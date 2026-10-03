@@ -281,10 +281,16 @@ def _install_event_emitter(
     emit_enabled: bool,
     events_jsonl_path: Path,
 ) -> None:
-    """Module-level install hook called from main() once per job."""
+    """Module-level install hook called from main() once per job.
+
+    ``events_jsonl_path=None`` means "no sink": emit_event() gates its jsonl
+    write on ``_EVENT_LOG_PATH is not None``, so None disables the file while
+    leaving the stdout event stream intact.  Passed by --no-events-jsonl, which
+    the yamls' output.events_jsonl:false maps to.
+    """
     global _EVENT_ENABLED, _EVENT_LOG_PATH, _EVENT_FH
     _EVENT_ENABLED = bool(emit_enabled)
-    _EVENT_LOG_PATH = Path(events_jsonl_path)
+    _EVENT_LOG_PATH = None if events_jsonl_path is None else Path(events_jsonl_path)
     if _EVENT_FH is not None:
         try:
             _EVENT_FH.close()
@@ -1422,6 +1428,17 @@ def train_one_metal_one_seed(
     # behaviour bit-for-bit); a positive value below the pool size
     # applies a seeded random subsample.
     max_joint_rows: Optional[int] = None,
+    # 2026-10-04 — GPU-utilisation flags (compute.torch_compile / tf32 /
+    # cudnn_benchmark / channels_last).  Threaded as kwargs from main() for
+    # the same reason Wf-427-A3 threaded use_dann/per_cohort_features: this
+    # function has NO access to the main()-scoped ``args`` object, and
+    # referencing ``args.<flag>`` here raises NameError at the first epoch —
+    # which is exactly what this block did on its first attempt.  Defaults
+    # OFF keep the no-flag path bit-for-bit identical to Wf-131 P1.
+    torch_compile: bool = False,
+    tf32: bool = False,
+    cudnn_benchmark: bool = False,
+    channels_last: bool = False,
 ) -> MetalSeedResult:
     """Train a 5-metal multi-task D-MPNN for one (metal, seed).
 
@@ -1586,6 +1603,40 @@ def train_one_metal_one_seed(
         dropout=DEFAULT_DROPOUT,
         use_dann=use_dann,
     ).to(device)
+    # 2026-10-04 — GPU-utilisation wire-in, mirroring Wf-431-B1 in
+    # train_cfm_yuelbond_wasserstein.py.  Default OFF; the no-flag path is
+    # bit-for-bit unchanged.  Order matters: torch.backends.* BEFORE
+    # torch.compile so the compiled graph inherits the precision settings.
+    if cudnn_benchmark:
+        torch.backends.cudnn.benchmark = True
+        print("[compute] --cudnn-benchmark ENABLED", flush=True)
+    if tf32:
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        torch.set_float32_matmul_precision("high")
+        print("[compute] --tf32 ENABLED (matmul precision = high)", flush=True)
+    if channels_last:
+        model = model.to(memory_format=torch.channels_last)
+        print(
+            "[compute] --channels-last ENABLED (note: a D-MPNN has no "
+            "spatial axes, so this is expected to be a no-op)",
+            flush=True,
+        )
+    if torch_compile:
+        # dynamic_shapes BEFORE any compile call: the training loop produces
+        # variable batch sizes when n_train % batch_size != 0.
+        torch._dynamo.config.dynamic_shapes = True
+        try:
+            model = torch.compile(model, mode="reduce-overhead")
+            print("[compute] --torch-compile ENABLED (reduce-overhead)", flush=True)
+        except Exception as exc:  # noqa: BLE001
+            # A corrupt inductor cache must not kill the run; eager is
+            # bit-for-bit the no-flag path.
+            print(
+                f"[compute] --torch-compile FAILED ({type(exc).__name__}: {exc}); "
+                f"falling back to eager. Clear with: rm -rf /tmp/torchinductor_*",
+                flush=True,
+            )
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
 
     # Wf-A6 A2 BLOCKER C fix — instantiate LR scheduler (opt-in).
@@ -2800,6 +2851,71 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "tail this file for structured per-epoch / per-batch events."
         ),
     )
+    p.add_argument(
+        "--no-events-jsonl",
+        dest="no_events_jsonl",
+        action="store_true",
+        default=False,
+        help=(
+            "2026-10-04: disable the events.jsonl sink entirely. Distinct "
+            "from --no-emit-json-events, which only switches STDOUT between "
+            "JSON and the legacy '[EVENT type] k=v' text format — the jsonl "
+            "write happened either way, so there was no way to turn the file "
+            "off. Wired to the yamls' output.events_jsonl:false, which had "
+            "been declared in 9 configs and read by nothing."
+        ),
+    )
+    # ------------------------------------------------------------------
+    # 2026-10-04: GPU-utilisation flags, mirroring Wf-431-B1 in
+    # train_cfm_yuelbond_wasserstein.py (lines ~3020-3060) — the CFM trainer
+    # has had these since Wf-431-B1 and this one never did, so every config
+    # that declared compute.torch_compile / tf32 / cudnn_benchmark /
+    # channels_last was writing them into a void.  Defaults OFF; the no-flag
+    # path is bit-for-bit unchanged.
+    # ------------------------------------------------------------------
+    p.add_argument(
+        "--torch-compile",
+        dest="torch_compile",
+        action="store_true",
+        default=False,
+        help=(
+            "torch.compile(model, mode='reduce-overhead') AFTER "
+            "torch._dynamo.config.dynamic_shapes=True. Default OFF."
+        ),
+    )
+    p.add_argument(
+        "--tf32",
+        dest="tf32",
+        action="store_true",
+        default=False,
+        help=(
+            "torch.backends.cuda.matmul.allow_tf32 + cudnn.allow_tf32 + "
+            "set_float32_matmul_precision('high'). Default OFF."
+        ),
+    )
+    p.add_argument(
+        "--cudnn-benchmark",
+        dest="cudnn_benchmark",
+        action="store_true",
+        default=False,
+        help=(
+            "torch.backends.cudnn.benchmark=True — benchmark algos on the "
+            "first iteration. Default OFF."
+        ),
+    )
+    p.add_argument(
+        "--channels-last",
+        dest="channels_last",
+        action="store_true",
+        default=False,
+        help=(
+            "model.to(memory_format=torch.channels_last). Default OFF. NOTE: "
+            "channels_last targets conv-style NCHW tensors; a D-MPNN over "
+            "scatter/gather message passing has no spatial axes, so this is "
+            "expected to be a no-op here and is kept only for parity with the "
+            "CFM trainer. Declared SCAFFOLD in the same sense as Wf-431-B1."
+        ),
+    )
     args = p.parse_args(argv)
     # Apply YAML overrides (no-op when --config not supplied).
     from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
@@ -2837,6 +2953,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.events_jsonl_path is not None
         else (args.out_dir / "events.jsonl")
     )
+    if getattr(args, "no_events_jsonl", False):
+        # None is the documented "no sink" sentinel handled by
+        # _install_event_emitter; emit_event() gates its write on it.
+        _events_jsonl_path = None
     _install_event_emitter(
         emit_enabled=bool(args.emit_json_events),
         events_jsonl_path=_events_jsonl_path,
@@ -3146,6 +3266,13 @@ def main(argv: Optional[List[str]] = None) -> int:
                     # the cap actually reaches the live pool assembly
                     # (was FLAG_ONLY: declared, never read; §5.7).
                     max_joint_rows=getattr(args, "max_joint_rows", None),
+                    # 2026-10-04 — thread the four compute.* flags.  Without
+                    # this the kwargs default to False and the flags stay
+                    # FLAG_ONLY (§5.7): accepted by argparse, reach nothing.
+                    torch_compile=bool(getattr(args, "torch_compile", False)),
+                    tf32=bool(getattr(args, "tf32", False)),
+                    cudnn_benchmark=bool(getattr(args, "cudnn_benchmark", False)),
+                    channels_last=bool(getattr(args, "channels_last", False)),
                     batch_size=args.batch_size,
                     w_w=args.wasserstein_weight,
                     use_l2_guard=args.use_l2_guard,
