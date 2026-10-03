@@ -64,14 +64,10 @@ ALL_TERMS = frozenset(
         "wasserstein_weight*w2_val",
         "0.05*cb_loss",
         "diversity_term",
-        "sa_penalty_weight*sa_loss",
         "shortcut_distill_loss",
         "consistency_term",
-        "per_cohort_term",
-        "pll_term",
         "so3_term",
         "edm_term",
-        "chemprop_v3_cache_term",
         "fm_term",
     }
 )
@@ -105,40 +101,27 @@ EXPECTED_LIVE = frozenset(
         "consistency_term",
         "so3_term",
         "edm_term",
+        # Fixed 2026-10-04: `mmd_loss(vel.detach(), ...)` and
+        # `repulsion_loss(vel.detach(), ...)` detached the MODEL's own velocity
+        # output, so the regulariser was a constant -- measured
+        # requires_grad=False at value 0.17 even with mmd_weight=1.0.  Only the
+        # target side stays detached now.
+        "diversity_term",
     }
 )
 
-#: Terms permitted to be gradient-dead, each with the reason and the work
-#: item that retires it.  Keep the reasons specific — "TODO" is not a reason.
-ALLOWED_DEAD = {
-    "diversity_term": (
-        "requires_grad=False even with --mmd-weight 1.0 --repulsion-weight 1.0 "
-        "(measured value 0.17, gradient zero). Detached upstream of the sum; "
-        "the static read that called this live was wrong. Retired by: "
-        "locate the detach in the mmd/repulsion path and decide restore-vs-remove."
-    ),
-    "sa_penalty_weight*sa_loss": (
-        "built as torch.tensor(float(_sa_pen.mean())); the float() cast cuts "
-        "the graph, and _synthesize_sa_scores_from_clouds returns List[float]. "
-        "Retired by: remove from the sum, or make the surrogate differentiable."
-    ),
-    "per_cohort_term": (
-        "always torch.zeros; its own comment says it contributes 0 to the loss "
-        "and exists for logging. Retired by: drop it from the sum and log it."
-    ),
-    "pll_term": (
-        "all 4 hardcoded SMILES raise PLLFeatureError('mol has no conformer id "
-        "0'), swallowed by 'except _PLL_FEATURE_ERROR: continue', so the list "
-        "stays empty and the initial torch.zeros survives. Even fixed it would "
-        "be a constant: per TODO-94, PLL is a per-molecule DESCRIPTOR for a "
-        "downstream regressor, not a loss term. Retired by: drop from the sum, "
-        "log as a diagnostic."
-    ),
-    "chemprop_v3_cache_term": (
-        "always torch.zeros; its comment says the cache's 'purpose is speedup, "
-        "not training signal'. Retired by: drop from the sum."
-    ),
-}
+#: Terms permitted to be gradient-dead.
+#:
+#: EMPTY as of 2026-10-04, and that is the point.  It reached 11 entries when
+#: this test was written; every one has since been either fixed (cb_loss,
+#: diversity_term) or removed from the loss sum for being structurally
+#: incapable of carrying a gradient (sa_penalty_weight*sa_loss,
+#: per_cohort_term, pll_term, chemprop_v3_cache_term, log_normal_t_term).
+#:
+#: Keep it that way: an entry here means a term is inside the objective while
+#: training nothing, and each one has to earn its place with a specific
+#: reason.  Prefer fixing the term or taking it out of the sum.
+ALLOWED_DEAD: dict = {}
 
 #: The trainer invocation used to sample a real loss.  Every feature flag is
 #: ON so the ACTIVE branch of each term runs — with flags off, a dead term and

@@ -1304,8 +1304,15 @@ def train_one_epoch(
                             _sigma = float(
                                 torch.cdist(vel, ref).median().clamp(min=1e-3)
                             )
+                        # 2026-10-04: `vel` used to be `vel.detach()` here, so
+                        # this regulariser was a constant -- measured
+                        # requires_grad=False at value 0.17 even with
+                        # mmd_weight=1.0, i.e. it reached the loss and trained
+                        # nothing.  `vel` is the model's own velocity output;
+                        # only the TARGET side (ref) stays detached.  `_sigma`
+                        # is a bandwidth, not something to differentiate.
                         mmd_val = _ds.mmd_loss(
-                            vel.detach(),
+                            vel,
                             ref.detach(),
                             sigma=_sigma,
                             unbiased=False,
@@ -1317,8 +1324,12 @@ def train_one_epoch(
                 if repulsion_weight > 0.0 and batch_velocities:
                     vel = torch.cat(batch_velocities, dim=0)
                     if vel.shape[0] >= 2:
+                        # 2026-10-04: same fix as the MMD call above -- the
+                        # `vel.detach()` made this a constant.  The term's whole
+                        # purpose is to push generated positions apart, which
+                        # requires the gradient to reach `vel`.
                         rep_val = _ds.repulsion_loss(
-                            vel.detach(),
+                            vel,
                             margin=0.95,
                             reduce=True,
                         )
@@ -1768,26 +1779,45 @@ def train_one_epoch(
                 # degrades to no-op, loss contribution stays at 0,
                 # bit-for-bit backward compat preserved.
                 pass
+        # 2026-10-04 — four terms left this sum.  None of them was a wiring
+        # oversight: each is structurally incapable of carrying a gradient, so
+        # being here only made the reported loss differ from the objective and
+        # invited the next reader to believe they trained something.
+        #
+        #   sa_penalty_weight * sa_loss
+        #       The SA scores come from `_synthesize_sa_scores_from_clouds`,
+        #       typed `-> List[float]`, computed from the DATA clouds rather
+        #       than from model output, then wrapped in torch.tensor(float(...))
+        #       which severs any graph there might have been.  A constant.
+        #       To make this real the penalty has to be scored on DECODED
+        #       molecules, which is a different piece of work.
+        #   per_cohort_term
+        #       Always torch.zeros; its own comment says it contributes 0 and
+        #       exists for logging.
+        #   pll_term
+        #       Per TODO-94, PLL is a per-molecule DESCRIPTOR feeding a
+        #       downstream regressor, not a loss term.  On top of that the
+        #       computation never succeeded anyway: all four hardcoded SMILES
+        #       raised PLLFeatureError and `except ...: continue` ate them.
+        #       The eigenvalue features are still computed and logged; they
+        #       just no longer masquerade as training signal.
+        #   chemprop_v3_cache_term
+        #       Always torch.zeros; its comment says the cache's purpose is
+        #       speedup, not training signal.
+        #
+        # Each of these is asserted by tests/test_cfm_loss_gradient_liveness.py
+        # to be ABSENT from the sum -- if one reappears, that test fails.
         loss = (
             bond_ce
             + wasserstein_weight * w2_val
             + 0.05 * cb_loss
             + diversity_term
-            + sa_penalty_weight * sa_loss
             + shortcut_distill_loss
             + consistency_term
-            + per_cohort_term
-            + pll_term  # Wf-409-A1 NEW (TODO-94 R20-P3 Multi-PH + PLL)
-            # Wf-408-A2 NEW — final Wf-380 SCAFFOLD close-out: 4 NEW
-            # loss terms.  All default-OFF / zero-contribution so
-            # backward compat with Wf-243..Wf-252 HEAD + Wf-388-A2/A3
-            # + Wf-405-A2 + Wf-406-A2 + Wf-409-A1 baseline is preserved
-            # bit-for-bit when no flag is set on the CLI.
             + so3_term  # Wf-408-A2 so3_average
             # log_normal_t_term REMOVED 2026-10-04 — it was an exact zero in
             # this sum; the flag now drives the FM block's t-sampling instead.
             + edm_term  # Wf-408-A2 edm_preconditioning
-            + chemprop_v3_cache_term  # Wf-408-A2 chemprop_v3_cache
             + fm_term  # 2026-10-04 NEW — flow-matching objective (default OFF)
         )
         # 2026-10-04 — refresh the per-term side-channel read by
@@ -1803,15 +1833,17 @@ def train_one_epoch(
                 "wasserstein_weight*w2_val": wasserstein_weight * w2_val,
                 "0.05*cb_loss": 0.05 * cb_loss,
                 "diversity_term": diversity_term,
-                "sa_penalty_weight*sa_loss": sa_penalty_weight * sa_loss,
                 "shortcut_distill_loss": shortcut_distill_loss,
                 "consistency_term": consistency_term,
-                "per_cohort_term": per_cohort_term,
-                "pll_term": pll_term,
                 "so3_term": so3_term,
                 "edm_term": edm_term,
-                "chemprop_v3_cache_term": chemprop_v3_cache_term,
                 "fm_term": fm_term,
+                # Deliberately absent (removed from the loss sum 2026-10-04,
+                # see the comment above `loss = (`): "sa_penalty_weight*sa_loss",
+                # "per_cohort_term", "pll_term", "chemprop_v3_cache_term",
+                # "log_normal_t_term".  These were structurally constant, so
+                # their variables still exist above but no longer enter the
+                # objective.  The guard test asserts they stay out.
             }
         )
         # Wf-406-A2 — TODO-21 Lambda × CFM reward-weighting wiring
