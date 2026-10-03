@@ -253,18 +253,62 @@ else:
 # Per AGENTS.md 5.5 + user voice 'never use CLI again always yaml', new yamls
 # use 'command_template' field with {yaml_path}/{flags_joined}/{seed}/{out_dir}
 # placeholders; old yamls use inline 'command' with shell vars.
+def _proto_or_train(cfg: dict, key: str, default):
+    """Read a hyperparameter from where the shipped configs actually put it.
+
+    2026-10-03: the shipped wf124/cfm configs declare epochs/batch_size/lr
+    under ``protocol``; this looked under ``train`` and so always missed,
+    silently substituting the literal default while the yaml's own value drove
+    nothing.  Check both, preferring ``protocol`` (the current convention).
+    """
+    for section in ('protocol', 'train'):
+        v = (cfg.get(section) or {}).get(key)
+        if v is not None:
+            return v
+    return default
+
+
 _cmd_template_or_legacy = e.get('command_template') or e.get('command', '')
 cmd = _cmd_template_or_legacy.format(
     out_dir=d.get('output', {}).get('base_dir', 'results/auto'),
     ckpt_dir=d.get('output', {}).get('ckpt_dir', 'results/auto/ckpts'),
     hidden=(d.get('model', {}) or {}).get('hidden_dim', 128),
-    n_layers=(d.get('model', {}) or {}).get('n_layers', 4),
+    n_layers=(d.get('model', {}) or {}).get('n_layers')
+    or (d.get('model', {}) or {}).get('depth', 4),
     n_steps=(d.get('flow', {}) or {}).get('n_steps', 100),
     method=(d.get('flow', {}) or {}).get('method', 'rk4'),
-    batch_size=(d.get('train', {}) or {}).get('batch_size', 32),
-    lr=(d.get('train', {}) or {}).get('lr', 1e-4),
-    epochs=(d.get('train', {}) or {}).get('epochs', 30),
+    # 2026-10-03: these read `protocol.*` because that is where the shipped
+    # configs actually declare them.  They previously read `train.*`, which
+    # none of the wf124/cfm configs have — so the values silently fell back to
+    # the literals below, and the yaml's protocol.epochs/batch_size/lr drove
+    # nothing.  Verified by probe: editing protocol.epochs 50 -> 77 left the
+    # rendered command unchanged.  `train.*` is kept as a fallback for older
+    # configs.
+    batch_size=_proto_or_train(d, 'batch_size', 32),
+    lr=_proto_or_train(d, 'lr', 1e-4),
+    epochs=_proto_or_train(d, 'epochs', 30),
     dataset=(d.get('data', {}) or {}).get('dataset', 'qm9'),
+    # placeholders the wf124/cfm templates need to stop hardcoding values the
+    # yaml already declares
+    alpha=(d.get('model', {}) or {}).get('alpha', 0.5),
+    wasserstein_weight=(d.get('model', {}) or {}).get('wasserstein_weight', 0.0),
+    n_mc=(d.get('model', {}) or {}).get('n_mc', 256),
+    w2_gradient_mode=(d.get('model', {}) or {}).get('w2_gradient_mode', 'sliced'),
+    ablation_config=(d.get('model', {}) or {}).get('ablation_config', 'mtl_baseline'),
+    depth=(d.get('model', {}) or {}).get('depth', 3),
+    use_l2_guard='--use-l2-guard' if (d.get('model', {}) or {}).get('use_l2_guard') else '',
+    device=(d.get('compute', {}) or {}).get('gpu', 'cuda:0'),
+    # NOTE: the launchers pass --cpu-num-workers 8 (Wf-326B optimal on this
+    # 24-core host) while the shipped yamls declare 4.  Wiring the yaml through
+    # makes the yaml authoritative on the start.sh path; the two values
+    # disagreeing is a value question, flagged rather than silently resolved.
+    cpu_workers=(d.get('compute', {}) or {}).get('cpu_workers', 0),
+    # 2026-10-03: cfm_real_decode_lift_p1.3.yaml's template uses {pocket_id} but
+    # nothing supplied it, so start.sh died with KeyError -> reported as
+    # "could not parse YAML" (misleading: the yaml parsed fine).  Declared in
+    # the yaml as protocol.pocket_id; falls back to the trainer's own default
+    # so configs that do not use the placeholder are unaffected.
+    pocket_id=(d.get('protocol', {}) or {}).get('pocket_id', '1h36'),
     script=e.get('script', 'molmetal/scripts/train_dmpnn_multitask_wasserstein.py'),
     metal=_metal_default,
     seed=_seed_default,

@@ -42,6 +42,11 @@ flow:
   method: rk4
   ot_solver: w_flow
 protocol:
+  # 2026-10-03: declared so entry.command_template's {pocket_id} placeholder
+  # has a source in the yaml rather than only a fallback in start.sh. Must
+  # name a pocket the per-pocket bias lookup knows; the trainer's own
+  # default is 1h36.
+  pocket_id: 1h36
   n_seeds: 1  # Wf-A11: seed list removed — CFM dest is singular --seed (enumerated by entry.command_template); n_seeds read by scripts/start.sh
   epochs: 3
   batch_size: 16

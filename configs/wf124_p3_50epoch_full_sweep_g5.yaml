@@ -26,6 +26,17 @@ data:
     - Rh
     - Re
     scaffold_split: true
+    # 2026-10-03: ratios added — the config declared `type: scaffold_split`
+    # but no fractions, so a reader could not tell 70/10/20 from 80/10/10.
+    # These mirror what the trainer actually does: wfA2's ScaffoldSplitter
+    # is Bemis-Murcko / largest_first with fractions hardcoded at
+    # train_dmpnn_multitask_wasserstein.py:699 as (0.7, 0.1, 0.2).  The
+    # yaml does NOT control the split today (there are no split CLI flags),
+    # so this is a truthful declaration, not a setting — pre-flight's
+    # split check fails if the two ever diverge.
+    train_frac: 0.7
+    val_frac: 0.1
+    test_frac: 0.2
 model:
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'backbone' removed (no --backbone dest in either trainer; never reached the trainer).
   ablation_config: mtl_baseline
@@ -224,7 +235,7 @@ directives:
   - p3_wf343c2_per_wave_runtime_check
 entry:
   script: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
-  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --metals {metal} --seeds {seed} --epochs 50 --batch-size 64 --lr 1e-3 --alpha 0.5 --wasserstein-weight 0.05 --use-l2-guard --device cuda:0 --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --metals {metal} --seeds {seed} --epochs {epochs} --batch-size {batch_size} --lr {lr} --hidden {hidden} --depth {depth} --alpha {alpha} --wasserstein-weight {wasserstein_weight} {use_l2_guard} --device {device} --cpu-num-workers {cpu_workers} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
   warm_start_checkpoint: n/a
 honest_framing:
   data_grounding:
