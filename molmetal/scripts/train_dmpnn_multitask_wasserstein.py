@@ -940,6 +940,59 @@ class MultiTaskWassersteinModel(nn.Module):
             ]
         )
 
+    # ------------------------------------------------------------------
+    # EMA — exponential moving average of the parameters (Karras 2022 EDM §5)
+    # ------------------------------------------------------------------
+    # 2026-10-04: `train.ema_decay: 0.999` in configs/default.yaml had NO
+    # consumer -- this trainer had no EMA code at all (the 20 grep hits for
+    # "ema" in this file are all the substring inside "schema").  Same
+    # situation as the CFM trainer's --use-ema, and wired the same way so the
+    # two entries behave alike.
+    def init_ema(self, decay: float = 0.999) -> None:
+        """Snapshot the current parameters as the EMA starting point."""
+        self._ema_decay = float(decay)
+        self._ema_state = {k: v.detach().clone() for k, v in self.state_dict().items()}
+        self._ema_backup = None
+
+    def update_ema(self, decay: Optional[float] = None) -> None:
+        """``ema = decay * ema + (1 - decay) * model`` over parameters+buffers."""
+        state = getattr(self, "_ema_state", None)
+        if state is None:
+            return
+        d = float(self._ema_decay if decay is None else decay)
+        with torch.no_grad():
+            msd = self.state_dict()
+            for k, v_ema in state.items():
+                v = msd[k]
+                if not torch.is_floating_point(v):
+                    # Integer buffers (e.g. num_batches_tracked) -- copy verbatim.
+                    v_ema.copy_(v)
+                else:
+                    v_ema.mul_(d).add_(v.detach(), alpha=1.0 - d)
+
+    def ema_swap_in(self) -> bool:
+        """Back up the live weights and load the EMA snapshot over them."""
+        state = getattr(self, "_ema_state", None)
+        if state is None:
+            return False
+        self._ema_backup = {k: v.detach().clone() for k, v in self.state_dict().items()}
+        msd = self.state_dict()
+        with torch.no_grad():
+            for k, v_ema in state.items():
+                msd[k].copy_(v_ema)
+        return True
+
+    def ema_swap_out(self) -> None:
+        """Restore the weights backed up by :meth:`ema_swap_in`."""
+        backup = getattr(self, "_ema_backup", None)
+        if backup is None:
+            return
+        msd = self.state_dict()
+        with torch.no_grad():
+            for k, v in backup.items():
+                msd[k].copy_(v)
+        self._ema_backup = None
+
     def encode_pool(
         self,
         atom_feats: torch.Tensor,
@@ -1081,6 +1134,11 @@ def train_one_epoch_joint(
     #     ``non_blocking=True`` a documented no-op, so numerics unchanged.
     gradient_accumulation_steps: int = 1,
     pin_memory: bool = True,
+    # 2026-10-04 NEW — EMA kwargs.  `train.ema_decay: 0.999` in
+    # configs/default.yaml had no consumer because this trainer had no EMA
+    # code at all; see the EMA methods on MultiTaskWassersteinModel.
+    use_ema: bool = False,
+    ema_decay: float = 0.999,
 ) -> Tuple[float, float, float, float]:
     """Train one epoch on the joint 5-metal pool.
 
@@ -1130,6 +1188,11 @@ def train_one_epoch_joint(
                 torch.nn.utils.clip_grad_norm_(model.parameters(), L2_GUARD_MAX_NORM)
             )
         optimizer.step()
+        # 2026-10-04 — EMA update, immediately after the step and before
+        # anything reads the weights.  No-op when use_ema is off (the snapshot
+        # is never created), so the default path is unchanged.
+        if bool(use_ema):
+            model.update_ema()
 
     for start in range(0, len(indices), batch_size):
         batch_idx = indices[start : start + batch_size]
@@ -1500,6 +1563,10 @@ def train_one_metal_one_seed(
     # (1 / True) preserve the pre-flag loop bit-for-bit.
     gradient_accumulation_steps: int = 1,
     pin_memory: bool = True,
+    # 2026-10-04 — EMA kwargs (the yaml `train.ema_decay`), threaded the same
+    # way for the same reason: no access to the main()-scoped `args` here.
+    use_ema: bool = False,
+    ema_decay: float = 0.999,
 ) -> MetalSeedResult:
     """Train a 5-metal multi-task D-MPNN for one (metal, seed).
 
@@ -1676,6 +1743,24 @@ def train_one_metal_one_seed(
         torch.backends.cudnn.allow_tf32 = True
         torch.set_float32_matmul_precision("high")
         print("[compute] --tf32 ENABLED (matmul precision = high)", flush=True)
+    # 2026-10-04 — parameter EMA.  Initialised AFTER the model is on its
+    # target device so the snapshot lands on the same device as the
+    # parameters, and BEFORE any torch.compile wrapper (which would otherwise
+    # hide the parameters behind an OptimizedModule).
+    #
+    # NOTE: this runs inside `train_one_metal_one_seed`, NOT in `main()` — so
+    # it reads the `use_ema` / `ema_decay` KWARGS threaded into this function,
+    # never a main()-scoped `args`.  The first draft of this block did use
+    # `getattr(args, ...)` and produced the exact `NameError: name 'args' is
+    # not defined` that the comment at the top of this signature warns about
+    # (AGENTS.md §5.7 floor #2) — caught by the smoke, not by reading.
+    if bool(use_ema):
+        model.init_ema(decay=float(ema_decay))
+        print(
+            f"[dmpnn-ema] enabled: decay={float(ema_decay)} "
+            "(snapshot taken from freshly-initialised weights)",
+            flush=True,
+        )
     if channels_last:
         model = model.to(memory_format=torch.channels_last)
         print(
@@ -1850,6 +1935,10 @@ def train_one_metal_one_seed(
             # namespace; this function never reads ``args``).
             gradient_accumulation_steps=gradient_accumulation_steps,
             pin_memory=pin_memory,
+            # 2026-10-04 — EMA kwargs, threaded the same way (never read off a
+            # main()-scoped `args` from inside this function).
+            use_ema=use_ema,
+            ema_decay=ema_decay,
         )
         w_history.append(float(avg_w))
 
@@ -2824,6 +2913,25 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     # (pinning only happens inside a DataLoader), so numerics are unchanged
     # at the default True; on CPU the flag is a no-op by construction.
     p.add_argument(
+        "--use-ema",
+        dest="use_ema",
+        action="store_true",
+        default=False,
+        help=(
+            "WIRE-IN 2026-10-04: EMA of the model parameters (Karras 2022 EDM "
+            "section 5), updated after every optimizer step and swapped in "
+            "around evaluation.  Default OFF.  This is the consumer the yaml "
+            "`train.ema_decay` key had been missing -- before today this "
+            "trainer had no EMA code at all."
+        ),
+    )
+    p.add_argument(
+        "--ema-decay",
+        type=float,
+        default=0.999,
+        help="EMA decay (default 0.999); the value the yaml `train.ema_decay` declares.",
+    )
+    p.add_argument(
         "--pin-memory",
         dest="pin_memory",
         action=argparse.BooleanOptionalAction,
@@ -3440,6 +3548,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                         1, int(getattr(args, "gradient_accumulation_steps", 1))
                     ),
                     pin_memory=bool(getattr(args, "pin_memory", True)),
+                    # 2026-10-04 — EMA kwargs (the yaml `train.ema_decay`).
+                    use_ema=bool(getattr(args, "use_ema", False)),
+                    ema_decay=float(getattr(args, "ema_decay", 0.999)),
                     batch_size=args.batch_size,
                     w_w=args.wasserstein_weight,
                     use_l2_guard=args.use_l2_guard,

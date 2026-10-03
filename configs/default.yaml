@@ -15,8 +15,20 @@ train:
   epochs: 30
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'warmup_steps: 200' removed — D-MPNN has no --lr-warmup-steps dest; its warmup is protocol.scheduler.warmup_epochs -> --lr-warmup-epochs.
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'grad_clip_norm: 1.0' removed — real dest is protocol.max_norm (5.0 below); loader alias now maps grad_clip_norm->max_norm.
+  # WIRED 2026-10-04: `train.ema_decay` now reaches the D-MPNN trainer via
+  # --ema-decay (with --use-ema).  This trainer had NO EMA code at all before
+  # today, so the declared 0.999 reached nothing; see the EMA methods on
+  # MultiTaskWassersteinModel and the init in main().
   ema_decay: 0.999
-  edge_cutoff: 6.0
+  # 2026-10-04: `edge_cutoff: 6.0` REMOVED.  It names a 3D interatomic distance
+  # cutoff, which belongs to EquivariantDMPNN (whose own default is 5.0).  The
+  # D-MPNN trainer builds DMPNNMultiTaskModel instead -- a 2D message-passing
+  # net over the SMILES-derived molecular graph, which has NO cutoff parameter
+  # and no 3D coordinates at all (grep for coords/positions/rbf over
+  # train_dmpnn_multitask_wasserstein.py returns nothing).  So the key
+  # described a geometry for a model this entry does not build.  Left absent
+  # rather than registered as spec, because unlike flow.n_steps there is no
+  # sibling config that uses it.
 data:
   dataset: metalcytotox_5metal  # Wf-A8c FIX: rename qm9 to metalcytotox_5metal per Tier-1 allowed list
   split:  # Wf-A8c FIX: convert split string to block with type

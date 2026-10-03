@@ -2699,6 +2699,27 @@ def parse_args() -> argparse.Namespace:
             "yaml `model.joint_train` key."
         ),
     )
+    # 2026-10-04 NEW — `model.learnable_vel_scale`'s consumer.  TODO-24 P1.2
+    # replaced a tanh-saturated scalar gate in the Lipman adapter with a
+    # learnable `vel_scale` nn.Parameter.  This trainer's `vel_probe` never had
+    # a saturation gate in the first place -- it ends in an unconstrained
+    # `nn.Linear(hidden, 3)`, so the output scale is learned by construction.
+    # The key is wired as a guard for the same reason as joint_train: asking
+    # for the saturating behaviour is not something this trainer can honour.
+    p.add_argument(
+        "--learnable-vel-scale",
+        dest="learnable_vel_scale",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Whether the velocity field's output scale is a learnable "
+            "parameter (TODO-24 P1.2) rather than a tanh-saturated gate.  "
+            "This trainer only supports True -- vel_probe ends in an "
+            "unconstrained Linear, so the scale is always learned -- and "
+            "--no-learnable-vel-scale is rejected rather than ignored.  "
+            "Driven by the yaml `model.learnable_vel_scale` key."
+        ),
+    )
     p.add_argument(
         "--use-bass-martingale",
         dest="bass_martingale",
@@ -4190,9 +4211,19 @@ def main() -> int:
             "this trainer has no frozen-head path.  The key had no consumer "
             "before 2026-10-04, so the request would have been a silent no-op."
         )
+    # 2026-10-04 — `model.learnable_vel_scale` guard.  See the flag's help.
+    if not bool(getattr(args, "learnable_vel_scale", True)):
+        raise SystemExit(
+            "model.learnable_vel_scale=false is not supported: vel_probe ends "
+            "in an unconstrained nn.Linear, so the velocity scale is always "
+            "learned.  There is no tanh-saturated variant to fall back to.  "
+            "The key had no consumer before 2026-10-04, so the request would "
+            "have been a silent no-op."
+        )
     print(
         f"[cfm-head] bond_head={_bond_head} cfm_decoder={_cfm_decoder} "
-        f"use_yuelbond={_use_yuelbond} joint_train=True (consistent)"
+        f"use_yuelbond={_use_yuelbond} joint_train=True "
+        f"learnable_vel_scale=True (consistent)"
     )
     # Pocket bias + reference positions.
     bias_verdict = pocket_specific_closure_bias(args.pocket_id)
