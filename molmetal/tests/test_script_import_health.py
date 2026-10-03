@@ -67,12 +67,32 @@ SCRIPTS_DIR = REPO_ROOT / "molmetal" / "scripts"
 #: Any script carrying one of these opts into the import-health guard.
 MIGRATION_MARKERS = ("_wf416_atomic_write_text", "_WF416_HAS_ATOMIC")
 
-#: The exact splice signature that broke four files.
+#: The splice signature that broke four files — GENERALISED (Wf-A16).
+#:
+#: This used to be pinned to the exact Wf-416 helper name
+#: (``def _wf416_atomic_write_text``). That made the guard marker-specific, and
+#: it duly missed the SAME defect arriving from a different wave:
+#: ``molmetal/scripts/r4_c_full_sweep.py`` had the Wf-424-A4 migration splice its
+#: helper between ``@dataclass`` and ``class PocketResult``, which killed the
+#: import and stopped three test modules from even being COLLECTED. A guard that
+#: keys on one wave's identifier protects against one wave's bug, not the bug.
+#:
+#: So the pattern is now the DEFECT SHAPE, not the tool that caused it: any
+#: ``@dataclass`` decorator immediately followed by a ``def``. `\b` after
+#: ``@dataclass`` is load-bearing — it stops the rule firing on the legitimate
+#: ``@dataclass_transform()``, which really does decorate a function (`_` is a
+#: word character, so there is no boundary between ``dataclass`` and
+#: ``_transform``).
 _DECORATOR_CLOBBER = re.compile(
-    r"^[ \t]*@dataclass[^\n]*\n"
-    r"[ \t]*def _wf416_atomic_write_text\b",
+    r"^[ \t]*@dataclass\b[^\n]*\n"
+    r"[ \t]*(?:async[ \t]+)?def[ \t]",
     re.MULTILINE,
 )
+
+#: Every script, not just the marked ones — the Wf-424 instance was unmarked.
+def _all_scripts() -> list[Path]:
+    """Every ``molmetal/scripts/*.py``, sorted for stable ids."""
+    return sorted(SCRIPTS_DIR.glob("*.py"))
 
 
 def _marked_scripts() -> list[Path]:
@@ -102,18 +122,45 @@ def test_guard_is_not_vacuous() -> None:
 
 
 def test_no_dataclass_clobber() -> None:
-    """No marked script may have ``@dataclass`` spliced onto the injected helper."""
+    """No script — marked or not — may have ``@dataclass`` spliced onto a ``def``.
+
+    Wf-A16: this used to iterate ``MARKED``, i.e. only scripts carrying the
+    Wf-416 marker. That is exactly why it missed ``r4_c_full_sweep.py``, whose
+    clobber came from Wf-424-A4 and therefore was never in the population the
+    guard looked at. The population is now every script.
+    """
     offenders: list[str] = []
-    for path in MARKED:
+    for path in _all_scripts():
         text = path.read_text(encoding="utf-8", errors="replace")
         for m in _DECORATOR_CLOBBER.finditer(text):
             line_no = text[: m.start()].count("\n") + 1
             offenders.append(f"{path.name}:{line_no}")
     assert not offenders, (
-        "the Wf-416-A1 helper is decorated with @dataclass, which means a "
-        "class below it lost its decorator and the module cannot import — "
-        "see this file's docstring for the failure mode. Offenders: "
+        "a @dataclass decorator is sitting on a function (which means a class "
+        "below it lost its decorator and the module cannot import — "
+        "AttributeError: 'function' object has no attribute '__mro__'), or the "
+        "module will not import at all. See this file's docstring. Offenders: "
         + ", ".join(offenders)
+    )
+
+
+def test_clobber_pattern_is_not_vacuous() -> None:
+    """A pattern that matches nothing proves nothing — fire it on a plant.
+
+    Wf-A16: the previous guard was specific enough to be safe and too specific
+    to be useful. This pins the OTHER direction: the regex must still catch the
+    defect shape, and must NOT catch the legitimate ``@dataclass_transform()``
+    (which decorates functions on purpose).
+    """
+    planted = "@dataclass\ndef _wf424_whatever(x): ...\n"
+    assert _DECORATOR_CLOBBER.search(planted), (
+        "the clobber regex no longer fires on a planted clobber — the guard has "
+        "gone vacuous and would pass on real corruption"
+    )
+    legitimate = "@dataclass_transform()\ndef create_model(cls): ...\n"
+    assert not _DECORATOR_CLOBBER.search(legitimate), (
+        "the clobber regex fires on @dataclass_transform(), which legitimately "
+        "decorates functions — the guard would now flag correct code"
     )
 
 

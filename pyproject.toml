@@ -73,6 +73,13 @@ markers = [
     "integration: marks tests requiring optional external services or data",
     "gpu: marks tests requiring a GPU (QuickVina-GPU, CFM retrain, etc.)",
     "gpu_blocked: marks tests whose real path is BLOCKED on this CUDA host (placeholder for AMD-only tests; currently unused on pure-CUDA nodes per AGENTS.md §5.1)",
+    # Wf-A16 (2026-10-03): this marker was USED (test_reproduce_R17.py) but never
+    # DECLARED, and addopts carries --strict-markers — so the module errored at
+    # COLLECTION with "Failed: 'reproduce_R17' not found" and contributed zero
+    # coverage. Its own docstring documents the intent ("callers can opt-out via
+    # -m 'not reproduce_R17' for fast inner-loop runs"), so declaring it is the
+    # fix; deselecting it is now possible as designed.
+    "reproduce_R17: slow single-command R17 reproducibility driver (deselect with '-m not reproduce_R17')",
 ]
 
 [dependency-groups]
