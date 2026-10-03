@@ -1682,6 +1682,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         args.seeds = args.seeds[:1]
         args.epochs = 2
         args.time_budget_s = 180.0
+        # 2026-10-04: cap the corpus.  --quick claimed "1 metal x 1 seed x
+        # 2 epochs" but capped only those three — NOT the row count — so a
+        # 2-epoch smoke featurized and trained on the full 19,135-row corpus.
+        # Measured on this host, `--quick` alone ran >400 s against the
+        # pre-flight gate's 90 s budget, which is why p1_chemprop_smoke had
+        # been failing; the gate's docstring records a ~34 s baseline, so this
+        # was a ~12x regression, not a mis-set budget.
+        #
+        # --max-rows already existed for exactly this ("so the pre-featurization
+        # step stays cheap") and simply was not wired to --quick.  Measured
+        # wall time / loss-decrease (the Wf-446-H2 invariant needs >= 0.3 %):
+        #     rows    0 -> >300 s (budget blown)     2000 -> 105 s / 79.9 %
+        #     500 ->  7 s / 73.4 %                   1500 ->   9 s / 66.1 %
+        #    1000 ->  8 s / 65.1 %
+        # 1000 chosen: ~50x faster, and the invariant holds with ~200x margin.
+        # An explicit --max-rows still wins, so callers can override.
+        if args.max_rows == 0:
+            args.max_rows = 1000
 
     # Wf-245 Fix: --single-metal shortcut → --metals {M}.
     if args.single_metal:

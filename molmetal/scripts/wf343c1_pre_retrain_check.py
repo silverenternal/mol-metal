@@ -305,6 +305,11 @@ def gate_regex(
     )
 
 
+#: 2026-10-04 — memoised `--help` probes, keyed by
+#: (interpreter, script, extra_args).  See gate_help for why.
+_HELP_PROBE_CACHE: Dict[tuple, Tuple[int, str, str]] = {}
+
+
 def gate_help(
     name: str,
     priority: str,
@@ -323,8 +328,23 @@ def gate_help(
     joined stdout+stderr of ``{py} {script} {extra_args} --help``.
     """
     t0 = time.perf_counter()
-    args = [py, str(script)] + (extra_args or []) + ["--help"]
-    rc, out, err = _run(args, timeout=timeout)
+    # 2026-10-04 — CACHE the --help probe per (interpreter, script, extra_args).
+    # All six callers here probe the same CHEMPROP_V3_DRIVER, and pre-flight
+    # probes it six more times through its own copy of this helper, so the
+    # same `train_chemprop_v2_v3.py --help` was being spawned twelve times per
+    # pre-flight run.  Each spawn pays the script's full import cost (torch,
+    # chemprop) before argparse can print: measured ~5.3 s each, ~64 s of the
+    # 180 s `--all` suite.  The gate treats the output as a constant, so
+    # memoising it is behaviour-preserving — same command, same parsing, the
+    # second and later calls for one key served from memory.
+    cache_key = (str(py), str(script), tuple(extra_args or ()))
+    hit = _HELP_PROBE_CACHE.get(cache_key)
+    if hit is None:
+        args = [py, str(script)] + (extra_args or []) + ["--help"]
+        rc, out, err = _run(args, timeout=timeout)
+        _HELP_PROBE_CACHE[cache_key] = (rc, out, err)
+    else:
+        rc, out, err = hit
     elapsed = time.perf_counter() - t0
     blob = out + "\n" + err
     tokens = pattern.split()

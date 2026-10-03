@@ -335,10 +335,25 @@ def _run(
         )
         return proc.returncode, proc.stdout, proc.stderr
     except subprocess.TimeoutExpired as exc:
+        # 2026-10-04: TimeoutExpired.stdout/.stderr are BYTES even when the
+        # call passed text=True — CPython raises TimeoutExpired from inside
+        # communicate(), before the decode step a successful call performs.
+        # So `(exc.stderr or "") + f"..."` raised
+        #   TypeError: can't concat str to bytes
+        # from inside the timeout handler itself, and the caller reported the
+        # real condition ("the smoke exceeded its budget") as a bare
+        # "gate raised: TypeError" — the failure mode hid the failure.
+        def _as_text(v: object) -> str:
+            if v is None:
+                return ""
+            if isinstance(v, bytes):
+                return v.decode("utf-8", errors="replace")
+            return str(v)
+
         return (
             124,
-            exc.stdout or "",
-            (exc.stderr or "") + f"\n[TIMEOUT after {timeout}s]",
+            _as_text(exc.stdout),
+            _as_text(exc.stderr) + f"\n[TIMEOUT after {timeout}s]",
         )
     except FileNotFoundError as exc:
         return 127, "", f"[exec error: {exc}]"
@@ -401,6 +416,19 @@ def gate_grep(
     )
 
 
+#: 2026-10-04 — memoised `--help` probes, keyed by
+#: (interpreter, script, extra_args).  See gate_help for why.
+_HELP_PROBE_CACHE: Dict[tuple, Tuple[int, str, str]] = {}
+
+# Share the one cache with wf343c1_pre_retrain_check, which has its own copy of
+# gate_help and probes the SAME script.  Without this the script was spawned
+# once per module (twice per pre-flight run) and the second module's first
+# probe still paid the full ~5.3 s import.  Aliasing the dict — rather than
+# copying — means whichever module probes first serves the other, and a
+# FAILing probe cannot differ between them.
+_wf343c1._HELP_PROBE_CACHE = _HELP_PROBE_CACHE
+
+
 def gate_help(
     name: str,
     priority: str,
@@ -436,8 +464,29 @@ def gate_help(
     50-step smoke (``wf399a1_smoke_protocol.py``), not this gate.
     """
     t0 = time.perf_counter()
-    args = [py, str(script)] + (extra_args or []) + ["--help"]
-    rc, out, err = _run(args, timeout=timeout)
+    # 2026-10-04 — CACHE the --help probe per (interpreter, script, extra_args).
+    #
+    # This gate is declaration-only: it spawns `python <script> --help` and
+    # reads the argparse invocation column.  Twelve gates probe the SAME
+    # script with no extra args, so eleven of the twelve subprocesses were
+    # pure repetition — and each one pays the script's full import cost
+    # (torch, chemprop, ...) before argparse can print anything.  Measured:
+    # ~5.3 s per probe, ~64 s of the 180 s `--all` suite.
+    #
+    # The result is a pure function of (py, script, extra_args) — the gate
+    # already treats it as constant, and holding it makes repeated probes
+    # free.  Semantics are unchanged: the same command, the same output, the
+    # same INVOCATION-column parsing below; only the second and later calls
+    # for one key are served from memory.  A FAILing probe is cached too, so
+    # twelve gates cannot disagree about one script.
+    cache_key = (str(py), str(script), tuple(extra_args or ()))
+    hit = _HELP_PROBE_CACHE.get(cache_key)
+    if hit is None:
+        args = [py, str(script)] + (extra_args or []) + ["--help"]
+        rc, out, err = _run(args, timeout=timeout)
+        _HELP_PROBE_CACHE[cache_key] = (rc, out, err)
+    else:
+        rc, out, err = hit
     elapsed = time.perf_counter() - t0
     blob = out + "\n" + err
     tokens = pattern.split()
@@ -5785,6 +5834,14 @@ HP_RESOLUTION_EXEMPT_KEYS: Dict[str, str] = {
     "output.checkpoint_interval": "start.sh CHECKPOINT_INTERVAL env -> trainer flag",
     "output.resume_from": "start.sh RESUME_FROM env -> trainer --resume-from",
     "output.events_jsonl_path": "start.sh EVENTS_JSONL_PATH env -> trainer --events-jsonl-path",
+    # 2026-10-04: registered when it was actually wired.  This boolean was in
+    # all 9 configs and read by nothing — start.sh only looked at the _path
+    # key, so `events_jsonl: false` still emitted events.  start.sh now emits
+    # the trainer's --no-events-jsonl instead of --events-jsonl-path when this
+    # is False.  Registered here because the classifier resolves against
+    # argparse dests only, and this is consumed by start.sh; without the entry
+    # it would keep being reported as a dead key that a reader has just fixed.
+    "output.events_jsonl": "start.sh -> trainer --no-events-jsonl when false",
 }
 
 #: Dotted prefixes (exact key or any child) with NO executable consumer.

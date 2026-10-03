@@ -152,7 +152,12 @@ directives:
   - p3_wf343c4_anchor_freshness_24h
   - p3_wf343c2_per_wave_runtime_check
 entry:
-  script: molmetal/scripts/metallo_drug_smoke_retrain.py
+  # 2026-10-04 (user decision): was molmetal/scripts/metallo_drug_smoke_retrain.py
+  # — a 1000-step SMOKE script — on a config named `cfm_full_retrain`.  Every
+  # train.*/flow.*/model.* key below was therefore unresolved against the entry
+  # trainer and silently dropped.  Repointed at the real CFM trainer; those keys
+  # are re-evaluated against it (see todo.json).
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
   # Wf-A8c FIX C: replace inline CLI flags with yaml-driven --config pattern
   # Per AGENTS.md §5.5 + §5.7 + user voice "never use CLI again always yaml"
   # All retrain hyperparameters live in yaml sections above (data + model + flow + train + protocol);

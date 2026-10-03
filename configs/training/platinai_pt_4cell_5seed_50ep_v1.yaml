@@ -55,7 +55,11 @@ data:
     test_frac: 0.2
     temporal: pre_2024_train_and_2024_plus_test_HONEST_NEGATIVE_BLOCKED_no_Year_column_in_csv
     temporal_substitute: stable_hash_per_cell_balanced_70_10_10
-  num_workers: 8  # PyTorch DataLoader docs recommendation; Blackwell sm_120 + 6-batch featurisation handles 8 workers
+  # 2026-10-04: renamed from `num_workers` to match the trainer flag.
+  # --cpu-num-workers is the DataLoader num_workers knob (its own help reads
+  # 'DataLoader num_workers (default 0 = main process)'); the old key name
+  # resolved to no argparse dest and was silently dropped.
+  cpu_num_workers: 8  # PyTorch DataLoader docs recommendation; Blackwell sm_120 + 6-batch featurisation handles 8 workers
   pin_memory: true  # default DataLoader semantics (D-MPNN has no --pin-memory flag)
 
 # ============================================================================

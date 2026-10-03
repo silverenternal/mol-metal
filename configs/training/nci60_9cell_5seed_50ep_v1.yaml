@@ -77,7 +77,11 @@ data:
     val_frac: 0.1
     test_frac: 0.2
     grouped_on: unique_canonical_smiles  # NOT rows: guarantees zero cross-cell leakage
-  num_workers: 8
+  # 2026-10-04: renamed from `num_workers` to match the trainer flag.
+  # --cpu-num-workers is the DataLoader num_workers knob (its own help
+  # reads 'DataLoader num_workers (default 0 = main process)'); the old key
+  # name resolved to no argparse dest and was silently dropped.
+  cpu_num_workers: 8
   pin_memory: true  # schema-only; D-MPNN trainer has no --pin-memory flag
 
 # ============================================================================

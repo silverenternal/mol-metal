@@ -1,0 +1,614 @@
+{
+ "schema": "molmetal.dead_params.v1",
+ "created": "2026-10-04",
+ "source": "pre_flight_check._resolve_one_config_via_loader residual bucket (the repo's own classifier)",
+ "summary": {
+  "residual_occurrences": 61,
+  "distinct_keys": 31,
+  "reader": 27,
+  "spec": 143
+ },
+ "rules": [
+  "A 'spec' key is documented provenance, NOT dead - see HP_RESOLUTION_EXEMPT_PREFIXES.",
+  "residual = no argparse dest on the config's entry trainer AND no registered consumer.",
+  "Fix = delete (legacy) or wire (real setting). Decide per key, never blanket."
+ ],
+ "items": [
+  {
+   "key": "compute.channels_last",
+   "declared_value": false,
+   "configs": [
+    "nci60_9cell_5seed_50ep_v1.yaml",
+    "platinai_pt_4cell_5seed_50ep_v1.yaml"
+   ],
+   "entry_trainers": [
+    ""
+   ],
+   "accepted_by_entry": {
+    "": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "decided",
+   "disposition": "wire: add --channels-last to the D-MPNN trainer, align with CFM trainer",
+   "evidence": null
+  },
+  {
+   "key": "compute.cudnn_benchmark",
+   "declared_value": false,
+   "configs": [
+    "nci60_9cell_5seed_50ep_v1.yaml",
+    "platinai_pt_4cell_5seed_50ep_v1.yaml"
+   ],
+   "entry_trainers": [
+    ""
+   ],
+   "accepted_by_entry": {
+    "": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "decided",
+   "disposition": "wire: add --cudnn-benchmark to the D-MPNN trainer, align with CFM trainer",
+   "evidence": null
+  },
+  {
+   "key": "compute.tf32",
+   "declared_value": "high",
+   "configs": [
+    "platinai_pt_4cell_5seed_50ep_v1.yaml"
+   ],
+   "entry_trainers": [
+    ""
+   ],
+   "accepted_by_entry": {
+    "": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "decided",
+   "disposition": "wire: add --tf32 to the D-MPNN trainer, align with CFM trainer",
+   "evidence": null
+  },
+  {
+   "key": "compute.torch_compile",
+   "declared_value": false,
+   "configs": [
+    "nci60_9cell_5seed_50ep_v1.yaml",
+    "platinai_pt_4cell_5seed_50ep_v1.yaml"
+   ],
+   "entry_trainers": [
+    ""
+   ],
+   "accepted_by_entry": {
+    "": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "decided",
+   "disposition": "wire: add --torch-compile to the D-MPNN trainer, align with CFM trainer",
+   "evidence": null
+  },
+  {
+   "key": "data.csv",
+   "declared_value": ".data/molmetal/metalcytotox_5metal_multitask_v2.csv",
+   "configs": [
+    "cfm_per_innovation_ablation_p1.4.yaml",
+    "cfm_real_decode_lift_p1.3.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "data.num_workers",
+   "declared_value": 8,
+   "configs": [
+    "nci60_9cell_5seed_50ep_v1.yaml",
+    "platinai_pt_4cell_5seed_50ep_v1.yaml"
+   ],
+   "entry_trainers": [
+    ""
+   ],
+   "accepted_by_entry": {
+    "": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "fixed",
+   "disposition": "rename: config key -> cpu_num_workers (trainer flag --cpu-num-workers already exists)",
+   "evidence": "FIXED 2026-10-04: renamed to cpu_num_workers in nci60 + platinai; both now resolve against the trainer's --cpu-num-workers dest."
+  },
+  {
+   "key": "data.pin_memory",
+   "declared_value": true,
+   "configs": [
+    "nci60_9cell_5seed_50ep_v1.yaml",
+    "platinai_pt_4cell_5seed_50ep_v1.yaml"
+   ],
+   "entry_trainers": [
+    ""
+   ],
+   "accepted_by_entry": {
+    "": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "eval.target_decode_ratio",
+   "declared_value": 0.8,
+   "configs": [
+    "cfm_full_retrain.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "never exempted: names a real trainer dest (dead wiring stays visible)",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "flow.bass_martingale",
+   "declared_value": false,
+   "configs": [
+    "cfm_full_retrain.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "flow.monge_ampere",
+   "declared_value": false,
+   "configs": [
+    "cfm_full_retrain.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "flow.multi_ph",
+   "declared_value": false,
+   "configs": [
+    "cfm_full_retrain.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "flow.ot_solver",
+   "declared_value": "w_flow",
+   "configs": [
+    "cfm_full_retrain.yaml",
+    "cfm_per_innovation_ablation_p1.4.yaml",
+    "cfm_real_decode_lift_p1.3.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py",
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false,
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "flow.se3_sb",
+   "declared_value": false,
+   "configs": [
+    "cfm_full_retrain.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "model.atom_vocab_size",
+   "declared_value": 14,
+   "configs": [
+    "cfm_full_retrain.yaml",
+    "cfm_per_innovation_ablation_p1.4.yaml",
+    "cfm_real_decode_lift_p1.3.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py",
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false,
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "model.bond_head",
+   "declared_value": "learned",
+   "configs": [
+    "cfm_per_innovation_ablation_p1.4.yaml",
+    "cfm_real_decode_lift_p1.3.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "model.cfm_decoder",
+   "declared_value": "yuelbond",
+   "configs": [
+    "cfm_full_retrain.yaml",
+    "cfm_per_innovation_ablation_p1.4.yaml",
+    "cfm_real_decode_lift_p1.3.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py",
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false,
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "model.joint_train",
+   "declared_value": true,
+   "configs": [
+    "cfm_per_innovation_ablation_p1.4.yaml",
+    "cfm_real_decode_lift_p1.3.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "model.learnable_vel_scale",
+   "declared_value": true,
+   "configs": [
+    "cfm_full_retrain.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "model.pcgrad_multi_task",
+   "declared_value": false,
+   "configs": [
+    "cfm_full_retrain.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "model.task",
+   "declared_value": "multi_task",
+   "configs": [
+    "nci60_9cell_5seed_50ep_v1.yaml",
+    "platinai_pt_4cell_5seed_50ep_v1.yaml",
+    "wf124_p3_50epoch_full_sweep_g5.yaml",
+    "wf124_p3_remaining_metals_g4.yaml"
+   ],
+   "entry_trainers": [
+    "",
+    "molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
+   ],
+   "accepted_by_entry": {
+    "": false,
+    "molmetal/scripts/train_dmpnn_multitask_wasserstein.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "output.events_jsonl",
+   "declared_value": true,
+   "configs": [
+    "cfm_full_retrain.yaml",
+    "cfm_per_innovation_ablation_p1.4.yaml",
+    "cfm_real_decode_lift_p1.3.yaml",
+    "default.yaml",
+    "nci60_9cell_5seed_50ep_v1.yaml",
+    "platinai_pt_4cell_5seed_50ep_v1.yaml",
+    "wf124_p3_50epoch_full_sweep_g5.yaml",
+    "wf124_p3_per_innovation_ablation_g6.yaml",
+    "wf124_p3_remaining_metals_g4.yaml"
+   ],
+   "entry_trainers": [
+    "",
+    "molmetal/scripts/metallo_drug_smoke_retrain.py",
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+    "molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
+   ],
+   "accepted_by_entry": {
+    "": false,
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false,
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py": false,
+    "molmetal/scripts/train_dmpnn_multitask_wasserstein.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "fixed",
+   "disposition": "wire: honour the bool in start.sh so False really suppresses events",
+   "evidence": "FIXED 2026-10-04: start.sh now emits --no-events-jsonl when false; trainer gained the flag (it had no way to disable the jsonl sink at all - emit_event gates on _EVENT_LOG_PATH is not None, which was always a Path). Registered in HP_RESOLUTION_EXEMPT_KEYS. Smoke: on=4 lines, off=no file."
+  },
+  {
+   "key": "protocol.edge_cutoff",
+   "declared_value": 6.0,
+   "configs": [
+    "cfm_per_innovation_ablation_p1.4.yaml",
+    "cfm_real_decode_lift_p1.3.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "protocol.ema_decay",
+   "declared_value": 0.999,
+   "configs": [
+    "cfm_per_innovation_ablation_p1.4.yaml",
+    "cfm_real_decode_lift_p1.3.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "protocol.gradient_accumulation_steps",
+   "declared_value": 1,
+   "configs": [
+    "nci60_9cell_5seed_50ep_v1.yaml",
+    "platinai_pt_4cell_5seed_50ep_v1.yaml"
+   ],
+   "entry_trainers": [
+    ""
+   ],
+   "accepted_by_entry": {
+    "": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "protocol.n_seeds_min",
+   "declared_value": 3,
+   "configs": [
+    "cfm_full_retrain.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "train.closure_bounded",
+   "declared_value": true,
+   "configs": [
+    "cfm_full_retrain.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "train.edge_cutoff",
+   "declared_value": 6.0,
+   "configs": [
+    "cfm_full_retrain.yaml",
+    "default.yaml"
+   ],
+   "entry_trainers": [
+    "",
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "": false,
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "train.ema_decay",
+   "declared_value": 0.999,
+   "configs": [
+    "cfm_full_retrain.yaml",
+    "default.yaml"
+   ],
+   "entry_trainers": [
+    "",
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "": false,
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "train.optimizer",
+   "declared_value": "adam",
+   "configs": [
+    "cfm_full_retrain.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "train.use_yuelbond",
+   "declared_value": true,
+   "configs": [
+    "cfm_full_retrain.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  },
+  {
+   "key": "train.wasserstein_weight",
+   "declared_value": 0.1,
+   "configs": [
+    "cfm_full_retrain.yaml"
+   ],
+   "entry_trainers": [
+    "molmetal/scripts/metallo_drug_smoke_retrain.py"
+   ],
+   "accepted_by_entry": {
+    "molmetal/scripts/metallo_drug_smoke_retrain.py": false
+   },
+   "bucket_why": "no argparse dest on the entry trainer and no documented non-trainer consumer",
+   "status": "pending-decision",
+   "disposition": null,
+   "evidence": null
+  }
+ ],
+ "decisions": {
+  "date": "2026-10-04",
+  "by": "user (AskUserQuestion)",
+  "entries": {
+   "compute.torch_compile": "wire: add --torch-compile to the D-MPNN trainer, align with CFM trainer",
+   "compute.tf32": "wire: add --tf32 to the D-MPNN trainer, align with CFM trainer",
+   "compute.cudnn_benchmark": "wire: add --cudnn-benchmark to the D-MPNN trainer, align with CFM trainer",
+   "compute.channels_last": "wire: add --channels-last to the D-MPNN trainer, align with CFM trainer",
+   "data.num_workers": "rename: config key -> cpu_num_workers (trainer flag --cpu-num-workers already exists)",
+   "output.events_jsonl": "wire: honour the bool in start.sh so False really suppresses events"
+  },
+  "cfm_full_retrain_entry": "repoint entry.script to molmetal/scripts/train_cfm_yuelbond_wasserstein.py (was metallo_drug_smoke_retrain.py, a 1000-step smoke script)",
+  "note": "the four compute.* keys are the same settings the CFM trainer already exposes; the D-MPNN trainer is the one missing them. Wf-A16's register already lists _make_compiled_encoder_forward as an unimplemented D-MPNN wire-in (Wf-328)."
+ },
+ "progress": {
+  "date": "2026-10-04",
+  "residual_at_start": 61,
+  "residual_now": 51,
+  "fixed": 2,
+  "note": "cfm_full_retrain entry repointed at the real CFM trainer too (+4 keys resolved)"
+ }
+}

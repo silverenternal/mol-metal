@@ -340,6 +340,17 @@ events_jsonl_default = str(
 events_jsonl_path = str(
     out_block.get('events_jsonl_path', events_jsonl_default)
 )
+# 2026-10-04: honour output.events_jsonl.  This boolean was declared in all 9
+# configs and read by NOTHING — start.sh only ever looked at
+# output.events_jsonl_path, so `events_jsonl: False` still emitted events.
+#
+# The trainer had no way to disable the jsonl sink either: emit_event() gates
+# the write on `_EVENT_LOG_PATH is not None`, and that was always a Path
+# (--no-emit-json-events only switches stdout formatting).  So this needed a
+# real off-switch rather than an empty path (which Path('') would turn into
+# Path('.'), i.e. writing into the CWD).  Added --no-events-jsonl to the
+# trainer; emitted below only when the yaml actually says False.
+events_jsonl_disabled = out_block.get('events_jsonl', True) is False
 lines = [
     f'ENTRY_SCRIPT={shlex.quote(e.get("script", ""))}',
     f'ENTRY_COMMAND={shlex.quote(cmd)}',
@@ -377,6 +388,7 @@ lines = [
     # --events-jsonl flag).  Default = <out_dir>/events.jsonl when the
     # yaml does not specify output.events_jsonl_path.
     f'EVENTS_JSONL_PATH={shlex.quote(events_jsonl_path)}',
+    f'EVENTS_JSONL_DISABLED={1 if events_jsonl_disabled else 0}',
 ]
 with open(env_path, 'w') as f:
     f.write('\n'.join(lines) + '\n')
@@ -460,7 +472,14 @@ mkdir -p "$OUT_DIR" "$(dirname "$TRAINING_SUMMARY")" "$(dirname "$LOG_MASTER")"
 # the live TUI dashboard.  Per AGENTS.md §5.7 trainer-flag wire-in
 # smoke-required rule: flag exists in parse_args + initialises cleanly
 # when set (verified via §5.7 50-step CPU smoke at Wf-TUI §5.7 section).
-TRAINER_CMD="$ENTRY_COMMAND --checkpoint-interval \"$CHECKPOINT_INTERVAL\" --resume-from \"$RESUME_FROM\" --events-jsonl-path \"$EVENTS_JSONL_PATH\" --lr-scheduler \"$SCHEDULER\" --lr-warmup-epochs \"$LR_WARMUP_EPOCHS\" --lr-min-lr \"$LR_MIN_LR\" --weight-decay \"$WEIGHT_DECAY\" --max-norm \"$MAX_NORM\" $EXTRA_FLAGS"
+# 2026-10-04: output.events_jsonl:false must actually disable the sink.
+# --events-jsonl-path always installs one, so emit the off-switch instead.
+if [[ "${EVENTS_JSONL_DISABLED:-0}" == "1" ]]; then
+  EVENTS_FLAG="--no-events-jsonl"
+else
+  EVENTS_FLAG="--events-jsonl-path \"$EVENTS_JSONL_PATH\""
+fi
+TRAINER_CMD="$ENTRY_COMMAND --checkpoint-interval \"$CHECKPOINT_INTERVAL\" --resume-from \"$RESUME_FROM\" $EVENTS_FLAG --lr-scheduler \"$SCHEDULER\" --lr-warmup-epochs \"$LR_WARMUP_EPOCHS\" --lr-min-lr \"$LR_MIN_LR\" --weight-decay \"$WEIGHT_DECAY\" --max-norm \"$MAX_NORM\" $EXTRA_FLAGS"
 LOG_FILE="$LOG_MASTER"
 echo "[start.sh] trainer command: $TRAINER_CMD"
 echo "[start.sh] log file: $LOG_FILE"
