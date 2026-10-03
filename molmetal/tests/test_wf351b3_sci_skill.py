@@ -13,7 +13,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pytest
 
 SKILL_DIR = Path(
     "/home/hugo/codes/mol-metal/.claude/skills/mol-metal-sci-paper-submission"

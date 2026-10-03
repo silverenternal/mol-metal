@@ -20,7 +20,6 @@ ordering tests below.
 from __future__ import annotations
 
 import math
-from typing import List
 
 import pytest
 import torch
@@ -33,9 +32,7 @@ from molmetal.adapters.mock import (
 )
 from molmetal.domain import Pocket
 from molmetal.orchestration.design_loop import (
-    CandidateProvenance,
     DesignLoop,
-    LoopResult,
 )
 
 

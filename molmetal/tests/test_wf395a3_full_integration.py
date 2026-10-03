@@ -59,13 +59,11 @@ from __future__ import annotations
 import argparse
 import ast
 import json
-import os
-import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import List, Optional, Set, Tuple
+from typing import Optional, Set, Tuple
 from unittest import mock
 
 

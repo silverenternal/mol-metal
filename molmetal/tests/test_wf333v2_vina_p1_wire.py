@@ -41,9 +41,7 @@ metal_coord_term module.
 
 from __future__ import annotations
 
-import csv
 import importlib.util
-import json
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -531,7 +529,7 @@ def test_p1_per_pocket_lift_varies_by_pocket_donor_counts(tmp_path):
         )
         assert (
             "metal_coord_n_with_total" in agg
-        ), f"per-pocket aggregate must contain metal_coord_n_with_total"
+        ), "per-pocket aggregate must contain metal_coord_n_with_total"
 
 
 # ---------------------------------------------------------------------------

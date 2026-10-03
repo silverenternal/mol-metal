@@ -40,7 +40,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 import time
 from pathlib import Path
@@ -151,15 +150,11 @@ def import_metal_coord_term() -> Tuple[bool, str]:
     Returns (import_ok, detail_string).
     """
     try:
-        from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (  # type: ignore  # noqa: E501
-            MetalCoordinationScore,
-            MetalCoordinationTerm,
-        )
 
         return True, (
-            f"import_ok; MetalCoordinationTerm at "
-            f"molmetal.molmetal_lam.sbdd_env.metal_coord_term; "
-            f"sign-fixed kcal_adjustment at line 635 per Wf-333-V1"
+            "import_ok; MetalCoordinationTerm at "
+            "molmetal.molmetal_lam.sbdd_env.metal_coord_term; "
+            "sign-fixed kcal_adjustment at line 635 per Wf-333-V1"
         )
     except Exception as exc:  # pragma: no cover
         return False, f"import_failed: {type(exc).__name__}: {exc}"

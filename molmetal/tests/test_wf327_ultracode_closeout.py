@@ -42,7 +42,6 @@ Honest framing (party-twenty-spirit §3.5):
 from __future__ import annotations
 
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -173,12 +172,12 @@ def test_dmpnn_trainer_uses_build_optimized_loader():
     assert trainer.is_file()
     text = trainer.read_text(encoding="utf-8")
     assert "from molmetal.scripts.wf326b_dataloader_optimized import" in text, (
-        f"D-MPNN trainer does NOT import build_optimized_loader — "
-        f"Wf-328-W6 wiring regressed?"
+        "D-MPNN trainer does NOT import build_optimized_loader — "
+        "Wf-328-W6 wiring regressed?"
     )
     assert "build_optimized_loader(" in text, (
-        f"D-MPNN trainer does NOT call build_optimized_loader — "
-        f"Wf-328-W6 wiring regressed?"
+        "D-MPNN trainer does NOT call build_optimized_loader — "
+        "Wf-328-W6 wiring regressed?"
     )
 
 
@@ -201,11 +200,11 @@ def test_chemprop_trainer_num_workers_is_honest_negative():
     # The flag must be declared.
     assert (
         '"--num-workers"' in text or "'--num-workers'" in text
-    ), f"chemprop trainer does NOT declare --num-workers flag"
+    ), "chemprop trainer does NOT declare --num-workers flag"
     # And the help text must include 'Reserved' (the honest disclosure).
     assert "Reserved" in text, (
-        f"chemprop --num-workers help text does NOT include 'Reserved' "
-        f"— honest-negative disclosure regressed?"
+        "chemprop --num-workers help text does NOT include 'Reserved' "
+        "— honest-negative disclosure regressed?"
     )
 
 

@@ -41,14 +41,14 @@ import json
 import logging
 import os
 import random
-import sys
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .aggregator import CellResult, build_lambda_only_aggregator
-from .constants import METAL_SEED_SMILES, _REPO_ROOT
+from .constants import METAL_SEED_SMILES
 from .metrics import (
+    _embed_3d_for_rmsd,
     diversity_alpha,
     diversity_homotype,
     metric_ames_mutagen_mean,
@@ -1207,7 +1207,6 @@ def run_one_cell(
     target_predicates: List[TypePredicate] = []
     try:
         from molmetal_lam.binding.types import BindingSite as _BS
-        from molmetal_lam.types.predicates import TypePredicate as _TP
 
         # ``BindingSite`` requires a ``name``; we use the pocket id and
         # leave ``constraints`` empty so the search never typechecks

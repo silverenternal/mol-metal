@@ -35,7 +35,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 # Repo root on sys.path.
 _HERE = Path(__file__).resolve().parent
@@ -54,7 +53,6 @@ from molmetal.scripts.bench_multiph_pll_end_to_end_guarded import (  # type: ign
     compute_r2_safe,
     fit_hilbert_guarded,
     kfold_indices,
-    predict_hilbert_guarded,
     render_synthesis,
     sliced_wasserstein_2,
 )

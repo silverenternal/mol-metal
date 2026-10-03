@@ -27,10 +27,9 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import numpy as np
-import pandas as pd
 
 # Make ``molmetal.*`` importable when run as ``python -m molmetal.scripts.ablation_counterion``
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -40,7 +39,6 @@ if str(PROJECT_ROOT) not in sys.path:
 from molmetal.baselines.eval_utils import compute_metrics
 from molmetal.data.counterion_utils import (
     CONFIGS,
-    FEATURE_NAMES,
     apply_config,
 )
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset

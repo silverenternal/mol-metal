@@ -44,7 +44,6 @@ import re
 import sys
 from pathlib import Path
 
-import pytest
 
 # ---------------------------------------------------------------------------
 # Project root + path setup

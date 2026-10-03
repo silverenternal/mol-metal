@@ -33,7 +33,6 @@ import json
 import random
 import sys
 import time
-from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -65,11 +64,7 @@ from molmetal.models.bond_head import (  # type: ignore
     BondOrderHead,
 )
 from molmetal.molmetal_lam.lam_chem.decoder_rework import (  # type: ignore
-    DecoderRework,
     ReworkedDecoder,
-)
-from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (  # type: ignore
-    YuelBondDecodeResult,
 )
 
 
@@ -607,7 +602,7 @@ def main() -> int:
     )
 
     # ---- Step 3: convert to AtomClouds -----------------------------------
-    print(f"[Wf-269C] embedding train mols (3D) ...", flush=True)
+    print("[Wf-269C] embedding train mols (3D) ...", flush=True)
     train_clouds: List[AtomCloud] = []
     n_train_embed_fail = 0
     for i, m in enumerate(train_mols):
@@ -622,7 +617,7 @@ def main() -> int:
         flush=True,
     )
 
-    print(f"[Wf-269C] embedding val mols (3D) ...", flush=True)
+    print("[Wf-269C] embedding val mols (3D) ...", flush=True)
     val_clouds: List[AtomCloud] = []
     n_val_embed_fail = 0
     for i, m in enumerate(val_mols):
@@ -764,7 +759,7 @@ def main() -> int:
         f.write(f"\n**Honest framing:** {honest_framing}\n")
     print(f"[Wf-269C] wrote {report_path}", flush=True)
     print(f"[Wf-269C] wrote {md_path}", flush=True)
-    print(f"[Wf-269C] === DONE ===\n")
+    print("[Wf-269C] === DONE ===\n")
     return 0
 
 

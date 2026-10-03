@@ -38,9 +38,7 @@ Honest framing (party-twenty-spirit §3.5)
 
 import json
 import os
-import re
 import subprocess
-import sys
 import unittest
 from pathlib import Path
 

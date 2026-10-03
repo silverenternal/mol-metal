@@ -52,8 +52,6 @@ Cross-references
 from __future__ import annotations
 
 import json
-import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -278,7 +276,7 @@ def test_budget_status_schema():
     )
     assert {
         pl["launcher"] for pl in cli_budget["per_launcher"]
-    } == EXPECTED_LAUNCHERS, f"CLI --budget-summary per_launcher mismatch"
+    } == EXPECTED_LAUNCHERS, "CLI --budget-summary per_launcher mismatch"
 
     # On-disk dashboard JSON also carries the budget_status field.
     proc = subprocess.run(

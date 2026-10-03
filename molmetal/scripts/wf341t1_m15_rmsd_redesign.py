@@ -68,7 +68,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import statistics
 import sys
 from dataclasses import asdict, dataclass, field
@@ -200,7 +199,6 @@ def _smiles_to_pdbqt_string_via_meeko(smiles: str) -> Optional[str]:
     try:
         from rdkit import Chem
         from rdkit.Chem import AllChem
-        import meeko
         from meeko import MoleculePreparation, PDBQTWriterLegacy  # type: ignore
 
         mol = Chem.MolFromSmiles(smiles)

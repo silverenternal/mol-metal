@@ -39,7 +39,6 @@ import json
 import sys
 import tempfile
 import time
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -48,10 +47,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from molmetal.replay.curriculum import (  # noqa: E402
-    AcquisitionResult,
     CurriculumConfig,
     CurriculumStepReport,
-    DriftReport,
     RSICurriculum,
 )
 

@@ -7,7 +7,6 @@ Per AGENTS.md §5.7 NEW trainer flag wire-in smoke-required rule + §5.6 atomic 
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path

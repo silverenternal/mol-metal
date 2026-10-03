@@ -502,7 +502,7 @@ def test_l12_platinai_rate_matches_bench_md(l12_md_text: str) -> None:
     # The exact reachability_rate 0.5581 must appear
     assert (
         "0.5581" in l12_md_text
-    ), f"L12 PlatinAI 5K rate drift: bench MD does not contain 0.5581"
+    ), "L12 PlatinAI 5K rate drift: bench MD does not contain 0.5581"
 
 
 def test_l12_metalcytotox_rate_matches_bench_md(l12_md_text: str) -> None:

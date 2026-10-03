@@ -83,14 +83,11 @@ available) and exits ``0``.
 from __future__ import annotations
 
 import argparse
-import importlib
-import importlib.util
 import logging
-import os
 import sys
 import warnings
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence
+from typing import List, Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +210,6 @@ def _try_real_score(
     try:
         # Late import — guarded by ``biolm_oracle_available``.
         import torch  # noqa: F401
-        from BioLM_Score.model.model4 import BioLLMScore  # type: ignore
     except Exception:
         return None
 

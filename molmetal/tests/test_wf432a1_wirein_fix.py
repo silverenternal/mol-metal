@@ -36,7 +36,6 @@ Wall budget: ~30 s on the host Python with project venv. CPU-only by design
 
 from __future__ import annotations
 
-import os
 import re
 import shutil
 import subprocess
@@ -251,7 +250,7 @@ class TestDMPNNWireInNoNameError(unittest.TestCase):
         self.assertIn(
             "[Wf-405-A2] --per-cohort-features ENABLED",
             stdout,
-            f"per-cohort features log line not found",
+            "per-cohort features log line not found",
         )
 
 

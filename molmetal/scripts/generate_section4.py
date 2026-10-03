@@ -55,7 +55,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -721,7 +720,7 @@ def render_summary_md(rows: List[Dict[str, str]]) -> str:
         "",
         "**Date**: 2026-09-25  ",
         "**Source**: `molmetal/scripts/generate_section4.py`  ",
-        f"**Metrics dir**: `metrics/by_metric/*.json`  ",
+        "**Metrics dir**: `metrics/by_metric/*.json`  ",
         "",
         "## Verdict counts",
         "",

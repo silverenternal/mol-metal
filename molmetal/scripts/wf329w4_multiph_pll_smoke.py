@@ -197,8 +197,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 f"n={r2['n_samples']}, joint_dim={r2['joint_dim']})"
             ),
             "fourier_features": (
-                f"32-bin radially-binned magnitude spectrum of multi-PH "
-                f"feature map (Kim-Jung 2026 §4 acceleration)"
+                "32-bin radially-binned magnitude spectrum of multi-PH "
+                "feature map (Kim-Jung 2026 §4 acceleration)"
             ),
             "multi_ph_features": (
                 f"TwoParameterFiltration n_bins={extractor.n_bins} "

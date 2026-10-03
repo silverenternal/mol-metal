@@ -60,7 +60,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # Repo root on sys.path so ``molmetal_lam`` resolves without an install.
 _HERE = Path(__file__).resolve().parent
@@ -71,7 +71,7 @@ if str(_REPO_ROOT) not in sys.path:
 import numpy as np
 
 from molmetal_lam.lam_chem.pll_signature import compute_pll
-from molmetal_lam.search_alg.pll_heuristic import PLLHeuristic, pll_distance
+from molmetal_lam.search_alg.pll_heuristic import PLLHeuristic
 from molmetal_lam.search_alg.proof_search import MCTSProofSearch
 from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 from molmetal_lam.tile_lib.library import (
@@ -82,7 +82,6 @@ from molmetal_lam.reactions.beta_reductions import REACTION_RULES
 from molmetal_lam.binding.types import BindingSite
 from molmetal_lam.lam_chem.reducer import (
     is_normal_form,
-    pll_cost,
     reduce_to_normal_form,
 )
 
@@ -133,8 +132,6 @@ def _safe_sa(smi: str) -> float:
 
         try:
             from rdkit.Chem import RDConfig  # type: ignore  # noqa: F401
-            import os as _os
-            from rdkit.Chem import Descriptors as _Desc  # type: ignore
             from rdkit.Contrib.SA_Score import sascorer  # type: ignore
 
             mol = Chem.MolFromSmiles(smi)

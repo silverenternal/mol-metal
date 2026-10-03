@@ -17,10 +17,8 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from pathlib import Path
 
-import pytest
 
 REPO_ROOT = Path("/home/hugo/codes/mol-metal")
 SCRIPTS_DIR = REPO_ROOT / "molmetal" / "scripts"

@@ -28,7 +28,7 @@ kcal/mol score is fabricated.
 Usage
 -----
 ::
-    molmetal/.venvs/mol-metal-venv/bin/python \\
+    molmetal/.venv/bin/python \\
         molmetal/scripts/dock_per_pocket_vina.py \\
         --pockets 1h36 3eml 3ny8 4aaw 4rlu \\
         --smiles "CCO" "c1ccccc1" \\
@@ -42,13 +42,12 @@ import argparse
 import csv
 import json
 import logging
-import os
 import statistics
 import sys
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:

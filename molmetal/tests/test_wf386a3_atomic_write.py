@@ -15,7 +15,6 @@ All tests run on a temporary directory; no production files are touched.
 
 from __future__ import annotations
 
-import os
 import threading
 from pathlib import Path
 

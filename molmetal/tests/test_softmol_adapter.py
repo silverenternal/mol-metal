@@ -37,8 +37,8 @@ from molmetal.adapters.softmol_adapter import (
     is_softmol_available,
     list_softmol_configs,
 )
-from molmetal.domain import Molecule, Pocket
-from molmetal.ports import GenerationConfig, MoleculeGenerator
+from molmetal.domain import Pocket
+from molmetal.ports import GenerationConfig
 
 
 # ---------------------------------------------------------------------------

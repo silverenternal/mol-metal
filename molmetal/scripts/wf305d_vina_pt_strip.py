@@ -54,12 +54,10 @@ DNA/protein pockets in the Wf-179 m15 reference set.
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import sys
-import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import List, Optional, Sequence
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -69,15 +67,12 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # Re-use the Wf-301B build_panel + cfm_vina_dock_panel surface.
 from molmetal.scripts.cfm_vina_dock_panel import (  # noqa: E402
-    DEFAULT_POCKETS,
     DEFAULT_VINA_BIN,
     DEFAULT_EXHAUSTIVENESS,
     DEFAULT_N_POSES,
     DEFAULT_BOX_SIZE,
     DEFAULT_SEED,
     DEFAULT_DOCK_TIMEOUT,
-    STATUS_REAL_VINA,
-    STATUS_STUB_FALLBACK,
     build_panel,
     read_smiles_csv,
 )

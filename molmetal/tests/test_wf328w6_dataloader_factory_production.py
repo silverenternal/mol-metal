@@ -38,7 +38,6 @@ Honest framing (AGENTS.md §5.2 / ``party-twenty-spirit`` §3.5):
 from __future__ import annotations
 
 import math
-import subprocess
 import sys
 from pathlib import Path
 

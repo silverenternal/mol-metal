@@ -40,15 +40,12 @@ Test inventory
 
 from __future__ import annotations
 
-import csv
 import json
-import math
 import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import List
 
 import numpy as np
 import pytest
@@ -72,7 +69,6 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 
 from molmetal.scripts.bench_hilbert_astr_phase2_platinai_4cell import (  # noqa: E402
     FEATURE_COLUMNS,
-    COLLAPSE_RATIO_THRESHOLD,
     PRED_CLIP,
     BLEND_ALPHAS,
     PLATINAI_CELL_COLS,

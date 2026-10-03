@@ -54,7 +54,6 @@ from molmetal.molmetal_lam.lam_chem.skeleton_jump import (
     DEFAULT_TARGET_DIVERSITY,
     DiversityAwareSkeletonJump,
     FragmentLibrary,
-    FragmentRecord,
     SkeletonJumpRule,
     SwapResult,
     register_skeleton_jump,

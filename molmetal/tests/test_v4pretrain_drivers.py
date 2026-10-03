@@ -460,7 +460,6 @@ def test_v4pretrain_pretrain_mode_off_matches_v4_base() -> None:
     V4MultiTaskDMPNN output (5 metals + coord), with no pretrain heads
     — this is the backward-compat guarantee."""
     from molmetal.models.v4_multitask_dmpnn import (
-        SUPPORTED_METALS,
         V4MultiTaskDMPNN,
         V4MultiTaskDMPNNPretrain,
     )

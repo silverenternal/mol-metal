@@ -1,8 +1,6 @@
 """Behavioral transport checks; fake workers never claim real model validation."""
 
-from dataclasses import asdict
 import json
-import os
 from pathlib import Path
 import sys
 import time

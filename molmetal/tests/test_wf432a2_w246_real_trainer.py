@@ -13,7 +13,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 REPO_ROOT = Path("/home/hugo/codes/mol-metal")
 WRAPPER = REPO_ROOT / "scripts" / "launch_wf409a3_metal_coord_retrain.sh"
@@ -141,7 +140,6 @@ def test_wrapper_actual_invokes_real_trainer_text():
 
 def test_trainer_cli_accepts_metal_coord_flags():
     """Trainer's parse_args accepts the 3 NEW metal-coord CLI flags."""
-    import argparse
 
     sys.path.insert(0, str(REPO_ROOT))
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import parse_args
@@ -175,7 +173,6 @@ def test_trainer_cli_accepts_metal_coord_flags():
 
 def test_trainer_metal_coord_sign_fix_sign_flips():
     """--no-cal-sign-vina-convention flips the kcal sign (per Wf-427-A1 line 641)."""
-    import torch
 
     sys.path.insert(0, str(REPO_ROOT))
     from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (
@@ -208,7 +205,6 @@ def test_trainer_kcal_sign_audit_canary():
     have a decode_ratio metric; that one is CFM-only per the
     mol-metal-cfm-training skill).
     """
-    import torch
 
     sys.path.insert(0, str(REPO_ROOT))
     from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (

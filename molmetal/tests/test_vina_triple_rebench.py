@@ -16,14 +16,9 @@ the real Vina binary or RDKit to be installed.
 
 from __future__ import annotations
 
-import importlib
-import io
 import json
-import logging
-import os
 import subprocess
 import sys
-from contextlib import redirect_stdout
 from pathlib import Path
 
 import pytest

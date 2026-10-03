@@ -51,14 +51,12 @@ Honest framing
 from __future__ import annotations
 
 import math
-import sys
-from pathlib import Path
 from typing import Dict, List
 
 import pytest
 
 try:
-    from rdkit import Chem, RDLogger  # type: ignore
+    from rdkit import RDLogger  # type: ignore
 
     RDLogger.DisableLog("rdApp.*")
     _HAVE_RDKIT = True

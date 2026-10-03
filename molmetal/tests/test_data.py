@@ -13,7 +13,6 @@ Smoke coverage:
 from __future__ import annotations
 
 import math
-import os
 from pathlib import Path
 
 import numpy as np
@@ -22,7 +21,6 @@ import pytest
 from molmetal.data import (
     ChemicalSplitter,
     CrossDockedDataset,
-    CytotoxFilter,
     GraphFeaturizer,
     LigandDeduplicatedSplitter,
     MetalCytotoxDataset,
@@ -204,7 +202,6 @@ class TestSplitters:
         # Use a small subsample for speed
         ds = ru_dataset
         # Limit to first 1000 rows for test speed
-        from molmetal.data.cytotox import _add_pic50, _add_active
 
         small = MetalCytotoxDataset(ds.df.iloc[:1000].copy())
         sp = ChemicalSplitter(
@@ -382,7 +379,6 @@ class TestSplitters:
         # Splitters must handle the empty-dataset case without raising.
         # We test the splitter directly rather than the dataset constructor
         # (which intentionally rejects empty DataFrames).
-        from molmetal.data.splits import SplitResult
 
         class _EmptyDS:
             years = np.array([], dtype=np.int64)

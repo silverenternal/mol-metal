@@ -44,7 +44,6 @@ from __future__ import annotations
 import argparse
 import sys
 import time
-from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -201,7 +200,6 @@ def main(argv=None) -> int:
         sample_log_normal_t,
         sigma_from_cfm_t,
         cfm_t_from_sigma,
-        edm_loss_weight,
     )
 
     cfg = EDMPreconditionerConfig(
@@ -294,12 +292,12 @@ def main(argv=None) -> int:
     print(f"[train] first loss={losses[0]:.4f}, final loss={final_loss:.4f}")
     print(f"[train] loss delta = {losses[0] - final_loss:.4f}")
     print(
-        f"[ok] Wf-341-C2 standalone EDM preconditioning + sigma reparam "
-        f"completed on synthetic CFM velocity field."
+        "[ok] Wf-341-C2 standalone EDM preconditioning + sigma reparam "
+        "completed on synthetic CFM velocity field."
     )
     print(
-        f"[ok] PROJECTED 1.5-3x speedup per Karras 2022 §5 (MEASURED on "
-        f"Mol-Metal EGNN deferred to Wf-340-A7)."
+        "[ok] PROJECTED 1.5-3x speedup per Karras 2022 §5 (MEASURED on "
+        "Mol-Metal EGNN deferred to Wf-340-A7)."
     )
 
     # 4) JSON-side probe of sigma reparam: log-normal t → σ should

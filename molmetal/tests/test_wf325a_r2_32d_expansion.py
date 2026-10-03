@@ -42,15 +42,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from molmetal.scripts.bench_wf325a_r2_32d import (  # noqa: E402
-    METALCYTOTOX_12D_COLUMNS,
-    METALCYTOTOX_32D_COLUMNS,
-    METALCYTOTOX_TARGET_COLUMN,
-    PLATINAI_12D_COLUMNS,
-    PLATINAI_32D_COLUMNS,
-    PLATINAI_PIC50_COLUMNS,
-    _mean_pIC50_target,
     _read_csv,
-    _row_to_floats,
     _summarise_lift,
     compute_metalcytotox_32d,
     load_metalcytotox_12d,

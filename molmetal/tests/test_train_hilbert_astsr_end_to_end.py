@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import sys
 from pathlib import Path
 
@@ -85,7 +84,7 @@ def test_run_log_exists() -> None:
 def bench() -> dict:
     if not BENCH_PATH.exists():
         pytest.skip(
-            f"r2_bench.json not produced; run train_hilbert_astsr_end_to_end.py first"
+            "r2_bench.json not produced; run train_hilbert_astsr_end_to_end.py first"
         )
     with open(BENCH_PATH) as f:
         return json.load(f)
@@ -493,7 +492,6 @@ def test_cli_flags_present() -> None:
     mod = _import_script()
     # Re-run main() with --help, but cap on stdin — easier to inspect the
     # argparse parser directly.
-    import argparse
 
     # Build the parser the same way main() does.
     # Simpler: invoke main with --help and check exit code 0 + argparse usage.

@@ -28,12 +28,8 @@ Run via::
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
-from dataclasses import fields
 from pathlib import Path
-from typing import Any, Dict, List
 
 import numpy as np
 import pytest
@@ -51,9 +47,7 @@ from bench_mcts_replay_learner_regularized import (  # type: ignore
     DEFAULT_BETA_W2_POLICY,
     DEFAULT_FEATURE_DIM,
     DEFAULT_GAMMA_W2_VALUE,
-    DEFAULT_HIDDEN_DIM,
     DEFAULT_LR,
-    DEFAULT_N_ACTIONS,
     DEFAULT_N_EPOCHS_P2,
     DEFAULT_N_MC_W2,
     DEFAULT_WEIGHT_DECAY,
@@ -68,8 +62,6 @@ from bench_mcts_replay_learner_regularized import (  # type: ignore
     _compute_w2,
     _np_sliced_w2,
     _parse_args,
-    _run_strategy,
-    _write_per_seed_json,
     _write_synthesis,
     main,
 )
@@ -307,7 +299,6 @@ class TestRegularisedLearner:
         # Build a small synthetic buffer inline (no real chemistry).
         from molmetal_lam.search_alg.mcts_replay_buffer import (  # type: ignore
             MCTSReplayBuffer,
-            MCTSReplayEntry,
         )
         from molmetal.scripts.mcts_replay_learner import (  # type: ignore
             synth_populate_buffer,

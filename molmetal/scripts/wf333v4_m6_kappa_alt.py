@@ -62,7 +62,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np  # noqa: E402  (early import for all helper functions)
 
@@ -729,7 +729,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # ------------------------------------------------------------------
     print()
     print("=" * 80)
-    print(f"Wf-333-V4 SUMMARY")
+    print("Wf-333-V4 SUMMARY")
     print(
         f"  m6_kappa baseline mean : {baseline_mean:.4f} "
         f"(Wf-325D MEASURED={WF_325D_MEASURED_BASELINE:.4f})"
@@ -971,10 +971,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"~baseline by unbiased CV projection)"
     )
     print(
-        f"  n_tests_pass         : 4 NEW tests in "
-        f"test_wf333v4_m6_kappa_alt.py (w2_pll_feature / "
-        f"per_modality_diagnostic / adaptive_threshold / "
-        f"m6_kappa_lift)"
+        "  n_tests_pass         : 4 NEW tests in "
+        "test_wf333v4_m6_kappa_alt.py (w2_pll_feature / "
+        "per_modality_diagnostic / adaptive_threshold / "
+        "m6_kappa_lift)"
     )
     print(
         f"  recovery_verdict     : {aggregate_status} "

@@ -40,9 +40,8 @@ exercise the production paths.
 from __future__ import annotations
 
 import random
-import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Dict, List
 
 import numpy as np
 import pytest

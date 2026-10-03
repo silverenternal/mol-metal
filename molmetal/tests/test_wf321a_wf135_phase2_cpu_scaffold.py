@@ -39,10 +39,7 @@ is gated on USER_OK=1 per Wf-310E.
 from __future__ import annotations
 
 import json
-import os
 import re
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest

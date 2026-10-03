@@ -18,7 +18,6 @@ Total: 1 NEW test class × 8 invariants ≈ 10-15 test cases in <1 s CPU-only.
 
 from __future__ import annotations
 
-import os
 import re
 import unittest
 from pathlib import Path

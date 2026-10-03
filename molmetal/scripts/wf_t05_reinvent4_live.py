@@ -235,7 +235,7 @@ def main() -> int:
 
     # Force the reinvent root to the reinvent4-rocm upstream tree.
     invent_root = str(args.reinvent_root.resolve())
-    print(f"== WF-T05: TODO-05 REINVENT4 live multiproperty smoke (direct API) ==")
+    print("== WF-T05: TODO-05 REINVENT4 live multiproperty smoke (direct API) ==")
     print(f"invent_root: {invent_root}")
     print(f"scoring_config: {args.config}")
 

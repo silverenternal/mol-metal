@@ -306,7 +306,7 @@ def test_safe_external_score_no_silent_none_on_missing_module(monkeypatch):
         )
         # The assertion above guarantees we never reach the next line,
         # but defensively also check the docstring return type:
-        assert not (result is None), "silent None path eliminated"
+        assert result is not None, "silent None path eliminated"
 
 
 def test_safe_external_score_no_silent_none_on_empty_smiles():

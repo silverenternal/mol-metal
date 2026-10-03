@@ -82,7 +82,6 @@ import csv
 import gc
 import json
 import math
-import os
 import sys
 import time
 import tracemalloc
@@ -980,7 +979,7 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     # Pick fastest method as the speedup reference.
     fastest = min(methods, key=lambda m: per_method[m]["wall_s_mean"])
     lines: List[str] = []
-    lines.append(f"# Wf-39 Phase 2 — Deflexpressor end-to-end training bench\n")
+    lines.append("# Wf-39 Phase 2 — Deflexpressor end-to-end training bench\n")
     lines.append(f"**Dataset**: `{cfg['dataset']}`  ")
     lines.append(
         f"**n_samples loaded**: {cfg['n_samples_loaded']} "

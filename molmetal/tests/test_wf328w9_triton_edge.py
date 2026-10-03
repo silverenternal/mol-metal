@@ -42,12 +42,10 @@ Reference: TODO/completed/326e_triton_audit.md §5 Wf-326E-B.
 
 from __future__ import annotations
 
-import os
 import sys
 import time
 from pathlib import Path
 
-import pytest
 import torch
 
 # Make sure the project root is on sys.path so ``molmetal.models.dmpnn`` etc.
@@ -307,7 +305,6 @@ def test_fallback_to_native_works(monkeypatch):
     RTX 5090 until Wf-326E-A lands the sm_120 autotune retune).
     """
     from triton_kernels import fused_relu_linear
-    from triton_kernels.config import triton_config
 
     # Force the gate closed.
     monkeypatch.setenv("TRITON_USE_FUSED", "0")

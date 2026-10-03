@@ -43,9 +43,7 @@ import pytest
 from molmetal.molmetal_lam.lam_chem.fg_compat_veto import (
     FGCompatMatrix,
     FUNCTIONAL_GROUPS,
-    LEAVING_GROUPS,
     LeaveGroupVeto,
-    METAL_LABELS,
     VetoAugmentedReducer,
     register_fg_compat_veto,
 )

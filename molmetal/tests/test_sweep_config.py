@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import dataclasses
 
-import pytest
 
 from molmetal.scripts._sweep_helpers import SweepConfig
 

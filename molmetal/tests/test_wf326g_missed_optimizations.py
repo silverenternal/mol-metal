@@ -36,7 +36,6 @@ import time
 from typing import List
 
 import numpy as np
-import pytest
 import torch
 
 from molmetal.baselines.dmpnn import (

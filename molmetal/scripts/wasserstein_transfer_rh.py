@@ -56,7 +56,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import time
 from pathlib import Path
@@ -76,7 +75,6 @@ from molmetal.molmetal_lam.reward.closure_oversample import (
 )
 from molmetal.molmetal_lam.reward.wasserstein_loss import (
     wasserstein_loss,
-    wasserstein_transfer_loss,
 )
 from molmetal.molmetal_lam.reward.wasserstein_transfer import (
     WassersteinTransferLoss,
@@ -449,7 +447,7 @@ def _build_synthesis_markdown(
     lines.append("|---|---|")
     lines.append(f"| Seed scaffolds (curated Rh pool) | {seed_count} |")
     lines.append(f"| Partner tiles (rich set) | {oss_partner_count} |")
-    lines.append(f"| Click rules | 5 (CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling) |")
+    lines.append("| Click rules | 5 (CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling) |")
     lines.append(f"| BFS depth budget | {args.max_depth} |")
     lines.append(f"| Per-scaffold cap | {args.per_scaffold_cap} |")
     lines.append(f"| Total BFS products (raw) | {n_raw} |")
@@ -672,7 +670,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     all_catherine_pass = all(c.catherine_6of6_pass for c in cohort.per_compound)
     if not all_catherine_pass:
         print(
-            f"[wf131-p2] ERROR: not all kept compounds pass Catherine 6/6!",
+            "[wf131-p2] ERROR: not all kept compounds pass Catherine 6/6!",
             flush=True,
         )
         return 2

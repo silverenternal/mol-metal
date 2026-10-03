@@ -80,13 +80,12 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
 import sys
 import time
 from collections import Counter
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 
 _HERE = Path(__file__).resolve().parent
 _REPO_ROOT = _HERE.parent.parent
@@ -620,9 +619,9 @@ def write_outputs(
     summary_path = out_dir / "ranking_summary.md"
     with summary_path.open("w") as f:
         f.write("# Wf-58 Phase 1 — Compound Prioritization Dry-Run\n\n")
-        f.write(f"**Date**: 2026-09-26\n")
-        f.write(f"**Status**: DRY-RUN (no wet-lab synthesis)\n")
-        f.write(f"**Top-K**: 20\n\n")
+        f.write("**Date**: 2026-09-26\n")
+        f.write("**Status**: DRY-RUN (no wet-lab synthesis)\n")
+        f.write("**Top-K**: 20\n\n")
         f.write("## Inputs\n\n")
         f.write("* `platinai_5k.csv` (5,000 generated candidates)\n")
         f.write(

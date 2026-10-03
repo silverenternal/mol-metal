@@ -41,7 +41,6 @@ from __future__ import annotations
 
 import csv
 import json
-import math
 import os
 import sys
 import time
@@ -49,7 +48,7 @@ import tracemalloc
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 

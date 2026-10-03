@@ -15,7 +15,6 @@ All tests are CPU-only, deterministic on seed=0, runtime <1s.
 
 from __future__ import annotations
 
-import math
 import os
 import sys
 

@@ -18,7 +18,6 @@ import json
 import os
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -288,7 +287,7 @@ def test_yaml_config_parses():
     ), f"protocol.total_runs must be 60, got {cfg['protocol']['total_runs']}"
     assert (
         cfg["ablation_configs"].get("total_runs") == 60
-    ), f"ablation_configs.total_runs must be 60"
+    ), "ablation_configs.total_runs must be 60"
     # 8 waves decomposition
     assert (
         cfg["waves"]["total_waves"] == 8

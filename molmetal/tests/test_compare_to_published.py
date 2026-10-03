@@ -14,7 +14,6 @@ Two focused tests as specified in the H4 task spec:
 
 from __future__ import annotations
 
-import pytest
 
 from molmetal.molmetal_lam.scripts.compare_to_published import (  # noqa: E402
     PUBLISHED_NUMBERS,

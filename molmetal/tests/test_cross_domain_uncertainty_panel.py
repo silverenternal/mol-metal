@@ -16,7 +16,6 @@ Honest framing: 18 tests, deterministic, CPU-only, stdlib + ``math``
 from __future__ import annotations
 
 import csv
-import json
 import math
 import os
 import sys
@@ -38,7 +37,6 @@ from build_cross_domain_uncertainty_panel import (  # noqa: E402  (post-sys.path
     FOUR_SOURCES,
     NINE_CELLS,
     ROW_FIELDS,
-    BIN_FIELDS,
     _brier_score,
     _calibration_bins,
     _clip_probability,

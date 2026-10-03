@@ -42,7 +42,6 @@ Run from the project root::
 
 from __future__ import annotations
 
-from typing import List, Tuple
 
 import pytest
 
@@ -92,7 +91,6 @@ def test_02_build_matrix_reactions_returns_compiled_rdkit():
     # When available, the function returns 101 compiled entries with
     # n_failed == 0 on the canonical SMARTS library.
     try:
-        from rdkit.Chem import AllChem as _AllChem  # type: ignore
 
         rdkit_ok = True
     except Exception:

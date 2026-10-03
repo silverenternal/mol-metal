@@ -50,10 +50,6 @@ from molmetal.math_skills import (
     ReactionStepW2,
     W2GradientFlow,
 )
-from molmetal.math_skills.wasserstein_gradient_flow import (
-    _EPS_LOG,
-    _EPS_SIGMA2,
-)
 
 
 # ---------------------------------------------------------------------------

@@ -42,7 +42,6 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import List
 
@@ -321,7 +320,6 @@ def test_se3_integration_smoke_function_is_truthy() -> None:
     import train_se3sb  # type: ignore[import-not-found]
 
     # Construct a minimal dummy twist head so the smoke runs cheaply.
-    import torch
 
     twist_head = train_se3sb.build_se3_twist_head(hidden_dim=32)
     out = train_se3sb.se3_integration_smoke(twist_head)

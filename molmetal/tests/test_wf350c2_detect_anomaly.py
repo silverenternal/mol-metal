@@ -23,7 +23,6 @@ No GPU launches performed (CPU-only; mocked main() for the test).
 
 from __future__ import annotations
 
-import argparse
 import importlib
 import sys
 from unittest import mock

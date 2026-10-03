@@ -680,11 +680,11 @@ def write_summary(
     md_lines.append("# Wf-320H — TODO-134 Phase 2 Vina attempt (pipeline proof)")
     md_lines.append("")
     md_lines.append(f"_Generated_: {_utc_now_iso()}  ")
-    md_lines.append(f"_Engine_: AutoDock Vina 1.2.7 (Python binding)  ")
+    md_lines.append("_Engine_: AutoDock Vina 1.2.7 (Python binding)  ")
     md_lines.append(f"_Interpreter_: `{PROJECT_VENV_PY}`  ")
     md_lines.append(f"_Scope_: {payload['scope']}  ")
     md_lines.append(
-        f"_Receptor_: Wf-30 staged real receptor.pdbqt (5/6 READY) — SYNTHETIC 200 ALA scaffold only if Wf-30 missing.  "
+        "_Receptor_: Wf-30 staged real receptor.pdbqt (5/6 READY) — SYNTHETIC 200 ALA scaffold only if Wf-30 missing.  "
     )
     md_lines.append("")
     md_lines.append("## Per-pocket Vina pose results")
@@ -873,7 +873,7 @@ def main() -> int:
         f"  scope: {len(args.pockets)} pockets × 1 seed × "
         f"{args.n_poses} poses × exhaustiveness={args.exhaustiveness}"
     )
-    print(f"  receptor: SYNTHETIC 200 ALA atoms (PIPELINE PROOF only)")
+    print("  receptor: SYNTHETIC 200 ALA atoms (PIPELINE PROOF only)")
     print(f"  out dir: {out_dir.relative_to(PROJECT_ROOT)}")
     print()
 
@@ -931,10 +931,10 @@ def main() -> int:
     print(f"Pockets measured: {agg['n_measured']}/{agg['n_pockets']}")
     if agg["n_measured"] >= 4:
         print("Pipeline proof PASS (≥4/6 pockets green)")
-        print(f"Stdout invariant: PASS")
+        print("Stdout invariant: PASS")
         return 0
     print(f"Pipeline proof FAIL ({agg['n_measured']}/6)")
-    print(f"Stdout invariant: FAIL")
+    print("Stdout invariant: FAIL")
     return 1
 
 

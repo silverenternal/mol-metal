@@ -1,19 +1,15 @@
 """Tests for Attentive D-MPNN baseline."""
 
-import numpy as np
 import pytest
 import torch
 
 from molmetal.baselines.dmpnn_attentive import (
     AttentiveDMPNNModel,
-    AttentiveDMPNNBaseline,
-    mol_to_graph,
     featurize_smiles_list,
     ATOM_FEATURE_DIM,
     BOND_FEATURE_DIM,
     quick_smoke,
 )
-from molmetal.data.splits import TemporalSplitter
 
 
 def test_dmpnn_attn_forward_shape():

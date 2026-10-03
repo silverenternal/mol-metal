@@ -28,7 +28,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
 import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -50,7 +49,6 @@ from molmetal.molmetal_lam.lam_chem.decoder_rework import (
 from molmetal.models.bond_head import (
     AtomCloud,
     BondAwareDecoder,
-    BondOrderHead,
     DecodedMol,
     PairFeature,
     default_trained_head,

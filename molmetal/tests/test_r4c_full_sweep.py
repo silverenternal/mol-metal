@@ -14,7 +14,6 @@ decisions.md D4) and is a future test target.
 
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 from pathlib import Path

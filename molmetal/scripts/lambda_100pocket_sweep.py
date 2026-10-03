@@ -63,16 +63,13 @@ from molmetal_lam.binding.types import PROTEASE_GENERIC
 from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 from molmetal_lam.reactions.beta_reductions import REACTION_RULES
 from molmetal_lam.scripts._sweep_helpers import (
-    BRANCHING_LABELS,
     build_reward,
     build_seed_smiles,
-    build_seed_term,
-    build_tile_library_for_branching,
     lipinski_pass,
     smi_of,
     vina_proxy,
 )
-from molmetal_lam.search_alg.proof_search import MCTSProofSearch, RewardAggregator
+from molmetal_lam.search_alg.proof_search import MCTSProofSearch
 from molmetal_lam.tile_lib.library import build_tile_library, FRAGMENT_LIBRARY_200_TILES
 from molmetal_lam.types.predicates import LIPINSKI
 

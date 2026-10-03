@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
 import torch
 
 from molmetal.models.chemprop_v2_frontier import (

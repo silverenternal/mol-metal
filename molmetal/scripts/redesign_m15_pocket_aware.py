@@ -244,7 +244,7 @@ def main() -> int:
         "## §2 Inputs",
         "",
         f"- `molmetal/reports/wf179_bd9_m15_rmsd_p2/summary.json` (5 pockets x 3 seeds, Vina ex={src.get('exhaustiveness', 16)})",
-        f"- `molmetal/data/pocket_ref_ligands/ligand_metadata.json` (ref ligand SMILES + coords)",
+        "- `molmetal/data/pocket_ref_ligands/ligand_metadata.json` (ref ligand SMILES + coords)",
         "",
         "## §3 Per-pocket results",
         "",

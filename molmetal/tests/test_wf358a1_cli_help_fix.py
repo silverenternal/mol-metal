@@ -33,7 +33,6 @@ Source: Wf-358-A1 closeout + Wf-357-A1 root-cause finding.
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest

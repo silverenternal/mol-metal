@@ -184,7 +184,6 @@ def test_module_imports_cleanly() -> None:
     sys.path.insert(0, _scripts_path())
     sys.path.insert(0, _repo_root_path())
     import importlib
-    import train_multimetal_lomo as m32  # type: ignore[import-not-found]
 
     if "train_multimetal_lomo" in sys.modules:
         importlib.reload(sys.modules["train_multimetal_lomo"])

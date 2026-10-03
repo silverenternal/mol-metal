@@ -380,7 +380,7 @@ def test_filesystem_truth_rule_citation(catalog_text: str) -> None:
     )
 
     print(
-        f"  [test_filesystem_truth_rule_citation] filesystem-truth rule OK: "
-        f"cited_in_§6.27-§6.30=True",
+        "  [test_filesystem_truth_rule_citation] filesystem-truth rule OK: "
+        "cited_in_§6.27-§6.30=True",
         flush=True,
     )

@@ -24,11 +24,7 @@ if str(_REPO_ROOT) not in sys.path:
 from molmetal.scripts.wf433_m5_real_validation import (  # noqa: E402
     AUDIT_DIR,
     METRIC_FILE_MAP,
-    METRICS_DIR,
     OUT_DIR,
-    _count_measurements,
-    _extract_top_value,
-    _last_measurement,
     probe_metric,
 )
 

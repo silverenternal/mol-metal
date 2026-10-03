@@ -66,9 +66,6 @@ from molmetal.molmetal_lam.reward.lambda_astsr import LambdaASTSR  # noqa: E402
 from molmetal.molmetal_lam.reward.hilbert_primal_dual import (  # noqa: E402
     LambdaASTSRHilbert,
 )
-from molmetal.scripts.bench_hilbert_astr_combined_real import (  # noqa: E402
-    fit_hilbert,
-)
 
 
 # ---------------------------------------------------------------------------

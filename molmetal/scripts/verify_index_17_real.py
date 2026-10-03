@@ -342,7 +342,7 @@ def main() -> int:
         "",
         f"**Generated**: {report['generated_utc']}",
         f"**Section**: {report['section']}",
-        f"**Verifier**: `molmetal/scripts/verify_index_17_real.py`",
+        "**Verifier**: `molmetal/scripts/verify_index_17_real.py`",
         "",
         "## §17.1 counts (claimed in INDEX)",
         "",

@@ -33,7 +33,7 @@ import sys
 import time
 import tracemalloc
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import pytest
 
@@ -217,7 +217,6 @@ def test_payload_schema(tmp_path: Path) -> None:
     (CPU budget) — instead we run a tiny smoke (1 sample, 1 run)
     and assert the JSON keys / dtypes match the documented schema.
     """
-    import csv
 
     smiles = _load_platinai_smiles(CSV_PATH, 1)
     registry = _build_module_registry()

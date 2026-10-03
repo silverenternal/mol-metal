@@ -137,7 +137,7 @@ def test_zotero_install_tree_present() -> None:
     app_ini = EXPECTED_ZOTERO_DIR / "app" / "application.ini"
 
     assert launcher.exists(), f"launcher shell script missing: {launcher}"
-    assert bin_actual.exists(), f"zotero-bin missing: {actual}"
+    assert bin_actual.exists(), f"zotero-bin missing: {bin_actual}"
     assert app_ini.exists(), f"app/application.ini missing: {app_ini}"
 
     # Sanity: the launcher is a bash script (Zotero's launcher wraps

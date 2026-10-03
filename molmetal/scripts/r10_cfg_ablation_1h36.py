@@ -42,7 +42,7 @@ import statistics
 import sys
 import time
 from pathlib import Path
-from typing import List, Sequence
+from typing import Sequence
 
 import torch
 
@@ -423,7 +423,6 @@ def _run_one_cfg(
     # The clamp is applied INSIDE the velocity model (per-step) so the
     # integrator never sees exploding coords.  Post-generation we also
     # clamp x_final defensively.
-    from molmetal.ports import GenerationConfig
 
     # Build the in-adapter velocity_model the same way generate() does,
     # then wrap it with our coord clip.
@@ -496,9 +495,6 @@ def _run_one_cfg(
 
     # Post-ODE atom-type prediction (matches the adapter's logic, with
     # CFG-aware logits when cfg_scale_v != 1.0).
-    from molmetal.adapters.flow_matching_lipman import (
-        EGNNVelocityField as _EGNN,
-    )
 
     adapter.velocity_field.eval()
     init_atom_types = torch.ones_like(atom_types_init)

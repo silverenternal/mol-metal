@@ -45,13 +45,11 @@ from __future__ import annotations
 import pytest
 
 # RDKit — required for the dispatcher.
-from rdkit import Chem  # type: ignore
 
 # The runtime under test.
 from molmetal_lam.lam_chem.metal_ligand_exchange_runtime import (
     F2DispatchResult,
     F2MetalLigandExchangeRuntime,
-    F2RuntimeConfig,
     render_runtime_summary,
 )
 
@@ -106,18 +104,18 @@ def test_runtime_dispatch_sub_libraries_are_reachable() -> None:
     rt = F2MetalLigandExchangeRuntime()
     loaded_names = set(rt.list_loaded_pattern_names())
     # Curated F2(a) — ``Pt_Cl_NH3`` is the canonical.
-    assert "Pt_Cl_NH3" in loaded_names, f"curated F2(a) Pt_Cl_NH3 not in loaded library"
+    assert "Pt_Cl_NH3" in loaded_names, "curated F2(a) Pt_Cl_NH3 not in loaded library"
     # Matrix — ``Pt_II_Cl_NH3`` is the matrix form of the same reaction.
-    assert "Pt_II_Cl_NH3" in loaded_names, f"matrix Pt_II_Cl_NH3 not in loaded library"
+    assert "Pt_II_Cl_NH3" in loaded_names, "matrix Pt_II_Cl_NH3 not in loaded library"
     # NEW SMARTS — the transmetalation prefix ``transmet_Pt_II_to_Pd_II``
     # should be in the loaded library.
     assert (
         "transmet_Pt_II_to_Pd_II" in loaded_names
-    ), f"NEW SMARTS transmet_Pt_II_to_Pd_II not in loaded library"
+    ), "NEW SMARTS transmet_Pt_II_to_Pd_II not in loaded library"
     # 82-metal library — bare metal names like ``"Ru"`` survive the
     # dedup race because no curated / matrix / NEW entry uses a bare
     # metal as the pattern name.
-    assert "Ru" in loaded_names, f"82-metal library bare Ru entry not in loaded library"
+    assert "Ru" in loaded_names, "82-metal library bare Ru entry not in loaded library"
 
 
 def test_runtime_render_summary_produces_markdown_table() -> None:

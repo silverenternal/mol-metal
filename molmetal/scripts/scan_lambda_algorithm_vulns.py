@@ -53,7 +53,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 _HERE = Path(__file__).resolve().parent
 _REPO_ROOT = _HERE.parent.parent
@@ -69,7 +69,6 @@ RDLogger.DisableLog("rdApp.*")
 
 # Reuse the bench helpers.
 from bench_deflexpressor_end_to_end import (  # noqa: E402
-    DEFAULT_HYPERPARAMS,
     HILBERT_DIM,
     build_design_matrix,
     load_nci60_precious,

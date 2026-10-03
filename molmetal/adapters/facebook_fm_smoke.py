@@ -8,7 +8,11 @@ Run:
     /home/hugo/.local/bin/uv run --no-sync python molmetal/adapters/facebook_fm_smoke.py
 """
 
-import sys, os, statistics, math, time
+import sys
+import os
+import statistics
+import math
+import time
 from dataclasses import dataclass
 
 sys.path.insert(0, "/home/hugo/codes/try_triton_on_rocm")

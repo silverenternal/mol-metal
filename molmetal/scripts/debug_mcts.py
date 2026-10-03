@@ -28,7 +28,7 @@ from __future__ import annotations
 import argparse
 import random
 import sys
-from typing import Any, Dict, List
+from typing import Dict, List
 
 # Allow ``python -m molmetal.scripts.debug_mcts`` and direct-script
 # execution both.  When invoked as a module under the ``molmetal``

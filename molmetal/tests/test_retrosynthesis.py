@@ -77,7 +77,6 @@ def _generate_lambda_products(n_max: int = 12) -> list:
     from molmetal_lam.reactions.beta_reductions import (
         cuaac,
         diels_alder,
-        thiol_ene,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 

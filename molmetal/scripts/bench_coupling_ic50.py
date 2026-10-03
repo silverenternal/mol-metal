@@ -79,14 +79,12 @@ import argparse
 import gc
 import json
 import math
-import os
 import sys
 import time
 import tracemalloc
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from statistics import mean, pstdev
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -714,7 +712,7 @@ def render_markdown(payload: Dict[str, Any]) -> str:
         else None
     )
     lines: List[str] = []
-    lines.append(f"# Wf-39 Phase 3 — Coupling Adapter IC50 bench\n")
+    lines.append("# Wf-39 Phase 3 — Coupling Adapter IC50 bench\n")
     lines.append(
         f"**Dataset**: `{cfg['dataset']}`  \n"
         f"**n_samples loaded**: {cfg['n_samples_loaded']} "

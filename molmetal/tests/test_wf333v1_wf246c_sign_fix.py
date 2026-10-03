@@ -50,13 +50,12 @@ Honest framing
 from __future__ import annotations
 
 import json
-import math
 from pathlib import Path
 
 import pytest
 
 try:
-    from rdkit import Chem, RDLogger  # type: ignore
+    from rdkit import RDLogger  # type: ignore
 
     RDLogger.DisableLog("rdApp.*")
     _HAVE_RDKIT = True
@@ -64,7 +63,6 @@ except Exception:  # pragma: no cover
     _HAVE_RDKIT = False
 
 from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (
-    METAL_LIGAND_OPT_DISTANCE,
     MetalCoordinationScore,
     MetalCoordinationTerm,
 )

@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 """Tests for infer_cfm.py standalone inference CLI."""
 
-import json
 import os
 import tempfile
-from pathlib import Path
 
-import pytest
 
 from molmetal.scripts.infer_cfm import (
     parse_args,
@@ -49,7 +46,7 @@ class TestInferCFM:
             make_dirs(tmp)  # second call should not raise
             make_dirs(tmp)
             assert os.path.isdir(tmp)
-        print(f"test_make_dirs_idempotent PASS")
+        print("test_make_dirs_idempotent PASS")
 
     def test_load_smiles_basic(self):
         """load_smiles reads SMILES file, skips blanks and comments."""
@@ -77,7 +74,6 @@ class TestInferCFM:
                     "num_cycle": num_cycle,
                 }
 
-        import argparse
 
         args = parse_args([])
         out = infer_batch(StubModel(), ["CCO", "c1ccccc1"], args)

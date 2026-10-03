@@ -62,7 +62,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -1126,21 +1125,21 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"(R²={w2_sel['best_axis_r2_mean']:+.4f})"
             )
         if c["per_cell_r2"]:
-            print(f"    per_cell R²:")
+            print("    per_cell R²:")
             for cell, res in c["per_cell_r2"].items():
                 print(
                     f"      {cell:>10s}  R²={res.get('r2_mean', float('nan')):+.4f} ± "
                     f"{res.get('r2_std', 0):.4f}  n={res.get('n_valid', 0)}"
                 )
         if c["per_metal_r2"]:
-            print(f"    per_metal R²:")
+            print("    per_metal R²:")
             for metal, res in c["per_metal_r2"].items():
                 print(
                     f"      {metal:>4s}  R²={res.get('r2_mean', float('nan')):+.4f} ± "
                     f"{res.get('r2_std', 0):.4f}  n={res.get('n_samples', 0)}"
                 )
         if c["top10_feature_importance"]:
-            print(f"    top-10 feature importance:")
+            print("    top-10 feature importance:")
             for feat in c["top10_feature_importance"][:10]:
                 if "error" in feat:
                     print(f"      error: {feat['error']}")

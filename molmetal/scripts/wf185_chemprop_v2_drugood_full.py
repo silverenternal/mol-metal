@@ -70,7 +70,6 @@ for p in (str(PROJECT_ROOT), str(CHEMPROP_V2_PATH)):
 
 import numpy as np
 import torch
-import torch.nn as nn
 from rdkit import Chem, RDLogger
 from sklearn.metrics import roc_auc_score
 
@@ -822,8 +821,8 @@ def run_one_config(
         f"**Date:** {time.strftime('%Y-%m-%d')}  ",
         f"**Data:** DrugOOD {subset}  ",
         f"**Train rows:** {splits['train'].n_valid}  ",
-        f"**Model:** chemprop v2 AtomMessagePassing + SumAggregation + "
-        f"BinaryClassificationFFN (via ChempropV2MTModel Ru head)  ",
+        "**Model:** chemprop v2 AtomMessagePassing + SumAggregation + "
+        "BinaryClassificationFFN (via ChempropV2MTModel Ru head)  ",
         f"**Backbone:** hidden={args.hidden}, depth={args.depth}, "
         f"head_hidden={args.head_hidden}  ",
         f"**Recipe:** {args.epochs} epochs × batch {args.batch} × lr {args.lr} "
@@ -969,9 +968,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "(Wf-190 env guard)."
             )
         _log(
-            f"CUDA requested but torch.cuda.is_available() is False; "
-            f"falling back to CPU.  Set MOLMETAL_ALLOW_CPU=0 + --no-bf16 "
-            f"for fail-fast behaviour.",
+            "CUDA requested but torch.cuda.is_available() is False; "
+            "falling back to CPU.  Set MOLMETAL_ALLOW_CPU=0 + --no-bf16 "
+            "for fail-fast behaviour.",
         )
         device = torch.device("cpu")
     _log(
@@ -1143,8 +1142,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "",
         f"- [G1] All configs ran: **{gate_1_all_ran}**",
         f"- [G2] Total runs: **{gate_2_total_runs}**",
-        f"- [G3] Per-config ood_test AUC: see table below",
-        f"- [G4] Per-config mean ± std: see table below",
+        "- [G3] Per-config ood_test AUC: see table below",
+        "- [G4] Per-config mean ± std: see table below",
         f"- [G5] Total wall time: **{gate_5_wall_min:.2f} min** "
         f"(≤ {args.time_budget_s/3600:.1f} hr)",
         "",
@@ -1202,7 +1201,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     _log(f"wrote {final_md_path}")
 
     # Print summary to stdout for easy grep.
-    print(f"\n=== Wf-185 SUMMARY ===")
+    print("\n=== Wf-185 SUMMARY ===")
     print(f"gate_1_all_ran: {gate_1_all_ran}")
     print(f"gate_2_total_runs: {gate_2_total_runs}")
     print(f"gate_3_per_config_ood_test: {json.dumps(gate_3_per_config)}")

@@ -120,7 +120,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import logging
 import math
 import statistics
 import sys
@@ -128,7 +127,7 @@ import time
 import tracemalloc
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 

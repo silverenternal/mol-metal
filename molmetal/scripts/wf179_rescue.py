@@ -15,12 +15,28 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-import sys
 import time
 from pathlib import Path
 
 import numpy as np
 from scipy.optimize import linear_sum_assignment
+
+# Wf-424-A4 atomic write protocol primitives, bound at module scope: the
+# wrapper below runs in THIS process (the generated subprocess scripts
+# carry their own copy of this import block inside the embedded template).
+try:
+    from molmetal.scripts.wf386a3_atomic_write import (
+        atomic_write_file,
+        safe_overwrite_check,
+        detect_truncation,
+    )
+
+    _WF424_HAS_ATOMIC = True
+except ImportError:  # pragma: no cover — fallback when running as standalone
+    _WF424_HAS_ATOMIC = False
+    atomic_write_file = None  # type: ignore[assignment]
+    safe_overwrite_check = None  # type: ignore[assignment]
+    detect_truncation = None  # type: ignore[assignment]
 
 REPO = Path("/home/hugo/codes/mol-metal")
 WORKDIR = REPO / "molmetal/reports/wf179_bd9_m15_rmsd_p2"
@@ -560,7 +576,7 @@ def main():
         }
         with open(WORKDIR / "summary.json", "w") as f:
             json.dump(summary, f, indent=2)
-        print(f"\n=== FINAL ===", flush=True)
+        print("\n=== FINAL ===", flush=True)
         print(
             f"aggregate median: {overall:.4f}A across {len(aggregate)} pockets",
             flush=True,

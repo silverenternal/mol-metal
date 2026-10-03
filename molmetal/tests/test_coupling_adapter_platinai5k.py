@@ -23,12 +23,10 @@ produces :file:`models/coupling_adapter_platinai5k.npz` — a
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:

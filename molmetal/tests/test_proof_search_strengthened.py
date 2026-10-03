@@ -20,9 +20,8 @@ import random
 from typing import List
 
 import numpy as np
-import pytest
 
-from molmetal_lam.binding.types import BindingSite, KINASE_ATP, typecheck
+from molmetal_lam.binding.types import BindingSite
 from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 from molmetal_lam.reactions.beta_reductions import ReactionRule
 from molmetal_lam.search_alg.proof_search import (
@@ -33,7 +32,6 @@ from molmetal_lam.search_alg.proof_search import (
     VirtualLoss,
     heuristic,
 )
-from molmetal_lam.types.predicates import LIPINSKI, TypePredicate
 
 
 # ---------------------------------------------------------------------------

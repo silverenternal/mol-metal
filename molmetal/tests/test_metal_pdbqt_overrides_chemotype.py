@@ -48,10 +48,8 @@ Honest framing
 
 from __future__ import annotations
 
-import json
-import pathlib
 import sys
-from typing import Any, Dict, List
+from typing import Dict
 from unittest import mock
 
 import pytest
@@ -61,9 +59,7 @@ import pytest
 # Imports under test
 # ---------------------------------------------------------------------------
 from molmetal.molmetal_lam.sbdd_env.metal_pdbqt_overrides import (
-    DBLOCK_VDW_TABLE_PATH,
     GENERIC_ATYPE,
-    PT_GROUP_ELEMENTS,
     VINA_FALLBACK_ATYPE,
     add_metal_atom_types,
     get_metal_atom_type_rules,

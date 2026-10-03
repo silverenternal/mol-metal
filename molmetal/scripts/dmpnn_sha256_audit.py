@@ -59,9 +59,6 @@ if str(PROJECT_ROOT) not in sys.path:
 # Wf-120 P3 — import shared SHA256-guard helpers from the dependency-free
 # module so the audit re-uses the canonical scan_all_ckpts /
 # find_duplicate_shas implementations.
-from molmetal.scripts._dmpnn_sha256_guard import (  # noqa: E402
-    find_duplicate_shas as _guard_find_duplicate_shas,
-)
 
 DEFAULT_CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints"
 DEFAULT_STATUS_JSON = PROJECT_ROOT / "metrics" / "by_metric" / "dmpnn_ckpt_status.json"

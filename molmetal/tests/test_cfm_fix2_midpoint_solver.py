@@ -32,13 +32,11 @@ Reference: ``molmetal/reports/wf_cfm_frontier_research/synthesis_phase2.md``
 
 from __future__ import annotations
 
-import math
 import sys
 import warnings
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -118,7 +116,7 @@ def test_generate_impl_reads_config_method():
     adapter._ODESolver = _RecordingODESolver
 
     # Build a minimal pocket and config.
-    from molmetal.domain import Molecule, Pocket
+    from molmetal.domain import Pocket
 
     g = torch.Generator().manual_seed(7)
     pcoords = torch.randn(12, 3, generator=g) * 2.0

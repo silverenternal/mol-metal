@@ -1,6 +1,6 @@
 # Wf-131 Phase 3 — LOMO 5-fold × 5-seed × 50-epoch full re-bench on MetalCytoToxDB 5-metal
 
-**Date**: 2026-10-02  
+**Date**: 2026-10-03  
 **Metals**: Rh  
 **Seeds**: 0  
 **Epochs/seed**: 2  
@@ -39,11 +39,11 @@ existing LOMO trainer:
 
 ## §2 MEASURED (this run)
 
-**Overall LOMO mean test AUC = 0.4849 ± 0.0000**  
+**Overall LOMO mean test AUC = 0.5025 ± 0.0000**  
 (n=1 runs, 1 folds, gate ≥ 0.7)
 
-**Rh LOMO AUC = 0.4849 ± 0.0000** (target ≥ 0.5)  
-**Verdict (Rh target)**: MISS  
+**Rh LOMO AUC = 0.5025 ± 0.0000** (target ≥ 0.5)  
+**Verdict (Rh target)**: HIT  
 **Verdict (overall target ≥ 0.60)**: MISS  
 **Verdict (gate ≥ 0.70)**: BELOW GATE  
 
@@ -51,13 +51,13 @@ existing LOMO trainer:
 
 | Held-out metal | Mean ROC-AUC | Std | n_runs |
 |---|---|---|---|
-| Rh | 0.4849 | 0.0000 | 1 |
+| Rh | 0.5025 | 0.0000 | 1 |
 
 ### §2.2 Per-run detail
 
 | Fold | Seed | n_train | n_test | pos_rate_test | val_AUC | test_AUC | elapsed_s |
 |---|---|---|---|---|---|---|---|
-| Rh | 0 | 22962 | 1368 | 0.374 | 0.6662 | 0.4849 | 396.7 |
+| Rh | 0 | 22962 | 1368 | 0.374 | 0.6403 | 0.5025 | 377.6 |
 
 ## §3 Honest framing (party-twenty-spirit §3.5)
 
@@ -68,7 +68,7 @@ No silent PROJECTED-to-MEASURED promotion.
 **PROJECTED (TODO-121 §4)**: Rh LOMO AUC ≥ 0.50 (vs current 0.368);
 overall LOMO mean ≥ 0.60 (vs current 0.535).
 
-**Hit / miss summary**: Rh target MISS,
+**Hit / miss summary**: Rh target HIT,
 overall target MISS,
 original gate BELOW GATE.
 

@@ -52,10 +52,8 @@ import argparse
 import json
 import os
 import subprocess
-import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from itertools import product
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -460,18 +458,18 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
         "2. **Wasserstein pIC50 regularization** (Wf-123 P1 M1)",
         "3. **L2 guard** (grad-norm clip at 5.0)",
         "",
-        f"The aggregate lift (+0.049, 0.7123 → 0.7613 on Ru seed=0 30ep h=128) was",
+        "The aggregate lift (+0.049, 0.7123 → 0.7613 on Ru seed=0 30ep h=128) was",
         "an **aggregate** measurement — paper §3 cannot honestly attribute it to",
         "per-lever percentages without this ablation.",
         "",
         "## §1 Acceptance gates",
         "",
-        f"| Gate | Requirement | Result |",
-        f"|---|---|---|",
+        "| Gate | Requirement | Result |",
+        "|---|---|---|",
         f"| G1 | All {len(ABLATION_CONFIGS)} permutations complete | {summary['n_configs_completed']}/{summary['n_configs_planned']} |",
         f"| G2 | Per-lever lift attribution table | {'✅' if attribution.get('single_lever_lift') else '❌'} |",
-        f"| G3 | Aggregate +0.049 attributed to levers | see §4 |",
-        f"| G4 | Honest framing | see §6 |",
+        "| G3 | Aggregate +0.049 attributed to levers | see §4 |",
+        "| G4 | Honest framing | see §6 |",
         "",
         "## §2 Ablation matrix (2^3 = 8 configs)",
         "",
@@ -530,7 +528,7 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
             if val is not None:
                 lines.append(f"| {inter} | I_AB | {val:+.4f} |")
         lines.append("")
-        lines.append(f"### §4.3 Full recipe (111) lift vs baseline")
+        lines.append("### §4.3 Full recipe (111) lift vs baseline")
         lines.append("")
         if attribution["full_recipe_lift"] is not None:
             lines.append(
@@ -647,7 +645,7 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
         lines.append("✅ **G4 PASS** — Honest framing documented (§6)")
     else:
         lines.append(f"⚠️ **G1 PARTIAL** — {n_done}/{n_total} permutations complete")
-        lines.append(f"⚠️ See §3 for missing configs and §6 for honest framing")
+        lines.append("⚠️ See §3 for missing configs and §6 for honest framing")
 
     lines.extend(
         [

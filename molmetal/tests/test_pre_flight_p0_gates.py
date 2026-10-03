@@ -12,9 +12,7 @@ Verifies:
 Run with: pytest molmetal/tests/test_pre_flight_p0_gates.py -v
 """
 
-from pathlib import Path
 
-import pytest
 
 from molmetal.scripts.pre_flight_check import (
     gate_yaml_schema,

@@ -46,7 +46,6 @@ import sys
 import types
 from pathlib import Path
 
-import pytest
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _SCRIPT_DIR = _REPO_ROOT / "molmetal" / "scripts"

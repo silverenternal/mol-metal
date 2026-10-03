@@ -34,7 +34,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Iterable, List, Tuple
 
 import pytest
 

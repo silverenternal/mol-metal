@@ -34,7 +34,6 @@ is recorded on the cell.warnings audit and consumed by downstream
 metrics that want to enforce a per-cell cap.
 """
 
-import pytest
 
 from molmetal.scripts import r4_lambda_only_run as lambda_run
 from molmetal.scripts import r4_c_full_sweep as sweep

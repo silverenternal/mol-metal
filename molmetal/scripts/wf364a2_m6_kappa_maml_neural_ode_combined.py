@@ -66,10 +66,8 @@ from __future__ import annotations
 
 import csv
 import json
-import math
 import sys
 import time
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -720,7 +718,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # ---- Stage 4: Summary + verdict ----
     print()
     print("=" * 80)
-    print(f"Wf-364-A2 SUMMARY")
+    print("Wf-364-A2 SUMMARY")
     print(
         f"  m6_kappa baseline mean : {baseline_mean:.4f} "
         f"(Wf-325D MEASURED={WF_325D_MEASURED_BASELINE:.4f}, "
@@ -961,10 +959,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"({'CEILING_BREAK via combined MAML+ODE' if aggregate_status == 'HONEST_NEGATIVE_M6_KAPPA_RESOLVED' else 'PRESERVED — augmented_mean < 0.6, final state, no more paths to try'})"
     )
     print(
-        f"  tests_status             : 3 NEW tests in "
-        f"test_wf364a2_m6_kappa_combined.py "
-        f"(MAML_inner_with_neural_ode_forward / "
-        f"combined_loss_backward / backward_compat)"
+        "  tests_status             : 3 NEW tests in "
+        "test_wf364a2_m6_kappa_combined.py "
+        "(MAML_inner_with_neural_ode_forward / "
+        "combined_loss_backward / backward_compat)"
     )
     print(
         f"  final_verdict            : {aggregate_status} (this is "

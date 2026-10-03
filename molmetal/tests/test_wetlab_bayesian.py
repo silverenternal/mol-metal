@@ -15,7 +15,6 @@ All tests are CPU-only, deterministic on seed=0, runtime <2s.
 
 from __future__ import annotations
 
-import math
 import os
 import sys
 
@@ -39,7 +38,6 @@ from molmetal.molmetal_lam.reward.wetlab_bayesian import (  # noqa: E402
     compute_silico_wetlab_agreement,
     run_iterative_loop,
     synthesize_wetlab_loop,
-    _encode_axis,
 )
 
 

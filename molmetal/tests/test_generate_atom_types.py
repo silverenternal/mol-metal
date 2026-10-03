@@ -13,7 +13,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import List
 
-import pytest
 import torch
 
 from molmetal.adapters.flow_matching_lipman import LipmanFlowMatchingAdapter

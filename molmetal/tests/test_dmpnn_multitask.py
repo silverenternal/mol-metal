@@ -28,8 +28,6 @@ New joint 5-metal multi-task (15):
 
 from __future__ import annotations
 
-import json
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -39,17 +37,11 @@ import torch
 from molmetal.baselines.dmpnn_multitask import (
     ATOM_FEATURE_DIM,
     BOND_FEATURE_DIM,
-    DMPNNMultiTaskBaseline,
     DMPNNMultiTaskModel,
     MT_ALPHA,
-    MT_BATCH_SIZE,
     MultiTaskLoss,
-    featurize_smiles_list,
-    predict_mt,
-    train_epoch_mt,
 )
 from molmetal.baselines.dmpnn import (
-    DMPNNModel,
     featurize_smiles_list as _featurize,
 )
 

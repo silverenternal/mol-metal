@@ -37,11 +37,9 @@ The test joins the existing
 from __future__ import annotations
 
 import ast
-import importlib
 import re
-import sys
 from pathlib import Path
-from typing import Iterable, List
+from typing import List
 
 import pytest
 

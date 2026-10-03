@@ -44,7 +44,7 @@ Outputs
 
 Usage::
 
-    CUDA_VISIBLE_DEVICES=1 molmetal/.venvs/mol-metal-venv/bin/python \
+    molmetal/.venv/bin/python \
       molmetal/scripts/bench_3way_tmqm.py \
       --seeds 0 1 2 3 4 --epochs 50 \
       --out-dir molmetal/reports/wf128_p3_tmqm_29
@@ -59,7 +59,7 @@ import math
 import sys
 import time
 from collections import defaultdict
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -74,7 +74,6 @@ import numpy as np
 
 # Reuse 3-way streams + collapse detector from Wf-128 P2 ship.
 from bench_3way_real_metalcytotox import (  # noqa: E402
-    COLLAPSE_RATIO_THRESHOLD,
     DEFAULT_HILBERT_DIM,
     DEFAULT_N_FOLDS,
     FEATURE_DIM,

@@ -20,7 +20,6 @@ import argparse
 import json
 import os
 import subprocess
-import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path

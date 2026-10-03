@@ -197,7 +197,7 @@ def main() -> int:
         json.dump(out, fh, indent=2, default=str)
 
     print()
-    print(f"[wf329w3-f2a-smoke] headline:")
+    print("[wf329w3-f2a-smoke] headline:")
     print(
         f"  cohort_vina_median = {headline['cohort_vina_median_kcal_mol']:+.4f} kcal/mol"
     )

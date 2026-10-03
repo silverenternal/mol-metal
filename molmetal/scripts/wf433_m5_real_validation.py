@@ -33,7 +33,6 @@ CPU-only — no torch autograd, no encoder forward pass, no GPU launches
 from __future__ import annotations
 
 import json
-import os
 import sys
 import time
 from dataclasses import dataclass, field, asdict

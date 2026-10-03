@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -90,7 +89,7 @@ def test_sn_jnl_cls_exists() -> None:
     # the underlying cls itself is LPPL-1.3c per the docstrip header).
     assert (
         "LPPL" in text or "Apache" in text or "License" in text
-    ), f"expected license header in cls file (LPPL or Apache)"
+    ), "expected license header in cls file (LPPL or Apache)"
 
 
 # ---------------------------------------------------------------------------

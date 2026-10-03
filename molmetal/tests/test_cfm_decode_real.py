@@ -101,7 +101,6 @@ def test_seed_metrics_dataclass_serialisable():
 # ---------------------------------------------------------------------------
 def test_cli_default_args():
     """argparse defaults should match the Wf-139 P5 spec."""
-    from argparse import Namespace
 
     # Default values hard-coded in the script:
     assert bench.DEFAULT_CKPT_PATH.name == "cfm_yuelbond_wasserstein.pt"
@@ -414,4 +413,3 @@ def test_per_seed_metrics_file_is_valid_json(tmp_path):
 # Imports at module level — torch + numpy
 # ---------------------------------------------------------------------------
 import torch  # noqa: E402
-import numpy as np  # noqa: E402

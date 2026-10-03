@@ -67,10 +67,8 @@ This test module assumes the standard molmetal-test environment
 
 from __future__ import annotations
 
-import math
 import sys
 from pathlib import Path
-from typing import Optional
 
 import pytest
 import torch
@@ -129,7 +127,6 @@ from molmetal.adapters.flow_matching_lipman.se3sb_bass_integration import (  # n
     make_ot_sampler,
 )
 from molmetal.adapters.flow_matching_lipman.w_flow import (  # noqa: E402
-    DEFAULT_N_WINDOWS,
     WaveformRelaxationSolver,
     WFlowCFM,
     make_default_w_solver,

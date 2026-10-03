@@ -347,7 +347,6 @@ def test_per_descriptor_values_match_rdkit_directly(mod) -> None:
     with disconnected fragments would NaN out the partial-charge
     descriptors, which is a separate test).
     """
-    from rdkit.Chem import Descriptors  # type: ignore
 
     mol = Chem.MolFromSmiles(ASPIRIN)
     assert mol is not None

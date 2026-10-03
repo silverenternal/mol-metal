@@ -39,25 +39,19 @@ Run via::
 
 from __future__ import annotations
 
-import json
 import math
 import os
 import subprocess
 import sys
 from typing import Any, Dict
 
-import pytest
 
 
 # Lazy imports (mirrors convention in test_variance_puct_sign_fix.py).
 try:
-    from molmetal_lam.search_alg.variance_puct_integration import (
-        VarianceControlledPUCT,
-    )
+    pass
 except Exception:  # pragma: no cover - import path fallback
-    from molmetal.molmetal_lam.search_alg.variance_puct_integration import (  # type: ignore  # noqa: E402
-        VarianceControlledPUCT,
-    )
+    pass
 
 
 # ---------------------------------------------------------------------------

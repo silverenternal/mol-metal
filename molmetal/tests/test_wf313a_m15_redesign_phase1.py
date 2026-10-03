@@ -278,4 +278,4 @@ def test_12_integration_with_wf139_p1_synthesis_md() -> None:
     todo134_content = todo134_abs.read_text()
     assert (
         "Wf-139" in todo134_content or "Phase 1 SHIPPED" in todo134_content
-    ), f"TODO-134 should document Wf-139 P1 as the Phase 1 ship source"
+    ), "TODO-134 should document Wf-139 P1 as the Phase 1 ship source"

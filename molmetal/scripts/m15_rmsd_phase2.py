@@ -84,6 +84,23 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
+# Wf-416-A1 atomic write protocol primitives, bound at module scope: the
+# wrapper below runs in THIS process (the generated subprocess scripts
+# carry their own copy of this import block inside the embedded template).
+try:
+    from molmetal.scripts.wf386a3_atomic_write import (
+        atomic_write_file,
+        safe_overwrite_check,
+        detect_truncation,
+    )
+
+    _WF416_HAS_ATOMIC = True
+except ImportError:  # pragma: no cover — fallback when running as standalone
+    _WF416_HAS_ATOMIC = False
+    atomic_write_file = None  # type: ignore[assignment]
+    safe_overwrite_check = None  # type: ignore[assignment]
+    detect_truncation = None  # type: ignore[assignment]
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------

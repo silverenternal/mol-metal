@@ -276,7 +276,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # Late import so the gfx1101 + RDKit env vars are applied first.
     from molmetal.molmetal_lam.reward.multiph_pll_feature import (
         MultiPHPLLFeatureExtractor,
-        fourier_32bin_features,
     )
 
     print(
@@ -591,7 +590,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # ------------------------------------------------------------------
     print()
     print("=" * 72)
-    print(f"Wf-331-R3 SUMMARY")
+    print("Wf-331-R3 SUMMARY")
     print(
         f"  m6_kappa before/after : "
         f"{baseline_mean:.4f} -> {augmented_mean:.4f} "

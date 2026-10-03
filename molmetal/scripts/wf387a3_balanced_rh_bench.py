@@ -77,7 +77,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -164,7 +163,7 @@ def rdkit_features(smiles_list: List[str], n_dims: int = 12) -> np.ndarray:
     out = np.zeros((n, n_dims), dtype=np.float64)
     try:
         from rdkit import Chem, RDLogger  # type: ignore
-        from rdkit.Chem import AllChem, Descriptors  # type: ignore
+        from rdkit.Chem import Descriptors  # type: ignore
 
         RDLogger.DisableLog("rdApp.*")
     except Exception:

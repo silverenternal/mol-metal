@@ -39,7 +39,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
 import sys
 import time
 from pathlib import Path
@@ -269,9 +268,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"structural_ceiling_lifted via cv_r2={report.cv_r2:+.4f}"
     )
     print(
-        f"  n_tests_pass         : 4 NEW tests in "
-        f"test_wf335m1_chemprop_pll.py (chemprop_v2_features / "
-        f"pll_signature / combined_ridge / cv_r2_verification)"
+        "  n_tests_pass         : 4 NEW tests in "
+        "test_wf335m1_chemprop_pll.py (chemprop_v2_features / "
+        "pll_signature / combined_ridge / cv_r2_verification)"
     )
     print(
         f"  recovery_verdict     : {report.verdict} "

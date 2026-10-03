@@ -36,7 +36,6 @@ Honest framing (party-twenty-spirit §3.5)
   smoke) + ~10 min CPU (Wf-264 run-once) = 15 min total.
 """
 
-import json
 import os
 import re
 import subprocess

@@ -58,17 +58,6 @@ if _PROJECT_ROOT not in sys.path:
 try:
     from molmetal_lam.search_alg.mcts_replay_buffer import (
         MCTSReplayBuffer,
-        MCTSReplayEntry,
-    )
-    from molmetal_lam.search_alg.score_repellent_mc import (
-        ScoreRepellentSampler,
-    )
-    from molmetal_lam.search_alg.variance_puct_integration import (
-        IntegrationNode,
-        VarianceControlledPUCT,
-    )
-    from molmetal_lam.search_alg.variance_mcts_integration import (
-        VarianceMCTSWrapper,
     )
     from molmetal_lam.search_alg.proof_search import (
         EXPLORATION_STRATEGIES,
@@ -81,17 +70,6 @@ try:
 except Exception:  # pragma: no cover - import path fallback
     from molmetal.molmetal_lam.search_alg.mcts_replay_buffer import (  # type: ignore
         MCTSReplayBuffer,
-        MCTSReplayEntry,
-    )
-    from molmetal.molmetal_lam.search_alg.score_repellent_mc import (  # type: ignore
-        ScoreRepellentSampler,
-    )
-    from molmetal.molmetal_lam.search_alg.variance_puct_integration import (  # type: ignore
-        IntegrationNode,
-        VarianceControlledPUCT,
-    )
-    from molmetal.molmetal_lam.search_alg.variance_mcts_integration import (  # type: ignore
-        VarianceMCTSWrapper,
     )
 
     # Wf-A16: the FALLBACK path fails too. EXPLORATION_STRATEGIES does not

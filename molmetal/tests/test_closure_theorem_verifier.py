@@ -67,10 +67,7 @@ if str(SCRIPT_DIR) not in sys.path:
 from molmetal.scripts import verify_closure_theorem  # noqa: E402
 from molmetal.scripts.verify_closure_theorem import (  # noqa: E402
     DEFAULT_DATASET,
-    DEFAULT_MAX_DEPTH,
-    DEFAULT_MAX_PRODUCTS,
     DEFAULT_N_SAMPLES_PER_METAL,
-    DEFAULT_OUTPUT_DIR,
     DEFAULT_PLATINAI_CSV,
     DEFAULT_TMQM_CSV,
     PARTNER_SMILE_LIST,

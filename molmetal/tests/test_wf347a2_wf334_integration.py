@@ -35,11 +35,9 @@ Per ``party-twenty-spirit`` §3.5 honest framing:
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
 if str(PROJECT_ROOT) not in sys.path:

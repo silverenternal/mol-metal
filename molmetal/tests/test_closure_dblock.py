@@ -46,7 +46,6 @@ Run with::
 from __future__ import annotations
 
 import csv
-import json
 import sys
 import time
 from pathlib import Path
@@ -71,7 +70,6 @@ from molmetal.scripts.bench_closure_dblock import (  # noqa: E402
     DBLOCK_METALS,
     DEFAULT_DATASET,
     DEFAULT_MAX_DEPTH,
-    DEFAULT_MAX_PRODUCTS,
     DEFAULT_N_SAMPLES_PER_METAL,
     DEFAULT_OUTPUT_DIR,
     DEFAULT_SEEDS,

@@ -25,11 +25,9 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import sys
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 _HERE = Path(__file__).resolve().parent
@@ -70,7 +68,7 @@ def test_run_log_exists() -> None:
 def metrics() -> dict:
     """Load the artefact ``metrics.json`` once per module."""
     if not METRICS_PATH.exists():
-        pytest.skip(f"metrics.json not produced yet; run wf25_hilbert_real_eval.py")
+        pytest.skip("metrics.json not produced yet; run wf25_hilbert_real_eval.py")
     with open(METRICS_PATH) as f:
         return json.load(f)
 

@@ -37,7 +37,6 @@ import os
 import sys
 import tempfile
 import unittest
-from typing import Any, Dict
 
 import numpy as np
 
@@ -58,7 +57,6 @@ from molmetal.scripts.wf367b1_m2_r2_recovery import (
 )
 from molmetal.scripts.wf335m2_r2_w2_chemprop import WF325A_BASELINE_R2
 from molmetal.scripts.wf331r5_r2_w2_chemprop import (
-    extract_graph_features_pooled,
     load_cohort,
 )
 

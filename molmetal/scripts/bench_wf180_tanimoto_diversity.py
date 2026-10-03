@@ -29,7 +29,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, Sequence
 
 # Ensure imports work in headless test contexts.
 _REPO_ROOT = Path("/home/hugo/codes/mol-metal")

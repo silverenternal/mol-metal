@@ -96,7 +96,7 @@ import math
 import statistics
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -357,7 +357,6 @@ def run_pb_one(
     # here as a ``skipped`` cell rather than a top-level crash.
     try:
         from molmetal.validation.posebusters_runner import (
-            check_docked_pose,
             check_posebusters,
             posebusters_available,
         )

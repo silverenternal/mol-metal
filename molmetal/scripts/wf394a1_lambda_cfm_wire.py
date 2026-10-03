@@ -67,7 +67,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 # Wf-406-A3: atomic write protocol migration (per AGENTS.md §5.6 + Wf-386-A3).
 # Replace direct Write with atomic_write_file to close the half-merged-file

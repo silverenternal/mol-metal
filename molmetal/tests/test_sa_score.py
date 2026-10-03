@@ -9,7 +9,6 @@ polycyclic / saccharide / natural-product SMILES should land in
 
 from __future__ import annotations
 
-import math
 
 import pytest
 

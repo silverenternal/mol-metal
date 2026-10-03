@@ -7,7 +7,7 @@ prior to the 0.75 floor when the learned prior picks it.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Dict
 
 import pytest
 

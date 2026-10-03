@@ -66,11 +66,7 @@ if str(_SCRIPTS_DIR) not in sys.path:
 
 from bench_deflexpressor_multiph_3way import (  # noqa: E402
     DEFAULT_HYPERPARAMS,
-    DEFAULT_METHODS,
-    DEFAULT_N_SAMPLES,
-    DEFAULT_OUT_DIR,
     DEFAULT_PLATINAI_CSV,
-    DEFAULT_SEEDS,
     FEATURE_COLUMNS,
     HILBERT_DIM,
     MPH_DIM,
@@ -78,14 +74,10 @@ from bench_deflexpressor_multiph_3way import (  # noqa: E402
     N_DESCRIPTORS,
     PLL_K,
     DesignMatrices,
-    FitRecord,
     MethodSummary,
     _featurize_smiles,
     _mph_features_for,
-    _numpy_pll_eigvals,
     _pll_features_for,
-    _predict,
-    _r2,
     _stable_ridge_fit,
     build_design_matrices,
     fit_3way,
@@ -94,12 +86,8 @@ from bench_deflexpressor_multiph_3way import (  # noqa: E402
     fit_joint,
     fit_multiph,
     load_platinai_5k,
-    pad_to_hilbert_dim,
     precompute_features,
     render_markdown,
-    run_benchmark,
-    write_metrics,
-    zscore,
 )
 
 

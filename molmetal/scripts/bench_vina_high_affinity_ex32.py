@@ -56,7 +56,7 @@ Usage
 -----
 ::
 
-    molmetal/.venvs/mol-metal-venv/bin/python \\
+    molmetal/.venv/bin/python \\
         molmetal/scripts/bench_vina_high_affinity_ex32.py \\
         --pocket 4aaw
 """
@@ -66,8 +66,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
-import statistics
 import sys
 import time
 import traceback

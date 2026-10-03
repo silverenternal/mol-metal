@@ -72,20 +72,16 @@ is unavailable on this host (honest ``HONEST_NEGATIVE``).
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import logging
 import math
-import os
-import statistics
 import sys
 import time
-import traceback
 from collections import Counter, defaultdict
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
 # Repo-root path setup
@@ -537,10 +533,10 @@ def write_summary_md(
             "Install via `uv pip install posebusters`."
         )
         + "",
-        f"* **Vina availability**: not required for this phase (PB ``mol`` mode "
+        "* **Vina availability**: not required for this phase (PB ``mol`` mode "
         "needs only RDKit + 3D embedding).  Wf-63 Phase 1 SHIP the Vina install "
         "status; Phase 3 re-runs only the m8 portion of script4.",
-        f"* **Candidate source**: "
+        "* **Candidate source**: "
         + (
             "real Lambda MCTS via ``r4_lambda_only_run.run_one_cell``."
             if use_real_mcts

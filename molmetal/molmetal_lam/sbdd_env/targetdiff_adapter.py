@@ -303,7 +303,7 @@ class DiffSBDDAdapter:
             raise CheckpointUnavailableError(
                 f"DiffSBDD ckpt not found at {self.ckpt_path}",
                 hint=(
-                    f"wget -P {DIFFSBDD_DIR/'checkpoints'/} {self.ckpt_url}"
+                    f"wget -P {DIFFSBDD_DIR / 'checkpoints'} {self.ckpt_url}"
                 ),
             )
 

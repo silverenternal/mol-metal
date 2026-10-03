@@ -20,7 +20,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-import statistics
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

@@ -86,9 +86,6 @@ def main() -> int:
 
     # Step 1 — Load the combined dataset (lazy on DrugOOD/BindingDB).
     from molmetal.data.four_domain_combined import (
-        DOMAIN_METALCYTOTOX,
-        DOMAIN_DRUGOOD,
-        DOMAIN_NCI60,
         DOMAIN_BINDINGDB,
         FourDomainDataset,
         DEFAULT_BINDINGDB_CSV,
@@ -286,8 +283,8 @@ def main() -> int:
     )
     if n_dup:
         print(
-            f"  (duplicates are INFORMATIONAL: shared scaffolds are expected; "
-            f"only exact-SMILES matches across *distinct source CSVs* are flagged)"
+            "  (duplicates are INFORMATIONAL: shared scaffolds are expected; "
+            "only exact-SMILES matches across *distinct source CSVs* are flagged)"
         )
         # Print up to 3 duplicate examples
         for smi, ds_list in list(duplicates.items())[:3]:

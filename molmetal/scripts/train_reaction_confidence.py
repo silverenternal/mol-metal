@@ -62,10 +62,9 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import sys
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 # ---------------------------------------------------------------------------
 # Make molmetal importable when running this script directly.
@@ -79,7 +78,6 @@ from molmetal.molmetal_lam.reactions.confidence import (  # noqa: E402
     Reaction,
     ReactionConfidence,
     SCAFFOLD_HASH_MAX_LEN,
-    laplace_estimate,
 )
 from molmetal.molmetal_lam.reactions.rate_predictor import LITERATURE_YIELDS  # noqa: E402
 

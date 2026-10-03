@@ -67,15 +67,13 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import os
 import statistics
 import sys
 import time
 import traceback
-from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 # ---------------------------------------------------------------------------
 # Path bootstrap — mirror the convention in every Wf-3x / Wf-4x bench so

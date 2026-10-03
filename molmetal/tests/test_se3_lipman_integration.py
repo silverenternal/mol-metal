@@ -152,7 +152,6 @@ def _make_composite(
     """Helper — construct an :class:`SE3CFMComposite` for tests."""
     from molmetal.adapters.se3_lipman_integration import (
         SE3CFMComposite,
-        SE3LipmanSolver,
     )
 
     if base_cfm is None:
@@ -538,7 +537,6 @@ def test_se3_cfm_composite_rejects_non_callable_base_cfm():
     """Non-callable ``base_cfm`` raises :class:`TypeError` at construction."""
     from molmetal.adapters.se3_lipman_integration import (
         SE3CFMComposite,
-        SE3LipmanSolver,
     )
 
     se3_solver = _make_solver(n_steps=10)

@@ -12,11 +12,9 @@ properties to lock in are:
 
 from __future__ import annotations
 
-import math
 
 import numpy as np
 import torch
-import torch.nn as nn
 
 from molmetal.models.cross_attention_fusion_v3 import CrossAttentionFusionV3
 

@@ -15,15 +15,10 @@ from __future__ import annotations
 
 import time
 
-import numpy as np
-import pytest
 import torch
 
-from molmetal.models.dmpnn import DirectedMPNN, MPNNConfig
 from molmetal.models.dmpnn_cache import (
-    DMPNNCacheStats,
     DMPNNFeaturizationCache,
-    cached_featurize_batch,
 )
 from molmetal.models.v4_multitask_dmpnn import DMPNNEncoder
 

@@ -47,7 +47,6 @@ tests run on CPU in <1 s without pandas / torch / rdkit.
 from __future__ import annotations
 
 import io
-import json
 import sys
 from contextlib import redirect_stdout
 from pathlib import Path

@@ -40,7 +40,6 @@ import random
 import sys
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -55,7 +54,6 @@ from molmetal.molmetal_lam.lam_chem.layered_generation import (
     DecorateResult,
     DecorateStage,
     LayeredGenerationPipeline,
-    PipelineResult,
     ScaffoldStage,
     is_valid_smiles,
 )

@@ -58,8 +58,6 @@ from molmetal.scripts.wf404a2_rmsd_multitemplate_scaffold import (
     DEFAULT_N_TEMPLATES,
     DEFAULT_TOP_K,
     PerPocketMultitemplate,
-    PerTemplateRecord,
-    RMSD_PRACTICAL_THRESHOLD_ANGSTROM,
     RMSD_SOTA_THRESHOLD_ANGSTROM,
     STATUS_SURROGATE,
     TEMPLATE_SOURCES,
@@ -256,7 +254,7 @@ def test_mm_gbsa_rescore() -> None:
     assert full_mmgbsa.shape == (n_templates, n_poses)
     # The exhaustive top-K-0 cell equals the per-template argmin.
     for t in range(n_templates):
-        assert full_mmgbsa[t, 0] == float(mm_gbsa_grid[t, :].min())
+        assert full_mmgbsa[t, 0] == float(mmgbsa_grid[t, :].min())
 
 
 # ---------------------------------------------------------------------------

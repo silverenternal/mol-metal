@@ -27,11 +27,10 @@ import argparse
 import json
 import re
 import sys
-from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 # ---------- Constants (per TODO/03_plans/LAMBDA_ROADMAP.md §4.2) ----------
 

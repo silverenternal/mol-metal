@@ -33,7 +33,6 @@ All tests are CPU-only, deterministic, and run in < 60 seconds total.
 from __future__ import annotations
 
 import json
-import statistics
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -52,16 +51,9 @@ if str(_SCRIPT_DIR) not in sys.path:
 
 from molmetal.scripts.r18_cv_harness import (  # noqa: E402
     DEFAULT_N_FOLDS,
-    _aggregate_mean,
-    _aggregate_std,
     _build_folds,
     _build_module_registry,
-    _cross_module_aggregate,
-    _make_synthetic_smiles,
     _MODULE_GROUPS,
-    _per_module_cv,
-    _render_text,
-    _run_fold,
     run_cv,
 )
 

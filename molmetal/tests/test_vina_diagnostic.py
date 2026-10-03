@@ -23,13 +23,8 @@ they install their own probes via ``monkeypatch``.
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
 import sys
 from pathlib import Path
-from typing import List, Tuple
-from unittest import mock
 
 import pytest
 
@@ -38,9 +33,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from molmetal.scripts.vina_diagnostic import (  # noqa: E402
-    DiagnosticResult,
     ProbeHit,
-    VINA_BIN_CANDIDATES,
     _parse_version,
     _probe_binary,
     detect_vina_binary,

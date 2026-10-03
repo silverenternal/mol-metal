@@ -39,12 +39,8 @@ combined.  Smoke runs use ``--n-samples 2 --seeds 1`` for sub-30 s CI.
 from __future__ import annotations
 
 import json
-import shutil
-import subprocess
 import sys
-import time
 from pathlib import Path
-from typing import Any, Dict, List
 
 import pytest
 
@@ -60,25 +56,16 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 
-from molmetal.scripts import bench_ood_per_metal  # noqa: E402
 from molmetal.scripts.bench_ood_per_metal import (  # noqa: E402
-    DEFAULT_MAX_DEPTH,
-    DEFAULT_MAX_PRODUCTS,
     DEFAULT_N_SAMPLES,
-    DEFAULT_OUTPUT_DIR,
     DEFAULT_SEEDS,
     DEFAULT_TANIMOTO_THRESHOLD,
     METALCYTOTOX_METALS,
     METAL_Z,
     PARTNER_SMILE_LIST,
     _aggregate_per_metal,
-    _benchmark_one,
     _load_click_rules,
-    _load_metal_samples,
-    _load_partner_terms,
     _load_tanimoto_protocol,
-    _load_tmqm_train_pool,
-    _utcnow_iso,
     run_ood_per_metal_benchmark,
     save_ood_per_metal_benchmark,
 )

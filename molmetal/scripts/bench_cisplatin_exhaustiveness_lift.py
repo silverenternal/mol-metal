@@ -75,12 +75,10 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import math
-import statistics
 import sys
 import time
 import traceback
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -570,7 +568,7 @@ def run_full_lift(
     md_lines.append("# Wf-141 v2 — cisplatin Vina exhaustiveness 8 → 32 lift")
     md_lines.append("")
     md_lines.append(f"_Generated: {_utc_now_iso()}_  ")
-    md_lines.append(f"_Hardware: CPU-only (Vina Python binding) + GPU-0 Blackwell_  ")
+    md_lines.append("_Hardware: CPU-only (Vina Python binding) + GPU-0 Blackwell_  ")
     md_lines.append(f"_Ligand SMILES_: `{CISPLATIN_SMILES}` (= cisplatin).  ")
     md_lines.append(f"_Engine_: Vina {_probe_vina_version()} (Python binding).  ")
     md_lines.append(
@@ -677,8 +675,8 @@ def run_full_lift(
         "_workflow": "Wf-141",
         "_phase": "v2",
         "_title": (
-            f"Cisplatin Vina exhaustiveness lift: ex=8 → ex=32 on 10 pockets, "
-            f"ex=64 upper-bound on 2 pockets"
+            "Cisplatin Vina exhaustiveness lift: ex=8 → ex=32 on 10 pockets, "
+            "ex=64 upper-bound on 2 pockets"
         ),
         "_generated_utc": _utc_now_iso(),
         "_hardware": "CPU-only (Vina Python binding) + GPU-0 Blackwell",

@@ -30,7 +30,6 @@ Honest framing (party-twenty-spirit §3.5)
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import List
 
@@ -38,22 +37,15 @@ import numpy as np
 import pytest
 
 from molmetal.scripts.wf381a2_multi_template_mm_gbsa import (
-    DEFAULT_N_TEMPLATES,
     DEFAULT_N_POSES,
     DEFAULT_POCKETS,
     MMGBSA_BORN_IMPLICIT_SOLVENT_KCAL,
-    PER_POCKET_SUCCESS_RATE,
-    RMSD_PRACTICAL_THRESHOLD_ANGSTROM,
-    RMSD_SOTA_THRESHOLD_ANGSTROM,
-    STATUS_HONEST_NEGATIVE,
     STATUS_SURROGATE,
     CohortSummary,
     PerPocketResult,
     PoseGrid,
     RescoreGrid,
-    _synthetic_rmsd_grid,
     aggregate_median_rmsd,
-    bench_multi_template_mm_gbsa,
     mm_gbsa_rescore,
     multi_template_dock,
     per_pocket_median_rmsd,

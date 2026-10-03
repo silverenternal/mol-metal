@@ -42,11 +42,8 @@ CPU-only by design. Wall budget: ~5 s on the host Python.
 
 from __future__ import annotations
 
-import importlib.util as _ilu
 import json
 import math
-import os
-import subprocess
 import sys
 import tempfile
 import unittest

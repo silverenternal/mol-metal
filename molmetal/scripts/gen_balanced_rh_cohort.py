@@ -47,7 +47,6 @@ import csv
 import json
 import sys
 import time
-from collections import Counter
 from pathlib import Path
 from typing import List, Optional, Tuple
 

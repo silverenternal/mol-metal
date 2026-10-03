@@ -26,7 +26,6 @@ import pytest
 import torch
 
 from molmetal.models.chemprop_v2_mt_model import (
-    COORD_GEOMETRY_NAMES,
     SUPPORTED_METALS,
     ChempropV2MTLoss,
     ChempropV2MTModel,

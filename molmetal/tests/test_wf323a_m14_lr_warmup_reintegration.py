@@ -47,11 +47,9 @@ Cross-references
 
 from __future__ import annotations
 
-import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List
 
 import pytest
 
@@ -326,7 +324,7 @@ def test_m14_subprocess_does_not_crash_on_unknown_flag():
     )
     assert (
         "error: unrecognized" not in combined
-    ), f"argparse reported error: unrecognized argument --lr-warmup-steps"
+    ), "argparse reported error: unrecognized argument --lr-warmup-steps"
 
 
 def test_default_lr_warmup_steps_is_200():

@@ -27,12 +27,9 @@ output. No paper/* touches (TODO-84 honored).
 from __future__ import annotations
 
 import os
-import re
 import subprocess
-import sys
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
 WRAPPER = PROJECT_ROOT / "scripts" / "launch_wf310e_r20_p3_drugood_1.58M_chemprop_v2.sh"

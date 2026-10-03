@@ -35,7 +35,6 @@ import sys
 from pathlib import Path
 from typing import Tuple
 
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPTS_DIR = PROJECT_ROOT / "molmetal" / "scripts"

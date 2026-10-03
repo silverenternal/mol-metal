@@ -22,7 +22,6 @@ All tests run with fast per-domain caps so the 1.58M-row DrugOOD CSV is
 
 from __future__ import annotations
 
-import json
 import math
 import os
 import sys
@@ -40,7 +39,6 @@ _DEFAULT_DATA = PROJECT_ROOT / ".data" / "molmetal"
 if not os.environ.get("MOLMETAL_DATA_DIR") and _DEFAULT_DATA.exists():
     os.environ["MOLMETAL_DATA_DIR"] = str(_DEFAULT_DATA)
 
-import numpy as np
 import torch
 from torch.utils.data import WeightedRandomSampler
 

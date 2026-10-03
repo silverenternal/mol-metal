@@ -250,7 +250,6 @@ def test_sa_loss_on_positive_penalty() -> None:
 
     from molmetal.adapters.flow_matching_lipman.sa_penalty import (
         sa_aware_sampling_penalty,
-        DEFAULT_TARGET_SA,
         DEFAULT_SA_WEIGHT,
     )
 

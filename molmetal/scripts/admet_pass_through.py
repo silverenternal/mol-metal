@@ -78,7 +78,7 @@ import os as _os
 import statistics
 import sys
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 # Project root on sys.path so we can import molmetal.* modules.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent

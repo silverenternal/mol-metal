@@ -31,7 +31,6 @@ All tests CPU-only, deterministic, complete < 60 s combined.
 
 from __future__ import annotations
 
-import csv
 import json
 import sys
 from pathlib import Path
@@ -52,12 +51,10 @@ from molmetal.scripts import bench_closure_dblock_full  # noqa: E402
 from molmetal.scripts.bench_closure_dblock_full import (  # noqa: E402
     DBLOCK_METALS,
     DEFAULT_MAX_DEPTH,
-    DEFAULT_MAX_PRODUCTS,
     DEFAULT_N_METALS,
     DEFAULT_N_SAMPLES,
     DEFAULT_OUTPUT_DIR,
     DEFAULT_SAMPLE_SEED,
-    DEFAULT_SEEDS,
     DEFAULT_TMQM_CSV,
     FALLBACK_TMQM_CSV,
     GATE_TARGET_REACHABILITY,

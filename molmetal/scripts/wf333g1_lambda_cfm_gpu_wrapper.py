@@ -77,11 +77,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -203,7 +202,6 @@ class LambdaCFMGPUWrapper:
         """
         try:
             from molmetal.molmetal_lam.lam_chem.coupling_joint_inference import (
-                LambdaCFMPipeline,
                 load_joint_pipeline,
                 DEFAULT_PRETRAIN_NPZ,
             )
@@ -519,7 +517,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         flush=True,
     )
     print(
-        f"[Wf-333-G1] binding constraint: decode_ratio=0 (CfM upstream gate)",
+        "[Wf-333-G1] binding constraint: decode_ratio=0 (CfM upstream gate)",
         flush=True,
     )
     return 0 if smoke.get("ok") else 2

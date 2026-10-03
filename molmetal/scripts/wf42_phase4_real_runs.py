@@ -78,17 +78,15 @@ Usage
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import logging
-import math
 import statistics
 import sys
 import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
 # Repo-root path setup
@@ -454,7 +452,7 @@ def run_bench_deflexpressor_e2e(out_path: Path) -> Dict[str, Any]:
             import pandas as pd
             import numpy as np
             from rdkit import Chem
-            from rdkit.Chem import Descriptors, rdMolDescriptors
+            from rdkit.Chem import Descriptors
 
             df = pd.read_csv(csv_path)
             n_rows = int(len(df))

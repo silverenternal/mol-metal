@@ -52,14 +52,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
 try:
-    from sklearn.linear_model import Ridge  # type: ignore
 
     _HAS_SKLEARN = True
 except Exception:  # pragma: no cover — defensive
@@ -68,23 +66,16 @@ except Exception:  # pragma: no cover — defensive
 # Reuse the canonical cohort loader from Wf-331-R5 (3 cohorts: platinai_4cell + hilbert + metalcytotox_combined).
 from molmetal.scripts.wf331r5_r2_w2_chemprop import (
     load_cohort as _wf331r5_load_cohort,
-    PLATINAI_12D_COLUMNS,
-    PLATINAI_32D_COLUMNS,
-    METALCYTOTOX_TARGET_COLUMN,
 )
 
 # Reuse the per-cohort config selector from Wf-380-A2 (size-based tier).
 from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
     select_features as wf380a2_select_features,
     load_config as wf380a2_load_config,
-    ridge_r2_eval as wf380a2_ridge_r2_eval,
     ridge_r2_cv as wf380a2_ridge_r2_cv,
 )
 
 # Reuse the Wf-335-M2 baseline R² anchors (HONEST_NEGATIVE_R2_DEEP on platinai + hilbert, CEILING_BREAK on metalcytotox_combined).
-from molmetal.scripts.wf331r5_r2_w2_chemprop import (
-    WF325A_BASELINE_R2,
-)
 
 
 # ---------------------------------------------------------------------------

@@ -50,7 +50,6 @@ def test_train_metal_lomo_v2_chemprop_v2_class_resolves() -> None:
     ``ChempropV2MTModel`` (the previous NotImplementedError stub for
     "class does not exist" is replaced with real instantiation).
     """
-    from molmetal.models.chemprop_v2_mt_model import ChempropV2MTModel
 
     mod = _import("train_metal_lomo_v2")
     # Source must contain the chemprop_v2 branch resolving to
@@ -143,7 +142,6 @@ def test_train_metal_lomo_v2_v4_still_resolves_to_v4multitaskdmpnn() -> None:
 
     The Wf-145 / TODO-145 §3.5 V4 wiring contract is preserved.
     """
-    from molmetal.models.v4_multitask_dmpnn import V4MultiTaskDMPNN
 
     mod = _import("train_metal_lomo_v2")
     src = Path(mod.__file__).read_text()
@@ -182,7 +180,6 @@ def test_train_dmpnn_multitask_chemprop_v2_choice_exists() -> None:
     and the chemprop_v2 branch in ``run_pretrain_training`` instantiates
     ChempropV2MTModel before raising NotImplementedError.
     """
-    from molmetal.models.chemprop_v2_mt_model import ChempropV2MTModel
 
     mod = _import("train_dmpnn_multitask")
     args = mod._parse_args(["--model", "chemprop_v2"])

@@ -54,7 +54,7 @@ Usage
 -----
 ::
 
-    source .venvs/mol-metal-venv/bin/activate
+    source .venv/bin/activate
     python molmetal/scripts/analyze_feature_target_correlation.py
     python molmetal/scripts/analyze_feature_target_correlation.py \\
         --out-dir molmetal/reports/wf44_r2_debug
@@ -79,7 +79,7 @@ import argparse
 import json
 import math
 import sys
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -904,7 +904,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     out_path = args.out_dir / "correlation_analysis.json"
 
     if not args.quiet:
-        print(f"[wf44-p5] Running feature-target correlation analysis ...")
+        print("[wf44-p5] Running feature-target correlation analysis ...")
         print(f"[wf44-p5] Output: {out_path}")
 
     result = run_full_analysis()

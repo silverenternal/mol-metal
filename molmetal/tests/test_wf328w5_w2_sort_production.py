@@ -295,7 +295,6 @@ def test_integration_with_trainer():
     active = np.random.randint(0, 2, size=8).astype(np.int64)
     ref_dist = torch.randn(64)
 
-    from molmetal.models.dmpnn import DirectedMPNN
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
         MultiTaskWassersteinModel,
     )

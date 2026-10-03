@@ -42,7 +42,6 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from molmetal.scripts.wf343c3_data_quality_check import (  # noqa: E402
-    CANONICAL_COLUMNS,
     CheckResult,
     DEFAULT_OUT_DIR,
     LoaderReport,

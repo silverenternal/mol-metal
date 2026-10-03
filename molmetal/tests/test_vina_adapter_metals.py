@@ -42,7 +42,6 @@ Honest framing
 
 from __future__ import annotations
 
-import re
 import tempfile
 from pathlib import Path
 

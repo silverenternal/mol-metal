@@ -303,7 +303,6 @@ def _run_one_seed(
         )
         # Re-evaluate R² on the original (un-standardised) y so the
         # headline metric is comparable to the 5-d baseline.
-        from molmetal.scripts.triangle_closure import TriangleClosure as _TC
 
         # We can't easily re-evaluate the regressor's prediction on the
         # original scale because LambdaASTSRHilbert.predict() expects

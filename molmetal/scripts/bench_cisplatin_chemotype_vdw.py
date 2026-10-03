@@ -68,11 +68,10 @@ import argparse
 import json
 import logging
 import math
-import statistics
 import sys
 import time
 import traceback
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -475,7 +474,7 @@ def _write_synthesis(
     md.append(f"_Generated: {summary['_generated_utc']}_  ")
     md.append(f"_Hardware: {summary['_hardware']}_  ")
     md.append(f"_Ligand SMILES_: `{summary['_smiles']}` (= cisplatin).  ")
-    md.append(f"_Engine_: Vina 1.2.7 (Python binding).  ")
+    md.append("_Engine_: Vina 1.2.7 (Python binding).  ")
     md.append(
         f"_Exhaustiveness_: {summary['_exhaustiveness']}; "
         f"_n_poses_: {summary['_n_poses']}; "

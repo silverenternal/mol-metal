@@ -75,11 +75,9 @@ import csv
 import json
 import logging
 import math
-import os
 import statistics
 import sys
 import time
-from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -92,7 +90,6 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 
 # Imported lazily inside run_study() so --help works without the
 # heavy Lambda stack.
-import importlib
 
 log = logging.getLogger("wf_click_effect")
 

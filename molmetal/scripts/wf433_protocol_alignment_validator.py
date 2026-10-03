@@ -65,8 +65,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -91,7 +90,6 @@ DEFAULT_OUT = (
 from molmetal.scripts.wf433_protocol_validator import (
     BASELINES,
     SUPPORTED_BASELINES,
-    METRIC_KEYS_BY_NAME,
     SCHEMA_VERSION,
     _now_iso,
     _read_json,

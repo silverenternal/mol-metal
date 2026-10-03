@@ -21,7 +21,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 # Bench-script imports -- tests run inside the project venv.
 # We load the bench module by file path because pytest's collection

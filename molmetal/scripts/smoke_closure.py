@@ -21,7 +21,7 @@ import sys
 import time
 import warnings
 from pathlib import Path
-from typing import List, Optional, Sequence
+from typing import Optional, Sequence
 
 
 _HERE = Path(__file__).resolve().parent

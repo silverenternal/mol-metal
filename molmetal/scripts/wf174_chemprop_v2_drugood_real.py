@@ -74,7 +74,6 @@ for p in (str(PROJECT_ROOT), str(CHEMPROP_V2_PATH)):
 
 import numpy as np
 import torch
-import torch.nn as nn
 from rdkit import Chem, RDLogger
 from sklearn.metrics import roc_auc_score
 
@@ -697,9 +696,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "(Wf-190 env guard)."
             )
         _log(
-            f"CUDA requested but torch.cuda.is_available() is False; "
-            f"falling back to CPU.  Set MOLMETAL_ALLOW_CPU=0 + --no-bf16 "
-            f"for fail-fast behaviour.",
+            "CUDA requested but torch.cuda.is_available() is False; "
+            "falling back to CPU.  Set MOLMETAL_ALLOW_CPU=0 + --no-bf16 "
+            "for fail-fast behaviour.",
         )
         device = torch.device("cpu")
     _log(
@@ -959,10 +958,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         "# Wf-174 BD-11 — chemprop v2 retrain on DrugOOD lbap_refined_ic50_assay",
         "",
         f"**Date:** {time.strftime('%Y-%m-%d')}  ",
-        f"**Data:** DrugOOD lbap_refined_ic50_assay (266,522 rows × 5 splits)  ",
+        "**Data:** DrugOOD lbap_refined_ic50_assay (266,522 rows × 5 splits)  ",
         f"**Train rows:** {splits['train'].n_valid}  ",
-        f"**Model:** chemprop v2 AtomMessagePassing + SumAggregation + "
-        f"BinaryClassificationFFN (via ChempropV2MTModel Ru head)  ",
+        "**Model:** chemprop v2 AtomMessagePassing + SumAggregation + "
+        "BinaryClassificationFFN (via ChempropV2MTModel Ru head)  ",
         f"**Backbone:** hidden={args.hidden}, depth={args.depth}, "
         f"head_hidden={args.head_hidden}  ",
         f"**Recipe:** {args.epochs} epochs × batch {args.batch} × lr {args.lr} "

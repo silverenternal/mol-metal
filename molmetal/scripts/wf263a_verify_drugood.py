@@ -48,7 +48,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import shutil
 import sys
 import time
@@ -65,7 +64,6 @@ for p in (str(PROJECT_ROOT), str(CHEMPROP_V2_PATH)):
 
 import numpy as np
 import torch
-import torch.nn as nn
 from rdkit import Chem, RDLogger
 from sklearn.metrics import roc_auc_score
 
@@ -75,7 +73,6 @@ warnings.filterwarnings("ignore")
 from chemprop.data import BatchMolGraph  # noqa: E402
 from chemprop.data.molgraph import MolGraph  # noqa: E402
 from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer  # noqa: E402
-from chemprop.featurizers.molgraph.cache import MolGraphCache  # noqa: E402
 
 from molmetal.data.drugood_loader import load_drugood  # noqa: E402
 from molmetal.models.chemprop_v2_mt_model import (  # noqa: E402

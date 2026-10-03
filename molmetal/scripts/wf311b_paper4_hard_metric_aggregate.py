@@ -736,8 +736,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
         _log("=== RMSD aggregate ===")
         _log(
-            f"  docked_pose_rmsd: median={docked := rmsd_agg['docked_pose_rmsd']['cross_pocket_aggregate'].get('median')} A "
-            f"std={docked_std := rmsd_agg['docked_pose_rmsd']['cross_pocket_aggregate'].get('std')} A"
+            f"  docked_pose_rmsd: median={(docked := rmsd_agg['docked_pose_rmsd']['cross_pocket_aggregate'].get('median'))} A "
+            f"std={(docked_std := rmsd_agg['docked_pose_rmsd']['cross_pocket_aggregate'].get('std'))} A"
         )
         _log(
             f"  ligand_vs_pocket_rmsd: median={rmsd_agg['ligand_vs_pocket_rmsd']['cross_pocket_aggregate'].get('median')} A"

@@ -7,7 +7,6 @@ import torch
 from molmetal.baselines.dmpnn import (
     DMPNNModel,
     DMPNNBaseline,
-    mol_to_graph,
     featurize_smiles_list,
     ATOM_FEATURE_DIM,
     BOND_FEATURE_DIM,

@@ -25,7 +25,6 @@ import pytest
 
 from molmetal_lam.binding.types import (
     CANONICAL_BINDING_SITES,
-    KINASE_ATP,
     MMP2_ACTIVE,
     PROTEASE_GENERIC,
     PT_DNA_MAJOR_GROOVE,

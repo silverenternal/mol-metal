@@ -97,7 +97,7 @@ def test_minibatch_ot_coupling_correctness():
     squared-L2 distance ≤ random pairing's (the trivial upper bound
     used in the paper's §2.3).
     """
-    from wf341c1_minibatch_ot import minibatch_ot_couple, _VALID_MODES
+    from wf341c1_minibatch_ot import minibatch_ot_couple
 
     # POT may be missing — fall back to scipy hungarian (always
     # available in the venv).

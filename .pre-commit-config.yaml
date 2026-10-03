@@ -20,10 +20,18 @@
 #     no-stale-venv guard. Nothing else below runs at commit time.
 #   * DECLARED BUT MANUAL (`stages: [manual]`; run via
 #     `pre-commit run --hook-stage manual --all-files`): ruff, ruff-format,
-#     mypy, mdformat, codespell. They fail or are unmeasured on this tree
-#     today: system ruff 0.16.8 (NOT the pinned v0.6.9 — counts PROJECTED
-#     for the pin) reports `ruff check molmetal/scripts` -> 18,369 findings
-#     and `ruff format --check` -> 540 files would be reformatted; mypy and
+#     mypy, mdformat, codespell. They still fail or are unmeasured on this
+#     tree, re-measured 2026-10-03 with the PINNED ruff v0.6.9:
+#     `ruff check molmetal` -> 2,907 findings (E402 1304 / F401 778 /
+#     F841 494 / F821 152 / E741 97 / E731 28 / F541 27 / F811 24 /
+#     E401 1 / E743 1 / F822 1; 256 of the 2,907 sit under the
+#     molmetal/reports/ exclude). `ruff format --check molmetal` -> 103
+#     files would be reformatted / 1899 already formatted; 67 of the 103
+#     are outside the uncommitted working-tree edits and all sit under the
+#     molmetal/reports/ exclude, so the committed tree is format-clean since
+#     fc19d4c610 applied the tree-wide sweep (1,879 files). The earlier
+#     "540 files would be reformatted" line was a SYSTEM-ruff-0.16.8 run
+#     scoped to molmetal/scripts — not the pin; superseded. mypy and
 #     codespell are ABSENT from every environment probed (no census yet);
 #     mdformat --wrap 100 would rewrite the docs corpus. Promote to
 #     enforcing only after a scoped, directory-limited cleanup.

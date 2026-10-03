@@ -13,7 +13,6 @@ Run with: pytest molmetal/tests/test_wf260_dataloader_fix.py -v
 """
 
 import math
-from pathlib import Path
 
 import numpy as np
 import pytest

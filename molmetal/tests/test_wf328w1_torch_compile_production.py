@@ -39,15 +39,12 @@ flight Wf-124 P3 / Wf-181 G5 / Wf-182 G6 runs.
 
 from __future__ import annotations
 
-import math
 import sys
-import warnings
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Tuple
 
 import pytest
 import torch
-import torch.nn as nn
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -62,7 +59,6 @@ from molmetal.baselines.dmpnn_multitask import (
     MultiTaskLoss,
 )
 from molmetal.molmetal_lam.reward.wasserstein_loss import (
-    WassersteinConfig,
     wasserstein_pic50_gradient,
 )
 

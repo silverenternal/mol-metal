@@ -34,7 +34,7 @@ import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 # Wf-406-A3: atomic write protocol migration (per AGENTS.md §5.6 + Wf-386-A3).
 # Replace direct Write with atomic_write_file to close the half-merged-file
@@ -386,7 +386,7 @@ def main() -> int:
     print("=" * 70)
     for field_name, value in inv.__dict__.items():
         if field_name == "notes":
-            print(f"  notes:")
+            print("  notes:")
             for note in value:
                 print(f"    - {note}")
         else:

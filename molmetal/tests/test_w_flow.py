@@ -50,7 +50,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from molmetal.adapters.flow_matching_lipman.w_flow import (  # noqa: E402
     DEFAULT_N_ITERS_PER_WINDOW,
-    DEFAULT_N_RUNS,
     DEFAULT_N_WINDOWS,
     DEFAULT_TOL,
     WaveformRelaxationSolver,

@@ -26,7 +26,6 @@ import json
 import sys
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 # Repo-root path injection so the module is importable when invoked
@@ -38,11 +37,8 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
         sys.path.insert(0, _p)
 
 from molmetal.scripts.orchestrate_lambda_cfm_pipeline import (  # noqa: E402
-    DEFAULT_CLOSURE_MAX_DEPTH,
-    DEFAULT_POCKET_SIZE,
     LambdaCFMBenchmark,
     LambdaCFMPipeline,
-    REPORT_DIR,
     _memory_mb,
     _parse_phases,
     _parse_seeds,

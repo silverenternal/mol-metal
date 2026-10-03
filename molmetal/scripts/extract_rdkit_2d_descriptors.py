@@ -161,7 +161,7 @@ except ImportError:  # pragma: no cover — fallback when running as standalone
 # so we must fail loudly if RDKit is absent).
 try:
     from rdkit import Chem, RDLogger
-    from rdkit.Chem import AllChem, Descriptors, rdMolDescriptors
+    from rdkit.Chem import AllChem, Descriptors
     from rdkit import DataStructs
 
     RDLogger.DisableLog("rdApp.*")  # silence the per-mol warnings

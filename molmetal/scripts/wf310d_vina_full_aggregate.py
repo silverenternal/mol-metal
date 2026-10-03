@@ -180,7 +180,7 @@ def _format_claim_cards(
     verdict: str,
 ) -> str:
     lines = [
-        f"# Wf-310D Vina pt-strip full aggregation -- claim cards",
+        "# Wf-310D Vina pt-strip full aggregation -- claim cards",
         "",
         f"Date: {time.strftime('%Y-%m-%d')}",
         f"n_total: {n_total}  n_parse_ok: {n_parse_ok}  "

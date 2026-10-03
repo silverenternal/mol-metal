@@ -95,7 +95,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 import time
 from dataclasses import dataclass
@@ -627,7 +626,6 @@ def run_platinai_cell(
     """
     try:
         from molmetal.scripts.bench_hilbert_astr_phase2_platinai_4cell import (
-            PLATINAI_CELL_COLS,
             load_platinai_cell,
         )
 

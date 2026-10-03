@@ -40,7 +40,6 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict
 
 import pytest
 
@@ -59,8 +58,6 @@ if str(SCRIPT_DIR) not in sys.path:
 from molmetal.scripts import bench_ood_tanimoto_protocol  # noqa: E402
 from molmetal.scripts.bench_ood_tanimoto_protocol import (  # noqa: E402
     CLUSTER_COLUMN,
-    CODE_COLUMN,
-    DEFAULT_MAX_SAMPLES_PER_CLUSTER,
     DEFAULT_OUTPUT_DIR,
     DEFAULT_TANIMOTO_THRESHOLD,
     DEFAULT_TMQM_CSV,
@@ -74,7 +71,6 @@ from molmetal.scripts.bench_ood_tanimoto_protocol import (  # noqa: E402
     _safe_div,
     _utcnow_iso,
     benchmark_cluster,
-    compute_cluster_tanimoto_matrix,
     load_tmqm_pool,
     pairs_from_matrix,
     run_ood_tanimoto_protocol,

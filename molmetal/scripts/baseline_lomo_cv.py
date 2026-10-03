@@ -24,7 +24,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 import time
 from pathlib import Path
@@ -39,9 +38,7 @@ import numpy as np
 import pandas as pd
 
 from molmetal.baselines.eval_utils import compute_metrics, morgan_features
-from molmetal.baselines.morgan_xgb import MorganXGBBaseline
 from molmetal.baselines.morgan_lightgbm import (
-    MorganLightGBMBaseline,
     lightgbm_available,
 )
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset

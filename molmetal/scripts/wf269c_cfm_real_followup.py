@@ -12,7 +12,6 @@ closure-bounded knobs do NOT differentiate decode_ratio from full.
 """
 
 import argparse
-import csv
 import json
 import sys
 import time
@@ -24,7 +23,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import numpy as np
 import torch
-from rdkit import Chem
 
 from molmetal.scripts.wf269c_cfm_real_ablation import (  # type: ignore
     load_real_cohort,
@@ -37,7 +35,6 @@ from molmetal.scripts.wf269c_cfm_real_ablation import (  # type: ignore
 )
 from molmetal.scripts.train_cfm_yuelbond_wasserstein import (  # type: ignore
     CFMJointModel,
-    WassersteinConfig,
     build_reference_positions,
     pocket_specific_closure_bias,
     train_one_epoch,

@@ -39,7 +39,6 @@ import argparse
 import csv
 import json
 import math
-import os
 import sys
 import time
 from pathlib import Path
@@ -1061,7 +1060,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # Write final run.log.
     final_log_lines = [
-        f"workflow=Wf-348-B3",
+        "workflow=Wf-348-B3",
         f"features={args.features}",
         f"dataset={args.dataset}",
         f"n_samples={args.n_samples}",

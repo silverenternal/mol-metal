@@ -371,7 +371,7 @@ def test_trainer_help_shows_all_wf328_flags() -> None:
     # The --w2-gradient-mode choices should include BOTH "sliced" and "sort"
     # per Wf-328-W5 backward-compat surface (paper §6 reproducibility audits).
     assert "{sliced,sort}" in out or "sliced" in out and "sort" in out, (
-        f"trainer --help is missing w2-gradient-mode choices; Wf-328-W5 "
-        f"expects both 'sliced' (legacy / paper §6 audit) and 'sort' "
-        f"(production default) to be discoverable"
+        "trainer --help is missing w2-gradient-mode choices; Wf-328-W5 "
+        "expects both 'sliced' (legacy / paper §6 audit) and 'sort' "
+        "(production default) to be discoverable"
     )

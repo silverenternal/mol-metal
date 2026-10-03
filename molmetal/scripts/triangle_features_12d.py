@@ -70,7 +70,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Iterable, List, Sequence, Tuple
+from typing import Iterable, Tuple
 
 import numpy as np
 

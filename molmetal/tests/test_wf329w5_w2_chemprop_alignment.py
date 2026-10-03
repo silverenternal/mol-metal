@@ -46,7 +46,6 @@ import os
 import sys
 import tempfile
 import unittest
-from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
@@ -59,13 +58,11 @@ from molmetal.scripts.wf329w5_w2_chemprop_smoke import (  # noqa: E402
     WF325A_BASELINE_R2_PLA_12D,
     _get_graph_feature_dim,
     _probe_chemprop_dims,
-    _summarise_recovery,
     _wasserstein_distance_1d,
     combined_feature_pipeline,
     compute_w2_distance_feature,
     extract_chemprop_v2_graph_features,
     load_platinai_4cell_32d_with_smiles,
-    ridge_r2_eval,
     run_wf329w5,
 )
 

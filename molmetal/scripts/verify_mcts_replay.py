@@ -90,7 +90,6 @@ def _build_stub_search():
 def _run_smoke(n_samples: int) -> int:
     from molmetal.molmetal_lam.search_alg.mcts_replay_buffer import (
         MCTSReplayBuffer,
-        MCTSReplayEntry,
         MCTSReplayWrapper,
         ReplayGuidedMCTS,
     )

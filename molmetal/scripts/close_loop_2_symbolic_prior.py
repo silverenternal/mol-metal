@@ -17,7 +17,6 @@ import os
 import random
 import sys
 import time
-from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -507,7 +506,7 @@ def main() -> None:
     guided_best = [h["best_score"] for h in guided_history]
     guided_monotone = all(b >= a - 1e-9 for a, b in zip(guided_best, guided_best[1:]))
     print(f"[step3] best_score trajectory monotone = {guided_monotone}")
-    print(f"[step3] top-K SMILES:")
+    print("[step3] top-K SMILES:")
     for i, c in enumerate(guided_candidates):
         try:
             smi = c.canonical_smiles()

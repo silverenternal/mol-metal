@@ -108,7 +108,7 @@ def test_sn_jnl_cls_exists() -> None:
     # the underlying cls itself is LPPL-1.3c per the docstrip header).
     assert (
         "LPPL" in text or "Apache" in text or "License" in text
-    ), f"expected license header in cls file (LPPL or Apache)"
+    ), "expected license header in cls file (LPPL or Apache)"
 
 
 # ---------------------------------------------------------------------------
@@ -295,7 +295,6 @@ def test_pybtex_wrapper_present() -> None:
     assert PYBTEX_WRAPPER.is_file()
 
     # Must be executable (either owner-exec or world-exec bit set).
-    import os
     import stat
 
     mode = PYBTEX_WRAPPER.stat().st_mode

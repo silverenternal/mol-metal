@@ -33,7 +33,7 @@ import random
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 # Make molmetal importable (similar to other scripts under molmetal/scripts/)
 _HERE = Path(__file__).resolve().parent
@@ -44,35 +44,29 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 
 # Module L1: conformer embedding
 from molmetal.molmetal_lam.lam_chem.conformer_embed import (
-    extract_coords,
     generate_conformer,
-    has_finite_3d,
 )
 
 # Module L2: pharmacophore filter
 from molmetal.molmetal_lam.lam_chem.pharmacophore_filter import (
     compute_pharmacophore_report,
     filter_molecules,
-    pass_pharmacophore,
 )
 
 # Module L3: stereo-aware reduction (we just import annotation; not all
 # SMILES are valid click pairs but we report annotations where applicable)
 from molmetal.molmetal_lam.lam_chem.stereo_aware_reduction import (
     _annotate_smiles_stereo,
-    apply_click,
 )
 
 # Module L4: reaction confidence (Laplace-smoothed priors)
 from molmetal.molmetal_lam.reactions.confidence import (
-    ReactionConfidence,
     laplace_estimate,
     scaffold_key,
 )
 
 # Module L5: Pareto multi-objective ranking
 from molmetal.molmetal_lam.search_alg.pareto import (
-    dominates,
     hypervolume,
     non_dominated_set,
     pareto_front,

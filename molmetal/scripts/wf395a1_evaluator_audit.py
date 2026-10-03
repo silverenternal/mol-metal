@@ -41,7 +41,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 # Make project importable
 _ROOT = Path(__file__).resolve().parents[2]
@@ -426,8 +426,8 @@ def main() -> int:
     print()
     print("=" * 80)
     print(f"Wf-395-A1 SUMMARY: {n_pass}/{len(records)} evaluators PASS")
-    print(f"R17 canonical baseline: 14/14 evaluators PASS")
-    print(f"  (per molmetal/scripts/eval_all_evaluators.py @ Wf-395-A1 fresh-run)")
+    print("R17 canonical baseline: 14/14 evaluators PASS")
+    print("  (per molmetal/scripts/eval_all_evaluators.py @ Wf-395-A1 fresh-run)")
     print(
         f"NEW Wf-380..394: {sum(by_tier.get(t, 0) for t in ['SCAFFOLD', 'WIRE-IN', 'MEASURED-ON-REAL'])} candidate evaluators"
     )

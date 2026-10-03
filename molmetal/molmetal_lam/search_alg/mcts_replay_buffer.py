@@ -514,7 +514,7 @@ class MCTSReplayBuffer:
             payload = pickle.load(fh)
         if not isinstance(payload, dict) or "entries" not in payload:
             raise MCTSReplayError(
-                f"load() — malformed pickle payload (missing 'entries')"
+                "load() — malformed pickle payload (missing 'entries')"
             )
         buf = cls(
             max_size=int(payload.get("max_size", DEFAULT_MAX_SIZE)),

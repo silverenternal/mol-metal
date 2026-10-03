@@ -356,7 +356,7 @@ def main() -> None:
             fh.write(
                 f"| {i+1} | `{r['product_smiles']}` | {r['vina_score_kcal_mol']:+.3f} | {int(r['success_vs_ref'])} |\n"
             )
-        fh.write(f"""
+        fh.write("""
 ## Notes
 
 * **Target swap from 1h36 → 830c**: the brief specified MMP13 but PDB 1h36 is

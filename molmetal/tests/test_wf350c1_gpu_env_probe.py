@@ -190,8 +190,8 @@ def test_gate_wf350c1_gpu_env_probe_pass_on_host(preflight) -> None:
         f"{type(env_summary['gpu_names']).__name__}"
     )
     assert len(env_summary["gpu_names"]) >= 1, (
-        f"env summary['gpu_names'] is empty; expected >= 1 GPU visible "
-        f"via nvidia-smi on a 2-GPU host"
+        "env summary['gpu_names'] is empty; expected >= 1 GPU visible "
+        "via nvidia-smi on a 2-GPU host"
     )
 
     # gpu_count must be int >= 1.

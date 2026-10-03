@@ -14,7 +14,6 @@ Honest framing (party-twenty-spirit §3.5):
 
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass
 
 import pytest
@@ -326,7 +325,6 @@ def test_backward_compat_without_flag() -> None:
     # is untouched (no imports clobbered, no global state mutated).
     from molmetal.adapters.flow_matching_lipman.acceleration import (
         ShortcutConfig,
-        shortcut_consistency_loss,
     )
 
     sc_cfg = ShortcutConfig()

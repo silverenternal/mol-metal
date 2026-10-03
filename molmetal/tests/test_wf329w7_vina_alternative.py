@@ -39,7 +39,6 @@ Honest framing per party-twenty-spirit §3.5
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -175,9 +174,9 @@ def test_m6_driver_references_both_recovery_paths() -> None:
 
     # Reference 1: in-process via CadButEaas
     assert "PROJECT_VENV_PY" in text, (
-        f"Driver does NOT reference PROJECT_VENV_PY. Per Wf-320H, the "
-        f"in-process Vina Python binding lives at /home/hugo/codes/"
-        f"/home/hugo/codes/mol-metal/.venv/bin/python and must be the primary path."
+        "Driver does NOT reference PROJECT_VENV_PY. Per Wf-320H, the "
+        "in-process Vina Python binding lives at /home/hugo/codes/"
+        "/home/hugo/codes/mol-metal/.venv/bin/python and must be the primary path."
     )
     assert (
         str(PROJECT_VENV_PY) in text

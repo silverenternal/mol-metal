@@ -246,7 +246,6 @@ def test_env_routing_qvina2_for_vina_score(monkeypatch) -> None:
             # then calls REGISTRY[env-metric].wrapper.
             pass
         # Verify the routing function picks vina_qvina2:
-        from molmetal.scoring.score_any import score_any as _sa
 
         # Direct check of the env routing branch via a patched
         # wrapper: replace vina_qvina2 with a sentinel, and verify
@@ -548,7 +547,6 @@ def test_capture_fallback_calls_counts_invocation() -> None:
     """``_capture_fallback_calls`` increments the counter on each call."""
     mod = importlib.import_module("test_score_any_fallback")
     from molmetal.scoring.score_any import (
-        AdapterUnavailable,
         ToolRef,
         REGISTRY,
     )

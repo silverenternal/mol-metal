@@ -53,10 +53,8 @@ from __future__ import annotations
 
 import os
 import subprocess
-import sys
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
 WRAPPER = PROJECT_ROOT / "scripts" / "pre_flight_gpu_ready.sh"

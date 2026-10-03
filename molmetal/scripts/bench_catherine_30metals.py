@@ -69,9 +69,8 @@ import json
 import logging
 import sys
 import time
-import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 
 # ---------------------------------------------------------------------------
 # Repo-root path injection
@@ -263,7 +262,7 @@ def _write_outputs(
         json.dump(report, f, indent=2, sort_keys=True)
     # Markdown summary.
     lines: List[str] = []
-    lines.append(f"# Catherine 30-metal closure bench (Wf-255 R20-P5)\n")
+    lines.append("# Catherine 30-metal closure bench (Wf-255 R20-P5)\n")
     lines.append(f"- n_metals: **{report['n_metals']}**")
     lines.append(
         f"- 6/6 PASS: **{report['n_six_of_six_pass']} / {report['n_metals']}**"

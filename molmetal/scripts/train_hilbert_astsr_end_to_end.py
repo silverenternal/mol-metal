@@ -1270,7 +1270,7 @@ def render_table(seeds: List[Dict[str, Any]], stats: Dict[str, int]) -> str:
     out = [
         "# Wf-37 Phase 1 — Hilbert-ASTSR end-to-end on real IC50 (L5)",
         "",
-        f"**Dataset**: real IC50 (NCI-60 precious-metal long-form + PlatinAI 4-cell)",
+        "**Dataset**: real IC50 (NCI-60 precious-metal long-form + PlatinAI 4-cell)",
         f"**N samples**: {stats['n_target_rows']} (parsed={stats['n_parsed']}, "
         f"failed={stats['n_failed']})",
         f"**Hilbert dim**: {POPULATION_DIM}  |  **Folds**: 5",

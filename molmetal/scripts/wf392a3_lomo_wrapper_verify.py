@@ -36,12 +36,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 import sys
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 
 # ---------------------------------------------------------------------------
@@ -295,7 +294,7 @@ def verify_wrapper_passes_flags(
         in_trainer = f in trainer_set
         if in_wrapper and in_trainer:
             rep.verdicts.append(
-                FlagVerdict(f, "PASSED", f"flag present in both wrapper and trainer")
+                FlagVerdict(f, "PASSED", "flag present in both wrapper and trainer")
             )
         elif in_wrapper and not in_trainer:
             rep.verdicts.append(
@@ -311,7 +310,7 @@ def verify_wrapper_passes_flags(
                 FlagVerdict(
                     f,
                     "GAP-WRAPPER-MISSING",
-                    f"trainer defines flag but wrapper does NOT pass it",
+                    "trainer defines flag but wrapper does NOT pass it",
                 )
             )
         else:
@@ -319,7 +318,7 @@ def verify_wrapper_passes_flags(
                 FlagVerdict(
                     f,
                     "GAP-TRAINER-MISSING",
-                    f"neither wrapper nor trainer has flag (likely SCAFFOLD-only)",
+                    "neither wrapper nor trainer has flag (likely SCAFFOLD-only)",
                 )
             )
     n_passed = sum(1 for v in rep.verdicts if v.status == "PASSED")

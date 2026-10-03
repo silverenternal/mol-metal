@@ -46,7 +46,6 @@ import json
 import math
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
 
 import numpy as np
 import pytest
@@ -79,19 +78,12 @@ from bench_3way_platinai_4cell import (  # noqa: E402
     evaluate_cell_line,
     evaluate_fold as plat_evaluate_fold,
     load_platinai_cell,
-    write_synthesis as plat_write_synthesis,
 )
 from bench_3way_tmqm import (  # noqa: E402
     ALL_DBLOCK_ELEMENTS,
     DEFAULT_ELEMENTS,
-    MIN_ROWS_PER_ELEMENT,
-    FitRecord as TmqmFitRecord,
-    ElementSeedSummary as TmqmSeedSummary,
-    aggregate_element,
-    evaluate_element,
     list_available_elements,
     load_tmqm_element,
-    write_synthesis as tmqm_write_synthesis,
 )
 
 

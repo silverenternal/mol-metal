@@ -41,12 +41,9 @@ the anchor is recorded honestly rather than papered over.
 from __future__ import annotations
 
 import os
-import random
-import sys
 from typing import Optional
 
 import numpy as np
-import pytest
 
 
 # ---------------------------------------------------------------------------
@@ -97,7 +94,6 @@ def test_lambda_astsr_integration() -> None:
     """
     from molmetal.molmetal_lam.reward.lambda_astsr import (
         DEFAULT_FEATURE_COLUMNS,
-        LambdaAST,
         LambdaASTSR,
         RDKIT_2D_EXTENDED_FEATURE_COLUMNS,
         RDKIT_2D_FEATURE_COLUMNS,

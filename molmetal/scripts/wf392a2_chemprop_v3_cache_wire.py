@@ -48,11 +48,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, Optional, Sequence
 
 # ---------------------------------------------------------------------------
 # Repo-root importability.

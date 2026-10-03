@@ -290,6 +290,7 @@ class _Pocket2MolLiveAdapter:
             from utils.transforms import (  # noqa: F401
                 AtomComposer,
                 Compose,
+                ContrastiveSample,
                 FeaturizeLigandAtom,
                 FeaturizeProteinAtom,
                 LigandCountNeighbors,

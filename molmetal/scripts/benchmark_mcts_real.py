@@ -64,8 +64,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import math
-import os
 import random
 import sys
 import time
@@ -754,7 +752,7 @@ def _write_benchmark_log(
     lines.append(f"- max_depth     = {max_depth}")
     lines.append(f"- top_k         = {top_k}")
     lines.append(f"- RNG seed      = {summary['seed']}")
-    lines.append(f"- Tile library  : STANDARD_12_TILES (canonical Phase-0 12 tiles)")
+    lines.append("- Tile library  : STANDARD_12_TILES (canonical Phase-0 12 tiles)")
     lines.append(
         f"- Reaction rules: REACTION_RULES ({summary['strategy_reports']['base']['n_samples']} samples searched)"
     )

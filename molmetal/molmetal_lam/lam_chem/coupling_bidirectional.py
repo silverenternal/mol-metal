@@ -215,6 +215,17 @@ def _project_cfm_to_lambda_features(cfm_output: np.ndarray) -> np.ndarray:
     return projected.astype(np.float32)
 
 
+def _stub_fwd(lambda_seed: str, pocket: np.ndarray, n_steps: int) -> Dict[str, Any]:
+    """Deterministic fallback forward pass for the λ → CFM leg.
+
+    Used only when ``lambda_to_cfm`` does not expose
+    ``run_full_pipeline``.  Returns an empty mapping so the caller's
+    documented ``.get(...)`` defaults supply the deterministic values
+    (zero CFM embedding, seed-derived lambda features, no decoded SMILES).
+    """
+    return {}
+
+
 def _lambda_features_from_text(text: str) -> np.ndarray:
     """Stable 32-d featurisation for an arbitrary text string.
 

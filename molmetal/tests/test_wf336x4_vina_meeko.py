@@ -49,7 +49,6 @@ Wf-336-X4 deliverables:
 
 from __future__ import annotations
 
-import json
 import sys
 import tempfile
 from pathlib import Path
@@ -161,7 +160,7 @@ def test_meeko_alternative_integration_produces_meeko_prep_only_status() -> None
     )
     assert (
         STATUS_STUB_FALLBACK == "STUB_FALLBACK"
-    ), f"Backward-compat: STUB_FALLBACK constant changed."
+    ), "Backward-compat: STUB_FALLBACK constant changed."
 
     # We need at least one pocket staged.  Use whatever Wf-30 pocket
     # is staged on disk; if none are, skip the smoke test.

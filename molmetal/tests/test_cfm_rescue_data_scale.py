@@ -15,7 +15,6 @@ import ast
 import sys
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -105,8 +104,6 @@ def test_n_train_backward_compat_explicit_8():
     CrossDocked load time) must continue to work.
     """
     # Simulate parser.parse_args(["--n-train=8"])
-    import argparse
-    from molmetal.scripts.r10_cfg_real_crossdocked import select_training
 
     # Inspect the parser to confirm it accepts --n-train
     script = PROJECT_ROOT / "molmetal" / "scripts" / "r10_cfg_real_crossdocked.py"

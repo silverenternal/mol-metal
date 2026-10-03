@@ -32,7 +32,6 @@ Run from the project root::
 from __future__ import annotations
 
 import importlib
-import logging
 import sys
 import warnings
 from pathlib import Path

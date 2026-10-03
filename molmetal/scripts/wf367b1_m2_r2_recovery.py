@@ -48,15 +48,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
 try:
-    from sklearn.linear_model import Ridge
-    from sklearn.preprocessing import StandardScaler
 
     _HAS_SKLEARN = True
 except Exception:  # pragma: no cover — defensive
@@ -70,7 +67,6 @@ from molmetal.scripts.wf335m2_r2_w2_chemprop import (
 )
 from molmetal.scripts.wf331r5_r2_w2_chemprop import (
     WF325A_BASELINE_R2,
-    extract_graph_features_pooled,
     load_cohort,
 )
 

@@ -51,7 +51,6 @@ import os
 import sys
 import tempfile
 import unittest
-from typing import Any, Dict
 
 import numpy as np
 
@@ -61,11 +60,7 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from molmetal.scripts.wf335m2_r2_w2_chemprop import (  # noqa: E402
-    W2_PROJECTION_AXES,
     build_full_feature_matrix,
-    feature_importance_topk,
-    per_cell_r2_breakdown,
-    per_metal_r2_breakdown,
     ridge_r2_cv,
     ridge_r2_eval_with_w2,
     run_wf335m2,

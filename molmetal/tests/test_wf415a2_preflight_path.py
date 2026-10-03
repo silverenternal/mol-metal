@@ -148,7 +148,7 @@ def test_preflight_pipeline_cfm_strict() -> None:
     # Required top-level keys per Wf-259 + Wf-353-B1 contract.
     assert "pipeline" in data, f"missing 'pipeline' key in {data.keys()}"
     assert data["pipeline"] == "cfm"
-    assert "timestamp" in data, f"missing 'timestamp' key"
+    assert "timestamp" in data, "missing 'timestamp' key"
     # At least one gate suite should be present.
     assert (
         "gates" in data

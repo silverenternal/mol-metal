@@ -40,10 +40,8 @@ Run::
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
-from typing import List
 
 import numpy as np
 import pytest
@@ -57,7 +55,6 @@ from molmetal.baselines.dmpnn import (  # noqa: E402
     ATOM_FEATURE_DIM,
     BOND_FEATURE_DIM,
     DMPNNBaseline,
-    featurize_smiles_list,
 )
 from molmetal.baselines.dmpnn_p0wins import PreFeaturizedCache  # noqa: E402
 

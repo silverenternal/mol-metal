@@ -31,7 +31,6 @@ of the adapter (hidden_dim=8, n_layers=1).
 
 from __future__ import annotations
 
-import importlib
 import sys
 from pathlib import Path
 

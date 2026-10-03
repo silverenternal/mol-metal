@@ -30,7 +30,6 @@ Run via::
 
 from __future__ import annotations
 
-import argparse
 import importlib
 import subprocess
 import sys

@@ -65,12 +65,10 @@ import argparse
 import datetime as _dt
 import json
 import math
-import os
 import re
 import sys
-import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -83,8 +81,6 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 # AGENTS.md §5.6 adoption rule.
 from molmetal.scripts.wf386a3_atomic_write import (
     atomic_write_file,
-    safe_overwrite_check,
-    detect_truncation,
 )
 
 # ---------------------------------------------------------------------------

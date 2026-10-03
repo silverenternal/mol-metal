@@ -69,7 +69,6 @@ from molmetal.molmetal_lam.reward.closure_oversample import (
     RICH_PARTNERS,
     ClosureOversampleResult,
     ClosureOversampler,
-    RhSyntheticCompound,
 )
 
 

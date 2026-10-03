@@ -80,7 +80,6 @@ import sys
 import time
 import tracemalloc
 import warnings
-from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple

@@ -737,7 +737,7 @@ def test_integrate_with_cfm_large_steps_stable():
     out = integrate_with_cfm(samples, field, n_steps=200)
     assert torch.isfinite(
         out
-    ).all(), f"Integration at n_steps=200 must remain finite; got NaN/Inf"
+    ).all(), "Integration at n_steps=200 must remain finite; got NaN/Inf"
     # Output magnitude must be bounded (the field is bounded).
     assert (
         out.abs().max().item() < 100.0

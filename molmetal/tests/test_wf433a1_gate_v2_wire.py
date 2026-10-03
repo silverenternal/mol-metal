@@ -28,9 +28,6 @@ callable + verdict logic; no 50-step CPU smoke required.
 
 from __future__ import annotations
 
-import json
-import os
-import re
 import sys
 from pathlib import Path
 

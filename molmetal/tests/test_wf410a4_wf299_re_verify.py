@@ -15,7 +15,6 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
 
 # Make /home/hugo/codes/mol-metal importable so we can find the script
 PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")

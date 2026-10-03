@@ -32,7 +32,6 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from rdkit import Chem, RDLogger
-from rdkit.Chem import AllChem
 
 RDLogger.DisableLog("rdApp.*")
 

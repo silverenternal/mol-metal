@@ -55,7 +55,6 @@ from molmetal.baselines.dmpnn_multitask import (
 )
 from molmetal.baselines.dmpnn import featurize_smiles_list, collate_graphs
 from molmetal.models.dmpnn import DomainAdversarialHead
-from molmetal.molmetal_lam.sbdd_env.gradient_reversal import ReverseLayerF
 
 
 SMILES_8 = [

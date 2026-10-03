@@ -20,7 +20,7 @@ Usage
 -----
 ::
 
-    source .venvs/mol-metal-venv/bin/activate
+    source .venv/bin/activate
     python molmetal/scripts/numerical_fix_check.py
     pytest molmetal/tests/test_numerical_fix_results.py -v
 """

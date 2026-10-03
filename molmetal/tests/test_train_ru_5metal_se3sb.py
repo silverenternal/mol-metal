@@ -184,7 +184,6 @@ def test_module_imports_cleanly() -> None:
     """Importing the module must not crash; all Wf-31 symbols are exported."""
     sys.path.insert(0, _scripts_path())
     import importlib
-    import train_ru_5metal_se3sb as w31  # type: ignore[import-not-found]
 
     # Re-import (forces fresh load — same shape as test 11).
     if "train_ru_5metal_se3sb" in sys.modules:

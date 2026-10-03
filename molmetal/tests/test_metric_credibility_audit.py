@@ -37,11 +37,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from molmetal.scripts.metric_credibility_audit import (  # noqa: E402
-    AUDIT_DIR,
-    AUDIT_JSON,
     OUT_JSON,
     build_credibility_audit,
-    classify,
     load_audit,
 )
 

@@ -61,9 +61,9 @@ import argparse
 import json
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, Optional, Sequence
 
 import numpy as np
 from rdkit import Chem

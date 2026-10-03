@@ -24,7 +24,6 @@ CFM velocity-field contract.
 
 from __future__ import annotations
 
-import math
 import sys
 from pathlib import Path
 from typing import Optional
@@ -454,7 +453,7 @@ def test_quotient_diffusion_step_finite():
     x = torch.randn(2, 4, 3)
     for t in range(10):
         x = s.step(x, t)
-    assert torch.isfinite(x).all(), f"step output must be finite; got NaN/Inf"
+    assert torch.isfinite(x).all(), "step output must be finite; got NaN/Inf"
 
 
 def test_quotient_diffusion_step_invalid_t():

@@ -21,7 +21,6 @@ Honest framing (per `party-twenty-spirit` §3.5 + AGENTS.md §5.2):
 Cross-ref: TODO/completed/340i3_integration_plan.md §2 + §3 + §6.
 """
 
-import os
 import re
 from pathlib import Path
 

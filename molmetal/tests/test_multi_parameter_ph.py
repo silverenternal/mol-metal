@@ -50,13 +50,8 @@ import torch
 from molmetal.math_skills import (
     MultiPHKernel,
     MultiPHSummarizer,
-    TwoParameterDiagram,
     TwoParameterFiltration,
-    sliced_wasserstein_kernel,
     two_param_filtration,
-)
-from molmetal.math_skills.multi_parameter_ph import (
-    _EPS_LOG,
 )
 
 

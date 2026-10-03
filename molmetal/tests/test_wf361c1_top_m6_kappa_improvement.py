@@ -39,7 +39,6 @@ This test file covers 3 axes:
 
 from __future__ import annotations
 
-import json
 import subprocess
 import sys
 from pathlib import Path

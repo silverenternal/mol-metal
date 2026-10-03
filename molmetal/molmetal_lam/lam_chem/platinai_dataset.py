@@ -466,7 +466,7 @@ class MetalCytoToxDataset:
             )
         ic50_col = "IC50_Dark(M*10^-6)"
         if ic50_col not in df.columns:
-            raise ValueError(f"MetalCytoToxDB missing IC50_Dark column")
+            raise ValueError("MetalCytoToxDB missing IC50_Dark column")
         metal_col = "Metal"
         ox_col = "Oxidation_state"
 

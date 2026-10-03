@@ -125,7 +125,6 @@ def test_diagnostic_inventory_enumerates_fake_ckpts(tmp_path):
 def test_diagnostic_load_helper_handles_corrupt_ckpt(tmp_path):
     """load_ckpt_diagnostic must catch torch.load exceptions and report them,
     not propagate (so the main loop continues across bad files)."""
-    import torch
     from molmetal.scripts.dmpnn_ckpt_diagnostic import load_ckpt_diagnostic
 
     bad = tmp_path / "dmpnn_pic50_ru_seed0.pt"

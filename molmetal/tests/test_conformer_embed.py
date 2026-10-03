@@ -36,14 +36,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from rdkit import Chem
 
 from molmetal_lam.lam_chem.conformer_embed import (
     DEFAULT_MAX_ATTEMPTS,
-    DEFAULT_MAX_ITERS,
     DEFAULT_SEED,
     ConformerEmbedError,
-    extract_coords,
     generate_conformer,
     generate_conformers,
     has_finite_3d,

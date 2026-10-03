@@ -1275,7 +1275,7 @@ class RewardAggregator:
                     return 0.0
                 return max(0.0, min(1.0, v))
             except Exception as exc:  # pragma: no cover - defensive
-                logger.warning(
+                log.warning(
                     "RewardAggregator.r_reinvent4: adapter.score() failed (%s); "
                     "falling back to 0.0",
                     exc,
@@ -1363,7 +1363,7 @@ class RewardAggregator:
                     return 0.0
                 return max(0.0, min(1.0, v))
             except Exception as exc:  # pragma: no cover - defensive
-                logger.warning(
+                log.warning(
                     "RewardAggregator.r_reinvent4 (api): adapter.score() "
                     "failed (%s); falling back to 0.0",
                     exc,
@@ -1782,7 +1782,7 @@ class RewardAggregator:
             # F5 import / evaluation error.  Logs the failure but
             # returns 0.0 so the dominant channels still fire.
             try:
-                logger.warning(
+                log.warning(
                     "RewardAggregator._learned_shaping_contribution: "
                     "F5 evaluation failed (%s); falling back to 0.0",
                     exc,

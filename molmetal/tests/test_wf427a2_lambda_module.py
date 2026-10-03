@@ -11,12 +11,10 @@ on a single thread.
 
 from __future__ import annotations
 
-from typing import List, Tuple, Dict
 
 # Public API per task brief
 from molmetal_lam.lam_chem.coupling_adapter import (
     lambda_samples_to_reward_targets,
-    _safe_reward_channels,
     _FIXED_SMILES_POOL,
 )
 
@@ -77,8 +75,8 @@ def test_lambda_samples_to_reward_targets_deterministic_seed():
     smiles_c = [s for s, _ in out_c]
     assert smiles_a != smiles_c, "different seeds gave same SMILES order"
     print(
-        f"  test_lambda_samples_to_reward_targets_deterministic_seed: PASS "
-        f"(seeds 42 vs 999 differ)"
+        "  test_lambda_samples_to_reward_targets_deterministic_seed: PASS "
+        "(seeds 42 vs 999 differ)"
     )
 
 

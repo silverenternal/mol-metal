@@ -30,9 +30,6 @@ measurement that lives in the reports under
 from __future__ import annotations
 
 import json
-import sys
-import tempfile
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -43,7 +40,6 @@ from molmetal.baselines.dmpnn import (
     BOND_FEATURE_DIM,
     DMPNNBaseline,
     DMPNNModel,
-    DMPNNResult,
     SPLITTER_FACTORIES,
     featurize_smiles_list,
     mol_to_graph,
@@ -151,8 +147,8 @@ def test_mol_to_graph_shapes_ethanol():
     assert e_dst.shape == (4,)
     # Directed edges: each (src, dst) must be a valid atom index
     V = atom_f.shape[0]
-    assert int(e_src.max()) < V, f"e_src has out-of-range atom index"
-    assert int(e_dst.max()) < V, f"e_dst has out-of-range atom index"
+    assert int(e_src.max()) < V, "e_src has out-of-range atom index"
+    assert int(e_dst.max()) < V, "e_dst has out-of-range atom index"
 
 
 def test_mol_to_graph_handles_empty():

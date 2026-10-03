@@ -31,7 +31,7 @@ Verify (after run completes):
 ::
 
     PYTHONPATH=/home/hugo/codes/mol-metal \\
-    /home/hugo/codes/mol-metal/molmetal/.venvs/mol-metal-venv/bin/python \\
+    /home/hugo/codes/mol-metal/molmetal/.venv/bin/python \\
         -m molmetal.scripts.bench_vina_triple_rebench \\
         --pockets 830c 1h36 3eml \\
         --cands "$(cat <<'EOF'
@@ -58,19 +58,17 @@ Expected pass criteria (per harness task):
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import logging
-import math
 import os
 import shutil
 import statistics
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:

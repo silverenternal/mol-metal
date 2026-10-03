@@ -32,9 +32,7 @@ Run via::
 from __future__ import annotations
 
 import random
-from typing import List
 
-import pytest
 
 # Lazy import so missing torch / score_repellent_mc is caught at
 # use-time, not at module load (matches the convention in
@@ -47,7 +45,6 @@ try:
         DEFAULT_USE_VARIANCE_PUCT,
         IntegrationNode,
         VarianceControlledPUCT,
-        VariancePUCTError,
         make_default_selector,
     )
 except Exception:  # pragma: no cover - import path fallback
@@ -58,7 +55,6 @@ except Exception:  # pragma: no cover - import path fallback
         DEFAULT_USE_VARIANCE_PUCT,
         IntegrationNode,
         VarianceControlledPUCT,
-        VariancePUCTError,
         make_default_selector,
     )
 

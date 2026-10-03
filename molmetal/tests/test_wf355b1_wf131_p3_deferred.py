@@ -28,7 +28,6 @@ import re
 import subprocess
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
 WRAPPER = PROJECT_ROOT / "scripts" / "launch_wf131_p3_deferred_runs.sh"

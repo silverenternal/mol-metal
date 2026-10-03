@@ -33,7 +33,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -223,7 +222,6 @@ class TestLomoV2Defaults:
         * --model default "v3" (alias for DMPNNMultiTaskModel, the
           pre-P1 default)
         """
-        from molmetal.scripts.train_metal_lomo_v2 import main as trainer_main
 
         # Parse with no overrides (capture stdout to silence the docstring).
         old_argv = sys.argv
@@ -235,7 +233,6 @@ class TestLomoV2Defaults:
                 # We monkey-patch out the training body by intercepting
                 # at the parse step.  Easier: re-implement _parse here
                 # using the same parser object the script registers.
-                import argparse as _ap
 
                 # We replicate the parser setup here by importing the
                 # script's main and intercepting after parse_args.  But

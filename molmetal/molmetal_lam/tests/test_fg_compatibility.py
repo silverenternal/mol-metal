@@ -355,8 +355,8 @@ def test_reaction_rule_reduce_respects_fg_strict_kwarg() -> None:
     # (Ethyl azide + propyne must produce >=1 product.  If this fails
     # the test environment is broken, NOT the FG veto code path.)
     assert len(baseline) >= 1, (
-        f"CuAAC baseline (ethyl azide + propyne) produced 0 products; "
-        f"test environment is broken, not the FG veto."
+        "CuAAC baseline (ethyl azide + propyne) produced 0 products; "
+        "test environment is broken, not the FG veto."
     )
 
     # Same baseline + 4-mercaptophenol as a NON-matching reactant (so the

@@ -38,16 +38,12 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
         sys.path.insert(0, _p)
 
 from molmetal.scripts.benchmark_astsr_extended import (  # noqa: E402
-    ASTSR_DEPTH,
-    ASTSR_GENERATIONS,
-    ASTSR_POPULATION,
     DEFAULT_K_FOLDS,
     DEFAULT_N_SAMPLES,
     DEFAULT_OUT_DIR,
     DEFAULT_OUT_FILE,
     DEFAULT_PLATINAI_CSV,
     DEFAULT_SEED,
-    HILBERT_LR_DUAL,
     HILBERT_LR_PRIMAL,
     HILBERT_N_ITERS,
     HILBERT_POPULATION_DIM,
@@ -56,8 +52,6 @@ from molmetal.scripts.benchmark_astsr_extended import (  # noqa: E402
     PlatinAIFeatures,
     aggregate_folds,
     evaluate_backend_on_fold,
-    fit_evolutionary_fold,
-    fit_hilbert_fold,
     lift_to_hilbert_dim,
     load_platinai_features,
     make_kfold_indices,

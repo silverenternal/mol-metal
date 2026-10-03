@@ -2,13 +2,11 @@
 """Tests for ConfidenceHead (mirror OmegaFold omegafold/confidence.py)."""
 
 import torch
-import pytest
 
 from molmetal.adapters.flow_matching_lipman.confidence_head import (
     ConfidenceHead,
     ConfidenceHeadOutput,
     _compute_confidence,
-    get_all_confidence,
     make_confidence_head,
 )
 

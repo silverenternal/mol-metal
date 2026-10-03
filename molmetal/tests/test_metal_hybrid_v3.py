@@ -149,7 +149,6 @@ def test_coord_refinement():
 def test_train_loop_1_epoch(tmp_path):
     """One training epoch over a tiny Ru subset runs end-to-end with finite loss."""
     _set_seed(0)
-    import torch.nn.functional as F
     from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
     from molmetal.data.splits import LigandDeduplicatedSplitter
     from molmetal.models.loss import MetalCytotoxLoss

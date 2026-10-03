@@ -71,7 +71,6 @@ from wf_lambda_pipeline_smoke import (
     MAX_DEPTH,
     TOP_K,
     save_artifacts,
-    write_report_md,
     run_pipeline,
 )
 

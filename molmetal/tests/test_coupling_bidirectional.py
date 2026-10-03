@@ -31,7 +31,6 @@ Honest framing
 from __future__ import annotations
 
 import sys
-import time
 from pathlib import Path
 
 import numpy as np
@@ -354,9 +353,7 @@ def test_lamterm_to_features_shape_and_finite() -> None:
     """``lamterm_to_features`` returns a finite 32-d vector for any term."""
     try:
         from molmetal.molmetal_lam.lam_chem.ast import (
-            LamVar,
             LamAbs,
-            LamApp,
             var,
         )
     except Exception:

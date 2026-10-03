@@ -46,9 +46,7 @@ from __future__ import annotations
 import sys
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
-import pytest
 import torch
 import torch.nn as nn
 
@@ -102,15 +100,12 @@ def test_fused_adam_cli_flag_wired() -> None:
     chemprop_src = chemprop_src_path.read_text()
     assert (
         '"--fused-adam"' in chemprop_src
-    ), f"chemprop_v2_v3 trainer must declare --fused-adam CLI flag"
+    ), "chemprop_v2_v3 trainer must declare --fused-adam CLI flag"
     assert (
         '"--no-fused-adam"' in chemprop_src
-    ), f"chemprop_v2_v3 trainer must declare --no-fused-adam CLI flag"
+    ), "chemprop_v2_v3 trainer must declare --no-fused-adam CLI flag"
 
     # CFM trainer (parse_args takes no positional args; uses sys.argv)
-    from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
-        parse_args as cfm_parse_args,
-    )
 
     # Default OFF (backward-compat with Wf-299 / Wf-291C shipped).
     # We construct the Namespace directly via subprocess to avoid
@@ -323,17 +318,17 @@ def test_fused_adam_integration_with_trainer() -> None:
     )
     src_text = src_path.read_text()
     assert "Wf-357-D1" in src_text, (
-        f"D-MPNN trainer source must contain the Wf-357-D1 marker "
-        f"so future maintainers can trace the integration"
+        "D-MPNN trainer source must contain the Wf-357-D1 marker "
+        "so future maintainers can trace the integration"
     )
     # Confirm the make_optimized_adam factory call site is present.
     assert "make_optimized_adam" in src_text, (
-        f"D-MPNN trainer must call make_optimized_adam when " f"use_fused_adam=True"
+        "D-MPNN trainer must call make_optimized_adam when " "use_fused_adam=True"
     )
     # Confirm the CLI flag is declared in parse_args.
     assert (
         '"--fused-adam"' in src_text
-    ), f"D-MPNN trainer must declare --fused-adam CLI flag"
+    ), "D-MPNN trainer must declare --fused-adam CLI flag"
 
     # Confirm the chemprop_v2_v3 trainer is also wired.
     chemprop_src_path = (
@@ -342,10 +337,10 @@ def test_fused_adam_integration_with_trainer() -> None:
     chemprop_src = chemprop_src_path.read_text()
     assert (
         "Wf-357-D1" in chemprop_src
-    ), f"chemprop_v2_v3 trainer must contain the Wf-357-D1 marker"
+    ), "chemprop_v2_v3 trainer must contain the Wf-357-D1 marker"
     assert "make_optimized_adam" in chemprop_src, (
-        f"chemprop_v2_v3 trainer must call make_optimized_adam when "
-        f"use_fused_adam=True"
+        "chemprop_v2_v3 trainer must call make_optimized_adam when "
+        "use_fused_adam=True"
     )
 
     # Confirm the CFM trainer is also wired.
@@ -355,14 +350,14 @@ def test_fused_adam_integration_with_trainer() -> None:
         / "train_cfm_yuelbond_wasserstein.py"
     )
     cfm_src = cfm_src_path.read_text()
-    assert "Wf-357-D1" in cfm_src, f"CFM trainer must contain the Wf-357-D1 marker"
+    assert "Wf-357-D1" in cfm_src, "CFM trainer must contain the Wf-357-D1 marker"
     assert "make_optimized_adam" in cfm_src, (
-        f"CFM trainer must call make_optimized_adam when " f"args.fused_adam=True"
+        "CFM trainer must call make_optimized_adam when " "args.fused_adam=True"
     )
 
     # Confirm the summary JSON includes the Wf-357-D1 flag for paper
     # §6 reproducibility audits.
     assert "wf357d1_use_fused_adam" in src_text, (
-        f"D-MPNN trainer must persist wf357d1_use_fused_adam into "
-        f"the training_summary JSON for paper §6 audits"
+        "D-MPNN trainer must persist wf357d1_use_fused_adam into "
+        "the training_summary JSON for paper §6 audits"
     )

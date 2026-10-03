@@ -11,7 +11,6 @@ from molmetal.adapters.flow_matching_lipman.optimal_transport_v2_solver import (
     ot_solver,
     sinkhorn_plan,
     transport_plan,
-    wasserstein_1d_torchsort,
 )
 
 

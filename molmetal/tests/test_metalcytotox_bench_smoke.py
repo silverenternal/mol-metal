@@ -51,7 +51,6 @@ Unlike :mod:`test_platinai_bench_smoke`, every benchmark shape is
 
 from __future__ import annotations
 
-import csv
 import json
 import sys
 import time

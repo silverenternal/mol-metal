@@ -13,7 +13,6 @@ Also covers the EGNN stub and the port contract (duck-typed
 
 from __future__ import annotations
 
-from typing import List, Optional
 
 import pytest
 import torch

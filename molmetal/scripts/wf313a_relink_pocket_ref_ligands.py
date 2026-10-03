@@ -36,7 +36,6 @@ Verify:
 from __future__ import annotations
 
 import json
-import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,7 +49,6 @@ from typing import Any
 from molmetal.scripts.wf386a3_atomic_write import (
     atomic_write_file,
     safe_overwrite_check,
-    detect_truncation,
 )
 
 PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
@@ -225,14 +223,14 @@ def main() -> int:
     n_ok = sum(1 for p in per_pocket if p["ok"])
     n_unique_inchi = len({p["inchikey"] for p in per_pocket if p["ok"]})
     print("PASS")
-    print(f"  wf_id: Wf-313A (RELINK from Wf-139 P1 MEASURED)")
+    print("  wf_id: Wf-313A (RELINK from Wf-139 P1 MEASURED)")
     print(f"  n_pockets_extracted: {n_pockets}")
     print(f"  n_smiles_valid: {n_ok}")
     print(f"  n_inchi_consistent: {n_unique_inchi} (unique InChIKeys)")
     print(f"  out_dir: {TARGET_DIR.relative_to(PROJECT_ROOT)}")
     print(f"  summary: {summary_path.relative_to(PROJECT_ROOT)}")
-    print(f"  phase2_redocking_status: BLOCKED (Vina 1.2.7 not installed)")
-    print(f"  preflight_status: PENDING_VERIFICATION_AT_CLOSE")
+    print("  phase2_redocking_status: BLOCKED (Vina 1.2.7 not installed)")
+    print("  preflight_status: PENDING_VERIFICATION_AT_CLOSE")
     return 0
 
 

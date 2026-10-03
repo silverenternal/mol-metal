@@ -71,10 +71,8 @@ import argparse
 import datetime as _dt
 import json
 import math
-import os
 import re
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple

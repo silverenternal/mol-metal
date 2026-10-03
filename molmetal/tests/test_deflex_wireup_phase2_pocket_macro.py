@@ -21,7 +21,6 @@ def test_v2_checkpoint_loads():
     try:
         from molmetal_lam.lam_chem.pocket_macro_inference import (
             PocketMacroInference,
-            PER_RESIDUE_FEATURES,
             DEFAULT_CHECKPOINT_PATH,
         )
     except Exception as exc:  # pragma: no cover

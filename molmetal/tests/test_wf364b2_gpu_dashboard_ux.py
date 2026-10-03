@@ -29,12 +29,10 @@ run output. No paper/* touches (TODO-84 honored).
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
 DASHBOARD_SH = PROJECT_ROOT / "scripts" / "gpu_launch_dashboard.sh"

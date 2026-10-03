@@ -65,7 +65,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent.parent
 REPORTS_DIR: Path = PROJECT_ROOT / "molmetal" / "reports" / "wf409a4_wf29_extended"

@@ -16,8 +16,6 @@ Total: **10 tests**, CPU-only.  All under 1 s on any CI container.
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from pathlib import Path
 
 import pandas as pd
@@ -29,7 +27,6 @@ try:
         LEDGER_VERSION,
         PerSampleRecord,
         SampleLedger,
-        SampleLedgerShard,
     )
 except Exception:
     from molmetal.replay.curriculum import (  # type: ignore
@@ -37,7 +34,6 @@ except Exception:
         LEDGER_VERSION,
         PerSampleRecord,
         SampleLedger,
-        SampleLedgerShard,
     )
 
 

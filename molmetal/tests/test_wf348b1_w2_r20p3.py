@@ -29,9 +29,7 @@ n_bins=32 path is exercised by the recipe itself in ``wf348b1_w2_r20p3.py``).
 from __future__ import annotations
 
 import math
-import os
 import sys
-import warnings
 from pathlib import Path
 
 import numpy as np

@@ -9,10 +9,8 @@ Covers:
 
 from __future__ import annotations
 
-import math
 import os
 import tempfile
-from typing import List, Optional, Tuple
 
 import pytest
 import torch
@@ -27,7 +25,6 @@ from molmetal.ports import (
     MoleculeGenerator,
     PropertyPrediction,
     PropertyPredictor,
-    ScoredCandidate,
     ScoringFunction,
 )
 

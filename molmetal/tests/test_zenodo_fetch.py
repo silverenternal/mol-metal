@@ -31,7 +31,6 @@ if str(PROJECT_ROOT) not in sys.path:
 from molmetal.scripts.zenodo_fetch import (
     ZenodoFetchResult,
     ZENODO_FALLBACK_IPS,
-    _head_via_ip,
     _http_download_direct,
     _http_download_via_ip,
     _resolve_zenodo_dns,

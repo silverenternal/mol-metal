@@ -11,7 +11,6 @@ Reference: `party-twenty-spirit` §3.5 (MEASURED-vs-PROJECTED tag discipline) +
 `AGENTS.md` §5.2 (honest framing) + Wf-369-A1 §1.1 (Wf-368-C1 gap-flag).
 """
 
-import os
 import re
 from pathlib import Path
 

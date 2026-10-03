@@ -34,14 +34,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import pickle
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-import numpy as np
-import pandas as pd
 
 # Project root: .../try_triton_on_rocm
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -49,11 +46,11 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from molmetal.molmetal_lam.reward.symbolic_regression import (  # noqa: E402
     FEATURE_COLUMNS,
+    # Kept by hand: ruff 0.6.9 F401 mislabels this as unused when the
+    # block also imports ``FORMULA_FAMILIES as _FFA`` (duplicate-import
+    # false positive); the name IS referenced in main(). The alias has
+    # since been removed, so the plain import is no longer flagged.
     FORMULA_FAMILIES,
-    FORMULA_FAMILIES as _FFA,  # alias for clarity
-    FAMILY_FITTERS,
-    FitResult,
-    build_reward_target,
     fit_symbolic_reward,
     load_measured_cells,
     loo_cv,
@@ -219,7 +216,7 @@ def main() -> int:
             f"- **Lit anchor**: {best_meta['lit_anchor']}",
             f"- **Math prior**: {best_meta['math_prior']}",
             "",
-            f"**Formula**:",
+            "**Formula**:",
             "",
             "```",
             best_meta["formula"],

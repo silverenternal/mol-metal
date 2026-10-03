@@ -39,7 +39,6 @@ import pytest
 
 from molmetal.adapters.per_residue_protein_metal_auc import (
     DEFAULT_N_RESIDUES_PER_NEG,
-    DEFAULT_N_RESIDUES_PER_POS,
     DEFAULT_SEED,
     PerResidueProteinMetalAUC,
     _residue_count_for_complex,

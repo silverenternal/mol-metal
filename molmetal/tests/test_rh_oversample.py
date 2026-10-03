@@ -193,4 +193,4 @@ class TestWf187M19Oversample:
         # Total loss should differ (cls differs, reg same).
         assert total_default.item() != pytest.approx(
             total_pos10.item(), abs=1e-4
-        ), f"total loss did not change between paths"
+        ), "total loss did not change between paths"

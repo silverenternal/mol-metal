@@ -2,7 +2,7 @@
 
 Per task spec:
   - 5 metals × 5 seeds × 50 epochs = 1250 epoch-runs (25 (metal, seed) ckpts+JSONs)
-  - CUDA_VISIBLE_DEVICES=1 (RTX 5090)
+  - GPU 0 (RTX PRO 6000 Blackwell) is the default since 2026-10-03
   - BF16 autocast
   - Pre-cached chemprop features (via the existing pre-featurize-all-SMILES
     path used by Wf-156)
@@ -50,7 +50,6 @@ import logging
 import sys
 import time
 import traceback
-from dataclasses import asdict
 from pathlib import Path
 from typing import Dict, List
 
@@ -64,7 +63,6 @@ if str(PROJECT_ROOT) not in sys.path:
 from sklearn.model_selection import LeaveOneGroupOut
 
 from molmetal.models.chemprop_v2_mt_model import (
-    ChempropV2MTModel,
     SUPPORTED_METALS,
 )
 

@@ -26,8 +26,6 @@ from pathlib import Path
 import pytest
 
 from molmetal.scripts.pre_flight_check import (
-    DATA_DIR,
-    DOT_DATA_DIR,
     SCRIPT_DIR,
     build_gates,
     gate_p2_data_leakage_diag,

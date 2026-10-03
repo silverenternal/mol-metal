@@ -66,7 +66,6 @@ import csv
 import gc
 import json
 import math
-import os
 import sys
 import time
 import tracemalloc
@@ -1356,7 +1355,7 @@ def render_markdown(payload: Dict[str, Any]) -> str:
     lift = payload["lift_over_ast"]
     lines: List[str] = []
     lines.append("# Wf-41 Phase 1 — Deflexpressor + Multi-PH + ASTSR 3-way bench\n")
-    lines.append(f"**Dataset**: PlatinAI 5K (synthetic ``qed * qed`` target)  ")
+    lines.append("**Dataset**: PlatinAI 5K (synthetic ``qed * qed`` target)  ")
     lines.append(
         f"**n_samples loaded**: {cfg['n_samples_loaded']} "
         f"(requested {cfg['n_samples_requested']})  "

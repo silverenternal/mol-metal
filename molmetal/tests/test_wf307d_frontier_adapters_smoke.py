@@ -39,7 +39,6 @@ from molmetal.adapters.se3_lipman_integration import (
 from molmetal.adapters.se3_sb_integration import (
     SE3SBVelocityField,
     SE3SBDecoder,
-    integrate_with_cfm,
 )
 
 # Adapter 4: Transport Relaxation (math_skills/transport_relaxation)

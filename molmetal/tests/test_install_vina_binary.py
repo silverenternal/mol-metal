@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -43,7 +42,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from molmetal.scripts.install_vina_binary import (  # noqa: E402
     DEFAULT_BIN_DIR,
-    DEFAULT_LOG_PATH,
     _probe_vina,
     _write_stub_warning,
     _write_wrapper,

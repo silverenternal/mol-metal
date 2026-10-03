@@ -43,7 +43,7 @@ Usage
 -----
 ::
 
-    source .venvs/mol-metal-venv/bin/activate
+    source .venv/bin/activate
     python molmetal/scripts/check_r2_baseline.py
     python molmetal/scripts/check_r2_baseline.py --out-dir molmetal/reports/wf44_r2_debug
     pytest molmetal/tests/test_r2_baseline.py -v
@@ -64,7 +64,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 from dataclasses import dataclass, asdict, field
 from pathlib import Path

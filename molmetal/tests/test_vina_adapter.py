@@ -11,9 +11,7 @@ Tests are skipped if vina or meeko are not installed.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-import sys
 
 import numpy as np
 import pytest

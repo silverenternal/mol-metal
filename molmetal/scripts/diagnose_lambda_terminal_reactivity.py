@@ -13,7 +13,6 @@ from pathlib import Path
 import signal
 import subprocess
 import sys
-import time
 import traceback
 
 ROOT = Path(__file__).resolve().parents[2]

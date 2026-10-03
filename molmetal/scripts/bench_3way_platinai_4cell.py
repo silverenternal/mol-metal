@@ -38,7 +38,7 @@ Outputs
 
 Usage::
 
-    CUDA_VISIBLE_DEVICES=1 molmetal/.venvs/mol-metal-venv/bin/python \
+    molmetal/.venv/bin/python \
       molmetal/scripts/bench_3way_platinai_4cell.py \
       --cell-lines mcf7 a549 a2780 a2780cis --seeds 0 1 2 3 4 \
       --epochs 50 --out-dir molmetal/reports/wf128_p3_platinai_4cell
@@ -52,7 +52,7 @@ import json
 import math
 import sys
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -67,12 +67,9 @@ import numpy as np
 
 # Reuse 3-way streams + collapse detector from Wf-128 P2 ship.
 from bench_3way_real_metalcytotox import (  # noqa: E402
-    COLLAPSE_RATIO_THRESHOLD,
     DEFAULT_HILBERT_DIM,
     DEFAULT_N_FOLDS,
-    EPS_STD,
     FEATURE_DIM,
-    MULTI_PH_DIM,
     PRED_CLIP,
     RDKIT_DIM,
     _collapse_detected,

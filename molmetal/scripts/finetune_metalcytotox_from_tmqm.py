@@ -48,9 +48,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -69,7 +67,6 @@ from molmetal.baselines.dmpnn import (
     DMPNN_HIDDEN,
     DMPNN_DEPTH,
     DMPNN_DROPOUT,
-    DMPNNModel,
     _GRUUpdate,
     featurize_smiles_list,
 )

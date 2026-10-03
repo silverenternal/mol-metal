@@ -74,9 +74,7 @@ del _PROJ_ROOT_HINT
 from molmetal.replay import (  # noqa: E402
     LOW_COVERAGE_THRESHOLD,
     ReplayPool,
-    ScoreEstimate,
     TrajectoryRecord,
-    pessimistic_shrinkage,
 )
 from molmetal.replay.pool import _config_hash_from_hp  # noqa: E402
 
@@ -419,7 +417,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     cov_table = pool.coverage_table()
     print(
-        f"[r4_dmpnn_replay_sweep] coverage: "
+        "[r4_dmpnn_replay_sweep] coverage: "
         + json.dumps(
             {
                 m: {

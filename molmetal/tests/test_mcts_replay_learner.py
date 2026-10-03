@@ -36,10 +36,9 @@ Run via::
 from __future__ import annotations
 
 import json
-import math
 import os
 import sys
-from typing import Any, Dict, List
+from typing import Any, List
 
 import numpy as np
 import pytest

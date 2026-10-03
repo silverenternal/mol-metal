@@ -15,7 +15,6 @@ import os
 import random
 import sys
 import time
-from dataclasses import dataclass
 from typing import Any, Dict, List
 
 import numpy as np
@@ -30,7 +29,6 @@ from molmetal_lam.pipeline.closed_loop import LamClickDesignLoop  # noqa: E402
 from molmetal_lam.reactions.beta_reductions import ReactionRule  # noqa: E402
 from molmetal_lam.search_alg.proof_search import (  # noqa: E402
     MCTSProofSearch,
-    _MCTSNode,
 )
 from molmetal_lam.types.predicates import TypePredicate  # noqa: E402
 

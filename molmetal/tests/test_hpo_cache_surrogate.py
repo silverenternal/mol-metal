@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import tempfile
 from typing import Dict, List
 
@@ -39,10 +38,8 @@ import pytest
 try:
     from molmetal.replay import (  # type: ignore
         ASHAEarlyStop,
-        DEFAULT_CACHE_ROOT,
         DEFAULT_FEATURE_DIM,
         ColdStartSurrogate,
-        EarlyStopDecision,
         EpsilonGreedyAcquisition,
         EpsilonSchedule,
         RSI_ITER,
@@ -56,10 +53,8 @@ try:
 except Exception:  # pragma: no cover
     from molmetal.replay.hpo import (  # type: ignore  # noqa: E402
         ASHAEarlyStop,
-        DEFAULT_CACHE_ROOT,
         DEFAULT_FEATURE_DIM,
         ColdStartSurrogate,
-        EarlyStopDecision,
         EpsilonGreedyAcquisition,
         EpsilonSchedule,
         RSI_ITER,
@@ -760,20 +755,10 @@ class TestPublicAPI:
     def test_constants_exposed(self):
         # All exported by __init__.py.
         from molmetal.replay import (  # type: ignore
-            ASHAEarlyStop,
             DEFAULT_CACHE_ROOT,
             DEFAULT_FEATURE_DIM,
-            ColdStartSurrogate,
-            EarlyStopDecision,
-            EpsilonGreedyAcquisition,
-            EpsilonSchedule,
             RSI_ITER,
             RSI_SCHEMA_FROZEN,
-            ReplayPool,
-            SurrogateDecision,
-            TrajectoryCacheEntry,
-            TrajectoryCacheWriter,
-            config_hash_from_hp,
         )
 
         assert RSI_ITER >= 0

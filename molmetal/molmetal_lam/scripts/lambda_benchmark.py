@@ -344,7 +344,7 @@ def main() -> int:
     entries = sorted(os.listdir(args.pockets))
     pocket_window = entries[args.pocket_offset : args.pocket_offset + args.n_pockets]
     if not pocket_window:
-        print(f"[bench] no pockets found in window", file=sys.stderr)
+        print("[bench] no pockets found in window", file=sys.stderr)
         return 1
 
     csv_path = args.output_prefix + ".csv"

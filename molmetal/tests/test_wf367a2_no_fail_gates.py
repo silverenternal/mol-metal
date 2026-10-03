@@ -31,7 +31,6 @@ Source: Wf-367-A2 closeout + Wf-364-A1 §4.2 root-cause recommendation.
 from __future__ import annotations
 
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -142,8 +141,8 @@ def test_gate_wf343c2_per_wave_runtime_check_no_strict_invocation() -> None:
     code_only = re.sub(r'"""[\s\S]*?"""', "", gate_src)
     code_only = re.sub(r"#.*$", "", code_only, flags=re.MULTILINE)
     assert '"--strict"' not in code_only, (
-        f"Wf-367-A2 contract VIOLATED: gate function source contains "
-        f"'\"--strict\"' as a subprocess arg token. The pre-flight gate "
-        f"must NOT pass --strict (per Wf-367-A2 fix). Drop it from the "
-        f"args=[ ... ] list in gate_wf343c2_per_wave_runtime_check."
+        "Wf-367-A2 contract VIOLATED: gate function source contains "
+        "'\"--strict\"' as a subprocess arg token. The pre-flight gate "
+        "must NOT pass --strict (per Wf-367-A2 fix). Drop it from the "
+        "args=[ ... ] list in gate_wf343c2_per_wave_runtime_check."
     )

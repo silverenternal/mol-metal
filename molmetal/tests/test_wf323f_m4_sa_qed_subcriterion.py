@@ -62,8 +62,6 @@ except Exception:
 
 
 try:
-    from rdkit import Chem  # noqa: WPS433
-    from rdkit.Chem import QED  # noqa: WPS433
 
     _RDKIT_AVAILABLE = True
 except Exception:

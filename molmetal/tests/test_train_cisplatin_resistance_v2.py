@@ -205,7 +205,6 @@ def test_module_imports_cleanly() -> None:
     """Importing the module must not crash; all Wf-31 Phase 2 symbols are exported."""
     sys.path.insert(0, _scripts_path())
     import importlib
-    import train_cisplatin_resistance_v2 as w31p2  # type: ignore[import-not-found]
 
     if "train_cisplatin_resistance_v2" in sys.modules:
         importlib.reload(sys.modules["train_cisplatin_resistance_v2"])

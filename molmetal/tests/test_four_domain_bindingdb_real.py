@@ -46,7 +46,6 @@ from molmetal.data.four_domain_combined import (
     DOMAIN_BINDINGDB,
     FourDomainDataset,
     DEFAULT_BINDINGDB_CSV,
-    DEFAULT_BINDINGDB_FALLBACK_CSV,
     _BindingDBRows,
 )
 

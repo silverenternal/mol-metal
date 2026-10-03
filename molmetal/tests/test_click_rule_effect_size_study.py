@@ -23,7 +23,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 from molmetal.scripts import click_rule_effect_size_study as ces
 

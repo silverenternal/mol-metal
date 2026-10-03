@@ -151,7 +151,6 @@ def _build_molgraphs(
 def _make_batch(molgraphs, indices, atom_fdim: int, bond_fdim: int, device):
     """Build a chemprop :class:`BatchMolGraph` from a list-index subset."""
     from chemprop.data import BatchMolGraph
-    from chemprop.data.molgraph import MolGraph
 
     mgs = []
     for i in indices:

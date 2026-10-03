@@ -80,14 +80,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
-import os
-import random
 import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence
 
 # Atomic write protocol — closes the "half-merged file state" failure mode
 # (concurrent writers racing on the rename) and the "direct overwrite
@@ -97,7 +94,6 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from molmetal.scripts.wf386a3_atomic_write import (
     atomic_write_file,
     safe_overwrite_check,
-    detect_truncation,
 )
 
 import numpy as np
@@ -115,7 +111,6 @@ else:
 # ---------------------------------------------------------------------------
 try:
     from molmetal_lam.search_alg.mcts_replay_buffer import (
-        DEFAULT_BATCH_SIZE as _REPLAY_DEFAULT_BATCH,
         MCTSReplayBuffer,
         MCTSReplayEntry,
     )
@@ -124,9 +119,7 @@ try:
         DEFAULT_HIDDEN_DIM,
         DEFAULT_LR,
         DEFAULT_N_ACTIONS,
-        DEFAULT_N_EPOCHS,
         MCTSReplayLearner,
-        MCTSReplayLearnerError,
         PolicyNetwork,
         ValueNetwork,
         featurise_entry,
@@ -135,7 +128,6 @@ try:
 except Exception:  # pragma: no cover - import path fallback
     try:
         from molmetal.molmetal_lam.search_alg.mcts_replay_buffer import (  # type: ignore
-            DEFAULT_BATCH_SIZE as _REPLAY_DEFAULT_BATCH,
             MCTSReplayBuffer,
             MCTSReplayEntry,
         )
@@ -144,9 +136,7 @@ except Exception:  # pragma: no cover - import path fallback
             DEFAULT_HIDDEN_DIM,
             DEFAULT_LR,
             DEFAULT_N_ACTIONS,
-            DEFAULT_N_EPOCHS,
             MCTSReplayLearner,
-            MCTSReplayLearnerError,
             PolicyNetwork,
             ValueNetwork,
             featurise_entry,

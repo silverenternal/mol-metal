@@ -28,7 +28,7 @@ import torch
 from molmetal.adapters.diffdock import DiffDockAdapter
 from molmetal.adapters.equibind import EquiBindAdapter
 from molmetal.domain import Complex, Molecule, Pocket
-from molmetal.ports import DockingConfig, DockingEngine
+from molmetal.ports import DockingConfig
 
 
 # ---------------------------------------------------------------------------

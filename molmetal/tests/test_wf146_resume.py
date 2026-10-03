@@ -29,7 +29,6 @@ each and do not depend on the ~340K-row MetalCytoToxDB CSV.
 from __future__ import annotations
 
 import copy
-import tempfile
 from pathlib import Path
 
 import numpy as np

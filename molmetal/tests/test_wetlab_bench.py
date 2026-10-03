@@ -17,10 +17,8 @@ the standard 5-minute wall-clock CI cap.
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List
 
 import pytest
 

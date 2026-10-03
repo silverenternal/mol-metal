@@ -36,7 +36,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 try:
     from molmetal.scripts.bench_catherine_30metals import (  # type: ignore

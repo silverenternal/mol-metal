@@ -61,7 +61,6 @@ Usage examples
 from __future__ import annotations
 
 import argparse
-import math
 import random
 import sys
 import time
@@ -103,7 +102,6 @@ def _run_proof_search(
         DEFAULT_USE_VARIANCE_PUCT,
         IntegrationNode,
         VarianceControlledPUCT,
-        VariancePUCTError,
         make_default_selector,
     )
 

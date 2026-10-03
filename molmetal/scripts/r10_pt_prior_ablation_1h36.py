@@ -46,7 +46,7 @@ import statistics
 import sys
 import time
 from pathlib import Path
-from typing import List, Sequence
+from typing import Sequence
 
 import torch
 
@@ -370,7 +370,6 @@ def _run_one_setting(
     # Sanity-check the prior-on/off flag is honored by MetalGeometryPrior.
     from molmetal.molmetal_lam.priors.metal_geometry import (
         MetalGeometryPrior,
-        Geometry,
     )
 
     _probe = MetalGeometryPrior(weight=1.0)
@@ -453,9 +452,6 @@ def _run_one_setting(
         x_final = x_final.clamp(-clip, clip)
 
     # Post-ODE atom-type prediction (no CFG — this ablation is prior-only).
-    from molmetal.adapters.flow_matching_lipman import (
-        EGNNVelocityField as _EGNN,
-    )
 
     adapter.velocity_field.eval()
     init_atom_types = torch.ones_like(atom_types_init)

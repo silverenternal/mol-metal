@@ -15,7 +15,6 @@ CrossDocked2020 archive (or PDBbind-CrossDocked-Core) to be present.
 
 from __future__ import annotations
 
-from typing import List
 
 import pytest
 

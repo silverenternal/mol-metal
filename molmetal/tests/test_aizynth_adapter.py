@@ -22,7 +22,6 @@ from molmetal.molmetal_lam.sbdd_env.aizynth_adapter import (
     AiZynthAdapter,
     RetrosynthesisReport,
     _have_aizynthfinder,
-    check_list,
     check_synthesizable,
 )
 

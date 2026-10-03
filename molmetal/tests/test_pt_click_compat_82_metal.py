@@ -54,7 +54,6 @@ from __future__ import annotations
 
 from typing import Tuple
 
-import pytest
 
 # CPU-only — RDKit ReactionFromSmarts is the heaviest dependency here.
 from molmetal.molmetal_lam.lam_chem.pt_click_compat import (

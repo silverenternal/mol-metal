@@ -41,7 +41,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Optional, Tuple
 
 import pytest
 

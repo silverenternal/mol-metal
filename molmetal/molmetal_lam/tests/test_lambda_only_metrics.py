@@ -1077,8 +1077,8 @@ def test_sa_weight_positive_lowers_sa(tmp_path):
             assert key in agg, f"aggregate missing {key}: {sorted(agg.keys())}"
         # And per-cell rows too.
         for row in payload["cells"]:
-            assert "sa_mean" in row, f"cell row missing sa_mean"
-            assert "qed_mean" in row, f"cell row missing qed_mean"
+            assert "sa_mean" in row, "cell row missing sa_mean"
+            assert "qed_mean" in row, "cell row missing qed_mean"
 
     # 3) CORE HYPOTHESIS — sa_mean with weight 0.3 should be <= sa_mean
     #    with weight 0.0 (more penalty -> search biased toward easier-to-

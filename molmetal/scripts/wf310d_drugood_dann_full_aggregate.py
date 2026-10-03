@@ -148,7 +148,7 @@ def _format_claim_cards(
 ) -> str:
     """Format per-seed table + MEASURED-vs-PROJECTED claim cards."""
     lines = [
-        f"# Wf-310D DrugOOD DANN full aggregation -- claim cards",
+        "# Wf-310D DrugOOD DANN full aggregation -- claim cards",
         "",
         f"Date: {time.strftime('%Y-%m-%d')}",
         f"n_seeds: {n_seeds}  test_auc_mean: {test_mean:.4f}  "
@@ -194,7 +194,7 @@ def _format_claim_cards(
             "## Card 4 -- wall + GPU cost (PROJECTED)",
             "",
             f"- Wall: {wall_min:.1f} min ({wall_min/60:.2f} hr) -- MEASURED.",
-            f"- GPU: cuda:1 (RTX 5090) per Wf-306A launch_wf306a_drugood_vina_gpu.sh.",
+            "- GPU: cuda:1 (RTX 5090) per Wf-306A launch_wf306a_drugood_vina_gpu.sh.",
             "- ~3-4 hr GPU-1 PROJECTED per Wf-306A Phase-A budget.",
             "",
         ]

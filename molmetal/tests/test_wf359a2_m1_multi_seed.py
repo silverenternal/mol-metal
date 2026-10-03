@@ -37,9 +37,7 @@ import json
 import math
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
 
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:

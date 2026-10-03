@@ -76,7 +76,6 @@ Cross-references
 from __future__ import annotations
 
 import os
-import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -391,8 +390,8 @@ def test_integration_summary_emitted() -> None:
         f"  total_wrappers: {len(WRAPPERS)}",
         f"  with_dry_run_log_helper: {sum(1 for w in WRAPPERS if w['emits_dry_run_log'])}",
         f"  with_user_ok_gate: {sum(1 for w in WRAPPERS if w['gate_value'] is not None)}",
-        f"  honest_negative_g5_no_gate: 1",
-        f"  honest_negative_recover_g6_loose_bypass: 1",
+        "  honest_negative_g5_no_gate: 1",
+        "  honest_negative_recover_g6_loose_bypass: 1",
     ]
     print("\n" + "\n".join(summary_lines))
     assert len(WRAPPERS) == 7, "expected 7 wrappers (Wf-355 + Wf-337-G1)"

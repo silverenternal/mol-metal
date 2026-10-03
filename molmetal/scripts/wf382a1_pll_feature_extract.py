@@ -375,7 +375,7 @@ def main() -> int:
     out_dir = Path(args.out_dir)
     result = _write_smoke_report(out_dir)
 
-    print(f"Wf-382-A1 PLL smoke run complete:")
+    print("Wf-382-A1 PLL smoke run complete:")
     print(f"  output_path = {result.get('output_path', '<not written>')}")
     print(f"  adapter_available = {result['adapter_available']}")
     print(f"  smoke_cohort_present = {result['smoke_cohort_present']}")

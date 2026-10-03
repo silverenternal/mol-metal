@@ -255,7 +255,6 @@ def measure_vram(
     # (``MOLMETAL_CFM_AMP``) only fires inside the adapter's own
     # ``maybe_enable_amp()``.  The harness owns the autocast context
     # so we use the public ``CFMAMPContext`` directly.
-    from molmetal.adapters.flow_matching_lipman import maybe_enable_amp
 
     prev_amp_setting = None  # we don't toggle the env; we own the context
 

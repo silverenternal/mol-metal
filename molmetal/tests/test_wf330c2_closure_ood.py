@@ -52,7 +52,6 @@ from __future__ import annotations
 import csv
 import json
 import sys
-import time
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -71,7 +70,6 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 
-from molmetal.scripts import bench_closure_ood  # noqa: E402
 from molmetal.scripts.bench_closure_ood import (  # noqa: E402
     DOMAIN_SPECS,
     DEFAULT_TANIMOTO_THRESHOLD,

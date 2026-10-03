@@ -27,13 +27,8 @@ verify **wiring**, not training lift — the projected L5 R² lift in
 
 from __future__ import annotations
 
-import argparse
-import json
-import sys
-from pathlib import Path
 from unittest import mock
 
-import pytest
 
 
 # ---------------------------------------------------------------------------
@@ -274,9 +269,6 @@ class TestMasterWassersteinIntegration:
 
     def test_master_wass_module_importable(self):
         from molmetal.molmetal_lam.reward.master_wasserstein_gradient_flow import (
-            MasterWassersteinGradientFlow,
-            MasterWassersteinConfig,
-            MasterWassersteinResult,
             SUPPORTED_LOSS_TYPES,
             ENGINE_TAG,
         )
@@ -346,9 +338,6 @@ class TestMasterCatherineIntegration:
 
     def test_master_cath_module_importable(self):
         from molmetal.molmetal_lam.reward.master_catherine_closure_bias import (
-            MasterCatherineClosureBias,
-            MasterCatherineBiasResult,
-            CatherineClosureFeatureFlag,
             SUPPORTED_BIAS_TYPES,
             ENGINE_FEATURE_FLAG,
         )

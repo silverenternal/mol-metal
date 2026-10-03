@@ -22,10 +22,8 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -48,10 +46,6 @@ def test_module_imports():
         from bench_pb_production_m8_retry import (  # type: ignore
             PocketMetrics,
             PBCandResult,
-            _have_real_pb,
-            _load_fixture_candidates,
-            aggregate,
-            _clean,
         )
     except Exception as exc:
         pytest.fail(f"module import failed: {exc}")
@@ -102,7 +96,7 @@ def test_have_real_pb_returns_bool():
 # ---------------------------------------------------------------------------
 def test_aggregate_empty_sweep():
     sys.path.insert(0, str(SCRIPTS))
-    from bench_pb_production_m8_retry import aggregate, PocketMetrics
+    from bench_pb_production_m8_retry import aggregate
 
     agg = aggregate([])
     assert agg["n_cells_total"] == 0
@@ -214,7 +208,6 @@ def test_cli_help():
 def test_smoke_single_pocket_real_pb(tmp_path):
     sys.path.insert(0, str(SCRIPTS))
     from molmetal_lam.sbdd_env.posebusters_adapter import (
-        PoseBustersAdapter,
         _have_posebusters,
     )
 
@@ -308,7 +301,7 @@ def test_builtin_organic_fallback_all_pass_pb():
 # ---------------------------------------------------------------------------
 def test_per_pocket_cell_stub_returns_honest_zero():
     sys.path.insert(0, str(SCRIPTS))
-    from bench_pb_production_m8_retry import _per_pocket_cell, PocketMetrics
+    from bench_pb_production_m8_retry import PocketMetrics
 
     # Adapter=None forces the stub path inside _per_pocket_cell — but the
     # current implementation requires an adapter arg.  We test the

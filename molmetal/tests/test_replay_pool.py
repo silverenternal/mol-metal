@@ -35,19 +35,13 @@ import pytest
 
 try:
     from molmetal.replay import (  # type: ignore
-        LOW_COVERAGE_THRESHOLD,
-        CoverageStats,
         ReplayPool,
-        ScoreEstimate,
         TrajectoryRecord,
         pessimistic_shrinkage,
     )
 except Exception:  # pragma: no cover
     from molmetal.replay.pool import (  # type: ignore  # noqa: E402
-        LOW_COVERAGE_THRESHOLD,
-        CoverageStats,
         ReplayPool,
-        ScoreEstimate,
         TrajectoryRecord,
         pessimistic_shrinkage,
     )

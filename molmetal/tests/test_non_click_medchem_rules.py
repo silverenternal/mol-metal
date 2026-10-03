@@ -29,7 +29,6 @@ Honest framing
 
 from __future__ import annotations
 
-import pytest
 
 # All tests in this file are CPU-only (no GPU, no RDKit conformer embedding).
 from molmetal.molmetal_lam.lam_chem.non_click_medchem_rules import (

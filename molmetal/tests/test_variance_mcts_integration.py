@@ -27,10 +27,6 @@ import pytest
 
 try:
     from molmetal_lam.search_alg.variance_mcts_integration import (
-        DEFAULT_C_PUCT,
-        DEFAULT_C_VAR,
-        DEFAULT_N_MIN_VISITS,
-        DEFAULT_N_RUNS,
         VarianceMCTSError,
         VarianceMCTSNode,
         VarianceMCTSWrapper,
@@ -38,10 +34,6 @@ try:
     )
 except Exception:  # pragma: no cover - import path fallback
     from molmetal.molmetal_lam.search_alg.variance_mcts_integration import (  # type: ignore  # noqa: E402
-        DEFAULT_C_PUCT,
-        DEFAULT_C_VAR,
-        DEFAULT_N_MIN_VISITS,
-        DEFAULT_N_RUNS,
         VarianceMCTSError,
         VarianceMCTSNode,
         VarianceMCTSWrapper,

@@ -1747,8 +1747,11 @@ def main() -> int:
     # as ``runs/{run_id}/fingerprint.json``.  The fingerprint is
     # consumed by test_reproducibility_split.py::test_fingerprint_*
     # to verify stability across runs.
+    # ``results`` holds completed cells; nothing has run yet at this point,
+    # so bind the empty list — the fingerprint below then falls back to the
+    # manifest pair ids (resume mode re-loads records further down).
+    results = []
     try:
-        from dataclasses import asdict as _asdict
 
         # Collect active CLI flags from the parsed namespace.  We
         # exclude the worker-only flags (--worker-input/output) so a

@@ -55,7 +55,6 @@ if str(PROJECT_ROOT) not in sys.path:
 from molmetal.models.bond_head import (
     AtomCloud,
     BondOrderHead,
-    BondAwareDecoder,
     NUM_BOND_CLASSES,
     default_trained_head,
 )

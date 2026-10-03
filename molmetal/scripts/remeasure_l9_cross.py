@@ -16,7 +16,7 @@ import os
 import random
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List
 
 import numpy as np

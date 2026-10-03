@@ -372,7 +372,7 @@ class _BindingDBRows:
                     active = False
                 metal = str(row.get("metal", ""))
                 protein = str(row.get("protein", ""))
-                rows.append((smi, float(pIC50), metal, protein, bool(active)))
+                rows.append((smi, float(pic50), metal, protein, bool(active)))
         return rows
 
     def __len__(self) -> int:

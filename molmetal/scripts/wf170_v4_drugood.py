@@ -37,7 +37,6 @@ import csv
 import json
 import sys
 import time
-import warnings
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -47,7 +46,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from rdkit import Chem, RDLogger
 from sklearn.metrics import roc_auc_score
@@ -788,7 +786,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "# Wf-170 — V4MultiTaskDMPNN on real DrugOOD IC50 (paper §4.1)",
         "",
         f"**Date:** {time.strftime('%Y-%m-%d')}  ",
-        f"**Data:** DrugOOD lbap_core_ic50 (assay / scaffold / size) — 95236 rows per config  ",
+        "**Data:** DrugOOD lbap_core_ic50 (assay / scaffold / size) — 95236 rows per config  ",
         f"**Model:** V4MultiTaskDMPNN (hidden={args.hidden}, n_layers={args.depth}, "
         f"n_metals=1)  ",
         f"**Recipe:** {args.epochs} epochs × batch {args.batch} × lr {args.lr}  "

@@ -21,11 +21,9 @@ import hashlib
 import importlib
 import json
 import sys
-import tempfile
 from pathlib import Path
-from typing import List, Sequence
+from typing import List
 
-import pytest
 
 # Make ``molmetal`` importable when pytest is invoked from the repo root.
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -356,7 +354,6 @@ def test_fingerprint_roundtrip_json_loadable(tmp_path):
 def test_split_flag_default_is_none_in_argparser():
     """The ``--split`` CLI flag must default to ``none`` so legacy
     invocations are bit-for-bit unchanged."""
-    import argparse
     from molmetal.scripts import r4_lambda_only_run as r4
 
     # Build a fresh parser and parse with --output-dir (the only

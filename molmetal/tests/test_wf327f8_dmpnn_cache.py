@@ -32,11 +32,9 @@ import json
 import time
 from pathlib import Path
 
-import pytest
 import torch
 
-from molmetal.models.dmpnn import DirectedMPNN, MPNNConfig
-from molmetal.models.dmpnn_cache import DMPNNFeaturizationCache, cached_featurize_batch
+from molmetal.models.dmpnn_cache import DMPNNFeaturizationCache
 from molmetal.models.v4_multitask_dmpnn import DMPNNEncoder
 
 

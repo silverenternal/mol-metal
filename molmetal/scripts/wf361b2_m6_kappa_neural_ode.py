@@ -59,7 +59,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np  # noqa: E402  (early import for all helper functions)
 
@@ -658,7 +658,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # ------------------------------------------------------------------
     print()
     print("=" * 80)
-    print(f"Wf-361-B2 SUMMARY")
+    print("Wf-361-B2 SUMMARY")
     print(
         f"  m6_kappa baseline mean : {baseline_mean:.4f} "
         f"(Wf-325D MEASURED={WF_325D_MEASURED_BASELINE:.4f}, "
@@ -935,9 +935,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"(ceiling_break={ceiling_break})"
     )
     print(
-        f"  tests_status              : 3 NEW tests in "
-        f"test_wf361b2_m6_kappa_neural_ode.py (ode_function / "
-        f"ode_solver / backward_compat)"
+        "  tests_status              : 3 NEW tests in "
+        "test_wf361b2_m6_kappa_neural_ode.py (ode_function / "
+        "ode_solver / backward_compat)"
     )
 
     return 0

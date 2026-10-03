@@ -660,7 +660,7 @@ def _write_report(out_dir, aggregate, per_metal, vina_records, args) -> None:
     lines = [
         "# Wf-264 — CFM Property Panel on Wf-188 Generated Molecules",
         "",
-        f"**Date**: 2026-09-28",
+        "**Date**: 2026-09-28",
         f"**Source data**: `{aggregate['data_path']}`",
         f"**Total molecules scored**: {aggregate['n_total']} "
         f"(parse fail = {aggregate['n_parse_fail']})",
@@ -763,11 +763,11 @@ def _write_report(out_dir, aggregate, per_metal, vina_records, args) -> None:
         "",
         "## §5 Files emitted",
         "",
-        f"- `aggregate.json` — global aggregates (SA / QED / Vina summaries)",
+        "- `aggregate.json` — global aggregates (SA / QED / Vina summaries)",
         f"- `per_molecule.json` — {aggregate['n_total']} rows (smi, metal, sa, qed)",
-        f"- `per_metal.json` — per-metal SA + QED summaries (n=5 metals)",
-        f"- `per_pocket.json` — Vina per-pocket records (if Vina run)",
-        f"- `panel_report.md` — this file",
+        "- `per_metal.json` — per-metal SA + QED summaries (n=5 metals)",
+        "- `per_pocket.json` — Vina per-pocket records (if Vina run)",
+        "- `panel_report.md` — this file",
         "",
         "## §6 Acceptance gates (this run)",
         "",
@@ -776,7 +776,7 @@ def _write_report(out_dir, aggregate, per_metal, vina_records, args) -> None:
         f"- **G3_vina_per_pocket**: ✅ "
         f"{vina.get('n_docked', 0)}/{vina.get('n_attempted', 0)} "
         f"docked ok on {args.vina_pocket}",
-        f"- **G4_207_section9_updated**: ✅ (TODO-207 §9.6.1 updated with MEASURED SA+QED+Vina)",
+        "- **G4_207_section9_updated**: ✅ (TODO-207 §9.6.1 updated with MEASURED SA+QED+Vina)",
         f"- **G5_report_path**: ✅ `{out_dir}/panel_report.md`",
         "",
     ]

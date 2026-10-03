@@ -65,7 +65,7 @@ def test_per_cohort_r2_computed() -> None:
         ), f"r2_mean not numeric for {entry['cohort']}"
         assert (
             entry["r2_mean"] != 0.0
-        ), f"r2_mean exactly 0.0 (suspicious — verify upstream)"
+        ), "r2_mean exactly 0.0 (suspicious — verify upstream)"
         # Lift vs Wf-335-M2 baseline is computed (numerical field).
         assert "lift_vs_wf335_m2" in entry, "lift_vs_wf335_m2 missing"
         assert isinstance(

@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd

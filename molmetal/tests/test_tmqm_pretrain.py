@@ -23,9 +23,7 @@ Contract tests for the encoder-only pretrain pipeline:
 
 from __future__ import annotations
 
-import os
 import sys
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -40,7 +38,6 @@ from molmetal.scripts.pretrain_tmqm import (  # noqa: E402
     N_OX_BINS,
     OX_STATES,
     RegScaler,
-    TmQMDataset,
     TmqmPretrainModel,
     charge_to_bin,
     load_tmqm,

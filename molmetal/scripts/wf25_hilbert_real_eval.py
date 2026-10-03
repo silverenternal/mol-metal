@@ -523,7 +523,7 @@ def main() -> int:
         if rel.exists():
             metalcytotox_csv = rel
 
-    print(f"Wf-25 Phase 1 — Hilbert-ASTSR real evaluation")
+    print("Wf-25 Phase 1 — Hilbert-ASTSR real evaluation")
     print(f"  platinai_csv     = {platinai_csv}")
     print(f"  metalcytotox_csv = {metalcytotox_csv}")
     print(f"  output           = {out_dir}")

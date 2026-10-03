@@ -407,7 +407,7 @@ def _build_row(item: dict, cell_lines_data: List[dict]) -> dict:
     coverage_flags = {}
     for line in TARGET_CELL_LINES:
         if line == "A2780cis":
-            coverage_flags[f"has_a2780cis"] = int(
+            coverage_flags["has_a2780cis"] = int(
                 any(
                     "A2780cis" == cn or "A2780cis" in (cn or "")
                     for cn in cell_line_names
@@ -882,7 +882,7 @@ def main() -> int:
         )
     else:
         print(
-            f"=== Wf-295B: MB-Finder real-label loader (Strategy S7, Wf-292D top-1) ==="
+            "=== Wf-295B: MB-Finder real-label loader (Strategy S7, Wf-292D top-1) ==="
         )
     print(f"Source: {MB_API_BASE}")
     if stratified:

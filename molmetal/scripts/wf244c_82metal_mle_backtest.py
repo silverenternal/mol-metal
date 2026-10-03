@@ -29,10 +29,9 @@ import csv
 import json
 import os
 from collections import Counter, defaultdict
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from molmetal.molmetal_lam.reactions.rate_predictor import (
-    LITERATURE_YIELDS,
     predict_yield,
     train_rate_predictor,
 )

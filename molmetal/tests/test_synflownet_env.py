@@ -25,7 +25,7 @@ Run with::
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from typing import List
 
 import pytest
 from rdkit import Chem

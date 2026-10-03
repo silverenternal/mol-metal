@@ -44,7 +44,6 @@ import math
 import sys
 from pathlib import Path
 
-import pytest
 import torch
 
 # Ensure the project root is on sys.path so the ``molmetal`` package
@@ -62,12 +61,9 @@ from molmetal.scripts.wf341c3_shortcut_ema import (  # noqa: E402
     DEFAULT_EMA_HALFLIFE_KIMG,
     DEFAULT_HIDDEN_DIM,
     DEFAULT_N_ATOMS,
-    DEFAULT_N_STEPS,
     DEFAULT_SHORTCUT_P_SELF,
     DEFAULT_SHORTCUT_WEIGHT,
-    REPORT_DIR,
     STATUS_PASS,
-    ShortcutEMABenchSummary,
     TinyVelocityField,
     bench_shortcut_ema,
     linear_path_sample,

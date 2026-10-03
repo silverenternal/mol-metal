@@ -38,7 +38,6 @@ import re
 import subprocess
 from pathlib import Path
 
-import pytest
 
 ROOT = Path("/home/hugo/codes/mol-metal")
 FULL_LAUNCHER = ROOT / "scripts" / "launch_wf264_cfm_property_panel.sh"

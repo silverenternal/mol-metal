@@ -727,8 +727,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "# Wf-170 chemprop v2 on real DrugOOD IC50 (paper §4.1)",
         "",
         f"**Date:** {time.strftime('%Y-%m-%d')}  ",
-        f"**Data:** DrugOOD lbap_core_ic50 (assay / scaffold / size) — 95236 rows per config  ",
-        f"**Model:** chemprop v2 AtomMessagePassing + SumAggregation + BinaryClassificationFFN  ",
+        "**Data:** DrugOOD lbap_core_ic50 (assay / scaffold / size) — 95236 rows per config  ",
+        "**Model:** chemprop v2 AtomMessagePassing + SumAggregation + BinaryClassificationFFN  ",
         f"**Backbone:** hidden={args.hidden}, depth={args.depth} (chemprop v2 defaults)  ",
         f"**Recipe:** {args.epochs} epochs x batch {args.batch} x lr {args.lr}  "
         f"x train_max_per_epoch={args.train_max_per_epoch}  ",

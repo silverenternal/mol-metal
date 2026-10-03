@@ -11,12 +11,8 @@ from __future__ import annotations
 import argparse
 import csv
 import logging
-import os
 import sys
-import tarfile
-import tempfile
 import urllib.request
-import zipfile
 from pathlib import Path
 
 

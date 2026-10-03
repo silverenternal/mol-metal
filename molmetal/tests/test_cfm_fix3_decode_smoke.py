@@ -42,7 +42,6 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent

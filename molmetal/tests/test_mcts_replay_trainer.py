@@ -28,7 +28,6 @@ Run via::
 from __future__ import annotations
 
 import math
-import os
 import sys
 
 import numpy as np
@@ -49,17 +48,11 @@ try:
     from molmetal_lam.search_alg.mcts_replay_buffer import (
         MCTSReplayBuffer,
         MCTSReplayEntry,
-        MCTSReplayError,
     )
     from molmetal_lam.search_alg.mcts_replay_trainer import (
         DEFAULT_FEATURE_DIM,
-        DEFAULT_LR,
         DEFAULT_N_ACTIONS,
-        DEFAULT_VALUE_CLIP,
-        DEFAULT_VALUE_LOSS_WEIGHT,
-        DEFAULT_WEIGHT_DECAY,
         HASH_DIM,
-        LOG_PI_CLIP,
         LinearPolicyValueNet,
         MCTSReplayLearner,
         MCTSReplayTrainerError,
@@ -72,17 +65,11 @@ except Exception:  # pragma: no cover - import path fallback
     from molmetal.molmetal_lam.search_alg.mcts_replay_buffer import (  # type: ignore
         MCTSReplayBuffer,
         MCTSReplayEntry,
-        MCTSReplayError,
     )
     from molmetal.molmetal_lam.search_alg.mcts_replay_trainer import (  # type: ignore
         DEFAULT_FEATURE_DIM,
-        DEFAULT_LR,
         DEFAULT_N_ACTIONS,
-        DEFAULT_VALUE_CLIP,
-        DEFAULT_VALUE_LOSS_WEIGHT,
-        DEFAULT_WEIGHT_DECAY,
         HASH_DIM,
-        LOG_PI_CLIP,
         LinearPolicyValueNet,
         MCTSReplayLearner,
         MCTSReplayTrainerError,

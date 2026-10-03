@@ -336,7 +336,6 @@ def test_backward_compat_no_flag(mod):
     chemprop+PLL extractor."""
     try:
         from molmetal.molmetal_lam.reward.chemprop_pll_integration import (
-            ChempropPLLFeatureExtractor,
             wire_chemprop_pll_recovery,
             WF333V4_MEASURED_CV_R2,
             WF325D_MEASURED_BASELINE,

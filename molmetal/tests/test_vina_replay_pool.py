@@ -39,7 +39,6 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import tempfile
 from pathlib import Path
 from typing import List
@@ -51,11 +50,8 @@ try:
     from molmetal.molmetal_lam.sbdd_env.vina_replay_pool import (  # type: ignore
         DEFAULT_EMBED_DIM,
         DEFAULT_POCKET_DIM,
-        MIN_POOL_FOR_SURROGATE,
         MLP_HIDDEN,
-        RIDGE_ALPHA,
         ReplayProbe,
-        RevealedRecord,
         VinaReplayNode,
         VinaReplayPool,
         VinaReplaySimulator,

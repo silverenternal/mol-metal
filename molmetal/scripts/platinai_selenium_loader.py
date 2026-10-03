@@ -445,7 +445,7 @@ def main() -> int:
                 final_source_bytes = len(driver.page_source)
             except Exception:
                 pass
-            print(f"[3/4] Extracting supplementary links...")
+            print("[3/4] Extracting supplementary links...")
             suppl_links = _extract_supplementary_links(driver)
             print(f"      Found {len(suppl_links)} xlsx/supp links:")
             for sl in suppl_links[:5]:
@@ -512,7 +512,7 @@ def main() -> int:
     print(f"suppl_links_count:   {len(suppl_links)}")
     print(f"n_rows_parsed:       {len(rows)}")
     print(f"n_per_cell_ic50:     {n_per_cell_ic50}")
-    print(f"user_ok_status:      NOT_REQUESTED (workflow harness auto-launched)")
+    print("user_ok_status:      NOT_REQUESTED (workflow harness auto-launched)")
 
     meta = {
         "status": "OK"

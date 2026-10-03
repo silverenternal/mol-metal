@@ -27,13 +27,10 @@ import importlib.util as importlib_util
 import json
 import os
 import re
-import shutil
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")
 DASHBOARD_SH = PROJECT_ROOT / "scripts" / "gpu_launch_dashboard.sh"

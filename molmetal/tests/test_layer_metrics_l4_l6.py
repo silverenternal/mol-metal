@@ -7,7 +7,6 @@ state of the corresponding module.
 
 from __future__ import annotations
 
-import pytest
 
 from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 from molmetal_lam.reactions.beta_reductions import (
@@ -23,14 +22,8 @@ from molmetal_lam.reactions.rate_predictor import (
 )
 from molmetal_lam.tile_lib.click_tiles import (
     STANDARD_12_TILES,
-    STANDARD_14_TILES,
-    THIOL_TILES,
     build_click_tile,
     l6_metrics,
-)
-from molmetal_lam.tile_lib.library import (
-    build_tile_library,
-    l6_library_metrics,
 )
 
 

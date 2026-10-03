@@ -47,7 +47,6 @@ import argparse
 import json
 import os
 import subprocess
-import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
@@ -392,18 +391,18 @@ def write_synthesis(summary: dict, attribution: dict) -> None:
         "2. **Wasserstein pIC50 regularization** (Wf-123 P1 M1)",
         "3. **L2 guard** (grad-norm clip at 5.0)",
         "",
-        f"The aggregate lift (+0.049, 0.7123 → 0.7613 on Ru seed=0 30ep h=128) was",
+        "The aggregate lift (+0.049, 0.7123 → 0.7613 on Ru seed=0 30ep h=128) was",
         "an **aggregate** measurement — paper §3 cannot honestly attribute it to",
         "per-lever percentages without this ablation.",
         "",
         "## §1 Acceptance gates",
         "",
-        f"| Gate | Requirement | Result |",
-        f"|---|---|---|",
+        "| Gate | Requirement | Result |",
+        "|---|---|---|",
         f"| G1 | All 8 permutations complete | {summary['n_configs_completed']}/{summary['n_configs_planned']} |",
         f"| G2 | Per-lever lift attribution table | {'PASS' if attribution.get('single_lever_lift') else 'FAIL'} |",
-        f"| G3 | Aggregate +0.049 attributed to levers | see §4 |",
-        f"| G4 | Honest framing | see §6 |",
+        "| G3 | Aggregate +0.049 attributed to levers | see §4 |",
+        "| G4 | Honest framing | see §6 |",
         "",
         "## §2 Ablation matrix (2^3 = 8 configs)",
         "",
@@ -696,14 +695,14 @@ def main(argv: list[str] | None = None) -> int:
         flush=True,
     )
     print(
-        f"[wf216] target: full 2^3 = 8 unique permutations "
-        f"(1 baseline + 3 single + 3 two-way + 1 three-way)",
+        "[wf216] target: full 2^3 = 8 unique permutations "
+        "(1 baseline + 3 single + 3 two-way + 1 three-way)",
         flush=True,
     )
     print(
-        f"[wf216] note: task spec 1+3+7=11 has overlap "
-        f"(the 7 combinations include the 3 single-lever runs); "
-        f"we run each unique config once",
+        "[wf216] note: task spec 1+3+7=11 has overlap "
+        "(the 7 combinations include the 3 single-lever runs); "
+        "we run each unique config once",
         flush=True,
     )
 

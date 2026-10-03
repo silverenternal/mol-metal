@@ -47,7 +47,6 @@ from __future__ import annotations
 import csv
 import json
 import math
-import os
 import sys
 import time
 from pathlib import Path
@@ -61,15 +60,12 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from molmetal.molmetal_lam.reward.pocket_closure_bias import (
-    ALL_BIAS_RULES,
     FIVE_CLICK_RULES,
     SUPPORTED_POCKETS,
     closure_bounded_smiles_generation,
-    per_pocket_pharmacophore_lookup,
     pocket_specific_closure_bias,
 )
 from molmetal.molmetal_lam.reward.wasserstein_loss import (
-    WassersteinConfig,
     wasserstein_decay_check,
     wasserstein_loss,
     wasserstein_pic50_loss,

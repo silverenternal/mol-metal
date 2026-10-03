@@ -158,11 +158,11 @@ def main() -> int:
         # so the user knows the gate cannot run without the
         # chemoinformatics stack.  Exit 0 with a sentinel output
         # so callers do not treat this as a crash.
-        print(f"engine: unavailable")
-        print(f"n_tested: 0")
-        print(f"n_passed: 0")
-        print(f"pass_rate: 0.0000")
-        print(f"mean_buyability_score: 0.0000")
+        print("engine: unavailable")
+        print("n_tested: 0")
+        print("n_passed: 0")
+        print("pass_rate: 0.0000")
+        print("mean_buyability_score: 0.0000")
         print(f"error: missing dependency ({exc})", file=sys.stderr)
         return 0
     finally:

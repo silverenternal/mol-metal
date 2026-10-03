@@ -40,7 +40,6 @@ All tests are CPU-only and import the script as a Python module
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
 import sys
@@ -269,7 +268,6 @@ def test_g4_n_distinct_tests_at_least_three():
     counting the top-level ``def test_*`` functions defined above this
     one.
     """
-    import inspect
 
     here = Path(__file__).resolve()
     src = here.read_text(encoding="utf-8")

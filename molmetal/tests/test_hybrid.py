@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 import torch
-import torch.nn as nn
 
-from molmetal.data.featurize import GraphFeaturizer
 from molmetal.models.dmpnn import DirectedMPNN, MPNNConfig
-from molmetal.models.egnn_predict import EGNNPredictor, EGNNPredictorConfig
 from molmetal.models.fusion import FusionMLP
 from molmetal.models.loss import MetalCytotoxLoss
 from molmetal.models.metal_hybrid import MetalHybridConfig, MetalHybridModel

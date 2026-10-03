@@ -41,11 +41,9 @@ intended feedback loop.
 from __future__ import annotations
 
 import ast
-import re
 from pathlib import Path
 from typing import List, Tuple
 
-import pytest
 
 TESTS_DIR = Path(__file__).resolve().parent
 

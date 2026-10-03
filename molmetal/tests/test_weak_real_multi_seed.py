@@ -22,7 +22,7 @@ import json
 import statistics
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List
 from unittest import mock
 
 import pytest
@@ -116,10 +116,10 @@ def test_parse_args_rejects_unknown_metric() -> None:
         _parse_args(["--metrics", "bogus"])
 
 
-def test_parse_args_cuda_visible_devices_default_is_gpu1() -> None:
-    """Spec: GPU-1 RTX 5090 only — leave Blackwell sm_120 free."""
+def test_parse_args_cuda_visible_devices_default_is_gpu0() -> None:
+    """Spec: GPU 0 (RTX PRO 6000 Blackwell) — the project-wide default."""
     args = _parse_args([])
-    assert args.cuda_visible_devices == "1"
+    assert args.cuda_visible_devices == "0"
 
 
 # ---------------------------------------------------------------------------

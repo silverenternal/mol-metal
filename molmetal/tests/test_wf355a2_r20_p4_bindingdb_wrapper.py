@@ -20,7 +20,6 @@ import os
 import subprocess
 from pathlib import Path
 
-import pytest
 
 ROOT = Path("/home/hugo/codes/mol-metal")
 WRAPPER = ROOT / "scripts" / "launch_wf310e_r20_p4_bindingdb_1.07M.sh"
@@ -85,7 +84,7 @@ def test_user_ok_gate_enforced():
     # Gate refusal message
     assert (
         "USER_OK" in proc.stderr or "USER_OK" in proc.stdout
-    ), f"USER_OK gate refusal message missing from output"
+    ), "USER_OK gate refusal message missing from output"
 
 
 # ---------------------------------------------------------------------------

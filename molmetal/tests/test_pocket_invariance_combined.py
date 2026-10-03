@@ -22,7 +22,7 @@ pockets.  The combined test asserts:
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Dict
 
 import pytest
 

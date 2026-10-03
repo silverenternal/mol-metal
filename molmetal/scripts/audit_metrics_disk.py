@@ -559,7 +559,7 @@ def write_synthesis(per_metric: Dict[str, Any]) -> Path:
     md_lines.append("# Wf-87 Phase 1 — Per-Metric Disk Audit")
     md_lines.append("")
     md_lines.append(f"**Date**: {per_metric['date']}  ")
-    md_lines.append(f"**Workflow**: Wf-87 Phase 1 — per-metric disk audit  ")
+    md_lines.append("**Workflow**: Wf-87 Phase 1 — per-metric disk audit  ")
     md_lines.append(f"**Constraint**: {per_metric['constraint']}  ")
     md_lines.append("")
     md_lines.append("## 1. Aggregate")

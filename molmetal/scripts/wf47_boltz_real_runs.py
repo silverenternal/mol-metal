@@ -62,7 +62,6 @@ import json
 import logging
 import math
 import os
-import statistics
 import subprocess
 import sys
 import time
@@ -70,7 +69,7 @@ import traceback
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
 # Path bootstrap — mirror every Wf-3x / Wf-4x bench.

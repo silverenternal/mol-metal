@@ -260,7 +260,6 @@ def _benchmark_one(
     wall-time + memory deltas.
     """
     from molmetal_lam.lam_chem.closure import (
-        ProductiveSpace,
         closure_theorem,
     )
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm

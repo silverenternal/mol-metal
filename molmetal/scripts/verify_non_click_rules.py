@@ -38,10 +38,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT), str(ROOT / "molmetal")]
 
 from molmetal.molmetal_lam.lam_chem.non_click_medchem_rules import (
-    BocProtectionRule,
     NonClickMedChemRegistry,
-    PeptideBondRule,
-    ReductiveAminationRule,
     register_non_click_rules,
 )
 

@@ -25,13 +25,12 @@ from pathlib import Path
 import pytest
 
 from molmetal.scoring import (
-    AdapterUnavailable,
     PolicyEntry,
     REGISTRY,
     ROUTING_POLICY,
     available_metrics,
 )
-from molmetal.scoring.score_any import score_any, tool_for_metric
+from molmetal.scoring.score_any import score_any
 
 
 # ---------------------------------------------------------------------------

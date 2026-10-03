@@ -39,7 +39,7 @@ Backward-compat tests:
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 import numpy as np
 import pytest
@@ -47,10 +47,6 @@ import pytest
 from molmetal.baselines.dmpnn import SPLITTER_FACTORIES
 from molmetal.data.splits import (
     AssayGroupSplitter,
-    GroupIdSplitter,
-    LigandDeduplicatedSplitter,
-    RandomSplitter,
-    ScaffoldSplitter,
     SizeGroupSplitter,
 )
 

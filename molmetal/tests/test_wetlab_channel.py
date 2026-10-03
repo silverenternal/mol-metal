@@ -28,10 +28,8 @@ import json
 import math
 import subprocess
 import sys
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict
 
 import pytest
 

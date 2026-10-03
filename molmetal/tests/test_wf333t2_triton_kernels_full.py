@@ -84,8 +84,6 @@ from molmetal.adapters.flow_matching_lipman._reference.fused_smiles_featurize im
     fused_smiles_featurize as _fused_smiles,
     pytorch_reference as _pt_smiles,
     _FEATURE_DIM,
-    _NUM_SYMBOLS,
-    symbol_to_idx,
 )
 
 

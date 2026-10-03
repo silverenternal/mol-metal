@@ -32,7 +32,6 @@ MEASURED anchors (per on-disk JSON — Sep 28 2026):
 
 from __future__ import annotations
 
-import json
 import math
 import sys
 from pathlib import Path

@@ -248,7 +248,7 @@ def _write_markdown(
     lines.append("")
     lines.append(f"**Date**: {payload['timestamp_utc']}  ")
     lines.append(f"**Dataset**: `{payload['dataset']}`  ")
-    lines.append(f"**Pipeline**: 5-step R18 orchestrator (32 ship-modules chained)  ")
+    lines.append("**Pipeline**: 5-step R18 orchestrator (32 ship-modules chained)  ")
     lines.append(f"**N samples per metal** (target): {n_per}  ")
     lines.append(f"**Metals**: {', '.join(metals)}  ")
     lines.append("")
@@ -402,7 +402,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     # takes a few seconds and is shared across all metals.
     from molmetal.scripts.r18_pipeline_orchestrator import R18Pipeline
 
-    print(f"[bench] Initialising R18Pipeline ...")
+    print("[bench] Initialising R18Pipeline ...")
     t_init_0 = time.perf_counter()
     pipeline = R18Pipeline()
     t_init = time.perf_counter() - t_init_0

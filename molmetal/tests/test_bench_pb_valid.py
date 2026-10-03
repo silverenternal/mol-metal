@@ -164,7 +164,6 @@ def test_select_candidates_caps() -> None:
     """select_candidates(..., n=2) returns the first 2 candidates."""
     from bench_pb_valid import (  # type: ignore
         DEFAULT_CANDIDATES_TXT,
-        Candidate,
         load_default_candidates,
         select_candidates,
     )

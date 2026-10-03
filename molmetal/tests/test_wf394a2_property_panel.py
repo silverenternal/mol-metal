@@ -54,7 +54,6 @@ if _loader_name not in sys.modules:
     _mod = _iu_loader.module_from_spec(_spec)
     sys.modules[_loader_name] = _mod
     _spec.loader.exec_module(_mod)
-    from pathlib import Path as _P
 
     _mod._reference_root = (
         REPO_ROOT / "molmetal" / "references" / "flow_matching" / "flow_matching"

@@ -29,7 +29,6 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from molmetal.scripts.wf404a1_vina_param_tuning_scaffold import (
-    BASE_KCAL_PER_LEVEL_WF404A1,
     COHORT_POCKETS_WF333V3,
     PARAM_GRID_4LEVEL,
     aggregate_per_level,

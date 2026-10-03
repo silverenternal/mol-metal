@@ -9,7 +9,6 @@ Re-compute RMSD for all 5 pockets from existing pose PDBQT files.
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -315,7 +314,7 @@ def main():
         }
         with open(WORKDIR / "summary.json", "w") as f:
             json.dump(summary, f, indent=2)
-        print(f"\n=== FINAL ===")
+        print("\n=== FINAL ===")
         print(f"aggregate median: {overall:.4f}A across {len(aggregate)} pockets")
         print(f"per-pocket medians: {aggregate}")
         print(f"n_pass_2.5A: {n_pass}/{len(aggregate)}")

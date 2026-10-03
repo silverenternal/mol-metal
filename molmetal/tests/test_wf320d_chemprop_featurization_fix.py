@@ -204,9 +204,6 @@ class TestIntegrationWithPerMetalSingletask:
         """Test 8: PerEpochFeatureCache is importable from the wf320d module."""
         from molmetal.scripts.wf320d_featurization_fix import (
             PerEpochFeatureCache,
-            FastAtomFeaturizer,
-            FastBondFeaturizer,
-            CacheStats,
             ATOM_FDIM_DEFAULT,
             BOND_FDIM_DEFAULT,
         )
@@ -259,7 +256,6 @@ class TestTimingBenchmark:
         pytest.importorskip("chemprop")
         pytest.importorskip("torch")
         from chemprop.data import BatchMolGraph
-        from chemprop.data.molgraph import MolGraph
         from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
 
         import torch

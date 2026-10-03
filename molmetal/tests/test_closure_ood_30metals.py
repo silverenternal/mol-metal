@@ -41,11 +41,9 @@ Run with::
 
 from __future__ import annotations
 
-import csv
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
 
 import pytest
 
@@ -68,18 +66,14 @@ from molmetal.scripts.bench_closure_ood_30metals import (  # noqa: E402
     DEFAULT_MAX_PRODUCTS,
     DEFAULT_N_METALS,
     DEFAULT_N_SAMPLES,
-    DEFAULT_OUTPUT_DIR,
     DEFAULT_PLATINAI_CSV,
     DEFAULT_METALCYTO_CSV,
     DEFAULT_TMQM_CSV,
     DEFAULT_SAMPLE_SEED,
-    DEFAULT_SEEDS,
     DEFAULT_TANIMOTO_THRESHOLD,
     FALLBACK_METALCYTO_CSV,
     GATE_TARGET_PER_METAL_REACHABILITY,
     HONEST_NEGATIVE_THRESHOLD,
-    METAL_Z,
-    PARTNER_SMILE_LIST,
     WF41_AU_REACHABILITY,
     WF41_IR_REACHABILITY,
     WF41_METALCYTO_MACRO_REACHABILITY,
@@ -91,15 +85,8 @@ from molmetal.scripts.bench_closure_ood_30metals import (  # noqa: E402
     WF41_RH_REACHABILITY,
     WF41_RU_REACHABILITY,
     _aggregate_per_metal,
-    _benchmark_one,
     _filter_ood_subset,
-    _load_click_rules,
-    _load_metal_samples,
-    _load_partner_terms,
     _load_tanimoto_protocol,
-    _load_tmqm_train_pool,
-    _memory_mb,
-    _utcnow_iso,
     run_benchmark,
     save_per_metal,
     write_synthesis,

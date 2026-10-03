@@ -37,7 +37,6 @@ import re
 import subprocess
 from pathlib import Path
 
-import pytest
 
 ROOT = Path("/home/hugo/codes/mol-metal")
 WRAPPER = ROOT / "scripts" / "launch_wf124_p3_g5.sh"

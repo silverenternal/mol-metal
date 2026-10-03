@@ -43,7 +43,6 @@ from __future__ import annotations
 
 import math
 
-import numpy as np
 import pytest
 
 from molmetal_lam.search_alg.learned_prior import (

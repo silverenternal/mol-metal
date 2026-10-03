@@ -308,7 +308,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     env_dir = Path(args.env_dir)
 
-    print(f"[platinai-4cell] Collecting Pt SMILES from sources...", flush=True)
+    print("[platinai-4cell] Collecting Pt SMILES from sources...", flush=True)
     src_platinai = _collect_from_platinai_5k()
     src_known = _collect_from_known_pt_drugs()
     src_tmqm = _collect_from_tmqm(env_dir)

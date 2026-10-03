@@ -29,9 +29,7 @@ from __future__ import annotations
 import csv
 import json
 import logging
-import os
 import sys
-import tempfile
 from dataclasses import asdict as _asdict
 from pathlib import Path
 
@@ -44,8 +42,6 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from molmetal.scripts.lambda_100x3_cpu_mock import (  # noqa: E402
-    DEFAULT_MANIFEST,
-    DEFAULT_OUTPUT_DIR,
     GPU_TARGET_CELLS,
     METRIC_KEYS,
     GPUExtensionPlan,
@@ -54,7 +50,6 @@ from molmetal.scripts.lambda_100x3_cpu_mock import (  # noqa: E402
     load_manifest_pocket_ids,
     synthetic_pocket_pool,
     _aggregate_metrics,
-    _deterministic_mock_cell,
     _hashselect,
     _project_to_full_sweep,
     _signed_unit_hash,

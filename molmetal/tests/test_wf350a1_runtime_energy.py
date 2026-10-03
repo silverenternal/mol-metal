@@ -249,7 +249,7 @@ def test_gate_p1_runtime_energy_report_schema_validity(
         per_gpu, list
     ), f"per_gpu is not a list: type={type(per_gpu).__name__}"
     assert len(per_gpu) >= 1, (
-        f"per_gpu has 0 entries (expected >= 1 on a host with " f">= 1 NVIDIA GPU)"
+        "per_gpu has 0 entries (expected >= 1 on a host with " ">= 1 NVIDIA GPU)"
     )
     for i, gpu in enumerate(per_gpu):
         assert isinstance(

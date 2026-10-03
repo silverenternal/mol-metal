@@ -330,4 +330,4 @@ def test_skill_ecosystem_audit_wf321b_status():
     # R20 coverage line should be present
     assert (
         "R20 coverage = 4/4" in text or "R20 4/4" in text
-    ), f"Wf-321B audit missing R20 4/4 coverage marker"
+    ), "Wf-321B audit missing R20 4/4 coverage marker"

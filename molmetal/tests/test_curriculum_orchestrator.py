@@ -19,17 +19,14 @@ side-by-side A/B and lives in
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import pandas as pd
-import pytest
 
 try:
     from molmetal.replay.curriculum.curriculum import (
         RSICurriculum,
         CurriculumConfig,
-        CurriculumStepReport,
     )
     from molmetal.replay.curriculum import (
         LEDGER_ROOT_DEFAULT,
@@ -39,7 +36,6 @@ except Exception:
     from molmetal.replay.curriculum import (  # type: ignore
         RSICurriculum,
         CurriculumConfig,
-        CurriculumStepReport,
         LEDGER_ROOT_DEFAULT,
         PREDICTOR_INPUT_DIM,
     )

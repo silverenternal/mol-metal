@@ -27,7 +27,6 @@ import time
 from pathlib import Path
 
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score
 from rdkit import Chem
 from rdkit.Chem import AllChem

@@ -30,11 +30,8 @@ Honest framing (party-twenty-spirit §3.5):
 
 from __future__ import annotations
 
-import json
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict
 
 import pytest
 
@@ -43,7 +40,6 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from molmetal.scripts.wf380a2_m2_r2_per_cohort import (  # noqa: E402
-    COHORT_SIZES,
     load_config,
     per_cohort_pipeline,
     select_features,

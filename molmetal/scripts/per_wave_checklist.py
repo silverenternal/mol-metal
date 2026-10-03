@@ -51,13 +51,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import re
 import sys
 from datetime import datetime, timezone
-from glob import glob as _glob
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from molmetal.scripts.wf386a3_atomic_write import (

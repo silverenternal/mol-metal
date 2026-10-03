@@ -27,7 +27,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import List
 
 import numpy as np
 import pytest
@@ -50,17 +49,14 @@ from molmetal.scripts.diag_hilbert_astsr_param_sweep import (  # noqa: E402
     ASTR_SCALE_SWEEP,
     INIT_MODE_SWEEP,
     STABLE_R2_THRESHOLD,
-    PRED_CLIP,
     make_synthetic,
     train_test_split,
     compute_r2,
     hilbert_feature_map,
     run_hilbert_sweep,
-    run_astr_sweep,
     l2_axis_sweep,
     astr_axis_sweep,
     init_axis_sweep,
-    write_synthesis,
 )
 
 

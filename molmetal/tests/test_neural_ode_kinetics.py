@@ -56,7 +56,6 @@ from molmetal.molmetal_lam.reward.neural_ode_kinetics import (
     HYDROLYSIS_CASCADE_RATE_CONSTANTS,
     KINETIC_REGIME,
     KineticsTrajectory,
-    LIGAND_EXCHANGE_RATE_CONSTANTS,
     MULTI_TASK_LOSS_WEIGHTS,
     MultiTaskLoss,
     REDOX_POTENTIALS_V,

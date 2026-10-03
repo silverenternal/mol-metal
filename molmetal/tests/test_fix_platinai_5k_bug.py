@@ -34,10 +34,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from molmetal.scripts.fix_platinai_5k_bug import (  # noqa: E402
-    EXPECTED_PLATINAI_4CELL_CELLS,
     EXPECTED_PLATINAI_4CELL_ENTRY_COUNT,
     EXPECTED_RDKIT_2D_DESCRIPTORS,
-    PER_DATASET_SUMMARY,
     build_per_dataset_summary,
 )
 

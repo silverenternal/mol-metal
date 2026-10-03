@@ -339,7 +339,7 @@ def _run_one_ablation(
             str(abl_out.relative_to(_REPO_ROOT)),
         ]
         print(
-            f"[ablation_runner] === BASELINE (no ablation) ===",
+            "[ablation_runner] === BASELINE (no ablation) ===",
             flush=True,
         )
         print(

@@ -27,7 +27,6 @@ This is a static-only guard.  If you want to verify the demo actually
 
 from __future__ import annotations
 
-import os
 import re
 import stat
 from pathlib import Path

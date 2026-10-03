@@ -12,16 +12,12 @@ upstream code paths (FlowDock / FLOWR / REINVENT4 plugins).
 
 from __future__ import annotations
 
-import pytest
 
 from molmetal.domain import Complex, Molecule, Pocket
 from molmetal.ports import (
     DockingConfig,
-    DockingEngine,
     GenerationConfig,
-    MoleculeGenerator,
     PropertyPrediction,
-    ScoringFunction,
 )
 from molmetal_lam.sbdd_env.flowdock_adapter import (
     FlowDockReferenceAdapter,

@@ -30,11 +30,8 @@ import numpy as np
 import torch
 
 from molmetal.adapters.flow_matching_lipman import LipmanFlowMatchingAdapter
-from molmetal.adapters.rdkit_predictor import RDKitPropertyPredictor
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 from molmetal.domain import Molecule
-from molmetal.ports import GenerationConfig
-from molmetal.utils.device import verify_rocm_active
 
 
 # GenerationConfig is frozen and has no `n_atoms` field; the adapter

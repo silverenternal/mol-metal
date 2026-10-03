@@ -219,10 +219,6 @@ def test_lambda_astsr_score_clipped_to_neg_inf_for_exploding_ast() -> None:
     """
     import random
 
-    from molmetal.molmetal_lam.reward.lambda_astsr import (
-        LambdaAST,
-        default_feature_columns,
-    )
 
     rng_a = random.Random(0)
     ast = random_ast(rng_a, ("a", "b"), max_depth=2)

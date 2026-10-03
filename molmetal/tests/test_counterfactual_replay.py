@@ -18,7 +18,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 # Ensure project root is importable when tests run from any cwd.
@@ -26,7 +25,6 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from molmetal.reports.dream_rsi_replay_pool.counterfactual_replay import (
-    MIN_COUNTERFACTUAL_POOL,
     CounterfactualReplay,
     CounterfactualReport,
     CounterfactualRow,

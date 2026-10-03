@@ -29,6 +29,13 @@ import sys
 from pathlib import Path
 from typing import List, Tuple
 
+# Wf-424-A4: canonical atomic primitive, bound at module scope for
+# ``migrate_one`` (the guard below re-checks importability at call time).
+try:
+    from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
+except ImportError:  # pragma: no cover — fallback when running as standalone
+    atomic_write_file = None  # type: ignore[assignment]
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Import block template (idempotent: _WF424_HAS_ATOMIC guard prevents double-write).

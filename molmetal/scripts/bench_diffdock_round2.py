@@ -64,7 +64,6 @@ Expected pass criteria:
 from __future__ import annotations
 
 import argparse
-import dataclasses
 import hashlib
 import json
 import logging

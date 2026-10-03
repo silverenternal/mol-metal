@@ -46,7 +46,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Dict
 
 import pytest
 
@@ -62,12 +62,8 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 
-from molmetal.scripts import bench_ood_per_element  # noqa: E402
 from molmetal.scripts.bench_ood_per_element import (  # noqa: E402
-    DEFAULT_MAX_DEPTH,
-    DEFAULT_MAX_PRODUCTS,
     DEFAULT_N_SAMPLES,
-    DEFAULT_OUTPUT_DIR,
     DEFAULT_SEEDS,
     DEFAULT_TANIMOTO_THRESHOLD,
     DBLOCK_ELEMENTS,
@@ -78,7 +74,6 @@ from molmetal.scripts.bench_ood_per_element import (  # noqa: E402
     _aggregate_per_element,
     _cross_element_correlation,
     _load_click_rules,
-    _load_partner_terms,
     _load_tanimoto_protocol,
     _load_tmqm_pool,
     _split_train_test,

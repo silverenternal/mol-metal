@@ -66,7 +66,6 @@ from __future__ import annotations
 
 import os
 import random
-import shutil
 import subprocess
 import sys
 import time
@@ -134,11 +133,9 @@ from molmetal.molmetal_lam.lam_chem.pt_click_compat import (
     CLICK_RULE_NAMES,
     COMPAT_MATRIX,
     SCAFFOLD_NAMES,
-    default_compatible_rules,
     detect_scaffold,
 )
 from molmetal.molmetal_lam.lam_chem.pt_metal_ligand_exchange import (
-    get_metal_ligand_exchange_matrix_patterns,
     register_metal_ligand_exchange_rules,
 )
 from molmetal.molmetal_lam.reward.lambda_astsr import (
@@ -149,12 +146,9 @@ from molmetal.molmetal_lam.sbdd_env.qed_scorer import qed_from_smiles
 from molmetal.molmetal_lam.sbdd_env.sa_score import sa_score_ertl
 from molmetal.molmetal_lam.sbdd_env.vina_adapter import (
     VinaDockingAdapter,
-    _have_meeko,
-    _have_vina,
 )
 from molmetal.molmetal_lam.search_alg.proof_search import (
     MCTSProofSearch,
-    SymbolicPrior,
 )
 from molmetal.ports import DockingConfig, GenerationConfig
 
@@ -167,7 +161,9 @@ from molmetal.ports import DockingConfig, GenerationConfig
 # imported ``molmetal.molmetal_lam.reactions.rule_registry`` separately
 # Python would materialise a SECOND instance with an empty _REGISTRY
 # and the post-registration count would silently disagree.
-import molmetal_lam  # noqa: E402
+# noqa kept deliberately: F401 (the import exists for module identity, not
+# for its names) + E402 (it must follow the molmetal.* import block above).
+import molmetal_lam  # noqa: E402, F401
 from molmetal_lam.molecules.closed_term import MoleculeClosedTerm  # noqa: E402
 from molmetal_lam.reactions.beta_reductions import ReactionRule  # noqa: E402
 from molmetal_lam.reactions.rule_registry import list_rules as list_rules_top  # noqa: E402

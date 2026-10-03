@@ -56,7 +56,7 @@ import csv
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import List
 
 import pytest
 
@@ -72,14 +72,12 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 
-from molmetal.scripts import bench_closure_ood  # noqa: E402
 from molmetal.scripts.bench_closure_ood import (  # noqa: E402
     DEFAULT_PLATINAI_CSV,
     DEFAULT_METALCYTO_CSV,
     DEFAULT_TMQM_CSV,
     DOMAIN_SPECS,
     PLATINAI_METALS,
-    METALCYTO_METALS,
     TMQM_METALS,
     _filter_ood_subset,
     _load_tanimoto_protocol,

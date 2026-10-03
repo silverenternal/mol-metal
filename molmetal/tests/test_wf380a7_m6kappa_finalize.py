@@ -23,7 +23,6 @@ Date: 2026-09-30.
 
 from __future__ import annotations
 
-import re
 import unittest
 from pathlib import Path
 

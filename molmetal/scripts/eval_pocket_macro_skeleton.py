@@ -36,7 +36,6 @@ import sys
 from typing import List
 
 import numpy as np
-import torch
 
 # Allow direct-script invocation (uv run python .../eval_pocket_macro_skeleton.py)
 # — the canonical r4_lambda_only_run.py pattern adds the project root.
@@ -50,9 +49,6 @@ from molmetal_lam.lam_chem.pocket_macro_inference import (
     DEFAULT_CHECKPOINT_PATH,
     DEFAULT_METADATA_PATH,
     HIDDEN_DIM,
-)
-from molmetal_lam.lam_chem.pocket_macro_skeleton import (
-    scaffold_class_from_target_name,
 )
 
 
@@ -103,7 +99,7 @@ def main() -> int:
     # ------------------------------------------------------------------
     # Embedding norms (the 32-d bridge for downstream integration)
     # ------------------------------------------------------------------
-    print(f"\n[3/4] 32-d embedding L2 norms (downstream bridge for warm_start.py):")
+    print("\n[3/4] 32-d embedding L2 norms (downstream bridge for warm_start.py):")
     embs = []
     for target in TEST_SET:
         emb = inference.get_embedding(target)
@@ -126,7 +122,7 @@ def main() -> int:
     # ------------------------------------------------------------------
     # Metadata sidecar (per-class accuracy, n_params sanity)
     # ------------------------------------------------------------------
-    print(f"\n[4/4] Training metadata (per-class accuracy):")
+    print("\n[4/4] Training metadata (per-class accuracy):")
     per_class = inference.scaffold_class_distribution()
     for cls in sorted(per_class.keys()):
         row = per_class[cls]

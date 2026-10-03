@@ -336,7 +336,6 @@ def _stage_quantum_semantics(smiles: str, prev: Optional[dict]) -> dict:
     import torch
     from molmetal.math_skills.quantum_semantics import (
         BetaReductionSymp,
-        PrimitiveAtomQuantum,
         SymplecticPoint,
         quantize_atom,
     )
@@ -356,7 +355,6 @@ def _stage_hochschild(smiles: str, prev: Optional[dict]) -> dict:
     import torch
     from molmetal.math_skills.hochschild_cohomology import (
         Cochain,
-        Differential,
         HochschildCohomology,
         mlc_algebra,
     )

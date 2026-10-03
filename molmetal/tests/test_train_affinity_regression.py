@@ -281,7 +281,6 @@ def test_platinai_dataset_shape() -> None:
     """``PlatinAIRegressionDataset.from_csv`` yields (N, 4) pIC50 + valid mask."""
     mod = _import_module()
     pytest.importorskip("rdkit")
-    from pathlib import Path
 
     ds = mod.PlatinAIRegressionDataset.from_csv(
         _REPO_ROOT / "molmetal" / "data" / "platinai_4cell.csv"

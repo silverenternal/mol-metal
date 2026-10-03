@@ -35,16 +35,12 @@ Honest framing (party-twenty-spirit §3.5)
 
 from __future__ import annotations
 
-import pytest
 
 from molmetal.scripts.wf380a5_multi_template_mm_gbsa import (
     DEFAULT_N_POSES,
     DEFAULT_N_TEMPLATES,
-    DEFAULT_POCKETS,
     RMSD_SOTA_THRESHOLD_ANGSTROM,
     STATUS_SURROGATE,
-    aggregate_median_rmsd,
-    bench_multi_template_mm_gbsa,
     mm_gbsa_rescore,
     multi_template_dock,
     per_pocket_median_rmsd,
@@ -84,7 +80,6 @@ def test_multi_template_dock() -> None:
     )
 
     # MM-GBSA must be finite floats (no NaN / Inf).
-    import math
 
     assert np_all_finite(mmgbsa_grid), (
         f"MM-GBSA grid contains non-finite values: "

@@ -44,9 +44,7 @@ note at the bottom of this file) confirms the wiring in CI.
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -166,8 +164,8 @@ def test_setup_script_sets_pythonpath_to_repo_root() -> None:
     src = SETUP_SCRIPT.read_text()
     assert "PYTHONPATH" in src, "setup script never references PYTHONPATH"
     assert "REPO_ROOT=" in src, (
-        f"setup script never resolves REPO_ROOT — `import molmetal` "
-        f"will fail under the shared interpreter"
+        "setup script never resolves REPO_ROOT — `import molmetal` "
+        "will fail under the shared interpreter"
     )
     assert (
         "${REPO_ROOT}" in src

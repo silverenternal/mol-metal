@@ -71,15 +71,10 @@ import csv
 import json
 import math
 import os
-import sys
 import time
-import warnings
-from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
-import torch
 
 # RDKit + sklearn imports — kept lazy so the bench can still load in
 # minimal environments; actual call sites guard on availability.
@@ -781,9 +776,9 @@ def run_wf348b1(
             "is_no_retrain": True,
             "r2_lift_not_measured": True,
             "feature_ceiling_break": (
-                f"32-bin Fourier + 128-d PLL = 160-d joint feature; "
-                f"this breaks the 12-d RDKit 2D signal floor (Wf-127 §Cause 2) "
-                f"and unblocks the W₂ recipe that was STATUS_HOLD at TODO-179 §0."
+                "32-bin Fourier + 128-d PLL = 160-d joint feature; "
+                "this breaks the 12-d RDKit 2D signal floor (Wf-127 §Cause 2) "
+                "and unblocks the W₂ recipe that was STATUS_HOLD at TODO-179 §0."
             ),
             "w2_band": (
                 f"Per-row 1-D W₂ in log10(IC50) units; SOTA band "
@@ -852,7 +847,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         f"  wall: {result['wall_seconds']:.2f}s "
         f"(feature_extraction={result['feature_extraction_wall_seconds']:.2f}s)"
     )
-    print(f"  w2_per_cell:")
+    print("  w2_per_cell:")
     for c, v in result["w2_per_cell"].items():
         print(f"    {c:>10s}: W₂={v:+.4f}")
     pc = result["w2_per_cohort"]

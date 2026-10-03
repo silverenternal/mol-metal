@@ -500,7 +500,7 @@ def write_outputs(records: List[Dict[str, object]]) -> None:
             "- **Heavy atom count plausibility**: 19-56 heavy atoms "
             "(drug-like range)",
             "",
-            f"## Decision",
+            "## Decision",
             "",
         ]
     )

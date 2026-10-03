@@ -457,7 +457,7 @@ class MetalHybridV3Model(nn.Module):
         """MSE between predicted Δx and target Δx (e.g. MMFF94 step)."""
         B = len(smiles_list)
         device = coords.device
-        h_atom, edge_index, _, _, _ = self._featurize_batch(
+        h_atom, edge_index, edge_attr, _, _ = self._featurize_batch(
             smiles_list, mol_objects=mol_objects
         )
         N_max = h_atom.size(1)

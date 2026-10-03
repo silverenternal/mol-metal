@@ -29,10 +29,8 @@ deferred to Phase 4).
 
 from __future__ import annotations
 
-import argparse
 import importlib
 import io
-import json
 import subprocess
 import sys
 from contextlib import redirect_stdout

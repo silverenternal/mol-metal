@@ -43,12 +43,10 @@ Run::
 
 from __future__ import annotations
 
-import importlib
 import json
 import sys
 from pathlib import Path
 
-import pytest
 
 
 # ---------------------------------------------------------------------------
@@ -372,8 +370,8 @@ class TestPerKernelConfigsSubset:
         # subset of the Wf-331-X3 grid.
         assert union_pairs, "Union of per-kernel configs is empty."
         assert union_pairs <= x3_pairs, (
-            f"Union of per-kernel configs is not a subset of the "
-            f"Wf-331-X3 generic grid."
+            "Union of per-kernel configs is not a subset of the "
+            "Wf-331-X3 generic grid."
         )
 
 

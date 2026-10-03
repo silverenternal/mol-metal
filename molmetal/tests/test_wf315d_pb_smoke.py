@@ -16,7 +16,6 @@ that maps to HONEST_NEGATIVE_BLOCKED in the 1h36 metric.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path

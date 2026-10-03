@@ -68,7 +68,6 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
-import pytest
 
 # ---------------------------------------------------------------------------
 # Path bootstrap -- mirror the Wf-302D test layout.
@@ -82,11 +81,9 @@ if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
 
 from wf320b_harness_autofallback import (  # noqa: E402
-    AutoFallbackReport,
     FailureReason,
     FallbackStrategy,
     HarnessAutoFallback,
-    build_schema_coerce_hint,
     detect_schema_mismatch,
     wrap_wf302d_with_autofallback,
 )

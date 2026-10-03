@@ -20,7 +20,6 @@ from __future__ import annotations
 from typing import Any, List, Sequence, Tuple
 
 from .constants import (
-    METAL_SEED_SMILES,
     POCKET_DERIVED_METAL_SEED_FALLBACK,
     _POCKET_METAL_BUCKETS,
 )

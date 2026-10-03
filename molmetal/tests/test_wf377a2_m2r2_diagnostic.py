@@ -14,11 +14,9 @@ Per Wf-377-A2 brief — 3 NEW tests, 3/3 PASS expected.
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(REPO_ROOT) not in sys.path:
@@ -125,7 +123,7 @@ def test_wf377a2_result_json_has_per_cohort_stats():
             assert c["n_samples"] == 200, f"{c['cohort']} expected n=200"
             assert abs(c["y_mean"] - 5.0378) < 0.01, f"{c['cohort']} y_mean drift"
         if c["cohort"] == "metalcytotox_combined":
-            assert c["n_samples"] == 2000, f"metalcytotox_combined expected n=2000"
+            assert c["n_samples"] == 2000, "metalcytotox_combined expected n=2000"
 
 
 # ---------------------------------------------------------------------------

@@ -188,7 +188,6 @@ def test_load_top20_handles_missing_file(tmp_path):
 # ---------------------------------------------------------------------------
 def test_predict_pic50_external_returns_n_by_4():
     from molmetal.scripts.bench_dmpnn_top20_predictions import (
-        CELL_LINES,
         predict_pic50_external,
     )
     from molmetal.scripts.train_platinai_4cell import DMPNNFourCellModel
@@ -212,7 +211,6 @@ def test_predict_pic50_external_returns_n_by_4():
 
 def test_predict_pic50_external_raises_without_fit():
     from molmetal.scripts.bench_dmpnn_top20_predictions import predict_pic50_external
-    from molmetal.scripts.train_platinai_4cell import DMPNNFourCellModel
 
     class _EmptyRunner:
         model = None
@@ -269,7 +267,6 @@ def test_per_compound_std_handles_constant_predictions():
     from molmetal.scripts.bench_dmpnn_top20_predictions import (
         aggregate_per_compound_std,
         Top20Candidate,
-        PIC50_STD_GATE,
     )
 
     arr = np.full((4, 4), 6.5)

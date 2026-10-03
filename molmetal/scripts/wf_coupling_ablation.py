@@ -76,7 +76,6 @@ from rdkit import Chem, RDLogger
 from rdkit.Chem import AllChem, QED
 
 from molmetal.molmetal_lam.reward.lambda_astsr import (
-    DEFAULT_FEATURE_COLUMNS,
     LambdaASTSR,
     compute_r2,
     default_feature_columns,
@@ -771,7 +770,7 @@ def _render_report(m: Dict, gate_pass: bool) -> str:
             f"constant predictor, ŷ={s['no_coupling']['y_mean']:.4f} |"
         ),
         "",
-        f"### Verify gate",
+        "### Verify gate",
         "",
         f"Δ R² = ASTSR − F5 = "
         f"{m['verify_gate']['astsr_r2_minus_f5_r2']:+.4f} "
@@ -780,9 +779,9 @@ def _render_report(m: Dict, gate_pass: bool) -> str:
         "",
         "## 4. F5 fit detail",
         "",
-        f"```",
+        "```",
         f"{s['f5_linear_hinge']['formula']}",
-        f"```",
+        "```",
         "",
         "## 5. Honest framing",
         "",

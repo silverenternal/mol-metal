@@ -49,8 +49,6 @@ from molmetal.data.mmp_targets import (
     MMP2_TARGET,
     MMP9_TARGET,
     MMPTarget,
-    all_targets,
-    combined_pdb_ids,
     get_target,
 )
 

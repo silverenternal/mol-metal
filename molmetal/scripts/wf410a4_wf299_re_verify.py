@@ -41,12 +41,11 @@ AGENTS.md §5.1.
 from __future__ import annotations
 
 import json
-import os
 import re
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 # --- Canonical paths ---------------------------------------------------------
 PROJECT_ROOT = Path("/home/hugo/codes/mol-metal")

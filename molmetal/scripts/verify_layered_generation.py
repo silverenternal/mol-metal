@@ -42,7 +42,6 @@ from molmetal.molmetal_lam.lam_chem.layered_generation import (
     DecorateStage,
     LayeredGenerationPipeline,
     ScaffoldStage,
-    is_valid_smiles,
 )
 
 

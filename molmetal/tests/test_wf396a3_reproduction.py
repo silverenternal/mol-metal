@@ -34,7 +34,6 @@ Constraints (per AGENTS.md §5 + party-twenty-spirit §3.5):
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 

@@ -28,7 +28,7 @@ import argparse
 import json
 import sys
 import time
-from typing import Any, Dict, List
+from typing import Any, List
 
 
 def _build_stub_search() -> Any:

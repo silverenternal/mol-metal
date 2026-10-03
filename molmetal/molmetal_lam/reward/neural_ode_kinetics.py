@@ -406,7 +406,7 @@ class DissociationKinetics:
         if self.metal not in SUPPORTED_KINETIC_METALS:
             raise ValueError(f"DissociationKinetics: unknown metal {self.metal!r}")
         if self.rate_scale < 0.0:
-            raise ValueError(f"DissociationKinetics: rate_scale must be non-negative")
+            raise ValueError("DissociationKinetics: rate_scale must be non-negative")
 
     def initial_state(self) -> Tuple[float, float, float, float, float, float]:
         """Return the initial [PtCl2, PtClOH2, Pt(OH2)2, PtOH, PtN7, PtOHG] state."""
@@ -542,7 +542,7 @@ class CellularUptake:
             Per-timestep concentrations.
         """
         if pt_ext_init_m < 0.0:
-            raise ValueError(f"CellularUptake.integrate: pt_ext_init_m < 0")
+            raise ValueError("CellularUptake.integrate: pt_ext_init_m < 0")
         if t_end_s <= 0.0 or dt_s <= 0.0:
             raise ValueError(
                 f"CellularUptake.integrate: t_end_s={t_end_s}, dt_s={dt_s} "
@@ -615,7 +615,7 @@ class RedoxCycling:
         if self.metal not in SUPPORTED_KINETIC_METALS:
             raise ValueError(f"RedoxCycling: unknown metal {self.metal!r}")
         if self.k_oxidation_s < 0.0 or self.k_reduction_s < 0.0:
-            raise ValueError(f"RedoxCycling: rate constants must be non-negative")
+            raise ValueError("RedoxCycling: rate constants must be non-negative")
 
     def e0_v_vs_nhe(self) -> float:
         """Return the redox potential (V vs NHE) for this metal."""
@@ -864,7 +864,7 @@ def synthetic_mock_kinetics(
         )
     if not isinstance(target_id, str) or not target_id:
         raise ValueError(
-            f"synthetic_mock_kinetics: target_id must be a non-empty string"
+            "synthetic_mock_kinetics: target_id must be a non-empty string"
         )
     if t_end_s <= 0.0 or dt_s <= 0.0:
         raise ValueError(

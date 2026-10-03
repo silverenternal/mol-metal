@@ -416,7 +416,6 @@ def compute_multiph_features(
     every exception per-row so a single bad SMILES does not abort
     the whole extraction.
     """
-    import numpy as np
     import torch
 
     from molmetal.adapters.multi_ph_integration import MultiPHPocketFeatures

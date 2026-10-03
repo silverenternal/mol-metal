@@ -63,8 +63,6 @@ import torch.nn.functional as F
 from molmetal.baselines.dmpnn import (
     ATOM_FEATURE_DIM,
     BOND_FEATURE_DIM,
-    DMPNN_DEPTH,
-    DMPNN_DROPOUT,
     _GRUUpdate,
     featurize_smiles_list,
 )

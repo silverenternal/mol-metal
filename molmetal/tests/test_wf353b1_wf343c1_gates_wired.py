@@ -63,11 +63,9 @@ Honest framing (per AGENTS.md §1 + §5.2 + party-twenty-spirit §3.5):
 from __future__ import annotations
 
 import importlib.util
-import json
-import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 import pytest
 

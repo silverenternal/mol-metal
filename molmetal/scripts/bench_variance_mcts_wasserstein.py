@@ -74,13 +74,12 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import os
 import random
 import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence
 
 # Atomic write protocol — closes the "half-merged file state" failure mode
 # (concurrent writers racing on the rename) and the "direct overwrite
@@ -90,7 +89,6 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from molmetal.scripts.wf386a3_atomic_write import (
     atomic_write_file,
     safe_overwrite_check,
-    detect_truncation,
 )
 
 # Path bootstrap — mirror the Wf-39 / Wf-36 P2 convention.

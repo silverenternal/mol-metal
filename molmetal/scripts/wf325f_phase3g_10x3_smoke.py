@@ -64,7 +64,6 @@ Honest framing
 from __future__ import annotations
 
 import json
-import os
 import statistics
 import sys
 import time
@@ -337,7 +336,7 @@ def main() -> int:
     out_path = out_dir / "result.json"
     out_path.write_text(json.dumps(result, indent=2, default=str))
     # Summary to stdout.
-    print(f"Wf-325F Phase-3G 10x3 rotation CPU smoke")
+    print("Wf-325F Phase-3G 10x3 rotation CPU smoke")
     print(f"  n_runs_executed: {result['n_runs_executed']}")
     print(
         f"  n_compliant / n_noncompliant / n_none: "

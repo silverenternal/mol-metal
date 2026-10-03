@@ -110,8 +110,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import logging
-import math
 import os
 import statistics
 import sys
@@ -126,16 +124,12 @@ import numpy as np
 from molmetal.scripts.wf380a5_multi_template_mm_gbsa import (  # noqa: E402
     RMSD_PRACTICAL_THRESHOLD_ANGSTROM,
     RMSD_SOTA_THRESHOLD_ANGSTROM,
-    STATUS_HONEST_NEGATIVE,
     STATUS_MEASURED,
     STATUS_SURROGATE,
     DOCKED_POSE_RMSD_JSON,
     REPO,
     _synthetic_mmgbsa_kcal,
     _synthetic_rmsd_grid,
-    aggregate_median_rmsd,
-    mm_gbsa_rescore,
-    per_pocket_median_rmsd as wf380a5_per_pocket_median_rmsd,
     _load_baseline_per_pocket_rmsd,
 )
 
@@ -959,7 +953,7 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         "--pockets",
         nargs="+",
         default=list(TEMPLATE_SOURCES.keys()),
-        help=f"pocket ids (default: 5 canonical pockets)",
+        help="pocket ids (default: 5 canonical pockets)",
     )
     p.add_argument(
         "--n-templates",

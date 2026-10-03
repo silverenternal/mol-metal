@@ -23,7 +23,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
 import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -38,7 +37,6 @@ from molmetal.models.bond_head import (
     NUM_BOND_CLASSES,
     AtomCloud,
     BOND_NO_BOND,
-    BOND_SINGLE,
 )
 
 

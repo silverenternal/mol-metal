@@ -23,13 +23,11 @@ from molmetal.molmetal_lam.search_alg.dream_rsi import (
     DiscoveryTree,
     DreamLoop,
     DreamOptions,
-    HostOptions,
     PolicyCandidate,
     PolicyHost,
     ReplayEpisode,
     ReplayEpisodeOptions,
     RewardConfig,
-    is_success,
     make_replay_probe,
     replay_value,
 )

@@ -18,7 +18,6 @@ _root = Path(__file__).resolve().parents[2]
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
-from rdkit import Chem
 
 # --- Test molecules ---
 TEST_MOLS = {
@@ -57,7 +56,7 @@ def main() -> int:
 
     # 1. SA score
     print("[1] SA score (Ertl-Schuffenhauer)")
-    from molmetal.molmetal_lam.sbdd_env.sa_score import sa_score_ertl, sa_score_to_unit
+    from molmetal.molmetal_lam.sbdd_env.sa_score import sa_score_ertl
 
     n_total += 1
     if _check("SA(CCO) [low]", lambda: f"{sa_score_ertl('CCO'):.3f}"):
@@ -118,7 +117,7 @@ def main() -> int:
 
     # 6. BioPython (PLIP replacement)
     print("\n[6] BioPython PDB (PLIP replacement)")
-    from Bio.PDB import PDBParser, NeighborSearch
+    from Bio.PDB import PDBParser
 
     n_total += 1
     if _check("Bio.PDB.PDBParser", lambda: PDBParser(QUIET=True)):
@@ -138,7 +137,7 @@ def main() -> int:
 
     # 9. Reference drug smoke test (sanity)
     print("\n[9] Reference drug sanity (cisplatin should have reasonable metrics)")
-    from molmetal.molmetal_lam.sbdd_env.sa_score import sa_score_ertl, sa_score_to_unit
+    from molmetal.molmetal_lam.sbdd_env.sa_score import sa_score_ertl
     from molmetal.molmetal_lam.sbdd_env.qed_scorer import qed_from_smiles
 
     cisplatin_sa = sa_score_ertl(TEST_MOLS["cisplatin (reference)"])

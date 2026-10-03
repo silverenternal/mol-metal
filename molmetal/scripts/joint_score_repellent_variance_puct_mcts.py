@@ -95,7 +95,7 @@ import os
 import random
 import sys
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 # Allow ``python -m molmetal.scripts.joint_...`` and direct-script
 # execution both.  When invoked as a module under ``molmetal`` the
@@ -118,12 +118,10 @@ try:
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
     from molmetal_lam.reactions.beta_reductions import ReactionRule
     from molmetal_lam.search_alg.proof_search import (
-        EXPLORATION_STRATEGIES,
         MCTSProofSearch,
     )
     from molmetal_lam.search_alg.score_repellent_mc import (
         ScoreRepellentSampler,
-        ScoreRepellentError,
     )
     from molmetal_lam.search_alg.variance_puct_integration import (
         IntegrationNode,
@@ -131,14 +129,11 @@ try:
         VariancePUCTError,
     )
     from molmetal_lam.search_alg.variance_mcts_integration import (
-        VarianceMCTSNode,
         VarianceMCTSWrapper,
-        VarianceMCTSError,
     )
     from molmetal_lam.search_alg.mcts_replay_buffer import (
         MCTSReplayBuffer,
         MCTSReplayEntry,
-        MCTSReplayWrapper,
         MCTSReplayError,
     )
 except Exception:  # pragma: no cover - import path fallback
@@ -153,12 +148,10 @@ except Exception:  # pragma: no cover - import path fallback
         ReactionRule,
     )
     from molmetal.molmetal_lam.search_alg.proof_search import (  # type: ignore
-        EXPLORATION_STRATEGIES,
         MCTSProofSearch,
     )
     from molmetal.molmetal_lam.search_alg.score_repellent_mc import (  # type: ignore
         ScoreRepellentSampler,
-        ScoreRepellentError,
     )
     from molmetal.molmetal_lam.search_alg.variance_puct_integration import (  # type: ignore
         IntegrationNode,
@@ -166,14 +159,11 @@ except Exception:  # pragma: no cover - import path fallback
         VariancePUCTError,
     )
     from molmetal.molmetal_lam.search_alg.variance_mcts_integration import (  # type: ignore
-        VarianceMCTSNode,
         VarianceMCTSWrapper,
-        VarianceMCTSError,
     )
     from molmetal.molmetal_lam.search_alg.mcts_replay_buffer import (  # type: ignore
         MCTSReplayBuffer,
         MCTSReplayEntry,
-        MCTSReplayWrapper,
         MCTSReplayError,
     )
 

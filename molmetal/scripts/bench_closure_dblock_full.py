@@ -527,8 +527,6 @@ def _benchmark_metal_worker(
     is exactly what we want, since with-replacement sampling repeats
     SMILES within the same metal.
     """
-    from molmetal_lam.lam_chem.closure import closure_theorem
-    from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
 
     csv_path = Path(csv_path_str)
     click_rules = _load_click_rules()

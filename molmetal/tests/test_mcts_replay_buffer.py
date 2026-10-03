@@ -24,7 +24,6 @@ Run via::
 
 from __future__ import annotations
 
-import math
 import os
 import tempfile
 
@@ -34,10 +33,6 @@ import pytest
 try:
     from molmetal_lam.search_alg.mcts_replay_buffer import (
         DEFAULT_BATCH_SIZE,
-        DEFAULT_MAX_SIZE,
-        DEFAULT_REPLAY_ALPHA,
-        DEFAULT_TAU,
-        MAX_BATCH_SIZE,
         MCTSReplayBuffer,
         MCTSReplayEntry,
         MCTSReplayError,
@@ -47,10 +42,6 @@ try:
 except Exception:  # pragma: no cover - import path fallback
     from molmetal.molmetal_lam.search_alg.mcts_replay_buffer import (  # type: ignore  # noqa: E402
         DEFAULT_BATCH_SIZE,
-        DEFAULT_MAX_SIZE,
-        DEFAULT_REPLAY_ALPHA,
-        DEFAULT_TAU,
-        MAX_BATCH_SIZE,
         MCTSReplayBuffer,
         MCTSReplayEntry,
         MCTSReplayError,

@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import math
 
-import pytest
 import torch
 
 from molmetal.molmetal_lam.priors.metal_geometry import (

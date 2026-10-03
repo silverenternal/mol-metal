@@ -38,7 +38,6 @@ from __future__ import annotations
 
 import math
 
-import pytest
 
 # Lazy imports (mirrors the convention in test_variance_puct_integration.py).
 try:
@@ -47,7 +46,6 @@ try:
         DEFAULT_C_VAR,
         IntegrationNode,
         VarianceControlledPUCT,
-        VariancePUCTError,
     )
 except Exception:  # pragma: no cover - import path fallback
     from molmetal.molmetal_lam.search_alg.variance_puct_integration import (  # type: ignore  # noqa: E402
@@ -55,7 +53,6 @@ except Exception:  # pragma: no cover - import path fallback
         DEFAULT_C_VAR,
         IntegrationNode,
         VarianceControlledPUCT,
-        VariancePUCTError,
     )
 
 try:

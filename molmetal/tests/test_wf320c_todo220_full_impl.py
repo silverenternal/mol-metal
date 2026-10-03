@@ -50,9 +50,7 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
-from unittest.mock import patch
 
-import pytest
 
 ROOT = Path("/home/hugo/codes/mol-metal")
 TEMPORAL_DRIVER = ROOT / "molmetal/scripts/wf219_temporal_split_driver.py"

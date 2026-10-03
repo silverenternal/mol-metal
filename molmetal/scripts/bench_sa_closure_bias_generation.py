@@ -59,11 +59,10 @@ import csv
 import json
 import logging
 import math
-import os
 import statistics
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -169,7 +168,7 @@ def _score_rdkit_validity_and_props(
     """Per-SMILES RDKit validity + Lipinski + QED."""
     try:
         from rdkit import Chem
-        from rdkit.Chem import AllChem, Descriptors, Lipinski, QED
+        from rdkit.Chem import Descriptors, Lipinski, QED
     except Exception as exc:  # pragma: no cover
         LOG.warning("[sa_closure_gen] RDKit not available: %s", exc)
         return [

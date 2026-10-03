@@ -15,10 +15,8 @@ from __future__ import annotations
 
 import json
 import sys
-import tempfile
 from pathlib import Path
 
-import pytest
 import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -26,7 +24,6 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from molmetal.molmetal_lam.lam_chem.cfm_decoder import (
-    CFMDecoder,
     CFMDecodeResult,
     build_cfm_decoder,
     smoke_decode_ratio,
@@ -40,8 +37,6 @@ from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
 )
 from molmetal.models.bond_head import (
     AtomCloud,
-    BOND_NO_BOND,
-    BOND_SINGLE,
     DecodedMol,
 )
 

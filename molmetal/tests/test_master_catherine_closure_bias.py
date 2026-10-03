@@ -58,10 +58,8 @@ def test_canonical_submodules_unchanged():
     from molmetal.molmetal_lam.reward.closure_oversample import (
         ClosureOversampleResult,
         ClosureOversampler,
-        RH_SEED_SCAFFOLDS,
     )
     from molmetal.molmetal_lam.reward.pocket_closure_bias import (
-        PocketBiasVerdict,
         closure_bounded_smiles_generation,
         closure_oversample,
         pocket_specific_closure_bias,

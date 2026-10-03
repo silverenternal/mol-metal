@@ -22,7 +22,6 @@ import pytest
 from molmetal.data.crossdocked import CrossDockedDataset
 from molmetal.data.crossdocked_filter import (
     CrossDockedEntry,
-    FilterStats,
     filter_by_pdb,
 )
 from molmetal.data.mmp_targets import (

@@ -83,7 +83,7 @@ def test_cli_defaults():
     ns = bwrl._parse_args([])
     assert ns.metrics == ["m7", "m15", "m16"]
     assert ns.seeds == [0, 1, 2, 3, 4]
-    assert ns.cuda_visible_devices == "1"
+    assert ns.cuda_visible_devices == "0"
     assert ns.strict_scaffold is True
     assert ns.dry_run is False
     assert ns.aggregate_existing is False

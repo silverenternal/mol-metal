@@ -64,14 +64,10 @@ if str(_SCRIPTS_DIR) not in sys.path:
 
 from bench_deflexpressor_end_to_end import (  # noqa: E402
     DEFAULT_HYPERPARAMS,
-    DEFAULT_METHODS,
-    DEFAULT_SEEDS,
-    FEATURE_COLUMNS,
     HILBERT_DIM,
     N_DESCRIPTORS,
     FitRecord,
     _featurize_smiles,
-    _r2,
     _run_one,
     _stable_pd_fit,
     build_design_matrix,
@@ -83,7 +79,6 @@ from bench_deflexpressor_end_to_end import (  # noqa: E402
     pad_to_hilbert_dim,
     render_markdown,
     run_benchmark,
-    write_metrics,
     zscore,
 )
 

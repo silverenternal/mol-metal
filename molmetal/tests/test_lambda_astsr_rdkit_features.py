@@ -57,7 +57,6 @@ Tests (count target: 15):
 from __future__ import annotations
 
 import random
-from typing import Optional
 
 import numpy as np
 import pytest
@@ -750,7 +749,7 @@ def test_extractor_compute_rdkit_extended_descriptors_returns_32d() -> None:
         )
     except Exception as exc:  # pragma: no cover
         pytest.skip(
-            f"RDKit unavailable or extractor import failed: {_exc}; "
+            f"RDKit unavailable or extractor import failed: {exc}; "
             "skipping 32-d extractor smoke test."
         )
     vec = compute_rdkit_extended_descriptors("CCO")
@@ -779,6 +778,6 @@ def test_extractor_compute_rdkit_extended_invalid_smiles_returns_none() -> None:
             compute_rdkit_extended_descriptors,
         )
     except Exception as exc:  # pragma: no cover
-        pytest.skip(f"RDKit unavailable: {_exc}")
+        pytest.skip(f"RDKit unavailable: {exc}")
     vec = compute_rdkit_extended_descriptors("NOT_A_SMILES_@@@")
     assert vec is None

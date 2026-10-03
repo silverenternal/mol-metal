@@ -44,12 +44,9 @@ def main() -> int:
         from molmetal.molmetal_lam.lam_chem.coupling_joint_inference import (
             LAMBDA_DIM,
             EMBED_DIM,
-            LambdaCFMPipeline,
             CascadedRefiner,
-            PlatinAI5KBridge,
             load_joint_pipeline,
             smoke_test_full_pipeline,
-            lambda_features_from_smiles,
         )
     except Exception as exc:
         print(

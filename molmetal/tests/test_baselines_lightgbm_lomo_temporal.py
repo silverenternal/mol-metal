@@ -21,10 +21,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import List
 
-import numpy as np
-import pandas as pd
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent

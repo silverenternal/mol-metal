@@ -650,8 +650,8 @@ def run_pb_production(
             "mock: hand-coded 'PB pass=20/30' aggregate → real: "
             "PoseBustersAdapter.validate_mol() (5 fixtures) + "
             ".validate_docked() (CCO @ mmp13_real/830c.pdb) — "
-            f"per-cell pass_rate + per_check_pass recorded "
-            f"(in-process; upstream manifest returns 2 on this host)"
+            "per-cell pass_rate + per_check_pass recorded "
+            "(in-process; upstream manifest returns 2 on this host)"
         )
     else:
         rec.pb_status = "AdapterUnavailable"
@@ -844,7 +844,6 @@ def run_bench_per_tool_accuracy(
     inprocess_pb_t0 = time.monotonic()
     try:
         from molmetal.scoring.score_any import (
-            AdapterUnavailable,
             score_any,
         )
 

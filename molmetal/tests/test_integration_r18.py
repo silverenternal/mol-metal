@@ -45,9 +45,8 @@ import math
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, List
 
-import pytest
 
 
 # ---------------------------------------------------------------------------
@@ -256,7 +255,6 @@ def _safe_call(fn) -> Any:
         return fn()
     except Exception as exc:  # pragma: no cover - defensive
         from dataclasses import dataclass, field
-        from typing import List
 
         @dataclass
         class _Stub:

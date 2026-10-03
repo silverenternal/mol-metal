@@ -301,7 +301,7 @@ def main() -> int:
 
     df = compute_top3_invariants(df)
     print(
-        f"[wf411a4] Computed MolLogP + MorganDensity_r2 + Chi3v invariants",
+        "[wf411a4] Computed MolLogP + MorganDensity_r2 + Chi3v invariants",
         file=sys.stderr,
     )
 

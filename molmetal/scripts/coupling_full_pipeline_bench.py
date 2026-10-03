@@ -89,7 +89,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import os
 import sys
 import time
 import tracemalloc
@@ -269,11 +268,12 @@ def _build_multi_ph_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
             MultiPHPLLSignature,
         )
     except Exception as exc:
+        _import_err = f"multi_ph import failed: {exc}"
 
         def _skip(
             smiles: str, pocket: np.ndarray, n_steps: int
         ) -> Tuple[bool, Dict[str, Any]]:
-            return False, {"error": f"multi_ph import failed: {exc}"}
+            return False, {"error": _import_err}
 
         return _skip
 
@@ -301,11 +301,12 @@ def _build_variance_puct_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
             VarianceControlledPUCT,
         )
     except Exception as exc:
+        _import_err = f"variance_puct import failed: {exc}"
 
         def _skip(
             smiles: str, pocket: np.ndarray, n_steps: int
         ) -> Tuple[bool, Dict[str, Any]]:
-            return False, {"error": f"variance_puct import failed: {exc}"}
+            return False, {"error": _import_err}
 
         return _skip
 
@@ -350,11 +351,12 @@ def _build_hilbert_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
         )
         from molmetal.molmetal_lam.reward.lambda_astsr import DEFAULT_FEATURE_COLUMNS  # noqa: E402
     except Exception as exc:
+        _import_err = f"hilbert import failed: {exc}"
 
         def _skip(
             smiles: str, pocket: np.ndarray, n_steps: int
         ) -> Tuple[bool, Dict[str, Any]]:
-            return False, {"error": f"hilbert import failed: {exc}"}
+            return False, {"error": _import_err}
 
         return _skip
 
@@ -407,11 +409,12 @@ def _build_bidirectional_runner() -> Callable[..., Tuple[bool, Dict[str, Any]]]:
             BidirectionalCoupling,
         )
     except Exception as exc:
+        _import_err = f"bidirectional import failed: {exc}"
 
         def _skip(
             smiles: str, pocket: np.ndarray, n_steps: int
         ) -> Tuple[bool, Dict[str, Any]]:
-            return False, {"error": f"bidirectional import failed: {exc}"}
+            return False, {"error": _import_err}
 
         return _skip
 

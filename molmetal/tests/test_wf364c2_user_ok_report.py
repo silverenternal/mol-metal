@@ -13,7 +13,6 @@ Per AGENTS.md §5.1 + §5.3 + §5.4 + party-twenty-spirit §3.5:
 from __future__ import annotations
 
 import os
-import re
 import unittest
 from pathlib import Path
 

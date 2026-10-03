@@ -18,12 +18,10 @@ end-to-end run is exercised separately in the manual verification at
 
 from __future__ import annotations
 
-import argparse
 import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 from molmetal.scripts import r4_lambda_only_run as r4
 

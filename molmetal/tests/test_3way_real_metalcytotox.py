@@ -49,7 +49,6 @@ import json
 import math
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
 
 import numpy as np
 import pytest
@@ -63,24 +62,16 @@ if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
 from bench_3way_real_metalcytotox import (  # noqa: E402
-    ASTR_SCALE_GUARD_MAX,
     DEFAULT_HILBERT_DIM,
-    DEFAULT_METALS,
-    DEFAULT_N_FOLDS,
     DEFAULT_W_W,
     FEATURE_DIM,
     FitRecord,
-    L2_GUARD_MAX_NORM,
     MetalSeedSummary,
     MULTI_PH_DIM,
-    PLL_DIM,
     RDKIT_DIM,
     _collapse_detected,
     _combine,
-    _featurize_smiles_12d,
     _random_kfold_indices,
-    _r2,
-    _stable_ridge_fit,
     _zscore,
     aggregate_metal,
     evaluate_fold,
@@ -88,9 +79,6 @@ from bench_3way_real_metalcytotox import (  # noqa: E402
     fit_hilbert_stream,
     fit_mph_stream,
     load_metal_cohort,
-    predict_astr,
-    predict_hilbert,
-    predict_mph,
     write_synthesis,
 )
 

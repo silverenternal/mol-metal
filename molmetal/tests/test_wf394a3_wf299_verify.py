@@ -24,7 +24,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 # Add scripts dir to path so we can import the gate module.
 SCRIPTS_DIR = Path("/home/hugo/codes/mol-metal/molmetal/scripts")

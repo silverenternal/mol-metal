@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-import time
 from pathlib import Path
 
 _HERE = Path(__file__).resolve().parent
@@ -53,7 +52,6 @@ def main() -> int:
         from molmetal.adapters.flow_matching_lipman.optimal_transport_v2 import (
             MeanFieldW2Plan,
             compute_ot_plan,
-            ma_regularization_factor,
             ma_regularized_ot_plan,
             mean_field_score_smoothed_ot_plan,
             mean_field_step_size,

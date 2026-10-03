@@ -30,14 +30,12 @@ traces to a file/line or live-run output. No ``paper/*`` touches
 from __future__ import annotations
 
 import inspect
-import json
 import math
 import os
 import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:

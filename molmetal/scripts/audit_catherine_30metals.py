@@ -87,7 +87,7 @@ import warnings
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 # ---------------------------------------------------------------------------
 # Repo-root path injection

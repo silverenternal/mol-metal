@@ -21,10 +21,8 @@
 
 from __future__ import annotations
 
-import json
 import os
 import sys
-from pathlib import Path
 
 # Ensure repo root is on sys.path so the module under test resolves
 # regardless of pytest's working directory.
@@ -32,7 +30,6 @@ _REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if _REPO not in sys.path:
     sys.path.insert(0, _REPO)
 
-import pytest
 
 from molmetal.scripts import paper_table_autogen as autogen
 

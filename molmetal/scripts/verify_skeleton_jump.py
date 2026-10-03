@@ -38,7 +38,6 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
         sys.path.insert(0, _p)
 
 from molmetal.molmetal_lam.lam_chem.skeleton_jump import (
-    DEFAULT_SWAP_PROB,
     DEFAULT_TARGET_DIVERSITY,
     DiversityAwareSkeletonJump,
     FragmentLibrary,

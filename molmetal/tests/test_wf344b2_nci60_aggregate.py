@@ -54,7 +54,6 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 JSON_PATH = PROJECT_ROOT / "metrics" / "by_metric" / "nci60_precious_9cell_auc.json"

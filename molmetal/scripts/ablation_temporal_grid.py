@@ -38,7 +38,6 @@ if str(PROJECT_ROOT) not in sys.path:
 from molmetal.baselines.eval_utils import compute_metrics, morgan_features
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 from molmetal.data.temporal_grids import (
-    TEMPORAL_GRIDS,
     hit_rate_by_year,
     rolling_split,
     temporal_split_at_threshold,
@@ -197,7 +196,7 @@ def _format_hit_rate_plot(
     )
     lines.append("")
     # Header scale
-    lines.append(f"  1.00 |" + "-" * W)
+    lines.append("  1.00 |" + "-" * W)
     # Draw year rows
     for y in range(lo, hi + 1):
         if y not in by_year:

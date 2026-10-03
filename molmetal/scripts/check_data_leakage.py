@@ -50,7 +50,7 @@ CLI
 ---
 ::
 
-    source .venvs/mol-metal-venv/bin/activate
+    source .venv/bin/activate
     python molmetal/scripts/check_data_leakage.py
     python molmetal/scripts/check_data_leakage.py \
         --platinai-csv molmetal/data/platinai_5k.csv \

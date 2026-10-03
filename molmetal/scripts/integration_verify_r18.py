@@ -214,7 +214,6 @@ def _test_t1_se3_vina() -> TestReport:
         import torch
         from molmetal.adapters.se3_sb_integration import (
             SE3SBDecoder,
-            SE3SBVelocityField,
         )
     except Exception as exc:  # pragma: no cover
         rep.status = "FAIL"

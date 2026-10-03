@@ -21,12 +21,10 @@ from __future__ import annotations
 
 import os
 import random
-import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List
 
 import numpy as np
-import pytest
 
 from molmetal_lam.binding.types import BindingSite
 from molmetal_lam.lam_chem.pysr_wrapper import HeuristicRegressor
@@ -35,9 +33,7 @@ from molmetal_lam.pipeline.closed_loop import LamClickDesignLoop
 from molmetal_lam.reactions.beta_reductions import ReactionRule
 from molmetal_lam.search_alg.proof_search import (
     MCTSProofSearch,
-    SymbolicPrior,
     _MCTSNode,
-    _smi_of,
 )
 
 

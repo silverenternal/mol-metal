@@ -28,7 +28,6 @@ sizes 1..4), and run in < 5 seconds.
 
 from __future__ import annotations
 
-import math
 import sys
 from pathlib import Path
 from typing import List
@@ -43,7 +42,6 @@ import torch
 
 from molmetal.math_skills.hochschild_cohomology import (
     Cochain,
-    Differential,
     HochschildCohomology,
     MLCReductionCochain,
     mlc_algebra,

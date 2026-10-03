@@ -57,9 +57,7 @@ auto-enabled CUDA Graphs.
 
 from __future__ import annotations
 
-import math
 import sys
-import warnings
 from pathlib import Path
 from typing import Tuple
 
@@ -77,9 +75,6 @@ from molmetal.baselines.dmpnn import (
 from molmetal.baselines.dmpnn_multitask import (
     DMPNNMultiTaskModel,
     MultiTaskLoss,
-)
-from molmetal.molmetal_lam.reward.wasserstein_loss import (
-    wasserstein_pic50_gradient,
 )
 
 try:

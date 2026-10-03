@@ -56,7 +56,7 @@ import json
 import math
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -66,9 +66,6 @@ from molmetal.scripts.wf329w3_f2a_metal_ligand import (  # noqa: E402
     DEFAULT_COVALENT_MODIFIER_KCAL_MOL,
     INDUSTRY_CUTOFF_KCAL_MOL,
     PER_BOND_PROJECTED_LIFT_KCAL_MOL,
-)
-from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (  # noqa: E402
-    MetalCoordinationTerm,
 )
 
 # ---------------------------------------------------------------------------
@@ -364,7 +361,7 @@ def main() -> int:
         json.dump(out, fh, indent=2, default=str)
 
     print()
-    print(f"[wf333v3-p2p3-smoke] headline:")
+    print("[wf333v3-p2p3-smoke] headline:")
     print(f"  cohort_v0_vina_median   = {med_v0:+.4f} kcal/mol (Wf-325B baseline)")
     print(f"  cohort_v1_pc_f2a_median = {med_v1:+.4f} kcal/mol (Wf-329-W3 baseline)")
     print(f"  cohort_v2_pb_f2a_median = {med_v2:+.4f} kcal/mol (Wf-333-V3 P2)")
@@ -372,7 +369,7 @@ def main() -> int:
     print(f"  V2 lift vs V1 = {lift_v2 - lift_v1:+.4f} kcal/mol (P2)")
     print(f"  V3 lift vs V2 = {lift_v3 - lift_v2:+.4f} kcal/mol (P3)")
     print(f"  total lift vs V0 = {lift_v3:+.4f} kcal/mol (V1+V2+V3)")
-    print(f"  industry_cutoff         = -7.0 kcal/mol")
+    print("  industry_cutoff         = -7.0 kcal/mol")
     print(f"  v3_combined_gap         = {gap_v3:+.4f} kcal/mol")
     print(f"  verdict                 = {verdict}")
     print()

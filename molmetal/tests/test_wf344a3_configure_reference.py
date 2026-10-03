@@ -33,8 +33,6 @@ All 4 tests are CPU-only and run in <2 s.
 
 from __future__ import annotations
 
-import importlib
-import os
 import sys
 from pathlib import Path
 

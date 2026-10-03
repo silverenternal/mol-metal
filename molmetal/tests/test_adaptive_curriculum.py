@@ -19,15 +19,12 @@ import sys
 import tempfile
 from pathlib import Path
 
-import numpy as np
 import pytest
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from molmetal.reports.dream_rsi_replay_pool.adaptive_curriculum import (
-    DEFAULT_DIFFICULTY_TEMP,
-    DEFAULT_WEIGHT_FLOOR,
     MIN_DIFFICULTY_POOL,
     AdaptiveCurriculumSampler,
     CurriculumBatch,
@@ -35,7 +32,6 @@ from molmetal.reports.dream_rsi_replay_pool.adaptive_curriculum import (
     DifficultyScorer,
 )
 from molmetal.reports.dream_rsi_replay_pool.vina_replay_pool import (
-    ReplayPoolSurrogate,
     VinaReplayPool,
     pocket_feature_vector,
     random_dmpnn_embedding,

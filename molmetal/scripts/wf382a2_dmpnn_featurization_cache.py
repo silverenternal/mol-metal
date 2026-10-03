@@ -51,9 +51,8 @@ import multiprocessing as _mp
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, Optional, Sequence
 
-import numpy as np
 from rdkit import Chem
 from rdkit import RDLogger
 

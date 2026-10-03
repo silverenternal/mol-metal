@@ -203,7 +203,6 @@ def compute_multi_ph_features(
     list of length ``n_bins ** 2`` float vectors and ``stats`` has
     ``{"n_parsed", "n_failed", "n_too_large"}``.
     """
-    import numpy as np
     import torch
 
     from molmetal.adapters.multi_ph_integration import MultiPHPocketFeatures

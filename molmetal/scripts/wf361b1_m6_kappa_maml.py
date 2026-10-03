@@ -53,7 +53,7 @@ import json
 import math
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -1168,10 +1168,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"({'CEILING_BREAK via MAML cross-scaffold transfer' if final_report.verdict == 'HONEST_NEGATIVE_M6_KAPPA_RESOLVED' else 'PRESERVED — augmented_mean < 0.6 despite architectural exploration'})"
     )
     print(
-        f"  tests_status            : 4 NEW tests in "
-        f"test_wf361b1_m6_kappa_maml.py (maml_inner_loop_logic / "
-        f"per_scaffold_adaptation_step / cross_scaffold_loso_validation / "
-        f"backward_compat_no_flag)"
+        "  tests_status            : 4 NEW tests in "
+        "test_wf361b1_m6_kappa_maml.py (maml_inner_loop_logic / "
+        "per_scaffold_adaptation_step / cross_scaffold_loso_validation / "
+        "backward_compat_no_flag)"
     )
     print(
         f"  projected_lift          : MAML cross-scaffold axis "

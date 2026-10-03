@@ -34,10 +34,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import time
-from collections import Counter
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Optional
@@ -397,7 +395,7 @@ def main():
     args = parser.parse_args()
 
     t0 = time.time()
-    print(f"=== Wf-139 P7: Rh positive-label cohort generation ===")
+    print("=== Wf-139 P7: Rh positive-label cohort generation ===")
     print(f"  threshold_active:   {args.threshold_active}")
     print(f"  threshold_inactive: {args.threshold_inactive}")
     print(f"  n_active target:    {args.n_active}")
@@ -718,7 +716,7 @@ Real cohort anchor: MetalCytoToxDB Rh train (n=794: 413 active + 381 inactive).
     print(f"  Wrote {syn_md}")
 
     # Final summary
-    print(f"\n=== SUMMARY ===")
+    print("\n=== SUMMARY ===")
     print(f"  n_active   = {stats.n_active} / {args.n_active} target")
     print(f"  n_inactive = {stats.n_inactive} / {args.n_inactive} target")
     print(f"  n_unclear  = {stats.n_unclear}")
@@ -732,15 +730,15 @@ Real cohort anchor: MetalCytoToxDB Rh train (n=794: 413 active + 381 inactive).
         and stats.n_inactive == args.n_inactive
         and overlap == 0
     ):
-        print(f"\n  STATUS: PASS")
+        print("\n  STATUS: PASS")
         return 0
     elif stats.n_active > 0 and stats.n_inactive > 0:
         print(
-            f"\n  STATUS: PARTIAL (cohort non-empty but threshold tuning may be needed)"
+            "\n  STATUS: PARTIAL (cohort non-empty but threshold tuning may be needed)"
         )
         return 1
     else:
-        print(f"\n  STATUS: HALT")
+        print("\n  STATUS: HALT")
         return 2
 
 

@@ -8,7 +8,6 @@ stays fast.  The full run is exercised by
 from __future__ import annotations
 
 import json
-import math
 import sys
 from pathlib import Path
 
@@ -23,7 +22,7 @@ from molmetal.baselines.eval_utils import (
     morgan_features,
     per_cell_line_auc,
 )
-from molmetal.baselines.morgan_xgb import MorganXGBBaseline, quick_smoke
+from molmetal.baselines.morgan_xgb import quick_smoke
 from molmetal.baselines.rf_baseline import RFBaseline
 
 

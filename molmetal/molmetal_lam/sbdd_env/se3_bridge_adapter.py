@@ -699,7 +699,7 @@ class WassersteinPoseLoss:
             Sliced-W₂ estimate (non-negative).
         """
         if pred_poses.ndim != 3 or ref_poses.ndim != 3:
-            raise ValueError(f"WassersteinPoseLoss.raw expects (B, N, 3) inputs")
+            raise ValueError("WassersteinPoseLoss.raw expects (B, N, 3) inputs")
         if pred_poses.shape[-1] != 3 or ref_poses.shape[-1] != 3:
             raise ValueError(
                 f"Last dim must be 3, got pred={tuple(pred_poses.shape)} "

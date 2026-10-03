@@ -71,7 +71,6 @@ def _import_module():
             _safe_m6_kappa,
             M6_KAPPA_THRESHOLD,
             M6_KAPPA_THRESHOLD_ADAPTIVE,
-            DEFAULT_SEED,
         )
 
         return {

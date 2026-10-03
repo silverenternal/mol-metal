@@ -98,7 +98,6 @@ def test_merge_counterion_features():
     assert out_empty["counterion_smiles"] == ""
 
     # NaN counterion → all-zero features
-    import math
 
     row_nan = {"smiles": "CCO", "Counterion": float("nan")}
     out_nan = merge_counterion_features(row_nan)

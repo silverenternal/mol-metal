@@ -232,7 +232,7 @@ def test_cisplatin_lambda_expression() -> None:
     )
     print(f"Number of bonds  : {len(mol['bonds'])}  (all dative)")
     print(f"Is closed        : {mol['is_closed']}")
-    print(f"Free sites per atom:")
+    print("Free sites per atom:")
     for label, n in mol["free_sites_per_atom"].items():
         print(f"  {label:8s} -> {n}")
     print("=" * 72)

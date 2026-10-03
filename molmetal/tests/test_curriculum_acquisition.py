@@ -15,7 +15,6 @@ Total: **10 tests**, CPU-only.  All under 1 s on any CI container.
 
 from __future__ import annotations
 
-import random
 
 import pytest
 

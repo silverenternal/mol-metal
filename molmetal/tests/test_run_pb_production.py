@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import json
 import math
-import os
 import subprocess
 import sys
 import tempfile
@@ -32,7 +31,6 @@ from molmetal.scripts.run_pb_production import (
     PBCellResult,
     aggregate_results,
     run_one_cell,
-    run_production,
 )
 
 

@@ -49,7 +49,6 @@ import os
 import sys
 import tempfile
 import unittest
-from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
@@ -60,20 +59,14 @@ if _REPO_ROOT not in sys.path:
 
 from molmetal.scripts.wf331r5_r2_w2_chemprop import (  # noqa: E402
     WF325A_BASELINE_R2,
-    WF325A_BASELINE_R2_PLA_12D,
     _compute_w2_distance_loo,
     _get_graph_feature_dim,
     _probe_chemprop_dims,
-    _summarise_recovery,
-    combined_feature_pipeline,
     compute_covariate_w2_distance,
     compute_w2_distance_feature,
     extract_graph_features_pooled,
-    load_cohort,
     rdkit_chemprop_atom_features,
     rdkit_chemprop_bond_features,
-    ridge_r2_eval,
-    ridge_r2_eval_split_aware_w2,
     run_wf331r5,
 )
 

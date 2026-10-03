@@ -92,7 +92,7 @@ def test_compute_pll_returns_real_ndarray_of_length_k() -> None:
     assert isinstance(eig, np.ndarray), f"expected ndarray, got {type(eig)!r}"
     assert eig.dtype.kind == "f", f"expected float dtype, got {eig.dtype!r}"
     assert eig.ndim == 1, f"expected 1D, got ndim={eig.ndim}"
-    assert len(eig) >= 1, f"empty eigenvalues array"
+    assert len(eig) >= 1, "empty eigenvalues array"
 
 
 # ---------------------------------------------------------------------------

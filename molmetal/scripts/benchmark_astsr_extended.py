@@ -105,7 +105,6 @@ from molmetal.molmetal_lam.reward.hilbert_astsr_integration import (
     HilbertASTSRComposite,
 )
 from molmetal.molmetal_lam.reward.lambda_astsr import (
-    DEFAULT_FEATURE_COLUMNS,
     LambdaASTSR,
     compute_r2,
     default_feature_columns,

@@ -41,7 +41,6 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
 
 # Repo-root path injection — matches the audit script.
 _HERE = Path(__file__).resolve().parent

@@ -14,7 +14,6 @@ empty branch checkout) so the rest of the suite still runs.
 
 from __future__ import annotations
 
-import shutil
 import subprocess
 import sys
 import time

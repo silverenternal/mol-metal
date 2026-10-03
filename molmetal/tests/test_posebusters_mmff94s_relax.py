@@ -31,8 +31,6 @@ Spec contracts tested here
 
 from __future__ import annotations
 
-import json
-import os
 import sys
 from pathlib import Path
 
@@ -182,7 +180,7 @@ class TestMMFF94sPreservesDockGeometry:
             mmff94s_relax_pose,
         )
         from rdkit import Chem
-        from rdkit.Chem import AllChem, rdMolAlign
+        from rdkit.Chem import AllChem
 
         mol = Chem.AddHs(Chem.MolFromSmiles(smi))
         if AllChem.EmbedMolecule(mol, AllChem.ETKDGv3()) != 0:

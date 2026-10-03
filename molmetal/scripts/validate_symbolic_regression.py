@@ -38,14 +38,12 @@ from pathlib import Path
 from typing import Any, Dict
 
 import numpy as np
-import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from molmetal.molmetal_lam.reward.symbolic_regression import (  # noqa: E402
     FORMULA_FAMILIES,
-    build_reward_target,
     compare_symbolic_vs_linear,
     compute_symbolic_reward,
     held_out_validation,
@@ -186,7 +184,7 @@ def main() -> int:
         n_repeats=args.n_repeats,
         seed=args.seed,
     )
-    print(f"\n[validate_symbolic_regression] linear baseline " f"(5 features, full LS)")
+    print("\n[validate_symbolic_regression] linear baseline " "(5 features, full LS)")
     print(
         f"  linear held-out R^2 = {base['baseline_r2_mean']:.4f} "
         f"± {base['baseline_r2_std']:.4f}"

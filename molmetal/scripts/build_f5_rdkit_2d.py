@@ -77,9 +77,7 @@ import numpy as np
 from molmetal.data.rdkit_2d_extended import (
     RDKIT_2D_BASE_DIM,
     RDKIT_2D_DIM,
-    RDKIT_2D_EXTENDED_DESCRIPTORS,
     RDKIT_2D_EXTENDED_FEATURE_COLUMNS,
-    RDKIT_2D_FEATURE_COLUMNS,
     compute_rdkit_2d_12d,
     compute_rdkit_2d_extended,
 )
@@ -403,7 +401,7 @@ def render_report(
 ) -> str:
     """Render a brief Markdown report for the build."""
     lines = [
-        f"# Wf-248 Phase 1 — F5_RDKIT_2D 32-d feature build report",
+        "# Wf-248 Phase 1 — F5_RDKIT_2D 32-d feature build report",
         "",
         f"- **dataset**: {dataset_name}",
         f"- **n_rows_total**: {n_total}",

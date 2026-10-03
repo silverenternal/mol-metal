@@ -25,9 +25,7 @@ Liu J. & Feng H. (2026).  J. Chem. Inf. Model. 66:1024-1037.
 
 from __future__ import annotations
 
-import math
 import sys
-import time
 from pathlib import Path
 from typing import List, Tuple
 
@@ -41,7 +39,6 @@ if str(PROJECT_ROOT) not in sys.path:
 from molmetal.math_skills.multi_parameter_ph import (
     TwoParameterFiltration,
 )
-from molmetal.molmetal_lam.lam_chem import multi_ph_pll_integration as integration
 from molmetal.molmetal_lam.lam_chem.multi_ph_pll_integration import (
     MultiPHPLLAugment,
     MultiPHPLLError,

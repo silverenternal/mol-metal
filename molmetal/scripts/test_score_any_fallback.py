@@ -50,10 +50,8 @@ Usage
 from __future__ import annotations
 
 import argparse
-import importlib
 import json
 import os
-import subprocess
 import sys
 import time
 from contextlib import contextmanager
@@ -277,7 +275,6 @@ def _capture_fallback_calls(
 
     _sa_mod = importlib.import_module("molmetal.scoring.score_any")
     from molmetal.scoring.score_any import (
-        AdapterUnavailable,
         ToolRef,
     )
 
@@ -534,7 +531,7 @@ def _run_chain_metadata_scenario(
         if ROUTING_POLICY[fb].wf43_status == "MOCK_DELETED":
             errors.append(f"refers to MOCK_DELETED metric {fb!r}")
     if metric in fallback_chain:
-        errors.append(f"self-reference in chain")
+        errors.append("self-reference in chain")
 
     # Cycle detection: only flag length-3+ cycles; length-2 cycles
     # are intentional bidirectional soft chains.

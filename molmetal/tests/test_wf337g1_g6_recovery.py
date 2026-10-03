@@ -55,14 +55,12 @@ Honest framing (AGENTS.md §5.2 + party-twenty-spirit §3.5):
 
 from __future__ import annotations
 
-import json
 import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
-import pytest
 
 
 # ---------------------------------------------------------------------------

@@ -19,13 +19,10 @@ GPU is involved.
 
 from __future__ import annotations
 
-import json
-import os
 import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 REPO_ROOT = Path("/home/hugo/codes/mol-metal")
 SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "generate_section6.py"

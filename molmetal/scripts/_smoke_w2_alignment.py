@@ -35,7 +35,6 @@ import math
 import sys
 import time
 from pathlib import Path
-from typing import Tuple
 
 _HERE = Path(__file__).resolve().parent
 _REPO_ROOT = _HERE.parent.parent

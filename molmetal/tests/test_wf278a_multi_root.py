@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import json
 import sys
-import time
 from pathlib import Path
 
 import pytest
@@ -155,7 +154,6 @@ def test_last_wins_dedup(tmp_path: Path) -> None:
 
 def test_expected_pairs_15() -> None:
     """Default expected_pairs is 15 (5 metals × 3 seeds), per Wf-298B patch."""
-    import subprocess
 
     # Invoke the CLI with --help to inspect the default. argparse prints the
     # default in the help text when default= is set; we instead parse the

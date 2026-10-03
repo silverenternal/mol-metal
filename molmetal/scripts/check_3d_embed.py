@@ -360,7 +360,7 @@ def run(
     print(f"  processed      : {n_take}")
     print(f"  success        : {success}  ({success_rate * 100:.1f} %)")
     print(f"  elapsed        : {elapsed:.1f} s")
-    print(f"  bond summary   :")
+    print("  bond summary   :")
     for key, stats in dist_summary.items():
         ref = stats.get("expected_A")
         ref_str = f" (ref {ref:.2f})" if ref is not None else ""

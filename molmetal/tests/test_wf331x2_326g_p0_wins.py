@@ -39,9 +39,7 @@ from pathlib import Path
 from typing import List
 
 import numpy as np
-import pytest
 import torch
-import torch.nn as nn
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -50,14 +48,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from molmetal.baselines.dmpnn import (  # noqa: E402
     ATOM_FEATURE_DIM,
     BOND_FEATURE_DIM,
-    DMPNNBaseline,
     DMPNNModel,
-    DMPNNResult,
     featurize_smiles_list,
-    mol_to_graph,
 )
 from molmetal.baselines.dmpnn_p0wins import (  # noqa: E402
-    BatchMolGraph,
     PreFeaturizedCache,
     batch_mol_graph_from_tuples,
     bf16_predict,

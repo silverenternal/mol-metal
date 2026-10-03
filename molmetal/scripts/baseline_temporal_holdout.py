@@ -32,7 +32,6 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import numpy as np
-import pandas as pd
 
 from molmetal.baselines.eval_utils import compute_metrics, morgan_features
 from molmetal.baselines.morgan_lightgbm import lightgbm_available

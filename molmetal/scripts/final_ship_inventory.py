@@ -25,7 +25,7 @@ import json
 import os
 import re
 from collections import defaultdict
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -880,8 +880,8 @@ def render_markdown(
     # 1. Headline numbers
     add("## 1. Headline numbers (MEASURED, this build)")
     add("")
-    add(f"| Item | Value |")
-    add(f"| --- | ---: |")
+    add("| Item | Value |")
+    add("| --- | ---: |")
     add(
         f"| **20 wf reports in `TODO/completed/`** | {counts['n_wf']} / {counts['n_wf_total']} shipped |"
     )
@@ -1088,14 +1088,14 @@ def render_markdown(
     # 8. Tests
     add("## 8. Tests (1,200+ MEASURED — project-wide pytest surface)")
     add("")
-    add(f"| Item | Value |")
-    add(f"| --- | ---: |")
+    add("| Item | Value |")
+    add("| --- | ---: |")
     add(f"| Test files (`test_*.py`) | {test_files:,} |")
     add(f"| Total test LOC | {test_loc:,} |")
     add(f"| `def test_*` definitions | {tests_count:,} |")
-    add(f"| R18 ship tests (Wf-1..Wf-18 aggregate) | ~1,070 (Wf-13 ledger) |")
+    add("| R18 ship tests (Wf-1..Wf-18 aggregate) | ~1,070 (Wf-13 ledger) |")
     add(
-        f"| R17 baseline (30/30 decode + 14/14 evaluators + 7/7 guards + ~217 unit) | preserved bit-identical |"
+        "| R17 baseline (30/30 decode + 14/14 evaluators + 7/7 guards + ~217 unit) | preserved bit-identical |"
     )
     add("")
 

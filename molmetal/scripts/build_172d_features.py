@@ -58,7 +58,6 @@ import argparse
 import csv
 import hashlib
 import json
-import math
 import sys
 import time
 from collections import Counter

@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -27,7 +26,6 @@ import time
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import torch
 from rdkit import Chem, RDLogger
 

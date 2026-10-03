@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import math
 
-import numpy as np
 import pytest
 
 # Lazy import so missing torch / score_repellent_mc is caught at
@@ -33,11 +32,6 @@ import pytest
 # test_score_repellent_mc.py).
 try:
     from molmetal_lam.search_alg.variance_puct_integration import (
-        DEFAULT_C_PUCT,
-        DEFAULT_C_VAR,
-        DEFAULT_DIRICHLET_ALPHA,
-        DEFAULT_N_MIN_VISITS,
-        DEFAULT_SCORE_REPELLENT_ALPHA,
         DirichletVarianceComparator,
         IntegrationNode,
         MCTSVarianceWrapper,
@@ -47,11 +41,6 @@ try:
     )
 except Exception:  # pragma: no cover - import path fallback
     from molmetal.molmetal_lam.search_alg.variance_puct_integration import (  # type: ignore  # noqa: E402
-        DEFAULT_C_PUCT,
-        DEFAULT_C_VAR,
-        DEFAULT_DIRICHLET_ALPHA,
-        DEFAULT_N_MIN_VISITS,
-        DEFAULT_SCORE_REPELLENT_ALPHA,
         DirichletVarianceComparator,
         IntegrationNode,
         MCTSVarianceWrapper,

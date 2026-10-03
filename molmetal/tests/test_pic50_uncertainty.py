@@ -56,10 +56,7 @@ if str(_PROJECT_ROOT) not in os.sys.path:
 
 from molmetal.scripts.calibrate_pic50_uncertainty import (  # noqa: E402
     TARGET_DOMAIN,
-    CalibrationResult,
-    PerRowCI,
     _aggregate_metrics,
-    _bootstrap_metric_distribution,
     _bootstrap_residual_distribution,
     _compliance_for_row,
     _to_json_safe,

@@ -261,4 +261,4 @@ def test_provenance_tag_in_bench_summary():
     assert (
         "random" in bench["encoder_init_status"].lower()
         or "fallback" in bench["encoder_init_status"].lower()
-    ), f"R18 runs trained from random init — bench_summary must record this honestly"
+    ), "R18 runs trained from random init — bench_summary must record this honestly"

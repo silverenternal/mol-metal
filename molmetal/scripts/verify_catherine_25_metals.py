@@ -78,7 +78,7 @@ import time
 import warnings
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 # ---------------------------------------------------------------------------
 # Repo-root path injection
@@ -408,7 +408,7 @@ def _write_per_metal(
             "wf": "Wf-68",
             "phase": "Phase 1",
             "r20_plan": "R20-P5.1",
-            "wf57_back_link": (f"../../wf57_catherine_25metals/per_metal_pass.json"),
+            "wf57_back_link": ("../../wf57_catherine_25metals/per_metal_pass.json"),
             "helpers_available": helpers_available,
             "timestamp": _utcnow_iso(),
         },

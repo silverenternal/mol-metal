@@ -66,7 +66,6 @@ import sys
 import time
 import tracemalloc
 import warnings
-from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -645,7 +644,7 @@ def write_synthesis(
     lines.append("## TL;DR")
     lines.append("")
     lines.append(f"- **Overall reachability**: {overall_rate:.4f}  ")
-    lines.append(f"- **Wf-37 P2 baseline**: 0.5891 (2244 samples)  ")
+    lines.append("- **Wf-37 P2 baseline**: 0.5891 (2244 samples)  ")
     lines.append(f"- **Gate target**: ≥ {GATE_TARGET_REACHABILITY:.2f}  ")
     lines.append(f"- **Overall gate pass**: {overall_pass}  ")
     lines.append(

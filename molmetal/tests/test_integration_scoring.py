@@ -37,14 +37,11 @@ Verify::
 
 from __future__ import annotations
 
-import ast
 import importlib
 import json
-import re
 import sys
 import textwrap
 from pathlib import Path
-from typing import Iterable, List
 
 import pytest
 

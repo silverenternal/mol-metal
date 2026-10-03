@@ -36,12 +36,10 @@ reference their on-disk source path.
 from __future__ import annotations
 
 import json
-import os
 import re
 import sys
 from pathlib import Path
 
-import pytest
 
 
 # ---------------------------------------------------------------------------
@@ -207,9 +205,9 @@ class TestMissingKernelCandidates:
         dmpnn_text = dmpnn_path.read_text()
         # The wiring comment must mention a future fused_relu_mlp.
         assert "fused_relu_mlp" in dmpnn_text, (
-            f"Expected models/dmpnn.py to reference 'fused_relu_mlp' "
-            f"in its wiring comment. If this reference is gone, the "
-            f"audit MISSING-001 wiring_site citation is stale."
+            "Expected models/dmpnn.py to reference 'fused_relu_mlp' "
+            "in its wiring comment. If this reference is gone, the "
+            "audit MISSING-001 wiring_site citation is stale."
         )
         # Cross-reference audit JSON.
         audit = _load_audit()

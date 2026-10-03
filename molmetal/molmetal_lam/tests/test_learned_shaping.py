@@ -192,7 +192,7 @@ def test_shape_reward_on_real_smiles():
         import os as _os
         import sys as _sys
 
-        sys.path.append(_os.path.join(RDConfig.RDContribDir, "SA_Score"))
+        _sys.path.append(_os.path.join(RDConfig.RDContribDir, "SA_Score"))
         import sascorer as _sascorer  # noqa: F401
 
         sa_func = _sascorer.calculateScore

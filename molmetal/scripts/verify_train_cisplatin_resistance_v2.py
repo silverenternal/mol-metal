@@ -47,7 +47,7 @@ import math
 import sys
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import numpy as np
 import torch
@@ -124,7 +124,7 @@ def _check_model_forward() -> None:
         lg = out[cl]
         assert lg.shape == (3, 2), f"{cl}: shape {tuple(lg.shape)} != (3, 2)"
         assert torch.isfinite(lg).all(), f"{cl}: non-finite logits"
-    print(f"        -> OK (4 cell heads, each (B, 2) = (3, 2))")
+    print("        -> OK (4 cell heads, each (B, 2) = (3, 2))")
 
 
 # ---------------------------------------------------------------------------

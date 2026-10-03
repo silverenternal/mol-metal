@@ -63,10 +63,9 @@ import json
 import math
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-import pytest
 
 # Path bootstrap.
 _REPO_ROOT = Path(__file__).resolve().parents[2]

@@ -208,7 +208,7 @@ def main() -> int:
 
     # Echo summary to stdout
     print(f"[wf119_cleanup] {'DRY RUN' if args.dry_run else 'EXECUTED'}")
-    print(f"  expected:        12")
+    print("  expected:        12")
     print(f"  deleted:         {log['deleted_count']}")
     print(f"  missing_before:  {log['missing_count']}")
     print(f"  bytes_freed:     {log['total_bytes_freed']:,}")

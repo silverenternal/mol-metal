@@ -26,7 +26,6 @@ on the PlatinAI 1K hold-out:
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path

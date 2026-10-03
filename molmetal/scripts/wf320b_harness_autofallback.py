@@ -66,10 +66,9 @@ from typing import Any, Callable, Dict, List, Optional
 
 # Re-use the Wf-301E detector + Wf-302D retry helper so the four layers
 # cannot drift out of sync.
-from wf301e_harness_detector import detect_schema_shape, extract_agent_result
+from wf301e_harness_detector import detect_schema_shape
 from wf302d_retry_with_correction import (
     DEFAULT_CORRECTION_PROMPT,
-    build_correction_prompt,
     run_agent_with_retry,
 )
 

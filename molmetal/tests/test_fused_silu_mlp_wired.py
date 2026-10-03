@@ -26,9 +26,7 @@ from __future__ import annotations
 import os
 import sys
 
-import pytest
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 # Ensure the project root is on sys.path so the test can import

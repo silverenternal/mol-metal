@@ -39,7 +39,6 @@ import os
 import sys
 from pathlib import Path
 
-import pytest
 import torch
 
 
@@ -137,8 +136,8 @@ class TestMinibatchOTTriton:
         # matches the kernel output (parity check on the public surface).
         ref = pytorch_minibatch_ot_coupling(x0, x1)
         assert torch.equal(out, ref), (
-            f"fused_minibatch_ot_coupling output diverges from "
-            f"module pytorch_minibatch_ot_coupling()"
+            "fused_minibatch_ot_coupling output diverges from "
+            "module pytorch_minibatch_ot_coupling()"
         )
 
     def test_03_minibatch_ot_triton_fallback_to_pytorch(self):
@@ -162,11 +161,11 @@ class TestMinibatchOTTriton:
         # Module reference.
         ref = pytorch_minibatch_ot_coupling(x0, x1)
         assert torch.equal(out_default, ref), (
-            f"default dispatch output diverges from " f"pytorch_minibatch_ot_coupling()"
+            "default dispatch output diverges from " "pytorch_minibatch_ot_coupling()"
         )
         assert torch.equal(out_forced, ref), (
-            f"force_pytorch=True output diverges from "
-            f"pytorch_minibatch_ot_coupling()"
+            "force_pytorch=True output diverges from "
+            "pytorch_minibatch_ot_coupling()"
         )
         # Shape gate: N > 1024 must still return a valid PyTorch result
         # (the gate_open() check + the explicit N > 1024 fallback in the

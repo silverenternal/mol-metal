@@ -394,6 +394,7 @@ def _w_vina_metal_fallback(ctx: Dict[str, Any]) -> List[float]:
 
     out: List[float] = []
     for smi in smiles_list:
+        _vina_exc: Optional[Exception] = None
         try:
             complexes = vina.dock_smiles(
                 smi,
@@ -403,6 +404,7 @@ def _w_vina_metal_fallback(ctx: Dict[str, Any]) -> List[float]:
                 engine=engine,
             )
         except Exception as exc:  # noqa: BLE001 — explicit fallback
+            _vina_exc = exc
             complexes = []
 
         scores = [
@@ -427,7 +429,7 @@ def _w_vina_metal_fallback(ctx: Dict[str, Any]) -> List[float]:
             raise AdapterUnavailable(
                 f"vina_metal_fallback: both Vina (real) and boltz_affinity "
                 f"(D-MPNN pIC50 fallback) failed for SMILES {smi!r}. "
-                f"Vina raised: {type(exc).__name__}: {exc}; boltz_affinity "
+                f"Vina raised: {type(_vina_exc).__name__}: {_vina_exc}; boltz_affinity "
                 f"checkpoint missing or invalid."
             )
     return out

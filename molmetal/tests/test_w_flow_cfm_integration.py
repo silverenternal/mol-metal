@@ -47,7 +47,6 @@ from __future__ import annotations
 
 import math
 import sys
-import time
 from pathlib import Path
 
 import pytest
@@ -66,12 +65,10 @@ from molmetal.adapters.flow_matching_lipman.w_flow import (  # noqa: E402
 )
 from molmetal.adapters.flow_matching_lipman.w_flow_cfm_integration import (  # noqa: E402
     COMPLEXITY_THRESHOLDS,
-    DEFAULT_N_WINDOWS,
     SolverStrategy,
     WFlowCFMSelector,
     WFlowCFMSolver,
     benchmark_w_flow_cfm,
-    make_default_w_flow_cfm_solver,
 )
 
 

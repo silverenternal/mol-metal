@@ -41,7 +41,6 @@ Cited as ``ma_xiaonan2025bergman_kernel`` in ``paper/refs.bib``.
 
 from __future__ import annotations
 
-import math
 import sys
 from pathlib import Path
 

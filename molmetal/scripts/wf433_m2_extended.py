@@ -84,11 +84,7 @@ except Exception:  # pragma: no cover — defensive
 
 # Reuse Wf-331-R5 canonical cohort loader + column constants.
 from molmetal.scripts.wf331r5_r2_w2_chemprop import (
-    load_cohort as _wf331r5_load_cohort,
-    PLATINAI_12D_COLUMNS,
     PLATINAI_32D_COLUMNS,
-    METALCYTOTOX_TARGET_COLUMN,
-    WF325A_BASELINE_R2,
 )
 
 # Reuse Wf-388-A1 per-cohort loader signatures.
@@ -96,7 +92,6 @@ from molmetal.scripts.wf388a1_m2_per_cohort_real import (
     load_platinai_4cell,
     load_hilbert,
     load_metalcytotox_combined,
-    COHORT_REGISTRY,
 )
 
 
@@ -471,7 +466,7 @@ def _main(argv: Optional[List[str]] = None) -> int:
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "result.json")
 
-    print(f"Wf-433-A2 — EXTENDED features (32-d RDKit + 128-d PLL proxy = 160-d)")
+    print("Wf-433-A2 — EXTENDED features (32-d RDKit + 128-d PLL proxy = 160-d)")
     print(f"  cohorts: {args.cohorts}")
     print(f"  seeds × folds: {args.n_seeds} × {args.n_folds}")
     print(f"  Ridge alpha: {args.alpha}")

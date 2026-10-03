@@ -16,10 +16,7 @@ Or all deflex-wireup tests at once::
 
 from __future__ import annotations
 
-import dataclasses
 import os
-import sys
-from typing import Any, List, Optional
 
 import pytest
 
@@ -162,8 +159,6 @@ def test_f5_register_with_custom_formula(aggregator_cls):
     os.environ.pop("LEARNED_SHAPING_ENABLED", None)
     from molmetal_lam.reward.learned_shaping import (
         BestFormula,
-        LearnedShaping,
-        F5_FEATURE_NAMES,
     )
 
     def _callable(sa_score: float) -> float:

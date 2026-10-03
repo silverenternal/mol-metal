@@ -1,7 +1,6 @@
 """The isolated bridge batches real reports and rejects unavailable workers."""
 
 import json
-import os
 from pathlib import Path
 import sys
 from types import SimpleNamespace

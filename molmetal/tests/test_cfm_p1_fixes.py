@@ -43,7 +43,6 @@ import sys
 import warnings
 from pathlib import Path
 
-import pytest
 import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -463,7 +462,6 @@ def test_connectivity_decoder_rejects_disconnected():
         ConnectivityAwareDecoder,
         ConnectivityResult,
         _count_connected_components,
-        _collect_predicted_edges,
     )
     from molmetal.models.bond_head import (
         AtomCloud,

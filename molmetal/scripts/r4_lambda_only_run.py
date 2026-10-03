@@ -86,7 +86,6 @@ import os
 import random
 import sys
 import time
-from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -918,7 +917,6 @@ def training_set_novelty(
     try:
         from rdkit import Chem  # type: ignore
         from rdkit.Chem import AllChem  # type: ignore
-        from rdkit import DataStructs  # type: ignore
     except Exception:
         return 1.0
     train_fps = []
@@ -1877,7 +1875,6 @@ def metric_rigid_rmsd_mean(
     if gen_mol is None or ref_mol is None:
         return 0.0
     try:
-        from rdkit import Chem  # type: ignore
         from rdkit.Chem import AllChem  # type: ignore
     except Exception:
         return 0.0
@@ -1938,7 +1935,7 @@ def _mol_center_of_mass(mol):
     if mol is None:
         return 0.0
     try:
-        from rdkit import Chem  # type: ignore
+        pass  # type: ignore
     except Exception:
         return 0.0
     try:
@@ -2907,7 +2904,6 @@ def run_one_cell(
     target_predicates: List[TypePredicate] = []
     try:
         from molmetal_lam.binding.types import BindingSite as _BS
-        from molmetal_lam.types.predicates import TypePredicate as _TP
 
         # ``BindingSite`` requires a ``name``; we use the pocket id and
         # leave ``constraints`` empty so the search never typechecks

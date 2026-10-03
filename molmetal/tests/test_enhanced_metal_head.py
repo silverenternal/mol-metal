@@ -27,7 +27,6 @@ import torch
 
 from molmetal.models.chemprop_v2_mt_model import (
     SUPPORTED_METALS,
-    ChempropV2MTModel,
     quick_smoke_chemprop_v2_mt,
 )
 from molmetal.models.chemprop_v2_mt_model_v3 import (

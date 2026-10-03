@@ -487,16 +487,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 f"exhausted)"
             ),
             "interpretation_note": (
-                f"Wf-371-A1 is the LAST CPU-only path per Wf-369-A3 §5 "
-                f"forward-looking recommendation. It is structurally "
-                f"identical to Wf-364-A2 candidate 3 "
-                f"(`rdkit_12d_baseline_no_ode_no_maml`); Wf-371-A1 "
-                f"isolates it as a standalone artifact for the "
-                f"forward-looking close-out. Even the simplest possible "
-                f"baseline (RDKit 12-d + K-fold Ridge) cannot lift "
-                f"augmented_mean to 0.6. The m6_kappa honesty gate is "
-                f"intrinsic to the metric, not to the architectural "
-                f"choice."
+                "Wf-371-A1 is the LAST CPU-only path per Wf-369-A3 §5 "
+                "forward-looking recommendation. It is structurally "
+                "identical to Wf-364-A2 candidate 3 "
+                "(`rdkit_12d_baseline_no_ode_no_maml`); Wf-371-A1 "
+                "isolates it as a standalone artifact for the "
+                "forward-looking close-out. Even the simplest possible "
+                "baseline (RDKit 12-d + K-fold Ridge) cannot lift "
+                "augmented_mean to 0.6. The m6_kappa honesty gate is "
+                "intrinsic to the metric, not to the architectural "
+                "choice."
             ),
             "cross_references": [
                 "TODO/completed/325d_m6_kappa_final.md (Wf-325D canonical)",
@@ -601,9 +601,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"({'CEILING_BREAK via degenerate chain' if ceiling_break else f'PRESERVED — augmented_mean < 0.6, FINAL FINAL after {paths_exhausted_total} paths exhausted (PARTIAL_STRUCTURAL preserved)'})"
     )
     print(
-        f"  tests_status               : 2 NEW tests in "
-        f"test_wf371a1_m6_kappa_degenerate.py "
-        f"(test_degenerate_chain_runs + test_backward_compat)"
+        "  tests_status               : 2 NEW tests in "
+        "test_wf371a1_m6_kappa_degenerate.py "
+        "(test_degenerate_chain_runs + test_backward_compat)"
     )
     print(
         f"  final_verdict              : {aggregate_status} "

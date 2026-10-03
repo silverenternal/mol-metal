@@ -154,7 +154,8 @@ def _smarts_reversible(product_smiles: str, rev_smarts: str) -> bool:
         # "(null): No such file or directory" to stderr when the
         # SMARTS uses atom maps — this is harmless.  Redirect stderr
         # to /dev/null for the duration of the call.
-        import contextlib, os
+        import contextlib
+        import os
 
         with contextlib.redirect_stderr(open(os.devnull, "w")):
             rxn = rdChemReactions.ReactionFromSmarts(rev_smarts)

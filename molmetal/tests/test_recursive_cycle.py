@@ -2,7 +2,6 @@
 """Tests for --num-cycle recursive inference cycle (mirror OmegaFoldCycle)."""
 
 import torch
-import pytest
 
 from molmetal.adapters.flow_matching_lipman.confidence_head import ConfidenceHead
 
@@ -47,7 +46,6 @@ class TestRecursiveCycle:
         import sys
 
         sys.path.insert(0, "/home/hugo/codes/mol-metal/molmetal/scripts")
-        from train_cfm_yuelbond_wasserstein import parse_args as trainer_parse
         import argparse
 
         # Mock sys.argv
@@ -57,7 +55,7 @@ class TestRecursiveCycle:
             # The trainer's parse_args might require many positional args; we just check default
             ns = argparse.Namespace(num_cycle=1)
             assert ns.num_cycle == 1
-            print(f"test_num_cycle_cli_flag_default_1 PASS")
+            print("test_num_cycle_cli_flag_default_1 PASS")
         finally:
             sys.argv = original_argv
 
@@ -66,4 +64,4 @@ class TestRecursiveCycle:
         for requested in [0, 1, 8, 100, -5]:
             clamped = max(1, min(8, requested))
             assert 1 <= clamped <= 8
-        print(f"test_num_cycle_max_constraint PASS")
+        print("test_num_cycle_max_constraint PASS")

@@ -31,7 +31,6 @@ Wave: Wf-398 (decode_ratio regression diagnosis + m2 R² recovery).
 from __future__ import annotations
 
 import json
-import os
 import sys
 from dataclasses import dataclass, field, asdict
 from pathlib import Path

@@ -339,7 +339,6 @@ def test_learned_prior_coupling_adapter_env_on_caches_bias(tmp_path: Path) -> No
             load_coupling_adapter,
         )
         from molmetal.scripts import tmqm_cfm_pretraining as pretrain
-        import torch
 
         pretrain.train_dry_run(out_dir=tmp_path, n_steps=1, seed=0)
         adapter = load_coupling_adapter(tmp_path / "coupling_mlp.npz")

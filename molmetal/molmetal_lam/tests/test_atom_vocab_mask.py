@@ -234,8 +234,8 @@ def test_pt_appears_with_nonzero_probability(
     # Poisson lower bound: with mean 166.7, the chance of getting
     # less than 100 is ~1e-12.  Use a generous threshold for flakiness.
     assert pt_count > 0, (
-        f"Pt appeared 0 times in 2000 samples — the metal centre is "
-        f"unreachable, the vocab mask is broken."
+        "Pt appeared 0 times in 2000 samples — the metal centre is "
+        "unreachable, the vocab mask is broken."
     )
     assert (
         pt_count >= 100

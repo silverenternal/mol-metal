@@ -22,7 +22,6 @@ Per ``R20_BIG_DATASET_FULL_RETRAIN_PLAN.md`` §1.1 the contract is
 
 from __future__ import annotations
 
-import importlib
 from pathlib import Path
 
 import pandas as pd

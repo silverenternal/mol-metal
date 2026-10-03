@@ -8,7 +8,6 @@ round-trip, and the top-k tie-breaker.
 from __future__ import annotations
 
 import math
-import pickle  # nosec
 import tempfile
 from pathlib import Path
 
