@@ -731,10 +731,19 @@ def train_one_epoch_joint(
     metal_coord_term: bool = False,
     metal_coord_weight: float = 0.5,
     cal_sign_vina_convention: bool = True,
+    # Wf-A9 FIX (2026-10-03) — gradient-clip threshold threaded as a
+    # kwarg.  The Wf-A8 patch referenced ``args`` inside this function,
+    # but ``args`` is ``main()``-scoped → NameError at the first
+    # ``total.backward()`` (AGENTS.md §5.7 smoke floor #2).  Default 5.0
+    # matches the yaml ``protocol.max_norm`` + the ``--max-norm`` argparse
+    # default; 0.0 disables this clip (the separate ``use_l2_guard``
+    # clip below is unaffected).
+    max_norm: float = 5.0,
 ) -> Tuple[float, float, float, float]:
     """Train one epoch on the joint 5-metal pool.
 
-    Returns ``(avg_total_loss, avg_cls_loss, avg_reg_loss, avg_wasserstein)``.
+    Returns ``(avg_total_loss, avg_cls_loss, avg_reg_loss, avg_wasserstein,
+    last_grad_norm)``.
 
     Wf-251-F4: ``w2_gradient_mode`` selects the W₂ penalty source —
     ``"sliced"`` (default, Wf-131 P1 shipped behaviour) uses the
@@ -745,6 +754,9 @@ def train_one_epoch_joint(
     model.train()
     total_loss = total_cls = total_reg = total_w = 0.0
     n_samples = 0
+    # Wf-A9 FIX (2026-10-03) — last observed gradient norm (0.0 until the
+    # first clip call runs); returned so callers can emit a real value.
+    last_grad_norm = 0.0
 
     indices = np.arange(len(graphs))
     np.random.shuffle(indices)
@@ -893,13 +905,23 @@ def train_one_epoch_joint(
         total = loss + w_w * w_pen + metal_coord_weight * mc_term_loss
         total.backward()
         # Wf-A8 (2026-10-03) gradient clipping per --max-norm flag (per
-        # AGENTS.md §5.7 trainer flag wire-in smoke-required rule; bit-exact
-        # baseline preserved when max_norm=0.0).
-        max_norm = float(getattr(args, "max_norm", 0.0)) if args is not None else 0.0
+        # AGENTS.md §5.7 trainer flag wire-in smoke-required rule).
+        # Wf-A9 FIX (2026-10-03) — ``max_norm`` now arrives as a kwarg
+        # threaded ``main()`` → ``train_one_metal_one_seed()`` → here.
+        # The previous ``getattr(args, ...)`` form raised NameError
+        # because ``args`` is ``main()``-scoped (AGENTS.md §5.7 floor #2).
+        # Wf-A9 FIX (2026-10-03) — the last clip call's return value IS
+        # the total gradient norm; surface it so the TUI/events report a
+        # real number instead of the hard-coded NaN placeholder it used
+        # to emit (see the train_epoch event emission below).
         if max_norm > 0.0:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+            last_grad_norm = float(
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+            )
         if use_l2_guard:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), L2_GUARD_MAX_NORM)
+            last_grad_norm = float(
+                torch.nn.utils.clip_grad_norm_(model.parameters(), L2_GUARD_MAX_NORM)
+            )
         optimizer.step()
 
         bs = pic50_t.size(0)
@@ -916,6 +938,7 @@ def train_one_epoch_joint(
         total_cls / n_samples,
         total_reg / n_samples,
         total_w / n_samples,
+        last_grad_norm,
     )
 
 
@@ -1053,6 +1076,17 @@ def train_one_metal_one_seed(
     # threaded from main() via getattr(args, "weight_decay", 0.0).
     # Default 0.0 preserves Wf-131 P1 + Wf-251-F4 baseline bit-for-bit.
     wd: float = 0.0,
+    # Wf-A9 FIX (2026-10-03) — gradient-clip threshold threaded from
+    # main() via ``getattr(args, "max_norm", 5.0)`` and forwarded to
+    # ``train_one_epoch_joint()``.  Sourced from the yaml
+    # ``protocol.max_norm`` via start.sh ``--max-norm "$MAX_NORM"``.
+    max_norm: float = 5.0,
+    # Wf-A9 FIX (2026-10-03) — the resolved joint metals pool (from
+    # ``--metals`` / ``--dataset``).  ``None`` keeps the historical
+    # FIVE_METALS pool so existing callers are unaffected; main() passes
+    # the resolved list so non-5-metal cohorts (e.g. platinai_4cell = Pt)
+    # build a correctly sized metal-embedding table.
+    metals_pool: Optional[Tuple[str, ...]] = None,
 ) -> MetalSeedResult:
     """Train a 5-metal multi-task D-MPNN for one (metal, seed).
 
@@ -1077,12 +1111,36 @@ def train_one_metal_one_seed(
     # and the model has n_metals=1 (no per-metal head sharing across
     # metals). Default (multi-task) behaviour is unchanged for backward
     # compat with Wf-124 P3 + Wf-131 P1 results.
-    metals_in_pool: Tuple[str, ...] = (metal,) if single_task else FIVE_METALS
-    n_metals_pool: int = 1 if single_task else len(FIVE_METALS)
+    # Wf-A9 FIX (2026-10-03) — the joint pool was structurally pinned to
+    # FIVE_METALS while main() already reported ``n_metals=len(args.metals)``
+    # (see the "[wf131-mtw] ... n_metals=" banner).  That mismatch made any
+    # non-5-metal cohort impossible: with --dataset platinai_4cell the CSV
+    # holds only Pt, so ``metal_to_idx[str(metals_all[i])]`` raised KeyError
+    # and the run died before the first batch.
+    #
+    # The pool now follows the resolved ``--metals`` list.  Order is
+    # canonicalised to FIVE_METALS first so the standard 5-metal pool is
+    # bit-for-bit unchanged (metal-embedding indices are positional);
+    # metals outside that set (e.g. Pt) are appended in caller order.
+    if single_task:
+        metals_in_pool: Tuple[str, ...] = (metal,)
+    else:
+        _pool: Tuple[str, ...] = tuple(metals_pool) if metals_pool else FIVE_METALS
+        metals_in_pool = tuple(
+            [m for m in FIVE_METALS if m in _pool]
+            + [m for m in _pool if m not in FIVE_METALS]
+        )
+        if not metals_in_pool:
+            raise RuntimeError(
+                "empty joint metals pool — check --metals / --dataset "
+                "resolution (see the '[Wf-A6 BLOCKER A] --metals resolved' "
+                "banner above)."
+            )
+    n_metals_pool: int = 1 if single_task else len(metals_in_pool)
 
-    metal_to_idx: Dict[str, int] = {m: i for i, m in enumerate(FIVE_METALS)}
+    metal_to_idx: Dict[str, int] = {m: i for i, m in enumerate(metals_in_pool)}
     per_metal_indices: Dict[str, Tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
-    for m in FIVE_METALS:
+    for m in metals_in_pool:
         try:
             per_metal_indices[m] = build_metal_split_indices(split_df, ds, m)
         except RuntimeError:
@@ -1272,7 +1330,7 @@ def train_one_metal_one_seed(
     t_train = time.time()
     for epoch in range(start_epoch, epochs):
         ep_t0 = time.time()
-        avg_loss, avg_cls, avg_reg, avg_w = train_one_epoch_joint(
+        avg_loss, avg_cls, avg_reg, avg_w, epoch_grad_norm = train_one_epoch_joint(
             model=model,
             optimizer=optimizer,
             criterion=criterion,
@@ -1293,6 +1351,9 @@ def train_one_metal_one_seed(
             # truth for the flag state.
             use_ot_cfm=use_ot_cfm,
             per_cohort_features=per_cohort_features,
+            # Wf-A9 FIX (2026-10-03) — thread the gradient-clip threshold
+            # through to the loss-cascade clipping site.
+            max_norm=max_norm,
             # Wf-432-A2 — Wf-246-C metal-coordination term wire-in
             # (Fix-B).  These kwargs reach the loss cascade in
             # ``train_one_epoch_joint`` (see line ~520) so the kcal/mol
@@ -1353,11 +1414,12 @@ def train_one_metal_one_seed(
                 if "pearson" in val_pic50_m
                 else None,
                 lr=float(optimizer.param_groups[0]["lr"]),
-                grad_norm=float(
-                    float("nan")
-                    if ep_t > 0
-                    else 0.0
-                ),
+                # Wf-A9 FIX (2026-10-03) — was a hard-coded NaN placeholder
+                # (`float("nan") if ep_t > 0 else 0.0`), which made the TUI
+                # gradient-norm row read NaN for every epoch.  Now carries
+                # the real post-clip total norm returned by
+                # train_one_epoch_joint().
+                grad_norm=float(epoch_grad_norm),
                 epoch_time_sec=float(ep_t),
             )
         except Exception:
@@ -1779,15 +1841,21 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument(
         "--metals",
         nargs="+",
-        default=list(FIVE_METALS),
+        default=["auto"],
         help=(
             "Subset of metals to train. Pass either space-separated metals "
             "(e.g. 'Ru Ir Rh') or the literal 'auto' for auto-discovery "
-            "from the CSV metal column. Default: all 5 (Ru,Ir,Rh,Os,Re). "
+            "from the CSV metal column. Default: 'auto' — the cohort is "
+            "read off whatever --csv / --dataset resolves to, so "
+            "metalcytotox_5metal yields the 5 metals and platinai_4cell "
+            "yields Pt without any extra flag. "
             "Wf-A6 BLOCKER A: --metals no longer hard-coded to FIVE_METALS; "
             "any metal string accepted; runtime CSV validation rejects "
             "metals not present in --csv (with clear 'Available metals: "
-            "[...]' error)."
+            "[...]' error). "
+            "Wf-A9: default changed from the literal FIVE_METALS list to "
+            "'auto' so the yaml `--dataset` actually drives the cohort "
+            "(the literal default silently rejected every other dataset)."
         ),
     )
     p.add_argument(
@@ -2068,8 +2136,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--cuda-visible-devices", default="",
         help=(
             "Override CUDA_VISIBLE_DEVICES before device resolution.  "
-            "Default '1' (RTX 5090 on kanzi, GPU 0 = VLM venv).  "
-            "Empty string '' = inherit shell env or fall back to '1'."
+            "Empty '' (the default) = inherit the shell env — "
+            "scripts/start.sh exports it from the yaml `compute.gpu` "
+            "field.  If neither is set, training_utils falls back to its "
+            "own default ('1').  Pass a non-empty value to force a GPU."
         ),
     )
     # --events-jsonl-path is added at line ~2035 below by the parallel
@@ -2351,7 +2421,17 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Wf-130 — GPU-first device defaults: cuda:0 (RTX 5090 via
     # CUDA_VISIBLE_DEVICES=1 on kanzi) when allocatable, else CPU.
-    apply_default_cuda_visible_devices(override=args.cuda_visible_devices)
+    # Wf-A9 FIX (2026-10-03) — ``args.cuda_visible_devices`` defaults to
+    # the empty string, which the argparse help documents as "inherit
+    # shell env or fall back to '1'".  ``apply_default_cuda_visible_devices``
+    # however treats a *non-None* ``""`` as an explicit "force no GPUs"
+    # override (Wf-415-A3 SCAFFOLD-gate contract), so passing the default
+    # straight through asked every normal launch for CPU.  Coerce empty →
+    # None so the documented "inherit" semantics actually apply: the env
+    # var exported by start.sh (from yaml ``compute.gpu``) wins.
+    apply_default_cuda_visible_devices(
+        override=(args.cuda_visible_devices or None)
+    )
     if args.device:
         device = torch.device(args.device)
         print(f"[wf131-mtw] explicit device override: {device}", flush=True)
@@ -2399,21 +2479,26 @@ def main(argv: Optional[List[str]] = None) -> int:
                 flush=True,
             )
 
-    split_df = load_5metal_split_table(args.csv)
-    print(
-        f"[wf131-mtw] loaded 5-metal split table: {len(split_df)} rows",
-        flush=True,
-    )
-    # Wf-A8 PlatinAI 4-cell loader (audit gap #1 fix) — dataset dispatch.
-    # Default --dataset=metalcytotox_5metal preserves Wf-131 P1 + Wf-251-F4
-    # baseline bit-for-bit. Pass --dataset platinai_4cell to switch.
+    # Wf-A9 FIX (2026-10-03) — dispatch on --dataset.  Previously the
+    # 5-metal table was loaded unconditionally and the platinai branch
+    # computed ``split_df_platinai`` that nothing ever consumed, so
+    # --dataset platinai_4cell died in load_5metal_split_table() on the
+    # platinai schema ("5-metal CSV missing columns: {...}").
+    # Default --dataset=metalcytotox_5metal preserves Wf-131 P1 +
+    # Wf-251-F4 baseline bit-for-bit.
     if args.dataset == "platinai_4cell":
-        split_df_platinai = load_platinai_4cell_split_table(args.csv)
+        split_df = load_platinai_4cell_split_table(args.csv)
         print(
             f"[Wf-A8 PlatinAI 4-cell loader] dataset=platinai_4cell "
-            f"loaded {len(split_df_platinai)} long-format rows; "
+            f"loaded {len(split_df)} long-format rows; "
             f"per-cell breakdown: "
-            f"{dict(split_df_platinai.groupby('cell_line').size())}",
+            f"{dict(split_df.groupby('cell_line').size())}",
+            flush=True,
+        )
+    else:
+        split_df = load_5metal_split_table(args.csv)
+        print(
+            f"[wf131-mtw] loaded 5-metal split table: {len(split_df)} rows",
             flush=True,
         )
 
@@ -2495,6 +2580,14 @@ def main(argv: Optional[List[str]] = None) -> int:
                     alpha=args.alpha,
                     lr=args.lr,
                     wd=float(getattr(args, "weight_decay", 0.0)),  # Wf-A6 A2 BLOCKER C fix
+                    # Wf-A9 FIX (2026-10-03) — gradient-clip threshold
+                    # from the yaml-driven ``args.max_norm`` threading
+                    # down to the loss-cascade clipping site.
+                    max_norm=float(getattr(args, "max_norm", 5.0)),
+                    # Wf-A9 FIX (2026-10-03) — resolved joint pool so the
+                    # model's metal-embedding table matches the cohort
+                    # (Pt-only for platinai_4cell, the canonical 5 otherwise).
+                    metals_pool=tuple(args.metals),
                     batch_size=args.batch_size,
                     w_w=args.wasserstein_weight,
                     use_l2_guard=args.use_l2_guard,

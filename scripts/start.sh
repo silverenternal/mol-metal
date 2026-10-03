@@ -309,6 +309,43 @@ echo "    n_seeds=$N_SEEDS"
 echo "    epochs=$EPOCHS"
 
 # ============================================================================
+# 3b) Export the environment the trainer + its data loaders actually need
+# ============================================================================
+# Wf-A9 FIX (2026-10-03) — these two were previously never exported, which
+# is why launches died after pre-flight PASS:
+#
+#   (a) MOLMETAL_DATA_DIR — molmetal/data/cytotox.py defaulted to the
+#       hard-coded /mnt/storage/data/molmetal mount (absent on this host),
+#       so MetalCytotoxDataset.from_csv() raised
+#       "FileNotFoundError: MetalCytoToxDB not found at
+#        /mnt/storage/data/molmetal/MetalCytoToxDB.csv" on the D-MPNN
+#       retrain path.  The real CSV is in .data/molmetal/.
+#       (The loader now also honours this var itself — see Wf-A9 fix in
+#       molmetal/data/cytotox.py — but exporting here keeps every child
+#       process consistent.)
+#
+#   (b) CUDA_VISIBLE_DEVICES — derived from the yaml `compute.gpu` field
+#       so the yaml stays the single source of truth for the device
+#       (per user voice: "这个也得靠yaml决定训练配置").  Without it,
+#       training_utils.apply_default_cuda_visible_devices() falls back to
+#       its DEFAULT of "1" = RTX 5090, contradicting `gpu: cuda:0` in
+#       every training config.
+export MOLMETAL_DATA_DIR="${MOLMETAL_DATA_DIR:-$PROJECT_ROOT/.data/molmetal}"
+export MOLMETAL_TMQM_DIR="${MOLMETAL_TMQM_DIR:-$PROJECT_ROOT/.data/molmetal/tmQM}"
+
+# "cuda:0" → "0"; ignore anything non-numeric ("auto", "cpu", …) so a
+# bad yaml value cannot silently pin the wrong device.
+_cvd="${GPU#cuda:}"
+_cvd="${_cvd%%[^0-9]*}"
+if [[ -n "$_cvd" ]]; then
+  export CUDA_VISIBLE_DEVICES="$_cvd"
+  echo "[start.sh] CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES (from yaml compute.gpu=$GPU)"
+else
+  echo "[start.sh][WARN] yaml compute.gpu='$GPU' is not a cuda:N index; leaving CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-<unset>}"
+fi
+echo "[start.sh] MOLMETAL_DATA_DIR=$MOLMETAL_DATA_DIR"
+
+# ============================================================================
 # 4) Build launch command (substitute YAML placeholders + append EXTRA_FLAGS)
 # ============================================================================
 mkdir -p "$OUT_DIR" "$(dirname "$TRAINING_SUMMARY")" "$(dirname "$LOG_MASTER")"

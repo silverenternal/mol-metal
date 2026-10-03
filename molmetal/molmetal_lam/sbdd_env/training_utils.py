@@ -74,8 +74,14 @@ from typing import Any, Dict, Optional
 
 #: Default value for ``CUDA_VISIBLE_DEVICES`` when neither the env var
 #: nor the CLI flag overrides it.  ``"1"`` = second GPU = RTX 5090 on
-#: the standard kanzi dual-GPU box (GPU 0 is reserved for the ``vlm``
-#: venv process at /home/hugo/dButEaas/.venv-vlm).
+#: the standard kanzi dual-GPU box (historically GPU 0 was reserved for
+#: the ``vlm`` venv process).
+#:
+#: Wf-A9 (2026-10-03): the launch path no longer relies on this fallback
+#: for retrains — ``scripts/start.sh`` exports ``CUDA_VISIBLE_DEVICES``
+#: from the yaml ``compute.gpu`` field, so the yaml decides the device.
+#: The fallback is kept unchanged for direct/standalone invocations that
+#: have their own tests pinning ``"1"``.
 DEFAULT_CUDA_VISIBLE_DEVICES: str = "1"
 
 
@@ -162,17 +168,28 @@ def apply_default_cuda_visible_devices(
     """
     log = logger or _LOGGER
     chosen: Optional[str] = None
+    # Wf-A9 FIX (2026-10-03) — "already set" must be tested with
+    # ``is not None``, not truthiness.  The previous ``.strip()`` guard
+    # read an explicitly-empty ``CUDA_VISIBLE_DEVICES=""`` as *unset* and
+    # silently replaced it with the ``"1"`` default, contradicting this
+    # function's own docstring (branch 2: "if already set (including
+    # empty-string \"\")") and CUDA's own semantics, where ``""`` means
+    # "no visible devices".  The wf385a3 SCAFFOLD wire-in gate relies on
+    # exactly that — it spawns its 50-step CPU smoke with
+    # ``CUDA_VISIBLE_DEVICES=""`` — so the regression surfaced there as
+    # ``RuntimeError: No CUDA GPUs are available``.
+    env_value = os.environ.get("CUDA_VISIBLE_DEVICES")
     if override is not None:
         # Wf-415-A3 fix: explicit "" override forces CPU even when env
         # var is unset (default fallback would otherwise kick in).
-        chosen = str(override).strip() if override is not None else None
-    elif os.environ.get("CUDA_VISIBLE_DEVICES", "").strip():
-        chosen = os.environ["CUDA_VISIBLE_DEVICES"].strip()
+        chosen = str(override).strip()
+    elif env_value is not None:
+        # Set — honour it verbatim ("" → force CPU, "0"/"1"/… → that GPU).
+        chosen = env_value.strip()
     else:
         chosen = DEFAULT_CUDA_VISIBLE_DEVICES
         log.warning(
-            "CUDA_VISIBLE_DEVICES not set — defaulting to %s (RTX 5090 "
-            "on kanzi; GPU 0 is occupied by the VLM venv process). "
+            "CUDA_VISIBLE_DEVICES not set — defaulting to %s. "
             "Override with --cuda-visible-devices=N or "
             "CUDA_VISIBLE_DEVICES=N before launching.",
             chosen,

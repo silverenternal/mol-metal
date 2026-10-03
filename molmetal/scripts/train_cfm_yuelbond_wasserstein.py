@@ -914,6 +914,14 @@ def train_one_epoch(
     # per-batch lookup with epoch_idx=0 (smoke-grade).  Loss contribution
     # stays 0 (cache lives outside the loss cascade).
     cfm_chemprop_v3_cache: bool = False,  # False = no CFM-side cache
+    # Wf-A9 FIX (2026-10-03) — gradient-clip threshold threaded as a
+    # kwarg.  The Wf-A8 patch referenced ``args`` inside this function,
+    # but ``args`` is ``main()``-scoped → NameError at the first
+    # ``loss.backward()`` (AGENTS.md §5.7 smoke floor #2).  Default 5.0
+    # matches the pre-Wf-A8 hardcoded ``clip_grad_norm_(..., max_norm=5.0)``
+    # so the Wf-124 P2 + Wf-148 baseline is preserved bit-for-bit;
+    # 0.0 disables clipping entirely.
+    max_norm: float = 5.0,
 ) -> Tuple[float, float, float, float, float]:
     """Train one epoch over the synthetic Pt-click cloud cohort.
 
@@ -1607,8 +1615,14 @@ def train_one_epoch(
         # Wf-A8 (2026-10-03) gradient clipping per --max-norm flag (per
         # AGENTS.md §5.7 trainer flag wire-in smoke-required rule; bit-exact
         # baseline preserved when max_norm=0.0).
-        max_norm = float(getattr(args, "max_norm", 5.0)) if args is not None else 5.0
-        grad_norm = float(torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=max_norm))
+        # Wf-A9 FIX (2026-10-03) — ``max_norm`` now arrives as a kwarg from
+        # ``main()``.  The previous ``getattr(args, ...)`` form raised
+        # NameError at the first backward step because ``args`` is
+        # ``main()``-scoped (AGENTS.md §5.7 smoke floor #2).
+        _clip_norm = float(max_norm) if max_norm > 0.0 else float("inf")
+        grad_norm = float(
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=_clip_norm)
+        )
         optimiser.step()
         bond_losses.append(float(bond_ce.detach()))
         w2_losses.append(float(w2_val.detach()))
@@ -2039,8 +2053,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--cuda-visible-devices", type=str, default="",
                    help=(
                        "Override CUDA_VISIBLE_DEVICES before device "
-                       "resolution.  Empty '' → default '1' (RTX 5090 "
-                       "on kanzi, GPU 0 = VLM venv)."
+                       "resolution.  Empty '' (the default) = inherit the "
+                       "shell env — scripts/start.sh exports it from the "
+                       "yaml `compute.gpu` field.  If neither is set, "
+                       "training_utils falls back to its own default ('1'). "
+                       "Pass a non-empty value to force a specific GPU."
                    ))
     p.add_argument("--out-dir", type=str,
                    default="molmetal/reports/wf124_p2_cfm_full",
@@ -2742,7 +2759,17 @@ def main() -> int:
         apply_default_cuda_visible_devices,
         resolve_default_device,
     )
-    apply_default_cuda_visible_devices(override=args.cuda_visible_devices)
+    # Wf-A9 FIX (2026-10-03) — ``args.cuda_visible_devices`` defaults to
+    # the empty string, which the argparse help documents as "inherit
+    # shell env or fall back to '1'".  ``apply_default_cuda_visible_devices``
+    # however treats a *non-None* ``""`` as an explicit "force no GPUs"
+    # override (Wf-415-A3 SCAFFOLD-gate contract), so passing the default
+    # straight through asked every normal launch for CPU.  Coerce empty →
+    # None so the documented "inherit" semantics actually apply: the env
+    # var exported by start.sh (from yaml ``compute.gpu``) wins.
+    apply_default_cuda_visible_devices(
+        override=(args.cuda_visible_devices or None)
+    )
     if args.device == "auto":
         device = resolve_default_device()
     elif args.device.startswith("cuda"):
@@ -3136,6 +3163,10 @@ def main() -> int:
             cfm_chemprop_v3_cache=bool(
                 getattr(args, "cfm_chemprop_v3_cache", False)
             ),
+            # Wf-A9 FIX (2026-10-03) — thread the gradient-clip threshold
+            # from the yaml-driven ``args.max_norm`` (start.sh passes
+            # ``--max-norm "$MAX_NORM"`` sourced from ``protocol.max_norm``).
+            max_norm=float(getattr(args, "max_norm", 5.0)),
         )
         # Evaluate.
         decoding_attempted = (epoch % 1 == 0)  # every epoch for short runs

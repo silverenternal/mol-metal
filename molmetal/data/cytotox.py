@@ -59,8 +59,25 @@ import pandas as pd
 
 from molmetal.domain import Molecule
 
-# Default data root — overridable via env MOLMETAL_DATA_DIR
-DEFAULT_DATA_DIR = Path("/mnt/storage/data/molmetal")
+# Default data root — overridable via env MOLMETAL_DATA_DIR.
+#
+# Wf-A9 FIX (2026-10-03): this env var was documented but never actually
+# read — ``DEFAULT_DATA_DIR`` was a hard-coded constant pointing at the
+# ``/mnt/storage`` mount, which does not exist on this host.  The D-MPNN
+# retrain path therefore died with
+# ``FileNotFoundError: MetalCytoToxDB not found at
+# /mnt/storage/data/molmetal/MetalCytoToxDB.csv`` before the first epoch
+# (raised from :meth:`MetalCytotoxDataset.from_csv`).  The real CSV lives
+# in the project-local ``.data/molmetal/`` tree (see :file:`env.sh` §1b,
+# which exports ``MOLMETAL_DATA_DIR=/…/.data/molmetal``).
+#
+# This now honours the env var the same way
+# :func:`molmetal.data.four_domain_combined._resolve_metalcytotox_csv`
+# already did, and keeps ``/mnt/storage`` as the last-resort fallback so
+# hosts that do have the mount are unaffected.
+DEFAULT_DATA_DIR = Path(
+    os.environ.get("MOLMETAL_DATA_DIR") or "/mnt/storage/data/molmetal"
+)
 DEFAULT_CSV = DEFAULT_DATA_DIR / "MetalCytoToxDB.csv"
 DEFAULT_CACHE_DIR = DEFAULT_DATA_DIR / "3d_cache"
 
