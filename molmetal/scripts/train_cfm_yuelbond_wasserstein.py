@@ -2261,6 +2261,146 @@ def train_one_epoch(
 
 
 @torch.no_grad()
+def evaluate_synthesis_certificates(
+    decoder: "YuelBondBondDecoder",
+    val_clouds: Sequence[AtomCloud],
+    seed_smiles: str = "[NH2][Pt]([NH2])([Cl])[Cl]",
+    max_depth: int = 3,
+    max_targets: int = 40,
+) -> Tuple[int, int, List[dict]]:
+    """Measure how many DECODED molecules carry a click-chemistry certificate.
+
+    2026-10-04 NEW.  This is the measurement the project's differentiating
+    claim rests on: the generative space is built from typed click-chemistry
+    beta-reductions, so a molecule it produces should come with a SYNTHESIS
+    ROUTE by construction -- something neither Rusanov 2025 (de novo design,
+    synthesised by hand) nor Krasnov 2026 (composition features, no geometry)
+    can claim.
+
+    The claim is only worth making if it is measured, so this decodes the
+    validation clouds and asks :func:`closure_test` whether each resulting
+    molecule is REACHABLE from a cisplatin seed through the five click rules,
+    recording the witness (the ordered rule list) when it is.
+
+    Honest caveat, stated here rather than buried: the CFM decodes a bond
+    graph from an atom cloud; it does NOT generate by applying click rules.
+    So a certificate is not guaranteed by construction -- it is an empirical
+    property of what the decoder emits, and a LOW rate is a real finding
+    about the gap between the two halves of the system, not a bug in this
+    function.
+
+    Returns
+    -------
+    (n_certified, n_attempted, records)
+        ``records`` has one dict per attempt: smiles / certified / witness /
+        error.
+    """
+    records: List[dict] = []
+    try:
+        from molmetal.molmetal_lam.lam_chem.closure import ProductiveSpace
+        from molmetal.molmetal_lam.lam_chem.rules import (
+            AmideCoupling,
+            CuAAC,
+            SPAAC,
+            Suzuki,
+            ThiolEne,
+        )
+        from molmetal.molmetal_lam.molecules.closed_term import MoleculeClosedTerm
+    except Exception as exc:  # noqa: BLE001 — reported, never silent
+        warnings.warn(
+            f"[cfm-cert] closure machinery unavailable, skipping: {exc!r}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return 0, 0, []
+
+    rules = [CuAAC, SPAAC, ThiolEne, Suzuki, AmideCoupling]
+    try:
+        seed_term = MoleculeClosedTerm.from_smiles(seed_smiles, embed_3d=False)
+    except Exception as exc:  # noqa: BLE001
+        warnings.warn(
+            f"[cfm-cert] could not build the seed {seed_smiles!r}: {exc!r}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return 0, 0, []
+
+    # 2026-10-04 — CLICK-HANDLE PARTNERS ARE REQUIRED, and forgetting them
+    # silently produces a 0.000 rate that looks like a finding.
+    #
+    # Cisplatin is a square-planar Pt(II) with NH3 + Cl ligands: it carries NO
+    # alkyne, azide, thiol, boronic-acid or amine handle, so from that seed
+    # alone every click rule is inapplicable and the reachable set is {seed}
+    # -- `closure_theorem`'s own docstring calls this the vacuous case
+    # ("a seed with no internal click handles yields an empty BFS").  The
+    # first run of this evaluator hit exactly that and reported 0/32, which
+    # was a defect in the measurement, not a property of the model.
+    #
+    # These are the same eight handle-bearing tiles wf_lambda4_verify.py uses.
+    try:
+        _partners = [
+            MoleculeClosedTerm.from_smiles(s, embed_3d=False)
+            for s in (
+                "C#CCN",  # propargylamine: alkyne + amine
+                "CCN=[N+]=[N-]",  # ethyl azide (CuAAC)
+                "C#CC",  # propyne (CuAAC)
+                "CS",  # methanethiol (ThiolEne)
+                "C=CC",  # propene (ThiolEne)
+                "B(O)c1ccccc1",  # phenylboronic acid (Suzuki)
+                "Brc1ccccc1",  # bromobenzene (Suzuki)
+                "OC(=O)c1ccccc1",  # benzoic acid (AmideCoupling)
+            )
+        ]
+    except Exception as exc:  # noqa: BLE001
+        warnings.warn(
+            f"[cfm-cert] could not build the click-handle partner tiles: "
+            f"{exc!r}; the reachable set will be degenerate (seed only)",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        _partners = []
+
+    n_attempted = 0
+    n_certified = 0
+    for cloud in list(val_clouds)[: int(max_targets)]:
+        smi = None
+        try:
+            res = decoder.decode(cloud)
+            decoded = getattr(res, "decoded", None)
+            smi = getattr(decoded, "smiles", None) if decoded is not None else None
+        except Exception:  # noqa: BLE001
+            smi = None
+        if not smi:
+            continue
+        n_attempted += 1
+        rec = {"smiles": smi, "certified": False, "witness": None, "error": None}
+        try:
+            target = MoleculeClosedTerm.from_smiles(smi, embed_3d=False)
+            # ProductiveSpace (not the bare closure_test) so the partner tiles
+            # can be seeded -- without them the BFS cannot leave the seed.
+            _space = ProductiveSpace(
+                start_term=seed_term,
+                click_rules=list(rules),
+                max_depth=int(max_depth),
+                max_products=2000,
+                partner_terms=list(_partners) or None,
+            )
+            ok, witness = _space.closure_test(target)
+            rec["certified"] = bool(ok)
+            rec["witness"] = list(witness) if witness else None
+            if ok:
+                n_certified += 1
+        except Exception as exc:  # noqa: BLE001
+            rec["error"] = f"{type(exc).__name__}: {exc}"
+        records.append(rec)
+    print(
+        f"[cfm-cert] synthesis certificates: {n_certified}/{n_attempted} decoded "
+        f"molecule(s) reachable from seed {seed_smiles!r} via the five click "
+        f"rules at depth<={max_depth}"
+    )
+    return n_certified, n_attempted, records
+
+
 def evaluate_decode_ratio(
     model: CFMJointModel,
     decoder: YuelBondBondDecoder,
@@ -2892,6 +3032,41 @@ def parse_args() -> argparse.Namespace:
     # probes' Z one-hot with it), so a checkpoint saved under one preset will
     # not load under the other.  Default 'pt' keeps every shipped config and
     # checkpoint exactly as they were.
+    p.add_argument(
+        "--closure-certify",
+        dest="closure_certify",
+        action="store_true",
+        default=False,
+        help=(
+            "Also measure the SYNTHESIS-CERTIFICATE rate during evaluation: "
+            "decode the validation clouds, then ask closure_test whether each "
+            "decoded molecule is reachable from a cisplatin seed through the "
+            "five click rules (CuAAC/SPAAC/ThiolEne/Suzuki/AmideCoupling), "
+            "recording the witness route.  This is the measurement the "
+            "synthesis-awareness claim rests on, and it is empirical -- the "
+            "CFM decodes a bond graph, it does not generate by applying click "
+            "rules, so a low rate is a real finding about the gap between the "
+            "two halves rather than a bug.  Default OFF."
+        ),
+    )
+    p.add_argument(
+        "--closure-seed-smiles",
+        type=str,
+        default="[NH2][Pt]([NH2])([Cl])[Cl]",
+        help="Seed term for the certificate check (default: cisplatin).",
+    )
+    p.add_argument(
+        "--closure-max-depth",
+        type=int,
+        default=3,
+        help="Maximum click-rule applications along a derivation.",
+    )
+    p.add_argument(
+        "--closure-max-targets",
+        type=int,
+        default=40,
+        help="Cap on decoded molecules certified per evaluation (the BFS is not free).",
+    )
     p.add_argument(
         "--yuelbond-vocab",
         type=str,
@@ -4603,6 +4778,29 @@ def main() -> int:
             finally:
                 if _ema_swapped:
                     model.ema_swap_out()
+            # 2026-10-04 — synthesis-certificate rate, the measurement the
+            # differentiating claim rests on.  Runs on the SAME evaluation
+            # pass so decode_ratio and cert_rate always describe one model
+            # state; reported every epoch because a rate that only appears at
+            # the end hides whether it was still climbing.
+            if bool(getattr(args, "closure_certify", False)):
+                _pc, _pt, _precs = evaluate_synthesis_certificates(
+                    decoder=decoder,
+                    val_clouds=val_clouds_d,
+                    seed_smiles=str(
+                        getattr(
+                            args, "closure_seed_smiles", "[NH2][Pt]([NH2])([Cl])[Cl]"
+                        )
+                    ),
+                    max_depth=int(getattr(args, "closure_max_depth", 3)),
+                    max_targets=int(getattr(args, "closure_max_targets", 40)),
+                )
+                print(
+                    f"[cfm-cert] epoch={epoch} cert_rate="
+                    f"{_pc / max(_pt, 1):.3f} ({_pc}/{_pt})"
+                )
+                if epoch == 0:
+                    _cert_records = _precs
         else:
             n_ok, n_total = 0, args.n_val
         decode_ratio = n_ok / max(n_total, 1)
