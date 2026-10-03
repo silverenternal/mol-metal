@@ -60,7 +60,7 @@ data:
   # 'DataLoader num_workers (default 0 = main process)'); the old key name
   # resolved to no argparse dest and was silently dropped.
   cpu_num_workers: 8  # PyTorch DataLoader docs recommendation; Blackwell sm_120 + 6-batch featurisation handles 8 workers
-  pin_memory: true  # default DataLoader semantics (D-MPNN has no --pin-memory flag)
+  pin_memory: true  # wired -> --pin-memory / --no-pin-memory (2026-10-04)
 
 # ============================================================================
 # MODEL — chemprop_v2_v3 D-MPNN multi-task Wasserstein pIC50
@@ -96,7 +96,7 @@ protocol:
   epochs: 50  # --epochs
   batch_size: 128  # --batch-size (linear scaling rule; NVIDIA A100 paper)
   lr: 2.0e-3  # --lr (linear scaling: lr = base_lr × new_batch / old_batch)
-  gradient_accumulation_steps: 1  # NOT IN TRAINER (D-MPNN has no --gradient-accumulation); schema-only
+  gradient_accumulation_steps: 1  # wired -> --gradient-accumulation-steps; 1 = no accumulation
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'grad_clip_norm: 5.0' removed (loader alias grad_clip_norm->--max-norm; operative key = protocol.max_norm below).
   weight_decay: 1.0e-5  # --weight-decay (Adam L2 regularisation)
   max_norm: 5.0  # --max-norm (Pascanu 2013 standard for transformer/GNN stability)

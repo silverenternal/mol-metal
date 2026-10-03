@@ -1068,6 +1068,19 @@ def train_one_epoch_joint(
     # default; 0.0 disables this clip (the separate ``use_l2_guard``
     # clip below is unaffected).
     max_norm: float = 5.0,
+    # 2026-10-04 — kwargs for the two remaining dead yaml keys, threaded the
+    # same way (main() → train_one_metal_one_seed() → here; never read off a
+    # main()-scoped ``args`` object from inside this function).
+    #   * ``gradient_accumulation_steps`` — real accumulation: divide each
+    #     micro-batch loss by N, clip+step every N micro-batches.  Default 1
+    #     keeps the pre-flag per-batch loop bit-for-bit (no division by 1
+    #     is even performed on that path).
+    #   * ``pin_memory`` — gates the ``non_blocking`` hint on the manual
+    #     H2D copies (this trainer has no torch DataLoader).  Default True
+    #     matches ``data.pin_memory``; pageable tensors make
+    #     ``non_blocking=True`` a documented no-op, so numerics unchanged.
+    gradient_accumulation_steps: int = 1,
+    pin_memory: bool = True,
 ) -> Tuple[float, float, float, float]:
     """Train one epoch on the joint 5-metal pool.
 
@@ -1090,6 +1103,34 @@ def train_one_epoch_joint(
     indices = np.arange(len(graphs))
     np.random.shuffle(indices)
 
+    # 2026-10-04 — gradient accumulation window.  ``accum == 1`` (default)
+    # keeps the historical per-batch loop bit-for-bit: zero_grad → forward →
+    # backward → clip → step, unchanged statement order and no loss scaling.
+    accum = max(1, int(gradient_accumulation_steps))
+    micro = 0
+    # ``pin_memory`` gates the non_blocking hint on the manual H2D copies.
+    # Torch documents non_blocking=True as a no-op for pageable tensors, so
+    # the default (True) leaves today's copy semantics untouched.
+    _non_blocking = bool(pin_memory) and getattr(device, "type", "") == "cuda"
+
+    def _clip_and_step() -> None:
+        """Clip grads (max_norm / L2 guard) then take one optimizer step.
+
+        Called once per accumulation window — with the default
+        ``gradient_accumulation_steps=1`` that is once per micro-batch, in
+        the same order as the pre-flag loop (backward → clip → step).
+        """
+        nonlocal last_grad_norm
+        if max_norm > 0.0:
+            last_grad_norm = float(
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
+            )
+        if use_l2_guard:
+            last_grad_norm = float(
+                torch.nn.utils.clip_grad_norm_(model.parameters(), L2_GUARD_MAX_NORM)
+            )
+        optimizer.step()
+
     for start in range(0, len(indices), batch_size):
         batch_idx = indices[start : start + batch_size]
         batch_graphs = [graphs[i] for i in batch_idx]
@@ -1103,15 +1144,18 @@ def train_one_epoch_joint(
         if batch_data is None:
             continue
         atom_f, bond_f, e_src, e_dst, mids_t, pic50_t, active_t = batch_data
-        atom_f = atom_f.to(device)
-        bond_f = bond_f.to(device)
-        e_src = e_src.to(device)
-        e_dst = e_dst.to(device)
-        mids_t = mids_t.to(device)
-        pic50_t = pic50_t.to(device)
-        active_t = active_t.to(device)
+        atom_f = atom_f.to(device, non_blocking=_non_blocking)
+        bond_f = bond_f.to(device, non_blocking=_non_blocking)
+        e_src = e_src.to(device, non_blocking=_non_blocking)
+        e_dst = e_dst.to(device, non_blocking=_non_blocking)
+        mids_t = mids_t.to(device, non_blocking=_non_blocking)
+        pic50_t = pic50_t.to(device, non_blocking=_non_blocking)
+        active_t = active_t.to(device, non_blocking=_non_blocking)
 
-        optimizer.zero_grad()
+        # Zero at the start of each accumulation window.  With accum == 1
+        # this is the same per-batch zero_grad the pre-flag loop ran.
+        if accum == 1 or micro % accum == 0:
+            optimizer.zero_grad()
         pic50_pred, active_logits = model(atom_f, bond_f, e_src, e_dst, mids_t)
         loss, lc, lr_ = criterion(pic50_pred, active_logits, pic50_t, active_t)
 
@@ -1237,7 +1281,15 @@ def train_one_epoch_joint(
                     _wasm_print_kcal_seen = True
 
         total = loss + w_w * w_pen + metal_coord_weight * mc_term_loss
-        total.backward()
+        if accum > 1:
+            # Gradient accumulation: the composite loss is divided by N and
+            # the gradients of N micro-batches accumulate, so one optimizer
+            # step consumes the window's mean loss.  accum == 1 takes the
+            # plain backward() branch below — no division is even performed
+            # — which keeps the default path bit-for-bit identical.
+            (total / accum).backward()
+        else:
+            total.backward()
         # Wf-A8 (2026-10-03) gradient clipping per --max-norm flag (per
         # AGENTS.md §5.7 trainer flag wire-in smoke-required rule).
         # Wf-A9 FIX (2026-10-03) — ``max_norm`` now arrives as a kwarg
@@ -1248,15 +1300,9 @@ def train_one_epoch_joint(
         # the total gradient norm; surface it so the TUI/events report a
         # real number instead of the hard-coded NaN placeholder it used
         # to emit (see the train_epoch event emission below).
-        if max_norm > 0.0:
-            last_grad_norm = float(
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
-            )
-        if use_l2_guard:
-            last_grad_norm = float(
-                torch.nn.utils.clip_grad_norm_(model.parameters(), L2_GUARD_MAX_NORM)
-            )
-        optimizer.step()
+        micro += 1
+        if accum == 1 or micro % accum == 0:
+            _clip_and_step()
 
         bs = pic50_t.size(0)
         total_loss += loss.item() * bs
@@ -1264,6 +1310,12 @@ def train_one_epoch_joint(
         total_reg += lr_.item() * bs
         total_w += float(w_pen.item()) * bs
         n_samples += bs
+
+    # Trailing partial accumulation window (accum > 1 only): step the
+    # leftover micro-batches instead of silently dropping their gradients.
+    # Their losses were scaled by 1/accum like every other micro-batch.
+    if accum > 1 and micro % accum != 0:
+        _clip_and_step()
 
     if n_samples == 0:
         return 0.0, 0.0, 0.0, 0.0
@@ -1439,6 +1491,15 @@ def train_one_metal_one_seed(
     tf32: bool = False,
     cudnn_benchmark: bool = False,
     channels_last: bool = False,
+    # 2026-10-04 — the remaining two dead yaml keys
+    # (``protocol.gradient_accumulation_steps`` / ``data.pin_memory``)
+    # threaded as explicit kwargs for the same reason as the block at the
+    # top of this signature: this function has NO access to the
+    # main()-scoped ``args`` object, and a ``getattr(args, ...)`` here is a
+    # NameError at the first epoch (AGENTS.md §5.7 floor #2).  Defaults
+    # (1 / True) preserve the pre-flag loop bit-for-bit.
+    gradient_accumulation_steps: int = 1,
+    pin_memory: bool = True,
 ) -> MetalSeedResult:
     """Train a 5-metal multi-task D-MPNN for one (metal, seed).
 
@@ -1650,7 +1711,15 @@ def train_one_metal_one_seed(
     # documented alternative (Smith-Topin 2018 §3.3 discusses
     # batch-level vs epoch-level step for OneCycleLR; epoch-level
     # is functionally equivalent up to total_steps divisor).
-    steps_per_epoch = max(1, len(train_mids) // max(1, batch_size))
+    # 2026-10-04 — with --gradient-accumulation-steps N the optimizer steps
+    # once per N micro-batches, so the scheduler's step count is the window
+    # count, not the micro-batch count.  N == 1 divides by 1 → the schedule
+    # is bit-for-bit the pre-flag one.
+    steps_per_epoch = max(
+        1,
+        (len(train_mids) // max(1, batch_size))
+        // max(1, int(gradient_accumulation_steps)),
+    )
     total_steps = max(1, int(epochs) * int(steps_per_epoch))
     warmup_steps = max(0, int(lr_warmup_epochs) * int(steps_per_epoch))
     scheduler = build_lr_scheduler(
@@ -1776,6 +1845,11 @@ def train_one_metal_one_seed(
             metal_coord_term=metal_coord_term,
             metal_coord_weight=metal_coord_weight,
             cal_sign_vina_convention=cal_sign_vina_convention,
+            # 2026-10-04 — gradient accumulation window + pin-memory transfer
+            # hint, threaded from main() (the values live on the caller's
+            # namespace; this function never reads ``args``).
+            gradient_accumulation_steps=gradient_accumulation_steps,
+            pin_memory=pin_memory,
         )
         w_history.append(float(avg_w))
 
@@ -2357,6 +2431,26 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "mtl_gradproj (PCGrad-style per-task gradient projection), "
         "single_task (Wf-197 lever 1; per-metal cohort only).",
     )
+    # 2026-10-04 — `model.task` was declared in 4 configs and resolved to no
+    # argparse dest (pre-flight p3_wf343c4_hyperparams_config_complete
+    # RESIDUAL), so the declared value reached nothing. The schema leaf
+    # `model.task` maps to this dest via the wfA2 loader's two-component
+    # section fallback. The multi-task head layout is hardcoded (one head
+    # pair per cohort member); only the declared value 'multi_task' is
+    # accepted — main() raises on anything else rather than silently
+    # pretending to support a task layout that does not exist.
+    p.add_argument(
+        "--task",
+        choices=("multi_task",),
+        default="multi_task",
+        help=(
+            "Task layout (yamls declare it as model.task). Only "
+            "'multi_task' is supported: the model is a shared encoder + "
+            "one head pair per cohort member, which IS the multi-task "
+            "layout. Any other value is rejected loudly in main(); it is "
+            "never silently ignored."
+        ),
+    )
     p.add_argument(
         "--n-mc",
         type=int,
@@ -2470,6 +2564,25 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         type=int,
         default=DEFAULT_BATCH_SIZE,
         help="Batch size (default MT_BATCH_SIZE=64).",
+    )
+    # 2026-10-04 — `protocol.gradient_accumulation_steps` was declared in 2
+    # configs and resolved to no argparse dest (pre-flight RESIDUAL), so the
+    # declared value reached nothing. The schema leaf maps to this dest via
+    # the wfA2 loader's two-component section fallback. Implemented as real
+    # gradient accumulation in train_one_epoch_joint(): the loss is divided
+    # by N and the optimizer steps once every N micro-batches. Default 1 =
+    # one step per batch, bit-for-bit identical to the pre-flag loop.
+    p.add_argument(
+        "--gradient-accumulation-steps",
+        type=int,
+        default=1,
+        help=(
+            "Gradient accumulation window (micro-batches per optimizer "
+            "step). The composite loss of each micro-batch is divided by "
+            "this N and the optimizer/clip runs once every N micro-batches; "
+            "the trailing partial window is stepped at epoch end. "
+            "Default 1 = current per-batch behaviour, bit-for-bit."
+        ),
     )
     p.add_argument(
         "--out-dir",
@@ -2700,6 +2813,30 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "when featurising on CPU).  Use 0 unless batching is large."
         ),
     )
+    # 2026-10-04 — `data.pin_memory` was declared in 2 configs and resolved
+    # to no argparse dest (pre-flight RESIDUAL), so the declared value
+    # reached nothing. The schema leaf `data.pin_memory` maps to this dest
+    # via the wfA2 loader's two-component section fallback. The trainer
+    # batches manually (no torch DataLoader), so pin_memory is wired to the
+    # host→device transfer it exists to accelerate: when enabled, the
+    # collated batch tensors are copied with non_blocking=True. On the
+    # default pageable tensors non_blocking is documented as a no-op
+    # (pinning only happens inside a DataLoader), so numerics are unchanged
+    # at the default True; on CPU the flag is a no-op by construction.
+    p.add_argument(
+        "--pin-memory",
+        dest="pin_memory",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Pin-memory semantics for the manual batch → device transfer "
+            "(yamls declare it as data.pin_memory). Default True; "
+            "--no-pin-memory forces blocking copies. This trainer has no "
+            "torch DataLoader (it builds batches itself), so the flag gates "
+            "the non_blocking hint on the H2D copies rather than a loader "
+            "argument."
+        ),
+    )
     # ------------------------------------------------------------------
     # Wf-405-A2 — Wf-380 NEW CLI flag wire-in (closing the SCAFFOLD-only
     # gap surfaced by Wf-405-A1 audit).  3 NEW DMPNN flags with
@@ -2925,6 +3062,27 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
+    # 2026-10-04 — `model.task` (dest `task`) validation.  The multi-task
+    # head layout is hardcoded (shared encoder + one head pair per cohort
+    # member), so any other value must FAIL LOUDLY instead of being
+    # silently ignored.  Both entry paths reach this check: the argparse
+    # `choices` guard covers the CLI, while the wfA2 YAML loader setattrs
+    # the namespace directly and bypasses argparse validation — a yaml
+    # `model.task: <bogus>` would otherwise slip through.  Runs before any
+    # directory / checkpoint side effect.
+    if str(args.task) != "multi_task":
+        raise ValueError(
+            f"--task={args.task!r} (yaml model.task) is not supported: this "
+            "trainer implements the multi-task layout only (shared encoder "
+            "+ one head pair per cohort member).  Pass --task multi_task / "
+            "model.task: multi_task; any other value is rejected here rather "
+            "than silently ignored."
+        )
+    print(
+        f"[dmpnn-flags] task={args.task} pin_memory={args.pin_memory} "
+        f"gradient_accumulation_steps={args.gradient_accumulation_steps}",
+        flush=True,
+    )
     args.out_dir.mkdir(parents=True, exist_ok=True)
     # Wf-A10 — default the checkpoint dir to <out_dir>/checkpoints so a run
     # can no longer read or write the shared molmetal/checkpoints/ tree
@@ -3273,6 +3431,15 @@ def main(argv: Optional[List[str]] = None) -> int:
                     tf32=bool(getattr(args, "tf32", False)),
                     cudnn_benchmark=bool(getattr(args, "cudnn_benchmark", False)),
                     channels_last=bool(getattr(args, "channels_last", False)),
+                    # 2026-10-04 — thread the two remaining dead yaml keys
+                    # (protocol.gradient_accumulation_steps / data.pin_memory)
+                    # into the live loop.  Without this the kwargs default to
+                    # 1 / True and the flags stay FLAG_ONLY (§5.7): accepted
+                    # by argparse, reach nothing.
+                    gradient_accumulation_steps=max(
+                        1, int(getattr(args, "gradient_accumulation_steps", 1))
+                    ),
+                    pin_memory=bool(getattr(args, "pin_memory", True)),
                     batch_size=args.batch_size,
                     w_w=args.wasserstein_weight,
                     use_l2_guard=args.use_l2_guard,

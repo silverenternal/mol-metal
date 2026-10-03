@@ -323,6 +323,36 @@ cmd = _cmd_template_or_legacy.format(
 # Strip yaml literal-block backslash continuations: '|' block scalars
 # preserve backslashes as literal chars; we need single-line for shell.
 cmd = cmd.replace(chr(92)+chr(10), ' ').replace(chr(92), '').strip()
+# 2026-10-04 — three YAML keys that resolved to no trainer argparse dest
+# before this date, so their declared values reached nothing:
+#   model.task                          -> --task
+#   data.pin_memory                     -> --pin-memory / --no-pin-memory
+#   protocol.gradient_accumulation_steps -> --gradient-accumulation-steps
+# Emitted ONLY for the D-MPNN entry script: the CFM trainer declares none of
+# these flags, so appending them to a CFM launch would abort it with
+# "unrecognized arguments".  Fallbacks are the trainer's own defaults
+# (multi_task / True / 1), i.e. its pre-flag behaviour, so configs that do
+# not declare a key keep launching unchanged.
+_dmpnn_new_flags = ''
+# The entry script is `entry.script` when set, but the two configs/training/
+# yamls spell it only inside entry.command_template — so also scan the
+# command for the .py path, otherwise those two would silently miss the flags.
+_script_candidates = [str(e.get('script', ''))]
+_cmd_src = str(e.get('command_template') or e.get('command') or '')
+_script_candidates += [w for w in _cmd_src.split() if w.endswith('.py')]
+if any(
+    Path(w).name == 'train_dmpnn_multitask_wasserstein.py'
+    for w in _script_candidates
+    if w
+):
+    _task_v = str((d.get('model', {}) or {}).get('task', 'multi_task'))
+    _pin_v = bool((d.get('data', {}) or {}).get('pin_memory', True))
+    _grad_accum_v = int(_proto_or_train(d, 'gradient_accumulation_steps', 1))
+    _dmpnn_new_flags = (
+        f'--task {shlex.quote(_task_v)} '
+        f'{"--pin-memory" if _pin_v else "--no-pin-memory"} '
+        f'--gradient-accumulation-steps {_grad_accum_v}'
+    )
 # Wf-A5 N3 — extract checkpoint resumption fields from the output
 # section so we can pass them to the trainer via --resume-from +
 # --checkpoint-interval.  Defaults match the trainer CLI defaults
@@ -389,6 +419,9 @@ lines = [
     # yaml does not specify output.events_jsonl_path.
     f'EVENTS_JSONL_PATH={shlex.quote(events_jsonl_path)}',
     f'EVENTS_JSONL_DISABLED={1 if events_jsonl_disabled else 0}',
+    # 2026-10-04 — D-MPNN-only flags rendered from the yaml keys above
+    # (empty string for every other entry script; see _dmpnn_new_flags).
+    f'DMPNN_NEW_FLAGS={shlex.quote(_dmpnn_new_flags)}',
 ]
 with open(env_path, 'w') as f:
     f.write('\n'.join(lines) + '\n')
@@ -479,7 +512,11 @@ if [[ "${EVENTS_JSONL_DISABLED:-0}" == "1" ]]; then
 else
   EVENTS_FLAG="--events-jsonl-path \"$EVENTS_JSONL_PATH\""
 fi
-TRAINER_CMD="$ENTRY_COMMAND --checkpoint-interval \"$CHECKPOINT_INTERVAL\" --resume-from \"$RESUME_FROM\" $EVENTS_FLAG --lr-scheduler \"$SCHEDULER\" --lr-warmup-epochs \"$LR_WARMUP_EPOCHS\" --lr-min-lr \"$LR_MIN_LR\" --weight-decay \"$WEIGHT_DECAY\" --max-norm \"$MAX_NORM\" $EXTRA_FLAGS"
+# 2026-10-04 — $DMPNN_NEW_FLAGS carries the three formerly-dead yaml keys
+# (model.task / data.pin_memory / protocol.gradient_accumulation_steps) for
+# the D-MPNN entry script; it is empty for every other script (e.g. CFM,
+# which has no such flags) — see the parse_yaml block above.
+TRAINER_CMD="$ENTRY_COMMAND --checkpoint-interval \"$CHECKPOINT_INTERVAL\" --resume-from \"$RESUME_FROM\" $EVENTS_FLAG --lr-scheduler \"$SCHEDULER\" --lr-warmup-epochs \"$LR_WARMUP_EPOCHS\" --lr-min-lr \"$LR_MIN_LR\" --weight-decay \"$WEIGHT_DECAY\" --max-norm \"$MAX_NORM\" ${DMPNN_NEW_FLAGS:-} $EXTRA_FLAGS"
 LOG_FILE="$LOG_MASTER"
 echo "[start.sh] trainer command: $TRAINER_CMD"
 echo "[start.sh] log file: $LOG_FILE"

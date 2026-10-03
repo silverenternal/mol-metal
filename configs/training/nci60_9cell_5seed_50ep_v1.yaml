@@ -82,7 +82,7 @@ data:
   # reads 'DataLoader num_workers (default 0 = main process)'); the old key
   # name resolved to no argparse dest and was silently dropped.
   cpu_num_workers: 8
-  pin_memory: true  # schema-only; D-MPNN trainer has no --pin-memory flag
+  pin_memory: true  # wired -> --pin-memory / --no-pin-memory (2026-10-04)
 
 # ============================================================================
 # MODEL — D-MPNN multi-task: shared encoder + one head pair per cell line.
@@ -129,7 +129,7 @@ protocol:
   lr: 1.0e-3
   weight_decay: 1.0e-5
   max_norm: 5.0
-  gradient_accumulation_steps: 1  # schema-only; D-MPNN has no such flag
+  gradient_accumulation_steps: 1  # wired -> --gradient-accumulation-steps; 1 = no accumulation
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'grad_clip_norm: 5.0' removed (loader alias grad_clip_norm->--max-norm; operative key = protocol.max_norm above).
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16: false' removed (no AMP path exists to disable).
   scheduler:
@@ -219,9 +219,9 @@ compute:
   gpu: cuda:0  # GPU 0 only, per standing user directive "只用gpu0吧"
   cpu_workers: 8
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16: false' removed (no AMP path exists to disable).
-  torch_compile: false  # schema-only
-  cudnn_benchmark: false  # schema-only
-  channels_last: false  # schema-only; D-MPNN is not a ConvNet
+  torch_compile: false  # wired -> --torch-compile (2026-10-03)
+  cudnn_benchmark: false  # wired -> --cudnn-benchmark (2026-10-03)
+  channels_last: false  # wired -> --channels-last; no-op here (D-MPNN is not a ConvNet)
 
 # ============================================================================
 # STANDING DIRECTIVES
