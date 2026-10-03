@@ -13,10 +13,11 @@ wired into the ``build_gates('all')`` dispatcher until this Wf-346-A3.
 Tests
 -----
 
-1. **test_wf346a3_anchor_freshness_24h_in_all_pipeline** —
+1. **test_wf346a3_anchor_freshness_24h_in_launch_pipeline** —
    Asserts that ``p3_wf343c4_anchor_freshness_24h`` is registered in
-   the ``build_gates('all')`` dispatcher. This is the direct
-   membership check that proves the gate is wired in (vs. only
+   the ``build_gates('launch')`` dispatcher AND absent from
+   ``build_gates('all')`` (Wf-A16 commit/launch split). This is the
+   direct membership check that proves the gate is wired in (vs. only
    declared as a function on the module).
 
 2. **test_wf346a3_build_gates_all_returns_at_least_63** —
@@ -51,7 +52,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
 
 
 # ---------------------------------------------------------------------------
@@ -75,30 +75,36 @@ def _import_preflight():
 # ---------------------------------------------------------------------------
 
 
-def test_wf346a3_anchor_freshness_24h_in_all_pipeline():
-    """``p3_wf343c4_anchor_freshness_24h`` MUST be in ``build_gates('all')``.
+def test_wf346a3_anchor_freshness_24h_in_launch_pipeline():
+    """``p3_wf343c4_anchor_freshness_24h`` MUST be in ``build_gates('launch')``
+    and NOT in ``build_gates('all')`` (Wf-A16 split: a commit is not a
+    launch, so the commit path must not fail purely on wall-clock age).
 
-    Per Wf-343D1 finding: the gate function existed at
-    :mod:`molmetal.scripts.pre_flight_check` line ~3215 but was not
-    wired into the ``build_gates('all')`` dispatcher. Wf-346-A3
-    fixes this drift by adding the gate to the dispatcher's
-    ``if pipeline == "all"`` block alongside the 3 sibling Wf-343C4
-    gates.
+    Wf-343D1 originally detected the gate was not wired anywhere; Wf-346-A3
+    registered it on 'all'. Wf-A16 (2026-10-03) then moved it to the
+    LAUNCH-only block — the anchor-freshness contract belongs to a launch,
+    not to a commit that only touches gate tooling. This test pins the
+    current contract: present in 'launch', absent from 'all'.
 
-    The gate is matched by exact name on the dispatcher's runner
-    list. If a future edit accidentally drops the gate (e.g. via a
-    partial rebase / conflict), this test FAILs with the exact
-    runner count diff for fast triage.
+    The gate is matched by exact name on the dispatcher's runner list. If a
+    future edit accidentally drops it (or re-adds it to the commit path),
+    this test FAILs with the exact runner counts for fast triage.
     """
     preflight = _import_preflight()
-    runners = preflight.build_gates("all")
-    runner_names = [name for name, _ in runners]
+    launch_names = [name for name, _ in preflight.build_gates("launch")]
+    all_names = [name for name, _ in preflight.build_gates("all")]
 
     expected_gate_name = "p3_wf343c4_anchor_freshness_24h"
-    assert expected_gate_name in runner_names, (
-        f"{expected_gate_name} not in build_gates('all') output "
-        f"(count={len(runner_names)}). Wf-346-A3 registration drift "
-        f"regression — re-add the gate to the dispatcher per Wf-343C4."
+    assert expected_gate_name in launch_names, (
+        f"{expected_gate_name} not in build_gates('launch') output "
+        f"(count={len(launch_names)}). Gate registration drift — re-add it "
+        f"to the launch-only runner block per Wf-A16 + Wf-343C4."
+    )
+    assert expected_gate_name not in all_names, (
+        f"{expected_gate_name} re-added to build_gates('all') "
+        f"(count={len(all_names)}) — Wf-A16 moved it to the launch-only "
+        f"block on purpose (commit != launch; wall-clock FAILs on frozen "
+        f"anchors made the repo uncommittable)."
     )
 
 

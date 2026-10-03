@@ -40,12 +40,12 @@ Tests
    wave_budget_report.json (matching the Wf-262 §7.1 schema)
    into a tmp_path, points the gate at it, asserts PASS on a
    fresh budget + FAIL on an over-budget wave list. ALSO verifies
-   the Wf-321D ``EXPECTED_GATE_COUNTS['all'] == 66`` invariant
-   (62 baseline + 4 NEW), the per_wave_checklist.py
-   P3-partition picks up the 4 NEW gates, and the 'frontier'
-   pipeline count stays at 25 (the 4 NEW gates are 'all'-only by
-   the §3.4 design contract). Closes the third audit link
-   alongside per_wave_checklist.py + the Wf-321D audit.
+   the Wf-321D ``EXPECTED_GATE_COUNTS['all']`` count invariant,
+   the per_wave_checklist.py P3-partition picks up the 4 NEW gates,
+   and the 'frontier' pipeline count stays at 25 (the Wf-343C4 gates
+   are commit-path/launch-only per Wf-A16 and none bleed into
+   'frontier' by the §3.4 design contract). Closes the third audit
+   link alongside per_wave_checklist.py + the Wf-321D audit.
 
 Backward-compat verdict
 -----------------------
@@ -61,11 +61,11 @@ Honest framing (party-twenty-spirit §3.5)
   PASS / FAIL on fixture) so failures localise cleanly.
 * Tests do NOT fabricate any metric values — every assertion traces
   to the on-disk YAML / module / JSON fixture.
-* The current repo state has 3/4 NEW gates FAILing on the live
-  artefacts (configs missing hyperparameters, 4/11 anchors stale,
-  wave budget over by 18x) — these are HONEST-NEGATIVEs the gates
-  correctly detect (not silent regressions). The tests verify the
-  gates' PASS / FAIL contracts on isolated fixtures so the
+* The current repo state: the gates emit honest PASS/FAIL/SKIP verdicts
+  on the live artefacts (e.g. the anchor gate SKIPs its frozen scope
+  loudly — 0 live anchors, 11 frozen historical — instead of FAILing on
+  frozen history that has no producer in today's pipeline). The tests
+  verify the gates' PASS / FAIL contracts on isolated fixtures so the
   pass-criterion is testable independent of the live-repo state.
 
 Cross-references
@@ -420,6 +420,23 @@ def test_gate_wf343c4_anchor_freshness_24h_pass_on_fresh_fixture(
         bad.status == "FAIL"
     ), f"stale anchor should FAIL; got {bad.status}: {bad.evidence}"
     assert "STALE" in bad.evidence or "stale" in bad.evidence.lower()
+    assert "never touch" in bad.evidence  # remedy is embedded (2026-10-03 fix)
+
+    # FROZEN branch (2026-10-03 fix): the same stale fixture, declared
+    # frozen with a reason → SKIP (exempt, NOT passed), never FAIL.
+    frozen = preflight.gate_wf343c4_anchor_freshness_24h(
+        "wf343c4_fresh_test_frozen",
+        "P3",
+        "wf343c4",
+        glob_patterns=(str(stale_path),),
+        max_age_sec=24 * 3600.0,
+        frozen_paths=((str(stale_path), "test historical anchor"),),
+    )
+    assert frozen.status == "SKIP", (
+        f"frozen-exempt stale anchor should SKIP (never FAIL/PASS); got "
+        f"{frozen.status}: {frozen.evidence}"
+    )
+    assert "frozen historical" in frozen.evidence
 
 
 # ---------------------------------------------------------------------------
@@ -464,9 +481,10 @@ def test_gate_wf343c4_wave_budget_remaining_nonneg_cross_script(
     tmp_path,
 ) -> None:
     """Wf-343C4 (4) — wave_budget_remaining_nonneg PASS on fixture + FAIL on real overrun
-    + Wf-321D ``EXPECTED_GATE_COUNTS['all'] == 66`` invariant + cross-script
+    + Wf-321D ``EXPECTED_GATE_COUNTS['all']`` invariant + cross-script
     per_wave_checklist.py P3-partition registration check + 'frontier' pipeline
-    count stays at 25 (4 NEW gates are 'all'-only by §3.4 design contract).
+    count stays at 25 (the Wf-343C4 gates are commit-path/launch-only per
+    Wf-A16 and none bleed into 'frontier').
 
     Verifies the **cross-script integration** between
     :mod:`molmetal.scripts.wave_budget_tracker` (emitter) and
@@ -499,17 +517,19 @@ def test_gate_wf343c4_wave_budget_remaining_nonneg_cross_script(
     check) verifies the Wf-321D audit invariant + per_wave_checklist.py
     integration:
 
-      * ``build_gates('all')`` returns 66 runners (62 baseline + 4 NEW)
-        and ``EXPECTED_GATE_COUNTS['all'] == 66``.
-      * All 4 NEW gate names are present in build_gates('all') runners.
+      * ``build_gates('all')`` count equals ``EXPECTED_GATE_COUNTS['all']``
+        (Wf-321D audit invariant).
+      * The 3 commit-path Wf-343C4 gates are present in build_gates('all');
+        the anchor-freshness gate is present in build_gates('launch')
+        (Wf-A16 commit/launch split).
       * Wf-321D ``p3_gate_count_consistency_audit`` PASSes (the
         in-process introspection path; no subprocess).
       * per_wave_checklist._partition_gates_by_priority surfaces all
         4 NEW gates in its P3 partition (the cross-script integration
         with per_wave_checklist.py).
-      * 'frontier' pipeline count stays at 25 (4 NEW gates are
-        'all'-only by the §3.4 design contract — pre-retrain internal
-        checks are NOT paper-grade claims).
+      * 'frontier' pipeline count stays at 25 (none of the Wf-343C4
+        gates bleed into 'frontier' by the §3.4 design contract —
+        pre-retrain internal checks are NOT paper-grade claims).
 
     The deferred-only SKIP path is verified separately in
     :mod:`molmetal.tests.test_wf345a4_wave_budget_skip` (per Wf-345-A4
@@ -608,18 +628,32 @@ def test_gate_wf343c4_wave_budget_remaining_nonneg_cross_script(
         f"(Wf-321D audit invariant)"
     )
 
-    # (b) All 4 NEW gate names are present in build_gates('all') runners.
+    # (b) The 3 commit-path Wf-343C4 gates are present in build_gates('all');
+    # the anchor-freshness gate is LAUNCH-only per Wf-A16 (a commit is not a
+    # launch — it must not fail purely on wall-clock anchor age).
     names = [n for n, _ in all_runners]
-    expected_new = [
+    expected_all = [
         "p3_wf343c4_hyperparams_config_complete",
         "p3_wf343c4_yuelbond_decoder_env",
-        "p3_wf343c4_anchor_freshness_24h",
         "p3_wf343c4_wave_budget_remaining_nonneg",
     ]
-    for new_name in expected_new:
+    expected_launch = ["p3_wf343c4_anchor_freshness_24h"]
+    expected_new = expected_all + expected_launch
+    for new_name in expected_all:
         assert new_name in names, (
             f"{new_name} NOT registered in build_gates('all'); "
             f"gate registration drifted from Wf-343C4 contract"
+        )
+    assert expected_launch[0] not in names, (
+        f"{expected_launch[0]} re-added to build_gates('all') — Wf-A16 moved "
+        f"it to the launch pipeline on purpose (commit != launch)"
+    )
+    launch_runners = preflight.build_gates("launch")
+    launch_names = [n for n, _ in launch_runners]
+    for new_name in expected_launch:
+        assert new_name in launch_names, (
+            f"{new_name} NOT registered in build_gates('launch'); "
+            f"gate registration drifted from Wf-343C4 + Wf-A16 contract"
         )
 
     # (c) Wf-321D gate_count_consistency_audit PASSes in-process.
@@ -649,7 +683,7 @@ def test_gate_wf343c4_wave_budget_remaining_nonneg_cross_script(
     pwc_spec.loader.exec_module(pwc_mod)
     synthetic_gates = []
     for new_name in expected_new:
-        runner = next(r for n, r in all_runners if n == new_name)
+        runner = next(r for n, r in all_runners + launch_runners if n == new_name)
         result = runner()
         synthetic_gates.append(
             {

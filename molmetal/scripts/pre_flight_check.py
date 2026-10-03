@@ -161,6 +161,64 @@ ANCHOR_GLOB_PATTERNS = (
     "molmetal/reports/**/m17_drugood_reeval.json",
     "molmetal/reports/**/sweep_summary.json",
 )
+# 2026-10-03 anchor-scope fix (defect 2): the mtime freshness budget below
+# applies ONLY to LIVE anchors — files a current pipeline still writes or
+# serves. The 11 paths in ``ANCHOR_FROZEN_PATHS`` are shipped historical
+# wave reports (MEASURED on disk 2026-10-03, ages 12.1-26.5 h); no producer
+# in today's pipeline regenerates them, so a wall-clock FAIL on them can
+# never be remedied without touching frozen history — and touching an
+# anchor to reset its mtime is fabricated freshness (AGENTS.md §5.2
+# violation). Left un-scoped, that FAIL was permanent decoration, not a
+# gate. Frozen paths remain covered by ``gate_anchor_version_pin`` (the
+# content/version-pin contract). Any NEW file matching ANCHOR_GLOB_PATTERNS
+# is LIVE by default — un-freeze a path by removing its entry here and it
+# is mtime-checked again.
+ANCHOR_FROZEN_PATHS: Tuple[Tuple[str, str], ...] = (
+    (
+        "molmetal/reports/wf121_cisplatin_real_vina/sweep_summary.json",
+        "Wf-121 cisplatin real-Vina sweep summary; shipped historical report",
+    ),
+    (
+        "molmetal/reports/wf143_p4_chemotype_dock/sweep_summary.json",
+        "Wf-143 P4 chemotype-dock sweep summary; shipped historical report",
+    ),
+    (
+        "molmetal/reports/wf170_permetal_singletask/sweep_summary.json",
+        "Wf-170 per-metal singletask sweep summary; shipped historical report",
+    ),
+    (
+        "molmetal/reports/wf188_m14_full_metalcytotox/m14_anchor.json",
+        "Wf-188 m14 full-MetalCytoTox run anchor; shipped historical report",
+    ),
+    (
+        "molmetal/reports/wf219_krasnov_aligned/sweep_summary.json",
+        "Wf-219 Krasnov-aligned sweep summary; shipped historical report",
+    ),
+    (
+        "molmetal/reports/wf253d_m17_drugood_reeval/m17_drugood_reeval.json",
+        "Wf-253D m17 DrugOOD re-eval report; shipped historical report",
+    ),
+    (
+        "molmetal/reports/wf269c_cfm_real/wf269c_report.json",
+        "Wf-269C CFM real-cohort decode report; shipped historical report",
+    ),
+    (
+        "molmetal/reports/wf277c_real_pilot/wf269c_report.json",
+        "Wf-277C real-pilot report; shipped historical report",
+    ),
+    (
+        "molmetal/reports/wf308c_temporal_split/sweep_summary.json",
+        "Wf-308C temporal-split sweep summary; shipped historical report",
+    ),
+    (
+        "molmetal/reports/wf308d_temporal_smoke/sweep_summary.json",
+        "Wf-308D temporal-smoke sweep summary; shipped historical report",
+    ),
+    (
+        "molmetal/reports/wf67_p4_3_100pocket/sweep_summary.json",
+        "Wf-67 P4 3x100-pocket sweep summary; shipped historical report",
+    ),
+)
 
 PIPELINES = ("chemprop_v2_v3", "cfm", "all", "frontier", "launch")
 # "launch" = everything in "all" PLUS the gates that only make sense before a
@@ -1840,17 +1898,17 @@ def gate_nci60_split_no_leak(
     )
     if leaks_real and not strict_scaffold:
         notes.append(
-            f"HONEST-NEGATIVE: the shipped split is NOT Bemis-Murcko "
-            f"scaffold-disjoint (see REAL-scaffold-overlap above). Root cause "
-            f"(MEASURED): ScaffoldSplitter._scaffold_for calls "
-            f"GetScaffoldForMol(mol, includeChirality=...) — TypeError in the "
-            f"installed rdkit — and molmetal/data/splits.py:604 swallows it, "
-            f"so the 'scaffold' splitter is molecule-level. m21 "
-            f"(train_nci60_10cell.py) uses the same code, hence the "
-            f"byte-identical sizes. molmetal/data/splits.py is out of this "
-            f"fix's ownership; turn this into a hard FAIL via "
-            f"NCI60_SPLIT_STRICT_SCAFFOLD=1 or strict_scaffold=True once the "
-            f"splitter is fixed."
+            "HONEST-NEGATIVE: the shipped split is NOT Bemis-Murcko "
+            "scaffold-disjoint (see REAL-scaffold-overlap above). Root cause "
+            "(MEASURED): ScaffoldSplitter._scaffold_for calls "
+            "GetScaffoldForMol(mol, includeChirality=...) — TypeError in the "
+            "installed rdkit — and molmetal/data/splits.py:604 swallows it, "
+            "so the 'scaffold' splitter is molecule-level. m21 "
+            "(train_nci60_10cell.py) uses the same code, hence the "
+            "byte-identical sizes. molmetal/data/splits.py is out of this "
+            "fix's ownership; turn this into a hard FAIL via "
+            "NCI60_SPLIT_STRICT_SCAFFOLD=1 or strict_scaffold=True once the "
+            "splitter is fixed."
         )
     notes.append(
         f"chemprop scaffold helper: cells={len(cells)} seeds={list(seeds)} "
@@ -2027,7 +2085,6 @@ def gate_wf350a2_compute_manifest(
       the paper §E.5 reproducibility appendix — MEASURED per
       AGENTS.md §5.2 (host-time probe, no PROJECTED fields).
     """
-    import re as _re
 
     t0 = time.perf_counter()
 
@@ -3065,9 +3122,9 @@ def gate_wf315d_pb_smoke(
     pb_v = None
     try:
         probe = (
-            f"import rdkit, posebusters; "
-            f"print('rdkit=' + rdkit.__version__); "
-            f"print('posebusters=' + posebusters.__version__)"
+            "import rdkit, posebusters; "
+            "print('rdkit=' + rdkit.__version__); "
+            "print('posebusters=' + posebusters.__version__)"
         )
         out = subprocess.run(
             [venv_python, "-c", probe],
@@ -3332,7 +3389,7 @@ def gate_wf323c_m8_full_pass_rate_documented(
             priority,
             pipeline,
             "FAIL",
-            f"metric_json.value.wf323c_smoke_summary missing",
+            "metric_json.value.wf323c_smoke_summary missing",
             time.perf_counter() - t0,
         )
 
@@ -3650,7 +3707,7 @@ def gate_wf319b_uff_min_pt_pool_present(
             priority,
             pipeline,
             "FAIL",
-            f"metrics_json: honest_negative_reason is empty/non-string",
+            "metrics_json: honest_negative_reason is empty/non-string",
             time.perf_counter() - t0,
         )
 
@@ -3937,10 +3994,10 @@ def gate_wf321a_wf135_phase2_cpu_smoke(
         priority,
         pipeline,
         "PASS",
-        f"Phase 1 cohort=OK (250+250, scaffold_overlap=0); "
-        f"trainer flags (--balanced-cohort-json/--oversample-positives/"
-        f"--pos-weight) wired into BalancedLOMORunner; "
-        f"Wf-310E launch wrapper present with USER_OK gate",
+        "Phase 1 cohort=OK (250+250, scaffold_overlap=0); "
+        "trainer flags (--balanced-cohort-json/--oversample-positives/"
+        "--pos-weight) wired into BalancedLOMORunner; "
+        "Wf-310E launch wrapper present with USER_OK gate",
         elapsed,
     )
 
@@ -4122,9 +4179,9 @@ def gate_wf322f_wf176_m19_lomo_closeout_documented(
         priority,
         pipeline,
         "PASS",
-        f"Wf-322F closeout doc=OK; Phase 1 cohort=OK (≥250+≥250); "
-        f"Phase 1 synthesis doc=OK (Wf-139 P7 + 250+250 balanced); "
-        f"GPU launch wrapper=OK (USER_OK gate + trainer reference)",
+        "Wf-322F closeout doc=OK; Phase 1 cohort=OK (≥250+≥250); "
+        "Phase 1 synthesis doc=OK (Wf-139 P7 + 250+250 balanced); "
+        "GPU launch wrapper=OK (USER_OK gate + trainer reference)",
         elapsed,
     )
 
@@ -4268,8 +4325,8 @@ def gate_wf325d_m6_kappa_closeout_documented(
             priority,
             pipeline,
             "PASS",
-            f"Wf-325D close-out doc on disk + m6_kappa.json carries "
-            f"HONEST_NEGATIVE=true + metalcytotox_validation block",
+            "Wf-325D close-out doc on disk + m6_kappa.json carries "
+            "HONEST_NEGATIVE=true + metalcytotox_validation block",
             elapsed,
         )
     return GateResult(
@@ -4480,9 +4537,9 @@ def gate_wf321e_ablation_registry_complete(
         priority,
         pipeline,
         "PASS",
-        f"ABLATION_TABLE OK: 11/11 §7 ablations mirrored "
-        f"(M3/M4/M7/M8/M10/M11/M12/M13/M14/M15/M21) + 1 BASELINE; "
-        f"all 12 entries carry the §7 contract fields",
+        "ABLATION_TABLE OK: 11/11 §7 ablations mirrored "
+        "(M3/M4/M7/M8/M10/M11/M12/M13/M14/M15/M21) + 1 BASELINE; "
+        "all 12 entries carry the §7 contract fields",
         elapsed,
     )
 
@@ -5378,10 +5435,10 @@ def gate_p1_gpu_env_probe(
             priority,
             pipeline,
             "FAIL",
-            f"gpu_names list is empty (nvidia-smi reported 0 GPUs); "
-            f"host has no NVIDIA GPU visible. torch_probe reports "
-            f"torch.cuda.is_available=True but the system driver "
-            f"sees no hardware — re-seat GPU / driver.",
+            "gpu_names list is empty (nvidia-smi reported 0 GPUs); "
+            "host has no NVIDIA GPU visible. torch_probe reports "
+            "torch.cuda.is_available=True but the system driver "
+            "sees no hardware — re-seat GPU / driver.",
             time.perf_counter() - t0,
         )
 
@@ -6363,8 +6420,9 @@ def gate_wf343c4_anchor_freshness_24h(
     pipeline: str,
     glob_patterns: Tuple[str, ...] = ANCHOR_GLOB_PATTERNS,
     max_age_sec: float = 24 * 3600.0,
+    frozen_paths: Tuple[Tuple[str, str], ...] = ANCHOR_FROZEN_PATHS,
 ) -> GateResult:
-    """Wf-343C4 — every paper-grade ``*_anchor.json`` MUST be ≤ 24 h stale.
+    """Wf-343C4 — every LIVE paper-grade ``*_anchor.json`` MUST be ≤ 24 h stale.
 
     Per Wf-302A AnchorGuard + Wf-304A AnchorGuard adoption + AGENTS.md
     §1.4 pre-flight v2 25/25 PASS gate (STALE flag blocks PASS): any
@@ -6372,23 +6430,33 @@ def gate_wf343c4_anchor_freshness_24h(
     pre_flight_check itself) reading a paper-grade anchor via
     ``AnchorGuard`` will see ``AnchorStaleError`` when the anchor's mtime
     exceeds 24 hr. This gate is the **pre-retrain prevention layer** —
-    it walks every paper-grade ``*_anchor.json`` glob pattern under
-    :data:`REPO_ROOT` and asserts the mtime stays within the freshness
-    budget.
+    it walks the ``ANCHOR_GLOB_PATTERNS`` globs under :data:`REPO_ROOT`
+    and asserts the mtime stays within the freshness budget — for LIVE
+    anchors.
 
-    PASS criteria (all required):
+    Scope (2026-10-03 fix): matches listed in ``frozen_paths`` (path +
+    reason; see :data:`ANCHOR_FROZEN_PATHS`) are frozen historical
+    reports with no producer in today's pipeline. They are EXEMPT from
+    the mtime check — a wall-clock FAIL on frozen history is
+    un-remediable (touching an anchor to reset its mtime is fabricated
+    freshness, AGENTS.md §5.2) and made this gate permanent decoration.
+    The exemption is loud, never silent: frozen matches are counted in
+    the evidence and remain covered by the
+    :func:`gate_anchor_version_pin` content/version contract.
 
-      * Every file matching any of the 4 ``ANCHOR_GLOB_PATTERNS`` globs
-        is a non-empty file on disk.
-      * Every such file's mtime satisfies
-        ``now - mtime <= max_age_sec`` (default 24 h).
+    Status contract:
 
-    FAIL on any one missing or stale. The gate **does not** auto-pass
-    legacy anchors (unlike :func:`gate_anchor_version_pin` which
-    SKIPs anchors without a ``"version"`` field) — the freshness check
-    applies to ALL paper-grade anchors regardless of version opt-in,
-    because a stale anchor downstream of a retrain is a silent
-    measurement drift (Wf-291H §4 explicit-error contract).
+      * PASS — every live match fresh (``now - mtime <= max_age_sec``).
+      * SKIP — 0 live matches (everything matching is frozen-exempt);
+        the evidence names the remedy (a NEW anchor is live by default;
+        un-freeze by removing the frozen entry).
+      * FAIL — a live match is missing / stat()-fails / stale; the FAIL
+        evidence carries the remedy (re-run the producing wave, or
+        declare the path frozen if it is historical — never touch).
+
+    Callers passing an explicit ``glob_patterns`` (test fixtures /
+    tmp_path) get those paths treated as LIVE unless they appear in
+    ``frozen_paths``.
 
     CPU-only gate (no torch.cuda, no subprocess) — runs in < 5 ms on the
     host. See TODO/completed/343c4_integration.md for the Wf-343C4 ship
@@ -6404,7 +6472,17 @@ def gate_wf343c4_anchor_freshness_24h(
 
     t0 = time.perf_counter()
     now = _time.time()
+
+    # Resolve the frozen allowlist to absolute-path keys for exact matching
+    # (covers both repo-relative and absolute spellings of an entry).
+    frozen_by_key: Dict[str, str] = {}
+    for rel, reason in frozen_paths:
+        p = Path(rel)
+        frozen_by_key[str((p if p.is_absolute() else REPO_ROOT / p).resolve())] = reason
+
     checked: List[str] = []
+    live: List[str] = []
+    frozen_seen: List[str] = []
     stale: List[str] = []
     missing: List[str] = []
     failures: List[str] = []
@@ -6415,11 +6493,20 @@ def gate_wf343c4_anchor_freshness_24h(
         # check normalises both shapes so the gate is testable on
         # isolated fixtures (per Wf-343C4 contract).
         if Path(pattern).is_absolute():
-            for path in sorted(Path("/").glob(pattern.lstrip("/"))):
+            matches = sorted(Path("/").glob(pattern.lstrip("/")))
+            for path in matches:
                 checked.append(str(path))
+                key = str(path.resolve())
                 if not path.is_file():
-                    missing.append(str(path))
+                    if key in frozen_by_key:
+                        frozen_seen.append(str(path))
+                    else:
+                        missing.append(str(path))
                     continue
+                if key in frozen_by_key:
+                    frozen_seen.append(str(path))
+                    continue
+                live.append(str(path))
                 try:
                     mtime = path.stat().st_mtime
                 except OSError as exc:
@@ -6433,30 +6520,45 @@ def gate_wf343c4_anchor_freshness_24h(
                     )
         else:
             for path in sorted(REPO_ROOT.glob(pattern)):
-                checked.append(str(path))
+                shown = str(path.relative_to(REPO_ROOT))
+                checked.append(shown)
+                key = str(path.resolve())
                 if not path.is_file():
-                    missing.append(str(path))
+                    if key in frozen_by_key:
+                        frozen_seen.append(shown)
+                    else:
+                        missing.append(shown)
                     continue
+                if key in frozen_by_key:
+                    frozen_seen.append(shown)
+                    continue
+                live.append(shown)
                 try:
                     mtime = path.stat().st_mtime
                 except OSError as exc:
-                    failures.append(f"{path}: stat() failed: {exc}")
+                    failures.append(f"{shown}: stat() failed: {exc}")
                     continue
                 age_sec = now - mtime
                 if age_sec > max_age_sec:
                     stale.append(
-                        f"{path.relative_to(REPO_ROOT)} "
-                        f"(age={age_sec / 3600:.1f}h > {max_age_sec / 3600:.0f}h)"
+                        f"{shown} (age={age_sec / 3600:.1f}h > "
+                        f"{max_age_sec / 3600:.0f}h)"
                     )
     elapsed = time.perf_counter() - t0
+    frozen_note = (
+        f"[frozen-exempt: {len(frozen_seen)} historical anchor(s) not "
+        f"mtime-checked; still covered by gate_anchor_version_pin]"
+    )
     if missing:
         return GateResult(
             name,
             priority,
             pipeline,
             "FAIL",
-            f"{len(missing)}/{len(checked)} paper-grade anchors missing: "
-            f"{missing[:3]}",
+            f"{len(missing)}/{len(checked)} LIVE paper-grade anchors missing: "
+            f"{missing[:3]}; remedy: re-run the producing wave to regenerate, "
+            f"or add the path to ANCHOR_FROZEN_PATHS (with a reason) if it is "
+            f"historical {frozen_note}",
             elapsed,
         )
     if failures:
@@ -6466,7 +6568,7 @@ def gate_wf343c4_anchor_freshness_24h(
             pipeline,
             "FAIL",
             f"{len(failures)}/{len(checked)} anchor stat() failures: "
-            f"{failures[:3]}",
+            f"{failures[:3]} {frozen_note}",
             elapsed,
         )
     if stale:
@@ -6475,8 +6577,27 @@ def gate_wf343c4_anchor_freshness_24h(
             priority,
             pipeline,
             "FAIL",
-            f"{len(stale)}/{len(checked)} paper-grade anchors STALE "
-            f"(> {max_age_sec / 3600:.0f}h): {stale[:3]}",
+            f"{len(stale)}/{len(live)} LIVE paper-grade anchors STALE "
+            f"(> {max_age_sec / 3600:.0f}h): {stale[:3]}; remedy: re-run the "
+            f"producing wave to regenerate (never touch/backdate — fabricated "
+            f"freshness per AGENTS.md §5.2), or add the path to "
+            f"ANCHOR_FROZEN_PATHS with a reason if it is historical "
+            f"{frozen_note}",
+            elapsed,
+        )
+    if not live:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"0 live anchors to mtime-check — all {len(frozen_seen)} matching "
+            f"anchor(s) are frozen historical reports (exempt, NOT passed; "
+            f"content/version still covered by gate_anchor_version_pin); "
+            f"remedy: a NEW anchor matching ANCHOR_GLOB_PATTERNS is live by "
+            f"default — place the launch's fresh anchor outside "
+            f"ANCHOR_FROZEN_PATHS, or un-freeze a path by removing its entry "
+            f"there (it is then mtime-checked again)",
             elapsed,
         )
     return GateResult(
@@ -6484,9 +6605,9 @@ def gate_wf343c4_anchor_freshness_24h(
         priority,
         pipeline,
         "PASS",
-        f"all {len(checked)}/{len(checked)} paper-grade anchors fresh "
+        f"{len(live)} live paper-grade anchor(s) fresh "
         f"(<= {max_age_sec / 3600:.0f}h; Wf-302A / Wf-304A AnchorGuard "
-        f"pre-retrain freshness contract)",
+        f"pre-retrain freshness contract) {frozen_note}",
         elapsed,
     )
 
@@ -6722,9 +6843,9 @@ def gate_wf343c2_per_wave_runtime_check(
     script_path: Path,
     *,
     wave: str = "Wf-347A1 pre-retrain smoke",
-    pairs_metals: str = "Ru,Ir,Os,Rh,Re",
-    pairs_seeds: str = "0,1,2",
-    budget_hr: float = 10.0,
+    pairs_metals: Optional[str] = None,
+    pairs_seeds: Optional[str] = None,
+    budget_hr: Optional[float] = None,
     timeout: float = 60.0,
 ) -> GateResult:
     """Wf-347A1 — invoke the Wf-343C2 per-wave runtime check script as a subprocess gate.
@@ -6750,17 +6871,31 @@ def gate_wf343c2_per_wave_runtime_check(
         7. disk_free_space                 — df free disk ≥ threshold
 
     This gate invokes the script with ``--skip-live`` so checks (6) + (7)
-    become SKIP (no nvidia-smi / df subprocess in the pre-flight context);
-    the remaining 5 are the canonical pre-retrain surface.  The wave +
-    pairs-metals + pairs-seeds + budget-hr kwargs default to a smoke
-    configuration (``Ru,Ir,Os,Rh,Re × 0,1,2 × 10h budget``) — callers
-    wanting a stricter wave profile can override.
+    become SKIP (no nvidia-smi / df subprocess in the pre-flight context).
+    The wave + pairs-metals + pairs-seeds + budget-hr kwargs are
+    PASS-THROUGH ONLY: they are forwarded when the caller declares them
+    and omitted otherwise.  The pre-flight registration declares NONE —
+    the grid + budget belong to the launch being checked, and fabricating
+    them here is the exact defect this gate had until 2026-10-03:
+
+      * OLD behaviour: the gate hardcoded ``0,1,2`` seeds + a 10.0 h
+        budget and always forwarded them.  The inner check-5 derives
+        REQUIRED_HR from the grid (n_pairs × 0.7 h/pair MEASURED × 1.25
+        PROJECTED), so the gate PASSed on those hardcoded inputs while
+        the standalone CLI run with the same "defaults" FAILed — two
+        different answers for one check.
+      * NEW behaviour: nothing is injected.  With no grid/budget the
+        inner check 5 emits a loud SKIP (evidence names the REQUIRED_HR
+        derivation + how to declare); omission is never a PASS.  A
+        launcher wanting the real check passes the launch's own grid +
+        a declared budget (``--budget-hr`` or ``--budget-report``).
 
     PASS criteria:
-      * Subprocess exit code 0 — every non-SKIP check PASSED.
-      * SKIP-as-FAIL via ``--strict`` (default ``True`` for pre-flight
-        consumer): any SKIP → exit code 2 → FAIL on this gate (the
-        ``--skip-live`` skips 2 of 7 checks; remaining 5 must PASS).
+      * Subprocess exit code 0 — every non-SKIP check PASSED.  SKIPs are
+        legitimate and reported verbatim in the evidence (which surfaces
+        the script's per-check status line, so a SKIP can never hide
+        inside a PASS).  ``--strict`` is deliberately NOT passed — see
+        the Wf-367-A2 note in the args below.
 
     FAIL on any check FAIL, on subprocess timeout, or on missing script.
 
@@ -6784,12 +6919,6 @@ def gate_wf343c2_per_wave_runtime_check(
         str(script_path),
         "--wave",
         wave,
-        "--pairs-metals",
-        pairs_metals,
-        "--pairs-seeds",
-        pairs_seeds,
-        "--budget-hr",
-        str(budget_hr),
         "--skip-live",
         # NOTE (Wf-367-A2): do NOT pass --strict here. The --skip-live flag
         # legitimately produces 3 SKIPs (hyperparams + gpu + disk); --strict
@@ -6800,20 +6929,48 @@ def gate_wf343c2_per_wave_runtime_check(
         # drives the upstream cascade.  Per Wf-364-A1 §4.2 root-cause
         # recommendation.
     ]
+    # Grid / budget PASS-THROUGH only (2026-10-03 gate-semantics fix):
+    # forward what the caller declared; never fabricate inputs the launch
+    # did not state (the old hardcoded ``0,1,2`` + 10.0 h made this gate
+    # PASS on inputs the standalone CLI — same check — FAILed on).
+    if pairs_metals is not None:
+        args.extend(["--pairs-metals", pairs_metals])
+    if pairs_seeds is not None:
+        args.extend(["--pairs-seeds", pairs_seeds])
+    if budget_hr is not None:
+        args.extend(["--budget-hr", str(budget_hr)])
     rc, out, err = _run(args, timeout=timeout, cwd=REPO_ROOT)
     elapsed = time.perf_counter() - t0
     blob = (out + "\n" + err).strip()
     tail = blob.splitlines()[-1] if blob else "(no output)"
+    # Surface the script's per-check status line verbatim so a SKIP (e.g.
+    # "no budget declared") can never masquerade as a PASS inside "rc=0".
+    status_line = next(
+        (ln for ln in blob.splitlines() if ln.startswith("wf343c2_per_wave_check: ")),
+        tail,
+    )
+    grid_desc = (
+        f"pairs=({pairs_metals})×({pairs_seeds})"
+        if pairs_metals is not None and pairs_seeds is not None
+        else "grid not declared by caller (inner REQUIRED_HR uses the "
+        "script's default grid; pass --pairs-metals/--pairs-seeds to "
+        "declare the launch's own)"
+    )
+    budget_desc = (
+        f"budget={budget_hr}h declared"
+        if budget_hr is not None
+        else "budget not declared (inner budget check SKIPs loudly; "
+        "pass --budget-hr/--budget-report to make it real)"
+    )
     if rc == 0:
         return GateResult(
             name,
             priority,
             pipeline,
             "PASS",
-            f"wf343c2_per_wave_check.py PASS (rc=0; wave={wave!r}, "
-            f"pairs=({pairs_metals})×({pairs_seeds}), "
-            f"budget={budget_hr}h, --skip-live, no --strict per Wf-367-A2): "
-            f"{tail}",
+            f"wf343c2_per_wave_check.py PASS (rc=0; wave={wave!r}; "
+            f"{grid_desc}; {budget_desc}; --skip-live, "
+            f"no --strict per Wf-367-A2): {status_line}",
             elapsed,
         )
     return GateResult(
@@ -6821,8 +6978,9 @@ def gate_wf343c2_per_wave_runtime_check(
         priority,
         pipeline,
         "FAIL",
-        f"wf343c2_per_wave_check.py FAIL (rc={rc}, wave={wave!r}, "
-        f"--skip-live, no --strict per Wf-367-A2): {tail}",
+        f"wf343c2_per_wave_check.py FAIL (rc={rc}, wave={wave!r}; "
+        f"{grid_desc}; {budget_desc}; --skip-live, "
+        f"no --strict per Wf-367-A2): {status_line}",
         elapsed,
     )
 
@@ -8427,8 +8585,8 @@ def gate_p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket(
             priority,
             pipeline,
             "FAIL",
-            f"vina_kcal_per_mol.json missing v3_cohort_median_REAL field "
-            f"(and aggregate.cisplatin_mean_kcal_per_mol fallback)",
+            "vina_kcal_per_mol.json missing v3_cohort_median_REAL field "
+            "(and aggregate.cisplatin_mean_kcal_per_mol fallback)",
             time.perf_counter() - t0,
         )
     return GateResult(
@@ -8487,7 +8645,7 @@ def gate_p3_mock_to_real_m15_rmsd_REAL_5_pocket(
             priority,
             pipeline,
             "FAIL",
-            f"docked_pose_rmsd.json missing aggregate_median_best_rmsd_REAL field",
+            "docked_pose_rmsd.json missing aggregate_median_best_rmsd_REAL field",
             time.perf_counter() - t0,
         )
     return GateResult(
@@ -8606,7 +8764,7 @@ def gate_p3_mock_to_real_m17_drugood_assay_REAL_3_seeds(
             priority,
             pipeline,
             "FAIL",
-            f"drugood_od_auc.json missing assay_split_REAL field",
+            "drugood_od_auc.json missing assay_split_REAL field",
             time.perf_counter() - t0,
         )
     return GateResult(
@@ -8663,7 +8821,7 @@ def gate_p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds(
             priority,
             pipeline,
             "FAIL",
-            f"nci60_precious_9cell_auc.json missing aggregate_mean_auc_REAL field",
+            "nci60_precious_9cell_auc.json missing aggregate_mean_auc_REAL field",
             time.perf_counter() - t0,
         )
     return GateResult(
@@ -8827,8 +8985,8 @@ def gate_p3_honest_neg_closure_m1_re_fold(
         priority,
         pipeline,
         "PASS",
-        f"m1 Re-fold pre-closure path complete: Re < 0.86 + §6 catalog entry "
-        f"+ §3 metric table Rh-fold-ONLY + §6 paragraph present (paper §4 LEAD = Rh fold)",
+        "m1 Re-fold pre-closure path complete: Re < 0.86 + §6 catalog entry "
+        "+ §3 metric table Rh-fold-ONLY + §6 paragraph present (paper §4 LEAD = Rh fold)",
         time.perf_counter() - t0,
     )
 

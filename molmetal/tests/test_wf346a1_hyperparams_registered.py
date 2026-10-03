@@ -87,16 +87,16 @@ PRE_FLIGHT_SCRIPT = REPO_ROOT / "molmetal" / "scripts" / "pre_flight_check.py"
 # ---------------------------------------------------------------------------
 # Constants — the Wf-343C4 gate-name contract.
 # ---------------------------------------------------------------------------
-# The 4 NEW Wf-343C4 gates added to EXPECTED_GATE_COUNTS["all"] baseline
-# (62 → 66).  These names MUST appear in the ``all`` pipeline's runner
-# list; the broader count invariant (== 66) is enforced by the Wf-327F11
-# test_pre_flight_check.py TestExpectedGateCountsSync test.
-WF343C4_GATE_NAMES = (
+# The 4 NEW Wf-343C4 gates.  Per Wf-A16 (2026-10-03) they split across
+# pipelines: the 3 commit-safe gates stay on 'all'; the anchor-freshness
+# gate is LAUNCH-only (a commit is not a launch — the commit path must
+# not fail purely on wall-clock anchor age).
+WF343C4_COMMIT_SAFE_GATE_NAMES = (
     "p3_wf343c4_hyperparams_config_complete",
     "p3_wf343c4_yuelbond_decoder_env",
-    "p3_wf343c4_anchor_freshness_24h",
     "p3_wf343c4_wave_budget_remaining_nonneg",
 )
+WF343C4_LAUNCH_ONLY_GATE_NAMES = ("p3_wf343c4_anchor_freshness_24h",)
 # Primary target gate per the Wf-346-A1 task brief.
 PRIMARY_GATE_NAME = "p3_wf343c4_hyperparams_config_complete"
 # Pre-registration baseline (Wf-343D1 MEASURED).
@@ -116,6 +116,17 @@ def _build_gates_all() -> List[Tuple[str, object]]:
     from molmetal.scripts.pre_flight_check import build_gates
 
     return list(build_gates("all"))
+
+
+def _build_gates_launch() -> List[Tuple[str, object]]:
+    """Return the (name, runner) tuple list for the ``launch`` pipeline.
+
+    Wf-A16: the launch pipeline = 'all' + the launch-only block (anchor
+    freshness + wf343c2 runtime check).
+    """
+    from molmetal.scripts.pre_flight_check import build_gates
+
+    return list(build_gates("launch"))
 
 
 # ---------------------------------------------------------------------------
@@ -166,15 +177,30 @@ class TestBuildGatesAllRegistered:
             f"the count was {PRE_REGISTRATION_ALL_BASELINE}; post-"
             f"registration baseline is "
             f"EXPECTED_GATE_COUNTS['all'] = 66.  Failing names: "
-            f"{[n for n in WF343C4_GATE_NAMES if n not in names]}"
+            f"{[n for n in WF343C4_COMMIT_SAFE_GATE_NAMES if n not in names]}"
         )
-        # Sanity: every Wf-343C4 gate-name contract holder is present.
-        missing = [n for n in WF343C4_GATE_NAMES if n not in names]
+        # Sanity: every commit-safe Wf-343C4 gate-name contract holder is
+        # present in 'all'; the launch-only anchor gate is NOT (Wf-A16).
+        missing = [n for n in WF343C4_COMMIT_SAFE_GATE_NAMES if n not in names]
         assert not missing, (
             f"Wf-343C4 gate-name contract drift: {missing} not "
             f"registered in build_gates('all'); Wf-346-A1 was opened "
-            f"to register exactly these 4 gates.  Full registered "
+            f"to register these gates.  Full registered "
             f"set: {sorted(n for n in names if 'wf343c4' in n)}"
+        )
+        launch_names = [n for n, _ in _build_gates_launch()]
+        missing_launch = [
+            n for n in WF343C4_LAUNCH_ONLY_GATE_NAMES if n not in launch_names
+        ]
+        assert not missing_launch, (
+            f"Wf-343C4 launch-only gate contract drift: {missing_launch} "
+            f"not registered in build_gates('launch'); the anchor-freshness "
+            f"gate belongs to the launch pipeline per Wf-A16."
+        )
+        leaked = [n for n in WF343C4_LAUNCH_ONLY_GATE_NAMES if n in names]
+        assert not leaked, (
+            f"Wf-343C4 launch-only gate leaked back into build_gates('all'): "
+            f"{leaked}; Wf-A16 moved it to the launch-only block on purpose."
         )
 
 

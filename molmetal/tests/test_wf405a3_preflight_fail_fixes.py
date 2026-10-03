@@ -52,7 +52,6 @@ import re
 import time
 from pathlib import Path
 
-import pytest
 
 from molmetal.scripts.pre_flight_check import (
     gate_loi_send_ready,
@@ -193,22 +192,31 @@ def test_loi_without_status_fail(tmp_path: Path) -> None:
 
 
 def test_anchor_freshness_refresh() -> None:
-    """``gate_wf343c4_anchor_freshness_24h`` PASSes against the refreshed
-    ``wf269c_report.json`` files (mtime < 24h post-Wf-405-A3 fix).
+    """``gate_wf343c4_anchor_freshness_24h`` on the 2 frozen wf269c anchors.
 
-    Wf-405-A3 fix surface 2: both ``molmetal/reports/wf269c_cfm_real/
-    wf269c_report.json`` and ``molmetal/reports/wf277c_real_pilot/
-    wf269c_report.json`` were ``touch``-refreshed at Wf-405-A3 timestamp
-    2026-09-30 13:25 CST. The gate walks every file matching
-    ``ANCHOR_GLOB_PATTERNS``; for the wave-specific 2 files, the test
-    invokes the gate directly via the canonical pattern + a glob override
-    to keep the test self-contained.
+    Wf-405-A3 fix surface 2 originally ``touch``-refreshed both
+    ``molmetal/reports/wf269c_cfm_real/wf269c_report.json`` and
+    ``molmetal/reports/wf277c_real_pilot/wf269c_report.json`` so the gate
+    would PASS for 24 h. The 2026-10-03 anchor-scope fix supersedes that
+    pattern: both paths are shipped historical reports with no producer in
+    today's pipeline, so they are on ``ANCHOR_FROZEN_PATHS`` — the mtime
+    budget no longer applies (touching an anchor is fabricated freshness,
+    AGENTS.md §5.2) and the gate returns a loud SKIP (exempt, NOT passed;
+    content/version still covered by ``gate_anchor_version_pin``).
+
+    This test pins the post-fix contract for these 2 files: they exist +
+    parse, they are listed as frozen-exempt, and the gate scoped to them
+    SKIPs loudly with the frozen note + remedy. The live-anchor PASS/FAIL
+    behaviour is pinned separately in ``test_anchor_age_calculation``
+    (tmp-path live fixtures).
 
     We do NOT invoke the full ``pre_flight_check.py`` run here — that
     would walk all paper-grade anchors and risk cascading FAILs from
     other waves. This test isolates the 2 wf269c_report.json files.
     """
     import json
+
+    from molmetal.scripts.pre_flight_check import ANCHOR_FROZEN_PATHS
 
     # Verify both target files exist + parse + carry the canonical schema.
     wf269c_real = (
@@ -218,37 +226,26 @@ def test_anchor_freshness_refresh() -> None:
         REPO_ROOT / "molmetal" / "reports" / "wf277c_real_pilot" / "wf269c_report.json"
     )
     for p in (wf269c_real, wf269c_pilot):
-        assert (
-            p.is_file()
-        ), f"{p.relative_to(REPO_ROOT)} MUST be on disk after Wf-405-A3 touch"
+        assert p.is_file(), f"{p.relative_to(REPO_ROOT)} MUST be on disk"
         data = json.loads(p.read_text(encoding="utf-8"))
         assert (
             "configs" in data
         ), f"{p.relative_to(REPO_ROOT)} MUST carry canonical Wf-269C schema"
         assert len(data["configs"]) >= 1
 
-    # Verify mtimes are < 24h.
-    now = time.time()
+    # Both files MUST be declared frozen-exempt (documented history — the
+    # alternative is a wall-clock FAIL that can never be legitimately
+    # repaired without fabricating an mtime).
+    frozen = {rel for rel, _reason in ANCHOR_FROZEN_PATHS}
     for p in (wf269c_real, wf269c_pilot):
-        age_hours = (now - p.stat().st_mtime) / 3600.0
-        assert age_hours < 24.0, (
-            f"{p.relative_to(REPO_ROOT)} age = {age_hours:.2f}h; "
-            f"MUST be < 24h post-Wf-405-A3 touch"
+        rel = str(p.relative_to(REPO_ROOT))
+        assert rel in frozen, (
+            f"{rel} MUST be listed in ANCHOR_FROZEN_PATHS (shipped "
+            f"historical anchor; no producer regenerates it)"
         )
 
     # Now run the gate against a glob that scopes to ONLY these 2 files,
     # so the test does not depend on the full ANCHOR_GLOB_PATTERNS surface.
-    glob_pattern = (
-        "molmetal/reports/wf269c_cfm_real/wf269c_report.json,"
-        "molmetal/reports/wf277c_real_pilot/wf269c_report.json"
-    )
-    # The gate accepts a glob_patterns tuple — pass the 2-file subset.
-    # We do NOT use the full ANCHOR_GLOB_PATTERNS to keep the test isolated
-    # from other waves' anchor state.
-    from molmetal.scripts.pre_flight_check import ANCHOR_GLOB_PATTERNS as _FULL
-
-    # Build an isolated pattern list containing only these 2 files. We use
-    # the parent-dir pattern + a name filter to scope down.
     scoped_pattern = (
         "molmetal/reports/wf{269c_cfm_real,277c_real_pilot}/wf269c_report.json"
     )
@@ -258,15 +255,17 @@ def test_anchor_freshness_refresh() -> None:
         "wf343c4",
         glob_patterns=(scoped_pattern,),
     )
-    assert result.status == "PASS", (
-        f"gate must PASS after Wf-405-A3 refresh; "
+    assert result.status == "SKIP", (
+        f"gate must SKIP for the frozen-only scope (exempt, NOT passed); "
         f"got status={result.status!r} evidence={result.evidence!r}"
     )
-    # The 2 wf269c_report.json files MUST be checked.
-    assert (
-        "2/2" in result.evidence
-        or "all 2/2" in result.evidence
-        or (len(re.findall(r"\d+/\d+", result.evidence)) >= 1)
+    assert "frozen" in result.evidence, (
+        f"SKIP evidence MUST name the frozen-exempt scope; "
+        f"evidence={result.evidence!r}"
+    )
+    assert "remedy" in result.evidence, (
+        f"SKIP evidence MUST carry the documented remedy; "
+        f"evidence={result.evidence!r}"
     )
 
 

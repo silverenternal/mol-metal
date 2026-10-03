@@ -20,6 +20,12 @@ Covers the per-wave internal pre-retrain check contract:
   6. Schema validator: ``_validate_schema`` rejects a stub missing
      required keys / wrong types / unknown check IDs; accepts a stub
      built by ``run_per_wave_checks`` with --skip-live.
+  7. Budget-gate semantics (2026-10-03 fix): no declared budget → loud
+     SKIP; declared < REQUIRED_HR → FAIL with both numbers; escape
+     ``--allow-under-budget --reason`` downgrades FAIL→SKIP only (never
+     PASS); ``--strict`` re-FAILs; the shipped defaults must NOT FAIL;
+     ``--budget-report`` is a second budget source. Also pins check 1's
+     frozen-vs-live freshness scope.
 
 All tests are CPU-only; they construct ephemeral JSON/YAML under
 ``tmp_path`` so the real ``molmetal/reports/wf259_run/pre_flight.json`` and
@@ -34,7 +40,6 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
 
 # Make ``wf343c2_per_wave_check`` importable as a module (no torch needed).
 SCRIPT_DIR = Path(__file__).resolve().parent.parent / "scripts"
@@ -92,7 +97,7 @@ REQUIRED_TOP_TYPES: dict = {
     "config_path": str,
     "preflight_path": str,
     "n_pairs": int,
-    "budget_hr": float,
+    "budget_hr": (float, type(None)),  # None = no budget declared (SKIP, never PASS)
     "skip_live": bool,
     "error": str,
 }
@@ -190,10 +195,19 @@ def test_cli_exposes_contract_flags():
     assert hasattr(ns, "skip_live")
     assert hasattr(ns, "strict")
     assert hasattr(ns, "verbose")
-    # Defaults — skip_live + strict + verbose off
+    # 2026-10-03 fix flags: pass-through + escape surface
+    assert hasattr(ns, "preflight_live")
+    assert hasattr(ns, "budget_report")
+    assert hasattr(ns, "allow_under_budget")
+    assert hasattr(ns, "reason")
+    # Defaults — skip_live + strict + verbose off; nothing declared
     assert ns.skip_live is False
     assert ns.strict is False
     assert ns.verbose is False
+    assert ns.budget_hr is None
+    assert ns.budget_report is None
+    assert ns.allow_under_budget is False
+    assert ns.preflight_live is False
 
 
 # ---------------------------------------------------------------------------
@@ -204,13 +218,23 @@ def test_cli_exposes_contract_flags():
 def test_default_paths_match_contract():
     """``--preflight`` default = ``wf259_run/pre_flight.json``;
     ``--out`` default = ``wf343c2_per_wave_check/per_wave_check.json``;
-    budget default = 10.0h; max_age default = 86400 (= 24h)."""
+    **budget default = None (no DEFAULT_BUDGET_HR — 2026-10-03 fix)**;
+    max_age default = 86400 (= 24h)."""
     ns = wf343c2.parse_argv(["--wave", "Wave-test"])
     assert ns.preflight == wf343c2.DEFAULT_PREFLIGHT_JSON
     assert ns.out == wf343c2.DEFAULT_OUT_JSON
     assert "wf259_run" in str(ns.preflight)
     assert "wf343c2_per_wave_check" in str(ns.out)
-    assert ns.budget_hr == wf343c2.DEFAULT_BUDGET_HR == 10.0
+    # 2026-10-03 gate-semantics fix: the hardcoded 10.0h budget constant was
+    # deleted. The budget is an INPUT the caller declares; None = loud SKIP
+    # (never PASS). The script must not FAIL on its own shipped defaults.
+    assert ns.budget_hr is None
+    assert not hasattr(wf343c2, "DEFAULT_BUDGET_HR")
+    # New pass-through / escape flags default to "nothing declared".
+    assert ns.preflight_live is False
+    assert ns.budget_report is None
+    assert ns.allow_under_budget is False
+    assert ns.reason == ""
     assert ns.max_age_sec == wf343c2.DEFAULT_PREFLIGHT_MAX_AGE_SEC == 86400
     assert ns.min_vram_mib == wf343c2.DEFAULT_MIN_VRAM_MIB
     assert ns.min_disk_gib == wf343c2.DEFAULT_MIN_DISK_GIB
@@ -247,10 +271,10 @@ def test_schema_seven_checks_with_contract_ids(tmp_path: Path):
     # Top-level keys + types
     for k in REQUIRED_TOP_KEYS:
         assert k in obj, f"missing top-level key {k!r}"
-        assert isinstance(obj[k], REQUIRED_TOP_TYPES[k]), (
-            f"key {k!r}: expected {REQUIRED_TOP_TYPES[k].__name__}, "
-            f"got {type(obj[k]).__name__}"
-        )
+        expected_type = REQUIRED_TOP_TYPES[k]
+        assert isinstance(
+            obj[k], expected_type
+        ), f"key {k!r}: expected {expected_type}, got {type(obj[k]).__name__}"
     # Exactly 7 checks
     assert obj["n_checks"] == wf343c2.N_CHECKS == 7
     assert len(obj["checks"]) == 7
@@ -352,8 +376,8 @@ def test_multiple_checks_fail_with_evidence(tmp_path: Path, monkeypatch):
         pairs_seeds=[0, 1, 2, 3, 4],  # 5 seeds → 25 pairs
         min_vram_mib=1024,
         min_disk_gib=10,
-        # 1.0h budget × 25 pairs × 0.7/25 = 0.7h/ea → 25 × 0.028 = 0.7h
-        # to fit; we deliberately starve it
+        # REQUIRED_HR = 25 pairs × 0.7h/pair × 1.25 = 21.88h; 0.5h
+        # deliberately starves it (the FAIL is the point of this branch)
         budget_hr=0.5,
         max_age_sec=86400,
         skip_live=True,
@@ -438,3 +462,181 @@ def test_validate_schema_rejects_stubs_and_accepts_real(tmp_path: Path):
     stub6["checks"][0] = dict(stub6["checks"][0])
     stub6["checks"][0]["status"] = "MAYBE"
     assert wf343c2._validate_schema(stub6) is False
+
+
+# ---------------------------------------------------------------------------
+# Tests 7-11 — budget / freshness gate semantics (2026-10-03 review fix)
+# ---------------------------------------------------------------------------
+
+GRID_25 = dict(
+    pairs_metals=["Ru", "Ir", "Os", "Rh", "Re"],
+    pairs_seeds=[0, 1, 2, 3, 4],
+)
+REQUIRED_HR_25 = 21.88  # 25 × 0.7 (MEASURED Wf-268C upper bound) × 1.25 (PROJECTED)
+
+
+def test_budget_no_declaration_skips_loudly_never_fails(tmp_path: Path):
+    """Shipped-default shape (25-pair grid, NO declared budget) → check 5
+    SKIP with REQUIRED_HR + both tags + how-to-declare; never FAIL/PASS."""
+    pf = tmp_path / "preflight.json"
+    _write_fresh_preflight(pf)
+    obj = wf343c2.run_per_wave_checks(
+        wave="W-defaults",
+        config_path=None,
+        preflight_path=pf,
+        min_vram_mib=1024,
+        min_disk_gib=10,
+        budget_hr=None,
+        max_age_sec=86400,
+        skip_live=True,
+        **GRID_25,
+    )
+    c5 = next(
+        c for c in obj["checks"] if c["check_id"] == "wave_budget_remaining_nonneg"
+    )
+    assert c5["status"] == "SKIP"
+    assert "no budget declared" in c5["evidence"]
+    assert f"REQUIRED_HR={REQUIRED_HR_25}h" in c5["evidence"]
+    assert "MEASURED" in c5["evidence"] and "PROJECTED" in c5["evidence"]
+    assert "omission is not a pass" in c5["evidence"]
+    assert obj["n_fail"] == 0
+    assert obj["budget_hr"] is None
+
+
+def test_budget_below_required_fails_with_both_numbers_and_derivation():
+    st, ev = wf343c2.check_wave_budget_remaining_nonneg(budget_hr=10.0, **GRID_25)
+    assert st == "FAIL"
+    assert "10.00h" in ev and f"REQUIRED_HR {REQUIRED_HR_25}h" in ev
+    assert "override contradicts derivation" in ev
+    assert 'escape: --allow-under-budget --reason "<text>"' in ev
+
+
+def test_budget_escape_never_passes_and_strict_refails():
+    common = dict(budget_hr=10.0, **GRID_25)
+    st, ev = wf343c2.check_wave_budget_remaining_nonneg(
+        **common, allow_under_budget=True, under_budget_reason="review smoke"
+    )
+    assert st == "SKIP"
+    assert "SKIP, NOT PASS" in ev and "review smoke" in ev
+    st2, ev2 = wf343c2.check_wave_budget_remaining_nonneg(
+        **common,
+        allow_under_budget=True,
+        under_budget_reason="review smoke",
+        strict=True,
+    )
+    assert st2 == "FAIL"
+    assert "--strict refuses" in ev2
+    # No (escape, strict) combination may yield PASS for an under-budget wave.
+    for esc in (False, True):
+        for strict in (False, True):
+            stx, _ = wf343c2.check_wave_budget_remaining_nonneg(
+                **common,
+                allow_under_budget=esc,
+                under_budget_reason="r" if esc else "",
+                strict=strict,
+            )
+            assert stx != "PASS", (esc, strict)
+
+
+def test_budget_report_source_and_precedence(tmp_path: Path):
+    rep = tmp_path / "wave_budget_report.json"
+    rep.write_text(
+        json.dumps({"budget_hr": 40.0, "remaining_hr": 30.0}), encoding="utf-8"
+    )
+    st, ev = wf343c2.check_wave_budget_remaining_nonneg(
+        budget_hr=None, budget_report=rep, **GRID_25
+    )
+    assert st == "PASS" and "remaining_hr" in ev
+    # explicit --budget-hr wins over the report (and still FAILs loudly)
+    st2, ev2 = wf343c2.check_wave_budget_remaining_nonneg(
+        budget_hr=5.0, budget_report=rep, **GRID_25
+    )
+    assert st2 == "FAIL" and "explicit --budget-hr" in ev2
+    # unreadable report → FAIL (loud, not silent fallback)
+    st3, ev3 = wf343c2.check_wave_budget_remaining_nonneg(
+        budget_hr=None, budget_report=tmp_path / "nope.json", **GRID_25
+    )
+    assert st3 == "FAIL" and "unreadable" in ev3
+    # empty grid → SKIP regardless of budget
+    st4, ev4 = wf343c2.check_wave_budget_remaining_nonneg(
+        budget_hr=None, pairs_metals=[], pairs_seeds=[]
+    )
+    assert st4 == "SKIP" and "empty" in ev4
+
+
+def test_cli_exit_codes_pin_the_new_semantics(tmp_path: Path):
+    pf = tmp_path / "preflight.json"
+    _write_fresh_preflight(pf)
+    out = tmp_path / "out.json"
+    base = [
+        "--wave",
+        "W-cli",
+        "--preflight",
+        str(pf),
+        "--out",
+        str(out),
+        "--skip-live",
+        "--pairs-metals",
+        "Ru,Ir,Os,Rh,Re",
+        "--pairs-seeds",
+        "0,1,2,3,4",
+    ]
+    assert wf343c2.main(base) == 0  # no budget → SKIP → rc 0
+    assert wf343c2.main(base + ["--budget-hr", "25"]) == 0  # 25 ≥ 21.88 → PASS
+    assert wf343c2.main(base + ["--budget-hr", "10"]) == 1  # FAIL → rc 1
+    assert (
+        wf343c2.main(
+            base + ["--budget-hr", "10", "--allow-under-budget", "--reason", "smoke"]
+        )
+        == 0
+    )  # escape → FAIL downgraded to SKIP
+    assert (
+        wf343c2.main(
+            base
+            + [
+                "--budget-hr",
+                "10",
+                "--allow-under-budget",
+                "--reason",
+                "smoke",
+                "--strict",
+            ]
+        )
+        == 1
+    )  # --strict refuses the escape (re-FAILs)
+    # The JSON written by the escape+strict run never claims PASS.
+    obj = json.loads(out.read_text(encoding="utf-8"))
+    c5 = next(
+        c for c in obj["checks"] if c["check_id"] == "wave_budget_remaining_nonneg"
+    )
+    assert c5["status"] == "FAIL"
+    assert wf343c2.main(base + ["--strict"]) == 2  # SKIPs + --strict → rc 2
+    obj2 = json.loads(out.read_text(encoding="utf-8"))
+    c5b = next(
+        c for c in obj2["checks"] if c["check_id"] == "wave_budget_remaining_nonneg"
+    )
+    assert c5b["status"] == "SKIP"
+
+
+def test_freshness_frozen_target_skips_live_fails_with_remedy(tmp_path: Path):
+    # Frozen default target → SKIP carrying the remedy, never PASS.
+    st, ev = wf343c2.check_preflight_freshness_24h(
+        preflight_path=wf343c2.DEFAULT_PREFLIGHT_JSON, max_age_sec=86400
+    )
+    assert st == "SKIP"
+    assert "frozen archived pre-flight" in ev and "never touch" in ev
+    # Declared live → the real mtime verdict applies (never SKIP).
+    st2, _ = wf343c2.check_preflight_freshness_24h(
+        preflight_path=wf343c2.DEFAULT_PREFLIGHT_JSON,
+        max_age_sec=86400,
+        declared_live=True,
+    )
+    assert st2 in {"PASS", "FAIL"}
+    # A stale non-frozen target FAILs with the remedy embedded.
+    pf = tmp_path / "stale.json"
+    _write_stale_preflight(pf, age_sec=90000)
+    st3, ev3 = wf343c2.check_preflight_freshness_24h(
+        preflight_path=pf, max_age_sec=86400
+    )
+    assert st3 == "FAIL"
+    assert "never touch" in ev3 and "widen --max-age-sec" in ev3

@@ -10,12 +10,12 @@
 
 ## §0 TL;DR
 
-This document catalogs **86 honest-negative findings** discovered across Wf-296..426 work, expanding the legacy 9-entry catalog (per Wf-263B) into 7 sections for reviewer rebuttal + paper §6 Limitations:
+This document catalogs **87 honest-negative findings** discovered across Wf-296..426 work, expanding the legacy 9-entry catalog (per Wf-263B) into 7 sections for reviewer rebuttal + paper §6 Limitations:
 
 - **§1 Per-metric honest-negatives (m1-m21)** — 12 entries — metric-level findings (m6_kappa + m3 Vina + m17 DrugOOD + m19 LOMO etc.)
 - **§2 Per-workflow honest-negatives (Wf-1..358)** — 15 entries — workflow-level findings (Wf-253d m17 BELOW_RANDOM + Wf-330-B4 cudagraphs RuntimeError + Wf-304B Selenium CF BLOCK etc.)
 - **§3 Per-launcher honest-negatives (G5/G6/R20 §3/§4/§5)** — 6 entries — GPU launch-blocker findings (TODO-181/182 + TODO-119 P1.3/P1.4 + R20 §3 DrugOOD SCOPE MISMATCH + R20 §4 BindingDB DATA-HOLD + R20 §5 tmQM STATUS_HOLD)
-- **§4 Resolved entries (Wf-344..358)** — 7 entries — CLOSED honest-negatives (Wf-246-C kcal sign-fix + Wf-330-B4 cudagraphs + 4 stale anchors + CLI help-text bug + OT-CFM silent bug + DATA_CSV undefined error + pre_flight EXPECTED_GATE_COUNTS drift)
+- **§4 Resolved entries (Wf-344..358)** — 8 entries — CLOSED honest-negatives (Wf-246-C kcal sign-fix + Wf-330-B4 cudagraphs + 4 stale anchors + CLI help-text bug + OT-CFM silent bug + DATA_CSV undefined error + pre_flight EXPECTED_GATE_COUNTS drift + frozen-anchor mtime scope exception)
 - **§5 Open entries (USER_OK-gated + structural)** — 10 entries — currently BLOCKED (TODO-21 Lambda CFM decode_ratio=0 + Triangle GPU R² ≥ 0.6 gate + 4 m1 Ru AUC seeds + 5 CFM DEFERRED waves + Wf-339-D3 16 deprecation items + Wave budget -183.04h etc.)
 - **§6 NEW Wf-340..368 + Wf-388/390/392 + Wf-396/397 + Wf-425/426 consolidated entries** — 30 entries — Wf-369-A3 expansion 16 + Wf-383-A1 §6.16 + Wf-386-A3+B1 §6.17 + Wf-395-A2 §6.18-§6.25 (8 NEW: m2 R² real cohort lift + m7 Diversity wire-in + m4 SA penalty wire-in + TODO-376 5-metal Path A + TODO-179 SCAFFOLD_NOT_FUNCTIONAL + TODO-383 SE(3) SB wire-in + TODO-94 Multi-PH PLL wire-in + TODO-155 chemprop v3 cache wire-in) + **Wf-399-A2 §6.26** (1 NEW regression-documented: decode_ratio 1→0 root-cause + Wf-397 fix + Wf-385-A3 prevention gate) + **Wf-426-A4 §6.27-§6.30** (4 NEW: Wf-425 cumulative false-claim cascade audit 8 cascades + Wf-426 retro-author verification filesystem-truth-gap + Wf-426-A3 retrain readiness infrastructure + Wf-425-B1 docs sync filesystem-truth-gap)
 - **§7 WETLAB_DEPRECATED entries (per-file + per-launcher + per-workflow)** — 6 entries — NEW Wf-375-A2 expansion (4 LOI drafts DO NOT SEND + 3 wetlab SOPs DO NOT EXECUTE + 1 IC50 analysis pipeline DO NOT RUN + R20-P6 wet-lab IC50 DEPRECATED + Wf-74 v2 outreach DEPRECATED + LAMBDA_ROADMAP R22-P1/R23 DEPRECATED)
@@ -367,7 +367,7 @@ Each entry pairs a LAUNCHER with its honest-negative finding. Cross-ref `TODO/pe
 
 ---
 
-## §4 Resolved entries (Wf-344..358 closed) — 7 entries
+## §4 Resolved entries (Wf-344..358 closed) — 8 entries
 
 Each entry pairs a HISTORICAL honest-negative with its RESOLVED status + the WORKFLOW that closed it.
 
@@ -440,6 +440,16 @@ Each entry pairs a HISTORICAL honest-negative with its RESOLVED status + the WOR
 | **MEASURED** | Pre-flight v3 fresh-run **65 PASS / 2 FAIL / 1 SKIP / 68 TOTAL** post-fix (vs Wf-343D1 61/1/0/62) |
 | **Verdict** | **HONEST_NEGATIVE_PARTIAL_RESOLVED** — partial fix at Wf-346-B2; remaining 2 FAILs preserved at §5.9 + §5.10 (USER_OK-gated / external-dependency) |
 | **Source** | `TODO/completed/346b2_expected_gate_counts_drift.md` + `molmetal/scripts/pre_flight_check.py` |
+
+### §4.8 Anchor freshness mtime gate scoped to LIVE anchors; 11 frozen historical reports exempt (2026-10-03 gate-semantics fix)
+
+| Field | Value |
+|---|---|
+| **Original** | HONEST_NEGATIVE_ANCHOR_GATE_FROZEN_SCOPE — `gate_wf343c4_anchor_freshness_24h` mtime-checked every anchor matching `ANCHOR_GLOB_PATTERNS`; the 11 shipped historical wave reports have no producer in today's pipeline, so their >24h wall-clock age produced a permanent FAIL that no legitimate action could repair (`touch` = fabricated freshness, AGENTS.md §5.2) |
+| **Fix** | 2026-10-03 anchor-scope fix — the mtime contract applies to LIVE anchors only; the 11 historical reports are documented in `ANCHOR_FROZEN_PATHS` (path + reason) and the gate SKIPs loudly for them (never PASS, never a silent scope-drop); content/version coverage stays with `gate_anchor_version_pin`; live-stale FAIL evidence embeds the remedy (re-run the producing wave; or freeze the path with a reason — never touch) |
+| **MEASURED** | 11/11 matching anchors frozen-exempt; host gate verdict SKIP (0 live anchors to mtime-check) at 2026-10-03; on-disk ages 6 × 27.7h + 5 × 13.3h |
+| **Verdict** | **HONEST_NEGATIVE_SCOPED** — frozen-history staleness is a versioned-input property, not a per-wave output; no wall-clock claim is made for them |
+| **Source** | `molmetal/scripts/pre_flight_check.py` (`ANCHOR_FROZEN_PATHS` + `gate_wf343c4_anchor_freshness_24h` + `gate_wf343c2_per_wave_runtime_check`) + `molmetal/scripts/wf343c2_per_wave_check.py` (`FROZEN_PREFLIGHT_PATHS`) |
 
 ---
 

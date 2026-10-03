@@ -12,9 +12,10 @@ contract renaming ``_registered`` → ``_env``; TODO/completed/343c4_integration
 This file is the verification surface: 2 tests confirming (a) the gate
 is registered in the 'all' pipeline only (NOT 'frontier' /
 'chemprop_v2_v3' / 'cfm'; pre-retrain internal checks are not
-paper-grade), and (b) ``build_gates('all')`` returns >= 63 gates after
-registration (i.e. the Wf-321D ``EXPECTED_GATE_COUNTS['all'] == 66``
-invariant is preserved: 62 baseline + 4 NEW Wf-343C4 gates).
+paper-grade), and (b) ``build_gates('all')`` matches
+``EXPECTED_GATE_COUNTS['all']`` (the Wf-321D equality invariant; the
+literal count drifts as gates are added) with the anchor-freshness
+sibling launch-only per Wf-A16.
 
 Tests
 -----
@@ -28,13 +29,13 @@ Tests
    gate's primary concern (env-aware SKIP on torch-missing host); the
    dispatcher string literal at line 7911 is canonical.
 
-2. ``test_build_gates_all_returns_66_with_four_wf343c4_gates`` —
-   asserts ``len(build_gates('all')) >= 63`` (current = 66 per the
-   Wf-321D audit) AND that all 4 Wf-343C4 gates are present in the
-   'all' pipeline (hyperparams + yuelbond + anchor_freshness +
-   wave_budget). This locks the Wf-321D ``all == 66`` invariant so
-   future registration drift (a gate silently lost) cannot regress
-   the audit count.
+2. ``test_build_gates_all_count_invariant_with_wf343c4_gates`` —
+   asserts ``len(build_gates('all')) == EXPECTED_GATE_COUNTS['all']``
+   AND that the 3 commit-safe Wf-343C4 gates are present in the 'all'
+   pipeline (hyperparams + yuelbond + wave_budget), while the
+   anchor_freshness gate is launch-only (Wf-A16 split). This locks the
+   Wf-321D count invariant so future registration drift (a gate
+   silently lost) cannot regress the audit count.
 
 Honest framing (party-twenty-spirit §3.5)
 -----------------------------------------
@@ -110,18 +111,22 @@ def test_wf343c4_yuelbond_decoder_gate_registered_in_dispatcher():
     )
 
 
-def test_build_gates_all_returns_66_with_four_wf343c4_gates():
-    """Wf-346-A2 — Wf-321D 'all == 66' invariant preserved + 4 Wf-343C4 gates present.
+def test_build_gates_all_count_invariant_with_wf343c4_gates():
+    """Wf-346-A2 — 'all' count invariant + Wf-343C4 registration split.
 
     The Wf-321D gate-count-consistency audit asserts
-    ``EXPECTED_GATE_COUNTS['all'] == 66`` (62 baseline + 4 NEW Wf-343C4
-    gates). This test pins BOTH the count AND the per-gate registration
-    of the 4 Wf-343C4 gates (the Wf-343C4 integration suite at
-    ``test_wf343c4_integration.py`` already asserts the 4 gates'
-    runner-level PASS / FAIL behaviour; this test is the registry +
+    ``len(build_gates('all')) == EXPECTED_GATE_COUNTS['all']`` (the literal
+    count drifts over time as gates are added; the invariant is the equality
+    itself). Per Wf-A16 (2026-10-03) the Wf-343C4 gates split across
+    pipelines: the 3 commit-safe gates stay on 'all', while the anchor
+    freshness gate is LAUNCH-only — a commit must not fail purely on
+    wall-clock anchor age. This test pins the count invariant AND the split
+    registration (the Wf-343C4 integration suite at
+    ``test_wf343c4_integration.py`` already asserts the gates'
+    runner-level PASS / FAIL / SKIP behaviour; this test is the registry +
     count invariant slice).
     """
-    from molmetal.scripts.pre_flight_check import EXPECTED_GATE_COUNTS
+    from molmetal.scripts.pre_flight_check import EXPECTED_GATE_COUNTS, build_gates
 
     runners = _build_gates_all()
     assert len(runners) >= 63, (
@@ -141,7 +146,6 @@ def test_build_gates_all_returns_66_with_four_wf343c4_gates():
     expected_wf343c4_gates = [
         "p3_wf343c4_hyperparams_config_complete",
         "p3_wf343c4_yuelbond_decoder_env",
-        "p3_wf343c4_anchor_freshness_24h",
         "p3_wf343c4_wave_budget_remaining_nonneg",
     ]
     for expected_gate in expected_wf343c4_gates:
@@ -151,12 +155,19 @@ def test_build_gates_all_returns_66_with_four_wf343c4_gates():
             f"All gate names: {gate_names}"
         )
 
-    # Lock the count at exactly 66 (the Wf-321D baseline).
-    assert len(runners) == 66, (
-        f"Wf-346-A2: build_gates('all') returns {len(runners)} gates; "
-        f"current Wf-321D baseline is exactly 66.  Any drift here means "
-        f"a NEW gate was registered without bumping EXPECTED_GATE_COUNTS, "
-        f"OR a gate was silently lost."
+    # Wf-A16: the anchor-freshness gate is launch-only — present in
+    # build_gates('launch'), absent from the commit path.
+    launch_names = [name for name, _ in build_gates("launch")]
+    assert "p3_wf343c4_anchor_freshness_24h" in launch_names, (
+        "Wf-346-A2: p3_wf343c4_anchor_freshness_24h NOT in "
+        "build_gates('launch') — gate registration drifted from the "
+        "Wf-343C4 + Wf-A16 contract."
+    )
+    assert "p3_wf343c4_anchor_freshness_24h" not in gate_names, (
+        "Wf-346-A2: p3_wf343c4_anchor_freshness_24h was re-added to "
+        "build_gates('all') — Wf-A16 moved it to the launch-only block on "
+        "purpose (commit != launch; wall-clock FAILs on frozen anchors made "
+        "the repo uncommittable)."
     )
 
 

@@ -21,14 +21,14 @@ Tests
    pins the audit's "11 total" claim that the
    :func:`gate_wf343c4_anchor_freshness_24h` FAIL message depends on.
 
-2. **test_wf345a3_stale_anchor_detection** — verify that 4 of the 11
-   anchors are detected as STALE (> 24h mtime). Uses real mtime
-   inspection (not the audit JSON) so the detection logic is
-   self-contained. The test confirms the precise set of stale paths
-   reported by the gate matches the audit's stale_anchors list (3 of
-   the 4 are unambiguous: wf121_cisplatin_real_vina +
-   wf143_p4_chemotype_dock + wf170_permetal_singletask; the 4th is
-   wf67_p4_3_100pocket which surfaced during the audit).
+2. **test_wf345a3_stale_anchor_detection** — verify the live stale
+   detection still runs (>= 4 anchors over 24h on today's disk) and that
+   the audit's 4 historical stale paths (wf121_cisplatin_real_vina +
+   wf143_p4_chemotype_dock + wf170_permetal_singletask +
+   wf67_p4_3_100pocket) are frozen-exempt in
+   ``pre_flight_check.ANCHOR_FROZEN_PATHS`` so their wall-clock age can
+   no longer FAIL the pre-retrain anchor gate (2026-10-03 anchor-scope
+   fix; refreshed at Wf-356-A2, catalog §4.3).
 
 3. **test_wf345a3_audit_json_schema_valid** — verify the audit artifact
    at ``molmetal/reports/wf345a3_anchor_audit/audit.json`` parses as
@@ -145,32 +145,48 @@ def test_wf345a3_anchor_catalog_count():
 
 
 def test_wf345a3_stale_anchor_detection():
-    """Detect every anchor whose mtime exceeds 24h freshness budget.
+    """Stale detection runs on live disk; the audit's stale set is frozen-exempt.
 
-    Confirms the Wf-345-A3 audit's "4 stale anchors" claim: the stale
-    set must contain at least ``EXPECTED_STALE_PATHS`` (the audit's
-    pinned stale set) and may contain more if Phase 3 has not yet
-    refreshed them. The test prints the actual stale paths for the
-    convenience of anyone investigating the gate FAIL.
+    2026-10-03 update (anchor-scope fix): the Wf-345-A3 audit's 4 stale
+    paths (wf67 + wf121 + wf143 + wf170) were refreshed at Wf-356-A2
+    (catalog §4.3) and are now entries in
+    ``pre_flight_check.ANCHOR_FROZEN_PATHS`` — the pre-retrain anchor
+    gate deliberately holds NO wall-clock mtime claim over frozen
+    historical reports (no producer in today's pipeline; a refresh or
+    ``touch`` must never flip a gate verdict). The previous assertion
+    required those paths to *still* be stale, which pinned wall-clock
+    state and was RED on 2026-10-03 while the files sat at 13.3h.
+
+    Deterministic replacements:
+
+      1. every audit path is a documented frozen-exempt entry (path +
+         non-empty reason), so its age can no longer FAIL the gate;
+      2. the age classification still detects stale anchors on today's
+         disk (>= 4; 6 were MEASURED stale at 27.6h+ on 2026-10-03).
     """
     files = _list_anchor_files()
     actual_stale = {f for f in files if _classify_age_hr(f) > MAX_AGE_HR}
-    # The audit's stale set must be a subset of what we now detect.
-    # We do NOT require exact equality (Phase 3 may have refreshed
-    # some anchors by the time this test runs).
-    missing = EXPECTED_STALE_PATHS - actual_stale
-    assert not missing, (
-        f"audit's stale set drifted: expected stale paths no longer "
-        f"stale (refresh may have happened): {sorted(missing)}; "
-        f"current stale set: {sorted(actual_stale)}"
-    )
-    # We must detect AT LEAST 4 stale (the audit's MEASURED count).
+    # (1) The audit's stale set is frozen-exempt in the pre-retrain gate
+    # (pre_flight_check.ANCHOR_FROZEN_PATHS): staleness of these
+    # historical reports no longer gates any launch.  Un-freezing a path
+    # without refreshing it re-fails HERE, loudly.
+    from molmetal.scripts.pre_flight_check import ANCHOR_FROZEN_PATHS
+
+    frozen_reasons = dict(ANCHOR_FROZEN_PATHS)
+    for p in sorted(EXPECTED_STALE_PATHS):
+        assert p in frozen_reasons, (
+            f"{p} is no longer frozen-exempt in ANCHOR_FROZEN_PATHS — it "
+            f"is mtime-checked by the anchor gate again; refresh it (or "
+            f"re-freeze with a reason) before the gate can pass"
+        )
+        assert frozen_reasons[p].strip(), f"{p} frozen entry has an empty reason"
+    # (2) Stale detection still works on the live disk state.
     assert len(actual_stale) >= 4, (
         f"stale count under floor: detected {len(actual_stale)} stale "
         f"anchors, expected >= 4; full set: {sorted(actual_stale)}"
     )
     # Sanity: classify each EXPECTED_STALE_PATH's age in hours (printed
-    # so investigators can see which paths are still over 24h).
+    # so investigators can see the current age of the frozen set).
     for p in sorted(EXPECTED_STALE_PATHS):
         print(f"  {p} age={_classify_age_hr(p):.2f}h")
 
