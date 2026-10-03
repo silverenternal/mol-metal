@@ -7,17 +7,28 @@
 
 ## §0 TL;DR
 
-**The gap is crossed.** The platinai 4-cell cohort now trains end-to-end on the
-existing D-MPNN, producing a per-cell-line result table — the metric shape
-Rusanov 2025 reports. **No model code changed:** `MultiTaskWassersteinModel` was
-already *"shared encoder + per-task heads"* indexed by an integer task id, so
-the cell line simply becomes the task axis.
+**The plumbing is crossed; the science is not.** The platinai 4-cell cohort now
+trains end-to-end on the existing D-MPNN and produces a per-cell-line result
+table — the metric shape Rusanov 2025 reports. **No model code changed:**
+`MultiTaskWassersteinModel` was already *"shared encoder + per-task heads"*
+indexed by an integer task id, so the cell line simply becomes the task.
 
-Verdict: **SHIPPED (plumbing verified, model quality not yet measured).**
-The smoke is 1 epoch / 1 seed and returns AUC ≈ 0.50–0.57, i.e. **near chance**.
-That is expected for a 1-epoch run and says nothing about the model's ceiling —
-it only proves the pipeline is correct. A 50-epoch × 5-seed run is required
-before any claim about beating/comparing to Rusanov.
+**But `platinai_4cell.csv` labels are synthetic noise** (found after §1-§2 were
+written — see §3b). The 4,078 SMILES are real; every IC50 is generated. So:
+
+- the §2.1 AUC ≈ 0.50 results are a **correct null test**, not a measurement —
+  they show the pipeline does not leak labels, and nothing more;
+- **a platinai training run must not be launched**;
+- a per-cell comparison against Rusanov 2025 is **BLOCKED on data**, not on code.
+
+The repo has **no cohort with both real labels and Pt**. It does have a real
+multi-cell-line cohort — `nci60_precious_9cell.csv`, 7,823 rows, 9 cell lines,
+measured pIC50 — which the axis built here fits exactly, and which contains all
+four of Rusanov's cell lines (with non-Pt metals). Pivoting to it is the next
+decision (§3b, §5).
+
+Verdict: **SHIPPED** (task axis + deterministic split + calibrated labels +
+checkpoint isolation) / **BLOCKED on data** (Rusanov comparison).
 
 ---
 
@@ -189,6 +200,106 @@ values). Repo's own plan already said *"V4 4-cell-line multi-task head"*
 
 ---
 
+## §3b CRITICAL — the platinai labels are SYNTHETIC (found 2026-10-03, after §1-§2 were written)
+
+While acting on the §3 item *"verify the label provenance of platinai_4cell.csv"*,
+this was found:
+
+`molmetal/data/platinai_4cell.meta.json`:
+
+```json
+"seed": 42,
+"base_log10_ic50_nm": 3.95,
+"sigma": 0.45,
+"cell_offsets_log10_nm": {"MCF7": 0.0, "A549": 0.15, "A2780": -0.3, "A2780cis": 0.4},
+"framing": "synthetic IC50 labels for pipeline test; NOT directly comparable to Rusanov 2025 Table S4-S5"
+```
+
+`molmetal/scripts/build_platinai_4cell.py` line 51 states it outright: *"This is
+**synthetic, not real**"*. The 4,078 SMILES are real (platinai_5k_pt 874 +
+known_pt_drugs 7 + tmQM_pt 7,854, deduped), but **every IC50 value is
+`3.95 ± 0.45` log10-nM noise plus a per-cell offset.**
+
+Consequences:
+
+1. **The §2.1 numbers are a null test, and read correctly as one.** Against
+   random labels the expected AUC is 0.5; the smoke returned a2780 0.5018 /
+   a549 0.5045 / mcf7 0.5087. That is the pipeline behaving correctly — and it
+   is a *useful* negative control: had AUC come back at 0.9 on random labels,
+   that would have indicated label leakage. It did not.
+2. **A 50-epoch × 5-seed platinai run must NOT be launched.** It would spend
+   ~12 GPU-h fitting noise and produce a number that can never be reported.
+3. **The §1 threshold numbers are properties of the synthetic distribution.**
+   The `A2780cis` 90 %-positive figure comes from `cell_offsets_log10_nm: +0.4`
+   in the generator, not from real Pt biology. The `per_cell_median` mechanism
+   is still methodologically sound (it is robust to any label distribution),
+   but the specific justification numbers are synthetic.
+
+### Data inventory — is there ANY real labelled Pt cohort?
+
+| file | rows | metals | labels | usable? |
+|---|---:|---|---|---|
+| `.data/molmetal/MetalCytoToxDB.csv` | 26,801 | Ru/Ir/Rh/Os/Re — **Pt = 0** | measured | ✅ real, but no Pt |
+| `molmetal/data/nci60_precious_9cell.csv` | 7,823 | Ru/Ir/Rh/Os/Re | **measured** pIC50 + active, 9 cell lines | ✅ **real multi-cell-line cohort** |
+| `molmetal/data/platinai_4cell.csv` | 4,078 | Pt | **SYNTHETIC** | ❌ null test only |
+| `molmetal/data/platinai_5k.csv` | 5,000 | Pt | `ic50_nm` non-null = **0**, `selectivity` non-null = **0** | ❌ no labels at all |
+| `molmetal/data/metallo_drugs_500_train.csv` | 450 | — | none (only `smiles, source`) | ❌ SMILES pool only |
+| PlatinAI full 226K | — | Pt | — | ❌ not on disk, not retrievable (`TODO/completed/175_platinai_226k_gap.md`) |
+
+**No dataset in this repo has both real labels and Pt.** A per-cell AUC
+comparison against Rusanov 2025 is therefore **BLOCKED on data**, not on code.
+
+### The real cohort, and why it fits the work above
+
+`nci60_precious_9cell.csv` is measured, and its shape is exactly the task axis
+built in §1:
+
+```
+cols: smiles, cell_line, pIC50, active       rows: 7,823   unique SMILES: 5,207
+cell_lines (9): A2780, A2780cis, A549, DU145, HCT116, HL60, MCF7, PC3, SKOV3
+pIC50: all non-null, range [2.70, 8.00], median 4.72
+active: mean 0.382
+per-cell rows: A549 2647 | MCF7 1964 | A2780 1095 | HCT116 701 | A2780cis 564
+               PC3 275 | HL60 225 | SKOV3 191 | DU145 161
+```
+
+It contains **all four of Rusanov's cell lines** (A2780, A2780cis, A549, MCF7),
+it is the cohort behind the existing m21 metric (AUC 0.8007 ± 0.0160), and it is
+precious-metal (non-Pt). So it can carry a real shared-encoder + per-cell-heads
+result, but it is **not** a Rusanov comparison — the metals differ.
+
+Wiring it up is not yet done, and should not be done blind: it needs a decision
+on the split protocol so the number stays comparable to the existing m21
+baseline.
+
+---
+
+## §3c Checkpoint isolation — DONE
+
+`--ckpt-dir` used to default to the shared `molmetal/checkpoints/` regardless of
+`--out-dir`, so (a) any throwaway smoke wrote into the production checkpoint
+directory and (b) the default `--resume-from auto` then silently resumed from
+those stale checkpoints. Default is now `<out_dir>/checkpoints`; an explicit
+`--ckpt-dir` or yaml `output.ckpt_dir` still wins.
+
+MEASURED before/after, same command, `--out-dir /tmp/wfa10_iso`:
+
+```
+[Wf-A10] --ckpt-dir not set; using /tmp/wfa10_iso/checkpoints (isolated per --out-dir; ...)
+ckpt_path="/tmp/wfa10_iso/checkpoints/dmpnn_mtw_ir_seed0.pt"
+train_seconds=15.58        <- actually training
+```
+
+vs. the earlier behaviour of `train_seconds=0.0035` (resumed from a stale shared
+checkpoint instead of training). `molmetal/checkpoints/` is untouched — its
+newest entries are still from 2026-09-25/27.
+
+Note this also means the §2.2 "5-metal regression" AUC values were produced by a
+run that resumed rather than trained; the structural check (byte-identical split
+sizes) is unaffected, but those particular AUC numbers are from stale weights.
+
+---
+
 ## §4 Process finding — AGENTS.md has outgrown subagent injection
 
 The first attempt was an ultracode workflow (5 agents: implement → verify →
@@ -211,13 +322,15 @@ The work above was done inline.
 
 ## §5 Forward-looking
 
-1. **Scope the real run**: 4 tasks × 5 seeds × 50 epochs at ~42 s/epoch ≈ 12 GPU-h
-   per seed-set; decide batch size / workers before committing.
-2. **Checkpoint isolation** by `(dataset, task_axis, task)` so `--resume-from auto`
-   cannot mix a cell-line run with a metal run.
-3. **Verify the label provenance** of `platinai_4cell.csv` (measured vs predicted).
-4. **Split AGENTS.md** (§6 → `docs/WAVE_HISTORY.md`) to unblock multi-agent workflows.
-5. Then, and only then, compare per-cell AUC against Rusanov 2025 Table S4–S5.
+1. **Do NOT launch a platinai training run** — its labels are synthetic (§3b).
+2. **Decide the pivot**: point the cell-line axis at the REAL
+   `nci60_precious_9cell.csv` cohort (§3b). Open question: which split protocol,
+   so the number stays comparable to the existing m21 baseline.
+3. **Getting real Pt labels is BLOCKED on data** — see the inventory in §3b.
+4. **Split AGENTS.md** (§6 → `docs/WAVE_HISTORY.md`) to unblock multi-agent
+   workflows (§4).
+5. **Scope the real run** once a real cohort is chosen: ~42 s/epoch/task at
+   batch 128, so 9 tasks × 5 seeds × 50 epochs needs sizing against the GPU budget.
 
 ---
 

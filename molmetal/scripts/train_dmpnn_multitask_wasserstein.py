@@ -2166,8 +2166,19 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Output directory for per-seed metrics JSON.",
     )
     p.add_argument(
-        "--ckpt-dir", type=Path, default=DEFAULT_CKPT_DIR,
-        help="Checkpoint directory.",
+        "--ckpt-dir", type=Path, default=None,
+        help=(
+            "Checkpoint directory. Default (when not given here or via the "
+            "yaml output.ckpt_dir field): <out_dir>/checkpoints. "
+            "Wf-A10: this used to default to the shared "
+            "molmetal/checkpoints/ regardless of --out-dir, so any throwaway "
+            "smoke wrote into the production checkpoint directory AND the "
+            "default --resume-from auto would then silently resume from those "
+            "stale checkpoints on a later run (observed: train_seconds=0.0035, "
+            "i.e. it trained nothing). Deriving from --out-dir keeps runs "
+            "isolated. Configs that want the shared directory can still set "
+            "output.ckpt_dir explicitly in the yaml."
+        ),
     )
     # ---- N3 checkpoint resumption (Wf-A5 N3 design field) ----
     # --resume-from controls how to load a prior checkpoint at the start of
@@ -2521,6 +2532,17 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
     args.out_dir.mkdir(parents=True, exist_ok=True)
+    # Wf-A10 — default the checkpoint dir to <out_dir>/checkpoints so a run
+    # can no longer read or write the shared molmetal/checkpoints/ tree
+    # unless it asks to (yaml output.ckpt_dir still wins when set).
+    if args.ckpt_dir is None:
+        args.ckpt_dir = Path(args.out_dir) / "checkpoints"
+        print(
+            f"[Wf-A10] --ckpt-dir not set; using {args.ckpt_dir} "
+            f"(isolated per --out-dir; set --ckpt-dir or yaml output.ckpt_dir "
+            f"to share a directory)",
+            flush=True,
+        )
     args.ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     # Wf-TUI NEW: install structured-event emitter BEFORE any training
