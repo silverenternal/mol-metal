@@ -169,6 +169,26 @@ _CFM_CHEMPROP_V3_CACHE_HOLDER: Dict[str, Optional[object]] = {"cache": None}
 # Default (None) means stdout-only — preserves the Wf-124 P2 + Wf-148
 # baseline bit-for-bit when --emit-json-events is False at the CLI.
 _EVENT_LOG_PATH: Optional[Path] = None
+
+#: Per-term side-channel for the loss cascade, refreshed on every batch.
+#: Maps the term's name -> the EXACT tensor that entered ``loss``.
+#:
+#: Why this exists (2026-10-04 audit): a term can reach the ``loss = (...)``
+#: sum and still be incapable of training anything.  Three shapes were found
+#: in this file, and NONE of them is visible to a "does anything consume this
+#: flag?" check or to the §5.7 smoke:
+#:
+#:   * ``x * torch.tensor(0.0)``        — the term is a literal zero
+#:   * ``t.detach()`` on every operand  — the term is a constant
+#:   * ``torch.tensor(float(v))``       — the ``float()`` cuts the grad path
+#:
+#: (A 4th, an exception swallowed by ``except ...: continue``, is caught by
+#: ``tests/test_cfm_loss_gradient_liveness.py`` instead — see there.)
+#: This dict lets that test assert, on a real forward pass, that every term
+#: inside the sum either carries a gradient or is on a declared allowlist of
+#: intentional diagnostics.  It is write-only for the trainer: nothing reads
+#: it during training, so it costs one dict store per batch.
+_LAST_LOSS_TERMS: Dict[str, "torch.Tensor"] = {}
 _EVENT_FH = None
 _EVENT_ENABLED: bool = False
 _EVENT_TYPES = frozenset(
@@ -1131,8 +1151,16 @@ def train_one_epoch(
             # the original logits — small contribution that nudges
             # the head toward the closure-biased optimum.
             cb_mean = sum(closure_bias.values()) / max(len(closure_bias), 1)
+            # 2026-10-04: the first operand was `all_logits.detach().mean(-1)`.
+            # Detaching the PREDICTION severs the gradient, so this term was a
+            # constant: it inflated the reported train_loss while nudging
+            # nothing, contradicting the comment above and the `0.05 * cb_loss`
+            # coefficient in the loss cascade.  `closure_bounded: true` is set
+            # in cfm_full_retrain.yaml + cfm_real_decode_lift_p1.3.yaml, so the
+            # term was live-but-inert in 2 of the 3 CFM configs.  The TARGET
+            # operand stays detached — it is a constant by construction.
             cb_loss = F.mse_loss(
-                all_logits.detach().mean(dim=-1),
+                all_logits.mean(dim=-1),
                 torch.full_like(
                     all_logits.detach().mean(dim=-1),
                     float(cb_mean) * 0.1,
@@ -1625,6 +1653,30 @@ def train_one_epoch(
             + log_normal_t_term  # Wf-408-A2 log_normal_t
             + edm_term  # Wf-408-A2 edm_preconditioning
             + chemprop_v3_cache_term  # Wf-408-A2 chemprop_v3_cache
+        )
+        # 2026-10-04 — refresh the per-term side-channel read by
+        # tests/test_cfm_loss_gradient_liveness.py.  Each value is the exact
+        # tensor that entered `loss` above (weighted contributions included),
+        # so a term that is structurally incapable of training shows up as
+        # requires_grad=False.  Mutating the module-level dict in place (never
+        # rebinding) keeps this valid without a `global` statement.
+        _LAST_LOSS_TERMS.clear()
+        _LAST_LOSS_TERMS.update(
+            {
+                "bond_ce": bond_ce,
+                "wasserstein_weight*w2_val": wasserstein_weight * w2_val,
+                "0.05*cb_loss": 0.05 * cb_loss,
+                "diversity_term": diversity_term,
+                "sa_penalty_weight*sa_loss": sa_penalty_weight * sa_loss,
+                "shortcut_distill_loss": shortcut_distill_loss,
+                "consistency_term": consistency_term,
+                "per_cohort_term": per_cohort_term,
+                "pll_term": pll_term,
+                "so3_term": so3_term,
+                "log_normal_t_term": log_normal_t_term,
+                "edm_term": edm_term,
+                "chemprop_v3_cache_term": chemprop_v3_cache_term,
+            }
         )
         # Wf-406-A2 — TODO-21 Lambda × CFM reward-weighting wiring
         # (re-wire of Wf-329-W6 + Wf-394-A1; CPU-safe scaffolding;
