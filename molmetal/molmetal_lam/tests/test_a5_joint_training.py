@@ -563,8 +563,17 @@ def test_construct_adapter_with_joint_train_knobs() -> None:
     assert a.bond_loss_weight == 0.5
     assert a.bond_pattern_mask_enabled is False
     # Defaults preserve A1 bit-exact behaviour.
+    #
+    # 2026-10-04: `joint_train` was deliberately flipped to True by
+    # WF-CFM-Frontier-Research Phase 2 Fix #1 (see the comment at
+    # adapters/flow_matching_lipman/__init__.py:1829-1836).  The A1
+    # bit-exactness this test is actually about still holds, because every
+    # consumer of joint_train is gated on `use_bond_head`, which is still
+    # False -- so the flag being True changes nothing until a bond head is
+    # requested.  Only the asserted literal was stale.
     a2 = LipmanFlowMatchingAdapter()
     assert a2.use_bond_head is False
-    assert a2.joint_train is False
+    assert a2.joint_train is True
+    assert a2.use_bond_head is False, "joint_train must stay inert without a bond head"
     assert a2.bond_loss_weight == 1.0
     assert a2.bond_pattern_mask_enabled is True

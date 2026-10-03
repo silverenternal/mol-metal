@@ -27,7 +27,13 @@ from pathlib import Path
 from molmetal.scripts import click_rule_effect_size_study as ces
 
 
-PROJECT_ROOT = Path("/home/hugo/codes/try_triton_on_rocm")
+# 2026-10-04: this used to hardcode an absolute path into a FOREIGN checkout
+# (/home/hugo/codes/try_triton_on_rocm).  That directory does not exist here,
+# so the CLI subprocess died with ENOENT and the test failed for a reason that
+# had nothing to do with the script it was testing.  Derive the root from the
+# already-imported module instead, so the test follows the code wherever the
+# repo lives.
+PROJECT_ROOT = Path(ces.__file__).resolve().parents[2]
 SCRIPT = PROJECT_ROOT / "molmetal" / "scripts" / "click_rule_effect_size_study.py"
 MANIFEST = PROJECT_ROOT / "molmetal" / "data" / "crossdocked100_manifest.csv"
 

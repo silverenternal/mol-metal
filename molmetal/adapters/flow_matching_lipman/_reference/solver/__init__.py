@@ -197,6 +197,17 @@ class ODESolver:
         if time_grid is not None:
             n_eff = int(time_grid.shape[0] - 1)
             dt = float(time_grid[1].item() - time_grid[0].item())
+        elif step_size is not None and n_steps is None:
+            # 2026-10-04 fix: a caller who gives ONLY `step_size` means "step
+            # by this much across the canonical t in [0, 1]", exactly as the
+            # `step_size` docstring says ("When None we derive it as
+            # 1/n_steps" -- the converse case).  The old code fell through to
+            # `n_eff = self.n_steps` (100), so `step_size=0.25` integrated
+            # t from 0 to 100*0.25 = 25 while the ODE is defined on [0, 1],
+            # and the endpoint came out 24.0 away from x1.  Derive the step
+            # count from the step size instead.
+            n_eff = max(1, int(round(1.0 / float(step_size))))
+            dt = float(step_size)
         else:
             n_eff = int(n_steps) if n_steps is not None else int(self.n_steps)
             dt = float(step_size) if step_size is not None else 1.0 / max(1, n_eff)

@@ -281,7 +281,19 @@ def _scatter_sum_impl(
     # table is small and the per-call overhead is one dict lookup
     # (memoised by ``_backend_for``).
     backend = _backend_for(n_atoms=n_atoms, rbf_dim=features.shape[1])
-    use_triton = backend == "triton" and _TRITON_AGGREGATE is not None
+    # 2026-10-04 fix: `features.is_cuda` added to the guard.  `_backend_for`
+    # selects on GPU *capability*, not on where this tensor actually lives, so
+    # on a host with a capable GPU a CPU tensor reached the Triton kernel and
+    # raised.  That made every CPU-only caller fail on exactly the machines
+    # that also have a GPU -- the opposite of what a backend selector is for.
+    # The Triton kernels are CUDA-only; a CPU tensor has to take the torch
+    # path.  Both dispatch sites below use `features`, so guarding on its
+    # device covers them.
+    use_triton = (
+        backend == "triton"
+        and _TRITON_AGGREGATE is not None
+        and bool(getattr(features, "is_cuda", False))
+    )
 
     bs = batch_size if (batch_size is not None and batch_size > 1) else 1
     if bs > 1:

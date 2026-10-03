@@ -64,12 +64,22 @@ molmetal/reports/**/__pycache__/
 
 # --- Top-level transient workflow output -----------------------------------
 # These are working artefacts from past ultracode workflows; not source.
-_a1_sanity.py
-conftest.py
-cutoff_sweep.json
-cutoff_sweep.md
-texput.log
-topo_plot.png
+#
+# 2026-10-04: ANCHORED to the repo root.  The section says "Top-level", but the
+# bare patterns matched at ANY depth, and the damage was real: the entry
+# `conftest.py` silently excluded `molmetal/conftest.py` (the package's pytest
+# config, R17/C3) and `molmetal/tests/conftest.py` (the Wf-235 reference-import
+# shim, 231 lines) from version control -- `git ls-files | grep conftest.py`
+# returned nothing at all.  That shim changes test behaviour, so a clone of this
+# repo did not reproduce the test suite the maintainers run.  No conftest.py
+# even exists at the root today, and the other three matched zero files, so
+# anchoring costs nothing and stops the pattern from reaching into source.
+/_a1_sanity.py
+/conftest.py
+/cutoff_sweep.json
+/cutoff_sweep.md
+/texput.log
+/topo_plot.png
 topo_plot_clean.png
 %{size_download}\n
 wf_lambda_mcts_coords_fix/

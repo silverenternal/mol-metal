@@ -161,8 +161,16 @@ def test_n_atoms_via_generation_config():
     from molmetal.scripts.r10_cfg_real_crossdocked import SizedGenerationConfig
 
     sized = SizedGenerationConfig()
-    assert sized.n_atoms == 19, (
-        f"SizedGenerationConfig.n_atoms should default to 19 for CrossDocked, "
+    # 2026-10-04: expected value updated 19 -> 24 to match the code.  The
+    # default at r10_cfg_real_crossdocked.py:52 is 24 with an explicit
+    # rationale there ("heavy atoms 8..38 covers drug-like organics + small
+    # organometallics (cisplatin=8, carboplatin=12, oxaliplatin=14)"), and
+    # TODO/completed/349d1_integration_verify.md:54 already classifies
+    # 19 -> 24 as pre-existing schema drift.  The value 19 appears nowhere on
+    # disk outside this assertion, so the test was the stale side.
+    assert sized.n_atoms == 24, (
+        f"SizedGenerationConfig.n_atoms should default to 24 for CrossDocked "
+        f"(heavy-atom range rationale at r10_cfg_real_crossdocked.py:46-51), "
         f"got {sized.n_atoms}"
     )
 
