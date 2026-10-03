@@ -188,7 +188,7 @@ FOR each Tier-1 metric m_i:
     protocol_alignment(m_i) ∈ {scaffold-split, 5-fold CV, per-cell-line, ...}
     metric_alignment(m_i) ∈ {binary AUC, R², median kcal/mol, ...}
     threshold(m_i) = baseline(m_i, baseline_paper) + protocol_adjustment(m_i, protocol_difference)
-    
+
     IF protocol_alignment(m_i) == IDENTICAL:
         threshold(m_i) = baseline(m_i)  # bit-identical reproduction
     ELSE IF protocol_alignment(m_i) == APPROX:
@@ -533,7 +533,7 @@ Per the user's directive "重新训练前置门槛", the pre-retrain threshold g
 ```
 BEFORE retrain m_i:
     threshold(m_i) = baseline(m_i, baseline_paper) + protocol_adjustment(m_i, protocol_difference)
-    
+
     IF MEASURED(m_i) >= threshold(m_i):
         PASS — proceed with retrain
     ELSE:

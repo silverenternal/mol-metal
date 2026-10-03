@@ -34,7 +34,7 @@ Phase 0 现在的目标:**让化学的每一层都有 λ-演算对应**。不再
 @dataclass(frozen=True)
 class Atom:
     """An atom IS a primitive λ-combinator with a fixed arity.
-    
+
     - valence: 该原子可以形成的共价键数 (e.g. C=4, H=1, Pt=4 square-planar)
     - lone_pairs: 额外的电子对可用 (= 可以接受 dative bond)
     - geometry: 'sp3', 'sp2', 'square_planar', 'octahedral', ...
@@ -45,11 +45,11 @@ class Atom:
     valence: int
     lone_pairs: int = 0
     geometry: str = ""
-    
+
     @property
     def arity(self) -> int:
         return self.valence + self.lone_pairs
-    
+
     def is_saturated(self, current_bonds: int) -> bool:
         """Saturated atom = fully-applied combinator = in β-NF."""
         return current_bonds >= self.arity
@@ -131,18 +131,18 @@ class LamApp:
 # molmetal/molmetal_lam/bonds/application.py
 class Bond:
     """A chemical bond IS a β-reduction step."""
-    
+
     @staticmethod
     def covalent(atom_a: Atom, atom_b: Atom) -> 'Molecule':
         """Single covalent bond = (atom_a atom_b) — direct β-reduction."""
         new_a = atom_a.with_one_bond_to(atom_b)
         new_b = atom_b.with_one_bond_to(atom_a)
         return Molecule([new_a, new_b], bonds=[(a.id, b.id, 'covalent_single')])
-    
+
     @staticmethod
     def dative(metal: Atom, ligand: Atom) -> 'Molecule':
         """Dative (coordination) bond = partial application.
-        
+
         Pt + NH3 → (Pt NH3), but Pt retains 3 free sites (= curried).
         This is morally:
             Pt_II = λabcd.complex(a,b,c,d)
@@ -155,7 +155,7 @@ class Bond:
             bonds=[(metal.id, ligand.id, 'dative')],
             metal_free_sites=new_metal.arity - 1,
         )
-    
+
     @staticmethod
     def aromatic(ring_atoms: List[Atom]) -> 'Molecule':
         """Aromatic ring = η-conversion class (all C-C are equivalent)."""
@@ -185,7 +185,7 @@ class Bond:
 # molmetal/molmetal_lam/lam_chem/rules.py
 def CuAAC(tile_A: Tile, tile_B: Tile) -> Tile:
     """λ(Tile_A). λ(Tile_B). CuAAC_Assemble(Tile_A, Tile_B)
-    
+
     Chemistry: R-N3 + R'-C≡CH → 1,4-disubstituted 1,2,3-triazole
     """
     # Church Encoding: triazole ring as 5-tuple of atoms
@@ -240,11 +240,11 @@ class REINVENT4Scorer:
         self.reinvent = self._load_reinvent(reinvent_repo)
         # Default weights match REINVENT4's "Standard" profile
         self.weights = weights or {"qed": 0.6, "binding": 1.0, "sas": 0.4}
-    
+
     def score(self, tile: Tile) -> float:
         smi = tile.to_smiles()
         return self.reinvent.score(smi)
-    
+
     def batch_score(self, tiles: List[Tile]) -> torch.Tensor:
         return torch.tensor([self.score(t) for t in tiles])
 ```
@@ -272,7 +272,7 @@ class REINVENT4Scorer:
 @dataclass(frozen=True)
 class Tile:
     """Lambda 演算的"基础常量" — 一个可点击化学组装的分子片段
-    
+
     包含:
     - smiles (canonical)
     - coords (3D positions)
@@ -339,11 +339,11 @@ from collections import defaultdict
 
 class LamMCTS:
     """Lambda-Calculus-driven MCTS for tile assembly.
-    
+
     State: partial molecular assembly (set of fragments + reaction sites)
     Action: choose (tile_A, tile_B, reaction_rule) and apply β-reduction
     Reward: REINVENT4 scorer (from step 3) + constraint satisfaction
-    
+
     Heuristic: PySR-generated function `h(state) → value`
     """
     def __init__(self, tiles: List[Tile], rules: Dict[str, Callable],
@@ -355,14 +355,14 @@ class LamMCTS:
         self.n_simulations = n_simulations
         self.c_puct = c_puct
         self.tree = defaultdict(lambda: {"N": 0, "W": 0.0, "P": 0.0, "children": []})
-    
+
     def search(self, root_state: AssemblyState, target_pocket: Pocket,
                max_depth: int = 10) -> AssemblyState:
         """Run n_simulations MCTS rollouts, return best leaf state."""
         for _ in range(self.n_simulations):
             self._simulate(root_state, target_pocket, max_depth)
         return self._best_child(root_state, c=0)  # exploit
-    
+
     def _simulate(self, state, pocket, max_depth):
         """One MCTS rollout: selection → expansion → simulation → backprop"""
         path = [state]
@@ -382,7 +382,7 @@ class LamMCTS:
         for s in path:
             self.tree[s]["N"] += 1
             self.tree[s]["W"] += value
-    
+
     def _expand(self, state, pocket):
         """β-reduction: apply all valid (tile, rule) pairs to state"""
         children = []
@@ -393,7 +393,7 @@ class LamMCTS:
                     if self._satisfies_constraints(new_state, pocket):
                         children.append(new_state)
         return children
-    
+
     def _rollout(self, state, pocket, depth):
         """Simulate to terminal using PySR-derived heuristic"""
         if depth == 0 or state.is_terminal(pocket):
@@ -441,7 +441,7 @@ def build_heuristic(training_data: List[Tuple[Features, Score]]):
 def pocket_to_spatial_tiles(pdb_id: str, lig_center: torch.Tensor,
                              grid_size: int = 32, resolution: float = 0.5) -> List[SpatialTile]:
     """Convert protein pocket into a 32×32×32 voxel grid.
-    
+
     Each voxel is a SpatialTile (Lambda constant) with:
     - occupied: bool (atom present?)
     - hbond_donor: bool
@@ -497,7 +497,7 @@ class SpatialTile:
 # molmetal/molmetal_lam/pipeline/closed_loop.py
 class LamClickDesignLoop:
     """Closed loop: pocket → search → score → refine
-    
+
     输出三件事:
     1. SMILES (分子)
     2. 3D coords (构象)
@@ -509,7 +509,7 @@ class LamClickDesignLoop:
         self.scorer = scorer
         self.pocket_loader = pocket_loader
         self.symbolic_reg = symbolic_reg
-    
+
     def run(self, pdb_id: str, n_iterations: int = 10, top_k: int = 100):
         history = []
         for it in range(n_iterations):
@@ -517,18 +517,18 @@ class LamClickDesignLoop:
             tiles = build_tile_library(...)  # Step 4
             states = self.mcts.search(initial_state, pocket, max_depth=10)
             smiles_3d = [s.to_smiles_3d() for s in states[:top_k]]
-            
+
             # Extract Lambda expressions
             lam_exprs = [s.to_lambda_expr() for s in states[:top_k]]
-            
+
             # Score with REINVENT4
             scores = self.scorer.batch_score(smiles_3d)
-            
+
             # Symbolic regression: extract formula
             features = torch.stack([s.features() for s in states[:top_k]])
             self.symbolic_reg.fit(features.numpy(), scores.numpy())
             formula = str(self.symbolic_reg.sympy())  # e.g. "yield = (T/100) * exp(-Ea/RT)"
-            
+
             history.append({
                 "iteration": it,
                 "n_candidates": len(smiles_3d),
@@ -538,7 +538,7 @@ class LamClickDesignLoop:
                 "extracted_formula": formula,
             })
         return history
-    
+
     def extract_paper_equation(self, top_k_states) -> str:
         """逆向提取'高产率 click 组装的数学方程'"""
         X = torch.stack([s.features() for s in top_k_states]).numpy()
@@ -570,14 +570,14 @@ class LamClickDesignLoop:
 # molmetal/molmetal_lam/scripts/eval_sbdd.py
 def evaluate_against_reinvent4(generated_smiles: List[str], pdb_id: str):
     from reinvent4 import REINVENT, ScoringWorkflow
-    
+
     # Use REINVENT4's docking scoring
     reinvent = REINVENT(...)
     scores = reinvent.score_batch(generated_smiles, pdb_id)
-    
+
     # Compare to DiffDock baseline
     diffdock_scores = diffdock_eval(generated_smiles, pdb_id)
-    
+
     return {
         "lambda_method": {
             "binding_affinity": scores["binding"].mean(),
@@ -612,23 +612,23 @@ def evaluate_against_reinvent4(generated_smiles: List[str], pdb_id: str):
 def compare_all_methods(pdb_id: str, n_samples: int = 100):
     """Comprehensive comparison: 4 methods × 5 metrics"""
     results = {}
-    
+
     # Method 1: Lambda-MCTS (ours)
     lambda_mols = lam_search(pdb_id, n_samples=n_samples)
     results["Lambda"] = evaluate(lambda_mols, pdb_id)
-    
+
     # Method 2: DiffSBDD (already cloned)
     diffsbd_mols = diffsbd_generate(pdb_id, n_samples=n_samples)
     results["DiffSBDD"] = evaluate(diffsbd_mols, pdb_id)
-    
+
     # Method 3: Pocket2Mol
     p2m_mols = pocket2mol_generate(pdb_id, n_samples=n_samples)
     results["Pocket2Mol"] = evaluate(p2m_mols, pdb_id)
-    
+
     # Method 4: TargetDiff
     td_mols = targetdiff_generate(pdb_id, n_samples=n_samples)
     results["TargetDiff"] = evaluate(td_mols, pdb_id)
-    
+
     return results  # 4×5 matrix for Table 1
 ```
 

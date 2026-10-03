@@ -286,4 +286,3 @@ NEW file `molmetal/tests/test_wf432a2_w246_real_trainer.py` with 7 tests:
 - §5.6 — atomic write protocol adoption rule (this closeout authored via `atomic_write_file` from `molmetal/scripts/wf386a3_atomic_write.py`)
 - §5.7 NEW — trainer flag wire-in smoke-required rule (7/7 tests PASS; kcal sign audit canary + parse_args + trainer import + 50-step synthetic loss smoke all MEASURED)
 - §10 — wet-lab deprecation
-

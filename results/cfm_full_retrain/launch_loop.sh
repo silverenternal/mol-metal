@@ -7,7 +7,7 @@ SEEDS="0 1 2 3 4"
 for pocket in $POCKETS; do
     for seed in $SEEDS; do
         echo "=== pocket=$pocket seed=$seed ==="
-        CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/CadButEaas/.venv-vlm/bin/python \
+        CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/mol-metal/.venv/bin/python \
             molmetal/scripts/train_cfm_yuelbond_wasserstein.py \
             --epochs 50 \
             --hidden-dim 128 \

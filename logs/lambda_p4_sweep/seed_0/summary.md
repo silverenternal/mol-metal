@@ -188,4 +188,3 @@ Total elapsed: `60.31 s`
 - `metal_geometry_prior_bonus` — +1.0 if Pt=4 / Ru=Ir=6 coord.
 - `rdkit_validity_score` — 1.0 if RDKit can sanitize.
 - `synthesizability_via_lambda_paths` — 1.0 if beta-NF + RDKit.
-

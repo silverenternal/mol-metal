@@ -465,7 +465,7 @@ The `molmetal/checkpoints/` folder contains **17 .pt files** totalling ~80 MB. T
 | `egnn_tmqm_finetuned_ru.pt` | ~2.6 MB | EGNN tmQM-pretrained Ru | R10 |
 | `metallo_drug_smoke_mol_cache.pt` | varies | RDKit 3D embed cache for the 500-mol pool | R15 |
 
-**Migration strategy**: 
+**Migration strategy**:
 - **Copy** all `.pt` files via `scp` / `rsync` — they are PyTorch `state_dict` dicts and load across platforms (CPU ↔ GPU ↔ ROCm ↔ CUDA) as long as PyTorch versions match.
 - **OR retrain** from scratch using `molmetal/scripts/metallo_drug_smoke_retrain.py` (≈4-6 h on A100 / 12 h on RX 7800 XT).
 

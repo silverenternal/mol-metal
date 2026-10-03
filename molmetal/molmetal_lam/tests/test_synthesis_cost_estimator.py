@@ -47,4 +47,3 @@ def test_custom_weights_are_normalized_and_used():
 def test_invalid_smiles_returns_impossible_cost():
     assert synthesis_cost("this is not smiles") == 1.0
     assert SynthesisCostEstimator().cost("[invalid") == 1.0
-

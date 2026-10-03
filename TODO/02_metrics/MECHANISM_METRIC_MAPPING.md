@@ -662,7 +662,7 @@ Step 2: Run targeted unit tests
       _______________________________________________
       _______________________________________________
       _______________________________________________
-    
+
 Step 3: Verify each mechanism's current state
     [ ] M___ unit test PASS
     [ ] M___ unit test PASS

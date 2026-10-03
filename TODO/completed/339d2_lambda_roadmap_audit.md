@@ -5,7 +5,7 @@
 **Status**: ✅ SHIPPED (pure docs audit; Bash + Read only per Wf-302C text-only brief template)
 **Skill alignment**: `mol-metal-mechanism-mapping` + `mol-metal-lambda-calculus` + `party-twenty-spirit` §3.5 (MEASURED vs PROJECTED tag discipline)
 **Parent**: `TODO/03_plans/LAMBDA_ROADMAP.md` (R20-R25 6-year plan, 2027-01 → 2030-07)
-**Sources**: 
+**Sources**:
 - `TODO/03_plans/LAMBDA_ROADMAP.md` (full doc, §1-§10.5)
 - `TODO/INDEX.md` §0.1-§0.15 (Wf-256..330 ship-wave timeline)
 - `TODO/completed/83j_lambda_closeout.md` (12-gap L1-L12 final status)

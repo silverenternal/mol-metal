@@ -5,12 +5,12 @@ flag wire-in smoke-required rule + §5.8 token-budget discipline.
 
 ## MEASURED findings
 
-Both trainers ( + 
+Both trainers ( +
 ) already SHIP --max-norm + --weight-decay
 CLI flags + gradient clipping + optimizer weight_decay wire-in:
 
 - D-MPNN  --max-norm flag at line 1865 default 5.0
-- D-MPNN gradient clip site at line 803-810: 
+- D-MPNN gradient clip site at line 803-810:
     max_norm = float(getattr(args, "max_norm", 0.0))
     if max_norm > 0.0: torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm)
 - D-MPNN optimizer at line 1079: weight_decay=wd threaded from main() via args
@@ -35,7 +35,7 @@ D-MPNN smoke rc=0 (trainer reaches 50 steps for Ru seed=0 with
 --weight-decay 0.01 --max-norm 1.0 --epochs 1 --batch-size 4
 --data-csv .data/molmetal/metalcytotox_5metal_multitask_v4.csv
 --csv .data/molmetal/metalcytotox_5metal_multitask.csv
---device cpu). Other 4 metals (Ir/Os/Rh/Re) hit a PRE-EXISTING 
+--device cpu). Other 4 metals (Ir/Os/Rh/Re) hit a PRE-EXISTING
 NameError "args is not defined" in L2_GUARD code path (separate
 from --max-norm wire-in; deferred to Wf-A6 BLOCKER D follow-up).
 

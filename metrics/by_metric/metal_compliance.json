@@ -58,4 +58,3 @@
   },
   "verdict": "EXPECTED_TRADE_OFF — metal_compliance 1.0 -> 0.0 is the cost of lifting diversity. Not a regression; reflects honest metric design. Open: can we have BOTH diversity AND compliance? (Requires F2(a) MetalLigandExchange SMARTS rule — structural fix needed)"
 }
-

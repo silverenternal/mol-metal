@@ -73,7 +73,7 @@
 - abstract 不再 claim Tier-1 AUC 领先
 - skill `mol-metal-mechanism-mapping` §3 已加 R18 honest policy
 
-**Risk**: reviewer 因为 honest framing 质疑 paper novel claim strength  
+**Risk**: reviewer 因为 honest framing 质疑 paper novel claim strength
 **Mitigation**: 把 "methodological contribution" + "explicit limitations" 当作主卖（PKU 2026 / Nature Mach Intell 评审对 honest framing 加分）
 
 **Deliverable**: 3 paper files (modified), `molmetal/reports/wf_r18_p0_honest/final.md`
@@ -120,7 +120,7 @@
 - m8 PB-Valid ≥ 0.95
 - SE(3) decoder: det=1, orthogonal
 
-**Risk**: Lie group numerical integration 不稳定  
+**Risk**: Lie group numerical integration 不稳定
 **Mitigation**: 1st-order Lie Euler fallback；matrix orthogonality 检查
 
 **Deliverable**: `se3_lie_group.py` (NEW), `velocity_net.py` (MODIFIED), `test_se3_lie_group.py` (NEW), `wf_r18_p2_se3_sb/final.md`, update 3 skills
@@ -140,7 +140,7 @@
 - R² ≥ 0.62（F5 gate，primal-dual 不 regression）
 - LambdaASTSR wall-time -50%
 
-**Risk**: Multi-PH Fourier 算法 O(N log N)→O(N²) 退化  
+**Risk**: Multi-PH Fourier 算法 O(N log N)→O(N²) 退化
 **Mitigation**: 限 N ≤ 100 atoms
 
 **Deliverable**: `multi_ph.py` (NEW), `lambda_astsr_primal_dual.py` (NEW), `test_multi_ph.py` (NEW), `wf_r18_p3_multiph_primaldual/final.md`
@@ -187,8 +187,8 @@ Week 7  : Phase 3 W2 (primal-dual)
 Week 8  : Phase 4 (paper final + skill + close-out)
 ```
 
-**Critical path**: Phase 2 (3 weeks, 最大风险)  
-**Slip buffer**: 1 week built into Phase 4  
+**Critical path**: Phase 2 (3 weeks, 最大风险)
+**Slip buffer**: 1 week built into Phase 4
 **Parallelism policy**: Phase 0 paper (no GPU) 与 Phase 1 training (GPU) 可同周跑；Phase 2 与 Phase 3 训练**严格分段**（见 §risk）
 
 ---

@@ -59,19 +59,19 @@
 # molmetal/molmetal_lam/types/type_inference.py
 class MolMetalTypeInference:
     """Mol-Metal's EGNN IC50 predictor = type inhabitation inference.
-    
+
     IC50(M) = "how strongly does M inhabit BindingType(T)?"
-    
+
     In λ-calculus terms: type inference assigns the "deepest"
     inhabitation score — EGNN approximates this via η-invariant features.
     """
     def infer(self, molecule: Molecule, binding_type: 'BindingType') -> 'InhabitationScore':
         # Step 1: η-canonicalize (GNN aggregation = η-reduction)
         canonical_features = egnn_encode(molecule)
-        
+
         # Step 2: Type inhabitation score
         inhabitation = self.binding_head(canonical_features, binding_type)
-        
+
         # Step 3: Convert to pIC50
         return InhabitationScore(
             pic50=9.0 - inhabitation,
@@ -94,7 +94,7 @@ class MolMetalTypeInference:
 @dataclass(frozen=True)
 class MetalCoordinationTile(Tile):
     """Special tile: a metal center with predefined coordination geometry.
-    
+
     Square-planar Pt(II): 4 ligands at 90° in a plane
     Octahedral Ru(II):    6 ligands at 90°
     Trigonal bipyramidal: 5 ligands
@@ -103,7 +103,7 @@ class MetalCoordinationTile(Tile):
     oxidation_state: int
     geometry: str        # 'square_planar', 'octahedral', ...
     ligand_angles: torch.Tensor   # (n_ligands, 3) ideal positions
-    
+
     @classmethod
     def pt_square_planar(cls, pt_center: torch.Tensor) -> 'MetalCoordinationTile':
         """Pt(II) center with 4 ideal ligand positions in xy plane."""
@@ -121,7 +121,7 @@ class MetalCoordinationTile(Tile):
             metal='Pt', oxidation_state=2, geometry='square_planar',
             ligand_angles=angles,
         )
-    
+
     @classmethod
     def ru_octahedral(cls, ru_center: torch.Tensor) -> 'MetalCoordinationTile':
         """Ru(II) center with 6 ideal ligand positions."""
@@ -144,9 +144,9 @@ class MetalCoordinationTile(Tile):
 
 ```haskell
 -- Lambda 演算
-Cisplatin = Pt_Center 
+Cisplatin = Pt_Center
           `attach` Azide_Handle("NH3")  -- via CuAAC to first NH3
-          `attach` Azide_Handle("NH3")  -- via CuAAC to second NH3  
+          `attach` Azide_Handle("NH3")  -- via CuAAC to second NH3
           `attach` Chloro_Handle         -- via click to Cl
           `attach` Chloro_Handle         -- via click to Cl
 
@@ -181,23 +181,23 @@ Cisplatin = Pt_Center
 # molmetal/molmetal_lam/scripts/cross_validate_with_molmetal.py
 def cross_validate(pdb_id: str):
     """Run BOTH tracks on the same target, compare outcomes."""
-    
+
     # 1. Lambda track generates candidates
     lambda_candidates = lam_mcts_run(pdb_id, n=1000)
-    
+
     # 2. Mol-Metal IC50 predictor scores them
     ic50_scores = molmetal_ic50_predictor.predict_batch(
         [c.smiles for c in lambda_candidates]
     )
-    
+
     # 3. Mol-Metal diffusion also generates candidates
     molmetal_candidates = lipman_fm_adapter.generate(pdb_id, n=1000)
-    
+
     # 4. Lambda scoring (REINVENT4 + SAS) evaluates them
     lambda_scores = reinvent_scorer.score_batch(
         [c.smiles for c in molmetal_candidates]
     )
-    
+
     # 5. Report cross-track metrics
     return {
         "lambda_candidates_molmetal_auc": compute_auc(ic50_scores, active_labels),
@@ -340,7 +340,7 @@ from molmetal_lam.tile_lib.tile import Tile
 
 def CuAAC(tile_A: Tile, tile_B: Tile) -> Tile:
     """Cu(I)-catalyzed azide-alkyne cycloaddition.
-    
+
     R-N3 + R'-C≡CH --[Cu(I)]--> 1,4-disubstituted 1,2,3-triazole
     """
     azide_atoms = tile_A.get_functional_group("azide")

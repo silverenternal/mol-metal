@@ -30,7 +30,7 @@
 
 **Planned**: fix `train_se3sb.py:613` AttributeError (`args.se3_sinkhorn` typo) → run 4 scripts (`train_se3sb` / `train_transport` / `train_multiph` / `train_ru_multitask`) on GPU 1 5-seed × 50-epoch × smoke.
 
-**Actual**: 
+**Actual**:
 - `molmetal/scripts/train_se3sb.py:613` already reads `args.se3_use_sinkhorn` (verified by Read at offset 605-615) — the bug reported in `76_r18_blackwell_retrain_v2.md` §2.4 was actually **fixed inline** during Wf-23, not deferred to Wf-29. Wf-29 has no outstanding bug to chase.
 - 4 train scripts exist on disk (se3sb / transport / multiph / ru_multitask). Smoke import test passes (25+ tests in `molmetal/tests/test_r18_train_scripts.py`). 5-seed × 50-epoch GPU run **not executed** (no `molmetal/reports/wf29_*/` artifacts; kanzi GPU-0 contention + ultracode priority kept this from launching).
 - **Honest**: Wf-29 produced 0/4 benchmark JSON. Per `party-twenty-spirit` §3.5 we report zero lift, not "expected lift". The 25 unit tests are MEASURED; the 5-seed GPU retrain is PROJECTED @ R20.
@@ -245,7 +245,7 @@ Per `TODO/pending/82_metric_gap_filling_plan.md` §0, the 7 gaps require Blackwe
 
 ## §8 Final verdict
 
-**Wf-29~Wf-34 ship status**: 
+**Wf-29~Wf-34 ship status**:
 - ✅ 10/10 pocket receptor prep (Wf-30 Phase 1)
 - ✅ 4 NEW train scripts + 3 NEW verify scripts + 1 NEW dock script + 3 NEW test files
 - ✅ NEW skill `mol-metal-gpu-execution` (302 LOC, 10 sections)

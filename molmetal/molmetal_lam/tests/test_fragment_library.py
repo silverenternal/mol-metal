@@ -319,4 +319,3 @@ def test_filtered_pool_default_excludes_top10() -> None:
     sentinel_empty: list = []
     result = top10_filter_pool(sentinel_empty)
     assert result == []
-

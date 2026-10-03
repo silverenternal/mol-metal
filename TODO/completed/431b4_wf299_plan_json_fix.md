@@ -161,4 +161,3 @@ aggregator gap documented at Wf-431-A4 §0 is now closed.
 Forward-looking USER_OK-gated items per Wf-431-A4 §5:
 - Wf-431-A5 actual Wf-299 launch on cuda:0 (~12 hr GPU USER_OK-gated
   per AGENTS.md §5.1 + kill_then_adapt §0)
-

@@ -587,8 +587,8 @@ Week 10-12: Phase 6 (Pitfall P2.5 Phases C-E ship)
 Week 12 : Post-flight (paper v2 + skill update + close-out)
 ```
 
-**Critical path**: Phase 1 (M22 SE(3) SB — 最大风险: Lie group numerical integration 不稳定)  
-**Slip buffer**: Phase 6 3 周可吸收 Phase 1-5 延期  
+**Critical path**: Phase 1 (M22 SE(3) SB — 最大风险: Lie group numerical integration 不稳定)
+**Slip buffer**: Phase 6 3 周可吸收 Phase 1-5 延期
 **Parallelism policy**: Phase 1-4 GPU-1 主训练 + GPU-2 对照/并行 seed；Phase 5 GPU-1 + GPU-2 split 5-seed；Phase 6 GPU-1 主训练 + GPU-2 MMseqs2 + CPU AMBER/YASARA
 
 ---

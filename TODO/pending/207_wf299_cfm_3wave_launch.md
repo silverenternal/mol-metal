@@ -109,7 +109,7 @@ Per Wf-299 brief:
 
 ### §3.1 USER_OK gate
 
-Per AGENTS.md §5.1 + 2026-09-30 user grant: USER_OK=1 granted. 
+Per AGENTS.md §5.1 + 2026-09-30 user grant: USER_OK=1 granted.
 
 ```bash
 if [ "${USER_OK:-0}" != "1" ]; then

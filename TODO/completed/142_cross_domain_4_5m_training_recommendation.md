@@ -81,7 +81,7 @@ class MultiTaskUncertaintyLoss(nn.Module):
     def __init__(self, num_tasks: int):
         super().__init__()
         self.log_vars = nn.Parameter(torch.zeros(num_tasks))
-    
+
     def forward(self, losses_per_task):
         total = 0
         for i, L in enumerate(losses_per_task):

@@ -138,7 +138,7 @@ the same m2.
   - `HONEST_NEGATIVE` = true (auto-attached per Wf-308B / Wf-312C / Wf-323F
     contract)
 - **Gate target**: ≥ 0.60 (WEAK_TO_STRONG §2.4)
-- **Lift trajectory**: 
+- **Lift trajectory**:
   - **Short-term** (Phase 1 SA/QED wiring — SHIPPED via Wf-315A + Wf-323F):
     +5-10pp PROJECTED on the SA/QED sub-rate; current sub-rate = 0.00223
   - **Medium-term** (Phase 2 m3 Vina lift hitting ≤-8.0): +15-20pp PROJECTED
@@ -170,7 +170,7 @@ the same m2.
   metric, NOT a WEAK metric; the audit brief's "BELOW" framing here appears
   to follow the WEAK_TO_STRONG_PLAN §2.4 sub-criterion gate rather than the
   paper §4 LEAD-claim framing.
-- **Lift trajectory**: 
+- **Lift trajectory**:
   - `wf_sa_penalty_guidance` (no sa-weight): ≥ 5.0 MEASURED
   - `--sa-weight 0.3` smoke: 3.319 MEASURED (+1.681 lift vs no-sa-weight)
   - `wf_sa_fragment_pool_optimize` (1×1): 3.099 MEASURED (+0.220 lift)
@@ -208,7 +208,7 @@ the same m2.
   - 3-seed × 3 pH × multi-pocket sub-pools (n_agg ~52-53 per seed)
   - 3 seeds independently clear the 0.65 gate
 - **Gate target**: ≥ 0.65 (WEAK_TO_STRONG §2.5)
-- **Lift trajectory**: 
+- **Lift trajectory**:
   - `m7_after_lift_geometric` (0.7925) vs `m7_baseline_path_a` (0.1065):
     **+0.6860** (primary lift)
   - vs `m7_baseline_r12_ev3` (0.1366): **+0.6559**

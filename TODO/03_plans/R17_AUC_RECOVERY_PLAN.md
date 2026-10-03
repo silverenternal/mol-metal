@@ -46,7 +46,7 @@
    # molmetal/models/v4_multitask_dmpnn.py
    class V4MultiTaskDMPNN(nn.Module):
        """5-way multi-task D-MPNN for precious-metal cytotoxicity.
-       
+
        Shared encoder (D-MPNN), 5 classification heads (Ru, Ir, Rh, Re, Os)
        Each head: 256 → 128 → 2 (active/inactive)
        Auxiliary: coordination geometry classifier (5 classes)
@@ -95,7 +95,7 @@
    # molmetal/molmetal_lam/lam_chem/cisplatin_resistance.py
    def compute_resistance_features(mol: Chem.Mol) -> dict:
        """Features specific to cisplatin-resistance prediction.
-       
+
        - Lipophilicity (logP)
        - Reduction potential (proxy by Hammett-like substituent constants)
        - Glutathione affinity (proxy by thiol count)
@@ -231,7 +231,7 @@ def compute_resistance_features(smiles: str) -> np.ndarray:
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return np.zeros(10)
-    
+
     features = []
     # 1. logP (lipophilicity)
     features.append(Descriptors.MolLogP(mol))
@@ -265,7 +265,7 @@ class FocalLoss(nn.Module):
         super().__init__()
         self.alpha = alpha
         self.gamma = gamma
-    
+
     def forward(self, logits, targets):
         ce = F.cross_entropy(logits, targets, reduction='none')
         pt = torch.exp(-ce)

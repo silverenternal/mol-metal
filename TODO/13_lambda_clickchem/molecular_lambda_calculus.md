@@ -66,16 +66,16 @@ class Atom:
     lone_pairs: int            # additional electron-pair sites
     is_metal: bool = False
     geometry: str = ""         # 'sp3', 'sp2', 'square_planar', ...
-    
+
     @property
     def arity(self) -> int:
         """The arity of this atom as a λ-combinator."""
         return self.valence + self.lone_pairs
-    
+
     def is_saturated(self, current_bonds: int) -> bool:
         """A saturated atom is in β-normal form."""
         return current_bonds == self.arity
-    
+
     def can_bond_with(self, other: 'Atom') -> bool:
         """Two atoms can β-reduce (= bond) iff both have free arity."""
         return (not self.is_saturated(0)  # pseudo-check
@@ -103,23 +103,23 @@ class Atom:
 ```python
 class Bond:
     """A bond is a β-reduction (= function application) between two atoms."""
-    
+
     def apply(self, atom_a: Atom, atom_b: Atom) -> 'Molecule':
         """β-reduction: applying atom_a to atom_b (or vice versa)
-        
+
         Returns the reduced term (= molecule with one fewer free site).
         """
         new_a = atom_a.with_one_less_free_site()
         new_b = atom_b.with_one_less_free_site()
         return Molecule([new_a, new_b], bonds=[(a.id, b.id, self.order)])
-    
+
     @classmethod
     def dative(cls, metal: Atom, ligand: Atom) -> 'Molecule':
         """Dative bond = curried application. Metal retains free sites."""
         # Pt(NH3) — Pt now has 3 free sites, NH3 is fully saturated
         new_metal = metal.with_one_less_free_site()
         saturated_ligand = ligand.saturate()  # ligand is now a value, not a function
-        return Molecule([new_metal, saturated_ligand], 
+        return Molecule([new_metal, saturated_ligand],
                        bonds=[(metal.id, ligand.id, 'dative')],
                        metal_free_sites=new_metal.arity - new_metal.used_sites)
 ```
@@ -141,21 +141,21 @@ class Molecule:
     """A molecule is a closed λ-term in β-normal form."""
     atoms: List[Atom]                # atom stack
     bonds: List[Bond]                # applications applied (β-reduction history)
-    
+
     @property
     def is_closed(self) -> bool:
         """Closed term = no free variables = no unsatisfied atoms."""
         return all(a.is_saturated() for a in self.atoms)
-    
+
     @property
     def is_beta_normal_form(self) -> bool:
         """β-NF: no more reducible applications."""
         return self.is_closed and not self.has_redex()
-    
+
     def alpha_equivalent(self, other: 'Molecule') -> bool:
         """α-equivalence: same topology, different atom labeling."""
         return self.canonical_smiles() == other.canonical_smiles()
-    
+
     def has_redex(self) -> bool:
         """A redex = (λx.M) N, a reducible application."""
         # In our chemistry: an unsaturated atom with a free lone pair next
@@ -164,7 +164,7 @@ class Molecule:
             if not a.is_saturated() and a.has_acidic_neighbor(self):
                 return True
         return False
-    
+
     def reduce_once(self) -> 'Molecule':
         """One β-reduction step = one chemical transformation."""
         # Find a redex and reduce it (= perform the reaction)
@@ -186,7 +186,7 @@ class Molecule:
 ```python
 class Reaction:
     """A chemical reaction IS a β-reduction rule."""
-    
+
     def reduce(self, mol: Molecule) -> Molecule:
         """Apply the redex pattern = perform the reaction."""
         ...
@@ -195,12 +195,12 @@ class Reaction:
 
 def SN2(nucleophile: Atom, substrate: Atom, leaving_group: Atom) -> Molecule:
     """SN2 substitution = one β-reduction with inversion.
-    
+
     Pattern:    Nu: + R-LG  →  Nu-R + :LG
-    
+
     λ-calculus:  (λx.R-x) (Nu LG)  →  (λx.R-Nu) LG
                           ↑ redex here
-    
+
     (Walden inversion = the new bond forms on the opposite face)
     """
     new_substrate = substrate.replace_leaving_group(nucleophile)
@@ -209,11 +209,11 @@ def SN2(nucleophile: Atom, substrate: Atom, leaving_group: Atom) -> Molecule:
 
 def CuAAC(azide_tile: 'Tile', alkyne_tile: 'Tile') -> 'Tile':
     """CuAAC click reaction = β-reduction in the tile algebra.
-    
+
     R-N3 + R'-C≡CH --[Cu(I)]--> 1,4-disubstituted triazole
-    
+
     As λ-calculus:
-      triazole = λ(R-N3). λ(R'-C≡CH). 
+      triazole = λ(R-N3). λ(R'-C≡CH).
                  combine(
                    attach(R-N3, "azide_site"),
                    attach(R'-C≡CH, "alkyne_site")
@@ -223,8 +223,8 @@ def CuAAC(azide_tile: 'Tile', alkyne_tile: 'Tile') -> 'Tile':
 
 def cycloaddition(diene: 'Tile', dienophile: 'Tile', ring_size: int) -> 'Tile':
     """[4+2] Diels-Alder cycloaddition.
-    
-    In λ-calculus: a 4-arity function meeting a 2-arity function 
+
+    In λ-calculus: a 4-arity function meeting a 2-arity function
     produces a 6-ring (= saturated cycle).
     """
     ...
@@ -242,7 +242,7 @@ def cycloaddition(diene: 'Tile', dienophile: 'Tile', ring_size: int) -> 'Tile':
 ```python
 def synthesize(target: Molecule, starting_materials: List[Tile]) -> List[Reaction]:
     """Forward synthesis = β-reduction sequence.
-    
+
     Input: target Molecule (closed λ-term in NF)
     Output: sequence of reactions (β-reductions) that produce it from
             starting_materials (also closed terms, smaller NF).
@@ -252,7 +252,7 @@ def synthesize(target: Molecule, starting_materials: List[Tile]) -> List[Reactio
 
 def retrosynthesize(target: Molecule) -> List['ReactionPattern']:
     """Retrosynthesis = β-expansion.
-    
+
     For each redex in the target's β-expansion space, generate
     a candidate precursor + the reaction that forms the bond.
     """
@@ -277,16 +277,16 @@ def retrosynthesize(target: Molecule) -> List['ReactionPattern']:
 ```python
 class BindingType:
     """A binding site IS a higher-order type.
-    
+
     E.g. MMP2 active site: "Zn-coordination" + "hydrophobic pocket" + "backbone H-bond"
     """
     def __init__(self, name: str, constraints: List['Constraint']):
         self.name = name
         self.constraints = constraints
-    
+
     def typecheck(self, ligand: Molecule) -> 'TypeCheckResult':
         """Type-check ligand against this binding site.
-        
+
         Returns: success (with affinity), or failure (with reason).
         """
         for c in self.constraints:
@@ -299,7 +299,7 @@ def dock(ligand: Molecule, pocket: 'BindingType') -> 'Complex':
     typecheck = pocket.typecheck(ligand)
     if not typecheck.success:
         return Complex(ligand, pocket, success=False, reason=typecheck.violated)
-    return Complex(ligand, pocket, success=True, 
+    return Complex(ligand, pocket, success=True,
                    affinity=typecheck.affinity,
                    pose=find_optimal_pose(ligand, pocket))
 ```
@@ -319,12 +319,12 @@ class TypePredicate:
     def __init__(self, name: str, predicate_fn):
         self.name = name
         self.predicate = predicate_fn
-    
+
     def __call__(self, mol: Molecule) -> bool:
         return self.predicate(mol)
 
 # Standard predicates
-LIPINSKI = TypePredicate("Lipinski", lambda m: 
+LIPINSKI = TypePredicate("Lipinski", lambda m:
     m.mw <= 500 and m.logp <= 5 and m.hbd <= 5 and m.hba <= 10)
 
 VEBER = TypePredicate("Veber", lambda m:
@@ -372,20 +372,20 @@ def drug_design_proof_search(
     for it in range(max_iterations):
         # 1. Generate candidate via MCTS (proof search)
         candidate = mcts_proof_search_step(target, admet_predicates, tile_library)
-        
+
         # 2. Type-check
         if not well_typed(candidate, admet_predicates):
             continue
         if not target.typecheck(candidate).success:
             continue
-        
+
         # 3. Synthesize (verify the proof is constructive)
         synthesis_path = synthesize(candidate, tile_library)
         if synthesis_path is None:
             continue
-        
+
         well_typed_molecules.append((candidate, synthesis_path))
-    
+
     return well_typed_molecules
 ```
 
@@ -403,11 +403,11 @@ def drug_design_proof_search(
 ```python
 class EGNN(nn.Module):
     """EGNN is morally learning a η-conversion-invariant function.
-    
+
     The message passing step:
         m_ij = MLP(h_i || h_j || ||x_i - x_j||²)   # pairwise interaction
         h_i^{l+1} = h_i^l + Σ_j m_ij               # sum = permutation-invariant
-    
+
     The η-conversion is the aggregation:
         The output h_i depends only on the multiset of h_j's, not their order.
         So h_i = λ(σ permutation). η-reduce_to_canonical_form
@@ -416,10 +416,10 @@ class EGNN(nn.Module):
 
 class FlowMatching:
     """Flow matching for molecules = learning the β-NF from noise.
-    
+
     Forward (β-reduction):
         x_t = (1-t) * x_0 + t * x_1
-    
+
     This is exactly the affine-linear path from Lipman 2023 §4.8,
     which is the SIMPLEST β-reduction path between two λ-terms.
     """
@@ -442,19 +442,19 @@ class FlowMatching:
 ```python
 class MolMetalIC50Predictor:
     """EGNN-based IC50 predictor = type inference.
-    
+
     IC50(M) = "how strongly does M inhabit BindingType(T)?"
-    
+
     In λ-calculus: type inference assigns the "deepest" inhabitation score.
     EGNN approximates this via η-invariant features.
     """
     def predict(self, molecule: Molecule, target: BindingType) -> float:
         # Step 1: η-canonicalize (GNN aggregation)
         canonical_features = egnn_encode(molecule)
-        
+
         # Step 2: Type inhabitation score
         binding_score = self.binding_head(canonical_features)
-        
+
         # Step 3: Convert to pIC50
         return 9.0 - binding_score  # higher pIC50 = lower binding_score
 ```

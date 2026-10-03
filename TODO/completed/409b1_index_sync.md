@@ -134,4 +134,3 @@ Per `party-twenty-spirit` §3.5 + AGENTS.md §5.1..§5.7 + §10 standing directi
 - `TODO/completed/409a4_wf29_extended.md` (16,726 bytes mtime 2026-09-30 16:16)
 
 This B1 docs-only sync (5th deliverable) closes the wave; 0 NEW tests (verification + docs-only sync only per task brief).
-

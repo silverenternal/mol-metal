@@ -139,4 +139,3 @@ $ ls -la molmetal/scripts/train_dmpnn_multitask_wasserstein.py
 $ ls -la molmetal/scripts/train_dmpnn_multitask_wasserstein.py.bak.wfa8_plat
 -rw-r--r-- 1 hugo hugo 107501 Oct  3 05:17
 ```
-

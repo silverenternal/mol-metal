@@ -161,7 +161,7 @@ R20 12 weeks (接力 Wf-36/37 ship surface):
 
 **目标**: 把 Wf-37 L4-L8 + Wf-36 L1-L3 真正推到 tier-1 metric (m18/m19/m20) + AlphaFold-Multimer + MetalSite + patient-derived organoid
 
-**⚠️ DEPRECATION NOTICE (2026-09-29 user directive + AGENTS.md §10)**: 
+**⚠️ DEPRECATION NOTICE (2026-09-29 user directive + AGENTS.md §10)**:
 - **R22-P1 (m18 wet-lab)** — wet-lab scope DEPRECATED per AGENTS.md §10 + Tier-2 re-orientation; re-scope to in-silico AlphaFold-Multimer + MetalSite feature extraction only (no wet-lab patient-derived organoid execution). Per user 2026-09-29 verbatim *"我们发二区就可以了，不用规划湿实验"* + 2026-09-30 verbatim *"搞清楚我们不用做湿实验，这一点我已经明确了好多遍了"*.
 - **Patient-derived organoid component** — DEPRECATED per AGENTS.md §10.1 (3 wetlab SOPs); substituted by literature values from peer-paper experimental references (Tier-2 acceptable).
 - **m18/m19/m20 metric ship surface** — preserved as in-silico scaffold lift targets; clinical validation is **out of project scope** per §10.4 (peer-reviewer rebuttal should be reframed as computational substitution per §10.3).
@@ -281,7 +281,7 @@ R20 12 weeks (接力 Wf-36/37 ship surface):
 
 **总**: R20 close L1/L2/L5/L6/L7/L9/L10/L11/L12 + L4 retrain (9/12); R21 close L3/L4/L8 (12/12 全 close) + L9 R² ≥ 0.85 lift + L8 real-data triangle. R22-R25 长期演化 (with **R22-P1 wet-lab DEPRECATED** + **R23 ALL DEPRECATED** per AGENTS.md §10 + 2026-09-29/30 user directives — see §3.2/§3.3 DEPRECATION NOTICEs).
 
-**TODO # 列 cross-ref**: 
+**TODO # 列 cross-ref**:
 - TODO-92 = R20-P1 (L2)
 - TODO-93 = R20-P2 (L4+L5+L7+L8+L9+L11) — **Wf-381-A5 §2.1 closed CPU-side** (HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL per Wf-365-A3 verdict; structural CV-R² ceiling +0.6814 CEILING_BREAK but threshold-reaching axis NOT lifted; 5 architectural attempts exhausted per Wf-365-A3 §5; augmented_mean 0.472 < 0.6 gate; Wf-377-A1 redesign progress per Wf-377-A1 deep-dive-research move — drop-from-§3 recommendation pending USER_OK-gated paper conversion)
 - TODO-94 = R20-P3 (L7) — **Wf-381-A5 §2.4 closed CPU-side** + Wf-382-A1 SCAFFOLD (`molmetal/scripts/wf382a1_multiph_pll_scaffold.py` + 3 NEW tests PASS)

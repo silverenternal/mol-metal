@@ -389,4 +389,3 @@ $ ls -la /home/hugo/codes/mol-metal/TODO/completed/380a2_per_cohort_features.md
 - **§5.6** (atomic write protocol adoption rule): closeout authored via `atomic_write_file` from `molmetal/scripts/wf386a3_atomic_write.py` (NOT direct `Write`).
 - **§5.7 NEW** (trainer flag wire-in smoke-required rule): N/A for this sub-flow (no trainer flag wire-in).
 - **§10** (wetlab deprecation): 0 wet-lab planning in Wf-425-A1.
-

@@ -62,4 +62,3 @@ def test_predict_shape(monkeypatch, shape):
     y = np.arange(shape[0], dtype=float)
     model = SymbolicRegressor().fit(X, y)
     assert model.predict(X).shape == (shape[0],)
-

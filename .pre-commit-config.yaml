@@ -28,15 +28,28 @@
 #     mdformat --wrap 100 would rewrite the docs corpus. Promote to
 #     enforcing only after a scoped, directory-limited cleanup.
 # =============================================================================
-# GLOBAL EXCLUSIONS (Wf-A16). These are VENDORED third-party trees and
-# generated artefacts, not our code. Without this, the whitespace and
-# end-of-file-fixer hooks below would rewrite files we do not own — MEASURED
-# before adding it: `.tools/latex/sn-jnl.cls` (the journal's LaTeX class) and
-# `.tools/sci-paper/**` both carry trailing whitespace that is upstream's choice,
-# not a defect of ours. Reformatting them would create a permanent diff against
-# upstream and make the vendored copies unreconcilable.
+# GLOBAL EXCLUSIONS (Wf-A16).
+#
+# paper/ — AGENTS.md §5.3 / TODO-84 is a HARD rule: zero touches to paper/*
+#   without explicit user authorisation, and the paper-writing skill is READ-only.
+#   This line is what makes §5.3 hold at the HOOK layer, not just by convention.
+#   It was missing on the first pass and the hook duly reformatted
+#   paper/build_log.txt, four paper/figures/*.svg and two
+#   paper/reports/*/summary.md. Those edits were reverted with
+#   `git checkout -- paper/` immediately. A pre-commit hook that violates a
+#   project hard rule on every run is worse than no hook.
+#
+# Vendored + generated trees — not our code. MEASURED before adding:
+#   `.tools/latex/sn-jnl.cls` (the journal's LaTeX class) and `.tools/sci-paper/**`
+#   both carry trailing whitespace that is upstream's choice, not a defect of
+#   ours. Reformatting them would create a permanent diff against upstream and
+#   make the vendored copies unreconcilable.
+#
+# Verified with `pre-commit run trailing-whitespace --files <path>` for each
+# tree: the hook reports "no files to check / Skipped".
 exclude: |
   (?x)^(
+      paper/.*|
       \.tools/.*|
       \.venv/.*|
       \.venv\.bak\..*/.*|

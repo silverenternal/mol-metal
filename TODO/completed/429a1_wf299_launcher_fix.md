@@ -87,7 +87,7 @@ $ bash -n /home/hugo/codes/mol-metal/molmetal/scripts/wf426a3_post_fix_retrain_l
 $ # rc=0 PASS
 
 $ awk 'NR>=135 && NR<=145' /home/hugo/codes/mol-metal/molmetal/scripts/wf426a3_post_fix_retrain_launcher.sh
-135: 
+135:
 136: # Candidate 6: Wf-299 3-wave CFM (Wave A + Wave B + Wave C).
 137: WF299_SCRIPT="${REPO_ROOT}/molmetal/scripts/launch_wf299_cfm_main.sh"
 138: WF299_REPORT="${REPO_ROOT}/molmetal/reports/wf299_cfm_main"
@@ -95,7 +95,7 @@ $ awk 'NR>=135 && NR<=145' /home/hugo/codes/mol-metal/molmetal/scripts/wf426a3_p
 140:     "${WF299_SCRIPT}" \
 141:     "${WF299_REPORT}" \
 142:     "Wf-299 3-wave CFM main (Wave A yuelbond_only + Wave B W₂_only + Wave C catherine_only) — Wf-415-A1 transparent-passthrough + Wf-408-A3 --wave alias; WRAPPER FOUND on disk at molmetal/scripts/launch_wf299_cfm_main.sh per AGENTS.md §5.5 filesystem-truth (29179 B; executable); DRY_RUN.log found in wave_a/ + wave_b/ subdirs (not at top-level per readiness contract); BLOCKED per readiness-contract step 3 (DRY_RUN.log expected at top-level, see Wf-430 misfix); wrapper has Wf-415-A1 transparent-passthrough + Wf-408-A3 --wave alias; pre-flight v3 PASS (114/0/3/117 per Wf-424-A1); closure path = Wf-430-A1 align DRY_RUN.log top-level + Wf-425-A1 actual launch USER_OK-gated."
-143: 
+143:
 144: # Aggregate via Python aggregator (Wf-426-A3 deliverable #2).
 145: # Aggregate via Python aggregator (Wf-426-A3 deliverable #2).
 ```

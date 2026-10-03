@@ -58,4 +58,3 @@ def test_score_with_sa_shape_and_keys():
         assert record["smiles"] == smi
         assert isinstance(record["qed"], float)
         assert record["sa"] is None or isinstance(record["sa"], float)
-

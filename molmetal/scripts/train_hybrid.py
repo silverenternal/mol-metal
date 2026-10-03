@@ -172,7 +172,7 @@ def build_dataloader(
     order = list(range(n))
     if shuffle:
         order = list(np.random.permutation(order))
-    
+
     class _BatchLoader:
         def __init__(self, ds, order, batch_size, featurizer, device):
             self.ds = ds
@@ -180,16 +180,16 @@ def build_dataloader(
             self.batch_size = batch_size
             self.featurizer = featurizer
             self.device = device
-        
+
         def __iter__(self):
             for start in range(0, len(self.order), self.batch_size):
                 batch_idx = self.order[start:start+self.batch_size]
                 items = [self.ds[i] for i in batch_idx]
                 yield collate_with_3d(items, self.featurizer, self.device)
-        
+
         def __len__(self):
             return (len(self.order) + self.batch_size - 1) // self.batch_size
-    
+
     return _BatchLoader(ds, order, batch_size, featurizer, device)
 
 

@@ -110,11 +110,11 @@ Wf-364-A2 SUMMARY
   pass_rate @0.55 (ada)  : 0.3667
   candidates             : 4
 
-  candidate                                 n_feat     cv_r2  aug_mean  pass_lift  lift_adapt verdict                       
-  combined_maml_neural_ode                      12   +0.3733    0.4731    +0.0000     -0.0667 HONEST_NEGATIVE_PERSISTENT    
-  ode_only_no_maml_control                      12   +0.5410    0.4495    -0.0167     -0.0167 HONEST_NEGATIVE_PERSISTENT    
-  rdkit_12d_baseline_no_ode_no_maml             12   +0.5694    0.4493    -0.0167     -0.0167 HONEST_NEGATIVE_PERSISTENT    
-  joint_rdkit_ode_concat_with_maml              24   +0.3733    0.4737    +0.0167     -0.0667 HONEST_NEGATIVE_PERSISTENT    
+  candidate                                 n_feat     cv_r2  aug_mean  pass_lift  lift_adapt verdict
+  combined_maml_neural_ode                      12   +0.3733    0.4731    +0.0000     -0.0667 HONEST_NEGATIVE_PERSISTENT
+  ode_only_no_maml_control                      12   +0.5410    0.4495    -0.0167     -0.0167 HONEST_NEGATIVE_PERSISTENT
+  rdkit_12d_baseline_no_ode_no_maml             12   +0.5694    0.4493    -0.0167     -0.0167 HONEST_NEGATIVE_PERSISTENT
+  joint_rdkit_ode_concat_with_maml              24   +0.3733    0.4737    +0.0167     -0.0667 HONEST_NEGATIVE_PERSISTENT
 
   best_cv_r2 candidate       : rdkit_12d_baseline_no_ode_no_maml (CV-R²=+0.5694)
   best_aug_mean candidate    : joint_rdkit_ode_concat_with_maml (aug_mean=+0.4737)

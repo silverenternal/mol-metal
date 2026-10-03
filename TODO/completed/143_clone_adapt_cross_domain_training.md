@@ -105,7 +105,7 @@ class ReverseLayerF(Function):
     def forward(ctx, x, alpha):
         ctx.alpha = alpha
         return x.view_as(x)
-    
+
     @staticmethod
     def backward(ctx, grad_output):
         output = grad_output.neg() * ctx.alpha
@@ -337,7 +337,7 @@ class DMPNNDANN(nn.Module):
             nn.ReLU(),
             nn.Linear(64, num_domains),
         )
-    
+
     def forward(self, x, alpha=1.0):
         features = self.backbone(x)
         task_outputs = [head(features) for head in self.task_heads]
@@ -435,18 +435,18 @@ class SheafAlignment(nn.Module):
         # Initialize with random orthogonal
         for R in self.restriction_maps.values():
             nn.init.orthogonal_(R)
-    
+
     def sheaf_laplacian(self, X_per_domain):
         """Compute sheaf Laplacian from per-domain representations."""
         # ... sheaf Laplacian construction ...
-    
+
     def procrustes_update(self, X_i, X_j):
         """Closed-form Procrustes alignment between domain i and j."""
         # X_j ≈ R_i_j @ X_i
         U, _, Vt = torch.linalg.svd(X_j @ X_i.T)
         R = U @ Vt  # orthogonal
         return R
-    
+
     def forward(self, X_per_domain):
         """Compute sheaf-Laplacian regularization loss."""
         L = self.sheaf_laplacian(X_per_domain)

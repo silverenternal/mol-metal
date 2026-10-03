@@ -102,4 +102,3 @@ def compare_engines(pockets: Iterable[str] | None = None, ligands: Iterable[str]
     summary = {"qvina": {"pearson_r": _pearson(vv, qv), "mad": sum(map(abs, qd))/len(qd) if qd else 0.0, "n_samples": len(qd)}, "quickvina2": {"pearson_r": _pearson(vv, kv), "mad": sum(map(abs, kd))/len(kd) if kd else 0.0, "n_samples": len(kd)}}
     (out / "summary.json").write_text(json.dumps(summary, indent=2))
     return summary
-

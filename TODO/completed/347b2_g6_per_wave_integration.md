@@ -119,7 +119,7 @@ n_rows (incl header): 26633
 
 --- Ablation config verification status ---
 CONFIRMED flags: no_multi_task no_wass no_kendall no_dann
-UNVERIFIED (verify-flag-before-launch): 
+UNVERIFIED (verify-flag-before-launch):
 
 --- 60 (config, metal, seed) tuples enumerated ---
   [CONFIRMED] cfg=no_multi_task Ru seed=0  ->  results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed0/

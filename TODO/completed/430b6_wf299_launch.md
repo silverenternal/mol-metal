@@ -103,7 +103,7 @@ Wave B + Wave C total: ~7.7 hr GPU USER_OK-gated, separate from Wave A's 4 min.
 
 ## 6. User voice answer (per `Wf-430-B6` task brief + user voice "可以的，顺便把刚才结束的那个workflow没完成的地方补上，我给你授权")
 
-**Wf-430-B6 wave DID彻底解决** the Wf-430-A1 unfinished wrapper-bug surface via 3 wrapper fixes (`per_wave_checklist.py --json` removal + `--config <yaml>` removal + `bc`→`awk` swap + grep case-insensitive + invalid `--pattern TIMEOUT` fix) + **Wave A 4/4 ablation configs MEASURED PASS** (all 4 configs hit `decode_ratio=1.000 (192/192)` target HIT in ~4 min total). 
+**Wf-430-B6 wave DID彻底解决** the Wf-430-A1 unfinished wrapper-bug surface via 3 wrapper fixes (`per_wave_checklist.py --json` removal + `--config <yaml>` removal + `bc`→`awk` swap + grep case-insensitive + invalid `--pattern TIMEOUT` fix) + **Wave A 4/4 ablation configs MEASURED PASS** (all 4 configs hit `decode_ratio=1.000 (192/192)` target HIT in ~4 min total).
 
 The previous workflow Wf-430-A1 + Wf-430-A2 finalized the DRY_RUN.log + 6/6 readiness; Wf-430-B6 picks up the leftover `--json` argparse bug in `per_wave_checklist.py` invocation + discovers 2 new wrapper bugs (`--config` flag missing on trainer + `bc: command not found` triggering `set -e`) + successfully launches Wave A end-to-end. Wave B + Wave C deferred per the task brief explicit note.
 

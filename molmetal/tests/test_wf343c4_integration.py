@@ -619,4 +619,3 @@ def test_gate_wf343c4_wave_budget_remaining_nonneg_cross_script(
             f"{new_name} leaked into frontier pipeline (Wf-343C4 design "
             f"contract violated; pre-retrain checks are 'all'-only)"
         )
-

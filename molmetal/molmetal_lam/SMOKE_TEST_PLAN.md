@@ -230,4 +230,3 @@ The smoke test passes iff ALL 10 assertions succeed. Failure modes:
 - Smoke test planned but NOT YET implemented (depends on Tasks 1..N layers).
 - Will be implemented as `tests/test_cisplatin_smoke.py` once Layers 1–10
   are filled in (TASK 1 onwards).
-

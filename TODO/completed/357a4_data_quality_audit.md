@@ -1,10 +1,10 @@
 # Wf-357-A4 — Data Quality Audit (5 loaders × 5 checks = 25 evaluations)
 
-**Workflow**: Wf-357-A4 (residual Wf-357 closeout — data-axis verification)  
-**Predecessor**: Wf-343c3 (`molmetal/scripts/wf343c3_data_quality_check.py`) + Wf-356-A1 (wired into 6 launch scripts)  
-**Status**: SHIPPED (verification-only closeout)  
-**Date**: 2026-09-29  
-**Wall**: ~6 s CPU-only (script runtime; user-visible wall ≤ 30 s including venv spin-up)  
+**Workflow**: Wf-357-A4 (residual Wf-357 closeout — data-axis verification)
+**Predecessor**: Wf-343c3 (`molmetal/scripts/wf343c3_data_quality_check.py`) + Wf-356-A1 (wired into 6 launch scripts)
+**Status**: SHIPPED (verification-only closeout)
+**Date**: 2026-09-29
+**Wall**: ~6 s CPU-only (script runtime; user-visible wall ≤ 30 s including venv spin-up)
 **Tests**: 0 NEW (verification re-run of Wf-343c3 harness)
 
 ---

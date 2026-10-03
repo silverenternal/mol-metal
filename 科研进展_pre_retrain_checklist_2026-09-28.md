@@ -389,4 +389,3 @@ distinctions, GPU launch safety, and atomic-write contracts. Per
 path on disk; no fabrication; no paper-over.
 
 ---
-

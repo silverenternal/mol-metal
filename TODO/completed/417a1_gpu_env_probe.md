@@ -29,10 +29,10 @@
 | Wf-415-A1 case-statement fix | **PASS** (4 ablation configs emitted in dry-run; all flags accepted) |
 | Wf-413-A3 `--json` argparse fix | **PASS** (no exit 1 from argparse) |
 
-**Verdict:** Wf-299 launch wrapper READY for USER_OK-gated GPU launch on GPU 0 Blackwell. 
-Pre-flight cascade `113/1/3/117` is **1 FAIL BETTER than the Wf-415-A3 v3 baseline 112/2/3/117** 
-(p2_tests_pass FAIL root-cause is the pre-existing `test_kendall_dann_wiring.py::test_dann_on_off` 
-TypeError per Wf-415-A3 §3.4 — out of scope for this sub-flow, separate Wf-409-A2 follow-up). 
+**Verdict:** Wf-299 launch wrapper READY for USER_OK-gated GPU launch on GPU 0 Blackwell.
+Pre-flight cascade `113/1/3/117` is **1 FAIL BETTER than the Wf-415-A3 v3 baseline 112/2/3/117**
+(p2_tests_pass FAIL root-cause is the pre-existing `test_kendall_dann_wiring.py::test_dann_on_off`
+TypeError per Wf-415-A3 §3.4 — out of scope for this sub-flow, separate Wf-409-A2 follow-up).
 All 3 SKIPs are BY-DESIGN (Wf-262 §7.1 wave-budget overrun + BindingDB 1.07M external dependency).
 
 ---
@@ -87,7 +87,7 @@ mem free (1): (33234616320, 33766572032)    # (33.2 GB free, 33.8 GB total)
 
 ## §3 USER_OK gate
 
-Per **AGENTS.md §5.1 standing GPU authorization** (2026-09-29 user directive *"显存够就放心大胆用"*) + 
+Per **AGENTS.md §5.1 standing GPU authorization** (2026-09-29 user directive *"显存够就放心大胆用"*) +
 the Wf-355-B1 USER_OK-gated launch wrapper pattern (USER_OK=1 env var required + exit 64 on refusal):
 
 ```bash
@@ -227,7 +227,7 @@ actual=**117** == expected=**117** (auto-recomputed via Wf-345-B3 + gate_count_c
 
 ### §6.5 USER voice answer
 
-User directive 2026-09-29 verbatim *"token用量恢复了，你把那些没做完的任务多开ultracode合理安排尽快补起来"* 
+User directive 2026-09-29 verbatim *"token用量恢复了，你把那些没做完的任务多开ultracode合理安排尽快补起来"*
 → Wf-417-A1 sub-flow ships as the READINESS GATE for the Wf-299 GPU launch wave. The actual launch is a future USER_OK-gated wave (Wf-417-C1 or later) — **NOT** this sub-flow. This sub-flow verifies GPU + torch + USER_OK + pre-flight + Wf-299 launcher dry-run are all READY for the actual launch.
 
 ---
