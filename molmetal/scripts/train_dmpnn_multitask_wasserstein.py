@@ -139,6 +139,15 @@ DEFAULT_5METAL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_
 DEFAULT_PLATINAI_4CELL_CSV = PROJECT_ROOT / ".data" / "molmetal" / "platinai_4cell.csv"
 PLATINAI_4CELL_METALS: Tuple[str, ...] = ("Pt",)
 PLATINAI_4CELL_CELL_LINES: Tuple[str, ...] = ("mcf7", "a549", "a2780", "a2780cis")
+# Wf-A10 (2026-10-03) — NCI-60 precious-metal 9-cell-line cohort.  Unlike the
+# platinai cohort (synthetic labels, see platinai_4cell.meta.json) this file
+# carries REAL measured pIC50 from MetalCytoToxDB, and its 9 cell lines
+# include all four Rusanov 2025 reports (MCF7 / A549 / A2780 / A2780cis).
+# Long form: smiles,cell_line,pIC50,active — one row per (SMILES, cell) pair.
+DEFAULT_NCI60_9CELL_CSV = PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
+NCI60_9CELL_CELL_LINES: Tuple[str, ...] = (
+    "MCF7", "A549", "A2780", "A2780cis", "HCT116", "PC3", "HL60", "SKOV3", "DU145",
+)
 DEFAULT_OUT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf131_p1_ru_auc_multitask"
 DEFAULT_CKPT_DIR = PROJECT_ROOT / "molmetal" / "checkpoints"
 
@@ -374,9 +383,11 @@ def _resolve_default_csv_path(dataset_name: str) -> Path:
         return DEFAULT_5METAL_CSV
     if dataset_name == "platinai_4cell":
         return DEFAULT_PLATINAI_4CELL_CSV
+    if dataset_name == "nci60_9cell":
+        return DEFAULT_NCI60_9CELL_CSV
     raise ValueError(
         f"Unknown --dataset={dataset_name!r}. Available datasets: "
-        f"{{'metalcytotox_5metal', 'platinai_4cell'}}."
+        f"{{'metalcytotox_5metal', 'platinai_4cell', 'nci60_9cell'}}."
     )
 
 
@@ -564,6 +575,155 @@ def build_platinai_cell_line_axis(
         )
     # Local cache dir avoids /mnt/storage permission errors (same convention
     # as the --data-csv branch below).
+    cache_dir = Path("/tmp") / "wf131_mtw_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return split_df, MetalCytotoxDataset(df=ds_df, cache_dir=cache_dir)
+
+
+class _SmilesOnlyAdapter:
+    """Minimal ``.smiles`` / ``__len__`` shim so ``ScaffoldSplitter`` can group.
+
+    ``ScaffoldSplitter.__call__`` only reads ``dataset.smiles`` (and ``len``),
+    so this is enough to run it over a bare array of unique SMILES.
+    """
+
+    def __init__(self, smiles: "np.ndarray") -> None:
+        self.smiles = smiles
+
+    def __len__(self) -> int:
+        return int(len(self.smiles))
+
+
+def load_nci60_9cell_split_table(
+    csv_path: Path,
+    split_strategy: str = "scaffold_70_10_10",
+) -> pd.DataFrame:
+    """Load the NCI-60 precious-metal 9-cell long-form cohort + scaffold split.
+
+    Wf-A10 (2026-10-03).  Schema: ``smiles,cell_line,pIC50,active`` — one row
+    per (SMILES, cell) pair (7,823 rows / 5,207 unique SMILES / 9 cell lines).
+
+    Why this cohort
+    ---------------
+    Unlike ``platinai_4cell`` (whose labels are synthetic noise — see
+    ``molmetal/data/platinai_4cell.meta.json``), this file carries **real
+    measured** pIC50 from MetalCytoToxDB, and its 9 cell lines include all
+    four that Rusanov 2025 reports (MCF7 / A549 / A2780 / A2780cis).  It is
+    therefore the cohort that can actually answer the multi-cell-line
+    question; the platinai per-cell AUC near 0.50 is a null test (it proves
+    no label leakage), not a measurement.
+
+    Split protocol — deliberately m21's, for comparability
+    -----------------------------------------------------
+    The split reproduces ``molmetal/scripts/train_nci60_10cell.py`` exactly,
+    so an AUC measured here is directly comparable to that script's shipped
+    m21 baseline (0.8007 +/- 0.0160):
+
+      * ``ScaffoldSplitter`` (Bemis-Murcko, ``largest_first``, 70/10/20,
+        seed=0) is run on the **unique canonical SMILES**, not on rows.
+        That is what m21 does, because it pivots to wide form so its
+        ``ds.smiles`` holds one entry per molecule.
+      * MEASURED: doing so reproduces m21's split byte-for-byte — seed=0
+        gives train/val/test = 3645/521/1041, md5
+        ``86d08f8ace`` / ``7a9edd4f9d`` / ``548a90d992`` — and the
+        unique-SMILES population is identical (0 elements differ in either
+        direction; 5,207 both sides).
+      * Splitting unique SMILES also guarantees no cross-cell leakage: a
+        molecule lands in exactly one split, so all of its cell rows follow.
+
+    Labels — use the CSV's own ``active`` column, do NOT re-derive it
+    -----------------------------------------------------------------
+    ``prepare_nci60_data.py`` computes that column as
+    ``ic50_um < ACTIVE_THRESHOLD_UM`` with the same 10 uM constant m21 uses,
+    so it *is* m21's label.  Re-deriving it from pIC50 reproduces the column
+    only to 99.32% (53/7823 boundary rows differ), and comparability with
+    m21 is this cohort's entire purpose.
+    """
+    if split_strategy != "scaffold_70_10_10":
+        raise ValueError(
+            f"Unknown split_strategy={split_strategy!r} for nci60_9cell. "
+            f"Available: {{'scaffold_70_10_10'}}."
+        )
+    df = pd.read_csv(csv_path, low_memory=False)
+    required = {"smiles", "cell_line", "pIC50", "active"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(
+            f"nci60_9cell CSV missing columns: {sorted(missing)} in {csv_path}. "
+            f"Expected at least {sorted(required)}."
+        )
+    df = df[df["pIC50"].notna()].copy()
+    if df.empty:
+        raise ValueError(f"nci60_9cell CSV has no labelled rows: {csv_path}")
+
+    df["smiles"] = df["smiles"].astype(str)
+    df["cell_line"] = df["cell_line"].astype(str)
+    df["activity"] = df["pIC50"].astype(float)
+    df["active"] = df["active"].astype(int)
+
+    from molmetal.data.splits import ScaffoldSplitter
+
+    uniq = np.asarray(sorted(df["smiles"].unique()), dtype=object)
+    result = ScaffoldSplitter(
+        strategy="largest_first", fractions=(0.7, 0.1, 0.2), seed=0,
+    )(_SmilesOnlyAdapter(uniq))
+
+    smi_to_split: Dict[str, str] = {}
+    for _name, _idx in (
+        ("train", result.train_idx),
+        ("val", result.val_idx),
+        ("test", result.test_idx),
+    ):
+        for _i in _idx:
+            smi_to_split[str(uniq[int(_i)])] = _name
+
+    df["split"] = df["smiles"].map(smi_to_split)
+    _unassigned = int(df["split"].isna().sum())
+    if _unassigned:
+        raise ValueError(
+            f"{_unassigned} nci60 rows received no split assignment — the "
+            f"splitter saw a different SMILES set than the rows carry."
+        )
+    # The task axis is the cell line; the downstream pool machinery keys off
+    # a ``metal`` column, so alias it (same convention as the platinai axis).
+    df["metal"] = df["cell_line"]
+    return df.reset_index(drop=True)
+
+
+def build_nci60_cell_line_axis(
+    csv_path: Path,
+) -> Tuple[pd.DataFrame, "MetalCytotoxDataset"]:
+    """Build ``(split_df, ds)`` for the NCI-60 9-cell cohort on a cell-line axis.
+
+    Wf-A10 (2026-10-03).  Mirrors :func:`build_platinai_cell_line_axis`:
+    :class:`MultiTaskWassersteinModel` is a shared encoder plus one
+    (regression + classification) head per integer task id, so the 9 cell
+    lines become 9 heads over one shared encoder — the PECAN-style shared
+    network that the field uses for multi-cell-line cytotoxicity, rather
+    than 9 independent models.
+
+    Note this builder deliberately takes **no** threshold/labeling
+    arguments: the ``active`` label comes from the CSV verbatim (it is
+    m21's label — see :func:`load_nci60_9cell_split_table`).  Accepting a
+    threshold here and ignoring it would be a silent footgun, so it is not
+    offered.
+    """
+    split_df = load_nci60_9cell_split_table(csv_path).copy()
+
+    ds_df = pd.DataFrame(
+        {
+            "SMILES_Ligands": split_df["smiles"].astype(str),
+            "Metal": split_df["cell_line"].astype(str),
+            "pIC50": split_df["activity"].astype(float),
+            # m21's own label (IC50 < 10 uM), taken from the CSV.
+            "active": split_df["active"].astype(int),
+        }
+    )
+    ds_df = ds_df.reset_index(drop=True)
+    if ds_df.empty:
+        raise ValueError(
+            f"nci60 cell-line axis produced an empty dataset from {csv_path}."
+        )
     cache_dir = Path("/tmp") / "wf131_mtw_cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
     return split_df, MetalCytotoxDataset(df=ds_df, cache_dir=cache_dir)
@@ -2281,14 +2441,20 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     p.add_argument(
         "--dataset",
-        choices=("metalcytotox_5metal", "platinai_4cell"),
+        choices=("metalcytotox_5metal", "platinai_4cell", "nci60_9cell"),
         default="metalcytotox_5metal",
         help=(
             "Dataset selector (Wf-A8 PlatinAI 4-cell loader; audit gap #1 fix). "
             "Default 'metalcytotox_5metal' preserves Wf-131 P1 + Wf-251-F4 "
             "baseline bit-for-bit. 'platinai_4cell' loads the Rusanov 2025 "
             "Pt × 4-cell-line cohort from .data/molmetal/platinai_4cell.csv "
-            "(pivoted to long format internally)."
+            "(pivoted to long format internally) — NOTE its labels are "
+            "synthetic, so treat any AUC from it as a pipeline null test, not "
+            "a measurement. 'nci60_9cell' loads the REAL-labelled NCI-60 "
+            "precious-metal 9-cell cohort (molmetal/data/"
+            "nci60_precious_9cell.csv); its scaffold split reproduces "
+            "train_nci60_10cell.py byte-for-byte, so results are comparable "
+            "to the shipped m21 baseline (0.8007 +/- 0.0160)."
         ),
     )
     p.add_argument(
@@ -2598,8 +2764,25 @@ def main(argv: Optional[List[str]] = None) -> int:
             "cell line (this is what makes per-cell AUC, the metric Rusanov "
             "2025 reports, available from cls_heads)."
         )
+    if args.dataset == "nci60_9cell" and args.task_axis == "metal":
+        raise ValueError(
+            "--dataset nci60_9cell is a CELL-LINE cohort: one SMILES screened "
+            "across 9 cell lines (MCF7 / A549 / A2780 / A2780cis / HCT116 / "
+            "PC3 / HL60 / SKOV3 / DU145), with no metal column at all. With "
+            "--task-axis metal the pool cannot even be built. Pass "
+            "--task-axis cell_line so the shared encoder gets one head per "
+            "cell line, which is what makes per-cell AUC available from "
+            "cls_heads."
+        )
 
-    if args.task_axis == "cell_line":
+    if args.dataset == "nci60_9cell":
+        # Wf-A10 — long form with an explicit cell_line column, so the task
+        # keys are read directly.  (The platinai branch below cannot be used
+        # here: it looks for pIC50_<cell> column suffixes that this schema
+        # does not have, and would silently discover zero tasks.)
+        _nci = pd.read_csv(args.csv, usecols=["cell_line"])
+        _available_metals = sorted(set(_nci["cell_line"].astype(str).tolist()))
+    elif args.task_axis == "cell_line":
         # The raw platinai CSV has no cell_line column — the cell lines are the
         # suffixes of the pIC50_<cell> columns.
         _plate = pd.read_csv(args.csv, nrows=1)
@@ -2724,6 +2907,25 @@ def main(argv: Optional[List[str]] = None) -> int:
                 if args.active_labeling == "global"
                 else " (per-cell median split)"
             ),
+            flush=True,
+        )
+    elif args.dataset == "nci60_9cell":
+        # Wf-A10 — REAL-labelled 9-cell-line cohort on the cell-line task
+        # axis.  Labels come from the CSV's own `active` column (m21's 10 uM
+        # convention — see build_nci60_cell_line_axis), and the scaffold
+        # split reproduces train_nci60_10cell.py byte-for-byte, so any AUC
+        # measured here is comparable to the shipped m21 baseline
+        # (0.8007 +/- 0.0160).
+        split_df, ds = build_nci60_cell_line_axis(args.csv)
+        print(
+            f"[Wf-A10 cell-line axis] dataset=nci60_9cell "
+            f"task_axis=cell_line: {len(split_df)} long-format rows; "
+            f"tasks={sorted(split_df['metal'].unique().tolist())}; "
+            f"per-cell breakdown: "
+            f"{dict(split_df.groupby('cell_line').size())}; "
+            f"per-split: {dict(split_df.groupby('split').size())}; "
+            f"active_rate={float(split_df['active'].mean()):.4f} "
+            f"(labels from CSV, m21 10 uM convention)",
             flush=True,
         )
     else:
