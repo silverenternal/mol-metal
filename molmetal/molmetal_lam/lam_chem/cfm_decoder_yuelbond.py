@@ -475,7 +475,25 @@ class YuelBondBondDecoder:
     # ------------------------------------------------------------------
     @staticmethod
     def _is_metal(z: int) -> bool:
-        return z in (78, 44, 30, 77, 29, 79, 46, 26, 28)
+        """Whether Z is a metal for the purposes of the dative-bond detector.
+
+        2026-10-04: the tuple below used to be (78, 44, 30, 77, 29, 79, 46,
+        26, 28), which covers Pt/Ru/Zn/Ir/Cu/Au/Pd/Fe/Ni but NOT Os (76),
+        Re (75) or Rh (45) -- three of this project's six target metals.  A
+        tmQM Os/Re/Rh complex would therefore have had its metal-to-donor
+        bonds classified as ordinary covalent bonds: the vocabulary extension
+        alone would not have been enough.
+
+        Grouped rather than left as a bare tuple so the gap is visible:
+          * the six project targets: Pt 78, Ru 44, Ir 77, Rh 45, Os 76, Re 75
+          * first-row transition metals already in the list: Fe 26, Ni 28,
+            Cu 29, Zn 30
+          * other d8/d10 metals already in the list: Pd 46, Au 79
+        """
+        return z in (
+            78, 44, 77, 45, 76, 75,  # the six project targets (Rh/Os/Re NEW)
+            26, 28, 29, 30, 46, 79,  # pre-existing: Fe, Ni, Cu, Zn, Pd, Au
+        )
 
     @staticmethod
     def _is_donor(z: int) -> bool:

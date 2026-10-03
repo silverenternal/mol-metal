@@ -75,6 +75,75 @@ from molmetal.models.bond_head import (
 _YUELBOND_Z_TABLE: Tuple[int, ...] = (0, 1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78)
 _YUELBOND_Z_TO_IDX = {z: i for i, z in enumerate(_YUELBOND_Z_TABLE)}
 
+#: 2026-10-04 — EXTENDED table covering all six of the project's target metals.
+#:
+#: The default table above contains exactly ONE metal: Pt (78).  The other
+#: five -- Ru, Ir, Rh, Os, Re -- are absent, so ``_z_to_onehot`` clamps them to
+#: the Z=0 padding slot and the decoder cannot tell them apart or emit them.
+#: Measured on the tmQM corpus (108,541 CSD-derived complexes, MIT, on disk at
+#: .data/molmetal/tmQM/): Ru 9,068 / Ir 4,695 / Rh 4,278 / Re 4,033 / Os 1,224
+#: entries are unreachable through the default vocab.
+#:
+#: Why this is a SEPARATE tuple rather than an edit of the tuple above:
+#:   * the original 13 entries are tied by comment to the round-10 atom_vocab
+#:     in ``flow_matching_lipman/__init__.py`` (12 atoms + Z=0 padding), and
+#:     that correspondence is worth keeping intact for the Pt-only path;
+#:   * the table's LENGTH is a model dimension -- ``atom_encoder`` is
+#:     ``nn.Linear(len(table), hidden_dim)`` and the CFM trainer's velocity
+#:     probes one-hot over the same width.  Growing it from 13 to 18 changes
+#:     those tensor shapes, so every existing checkpoint becomes unloadable.
+#:     That is a real consequence, not a detail; making it opt-in means the
+#:     default path keeps working and the break is a deliberate choice.
+#:
+#: Order matters: the original 13 keep their indices, so a model built with
+#: this table still assigns Pt the same one-hot slot it had before.  Only the
+#: width changes.
+_YUELBOND_Z_TABLE_ALL6: Tuple[int, ...] = (
+    0, 1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78,  # original 13 (Pt last)
+    44,  # Ru
+    77,  # Ir
+    45,  # Rh
+    76,  # Os
+    75,  # Re
+)
+
+#: Selectable vocabularies, by name.  ``pt`` is the default so every shipped
+#: config and checkpoint behaves exactly as before.
+Z_TABLE_PRESETS: dict = {
+    "pt": _YUELBOND_Z_TABLE,
+    "all6": _YUELBOND_Z_TABLE_ALL6,
+}
+
+
+def get_z_table(name: str = "pt") -> Tuple[int, ...]:
+    """Return the Z table for a preset name; raise on an unknown one.
+
+    Raising rather than falling back matters: a typo would otherwise silently
+    select the Pt-only table and the five other metals would be clamped to
+    padding without a word.
+    """
+    key = str(name).strip().lower()
+    if key not in Z_TABLE_PRESETS:
+        raise ValueError(
+            f"unknown z-table preset {name!r}; available: "
+            f"{sorted(Z_TABLE_PRESETS)}"
+        )
+    return Z_TABLE_PRESETS[key]
+
+
+def z_to_onehot(z: torch.Tensor, z_table: Tuple[int, ...] = _YUELBOND_Z_TABLE) -> torch.Tensor:
+    """Map atomic numbers to one-hot indices into ``z_table``.
+
+    Unknown Z values are clamped to the Z=0 (padding) slot.  The table is a
+    parameter so the all-six-metals vocab can be used without changing this
+    function's behaviour for callers that take the default.
+    """
+    to_idx = {zz: i for i, zz in enumerate(z_table)}
+    idx = torch.zeros(z.shape[0], dtype=torch.long)
+    for i, atomic_number in enumerate(z.tolist()):
+        idx[i] = to_idx.get(int(atomic_number), 0)
+    return F.one_hot(idx, num_classes=len(z_table)).float()
+
 
 def _z_to_onehot(z: torch.Tensor) -> torch.Tensor:
     """Map atomic numbers to one-hot indices into :data:`_YUELBOND_Z_TABLE`.
@@ -118,14 +187,20 @@ class YuelBondDecoderHead(nn.Module):
         n_layers: int = 3,
         cutoff: float = 3.5,
         min_distance: float = 1.0,
+        z_table: Tuple[int, ...] = _YUELBOND_Z_TABLE,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
         self.n_layers = int(n_layers)
         self.cutoff = float(cutoff)
         self.min_distance = float(min_distance)
+        # 2026-10-04 — the vocab is a parameter, not a module constant, so the
+        # all-six-metals table ("all6", see Z_TABLE_PRESETS) can be selected
+        # without editing this class.  Default is the original Pt-only table,
+        # so width -- and therefore every existing checkpoint -- is unchanged.
+        self.z_table = tuple(z_table)
         # Atom encoder: Z one-hot -> hidden_dim
-        self.atom_encoder = nn.Linear(len(_YUELBOND_Z_TABLE), hidden_dim)
+        self.atom_encoder = nn.Linear(len(self.z_table), hidden_dim)
         # Message MLP: input [h_i, h_j, d_ij, is_short, is_long, is_dative]
         self.msg_mlps = nn.ModuleList(
             [
@@ -169,7 +244,7 @@ class YuelBondDecoderHead(nn.Module):
                 (torch.zeros(0, dtype=torch.long), torch.zeros(0, dtype=torch.long)),
             )
         # Encode atoms
-        z_onehot = _z_to_onehot(atomic_numbers)
+        z_onehot = z_to_onehot(atomic_numbers, self.z_table)
         h = self.atom_encoder(z_onehot)  # (N, H)
         # Build pair list: upper triangle
         i_idx, j_idx = torch.triu_indices(n, n, offset=1)

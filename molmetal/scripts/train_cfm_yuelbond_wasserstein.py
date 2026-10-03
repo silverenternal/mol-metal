@@ -457,7 +457,20 @@ except ImportError:
     pass
 
 
-def _device_safe_z_to_onehot(z: torch.Tensor) -> torch.Tensor:
+def _device_safe_z_to_onehot(
+    z: torch.Tensor,
+    z_table: Optional[Sequence[int]] = None,
+) -> torch.Tensor:
+    """Device-safe Z -> one-hot.
+
+    2026-10-04: takes the table as an argument.  It used to read the module
+    constant ``_YUELBOND_Z_TABLE`` unconditionally, so under
+    ``--yuelbond-vocab all6`` the head's ``atom_encoder`` was 18-wide while
+    this produced 13-wide input -- ``RuntimeError: mat1 and mat2 shapes cannot
+    be multiplied (43x13 and 18x64)``.  ``None`` keeps the original default,
+    so the monkey-patch target and any caller that does not pass a table
+    behave exactly as before.
+    """
     """Device-safe replacement for ``_z_to_onehot``.
 
     The original implementation does ``z.tolist()`` then builds a new
@@ -466,8 +479,9 @@ def _device_safe_z_to_onehot(z: torch.Tensor) -> torch.Tensor:
     pure-tensor land so the output tensor stays on whatever device
     ``z`` is on.
     """
+    _tbl = tuple(_YUELBOND_Z_TABLE) if z_table is None else tuple(z_table)
     z_table = torch.tensor(
-        list(_YUELBOND_Z_TABLE),
+        list(_tbl),
         dtype=z.dtype,
         device=z.device,
     )
@@ -485,7 +499,7 @@ def _device_safe_z_to_onehot(z: torch.Tensor) -> torch.Tensor:
         idx[found] = pos[found]
     return torch.nn.functional.one_hot(
         idx,
-        num_classes=len(_YUELBOND_Z_TABLE),
+        num_classes=len(_tbl),
     ).float()
 
 
@@ -524,7 +538,7 @@ def _device_safe_yuelbond_forward(
                 torch.zeros(0, dtype=torch.long, device=positions.device),
             ),
         )
-    z_onehot = _device_safe_z_to_onehot(atomic_numbers)
+    z_onehot = _device_safe_z_to_onehot(atomic_numbers, self.z_table)
     h = self.atom_encoder(z_onehot)
     i_idx, j_idx = torch.triu_indices(n, n, offset=1, device=positions.device)
     if i_idx.numel() == 0:
@@ -741,6 +755,11 @@ class CFMJointModel(nn.Module):
             hidden_dim=hidden_dim,
             n_layers=n_layers,
             cutoff=cutoff,
+            # 2026-10-04 — pass the SAME table the wrapper uses.  Before this
+            # the head always took the module default while `self.z_dim` came
+            # from the wrapper's `z_table` argument, so the two could silently
+            # disagree on width.
+            z_table=z_table,
         )
         self.z_dim = len(z_table)
         self.z_table = list(z_table)
@@ -2858,6 +2877,74 @@ def parse_args() -> argparse.Namespace:
             "configs/cfm_full_retrain.yaml."
         ),
     )
+    # 2026-10-04 NEW — tmQM as a REAL metal-bearing geometry source.
+    # The decoder had only ever been validated on synthetic clouds (one
+    # jittered square-planar Pt layout); MetalCytoToxDB cannot substitute
+    # because its structures are ligand-only.  tmQM is CSD-derived, MIT,
+    # already on disk, and carries the metal in the geometry.  MEASURED:
+    # decode_ratio 91/100 on real Pt CN4 vs 100/100 on the synthetic baseline.
+    # 2026-10-04 NEW — atom-vocabulary preset.  The YuelBond default table
+    # contains ONE metal (Pt); Ru/Ir/Rh/Os/Re are clamped to the padding slot,
+    # so a tmQM Ru/Ir run would train a decoder that literally cannot tell the
+    # metal apart.  'all6' adds the other five.
+    #
+    # This CHANGES MODEL DIMENSIONS (atom_encoder 13 -> 18, and the velocity
+    # probes' Z one-hot with it), so a checkpoint saved under one preset will
+    # not load under the other.  Default 'pt' keeps every shipped config and
+    # checkpoint exactly as they were.
+    p.add_argument(
+        "--yuelbond-vocab",
+        type=str,
+        default="pt",
+        choices=["pt", "all6"],
+        help=(
+            "Atom-vocabulary preset.  'pt' (default) = the original 13-entry "
+            "YuelBond table, whose only metal is Pt.  'all6' = the same 13 "
+            "with Ru/Ir/Rh/Os/Re appended (18 entries); required for any "
+            "non-Pt metal, and incompatible with checkpoints trained under "
+            "'pt' because the encoder width changes."
+        ),
+    )
+    p.add_argument(
+        "--tmqm-dir",
+        type=str,
+        default=None,
+        help=(
+            "Directory holding tmqm_parsed.csv + tmQM_X*.xyz.gz.  When set, "
+            "the cohort is built from REAL metal-bearing 3D geometry instead "
+            "of the synthetic Pt-click layout.  Takes precedence over "
+            "--data-csv."
+        ),
+    )
+    p.add_argument(
+        "--tmqm-metals",
+        type=str,
+        default="Pt",
+        help=(
+            "Comma-separated metal symbols to keep from tmQM "
+            "(Pt,Ru,Ir,Rh,Os,Re).  NOTE: the YuelBond Z table currently "
+            "contains Pt only, so non-Pt metals reach the decoder as padding "
+            "until the vocab is extended."
+        ),
+    )
+    p.add_argument(
+        "--tmqm-val-frac",
+        type=float,
+        default=0.2,
+        help=(
+            "Val fraction for the DISJOINT train/val split of the tmQM "
+            "cohort, assigned by CSD-code hash.  The split exists because "
+            "drawing train and val separately with different seeds leaks -- "
+            "measured, the val candidate pool was a strict subset of the "
+            "train one."
+        ),
+    )
+    p.add_argument(
+        "--tmqm-coord-number",
+        type=int,
+        default=4,
+        help="Coordination number filter (4 = square-planar; 6 = octahedral). -1 = any.",
+    )
     p.add_argument(
         "--data-split",
         type=str,
@@ -3914,8 +4001,52 @@ def main() -> int:
     # 2026-10-04 — the yaml `data.csv` key now actually selects the corpus.
     # Before this, the key resolved to nothing for this trainer and the cohort
     # was ALWAYS the synthetic square-planar Pt layout -- one geometry, jittered.
+    # 2026-10-04 — tmQM takes precedence: it is the only source here whose
+    # geometry actually CONTAINS the metal.
+    _tmqm_dir = getattr(args, "tmqm_dir", None)
     _data_csv = getattr(args, "data_csv", None) or getattr(args, "csv", None)
-    if _data_csv is not None and str(_data_csv).strip():
+    if _tmqm_dir is not None and str(_tmqm_dir).strip():
+        from molmetal.data.tmqm_clouds import load_tmqm_clouds as _load_tmqm
+
+        _tmqm_root = str(_tmqm_dir)
+        if not Path(_tmqm_root).is_dir():
+            _alt = Path(__file__).resolve().parents[2] / _tmqm_root
+            if _alt.is_dir():
+                _tmqm_root = str(_alt)
+            else:
+                raise SystemExit(
+                    f"--tmqm-dir '{_tmqm_dir}' not found (tried {_tmqm_dir!r} "
+                    f"and {_alt})."
+                )
+        _tmqm_metals = [
+            s.strip() for s in str(getattr(args, "tmqm_metals", "Pt")).split(",") if s.strip()
+        ]
+        _cn = int(getattr(args, "tmqm_coord_number", 4))
+        # 2026-10-04 — DISJOINT split.  Calling this twice with different
+        # seeds LEAKS: MEASURED, the val candidate pool (160) was a strict
+        # subset of the train pool (480), 160/160, because both stream from
+        # the same head of the same files.  `split=` partitions by CSD-code
+        # hash so the two sides cannot overlap.
+        _tmqm_val_frac = float(getattr(args, "tmqm_val_frac", 0.2))
+        train_clouds = _load_tmqm(
+            _tmqm_root,
+            metals=_tmqm_metals,
+            coord_number=None if _cn < 0 else _cn,
+            n_clouds=args.n_train,
+            seed=args.seed,
+            split="train",
+            val_frac=_tmqm_val_frac,
+        )
+        val_clouds = _load_tmqm(
+            _tmqm_root,
+            metals=_tmqm_metals,
+            coord_number=None if _cn < 0 else _cn,
+            n_clouds=args.n_val,
+            seed=args.seed,
+            split="val",
+            val_frac=_tmqm_val_frac,
+        )
+    elif _data_csv is not None and str(_data_csv).strip():
         _csv_path = str(_data_csv)
         # Relative paths are resolved against the repo root, matching how the
         # yaml spells them ('.data/molmetal/...'), so the same config works
@@ -4008,11 +4139,24 @@ def main() -> int:
         flush=True,
     )
     # Model + decoder.
+    # 2026-10-04 — resolve the vocab preset BEFORE the model so the head, the
+    # velocity probes and the --atom-vocab-size guard all agree on one width.
+    from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
+        get_z_table as _get_z_table,
+    )
+
+    _z_table = _get_z_table(str(getattr(args, "yuelbond_vocab", "pt")))
+    print(
+        f"[cfm-vocab] preset={getattr(args, 'yuelbond_vocab', 'pt')} "
+        f"({len(_z_table)} entries, metals in table: "
+        f"{[z for z in _z_table if z in (78, 44, 77, 45, 76, 75)]})"
+    )
     model = CFMJointModel(
         hidden_dim=args.hidden_dim,
         n_layers=args.n_layers,
         cutoff=args.edge_cutoff,
         fm_objective=bool(getattr(args, "use_fm_objective", False)),
+        z_table=_z_table,
     ).to(device)
     # 2026-10-04 — parameter EMA (Karras 2022 EDM §5).  `--use-ema` was
     # FLAG_ONLY until today and the yaml's `ema_decay` had no consumer.
@@ -4162,9 +4306,7 @@ def main() -> int:
     # code computes rather than consumes.
     _declared_vocab = getattr(args, "atom_vocab_size", None)
     if _declared_vocab is not None:
-        from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
-            _YUELBOND_Z_TABLE as _ZT,
-        )
+        _ZT = _z_table
 
         _actual_vocab = len(_ZT)
         if int(_declared_vocab) != int(_actual_vocab):
