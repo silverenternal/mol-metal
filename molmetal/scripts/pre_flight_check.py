@@ -5842,6 +5842,11 @@ HP_RESOLUTION_EXEMPT_KEYS: Dict[str, str] = {
     # argparse dests only, and this is consumed by start.sh; without the entry
     # it would keep being reported as a dead key that a reader has just fixed.
     "output.events_jsonl": "start.sh -> trainer --no-events-jsonl when false",
+    # 2026-10-04: same treatment.  start.sh reads compute.cpu_workers and emits
+    # trainer --cpu-num-workers; the classifier resolves against argparse dests
+    # only, so a start.sh-consumed key would otherwise be reported dead right
+    # after being wired.
+    "compute.cpu_workers": "start.sh -> trainer --cpu-num-workers",
 }
 
 #: Dotted prefixes (exact key or any child) with NO executable consumer.
