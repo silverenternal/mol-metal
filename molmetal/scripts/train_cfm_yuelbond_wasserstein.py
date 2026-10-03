@@ -1150,6 +1150,12 @@ def train_one_epoch(
     sb_eps: float = 0.1,
     sb_n_iters: int = 50,
     ot_coupling_mode: str = "assignment",
+    # 2026-10-04 NEW — Monge-Ampere regularity-regularised OT plan (Wang X.-J.
+    # 2026).  The yaml `flow.monge_ampere` key had no consumer before this.
+    monge_ampere: bool = False,
+    ma_lambda: float = 1.0e-2,
+    ma_alpha: float = 0.5,
+    ma_degenerate_threshold: float = 1.0e-4,
     # 2026-10-04 NEW — parameter EMA (Karras 2022 EDM §5).  `use_ema` was
     # FLAG_ONLY from Wf-415-A3 until this date; `ema_decay` is the value
     # four yaml configs had been declaring with no consumer.
@@ -1668,32 +1674,86 @@ def train_one_epoch(
             # coupling is recomputed EVERY batch on freshly drawn noise, so it
             # stays part of the dynamic path rather than becoming a fixed
             # pairing baked once at startup.
-            if (bass_martingale or se3_sb) and len(batch_clouds) > 1:
+            _use_coupling = bool(bass_martingale or se3_sb or monge_ampere)
+            if _use_coupling and len(batch_clouds) > 1:
                 _n_clouds = len(batch_clouds)
                 if x1.shape[0] % _n_clouds == 0 and x1.shape[0] > _n_clouds:
                     _per = x1.shape[0] // _n_clouds
-                    from molmetal.adapters.flow_matching_lipman.se3sb_bass_integration import (  # noqa: E501
-                        make_ot_sampler as _make_ot_sampler,
-                    )
-
-                    _ot_mode, _ot_sampler = _make_ot_sampler(
-                        use_se3_sb=bool(se3_sb),
-                        use_bass_martingale=bool(bass_martingale),
-                        sb_eps=float(sb_eps),
-                        sb_n_iters=int(sb_n_iters),
-                        bass_eps=float(bass_eps),
-                    )
-                    # Two distinct semantics, both real (see the
-                    # --ot-coupling-mode help): 'assignment' is an exact
-                    # one-to-one permutation; 'sample' draws from the plan and
-                    # may repeat a target, which is the faithful way to draw a
-                    # two-point Bass coupling.
                     _x0_3d = x0.reshape(_n_clouds, _per, 3)
                     _x1_3d = x1.reshape(_n_clouds, _per, 3)
-                    if str(ot_coupling_mode) == "sample":
-                        _idx = _ot_sampler.sample_coupling(_x0_3d, _x1_3d)
+                    if monge_ampere:
+                        # Wang X.-J. 2026 (C^{2,alpha} regularity of
+                        # Kantorovich potentials): the MA lift engages only
+                        # when the empirical Brenier map is degenerate, so for
+                        # well-conditioned batches this returns the same plan
+                        # the plain Hungarian solver would have.
+                        # `_x0_3d`/_x1_3d` are (B, N, 3); compute_ot_plan
+                        # accepts (B, ...) and reduces internally.
+                        #
+                        # 2026-10-04 MEASURED PRECONDITION: the MA factor is
+                        # computed from the empirical covariance of x0, which
+                        # is (d_flat x d_flat) with d_flat = N*3.  When the
+                        # batch has B <= d_flat samples that covariance is
+                        # RANK-DEFICIENT, `det Q` is pinned by the epsilon
+                        # clamp, and the factor saturates to the constant
+                        # eps**(-1/d) for EVERY input -- including an
+                        # all-identical-point cloud.  Measured with N*3=9:
+                        #   B=2,4    factor identical for well-conditioned and
+                        #            degenerate input  -> MA inert
+                        #   B=32     factor 1.336 vs 7.743  -> MA active
+                        #   B=128    factor 0.997 vs 7.743  -> MA active
+                        # So MA silently does nothing at the default
+                        # --batch-size 8 with 5-atom clouds (d_flat=15).  Warn
+                        # loudly rather than let that pass as "wired".
+                        from molmetal.adapters.flow_matching_lipman.optimal_transport_v2 import (  # noqa: E501
+                            ma_regularized_ot_plan as _ma_plan,
+                        )
+
+                        _d_flat = int(_x0_3d.reshape(_n_clouds, -1).shape[-1])
+                        if _n_clouds <= _d_flat:
+                            warnings.warn(
+                                f"[cfm-ma] Monge-Ampere is a NO-OP at this "
+                                f"batch size: B={_n_clouds} clouds <= "
+                                f"d_flat={_d_flat} (N_atoms*3), so the "
+                                "empirical covariance is rank-deficient and "
+                                "the regularity factor saturates to a "
+                                "constant regardless of the input. Increase "
+                                "--batch-size above "
+                                f"{_d_flat} (e.g. "
+                                f"--batch-size {_d_flat + 8}) for the MA lift "
+                                "to actually engage.",
+                                RuntimeWarning,
+                                stacklevel=2,
+                            )
+
+                        _idx = _ma_plan(
+                            _x0_3d,
+                            _x1_3d,
+                            lambda_ma=float(ma_lambda),
+                            alpha=float(ma_alpha),
+                            degenerate_threshold=float(ma_degenerate_threshold),
+                        )
                     else:
-                        _idx = _ot_sampler.couple(_x0_3d, _x1_3d)
+                        from molmetal.adapters.flow_matching_lipman.se3sb_bass_integration import (  # noqa: E501
+                            make_ot_sampler as _make_ot_sampler,
+                        )
+
+                        _ot_mode, _ot_sampler = _make_ot_sampler(
+                            use_se3_sb=bool(se3_sb),
+                            use_bass_martingale=bool(bass_martingale),
+                            sb_eps=float(sb_eps),
+                            sb_n_iters=int(sb_n_iters),
+                            bass_eps=float(bass_eps),
+                        )
+                        # Two distinct semantics, both real (see the
+                        # --ot-coupling-mode help): 'assignment' is an exact
+                        # one-to-one permutation; 'sample' draws from the plan
+                        # and may repeat a target, which is the faithful way to
+                        # draw a two-point Bass coupling.
+                        if str(ot_coupling_mode) == "sample":
+                            _idx = _ot_sampler.sample_coupling(_x0_3d, _x1_3d)
+                        else:
+                            _idx = _ot_sampler.couple(_x0_3d, _x1_3d)
                     # Reorder the TARGET side (and its atomic numbers, which
                     # must stay aligned with their coordinates).  x0 is noise,
                     # so reordering it instead would be a no-op.
@@ -2539,6 +2599,45 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=50,
         help="SE(3) Schrodinger-bridge Sinkhorn iterations.",
+    )
+    p.add_argument(
+        "--use-monge-ampere",
+        dest="monge_ampere",
+        action="store_true",
+        default=False,
+        help=(
+            "WIRE-IN 2026-10-04: Monge-Ampere regularity-regularised OT plan "
+            "for the flow-matching objective's (x0, x1) pairing (Wang X.-J. "
+            "2026, C^{2,alpha} regularity of Kantorovich potentials).  Wraps "
+            "the upstream Hungarian plan with a Brenier-map lift that "
+            "activates ONLY when the empirical transport map is degenerate "
+            "(smallest Hessian eigenvalue below --ma-degenerate-threshold); "
+            "for well-conditioned inputs it returns the upstream plan "
+            "unchanged.  Requires --use-fm-objective.  Mutually exclusive "
+            "with --use-bass-martingale / --use-se3-sb, which pick a "
+            "different coupling family."
+        ),
+    )
+    p.add_argument(
+        "--ma-lambda",
+        type=float,
+        default=1.0e-2,
+        help="Monge-Ampere lift strength lambda_ma (Wang 2026).",
+    )
+    p.add_argument(
+        "--ma-alpha",
+        type=float,
+        default=0.5,
+        help="Holder exponent alpha for the C^{2,alpha} regularity bound.",
+    )
+    p.add_argument(
+        "--ma-degenerate-threshold",
+        type=float,
+        default=1.0e-4,
+        help=(
+            "Smallest-Hessian-eigenvalue threshold below which the Brenier "
+            "map counts as degenerate and the MA lift engages."
+        ),
     )
     p.add_argument(
         "--ot-coupling-mode",
@@ -3657,6 +3756,27 @@ def main() -> int:
     # FLAG_ONLY until today and the yaml's `ema_decay` had no consumer.
     # Initialised here, i.e. after the model is on its target device, so the
     # snapshot lands on the same device as the parameters.
+    # 2026-10-04 — the three OT-coupling families pick differently-structured
+    # pairings and cannot be combined: Bass/SE(3) build their own coupling
+    # matrix, while Monge-Ampere wraps the Hungarian plan.  Fail loudly here
+    # rather than letting one silently shadow the others inside the loop.
+    _coupling_flags = [
+        n
+        for n in ("monge_ampere", "bass_martingale", "se3_sb")
+        if bool(getattr(args, n, False))
+    ]
+    if len(_coupling_flags) > 1:
+        raise SystemExit(
+            "--use-monge-ampere / --use-bass-martingale / --use-se3-sb are "
+            f"mutually exclusive; got {_coupling_flags}.  They select "
+            "different coupling families for the same (x0, x1) pairing."
+        )
+    if _coupling_flags and not bool(getattr(args, "use_fm_objective", False)):
+        raise SystemExit(
+            f"{_coupling_flags[0]} requires --use-fm-objective: the coupling "
+            "re-pairs the flow-matching objective's (x0, x1), which does not "
+            "exist otherwise."
+        )
     # 2026-10-04 — PCGrad task list arrives as a comma-separated string from
     # the CLI; parse it once here so `train_one_epoch` gets a tuple.
     args.pcgrad_tasks = tuple(
@@ -3954,6 +4074,12 @@ def main() -> int:
             sb_eps=float(getattr(args, "sb_eps", 0.1)),
             sb_n_iters=int(getattr(args, "sb_n_iters", 50)),
             ot_coupling_mode=str(getattr(args, "ot_coupling_mode", "assignment")),
+            monge_ampere=bool(getattr(args, "monge_ampere", False)),
+            ma_lambda=float(getattr(args, "ma_lambda", 1.0e-2)),
+            ma_alpha=float(getattr(args, "ma_alpha", 0.5)),
+            ma_degenerate_threshold=float(
+                getattr(args, "ma_degenerate_threshold", 1.0e-4)
+            ),
             use_ema=bool(getattr(args, "use_ema", False)),
             ema_decay=float(getattr(args, "ema_decay", 0.999)),
             use_pcgrad=bool(getattr(args, "pcgrad_multi_task", False)),
