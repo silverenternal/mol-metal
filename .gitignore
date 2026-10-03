@@ -197,3 +197,15 @@ molmetal/reports/wf385a3_scaffold_wire_in/train/
 # Reserved scratch root for that pending redirect (pre_flight_check.py
 # default out_dir); ignored now so the follow-up cannot re-dirty the tree.
 results/gate_scratch/
+
+# --- Wf-A16 (2026-10-03): accidental artifacts, purged in this wave ---------
+# MEASURED: `--help` and `--output-dir` were TRACKED for weeks. They are the
+# same audit run written twice, 4 s apart (differing only in a timestamp), i.e.
+# a command whose output was redirected onto its own flag names. The real report
+# is molmetal/reports/wf65_p1_sign_audit/sign_flip_audit.json.
+/--help
+/--output-dir
+.pytest_tmp/
+# Migration backups. These duplicate content that is either in git history or
+# superseded; 77 of them had accumulated as tracked files.
+*.bak.*

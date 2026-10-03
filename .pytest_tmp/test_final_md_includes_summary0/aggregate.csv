@@ -1,4 +1,0 @@
-ablation_id,label,toggle,status,match,target_metric,m14_decode_ratio,m14_max,m13_validity,m5_sa_unit,m6_qed,atom_loss_last,bond_loss_last,wall_s
-BASELINE,no ablation (reference run),reference,PASS,N/A,m14,1.0,1.0,1.0,0.355,0.415,2.44,1.25,74.5
-M13,logits clamp (±50),toggleable,PASS,PREDICTION_QUALITATIVE,m14,1.0,1.0,1.0,0.322,0.405,1.23,3.16,76.7
-M3,KataGo-MCTS → vanilla UCB,design,DESIGN_ONLY,,m7,,,,,,,,
