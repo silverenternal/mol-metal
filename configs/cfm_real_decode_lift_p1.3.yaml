@@ -114,7 +114,7 @@ directives:
   - p3_wf343c2_per_wave_runtime_check
 entry:
   script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
-  command_template: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/mol-metal/.venv/bin/python \\\\\n  molmetal/scripts/train_cfm_yuelbond_wasserstein.py \\\\\n  --epochs {epochs} \\\\\n  --use-yuelbond \\\\\n  --pocket-id {pocket_id} \\\\\n  --seed {seed} \\\\\n  --out-dir {out_dir}\n"
+  command_template: CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --epochs {epochs} --use-yuelbond --pocket-id {pocket_id} --seed {seed} --out-dir {out_dir}
   warm_start_checkpoint: molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
 honest_framing:
   claims:

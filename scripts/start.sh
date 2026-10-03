@@ -192,16 +192,63 @@ if not e:
 # with .pairs) or a list (new Wf-A8 yamls); handle both so the
 # format() below doesn't KeyError on {metal}/{seed}.
 _cr_obj = d.get('cross_references')
-if not isinstance(_cr_obj, dict):
-    _metal_default = 'Pt'
-    _seed_default = '0'
-else:
+if isinstance(_cr_obj, dict):
+    # legacy shape: cross_references.pairs = [{'metal': ..., 'seed': ...}, ...]
     _pairs = _cr_obj.get('pairs') or [{}]
     _first = _pairs[:1][0] if _pairs else {}
     if not isinstance(_first, dict):
         _first = {}
     _metal_default = _first.get('metal', 'Pt')
     _seed_default = _first.get('seed', '0')
+else:
+    # New Wf-A8 shape: cross_references is a LIST of report paths, so it
+    # carries no metal/seed — the grid lives elsewhere in the yaml.
+    #
+    # 2026-10-03 fix: this branch previously hardcoded 'Pt', and the comment
+    # above it already claimed both shapes were handled.  On the new-format
+    # yamls that silently rendered `--metals Pt` for every sweep — the G5 grid
+    # is Ru/Ir/Os/Rh/Re, so the trainer aborted with
+    # "Metal(s) ['Pt'] not found in CSV. Available metals: [Ir, Os, Re, Rh, Ru]".
+    #
+    # The grid's location differs per config, so try the shapes actually
+    # present in this repo rather than patching one file at a time:
+    #   1. protocol.enumerated_runs = [{'metal': 'Ru', 'seed': 0}, ...]
+    #   2. protocol.seeds + sweep_pairs = {'ru': [0,1,2], ..., 'total_pairs': N}
+    #   3. runs.matrix = {'no_multi_task': {'ru': [0,1,2], ...}, ...}
+    _proto = d.get('protocol') or {}
+    _metal_default, _seed_default = None, None
+
+    _runs = _proto.get('enumerated_runs') or []
+    if _runs and isinstance(_runs[0], dict):
+        _metal_default = _runs[0].get('metal')
+        _seed_default = str(_runs[0].get('seed', 0))
+
+    if _metal_default is None:
+        _sp = {k: v for k, v in (d.get('sweep_pairs') or {}).items()
+               if k != 'total_pairs' and isinstance(v, list)}
+        if _sp:
+            _metal_default = next(iter(_sp)).capitalize()
+
+    if _metal_default is None:
+        _matrix = (d.get('runs') or {}).get('matrix') or {}
+        for _cfg_name, _grid in _matrix.items():
+            if isinstance(_grid, dict) and _grid:
+                _metal_default = next(iter(_grid)).capitalize()
+                break
+
+    if _metal_default is None:
+        # waves.<name>.pairs = [{'metal': 'Ru', 'seed': 1}, ...]
+        for _wname, _wave in (d.get('waves') or {}).items():
+            if not isinstance(_wave, dict):
+                continue
+            _wp = _wave.get('pairs') or []
+            if _wp and isinstance(_wp[0], dict) and _wp[0].get('metal'):
+                _metal_default = _wp[0]['metal']
+                _seed_default = str(_wp[0].get('seed', 0))
+                break
+
+    _metal_default = _metal_default or 'Pt'
+    _seed_default = _seed_default or '0'
 # Wf-A8c FIX: try new Wf-A8 yaml-managed 'command_template' first, fall back to legacy 'command'.
 # Per AGENTS.md 5.5 + user voice 'never use CLI again always yaml', new yamls
 # use 'command_template' field with {yaml_path}/{flags_joined}/{seed}/{out_dir}
