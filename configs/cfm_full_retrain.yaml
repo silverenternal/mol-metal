@@ -86,7 +86,12 @@ train:
   wasserstein_weight: 0.1
   closure_bounded: true
   use_yuelbond: true
-  edge_cutoff: 6.0
+  # 2026-10-04: was 6.0, which the run never used — the decoder's own
+  # default of 3.5 was in force, so this key misreported the geometry the
+  # run actually had.  3.5 is the value YuelBond actually filters at
+  # ("cutoff=3.5 A excludes 4.1 A Cl-Cl"), and --edge-cutoff now carries
+  # it into YuelBondDecoderHead.  Changing this number now changes the run.
+  edge_cutoff: 3.5
 protocol:
   n_seeds: 5
   epochs: 50

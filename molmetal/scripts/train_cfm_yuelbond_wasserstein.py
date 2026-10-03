@@ -592,6 +592,13 @@ DEFAULT_TRAIN_CLOUDS = 256
 DEFAULT_VAL_CLOUDS = 192
 DEFAULT_HIDDEN_DIM = 64
 DEFAULT_N_LAYERS = 3
+# YuelBond bond-length cutoff (Å).  Mirrors ``YuelBondDecoderHead``'s own
+# default; that class filters ``d < cutoff`` and its docstring's worked
+# example is "cutoff=3.5 Å excludes 4.1 Å Cl-Cl".  Exposed as
+# ``--edge-cutoff`` so the yaml's ``edge_cutoff`` key is real — before
+# 2026-10-04 the yamls declared 6.0 while the decoder ran at the 3.5
+# default, i.e. the config misreported the geometry the run actually used.
+DEFAULT_EDGE_CUTOFF = 3.5
 DEFAULT_LR = 3.0e-4
 DEFAULT_PATIENCE = 10
 
@@ -652,6 +659,7 @@ class CFMJointModel(nn.Module):
         self,
         hidden_dim: int = DEFAULT_HIDDEN_DIM,
         n_layers: int = DEFAULT_N_LAYERS,
+        cutoff: float = DEFAULT_EDGE_CUTOFF,
         z_table: Sequence[int] = (
             0,
             1,
@@ -672,6 +680,7 @@ class CFMJointModel(nn.Module):
         self.head = YuelBondDecoderHead(
             hidden_dim=hidden_dim,
             n_layers=n_layers,
+            cutoff=cutoff,
         )
         self.z_dim = len(z_table)
         self.z_table = list(z_table)
@@ -1957,6 +1966,17 @@ def parse_args() -> argparse.Namespace:
     )
 
     p.add_argument("--n-layers", type=int, default=DEFAULT_N_LAYERS)
+    p.add_argument(
+        "--edge-cutoff",
+        type=float,
+        default=DEFAULT_EDGE_CUTOFF,
+        help=(
+            "YuelBond bond-length cutoff in Å (default 3.5).  Pairs with "
+            "d < cutoff are eligible bonds; the YuelBond canonical table's "
+            "3.5 Å excludes e.g. the 4.1 Å Cl-Cl contact.  Driven by the "
+            "yaml `edge_cutoff` / `protocol.edge_cutoff` key."
+        ),
+    )
     p.add_argument("--lr", type=float, default=DEFAULT_LR)
     # Wf-A6 A2 BLOCKER C fix — LR scheduler (cosine/onecycle) + warmup + weight decay
     # per user voice 2026-10-03 verbatim '学习率的控制至少得用余弦退火或者更加高级的方案'.
@@ -3009,6 +3029,7 @@ def main() -> int:
     model = CFMJointModel(
         hidden_dim=args.hidden_dim,
         n_layers=args.n_layers,
+        cutoff=args.edge_cutoff,
     ).to(device)
     # Wf-431-B1 NEW — GPU utilization optimization wire-in (default OFF,
     # bit-for-bit backward compat with Wf-380-B1 + Wf-388 + Wf-418).

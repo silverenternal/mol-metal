@@ -67,7 +67,12 @@ protocol:
   #   pins 5.0 to preserve the Wf-124 P2 + Wf-148 baseline bit-for-bit.
   #   See TODO/completed/config_dead_key_remediation.md.
   ema_decay: 0.999
-  edge_cutoff: 6.0
+  # 2026-10-04: was 6.0, which the run never used — the decoder's own
+  # default of 3.5 was in force, so this key misreported the geometry the
+  # shipped numbers actually had.  3.5 is what YuelBond filters at
+  # ("cutoff=3.5 A excludes 4.1 A Cl-Cl"); --edge-cutoff now carries it
+  # into YuelBondDecoderHead, so editing this number now changes the run.
+  edge_cutoff: 3.5
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16' removed (zero bf16/autocast in either trainer).
   scheduler:
     type: cosine
