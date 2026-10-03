@@ -51,6 +51,7 @@ import struct
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import torch
@@ -179,11 +180,29 @@ class PocketConditionedVelocityField(nn.Module):
         hidden_dim: int = 128,
         n_layers: int = 3,
         max_atomic_number: int = 100,
+        multi_ph_dim: int = 0,
     ) -> None:
         super().__init__()
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
         self.max_atomic_number = max_atomic_number
+        # 2026-10-04 NEW — multi-parameter persistent homology pocket features
+        # (Wf-236 / Kim-Jung 2026 §4.1).  `flow.multi_ph` had no consumer
+        # anywhere; this trainer is where it belongs, because it is the only
+        # one that carries real pocket coordinates -- which is what
+        # `StableMultiPHExtractor.compute_batch` requires.  (The CFM trainer
+        # has no pocket tensor at all; its `pocket_id` is just a string key
+        # into a closure-bias dict.)
+        #
+        # `multi_ph_dim` is 0 when the feature is off, so the built-in default
+        # path adds no parameters and every existing checkpoint still loads.
+        self.multi_ph_dim = int(multi_ph_dim)
+        if self.multi_ph_dim > 0:
+            self.multi_ph_proj = _MaybeFusedSiLUMLP(
+                in_dim=self.multi_ph_dim,
+                hidden_dim=hidden_dim,
+                out_dim=hidden_dim,
+            )
 
         # TritonConfig-gated fused path for ``Linear -> SiLU -> Linear``.
         self.time_mlp = _MaybeFusedSiLUMLP(
@@ -223,6 +242,7 @@ class PocketConditionedVelocityField(nn.Module):
         edge_index_poc: torch.Tensor,  # (B, 2, E_poc)  — not used
         t: torch.Tensor,  # (B,) or (B, 1)
         ligand_mask: torch.Tensor,  # (B, N_lig)
+        multi_ph_features: Optional[torch.Tensor] = None,  # (B, multi_ph_dim)
     ) -> torch.Tensor:
         """Predict per-atom velocity for ligand atoms (B, N_lig, 3).
 
@@ -269,6 +289,20 @@ class PocketConditionedVelocityField(nn.Module):
                 pocket_atom_types[i : i + 1].squeeze(0)
             )  # (N_poc, H)
             n_poc_i = x_poc_i.shape[0]
+            if self.multi_ph_dim > 0:
+                if multi_ph_features is None:
+                    raise ValueError(
+                        "model was built with multi_ph_dim>0 but forward() got "
+                        "multi_ph_features=None.  Pass the (B, multi_ph_dim) "
+                        "feature block produced by StableMultiPHExtractor."
+                    )
+                # Broadcast the per-sample pocket descriptor to every pocket
+                # node.  It is a global shape signature of the pocket, so every
+                # node sees the same vector -- the same convention the pocket
+                # atom embedding already uses per-atom.
+                h_poc_i = h_poc_i + self.multi_ph_proj(multi_ph_features[i]).unsqueeze(
+                    0
+                ).expand(n_poc_i, -1)
 
             # Build edges for this sample
             if n_lig_i > 1:
@@ -918,6 +952,58 @@ Saved to: `{checkpoint_path}`
 # ---------------------------------------------------------------------------
 
 
+def make_multi_ph_extractor(
+    n_bins: int = 32,
+    max_radius: float = 5.0,
+    max_coord: float = 4.0,
+    seed: int = 0,
+):
+    """Build the 2-parameter PH extractor, or None when the import fails.
+
+    Wraps :class:`StableMultiPHExtractor` (Wf-236 / Kim-Jung 2026 §4.1).  The
+    import is lazy so the trainer keeps working -- unchanged -- in an
+    environment where the reward package is unavailable; the caller treats
+    None as "feature off".
+    """
+    try:
+        from molmetal.molmetal_lam.reward.astsr_multiph_hilbert import (
+            StableMultiPHExtractor,
+        )
+    except Exception as exc:  # noqa: BLE001 - report, do not hide
+        print(f"[fm-pocket][WARNING] Multi-PH extractor unavailable: {exc!r}")
+        return None
+    return StableMultiPHExtractor(
+        max_radius=float(max_radius),
+        max_coord=float(max_coord),
+        n_bins=int(n_bins),
+        seed=int(seed),
+    )
+
+
+def compute_multi_ph_batch(
+    extractor,
+    pocket_coords: torch.Tensor,
+    pocket_atom_types: torch.Tensor,
+    pocket_mask: torch.Tensor,
+    device: torch.device,
+) -> Optional[torch.Tensor]:
+    """Extract ``(B, n_bins**2)`` multi-PH pocket features for one batch.
+
+    The 2-parameter filtration is a numpy/CPU construction (Vietoris-Rips on
+    pairwise distances AND on ``|z_i - z_j|``), so this round-trips through the
+    CPU.  It is a DATA-derived conditioning feature, not a differentiable
+    function of the model, so the detach is inherent rather than a bug --
+    exactly like the pocket atom embeddings.
+    """
+    if extractor is None:
+        return None
+    coords = pocket_coords.detach().cpu().numpy()
+    atoms = pocket_atom_types.detach().cpu().numpy()
+    mask = pocket_mask.detach().cpu().numpy()
+    feats = extractor.compute_batch(coords, atoms, mask)
+    return torch.as_tensor(feats, dtype=torch.float32, device=device)
+
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description="Train pocket-conditioned FM on CrossDocked2020."
@@ -938,6 +1024,25 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument("--max-pairs", type=int, default=500, help="Max pairs to load")
     p.add_argument("--split", default="train", choices=["train", "test"])
+    # 2026-10-04 NEW — multi-parameter persistent homology conditioning
+    # (Wf-236 / Kim-Jung 2026 §4.1).  Driven by the yaml `flow.multi_ph` key.
+    p.add_argument(
+        "--use-multi-ph",
+        dest="multi_ph",
+        action="store_true",
+        default=False,
+        help=(
+            "Condition the velocity field on 2-parameter persistent homology "
+            "of the pocket (StableMultiPHExtractor, Wf-236).  Default OFF, so "
+            "the model's parameter set is unchanged and existing checkpoints "
+            "still load.  This trainer is the right home for the feature: it "
+            "is the only one carrying real pocket coordinates, which is what "
+            "compute_batch() requires."
+        ),
+    )
+    p.add_argument("--multi-ph-bins", type=int, default=32)
+    p.add_argument("--multi-ph-max-radius", type=float, default=5.0)
+    p.add_argument("--multi-ph-max-coord", type=float, default=4.0)
     p.add_argument("--checkpoint-out", default=None)
     p.add_argument("--plot-out", default=None)
     p.add_argument("--report-out", default=None)
@@ -1004,9 +1109,33 @@ def main(argv: list[str] | None = None) -> int:
     device = get_device()
     print(f"[pocket_fm]   device = {device}")
 
+    # 2026-10-04 — multi-PH conditioning.  Built BEFORE the model so the
+    # feature width can be passed in, and so a missing extractor degrades to
+    # "feature off" with one warning rather than a crash mid-training.
+    multi_ph_extractor = (
+        make_multi_ph_extractor(
+            n_bins=int(args.multi_ph_bins),
+            max_radius=float(args.multi_ph_max_radius),
+            max_coord=float(args.multi_ph_max_coord),
+            seed=int(args.seed),
+        )
+        if bool(args.multi_ph)
+        else None
+    )
+    # `feature_dim` is a @property on StableMultiPHExtractor, not a method.
+    multi_ph_dim = (
+        int(multi_ph_extractor.feature_dim) if multi_ph_extractor is not None else 0
+    )
+    if bool(args.multi_ph):
+        print(
+            f"[pocket_fm] multi-PH conditioning ON: "
+            f"n_bins={args.multi_ph_bins} feature_dim={multi_ph_dim}"
+        )
+
     model = PocketConditionedVelocityField(
         hidden_dim=args.hidden_dim,
         n_layers=args.n_layers,
+        multi_ph_dim=multi_ph_dim,
     ).to(device)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
@@ -1088,6 +1217,11 @@ def main(argv: list[str] | None = None) -> int:
             # Sample path
             path_sample = path.sample(x_0=x_0, x_1=x_1, t=t)
 
+            # 2026-10-04 — multi-PH pocket features for this batch.
+            _multi_ph = compute_multi_ph_batch(
+                multi_ph_extractor, x_pocket, atom_types_poc, pocket_mask, device
+            )
+
             # Velocity prediction
             v_pred = model(
                 ligand_coords=path_sample.x_t,
@@ -1098,6 +1232,7 @@ def main(argv: list[str] | None = None) -> int:
                 edge_index_poc=edge_index_poc,
                 t=t,
                 ligand_mask=ligand_mask,
+                multi_ph_features=_multi_ph,
             )
 
             # CFM loss
@@ -1184,8 +1319,27 @@ def main(argv: list[str] | None = None) -> int:
     gen_ligand_mask = torch.ones(
         args.n_gen, n_gen_atoms, dtype=torch.bool, device=device
     )
+    # 2026-10-04 — pocket mask for generation.  The generation pocket is a
+    # single real pocket expanded across the batch, so every atom is real;
+    # this mirrors gen_ligand_mask above.  (The multi-PH extractor needs it to
+    # skip padding rows, and the batch path already has an equivalent
+    # `pocket_mask`.)
+    gen_pocket_mask = torch.ones(
+        args.n_gen, n_poc, dtype=torch.bool, device=device
+    )
 
     from functools import partial
+
+    # 2026-10-04 — the generation pocket is fixed for the whole sampling loop,
+    # so its multi-PH descriptor is computed once here and closed over, rather
+    # than recomputed on every ODE step.
+    gen_multi_ph = compute_multi_ph_batch(
+        multi_ph_extractor,
+        gen_pocket_coords,
+        gen_pocket_atom_types,
+        gen_pocket_mask,
+        device,
+    )
 
     def velocity_model(
         x,
@@ -1207,6 +1361,7 @@ def main(argv: list[str] | None = None) -> int:
             edge_index_poc=edge_index_poc,
             t=t,
             ligand_mask=ligand_mask,
+            multi_ph_features=gen_multi_ph,
         )
 
     velocity_fn = partial(

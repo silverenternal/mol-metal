@@ -72,10 +72,19 @@ flow:
   n_steps: 100
   method: rk4
   ot_solver: w_flow
+  # se3_sb / bass_martingale / monge_ampere are wired as of 2026-10-04: they
+  # re-pair the flow-matching objective's (x0, x1) through the SE(3) Sinkhorn,
+  # Bass martingale and Monge-Ampere OT plans respectively, and they are
+  # mutually exclusive.
   se3_sb: false
   bass_martingale: false
   monge_ampere: false
-  multi_ph: false
+  # 2026-10-04: `multi_ph: false` REMOVED.  Multi-parameter persistent homology
+  # needs POCKET coordinates (StableMultiPHExtractor.compute_batch takes
+  # (pocket_coords, pocket_atom_types, pocket_mask)), and this trainer has no
+  # pocket tensor at all -- its `pocket_id` is a string key into a closure-bias
+  # dict.  The feature's home is molmetal/scripts/train_fm_pocket.py, which
+  # does carry real pocket coordinates; see configs/fm_pocket_multiph.yaml.
 train:
   optimizer: adam
   batch_size: 16
@@ -167,7 +176,14 @@ entry:
   # Per AGENTS.md §5.5 + §5.7 + user voice "never use CLI again always yaml"
   # All retrain hyperparameters live in yaml sections above (data + model + flow + train + protocol);
   # trainer applies via wfA2_config_loader.py
-  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/metallo_drug_smoke_retrain.py --config {yaml_path} --seed {seed} --out-dir {out_dir}
+  # 2026-10-04: the repoint above changed `entry.script` but NOT this line, and
+  # THIS is what start.sh actually executes (it renders command_template into
+  # TRAINER_CMD).  So the launch kept running the 1000-step smoke script while
+  # the file, the comment and the pre-flight classifier all said the real CFM
+  # trainer -- the fix looked applied and was not.  Both must name the same
+  # script; two other configs spell the entry ONLY here, which is why start.sh
+  # scans the command for a .py path as well as reading entry.script.
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir}
   # FIX C: yaml-driven config + only debug/seed/out-dir CLI flags remain (per task brief DEBUG_FLAG_OVERRIDES)
   warm_start_checkpoint: molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
   # Original inline-CLI command preserved as legacy_inline_command for backward-compat rollback only

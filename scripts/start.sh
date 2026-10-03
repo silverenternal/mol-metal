@@ -309,6 +309,15 @@ cmd = _cmd_template_or_legacy.format(
     # the yaml as protocol.pocket_id; falls back to the trainer's own default
     # so configs that do not use the placeholder are unaffected.
     pocket_id=(d.get('protocol', {}) or {}).get('pocket_id', '1h36'),
+    # 2026-10-04 — placeholders for the pocket-conditioned flow-matching entry
+    # (train_fm_pocket.py).  Without these, a template naming any of them dies
+    # with KeyError, which start.sh reports as "could not parse YAML" -- a
+    # misleading message for what is really an unsupported placeholder.
+    max_atoms=(d.get('data', {}) or {}).get('max_atoms', 40),
+    max_pocket_atoms=(d.get('data', {}) or {}).get('max_pocket_atoms', 200),
+    multi_ph_bins=(d.get('flow', {}) or {}).get('multi_ph_bins', 32),
+    multi_ph_max_radius=(d.get('flow', {}) or {}).get('multi_ph_max_radius', 5.0),
+    multi_ph_max_coord=(d.get('flow', {}) or {}).get('multi_ph_max_coord', 4.0),
     script=e.get('script', 'molmetal/scripts/train_dmpnn_multitask_wasserstein.py'),
     metal=_metal_default,
     seed=_seed_default,
@@ -340,6 +349,69 @@ _dmpnn_new_flags = ''
 _script_candidates = [str(e.get('script', ''))]
 _cmd_src = str(e.get('command_template') or e.get('command') or '')
 _script_candidates += [w for w in _cmd_src.split() if w.endswith('.py')]
+
+# 2026-10-04 — emit only the appended flags the ENTRY SCRIPT actually accepts.
+# start.sh has always appended a fixed set (checkpoint/resume/lr-scheduler/
+# warmup/min-lr/weight-decay/max-norm) after the entry command.  That works
+# while every entry is one of the two trainers that grew up with those flags,
+# but a third entry (train_fm_pocket.py) accepts NONE of them, so launching it
+# through start.sh died on "unrecognized arguments" before doing any work.
+#
+# Probe the entry script's SOURCE for each flag literal rather than running
+# `--help`: the flags are plain strings in every parser here (verified: all 7
+# present as literals in the CFM and D-MPNN trainers, 0 of 7 in the pocket
+# trainer), and a subprocess probe would pay a full torch import at launch.
+# Matching on the source is also the conservative failure mode -- an
+# unrecognised flag is simply not appended, never a wrong one.
+_EXTRA_CANDIDATES = [
+    ('--checkpoint-interval', 'CHECKPOINT_INTERVAL'),
+    ('--resume-from', 'RESUME_FROM'),
+    ('--lr-scheduler', 'SCHEDULER'),
+    ('--lr-warmup-epochs', 'LR_WARMUP_EPOCHS'),
+    ('--lr-min-lr', 'LR_MIN_LR'),
+    ('--weight-decay', 'WEIGHT_DECAY'),
+    ('--max-norm', 'MAX_NORM'),
+]
+_extra_supported = ''
+_extra_skipped = []
+_probe_src = ''
+for _w in _script_candidates:
+    if not _w:
+        continue
+    _p = Path(_w)
+    if not _p.is_file():
+        _p = (Path.cwd() / _w)
+    if _p.is_file():
+        try:
+            _probe_src = _p.read_text(encoding='utf-8', errors='ignore')
+        except Exception:
+            _probe_src = ''
+        break
+if _probe_src:
+    _parts = []
+    for _flag, _var in _EXTRA_CANDIDATES:
+        if ('"%s"' % _flag) in _probe_src or ("'%s'" % _flag) in _probe_src:
+            _parts.append(_flag)
+        else:
+            _extra_skipped.append(_flag)
+    _extra_supported = ' '.join(_parts)
+    if _extra_skipped:
+        print(
+            '[start.sh] entry %s does not accept: %s -- not appending them'
+            % (Path(_script_candidates[0] or _cmd_src.split()[0]).name,
+               ', '.join(_extra_skipped)),
+            file=sys.stderr,
+        )
+# The events flags are appended separately (as $EVENTS_FLAG) and the pocket
+# trainer has neither form, so probe them too -- otherwise the entry still
+# dies on "unrecognized arguments" via the one flag the loop above missed.
+_events_supported = 0
+if _probe_src and (
+    '"--events-jsonl-path"' in _probe_src
+    or "'--events-jsonl-path'" in _probe_src
+    or '"--no-events-jsonl"' in _probe_src
+):
+    _events_supported = 1
 if any(
     Path(w).name == 'train_dmpnn_multitask_wasserstein.py'
     for w in _script_candidates
@@ -422,6 +494,12 @@ lines = [
     # 2026-10-04 — D-MPNN-only flags rendered from the yaml keys above
     # (empty string for every other entry script; see _dmpnn_new_flags).
     f'DMPNN_NEW_FLAGS={shlex.quote(_dmpnn_new_flags)}',
+    # 2026-10-04 — space-separated list of the flags above that the entry
+    # script actually accepts (empty when the probe could not read it, in
+    # which case bash falls back to the full legacy set).
+    f'EXTRA_SUPPORTED_FLAGS={shlex.quote(_extra_supported)}',
+    f'EXTRA_PROBE_OK={1 if _probe_src else 0}',
+    f'EVENTS_SUPPORTED={_events_supported}',
 ]
 with open(env_path, 'w') as f:
     f.write('\n'.join(lines) + '\n')
@@ -516,7 +594,31 @@ fi
 # (model.task / data.pin_memory / protocol.gradient_accumulation_steps) for
 # the D-MPNN entry script; it is empty for every other script (e.g. CFM,
 # which has no such flags) — see the parse_yaml block above.
-TRAINER_CMD="$ENTRY_COMMAND --checkpoint-interval \"$CHECKPOINT_INTERVAL\" --resume-from \"$RESUME_FROM\" $EVENTS_FLAG --lr-scheduler \"$SCHEDULER\" --lr-warmup-epochs \"$LR_WARMUP_EPOCHS\" --lr-min-lr \"$LR_MIN_LR\" --weight-decay \"$WEIGHT_DECAY\" --max-norm \"$MAX_NORM\" ${DMPNN_NEW_FLAGS:-} $EXTRA_FLAGS"
+# 2026-10-04 — append only what the entry script accepts.  Each entry below is
+# "flag VAR"; the value is quoted at emit time so paths with spaces survive.
+# EXTRA_PROBE_OK=0 (the probe could not read the script) falls back to the full
+# legacy set, so nothing that worked before stops working.
+APPENDED_FLAGS=""
+_add_flag() {
+  local _flag="$1" _var="$2"
+  if [[ "${EXTRA_PROBE_OK:-0}" == "0" ]] \
+     || [[ " ${EXTRA_SUPPORTED_FLAGS:-} " == *" ${_flag} "* ]]; then
+    APPENDED_FLAGS="${APPENDED_FLAGS} ${_flag} \"${!_var}\""
+  fi
+}
+_add_flag --checkpoint-interval CHECKPOINT_INTERVAL
+_add_flag --resume-from RESUME_FROM
+_add_flag --lr-scheduler SCHEDULER
+_add_flag --lr-warmup-epochs LR_WARMUP_EPOCHS
+_add_flag --lr-min-lr LR_MIN_LR
+_add_flag --weight-decay WEIGHT_DECAY
+_add_flag --max-norm MAX_NORM
+# Same treatment for the events sink: an entry with neither form gets no flag
+# rather than an argument error.
+if [[ "${EXTRA_PROBE_OK:-0}" == "1" && "${EVENTS_SUPPORTED:-0}" != "1" ]]; then
+  EVENTS_FLAG=""
+fi
+TRAINER_CMD="$ENTRY_COMMAND$APPENDED_FLAGS $EVENTS_FLAG ${DMPNN_NEW_FLAGS:-} $EXTRA_FLAGS"
 LOG_FILE="$LOG_MASTER"
 echo "[start.sh] trainer command: $TRAINER_CMD"
 echo "[start.sh] log file: $LOG_FILE"

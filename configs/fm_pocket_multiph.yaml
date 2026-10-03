@@ -1,0 +1,70 @@
+# Pocket-conditioned flow matching with multi-parameter persistent homology.
+#
+# 2026-10-04 NEW.  Why this config exists:
+#
+# `flow.multi_ph` had no consumer anywhere in the repo.  Wf-236's wire-in
+# report (molmetal/reports/wf236_ma_ph_math_wirein.md) places the feature on
+# the joint Hilbert regression path, and `StableMultiPHExtractor.compute_batch`
+# takes (pocket_coords, pocket_atom_types, pocket_mask).  The CFM trainer
+# (train_cfm_yuelbond_wasserstein.py) has NO pocket tensor -- its `pocket_id` is
+# a string key into a closure-bias dict -- so the key could never resolve there.
+#
+# train_fm_pocket.py is the only trainer carrying real pocket coordinates
+# (PocketConditionedVelocityField.forward takes pocket_coords (B, N_poc, 3) and
+# pocket_atom_types (B, N_poc)).  The feature is wired in there; this config
+# drives it.
+#
+# NOTE ON LAUNCHING: train_fm_pocket.py accepts none of the flags start.sh
+# historically appended (checkpoint-interval / resume-from / lr-scheduler /
+# lr-warmup-epochs / lr-min-lr / weight-decay / max-norm / events-jsonl-path).
+# As of 2026-10-04 start.sh probes the entry script's source for each and
+# appends only the accepted ones, so this config launches cleanly rather than
+# dying on "unrecognized arguments".
+
+model:
+  hidden_dim: 128
+  depth: 3
+
+flow:
+  # The feature this config exists for.
+  multi_ph: true
+  multi_ph_bins: 32
+  multi_ph_max_radius: 5.0
+  multi_ph_max_coord: 4.0
+
+protocol:
+  batch_size: 8
+  lr: 0.0001
+  epochs: 30
+
+data:
+  max_atoms: 40
+  max_pocket_atoms: 200
+
+device: cuda
+
+# `directives` is a DICT in every config, not a list -- start.sh reads
+# `directives.user_ok_required` from it, so a list raises AttributeError there
+# and surfaces as the misleading "could not parse YAML".
+directives:
+  kill_then_adapt: True
+  time_budget: "2h"
+  user_ok_required: True
+  pre_flight_gates_required:
+    - p1_pytorch_cuda_available
+    - p3_wf343c4_anchor_freshness_24h
+
+output:
+  base_dir: results/fm_pocket_multiph
+  events_jsonl: false
+
+entry:
+  script: molmetal/scripts/train_fm_pocket.py
+  # Only the flags train_fm_pocket.py actually accepts.  `--split` is fixed to
+  # train: this entry is a trainer, not an evaluator.
+  # Placeholders must come from start.sh's str.format() kwarg set -- an
+  # unknown name raises KeyError, which start.sh reports as the (misleading)
+  # "could not parse YAML".  `{hidden}` maps to model.hidden_dim and `{depth}`
+  # to model.depth; the multi_ph_* and max_* placeholders were added to
+  # start.sh for this entry.
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_fm_pocket.py --epochs {epochs} --batch {batch_size} --lr {lr} --hidden-dim {hidden} --n-layers {depth} --max-atoms {max_atoms} --max-pocket-atoms {max_pocket_atoms} --use-multi-ph --multi-ph-bins {multi_ph_bins} --multi-ph-max-radius {multi_ph_max_radius} --multi-ph-max-coord {multi_ph_max_coord}
