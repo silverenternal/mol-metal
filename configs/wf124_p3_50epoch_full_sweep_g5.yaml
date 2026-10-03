@@ -235,7 +235,7 @@ directives:
   - p3_wf343c2_per_wave_runtime_check
 entry:
   script: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
-  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --metals {metal} --seeds {seed} --epochs {epochs} --batch-size {batch_size} --lr {lr} --hidden {hidden} --depth {depth} --alpha {alpha} --wasserstein-weight {wasserstein_weight} {use_l2_guard} --device {device} --cpu-num-workers {cpu_workers} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --metals {metal} --seeds {seed} --epochs {epochs} --batch-size {batch_size} --lr {lr} --hidden {hidden} --depth {depth} --alpha {alpha} --wasserstein-weight {wasserstein_weight} {use_l2_guard} --device {device} --cpu-num-workers {cpu_workers} --out-dir {out_dir} --ckpt-dir {ckpt_dir} --ablation-config {ablation_config} --w2-gradient-mode {w2_gradient_mode} --n-mc {n_mc}
   warm_start_checkpoint: n/a
 honest_framing:
   data_grounding:
