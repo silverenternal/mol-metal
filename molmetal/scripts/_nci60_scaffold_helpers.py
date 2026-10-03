@@ -13,9 +13,33 @@ the public API is unchanged.
 """
 from __future__ import annotations
 
+import hashlib
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+
+
+def _stable_hash_int(text: str, modulus: int) -> int:
+    """Process-independent hash of *text* into ``[0, modulus)``.
+
+    Wf-A10 FIX (2026-10-03) — Python salts ``hash()`` of ``str`` per process
+    (PYTHONHASHSEED), so the two call sites below produced DIFFERENT values on
+    every run.  MEASURED for ``hash("CCO") % 1024`` across three processes:
+    519 / 244 / 396.  That silently made (a) the scaffold fallback grouping —
+    and therefore the train/val/test split — irreproducible, and (b) the
+    reported ``scaffold_ood_group_*`` run label differ run to run, so runs
+    could not be compared or tracked by label.
+
+    A SHA-256 digest is fixed, so the same input always yields the same id on
+    any process and any machine.  Mirrors ``_stable_hash_int`` in
+    ``molmetal/scripts/train_dmpnn_multitask_wasserstein.py`` (same fix class).
+
+    NOTE: this defect was LATENT — verified no shipped metric contains a
+    ``scaffold_ood_group_*`` or ``__circular_*`` string, so no published number
+    was contaminated.  It is fixed to stop it becoming live.
+    """
+    digest = hashlib.sha256(str(text).encode("utf-8")).hexdigest()
+    return int(digest[:16], 16) % int(modulus)
 
 
 __all__ = [
@@ -51,7 +75,8 @@ def _scaffold_split_indices_nci60(
         except Exception:
             sc = ""
         if not sc:
-            sc = f"__circular_{hash(smi) % 1024}__"
+            # Wf-A10 FIX: stable hash (was `hash(smi) % 1024`, salted per process).
+            sc = f"__circular_{_stable_hash_int(smi, 1024)}__"
         scaffolds.setdefault(sc, []).append(int(i))
 
     # Sort scaffold groups by size desc, then randomise seed.
@@ -73,7 +98,8 @@ def _scaffold_split_indices_nci60(
         n_val = max(int(round(0.10 * len(rest_arr))), 1)
         val_idx = rest_arr[:n_val]
         train_idx = rest_arr[n_val:]
-        label = f"scaffold_ood_group_{abs(hash(sc)) % 10**8}_n={len(idx_list)}"
+        # Wf-A10 FIX: stable hash (was `abs(hash(sc)) % 10**8`, salted per process).
+        label = f"scaffold_ood_group_{_stable_hash_int(sc, 10**8)}_n={len(idx_list)}"
         return (
             np.asarray(train_idx, dtype=np.int64),
             np.asarray(val_idx, dtype=np.int64),
