@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Aggregate Round-13 sweep JSON outputs into a single schema-compliant report."""
-import json, pathlib, statistics
+import json
+import pathlib
+import statistics
 
 ROUND13 = pathlib.Path(__file__).resolve().parent
 LAMBDA_OUT = ROUND13.parent / "wf_lambda1_wf_round13_100x3" / "lambda" / "r4c"

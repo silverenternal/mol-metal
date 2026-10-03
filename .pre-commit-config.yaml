@@ -22,10 +22,16 @@
 #     `pre-commit run --hook-stage manual --all-files`): ruff, ruff-format,
 #     mypy, mdformat, codespell. They still fail or are unmeasured on this
 #     tree, re-measured 2026-10-03 with the PINNED ruff v0.6.9:
-#     `ruff check molmetal` -> 2,907 findings (E402 1304 / F401 778 /
-#     F841 494 / F821 152 / E741 97 / E731 28 / F541 27 / F811 24 /
-#     E401 1 / E743 1 / F822 1; 256 of the 2,907 sit under the
-#     molmetal/reports/ exclude). `ruff format --check molmetal` -> 103
+  #     `ruff check molmetal` -> 1,423 findings.  pyproject.toml now carries a
+  #     [tool.ruff.lint] block (this repo had NO ruff config before, so
+  #     `--isolated` == hook behaviour).  It declares three classes that were
+  #     individually verified to be deliberate — E402 (1283: imports follow an
+  #     intentional sys.path mutation), F821 (151: all annotation-only, and
+  #     nothing in this tree resolves annotations), F541 (27: all under the
+  #     molmetal/reports/ exclude).  What remains is deliberately LEFT VISIBLE
+  #     as real debt — F401 778 / F841 494 / E741 97 / E731 28 / F811 24 /
+  #     E743 1 / F822 1; see the rationale in pyproject.toml for why each was
+  #     not swept. `ruff format --check molmetal` -> 103
 #     files would be reformatted / 1899 already formatted; 67 of the 103
 #     are outside the uncommitted working-tree edits and all sit under the
 #     molmetal/reports/ exclude, so the committed tree is format-clean since

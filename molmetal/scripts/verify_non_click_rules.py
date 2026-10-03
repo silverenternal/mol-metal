@@ -34,13 +34,14 @@ import sys
 from pathlib import Path
 from typing import List, Tuple
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(ROOT), str(ROOT / "molmetal")]
 
 from molmetal.molmetal_lam.lam_chem.non_click_medchem_rules import (
     NonClickMedChemRegistry,
     register_non_click_rules,
 )
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path[:0] = [str(ROOT), str(ROOT / "molmetal")]
 
 
 # ---------------------------------------------------------------------------

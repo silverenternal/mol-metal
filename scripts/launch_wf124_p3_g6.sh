@@ -310,7 +310,17 @@ echo "[Wf-378-A2] USER_OK set — proceeding with 60-tuple launch (G6 wall ~7.5 
 # internally: load_binding_db, load_nci60, load_drugood, metalcytotox_v4,
 # platinai_4cell). Does NOT accept --data-csv; only --out-dir.
 # Use launcher-specific out-dir so each launcher's report is preserved.
-${PY} molmetal/scripts/pre_flight_check.py --pipeline launch || { echo "FAIL: pre_flight_check"; exit 1; }
+# 2026-10-03: declare grid + budget so the per-wave runtime gate gets REAL
+# inputs instead of SKIPping. 5 metals x 3 seeds = 15 (metal, seed) pairs; the
+# 4-config dimension makes 60 tuples, which the gate's (metal, seed) model does
+# not express — see the PER_PAIR_BASELINE_HR note in wf343c2_per_wave_check.py.
+${PY} molmetal/scripts/pre_flight_check.py \
+  --pipeline launch \
+  --declared-wave "Wf-124-P3-G6 60-tuple per-innovation ablation" \
+  --pairs-metals "Ru,Ir,Os,Rh,Re" \
+  --pairs-seeds "0,1,2" \
+  --budget-hr 48 \
+  || { echo "FAIL: pre_flight_check"; exit 1; }
 PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/wf343c3_data_quality_check.py \
   --out-dir molmetal/reports/wf124_p3_g6_data_quality \
   || { echo "FAIL: wf343c3_data_quality_check"; exit 1; }

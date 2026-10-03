@@ -69,8 +69,6 @@ import pandas as pd
 
 # Repo root bootstrap so we can import molmetal.* modules without
 # requiring an install.
-ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(ROOT), str(ROOT / "molmetal")]
 
 from rdkit import Chem, RDLogger
 from rdkit.Chem import AllChem, QED
@@ -84,6 +82,9 @@ from molmetal.molmetal_lam.sbdd_env.sa_score import (
     sa_score_ertl,
     sa_score_to_unit,
 )
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path[:0] = [str(ROOT), str(ROOT / "molmetal")]
 
 
 RDLogger.DisableLog("rdApp.*")

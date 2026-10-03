@@ -46,6 +46,55 @@ dependencies = [
 [tool.uv]
 managed = true
 
+# =============================================================================
+# ruff — the repo had NO config until 2026-10-03, so `--isolated` equalled hook
+# behaviour and every rule the default set enables was reported.  This block
+# declares ONLY the classes that were individually verified to be deliberate
+# patterns.  Everything else stays VISIBLE: an unexamined finding is debt, and
+# silencing it would be the defect this block is trying to avoid.
+#
+# Pinned version for all of the below: v0.6.9 (the .pre-commit-config.yaml pin,
+# supplied by pre-commit's isolated hook env — /usr/bin/ruff is 0.16.8 and
+# reports a different set).
+# =============================================================================
+[tool.ruff.lint]
+# Rules deliberately NOT enabled here (each was checked; none is silenced):
+#   F841 unused-variable   494 — ruff's fix DELETES the assignment, which
+#                                changes behaviour whenever the RHS has a side
+#                                effect.  Needs per-site judgement, not a sweep.
+#   F401 unused-import     778 — a subset are `try/except ImportError`
+#                                availability probes that ruff declines to
+#                                touch by design; the rest need the same
+#                                re-export/side-effect care the Wf-A16 lint
+#                                pass applied to tests/**+scripts/**.
+#   E741 ambiguous-name     97 — no autofix; each `l`/`I`/`O` needs renaming.
+#   F811 redefinition       24 — each is a shadowed definition; may be real.
+ignore = [
+    # 1283 findings.  Imports follow an intentional setup step: 1036
+    # `sys.path.insert`, 56 `sys.path.append`, 14 slice forms
+    # (`sys.path[:0] = [...]`, `sys.path[:] = [...]`).  The import MUST come
+    # after the path mutation, so E402 fires on correct code.  254 files carry
+    # this shape.  The sites that were NOT deliberate — 22 findings across 9
+    # files, in modules with no sys.path handling at all — were fixed
+    # 2026-10-03 by moving the splitting statement below the import block.
+    # Two files were attempted and REVERTED because the move broke a real
+    # dependency: molmetal_lam/priors/__init__.py (a multi-line `__all__`
+    # consumed by a later name) and scripts/diagnose_lambda_terminal_reactivity.py
+    # (an import that depends on the preceding `sys.path[:0] = [...]`).
+    "E402",
+    # 151 findings, ALL inside annotations.  Verified with an AST pass plus a
+    # check that nothing in this repo resolves annotations: zero
+    # `get_type_hints` calls, zero pydantic/typer/fastapi/attrs/click imports,
+    # and `dataclass` reads only annotation KEYS, never the types.  Under
+    # `from __future__ import annotations` (present in 1912 files) these names
+    # are never looked up.  The one non-annotation instance — a dead
+    # `X if False else object` base — was fixed.
+    "F821",
+    # 27 findings, all under molmetal/reports/, which .pre-commit-config.yaml
+    # already excludes from the hook.
+    "F541",
+]
+
 [tool.setuptools]
 packages = ["molmetal", "molmetal.molmetal_lam", "molmetal.data", "molmetal.baselines", "molmetal_lam"]
 

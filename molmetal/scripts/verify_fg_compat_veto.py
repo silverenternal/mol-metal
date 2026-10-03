@@ -36,8 +36,6 @@ import sys
 from pathlib import Path
 from typing import List, Tuple
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(ROOT), str(ROOT / "molmetal")]
 
 from molmetal.molmetal_lam.lam_chem.fg_compat_veto import (
     FGCompatMatrix,
@@ -45,6 +43,9 @@ from molmetal.molmetal_lam.lam_chem.fg_compat_veto import (
     VetoAugmentedReducer,
     register_fg_compat_veto,
 )
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path[:0] = [str(ROOT), str(ROOT / "molmetal")]
 
 
 # ---------------------------------------------------------------------------

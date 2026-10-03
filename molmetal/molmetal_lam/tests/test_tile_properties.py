@@ -49,7 +49,6 @@ from typing import List
 
 import pytest
 
-hypothesis = pytest.importorskip("hypothesis")
 from hypothesis import HealthCheck, given, settings  # noqa: E402
 from hypothesis import strategies as st  # noqa: E402
 
@@ -61,6 +60,8 @@ from molmetal_lam.tile_lib.property_tests import (
     assert_tile_well_formed,
 )
 from molmetal_lam.tile_lib.tile import Tile
+
+hypothesis = pytest.importorskip("hypothesis")
 
 
 # ---------------------------------------------------------------------------

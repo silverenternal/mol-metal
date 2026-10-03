@@ -221,7 +221,12 @@ compute:
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16' removed (ZERO bf16/autocast/GradScaler occurrences in either trainer; claimed an AMP path that does not exist).
 directives:
   kill_then_adapt: true
-  time_budget: 13h
+  # 2026-10-03 user directive: session budget is 48h ("我给48小时的预算").
+  # The old 10h/13h values made the per-wave budget gate FAIL on a resource
+  # dimension that is not actually constrained; with 48h the gate still does
+  # real work (it FAILs a wave whose declared grid exceeds the declared
+  # budget) but no longer blocks a legitimate launch.
+  time_budget: 48h
   user_ok_required: true
   user_ok_granted: pending — DRY-RUN only
   per_wave_user_ok_required: true

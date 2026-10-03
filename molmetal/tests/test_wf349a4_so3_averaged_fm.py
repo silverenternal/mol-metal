@@ -46,13 +46,14 @@ import pytest
 import torch
 
 # Project root path (this file's parent's parent: tests/ -> molmetal/ -> root).
-_PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 from molmetal.adapters.flow_matching_lipman.so3_averaged_fm import (
     kabsch_mse_loss,
     sample_so3_rotations,
     so3_averaged_fm_loss,
 )
+
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 # ---------------------------------------------------------------------------

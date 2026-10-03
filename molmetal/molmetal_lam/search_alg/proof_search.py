@@ -110,7 +110,6 @@ import numpy as np
 
 from molmetal.utils.device import get_device
 
-log = logging.getLogger(__name__)
 
 from molmetal_lam.atoms.combinators import Atom
 from molmetal_lam.binding.types import BindingSite, typecheck
@@ -120,6 +119,8 @@ from molmetal_lam.reactions.beta_reductions import ReactionRule
 from molmetal_lam.types.predicates import TypePredicate
 from triton_kernels import softmax_last_dim
 from triton_kernels.config import triton_config
+
+log = logging.getLogger(__name__)
 
 # Optional RDKit-backed channels — the MLC search runs headless without
 # RDKit, so we guard every import and silently degrade channels that

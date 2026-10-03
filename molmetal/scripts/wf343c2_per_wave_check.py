@@ -164,6 +164,30 @@ DEFAULT_DF_TIMEOUT_SEC = 5
 # from the declared grid, and the budget is an INPUT the caller must
 # declare (no declaration -> loud SKIP, never PASS).
 PER_PAIR_BASELINE_HR = 0.7  # MEASURED upper bound (Wf-268C: 0.55-0.7 h/pair)
+# ^ OPEN DISCREPANCY, recorded 2026-10-03 rather than papered over.
+#
+# The 0.7 is a MEASURED upper bound, but for a DIFFERENT workload than the
+# waves this gate now checks: Wf-268C measured 30-epoch D-MPNN on an RTX 5090.
+# The Wf-124 G5/G6 launchers run 50 epochs on an RTX PRO 6000 and derive their
+# own estimates from per-metal timings — 0.33 h/pair for G5
+# (Ru 3x30min + Ir 3x30 + Os 3x15 + Rh 3x15 + Re 3x10 = 300 min / 15 pairs)
+# and 0.50 for G6.  So this constant is 2.6x the G5 measurement and 1.75x the
+# G6 one, and the two models disagree about what a pair costs.
+#
+# It does not bite today: with the 48h session budget the user declared on
+# 2026-10-03, 15 pairs x 0.7 x 1.25 = 13.1h passes comfortably.  It WILL bite
+# anyone who declares a budget between ~5h and ~13h — they will see a FAIL
+# that the launcher's own measurement says is not real.
+#
+# Not resolved here because resolving it means choosing between two
+# measurements, and that is a modelling decision, not a code fix:
+#   (a) trust the gate's conservative upper bound -> G5/G6's 5h/7.5h wall
+#       estimates are wrong and understate the run; or
+#   (b) trust the launchers' per-metal timings -> this constant needs to
+#       become per-workload (per-epoch, per-GPU) rather than one global number.
+# Whoever settles it should also decide whether `--per-pair-hr` should be a
+# caller declaration (which would let a caller declare a tiny cost to pass —
+# a bypass) or stay fixed.
 
 # Planning margin applied on top of the MEASURED per-pair baseline.
 # PROJECTED (not measured): absorbs queueing / restart / eval overhead so

@@ -253,7 +253,17 @@ fi
 # internally: load_binding_db, load_nci60, load_drugood, metalcytotox_v4,
 # platinai_4cell). Does NOT accept --data-csv; only --out-dir.
 # Use launcher-specific out-dir so each launcher's report is preserved.
-PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py --pipeline launch || { echo "FAIL: pre_flight_check"; exit 1; }
+# 2026-10-03: declare the wave's grid + budget so the per-wave runtime gate has
+# REAL inputs. Without the declaration that gate could only SKIP (it needs a
+# grid and a budget and had no way to receive them). Budget is the 48h session
+# figure from the user directive; the grid is 5 metals x 3 seeds = 15 pairs.
+PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py \
+  --pipeline launch \
+  --declared-wave "Wf-124-P3-G5 15-pair full sweep" \
+  --pairs-metals "Ru,Ir,Os,Rh,Re" \
+  --pairs-seeds "0,1,2" \
+  --budget-hr 48 \
+  || { echo "FAIL: pre_flight_check"; exit 1; }
 PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/wf343c3_data_quality_check.py \
   --out-dir molmetal/reports/wf124_p3_g5_data_quality \
   || { echo "FAIL: wf343c3_data_quality_check"; exit 1; }

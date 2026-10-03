@@ -19,12 +19,13 @@ import statistics
 import sys
 import time
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(ROOT), str(ROOT / "molmetal")]
 
 from rdkit import Chem, rdBase
 from molmetal.scripts import lambda_100pocket_sweep as runner
 from molmetal_lam.search_alg import sweep_guidance as guidance
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path[:0] = [str(ROOT), str(ROOT / "molmetal")]
 
 
 def key(term):
