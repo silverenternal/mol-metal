@@ -2558,6 +2558,31 @@ def parse_args() -> argparse.Namespace:
     # objective's freshly-sampled (x0, x1) every batch; they are mutually
     # exclusive (make_ot_sampler raises), matching the two yaml keys being
     # alternatives rather than additives.
+    # 2026-10-04 NEW — `model.bond_head` and `model.cfm_decoder` had no
+    # consumer.  Both name the SAME decision as --use-yuelbond (the YuelBond
+    # head IS the learned bond head AND the decoder), so they are wired as
+    # consistency guards rather than as separate switches: declaring a decoder
+    # the trainer cannot build now fails loudly instead of being ignored.
+    p.add_argument(
+        "--bond-head",
+        type=str,
+        default="learned",
+        help=(
+            "Bond-head kind.  'learned' is the only kind this trainer builds "
+            "(the YuelBond head); any other value is rejected rather than "
+            "silently ignored.  Driven by the yaml `model.bond_head` key."
+        ),
+    )
+    p.add_argument(
+        "--cfm-decoder",
+        type=str,
+        default="yuelbond",
+        help=(
+            "CFM decoder kind.  'yuelbond' is the only kind this trainer "
+            "builds; any other value is rejected.  Driven by the yaml "
+            "`model.cfm_decoder` key.  Must agree with --use-yuelbond."
+        ),
+    )
     p.add_argument(
         "--use-bass-martingale",
         dest="bass_martingale",
@@ -2652,6 +2677,35 @@ def parse_args() -> argparse.Namespace:
             "j ~ Pi[i, :] per source, which preserves a two-point Bass plan's "
             "structure at the cost of repeating targets.  These are genuinely "
             "different semantics, not a quality setting."
+        ),
+    )
+    # 2026-10-04 NEW — two yaml keys that had no consumer.
+    #
+    # `train.optimizer` declared 'adam' while the code hardcoded
+    # optim.Adam(...) -- the value happened to match, so nothing looked wrong,
+    # and changing it would have silently done nothing.
+    p.add_argument(
+        "--optimizer",
+        type=str,
+        default="adam",
+        choices=["adam", "adamw", "sgd"],
+        help=(
+            "Optimizer for the CFM head + velocity probe (default adam, which "
+            "is what the code hardcoded before this flag existed).  Driven by "
+            "the yaml `train.optimizer` key."
+        ),
+    )
+    p.add_argument(
+        "--atom-vocab-size",
+        type=int,
+        default=None,
+        help=(
+            "Expected number of atom-vocabulary entries.  This is a GUARD, "
+            "not a knob: the trainer derives the real width from YuelBond's "
+            "canonical Z table (len(_YUELBOND_Z_TABLE) == 13), and a mismatch "
+            "is reported as an error rather than silently ignored.  The yaml "
+            "declared 14, which matches neither the YuelBond path (13) nor "
+            "the Lipman adapter's DEFAULT_ATOM_VOCAB (12)."
         ),
     )
     p.add_argument("--lr", type=float, default=DEFAULT_LR)
@@ -3874,9 +3928,75 @@ def main() -> int:
     )
     # The decoder's head *is* model.head — we share weights so training
     # updates the decoder too.
-    optimiser = optim.Adam(
-        model.parameters(), lr=args.lr, weight_decay=getattr(args, "weight_decay", 0.0)
-    )  # Wf-A6 A2 BLOCKER C fix
+    # 2026-10-04 — `--optimizer` made real.  This was optim.Adam hardcoded
+    # (Wf-A6 A2 BLOCKER C fix), and the yaml's `train.optimizer: adam` matched
+    # it by luck, so the key looked wired while having no path to the code.
+    # Adam remains the default, so existing runs are bit-identical.
+    _opt_name = str(getattr(args, "optimizer", "adam")).lower()
+    _opt_kwargs = {"lr": args.lr, "weight_decay": getattr(args, "weight_decay", 0.0)}
+    if _opt_name == "adamw":
+        optimiser = optim.AdamW(model.parameters(), **_opt_kwargs)
+    elif _opt_name == "sgd":
+        # No weight_decay default for SGD: decoupled-vs-coupled decay differs,
+        # and inventing a value here would be exactly the kind of silent
+        # assumption this pass exists to remove.  momentum=0 keeps it plain.
+        optimiser = optim.SGD(
+            model.parameters(),
+            lr=float(args.lr),
+            weight_decay=float(getattr(args, "weight_decay", 0.0)),
+        )
+    else:
+        optimiser = optim.Adam(model.parameters(), **_opt_kwargs)
+    print(f"[cfm-opt] optimizer={_opt_name} ({type(optimiser).__name__})")
+    # 2026-10-04 — `--atom-vocab-size` guard.  The yaml declared 14; the
+    # YuelBond path derives 13 from _YUELBOND_Z_TABLE and the Lipman adapter
+    # uses 12.  A guard that fails loudly is the honest form for a value the
+    # code computes rather than consumes.
+    _declared_vocab = getattr(args, "atom_vocab_size", None)
+    if _declared_vocab is not None:
+        from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
+            _YUELBOND_Z_TABLE as _ZT,
+        )
+
+        _actual_vocab = len(_ZT)
+        if int(_declared_vocab) != int(_actual_vocab):
+            raise SystemExit(
+                f"atom_vocab_size mismatch: yaml declares {int(_declared_vocab)} "
+                f"but the YuelBond Z table has {_actual_vocab} entries "
+                f"({tuple(_ZT)}).  The declared value reached no code path "
+                "before 2026-10-04, so a wrong number here was invisible.  "
+                f"Set model.atom_vocab_size to {_actual_vocab}, or drop the key."
+            )
+        print(f"[cfm-vocab] atom_vocab_size={_actual_vocab} matches YuelBond Z table")
+    # 2026-10-04 — bond_head / cfm_decoder consistency.  Both keys name the
+    # same decision as --use-yuelbond.  Declaring a decoder this trainer
+    # cannot build used to be a no-op because nothing read the key; now it is
+    # an error.
+    _bond_head = str(getattr(args, "bond_head", "learned")).lower()
+    _cfm_decoder = str(getattr(args, "cfm_decoder", "yuelbond")).lower()
+    _use_yuelbond = bool(getattr(args, "use_yuelbond", True))
+    if _bond_head != "learned":
+        raise SystemExit(
+            f"model.bond_head='{_bond_head}' is not supported: this trainer "
+            "only builds the learned YuelBond bond head ('learned').  The key "
+            "had no consumer before 2026-10-04, so an unsupported value was "
+            "silently ignored."
+        )
+    if _cfm_decoder != "yuelbond":
+        raise SystemExit(
+            f"model.cfm_decoder='{_cfm_decoder}' is not supported: this "
+            "trainer only builds the YuelBond decoder ('yuelbond')."
+        )
+    if not _use_yuelbond:
+        raise SystemExit(
+            "contradictory config: model.cfm_decoder='yuelbond' / "
+            "model.bond_head='learned' but --no-yuelbond was passed.  These "
+            "name the same decision, so one of them is wrong."
+        )
+    print(
+        f"[cfm-head] bond_head={_bond_head} cfm_decoder={_cfm_decoder} "
+        f"use_yuelbond={_use_yuelbond} (consistent)"
+    )
     # Pocket bias + reference positions.
     bias_verdict = pocket_specific_closure_bias(args.pocket_id)
     closure_bias = bias_verdict.bias_dict if bias_verdict.is_known_pocket else None

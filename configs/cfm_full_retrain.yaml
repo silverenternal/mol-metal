@@ -62,7 +62,11 @@ model:
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'backbone' removed (no --backbone dest).
   hidden_dim: 128
   n_layers: 3
-  atom_vocab_size: 14
+  # 2026-10-04: was 14, which matched NOTHING.  The YuelBond path derives
+  # its width from _YUELBOND_Z_TABLE (13 entries) and the Lipman adapter
+  # uses 12; the declared value reached no code path, so it was never
+  # checked.  It is now a GUARD: --atom-vocab-size fails loudly on mismatch.
+  atom_vocab_size: 13
   bond_head: learned
   joint_train: true
   cfm_decoder: yuelbond

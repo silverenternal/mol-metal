@@ -5825,6 +5825,14 @@ HP_RESOLUTION_EXEMPT_KEYS: Dict[str, str] = {
     "flow.method": "start.sh placeholder `method=`",
     "data.dataset": "start.sh placeholder `dataset=` + legacy-entry synthesis",
     "protocol.epochs": "start.sh EPOCHS env",
+    # 2026-10-04: consumed by start.sh, not a trainer, so the dest-based
+    # classifier cannot see it.  start.sh exports N_SEEDS_MIN and blocks a run
+    # whose protocol.n_seeds falls below it -- the same "minimum seeds for an
+    # honest per-seed std" guard as chemprop's --n-seeds-min
+    # (train_chemprop_v2_v3.py:1714).  The guard lives in the launcher because
+    # a trainer invocation sees a single --seed; only start.sh knows the sweep
+    # size.  ALLOW_SINGLE_SEED=1 bypasses it for smoke / honest-negative runs.
+    "protocol.n_seeds_min": "start.sh N_SEEDS_MIN env -> n_seeds guard",
     "protocol.weight_decay": "start.sh WEIGHT_DECAY env -> trainer --weight-decay",
     "protocol.max_norm": "start.sh MAX_NORM env -> trainer --max-norm",
     "protocol.scheduler.type": "start.sh SCHEDULER env -> trainer --lr-scheduler",

@@ -461,6 +461,12 @@ lines = [
     f'LOG_MASTER={shlex.quote(out_block.get("log_master", ""))}',
     f'GPU={shlex.quote(d.get("compute", {}).get("gpu", "cuda:0"))}',
     f'N_SEEDS={d.get("protocol", {}).get("n_seeds", 1)}',
+    # 2026-10-04 — `protocol.n_seeds_min` had no consumer anywhere.  The CFM
+    # trainer takes a SINGLE --seed (start.sh enumerates the sweep), so the
+    # "minimum seeds for honest per-seed std" guard belongs here, at the level
+    # that actually knows the sweep size -- the same semantics as chemprop's
+    # --n-seeds-min (train_chemprop_v2_v3.py:1714).  Default 1 = no opinion.
+    f'N_SEEDS_MIN={d.get("protocol", {}).get("n_seeds_min", 1)}',
     f'EPOCHS={d.get("protocol", {}).get("epochs", 50)}',
     f'DIRECTIVES_USER_OK={d.get("directives", {}).get("user_ok_required", True)}',
     # Wf-A6 A2 BLOCKER C fix (2026-10-03) — extract LR scheduler
@@ -521,6 +527,29 @@ echo "    out_dir=$OUT_DIR"
 echo "    gpu=$GPU"
 echo "    n_seeds=$N_SEEDS"
 echo "    epochs=$EPOCHS"
+
+# ============================================================================
+# 3a-bis) n_seeds_min guard (2026-10-04)
+# ============================================================================
+# `protocol.n_seeds_min` had no consumer before this.  It carries the same
+# meaning as chemprop's --n-seeds-min: below it, a per-seed std is not an
+# honest statistic, so a run that would report one must say so out loud or be
+# blocked.  Checked here rather than in a trainer because the trainer sees a
+# single --seed; only this script knows the sweep size.
+# ALLOW_SINGLE_SEED=1 bypasses it, mirroring chemprop's --allow-single-seed --
+# for smoke runs and explicit honest-negative reporting, not for results.
+if [[ "${N_SEEDS_INT:-$N_SEEDS}" =~ ^[0-9]+$ ]] \
+   && [[ "${N_SEEDS_MIN:-1}" =~ ^[0-9]+$ ]] \
+   && (( N_SEEDS < N_SEEDS_MIN )); then
+  if [[ "${ALLOW_SINGLE_SEED:-0}" == "1" ]]; then
+    echo "[start.sh][WARN] n_seeds=$N_SEEDS < n_seeds_min=$N_SEEDS_MIN — proceeding because ALLOW_SINGLE_SEED=1. Any per-seed std from this run is NOT an honest estimate."
+  else
+    echo "[start.sh][FAIL] n_seeds=$N_SEEDS < n_seeds_min=$N_SEEDS_MIN (protocol.n_seeds_min)."
+    echo "[start.sh][FAIL] A per-seed std needs at least $N_SEEDS_MIN seeds to be meaningful."
+    echo "[start.sh][FAIL] Raise protocol.n_seeds, lower protocol.n_seeds_min, or set ALLOW_SINGLE_SEED=1 for a smoke / honest-negative run."
+    exit 1
+  fi
+fi
 
 # ============================================================================
 # 3b) Export the environment the trainer + its data loaders actually need
