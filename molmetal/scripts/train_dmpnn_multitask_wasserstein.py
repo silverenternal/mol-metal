@@ -77,6 +77,7 @@ del _wf130_os
 # --- end Wf-130 ------------------------------------------------
 
 import argparse
+import hashlib
 import json
 import math
 import pickle
@@ -379,6 +380,26 @@ def _resolve_default_csv_path(dataset_name: str) -> Path:
     )
 
 
+def _stable_hash_int(text: str, modulus: int) -> int:
+    """Process-independent hash of *text* into ``[0, modulus)``.
+
+    Wf-A10 FIX (2026-10-03) — Python salts the hash of ``str`` per process
+    (PYTHONHASHSEED), so the previous
+
+        abs(hash(smiles)) % (10**8)
+
+    produced a DIFFERENT scaffold id — and therefore a different
+    train/val/test split — on every run.  Measured for ``hash("CCO")``
+    across three processes: 60767441 / 88287468 / 44141501.  That silently
+    made every platinai result irreproducible.
+
+    This uses a fixed SHA-256 digest instead, so the same SMILES always
+    yields the same id on any process and any machine.
+    """
+    digest = hashlib.sha256(str(text).encode("utf-8")).hexdigest()
+    return int(digest[:16], 16) % int(modulus)
+
+
 def load_platinai_4cell_split_table(
     csv_path: Path,
     split_strategy: str = "scaffold_70_10_10",
@@ -424,15 +445,21 @@ def load_platinai_4cell_split_table(
             f"{PLATINAI_4CELL_CELL_LINES}."
         )
     long_df = pd.concat(records, ignore_index=True)
-    # Deterministic scaffold_id per SMILES (hash of canonicalised SMILES)
-    long_df["scaffold_id"] = (
-        long_df["smiles"].astype(str).map(lambda s: abs(hash(s)) % (10**8))
+    # Wf-A10 FIX (2026-10-03) — stable scaffold id.  Was
+    # ``abs(hash(smiles)) % (10**8)``, which is salted per process and made
+    # the split change on every run (see _stable_hash_int).  Because the id
+    # depends only on the SMILES, the same molecule lands in the same split
+    # for all 4 cell lines — that is what prevents cross-cell leakage.
+    long_df["scaffold_id"] = long_df["smiles"].astype(str).map(
+        lambda s: _stable_hash_int(s, 10**8)
     )
     if split_strategy == "scaffold_70_10_10":
-        # Stable hash-based split: 70/10/10 per scaffold_id bucket
-        # (deterministic across runs because hash of int is stable).
+        # 70/10/10 bucket, derived from the stable id only.  (Was
+        # ``abs(hash(sid)) % 100`` on an int — stable in practice, but it
+        # still leaned on a builtin whose stability is not part of its
+        # contract, so it now goes through the same digest helper.)
         def _split_bucket(sid: int) -> str:
-            h = abs(hash(sid)) % 100
+            h = _stable_hash_int(str(sid), 100)
             if h < 70:
                 return "train"
             if h < 80:
@@ -446,6 +473,100 @@ def load_platinai_4cell_split_table(
         )
     long_df = long_df.reset_index(drop=False).rename(columns={"index": "row_id"})
     return long_df
+
+
+def _derive_active_labels(
+    pic50: pd.Series,
+    task_labels: pd.Series,
+    labeling: str,
+    global_threshold: float,
+) -> pd.Series:
+    """Boolean ``active`` labels for the platinai cell-line axis (Wf-A10).
+
+    ``labeling='per_cell_median'`` (default): each task is split at ITS OWN
+    median pIC50, so every per-cell head sees a balanced 50/50 problem.
+    ``labeling='global'``: a single pIC50 cut for all tasks.
+
+    Why per-task is the default here: measured on platinai_4cell.csv, a single
+    global cut cannot balance the four heads, because the cell lines have
+    different potency distributions (median pIC50 = a2780 5.69, mcf7 5.99,
+    a549 6.15, a2780cis 6.59). At a global 1 uM cut the per-cell active
+    fraction is a2780 0.242 / mcf7 0.491 / a549 0.632 / a2780cis 0.902 — the
+    a2780cis head, the one this cohort exists to characterise, is 90% positive
+    and its AUC is near-degenerate. A per-task median keeps every head at 0.50
+    and makes the per-cell AUC a within-cell potency ranking, comparable
+    across cell lines.
+    """
+    if labeling == "per_cell_median":
+        return pic50.groupby(task_labels).transform(
+            lambda s: s > float(s.median())
+        ).astype(bool)
+    if labeling == "global":
+        return (pic50 > float(global_threshold)).astype(bool)
+    raise ValueError(
+        f"Unknown active labeling {labeling!r}. "
+        f"Supported: 'per_cell_median', 'global'."
+    )
+
+
+def build_platinai_cell_line_axis(
+    csv_path: Path,
+    active_pic50_threshold: float = 6.0,
+    active_labeling: str = "per_cell_median",
+) -> Tuple[pd.DataFrame, "MetalCytotoxDataset"]:
+    """Build ``(split_df, ds)`` for the platinAI 4-cell cohort on a CELL-LINE task axis.
+
+    Wf-A10 (2026-10-03).  :class:`MultiTaskWassersteinModel` is a shared encoder
+    plus one (regression + classification) head per task, selected by an integer
+    task id — nothing about it is metal-specific.  The platinai cohort is one
+    metal (Pt) across four cell lines, so the task axis becomes the *cell line*::
+
+        MCF7 / A549 / A2780 / A2780cis  ->  4 heads over one shared encoder
+
+    That is how the field does multi-cell-line cytotoxicity prediction: PECAN
+    predicts 59 NCI-60 lines from a single shared network (arguing the shared
+    objective forces generalisable features), while per-cell-line separate
+    models are the superseded approach.  It also matches Rusanov 2025, whose
+    PlatinAI benchmark is reported as AUC **per cell line**.
+
+    The long-format loader already puts the cell line into the ``metal`` column,
+    so the downstream pool machinery (``build_metal_split_indices``) works
+    unmodified; ``ds`` is then built with exactly the four columns the trainer
+    reads — ``SMILES_Ligands`` / ``Metal`` / ``pIC50`` / ``active``.
+
+    ``active`` labels use ``active_pic50_threshold`` (default 6.0, i.e.
+    IC50 < 1 uM).  Note this deliberately differs from the repo's
+    MetalCytoToxDB standard of 5.0: measured on the real platinai cohort,
+    5.0 marks 98.1% of rows active, which degenerates the classification
+    task.  See the ``--active-pic50-threshold`` help text for the full
+    measured sweep.
+    """
+    split_df = load_platinai_4cell_split_table(csv_path).copy()
+    split_df["metal"] = split_df["cell_line"].astype(str)
+
+    ds_df = pd.DataFrame(
+        {
+            "SMILES_Ligands": split_df["smiles"].astype(str),
+            "Metal": split_df["cell_line"].astype(str),
+            "pIC50": split_df["activity"].astype(float),
+        }
+    )
+    ds_df["active"] = _derive_active_labels(
+        ds_df["pIC50"],
+        ds_df["Metal"],
+        active_labeling,
+        active_pic50_threshold,
+    )
+    ds_df = ds_df.reset_index(drop=True)
+    if ds_df.empty:
+        raise ValueError(
+            f"platinai cell-line axis produced an empty dataset from {csv_path}."
+        )
+    # Local cache dir avoids /mnt/storage permission errors (same convention
+    # as the --data-csv branch below).
+    cache_dir = Path("/tmp") / "wf131_mtw_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    return split_df, MetalCytotoxDataset(df=ds_df, cache_dir=cache_dir)
 
 
 def _featurize_with_cache(
@@ -2097,6 +2218,57 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--task-axis",
+        choices=("metal", "cell_line"),
+        default="metal",
+        help=(
+            "What the model's per-task heads are indexed by (Wf-A10). "
+            "'metal' (default) = the historical 5-metal pool: one head per "
+            "metal. 'cell_line' = one head per cell line over the SAME shared "
+            "encoder, for cohorts that vary the cell line instead of the metal "
+            "(e.g. --dataset platinai_4cell: MCF7 / A549 / A2780 / A2780cis). "
+            "This is the multi-task shape the field uses for multi-cell-line "
+            "cytotoxicity prediction, and it is what makes per-cell AUC — the "
+            "metric Rusanov 2025 reports — directly available from cls_heads. "
+            "Changing this does NOT change the model: n_metals is the task "
+            "count, so 4 cell lines simply become 4 heads."
+        ),
+    )
+    p.add_argument(
+        "--active-labeling",
+        choices=("per_cell_median", "global"),
+        default="per_cell_median",
+        help=(
+            "How the `active` label is derived on the --task-axis cell_line "
+            "path (Wf-A10). 'per_cell_median' (default) splits each cell line "
+            "at its own median pIC50, giving every per-cell head a balanced "
+            "50/50 problem and making per-cell AUC a within-cell potency "
+            "ranking that is comparable across cell lines. 'global' applies "
+            "one --active-pic50-threshold to every cell line. "
+            "Measured on platinai_4cell.csv with 'global' at 1 uM: the per-cell "
+            "active fraction is a2780 0.242 / mcf7 0.491 / a549 0.632 / "
+            "a2780cis 0.902 — a single cut cannot balance these four, because "
+            "their medians differ (5.69 / 5.99 / 6.15 / 6.59)."
+        ),
+    )
+    p.add_argument(
+        "--active-pic50-threshold",
+        type=float,
+        default=6.0,
+        help=(
+            "pIC50 above which a row is labelled active, used only by "
+            "--active-labeling global (Wf-A10). Default 6.0 (= IC50 < 1 uM), "
+            "NOT the repo's MetalCytoToxDB standard of 5.0 (IC50 < 10 uM): "
+            "measured on the real platinai cohort, 5.0 labels 98.1%% of rows "
+            "positive, which makes the classification task degenerate and "
+            "per-cell AUC meaningless. Measured active fraction on "
+            "platinai_4cell.csv: >5.0 -> 0.981, >5.5 -> 0.863, >6.0 -> 0.567, "
+            ">6.5 -> 0.244, >7.0 -> 0.059. A threshold calibrated on one "
+            "assay's IC50 distribution does not transfer to a differently "
+            "pre-filtered cohort."
+        ),
+    )
+    p.add_argument(
         "--dataset",
         choices=("metalcytotox_5metal", "platinai_4cell"),
         default="metalcytotox_5metal",
@@ -2392,10 +2564,33 @@ def main(argv: Optional[List[str]] = None) -> int:
             f"--dataset={args.dataset!r} (resolver: "
             f"_resolve_default_csv_path('{args.dataset}'))."
         )
-    _metals_df = pd.read_csv(args.csv, usecols=["metal"])
-    _available_metals = sorted(
-        set(_metals_df["metal"].astype(str).tolist())
-    )
+    # Wf-A10 — fail loudly on a mismatched cohort/axis pairing rather than
+    # silently collapsing the 4-cell structure to a single "Pt" task.
+    if args.dataset == "platinai_4cell" and args.task_axis == "metal":
+        raise ValueError(
+            "--dataset platinai_4cell is a CELL-LINE cohort: a single metal "
+            "(Pt) measured across 4 cell lines (MCF7 / A549 / A2780 / "
+            "A2780cis). With --task-axis metal the pool collapses to one 'Pt' "
+            "task and the 4-cell structure is lost. Pass "
+            "--task-axis cell_line so the shared encoder gets one head per "
+            "cell line (this is what makes per-cell AUC, the metric Rusanov "
+            "2025 reports, available from cls_heads)."
+        )
+
+    if args.task_axis == "cell_line":
+        # The raw platinai CSV has no cell_line column — the cell lines are the
+        # suffixes of the pIC50_<cell> columns.
+        _plate = pd.read_csv(args.csv, nrows=1)
+        _available_metals = sorted(
+            str(c)[len("pIC50_"):]
+            for c in _plate.columns
+            if str(c).startswith("pIC50_")
+        )
+    else:
+        _metals_df = pd.read_csv(args.csv, usecols=["metal"])
+        _available_metals = sorted(
+            set(_metals_df["metal"].astype(str).tolist())
+        )
     _expanded_metals: List[str] = []
     for _m in args.metals:
         if _m == "auto":
@@ -2487,12 +2682,26 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Default --dataset=metalcytotox_5metal preserves Wf-131 P1 +
     # Wf-251-F4 baseline bit-for-bit.
     if args.dataset == "platinai_4cell":
-        split_df = load_platinai_4cell_split_table(args.csv)
+        # Wf-A10 — cell-line task axis.  Yields BOTH split_df and ds, because
+        # the platinai labels come from the pivoted pIC50 columns rather than
+        # from MetalCytoToxDB.csv (which holds no Pt rows at all).
+        split_df, ds = build_platinai_cell_line_axis(
+            args.csv,
+            float(args.active_pic50_threshold),
+            str(args.active_labeling),
+        )
         print(
-            f"[Wf-A8 PlatinAI 4-cell loader] dataset=platinai_4cell "
-            f"loaded {len(split_df)} long-format rows; "
+            f"[Wf-A10 cell-line axis] dataset=platinai_4cell "
+            f"task_axis=cell_line: {len(split_df)} long-format rows; "
+            f"tasks={sorted(split_df['metal'].unique().tolist())}; "
             f"per-cell breakdown: "
-            f"{dict(split_df.groupby('cell_line').size())}",
+            f"{dict(split_df.groupby('cell_line').size())}; "
+            f"active_labeling={args.active_labeling}"
+            + (
+                f" (global threshold pIC50 > {args.active_pic50_threshold})"
+                if args.active_labeling == "global"
+                else " (per-cell median split)"
+            ),
             flush=True,
         )
     else:
@@ -2502,37 +2711,37 @@ def main(argv: Optional[List[str]] = None) -> int:
             flush=True,
         )
 
-    if args.loose_filter:
-        flt = CytotoxFilter(
-            time_threshold=None,
-            ic50_min=None,
-            metal_whitelist=list(args.metals),
-            compute_pic50=True,
-            compute_active=True,
-        )
-    else:
-        flt = CytotoxFilter(
-            time_threshold=24.0,
-            ic50_min=0.01,
-            metal_whitelist=list(args.metals),
-            compute_pic50=True,
-            compute_active=True,
-        )
-    if args.data_csv is not None:
-        # Use a local cache dir to avoid /mnt/storage permission errors.
-        local_cache = Path("/tmp") / "wf131_mtw_cache"
-        local_cache.mkdir(parents=True, exist_ok=True)
-        import pandas as _pd
-        df_loaded = _pd.read_csv(args.data_csv, low_memory=False)
-        from molmetal.data import cytotox as _cytotox_mod
-        df_loaded = _cytotox_mod._apply_filters(df_loaded, flt)
-        if flt.compute_pic50:
-            df_loaded = _cytotox_mod._add_pic50(df_loaded)
-        if flt.compute_active:
-            df_loaded = _cytotox_mod._add_active(df_loaded)
-        ds = MetalCytotoxDataset(df=df_loaded, cache_dir=local_cache)
-    else:
-        ds = MetalCytotoxDataset.from_csv(filters=flt)
+        if args.loose_filter:
+            flt = CytotoxFilter(
+                time_threshold=None,
+                ic50_min=None,
+                metal_whitelist=list(args.metals),
+                compute_pic50=True,
+                compute_active=True,
+            )
+        else:
+            flt = CytotoxFilter(
+                time_threshold=24.0,
+                ic50_min=0.01,
+                metal_whitelist=list(args.metals),
+                compute_pic50=True,
+                compute_active=True,
+            )
+        if args.data_csv is not None:
+            # Use a local cache dir to avoid /mnt/storage permission errors.
+            local_cache = Path("/tmp") / "wf131_mtw_cache"
+            local_cache.mkdir(parents=True, exist_ok=True)
+            import pandas as _pd
+            df_loaded = _pd.read_csv(args.data_csv, low_memory=False)
+            from molmetal.data import cytotox as _cytotox_mod
+            df_loaded = _cytotox_mod._apply_filters(df_loaded, flt)
+            if flt.compute_pic50:
+                df_loaded = _cytotox_mod._add_pic50(df_loaded)
+            if flt.compute_active:
+                df_loaded = _cytotox_mod._add_active(df_loaded)
+            ds = MetalCytotoxDataset(df=df_loaded, cache_dir=local_cache)
+        else:
+            ds = MetalCytotoxDataset.from_csv(filters=flt)
     print(
         f"[wf131-mtw] loaded MetalCytoToxDataset: {len(ds)} rows "
         f"across {sorted(set(ds.metals))}",
