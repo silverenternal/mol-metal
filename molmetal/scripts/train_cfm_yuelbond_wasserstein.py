@@ -2337,6 +2337,103 @@ def build_reference_positions() -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # Synthetic cohort builder (with jitter, optionally with extra donors)
 # ---------------------------------------------------------------------------
+def build_csv_cohort(
+    csv_path: str,
+    split: str = "train",
+    n_clouds: Optional[int] = None,
+    seed: int = 0,
+    add_hydrogens: bool = True,
+) -> List["AtomCloud"]:
+    """Build training clouds from the REAL MetalCytoToxDB corpus.
+
+    2026-10-04 NEW.  Until now the CFM trained on
+    ``build_synthetic_pt_click_clouds`` -- every cloud was the SAME
+    square-planar cisplatin layout (1 Pt + 2 NH3 + 2 Cl) with Gaussian jitter,
+    while the yaml declared a `data.csv` pointing at
+    ``metalcytotox_5metal_multitask_v2.csv`` that nothing ever opened.  So the
+    declared training corpus was fiction and the model only ever saw one
+    geometry.
+
+    This reads the declared CSV and produces a cloud per molecule from its
+    RDKit 3D conformer.
+
+    Parameters
+    ----------
+    csv_path : str
+        Path to the corpus.  Columns used: ``smiles``, ``split``.
+    split : str
+        Which ``split`` column value to take ("train" / "val" / "test").
+    n_clouds : int or None
+        Cap on the number of clouds.  None = every embeddable row.
+    seed : int
+        Passed to RDKit's ETKDG embedder so runs are reproducible.
+    add_hydrogens : bool
+        Embed with explicit H (default) so the geometry is physical.
+
+    Returns
+    -------
+    list[AtomCloud]
+        One cloud per successfully embedded molecule.  Molecules RDKit cannot
+        embed are SKIPPED and COUNTED -- the count is printed, not swallowed,
+        because a silent shortfall here would look like a smaller corpus
+        rather than a failure.
+    """
+    import csv as _csv
+
+    if not RDKIT_AVAILABLE:
+        raise RuntimeError(
+            "build_csv_cohort needs RDKit; it is unavailable in this "
+            "environment.  Use the synthetic cohort or install RDKit."
+        )
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+
+    rows: List[str] = []
+    with open(csv_path, newline="") as fh:
+        for row in _csv.DictReader(fh):
+            if str(row.get("split", "")).strip() != str(split):
+                continue
+            smi = str(row.get("smiles", "")).strip()
+            if smi:
+                rows.append(smi)
+    if n_clouds is not None:
+        rows = rows[: int(n_clouds)]
+
+    clouds: List[AtomCloud] = []
+    n_parse_fail = 0
+    n_embed_fail = 0
+    for smi in rows:
+        mol = Chem.MolFromSmiles(smi)
+        if mol is None:
+            n_parse_fail += 1
+            continue
+        mol_h = Chem.AddHs(mol) if add_hydrogens else mol
+        if AllChem.EmbedMolecule(mol_h, randomSeed=int(seed)) != 0:
+            n_embed_fail += 1
+            continue
+        conf = mol_h.GetConformer()
+        pos = torch.tensor(
+            [list(conf.GetAtomPosition(i)) for i in range(mol_h.GetNumAtoms())],
+            dtype=torch.float32,
+        )
+        z = torch.tensor(
+            [int(a.GetAtomicNum()) for a in mol_h.GetAtoms()], dtype=torch.long
+        )
+        clouds.append(AtomCloud(positions=pos, atomic_numbers=z))
+    print(
+        f"[cfm-cohort] csv={Path(csv_path).name} split={split}: "
+        f"{len(clouds)} cloud(s) built from {len(rows)} row(s); "
+        f"skipped {n_parse_fail} unparseable + {n_embed_fail} un-embeddable"
+    )
+    if not clouds:
+        raise RuntimeError(
+            f"build_csv_cohort produced 0 clouds from {csv_path} split="
+            f"{split!r}.  Check the path, the `split` column values, and "
+            "whether RDKit can parse the SMILES."
+        )
+    return clouds
+
+
 def build_training_cohort(
     n_train: int,
     seed: int = 0,
@@ -2583,6 +2680,25 @@ def parse_args() -> argparse.Namespace:
             "`model.cfm_decoder` key.  Must agree with --use-yuelbond."
         ),
     )
+    # 2026-10-04 NEW — `model.joint_train`'s consumer.  In the Lipman adapter
+    # the flag selects "train the bond head jointly with the flow" vs "frozen
+    # head".  This trainer has no frozen-head mode: CFMJointModel is a joint
+    # wrapper by construction (see its docstring), so joint training is what
+    # it always does.  The key is wired as a guard so a config asking for the
+    # other mode is told, rather than silently getting joint training anyway.
+    p.add_argument(
+        "--joint-train",
+        dest="joint_train",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Whether the bond head is trained jointly with the flow.  This "
+            "trainer only supports True -- CFMJointModel is a joint wrapper "
+            "and has no frozen-head path -- so --no-joint-train is rejected "
+            "with an explanation instead of being ignored.  Driven by the "
+            "yaml `model.joint_train` key."
+        ),
+    )
     p.add_argument(
         "--use-bass-martingale",
         dest="bass_martingale",
@@ -2694,6 +2810,44 @@ def parse_args() -> argparse.Namespace:
             "is what the code hardcoded before this flag existed).  Driven by "
             "the yaml `train.optimizer` key."
         ),
+    )
+    # 2026-10-04 NEW — the yaml `data.csv` key had NO consumer in this trainer:
+    # the cohort was always build_synthetic_pt_click_clouds (one square-planar
+    # Pt layout, jittered), while the config declared a 26k-row
+    # MetalCytoToxDB corpus that nothing opened.  With these set, the corpus is
+    # real.  Both default to None = keep the synthetic cohort, so nothing
+    # changes unless the yaml asks for it.
+    p.add_argument(
+        "--data-csv",
+        dest="data_csv",
+        type=str,
+        default=None,
+        help=(
+            "Path to a training corpus CSV (columns: smiles, split).  When "
+            "set, clouds are built from the molecules' RDKit 3D conformers "
+            "instead of the synthetic Pt-click layout.  NOTE (2026-10-04): no "
+            "shipped config sets this.  The obvious candidate -- "
+            "MetalCytoToxDB -- was tried and is the wrong kind of data for "
+            "this trainer: its structure column is `SMILES_Ligands`, so the "
+            "metal is a separate column and never appears in the structure "
+            "(MEASURED: 0 of 800 sampled rows contain any metal atom), and "
+            "100% of rows are multi-fragment.  Pointed at it, decode_ratio "
+            "went 1.000 -> 0.000.  This flag is for a corpus that DOES carry "
+            "metal coordinates.  See the `csv:` removal note in "
+            "configs/cfm_full_retrain.yaml."
+        ),
+    )
+    p.add_argument(
+        "--data-split",
+        type=str,
+        default="train",
+        help="`split` column value to take for the training cohort.",
+    )
+    p.add_argument(
+        "--val-split",
+        type=str,
+        default="val",
+        help="`split` column value to take for the validation cohort.",
     )
     p.add_argument(
         "--atom-vocab-size",
@@ -3736,12 +3890,45 @@ def main() -> int:
         f"[Wf-124 P2] building cohorts: " f"train={args.n_train}, val={args.n_val}",
         flush=True,
     )
-    train_clouds = build_training_cohort(args.n_train, seed=args.seed)
-    val_clouds = build_synthetic_pt_click_clouds(
-        n_clouds=args.n_val,
-        jitter=0.20,
-        seed=args.seed + 1,
-    )
+    # 2026-10-04 — the yaml `data.csv` key now actually selects the corpus.
+    # Before this, the key resolved to nothing for this trainer and the cohort
+    # was ALWAYS the synthetic square-planar Pt layout -- one geometry, jittered.
+    _data_csv = getattr(args, "data_csv", None) or getattr(args, "csv", None)
+    if _data_csv is not None and str(_data_csv).strip():
+        _csv_path = str(_data_csv)
+        # Relative paths are resolved against the repo root, matching how the
+        # yaml spells them ('.data/molmetal/...'), so the same config works
+        # from any cwd.
+        if not Path(_csv_path).is_file():
+            _alt = Path(__file__).resolve().parents[2] / _csv_path
+            if _alt.is_file():
+                _csv_path = str(_alt)
+            else:
+                raise SystemExit(
+                    f"data.csv='{_data_csv}' not found (tried {_data_csv!r} and "
+                    f"{_alt}).  The key silently resolved to nothing before "
+                    "2026-10-04; now it is an error rather than a quiet "
+                    "fallback to the synthetic cohort."
+                )
+        train_clouds = build_csv_cohort(
+            _csv_path,
+            split=str(getattr(args, "data_split", "train")),
+            n_clouds=args.n_train,
+            seed=args.seed,
+        )
+        val_clouds = build_csv_cohort(
+            _csv_path,
+            split=str(getattr(args, "val_split", "val")),
+            n_clouds=args.n_val,
+            seed=args.seed + 1,
+        )
+    else:
+        train_clouds = build_training_cohort(args.n_train, seed=args.seed)
+        val_clouds = build_synthetic_pt_click_clouds(
+            n_clouds=args.n_val,
+            jitter=0.20,
+            seed=args.seed + 1,
+        )
     # Wf-405-A2 — Wf-380 NEW CLI flag env-var dispatch + logging.
     # triton_ot: set TRITON_MINIBATCH_OT=1 + TRITON_USE_FUSED=1 env vars
     # BEFORE any model init so triton_minibatch_ot_coupling env-var
@@ -3993,9 +4180,19 @@ def main() -> int:
             "model.bond_head='learned' but --no-yuelbond was passed.  These "
             "name the same decision, so one of them is wrong."
         )
+    # 2026-10-04 — `model.joint_train` guard.  CFMJointModel trains the bond
+    # head and the velocity field together; there is no frozen-head mode, so a
+    # config asking for one is told rather than silently given joint training.
+    if not bool(getattr(args, "joint_train", True)):
+        raise SystemExit(
+            "model.joint_train=false is not supported: CFMJointModel is a "
+            "joint wrapper (bond head + velocity field trained together) and "
+            "this trainer has no frozen-head path.  The key had no consumer "
+            "before 2026-10-04, so the request would have been a silent no-op."
+        )
     print(
         f"[cfm-head] bond_head={_bond_head} cfm_decoder={_cfm_decoder} "
-        f"use_yuelbond={_use_yuelbond} (consistent)"
+        f"use_yuelbond={_use_yuelbond} joint_train=True (consistent)"
     )
     # Pocket bias + reference positions.
     bias_verdict = pocket_specific_closure_bias(args.pocket_id)

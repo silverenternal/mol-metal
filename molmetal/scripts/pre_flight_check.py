@@ -5823,6 +5823,23 @@ HP_RESOLUTION_EXEMPT_KEYS: Dict[str, str] = {
     "train.epochs": "start.sh placeholder `epochs=`",
     "flow.n_steps": "start.sh placeholder `n_steps=`",
     "flow.method": "start.sh placeholder `method=`",
+    # 2026-10-04: `flow.ot_solver: w_flow` names the W-Flow waveform-relaxation
+    # ODE solver (adapters/flow_matching_lipman/w_flow.py).  MEASURED: no
+    # consumer reads a config key by that name anywhere -- the only occurrences
+    # of the token outside YAML are the module's own function name
+    # `optimal_transport_v2_solver.ot_solver` and its call sites, which is a
+    # different thing.  Registering it as spec is the honest call, but the
+    # reason is NOT "documentation": the CFM trainer has no ODE solver at all
+    # (`grep ODESolver` over train_cfm_yuelbond_wasserstein.py returns nothing;
+    # decoding is a direct bond-graph decode from the cloud).  So this key and
+    # its neighbours `flow.n_steps` / `flow.method` describe an ODE sampling
+    # pipeline that this entry does not run.  Kept because the `flow:` block is
+    # shared with configs that do have one, and removing three keys from one
+    # config while a sibling uses them would be the more confusing edit.
+    "flow.ot_solver": (
+        "declares an ODE solver for a flow-matching pipeline this trainer "
+        "does not implement (no ODESolver; decode is direct bond-graph)"
+    ),
     "data.dataset": "start.sh placeholder `dataset=` + legacy-entry synthesis",
     "protocol.epochs": "start.sh EPOCHS env",
     # 2026-10-04: consumed by start.sh, not a trainer, so the dest-based

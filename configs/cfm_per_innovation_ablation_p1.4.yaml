@@ -9,7 +9,24 @@
 # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: removed 'dry_run: true' + 'user_ok_required: true' (no consumer anywhere).
 data:
   dataset: metalcytotox_5metal  # Wf-A8c FIX A: rename cfm_per_innovation_ablation_p1.4 → metalcytotox_5metal (Krasnov 2026 baseline anchor per PROTOCOL_ALIGNMENT_MATRIX.md §1)
-  csv: .data/molmetal/metalcytotox_5metal_multitask_v2.csv
+  # 2026-10-04: `csv:` REMOVED.  This key never resolved for the CFM trainer
+  # (which read no corpus at all -- the cohort was always
+  # build_synthetic_pt_click_clouds, one jittered square-planar Pt layout).
+  # Wiring it up was tried and measured, and the corpus turns out to be the
+  # wrong KIND of data for this entry:
+  #   * its structure column is literally named `SMILES_Ligands` -- the
+  #     complexes' metal is a separate `Metal` COLUMN, never in the structure.
+  #     MEASURED on 800-row samples of v1 and v2: 0 rows contain any metal atom.
+  #   * 100% of rows are multi-fragment (2-6 disconnected components, mostly 3)
+  #     and 40-101 atoms, vs the 5-atom single-fragment synthetic clouds.
+  #   * pointed at it, decode_ratio collapsed 1.000 -> 0.000 and grad_norm
+  #     2.7 -> 778.
+  # So this corpus is a PROPERTY dataset (SMILES_Ligands + metal label -> pIC50)
+  # and belongs to the property-prediction entry, where the D-MPNN configs
+  # already consume it and report 0 residual keys.  For the CFM, whose claim is
+  # metal-GEOMETRY-conditioned decoding, it has no metal centre to condition on.
+  # `--data-csv` still exists on the trainer for a corpus that DOES carry metal
+  # coordinates; see the note in train_cfm_yuelbond_wasserstein.py.
   n_rows_expected: 26632
   expected_columns_subset:
   - smiles
