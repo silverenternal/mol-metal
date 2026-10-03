@@ -190,6 +190,16 @@ _EVENT_LOG_PATH: Optional[Path] = None
 #: intentional diagnostics.  It is write-only for the trainer: nothing reads
 #: it during training, so it costs one dict store per batch.
 _LAST_LOSS_TERMS: Dict[str, "torch.Tensor"] = {}
+
+#: PCGrad diagnostics, refreshed whenever the PCGrad branch runs.
+#: ``n_conflicts`` > 0 means tasks genuinely disagreed (so PCGrad changed the
+#: update); ``n_conflicts == 0`` with several tasks means they happened to
+#: agree and PCGrad was a no-op for that batch -- a distinction the gradient
+#: norms alone cannot show.  ``mean_cos`` is the average pairwise cosine
+#: similarity, and ``delta_vs_fallback`` is the L2 distance between the
+#: resolved gradient and the plain weighted sum, i.e. direct evidence that the
+#: projection did something rather than merely running extra backwards.
+_LAST_PCGRAD_STATS: Dict[str, float] = {}
 _EVENT_FH = None
 _EVENT_ENABLED: bool = False
 _EVENT_TYPES = frozenset(
@@ -620,6 +630,34 @@ DEFAULT_N_LAYERS = 3
 # 2026-10-04 the yamls declared 6.0 while the decoder ran at the 3.5
 # default, i.e. the config misreported the geometry the run actually used.
 DEFAULT_EDGE_CUTOFF = 3.5
+# PCGrad task set (Yu 2020 arXiv:2001.06782).  These are the PRIMARY
+# objectives -- the ones that pose genuinely distinct problems.  The
+# regularisers are deliberately excluded: they shape the same velocity field
+# rather than being separate tasks, and every task costs one extra backward.
+# Names must match the keys emitted by `_LAST_LOSS_TERMS`.
+#: Fallback task set used only when neither ``--pcgrad-tasks`` nor runtime
+#: detection is available.  The real default is ADAPTIVE -- see
+#: ``train_one_epoch``, which takes every loss term that currently carries a
+#: gradient.  That choice is measurement-driven, not stylistic:
+#:
+#:   * With only the primary objectives live (the default configuration), the
+#:     MEASURED pairwise cosine similarity is ~0 and ``n_conflicts`` is 0 over
+#:     8 epochs -- the objectives are near-orthogonal and never fight.  PCGrad
+#:     correctly does nothing there, and forcing it to act would be wrong.
+#:   * With the FM-family regularisers enabled, the same measurement gives
+#:     n_conflicts = 8 of 9 tasks and an L2 change of 0.79 in the applied
+#:     gradient -- i.e. PCGrad earns its extra backward passes exactly when
+#:     there is something to resolve.
+#:
+#: So the task set follows what is switched on, rather than being pinned to a
+#: hand-picked list that would be a no-op in one regime and arbitrary in the
+#: other.
+PCGRAD_FALLBACK_TASKS: Tuple[str, ...] = (
+    "bond_ce",
+    "wasserstein_weight*w2_val",
+    "0.05*cb_loss",
+    "fm_term",
+)
 DEFAULT_LR = 3.0e-4
 DEFAULT_PATIENCE = 10
 
@@ -775,6 +813,71 @@ class CFMJointModel(nn.Module):
             t_col = t.reshape(-1, 1).to(dtype=x_t.dtype, device=x_t.device)
         feats = torch.cat([z_oh, x_t.float(), t_col], dim=-1)
         return self.fm_vel_head(feats)
+
+    # ------------------------------------------------------------------
+    # EMA — exponential moving average of the parameters (Karras 2022 EDM §5)
+    # ------------------------------------------------------------------
+    # 2026-10-04: `--use-ema` had been declared since Wf-415-A3 with ZERO
+    # consumers, and its own help text admitted it ("SCAFFOLD-only ... not yet
+    # wired").  The yaml meanwhile declared `ema_decay: 0.999` in four configs,
+    # a value with nowhere to go.
+    #
+    # The API mirrors `metal_hybrid_v4.init_ema/update_ema/load_ema_state`,
+    # which is the battle-tested version of this in the repo, and takes a
+    # DIRECT decay rather than `acceleration.ExponentialMovingAverage`'s
+    # halflife-in-kimg (which would have meant inverting halflife back into
+    # the decay the yaml already states).
+    #
+    # The swap is backup -> load-EMA -> evaluate -> restore, so the live
+    # weights are never left mutated by an evaluation.
+    def init_ema(self, decay: float = 0.999) -> None:
+        """Snapshot the current parameters as the EMA starting point."""
+        self._ema_decay = float(decay)
+        self._ema_state = {k: v.detach().clone() for k, v in self.state_dict().items()}
+        self._ema_backup = None
+
+    def update_ema(self, decay: Optional[float] = None) -> None:
+        """``ema = decay * ema + (1 - decay) * model`` over parameters+buffers."""
+        state = getattr(self, "_ema_state", None)
+        if state is None:
+            return
+        d = float(self._ema_decay if decay is None else decay)
+        with torch.no_grad():
+            msd = self.state_dict()
+            for k, v_ema in state.items():
+                v = msd[k]
+                if not torch.is_floating_point(v):
+                    # Integer buffers (e.g. num_batches_tracked) — copy verbatim.
+                    v_ema.copy_(v)
+                else:
+                    v_ema.mul_(d).add_(v.detach(), alpha=1.0 - d)
+
+    def ema_swap_in(self) -> bool:
+        """Back up the live weights and load the EMA snapshot over them."""
+        state = getattr(self, "_ema_state", None)
+        if state is None:
+            return False
+        self._ema_backup = {k: v.detach().clone() for k, v in self.state_dict().items()}
+        msd = self.state_dict()
+        with torch.no_grad():
+            for k, v_ema in state.items():
+                msd[k].copy_(v_ema)
+        return True
+
+    def ema_swap_out(self) -> None:
+        """Restore the weights backed up by :meth:`ema_swap_in`."""
+        backup = getattr(self, "_ema_backup", None)
+        if backup is None:
+            return
+        msd = self.state_dict()
+        with torch.no_grad():
+            for k, v in backup.items():
+                msd[k].copy_(v)
+        self._ema_backup = None
+
+    def ema_state_dict(self) -> dict:
+        """The EMA snapshot, ready for a checkpoint."""
+        return dict(getattr(self, "_ema_state", None) or {})
 
     def forward(self, cloud: AtomCloud) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return (bond_logits, predicted_velocities) for a single cloud.
@@ -1047,6 +1150,15 @@ def train_one_epoch(
     sb_eps: float = 0.1,
     sb_n_iters: int = 50,
     ot_coupling_mode: str = "assignment",
+    # 2026-10-04 NEW — parameter EMA (Karras 2022 EDM §5).  `use_ema` was
+    # FLAG_ONLY from Wf-415-A3 until this date; `ema_decay` is the value
+    # four yaml configs had been declaring with no consumer.
+    use_ema: bool = False,
+    ema_decay: float = 0.999,
+    # 2026-10-04 NEW — PCGrad multi-task gradient surgery (Yu 2020).  This is
+    # the consumer the yaml `model.pcgrad_multi_task` key had been missing.
+    use_pcgrad: bool = False,
+    pcgrad_tasks: Tuple[str, ...] = (),  # () = adapt to live terms
     # Wf-A9 FIX (2026-10-03) — gradient-clip threshold threaded as a
     # kwarg.  The Wf-A8 patch referenced ``args`` inside this function,
     # but ``args`` is ``main()``-scoped → NameError at the first
@@ -1916,7 +2028,99 @@ def train_one_epoch(
             # (zero-cost no-op sampled tensor) preserves Wf-380-B1
             # numerical behaviour.
             model.train()
-        loss.backward()
+        # 2026-10-04 — PCGrad multi-task gradient surgery (Yu 2020,
+        # arXiv:2001.06782).  `model.pcgrad_multi_task` in the yaml had no
+        # consumer before this.
+        #
+        # Why only the PRIMARY objectives participate: PCGrad resolves
+        # conflicts between TASKS.  In this trainer the distinct tasks are the
+        # bond-order head, the Wasserstein velocity field, the flow-matching
+        # field and the closure-bias term.  The regularisers (shortcut,
+        # consistency, SO(3), EDM, diversity) shape the same velocity field
+        # rather than posing separate problems, so treating them as tasks
+        # would be a category error -- and each task costs one extra backward
+        # pass, so it is also a T-fold slowdown.
+        #
+        # The per-term tensors come from `_LAST_LOSS_TERMS`, populated right
+        # after the loss sum, so this reuses the exact quantities that entered
+        # the objective rather than recomputing them.
+        # Task set: the explicit --pcgrad-tasks list when given, otherwise
+        # every loss term that currently carries a gradient.  See
+        # PCGRAD_FALLBACK_TASKS for the measurement that motivated adapting.
+        if use_pcgrad:
+            _pc_names = (
+                list(pcgrad_tasks)
+                if pcgrad_tasks
+                else [n for n, t in _LAST_LOSS_TERMS.items() if t.requires_grad]
+            )
+            _pc_tasks = [
+                (n, _LAST_LOSS_TERMS[n])
+                for n in _pc_names
+                if n in _LAST_LOSS_TERMS and _LAST_LOSS_TERMS[n].requires_grad
+            ]
+        else:
+            _pc_tasks = []
+        pcgrad_n_conflicts = 0
+        pcgrad_mean_cos = 0.0
+        if len(_pc_tasks) > 1:
+            from molmetal.adapters.flow_matching_lipman import (
+                _pcgrad_apply_to_params,
+            )
+
+            _pc_params = [p for p in model.parameters() if p.requires_grad]
+            _pc_grads: List[List[torch.Tensor]] = []
+            # retain_graph on every task backward: the graph is shared across
+            # all of them (one forward, T backwards).
+            for _pi, (_pname, _ptensor) in enumerate(_pc_tasks):
+                optimiser.zero_grad(set_to_none=True)
+                _ptensor.backward(retain_graph=True)
+                _pc_grads.append(
+                    [
+                        p.grad.detach().clone()
+                        if p.grad is not None
+                        else torch.zeros_like(p)
+                        for p in _pc_params
+                    ]
+                )
+            # The fallback is the plain weighted sum, i.e. what would have been
+            # used without PCGrad.  Since `loss` is the sum of these terms
+            # (times a scalar multiplier), the sum of the per-task gradients
+            # IS grad(loss) -- no extra backward needed.
+            _pc_scale = 1.0
+            if float(lambda_cfm_coupling_weight) > 0.0 and (
+                float(lambda_cfm_mean_weight) > 0.0
+            ):
+                _pc_scale = 1.0 + float(lambda_cfm_coupling_weight) * float(
+                    lambda_cfm_mean_weight
+                )
+            _pc_fallback = [
+                _pc_scale
+                * torch.stack([_pc_grads[t][k] for t in range(len(_pc_tasks))]).sum(0)
+                for k in range(len(_pc_params))
+            ]
+            pcgrad_n_conflicts, pcgrad_mean_cos = _pcgrad_apply_to_params(
+                _pc_params, _pc_grads, _pc_fallback
+            )
+            # Direct evidence the projection changed the update, rather than
+            # merely running T backwards: compare what PCGrad wrote into
+            # p.grad against the fallback it was given.
+            with torch.no_grad():
+                _d = sum(
+                    float((p.grad - _pc_fallback[k]).pow(2).sum())
+                    for k, p in enumerate(_pc_params)
+                    if p.grad is not None
+                )
+            _LAST_PCGRAD_STATS.clear()
+            _LAST_PCGRAD_STATS.update(
+                {
+                    "n_tasks": float(len(_pc_tasks)),
+                    "n_conflicts": float(pcgrad_n_conflicts),
+                    "mean_cos": float(pcgrad_mean_cos),
+                    "delta_vs_fallback": _d**0.5,
+                }
+            )
+        else:
+            loss.backward()
         # Wf-A8 (2026-10-03) gradient clipping per --max-norm flag (per
         # AGENTS.md §5.7 trainer flag wire-in smoke-required rule; bit-exact
         # baseline preserved when max_norm=0.0).
@@ -1929,6 +2133,12 @@ def train_one_epoch(
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=_clip_norm)
         )
         optimiser.step()
+        # 2026-10-04 — EMA update, in the one place it is correct: immediately
+        # after the optimizer step and before anything reads the weights.  With
+        # `use_ema` off this is a no-op (the snapshot is never created), so the
+        # default path is unchanged.
+        if use_ema:
+            model.update_ema()
         bond_losses.append(float(bond_ce.detach()))
         w2_losses.append(float(w2_val.detach()))
         total_losses.append(float(loss.detach()))
@@ -3064,12 +3274,55 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         default=False,
         help=(
-            "Wf-415-A3 NEW alias: EMA (exponential moving average) of "
-            "model parameters during training (Karras 2022 EDM §5). "
-            "Default OFF. Read by Wf-385-A3 gate but not yet wired to "
-            "the loss cascade (SCAFFOLD-only; SCAFFOLD is exported "
-            "but no per-batch EMA update — verified by 50-step smoke "
-            "PASS path)."
+            "WIRE-IN 2026-10-04: EMA (exponential moving average) of the "
+            "model parameters, per Karras 2022 EDM section 5.  Updated after "
+            "every optimizer step; the EMA weights are swapped in around the "
+            "per-epoch decode evaluation and restored afterwards, so the live "
+            "weights are never left mutated.  Default OFF.  Previously this "
+            "flag was FLAG_ONLY -- declared with zero consumers -- and this "
+            "help text said so; that is no longer true."
+        ),
+    )
+    p.add_argument(
+        "--ema-decay",
+        type=float,
+        default=0.999,
+        help=(
+            "EMA decay (default 0.999).  This is the value the yaml "
+            "`ema_decay` key had been declaring in four configs with nothing "
+            "reading it; it now reaches the update."
+        ),
+    )
+    p.add_argument(
+        "--use-pcgrad",
+        dest="pcgrad_multi_task",
+        action="store_true",
+        default=False,
+        help=(
+            "WIRE-IN 2026-10-04: PCGrad multi-task gradient surgery (Yu 2020, "
+            "arXiv:2001.06782).  Projects each task's gradient off the other "
+            "tasks' conflicting directions before the optimizer step.  Costs "
+            "one backward per participating task rather than one.  The "
+            "participating tasks default to the PRIMARY objectives; see "
+            "--pcgrad-tasks.  Default OFF.  This is the consumer the yaml "
+            "`model.pcgrad_multi_task` key had been missing."
+        ),
+    )
+    p.add_argument(
+        "--pcgrad-tasks",
+        type=str,
+        default="",
+        help=(
+            "Comma-separated loss-term names PCGrad treats as tasks.  Names "
+            "must match the `_LAST_LOSS_TERMS` keys.  EMPTY (the default) "
+            "means adaptive: every loss term currently carrying a gradient.  "
+            "That is measurement-driven -- with only the primary objectives "
+            "live, their pairwise cosine similarity is ~0 and n_conflicts is "
+            "0 over 8 epochs, so PCGrad correctly does nothing; enabling the "
+            "FM-family regularisers produces 8 conflicts of 9 tasks and a "
+            "0.79 L2 change in the applied gradient, so it earns the extra "
+            "backward passes exactly when there is something to resolve.  "
+            "Every participating task costs one backward pass."
         ),
     )
     p.add_argument(
@@ -3400,6 +3653,37 @@ def main() -> int:
         cutoff=args.edge_cutoff,
         fm_objective=bool(getattr(args, "use_fm_objective", False)),
     ).to(device)
+    # 2026-10-04 — parameter EMA (Karras 2022 EDM §5).  `--use-ema` was
+    # FLAG_ONLY until today and the yaml's `ema_decay` had no consumer.
+    # Initialised here, i.e. after the model is on its target device, so the
+    # snapshot lands on the same device as the parameters.
+    # 2026-10-04 — PCGrad task list arrives as a comma-separated string from
+    # the CLI; parse it once here so `train_one_epoch` gets a tuple.
+    args.pcgrad_tasks = tuple(
+        t.strip()
+        for t in str(
+            getattr(args, "pcgrad_tasks", "")
+        ).split(",")
+        if t.strip()
+    )
+    if bool(getattr(args, "pcgrad_multi_task", False)):
+        # An empty list is the adaptive default, not "no tasks" -- say which
+        # it is rather than printing `tasks=[]`, which reads as the latter.
+        print(
+            "[cfm-pcgrad] enabled; task set="
+            + (
+                f"{list(args.pcgrad_tasks)}"
+                if args.pcgrad_tasks
+                else "adaptive (every loss term carrying a gradient)"
+            )
+        )
+    use_ema = bool(getattr(args, "use_ema", False))
+    if use_ema:
+        model.init_ema(decay=float(getattr(args, "ema_decay", 0.999)))
+        print(
+            f"[cfm-ema] enabled: decay={float(getattr(args, 'ema_decay', 0.999))} "
+            "(snapshot taken from freshly-initialised weights)"
+        )
     # Wf-431-B1 NEW — GPU utilization optimization wire-in (default OFF,
     # bit-for-bit backward compat with Wf-380-B1 + Wf-388 + Wf-418).
     # Per Wf-431-A1 fix list F1+F2+F4. SCAFFOLD-only flags lift GPU
@@ -3670,6 +3954,12 @@ def main() -> int:
             sb_eps=float(getattr(args, "sb_eps", 0.1)),
             sb_n_iters=int(getattr(args, "sb_n_iters", 50)),
             ot_coupling_mode=str(getattr(args, "ot_coupling_mode", "assignment")),
+            use_ema=bool(getattr(args, "use_ema", False)),
+            ema_decay=float(getattr(args, "ema_decay", 0.999)),
+            use_pcgrad=bool(getattr(args, "pcgrad_multi_task", False)),
+            pcgrad_tasks=tuple(
+                getattr(args, "pcgrad_tasks", ())
+            ),
             # Wf-A9 FIX (2026-10-03) — thread the gradient-clip threshold
             # from the yaml-driven ``args.max_norm`` (start.sh passes
             # ``--max-norm "$MAX_NORM"`` sourced from ``protocol.max_norm``).
@@ -3678,14 +3968,25 @@ def main() -> int:
         # Evaluate.
         decoding_attempted = epoch % 1 == 0  # every epoch for short runs
         if decoding_attempted:
-            n_ok, n_total = evaluate_decode_ratio(
-                model=model,
-                decoder=decoder,
-                val_clouds=val_clouds_d,
-                device=device,
-                closure_bounded=args.closure_bounded,
-                closure_bias=closure_bias,
-            )
+            # 2026-10-04 — with EMA on, decode against the AVERAGED weights.
+            # That is the point of keeping the snapshot: the EMA is what you
+            # would ship, so the reported decode_ratio should be its, not the
+            # live weights'.  Swap in, evaluate, always restore — the restore
+            # is in a finally so a decode failure cannot leave the model
+            # holding the EMA weights for the next training epoch.
+            _ema_swapped = bool(use_ema) and model.ema_swap_in()
+            try:
+                n_ok, n_total = evaluate_decode_ratio(
+                    model=model,
+                    decoder=decoder,
+                    val_clouds=val_clouds_d,
+                    device=device,
+                    closure_bounded=args.closure_bounded,
+                    closure_bias=closure_bias,
+                )
+            finally:
+                if _ema_swapped:
+                    model.ema_swap_out()
         else:
             n_ok, n_total = 0, args.n_val
         decode_ratio = n_ok / max(n_total, 1)

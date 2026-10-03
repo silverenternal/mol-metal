@@ -675,24 +675,43 @@ def test_hidden_dim_default_is_128() -> None:
     # `p.add_argument('--hidden-dim', type=int, default=128)`.  Rather
     # than re-run argparse (which would also need --gpu-binary), we
     # read the source line to assert the literal default value.
-    src = script_path.read_text(encoding="utf-8")
-    assert (
-        "'--hidden-dim'" in src
-    ), "r10_cfg_real_crossdocked.py missing --hidden-dim arg"
-    # Look for any line of the form:
-    #   p.add_argument('--hidden-dim', type=int, default=<N>)
-    import re
+    # 2026-10-04: this used to regex the SOURCE TEXT for the literal
+    # `'--hidden-dim'` in single quotes.  Commit fc19d4c610 (ruff-format,
+    # pinned v0.6.9, tree-wide) rewrote every string literal to double quotes,
+    # which broke the assertion even though the flag and its default were
+    # untouched -- the test was pinned to a formatting detail, not to the
+    # behaviour it names.  It failed from that commit until now.
+    #
+    # Parsing the module's AST instead reads the actual argument name and
+    # default, so quote style, line wrapping and comment placement are all
+    # irrelevant; the test now fails only if the flag or its default really
+    # changed.
+    import ast
 
-    pattern = re.compile(
-        r"add_argument\(\s*'--hidden-dim'\s*,\s*[^)]*default\s*=\s*(\d+)\s*\)",
-        re.MULTILINE,
+    tree = ast.parse(script_path.read_text(encoding="utf-8"))
+    default_value = None
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if not (isinstance(func, ast.Attribute) and func.attr == "add_argument"):
+            continue
+        names = [
+            a.value
+            for a in node.args
+            if isinstance(a, ast.Constant) and isinstance(a.value, str)
+        ]
+        if "--hidden-dim" not in names:
+            continue
+        for kw in node.keywords:
+            if kw.arg == "default" and isinstance(kw.value, ast.Constant):
+                default_value = int(kw.value.value)
+        break
+    assert default_value is not None, (
+        "Could not find a --hidden-dim add_argument with a literal `default` "
+        "in r10_cfg_real_crossdocked.py.  The flag may have been removed or "
+        "its default made non-literal."
     )
-    match = pattern.search(src)
-    assert match is not None, (
-        "Could not find --hidden-dim default in r10_cfg_real_crossdocked.py; "
-        "expected 'p.add_argument(\\'--hidden-dim\\', type=int, default=128)'"
-    )
-    default_value = int(match.group(1))
     assert default_value == 128, (
         f"Phase 2.1 default hidden_dim must be 128 (lit: Karczewski 2024 "
         f"EGNN expressivity), but r10_cfg_real_crossdocked.py default = "
