@@ -1,0 +1,78 @@
+# CFM retrain on REAL metal-bearing 3D geometry (tmQM), all six target metals.
+#
+# 2026-10-04 NEW.  Why this config exists:
+#
+# The CFM decoder had only ever been validated on synthetic clouds -- every one
+# the same square-planar Pt layout (1 Pt + 2 NH3 + 2 Cl), jittered.  The
+# declared "real" corpus (MetalCytoToxDB) cannot substitute: its structure
+# column is `SMILES_Ligands`, so the metal is a separate COLUMN and never
+# appears in the geometry (MEASURED: 0 of 800 sampled rows contain any metal
+# atom), and 100% of its rows are multi-fragment.  Pointed at it the decoder
+# collapses to decode_ratio 0.000.
+#
+# tmQM does substitute and was already on disk: 108,541 CSD-derived mononuclear
+# d-block complexes with explicit DFT coordinates, MIT-licensed, at
+# .data/molmetal/tmQM/.  Coverage of the six targets: Pt 8,275 / Ru 9,068 /
+# Ir 4,695 / Rh 4,278 / Re 4,033 / Os 1,224.
+#
+# MEASURED with a disjoint train/val split (CSD-code hash; verified
+# intersection 0), 20 epochs, 120 train / 48 held-out val:
+#
+#   pt    Pt   1.000        all6  Pt   1.000
+#   all6  Ru   1.000        all6  Ir   1.000
+#   all6  Os   1.000        all6  Re   1.000
+#   all6  Rh   1.000
+#
+# NOTE ON `vocab: all6`: the YuelBond default table contains ONE metal (Pt).
+# The other five are clamped to the padding slot unless the `all6` preset is
+# selected, which widens the atom encoder 13 -> 18.  A checkpoint trained under
+# one preset will NOT load under the other -- that is a real consequence of a
+# dimension change, not a bug.
+
+model:
+  hidden_dim: 128
+  # Canonical key: both trainers expose --n-layers (dest `n_layers`);
+  # `model.depth` is only an alias the required-hyperparam check accepts,
+  # not a dest the key-resolution classifier can see.
+  n_layers: 3
+  # 18-entry table: the original 13 (Pt is last) plus Ru/Ir/Rh/Os/Re.
+  yuelbond_vocab: all6
+
+data:
+  dataset: tmqm
+  # Real CSD-derived geometry WITH the metal present.
+  tmqm_dir: .data/molmetal/tmQM
+  # All six of the project's target metals.  Order does not matter; it is a
+  # filter, and the loader raises on an unknown symbol rather than dropping it.
+  tmqm_metals: Pt,Ru,Ir,Rh,Os,Re
+  # -1 = no coordination-number filter.  4 would restrict to square-planar,
+  # 6 to octahedral.
+  tmqm_coord_number: -1
+  # Val fraction of the DISJOINT split (assigned by CSD-code hash).  Drawing
+  # train and val separately with different seeds leaks -- measured, the val
+  # candidate pool was a strict subset of the train one, 160/160.
+  tmqm_val_frac: 0.2
+
+protocol:
+  batch_size: 16
+  lr: 0.0003
+  epochs: 20
+  n_seeds: 1
+
+device: cuda
+
+output:
+  base_dir: results/cfm_tmqm_all6
+  events_jsonl: true
+
+directives:
+  kill_then_adapt: True
+  time_budget: "2h"
+  user_ok_required: True
+  pre_flight_gates_required:
+    - p1_pytorch_cuda_available
+    - p3_wf343c4_anchor_freshness_24h
+
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir}

@@ -882,7 +882,7 @@ def write_report(
 | Parameter | Value |
 |-----------|-------|
 | Epochs | {args.epochs} |
-| Batch size | {args.batch} |
+| Batch size | {args.batch_size} |
 | Learning rate | {args.lr} |
 | Hidden dim | {args.hidden_dim} |
 | EGNN layers | {args.n_layers} |
@@ -1010,7 +1010,27 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument("--epochs", type=int, default=30)
     p.add_argument(
-        "--batch", type=int, default=8, help="Batch size (keep small for heavy 3D)"
+        "--batch",
+        "--batch-size",
+        dest="batch_size",
+        type=int,
+        default=8,
+        help=(
+            "Batch size (keep small for heavy 3D).  `--batch-size` is an "
+            "alias so the yaml `protocol.batch_size` key resolves here: the "
+            "other two trainers use --batch-size, and without the alias the "
+            "key is dead for this entry."
+        ),
+    )
+    p.add_argument(
+        "--device",
+        type=str,
+        default=None,
+        help=(
+            "Force a device (e.g. cpu, cuda).  None = auto-resolve.  Exists "
+            "so the yaml `device` key resolves for this entry, matching the "
+            "CFM trainer's flag."
+        ),
     )
     p.add_argument("--lr", type=float, default=1e-4)
     p.add_argument("--hidden-dim", type=int, default=128)
@@ -1106,7 +1126,14 @@ def main(argv: list[str] | None = None) -> int:
         override=(getattr(args, "cuda_visible_devices", "") or None),
     )
     device_info = verify_rocm_active()
-    device = get_device()
+    # 2026-10-04 — honor --device when given.  Declaring the flag without
+    # reading it would be exactly the FLAG_ONLY pattern this pass exists to
+    # remove; the yaml `device` key would resolve and then do nothing.
+    if getattr(args, "device", None):
+        device = torch.device(str(args.device))
+        print(f"[pocket_fm] --device override: {device}", flush=True)
+    else:
+        device = get_device()
     print(f"[pocket_fm]   device = {device}")
 
     # 2026-10-04 — multi-PH conditioning.  Built BEFORE the model so the
@@ -1148,18 +1175,18 @@ def main(argv: list[str] | None = None) -> int:
     path = AffineProbPath(scheduler=scheduler)
 
     # --- 3. Training loop --------------------------------------------------
-    print(f"[pocket_fm] Training for {args.epochs} epochs (batch={args.batch})...")
+    print(f"[pocket_fm] Training for {args.epochs} epochs (batch={args.batch_size})...")
     t_train = time.time()
     losses: list[float] = []
 
-    n_batches_per_epoch = max(1, n_pairs // args.batch)
+    n_batches_per_epoch = max(1, n_pairs // args.batch_size)
 
     for epoch in range(args.epochs):
         epoch_losses = []
         order = np.random.permutation(n_pairs)
 
-        for batch_start in range(0, n_pairs, args.batch):
-            batch_idx = order[batch_start : batch_start + args.batch]
+        for batch_start in range(0, n_pairs, args.batch_size):
+            batch_idx = order[batch_start : batch_start + args.batch_size]
             if len(batch_idx) == 0:
                 continue
 

@@ -23,7 +23,10 @@
 
 model:
   hidden_dim: 128
-  depth: 3
+  # Canonical key: both trainers expose --n-layers (dest `n_layers`);
+  # `model.depth` is only an alias the required-hyperparam check accepts,
+  # not a dest the key-resolution classifier can see.
+  n_layers: 3
 
 flow:
   # The feature this config exists for.

@@ -123,6 +123,36 @@ SCRIPTS_DIR = (
 )  # Wf-432-A1: project root scripts dir (USER_OK wrapper audit)
 LAM_CHEM_DIR = MOLMETAL_ROOT / "molmetal_lam" / "lam_chem"
 CONFIGS_DIR = REPO_ROOT / "configs"
+
+
+def _discover_active_configs() -> Tuple[Path, ...]:
+    """Discover the active configs instead of listing them by hand.
+
+    2026-10-04: this replaces a hard-coded tuple, and the reason is that the
+    hand-maintained list had ALREADY silently dropped coverage twice.  Its own
+    comment records the first: "configs/training/ was never scanned by this
+    gate, so its 2 active YAMLs were outside the contract entirely" (fixed by
+    Wf-A12 by appending them).  The second is that every config added since
+    was invisible -- `cfm_tmqm_all6.yaml` and `fm_pocket_multiph.yaml` were
+    both unscanned, so a dead key introduced in a NEW config would sail
+    through the very gate whose job is to catch dead keys.
+
+    Discovery removes the failure mode rather than patching another instance
+    of it: a config that exists is checked, and the only way to exclude one is
+    to put it somewhere this deliberately does not look (`archive/`, which the
+    globs below do not reach, and `*.bak`, filtered explicitly).
+
+    `.bak` files and any path containing an `archive` segment are excluded --
+    they are historical artefacts, and the Wf-A12 comment made the same
+    distinction.
+    """
+    out: List[Path] = []
+    for pattern in ("*.yaml", "training/*.yaml"):
+        for p in sorted(CONFIGS_DIR.glob(pattern)):
+            if p.suffix == ".bak" or "archive" in p.parts or p.name.endswith(".bak"):
+                continue
+            out.append(p)
+    return tuple(out)
 TESTS_DIR = MOLMETAL_ROOT / "tests"
 DATA_DIR = MOLMETAL_ROOT / "data"
 DOT_DATA_DIR = REPO_ROOT / ".data" / "molmetal"
@@ -11700,24 +11730,7 @@ def build_gates(
                     "p3_wf343c4_hyperparams_config_complete",
                     "P3",
                     "wf343c4",
-                    (
-                        CONFIGS_DIR / "cfm_full_retrain.yaml",
-                        CONFIGS_DIR / "cfm_per_innovation_ablation_p1.4.yaml",
-                        CONFIGS_DIR / "cfm_real_decode_lift_p1.3.yaml",
-                        CONFIGS_DIR / "default.yaml",
-                        CONFIGS_DIR / "wf124_p3_50epoch_full_sweep_g5.yaml",
-                        CONFIGS_DIR / "wf124_p3_per_innovation_ablation_g6.yaml",
-                        CONFIGS_DIR / "wf124_p3_remaining_metals_g4.yaml",
-                        # Wf-A12 coverage extension: configs/training/ was
-                        # never scanned by this gate, so its 2 active YAMLs
-                        # (the NCI-60 + PlatinAI 5-seed runs) were outside
-                        # the "config files > guessing" contract entirely.
-                        # (.bak / archive files are deliberately excluded.)
-                        CONFIGS_DIR / "training" / "nci60_9cell_5seed_50ep_v1.yaml",
-                        CONFIGS_DIR
-                        / "training"
-                        / "platinai_pt_4cell_5seed_50ep_v1.yaml",
-                    ),
+                    _discover_active_configs(),
                 ),
             ),
             (
