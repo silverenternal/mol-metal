@@ -109,6 +109,25 @@ __all__ = [
 # caps Pt_II at 4.  This is the *valence* that RDKit sees during
 # ``Chem.SanitizeMol`` and is the one that must be respected for
 # ``sanitized=True`` to come back.
+#: Valence COST of each predicted bond class — the bond order RDKit sums when
+#: it checks an atom's valence.  Distinct from the class INDEX: they agree for
+#: single/double/triple and diverge for ``BOND_AROMATIC`` (index 4, order ~1.5)
+#: and ``BOND_NO_BOND`` (index 0, order 0).
+#:
+#: Mixing the two up charges every aromatic bond 4 against a carbon cap of 4,
+#: so a benzene ring loses all of its bonds as "overvalent".  MEASURED on tmQM
+#: Ru complexes (60% aromatic bonds): 40-50% of each complex's bonds were
+#: discarded that way and 24/24 decodes failed RDKit sanitisation, even though
+#: the head had predicted the right classes.
+_CLASS_VALENCE_COST: Dict[int, float] = {
+    0: 0.0,  # BOND_NO_BOND
+    1: 1.0,  # BOND_SINGLE
+    2: 2.0,  # BOND_DOUBLE
+    3: 3.0,  # BOND_TRIPLE
+    4: 1.5,  # BOND_AROMATIC
+}
+
+
 _COVALENT_VALENCE: Dict[int, int] = {
     1: 1,  # H
     6: 4,  # C
@@ -344,14 +363,31 @@ class YuelBondBondDecoder:
         n_overvalent = 0
         n_kept = 0
         for _, i, j, order in pairs:
+            # 2026-10-04 — the VALENCE cost of a class is not its class index.
+            #
+            # `pairs` carries the argmax CLASS (0..4), and `_assemble_mol`
+            # correctly treats it as a class.  This loop used the same integer
+            # as a bond ORDER against `_COVALENT_VALENCE`, which is a sum of
+            # bond orders — and the two agree for single/double/triple but NOT
+            # for ``BOND_AROMATIC = 4``, whose real order is ~1.5.
+            #
+            # MEASURED on tmQM Ru complexes, where 60% of the true bonds are
+            # aromatic: a benzene carbon with two aromatic neighbours was
+            # charged 8 against a cap of 4, so both bonds were rejected as
+            # overvalent.  40-50% of every complex's bonds were discarded that
+            # way (cloud 0: 12 rejected / 11 kept against 35 true bonds), the
+            # molecule came out too sparse to sanitise, and RDKit rejected all
+            # 24/24 decodes.  The head had, in fact, been predicting the right
+            # classes.
+            cost = _CLASS_VALENCE_COST.get(int(order), 1.0)
             cap_i = remaining[i]
             cap_j = remaining[j]
-            if order > cap_i or order > cap_j:
+            if cost > cap_i or cost > cap_j:
                 n_overvalent += 1
                 continue
             bond_orders.append((i, j, order))
-            remaining[i] -= order
-            remaining[j] -= order
+            remaining[i] -= cost
+            remaining[j] -= cost
             n_kept += 1
             # Dative flag — same convention as BondAwareDecoder.
             zi = int(z_list[i])

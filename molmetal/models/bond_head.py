@@ -319,16 +319,40 @@ def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tens
 # ---------------------------------------------------------------------------
 @dataclass
 class AtomCloud:
-    """A point-cloud of atoms (no bond topology yet).
+    """A point-cloud of atoms, optionally carrying its true bond graph.
 
     Parameters
     ----------
     positions : (N, 3) tensor
     atomic_numbers : (N,) long tensor
+    bonds : (2, E) int64 tensor, optional
+        Ground-truth bond pairs, ``(i, j)`` per column, 0-based into this
+        cloud's atoms.  Supplied by corpora that know the answer (tmQM ships
+        Wiberg bond orders in the same atom order as its geometries).
+    bond_types : (E,) long tensor, optional
+        One :data:`BOND_LABELS` class per column of ``bonds``.
+
+    Why these are optional and last
+    -------------------------------
+    ``AtomCloud`` is constructed in 63 places across the repo, most of which
+    have no bond information to offer.  Defaulting both fields keeps every one
+    of those working unchanged, while letting a corpus that DOES know the
+    answer pass it through instead of forcing every consumer to re-derive it
+    from a heuristic.
+
+    Added 2026-10-04.  Before this the CFM trainer, having no bond truth to
+    consume, synthesised one with a rule that labelled a pair as bonded iff one
+    endpoint was Pt (Z=78) — and it was hardcoded.  On a Ru complex, 100% of
+    the resulting targets were ``BOND_NO_BOND`` (MEASURED: 1331/1331), so the
+    bond head learned to predict "no bond" everywhere, every decode came back
+    as disconnected atoms, and ``decode_ratio`` reported 1.000 because
+    ``C.C.C.C...`` is a valid SMILES.
     """
 
     positions: torch.Tensor
     atomic_numbers: torch.Tensor
+    bonds: Optional[torch.Tensor] = None
+    bond_types: Optional[torch.Tensor] = None
 
     def __post_init__(self) -> None:
         if self.positions.dim() != 2 or self.positions.shape[1] != 3:
@@ -337,6 +361,19 @@ class AtomCloud:
             raise ValueError("atomic_numbers must be (N,)")
         if self.positions.shape[0] != self.atomic_numbers.shape[0]:
             raise ValueError("positions and atomic_numbers must agree on N")
+        if self.bonds is not None:
+            if self.bonds.dim() != 2 or self.bonds.shape[0] != 2:
+                raise ValueError("bonds must be (2, E)")
+            if self.bond_types is None:
+                raise ValueError(
+                    "bond_types must be supplied alongside bonds — a pair list "
+                    "without its classes cannot be used as a training target"
+                )
+            if int(self.bond_types.shape[0]) != int(self.bonds.shape[1]):
+                raise ValueError(
+                    f"bond_types has {int(self.bond_types.shape[0])} entries "
+                    f"but bonds has {int(self.bonds.shape[1])} columns"
+                )
 
 
 @dataclass

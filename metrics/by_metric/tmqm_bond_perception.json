@@ -1,0 +1,115 @@
+{
+  "metric": "tmqm_bond_perception",
+  "description": "Reference table for bond perception (3D geometry -> molecular graph) on tmQM metal complexes. Built because a 2026-10-04 literature sweep found NO published number for this task on tmQM or any transition-metal corpus.",
+  "unit": "ratio (0-1, higher better unless noted)",
+  "scope": "tier2 / tmQM / six target metals (Pt,Ru,Ir,Rh,Os,Re)",
+  "source": "molmetal/scripts/bench_tmqm_bond_perception.py",
+  "protocol": {
+    "ground_truth": "tmQM_X{1,2,3}.BO.gz Wiberg bond orders (same atom indexing as the .xyz.gz geometries)",
+    "bo_threshold": 0.3,
+    "bond_type": "nearest of single(1.0)/double(2.0)/triple(3.0) by BO",
+    "metrics": [
+      "success_rate",
+      "exact_type_rate_of_successes",
+      "f1_exist_of_successes",
+      "macro_f1_type_of_successes"
+    ],
+    "note": "each baseline is scored on the bond subset it can address; the subset is named per row. No published tmQM bond-perception number exists to compare against (2026-10-04 literature sweep)."
+  },
+  "n_complexes": 360,
+  "n_per_metal": 60,
+  "results": {
+    "rdkit_stripped": {
+      "n_complexes": 360,
+      "n_success": 115,
+      "success_rate": 0.3194444444444444,
+      "exact_type_rate_of_successes": 0.034782608695652174,
+      "f1_exist_of_successes": 1.0,
+      "macro_f1_type_of_successes": 0.35795588627218555,
+      "scope": "non-metal bonds only"
+    },
+    "openbabel": {
+      "n_complexes": 360,
+      "n_success": 360,
+      "success_rate": 1.0,
+      "exact_type_rate_of_successes": 0.027777777777777776,
+      "f1_exist_of_successes": 0.9849611510520498,
+      "macro_f1_type_of_successes": 0.538980125244512,
+      "scope": "all bonds"
+    }
+  },
+  "comparison_status": "NO PUBLISHED BASELINE EXISTS. Published bond-perception numbers are all on organic molecules (RDKit DetermineBonds 95.3% exact-type on a fixed GEOM-DRUGS cohort; OpenBabel 64.4%) and are NOT comparable: different dataset, different chemistry. RDKit DetermineBonds cannot process transition metals at all. The tmQM paper (Balcells & Skjelstad, JCIM 2020, doi 10.1021/acs.jcim.0c01041) benchmarks DFT level-of-theory only and defines no structure task, so it shares no metric with this.",
+  "key_finding": "Connectivity is easy; bond ORDER is what fails on metals. Where each method produces a molecule at all, it recovers the bond connectivity essentially perfectly (RDKit-stripped F1(exist)=1.000, OpenBabel 0.985) but assigns the wrong bond orders (F1(type) 0.358 and 0.539; exact-type 0.035 and 0.028). The organic SOTA pipeline additionally only produces anything for 31.9% of metal complexes.",
+  "honest_framing": {
+    "measured": "All four numbers per baseline are MEASURED on this host, 360 complexes, seed-0 sample, BO threshold 0.3.",
+    "scope_caveat": "Each baseline is scored ONLY on the bond subset it can address, named in its row. rdkit_stripped is scored on non-metal bonds only (it removes the metal before running); openbabel is scored on all bonds. The two rows are therefore not directly comparable to each other.",
+    "protocol_choice": "Ground truth bond EXISTENCE comes from tmQM's Wiberg BO >= 0.3; bond TYPE is the nearest of single(1.0)/double(2.0)/triple(3.0) by BO magnitude. A SMILES-derived ground truth would give exact orders but needs an atom-mapping step whose failures would be indistinguishable from perception failures. The threshold and the type-rounding are protocol choices, not facts about the chemistry.",
+    "sample": "360 complexes is a seed-0 sample, not the full 33,429-complex target-metal pool. Per-metal breakdown is not reported here.",
+    "not_claimed": "These are NOT SOTA comparisons — no SOTA exists on this corpus. xyz2mol_tm (the published metal-capable method) is NOT included: it is not installed and could not be fetched in this session."
+  },
+  "controlled_comparison_2026_10_04": {
+    "why": "The table previously held only classical perception, so nothing in the project could answer 'does the learned bond head earn its place?'. The question has a specific shape: OpenBabel already recovers bond EXISTENCE almost perfectly and its documented weak axis is bond TYPE (metal-donor orders). That is the only axis on which a learned head can justify itself.",
+    "protocol": {
+      "scope": "non-hydrogen pairs for EVERY method (--heavy-atom-scope)",
+      "why_that_scope": "The CFM is trained on hydrogen-free clouds, so scoring it over all atoms would measure it out of distribution while the baselines kept the hydrogens. Restricting all three to the same non-hydrogen pair set is what makes the rows comparable.",
+      "n_complexes": 900,
+      "sampling": "150 per metal, six target metals, seed 0",
+      "bo_threshold": 0.3,
+      "aggregation": "per-complex metric then mean over complexes",
+      "source": "molmetal/reports/tmqm_bond_perception_scoped/tmqm_bond_perception.json"
+    },
+    "table": {
+      "cfm": {
+        "success_rate": 1.0,
+        "f1_exist": 0.6118,
+        "macro_f1_type": 0.2801,
+        "exact_type_rate": 0.0011,
+        "scope": "non-hydrogen pairs"
+      },
+      "rdkit_stripped": {
+        "success_rate": 0.3033,
+        "f1_exist": 0.9998,
+        "macro_f1_type": 0.2809,
+        "exact_type_rate": 0.022,
+        "scope": "non-metal AND non-hydrogen pairs"
+      },
+      "openbabel": {
+        "success_rate": 1.0,
+        "f1_exist": 0.9771,
+        "macro_f1_type": 0.5051,
+        "exact_type_rate": 0.03,
+        "scope": "non-hydrogen pairs"
+      }
+    },
+    "cfm_provenance": {
+      "path": "/tmp/cfm_probe/p0.5/ck/cfm_yuelbond_wasserstein_seed0.pt",
+      "epoch": 3,
+      "best_epoch": 0,
+      "n_train": 256,
+      "n_val": 192,
+      "epochs": 4,
+      "hidden_dim": 128,
+      "use_egnn_velocity": true,
+      "bond_class_weight_power": 0.5,
+      "bond_decision": "argmax",
+      "dataset": "tmqm",
+      "decision": "threshold",
+      "decision_threshold": 0.5
+    },
+    "reading": "MEASURED, the CFM does NOT beat OpenBabel on either axis at this training scale: existence F1 0.612 vs 0.977, type F1 0.280 vs 0.505. The burden of proof is therefore on the learned head, and the number that would discharge it is the TYPE column at production scale. rdkit_stripped's F1(exist) of 1.000 is on the 30.3% of complexes it can address at all — it is NOT comparable to the other two rows, which is why success_rate is printed beside every row.",
+    "caveats": [
+      "The CFM here is a 4-epoch probe (n_train=256), NOT a production model; the production config is 20 epochs over ~946 clouds.",
+      "The CFM's own training-time numbers use a POOLED aggregation (bond_type_macro_f1_pooled) while this table averages per complex. The two agree on a single complex (pinned by molmetal/tests/test_cfm_bond_type_metric.py) but are not interchangeable across a cohort.",
+      "OpenBabel is a mature deterministic toolkit; the CFM is 4 epochs of gradient descent. The gap is expected and is not by itself evidence that the head is worthless — it is evidence that nothing yet shows it is worth anything."
+    ]
+  },
+  "corrections": [
+    {
+      "field": "results / scope",
+      "old_value": "two classical baselines, each on its own subset, no learned model",
+      "new_value": "adds a controlled three-way comparison on one non-hydrogen scope",
+      "reason": "A reference table with no learned-model row could not support any claim about the project's own bond head. Measured under one scope, the head currently loses to OpenBabel on both existence and type.",
+      "date": "2026-10-04"
+    }
+  ]
+}

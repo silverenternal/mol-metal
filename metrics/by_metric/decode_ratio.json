@@ -1,6 +1,6 @@
 {
   "metric": "decode_ratio",
-  "description": "Fraction of generated samples successfully decoded into valid SMILES (RDKit-strict)",
+  "description": "Fraction of DECODED clouds whose SMILES passes RDKit-strict parsing (MolFromSmiles + SanitizeMol). NOT a chemistry metric — see blind_spot. Note the two inputs are different populations: the pre-Wf-148 entries decode GENERATED samples, while the Wf-148/Wf-139 'real' entries decode the REAL val geometry, so they measure bond perception on given clouds, not generation. Values across those two populations are not comparable.",
   "unit": "ratio (0-1)",
   "scope": "CFM (Conditional Flow Matching) generate path",
   "measurements": [
@@ -49,7 +49,7 @@
       "status": "MEASURED",
       "date_utc": "2026-09-16",
       "input": "freshly-init h=64 adapter; midpoint solver; joint_train=True; n_train=32 default",
-      "note": "decode_ratio still 0/8; metric lift requires GPU retrain with all 4 fixes (TODO-24 \u00a75 user-decision point)"
+      "note": "decode_ratio still 0/8; metric lift requires GPU retrain with all 4 fixes (TODO-24 §5 user-decision point)"
     },
     {
       "run": "wf_r15_cfm_cpu_verify (500-step 8-sample CPU smoke, all 4 fixes stacked)",
@@ -78,7 +78,7 @@
         "step_200": "0/8",
         "step_500": "0/8"
       },
-      "note": "GPU 500-step smoke result is bit-exact with CPU smoke (decode_ratio = 0/8) \u2014 the EGNN velocity field bottleneck is architecture, not device."
+      "note": "GPU 500-step smoke result is bit-exact with CPU smoke (decode_ratio = 0/8) — the EGNN velocity field bottleneck is architecture, not device."
     },
     {
       "run": "wf124_p1_yuelbond_wireup (CPU smoke, 8-sample synthetic Pt-click)",
@@ -87,7 +87,7 @@
       "status": "MEASURED",
       "date_utc": "2026-09-27",
       "input": "YuelBond decoder swap (Wang+Dokholyan 2025 GNN head + valence-aware greedy selector)",
-      "note": "Wf-124 Phase 1 wire-up \u2014 decode_ratio = 8/8 = 1.000 on synthetic Pt-click clouds (jitter=0.20). Baseline (4-fix bundle) = 0/8; Path B baseline = 4/8 strict. Architectural lever is intact; wall_time_seconds = 0.34 (CPU)."
+      "note": "Wf-124 Phase 1 wire-up — decode_ratio = 8/8 = 1.000 on synthetic Pt-click clouds (jitter=0.20). Baseline (4-fix bundle) = 0/8; Path B baseline = 4/8 strict. Architectural lever is intact; wall_time_seconds = 0.34 (CPU)."
     },
     {
       "run": "wf124_p2_cfm_full (50-epoch 192-sample GPU-1 RTX 5090, YuelBond + Wasserstein + Catherine closure-bounded)",
@@ -102,8 +102,8 @@
       "early_stop_reason": "no decode_ratio improvement possible past 1.000",
       "wall_time_s_total": 32.3,
       "wall_time_s_per_epoch": 2.9,
-      "bond_ce_trajectory": "1.8537 \u2192 0.2117 (clean decay)",
-      "w2_trajectory": "0.7394 \u2192 0.6677 (monotonic, JKO bound holds)",
+      "bond_ce_trajectory": "1.8537 → 0.2117 (clean decay)",
+      "w2_trajectory": "0.7394 → 0.6677 (monotonic, JKO bound holds)",
       "w2_decay_pass": true,
       "engine_tags": [
         "yuelbond_decoder",
@@ -111,7 +111,7 @@
         "closure_catherine_bounded"
       ],
       "ckpt_path": "molmetal/checkpoints/cfm_yuelbond_wasserstein.pt",
-      "note": "Wf-124 Phase 2 full CFM retrain \u2014 decode_ratio = 1.000 (192/192) RDKit-strict from epoch 0 (maintained through epoch 10). Best epoch = 0; mean across 11 epochs = 1.000. Target \u2265 0.8 PASS (\u00d725 over the 0.5 Path-B gap). Real-CFM decode_ratio lift on PlatinAI / DrugOOD cohorts is TODO-119 P1.3 follow-up (deferred)."
+      "note": "Wf-124 Phase 2 full CFM retrain — decode_ratio = 1.000 (192/192) RDKit-strict from epoch 0 (maintained through epoch 10). Best epoch = 0; mean across 11 epochs = 1.000. Target ≥ 0.8 PASS (×25 over the 0.5 Path-B gap). Real-CFM decode_ratio lift on PlatinAI / DrugOOD cohorts is TODO-119 P1.3 follow-up (deferred)."
     },
     {
       "run": "wf139_p5_cfm_decode_real (PlatinAI 5K Pt subset, 3-seed)",
@@ -120,7 +120,7 @@
       "status": "MEASURED",
       "date_utc": "2026-09-27",
       "device": "cpu (RTX 5090 available, deferred to GPU run)",
-      "input": "Wf-124 P2 ship cfm_yuelbond_wasserstein.pt (617 KB, 50-epoch trained) on PlatinAI 5K Pt subset (n=874) sampled 100\u00d73=300, 274 valid 3D-embedded atom clouds",
+      "input": "Wf-124 P2 ship cfm_yuelbond_wasserstein.pt (617 KB, 50-epoch trained) on PlatinAI 5K Pt subset (n=874) sampled 100×3=300, 274 valid 3D-embedded atom clouds",
       "per_seed": {
         "0": {
           "n_ok": 82,
@@ -145,8 +145,8 @@
       ],
       "ckpt_path": "molmetal/checkpoints/cfm_yuelbond_wasserstein.pt",
       "report_path": "molmetal/reports/wf139_p5_cfm_decode_real/",
-      "honest_framing": "PARTIAL: real 0.9745 < synthetic 1.000 (expected \u2014 synthetic is the upper bound; real < synthetic is the honest framing per party-twenty-spirit \u00a73.5). 274 samples >100 gate threshold; PARTIAL is success per Wf-139 P5 acceptance gate.",
-      "vs_synthetic_baseline": "\u22120.0255 absolute (gap is ~2.5pp; well within MEASURED-real-expectation)"
+      "honest_framing": "PARTIAL: real 0.9745 < synthetic 1.000 (expected — synthetic is the upper bound; real < synthetic is the honest framing per party-twenty-spirit §3.5). 274 samples >100 gate threshold; PARTIAL is success per Wf-139 P5 acceptance gate.",
+      "vs_synthetic_baseline": "−0.0255 absolute (gap is ~2.5pp; well within MEASURED-real-expectation)"
     },
     {
       "run": "wf148_m14_real_cfm (NCI-60 9-cell + DrugOOD native, 3-seed, GPU-0 Blackwell)",
@@ -183,8 +183,8 @@
       "report_path": "molmetal/reports/wf139_p5_cfm_decode_real/",
       "log_path": "molmetal/reports/wf148_m14_real_cfm.log",
       "out_json": "metrics/by_metric/cfm_decode_real.json",
-      "honest_framing": "PASS: real 0.9980 vs synthetic 1.000 \u2014 gap is only -0.0020 (-0.20pp); 9/6000 SMILES failed RDKit 3D embedding (heavy Pt-complexes with multi-coordinate donors that ETKDG can't handle), 3/5991 remaining clouds failed post-decode RDKit sanitisation. Real CFM is essentially at synthetic parity for non-pathological ligands.",
-      "vs_synthetic_baseline": "\u22120.0020 absolute (gap is ~0.2pp; well within MEASURED-real-expectation; effectively equal to synthetic upper bound)"
+      "honest_framing": "PASS: real 0.9980 vs synthetic 1.000 — gap is only -0.0020 (-0.20pp); 9/6000 SMILES failed RDKit 3D embedding (heavy Pt-complexes with multi-coordinate donors that ETKDG can't handle), 3/5991 remaining clouds failed post-decode RDKit sanitisation. Real CFM is essentially at synthetic parity for non-pathological ligands.",
+      "vs_synthetic_baseline": "−0.0020 absolute (gap is ~0.2pp; well within MEASURED-real-expectation; effectively equal to synthetic upper bound)"
     }
   ],
   "aggregate": {
@@ -192,9 +192,9 @@
     "best_measured_synthetic": 1.0,
     "best_measured_real": 0.998,
     "real_lift_vs_synthetic_gap": "-0.0020 (Wf-148 real NCI-60+DrugOOD supersedes wf139_p5 PlatinAI)",
-    "lit_target_targetdiff": "\u22650.5 (Guan 2023 ICLR)",
-    "target_internal": "\u22650.8 (TODO-119 \u00a71)",
-    "gap_to_internal_target": "+0.1980 (PASS \u2014 best_measured_real=0.9980 >> 0.8 internal target, and +0.4980 vs lit target TargetDiff 0.5)",
+    "lit_target_targetdiff": "≥0.5 (Guan 2023 ICLR)",
+    "target_internal": "≥0.8 (TODO-119 §1)",
+    "gap_to_internal_target": "+0.1980 (PASS — best_measured_real=0.9980 >> 0.8 internal target, and +0.4980 vs lit target TargetDiff 0.5)",
     "wf124_p2_hit_target": true,
     "wf139_p5_hit_target": true,
     "wf148_hit_target": true,
@@ -202,7 +202,7 @@
     "wf148_gap_vs_synthetic": -0.002,
     "wf148_n_samples": 5991,
     "wf148_data_config": "nci60+drugood",
-    "wf398a3_fix_note": "2026-09-30 Wf-398-A3: aggregate.all_measured_cfm_decode_ratio hand-set 0.0 \u2192 0.998 (real Wf-148 measurement) to match verdict 'MEASURED_TARGET_HIT_ON_BOTH_SYNTHETIC_AND_REAL'. Field was stale from before Wf-148 m14_real_cfm ship (2026-09-27). 0.0 was the LEGACY pre-Wf-124-P1 baseline (wf2_cfg_e2e_a5 2000-step) \u2014 not the current state. Regression-trace: user voice 2026-09-30 '\u4e4b\u524ddecode_ratio\u662f1\u7684\u73b0\u5728\u6211\u53bb\u54ea\u9000\u5316\u7684\u8fd9\u4e2a\u8981\u91cd\u70b9\u89e3\u51b3' flagged the aggregate showing 0.0 while measurements list shows 1.0/0.998 \u2014 root cause = hand-set aggregate field never updated by Wf-148 ship. Fix does NOT modify the 12 measurements (those are MEASURED timestamps preserved); only the aggregate field is corrected to the latest real-cohort MEASURED value per party-twenty-spirit \u00a73.5.",
+    "wf398a3_fix_note": "2026-09-30 Wf-398-A3: aggregate.all_measured_cfm_decode_ratio hand-set 0.0 → 0.998 (real Wf-148 measurement) to match verdict 'MEASURED_TARGET_HIT_ON_BOTH_SYNTHETIC_AND_REAL'. Field was stale from before Wf-148 m14_real_cfm ship (2026-09-27). 0.0 was the LEGACY pre-Wf-124-P1 baseline (wf2_cfg_e2e_a5 2000-step) — not the current state. Regression-trace: user voice 2026-09-30 '之前decode_ratio是1的现在我去哪退化的这个要重点解决' flagged the aggregate showing 0.0 while measurements list shows 1.0/0.998 — root cause = hand-set aggregate field never updated by Wf-148 ship. Fix does NOT modify the 12 measurements (those are MEASURED timestamps preserved); only the aggregate field is corrected to the latest real-cohort MEASURED value per party-twenty-spirit §3.5.",
     "all_measured_cfm_decode_ratio_REAL": 0.998,
     "all_measured_cfm_decode_ratio_definition": "LEGACY-MISNAMED FIELD. Value 0.998 = the latest REAL-cohort MEASURED decode_ratio (Wf-148 m14: 5979/5991, 2026-09-27), NOT an arithmetic aggregate of the measurements list. Retained for back-compat because repo code defines this field as 'latest MEASURED': molmetal/scripts/pre_flight_check.py::gate_p3_mock_to_real_m14_decode_ratio_REAL_30_probes (now reads the explicit _REAL alias first) and molmetal/tests/test_wf397a1_decode_ratio_fix.py::test_wf397a1_aggregate_metric_matches_latest_measurement (asserts == latest post-Wf-124 measurement). True aggregates over the 12 measurements are stored as all_measurements_unweighted_mean / all_measurements_sample_weighted_mean / *_era_mean.",
     "all_measurements_unweighted_mean": 0.4560416666666667,
@@ -213,10 +213,10 @@
     "pre_yuelbond_era_mean_definition": "Mean over the 8 measurements dated < 2026-09-27 = 1.5/8.",
     "yuelbond_era_mean": 0.993125,
     "yuelbond_era_mean_definition": "Mean over the 4 measurements dated 2026-09-27 (1.0, 1.0, 0.9745, 0.998) = 3.9725/4.",
-    "overclaim_remediation_note": "2026-10-03 metric-overclaim audit (B2): this field was named/documented as an all-measurements aggregate while holding a single hand-set measurement, disclosed in wf398a3_fix_note. Remediation: explicit definition added, the true recomputes stored as separate fields, and the _REAL alias added. The stored value 0.998 is RETAINED because it is exactly the latest real-cohort MEASURED value and because pre_flight + the Wf-397-A1 regression test read this field with 'latest MEASURED' semantics; replacing it with the pooled mean would fail both and misstate the current decoder state. NOTE on the audit brief: the claimed '~0.3727 mean of the 12' is NOT reproducible \u2014 recomputing over all 12 stored values gives 5.4725/12 = 0.456042; 0.3727 only appears if the Path B bond-bearing 1.0 (pre-RDKit-strict) entry is dropped from the numerator while still dividing by 12."
+    "overclaim_remediation_note": "2026-10-03 metric-overclaim audit (B2): this field was named/documented as an all-measurements aggregate while holding a single hand-set measurement, disclosed in wf398a3_fix_note. Remediation: explicit definition added, the true recomputes stored as separate fields, and the _REAL alias added. The stored value 0.998 is RETAINED because it is exactly the latest real-cohort MEASURED value and because pre_flight + the Wf-397-A1 regression test read this field with 'latest MEASURED' semantics; replacing it with the pooled mean would fail both and misstate the current decoder state. NOTE on the audit brief: the claimed '~0.3727 mean of the 12' is NOT reproducible — recomputing over all 12 stored values gives 5.4725/12 = 0.456042; 0.3727 only appears if the Path B bond-bearing 1.0 (pre-RDKit-strict) entry is dropped from the numerator while still dividing by 12."
   },
-  "verdict": "MEASURED_TARGET_HIT_ON_BOTH_SYNTHETIC_AND_REAL \u2014 Wf-124 P2 ship lifts synthetic decode_ratio to 1.000 (192/192) and Wf-148 lifts real NCI-60 + DrugOOD decode_ratio to 0.9980 (5979/5991) on GPU-0 Blackwell, gap vs synthetic only \u22120.0020 (\u22120.20pp). Both PASS internal target \u22650.8 and lit target TargetDiff \u22650.5. Real-CFM is essentially at synthetic parity for non-pathological ligands; the 12/6000 failures are RDKit ETKDG embedding limits on heavy Pt-multi-coordinate complexes, not CFM model failure.",
-  "honest_framing": "Data source: synthetic CFM-style 10-atom Pt-click clouds (Wf-124 P1/P2) AND real NCI-60 9-cell (n=7823) + DrugOOD native IC50 subsample (n=1000) (Wf-148 m14_real_cfm). Model: CFM (Conditional Flow Matching) with YuelBond decoder head (Wang+Dokholyan 2025 GNN head + valence-aware greedy selector) + Wasserstein gradient-flow regularization + Catherine closure-bounded generation + L2 grad-norm guard. Real CFM decode_ratio 0.9980 vs synthetic upper bound 1.000 (gap -0.0020, -0.20pp) \u2014 essentially at synthetic parity for non-pathological ligands. TargetDiff 2023 lit target \u22650.5 cite-only. NOT a head-to-head against TargetDiff \u2014 different cohort + different decoder architecture. Cites TODO-119 (CFM rescue), TODO-140/141/142/143/144. [Aggregate correction 2026-10-03: aggregate.all_measured_cfm_decode_ratio is a legacy-misnamed field holding the latest real-cohort MEASURED value (0.998, Wf-148 5979/5991), not an aggregate of the measurements list. True recomputes: all-12 unweighted mean 0.456042, sample-weighted mean 0.881302, YuelBond-era mean 0.993125. The 0.998 was hand-set on 2026-09-30 (Wf-398-A3, first committed 2026-10-02) and equals the Wf-148 measurement exactly. See corrections[] + aggregate.overclaim_remediation_note.]",
+  "verdict": "MEASURED_TARGET_HIT_ON_BOTH_SYNTHETIC_AND_REAL — Wf-124 P2 ship lifts synthetic decode_ratio to 1.000 (192/192) and Wf-148 lifts real NCI-60 + DrugOOD decode_ratio to 0.9980 (5979/5991) on GPU-0 Blackwell, gap vs synthetic only −0.0020 (−0.20pp). Both PASS internal target ≥0.8 and lit target TargetDiff ≥0.5. Real-CFM is essentially at synthetic parity for non-pathological ligands; the 12/6000 failures are RDKit ETKDG embedding limits on heavy Pt-multi-coordinate complexes, not CFM model failure.",
+  "honest_framing": "Data source: synthetic CFM-style 10-atom Pt-click clouds (Wf-124 P1/P2) AND real NCI-60 9-cell (n=7823) + DrugOOD native IC50 subsample (n=1000) (Wf-148 m14_real_cfm). Model: CFM (Conditional Flow Matching) with YuelBond decoder head (Wang+Dokholyan 2025 GNN head + valence-aware greedy selector) + Wasserstein gradient-flow regularization + Catherine closure-bounded generation + L2 grad-norm guard. Real CFM decode_ratio 0.9980 vs synthetic upper bound 1.000 (gap -0.0020, -0.20pp) — essentially at synthetic parity for non-pathological ligands. TargetDiff 2023 lit target ≥0.5 cite-only. NOT a head-to-head against TargetDiff — different cohort + different decoder architecture. Cites TODO-119 (CFM rescue), TODO-140/141/142/143/144. [Aggregate correction 2026-10-03: aggregate.all_measured_cfm_decode_ratio is a legacy-misnamed field holding the latest real-cohort MEASURED value (0.998, Wf-148 5979/5991), not an aggregate of the measurements list. True recomputes: all-12 unweighted mean 0.456042, sample-weighted mean 0.881302, YuelBond-era mean 0.993125. The 0.998 was hand-set on 2026-09-30 (Wf-398-A3, first committed 2026-10-02) and equals the Wf-148 measurement exactly. See corrections[] + aggregate.overclaim_remediation_note.]",
   "corrections": [
     {
       "field": "aggregate.all_measured_cfm_decode_ratio",
@@ -224,6 +224,23 @@
       "new_value": "0.998 (VALUE RETAINED, CLAIM CORRECTED: defined as latest real-cohort MEASURED value, not an all-measurements aggregate; true aggregates added: unweighted mean 0.4560416666666667, sample-weighted mean 0.8813023164507263, pre-YuelBond-era mean 0.1875, YuelBond-era mean 0.993125)",
       "reason": "the audit's premise that 0.998 is an aggregate is correct to reject; the honest fix is the explicit definition + stored recomputes, because repo consumers (pre_flight gate + Wf-397-A1 regression test) require this field to equal the latest MEASURED value and changing it would fail both. The audit's 0.3727 arithmetic could not be reproduced (true all-12 mean = 0.456042).",
       "date": "2026-10-03"
+    },
+    {
+      "field": "status / headline interpretation",
+      "old_value": "MEASURED_TARGET_HIT_ON_BOTH_SYNTHETIC_AND_REAL (treated as a decoder-quality result and as m14's headline metric)",
+      "new_value": "MEASURED_BUT_NOT_A_QUALITY_METRIC + blind_spot field + superseded_as_gate_by",
+      "reason": "The stored measurements are unchanged and still correct as measurements. What the 2026-10-04 CFM audit disproved is the INTERPRETATION: the metric peaks when the bond head is wrong. MEASURED 0.977 with an all-BOND_NO_BOND target vs 0.219 after the target was read from the corpus and the head learned real classes. No measurement is amended; the claim attached to them is.",
+      "date": "2026-10-04"
+    },
+    {
+      "field": "description",
+      "old_value": "Fraction of generated samples successfully decoded into valid SMILES (RDKit-strict)",
+      "new_value": "Fraction of DECODED clouds whose SMILES passes RDKit-strict parsing (MolFromSmiles + SanitizeMol). NOT a chemistry metric — see blind_spot. Note the two inputs are different populations: the pre-Wf-148 entries decode GENERATED samples, while the Wf-148/Wf-139 'real' entries decode the REAL val geometry, so they measure bond perception on given clouds, not generation. Values across those two populations are not comparable.",
+      "reason": "The single sentence described one population ('generated samples') while the file pools two: synthetic/generated decodes AND real-geometry decodes (Wf-139 P5, Wf-148 m14). A reader comparing 0.998 against 1.000 would be comparing a generation run against a bond-perception run.",
+      "date": "2026-10-04"
     }
-  ]
+  ],
+  "blind_spot": "2026-10-04 — decode_ratio counts RDKit-PARSEABLE decodes; it does NOT measure chemistry. MEASURED on 24 real Ru complexes: with the bond head predicting BOND_NO_BOND for nearly every pair the metric read 0.977 (a decoder emitting each atom as its own fragment gives 'C.C.C.C', which MolFromSmiles + SanitizeMol accept); once the head learned real bond classes it FELL to 0.219. The metric is therefore ANTI-CORRELATED with correctness over the range that mattered, and a value near 1.000 here is evidence the model learned nothing. It must not be read, quoted, or gated on as a decoder-quality result. Use metrics/by_metric/cfm_bond_accuracy.json (bond F1 / precision / recall vs the corpus Wiberg truth) as the CFM bond-quality metric, and read the gen_* chemistry fields (largest_fragment_frac, single_fragment_ratio, metal_ratio) beside any generation-validity number.",
+  "status": "MEASURED_BUT_NOT_A_QUALITY_METRIC",
+  "superseded_as_gate_by": "metrics/by_metric/cfm_bond_accuracy.json"
 }

@@ -157,6 +157,14 @@ _SMOKE_ARGS = [
     "--edm-preconditioning",
     "--chemprop-v3-cache",
     "--use-fm-objective",
+    # 2026-10-04 — hermetic.  Since --resume-from became real, the default
+    # 'auto' picks up ckpt_dir/cfm_yuelbond_wasserstein_seed0.pt if one is
+    # lying around, and the probe then measures the resumed state instead of
+    # a clean 1-epoch run (and, before the empty-per_epoch guard, crashed the
+    # report).  The probe asserts which loss terms carry gradients in a fresh
+    # step, so it must not inherit a previous run's weights.
+    "--resume-from",
+    "none",
 ]
 
 _PROBE = """
@@ -200,6 +208,19 @@ def _measure_terms_uncached(tmp_path: Path) -> dict:
             *_SMOKE_ARGS,
             "--out-dir",
             str(tmp_path / "run"),
+            # 2026-10-04 — the OTHER half of the hermeticity this file already
+            # started on.  `--resume-from none` fixed the READ side; without
+            # `--ckpt-dir` the WRITE side still went to the repo-global
+            # `molmetal/checkpoints` default, and this probe wrote a
+            # 1-epoch/32-sample checkpoint over the shipped
+            # `cfm_yuelbond_wasserstein.pt` / `..._seed0.pt` on every run.
+            # MEASURED, both files on disk carried
+            # `out_dir=/tmp/pytest-of-hugo/...` in their saved args.  The
+            # trainer now derives its default from --out-dir, so this is belt
+            # AND braces — but a test that executes real training must never
+            # depend on another component's default for its isolation.
+            "--ckpt-dir",
+            str(tmp_path / "ck"),
         ],
         capture_output=True,
         text=True,

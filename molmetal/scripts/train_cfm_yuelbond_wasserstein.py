@@ -705,6 +705,42 @@ class EpochMetrics:
     decoding_attempted: bool
     lr: float
     grad_norm: float
+    # 2026-10-04 — generation validity: integrate v(x,t) from x0 ~ N(0,I),
+    # decode, count RDKit-strict successes.  Distinct from decode_ratio,
+    # which decodes the REAL geometry; this one starts from noise and is
+    # therefore the only number here that measures the model as a GENERATOR.
+    # 2026-10-04 — bond-graph accuracy vs the corpus's Wiberg truth. The
+    # metric that gates; `decode_ratio` is anti-correlated with being right.
+    bond_precision: float = 0.0
+    bond_recall: float = 0.0
+    bond_f1: float = 0.0
+    bond_exact_match: float = 0.0
+    bond_n_scored: int = 0
+    # 2026-10-04 — threshold-free ranking quality for bond EXISTENCE.
+    # `bond_f1` above is one point on this curve (the argmax point); a large
+    # gap between `bond_pr_auc` and `bond_f1` means the head ranks bonds well
+    # and only the decision boundary is wrong.
+    bond_pr_auc: float = 0.0
+    bond_best_f1_at_threshold: float = 0.0
+    bond_best_f1_threshold: float = 0.0
+    # 2026-10-04 — the axis that decides whether the learned head is worth
+    # keeping. Existence is nearly solved by classical toolkits; TYPE is not.
+    bond_type_macro_f1_pooled: float = 0.0
+    bond_exact_type_rate: float = 0.0
+    gen_validity: float = 0.0
+    gen_validity_val: int = 0
+    gen_validity_n: int = 0
+    gen_solver: str = ""
+    # 2026-10-04 — the chemistry behind `gen_validity`.  RDKit parsing does
+    # not distinguish a molecule from a string of loose atoms, and MEASURED
+    # the loose-atom case is what a barely-trained sampler emits.  These
+    # travel with gen_validity so the parse count is never read alone.
+    # `largest_fragment_frac_mean` → 1/n_atoms for loose atoms, 1.0 for a
+    # real connected molecule.
+    gen_largest_fragment_frac: float = 0.0
+    gen_single_fragment_ratio: float = 0.0
+    gen_metal_ratio: float = 0.0
+    gen_mean_heavy_atoms: float = 0.0
     # Engine-tag contributions for honest reporting (per TODO-126 §7):
     w2_engine_tag: str = "wasserstein_reg"
     closure_engine_tag: str = "closure_catherine_bounded"
@@ -713,19 +749,70 @@ class EpochMetrics:
 # ---------------------------------------------------------------------------
 # YuelBond head + faux velocity-field joint wrapper
 # ---------------------------------------------------------------------------
+def _to_device_cloud(cloud: AtomCloud, device: torch.device) -> AtomCloud:
+    """Move a cloud to *device*, CARRYING its bond truth.
+
+    ONE definition, because two independent copies of this rebuild is exactly
+    how the 2026-10-04 bug survived a fix: the outer ``train_clouds_d`` build
+    stripped ``bonds`` before ``train_one_epoch`` ever saw the clouds, so
+    fixing the inner rebuild alone changed nothing and cost a retrain to
+    discover.  Any site that rebuilds a cloud to move it MUST go through here;
+    ``molmetal/tests/test_cfm_bond_target_truth.py`` pins the training-loop
+    sites.
+
+    Generation-from-noise callers legitimately have no truth to carry and
+    build ``AtomCloud`` directly — those are not this case.
+    """
+    _b = getattr(cloud, "bonds", None)
+    _bt = getattr(cloud, "bond_types", None)
+    return AtomCloud(
+        positions=cloud.positions.to(device),
+        atomic_numbers=cloud.atomic_numbers.to(device),
+        bonds=(_b.to(device) if _b is not None else None),
+        bond_types=(_bt.to(device) if _bt is not None else None),
+    )
+
+
+def _block_diag_radius_edges(
+    coords_pad: torch.Tensor,
+    node_mask: torch.Tensor,
+    cutoff: float,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Padded block-diagonal radius graph — delegates to the adapter.
+
+    2026-10-04 — this was a local copy.  The same algorithm is needed by
+    ``molmetal/adapters/flow_matching_lipman`` (where the EGNN lives), so it
+    now has ONE definition there (``radius_edge_index``) and this wrapper
+    keeps the trainer's call sites and signature unchanged.  Duplicating a
+    graph-construction invariant is how the two copies drift: the adapter's
+    copy was the one still handing the EGNN a fully-connected graph.
+    """
+    from molmetal.adapters.flow_matching_lipman import radius_edge_index
+
+    return radius_edge_index(coords_pad, node_mask, cutoff)
+
+
 class CFMJointModel(nn.Module):
-    """YuelBond decoder head + a single-layer velocity-field probe.
+    """YuelBond decoder head + a velocity field.
 
-    The YuelBond head is the production decoder (Wf-124 P1); the
-    velocity-field probe is a 1-layer encoder used as a stand-in for
-    the EGNN velocity field at this short training scale.  The
-    YuelBond head is **what we ship**; the velocity probe is just
-    the trainable object the Wasserstein loss hooks onto so we can
-    observe per-epoch W₂ decrease.
+    The YuelBond head is the production decoder (Wf-124 P1).
 
-    For longer (100-epoch) retraining, the velocity probe here would
-    be replaced with the production EGNN adapter from
-    ``molmetal.adapters.flow_matching_lipman``.
+    The velocity field has two modes:
+
+    * ``use_egnn_velocity=False`` (default) — the historical 2-layer MLP
+      probes (``vel_probe`` / ``fm_vel_head``).  Kept as the default so
+      every existing checkpoint keeps loading through ``--resume-from``.
+    * ``use_egnn_velocity=True`` — the production
+      :class:`~molmetal.adapters.flow_matching_lipman.EGNNVelocityField`
+      (518 K params at ``hidden_dim=128``).  This is the model the
+      project's flow-matching math — the SE(3) Sinkhorn / Bass couplings,
+      EDM σ-preconditioning, SO(3) averaging, shortcut distillation,
+      consistency regularisation — was written for; the MLP probes were
+      only ever placeholders for it.
+
+    The EGNN path is opt-in at the CLI (``--use-egnn-velocity``) rather
+    than the default, because switching changes the ``state_dict`` keys
+    and therefore invalidates every prior checkpoint.
     """
 
     def __init__(
@@ -749,8 +836,14 @@ class CFMJointModel(nn.Module):
             53,
             78,
         ),
+        use_egnn_velocity: bool = False,
+        max_atomic_number: int = 100,
+        context_dropout: float = 0.1,
+        tmqm_init_path: Optional[str] = None,
+        use_tmqm_init: bool = False,
     ) -> None:
         super().__init__()
+        self.cutoff = float(cutoff)
         self.head = YuelBondDecoderHead(
             hidden_dim=hidden_dim,
             n_layers=n_layers,
@@ -767,11 +860,19 @@ class CFMJointModel(nn.Module):
         # Single-layer velocity-field probe: maps per-atom features
         # to a 3-D velocity vector (Å/step) used as the Wasserstein
         # anchor.
-        self.vel_probe = nn.Sequential(
-            nn.Linear(self.z_dim + 3, hidden_dim),
-            nn.GELU(),
-            nn.Linear(hidden_dim, 3),
-        )
+        #
+        # 2026-10-04 — guarded on `use_egnn_velocity` (set just below) rather
+        # than built unconditionally.  When the production EGNN is active this
+        # MLP has no caller — `forward()` takes the EGNN branch — so building
+        # it would only put dead tensors in the `state_dict` and make the
+        # startup banner below false.  With the flag off it is built exactly as
+        # before, so every legacy checkpoint still round-trips.
+        if not use_egnn_velocity:
+            self.vel_probe = nn.Sequential(
+                nn.Linear(self.z_dim + 3, hidden_dim),
+                nn.GELU(),
+                nn.Linear(hidden_dim, 3),
+            )
         # 2026-10-04 — optional flow-matching velocity head.
         #
         # `vel_probe` above cannot serve the flow-matching objective: it takes
@@ -792,12 +893,48 @@ class CFMJointModel(nn.Module):
                 nn.GELU(),
                 nn.Linear(hidden_dim, 3),
             )
+        # 2026-10-04 — production EGNN velocity field (opt-in).
+        #
+        # `EGNNVelocityField.atom_embed` is `nn.Embedding(max_atomic_number,
+        # hidden)`, i.e. it indexes by **atomic number** directly.  That is
+        # why this path needs no `z_table`/one-hot plumbing at all: Z=78 (Pt)
+        # is just index 78, and the `--yuelbond-vocab all6` width question
+        # does not arise here.  `max_atomic_number=100` covers every element
+        # the project touches.
+        #
+        # Built LAZILY for the same reason `fm_vel_head` is: with the flag
+        # off these keys never enter the `state_dict`, so every checkpoint
+        # written before this change still resumes.
+        self.use_egnn_velocity = bool(use_egnn_velocity)
+        if self.use_egnn_velocity:
+            from molmetal.adapters.flow_matching_lipman import (
+                EGNNVelocityField,
+            )
+
+            # 2026-10-04 — tmQM warm start.  `EGNNVelocityField` has carried
+            # `use_tmqm_init` / `tmqm_init_path` since TODO-08 and the encoder
+            # checkpoint has been on disk the whole time, but nothing in any
+            # config-driven path ever passed either argument, so the field
+            # always started from random init.  `use_tmqm_init=True` loads the
+            # F2 pretrain output (138,112 params, 5 regression targets incl.
+            # metal_bo_total and coord_number) and bridges it into the EGNN by
+            # parameter SHAPE — the two exports do not share key names, and
+            # the loader reports the transfer count in either case.
+            self.vel_field = EGNNVelocityField(
+                hidden_dim=hidden_dim,
+                n_layers=n_layers,
+                max_atomic_number=int(max_atomic_number),
+                context_dropout=float(context_dropout),
+                tmqm_init_path=tmqm_init_path,
+                use_tmqm_init=bool(use_tmqm_init),
+            )
 
     def fm_velocity(
         self,
         x_t: torch.Tensor,
         t: torch.Tensor,
         atomic_numbers: torch.Tensor,
+        cloud_sizes: Optional[Sequence[int]] = None,
     ) -> torch.Tensor:
         """Time-conditioned velocity field ``v(x_t, t, z)`` for the FM objective.
 
@@ -809,6 +946,15 @@ class CFMJointModel(nn.Module):
             Flow time in ``[0, 1]``.
         atomic_numbers : (N,)
             Atomic numbers of the same atoms as ``x_t``.
+        cloud_sizes : sequence of int, optional
+            Per-cloud atom counts, in the same order the clouds were
+            concatenated into ``x_t``.  **Required by the EGNN path**: the
+            EGNN message-passes over a radius graph, and without the cloud
+            boundaries it would wire every atom in the batch to every other
+            atom within ``cutoff`` Å — including atoms belonging to different
+            molecules, which after separate RDKit embedding all sit near the
+            origin.  ``None`` is interpreted as one single cloud, which is
+            the correct reading when the caller really did pass one molecule.
 
         Returns
         -------
@@ -820,6 +966,47 @@ class CFMJointModel(nn.Module):
                 "fm_objective=True — the head does not exist.  Pass "
                 "--use-fm-objective (or fm_objective=True) to build it."
             )
+        if self.use_egnn_velocity:
+            n_total = int(x_t.shape[0])
+            sizes = (
+                [n_total]
+                if cloud_sizes is None
+                else [int(s) for s in cloud_sizes]
+            )
+            if sum(sizes) != n_total:
+                raise ValueError(
+                    f"cloud_sizes sum to {sum(sizes)} but x_t has {n_total} "
+                    "rows — the cloud boundaries would be wrong, and a wrong "
+                    "boundary silently creates cross-molecule edges."
+                )
+            b = len(sizes)
+            n_max = max(sizes)
+            dev = x_t.device
+            x_pad = x_t.new_zeros(b, n_max, 3)
+            z_pad = atomic_numbers.new_zeros(b, n_max)
+            node_mask = torch.zeros(b, n_max, dtype=torch.bool, device=dev)
+            start = 0
+            for i, s in enumerate(sizes):
+                x_pad[i, :s] = x_t[start : start + s].float()
+                z_pad[i, :s] = atomic_numbers[start : start + s].long()
+                node_mask[i, :s] = True
+                start += s
+            edge_index, edge_mask = _block_diag_radius_edges(
+                x_pad, node_mask, self.cutoff
+            )
+            if t.dim() == 0:
+                t_b = t.reshape(1).expand(b)
+            else:
+                # Per-atom t -> per-cloud t (atoms of one cloud share t in
+                # every caller; taking the first of each block is exact).
+                t_b = t.reshape(-1)[torch.tensor(
+                    [sum(sizes[:i]) for i in range(b)], device=dev
+                )]
+            out = self.vel_field(
+                x_pad, z_pad, edge_index, t_b, edge_mask=edge_mask
+            )
+            vel = out["vel"]  # (B, n_max, 3)
+            return vel[node_mask]  # (N, 3) flat, cloud-major
         idx = torch.tensor(
             [self.z_to_idx.get(int(zi), 0) for zi in atomic_numbers.tolist()],
             dtype=torch.long,
@@ -913,7 +1100,31 @@ class CFMJointModel(nn.Module):
             logits, _ = out
         else:
             logits = out
-        # Per-atom one-hot of Z for the velocity probe.
+        if self.use_egnn_velocity:
+            # Evaluate the field AT THE DATA, i.e. t = 1.  Under the CFM
+            # convention `x_t = (1 - t) x_0 + t x_1`, t = 1 is exactly
+            # `x_1` — the cloud's real coordinates.  Evaluating at t = 0
+            # instead would pair real coordinates with a "pure noise" time,
+            # which is off-manifold and would make the W₂ anchor below
+            # measure drift against a field value the model never sees
+            # during training.
+            pos = cloud.positions.float()
+            z = cloud.atomic_numbers.long()
+            x_pad = pos.unsqueeze(0)  # (1, N, 3)
+            z_pad = z.unsqueeze(0)  # (1, N)
+            node_mask = torch.ones(
+                1, pos.shape[0], dtype=torch.bool, device=pos.device
+            )
+            edge_index, edge_mask = _block_diag_radius_edges(
+                x_pad, node_mask, self.cutoff
+            )
+            t_b = torch.ones(1, device=pos.device)
+            out_vel = self.vel_field(
+                x_pad, z_pad, edge_index, t_b, edge_mask=edge_mask
+            )
+            velocities = out_vel["vel"][0]  # (N, 3)
+            return logits, velocities
+        # Per-atom one-hot of Z for the legacy velocity probe.
         z = cloud.atomic_numbers.tolist()
         idx = torch.tensor(
             [self.z_to_idx.get(int(zi), 0) for zi in z],
@@ -995,20 +1206,84 @@ def _bond_target_for_clean_cloud(cloud: AtomCloud, head=None):
     if not yres.decode_succeeded or yres.logits.shape[0] == 0:
         return None, None
     edge_index = yres.edge_index
-    z = cloud.atomic_numbers.tolist()
-    pt_z = 78
-    targets: List[int] = []
-    for s, d in zip(edge_index[0].tolist(), edge_index[1].tolist()):
-        zs, zd = int(z[int(s)]), int(z[int(d)])
-        is_pt_donor = (zs == pt_z) or (zd == pt_z)
-        # Pt_II is at most 4 bonds; the canonical GT in a 5-atom
-        # cisplatin-like cloud has exactly 4 Pt-donor singles.
-        if is_pt_donor:
-            targets.append(BOND_SINGLE)
-        else:
-            targets.append(BOND_NO_BOND)
+
+    # ------------------------------------------------------------------
+    # 2026-10-04 — REAL bond targets, when the corpus supplies them.
+    #
+    # What was here before:
+    #
+    #     pt_z = 78                                  # hardcoded Pt
+    #     is_pt_donor = (zs == pt_z) or (zd == pt_z)
+    #     targets.append(BOND_SINGLE if is_pt_donor else BOND_NO_BOND)
+    #
+    # That rule was written for the synthetic 5-atom Pt-click cloud (Pt + 2 Cl
+    # + 2 N -> 4 Pt-donor bonds) and never updated when the corpus became tmQM.
+    # MEASURED on Ru: 1331/1331 targets were BOND_NO_BOND — ZERO positives — so
+    # the head learned to predict "no bond" for every pair.  Decoding then
+    # emitted loose atoms (`C.C.C.C...`), which is a valid SMILES, so
+    # `decode_ratio` reported 1.000 and `bond_ce` reported 0.0000: a perfect
+    # score on a target containing no chemistry at all.  Even on Pt only 9.4%
+    # of targets were positive, because ligand-internal bonds were never
+    # labelled either.
+    #
+    # `AtomCloud.bonds` carries the truth from tmQM's Wiberg bond-order blocks
+    # (same atom ordering as the geometry).  The geometric rule survives only
+    # as a documented fallback for clouds with no truth to offer, and it warns
+    # — falling back silently is how the original bug stayed invisible.
+    # ------------------------------------------------------------------
+    bonds = getattr(cloud, "bonds", None)
+    bond_types = getattr(cloud, "bond_types", None)
+    if bonds is not None and bond_types is not None:
+        lookup = {
+            (int(i), int(j)): int(t)
+            for i, j, t in zip(
+                bonds[0].tolist(), bonds[1].tolist(), bond_types.tolist()
+            )
+        }
+        targets = [
+            lookup.get(
+                (int(s), int(d)), lookup.get((int(d), int(s)), BOND_NO_BOND)
+            )
+            for s, d in zip(edge_index[0].tolist(), edge_index[1].tolist())
+        ]
+    else:
+        _warn_bond_target_fallback_once()
+        pt_z = 78
+        z = cloud.atomic_numbers.tolist()
+        targets = []
+        for s, d in zip(edge_index[0].tolist(), edge_index[1].tolist()):
+            zs, zd = int(z[int(s)]), int(z[int(d)])
+            # Pt_II is at most 4 bonds; the canonical GT in a 5-atom
+            # cisplatin-like cloud has exactly 4 Pt-donor singles.
+            targets.append(
+                BOND_SINGLE if (zs == pt_z or zd == pt_z) else BOND_NO_BOND
+            )
     y = torch.tensor(targets, dtype=torch.long, device=cloud.positions.device)
     return yres.logits, y
+
+
+_BOND_TARGET_FALLBACK_WARNED = False
+
+
+def _warn_bond_target_fallback_once() -> None:
+    """Say — once — that bond targets are being invented rather than read.
+
+    The original silent fallback is why a 100%-NO_BOND target survived long
+    enough to be trained on and then reported as `decode_ratio 1.000`.
+    """
+    global _BOND_TARGET_FALLBACK_WARNED
+    if _BOND_TARGET_FALLBACK_WARNED:
+        return
+    _BOND_TARGET_FALLBACK_WARNED = True
+    print(
+        "[cfm-bond-target][WARNING] the cloud carries no true bond graph, so "
+        "targets are SYNTHESISED by the Pt-only geometric rule.  On any "
+        "non-Pt metal that rule labels every pair BOND_NO_BOND (MEASURED: "
+        "1331/1331 on Ru), the head learns 'no bond' everywhere, and a perfect "
+        "decode_ratio then means nothing.  Load the corpus through "
+        "molmetal.data.tmqm_clouds so the Wiberg BO blocks are attached.",
+        flush=True,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1105,6 +1380,12 @@ def train_one_epoch(
     sa_penalty: float = 0.0,  # 0.0 = no SA penalty term (OFF)
     sa_target: float = 2.8,
     sa_weight: float = 0.3,
+    # 2026-10-04 — inverse-frequency class weights for the bond CE.
+    # MEASURED: 71% of candidate pairs are BOND_NO_BOND, so an unweighted
+    # CE is minimised by predicting "no bond" almost everywhere — recall
+    # 0.293 with precision 0.870.  Weighting the rare classes lifts the
+    # cost of missing a real bond above the cost of a false one.
+    bond_class_weights: Optional[torch.Tensor] = None,
     # Wf-406-A2 — pass Lambda × CFM coupling kwargs through (re-wire of
     # Wf-329-W6 + Wf-394-A1). Both default to 0.0 so the multiplier
     # collapses to identity (1 + 0 * 0 = 1) → bit-for-bit backward
@@ -1221,9 +1502,30 @@ def train_one_epoch(
             cloud = train_clouds[int(idx)]
             # Move cloud to device by re-creating (AtomCloud has no
             # .to() since it's a plain dataclass).
+            #
+            # 2026-10-04 — CARRY THE BOND TRUTH ACROSS.  This rebuild used to
+            # drop `bonds`/`bond_types`, so `_bond_target_for_clean_cloud`,
+            # called a few lines below on this very object, never saw them and
+            # silently fell back to the Pt-only rule — all BOND_NO_BOND on a
+            # non-Pt metal.  The training then reported `bond_ce = 0.0001`: a
+            # near-perfect score against an all-zero target.  MEASURED while
+            # chasing this: the head's argmax was class 0 for 1133/1133 pairs
+            # with per-class logit means [+32.9, -3.0, -5.4, -15.6, -8.7], i.e.
+            # it had learned to say "no bond" very confidently, and every
+            # decode came back as loose atoms.
             cloud = AtomCloud(
                 positions=cloud.positions.to(device),
                 atomic_numbers=cloud.atomic_numbers.to(device),
+                bonds=(
+                    getattr(cloud, "bonds", None).to(device)
+                    if getattr(cloud, "bonds", None) is not None
+                    else None
+                ),
+                bond_types=(
+                    getattr(cloud, "bond_types", None).to(device)
+                    if getattr(cloud, "bond_types", None) is not None
+                    else None
+                ),
             )
             batch_clouds.append(cloud)
             logits, velocities = model(cloud)
@@ -1253,7 +1555,9 @@ def train_one_epoch(
         # limited-label overfit); large cohorts (n>=1000, alpha=0.1) get
         # mild smoothing. Try/except defensive fallback preserves
         # training on broken wire-in (bit-exact identity).
-        bond_ce = F.cross_entropy(all_logits, all_targets)
+        bond_ce = F.cross_entropy(
+            all_logits, all_targets, weight=bond_class_weights
+        )
         if per_cohort_features:
             try:
                 from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
@@ -1292,29 +1596,32 @@ def train_one_epoch(
                     f"(no label_smoothing).",
                     flush=True,
                 )
-        # Wf-405-A2 — stable_vm flag swap (default OFF preserves
-        # legacy F.cross_entropy). When ON, replace bond_ce with
-        # stable_vm_loss for noise-robust multi-scale mixture
-        # (Wf-380-A1 SCAFFOLD wire-in).
-        if stable_vm and batch_velocities:
-            try:
-                from molmetal.adapters.flow_matching_lipman import (
-                    stable_vm as _svm,
-                )
-
-                vel_stub = torch.cat(batch_velocities, dim=0)
-                # stable_vm_loss takes (pred, target) velocity probes;
-                # all_logits & all_targets are bond logits — use
-                # stable_vm_loss on logits as a drop-in replacement
-                # (it computes the multi-scale mixture MSE).
-                bond_ce = _svm.stable_vm_loss(
-                    all_logits,
-                    torch.zeros_like(all_logits),
-                )
-            except Exception:
-                # Defensive: fall back to legacy F.cross_entropy so
-                # the trainer never crashes on a broken wire-in.
-                bond_ce = F.cross_entropy(all_logits, all_targets)
+        # 2026-10-04 — `stable_vm` is DISABLED.  It used to REPLACE bond_ce
+        # with ``stable_vm_loss(all_logits, zeros)``: a multi-scale MSE
+        # between the bond CLASS logits and an all-zero tensor.  That is not
+        # a bond loss in any sense — it trains the head to emit zeros, and it
+        # discards the real classification loss in the same assignment, so a
+        # run with this flag on reports a falling `bond_ce` while learning no
+        # bond chemistry at all.  The comment it carried
+        # ("use stable_vm_loss on logits as a drop-in replacement") names the
+        # error: a velocity-probe loss is not a drop-in for a 5-class
+        # cross-entropy.
+        #
+        # This is the FLAG_ONLY class AGENTS.md §5.7 exists to catch; the
+        # difference is that this one is worse than inert, it is destructive.
+        # `stable_vm` belongs on the VELOCITY loss (see the `--stable-vm`
+        # help); wiring it there is the fix, and until then the flag raises
+        # rather than silently corrupting the bond head.
+        if stable_vm:
+            raise SystemExit(
+                "--stable-vm is not wired to the bond loss and must not "
+                "replace bond_ce. It was previously used to overwrite the "
+                "bond cross-entropy with stable_vm_loss(logits, zeros), which "
+                "trains the bond head to output zeros while reporting a "
+                "falling bond_ce. The flag belongs on the VELOCITY loss; "
+                "either wire it there or drop it from the config. Refusing to "
+                "train with a silently destroyed bond objective."
+            )
         # Wasserstein regularization (M1).
         w2_val = torch.zeros((), device=device)
         if wasserstein_weight > 0.0 and batch_velocities:
@@ -1514,7 +1821,9 @@ def train_one_epoch(
                         # model via the bias zeroing so the path is
                         # bit-exact equivalent to the Wf-380-B1
                         # behaviour when scaffold_bias is None.
-                        bond_ce = F.cross_entropy(conditioned, all_targets)
+                        bond_ce = F.cross_entropy(
+                            conditioned, all_targets, weight=bond_class_weights
+                        )
         # Wf-388-A3 + Wf-404-A3 — SA-aware loss penalty wire-in (Wf-380-A6
         # SCAFFOLD; TODO-205). Default 0 (sa_loss = 0) preserves bit-for-bit
         # backward compat with Wf-380-B1 / Wf-299 train outputs. When
@@ -1681,6 +1990,15 @@ def train_one_epoch(
                 [c.atomic_numbers.long().to(device) for c in batch_clouds], dim=0
             )
             n_atoms = int(x1.shape[0])
+            # Real per-cloud atom counts, in the concatenation order above.
+            # The EGNN velocity field needs these to keep message passing
+            # inside each molecule: batch clouds are separately RDKit-embedded
+            # and all sit near the origin, so a distance-only radius graph
+            # would wire unrelated molecules together.  `_per` below is the
+            # older equal-split heuristic, which is only valid when every
+            # cloud happens to have the same size; this list is exact either
+            # way.
+            _cloud_sizes = [int(c.positions.shape[0]) for c in batch_clouds]
             x0 = torch.randn_like(x1)
             # 2026-10-04 — frontier-math OT coupling (Bass martingale /
             # SE(3) Schrodinger bridge), the point where the repo's R18 math
@@ -1803,7 +2121,7 @@ def train_one_epoch(
             x_t = (1.0 - t_col) * x0 + t_col * x1
             target_dx = x1 - x0
             fm_term = float(fm_weight) * F.mse_loss(
-                model.fm_velocity(x_t, t, z_all), target_dx
+                model.fm_velocity(x_t, t, z_all, cloud_sizes=_cloud_sizes), target_dx
             )
         # (a) shortcut_distill — Frans 2024 teacher-student distillation.
         #     CPU-safe scaffold: when shortcut_distill=True but no CUDA
@@ -1824,7 +2142,9 @@ def train_one_epoch(
                 # x_t / t / target_dx are resampled every batch, which is what
                 # keeps it from decaying into the constant shape.
                 shortcut_distill_loss = _sd.shortcut_distillation_loss(
-                    pred_fn=lambda x, tt: model.fm_velocity(x, tt, z_all),
+                    pred_fn=lambda x, tt: model.fm_velocity(
+                        x, tt, z_all, cloud_sizes=_cloud_sizes
+                    ),
                     x_time=x_t,
                     t=t,
                     target_dx=target_dx,
@@ -1859,7 +2179,9 @@ def train_one_epoch(
                 # over; x_t is the flow state built above.  Previously this was
                 # `consistency_weight * 0.0` — a constant, whatever the weight.
                 consistency_term = _cr.consistency_loss_fn(
-                    pred_fn=lambda x: model.fm_velocity(x, t, z_all),
+                    pred_fn=lambda x: model.fm_velocity(
+                        x, t, z_all, cloud_sizes=_cloud_sizes
+                    ),
                     x_t=x_t,
                     weight=float(consistency_weight),
                 )
@@ -1902,7 +2224,9 @@ def train_one_epoch(
                 # invisible to a grep for consumers and to the §5.7 smoke.
                 # Now it runs on the live flow state and target.
                 so3_term = float(so3_average_weight) * _so3.so3_average_loss(
-                    pred_fn=lambda x: model.fm_velocity(x, t, z_all),
+                    pred_fn=lambda x: model.fm_velocity(
+                        x, t, z_all, cloud_sizes=_cloud_sizes
+                    ),
                     x_t=x_t,
                     target=target_dx,
                     n_rotations=2,
@@ -1952,7 +2276,7 @@ def train_one_epoch(
                     device=device,
                 )
                 edm_term = _edm.preconditioned_loss(
-                    pred_raw=model.fm_velocity(x_t, t, z_all),
+                    pred_raw=model.fm_velocity(x_t, t, z_all, cloud_sizes=_cloud_sizes),
                     x_t=x_t,
                     target_dx=target_dx,
                     sigma=_sigma,
@@ -2336,29 +2660,72 @@ def evaluate_synthesis_certificates(
     # first run of this evaluator hit exactly that and reported 0/32, which
     # was a defect in the measurement, not a property of the model.
     #
-    # These are the same eight handle-bearing tiles wf_lambda4_verify.py uses.
+    # 2026-10-04 — USE THE PROJECT'S OWN TILE LIBRARY, not a hand-picked set.
+    #
+    # MCTSProofSearch has `use_fragment_pool: bool = True` as its DEFAULT, and
+    # `_expand` swaps the 12-tile Phase-0 library for
+    # FRAGMENT_LIBRARY_200_TILES -- MEASURED 240 tiles, 3x the library name.
+    # The search therefore expands over 5 rules x 240 tiles by default.  An
+    # earlier version of this evaluator used EIGHT hand-picked tiles taken from
+    # wf_lambda4_verify.py, so it measured a reachable set two orders of
+    # magnitude smaller than what the real search explores, and reported a
+    # certificate rate for a space the system never actually searches.
+    #
+    # Falls back to the handle-bearing subset when the library cannot load, and
+    # SAYS SO -- a silent fallback here would look like a smaller space rather
+    # than a failed import.
+    _partner_smiles = (
+        "C#CCN",  # propargylamine: alkyne + amine
+        "CCN=[N+]=[N-]",  # ethyl azide (CuAAC)
+        "C#CC",  # propyne (CuAAC)
+        "CS",  # methanethiol (ThiolEne)
+        "C=CC",  # propene (ThiolEne)
+        "B(O)c1ccccc1",  # phenylboronic acid (Suzuki)
+        "Brc1ccccc1",  # bromobenzene (Suzuki)
+        "OC(=O)c1ccccc1",  # benzoic acid (AmideCoupling)
+    )
+    _partners: List[object] = []
     try:
+        from molmetal.molmetal_lam.tile_lib.library import (
+            FRAGMENT_LIBRARY_200_TILES,
+        )
+
+        _tiles = list(FRAGMENT_LIBRARY_200_TILES())
+        _smi_of = lambda t: getattr(t, "smiles", None) or getattr(  # noqa: E731
+            t, "source_smiles", None
+        )
         _partners = [
-            MoleculeClosedTerm.from_smiles(s, embed_3d=False)
-            for s in (
-                "C#CCN",  # propargylamine: alkyne + amine
-                "CCN=[N+]=[N-]",  # ethyl azide (CuAAC)
-                "C#CC",  # propyne (CuAAC)
-                "CS",  # methanethiol (ThiolEne)
-                "C=CC",  # propene (ThiolEne)
-                "B(O)c1ccccc1",  # phenylboronic acid (Suzuki)
-                "Brc1ccccc1",  # bromobenzene (Suzuki)
-                "OC(=O)c1ccccc1",  # benzoic acid (AmideCoupling)
-            )
+            MoleculeClosedTerm.from_smiles(_smi_of(t), embed_3d=False)
+            for t in _tiles
+            if _smi_of(t)
         ]
+        print(
+            f"[cfm-cert] using the project tile library: {len(_partners)} "
+            f"partner tiles (matches MCTSProofSearch's default "
+            "use_fragment_pool=True expand pool)"
+        )
     except Exception as exc:  # noqa: BLE001
         warnings.warn(
-            f"[cfm-cert] could not build the click-handle partner tiles: "
-            f"{exc!r}; the reachable set will be degenerate (seed only)",
+            f"[cfm-cert] tile library unavailable ({exc!r}); FALLING BACK to "
+            f"the {len(_partner_smiles)}-tile handle-bearing subset, which "
+            "measures a much smaller space than the search explores",
             RuntimeWarning,
             stacklevel=2,
         )
-        _partners = []
+    if not _partners:
+        try:
+            _partners = [
+                MoleculeClosedTerm.from_smiles(s, embed_3d=False)
+                for s in _partner_smiles
+            ]
+        except Exception as exc:  # noqa: BLE001
+            warnings.warn(
+                f"[cfm-cert] could not build partner tiles either: {exc!r}; "
+                "the reachable set will be degenerate (seed only)",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            _partners = []
 
     n_attempted = 0
     n_certified = 0
@@ -2401,6 +2768,518 @@ def evaluate_synthesis_certificates(
     return n_certified, n_attempted, records
 
 
+def generate_clouds_from_noise(
+    model: "CFMJointModel",
+    templates: Sequence[AtomCloud],
+    device: torch.device,
+    *,
+    method: str = "euler",
+    n_steps: int = 100,
+    seed: int = 0,
+) -> List[AtomCloud]:
+    """Integrate the velocity field from ``x_0 ~ N(0, I)`` to ``t = 1``.
+
+    This is the GENERATION half of the CFM.  Until 2026-10-04 the trainer had
+    none: it trained a velocity field and a bond decoder, then measured
+    ``decode_ratio`` on the *data* clouds.  That measures bond perception from
+    a given geometry — it never samples a geometry.  The yaml said
+    ``flow.n_steps: 100`` / ``flow.method: rk4`` and nothing read either,
+    because there was no sampler for them to configure.
+
+    Each entry of ``templates`` supplies only the COMPOSITION (its atomic
+    numbers) and the atom count; the coordinates are discarded and re-drawn
+    from noise.  Samples are grouped by atom count so each ``ODESolver`` call
+    sees a rectangular ``(B, N, 3)`` batch.
+
+    The edge index is rebuilt on every solver step, because it is a radius
+    graph over ``x_t`` and ``x_t`` moves.  That is the standard treatment
+    (TargetDiff / DiffSBDD) and the reason a closure rather than a fixed
+    tensor is handed to the solver.
+    """
+    from molmetal.adapters.flow_matching_lipman._reference.solver import (
+        ODESolver,
+    )
+
+    was_training = model.training
+    model.eval()
+    gen = torch.Generator(device="cpu").manual_seed(int(seed))
+    by_size: Dict[int, List[AtomCloud]] = {}
+    for tpl in templates:
+        by_size.setdefault(int(tpl.atomic_numbers.shape[0]), []).append(tpl)
+
+    out: List[AtomCloud] = []
+    with torch.no_grad():
+        for n_atoms in sorted(by_size):
+            group = by_size[n_atoms]
+            b = len(group)
+            z_b = torch.stack(
+                [g.atomic_numbers.long().to(device) for g in group], dim=0
+            )  # (B, N)
+            node_mask = torch.ones(b, n_atoms, dtype=torch.bool, device=device)
+            x0 = torch.randn(b, n_atoms, 3, device=device, generator=gen)
+
+            def _vf(x, t, _z=z_b, _m=node_mask):
+                edge_index, edge_mask = _block_diag_radius_edges(
+                    x, _m, model.cutoff
+                )
+                # The solver passes t as a 0-d scalar (ModelWrapper contract);
+                # EGNNVelocityField wants a per-sample (B,) time.
+                t_b = (
+                    t.reshape(1).expand(x.shape[0])
+                    if t.dim() == 0
+                    else t.reshape(-1)[:1].expand(x.shape[0])
+                )
+                return model.vel_field(
+                    x, _z, edge_index, t_b, edge_mask=edge_mask
+                )["vel"]
+
+            solver = ODESolver(
+                velocity_model=_vf, method=str(method), n_steps=int(n_steps)
+            )
+            x1 = solver.sample(x0, method=str(method), n_steps=int(n_steps))
+            for i in range(b):
+                out.append(
+                    AtomCloud(
+                        positions=x1[i].detach().cpu(),
+                        atomic_numbers=group[i].atomic_numbers.cpu(),
+                    )
+                )
+    if was_training:
+        model.train()
+    return out
+
+
+_TARGET_METALS = frozenset({44, 45, 75, 76, 77, 78})  # Ru Rh Re Os Ir Pt
+
+
+def decode_chemistry(smiles: str) -> Optional[Dict[str, Any]]:
+    """Chemical facts RDKit-strict parsing does NOT establish.
+
+    2026-10-04 — why this exists.  ``decode_ratio`` counts a decode as a
+    success when ``Chem.MolFromSmiles`` + ``SanitizeMol`` accept the string.
+    MEASURED, a decoder that emits every atom as its own fragment scores
+    1.000 on that test: ``C.C.C.C`` is a perfectly sanitizable SMILES.  The
+    metric therefore reads HIGH exactly when the model has learned nothing,
+    which is the same blind spot that let the all-BOND_NO_BOND target go
+    unnoticed for weeks (see ``_bond_target_for_clean_cloud``).
+
+    These three facts close it:
+
+      * ``n_fragments`` / ``largest_fragment_frac`` — loose atoms are the
+        signature; a real complex is one connected molecule, so the largest
+        fragment should hold ~all the atoms.  This is the direct detector.
+      * ``has_metal`` — the corpus is metal complexes; a decode with no metal
+        in it cannot be one, whatever its valence bookkeeping.
+      * ``n_heavy`` — catches the degenerate one-atom fragment.
+
+    Returns ``None`` when the SMILES does not parse at all.
+    """
+    if not RDKIT_AVAILABLE or not smiles:
+        return None
+    try:
+        from rdkit import Chem
+
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            return None
+        frags = Chem.GetMolFrags(mol, asMols=False, sanitizeFrags=False)
+        sizes = [len(f) for f in frags] or [0]
+        n_heavy = int(mol.GetNumHeavyAtoms())
+        has_metal = any(
+            int(a.GetAtomicNum()) in _TARGET_METALS for a in mol.GetAtoms()
+        )
+        return {
+            "n_fragments": len(sizes),
+            "n_heavy": n_heavy,
+            "largest_fragment_frac": (max(sizes) / n_heavy) if n_heavy else 0.0,
+            "has_metal": bool(has_metal),
+        }
+    except Exception:
+        return None
+
+
+def summarise_decode_chemistry(rows: Sequence[Optional[Dict[str, Any]]]) -> Dict[str, Any]:
+    """Aggregate :func:`decode_chemistry` rows into one report dict.
+
+    ``largest_fragment_frac_mean`` is the number to read first: on loose-atom
+    output it collapses toward ``1/n_atoms``, while on real molecules it sits
+    at 1.0.  ``decode_ratio`` cannot tell those two apart.
+    """
+    valid = [r for r in rows if r]
+    n = len(valid)
+    if not n:
+        return {
+            "n_chemistry_scored": 0,
+            "largest_fragment_frac_mean": 0.0,
+            "single_fragment_ratio": 0.0,
+            "metal_ratio": 0.0,
+            "mean_heavy_atoms": 0.0,
+        }
+    return {
+        "n_chemistry_scored": n,
+        "largest_fragment_frac_mean": float(
+            sum(r["largest_fragment_frac"] for r in valid) / n
+        ),
+        "single_fragment_ratio": float(
+            sum(1 for r in valid if r["n_fragments"] == 1) / n
+        ),
+        "metal_ratio": float(sum(1 for r in valid if r["has_metal"]) / n),
+        "mean_heavy_atoms": float(sum(r["n_heavy"] for r in valid) / n),
+    }
+
+
+def evaluate_generation_validity(
+    model: "CFMJointModel",
+    decoder: "YuelBondBondDecoder",
+    templates: Sequence[AtomCloud],
+    device: torch.device,
+    *,
+    method: str = "euler",
+    n_steps: int = 100,
+    n_samples: int = 16,
+    seed: int = 0,
+    chemistry_out: Optional[Dict[str, Any]] = None,
+) -> Tuple[int, int]:
+    """Generate from noise, decode, and count RDKit-strict successes.
+
+    Returns ``(n_ok, n_total)``.  This is the honest companion to
+    ``decode_ratio``: that one asks "given the real geometry, is the bond
+    graph right?", this one asks "given nothing but a composition, does the
+    model produce a molecule RDKit accepts?".
+
+    Pass ``chemistry_out`` to also receive the chemical facts RDKit-strict
+    parsing does not establish (fragment counts, metal presence) — see
+    :func:`decode_chemistry`.  ``n_ok`` alone cannot distinguish a real
+    molecule from a string of loose atoms.
+    """
+    if not templates or n_samples <= 0:
+        return 0, 0
+    pool = list(templates)[: int(n_samples)]
+    clouds = generate_clouds_from_noise(
+        model,
+        pool,
+        device,
+        method=method,
+        n_steps=n_steps,
+        seed=seed,
+    )
+    n_ok = 0
+    chem_rows: list[Optional[Dict[str, Any]]] = []
+    for cloud in clouds:
+        try:
+            res = decoder.decode(cloud)
+            smi = getattr(getattr(res, "decoded", None), "smiles", None)
+            chem_rows.append(decode_chemistry(smi) if smi else None)
+            if _decode_with_rdkit_strict(decoder, cloud):
+                n_ok += 1
+        except Exception:
+            chem_rows.append(None)
+            continue
+    if chemistry_out is not None:
+        chemistry_out.clear()
+        chemistry_out.update(summarise_decode_chemistry(chem_rows))
+        chemistry_out["n_samples"] = len(clouds)
+        chemistry_out["decode_ratio"] = n_ok / max(len(clouds), 1)
+    return n_ok, len(clouds)
+
+
+def _bond_decision(
+    logits: "torch.Tensor",
+    decision: str,
+    threshold: float,
+) -> list:
+    """Turn per-pair class logits into predicted classes.
+
+    ``argmax`` — the historical rule.  MEASURED to be badly calibrated in both
+    directions on this task: with unweighted CE it collapsed to recall 0.007
+    (F1 0.013) while the same logits reached F1 0.46-0.50 under a threshold,
+    and with full inverse-frequency weights it swung to recall 0.97 /
+    precision 0.32.  Six of five classes are overwhelmingly BOND_NO_BOND, so
+    the argmax boundary sits nowhere near the useful operating point, and
+    class weighting MOVES it rather than fixing it.
+
+    ``threshold`` — existence is decided by ``P(bonded) >= threshold``, and
+    the class is the argmax over the NON-zero classes.  This decouples "is
+    there a bond" from "which bond", which is what the data supports: the
+    existence question has a 30% positive rate, the type question is nearly
+    deterministic given existence.
+    """
+    if decision == "argmax":
+        return logits.argmax(dim=-1).tolist()
+    prob = torch.softmax(logits.float(), dim=-1)
+    p_bonded = 1.0 - prob[:, BOND_NO_BOND]
+    non_zero = prob[:, 1:]
+    types = non_zero.argmax(dim=-1) + 1
+    out = []
+    for k in range(logits.shape[0]):
+        out.append(int(types[k]) if float(p_bonded[k]) >= threshold else BOND_NO_BOND)
+    return out
+
+
+def evaluate_bond_accuracy(
+    model: "CFMJointModel",
+    val_clouds: Sequence[AtomCloud],
+    *,
+    decision: str = "argmax",
+    threshold: float = 0.5,
+) -> Dict[str, float]:
+    """Bond prediction scored against the corpus's TRUE bond graph.
+
+    ``decode_ratio`` asks "did the decoded string parse" and, MEASURED, it is
+    anti-correlated with being right here: it read 0.969-0.977 while the head
+    was still predicting BOND_NO_BOND for nearly every pair (loose atoms parse
+    trivially) and fell to 0.219 as the head learned real bond classes
+    (connected molecules with a wrong valence get rejected).  A metric that
+    peaks when the model is wrong cannot gate a retrain.
+
+    This scores the thing that matters, pair by pair against the Wiberg
+    bond-order graph the corpus carries in ``AtomCloud.bonds``:
+
+      * ``bond_precision`` / ``bond_recall`` / ``bond_f1`` — over bond
+        EXISTENCE,
+      * ``bond_exact_match`` — the fraction of clouds whose bond set AND every
+        class match the truth exactly,
+      * ``n_truth_bonds`` — so an empty prediction cannot look good.
+
+    Clouds without ``bonds`` are skipped and counted in ``n_scored``, so a
+    corpus that carries no truth reports ``n_scored=0`` rather than a
+    meaningless 1.0.
+    """
+    model.eval()
+    tp = fp = fn = 0
+    # The OTHER decision rule, scored on the same pairs every epoch.  Both are
+    # cheap (same logits) and reporting both is what turns "which rule should
+    # we use" from a guess into a measurement — MEASURED, they differ by 0.45
+    # F1 on the same model.
+    alt_tp = alt_fp = alt_fn = 0
+    exact = 0
+    exact_type = 0
+    n_scored = 0
+    n_truth_bonds = 0
+    # Bond-TYPE bookkeeping.  2026-10-04 — existence F1 alone cannot answer
+    # whether the learned head earns its place: a classical toolkit recovers
+    # bond EXISTENCE at F1 ~0.98 on this corpus (MEASURED, OpenBabel, see
+    # metrics/by_metric/tmqm_bond_perception.json) and its weakness is the
+    # TYPE, i.e. the metal-donor orders.  Without a type number here the
+    # training run cannot speak to the one axis that matters.
+    truth_pairs_by_type: Dict[int, set] = {}
+    pred_pairs_by_type: Dict[int, set] = {}
+    # 2026-10-04 — per-pair "is there a bond" scores, kept so the report can
+    # separate two very different failures.  The argmax above fixes the
+    # operating point at 0.5-on-the-argmax, and class weighting MOVES it: at
+    # weight power 1.0 the head went to precision 0.409 / recall 0.737, at
+    # power 0.0 it sat at 0.870 / 0.293.  That trade is only informative if we
+    # know whether the model RANKS bonds well and the boundary is wrong, or
+    # whether it cannot rank them at all.  Average precision is threshold-free
+    # and answers exactly that.
+    pair_scores: list[float] = []
+    pair_is_true: list[int] = []
+    from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
+        YuelBondDecoder,
+    )
+
+    # One featuriser, built exactly the way `_bond_target_for_clean_cloud`
+    # builds its own, so the pair keys below index the SAME edges the head
+    # scored.
+    featuriser = YuelBondDecoder(head=model.head)
+    with torch.no_grad():
+        for cloud in val_clouds:
+            truth_bonds = getattr(cloud, "bonds", None)
+            truth_types = getattr(cloud, "bond_types", None)
+            if truth_bonds is None or truth_types is None:
+                continue
+            try:
+                yres = featuriser.featurise(cloud)
+            except Exception:
+                continue
+            if not yres.decode_succeeded or yres.logits.shape[0] == 0:
+                continue
+            n_scored += 1
+            predicted = _bond_decision(yres.logits, decision, threshold)
+            predicted_alt = _bond_decision(
+                yres.logits,
+                "threshold" if decision == "argmax" else "argmax",
+                threshold,
+            )
+            edge_index = yres.edge_index
+            truth = {
+                (int(i), int(j)): int(t)
+                for i, j, t in zip(
+                    truth_bonds[0].tolist(),
+                    truth_bonds[1].tolist(),
+                    truth_types.tolist(),
+                )
+            }
+            # P(bonded) = 1 - P(class 0), the threshold-free ranking score.
+            prob = torch.softmax(yres.logits.float(), dim=-1)
+            p_bonded = (1.0 - prob[:, BOND_NO_BOND]).tolist()
+            for k, (s, d) in enumerate(
+                zip(edge_index[0].tolist(), edge_index[1].tolist())
+            ):
+                key = (min(s, d), max(s, d))
+                pair_scores.append(float(p_bonded[k]))
+                # A pair is "truly bonded" iff the corpus carries a non-zero
+                # class for it.  Note the truth dict is keyed by the SAME
+                # (min,max) canonicalisation, so this is a like-for-like test.
+                pair_is_true.append(1 if truth.get(key, 0) != 0 else 0)
+
+            pred_set = {}
+            pred_set_alt = {}
+            for k, (s, d) in enumerate(
+                zip(edge_index[0].tolist(), edge_index[1].tolist())
+            ):
+                key = (min(s, d), max(s, d))
+                if predicted[k] != BOND_NO_BOND:
+                    pred_set[key] = predicted[k]
+                if predicted_alt[k] != BOND_NO_BOND:
+                    pred_set_alt[key] = predicted_alt[k]
+            n_truth_bonds += len(truth)
+            shared = set(pred_set) & set(truth)
+            tp += len(shared)
+            fp += len(set(pred_set) - set(truth))
+            fn += len(set(truth) - set(pred_set))
+            alt_tp += len(set(pred_set_alt) & set(truth))
+            alt_fp += len(set(pred_set_alt) - set(truth))
+            alt_fn += len(set(truth) - set(pred_set_alt))
+            if set(pred_set) == set(truth) and all(
+                pred_set[k] == truth[k] for k in truth
+            ):
+                exact += 1
+            # TYPE: exact requires the bond set AND every class to match, the
+            # same definition `bench_tmqm_bond_perception.score_bonds` uses for
+            # `exact_type`, so the two tables mean the same thing.
+            if set(pred_set) == set(truth) and all(
+                pred_set[k] == truth[k] for k in truth
+            ):
+                exact_type += 1
+            for k, cls in truth.items():
+                truth_pairs_by_type.setdefault(int(cls), set()).add((id(cloud), k))
+            for k, cls in pred_set.items():
+                pred_pairs_by_type.setdefault(int(cls), set()).add((id(cloud), k))
+    prec = tp / max(tp + fp, 1)
+    rec = tp / max(tp + fn, 1)
+    out = {
+        "n_scored": float(n_scored),
+        "n_truth_bonds": float(n_truth_bonds),
+        "bond_precision": float(prec),
+        "bond_recall": float(rec),
+        "bond_f1": float(2 * prec * rec / max(prec + rec, 1e-9)),
+        "bond_exact_match": float(exact / n_scored) if n_scored else 0.0,
+    }
+    alt_prec = alt_tp / max(alt_tp + alt_fp, 1)
+    alt_rec = alt_tp / max(alt_tp + alt_fn, 1)
+    out["bond_decision"] = decision
+    out["bond_decision_threshold"] = float(threshold)
+    out["bond_f1_alt_rule"] = float(
+        2 * alt_prec * alt_rec / max(alt_prec + alt_rec, 1e-9)
+    )
+    out["bond_precision_alt_rule"] = float(alt_prec)
+    out["bond_recall_alt_rule"] = float(alt_rec)
+    # Macro F1 over bond TYPE, pooled across all scored pairs.  The per-class
+    # F1 formula is the bench's; the AGGREGATION differs — the bench averages
+    # F1 per complex, this pools the pairs and computes one F1.  Both are
+    # legitimate and they are not interchangeable, so the field name says
+    # which one it is.  `bond_exact_type_rate` is the fraction of clouds whose
+    # bond set and every class match, which is aggregation-free and therefore
+    # directly comparable to the bench's `exact_type`.
+    classes = sorted(set(truth_pairs_by_type) | set(pred_pairs_by_type))
+    f1s = []
+    for cls in classes:
+        t_c = truth_pairs_by_type.get(cls, set())
+        p_c = pred_pairs_by_type.get(cls, set())
+        tp_t = len(t_c & p_c)
+        f1s.append(0.0 if not (t_c or p_c) else 2 * tp_t / (len(t_c) + len(p_c)))
+    out["bond_type_macro_f1_pooled"] = float(sum(f1s) / len(f1s)) if f1s else 0.0
+    out["bond_exact_type_rate"] = float(exact_type / n_scored) if n_scored else 0.0
+    out["bond_type_n_classes"] = float(len(classes))
+    out.update(_bond_ranking_report(pair_scores, pair_is_true))
+    return out
+
+
+def _bond_ranking_report(
+    scores: Sequence[float], is_true: Sequence[int]
+) -> Dict[str, float]:
+    """Threshold-free bond-existence ranking quality + a labelled sweep.
+
+    ``bond_pr_auc`` (average precision) is the honest number: it needs no
+    threshold and no selection, so it cannot be inflated by tuning.  Read it
+    against ``bond_f1`` from the argmax decision — a large gap means the head
+    RANKS bonds well and only the operating point is wrong, which is a
+    post-hoc calibration rather than a retrain; a small gap means the ranking
+    itself is the problem and no threshold will recover it.
+
+    ``bond_best_f1_threshold`` is OPTIMISTIC BY CONSTRUCTION — the threshold
+    is chosen on the same pairs it is scored on.  It is a ceiling on what
+    threshold calibration could buy, not a reportable result.  Picking a
+    production threshold requires a held-out split.
+    """
+    n = len(scores)
+    if n == 0 or sum(is_true) == 0:
+        return {
+            "bond_pr_auc": 0.0,
+            "bond_best_f1_threshold": 0.0,
+            "bond_best_f1_at_threshold": 0.0,
+            "bond_pr_auc_note": "no scored pairs or no positives",
+        }
+    total_pos = sum(is_true)
+    # Average precision as the area under the precision-recall curve, stepped
+    # at each UNIQUE score.  The "mean of precision@k at the positive ranks"
+    # formulation is the same number when scores are distinct — softmax
+    # probabilities essentially always are — but it is order-dependent under
+    # ties, and a run of equal scores would then be scored by whatever order
+    # the pairs happened to arrive in.  Constant scores must yield the base
+    # rate, which is what a block formulation gives and the rank-average does
+    # not (MEASURED: it returned 1.0 for all-equal scores).
+    pairs = sorted(zip(scores, is_true), key=lambda x: -x[0])
+    ap = 0.0
+    tp = fp = 0
+    prev_recall = 0.0
+    i = 0
+    while i < len(pairs):
+        j = i
+        while j < len(pairs) and pairs[j][0] == pairs[i][0]:
+            if pairs[j][1]:
+                tp += 1
+            else:
+                fp += 1
+            j += 1
+        prec_t = tp / max(tp + fp, 1)
+        rec_t = tp / total_pos
+        ap += (rec_t - prev_recall) * prec_t
+        prev_recall = rec_t
+        i = j
+
+    best_f1 = 0.0
+    best_t = 0.0
+    for t in [i / 100.0 for i in range(5, 100, 5)]:
+        tp_t = fp_t = fn_t = 0
+        for s, lab in zip(scores, is_true):
+            if s >= t:
+                if lab:
+                    tp_t += 1
+                else:
+                    fp_t += 1
+            elif lab:
+                fn_t += 1
+        p_t = tp_t / max(tp_t + fp_t, 1)
+        r_t = tp_t / max(tp_t + fn_t, 1)
+        f1_t = 2 * p_t * r_t / max(p_t + r_t, 1e-9)
+        if f1_t > best_f1:
+            best_f1, best_t = f1_t, t
+    return {
+        "bond_pr_auc": float(ap),
+        "bond_best_f1_threshold": float(best_t),
+        "bond_best_f1_at_threshold": float(best_f1),
+        "bond_n_pairs_scored": float(n),
+        "bond_positive_rate": float(total_pos / n),
+        "bond_pr_auc_note": (
+            "bond_pr_auc is threshold-free (honest). "
+            "bond_best_f1_* are selected on the same pairs (OPTIMISTIC — a "
+            "ceiling, not a result)."
+        ),
+    }
+
+
 def evaluate_decode_ratio(
     model: CFMJointModel,
     decoder: YuelBondBondDecoder,
@@ -2416,10 +3295,11 @@ def evaluate_decode_ratio(
     n_ok = 0
     n_total = len(val_clouds)
     for cloud in val_clouds:
-        cloud_d = AtomCloud(
-            positions=cloud.positions.to(device),
-            atomic_numbers=cloud.atomic_numbers.to(device),
-        )
+        # Through the helper, not an inline rebuild: decoding does not read
+        # `bonds` today, but an inline rebuild here is precisely the shape
+        # that silently dropped the bond truth from `train_clouds_d` and made
+        # the 2026-10-04 all-BOND_NO_BOND target invisible for a full retrain.
+        cloud_d = _to_device_cloud(cloud, device)
         # Closure-bounded decoding: bias the YuelBond head logits
         # before the decoder's greedy selection step.  We do this
         # by temporarily replacing the decoder head's weights, but
@@ -2791,6 +3671,185 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--use-egnn-velocity",
+        dest="use_egnn_velocity",
+        action="store_true",
+        default=False,
+        help=(
+            "2026-10-04 NEW: replace the two placeholder velocity probes "
+            "(`vel_probe` / `fm_vel_head`, 2-layer MLPs) with the production "
+            "EGNNVelocityField from molmetal.adapters.flow_matching_lipman "
+            "(518 K params at --hidden-dim 128).  The project's flow-matching "
+            "math — SE(3) Sinkhorn / Bass couplings, EDM sigma-preconditioning, "
+            "SO(3) averaging, shortcut distillation, consistency "
+            "regularisation — is written for a real SE(3)-equivariant field; "
+            "applied to the MLP probes it only ever regularised a placeholder.  "
+            "This flag also activates the radius-graph message passing "
+            "(block-diagonal per cloud — no cross-molecule edges).  Default "
+            "OFF because it changes the state_dict keys, so it invalidates "
+            "every checkpoint written before it."
+        ),
+    )
+    p.add_argument(
+        "--n-steps",
+        dest="n_steps",
+        type=int,
+        default=100,
+        help=(
+            "2026-10-04 NEW: ODE integration steps for generation.  The yaml "
+            "`flow.n_steps` key named this and had NO consumer — the trainer "
+            "had no sampler at all, so a step count configured nothing.  "
+            "Wired to the cloned reference solver "
+            "(molmetal/adapters/flow_matching_lipman/_reference/solver). "
+            "Only used when --gen-validity-samples > 0."
+        ),
+    )
+    p.add_argument(
+        "--method",
+        dest="method",
+        type=str,
+        default="euler",
+        choices=("euler", "midpoint", "heun", "rk2", "rk4"),
+        help=(
+            "2026-10-04 NEW: ODE integrator for generation; the yaml "
+            "`flow.method` key named this and had no consumer.  'euler' is "
+            "1st order, 'midpoint'/'heun'/'rk2' 2nd, 'rk4' 4th.  Verified "
+            "against the exact solution of dx/dt = -x: euler 2.9e-3, midpoint "
+            "1.5e-5, rk4 6.0e-8 at 64 steps."
+        ),
+    )
+    p.add_argument(
+        "--gen-validity-samples",
+        dest="gen_validity_samples",
+        type=int,
+        default=0,
+        help=(
+            "2026-10-04 NEW: how many val compositions to generate from noise "
+            "each epoch and decode for RDKit validity.  0 (default) disables "
+            "generation eval, which keeps a decode-only run bit-for-bit "
+            "unchanged.  This is the GENERATION metric: `decode_ratio` decodes "
+            "the real geometry (bond perception), while this integrates "
+            "v(x,t) from x0 ~ N(0, I) and decodes the result (sampling).  "
+            "Requires --use-egnn-velocity."
+        ),
+    )
+    p.add_argument(
+        "--bond-decision",
+        dest="bond_decision",
+        choices=("argmax", "threshold"),
+        default="argmax",
+        help=(
+            "2026-10-04 NEW: how per-pair bond logits become a predicted "
+            "class. 'argmax' (default, historical) takes the 5-way argmax; "
+            "MEASURED it is badly calibrated in BOTH directions — unweighted "
+            "it gave F1 0.013 where a threshold on the same logits gave "
+            "0.46-0.50, and inverse-frequency weighted it swung to recall "
+            "0.97 / precision 0.32. 'threshold' decides existence by "
+            "P(bonded) >= --bond-decision-threshold and takes the argmax "
+            "over the non-zero classes for the type, decoupling 'is there a "
+            "bond' (30%% positive rate) from 'which bond'. Set both from "
+            "yaml (flow.bond_decision / flow.bond_decision_threshold)."
+        ),
+    )
+    p.add_argument(
+        "--bond-decision-threshold",
+        dest="bond_decision_threshold",
+        type=float,
+        default=0.5,
+        help=(
+            "2026-10-04 NEW: P(bonded) cut used when --bond-decision "
+            "threshold. Default 0.5 is a PRIOR, not a tuned value — the "
+            "per-epoch 'best_f1(optimistic)' line reports what a sweep would "
+            "reach, and picking a production threshold needs a held-out "
+            "split (choosing it on the same pairs inflates the score)."
+        ),
+    )
+    p.add_argument(
+        "--bond-class-weights",
+        dest="bond_class_weights",
+        action="store_true",
+        default=False,
+        help=(
+            "2026-10-04 NEW: inverse-frequency class weights on the bond "
+            "cross-entropy.  MEASURED, 71%% of candidate pairs are "
+            "BOND_NO_BOND, so the unweighted CE is minimised by predicting "
+            "'no bond' almost everywhere: recall 0.293 against precision "
+            "0.870.  Weighting makes a missed real bond cost more than a "
+            "spurious one.  Compute once from the training cohort (not "
+            "per-batch, which would make the loss non-stationary)."
+        ),
+    )
+    p.add_argument(
+        "--bond-class-weight-power",
+        dest="bond_class_weight_power",
+        type=float,
+        default=0.5,
+        help=(
+            "2026-10-04 NEW: softening exponent on the inverse-frequency "
+            "bond-class weights.  1.0 = the textbook form, which is NOT "
+            "usable here: MEASURED counts [24378, 4460, 421, 28, 5661] give "
+            "BOND_TRIPLE (0.08%% of pairs, 28 examples) a 250x weight that "
+            "would dominate the gradient.  0.5 (default) is the standard "
+            "effective-number-of-samples softening, pulling it to ~16x; "
+            "weights are renormalised to mean 1 so the bond_ce loss scale "
+            "does not move with the exponent."
+        ),
+    )
+    p.add_argument(
+        "--egnn-max-atomic-number",
+        dest="egnn_max_atomic_number",
+        type=int,
+        default=100,
+        help=(
+            "Embedding width for the EGNN's atom encoder (only with "
+            "--use-egnn-velocity).  EGNNVelocityField indexes atom_embed by "
+            "atomic number directly, so this is a plain upper bound on Z — "
+            "100 covers every element the project touches.  Unlike "
+            "--yuelbond-vocab it is not a curated table, so it does not need "
+            "to be kept in sync with the bond head."
+        ),
+    )
+    p.add_argument(
+        "--use-tmqm-init",
+        dest="use_tmqm_init",
+        action="store_true",
+        default=False,
+        help=(
+            "2026-10-04 NEW: warm-start the EGNN velocity field's encoder from "
+            "the F2 tmQM pretrain output instead of random init.  The "
+            "interface (EGNNVelocityField.tmqm_init_path / use_tmqm_init) "
+            "existed since TODO-08 and the checkpoint has been on disk the "
+            "whole time, but no config-driven path ever set either, so the "
+            "field always trained from scratch.  Only applies with "
+            "--use-egnn-velocity."
+        ),
+    )
+    p.add_argument(
+        "--tmqm-init-path",
+        dest="tmqm_init_path",
+        type=str,
+        default=None,
+        help=(
+            "Explicit tmQM encoder checkpoint; defaults to the F2 pretrain "
+            "output resolved over models/tmqm_pretrained/ then "
+            "molmetal/checkpoints/ (see DEFAULT_TMQM_CKPT).  Implies "
+            "--use-tmqm-init when set."
+        ),
+    )
+    p.add_argument(
+        "--egnn-context-dropout",
+        dest="egnn_context_dropout",
+        type=float,
+        default=0.1,
+        help=(
+            "Per-sample Bernoulli drop probability on the pocket conditioning "
+            "bias, inside EGNNVelocityField (only with --use-egnn-velocity).  "
+            "Teaches the unconditional marginal p(v | empty) so that "
+            "classifier-free guidance (EGNNVelocityField.v_cfg) is available "
+            "at sampling time.  0.0 disables CFG."
+        ),
+    )
+    p.add_argument(
         "--fm-weight",
         type=float,
         default=1.0,
@@ -3011,7 +4070,11 @@ def parse_args() -> argparse.Namespace:
             "this trainer: its structure column is `SMILES_Ligands`, so the "
             "metal is a separate column and never appears in the structure "
             "(MEASURED: 0 of 800 sampled rows contain any metal atom), and "
-            "100% of rows are multi-fragment.  Pointed at it, decode_ratio "
+            # `%%` — argparse runs `help % params` on every help string, so a
+            # bare `%` here raises "TypeError: %o format" and takes down the
+            # whole `--help` render, not just this flag.  Same trap as the
+            # Wf-358-A1 escape fix noted further down this file.
+            "100%% of rows are multi-fragment.  Pointed at it, decode_ratio "
             "went 1.000 -> 0.000.  This flag is for a corpus that DOES carry "
             "metal coordinates.  See the `csv:` removal note in "
             "configs/cfm_full_retrain.yaml."
@@ -3078,6 +4141,27 @@ def parse_args() -> argparse.Namespace:
             "with Ru/Ir/Rh/Os/Re appended (18 entries); required for any "
             "non-Pt metal, and incompatible with checkpoints trained under "
             "'pt' because the encoder width changes."
+        ),
+    )
+    p.add_argument(
+        "--dataset",
+        dest="dataset",
+        type=str,
+        default="auto",
+        choices=("auto", "synthetic", "tmqm", "csv"),
+        help=(
+            "2026-10-04 NEW: which corpus this run trains on.  Before this "
+            "flag the selection was IMPLICIT — tmQM if --tmqm-dir was set, "
+            "else the CSV if --data-csv was set, else the synthetic Pt-click "
+            "layout — so a config could declare a dataset in `data.dataset` "
+            "(a key that resolved to no dest and was silently dropped) while "
+            "actually training on the synthetic clouds.  That is exactly what "
+            "`configs/cfm_full_retrain.yaml` did: its honest_framing claimed "
+            "'MetalCytoToxDB 5-metal v2 corpus, 26632 rows, 0 leak' while the "
+            "cohort was one jittered square-planar Pt layout.  "
+            "'auto' (default) keeps the old precedence so existing launches "
+            "are bit-for-bit unchanged; naming a corpus explicitly makes the "
+            "run disagree with its own arguments FAIL LOUDLY instead."
         ),
     )
     p.add_argument(
@@ -3227,9 +4311,14 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=50,
         help=(
-            "Wf-A5 N3 — per-epoch checkpoint save interval (default 50). "
-            "Final epoch always saves regardless of interval. "
-            "Default preserves Wf-131 P1 + Wf-251-F4 baseline bit-for-bit."
+            "Per-epoch checkpoint save interval (default 50; 0 disables "
+            "periodic saves).  The final epoch always saves.  NOTE "
+            "(2026-10-04): this flag previously had ZERO read sites here — "
+            "start.sh passes it on every launch, so the no-op was invisible.  "
+            "The only save was 'on decode_ratio improvement', and in a "
+            "50-epoch run decode_ratio typically reaches its ceiling at epoch "
+            "0, so the checkpoint was written once and never updated: a crash "
+            "at epoch 49 lost the whole run."
         ),
     )
     p.add_argument(
@@ -3237,10 +4326,14 @@ def parse_args() -> argparse.Namespace:
         choices=["auto", "none", "path"],
         default="auto",
         help=(
-            "Wf-A5 N3 — checkpoint resume mode (default 'auto'). "
-            "'auto' scans ckpt_dir for dmpnn_mtw_{metal}_seed{seed}.pt; "
-            "'none' cold-starts; 'path' uses --resume-from-path. "
-            "Default 'auto' preserves baseline bit-for-bit."
+            "Checkpoint resume mode (default 'auto').  'auto' loads "
+            "ckpt_dir/cfm_yuelbond_wasserstein_seed{seed}.pt when it exists "
+            "and continues from the next epoch; 'none' cold-starts; 'path' "
+            "uses --resume-from-path.  NOTE (2026-10-04): this flag previously "
+            "had ZERO read sites here — start.sh appends it to every launch, "
+            "so the no-op was invisible.  'auto' never reads the legacy "
+            "unseeded 'cfm_yuelbond_wasserstein.pt'; that file belongs to "
+            "whichever seed finished last."
         ),
     )
     p.add_argument(
@@ -3335,8 +4428,19 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--ckpt-dir",
         type=str,
-        default="molmetal/checkpoints",
-        help="Checkpoint directory.",
+        default=None,
+        help=(
+            "Checkpoint directory. Default (when not given here or via the "
+            "yaml output.ckpt_dir field): <out_dir>/checkpoints. "
+            "2026-10-04: this used to default to the repo-global "
+            "molmetal/checkpoints regardless of --out-dir, so any throwaway "
+            "smoke wrote into the production checkpoint directory AND the "
+            "default --resume-from auto would then silently resume from those "
+            "stale checkpoints on a later run. MEASURED: a 1-epoch/32-sample "
+            "pytest run overwrote the shipped cfm_yuelbond_wasserstein.pt. "
+            "Deriving from --out-dir keeps runs isolated; this mirrors the "
+            "Wf-A10 fix on train_dmpnn_multitask_wasserstein.py."
+        ),
     )
     p.add_argument(
         "--target-decode-ratio",
@@ -3522,15 +4626,17 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help=(
             "Wf-405-A2 NEW (Wf-380-B1 closeout #3 / Wf-380-A1): "
-            "use stable_vm.stable_vm_loss as the velocity MSE loss "
+            "use stable_vm.stable_vm_loss as the VELOCITY MSE loss "
             "(multi-scale mixture per StableVM 2026 ICML). "
-            "Default OFF (False) per Wf-405-A2 backward-compat "
-            "requirement; Wf-388-A3 cross_entropy bond-CE is "
-            "preserved bit-for-bit when --stable-vm is False. "
-            "When ON, bond_ce is computed via stable_vm_loss "
-            "(geometric-series per-scale weights, default "
-            "n_scales=4 base=0.05 growth=2.0). PROJECTED noise "
-            "robustness lift on small-cohort training per Wf-380-A1."
+            "Default OFF (False). "
+            "2026-10-04 — this flag currently RAISES. Its wire-in sent "
+            "stable_vm_loss to bond_ce, replacing the 5-class bond "
+            "cross-entropy with a velocity MSE against an all-zero target; "
+            "the head learns to output zeros and bond_ce falls, so the run "
+            "looks like progress. A velocity-probe loss is not a drop-in for "
+            "a bond classifier, and the flag will not be re-enabled until it "
+            "is wired to the velocity loss. See the raise site in "
+            "train_one_epoch."
         ),
     )
     p.add_argument(
@@ -4147,7 +5253,36 @@ def main() -> int:
     # Output dirs.
     out_dir = PROJECT_ROOT / args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
-    ckpt_dir = PROJECT_ROOT / args.ckpt_dir
+    # 2026-10-04 FIX — mirrors the Wf-A10 fix on the D-MPNN trainer.
+    #
+    # `--ckpt-dir` used to default to the repo-global `molmetal/checkpoints`.
+    # MEASURED consequence: `test_cfm_loss_gradient_liveness.py` runs this
+    # trainer for one 32-sample epoch with `--out-dir <pytest tmp>` and no
+    # `--ckpt-dir`, so it wrote a 1-epoch/32-sample checkpoint OVER the
+    # shipped `cfm_yuelbond_wasserstein.pt` and `..._seed0.pt`.  Both files on
+    # disk now carry `out_dir=/tmp/pytest-of-hugo/...` in their saved args,
+    # and the Wf-124 P2 50-epoch weights they used to hold are not in git and
+    # have no surviving copy.
+    #
+    # The second half is the reason this cannot be left as a test-only fix:
+    # `--resume-from` defaults to `auto`, which scans `ckpt_dir` and resumes.
+    # A smoke writing into the shared dir therefore poisons the NEXT real
+    # launch, which silently continues from the smoke's weights — the same
+    # `train_seconds=0.0035` failure Wf-A10 recorded on the D-MPNN side.
+    #
+    # Deriving from `--out-dir` keeps every run's checkpoints with that run.
+    # A config that genuinely wants a shared directory can still set
+    # `output.ckpt_dir` in the yaml (start.sh passes it through).
+    if args.ckpt_dir:
+        ckpt_dir = PROJECT_ROOT / args.ckpt_dir
+    else:
+        ckpt_dir = out_dir / "checkpoints"
+        print(
+            f"[cfm-ckpt] --ckpt-dir not set; using the run's own directory "
+            f"({ckpt_dir}) so this run cannot overwrite, or resume from, "
+            f"another run's checkpoints.",
+            flush=True,
+        )
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     # Wf-TUI NEW: install structured-event emitter BEFORE any training
@@ -4180,7 +5315,47 @@ def main() -> int:
     # geometry actually CONTAINS the metal.
     _tmqm_dir = getattr(args, "tmqm_dir", None)
     _data_csv = getattr(args, "data_csv", None) or getattr(args, "csv", None)
-    if _tmqm_dir is not None and str(_tmqm_dir).strip():
+    _has_tmqm = _tmqm_dir is not None and str(_tmqm_dir).strip() != ""
+    _has_csv = _data_csv is not None and str(_data_csv).strip() != ""
+    # 2026-10-04 — resolve the corpus BEFORE branching, and refuse a
+    # contradiction rather than silently substituting a different corpus.
+    #
+    # The silent substitution is what produced the shipped
+    # `configs/cfm_full_retrain.yaml` contradiction: `data.dataset` named a
+    # property corpus, that key resolved to no dest, the trainer found no
+    # `--tmqm-dir`/`--data-csv`, and the `else` branch quietly handed it the
+    # synthetic Pt-click layout — while `honest_framing.claims` still said
+    # "26632 rows, Wf-261 strict scaffold split, 0 leak".  A run whose data
+    # disagrees with its own description must not start.
+    _dataset = str(getattr(args, "dataset", "auto") or "auto").strip().lower()
+    if _dataset in ("", "auto"):
+        # Preserve the pre-flag precedence exactly: tmQM wins over CSV wins
+        # over synthetic.
+        _dataset = "tmqm" if _has_tmqm else ("csv" if _has_csv else "synthetic")
+    if _dataset == "tmqm" and not _has_tmqm:
+        raise SystemExit(
+            "--dataset tmqm requires --tmqm-dir (yaml `data.tmqm_dir`); got "
+            f"tmqm_dir={_tmqm_dir!r}.  Refusing to fall back to another "
+            "corpus: an undeclared substitution is how a config ends up "
+            "reporting a dataset it never read."
+        )
+    if _dataset == "csv" and not _has_csv:
+        raise SystemExit(
+            "--dataset csv requires --data-csv (yaml `data.csv`); got "
+            f"data_csv={_data_csv!r}.  Refusing to fall back to another corpus."
+        )
+    if _dataset == "synthetic" and (_has_tmqm or _has_csv):
+        raise SystemExit(
+            "--dataset synthetic conflicts with a supplied corpus "
+            f"(tmqm_dir={_tmqm_dir!r}, data_csv={_data_csv!r}).  Drop one of "
+            "the two so the run's data matches its declaration."
+        )
+    print(
+        f"[cfm-corpus] dataset={_dataset} "
+        f"(tmqm_dir={_tmqm_dir!r}, data_csv={_data_csv!r})",
+        flush=True,
+    )
+    if _dataset == "tmqm":
         from molmetal.data.tmqm_clouds import load_tmqm_clouds as _load_tmqm
 
         _tmqm_root = str(_tmqm_dir)
@@ -4221,7 +5396,7 @@ def main() -> int:
             split="val",
             val_frac=_tmqm_val_frac,
         )
-    elif _data_csv is not None and str(_data_csv).strip():
+    elif _dataset == "csv":
         _csv_path = str(_data_csv)
         # Relative paths are resolved against the repo root, matching how the
         # yaml spells them ('.data/molmetal/...'), so the same config works
@@ -4294,20 +5469,25 @@ def main() -> int:
                 flush=True,
             )
     # Move to device.
-    train_clouds_d = [
-        AtomCloud(
-            positions=c.positions.to(device),
-            atomic_numbers=c.atomic_numbers.to(device),
-        )
-        for c in train_clouds
-    ]
-    val_clouds_d = [
-        AtomCloud(
-            positions=c.positions.to(device),
-            atomic_numbers=c.atomic_numbers.to(device),
-        )
-        for c in val_clouds
-    ]
+    # 2026-10-04 — CARRY THE BOND TRUTH ACROSS.
+    #
+    # This device-move runs BEFORE train_one_epoch, and it used to keep only
+    # positions + atomic_numbers.  Everything downstream therefore saw clouds
+    # with `bonds is None`, `_bond_target_for_clean_cloud` silently took its
+    # Pt-only fallback, and the training target came back 100% BOND_NO_BOND on
+    # Ru (MEASURED at the training loop: tgt_dist={0: 1759}).  The head's
+    # argmax was class 0 for every pair, so every decode was loose atoms
+    # (`C.C.C.C...`) — which parses, so `decode_ratio` reported 1.000 and
+    # `bond_ce` reported 0.0000 throughout.
+    #
+    # NOTE for anyone chasing this again: there is a SECOND rebuild inside
+    # train_one_epoch's batch loop, and fixing only that one changes nothing —
+    # by then the bonds are already gone.  Both are guarded by
+    # molmetal/tests/test_cfm_bond_target_truth.py.
+    train_clouds_d = [_to_device_cloud(c, device) for c in train_clouds]
+    val_clouds_d = [_to_device_cloud(c, device) for c in val_clouds]
+
+
     print(
         f"[Wf-124 P2] cohort built: train={len(train_clouds_d)} "
         f"val={len(val_clouds_d)}",
@@ -4326,13 +5506,95 @@ def main() -> int:
         f"({len(_z_table)} entries, metals in table: "
         f"{[z for z in _z_table if z in (78, 44, 77, 45, 76, 75)]})"
     )
+    _use_egnn = bool(getattr(args, "use_egnn_velocity", False))
     model = CFMJointModel(
         hidden_dim=args.hidden_dim,
         n_layers=args.n_layers,
         cutoff=args.edge_cutoff,
         fm_objective=bool(getattr(args, "use_fm_objective", False)),
         z_table=_z_table,
+        use_egnn_velocity=_use_egnn,
+        max_atomic_number=int(getattr(args, "egnn_max_atomic_number", 100)),
+        context_dropout=float(getattr(args, "egnn_context_dropout", 0.1)),
+        # An explicit path implies the warm start; asking for a checkpoint and
+        # silently not loading it is the failure mode this whole pass is about.
+        tmqm_init_path=getattr(args, "tmqm_init_path", None),
+        use_tmqm_init=bool(
+            getattr(args, "use_tmqm_init", False)
+            or getattr(args, "tmqm_init_path", None)
+        ),
     ).to(device)
+
+    # 2026-10-04 — inverse-frequency bond-class weights, computed ONCE from the
+    # training cohort.  Per-batch computation would make the loss
+    # non-stationary across batches and the gradient scale drift; the cohort
+    # statistic is fixed for the run, which is what a class weight is supposed
+    # to be.
+    _bond_class_weights: Optional[torch.Tensor] = None
+    if bool(getattr(args, "bond_class_weights", False)):
+        _counts = torch.zeros(NUM_BOND_CLASSES, dtype=torch.long)
+        for _c in train_clouds_d:
+            _bt = getattr(_c, "bond_types", None)
+            if _bt is None:
+                continue
+            # Targets are per CANDIDATE PAIR, not per true bond: the head is
+            # asked about every pair within the cutoff, and the vast majority
+            # of those are BOND_NO_BOND.  Count the same thing the loss sees.
+            _t = _bond_target_for_clean_cloud(_c, head=model.head)
+            if _t[1] is None:
+                continue
+            _counts += torch.bincount(
+                torch.as_tensor(_t[1]).flatten().cpu(), minlength=NUM_BOND_CLASSES
+            )
+        if int(_counts.sum()) > 0:
+            _freq = _counts.float().clamp(min=1.0)
+            # Softening exponent.  Pure inverse frequency (power 1.0) is not
+            # usable on this distribution: MEASURED counts on a 256-cloud Ru
+            # cohort were [24378, 4460, 421, 28, 5661], so BOND_TRIPLE holds
+            # 0.08% of the pairs and takes a 250x weight — 28 examples would
+            # dominate the gradient.  The default 0.5 (sqrt) is the standard
+            # effective-number-of-samples softening: it keeps the ordering
+            # and most of the rebalancing while pulling the extreme in to
+            # ~16x.  Set `flow.bond_class_weight_power: 1.0` to opt into the
+            # unsoftened form.
+            _power = float(getattr(args, "bond_class_weight_power", 0.5))
+            _raw = _counts.sum().float() / (NUM_BOND_CLASSES * _freq)
+            _w = _raw.pow(_power)
+            # Renormalise on the SCALE-NEUTRAL invariant, ``sum_c p_c w_c =
+            # 1`` (p = the empirical class frequency), so the weighted CE has
+            # the same expected magnitude as the unweighted one and bond_ce
+            # keeps its weight in ``total = ...`` regardless of the exponent.
+            #
+            # Not ``w.mean() == 1``: on these counts that divides by 53.9 and
+            # shrinks bond_ce 54x, which silently deletes the term from the
+            # objective — the opposite of the intent.  Note ``sum_c p_c w_c``
+            # is EXACTLY 1 for the unsoftened raw weights, confirming raw is
+            # already the scale-correct textbook form and this is a no-op at
+            # power 1.0.
+            _p = _counts.float() / _counts.sum().float()
+            _w = _w / (_p * _w).sum().clamp(min=1e-12)
+            _bond_class_weights = _w.to(device)
+            print(
+                "[cfm-bond-weights] class counts="
+                + str(_counts.tolist())
+                + f" power={_power}"
+                + " raw_inv_freq="
+                + str([round(float(x), 3) for x in _raw.tolist()])
+                + " weights="
+                + str([round(float(w), 3) for w in _bond_class_weights.tolist()]),
+                flush=True,
+            )
+    if _use_egnn:
+        _vf = getattr(model, "vel_field", None)
+        _n_vf = sum(p.numel() for p in _vf.parameters()) if _vf is not None else 0
+        print(
+            f"[cfm-velocity-field] EGNNVelocityField ACTIVE "
+            f"({_n_vf:,} params, cutoff={args.edge_cutoff} A, "
+            f"max_atomic_number={getattr(args, 'egnn_max_atomic_number', 100)}, "
+            f"context_dropout={getattr(args, 'egnn_context_dropout', 0.1)}); "
+            f"vel_probe/fm_vel_head placeholders are NOT built.",
+            flush=True,
+        )
     # 2026-10-04 — parameter EMA (Karras 2022 EDM §5).  `--use-ema` was
     # FLAG_ONLY until today and the yaml's `ema_decay` had no consumer.
     # Initialised here, i.e. after the model is on its target device, so the
@@ -4629,6 +5891,13 @@ def main() -> int:
     per_epoch: List[EpochMetrics] = []
     best_decode_ratio = 0.0
     best_epoch = -1
+    # 2026-10-04 FIX — `_bond_acc` is reset at the top of every epoch and read
+    # AGAIN after the loop by the metrics payload.  Declaring it only inside
+    # the loop leaves it unbound whenever the loop body never runs (0 epochs,
+    # an exhausted resume budget), so the run crashed at report time with
+    # `UnboundLocalError: _bond_acc` AFTER training.
+    # `p3_wf385_scaffold_loss_wire_in_verified` catches exactly that.
+    _bond_acc: Dict[str, float] = {}
     epochs_without_improve = 0
     overall_start = time.time()
     # Wf-A6 A2 BLOCKER C fix — instantiate LR scheduler (opt-in).
@@ -4657,7 +5926,87 @@ def main() -> int:
             f"min_lr={getattr(args, 'lr_min_lr', 1e-6):.2e}",
             flush=True,
         )
-    for epoch in range(args.epochs):
+    # 2026-10-04 — `--resume-from` / `--resume-from-path` IMPLEMENTED.
+    #
+    # Both this trainer and the D-MPNN declared these flags with a help string
+    # describing behaviour that did not exist: `args.resume_from` had ZERO read
+    # sites in either file, so `--resume-from auto` — which start.sh appends to
+    # every launch, and which `configs/training/*.yaml` set explicitly — was a
+    # silent no-op.  A 5-seed x 50-epoch run had no crash recovery at all.
+    #
+    # The checkpoint filename is now qualified by seed.  It was a fixed
+    # `cfm_yuelbond_wasserstein.pt`, and the launcher passes no `--ckpt-dir`,
+    # so all five seeds in a sweep wrote to the SAME path and the last one to
+    # finish won.  That is how the file the three CFM configs name as their
+    # `warm_start_checkpoint` came to hold a 2-epoch / 64-sample / CPU smoke
+    # (its embedded `args` say `out_dir: /tmp/cert_full`).
+    #
+    # `auto` deliberately does NOT read the legacy unseeded name: it belongs to
+    # whichever run finished last, not to this seed, and under
+    # `--use-egnn-velocity` its state_dict would not load anyway.
+    _resume_mode = str(getattr(args, "resume_from", "auto") or "auto").strip().lower()
+    _start_epoch = 0
+    _resume_path: Optional[Path] = None
+    if _resume_mode == "path":
+        _rp = getattr(args, "resume_from_path", None)
+        if not _rp or not str(_rp).strip():
+            raise SystemExit(
+                "--resume-from path requires --resume-from-path (yaml "
+                "`output.resume_from_path`); got None."
+            )
+        _resume_path = Path(str(_rp))
+        if not _resume_path.is_file():
+            _alt = PROJECT_ROOT / str(_rp)
+            if _alt.is_file():
+                _resume_path = _alt
+            else:
+                raise SystemExit(f"--resume-from-path '{_rp}' not found.")
+    elif _resume_mode == "auto":
+        _cand = ckpt_dir / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}.pt"
+        if _cand.is_file():
+            _resume_path = _cand
+    elif _resume_mode != "none":
+        raise SystemExit(
+            f"--resume-from must be one of auto/none/path; got {_resume_mode!r}."
+        )
+    if _resume_path is not None:
+        _rsd = torch.load(_resume_path, map_location=device, weights_only=False)
+        _rstate = _rsd.get("model_state_dict", _rsd)
+        try:
+            model.load_state_dict(_rstate, strict=True)
+        except RuntimeError as exc:
+            raise SystemExit(
+                f"Cannot resume from {_resume_path}: state_dict does not match "
+                f"the model this run builds ({exc}).  A checkpoint written "
+                "before --use-egnn-velocity has vel_probe keys and no vel_field "
+                "keys, and the two are not interchangeable.  Use "
+                "--resume-from none to start cold."
+            )
+        if "optimiser_state_dict" in _rsd:
+            try:
+                optimiser.load_state_dict(_rsd["optimiser_state_dict"])
+            except Exception as exc:
+                print(
+                    f"[cfm-resume][WARNING] optimiser state not restored "
+                    f"({type(exc).__name__}: {exc}); continuing with a fresh "
+                    "optimiser.",
+                    flush=True,
+                )
+        _last_epoch = int(_rsd.get("epoch", -1))
+        _start_epoch = _last_epoch + 1
+        # Prefer the recorded best over the last-written decode_ratio: a
+        # periodic save at a worse epoch must not roll the best backwards.
+        best_decode_ratio = float(
+            _rsd.get("best_decode_ratio", _rsd.get("decode_ratio", 0.0))
+        )
+        best_epoch = int(_rsd.get("best_epoch", _last_epoch))
+        print(
+            f"[cfm-resume] loaded {_resume_path} "
+            f"(epoch={_last_epoch}, decode_ratio={best_decode_ratio:.3f}); "
+            f"continuing from epoch {_start_epoch}/{args.epochs}",
+            flush=True,
+        )
+    for epoch in range(_start_epoch, args.epochs):
         epoch_start = time.time()
         train_loss, bond_ce, w2_val, grad_norm, catherine_rate = train_one_epoch(
             model=model,
@@ -4694,6 +6043,7 @@ def main() -> int:
             shortcut_distill=bool(getattr(args, "shortcut_distill", False)),
             consistency_weight=float(getattr(args, "consistency_weight", 0.0)),
             per_cohort_features=bool(getattr(args, "per_cohort_features", False)),
+            bond_class_weights=_bond_class_weights,
             # Wf-406-A2 — pass Lambda × CFM coupling kwargs through;
             # defaults preserve Wf-388-A3 / Wf-397-A2 OFF semantics
             # (1 + 0 * 0 = 1 → bit-for-bit backward compat).
@@ -4775,9 +6125,61 @@ def main() -> int:
                     closure_bounded=args.closure_bounded,
                     closure_bias=closure_bias,
                 )
+                # 2026-10-04 — the metric that gates.  `decode_ratio` is
+                # anti-correlated with correctness on a corpus whose bonds the
+                # head has to learn (it reads high while the head predicts
+                # BOND_NO_BOND everywhere, because loose atoms parse, and falls
+                # as real bonds appear).  This one compares the predicted bond
+                # graph to the corpus's Wiberg truth.  Reported every epoch so
+                # a run can be judged without decoding anything.
+                _bond_acc = evaluate_bond_accuracy(
+                    model=model,
+                    val_clouds=val_clouds_d,
+                    decision=str(getattr(args, "bond_decision", "argmax")),
+                    threshold=float(
+                        getattr(args, "bond_decision_threshold", 0.5)
+                    ),
+                )
             finally:
                 if _ema_swapped:
                     model.ema_swap_out()
+            if _bond_acc.get("n_scored", 0.0) > 0:
+                print(
+                    f"[cfm-bond] epoch={epoch} "
+                    f"prec={_bond_acc['bond_precision']:.3f} "
+                    f"rec={_bond_acc['bond_recall']:.3f} "
+                    f"F1={_bond_acc['bond_f1']:.3f} "
+                    f"exact={_bond_acc['bond_exact_match']:.3f} "
+                    f"(n={int(_bond_acc['n_scored'])}, "
+                    f"truth_bonds={int(_bond_acc['n_truth_bonds'])}) "
+                    f"[rule={_bond_acc.get('bond_decision', 'argmax')}"
+                    f"@{_bond_acc.get('bond_decision_threshold', 0.0):.2f}; "
+                    f"alt_rule_F1="
+                    f"{_bond_acc.get('bond_f1_alt_rule', 0.0):.3f}]",
+                    flush=True,
+                )
+                # The argmax F1 above is a point on the PR curve.  This line
+                # says whether the curve is any good, which decides whether
+                # the fix is a threshold or a retrain.
+                print(
+                    f"[cfm-bond-type] epoch={epoch} "
+                    f"macro_f1_type(pooled)="
+                    f"{_bond_acc.get('bond_type_macro_f1_pooled', 0.0):.3f} "
+                    f"exact_type_rate="
+                    f"{_bond_acc.get('bond_exact_type_rate', 0.0):.3f} "
+                    f"classes={int(_bond_acc.get('bond_type_n_classes', 0))} "
+                    f"(OpenBabel reference on this corpus: F1(type) 0.505)",
+                    flush=True,
+                )
+                print(
+                    f"[cfm-bond-pr] epoch={epoch} "
+                    f"pr_auc={_bond_acc.get('bond_pr_auc', 0.0):.3f} "
+                    f"pos_rate={_bond_acc.get('bond_positive_rate', 0.0):.3f} "
+                    f"best_f1(optimistic)="
+                    f"{_bond_acc.get('bond_best_f1_at_threshold', 0.0):.3f}"
+                    f"@t={_bond_acc.get('bond_best_f1_threshold', 0.0):.2f}",
+                    flush=True,
+                )
             # 2026-10-04 — synthesis-certificate rate, the measurement the
             # differentiating claim rests on.  Runs on the SAME evaluation
             # pass so decode_ratio and cert_rate always describe one model
@@ -4804,6 +6206,81 @@ def main() -> int:
         else:
             n_ok, n_total = 0, args.n_val
         decode_ratio = n_ok / max(n_total, 1)
+        # 2026-10-04 — GENERATION validity, the sampler half of the CFM.
+        #
+        # `decode_ratio` above decodes the REAL val geometry, so it measures
+        # bond perception.  This block integrates the velocity field from
+        # x0 ~ N(0,I) and decodes the RESULT, which is the only measurement
+        # here that exercises the model as a generator.  The trainer had no
+        # sampler at all until today, so `flow.n_steps` / `flow.method` in the
+        # yaml configured nothing; they are wired to these flags now.
+        _bond_acc = {}
+        _gen_n = int(getattr(args, "gen_validity_samples", 0) or 0)
+        _gen_ok = _gen_tot = 0
+        _gen_solver = ""
+        # 2026-10-04 — `gen_validity` shares decode_ratio's blind spot: it
+        # counts a decode as good when RDKit parses it, and `C.C.C.C` parses.
+        # `_gen_chem` carries the fragment / metal facts that separate a real
+        # molecule from a string of loose atoms.
+        _gen_chem: Dict[str, Any] = {}
+        if decoding_attempted and _gen_n > 0 and model.use_egnn_velocity:
+            _ema_swapped_gen = bool(use_ema) and model.ema_swap_in()
+            try:
+                _gen_ok, _gen_tot = evaluate_generation_validity(
+                    model=model,
+                    decoder=decoder,
+                    templates=val_clouds_d,
+                    device=device,
+                    method=str(getattr(args, "method", "euler")),
+                    n_steps=int(getattr(args, "n_steps", 100)),
+                    n_samples=_gen_n,
+                    seed=int(args.seed) * 1000 + int(epoch),
+                    chemistry_out=_gen_chem,
+                )
+            except Exception as _gen_exc:
+                print(
+                    f"[cfm-gen][WARNING] generation eval failed "
+                    f"({type(_gen_exc).__name__}: {_gen_exc}); reporting 0.",
+                    flush=True,
+                )
+                _gen_ok = _gen_tot = 0
+            finally:
+                if _ema_swapped_gen:
+                    model.ema_swap_out()
+            _gen_solver = (
+                f"{getattr(args, 'method', 'euler')}"
+                f"/{int(getattr(args, 'n_steps', 100))}"
+            )
+            print(
+                f"[cfm-gen] epoch={epoch} gen_validity="
+                f"{_gen_ok / max(_gen_tot, 1):.3f} ({_gen_ok}/{_gen_tot}) "
+                f"solver={_gen_solver}",
+                flush=True,
+            )
+            # The parse count on its own cannot tell a molecule from loose
+            # atoms; print the chemistry beside it so the two are always read
+            # together.
+            if _gen_chem:
+                print(
+                    f"[cfm-gen-chem] epoch={epoch} "
+                    f"largest_fragment_frac="
+                    f"{_gen_chem.get('largest_fragment_frac_mean', 0.0):.3f} "
+                    f"single_fragment_ratio="
+                    f"{_gen_chem.get('single_fragment_ratio', 0.0):.3f} "
+                    f"metal_ratio={_gen_chem.get('metal_ratio', 0.0):.3f} "
+                    f"mean_heavy_atoms="
+                    f"{_gen_chem.get('mean_heavy_atoms', 0.0):.1f} "
+                    f"(n={_gen_chem.get('n_chemistry_scored', 0)})",
+                    flush=True,
+                )
+        elif decoding_attempted and _gen_n > 0 and not model.use_egnn_velocity:
+            if epoch == 0:
+                print(
+                    "[cfm-gen] skipped: generation needs a velocity field. "
+                    "Pass --use-egnn-velocity; the MLP probes were never a "
+                    "sampler.",
+                    flush=True,
+                )
         elapsed = time.time() - epoch_start
         metric = EpochMetrics(
             epoch=epoch,
@@ -4818,6 +6295,36 @@ def main() -> int:
             decoding_attempted=decoding_attempted,
             lr=args.lr,
             grad_norm=grad_norm,
+            bond_precision=float(_bond_acc.get("bond_precision", 0.0)),
+            bond_recall=float(_bond_acc.get("bond_recall", 0.0)),
+            bond_f1=float(_bond_acc.get("bond_f1", 0.0)),
+            bond_exact_match=float(_bond_acc.get("bond_exact_match", 0.0)),
+            bond_n_scored=int(_bond_acc.get("n_scored", 0.0)),
+            bond_pr_auc=float(_bond_acc.get("bond_pr_auc", 0.0)),
+            bond_best_f1_at_threshold=float(
+                _bond_acc.get("bond_best_f1_at_threshold", 0.0)
+            ),
+            bond_best_f1_threshold=float(
+                _bond_acc.get("bond_best_f1_threshold", 0.0)
+            ),
+            bond_type_macro_f1_pooled=float(
+                _bond_acc.get("bond_type_macro_f1_pooled", 0.0)
+            ),
+            bond_exact_type_rate=float(
+                _bond_acc.get("bond_exact_type_rate", 0.0)
+            ),
+            gen_validity=_gen_ok / max(_gen_tot, 1),
+            gen_validity_val=_gen_ok,
+            gen_validity_n=_gen_tot,
+            gen_solver=_gen_solver,
+            gen_largest_fragment_frac=float(
+                _gen_chem.get("largest_fragment_frac_mean", 0.0)
+            ),
+            gen_single_fragment_ratio=float(
+                _gen_chem.get("single_fragment_ratio", 0.0)
+            ),
+            gen_metal_ratio=float(_gen_chem.get("metal_ratio", 0.0)),
+            gen_mean_heavy_atoms=float(_gen_chem.get("mean_heavy_atoms", 0.0)),
         )
         per_epoch.append(metric)
         print(
@@ -4846,6 +6353,22 @@ def main() -> int:
                 decode_ratio=float(decode_ratio),
                 decode_ratio_val=int(n_ok),
                 decode_ratio_n=int(n_total),
+                # 2026-10-04 — generation validity: the metric that actually
+                # exercises the sampler (decode_ratio decodes the REAL val
+                # geometry).  Emitted so the TUI dashboard can chart it; it
+                # was already in per_epoch_metrics.json but not in the
+                # structured event stream.
+                gen_validity=float(_gen_ok / max(_gen_tot, 1)),
+                gen_validity_val=int(_gen_ok),
+                gen_validity_n=int(_gen_tot),
+                gen_solver=str(_gen_solver),
+                gen_largest_fragment_frac=float(
+                    _gen_chem.get("largest_fragment_frac_mean", 0.0)
+                ),
+                gen_single_fragment_ratio=float(
+                    _gen_chem.get("single_fragment_ratio", 0.0)
+                ),
+                gen_metal_ratio=float(_gen_chem.get("metal_ratio", 0.0)),
                 lr=float(args.lr),
                 epoch_time_sec=float(elapsed),
                 wall_time_s=float(elapsed),
@@ -4867,18 +6390,25 @@ def main() -> int:
             )
         except Exception:
             pass
-        # Target / early stopping.
-        if decode_ratio > best_decode_ratio:
-            best_decode_ratio = decode_ratio
-            best_epoch = epoch
-            epochs_without_improve = 0
-            ckpt_path = ckpt_dir / "cfm_yuelbond_wasserstein.pt"
+        # 2026-10-04 — seed-qualified.  The unqualified name was shared by
+        # every seed in a sweep (the launcher passes no --ckpt-dir), so the
+        # five seeds overwrote one another and only the last survived.
+        ckpt_path = ckpt_dir / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}.pt"
+
+        def _save_cfm_checkpoint(_epoch: int, _decode_ratio: float) -> None:
+            """Write the resume-complete checkpoint for this seed.
+
+            Records both the epoch just finished AND the running best, so a
+            periodic save cannot roll the best-so-far backwards on resume.
+            """
             torch.save(
                 {
                     "model_state_dict": model.state_dict(),
                     "optimiser_state_dict": optimiser.state_dict(),
-                    "epoch": epoch,
-                    "decode_ratio": decode_ratio,
+                    "epoch": _epoch,
+                    "decode_ratio": _decode_ratio,
+                    "best_decode_ratio": best_decode_ratio,
+                    "best_epoch": best_epoch,
                     "args": vars(args),
                     "pocket_id": args.pocket_id,
                     "closure_bias": closure_bias,
@@ -4886,6 +6416,40 @@ def main() -> int:
                 },
                 ckpt_path,
             )
+
+        # Target / early stopping.
+        #
+        # 2026-10-04 — the SELECTION CRITERION is bond F1 when the corpus
+        # carries bond truth, not decode_ratio.
+        #
+        # MEASURED on tmQM Ru, one 6-epoch run:
+        #
+        #     epoch         1      2      3      4      5
+        #     bond_f1     0.065  0.124  0.235  0.462  0.439
+        #     decode_ratio 0.969  0.883  0.617  0.188  0.188
+        #
+        # The two move in OPPOSITE directions, and `decode_ratio` is the wrong
+        # sign: it is high while the head predicts BOND_NO_BOND for nearly
+        # every pair (loose atoms parse trivially) and falls as real bonds
+        # appear (connected molecules with a wrong valence get rejected).  So
+        # `best_decode_ratio` selected epoch 1 — the checkpoint with bond
+        # F1 0.065, i.e. the one that had learned the least chemistry — as the
+        # artifact to keep.
+        #
+        # decode_ratio is still recorded and still reported; it just no longer
+        # decides which weights survive.
+        _gate = (
+            float(_bond_acc["bond_f1"])
+            if _bond_acc.get("n_scored", 0.0) > 0
+            else decode_ratio
+        )
+        _best_gate = float(getattr(model, "_cfm_best_gate", float("-inf")))
+        if _gate > _best_gate:
+            model._cfm_best_gate = _gate  # type: ignore[attr-defined]
+            best_decode_ratio = decode_ratio
+            best_epoch = epoch
+            epochs_without_improve = 0
+            _save_cfm_checkpoint(epoch, decode_ratio)
         else:
             epochs_without_improve += 1
             if epochs_without_improve >= args.patience:
@@ -4895,6 +6459,19 @@ def main() -> int:
                     flush=True,
                 )
                 break
+
+        # 2026-10-04 — periodic save, driven by `--checkpoint-interval`.
+        #
+        # That flag had zero read sites until today, while start.sh passed it
+        # on every launch, so the no-op was invisible.  With only the
+        # improvement-triggered save above, a run whose decode_ratio peaks at
+        # epoch 0 — the common case here, since the target is 0.8 and the
+        # decoder clears it on the first epoch — wrote its checkpoint exactly
+        # once and never again.  A crash at epoch 49 of 50 lost the run, and
+        # `--resume-from auto` would have resumed from epoch 0.
+        _cki = int(getattr(args, "checkpoint_interval", 0) or 0)
+        if _cki > 0 and ((epoch + 1) % _cki == 0 or (epoch + 1) >= int(args.epochs)):
+            _save_cfm_checkpoint(epoch, decode_ratio)
 
         # Wf-A6 A2 BLOCKER C fix — LR scheduler step (per-epoch).
         # Default OFF (scheduler is None) preserves Wf-124 P2 + Wf-148
@@ -4930,21 +6507,55 @@ def main() -> int:
             "device": str(device),
             "target_decode_ratio": args.target_decode_ratio,
         },
+        # 2026-10-04 — WHAT GATES vs WHAT IS REPORTED.
+        #
+        # The improvement gate is bond F1 against the corpus's Wiberg truth
+        # whenever that truth exists; `decode_ratio` only gates as the
+        # fallback for corpora with no bond truth.  Reporting
+        # `best.decode_ratio` as the headline regardless is how a model whose
+        # head predicted BOND_NO_BOND for every pair still showed 0.977.
+        "gate_metric": (
+            "bond_f1 (vs corpus Wiberg truth)"
+            if _bond_acc.get("n_scored", 0.0) > 0
+            else "decode_ratio (no bond truth in this corpus)"
+        ),
         "best": {
             "epoch": best_epoch,
             "decode_ratio": best_decode_ratio,
             "hit_target": best_decode_ratio >= args.target_decode_ratio,
+            "bond_f1": float(_bond_acc.get("bond_f1", 0.0)),
+            "bond_precision": float(_bond_acc.get("bond_precision", 0.0)),
+            "bond_recall": float(_bond_acc.get("bond_recall", 0.0)),
         },
         "per_epoch_metrics": [asdict(m) for m in per_epoch],
         "wall_time_s": total_elapsed,
+        # Consumers (metrics/*.json, TUI panels, pre-flight) must not read
+        # `decode_ratio` as a chemistry result.  MEASURED, it is HIGHEST when
+        # the model is doing nothing: a decode that emits every atom as its
+        # own fragment gives `C.C.C.C`, which RDKit parses and sanitizes
+        # happily.  It counts PARSES, not molecules.
+        "decode_ratio_caveat": (
+            "decode_ratio counts RDKit-parseable decodes and is NOT a "
+            "chemistry metric.  MEASURED, a head predicting BOND_NO_BOND for "
+            "every pair scores 0.977 here (loose atoms parse trivially) and "
+            "0.219 once it predicts real bond classes, i.e. the metric is "
+            "anti-correlated with correctness.  Read it together with "
+            "bond_f1 / bond_recall and with the gen_* chemistry fields "
+            "(largest_fragment_frac, single_fragment_ratio, metal_ratio)."
+        ),
         "honest_framing": (
-            f"Wf-124 P2 retrain complete on {device}. "
-            f"Best decode_ratio = {best_decode_ratio:.3f} "
+            f"CFM retrain complete on {device}. "
+            f"Gating metric: {('bond_f1' if _bond_acc.get('n_scored', 0.0) > 0 else 'decode_ratio')}; "
+            f"bond_f1 = {float(_bond_acc.get('bond_f1', 0.0)):.3f} "
+            f"(precision {float(_bond_acc.get('bond_precision', 0.0)):.3f} / "
+            f"recall {float(_bond_acc.get('bond_recall', 0.0)):.3f}) vs "
+            f"corpus Wiberg truth. "
+            f"decode_ratio = {best_decode_ratio:.3f} "
             f"({'PASS' if best_decode_ratio >= args.target_decode_ratio else 'miss'} "
-            f"vs target {args.target_decode_ratio:.2f}). "
-            "Per-target decode_ratio is on synthetic Pt-click clouds (the "
-            "canonical CFM smoke input). The Wasserstein + Catherine closure "
-            "bias contribute as engine-tagged add-ons, NOT silent substitutes."
+            f"vs target {args.target_decode_ratio:.2f}) but it is a PARSE "
+            "count, not a chemistry result — see decode_ratio_caveat. "
+            "The Wasserstein + Catherine closure bias contribute as "
+            "engine-tagged add-ons, NOT silent substitutes."
         ),
     }
     (out_dir / "per_epoch_metrics.json").write_text(
@@ -4980,6 +6591,14 @@ def main() -> int:
                 "decode_ratio_val",
                 "decode_ratio_n",
                 "decoding_attempted",
+                "gen_validity",
+                "gen_validity_val",
+                "gen_validity_n",
+                "gen_solver",
+                "gen_largest_fragment_frac",
+                "gen_single_fragment_ratio",
+                "gen_metal_ratio",
+                "gen_mean_heavy_atoms",
             ]
         )
         for m in per_epoch:
@@ -4995,6 +6614,14 @@ def main() -> int:
                     m.decode_ratio_val,
                     m.decode_ratio_n,
                     int(m.decoding_attempted),
+                    f"{m.gen_validity:.4f}",
+                    m.gen_validity_val,
+                    m.gen_validity_n,
+                    m.gen_solver,
+                    f"{m.gen_largest_fragment_frac:.4f}",
+                    f"{m.gen_single_fragment_ratio:.4f}",
+                    f"{m.gen_metal_ratio:.4f}",
+                    f"{m.gen_mean_heavy_atoms:.2f}",
                 ]
             )
     # Wasserstein decay check.
@@ -5013,6 +6640,23 @@ def main() -> int:
     )
     # Synthesis MD.
     lines: List[str] = []
+    # 2026-10-04 — guard on `per_epoch` being non-empty, not on `best_epoch >= 0`
+    # alone.  Resume makes those two conditions disagree: `--resume-from auto`
+    # sets `best_epoch` from the checkpoint and starts the loop at
+    # `last_epoch + 1`, so resuming a finished run (or a `--epochs 1` run whose
+    # checkpoint is already at epoch 0) leaves `per_epoch` EMPTY while
+    # `best_epoch == 0` — and the report below indexed it, raising IndexError
+    # after the run had otherwise completed.
+    _best_ok = 0 <= int(best_epoch) < len(per_epoch)
+    _best_val = per_epoch[best_epoch].decode_ratio_val if _best_ok else 0
+    _best_n = per_epoch[best_epoch].decode_ratio_n if _best_ok else 0
+    if not per_epoch:
+        print(
+            "[cfm-run][WARNING] no epoch ran: the resume point is already at "
+            f"or past --epochs={args.epochs}.  Metrics below describe the "
+            "resumed checkpoint, not a fresh training run.",
+            flush=True,
+        )
     lines += [
         "# Wf-124 Phase 2 — Full CFM retrain: YuelBond + Wasserstein "
         "+ Catherine closure-bounded",
@@ -5020,8 +6664,7 @@ def main() -> int:
         "**Date**: 2026-09-27  ",
         f"**Device**: {device}  ",
         f"**Best decode_ratio RDKit-strict**: {best_decode_ratio:.3f} "
-        f"({(per_epoch[best_epoch].decode_ratio_val if best_epoch >= 0 else 0)}/"
-        f"{(per_epoch[best_epoch].decode_ratio_n if best_epoch >= 0 else 0)})  ",
+        f"({_best_val}/{_best_n})  ",
         f"**Best epoch**: {best_epoch}  ",
         f"**Target**: {args.target_decode_ratio:.2f}  ",
         f"**Hit target**: "
@@ -5051,7 +6694,9 @@ def main() -> int:
         show.add(i)
     for i in list(range(max(0, n - 5), n)):
         show.add(i)
-    if best_epoch >= 0:
+    # Same resume-made-them-disagree guard as the header above: a resumed
+    # checkpoint can leave `best_epoch >= 0` while `per_epoch` is empty.
+    if _best_ok:
         show.add(best_epoch)
     show = sorted(show)
     for i in show:

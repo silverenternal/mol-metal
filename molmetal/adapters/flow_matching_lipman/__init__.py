@@ -33,7 +33,7 @@ Pocket conditioning (T5):
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import warnings
 
 import torch
@@ -140,9 +140,45 @@ class _MaybeFusedSiLUMLP(nn.Module):
 # pre-training run on 21,615 Pt/Ru/Ir tmQM complexes (CN MAE 0.13,
 # Wiberg BO MAE 0.18 on a held-out 10 % val split).  See
 # ``molmetal/reports/f2_tmqm_pretrain.md`` for the full report.
-DEFAULT_TMQM_CKPT = (
-    Path(__file__).resolve().parents[2] / "checkpoints" / "dmpnn_tmqm_pretrained.pt"
+#: 2026-10-04 — this used to be a single hard-coded path,
+#: ``molmetal/checkpoints/dmpnn_tmqm_pretrained.pt``, which is GIT-IGNORED
+#: (``.gitignore:110 checkpoints/``) and is NOT on disk.  Two consequences,
+#: both silent:
+#:
+#:   * ``use_tmqm_init=True`` with no explicit path would raise on a missing
+#:     file — so the warm start was never usable through its own default.
+#:   * ``molmetal/tests/test_tmqm_wireup.py`` gates its whole module on
+#:     ``DEFAULT_TMQM_CKPT.exists()``, so all 6 tmQM wire-up tests were
+#:     SKIPPED, and the suite reported green while testing nothing.
+#:
+#: The F2 pretrain output does exist at ``models/tmqm_pretrained/``
+#: (138,112 params, hidden 128 / depth 3, 5 regression targets incl.
+#: metal_bo_total + coord_number, cls_acc 0.965 — matching
+#: ``molmetal/reports/f2_tmqm_pretraining.md``).  Resolve over both
+#: locations, newest-convention first, so neither the tests nor the flag
+#: depend on which one a given checkout happens to carry.
+# `parents[2]` is `molmetal/` (this file is molmetal/adapters/flow_matching_lipman/);
+# `parents[3]` is the repo root, where `models/` lives.
+_TMQM_CKPT_CANDIDATES = (
+    Path(__file__).resolve().parents[3]
+    / "models"
+    / "tmqm_pretrained"
+    / "tmqm_pretrained_encoder.pt",
+    Path(__file__).resolve().parents[2]
+    / "checkpoints"
+    / "dmpnn_tmqm_pretrained.pt",
 )
+
+
+def _resolve_default_tmqm_ckpt() -> Path:
+    """First existing tmQM checkpoint, else the canonical (absent) path."""
+    for _cand in _TMQM_CKPT_CANDIDATES:
+        if _cand.exists():
+            return _cand
+    return _TMQM_CKPT_CANDIDATES[0]
+
+
+DEFAULT_TMQM_CKPT = _resolve_default_tmqm_ckpt()
 
 
 def load_tmQM_pretrained(
@@ -972,6 +1008,113 @@ def _import_fm_lib(reference_path: str | Path):
 # ---------------------------------------------------------------------------
 # Pocket encoder — per-pocket-atom 1-hot coords → global pool (T5)
 # ---------------------------------------------------------------------------
+def radius_edge_index(
+    coords: torch.Tensor,
+    node_mask: Optional[torch.Tensor] = None,
+    cutoff: float = 5.0,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Padded block-diagonal radius graph over a batch of atom clouds.
+
+    Returns ``(edge_index (B, 2, E), edge_mask (B, E))``.
+
+    ``EGNNVelocityField`` takes ``edge_index`` as a rectangular tensor, so
+    every graph in a batch is padded to the same ``E`` and ``edge_mask``
+    marks which entries are real.  Two properties are load-bearing:
+
+    * **No cross-sample edges** — padding positions are excluded via
+      ``node_mask``, so a pair whose endpoints are not both real is dropped.
+      Without it, a batch of separately-embedded molecules (each near the
+      origin) would be silently wired into one spurious super-molecule.
+    * **No self-loops**, and no pair at or beyond ``cutoff`` Å.
+
+    Added 2026-10-04 alongside the EGNN speed-up: the adapter used to hand
+    the EGNN a FULLY CONNECTED graph (``_make_dummy_edge_index``) — O(N^2)
+    messages with none of the locality an EGNN's geometric prior comes from.
+    """
+    b, n = int(coords.shape[0]), int(coords.shape[1])
+    dev = coords.device
+    idx = torch.arange(n, device=dev)
+    src = idx.view(1, n, 1).expand(b, n, n)
+    dst = idx.view(1, 1, n).expand(b, n, n)
+    dist = torch.cdist(coords.float(), coords.float())  # (B, n, n)
+    keep = (src != dst) & (dist < float(cutoff))
+    if node_mask is not None:
+        keep = keep & node_mask.unsqueeze(2) & node_mask.unsqueeze(1)
+    flat_keep = keep.reshape(b, n * n)
+    e_max = int(flat_keep.sum(dim=1).max().item()) if flat_keep.numel() else 0
+    if e_max == 0:
+        return (
+            torch.zeros(b, 2, 0, dtype=torch.long, device=dev),
+            torch.zeros(b, 0, dtype=torch.bool, device=dev),
+        )
+    # `topk(largest=True)` puts the True entries first, so taking the first
+    # `e_max` positions selects every real edge and pads the rest with
+    # arbitrary False positions, which `edge_mask` then masks out.
+    order = flat_keep.float().topk(e_max, dim=1, largest=True).indices
+    sel_mask = flat_keep.gather(1, order)
+    src_sel = src.reshape(b, -1).gather(1, order)
+    dst_sel = dst.reshape(b, -1).gather(1, order)
+    return torch.stack([src_sel, dst_sel], dim=1), sel_mask
+
+
+class _RadiusGraphVelocityModel:
+    """Bind the EGNN's extra inputs, rebuilding the graph from each ``x``.
+
+    The cloned ``ODESolver`` calls ``model(x, t)`` with a 0-d scalar ``t`` and
+    expects a ``(B, N, 3)`` velocity back.  The EGNN additionally needs
+    ``atom_types``, an ``edge_index``, and a per-sample ``t``.
+
+    The graph cannot be bound once and reused.  It is a radius graph over
+    ``x``, and the solver moves ``x`` at every step, so a bound graph is
+    stale from the first step on — which is what the previous
+    ``partial(..., edge_index=...)`` did for the whole 100-step solve.  This
+    callable rebuilds it per invocation instead.
+
+    ``use_cfg`` routes through :meth:`EGNNVelocityField.v_cfg`; both that and
+    :meth:`forward_velocity` return the velocity tensor directly.
+    """
+
+    def __init__(
+        self,
+        velocity_field: "EGNNVelocityField",
+        atom_types: torch.Tensor,
+        node_mask: Optional[torch.Tensor],
+        cutoff: float,
+        pocket_embed: Optional[torch.Tensor] = None,
+        cfg_scale: float = 1.0,
+    ) -> None:
+        self._vf = velocity_field
+        self._atom_types = atom_types
+        self._node_mask = node_mask
+        self._cutoff = float(cutoff)
+        self._pocket_embed = pocket_embed
+        self._cfg_scale = float(cfg_scale)
+
+    def __call__(self, x: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+        edge_index, edge_mask = radius_edge_index(x, self._node_mask, self._cutoff)
+        b = int(x.shape[0])
+        # Solver contract: 0-d scalar t.  EGNN wants one time per sample.
+        t_b = t.reshape(1).expand(b) if t.dim() == 0 else t.reshape(-1)[:1].expand(b)
+        if self._cfg_scale != 1.0 and self._pocket_embed is not None:
+            return self._vf.v_cfg(
+                x,
+                self._atom_types,
+                edge_index,
+                t_b,
+                pocket_embed=self._pocket_embed,
+                cfg_scale=self._cfg_scale,
+                edge_mask=edge_mask,
+            )
+        return self._vf.forward_velocity(
+            x,
+            self._atom_types,
+            edge_index,
+            t_b,
+            edge_mask=edge_mask,
+            pocket_embed=self._pocket_embed,
+        )
+
+
 class PocketEncoder(nn.Module):
     """Lightweight pocket encoder: per-pocket-atom 1-hot coords → (B, H) vector.
 
@@ -1856,7 +1999,19 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # hatch for callers who want bit-exact P0 behaviour.
         accept_only_connected: bool = True,
         keep_empty_connected: bool = True,
+        cutoff: float = 5.0,
     ) -> None:
+        # 2026-10-04 — radius-graph cutoff (Å) for the EGNN's message passing.
+        #
+        # Both production call sites used to pass a FULLY CONNECTED graph
+        # (``_make_dummy_edge_index``), so the EGNN ran O(N^2) messages with
+        # none of the locality its geometric prior is built on, and the graph
+        # was also built ONCE before the ODE solve and reused at every
+        # integration step even though ``x_t`` moves.  5.0 Å is the usual
+        # intra-molecular choice for 3D molecular FM (TargetDiff / DiffSBDD
+        # use 4-10 Å); the smallest molecules here are ~8 atoms / ~5 Å across,
+        # so a smaller value would fragment them into disconnected pieces.
+        self._cutoff = float(cutoff)
         self._ref_repo = ref_repo_path
         self._hidden_dim = hidden_dim
         self._n_layers = n_layers
@@ -2173,7 +2328,17 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # path_sample.dx_t shape (B, max_n, 3)  — conditional velocity x_1 - x_0
 
         # Velocity field prediction (joint: coord velocity + atom-type logits)
-        edge_index = self._make_dummy_edge_index(b, max_n, self.device)
+        #
+        # 2026-10-04 — a radius graph over the CURRENT x_t, not a fully
+        # connected one.  `_make_dummy_edge_index` wired every atom to every
+        # other atom in the sample: O(N^2) messages and no locality, which is
+        # the one inductive bias an EGNN carries.  Building it from
+        # `path_sample.x_t` (the interpolated coordinates the model actually
+        # sees) is the standard treatment; using `x_1` would leak the target
+        # geometry into the graph structure.
+        edge_index, edge_mask = radius_edge_index(
+            path_sample.x_t, node_mask, self._cutoff
+        )
         # Identity is a prediction target, not an input available to the
         # unconstrained sampler. Supplying the target atomic numbers here
         # lets the atom head copy them and leaves the sampling input unseen.
@@ -2182,6 +2347,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             torch.zeros_like(atom_types),
             edge_index,
             t,
+            edge_mask=edge_mask,
             pocket_embed=pocket_embed,
         )
         v_pred = out["vel"]
@@ -2494,8 +2660,12 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 raise ValueError(
                     "fixed_atom_types outside the model atomic-number vocabulary"
                 )
-        edge_index = self._make_dummy_edge_index(n_samples, n_atoms, self.device)
-
+        # 2026-10-04 — no fixed `edge_index` here any more.  The solver changes
+        # `x_t` at every step and the graph is a radius graph over `x_t`, so a
+        # single graph bound for the whole solve is stale from step 1.
+        # `_RadiusGraphVelocityModel` rebuilds it per call; the two one-shot
+        # forwards below build theirs from `x_final`.
+        #
         # T5: encode pocket once (broadcast to all samples in this batch).
         # Returns None when pocket=None so the velocity field uses the
         # unconditioned (zero-bias) path.
@@ -2522,21 +2692,16 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         from functools import partial
 
         cfg_scale = float(getattr(self, "_cfg_scale", 1.0) or 1.0)
-        if cfg_scale != 1.0 and pocket_embed is not None:
-            velocity_model = partial(
-                self.velocity_field.v_cfg,
-                atom_types=atom_types,
-                edge_index=edge_index,
-                pocket_embed=pocket_embed,
-                cfg_scale=cfg_scale,
-            )
-        else:
-            velocity_model = partial(
-                self.velocity_field.forward_velocity,
-                atom_types=atom_types,
-                edge_index=edge_index,
-                pocket_embed=pocket_embed,
-            )
+        # The radius graph is a function of `x`, which the solver moves, so it
+        # is rebuilt inside the callable rather than bound here.
+        velocity_model = _RadiusGraphVelocityModel(
+            velocity_field=self.velocity_field,
+            atom_types=atom_types,
+            node_mask=None,  # fixed n_atoms grid: every sample is fully real
+            cutoff=self._cutoff,
+            pocket_embed=pocket_embed,
+            cfg_scale=cfg_scale if pocket_embed is not None else 1.0,
+        )
 
         # Geometry conditioning requires known identities and real donor ->
         # metal endpoints. Unconstrained categorical sampling has neither.
@@ -2669,19 +2834,27 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             # categorical sampling matches the conditional velocity
             # distribution we integrated with.  cfg_scale=1.0 keeps the
             # legacy pure-conditional forward path bit-exact.
+            # One-shot forward on the SOLVED coordinates: the graph is built
+            # from `x_final` once.  (Unlike the solve above, `x_final` does
+            # not move between these two calls.)
+            _ei_final, _em_final = radius_edge_index(
+                x_final, None, self._cutoff
+            )
             if cfg_scale != 1.0 and pocket_embed is not None:
                 out_cond = self.velocity_field(
                     x_final,
                     init_atom_types,
-                    edge_index,
+                    _ei_final,
                     torch.ones(n_samples, device=self.device),
+                    edge_mask=_em_final,
                     pocket_embed=pocket_embed,
                 )
                 out_uncond = self.velocity_field(
                     x_final,
                     init_atom_types,
-                    edge_index,
+                    _ei_final,
                     torch.ones(n_samples, device=self.device),
+                    edge_mask=_em_final,
                     pocket_embed=None,
                 )
                 # CFG-style logits interpolation (linear in logit space).
@@ -2692,8 +2865,9 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 out = self.velocity_field(
                     x_final,
                     init_atom_types,
-                    edge_index,
+                    _ei_final,
                     torch.ones(n_samples, device=self.device),
+                    edge_mask=_em_final,
                     pocket_embed=pocket_embed,
                 )
                 atom_logits = out["atom_logits"]  # (n_samples, n_atoms, max_z)
