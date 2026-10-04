@@ -16,7 +16,7 @@
 
 | Tier-1 metric | Selected baseline | Alignment level | Where reported in paper |
 |---|---|---|---|
-| **m1** Ru subset binary AUC | Krasnov 2026 (MetalCytoToxDB) | **DATASET + METRIC ALIGN** (split differs: paper 5-fold CV; us scaffold-split 70/10/20) | paper §3 main results |
+| **m1** Ru subset binary AUC | Krasnov 2026 (MetalCytoToxDB v2) | **DATASET + METRIC + SPLIT ALIGN — cohort honest-negative** (2026-10-04: paper criteria adopted — filters dropped+recorded; DOI-split 10-fold CV replicated (DOI-disjoint); release v2 md5-verified; MEASURED D-MPNN 0.7717 ± 0.0380 vs paper LightGBM 0.810 ± 0.024; paper cohort 11,294 / 4,399 / 23 not replicated — ours 15,799 / 4,793 / 591; see COMPARISON_BASELINES.md §3 + §6) | paper §3 main results (cross-cohort caveat; see §6) |
 | **m2** R² per-cell-line | Rusanov 2025 (PlatinAI) | **DATASET + METRIC + SPLIT APPROX ALIGN** | paper §4 honest limitations |
 | **m3** Vina Dock on CrossDocked100 | MolCRAFT / TransDiffSBDD (Tier-2 only) | **DATASET + METRIC ALIGN** (subset differs: 5 vs 100 pockets) | paper §4 main results |
 | **m7** Diversity (Morgan ECFP4 Tanimoto) | MolChord / TransDiffSBDD | **DATASET + METRIC + SPLIT ALIGN** | paper §4 main results |
@@ -33,6 +33,7 @@
 - **DATASET + METRIC + SPLIT APPROX ALIGN**: small split difference (e.g. per-cell-line vs cohort-split) — per-cell breakdown matches
 - **DATASET ALIGN** (split + metric differ): values comparable as sample-size-scaled estimates; document both in §6
 - **NOT ALIGN**: do not include in §4 comparison tables
+- **DATASET + METRIC + SPLIT ALIGN — cohort honest-negative**: dataset + metric + split protocol aligned, but the cohort scope differs from the paper's — the numeric comparison is a cross-cohort estimate (see `COMPARISON_BASELINES.md` §6)
 
 ---
 
@@ -49,7 +50,7 @@
 
 | Metric | Limitation type | §6 paragraph |
 |---|---|---|
-| m1 | Krasnov uses 5-fold CV; we use scaffold-split. Per-seed statistics comparable; headline mean +0.05 margin documented | §6.1 |
+| m1 | **Cohort honest-negative** — paper criteria adopted 2026-10-04 (filters dropped + recorded; DOI-split 10-fold CV replicated; release v2 md5-verified) but the paper's 23-cell-line cohort is not reproduced (ours 15,799 rows / 591 cell lines vs paper 11,294 / 23; D-MPNN 0.7717 ± 0.0380 vs paper LightGBM 0.810 ± 0.024). The shipped 0.7613 record (scaffold split, unrecorded filter) remains untraceable but is superseded as the m1 comparison number by the additive new entry. Full state: `COMPARISON_BASELINES.md` §6 | §6.1 |
 | m2 | Rusanov uses per-cell-line; we use cohort-split + per-cell eval. Per-cell breakdown matches | §6.2 |
 | m3 | CrossDocked100 is large; we benchmark on 5-pocket subset for budget reasons. Sample-size-scaled estimates documented | §6.3 |
 | m7 | Same dataset + split + metric as TransDiffSBDD | §6.4 (no limitation) |

@@ -120,7 +120,7 @@ These are NOT in scope of the Mol-Metal Tier-2 paper. We do NOT include them in 
 
 | Metric | Selected baseline | Paper dataset | Paper split | Paper metric | Our dataset | Our split | Our metric | Alignment level |
 |---|---|---|---|---|---|---|---|---|
-| **m1** Ru AUC | Krasnov 2026 | MetalCytoToxDB | 5-fold CV | binary AUC | MetalCytoToxDB | scaffold-split 70/10/20 | binary AUC | **DATASET + METRIC ALIGN** (split differs; document in §6) |
+| **m1** Ru AUC | Krasnov 2026 | MetalCytoToxDB (v2) | DOI-split 10-fold CV (primary; + SMILES-split 10-fold CV alt) | binary AUC | MetalCytoToxDB v2 Ru subset — paper criteria adopted 2026-10-04: no exposure-time filter, no IC50 noise floor, measurement-level dedup (SMILES_Ligands, Cell_line, Time(h)) keep-first, 76-name non-cancer exclusion = 15,799 rows / 4,793 complexes / 591 cell lines; release md5 f270dc90… = Zenodo v2 | DOI-split 10-fold CV (replicated; folds DOI-disjoint) | binary AUC | **DATASET + METRIC + SPLIT ALIGN — cohort honest-negative** (MEASURED D-MPNN 0.7717 ± 0.0380 vs paper LightGBM 0.810 ± 0.024 = 0.038 below; paper cohort 11,294 / 4,399 / 23 not replicated; see §6) |
 | **m2** R² per-cell | Rusanov 2025 | PlatinAI | per-cell-line | binary AUC + R² | PlatinAI + MetalCytoTox | cohort-split 70/10/20 + per-cell-line eval | per-cell-line AUC + R² | **DATASET + METRIC + SPLIT APPROX ALIGN** |
 | **m3** Vina Dock | MolCRAFT / TransDiffSBDD (Tier-2 only) | CrossDocked100 | pocket-split | median kcal/mol | CrossDocked100 (5-pocket subset) | pocket-split | median kcal/mol | **DATASET + METRIC ALIGN** (subset differs; document in §6) |
 | **m7** Diversity | MolChord / TransDiffSBDD | CrossDocked100 | pocket-split | Morgan ECFP4 Tanimoto | CrossDocked100 | pocket-split | Morgan ECFP4 Tanimoto | **DATASET + METRIC + SPLIT ALIGN** |
@@ -134,6 +134,7 @@ These are NOT in scope of the Mol-Metal Tier-2 paper. We do NOT include them in 
 - **DATASET + METRIC ALIGN** (split differs): numerical values not directly comparable but per-seed/per-split statistics are; document split difference in §6
 - **DATASET ALIGN** (split + metric differ): values comparable as sample-size-scaled estimates; document both in §6
 - **NOT ALIGN**: do not include in §4 comparison tables
+- **DATASET + METRIC + SPLIT ALIGN — cohort honest-negative**: dataset + metric + split protocol aligned, but our cohort scope differs from the paper's (stated in §6) — the numeric comparison is a cross-cohort estimate, not a reproduction
 
 ---
 
@@ -169,3 +170,23 @@ These are NOT in scope of the Mol-Metal Tier-2 paper. We do NOT include them in 
 - `TODO/03_plans/METRIC_LIFT_STRATEGY_v2.md` — metric lift strategy
 - `TODO/decisions.md` D-Wf-431 — this refactor decision
 - `TODO/archive/reproduce_baselines.md.archived_2026_10_01` — previous "reproduce baseline" approach (DEPRECATED per new principle)
+
+---
+
+## §6 Honest limitations (m1 cohort alignment state)
+
+### 6.1 m1 (Ru AUC) — current measured state (paper criteria adopted, 2026-10-04)
+
+- **Decision (user, 2026-10-04)**: adopt the paper's criteria — drop and record the filters, replicate the paper's funnel, re-evaluate under DOI-split 10-fold CV (the former §6.2 Option A).
+- **Cohort (MEASURED)**: `molmetal/data/cytotox.py::build_paper_cohort` on the release-identical v2 file (`.data/molmetal/MetalCytoToxDB.csv`, md5 `f270dc907dbdfede953063a14f0825a7` = Zenodo v2 10.5281/zenodo.17106822, 26,801 rows): IC50-present → Ru → measurement-level dedup `(SMILES_Ligands, Cell_line, Time(h))` keep-first → 76-name non-cancer exclusion (exact strip().upper() match) = **15,799 rows / 4,793 complexes / 591 cell lines** (active_rate 0.3123). Paper: 11,294 rows / 4,399 complexes / 23 cancer cell lines (from 18,895 raw; no exposure-time filter — 24–144 h kept as feature; no IC50 noise floor; binary cut 10 uM).
+- **Split (MEASURED)**: DOI-split 10-fold CV — the paper's primary scheme; all rows sharing a DOI in one fold, DOI-disjoint verified; fold indices written by `molmetal/scripts/doi_split_cv.py` (`folds/fold_*.json`); no trainer or filter default changed.
+- **Result (MEASURED, 10/10 folds)**: D-MPNN multi-task, 10 epochs, seed 0, batch 64, hidden 128, depth 3, lr 1e-3, val=none (no checkpoint selection) → mean AUC **0.7717 ± 0.0380**; per-fold 0.8007, 0.7691, 0.8141, 0.7652, 0.7203, 0.7424, 0.8174, 0.7043, 0.7723, 0.8115 (3/10 folds ≥ 0.81). vs paper Ru binary ROC-AUC **0.810 ± 0.024** (LightGBM, DOI-split 10CV, 23 cell lines) → **0.038 below**; model class differs (D-MPNN vs LightGBM); the paper's SMILES-split 0.894 was NOT run.
+- **What still differs (honest-negative)**: the paper's cohort scope is not replicated — rows +4,505 (+39.9%), complexes +394 (+9.0%), cell lines 591 vs 23 (25.7×); 95% of the residual row gap (4,282 of 4,505) sits in the 568 cell lines outside our top-23-by-volume subset (that subset holds 11,517 of 15,799 rows, within 2% of the paper's 11,294) — neither the dedup-key lever (moves 412 rows = 2.2% of raw) nor exclusion breadth (2,446 rows) reproduces the paper's ~23-cell-line scope; unexplained, not tuned. Our non-cancer list (76 names) is our curation; the paper's inclusion criteria are documented in no Zenodo release (measured: zero matches for excluded/filter/dropped/dedup/criteria). The numeric comparison is a cross-cohort estimate, not a reproduction.
+- **Shipped record (unchanged)**: the shipped 0.7613 (scaffold split; no recorded row-level filter; n_train_avg 2509 / n_test_avg 796 matching no measured rerun) stays untraceable; the new measurement is an additive entry (`paper_protocol_measurement`) in `metrics/by_metric/metalcytotox_ru_auc.json`.
+- **Evidence**: `/tmp/wf_m1_paper_cv/summary.json` + `folds/fold_*.json` + `run{,a,b,c,a2,b2,c2}.log`; contaminated first pass excluded (15 resume-artifact rows in `summary.excluded_rows`), all 10 accepted folds cold-start (cold=10 / resumed=0); tests `molmetal/tests/test_paper_cohort_doi_cv.py` 5/5 PASS.
+
+### 6.2 m1 decision record (closed) + retained default-path facts
+
+- **Former open decision is closed**: Option A adopted and executed 2026-10-04; Option B (keep cohort, declare) superseded. Resolved vs the old flags: filters dropped + recorded; release identity established (v2, md5-identical); split scheme = paper's DOI-split 10-fold CV; dedup + non-cancer funnel replicated. No open protocol item remains; the cohort-size gap above is the standing honest-negative for paper §6.
+- **Retained default-path facts (NOT the m1 comparison numbers)**: default `CytotoxFilter` (time_threshold=24.0, ic50_min=0.01; `train_dmpnn_multitask_wasserstein.py:3449`) keeps 3,650/18,987 v4 Ru rows = 19.2%; measured reruns 2,262/394/994 AUC 0.5727 (10 ep) / 0.5901 (30 ep); loose 12,471/2,166/4,350 AUC 0.7622 (10 ep).
+- **Flag (not edited here)**: §1.1's "Paper split: 5-fold CV (Krasnov paper Table 4)" line and the "(5-fold CV)" parenthetical at the §1.1 m1 bullet are superseded by the verified ChemRxiv v2 reading (10-fold CV; DOI-split primary + SMILES-split alt).
