@@ -28,15 +28,46 @@ TRAINER = (
 
 
 def test_gate_uses_bond_f1_when_truth_is_available():
+    """The gate must read a BOND metric, and must be one that can improve.
+
+    2026-10-05 — this test previously demanded the literal
+    ``_bond_acc["bond_f1"]``, which was correct when written and wrong after
+    the large-cohort run exposed saturation: MEASURED over 26,715 clouds,
+    ``bond_f1`` reached 0.996 by epoch 5 and never moved again, while
+    ``bond_exact_type_rate`` climbed 0.254 -> 0.415 over the same epochs.
+    Gating on the saturated metric stopped the run at epoch 13 of 20
+    (patience=10) and left the epoch-3 weights as "best" — the artifact with
+    exact-match 0.254 instead of 0.415.
+
+    So the invariant is not a particular metric's name. It is: the gate reads a
+    bond metric, it is not decode_ratio, and it is not an existence metric
+    that saturates. Pinning the name would have blocked the fix; pinning the
+    property stops the same regression recurring.
+    """
     src = TRAINER.read_text()
-    assert '_bond_acc["bond_f1"]' in src, (
-        "the checkpoint gate no longer consults bond_f1 — it would select on "
-        "decode_ratio again, which is anti-correlated with bond correctness "
-        "and saves the least-trained epoch as the best one"
+    assert "_bond_acc.get(" in src, (
+        "the checkpoint gate no longer reads a bond metric at all — it would "
+        "select on decode_ratio again, which is anti-correlated with bond "
+        "correctness and saves the least-trained epoch as the best one"
     )
     assert "if _gate > _best_gate:" in src, (
-        "the gate comparison was changed; confirm the criterion is still the "
-        "bond-F1 gate rather than decode_ratio"
+        "the gate comparison was changed; confirm the criterion is still a "
+        "bond-derived gate rather than decode_ratio"
+    )
+    # The saturating existence metric must not be the criterion again.
+    gate_line = [
+        ln
+        for ln in src.splitlines()
+        if "_gate = (" in ln or ln.strip().startswith("float(_bond_acc.get(")
+    ]
+    assert gate_line, "could not locate the gate assignment to audit it"
+    assert not any('"bond_f1"' in ln for ln in gate_line), (
+        "bond_f1 saturates on the large cohort (0.996 by epoch 5) and must not "
+        "gate; use bond_exact_type_rate, which was still improving"
+    )
+    assert any('"bond_exact_type_rate"' in ln for ln in gate_line), (
+        "the gate should be bond_exact_type_rate — the fraction of complexes "
+        "whose bond set AND every order match"
     )
 
 
@@ -129,3 +160,78 @@ def test_both_rules_are_scored_every_epoch():
         "rule — the argmax/threshold gap would go unmeasured and the config "
         "choice would be a guess again"
     )
+
+
+def test_gate_name_and_value_are_defined_before_the_epoch_loop():
+    """The run summary reads both AFTER the loop, so both must pre-exist.
+
+    2026-10-05 — `_gate_name` and `_best_gate` were assigned only inside the
+    epoch loop, and the summary block reads them once training is over.  A
+    0-epoch run (exhausted resume budget, or an early break that skips the
+    gate block) therefore raised `UnboundLocalError` at report time — after
+    the training, which is the worst moment to lose a run.
+
+    This is the same shape as the `_bond_acc` UnboundLocalError found
+    earlier the same day, so the check is deliberately structural: it asserts
+    the assignment precedes the loop rather than trying to run a 0-epoch
+    training, which would cost a corpus load.
+    """
+    lines = TRAINER.read_text().splitlines()
+
+    def _first_assign(name: str) -> int:
+        for i, ln in enumerate(lines, 1):
+            s = ln.strip()
+            if s.startswith(f"{name} =") or s.startswith(f"{name}:"):
+                return i
+        raise AssertionError(f"{name} is never assigned in the trainer")
+
+    loop = next(
+        i for i, ln in enumerate(lines, 1) if "for epoch in range(" in ln
+    )
+    for name in ("_gate_name", "_best_gate", "_bond_acc"):
+        at = _first_assign(name)
+        assert at < loop, (
+            f"{name} is first assigned at line {at}, after the epoch loop at "
+            f"{loop}; a 0-epoch run would raise UnboundLocalError when the "
+            "summary reads it after training"
+        )
+
+
+def test_hit_target_is_measured_against_the_gate_not_decode_ratio():
+    """`hit_target: false` must not be possible for a run that improved.
+
+    2026-10-05 — `hit_target` compared `best_decode_ratio` to
+    `target_decode_ratio`.  decode_ratio FALLS as the bond head improves
+    (loose atoms parse; connected molecules with a wrong valence do not), so
+    the 2026-10-04 run improved its gate metric every single epoch and still
+    reported `hit_target: false`.  The verdict now follows the gate.
+    """
+    src = TRAINER.read_text()
+    assert '"gate_metric": _gate_name' in src, (
+        "the summary no longer names the metric it gated on"
+    )
+    assert "hit_target=bool(" in src, "hit_target must be derived, not implied"
+    # The old comparison must not survive anywhere in the summary/event path.
+    assert "hit_target=bool(best_decode_ratio >=" not in src, (
+        "hit_target is comparing decode_ratio again — that is the "
+        "anti-correlated metric, and it makes an improving run read as a "
+        "failure"
+    )
+    assert '"hit_target": best_decode_ratio >=' not in src, (
+        "the JSON summary's hit_target is comparing decode_ratio again"
+    )
+
+
+def test_run_summary_reports_the_type_metrics():
+    """The bond TYPE results must be in the summary, not only per-epoch.
+
+    They are the numbers the task is actually about (existence F1 is close to
+    saturated by classical toolkits; type perception is the claim), so a
+    summary that omits them cannot support the result it is reporting.
+    """
+    src = TRAINER.read_text()
+    for key in (
+        '"bond_exact_type_rate"',
+        '"bond_type_macro_f1_pooled"',
+    ):
+        assert key in src, f"{key} is missing from the trainer's run summary"

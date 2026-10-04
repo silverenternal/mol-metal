@@ -109,3 +109,30 @@ def test_the_liveness_probe_passes_its_own_ckpt_dir():
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+def test_no_test_writes_into_the_shared_checkpoint_dir(tmp_path: Path) -> None:
+    """A test that runs real training must isolate its ckpt_dir.
+
+    2026-10-05 — a 1-epoch / 32-sample checkpoint was found sitting at
+    ``molmetal/checkpoints/cfm_yuelbond_wasserstein_seed0.pt``, the default
+    that ``de_novo_loop.py`` and three other scripts load.  Its saved args
+    read ``out_dir=/tmp/pytest-of-hugo/pytest-5024/...`` — it was a test
+    artifact wearing a production filename, so anything using the default
+    would have silently loaded a toy model.
+
+    The fix (2026-10-04, f7fec1f360) added ``--ckpt-dir`` to the gradient
+    probe.  This test pins it, because the failure is silent: the directory
+    is untracked, so nothing in git history records that it happened.
+    """
+    probe = (
+        PROJECT_ROOT / "molmetal" / "tests" / "test_cfm_loss_gradient_liveness.py"
+    ).read_text()
+    assert '"--ckpt-dir"' in probe, (
+        "the gradient probe runs a real training epoch; without --ckpt-dir it "
+        "writes into molmetal/checkpoints and overwrites whatever production "
+        "checkpoint carries that name"
+    )
+    assert '"--resume-from"' in probe, (
+        "the probe must not inherit a previous run's weights via --resume-from auto"
+    )

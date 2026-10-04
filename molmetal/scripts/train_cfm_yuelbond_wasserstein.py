@@ -522,31 +522,58 @@ def _device_safe_yuelbond_forward(
 ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
     """Device-safe forward for ``YuelBondDecoderHead``.
 
-    Mirrors :meth:`YuelBondDecoderHead.forward` but routes the
-    upper-triangle pair indices through ``cloud.positions.device``
-    and the message-passing pair features through ``F.one_hot`` on the
-    correct device.  This is sufficient for CUDA / MPS / CPU parity.
+    Routes the upper-triangle pair indices and the one-hot through a
+    single device, giving CUDA / MPS / CPU parity.
+
+    2026-10-05 — the device is taken from the head's WEIGHTS, not from
+    ``cloud.positions``.  Those differ in the exact case that mattered:
+    ``generate_clouds_from_noise`` returns ``.cpu()`` clouds by design, so a
+    CUDA model met a CPU cloud, this forward built every tensor on the
+    cloud's device, and ``atom_encoder`` raised ``RuntimeError: Expected all
+    tensors to be on the same device``.  ``featurise`` caught it and returned
+    ``decode_succeeded=False``, so ``gen_validity`` reported 0/128 on CUDA and
+    28/72 on CPU for the SAME checkpoint (results/cfm_tmqm_all6, 2026-10-04).
+
+    KNOWN DIVERGENCE FROM THE MODULE'S FORWARD — this patch is NOT 1:1 with
+    :meth:`YuelBondDecoderHead.forward` despite what the comment above used to
+    claim.  Three differences, all in the message-passing loop:
+
+    ==================  ==========================  =========================
+    step                module forward              this patch
+    ==================  ==========================  =========================
+    activation          none                        ``F.relu(msg)``
+    aggregation         ``i_idx`` only              ``i_idx`` AND ``j_idx``
+    residual            none                        ``h + ...``
+    ==================  ==========================  =========================
+
+    It was left in place rather than deleted because every CFM entry point
+    imports this module (and therefore picks the patch up), so the shipped
+    checkpoints were trained under THESE weights.  Deleting it would change
+    the model's math and invalidate them.  Reconciling the two is a modelling
+    decision, not a bug fix, and is tracked rather than done silently here.
     """
+    _dev = self.pair_head[-1].weight.device
+    cloud = cloud.to(_dev)
     positions = cloud.positions.float()
     atomic_numbers = cloud.atomic_numbers.long()
     n = int(atomic_numbers.shape[0])
     if n < 2:
         return (
-            torch.zeros(0, NUM_BOND_CLASSES, device=positions.device),
+            torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
             (
-                torch.zeros(0, dtype=torch.long, device=positions.device),
-                torch.zeros(0, dtype=torch.long, device=positions.device),
+                torch.zeros(0, dtype=torch.long, device=_dev),
+                torch.zeros(0, dtype=torch.long, device=_dev),
             ),
         )
     z_onehot = _device_safe_z_to_onehot(atomic_numbers, self.z_table)
     h = self.atom_encoder(z_onehot)
-    i_idx, j_idx = torch.triu_indices(n, n, offset=1, device=positions.device)
+    i_idx, j_idx = torch.triu_indices(n, n, offset=1, device=_dev)
     if i_idx.numel() == 0:
         return (
-            torch.zeros(0, NUM_BOND_CLASSES, device=positions.device),
+            torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
             (
-                torch.zeros(0, dtype=torch.long, device=positions.device),
-                torch.zeros(0, dtype=torch.long, device=positions.device),
+                torch.zeros(0, dtype=torch.long, device=_dev),
+                torch.zeros(0, dtype=torch.long, device=_dev),
             ),
         )
     d_vec = positions[j_idx] - positions[i_idx]
@@ -557,10 +584,10 @@ def _device_safe_yuelbond_forward(
     d = d[mask]
     if i_idx.numel() == 0:
         return (
-            torch.zeros(0, NUM_BOND_CLASSES, device=positions.device),
+            torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
             (
-                torch.zeros(0, dtype=torch.long, device=positions.device),
-                torch.zeros(0, dtype=torch.long, device=positions.device),
+                torch.zeros(0, dtype=torch.long, device=_dev),
+                torch.zeros(0, dtype=torch.long, device=_dev),
             ),
         )
     is_short = (d < 1.7).float().unsqueeze(-1)
@@ -644,6 +671,23 @@ DEFAULT_N_LAYERS = 3
 # 2026-10-04 the yamls declared 6.0 while the decoder ran at the 3.5
 # default, i.e. the config misreported the geometry the run actually used.
 DEFAULT_EDGE_CUTOFF = 3.5
+# 2026-10-05 — the acceptance bar for the bond TYPE task, used only when the
+# corpus carries Wiberg truth (tmQM) so `hit_target` has something meaningful
+# to compare against.
+#
+# `target_decode_ratio` (0.8) cannot serve: decode_ratio counts RDKit-parseable
+# decodes and is ANTI-correlated with correctness — loose atoms parse trivially,
+# so a head that predicts BOND_NO_BOND for every pair scores 0.977.  Requiring
+# 0.8 of it is a demand for bad chemistry.
+#
+# 0.50 is a ROUNDING bar, not a tuned one.  MEASURED on the 26,715-cloud run,
+# exact-type rate was still climbing at epoch 13 (0.254 -> 0.415) when the
+# saturating gate stopped it, and OpenBabel's whole-graph exact match on the
+# same task is 0.030.  The point is to be passed by a model that has learned
+# most of the task, so the next run's number is interpretable; it is not a
+# claim about where this architecture saturates.  A run that misses it is
+# reported as a miss, not re-thresholded.
+_TARGET_EXACT_TYPE_RATE = 0.50
 # PCGrad task set (Yu 2020 arXiv:2001.06782).  These are the PRIMARY
 # objectives -- the ones that pose genuinely distinct problems.  The
 # regularisers are deliberately excluded: they shape the same velocity field
@@ -2802,7 +2846,15 @@ def generate_clouds_from_noise(
 
     was_training = model.training
     model.eval()
-    gen = torch.Generator(device="cpu").manual_seed(int(seed))
+    # 2026-10-04 FIX — the generator must live on the same device as the
+    # tensor it seeds.  This was `torch.Generator(device="cpu")` while the
+    # `torch.randn` below runs on CUDA, which raises
+    # `RuntimeError: Expected a 'cuda' device type for generator but found
+    # 'cpu'`.  MEASURED consequence: `[cfm-gen]` reported 0/0 every epoch on a
+    # CUDA run — the whole GENERATION half of the CFM, the only part that
+    # exercises the sampler, was never measured, and the failure was a
+    # one-line warning inside a try/except rather than a crash.
+    gen = torch.Generator(device=device).manual_seed(int(seed))
     by_size: Dict[int, List[AtomCloud]] = {}
     for tpl in templates:
         by_size.setdefault(int(tpl.atomic_numbers.shape[0]), []).append(tpl)
@@ -2965,6 +3017,16 @@ def evaluate_generation_validity(
     )
     n_ok = 0
     chem_rows: list[Optional[Dict[str, Any]]] = []
+    # 2026-10-05 — a decode that CRASHED is not a decode that failed, and
+    # counting it as one is what let a device bug read as a modelling result.
+    # MEASURED on results/cfm_tmqm_all6: every one of the 128 CUDA decodes hit
+    # `RuntimeError: Expected all tensors to be on the same device` inside the
+    # head, `featurise` converted it to `decode_succeeded=False`, and
+    # `gen_validity` reported 0.000 — indistinguishable from a model that
+    # samples bad chemistry.  The count below makes the two separable, so a
+    # future run says "the head never ran" instead of "the model is bad".
+    n_decode_error = 0
+    first_error = ""
     for cloud in clouds:
         try:
             res = decoder.decode(cloud)
@@ -2972,7 +3034,10 @@ def evaluate_generation_validity(
             chem_rows.append(decode_chemistry(smi) if smi else None)
             if _decode_with_rdkit_strict(decoder, cloud):
                 n_ok += 1
-        except Exception:
+        except Exception as exc:
+            n_decode_error += 1
+            if not first_error:
+                first_error = f"{type(exc).__name__}: {exc}"
             chem_rows.append(None)
             continue
     if chemistry_out is not None:
@@ -2980,6 +3045,9 @@ def evaluate_generation_validity(
         chemistry_out.update(summarise_decode_chemistry(chem_rows))
         chemistry_out["n_samples"] = len(clouds)
         chemistry_out["decode_ratio"] = n_ok / max(len(clouds), 1)
+        chemistry_out["n_decode_error"] = n_decode_error
+        if first_error:
+            chemistry_out["decode_error_example"] = first_error
     return n_ok, len(clouds)
 
 
@@ -5898,6 +5966,13 @@ def main() -> int:
     # `UnboundLocalError: _bond_acc` AFTER training.
     # `p3_wf385_scaffold_loss_wire_in_verified` catches exactly that.
     _bond_acc: Dict[str, float] = {}
+    # 2026-10-05 — the run summary reads the gate's NAME and VALUE after the
+    # epoch loop.  Both were assigned only inside the loop, so a 0-epoch run
+    # (exhausted resume budget, or an early break before the gate block) died
+    # with UnboundLocalError at report time — after training, which is the
+    # worst place to lose a run.  Defaulted here, mirroring `_bond_acc`.
+    _gate_name = "decode_ratio"
+    _best_gate = float("-inf")
     epochs_without_improve = 0
     overall_start = time.time()
     # Wf-A6 A2 BLOCKER C fix — instantiate LR scheduler (opt-in).
@@ -6273,6 +6348,19 @@ def main() -> int:
                     f"(n={_gen_chem.get('n_chemistry_scored', 0)})",
                     flush=True,
                 )
+            # 2026-10-05 — gen_validity=0.000 with no decode errors means the
+            # model sampled chemistry RDKit rejected.  gen_validity=0.000 WITH
+            # decode errors means the decoder never ran, which is an
+            # infrastructure fault and must not be filed as a result.
+            if int(_gen_chem.get("n_decode_error", 0) or 0) > 0:
+                print(
+                    f"[cfm-gen][ERROR] epoch={epoch} "
+                    f"{_gen_chem['n_decode_error']}/{_gen_tot} decodes RAISED — "
+                    f"gen_validity is an infrastructure failure, not a "
+                    f"modelling result. First: "
+                    f"{_gen_chem.get('decode_error_example', '?')}",
+                    flush=True,
+                )
         elif decoding_attempted and _gen_n > 0 and not model.use_egnn_velocity:
             if epoch == 0:
                 print(
@@ -6438,10 +6526,30 @@ def main() -> int:
         #
         # decode_ratio is still recorded and still reported; it just no longer
         # decides which weights survive.
+        # 2026-10-04 — the gate must be a metric that can still IMPROVE.
+        #
+        # `bond_f1` measures bond EXISTENCE and it saturates: MEASURED on the
+        # 26,715-cloud run it reached 0.996 by epoch 5 and never moved again,
+        # while `bond_exact_type_rate` — the fraction of complexes whose bond
+        # set AND every order match — climbed 0.254 -> 0.415 over the same
+        # epochs.  Gating on the saturated metric stopped the run at epoch 13
+        # of 20 with patience=10 and, worse, the checkpoint kept is the one
+        # from epoch 3 (the last strict F1 improvement), i.e. the artifact with
+        # exact-match 0.254 instead of 0.415.
+        #
+        # `bond_exact_type_rate` is the task itself (reproduce the graph with
+        # the right orders), it is aggregation-free, and it is comparable to
+        # the reference table's `exact_type`.  Fall back to decode_ratio only
+        # when the corpus carries no type truth.
         _gate = (
-            float(_bond_acc["bond_f1"])
+            float(_bond_acc.get("bond_exact_type_rate", 0.0))
             if _bond_acc.get("n_scored", 0.0) > 0
             else decode_ratio
+        )
+        _gate_name = (
+            "bond_exact_type_rate"
+            if _bond_acc.get("n_scored", 0.0) > 0
+            else "decode_ratio"
         )
         _best_gate = float(getattr(model, "_cfm_best_gate", float("-inf")))
         if _gate > _best_gate:
@@ -6455,7 +6563,9 @@ def main() -> int:
             if epochs_without_improve >= args.patience:
                 print(
                     f"[Wf-124 P2] early stop @ epoch {epoch} "
-                    f"(best_decode_ratio={best_decode_ratio:.3f} @ epoch {best_epoch})",
+                    f"(best {_gate_name}={_best_gate:.4f} @ epoch {best_epoch}; "
+                    f"decode_ratio there was {best_decode_ratio:.3f} — reported, "
+                    f"not the criterion)",
                     flush=True,
                 )
                 break
@@ -6507,25 +6617,50 @@ def main() -> int:
             "device": str(device),
             "target_decode_ratio": args.target_decode_ratio,
         },
-        # 2026-10-04 — WHAT GATES vs WHAT IS REPORTED.
+        # 2026-10-05 — WHAT GATES vs WHAT IS REPORTED.
         #
-        # The improvement gate is bond F1 against the corpus's Wiberg truth
-        # whenever that truth exists; `decode_ratio` only gates as the
-        # fallback for corpora with no bond truth.  Reporting
-        # `best.decode_ratio` as the headline regardless is how a model whose
-        # head predicted BOND_NO_BOND for every pair still showed 0.977.
-        "gate_metric": (
-            "bond_f1 (vs corpus Wiberg truth)"
-            if _bond_acc.get("n_scored", 0.0) > 0
-            else "decode_ratio (no bond truth in this corpus)"
-        ),
+        # The improvement gate is `bond_exact_type_rate` against the corpus's
+        # Wiberg truth whenever that truth exists (2026-10-04 used bond F1,
+        # which saturates at 0.996 by epoch 5 on the large cohort and so never
+        # improved again); `decode_ratio` only gates as the fallback for
+        # corpora with no bond truth.
+        #
+        # `hit_target` is measured against THE GATE, not against decode_ratio.
+        # It used to test `best_decode_ratio >= target_decode_ratio`, so a run
+        # whose bond model had improved every epoch still reported
+        # `hit_target: false` because decode_ratio had fallen — which is the
+        # correct direction for that metric, and made the summary read as a
+        # failure.  Where decode_ratio is the gate, the two coincide and the
+        # old comparison is kept.
+        "gate_metric": _gate_name,
+        "gate_value": _best_gate,
         "best": {
             "epoch": best_epoch,
-            "decode_ratio": best_decode_ratio,
-            "hit_target": best_decode_ratio >= args.target_decode_ratio,
+            "gate_metric": _gate_name,
+            "gate_value": _best_gate,
+            # 2026-10-05 — the headline follows the gate.  decode_ratio stays
+            # present and stays caveated, but it is not what "best" means.
+            "bond_exact_type_rate": float(
+                _bond_acc.get("bond_exact_type_rate", 0.0)
+            ),
+            "bond_type_macro_f1_pooled": float(
+                _bond_acc.get("bond_type_macro_f1_pooled", 0.0)
+            ),
             "bond_f1": float(_bond_acc.get("bond_f1", 0.0)),
             "bond_precision": float(_bond_acc.get("bond_precision", 0.0)),
             "bond_recall": float(_bond_acc.get("bond_recall", 0.0)),
+            "decode_ratio": best_decode_ratio,
+            "hit_target": bool(
+                _best_gate >= args.target_decode_ratio
+                if _gate_name == "decode_ratio"
+                else _best_gate >= _TARGET_EXACT_TYPE_RATE
+            ),
+            "target_note": (
+                "hit_target is measured on the gate metric. With bond truth "
+                "present the target is bond_exact_type_rate >= "
+                f"{_TARGET_EXACT_TYPE_RATE}; decode_ratio is reported but is "
+                "not a chemistry metric (see decode_ratio_caveat)."
+            ),
         },
         "per_epoch_metrics": [asdict(m) for m in per_epoch],
         "wall_time_s": total_elapsed,
@@ -6545,15 +6680,18 @@ def main() -> int:
         ),
         "honest_framing": (
             f"CFM retrain complete on {device}. "
-            f"Gating metric: {('bond_f1' if _bond_acc.get('n_scored', 0.0) > 0 else 'decode_ratio')}; "
+            f"Gating metric: {_gate_name} = {_best_gate:.4f} (best @ epoch "
+            f"{best_epoch}) vs corpus Wiberg truth. "
+            f"bond_exact_type_rate = "
+            f"{float(_bond_acc.get('bond_exact_type_rate', 0.0)):.4f}; "
+            f"bond_type_macro_f1 = "
+            f"{float(_bond_acc.get('bond_type_macro_f1_pooled', 0.0)):.4f}; "
             f"bond_f1 = {float(_bond_acc.get('bond_f1', 0.0)):.3f} "
             f"(precision {float(_bond_acc.get('bond_precision', 0.0)):.3f} / "
-            f"recall {float(_bond_acc.get('bond_recall', 0.0)):.3f}) vs "
-            f"corpus Wiberg truth. "
-            f"decode_ratio = {best_decode_ratio:.3f} "
-            f"({'PASS' if best_decode_ratio >= args.target_decode_ratio else 'miss'} "
-            f"vs target {args.target_decode_ratio:.2f}) but it is a PARSE "
-            "count, not a chemistry result — see decode_ratio_caveat. "
+            f"recall {float(_bond_acc.get('bond_recall', 0.0)):.3f}). "
+            f"decode_ratio = {best_decode_ratio:.3f} — reported, not the "
+            "criterion; it is a PARSE count, not a chemistry result (see "
+            "decode_ratio_caveat). "
             "The Wasserstein + Catherine closure bias contribute as "
             "engine-tagged add-ons, NOT silent substitutes."
         ),
@@ -6568,7 +6706,20 @@ def main() -> int:
             best_epoch=int(best_epoch),
             best_decode_ratio=float(best_decode_ratio),
             target_decode_ratio=float(args.target_decode_ratio),
-            hit_target=bool(best_decode_ratio >= args.target_decode_ratio),
+            # 2026-10-05 — downstream consumers (TUI panels, the m1 CV
+            # driver) read this as the run's verdict. It used to be the
+            # decode_ratio comparison, so a run whose bond model improved
+            # every epoch reported hit_target=false.
+            gate_metric=_gate_name,
+            gate_value=float(_best_gate),
+            bond_exact_type_rate=float(
+                _bond_acc.get("bond_exact_type_rate", 0.0)
+            ),
+            hit_target=bool(
+                _best_gate >= args.target_decode_ratio
+                if _gate_name == "decode_ratio"
+                else _best_gate >= _TARGET_EXACT_TYPE_RATE
+            ),
             wall_time_s=float(total_elapsed),
             n_epochs=int(args.epochs),
             n_epochs_run=len(per_epoch),

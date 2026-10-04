@@ -375,6 +375,57 @@ class AtomCloud:
                     f"but bonds has {int(self.bonds.shape[1])} columns"
                 )
 
+    def to(self, device) -> "AtomCloud":
+        """Return a copy with every tensor moved to *device*.
+
+        2026-10-05 — added because the absence of this method is what let a
+        device mismatch hide for a whole run.  ``YuelBondDecoderHead.forward``
+        fed ``cloud.positions`` straight into a ``nn.Linear``; a cloud on CPU
+        against weights on CUDA raises ``RuntimeError``, which
+        ``YuelBondDecoder.featurise`` catches and reports as
+        ``decode_succeeded=False``.  That is indistinguishable from the model
+        having produced bad chemistry, so ``gen_validity`` read 0/128 on CUDA
+        and 28/72 on CPU for the SAME checkpoint (results/cfm_tmqm_all6).
+
+        Carries ``bonds`` / ``bond_types`` too, so a moved cloud keeps its
+        training truth — a move that dropped the labels would silently turn a
+        supervised example into an unlabelled one.
+        """
+        return AtomCloud(
+            positions=self.positions.to(device),
+            atomic_numbers=self.atomic_numbers.to(device),
+            bonds=(self.bonds.to(device) if self.bonds is not None else None),
+            bond_types=(
+                self.bond_types.to(device)
+                if self.bond_types is not None
+                else None
+            ),
+        )
+
+    def cuda(self, *args) -> "AtomCloud":
+        """``to('cuda')`` — present so callers reach for the obvious name.
+
+        Without it, code written against the torch idiom fails with
+        ``AttributeError`` at the call site rather than doing the obvious
+        thing, which is how device handling ends up reinvented (and, before
+        :meth:`to` existed, forgotten) at a dozen places.
+
+        Only the optional device INDEX is accepted, matching ``Tensor.cuda``.
+        Keyword arguments are refused rather than ignored — silently dropping
+        a caller's ``dtype=`` or ``non_blocking=`` is the failure mode this
+        method exists to prevent.
+        """
+        if len(args) > 1:
+            raise TypeError(
+                f"AtomCloud.cuda() takes at most 1 argument "
+                f"({len(args)} given); convert dtype explicitly with .to()"
+            )
+        return self.to(torch.device("cuda", *args) if args else torch.device("cuda"))
+
+    def cpu(self) -> "AtomCloud":
+        """``to('cpu')`` — see :meth:`cuda`."""
+        return self.to(torch.device("cpu"))
+
 
 @dataclass
 class PairFeature:

@@ -148,3 +148,26 @@ def test_trainer_pooled_macro_f1_matches_the_bench_formula():
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+def test_early_stop_gate_is_not_the_saturating_metric():
+    """The gate must be able to improve, or patience kills a learning run.
+
+    2026-10-04 — gating on `bond_f1` stopped the 26,715-cloud run at epoch 13
+    of 20 with patience=10.  MEASURED on that run: bond_f1 hit 0.996 at epoch 5
+    and never moved, while `bond_exact_type_rate` climbed 0.254 -> 0.415 over
+    the same epochs.  No improvement-save fired after epoch 3, so the best
+    epoch (13, exact-match 0.415) was never written; the artifact on disk is
+    the epoch-9 periodic save (exact-match 0.370).
+    """
+    src = TRAINER.read_text()
+    assert 'float(_bond_acc.get("bond_exact_type_rate", 0.0))' in src, (
+        "the improvement gate went back to a metric that saturates; the run "
+        "will early-stop while the task metric is still climbing, and the kept "
+        "checkpoint will be an early, inferior one"
+    )
+    assert "best {_gate_name}=" in src, (
+        "the early-stop message must name the metric that actually decided it; "
+        "printing best_decode_ratio reads as though decode_ratio were the "
+        "criterion"
+    )

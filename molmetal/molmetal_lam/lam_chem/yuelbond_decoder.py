@@ -139,7 +139,12 @@ def z_to_onehot(z: torch.Tensor, z_table: Tuple[int, ...] = _YUELBOND_Z_TABLE) -
     function's behaviour for callers that take the default.
     """
     to_idx = {zz: i for i, zz in enumerate(z_table)}
-    idx = torch.zeros(z.shape[0], dtype=torch.long)
+    # 2026-10-05 — allocate on `z`'s device.  This defaulted to CPU, so a CUDA
+    # atomic-number tensor still produced a CPU one-hot and the head's
+    # `nn.Linear` raised `Expected all tensors to be on the same device`.
+    # Fixing it here rather than at the call site means every caller inherits
+    # it, including ones that have not been exercised on GPU yet.
+    idx = torch.zeros(z.shape[0], dtype=torch.long, device=z.device)
     for i, atomic_number in enumerate(z.tolist()):
         idx[i] = to_idx.get(int(atomic_number), 0)
     return F.one_hot(idx, num_classes=len(z_table)).float()
@@ -235,23 +240,54 @@ class YuelBondDecoderHead(nn.Module):
         ``> cutoff`` are NOT returned (caller should treat them as
         ``NO_BOND``); pairs at ``< min_distance`` are clamped.
         """
+        # 2026-10-05 FIX — the head must run where its WEIGHTS are, and the
+        # cloud must be moved there.  `forward` used to consume the cloud's
+        # tensors verbatim, so a CPU cloud against CUDA weights raised
+        # `RuntimeError: Expected all tensors to be on the same device`.
+        #
+        # MEASURED consequence (results/cfm_tmqm_all6, 2026-10-04 run):
+        # `generate_clouds_from_noise` returns `.cpu()` clouds by design, so
+        # every generation eval on CUDA hit this — and `YuelBondDecoder.
+        # featurise` catches the exception and returns `decode_succeeded=False`,
+        # which is indistinguishable from "the model produced bad chemistry".
+        # gen_validity therefore read 0/128 on CUDA and 28/72 on CPU for the
+        # SAME checkpoint: the CUDA zeros were a device mismatch, not a
+        # modelling result.
+        #
+        # The head runs where its WEIGHTS are: the cloud is moved onto them.
+        # A caller that hands this a CPU cloud while the module is on CUDA
+        # therefore still works, which is the case
+        # `generate_clouds_from_noise` produces by design.
+        _dev = self.pair_head[-1].weight.device
+        cloud = cloud.to(_dev)
         positions = cloud.positions.float()
         atomic_numbers = cloud.atomic_numbers.long()
         n = int(atomic_numbers.shape[0])
         if n < 2:
             return (
-                torch.zeros(0, NUM_BOND_CLASSES),
-                (torch.zeros(0, dtype=torch.long), torch.zeros(0, dtype=torch.long)),
+                torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
+                (
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                ),
             )
         # Encode atoms
         z_onehot = z_to_onehot(atomic_numbers, self.z_table)
         h = self.atom_encoder(z_onehot)  # (N, H)
-        # Build pair list: upper triangle
-        i_idx, j_idx = torch.triu_indices(n, n, offset=1)
+        # Build pair list: upper triangle.
+        # 2026-10-05 — `torch.triu_indices` allocates on CPU unless told
+        # otherwise, which silently dragged the whole forward back to CPU and
+        # re-raised the device error the `cloud.to(_dev)` above had just fixed.
+        # Every index tensor derived from it inherits this, so the device is
+        # stated here once rather than at each use.
+        i_idx, j_idx = torch.triu_indices(n, n, offset=1, device=_dev)
         if i_idx.numel() == 0:
             return (
-                torch.zeros(0, NUM_BOND_CLASSES),
-                (torch.zeros(0, dtype=torch.long), torch.zeros(0, dtype=torch.long)),
+                torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
+                (
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                ),
             )
         # Pair distances and short/long flags
         d_vec = positions[j_idx] - positions[i_idx]
@@ -263,8 +299,11 @@ class YuelBondDecoderHead(nn.Module):
         d = d[mask]
         if i_idx.numel() == 0:
             return (
-                torch.zeros(0, NUM_BOND_CLASSES),
-                (torch.zeros(0, dtype=torch.long), torch.zeros(0, dtype=torch.long)),
+                torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
+                (
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                ),
             )
         # Per-edge features (now all shape (E,))
         is_short = (d < 1.7).float().unsqueeze(-1)
@@ -356,6 +395,16 @@ class YuelBondDecoder:
         Returns a :class:`YuelBondResult`; on shape errors returns
         ``decode_succeeded=False`` with a short ``error`` message.
         """
+        # 2026-10-05 — the head is moved onto the cloud's device HERE, at the
+        # single point every decode passes through, rather than relying on each
+        # caller to have done it.  MEASURED: `generate_clouds_from_noise`
+        # returns `.cpu()` clouds, so on a CUDA run every one of these calls
+        # raised `RuntimeError: Expected all tensors to be on the same device`
+        # and was caught below as `head_forward_failed:RuntimeError` — which
+        # reads identically to "the head ran and found no bonds".  That is how
+        # gen_validity came to report 0/128 on CUDA and 28/72 on CPU for one
+        # checkpoint.
+        cloud = cloud.to(self.head.pair_head[-1].weight.device)
         try:
             out = self.head(cloud)
             # Default YuelBondDecoderHead always returns (logits, (i_idx, j_idx))
@@ -364,7 +413,7 @@ class YuelBondDecoder:
             else:
                 return YuelBondResult(
                     pair_features=None,
-                    logits=torch.zeros(0, NUM_BOND_CLASSES),
+                    logits=torch.zeros(0, NUM_BOND_CLASSES, device=cloud.positions.device),
                     edge_index=torch.zeros(2, 0, dtype=torch.long),
                     decode_succeeded=False,
                     error="head_returned_unexpected_format",
@@ -372,10 +421,14 @@ class YuelBondDecoder:
         except Exception as exc:
             return YuelBondResult(
                 pair_features=None,
-                logits=torch.zeros(0, NUM_BOND_CLASSES),
+                logits=torch.zeros(0, NUM_BOND_CLASSES, device=cloud.positions.device),
                 edge_index=torch.zeros(2, 0, dtype=torch.long),
                 decode_succeeded=False,
-                error=f"head_forward_failed:{type(exc).__name__}",
+                # 2026-10-05 — carry the MESSAGE, not just the type.  A bare
+                # class name is what made this unreadable: `RuntimeError` on
+                # its own says nothing about which of the dozens of ways a
+                # forward pass can fail actually happened.
+                error=f"head_forward_failed:{type(exc).__name__}:{exc}",
             )
         edge_index = torch.stack([i_idx, j_idx], dim=0).long()
         if edge_index.shape[1] == 0:

@@ -254,3 +254,84 @@ def test_softening_pulls_in_the_extreme_class():
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+# ---------------------------------------------------------------------------
+# The generator device (the sampler was never measured on CUDA)
+# ---------------------------------------------------------------------------
+def test_sampling_generator_matches_the_tensor_device():
+    """`torch.randn(device=X, generator=g)` needs g on X.
+
+    2026-10-04 — `generate_clouds_from_noise` built the generator with
+    `device="cpu"` and then sampled on CUDA, which raises
+    `RuntimeError: Expected a 'cuda' device type for generator but found
+    'cpu'`.  The generation eval caught it in a try/except and reported
+    `gen_validity=0.000 (0/0)` every epoch, so the sampler — the half of the
+    CFM that produces molecules rather than reading given geometry — went
+    unmeasured for an entire CUDA run behind a one-line warning.
+    """
+    src = (
+        PROJECT_ROOT
+        / "molmetal"
+        / "scripts"
+        / "train_cfm_yuelbond_wasserstein.py"
+    ).read_text()
+    # Comments are excluded deliberately: the fix site quotes the old call in
+    # the note explaining it, and a naive substring check would match that
+    # quote and fail on correct code.
+    code_lines = [
+        ln for ln in src.splitlines()
+        if not ln.lstrip().startswith("#")
+    ]
+    code = "\n".join(code_lines)
+    assert 'torch.Generator(device="cpu")' not in code, (
+        "a CPU generator is being handed to a CUDA randn again; the "
+        "generation eval will silently report 0/0"
+    )
+    assert "torch.Generator(device=device)" in code, (
+        "the sampling generator must be created on the same device as the "
+        "tensor it seeds"
+    )
+
+
+@needs_rdkit
+def test_generate_clouds_from_noise_runs_on_the_given_device():
+    """End-to-end: generating must not raise on the device it is handed."""
+    import importlib.util as _ilu
+
+    import torch as _t
+
+    path = (
+        PROJECT_ROOT
+        / "molmetal"
+        / "scripts"
+        / "train_cfm_yuelbond_wasserstein.py"
+    )
+    spec = _ilu.spec_from_file_location("_t_gen_dev", str(path))
+    mod = _ilu.module_from_spec(spec)
+    sys.modules["_t_gen_dev"] = mod
+    spec.loader.exec_module(mod)
+
+    from molmetal.models.bond_head import AtomCloud
+    from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import get_z_table
+
+    tpl = [
+        AtomCloud(
+            positions=_t.randn(5, 3),
+            atomic_numbers=_t.tensor([78, 7, 7, 17, 17]),
+        )
+        for _ in range(2)
+    ]
+    model = mod.CFMJointModel(
+        hidden_dim=32,
+        n_layers=2,
+        cutoff=3.5,
+        z_table=get_z_table("pt"),
+        use_egnn_velocity=True,
+        max_atomic_number=100,
+    )
+    clouds = mod.generate_clouds_from_noise(
+        model, tpl, _t.device("cpu"), method="euler", n_steps=3, seed=0
+    )
+    assert len(clouds) == 2
+    assert clouds[0].positions.shape == (5, 3)
