@@ -219,3 +219,10 @@ results/gate_scratch/
 # Migration backups. These duplicate content that is either in git history or
 # superseded; 77 of them had accumulated as tracked files.
 *.bak.*
+
+# 2026-10-04 — transient per-run launch artifacts.  `plan.json` IS tracked
+# (see results/wf124_p3_*/plan.json); `.log` files are already ignored
+# globally by `**/*.log`, so these two are the remaining exceptions.
+results/**/preflight.json
+results/**/events.jsonl
+molmetal/reports/**/events.jsonl

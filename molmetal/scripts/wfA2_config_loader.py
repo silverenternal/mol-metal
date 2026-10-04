@@ -176,6 +176,21 @@ _NON_TRAINER_KEYS: dict[str, str] = {
     "per_wave_user_ok_required": "run-control metadata",
 }
 
+#: Dotted-path form of the same idea, for keys whose leaf name is too generic
+#: to key on safely (`protocol.scheduler.type` has leaf `type`, and excusing
+#: every `*.type` would hide real dead keys).  Every entry was verified by
+#: reading the named consumer — same bar as `_NON_TRAINER_KEYS`.
+_NON_TRAINER_PATHS: dict[str, str] = {
+    "protocol.n_seeds_min": "scripts/start.sh N_SEEDS_MIN env (reads protocol.n_seeds_min)",
+    "protocol.scheduler.type": (
+        "scripts/start.sh SCHEDULER env (reads protocol.scheduler.type, "
+        "passes it back as --lr-scheduler)"
+    ),
+    "output.events_jsonl": (
+        "scripts/start.sh events_jsonl_disabled (reads output.events_jsonl)"
+    ),
+}
+
 #: Report of the most recent apply_yaml_overrides() call (module-global so
 #: tests / gates can inspect it without re-parsing).
 _LAST_SKIPPED: list[dict[str, Any]] = []
@@ -275,12 +290,23 @@ def _skip_entry(
     return entry
 
 
+def _non_trainer_consumer(entry: Mapping[str, Any]) -> Optional[str]:
+    """Name the non-trainer consumer of a skipped key, or ``None``.
+
+    Checked in order: the section is metadata by design, the full dotted path
+    is registered, or the (normalised) leaf is registered.
+    """
+    if entry.get("section") in _NON_TRAINER_SECTIONS:
+        return "metadata section"
+    path = str(entry.get("key", ""))
+    if path in _NON_TRAINER_PATHS:
+        return _NON_TRAINER_PATHS[path]
+    return _NON_TRAINER_KEYS.get(str(entry.get("leaf", "")))
+
+
 def _registered_non_trainer(entry: Mapping[str, Any]) -> bool:
-    """True when the skip is by design (metadata section or named key)."""
-    return (
-        entry.get("section") in _NON_TRAINER_SECTIONS
-        or entry.get("leaf") in _NON_TRAINER_KEYS
-    )
+    """True when the skip is by design (metadata section or named consumer)."""
+    return _non_trainer_consumer(entry) is not None
 
 
 def _iter_leaves(mapping: Mapping[str, Any], prefix: Optional[list[str]] = None):
@@ -485,19 +511,60 @@ def apply_yaml_overrides(
     _LAST_SKIPPED = skipped
     setattr(args, "yaml_unresolved_keys", skipped)
     if skipped and not _quiet_enabled():
+        # 2026-10-04 — split the report by intent.
+        #
+        # A key inside `_NON_TRAINER_SECTIONS` (entry / directives /
+        # honest_framing / cross_references / waves / ablation_configs) has no
+        # trainer dest BY DESIGN — that is what the section is for.  Warning
+        # per key made a routine load print 40-78 lines, and a genuinely dead
+        # key (`data.dataset`) drowned in them: `cfm_full_retrain.yaml`
+        # declared a dataset it never read and nobody noticed, because the
+        # noise floor was already 46 lines high.  Metadata sections now get one
+        # aggregated line; only keys that COULD have resolved — or that sit in
+        # a section where a trainer dest is expected — get a per-key WARNING.
+        # Everything still lands in `last_skipped_keys()` and strict mode still
+        # fails on it.
+        metadata: dict[str, list[str]] = {}
+        actionable: list[dict[str, Any]] = []
         for entry in skipped:
+            section = str(entry.get("key", "")).split(".")[0]
+            if section in _NON_TRAINER_SECTIONS:
+                metadata.setdefault(section, []).append(str(entry.get("key", "")))
+            else:
+                actionable.append(entry)
+        by_design = 0
+        for entry in actionable:
+            consumer = _non_trainer_consumer(entry)
+            if consumer is not None and "reason" not in entry:
+                # Verified non-trainer consumer (typically a start.sh env var
+                # that is passed straight back to the trainer as a CLI flag).
+                # Not a warning: the key IS consumed, just not by argparse.
+                by_design += 1
+                continue
             why = entry.get("reason") or "no argparse dest"
-            consumer = _NON_TRAINER_KEYS.get(entry.get("leaf", ""))
-            if consumer and "reason" not in entry:
-                why = f"{why} (consumer: {consumer})"
             print(
                 f"[wfA2_config_loader] WARNING: YAML key "
                 f"'{entry['key']}' (value={entry['value']!r}) skipped — {why}",
                 file=sys.stderr,
             )
+        if by_design:
+            print(
+                f"[wfA2_config_loader] note: {by_design} key(s) outside "
+                "metadata sections have a verified non-trainer consumer "
+                "(scripts/start.sh); see _NON_TRAINER_PATHS / _NON_TRAINER_KEYS.",
+                file=sys.stderr,
+            )
+        for section, keys in sorted(metadata.items()):
+            print(
+                f"[wfA2_config_loader] note: {len(keys)} key(s) under "
+                f"'{section}:' have no trainer dest by design (run-control "
+                f"metadata, read by start.sh where applicable).",
+                file=sys.stderr,
+            )
         print(
             f"[wfA2_config_loader] {len(skipped)} YAML key(s) resolved to no "
-            "argparse dest; set WFA2_CONFIG_STRICT=1 to fail on these.",
+            f"argparse dest ({len(actionable)} outside metadata sections); "
+            "set WFA2_CONFIG_STRICT=1 to fail on these.",
             file=sys.stderr,
         )
     if _strict_enabled():

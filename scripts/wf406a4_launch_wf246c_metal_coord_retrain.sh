@@ -1,4 +1,38 @@
 #!/usr/bin/env bash
+# =============================================================================
+# 2026-10-04 — THIS LAUNCHER CANNOT RUN.  It passes --metal-coord-term, which
+# now raises SystemExit in the trainer.
+#
+# Why it was disabled rather than left alone: MetalCoordinationTerm is a
+# rule-based SMILES scorer (coordination_geometry_score / hsab_match_score —
+# RDKit + an HSAB table), so `kcal_adjustment` returns a Python float with no
+# gradient.  The old wire-in wrapped it in torch.tensor() behind a .item(),
+# which put a CONSTANT into the loss behind `metal_coord_weight` (default 0.5)
+# while every parameter update stayed identical to running without it — a run
+# that reports the flag as active while doing nothing.
+#
+# It is not repairable by dropping the .item(): the term has no gradient to
+# give, and feeding it sigmoid(pic50_pred) as a stand-in (as the old code did)
+# would teach the model to inflate its own output, since minimising
+# (1 - 2*c) pushes c up and c is derived from the supervised prediction.
+#
+# Independently, the term cannot fire on this corpus: it detects the metal
+# FROM THE SMILES, and MEASURED, 0 of 800 sampled rows of metalcytotox_5metal
+# contain any metal atom — the metal is a separate `metal` COLUMN.
+#
+# The term already runs where it works:
+#   molmetal/molmetal_lam/sbdd_env/vina_adapter.py::_compute_metal_coord_adjustment
+# applies it to real docked SMILES as a post-hoc kcal/mol correction.
+#
+# To make metal chemistry visible to the D-MPNN, the mechanism has to be an
+# auxiliary target computed per-row from the `metal` column — which first
+# requires hsab_match_score / coordination_geometry_score to accept an
+# explicit metal symbol.  That is a different piece of work; see
+# TODO/completed/431a3_wf246c_scafffold_close.md.
+#
+# Kept on disk (not deleted) so the Wf-388 / Wf-409 / Wf-406 provenance chain
+# stays intact.
+# =============================================================================
 # -----------------------------------------------------------------------------
 # scripts/wf406a4_launch_wf246c_metal_coord_retrain.sh
 #

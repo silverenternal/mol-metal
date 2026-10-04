@@ -190,6 +190,22 @@ def atomic_write_file(
                 if fsync:
                     f.flush()
                     os.fsync(f.fileno())
+            # 2026-10-04 FIX — `tempfile.mkstemp` creates the file 0600 by
+            # design, and `os.replace` carries that mode onto the target.  So
+            # every artifact written through this helper silently became
+            # owner-only, unlike a plain `open(path, "w")` — MEASURED, a new
+            # metrics/*.json landed at -rw------- beside siblings at
+            # -rw-r--r--.  On a shared checkout that makes the file
+            # unreadable to every other user and service, which is the
+            # opposite of what an audit trail is for.  Preserve an existing
+            # target's mode; otherwise apply what a normal create would.
+            try:
+                mode = os.stat(path).st_mode & 0o7777
+            except FileNotFoundError:
+                umask = os.umask(0)
+                os.umask(umask)
+                mode = 0o666 & ~umask
+            os.chmod(tmp_path, mode)
             os.replace(tmp_path, path)  # os.replace is atomic on POSIX
             LOG.info("atomic_write: %s (%d bytes)", path, len(content))
         except Exception:
@@ -293,11 +309,24 @@ def detect_truncation(
         return f"too_short({len(agent_output)}<{expected_min_length})"
     # Strip trailing whitespace for the closing-token match.
     stripped = agent_output.rstrip()
-    # Common truncation markers in agent output.
-    bad_endings = (":", ",", "...", "…", "TODO", "FIXME", "WIP", "[truncated]")
-    for bad in bad_endings:
+    # Common truncation markers in agent output.  Named tokens get a
+    # human-readable reason so a warning log says WHICH failure it is
+    # (`ends_with_colon` beats `ends_with_bad_token(':')` when grepping).
+    bad_endings = (
+        (":", "ends_with_colon"),
+        (",", "ends_with_comma"),
+        ("...", "ends_with_ellipsis"),
+        ("…", "ends_with_ellipsis"),
+        ("TODO", "ends_with_todo"),
+        ("FIXME", "ends_with_fixme"),
+        ("WIP", "ends_with_wip"),
+        ("[truncated]", "ends_with_truncated_marker"),
+    )
+    for bad, reason in bad_endings:
         if stripped.endswith(bad):
-            return f"ends_with_bad_token({bad!r})"
+            # Both the greppable name and the literal token, so a log line
+            # reads `ends_with_todo('TODO')` and either spelling matches.
+            return f"{reason}({bad!r})"
     # Require a closing token. Strip a trailing newline before matching
     # so we accept e.g. "...end of section.\n" as complete.
     for token in _CLOSING_TOKENS:

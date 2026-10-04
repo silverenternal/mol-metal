@@ -37,6 +37,36 @@ model:
   n_layers: 3
   # 18-entry table: the original 13 (Pt is last) plus Ru/Ir/Rh/Os/Re.
   yuelbond_vocab: all6
+  # 2026-10-04 — the production EGNN velocity field.
+  #
+  # Until this flag existed the trainer built `CFMJointModel`, whose velocity
+  # path was a 2-layer MLP placeholder (the class docstring said so: "a
+  # stand-in for the EGNN velocity field").  Everything the `flow:` block
+  # below turns on — the SE(3) Sinkhorn / Bass couplings, EDM
+  # sigma-preconditioning, SO(3) averaging, shortcut distillation,
+  # consistency regularisation — was therefore regularising a placeholder.
+  # With this on, `EGNNVelocityField` (518 K params at hidden_dim 128) takes
+  # its place and those terms act on a real SE(3)-equivariant field over a
+  # radius graph.
+  #
+  # Note this changes the state_dict keys, so it cannot resume a checkpoint
+  # written by the MLP path, and `--yuelbond-vocab` no longer governs the
+  # velocity field at all: EGNNVelocityField indexes its atom embedding by
+  # atomic number directly (see gnn_max_atomic_number below).
+  use_egnn_velocity: true
+  # Plain upper bound on Z for the EGNN's atom embedding, NOT a curated
+  # table — 100 covers every element in scope.
+  egnn_max_atomic_number: 100
+  # Per-sample drop probability on the pocket-conditioning bias.  > 0 teaches
+  # the unconditional marginal p(v | empty), which is what makes
+  # classifier-free guidance available at sampling time.
+  egnn_context_dropout: 0.1
+  # 2026-10-04 — warm-start the EGNN encoder from the F2 tmQM pretrain
+  # output (138,112 params, 5 regression targets incl. metal_bo_total and
+  # coord_number).  The interface has existed since TODO-08 and the checkpoint
+  # has been on disk all along, but no config-driven path ever set it, so the
+  # velocity field trained from random init in every shipped run.
+  use_tmqm_init: true
 
 data:
   dataset: tmqm
@@ -53,17 +83,81 @@ data:
   # candidate pool was a strict subset of the train one, 160/160.
   tmqm_val_frac: 0.2
 
+flow:
+  # 2026-10-04 — inverse-frequency weighting on the bond-class cross-entropy.
+  #
+  # Why: the bond head is asked about EVERY pair inside the cutoff, and the
+  # great majority of those pairs are BOND_NO_BOND.  MEASURED on a real Ru
+  # cohort the target distribution is ~71% no-bond / 29% bonded, and the head
+  # took the cheap route out of it: after the 2026-10-04 target fix (bonds read
+  # from the corpus rather than synthesised by the old Pt-only rule) MEASURED
+  # precision 0.870 / recall 0.293 / F1 0.439 — it predicts "no bond" for most
+  # pairs that ARE bonded.  Recall is the bottleneck, not precision.
+  #
+  # Weights are computed once from the TRAIN cohort (not per batch, which would
+  # make the loss non-stationary) and target inverse frequency, so the rare
+  # bonded classes stop being dominated by the majority class.
+  bond_class_weights: true
+  # 2026-10-04 — how per-pair logits become a predicted bond class.
+  #
+  # `argmax` is the historical rule and MEASURED it is badly calibrated here:
+  # on the same logits, 4 epochs unweighted gave argmax F1 0.079 while a cut
+  # on P(bonded) gave 0.570, and with full inverse-frequency weights argmax
+  # swung the other way to recall 0.97 / precision 0.32.  71% of pairs are
+  # BOND_NO_BOND, so the argmax boundary sits nowhere near a useful operating
+  # point and class weighting MOVES it rather than fixing it.
+  #
+  # `threshold` decides existence by P(bonded) >= bond_decision_threshold and
+  # takes the argmax over the non-zero classes for the type.
+  bond_decision: threshold
+  # A PRIOR, not a tuned value.  The probe's F1-optimal cut was ~0.30, but
+  # that was selected on the same pairs it was scored on, so adopting it here
+  # would bake a selection bias into the config.  0.5 is neutral; the
+  # per-epoch `best_f1(optimistic)` line reports the ceiling, and a production
+  # threshold should be chosen on a held-out split.  Both rules are scored and
+  # printed every epoch, so this choice is always visible rather than assumed.
+  bond_decision_threshold: 0.5
+
 protocol:
   batch_size: 16
   lr: 0.0003
   epochs: 20
   n_seeds: 1
+  # 2026-10-04 — THE COHORT SIZE.  Nothing here set these before, so every run
+  # fell to the trainer's DEFAULT_TRAIN_CLOUDS=256 / DEFAULT_VAL_CLOUDS=192.
+  #
+  # 256 clouds is 0.96% of the trainable corpus.  It was a sensible default for
+  # the old synthetic Pt-click corpus, which held a few hundred clouds total,
+  # and it silently became a cap when the corpus switched to tmQM (33,429
+  # six-metal complexes).  No CFM checkpoint on disk has n_train > 256, which is
+  # why every recorded CFM number — including the 0.998 decode ratio — describes
+  # a model trained on under 1% of the data.
+  #
+  # The values below are what the loader actually serves: `tmqm_val_frac 0.2`
+  # splits the 33,429 six-metal complexes into 26,715 train / 6,714 val.  The
+  # partition is by CSD-code sha256 and is independent of these numbers, so
+  # asking for the split size gets the whole split rather than a re-sample.
+  n_train: 26715
+  n_val: 6714
+  # A 4-hour run should not keep its only checkpoint for the last epoch.
+  checkpoint_interval: 5
+  # 2026-10-04 — the other three CFM configs declare this and this one did
+  # not, so a run from THIS config never exercised the sampler at all:
+  # `--gen-validity-samples` defaults to 0 (generation eval off), and nothing
+  # in this file turned it on.  Every probe run in the 2026-10-04 bond work
+  # was therefore decode-only, which is the half of the CFM that reads given
+  # geometry — the sampler went unmeasured.  Same value as its siblings.
+  gen_validity_samples: 16
 
 device: cuda
 
 output:
   base_dir: results/cfm_tmqm_all6
   events_jsonl: true
+  # 2026-10-04 — explicit, matching its siblings.  This run's checkpoints stay
+  # in this run's directory; see the `--ckpt-dir` help for why the repo-global
+  # default destroyed the shipped checkpoint.
+  ckpt_dir: results/cfm_tmqm_all6/checkpoints
 
 directives:
   kill_then_adapt: True

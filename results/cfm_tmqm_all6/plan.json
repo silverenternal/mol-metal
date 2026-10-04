@@ -1,0 +1,16 @@
+{
+    "wrapper": "launch_wf446_cfm_tmqm_large_cohort.sh",
+    "wf_origin": "wf446",
+    "mode": "dry-run",
+    "user_ok_required": true,
+    "trainer": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+    "config": "configs/cfm_tmqm_all6.yaml",
+    "py": "/home/hugo/codes/mol-metal/.venv/bin/python",
+    "out_dir": "/home/hugo/codes/mol-metal/results/cfm_tmqm_all6",
+    "vram_free_mib": 96953,
+    "pre_flight": "PASS",
+    "args": ["--config", "configs/cfm_tmqm_all6.yaml", "--seed", "0", "--out-dir", "/home/hugo/codes/mol-metal/results/cfm_tmqm_all6"],
+    "expected_cohort": {"n_train": 26715, "n_val": 6714},
+    "estimated_wall": "4-5 hr (26715 clouds; MEASURED 256-cloud epoch = 6-8 s)",
+    "kill_then_adapt_directive": "USER_OK gate HARD-REQUIRED per mol-metal-gpu-execution §0 + AGENTS.md §5.1"
+}

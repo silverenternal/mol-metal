@@ -173,7 +173,16 @@ DEFAULT_SMOKE_FLAGS: Tuple[str, ...] = (
     "50",
     "--temperature",
     "1.0",
-    "--stable-vm",
+    # "--stable-vm" REMOVED 2026-10-04.  It was in the all-flags-on set, but
+    # the trainer now REFUSES it: its wire-in assigned
+    # `stable_vm_loss(all_logits, zeros)` to `bond_ce`, replacing the 5-class
+    # bond cross-entropy with a velocity MSE against an all-zero target.  That
+    # does not train a bond head, it trains it to emit zeros, and it discards
+    # the real classification loss in the same assignment — so a run with this
+    # flag reports a falling bond_ce while learning no bond chemistry.  A flag
+    # that destroys the objective cannot be part of a "do all scaffold flags
+    # train?" smoke; including it made this gate fail with rc=1 for a reason
+    # that is the trainer's correct behaviour.
     "--so3-average",
     "--log-normal-t",
     "--triton-ot",
@@ -327,6 +336,18 @@ def run_smoke_training(
         str(trainer_out_dir),
         "--ckpt-dir",
         str(trainer_ckpt_dir),
+        # 2026-10-04 FIX — a smoke must never resume.  `--resume-from`
+        # defaults to 'auto', which scans the checkpoint dir; this gate's
+        # scratch dir persists between runs (`results/gate_scratch/...`), so
+        # the SECOND and later invocations found the previous smoke's
+        # checkpoint, resumed past the 3-epoch budget, ran ZERO epochs, and
+        # wrote `per_epoch_metrics: []`.  This gate then reported
+        # `loss[0]=None, loss[-1]=None` — a FAIL whose cause was a stale
+        # checkpoint, not a broken wire-in.  MEASURED: scratch ckpt at 06:02
+        # (epoch 2/3) made the 15:15 pre-flight run report empty metrics while
+        # a clean out-dir measured loss 1.9426 -> 1.8369 in 6 s.
+        "--resume-from",
+        "none",
     ]
     try:
         proc = subprocess.run(

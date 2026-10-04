@@ -5,44 +5,20 @@
 # Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
 # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: removed 'dry_run: true' + 'user_ok_required: true' (no consumer anywhere).
 data:
-  dataset: metalcytotox_5metal  # Wf-A8c FIX: rename per Tier-1 allowed list (PROTOCOL_ALIGNMENT_MATRIX.md §2)
-  # 2026-10-04: `csv:` REMOVED.  This key never resolved for the CFM trainer
-  # (which read no corpus at all -- the cohort was always
-  # build_synthetic_pt_click_clouds, one jittered square-planar Pt layout).
-  # Wiring it up was tried and measured, and the corpus turns out to be the
-  # wrong KIND of data for this entry:
-  #   * its structure column is literally named `SMILES_Ligands` -- the
-  #     complexes' metal is a separate `Metal` COLUMN, never in the structure.
-  #     MEASURED on 800-row samples of v1 and v2: 0 rows contain any metal atom.
-  #   * 100% of rows are multi-fragment (2-6 disconnected components, mostly 3)
-  #     and 40-101 atoms, vs the 5-atom single-fragment synthetic clouds.
-  #   * pointed at it, decode_ratio collapsed 1.000 -> 0.000 and grad_norm
-  #     2.7 -> 778.
-  # So this corpus is a PROPERTY dataset (SMILES_Ligands + metal label -> pIC50)
-  # and belongs to the property-prediction entry, where the D-MPNN configs
-  # already consume it and report 0 residual keys.  For the CFM, whose claim is
-  # metal-GEOMETRY-conditioned decoding, it has no metal centre to condition on.
-  # `--data-csv` still exists on the trainer for a corpus that DOES carry metal
-  # coordinates; see the note in train_cfm_yuelbond_wasserstein.py.
-  split:  # Wf-A8c FIX: add explicit split type matching Krasnov 2026 baseline
-    type: scaffold_split  # Krasnov 2026 MetalCytoToxDB baseline anchor
-    train_frac: 0.7
-    val_frac: 0.1
-    test_frac: 0.2
-  n_rows_expected: 26632
-  expected_columns_subset:
-  - smiles
-  - metal
-  - pic50
-  - source
-  cohort_filter:
-    metals:
-    - Ru
-    - Ir
-    - Os
-    - Rh
-    - Re
-    scaffold_split: true
+  # 2026-10-04 — REPOINTED: MetalCytoToxDB -> tmQM (same change as
+  # configs/cfm_full_retrain.yaml; see that file's data block for the full
+  # account).  In short: `dataset: metalcytotox_5metal` resolved to no
+  # argparse dest, no live corpus was wired, and the trainer's else branch
+  # supplied ONE jittered square-planar Pt layout -- while the config's own
+  # `do_not_claim` forbade claiming synthetic Pt clouds.  The property corpus
+  # has no metal atom in its structures (MEASURED: 0 of 800 rows), so it
+  # cannot feed a metal-GEOMETRY-conditioned decoder; it belongs to the
+  # D-MPNN entry.  tmQM carries the metal in the geometry.
+  dataset: tmqm
+  tmqm_dir: .data/molmetal/tmQM
+  tmqm_metals: Pt,Ru,Ir,Rh,Os,Re
+  tmqm_coord_number: -1
+  tmqm_val_frac: 0.2
 model:
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'backbone' removed (no --backbone dest).
   hidden_dim: 128
@@ -55,14 +31,54 @@ model:
   bond_head: learned
   joint_train: true
   cfm_decoder: yuelbond
+  # 2026-10-04 — production EGNN velocity field (see configs/cfm_tmqm_all6.yaml
+  # for the full rationale).  Without this the trainer builds CFMJointModel,
+  # whose velocity path is a 2-layer MLP placeholder, and every `flow:` term
+  # below regularises that placeholder instead of a real SE(3) field.
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  # 2026-10-04 — warm-start the EGNN encoder from the F2 tmQM pretrain
+  # output (138,112 params, 5 regression targets incl. metal_bo_total and
+  # coord_number).  The interface has existed since TODO-08 and the checkpoint
+  # has been on disk all along, but no config-driven path ever set it, so the
+  # velocity field trained from random init in every shipped run.
+  use_tmqm_init: true
   wasserstein_weight: 0.1
   closure_bounded: true
   use_yuelbond: true
 flow:
+  # 2026-10-04 — bond head objective + decision rule.  See
+  # configs/cfm_tmqm_all6.yaml for the full reasoning and the MEASURED
+  # numbers behind each value.
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  # 2026-10-04 — RESTORED, now that there is a sampler to configure.
+  #
+  # These keys were removed earlier the same day because the CFM trainer had
+  # no generation path at all: no --n-steps, no --method, no generate(), so a
+  # step count and an integrator configured nothing.  `decode_ratio` measures
+  # the bond decoder on the REAL geometry, which is perception, not sampling.
+  #
+  # The trainer now integrates v(x,t) from x0 ~ N(0,I) with the cloned
+  # reference solver (molmetal/adapters/flow_matching_lipman/_reference/solver)
+  # and decodes the result — `gen_validity` in the metrics.  Integrator
+  # accuracy verified against the exact solution of dx/dt = -x at 64 steps:
+  # euler 2.9e-3, midpoint 1.5e-5, rk4 6.0e-8.
   n_steps: 100
   method: rk4
-  ot_solver: w_flow
+  # NOTE: `ot_solver: w_flow` is NOT restored.  The trainer's OT switch is
+  # `--ot-coupling-mode {assignment,sample}` (plus --use-ot-cfm), which picks
+  # between an exact permutation and a two-point Bass draw — not the
+  # solver/loss pairing the old key name implied.  Naming it `ot_solver` here
+  # would re-create exactly the kind of key that looks wired and is not.
+
 protocol:
+  # 2026-10-04 — how many val compositions to generate from noise and
+  # decode for RDKit validity each epoch.  0 disables (decode-only).
+  gen_validity_samples: 16
   # 2026-10-03: declared so entry.command_template's {pocket_id} placeholder
   # has a source in the yaml rather than only a fallback in start.sh. Must
   # name a pocket the per-pocket bias lookup knows; the trainer's own
@@ -101,20 +117,28 @@ protocol:
     min_lr: 1.0e-06
   weight_decay: 1.0e-05
   max_norm: 5.0
-eval:
-  primary_metric: decode_ratio
-  secondary_metrics:
-  - catherine_pass_rate
-  - wasserstein_loss
-  - dock_rmsd
-  target_decode_ratio: 0.5
 output:
   base_dir: results/cfm_real_decode_lift_p1.3
-  per_seed_dir: results/cfm_real_decode_lift_p1.3/seed{seed}
-  metrics_json: results/cfm_real_decode_lift_p1.3/decode_lift_metrics.json
   log_master: results/cfm_real_decode_lift_p1.3/master.log
-  ckpt_dir: molmetal/checkpoints
+  ckpt_dir: results/cfm_real_decode_lift_p1.3/checkpoints
+  # 2026-10-04 — was `molmetal/checkpoints`, the repo-global directory.
+  # MEASURED: that default let a 1-epoch/32-sample pytest run overwrite the
+  # shipped `cfm_yuelbond_wasserstein.pt`, whose 50-epoch weights are not in
+  # git and had no surviving copy.  With `--resume-from auto` also reading
+  # this directory, a stale smoke checkpoint then poisons the next real
+  # launch.  Pointed at this run's own directory so a run can only ever
+  # resume from itself.  See the `--ckpt-dir` help in the trainer.
   events_jsonl: true
+  # 2026-10-04 — `resume_from` replaces the `entry.warm_start_checkpoint`
+  # key, which was DEAD: grep across *.py/*.sh finds zero readers, and
+  # `entry:` is outside the config loader's whitelisted sections, so it
+  # was dropped without even the usual skip warning.  start.sh reads
+  # THIS key (scripts/start.sh:438) and passes it as --resume-from, which
+  # the trainer now implements (it, too, had zero read sites before).
+  # 'auto' = resume ckpt_dir/cfm_yuelbond_wasserstein_seed{seed}.pt when
+  # present; 'none' = cold start; 'path' = --resume-from-path.
+  resume_from: auto
+  resume_from_path: null
 waves:
   total_waves: 1
   wave_a:
@@ -146,16 +170,19 @@ directives:
 entry:
   script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
   command_template: CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --epochs {epochs} --use-yuelbond --pocket-id {pocket_id} --seed {seed} --out-dir {out_dir}
-  warm_start_checkpoint: molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
 honest_framing:
+  # 2026-10-04 CORRECTION — the first claim used to read "Real-CFM
+  # decode_ratio lift smoke on 26632-row MetalCytoToxDB 5-metal v2 (...)".
+  # That corpus was never read (see the data block above); the cohort was the
+  # synthetic Pt-click layout, which `do_not_claim[1]` then forbade claiming.
+  # The corpus is now tmQM and the claims below describe it.
   claims:
-  - Real-CFM decode_ratio lift smoke on 26632-row MetalCytoToxDB 5-metal v2 (Wf-261 strict Bemis-Murcko scaffold split, 0
-    leak)
+  - Real-CFM decode_ratio lift smoke on tmQM CSD-derived metal-bearing geometry (six target metals Pt/Ru/Ir/Rh/Os/Re, disjoint CSD-code-hash split)
   - 'Full 3-innovation stack: YuelBond + W2 + Catherine closure-bounded'
   - 1 seed x 3 epochs, ~30 min on PRO 6000 (small smoke per TODO-119 P1.3)
   do_not_claim:
   - Wf-181 / Wf-188 0.9980 / 0.9958 as P1.3 result (those are ad-hoc, not P1.3)
-  - Synthetic Pt click cloud decode_ratio 1.000 (that is decoder smoke only)
+  - MetalCytoToxDB as this entry's corpus — its structures contain no metal atom (MEASURED 0 of 800 sampled rows)
   - Aggregate lift before per-cohort ablation
   deferred:
   - PlatinAI 4-cell full-batch run (P1.3 cohort 1)
@@ -169,3 +196,4 @@ cross_references:
 - configs/cfm_full_retrain.yaml
 - molmetal/scripts/train_cfm_yuelbond_wasserstein.py
 - molmetal/checkpoints/cfm_yuelbond_wasserstein.pt
+  - Per-seed output dirs + a separate metrics JSON — the trainer already writes decode_ratio / catherine_pass_rate / wasserstein_loss to <out_dir>/per_epoch_metrics.json

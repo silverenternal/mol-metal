@@ -105,6 +105,11 @@ class TestAtomicWriteFileConcurrent:
 
         def writer(idx: int, suffix: str) -> None:
             target = tmp_path / f"out-{suffix}.md"
+            # Both threads must actually be in flight together, or the
+            # "different paths do not block" property is never exercised.
+            # The barrier was declared and then unused, so the test could
+            # pass with the threads running one after the other.
+            barrier.wait(timeout=5)
             atomic_write_file(target, f"writer-{idx}.\n")
             done.append(idx)
 
@@ -115,7 +120,12 @@ class TestAtomicWriteFileConcurrent:
         t1.join()
         t2.join()
 
-        assert done == [1, 2]
+        # COMPLETION ORDER IS NOT DETERMINISTIC — two threads racing to
+        # append will land in either order.  This asserted `done == [1, 2]`
+        # and failed intermittently as `[2, 1]` (MEASURED, ~2 runs in 5).  The
+        # property under test is that no deadlock occurred and both writes
+        # landed, which the assertions below check.
+        assert sorted(done) == [1, 2]
         assert (tmp_path / "out-a.md").read_text() == "writer-1.\n"
         assert (tmp_path / "out-b.md").read_text() == "writer-2.\n"
 

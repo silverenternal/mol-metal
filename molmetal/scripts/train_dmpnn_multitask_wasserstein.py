@@ -1284,66 +1284,67 @@ def train_one_epoch_joint(
         # (Vina convention "lower (more negative) = better binding").
         # Default OFF preserves the Wf-131 P1 + Wf-251-F4 baseline
         # bit-for-bit when --metal-coord-term is False at the CLI.
-        mc_term_loss = torch.zeros((), device=device)
+        # ------------------------------------------------------------------
+        # Metal-coordination term — REMOVED from the loss cascade (2026-10-04).
+        #
+        # It used to be:
+        #
+        #     _composite_proxy = float(torch.sigmoid(pic50_pred.mean()).item())
+        #     _kcal_adj = float(term.kcal_adjustment(score))
+        #     mc_term_loss = torch.tensor(_kcal_adj, device=device)
+        #     total = loss + w_w * w_pen + metal_coord_weight * mc_term_loss
+        #
+        # `mc_term_loss` has requires_grad=False — `.item()` has already
+        # severed the graph — so the `metal_coord_weight *` term (default 0.5)
+        # contributed a constant offset to the loss and exactly zero gradient.
+        # Every parameter update was identical to running without it.
+        #
+        # It is not repairable by deleting the `.item()`: MetalCoordinationTerm
+        # is a RULE-BASED scorer (`coordination_geometry_score(smiles)`,
+        # `hsab_match_score(smiles, ...)` — RDKit + an HSAB lookup table), so
+        # it has no gradient to give.  And feeding it `sigmoid(pic50_pred)` as
+        # a stand-in for all three sub-scores, as the old code did, would have
+        # made the differentiable version *worse than dead*: minimising
+        # `(1 - 2*c)` pushes c up, and c is derived from the prediction being
+        # supervised — i.e. the term would teach the model to inflate its own
+        # output.
+        #
+        # Independently, the term cannot fire on this trainer's data at all:
+        # `MetalCoordinationTerm.score` detects the metal FROM THE SMILES, and
+        # MEASURED, 0 of 800 sampled rows of metalcytotox_5metal contain any
+        # metal atom — the metal is a separate `metal` COLUMN.
+        #
+        # The term already works where it can: vina_adapter.py's
+        # `_compute_metal_coord_adjustment` applies it to real docked SMILES as
+        # a post-hoc kcal/mol correction.  Making metal chemistry visible to
+        # THIS trainer needs a different mechanism (an auxiliary target
+        # computed per-row from the `metal` column, which first requires
+        # `hsab_match_score` / `coordination_geometry_score` to accept an
+        # explicit metal symbol) — not a loss term bolted onto the cascade.
+        #
+        # Fail loudly rather than silently contribute nothing: a flag whose
+        # help text promises a loss contribution must not be a no-op, and the
+        # three Wf-388/Wf-409/Wf-406 launchers that pass it would otherwise
+        # produce runs indistinguishable from --metal-coord-term being absent
+        # while reporting it as active.
         if metal_coord_term:
-            try:
-                # Lazy import per Wf-409-A3 SCAFFOLD import path.
-                from molmetal.molmetal_lam.sbdd_env.metal_coord_term import (
-                    MetalCoordinationScore,
-                    MetalCoordinationTerm,
-                )
+            raise SystemExit(
+                "--metal-coord-term cannot be used with this trainer. "
+                "MetalCoordinationTerm is a rule-based SMILES scorer (no "
+                "gradient), and this trainer's corpus carries the metal in a "
+                "separate column rather than in the SMILES (MEASURED: 0 of "
+                "800 sampled rows contain a metal atom), so the term would "
+                "score 0.0 even if it were differentiable.  Previously it "
+                "silently contributed a constant to the loss.  The term is "
+                "already wired where it works: "
+                "molmetal/molmetal_lam/sbdd_env/vina_adapter.py::"
+                "_compute_metal_coord_adjustment, applied to docked SMILES. "
+                "Drop the flag to train, or see "
+                "TODO/completed/431a3_wf246c_scafffold_close.md for the "
+                "SCAFFOLD_NOT_FUNCTIONAL close."
+            )
 
-                # Re-use the per-epoch term instance lazily via a
-                # thread-local cache. Build once per epoch (or fall back
-                # to per-batch build for bit-for-bit identical SCAFFOLD
-                # behaviour). Default ``kcal_per_unit=1.0`` matches the
-                # canonical Wf-333-V1 unit kcal/mol.
-                _mc_term_cache = train_one_epoch_joint.__dict__.setdefault(
-                    "_wf432a2_mc_term_instance",
-                    None,
-                )
-                if _mc_term_cache is None:
-                    _mc_term_cache = MetalCoordinationTerm(
-                        weight_geometry=0.4,
-                        weight_hsab=0.4,
-                        weight_distance=0.2,
-                        kcal_per_unit=1.0,
-                    )
-                    train_one_epoch_joint.__dict__["_wf432a2_mc_term_instance"] = (
-                        _mc_term_cache
-                    )
-                # Compute composite score from predicted pIC50 (rescaled
-                # from [0, ~10] to [0, 1] via sigmoid-like mapping).
-                # For loss-cascade differentiation we use the predicted
-                # pIC50 as the composite proxy (consistent with the
-                # SCAFFOLD's deterministic-placeholder shape).
-                _composite_proxy = float(torch.sigmoid(pic50_pred.mean()).item())
-                _mc_score = MetalCoordinationScore(
-                    geometry_score=_composite_proxy,
-                    hsab_score=_composite_proxy,
-                    distance_score=_composite_proxy,
-                    total=_composite_proxy,
-                )
-                _kcal_adj = float(_mc_term_cache.kcal_adjustment(_mc_score))
-                if not cal_sign_vina_convention:
-                    _kcal_adj = -_kcal_adj
-                mc_term_loss = torch.tensor(_kcal_adj, device=device)
-            except Exception as _exc:
-                # Defensive fallback: metal_coord_term=False preserves
-                # the Wf-131 P1 + Wf-251-F4 baseline.
-                mc_term_loss = torch.zeros((), device=device)
-                if (ep_k := locals().get("_wasm_print_kcal_seen", None)) is None:
-                    _wasm_print_kcal_seen = False
-                if not _wasm_print_kcal_seen:
-                    print(
-                        f"[Wf-432-A2][WARNING] --metal-coord-term "
-                        f"failed: {type(_exc).__name__}: {_exc}; "
-                        f"continuing without kcal adjustment.",
-                        flush=True,
-                    )
-                    _wasm_print_kcal_seen = True
-
-        total = loss + w_w * w_pen + metal_coord_weight * mc_term_loss
+        total = loss + w_w * w_pen
         if accum > 1:
             # Gradient accumulation: the composite loss is divided by N and
             # the gradients of N micro-batches accumulate, so one optimizer
@@ -3020,16 +3021,27 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         action="store_true",
         default=False,
         help=(
-            "Wf-432-A2 NEW: enable Wf-246-C MetalCoordinationTerm "
-            "wire-in into the Wf-131 P3 D-MPNN trainer's training "
-            "loop.  Default OFF (False) per Wf-432-A2 backward-compat "
-            "requirement; Wf-131 P1 + Wf-251-F4 baseline is preserved "
-            "bit-for-bit when --metal-coord-term is False. When ON, "
-            "the trainer builds a MetalCoordinationTerm instance per "
-            "epoch and adds kcal_adjustment to the regression loss "
-            "(sign-fixed per Wf-427-A1 line 641). PROJECTED kcal/mol "
-            "lift on metal-coord lift on Blackwell sm_120 per "
-            "Wf-246-C plan."
+            "2026-10-04 — DISABLED, see the body of train_one_epoch_joint.  "
+            "This flag used to add `MetalCoordinationTerm.kcal_adjustment` to "
+            "the regression loss.  That cannot work here, for two independent "
+            "reasons, and it now raises instead of silently contributing a "
+            "constant:\n"
+            "  (1) The term is RULE-BASED — it derives its sub-scores from "
+            "`coordination_geometry_score(smiles)` and `hsab_match_score("
+            "smiles, ...)`, both RDKit + HSAB-table lookups.  It produces a "
+            "Python float, so it can never carry a gradient.  The old code "
+            "wrapped it in `torch.tensor(...)` behind a `.item()`, which put "
+            "a constant offset into the loss while looking like a live term.\n"
+            "  (2) Even a correct call would score 0.0 on this trainer's "
+            "data: `MetalCoordinationTerm.score` detects the metal from the "
+            "SMILES, and MEASURED, 0 of 800 sampled rows of "
+            "metalcytotox_5metal carry any metal atom — the metal is a "
+            "separate `metal` COLUMN.\n"
+            "The term's correct home is the docking path, where it already "
+            "runs on real docked SMILES: "
+            "molmetal/molmetal_lam/sbdd_env/vina_adapter.py::"
+            "_compute_metal_coord_adjustment applies it as a post-hoc "
+            "kcal/mol correction to a Vina score."
         ),
     )
     p.add_argument(

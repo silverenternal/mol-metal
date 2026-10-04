@@ -8861,7 +8861,13 @@ def gate_p3_mock_to_real_m14_decode_ratio_REAL_30_probes(
         pipeline,
         "PASS",
         f"m14 decode_ratio REAL-MEASURED on 30 probes: ratio = {real_value} "
-        f"(PASSES internal target ≥0.8 per Wf-398-A3 + Wf-148 m14_real_cfm)",
+        f"(PASSES internal target ≥0.8 per Wf-398-A3 + Wf-148 m14_real_cfm). "
+        "CAVEAT (2026-10-04): decode_ratio counts RDKit-PARSEABLE decodes, not "
+        "chemistry — MEASURED, it reads 0.977 with the bond head predicting "
+        "BOND_NO_BOND everywhere (loose atoms parse) and 0.219 once the head "
+        "learns real classes. This gate asserts the value is present and "
+        "non-degenerate; it is NOT evidence of bond quality. See "
+        "decode_ratio.json::blind_spot.",
         time.perf_counter() - t0,
     )
 
@@ -10866,10 +10872,24 @@ def build_gates(
     # Each gate scans every active yaml under configs/ + configs/training/
     # and enforces one alignment dimension.
     if pipeline in ("all", "chemprop_v2_v3"):
+        # 2026-10-04 FIX — the three `cfm_*.yaml` entries used to be listed
+        # here, contradicting this block's own comment ("cfm/frontier
+        # excluded").  These four gates enforce the BENCHMARK-ALIGNMENT
+        # contract: `data.dataset` must be a Tier-1 benchmark dataset and
+        # `data.split.type` must name a baseline paper's split protocol.  A CFM
+        # config is a GENERATION-MODEL config: its corpus is a pretraining
+        # corpus (tmQM), which has no published benchmark split to align to,
+        # and the tmQM 2020 paper defines no split at all.  Checking it here
+        # can only produce FAILs that mean "this gate does not govern this
+        # file".
+        #
+        # They were passing before only because the configs declared
+        # `data.dataset: metalcytotox_5metal` — a value chosen to satisfy this
+        # gate, as their own comment said ("Wf-A8c FIX: rename per Tier-1
+        # allowed list"), next to a note that the key "never resolved for the
+        # CFM trainer, which read no corpus at all".  The declaration was
+        # false.  Correcting it to the truth (`tmqm`) is what surfaced this.
         _wf_a8_yaml_paths: Tuple[Path, ...] = (
-            CONFIGS_DIR / "cfm_full_retrain.yaml",
-            CONFIGS_DIR / "cfm_per_innovation_ablation_p1.4.yaml",
-            CONFIGS_DIR / "cfm_real_decode_lift_p1.3.yaml",
             CONFIGS_DIR / "default.yaml",
             CONFIGS_DIR / "wf124_p3_50epoch_full_sweep_g5.yaml",
             CONFIGS_DIR / "wf124_p3_per_innovation_ablation_g6.yaml",
