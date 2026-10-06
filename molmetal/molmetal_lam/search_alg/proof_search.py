@@ -3203,6 +3203,45 @@ class MCTSProofSearch:
     reward_channels: Optional[Dict[str, float]] = None
     n_simulations: int = 1000
     c_puct: float = 1.4
+    #: R20 FIX 2 — PUCT exploration-weight routing.  ``"constant"``
+    #: (default) keeps the legacy behaviour exactly: the exploration term
+    #: uses the fixed :attr:`c_puct` for every child.  ``"variance"``
+    #: routes through :meth:`_cpuct_for`, which scales the weight
+    #: KataGo-style by the node's value variance — a noisier value
+    #: estimate earns *more* exploration (``base * (1 + alpha*sqrt(var))``,
+    #: clamped at 2x base by ``variance_cpuct.MAX_VARIANCE``).
+    #: Default is ``"constant"`` so every existing caller is byte-for-byte
+    #: unchanged until it opts in.
+    cpuct_mode: str = "constant"
+    #: Variance-scaling exponent used when ``cpuct_mode == "variance"``.
+    #: ``0.8`` is the KataGo default.  Ignored in ``"constant"`` mode.
+    cpuct_variance_alpha: float = 0.8
+    #: R20 FIX 3 — KataGo First-Play-Urgency reduction.  ``0.0`` (default)
+    #: disables FPU entirely and keeps :meth:`_select_child` byte-for-byte
+    #: identical to the pre-R20-FIX-3 behaviour.  Any ``> 0.0`` value
+    #: delegates to :func:`pll_heuristic.apply_fpu_bonus`, which lifts an
+    #: unvisited child's PUCT score to ``parent_Q_max - fpu_reduction``.
+    #: NOTE: this is the *reduction* magnitude, not the bonus itself —
+    #: the bonus is computed inside the search from the parent's Q.
+    fpu_reduction: float = 0.0
+    #: R22 (Wf-R22-A) — target SMILES for PLL heuristic leaf-value signal.
+    #: When set, :meth:`_rollout` lazy-instantiates a :class:`PLLHeuristic`
+    #: against this SMILES and *adds* ``1 / (1 + PLL_distance)`` to the
+    #: leaf reward, giving MCTS a real signal source for tree shaping.
+    #: ``None`` (default) keeps the zero-aggregator path byte-for-byte
+    #: unchanged (backward compatible with all Wf-R20-FIX-1 measurements).
+    target_smiles: Optional[str] = None
+    #: R22 — lazy PLLHeuristic cache.  Populated on first rollout call.
+    #: ``field(default=None, repr=False)`` so the cached object does not
+    #: pollute the dataclass repr.
+    _pll_heuristic: Optional[Any] = field(default=None, repr=False)
+    #: R20 FIX 3 — optional AlphaZero-style ``α`` decay schedule for the
+    #: root Dirichlet noise.  When set to a sequence of concentration
+    #: parameters, the effective ``α`` at root re-injection ``k`` (0-based)
+    #: is chosen by the schedule entry whose simulation-fraction threshold
+    #: has been passed.  ``None`` (default) keeps the fixed
+    #: :attr:`dirichlet_alpha` — byte-for-byte legacy behaviour.
+    dirichlet_alpha_schedule: Optional[Sequence[float]] = None
     #: ``top_k`` controls the number of top-scoring candidates returned
     #: by :meth:`search` (and thus the per-pocket ``n_candidates``
     #: column emitted by the 100-pocket sweep).  Default 20 (was 5 in
@@ -4061,7 +4100,10 @@ class MCTSProofSearch:
             # ``add_exploration_noise`` step exactly.
             if (
                 not root_dirichlet_applied
-                and self.dirichlet_alpha > 0.0
+                and (
+                    self.dirichlet_alpha > 0.0
+                    or getattr(self, "dirichlet_alpha_schedule", None)
+                )
                 and self.dirichlet_fraction > 0.0
             ):
                 root_children_cache = self._expand(root.state)
@@ -4072,6 +4114,12 @@ class MCTSProofSearch:
                 root_dirichlet_applied = True
 
             path = self._simulate(root, max_depth, root_children_cache)
+            # Wf-R21-A-S: expose the deepest rollout actually traversed so
+            # downstream harnesses (bench_mcts_search_quality.py) can measure
+            # search depth instead of hard-coding 0.
+            self._max_depth_reached = max(
+                int(getattr(self, "_max_depth_reached", 0) or 0), len(path)
+            )
             leaves_by_smi = self._collect_leaves(root, leaves_by_smi)
 
             # Per-iteration history entry — diagnostics for the
@@ -4578,6 +4626,37 @@ class MCTSProofSearch:
 
         return path
 
+    def _cpuct_for(self, node: "_MCTSNode") -> float:
+        """Resolve the PUCT exploration weight for ``node`` (R20 FIX 2).
+
+        Routes on :attr:`cpuct_mode`:
+
+        * ``"constant"`` (default) — return the fixed :attr:`c_puct`.
+          Byte-for-byte identical to the pre-R20-FIX-2 behaviour, so
+          every existing caller is unaffected.
+        * ``"variance"`` — KataGo-style variance scaling: the weight grows
+          with the node's value-estimate noise, so search explores the
+          *uncertain* branches harder.  Delegates to
+          ``variance_cpuct.effective_cpuct`` = ``base * (1 + alpha*sqrt(var))``
+          (clamped at 2x base).  Uses ``leaf_value_var`` when present, else
+          0.0 — which yields the unmodified ``c_puct``.
+        * anything else — defensive fall back to the constant weight
+          rather than raising, so a bad config value degrades to legacy
+          behaviour instead of killing a running sweep.
+        """
+        if getattr(self, "cpuct_mode", "constant") != "variance":
+            return float(self.c_puct)
+        # Local import: keeps ``variance_cpuct`` an optional dependency
+        # and leaves the module import graph unchanged for constant mode.
+        from molmetal_lam.search_alg.variance_cpuct import effective_cpuct
+
+        var = float(getattr(node, "leaf_value_var", 0.0) or 0.0)
+        return effective_cpuct(
+            float(self.c_puct),
+            var,
+            float(getattr(self, "cpuct_variance_alpha", 0.8)),
+        )
+
     def _select_child(self, node: _MCTSNode) -> _MCTSNode:
         """PUCT selection: pick the child maximising Q + c_puct * P * sqrt(N) / (1 + N).
 
@@ -4621,6 +4700,25 @@ class MCTSProofSearch:
 
         best_score = -float("inf")
         best_child: Optional[_MCTSNode] = None
+
+        # R20 FIX 3 — KataGo First-Play-Urgency.  ``apply_fpu_bonus``
+        # needs ``parent_Q_max`` = the best Q over the parent's *visited*
+        # children (the FPU threshold).  Computed once per parent, not
+        # per child, so the O(children) pass is not quadratic.
+        fpu_reduction = float(getattr(self, "fpu_reduction", 0.0) or 0.0)
+        apply_fpu = None
+        parent_q_max = 0.0
+        if fpu_reduction > 0.0:
+            # Local import: keeps ``pll_heuristic`` off the module import
+            # graph for the default (FPU-disabled) path, mirroring the
+            # ``variance_cpuct`` local-import convention in ``_cpuct_for``.
+            from molmetal_lam.search_alg.pll_heuristic import apply_fpu_bonus
+
+            apply_fpu = apply_fpu_bonus
+            for sib in node.children:
+                if sib.N > 0 and sib.Q > parent_q_max:
+                    parent_q_max = sib.Q
+
         for child in node.children:
             Q = child.Q
             P = child.P
@@ -4652,12 +4750,26 @@ class MCTSProofSearch:
             # Thread safety: Python GIL serialises the underlying
             # ``+=`` / ``-=`` so the counter is monotonic within one
             # interpreter.
-            w = float(self.c_puct)
+            w = self._cpuct_for(node)
             u = (
                 w * (P * sqrt_N_parent) / (1.0 + N_child)
                 + float(Q) / max(1.0, 1.0 + N_child)
                 - virtual_loss / (1.0 + N_child)
             )
+            # R20 FIX 3 — FPU bonus.  Added to the *score* (not to ``w``):
+            # FPU is a Q-space stand-in that raises an unvisited child's
+            # score to ``parent_Q_max - fpu_reduction``.  Scaling the
+            # exploration weight ``w`` instead would inflate exploration for
+            # *every* child including visited ones, which is not the KataGo
+            # rule.  Zero for visited children by construction, so the
+            # visited-child path is untouched.
+            if apply_fpu is not None:
+                u += apply_fpu(
+                    child_q=float(Q),
+                    parent_q_max=parent_q_max,
+                    child_n=int(N_child),
+                    fpu_reduction=fpu_reduction,
+                )
             if u > best_score:
                 best_score = u
                 best_child = child
@@ -4976,6 +5088,43 @@ class MCTSProofSearch:
             pass
         return converted
 
+    def _dirichlet_alpha_at(self, reinjection_index: int) -> float:
+        """Resolve the effective root-Dirichlet ``α`` for re-injection ``k``.
+
+        R20 FIX 3 — AlphaZero-style ``α`` decay.  When
+        :attr:`dirichlet_alpha_schedule` is ``None`` (default) this returns
+        the fixed :attr:`dirichlet_alpha`, so every existing caller is
+        byte-for-byte unchanged.
+
+        When a schedule is supplied, the search-fraction thresholds are
+        uniform: entry ``k`` covers the band
+        ``[k/len, (k+1)/len)`` of :attr:`n_simulations`.  So a schedule of
+        ``[1.0, 0.3, 0.15, 0.03]`` gives the canonical AlphaZero decay —
+        broad early exploration narrowing to exploitation as the search
+        progresses — with the *last* entry held for all remaining
+        re-injections.
+
+        Parameters
+        ----------
+        reinjection_index : int
+            0-based count of root re-injections performed so far.
+
+        Returns
+        -------
+        float
+            The ``α`` to use, clamped to ``> 0.0``.
+        """
+        sched = getattr(self, "dirichlet_alpha_schedule", None)
+        if not sched:
+            return float(self.dirichlet_alpha)
+        seq = [float(a) for a in sched]
+        if not seq or any(a <= 0.0 for a in seq):
+            # Defensive: an all-non-positive schedule would silently disable
+            # noise. Fall back to the fixed alpha rather than dividing by 0.
+            return float(self.dirichlet_alpha)
+        idx = min(int(reinjection_index), len(seq) - 1)
+        return max(1e-6, seq[idx])
+
     def _apply_dirichlet_to_root(
         self,
         root: _MCTSNode,
@@ -5005,7 +5154,16 @@ class MCTSProofSearch:
         scalar-path (CPU fallback) is used.
         """
         eps = float(self.dirichlet_fraction)
-        alpha = float(self.dirichlet_alpha)
+        alpha = self._dirichlet_alpha_at(
+            int(getattr(self, "_dirichlet_reinjection_count", 0) or 0)
+        )
+        # Advance the schedule cursor so a subsequent re-injection picks the
+        # next alpha.  Only bumped when a schedule is actually configured, so
+        # the legacy fixed-alpha path is untouched.
+        if getattr(self, "dirichlet_alpha_schedule", None):
+            self._dirichlet_reinjection_count = (
+                int(getattr(self, "_dirichlet_reinjection_count", 0) or 0) + 1
+            )
         # Add the children to the tree first (so root.children exists
         # for the selection step) and then overwrite their P with the
         # Dirichlet-mixed value.
@@ -5097,9 +5255,15 @@ class MCTSProofSearch:
             return False
         try:
             eps = float(fraction)
-            alpha = float(self.dirichlet_alpha)
+            alpha = self._dirichlet_alpha_at(
+                int(getattr(self, "_dirichlet_reinjection_count", 0) or 0)
+            )
         except Exception:
             return False
+        if getattr(self, "dirichlet_alpha_schedule", None):
+            self._dirichlet_reinjection_count = (
+                int(getattr(self, "_dirichlet_reinjection_count", 0) or 0) + 1
+            )
         if eps <= 0.0 or alpha <= 0.0:
             return False
         rng = np.random.default_rng(self._seed_for_noise())
@@ -5250,6 +5414,25 @@ class MCTSProofSearch:
             self.nfe = int(self.nfe) + 1
         except Exception:
             pass
+        # R22 (Wf-R22-A) — PLL leaf-value bonus.  When ``target_smiles``
+        # is set, lazy-instantiate a :class:`PLLHeuristic` against the
+        # target and add ``1 / (1 + PLL_distance)`` to the leaf reward.
+        # This is the missing signal source that lets MCTS distinguish
+        # target-similar leaves from dissimilar ones — without it the
+        # zero default :class:`RewardAggregator` returns ``0.0`` for
+        # every leaf and ``leaf_value_var = 0`` (the BENCH_DEGENERATE
+        # mode the Wf-R20-A1 degeneracy guard catches).
+        if self.target_smiles is not None:
+            try:
+                from molmetal_lam.search_alg.pll_heuristic import PLLHeuristic
+                if self._pll_heuristic is None:
+                    self._pll_heuristic = PLLHeuristic(target=self.target_smiles)
+                pll_bonus = float(self._pll_heuristic.score_state(current))
+            except Exception:
+                pll_bonus = 0.0
+        else:
+            pll_bonus = 0.0
+        value = float(value) + float(pll_bonus)
         # L-A2: append leaf reward to per-search tracker so
         # ``search()`` can compute the cumulative LEAF_VALUE_VAR at
         # the end of the run.

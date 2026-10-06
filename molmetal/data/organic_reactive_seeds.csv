@@ -1,0 +1,17 @@
+smiles,note
+C#CCO,propargyl_alcohol_alkyne
+C#CCN,propargyl_amine
+[N-]=[N+]=NCC,ethyl_azide
+[N-]=[N+]=NCCCC,pentyl_azide
+O=C1C=CC(=O)N1,maleimide
+O=C1C=CC(=O)N1C,nmethyl_maleimide
+CC[NH2],ethyl_amine
+CCNCC,diethyl_amine
+NCCN,ethylenediamine
+CCS,ethanethiol
+CCCS,propanethiol
+CCCCN,nbutyl_amine
+NC1=CC=CC=C1,aniline
+OC1=CC=CC=C1,phenol
+SC1=CC=CC=C1,thiophenol
+NC(=O)CCCCC,caprolactam_precursor
