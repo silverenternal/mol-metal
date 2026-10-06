@@ -198,17 +198,36 @@ def mol_to_graph(
     )
 
 
-def featurize_smiles_list(smiles_list: List[str]) -> List[Tuple]:
+def featurize_smiles_list(
+    smiles_list: List[str], metal_mode: str = "retain"
+) -> List[Tuple]:
     """Featurize a list of SMILES into graph tuples.
 
     Returns list of (atom_feats, bond_feats, edge_src, edge_dst) or None for invalid.
+
+    ``metal_mode`` (F3) selects how precious-metal atoms are handled before
+    the RDKit parse:
+
+    * ``"retain"`` (**default**) — keep metal atoms.  This is the historical
+      behaviour of this function and the only mode that leaves the real
+      ``metal_lomo.csv`` cohort byte-identical (MEASURED: 0/5460 rows carry
+      a metal token, so every mode is a no-op there — the default is chosen
+      to keep the synthetic Rh oversample cohort, which is 500/500
+      metal-bearing, off a behaviour change on the historical path).
+    * ``"strip"`` — drop precious-metal atoms (``_strip_metal_atoms``).
+    * ``"annotate"`` — keep the metal atom and prepend a Z=0 marker node.
+
+    Unknown modes raise ``ValueError``.
     """
+    from molmetal.data.featurize import _apply_metal_mode
+
     results = []
     for smi in smiles_list:
         if not smi:
             results.append(None)
             continue
-        mol = Chem.MolFromSmiles(smi)
+        prepared, _n_metal = _apply_metal_mode(str(smi), metal_mode)
+        mol = Chem.MolFromSmiles(prepared)
         if mol is None:
             results.append(None)
             continue
@@ -590,6 +609,10 @@ class DMPNNBaseline:
         seed: int = 42,
         splitter: Optional[callable] = None,
         device: Optional[torch.device] = None,
+        # Wf-333-G4 — PreFeaturizedCache hook (default None = legacy
+        # eager featurise path).  When set, ``_featurize_with_cache``
+        # consults the cache before falling back to the slow path.
+        cache: Optional[object] = None,
     ):
         self.metal = metal
         self.hidden = hidden
@@ -603,6 +626,11 @@ class DMPNNBaseline:
         self.device = device or torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         )
+        # Wf-333-G4 — cache hit / miss counters (set by
+        # ``_featurize_with_cache``; exposed via ``cache_hit_rate``).
+        self.cache = cache
+        self._cache_hits: int = 0
+        self._cache_misses: int = 0
         self.model: Optional[DMPNNModel] = None
         self._train_idx: Optional[np.ndarray] = None
         self._val_idx: Optional[np.ndarray] = None
@@ -643,6 +671,100 @@ class DMPNNBaseline:
             random_state=self.seed,
         )
         return idx_train, idx_val, idx_test
+
+    @property
+    def cache_hit_rate(self) -> float:
+        """Wf-333-G4 — fraction of featurise lookups that hit the cache."""
+        total = self._cache_hits + self._cache_misses
+        return self._cache_hits / total if total > 0 else 0.0
+
+    def _featurize_with_cache(self, smiles):
+        """Featurise ``smiles`` via the PreFeaturizedCache if available.
+
+        Falls back to the legacy eager ``featurize_smiles_list`` path when
+        no cache is set OR when the SMILES misses the cache.  Updates
+        ``_cache_hits`` / ``_cache_misses`` accordingly.
+        """
+        from molmetal.data.featurize import GraphFeaturizer
+        _gf = GraphFeaturizer()
+        smiles_list = [str(s) for s in smiles]
+        if self.cache is None:
+            # No cache configured — eager path, count as misses for
+            # accounting symmetry (the legacy path always "missed").
+            self._cache_misses += len(smiles_list)
+            return [_gf(s) for s in smiles_list]
+        # Lazy-load the cache on first use so the wire-in is non-invasive.
+        if not getattr(self.cache, "_loaded", True):
+            self.cache.load()
+        cache_dict = getattr(self.cache, "_cache", {})
+        feats, hits, miss_list = [], 0, []
+        for i, smi in enumerate(smiles_list):
+            if smi in cache_dict:
+                feats.append(cache_dict[smi])
+                hits += 1
+            else:
+                miss_list.append(smi)
+        self._cache_hits += hits
+        if not miss_list:
+            return feats
+        eager = []
+        for s in miss_list:
+            try:
+                eager.append(_gf(s))
+            except Exception:
+                # Invalid SMILES counts as a miss + placeholder feature
+                # dict (1-atom zero-row tensor).  Matches the v4 encoder
+                # placeholder contract.
+                eager.append(
+                    {
+                        "x": np.zeros((1, _gf.atom_feature_dim), dtype=np.float32),
+                        "edge_index": np.zeros((2, 0), dtype=np.int64),
+                        "edge_attr": np.zeros((0, _gf.edge_feature_dim), dtype=np.float32),
+                        "n_atoms": 1,
+                        "n_bonds": 0,
+                        "smiles": s,
+                    }
+                )
+        self._cache_misses += len(miss_list)
+        # Merge: cache hits keep their ordering; misses fill in.
+        out: List = []
+        miss_iter = iter(eager)
+        for smi in smiles_list:
+            if smi in cache_dict:
+                out.append(cache_dict[smi])
+            else:
+                out.append(next(miss_iter))
+        return out
+        return feats
+
+        # Lazy-load the cache on first use so the wire-in is non-invasive.
+        if not getattr(self.cache, "_loaded", True):
+            self.cache.load()
+
+        cache_dict = getattr(self.cache, "_cache", {})
+        feats, hits, miss_list = [], 0, []
+        for i, smi in enumerate(smiles_list):
+            if smi in cache_dict:
+                feats.append(cache_dict[smi])
+                hits += 1
+            else:
+                miss_list.append(smi)
+        self._cache_hits += hits
+        if miss_list:
+            from molmetal.data.featurize import GraphFeaturizer as _GF
+            _gf = _GF()
+            eager = [_gf(s) for s in miss_list]
+            self._cache_misses += len(miss_list)
+            # Merge: cache hits keep their ordering; misses fill in.
+            out: List = []
+            miss_iter = iter(eager)
+            for smi in smiles_list:
+                if smi in cache_dict:
+                    out.append(cache_dict[smi])
+                else:
+                    out.append(next(miss_iter))
+            return out
+        return feats
 
     def fit(
         self,

@@ -431,11 +431,26 @@ def load_tmqm_clouds(
             n_skip_no_metal += 1
             continue
         pos = torch.tensor(coords, dtype=torch.float32)
+        # EDM-style zero-CoM translational gauge (Hoogeboom 2022,
+        # arXiv:2203.17003 §3). CSD XYZ files sit at an arbitrary Cartesian
+        # frame: per-complex |centroid| ~11 A, raw std 5.14 — 67.8% of the
+        # variance is uncorrelated translation. Subtracting the centroid
+        # removes that degrees of freedom so the model's capacity goes into
+        # internal geometry (= chemistry) instead. Velocity field needs no
+        # change — x0 ~ N(0,I) is already centered so x_t = (1-t)*x0 + t*x1
+        # inherits centering. Do NOT scale x here: that would require an
+        # EDM-style log-likelihood correction (Hoogeboom §3.2).
+        pos = pos - pos.mean(0, keepdim=True)
         zt = torch.tensor(zs, dtype=torch.long)
         keep_idx = list(range(len(symbols)))
         if not include_hydrogens:
             keep_idx = [i for i, s in enumerate(symbols) if s != "H"]
             pos = pos[keep_idx]
+        # Re-center on the SELECTED atoms: the centering above was on all
+        # atoms (with H); after dropping H the heavy-atom centroid is non-zero
+        # by the mass of the stripped hydrogens. CFM trainer is heavy-atom
+        # only — its positions need to have centroid 0.
+        pos = pos - pos.mean(0, keepdim=True)
 
         # 2026-10-04 — attach the TRUE bond graph.
         #

@@ -1,12 +1,12 @@
 # Wf-87 Phase 1 — Per-Metric Disk Audit
 
-**Date**: 2026-09-26  
+**Date**: 2026-10-05  
 **Workflow**: Wf-87 Phase 1 — per-metric disk audit  
 **Constraint**: CPU-only; no GPU retrain; paper-gate (TODO-84) honored; party-twenty-spirit §3.5 honest framing  
 
 ## 1. Aggregate
 
-- `metrics/by_metric/` files scanned: **125** JSON files.
+- `metrics/by_metric/` files scanned: **156** JSON files.
 - Conceptual metrics audited (per `TODO/INDEX.md` §17.1): **26**.
 - Conceptual category distribution:
   - **DEFERRED**: 3
@@ -24,32 +24,32 @@
 | # | Metric | Bucket | On-disk state | M | P | D | Latest value | mtime_utc | Source |
 |---:|---|---|---|---:|---:|---:|---:|---|---|
 
-| 1 | QED (`m6`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | 0.6123 | `2026-09-26T12:30:00.890030+00:00` | `metrics/by_metric/qed.json` (+`TODO/completed/87l_undefined_metrics_definition.md`) |
-| 2 | Water solubility logS (`m9`) | STRONG_REAL | MEASURED | 0 | 0 | 0 | -7.6122 | `2026-09-25T04:54:08.754357+00:00` | `metrics/by_metric/aqueous_solubility_logS.json` (+`TODO/completed/87l_undefined_metrics_definition.md`) |
+| 1 | QED (`m6`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-10-03T09:58:25.515375+00:00` | `metrics/by_metric/qed.json` (+`TODO/completed/87l_undefined_metrics_definition.md`) |
+| 2 | Water solubility logS (`m9`) | STRONG_REAL | MEASURED | 0 | 0 | 0 | -7.6122 | `2026-10-01T09:00:09.669039+00:00` | `metrics/by_metric/aqueous_solubility_logS.json` (+`TODO/completed/87l_undefined_metrics_definition.md`) |
 | 3 | n_distinct (`m11`) | STRONG_REAL | MEASURED | 4 | 0 | 0 | 20.0000 | `2026-09-25T04:54:08.754357+00:00` | `metrics/by_metric/n_distinct.json` (+`—`) |
-| 4 | RDKit validity (`m13`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | 1.0000 | `2026-09-26T12:30:08.576593+00:00` | `metrics/by_metric/rdkit_validity.json` (+`TODO/completed/87l_undefined_metrics_definition.md`) |
-| 5 | CFM decode (`m14`) | STRONG_REAL | MEASURED | 8 | 0 | 0 | 0.0000 | `2026-09-25T04:54:08.754357+00:00` | `metrics/by_metric/decode_ratio.json` (+`—`) |
-| 6 | DrugOOD OOD AUC (`m17`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-09-25T08:51:14.786986+00:00` | `metrics/by_metric/drugood_ood_auc.json` (+`—`) |
-| 7 | NCI-60 9-cell AUC (`m21`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-09-26T05:38:49.998286+00:00` | `metrics/by_metric/nci60_precious_9cell_auc.json` (+`—`) |
-| 8 | m18 Protein-Metal binding AUC (`m22`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-09-25T12:19:39.937381+00:00` | `metrics/by_metric/metric18_protein_metal_v2.json` (+`—`) |
-| 9 | PlatinAI 3-cell resistance AUC (`m23`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-09-25T16:12:31.894315+00:00` | `metrics/by_metric/platinai_3cell_resistance.json` (+`—`) |
+| 4 | RDKit validity (`m13`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | 1.0000 | `2026-10-03T09:58:25.508375+00:00` | `metrics/by_metric/rdkit_validity.json` (+`TODO/completed/87l_undefined_metrics_definition.md`) |
+| 5 | CFM decode (`m14`) | STRONG_REAL | MEASURED | 13 | 0 | 0 | 0.9980 | `2026-10-04T06:11:58.211846+00:00` | `metrics/by_metric/decode_ratio.json` (+`—`) |
+| 6 | DrugOOD OOD AUC (`m17`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-10-03T09:58:25.515375+00:00` | `metrics/by_metric/drugood_ood_auc.json` (+`—`) |
+| 7 | NCI-60 9-cell AUC (`m21`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | 0.4200 | `2026-10-03T01:29:35.563652+00:00` | `metrics/by_metric/nci60_precious_9cell_auc.json` (+`—`) |
+| 8 | m18 Protein-Metal binding AUC (`m22`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-10-03T09:58:25.503375+00:00` | `metrics/by_metric/metric18_protein_metal_v2.json` (+`—`) |
+| 9 | PlatinAI 3-cell resistance AUC (`m23`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-10-03T09:58:25.516375+00:00` | `metrics/by_metric/platinai_3cell_resistance.json` (+`—`) |
 | 10 | cross-dataset macro R² (`m24`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-09-26T09:31:13.769665+00:00` | `molmetal/reports/wf71_p3_wf49_cross_round2/cross_dataset_summary.json` (+`—`) |
-| 11 | Ru AUC (`m1`) | WEAK_REAL | MEASURED | 1 | 0 | 0 | 0.6300 | `2026-09-26T05:38:32.693032+00:00` | `metrics/by_metric/metalcytotox_ru_auc.json` (+`—`) |
-| 12 | Pt 4-cell AUC (`m2`) | WEAK_REAL | MEASURED | 1 | 0 | 0 | — | `2026-09-25T08:43:26.630482+00:00` | `metrics/by_metric/platinai_4cell_auc.json` (+`—`) |
-| 13 | Vina triple success (`m4`) | WEAK_REAL | MEASURED | 1 | 0 | 0 | — | `2026-09-25T04:54:08.756156+00:00` | `metrics/by_metric/vina_triple_success.json` (+`—`) |
-| 14 | SA mean (`m5`) | WEAK_REAL | MEASURED | 6 | 0 | 0 | 3.0988 | `2026-09-25T04:54:08.755156+00:00` | `metrics/by_metric/sa_mean.json` (+`—`) |
-| 15 | Diversity Tanimoto (`m7`) | WEAK_REAL | MEASURED | 7 | 0 | 0 | 0.9036 | `2026-09-26T05:39:17.991698+00:00` | `metrics/by_metric/diversity_tanimoto.json` (+`—`) |
-| 16 | PoseBusters pass-rate (`m8`) | WEAK_REAL | MEASURED | 2 | 0 | 0 | 0.8460 | `2026-09-26T05:33:41.913945+00:00` | `metrics/by_metric/pb_pass_rate.json` (+`—`) |
-| 17 | Vina min score (`m10`) | WEAK_REAL | MEASURED | 1 | 0 | 0 | — | `2026-09-25T04:54:08.755156+00:00` | `metrics/by_metric/vina_min_score.json` (+`—`) |
+| 11 | Ru AUC (`m1`) | WEAK_REAL | MEASURED | 2 | 0 | 0 | 0.7613 | `2026-10-03T22:40:09.120225+00:00` | `metrics/by_metric/metalcytotox_ru_auc.json` (+`—`) |
+| 12 | Pt 4-cell AUC (`m2`) | WEAK_REAL | MEASURED | 1 | 0 | 0 | — | `2026-10-03T09:58:25.508375+00:00` | `metrics/by_metric/platinai_4cell_auc.json` (+`—`) |
+| 13 | Vina triple success (`m4`) | WEAK_REAL | MEASURED | 1 | 0 | 0 | — | `2026-10-03T09:58:25.516375+00:00` | `metrics/by_metric/vina_triple_success.json` (+`—`) |
+| 14 | SA mean (`m5`) | WEAK_REAL | MEASURED | 12 | 0 | 0 | 2.4583 | `2026-09-28T08:28:09.329217+00:00` | `metrics/by_metric/sa_mean.json` (+`—`) |
+| 15 | Diversity Tanimoto (`m7`) | WEAK_REAL | MEASURED | 6 | 0 | 0 | 0.0000 | `2026-10-03T09:58:25.514375+00:00` | `metrics/by_metric/diversity_tanimoto.json` (+`—`) |
+| 16 | PoseBusters pass-rate (`m8`) | WEAK_REAL | MEASURED | 2 | 0 | 0 | 0.8460 | `2026-10-03T09:58:25.514375+00:00` | `metrics/by_metric/pb_pass_rate.json` (+`—`) |
+| 17 | Vina min score (`m10`) | WEAK_REAL | MEASURED | 1 | 0 | 0 | — | `2026-10-03T09:58:25.515375+00:00` | `metrics/by_metric/vina_min_score.json` (+`—`) |
 | 18 | RMSD (`m15`) | WEAK_REAL | REVIEW_NEEDED | 0 | 0 | 0 | — | `2026-09-26T07:09:12.613798+00:00` | `TODO/completed/85_mock_audit.md` (+`—`) |
-| 19 | Affinity Pearson r (`m16`) | WEAK_REAL | MEASURED | 5 | 0 | 0 | -0.0403 | `2026-09-26T05:34:00.137189+00:00` | `metrics/by_metric/pearson_r_pic50.json` (+`—`) |
-| 20 | Multi-metal LOMO (`m19`) | WEAK_REAL | MEASURED | 1 | 0 | 0 | 0.5346 | `2026-09-26T05:33:36.364871+00:00` | `metrics/by_metric/metal_lomo_auc.json` (+`—`) |
-| 21 | per-pocket Vina Phase-1B (`per_pocket_vina`) | WEAK_REAL | REVIEW_NEEDED | 0 | 0 | 0 | — | `2026-09-26T04:55:46.217885+00:00` | `TODO/completed/82b_vina_dock_retrain.md` (+`—`) |
-| 22 | Vina Dock stub (`m3`) | MOCK | REVIEW_NEEDED | 0 | 0 | 0 | — | `2026-09-26T04:55:46.217885+00:00` | `TODO/completed/82b_vina_dock_retrain.md` (+`—`) |
+| 19 | Affinity Pearson r (`m16`) | WEAK_REAL | MEASURED | 6 | 0 | 0 | 0.2600 | `2026-09-28T08:28:09.329217+00:00` | `metrics/by_metric/pearson_r_pic50.json` (+`—`) |
+| 20 | Multi-metal LOMO (`m19`) | WEAK_REAL | MEASURED | 1 | 0 | 0 | 0.5346 | `2026-10-03T09:58:25.516375+00:00` | `metrics/by_metric/metal_lomo_auc.json` (+`—`) |
+| 21 | per-pocket Vina Phase-1B (`per_pocket_vina`) | WEAK_REAL | REVIEW_NEEDED | 0 | 0 | 0 | — | `2026-09-27T02:51:20.159948+00:00` | `TODO/completed/82b_vina_dock_retrain.md` (+`—`) |
+| 22 | Vina Dock stub (`m3`) | MOCK | REVIEW_NEEDED | 0 | 0 | 0 | — | `2026-09-27T02:51:20.159948+00:00` | `TODO/completed/82b_vina_dock_retrain.md` (+`—`) |
 | 23 | 4 external scorers (coord_geometry / phototherapy / ptiv / metalloprotein) (`external_scorers`) | MOCK | REVIEW_NEEDED | 0 | 0 | 0 | — | `2026-09-26T07:09:12.613798+00:00` | `TODO/completed/85_mock_audit.md` (+`—`) |
-| 24 | diversity_subpocket (`diversity_subpocket`) | DEFERRED | DEFERRED_HOST_GAP | 0 | 0 | 1 | — | `2026-09-25T04:54:08.754357+00:00` | `metrics/by_metric/diversity_subpocket.json` (+`—`) |
-| 25 | steric_clash (PB dock-mode) (`steric_clash`) | DEFERRED | DEFERRED | 0 | 0 | 1 | — | `2026-09-25T04:54:08.755156+00:00` | `metrics/by_metric/steric_clash_pb_dock.json` (+`—`) |
-| 26 | vina_*_test_001 (×4 sub-variants) (`vina_test_001`) | DEFERRED | DEFERRED | 0 | 0 | 1 | — | `2026-09-25T04:54:08.756156+00:00` | `metrics/by_metric/vina_score_test_001.json` (+`—`) |
+| 24 | diversity_subpocket (`diversity_subpocket`) | DEFERRED | DEFERRED_HOST_GAP | 0 | 0 | 1 | — | `2026-09-30T02:04:20.059087+00:00` | `metrics/by_metric/diversity_subpocket.json` (+`—`) |
+| 25 | steric_clash (PB dock-mode) (`steric_clash`) | DEFERRED | DEFERRED | 0 | 0 | 1 | — | `2026-10-03T09:58:25.514375+00:00` | `metrics/by_metric/steric_clash_pb_dock.json` (+`—`) |
+| 26 | vina_*_test_001 (×4 sub-variants) (`vina_test_001`) | DEFERRED | DEFERRED | 0 | 0 | 1 | — | `2026-10-03T09:58:25.515375+00:00` | `metrics/by_metric/vina_score_test_001.json` (+`—`) |
 
 ## 3. Honest-framing notes
 

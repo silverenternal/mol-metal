@@ -52,7 +52,7 @@ def test_template_cross_references_metrics():
     assert (
         "metrics/by_metric/" in content
     ), "Missing cross-reference to metrics/by_metric/*.json source paths."
-    # Required source paths from docs/PAPER_SECTION_6_LIMITATIONS_DRAFT.md
+    # Required source paths from docs/PAPER_SECTION_6_v4_FINAL.md
     assert "metalcytotox_ru_auc.json" in content
     assert "wf335m2_r2/result.json" in content or "wf335m1_chemprop_pll" in content
     # Honest-negative catalog cross-ref

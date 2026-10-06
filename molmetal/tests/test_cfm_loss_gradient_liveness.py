@@ -69,6 +69,14 @@ ALL_TERMS = frozenset(
         "so3_term",
         "edm_term",
         "fm_term",
+        # Round-3 D1 (2026-10-05) — assemble-aware connectivity.  The
+        # surrogate is soft by construction: a thresholded fragment count has
+        # zero gradient almost everywhere and would be FLAG_ONLY, which is
+        # the exact failure class this file exists to catch.
+        # molmetal/tests/test_assemble_connectivity.py pins its direction,
+        # truncation stability and gradcheck; the entry HERE is what stops
+        # it silently rotting back into a constant.
+        "assemble_term",
     }
 )
 
@@ -92,6 +100,12 @@ EXPECTED_LIVE = frozenset(
         # collapse into a constant the way the fixed-reference regression it
         # sits beside can.
         "fm_term",
+        # Round-3 D1: the assemble-aware connectivity term.  LIVE only when
+        # `--assemble-loss-weight > 0` (its default is 0.0, which is an exact
+        # `torch.zeros(())` and correctly gradient-dead), so the smoke args
+        # below turn the flag ON — otherwise this entry could not be
+        # asserted live and the term would go untested by this guard.
+        "assemble_term",
         # Wired 2026-10-04 onto that path.  Each of these was previously
         # unusable for want of an (x0, x1, x_t, t) input, not for want of care:
         # shortcut/consistency were `weight * torch.tensor(0.0)`; so3/edm
@@ -165,6 +179,10 @@ _SMOKE_ARGS = [
     # step, so it must not inherit a previous run's weights.
     "--resume-from",
     "none",
+    # Round-3 D1: the assemble term is OFF by default, so the smoke has to
+    # switch it on explicitly for the guard to have anything to check.
+    "--assemble-loss-weight",
+    "0.05",
 ]
 
 _PROBE = """

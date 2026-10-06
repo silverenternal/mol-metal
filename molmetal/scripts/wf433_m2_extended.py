@@ -12,7 +12,7 @@ plan from TODO/pending/201_m2_r2_per_cohort_feature_engineering.md §3.3:
     bias-variance inflation prediction)
 
 Per user voice 2026-09-30 *"如果是同一个问题一直没修好的话得做调研+review尝试
-更深层的修复"* + Wf-433-A1 HONEST_NEGATIVE_CLOSURE_PLAN.md §0.2:
+更深层的修复"* + Wf-433-A1 design §0.2:
 
   1. m1 1-seed STALE 0.4917 → 7/7 pair aggregate 0.7577 (Wf-413-A1 SHIPPED)
   2. m2 R² -0.1440 / +0.1981 → run 5×5 CV Ridge on EXTENDED features

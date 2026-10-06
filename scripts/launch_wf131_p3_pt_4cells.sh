@@ -448,6 +448,7 @@ run_pair() {
     --seeds "${seed}" \
     --csv "${LOMO_CSV}" \
     --out-dir "${OUT_BASE}/Pt/${cell}/seed${seed}" \
+    --out-metric "${OUT_BASE}/Pt/${cell}/seed${seed}/metrics.json" \
     --ckpt-dir "${OUT_BASE}/Pt/${cell}/seed${seed}/ckpts" \
     "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
   local rc=${PIPESTATUS[0]}

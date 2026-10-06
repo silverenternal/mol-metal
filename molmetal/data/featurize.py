@@ -180,6 +180,206 @@ class GraphFeaturizerConfig:
     include_stereo: bool = False  # not needed for ESM / docking baselines
 
 
+# ---------------------------------------------------------------------------
+# 1b. SMILES normalization helpers (Wf-ultracode D-MPNN-line cleanups)
+# ---------------------------------------------------------------------------
+# Precious-metal symbols — used by ``_strip_metal_atoms`` to canonicalise
+# SMILES across cohorts so the D-MPNN encoder always sees a ligand-only
+# graph (the metal id is carried separately via ``metal_embed`` /
+# ``metal_ids``).
+#
+# The set is the same as the one used by ``molmetal/data/metal_smiles.py``
+# but limited to the precious-metal subset that the D-MPNN line targets
+# in MetalCytoToxDB / NCI60 / platinai cohorts.  Adding more symbols
+# here is safe — the helper is a no-op for SMILES that don't carry any
+# of these elements.
+_DMPNN_METAL_SYMBOLS: Tuple[str, ...] = (
+    "Pt",
+    "Ru",
+    "Ir",
+    "Rh",
+    "Os",
+    "Re",
+    "Pd",
+    "Au",
+)
+
+
+def _strip_metal_atoms(smiles: str) -> Tuple[str, int]:
+    """Strip precious-metal atoms from *smiles* so the graph is ligand-only.
+
+    The D-MPNN line carries the metal id separately via
+    ``metal_embed`` / ``metal_ids`` (one integer per molecule), so
+    having the metal also be an atom in the SMILES graph is double-
+    counted information — and worse, it creates an asymmetry across
+    cohorts:
+
+      * platinai SMILES carry ``[Pt+2]`` (Rusanov-style full-complex),
+        so the encoder sees Pt as a real atom and the embedding is
+        metal-aware via the graph path;
+      * MetalCytoToxDB / NCI60 SMILES carry only the ligand (no metal
+        token), so the encoder is metal-agnostic on the graph path
+        and the metal is encoded solely via the metal-id tensor.
+
+    Normalising on the **ligand-only** convention removes the
+    asymmetry without losing information (the metal id is still
+    passed via ``metal_ids``).
+
+    Returns
+    -------
+    stripped_smiles : str
+        A canonical SMILES that RDKit can re-parse.  Equal to the
+        input SMILES when no metal atoms are present.
+    n_removed : int
+        Number of precious-metal atoms removed.  Zero for ligand-only
+        inputs.
+
+    Notes
+    -----
+    Uses RDKit's ``AllChem.DeleteSubstructs`` on the precious-metal
+    set, then canonicalises.  Falls back to the original SMILES on
+    parse failure so callers don't have to special-case malformed data.
+    """
+    s = (smiles or "").strip()
+    if not s:
+        return "", 0
+    from rdkit import Chem
+    from rdkit import RDLogger
+
+    RDLogger.DisableLog("rdApp.*")
+    mol = Chem.MolFromSmiles(s)
+    if mol is None:
+        return s, 0
+
+    # Count before stripping — drives the returned ``n_removed``.
+    pre_count = sum(
+        1 for a in mol.GetAtoms() if a.GetSymbol() in _DMPNN_METAL_SYMBOLS
+    )
+    if pre_count == 0:
+        # Fast path: no metals, nothing to do.
+        return s, 0
+
+    # Build the SMARTS patterns once.  The bare-element form (``Pt``)
+    # matches both bracketed (``[Pt+2]``) and bare (``Pt``) atoms in
+    # RDKit SMARTS.
+    patterns = [Chem.MolFromSmarts(f"[{sym}]") for sym in _DMPNN_METAL_SYMBOLS]
+    patterns = [p for p in patterns if p is not None]
+    n_removed = 0
+    for pat in patterns:
+        # ``DeleteSubstructs`` cumulatively removes every occurrence of
+        # ``pat`` from ``mol`` and returns a NEW mol.  Track the atom
+        # diff vs the previous mol so the count is exact across all
+        # metals in a single pass.
+        out = Chem.DeleteSubstructs(mol, pat)
+        diff = mol.GetNumAtoms() - out.GetNumAtoms()
+        if diff > 0:
+            n_removed += diff
+            mol = out
+    stripped = Chem.MolToSmiles(mol)
+    return stripped, int(n_removed)
+
+
+# F3 — metal-retain / annotate modes.
+#
+# The LOMO D-MPNN path (``molmetal.baselines.dmpnn.featurize_smiles_list``)
+# does NOT strip metals; only ``V4MultiTaskDMPNN`` does.  MEASURED on
+# ``metal_lomo.csv``: 0/5460 rows carry a metal token, so the strip helper is
+# a no-op on the real cohort either way.  The asymmetry is in the synthetic
+# Rh oversample cohort, where 500/500 rows DO carry ``[Rh]``.
+#
+# ``_prepend_marker_atom`` inserts a single dummy (Z=0, "other") atom so the
+# graph is never fragment-boundary-sensitive when the metal is dropped: the
+# marker keeps one connected component anchored on the graph.
+_DMPNN_METAL_MARKER_Z: int = 0
+
+
+def _prepend_marker_atom(smiles: str) -> str:
+    """Return *smiles* with a leading dummy atom so the graph stays anchored.
+
+    Used by ``_apply_metal_mode`` in ``annotate`` mode.  The marker carries
+    atomic number 0 (``z_other``) and no bonds, so it contributes one atom
+    node and zero edges — it cannot change any message-passing result, it
+    only makes the metal's presence explicit and count-stable.
+
+    Falls back to the input when RDKit cannot parse it.
+    """
+    s = (smiles or "").strip()
+    if not s:
+        return ""
+    from rdkit import Chem
+    from rdkit import RDLogger
+
+    RDLogger.DisableLog("rdApp.*")
+    mol = Chem.MolFromSmiles(s)
+    if mol is None:
+        return s
+    marker = Chem.Atom(_DMPNN_METAL_MARKER_Z)
+    out = Chem.RWMol(mol)
+    out.AddAtom(marker)
+    # Renumber so the marker is atom 0; RWMol appends, which is fine for a
+    # bond-free atom, but pin the index explicitly for deterministic output.
+    return Chem.MolToSmiles(out.GetMol())
+
+
+def _apply_metal_mode(smiles: str, mode: str) -> Tuple[str, int]:
+    """Apply a metal-handling *mode* to *smiles*.
+
+    Modes
+    -----
+    ``"strip"``
+        Legacy behaviour — remove precious-metal atoms via
+        ``_strip_metal_atoms``.  Returns ``(stripped, n_removed)``.
+    ``"retain"``
+        Keep the metal atom in the graph.  A no-op passthrough: the input is
+        returned unchanged with ``n_removed=0``.
+    ``"annotate"``
+        Keep the metal atom AND prepend a zero-atomic-number marker node, so
+        the metal-bearing nature of the graph is explicit and the atom count
+        is stable against a downstream strip.
+
+    Unknown modes raise ``ValueError`` rather than silently falling back to
+    ``strip`` — a silent fallback would re-break the metal-blindness this
+    mode exists to fix.
+    """
+    m = (mode or "strip").strip().lower()
+    if m == "strip":
+        return _strip_metal_atoms(smiles)
+    if m == "retain":
+        s = (smiles or "").strip()
+        return (s, 0) if s else ("", 0)
+    if m == "annotate":
+        s = (smiles or "").strip()
+        if not s:
+            return "", 0
+        return _prepend_marker_atom(s), 0
+    raise ValueError(
+        f"unknown metal mode {mode!r}; expected one of 'strip', 'retain', 'annotate'"
+    )
+
+
+def _count_fragments(smiles: str) -> int:
+    """Return the number of dot-separated fragments in *smiles*.
+
+    Multi-fragment molecules (salts like ``[Na+].[Cl-]``, full
+    metal complexes with explicit counter-ions like
+    ``NH3.Pt.Cl.Cl.[Pt]``, etc.) are common in the D-MPNN line:
+
+      * MetalCytoToxDB / v4: 99.94% of rows are multi-fragment
+      * NCI60 / 9-cell: 99.87% of rows are multi-fragment
+
+    ``_edge_features`` only iterates ``mol.GetBonds()`` so message
+    passing never crosses fragment boundaries.  This helper exposes
+    the fragment count so callers can detect and reason about
+    disconnected graphs without re-parsing RDKit.
+
+    Empty / whitespace inputs map to ``0`` (not raising).
+    """
+    s = (smiles or "").strip()
+    if not s:
+        return 0
+    return sum(1 for frag in s.split(".") if frag.strip())
+
+
 class GraphFeaturizer:
     """Convert RDKit ``Chem.Mol`` (or SMILES) into atom/edge tensors.
 
@@ -245,8 +445,10 @@ class GraphFeaturizer:
             mol = Chem.MolFromSmiles(smiles_or_mol)
             if mol is None:
                 raise ValueError(f"RDKit could not parse SMILES: {smiles_or_mol!r}")
+            smiles_in = smiles_or_mol
         else:
             mol = smiles_or_mol
+            smiles_in = Chem.MolToSmiles(mol) if mol.GetNumAtoms() > 0 else ""
         x = self._atom_features(mol)
         edge_index, edge_attr = self._edge_features(mol)
         return {
@@ -256,6 +458,12 @@ class GraphFeaturizer:
             "smiles": Chem.MolToSmiles(mol) if mol.GetNumAtoms() > 0 else "",
             "n_atoms": int(mol.GetNumAtoms()),
             "n_bonds": int(edge_index.shape[1] // 2),
+            # Wf-ultracode (Defect 2): expose the dot-separated fragment
+            # count so callers can detect disconnected graphs without
+            # re-parsing RDKit.  See ``_count_fragments`` for the
+            # convention.  Measured on the production cohorts:
+            # v4 / MetalCytoToxDB = 99.94% multi-fragment, NCI60 = 99.87%.
+            "n_fragments": _count_fragments(smiles_in),
         }
 
     # ------------------------------------------------------------------

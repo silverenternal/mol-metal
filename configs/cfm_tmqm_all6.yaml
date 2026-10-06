@@ -54,6 +54,60 @@ model:
   # velocity field at all: EGNNVelocityField indexes its atom embedding by
   # atomic number directly (see gnn_max_atomic_number below).
   use_egnn_velocity: true
+  # 2026-10-06 (F5) — the flow-matching objective, ON.
+  #
+  # MEASURED on this config's own retrain (results/cfm_tmqm_all6/
+  # per_epoch_metrics.csv, 12 epochs): `gen_validity` read 0.0000 at EVERY
+  # epoch, at every n, with the sampler running (`gen_solver=euler/100`,
+  # `decoding_attempted=1`) — while `bond_ce` fell 0.109 -> 0.037 over the
+  # same epochs.  The bond head was learning; generation was flat-zero, not
+  # degrading, so "训练越久越差" was not what the run showed.
+  #
+  # WHY.  With this key absent, `--use-fm-objective` stays False, so `fm_term`
+  # is `torch.zeros(())` in the loss cascade and the EGNN velocity field has
+  # NO regression target anywhere in the objective.  The only term touching
+  # the field is `wasserstein_weight * w2_val`, which regresses it toward
+  # `build_reference_positions()` — a hard-coded square-planar Pt literal
+  # (see the comment above that call).  So the field the ODE solver
+  # integrates was fitted to ONE constant geometry, which is not the
+  # conditional mean of `x1 - x0` and carries no time dependence.  Integrating
+  # it from noise cannot produce a molecular geometry, hence 0.0000.
+  #
+  # This flag is the fix: it adds the real CFM objective
+  #   x0 ~ N(0,I); x_t = (1-t)*x0 + t*x1; target dx = x1 - x0;
+  #   loss += fm_weight * MSE(v(x_t, t, z), dx)
+  # with x1 = the batch's own coordinates, resampled every step, so the field
+  # learns the data's velocity distribution instead of a constant.  Under
+  # `use_egnn_velocity: true` it trains the SAME `vel_field` the sampler
+  # integrates (see CFMJointModel.fm_velocity), so the trained and the
+  # sampled field are one object.
+  #
+  # Cost: this is a real change to the objective, so gen_validity from a run
+  # with it OFF is NOT comparable to one with it ON.  It adds no state_dict
+  # keys on the EGNN path (fm_vel_head is not built there), so checkpoints
+  # written before it still resume.
+  use_fm_objective: true
+  # 2026-10-06 (F6) — the FM flow time is drawn ONCE PER MOLECULE.
+  #
+  # The draw was per ATOM. `x_t = (1-t)*x0 + t*x1` is then built with a
+  # different t for every atom of the same molecule, while
+  # `CFMJointModel.fm_velocity` collapses that per-atom vector back to one
+  # scalar per cloud by taking the FIRST atom's t. The EGNN was therefore
+  # conditioned on "t = 0.31" for a molecule whose other atoms actually sit
+  # at t = 0.87, 0.04, 0.66 ... The supervision was internally inconsistent
+  # with the coordinates it was handed, and the spread grows with atom count.
+  #
+  # Why that is the mechanism behind "bond_f1 0.991 but gen_validity poor":
+  # the bond head trains on REAL clouds (`forward()` evaluates the field at
+  # t = 1) and is untouched by this; the velocity field is the head that was
+  # being trained off the manifold. `generate_clouds_from_noise` integrates
+  # the SAME field at one scalar t per step, so it only ever visits the
+  # consistent sub-manifold the per-cloud draw now supervises.
+  #
+  # MEASURED (CPU, 1500 AdamW steps on 16 Pt/Ru/Ir complexes, bond head
+  # trained jointly, otherwise identical): FM MSE 2.7580 -> 2.4259 (-12.0%).
+  # Set to 0 only to reproduce the pre-F6 behaviour for ablation.
+  fm_t_per_cloud: 1
   # Plain upper bound on Z for the EGNN's atom embedding, NOT a curated
   # table — 100 covers every element in scope.
   egnn_max_atomic_number: 100
@@ -117,6 +171,79 @@ flow:
   # threshold should be chosen on a held-out split.  Both rules are scored and
   # printed every epoch, so this choice is always visible rather than assumed.
   bond_decision_threshold: 0.5
+  # 2026-10-05 NEW (Round-3 D2) — connectivity prior, ON by default.
+  #
+  # POSTPROCESS in the decoder, not a loss term: after bond selection, if the
+  # assembled graph has more than one connected component among heavy atoms,
+  # add the highest-logit candidate bond that bridges two of them, and repeat
+  # until one component remains or no candidate qualifies.  Bridging edges come
+  # from the head's own logits and only between pairs the head already emitted
+  # inside the distance cutoff, so this reorders which candidate edges become
+  # bonds and never invents geometry.
+  #
+  # Motivation is measured, from this config's own 2026-10-04 retrain:
+  # `largest_fragment_frac` climbed 0.21 -> 0.47 across epochs while
+  # `single_fragment_ratio` only reached 0.167.  The per-pair selector is
+  # learning to draw a larger blob, not to join the blob to the rest of the
+  # cloud.  Set `off` to reproduce the pre-D2 decode bit-exactly — any
+  # decode_ratio measured with the prior ON is NOT comparable to one measured
+  # with it OFF, which is why the flag is also recorded in the run summary.
+  # QUOTED, and not incidentally: bare `on` / `off` are YAML 1.1 booleans, so
+  # an unquoted `off` reaches argparse as `False` and any `!= "off"` test
+  # would read it as ON.  Quoting keeps the value a string end to end.
+  connectivity_prior: "on"
+  # A PRIOR, not a tuned value: 0.0 means "any pair the head emitted inside the
+  # cutoff".  Raising it makes the prior defer to the head's confidence.
+  connectivity_prior_min_logit: 0.0
+
+  # 2026-10-06 (Round-7 N1) -- data-matched base distribution.
+  #
+  # MEASURED on 24 real tmQM clouds: per-coordinate std 2.505 A, while the
+  # prior was N(0, 1).  The two ends of the CFM interpolant were therefore on
+  # different scales.  The cost is not a constant rescale -- the EGNN's radius
+  # graph is rebuilt from x_t at every ODE step, so the prior's scale sets the
+  # graph DENSITY the field is conditioned on.  At sigma=1 the edge density
+  # (cutoff 3.5 A) runs 0.843 at t=0 down to 0.259 at t=1, a 3.3x swing, so
+  # the field is trained and sampled over two quite different neighbourhood
+  # structures.  At sigma=2.505 it runs 0.186 -> 0.259, roughly constant.
+  # Applied to BOTH the training draw and the sampler's x0, so the trained
+  # and the sampled prior are the same object.
+  fm_noise_sigma: 2.505
+  # 2026-10-06 (Round-7 N2) -- the Wasserstein anchor OFF.
+  #
+  # `build_reference_positions()` returns a hard-coded 5-atom square-planar Pt
+  # literal, which the tmQM corpus contradicts for 5 of its 6 target metals
+  # (F4).  It was still being optimised: `closure_bounded` defaults True and
+  # `wasserstein_weight` defaults 0.1, and this config set neither, so the
+  # anchor contributed a live gradient on every step.
+  #
+  # MEASURED on the real 8-cloud tmQM batch at initialisation: the FM gradient
+  # norm is 39.37 and the weighted W2 gradient norm is 0.00195, a ratio of
+  # 4.9e-05 -- so this was never a MAGNITUDE problem and F4 is not what
+  # suppressed generation.  But the cosine between them is -0.529: the anchor
+  # points consistently OPPOSITE to the objective it is meant to regularise.
+  # The right action is to remove it rather than reweight it, and the real CFM
+  # objective (F5) already supplies the geometry signal the anchor stood in
+  # for.  0.0 = OFF, i.e. the pre-anchor objective.
+  wasserstein_weight: 0.0
+  # Same change on the decode-side companion.  `closure_bounded` also feeds
+  # `apply_closure_bounded_mask` (trainer L1991), which masks bond logits
+  # toward the same Pt literal at DECODE time -- so it was steering the bond
+  # head on real Ru/Ir/Rh/Os/Re geometry too, not only the velocity field.
+  closure_bounded: false
+  # 2026-10-06 (Round-7 N3) -- 2nd-order integrator.
+  #
+  # The solver shim defaults to Euler and this config declared neither key, so
+  # every shipped generation eval integrated first-order over 100 steps.  The
+  # shim carries midpoint (Heun, 2nd order) and its own docstring puts Euler's
+  # drift at ~0.1 A/atom versus ~0.01 A for midpoint -- 10% of a covalent bond
+  # length, inside the bond decoder's sensitivity band.  That mattered little
+  # while the field was regressed to a constant (F4/F5); it matters now that
+  # the field has a real time-dependent target.
+  # NOTE: `_integrate_inline` evaluates the field at t = 0, dt, ..., (n-1)*dt
+  # and never at t=1, so the endpoint is always reached by extrapolation.
+  method: midpoint
+  n_steps: 100
 
 protocol:
   batch_size: 16
@@ -148,6 +275,15 @@ protocol:
   # was therefore decode-only, which is the half of the CFM that reads given
   # geometry — the sampler went unmeasured.  Same value as its siblings.
   gen_validity_samples: 16
+  # 2026-10-05 (Round-3 D3) — n=16 was MEASURED too noisy to gate on:
+  # gen_validity read 0.375/0.312/0.562/0.688/0.750 over five
+  # consecutive epochs of one run, a 44pp swing on a monotone
+  # trajectory (binomial 1-sigma at p~0.5, n=16 is +-12.5pp).  Below
+  # turns the eval into 3 seeds x 64 samples over 3 DISJOINT windows of
+  # val compositions — 192 distinct chemistries, 1-sigma +-3.6pp.
+  # EVAL-ONLY: no training or checkpoint behaviour changes.
+  gen_eval_n: 64
+  gen_eval_seeds: "0 1 2"
 
 device: cuda
 

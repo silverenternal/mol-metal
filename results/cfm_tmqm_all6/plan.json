@@ -7,7 +7,7 @@
     "config": "configs/cfm_tmqm_all6.yaml",
     "py": "/home/hugo/codes/mol-metal/.venv/bin/python",
     "out_dir": "/home/hugo/codes/mol-metal/results/cfm_tmqm_all6",
-    "vram_free_mib": 96953,
+    "vram_free_mib": 85497,
     "pre_flight": "PASS",
     "args": ["--config", "configs/cfm_tmqm_all6.yaml", "--seed", "0", "--out-dir", "/home/hugo/codes/mol-metal/results/cfm_tmqm_all6"],
     "expected_cohort": {"n_train": 26715, "n_val": 6714},

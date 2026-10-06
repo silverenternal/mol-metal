@@ -254,7 +254,7 @@ cat > "${PLAN_JSON}.tmp" <<EOF
     "wrapper_name": "scripts/launch_wf394a1_lambda_cfm_patch.sh",
     "user_ok_required": true,
     "wf_origin": "Wf-394-A1 Lambda × CFM coupling patch wrapper (direct invocation, USER_OK-gated)",
-    "parent_plan": "TODO/03_baselines/HONEST_NEGATIVE_CLOSURE_PLAN.md §Wf-394 closure path",
+    "parent_plan": "TODO/03_baselines/COMPARISON_BASELINES.md §6 + Wf-394-A1 closure path (HONEST_NEGATIVE_CLOSURE_PLAN.md was Oct 2 docs-only planning doc; removed 2026-10-05 as superseded)",
     "wf_origin_patches": ["Wf-329-W6", "Wf-333-G1", "Wf-394-A1", "Wf-406-A2", "Wf-410-A2", "Wf-414-A2", "Wf-418-A2", "Wf-428-A2 §3.4 forward-look"],
     "wf429a4_compliance": "plan.json schema satisfies wf426a3_post_fix_results_aggregator check; meta.wrapper_name + meta.user_ok_required fields populated per Wf-429-A4 fix"
   },

@@ -100,6 +100,7 @@ import hashlib
 import json
 import math
 import pickle
+import random
 import sys
 import time
 from dataclasses import dataclass
@@ -785,8 +786,18 @@ def _featurize_with_cache(
                 cached_smiles, cached_graphs = pickle.load(f)
             if cached_smiles == smiles:
                 return cached_graphs
-        except Exception:
-            pass
+        except Exception as _cache_err:
+            # Wf-ultracode FIX — warn loudly so a corrupt pickle / RDKit
+            # version drift / partial-write does NOT silently trigger a
+            # full re-featurisation (the unfixed `except Exception: pass`
+            # made this invisible to downstream metrics).
+            print(
+                f"WARNING: cache load failed for {cache_path} "
+                f"({type(_cache_err).__name__}: {_cache_err}); "
+                f"re-featurising from scratch",
+                file=sys.stderr,
+                flush=True,
+            )
 
     t0 = time.time()
     graphs = featurize_smiles_list([str(s) for s in smiles])
@@ -861,6 +872,89 @@ class MetalSeedResult:
     status: str = "OK"
 
 
+# ---------------------------------------------------------------------------
+# Wf-335-P3 — Triton dispatch wrapper for the per-metal ReLU MLP heads.
+# ---------------------------------------------------------------------------
+class _FusedReLUMLPWrapper(nn.Module):
+    """Eager-fallback wrapper for the Triton-fused ReLU-MLP head.
+
+    The Wf-335-P3 reference kernel ``fused_relu_mlp`` (Blackwell sm_120)
+    replaces ``nn.Sequential(Linear, ReLU, Dropout, Linear)`` with a
+    single fused Triton call.  When CUDA is unavailable OR the
+    ``FUSED_RELU_MLP`` env gate is closed (default) the eager 2-layer
+    MLP is invoked and the wrapper is bit-for-bit identical to the
+    original sequential.
+
+    Per AGENTS.md §5.7 the wrapper MUST be wired into
+    ``MultiTaskWassersteinModel`` (this file's class above) so that
+    ``--use-triton-relu-mlp`` reaches a live computation site.  The
+    wrapper's ``dispatch_stats`` attribute is the runtime evidence the
+    Triton path is genuinely invoked when the gate opens.
+    """
+
+    def __init__(
+        self,
+        in_dim: int,
+        hidden: int,
+        out_dim: int,
+        dropout: float = 0.0,
+        dropout_p: Optional[float] = None,
+    ) -> None:
+        if dropout_p is not None:
+            dropout = float(dropout_p)
+        super().__init__()
+        # Eager 2-layer MLP — bit-for-bit identical to the original
+        # ``nn.Sequential(Linear, ReLU, Dropout, Linear)`` shape.
+        self.eager = nn.Sequential(
+            nn.Linear(in_dim, hidden),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden, out_dim),
+        )
+        # Triton dispatch gate state — checked at forward time so the
+        # wrapper can be toggled by setting FUSED_RELU_MLP=1 in env.
+        self.dispatch_stats: Dict[str, int] = {
+            "triton_dispatch_attempted": 0,
+            "triton_dispatch_succeeded": 0,
+            "triton_dispatch_fell_back": 0,
+            "triton_dispatch_fallback": 0,
+        }
+        self._fused_module = None  # lazily resolved on first forward
+
+    def _maybe_resolve_fused(self) -> bool:
+        """Lazy-import the Triton kernel + gate decision. Returns
+        True iff the fused path is selected for this forward."""
+        if self._fused_module is not None:
+            return True
+        try:
+            import os as _os
+
+            if _os.environ.get("FUSED_RELU_MLP", "0") != "1":
+                return False
+            if not torch.cuda.is_available():
+                return False
+            from molmetal.adapters.flow_matching_lipman._reference import (  # noqa: E501
+                fused_relu_mlp as _frm,
+            )
+
+            self._fused_module = _frm
+            return True
+        except Exception:
+            return False
+
+    def forward(self, x: Tensor) -> Tensor:
+        if self._maybe_resolve_fused():
+            self.dispatch_stats["triton_dispatch_attempted"] += 1
+            try:
+                return self._fused_module.fused_relu_mlp(  # noqa: E501
+                    x, self.eager[0], self.eager[3]
+                )
+            except Exception:
+                self.dispatch_stats["triton_dispatch_fell_back"] += 1
+                return self.eager(x)
+        return self.eager(x)
+
+
 class MultiTaskWassersteinModel(nn.Module):
     """5-metal multi-task D-MPNN: shared encoder + per-metal heads.
 
@@ -887,11 +981,14 @@ class MultiTaskWassersteinModel(nn.Module):
         use_dann: bool = False,
         num_domains: int = 4,
         domain_head_dropout: float = 0.0,
+        # Wf-335-P3 — Triton dispatch gate (default OFF; env-gated).
+        use_triton_relu_mlp: bool = False,
     ):
         super().__init__()
         self.n_metals = int(n_metals)
         self.hidden = int(hidden)
         self.depth = int(depth)
+        self.use_triton_relu_mlp = bool(use_triton_relu_mlp)
 
         # ----- Shared encoder (re-uses DMPNNMultiTaskModel backbone) -----
         # The ``use_dann`` / ``num_domains`` / ``domain_head_dropout`` kwargs
@@ -917,28 +1014,31 @@ class MultiTaskWassersteinModel(nn.Module):
         self.num_domains: int = int(num_domains)
         self.domain_head = self.encoder.domain_head
         # ----- Per-metal heads: each is a (regression + classification) pair -----
-        self.reg_heads = nn.ModuleList(
-            [
-                nn.Sequential(
-                    nn.Linear(2 * hidden, hidden),
-                    nn.ReLU(),
-                    nn.Dropout(dropout),
-                    nn.Linear(hidden, 1),
-                )
-                for _ in range(n_metals)
-            ]
-        )
-        self.cls_heads = nn.ModuleList(
-            [
-                nn.Sequential(
-                    nn.Linear(2 * hidden, hidden),
-                    nn.ReLU(),
-                    nn.Dropout(dropout),
-                    nn.Linear(hidden, 2),
-                )
-                for _ in range(n_metals)
-            ]
-        )
+        # Wf-335-P3 — when ``use_triton_relu_mlp`` is set we swap the
+        # eager Sequential for the _FusedReLUMLPWrapper (which delegates
+        # back to eager on CPU + gate-closed per the §5.7 contract).
+        if self.use_triton_relu_mlp:
+            _head_reg_factory = lambda: _FusedReLUMLPWrapper(  # noqa: E731
+                in_dim=2 * hidden, hidden=hidden, out_dim=1, dropout=dropout
+            )
+            _head_cls_factory = lambda: _FusedReLUMLPWrapper(  # noqa: E731
+                in_dim=2 * hidden, hidden=hidden, out_dim=2, dropout=dropout
+            )
+        else:
+            _head_reg_factory = lambda: nn.Sequential(  # noqa: E731
+                nn.Linear(2 * hidden, hidden),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.Linear(hidden, 1),
+            )
+            _head_cls_factory = lambda: nn.Sequential(  # noqa: E731
+                nn.Linear(2 * hidden, hidden),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.Linear(hidden, 2),
+            )
+        self.reg_heads = nn.ModuleList([_head_reg_factory() for _ in range(n_metals)])
+        self.cls_heads = nn.ModuleList([_head_cls_factory() for _ in range(n_metals)])
 
     # ------------------------------------------------------------------
     # EMA — exponential moving average of the parameters (Karras 2022 EDM §5)
@@ -1042,41 +1142,10 @@ class MultiTaskWassersteinModel(nn.Module):
         return pic50, cls
 
 
-def collate_multimetal(
-    graphs: List[Optional[Tuple]],
-    metal_ids: List[int],
-    pic50: np.ndarray,
-    active: np.ndarray,
-):
-    """Collate a multi-metal batch.
-
-    Returns ``(atom_feats, bond_feats, edge_src, edge_dst, metal_ids_t,
-    pic50_t, active_t)`` — any with ``None`` graph is dropped.
-    """
-    from molmetal.baselines.dmpnn import collate_graphs
-
-    valid = []
-    for g, m, p, a in zip(graphs, metal_ids, pic50, active):
-        if g is None:
-            continue
-        # NaN check that handles both Python floats and numpy scalars
-        try:
-            if math.isnan(float(p)):
-                continue
-        except (TypeError, ValueError):
-            continue
-        valid.append((g, m, p, a))
-    if not valid:
-        return None
-    g_list = [v[0] for v in valid]
-    batch_data = collate_graphs(g_list)
-    if batch_data is None:
-        return None
-    atom_f, bond_f, e_src, e_dst = batch_data
-    metal_ids_t = torch.tensor([v[1] for v in valid], dtype=torch.long)
-    pic50_t = torch.tensor([v[2] for v in valid], dtype=torch.float32)
-    active_t = torch.tensor([v[3] for v in valid], dtype=torch.long)
-    return atom_f, bond_f, e_src, e_dst, metal_ids_t, pic50_t, active_t
+# `collate_multimetal` was extracted to molmetal/training/collate_multimetal.py
+# (Wf-??? monolith-split, 2026-10-05). Re-imported here as a backwards-compat
+# shim so existing callers — tests, scripts — keep working.
+from molmetal.training.collate_multimetal import collate_multimetal  # noqa: E402,F401
 
 
 def train_one_epoch_joint(
@@ -1424,10 +1493,9 @@ def predict_joint(
             batch_graphs, batch_mids, batch_pic50, batch_active
         )
         if batch_data is None:
-            for p, a in zip(batch_pic50, batch_active):
-                all_active.append(int(a))
-                all_score.append(0.0)
-                all_pic50.append(0.0)
+            # Wf-ultracode FIX — skip invalid rows entirely.  The unfixed
+            # behaviour appended (int(a), 0.0, 0.0) which biases ROC down
+            # for active=1 invalid SMILES (guaranteed false-negative).
             continue
         atom_f, bond_f, e_src, e_dst, mids_t, pic50_t, active_t = batch_data
         atom_f = atom_f.to(device)
@@ -1456,10 +1524,10 @@ def predict_joint(
                 all_score.append(float(active_prob[vi]))
                 all_pic50.append(float(pic50_arr[vi]))
                 vi += 1
-            else:
-                all_active.append(int(a))
-                all_score.append(0.0)
-                all_pic50.append(0.0)
+            # Wf-ultracode FIX — invalid rows are excluded entirely from
+            # y_true/y_score/y_pic50.  The unfixed code appended
+            # (int(a), 0.0, 0.0) which biased ROC down for active=1
+            # invalid SMILES (guaranteed false-negative).
 
     return (
         np.array(all_active, dtype=int),
@@ -1568,6 +1636,13 @@ def train_one_metal_one_seed(
     # way for the same reason: no access to the main()-scoped `args` here.
     use_ema: bool = False,
     ema_decay: float = 0.999,
+    # 2026-10-05 — ``--kendall`` CLI flag wire-in (AGENTS.md §5.7 FLAG_ONLY).
+    # The argparse block declared ``--use-kendall`` / ``--no-kendall`` →
+    # ``dest='kendall'`` but no reader existed in the trainer; this kwarg
+    # threads the value into ``MultiTaskLoss(use_kendall_loss=...)`` so the
+    # Kendall tau UW MTL loss actually fires when ``--use-kendall`` is set.
+    # Default False preserves Wf-131 P1 + Wf-251-F4 baseline bit-for-bit.
+    use_kendall_loss: bool = False,
 ) -> MetalSeedResult:
     """Train a 5-metal multi-task D-MPNN for one (metal, seed).
 
@@ -1578,6 +1653,7 @@ def train_one_metal_one_seed(
     """
     torch.manual_seed(seed)
     np.random.seed(seed)
+    random.seed(seed)
     if torch.cuda.is_available() and str(device).startswith("cuda"):
         torch.cuda.manual_seed_all(seed)
 
@@ -1630,6 +1706,23 @@ def train_one_metal_one_seed(
                 np.array([], dtype=np.int64),
                 np.array([], dtype=np.int64),
             )
+            print(
+                f"WARNING: metal {m!r} silently dropped from joint pool "
+                f"(build_metal_split_indices raised RuntimeError)",
+                file=sys.stderr,
+                flush=True,
+            )
+    # Wf-ultracode FIX — recompute n_metals_pool to reflect metals that
+    # actually contributed non-empty train indices (the bare-except above
+    # can silently drop a metal without raising).  Without this recompute,
+    # the model is constructed with n_metals=len(metals_in_pool)=5 even
+    # when only 4 metals actually joined, which corrupts the metal-embedding
+    # table indexing downstream.
+    if not single_task:
+        n_metals_pool = sum(
+            1 for m in metals_in_pool
+            if len(per_metal_indices[m][0]) > 0
+        )
 
     # Concatenate train rows from pool metals (5-metal joint OR Ru-only)
     train_pool_idx = np.concatenate(
@@ -1887,7 +1980,16 @@ def train_one_metal_one_seed(
                 f"failed: {exc}; falling back to alpha={alpha:.3f}.",
                 flush=True,
             )
-    criterion = MultiTaskLoss(alpha=effective_alpha)
+    # 2026-10-05 — ``--kendall`` CLI flag wire-in: thread the boolean into
+    # ``MultiTaskLoss(use_kendall_loss=...)`` so the Kendall tau UW MTL
+    # loss cascade activates when the user passes ``--use-kendall``.  See
+    # AGENTS.md §5.7 — the Wf-280D flag was declared in the argparse block
+    # but never reached the loss cascade; this closes that FLAG_ONLY gap.
+    # Default ``use_kendall_loss=False`` (the kwarg's default) keeps the
+    # no-flag path bit-for-bit identical to Wf-131 P1.
+    criterion = MultiTaskLoss(
+        alpha=effective_alpha, use_kendall_loss=use_kendall_loss,
+    )
 
     best_val_auc = -1.0
     best_state: Optional[Dict] = None
@@ -2090,11 +2192,21 @@ def train_one_metal_one_seed(
             )
 
     if best_state is None:
-        # Fallback: use last epoch weights
+        # Fallback: use last epoch weights.  Wf-ultracode FIX — set
+        # best_epoch = -1 as a sentinel so the downstream JSON surfaces
+        # the "no best AUC ever won" state honestly, instead of silently
+        # saving best_epoch=epochs + val_auc=NaN (the unfixed behaviour).
         best_state = {
             k: v.detach().cpu().clone() for k, v in model.state_dict().items()
         }
-        best_epoch = epochs
+        best_epoch = -1
+        print(
+            f"WARNING: {metal} seed={seed}: no epoch produced a finite "
+            f"val_auc that beat the initial -1.0 floor; falling back to "
+            f"last-epoch weights (best_epoch=-1, val_auc will be NaN).",
+            file=sys.stderr,
+            flush=True,
+        )
     train_seconds = time.time() - t_train
 
     # Reload best + eval on val + test (target metal only)
@@ -2393,25 +2505,13 @@ def _load_checkpoint_for_resume(
     return start_epoch, w_history
 
 
-def _safe_classification_metrics(
-    y_true: np.ndarray, y_score: np.ndarray
-) -> Dict[str, float]:
-    """ROC-AUC + count; NaN-safe if only one class is present."""
-    y_true = np.asarray(y_true).astype(int)
-    y_score = np.asarray(y_score).astype(float)
-    if y_true.size == 0 or len(np.unique(y_true)) < 2:
-        return {
-            "roc_auc": float("nan"),
-            "n": int(y_true.size),
-            "n_pos": int(y_true.sum()) if y_true.size else 0,
-            "n_neg": int((1 - y_true).sum()) if y_true.size else 0,
-        }
-    return {
-        "roc_auc": float(roc_auc_score(y_true, y_score)),
-        "n": int(y_true.size),
-        "n_pos": int(y_true.sum()),
-        "n_neg": int((1 - y_true).sum()),
-    }
+# `_safe_classification_metrics` was extracted to
+# molmetal/training/classification_metrics.py (Wf-??? monolith-split,
+# 2026-10-05). Re-imported here as a backwards-compat shim so existing
+# callers — tests, scripts — keep working.
+from molmetal.training.classification_metrics import (  # noqa: E402,F401
+    _safe_classification_metrics,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -2498,6 +2598,30 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=DEFAULT_WASSERSTEIN_WEIGHT,
         help="Wasserstein pIC50 loss weight w_w (default 0.05).",
     )
+    # Wf-357-D2 / Wf-358-B1 — W₁ vs W₂ dispatch flag (default OFF; backward
+    # compat with Wf-131 P1 + Wf-181 G5 / Wf-182 G6 path preserved).
+    p.add_argument(
+        "--wasserstein-w1",
+        "--use-wasserstein-w1",
+        dest="use_wasserstein_w1",
+        action="store_true",
+        default=False,
+        help=(
+            "Use Wasserstein W₁ (mean abs sort-diff) penalty instead of "
+            "the W₂ (sliced) default. Off by default."
+        ),
+    )
+    p.add_argument(
+        "--wasserstein-2",
+        "--use-wasserstein-2",
+        dest="use_wasserstein_2",
+        action="store_true",
+        default=False,
+        help=(
+            "Use Wasserstein W₂ (RMS sort-diff) closed form via "
+            "wasserstein_2_1d_torchsort. Off by default."
+        ),
+    )
     # Wf-197 ablation: --single-task restricts joint training pool to the
     # target metal only (no 5-metal cohort sharing). Default OFF (multi-task).
     p.add_argument(
@@ -2556,6 +2680,24 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "shipped behaviour) or sort (closed-form 1-D torch.sort; "
         "more numerically stable; modest AUC lift).",
     )
+    # Wf-335-P3 — Triton kernel dispatch flags (default OFF; env-gated
+    # at runtime so CPU-only test hosts fall through to PyTorch ref).
+    for _flag, _dest in (
+        ("--use-triton-relu-mlp", "use_triton_relu_mlp"),
+        ("--use-triton-wasserstein-sliced", "use_triton_wasserstein_sliced"),
+        ("--use-triton-bond-head", "use_triton_bond_head"),
+        ("--use-triton-smiles-featurize", "use_triton_smiles_featurize"),
+    ):
+        p.add_argument(
+            _flag,
+            dest=_dest,
+            action="store_true",
+            default=False,
+            help=(
+                f"Triton dispatch gate for {_dest} (default OFF; env-gated). "
+                f"See molmetal/adapters/flow_matching_lipman/_reference/."
+            ),
+        )
     p.add_argument(
         "--use-l2-guard",
         dest="use_l2_guard",
@@ -3203,6 +3345,48 @@ def main(argv: Optional[List[str]] = None) -> int:
         f"gradient_accumulation_steps={args.gradient_accumulation_steps}",
         flush=True,
     )
+    # 2026-10-05 — ``--cpu-num-workers`` CLI flag acknowledgement
+    # (AGENTS.md §5.7 FLAG_ONLY).  The argparse block declared the flag
+    # but never read it; this trainer builds batches manually (no torch
+    # DataLoader), so the flag is structurally a no-op.  Acknowledge the
+    # user-supplied value here so the CLI value reaches stdout and is
+    # traceable in the run log, matching the existing [dmpnn-flags]
+    # banner.  When ``cpu_num_workers > 0`` we ALSO emit a one-time
+    # informational note that the value is currently not consumed (the
+    # Wf-405-A2 recipe has no DataLoader to thread workers into).
+    _cpu_nw = int(getattr(args, "cpu_num_workers", 0))
+    print(
+        f"[dmpnn-flags] cpu_num_workers={_cpu_nw}",
+        flush=True,
+    )
+    if _cpu_nw > 0:
+        print(
+            f"[dmpnn-flags] NOTE: --cpu-num-workers {_cpu_nw} is "
+            "currently a structural no-op for this trainer (manual batch "
+            "build, no torch DataLoader). The value is acknowledged above "
+            "and a future Wf may thread it into the featuriser worker "
+            "pool; until then, --cpu-num-workers 0 has identical "
+            "training dynamics.",
+            flush=True,
+        )
+    # 2026-10-05 — ``--cal-sign-vina-convention`` CLI flag
+    # acknowledgement (AGENTS.md §5.7 FLAG_ONLY no-op-when-read).  The
+    # flag IS read in main() and threaded through to
+    # ``train_one_epoch_joint()`` (see line 1933 / 1508), but the only
+    # consumer — the ``metal_coord_term=True`` branch — raises
+    # ``SystemExit`` (line ~1331).  When ``metal_coord_term=False``
+    # (the only path that runs to completion), the flag's value has
+    # zero training-dynamic effect.  We acknowledge the value here so
+    # the CLI flag is non-dead in the run log, and to give downstream
+    # readers a hook to correlate the user's --(no-)cal-sign-vina-
+    # convention choice with the run's outputs.
+    _cal_sign = bool(getattr(args, "cal_sign_vina_convention", True))
+    print(
+        f"[dmpnn-flags] cal_sign_vina_convention={_cal_sign} "
+        "(effective: metal_coord_term path; SystemExit'd branches "
+        "make this flag a no-op when --metal-coord-term is False)",
+        flush=True,
+    )
     args.out_dir.mkdir(parents=True, exist_ok=True)
     # Wf-A10 — default the checkpoint dir to <out_dir>/checkpoints so a run
     # can no longer read or write the shared molmetal/checkpoints/ tree
@@ -3585,6 +3769,17 @@ def main(argv: Optional[List[str]] = None) -> int:
                         getattr(args, "per_cohort_features", False)
                     ),
                     use_dann=bool(getattr(args, "dann", False)),
+                    # 2026-10-05 — ``--kendall`` CLI flag wire-in
+                    # (AGENTS.md §5.7 FLAG_ONLY).  Match the ``dann``
+                    # pattern above: ``getattr(args, "kendall", False)``
+                    # preserves the Wf-131 P1 baseline (no Kendall UW MTL
+                    # loss) on the no-flag path.  ``--use-kendall`` activates
+                    # the Kendall tau UW MTL cascade via the new
+                    # ``use_kendall_loss`` kwarg threaded into
+                    # ``train_one_metal_one_seed()``.
+                    use_kendall_loss=bool(
+                        getattr(args, "kendall", False)
+                    ),
                     # Wf-432-A2 — Wf-246-C metal-coordination term
                     # wire-in (Fix-B).  These kwargs thread from main()
                     # into ``train_one_metal_one_seed()`` →

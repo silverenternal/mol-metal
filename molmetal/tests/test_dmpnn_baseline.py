@@ -279,10 +279,18 @@ def test_train_dmpnn_multitask_cli_importable():
 
 
 def test_splitter_factories_keys():
-    """SPLITTER_FACTORIES exposes the documented splitter keys."""
+    """SPLITTER_FACTORIES exposes the documented splitter keys.
+
+    Note: two extra splitters (``size``, ``assay``) were added after
+    this test was written (Wf-251-F4 + Wf-280D).  The test only
+    asserts the *original* documented keys are present, not that the
+    set is exactly that superset — additive extensions are fine.
+    """
     expected = {"random", "ligand_dedup", "scaffold", "temporal", "chemical"}
     actual = set(SPLITTER_FACTORIES.keys())
-    assert expected == actual, f"Expected splitters {expected}, got {actual}"
+    assert expected.issubset(actual), (
+        f"Missing splitters {expected - actual}; got {actual}"
+    )
 
 
 # ---------------------------------------------------------------------------

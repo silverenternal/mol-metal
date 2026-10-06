@@ -100,6 +100,10 @@ def run_one_pair(
         str(DEFAULT_CSV),
         "--out-dir",
         str(OUT_DIR),
+        # Wf-C2: --out-metric has no default since the trainer guard landed;
+        # without an explicit path this sweep would exit 3.
+        "--out-metric",
+        str(OUT_DIR / "metrics.json"),
     ]
     env = os.environ.copy()
     # Cap threads per process so 4 parallel runs share the 32 cores.

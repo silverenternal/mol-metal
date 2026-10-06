@@ -1,6 +1,6 @@
 # Wf-84 Phase 2 — Vina install STUB_FALLBACK
 
-**Date**: 2026-09-27T03:14:42+0800
+**Date**: 2026-10-05T01:48:45+0800
 **Status**: STUB_FALLBACK — no real Vina binary reachable on this host.
 
 ## What was attempted

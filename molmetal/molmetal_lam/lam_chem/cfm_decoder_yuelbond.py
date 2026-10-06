@@ -75,6 +75,7 @@ from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
     YuelBondDecoder,
     YuelBondDecoderHead,
     YuelBondResult,
+    bond_decision as _bond_decision,
 )
 from molmetal.molmetal_lam.lam_chem.decoder_rework import (
     DEFAULT_VALENCES,
@@ -134,9 +135,20 @@ _COVALENT_VALENCE: Dict[int, int] = {
     7: 3,  # N (sp3-amine; aromatic N counts as 3 with one double)
     8: 2,  # O
     9: 1,  # F
+    # 2026-10-05 NEW — B, Si and As.  These fell through to the unknown-Z
+    # default of 4, and a cap that is too HIGH is not a neutral fallback: it
+    # authorises the selector to build a bond RDKit then rejects.  MEASURED on
+    # a 200-cloud tmQM val sample the prior hit exactly this: a complex with
+    # one B atom decoded to "Explicit valence for atom # 35 B, 4, is greater
+    # than permitted" once a fourth bond was placed on it (B appears 6x in
+    # that sample, Si 18x, As 1x).  RDKit's own default valences are B 3,
+    # Si 4, As 3.
+    5: 3,  # B
+    14: 4,  # Si
     15: 3,  # P
     16: 2,  # S
     17: 1,  # Cl
+    33: 3,  # As
     34: 2,  # Se
     35: 1,  # Br
     53: 1,  # I
@@ -150,6 +162,15 @@ _COVALENT_VALENCE: Dict[int, int] = {
     46: 4,  # Pd_II
     26: 4,  # Fe_II (default; rare in SBDD ligand sets)
     28: 4,  # Ni_II
+    # 2026-10-05 NEW — Rh, Re and Os.  These are THREE OF THE SIX METALS THIS
+    # PROJECT TARGETS and they were absent, so they took the default of 4.
+    # MEASURED on a 200-cloud tmQM val sample: Rh appears 32x, Re 2x, Os 2x.
+    # An octahedral ceiling is the conservative choice — a cap that is too
+    # LOW only costs a bond, while a cap that is too HIGH produces a molecule
+    # RDKit refuses, and the decode is lost outright.
+    45: 6,  # Rh (octahedral — the common Rh(III) count)
+    75: 6,  # Re (octahedral)
+    76: 6,  # Os (octahedral)
 }
 
 
@@ -203,12 +224,19 @@ class YuelBondDecodeResult:
         an atom overvalent.  Diagnostic for the post-R18 reset (large
         counts here mean the head is over-confident; small counts mean
         the cap is not the bottleneck).
+    bonds_added_connectivity : int
+        Round-3 D2: how many bonds the connectivity prior ADDED to join two
+        heavy-atom components.  Non-zero means the raw selector left the graph
+        fragmented and the prior closed it; zero on an already-connected
+        decode.  Tracked separately from ``bonds_accepted`` (which is the
+        selector's own count plus these) so the two effects stay separable.
     """
 
     decoded: DecodedMol
     yuelbond_result: YuelBondResult
     bonds_accepted: int = 0
     bonds_rejected_overvalent: int = 0
+    bonds_added_connectivity: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -259,6 +287,10 @@ class YuelBondBondDecoder:
         n_layers: int = 3,
         distance_cutoff: float = 3.5,
         valence_cap: Optional[Dict[int, int]] = None,
+        decision: str = "argmax",
+        decision_threshold: float = 0.5,
+        connectivity_prior: bool = True,
+        connectivity_prior_min_logit: float = 0.0,
     ) -> None:
         self._decoder = YuelBondDecoder(
             head=head,
@@ -270,6 +302,62 @@ class YuelBondBondDecoder:
         else:
             self.distance_cutoff = float(distance_cutoff)
         self.valence_cap = covalent_valence_table(valence_cap)
+        # 2026-10-05 — HOW PER-PAIR LOGITS BECOME A CLASS.
+        #
+        # This decoder hardcoded `argmax` in `_select_bonds`, so the decision
+        # rule configured under `flow.bond_decision` in the yaml reached the
+        # METRICS (`evaluate_bond_accuracy` calls the trainer's
+        # `_bond_decision`) but never reached the DECODER.  The consequence is
+        # that the reported bond F1 / exact-type and the molecules actually
+        # assembled into an RDKit Mol came from two different rules.
+        #
+        # MEASURED on the epoch-9 checkpoint, on real tmQM geometry, the two
+        # agree pair-for-pair (624/2141 bonded under argmax, 0.5 and 0.3), so
+        # this gap is NOT what produces the fragmented decodes — it is a real
+        # wiring bug with no measured effect at that operating point.  It is
+        # fixed here because it silently couples the headline metrics to a
+        # rule the config does not control, and that coupling disappears the
+        # moment the operating point moves.
+        self.decision = str(decision)
+        self.decision_threshold = float(decision_threshold)
+        if self.decision not in ("argmax", "threshold"):
+            # Fail HERE, not at the first decode.  A yaml typo like
+            # `bond_decision: treshold` otherwise decodes with argmax and the
+            # only symptom is molecules that do not match the reported
+            # metrics — discovered, if at all, days later.
+            raise ValueError(
+                f"unknown bond decision rule {self.decision!r}; expected "
+                f"'argmax' or 'threshold'"
+            )
+        # 2026-10-05 (Round-3 D2) — CONNECTIVITY PRIOR AT INFERENCE TIME.
+        #
+        # The selector above is purely PER-PAIR: it takes each candidate edge
+        # on its own logits and a per-atom valence cap.  Nothing in it knows
+        # whether the graph it is assembling is ONE molecule or six loose
+        # fragments held together by spatial proximity.  That is why
+        # MEASURED on the tmQM all6 retrain (2026-10-04) `largest_fragment_frac`
+        # climbs 0.21 -> 0.47 across epochs while `single_fragment_ratio` only
+        # reaches 0.167: the model gets better at drawing ONE big blob, and
+        # never at joining the blob to the rest of the cloud.
+        #
+        # This is POSTPROCESS in the decoder, NOT a loss term.  An already
+        # trained checkpoint therefore benefits the moment the flag is on --
+        # no retrain, no re-derivation of the training objective, and the
+        # bonds it adds come from the head's OWN logits, so it can only
+        # reorder which candidate edges become bonds, never invent geometry.
+        #
+        # It is deliberately one-sided: it can only ADD a bridging bond between
+        # two heavy atoms the head already emitted as a candidate (i.e. already
+        # inside the 3.5 A cutoff), and only when the remaining valence budget
+        # allows.  It never deletes a bond the selector kept, so turning it OFF
+        # restores the historical decode bit-exactly.
+        self.connectivity_prior = bool(connectivity_prior)
+        #: A bridging candidate is only eligible if its strongest non-NO_BOND
+        #: logit clears this bar.  0.0 means "any candidate the head emitted",
+        #: which is the geometric-cutoff prior and nothing more.  Raising it
+        #: makes the prior defer to the head's confidence; it is a PRIOR, not
+        #: a tuned value, and the flag is the honest control.
+        self.connectivity_prior_min_logit = float(connectivity_prior_min_logit)
 
     # ------------------------------------------------------------------
     # Public API
@@ -294,13 +382,25 @@ class YuelBondBondDecoder:
             cloud,
             yres,
         )
+        # Step 2b (Round-3 D2): connectivity prior — POSTPROCESS, after bond
+        # selection and before assembly.  No-op when `connectivity_prior` is
+        # False, so the pre-D2 decode is reproduced bit-exactly.
+        n_bridges = 0
+        if self.connectivity_prior and bond_orders:
+            bond_orders, dative_bonds, n_bridges = self._bridge_components(
+                cloud,
+                yres,
+                bond_orders,
+                dative_bonds,
+            )
         # Step 3: assemble into an RDKit Mol.
         decoded = self._assemble_mol(cloud, bond_orders, dative_bonds)
         return YuelBondDecodeResult(
             decoded=decoded,
             yuelbond_result=yres,
-            bonds_accepted=n_kept,
+            bonds_accepted=n_kept + n_bridges,
             bonds_rejected_overvalent=n_overvalent,
+            bonds_added_connectivity=n_bridges,
         )
 
     # ------------------------------------------------------------------
@@ -337,8 +437,11 @@ class YuelBondBondDecoder:
         n_atoms = cloud.atomic_numbers.shape[0]
         if edge_index.shape[1] == 0:
             return [], [], 0, 0
-        # Per-pair argmax — predict discrete bond order.
-        predicted = torch.argmax(logits, dim=-1).tolist()
+        # 2026-10-05 — the decision rule is a CONFIGURED INPUT, not a
+        # hardcoded argmax. See `__init__` for why this was a real gap.
+        predicted = _bond_decision(
+            logits, self.decision, self.decision_threshold
+        )
         # Confidence score = max logit per pair (skip NO_BOND class for
         # a stronger "is this pair bonded" signal).
         # max_logit[i] = max(logits[i, 1:])  (excluding class 0)
@@ -402,6 +505,147 @@ class YuelBondBondDecoder:
                 else:
                     dative_bonds.append((i, j))
         return bond_orders, dative_bonds, n_kept, n_overvalent
+
+    # ------------------------------------------------------------------
+    # Round-3 D2 — connectivity prior (POSTPROCESS, inference time).
+    # ------------------------------------------------------------------
+    def _bridge_components(
+        self,
+        cloud: AtomCloud,
+        yres: YuelBondResult,
+        bond_orders: List[Tuple[int, int, int]],
+        dative_bonds: List[Tuple[int, int]],
+    ) -> Tuple[List[Tuple[int, int, int]], List[Tuple[int, int]], int]:
+        """Add the highest-scoring bonds that JOIN two heavy-atom components.
+
+        Why this exists
+        ---------------
+        MEASURED on the tmQM all6 retrain (2026-10-04): across 20 epochs
+        ``largest_fragment_frac`` rose 0.21 -> 0.47 while
+        ``single_fragment_ratio`` only reached 0.167.  The head is learning to
+        draw a bigger single blob, not to join the blob to the rest of the
+        cloud.  ``_select_bonds`` cannot fix this by construction: it scores
+        each candidate edge independently and has no notion of a component.
+
+        Algorithm
+        ---------
+        1. Union-find the heavy atoms over the ALREADY-SELECTED bonds.
+        2. If there is one component (or zero heavy atoms), return unchanged.
+        3. Repeatedly take the candidate pair ``(i, j)`` of heavy atoms in
+           DIFFERENT components with the highest non-``NO_BOND`` logit that
+           is not already a bond and whose single-bond valence cost still fits
+           both atoms' remaining budget.  Add it as a ``BOND_SINGLE`` and union.
+        4. Stop at one component, when no candidate qualifies, or when a full
+           pass adds nothing (guards against a cycle if the two steps above
+           ever disagree).
+
+        What it can and cannot do, stated plainly
+        -----------------------------------------
+        * It only ADDS, and only between heavy atoms the head already emitted
+          as a candidate — i.e. already inside the 3.5 A cutoff.  It never
+          invents a long-range bond and never deletes a bond the selector
+          kept, so ``connectivity_prior=False`` reproduces the pre-D2 decode
+          bit-exactly.
+        * A bridging edge is added as ``BOND_SINGLE`` regardless of the
+          head's argmax class.  The head's class prediction on a pair it
+          called ``NO_BOND`` is by construction not meaningful, and paying the
+          cheapest possible valence cost is what keeps the added bond from
+          pushing an atom over its cap and failing RDKit sanitisation.  The
+          head's LOGIT still decides WHICH pair is added, so the choice of
+          edge is the model's, not this code's.
+        * Hydrogens are excluded from the component count (a stranded H is a
+          valence detail, not a separate molecule) and cannot be a bridge
+          endpoint, for the same reason.
+        * This does not make the model better; it makes an existing checkpoint
+          assemble more of what it already predicts as one molecule.  The
+          paired D1 loss is what moves the training objective.
+        """
+        logits = yres.logits.detach()
+        edge_index = yres.edge_index
+        if edge_index.shape[1] == 0:
+            return bond_orders, dative_bonds, 0
+        z_list = [int(z) for z in cloud.atomic_numbers.tolist()]
+        n_atoms = len(z_list)
+        # Heavy atoms only: H is a valence detail, not a fragment.
+        heavy = [i for i in range(n_atoms) if z_list[i] != 1]
+        if len(heavy) < 2:
+            return bond_orders, dative_bonds, 0
+
+        # --- union-find over the selected bonds -----------------------------
+        parent = list(range(n_atoms))
+
+        def _find(a: int) -> int:
+            while parent[a] != a:
+                parent[a] = parent[parent[a]]
+                a = parent[a]
+            return a
+
+        def _union(a: int, b: int) -> bool:
+            ra, rb = _find(a), _find(b)
+            if ra == rb:
+                return False
+            parent[rb] = ra
+            return True
+
+        have = set()
+        for i, j, _o in bond_orders:
+            have.add((i, j) if i < j else (j, i))
+            _union(i, j)
+        n_components = len({_find(i) for i in heavy})
+        if n_components <= 1:
+            return bond_orders, dative_bonds, 0
+
+        # --- remaining valence budget from the selected bonds --------------
+        remaining = [int(self.valence_cap.get(z, 4)) for z in z_list]
+        for i, j, order in bond_orders:
+            cost = _CLASS_VALENCE_COST.get(int(order), 1.0)
+            remaining[i] -= cost
+            remaining[j] -= cost
+
+        # --- candidate bridging edges, scored by the head's own logit -------
+        # `max(logits[:, 1:])` is the same confidence the selector uses, so
+        # the prior and the selector rank the head the same way.
+        best_logit = logits[:, 1:].max(dim=-1).values.tolist()
+        candidates = []
+        for k in range(edge_index.shape[1]):
+            i = int(edge_index[0][k])
+            j = int(edge_index[1][k])
+            if i == j or i >= n_atoms or j >= n_atoms:
+                continue
+            if z_list[i] == 1 or z_list[j] == 1:
+                continue
+            key = (i, j) if i < j else (j, i)
+            if key in have:
+                continue
+            score = float(best_logit[k])
+            if score < self.connectivity_prior_min_logit:
+                continue
+            candidates.append((score, i, j))
+        candidates.sort(key=lambda t: t[0], reverse=True)
+
+        # --- greedily bridge ----------------------------------------------
+        n_added = 0
+        for _score, i, j in candidates:
+            if n_components <= 1:
+                break
+            if _find(i) == _find(j):
+                continue
+            if remaining[i] < 1.0 or remaining[j] < 1.0:
+                continue
+            bond_orders.append((i, j, BOND_SINGLE))
+            remaining[i] -= 1.0
+            remaining[j] -= 1.0
+            have.add((i, j) if i < j else (j, i))
+            # Mirror `_select_bonds`' dative convention for a metal-donor pair.
+            if self._is_dative_pair(z_list[i], z_list[j]):
+                if self._is_metal(z_list[i]) and not self._is_metal(z_list[j]):
+                    dative_bonds.append((j, i))
+                else:
+                    dative_bonds.append((i, j))
+            if _union(i, j):
+                n_components -= 1
+                n_added += 1
+        return bond_orders, dative_bonds, n_added
 
     # ------------------------------------------------------------------
     # RDKit assembly (mirrors BondAwareDecoder._assemble_mol contract)

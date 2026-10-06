@@ -150,6 +150,52 @@ def z_to_onehot(z: torch.Tensor, z_table: Tuple[int, ...] = _YUELBOND_Z_TABLE) -
     return F.one_hot(idx, num_classes=len(z_table)).float()
 
 
+def bond_decision(
+    logits: torch.Tensor,
+    decision: str = "argmax",
+    threshold: float = 0.5,
+) -> list:
+    """Turn per-pair class logits into predicted bond classes.
+
+    Lives HERE, in the library, because two consumers need it and must not
+    disagree: the metric path (``evaluate_bond_accuracy``) and the decode path
+    (``YuelBondBondDecoder._select_bonds``).  When the decode path hardcoded
+    ``argmax`` while the metrics used a threshold, the reported bond F1 and the
+    molecules actually assembled into an RDKit ``Mol`` came from two different
+    rules — a wiring gap invisible in the code and meaningless in the numbers
+    only for as long as the two happened to agree.
+
+    ``argmax`` — the historical rule.  MEASURED to be badly calibrated in both
+    directions on this task: with unweighted CE it collapsed to recall 0.007
+    (F1 0.013) while the same logits reached F1 0.46-0.50 under a threshold,
+    and with full inverse-frequency weights it swung to recall 0.97 /
+    precision 0.32.  Four of five classes are overwhelmingly BOND_NO_BOND, so
+    the argmax boundary sits nowhere near a useful operating point, and class
+    weighting MOVES it rather than fixing it.
+
+    ``threshold`` — existence is decided by ``P(bonded) >= threshold``, and the
+    class is the argmax over the NON-zero classes.  This decouples "is there a
+    bond" from "which bond", which is what the data supports: the existence
+    question has a ~29% positive rate, the type question is nearly
+    deterministic given existence.
+    """
+    if decision == "argmax":
+        return logits.argmax(dim=-1).tolist()
+    if decision != "threshold":
+        raise ValueError(
+            f"unknown bond decision rule {decision!r}; expected 'argmax' or "
+            f"'threshold'. A typo here would otherwise fall through to the "
+            f"argmax branch and silently decode with the wrong rule."
+        )
+    prob = torch.softmax(logits.float(), dim=-1)
+    p_bonded = 1.0 - prob[:, 0]  # column 0 is BOND_NO_BOND
+    types = prob[:, 1:].argmax(dim=-1) + 1
+    return [
+        int(types[k]) if float(p_bonded[k]) >= threshold else 0
+        for k in range(logits.shape[0])
+    ]
+
+
 def _z_to_onehot(z: torch.Tensor) -> torch.Tensor:
     """Map atomic numbers to one-hot indices into :data:`_YUELBOND_Z_TABLE`.
 
@@ -239,6 +285,22 @@ class YuelBondDecoderHead(nn.Module):
         with all pairs closer than :attr:`cutoff`.  Pairs at distance
         ``> cutoff`` are NOT returned (caller should treat them as
         ``NO_BOND``); pairs at ``< min_distance`` are clamped.
+
+        The message-passing update is the standard MPNN one — every edge
+        informs BOTH endpoints, the message is passed through a ReLU, and the
+        result is added residually::
+
+            h_i <- h_i + sum_j ReLU(MLP([h_i, h_j, d_ij, flags]))
+            h_j <- h_j + sum_i ReLU(MLP([h_j, h_i, d_ij, flags]))
+
+        2026-10-05 — this is the variant the CFM trainer's
+        ``_device_safe_yuelbond_forward`` monkey-patch has been installing at
+        import time, and therefore the one every shipped checkpoint was
+        trained under.  The module was aligned to the patch rather than the
+        reverse, which makes the alignment a no-op for existing weights;
+        aligning the other way would have invalidated all of them.  The
+        monkey-patch is gone and this is the single definition.  See
+        ``molmetal/tests/test_yuelbond_forward_alignment.py``.
         """
         # 2026-10-05 FIX — the head must run where its WEIGHTS are, and the
         # cloud must be moved there.  `forward` used to consume the cloud's
@@ -314,14 +376,27 @@ class YuelBondDecoderHead(nn.Module):
             | (atomic_numbers[i_idx] == 16)
         ) & (atomic_numbers[j_idx] == 78)
         is_dative = is_dative.float().unsqueeze(-1)
-        # K message-passing iterations
+        # K message-passing iterations.
+        #
+        # 2026-10-05 — this loop is the variant the trainer's
+        # `_device_safe_yuelbond_forward` monkey-patch has been installing at
+        # import time, and it is the one every shipped CFM checkpoint was
+        # TRAINED under.  Per the user's decision, the module is aligned to the
+        # patch rather than the reverse, so aligning is a NO-OP for existing
+        # weights: same activation, same bidirectional aggregation, same
+        # residual.  `molmetal/tests/test_yuelbond_forward_alignment.py`
+        # pins the three steps so neither variant can drift back.
+        #
+        # What the module's own version used to do, kept here for the record:
+        # no activation, aggregate into `i_idx` only, no residual. That is not
+        # the standard MPNN update (Gilmer 2017 and every PyG/DGL/SchNet/MACE
+        # implementation aggregate each edge in BOTH directions and add a
+        # residual), so the patch is the better of the two on its own terms.
         for k in range(self.n_layers):
-            h_i = h[i_idx]
-            h_j = h[j_idx]
             msg_in = torch.cat(
                 [
-                    h_i,
-                    h_j,
+                    h[i_idx],
+                    h[j_idx],
                     d.unsqueeze(-1),
                     is_short,
                     is_long,
@@ -330,17 +405,17 @@ class YuelBondDecoderHead(nn.Module):
                 dim=-1,
             )
             msg = self.msg_mlps[k](msg_in)
-            # Aggregate by scatter-add onto each atom's h
-            h_new = h.clone()
-            h_new.index_add_(0, i_idx, msg)
-            h = h_new
+            h = h.clone()
+            h = h + torch.zeros_like(h).index_add_(
+                0,
+                i_idx,
+                torch.relu(msg),
+            ).index_add_(0, j_idx, torch.relu(msg))
         # Pair head
-        h_i_final = h[i_idx]
-        h_j_final = h[j_idx]
         pair_in = torch.cat(
             [
-                h_i_final,
-                h_j_final,
+                h[i_idx],
+                h[j_idx],
                 d.unsqueeze(-1),
                 is_dative,
                 is_short,

@@ -36,6 +36,7 @@ import torch
 
 from molmetal.scripts.train_metal_lomo_wasserstein import (
     WassersteinLOMORunner,
+    WassersteinLOMOSplitter,
     _aggregate,
     _parse_args,
     append_synthetic_rh_to_dataset,
@@ -124,7 +125,11 @@ class TestParseArgs:
         assert ns.metals == ["Ru", "Ir", "Os", "Rh", "Re"]
         assert ns.seeds == [0, 1, 2]
         assert ns.epochs == 30
-        assert ns.wasserstein_weight == 0.05
+        # Wf-E1 (2026-10-05): the W2 term is OFF by default. It was 0.05
+        # until Wf-C3 measured it as a detached no-op costing 2.4x
+        # wall-time; the real gradient now requires --wasserstein-real.
+        assert ns.wasserstein_weight == 0.0
+        assert ns.wasserstein_real is False
         assert ns.rh_oversample == 500
         assert ns.n_mc == 32
         # Wf-127 P2 + P3 guards default off (backward-compat with Wf-125 P2).
@@ -295,6 +300,69 @@ class TestWassersteinLOMORunnerSmoke:
         assert res.fold == "Ru"
         assert 0.0 <= res.test_auc <= 1.0
 
+    def test_w2_off_by_default_reports_zero_effective_weight(self, tiny_dataset):
+        """Wf-E1 — a requested weight with no ``--wasserstein-real`` must be
+        recorded as NOT applied, so the emitted JSON cannot imply the model
+        was W₂-regularised."""
+        runner = WassersteinLOMORunner(
+            ds=tiny_dataset,
+            held_out_metal="Ru",
+            wasserstein_weight=0.05,
+            hidden=32,
+            depth=1,
+            dropout=0.0,
+            lr=1e-3,
+            epochs=1,
+            batch_size=8,
+            alpha=0.5,
+            seed=0,
+            device=torch.device("cpu"),
+            synthetic_rh_count=0,
+            wasserstein_real=False,
+        )
+        assert runner.w2_enabled is False
+        res = runner.run(verbose=False)
+        assert res.wasserstein_weight == 0.05  # what was asked for
+        assert res.w2_real is False  # what actually happened
+        assert res.w2_effective_weight == 0.0
+        # No W2 work means no W2 diagnostics (and none of their wall-time).
+        assert res.final_per_metal_w2 == {}
+
+    def test_smoke_runs_with_real_w2(self, tiny_dataset):
+        """Wf-E1 — ``--wasserstein-real`` must survive a full training loop.
+
+        The W2 graph is built once per epoch and back-propagated once, so the
+        failure mode this guards is ``RuntimeError: Trying to backward
+        through the graph a second time`` on the second batch of an injection
+        epoch. It is not reachable from a single-batch smoke, hence the
+        2-epoch run with a small batch size (many batches per epoch).
+        """
+        runner = WassersteinLOMORunner(
+            ds=tiny_dataset,
+            held_out_metal="Ru",
+            wasserstein_weight=0.05,
+            hidden=32,
+            depth=1,
+            dropout=0.0,
+            lr=1e-3,
+            epochs=2,
+            batch_size=8,
+            alpha=0.5,
+            seed=0,
+            device=torch.device("cpu"),
+            synthetic_rh_count=0,
+            wasserstein_real=True,
+        )
+        assert runner.w2_enabled is True
+        res = runner.run(verbose=False)
+        assert res.w2_real is True
+        assert res.w2_effective_weight == 0.05
+        assert 0.0 <= res.test_auc <= 1.0
+        # The W2 diagnostics only exist when W2 is actually on.
+        assert isinstance(res.wasserstein_loss_history, list)
+        assert len(res.wasserstein_loss_history) == 2
+        assert isinstance(res.final_per_metal_w2, dict)
+
     def test_smoke_completes_with_l2_and_astr_guards(self, tiny_dataset):
         # Wf-127 P2 + P3 guards engaged together: grad-norm clip + pIC50
         # value-space clip.  Confirms the flags round-trip into the
@@ -411,3 +479,152 @@ class TestMainSmoke:
         # so the synthesis report can render them honestly.
         assert "rh_target_hit" in payload
         assert "overall_target_hit" in payload
+
+
+# ---------------------------------------------------------------------------
+# Wf-A3 — synthetic Rh routing + two-cohort class balance
+#
+# Regression cover for the defect found in the 2026-10-05 audit: the
+# synthetic Rh rows carry ``Metal == "Rh"`` by design, so a plain
+# ``metals == held_out`` test mask swept all 500 of them into the Rh TEST
+# fold (82 % of a 608-row test set, every one labelled inactive, none of them
+# ever trained on) and the reported Rh test AUC was measured mostly on
+# fabricated rows.
+# ---------------------------------------------------------------------------
+
+
+class TestSyntheticRhRouting:
+    def test_synthetic_rows_never_reach_the_held_out_test_fold(
+        self, tiny_dataset, rh_cohort_path
+    ):
+        ds, n = append_synthetic_rh_to_dataset(
+            tiny_dataset, rh_cohort_path, n_target=60
+        )
+        assert n == 60
+        synth = (ds.df["Cell_line"].astype(str) == "SYNTHETIC_RH").to_numpy()
+        assert int(synth.sum()) == 60
+
+        for metal in ("Rh", "Ru", "Ir"):
+            split = WassersteinLOMOSplitter(held_out_metal=metal, seed=0)(ds)
+            assert int(synth[split.test_idx].sum()) == 0, (
+                f"synthetic rows leaked into the {metal} test fold"
+            )
+            # They must still be trained on, not silently dropped.
+            assert int(synth[split.train_idx].sum()) == 60
+
+    def test_synthetic_rows_never_reach_val(self, tiny_dataset, rh_cohort_path):
+        ds, _ = append_synthetic_rh_to_dataset(
+            tiny_dataset, rh_cohort_path, n_target=60
+        )
+        synth = (ds.df["Cell_line"].astype(str) == "SYNTHETIC_RH").to_numpy()
+        split = WassersteinLOMOSplitter(held_out_metal="Rh", seed=0)(ds)
+        assert int(synth[split.val_idx].sum()) == 0
+
+    def test_test_fold_is_real_rows_only(self, tiny_dataset, rh_cohort_path):
+        """With the fix the Rh test fold is the real Rh rows, unchanged."""
+        ds, _ = append_synthetic_rh_to_dataset(
+            tiny_dataset, rh_cohort_path, n_target=60
+        )
+        split = WassersteinLOMOSplitter(held_out_metal="Rh", seed=0)(ds)
+        real_rh = int(
+            (
+                (ds.df["Metal"].astype(str) == "Rh")
+                & (ds.df["Cell_line"].astype(str) != "SYNTHETIC_RH")
+            ).sum()
+        )
+        assert len(split.test_idx) == real_rh
+
+    def test_splitter_unchanged_without_synthetic_rows(self, tiny_dataset):
+        """No synthetic rows -> the split is the plain by-metal split."""
+        split = WassersteinLOMOSplitter(held_out_metal="Rh", seed=0)(tiny_dataset)
+        assert len(split.test_idx) == int((tiny_dataset.metals == "Rh").sum())
+
+
+class TestTwoCohortBalance:
+    def _write_active(self, tmp_path, n=40):
+        import json
+
+        recs = [
+            {
+                "compound_id": f"rh_syn_act_{i:04d}",
+                "smiles": f"CC[{i}]",
+                "is_active": 1,
+                "catherine_6of6_pass": True,
+            }
+            for i in range(n)
+        ]
+        p = tmp_path / "active.json"
+        p.write_text(json.dumps({"per_compound": recs}))
+        return p
+
+    def test_active_cohort_adds_positives(self, tiny_dataset, rh_cohort_path, tmp_path):
+        act = self._write_active(tmp_path)
+        ds, n = append_synthetic_rh_to_dataset(
+            tiny_dataset, rh_cohort_path, n_target=60, active_cohort_json=act
+        )
+        assert n == 60
+        synth = (ds.df["Cell_line"].astype(str) == "SYNTHETIC_RH").to_numpy()
+        lab = ds.active.astype(int)
+        assert int(synth.sum()) == 60
+        # 50/50 split: both classes present among the synthetic block.
+        assert int(lab[synth].sum()) > 0
+        assert int((lab[synth] == 0).sum()) > 0
+
+    def test_backward_compat_single_cohort_all_inactive(
+        self, tiny_dataset, rh_cohort_path
+    ):
+        """No active cohort -> the original all-inactive behaviour."""
+        ds, n = append_synthetic_rh_to_dataset(
+            tiny_dataset, rh_cohort_path, n_target=60
+        )
+        synth = (ds.df["Cell_line"].astype(str) == "SYNTHETIC_RH").to_numpy()
+        assert n == 60
+        assert int(ds.active.astype(int)[synth].sum()) == 0
+
+    def test_active_and_inactive_labels_agree_with_pic50(
+        self, tiny_dataset, rh_cohort_path, tmp_path
+    ):
+        """pIC50 must not contradict the classification label."""
+        act = self._write_active(tmp_path)
+        ds, _ = append_synthetic_rh_to_dataset(
+            tiny_dataset, rh_cohort_path, n_target=40, active_cohort_json=act
+        )
+        synth = (ds.df["Cell_line"].astype(str) == "SYNTHETIC_RH").to_numpy()
+        lab = ds.active.astype(int)[synth]
+        pic = ds.pic50.astype(float)[synth]
+        assert (pic[lab == 1] > pic[lab == 0]).all()
+
+    def test_missing_active_file_raises(
+        self, tiny_dataset, rh_cohort_path, tmp_path
+    ):
+        with pytest.raises(FileNotFoundError):
+            append_synthetic_rh_to_dataset(
+                tiny_dataset,
+                rh_cohort_path,
+                n_target=40,
+                active_cohort_json=tmp_path / "nope.json",
+            )
+
+
+class TestActiveCohortFile:
+    def test_active_cohort_json_on_disk_is_all_active(self):
+        p = (
+            PROJECT_ROOT
+            / "molmetal"
+            / "reports"
+            / "wf125_p1_rh_oversample"
+            / "synthetic_rh_cohort_active.json"
+        )
+        if not p.exists():
+            pytest.skip(f"Wf-A3 active cohort not found at {p}; cannot test.")
+        import json
+
+        d = json.loads(p.read_text())
+        recs = d["per_compound"]
+        assert len(recs) >= 500
+        assert all(int(r.get("is_active", r.get("active", 0))) == 1 for r in recs)
+        # Must be disjoint from the inactive cohort it is meant to balance.
+        inactive = PROJECT_ROOT / "molmetal" / "reports" / "wf125_p1_rh_oversample" / "synthetic_rh_cohort.json"
+        if inactive.exists():
+            old = {e["smiles"] for e in json.loads(inactive.read_text())["per_compound"]}
+            assert not (old & {r["smiles"] for r in recs})

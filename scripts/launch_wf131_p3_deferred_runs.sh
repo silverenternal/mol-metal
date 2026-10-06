@@ -301,6 +301,7 @@ for ((i = 0; i < ${#RUNS[@]}; i += 2)); do
             --csv "${LOMO_CSV}" \
             --use-l2-guard \
             --out-dir "${REPORTS_DIR}/${METAL}/seed${SEED}" \
+            --out-metric "${REPORTS_DIR}/${METAL}/seed${SEED}/metrics.json" \
             --device cuda:0 \
             >> "${RUN_LOG}" 2>&1; then
         ok "metal=${METAL} seed=${SEED} completed"

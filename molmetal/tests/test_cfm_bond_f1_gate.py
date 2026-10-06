@@ -27,6 +27,27 @@ TRAINER = (
 )
 
 
+def _load_trainer():
+    """Import the trainer module (cached) for behavioural assertions.
+
+    Round-4 E4 added pure functions (`resolve_early_stop_criterion`,
+    `early_stop_hit_target`) that the source-text audits cannot exercise: the
+    failure they guard against is a criterion resolving to a constant 0.0 and
+    the run plateauing silently, which is invisible in the source and only
+    shows up when the function is called with the degenerate inputs.
+    """
+    import importlib.util
+    import sys
+
+    if "_t_gate" in sys.modules:
+        return sys.modules["_t_gate"]
+    spec = importlib.util.spec_from_file_location("_t_gate", str(TRAINER))
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["_t_gate"] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def test_gate_uses_bond_f1_when_truth_is_available():
     """The gate must read a BOND metric, and must be one that can improve.
 
@@ -54,20 +75,30 @@ def test_gate_uses_bond_f1_when_truth_is_available():
         "the gate comparison was changed; confirm the criterion is still a "
         "bond-derived gate rather than decode_ratio"
     )
-    # The saturating existence metric must not be the criterion again.
-    gate_line = [
-        ln
-        for ln in src.splitlines()
-        if "_gate = (" in ln or ln.strip().startswith("float(_bond_acc.get(")
-    ]
-    assert gate_line, "could not locate the gate assignment to audit it"
-    assert not any('"bond_f1"' in ln for ln in gate_line), (
+    # Round-4 E4 — the criterion moved out of the loop body into
+    # `resolve_early_stop_criterion`, so the audit follows it there.  The
+    # invariant is unchanged: the criterion is bond-derived, it is not
+    # decode_ratio, and it is not the saturating existence metric.
+    assert "def resolve_early_stop_criterion(" in src, (
+        "the early-stop criterion is no longer resolved by a named helper — "
+        "audit where it went before assuming it is still a bond metric"
+    )
+    resolver_body = src.split("def resolve_early_stop_criterion(", 1)[1].split(
+        "\ndef ", 1
+    )[0]
+    assert '"bond_exact_type"' in resolver_body, (
+        "the resolver no longer offers bond_exact_type — the fraction of "
+        "complexes whose bond set AND every order match"
+    )
+    assert '"bond_f1"' not in resolver_body, (
         "bond_f1 saturates on the large cohort (0.996 by epoch 5) and must not "
         "gate; use bond_exact_type_rate, which was still improving"
     )
-    assert any('"bond_exact_type_rate"' in ln for ln in gate_line), (
-        "the gate should be bond_exact_type_rate — the fraction of complexes "
-        "whose bond set AND every order match"
+    # The default must not be the anti-correlated one.
+    assert 'DEFAULT_EARLY_STOP_METRIC = "combined"' in src, (
+        "the default early-stop criterion is no longer a chemistry metric — "
+        "decode_ratio is the project's own documented "
+        "'NOT a chemistry metric, anti-correlated with correctness'"
     )
 
 
@@ -210,7 +241,17 @@ def test_hit_target_is_measured_against_the_gate_not_decode_ratio():
     assert '"gate_metric": _gate_name' in src, (
         "the summary no longer names the metric it gated on"
     )
-    assert "hit_target=bool(" in src, "hit_target must be derived, not implied"
+    # Round-4 E4 — the verdict is now computed by a named helper so each
+    # criterion can be compared against its OWN bar.  Comparing a
+    # gen_validity rate against the bond-exact-type bar (or vice versa) is the
+    # same class of bug as gating on decode_ratio.
+    assert "def early_stop_hit_target(" in src, (
+        "hit_target must be derived per criterion, not compared against one "
+        "constant bar for every metric"
+    )
+    assert "hit_target=early_stop_hit_target(" in src, (
+        "hit_target must be derived, not implied"
+    )
     # The old comparison must not survive anywhere in the summary/event path.
     assert "hit_target=bool(best_decode_ratio >=" not in src, (
         "hit_target is comparing decode_ratio again — that is the "
@@ -219,6 +260,231 @@ def test_hit_target_is_measured_against_the_gate_not_decode_ratio():
     )
     assert '"hit_target": best_decode_ratio >=' not in src, (
         "the JSON summary's hit_target is comparing decode_ratio again"
+    )
+
+
+def test_early_stop_criterion_resolution():
+    """Round-4 E4 — the criterion resolves to a MEASURED chemistry number.
+
+    This is the behavioural counterpart to the source audits above.  The
+    failure it guards against is silent and well-formatted: if a criterion's
+    own input is unmeasured (generation eval off, or no Wiberg truth) and the
+    code takes it at face value, `combined` becomes the constant 0.0, the run
+    plateaus, and it early-stops at `patience` epochs having learned nothing
+    — while writing a perfectly normal-looking per_epoch_metrics.json.
+    """
+    mod = _load_trainer()
+    resolve = mod.resolve_early_stop_criterion
+
+    # Both halves measured: the product, as asked.
+    name, value, note = resolve(
+        "combined",
+        decode_ratio=0.53,
+        gen_validity=0.40,
+        gen_n=64,
+        bond_exact_type_rate=0.38,
+        bond_n_scored=100,
+    )
+    assert name == "combined" and note == ""
+    assert abs(value - 0.40 * 0.38) < 1e-12, "combined is not the product"
+
+    # Generation eval off (gen_n=0) must NOT yield combined==0.0.
+    name, value, note = resolve(
+        "combined",
+        decode_ratio=0.53,
+        gen_validity=0.0,
+        gen_n=0,
+        bond_exact_type_rate=0.38,
+        bond_n_scored=100,
+    )
+    assert name == "bond_exact_type", f"combined gated on an unmeasured half: {name}"
+    assert value > 0.0, "the degraded criterion must still carry real signal"
+    assert note, "a degradation must be recorded, not silent"
+
+    # No Wiberg truth: degrade the other way, and say so.
+    name, value, note = resolve(
+        "combined",
+        decode_ratio=0.53,
+        gen_validity=0.40,
+        gen_n=64,
+        bond_exact_type_rate=0.0,
+        bond_n_scored=0,
+    )
+    assert name == "gen_validity"
+    assert value > 0.0
+    assert "bond_n_scored=0" in note
+
+    # Neither chemistry metric measurable: the fallback is decode_ratio, and
+    # the note must say plainly that no chemistry metric existed.
+    name, value, note = resolve(
+        "combined",
+        decode_ratio=0.53,
+        gen_validity=0.0,
+        gen_n=0,
+        bond_exact_type_rate=0.0,
+        bond_n_scored=0,
+    )
+    assert name == "decode_ratio" and note
+
+    # An explicitly-requested criterion with its own data missing degrades.
+    name, value, note = resolve(
+        "gen_validity",
+        decode_ratio=0.53,
+        gen_validity=0.0,
+        gen_n=0,
+        bond_exact_type_rate=0.38,
+        bond_n_scored=100,
+    )
+    assert name == "bond_exact_type" and note
+
+    # The legacy criterion is honoured exactly and never degraded.
+    name, value, note = resolve(
+        "decode_ratio",
+        decode_ratio=0.531,
+        gen_validity=0.0,
+        gen_n=0,
+        bond_exact_type_rate=0.0,
+        bond_n_scored=0,
+    )
+    assert (name, value, note) == ("decode_ratio", 0.531, "")
+
+    # Unknown names are rejected rather than silently defaulted.
+    try:
+        resolve(
+            "bond_f1",
+            decode_ratio=0.5,
+            gen_validity=0.0,
+            gen_n=0,
+            bond_exact_type_rate=0.0,
+            bond_n_scored=0,
+        )
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("an unknown criterion must not be silently accepted")
+
+
+def test_saturated_criterion_is_flagged_not_treated_as_signal():
+    """A rate pinned at 0.0 or 1.000 carries no gradient — say so.
+
+    MEASURED in the E4 50-step CPU smoke (tmQM Ru, 6 epochs, n=4 generation
+    samples, no Wiberg truth): `gen_validity` read 1.000 at EVERY epoch, so
+    `combined` degraded to a constant 1.0.  A constant criterion never
+    improves, so the run stops at `patience` epochs while the JSON reads a
+    confident-looking 1.000.  That is decode_ratio's failure mode wearing a
+    chemistry label, so the resolver must name the saturation instead of
+    letting a reader take 1.000 for a result.
+    """
+    mod = _load_trainer()
+    resolve = mod.resolve_early_stop_criterion
+
+    _, value, note = resolve(
+        "combined",
+        decode_ratio=1.0,
+        gen_validity=1.0,
+        gen_n=4,
+        bond_exact_type_rate=0.0,
+        bond_n_scored=0,
+    )
+    assert "saturated" in note, (
+        "a criterion pinned at its ceiling was accepted as signal; a reader "
+        "would read 1.000 as a result"
+    )
+    assert "n=4" in note, "the note must carry the sample size that saturated it"
+
+    # The floor is the same failure.
+    _, _, note_floor = resolve(
+        "gen_validity",
+        decode_ratio=0.5,
+        gen_validity=0.0,
+        gen_n=4,
+        bond_exact_type_rate=0.0,
+        bond_n_scored=0,
+    )
+    assert "saturated" in note_floor
+
+    # A genuine interior value is NOT flagged — otherwise the warning is noise.
+    _, _, note_ok = resolve(
+        "combined",
+        decode_ratio=0.5,
+        gen_validity=0.40,
+        gen_n=64,
+        bond_exact_type_rate=0.35,
+        bond_n_scored=50,
+    )
+    assert note_ok == "", f"an interior measurement was flagged: {note_ok!r}"
+
+
+def test_combined_at_its_floor_is_flagged_on_the_bond_side():
+    """MEASURED in the E4 50-step CPU smoke: `combined` was a constant 0.000.
+
+    The 4-epoch / 5-complex smoke reports `bond_exact_type_rate` 0.000 at
+    every epoch (a run that short cannot learn the task — expected), and
+    `gen_validity` 1.000 (n=3, saturated).  The product is 0.000 at every
+    epoch, so the gate never improves and the run early-stops having selected
+    nothing.  Both factors are pinned; the note must say so rather than let
+    `combined: 0.0` read as a measurement.
+    """
+    mod = _load_trainer()
+    resolve = mod.resolve_early_stop_criterion
+    name, value, note = resolve(
+        "combined",
+        decode_ratio=1.0,
+        gen_validity=1.0,
+        gen_n=3,
+        bond_exact_type_rate=0.0,
+        bond_n_scored=5,
+    )
+    assert name == "combined" and value == 0.0
+    assert "floor" in note and "n=5" in note, (
+        "the bond factor sitting at its floor was not reported; a reader would "
+        "read combined=0.000 as a result"
+    )
+    assert "saturated" in note, "the gen factor's saturation was not reported"
+
+    # The CFM retrain's own MEASURED range must stay clean, or the flag is
+    # noise: exact_type climbed 0.355 -> 0.380 across that run.
+    _, _, note_retrain = resolve(
+        "combined",
+        decode_ratio=0.53,
+        gen_validity=0.40,
+        gen_n=64,
+        bond_exact_type_rate=0.355,
+        bond_n_scored=500,
+    )
+    assert note_retrain == "", (
+        f"a realistic in-range measurement was flagged: {note_retrain!r}"
+    )
+
+
+def test_early_stop_hit_target_uses_each_metrics_own_bar():
+    """A `combined` run is not judged against the bond-exact-type bar."""
+    mod = _load_trainer()
+    hit = mod.early_stop_hit_target
+    # 0.35 * 0.90 = 0.315, which is below the bond bar 0.50 but the combined
+    # bar is 0.80 * 0.50 = 0.40.  Still a miss; the point is the two paths
+    # are not the same expression.
+    assert hit("bond_exact_type", 0.49, 0.8) is False
+    assert hit("bond_exact_type", 0.51, 0.8) is True
+    assert hit("gen_validity", 0.85, 0.8) is True
+    assert hit("gen_validity", 0.75, 0.8) is False
+    # decode_ratio keeps its own user-configurable bar.
+    assert hit("decode_ratio", 0.85, 0.8) is True
+    assert hit("decode_ratio", 0.75, 0.8) is False
+
+
+def test_per_epoch_json_records_the_criterion():
+    """The JSON must say which number gated, not leave it to be guessed."""
+    src = TRAINER.read_text()
+    assert "early_stop_metric: str" in src, (
+        "per-epoch records no longer carry the criterion that gated them"
+    )
+    assert "early_stop_value: float" in src
+    assert "early_stop_criterion_note: str" in src
+    assert "early_stop_improved: bool" in src
+    assert '"early_stop_control"' in src, (
+        "the run summary does not record the early-stop control that produced "
+        "its `best` block"
     )
 
 

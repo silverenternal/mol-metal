@@ -1,6 +1,6 @@
 # Wf-35 Phase 3 — Master verify (R18 train scripts)
 
-Generated at `2026-09-26T12:37:20.342927+00:00` (UTC). Total wall-clock: `19.7 s`.
+Generated at `2026-10-04T18:15:11.162269+00:00` (UTC). Total wall-clock: `43.1 s`.
 
 - **Total scripts**: 8
 - **PASS**: 7
@@ -12,13 +12,13 @@ Generated at `2026-09-26T12:37:20.342927+00:00` (UTC). Total wall-clock: `19.7 s
 
 | Script | WF | Status | Checks (import / argparse / smoke) | Elapsed (s) | Notes |
 |---|---|---|---|---|---|
-| `train_se3sb.py` | Wf-29 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 4.1 | all checks passed |
-| `train_transport.py` | Wf-29 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 2.8 | all checks passed |
-| `train_multiph.py` | Wf-29 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 2.8 | all checks passed |
-| `train_ru_5metal_se3sb.py` | Wf-31 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 2.3 | all checks passed |
-| `train_affinity_regression.py` | Wf-32 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 2.5 | all checks passed |
-| `train_multimetal_lomo.py` | Wf-32 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 2.4 | all checks passed |
-| `train_cisplatin_resistance_v2.py` | Wf-31 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 2.8 | all checks passed |
+| `train_se3sb.py` | Wf-29 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 8.3 | all checks passed |
+| `train_transport.py` | Wf-29 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 5.1 | all checks passed |
+| `train_multiph.py` | Wf-29 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 6.4 | all checks passed |
+| `train_ru_5metal_se3sb.py` | Wf-31 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 5.2 | all checks passed |
+| `train_affinity_regression.py` | Wf-32 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 4.6 | all checks passed |
+| `train_multimetal_lomo.py` | Wf-32 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 6.9 | all checks passed |
+| `train_cisplatin_resistance_v2.py` | Wf-31 | PASS | ✓ import, ✓ argparse, ⏭ smoke | 6.6 | all checks passed |
 | `bench_pb_valid.py` | Wf-32 | PENDING |  | 0.0 | script authored but not yet refactored to _common_train_args — auto-skipped per Wf-35 contract |
 
 ## Methodology

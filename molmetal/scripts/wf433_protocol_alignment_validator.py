@@ -6,7 +6,7 @@ protocol + metric definition**.
 
 ==============================================================================
 
-Per ``TODO/03_baselines/PROTOCOL_VALIDATION.md`` §2 + ``COMPARISON_BASELINES.md``
+Per ``COMPARISON_BASELINES.md``
 §0:
 
     我们不需要 reproduce 别人的数字 — 我们需要 same dataset + same protocol +

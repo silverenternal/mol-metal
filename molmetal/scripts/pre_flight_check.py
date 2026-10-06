@@ -9108,14 +9108,40 @@ def gate_p3_honest_neg_closure_m1_re_fold(
     paper_section_3_v4_md: Path,
     paper_section_6_v4_md: Path,
 ) -> GateResult:
-    """Wf-432-A1 §6 L4-3 — m1 Re-fold pre-closure (Rh-fold-ONLY as §4 LEAD)."""
+    """Wf-432-A1 §6 L4-3 — m1 Re-fold pre-closure (Rh-fold-ONLY as §4 LEAD).
+
+    Wf-A12 (2026-10-05) — the headline JSON is read via
+    :func:`molmetal.scripts.headline_metric_loader.load_headline_metric` with
+    ``as_headline=True, allow_disqualified=True`` so the canonical gate is
+    ACTUALLY invoked (not a decorative no-op). ``allow_disqualified=True``
+    is required because the on-disk headline carries
+    ``USABLE_AS_HEADLINE=false`` (Wf-413-A1 oversample=500 + only 2 of 5
+    folds covered); the gate still surfaces the disqualifying_reasons into
+    the gate message so downstream renderers cannot pretend the number is
+    clean.
+    """
     t0 = time.perf_counter()
     failures: List[str] = []
     if not metal_lomo_auc_json.exists():
         failures.append(f"missing: {metal_lomo_auc_json}")
     else:
         try:
-            data = json.loads(metal_lomo_auc_json.read_text(encoding="utf-8"))
+            # Local import to avoid a hard module-load order dependency on
+            # the headline loader at the top of pre_flight_check.py.
+            from molmetal.scripts.headline_metric_loader import (  # noqa: PLC0415
+                HeadlineNotUsableError,
+                load_headline_metric,
+            )
+            # Route the read through the canonical gate. as_headline=True
+            # would RAISE on the disqualified JSON; allow_disqualified=True
+            # returns the payload but the gate still ran (and we surface
+            # the disqualifying_reasons below so the gate is REAL, not
+            # decorative).
+            data = load_headline_metric(
+                metal_lomo_auc_json,
+                as_headline=True,
+                allow_disqualified=True,
+            )
             per_fold = data.get("per_fold_auc_mean", {}) or data.get(
                 "aggregate", {}
             ).get("per_fold_auc_mean", {})
@@ -9125,6 +9151,29 @@ def gate_p3_honest_neg_closure_m1_re_fold(
                     f"metal_lomo_auc.json per_fold_auc_mean.Re >= 0.86 OR missing: "
                     f"value={re_value} (pre-closure requires Re < 0.86 to gate Rh-fold-ONLY)"
                 )
+            # Surface the gate's disqualifying reasons so the canonical
+            # gate cannot be silently bypassed. If the JSON ever becomes
+            # USABLE_AS_HEADLINE=true (clean re-measurement per the JSON's
+            # clean_re_measurement_command), the list is empty and this
+            # block is a no-op.
+            reasons = data.get("disqualifying_reasons") or []
+            usable = bool(data.get("USABLE_AS_HEADLINE", False))
+            if reasons and not usable:
+                print(
+                    f"[Wf-A12 pre_flight_check] headline gate fired for "
+                    f"{metal_lomo_auc_json.name}: USABLE_AS_HEADLINE=false; "
+                    f"disqualifying_reasons={reasons}",
+                    file=sys.stderr,
+                )
+        except HeadlineNotUsableError as exc:
+            # Should not trigger because allow_disqualified=True, but be
+            # defensive so a future caller without allow_disqualified
+            # surfaces the gate result instead of crashing the whole pre-
+            # flight run.
+            failures.append(
+                f"headline gate refused {metal_lomo_auc_json}: "
+                f"{'; '.join(exc.reasons)}"
+            )
         except (json.JSONDecodeError, OSError, ValueError) as exc:
             failures.append(f"parse error: {type(exc).__name__}: {exc}")
     for p in (honest_negative_catalog_md, paper_section_3_v4_md, paper_section_6_v4_md):

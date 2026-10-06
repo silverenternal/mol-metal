@@ -79,6 +79,15 @@ protocol:
   # 2026-10-04 — how many val compositions to generate from noise and
   # decode for RDKit validity each epoch.  0 disables (decode-only).
   gen_validity_samples: 16
+  # 2026-10-05 (Round-3 D3) — n=16 was MEASURED too noisy to gate on:
+  # gen_validity read 0.375/0.312/0.562/0.688/0.750 over five
+  # consecutive epochs of one run, a 44pp swing on a monotone
+  # trajectory (binomial 1-sigma at p~0.5, n=16 is +-12.5pp).  Below
+  # turns the eval into 3 seeds x 64 samples over 3 DISJOINT windows of
+  # val compositions — 192 distinct chemistries, 1-sigma +-3.6pp.
+  # EVAL-ONLY: no training or checkpoint behaviour changes.
+  gen_eval_n: 64
+  gen_eval_seeds: "0 1 2"
   n_seeds: 1  # Wf-A11: seed list removed — CFM dest is singular --seed (enumerated by entry.command_template); n_seeds read by scripts/start.sh
   epochs: 3
   batch_size: 16

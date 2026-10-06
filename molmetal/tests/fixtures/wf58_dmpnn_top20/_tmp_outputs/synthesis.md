@@ -1,9 +1,9 @@
 # Wf-58 Phase 2 — D-MPNN pIC50 prediction on top-20 wet-lab candidates
 
-**Date**: 2026-09-27
+**Date**: 2026-10-06
 **Model**: 4-cell-line multi-task D-MPNN (hidden=32, depth=2, dropout=0.1)
 **Split**: scaffold (Bemis-Murcko) 70/10/20 (per-seed)
-**Seeds**: [0]
+**Seeds**: [0]  
 **Epochs**: 2, lr=0.001, batch=8, alpha=0.5
 **Device**: cpu
 

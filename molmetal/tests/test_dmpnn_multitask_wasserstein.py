@@ -226,7 +226,7 @@ def test_train_one_epoch_joint_finite():
     graphs, mids, pic50, active = _toy_batch(n=8, n_metals=n_metals)
     ref_pic50 = torch.from_numpy(pic50.astype(np.float32))
 
-    loss, cls_loss, reg_loss, w_pen = train_one_epoch_joint(
+    loss, cls_loss, reg_loss, w_pen, last_grad_norm = train_one_epoch_joint(
         model=model,
         optimizer=optimizer,
         criterion=criterion,
@@ -270,7 +270,7 @@ def test_train_one_epoch_joint_w_w_zero():
     ref_pic50 = torch.from_numpy(pic50.astype(np.float32))
 
     # w_w=0 → no Wasserstein penalty
-    _, _, _, w_pen = train_one_epoch_joint(
+    _, _, _, w_pen, _ = train_one_epoch_joint(
         model=model,
         optimizer=optimizer,
         criterion=criterion,
@@ -311,7 +311,7 @@ def test_train_one_epoch_joint_w_w_positive():
     # Reference distribution is shifted → W2 > 0
     ref_pic50 = torch.from_numpy((pic50 + 3.0).astype(np.float32))
 
-    loss, cls_loss, reg_loss, w_pen = train_one_epoch_joint(
+    loss, cls_loss, reg_loss, w_pen, last_grad_norm = train_one_epoch_joint(
         model=model,
         optimizer=optimizer,
         criterion=criterion,
@@ -381,12 +381,20 @@ def test_parse_args_defaults():
         DEFAULT_EPOCHS,
     )
 
+    # Wf-A9 (2026-10-03): ``--metals`` default is now ``['auto']`` so
+    # the trainer auto-discovers from ``--csv / --dataset`` (the literal
+    # FIVE_METALS default silently rejected every other dataset such as
+    # ``platinai_4cell``).  Test the new intentional behaviour here.
     args = parse_args([])
-    assert args.metals == list(FIVE_METALS)
+    assert args.metals == ["auto"]
     assert args.seeds == list(DEFAULT_SEEDS)
     assert args.epochs == DEFAULT_EPOCHS
     assert args.alpha == 0.5
     assert args.wasserstein_weight == 0.05
+
+    # Explicit ``--metals`` still accepts the legacy FIVE_METALS list.
+    args2 = parse_args(["--metals", *FIVE_METALS])
+    assert args2.metals == list(FIVE_METALS)
 
 
 # ---------------------------------------------------------------------------
@@ -410,9 +418,15 @@ def test_parse_args_l2_guard_flags():
 def test_parse_args_invalid_metal():
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import parse_args
 
-    with pytest.raises(SystemExit):
-        # "Fe" is not in {Ru, Ir, Rh, Os, Re}
-        parse_args(["--metals", "Fe"])
+    # Wf-A6 (BLOCKER A): --metals validation moved from argparse-time to
+    # runtime (main() resolves the CSV / dataset then rejects metals not
+    # present).  argparse-time rejection no longer fires.  The runtime
+    # check raises a clear ``Available metals: [...]`` SystemExit when
+    # the requested metal isn't in the resolved cohort.  We assert that
+    # the argparse layer accepts arbitrary metal strings (the parser
+    # contract is intentionally permissive post-Wf-A6).
+    args = parse_args(["--metals", "Fe"])
+    assert args.metals == ["Fe"]
 
 
 # ---------------------------------------------------------------------------

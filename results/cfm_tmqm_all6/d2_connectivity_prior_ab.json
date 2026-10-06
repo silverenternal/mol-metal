@@ -1,0 +1,3635 @@
+{
+  "experiment": "cfm_round3_d2_connectivity_prior_ab",
+  "kind": "MEASURED",
+  "claim": "inference-time postprocess; the two arms differ ONLY in connectivity_prior and share one checkpoint, one decode, one bond decision rule",
+  "checkpoint": "results/cfm_tmqm_all6/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+  "checkpoint_epoch": 9,
+  "checkpoint_best_decode_ratio": 0.5308310991957105,
+  "corpus": {
+    "name": "tmQM",
+    "metals": "Pt,Ru,Ir,Rh,Os,Re",
+    "split": "val",
+    "n_clouds": 256,
+    "coord_number": 4
+  },
+  "bond_decision": "threshold",
+  "bond_decision_threshold": 0.5,
+  "connectivity_prior_min_logit": 0.0,
+  "arms": {
+    "prior_off": {
+      "n_clouds": 256,
+      "decode_ratio": 0.5625,
+      "single_fragment_ratio": 0.31640625,
+      "largest_fragment_frac_mean": 0.7662865552184106,
+      "mean_heavy_atoms": 33.7109375,
+      "connectivity_bonds_added_total": 0,
+      "clouds_with_bonds_added": 0,
+      "per_cloud": [
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.75,
+          "sanitized": false,
+          "bonds": 52,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 25,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 37,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 24,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 36,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.875,
+          "sanitized": false,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9111111111111111,
+          "sanitized": true,
+          "bonds": 49,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.3958333333333333,
+          "sanitized": true,
+          "bonds": 51,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5128205128205128,
+          "sanitized": true,
+          "bonds": 42,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 24,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.782608695652174,
+          "sanitized": true,
+          "bonds": 47,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.7592592592592593,
+          "sanitized": false,
+          "bonds": 57,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.76,
+          "sanitized": true,
+          "bonds": 54,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 24,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5490196078431373,
+          "sanitized": true,
+          "bonds": 55,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.8620689655172413,
+          "sanitized": false,
+          "bonds": 29,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.4489795918367347,
+          "sanitized": false,
+          "bonds": 50,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5476190476190477,
+          "sanitized": true,
+          "bonds": 45,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.36585365853658536,
+          "sanitized": true,
+          "bonds": 42,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.42857142857142855,
+          "sanitized": true,
+          "bonds": 40,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.39285714285714285,
+          "sanitized": true,
+          "bonds": 61,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.3958333333333333,
+          "sanitized": false,
+          "bonds": 52,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.44,
+          "sanitized": true,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.96875,
+          "sanitized": true,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 15,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.8888888888888888,
+          "sanitized": true,
+          "bonds": 23,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.95,
+          "sanitized": true,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.625,
+          "sanitized": false,
+          "bonds": 42,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8529411764705882,
+          "sanitized": false,
+          "bonds": 36,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5365853658536586,
+          "sanitized": false,
+          "bonds": 43,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9583333333333334,
+          "sanitized": true,
+          "bonds": 25,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.53125,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.6875,
+          "sanitized": false,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.76,
+          "sanitized": false,
+          "bonds": 53,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 5,
+          "largest_fragment_frac": 0.42857142857142855,
+          "sanitized": true,
+          "bonds": 25,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.9259259259259259,
+          "sanitized": true,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9565217391304348,
+          "sanitized": true,
+          "bonds": 25,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 21,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.45454545454545453,
+          "sanitized": true,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 5,
+          "largest_fragment_frac": 0.7894736842105263,
+          "sanitized": false,
+          "bonds": 16,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8666666666666667,
+          "sanitized": true,
+          "bonds": 29,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.3684210526315789,
+          "sanitized": true,
+          "bonds": 16,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.9574468085106383,
+          "sanitized": true,
+          "bonds": 51,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.7837837837837838,
+          "sanitized": true,
+          "bonds": 38,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8,
+          "sanitized": true,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 49,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9782608695652174,
+          "sanitized": true,
+          "bonds": 50,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5714285714285714,
+          "sanitized": true,
+          "bonds": 38,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 28,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.4222222222222222,
+          "sanitized": true,
+          "bonds": 49,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.8695652173913043,
+          "sanitized": true,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.8518518518518519,
+          "sanitized": false,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.8076923076923077,
+          "sanitized": true,
+          "bonds": 25,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.5,
+          "sanitized": false,
+          "bonds": 39,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.7857142857142857,
+          "sanitized": true,
+          "bonds": 30,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 35,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.576271186440678,
+          "sanitized": true,
+          "bonds": 62,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.4827586206896552,
+          "sanitized": false,
+          "bonds": 28,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.8461538461538461,
+          "sanitized": true,
+          "bonds": 27,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.7391304347826086,
+          "sanitized": false,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.7837837837837838,
+          "sanitized": false,
+          "bonds": 40,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.375,
+          "sanitized": true,
+          "bonds": 49,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 24,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.47540983606557374,
+          "sanitized": true,
+          "bonds": 64,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 48,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.3220338983050847,
+          "sanitized": true,
+          "bonds": 64,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 49,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 28,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 36,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.4634146341463415,
+          "sanitized": true,
+          "bonds": 43,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 29,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 5,
+          "largest_fragment_frac": 0.27586206896551724,
+          "sanitized": true,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 5,
+          "largest_fragment_frac": 0.4838709677419355,
+          "sanitized": false,
+          "bonds": 28,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.3877551020408163,
+          "sanitized": true,
+          "bonds": 53,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.64,
+          "sanitized": true,
+          "bonds": 24,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5641025641025641,
+          "sanitized": true,
+          "bonds": 42,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 14,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.41304347826086957,
+          "sanitized": false,
+          "bonds": 49,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.35294117647058826,
+          "sanitized": true,
+          "bonds": 14,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.4634146341463415,
+          "sanitized": true,
+          "bonds": 44,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 31,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8484848484848485,
+          "sanitized": true,
+          "bonds": 35,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9666666666666667,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.875,
+          "sanitized": false,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.75,
+          "sanitized": false,
+          "bonds": 51,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8787878787878788,
+          "sanitized": true,
+          "bonds": 35,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9038461538461539,
+          "sanitized": true,
+          "bonds": 57,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5217391304347826,
+          "sanitized": true,
+          "bonds": 52,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8421052631578947,
+          "sanitized": false,
+          "bonds": 18,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 5,
+          "largest_fragment_frac": 0.2413793103448276,
+          "sanitized": true,
+          "bonds": 24,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9354838709677419,
+          "sanitized": true,
+          "bonds": 31,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 19,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.7894736842105263,
+          "sanitized": true,
+          "bonds": 41,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 5,
+          "largest_fragment_frac": 0.24324324324324326,
+          "sanitized": true,
+          "bonds": 36,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.7142857142857143,
+          "sanitized": true,
+          "bonds": 29,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8,
+          "sanitized": false,
+          "bonds": 14,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8387096774193549,
+          "sanitized": false,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.3684210526315789,
+          "sanitized": true,
+          "bonds": 18,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5121951219512195,
+          "sanitized": false,
+          "bonds": 45,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 12,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.6666666666666666,
+          "sanitized": true,
+          "bonds": 9,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.5238095238095238,
+          "sanitized": false,
+          "bonds": 43,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.5,
+          "sanitized": false,
+          "bonds": 27,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 10,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 21,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.576271186440678,
+          "sanitized": true,
+          "bonds": 66,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.6190476190476191,
+          "sanitized": false,
+          "bonds": 18,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.7058823529411765,
+          "sanitized": false,
+          "bonds": 16,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5227272727272727,
+          "sanitized": false,
+          "bonds": 47,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.5121951219512195,
+          "sanitized": true,
+          "bonds": 41,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.8260869565217391,
+          "sanitized": true,
+          "bonds": 23,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.3584905660377358,
+          "sanitized": false,
+          "bonds": 56,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 49,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 5,
+          "largest_fragment_frac": 0.30434782608695654,
+          "sanitized": true,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.3939393939393939,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5135135135135135,
+          "sanitized": false,
+          "bonds": 41,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 53,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.4074074074074074,
+          "sanitized": false,
+          "bonds": 28,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.8095238095238095,
+          "sanitized": true,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.3548387096774194,
+          "sanitized": false,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 24,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.92,
+          "sanitized": true,
+          "bonds": 25,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.53125,
+          "sanitized": false,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.53125,
+          "sanitized": true,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 17,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.8571428571428571,
+          "sanitized": false,
+          "bonds": 56,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 63,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.6666666666666666,
+          "sanitized": false,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.92,
+          "sanitized": true,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 23,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.8208955223880597,
+          "sanitized": true,
+          "bonds": 74,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9411764705882353,
+          "sanitized": true,
+          "bonds": 17,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 39,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5238095238095238,
+          "sanitized": true,
+          "bonds": 21,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.6,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.7058823529411765,
+          "sanitized": true,
+          "bonds": 52,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8148148148148148,
+          "sanitized": true,
+          "bonds": 27,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 21,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.6296296296296297,
+          "sanitized": false,
+          "bonds": 28,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8055555555555556,
+          "sanitized": true,
+          "bonds": 39,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8611111111111112,
+          "sanitized": false,
+          "bonds": 38,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.78125,
+          "sanitized": true,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.675,
+          "sanitized": false,
+          "bonds": 44,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.6666666666666666,
+          "sanitized": true,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 23,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.6,
+          "sanitized": true,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 5,
+          "largest_fragment_frac": 0.6857142857142857,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9629629629629629,
+          "sanitized": false,
+          "bonds": 29,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8936170212765957,
+          "sanitized": true,
+          "bonds": 53,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9487179487179487,
+          "sanitized": true,
+          "bonds": 42,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8,
+          "sanitized": true,
+          "bonds": 37,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.6666666666666666,
+          "sanitized": true,
+          "bonds": 43,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8297872340425532,
+          "sanitized": true,
+          "bonds": 51,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 17,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 36,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.896551724137931,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.8214285714285714,
+          "sanitized": true,
+          "bonds": 27,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9444444444444444,
+          "sanitized": false,
+          "bonds": 18,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 13,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.4074074074074074,
+          "sanitized": false,
+          "bonds": 28,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.8032786885245902,
+          "sanitized": true,
+          "bonds": 64,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.75,
+          "sanitized": false,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 5,
+          "largest_fragment_frac": 0.7647058823529411,
+          "sanitized": true,
+          "bonds": 14,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 5,
+          "largest_fragment_frac": 0.3670886075949367,
+          "sanitized": true,
+          "bonds": 86,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 36,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9375,
+          "sanitized": true,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 28,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 15,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.5901639344262295,
+          "sanitized": false,
+          "bonds": 66,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8235294117647058,
+          "sanitized": true,
+          "bonds": 37,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.47619047619047616,
+          "sanitized": true,
+          "bonds": 19,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 18,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 25,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5283018867924528,
+          "sanitized": true,
+          "bonds": 58,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8235294117647058,
+          "sanitized": true,
+          "bonds": 17,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 6,
+          "largest_fragment_frac": 0.2638888888888889,
+          "sanitized": true,
+          "bonds": 83,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.7450980392156863,
+          "sanitized": false,
+          "bonds": 54,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.7560975609756098,
+          "sanitized": true,
+          "bonds": 43,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 40,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.5434782608695652,
+          "sanitized": false,
+          "bonds": 47,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.7619047619047619,
+          "sanitized": false,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 53,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.896551724137931,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 19,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.9130434782608695,
+          "sanitized": false,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 5,
+          "largest_fragment_frac": 0.3283582089552239,
+          "sanitized": false,
+          "bonds": 70,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.5555555555555556,
+          "sanitized": true,
+          "bonds": 68,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 50,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.6216216216216216,
+          "sanitized": true,
+          "bonds": 36,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.6379310344827587,
+          "sanitized": true,
+          "bonds": 67,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8285714285714286,
+          "sanitized": true,
+          "bonds": 37,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 46,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.46511627906976744,
+          "sanitized": true,
+          "bonds": 46,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 42,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9622641509433962,
+          "sanitized": true,
+          "bonds": 67,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.875,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.3142857142857143,
+          "sanitized": true,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5135135135135135,
+          "sanitized": true,
+          "bonds": 42,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.6071428571428571,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.7758620689655172,
+          "sanitized": false,
+          "bonds": 64,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.48484848484848486,
+          "sanitized": true,
+          "bonds": 30,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 45,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.5483870967741935,
+          "sanitized": true,
+          "bonds": 30,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.7333333333333333,
+          "sanitized": true,
+          "bonds": 49,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 12,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 28,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 12,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.6829268292682927,
+          "sanitized": false,
+          "bonds": 45,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9333333333333333,
+          "sanitized": false,
+          "bonds": 29,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 42,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.8571428571428571,
+          "sanitized": true,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.4634146341463415,
+          "sanitized": true,
+          "bonds": 44,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.7560975609756098,
+          "sanitized": true,
+          "bonds": 41,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.3684210526315789,
+          "sanitized": true,
+          "bonds": 60,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9523809523809523,
+          "sanitized": true,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.6206896551724138,
+          "sanitized": false,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 33,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.7619047619047619,
+          "sanitized": false,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 46,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.35185185185185186,
+          "sanitized": true,
+          "bonds": 59,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 5,
+          "largest_fragment_frac": 0.38095238095238093,
+          "sanitized": true,
+          "bonds": 66,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 21,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 4,
+          "largest_fragment_frac": 0.41304347826086957,
+          "sanitized": false,
+          "bonds": 48,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.9615384615384616,
+          "sanitized": false,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 5,
+          "largest_fragment_frac": 0.4878048780487805,
+          "sanitized": false,
+          "bonds": 40,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.4594594594594595,
+          "sanitized": true,
+          "bonds": 38,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.55,
+          "sanitized": true,
+          "bonds": 42,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 17,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5111111111111111,
+          "sanitized": false,
+          "bonds": 48,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 17,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.6274509803921569,
+          "sanitized": true,
+          "bonds": 57,
+          "connectivity_bonds_added": 0
+        }
+      ]
+    },
+    "prior_on": {
+      "n_clouds": 256,
+      "decode_ratio": 0.5625,
+      "single_fragment_ratio": 0.96484375,
+      "largest_fragment_frac_mean": 0.9873976899856491,
+      "mean_heavy_atoms": 33.7109375,
+      "connectivity_bonds_added_total": 311,
+      "clouds_with_bonds_added": 171,
+      "per_cloud": [
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 54,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 25,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 37,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 24,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 36,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 35,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 50,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 54,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 43,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 24,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 48,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 59,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 56,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 24,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 56,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 52,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 46,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 44,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.42857142857142855,
+          "sanitized": true,
+          "bonds": 40,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 63,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 54,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 24,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 33,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 15,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 26,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 21,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.925,
+          "sanitized": false,
+          "bonds": 43,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 37,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 44,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 26,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 34,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 34,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 55,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 29,
+          "connectivity_bonds_added": 4
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 28,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 26,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 21,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 36,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 20,
+          "connectivity_bonds_added": 4
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 30,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 18,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 53,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 40,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 33,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 49,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 51,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 39,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 28,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 51,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 25,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8888888888888888,
+          "sanitized": false,
+          "bonds": 27,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 28,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 41,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 31,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 35,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 64,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 29,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 24,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 41,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 51,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 24,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 66,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 48,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 67,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 49,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 28,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 36,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 45,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 29,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 30,
+          "connectivity_bonds_added": 4
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 32,
+          "connectivity_bonds_added": 4
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 55,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 25,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 43,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 14,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 51,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 16,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 46,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 31,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 36,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 34,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 53,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 36,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 58,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 53,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 19,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 28,
+          "connectivity_bonds_added": 4
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 32,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 19,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 42,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.5135135135135135,
+          "sanitized": true,
+          "bonds": 39,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 30,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 15,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 35,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 20,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 46,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 12,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 11,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 45,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 10,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 21,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 68,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 21,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 17,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 48,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 43,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 25,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 59,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 49,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.34782608695652173,
+          "sanitized": true,
+          "bonds": 22,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 33,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 42,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 53,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 22,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 34,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 24,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 26,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 35,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 33,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 17,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 59,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 63,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 23,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 28,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 23,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 76,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 18,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 39,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 22,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 34,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 54,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 28,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 21,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 40,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 39,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 35,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 45,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.6666666666666666,
+          "sanitized": true,
+          "bonds": 34,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 23,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 36,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 34,
+          "connectivity_bonds_added": 4
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 54,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 43,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 38,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 45,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 52,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 17,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 36,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 29,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 19,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 13,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 66,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 21,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 18,
+          "connectivity_bonds_added": 4
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 90,
+          "connectivity_bonds_added": 4
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 36,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 35,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 28,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 15,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 68,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 38,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 22,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 18,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 25,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 59,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 18,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 2,
+          "largest_fragment_frac": 0.8333333333333334,
+          "sanitized": true,
+          "bonds": 87,
+          "connectivity_bonds_added": 4
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 57,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 44,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 40,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 50,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 23,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 53,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 32,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 19,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 20,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 24,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 74,
+          "connectivity_bonds_added": 4
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 70,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 50,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.6216216216216216,
+          "sanitized": true,
+          "bonds": 36,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 69,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 38,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 46,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 48,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 42,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 68,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 33,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 37,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 22,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 43,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 31,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 67,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 32,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 45,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 3,
+          "largest_fragment_frac": 0.5483870967741935,
+          "sanitized": true,
+          "bonds": 30,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 51,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 12,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 28,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 12,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 46,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 30,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 26,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 42,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 23,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 46,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 42,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 32,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 62,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 23,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 29,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 33,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 21,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 46,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 61,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 70,
+          "connectivity_bonds_added": 4
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 21,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 51,
+          "connectivity_bonds_added": 3
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 27,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 44,
+          "connectivity_bonds_added": 4
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 40,
+          "connectivity_bonds_added": 2
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 43,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 17,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": false,
+          "bonds": 49,
+          "connectivity_bonds_added": 1
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 17,
+          "connectivity_bonds_added": 0
+        },
+        {
+          "n_fragments": 1,
+          "largest_fragment_frac": 1.0,
+          "sanitized": true,
+          "bonds": 58,
+          "connectivity_bonds_added": 1
+        }
+      ]
+    }
+  },
+  "delta_on_minus_off": {
+    "decode_ratio": 0.0,
+    "single_fragment_ratio": 0.6484375,
+    "largest_fragment_frac_mean": 0.22111113476723854
+  },
+  "not_measured_here": [
+    "the effect of the D1 assemble-aware loss (this A/B holds the checkpoint FIXED, so it isolates D2 alone)",
+    "generation from noise (every cloud here is real tmQM geometry; the prior is an inference-time step either way)"
+  ]
+}

@@ -1244,6 +1244,19 @@ CLAIM_CATALOG: List[Dict[str, Any]] = [
             "per_run[0].test_auc + .wasserstein_weight + molmetal/reports/"
             "wf176_m19_oversample_lomo/Rh/per_seed_metrics_seed3.json::test_auc"
         ),
+        "disclosure": (
+            "metrics/by_metric/metal_lomo_auc_wasserstein.json carries "
+            "USABLE_AS_HEADLINE=false (Wf-A11): rh_oversample=500 mixes 500 "
+            "synthetic Rh rows into the TRAIN split of the held-out Rh fold "
+            "(contaminates OOD-LOMO measurement); n_folds=2 (Rh + Re only) "
+            "NOT a 5-metal LOMO sweep. Per-fold Rh 0.8798 ± 0.0115 is "
+            "MEASURED on its own merit (Rh fold lift vs R17 = +0.5121); "
+            "Per-fold Re 0.7088 ± 0.0482 is BELOW Krasnov 0.86 gate. "
+            "Overall mean 0.7577 must NOT be cited as a Tier-2 headline. "
+            "Clean re-measurement command lives in the JSON's "
+            "clean_re_measurement_command field (USER_OK-gated per "
+            "AGENTS.md §5.1)."
+        ),
         "timestamp": "2026-09-29",
     },
     {
@@ -1682,6 +1695,16 @@ HONEST_NEGATIVE_CATALOG: List[Dict[str, Any]] = [
         "section": "§9.BC",
         "item": "DO NOT cite the Wf-320E TODO-121 -31.25% 'lift' as a positive result (BELOW_RANDOM; Wf-176 Re fold seed=4 2-epoch W₂=0 test_auc=0.34375; val_auc=0.6949 vs test_auc=0.34375 is a strong overfitting signal; W₂ was effectively disabled for this run). Honest entry: §6 honest-limitations. Wf-125 P2 5-fold × 5-seed × 50-epoch + W₂>0 needed to attempt recovery.",
         "ref": "molmetal/reports/wf320e_downstream_lift_dashboard/dashboard.json::per_consumer[TODO-121] + metrics/by_metric/metal_lomo_auc_wasserstein.json::wasserstein_weight + .val_auc + .test_auc",
+        "disclosure": (
+            "metrics/by_metric/metal_lomo_auc_wasserstein.json carries "
+            "USABLE_AS_HEADLINE=false (Wf-A11): rh_oversample=500 mixes 500 "
+            "synthetic Rh rows into TRAIN (contaminates held-out Rh fold "
+            "OOD-LOMO); n_folds=2 (Rh + Re only) NOT a 5-metal LOMO sweep. "
+            "Per-fold Rh 0.8798 ± 0.0115 (MEASURED, +0.020 vs Krasnov 0.86 "
+            "PASS) and Per-fold Re 0.7088 ± 0.0482 (BELOW Krasnov 0.86, gap "
+            "−0.151). DO NOT cite overall mean 0.7577 as a clean Tier-2 "
+            "headline."
+        ),
     },
     {
         "id": "hn_wf320e_todo122_l5_arch_ceiling",

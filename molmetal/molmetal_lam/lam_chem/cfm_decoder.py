@@ -150,11 +150,15 @@ class CFMDecoder:
         yuelbond_decoder: Any = None,
         rework_decoder: Any = None,
         bond_head: Optional[BondOrderHead] = None,
+        connectivity_prior: bool = True,
     ) -> None:
         self.use_yuelbond = bool(use_yuelbond)
         self._yuelbond_decoder = yuelbond_decoder
         self._rework_decoder = rework_decoder
         self._bond_head = bond_head
+        # Round-3 D2 — only reaches the lazily-built YuelBond decoder below;
+        # a pre-built `yuelbond_decoder` was configured at its own site.
+        self.connectivity_prior = bool(connectivity_prior)
 
     # ------------------------------------------------------------------
     # Public API
@@ -199,6 +203,7 @@ class CFMDecoder:
             self._yuelbond_decoder = YuelBondBondDecoder(
                 hidden_dim=64,
                 n_layers=3,
+                connectivity_prior=self.connectivity_prior,
             )
         return self._yuelbond_decoder
 
@@ -233,6 +238,7 @@ def build_cfm_decoder(
     bond_head: Optional[BondOrderHead] = None,
     yuelbond_decoder: Any = None,
     rework_decoder: Any = None,
+    connectivity_prior: bool = True,
 ) -> CFMDecoder:
     """Build a :class:`CFMDecoder` with the right path selected.
 
@@ -265,6 +271,7 @@ def build_cfm_decoder(
         yuelbond_decoder=yuelbond_decoder,
         rework_decoder=rework_decoder,
         bond_head=bond_head,
+        connectivity_prior=connectivity_prior,
     )
 
 

@@ -5,7 +5,7 @@ comparison against 3 selected Tier-1 baselines (Krasnov 2026 + Rusanov 2025
 
 ==============================================================================
 
-Per ``TODO/03_baselines/PROTOCOL_VALIDATION.md`` §2 + ``COMPARISON_BASELINES.md``
+Per ``COMPARISON_BASELINES.md``
 §0 principle:
 
     我们不需要 reproduce 别人的数字 — 我们需要 same dataset + same protocol +
@@ -95,11 +95,10 @@ DEFAULT_OUT = (
 )
 
 # Canonical 3 baseline cache (auto-extracted from COMPARISON_BASELINES.md §1
-# + PROTOCOL_VALIDATION.md §2 + PROTOCOL_ALIGNMENT_MATRIX.md §1).
+# + PROTOCOL_ALIGNMENT_MATRIX.md §1).
 # Per-baseline: dataset, split, metric, alignment level, protocol adjustment,
 # baseline values (per-metal for Krasnov, per-cell for Rusanov, per-split for
-# DrugOOD).  Every numeric value traces to COMPARISON_BASELINES.md §1 per
-# PROTOCOL_VALIDATION.md §4 honest framing.
+# DrugOOD).  Every numeric value traces to COMPARISON_BASELINES.md §1.
 BASELINES: Dict[str, Dict[str, Any]] = {
     "krasnov_2026": {
         "name": "Krasnov 2026 (J. Med. Chem.) — MetalCytoToxDB",

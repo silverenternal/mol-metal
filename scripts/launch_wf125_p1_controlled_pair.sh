@@ -178,6 +178,7 @@ PYTHONPATH="${PROJECT_ROOT}" ${PY} "${TRAINER}" \
     --device cpu \
     --rh-oversample 500 --rh-cohort-json "${REAL_RH_COHORT}" \
     --out-dir "${OUT_BASE}/scaffold_smoke" \
+    --out-metric "${OUT_BASE}/scaffold_smoke/metrics.json" \
     > "${OUT_BASE}/scaffold_smoke.log" 2>&1 || SMOKE_RC=$?
 echo "SCAFFOLD_SMOKE_RC=${SMOKE_RC}" | tee -a "${LOG}"
 # SCAFFOLD smoke is for flag-acceptance only; trainer may fail on dry-run
@@ -348,6 +349,7 @@ run_controlled_pair_run() {
   echo "=== $(date '+%H:%M:%S') START CONTROLD PAIR run_mode=${run_mode} ===" | tee -a "${LOG}"
   CUDA_VISIBLE_DEVICES=0 ${PY} "${TRAINER}" \
     --out-dir "${OUT_BASE}/run_${run_mode}" \
+    --out-metric "${OUT_BASE}/run_${run_mode}/metrics.json" \
     --ckpt-dir "${OUT_BASE}/run_${run_mode}/ckpts" \
     "${COMMON_ARGS[@]}" \
     "${cohort_args[@]+"${cohort_args[@]}"}" \

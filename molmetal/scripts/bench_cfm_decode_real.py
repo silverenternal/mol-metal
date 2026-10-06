@@ -407,6 +407,15 @@ def load_checkpoint(
         hidden_dim=hidden_dim,
         n_layers=n_layers,
     )
+    # 2026-10-05 (Round-3 D2) — the connectivity prior defaults to ON, so this
+    # bench's numbers are NOT comparable with a pre-D2 run of the same
+    # checkpoint. Printed because the decoder is built here with defaults and
+    # nothing downstream would otherwise record that the decode changed.
+    print(
+        f"[Wf-139 P5] connectivity_prior="
+        f"{'on' if decoder.connectivity_prior else 'off'} (D2 postprocess)",
+        flush=True,
+    )
     model.eval()
     return model, decoder, payload
 

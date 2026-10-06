@@ -5,16 +5,19 @@ TODO-84 §1 (paper sections forbidden without USER_OK), the actual §6
 write to ``paper/sections/06_limitations_v4.tex`` requires explicit USER_OK.
 
 This module ships 1 regression test that verifies the PRE-PREPARED draft
-scaffold at ``docs/PAPER_SECTION_6_LIMITATIONS_DRAFT.md`` exists and
-contains the 6 canonical sections (§1..§6 per the Wf-359-B2 brief):
+scaffold at ``docs/PAPER_SECTION_6_v4_FINAL.md`` exists and
+contains the 6 canonical sections (§1..§6 per the Wf-359-B2 brief → superseded
+by Wf-410-A1 + Wf-424-A13 → v4 FINAL; 2026-10-05 docs prune retired the
+interim Wf-359-B2 PAPER_SECTION_6_LIMITATIONS_DRAFT.md, see TODO/03_plans
+audit):
 
-  §0 TL;DR — Honest-negative framing is the §6 posture
-  §1 Per-metric honest-negatives (m1-m21)
-  §2 Per-workflow honest-negatives (Wf-1..358)
-  §3 Per-launcher honest-negatives (5 wrappers × ~37.5 hr GPU total)
-  §4 Resolved entries (Wf-344 + Wf-345 + Wf-346 + Wf-356 + Wf-358 closed)
-  §5 Forward-looking honest-negatives (next 90 days)
-  §6 Cross-references (AGENTS.md + Wf closeouts)
+  §0 TL;DR — paper §6 v4 operational summary
+  §1 Operational context — Tier-2 acceptance + standing directives
+  §2 Convergence — the 9-path m6_kappa inventory + §3 lineup invariant
+  §3 Ready-to-paste LaTeX block — for `paper/sections/06_limitations_v4.tex`
+  §4 Status + ownership
+  §5 Cross-references — convergence brief sources
+  §6 Honest framing + USER_OK dependency
 
 Honest framing per ``party-twenty-spirit`` §3.5: this is a doc-existence
 + section-coverage regression test (CPU-only, no GPU launches, no
@@ -31,31 +34,30 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DOC_PATH = PROJECT_ROOT / "docs" / "PAPER_SECTION_6_LIMITATIONS_DRAFT.md"
+DOC_PATH = PROJECT_ROOT / "docs" / "PAPER_SECTION_6_v4_FINAL.md"
 
 
 @pytest.mark.skipif(
     not DOC_PATH.exists(),
-    reason="docs/PAPER_SECTION_6_LIMITATIONS_DRAFT.md not on disk",
+    reason="docs/PAPER_SECTION_6_v4_FINAL.md not on disk",
 )
 def test_paper_section6_draft_has_six_sections() -> None:
-    """The §6 Limitations draft scaffold has 6 canonical §1..§6 sections.
+    """The §6 Limitations v4 FINAL has 6 canonical §1..§6 sections.
 
-    Per Wf-359-B2 brief: the scaffold MUST contain §1 per-metric +
-    §2 per-workflow + §3 per-launcher + §4 resolved + §5 forward-looking
-    + §6 cross-references. We grep for ``## §<N>`` markers (case-sensitive
-    top-of-section heading style used throughout Mol-Metal closeouts).
+    Per Wf-410-A1 + Wf-424-A13 + 2026-10-05 docs prune: the canonical
+    paper §6 source is `docs/PAPER_SECTION_6_v4_FINAL.md`. This test
+    verifies the 6 canonical §1..§6 section markers (post-prune).
     """
     text = DOC_PATH.read_text(encoding="utf-8")
 
-    # Verify the 6 canonical section markers are present.
+    # Verify the 6 canonical section markers are present (v4 FINAL structure).
     expected_sections = [
-        ("§1", "Per-metric"),
-        ("§2", "Per-workflow"),
-        ("§3", "Per-launcher"),
-        ("§4", "Resolved"),
-        ("§5", "Forward-looking"),
-        ("§6", "Cross-references"),
+        ("§1", "Operational context"),
+        ("§2", "Convergence"),
+        ("§3", "Ready-to-paste"),
+        ("§4", "Status"),
+        ("§5", "Cross-references"),
+        ("§6", "Honest framing"),
     ]
 
     found_sections: list[tuple[str, str]] = []

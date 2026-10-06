@@ -65,6 +65,7 @@ del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
 import argparse
 import json
 import pickle
+import random
 import sys
 import time
 from dataclasses import dataclass
@@ -311,6 +312,7 @@ def train_one_metal_one_seed(
 
     torch.manual_seed(seed)
     np.random.seed(seed)
+    random.seed(seed)
     if torch.cuda.is_available() and str(device).startswith("cuda"):
         torch.cuda.manual_seed_all(seed)
 

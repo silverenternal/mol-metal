@@ -11,11 +11,22 @@ production behaviour.
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+# Per env.sh §1b — point the data loaders at the local repo CSV so
+# CPU-only test hosts (no /mnt/storage mount) can read MetalCytoToxDB
+# without setting MOLMETAL_DATA_DIR manually.  This fixes the recurring
+# FileNotFoundError at MetalCytotoxDataset.from_csv that 4 dmpnn tests
+# were tripping on.
+_DEFAULT_DATA_DIR = PROJECT_ROOT / ".data" / "molmetal"
+if not os.environ.get("MOLMETAL_DATA_DIR") and _DEFAULT_DATA_DIR.is_dir():
+    os.environ["MOLMETAL_DATA_DIR"] = str(_DEFAULT_DATA_DIR)
 
 
 def _preload_init(init_path: Path, mod_name: str, search_locations: list) -> None:

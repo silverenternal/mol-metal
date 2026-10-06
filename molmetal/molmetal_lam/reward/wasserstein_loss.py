@@ -103,6 +103,7 @@ Lit anchors
 from __future__ import annotations
 
 import math
+import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
@@ -254,6 +255,30 @@ def _sliced_w2(
         # but we return zero rather than NaN to keep trainer logging
         # stable (callers can guard against empty batches upstream).
         return torch.zeros((), dtype=x.dtype, device=x.device)
+    # Wf-405-A2 — Triton dispatch hook.  When TRITON_WASSERSTEIN_SLICED=1
+    # AND on CUDA AND triton is importable, route through
+    # ``fused_wasserstein_sliced`` which selects the per-direction Triton
+    # kernel.  On CPU (the default training device for the LOMO +
+    # multitask trainers), the function falls back to its PyTorch
+    # reference, so CPU behavior is preserved bit-for-bit (the
+    # conditional guard guarantees ``fused_wasserstein_sliced`` only
+    # returns its Triton path under conditions where the original
+    # result would have been computed on CUDA anyway).
+    if (
+        x.is_cuda
+        and bool(int(os.environ.get("TRITON_WASSERSTEIN_SLICED", "0"))) == 1
+    ):
+        try:
+            from molmetal.adapters.flow_matching_lipman._reference.fused_wasserstein_sliced import (
+                fused_wasserstein_sliced as _fused_w2,
+            )
+
+            return _fused_w2(x, y, n_mc=int(n_mc), seed=int(seed))
+        except Exception:
+            # Triton dispatch failed (e.g. triton not installed, kernel
+            # raised) — fall through to the PyTorch path below so the
+            # trainer never breaks on a missing optional dep.
+            pass
     gen = torch.Generator(device=x.device)
     gen.manual_seed(int(seed))
     d = x.shape[1]
@@ -346,10 +371,54 @@ def wasserstein_1d_torchsort(
     return (xs - ys).abs().mean()
 
 
+def wasserstein_2_1d_torchsort(
+    pred: Tensor,
+    target: Tensor,
+) -> Tensor:
+    """Closed-form 1-D W₂ (RMS form): sqrt(mean((sort(pred)-sort(target))²)).
+
+    The 2-norm Wasserstein distance on equal-length 1-D samples is the
+    root-mean-square of the order-statistic differences (Peyré & Cuturi
+    2019 §3, Prop. 1).  Differentiable w.r.t. ``pred``.
+
+    Resize-via-linear-interpolation matches :func:`wasserstein_1d_torchsort`
+    so callers can swap W₁ ↔ W₂ without retuning the input shape.
+    """
+    if pred.dim() == 0:
+        pred_flat = pred.reshape(-1)
+    else:
+        pred_flat = pred.flatten()
+    if target.dim() == 0:
+        tgt_flat = target.reshape(-1)
+    else:
+        tgt_flat = target.flatten()
+    n = max(pred_flat.numel(), tgt_flat.numel())
+    xs = torch.sort(pred_flat, dim=0).values
+    ys = torch.sort(tgt_flat, dim=0).values
+    if xs.numel() != n:
+        idx = torch.linspace(
+            0, max(xs.numel() - 1, 1), n, device=pred.device, dtype=pred.dtype
+        )
+        idx_lo = idx.floor().long().clamp(max=xs.numel() - 1)
+        idx_hi = idx.ceil().long().clamp(max=ys.numel() - 1)
+        frac = (idx - idx_lo.to(idx.dtype)).clamp(0.0, 1.0)
+        xs = (1.0 - frac) * xs[idx_lo] + frac * xs[idx_hi]
+    if ys.numel() != n:
+        idx = torch.linspace(
+            0, max(ys.numel() - 1, 1), n, device=target.device, dtype=target.dtype
+        )
+        idx_lo = idx.floor().long().clamp(max=ys.numel() - 1)
+        idx_hi = idx.ceil().long().clamp(max=ys.numel() - 1)
+        frac = (idx - idx_lo.to(idx.dtype)).clamp(0.0, 1.0)
+        ys = (1.0 - frac) * ys[idx_lo] + frac * ys[idx_hi]
+    return ((xs - ys) ** 2).mean().sqrt()
+
+
 def wasserstein_pic50_gradient(
     predicted_pic50_batch: Tensor,
     reference_pic50_cloud: Tensor,
     w_weight: float = 0.05,
+    wasserstein_order: int = 1,
 ) -> Tensor:
     """Differentiable 1-D W₂ penalty for pIC50 (Wf-251-F4).
 
@@ -389,6 +458,11 @@ def wasserstein_pic50_gradient(
         predicted_pic50_batch,
         reference_pic50_cloud.detach(),
     )
+    if int(wasserstein_order) == 2:
+        w2 = wasserstein_2_1d_torchsort(
+            predicted_pic50_batch,
+            reference_pic50_cloud.detach(),
+        )
     return float(w_weight) * w2
 
 

@@ -1,11 +1,14 @@
-"""Wf-120 Phase 1 — SHA256 audit for D-MPNN pIC50 checkpoints.
+"""Wf-120 Phase 1 — SHA256 audit for D-MPNN checkpoints.
 
 =====================================================================
-Per-ckpt SHA256 audit for ``molmetal/checkpoints/dmpnn_pic50_*.pt``
+Per-ckpt SHA256 audit for all ``molmetal/checkpoints/dmpnn_*.pt``
 =====================================================================
 
-Reads every ``dmpnn_pic50_{metal}_seed{N}.pt`` checkpoint under
-``molmetal/checkpoints/``, computes its SHA256, and verifies that:
+Reads every D-MPNN checkpoint under ``molmetal/checkpoints/``
+(``dmpnn_pic50_{metal}_seed{N}.pt`` single-task pIC50,
+``dmpnn_mtw_{metal}_seed{N}.pt`` multi-task Wasserstein, and
+``dmpnn_dann_{cohort}_seed{N}.pt`` DANN domain-adversarial), computes
+its SHA256, and verifies that:
 
   1. Every (metal, seed) pair has a unique SHA256 (i.e. seed0 and
      seed1 of the same metal are byte-different — defends against
@@ -78,10 +81,22 @@ def sha256_of_file(path: Path, chunk_bytes: int = 1 << 20) -> str:
 
 
 def discover_dmpnn_ckpts(ckpt_dir: Path) -> List[Path]:
-    """Return ``dmpnn_pic50_*.pt`` paths under ``ckpt_dir``, sorted."""
+    """Return all D-MPNN checkpoint paths under ``ckpt_dir``, sorted.
+
+    Covers every D-MPNN family the project emits:
+      * ``dmpnn_pic50_{metal}_seed{N}.pt`` — single-task pIC50 (Wf-84 / Wf-120)
+      * ``dmpnn_mtw_{metal}_seed{N}.pt`` — multi-task Wasserstein (Wf-124 P3)
+      * ``dmpnn_dann_{cohort}_seed{N}.pt`` — DANN domain-adversarial (Wf-131)
+
+    Other ckpt families (e.g. ``affinity_platinai_seed0.pt``) are intentionally
+    excluded — they belong to different baselines and are audited elsewhere.
+    """
     if not ckpt_dir.is_dir():
         return []
-    return sorted(ckpt_dir.glob("dmpnn_pic50_*.pt"))
+    out: List[Path] = []
+    for pattern in ("dmpnn_pic50_*.pt", "dmpnn_mtw_*.pt", "dmpnn_dann_*.pt"):
+        out.extend(ckpt_dir.glob(pattern))
+    return sorted(out)
 
 
 def parse_filename(p: Path) -> Optional[Tuple[str, int]]:

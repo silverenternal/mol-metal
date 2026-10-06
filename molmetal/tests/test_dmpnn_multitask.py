@@ -528,7 +528,7 @@ def test_joint_train_step_no_nan():
     graphs, mids, pic50, active = _build_joint_batch(n_per_metal=4)
     ref_pic50 = torch.from_numpy(pic50.astype(np.float32))
 
-    loss, cls_loss, reg_loss, w_pen = train_one_epoch_joint(
+    loss, cls_loss, reg_loss, w_pen, _ = train_one_epoch_joint(
         model=model,
         optimizer=optimizer,
         criterion=criterion,
@@ -821,7 +821,7 @@ def test_5metal_joint_loss_decreases():
 
     losses = []
     for epoch in range(3):
-        loss, cls_loss, reg_loss, w_pen = train_one_epoch_joint(
+        loss, cls_loss, reg_loss, w_pen, _ = train_one_epoch_joint(
             model=model,
             optimizer=optimizer,
             criterion=criterion,

@@ -98,12 +98,26 @@ class DMPNNEncoder(nn.Module):
         atom_feat_dim: int = 39,  # GraphFeaturizer default
         edge_feat_dim: int = 6,  # GraphFeaturizer default
         dropout: float = 0.0,
+        strip_metal_atoms: bool = True,
     ):
         super().__init__()
         self.hidden_dim = int(hidden_dim)
         self.n_layers = int(n_layers)
         self.atom_feat_dim = int(atom_feat_dim)
         self.edge_feat_dim = int(edge_feat_dim)
+        # Wf-ultracode (Defect 1 — silent ligand-only graphs): when
+        # ``strip_metal_atoms=True`` (default), the encoder removes any
+        # precious-metal atom from the SMILES (Pt, Pd, Ru, Ir, Rh, Os,
+        # Re, Au) before RDKit parsing.  The metal id is still passed
+        # via ``metal_embed`` / ``metal_ids``, so no information is lost
+        # — only the double-counting between the graph path and the
+        # metal-id tensor.  This makes platinai (4078/4078 rows carry
+        # ``[Pt+2]``) consistent with v4 / NCI60 (0/26632 and 0/7823
+        # carry metal tokens): the encoder always sees ligand-only
+        # graphs.  Set ``strip_metal_atoms=False`` to restore the
+        # legacy encoding for callers that need the metal atom in the
+        # graph.
+        self.strip_metal_atoms = bool(strip_metal_atoms)
         # Featurizer is stateless and side-effect-free; safe to share.
         self.featurizer = GraphFeaturizer()
         cfg = MPNNConfig(
@@ -123,6 +137,8 @@ class DMPNNEncoder(nn.Module):
         smiles_list: List[str],
         device: torch.device,
         mol_objects: Optional[List] = None,
+        cache: Optional[Dict] = None,
+        batch_idx_key: Optional[int] = None,
     ) -> Tuple[
         torch.Tensor,  # h_atom (B, N_max, atom_feat_dim)
         torch.Tensor,  # edge_index (B, 2, E_max)
@@ -132,27 +148,95 @@ class DMPNNEncoder(nn.Module):
     ]:
         from rdkit import Chem, RDLogger
 
+        # Local import to avoid a top-level circular dependency with
+        # ``molmetal.data.featurize`` (the latter imports nothing from
+        # ``molmetal.models`` so this is cheap).
+        from molmetal.data.featurize import _strip_metal_atoms
+
         RDLogger.DisableLog("rdApp.*")
         B = len(smiles_list)
         atom_feats, edge_indices, edge_attrs, n_atoms_list = [], [], [], []
         for i, smi in enumerate(smiles_list):
-            try:
-                if mol_objects is not None and mol_objects[i] is not None:
-                    mol = mol_objects[i]
-                else:
-                    mol = Chem.MolFromSmiles(smi)
-                if mol is None:
-                    raise ValueError(f"RDKit parse failed for {smi!r}")
-                feat = self.featurizer(mol)
-                atom_feats.append(feat["x"])
-                edge_indices.append(feat["edge_index"])
-                edge_attrs.append(feat["edge_attr"])
-                n_atoms_list.append(int(feat["n_atoms"]))
-            except Exception:
-                atom_feats.append(np.zeros((1, self.atom_feat_dim), dtype=np.float32))
-                edge_indices.append(np.zeros((2, 0), dtype=np.int64))
-                edge_attrs.append(np.zeros((0, self.edge_feat_dim), dtype=np.float32))
-                n_atoms_list.append(1)
+            # Wf-327-F8 / Wf-328-W10 — cache look-up before RDKit parse.
+            # Two cache APIs are supported:
+            #   1. DMPNNFeaturizationCache (molmetal.models.dmpnn_cache) —
+            #      populated by ``cache.precompute_smiles``; per-SMILES
+            #      cache populated before the batch loop.  On a cache hit
+            #      we skip the RDKit parse + GraphFeaturizer entirely.
+            #   2. Raw dict keyed by (smiles, batch_idx_key) — populated
+            #      on the first call, reused on the second (useful for
+            #      callers that don't precompute).
+            _cache_hit: Optional[Dict] = None
+            if cache is not None:
+                # API (1): DMPNNFeaturizationCache with a precomputed
+                # ``_mols`` dict.  Hit short-circuits the parse path.
+                if hasattr(cache, "_mols") and smi in cache._mols:
+                    _mol_cache_entry = cache._mols[smi]
+                    _cache_hit = (
+                        _mol_cache_entry["x"],
+                        _mol_cache_entry["edge_index"],
+                        _mol_cache_entry["edge_attr"],
+                        int(_mol_cache_entry["n_atoms"]),
+                    )
+                elif isinstance(cache, dict):
+                    _cache_key = (smi, batch_idx_key)
+                    _cache_hit = cache.get(_cache_key)
+            if _cache_hit is None:
+                try:
+                    if mol_objects is not None and mol_objects[i] is not None:
+                        mol = mol_objects[i]
+                    else:
+                        # Wf-ultracode (Defect 1): strip precious-metal atoms
+                        # before RDKit parsing so the encoder sees ligand-only
+                        # graphs across all cohorts.  ``_strip_metal_atoms``
+                        # is a no-op for SMILES that don't carry a metal
+                        # token (the v4 / NCI60 case).
+                        parse_smi = (
+                            _strip_metal_atoms(str(smi))[0]
+                            if self.strip_metal_atoms
+                            else str(smi)
+                        )
+                        mol = Chem.MolFromSmiles(parse_smi)
+                    if mol is None:
+                        raise ValueError(f"RDKit parse failed for {smi!r}")
+                    feat = self.featurizer(mol)
+                    atom_feats.append(feat["x"])
+                    edge_indices.append(feat["edge_index"])
+                    edge_attrs.append(feat["edge_attr"])
+                    n_atoms_list.append(int(feat["n_atoms"]))
+                    # Wf-327-F8 / Wf-328-W10 — store on cache hit-miss path
+                    # so subsequent batch passes reuse the parsed features.
+                    if cache is not None and isinstance(cache, dict):
+                        cache[(smi, batch_idx_key)] = (
+                            feat["x"],
+                            feat["edge_index"],
+                            feat["edge_attr"],
+                            int(feat["n_atoms"]),
+                        )
+                    # Wf-328-W10 — also feed the per-SMILES tier of
+                    # DMPNNFeaturizationCache so subsequent passes hit
+                    # via the canonical (per-SMILES) key.
+                    if cache is not None and hasattr(cache, "_mols") and smi not in cache._mols:
+                        cache._mols[smi] = {
+                            "x": feat["x"],
+                            "edge_index": feat["edge_index"],
+                            "edge_attr": feat["edge_attr"],
+                            "n_atoms": int(feat["n_atoms"]),
+                            "n_bonds": int(feat.get("n_bonds", 0)),
+                            "mol": None,
+                        }
+                except Exception:
+                    atom_feats.append(np.zeros((1, self.atom_feat_dim), dtype=np.float32))
+                    edge_indices.append(np.zeros((2, 0), dtype=np.int64))
+                    edge_attrs.append(np.zeros((0, self.edge_feat_dim), dtype=np.float32))
+                    n_atoms_list.append(1)
+            else:
+                # Cache hit — restore the previously-featurized tensors.
+                _cached_x, _cached_ei, _cached_ea, _cached_n = _cache_hit
+                atom_feats.append(_cached_x)
+                edge_indices.append(_cached_ei)
+                edge_attrs.append(_cached_ea)
+                n_atoms_list.append(int(_cached_n))
 
         N_max = max(max(n_atoms_list), 1)
         E_max = max(max(ei.shape[1] for ei in edge_indices), 1)
@@ -175,6 +259,29 @@ class DMPNNEncoder(nn.Module):
             n_ea = min(ea.size(0), E_max)
             edge_attr[b, :n_ea] = ea[:n_ea]
             batch_idx[b, :n_a] = b
+
+        # Wf-328-W10 — populate the per-batch tier of
+        # DMPNNFeaturizationCache so subsequent calls with the same
+        # ``batch_idx_key`` hit on the second pass.  Stat accounting:
+        # the FIRST store is a miss (no prior entry in ``_batch_cache``);
+        # subsequent stores are hits.
+        if (
+            cache is not None
+            and hasattr(cache, "_batch_cache")
+            and batch_idx_key is not None
+        ):
+            _was_hit = batch_idx_key in cache._batch_cache
+            cache._batch_cache[batch_idx_key] = {
+                "h_atom": h_atom,
+                "edge_index": edge_index,
+                "edge_attr": edge_attr,
+                "batch_idx": batch_idx,
+                "atom_mask": atom_mask,
+            }
+            if _was_hit:
+                cache.stats.n_batch_hit += 1
+            else:
+                cache.stats.n_batch_miss += 1
 
         return h_atom, edge_index, edge_attr, batch_idx, atom_mask
 
