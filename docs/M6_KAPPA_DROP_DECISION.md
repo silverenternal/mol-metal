@@ -53,7 +53,7 @@ Per `TODO/completed/389a1_m6k_supp_reframe.md` (Wf-389-A1, ~250 LOC, 6 sections)
 - **§3 supplementary sub-table** — top-3 WEAK-band correlates promoted: MolLogP +0.1999 + MorganDensity_r2 +0.1644 + Chi3v +0.1541.
 - **Convergence with Wf-377-A1 §4.2 forward-looking recommendation** — DROP + PROMOTE + RETAIN decision matrix.
 - **JSON verdict update** — `metrics/by_metric/m6_kappa.json::verdict = MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL` + `wf389a1_supplementary_reframe` block with `drop_from_main_result=true` + `promote_to_supplementary_subtable=true`.
-- **`docs/PAPER_SECTION_3_METRIC_TABLE.md`** NEW ~580 LOC authored with §3 main-result table + §3 supplementary sub-table + §4 ready-to-paste LaTeX block for USER_OK-gated paper conversion.
+- **`docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md`** NEW ~580 LOC authored with §3 main-result table + §3 supplementary sub-table + §4 ready-to-paste LaTeX block for USER_OK-gated paper conversion.
 
 ### §1.3 Wf-411-A4 per-cohort × Cohen 1988 3-band refinement (the structural refinement)
 
@@ -336,9 +336,9 @@ The §6 honest-limitations section is the canonical place for **structural ceili
 
 ### §5.1 §3 main-result table conversion
 
-**Source file:** `docs/PAPER_SECTION_3_METRIC_TABLE.md` (Wf-389-A1 §3, ~580 LOC, 6 sections)
+**Source file:** `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` (Wf-389-A1 §3, ~580 LOC, 6 sections)
 
-**Source path (for reference only):** this lives in `docs/`, NOT `paper/sections/` per AGENTS.md §5.3 + TODO-84. USER_OK-gated conversion requires `cp docs/PAPER_SECTION_3_METRIC_TABLE.md paper/sections/03_main_results.tex` + manual edit to use the active tabulator discipline per mol-metal-paper-writing skill §3.
+**Source path (for reference only):** this lives in `docs/`, NOT `paper/sections/` per AGENTS.md §5.3 + TODO-84. USER_OK-gated conversion requires `cp docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md paper/sections/03_main_results.tex` + manual edit to use the active tabulator discipline per mol-metal-paper-writing skill §3.
 
 **§3 main-result table** — 4 CEILING_BREAK metrics preserved:
 
@@ -351,7 +351,7 @@ The §6 honest-limitations section is the canonical place for **structural ceili
 
 ### §5.2 §3 supplementary sub-table conversion
 
-**Source file:** `docs/PAPER_SECTION_3_METRIC_TABLE.md §3` (Wf-389-A1 §3) + `docs/M6_KAPPA_DROP_DECISION.md §3` (this brief)
+**Source file:** `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md §3` (Wf-389-A1 §3) + `docs/M6_KAPPA_DROP_DECISION.md §3` (this brief)
 
 **§3 supplementary sub-table** — 3 WEAK-band correlates promoted (cohort-level n=5460):
 
@@ -391,7 +391,7 @@ The §6 honest-limitations section is the canonical place for **structural ceili
 ```latex
 % =============================================================================
 % Section 3.1 -- Main-result metrics (v4.1, 2026-10-01).
-% Source: docs/PAPER_SECTION_3_METRIC_TABLE.md (Wf-389-A1) +
+% Source: docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md (Wf-389-A1) +
 % docs/M6_KAPPA_DROP_DECISION.md (Wf-424-A15).
 % Verdict: 4 CEILING_BREAK metrics preserved; m6_kappa DROPPED.
 % =============================================================================
@@ -496,7 +496,7 @@ See §4.2 + §4.3 above.
 | **Wf-376-A4** | `docs/SECTION_3_METRIC_REFRAME_TEMPLATE.md` + `TODO/completed/376a4_section3_reframe.md` | Tier-2 paper §3 main-result reframe LaTeX (drop m6_kappa; promote 4 CEILING_BREAK) |
 | **Wf-377-A1** | `docs/M6_KAPPA_REDESIGN_PROPOSAL.md` (8 sections, ~590 LOC) + `TODO/completed/377a1_m6_kappa_redesign.md` | Metric-redesign literature + empirical validation (8th path, 16 invariants × n=5460); §6.1.7 LaTeX extending §6.1.6 |
 | **Wf-380-A7** | `TODO/completed/380a7_m6kappa_finalize.md` (5 sections, ~150 LOC) | TODO-206 m6_kappa metric redefinition finalization; aggregates Wf-375-A4 + Wf-376-A4 + Wf-377-A1 + Wf-365-A3 into single 8-path inventory |
-| **Wf-389-A1** | `TODO/completed/389a1_m6k_supp_reframe.md` (~250 LOC, 6 sections) + `docs/PAPER_SECTION_3_METRIC_TABLE.md` (~580 LOC, 6 sections) | Tier-2 paper §3 metric table reframe (9th path; top-3 WEAK-band correlates promoted to §3 supplementary sub-table) |
+| **Wf-389-A1** | `TODO/completed/389a1_m6k_supp_reframe.md` (~250 LOC, 6 sections) + `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` (~580 LOC, 6 sections) | Tier-2 paper §3 metric table reframe (9th path; top-3 WEAK-band correlates promoted to §3 supplementary sub-table) |
 | **Wf-410-A1** | `docs/PAPER_SECTION_6_v4_LIMITATIONS_READY.md` (~518 LOC, 7 sections) + `docs/SECTION_6_LIMITATIONS_TEMPLATE.md §3.1.6` (~70 LOC §6 v4 framing extension) | Tier-2 paper §6 v4 ready-to-paste scaffold |
 | **Wf-411-A4** | `TODO/completed/411a4_m6k_verifier.md` (~14,599 bytes, 5 sections) | Per-cohort × Cohen 1988 3-band refinement (10th path; 13/15 cohort-cells MODERATE) |
 | **Wf-424-A15** | this brief (`docs/M6_KAPPA_DROP_DECISION.md`) + `TODO/completed/424a15_m6_kappa_drop.md` + `metrics/by_metric/m6_kappa.json::wf424a15_drop_decision` | PAPER-CONVERSION DECISION: drop §3 main-result + promote top-3 supplementary + retain §6 complementary heuristic |
@@ -547,7 +547,7 @@ See §4.2 + §4.3 above.
 - `molmetal/reports/wf341t1_redesign/` — Wf-341-T1 m15 docked pose RMSD redesign
 - `molmetal/reports/wf371a1_degenerate_chain/result.json` — Wf-371-A1 primary MEASURED output (89 lines)
 - `docs/HONEST_NEGATIVE_CATALOG.md` — per Wf-375-A4 + Wf-358-C2 + Wf-369-A3 + Wf-359-B1 + Wf-395-A2 + Wf-410-A1 expanded 65+ entries catalog
-- `docs/PAPER_SECTION_3_METRIC_TABLE.md` (Wf-389-A1) + `docs/PAPER_SECTION_6_v4_LIMITATIONS_READY.md` (Wf-410-A1)
+- `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` (Wf-389-A1) + `docs/PAPER_SECTION_6_v4_LIMITATIONS_READY.md` (Wf-410-A1)
 
 ---
 
@@ -582,7 +582,7 @@ See §4.2 + §4.3 above.
 - Wf-389-A1 = **1 supplementary path** (§3 metric table reframe)
 - Wf-411-A4 = **1 per-cohort path** (Cohen 1988 3-band refinement)
 
-= **10 paths total**. All exhaustively confirm that no per-molecule topological invariant — Shape Kappa Index, MolLogP, MorganDensity, Chi connectivity, Balaban J, or any other — reaches MODERATE-band correlation with metallodrug pIC50 at the cohort level. The per-metal MODERATE-band discoveries (Rh BalabanJ +0.3953, Rh MolLogP -0.3416, Re MolLogP +0.3363) merit follow-up but do not save m6_kappa as a §3 main-result metric. The recommended framing is to **drop m6_kappa from §3 main-result**, **keep as §6 honest-limitations complementary heuristic**, and **promote top-3 alternatives (MolLogP + MorganDensity_r2 + Chi3v) to §3 supplementary sub-table**. Paper §3 + §6 v4 ready-to-paste scaffold is in `docs/PAPER_SECTION_3_METRIC_TABLE.md` (Wf-389-A1) + `docs/PAPER_SECTION_6_v4_LIMITATIONS_READY.md` (Wf-410-A1) + this brief §6. USER_OK-gated conversion to `paper/sections/03_main_results.tex` + `paper/sections/06_limitations_v4.tex` requires explicit user authorization per TODO-84 + AGENTS.md §5.3.
+= **10 paths total**. All exhaustively confirm that no per-molecule topological invariant — Shape Kappa Index, MolLogP, MorganDensity, Chi connectivity, Balaban J, or any other — reaches MODERATE-band correlation with metallodrug pIC50 at the cohort level. The per-metal MODERATE-band discoveries (Rh BalabanJ +0.3953, Rh MolLogP -0.3416, Re MolLogP +0.3363) merit follow-up but do not save m6_kappa as a §3 main-result metric. The recommended framing is to **drop m6_kappa from §3 main-result**, **keep as §6 honest-limitations complementary heuristic**, and **promote top-3 alternatives (MolLogP + MorganDensity_r2 + Chi3v) to §3 supplementary sub-table**. Paper §3 + §6 v4 ready-to-paste scaffold is in `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` (Wf-389-A1) + `docs/PAPER_SECTION_6_v4_LIMITATIONS_READY.md` (Wf-410-A1) + this brief §6. USER_OK-gated conversion to `paper/sections/03_main_results.tex` + `paper/sections/06_limitations_v4.tex` requires explicit user authorization per TODO-84 + AGENTS.md §5.3.
 
 ---
 

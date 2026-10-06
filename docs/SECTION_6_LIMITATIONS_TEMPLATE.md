@@ -9,7 +9,7 @@ into a new file. All `\MEASURED{}` / `\PROJECTED{}` labels are preserved per
 
 **Date**: 2026-09-30 (extended from 2026-09-29 base)
 **Owner**: Hugo Lee + ultracode agents (Wf-364-A4 base + Wf-406-A1 m6_kappa §3.1 extension + Wf-410-A1 §3.1.6 §6 v4 framing extension)
-**Source draft**: `docs/PAPER_SECTION_6_LIMITATIONS_DRAFT.md` (Wf-359-B2)
+**Source draft**: `docs/PAPER_SECTION_6_v4_FINAL.md` (Wf-359-B2)
 **Source catalog**: `docs/HONEST_NEGATIVE_CATALOG.md` (Wf-359-B1 + Wf-358-C2; 40 entries)
 **m6_kappa drop justification brief**: `docs/M6_KAPPA_TIER2_DROP_JUSTIFICATION.md` (Wf-406-A1)
 **Existing paper §6**: `paper/sections/06_limitations_v3.tex` (486 LOC; tier-1 anchors)
@@ -48,7 +48,7 @@ MEASURED tag discipline preserved per `party-twenty-spirit` §3.5.
 | m6_kappa augmented_mean (Wf-364-A2 best 0.4737) | `metrics/by_metric/m6_kappa.json::wf365a3_final_verdict` (retroactively added by Wf-406-A1 per AGENTS.md §5.5) | \MEASURED{} |
 | m6_kappa DEGENERATE (Wf-371-A1 RDKit 12-d baseline 0.4493) | `molmetal/reports/wf371a1_degenerate_chain/result.json` | \MEASURED{} |
 | m6_kappa redesign top-3 (Wf-377-A1 MolLogP/MorganDensity_r2/Chi3v) | `molmetal/reports/wf377a1_m6_kappa_redesign/result.json::ranking` | \MEASURED{} |
-| m6_kappa §3 supplementary reframe (Wf-389-A1) | `docs/PAPER_SECTION_3_METRIC_TABLE.md` | \MEASURED{} |
+| m6_kappa §3 supplementary reframe (Wf-389-A1) | `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` | \MEASURED{} |
 | m6_kappa Tier-2 §3 drop justification (Wf-406-A1) | `docs/M6_KAPPA_TIER2_DROP_JUSTIFICATION.md` | \MEASURED{} |
 | m3 Vina cohort median (Wf-333-V3) | `molmetal/reports/wf333_v3_vina/cohort_summary.json` | \PROJECTED{} |
 | 5 DEFERRED CFM waves (Wf-357-C3) | `molmetal/reports/wf258_audit/cfm_todo_gap_audit.md` §2.1 | \PROJECTED{} |
@@ -307,7 +307,7 @@ Pearson r calculation matches scipy.stats.pearsonr to machine precision.
 ### §3.1.3 Decision — DROP from §3 main-result + PROMOTE 3 alternatives + RETAIN in §6
 
 Per `docs/M6_KAPPA_TIER2_DROP_JUSTIFICATION.md` (Wf-406-A1 SHIPPED 2026-09-30)
-+ `docs/PAPER_SECTION_3_METRIC_TABLE.md` (Wf-389-A1 SHIPPED 2026-09-30):
++ `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` (Wf-389-A1 SHIPPED 2026-09-30):
 
 **§3 main-result table — m6_kappa DROPPED**:
 
@@ -350,7 +350,7 @@ but do NOT promote to main-result.
 - `docs/M6_KAPPA_REDESIGN_PROPOSAL.md` (Wf-377-A1 SHIPPED 2026-09-30, ~595 LOC, 8 sections)
 - `docs/PAPER_S6_M6_KAPPA_REFRAME.md` (Wf-375-A4 SHIPPED 2026-09-30, ~480 LOC, 8 sections)
 - `docs/SECTION_3_METRIC_REFRAME_TEMPLATE.md` (Wf-376-A4 SHIPPED 2026-09-30, ~480 LOC, 7 sections)
-- `docs/PAPER_SECTION_3_METRIC_TABLE.md` (Wf-389-A1 SHIPPED 2026-09-30, ~580 LOC, 6 sections)
+- `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` (Wf-389-A1 SHIPPED 2026-09-30, ~580 LOC, 6 sections)
 - `docs/M6_KAPPA_TIER2_DROP_JUSTIFICATION.md` (Wf-406-A1 SHIPPED 2026-09-30, this wave)
 - `metrics/by_metric/m6_kappa.json::wf365a3_final_verdict` (Wf-365-A3 verdict field — retroactively added by Wf-406-A1 per AGENTS.md §5.5 on-disk verification rule; see `docs/M6_KAPPA_TIER2_DROP_JUSTIFICATION.md` §8 retro-fix note)
 - `metrics/by_metric/m6_kappa.json::wf389a1_supplementary_reframe` (Wf-389-A1 verdict field + top-3 promotion record)
@@ -403,7 +403,7 @@ honest-framing compliant and `AGENTS.md §5.2` MEASURED-cite-everything complian
 | **1** | **Wf-365-A3** | `docs/M6_KAPPA_FINAL_VERDICT.md` + `TODO/completed/365a3_m6_kappa_final.md` | 5-path aggregation + `verdict.doc` |
 | **2** | **Wf-377-A1** | `docs/M6_KAPPA_REDESIGN_PROPOSAL.md` + `molmetal/reports/wf377a1_m6_kappa_redesign/result.json` + `TODO/completed/377a1_m6_kappa_redesign.md` | Metric-redesign literature + empirical n=5460 validation |
 | **3** | **Wf-381-A4** | `TODO/completed/381a4_m6kappa_finalize.md` + `TODO/pending/206_m6_kappa_metric_redefinition.md` | TODO-206 metric-redefinition finalization (14 NEW tests; canonical source brief) |
-| **4** | **Wf-389-A1** | `docs/PAPER_SECTION_3_METRIC_TABLE.md` + `TODO/completed/389a1_m6k_supp_reframe.md` + `metrics/by_metric/m6_kappa.json::wf389a1_supplementary_reframe` | §3 supplementary sub-table reframe (top-3 promote) |
+| **4** | **Wf-389-A1** | `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` + `TODO/completed/389a1_m6k_supp_reframe.md` + `metrics/by_metric/m6_kappa.json::wf389a1_supplementary_reframe` | §3 supplementary sub-table reframe (top-3 promote) |
 | **5** | **Wf-406-A1** | `docs/M6_KAPPA_TIER2_DROP_JUSTIFICATION.md` + `TODO/completed/406a1_m6_kappa_paper_prep.md` | Convergence brief + §3.1 template extension + retro-fix of `m6_kappa.json::wf365a3_final_verdict` field |
 | **6** | (secondary) Wf-335-M1 | `TODO/completed/335m1_chemprop_pll.md` + `molmetal/reports/wf335m1_chemprop_pll/result.json` | chemprop+PLL CV-R² +0.6814 CEILING_BREAK |
 | **7** | (secondary) Wf-371-A1 | `TODO/completed/371a1_m6_kappa_degenerate.md` + `molmetal/reports/wf371a1_degenerate_chain/result.json` | DEGENERATE RDKit 12-d baseline + bit-equivalence proof |

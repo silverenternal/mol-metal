@@ -501,7 +501,7 @@ AGENTS.md \S5.4; the 9-path exhaustion is itself the reviewer-rebuttal defence.
 | m6_kappa.json::wf365a3_final_verdict | `metrics/by_metric/m6_kappa.json::wf365a3_final_verdict` | Retroactively added by Wf-406-A1 per AGENTS.md §5.5 |
 | m6_kappa.json::wf389a1_supplementary_reframe | `metrics/by_metric/m6_kappa.json::wf389a1_supplementary_reframe` | top-3 promotion record + supplementary sub-table lineup |
 | m2_r2_per_cohort.json | `metrics/by_metric/m2_r2_per_cohort.json` | NEW per Wf-388-A1; platinai_4cell + hilbert HONEST_NEGATIVE_R2_DEEP; metalcytotox_combined CEILING_BREAK |
-| metal_lomo_auc_wasserstein.json | `metrics/by_metric/metal_lomo_auc_wasserstein.json` | UPDATED per Wf-413-A1; 7-run aggregate value 0.7577 BELOW_KRASNOV_PARTIAL |
+| metal_lomo_auc_wasserstein.json | `metrics/by_metric/metal_lomo_auc_wasserstein.json` | UPDATED per Wf-413-A1; 7-run aggregate value 0.7577 BELOW_KRASNOV_PARTIAL [DISCLOSURE: USABLE_AS_HEADLINE=false per Wf-A11 — rh_oversample=500 synthetic Rh in TRAIN; only 2 of 5 folds (Rh+Re) covered; do NOT cite 0.7577 as Tier-2 headline; per-fold Rh 0.8798 MEASURED on its own merit] |
 
 ### §5.3 Standing rules honored (per AGENTS.md)
 

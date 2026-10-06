@@ -448,7 +448,7 @@ Pre-flight v2/v3 PASS gate (TODO-207) is MANDATORY before any retrain / panel / 
 | **docs/USER_OK_OUTSTANDING_REPORT.md** | `/home/hugo/codes/mol-metal/docs/USER_OK_OUTSTANDING_REPORT.md` | 11 wrapper inventory (Wf-364-C2; superseded by Wf-366-C2) |
 | **docs/M2_R2_FINAL_VERDICT.md** | `/home/hugo/codes/mol-metal/docs/M2_R2_FINAL_VERDICT.md` | m2 R² HONEST_NEGATIVE_R2_DEEP FINAL verdict (Wf-369-A2) |
 | **docs/M6_KAPPA_FINAL_VERDICT.md** | `/home/hugo/codes/mol-metal/docs/M6_KAPPA_FINAL_VERDICT.md` | m6_kappa HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL verdict (Wf-365-A3) |
-| **docs/PAPER_SECTION_6_LIMITATIONS_DRAFT.md** | `/home/hugo/codes/mol-metal/docs/PAPER_SECTION_6_LIMITATIONS_DRAFT.md` | §6 limitations draft (65-entry catalog) |
+| **docs/PAPER_SECTION_6_v4_FINAL.md** | `/home/hugo/codes/mol-metal/docs/PAPER_SECTION_6_v4_FINAL.md` | §6 limitations draft (65-entry catalog) |
 | **docs/SECTION_6_LIMITATIONS_TEMPLATE.md** | `/home/hugo/codes/mol-metal/docs/SECTION_6_LIMITATIONS_TEMPLATE.md` | §6 template (Wf-364-A4) |
 | **docs/WF296_TO_WF359_RETROSPECTIVE.md** | `/home/hugo/codes/mol-metal/docs/WF296_TO_WF359_RETROSPECTIVE.md` | 64-Wf retrospective (Wf-360-B1) |
 | **docs/WORKFLOW_DEPENDENCY_GRAPH.md** | `/home/hugo/codes/mol-metal/docs/WORKFLOW_DEPENDENCY_GRAPH.md` | Wf dependency graph |

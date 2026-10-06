@@ -455,7 +455,7 @@ Per Wf-387-A1 canonical aggregation + Wf-388-A1 real-cohort verification + Wf-37
 - **Wf-377-A1 deep-dive-research move**: 16 per-molecule topological invariants evaluated on n=5460 MetalCytoToxDB labelled pIC50; best alternative MolLogP Pearson r=+0.1999 WEAK band; no cohort-level MODERATE band discovery
 - **Forward-looking**: drop-from-§3 + USER_OK-gated paper conversion of `docs/M6_KAPPA_REDESIGN_PROPOSAL.md`
 
-**Tier-2 paper §6 Limitations draft** (per Wf-359-B2): m6_kappa + m2 R² + m1 Ru AUC 0.7640 NOT HIT all surface as honest-negative entries in §6; cross-ref `docs/PAPER_SECTION_6_LIMITATIONS_DRAFT.md` + `docs/SECTION_6_LIMITATIONS_TEMPLATE.md` (Wf-364-A4 LaTeX template)
+**Tier-2 paper §6 Limitations draft** (per Wf-359-B2): m6_kappa + m2 R² + m1 Ru AUC 0.7640 NOT HIT all surface as honest-negative entries in §6; cross-ref `docs/PAPER_SECTION_6_v4_FINAL.md (Wf-424-A13 SHIPPED 2026-10-01; superseded Wf-359-B2 PAPER_SECTION_6_LIMITATIONS_DRAFT.md, removed 2026-10-05)` + `docs/SECTION_6_LIMITATIONS_TEMPLATE.md` (Wf-364-A4 LaTeX template)
 
 **Tier-1 paper claim DEPRECATED** per AGENTS.md §5.4 + 2026-09-29 user directive *"我们发二区就可以了，不用规划湿实验"* — Tier-2 journal target (JCAMD / Mol. Divers. / Comput. Chem.) does NOT require Tier-1 AUC gate
 

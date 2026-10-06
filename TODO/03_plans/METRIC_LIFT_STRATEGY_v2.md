@@ -227,7 +227,7 @@ When all 6 flags are OFF, trainer loss bit-exact equivalent to Wf-380-B1 / Wf-29
 **Wf-389-A1 §3 supplementary sub-table promotion (SHIPPED)**:
 - JSON verdict field updated: `metrics/by_metric/m6_kappa.json::verdict` = **MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL**
 - `wf389a1_supplementary_reframe` block added to JSON (top-3 promotion record + supplementary sub-table lineup)
-- NEW doc: `docs/PAPER_SECTION_3_METRIC_TABLE.md` (~580 LOC, 6 sections: §0 TL;DR + §1 main-result table + §2 supplementary sub-table + §3 demoted + §4 LaTeX snippet + §5 cross-references + §6 how-to-use)
+- NEW doc: `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md (Wf-424-A14 SHIPPED 2026-10-01; superseded Wf-389-A1 PAPER_SECTION_3_METRIC_TABLE.md draft, removed 2026-10-05)` (~580 LOC, 6 sections: §0 TL;DR + §1 main-result table + §2 supplementary sub-table + §3 demoted + §4 LaTeX snippet + §5 cross-references + §6 how-to-use)
 - §4 ready-to-paste LaTeX block (~150 LOC) for future USER_OK-gated write to `paper/sections/03_main_results_v4_1.tex`
 
 **Top-3 alternatives promoted to §3 supplementary sub-table** (per Wf-377-A1 §4.2 + Wf-389-A1 §2):
@@ -249,7 +249,7 @@ All 3 supplementary entries are **WEAK band** (|r| < 0.3 per Cohen 1988) and **s
 - `docs/SECTION_3_METRIC_REFRAME_TEMPLATE.md` (Wf-376-A4 SHIPPED) — §3 main-result LaTeX + 4-metric headline
 - `docs/M6_KAPPA_REDESIGN_PROPOSAL.md` (Wf-377-A1 SHIPPED) — §6.1.7 LaTeX + 8th path (metric redesign)
 - `docs/M6_KAPPA_FINAL_VERDICT.md` (Wf-365-A3 SHIPPED) — 5 architectural attempts aggregated
-- `docs/PAPER_SECTION_3_METRIC_TABLE.md` (Wf-389-A1 SHIPPED) — explicit §3 metric table
+- `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md (Wf-424-A14 SHIPPED 2026-10-01; superseded Wf-389-A1 PAPER_SECTION_3_METRIC_TABLE.md draft, removed 2026-10-05)` (Wf-389-A1 SHIPPED) — explicit §3 metric table
 - `TODO/pending/206_m6_kappa_metric_redefinition.md` (Wf-381-A4 NEW ~10 KB) — canonical source brief
 - `metrics/by_metric/m6_kappa.json` (Wf-389-A1 verdict + wf389a1 block UPDATED)
 
@@ -573,7 +573,7 @@ Per Wf-376-A4 + Wf-389-A1 §3 + Wf-377-A1 §6.1.7:
 
 | # | Action | Wall | USER_OK? | Output |
 |---|---|---:|---|---|
-| P1 | `docs/PAPER_SECTION_3_METRIC_TABLE.md` LaTeX → `paper/sections/03_main_results_v4_1.tex` | ~2 hr CPU | Yes | 4 main + 3 supplementary + 1 demoted §3 metric table |
+| P1 | `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md (Wf-424-A14 SHIPPED 2026-10-01; superseded Wf-389-A1 PAPER_SECTION_3_METRIC_TABLE.md draft, removed 2026-10-05)` LaTeX → `paper/sections/03_main_results_v4_1.tex` | ~2 hr CPU | Yes | 4 main + 3 supplementary + 1 demoted §3 metric table |
 | P2 | `docs/PAPER_S6_M6_KAPPA_REFRAME.md` LaTeX → `paper/sections/06_limitations_v4.tex` §6.1.6 | ~1 hr CPU | Yes | 7-path inventory verbatim |
 | P3 | `docs/M6_KAPPA_REDESIGN_PROPOSAL.md` LaTeX → `paper/sections/06_limitations_v4.tex` §6.1.7 | ~1 hr CPU | Yes | 8th path (metric redesign) |
 | P4 | `docs/SECTION_6_LIMITATIONS_TEMPLATE.md` LaTeX → paper §6 intro + closing | ~2 hr CPU | Yes | Honest-negative catalog integration |

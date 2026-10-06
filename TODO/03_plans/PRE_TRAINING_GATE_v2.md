@@ -10,9 +10,7 @@
 - `TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md` — quick reference table
 - `TODO/02_metrics/METRICS_TARGETS.md` §11 — Tier 1 LEAD + Tier 2 internal metrics status
 - `TODO/02_metrics/MECHANISM_METRIC_MAPPING.md` — 21 mechanisms × 20 metrics contribution matrix
-- `TODO/03_baselines/MOCK_TO_REAL_PLAN.md` — 5 MOCK→REAL MOCK metric conversion details
-- `TODO/03_baselines/HONEST_NEGATIVE_CLOSURE_PLAN.md` — 3 honest-negative pre-closure paths
-- `TODO/03_baselines/PROTOCOL_VALIDATION.md` — per-baseline protocol validation hook details
+- `TODO/03_baselines/COMPARISON_BASELINES.md` §6 + `PROTOCOL_ALIGNMENT_MATRIX.md` — canonical Oct 4 pair (the 3 Oct 2 planning docs MOCK_TO_REAL_PLAN.md / HONEST_NEGATIVE_CLOSURE_PLAN.md / PROTOCOL_VALIDATION.md were removed 2026-10-05 as superseded; canonical historical lineage in `TODO/completed/432a1_pre_training_gate_v2.md` + `433a2_m2_extended.md`)
 - `TODO/decisions.md` D-Wf-431 — alignment 不是 reproduction (the principle that motivated this gate)
 - `AGENTS.md` §1 + §5.1 + §5.2 + §5.3 + §5.4 + §5.5 + §5.6 + §5.7 — standing directives
 - `molmetal/scripts/pre_flight_check.py` line 3142 `EXPECTED_GATE_COUNTS` — the 95-gate contract this gate extends
@@ -144,8 +142,8 @@ These 8 gates are BLOCKING — must PASS before any retrain launch. They enforce
 ### L1 Gate 5: `p3_protocol_alignment_honest_limitation_minor_section`
 
 - **Purpose**: Verify the §6 honest-limitations paragraphs are auto-emitted into per-candidate post-retrain reports
-- **Spec**: For each Tier-1 LEAD metric, verify `docs/HONEST_NEGATIVE_CATALOG.md` §6 entry exists for that metric + the §6 minor-section template (per `TODO/03_baselines/HONEST_NEGATIVE_CLOSURE_PLAN.md` §4) is present
-- **Source**: `docs/HONEST_NEGATIVE_CATALOG.md` §6 (84 entries per Wf-416-B1 + Wf-426-A4 + Wf-427 + Wf-428 + Wf-429) + `TODO/03_baselines/HONEST_NEGATIVE_CLOSURE_PLAN.md` §4
+- **Spec**: For each Tier-1 LEAD metric, verify `docs/HONEST_NEGATIVE_CATALOG.md` §6 entry exists for that metric + the §6 minor-section template is present
+- **Source**: `docs/HONEST_NEGATIVE_CATALOG.md` §6 (84 entries per Wf-416-B1 + Wf-426-A4 + Wf-427 + Wf-428 + Wf-429); template spec inherited from Wf-433-A1 design (closed via `TODO/completed/433a2_m2_extended.md`)
 - **Verdict gate**: `PASS` if all 7 Tier-1 LEAD metrics have §6 catalog entry + minor-section template present
 - **Wave**: pre-retrain (BLOCKING)
 
@@ -246,7 +244,7 @@ These 7 gates are WARN-only (strong recommendation but non-blocking). They enfor
 
 ### L2 Gate 7: `p3_protocol_recommended_section_6_honest_minor_section_auto_emit`
 
-- **Purpose**: Recommend §6 minor-section auto-emit (per `TODO/03_baselines/HONEST_NEGATIVE_CLOSURE_PLAN.md` §4)
+- **Purpose**: Recommend §6 minor-section auto-emit (template spec inherited from Wf-433-A1 design; closed via `TODO/completed/433a2_m2_extended.md`)
 - **Spec**: Verify `molmetal/scripts/auto_emit_section_6_minor.py` exists + auto-emits §6 per-metric minor-section at post-retrain time
 - **Source**: `molmetal/scripts/auto_emit_section_6_minor.py` (NEW per Wf-431 docs-only refactor)
 - **Verdict gate**: `PASS` if auto-emit script present + emits valid §6 minor-section per Tier-1 LEAD metric; otherwise `WARN`
@@ -350,7 +348,7 @@ These 9 hooks run POST-RETRAIN (not pre-retrain — they need actual retrain out
 
 ## §5 MOCK → REAL verification gates (5 metrics)
 
-These 5 gates convert the 5 MOCK metrics (per `TODO/03_baselines/MOCK_TO_REAL_PLAN.md`) to REAL measurements. 5 of 5 already MEASURED per Wf-380..430.
+These 5 gates convert the 5 MOCK metrics (per Wf-432 design) to REAL measurements. 5 of 5 already MEASURED per Wf-380..430.
 
 ### L3 Gate 1: `p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket`
 
@@ -400,7 +398,7 @@ These 5 gates convert the 5 MOCK metrics (per `TODO/03_baselines/MOCK_TO_REAL_PL
 
 ## §6 Honest-negative pre-closure gates (3 gates)
 
-These 3 gates enforce the pre-closure paths for the 3 honest-negative structural gates (m2 R² / m6_kappa / m1 Re-fold). Per `TODO/03_baselines/HONEST_NEGATIVE_CLOSURE_PLAN.md` §3.
+These 3 gates enforce the pre-closure paths for the 3 honest-negative structural gates (m2 R² / m6_kappa / m1 Re-fold). Spec inherited from Wf-433-A1 design; closed via `TODO/completed/433a2_m2_extended.md`.
 
 ### L4 Gate 1: `p3_honest_neg_closure_m2_r2`
 
@@ -459,11 +457,9 @@ All 3 follow `Wf-377-A1` + `Wf-369-A2` + `Wf-413-A1` + `Wf-424-A15` precedent.
 
 ## §9 Cross-references (existing format)
 
-- `TODO/03_baselines/COMPARISON_BASELINES.md` — selected baselines + protocol alignment detail
-- `TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md` — quick reference table
-- `TODO/03_baselines/MOCK_TO_REAL_PLAN.md` — 5 MOCK→REAL MOCK metric conversion details (SHIPPED 2026-10-02, 68,245 B)
-- `TODO/03_baselines/HONEST_NEGATIVE_CLOSURE_PLAN.md` — 3 honest-negative pre-closure paths (SHIPPED 2026-10-02, 74,946 B)
-- `TODO/03_baselines/PROTOCOL_VALIDATION.md` — per-baseline protocol validation hook details (SHIPPED 2026-10-02, 68,126 B)
+- `TODO/03_baselines/COMPARISON_BASELINES.md` — selected baselines + protocol alignment detail (canonical Oct 4)
+- `TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md` — quick reference table (canonical Oct 4)
+- (MOCK_TO_REAL_PLAN.md / HONEST_NEGATIVE_CLOSURE_PLAN.md / PROTOCOL_VALIDATION.md — Oct 2 docs-only planning wave; all 3 removed 2026-10-05 as superseded by the canonical pair above; Wf-432 design lineage in `TODO/completed/432a1_*.md` + Wf-433 lineage in `TODO/completed/433a2_m2_extended.md`)
 - `TODO/02_metrics/METRICS_TARGETS.md` — per-metric target values + verdict gates
 - `TODO/02_metrics/MECHANISM_METRIC_MAPPING.md` — 21 mechanisms × 20 metrics contribution matrix
 - `TODO/decisions.md` D-Wf-431 — alignment 不是 reproduction (the principle that motivated this gate)

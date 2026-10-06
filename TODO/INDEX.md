@@ -25,13 +25,12 @@ TODO/
 │   ├── EVALUATORS_MIGRATED.md ← 22/22 evaluators MEASURED-OK
 │   └── MECHANISM_METRIC_MAPPING.md
 │
-├── 03_baselines/          ← 3 Tier-1 baselines + protocol alignment
-│   ├── ARCHITECTURE.md    ← 3 baselines + alignment contract
+├── 03_baselines/          ← 3 Tier-1 baselines + protocol alignment (canonical Oct 4 pair)
 │   ├── COMPARISON_BASELINES.md
 │   ├── PROTOCOL_ALIGNMENT_MATRIX.md
-│   ├── MOCK_TO_REAL_PLAN.md
-│   ├── HONEST_NEGATIVE_CLOSURE_PLAN.md
-│   └── PROTOCOL_VALIDATION.md
+│   # MOCK_TO_REAL_PLAN.md / HONEST_NEGATIVE_CLOSURE_PLAN.md / PROTOCOL_VALIDATION.md /
+│   # ARCHITECTURE.md — removed 2026-10-05 (superseded by the canonical Oct 4 pair; no shipped
+│   # wf_a4_*.py code; canonical historical lineage in `TODO/completed/432a1_*.md` + `433a2_*.md`)
 │
 ├── 03_plans/              ← R17-R20 strategic plans + INDEX
 │   ├── INDEX.md           ← this directory's per-topic INDEX
@@ -67,11 +66,9 @@ TODO/
 
 ### `03_baselines/` — 3 Tier-1 Baselines (6 files)
 - **ARCHITECTURE.md** ← NEW 2026-10-02 — 3 Tier-1 baselines + alignment contract (per-baseline dataset + protocol + metric + alignment level)
-- **COMPARISON_BASELINES.md** — cross-baseline comparison table
-- **PROTOCOL_ALIGNMENT_MATRIX.md** — per-baseline protocol difference adjustment matrix
-- **MOCK_TO_REAL_PLAN.md** — 5 MOCK→REAL conversion plan
-- **HONEST_NEGATIVE_CLOSURE_PLAN.md** — 3 honest-negative structural gates pre-closure paths
-- **PROTOCOL_VALIDATION.md** — 23 NEW pre-retrain threshold gates Layer 1-4
+- **COMPARISON_BASELINES.md** — cross-baseline comparison table (canonical Oct 4)
+- **PROTOCOL_ALIGNMENT_MATRIX.md** — per-baseline protocol difference adjustment matrix (canonical Oct 4)
+- (MOCK_TO_REAL_PLAN.md / HONEST_NEGATIVE_CLOSURE_PLAN.md / PROTOCOL_VALIDATION.md / ARCHITECTURE.md — removed 2026-10-05; superseded by canonical pair above; historical lineage in `TODO/completed/432a1_*.md` + `433a2_*.md` + `TODO/03_plans/PRE_TRAINING_GATE_v2.md`)
 
 ### `03_plans/` — R17-R20 Strategic Plans (11 files)
 - **INDEX.md** ← NEW 2026-10-02 — per-topic INDEX + 1-line per R* plan + cross-links
@@ -162,7 +159,7 @@ TODO/
 | Category | Count | Examples |
 |---|---:|---|
 | 🟢 **STRONG_REAL_PAPER_READY** | 7 | m21 NCI-60 9-cell AUC 0.8007±0.0160; m17 DrugOOD OOD 0.891; m11 n_distinct=20; m13 RDKit validity 1.000; m14 CFM decode_ratio 0.998 (per Wf-398-A3); ring_size_distribution; metallodrug_vertical_coverage |
-| 🟡 **WEAK_REAL_NEEDS_MORE_DATA** | 6 | m1 Ru AUC BELOW_KRASNOV_PARTIAL (per Wf-413-A1); m2 R² HONEST_NEGATIVE_R2_DEEP (per Wf-388-A1); m7 Diversity SCAFFOLD-only (per Wf-388-A2); m10 Vina min -4.158; m15 RMSD MEASURED 0.6578 Å; m19 LOMO 0.535 (Rh 0.368) |
+| 🟡 **WEAK_REAL_NEEDS_MORE_DATA** | 6 | m1 Ru AUC BELOW_KRASNOV_PARTIAL (per Wf-413-A1); m2 R² HONEST_NEGATIVE_R2_DEEP (per Wf-388-A1); m7 Diversity SCAFFOLD-only (per Wf-388-A2); m10 Vina min -4.158; m15 RMSD MEASURED 0.6578 Å; m19 LOMO **0.535 (Rh 0.368) is the R17 baseline** (`metrics/by_metric/metal_lomo_auc_wasserstein.json::r17_baseline_reference`) — current Wf-413-A1 7-pair overall mean = **0.7577** (Rh fold 0.8798 PASS_KRASNOV +0.020; Re fold 0.7088 BELOW_KRASNOV −0.151) but `USABLE_AS_HEADLINE=false` (oversample=500 mixed into TRAIN; only Rh+Re covered of 5 folds); clean re-measurement command + disqualifying_reasons live in the JSON itself (per Wf-A11). |
 | 🔴 **MOCK_NEEDS_REMEASURE** | 4 | m3 Vina stub -9.6574 (CRITICAL); m16 ckpt GAP (D-MPNN pIC50 Pt missing); m4 SA SCAFFOLD-only; m8 PB production; 4 external_scorers MOCK_DELETED |
 | ⚪ **UNDEFINED** | 5 | m6_kappa HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL (per Wf-377-A1 + Wf-411-A4 — to be dropped from §3 main-result, promoted top-3 WEAK correlates to §3 supplementary sub-table); m9/m20 not in pipeline; diversity_subpocket; steric_clash; vina_*_test_001 |
 | 🔵 **PROJECTED** (R20 plan) | 8 | R20·P1..P6 + Wf-44 P2 (per TODO-92..99 R20 plan items) |
@@ -207,7 +204,7 @@ Full details per LAMBDA_ROADMAP §4.2 + `TODO/pending/92..99_*.md`.
 - `REPRODUCE.md` (2,245 B) — single-file reproduce + expected outputs + cross-links
 - `TODO/INDEX.md` (8,172 B, UPDATED) — per-topic INDEX (NOT per-wave) with 6 directories + 21 pending TODO entries + standing rules + navigation rule of thumb
 - `TODO/02_metrics/ARCHITECTURE.md` (6,542 B) — 21 mechanisms M1-M21 + 4 phases + phase composition
-- `TODO/03_baselines/ARCHITECTURE.md` (4,471 B) — 3 Tier-1 baselines (Krasnov 2026 + Rusanov 2025 + DrugOOD 2022) + 10 per-metric thresholds
+- `TODO/03_baselines/ARCHITECTURE.md` — removed 2026-10-05 (duplicated `docs/ARCHITECTURE.md` M2 line; canonical is the Oct 4 `COMPARISON_BASELINES.md` + `PROTOCOL_ALIGNMENT_MATRIX.md` pair)
 - `TODO/03_plans/INDEX.md` (3,490 B) — 1-line per R* plan + cross-links (R17 / R18 / R19 / R20 / WEAK_TO_STRONG / METRIC_LIFT_STRATEGY_v2 / PRE_TRAINING_GATE_v2 / IMPROVEMENT_ENUM/QUEUE)
 
 **2 NEW docs-only INDEX files (A2 code consolidation):**

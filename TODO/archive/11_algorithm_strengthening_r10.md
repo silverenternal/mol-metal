@@ -99,8 +99,8 @@ allowed. ROCm 7.2 / triton-rocm 3.8.0 / gfx1101 / wave64. Use
 
 - `molmetal/reports/lambda_layer_metrics.md` (per-layer metric catalogue)
 - `molmetal/reports/lambda_vs_sbdd_protocol_aligned.md` (§3 P0/P1/P2 priority list)
-- `TODO/completed/09_metal_prior_done.md` (round-8 Pt prior)
-- `TODO/completed/10_minibatch_ot_done.md` (round-8 mini-batch OT stub)
+- `TODO/completed/22_metal_prior_done.md` (round-8 Pt prior — supersedes 09_*, deleted in Wf-dmpnn-prune-docs 2026-10-05)
+- `TODO/completed/23_minibatch_ot_done.md` (round-8 mini-batch OT stub — supersedes 10_*, deleted in Wf-dmpnn-prune-docs 2026-10-05)
 
 ## R10 Pt(II) prior end-to-end Vina micro-bench summary (2026-09-14, append-only)
 

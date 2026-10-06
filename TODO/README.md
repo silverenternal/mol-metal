@@ -293,7 +293,7 @@ These are the original Phase-0 gating questions; status updated 2026-09-12.
 
 ### §12.2 Pre-retrain threshold gate contract (per user directive)
 
-Per TODO/03_baselines/COMPARISON_BASELINES.md §0 + PROTOCOL_ALIGNMENT_MATRIX.md + PROTOCOL_VALIDATION.md:
+Per TODO/03_baselines/COMPARISON_BASELINES.md §0 + PROTOCOL_ALIGNMENT_MATRIX.md (canonical Oct 4 pair; PROTOCOL_VALIDATION.md / MOCK_TO_REAL_PLAN.md / HONEST_NEGATIVE_CLOSURE_PLAN.md were Oct 2 wave-staging planning docs, superseded and removed 2026-10-05 per AGENTS.md §5.10):
 
 **threshold(m_i) = baseline(m_i) + protocol_adjustment(m_i, protocol_difference)**
 
@@ -408,9 +408,9 @@ Per user verbatim *"我想要我们的模型在数据集上训练之后就能和
 | File | Path | Status | Size (B) | mtime |
 |---|---|---|---|---|
 | PRE_TRAINING_GATE_v2 | `TODO/03_plans/PRE_TRAINING_GATE_v2.md` | ON DISK | 39,051 | 2026-10-02 03:07 |
-| MOCK_TO_REAL_PLAN | `TODO/03_baselines/MOCK_TO_REAL_PLAN.md` | ON DISK | 68,245 | 2026-10-02 02:03 |
-| HONEST_NEGATIVE_CLOSURE_PLAN | `TODO/03_baselines/HONEST_NEGATIVE_CLOSURE_PLAN.md` | ON DISK | 74,946 | 2026-10-02 02:04 |
-| PROTOCOL_VALIDATION | `TODO/03_baselines/PROTOCOL_VALIDATION.md` | ON DISK | 68,126 | 2026-10-02 02:18 |
+| ~~MOCK_TO_REAL_PLAN~~ | `TODO/03_baselines/MOCK_TO_REAL_PLAN.md` | SUPERSEDED 2026-10-05 (canonical = PROTOCOL_ALIGNMENT_MATRIX.md + PRE_TRAINING_GATE_v2.md) | n/a | n/a |
+| ~~HONEST_NEGATIVE_CLOSURE_PLAN~~ | `TODO/03_baselines/HONEST_NEGATIVE_CLOSURE_PLAN.md` | SUPERSEDED 2026-10-05 (closed via Wf-433-A2 closeout, see `TODO/completed/433a2_m2_extended.md`) | n/a | n/a |
+| ~~PROTOCOL_VALIDATION~~ | `TODO/03_baselines/PROTOCOL_VALIDATION.md` | SUPERSEDED 2026-10-05 (no shipped wf_a4_*.py deliverables) | n/a | n/a |
 
 **Verified via `ls -la`** at 2026-10-02 03:07 CST per AGENTS.md §5.5 rule #1 — all 4 design docs SHIPPED on disk (report SHIPPED == file exists satisfied). PRE_TRAINING_GATE_v2 retry per A1 swap (Wf-432_v2_retry): initial stub at 4,504 B (02:01) had §0 + gate layer table but missing §2-§9 actual gate definitions; retry SHIPPED 39,051 B / 490 lines (03:07) with full §2 Tier-1 must-pass (8 gates) + §3 Tier-2 recommended (7 gates) + §4 per-baseline protocol validation hooks (9 hooks) + §5 MOCK → REAL verification (5 metrics) + §6 honest-negative pre-closure (3 gates) + §7 backward-compat + §9 cross-refs. Backup at `TODO/03_plans/PRE_TRAINING_GATE_v2.md.bak.wf432_v2_retry` (4,504 B) preserved per §5.6 safe_overwrite_check contract.
 
@@ -436,7 +436,7 @@ Per Wf-432 §12 + Wf-432-A1..A4 investigations + filesystem-truth audit:
 |---|---|---|
 | **m6_kappa** | HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL (best aug_mean 0.472 vs 0.6 gate; gap −0.128; 9 paths exhausted) | Wf-377-A1 §4.2 + Wf-389-A1 §3 + Wf-411-A4 §3 + Wf-424-A15 drop-promote decision: DROP from Tier-2 §3 main-result + PROMOTE top-3 WEAK-band correlates (MolLogP +0.1999 + MorganDensity_r2 +0.1644 + Chi3v +0.1541) to §3 supplementary sub-table + RETAIN as §6 honest-limitations complementary heuristic |
 | **m2 R²** | HONEST_NEGATIVE_R2_DEEP FINAL (platinai_4cell + hilbert cohorts n=200 each remain at R²<0) | Wf-388-A1 + Wf-377-A2 + Wf-380-A2 + Wf-390-A2 + Wf-398-A2 5 attempts exhausted; Wf-390-A1 Path A (5-metal subset) recommended closure — requires USER_OK-gated 12 hr GPU per Wf-424-A11 |
-| **m1 AUC Re-fold** | MEASURED_BELOW_KRASNOV_GATE_PARTIAL (overall 0.7577 vs 0.86; Re fold 0.7088 vs 0.86) | Wf-413-A1 7/7 (metal, seed) pair aggregate MEASURED; Rh fold PASS_KRASNOV +0.020; Re fold BELOW_KRASNOV −0.151 — paper §4 LEAD claim = Rh fold only; paper §6 honest-negative on Re fold; closure path = Wf-379-A1 multi-seed extension (USER_OK-gated) |
+| **m1 AUC Re-fold** | MEASURED_BELOW_KRASNOV_GATE_PARTIAL (overall 0.7577 vs 0.86; Re fold 0.7088 vs 0.86) [DISCLOSURE: `metal_lomo_auc_wasserstein.json::USABLE_AS_HEADLINE=false` per Wf-A11 — rh_oversample=500 mixes 500 synthetic Rh into held-out Rh TRAIN (contaminates OOD-LOMO); only Rh+Re covered of 5 folds; clean re-measurement USER_OK-gated] | Wf-413-A1 7/7 (metal, seed) pair aggregate MEASURED; Rh fold PASS_KRASNOV +0.020; Re fold BELOW_KRASNOV −0.151 — paper §4 LEAD claim = Rh fold only; paper §6 honest-negative on Re fold; closure path = Wf-379-A1 multi-seed extension (USER_OK-gated) |
 
 ### §12.7.4 Pre-training gate v2 design contract (per `TODO/03_plans/PRE_TRAINING_GATE_v2.md`)
 
@@ -450,7 +450,7 @@ Per user verbatim *"5 MOCK全部变为真实测量"* + *"Honest-negatives 与 Fo
 
 Total new gates: 23 — appended to `pre_flight_check.py::build_gates("all")` per §5.6 atomic_write contract. The 117-gate baseline is preserved per AGENTS.md §5.6 EXPECTED_GATE_COUNTS["all"].
 
-### §12.7.5 Protocol validation summary (per `TODO/03_baselines/PROTOCOL_VALIDATION.md`)
+### §12.7.5 Protocol validation summary (per `TODO/03_baselines/COMPARISON_BASELINES.md` + `PROTOCOL_ALIGNMENT_MATRIX.md`)
 
 3 Tier-1 baselines selected + aligned (NOT reproduced — per D-Wf-431):
 1. **Krasnov 2026 (MetalCytoToxDB)** — pIC50 regression + 5-fold CV + A2780/MCF7/NCI-60 cell-line breakdown
@@ -464,9 +464,9 @@ Alignment contract: same dataset + same protocol + same metric — results are R
 | Path | Status | LOC |
 |---|---|---|
 | `TODO/03_plans/PRE_TRAINING_GATE_v2.md` | ON DISK (Phase 1) | 4,504 |
-| `TODO/03_baselines/MOCK_TO_REAL_PLAN.md` | ON DISK (Phase 1) | 68,245 |
-| `TODO/03_baselines/HONEST_NEGATIVE_CLOSURE_PLAN.md` | ON DISK (Phase 1) | 74,946 |
-| `TODO/03_baselines/PROTOCOL_VALIDATION.md` | ON DISK (Phase 1) | 68,126 |
+| ~~MOCK_TO_REAL_PLAN.md~~ | SUPERSEDED 2026-10-05 (canonical = PROTOCOL_ALIGNMENT_MATRIX.md + PRE_TRAINING_GATE_v2.md) | n/a |
+| ~~HONEST_NEGATIVE_CLOSURE_PLAN.md~~ | SUPERSEDED 2026-10-05 (canonical = `TODO/completed/433a2_m2_extended.md` closeout) | n/a |
+| ~~PROTOCOL_VALIDATION.md~~ | SUPERSEDED 2026-10-05 (no shipped wf_a4_*.py deliverables; canonical = COMPARISON_BASELINES.md §6) | n/a |
 | `TODO/README.md` §12.7 | NEW (this entry) | ~110 |
 | `TODO/INDEX.md` §23 (5 NEW entries) | NEW (this entry) | ~85 |
 | `TODO/README.md.bak.wf432_v2` | BACKUP per §5.6 | 28,000 |

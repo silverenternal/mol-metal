@@ -369,7 +369,7 @@ requires USER_OK per TODO-84 + AGENTS.md §5.3.
 ### §4.4 Paper §6 template + cross-verify workflow docs
 
 - `docs/SECTION_6_LIMITATIONS_TEMPLATE.md` — Wf-364-A4 LaTeX template scaffold (~270 LOC) — source for §6 limitations v4
-- `docs/PAPER_SECTION_6_LIMITATIONS_DRAFT.md` — Wf-359-B2 draft (~290 LOC) — pre-preparation for §6 v4
+- `docs/PAPER_SECTION_6_v4_FINAL.md` — Wf-359-B2 draft (~290 LOC) — pre-preparation for §6 v4
 - `docs/HONEST_NEGATIVE_CATALOG.md` — catalog at 65 entries (Wf-369-A3 expansion); m6_kappa entry under §1 per-metric
 - `docs/M2_R2_FINAL_VERDICT.md` — Wf-369-A2 m2 R² FINAL verdict (320 LOC, 7 sections) — analog template for §6 m2 entry
 - `docs/SESSION_FINAL_SYNTHESIS.md` — Wf-370-A3 comprehensive session synthesis (~575 LOC, 10 sections)

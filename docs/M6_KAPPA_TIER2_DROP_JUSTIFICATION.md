@@ -196,7 +196,7 @@ per-metal modulation of the pIC50 axis is real and worth further investigation.
 
 ### §2.4 §3 supplementary sub-table final lineup (NEW per Wf-389-A1)
 
-Per `docs/PAPER_SECTION_3_METRIC_TABLE.md` (Wf-389-A1 SHIPPED):
+Per `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` (Wf-389-A1 SHIPPED):
 
 | # | Invariant | Pearson r (n=5460) | Spearman ρ | Verdict band | Δ vs m6_kappa |
 |---:|---|---:|---:|---|---:|
@@ -254,7 +254,7 @@ The drop decision is **convergent** across multiple SHIPPED docs:
 | `docs/PAPER_S6_M6_KAPPA_REFRAME.md` | 2026-09-30 | 7 paths exhausted; 4 main + drop m6_kappa from §3 + keep in §6 | Wf-375-A4 §2 |
 | `docs/SECTION_3_METRIC_REFRAME_TEMPLATE.md` | 2026-09-30 | §3 lineup invariant = 4 CEILING_BREAK metrics | Wf-376-A4 §2 |
 | `docs/M6_KAPPA_REDESIGN_PROPOSAL.md` | 2026-09-30 | DROP m6_kappa + PROMOTE top-3 alternatives | Wf-377-A1 §4 |
-| `docs/PAPER_SECTION_3_METRIC_TABLE.md` | 2026-09-30 | 4 main + 3 supplementary + 1 demoted metric | Wf-389-A1 §0 |
+| `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` | 2026-09-30 | 4 main + 3 supplementary + 1 demoted metric | Wf-389-A1 §0 |
 
 ### §4.2 Cross-refs to all upstream Wf-closeouts
 
@@ -321,7 +321,7 @@ The drop decision is **convergent** across multiple SHIPPED docs:
 
 **PROJECTED cost of USER_OK-gated paper conversion**:
 - `docs/SECTION_6_LIMITATIONS_TEMPLATE.md` §3.1 m6_kappa subsection (NEW per Wf-406-A1) → copy-paste into `paper/sections/06_limitations_v4.tex`
-- `docs/PAPER_SECTION_3_METRIC_TABLE.md` (Wf-389-A1) → copy-paste into `paper/sections/03_main_results_v4.tex`
+- `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` (Wf-389-A1) → copy-paste into `paper/sections/03_main_results_v4.tex`
 - This brief → optional §6.1.7 cross-ref / forward-looking reference
 
 ---

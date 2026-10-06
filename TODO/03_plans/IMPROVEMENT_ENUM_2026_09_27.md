@@ -113,7 +113,7 @@
 - ✅ m6_kappa §6 honest-limitations RETAINED as complementary heuristic
 - ✅ `metrics/by_metric/m6_kappa.json::verdict` UPDATED to `MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL`
 - ✅ `metrics/by_metric/m6_kappa.json::wf389a1_supplementary_reframe` block ADDED (top-3 promotion record)
-- ✅ NEW doc `docs/PAPER_SECTION_3_METRIC_TABLE.md` (~580 LOC, 6 sections) SHIPPED
+- ✅ NEW doc `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md (Wf-424-A14 SHIPPED 2026-10-01; superseded Wf-389-A1 PAPER_SECTION_3_METRIC_TABLE.md draft, removed 2026-10-05)` (~580 LOC, 6 sections) SHIPPED
 - ✅ WEAK_TO_STRONG_PLAN.md §3.6 + §2.2 + §3.8 amended (Wf-389-A3; preserved via canonical closeouts)
 
 **新增 honest-negative caveats**:
@@ -240,7 +240,7 @@
 - m6_kappa §6 honest-limitations RETAINED
 - WEAK_TO_STRONG_PLAN.md amended (Wf-389-A3)
 - `metrics/by_metric/m6_kappa.json::verdict` UPDATED
-- Paper §3 metric table NEW doc SHIPPED (`docs/PAPER_SECTION_3_METRIC_TABLE.md`)
+- Paper §3 metric table NEW doc SHIPPED (`docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md (Wf-424-A14 SHIPPED 2026-10-01; superseded Wf-389-A1 PAPER_SECTION_3_METRIC_TABLE.md draft, removed 2026-10-05)`)
 
 **Closure path**: USER_OK-gated paper/* write per TODO-84 (~12-15 hr CPU)
 

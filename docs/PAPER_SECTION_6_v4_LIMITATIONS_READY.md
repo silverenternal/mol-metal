@@ -14,7 +14,7 @@ labels preserved per `party-twenty-spirit` §3.5.
 **Audience:** Tier-2 paper §6 author + reviewer rebuttal + AGENTS.md standing rules
 **Source convergence brief:** `docs/SECTION_6_LIMITATIONS_TEMPLATE.md` §3.1.6 (Wf-410-A1 extension)
 **Source convergence brief:** `docs/M6_KAPPA_TIER2_DROP_JUSTIFICATION.md` (Wf-406-A1)
-**Source draft:** `docs/PAPER_SECTION_6_LIMITATIONS_DRAFT.md` (Wf-359-B2)
+**Source draft:** `docs/PAPER_SECTION_6_v4_FINAL.md` (Wf-359-B2)
 **Source catalog:** `docs/HONEST_NEGATIVE_CATALOG.md` (Wf-359-B1 + Wf-358-C2 + Wf-369-A3 + Wf-383-A1 + Wf-395-A2 + Wf-399-A2; 82 entries)
 
 ---
@@ -50,7 +50,7 @@ for USER_OK-gated paper §6 v4 write.
 ### §1.1 The 9-path inventory (FULL CONVERGENCE)
 
 Per `docs/M6_KAPPA_TIER2_DROP_JUSTIFICATION.md` (Wf-406-A1 SHIPPED 2026-09-30) §1.1
-+ `docs/PAPER_SECTION_3_METRIC_TABLE.md` (Wf-389-A1 SHIPPED 2026-09-30) §0:
++ `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` (Wf-389-A1 SHIPPED 2026-09-30) §0:
 
 | # | Workflow | Path | augmented_mean | CV-R² | Verdict |
 |---:|---|---|---:|---:|---|
@@ -149,7 +149,7 @@ but do NOT promote to main-result.
 
 ### §3.1 §3 main-result table (4 metrics, all with CEILING_BREAK or strong MEASURED anchors)
 
-Per `docs/PAPER_SECTION_3_METRIC_TABLE.md` (Wf-389-A1) §0 + Wf-376-A4 §3 lineup invariant:
+Per `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` (Wf-389-A1) §0 + Wf-376-A4 §3 lineup invariant:
 
 | # | Metric | Headline value | Verdict |
 |---|---|---|---|
@@ -195,7 +195,7 @@ Per `TODO/03_plans/METRIC_LIFT_STRATEGY_v2.md` (Wf-391-A3 SHIPPED 2026-09-30, ~8
 
 ### §4.3 7 paper artefacts (BLOCKED on TODO-84 + USER_OK)
 
-1. Tier-2 §3 v4 (this ready-to-paste file `docs/PAPER_SECTION_3_METRIC_TABLE.md` already SHIPPED per Wf-389-A1)
+1. Tier-2 §3 v4 (this ready-to-paste file `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` already SHIPPED per Wf-389-A1)
 2. Tier-2 §6 v4 (this ready-to-paste file + `docs/SECTION_6_LIMITATIONS_TEMPLATE.md` SHIPPED per Wf-410-A1)
 3. Tier-2 cover letter — TEMPLATE_READY
 4. Tier-2 supplementary — TEMPLATE_READY
@@ -220,7 +220,7 @@ Per `TODO/03_plans/METRIC_LIFT_STRATEGY_v2.md` (Wf-391-A3 SHIPPED 2026-09-30, ~8
 | `docs/M6_KAPPA_REDESIGN_PROPOSAL.md` | Wf-377-A1 SHIPPED 2026-09-30 | ~595 | 16 invariants on n=5460; best alternative MolLogP r=+0.1999 (2.46× lift); DROP + PROMOTE |
 | `docs/PAPER_S6_M6_KAPPA_REFRAME.md` | Wf-375-A4 SHIPPED 2026-09-30 | ~480 | 4 main + drop m6_kappa from §3 + keep in §6 |
 | `docs/SECTION_3_METRIC_REFRAME_TEMPLATE.md` | Wf-376-A4 SHIPPED 2026-09-30 | ~480 | §3 lineup invariant = 4 CEILING_BREAK metrics |
-| `docs/PAPER_SECTION_3_METRIC_TABLE.md` | Wf-389-A1 SHIPPED 2026-09-30 | ~580 | 4 main + 3 supplementary + 1 demoted metric |
+| `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` | Wf-389-A1 SHIPPED 2026-09-30 | ~580 | 4 main + 3 supplementary + 1 demoted metric |
 | `docs/M6_KAPPA_TIER2_DROP_JUSTIFICATION.md` | Wf-406-A1 SHIPPED 2026-09-30 | ~383 | Convergence brief + retro-fix of `m6_kappa.json::wf365a3_final_verdict` |
 | `docs/SECTION_6_LIMITATIONS_TEMPLATE.md` §3.1.6 | Wf-410-A1 SHIPPED 2026-09-30 | +70 | §6 v4 framing + cross-ref roster |
 

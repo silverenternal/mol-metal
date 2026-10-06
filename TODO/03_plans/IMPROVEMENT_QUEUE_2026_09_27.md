@@ -230,7 +230,7 @@ cd /home/hugo/codes/mol-metal
 source env.sh
 # Read the spec
 cat TODO/pending/138_paper_v2_submission_package.md
-cat docs/PAPER_SECTION_3_METRIC_TABLE.md  # ready-to-paste §3 supplementary sub-table
+cat docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md (Wf-424-A14 SHIPPED 2026-10-01; superseded Wf-389-A1 PAPER_SECTION_3_METRIC_TABLE.md draft, removed 2026-10-05)  # ready-to-paste §3 supplementary sub-table
 # Compile + verify per mol-metal-sci-paper-submission skill
 ```
 
