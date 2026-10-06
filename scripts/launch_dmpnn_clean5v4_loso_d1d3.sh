@@ -57,6 +57,10 @@ RH_LOSO="${RH_LOSO:-1}"  # D1 + D3 require this
 WASSERSTEIN_REAL="${WASSERSTEIN_REAL:-0}"
 RH_OVERSAMPLE="${RH_OVERSAMPLE:-500}"
 WASSERSTEIN_WEIGHT="${WASSERSTEIN_WEIGHT:-0.0}"
+# Wf-R12-A: W2 injection cadence. Default 'per-epoch' keeps the historical
+# behaviour (7 first-batch backwards per 30-epoch run, per Wf-A1). Set to
+# 'every-batch' to actually let W2 move the weights on every step.
+WASSERSTEIN_CADENCE="${WASSERSTEIN_CADENCE:-per-epoch}"
 METAL_STRIP_MODE="${METAL_STRIP_MODE:-retain}"  # F3 wf-7b fix default
 # Round 7 (2026-10-06): the trainer's `ensure_cuda_visible_devices_default`
 # honours the env var set by us, so torch-visible index is always 0.
@@ -79,6 +83,7 @@ while [[ $# -gt 0 ]]; do
         --no-rh-loso) RH_LOSO=0; shift ;;
         --wasserstein-real) WASSERSTEIN_REAL=1; shift ;;
         --wasserstein-weight) WASSERSTEIN_WEIGHT="$2"; shift 2 ;;
+        --wasserstein-cadence) WASSERSTEIN_CADENCE="$2"; shift 2 ;;
         --rh-oversample) RH_OVERSAMPLE="$2"; shift 2 ;;
         *) echo "unknown arg: $1" >&2; exit 1 ;;
     esac
@@ -89,6 +94,7 @@ CMD=("${PY}" "${PROJECT_ROOT}/molmetal/scripts/train_metal_lomo_wasserstein.py"
      --seeds ${SEEDS}
      --epochs "${EPOCHS}"
      --wasserstein-weight "${WASSERSTEIN_WEIGHT}"
+     --wasserstein-cadence "${WASSERSTEIN_CADENCE}"
      --rh-oversample "${RH_OVERSAMPLE}"
      --metal-strip-mode "${METAL_STRIP_MODE}"
      --device "${DEVICE}"

@@ -637,6 +637,9 @@ def _extract_per_metal_embeddings_inner(
 # best-val selection was chasing noise.  ``best_val`` is kept for ablation;
 # ``smoothed_val`` averages the val AUC over a trailing window.
 _MODEL_SELECT_MODES = ("last_epoch", "best_val", "smoothed_val")
+
+# Wf-R12-A — W₂ injection cadences (see ``wasserstein_cadence``).
+_WASSERSTEIN_CADENCES = ("per-epoch", "every-batch")
 _MODEL_SELECT_SMOOTH_WINDOW = 5
 
 @dataclass
@@ -664,6 +667,13 @@ class WassersteinLOMOResult:
     # ``wasserstein_weight`` when ``w2_real`` else 0.0, so a metrics JSON
     # can never read "weight 0.05" next to a model that never saw it.
     w2_effective_weight: float = 0.0
+    # Wf-R12-A — which cadence actually ran, and how many optimisation steps
+    # carried a W₂ gradient. ``w2_batches_applied`` is the audit number for
+    # the A1 finding: under ``per-epoch`` it is 7 (one per injection epoch)
+    # regardless of fold size, i.e. ~0.5 % of steps at 30 epochs.
+    wasserstein_cadence: str = "per-epoch"
+    w2_batches_applied: int = 0
+    w2_batches_skipped: int = 0
     use_l2_guard: bool = False
     use_astr_scale_guard: bool = False
     l2_guard_max_norm: float = L2_GUARD_MAX_NORM
@@ -714,6 +724,7 @@ class WassersteinLOMORunner:
         balanced_sampler: bool = True,
         model_select: str = "last_epoch",
         wasserstein_real: bool = False,
+        wasserstein_cadence: str = "per-epoch",
         rh_loso_validation: bool = False,
         per_metal_pic50_center: bool = False,
         metal_strip_mode: str = "retain",
@@ -725,6 +736,30 @@ class WassersteinLOMORunner:
         # Default False: the term stays a detached constant (the Wf-C3
         # no-op) so historical runs remain reproducible.
         self.wasserstein_real = bool(wasserstein_real)
+        # Wf-R12-A — W₂ injection cadence.
+        #
+        # ``per-epoch`` (default, byte-identical to the pre-Wf-R12-A path):
+        # build the W₂ graph once at epoch start on epochs 0, 5, 10, ... and
+        # back-propagate it on the FIRST batch only. Wf-A1 measured this as
+        # ~0.5 % of gradient mass over a 30-epoch run (7 single-batch
+        # backwards vs ~1300 total steps) — MEASURED, see
+        # ``molmetal/reports/dmpnn_clean5v6_w2_real_30ep/Ru/``
+        # ``per_seed_metrics_seed0.json`` where ``wasserstein_loss_history``
+        # holds only 7 distinct values across 30 epochs.
+        #
+        # ``every-batch``: inject W₂ on EVERY batch using the pooled
+        # embedding returned by the batch's own forward
+        # (``return_pool=True``), so the W₂ gradient is an exact
+        # derivative at the CURRENT parameters rather than a stale
+        # epoch-start direction. This costs no extra model compute —
+        # ``_forward_flat`` already computes ``h_pool``; we just read it.
+        _wc = str(wasserstein_cadence)
+        if _wc not in _WASSERSTEIN_CADENCES:
+            raise ValueError(
+                f"wasserstein_cadence must be one of "
+                f"{sorted(_WASSERSTEIN_CADENCES)}, got {wasserstein_cadence!r}"
+            )
+        self.wasserstein_cadence = _wc
         self.n_mc = int(n_mc)
         self.hidden = hidden
         self.depth = depth
@@ -828,6 +863,9 @@ class WassersteinLOMORunner:
             pic50_all[val_idx] if len(val_idx) else np.array([], dtype=np.float32)
         )
         active_train = active_all[train_idx]
+        # Wf-R12-A — per-row metal labels aligned to ``graphs_train``, for
+        # bucketing the batch's pooled embedding in the every-batch W₂.
+        metals_train = np.asarray(metals_all, dtype=object)[train_idx]
         active_val = active_all[val_idx] if len(val_idx) else np.array([], dtype=int)
         pic50_test = pic50_all[test_idx]
         active_test = active_all[test_idx]
@@ -964,6 +1002,8 @@ class WassersteinLOMORunner:
             OrderedDict()
         )
 
+        total_w2_applied = 0
+        total_w2_skipped = 0
         for epoch in range(self.epochs):
             t0 = time.time()
             # ---- Pre-compute W₂ penalty once per epoch (when triggered) ----
@@ -981,7 +1021,11 @@ class WassersteinLOMORunner:
             # model; it only loses the (meaningless) W₂ diagnostic trace.
             w2_loss_t: Optional[torch.Tensor] = None
             w2_applied = False
-            if self.w2_enabled and (epoch % 5 == 0 or epoch == self.epochs - 1):
+            if (
+                self.w2_enabled
+                and self.wasserstein_cadence == "per-epoch"
+                and (epoch % 5 == 0 or epoch == self.epochs - 1)
+            ):
                 train_smiles = smiles_all[train_idx]
                 train_metals = metals_all[train_idx]
                 embeds = extract_per_metal_embeddings(
@@ -1016,6 +1060,9 @@ class WassersteinLOMORunner:
             total_cls = 0.0
             total_reg = 0.0
             n_batches = 0
+            # Wf-R12-A — how much of the run actually carried a W₂ gradient.
+            n_w2_batches = 0
+            n_w2_batches_skipped = 0
             for start in range(0, len(indices), self.batch_size):
                 batch_idx = indices[start : start + self.batch_size]
                 batch_graphs = [graphs_train[i] for i in batch_idx]
@@ -1025,6 +1072,18 @@ class WassersteinLOMORunner:
                     (g, p, a)
                     for g, p, a in zip(batch_graphs, batch_pic50, batch_active)
                     if g is not None and not (isinstance(p, float) and np.isnan(p))
+                ]
+                # Wf-R12-A — metals aligned to ``g_list`` after the ``valid``
+                # filter, for the every-batch W₂ bucket. Built from the same
+                # boolean mask so the two lists cannot drift out of sync.
+                batch_metals_valid: List[str] = [
+                    str(m)
+                    for g, p, a, m in zip(
+                        batch_graphs, batch_pic50, batch_active,
+                        metals_train[batch_idx],
+                    )
+                    if g is not None
+                    and not (isinstance(p, float) and np.isnan(p))
                 ]
                 if not valid:
                     continue
@@ -1043,7 +1102,18 @@ class WassersteinLOMORunner:
                 y_active_t = torch.from_numpy(y_active).to(self.device)
 
                 optimizer.zero_grad()
-                pic50_pred, active_logits = model(atom_f, bond_f, e_src, e_dst)
+                need_pool = (
+                    self.w2_enabled
+                    and self.wasserstein_cadence == "every-batch"
+                )
+                if need_pool:
+                    pic50_pred, active_logits, h_pool = model(
+                        atom_f, bond_f, e_src, e_dst, return_pool=True
+                    )
+                else:
+                    pic50_pred, active_logits = model(
+                        atom_f, bond_f, e_src, e_dst
+                    )
                 loss, lc, lr_ = criterion(
                     pic50_pred, active_logits, y_pic50_t, y_active_t
                 )
@@ -1083,6 +1153,43 @@ class WassersteinLOMORunner:
                     loss = loss + w2_loss_t
                     loss.backward()
                     w2_applied = True
+                elif need_pool:
+                    # Wf-R12-A ``every-batch`` — bucket the batch's OWN
+                    # pooled embedding by metal and add the W₂ term to this
+                    # batch's loss. The embedding comes from the same
+                    # ``_forward_flat`` the classification/regression heads
+                    # consumed, so this costs NO extra model compute, and
+                    # the gradient is an exact derivative at the CURRENT
+                    # parameters (no epoch-start staleness).
+                    #
+                    # A W₂ needs ≥ 2 metals present in the batch to be
+                    # defined; batches whose rows are single-metal (common
+                    # for the large fold-out cohorts) contribute nothing
+                    # this step and are counted in ``w2_batches_skipped``.
+                    buckets: Dict[str, List[torch.Tensor]] = {}
+                    for row_i, metal_i in enumerate(batch_metals_valid):
+                        if row_i >= h_pool.size(0):
+                            break
+                        buckets.setdefault(metal_i, []).append(
+                            h_pool[row_i]
+                        )
+                    if len(buckets) >= 2:
+                        batch_embeds = {
+                            m: torch.stack(v, dim=0)
+                            for m, v in buckets.items()
+                            if v
+                        }
+                        loss = loss + self.wasserstein_weight * (
+                            wasserstein_transfer_loss(
+                                batch_embeds,
+                                n_mc=self.n_mc,
+                                seed=self.seed,
+                            )
+                        )
+                        n_w2_batches += 1
+                    else:
+                        n_w2_batches_skipped += 1
+                    loss.backward()
                 else:
                     loss.backward()
                 # Wf-127 P2 — grad-norm clip (max_norm=5.0 by default).
@@ -1126,7 +1233,11 @@ class WassersteinLOMORunner:
             # ``--wasserstein-real`` is on. It is a SECOND full extraction
             # over the train pool, so leaving it on for a detached (no-op)
             # W₂ was pure 2.4x wall-time for a number nothing consumed.
-            if self.w2_enabled and (epoch % 5 == 0 or epoch == self.epochs - 1):
+            if self.w2_enabled and (
+                self.wasserstein_cadence == "every-batch"
+                or epoch % 5 == 0
+                or epoch == self.epochs - 1
+            ):
                 # Cheap re-extraction on a smaller subset keeps the
                 # cost bounded while still capturing the decay trend.
                 train_embeds = extract_per_metal_embeddings(
@@ -1146,6 +1257,10 @@ class WassersteinLOMORunner:
             else:
                 w2_val = w2_history[-1] if w2_history else 0.0
             w2_history.append(w2_val)
+            # Wf-R12-A — roll the per-epoch counters into run totals so the
+            # JSON can be audited after the fact.
+            total_w2_applied += n_w2_batches
+            total_w2_skipped += n_w2_batches_skipped
 
             if verbose and (epoch % 1 == 0 or epoch == self.epochs - 1):
                 logger.info(
@@ -1307,6 +1422,26 @@ class WassersteinLOMORunner:
             w2_effective_weight=(
                 self.wasserstein_weight if self.w2_enabled else 0.0
             ),
+            wasserstein_cadence=self.wasserstein_cadence,
+            w2_batches_applied=(
+                total_w2_applied
+                if self.wasserstein_cadence == "every-batch"
+                # per-epoch: one injection on the first batch of each
+                # triggering epoch — count them so the comparison is
+                # like-for-like.
+                else (
+                    len(
+                        [
+                            e
+                            for e in range(self.epochs)
+                            if e % 5 == 0 or e == self.epochs - 1
+                        ]
+                    )
+                    if self.w2_enabled
+                    else 0
+                )
+            ),
+            w2_batches_skipped=total_w2_skipped,
             elapsed_seconds=0.0,  # populated by caller
             use_l2_guard=self.use_l2_guard,
             use_astr_scale_guard=self.use_astr_scale_guard,
@@ -1402,6 +1537,23 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "within seed noise). A non-zero value WITHOUT --wasserstein-real is "
         "accepted for config back-compat, emits a DeprecationWarning, and "
         "is otherwise ignored — see molmetal/reports/wf_round2_w2_{on,off}/.",
+    )
+    p.add_argument(
+        "--wasserstein-cadence",
+        dest="wasserstein_cadence",
+        choices=list(_WASSERSTEIN_CADENCES),
+        default="per-epoch",
+        help="Wf-R12-A: how often the W₂ term joins the loss. "
+        "'per-epoch' (default, unchanged behaviour): build the W₂ graph "
+        "once at epoch start on epochs 0, 5, 10, ... and back-propagate "
+        "on the first batch only — Wf-A1 measured this as ~0.5%% of "
+        "gradient mass over 30 epochs (7 backwards vs ~1300 steps). "
+        "'every-batch': add W₂ to EVERY batch using the pooled embedding "
+        "from that batch's own forward (return_pool=True), so the "
+        "gradient is an exact derivative at the current parameters. "
+        "Costs no extra model compute (the pooling is already done); "
+        "batches containing < 2 metals contribute no W₂ that step and "
+        "are counted in w2_batches_skipped.",
     )
     p.add_argument(
         "--wasserstein-real",
@@ -1738,6 +1890,9 @@ def _run_one(
         held_out_metal=metal,
         wasserstein_weight=args.wasserstein_weight,
         wasserstein_real=bool(getattr(args, "wasserstein_real", False)),
+        wasserstein_cadence=str(
+            getattr(args, "wasserstein_cadence", "per-epoch")
+        ),
         n_mc=args.n_mc,
         hidden=args.hidden,
         depth=args.depth,
@@ -1796,6 +1951,13 @@ def _run_one(
         # model that never received a W₂ gradient.
         "w2_real": bool(res.w2_real),
         "w2_effective_weight": float(res.w2_effective_weight),
+        # Wf-R12-A — which cadence ran, and how many optimisation steps
+        # actually carried a W₂ gradient. Under ``per-epoch`` this is a
+        # small constant (7 at 30 epochs) no matter how big the fold is,
+        # which is exactly the A1 finding.
+        "wasserstein_cadence": str(res.wasserstein_cadence),
+        "w2_batches_applied": int(res.w2_batches_applied),
+        "w2_batches_skipped": int(res.w2_batches_skipped),
         "wasserstein_loss_history": res.wasserstein_loss_history,
         "final_per_metal_w2": res.final_per_metal_w2,
         "elapsed_seconds": float(elapsed),
@@ -2218,6 +2380,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Wf-E1 — the honest pair. Read ``w2_effective_weight``, not
         # ``wasserstein_weight``, to know whether W₂ touched the model.
         "w2_real": bool(getattr(args, "wasserstein_real", False)),
+        "wasserstein_cadence": str(
+            getattr(args, "wasserstein_cadence", "per-epoch")
+        ),
         "w2_effective_weight": (
             float(args.wasserstein_weight)
             if bool(getattr(args, "wasserstein_real", False))
