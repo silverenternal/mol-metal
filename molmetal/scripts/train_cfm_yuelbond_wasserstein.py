@@ -4222,6 +4222,35 @@ def parse_args() -> argparse.Namespace:
         default=50,
         help="Number of epochs (default 50; dial-down to 10 " "for CPU smoke).",
     )
+    # 2026-10-06 (Wf-R11-A3) — EVAL-ONLY re-measurement mode.
+    #
+    # The generator half of this trainer (`gen_validity`) could only ever be
+    # measured from INSIDE the epoch loop, so "re-measure gen_validity on an
+    # existing checkpoint without retraining" was not expressible.  The
+    # obvious spelling is a no-op: `--resume-from path --epochs 1` resumes at
+    # `_start_epoch = last_epoch + 1`, and `range(20, 1)` is EMPTY, so the run
+    # trains nothing, evaluates nothing, and exits "successfully" having
+    # measured nothing.  That failure is silent -- no error, no warning, an
+    # empty per_epoch list.
+    #
+    # This flag makes the intent explicit and non-empty: train nothing, run
+    # the eval block exactly once against the resumed weights, and write the
+    # usual per-epoch record.  It forces the loop to one iteration
+    # regardless of `--epochs`, and suppresses BOTH checkpoint writes, so an
+    # eval-only run can never overwrite the checkpoint it is measuring.
+    p.add_argument(
+        "--eval-only",
+        action="store_true",
+        default=False,
+        help=(
+            "Measure on the resumed checkpoint without training: skips "
+            "train_one_epoch, runs the decode/bond/generation eval once, and "
+            "suppresses checkpoint writes.  Requires --resume-from path (or "
+            "auto) so there are weights to evaluate.  Use this instead of "
+            "`--resume-from path --epochs 1`, which resumes past `--epochs` "
+            "and runs an empty loop."
+        ),
+    )
     p.add_argument(
         "--batch-size", type=int, default=64, help="Mini-batch size (default 64)."
     )
@@ -6832,7 +6861,30 @@ def main() -> int:
             f"continuing from epoch {_start_epoch}/{args.epochs}",
             flush=True,
         )
-    for epoch in range(_start_epoch, args.epochs):
+    # 2026-10-06 (Wf-R11-A3) — eval-only loop bounds.  Resuming a
+    # checkpoint trained for N epochs sets `_start_epoch = N`, so any
+    # `--epochs <= N` yields `range(N, epochs)` == empty: the process runs,
+    # writes an empty per_epoch list, and exits 0 having measured nothing.
+    # Under `--eval-only` the loop must run EXACTLY once, so the bound is
+    # overridden rather than trusted; and the training call below is skipped.
+    _eval_only = bool(getattr(args, "eval_only", False))
+    if _eval_only:
+        if _start_epoch <= 0 and _resume_path is None:
+            raise SystemExit(
+                "--eval-only requires --resume-from path (with "
+                "--resume-from-path) or --resume-from auto: there are no "
+                "weights on disk to evaluate."
+            )
+        # Label the single pass with the epoch it actually measures, not the
+        # post-resume counter, so the record is traceable to the checkpoint.
+        _start_epoch = max(int(_last_epoch), 0) if _resume_path is not None else 0
+        print(
+            f"[cfm-eval-only] measuring epoch {_start_epoch} without "
+            f"training; checkpoint writes suppressed",
+            flush=True,
+        )
+    _loop_end = _start_epoch + 1 if _eval_only else args.epochs
+    for epoch in range(_start_epoch, _loop_end):
         epoch_start = time.time()
         # Round-4 E3 — per-epoch bond-score accumulator.  Reset HERE, at the
         # top of the loop, so a stale score from the previous epoch cannot
@@ -6840,8 +6892,16 @@ def main() -> int:
         # be reset mid-loop, after the `[cfm-bond]` prints, which silently
         # zeroed every bond field in per_epoch_metrics.json.)
         _bond_acc = {}  # type: Dict[str, float]
-        train_loss, bond_ce, w2_val, grad_norm, catherine_rate = train_one_epoch(
-            model=model,
+        if _eval_only:
+            # No optimiser step, no gradient: the resumed weights are the
+            # subject of the measurement and must not move.  NaN train_loss
+            # is deliberate -- it is the honest value for "not trained", and
+            # it cannot be mistaken for a measured 0.0.
+            train_loss, bond_ce, w2_val = float("nan"), float("nan"), float("nan")
+            grad_norm, catherine_rate = float("nan"), 0.0
+        else:
+            train_loss, bond_ce, w2_val, grad_norm, catherine_rate = train_one_epoch(
+                model=model,
             decoder=decoder,
             optimiser=optimiser,
             train_clouds=train_clouds_d,
@@ -7582,7 +7642,12 @@ def main() -> int:
             best_epoch = epoch
             epochs_without_improve = 0
             metric.early_stop_improved = True
-            _save_cfm_checkpoint(epoch, decode_ratio)
+            # Wf-R11-A3 — an eval-only run must not write a checkpoint.  Both
+            # save sites are gated, because an eval-only pass can clear
+            # `_best_gate` (it starts at -inf) and would otherwise overwrite
+            # the very checkpoint it is measuring with a 1-epoch record.
+            if not _eval_only:
+                _save_cfm_checkpoint(epoch, decode_ratio)
         else:
             epochs_without_improve += 1
             if epochs_without_improve >= _patience:
@@ -7605,7 +7670,11 @@ def main() -> int:
         # once and never again.  A crash at epoch 49 of 50 lost the run, and
         # `--resume-from auto` would have resumed from epoch 0.
         _cki = int(getattr(args, "checkpoint_interval", 0) or 0)
-        if _cki > 0 and ((epoch + 1) % _cki == 0 or (epoch + 1) >= int(args.epochs)):
+        if (
+            not _eval_only
+            and _cki > 0
+            and ((epoch + 1) % _cki == 0 or (epoch + 1) >= int(args.epochs))
+        ):
             _save_cfm_checkpoint(epoch, decode_ratio)
 
         # Wf-A6 A2 BLOCKER C fix — LR scheduler step (per-epoch).
