@@ -33,257 +33,47 @@
 
 ## §1 Per-Wf summary (64 Wfs × 1-line summary)
 
-The table below covers Wf-296..359 inclusive. "Wave" = cohort dispatched in same ultracode run. "Status" sourced from on-disk closeout doc headers.
-
-### §1.1 Wf-296 — Pipeline integration audit + integration (Wf-296 SHIP)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Outcome**: Initial integration checkpoint; downstream Wf-309..317 wave absorbed follow-up.
-**File**: `TODO/completed/296_wf296_pipeline_integration.md` (1 of 1 file in 290s range; bulk 296 content lives in Wf-309..317 + Wf-321..322 closeouts).
-**Key takeaway**: Set the stage for the ultrawave by cataloguing the in-flight pipelines (D-MPNN + CFM + Lambda MCTS + closure theorem + Catherine).
-
-### §1.2 Wf-309..317 ship wave (frontier-math CPU + actionable-now bundle + G5 retrain + LOI integration + §9 expansion 30→36 + R20 Phase 0 loaders + OOD RDKit fix + SA/QED wiring + NCI-60 scaffold fallback + TODO directory cleanup + Tier-2 re-orientation)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 308d (Wf-312E LOI + G5 integration), 310 (Wf-310H actionable-now CPU bundle), 312 (honest-framing 35+), 313e (mechanism metric mapping extension), 313 (R20 Phase 0 loaders), 314a (Wf-311E part-4 deterministic edits), 314e (OOD RDKit fix), 315a (SA/QED wiring), 315f (NCI-60 per-cell scaffold fallback), 316 (final synthesis), 316 index + directory final state, 317a..h (Tier-2 updates for INDEX/README/WEAK_TO_STRONG/IMPROVEMENT_ENUM/LAMBDA_ROADMAP/4 LOI/wetlab SOP/IMPROVEMENT_QUEUE), 317 final synthesis.
-**Outcome**: Tier-2 journal target adopted per user directive ("我们发二区就可以了，不用规划湿实验"); 4 LOI/SOP templates reclassified as `TEMPLATE_NOT_NEEDED_FOR_TIER2` rather than `STILL_PENDING`.
-**Key takeaway**: Largest single-day waveset in project history; established the Tier-2-first + no-wet-lab orientation that persists to today.
-
-### §1.3 Wf-318..320 closeout wave (R13 100x3 diversity + steric_clash + downstream lift dashboard + Wf-313 closeout + final synthesis)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 318b (G5 cascade delta 5-metal), 318d (Wf-219 Ru aggregation fix), 318e (OOD RDKit alt-env), 318f (F2(a) metal ligand runtime), 318g (R13 diversity steric final), 318j (Tier-2 integration verified), 318r (Wf-311F ultracode candidates), 318 final synthesis; 319a..g (ablation runner smoke + UFF min Pt pool + pb packages status + G2 metalcytotox CSV audit + NCI-60 fallback + m6_kappa ADMET consistency + Wf-296D deep wire); 320b..h (Wf-291F harness autofallback fix + TODO-220 full impl + chemprop featurization fix + downstream lift dashboard + R20 phase 0 loaders + mechanism metric mapping extension + TODO-134 Phase 2 attempt), 320 final synthesis.
-**Outcome**: Resolved 7+ long-pending items including the Wf-219 Ru aggregation bug that had been a known regression for multiple Wf cycles.
-**Key takeaway**: "Phase-0 loader" pattern established (load + verify + downstream-ready) becomes standard for later Wf-322..340 work.
-
-### §1.4 Wf-321..322 docs-only closeout (Wf-176 m19 LOMO CPU + R20/R21 skill ecosystem 8 NEW skills + pre-flight gate audit + ablation runner integration + chemprop v2 reconciliation + 4 LOI/SOP Tier-2 markers + INDEX/README sync)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 321a (Wf-135 phase 2 CPU scaffold), 321b (R20/R21 skill ecosystem audit — 4 NEW R20 + 4 NEW R21 = 8 NEW skills), 321d (pre-flight gate audit), 321e (ablation runner integration test), 321f (chemprop v2 status reconciliation), 321h (TODO-119 P1.4 CPU scaffold); 322a..g (4 LOI Tier-2 final + wetlab SOP Tier-2 final + improvement queue Tier-2 final + INDEX/README Wf-309..322 sync + TODO-148 loader API doc + Wf-176 m19 LOMO final closeout + TODO-130 G3 closure 30-metal closeout).
-**Outcome**: Established 28-skill ecosystem (20 baseline + 8 NEW Wf-321B + 2 meta-packs) that anchors AGENTS.md §3 today.
-**Key takeaway**: Skill ecosystem expansion is doc-only and zero-touch to existing pipelines; every new skill ships with stub + verification doc.
-
-### §1.5 Wf-323 CPU closeouts (7 closeouts)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 323a (M14 lr-warmup re-integration), 323b (v3/v4 schema drift fix), 323c (M8 full CPU fix), 323d (ablation runner integration), 323e (TODO-21 Lambda CFM coupling closeout), 323f (M4 SA/QED sub-criterion), 323g (TODO-134 Vina install attempt).
-**Outcome**: All 7 closeouts are CPU-only docs+code; pre-flight v3 25→42 PASS expansion.
-**Key takeaway**: Foundational pattern for subsequent "closeout wave" workflows — each agent writes a focused 1-task closeout + a single closeout doc with §0 TL;DR + §1 evidence + §2 standing rules.
-
-### §1.6 Wf-324D README/AGENTS/TODO refresh
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 324a (README comprehensive refresh), 324b (INDEX refresh), 324c (README TODO refresh), 324d (AGENTS refresh — this file), 324e (decisions/risks refresh), 324f (metrics targets refresh), 324 final synthesis.
-**Outcome**: All 7 cross-cutting meta-docs refreshed to Wf-322D baseline.
-**Key takeaway**: Establishes the "D-class refresh" pattern: bulk-update project meta-docs at end of each major wave.
-
-### §1.7 Wf-325 honest-negative closeout wave (7 closeouts)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 325a (R² 32-d expansion), 325b (Vina Pt→Zn substitution), 325d (m6_kappa final), 325e (ADMET 4 below final), 325f (F2(a) Phase-3G unblock), 325 final synthesis, 325g (m7 Multi-PH lift).
-**Outcome**: 7 honest-negative closeouts; preserved as institutional memory for future contributors per §5.2.
-**Key takeaway**: "Honest-negative closeout" pattern crystallized — every metric BELOW field-avg gets a §-doc with measured evidence + PROJECTED recovery path + blocking reasons.
-
-### §1.8 Wf-326 GPU profile / AMP batch / Triton audit
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 326a (GPU utilization profile), 326b (DataLoader optimization), 326c (torch.compile optimization), 326d (AMP/BF16 batch optimization), 326e (Triton audit), 326f (memory ceiling closeout), 326g (missed optimizations plan), 326h (synthesis closeout).
-**Outcome**: 2.72× torch.compile speedup MEASURED on RTX PRO 6000 Blackwell sm_120; W₂ sort 2-3×; cache 16.83× featurization; TF32 1.5× matmul. Paved the way for Wf-328 wire-ups.
-**Key takeaway**: "Profile-before-wire-up" pattern — every wire-up must trace to a profile-measured bottleneck.
-
-### §1.9 Wf-327 — 16 NEW fix docs (Wf-327-F1..F16 + Wf-327-SYN)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 327f1..f16 (16 fix docs: M14 lr-warmup + v3/v4 schema + M8 full CPU + ablation runner + 8 NEW skill wiring + gate-count docs fix + m6_kappa + Rh LOMO + ADMET 4 + F2(a) + m7 diversity + 8 NEW skill stubs + skill verification + 14 sub-flows total), 327 synthesis (aggregator), 327 ultracode remaining problems closeout.
-**Outcome**: 11 SHIPPED + 3 VERIFIED + 1 INVESTIGATED + 1 NOT-WRITTEN-merged-into-F8. **Path-bug fix in `p3_wf327_cpu_num_workers_sufficient` gate**: `MOLMETAL_ROOT/scripts/launch_*.sh` → `REPO_ROOT/scripts/launch_*.sh` (6 lines, 1 Edit).
-**Key takeaway**: "F-suffix" closeout naming convention for fix-class work (Wf-327-F1..F16) — sub-flows explicitly numbered for aggregation clarity.
-
-### §1.10 Wf-328 — 10 wire-ups (Wf-328-W1..W10 + Wf-328-SYN)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 328w1..w10 (10 wire-ups: torch.compile + launcher num_workers fix + BF16 + TF32 + W₂ sort + DataLoader factory + D-MPNN PyG port + CUDA Graphs + Triton edge kernel + D-MPNN cache), 328 synthesis.
-**Outcome**: 54/54 NEW tests PASS + 1 SKIP / 0 FAIL; pre-flight v3 fresh-run **62 PASS / 0 FAIL / 62 TOTAL** at Wf-328-SYN baseline; **MEASURED joint speedup ~3-4× end-to-end** (multiplicative on torch.compile 2.72× + W₂ sort 2-3× + cache 16.83× + TF32 1.5×); **PROJECTED joint ceiling ~10-15× end-to-end** (multiplicative on PyG + torch.compile + CUDA Graphs + Triton + BF16 + W₂ sort + cache); **6 honest-negative caveats preserved**.
-**Key takeaway**: "W-suffix" wire-up naming convention — each wire-up gets its own CLI flag + test + bench JSON. W-suffix workflow is the canonical "how to integrate optimizations" template for Wf-335+.
-
-### §1.11 Wf-329 — R20-P2..P5 + R21-P1..P5 ship-surface wiring (8 sub-flows W1..W8)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 329w1 (Catherine 30-metal bench), 329w2 (triangle closure), 329w3 (F2(a) metal ligand), 329w4 (Multi-PH PLL), 329w5 (W₂ chemprop alignment), 329w6 (TODO-21 Lambda CFM verified), 329w7 (TODO-134 Vina alternative), 329w8 (skill wiring verified), 329v4 (INDEX sync), 329 synthesis.
-**Outcome**: 8 wire+bench + 4 verify verdicts. Catherine 30/30 PASS post-fix. pre-flight delta +20 PASS / -15 FAIL.
-**Key takeaway**: Wf-329 first wave to integrate R20 + R21 phases simultaneously; established cross-phase compatibility.
-
-### §1.12 Wf-330 ULTRACODE (7 sub-flows A..G)
-
-**Status**: ✅ SHIPPED 2026-09-29 (per user directive "基于刚才的洞察，可以启动ultracode，覆盖所有发现的问题把残余的问题解决了，一定要全，工作流可以长")
-**Closeouts**: 330a (Catherine bench P1+P6 BFS-bug fix), 330b1 (trainer merge fix), 330b2 (optimization integration), 330b4 (regression smoke), 330b (Catherine 30-metal full pass), 330c1 (closure C25 ship), 330c2 (closure OOD ship), 330c3 (Wf-44 P2 Phase 2), 330c4 (reachability matrix), 330c (preflight v3 full pass), 330d (Wf-326 closeouts), 330e (Wf-327/Wf-328 closeouts), 330f (Wf-329 closeouts), 330t1 (triangle PlatinAI), 330t2 (triangle MetalCytoTox), 330t4 (triangle 12-d).
-**Outcome**: Catherine 30/30 metals 6/6 PASS; pre-flight v3 62/62 PASS; §9.BD catalog entry; risks.md R9 close.
-**Key takeaway**: "ULTRACODE" pattern — a single user directive spawns a multi-sub-flow wave with letter-suffix (A..G) sub-flow IDs.
-
-### §1.13 Wf-331 — NO WORK (per Wf-332-S1 verification table §0.16)
-
-**Status**: 🚫 **NO WORK** (no closeouts on disk; user can spawn a separate Wf-331 if needed)
-**Verdict**: Wf-331 was a planned-but-cancelled ultracode; Wf-332-S1 INDEX sync flagged it as "no closeouts on disk" — preserved as honest-negative in the timeline.
-**Key takeaway**: "No-work" verdict is a valid closeout; preserves intent + user context without fabricating Wf-331 content.
-
-### §1.14 Wf-332-S1 INDEX.md final sync + Wf-332-S2 AGENTS.md final sync
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 332s4 (preflight final), 332 final synthesis.
-**Outcome**: Verification pass over Wf-323..331 closeouts; per-Wf closeout-count verdict table; AGENTS.md §3 + §6 delta.
-**Key takeaway**: "S-class" sync workflows — bulk-update INDEX.md + AGENTS.md after major wave closeouts.
-
-### §1.15 Wf-333 recovery final wave (12 closeouts V1/V2/V3/V4/G1/G2/G3/G4/T1/T2/T3/T4 + Wf-333-SYN)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 333v1 (Wf-246C kcal sign-fix at `metal_coord_term.py:629 → :654`), 333v2 (Vina P1 wire-in), 333v3 (Vina P2 per-bond F2(a) + P3 distance wire-in), 333v4 (m6_kappa 5-candidate alt route — chemprop+PLL surprise CV-R² +0.6814 best of 5 candidates; HONEST_NEGATIVE_PARTIAL_STRUCTURAL), 333g1 (Lambda CFM GPU wrapper), 333g2 (Triangle GPU wrapper), 333g3 (P0 wins extension), 333g4 (pre_featurize_dmpnn runtime hook), 333t1 (sm_120 Triton autotune extended), 333t2 (4 missing Triton kernels full implementations), 333t3 (trainer verify), 333t4 (Wf-326F + Wf-326H final), 333 final synthesis.
-**Outcome**: **Wf-246-C kcal_adjustment sign-fix at `metal_coord_term.py:629 → :654`** closes `HONEST_NEGATIVE_WF246_C_KCAL_SIGN_INVERTED`; corrected `(1 − 2*c) × kcal_per_unit` for Vina convention "lower (more negative) = better binding". Vina cohort lift -2.3 kcal/mol MEASURED on 5-pocket cohort smoke; Vina cohort median -7.782 kcal/mol PROJECTED PASSES industry -7.0 by 0.782 margin. m6_kappa structural fix attempt (chemprop+PLL). Lambda CFM GPU wrapper SHIPPED. Triangle closure GPU wrapper SHIPPED. P0 wins extended. sm_120 Triton autotune extended. 4 missing Triton kernels full implementations. 94/94 NEW tests PASS + 2 SKIP.
-**Key takeaway**: "V-class" recovery naming convention for recovery-axis work (V1..V4 for Vina/m3; G for GPU; T for Triton); aggregator has explicit HONEST_NEGATIVE_PARTIAL_STRUCTURAL verdict preserved.
-
-### §1.16 Wf-334 GPU validation wave (4 closeouts U1/U2/U4 + ultracode residual)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 334u1 (GPU smoke test), 334u2 (pipeline master integration), 334u4 (launcher verify), 334c2 (preflight final), 334 final closeout, 334 ultracode residual gaps.
-**Outcome**: 22-test GPU smoke suite (21/22 PASS + 1 SKIP under host load G6+dfine_t146); pipeline master CLI integrates Wf-326 + Wf-328 + Wf-333 wire-ups (4/4 PASS in 0.82 s); Wf-264 CFM property panel launch script SHIPPED (~135 LOC, closes Wf-298 §1.3 "launch script not yet written" gap); ultracode residual gap closure (10/10 PASS); 37/37 NEW tests PASS + 1 SKIP.
-**Key takeaway**: "U-class" naming convention for GPU-validation work (U1..U4); preserves Wf-334 as CPU-only verification + Edit + 1 source sign-fix + 1 `--dmpnn-backend` wire-up + 1 Wf-264 launch script — zero GPU launches.
-
-### §1.17 Wf-335 torch.compile mode default fix (3 closeouts R1+R2+R3 + 6 ultracode closeouts M1+M2+M3+P1+P2+P3 + Wf-335-SYN)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 335r1 (no_cudagraphs_fix — torch.compile mode default `default`→`reduce-overhead`→`max-autotune-no-cudagraphs` after Blackwell cudagraphs RuntimeError per Wf-330-B4), 335r2 (wireup reverify), 335r3 (G6 no_cudagraphs), 335m1 (chemprop+PLL full), 335m2 (R² W₂ chemprop full), 335m3 (triangle GPU extend), 335p1 (P0 extend trainers), 335p2 (sm_120 GPU wrapper), 335p3 (Triton kernels wired), 335 final synthesis.
-**Outcome**: Closes `HONEST_NEGATIVE_WF330_B4_CUDAGRAPHS_RUNTIME_ERROR`; 4 NEW tests PASS + 13/13 Wf-335-R2 reverify tests PASS; 70/70 NEW tests PASS across Wf-335; pre-flight v3 62/62 PASS preserved.
-**Key takeaway**: "R-suffix" naming convention for runtime-bug fixes (R1+R2+R3 — diagnose + reverify + safety lever); multi-class wave (R + M + P) within single Wf.
-
-### §1.18 Wf-336 ultracode residual wave (4 closeouts X1+X2+X3+X4 + Wf-336-D2/D3/F1/F2 + Wf-336 final)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 336x1 (Wf-326F + Wf-326H final confirmation — closes `333t4_326f_326h_final.md` delivery gap), 336x2 (TODO-119 P1.4 chemprop v3 LOMO launch wrapper), 336x3 (Wf-74 v2 DrugOOD DANN launch wrapper), 336x4 (TODO-134 Vina meeko alt integration), 336d3 (pipeline integrate), 336f1 (preflight final), 336f2 (user_ok_gate), 336 final closeout.
-**Outcome**: 7 NEW closeouts since Wf-333-SYN; Wf-336 X1 closes a known delivery gap from Wf-331-X1 + Wf-333-T4.
-**Key takeaway**: "X-suffix" naming convention for cross-cutting ultracode residual work (X1..X4); "F-suffix" for finalization work.
-
-### §1.19 Wf-337 + Wf-338 ultracode residual closeout wave (10 Wf-337 + 6 Wf-338 closeouts)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts (Wf-337)**: 337a1 (Wf-316 audit), 337a2 (Wf-298D recovery), 337g1 (G6 recovery), 337g2 (launcher v2), 337g3 (G6 regression), 337u2 (Wf-135 user_ok), 337w1, 337w2, 337w3.
-**Closeouts (Wf-338)**: 338f1 (m1 m6_kappa), 338m1 (m2 m7), 338m2 (m3 Multi-PH PLL), 338v1 (vina), 338v2 (vina recovery), 338v3 (vina V3).
-**Outcome**: 121 NEW tests PASS + 16 NEW test files; 27 existing test re-verifications; Vina recovery paths + G6 launcher hardening + per-metal reachability matrix wire + closure verification.
-**Key takeaway**: "W-suffix" letter-A/B/G/U/V used to organize sub-flows by topic (W1..W3 = wire-ups; G1..G3 = G6 launchers; U2 = user-OK; V1..V3 = Vina recovery).
-
-### §1.20 Wf-338-F2 INDEX.md final sync
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Outcome**: 16-row per-Wf INDEX coverage verdict for Wf-323..338; pre-flight v3 fresh-run **62/62 PASS** at Wf-338-F2 timestamp wall ~5s.
-**Key takeaway**: "F-suffix" naming convention for INDEX finalization work (F1/F2/F3 = final/sync/verify).
-
-### §1.21 Wf-339 — TODO directory cleanup (Wf-339-B2/B3 + Wf-339 final)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Outcome**: Lambda roadmap audit (Wf-339-C2) + Improvement audit (Wf-339-C3); integration verification.
-**Key takeaway**: "B-suffix" naming convention for plan-deep-dive work (B1 = integration; B2 = SE(3) Schrödinger Bridge scaffold; B3 = Hilbert primal-dual joint retrain wrapper).
-
-### §1.22 Wf-340 — CFM research + improvement ultracode (11-agent aggregation, R1+R2+R3+R4+A1+A2+A3+A4+I1+I2+I3 + Wf-340-SYN)
-
-**Status**: ✅ SHIPPED 2026-09-29 (per user directive "你看一下模型的训练框架能不能再提升，CFM那块，我们模型的本质还是flow matching，应该是能找到那种快速收敛训练的论文和对应的开源代码的，额外启动一个ultracode去做，调研完了得做对应的改进")
-**Closeouts**: 340r1 (CFM papers survey — 9 papers), 340r2 (acceleration methods — 8 methods), 340r3 (molecule CFM — 10 mol-specific papers), 340r4 (code repos — 16 repos), 340a1 (coverage matrix — 24 techniques × 4-axis), 340a2 (opportunities — Top-10 ranked), 340a3 (borrowable code — Top-5 repos), 340a4 (compatibility — 8 × 4 axes), 340i1 (acceleration implementation — 6 NEW wires + 7 NEW CLI flags), 340i2 (speedup estimate), 340i3 (integration plan — 3 phases), 340 final synthesis.
-**Outcome**: 24 unique papers + 16 repos catalogued + 10 ranked opportunities + 6 on-disk wire-ups + 12 NEW tests PASS; joint speedup PROJECTED 5-10× additional on top of Wf-326/328 MEASURED 3-4× → **~10-20× end-to-end** conservative band / 18-86× aggressive band.
-**Key takeaway**: "R + A + I" suffix pattern for research → analysis → implementation: 4 R-class surveys → 4 A-class analyses → 3 I-class implementations + 1 SYN. Foundational pattern for Wf-340+ research ultracodes.
-
-### §1.23 Wf-341 — R20-P2 Hilbert-ASTSR GPU joint retrain wrappers + W₂ scaffold + smoke
-
-**Status**: ✅ SHIPPED 2026-09-29 (CPU-only scaffolds; GPU A/B deferred)
-**Outcome**: W₂ recipe SHIPPED + Hilbert R² gate PRESERVED; Wf-341-C1 GPU readback + Wf-341-C2 GPU-DEFERRED.
-**Key takeaway**: CPU scaffold SHIPPED + GPU launch gated separately (Wf-341-A7/A8).
-
-### §1.24 Wf-342 — TODO-211 W₂ pipeline + weak-to-strong + INDEX sync
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 342a, 342b, 342c, 342d, 342 final.
-**Key takeaway**: "TODO-N" naming convention for TODO-directory-driven work.
-
-### §1.25 Wf-343..346 — TODO-217 W2_pIC50_pipeline_scaffold + arch_lift + CUDA Graphs Blackwell retune + INDEX sync
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Outcome**: 4 NEW pre-flight gates per Wf-343C4 (EXPECTED_GATE_COUNTS["all"] 62 → 66).
-**Key takeaway**: Pre-flight gate expansion is gated by each Wf that adds new gates; INDEX sync rolls up.
-
-### §1.26 Wf-347..348 — Wf-347A m1 Multi-PH m6_kappa + Wf-347B m3 F2(a) + Wf-348-B1 W₂ recipe SHIPPED
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Outcome**: W₂ recipe SHIPPED + Hilbert R² gate PRESERVED.
-
-### §1.27 Wf-349 — SO(3)-averaged FM + EDM preconditioning + OT-CFM exact solver + StableVM variance reduction (Wf-349-A1..A4 + Wf-349-B1..B3 + Wf-349-D1/D2 + Wf-349 final)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 349a1 (SO(3)-averaged FM), 349a2 (EDM preconditioning), 349a3 (OT-CFM exact solver), 349a4 (StableVM variance reduction), 349b1 (Wf-340-P2 INDEX sync), 349b2 (Wf-340-P3 INDEX sync), 349b3 (Wf-340-P4 INDEX sync), 349c1 (Wf-341 wrappers deep integration), 349c2 (Wf-339 Lambda roadmap audit), 349c3 (Wf-339 improvement audit), 349d1 (integration verify), 349d2 (closeouts indexed verify), 349 final synthesis.
-**Outcome**: All 4 CFM acceleration techniques SHIPPED CPU-only; pre-flight v3 62→66 PASS preserved.
-**Key takeaway**: "A-suffix" naming convention for acceleration methods; "B-suffix" for INDEX sync; "C-suffix" for integration audit; "D-suffix" for verification.
-
-### §1.28 Wf-350 — Sci submission infrastructure + compute manifest + GPU env probe
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 350a1 (runtime energy report), 350a2 (compute manifest), 350a3 (HP provenance log), 350b1 (compute manifest gate), 350b2 (PREREG template), 350b3 (repro manifest extension), 350c1 (GPU env probe), 350c2 (detect anomaly), 350c3 (memory opts), 350d2 (GPU safety verify), 350 final synthesis.
-**Outcome**: SCI submission infrastructure scaffold SHIPPED; runtime energy report emitted; GPU env probe script SHIPPED.
-**Key takeaway**: "350a/b/c/d" pattern — initialize (a) → process (b) → analyze (c) → verify (d).
-
-### §1.29 Wf-351 — LaTeX/reference/figure audit + Zotero + SCI skill + AGENTS index sync
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 351a1 (LaTeX template audit), 351a2 (reference manager audit), 351a3 (LaTeX engine audit), 351a4 (figure style audit), 351b2 (Zotero setup), 351b3 (SCI skill — mol-metal-sci-paper-submission), 351c1 (setup verify), 351c2 (AGENTS.md index sync), 351 final synthesis.
-**Outcome**: 29th skill `mol-metal-sci-paper-submission` SHIPPED.
-**Key takeaway**: "B3" naming convention for skill creation within multi-class wave.
-
-### §1.30 Wf-352 — Expected gate counts bump + per-pipeline audit + AGENTS sync + verify
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 352a1 (expected gate counts bump), 352a2 (per-pipeline audit), 352b1 (Wf-321D audit doc sync), 352b2 (synthesis doc sync), 352b3 (AGENTS sync), 352c1 (full verify), 352c2 (INDEX sync), 352 final synthesis.
-**Key takeaway**: "A/B/C" suffix pattern — audit (a) → sync (b) → verify (c).
-
-### §1.31 Wf-353 — Triton mini-batch OT + shortcut distillation + consistency regularization + unified atom-bond flow (Wf-353-A1..A4 + Wf-353-B1/B2 + Wf-353-C2 + Wf-353 final)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 353a1 (Triton mini-batch OT), 353a2 (shortcut distillation), 353a3 (consistency regularization), 353a4 (unified atom-bond flow), 353b1 (Wf-343C1 gates wired), 353b2 (Wf-343C2 C3 verify), 353c2 (INDEX sync), 353 final synthesis.
-**Outcome**: 4 NEW CFM acceleration techniques SHIPPED CPU-only + Triton log-domain Sinkhorn kernel SHIPPED.
-**Key takeaway**: All 7 NEW R18 acceleration techniques (Wf-349 + Wf-353) are CPU-only scaffolds awaiting GPU A/B smoke per AGENTS.md §5.1.
-
-### §1.32 Wf-354 — TODO-130 G3 + Wf-342-P2 + Wf-342-P4 + INDEX sync
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 354a1 (Wf-342-P2 LOMO integration), 354a2 (Wf-310E user_ok verify), 354b1 (R20-P3 DrugOOD wrapper), 354b2 (R20-P4 BindingDB wrapper), 354b3 (R20-P5 tmQM+Plat joint retrain wrapper), 354c1 (Wf-342-P4 weak-to-strong), 354c2 (INDEX sync), 354 final synthesis.
-**Key takeaway**: 3 NEW R20 user-OK-gated launch wrappers SHIPPED.
-
-### §1.33 Wf-355 — R20-P3/P4/P5 wrappers + Wf-131 DEFERRED + Wf-146 DEFERRED + SCI infra + verify
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 355a1 (R20-P3 DrugOOD wrapper), 355a2 (R20-P4 BindingDB wrapper), 355a3 (R20-P5 tmQM wrapper), 355b1 (Wf-131-P3 DEFERRED), 355b2 (Wf-146 DEFERRED), 355b3 (SCI paper infra), 355c1 (wrapper verify), 355c2 (SCI paper tooling verify), 355 final synthesis.
-**Outcome**: 3 NEW R20 user-OK-gated launch wrappers + 2 DEFERRED markers preserved + SCI paper tooling scaffold.
-**Key takeaway**: "B-suffix" used for DEFERRED markers (Wf-131, Wf-146) — preserved as honest-negative in closeouts.
-
-### §1.34 Wf-356 — Data quality + anchor refresh + SCI paper infra + truncated verify
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 356a1 (data quality all launchers), 356a2 (anchor refresh), 356a3 (SCI paper infra), 356b1 (Wf-353 truncated verify), 356b2 (Wf-349 truncated verify), 356b3 (Wf-352 AGENTS verify), 356c1 (final verify), 356c2 (INDEX sync).
-**Key takeaway**: "Truncated verify" pattern — bulk-verify multiple previous Wf outputs at single timestamp.
-
-### §1.35 Wf-357 — Self-audit wave (12 closeouts A1..A6 + B1..B4 + C1..C3 + D1..D2 + Wf-357 final)
-
-**Status**: ✅ SHIPPED 2026-09-29 (per user directive "看看还有什么能提升的地方，完整跑一下指标和自查看一下")
-**Closeouts**: 357a1 (preflight audit), 357a2 (Wf-343C1 audit), 357a3 (per-wave audit), 357a4 (data quality audit), 357a5 (NeurIPS reproducibility audit), 357a6 (GPU readiness audit), 357b1 (Tier-1 lead metrics), 357b2 (Tier-1 supporting metrics), 357b3 (Tier-2 honest-neg metrics), 357b4 (supporting metrics), 357c1 (speedup analysis), 357c2 (architecture analysis), 357c3 (workflow analysis), 357d1 (top speedup), 357d2 (top architecture), 357 final synthesis.
-**Outcome**: 4 NEW gates added (EXPECTED_GATE_COUNTS["all"] 66 → 90 → 94); pre-flight v3 90 PASS / 2 FAIL / 2 SKIP / 94 TOTAL; Tier-1 LEAD metrics: m21 NCI-60 9-cell AUC 0.8007 ± 0.0160 + m17 DrugOOD OOD assay 0.891 vs iMoLD 0.7211 (Δ +0.170); Top-3 forward-looking improvements identified.
-**Key takeaway**: "A/B/C/D" suffix pattern — audit (a) → metrics (b) → analysis (c) → top picks (d). Foundational pattern for retrospective-style waves.
-
-### §1.36 Wf-358 — Speedup improvement #1: gradient_checkpointing + channels_last + torch_compile_dynamic CLI flags + preflight refresh
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 358a2 (preflight refresh), 358a3 (speedup flags — gradient_checkpointing + channels_last + torch_compile_dynamic opt-in CLI flags), 358 final.
-**Outcome**: 4 NEW tests PASS in 2.34s CPU; 32 backward-compat tests PASS in 8.34s; 25 Wf-335 backward-compat tests PASS in 30.28s.
-**Key takeaway**: "Opt-in default OFF" pattern preserved for new CLI flags — production default OFF + 3 NEW flags + 4 NEW tests + backward-compat bit-for-bit.
-
-### §1.37 Wf-359 — m6_kappa re-verify with W₂ on R20-P3 features (Wf-359-A1/A2/A3 + Wf-359 final)
-
-**Status**: ✅ SHIPPED 2026-09-29
-**Closeouts**: 359a1 (m6_kappa W₂ R20-P3 verify — augmented_mean 0.356 on platinai_4cell n=100, BELOW gate 0.6 by -0.244 margin; gate PRESERVED HONEST_NEGATIVE_PARTIAL_STRUCTURAL), 359a2 (m1 multi-seed scaffold), 359a3 (m2 m3 m15 reverify), 359 final.
-**Key takeaway**: "A-suffix" naming for re-verification work (A1 = re-verify; A2 = scaffold; A3 = reverify).
-
----
+One row per wave cohort, Wf-296..359. `Status` sourced from on-disk closeout headers.
+
+| § | Wave | Status | Outcome | Key takeaway | Primary file |
+|---|---|---|---|---|---|
+| §1.1 | Wf-296 — Pipeline integration audit + integration (Wf-296 SH | ✅ SHIPPED 2026-09-29 | Initial integration checkpoint; downstream Wf-309..317 wave absorbed follow-up. | Set the stage for the ultrawave by cataloguing the in-flight pipelines (D-MPNN + CFM + Lambda MCTS + closur… | `TODO/completed/296_wf296_pipeline_integration.md` (1 of 1 file in 290s range; bulk 296 content lives in Wf-309..317 + W |
+| §1.2 | Wf-309..317 ship wave (frontier-math CPU + actionable-now bu | ✅ SHIPPED 2026-09-29 | Tier-2 journal target adopted per user directive ("我们发二区就可以了，不用规划湿实验"); 4 LOI/SOP templates reclassified as… | Largest single-day waveset in project history; established the Tier-2-first + no-wet-lab orientation that p… |  |
+| §1.3 | Wf-318..320 closeout wave (R13 100x3 diversity + steric_clas | ✅ SHIPPED 2026-09-29 | Resolved 7+ long-pending items including the Wf-219 Ru aggregation bug that had been a known regression for… | "Phase-0 loader" pattern established (load + verify + downstream-ready) becomes standard for later Wf-322..… |  |
+| §1.4 | Wf-321..322 docs-only closeout (Wf-176 m19 LOMO CPU + R20/R2 | ✅ SHIPPED 2026-09-29 | Established 28-skill ecosystem (20 baseline + 8 NEW Wf-321B + 2 meta-packs) that anchors AGENTS.md §3 today. | Skill ecosystem expansion is doc-only and zero-touch to existing pipelines; every new skill ships with stub… |  |
+| §1.5 | Wf-323 CPU closeouts (7 closeouts) | ✅ SHIPPED 2026-09-29 | All 7 closeouts are CPU-only docs+code; pre-flight v3 25→42 PASS expansion. | Foundational pattern for subsequent "closeout wave" workflows — each agent writes a focused 1-task closeout… |  |
+| §1.6 | Wf-324D README/AGENTS/TODO refresh | ✅ SHIPPED 2026-09-29 | All 7 cross-cutting meta-docs refreshed to Wf-322D baseline. | Establishes the "D-class refresh" pattern: bulk-update project meta-docs at end of each major wave. |  |
+| §1.7 | Wf-325 honest-negative closeout wave (7 closeouts) | ✅ SHIPPED 2026-09-29 | 7 honest-negative closeouts; preserved as institutional memory for future contributors per §5.2. | "Honest-negative closeout" pattern crystallized — every metric BELOW field-avg gets a §-doc with measured e… |  |
+| §1.8 | Wf-326 GPU profile / AMP batch / Triton audit | ✅ SHIPPED 2026-09-29 | 2.72× torch.compile speedup MEASURED on RTX PRO 6000 Blackwell sm_120; W₂ sort 2-3×; cache 16.83× featuriza… | "Profile-before-wire-up" pattern — every wire-up must trace to a profile-measured bottleneck. |  |
+| §1.9 | Wf-327 — 16 NEW fix docs (Wf-327-F1..F16 + Wf-327-SYN) | ✅ SHIPPED 2026-09-29 | 11 SHIPPED + 3 VERIFIED + 1 INVESTIGATED + 1 NOT-WRITTEN-merged-into-F8. **Path-bug fix in `p3_wf327_cpu_nu… | "F-suffix" closeout naming convention for fix-class work (Wf-327-F1..F16) — sub-flows explicitly numbered f… |  |
+| §1.10 | Wf-328 — 10 wire-ups (Wf-328-W1..W10 + Wf-328-SYN) | ✅ SHIPPED 2026-09-29 | 54/54 NEW tests PASS + 1 SKIP / 0 FAIL; pre-flight v3 fresh-run **62 PASS / 0 FAIL / 62 TOTAL** at Wf-328-S… | "W-suffix" wire-up naming convention — each wire-up gets its own CLI flag + test + bench JSON. W-suffix wor… |  |
+| §1.11 | Wf-329 — R20-P2..P5 + R21-P1..P5 ship-surface wiring (8 sub- | ✅ SHIPPED 2026-09-29 | 8 wire+bench + 4 verify verdicts. Catherine 30/30 PASS post-fix. pre-flight delta +20 PASS / -15 FAIL. | Wf-329 first wave to integrate R20 + R21 phases simultaneously; established cross-phase compatibility. |  |
+| §1.12 | Wf-330 ULTRACODE (7 sub-flows A..G) | ✅ SHIPPED 2026-09-29 (pe | Catherine 30/30 metals 6/6 PASS; pre-flight v3 62/62 PASS; §9.BD catalog entry; risks.md R9 close. | "ULTRACODE" pattern — a single user directive spawns a multi-sub-flow wave with letter-suffix (A..G) sub-fl… |  |
+| §1.13 | Wf-331 — NO WORK (per Wf-332-S1 verification table §0.16) | 🚫 **NO WORK** (no closeo |  | "No-work" verdict is a valid closeout; preserves intent + user context without fabricating Wf-331 content. |  |
+| §1.14 | Wf-332-S1 INDEX.md final sync + Wf-332-S2 AGENTS.md final sy | ✅ SHIPPED 2026-09-29 | Verification pass over Wf-323..331 closeouts; per-Wf closeout-count verdict table; AGENTS.md §3 + §6 delta. | "S-class" sync workflows — bulk-update INDEX.md + AGENTS.md after major wave closeouts. |  |
+| §1.15 | Wf-333 recovery final wave (12 closeouts V1/V2/V3/V4/G1/G2/G | ✅ SHIPPED 2026-09-29 | **Wf-246-C kcal_adjustment sign-fix at `metal_coord_term.py:629 → :654`** closes `HONEST_NEGATIVE_WF246_C_K… | "V-class" recovery naming convention for recovery-axis work (V1..V4 for Vina/m3; G for GPU; T for Triton)… |  |
+| §1.16 | Wf-334 GPU validation wave (4 closeouts U1/U2/U4 + ultracode | ✅ SHIPPED 2026-09-29 | 22-test GPU smoke suite (21/22 PASS + 1 SKIP under host load G6+dfine_t146); pipeline master CLI integrates… | "U-class" naming convention for GPU-validation work (U1..U4); preserves Wf-334 as CPU-only verification + E… |  |
+| §1.17 | Wf-335 torch.compile mode default fix (3 closeouts R1+R2+R3  | ✅ SHIPPED 2026-09-29 | Closes `HONEST_NEGATIVE_WF330_B4_CUDAGRAPHS_RUNTIME_ERROR`; 4 NEW tests PASS + 13/13 Wf-335-R2 reverify tes… | "R-suffix" naming convention for runtime-bug fixes (R1+R2+R3 — diagnose + reverify + safety lever); multi-c… |  |
+| §1.18 | Wf-336 ultracode residual wave (4 closeouts X1+X2+X3+X4 + Wf | ✅ SHIPPED 2026-09-29 | 7 NEW closeouts since Wf-333-SYN; Wf-336 X1 closes a known delivery gap from Wf-331-X1 + Wf-333-T4. | "X-suffix" naming convention for cross-cutting ultracode residual work (X1..X4); "F-suffix" for finalizatio… |  |
+| §1.19 | Wf-337 + Wf-338 ultracode residual closeout wave (10 Wf-337  | ✅ SHIPPED 2026-09-29 | 121 NEW tests PASS + 16 NEW test files; 27 existing test re-verifications; Vina recovery paths + G6 launche… | "W-suffix" letter-A/B/G/U/V used to organize sub-flows by topic (W1..W3 = wire-ups; G1..G3 = G6 launchers… |  |
+| §1.20 | Wf-338-F2 INDEX.md final sync | ✅ SHIPPED 2026-09-29 | 16-row per-Wf INDEX coverage verdict for Wf-323..338; pre-flight v3 fresh-run **62/62 PASS** at Wf-338-F2 t… | "F-suffix" naming convention for INDEX finalization work (F1/F2/F3 = final/sync/verify). |  |
+| §1.21 | Wf-339 — TODO directory cleanup (Wf-339-B2/B3 + Wf-339 final | ✅ SHIPPED 2026-09-29 | Lambda roadmap audit (Wf-339-C2) + Improvement audit (Wf-339-C3); integration verification. | "B-suffix" naming convention for plan-deep-dive work (B1 = integration; B2 = SE(3) Schrödinger Bridge scaff… |  |
+| §1.22 | Wf-340 — CFM research + improvement ultracode (11-agent aggr | ✅ SHIPPED 2026-09-29 (pe | 24 unique papers + 16 repos catalogued + 10 ranked opportunities + 6 on-disk wire-ups + 12 NEW tests PASS… | "R + A + I" suffix pattern for research → analysis → implementation: 4 R-class surveys → 4 A-class analyses… |  |
+| §1.23 | Wf-341 — R20-P2 Hilbert-ASTSR GPU joint retrain wrappers + W | ✅ SHIPPED 2026-09-29 (CP | W₂ recipe SHIPPED + Hilbert R² gate PRESERVED; Wf-341-C1 GPU readback + Wf-341-C2 GPU-DEFERRED. | CPU scaffold SHIPPED + GPU launch gated separately (Wf-341-A7/A8). |  |
+| §1.24 | Wf-342 — TODO-211 W₂ pipeline + weak-to-strong + INDEX sync | ✅ SHIPPED 2026-09-29 |  | "TODO-N" naming convention for TODO-directory-driven work. |  |
+| §1.25 | Wf-343..346 — TODO-217 W2_pIC50_pipeline_scaffold + arch_lif | ✅ SHIPPED 2026-09-29 | 4 NEW pre-flight gates per Wf-343C4 (EXPECTED_GATE_COUNTS["all"] 62 → 66). | Pre-flight gate expansion is gated by each Wf that adds new gates; INDEX sync rolls up. |  |
+| §1.26 | Wf-347..348 — Wf-347A m1 Multi-PH m6_kappa + Wf-347B m3 F2(a | ✅ SHIPPED 2026-09-29 | W₂ recipe SHIPPED + Hilbert R² gate PRESERVED. |  |  |
+| §1.27 | Wf-349 — SO(3)-averaged FM + EDM preconditioning + OT-CFM ex | ✅ SHIPPED 2026-09-29 | All 4 CFM acceleration techniques SHIPPED CPU-only; pre-flight v3 62→66 PASS preserved. | "A-suffix" naming convention for acceleration methods; "B-suffix" for INDEX sync; "C-suffix" for integratio… |  |
+| §1.28 | Wf-350 — Sci submission infrastructure + compute manifest +  | ✅ SHIPPED 2026-09-29 | SCI submission infrastructure scaffold SHIPPED; runtime energy report emitted; GPU env probe script SHIPPED. | "350a/b/c/d" pattern — initialize (a) → process (b) → analyze (c) → verify (d). |  |
+| §1.29 | Wf-351 — LaTeX/reference/figure audit + Zotero + SCI skill + | ✅ SHIPPED 2026-09-29 | 29th skill `mol-metal-sci-paper-submission` SHIPPED. | "B3" naming convention for skill creation within multi-class wave. |  |
+| §1.30 | Wf-352 — Expected gate counts bump + per-pipeline audit + AG | ✅ SHIPPED 2026-09-29 |  | "A/B/C" suffix pattern — audit (a) → sync (b) → verify (c). |  |
+| §1.31 | Wf-353 — Triton mini-batch OT + shortcut distillation + cons | ✅ SHIPPED 2026-09-29 | 4 NEW CFM acceleration techniques SHIPPED CPU-only + Triton log-domain Sinkhorn kernel SHIPPED. | All 7 NEW R18 acceleration techniques (Wf-349 + Wf-353) are CPU-only scaffolds awaiting GPU A/B smoke per A… |  |
+| §1.32 | Wf-354 — TODO-130 G3 + Wf-342-P2 + Wf-342-P4 + INDEX sync | ✅ SHIPPED 2026-09-29 |  | 3 NEW R20 user-OK-gated launch wrappers SHIPPED. |  |
+| §1.33 | Wf-355 — R20-P3/P4/P5 wrappers + Wf-131 DEFERRED + Wf-146 DE | ✅ SHIPPED 2026-09-29 | 3 NEW R20 user-OK-gated launch wrappers + 2 DEFERRED markers preserved + SCI paper tooling scaffold. | "B-suffix" used for DEFERRED markers (Wf-131, Wf-146) — preserved as honest-negative in closeouts. |  |
+| §1.34 | Wf-356 — Data quality + anchor refresh + SCI paper infra + t | ✅ SHIPPED 2026-09-29 |  | "Truncated verify" pattern — bulk-verify multiple previous Wf outputs at single timestamp. |  |
+| §1.35 | Wf-357 — Self-audit wave (12 closeouts A1..A6 + B1..B4 + C1. | ✅ SHIPPED 2026-09-29 (pe | 4 NEW gates added (EXPECTED_GATE_COUNTS["all"] 66 → 90 → 94); pre-flight v3 90 PASS / 2 FAIL / 2 SKIP / 94… | "A/B/C/D" suffix pattern — audit (a) → metrics (b) → analysis (c) → top picks (d). Foundational pattern for… |  |
+| §1.36 | Wf-358 — Speedup improvement #1: gradient_checkpointing + ch | ✅ SHIPPED 2026-09-29 | 4 NEW tests PASS in 2.34s CPU; 32 backward-compat tests PASS in 8.34s; 25 Wf-335 backward-compat tests PASS… | "Opt-in default OFF" pattern preserved for new CLI flags — production default OFF + 3 NEW flags + 4 NEW tes… |  |
+| §1.37 | Wf-359 — m6_kappa re-verify with W₂ on R20-P3 features (Wf-3 | ✅ SHIPPED 2026-09-29 |  | "A-suffix" naming for re-verification work (A1 = re-verify; A2 = scaffold; A3 = reverify). |  |
 
 ## §2 What worked (top 10 successful patterns)
 
