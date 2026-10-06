@@ -1479,6 +1479,25 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Path to the 5-metal LOMO CSV.",
     )
     p.add_argument(
+        "--time-threshold",
+        type=float,
+        default=24.0,
+        help=(
+            "Maximum cytotoxicity exposure time (hours) kept by "
+            "CytotoxFilter. Wf-R10-A3: this was hardcoded at 24.0, which "
+            "silently capped the Rh block at 108 of the source's 1134 rows "
+            "(MEASURED: Rh Time(h) dist is {24: 106, 48: 489, 72: 289, "
+            "96: 245}) and so capped the Rh LOMO test fold at ~54 rows, "
+            "giving AUC SE ~0.09. Raising it to 96 admits 1131 Rh rows "
+            "(test fold ~565, AUC SE ~0.024). NOTE: higher thresholds admit "
+            "longer-exposure rows whose positive rate is systematically "
+            "higher (MEASURED Rh: 24h 0.33, 48h 0.42, 72h 0.55, 96h 0.53), "
+            "so a widened fold changes the label base rate as well as the "
+            "sample size -- the two effects are NOT separable by this run "
+            "alone. Default 24.0 preserves the historical behaviour."
+        ),
+    )
+    p.add_argument(
         "--out-dir",
         type=str,
         default="molmetal/reports/wf131_p3_lomo_full",
@@ -1621,7 +1640,7 @@ def _build_dataset(
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     flt = CytotoxFilter(
-        time_threshold=24.0,
+        time_threshold=float(getattr(args, "time_threshold", 24.0)),
         ic50_min=0.01,
         metal_whitelist=None,
         compute_pic50=True,

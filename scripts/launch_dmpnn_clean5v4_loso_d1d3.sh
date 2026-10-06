@@ -63,6 +63,10 @@ METAL_STRIP_MODE="${METAL_STRIP_MODE:-retain}"  # F3 wf-7b fix default
 # We expose --gpu to pick the physical GPU (--device is visible-index).
 GPU="${GPU:-1}"  # physical GPU index (1=RTX 5090; 0=Blackwell)
 DEVICE="cuda:0"  # visible index inside the trainer
+# Wf-R10-A3: expose the CSV + exposure-time window so the Rh-block widening
+# is reachable from the launcher.  Defaults preserve the Round-7/8 behaviour.
+CSV="${CSV:-/home/hugo/codes/mol-metal/molmetal/data/metal_lomo.csv}"
+TIME_THRESHOLD="${TIME_THRESHOLD:-24.0}"
 DRY_RUN=0
 
 while [[ $# -gt 0 ]]; do
@@ -89,6 +93,8 @@ CMD=("${PY}" "${PROJECT_ROOT}/molmetal/scripts/train_metal_lomo_wasserstein.py"
      --metal-strip-mode "${METAL_STRIP_MODE}"
      --device "${DEVICE}"
      --out-dir "${REPORTS_DIR}"
+     --csv "${CSV}"
+     --time-threshold "${TIME_THRESHOLD}"
      --out-metric "${METRIC_OUT}")
 
 if [[ ${RH_LOSO} -eq 1 ]]; then
@@ -120,6 +126,8 @@ echo "  WASSERSTEIN_WEIGHT:   ${WASSERSTEIN_WEIGHT}"
 echo "  RH_OVERSAMPLE:        ${RH_OVERSAMPLE}"
 echo "  METAL_STRIP_MODE:     ${METAL_STRIP_MODE}"
 echo "  DEVICE:               ${DEVICE}"
+echo "  CSV:                  ${CSV}"
+echo "  TIME_THRESHOLD:       ${TIME_THRESHOLD}"
 echo "  DRY_RUN:              ${DRY_RUN}"
 echo "  CMD: ${CMD[*]}"
 
