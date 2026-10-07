@@ -498,8 +498,8 @@ def run_pb_production(
         command=[
             "in-process:",
             "PoseBustersAdapter(mode='mol').validate_mol(<fixture>) +",
-            "PoseBustersAdapter(mode='dock').validate_docked(<fixture>, "
-            "wf30_pocket_prep/830c/receptor.pdb)",
+            "PoseBustersAdapter(mode='dock').validate_docked_pose("
+            "mmp13_real/830c_ligand.pdb, mmp13_real/830c.pdb)",
         ],
     )
 
@@ -555,6 +555,31 @@ def run_pb_production(
             adapter_dock = None
             if Path(receptor_path).is_file():
                 adapter_dock = posebusters_adapter.PoseBustersAdapter(mode="dock")
+            # Wf-R43 m8: the dock probe used to score a hardcoded "CCO"
+            # re-embedded from SMILES.  A freshly embedded molecule is not
+            # in the binding site, so every protein-aware check was
+            # guaranteed to fail and the "dock" verdict was meaningless.
+            # Score the real RS1 docked pose from the same 830C complex.
+            docked_pose_path = str(
+                _REPO_ROOT / "molmetal" / "data" / "mmp13_real" / "830c_ligand.pdb"
+            )
+            docked_pose = None
+            if adapter_dock is not None and Path(docked_pose_path).is_file():
+                try:
+                    from rdkit import Chem as _Chem
+
+                    docked_pose = _Chem.MolFromPDBFile(
+                        docked_pose_path, removeHs=False, sanitize=False
+                    )
+                    if docked_pose is not None:
+                        _Chem.SanitizeMol(docked_pose)
+                except Exception as exc:
+                    docked_pose = None
+                    log.warning(
+                        "docked-pose probe unavailable (%s: %s)",
+                        type(exc).__name__,
+                        exc,
+                    )
 
             # mol-mode: each fixture (5 SMILES)
             for smi in FIXTURE_SMILES:
@@ -583,16 +608,22 @@ def run_pb_production(
                         }
                     )
 
-            # dock-mode: only on a single representative fixture
-            if adapter_dock is not None:
+            # dock-mode: the real RS1 pose from the 830C complex.
+            if adapter_dock is not None and docked_pose is not None:
                 t0 = time.monotonic()
                 try:
-                    pb_result = adapter_dock.validate_docked("CCO", receptor_path)
+                    pb_result = adapter_dock.validate_docked_pose(
+                        docked_pose, receptor_path
+                    )
                     inprocess_pb_values.append(
                         {
-                            "smiles": "CCO",
+                            "smiles": pb_result.smiles,
                             "mode": "dock",
                             "receptor_pdb": receptor_path,
+                            "pose_path": docked_pose_path,
+                            "coordinates_preserved": bool(
+                                pb_result.coordinates_preserved
+                            ),
                             "passed": bool(pb_result.report.passed),
                             "pass_rate": float(pb_result.report.pass_rate),
                             "n_passed": int(pb_result.report.n_passed),
@@ -604,13 +635,28 @@ def run_pb_production(
                 except Exception as exc:
                     inprocess_pb_values.append(
                         {
-                            "smiles": "CCO",
                             "mode": "dock",
                             "receptor_pdb": receptor_path,
+                            "pose_path": docked_pose_path,
                             "elapsed_s": round(time.monotonic() - t0, 3),
                             "error": f"{type(exc).__name__}: {str(exc)[:120]}",
                         }
                     )
+            elif adapter_dock is not None:
+                # Fail loud: a dock-mode verdict with no real pose is not
+                # a measurement.  Recording a SMILES-re-embedded number
+                # here is what produced the m8 "0 PB pass vs 20 PB pass
+                # for the same pose" contradiction.
+                inprocess_pb_values.append(
+                    {
+                        "mode": "dock",
+                        "status": "skipped_no_docked_pose",
+                        "reason": (
+                            "no coordinate-preserving docked pose available; "
+                            "refusing to emit a re-embedded-from-SMILES verdict"
+                        ),
+                    }
+                )
 
             n_passed = sum(1 for v in inprocess_pb_values if v.get("passed"))
             n_total = sum(

@@ -42,6 +42,7 @@ from typing import Iterable, List, Optional
 
 import numpy as np
 import pandas as pd
+from rdkit import Chem  # type: ignore
 
 # Suppress RDKit + pandas warnings that PoseBusters triggers routinely
 warnings.filterwarnings("ignore")
@@ -99,6 +100,15 @@ class PBResult:
     mode: str
     receptor_pdb: Optional[str] = None
     extra_checks: tuple = ()  # clash / distance checks added in dock mode
+    # Wf-R43 m8: does ``report`` describe an ACTUAL docked pose, or a
+    # conformer that this adapter re-embedded from SMILES?  The two are
+    # not interchangeable: every protein-aware check in ``dock`` mode
+    # (protein-ligand distance, volume overlap, cofactor windows) is
+    # meaningless on a free conformer, because a freshly embedded
+    # molecule is not in the binding site.  Recorded explicitly so a
+    # downstream aggregator cannot mistake a re-embedded chemistry run
+    # for a docked-pose verdict.
+    coordinates_preserved: bool = False
 
     @property
     def smiles(self) -> str:
@@ -135,6 +145,7 @@ class PBResult:
                 "mode": self.mode,
                 "receptor_pdb": self.receptor_pdb,
                 "extra_checks": list(self.extra_checks),
+                "coordinates_preserved": self.coordinates_preserved,
             }
         )
         return d
@@ -261,6 +272,19 @@ class PoseBustersAdapter:
           receptor (a hard clash)
         * ``not_too_far_away_*_cofactors``     — cofactor-distance window
 
+        .. warning::
+           This entry point RE-EMBEDS the molecule from SMILES; it does
+           **not** evaluate a docked pose.  Every protein-aware check it
+           reports (``protein-ligand_maximum_distance``,
+           ``volume_overlap_with_protein``, the cofactor windows) is
+           therefore evaluated against a free conformer that was never
+           placed in the binding site, and will fail for a ligand that
+           docked perfectly well.  ``PBResult.coordinates_preserved`` is
+           set to ``False`` on every result from this method.
+
+           To score a real pose, use :meth:`validate_docked_pose`, which
+           passes the docked coordinates straight through unchanged.
+
         Parameters
         ----------
         smiles : str
@@ -305,6 +329,7 @@ class PoseBustersAdapter:
                 mode=self._mode,
                 receptor_pdb=receptor_pdb,
                 extra_checks=(),
+                coordinates_preserved=False,
             )
         mol = Chem.MolFromSmiles(smiles)
         if mol is None or mol.GetNumAtoms() == 0:
@@ -318,7 +343,11 @@ class PoseBustersAdapter:
                 details={"smiles_parse": False},
             )
             return PBResult(
-                report=bad, mode=self._mode, receptor_pdb=receptor_pdb, extra_checks=()
+                report=bad,
+                mode=self._mode,
+                receptor_pdb=receptor_pdb,
+                extra_checks=(),
+                coordinates_preserved=False,
             )
         mol = Chem.AddHs(mol)
         params = AllChem.ETKDGv3()
@@ -336,7 +365,11 @@ class PoseBustersAdapter:
                 details={"embed_3d": False},
             )
             return PBResult(
-                report=bad, mode=self._mode, receptor_pdb=receptor_pdb, extra_checks=()
+                report=bad,
+                mode=self._mode,
+                receptor_pdb=receptor_pdb,
+                extra_checks=(),
+                coordinates_preserved=False,
             )
         try:
             mmff_status = AllChem.MMFF94OptimizeMolecule(mol, maxIters=200)
@@ -364,6 +397,68 @@ class PoseBustersAdapter:
             mode=self._mode,
             receptor_pdb=receptor_pdb,
             extra_checks=extras,
+            coordinates_preserved=False,
+        )
+
+    def validate_docked_pose(
+        self,
+        mol,
+        receptor_pdb: str,
+    ) -> PBResult:
+        """Score an ACTUAL docked pose, preserving its coordinates.
+
+        This is the coordinate-preserving dock entry point.  The input
+        ``mol`` (an RDKit :class:`~rdkit.Chem.Mol` carrying exactly one
+        conformer) is handed to PoseBusters ``dock`` mode unchanged — no
+        re-embedding, no hydrogen addition, no minimisation — so the
+        protein-aware checks score the geometry the docking engine
+        actually produced.
+
+        Delegates to :func:`molmetal.validation.posebusters_runner.check_docked_pose`,
+        the canonical runner used by the Vina dispatcher, so the adapter
+        path and the dispatcher path cannot diverge again.
+
+        Parameters
+        ----------
+        mol : rdkit.Chem.Mol
+            Ligand with exactly one conformer holding the docked
+            coordinates.  Must be non-empty with finite coordinates.
+        receptor_pdb : str
+            Absolute path to a receptor PDB file.
+
+        Returns
+        -------
+        :class:`PBResult`
+            ``coordinates_preserved=True``; ``report.details`` carries the
+            per-check pass/fail map from the runner.
+        """
+        from molmetal.validation.posebusters_runner import (  # type: ignore
+            check_docked_pose,
+        )
+
+        res = check_docked_pose(mol, receptor_pdb)
+        checks = dict(res.get("checks") or {})
+        failures = tuple(res.get("failures") or ())
+        n_checks = len(checks)
+        n_passed = sum(1 for v in checks.values() if v is True)
+        report = ValidityReport(
+            smiles=Chem.MolToSmiles(mol) if hasattr(mol, "GetNumAtoms") else "",
+            # When the runner reports an infrastructure failure (skipped /
+            # error / invalid input) rather than check results, `checks` is
+            # empty.  Do NOT let an empty run score as a pass.
+            passed=bool(res.get("pb_valid")) and res.get("status") != "unavailable",
+            n_checks=n_checks,
+            n_passed=n_passed,
+            pass_rate=(n_passed / n_checks) if n_checks else 0.0,
+            failed_checks=failures,
+            details=checks,
+        )
+        return PBResult(
+            report=report,
+            mode="dock",
+            receptor_pdb=receptor_pdb,
+            extra_checks=tuple(sorted(failures)),
+            coordinates_preserved=bool(res.get("coordinates_preserved", True)),
         )
 
     def validate_list(
