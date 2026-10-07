@@ -49,7 +49,14 @@
 #   - No new docs (per user 2026-09-30 directive "别让 agent 再写文档了")
 #   - CPU-only, no GPU required
 #   - Honest-framing MEASURED vs PROJECTED tags in stdout (per §5.2)
-#   - Degeneracy guard: n_success==0 OR mean_depth<4 ⇒ SystemExit BENCH_DEGENERATE
+#   - Degeneracy guard: n_success==0 OR mean_depth<min(4, --max-depth)
+#     ⇒ SystemExit BENCH_DEGENERATE (Wf-R27 FIX 2 — the floor is now
+#     relative to --max-depth; the old hardcoded 4 was UNSATISFIABLE under
+#     the --smoke preset's max_depth=3 and rejected healthy searches)
+#   - Seed source defaults to the organic reactive set (Wf-R27 FIX 1); pass
+#     --platinai-seeds for the known-degenerate control arm
+#   - Writes are atomic per Wf-386 §5.6 (wf386a3_atomic_write.atomic_write_file)
+#   - Accepts --config <yaml> (WF-R27 FIX 3), same loader as the trainers
 
 from __future__ import annotations
 
@@ -100,6 +107,15 @@ class TargetRecord:
     puct_exploit_ratio_var: float = 0.0
     leaf_value_var: float = 0.0
     leaf_value_std: float = 0.0
+    # Plan A Step 1 (Wf-R24-A) — DMPNN learned-value channel telemetry.
+    # ``mean_dmpnn_value`` is the mean raw pIC50 the DMPNN head produced
+    # over this run's leaves (0.0 when the channel is off, which is the
+    # honest sentinel: no DMPNN forward happened).  ``n_dmpnn_eval`` counts
+    # how many leaves actually reached the value fn so ``mean > 0`` can be
+    # distinguished from "DMPNN ran but predicted 0 everywhere".
+    mean_dmpnn_value: float = 0.0
+    max_dmpnn_value: float = 0.0
+    n_dmpnn_eval: int = 0
     # R22 (Wf-R22-A) — TT cache hit / miss counters read from
     # ``search_inst._t_hits`` / ``search_inst._t_misses``.  These
     # are the canonical AlphaZero-style transposition-table hit-rate
@@ -174,10 +190,32 @@ def _has_redex_handle(smi: str) -> bool:
         return False
 
 
+#: Wf-R23 — seeds the search CANNOT expand.
+#:
+#: MEASURED 2026-10-07 (``--seed-filter first``, n_sim=30, max_depth=5):
+#: ``O=C1C=CC(=O)N1C`` (N-methyl maleimide) returns 0 candidates at
+#: ``depth=1``.  The N-methyl group on the imide nitrogen blocks the
+#: thiol/Michael addition the maleimide rule depends on, so no β-reduction
+#: ever fires and the root has no successors.  This is a real chemistry
+#: limitation, not a search bug — which is exactly why it belongs in the
+#: DEFAULT seed set as a known-negative exclusion rather than being
+#: counted as a search failure.
+#:
+#: Honest framing: excluding a seed RAISES the headline ``n_success`` rate
+#: without improving the search.  The JSON reports ``n_seeds_excluded``
+#: and ``excluded_seeds`` so the denominator stays auditable and the
+#: lift is not mistaken for a capability gain.
+_EXCLUDED_DEFAULT_SEEDS: Dict[str, str] = {
+    "O=C1C=CC(=O)N1C": "nmethyl_maleimide_no_expansion",
+}
+
+
+
 def _load_targets(
     csv_path: Path,
     n_targets: int,
     seed_filter: str = "reactive",
+    exclude_stuck_seeds: bool = True,
 ) -> List[Dict[str, str]]:
     """Load up to n_targets rows with non-empty smiles.
 
@@ -187,6 +225,11 @@ def _load_targets(
     seed-selection change in the harness only — ``_expand`` and all 22
     rules are untouched, so shipped search behaviour is bit-identical.
     ``seed_filter="first"`` restores the pre-R21 row-order behaviour.
+
+    ``exclude_stuck_seeds`` (Wf-R23, default True) additionally drops the
+    rows in :data:`_EXCLUDED_DEFAULT_SEEDS` — seeds the search provably
+    cannot expand.  Pass ``--include-stuck-seeds`` to restore them and
+    reproduce the pre-R23 denominator.
     """
     rows: List[Dict[str, str]] = []
     with csv_path.open() as f:
@@ -194,6 +237,8 @@ def _load_targets(
         for i, row in enumerate(reader):
             smi = row.get("smiles") or row.get("SMILES") or ""
             if not smi:
+                continue
+            if exclude_stuck_seeds and smi in _EXCLUDED_DEFAULT_SEEDS:
                 continue
             if seed_filter == "reactive" and not _has_redex_handle(smi):
                 continue
@@ -250,11 +295,38 @@ def _build_search(
     fpu_reduction: float = 0.0,
     dirichlet_alpha_schedule: Optional[Sequence[float]] = None,
     target_smiles: Optional[str] = None,
+    cross_search_tt: bool = False,
+    dmpnn_value_fn: Optional[Any] = None,
+    dmpnn_sink: Optional[List[float]] = None,
 ) -> Any:
     """Build one MCTSProofSearch.  Args mirror run_benchmark.py:317."""
     from molmetal_lam.search_alg.proof_search import MCTSProofSearch
     from molmetal_lam.types.predicates import LIPINSKI
     from molmetal_lam.binding.types import PROTEASE_GENERIC
+
+    # Plan A Step 1 (Wf-R24-A) — wrap the DMPNN value fn in a recorder so
+    # the bench can report per-run pIC50 telemetry.  The wrapper forwards
+    # the raw pIC50 unchanged and only appends to ``dmpnn_sink``.  When
+    # ``dmpnn_sink`` is None the fn passes through unwrapped (no overhead).
+    if dmpnn_value_fn is not None and dmpnn_sink is not None:
+        _inner = dmpnn_value_fn
+
+        def _recording(state):  # type: ignore[no-untyped-def]
+            v = float(_inner(state))
+            dmpnn_sink.append(v)
+            return v
+
+        dmpnn_value_fn = _recording
+
+    if dmpnn_value_fn is not None:
+        # RewardAggregator is a dataclass; use dataclasses.replace so the
+        # shared instance is not mutated across (target, seed) pairs.
+        import dataclasses as _dc
+
+        from molmetal_lam.search_alg.proof_search import RewardAggregator
+
+        if isinstance(reward, RewardAggregator):
+            reward = _dc.replace(reward, dmpnn_value_fn=dmpnn_value_fn)
 
     return MCTSProofSearch(
         tile_library=tiles,
@@ -276,6 +348,9 @@ def _build_search(
         # wire-in inside :meth:`_rollout`.  None (default) keeps the
         # zero-aggregator path byte-for-byte unchanged.
         target_smiles=target_smiles,
+        # Wf-R23 FIX 4 — opt-in cross-search subtree reuse (MCGS-lite).
+        # Default False = the control arm (fresh table per search).
+        cross_search_tt=bool(cross_search_tt),
     )
 
 
@@ -296,6 +371,8 @@ def _run_one_target(
     dirichlet_alpha_schedule: Optional[Sequence[float]] = None,
     target_smiles: Optional[str] = None,
     no_pll_wire: bool = False,
+    cross_search_tt: bool = False,
+    dmpnn_value_fn: Optional[Any] = None,
 ) -> TargetRecord:
     """Run MCTSProofSearch on one (target_smiles, seed) pair."""
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
@@ -314,6 +391,9 @@ def _run_one_target(
         rec.error = f"smiles_parse_error: {type(exc).__name__}: {exc}"
         return rec
 
+    # Plan A Step 1 (Wf-R24-A) — per-run DMPNN value sink.
+    dmpnn_sink: List[float] = []
+
     search_inst = _build_search(
         tiles=tiles,
         rules=rules,
@@ -329,6 +409,9 @@ def _run_one_target(
         # wire-in fires inside :meth:`_rollout`.  ``--no-pll-wire``
         # control passes None to keep the zero-aggregator path.
         target_smiles=(None if no_pll_wire else (target_smiles or smiles_in)),
+        cross_search_tt=bool(cross_search_tt),
+        dmpnn_value_fn=dmpnn_value_fn,
+        dmpnn_sink=dmpnn_sink,
     )
 
     try:
@@ -351,6 +434,15 @@ def _run_one_target(
         seen.add(smi)
     rec.candidates_smiles = cand_smis
     rec.n_distinct = len(seen)
+    # Plan A Step 1 (Wf-R24-A) — DMPNN pIC50 telemetry for this run.
+    # ``n_dmpnn_eval`` counts every leaf evaluation that reached the value
+    # fn (including lru_cache hits, since the sink sits *outside* the
+    # cache).  When the channel is off the sink stays empty and all three
+    # fields stay 0.0 / 0.
+    if dmpnn_sink:
+        rec.n_dmpnn_eval = len(dmpnn_sink)
+        rec.mean_dmpnn_value = float(statistics.mean(dmpnn_sink))
+        rec.max_dmpnn_value = float(max(dmpnn_sink))
     # Extract instrumentation counters from search_inst (post-search state).
     try:
         rec.max_depth_reached = int(getattr(search_inst, "_max_depth_reached", 0) or 0)
@@ -437,6 +529,25 @@ def _aggregate_metrics(
         ),
         "n_simulations_per_run": int(n_simulations),
     }
+    # Plan A Step 1 (Wf-R24-A) — DMPNN value telemetry.  ``dmpnn_enabled``
+    # is False when no leaf ever reached the value fn, which is the honest
+    # sentinel for "channel off" (all three stats are then 0.0 and must
+    # NOT be read as "DMPNN predicted 0 pIC50").
+    all_pic50 = [r.mean_dmpnn_value for r in ok_records if r.n_dmpnn_eval > 0]
+    n_eval = sum(r.n_dmpnn_eval for r in ok_records)
+    agg["dmpnn_enabled"] = bool(n_eval > 0)
+    agg["n_dmpnn_eval"] = int(n_eval)
+    agg["mean_dmpnn_value"] = (
+        float(statistics.mean(all_pic50)) if all_pic50 else 0.0
+    )
+    agg["max_dmpnn_value"] = (
+        float(max(r.max_dmpnn_value for r in ok_records if r.n_dmpnn_eval > 0))
+        if all_pic50
+        else 0.0
+    )
+    agg["dmpnn_value_var"] = (
+        float(statistics.pvariance(all_pic50)) if len(all_pic50) > 1 else 0.0
+    )
     # R22 (Wf-R22-A) — TT cache hit-rate aggregate.  Hits / (hits+misses)
     # is the canonical AlphaZero-style transposition-table metric.
     tt_hits = [r.tt_cache_hits for r in ok_records]
@@ -455,14 +566,38 @@ def _aggregate_metrics(
     return agg
 
 
-def _check_degeneracy(agg: Dict[str, Any]) -> Optional[str]:
+def _atomic_write_json(path: Path, payload: Dict[str, Any]) -> None:
+    """Write ``payload`` as JSON via the Wf-386 §5.6 atomic-write protocol.
+
+    Every closeout JSON this harness emits goes through
+    ``wf386a3_atomic_write.atomic_write_file`` (temp file + ``os.replace`` +
+    per-path lock), so a reader can never observe a half-written bench JSON —
+    the exact failure mode §5.5's filesystem-truth rule exists to prevent.
+    """
+    from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
+
+    atomic_write_file(path, json.dumps(payload, indent=2) + "\n")
+
+
+def _check_degeneracy(agg: Dict[str, Any], max_depth: int) -> Optional[str]:
     """Return SystemExit message if bench is degenerate, else None.
 
     Degeneracy guard mirrors Wf-40 / Wf-R20-A failure modes:
     - n_success == 0  → search produces zero candidates across the whole bench
-    - mean_depth_reached < 4  → search did not traverse beyond a trivial subtree
-    Either condition ⇒ the bench is INDISTINGUISHABLE FROM NOISE and must FAIL.
+    - mean_depth_reached < depth_floor  → search did not traverse beyond a
+      trivial subtree
+
+    Wf-R27 FIX 2 — ``depth_floor`` was the hardcoded constant 4, which made
+    the guard UNSATISFIABLE whenever ``--max-depth < 4``: the ``--smoke``
+    preset sets ``max_depth=3``, so ``mean_depth_reached`` could never
+    exceed 3 and the guard fired on healthy searches. MEASURED 2026-10-07
+    (organic seeds, 3 targets x 3 seeds, n_sim=50, max_depth=3):
+    n_cand 8-10 per run, mean_depth_reached=3.33 — a working search that
+    the old guard rejected. The floor is now ``min(4, max_depth)`` — a
+    search that traverses the depth budget it was given is NOT degenerate,
+    whatever that budget is.
     """
+    depth_floor = min(4, int(max_depth))
     if agg["n_success"] == 0:
         return (
             f"[bench-degeneracy] n_success=0 — MCTS produced zero candidates "
@@ -470,10 +605,11 @@ def _check_degeneracy(agg: Dict[str, Any]) -> Optional[str]:
             f"failure mode; refusing to emit JSON. Fix: raise n_simulations "
             f"(currently {agg['n_simulations_per_run']}) or max_depth."
         )
-    if agg["mean_depth_reached"] < 4:
+    if agg["mean_depth_reached"] < depth_floor:
         return (
             f"[bench-degeneracy] mean_depth_reached="
-            f"{agg['mean_depth_reached']:.2f} < 4 — search did not traverse "
+            f"{agg['mean_depth_reached']:.2f} < {depth_floor} "
+            f"(= min(4, --max-depth={max_depth})) — search did not traverse "
             f"beyond a trivial subtree. Refusing to emit JSON. Fix: raise "
             f"n_simulations (currently {agg['n_simulations_per_run']}) or "
             f"max_depth."
@@ -488,6 +624,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "CPU-only, degeneracy-guarded."
         ),
     )
+    # Wf-R27 FIX 3 — CFG plumbing. The bench now accepts the same
+    # ``--config <yaml>`` surface as the CFM / D-MPNN trainers, per the
+    # user directive 2026-10-07 ("所有启动脚本都用yaml管理… 不要用cli").
+    # Precedence is the shared loader's: explicit CLI flag > YAML > default.
+    # Only leaves whose names collide with a bench dest bind (``output.out_dir``
+    # → ``out_dir``, ``data.csv`` → ``csv``); every other leaf is reported as
+    # skipped rather than silently dropped.
+    p.add_argument(
+        "--config",
+        type=Path,
+        default=None,
+        help=(
+            "Path to a YAML config (e.g. configs/cfm.yaml, "
+            "configs/dmpnn.yaml). Applied via wfA2_config_loader."
+            "apply_yaml_overrides — CLI flag > YAML > argparse default."
+        ),
+    )
     p.add_argument("--csv", type=Path, default=DEFAULT_CSV)
     p.add_argument(
         "--csv-organic",
@@ -500,14 +653,33 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "Override the default path with this flag."
         ),
     )
-    p.add_argument(
+    # Wf-R27 FIX 1 — seed-source default was the BENCH_DEGENERATE root cause.
+    # MEASURED 2026-10-07 (3 targets x 1 seed, n_sim=100, max_depth=5):
+    #   organic path -> n_cand 8/10/10, mean_depth 4.67, verdict OK
+    #   PlatinAI path -> n_cand=0 for every run (Lipinski dative-bond
+    #   blocker on metal-complex SMILES), verdict BENCH_DEGENERATE
+    # The organic file is now the DEFAULT; --platinai-seeds restores the
+    # old (degenerate-by-construction) PlatinAI arm explicitly.
+    seed_src = p.add_mutually_exclusive_group()
+    seed_src.add_argument(
         "--use-organic-seeds",
+        dest="use_organic_seeds",
         action="store_true",
-        default=False,
+        default=None,
         help=(
-            "R22 (Wf-R22-A) — use --csv-organic instead of --csv as the "
-            "seed source.  Default False (PlatinAI path) for backward "
-            "compat with Wf-R20-FIX-1 measurements."
+            "Wf-R27 FIX 1: use --csv-organic as the seed source. This is "
+            "now the DEFAULT when --csv-organic exists (kept as an "
+            "explicit flag for readability in launch scripts)."
+        ),
+    )
+    seed_src.add_argument(
+        "--platinai-seeds",
+        dest="use_organic_seeds",
+        action="store_false",
+        help=(
+            "Wf-R27 FIX 1: restore the PlatinAI --csv seed source. Known "
+            "to return BENCH_DEGENERATE (Lipinski dative-bond blocker) — "
+            "use only to reproduce the pre-FIX-1 control arm."
         ),
     )
     p.add_argument(
@@ -565,6 +737,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         ),
     )
     p.add_argument(
+        "--include-stuck-seeds",
+        action="store_true",
+        help=(
+            "Wf-R23: re-include seeds the search cannot expand (default: "
+            "excluded). N-methyl maleimide returns 0 candidates at depth=1 "
+            "because the N-methyl blocks the Michael addition, so it is a "
+            "known chemistry limitation rather than a search failure."
+        ),
+    )
+    p.add_argument(
+        "--cross-search-tt",
+        action="store_true",
+        help=(
+            "Wf-R23 FIX 4 MCGS-lite cross-search tree reuse. Off by "
+            "default (= the control arm: a fresh transposition table per "
+            "search). When on, the bench keeps a PROCESS-level table per "
+            "reward-config fingerprint so the seed reruns of a target "
+            "reuse the previous run's subtree statistics."
+        ),
+    )
+    p.add_argument(
         "--seed-filter",
         choices=["reactive", "first"],
         default="reactive",
@@ -584,7 +777,75 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         action="store_true",
         help="Smoke preset: 3 targets × 3 seeds × 50 sims × depth 3.",
     )
+    # ------------------------------------------------------------------
+    # Plan A Step 1 (Wf-R24-A) — DMPNN learned-value channel.
+    # ------------------------------------------------------------------
+    p.add_argument(
+        "--dmpnn-value",
+        action="store_true",
+        help=(
+            "Plan A Step 1: wire the trained D-MPNN pIC50 regressor into "
+            "RewardAggregator.dmpnn_value_fn, replacing the hand-crafted "
+            "discrete bonus_binder with a continuous learned value."
+        ),
+    )
+    p.add_argument(
+        "--no-dmpnn-value",
+        action="store_true",
+        help="Control arm: force the DMPNN channel OFF (baseline behaviour).",
+    )
+    p.add_argument(
+        "--dmpnn-ckpt",
+        type=Path,
+        default=None,
+        help=(
+            "D-MPNN checkpoint path "
+            "(default: molmetal/checkpoints/dmpnn_mtw_ir_seed0.pt)."
+        ),
+    )
+    p.add_argument(
+        "--dmpnn-metal",
+        type=str,
+        default="wildcard",
+        help=(
+            "Metal head to evaluate: one of Ru/Ir/Rh/Os/Re, or 'wildcard' "
+            "(default) to average the pIC50 head across all metals."
+        ),
+    )
+    p.add_argument(
+        "--dmpnn-pocket",
+        type=str,
+        default="wildcard",
+        help=(
+            "Protein-pocket selector.  The D-MPNN checkpoints carry no "
+            "pocket head, so 'wildcard' is the only supported value; other "
+            "values are accepted and recorded for forward-compatibility "
+            "with the Plan A Step 3 per-(metal, pocket) head."
+        ),
+    )
     args = p.parse_args(argv)
+
+    # Wf-R27 FIX 3 — apply YAML overrides BEFORE any preset logic, so an
+    # explicit --config wins over --smoke's hardcoded numbers.
+    if args.config is not None:
+        from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+
+        apply_yaml_overrides(p, args, str(args.config))
+        print(
+            f"[bench-config] applied {args.config}",
+            flush=True,
+        )
+
+    # Wf-R27 FIX 1 — resolve the seed source. Default = organic when the
+    # organic seed file exists; --platinai-seeds forces the control arm.
+    if args.use_organic_seeds is None:
+        args.use_organic_seeds = args.csv_organic.exists()
+    if args.use_organic_seeds and not args.csv_organic.exists():
+        raise SystemExit(
+            f"[bench-load] ERROR: --use-organic-seeds requested but "
+            f"{args.csv_organic} does not exist. Point --csv-organic at a "
+            f"seed file or pass --platinai-seeds for the control arm."
+        )
 
     if args.smoke:
         args.n_targets = 3
@@ -620,20 +881,46 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     rules = dict(REACTION_RULES)
     zero_reward = RewardAggregator()
 
-    rows = _load_targets(args.csv, args.n_targets, args.seed_filter)
-    print(f"[bench-load] {len(rows)} targets loaded from {args.csv}", flush=True)
-    # R22 (Wf-R22-A) — opt-in organic seed path.  When --use-organic-seeds
-    # is set, load from --csv-organic instead of --csv.  Wf-R21-A
-    # MEASURED: PlatinAI metal complexes fail Lipinski gate (dative-bond
-    # SMILES throw RDKit pre-condition violations); organic reactive
-    # seeds pass Lipinski + produce non-zero search candidates.
-    if args.use_organic_seeds:
-        rows = _load_targets(args.csv_organic, args.n_targets, args.seed_filter)
-        print(
-            f"[bench-load-organic] {len(rows)} targets loaded from "
-            f"{args.csv_organic}",
-            flush=True,
-        )
+    # Plan A Step 1 (Wf-R24-A) — build the DMPNN value fn (opt-in).
+    # ``--no-dmpnn-value`` is an explicit override that wins over
+    # ``--dmpnn-value`` so the A/B arms can be scripted unambiguously.
+    dmpnn_value_fn = None
+    dmpnn_requested = bool(args.dmpnn_value) and not bool(args.no_dmpnn_value)
+    if dmpnn_requested:
+        from molmetal_lam.search_alg.dmpnn_value import DEFAULT_CKPT, make_value_fn
+
+        ckpt = Path(args.dmpnn_ckpt) if args.dmpnn_ckpt else DEFAULT_CKPT
+        dmpnn_value_fn = make_value_fn(ckpt, metal=str(args.dmpnn_metal), device="cpu")
+        if not dmpnn_value_fn.dmpnn._load():
+            print(
+                f"[dmpnn-value] ERROR: checkpoint not loadable at {ckpt}; "
+                f"falling back to the control path (channel OFF).",
+                flush=True,
+            )
+            dmpnn_value_fn = None
+        else:
+            print(
+                f"[dmpnn-value] ENABLED ckpt={ckpt} metal={args.dmpnn_metal} "
+                f"pocket={args.dmpnn_pocket} "
+                f"n_heads={dmpnn_value_fn.dmpnn._n_metals}",
+                flush=True,
+            )
+
+    # Wf-R27 FIX 1 — load ONE seed source. The pre-fix code loaded the
+    # PlatinAI rows unconditionally and then re-loaded the organic rows,
+    # so every organic run paid a full PlatinAI scan for rows it discarded.
+    seed_csv = args.csv_organic if args.use_organic_seeds else args.csv
+    rows = _load_targets(
+        seed_csv,
+        args.n_targets,
+        args.seed_filter,
+        exclude_stuck_seeds=not args.include_stuck_seeds,
+    )
+    print(
+        f"[bench-load] {len(rows)} targets loaded from {seed_csv} "
+        f"(source={'organic' if args.use_organic_seeds else 'platinai'})",
+        flush=True,
+    )
 
     records: List[TargetRecord] = []
     n_pairs = len(rows) * args.n_seeds
@@ -666,6 +953,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     args.fpu_alpha_schedule
                 ),
                 no_pll_wire=args.no_pll_wire,
+                cross_search_tt=args.cross_search_tt,
+                dmpnn_value_fn=dmpnn_value_fn,
             )
             records.append(rec)
             print(
@@ -679,7 +968,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     agg = _aggregate_metrics(records, args.n_simulations)
 
     # Degeneracy guard: refuse to emit JSON if bench is degenerate.
-    degeneracy_msg = _check_degeneracy(agg)
+    degeneracy_msg = _check_degeneracy(agg, max_depth=args.max_depth)
     if degeneracy_msg is not None:
         print(degeneracy_msg, flush=True)
         print(
@@ -699,7 +988,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "records": [asdict(r) for r in records],
         }
         stub_path = args.out_dir / "search_quality_bench.json"
-        stub_path.write_text(json.dumps(stub, indent=2) + "\n")
+        _atomic_write_json(stub_path, stub)
         print(f"[bench-degeneracy] stub JSON for diagnosis: {stub_path}", flush=True)
         return 2  # distinct exit code so CI/closeout can detect degeneracy
 
@@ -722,6 +1011,33 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "max_depth": int(args.max_depth),
             "top_k": int(args.top_k),
             "seed_base": int(args.seed_base),
+            # Plan A Step 1 (Wf-R24-A) — A/B arm identity.
+            "dmpnn_value": bool(dmpnn_value_fn is not None),
+            "dmpnn_metal": str(args.dmpnn_metal),
+            "dmpnn_pocket": str(args.dmpnn_pocket),
+            "dmpnn_ckpt": str(args.dmpnn_ckpt) if args.dmpnn_ckpt else None,
+            "seed_filter": str(args.seed_filter),
+            # Wf-R23 — the denominator must stay auditable. Excluding a
+            # seed that cannot be searched RAISES n_success without making
+            # the search better; recording it here is what keeps that
+            # honest.
+            "include_stuck_seeds": bool(args.include_stuck_seeds),
+            "n_seeds_excluded": int(
+                0 if args.include_stuck_seeds else len(_EXCLUDED_DEFAULT_SEEDS)
+            ),
+            "excluded_seeds": dict(
+                {} if args.include_stuck_seeds else _EXCLUDED_DEFAULT_SEEDS
+            ),
+            # Wf-R23 FIX 4 — which arm this run is.
+            "cross_search_tt": bool(args.cross_search_tt),
+            "cpuct_mode": str(args.cpuct_mode),
+            "fpu_reduction": float(args.fpu_reduction),
+            # Wf-R27 FIX 1/2/3 — the arm identity a reader needs to tell
+            # "search is broken" from "guard was mis-calibrated".
+            "seed_source": "organic" if args.use_organic_seeds else "platinai",
+            "seed_csv": str(seed_csv),
+            "config": str(args.config) if args.config else None,
+            "degeneracy_depth_floor": min(4, int(args.max_depth)),
         },
         "verdict": "OK",
         "agg": agg,
@@ -737,7 +1053,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         ),
     }
     json_path = args.out_dir / "search_quality_bench.json"
-    json_path.write_text(json.dumps(result, indent=2) + "\n")
+    _atomic_write_json(json_path, result)
     print(f"[bench-ok] JSON: {json_path}", flush=True)
     print(
         f"[bench-ok] verdict=OK  n_success={agg['n_success']}/{agg['n_total_runs']} "

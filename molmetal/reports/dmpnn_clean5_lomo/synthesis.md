@@ -1,13 +1,14 @@
 # Wf-131 Phase 3 — LOMO 5-fold × 5-seed × 50-epoch full re-bench on MetalCytoToxDB 5-metal
 
-**Date**: 2026-10-05  
+**Date**: 2026-10-08  
 **Metals**: Ru Ir Os Rh Re  
 **Seeds**: 0 1 2 3 4  
 **Epochs/seed**: 30  
-**Wasserstein weight**: 0.05  
-**Rh oversample**: 500 (500 actually appended)  
+**Wasserstein weight (requested)**: 0.05  
+**W₂ actually applied to the gradient (Wf-E1)**: 0.0  
+**Rh oversample**: 0 (0 actually appended)  
 **Quick mode**: False  
-**Wf-127 P2 L2 guard (grad-norm clip ≤ 5.0)**: False  
+**Wf-127 P2 L2 guard (grad-norm clip ≤ 5.0)**: True  
 **Wf-127 P3 ASTSR scale clip [-10.0, 10.0]**: False  
 
 ## §1 Goal
@@ -20,6 +21,14 @@ existing LOMO trainer:
    `molmetal_lam.reward.wasserstein_loss.wasserstein_transfer_loss`),
    added to the BCE+MSE loss with weight
    `0.05`.
+   **Wf-E1 (2026-10-05)**: this term is OFF unless
+   `--wasserstein-real` is passed. Wf-C3 measured that the
+   pre-Wf-E1 code detached the per-metal embeddings, so the W₂
+   contributed ZERO gradient while costing 2.4x wall-time
+   (Rh LOMO seeds 0-2, mean Δ test_AUC = −0.0023, within noise).
+   `--wasserstein-real` keeps the graph so the W₂ really backprops;
+   the per-epoch extraction is then evaluated at the epoch-start
+   parameters (stale-direction pull within the injection epoch).
 2. **Rh closure-theorem oversampling** — the 500-compound Catherine 6/6
    PASS synthetic Rh cohort from Wf-125 P1 is appended to the train
    pool when the held-out metal is Rh.
@@ -39,10 +48,10 @@ existing LOMO trainer:
 
 ## §2 MEASURED (this run)
 
-**Overall LOMO mean test AUC = 0.5574 ± 0.0922**  
+**Overall LOMO mean test AUC = 0.5575 ± 0.0949**  
 (n=25 runs, 5 folds, gate ≥ 0.7)
 
-**Rh LOMO AUC = 0.3864 ± 0.0197** (target ≥ 0.5)  
+**Rh LOMO AUC = 0.3812 ± 0.0270** (target ≥ 0.5)  
 **Verdict (Rh target)**: MISS  
 **Verdict (overall target ≥ 0.60)**: MISS  
 **Verdict (gate ≥ 0.70)**: BELOW GATE  
@@ -51,41 +60,41 @@ existing LOMO trainer:
 
 | Held-out metal | Mean ROC-AUC | Std | n_runs |
 |---|---|---|---|
-| Ru | 0.5862 | 0.0158 | 5 |
-| Ir | 0.6078 | 0.0145 | 5 |
-| Os | 0.5827 | 0.0286 | 5 |
-| Rh | 0.3864 | 0.0197 | 5 |
-| Re | 0.6237 | 0.0569 | 5 |
+| Ru | 0.5972 | 0.0121 | 5 |
+| Ir | 0.5975 | 0.0186 | 5 |
+| Os | 0.5831 | 0.0285 | 5 |
+| Rh | 0.3812 | 0.0270 | 5 |
+| Re | 0.6288 | 0.0551 | 5 |
 
 ### §2.2 Per-run detail
 
 | Fold | Seed | n_train | n_test | pos_rate_test | val_AUC | test_AUC | elapsed_s |
 |---|---|---|---|---|---|---|---|
-| Ru | 0 | 1942 | 3668 | 0.263 | 0.6874 | 0.5773 | 41.3 |
-| Ru | 1 | 1942 | 3668 | 0.263 | 0.7628 | 0.5717 | 38.6 |
-| Ru | 2 | 1942 | 3668 | 0.263 | 0.7424 | 0.5810 | 35.0 |
-| Ru | 3 | 1942 | 3668 | 0.263 | 0.7172 | 0.5841 | 35.3 |
-| Ru | 4 | 1942 | 3668 | 0.263 | 0.7204 | 0.6167 | 36.2 |
-| Ir | 0 | 4126 | 1242 | 0.448 | 0.7873 | 0.6101 | 64.6 |
-| Ir | 1 | 4126 | 1242 | 0.448 | 0.7499 | 0.6137 | 69.4 |
-| Ir | 2 | 4126 | 1242 | 0.448 | 0.7423 | 0.5833 | 66.0 |
-| Ir | 3 | 4126 | 1242 | 0.448 | 0.7450 | 0.6042 | 63.4 |
-| Ir | 4 | 4126 | 1242 | 0.448 | 0.7574 | 0.6278 | 66.3 |
-| Os | 0 | 5165 | 87 | 0.437 | 0.7858 | 0.5585 | 82.6 |
-| Os | 1 | 5165 | 87 | 0.437 | 0.7812 | 0.6063 | 83.5 |
-| Os | 2 | 5165 | 87 | 0.437 | 0.7493 | 0.6071 | 93.4 |
-| Os | 3 | 5165 | 87 | 0.437 | 0.7637 | 0.6028 | 114.9 |
-| Os | 4 | 5165 | 87 | 0.437 | 0.7600 | 0.5387 | 113.6 |
-| Rh | 0 | 5146 | 108 | 0.324 | 0.7848 | 0.3838 | 116.5 |
-| Rh | 1 | 5146 | 108 | 0.324 | 0.7661 | 0.4237 | 105.8 |
-| Rh | 2 | 5146 | 108 | 0.324 | 0.7279 | 0.3693 | 101.3 |
-| Rh | 3 | 5146 | 108 | 0.324 | 0.7734 | 0.3845 | 110.2 |
-| Rh | 4 | 5146 | 108 | 0.324 | 0.7718 | 0.3708 | 111.6 |
-| Re | 0 | 5094 | 166 | 0.163 | 0.7769 | 0.5883 | 107.1 |
-| Re | 1 | 5094 | 166 | 0.163 | 0.7750 | 0.5661 | 108.3 |
-| Re | 2 | 5094 | 166 | 0.163 | 0.7470 | 0.6182 | 96.9 |
-| Re | 3 | 5094 | 166 | 0.163 | 0.7596 | 0.6148 | 106.3 |
-| Re | 4 | 5094 | 166 | 0.163 | 0.7217 | 0.7310 | 107.3 |
+| Ru | 0 | 1442 | 3668 | 0.263 | 0.7282 | 0.6142 | 54.3 |
+| Ru | 1 | 1442 | 3668 | 0.263 | 0.8049 | 0.5906 | 45.1 |
+| Ru | 2 | 1442 | 3668 | 0.263 | 0.7467 | 0.6075 | 30.1 |
+| Ru | 3 | 1442 | 3668 | 0.263 | 0.7476 | 0.5806 | 34.4 |
+| Ru | 4 | 1442 | 3668 | 0.263 | 0.7388 | 0.5928 | 31.3 |
+| Ir | 0 | 3626 | 1242 | 0.448 | 0.7860 | 0.5797 | 56.9 |
+| Ir | 1 | 3626 | 1242 | 0.448 | 0.7999 | 0.6277 | 74.8 |
+| Ir | 2 | 3626 | 1242 | 0.448 | 0.7659 | 0.6041 | 80.8 |
+| Ir | 3 | 3626 | 1242 | 0.448 | 0.7437 | 0.5763 | 71.4 |
+| Ir | 4 | 3626 | 1242 | 0.448 | 0.7852 | 0.5999 | 60.8 |
+| Os | 0 | 4665 | 87 | 0.437 | 0.7871 | 0.5698 | 77.2 |
+| Os | 1 | 4665 | 87 | 0.437 | 0.7824 | 0.5738 | 45.5 |
+| Os | 2 | 4665 | 87 | 0.437 | 0.7633 | 0.5701 | 23.1 |
+| Os | 3 | 4665 | 87 | 0.437 | 0.7957 | 0.6396 | 26.3 |
+| Os | 4 | 4665 | 87 | 0.437 | 0.7773 | 0.5623 | 25.3 |
+| Rh | 0 | 4646 | 108 | 0.324 | 0.8125 | 0.3781 | 24.5 |
+| Rh | 1 | 4646 | 108 | 0.324 | 0.7679 | 0.4309 | 27.9 |
+| Rh | 2 | 4646 | 108 | 0.324 | 0.7207 | 0.3526 | 21.7 |
+| Rh | 3 | 4646 | 108 | 0.324 | 0.7887 | 0.3814 | 21.2 |
+| Rh | 4 | 4646 | 108 | 0.324 | 0.7923 | 0.3628 | 19.2 |
+| Re | 0 | 4594 | 166 | 0.163 | 0.8103 | 0.5697 | 18.4 |
+| Re | 1 | 4594 | 166 | 0.163 | 0.8042 | 0.6723 | 22.9 |
+| Re | 2 | 4594 | 166 | 0.163 | 0.7439 | 0.6577 | 19.4 |
+| Re | 3 | 4594 | 166 | 0.163 | 0.7717 | 0.6886 | 18.6 |
+| Re | 4 | 4594 | 166 | 0.163 | 0.7472 | 0.5554 | 16.6 |
 
 ## §3 Honest framing (party-twenty-spirit §3.5)
 
@@ -106,9 +115,13 @@ original gate BELOW GATE.
   Rh is ~85 % inactive at the IC50<10 µM gate). The oversample is
   a *chemistry* augmentation, not a *label* augmentation.
 * The Wasserstein regulariser is injected every 5 epochs (not every
-  batch) to keep the per-epoch wall-time reasonable.
+  batch) to keep the per-epoch wall-time reasonable. Wf-E1: it is
+  only computed at all when `--wasserstein-real` is passed;
+  `w2_effective_weight` in the per-seed JSON is the authoritative
+  record of whether W₂ reached the gradient.
 * The W₂ snapshot at the end of training is recorded in
-  `final_per_metal_w2` for diagnostic purposes (see per-seed JSON).
+  `final_per_metal_w2` for diagnostic purposes (see per-seed JSON);
+  it is empty when `--wasserstein-real` is off.
 
 ## §4 Cross-references
 

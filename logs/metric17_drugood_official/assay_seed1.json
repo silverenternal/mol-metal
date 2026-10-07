@@ -1,0 +1,14 @@
+{
+  "split": "drugood_official:lbap_refined_ic50:assay",
+  "seed": 1,
+  "n_train": 95373,
+  "n_val": 53293,
+  "n_test": 53291,
+  "n_id_test": 33164,
+  "id_test_source": "official_iid_test",
+  "id_test_auc": 0.9081140841015011,
+  "ood_test_auc": 0.7326532668698378,
+  "pos_rate_test": 0.8543093580529545,
+  "epochs": 1,
+  "axis": "assay"
+}

@@ -16,10 +16,10 @@
     "bond_head_in_dim": 265,
     "device": "cuda",
     "cuda_available": true,
-    "torch_version": "2.14.0+cu130",
+    "torch_version": "2.14.1+cu130",
     "seed": 42
   },
-  "wall_clock_s": 9.852558135986328,
+  "wall_clock_s": 8.70847463607788,
   "loss_curves_summary": {
     "cfm": {
       "n": 1,
@@ -66,9 +66,9 @@
         "n_decoded": 1,
         "mean_atoms": 8.0,
         "disconnected_count": 0,
-        "lap_p95": 1.1405413150787354,
+        "lap_p95": 1.1500011682510376,
         "step": 1,
-        "wall_s": 2.4728689193725586
+        "wall_s": 2.4873082637786865
       }
     ]
   },

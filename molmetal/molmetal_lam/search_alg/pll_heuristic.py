@@ -137,6 +137,22 @@ DEFAULT_FPU_REDUCTION: float = 0.25
 #: — clipped to that range for numerical safety.
 _PLL_BOX_HALF_WIDTH: float = 2.0
 
+
+def _pad_spectra(ev_a: "np.ndarray", ev_b: "np.ndarray", n: int) -> "np.ndarray":
+    """Zero-pad two eigenvalue spectra to a common length and return ``a - b``.
+
+    R26 F3/F5 helper.  ``compute_pll`` returns a variable-length spectrum
+    (one entry per eigenvalue, bounded by the molecule's rank), so two
+    molecules of different size produce different-length vectors.  Padding the
+    shorter with zeros makes the length difference itself show up as L2
+    distance, instead of being truncated away.
+    """
+    a = np.zeros(n, dtype=np.float64)
+    b = np.zeros(n, dtype=np.float64)
+    a[: ev_a.size] = ev_a
+    b[: ev_b.size] = ev_b
+    return a - b
+
 #: Default fingerprint size.  Matches :data:`pll_signature.DEFAULT_K`
 #: so :class:`PLLHeuristic` and ``compute_pll`` are compatible
 #: without coordination.
@@ -201,11 +217,19 @@ def pll_distance(
 
     ev_a = np.asarray(sig_a.eigenvalues, dtype=np.float64)
     ev_b = np.asarray(sig_b.eigenvalues, dtype=np.float64)
-    n = int(min(ev_a.size, ev_b.size))
+    # R26 F3/F5 — size-aware comparison.  The previous code truncated both
+    # spectra to ``min(size_a, size_b)``, which silently discarded the longer
+    # molecule's tail spectrum: a small molecule and itself-with-a-pharmacophore-
+    # tail appended scored a near-perfect similarity because the added atoms
+    # contributed nothing.  ``sqrt(n)`` normalisation was size-aware while the
+    # comparison was not, so ``n`` changed the score in a non-obvious way.
+    # Zero-pad the shorter spectrum to ``max(size)`` so extra atoms must
+    # contribute real L2, and normalise against the larger spectrum length.
+    n = int(max(ev_a.size, ev_b.size))
     if n <= 0:
         return 0.0
 
-    diff = ev_a[:n] - ev_b[:n]
+    diff = ev_a - ev_b if ev_a.size == ev_b.size else _pad_spectra(ev_a, ev_b, n)
     l2 = float(np.sqrt(np.sum(diff * diff)))
     max_l2 = _PLL_BOX_HALF_WIDTH * math.sqrt(float(n))
     if max_l2 <= 0.0:
@@ -322,10 +346,16 @@ def apply_fpu_bonus(
         # and the PUCT bonus is the standard c_puct * P * sqrt(N) /
         # (1 + N) term computed elsewhere.  No FPU adjustment.
         return 0.0
-    if parent_q_max <= 0.0:
-        # No information about the parent — fall back to uniform
-        # so we don't inject artificial signal.
+    if not math.isfinite(parent_q_max):
+        # No information about the parent (no visited child yet) — fall back
+        # to uniform so we don't inject artificial signal.
         return 0.0
+    # R26 F2 — a *negative* ``parent_q_max`` is real information (every
+    # visited child of this parent is negative), not an absence of it.  The
+    # former ``parent_q_max <= 0.0`` test silently zeroed the bonus across
+    # the whole negative-Q region of a reward head normalised to [-1, 1].
+    # The non-finite sentinel above is the only genuine "no info" case; the
+    # caller additionally substitutes ``-inf`` for the unvisited case.
     # Unvisited child with known parent Q_max: lift it above
     # (parent_Q_max - fpu_reduction).  The bonus is clipped at zero
     # so it never reduces a child below the legacy PUCT score.
@@ -588,10 +618,16 @@ class PLLHeuristic:
         ev = np.asarray(sig.eigenvalues, dtype=np.float64)
         if self._target_signature is None:
             return None
-        n = int(min(ev.size, self._target_signature.size))
+        # R26 F3/F5 — same size-aware zero-pad as the module-level
+        # ``pll_distance``; see that function for the rationale.
+        n = int(max(ev.size, self._target_signature.size))
         if n <= 0:
             return None
-        diff = ev[:n] - self._target_signature[:n]
+        diff = (
+            ev - self._target_signature
+            if ev.size == self._target_signature.size
+            else _pad_spectra(ev, self._target_signature, n)
+        )
         l2 = float(np.sqrt(np.sum(diff * diff)))
         max_l2 = _PLL_BOX_HALF_WIDTH * math.sqrt(float(n))
         if max_l2 <= 0.0:

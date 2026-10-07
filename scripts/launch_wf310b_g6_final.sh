@@ -45,6 +45,12 @@ mkdir -p "${OUT_BASE}"
 
 PY="/home/hugo/codes/mol-metal/.venv/bin/python"
 SCRIPT="molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
+# 2026-10-07 (user directive: "所有启动脚本都用yaml管理…不要用cli,那样不好追溯").
+# The trainer already accepts --config and ends parse_args() in
+# apply_yaml_overrides (train_dmpnn_multitask_wasserstein.py:3320-3322), so the
+# yaml is the base and the per-call flags below override it.
+# Precedence: explicit CLI flag > YAML > argparse default.
+DMPNN_CONFIG="${DMPNN_CONFIG:-configs/dmpnn.yaml}"
 GPU="cuda:0"  # RTX PRO 6000 Blackwell GPU-0 (CUDA_VISIBLE_DEVICES=0; serial execution)
 DATA_CSV="/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 
@@ -208,6 +214,7 @@ run_tuple() {
   # GPU 0 (RTX PRO 6000 Blackwell) per the 2026-10-03 all-GPU-0
   # directive; this call site is serial with every other job.
   CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} \
+--config "${DMPNN_CONFIG}" \
     --metals "${metal}" \
     --seeds "${seed}" \
     --csv "${DATA_CSV}" \

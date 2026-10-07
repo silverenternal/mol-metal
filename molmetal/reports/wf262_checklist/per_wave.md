@@ -1,12 +1,12 @@
-# Per-Wave Checklist — tmqm_plat
+# Per-Wave Checklist — Wf-131-P3-Pt-4cells
 
-_Generated: 2026-10-03T12:07:12+00:00_  _Schema: 262.v2_
+_Generated: 2026-10-07T23:39:49+00:00_  _Schema: 262.v2_
 
 ## Summary
 
 - preflight pass count: **96**
 - preflight fail count: **0**
-- wave budget: **10.0 h** (9.5 h remaining after abort penalties)
+- wave budget: **48.0 h** (47.5 h remaining after abort penalties)
 
 ## P0 BLOCKER gates
 
@@ -129,8 +129,10 @@ _Generated: 2026-10-03T12:07:12+00:00_  _Schema: 262.v2_
 ## Config summary
 
 - yaml_path: `/home/hugo/codes/mol-metal/configs/cfm_full_retrain.yaml`
-- parse_ok: **True**
-- n_required_keys_present: **9** of 9
+- parse_ok: **False**
+- error: ``
+- n_required_keys_present: **7** of 9
+- missing_keys: `train, eval`
 
 ## Abort criteria active (§7.2)
 

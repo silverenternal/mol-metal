@@ -20,8 +20,8 @@
 | bond_head in_dim | 265 (expected 265) |
 | device | cuda |
 | cuda_available | True |
-| torch | 2.14.0+cu130 |
-| wall-clock | 12.4s (12.36s/step) |
+| torch | 2.14.1+cu130 |
+| wall-clock | 8.6s (8.62s/step) |
 
 ## P0 fixes active
 all ON
@@ -53,7 +53,7 @@ all ON
 ## Decode smoke (n_samples=1 per checkpoint)
 | step | decode_ratio | n_decoded | mean_atoms | disconnected | wall_s |
 |---|---|---|---|---|---|
-| 1 | 1.000 | 1 | 8.0 | 0 | 3.9 |
+| 1 | 1.000 | 1 | 8.0 | 0 | 2.5 |
 
 **decode_ratio at step 200**: None
 **decode_ratio at step 500**: None

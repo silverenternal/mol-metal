@@ -104,9 +104,28 @@ GATE_MARGIN = 0.02  # we accept >= iMoLD - 0.02 as competitive
 # Heavy-atom threshold for the "size" split (drug-like small/medium vs large)
 SIZE_HEAVY_ATOM_THRESHOLD = 30
 
+# --- Official DrugOOD IC50 axis splits (Wf-R33 loader) ----------------------
+#: Official DrugOOD curator subset used for the 3-axis (assay/scaffold/size)
+#: iMoLD-comparable grid.  ``lbap_refined_ic50`` is the largest IC50 subset
+#: (266,522 rows per axis) and is the one iMoLD (Ji et al. ICLR 2023) reports.
+DRUGOOD_DEFAULT_SUBSET = "lbap_refined_ic50"
+
+#: Official DrugOOD ``(subset, axis)`` split labels we consume.  ``train`` /
+#: ``ood_val`` are the optimisation splits, ``ood_test`` is the axis-shifted
+#: test set, and ``iid_test`` is the in-distribution (same-assay /
+#: same-scaffold / same-size) test set.  These are the DrugOOD-published
+#: partitions — NOT re-derived here.
+DRUGOOD_SPLIT_LABELS = ("train", "ood_val", "ood_test", "iid_test")
+
+#: DrugOOD IC50 binary-task threshold on the continuous ``y`` column (pIC50).
+#: ``y >= 5.0``  <=>  IC50 <= 10 uM  <=> the official ``cls_label == 1`` class.
+#: MEASURED: on ``lbap_refined_ic50_assay.csv`` this threshold reproduces
+#: ``cls_label`` on 266,522 / 266,522 rows (0 mismatches).
+DRUGOOD_IC50_ACTIVATION_PIC50 = 5.0
+
 
 # ---------------------------------------------------------------------------
-# Dataset loading (DrugOOD -> MetalCytoToxDB fallback)
+# Dataset loading (official DrugOOD axis splits -> MetalCytoToxDB fallback)
 # ---------------------------------------------------------------------------
 def _try_load_drugood_native() -> (
     Optional[Tuple[List[str], np.ndarray, np.ndarray, np.ndarray, np.ndarray]]
@@ -132,6 +151,92 @@ def _try_load_drugood_native() -> (
         if train_csv.exists():
             return _load_drugood_dir(base)
     return None
+
+
+def _load_official_drugood_axis(
+    subset: str,
+    axis: str,
+) -> Optional[Dict[str, object]]:
+    """Load one official DrugOOD IC50 ``(subset, axis)`` split via the loader.
+
+    Returns ``None`` (never raises) when the CSV curator output is not
+    present on this host, so the caller can fall back to the MetalCytoToxDB
+    path without breaking an existing pipeline.
+
+    Returns
+    -------
+    dict with keys:
+        ``subset``     -- echo of the requested subset
+        ``axis``       -- echo of the requested axis
+        ``split_name`` -- ``"drugood_official:<subset>:<axis>"``
+        ``smiles``     -- list[str], all rows of the split
+        ``labels``     -- int64 array, 1 iff pIC50 >= 5.0 (IC50 <= 10 uM)
+        ``idx``        -- dict[str, np.ndarray] mapping each label in
+                          :data:`DRUGOOD_SPLIT_LABELS` to its row indices
+        ``n_rows``     -- int, total rows read
+        ``label_rule`` -- str, human-readable description of the binarisation
+    """
+    try:
+        from molmetal.scripts.drugood_loader import load_drugood_split
+    except Exception as exc:  # pragma: no cover - import guard
+        print(f"[drugood:official] loader import failed: {exc}", flush=True)
+        return None
+
+    try:
+        df = load_drugood_split(subset, axis)
+    except Exception as exc:
+        print(
+            f"[drugood:official] load_drugood_split({subset!r}, {axis!r}) "
+            f"unavailable: {exc}",
+            flush=True,
+        )
+        return None
+
+    if df is None or len(df) == 0:
+        print(
+            f"[drugood:official] {subset}/{axis} is empty — falling back",
+            flush=True,
+        )
+        return None
+
+    labels = (
+        df["label"].to_numpy(dtype="float64") >= DRUGOOD_IC50_ACTIVATION_PIC50
+    ).astype(np.int64)
+    smiles = df["smiles"].astype("string").fillna("").tolist()
+    split_col = df["split"].astype("string").fillna("")
+
+    idx: Dict[str, np.ndarray] = {}
+    for name in DRUGOOD_SPLIT_LABELS:
+        idx[name] = np.flatnonzero((split_col == name).to_numpy()).astype(np.int64)
+
+    missing = [k for k, v in idx.items() if v.size == 0]
+    if missing:
+        print(
+            f"[drugood:official] {subset}/{axis} has empty partition(s) "
+            f"{missing} — falling back",
+            flush=True,
+        )
+        return None
+
+    print(
+        f"[drugood:official] {subset}/{axis} n={len(df)}  "
+        + "  ".join(f"{k}={v.size}" for k, v in idx.items())
+        + f"  pos_rate={labels.mean():.4f}",
+        flush=True,
+    )
+    return {
+        "subset": subset,
+        "axis": axis,
+        "split_name": f"drugood_official:{subset}:{axis}",
+        "smiles": smiles,
+        "labels": labels,
+        "idx": idx,
+        "n_rows": int(len(df)),
+        "label_rule": (
+            f"pIC50 >= {DRUGOOD_IC50_ACTIVATION_PIC50} "
+            "(IC50 <= 10 uM; reproduces DrugOOD cls_label)"
+        ),
+    }
 
 
 def _load_drugood_dir(
@@ -451,6 +556,7 @@ def _train_eval_one_seed(
     lr: float,
     hidden: int,
     device: torch.device,
+    id_test_idx: Optional[np.ndarray] = None,
 ) -> Dict[str, object]:
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -507,13 +613,18 @@ def _train_eval_one_seed(
         test_logits = model(X_test).cpu().numpy()
     test_score = 1.0 / (1.0 + np.exp(-test_logits))
 
-    # ID-test AUC: subset of test_idx whose cell_line or scaffold appears in train_idx
-    # For DrugOOD, ID-test means rows drawn from the *training distribution*.  We
-    # construct a held-out ID-test by taking 10 % of train_idx as ID-test (ID
-    # chemistry + ID biology).  For OOD test we use the full test_idx.
-    rng = np.random.default_rng(seed)
-    perm = rng.permutation(len(train_idx))
-    id_test_idx = train_idx[perm[: max(1, len(perm) // 10)]]
+    # ID-test AUC.  Two modes:
+    #  * official DrugOOD axis splits pass ``id_test_idx`` = the DrugOOD-published
+    #    ``iid_test`` partition (same assay / same scaffold / same size as train).
+    #  * the MetalCytoToxDB fallback has no published partitions, so we hold out
+    #    10 % of train_idx as a proxy ID-test (ID chemistry + ID biology).
+    if id_test_idx is None:
+        rng = np.random.default_rng(seed)
+        perm = rng.permutation(len(train_idx))
+        id_test_idx = train_idx[perm[: max(1, len(perm) // 10)]]
+        id_source = "proxy_10pct_of_train"
+    else:
+        id_source = "official_iid_test"
     X_id = torch.from_numpy(X_all[id_test_idx]).float().to(device)
     with torch.no_grad():
         id_logits = model(X_id).cpu().numpy()
@@ -548,6 +659,7 @@ def _train_eval_one_seed(
         "n_val": int(len(val_idx)),
         "n_test": int(len(test_idx)),
         "n_id_test": int(len(id_test_idx)),
+        "id_test_source": id_source,
         "id_test_auc": id_auc,
         "ood_test_auc": ood_auc,
         "pos_rate_test": float(y_test_np.mean()),
@@ -580,7 +692,36 @@ def _write_report(
     overall_pass: bool,
     used_native_drugood: bool,
     requested_splits: List[str],
+    *,
+    data_source: str = "metacytotox_fallback",
+    n_official_test_rows: Optional[Dict[str, int]] = None,
+    subset: str = DRUGOOD_DEFAULT_SUBSET,
 ) -> None:
+    n_official_test_rows = n_official_test_rows or {}
+    official = str(data_source).startswith("drugood_official_")
+    if official:
+        source_line = (
+            f"Official DrugOOD IC50 axis partitions (subset={subset}) via "
+            "`molmetal.scripts.drugood_loader.load_drugood_split` — "
+            "`train` / `ood_val` / `ood_test` / `iid_test` are the "
+            "DrugOOD-published partitions, NOT re-derived here.  Labels "
+            f"binarised at pIC50 >= {DRUGOOD_IC50_ACTIVATION_PIC50} "
+            "(IC50 <= 10 uM), reproducing the DrugOOD `cls_label` column."
+        )
+        split_line = (
+            "assay / scaffold / size — the three official DrugOOD IC50 axis "
+            "splits consumed verbatim from the curator CSVs"
+        )
+    else:
+        source_line = (
+            f"FALLBACK path (source={data_source}) — NOT the DrugOOD-published "
+            "IC50 axis partitions.  Splits are re-derived locally "
+            "(cell_line / Bemis-Murcko scaffold / heavy-atom bucket)."
+        )
+        split_line = (
+            "assay (hold-out cell_line) / scaffold (Bemis-Murcko) / size "
+            "(heavy-atom bucket) — re-derived here, NOT DrugOOD-published"
+        )
     lines: List[str] = []
     lines += [
         "# Metric 17 — DrugOOD OOD generalisation (assay / scaffold / size)",
@@ -600,11 +741,19 @@ def _write_report(
         )
     lines += [
         "",
-        f"**Data source:** {'DrugOOD native CSV bundle' if used_native_drugood else 'MetalCytoToxDB fallback (cell_line / scaffold / heavy-atom bucket OOD axes)'}",
-        "**Featurization:** Morgan FP (radius=2, n_bits=2048)",
-        "**Model:** V4 MLP on Morgan FP (2048 -> 256 -> 128 -> 1, BCE-with-pos-weight)",
-        "**Splits:** assay (hold-out cell_line) / scaffold (Bemis-Murcko) / size (heavy-atom bucket)",
+        f"**Data source:** {source_line}",
+        f"**Featurization:** Morgan FP (radius=2, n_bits=2048)",
+        f"**Model:** V4 MLP on Morgan FP (2048 -> 256 -> 128 -> 1, BCE-with-pos-weight)",
+        f"**Splits:** {split_line}",
         "**Seeds:** 0, 1, 2",
+    ]
+    if official and n_official_test_rows:
+        lines += [
+            "**Official `ood_test` row counts:** "
+            + ", ".join(f"{s}={n_official_test_rows.get(s, 0)}" for s in requested_splits)
+            + f" (total {sum(n_official_test_rows.values())})",
+        ]
+    lines += [
         "",
         "## Results",
         "",
@@ -701,6 +850,31 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--hidden", type=int, default=256)
     p.add_argument(
+        "--device",
+        default="auto",
+        help="Device: 'auto' (cuda if available), 'cpu', or 'cuda:N'.",
+    )
+    p.add_argument(
+        "--subset",
+        default=DRUGOOD_DEFAULT_SUBSET,
+        help=(
+            "Official DrugOOD curator subset for the axis splits "
+            f"(default: {DRUGOOD_DEFAULT_SUBSET})."
+        ),
+    )
+    p.add_argument(
+        "--data-source",
+        dest="data_source",
+        default="official",
+        choices=["official", "fallback"],
+        help=(
+            "'official' (default) consumes the DrugOOD-published axis "
+            "partitions via molmetal.scripts.drugood_loader and falls back to "
+            "MetalCytoToxDB per-axis with a warning if a CSV is missing; "
+            "'fallback' forces the legacy MetalCytoToxDB path."
+        ),
+    )
+    p.add_argument(
         "--out-dir",
         default="logs/metric17_drugood",
         help="Per-seed JSON output dir.",
@@ -733,65 +907,149 @@ def main(argv: Optional[List[str]] = None) -> int:
         else REPORTS_DIR / "wf_tier1_metric17_drugood" / "final.md"
     )
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = _resolve_device(args.device)
     print(
-        f"[drugood] device={device}  splits={args.splits}  seeds={args.seeds}",
+        f"[drugood] device={device}  splits={args.splits}  seeds={args.seeds}  "
+        f"data_source={args.data_source}  subset={args.subset}",
         flush=True,
     )
 
-    # Load DrugOOD-native if available, else use MetalCytoToxDB fallback
-    native = _try_load_drugood_native()
-    heavy_atoms: Optional[np.ndarray] = None
-    if native is not None:
-        smiles, labels, assay_id, scaffold_id, size_id = native
-        used_native = True
-        print("[drugood] using native DrugOOD data", flush=True)
-    else:
-        smiles, labels, assay_id, scaffold_id, size_id, heavy_atoms = (
-            _load_metacytotox_fallback()
-        )
-        used_native = False
-        print(
-            "[drugood] using MetalCytoToxDB fallback for DrugOOD-style OOD splits",
-            flush=True,
-        )
+    use_official = args.data_source == "official"
 
-    # Featurize once
-    print(
-        f"[drugood] featurizing {len(smiles)} SMILES -> Morgan FP(2048, r=2)...",
-        flush=True,
-    )
-    X_all = _morgan_features(smiles, n_bits=2048, radius=2).astype(np.float32)
+    # --- per-axis official split cache -------------------------------------
+    # Each axis is a different CSV with its own published partitions, so the
+    # official path loads (and featurizes) one axis at a time.  If any axis
+    # fails to load we drop back to the MetalCytoToxDB path for that axis only
+    # — the legacy pipeline is never broken by a missing DrugOOD CSV.
+    official_cache: Dict[str, Optional[Dict[str, object]]] = {}
+
+    def _official_for(split_name: str) -> Optional[Dict[str, object]]:
+        if split_name not in official_cache:
+            official_cache[split_name] = _load_official_drugood_axis(
+                args.subset, split_name
+            )
+        return official_cache[split_name]
+
+    # --- legacy fallback dataset (lazy: only built if some axis needs it) ----
+    legacy: Optional[
+        Tuple[List[str], np.ndarray, np.ndarray, np.ndarray, np.ndarray, Optional[np.ndarray]]
+    ] = None
+    legacy_heavy: Optional[np.ndarray] = None
+    legacy_X: Optional[np.ndarray] = None
+    legacy_source: str = "unknown"
+
+    def _legacy_bundle():
+        nonlocal legacy, legacy_heavy, legacy_X, legacy_source
+        if legacy is None:
+            native = _try_load_drugood_native()
+            if native is not None:
+                smiles, labels, assay_id, scaffold_id, size_id = native
+                legacy_source = "drugood_native_dir"
+                print(
+                    f"[drugood:fallback] using native DrugOOD data "
+                    f"(source={legacy_source})",
+                    flush=True,
+                )
+                legacy = (smiles, labels, assay_id, scaffold_id, size_id, None)
+            else:
+                legacy_source = "metacytotox_fallback"
+                print(
+                    "[drugood:fallback] using MetalCytoToxDB fallback for "
+                    "DrugOOD-style OOD splits",
+                    flush=True,
+                )
+                legacy = _load_metacytotox_fallback()
+                legacy_heavy = legacy[5]
+            print(
+                f"[drugood:fallback] featurizing {len(legacy[0])} SMILES -> "
+                "Morgan FP(2048, r=2)...",
+                flush=True,
+            )
+            legacy_X = _morgan_features(legacy[0], n_bits=2048, radius=2).astype(
+                np.float32
+            )
+        return legacy, legacy_X
 
     all_results: Dict[str, Dict[str, object]] = {}
     gate_pass: Dict[str, bool] = {}
+    data_source_axis: Dict[str, str] = {}
+    n_official_test_rows: Dict[str, int] = {}
+    split_names: Dict[str, str] = {}
+
     for split in args.splits:
+        official = _official_for(split) if use_official else None
+        if official is not None:
+            split_names[split] = str(official["split_name"])
+            data_source_axis[split] = f"drugood_official_{args.subset}:{split}"
+            n_official_test_rows[split] = int(official["idx"]["ood_test"].size)
+            labels_o = np.asarray(official["labels"], dtype=np.int64)
+            print(
+                f"[drugood] featurizing {len(official['smiles'])} SMILES "
+                f"({split} axis) -> Morgan FP(2048, r=2)...",
+                flush=True,
+            )
+            X_axis = _morgan_features(
+                official["smiles"], n_bits=2048, radius=2
+            ).astype(np.float32)
+            idx = official["idx"]
+            train_idx_o = idx["train"]
+            val_idx_o = idx["ood_val"]
+            test_idx_o = idx["ood_test"]
+            id_idx_o = idx["iid_test"]
+        else:
+            if use_official:
+                print(
+                    f"[drugood] WARNING: official DrugOOD split for axis "
+                    f"{split!r} unavailable — falling back to "
+                    "MetalCytoToxDB for this axis only",
+                    flush=True,
+                )
+            legacy, legacy_X = _legacy_bundle()
+            data_source_axis[split] = f"fallback:{legacy_source}"
+            split_names[split] = f"{legacy_source}:{split}"
+            n_official_test_rows[split] = 0
+            labels_o = legacy[1]
+            X_axis = legacy_X
+            train_idx_o = val_idx_o = test_idx_o = id_idx_o = None
+
         per_seed: List[Dict[str, object]] = []
         for seed in args.seeds:
             try:
-                train_idx, val_idx, test_idx = _build_split(
-                    split,
-                    labels,
-                    assay_id,
-                    scaffold_id,
-                    size_id,
-                    seed,
-                    heavy_atoms=heavy_atoms,
-                )
+                if official is not None:
+                    tr, va, te, idt = (
+                        train_idx_o,
+                        val_idx_o,
+                        test_idx_o,
+                        id_idx_o,
+                    )
+                    tr, va, te = np.asarray(tr), np.asarray(va), np.asarray(te)
+                else:
+                    tr, va, te = _build_split(
+                        split,
+                        labels_o,
+                        legacy[2],
+                        legacy[3],
+                        legacy[4],
+                        seed,
+                        heavy_atoms=legacy_heavy,
+                    )
+                    idt = None
                 r = _train_eval_one_seed(
-                    split,
+                    split_names[split],
                     seed,
-                    X_all,
-                    labels,
-                    train_idx,
-                    val_idx,
-                    test_idx,
+                    X_axis,
+                    labels_o,
+                    tr,
+                    va,
+                    te,
                     args.epochs,
                     args.batch_size,
                     args.lr,
                     args.hidden,
                     device,
+                    id_test_idx=idt,
                 )
+                r["axis"] = split
                 per_seed.append(r)
                 (out_dir / f"{split}_seed{seed}.json").write_text(
                     json.dumps(r, indent=2)
@@ -800,13 +1058,15 @@ def main(argv: Optional[List[str]] = None) -> int:
                 print(f"[drugood:{split} seed={seed}] FAILED: {e}", flush=True)
                 per_seed.append(
                     {
-                        "split": split,
+                        "split": split_names[split],
+                        "axis": split,
                         "seed": seed,
                         "error": str(e),
                         "ood_test_auc": float("nan"),
                         "id_test_auc": float("nan"),
                     }
                 )
+        del X_axis
         agg = _aggregate_per_seed(per_seed)
         agg["per_seed"] = per_seed
         all_results[split] = agg
@@ -826,6 +1086,37 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Overall pass = all 3 splits pass
     overall_pass = all(gate_pass[s] for s in args.splits)
 
+    # A run is 'official' only when EVERY requested axis came from the
+    # DrugOOD-published partitions; a single per-axis fallback demotes the
+    # whole payload to the fallback label so the file never over-claims.
+    all_official = all(
+        data_source_axis[s].startswith("drugood_official_") for s in args.splits
+    )
+    if all_official:
+        data_source = f"drugood_official_{args.subset}"
+        honest_source_note = (
+            f"Official DrugOOD IC50 axis partitions (subset={args.subset}) "
+            "consumed via molmetal.scripts.drugood_loader.load_drugood_split; "
+            "train/ood_val/ood_test/iid_test are the DrugOOD-published "
+            "partitions, not re-derived here. Labels binarised at "
+            f"pIC50 >= {DRUGOOD_IC50_ACTIVATION_PIC50} (IC50 <= 10 uM), which "
+            "reproduces the DrugOOD cls_label column exactly (0 mismatches on "
+            f"{args.subset}/assay, 266,522 rows). Backbone is a Morgan-FP MLP, "
+            "NOT the graph NN iMoLD uses, so the AUCs are protocol-comparable "
+            "but NOT backbone-comparable."
+        )
+    else:
+        data_source = f"fallback:{legacy_source}"
+        honest_source_note = (
+            f"FALLBACK path — NOT the DrugOOD-published IC50 axis partitions. "
+            f"Underlying source: {legacy_source}. Per-axis fallback was "
+            "triggered for: "
+            + ", ".join(
+                s for s in args.splits if not data_source_axis[s].startswith("drugood_official_")
+            )
+            + ". Do not compare these AUCs to iMoLD."
+        )
+
     payload = {
         "date": time.strftime("%Y-%m-%d"),
         "featurization": "morgan_fp_2048_r2",
@@ -833,7 +1124,28 @@ def main(argv: Optional[List[str]] = None) -> int:
         "splits": args.splits,
         "seeds": args.seeds,
         "epochs": args.epochs,
-        "data_source": "drugood_native" if used_native else "metacytotox_fallback",
+        "batch_size": args.batch_size,
+        "device": str(device),
+        "data_source": data_source,
+        "data_source_per_axis": data_source_axis,
+        "data_source_axis_field": "data_source_per_axis",
+        "split_name_per_axis": split_names,
+        "split_partition_field": list(DRUGOOD_SPLIT_LABELS),
+        "drugood_subset": args.subset,
+        "drugood_axes": list(args.splits),
+        "drugood_label_rule": (
+            f"pIC50 >= {DRUGOOD_IC50_ACTIVATION_PIC50} "
+            "(IC50 <= 10 uM) — reproduces DrugOOD cls_label"
+        ),
+        "n_official_test_rows": n_official_test_rows,
+        "n_official_test_rows_total": int(sum(n_official_test_rows.values())),
+        "per_axis_auc": {
+            s: all_results[s]["ood_auc_mean"] for s in args.splits
+        },
+        "per_axis_auc_delta_vs_imold": {
+            s: float(all_results[s]["ood_auc_mean"] - IMOLD_TARGETS[s])
+            for s in args.splits
+        },
         "imold_reference": IMOLD_TARGETS,
         "erm_baseline": ERM_BASELINES,
         "gate_margin": GATE_MARGIN,
@@ -843,16 +1155,54 @@ def main(argv: Optional[List[str]] = None) -> int:
         },
         "gate_pass": gate_pass,
         "overall_pass": overall_pass,
+        "honest_framing": honest_source_note,
     }
     out_metric.parent.mkdir(parents=True, exist_ok=True)
-    out_metric.write_text(json.dumps(payload, indent=2))
+    payload_text = json.dumps(payload, indent=2)
+    _atomic_write(out_metric, payload_text)
     print(f"[drugood] wrote {out_metric}", flush=True)
 
     _write_report(
-        out_report, all_results, gate_pass, overall_pass, used_native, args.splits
+        out_report,
+        all_results,
+        gate_pass,
+        overall_pass,
+        all_official,
+        args.splits,
+        data_source=data_source,
+        n_official_test_rows=n_official_test_rows,
+        subset=args.subset,
     )
     print(f"[drugood] wrote {out_report}", flush=True)
     return 0
+
+
+def _resolve_device(spec: str) -> torch.device:
+    """Resolve ``--device`` to a torch device (never raises on bad input)."""
+    if spec == "auto":
+        return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    try:
+        return torch.device(spec)
+    except Exception as exc:  # pragma: no cover - defensive
+        print(f"[drugood] bad --device {spec!r} ({exc}); falling back to cpu", flush=True)
+        return torch.device("cpu")
+
+
+def _atomic_write(path: Path, text: str) -> None:
+    """Write ``text`` to ``path`` via the AGENTS.md §5.6 atomic-write protocol.
+
+    Prefers :func:`molmetal.scripts.wf386a3_atomic_write.atomic_write_file`
+    (temp-file + ``os.replace``, fsync); falls back to a plain write when the
+    helper is unavailable so the benchmark still produces its output.
+    """
+    try:
+        from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
+
+        atomic_write_file(path, text)
+        return
+    except Exception as exc:
+        print(f"[drugood] atomic_write_file unavailable ({exc}); plain write", flush=True)
+    path.write_text(text)
 
 
 def out_report_set(arg: Optional[str]) -> bool:

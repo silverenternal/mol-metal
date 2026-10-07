@@ -5,10 +5,10 @@
 - max_depth: 0
 - n_partners: 4
 - seed: 0
-- wall_time_s: 0.0220
+- wall_time_s: 0.0048
 
 | metal | 6/6 PASS | n_pass | wall_time_s | error |
 |---|---|---|---|---|
-| Sc | False | 0 | 0.0220 | TypeError: verify_all_catherine_properties() got an unexpected keyword argument 'max_depth' |
+| Sc | False | 0 | 0.0048 | TypeError: verify_all_catherine_properties() got an unexpected keyword argument 'max_depth' |
 | Ti | False | 0 | 0.0000 | TypeError: verify_all_catherine_properties() got an unexpected keyword argument 'max_depth' |
 | V | False | 0 | 0.0000 | TypeError: verify_all_catherine_properties() got an unexpected keyword argument 'max_depth' |

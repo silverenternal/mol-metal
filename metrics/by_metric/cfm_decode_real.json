@@ -17,7 +17,7 @@
   "aggregate_n_total": 818,
   "value": 0.9938875305623472,
   "gap_vs_synthetic": -0.006112469437652757,
-  "wall_time_s": 127.49954128265381,
+  "wall_time_s": 447.4247214794159,
   "device": "cpu",
   "pocket_id": "1h36",
   "jitter": 0.05,
@@ -32,7 +32,7 @@
       "n_samples": 818,
       "n_ok": 813,
       "decode_ratio": 0.9938875305623472,
-      "wall_time_s": 28.479880332946777,
+      "wall_time_s": 355.39225459098816,
       "device": "cpu",
       "closure_bounded": true,
       "pocket_id": "1h36"

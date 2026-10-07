@@ -47,6 +47,39 @@ PROJECT_ROOT="$( cd "${SCRIPT_DIR}/.." && pwd )"
 PY="${PY:-/home/hugo/codes/mol-metal/.venv/bin/python}"
 CFM_TRAINER="${PROJECT_ROOT}/molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
 
+# 2026-10-07 (Wf-R29 Tier-3 migration) — every hyperparameter now comes from
+# configs/cfm.yaml, matching launch_cfm_tmqm_all6_retrain.sh (the canonical CFM
+# template).  Before this edit the wrapper passed NO `--config`, so every value
+# came from the argparse DEFAULT — and the defaults are not equivalent to the
+# yaml.  MEASURED delta (probe of `parse_args()` under the two inputs):
+#
+#   key                 argparse default -> cfm.yaml
+#   use_fm_objective    False            -> True     (velocity target was ZERO)
+#   use_egnn_velocity   False            -> True     (MLP placeholder -> EGNN)
+#   fm_noise_sigma      1.0              -> 2.485    (measured cohort std)
+#   lr_scheduler        "none"           -> "cosine"
+#   hidden_dim          64               -> 128
+#   yuelbond_vocab      "pt"             -> "all6"
+#   n_steps / method    100 / "euler"    -> 50 / "midpoint"
+#   gen_eval_n          None (eval OFF)  -> 256
+#   tmqm_dir            None (synthetic) -> .data/molmetal/tmQM
+#
+# The first two are the load-bearing ones: with `use_fm_objective=False` the
+# flow was trained against a zero target, so every number this wrapper had
+# produced measured an untrained model.  configs/cfm.yaml:39-45 records the
+# same conclusion for the Round-2 cohort.
+#
+# Only RUN-CONTROL args stay on the command line: --epochs/--seed (per-run
+# budget), --pocket-id/--device/--out-dir (placement), plus the ablation and
+# Lambda-coupling tuples, which are the experiment's independent variable.
+#
+# NOTE on the ablation tuples: `--no-wasserstein` sets `wasserstein_weight=0.0`
+# while the argparse default is 0.1, so the loader's "CLI beats YAML" rule
+# keeps the 0.0 (verified by probe, not assumed).  `--use-yuelbond` is a
+# no-op against the default True but cfm.yaml does not declare use_yuelbond
+# either, so it stays consistent.
+CFG="${CFG:-${PROJECT_ROOT}/configs/cfm.yaml}"
+
 # Source the DRY_RUN.log helper (Wf-363-A1 schema) for consistent
 # per-wrapper DRY_RUN.log + plan.json emission.
 DRY_RUN_LOG_HELPER="${PROJECT_ROOT}/scripts/_dry_run_log_helper.sh"
@@ -159,6 +192,13 @@ if [ ! -f "${CFM_TRAINER}" ]; then
     die "CFM trainer missing on disk: ${CFM_TRAINER}"
 fi
 
+# Wf-R29 Tier-3 migration: the yaml is now the sole hyperparameter source, so a
+# missing/typo'd CFG would silently fall back to argparse defaults — the exact
+# silent-lie class this migration exists to remove.  Fail loudly instead.
+if [ ! -f "${CFG}" ]; then
+    die "CFM config missing on disk: ${CFG}"
+fi
+
 # Default Lambda × CFM coupling flags when caller did not override via
 # EXTRA_FLAGS. We honour caller-supplied EXTRA_FLAGS first, then prepend
 # our defaults, so explicit overrides always win.
@@ -260,6 +300,7 @@ cat > "${PLAN_JSON}.tmp" <<EOF
   },
   "user_ok": true,
   "dry_run": ${DRY_RUN},
+  "config": "${CFG}",
   "epochs_per_config": ${EPOCHS},
   "seed": ${SEED},
   "pocket_id": "${POCKET_ID}",
@@ -324,6 +365,7 @@ for key in full_stack yuelbond_only w2_only catherine_only; do
         "${key}" "${ABLATION_FLAG_TUPLE}"
     CUDA_VISIBLE_DEVICES=0 \
         "${PY}" "${CFM_TRAINER}" \
+            --config "${CFG}" \
             --epochs "${EPOCHS}" \
             --seed "${SEED}" \
             --pocket-id "${POCKET_ID}" \

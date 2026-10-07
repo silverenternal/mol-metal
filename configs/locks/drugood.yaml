@@ -1,0 +1,75 @@
+# configs/locks/drugood.yaml — DrugOOD OOD-generalisation cohort (Tier-1 metric m17).
+#
+# Consumed by: molmetal/scripts/train_drugood.py
+# NOTE (MEASURED 2026-10-07): train_drugood.py declares NO `--config` flag
+# (`grep -c config molmetal/scripts/train_drugood.py` -> 0).  It therefore does
+# NOT read this file at runtime.  This YAML is the LOCK-SIDE cohort declaration
+# consumed by
+#   molmetal/scripts/pre_flight_check.py::verify_protocol_lock
+# via the `trainer_config:` key in configs/locks/protocol_lock.yaml, and is the
+# single place the m17 cohort is written down.  The runtime cohort comes from
+# the trainer's own CLI defaults:
+#     --subset lbap_refined_ic50   (dest `subset`, default DRUGOOD_DEFAULT_SUBSET)
+#     --split assay scaffold size   (dest `splits`, default all three axes)
+#     --data-source official        (default; `fallback` forces MetalCytoToxDB)
+#   and the CSV root from molmetal/scripts/drugood_loader.py::DEFAULT_CSV_DIR
+#   (env override DRUGOOD_IC50_CSV_DIR).
+#
+# PLACEMENT (MEASURED 2026-10-07): this file lives under
+# configs/locks/ rather than configs/ BECAUSE _discover_active_configs() globs
+# configs/*.yaml, so a configs/drugood.yaml at the root is picked up by
+# gate_wf343c4_hyperparams_config_complete and FAILs (4 missing hyperparams,
+# 6 RESIDUAL keys).  Declaring fake train.batch_size / model.hidden_dim to
+# satisfy it would be the Wf-A12 silent-lie class: train_drugood.py has no
+# --config flag and would never read them.  configs/locks/ is the documented
+# escape hatch (see the Wf-447 comment above PROTOCOL_LOCK_PATH in
+# molmetal/scripts/pre_flight_check.py).
+#
+# SECTION SCHEMA — see configs/dmpnn.yaml header for the `_LEAF_FALLBACK_SECTIONS`
+# two-component rule.  Keys under `data:` that end in `.csv` are harvested by
+# pre_flight_check._protocol_lock_candidate_datasets (key set: csv / data_csv /
+# dataset / dataset_path / data_path / path / train_csv) and md5-matched against
+# the lock's accepted_dataset_md5.
+
+data:
+  # The three official DrugOOD IC50 axis partitions (Ji 2022 ood_test).
+  # MEASURED md5 2026-10-07 via md5sum; all three ON_DISK under
+  # .data/molmetal/drugood/ic50/csv/ (wf-R33 curator output).
+  dataset_path:
+    - /home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/csv/lbap_refined_ic50_assay.csv
+    - /home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/csv/lbap_refined_ic50_scaffold.csv
+    - /home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/csv/lbap_refined_ic50_size.csv
+
+  # Declarative mirror of the trainer's runtime args (NOT read by the trainer).
+  drugood_csv_dir: /home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/csv
+  drugood_subset: lbap_refined_ic50
+  drugood_axes: [assay, scaffold, size]
+  drugood_data_source: official
+
+protocol:
+  # Copied VERBATIM from configs/locks/protocol_lock.yaml m17_drugood_ood so
+  # verify_protocol_lock's split check PASSes rather than reporting
+  # "undeclared" (the trainer genuinely takes --split as a CLI list).
+  split: assay / scaffold / size (Ji 2022 official ood_test)
+
+eval:
+  n_folds: 3
+  target_metric: binary AUC, 3-split mean (ood_test partition)
+
+entry:
+  command_template: >-
+    .venv/bin/python molmetal/scripts/train_drugood.py
+    --data-source official
+    --subset lbap_refined_ic50
+    --split assay scaffold size
+    --seeds 0 1 2
+
+honest_framing: >-
+  This file is a COHORT DECLARATION, not a runtime config: train_drugood.py
+  has no --config flag and never reads it.  verify_protocol_lock hashes the
+  three CSVs named under data.dataset_path and requires at least one md5 to
+  appear in the lock's accepted_dataset_md5.  It does NOT inspect the argv of
+  a future run, so a retrain launched with `--data-source fallback` would still
+  pass this gate while producing MetalCytoToxDB numbers.  The cohort is
+  additionally guarded at runtime by the gate p3_wf35_protocol_lock_m17_drugood_ood
+  (opt-in via WF35_PROTOCOL_LOCK=1).

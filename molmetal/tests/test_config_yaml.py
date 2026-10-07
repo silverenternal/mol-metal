@@ -345,6 +345,32 @@ class TestApplyYamlOverridesListAlwaysWins:
         finally:
             os.unlink(path)
 
+    def test_explicit_cli_list_beats_yaml_list(self):
+        """Wf-R27 FIX 4 regression guard.
+
+        The launcher loop in every G5/G6-style wrapper enumerates ONE
+        (metal, seed) pair per invocation and passes it explicitly
+        (`--metals Ru --seeds 0`).  Before this fix the list branch in
+        apply_yaml_overrides set the value unconditionally, so the yaml
+        cohort (`data.metals: [auto]`, `data.seeds: [0..4]`) clobbered the
+        explicit pair and every iteration silently ran the FULL grid.
+        """
+        path = _make_yaml("metals: [Ru, Ir, Rh, Os, Re]\nseeds: [0, 1, 2, 3, 4]\n")
+        try:
+            p = _make_parser()
+            args = p.parse_args(
+                ["--config", path, "--metals", "Ru", "--seeds", "0"]
+            )
+            out = apply_yaml_overrides(p, args, args.config)
+            assert out.metals == ["Ru"], (
+                f"explicit --metals must survive yaml list override, got {out.metals}"
+            )
+            assert out.seeds == [0], (
+                f"explicit --seeds must survive yaml list override, got {out.seeds}"
+            )
+        finally:
+            os.unlink(path)
+
 
 # ---------------------------------------------------------------------------
 # TestDmpnnTrainerAcceptsConfig (smoke)

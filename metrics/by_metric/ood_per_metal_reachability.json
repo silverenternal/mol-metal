@@ -6,6 +6,8 @@
   "source": "molmetal/scripts/bench_ood_per_metal.py (Wf-73 P2) for precious metals; molmetal/scripts/bench_ood_per_element.py (Wf-73 P3) for full d-block; molmetal/scripts/bench_closure_ood_30metals.py (Wf-130 P3) for cross-domain coverage expansion.",
   "n_metals": 30,
   "gate_threshold": 0.4,
+  "gate_threshold_provenance": "INTERNAL -- 0.4 is our own OOD-tmQM Tanimoto pass/fail threshold set at Wf-73 P2. It is NOT a literature value and NOT a field average. aggregate_ood_pass_rate 0.8327 and aggregate_reachability_macro 0.4989 are measured against THIS internal threshold only; no external OOD-reachability baseline is compared in this file.",
+  "external_paper_baseline": null,
   "per_metal": {
     "Sc": {
       "atomic_number": 21,

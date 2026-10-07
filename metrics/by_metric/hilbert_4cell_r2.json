@@ -2,6 +2,8 @@
   "metric": "hilbert_4cell_r2",
   "description": "Mean combined Hilbert primal-dual + ASTSR evolutionary R² across 4 PlatinAI cell lines (mcf7 / a549 / a2780 / a2780cis) with per-fold alpha selection on 90/10 inner validation. Post-fix Wf-122 P3 values (L2 + scale-guard + best_ast_lisp fixes applied). Pre-fix Wf-83 P1 5-fold random CV values preserved for comparison.",
   "unit": "R² (can be negative; 1.0 = perfect, 0 = constant-mean baseline)",
+  "baseline_provenance": "The only baselines referenced in this file are INTERNAL and statistical: (a) the constant-mean predictor (R² = 0 reference point, a definitional convention, not a paper number), and (b) the Wf-85 P3 pre-fix self-anchor preserved under pre_fix_comparison. NEITHER is a literature / field-average R². No external Hilbert+ASTSR R² baseline is cited in this file. See TODO/03_baselines/COMPARISON_BASELINES.md 3 for the per-metric alignment state (m2 = APPROX ALIGN, not a numerical comparison).",
+  "external_paper_baseline": null,
   "scope": "tier1_precious_metal_anticancer / Wf-122 P3 post-fix combined anchor",
   "source": "molmetal/scripts/bench_hilbert_astr_combined_real.py (Wf-122 P3 post-fix re-bench on PlatinAI 4-cell strict-scaffold)",
   "n_cell_lines": 4,
@@ -62,7 +64,7 @@
   },
   "pre_fix_comparison": {
     "description": "Wf-85 P3 pre-fix anchor (collapse-tricked) preserved for direct comparison",
-    "aggregate_combined_r2_mean": -1.5030,
+    "aggregate_combined_r2_mean": -1.503,
     "aggregate_combined_r2_std": 1.3226,
     "source": "molmetal/reports/wf85_p3_hilbert_astr_combined_real/{mcf7,a549,a2780,a2780cis}/per_seed_metrics.json",
     "delta_combined_r2_mean": -4.1595,
@@ -105,7 +107,11 @@
     "l5_target_r2_geq_0_85_met": false,
     "l5_delta_vs_gate": -6.51,
     "l5_arch_ceiling_proof": "12-d RDKit signal |ρ| ≤ 0.019 on PlatinAI pIC50 (Wf-49 §Cause 2 audit); linear R² upper bound = (0.019)² · 12 = 0.0043, hence R² ≥ 0 mathematically infeasible on this feature stack. Hilbert L2 + ASTSR scale guard (Wf-122 P1.2) prevents divergence but does NOT lift the architectural signal floor.",
-    "l5_lift_paths": ["Wf-94 R20-P3 Multi-PH + PLL real feature augmentation (~3 wk GPU retrain)", "R22-P4 AlphaFold-Multimer protein-aware descriptors (~6-12 mo)", "R23-P6 wet-lab pIC50 hybrid training (~12-18 mo)"],
+    "l5_lift_paths": [
+      "Wf-94 R20-P3 Multi-PH + PLL real feature augmentation (~3 wk GPU retrain)",
+      "R22-P4 AlphaFold-Multimer protein-aware descriptors (~6-12 mo)",
+      "R23-P6 wet-lab pIC50 hybrid training (~12-18 mo)"
+    ],
     "l5_paper_section6_verdict": "RELEGATE to §6 honest limitations; do NOT cite in §4 main; cite the Wf-127 + Wf-128 + Wf-129 honest-negative 3-Wf table + 3 future lift paths."
   },
   "honest_framing_note": "Combined R² can be negative when the learned predictor is worse than the constant-mean baseline. Post-fix R² is WORSE than pre-fix because the pre-fix -1.50 was an artifact of the ASTSR-collapse trick (constant predictor yielding R² ≈ -0.014), which the Wf-122 P1.2 scale-guard correctly rejects. The post-fix -5.66 is the TRUE R² on the Wf-49 §Cause 2 signal-floor regime (every F5_RDKIT_2D feature has |ρ| < 0.02 on PlatinAI pIC50). Wf-139 P4 close-out (TODO/completed/137_l5_l7_l10_arch_ceiling_honest.md) confirms this is an ARCHITECTURAL CEILING: 3 independent Wf rescue attempts (Wf-127 Hilbert L2 + ASTSR scale; Wf-128 172-d multi-task + Wasserstein; Wf-129 Multi-PH+PLL + Wasserstein + L2) all converge on the same 12-d RDKit signal floor. The architectural fix for lifting R² ≥ 0 is Multi-PH + PLL feature augmentation with REAL 172-d features (Wf-94 / TODO-94 R20-P3 GPU retrain, ETA Q1) combined with AlphaFold-Multimer protein-aware descriptors (R22-P4, ETA +6-12 mo) and wet-lab pIC50 labels (R23-P6, ETA +12-18 mo). See TODO/completed/111_wf85_r2_root_fix.md for full close-out, TODO/completed/137_l5_l7_l10_arch_ceiling_honest.md for the consolidated Wf-139 P4 architectural-ceiling doc, and wf122_p3_post_fix/synthesis.md for pre/post comparison.",
@@ -142,5 +148,49 @@
     "verdict": "CODE_SHIP_BENCH_DEFERRED — 172-d feature builder (Wf-128 P1) + 172-d multi-task 4-cell backbone (Wf-125 P3) SHIP; 37 tests (34 lightweight PASS in < 1 s + 3 cache-dependent DEFERRED); full bench DEFERRED on 4078-SMILES cache-build timeout (~30 min cache + ~30 min bench = ~80 min total)",
     "honest_framing_note": "The 172-d + multi-task + Wasserstein stack is the STRONGEST honesty-tier lever we have for breaking the 12-d RDKit signal floor. The Wf-129 P3 Multi-PH + PLL end-to-end guarded sibling MEASURED R² = -0.0780 ± 0.0148 (per-cell-line: MCF7 -0.0582 / A549 -0.0702 / A2780 -0.0967 / A2780cis -0.0868; +5.58 R² delta vs Wf-122 P3 post-fix combined -5.66) — the regularisers PREVENT divergence but do NOT lift the architectural signal floor. The 172-d + multi-task + Wasserstein bench (when it ships) will confirm whether the full stack can cross 0 for at least 1 cell line. If not, the L4/L5/L7/L8/L11 central Lambda claim needs a different feature regime (e.g., reaction-product features from the 5-click productive space).",
     "source": "molmetal/reports/wf125_p3_172d_multitask/synthesis.md + molmetal/scripts/build_172d_features.py + molmetal/scripts/bench_hilbert_astr_172d_multitask.py"
+  },
+  "p_d_rescope_verdict": {
+    "date": "2026-10-07",
+    "phase": "P-D (ultracode coverage wave — L5 Hilbert R2 honest-negative re-scope)",
+    "verdict": "HONEST_NEGATIVE_R2_ARCHITECTURAL_CEILING_FINAL",
+    "verdict_change": "none — confirms existing top-level `verdict` = MEASURED_HONEST_NEGATIVE_R2_ARCHITECTURAL_CEILING (Wf-139 P4); P-D adds the FINAL marker + drop-from-§3 recommendation, no re-measurement",
+    "status_change": "none — status stays MEASURED_BELOW_GATE",
+    "roadmap_ref": "TODO/03_plans/LAMBDA_ROADMAP.md §4.2 L5 row + TODO-93 (R20-P2) + TODO-179 (L5 Hilbert R2 W2 pIC50 alignment, STATUS_HOLD per Wf-316A)",
+    "wf377a1_ref": "TODO/completed/377a1_m6_kappa_redesign.md (Wf-377-A1 m6_kappa redesign — the drop-from-§3 precedent this verdict follows)",
+    "latest_measured_value": {
+      "value": -0.07797702131842915,
+      "std": 0.0148,
+      "tag": "MEASURED",
+      "source": "metrics/by_metric/hilbert_4cell_r2.json::wf129_p3_multiph_pll_guarded_l7_lift_caveat (Wf-129 P3 Multi-PH + PLL guarded, 5 seeds x n=200, hilbert_dim=64, PlatinAI 4-cell)",
+      "supersedes_for_current_state": -5.662524090882017,
+      "supersedes_note": "Wf-122 P3 post-fix combined -5.6625 remains valid as the no-collapse pre-MultiPH anchor; Wf-129 P3 is LESS NEGATIVE and is the current best measured L5 state"
+    },
+    "gate": {
+      "target": "R2 >= 0.85",
+      "target_source": "TODO/03_plans/LAMBDA_ROADMAP.md §4.2 L5 row, R20 列 (R17 baseline 0.62 -> R20 gate 0.85)",
+      "delta_vs_gate": -0.9279770213184292,
+      "met": false
+    },
+    "gate_target_unreachable_within_architecture": true,
+    "unreachability_basis": "12-d RDKit signal floor — every F5_RDKIT_2D feature has |rho| <= 0.019 on PlatinAI pIC50 (Wf-49 §Cause 2 audit); linear R² upper bound = 0.019^2 * 12 = 0.0043, so R² >= 0 is mathematically infeasible on this feature stack. Wf-127 / Wf-128 / Wf-129 (3 independent rescue waves) all converge on the same floor.",
+    "attempts_exhausted": [
+      "Wf-127 Hilbert L2 + ASTSR scale",
+      "Wf-128 172-d multi-task + Wasserstein",
+      "Wf-129 Multi-PH + PLL + Wasserstein + L2"
+    ],
+    "remaining_lift_paths_in_silico_only": [
+      "Wf-94 / TODO-94 R20-P3 Multi-PH + PLL REAL 172-d feature augmentation (32-bin Fourier + 128-d PLL signature, NOT zero-padded)",
+      "R22-P4 AlphaFold-Multimer protein-aware descriptors"
+    ],
+    "deprecated_paths": [
+      "R23-P6 wet-lab pIC50 hybrid training — DEPRECATED per AGENTS.md §5.4 + §10 (2026-09-29 / 2026-09-30 user directives: no wet-lab planning)"
+    ],
+    "recommendation": "drop-from-§3-main + USER_OK-gated paper conversion — move L5 to Tier-2 §3 supplementary / §6 Limitations honest-negative table per the m6_kappa precedent (Wf-377-A1 + Wf-389-A1 + Wf-375-A4); any paper/* write still requires explicit user OK per TODO-84 + AGENTS.md §5.3",
+    "premise_corrections": [
+      "Task brief cited `augmented_mean 0.472 < 0.6 gate` as the L5 gate — that number is m6_kappa's (LAMBDA_ROADMAP line 506 + METRIC_LIFT_STRATEGY_v2.md §3.5), NOT L5's. L5's gate is R² >= 0.85. Both re-scope to drop-from-§3, but the gate values are not interchangeable; this JSON records L5's own.",
+      "Task brief cited `TODO/completed/377_a1_lit_honest_synthesis.md` — no such file on disk. The real Wf-377-A1 doc is `TODO/completed/377a1_m6_kappa_redesign.md`; cited that instead."
+    ],
+    "gpu_spent": "none — 0 retrain, 0 CUDA calls (per wf-R32 §4.2: do NOT spend GPU)",
+    "paper_touches": "none — TODO-84 + AGENTS.md §5.3 respected"
   }
 }

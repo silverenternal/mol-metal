@@ -76,6 +76,14 @@ PROJECT_ROOT="/home/hugo/codes/mol-metal"
 SCRIPTS_DIR="${PROJECT_ROOT}/molmetal/scripts"
 REPORTS_DIR="${PROJECT_ROOT}/molmetal/reports/wf390a1_path_a"
 TRAINER="${SCRIPTS_DIR}/train_dmpnn_multitask_wasserstein.py"
+# 2026-10-07 (user directive: "所有启动脚本都用yaml管理…不要用cli,那样不好追溯").
+# The trainer already accepts --config and ends parse_args() in
+# apply_yaml_overrides (train_dmpnn_multitask_wasserstein.py:3320-3322), so the
+# yaml is the base and the per-call flags below override it.
+# Precedence: explicit CLI flag > YAML > argparse default.
+# Absolute: this wrapper has no top-level `cd`, so a relative path would
+# resolve against the caller's cwd.
+DMPNN_CONFIG="${DMPNN_CONFIG:-${PROJECT_ROOT}/configs/dmpnn.yaml}"
 # Wf-261 strict scaffold split (0 leak) + v4 cohort
 DATA_CSV="${PROJECT_ROOT}/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 
@@ -371,6 +379,7 @@ run_pair() {
 
   echo "=== $(date '+%H:%M:%S') START ${metal} seed=${seed} ===" | tee -a "${LOG}"
   CUDA_VISIBLE_DEVICES=0 ${PY} "${TRAINER}" \
+    --config "${DMPNN_CONFIG}" \
     --metals "${metal}" \
     --seeds "${seed}" \
     --csv "${DATA_CSV}" \

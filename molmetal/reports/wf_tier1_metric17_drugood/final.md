@@ -11,19 +11,20 @@ comparison):
 | scaffold | 0.6884 | 0.6879 | >= 0.6684 |
 | size | 0.6792 | 0.6750 | >= 0.6592 |
 
-**Data source:** MetalCytoToxDB fallback (cell_line / scaffold / heavy-atom bucket OOD axes)
+**Data source:** Official DrugOOD IC50 axis partitions (subset=lbap_refined_ic50) via `molmetal.scripts.drugood_loader.load_drugood_split` — `train` / `ood_val` / `ood_test` / `iid_test` are the DrugOOD-published partitions, NOT re-derived here.  Labels binarised at pIC50 >= 5.0 (IC50 <= 10 uM), reproducing the DrugOOD `cls_label` column.
 **Featurization:** Morgan FP (radius=2, n_bits=2048)
 **Model:** V4 MLP on Morgan FP (2048 -> 256 -> 128 -> 1, BCE-with-pos-weight)
-**Splits:** assay (hold-out cell_line) / scaffold (Bemis-Murcko) / size (heavy-atom bucket)
+**Splits:** assay / scaffold / size — the three official DrugOOD IC50 axis splits consumed verbatim from the curator CSVs
 **Seeds:** 0, 1, 2
+**Official `ood_test` row counts:** assay=53291, scaffold=53304, size=51922 (total 158517)
 
 ## Results
 
 | Split | Our ID AUC | Our OOD AUC | iMoLD ref | ERM ref | Gate | Verdict |
 |---|---|---|---|---|---|---|
-| assay | 0.9743 +/- 0.0047 | **0.8914 +/- 0.0019** | 0.7211 | 0.7163 | >= 0.7011 | PASS |
-| scaffold | 0.9567 +/- 0.0148 | **0.6973 +/- 0.0271** | 0.6884 | 0.6879 | >= 0.6684 | PASS |
-| size | 0.9363 +/- 0.0134 | **0.7479 +/- 0.0055** | 0.6792 | 0.6750 | >= 0.6592 | PASS |
+| assay | 0.9107 +/- 0.0022 | **0.7304 +/- 0.0039** | 0.7211 | 0.7163 | >= 0.7011 | PASS |
+| scaffold | 0.8569 +/- 0.0006 | **0.6902 +/- 0.0037** | 0.6884 | 0.6879 | >= 0.6684 | PASS |
+| size | 0.9096 +/- 0.0009 | **0.6763 +/- 0.0017** | 0.6792 | 0.6750 | >= 0.6592 | PASS |
 
 **Overall verdict:** PASS (mean across 3 splits >= mean(iMoLD - 0.02))
 
@@ -33,25 +34,25 @@ comparison):
 
 | Seed | n_train | n_test (OOD) | pos_rate_test | ID AUC | OOD AUC |
 |---|---|---|---|---|---|
-| 0 | 3994 | 834 | 0.291 | 0.9752 | **0.8888** |
-| 1 | 3994 | 834 | 0.291 | 0.9681 | **0.8924** |
-| 2 | 3994 | 834 | 0.291 | 0.9796 | **0.8929** |
+| 0 | 95373 | 53291 | 0.854 | 0.9134 | **0.7250** |
+| 1 | 95373 | 53291 | 0.854 | 0.9081 | **0.7327** |
+| 2 | 95373 | 53291 | 0.854 | 0.9106 | **0.7337** |
 
 ### scaffold
 
 | Seed | n_train | n_test (OOD) | pos_rate_test | ID AUC | OOD AUC |
 |---|---|---|---|---|---|
-| 0 | 3681 | 1060 | 0.292 | 0.9724 | **0.7223** |
-| 1 | 3692 | 1053 | 0.354 | 0.9608 | **0.7101** |
-| 2 | 3681 | 1045 | 0.340 | 0.9368 | **0.6597** |
+| 0 | 60908 | 53304 | 0.818 | 0.8561 | **0.6872** |
+| 1 | 60908 | 53304 | 0.818 | 0.8573 | **0.6881** |
+| 2 | 60908 | 53304 | 0.818 | 0.8572 | **0.6954** |
 
 ### size
 
 | Seed | n_train | n_test (OOD) | pos_rate_test | ID AUC | OOD AUC |
 |---|---|---|---|---|---|
-| 0 | 3741 | 968 | 0.310 | 0.9397 | **0.7405** |
-| 1 | 3565 | 1216 | 0.296 | 0.9508 | **0.7497** |
-| 2 | 3797 | 912 | 0.273 | 0.9184 | **0.7536** |
+| 0 | 97779 | 51922 | 0.787 | 0.9106 | **0.6770** |
+| 1 | 97779 | 51922 | 0.787 | 0.9098 | **0.6740** |
+| 2 | 97779 | 51922 | 0.787 | 0.9083 | **0.6781** |
 
 ## Honest caveats
 

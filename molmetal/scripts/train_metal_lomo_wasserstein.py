@@ -27,6 +27,19 @@ Stacks three innovations on top of the existing ``train_metal_lomo.py``:
    to the **training pool** when the held-out metal is Rh (the LOMO
    bottleneck).  The synthetics carry an *inactive* label by default
    (MetalCytoToxDB Rh is ~85 % inactive at the IC50<10 µM gate).
+
+   .. warning:: **OFF by default since Wf-R10** (``--rh-oversample`` now
+      defaults to ``0``, was ``500``).  The cohort's labels are NOT
+      measured — ``append_synthetic_rh_to_dataset`` hard-codes
+      ``pIC50=7.0`` for the Active=1 half and ``5.0`` for the other, and the
+      positive half originates from a *similarity-transfer* generator whose
+      own self-declared median max-sim is 0.183 ("weak evidence").  Against
+      the 108 real Rh rows in ``molmetal/data/metal_lomo.csv`` this makes
+      82 % of the Rh train block fabricated, and the model fits the rule
+      "synthetic-Rh chemistry => active" which the real-only LOMO test fold
+      then scores as its absence.  MEASURED: every wave with
+      ``n_synthetic_rh_appended=500`` lands Rh at 0.338-0.411 regardless of
+      epoch count.  Pass ``--rh-oversample 500`` explicitly to restore it.
 3. **Multi-task D-MPNN backbone with per-metal embedding extraction** —
    we reuse the existing multi-task model and **instrument it** with a
    per-metal embedding hook (the pooled ``2H``-dim representation
@@ -55,7 +68,7 @@ CPU smoke run (default; small subset, 2 seeds, 5 epochs)::
     cd /home/hugo/codes/mol-metal && \
       .venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py \
         --metals Ru Ir Os Rh Re --seeds 0 1 \
-        --wasserstein-weight 0.05 --rh-oversample 500 \
+        --wasserstein-weight 0.05 \
         --epochs 5 --quick \
         --out-dir molmetal/reports/wf125_p2_lomo_rerun
 
@@ -63,7 +76,7 @@ Full 5-seed × 30-epoch run (CPU or GPU-1)::
 
     .venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py \
         --metals Ru Ir Os Rh Re --seeds 0 1 2 3 4 \
-        --wasserstein-weight 0.05 --rh-oversample 500 \
+        --wasserstein-weight 0.05 \
         --epochs 30 \
         --out-dir molmetal/reports/wf125_p2_lomo_rerun
 
@@ -100,6 +113,7 @@ del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
 import argparse
 import json
 import logging
+import random  # Wf-R19-A1: seeded alongside torch/numpy for full RNG coverage
 import statistics
 import sys
 import time
@@ -192,6 +206,88 @@ L2_GUARD_MAX_NORM: float = 5.0
 # predictions the D-MPNN W₂ regulariser can produce early in training.
 _ASTR_SCALE_CLIP_MIN: float = float(DEFAULT_ASTSR_SCALE_CLIP[0])
 _ASTR_SCALE_CLIP_MAX: float = float(DEFAULT_ASTSR_SCALE_CLIP[1])
+
+# ---------------------------------------------------------------------------
+# Wf-R19 Fix 3 — LR scheduler factory (ported, zero new algorithm).
+#
+# Byte-identical body to ``build_lr_scheduler()`` in
+# ``train_cfm_yuelbond_wasserstein.py`` (L359-414) and
+# ``train_dmpnn_multitask_wasserstein.py`` (L329-385) — the R19 fix plan
+# §Fix 3 explicitly says "copy that, don't re-derive".  Importing the CFM
+# symbol instead would drag that 8k-line trainer's module-level side
+# effects (data-dir env munging at its L110-123) into this entry point,
+# so the helper is duplicated verbatim and kept in sync by review.
+# ---------------------------------------------------------------------------
+from torch.optim.lr_scheduler import (  # Wf-R19 Fix 3
+    CosineAnnealingLR,
+    LinearLR,
+    OneCycleLR,
+    SequentialLR,
+)
+
+#: Scheduler strategies accepted by ``--lr-scheduler``.
+#: ``none`` keeps the historical fixed-LR path (bit-for-bit baseline).
+LR_SCHEDULER_TYPES = ("none", "cosine", "onecycle")
+
+
+def build_lr_scheduler(
+    optimizer: torch.optim.Optimizer,
+    total_steps: int,
+    scheduler_type: str,
+    warmup_steps: int,
+    min_lr: float,
+) -> object:
+    """Wf-R19 Fix 3 — LR scheduler factory, ported from the CFM trainer.
+
+    Args:
+        optimizer: torch.optim.Optimizer (Adam / AdamW over the D-MPNN-MT params).
+        total_steps: total optimizer steps (epochs * steps_per_epoch).
+        scheduler_type: 'none' | 'cosine' | 'onecycle'.
+        warmup_steps: linear warmup duration in steps (0 = no warmup).
+        min_lr: cosine floor / onecycle final_div_factor reference.
+
+    Returns:
+        None if scheduler_type == 'none'; otherwise an LRScheduler.
+
+    Notes:
+        - 'cosine': LinearLR warmup (start_factor=0.01 -> 1.0) +
+          SequentialLR([LinearLR, CosineAnnealingLR], milestones=[warmup_steps]).
+        - 'onecycle': Smith-Topin 2018 super-convergence (max_lr = base * 10).
+    """
+    if scheduler_type == "none":
+        return None
+    if scheduler_type == "cosine":
+        # Guard: warmup_steps must be < total_steps (else cosine gets 0 steps).
+        warmup_steps = max(0, min(int(warmup_steps), int(total_steps) - 1))
+        cosine_steps = max(1, int(total_steps) - warmup_steps)
+        warmup = LinearLR(
+            optimizer, start_factor=0.01, end_factor=1.0, total_iters=warmup_steps
+        )
+        cosine = CosineAnnealingLR(optimizer, T_max=cosine_steps, eta_min=float(min_lr))
+        if warmup_steps == 0:
+            return cosine
+        return SequentialLR(
+            optimizer,
+            schedulers=[warmup, cosine],
+            milestones=[warmup_steps],
+        )
+    if scheduler_type == "onecycle":
+        # Wf-R19 Fix 3 — BUG FIX on port. The CFM (L403) and D-MPNN (L374)
+        # twins index ``optimizer.defaults[0]["lr"]``, but ``defaults`` is a
+        # plain dict, so subscripting it raises ``KeyError: 0`` on the very
+        # first call and the 'onecycle' branch was unreachable in both.
+        # Correct access is ``defaults["lr"]``.
+        base_lr = float(optimizer.defaults["lr"])
+        return OneCycleLR(
+            optimizer,
+            max_lr=base_lr * 10,
+            total_steps=int(total_steps),
+            pct_start=0.3,
+            anneal_strategy="cos",
+            div_factor=25,
+            final_div_factor=1e4,
+        )
+    raise ValueError(f"build_lr_scheduler: unknown scheduler_type={scheduler_type!r}")
 
 
 # ---------------------------------------------------------------------------
@@ -674,7 +770,16 @@ class WassersteinLOMOResult:
     wasserstein_cadence: str = "per-epoch"
     w2_batches_applied: int = 0
     w2_batches_skipped: int = 0
-    use_l2_guard: bool = False
+    # Wf-R19-A1 (2026-10-07): default flipped False→True.  The L2 grad-norm
+    # guard is the cheapest variance reducer available on the LOMO trainer
+    # at n_test=166 — R19-S audit + bootstrap CI showed per-seed spread
+    # (range 0.0389) is at the noise floor of the AUC sampling SE (0.0350),
+    # so any reduction below 0.0350 is INDISTINGUISHABLE FROM NOISE, but
+    # ``use_l2_guard`` is still a free defensive default.  Backward compat:
+    # scripts that explicitly pass ``--use-l2-guard`` continue to get True
+    # (now the default anyway); scripts that want the legacy OFF behaviour
+    # pass ``--no-use-l2-guard``.
+    use_l2_guard: bool = True
     use_astr_scale_guard: bool = False
     l2_guard_max_norm: float = L2_GUARD_MAX_NORM
     astr_scale_clip_min: float = _ASTR_SCALE_CLIP_MIN
@@ -714,7 +819,9 @@ class WassersteinLOMORunner:
         seed: int = 42,
         device: Optional[torch.device] = None,
         synthetic_rh_count: int = 0,
-        use_l2_guard: bool = False,
+        # Wf-R19-A1: default flipped False→True (matches dataclass default).
+        # See comment on the dataclass field for the rationale.
+        use_l2_guard: bool = True,
         use_astr_scale_guard: bool = False,
         l2_guard_max_norm: float = L2_GUARD_MAX_NORM,
         astr_scale_clip_min: float = _ASTR_SCALE_CLIP_MIN,
@@ -728,6 +835,16 @@ class WassersteinLOMORunner:
         rh_loso_validation: bool = False,
         per_metal_pic50_center: bool = False,
         metal_strip_mode: str = "retain",
+        # Wf-R19 Fix 3 — LR schedule. Defaults match the CFM trainer's flag
+        # defaults so a config authored for one runs identically on the other;
+        # the R19 plan asks for ``--lr-scheduler cosine --lr-warmup-epochs 5``
+        # at the LAUNCHER, not as a silent trainer default (changing the
+        # trainer default would break bit-for-bit comparability with every
+        # archived Wf-125/Wf-131 panel).
+        lr_scheduler: str = "none",
+        lr_warmup_epochs: int = 5,
+        lr_min_lr: float = 1e-6,
+        weight_decay: float = 0.0,
     ) -> None:
         self.ds = ds
         self.held_out_metal = held_out_metal
@@ -789,6 +906,18 @@ class WassersteinLOMORunner:
                 "one of 'retain', 'strip', 'annotate'"
             )
         self.metal_strip_mode = metal_strip_mode
+        # Wf-R19 Fix 3 — LR schedule knobs. Fail fast on an unknown strategy
+        # rather than letting build_lr_scheduler raise deep inside run().
+        _ls = str(lr_scheduler)
+        if _ls not in LR_SCHEDULER_TYPES:
+            raise ValueError(
+                f"lr_scheduler must be one of {sorted(LR_SCHEDULER_TYPES)}, "
+                f"got {lr_scheduler!r}"
+            )
+        self.lr_scheduler = _ls
+        self.lr_warmup_epochs = int(lr_warmup_epochs)
+        self.lr_min_lr = float(lr_min_lr)
+        self.weight_decay = float(weight_decay)
         # Serial execution on GPU 0 (2026-10-03 directive): the old
         # ">1 GPU visible -> cuda:1" auto-pick routed every multi-GPU host
         # to the second card.
@@ -843,6 +972,13 @@ class WassersteinLOMORunner:
     def run(self, verbose: bool = False) -> WassersteinLOMOResult:
         torch.manual_seed(self.seed)
         np.random.seed(self.seed)
+        # Wf-R19-A1 (2026-10-07): seed python's built-in ``random`` too.
+        # The audit found ``random.seed=0`` and no DataLoader ``generator=``
+        # anywhere in the LOMO trainer — any python-``random``-driven
+        # shuffle / augmentation / splitter-side randomness was uncontrolled
+        # RNG, which is suspected of contributing to the observed per-seed
+        # spread (range 0.0389 vs AUC sampling SE 0.0350 at n_test=166).
+        random.seed(self.seed)
 
         split = self.splitter(self.ds)
         smiles_all = self.ds.smiles
@@ -982,7 +1118,43 @@ class WassersteinLOMORunner:
             depth=self.depth,
             dropout=self.dropout,
         ).to(self.device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(
+            model.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        )
+        # Wf-R19 Fix 3 — instantiate the LR scheduler (opt-in).
+        #
+        # ``steps_per_epoch`` counts BATCHES, which is the unit this loop's
+        # ``optimizer.step()`` fires in. That differs from the CFM / D-MPNN
+        # trainers, which compute ``total_steps`` the same way but only call
+        # ``scheduler.step()`` once per EPOCH — so their cosine schedule is
+        # stretched over ``steps_per_epoch``x longer than the total it was
+        # sized for and effectively anneals only 1/steps_per_epoch of the
+        # way. This trainer steps the scheduler per BATCH, which is the
+        # semantically correct pairing for a batch-denominated total_steps.
+        # The R19 plan says "copy the pattern"; the pattern's step cadence is
+        # the one part that is not portable, so it is corrected here and the
+        # correction is logged at runtime.
+        _steps_per_epoch = max(
+            1, len(graphs_train) // max(1, self.batch_size)
+        )
+        _total_steps = max(1, int(self.epochs) * int(_steps_per_epoch))
+        _warmup_steps = max(0, int(self.lr_warmup_epochs) * int(_steps_per_epoch))
+        scheduler = build_lr_scheduler(
+            optimizer=optimizer,
+            total_steps=_total_steps,
+            scheduler_type=self.lr_scheduler,
+            warmup_steps=_warmup_steps,
+            min_lr=self.lr_min_lr,
+        )
+        if scheduler is not None:
+            logger.info(
+                "[lr-sched] fold=%s seed=%d type=%s warmup_epochs=%d "
+                "steps/epoch=%d total_steps=%d min_lr=%.2e wd=%.1e "
+                "(step cadence: PER BATCH)",
+                self.held_out_metal, self.seed, self.lr_scheduler,
+                self.lr_warmup_epochs, _steps_per_epoch, _total_steps,
+                self.lr_min_lr, self.weight_decay,
+            )
         from molmetal.baselines.dmpnn_multitask import MultiTaskLoss
 
         # pos_weight != None switches MultiTaskLoss to BCEWithLogitsLoss on
@@ -1200,6 +1372,12 @@ class WassersteinLOMORunner:
                         model.parameters(), self.l2_guard_max_norm
                     )
                 optimizer.step()
+                # Wf-R19 Fix 3 — LR scheduler advance. ONE step per optimizer
+                # step, matching the batch-denominated ``_total_steps`` used to
+                # size the schedule above. Default OFF (scheduler is None)
+                # preserves the pre-R19 fixed-LR path bit-for-bit.
+                if scheduler is not None:
+                    scheduler.step()
 
                 bs = len(y_active)
                 total_loss += loss.item() * bs
@@ -1500,6 +1678,54 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument("--epochs", type=int, default=30)
     p.add_argument("--batch-size", type=int, default=MT_BATCH_SIZE)
     p.add_argument("--lr", type=float, default=MT_LR)
+    # Wf-R19 Fix 3 — LR schedule. Ported from the CFM trainer
+    # (build_lr_scheduler) with identical flag names, choices and defaults,
+    # so a config authored for train_cfm_yuelbond_wasserstein.py carries over.
+    p.add_argument(
+        "--lr-scheduler",
+        type=str,
+        choices=list(LR_SCHEDULER_TYPES),
+        default="none",
+        help=(
+            "Wf-R19 Fix 3: LR scheduler strategy. 'none' (default) keeps the "
+            "pre-R19 fixed-LR path bit-for-bit, preserving comparability with "
+            "the archived Wf-125/Wf-131 panels. 'cosine' applies linear warmup "
+            "for --lr-warmup-epochs followed by CosineAnnealingLR down to "
+            "--lr-min-lr (Loshchilov-Hutter 2017 SGDR). 'onecycle' applies the "
+            "Smith-Topin 2018 super-convergence policy (max_lr = base * 10). "
+            "The scheduler advances once per optimizer step (per batch). "
+            "PROJECTED variance reduction on the Re fold; MEASURED lift "
+            "requires a GPU re-run per AGENTS.md §5.1/§5.2."
+        ),
+    )
+    p.add_argument(
+        "--lr-warmup-epochs",
+        type=int,
+        default=5,
+        help=(
+            "Wf-R19 Fix 3: linear warmup duration in epochs before the cosine "
+            "anneal. Default 5. Only effective when --lr-scheduler != 'none'."
+        ),
+    )
+    p.add_argument(
+        "--lr-min-lr",
+        type=float,
+        default=1e-6,
+        help=(
+            "Wf-R19 Fix 3: floor LR for cosine annealing. Default 1e-6. "
+            "Only effective when --lr-scheduler == 'cosine'."
+        ),
+    )
+    p.add_argument(
+        "--weight-decay",
+        type=float,
+        default=0.0,
+        help=(
+            "Wf-R19 Fix 3: Adam L2 penalty. Default 0.0 (preserves the "
+            "pre-R19 optimizer bit-for-bit). Set 1e-5..1e-4 for the decoupled "
+            "variant recommended by Loshchilov & Hutter 2017 §4."
+        ),
+    )
     p.add_argument("--hidden", type=int, default=MT_HIDDEN)
     p.add_argument("--depth", type=int, default=MT_DEPTH)
     p.add_argument("--alpha", type=float, default=MT_ALPHA)
@@ -1604,8 +1830,44 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument(
         "--rh-oversample",
         type=int,
-        default=500,
-        help="Number of synthetic Rh compounds to append when Rh is held-out.",
+        default=0,
+        help=(
+            "Number of synthetic Rh compounds to append when Rh is held-out. "
+            "DEFAULT CHANGED 500 -> 0 per Wf-R10 §1 (MEASURED root cause: "
+            "the cohort is a FABRICATED-LABEL leak, not data). The 500-row "
+            "cohort carries 50/50 Active=1/Active=0 labels whose pIC50 is "
+            "hard-coded to 7.0/5.0 in append_synthetic_rh_to_dataset "
+            "(neither value is measured), so the model learns the rule "
+            "'synthetic-Rh chemistry => active' while the LOMO test fold "
+            "measures the ABSENCE of that rule. Against 108 real Rh rows in "
+            "metal_lomo.csv that is 82%% of the Rh train block fabricated. "
+            "MEASURED consequence: every wave with n_synthetic_rh_appended=500 "
+            "scores Rh 0.338-0.411 (dmpnn_clean5v6_w2_real_30ep Rh=0.3713; "
+            "dmpnn_w2_everybatch_30ep Rh=0.3789) -- the constant is the "
+            "cohort, not the epoch count. Pass a positive value explicitly "
+            "(e.g. --rh-oversample 500) to reproduce the historical path."
+        ),
+    )
+    # Wf-R40 P-A alias.  PROTOCOL_RECONCILIATION_AND_RE_PLAN_2026_10_07.md
+    # line 296 (the §5.7 smoke spec) invokes ``--n-synthetic-rh 0``, but the
+    # trainer has only ever exposed ``--rh-oversample``.  That is a DOC/CLI
+    # NAME MISMATCH, not a missing capability: both spellings write the same
+    # ``rh_oversample`` dest, which is what ``_build_dataset(args,
+    # rh_over=args.rh_oversample)`` reads to produce ``n_synthetic_rh_appended``
+    # (the P-A "real-only fold" invariant).
+    #
+    # ``default=argparse.SUPPRESS`` is load-bearing: when NEITHER spelling is
+    # passed this argument must not touch the namespace, so the canonical
+    # ``--rh-oversample`` default (and any value it was given) stays
+    # authoritative.  When both are passed, ordinary argparse ordering applies
+    # and the last one on the command line wins.  help=SUPPRESS keeps it out of
+    # --help so it does not read as a second, independent knob.
+    p.add_argument(
+        "--n-synthetic-rh",
+        dest="rh_oversample",
+        type=int,
+        default=argparse.SUPPRESS,
+        help=argparse.SUPPRESS,
     )
     p.add_argument(
         "--rh-cohort-json",
@@ -1712,13 +1974,16 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     # Wf-127 P2 grad-norm guard (D-MPNN analogue of the Hilbert dual
-    # shrinkage guard).  Off by default; engages when ``--use-l2-guard``.
+    # shrinkage guard).  Wf-R19-A1 (2026-10-07): default flipped OFF→ON.
+    # Backward compat: scripts that opt out pass ``--no-use-l2-guard``.
     p.add_argument(
         "--use-l2-guard",
         dest="use_l2_guard",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Wf-127 P2: clip grad-norm to L2_GUARD_MAX_NORM each step "
-        "(default 5.0). Off by default — backward-compat with Wf-125 P2.",
+        "(default 5.0). ON by default per Wf-R19-A1; pass --no-use-l2-guard "
+        "for the legacy OFF behaviour.",
     )
     p.add_argument(
         "--l2-guard-max-norm",
@@ -1922,6 +2187,13 @@ def _run_one(
             getattr(args, "per_metal_pic50_center", False)
         ),
         metal_strip_mode=str(getattr(args, "metal_strip_mode", "retain")),
+        # Wf-R19 Fix 3 — LR schedule wiring. getattr with the argparse
+        # defaults keeps a caller that builds a Namespace by hand (the
+        # tests do) on the bit-for-bit baseline path.
+        lr_scheduler=str(getattr(args, "lr_scheduler", "none")),
+        lr_warmup_epochs=int(getattr(args, "lr_warmup_epochs", 5)),
+        lr_min_lr=float(getattr(args, "lr_min_lr", 1e-6)),
+        weight_decay=float(getattr(args, "weight_decay", 0.0)),
     )
     t0 = time.time()
     res = runner.run(verbose=True)
@@ -2403,6 +2675,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             getattr(args, "rh_cohort_active_json", "") or ""
         ),
         "use_l2_guard": bool(args.use_l2_guard),
+        # Wf-R19 Fix 3 — record the LR schedule in every emitted JSON so a
+        # reader can never mistake a fixed-LR run for a cosine-annealed one.
+        "lr_scheduler": str(getattr(args, "lr_scheduler", "none")),
+        "lr_warmup_epochs": int(getattr(args, "lr_warmup_epochs", 5)),
+        "lr_min_lr": float(getattr(args, "lr_min_lr", 1e-6)),
+        "weight_decay": float(getattr(args, "weight_decay", 0.0)),
         "use_astr_scale_guard": bool(args.use_astr_scale_guard),
         "l2_guard_max_norm": float(args.l2_guard_max_norm),
         "astr_scale_clip_min": float(args.astr_scale_clip_min),

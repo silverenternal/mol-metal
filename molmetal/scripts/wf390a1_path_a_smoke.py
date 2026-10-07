@@ -72,7 +72,10 @@ TRAINER_PATH = (
 # Path A 5-metal subset (matches trainer FIVE_METALS exactly)
 PATH_A_METALS: Tuple[str, ...] = ("Ru", "Ir", "Rh", "Os", "Re")
 
-# Wf-379-A2 11-metal set (would FAIL argparse; preserved for negative test)
+# Wf-379-A2 11-metal set. Originally a NEGATIVE test (rejected by
+# `choices=FIVE_METALS`). Wf-A6 BLOCKER A (commit 7600ea088e) removed the
+# `choices=` constraint so `--metals` auto-discovers from the CSV metal
+# column; this constant is retained as a POSITIVE dynamic-metals guard.
 WF379A2_METALS: Tuple[str, ...] = (
     "Cr",
     "Mn",
@@ -274,9 +277,15 @@ def smoke_path_a_5metal() -> Dict[str, object]:
     * ``five_metals_tuple`` — the canonical FIVE_METALS from trainer
     * ``path_a_metals_parsed`` — argparse-validated list of Path A metals
     * ``path_a_metals_match`` — True iff trainer FIVE_METALS == PATH_A_METALS
-    * ``wf379a2_11metal_systemexit_code`` — expected 2 (argparse choices
-      violation per Wf-379-A2 §1.1)
-    * ``smoke_passed`` — True iff all 3 checks PASS
+    * ``wf379a2_11metal_accepted`` — True iff the Wf-379-A2 11-metal set now
+      parses cleanly. Wf-A6 BLOCKER A removed the ``choices=FIVE_METALS``
+      constraint from ``--metals`` (commit 7600ea088e), so this flipped from
+      REJECTED to ACCEPTED; it is kept as a positive regression guard that
+      ``--metals`` stays dynamic (Wf-A6 §BLOCKER A).
+    * ``task_axis_invalid_rejected`` — argparse negative test on ``--task-axis``
+      (which still carries ``choices=("metal", "cell_line")``, Wf-A10),
+      expected SystemExit code 2.
+    * ``smoke_passed`` — True iff all 4 checks PASS
     """
     FIVE_METALS, parse_args = import_trainer()
 
@@ -292,29 +301,48 @@ def smoke_path_a_5metal() -> Dict[str, object]:
         path_a_parse_ok = False
         path_a_parsed = []
 
-    # Check 3: Wf-379-A2 11-metal set is REJECTED with SystemExit 2.
-    # Suppress argparse's noisy usage printout via stderr redirect (the
-    # rejection is the EXPECTED outcome of this negative test, not a bug).
+    # Check 3: Wf-379-A2 11-metal set is now ACCEPTED.
+    # Wf-A6 BLOCKER A (commit 7600ea088e) removed `choices=` from --metals
+    # (auto-discovery from CSV is the new contract), so the old "REJECTED
+    # with SystemExit 2" assertion is obsolete. Inverted to a POSITIVE
+    # regression guard that --metals stays dynamic.
     import contextlib
     import io as _io
 
+    try:
+        ns11 = parse_args(["--metals", *WF379A2_METALS])
+        wf379a2_accepted = list(ns11.metals) == list(WF379A2_METALS)
+    except SystemExit:
+        wf379a2_accepted = False
+
+    # Check 4 (NEGATIVE test, retargeted): an invalid --task-axis value must
+    # be REJECTED with SystemExit 2. --task-axis still carries
+    # choices=("metal", "cell_line") (Wf-A10), so it is a live argparse
+    # validation surface. Suppress argparse's noisy usage printout via
+    # stderr redirect (the rejection is the EXPECTED outcome).
     with contextlib.redirect_stderr(_io.StringIO()):
         try:
-            parse_args(["--metals", *WF379A2_METALS])
-            wf379a2_rejected = False
-            wf379a2_exit_code = None
+            parse_args(["--task-axis", "not_a_valid_task_axis"])
+            task_axis_invalid_rejected = False
+            task_axis_exit_code = None
         except SystemExit as e:
-            wf379a2_rejected = True
-            wf379a2_exit_code = e.code
+            task_axis_invalid_rejected = True
+            task_axis_exit_code = e.code
 
-    smoke_passed = path_a_match and path_a_parse_ok and wf379a2_rejected
+    smoke_passed = (
+        path_a_match
+        and path_a_parse_ok
+        and wf379a2_accepted
+        and task_axis_invalid_rejected
+    )
 
     return {
         "five_metals_tuple": list(FIVE_METALS),
         "path_a_metals_parsed": path_a_parsed,
         "path_a_metals_match": path_a_match,
-        "wf379a2_11metal_rejected": wf379a2_rejected,
-        "wf379a2_11metal_systemexit_code": wf379a2_exit_code,
+        "wf379a2_11metal_accepted": wf379a2_accepted,
+        "task_axis_invalid_rejected": task_axis_invalid_rejected,
+        "task_axis_invalid_systemexit_code": task_axis_exit_code,
         "smoke_passed": smoke_passed,
     }
 
@@ -360,8 +388,11 @@ def build_path_a_aggregate(smoke_result: Dict[str, object]) -> Dict[str, object]
         "honest_framing": {
             "scope": "CPU-only docs + smoke; 0 GPU launches; 0 paper/* touches",
             "smoke_passes_argparse_check": bool(smoke_result.get("smoke_passed")),
-            "wf379a2_negative_test_validates": bool(
-                smoke_result.get("wf379a2_11metal_rejected")
+            "wf379a2_11metal_dynamic_metals_accepted": bool(
+                smoke_result.get("wf379a2_11metal_accepted")
+            ),
+            "task_axis_invalid_argparse_negative_test_validates": bool(
+                smoke_result.get("task_axis_invalid_rejected")
             ),
             "path_a_match_trainer_five_metals": bool(
                 smoke_result.get("path_a_metals_match")
@@ -429,9 +460,12 @@ def main(argv: List[str] | None = None) -> int:
     smoke_result = smoke_path_a_5metal()
     aggregate = build_path_a_aggregate(smoke_result)
 
-    # Write aggregate JSON
-    with open(aggregate_path, "w") as f:
-        json.dump(aggregate, f, indent=2, sort_keys=False)
+    # Write aggregate JSON — atomic per AGENTS.md §5.6 (Wf-386)
+    from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
+
+    atomic_write_file(
+        aggregate_path, json.dumps(aggregate, indent=2, sort_keys=False)
+    )
 
     # Print summary
     summary_lines = [
@@ -441,12 +475,13 @@ def main(argv: List[str] | None = None) -> int:
         f"Path A 5-metal match: {smoke_result['path_a_metals_match']}",
         f"Path A 5-metal argparse OK: {bool(smoke_result['path_a_metals_parsed'])}",
         (
-            f"Wf-379-A2 11-metal SystemExit: "
-            f"{smoke_result['wf379a2_11metal_systemexit_code']}"
+            f"Wf-379-A2 11-metal accepted (dynamic --metals, Wf-A6): "
+            f"{smoke_result['wf379a2_11metal_accepted']}"
         ),
         (
-            f"Wf-379-A2 11-metal rejected (expected): "
-            f"{smoke_result['wf379a2_11metal_rejected']}"
+            f"--task-axis invalid rejected (negative test): "
+            f"{smoke_result['task_axis_invalid_rejected']} "
+            f"(exit code {smoke_result['task_axis_invalid_systemexit_code']})"
         ),
         f"SMOKE PASSED: {smoke_result['smoke_passed']}",
         f"n_cohort_configs: {aggregate['n_cohort_configs']}",

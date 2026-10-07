@@ -33,6 +33,27 @@ P1_LAUNCHES=(
   # lambda_click_physical_smoke.yaml is a SCORING config (not trainer launch config); do NOT launch
 )
 
+# Wf-R27 FIX 5 (2026-10-07): the two trainer-level single-source-of-truth
+# configs. Both were unreachable from this launcher — MEASURED, neither path
+# appeared anywhere in scripts/*.sh before this edit — so a user following the
+# user directive "cfm和dmpnn分别用一个yaml管理配置" (one yaml per trainer) had
+# no canonical way to launch them: `bash scripts/start.sh configs/cfm.yaml`
+# exited 1 with `FAIL:missing=data,protocol,directives`, because the file had
+# only the trainer sections and start.sh's pre-flight requires those five
+# top-level keys. Both files carry them now (cfm.yaml) or already did
+# (dmpnn.yaml declares data:/output: but was still not listed here).
+#
+# These are CANONICAL-baseline runs, not the experiment grid: one launch each,
+# the config as committed. They sit below P0/P1 deliberately — the ablation
+# configs above are the paper-facing runs and must not queue behind a baseline.
+#
+# DRY_RUN=true validates them (pre-flight only, no GPU). An actual launch needs
+# USER_OK=1 plus a free cuda:0 per AGENTS.md §5.1.
+P2_LAUNCHES=(
+  "configs/cfm.yaml"                                    # CFM canonical baseline (Wf-R27)
+  "configs/dmpnn.yaml"                                  # D-MPNN canonical baseline (Wf-R27)
+)
+
 run_pre_flight_only() {
   local yaml="$1"
   echo "=== [$(date +%H:%M:%S)] PRE-FLIGHT (dry-run) for ${yaml} ==="
@@ -58,13 +79,13 @@ run_one() {
 
 if [[ "${DRY_RUN:-false}" == "true" ]]; then
   echo "=== DRY_RUN=true: pre-flight validation only (NO actual launch) ==="
-  for yaml in "${P0_LAUNCHES[@]}" "${P1_LAUNCHES[@]}"; do
+  for yaml in "${P0_LAUNCHES[@]}" "${P1_LAUNCHES[@]}" "${P2_LAUNCHES[@]}"; do
     run_one "${yaml}" pre-flight-only
   done
 else
   echo "=== ACTUAL LAUNCH: SERIAL on cuda:0 ==="
-  echo "=== Estimated wall time: ~21 hr (3 yaml × ~7 hr avg) ==="
-  for yaml in "${P0_LAUNCHES[@]}" "${P1_LAUNCHES[@]}"; do
+  echo "=== Estimated wall time: ~21 hr for P0+P1, plus P2 baselines (2 yaml) ==="
+  for yaml in "${P0_LAUNCHES[@]}" "${P1_LAUNCHES[@]}" "${P2_LAUNCHES[@]}"; do
     run_one "${yaml}" actual
     sleep 30
   done

@@ -48,7 +48,7 @@ PROJECT_ROOT="/home/hugo/codes/mol-metal"
 REPORTS_DIR="${REPORTS_DIR:-${PROJECT_ROOT}/molmetal/reports/cfm_round3_retrain/run}"
 LOG_OUT="${REPORTS_DIR}/train.log"
 METRIC_OUT="${REPORTS_DIR}/per_epoch_metrics.json"
-CFG="${PROJECT_ROOT}/configs/cfm_tmqm_all6.yaml"
+CFG="${PROJECT_ROOT}/configs/cfm.yaml"
 
 mkdir -p "${REPORTS_DIR}"
 

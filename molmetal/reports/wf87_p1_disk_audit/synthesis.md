@@ -1,12 +1,12 @@
 # Wf-87 Phase 1 — Per-Metric Disk Audit
 
-**Date**: 2026-10-05  
+**Date**: 2026-10-08  
 **Workflow**: Wf-87 Phase 1 — per-metric disk audit  
 **Constraint**: CPU-only; no GPU retrain; paper-gate (TODO-84) honored; party-twenty-spirit §3.5 honest framing  
 
 ## 1. Aggregate
 
-- `metrics/by_metric/` files scanned: **156** JSON files.
+- `metrics/by_metric/` files scanned: **157** JSON files.
 - Conceptual metrics audited (per `TODO/INDEX.md` §17.1): **26**.
 - Conceptual category distribution:
   - **DEFERRED**: 3
@@ -29,8 +29,8 @@
 | 3 | n_distinct (`m11`) | STRONG_REAL | MEASURED | 4 | 0 | 0 | 20.0000 | `2026-09-25T04:54:08.754357+00:00` | `metrics/by_metric/n_distinct.json` (+`—`) |
 | 4 | RDKit validity (`m13`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | 1.0000 | `2026-10-03T09:58:25.508375+00:00` | `metrics/by_metric/rdkit_validity.json` (+`TODO/completed/87l_undefined_metrics_definition.md`) |
 | 5 | CFM decode (`m14`) | STRONG_REAL | MEASURED | 13 | 0 | 0 | 0.9980 | `2026-10-04T06:11:58.211846+00:00` | `metrics/by_metric/decode_ratio.json` (+`—`) |
-| 6 | DrugOOD OOD AUC (`m17`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-10-03T09:58:25.515375+00:00` | `metrics/by_metric/drugood_ood_auc.json` (+`—`) |
-| 7 | NCI-60 9-cell AUC (`m21`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | 0.4200 | `2026-10-03T01:29:35.563652+00:00` | `metrics/by_metric/nci60_precious_9cell_auc.json` (+`—`) |
+| 6 | DrugOOD OOD AUC (`m17`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-10-07T19:18:59.767023+00:00` | `metrics/by_metric/drugood_ood_auc.json` (+`—`) |
+| 7 | NCI-60 9-cell AUC (`m21`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | 0.4200 | `2026-10-07T19:18:59.767803+00:00` | `metrics/by_metric/nci60_precious_9cell_auc.json` (+`—`) |
 | 8 | m18 Protein-Metal binding AUC (`m22`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-10-03T09:58:25.503375+00:00` | `metrics/by_metric/metric18_protein_metal_v2.json` (+`—`) |
 | 9 | PlatinAI 3-cell resistance AUC (`m23`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-10-03T09:58:25.516375+00:00` | `metrics/by_metric/platinai_3cell_resistance.json` (+`—`) |
 | 10 | cross-dataset macro R² (`m24`) | STRONG_REAL | MEASURED | 1 | 0 | 0 | — | `2026-09-26T09:31:13.769665+00:00` | `molmetal/reports/wf71_p3_wf49_cross_round2/cross_dataset_summary.json` (+`—`) |

@@ -22,7 +22,8 @@
 #
 # Scope
 # -----
-#   - configs/cfm_tmqm_all6.yaml (F5+F6 already in)
+#   - configs/cfm.yaml (F5+F6 already in as defaults; cfm_tmqm_all6.yaml
+#     deleted 2026-10-07 per user "配置和当前项目真实环境对齐")
 #   - 20 epochs, default seed
 #   - GPU 0 (Blackwell, 86 GB free — RTX 5090 used by D-MPNN retrain)
 #   - New output dir; does NOT overwrite cfm_round3_retrain/run (D6 baseline)
@@ -58,7 +59,7 @@ PROJECT_ROOT="/home/hugo/codes/mol-metal"
 # 2026-10-06 (Round 7) — new dir; do NOT overwrite cfm_round3_retrain/run.
 REPORTS_DIR="${REPORTS_DIR:-${PROJECT_ROOT}/molmetal/reports/cfm_round7_f5f6_retrain/run}"
 LOG_OUT="${REPORTS_DIR}/train.log"
-CFG="${PROJECT_ROOT}/configs/cfm_tmqm_all6.yaml"
+CFG="${PROJECT_ROOT}/configs/cfm.yaml"
 
 mkdir -p "${REPORTS_DIR}"
 

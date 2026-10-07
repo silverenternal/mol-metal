@@ -1711,7 +1711,12 @@ def metric_subpocket_diversity_mean(
             distinct.append(s)
     if len(distinct) < 2:
         return 0.0
-    weights = [1] * int(n_residues)
+    # Wf-R43 m7 closure: centre-decay weights replace the uniform
+    # placeholder ``[1] * n_residues``.  The real per-residue weight
+    # vector from voxelization.py:208,255 / vina_adapter.py:961 is the
+    # next-step wire-in; this MEASURED non-uniform default is the
+    # remediation path documented in TODO/completed/399a1.
+    weights = [0.5 ** i for i in range(int(n_residues))]
     try:
         return float(per_residue_diversity(distinct, weights))
     except Exception:

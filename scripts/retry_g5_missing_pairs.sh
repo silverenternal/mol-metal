@@ -27,6 +27,12 @@ LOG="${OUT_BASE}/master.log"
 
 PY="/home/hugo/codes/mol-metal/.venv/bin/python"
 SCRIPT="molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
+# 2026-10-07 (user directive: "所有启动脚本都用yaml管理…不要用cli,那样不好追溯").
+# The trainer already accepts --config and ends parse_args() in
+# apply_yaml_overrides (train_dmpnn_multitask_wasserstein.py:3320-3322), so the
+# yaml is the base and the per-call flags below override it.
+# Precedence: explicit CLI flag > YAML > argparse default.
+DMPNN_CONFIG="${DMPNN_CONFIG:-configs/dmpnn.yaml}"
 DATA_CSV="/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 
 COMMON_ARGS=(
@@ -59,6 +65,7 @@ run_pair() {
   mkdir -p "${OUT_BASE}/${metal}/seed${seed}/ckpts"
   echo "=== $(date '+%H:%M:%S') Wf-310A RETRY START ${metal} seed=${seed} on GPU ${gpu} ===" | tee -a "${LOG}"
   CUDA_VISIBLE_DEVICES=${gpu} ${PY} ${SCRIPT} \
+    --config "${DMPNN_CONFIG}" \
     --metals "${metal}" \
     --seeds "${seed}" \
     --csv "${DATA_CSV}" \

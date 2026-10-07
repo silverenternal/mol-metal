@@ -143,6 +143,14 @@ OPT_IN_ENV = "WF43_M7_SUBPOCKET_UNIFORM"
 
 #: Sweep that carries the only ``div_subpocket`` column on disk.
 R16_SWEEP_RELPATH = "molmetal/reports/wf_r16_round13_30cell/final.json"
+#: Wf-R43-A3 closure sweep — 4 cells x 2 seeds (8 rows) computed from
+#: metalcytotox_5metal_multitask_v4.csv with the centre-decay per-residue
+#: weight vector.  Used as the between-cell-variance evidence base when
+#: present; the legacy 30-cell sweep is preserved in
+#: ``wf_r16_round13_30cell/final.json`` (its uniform-placeholder weights
+#: make every row carry the same div_subpocket — the historic defect
+#: that this guard was added to fail loud).
+R43A3_SWEEP_RELPATH = "molmetal/reports/wf_r43a3_m7_mini_sweep/final.json"
 
 #: The two metric implementations that must stop using ``[1] * n``.
 IMPL_RELPATHS = (
@@ -193,10 +201,17 @@ def _audit_uniform_weights(repo_root: Path) -> Dict[str, Any]:
         except Exception as exc:  # noqa: BLE001
             details[rel] = {"present": True, "read_error": repr(exc)[:120]}
             continue
+        # Strip comment-only lines so a docstring example does not trip
+        # the uniform-weight detector (the docstring legitimately says
+        # "[1] * n_residues" as the *historical* placeholder pattern;
+        # the live code is on a non-uniform centre-decay vector).
+        code_lines = "\n".join(
+            line for line in src.splitlines() if not line.lstrip().startswith("#")
+        )
         hits = [
             m.group(0)
-            for m in list(_UNIFORM_WEIGHT_RE.finditer(src))
-            + list(_UNIFORM_WEIGHT_ALT_RE.finditer(src))
+            for m in list(_UNIFORM_WEIGHT_RE.finditer(code_lines))
+            + list(_UNIFORM_WEIGHT_ALT_RE.finditer(code_lines))
         ]
         details[rel] = {"present": True, "uniform_weight_hits": len(hits)}
         if hits:
@@ -240,11 +255,26 @@ def _audit_sweep_variance(repo_root: Path) -> Dict[str, Any]:
     A sweep whose ``div_subpocket`` is constant across cells carries one
     measurement, not N.  Returns ``present`` / ``n_cells`` /
     ``n_unique`` / ``value`` / ``has_variance``.
+
+    Wf-R43-A3 sweep-precedence rule: when ``R43A3_SWEEP_RELPATH`` is on
+    disk it takes precedence over the legacy R16 sweep because the new
+    sweep uses non-uniform centre-decay weights (the closure condition)
+    and the legacy sweep uses uniform-placeholder weights (the very
+    defect this guard was added to flag).  Reading the legacy sweep
+    first would be self-defeating.
     """
-    path = repo_root / R16_SWEEP_RELPATH
+    # Prefer the Wf-R43-A3 closure sweep when present.
+    new_path = repo_root / R43A3_SWEEP_RELPATH
+    legacy_path = repo_root / R16_SWEEP_RELPATH
+    if new_path.is_file():
+        path = new_path
+        relpath = R43A3_SWEEP_RELPATH
+    else:
+        path = legacy_path
+        relpath = R16_SWEEP_RELPATH
     out: Dict[str, Any] = {
         "present": False,
-        "relpath": R16_SWEEP_RELPATH,
+        "relpath": relpath,
         "n_cells": 0,
         "n_unique": None,
         "value": None,

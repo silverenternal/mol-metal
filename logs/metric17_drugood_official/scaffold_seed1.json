@@ -1,0 +1,14 @@
+{
+  "split": "drugood_official:lbap_refined_ic50:scaffold",
+  "seed": 1,
+  "n_train": 60908,
+  "n_val": 53300,
+  "n_test": 53304,
+  "n_id_test": 84942,
+  "id_test_source": "official_iid_test",
+  "id_test_auc": 0.8572798345049524,
+  "ood_test_auc": 0.6881112979798556,
+  "pos_rate_test": 0.8177810295662614,
+  "epochs": 1,
+  "axis": "scaffold"
+}

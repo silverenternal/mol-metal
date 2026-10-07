@@ -78,6 +78,9 @@ set -uo pipefail
 PY="${PY:-/home/hugo/codes/mol-metal/.venv/bin/python}"
 PROJECT_ROOT="/home/hugo/codes/mol-metal"
 SCRIPTS_DIR="${PROJECT_ROOT}/molmetal/scripts"
+# 2026-10-07 (user directive: configs in YAML, not CLI). Precedence:
+# explicit CLI flag > YAML > argparse default.
+DMPNN_CONFIG="${DMPNN_CONFIG:-${PROJECT_ROOT}/configs/dmpnn.yaml}"
 OUT_BASE="${PROJECT_ROOT}/results/wf338f1_w2_sliced_smoke"
 LOG_DIR="${PROJECT_ROOT}/molmetal/reports/wf338f1_w2_sliced_smoke"
 WRAPPER_LOG="${LOG_DIR}/wrapper.log"
@@ -212,6 +215,7 @@ launch_w2_sliced_smoke() {
 
   if [ "${DRY_RUN:-0}" = "1" ]; then
     echo "[DRY-RUN] USER_OK=1 ${PY} molmetal/scripts/train_dmpnn_multitask_wasserstein.py \\" | tee -a "${target_log}"
+    echo "    --config ${DMPNN_CONFIG} \\" | tee -a "${target_log}"
     echo "    --cuda-visible-devices 0 \\" | tee -a "${target_log}"
     echo "    --w2-gradient-mode sliced \\" | tee -a "${target_log}"
     echo "    --epochs 1 --seeds 0 --smoke --num-workers 8 --cpu-num-workers 8 \\" | tee -a "${target_log}"
@@ -222,6 +226,7 @@ launch_w2_sliced_smoke() {
   fi
 
   USER_OK=1 nohup "${PY}" "${SCRIPTS_DIR}/train_dmpnn_multitask_wasserstein.py" \
+    --config "${DMPNN_CONFIG}" \
     --cuda-visible-devices 0 \
     --w2-gradient-mode sliced \
     --epochs 1 --seeds 0 --smoke \

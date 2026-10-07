@@ -17,7 +17,18 @@
 # takes precedence over --cpu-num-workers; wires prefetch_factor=8 +
 # pin_memory=True + persistent_workers=True + spawn context).
 #
-# Per Wf-335-R1+R3: --no-cuda-graphs (safety lever; trainer default
+# Wf-R32 (2026-10-07): --num-workers and --no-cuda-graphs REMOVED from
+# COMMON_ARGS. Neither is declared in this trainer's argparse, so all 60
+# G6 tuples aborted with rc=2 "unrecognized arguments". This is the same
+# defect wf-R28 fixed in the G5 launcher (whose header named G6 as
+# "still blocked on the same defect"). The Wf-328-W6 DataLoader-factory
+# and Wf-335-R1+R3 cudagraphs-lever notes below are retained as history
+# only — both levers are structurally satisfied (manual batch build, so
+# no DataLoader workers are needed; no --torch-compile, so no CUDA
+# graphs). See the COMMON_ARGS comment for the full evidence trail.
+#
+# Per Wf-335-R1+R3 (HISTORICAL, flag removed per Wf-R32 — see above):
+# --no-cuda-graphs (safety lever; trainer default
 # torch_compile_mode = max-autotune-no-cudagraphs per Wf-330-B4 RuntimeError
 # fix on Ru seed=2 + Ir seed=0).
 #
@@ -139,6 +150,13 @@ mkdir -p "${OUT_BASE}"
 
 PY="/home/hugo/codes/mol-metal/.venv/bin/python"
 SCRIPT="molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
+# 2026-10-07 (user directive: configs in YAML, not CLI). The trainer already
+# accepts --config and ends parse_args() in apply_yaml_overrides
+# (train_dmpnn_multitask_wasserstein.py:3320-3322). The yaml is the base; the
+# per-ablation CONFIRMED_FLAGS and COMMON_ARGS below still win, which is
+# required here — the 4 G6 arms differ ONLY by those flags, so moving them into
+# one shared yaml would collapse the ablation design.
+DMPNN_CONFIG="${DMPNN_CONFIG:-configs/dmpnn.yaml}"
 GPU="cuda:0"  # RTX PRO 6000 Blackwell GPU-0 (CUDA_VISIBLE_DEVICES=0; serial execution)
 DATA_CSV="/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"  # Wf-261 strict scaffold split (0 leak)
 
@@ -157,15 +175,27 @@ COMMON_ARGS=(
   --device "${GPU}"
   --cuda-visible-devices 0
   --cpu-num-workers 8
-  --num-workers 8
   --data-csv "${DATA_CSV}"
-  # Wf-335-R3 — CUDA Graphs hard-disable safety lever. Default ON in
-  # trainer (per Wf-330-B4 MEASURED RuntimeError on Ru seed=2 + Ir seed=0
-  # under --torch-compile-mode reduce-overhead); pass explicitly so paper
-  # §6 audits can verify the lever is wired.  This is the G6 path that
-  # triggered the Wf-330-B4 regression; R3 wires the safety belt here
-  # before any future G6 launch.
-  --no-cuda-graphs
+  # Wf-R32 (2026-10-07): `--num-workers 8` and `--no-cuda-graphs` were
+  # REMOVED — neither is declared in this trainer's argparse
+  # (train_dmpnn_multitask_wasserstein.py), so all 60 G6 tuples would die
+  # with argparse rc=2 "unrecognized arguments" before a single epoch ran.
+  # This is the identical defect wf-R28 fixed in the G5 launcher; G6 was
+  # named as "still blocked on the same defect" in that closeout's header.
+  # MEASURED evidence: `python -m molmetal.scripts.train_dmpnn_multitask_wasserstein
+  # --config configs/dmpnn.yaml --num-workers 8` -> "error: unrecognized
+  # arguments: --num-workers 8", SystemExit rc=2.
+  #   - `--num-workers`: no dest exists; `--cpu-num-workers` (kept above) is
+  #     the trainer's only worker flag, and main() already documents it as a
+  #     structural no-op (manual batch build, no torch DataLoader).
+  #   - `--no-cuda-graphs`: CUDA graphs only exist behind `--torch-compile`
+  #     (action="store_true", default=False). G6 does not pass
+  #     --torch-compile, so graphs are already off; the Wf-335-R3 safety
+  #     lever is satisfied structurally. The only graph-related flag the
+  #     trainer exposes is the enabling `--torch-compile` itself, and
+  #     omitting it keeps the lever closed.
+  # The Wf-328-W6 and Wf-335-R3 header notes below are retained as history
+  # only — the levers are structurally satisfied.
 )
 
 # ---- Ablation config flag dispatcher (per TODO-182 §3.4 + g6 yaml) ----
@@ -249,7 +279,7 @@ if [[ "${DRY_RUN}" == "1" ]]; then
     --wrapper "$(basename "$0")" \
     --mode "G6_per_innovation_ablation" \
     --trainer "${SCRIPT}" \
-    --flags "--epochs 50 --batch-size 256 --hidden 300 --depth 3 --lr 1e-3 --alpha 0.5 --w2-gradient-mode sort --n-mc 256 --use-l2-guard --device ${GPU} --cpu-num-workers 8 --num-workers 8 --no-cuda-graphs ${COMMON_ARGS[*]}" \
+    --flags "--epochs 50 --batch-size 256 --hidden 300 --depth 3 --lr 1e-3 --alpha 0.5 --w2-gradient-mode sort --n-mc 256 --use-l2-guard --device ${GPU} --cpu-num-workers 8 ${COMMON_ARGS[*]}" \
     --gpu "${GPU}" \
     --budget-hr "7.5" \
     --user-ok "REQUIRED" \
@@ -352,6 +382,7 @@ run_tuple() {
   # GPU 0 (RTX PRO 6000 Blackwell) per the 2026-10-03 all-GPU-0
   # directive; this call site is serial with every other job.
   CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} \
+    --config "${DMPNN_CONFIG}" \
     --metals "${metal}" \
     --seeds "${seed}" \
     --csv "${DATA_CSV}" \

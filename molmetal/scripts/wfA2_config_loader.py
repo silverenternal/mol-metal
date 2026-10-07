@@ -477,12 +477,21 @@ def apply_yaml_overrides(
         dft = getattr(defaults, dest, _MISSING)
         if dft is _MISSING:
             continue
-        # Special case: for LIST-valued args, YAML always wins when provided.
-        # Rationale: list defaults (e.g. metals cohort = ['Ru','Ir','Rh','Os','Re'])
-        # are rarely the user's actual intent; YAML cohorts override by default.
+        # Special case: for LIST-valued args, YAML wins over the argparse
+        # DEFAULT but NOT over an explicit CLI flag.  Rationale: a list
+        # default (e.g. the built-in metals cohort ['Ru','Ir','Rh','Os','Re'])
+        # is rarely the caller's intent, so YAML beats it — but a launcher
+        # that enumerated one (metal, seed) pair per invocation passes
+        # `--metals Ru --seeds 0` EXPLICITLY, and clobbering that with the
+        # yaml cohort would silently run all 5 seeds x the yaml metals on
+        # every pair.  Wf-R27 FIX 4 (2026-10-07): the old branch set the value
+        # unconditionally, which made `cur == dft` unreachable for lists.
+        # Guarding on `cur == dft` restores the documented precedence
+        # (explicit CLI > YAML > argparse default) for lists too.
         if isinstance(value, list) and isinstance(cur, list):
-            setattr(args, dest, value)
-            yaml_written.add(dest)
+            if cur == dft:
+                setattr(args, dest, value)
+                yaml_written.add(dest)
             continue
         # `dest in yaml_written` keeps last-key-wins among YAML keys mapping
         # to the same dest (a prior YAML write must not look like a CLI pass).

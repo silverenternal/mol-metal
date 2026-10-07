@@ -70,8 +70,18 @@ set -euo pipefail
 # Locate repo root + scaffold script + real trainer
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "${SCRIPT_DIR}/.." && pwd )"
+# AGENTS.md §5.9 single-venv rule: canonical project venv, no bare python/python3.
+PY="${PY:-/home/hugo/codes/mol-metal/.venv/bin/python}"
 SCAFFOLD="${PROJECT_ROOT}/molmetal/scripts/wf409a3_metal_coord_retrain_scaffold.py"
 TRAINER="${PROJECT_ROOT}/molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
+# 2026-10-07 (user directive: "所有启动脚本都用yaml管理…不要用cli,那样不好追溯").
+# The trainer already accepts --config and ends parse_args() in
+# apply_yaml_overrides (train_dmpnn_multitask_wasserstein.py:3320-3322), so the
+# yaml is the base and the per-call flags below override it.
+# Precedence: explicit CLI flag > YAML > argparse default.
+# Absolute: this wrapper has no top-level `cd`, so a relative path would
+# resolve against the caller's cwd.
+DMPNN_CONFIG="${DMPNN_CONFIG:-${PROJECT_ROOT}/configs/dmpnn.yaml}"
 # Wf-432-A2 — Wf-246-C trainer (real D-MPNN trainer with the
 # MetalCoordinationTerm wire-in via --metal-coord-term).  R3_actual
 # invokes the real trainer; R2_smoke still invokes the SCAFFOLD for
@@ -279,7 +289,7 @@ case "${MODE}" in
         printf '%s[Wf-409-A3]%s R2 SCAFFOLD smoke mode: 5-step CPU smoke.\n' \
             "$(tput bold 2>/dev/null || true)" "$(tput sgr0 2>/dev/null || true)"
         PYTHONPATH="${PROJECT_ROOT}${PYTHONPATH:+:${PYTHONPATH}}" \
-        exec python3 "${SCAFFOLD}" \
+        exec "${PY}" "${SCAFFOLD}" \
             --metal-coord-term \
             --metals "${METALS_ARR[@]}" \
             --seeds "${SEEDS_ARR[@]}" \
@@ -309,7 +319,8 @@ case "${MODE}" in
             "${EPOCHS}" "${#PAIRS[@]}" \
             "$((EPOCHS * ${#PAIRS[@]}))"
         PYTHONPATH="${PROJECT_ROOT}${PYTHONPATH:+:${PYTHONPATH}}" \
-        exec .venv/bin/python "${TRAINER}" \
+        exec "${PY}" "${TRAINER}" \
+            --config "${DMPNN_CONFIG}" \
             --metal-coord-term \
             --metal-coord-weight 0.5 \
             --cal-sign-vina-convention \

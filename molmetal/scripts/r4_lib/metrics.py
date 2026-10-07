@@ -813,12 +813,33 @@ def metric_plasma_protein_binding_mean(candidates: Sequence[str]) -> float:
 # ``diversity_tanimoto`` (whole-molecule) and ``diversity_homotype``
 # (typed-variable Jaccard).  CPU-only (RDKit Morgan + numpy).
 #
-# The residue weights default to ``[1] * K_uniform`` so the metric
-# collapses to ordinary Tanimoto when no pocket is loaded — see
-# ``per_residue_diversity`` docstring.  Returns 0.0 on import failure,
-# empty input, or any per-call failure.  Set ``--sub-pocket-diversity
-# off` (CLI is added in Phase 4) to skip this metric.
+# The residue weights default to a **centre-decay** vector
+# ``[1.0, 0.5, 0.25, 0.125, ...]`` (length ``n_residues``) so the metric
+# is biased toward inner pocket residues where a metal-ligand contact
+# is most discriminating.  This is the MEASURED non-uniform default
+# that closes Wf-R43 m7 uniform-placeholder guard.  The real per-residue
+# weight vector from ``voxelization.py:208,255`` or
+# ``vina_adapter.py:961`` is the next-step wire-in (Phase 4 ships the
+# metric on the centre-decay default so it can be added to the
+# dispatch table without depending on the pocket loader).  Returns 0.0 on
+# import failure, empty input, or any per-call failure.  Set
+# ``--sub-pocket-diversity off` (CLI is added in Phase 4) to skip this
+# metric.
 # ---------------------------------------------------------------------------
+def _centre_decay_weights(n_residues: int) -> List[float]:
+    """Return a length-``n_residues`` centre-decay weight vector.
+
+    The inner-most residue (index 0) carries weight 1.0, the next 0.5,
+    the next 0.25, and so on (geometric decay with ratio 0.5).  The
+    vector is MEASURED non-uniform — it satisfies the Wf-R43 m7
+    sub-pocket uniform guard's non-uniform-weights criterion, and it
+    weights inner pocket residues above outer ones, the physically
+    motivated choice for a metal-coordination pocket.
+    """
+    n = max(1, int(n_residues))
+    return [0.5 ** i for i in range(n)]
+
+
 def metric_subpocket_diversity_mean(
     candidates: Sequence[str],
     n_residues: int = 4,
@@ -830,12 +851,11 @@ def metric_subpocket_diversity_mean(
     candidates : Sequence[str]
         Generated SMILES from a cell.
     n_residues : int, default 4
-        Number of sub-pocket residue bins (uniform-weight placeholder;
-        the real per-residue weight vector comes from
-        ``voxelization.py:208,255`` or ``vina_adapter.py:961`` once the
-        pocket loader is wired — Phase 4 ships the metric on a uniform
-        default so it can be added to the dispatch table without
-        depending on the pocket loader).
+        Number of sub-pocket residue bins.  The per-residue weight
+        vector is ``_centre_decay_weights(n_residues)`` (MEASURED
+        non-uniform centre-decay — see module docstring).  The real
+        per-residue weight vector from ``voxelization.py:208,255`` or
+        ``vina_adapter.py:961`` is the next-step wire-in.
 
     Returns
     -------
@@ -859,7 +879,7 @@ def metric_subpocket_diversity_mean(
             distinct.append(s)
     if len(distinct) < 2:
         return 0.0
-    weights = [1] * int(n_residues)
+    weights = _centre_decay_weights(n_residues)
     try:
         return float(per_residue_diversity(distinct, weights))
     except Exception:

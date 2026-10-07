@@ -84,12 +84,12 @@ See §2 for full list + rationale.
 **Paper metric**: OOD binary AUC (mean over 3 splits)
 
 **Our alignment**:
-- Dataset: **IDENTICAL** (DrugOOD) ✓
-- Split: **IDENTICAL** (assay / scaffold / size) ✓
+- Dataset: **NOT ALIGN** — our shipped run used the `metacytotox_fallback` cohort (MetalCytoToxDB-derived, 5,207 rows), NOT the official DrugOOD IC50 splits. The official DrugOOD CSVs are on disk at `.data/molmetal/drugood/ic50/csv/` (assay/scaffold/size × lbap_core / lbap_refined / ec50 / ic50 / ki / potency); m17 regeneration on them is **pending wf-R34-B2**.
+- Split: **NOT ALIGN** — the assay/scaffold/size split labels were reproduced on the fallback cohort, so they are DrugOOD-*style* splits over the wrong cohort, not DrugOOD's own splits.
 - Metric: **IDENTICAL** (binary AUC) ✓
 
 **Applicable metrics**:
-- **m17 OOD generalization AUC**: target ≥ iMoLD - 0.02 = 0.6909 (assay) per `metrics/by_metric/drugood_ood_auc.json`
+- **m17 OOD generalization AUC**: target ≥ iMoLD - 0.02 = 0.6909 (assay) per `metrics/by_metric/drugood_ood_auc.json` — **gate arithmetic only, NOT a protocol-aligned comparison**. The metric matches iMoLD; the cohort does not. Per the same JSON's `honest_framing` and `native_data_imold_proxy_results` (proxy-MLP on a 10K subsample scored 0.5625 / 0.5999 / 0.5813 vs iMoLD 0.7211 / 0.6884 / 0.6792 = −0.159 / −0.089 / −0.098), we explicitly do NOT claim to beat iMoLD. See §6.6.
 
 ---
 
@@ -122,10 +122,10 @@ These are NOT in scope of the Mol-Metal Tier-2 paper. We do NOT include them in 
 |---|---|---|---|---|---|---|---|---|
 | **m1** Ru AUC | Krasnov 2026 | MetalCytoToxDB (v2) | DOI-split 10-fold CV (primary; + SMILES-split 10-fold CV alt) | binary AUC | MetalCytoToxDB v2 Ru subset — paper criteria adopted 2026-10-04: no exposure-time filter, no IC50 noise floor, measurement-level dedup (SMILES_Ligands, Cell_line, Time(h)) keep-first, 76-name non-cancer exclusion = 15,799 rows / 4,793 complexes / 591 cell lines; release md5 f270dc90… = Zenodo v2 | DOI-split 10-fold CV (replicated; folds DOI-disjoint) | binary AUC | **DATASET + METRIC + SPLIT ALIGN — cohort honest-negative** (MEASURED D-MPNN 0.7717 ± 0.0380 vs paper LightGBM 0.810 ± 0.024 = 0.038 below; paper cohort 11,294 / 4,399 / 23 not replicated; see §6) |
 | **m2** R² per-cell | Rusanov 2025 | PlatinAI | per-cell-line | binary AUC + R² | PlatinAI + MetalCytoTox | cohort-split 70/10/20 + per-cell-line eval | per-cell-line AUC + R² | **DATASET + METRIC + SPLIT APPROX ALIGN** |
-| **m3** Vina Dock | MolCRAFT / TransDiffSBDD (Tier-2 only) | CrossDocked100 | pocket-split | median kcal/mol | CrossDocked100 (5-pocket subset) | pocket-split | median kcal/mol | **DATASET + METRIC ALIGN** (subset differs; document in §6) |
-| **m7** Diversity | MolChord / TransDiffSBDD | CrossDocked100 | pocket-split | Morgan ECFP4 Tanimoto | CrossDocked100 | pocket-split | Morgan ECFP4 Tanimoto | **DATASET + METRIC + SPLIT ALIGN** |
-| **m15** RMSD | DiffDock / EquiBind | CrossDocked100 (PDBbind) | pocket-split | median Å | CrossDocked100 (5-pocket) | pocket-split | median Å | **DATASET + METRIC ALIGN** (subset differs; document in §6) |
-| **m17** OOD | iMoLD / DrugOOD 2022 | DrugOOD | assay / scaffold / size | binary AUC | DrugOOD (metacytotox_fallback 5207 rows) | assay / scaffold / size | binary AUC | **DATASET + METRIC + SPLIT FULL ALIGN** |
+| **m3** Vina Dock | — none (see §2 out-of-scope) | CrossDocked100 | pocket-split | median kcal/mol | CrossDocked100 (5-pocket subset) | pocket-split | median kcal/mol | **NO FORMAL PAPER COMPARISON — Tier-2 supplementary** (no external baseline; our 5-pocket CrossDocked100 numbers are reported as absolute values only) |
+| **m7** Diversity | — none (see §2 out-of-scope) | CrossDocked100 | pocket-split | Morgan ECFP4 Tanimoto | CrossDocked100 | pocket-split | Morgan ECFP4 Tanimoto | **NO FORMAL PAPER COMPARISON — Tier-2 supplementary** (no external baseline; Morgan ECFP4 Tanimoto reported as an absolute value only) |
+| **m15** RMSD | — none (see §2 out-of-scope) | CrossDocked100 (PDBbind) | pocket-split | median Å | CrossDocked100 (5-pocket) | pocket-split | median Å | **NO FORMAL PAPER COMPARISON — Tier-2 supplementary** (no external baseline; median Å reported as an absolute value only) |
+| **m17** OOD | iMoLD / DrugOOD 2022 | DrugOOD | assay / scaffold / size | binary AUC | **NOT ALIGN — fallback cohort** (MEASURED: our 5,207 rows are `metacytotox_fallback` = MetalCytoToxDB-derived, NOT the official DrugOOD IC50 splits; the official DrugOOD CSVs are on disk at `.data/molmetal/drugood/ic50/csv/` (assay/scaffold/size × 6 tasks) but the m17 regeneration is still pending (wf-R34-B2). Per `metrics/by_metric/drugood_ood_auc.json::honest_framing`, the current numbers are NOT a head-to-head comparison against iMoLD. Excluded from §4 comparison tables; see §6.6) |
 | **m21** NCI-60 9-cell | Krasnov 2026 | MetalCytoToxDB | 5-fold CV per-cell | per-cell AUC | MetalCytoToxDB + NCI-60 panel | scaffold-split per-cell | per-cell AUC | **DATASET ALIGN** (split differs) |
 
 ### Alignment level legend
@@ -134,6 +134,8 @@ These are NOT in scope of the Mol-Metal Tier-2 paper. We do NOT include them in 
 - **DATASET + METRIC ALIGN** (split differs): numerical values not directly comparable but per-seed/per-split statistics are; document split difference in §6
 - **DATASET ALIGN** (split + metric differ): values comparable as sample-size-scaled estimates; document both in §6
 - **NOT ALIGN**: do not include in §4 comparison tables
+- **NOT ALIGN — fallback cohort**: only the metric definition matches; the dataset is a locally-derived stand-in for the paper's dataset (here: `metacytotox_fallback`, 5,207 MetalCytoToxDB-derived rows, used in place of the official DrugOOD IC50 splits). Numeric gates computed on it are internal sanity checks, never head-to-head comparisons. Report as an absolute standalone number + §6 limitation; regenerate on the official cohort before any comparison table (m17: pending wf-R34-B2)
+- **NO FORMAL PAPER COMPARISON — Tier-2 supplementary**: no external baseline exists for this metric; report our value as an absolute measured number in paper §4 supplementary only. Do NOT place it in a comparison table next to a literature value.
 - **DATASET + METRIC + SPLIT ALIGN — cohort honest-negative**: dataset + metric + split protocol aligned, but our cohort scope differs from the paper's (stated in §6) — the numeric comparison is a cross-cohort estimate, not a reproduction
 
 ---
@@ -190,3 +192,10 @@ These are NOT in scope of the Mol-Metal Tier-2 paper. We do NOT include them in 
 - **Former open decision is closed**: Option A adopted and executed 2026-10-04; Option B (keep cohort, declare) superseded. Resolved vs the old flags: filters dropped + recorded; release identity established (v2, md5-identical); split scheme = paper's DOI-split 10-fold CV; dedup + non-cancer funnel replicated. No open protocol item remains; the cohort-size gap above is the standing honest-negative for paper §6.
 - **Retained default-path facts (NOT the m1 comparison numbers)**: default `CytotoxFilter` (time_threshold=24.0, ic50_min=0.01; `train_dmpnn_multitask_wasserstein.py:3449`) keeps 3,650/18,987 v4 Ru rows = 19.2%; measured reruns 2,262/394/994 AUC 0.5727 (10 ep) / 0.5901 (30 ep); loose 12,471/2,166/4,350 AUC 0.7622 (10 ep).
 - **Flag (not edited here)**: §1.1's "Paper split: 5-fold CV (Krasnov paper Table 4)" line and the "(5-fold CV)" parenthetical at the §1.1 m1 bullet are superseded by the verified ChemRxiv v2 reading (10-fold CV; DOI-split primary + SMILES-split alt).
+
+### 6.6 m17 (OOD generalization) — fallback cohort, regen pending
+
+- **What we measured (MEASURED)**: `metrics/by_metric/drugood_ood_auc.json` (dated 2026-09-25, v4_morgan_mlp + Morgan FP 2048 r2, 30 epochs, 3 seeds) on `data_source = metacytotox_fallback` — MetalCytoToxDB-derived, 5,207 rows — using DrugOOD-*style* assay/scaffold/size splits. Gate pass 3/3 (assay / scaffold / size), `overall_pass = true` against the `iMoLD - 0.02` margin.
+- **Why that is not a comparison**: the cohort is a stand-in, not DrugOOD. The same JSON's `honest_framing` states plainly that these are NOT head-to-head numbers against iMoLD on the actual DrugOOD IC50 splits. The `native_data_imold_proxy_results` block (10K subsample + LogisticRegression proxy, not the graph NN iMoLD uses) scores 0.5625 / 0.5999 / 0.5813 vs iMoLD 0.7211 / 0.6884 / 0.6792 = −0.1586 / −0.0885 / −0.0979. We do NOT claim to beat iMoLD.
+- **What unblocks it**: the official DrugOOD IC50 CSVs are on disk at `.data/molmetal/drugood/ic50/csv/` (`lbap_core_ic50_{assay,scaffold,size}.csv`, `lbap_refined_ic50_*`, plus ec50 / ki / potency variants; native consolidated `train.csv` = 1,583,302 rows). Regenerating m17 on that cohort with a graph-NN backbone is **pending wf-R34-B2**.
+- **Paper consequence**: until that lands, m17 is reported as an absolute measured OOD AUC on the fallback cohort, with the cohort substitution stated here — it is excluded from the §4 comparison table.

@@ -1,0 +1,28 @@
+{
+  "wrapper": "launch_variance_puct_full.sh",
+  "wf_origin": "L3 full A/B for R20 FIX 2 variance-cPUct (Wf-R26 repair)",
+  "user_ok": true,
+  "dry_run": true,
+  "mode": "variance",
+  "arms": ["variance", "constant"],
+  "n_targets": 20,
+  "n_seeds": 2,
+  "n_simulations": 100,
+  "max_depth": 3,
+  "cpuct_variance_alpha": 0.8,
+  "n_runs_per_arm": 40,
+  "device": "cpu-only",
+  "wall_budget_hr": 1.0,
+  "wall_budget_label": "PROJECTED (~16 min total for both arms). MEASURED basis: 10 targets x 2 seeds x 100 sims x depth 3 = 20 runs in 230.2 s wall (mean_wall 14.388 s/run) on this 24-core host, 2026-10-07.",
+  "bench": "molmetal/scripts/bench_mcts_search_quality.py",
+  "out_base": "results/variance_puct_full",
+  "protocol_lock": "SKIP (unset)",
+  "honest_framing": {
+    "MEASURED_today": "wrapper ready; USER_OK gate enforced; bench argparse verified; both arms enumerated; DRY_RUN.log + plan.json emitted; degeneracy guard calibrated on this host",
+    "DEGENERACY_RISK": "--max-depth 4/5 at these n_simulations returns BENCH_DEGENERATE and emits NO JSON (MEASURED: mean_depth_reached 3.50 at depth 4/sims 200; 2.00 at depth 5/sims 400). Wrapper pins --max-depth 3 to clear the min(4, max_depth) floor and treats a degenerate verdict as FAIL.",
+    "NO_CLAIM": "This wrapper runs the A/B; it makes NO claim about whether variance-cPUct wins. No variance-vs-constant delta has been measured at this scale yet.",
+    "CPU_ONLY": "bench_mcts_search_quality.py exposes no --device/--cuda flag; the only torch call pins device=cpu. This is NOT a GPU launch and consumes no VRAM.",
+    "wf_R26": "variance-cPUct was FLAG_ONLY until Wf-R26 repaired the node.value_var read in proof_search.py; this A/B is its measurement surface"
+  },
+  "status": "PLAN_ONLY"
+}

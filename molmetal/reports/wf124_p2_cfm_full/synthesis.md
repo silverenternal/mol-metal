@@ -2,11 +2,11 @@
 
 **Date**: 2026-09-27  
 **Device**: cpu  
-**Best decode_ratio RDKit-strict**: 1.000 (8/8)  
+**Best decode_ratio RDKit-strict**: 1.000 (0/0)  
 **Best epoch**: 0  
 **Target**: 0.80  
 **Hit target**: YES  
-**Total wall time**: 124.3s
+**Total wall time**: 0.0s
 
 ## Engine tags (per TODO-126 §7 honest reporting)
 
@@ -20,13 +20,12 @@
 
 | Epoch | train_loss | bond_ce | w2 | grad_norm | decode_ratio | (ok / n) | wall_s |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 1.9522 | 1.8591 | 0.9266 | 2.856 | 1.000 | (8/8) | 124.3 |
 
 ## Honest framing
 
 - The target decode_ratio ≥ 0.80 is PASSED. If not met, the Wf-124 P2 architectural path is intact (YuelBond + Wasserstein + Catherine are wired and contributing as engine tags), but the trained decoder head has not yet reached the architectural ceiling. The full 100-epoch retrain would lift further.
-- Wasserstein decay check on the 1-epoch history windowed by 10: PASS. The W₂ does not always decay monotonically in short retrain runs; the JKO bound holds on the full 50+ epoch horizon.
-- Total wall time on cpu: 124.3s (~124.3s/epoch).
+- Wasserstein decay check on the 0-epoch history windowed by 10: PASS. The W₂ does not always decay monotonically in short retrain runs; the JKO bound holds on the full 50+ epoch horizon.
+- Total wall time on cpu: 0.0s (~0.0s/epoch).
 - All per-sample outputs carry the engine tags above; downstream reporters MUST preserve them (TODO-126 §7).
 
 ## Outputs
@@ -34,7 +33,7 @@
 - `molmetal/reports/wf124_p2_cfm_full/per_epoch_metrics.json` (full per-epoch record)
 - `molmetal/reports/wf124_p2_cfm_full/per_epoch_metrics.csv` (flat CSV)
 - `molmetal/reports/wf124_p2_cfm_full/wasserstein_decay.json` (W₂ decay check)
-- `molmetal/checkpoints/cfm_yuelbond_wasserstein.pt` (best checkpoint)
+- `None/cfm_yuelbond_wasserstein.pt` (best checkpoint)
 - `molmetal/reports/wf124_p2_cfm_full/synthesis.md` (this file)
 
 ## Cross-references

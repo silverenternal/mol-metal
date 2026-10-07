@@ -102,6 +102,7 @@ import logging
 import math
 import os
 import random
+import threading
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
@@ -828,6 +829,38 @@ class RewardAggregator:
     vina_invert: bool = True
     bonus_typed: float = 0.5
     bonus_binder: float = 0.5
+    #: Plan A Step 1 (Wf-R24-A) — **learned continuous value channel**
+    #: complementing the hand-crafted discrete ``bonus_binder``.  When a
+    #: callable is supplied, ``__call__`` adds
+    #: ``w_dmpnn_value * clip(pIC50 / 8, 0, 1)`` — the raw pIC50 is
+    #: normalised by ``dmpnn_pic50_scale`` and clamped, so the
+    #: contribution is bounded by ``w_dmpnn_value`` per leaf.
+    #:
+    #: Motivation (MEASURED 2026-10-07): with only ``bonus_typed`` /
+    #: ``bonus_binder`` the leaf values quantise to ``{0, 0.5, 1.0}`` and
+    #: ``leaf_value_var`` saturates (~0.19-0.22) — the variance signal that
+    #: drives ``cpuct_mode="variance_c"`` is dominated by that 0.5
+    #: quantisation rather than by chemistry.  A learned regressor gives a
+    #: continuous value with real contrast.
+    #:
+    #: Defaults to ``None`` so the existing reward is **bit-for-bit
+    #: unchanged** when the channel is not wired.  Typical construction:
+    #: ``make_value_fn(ckpt_path, metal="wildcard")`` from
+    #: :mod:`molmetal_lam.search_alg.dmpnn_value`.
+    #:
+    #: Honest-negative: the DMPNN checkpoint was trained on flat
+    #: metal-cytotoxicity cohorts, never on reaction-tree leaves, so leaf
+    #: molecules are out of distribution.  This channel is an interface
+    #: validation, not a metric claim.
+    dmpnn_value_fn: Optional[Callable[[MoleculeClosedTerm], float]] = None
+    #: Weight on :attr:`dmpnn_value_fn`.  ``0.6`` sits on the same order of
+    #: magnitude as ``bonus_binder = 0.5`` so the learned channel neither
+    #: dominates nor vanishes relative to the discrete terms.
+    w_dmpnn_value: float = 0.6
+    #: Divisor mapping raw pIC50 onto the unit interval.  pIC50 ∈ [0, 8]
+    #: maps linearly onto [0, 1]; ad-hoc by design — a calibrated squash
+    #: (e.g. per-metal isotonic regression) is deferred to Plan A Step 3.
+    dmpnn_pic50_scale: float = 8.0
     #: WF-Lambda-Fix-FullPath Fix 3 — diversity bonus channel.  At
     #: rank-time :meth:`MCTSProofSearch.search` re-evaluates each
     #: candidate's bonus contribution as ``+w_diversity`` if its
@@ -1917,6 +1950,12 @@ class RewardAggregator:
             "r_pharmacophore": "w_pharmacophore",
             # TODO-30 P5.2 Tier 1 — wet-lab signed-error channel.
             "r_wetlab": "w_wetlab",
+            # Plan A Step 1 (Wf-R24-A) — learned DMPNN pIC50 value
+            # channel.  Registered here so the reporting path does not
+            # silently drop it as an unknown channel; note the *leaf* path
+            # in ``__call__`` additionally applies the
+            # ``clip(pIC50 / 8, 0, 1)`` normalisation.
+            "r_dmpnn_value": "w_dmpnn_value",
         }
         value = 0.0
         for ch_name, ch_val in channels.items():
@@ -2114,6 +2153,15 @@ class RewardAggregator:
             value += self.bonus_typed
         if binds_target:
             value += self.bonus_binder
+        # Plan A Step 1 (Wf-R24-A) — learned continuous value channel.
+        # Added last so it composes with (rather than replaces) the
+        # discrete terms.  ``_safe`` swallows every failure (missing
+        # checkpoint, unparseable SMILES, torch OOM) into 0.0 so the
+        # search never crashes on a value-channel problem.
+        if self.dmpnn_value_fn is not None and self.w_dmpnn_value != 0.0:
+            v_dmpnn = _safe(self.dmpnn_value_fn)
+            scale = float(self.dmpnn_pic50_scale) or 1.0
+            value += self.w_dmpnn_value * max(0.0, min(1.0, v_dmpnn / scale))
         return value
 
     def metrics(self):
@@ -2523,6 +2571,12 @@ class RewardAggregator:
 #: within one interpreter so this is in-process thread-safe).
 VIRTUAL_LOSS_VALUE: float = 1.0
 
+#: R26 F1 — cap on the per-node backpropagated-value buffer that feeds
+#: ``_MCTSNode.value_var``.  Bounds memory in long searches; the window is
+#: large relative to a typical search depth so the variance estimate is not
+#: dominated by the first few visits.
+_VALUE_SAMPLES_MAX: int = 256
+
 
 #: SMARTS-defined click rules whose underlying reaction SMARTS is written
 #: with a fixed reactant order (azide / boronic-acid first).  For these
@@ -2685,6 +2739,125 @@ class _TranspositionTable:
             except Exception:
                 pass
 
+    def snapshot(self) -> Dict[str, "_MCTSNode"]:
+        """Return a shallow copy of the ``canonical_smi -> node`` map.
+
+        Used by the cross-search cache (FIX 4) to persist statistics
+        between :meth:`MCTSProofSearch.search` invocations without
+        aliasing the live table.  Node objects themselves are shared by
+        reference — the reuse is intentional (that is where the saved
+        ``N`` / ``W`` statistics live).
+        """
+        try:
+            return dict(self._table)
+        except Exception:
+            return {}
+
+
+# ---------------------------------------------------------------------------
+# Wf-R23 FIX 4 — cross-search global tree reuse (MCGS-lite)
+# ---------------------------------------------------------------------------
+# KataGo MCGS ("one of the largest single improvements" per
+# docs/KataGoMethods.md) keeps ONE tree across a game so that repeated
+# visits to the same position reuse the accumulated statistics instead of
+# re-expanding from scratch.
+#
+# In Mol-Metal the analogous win is the repeated-seed rerun: the bench
+# (and any panel/ablation driver) builds a FRESH ``MCTSProofSearch`` per
+# ``(target, seed)`` pair, so a per-instance table would be thrown away
+# every time and FIX 4 would be a measurable no-op.  We therefore keep
+# the cache at PROCESS level, namespaced by a fingerprint of everything
+# that changes the meaning of a stored statistic:
+#
+#   * the reward configuration (a node scored under one reward is not
+#     scored-comparable under another), and
+#   * the rule set (a node's children depend on which reductions can fire).
+#
+# The fingerprint deliberately does NOT include ``seed`` / ``rng`` — the
+# whole point is to reuse the subtree across the seed 0/1/2 reruns of the
+# same target.  It DOES include ``top_k`` and the cPUct / FPU knobs,
+# because those change which nodes get visited and therefore how the
+# cached N/W statistics should be interpreted.
+#
+# RISK NOTE (mirrors FIX 4 in lambda_mcts_r20_fix_plan.md §1): a stale
+# cache across differing reward contexts could silently degrade quality.
+# The fingerprint is the mitigation, and the acceptance gate is "must not
+# regress solution quality" — TRANSPOSITION_HIT_RATE alone is NOT accepted
+# as evidence.
+
+_CROSS_SEARCH_TT_CACHE: Dict[str, "_TranspositionTable"] = {}
+_CROSS_SEARCH_TT_LOCK = threading.RLock()
+
+#: Upper bound on the number of distinct reward-fingerprint namespaces kept
+#: alive at once.  Each namespace is one bounded ``_TranspositionTable``, so
+#: memory stays bounded even across a long panel sweep.
+_CROSS_SEARCH_TT_MAX_NAMESPACES = 8
+
+
+def _cross_search_namespace(
+    reward: Any,
+    rules: Any,
+    *,
+    top_k: int,
+    c_puct: Any,
+    cpuct_mode: Any,
+    cpuct_variance_alpha: Any,
+    fpu_reduction: Any,
+) -> str:
+    """Fingerprint the parts of the search config that a cached stat depends on.
+
+    Deliberately conservative: anything that could change the VALUE or the
+    EXPANSION of a node is included.  Two searches that share a namespace
+    are allowed to share a :class:`_TranspositionTable`; two that do not
+    are kept strictly apart.
+    """
+    parts: List[str] = []
+    try:
+        aggregator = reward if reward is not None else "None"
+        # ``RewardAggregator`` is a dataclass-ish config object; its repr
+        # captures channel weights, which is what a node's reward means.
+        parts.append(type(aggregator).__name__)
+        parts.append(repr(aggregator))
+    except Exception:
+        parts.append("reward_repr_error")
+    try:
+        parts.append("|".join(sorted(str(k) for k in (rules or {}).keys())))
+    except Exception:
+        parts.append("rules_repr_error")
+    for label, value in (
+        ("top_k", top_k),
+        ("c_puct", c_puct),
+        ("cpuct_mode", cpuct_mode),
+        ("cpuct_variance_alpha", cpuct_variance_alpha),
+        ("fpu_reduction", fpu_reduction),
+    ):
+        try:
+            parts.append(f"{label}={value!r}")
+        except Exception:
+            parts.append(f"{label}=?")
+    return "\n".join(parts)
+
+
+def get_cross_search_transposition_table(namespace: str) -> Optional["_TranspositionTable"]:
+    """Return the process-level cached table for ``namespace`` (or ``None``).
+
+    Public so that a driver can explicitly clear the cache between
+    configurations; see :func:`clear_cross_search_cache`.
+    """
+    with _CROSS_SEARCH_TT_LOCK:
+        return _CROSS_SEARCH_TT_CACHE.get(namespace)
+
+
+def clear_cross_search_cache() -> None:
+    """Drop every namespaced cross-search tree (the FIX 4 eviction path).
+
+    ``save_tree`` / ``load_tree`` remain the per-instance checkpoint path;
+    this is the coarser "different reward context" eviction.  Called
+    between A/B arms so an arm never inherits the other arm's statistics.
+    """
+    with _CROSS_SEARCH_TT_LOCK:
+        _CROSS_SEARCH_TT_CACHE.clear()
+
 
 # ---------------------------------------------------------------------------
 # MCTS node = a closed term + PUCT statistics
@@ -2732,6 +2905,38 @@ class _MCTSNode:
     # Exhaustive search expansion, not single-molecule beta-NF, establishes
     # whether an external rule/tile can still produce a successor.
     expansion_complete: bool = False
+    # Wf-R23 FIX 4 — which ``search()`` call created this node.  A node
+    # whose ``search_gen`` differs from the live search's generation came
+    # from the process-level cross-search cache and MAY be adopted
+    # (re-parented) instead of rebuilt, which is the MCGS-lite reuse path.
+    # Nodes from the SAME generation keep the legacy behaviour of staying
+    # separate per parent, because visits and parent pointers belong to a
+    # reaction path.
+    search_gen: int = 0
+    # R26 F1 — per-node buffer of backpropagated leaf values.  This is what
+    # makes ``cpuct_mode="variance"`` a real wire-in rather than a FLAG_ONLY
+    # no-op: before this field, ``_cpuct_for`` read ``leaf_value_var`` off the
+    # *node* via ``getattr``, but the field only ever lived on the *searcher*
+    # (``self.leaf_value_var``), so every lookup returned 0.0 and
+    # ``effective_cpuct(0.0)`` returned the unmodified ``base`` -- byte-identical
+    # to ``cpuct_mode="constant"``.  Bounded so a long search cannot grow it
+    # without limit; the tail is what drives the variance estimate.
+    value_samples: List[float] = field(default_factory=list)
+
+    @property
+    def value_var(self) -> float:
+        """Population variance of the buffered backpropagated values.
+
+        Returns 0.0 for a node with fewer than two samples (no variance
+        estimate exists yet), which routes ``effective_cpuct`` to its
+        unmodified ``base`` — the intended cold-start behaviour.
+        """
+        n = len(self.value_samples)
+        if n < 2:
+            return 0.0
+        mean = math.fsum(self.value_samples) / n
+        var = math.fsum((v - mean) ** 2 for v in self.value_samples) / n
+        return float(var) if math.isfinite(var) else 0.0
 
     @property
     def virtual_loss_value(self) -> float:
@@ -3431,6 +3636,22 @@ class MCTSProofSearch:
     transposition_table: _TranspositionTable = field(
         default_factory=_TranspositionTable,
     )
+    # ------------------------------------------------------------------
+    # Wf-R23 FIX 4 — cross-search global tree reuse (MCGS-lite)
+    # ------------------------------------------------------------------
+    #: Reward-config fingerprint used to namespace the process-level
+    #: cross-search tree.  ``None`` disables cross-search reuse entirely
+    #: (each :meth:`search` call starts from a fresh table), which is the
+    #: legacy behaviour and the control arm of the A/B.
+    cross_search_tt: bool = False
+    #: Monotonic counter identifying the current :meth:`search` call.
+    #: A cached node whose ``search_gen`` is lower than this one came
+    #: from a previous search and may be re-parented (adopted).
+    _search_gen: int = 0
+    #: Count of adopted cross-generation nodes in the current search.
+    #: Emitted as ``CROSS_SEARCH_ADOPTED`` so the reuse is observable
+    #: independently of ``TRANSPOSITION_HIT_RATE``.
+    _tt_cross_adopted: int = 0
 
     # ------------------------------------------------------------------
     # Reward resolution (backward compat)
@@ -4061,13 +4282,73 @@ class MCTSProofSearch:
         self._t_hits: int = 0
         self._t_misses: int = 0
         self._t_table: Dict[str, "_MCTSNode"] = {}
+        # Wf-R23 FIX 4 — bump the generation BEFORE the table is resolved so
+        # every node this search creates is tagged with the live generation.
+        # Nodes found in the process-level cache carry an older tag and are
+        # therefore eligible for cross-generation adoption in ``_expand``.
+        self._search_gen = int(getattr(self, "_search_gen", 0)) + 1
+        self._tt_cross_adopted: int = 0
         # Rules and the resolved tile pool are fixed for one search invocation.
         # Neither a dead-end verdict nor parent/visit state survives into a new
         # search, where callers may have changed the chemistry configuration.
         self._unreactive_states: set[str] = set()
-        self.transposition_table = _TranspositionTable(
-            max_size=self.transposition_table._max_size
+        # Wf-R23 FIX 4 — cross-search global tree reuse (MCGS-lite).
+        #
+        # Legacy behaviour (control arm): build a fresh table every search.
+        # With ``cross_search_tt`` enabled we instead look up a
+        # PROCESS-level table namespaced by a fingerprint of everything a
+        # cached N/W statistic depends on (reward config, rule set, top_k,
+        # cPUct / FPU knobs).  Nodes in that table carry an older
+        # ``search_gen`` and are adopted — re-parented into this search's
+        # tree while KEEPING their accumulated N/W — by ``_expand``.
+        #
+        # The per-instance ``transposition_table`` remains the authority for
+        # within-search transpositions; the cross-search table is the
+        # seed it starts from and is written back at the end of the run.
+        prev_max_size = getattr(
+            self.transposition_table, "_max_size", 50_000
         )
+        self._cross_search_ns: Optional[str] = None
+        if bool(getattr(self, "cross_search_tt", False)):
+            try:
+                namespace = _cross_search_namespace(
+                    self._resolved_reward(),
+                    self.rules,
+                    top_k=self.top_k,
+                    c_puct=self.c_puct,
+                    cpuct_mode=getattr(self, "cpuct_mode", "constant"),
+                    cpuct_variance_alpha=getattr(
+                        self, "cpuct_variance_alpha", 0.8
+                    ),
+                    fpu_reduction=getattr(self, "fpu_reduction", 0.0),
+                )
+                with _CROSS_SEARCH_TT_LOCK:
+                    shared = _CROSS_SEARCH_TT_CACHE.get(namespace)
+                    if shared is None:
+                        if len(_CROSS_SEARCH_TT_CACHE) >= (
+                            _CROSS_SEARCH_TT_MAX_NAMESPACES
+                        ):
+                            # Evict the oldest-inserted namespace so memory
+                            # stays bounded across a long panel sweep.
+                            _CROSS_SEARCH_TT_CACHE.pop(
+                                next(iter(_CROSS_SEARCH_TT_CACHE)), None
+                            )
+                        shared = _TranspositionTable(max_size=prev_max_size)
+                        _CROSS_SEARCH_TT_CACHE[namespace] = shared
+                    # Reuse the SAME table object: adoption in ``_expand``
+                    # writes into it, so the next search sees the stats.
+                    self.transposition_table = shared
+                    self._cross_search_ns = namespace
+            except Exception:
+                # Sticky fallback — a cache failure must never break search.
+                self.transposition_table = _TranspositionTable(
+                    max_size=prev_max_size
+                )
+                self._cross_search_ns = None
+        else:
+            self.transposition_table = _TranspositionTable(
+                max_size=prev_max_size
+            )
         self._prior_refit_skipped: bool = False
         self._prior_refit_last_size: int = 0
 
@@ -4197,6 +4478,17 @@ class MCTSProofSearch:
                     "LEAF_VALUE_VAR": float(leaf_value_var),
                     "LEAF_VALUE_STD": float(leaf_value_std),
                     "TRANSPOSITION_HIT_RATE": float(transposition_hit_rate),
+                    # Wf-R23 FIX 4 — cross-search subtree adoption count for
+                    # this search.  0 whenever ``cross_search_tt`` is off, so
+                    # the control arm is unaffected.  Emitted separately from
+                    # TRANSPOSITION_HIT_RATE on purpose: a higher hit rate is
+                    # NOT by itself evidence that FIX 4 worked.
+                    "CROSS_SEARCH_ADOPTED": int(
+                        getattr(self, "_tt_cross_adopted", 0)
+                    ),
+                    "CROSS_SEARCH_TT_ENABLED": bool(
+                        getattr(self, "cross_search_tt", False)
+                    ),
                     "PARALLEL_COLLISION_RATE": float(parallel_collision_rate),
                     "PRIOR_REFIT_SKIPPED": bool(
                         getattr(self, "_prior_refit_skipped", False)
@@ -4638,8 +4930,10 @@ class MCTSProofSearch:
           with the node's value-estimate noise, so search explores the
           *uncertain* branches harder.  Delegates to
           ``variance_cpuct.effective_cpuct`` = ``base * (1 + alpha*sqrt(var))``
-          (clamped at 2x base).  Uses ``leaf_value_var`` when present, else
-          0.0 — which yields the unmodified ``c_puct``.
+          (clamped at 2x base).  Reads :attr:`_MCTSNode.value_var`, the
+          per-node variance of its own backpropagated values.  A node with
+          fewer than two visits yields 0.0, which returns the unmodified
+          ``c_puct`` — the intended cold-start behaviour.
         * anything else — defensive fall back to the constant weight
           rather than raising, so a bad config value degrades to legacy
           behaviour instead of killing a running sweep.
@@ -4650,7 +4944,11 @@ class MCTSProofSearch:
         # and leaves the module import graph unchanged for constant mode.
         from molmetal_lam.search_alg.variance_cpuct import effective_cpuct
 
-        var = float(getattr(node, "leaf_value_var", 0.0) or 0.0)
+        # R26 F1 — read the node's own variance buffer directly.  The former
+        # ``getattr(node, "leaf_value_var", 0.0)`` always returned 0.0: that
+        # field is declared on the *searcher*, not on ``_MCTSNode``, so
+        # ``cpuct_mode="variance"`` was a silent no-op (FLAG_ONLY, §5.7 class).
+        var = float(node.value_var)
         return effective_cpuct(
             float(self.c_puct),
             var,
@@ -4663,9 +4961,12 @@ class MCTSProofSearch:
         Implements the canonical PUCT rule used in AlphaZero, augmented
         with a **virtual-loss term** for future lock-free parallel MCTS::
 
-            a* = argmax_a  Q(s, a) * w
+            a* = argmax_a  Q(s, a)
                          + c_puct * P(a) * sqrt(N(s)) / (1 + N(s, a))
                          - virtual_loss(a) / (1 + N(s, a))
+
+        ``Q`` is undamped (R26 F0 — see the comment at the score site) and
+        ``c_puct`` is resolved per child when ``cpuct_mode="variance"``.
 
         where ``Q(s, a) = W(a) / N(a)`` is the mean value of action a
         from state s, ``P(a)`` is the prior probability
@@ -4707,17 +5008,32 @@ class MCTSProofSearch:
         # per child, so the O(children) pass is not quadratic.
         fpu_reduction = float(getattr(self, "fpu_reduction", 0.0) or 0.0)
         apply_fpu = None
-        parent_q_max = 0.0
+        parent_q_max = float("-inf")
         if fpu_reduction > 0.0:
             # Local import: keeps ``pll_heuristic`` off the module import
             # graph for the default (FPU-disabled) path, mirroring the
             # ``variance_cpuct`` local-import convention in ``_cpuct_for``.
             from molmetal_lam.search_alg.pll_heuristic import apply_fpu_bonus
 
+            # R26 F2 — seed at -inf, not 0.0.  With a 0.0 seed, a parent whose
+            # visited children ALL have negative Q reported ``parent_q_max = 0``,
+            # which ``apply_fpu_bonus`` reads as "parent unvisited, no
+            # information" and returns a 0.0 bonus for — silently disabling FPU
+            # across exactly the negative-Q region of a reward head normalised
+            # to [-1, 1].  -inf plus the isfinite guard below restores the
+            # correct semantics: the sentinel now means "no child visited yet",
+            # and the comparison stays in Q-space (no rescale — a
+            # ``c_puct * sqrt(N) / (1+n)`` bonus would mix exploration-space
+            # units into a Q-space term).
             apply_fpu = apply_fpu_bonus
             for sib in node.children:
                 if sib.N > 0 and sib.Q > parent_q_max:
                     parent_q_max = sib.Q
+            if not math.isfinite(parent_q_max):
+                # No visited child — genuinely no information.  Apply the
+                # heuristic's neutral guard rather than passing -inf through,
+                # which would manufacture an enormous bonus.
+                apply_fpu = None
 
         for child in node.children:
             Q = child.Q
@@ -4742,7 +5058,7 @@ class MCTSProofSearch:
             except Exception:
                 cnt_vloss = 0.0
             virtual_loss = scalar_vloss + cnt_vloss
-            # PUCT formula — exploit (w * Q / (1+n)) + exploration
+            # PUCT formula — exploit (w * Q) + exploration
             # (c_puct * P * sqrt(N_parent) / (1+n)) - virtual-loss
             # penalty ((virtual_loss) / (1+n)).  The virtual-loss term
             # temporarily de-prioritises in-flight children so two
@@ -4750,10 +5066,19 @@ class MCTSProofSearch:
             # Thread safety: Python GIL serialises the underlying
             # ``+=`` / ``-=`` so the counter is monotonic within one
             # interpreter.
-            w = self._cpuct_for(node)
+            # R26 F0 — the exploration weight is resolved per *child*, so a
+            # child whose backpropagated values disagree explores harder than
+            # a child the reward head is confident about.
+            w = self._cpuct_for(child)
+            # R26 F0 — canonical AlphaZero / PGO exploit term: ``Q`` is
+            # UNDAMPED.  The former ``Q / max(1.0, 1 + N_child)`` shrank a
+            # well-visited child's value toward 0 like ``1/N`` (``max`` was a
+            # no-op — the denominator is already >= 1), so selection decayed
+            # into near-pure exploration and the lowest-visit child won
+            # regardless of merit.  At N=100 a Q in [0, 1] contributed <= 0.01.
             u = (
                 w * (P * sqrt_N_parent) / (1.0 + N_child)
-                + float(Q) / max(1.0, 1.0 + N_child)
+                + float(Q)
                 - virtual_loss / (1.0 + N_child)
             )
             # R20 FIX 3 — FPU bonus.  Added to the *score* (not to ``w``):
@@ -4933,6 +5258,47 @@ class MCTSProofSearch:
 
             existing, hit = self._lookup_or_create(child_key, factory)
             child = factory() if hit and existing.parent is not parent else existing
+
+            # Wf-R23 FIX 4 — cross-generation adoption (the MCGS-lite reuse
+            # path).  The legacy line above throws away any cached node
+            # whose parent is not the current one, which is correct WITHIN a
+            # search: visits and parent pointers belong to a reaction path.
+            #
+            # Across searches that invariant does not hold, because the old
+            # tree no longer exists.  When a hit node was stamped by an
+            # EARLIER search generation, its parent pointer is stale but its
+            # accumulated ``N`` / ``W`` are exactly the statistics we want
+            # to keep — re-using them is the entire point of MCGS.  So we
+            # adopt the node: re-point it at the current parent, adopt its
+            # children, and re-stamp the generation.
+            #
+            # Guarded twice: opt-in via ``cross_search_tt`` only, and the
+            # node's ``search_gen`` must be strictly older than the live
+            # generation.  A same-generation transposition keeps the legacy
+            # separate-node behaviour bit-for-bit.
+            if (
+                hit
+                and child is existing
+                and existing.parent is not parent
+                and bool(getattr(self, "cross_search_tt", False))
+                and int(getattr(existing, "search_gen", 0))
+                < int(getattr(self, "_search_gen", 0))
+            ):
+                try:
+                    existing.parent = parent
+                    existing.rule_name = rule_name
+                    existing.tile = tile
+                    existing.search_gen = int(self._search_gen)
+                    # Adopt the cached subtree so the next expansion of this
+                    # node does not re-derive its children.  ``expansion_
+                    # complete`` rides along: the prior search already
+                    # proved which successors exist.
+                    self._tt_cross_adopted = int(
+                        getattr(self, "_tt_cross_adopted", 0)
+                    ) + 1
+                except Exception:
+                    # Sticky fallback — keep the legacy fresh child.
+                    child = factory()
 
             # WF-Pocket-Invariance Phase-2B (sub-fix B) — apply the
             # learned-prior mix.  Per-child (state, action) lookup:
@@ -5502,6 +5868,13 @@ class MCTSProofSearch:
         for node in path:
             node.N += 1
             node.W += value
+            # R26 F1 — buffer the leaf value so the node can estimate its own
+            # value-variance for variance-scaled c_puct.  Bounded to the most
+            # recent 256 samples; older samples stop moving the mean.
+            samples = node.value_samples
+            samples.append(float(value))
+            if len(samples) > _VALUE_SAMPLES_MAX:
+                del samples[: len(samples) - _VALUE_SAMPLES_MAX]
             try:
                 node.virtual_loss.value -= float(VIRTUAL_LOSS_VALUE)
             except Exception:
@@ -6022,6 +6395,13 @@ class MCTSProofSearch:
             node = factory()
         except Exception:
             node = _MCTSNode(state=type("X", (), {})())  # type: ignore[abstract]
+        # Wf-R23 FIX 4 — stamp the live generation so a later search can
+        # tell "created by this search" from "inherited from the
+        # cross-search cache".
+        try:
+            node.search_gen = int(getattr(self, "_search_gen", 0))
+        except Exception:
+            pass
         try:
             self.transposition_table.insert(canonical_smi, node)
             self._t_table[canonical_smi] = node
@@ -6550,4 +6930,7 @@ __all__ = [
     "VirtualLoss",
     "_VirtualLoss",
     "_TranspositionTable",
+    # Wf-R23 FIX 4 — cross-search tree reuse (MCGS-lite) public surface.
+    "get_cross_search_transposition_table",
+    "clear_cross_search_cache",
 ]

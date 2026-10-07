@@ -12,13 +12,14 @@
 # RTX PRO 6000 Blackwell sm_120; replaces the legacy --w2-gradient-mode
 # sliced override that was preserved bit-exact for in-flight retrains).
 #
-# Per Wf-328-W6: --num-workers 8 (Wf-326B build_optimized_loader() factory;
-# takes precedence over --cpu-num-workers; wires prefetch_factor=8 +
-# pin_memory=True + persistent_workers=True + spawn context).
-#
-# Per Wf-335-R1+R3: --no-cuda-graphs (safety lever; trainer default
-# torch_compile_mode = max-autotune-no-cudagraphs per Wf-330-B4 RuntimeError
-# fix on Ru seed=2 + Ir seed=0).
+# Wf-r28 (2026-10-07): --num-workers and --no-cuda-graphs REMOVED from
+# COMMON_ARGS. Neither is declared in this trainer's argparse, so all 15
+# G5 pairs aborted with rc=2 "unrecognized arguments". The Wf-328-W6
+# DataLoader-factory and Wf-335-R3 cudagraphs-lever notes below are
+# retained as history only — the levers are structurally satisfied
+# (no --torch-compile => no cudagraphs). See the COMMON_ARGS comment
+# for the full evidence trail. G6 still carries both flags and is
+# blocked on the same defect.
 #
 # Wf-337-G2: this launcher mirrors launch_wf124_p3_g6.sh v2 config for
 # parity with the G6 per-innovation ablation sweep.
@@ -137,6 +138,13 @@ mkdir -p "${OUT_BASE}"
 
 PY="/home/hugo/codes/mol-metal/.venv/bin/python"
 SCRIPT="molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
+# 2026-10-07 (user directive: configs in YAML, not CLI). The trainer already
+# accepts --config and ends parse_args() in apply_yaml_overrides
+# (train_dmpnn_multitask_wasserstein.py:3320-3322), so the yaml is the base and
+# COMMON_ARGS below override it per-pair. Anything NOT in COMMON_ARGS falls back
+# to the yaml value rather than to the argparse default — that is the whole
+# point of the consolidation.
+DMPNN_CONFIG="${DMPNN_CONFIG:-configs/dmpnn.yaml}"
 GPU="cuda:0"  # RTX PRO 6000 Blackwell GPU-0 (CUDA_VISIBLE_DEVICES=0; G6 recovery holds GPU-1)
 DATA_CSV="/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"  # Wf-261 strict scaffold split (0 leak) + v4 cohort
 
@@ -156,14 +164,24 @@ COMMON_ARGS=(
   --n-mc 256
   --device "${GPU}"
   --cuda-visible-devices 0
-  --cpu-num-workers 8
-  --num-workers 8
+  # Wf-r28 (2026-10-07): `--num-workers 8` and `--no-cuda-graphs` were
+  # REMOVED — neither is declared in this trainer's argparse
+  # (train_dmpnn_multitask_wasserstein.py), so every one of the 15 G5
+  # pairs died with argparse rc=2 "unrecognized arguments" before a single
+  # epoch ran. This was masked while the `set -e` bug above killed the
+  # sweep even earlier. Evidence: `python -m ... --config configs/dmpnn.yaml
+  # --num-workers 8` and `--no-cuda-graphs` both exit rc=2.
+  #   - `--num-workers`: no dest exists; `--cpu-num-workers` (kept above) is
+  #     the trainer's only worker flag, and main() already documents it as a
+  #     structural no-op (manual batch build, no torch DataLoader).
+  #   - `--no-cuda-graphs`: CUDA graphs only exist behind
+  #     `--torch-compile` (action="store_true", default=False,
+  #     train_dmpnn_multitask_wasserstein.py:3286-3287). G5 does not pass
+  #     --torch-compile, so graphs are already off; the Wf-335-R3 safety
+  #     lever is satisfied structurally. The only graph-related flag the
+  #     trainer exposes is the enabling `--torch-compile` itself, and
+  #     omitting it keeps the lever closed.
   --data-csv "${DATA_CSV}"
-  # Wf-335-R3 — CUDA Graphs hard-disable safety lever. Default ON in
-  # trainer (per Wf-330-B4 MEASURED RuntimeError on Ru seed=2 + Ir seed=0
-  # under --torch-compile-mode reduce-overhead); pass explicitly so paper
-  # §6 audits can verify the lever is wired.
-  --no-cuda-graphs
 )
 
 # ---- DRY-RUN mode: verify config + CSV paths only (no GPU execution) ----
@@ -205,7 +223,7 @@ if [[ "${DRY_RUN}" == "1" ]]; then
     --wrapper "$(basename "$0")" \
     --mode "G5_50epoch_full_sweep" \
     --trainer "${SCRIPT}" \
-    --flags "--epochs 50 --batch-size 256 --hidden 300 --depth 3 --lr 1e-3 --alpha 0.5 --wasserstein-weight 0.05 --use-l2-guard --ablation-config mtl_baseline --w2-gradient-mode sort --n-mc 256 --device ${GPU} --cpu-num-workers 8 --num-workers 8 --no-cuda-graphs" \
+    --flags "--epochs 50 --batch-size 256 --hidden 300 --depth 3 --lr 1e-3 --alpha 0.5 --wasserstein-weight 0.05 --use-l2-guard --ablation-config mtl_baseline --w2-gradient-mode sort --n-mc 256 --device ${GPU} --cpu-num-workers 8" \
     --gpu "${GPU}" \
     --budget-hr "5" \
     --user-ok "REQUIRED" \
@@ -314,16 +332,26 @@ run_pair() {
   # evidence so post-sweep diagnostics can attribute any per-pair failure
   # to pre-flight vs wave-specific causes. The exit-code is captured for
   # the per-pair budget tracker but does NOT abort the sweep.
+  # Wf-r28: `set -e` is active at the top of this script. The bare
+  # wf343c2 invocation below returned rc=1 (2 sub-checks FAIL) and `set -e`
+  # therefore aborted the WHOLE script at this line — BEFORE the
+  # `local rc_c2=$?` capture below could run, and before any pair trained.
+  # That silently defeated the diagnostic-only contract documented above and
+  # surfaced as TODO-181 G5 task-3 rc=1 after 3 min (Wf-r28 2026-10-07).
+  # Fix: `|| rc_c2=$?` puts the command in a tested context so `set -e` does
+  # not fire, and captures the real rc. Mirrors the G6 launcher's
+  # `|| { ...; return 1; }` guard shape (scripts/launch_wf124_p3_g6.sh:354).
+  # `local rc_c2` MUST be declared before the call under `set -u` semantics.
+  local rc_c2=0
   PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/wf343c2_per_wave_check.py \
     --wave "Wf-124-P3-G5-${metal}-seed${seed}" \
     --pairs-metals "${metal}" \
     --pairs-seeds "${seed}" \
     --config configs/wf124_p3_50epoch_full_sweep_g5.yaml \
-    --budget-hr 0.7 \
+    --budget-hr 0.9 \
     --min-vram-mib 8192 \
     --min-disk-gib 50 \
-    --skip-live > "${OUT_BASE}/${metal}/seed${seed}/wf343c2_per_wave_check.log" 2>&1
-  local rc_c2=$?
+    --skip-live > "${OUT_BASE}/${metal}/seed${seed}/wf343c2_per_wave_check.log" 2>&1 || rc_c2=$?
   echo "PAIR_PER_WAVE_CHECK ${metal} seed=${seed} rc=${rc_c2} log=${OUT_BASE}/${metal}/seed${seed}/wf343c2_per_wave_check.log" | tee -a "${LOG}"
   # Diagnostic-only: do NOT return 1 on rc!=0 (per kill_then_adapt; see
   # comment above). The JSON evidence is captured for post-sweep audit.
@@ -340,6 +368,7 @@ run_pair() {
   # and the --cuda-visible-devices 0 flag above; the old '1' predated the
   # GPU-0 resolver default.  (G6 recovery holds GPU-1.)
   CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} \
+    --config "${DMPNN_CONFIG}" \
     --metals "${metal}" \
     --seeds "${seed}" \
     --csv "${DATA_CSV}" \

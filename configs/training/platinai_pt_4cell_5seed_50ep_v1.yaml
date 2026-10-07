@@ -45,22 +45,75 @@ data:
     metals: [Pt]  # Wf-A8 §5 MEASURED: 4078 SMILES × 4 cells = 16312 long-format rows
     cells: [A2780, MCF7, A549, A2780cis]  # Rusanov 2025 §3.2 per-cell-balanced
   expected_columns_subset: [SMILES_Ligands, pIC50_mcf7, pIC50_a549, pIC50_a2780, pIC50_a2780cis, metal]
+  # 2026-10-07 (P-A m2 lock fix): the resolved cohort CSV is pinned as a LIVE
+  # top-level `csv:` key (see the block below).  It is the SAME path
+  # `_resolve_default_csv_path('platinai_4cell')` picks
+  # (DEFAULT_PLATINAI_4CELL_CSV), now written down so
+  # pre_flight_check.verify_protocol_lock has a concrete artifact to md5 — the
+  # gate hashes what the config names, and `--dataset <name>` alone is not
+  # hashable (this is what made the p3_wf35_protocol_lock_m2_r2_per_cell gate
+  # FAIL with "trainer config names NO dataset artifact").
+  # The resolved cohort CSV lives at the TOP-LEVEL `csv:` key further down this
+  # file, NOT here — see that block for the MEASURED evidence and the
+  # `data.csv` -> `--data-csv` mis-wire it avoids.
   # HONEST-NEGATIVE: .data/molmetal/platinai_4cell.csv has NO Year column
   # (Wf-A8 §6); split_strategy='70_10_10_hash' is the canonical option.
   # If future CSV has Year column, platinai_dataset.py must support split_strategy='year_2024'.
-  split:
+  #
+  # 2026-10-07 (P-A m2 lock fix): `split:` -> `split_intent:`.  Every leaf
+  # below was MEASURED dead in wfA2_config_loader (no argparse dest named
+  # type / train_frac / val_frac / test_frac / temporal / temporal_substitute);
+  # the block is documentation of intent, not run configuration.  The operative
+  # split is hardcoded in `load_platinai_4cell_split_table(csv_path,
+  # split_strategy="scaffold_70_10_10")` — deterministic canonical-SMILES hash,
+  # 70/10/10 — NOT the 70/10/20 stated here, which Wf-A8 recorded from
+  # PROTOCOL_ALIGNMENT_MATRIX prose.  Renaming keeps the gate from stringifying
+  # this dict and reporting a fabricated diff against the lock's split field;
+  # it does NOT make the split machine-checked (no trainer exposes a
+  # split-protocol flag — see protocol_lock.yaml m2 `honest_negative`).
+  split_intent:
     type: per_cell_line_balanced
     train_frac: 0.7
     val_frac: 0.1
     test_frac: 0.2
     temporal: pre_2024_train_and_2024_plus_test_HONEST_NEGATIVE_BLOCKED_no_Year_column_in_csv
     temporal_substitute: stable_hash_per_cell_balanced_70_10_10
+
   # 2026-10-04: renamed from `num_workers` to match the trainer flag.
   # --cpu-num-workers is the DataLoader num_workers knob (its own help reads
   # 'DataLoader num_workers (default 0 = main process)'); the old key name
   # resolved to no argparse dest and was silently dropped.
   cpu_num_workers: 8  # PyTorch DataLoader docs recommendation; Blackwell sm_120 + 6-batch featurisation handles 8 workers
   pin_memory: true  # wired -> --pin-memory / --no-pin-memory (2026-10-04)
+
+# =============================================================================
+# COHORT CSV — TOP-LEVEL `csv:` (added 2026-10-07, P-A m2 protocol-lock fix)
+# =============================================================================
+# Resolved cohort artifact, pinned so pre_flight_check.verify_protocol_lock has
+# a concrete file to md5: the gate hashes what the config NAMES, and
+# `--dataset platinai_4cell` alone is not hashable (that is what produced the
+# p3_wf35_protocol_lock_m2_r2_per_cell FAIL "trainer config names NO dataset
+# artifact").  This is the SAME path `--dataset platinai_4cell` already resolves
+# to via _resolve_default_csv_path -> DEFAULT_PLATINAI_4CELL_CSV, so the key
+# pins the existing behaviour rather than changing it.
+#
+# MEASURED 2026-10-07: md5 5a5d8da8d1b05a9647546a5c2101f6f2, 472144 bytes,
+# 4078 data rows, columns SMILES_Ligands,pIC50_{mcf7,a549,a2780,a2780cis},metal.
+# NOT molmetal/data/platinai_4cell.csv (md5 cbdb7c2d…, same 4078 complexes but
+# columns complex_id,smiles,ic50_*_nm,source) — load_platinai_4cell_split_table
+# raises ValueError on that one for a missing `SMILES_Ligands` column
+# (train_dmpnn_multitask_wasserstein.py:469).
+#
+# NOTE ON SPELLING — top-level, not `data.csv`. That spelling is load-bearing
+# (MEASURED 2026-10-07 through wfA2_config_loader):
+#   `data.csv` -> _candidate_dests flat form `data_csv` -> matches --data-csv
+#                 (the MetalCytoToxDB override) and wins on the flat-first
+#                 rule, so it MIS-WIRES this PlatinAI path into the
+#                 MetalCytoToxDB reader: ns.csv stayed None while ns.data_csv
+#                 became the platinai path.
+#   `csv:`     -> flat form `csv` -> matches --csv. Correct dest.
+# §5.7 smoke evidence: ns.csv resolves to the path below and ns.data_csv stays None.
+csv: /home/hugo/codes/mol-metal/.data/molmetal/platinai_4cell.csv
 
 # ============================================================================
 # MODEL — chemprop_v2_v3 D-MPNN multi-task Wasserstein pIC50

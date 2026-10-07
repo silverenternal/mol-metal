@@ -20,8 +20,8 @@
 | bond_head in_dim | 265 (expected 265) |
 | device | cuda |
 | cuda_available | True |
-| torch | 2.14.0+cu130 |
-| wall-clock | 9.9s (9.85s/step) |
+| torch | 2.14.1+cu130 |
+| wall-clock | 8.7s (8.71s/step) |
 
 ## P0 fixes active
 all ON

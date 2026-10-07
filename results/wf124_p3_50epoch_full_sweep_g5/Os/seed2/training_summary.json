@@ -1,0 +1,40 @@
+{
+  "wf_tag": "Wf-131 Phase 1 \u2014 5-metal multi-task D-MPNN with Wasserstein pIC50 regularisation (Ru AUC rescue)",
+  "metals": [
+    "Os"
+  ],
+  "seeds": [
+    2
+  ],
+  "epochs": 50,
+  "alpha": 0.5,
+  "wasserstein_weight": 0.05,
+  "use_l2_guard": true,
+  "lr": 0.001,
+  "batch_size": 256,
+  "hidden": 300,
+  "depth": 3,
+  "device": "cuda:0",
+  "elapsed_seconds_total": 140.60441303253174,
+  "per_metal": {
+    "Os": {
+      "n_seeds": 1,
+      "n_train": 834,
+      "n_val": 100,
+      "n_test": 179,
+      "test_auc_mean": 0.7255696202531646,
+      "test_auc_std": 0.0,
+      "test_pearson_mean": 0.42579796598459535,
+      "test_pearson_std": 0.0,
+      "test_rmse_mean": 1.3704624647789068,
+      "test_rmse_std": 0.0,
+      "ckpt_paths": [
+        "results/wf124_p3_50epoch_full_sweep_g5/Os/seed2/ckpts/dmpnn_mtw_os_seed2.pt"
+      ],
+      "status": "OK"
+    }
+  },
+  "ru_auc_target": 0.86,
+  "ru_auc_baseline_single_task": 0.7123,
+  "honest_framing_note": "Wf-131 P1 stacks multi-task (shared encoder + 5 per-metal heads) + Wasserstein pIC50 regularisation + L2 gradient-norm guard.  Smaller metals (Rh/Os/Re < 1.2k rows) give noisier per-seed AUC; per-seed spread is reported unfiltered.  The Ru AUC \u2265 0.86 target is PROJECTED (party-twenty-spirit \u00a73.5), not measured \u2014 the recipe stack has not been validated end-to-end on this cohort, so we report mean \u00b1 std honestly and let the per-seed metrics speak for themselves."
+}

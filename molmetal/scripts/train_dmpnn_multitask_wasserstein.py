@@ -1583,6 +1583,15 @@ def train_one_metal_one_seed(
     resume_from: str = "auto",
     resume_from_path: Optional[Path] = None,
     checkpoint_interval: int = 50,
+    # Wf-R29 — Wf-335-P3 Triton dispatch flag wire-in.  ``--use-triton-relu-mlp``
+    # had a real argparse dest AND a live consumer (the ``self.use_triton_relu_mlp``
+    # branch in ``MultiTaskWassersteinModel.__init__`` that swaps the eager
+    # Sequential heads for ``_FusedReLUMLPWrapper``), but main() never threaded
+    # it into the model constructor — so the YAML key configs/dmpnn.yaml
+    # ``model.use_triton_relu_mlp`` resolved fine and then went nowhere.
+    # That is the Wf-385-A1 FLAG_ONLY class.  Default False keeps the
+    # bit-for-bit Wf-131-P1 baseline.
+    use_triton_relu_mlp: bool = False,
     # Wf-A6 A2 BLOCKER C fix — LR scheduler (cosine / onecycle) opt-in
     # kwargs thread from main(). Default OFF preserves Wf-131 P1 +
     # Wf-251-F4 baseline bit-for-bit (lr_scheduler='none' means
@@ -1824,6 +1833,7 @@ def train_one_metal_one_seed(
         depth=depth if depth is not None else DEFAULT_DEPTH,
         dropout=DEFAULT_DROPOUT,
         use_dann=use_dann,
+        use_triton_relu_mlp=use_triton_relu_mlp,
     ).to(device)
     # 2026-10-04 — GPU-utilisation wire-in, mirroring Wf-431-B1 in
     # train_cfm_yuelbond_wasserstein.py.  Default OFF; the no-flag path is
@@ -3728,6 +3738,13 @@ def main(argv: Optional[List[str]] = None) -> int:
                     # the cap actually reaches the live pool assembly
                     # (was FLAG_ONLY: declared, never read; §5.7).
                     max_joint_rows=getattr(args, "max_joint_rows", None),
+                    # Wf-R29 — thread --use-triton-relu-mlp into the model
+                    # constructor.  Resolved from the post-YAML ``args`` so
+                    # the configs/dmpnn.yaml ``model.use_triton_relu_mlp``
+                    # key is honoured (§5.7 FLAG_ONLY fix).
+                    use_triton_relu_mlp=bool(
+                        getattr(args, "use_triton_relu_mlp", False)
+                    ),
                     # 2026-10-04 — thread the four compute.* flags.  Without
                     # this the kwargs default to False and the flags stay
                     # FLAG_ONLY (§5.7): accepted by argparse, reach nothing.

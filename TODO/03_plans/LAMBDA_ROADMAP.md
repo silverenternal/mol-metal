@@ -279,6 +279,43 @@ R20 12 weeks (接力 Wf-36/37 ship surface):
 | **L11** MCTS tree per-node statistics | 93 | n/a | n/a | Wf-40 P3 ✅ success 100% / 85 nodes / depth 3 + vuln_f/g CRITICAL | R20-P2 ✅ hit_rate ≥ 0.95 (TODO-93) — **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.1 (HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL per Wf-365-A3 verdict; 5 architectural attempts exhausted) | ✅ | ✅ |
 | **L12** Closure theorem cross-domain OOD | 98 | n/a | n/a | Wf-41 P2 ✅ OOD 0.5581 plat / 0.0300 metalcyt + Wf-44 P1 catalog | Wf-44 P2 ✅ Catherine ≥ 25 metals (TODO-98) + R20-P5 ✅ (TODO-96) — **CPU SCAFFOLD SHIPPED** per Wf-381-A5 §2.4 (HONEST_NEGATIVE_PARTIAL: 1/3 domains lifted) | ✅ | ✅ |
 
+### §4.2 P-D 追加 (2026-10-07) — L5 Hilbert ASTSR honest-negative 复核 re-scope
+
+**Verdict**: L5 (Hilbert ASTSR end-to-end, TODO-93 R20-P2 + TODO-179) 归入
+**HONEST_NEGATIVE_R2_ARCHITECTURAL_CEILING FINAL** — 沿用 Wf-139 P4 结论，不再
+投入 GPU 追 R² gate。
+
+- **MEASURED 当前值 (最新, 非 Wf-122 P3)**: Wf-129 P3 Multi-PH + PLL guarded
+  retrain R² = **-0.0780 ± 0.0148** (5 seeds × n=200, hilbert_dim=64), 相比
+  Wf-122 P3 post-fix combined -5.6625 提升 +5.58 (LESS NEGATIVE)，但远低于
+  LAMBDA_ROADMAP §4.2 R20 列 L5 gate R² ≥ 0.85 (Δ ≈ -0.93)。
+  来源: `metrics/by_metric/hilbert_4cell_r2.json::wf129_p3_multiph_pll_guarded_l7_lift_caveat`
+  + `molmetal/reports/wf129_p3_multiph_pll/synthesis.md`。
+- **gate_target_unreachable_within_architecture** = true。12-d RDKit 信号地板:
+  PlatinAI pIC50 上每个 F5_RDKIT_2D 特征 |ρ| ≤ 0.019 (Wf-49 §Cause 2 audit)，
+  线性 R² 上界 = 0.019² × 12 = 0.0043，因此 R² ≥ 0 在当前特征栈上数学不可达。
+  Wf-127 / Wf-128 / Wf-129 三次独立 rescue 全部收敛到同一地板
+  (见 `TODO/completed/137_l5_l7_l10_arch_ceiling_honest.md`)。
+- **本 phase 修正的一处前提混淆**: 任务书原文写 "L5 ... augmented_mean 0.472 <
+  0.6 gate" — MEASURED 表明 `augmented_mean 0.472` 是 **m6_kappa** 的 gate
+  (LAMBDA_ROADMAP line 506 + `METRIC_LIFT_STRATEGY_v2.md` §3.5)，**不是 L5 的**。
+  L5 的 gate 是 R² ≥ 0.85 (R17 基线 0.62)。两者的 re-scope 结论同向 (drop from
+  §3 main-result)，但 gate 数值不可互换，JSON 中按 L5 自身数值记录。
+- **precedent 交叉引用 (m6_kappa sister case)**: `TODO/completed/377a1_m6_kappa_redesign.md`
+  (Wf-377-A1 redesign) + `docs/M6_KAPPA_REDESIGN_PROPOSAL.md` + Wf-389-A1 §3
+  supplementary sub-table promotion + Wf-375-A4 §6 reframe。**注意**: 任务书引用的
+  `TODO/completed/377_a1_lit_honest_synthesis.md` 在磁盘上不存在 (真实文件名为
+  `377a1_m6_kappa_redesign.md`)，已按后者引用。
+- **recommendation**: **drop-from-§3 main-result + USER_OK-gated paper conversion**。
+  L5 移入 Tier-2 §3 supplementary / §6 Limitations honest-negative 表 (Wf-139 P4
+  3-Wf honest-negative 表 + 三条 lift path: Wf-94 R20-P3 真实 172-d 特征增强 /
+  R22-P4 AlphaFold-Multimer 蛋白感知描述符 / ~~R23-P6 湿实验~~ — 湿实验分支已
+  按 AGENTS.md §10 DEPRECATED，仅保留前两条 in-silico path)。
+  任何 paper/* 落地仍需用户显式 OK (TODO-84 + AGENTS.md §5.3)。
+- **TODO-179 状态不变**: STATUS_HOLD per Wf-316A — 与 m6_kappa 情形一致
+  ("deferred until m6_kappa gate architecture is finalized per Wf-365-A3 §5")。
+- **本 phase 未做**: 0 次 retrain，0 GPU 调用，0 次 paper/* 触碰。
+
 **总**: R20 close L1/L2/L5/L6/L7/L9/L10/L11/L12 + L4 retrain (9/12); R21 close L3/L4/L8 (12/12 全 close) + L9 R² ≥ 0.85 lift + L8 real-data triangle. R22-R25 长期演化 (with **R22-P1 wet-lab DEPRECATED** + **R23 ALL DEPRECATED** per AGENTS.md §10 + 2026-09-29/30 user directives — see §3.2/§3.3 DEPRECATION NOTICEs).
 
 **TODO # 列 cross-ref**:

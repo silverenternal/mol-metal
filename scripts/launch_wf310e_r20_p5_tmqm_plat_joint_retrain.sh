@@ -84,6 +84,14 @@ PLAT_4CELL_META="${PROJECT_ROOT}/.data/molmetal/platinai_4cell.meta.json"
 # Trainer target (chemprop v2 multi-task + W₂ pIC50 regularization + Wf-348-B1
 # Multi-PH + PLL augmentation via --use-multiph-pll CLI flag)
 TRAINER="${SCRIPTS_DIR}/train_dmpnn_multitask_wasserstein.py"
+# 2026-10-07 (user directive: "所有启动脚本都用yaml管理…不要用cli,那样不好追溯").
+# The trainer already accepts --config and ends parse_args() in
+# apply_yaml_overrides (train_dmpnn_multitask_wasserstein.py:3320-3322), so the
+# yaml is the base and the per-call flags below override it.
+# Precedence: explicit CLI flag > YAML > argparse default.
+# Absolute: this wrapper has no top-level `cd`, so a relative path would
+# resolve against the caller's cwd.
+DMPNN_CONFIG="${DMPNN_CONFIG:-${PROJECT_ROOT}/configs/dmpnn.yaml}"
 
 # Per-cell PlatinAI (MCF7, A549, A2780, A2780cis per platinai_4cell.meta.json)
 CELLS=(MCF7 A549 A2780 A2780cis)
@@ -435,6 +443,7 @@ for CELL in "${CELLS[@]}"; do
     for SEED in "${SEEDS_TO_USE[@]}"; do
         log "=== cell=${CELL} seed=${SEED} on ${GPU} ==="
         if CUDA_VISIBLE_DEVICES=0 "${PY}" "${TRAINER}" \
+                --config "${DMPNN_CONFIG}" \
                 --mode joint_tmqm_platinai \
                 --tmqm-csv "${TMQM_CSV}" \
                 --platinai-csv "${PLAT_4CELL_CSV}" \

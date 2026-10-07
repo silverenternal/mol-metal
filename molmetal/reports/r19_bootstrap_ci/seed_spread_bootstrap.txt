@@ -1,0 +1,20 @@
+Wf-R19-A1 Bootstrap CI — Re W2-OFF 3-seed AUC
+==============================================
+
+Per-seed AUCs: ['0.5765', '0.6154', '0.5833']
+Observed mean : 0.5917
+Observed std  : 0.0170
+Observed range: 0.0389
+Per-seed AUC SE (n=166, n_pos=27): 0.0350
+
+Bootstrap B=2000, seed=0:
+  Mean 95% CI: [0.5765, 0.6154] (halfwidth=0.0195)
+  Std  95% CI: [0.0000, 0.0225]
+
+Verdict: MARGINAL
+  observed_seed_range=0.0389 in [1.0×, 2.0×) × per_seed_auc_resolution_se=0.0350
+
+Honest-negative: at n_test=166 the AUC sampling SE already exceeds the
+observed 3-seed range. A hyperparameter fix that shrinks the spread below
+~0.0350 is INDISTINGUISHABLE FROM NOISE. Recommendation: bootstrap across
+5 folds × N seeds, NOT within the current 3 seeds × 1 fold.
