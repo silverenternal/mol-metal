@@ -44,7 +44,23 @@ overlapping coverage, (d) verifies every gate is MEASURED-only, and
 
 ## §2 Gate inventory (per-pipeline; counts synced 2026-10-03, HOLE-1 + HOLE-5 + L4 + L5)
 
-### §2.1 `all` pipeline — 113 gates
+### §2.1 `all` pipeline — 114 gates
+
+> **Wf-R43 m16 (2026-10-08): 113 → 114.** 1 NEW opt-in fail-loud guard
+> `p3_wf_r43_m16_pt_ckpt_gap` guarding the m16 D-MPNN pIC50 **Pt
+> checkpoint gap** (the last red `MOCK_NEEDS_REMEASURE` item in
+> `TODO/INDEX.md` §17.1). `dmpnn_ckpt_status.json` inventories 25 ckpts
+> across Ru/Ir/Rh/Os/Re × seeds 0-4; Pt is absent. The gap is **not**
+> trainable from this repo: the MetalCytoToxDB-derived CSVs carry zero Pt
+> rows (MEASURED on disk) and the only Pt cohort reachable via
+> `--dataset platinai_4cell` carries SYNTHETIC labels per
+> `molmetal/data/platinai_4cell.meta.json`. So the gate audits and FAILs
+> loud while the gap is open rather than training on labels that would
+> restate their own generator (AGENTS.md §5.2). Opt-in via
+> `WF43_M16_PT_CKPT=1` (Wf-R35 P-A precedent), so the count moves without
+> changing any existing pre-flight verdict. Implementation:
+> `molmetal/scripts/wf_r43a1_m16_pt_ckpt_gap.py`; tests:
+> `molmetal/tests/test_wf_r43a1_m16_pt_ckpt_gap.py` (8/8 PASS).
 
 > **Wf-R42 MOCK→REAL (2026-10-08): 108 → 113.** 5 L3 MOCK→REAL gates
 > re-registered: `p3_mock_to_real_{m3_vina_kcal_per_mol,m15_rmsd,m14_decode_ratio,m17_drugood_assay,m21_nci60_precious_9cell}_*_REAL`.
@@ -324,7 +340,7 @@ When a gate is removed (rare; requires Wf-level justification):
 
 | Metric | Value |
 |---|---:|
-| `n_gates_total` (per-pipeline COUNT) | 113 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 7 (`cfm`) — plus the `launch` pipeline at 115 (`launch` = `all` + the 2 pre-retrain gates) |
+| `n_gates_total` (per-pipeline COUNT) | 114 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 7 (`cfm`) — plus the `launch` pipeline at 116 (`launch` = `all` + the 2 pre-retrain gates) |
 | `n_overlaps_found` | 2 (`p3_pb_*` family + P0/P2 CSV line-count) |
 | `n_deduped` | 0 (all overlaps were DOCUMENTED instead) |
 | `n_documented` | 2 |

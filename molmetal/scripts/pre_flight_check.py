@@ -4809,7 +4809,14 @@ EXPECTED_GATE_COUNTS = {
     # PASS/FAIL verdict of an existing pre-flight run does not.
     # Same-edit doc sync: TODO/completed/352a1_expected_gate_counts_bump.md
     # §Wf-R35-P-A.
-    "all": 113,
+    # Wf-R43 m16 (2026-10-08): 113 -> 114, MEASURED via
+    # len(build_gates("all")) == 114 after the m16 D-MPNN pIC50 Pt
+    # ckpt-gap fail-loud gate (p3_wf_r43_m16_pt_ckpt_gap) was registered.
+    # It emits SKIP unless WF43_M16_PT_CKPT=1 (Wf-R35 P-A precedent at
+    # L7598), so the count moves but the PASS/FAIL verdict of an
+    # existing pre-flight run does not. Implementation:
+    # molmetal/scripts/wf_r43a1_m16_pt_ckpt_gap.py.
+    "all": 114,
     # (was 103 before Wf-R35 P-A; Wf-A16 2026-10-03: 105 -> 103, MEASURED via
     # len(build_gates("all")) == 103 after the two PRE-RETRAIN
     # gates moved out of the commit path into the new "launch"
@@ -7658,6 +7665,50 @@ def gate_wf35_protocol_lock(
         result["status"],
         f"{name}: {result['evidence']}",
         time.perf_counter() - t0,
+    )
+
+
+def gate_wf_r43_m16_pt_ckpt_gap(
+    name: str,
+    priority: str,
+    pipeline: str,
+    inventory_path: Path,
+    *,
+    repo_root: Optional[Path] = None,
+) -> GateResult:
+    """Wf-R43 m16 — fail-loud guard on the D-MPNN pIC50 Pt ckpt gap.
+
+    ``metrics/by_metric/dmpnn_ckpt_status.json`` inventories 25 D-MPNN
+    pIC50 checkpoints across five metals (Ru/Ir/Rh/Os/Re x seeds 0-4).
+    Pt is absent, so ``m16`` sits in ``TODO/INDEX.md`` §17.1 as a red
+    ``MOCK_NEEDS_REMEASURE`` item.
+
+    The gap is **not** trainable away from this repo: the
+    MetalCytoToxDB-derived CSVs contain zero Pt rows (MEASURED on disk)
+    and the only Pt cohort reachable via ``--dataset platinai_4cell``
+    carries SYNTHETIC labels per
+    ``molmetal/data/platinai_4cell.meta.json``.  Training on it would
+    restate the label generator, not measure anything.
+
+    So this gate deliberately does NOT train — it audits and fails loud
+    while the gap is open, which stops a downstream surface (paper
+    draft / INDEX row / wave closeout) from inheriting a
+    SHIPPED-forever m16 (AGENTS.md §5.2 honest-framing mandate).
+
+    Opt-in via ``WF43_M16_PT_CKPT=1``, following the Wf-R35 P-A
+    precedent at L7598: registering the gate makes the surface auditable
+    without changing an existing pre-flight run's verdict.
+
+    Implementation lives in
+    ``molmetal/scripts/wf_r43a1_m16_pt_ckpt_gap.py`` (unit-tested
+    independently of this 14k-line file).
+    """
+    from molmetal.scripts.wf_r43a1_m16_pt_ckpt_gap import (
+        gate_m16_pt_ckpt_gap,
+    )
+
+    return gate_m16_pt_ckpt_gap(
+        name, priority, pipeline, inventory_path, repo_root=repo_root
     )
 
 
@@ -12426,6 +12477,27 @@ def build_gates(
                     "wf35pa",
                     _mk,
                     None,
+                ),
+            ),
+            # ---- Wf-R43 m16 — D-MPNN pIC50 Pt ckpt-gap fail-loud guard.
+            # `dmpnn_ckpt_status.json` covers Ru/Ir/Rh/Os/Re only; Pt is
+            # the red MOCK_NEEDS_REMEASURE item in TODO/INDEX.md §17.1.
+            # The gap is external-dep (no real-labelled Pt pIC50 cohort on
+            # disk; platinai_4cell labels are SYNTHETIC per its meta.json),
+            # so this gate audits + FAILs loud rather than training on
+            # labels that would restate their own generator. Opt-in via
+            # WF43_M16_PT_CKPT=1 (Wf-R35 P-A precedent), so registering it
+            # moves the gate count 113 -> 114 without changing any existing
+            # pre-flight verdict. See
+            # molmetal/scripts/wf_r43a1_m16_pt_ckpt_gap.py.
+            (
+                "p3_wf_r43_m16_pt_ckpt_gap",
+                lambda: gate_wf_r43_m16_pt_ckpt_gap(
+                    "p3_wf_r43_m16_pt_ckpt_gap",
+                    "P3",
+                    "wfr43m16",
+                    METRICS_DIR / "dmpnn_ckpt_status.json",
+                    repo_root=REPO_ROOT,
                 ),
             ),
             # ---- Wf-350-A3 — hyperparameter provenance log gate
