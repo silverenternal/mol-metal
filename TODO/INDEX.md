@@ -860,3 +860,39 @@ Cross-references: TODO/completed/A8_m17_yaml_rewrite.md + TODO/completed/A8_othe
 - Wf-A8 BLOCKER E + F trainer flag port deferred to Wf-A9+ (~70 LOC CPU)
 
 **Standing directives re-confirmed**: AGENTS.md §1 + §5.1 + §5.2 + §5.3 + §5.4 + §5.5 + §5.6 + §5.7 + §5.8 + §5.9 + §5.10 + §10.
+
+## §22.150 Wf-R39 docs-only pending→completed triage — 3 files MOVED, 8 correctly RETAINED (2026-10-08)
+
+**Wave**: Wf-R39 phase-3 `resolve-docs` (uncovered-TODO audit chain, wf_r39_uncovered_todo_audit).
+
+**Status**: 0 GPU launches · 0 trainer patches · 0 search_alg patches · 0 paper/* touches (TODO-84 honored) — **triage wave, not a compute wave.**
+
+**MOVED pending/ → completed/ via `git mv` per §5.6 (3 files)**:
+
+| # | From | To | Size | Self-declared terminal `Status:` | `TODO/completed/` counterpart (ls -la MEASURED) |
+|---:|---|---|---:|---|---|
+| 1 | `TODO/pending/206_m6_kappa_metric_redefinition.md` | `TODO/completed/206_m6_kappa_metric_redefinition.md` | 12898 B | `SHIPPED-PARTIAL → FINALIZED via Wf-381-A4` | `381a4_m6kappa_finalize.md` 17120 B |
+| 2 | `TODO/pending/234_wf234_frontier_math_audit_integration.md` | `TODO/completed/234_wf234_frontier_math_audit_integration.md` | 30335 B | `AUDIT COMPLETE — read-only` | `189_frontier_math_integration.md` 17778 B |
+| 3 | `TODO/pending/383_se3_sb_fast_converging_integration.md` | `TODO/completed/383_se3_sb_fast_converging_integration.md` | 33161 B | `PLAN_READY (CPU-only plan)` | `390a3_se3_sb_wire.md` 17731 B + `383a2_se3_sb_integration_plan.md` 20987 B |
+
+**CORRECTLY RETAINED in `TODO/pending/` (8 files — NOT moved)**:
+- `177_wf123_p3_m1m2_downstream_metric_lift.md` — `🚧 P1 — IN-FLIGHT … downstream lift NOT yet measured`; line 28 self-classifies as *Q4 2026 / R20 GPU exercise* → GPU-BLOCKED.
+- `179_wf123_p3_w2_pic50_alignment.md` — `🚧 P1 — IN-FLIGHT`; line 20 defers TODO-122 P1.3 to *R20-P2 GPU retrain* → GPU-BLOCKED.
+- `183_wf123_wf124_p3_gap_routing_plan.md` — `📐 PLANNING`; routes the 6 still-open TODOs 177-182 → GPU-BLOCKED (moving it would orphan the queue).
+- `376a3_m2_r2_gpu_retrain_plan.md` — `PLAN ONLY — no retrain launched. Awaiting USER_OK=1` → GPU-USER_OK.
+- `plan_a_overview.md` — `APPROVED by user` 2026-10-07 verbatim *"我认可你的方案A"* → live gating chain root.
+- `plan_a_data_pipeline.md` (GPU 0) / `plan_a_step2_cfm_prior.md` (GPU ~10 hr) / `plan_a_step3_closed_loop.md` (GPU ~30 hr) — all `DESIGN, gated on Step 1+/cfm_r10 fix` → live 3-step gating chain.
+- 7 `TODO/pending/wetlab_*` files — **RETAINED NOT DELETED** per AGENTS.md §10.5 retention policy (Tier-2 historical record); §10 HARD MANDATE unchanged.
+
+**docs/HONEST_NEGATIVE_CATALOG.md**: **NEW §6.37** appended (`wfr39_docs_only_pending_to_completed_closeout`) immediately before `## §7 WETLAB_DEPRECATED` — grep-confirmed 0 pre-existing `§6.37` references before the write.
+
+**§5.5 filesystem-truth evidence**:
+- `ls -la TODO/completed/206_m6_kappa_metric_redefinition.md` → 12898 B
+- `ls -la TODO/completed/234_wf234_frontier_math_audit_integration.md` → 30335 B
+- `ls -la TODO/completed/383_se3_sb_fast_converging_integration.md` → 33161 B
+- `ls -la docs/HONEST_NEGATIVE_CATALOG.md` → 146344 B, 1168 lines (was 140450 B, 1152 lines → **+3613 B / +16 lines**)
+- `git status --short -- paper/` → **empty** (TODO-84 honored)
+
+**Honest framing**: Wf-R39 resolved **3 of 11** docs-only items. The other **8 remain genuinely OPEN** (GPU-USER_OK / GPU-BLOCKED / live chaining). Wf-R39 did **NOT** unblock L4 (LOMO real-only ~6 hr GPU) or L5 (Wasserstein re-bench ~4 hr GPU) — both remain **BLOCKED on the P-A protocol patch + 5-fold real-only re-measure** per Wf-A8c closeout §"Residual gaps" (5 yamls still FAIL 4 yaml gates). No metric was lifted; no PROJECTED number was promoted to MEASURED.
+
+**Standing directives re-confirmed**: AGENTS.md §1 + §5.1 (no GPU launch, no USER_OK consumed) + §5.2 (honest framing — 8 items declared still open) + §5.3 (no paper work per TODO-84) + §5.4 + §5.5 (ls -la evidence above) + §5.6 (`atomic_write_file` for catalog + this entry; `git mv` for the 3 files) + §5.8 (wf token budget) + §5.9 (.venv/bin/python) + §5.10 + §10 (wetlab deprecation).
