@@ -176,19 +176,48 @@ except Exception as exc:  # pragma: no cover
 # ---------------------------------------------------------------------------
 # Each tuple = (column_name, callable(mol) -> float). Order is fixed for
 # schema stability across re-runs.
+#: (column_name, rdkit Descriptors attribute name) — the frozen Wf-49 order.
+#: Stored as *attribute names*, not resolved callables, so this module
+#: imports cleanly when RDKit is absent.  wf-R39-CPU found the previous
+#: ``Descriptors.MolWt`` form made the ``_HAS_RDKIT`` guard above dead code:
+#: a missing RDKit produced ``NameError: name 'Descriptors' is not defined``
+#: at line 180 rather than the intended lazy failure.  Use
+#: :func:`resolve_rdkit_2d_descriptors` to obtain the callable tuple.
+RDKIT_2D_DESCRIPTOR_ATTRS: Tuple[Tuple[str, str], ...] = (
+    ("MolWt", "MolWt"),
+    ("MolLogP", "MolLogP"),
+    ("TPSA", "TPSA"),
+    ("HBA", "NumHAcceptors"),
+    ("HBD", "NumHDonors"),
+    ("NRotB", "NumRotatableBonds"),
+    ("HeavyAtoms", "HeavyAtomCount"),
+    ("RingCount", "RingCount"),
+    ("NumAromaticRings", "NumAromaticRings"),
+    ("FractionCSP3", "FractionCSP3"),
+    ("MolMR", "MolMR"),
+    ("BalabanJ", "BalabanJ"),
+)
+
+
+def resolve_rdkit_2d_descriptors() -> Tuple[Tuple[str, "callable"], ...]:
+    """Return the frozen 12-d registry as ``(name, callable)`` pairs.
+
+    Raises ``RuntimeError`` via :func:`_require_rdkit` when RDKit is absent,
+    so the failure is the intended actionable one rather than a NameError.
+    """
+    _require_rdkit()
+    from rdkit.Chem import Descriptors as _D
+
+    return tuple((name, getattr(_D, attr)) for name, attr in RDKIT_2D_DESCRIPTOR_ATTRS)
+
+
+#: Back-compat alias.  Resolved eagerly ONLY when RDKit is importable; on an
+#: RDKit-less host this is an empty tuple and callers must use
+#: :func:`resolve_rdkit_2d_descriptors` (every internal call site does).
 RDKIT_2D_DESCRIPTORS: Tuple[Tuple[str, "callable"], ...] = (
-    ("MolWt", Descriptors.MolWt),
-    ("MolLogP", Descriptors.MolLogP),
-    ("TPSA", Descriptors.TPSA),
-    ("HBA", Descriptors.NumHAcceptors),
-    ("HBD", Descriptors.NumHDonors),
-    ("NRotB", Descriptors.NumRotatableBonds),
-    ("HeavyAtoms", Descriptors.HeavyAtomCount),
-    ("RingCount", Descriptors.RingCount),
-    ("NumAromaticRings", Descriptors.NumAromaticRings),
-    ("FractionCSP3", Descriptors.FractionCSP3),
-    ("MolMR", Descriptors.MolMR),
-    ("BalabanJ", Descriptors.BalabanJ),
+    tuple((name, getattr(Descriptors, attr)) for name, attr in RDKIT_2D_DESCRIPTOR_ATTRS)
+    if _HAS_RDKIT
+    else ()
 )
 
 
@@ -219,41 +248,65 @@ RDKIT_2D_DESCRIPTORS: Tuple[Tuple[str, "callable"], ...] = (
 # produces a 32-d vector whose first 12 entries match
 # ``compute_rdkit_descriptors`` exactly — guaranteeing backward
 # compatibility for the 12-d path).
-RDKIT_2D_EXTENDED_DESCRIPTORS: Tuple[Tuple[str, "callable"], ...] = (
+RDKIT_2D_EXTENDED_DESCRIPTOR_ATTRS: Tuple[Tuple[str, str], ...] = (
     # 12 from Wf-49 P1 (frozen order, preserved bit-for-bit)
-    ("MolWt", Descriptors.MolWt),
-    ("MolLogP", Descriptors.MolLogP),
-    ("TPSA", Descriptors.TPSA),
-    ("HBA", Descriptors.NumHAcceptors),
-    ("HBD", Descriptors.NumHDonors),
-    ("NRotB", Descriptors.NumRotatableBonds),
-    ("HeavyAtoms", Descriptors.HeavyAtomCount),
-    ("RingCount", Descriptors.RingCount),
-    ("NumAromaticRings", Descriptors.NumAromaticRings),
-    ("FractionCSP3", Descriptors.FractionCSP3),
-    ("MolMR", Descriptors.MolMR),
-    ("BalabanJ", Descriptors.BalabanJ),
+    ("MolWt", "MolWt"),
+    ("MolLogP", "MolLogP"),
+    ("TPSA", "TPSA"),
+    ("HBA", "NumHAcceptors"),
+    ("HBD", "NumHDonors"),
+    ("NRotB", "NumRotatableBonds"),
+    ("HeavyAtoms", "HeavyAtomCount"),
+    ("RingCount", "RingCount"),
+    ("NumAromaticRings", "NumAromaticRings"),
+    ("FractionCSP3", "FractionCSP3"),
+    ("MolMR", "MolMR"),
+    ("BalabanJ", "BalabanJ"),
     # 20 Wf-218 expansion descriptors
-    ("BertzCT", Descriptors.BertzCT),
-    ("Chi0v", Descriptors.Chi0v),
-    ("Chi0n", Descriptors.Chi0n),
-    ("Chi1n", Descriptors.Chi1n),
-    ("HallKierAlpha", Descriptors.HallKierAlpha),
-    ("Kappa1", Descriptors.Kappa1),
-    ("Kappa2", Descriptors.Kappa2),
-    ("Kappa3", Descriptors.Kappa3),
-    ("LabuteASA", Descriptors.LabuteASA),
-    ("MaxPartialCharge", Descriptors.MaxPartialCharge),
-    ("MinPartialCharge", Descriptors.MinPartialCharge),
-    ("MaxAbsPartialCharge", Descriptors.MaxAbsPartialCharge),
-    ("MinAbsPartialCharge", Descriptors.MinAbsPartialCharge),
-    ("NumAliphaticRings", Descriptors.NumAliphaticRings),
-    ("NumSaturatedRings", Descriptors.NumSaturatedRings),
-    ("NumHeteroatoms", Descriptors.NumHeteroatoms),
-    ("NHOHCount", Descriptors.NHOHCount),
-    ("NOCount", Descriptors.NOCount),
-    ("fr_halogen", Descriptors.fr_halogen),
-    ("fr_Al_COO", Descriptors.fr_Al_COO),
+    ("BertzCT", "BertzCT"),
+    ("Chi0v", "Chi0v"),
+    ("Chi0n", "Chi0n"),
+    ("Chi1n", "Chi1n"),
+    ("HallKierAlpha", "HallKierAlpha"),
+    ("Kappa1", "Kappa1"),
+    ("Kappa2", "Kappa2"),
+    ("Kappa3", "Kappa3"),
+    ("LabuteASA", "LabuteASA"),
+    ("MaxPartialCharge", "MaxPartialCharge"),
+    ("MinPartialCharge", "MinPartialCharge"),
+    ("MaxAbsPartialCharge", "MaxAbsPartialCharge"),
+    ("MinAbsPartialCharge", "MinAbsPartialCharge"),
+    ("NumAliphaticRings", "NumAliphaticRings"),
+    ("NumSaturatedRings", "NumSaturatedRings"),
+    ("NumHeteroatoms", "NumHeteroatoms"),
+    ("NHOHCount", "NHOHCount"),
+    ("NOCount", "NOCount"),
+    ("fr_halogen", "fr_halogen"),
+    ("fr_Al_COO", "fr_Al_COO"),
+)
+
+
+def resolve_rdkit_2d_extended_descriptors() -> Tuple[Tuple[str, "callable"], ...]:
+    """Return the frozen 32-d registry as ``(name, callable)`` pairs.
+
+    Same lazy contract as :func:`resolve_rdkit_2d_descriptors`.
+    """
+    _require_rdkit()
+    from rdkit.Chem import Descriptors as _D
+
+    return tuple(
+        (name, getattr(_D, attr)) for name, attr in RDKIT_2D_EXTENDED_DESCRIPTOR_ATTRS
+    )
+
+
+#: Back-compat alias — see :data:`RDKIT_2D_DESCRIPTORS`.
+RDKIT_2D_EXTENDED_DESCRIPTORS: Tuple[Tuple[str, "callable"], ...] = (
+    tuple(
+        (name, getattr(Descriptors, attr))
+        for name, attr in RDKIT_2D_EXTENDED_DESCRIPTOR_ATTRS
+    )
+    if _HAS_RDKIT
+    else ()
 )
 
 
