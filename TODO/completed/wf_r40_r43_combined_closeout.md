@@ -139,9 +139,15 @@ fresh re-read instead of relying on the template substitution).
 
 ## §9 Follow-up
 
-- Wf-R43 verify phase (`ad0c17b2a435b4932`) still in flight at 06:09, queued
-  behind 4 concurrent pre-flight processes; its pre-flight run will land on
-  the post-Wf-R43 state (`all=118, launch=120`), no further action needed.
-  in a follow-up wave.
+- ~~Wf-R43 verify phase (`ad0c17b2a435b4932`) still in flight at 06:09~~ —
+  **VERIFIED at 06:18**. Pre-flight `WFA2_CONFIG_STRICT=1 .venv/bin/python -m
+  molmetal.scripts.pre_flight_check`, exit 0, 599 s wall. Verdict:
+  - **`106 PASS / 0 FAIL / 12 SKIP / 118 total`** (baseline before Wf-R43:
+    `106 / 0 / 7 / 113`)
+  - **+5 gates registered**, all 5 SKIP by design (opt-in pattern, same as
+    the 7 pre-existing SKIPs). PASS / FAIL counts unchanged → **no
+    regressions introduced**.
+  - `paper/` empty. `git log --oneline -10` lists 8 Wf-R40/R43 commits.
+  - pytest test_wf_r41_soft_valence_loss (11/11) + test_wf327f11_gate_count (3/3) PASS.
 
 — End of closeout —
