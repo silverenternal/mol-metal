@@ -4816,7 +4816,15 @@ EXPECTED_GATE_COUNTS = {
     # L7598), so the count moves but the PASS/FAIL verdict of an
     # existing pre-flight run does not. Implementation:
     # molmetal/scripts/wf_r43a1_m16_pt_ckpt_gap.py.
-    "all": 114,
+    # Wf-R43 m1 (2026-10-08): 114 -> 115, MEASURED via
+    # len(build_gates("all")) == 115 after the m1 Ru-AUC paper-cohort
+    # comparability guard (p3_wf_r43_m1_paper_cohort) was registered. The
+    # recorded DOI-CV (0.7717) ran on 591 cell lines vs the paper's 23, so
+    # the -0.038 shortfall vs Krasnov 0.810 is cross-cohort, not a
+    # reproduction. Opt-in via WF43_M1_PAPER_COHORT=1 (same Wf-R43 pattern),
+    # so the count moves but no existing pre-flight verdict does.
+    # Implementation: molmetal/scripts/wf_r43a1_m1_paper_cohort_guard.py.
+    "all": 115,
     # (was 103 before Wf-R35 P-A; Wf-A16 2026-10-03: 105 -> 103, MEASURED via
     # len(build_gates("all")) == 103 after the two PRE-RETRAIN
     # gates moved out of the commit path into the new "launch"
@@ -7709,6 +7717,48 @@ def gate_wf_r43_m16_pt_ckpt_gap(
 
     return gate_m16_pt_ckpt_gap(
         name, priority, pipeline, inventory_path, repo_root=repo_root
+    )
+
+
+def gate_wf_r43_m1_paper_cohort(
+    name: str,
+    priority: str,
+    pipeline: str,
+    metric_path: Path,
+    *,
+    repo_root: Optional[Path] = None,
+) -> GateResult:
+    """Wf-R43 m1 — fail-loud guard on Ru-AUC paper-cohort comparability.
+
+    ``metrics/by_metric/metalcytotox_ru_auc.json`` records a DOI-split
+    10-fold CV of ``mean_auc`` 0.7717 +/- 0.0380 under
+    ``paper_protocol_measurement``, alongside the paper's 0.810 +/- 0.024.
+    That CV ran on **591** cell lines / 15,799 rows; the paper's Ru ML set
+    is **23** lines / 11,294 rows, so the -0.038 delta is a CROSS-COHORT
+    estimate and not a reproduction.
+
+    The gate audits the recorded cohort scope and FAILs loud while the
+    comparison is cross-cohort, which stops a paper draft / INDEX row /
+    closeout from quoting 0.7717 against 0.810 as like-for-like
+    (AGENTS.md §5.2 honest-framing mandate).  It never trains and never
+    writes a metric.  The remediation cohort (top-23) is constructible
+    today on CPU (MEASURED 11,517 rows / 4,502 complexes vs the paper's
+    11,294 / 4,399); only the 10-fold GPU sweep remains.
+
+    Opt-in via ``WF43_M1_PAPER_COHORT=1`` (Wf-R35 P-A precedent, same as
+    ``p3_wf_r43_m16_pt_ckpt_gap`` in this wave), so registering the gate
+    moves ``EXPECTED_GATE_COUNTS["all"]`` 114 -> 115 without changing the
+    verdict of an existing pre-flight run.
+
+    Implementation lives in
+    ``molmetal/scripts/wf_r43a1_m1_paper_cohort_guard.py``.
+    """
+    from molmetal.scripts.wf_r43a1_m1_paper_cohort_guard import (
+        gate_m1_paper_cohort,
+    )
+
+    return gate_m1_paper_cohort(
+        name, priority, pipeline, metric_path, repo_root=repo_root
     )
 
 
@@ -12497,6 +12547,31 @@ def build_gates(
                     "P3",
                     "wfr43m16",
                     METRICS_DIR / "dmpnn_ckpt_status.json",
+                    repo_root=REPO_ROOT,
+                ),
+            ),
+            # ---- Wf-R43 m1 — Ru-AUC paper-cohort comparability guard.
+            # `metalcytotox_ru_auc.json` records a DOI-split 10-fold CV
+            # (mean_auc 0.7717 +/- 0.0380) next to the paper's 0.810, but
+            # that CV ran on 591 cell lines / 15,799 rows while the paper's
+            # Ru ML set is 23 lines / 11,294 rows — so the -0.038 delta is a
+            # CROSS-COHORT estimate, not a reproduction. This gate audits
+            # the recorded cohort scope and FAILs loud while it is
+            # cross-cohort, so no downstream surface can quote 0.7717
+            # against 0.810 as like-for-like. The top-23 remediation cohort
+            # is CPU-constructible today (MEASURED 11,517 rows / 4,502
+            # complexes vs the paper's 11,294 / 4,399); only the 10-fold GPU
+            # sweep remains. Opt-in via WF43_M1_PAPER_COHORT=1 (same
+            # Wf-R43 opt-in pattern as m16), so the count moves 114 -> 115
+            # without changing any existing pre-flight verdict. See
+            # molmetal/scripts/wf_r43a1_m1_paper_cohort_guard.py.
+            (
+                "p3_wf_r43_m1_paper_cohort",
+                lambda: gate_wf_r43_m1_paper_cohort(
+                    "p3_wf_r43_m1_paper_cohort",
+                    "P3",
+                    "wfr43m1",
+                    METRICS_DIR / "metalcytotox_ru_auc.json",
                     repo_root=REPO_ROOT,
                 ),
             ),
