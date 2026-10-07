@@ -2012,31 +2012,29 @@ def train_one_epoch(
                     f"(no label_smoothing).",
                     flush=True,
                 )
-        # 2026-10-04 — `stable_vm` is DISABLED.  It used to REPLACE bond_ce
-        # with ``stable_vm_loss(all_logits, zeros)``: a multi-scale MSE
-        # between the bond CLASS logits and an all-zero tensor.  That is not
-        # a bond loss in any sense — it trains the head to emit zeros, and it
-        # discards the real classification loss in the same assignment, so a
-        # run with this flag on reports a falling `bond_ce` while learning no
-        # bond chemistry at all.  The comment it carried
-        # ("use stable_vm_loss on logits as a drop-in replacement") names the
-        # error: a velocity-probe loss is not a drop-in for a 5-class
-        # cross-entropy.
+        # 2026-10-04 (Wf-R38) - `stable_vm` no longer touches bond_ce.  It
+        # used to REPLACE bond_ce with ``stable_vm_loss(all_logits, zeros)``:
+        # a multi-scale MSE between the bond CLASS logits and an all-zero
+        # tensor.  That is not a bond loss in any sense - it trained the head
+        # to emit zeros while discarding the real classification loss, so a
+        # run with the flag on reported a falling `bond_ce` while learning no
+        # bond chemistry at all.  The flag has been moved to the VELOCITY
+        # loss, where it belongs, and is consumed by the `fm_term`
+        # computation below.
         #
-        # This is the FLAG_ONLY class AGENTS.md §5.7 exists to catch; the
-        # difference is that this one is worse than inert, it is destructive.
-        # `stable_vm` belongs on the VELOCITY loss (see the `--stable-vm`
-        # help); wiring it there is the fix, and until then the flag raises
-        # rather than silently corrupting the bond head.
-        if stable_vm:
+        # The only condition left here is a guard against the historical
+        # misuse: if `stable_vm` is set but the flow-matching objective is
+        # OFF there is no velocity loss to attach it to, and silently
+        # ignoring the flag would be exactly the FLAG_ONLY class AGENTS.md
+        # 5.7 exists to catch.  Fail loudly instead.
+        if stable_vm and not fm_objective:
             raise SystemExit(
-                "--stable-vm is not wired to the bond loss and must not "
-                "replace bond_ce. It was previously used to overwrite the "
-                "bond cross-entropy with stable_vm_loss(logits, zeros), which "
-                "trains the bond head to output zeros while reporting a "
-                "falling bond_ce. The flag belongs on the VELOCITY loss; "
-                "either wire it there or drop it from the config. Refusing to "
-                "train with a silently destroyed bond objective."
+                "--stable-vm is a VELOCITY-loss flag and requires the "
+                "flow-matching objective. Pass --use-fm-objective (and "
+                "--use-egnn-velocity) so there is a velocity prediction to "
+                "score, or drop --stable-vm. Refusing to accept a flag that "
+                "would otherwise have no effect (Wf-R38: it previously "
+                "destroyed the bond cross-entropy instead)."
             )
         # Wasserstein regularization (M1).
         w2_val = torch.zeros((), device=device)
@@ -2592,6 +2590,34 @@ def train_one_epoch(
             fm_term = float(fm_weight) * F.mse_loss(
                 model.fm_velocity(x_t, t, z_all, cloud_sizes=_cloud_sizes), target_dx
             )
+            # Wf-R38 — `--stable-vm` now attaches HERE, to the velocity loss.
+            # This is the site the flag was always meant for: `stable_vm_loss`
+            # is a multi-scale mixture of squared velocity residuals, so both
+            # of its operands are (predicted velocity, target velocity).
+            # Before this change the flag overwrote the 5-class bond
+            # cross-entropy with `stable_vm_loss(logits, zeros)` - a
+            # velocity-probe loss is not a drop-in for a classifier, and the
+            # run reported a falling bond_ce while learning no chemistry.
+            _vel_pred = model.fm_velocity(
+                x_t, t, z_all, cloud_sizes=_cloud_sizes
+            )
+            if stable_vm:
+                try:
+                    from molmetal.adapters.flow_matching_lipman import (
+                        stable_vm as _svm,
+                    )
+
+                    _vel_resid = _svm.stable_vm_loss(_vel_pred, target_dx)
+                except Exception as _svm_exc:  # noqa: BLE001 - warned, not hidden
+                    warnings.warn(
+                        f"[cfm-fm] stable_vm fell back to plain MSE: {_svm_exc!r}",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+                    _vel_resid = F.mse_loss(_vel_pred, target_dx)
+            else:
+                _vel_resid = F.mse_loss(_vel_pred, target_dx)
+            fm_term = float(fm_weight) * _vel_resid
         # (a) shortcut_distill — Frans 2024 teacher-student distillation.
         #     CPU-safe scaffold: when shortcut_distill=True but no CUDA
         #     is available, the term collapses to zero (preserves Wf-380
@@ -5563,15 +5589,15 @@ def parse_args() -> argparse.Namespace:
             "Wf-405-A2 NEW (Wf-380-B1 closeout #3 / Wf-380-A1): "
             "use stable_vm.stable_vm_loss as the VELOCITY MSE loss "
             "(multi-scale mixture per StableVM 2026 ICML). "
-            "Default OFF (False). "
-            "2026-10-04 — this flag currently RAISES. Its wire-in sent "
-            "stable_vm_loss to bond_ce, replacing the 5-class bond "
-            "cross-entropy with a velocity MSE against an all-zero target; "
-            "the head learns to output zeros and bond_ce falls, so the run "
-            "looks like progress. A velocity-probe loss is not a drop-in for "
-            "a bond classifier, and the flag will not be re-enabled until it "
-            "is wired to the velocity loss. See the raise site in "
-            "train_one_epoch."
+            "Default OFF (False) - when OFF the velocity term is a plain "
+            "F.mse_loss, bit-for-bit identical to the pre-Wf-R38 baseline. "
+            "Wf-R38 (2026-10-04) - the flag was previously wired to bond_ce, "
+            "replacing the 5-class bond cross-entropy with a velocity MSE "
+            "against an all-zero target, so the head learned to output zeros "
+            "while bond_ce fell. It is now attached to fm_term, the velocity "
+            "loss, where its two operands are (pred velocity, target "
+            "velocity). REQUIRES --use-fm-objective; the trainer refuses to "
+            "start if the flag is set with no velocity prediction to score."
         ),
     )
     p.add_argument(
@@ -7464,6 +7490,21 @@ def main() -> int:
                         ),
                         metal_presence_gate=str(
                             _gen_chem.get("metal_presence_gate", "SKIP")
+                        ),
+                        # Wf-R41 observability gap — n_decode_error
+                        # distinguishes a real gen_validity=0 (RDKit rejected
+                        # the sampled chemistry) from the 2026-10-05
+                        # documented infra fault where 128 CUDA decodes
+                        # raised RuntimeError: Expected all tensors to be
+                        # on the same device. Without this field the two
+                        # failure modes are indistinguishable from
+                        # events.jsonl alone (see Phase 1 Wf-R41 research
+                        # verdict §6.38). Print site stays at L7567 for
+                        # the operator-facing WARN; this field puts the
+                        # same number on the structured event so the TUI
+                        # and downstream dashboards can filter.
+                        n_decode_error=int(
+                            _gen_chem.get("n_decode_error", 0) or 0
                         ),
                     )
                 except Exception as _ev_exc:

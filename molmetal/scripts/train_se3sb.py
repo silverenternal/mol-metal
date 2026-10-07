@@ -448,12 +448,97 @@ def train_one_seed(
         f"trainable={n_trainable:,}"
     )
 
+    # --- Wf-R38 SE3 wires -------------------------------------------
+    # Four of the six new flags (--log-normal-t, --edm-precond,
+    # --consistency-reg, --stable-vm-velocity) shape a *flow-matching
+    # velocity loss*.  This trainer's objective is `V4MultiTaskLoss` =
+    # per-metal CE + coord-geometry CE: there is no velocity prediction,
+    # no x0/x1 interpolation and no 3D coordinate target anywhere in the
+    # loop, and `build_se3_twist_head` wraps a parameter-free stub whose
+    # forward returns zeros.  So there is no correct attachment point for
+    # them in THIS trainer - the velocity loss lives in
+    # `train_cfm_yuelbond_wasserstein.py`, where `--stable-vm` is now wired
+    # (Wf-R38).  Refuse loudly rather than accept a flag that would do
+    # nothing: that is the FLAG_ONLY class AGENTS.md 5.7 exists to catch.
+    _VELOCITY_FLAG_SPEC = (
+        ("log_normal_t", "--log-normal-t"),
+        ("edm_precond", "--edm-precond"),
+        ("consistency_reg", "--consistency-reg"),
+        ("stable_vm_velocity", "--stable-vm-velocity"),
+    )
+    _raised = [
+        flag_name
+        for dest, flag_name in _VELOCITY_FLAG_SPEC
+        if bool(getattr(args, dest, False))
+    ]
+    if _raised:
+        raise SystemExit(
+            f"{', '.join(_raised)} shape a flow-matching velocity loss, but "
+            "train_se3sb.py has none: its objective is per-metal CE + "
+            "coord-geometry CE, and its SE(3) twist head wraps a "
+            "parameter-free stub. Use train_cfm_yuelbond_wasserstein.py, "
+            "where --stable-vm is wired to fm_term (the velocity loss). "
+            "Refusing to accept a flag with no attachment point."
+        )
+
+    # --use-se3-ema — shadow copy of the trainable weights, updated every
+    # optimizer step and swapped in for eval / checkpointing.  Default OFF
+    # leaves the loop untouched.
+    _use_ema = bool(getattr(args, "use_se3_ema", False))
+    _ema_state: Dict[str, torch.Tensor] = {}
+    _ema_decay = float(getattr(args, "se3_ema_decay", 0.999))
+    if _use_ema:
+        for _n, _p in model.named_parameters():
+            if _p.requires_grad:
+                _ema_state[_n] = _p.detach().clone()
+        print(
+            f"[train_se3sb] se3_ema ON decay={_ema_decay} "
+            f"n_shadow={len(_ema_state)}"
+        )
+
+    # --lr-warmup — linear warmup composed with the existing cosine
+    # schedule via a single LambdaLR, so there is still exactly one
+    # scheduler and one `scheduler.step()` per epoch.  Default OFF keeps
+    # the plain CosineAnnealingLR.
     optimizer = torch.optim.AdamW(
         [p for p in model.parameters() if p.requires_grad],
         lr=args.lr,
         weight_decay=1e-4,
     )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
+    _base_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=args.epochs
+    )
+    # Wf-R38 --lr-warmup: linear warmup for the first `--lr-warmup-steps`
+    # optimizer steps, then the plain cosine curve.  Composed into ONE
+    # LambdaLR so the loop keeps its single `scheduler.step()` per epoch.
+    # Default OFF -> `_base_scheduler` unchanged, bit-for-bit baseline.
+    _warmup_steps = int(getattr(args, "lr_warmup_steps", 200))
+    if bool(getattr(args, "lr_warmup", False)):
+        try:
+            from molmetal.adapters.flow_matching_lipman import lr_warmup as _lw
+
+            _warm = _lw.LinearWarmupLR(
+                base_lr=float(args.lr), warmup_steps=_warmup_steps
+            )
+            def _lr_lambda(epoch: int, _w=_warm) -> float:
+                total = max(1, _warmup_steps) * max(1, args.batch) * \
+                    max(1, len(SUPPORTED_METALS))
+                return float(_w.lr_at(epoch * total) / max(float(args.lr), 1e-12))
+
+            scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, _lr_lambda)
+            print(
+                f"[train_se3sb] lr_warmup ON steps={_warmup_steps} "
+                f"(LinearWarmupLR + CosineAnnealingLR via LambdaLR)"
+            )
+        except Exception as _lw_exc:  # noqa: BLE001 - warned, not hidden
+            warnings.warn(
+                f"[train_se3sb] --lr-warmup fell back to plain cosine: {_lw_exc!r}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            scheduler = _base_scheduler
+    else:
+        scheduler = _base_scheduler
     loss_fn = V4MultiTaskLoss(
         n_coord_classes=RECIPE_N_COORD_CLASSES,
         coord_weight=COORD_LOSS_WEIGHT,
@@ -506,15 +591,39 @@ def train_one_seed(
                 batch_loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
                 optimizer.step()
+                # Wf-R38 --use-se3-ema: shadow-weight update after every
+                # optimizer step.  Default OFF -> the branch never runs and
+                # the loop is byte-for-bit the pre-Wf-R38 baseline.
+                if _ema_state:
+                    with torch.no_grad():
+                        for _n, _p in model.named_parameters():
+                            if _n in _ema_state:
+                                _ema_state[_n].mul_(_ema_decay).add_(
+                                    _p.detach(), alpha=1.0 - _ema_decay
+                                )
                 epoch_loss += float(batch_loss.item())
                 n_batches += 1
         scheduler.step()
 
         if epoch % args.eval_every == 0 or epoch == args.epochs:
             val_aucs = {}
+            # Wf-R38 --use-se3-ema: evaluate the shadow weights, then put
+            # the live weights back so training continues from them.
+            _raw_backup: Dict[str, torch.Tensor] = {}
+            if _ema_state:
+                _named = dict(model.named_parameters())
+                with torch.no_grad():
+                    for _n, _sh in _ema_state.items():
+                        _raw_backup[_n] = _named[_n].detach().clone()
+                        _named[_n].copy_(_sh)
             for m in SUPPORTED_METALS:
                 a, _ = eval_split_auc(model, data, m, "val", device, args.batch)
                 val_aucs[m] = a
+            if _raw_backup:
+                _named = dict(model.named_parameters())
+                with torch.no_grad():
+                    for _n, _raw in _raw_backup.items():
+                        _named[_n].copy_(_raw)
             valid_aucs = [v for v in val_aucs.values() if not np.isnan(v)]
             mean_val = float(np.mean(valid_aucs)) if valid_aucs else float("nan")
             val_history.append(
@@ -532,6 +641,17 @@ def train_one_seed(
                 best_state = {
                     k: v.detach().cpu().clone() for k, v in model.state_dict().items()
                 }
+                # Wf-R38 --use-se3-ema: persist the shadow weights, not the
+                # live ones - the eval that produced `mean_val` above ran on
+                # the shadow copy, so saving the live copy would save weights
+                # that were never measured.
+                if _ema_state:
+                    _ema_sd = model.state_dict()
+                    for _n, _sh in _ema_state.items():
+                        _ema_sd[_n] = _sh.detach().cpu().clone()
+                    best_state = {
+                        k: v.detach().cpu().clone() for k, v in _ema_sd.items()
+                    }
 
     model.load_state_dict(best_state)
 
@@ -568,6 +688,30 @@ def train_one_seed(
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+def _str2bool(v) -> bool:
+    """argparse ``type`` for a bool-valued flag that is default-OFF.
+
+    ``type=bool`` is the textbook footgun here: ``bool("False")`` is ``True``,
+    so ``--use-se3-ema False`` would SILENTLY ENABLE the flag. That is the
+    same failure class as the Wf-R38 ``--stable-vm`` bond-loss bug (a flag
+    that reports one thing and does another), so the Wf-R38 wires accept
+    real boolean strings instead.
+
+    Accepts: true/false/yes/no/on/off/1/0 (case-insensitive). Anything else
+    raises ``argparse.ArgumentTypeError`` rather than guessing.
+    """
+    if isinstance(v, bool):
+        return v
+    s = str(v).strip().lower()
+    if s in ("1", "true", "yes", "y", "on"):
+        return True
+    if s in ("0", "false", "no", "n", "off"):
+        return False
+    raise ValueError(
+        f"expected a boolean (true/false/yes/no/on/off/1/0), got {v!r}"
+    )
+
+
 def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=("Wf-23 Phase 2 — R18 W2.1 SE(3) SB 5-metal multitask trainer."),
@@ -609,6 +753,99 @@ def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
         default=RECIPE_SE3_SINKHORN_ITERS,
         help="Number of Sinkhorn iterations for the SB coupling.",
     )
+
+    # Wf-R38 NEW - 5 Wf-380 SCAFFOLD wires + the velocity-loss StableVM
+    # wire.  ALL default-OFF: with every flag False the training loop is
+    # byte-for-byte the pre-Wf-R38 baseline (plain CE cascade + plain
+    # cosine LR, no EMA, no velocity term).
+    #
+    # HONEST FRAMING (measured, this wave): this trainer's loss is
+    # `V4MultiTaskLoss` = per-metal CE + weighted coord-geometry CE.  It
+    # has NO flow-matching velocity term and NO 3D coordinate target -
+    # `build_se3_twist_head` wraps a *parameter-free* stub whose forward
+    # returns zeros.  So the four velocity-shaped flags below (log-normal-t,
+    # edm-precond, consistency-reg, stable-vm-velocity) have no live
+    # attachment point here and are wired to an explicit
+    # refuse-rather-than-silently-ignore guard; only --use-se3-ema and
+    # --lr-warmup have real work to do in this loop.  See the SE3_WIRES
+    # train_one_seed and the wave report.
+    p.add_argument(
+        "--use-se3-ema",
+        type=_str2bool,
+        default=False,
+        help=(
+            "Wf-R38 NEW: maintain an exponential moving average (EMA) of the "
+            "V4MultiTaskDMPNN weights and evaluate/save the EMA copy instead "
+            "of the raw weights. decay=0.999. Default OFF (False)."
+        ),
+    )
+    p.add_argument(
+        "--se3-ema-decay",
+        type=float,
+        default=0.999,
+        help="EMA decay for --use-se3-ema (default 0.999).",
+    )
+    p.add_argument(
+        "--log-normal-t",
+        type=_str2bool,
+        default=False,
+        help=(
+            "Wf-R38 NEW: draw the flow time t from a log-normal law "
+            "(mu=-0.5, sigma=1.0) instead of uniform. Requires a velocity "
+            "loss; this trainer has none, so the flag raises. Default OFF."
+        ),
+    )
+    p.add_argument(
+        "--lr-warmup",
+        type=_str2bool,
+        default=False,
+        help=(
+            "Wf-R38 NEW: linear LR warmup over --lr-warmup-steps before the "
+            "cosine schedule, using flow_matching_lipman.lr_warmup."
+            "LinearWarmupLR. Default OFF (False)."
+        ),
+    )
+    p.add_argument(
+        "--lr-warmup-steps",
+        type=int,
+        default=200,
+        help="Number of warmup steps for --lr-warmup (default 200).",
+    )
+    p.add_argument(
+        "--edm-precond",
+        type=_str2bool,
+        default=False,
+        help=(
+            "Wf-R38 NEW: Karras 2022 EDM sigma-preconditioning on the "
+            "velocity loss via flow_matching_lipman.edm_preconditioning."
+            "preconditioned_loss. Requires a velocity loss; this trainer has "
+            "none, so the flag raises. Default OFF."
+        ),
+    )
+    p.add_argument(
+        "--consistency-reg",
+        type=_str2bool,
+        default=False,
+        help=(
+            "Wf-R38 NEW: EDM consistency regulariser via "
+            "flow_matching_lipman.consistency_regularization_wf380."
+            "consistency_loss_fn. Requires a velocity loss; this trainer has "
+            "none, so the flag raises. Default OFF."
+        ),
+    )
+    p.add_argument(
+        "--stable-vm-velocity",
+        type=_str2bool,
+        default=False,
+        help=(
+            "Wf-R38 NEW: StableVM multi-scale velocity loss "
+            "(flow_matching_lipman.stable_vm.stable_vm_loss) on the VELOCITY "
+            "term - never on the bond head, which was the Wf-R38 defect. "
+            "Requires a velocity loss; this trainer has none, so the flag "
+            "raises. Default OFF (False)."
+        ),
+    )
+
     return p.parse_args(argv)
 
 
