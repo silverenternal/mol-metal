@@ -97,6 +97,56 @@ WF335M2_BEST_R2["hilbert"] = WF335M2_HILBERT_BEST_R2
 
 
 # ---------------------------------------------------------------------------
+# Wf-R43-A2 (m2) — cohort ALIAS map + per-cohort CV seed offsets
+# ---------------------------------------------------------------------------
+# Wf-331-R5 ``load_cohort("hilbert")`` (wf331r5_r2_w2_chemprop.py L1099-1101)
+# does not read a Hilbert dataset — there is no Hilbert cohort file anywhere
+# under molmetal/data/. It returns ``load_cohort("platinai_4cell")``, i.e. the
+# SAME 200 SMILES, the SAME 32-d features and the SAME pIC50 vector. Wf-331-R5
+# intended the two to differ by CV split seed (its own runner does
+# ``cohort_seed = seed + (1 if cohort == "hilbert" else 0)`` at L1250-1251),
+# but Wf-388-A1 called ``train_eval_per_cohort`` with a hardcoded
+# ``seed_offset=0`` for every cohort, so the split was never shifted.
+#
+# Result (MEASURED, reproduced in
+# molmetal/tests/test_wf_r43a2_m2_cohort_independence_guard.py): platinai_4cell
+# and hilbert returned bit-identical r2_mean / r2_std / baseline / lift
+# (-0.14401547578768395), and the aggregate counted them as 2 of 3 independent
+# cohorts. A second consequence: the baseline-anchor dispatch keyed off
+# ``target_name`` ("pIC50_mean_mcf7_a549_a2780_a2780cis" for BOTH cohorts), so
+# its ``elif "hilbert" in target_name.lower()`` arm was DEAD CODE and hilbert's
+# lift was measured against platinai's anchor rather than its own.
+#
+# Wf-R43-A2 fixes the seed dispatch (restoring Wf-331-R5's intent) and makes
+# the alias explicit so no downstream surface can treat the two rows as
+# independent cohorts.
+COHORT_ALIASES: Dict[str, str] = {"hilbert": "platinai_4cell"}
+
+# Per-cohort CV seed offset. Wf-331-R5 L1250-1251 uses +1 for hilbert.
+COHORT_SEED_OFFSETS: Dict[str, int] = {"hilbert": 1}
+
+
+def cohort_seed_offset(cohort: Optional[str]) -> int:
+    """CV seed offset for ``cohort`` (Wf-331-R5 L1250-1251 convention)."""
+    if not cohort:
+        return 0
+    return COHORT_SEED_OFFSETS.get(cohort, 0)
+
+
+def baseline_anchor_for(cohort: Optional[str]) -> str:
+    """Baseline-anchor key for ``cohort``.
+
+    Wf-R43-A2: dispatch on the cohort NAME, not on ``target_name``. The old
+    target_name dispatch was dead code for hilbert (both cohorts share
+    ``pIC50_mean_mcf7_a549_a2780_a2780cis``), so hilbert's lift was scored
+    against platinai's anchor.
+    """
+    if cohort and cohort in WF335M2_BEST_R2:
+        return cohort
+    return "metalcytotox_combined"
+
+
+# ---------------------------------------------------------------------------
 # Section 1: Repo path resolution (mirror Wf-380-A2 / Wf-367-B1 pattern)
 # ---------------------------------------------------------------------------
 def _resolve_repo_path(path: str) -> str:
@@ -226,6 +276,7 @@ def train_eval_per_cohort(
     n_folds: int = 5,
     wass_w: float = 0.05,
     epochs: int = 30,
+    cohort: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Train + eval per cohort using per-cohort config + Ridge baseline.
 
@@ -265,24 +316,25 @@ def train_eval_per_cohort(
     cohort_size = n_samples
     # Apply per-cohort config (12-d / 24-d / 50-d matched to cohort_size).
     X_per, cfg = apply_per_cohort_config(X, cohort_size)
-    # Multi-seed K-fold CV (Wf-335-M2 protocol).
+    # Multi-seed K-fold CV (Wf-335-M2 protocol). Wf-R43-A2: the seed offset is
+    # per-cohort, so hilbert re-splits the shared platinai data instead of
+    # replaying platinai's folds verbatim.
+    seed_offset = cohort_seed_offset(cohort)
     cv = wf380a2_ridge_r2_cv(
         X=X_per,
         y=y,
         n_splits=n_folds,
         n_seeds=n_seeds,
         alpha=cfg["alpha"],
-        seed_offset=0,
+        seed_offset=seed_offset,
     )
     r2_mean = float(cv["r2_mean"])
     r2_std = float(cv["r2_std"])
-    # Determine the Wf-335-M2 baseline R² anchor by target_name.
-    if "mcf7" in target_name.lower() or "a2780" in target_name.lower():
-        baseline_cohort = "platinai_4cell"
-    elif "hilbert" in target_name.lower():
-        baseline_cohort = "hilbert"
-    else:
-        baseline_cohort = "metalcytotox_combined"
+    # Wf-R43-A2: dispatch the baseline anchor on the cohort NAME. The old
+    # target_name dispatch was dead code for hilbert (both cohorts share
+    # pIC50_mean_mcf7_a549_a2780_a2780cis), so hilbert's lift was measured
+    # against platinai's anchor.
+    baseline_cohort = baseline_anchor_for(cohort)
     baseline_r2 = float(WF335M2_BEST_R2.get(baseline_cohort, float("nan")))
     lift_vs_baseline = (
         r2_mean - baseline_r2 if np.isfinite(baseline_r2) else float("nan")
@@ -312,6 +364,13 @@ def train_eval_per_cohort(
         "lift_vs_baseline": lift_vs_baseline,
         "verdict": verdict,
         "target_name": target_name,
+        # Wf-R43-A2: alias disclosure. hilbert is NOT an independent cohort —
+        # Wf-331-R5 load_cohort("hilbert") returns the platinai_4cell rows.
+        # It is a re-split of the same 200 compounds, so it must not be
+        # counted as independent evidence for a lift.
+        "cohort_is_alias_of": COHORT_ALIASES.get(cohort or "", None),
+        "independent_cohort": (cohort or "") not in COHORT_ALIASES,
+        "cv_seed_offset": int(seed_offset),
         "epochs_recorded": int(
             epochs
         ),  # Ridge is closed-form; recorded for schema parity.
@@ -350,6 +409,21 @@ def aggregate_per_cohort_r2(results_per_cohort: List[Dict[str, Any]]) -> Dict[st
         if r.get("verdict") in ("WEAK_RECOVERY", "MODERATE_RECOVERY", "CEILING_BREAK")
     )
     n_total = len(results_per_cohort)
+    # Wf-R43-A2: alias-aware counts. `n_cohorts_tested` keeps the raw row
+    # count (3) so the schema is unchanged, but `n_cohorts_independent`
+    # reports how many rows are distinct data (2 — hilbert re-splits
+    # platinai_4cell). Downstream surfaces must quote the independent count.
+    n_independent = sum(1 for r in results_per_cohort if r.get("independent_cohort", True))
+    n_alias = n_total - n_independent
+    finite_indep = [
+        r["r2_mean"]
+        for r in results_per_cohort
+        if r.get("independent_cohort", True)
+        and np.isfinite(r.get("r2_mean", float("nan")))
+    ]
+    mean_r2_independent = (
+        float(np.mean(finite_indep)) if finite_indep else float("nan")
+    )
     mean_r2 = float(np.mean(finite_r2)) if finite_r2 else float("nan")
     std_r2 = float(np.std(finite_r2)) if finite_r2 else float("nan")
     if n_ceiling_break >= 2:
@@ -364,6 +438,9 @@ def aggregate_per_cohort_r2(results_per_cohort: List[Dict[str, Any]]) -> Dict[st
         "mean_r2": mean_r2,
         "std_r2": std_r2,
         "n_cohorts_tested": n_total,
+        "n_cohorts_independent": n_independent,
+        "n_cohorts_aliased": n_alias,
+        "mean_r2_independent": mean_r2_independent,
         "n_cohorts_above_zero": n_above_zero,
         "n_cohorts_ceiling_break": n_ceiling_break,
         "n_cohorts_weak_recovery_or_better": n_weak_recovery,
@@ -432,6 +509,7 @@ def run_wf388a1(
             n_folds=n_folds,
             wass_w=wass_w,
             epochs=epochs,
+            cohort=cohort,
         )
         result["cohort"] = cohort
         result["elapsed_sec"] = float(time.time() - t0)

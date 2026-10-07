@@ -4824,7 +4824,17 @@ EXPECTED_GATE_COUNTS = {
     # reproduction. Opt-in via WF43_M1_PAPER_COHORT=1 (same Wf-R43 pattern),
     # so the count moves but no existing pre-flight verdict does.
     # Implementation: molmetal/scripts/wf_r43a1_m1_paper_cohort_guard.py.
-    "all": 115,
+    # Wf-R43 m2 (2026-10-08): 115 -> 116, MEASURED via
+    # len(build_gates("all")) == 116 after the m2 R² cohort-independence
+    # guard (p3_wf_r43_m2_cohort_independence) was registered. MEASURED:
+    # load_cohort("hilbert") returns the platinai_4cell rows and the CV
+    # seed offset was hardcoded to 0, so platinai_4cell + hilbert recorded
+    # a bit-identical r2_mean — 2 of the 3 "cohorts" were one
+    # measurement, and hilbert's baseline anchor was dead code. Opt-in via
+    # WF43_M2_COHORT_INDEPENDENCE=1 (same Wf-R43 pattern), so the count
+    # moves but no existing pre-flight verdict does. Implementation:
+    # molmetal/scripts/wf_r43a2_m2_cohort_independence_guard.py.
+    "all": 116,
     # (was 103 before Wf-R35 P-A; Wf-A16 2026-10-03: 105 -> 103, MEASURED via
     # len(build_gates("all")) == 103 after the two PRE-RETRAIN
     # gates moved out of the commit path into the new "launch"
@@ -7758,6 +7768,50 @@ def gate_wf_r43_m1_paper_cohort(
     )
 
     return gate_m1_paper_cohort(
+        name, priority, pipeline, metric_path, repo_root=repo_root
+    )
+
+
+def gate_wf_r43_m2_cohort_independence(
+    name: str,
+    priority: str,
+    pipeline: str,
+    metric_path: Path,
+    *,
+    repo_root: Optional[Path] = None,
+) -> Any:
+    """Wf-R43 m2 — R2 per-cohort COHORT-INDEPENDENCE guard.
+
+    ``m2_r2_per_cohort.json`` reports three cohorts, but MEASURED two of
+    them are the same measurement: ``load_cohort("hilbert")`` (Wf-331-R5
+    L1099-1101) returns the ``platinai_4cell`` rows — there is no Hilbert
+    dataset on disk — and Wf-388-A1 passed a hardcoded ``seed_offset=0``
+    for every cohort, so the CV split was never shifted. The record
+    therefore holds two bit-identical rows (both
+    ``r2_mean = -0.14401547578768395``), the hilbert baseline anchor is
+    unreachable dead code (its dispatch keyed off ``target_name``, which
+    both cohorts share), and the aliased negative row is counted twice in
+    the aggregate.
+
+    The gate audits that the recorded rows are independent cohorts and
+    FAILs loud while an aliased row is presented as independent evidence
+    (AGENTS.md §5.2 honest-framing mandate). It never trains and never
+    writes a metric.
+
+    Opt-in via ``WF43_M2_COHORT_INDEPENDENCE=1`` (Wf-R35 P-A precedent,
+    same as ``p3_wf_r43_m16_pt_ckpt_gap`` and ``p3_wf_r43_m1_paper_cohort``
+    in this wave), so registering the gate moves
+    ``EXPECTED_GATE_COUNTS["all"]`` 115 -> 116 without changing the verdict
+    of an existing pre-flight run.
+
+    Implementation lives in
+    ``molmetal/scripts/wf_r43a2_m2_cohort_independence_guard.py``.
+    """
+    from molmetal.scripts.wf_r43a2_m2_cohort_independence_guard import (
+        gate_m2_cohort_independence,
+    )
+
+    return gate_m2_cohort_independence(
         name, priority, pipeline, metric_path, repo_root=repo_root
     )
 
@@ -12572,6 +12626,29 @@ def build_gates(
                     "P3",
                     "wfr43m1",
                     METRICS_DIR / "metalcytotox_ru_auc.json",
+                    repo_root=REPO_ROOT,
+                ),
+            ),
+            # ---- Wf-R43 m2 — R² per-cohort independence guard.
+            # `m2_r2_per_cohort.json` reports 3 cohorts, but MEASURED two
+            # of them are the same measurement: load_cohort("hilbert")
+            # returns the platinai_4cell rows (no Hilbert dataset exists on
+            # disk) and Wf-388-A1 passed seed_offset=0 for every cohort,
+            # so the two rows are bit-identical (both r2_mean =
+            # -0.14401547578768395) and hilbert's baseline anchor was
+            # unreachable dead code. This gate FAILs loud while an aliased
+            # row is presented as independent evidence. Opt-in via
+            # WF43_M2_COHORT_INDEPENDENCE=1 (same Wf-R43 opt-in pattern as
+            # m16 + m1), so the count moves 115 -> 116 without changing any
+            # existing pre-flight verdict. See
+            # molmetal/scripts/wf_r43a2_m2_cohort_independence_guard.py.
+            (
+                "p3_wf_r43_m2_cohort_independence",
+                lambda: gate_wf_r43_m2_cohort_independence(
+                    "p3_wf_r43_m2_cohort_independence",
+                    "P3",
+                    "wfr43m2",
+                    METRICS_DIR / "m2_r2_per_cohort.json",
                     repo_root=REPO_ROOT,
                 ),
             ),
