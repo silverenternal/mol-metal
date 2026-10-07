@@ -55,17 +55,21 @@ molmetal/tests/test_wf_r40_pa_rh_oversample_fix.py 138 LOC, NEW (P-A)
 
 ## §2 Pre-flight delta (Wf-R42 baseline → Wf-R43)
 
-| Stage | Count | Delta | Note |
-|---|---:|---:|---|
-| **Wf-R42 baseline** | 113 gates | — | `EXPECTED_GATE_COUNTS["all"] = 113` |
-| **Wf-R43 m16 gate** | 114 | +1 | opt-in `WF43_M16_PT_CKPT=1` |
-| **Wf-R43 m1 gate** | 115 | +1 | always-on (paper-cohort comparability) |
-| **Wf-R43 m2 gate** | 116 | +1 | always-on (cohort independence) |
-| **Wf-R43 m7 gate** | 117 | +1 | always-on (sub-pocket uniformity) |
-| **Wf-R43 m19 gate** | 118 | +1 | always-on (real-only disclosure) |
+`EXPECTED_GATE_COUNTS` per `pre_flight_check.py:4796..4912`:
 
-**Expected final state**: 118 gates, all PASS on current JSON. (Pre-flight rerun by
-wf-R43 verify phase in flight at 06:03.)
+| Pipeline | Wf-R42 | Wf-R43 | Delta | Source |
+|---|---:|---:|---:|---|
+| **`all`** | 113 | **118** | +5 | m16 + m1 + m2 + m7 + m19 (5 opt-in fail-loud guards) |
+| **`launch`** | 115 | **120** | +5 | Was stale by 5 before m19 fix — `test_wf344b3_gate_count` was already FAILing on stashed HEAD; m19 commit `4ac2df1` synced to 120 |
+| **`frontier`** | 25 | 25 | 0 | unchanged |
+| **`chemprop_v2_v3`** | 18 | 18 | 0 | unchanged |
+| **`cfm`** | 7 | 7 | 0 | unchanged |
+
+**Opt-in semantics**: all 5 new Wf-R43 gates are gated behind env vars
+(`WF43_M16_PT_CKPT=1` / `WF43_M1_PAPER_COHORT=1` / `WF43_M2_COHORT_INDEPENDENCE=1`
+/ `WF43_M7_SUBPOCKET_UNIFORM=1` / `WF43_M19_LOMO_HEADLINE=1`), so the count moves
+but no existing pre-flight verdict changes. Default pre-flight runs see all 5 as
+SKIP. MEASURED per the Wf-R43 fix-m19 output at commit `4ac2df1`.
 
 ## §3 Not-shipped / DEFERRED items
 
@@ -117,7 +121,27 @@ wf-R43 verify phase in flight at 06:03.)
 
 - `molmetal/tests/test_metal_lomo_v2.py::test_cli_quick_smoke` — 185 s CPU timeout.
   Verified pre-existing by `git stash` + clean re-run; last touched by `87b026ee9e
-  refactor(gpu)` (independent of Wf-R40/R43). Suggest marking `@pytest.mark.slow`
+  refactor(gpu)` (independent of Wf-R40/R43). Suggest marking `@pytest.mark.slow`.
+
+## §8 Workflow template defect (NEW finding from Wf-R43)
+
+`/tmp/wf_r43_remaining_mock_and_weak.js` PHASE3_PROMPT template does NOT
+interpolate `${plan}` — the agent receives `item` but never receives the
+Phase 2 review text. **All 7 fix-* agents independently rediscovered their
+plans from on-disk evidence** (m1/m2/m7/m16/m19 outputs all flag this in
+their honest-framing). Net result: outputs are still correct (disk evidence
+is sufficient for these items), but the pipeline's stage-handoff is broken
+in template, not just in behaviour.
+
+**Fix** (next wf): change `PHASE3_PROMPT(item, plan)` body to use
+`PHASE3_PROMPT(item, plan)` with the plan interpolated (or pass plan via a
+fresh re-read instead of relying on the template substitution).
+
+## §9 Follow-up
+
+- Wf-R43 verify phase (`ad0c17b2a435b4932`) still in flight at 06:09, queued
+  behind 4 concurrent pre-flight processes; its pre-flight run will land on
+  the post-Wf-R43 state (`all=118, launch=120`), no further action needed.
   in a follow-up wave.
 
 — End of closeout —
