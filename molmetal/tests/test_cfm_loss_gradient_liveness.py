@@ -77,6 +77,15 @@ ALL_TERMS = frozenset(
         # truncation stability and gradcheck; the entry HERE is what stops
         # it silently rotting back into a constant.
         "assemble_term",
+        # Wf-R41 — soft-valence term.  The surrogate is per-cloud squared
+        # hinge on the model's own bond-order softmax (gradient flows back
+        # through the bond head); it has zero gradient at weight 0 (the
+        # default), which is the same gating pattern as assemble_term.
+        # molmetal/tests/test_wf_r41_soft_valence_loss.py pins the sign
+        # convention (cap-violation → +penalty, gradient w.r.t. logits),
+        # gradcheck, and the per-cloud loop; the entry HERE is what stops
+        # the wire-in silently rotting back into a constant.
+        "soft_valence_term",
     }
 )
 
@@ -106,6 +115,14 @@ EXPECTED_LIVE = frozenset(
         # below turn the flag ON — otherwise this entry could not be
         # asserted live and the term would go untested by this guard.
         "assemble_term",
+        # Wf-R41 — soft-valence term.  Same gating pattern as assemble:
+        # LIVE only when `--gen-validity-weight > 0` (default 0.0 →
+        # `torch.zeros(())`, correctly gradient-dead).  The smoke args below
+        # turn the flag ON — see test_wf_r41_soft_valence_loss.py for the
+        # sign-convention regression test (per-atom valence cap violation
+        # should INCREASE the penalty; gradient flows back through the bond
+        # head).
+        "soft_valence_term",
         # Wired 2026-10-04 onto that path.  Each of these was previously
         # unusable for want of an (x0, x1, x_t, t) input, not for want of care:
         # shortcut/consistency were `weight * torch.tensor(0.0)`; so3/edm
@@ -182,6 +199,11 @@ _SMOKE_ARGS = [
     # Round-3 D1: the assemble term is OFF by default, so the smoke has to
     # switch it on explicitly for the guard to have anything to check.
     "--assemble-loss-weight",
+    "0.05",
+    # Wf-R41: same gating pattern — soft-valence term is OFF by default,
+    # so the smoke turns it on explicitly for the guard to have anything
+    # to check.
+    "--gen-validity-weight",
     "0.05",
 ]
 

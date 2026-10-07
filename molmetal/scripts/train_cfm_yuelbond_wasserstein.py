@@ -1763,6 +1763,21 @@ def train_one_epoch(
     # that does not name the flag.  Turn it on deliberately with
     # `--assemble-loss-weight`.
     assemble_loss_weight: float = 0.0,
+    # Wf-R41 — differentiable soft-valence surrogate for gen_validity.
+    # User hypothesis (verbatim 2026-10-08): "gen_validity 在 loss 里的对应项
+    # 符号有可能是写反了或者说训练框架里没有对这一部分做对应的思考和处理".
+    # Phase 1 research CONFIRMED (b): gen_validity is computed post-hoc ONLY
+    # (evaluate_generation_validity at L3484-3578), NOT in the loss cascade.
+    # MEASURED L1 Wave A 2026-10-08: gen_validity 0.958 -> 0.000 at epoch 1
+    # while bond_ce was improving (1.29 -> 1.13). Sign-flip hypothesis REFUTED
+    # (no sign to flip — the term is structurally absent from the sum).
+    # Phase 2 design (d): differentiable squared-hinge penalty on the model's
+    # OWN per-cloud bond-order softmax, summed per atom and clamped against
+    # the per-element valence cap.  Reuses valence_log_barrier() from
+    # decoder_rework.py (already exists at L417-498, gradient-clean).
+    # Default OFF (0.0) preserves bit-for-bit backward compat with all
+    # Wf-388-A3 / Wf-405-A2 / Wf-406-A2 / Wf-408-A2 / Wf-409-A1 baselines.
+    gen_validity_weight: float = 0.0,
 ) -> Tuple[float, float, float, float, float]:
     """Train one epoch over the synthetic Pt-click cloud cohort.
 
@@ -1781,6 +1796,17 @@ def train_one_epoch(
     assemble_losses: List[float] = []
     assemble_frags: List[float] = []
     assemble_largest: List[float] = []
+    # Wf-R41 — soft-valence term gates per the same pattern as assemble.
+    # `_use_soft_valence=True` re-runs `model(..., return_edge_index=True)`
+    # for every cloud, then sums valence_log_barrier() per cloud at the end
+    # of the batch.  Default 0.0 → identity (this whole block is skipped).
+    _use_soft_valence = float(gen_validity_weight) > 0.0
+    soft_valence_terms: List[torch.Tensor] = []
+    # Wf-R41 — when EITHER `_use_assemble` or `_use_soft_valence` is on, the
+    # cloud loop must ask the head for its pair indices (otherwise the loss
+    # term has nothing to rebuild a graph from).  When BOTH are off the
+    # legacy 2-tuple path stays bit-for-bit untouched.
+    _need_edge_index = _use_assemble or _use_soft_valence
     n_train = len(train_clouds)
     rng = np.random.default_rng(seed=int(time.time()) % (2**31 - 1))
     order = rng.permutation(n_train).tolist()
@@ -1797,6 +1823,10 @@ def train_one_epoch(
         batch_clouds: List[AtomCloud] = []
         # Round-3 D1 — per-cloud (logits, edge_index, z) for the assemble term.
         batch_assemble: List[Tuple] = []
+        # Wf-R41 — per-cloud (logits, edge_index, z) for the soft-valence
+        # term.  Mirrors batch_assemble exactly; only constructed when the
+        # term is weighted so the default-path memory layout is untouched.
+        batch_soft_valence: List[Tuple] = []
         for idx in batch_indices:
             cloud = train_clouds[int(idx)]
             # Move cloud to device by re-creating (AtomCloud has no
@@ -1837,7 +1867,7 @@ def train_one_epoch(
             # cloud skipped for having no bond target must not leave a
             # dangling entry here, or the assemble list would drift out of
             # step with the batch it is supposed to describe.
-            if _use_assemble:
+            if _need_edge_index:
                 logits, velocities, edge_index = model(
                     cloud, return_edge_index=True
                 )
@@ -1846,12 +1876,18 @@ def train_one_epoch(
                 # than handed a `None` it would fail to unpack.
                 _assemble_item = (
                     (logits, edge_index, cloud.atomic_numbers)
-                    if edge_index is not None
+                    if (_use_assemble and edge_index is not None)
+                    else None
+                )
+                _sv_item = (
+                    (logits, edge_index, cloud.atomic_numbers)
+                    if (_use_soft_valence and edge_index is not None)
                     else None
                 )
             else:
                 logits, velocities = model(cloud)
                 _assemble_item = None
+                _sv_item = None
             tgt_logits, tgt_y = _bond_target_for_clean_cloud(
                 cloud,
                 head=model.head,
@@ -1860,6 +1896,8 @@ def train_one_epoch(
                 continue
             if _assemble_item is not None:
                 batch_assemble.append(_assemble_item)
+            if _sv_item is not None:
+                batch_soft_valence.append(_sv_item)
             batch_targets.append(tgt_y)
             batch_logits.append(logits)
             batch_velocities.append(velocities)
@@ -1870,6 +1908,59 @@ def train_one_epoch(
         all_targets = torch.cat(batch_targets, dim=0)
         if all_logits.shape[0] != all_targets.shape[0]:
             continue
+        # Wf-R41 — soft-valence term.  Reuses valence_log_barrier() from
+        # decoder_rework.py.  Per-cloud loop, same shape as the assemble
+        # term.  When the weight is 0 or no clouds made it through, the
+        # term is exactly `torch.zeros(())` so the sum below is the pre-R41
+        # objective bit-for-bit; the guard test in
+        # test_cfm_loss_gradient_liveness.py reads `_LAST_LOSS_TERMS[
+        # "soft_valence_term"].requires_grad` to confirm the wire is LIVE
+        # only when weighted, identical to the assemble pattern.  See
+        # tests/test_wf_r41_soft_valence_loss.py for the sign-convention
+        # regression check.
+        soft_valence_term = torch.zeros((), device=device)
+        if _use_soft_valence and batch_soft_valence:
+            from molmetal.molmetal_lam.lam_chem.decoder_rework import (
+                valence_log_barrier,
+            )
+            # Bond-order index lookup per NUM_BOND_CLASSES=5:
+            # 0=no-bond, 1=single, 2=double, 3=triple, 4=aromatic (treat as 1.5,
+            # per decoder_rework.py docstring on DEFAULT_VALENCES).
+            _bond_order_idx = torch.tensor(
+                [0.0, 1.0, 2.0, 3.0, 1.5],
+                dtype=all_logits.dtype,
+                device=all_logits.device,
+            )
+            _n_sv = 0
+            for _sv_logits_c, _sv_ei_c, _sv_z_c in batch_soft_valence:
+                if _sv_ei_c is None:
+                    continue
+                # `_sv_ei_c` is the head's `(i_idx, j_idx)` tuple of two
+                # (E,) long tensors — NOT a single 2D tensor.  Both must be
+                # non-empty for the valence barrier to be meaningful.
+                _sv_pair_src, _sv_pair_dst = _sv_ei_c
+                if int(_sv_pair_src.numel()) == 0:
+                    continue
+                # softmax over the 5 bond classes → soft probability per class
+                _sv_soft = torch.softmax(_sv_logits_c, dim=-1)
+                # Expected bond order per pair (E,) — soft, differentiable
+                _sv_orders = (_sv_soft * _bond_order_idx).sum(dim=-1)
+                _sv_pair_src = _sv_pair_src.long()
+                _sv_pair_dst = _sv_pair_dst.long()
+                _sv_n_atoms = int(_sv_z_c.shape[0])
+                _sv_penalty = valence_log_barrier(
+                    _sv_orders,
+                    _sv_z_c,
+                    _sv_pair_src,
+                    _sv_pair_dst,
+                    _sv_n_atoms,
+                )
+                soft_valence_term = soft_valence_term + _sv_penalty
+                _n_sv += 1
+            if _n_sv > 0:
+                soft_valence_term = (
+                    float(gen_validity_weight) * soft_valence_term
+                )
         # Wf-A5-A2 — per-cohort alpha → label_smoothing override. Default
         # OFF preserves bit-for-bit backward compat with Wf-243..Wf-252
         # + Wf-388-A2/A3 + Wf-405-A2 + Wf-406-A2 + Wf-408-A2 + Wf-409-A1
@@ -2795,6 +2886,12 @@ def train_one_epoch(
             # Round-3 D1 — assemble-aware connectivity (default weight 0.0,
             # i.e. an exact zero here unless --assemble-loss-weight is set).
             + assemble_term
+            # Wf-R41 — differentiable soft-valence surrogate for gen_validity.
+            # Squared-hinge penalty on per-cloud atom-bond-order sums exceeding
+            # the per-element valence cap. Default weight 0.0 → exact zero
+            # here unless --gen-validity-weight is set. See the block above
+            # `loss = (` for the per-cloud computation.
+            + soft_valence_term
         )
         # 2026-10-04 — refresh the per-term side-channel read by
         # tests/test_cfm_loss_gradient_liveness.py.  Each value is the exact
@@ -2820,6 +2917,12 @@ def train_one_epoch(
                 # which is CORRECT and is what the default means; the guard
                 # test runs its smoke with the flag ON, where it must be live.
                 "assemble_term": assemble_term,
+                # Wf-R41 — soft-valence term for gen_validity surrogate.
+                # Same convention as assemble_term: registered unconditionally
+                # so the guard test can see it; gradient-dead when weight is 0
+                # (an exact `torch.zeros(())`), LIVE when --gen-validity-weight
+                # is set > 0.  The guard test runs the smoke with the flag ON.
+                "soft_valence_term": soft_valence_term,
                 # Deliberately absent (removed from the loss sum 2026-10-04,
                 # see the comment above `loss = (`): "sa_penalty_weight*sa_loss",
                 # "per_cohort_term", "pll_term", "chemprop_v3_cache_term",
@@ -5176,6 +5279,32 @@ def parse_args() -> argparse.Namespace:
             "own fragment. Set > 0 to enable, e.g. 0.05."
         ),
     )
+    # Wf-R41 (2026-10-08) — differentiable soft-valence surrogate for the
+    # gen_validity post-hoc evaluation metric.  User hypothesis: gen_validity
+    # is sign-flipped OR missing from the loss.  Phase 1 research confirmed
+    # the MISSING case: the metric is computed at L3484-3578 AFTER each epoch
+    # but never enters `loss = (...)`.  Phase 2 design adds a per-cloud
+    # squared-hinge penalty on the model's own bond-order softmax (via
+    # valence_log_barrier at decoder_rework.py:417) so the gradient flows
+    # back through the bond head.  Bit-for-bit backward compat at weight 0.
+    p.add_argument(
+        "--gen-validity-weight",
+        dest="gen_validity_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight on the differentiable soft-valence surrogate for "
+            "gen_validity (default 0.0 = OFF, which is the pre-R41 "
+            "objective exactly).  When > 0, train_one_epoch adds "
+            "gen_validity_weight * sum_a max(0, valence_cap_a - "
+            "sum_e orders_e_at_a - eps)^2 to the loss, where the per-edge "
+            "soft bond order is the expected value of the head's 5-way "
+            "softmax (0=no-bond, 1, 2, 3, 1.5=aromatic).  MEASURED "
+            "motivation (L1 Wave A 2026-10-08): gen_validity collapsed "
+            "0.958 -> 0.000 at epoch 1 while bond_ce improved, so the "
+            "trainer had NO validity signal.  Set e.g. 0.05 to enable."
+        ),
+    )
     p.add_argument(
         "--no-wasserstein",
         dest="wasserstein_weight",
@@ -7008,6 +7137,13 @@ def main() -> int:
             # than raising AttributeError.
             assemble_loss_weight=float(
                 getattr(args, "assemble_loss_weight", 0.0)
+            ),
+            # Wf-R41 — gen_validity soft-valence weight.  getattr with an
+            # explicit default so an args namespace built elsewhere (tests,
+            # other entry points) keeps the pre-R41 objective rather than
+            # raising AttributeError.
+            gen_validity_weight=float(
+                getattr(args, "gen_validity_weight", 0.0)
             ),
         )
         # Evaluate.
