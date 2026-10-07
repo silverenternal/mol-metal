@@ -4845,7 +4845,17 @@ EXPECTED_GATE_COUNTS = {
     # Wf-R43 pattern), so the count moves but no existing pre-flight
     # verdict does. Implementation:
     # molmetal/scripts/wf_r43a3_m7_subpocket_uniform_guard.py.
-    "all": 117,
+    # Wf-R43 m19 (2026-10-08): 117 -> 118, MEASURED via
+    # len(build_gates("all")) == 118 after the m19 LOMO headline-usability
+    # guard (p3_wf_r43_m19_lomo_headline) was registered. The 0.7577
+    # Rh+Re headline pools folds whose TRAIN pool carried 500 synthetic Rh
+    # rows with hard-coded potency labels, and covers 2 of the 5 metals in
+    # the pool, so it is held-out but not real-data-only. MEASURED
+    # corroboration: pool 26,632 rows + 500 appended == the wave's
+    # n=27132. Opt-in via WF43_M19_LOMO_HEADLINE=1 (same Wf-R43 pattern),
+    # so the count moves but no existing pre-flight verdict does.
+    # Implementation: molmetal/scripts/wf_r43a1_m19_lomo_headline_guard.py.
+    "all": 118,
     # (was 103 before Wf-R35 P-A; Wf-A16 2026-10-03: 105 -> 103, MEASURED via
     # len(build_gates("all")) == 103 after the two PRE-RETRAIN
     # gates moved out of the commit path into the new "launch"
@@ -4888,8 +4898,13 @@ EXPECTED_GATE_COUNTS = {
     # MEASURED: len(build_gates("launch")) == 105.  Launchers should pass
     # --pipeline launch instead of --pipeline all; the commit hook keeps
     # --pipeline all, so a commit never waits on anchor freshness.
-    "launch": 115,  # Wf-R42 MOCK->REAL: 110 -> 115 (the same 5 NEW gates;
-    # launch is "all" + the 2 launch-only pre-retrain gates, so it tracks "all").
+    # launch is "all" + the 2 launch-only pre-retrain gates, so it tracks
+    # "all": MEASURED via len(build_gates("launch")) == 120 at "all" == 118.
+    # Wf-R43 m19 (2026-10-08): 115 -> 120. The 115 was stale by 5 — it had
+    # not tracked the 4 Wf-R42/Wf-R43 "all" gates that landed before m19, so
+    # test_wf344b3_gate_count.py::test_expected_gate_counts_keys_match_pipelines
+    # was already FAILing on stashed HEAD before this change.
+    "launch": 120,
     "frontier": 25,
     "chemprop_v2_v3": 18,  # Wf-A12 FIX (2026-10-03): 14 → 18 MEASURED
     # via len(build_gates("chemprop_v2_v3"));
@@ -7779,6 +7794,50 @@ def gate_wf_r43_m1_paper_cohort(
     )
 
     return gate_m1_paper_cohort(
+        name, priority, pipeline, metric_path, repo_root=repo_root
+    )
+
+
+def gate_wf_r43_m19_lomo_headline(
+    name: str,
+    priority: str,
+    pipeline: str,
+    metric_path: Path,
+    *,
+    repo_root: Optional[Path] = None,
+) -> GateResult:
+    """Wf-R43 m19 — fail-loud guard on LOMO headline real-data usability.
+
+    ``metrics/by_metric/metal_lomo_auc_wasserstein.json`` records a mean
+    test ROC-AUC of 0.7577 over 7 runs (Rh 0.8798 / Re 0.7088) against an
+    INTERNAL gate of 0.7.  That headline is **not real-data-only**: the
+    wave appended 500 SYNTHETIC Rh rows to the shared 5-metal pool *before*
+    the LOMO split (so they contaminate the Rh train fold and enter the Re
+    train fold too), those rows carry hard-coded potency labels, and the
+    sweep covers only 2 of the 5 metals in the pool.
+
+    The gate audits the record and FAILs loud while the headline is
+    contaminated, which stops a paper draft / INDEX row / closeout from
+    quoting 0.7577 as a real-data leave-one-metal-out transfer result
+    (AGENTS.md §5.2).  It never trains and never writes a metric.  It also
+    re-measures the pool row count and the wave's own ``n=`` so the
+    contamination is arithmetic rather than an inherited prose claim, and it
+    flags the JSON keys INDEX §17.1 cites for m19 but which are absent from
+    the file.
+
+    Opt-in via ``WF43_M19_LOMO_HEADLINE=1`` (Wf-R35 P-A precedent, same as
+    the m16 / m1 / m2 / m7 gates in this wave), so registering the gate
+    moves ``EXPECTED_GATE_COUNTS["all"]`` 117 -> 118 without changing the
+    verdict of an existing pre-flight run.
+
+    Implementation lives in
+    ``molmetal/scripts/wf_r43a1_m19_lomo_headline_guard.py``.
+    """
+    from molmetal.scripts.wf_r43a1_m19_lomo_headline_guard import (
+        gate_m19_lomo_headline,
+    )
+
+    return gate_m19_lomo_headline(
         name, priority, pipeline, metric_path, repo_root=repo_root
     )
 
@@ -12741,6 +12800,36 @@ def build_gates(
                     "P3",
                     "wfr43m7",
                     METRICS_DIR / "diversity_subpocket.json",
+                    repo_root=REPO_ROOT,
+                ),
+            ),
+            # ---- Wf-R43 m19 — LOMO headline real-data usability guard.
+            # `metal_lomo_auc_wasserstein.json` records a mean test ROC-AUC
+            # of 0.7577 over 7 runs (Rh 0.8798 / Re 0.7088) against an
+            # INTERNAL gate of 0.7, but the wave appended 500 SYNTHETIC Rh
+            # rows to the shared 5-metal pool BEFORE the LOMO split — so
+            # they contaminate the Rh train fold and enter the Re train fold
+            # too — those rows carry hard-coded potency labels (active
+            # IC50=0.1/pIC50=7.0), and the sweep covers only 2 of the 5
+            # metals in the pool. The headline is therefore held-out but
+            # NOT real-data-only. This gate FAILs loud while that holds, so
+            # no surface can quote 0.7577 as the leave-one-metal-out
+            # transfer result. MEASURED corroboration: the pool holds
+            # 26,632 rows and the wave's run.log records n=27132 =
+            # 26,632 + 500. The real-labelled Rh replacement cohort IS on
+            # disk (wf387a2, 500 compounds, is_synthetic=false), so only
+            # the 5-metal GPU sweep remains, USER_OK-gated per AGENTS.md
+            # §5.1. Opt-in via WF43_M19_LOMO_HEADLINE=1 (same Wf-R43 opt-in
+            # pattern as m16 + m1 + m2 + m7), so the count moves 117 -> 118
+            # without changing any existing pre-flight verdict. See
+            # molmetal/scripts/wf_r43a1_m19_lomo_headline_guard.py.
+            (
+                "p3_wf_r43_m19_lomo_headline",
+                lambda: gate_wf_r43_m19_lomo_headline(
+                    "p3_wf_r43_m19_lomo_headline",
+                    "P3",
+                    "wfr43m19",
+                    METRICS_DIR / "metal_lomo_auc_wasserstein.json",
                     repo_root=REPO_ROOT,
                 ),
             ),

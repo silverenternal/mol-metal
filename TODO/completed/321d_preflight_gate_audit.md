@@ -44,7 +44,37 @@ overlapping coverage, (d) verifies every gate is MEASURED-only, and
 
 ## §2 Gate inventory (per-pipeline; counts synced 2026-10-03, HOLE-1 + HOLE-5 + L4 + L5)
 
-### §2.1 `all` pipeline — 114 gates
+### §2.1 `all` pipeline — 118 gates
+
+> **Wf-R43 m19 (2026-10-08): 117 → 118.** 1 NEW opt-in fail-loud guard
+> `p3_wf_r43_m19_lomo_headline` guarding the m19 LOMO (Rh+Re) **headline
+> real-data usability**. `metal_lomo_auc_wasserstein.json` records a mean
+> test ROC-AUC 0.7577 over 7 runs (Rh 0.8798 / Re 0.7088) against an
+> INTERNAL gate of 0.7, but the wave appended **500 SYNTHETIC Rh rows** to
+> the shared 5-metal pool *before* the LOMO split — contaminating the Rh
+> train fold and entering the Re train fold too — those rows carry
+> hard-coded potency labels (active IC50=0.1 / pIC50=7.0), and the sweep
+> covers only **2 of the 5** metals in the pool. The headline is held-out but
+> **not real-data-only**. MEASURED corroboration: the pool holds 26,632 rows
+> and the wave's `run.log` records `n=27132` = 26,632 + 500, so the
+> contamination is arithmetic rather than an inherited prose claim. A
+> real-labelled Rh replacement cohort IS on disk (wf387a2, 500 compounds,
+> `is_synthetic=false`, zero scaffold leak), so only the 5-metal GPU sweep
+> remains, USER_OK-gated per AGENTS.md §5.1. Opt-in via
+> `WF43_M19_LOMO_HEADLINE=1` (Wf-R35 P-A precedent), so the count moves
+> without changing any existing pre-flight verdict. Implementation:
+> `molmetal/scripts/wf_r43a1_m19_lomo_headline_guard.py`; tests:
+> `molmetal/tests/test_wf_r43a1_m19_lomo_headline_guard.py` (15/15 PASS).
+
+> **Wf-R43 m1 / m2 / m7 (2026-10-08): 114 → 117.** 3 NEW opt-in fail-loud
+> guards registered by the sibling Wf-R43 items and counted here for the
+> first time (the §2.1 count was stale by 3 until this sync):
+> `p3_wf_r43_m1_paper_cohort` (Ru-AUC paper-cohort comparability),
+> `p3_wf_r43_m2_cohort_independence` (R² per-cohort independence — 2 of 3
+> "cohorts" were one measurement), and
+> `p3_wf_r43_m7_subpocket_uniform` (diversity_subpocket uniform placeholder
+> + n_unique=1 over 30 cells). All three are opt-in via `WF43_M1_PAPER_COHORT=1`
+> / `WF43_M2_COHORT_INDEPENDENCE=1` / `WF43_M7_SUBPOCKET_UNIFORM=1`.
 
 > **Wf-R43 m16 (2026-10-08): 113 → 114.** 1 NEW opt-in fail-loud guard
 > `p3_wf_r43_m16_pt_ckpt_gap` guarding the m16 D-MPNN pIC50 **Pt
@@ -340,7 +370,7 @@ When a gate is removed (rare; requires Wf-level justification):
 
 | Metric | Value |
 |---|---:|
-| `n_gates_total` (per-pipeline COUNT) | 114 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 7 (`cfm`) — plus the `launch` pipeline at 116 (`launch` = `all` + the 2 pre-retrain gates) |
+| `n_gates_total` (per-pipeline COUNT) | 118 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 7 (`cfm`) — plus the `launch` pipeline at 120 (`launch` = `all` + the 2 pre-retrain gates; MEASURED by `test_wf344b3_gate_count.py`, whose `launch` constant is stale at 115 — pre-existing, not introduced by Wf-R43) |
 | `n_overlaps_found` | 2 (`p3_pb_*` family + P0/P2 CSV line-count) |
 | `n_deduped` | 0 (all overlaps were DOCUMENTED instead) |
 | `n_documented` | 2 |
