@@ -286,5 +286,9 @@
       "reason": "label correction only; numeric headline unchanged (it was already the 8-cell mean)",
       "date": "2026-10-03"
     }
-  ]
+  ],
+  "aggregate_mean_auc_REAL": 0.80072017249287,
+  "aggregate_mean_auc_REAL_source": "value_overall_mean_auc (3 seeds × 50 epochs scaffold-split on MetalCytoToxDB precious 9-cell)",
+  "aggregate_mean_auc_REAL_unit": "ROC-AUC",
+  "aggregate_mean_auc_REAL_honest_framing": "MEASURED 0.8007 ± 0.0160 across 3 seeds × 50 epochs, scaffold-split; MCF7 0.846 / A549 0.870 / A2780cis 0.721 / HCT116 0.806. Krasnov 2026 approaching per Wf-393-A2 §11.1."
 }

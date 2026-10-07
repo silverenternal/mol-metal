@@ -244,9 +244,9 @@
   "wf432a1_multitemplate_mm_gb_sa_block": {
     "task_id": "A2_fix_step3_cat_b",
     "timestamp": "2026-10-01T21:14:43.243963+00:00",
-    "method": "Multi-template expansion per Wf-380-A5 SCAFFOLD \u2014 templates 5 \u2192 20 (4x template diversity) + poses 9 \u2192 20 (~2.2x pose diversity) + MM-GBSA rescoring with OPLS-AA force field + GB/SA implicit solvent",
-    "current_status": "MEASURED median RMSD 0.6578 \u00c5 across 5 pockets (Wf-341-T1 \u00a73 verdict); Wf-380-A5 SCAFFOLD surrogate aggregate_median 0.6015 \u00c5 across 5 templates \u00d7 9 poses (closed-form synthetic, NOT real Vina); 5/5 pockets PASS 2.0 \u00c5 SOTA gate",
-    "projected_lift": "-0.05 to -0.10 \u00c5 on 5-pocket organic-cofactor set (PROJECTED 0.6578 \u00c5 \u2192 ~0.55-0.60 \u00c5 at 20 templates \u00d7 20 poses); MEASURED end-to-end pending GPU retrain + meeko install",
+    "method": "Multi-template expansion per Wf-380-A5 SCAFFOLD — templates 5 → 20 (4x template diversity) + poses 9 → 20 (~2.2x pose diversity) + MM-GBSA rescoring with OPLS-AA force field + GB/SA implicit solvent",
+    "current_status": "MEASURED median RMSD 0.6578 Å across 5 pockets (Wf-341-T1 §3 verdict); Wf-380-A5 SCAFFOLD surrogate aggregate_median 0.6015 Å across 5 templates × 9 poses (closed-form synthetic, NOT real Vina); 5/5 pockets PASS 2.0 Å SOTA gate",
+    "projected_lift": "-0.05 to -0.10 Å on 5-pocket organic-cofactor set (PROJECTED 0.6578 Å → ~0.55-0.60 Å at 20 templates × 20 poses); MEASURED end-to-end pending GPU retrain + meeko install",
     "honest_framing": "SURROGATE bench (synthetic closed-form per Wf-380-A5 brief); real Vina + MM-GBSA binaries deferred to TODO-207 (Wf-299 launch USER_OK-gated); PoseBusters validity SKIPPED graceful (preserved as honest-negative on validity NOT on accuracy)"
   },
   "n_runs_measured": 13,
@@ -259,7 +259,7 @@
       "field": "note",
       "old_value": "Wf-246-B redesign: per-pocket std reporting (15 runs = 5 pockets x 3 seeds) + cross-pocket aggregate (median, std, min, max) + per-pocket difficulty flag (EASY <0.5A, MEDIUM 0.5-1.0A, HARD >=1.0A). Backward-compatible with Wf-179 ship schema.",
       "new_value": "Wf-246-B redesign: per-pocket std reporting (13 MEASURED runs of the planned 15-run grid = 5 pockets x 3 seeds; 3ny8 succeeded on 1/3 seeds, all other pockets 3/3) + cross-pocket aggregate (median, std, min, max) + per-pocket difficulty flag (EASY <0.5A, MEDIUM 0.5-1.0A, HARD >=1.0A). Backward-compatible with Wf-179 ship schema.",
-      "reason": "old note claimed 15 runs = 5 pockets x 3 seeds; summing per_seed_best_rmsd_angstrom arrays (3+3+1+3+3) and n_seeds_succeeded gives 13 MEASURED runs, not 15 \u2014 3ny8 completed 1/3 seeds. Aggregates recompute unchanged over the 5 pocket medians (median 0.6578; std 0.254592, ddof=1).",
+      "reason": "old note claimed 15 runs = 5 pockets x 3 seeds; summing per_seed_best_rmsd_angstrom arrays (3+3+1+3+3) and n_seeds_succeeded gives 13 MEASURED runs, not 15 — 3ny8 completed 1/3 seeds. Aggregates recompute unchanged over the 5 pocket medians (median 0.6578; std 0.254592, ddof=1).",
       "date": "2026-10-03"
     },
     {
@@ -269,5 +269,9 @@
       "reason": "same run-count correction",
       "date": "2026-10-03"
     }
-  ]
+  ],
+  "aggregate_median_best_rmsd_REAL": 0.6578,
+  "aggregate_median_best_rmsd_REAL_source": "median of per-pocket median_best_rmsd_angstrom across 5 pockets",
+  "aggregate_median_best_rmsd_REAL_unit": "Å",
+  "aggregate_median_best_rmsd_REAL_honest_framing": "MEASURED across 5 pockets (1h36 / 3eml / 3ny8 / 4aaw / 4rlu); aggregate median = 0.6578 Å → 5/5 PASS 2.0 Å SOTA gate per Wf-341-T1 + Wf-362-A3."
 }

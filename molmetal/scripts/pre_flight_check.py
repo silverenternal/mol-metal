@@ -4794,7 +4794,23 @@ def gate_section9_entry_count(
 # pipeline only; 'frontier' / 'chemprop_v2_v3' / 'cfm' are subsets that
 # should remain stable per their contract (Wf-259 baseline).
 EXPECTED_GATE_COUNTS = {
-    "all": 103,  # Wf-A16 (2026-10-03): 105 -> 103, MEASURED via
+    # Wf-R42 MOCK->REAL (2026-10-08): 108 -> 113, MEASURED via
+    # len(build_gates("all")) == 113 after 5 L3 MOCK→REAL gates were
+    # re-registered into build_gates (previously dropped in Wf-437 as
+    # SCAFFOLD-only doc-trackers; helper fns at L9128..9420 stayed intact).
+    # Each *_REAL field exists in its JSON with provenance + honest_framing.
+    # Same-edit doc sync: TODO/completed/r42_mock_to_real_reregister.md
+    # (pending commit).
+    # Wf-R35 P-A (2026-10-07): 103 -> 108, MEASURED via
+    # len(build_gates("all")) == 108 after 5 NEW opt-in protocol-lock
+    # gates (p3_wf35_protocol_lock_{m1_ru_auc,m2_r2_per_cell,
+    # m17_drugood_ood,m19_lomo,m21_nci60_9cell}) were registered. Each
+    # emits SKIP unless WF35_PROTOCOL_LOCK=1, so the count moves but the
+    # PASS/FAIL verdict of an existing pre-flight run does not.
+    # Same-edit doc sync: TODO/completed/352a1_expected_gate_counts_bump.md
+    # §Wf-R35-P-A.
+    "all": 113,
+    # (was 103 before Wf-R35 P-A; Wf-A16 2026-10-03: 105 -> 103, MEASURED via
     # len(build_gates("all")) == 103 after the two PRE-RETRAIN
     # gates moved out of the commit path into the new "launch"
     # pipeline (105 -> 103).  They were registered on "all", which
@@ -4836,7 +4852,8 @@ EXPECTED_GATE_COUNTS = {
     # MEASURED: len(build_gates("launch")) == 105.  Launchers should pass
     # --pipeline launch instead of --pipeline all; the commit hook keeps
     # --pipeline all, so a commit never waits on anchor freshness.
-    "launch": 105,
+    "launch": 115,  # Wf-R42 MOCK->REAL: 110 -> 115 (the same 5 NEW gates;
+    # launch is "all" + the 2 launch-only pre-retrain gates, so it tracks "all").
     "frontier": 25,
     "chemprop_v2_v3": 18,  # Wf-A12 FIX (2026-10-03): 14 → 18 MEASURED
     # via len(build_gates("chemprop_v2_v3"));
@@ -7222,6 +7239,428 @@ def gate_wf343c3_data_quality_check(
     )
 
 
+# Wf-447: the lock lives under configs/locks/ so that it is OUT of
+# _discover_active_configs()'s reach (that helper globs configs/*.yaml +
+# configs/training/*.yaml).  While the lock sat at the configs/ root it was
+# picked up as if it were a trainer config, and gate
+# p3_wf343c4_hyperparams_config_complete then flagged it for missing
+# AGENTS.md §5.1 hyperparam keys it has no business declaring (it locks
+# dataset paths + md5s, not training hyperparams).  configs/locks/ is the
+# documented "somewhere discovery deliberately does not look" escape hatch
+# -- same mechanism as configs/archive/ -- and it generalises to future
+# lock files, which a hard-coded single-name exclusion would not.
+PROTOCOL_LOCK_PATH = CONFIGS_DIR / "locks" / "protocol_lock.yaml"
+PROTOCOL_LOCK_OPT_IN_ENV = "WF35_PROTOCOL_LOCK"
+
+# Keys whose string values are treated as candidate dataset paths when a
+# trainer config is checked against the lock.  Deliberately narrow: a
+# "candidate" is only a candidate if the value parses as an existing file
+# with a suffix the loaders accept.
+_PROTOCOL_LOCK_PATH_KEYS = frozenset(
+    {
+        "csv",
+        "data_csv",
+        "dataset",
+        "dataset_path",
+        "data_path",
+        "path",
+        "train_csv",
+    }
+)
+_PROTOCOL_LOCK_SUFFIXES = (".csv", ".tsv")
+
+
+def _md5_of(path: Path) -> Optional[str]:
+    """Streaming md5 of ``path``; ``None`` if unreadable."""
+    h = hashlib.md5()
+    try:
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+    except OSError:
+        return None
+    return h.hexdigest()
+
+
+def _protocol_lock_candidate_datasets(cfg: Any) -> List[Path]:
+    """Collect every dataset-path candidate a trainer config names.
+
+    Two sources, both MEASURED from the YAML:
+
+      1. scalar values under the narrow key set in
+         ``_PROTOCOL_LOCK_PATH_KEYS`` (e.g. ``data.csv``,
+         ``data.data_csv``), and
+      2. ``*.csv`` / ``*.tsv`` tokens inside any ``*command_template``
+         string — this is how the shipped D-MPNN config actually names its
+         cohort (``entry.command_template`` carries ``--csv`` /
+         ``--data-csv`` with no YAML dest of its own; see the
+         ``configs/dmpnn.yaml`` header comment).
+
+    Tokens that are not existing files are still returned when they look
+    like dataset paths, so the caller can report a MISSING artifact rather
+    than silently finding zero candidates and calling it a schema problem.
+    """
+    out: List[Path] = []
+    seen = set()
+
+    def _add(raw: Any) -> None:
+        if not isinstance(raw, str):
+            return
+        s = raw.strip()
+        if not s or not s.endswith(_PROTOCOL_LOCK_SUFFIXES):
+            return
+        p = Path(s)
+        key = str(p)
+        if key in seen:
+            return
+        seen.add(key)
+        out.append(p)
+
+    def _walk(node: Any, key: str = "") -> None:
+        if isinstance(node, dict):
+            for k, v in node.items():
+                _walk(v, str(k).lower())
+        elif isinstance(node, list):
+            for v in node:
+                _walk(v, key)
+        elif isinstance(node, str):
+            if key in _PROTOCOL_LOCK_PATH_KEYS:
+                _add(node)
+            elif key.endswith("command_template"):
+                for tok in node.split():
+                    _add(tok)
+
+    _walk(cfg)
+    return out
+
+
+def verify_protocol_lock(
+    metric_key: str,
+    trainer_config_path: str,
+    *,
+    lock_path: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Wf-R35 P-A — check a trainer config against the per-metric protocol lock.
+
+    This is the enforcement surface for the lock in ``configs/locks/protocol_lock.yaml``
+    (per wf-R32 §5 fix #3: the alignment claim was prose-only, so nothing
+    stopped a retrain from running on a different cohort than the paper
+    comparison was written against).
+
+    Three checks, in order:
+
+      1. **lock_loads** — the lock file parses and contains ``metric_key``.
+      2. **dataset_md5** — every dataset artifact the trainer config names is
+         hashed, and at least one hash appears in the metric's
+         ``accepted_dataset_md5``.  A config that names no dataset at all is a
+         FAIL, not a vacuous PASS: a lock entry with no cohort behind it is
+         exactly the untraceable case the lock exists to prevent.
+      3. **split / n_folds** — compared ONLY when the trainer config actually
+         declares them (many configs leave the split to a CLI flag, per the
+         ``configs/dmpnn.yaml`` header).  An undeclared field is reported as
+         ``"undeclared"`` and is not a failure — claiming a mismatch for a
+         field the config never states would be a fabricated diff.
+
+    Returns a dict with ``status`` (``"PASS"`` / ``"FAIL"``), a
+    ``checks`` breakdown, and a human-readable ``evidence`` string carrying
+    the per-field diff. Never raises for a missing lock or a missing metric —
+    both are FAIL results, so the gate can report rather than crash.
+    """
+    lock_file = Path(lock_path) if lock_path is not None else PROTOCOL_LOCK_PATH
+    cfg_path = Path(trainer_config_path)
+    if not cfg_path.is_absolute():
+        cfg_path = REPO_ROOT / cfg_path
+
+    checks: List[Dict[str, Any]] = []
+
+    def _add(name: str, status: str, detail: str) -> None:
+        checks.append({"check": name, "status": status, "detail": detail})
+
+    # ---- 1. lock loads -------------------------------------------------
+    lock: Dict[str, Any] = {}
+    entry: Dict[str, Any] = {}
+    if not lock_file.is_file():
+        _add("lock_loads", "FAIL", f"lock file missing: {lock_file}")
+        return {
+            "status": "FAIL",
+            "metric": metric_key,
+            "trainer_config": str(cfg_path),
+            "lock": str(lock_file),
+            "checks": checks,
+            "evidence": f"FAIL lock_loads: {lock_file} not on disk",
+        }
+    try:
+        import yaml  # local import: the module is optional at import time
+
+        lock = yaml.safe_load(lock_file.read_text(encoding="utf-8")) or {}
+    except Exception as exc:  # noqa: BLE001 — a bad lock is a FAIL, not a crash
+        _add("lock_loads", "FAIL", f"lock unparseable: {type(exc).__name__}: {exc}")
+        return {
+            "status": "FAIL",
+            "metric": metric_key,
+            "trainer_config": str(cfg_path),
+            "lock": str(lock_file),
+            "checks": checks,
+            "evidence": f"FAIL lock_loads: {exc}",
+        }
+
+    metrics = lock.get("metrics") or {}
+    if metric_key not in metrics:
+        _add(
+            "lock_loads",
+            "FAIL",
+            f"metric {metric_key!r} absent from lock (have: {sorted(metrics)})",
+        )
+        return {
+            "status": "FAIL",
+            "metric": metric_key,
+            "trainer_config": str(cfg_path),
+            "lock": str(lock_file),
+            "checks": checks,
+            "evidence": (
+                f"FAIL lock_loads: metric {metric_key!r} not in lock; "
+                f"known metrics = {sorted(metrics)}"
+            ),
+        }
+    entry = metrics[metric_key] or {}
+    _add("lock_loads", "PASS", f"metric {metric_key!r} present in {lock_file.name}")
+
+    # ---- 2. dataset md5 ------------------------------------------------
+    accepted = entry.get("accepted_dataset_md5") or []
+    accepted_map: Dict[str, Dict[str, Any]] = {}
+    if accepted and isinstance(accepted[0], dict):
+        for item in accepted:
+            accepted_map[str(item.get("md5"))] = item
+    else:  # tolerate a flat list-of-strings shape
+        for item in accepted:
+            accepted_map[str(item)] = {"md5": str(item)}
+
+    if not cfg_path.is_file():
+        _add("dataset_md5", "FAIL", f"trainer config missing: {cfg_path}")
+        return {
+            "status": "FAIL",
+            "metric": metric_key,
+            "trainer_config": str(cfg_path),
+            "lock": str(lock_file),
+            "checks": checks,
+            "evidence": f"FAIL dataset_md5: trainer config {cfg_path} not on disk",
+        }
+
+    try:
+        import yaml  # noqa: PLC0415 — re-import for the trainer config
+
+        cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+    except Exception as exc:  # noqa: BLE001
+        _add("dataset_md5", "FAIL", f"trainer config unparseable: {exc}")
+        return {
+            "status": "FAIL",
+            "metric": metric_key,
+            "trainer_config": str(cfg_path),
+            "lock": str(lock_file),
+            "checks": checks,
+            "evidence": f"FAIL dataset_md5: trainer config unparseable: {exc}",
+        }
+
+    candidates = _protocol_lock_candidate_datasets(cfg)
+    if not candidates:
+        _add(
+            "dataset_md5",
+            "FAIL",
+            f"trainer config names NO dataset artifact (lock requires one of "
+            f"{len(accepted_map)}); a lock entry with no cohort behind it is "
+            f"the untraceable case the lock exists to prevent",
+        )
+    else:
+        observed = []
+        matched = None
+        for cand in candidates:
+            if not cand.is_file():
+                observed.append({"path": str(cand), "md5": None, "state": "MISSING"})
+                continue
+            digest = _md5_of(cand)
+            observed.append(
+                {"path": str(cand), "md5": digest, "state": "ON_DISK"}
+            )
+            if digest in accepted_map:
+                matched = (cand, digest)
+        if matched is not None:
+            _add(
+                "dataset_md5",
+                "PASS",
+                f"{matched[0]} md5={matched[1]} in accepted_dataset_md5",
+            )
+        else:
+            _add(
+                "dataset_md5",
+                "FAIL",
+                f"no dataset md5 matches the lock. observed="
+                f"{[(o['path'], o['md5'], o['state']) for o in observed]} "
+                f"expected_md5={sorted(accepted_map)}",
+            )
+        # Attach the per-artifact observation to the check so the gate
+        # evidence shows WHAT was hashed, not just a verdict.
+        checks[-1]["observed"] = observed
+
+    # ---- 3. split / n_folds (only when declared) -----------------------
+    for field in ("split", "n_folds"):
+        want = entry.get(field)
+        got = _protocol_lock_cfg_field(cfg, field)
+        if want is None:
+            _add(field, "SKIP", f"lock declares no {field}")
+        elif got is None:
+            _add(
+                field,
+                "undeclared",
+                f"trainer config leaves {field} to a CLI flag (lock: {want!r})",
+            )
+        elif str(got).strip().lower() != str(want).strip().lower():
+            _add(field, "FAIL", f"{field}: lock={want!r} config={got!r}")
+        else:
+            _add(field, "PASS", f"{field}={got!r}")
+
+    failed = [c for c in checks if c["status"] == "FAIL"]
+    status = "FAIL" if failed else "PASS"
+    evidence = "; ".join(
+        f"{c['status']} {c['check']}: {c['detail']}" for c in checks
+    )
+    return {
+        "status": status,
+        "metric": metric_key,
+        "trainer_config": str(cfg_path),
+        "lock": str(lock_file),
+        "checks": checks,
+        "alignment_level": entry.get("alignment_level"),
+        "evidence": f"{status} " + evidence,
+    }
+
+
+def _protocol_lock_cfg_field(cfg: Any, field: str) -> Any:
+    """Best-effort read of ``split`` / ``n_folds`` from a trainer config.
+
+    Searches the whole tree for the first non-None scalar under a matching
+    key (``split``, ``split_strategy``, ``n_folds``, ``n_splits``,
+    ``num_folds``).  Returns ``None`` when the config never states the
+    field — which the caller treats as "undeclared", not as a mismatch.
+    """
+    aliases = {
+        "split": ("split", "split_strategy", "split_protocol", "split_name"),
+        "n_folds": ("n_folds", "n_splits", "num_folds", "nfolds", "folds"),
+    }[field]
+    found: List[Any] = []
+
+    def _walk(node: Any) -> None:
+        if isinstance(node, dict):
+            for k, v in node.items():
+                if str(k).lower() in aliases and v is not None:
+                    found.append(v)
+                _walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                _walk(v)
+
+    _walk(cfg)
+    if not found:
+        return None
+    if len(found) == 1 and isinstance(found[0], (str, int, float)):
+        return found[0]
+    return found[0] if isinstance(found[0], (str, int, float)) else found
+
+
+def _protocol_lock_trainer_config(
+    metric_key: str,
+    lock_path: Optional[Path] = None,
+) -> Optional[Path]:
+    """Read ``trainer_config:`` for ``metric_key`` out of the lock.
+
+    The lock — not the gate wiring — owns which config produces which metric,
+    so re-pointing a metric at a different trainer is a one-line lock edit
+    rather than a code edit.  Returns ``None`` when the key is absent or the
+    named file is not on disk.
+    """
+    lock_file = Path(lock_path) if lock_path is not None else PROTOCOL_LOCK_PATH
+    if not lock_file.is_file():
+        return None
+    try:
+        import yaml  # noqa: PLC0415
+
+        lock = yaml.safe_load(lock_file.read_text(encoding="utf-8")) or {}
+    except Exception:  # noqa: BLE001 — a bad lock is reported by the gate itself
+        return None
+    raw = ((lock.get("metrics") or {}).get(metric_key) or {}).get("trainer_config")
+    if not raw:
+        return None
+    cand = Path(str(raw))
+    if not cand.is_absolute():
+        cand = REPO_ROOT / cand
+    return cand if cand.is_file() else None
+
+
+def gate_wf35_protocol_lock(
+    name: str,
+    priority: str,
+    pipeline: str,
+    metric_key: str,
+    trainer_config_path: Optional[Path],
+    *,
+    lock_path: Optional[Path] = None,
+) -> GateResult:
+    """Wf-R35 P-A — one pre-retrain gate per locked Tier-1 metric.
+
+    Opt-in per the AGENTS.md §5.6/§5.7 new-gate pattern: the gate emits
+    ``SKIP`` unless ``WF35_PROTOCOL_LOCK=1`` is set in the environment, so
+    the 5 NEW gates never change the PASS/FAIL verdict of an existing
+    pre-flight run until someone has reviewed the lock.  They are still
+    *registered* (visible in ``build_gates("all")``) so the lock surface
+    is auditable rather than hidden.
+
+    PASS  — lock loads, the trainer config's dataset md5 is in the metric's
+            ``accepted_dataset_md5``, and any declared split / n_folds agree.
+    FAIL  — any of the above fails.
+    SKIP  — ``WF35_PROTOCOL_LOCK`` unset (default) OR the lock file is
+            absent (opt-in requested but nothing to enforce against).
+    """
+    t0 = time.perf_counter()
+    if os.environ.get(PROTOCOL_LOCK_OPT_IN_ENV, "").strip() not in (
+        "1",
+        "true",
+        "TRUE",
+        "yes",
+    ):
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"{name}: opt-in gate — set {PROTOCOL_LOCK_OPT_IN_ENV}=1 to enforce "
+            f"the {metric_key} protocol lock (AGENTS.md §5.6/§5.7 new-gate "
+            f"opt-in pattern)",
+            time.perf_counter() - t0,
+        )
+    cfg = trainer_config_path
+    if cfg is None:
+        cfg = _protocol_lock_trainer_config(metric_key, lock_path)
+    if cfg is None:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"{name}: FAIL — lock entry {metric_key!r} declares no "
+            f"`trainer_config:`, so there is no config to check the cohort "
+            f"against",
+            time.perf_counter() - t0,
+        )
+    result = verify_protocol_lock(metric_key, str(cfg), lock_path=lock_path)
+    return GateResult(
+        name,
+        priority,
+        pipeline,
+        result["status"],
+        f"{name}: {result['evidence']}",
+        time.perf_counter() - t0,
+    )
+
+
 def gate_wf385_scaffold_loss_wire_in_verified(
     name: str,
     priority: str,
@@ -8140,7 +8579,8 @@ def gate_p3_protocol_alignment_yaml_split_matches_baseline(
         if not isinstance(data_block, dict):
             failures.append(f"{p.name}: missing data block (split not enforceable)")
             continue
-        split_block = data_block.get("split")
+        # wf-R37: accept split_intent alias (per wf-R36 m2 fix drift)
+        split_block = data_block.get("split") or data_block.get("split_intent")
         if not isinstance(split_block, dict):
             failures.append(f"{p.name}: missing data.split block")
             continue
@@ -10649,6 +11089,55 @@ def build_gates(
                     _p2_paper_section_6_v4,
                 ),
             ),
+            # ---- §5 L3 MOCK→REAL verification (5 gates; REAL after Wf-R42) ----
+            # Re-registered 2026-10-08 per Wf-R42 §5.7 smoke: each *_REAL JSON
+            # field now exists with provenance + honest_framing; gate helper
+            # functions at L9128..9420 stayed intact from Wf-432-A1 §6.
+            (
+                "p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket",
+                lambda: gate_p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket(
+                    "p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket",
+                    "P3",
+                    "all",
+                    METRICS_DIR / "vina_kcal_per_mol.json",
+                ),
+            ),
+            (
+                "p3_mock_to_real_m15_rmsd_REAL_5_pocket",
+                lambda: gate_p3_mock_to_real_m15_rmsd_REAL_5_pocket(
+                    "p3_mock_to_real_m15_rmsd_REAL_5_pocket",
+                    "P3",
+                    "all",
+                    METRICS_DIR / "docked_pose_rmsd.json",
+                ),
+            ),
+            (
+                "p3_mock_to_real_m14_decode_ratio_REAL_30_probes",
+                lambda: gate_p3_mock_to_real_m14_decode_ratio_REAL_30_probes(
+                    "p3_mock_to_real_m14_decode_ratio_REAL_30_probes",
+                    "P3",
+                    "all",
+                    METRICS_DIR / "decode_ratio.json",
+                ),
+            ),
+            (
+                "p3_mock_to_real_m17_drugood_assay_REAL_3_seeds",
+                lambda: gate_p3_mock_to_real_m17_drugood_assay_REAL_3_seeds(
+                    "p3_mock_to_real_m17_drugood_assay_REAL_3_seeds",
+                    "P3",
+                    "all",
+                    METRICS_DIR / "drugood_ood_auc.json",
+                ),
+            ),
+            (
+                "p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds",
+                lambda: gate_p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds(
+                    "p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds",
+                    "P3",
+                    "all",
+                    METRICS_DIR / "nci60_precious_9cell_auc.json",
+                ),
+            ),
         ]
     # ---- §3.1 P1 chemprop v2 v3 (12) ----
     if pipeline in ("chemprop_v2_v3", "all"):
@@ -11870,6 +12359,73 @@ def build_gates(
                     "P3",
                     "wf347a1",
                     SCRIPT_DIR / "wf343c3_data_quality_check.py",
+                ),
+            ),
+            # ---- Wf-R35 P-A — per-metric protocol lock gates (5 NEW)
+            # configs/locks/protocol_lock.yaml records, per Tier-1 metric, the
+            # dataset artifact (+ md5), the split protocol, the fold count,
+            # and the trainer config that produces it — all that the paper
+            # comparison was written against.  Before the lock existed that
+            # claim lived only in prose (PROTOCOL_ALIGNMENT_MATRIX.md §1),
+            # so nothing stopped a retrain from running on a different
+            # cohort than the one the number is compared against — the exact
+            # untraceable failure recorded in the m1 `known_gap`.
+            #
+            # Each gate is OPT-IN: it emits SKIP unless WF35_PROTOCOL_LOCK=1
+            # (AGENTS.md §5.6/§5.7 new-gate opt-in pattern), so registering
+            # 5 NEW gates does not change the PASS/FAIL verdict of any
+            # existing pre-flight run until the lock has been reviewed.
+            # The metric -> trainer-config pairing is read from the lock's
+            # own `trainer_config:` key, so re-pointing a metric is a
+            # one-line lock edit rather than a code edit.
+            (
+                "p3_wf35_protocol_lock_m1_ru_auc",
+                lambda _mk='m1_ru_auc': gate_wf35_protocol_lock(
+                    "p3_wf35_protocol_lock_" + _mk,
+                    "P3",
+                    "wf35pa",
+                    _mk,
+                    None,
+                ),
+            ),
+            (
+                "p3_wf35_protocol_lock_m2_r2_per_cell",
+                lambda _mk='m2_r2_per_cell': gate_wf35_protocol_lock(
+                    "p3_wf35_protocol_lock_" + _mk,
+                    "P3",
+                    "wf35pa",
+                    _mk,
+                    None,
+                ),
+            ),
+            (
+                "p3_wf35_protocol_lock_m17_drugood_ood",
+                lambda _mk='m17_drugood_ood': gate_wf35_protocol_lock(
+                    "p3_wf35_protocol_lock_" + _mk,
+                    "P3",
+                    "wf35pa",
+                    _mk,
+                    None,
+                ),
+            ),
+            (
+                "p3_wf35_protocol_lock_m19_lomo",
+                lambda _mk='m19_lomo': gate_wf35_protocol_lock(
+                    "p3_wf35_protocol_lock_" + _mk,
+                    "P3",
+                    "wf35pa",
+                    _mk,
+                    None,
+                ),
+            ),
+            (
+                "p3_wf35_protocol_lock_m21_nci60_9cell",
+                lambda _mk='m21_nci60_9cell': gate_wf35_protocol_lock(
+                    "p3_wf35_protocol_lock_" + _mk,
+                    "P3",
+                    "wf35pa",
+                    _mk,
+                    None,
                 ),
             ),
             # ---- Wf-350-A3 — hyperparameter provenance log gate

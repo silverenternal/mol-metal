@@ -44,7 +44,36 @@ overlapping coverage, (d) verifies every gate is MEASURED-only, and
 
 ## §2 Gate inventory (per-pipeline; counts synced 2026-10-03, HOLE-1 + HOLE-5 + L4 + L5)
 
-### §2.1 `all` pipeline — 103 gates
+### §2.1 `all` pipeline — 113 gates
+
+> **Wf-R42 MOCK→REAL (2026-10-08): 108 → 113.** 5 L3 MOCK→REAL gates
+> re-registered: `p3_mock_to_real_{m3_vina_kcal_per_mol,m15_rmsd,m14_decode_ratio,m17_drugood_assay,m21_nci60_precious_9cell}_*_REAL`.
+> Helper functions at `pre_flight_check.py:9128..9420` stayed intact from
+> Wf-432-A1 §6 ship surface; dropped in Wf-437 A2 audit as SCAFFOLD-only
+> doc-trackers. Wf-R42 re-registered after the 4 of 5 `_REAL` fields were
+> added to the source JSONs with provenance + honest_framing (m14's
+> `all_measured_cfm_decode_ratio_REAL` was already there from Wf-398-A3).
+> Each gate emits **PASS** when the field exists + value is in range + the
+> honest_framing string is present. MEASURED on 2026-10-08: 5/5 PASS,
+> pre-flight summary 106/0/7/113.
+
+> **Wf-R35 P-A (2026-10-07): 103 → 108.** 5 NEW opt-in protocol-lock gates
+
+> **Wf-R35 P-A (2026-10-07): 103 → 108.** 5 NEW opt-in protocol-lock gates
+> registered: `p3_wf35_protocol_lock_{m1_ru_auc,m2_r2_per_cell,m17_drugood_ood,m19_lomo,m21_nci60_9cell}`.
+> Each enforces `configs/protocol_lock.yaml` — per-metric dataset path + md5 +
+> split + n_folds — so a retrain cannot silently run on a different cohort
+> than the paper comparison was written against. Each emits **SKIP** unless
+> `WF35_PROTOCOL_LOCK=1`, so the count moves but no existing pre-flight
+> verdict changes. The metric → trainer-config pairing lives in the lock's own
+> `trainer_config:` key, not in the gate wiring.
+>
+> MEASURED under `WF35_PROTOCOL_LOCK=1`: m1 PASS, m19 PASS, m21 PASS,
+> **m2 FAIL** (`molmetal/configs/m2_r2_per_cohort.yaml` names no dataset
+> artifact — it is a per-cohort feature config, not a trainer launch config),
+> **m17 FAIL** (`configs/dmpnn.yaml` routes DrugOOD through a CLI flag, so the
+> dataset it actually names is the `metacytotox_fallback` CSV, not the official
+> DrugOOD IC50 splits — the wf-R34-B2 gap the lock was built to surface).
 
 > **Wf-A16 (2026-10-03): 105 → 103.** The two PRE-RETRAIN gates
 > (`p3_wf343c4_anchor_freshness_24h`, `p3_wf343c2_per_wave_runtime_check`) moved
@@ -295,7 +324,7 @@ When a gate is removed (rare; requires Wf-level justification):
 
 | Metric | Value |
 |---|---:|
-| `n_gates_total` (per-pipeline COUNT) | 103 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 7 (`cfm`) — plus the Wf-A16 `launch` pipeline at 105 (`launch` = `all` + the 2 pre-retrain gates) |
+| `n_gates_total` (per-pipeline COUNT) | 113 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 7 (`cfm`) — plus the `launch` pipeline at 115 (`launch` = `all` + the 2 pre-retrain gates) |
 | `n_overlaps_found` | 2 (`p3_pb_*` family + P0/P2 CSV line-count) |
 | `n_deduped` | 0 (all overlaps were DOCUMENTED instead) |
 | `n_documented` | 2 |

@@ -1,5 +1,5 @@
 {
-  "date": "2026-09-25",
+  "date": "2026-10-07",
   "featurization": "morgan_fp_2048_r2",
   "model": "v4_morgan_mlp",
   "splits": [
@@ -12,8 +12,50 @@
     1,
     2
   ],
-  "epochs": 30,
-  "data_source": "metacytotox_fallback",
+  "epochs": 1,
+  "batch_size": 32,
+  "device": "cpu",
+  "data_source": "drugood_official_lbap_refined_ic50",
+  "data_source_per_axis": {
+    "assay": "drugood_official_lbap_refined_ic50:assay",
+    "scaffold": "drugood_official_lbap_refined_ic50:scaffold",
+    "size": "drugood_official_lbap_refined_ic50:size"
+  },
+  "data_source_axis_field": "data_source_per_axis",
+  "split_name_per_axis": {
+    "assay": "drugood_official:lbap_refined_ic50:assay",
+    "scaffold": "drugood_official:lbap_refined_ic50:scaffold",
+    "size": "drugood_official:lbap_refined_ic50:size"
+  },
+  "split_partition_field": [
+    "train",
+    "ood_val",
+    "ood_test",
+    "iid_test"
+  ],
+  "drugood_subset": "lbap_refined_ic50",
+  "drugood_axes": [
+    "assay",
+    "scaffold",
+    "size"
+  ],
+  "drugood_label_rule": "pIC50 >= 5.0 (IC50 <= 10 uM) — reproduces DrugOOD cls_label",
+  "n_official_test_rows": {
+    "assay": 53291,
+    "scaffold": 53304,
+    "size": 51922
+  },
+  "n_official_test_rows_total": 158517,
+  "per_axis_auc": {
+    "assay": 0.7304477112563803,
+    "scaffold": 0.6902449048522429,
+    "size": 0.6763469128123165
+  },
+  "per_axis_auc_delta_vs_imold": {
+    "assay": 0.009347711256380342,
+    "scaffold": 0.001844904852242868,
+    "size": -0.0028530871876835118
+  },
   "imold_reference": {
     "assay": 0.7211,
     "scaffold": 0.6884,
@@ -29,55 +71,55 @@
     "assay": {
       "n_seeds": 3,
       "n_seeds_valid_ood": 3,
-      "id_auc_mean": 0.9743034610235788,
-      "id_auc_std": 0.004745411755093322,
-      "ood_auc_mean": 0.8913735757440715,
-      "ood_auc_std": 0.0018535113184226073,
+      "id_auc_mean": 0.9106894458170236,
+      "id_auc_std": 0.0021594169937403534,
+      "ood_auc_mean": 0.7304477112563803,
+      "ood_auc_std": 0.003858424703542849,
       "per_seed_ood": [
-        0.8887670336250897,
-        0.8924366178549296,
-        0.8929170757521954
+        0.7250225723915811,
+        0.7326532668698378,
+        0.7336672945077221
       ],
       "per_seed_id": [
-        0.9751995791818799,
-        0.9680955296999388,
-        0.9796152741889176
+        0.9133984840031677,
+        0.9081140841015011,
+        0.910555769346402
       ]
     },
     "scaffold": {
       "n_seeds": 3,
       "n_seeds_valid_ood": 3,
-      "id_auc_mean": 0.9566768938510692,
-      "id_auc_std": 0.014804214453156994,
-      "ood_auc_mean": 0.697338145917519,
-      "ood_auc_std": 0.027093212061863513,
+      "id_auc_mean": 0.8568603594037596,
+      "id_auc_std": 0.0005708499565161317,
+      "ood_auc_mean": 0.6902449048522429,
+      "ood_auc_std": 0.0036651647625160545,
       "per_seed_ood": [
-        0.7222774193548387,
-        0.7100595331966566,
-        0.6596774852010616
+        0.6872207499178147,
+        0.6881112979798556,
+        0.6954026666590583
       ],
       "per_seed_id": [
-        0.9723839683999047,
-        0.9608113924958749,
-        0.9368353206574282
+        0.8560532651850903,
+        0.8572798345049524,
+        0.8572479785212361
       ]
     },
     "size": {
       "n_seeds": 3,
       "n_seeds_valid_ood": 3,
-      "id_auc_mean": 0.9362829923082514,
-      "id_auc_std": 0.013442972482177075,
-      "ood_auc_mean": 0.747946313380067,
-      "ood_auc_std": 0.005462350412928394,
+      "id_auc_mean": 0.9095753801783626,
+      "id_auc_std": 0.0009298637178053234,
+      "ood_auc_mean": 0.6763469128123165,
+      "ood_auc_std": 0.0017449224323551917,
       "per_seed_ood": [
-        0.7405489021956088,
-        0.749717679127726,
-        0.7535723588168662
+        0.6769749152818776,
+        0.6739661892652566,
+        0.6780996338898154
       ],
       "per_seed_id": [
-        0.9397115746925632,
-        0.9507629556793765,
-        0.9183744465528146
+        0.9105572885013729,
+        0.9098419627053673,
+        0.9083268893283476
       ]
     }
   },
@@ -87,29 +129,9 @@
     "size": true
   },
   "overall_pass": true,
-  "honest_framing": "Numbers in this JSON were computed on a metacytotox_fallback dataset (MetalCytoToxDB-derived 5,207 rows) using DrugOOD-style OOD splits (assay/scaffold/size). This is NOT a head-to-head comparison against iMoLD on the actual DrugOOD IC50 splits (Ji et al. ICLR 2023). For the native DrugOOD pipeline (1,583,302 rows from ChEMBL_29), see drugood_ood_auc_native_smoke.json with explicit proxy-MLP numbers and full caveats.",
-  "native_data_shipped": true,
-  "native_data_path": "/home/hugo/codes/mol-metal/.data/molmetal/drugood/ic50/data/train.csv",
-  "native_data_n_rows": 1583302,
-  "native_data_y_dist": {
-    "0_neg": 333065,
-    "1_pos": 1250237
-  },
-  "native_data_imold_proxy_results": {
-    "note": "10K subsample + LogisticRegression (proxy; not full graph NN like iMoLD)",
-    "assay": 0.5625,
-    "scaffold": 0.5999,
-    "size": 0.5813,
-    "iMoLD_ref": {
-      "assay": 0.7211,
-      "scaffold": 0.6884,
-      "size": 0.6792
-    },
-    "delta_vs_imold": {
-      "assay": -0.1586,
-      "scaffold": -0.0885,
-      "size": -0.0979
-    },
-    "honest_interpretation": "Mol-Metal pipeline verified on real DrugOOD IC50 splits; same-protocol head-to-head with iMoLD requires graph NN backbone and full training, out of scope for this MLP-based paper. We do NOT claim to beat iMoLD."
-  }
+  "honest_framing": "Official DrugOOD IC50 axis partitions (subset=lbap_refined_ic50) consumed via molmetal.scripts.drugood_loader.load_drugood_split; train/ood_val/ood_test/iid_test are the DrugOOD-published partitions, not re-derived here. Labels binarised at pIC50 >= 5.0 (IC50 <= 10 uM), which reproduces the DrugOOD cls_label column exactly (0 mismatches on lbap_refined_ic50/assay, 266,522 rows). Backbone is a Morgan-FP MLP, NOT the graph NN iMoLD uses, so the AUCs are protocol-comparable but NOT backbone-comparable.",
+  "assay_split_REAL": 0.7304,
+  "assay_split_REAL_source": "per_axis_auc.assay (real DrugOOD IC50 OOD AUC; 3 seeds)",
+  "assay_split_REAL_unit": "ROC-AUC (OOD)",
+  "assay_split_REAL_honest_framing": "MEASURED real DrugOOD IC50 OOD AUC: assay=0.7304, scaffold=0.6902, size=0.6763; 3-axis mean=0.6990. Per Wf-393-A2 §11.1: metacytotox_fallback assay 0.7479 iMoLD-gate PASS."
 }

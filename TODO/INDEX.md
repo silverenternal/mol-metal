@@ -158,13 +158,13 @@ TODO/
 
 | Category | Count | Examples |
 |---|---:|---|
-| 🟢 **STRONG_REAL_PAPER_READY** | 7 | m21 NCI-60 9-cell AUC 0.8007±0.0160; m17 DrugOOD OOD 0.891; m11 n_distinct=20; m13 RDKit validity 1.000; m14 CFM decode_ratio 0.998 (per Wf-398-A3); ring_size_distribution; metallodrug_vertical_coverage |
-| 🟡 **WEAK_REAL_NEEDS_MORE_DATA** | 6 | m1 Ru AUC BELOW_KRASNOV_PARTIAL (per Wf-413-A1); m2 R² HONEST_NEGATIVE_R2_DEEP (per Wf-388-A1); m7 Diversity SCAFFOLD-only (per Wf-388-A2); m10 Vina min -4.158; m15 RMSD MEASURED 0.6578 Å; m19 LOMO **0.535 (Rh 0.368) is the R17 baseline** (`metrics/by_metric/metal_lomo_auc_wasserstein.json::r17_baseline_reference`) — current Wf-413-A1 7-pair overall mean = **0.7577** (Rh fold 0.8798 PASS_KRASNOV +0.020; Re fold 0.7088 BELOW_KRASNOV −0.151) but `USABLE_AS_HEADLINE=false` (oversample=500 mixed into TRAIN; only Rh+Re covered of 5 folds); clean re-measurement command + disqualifying_reasons live in the JSON itself (per Wf-A11). |
-| 🔴 **MOCK_NEEDS_REMEASURE** | 4 | m3 Vina stub -9.6574 (CRITICAL); m16 ckpt GAP (D-MPNN pIC50 Pt missing); m4 SA SCAFFOLD-only; m8 PB production; 4 external_scorers MOCK_DELETED |
-| ⚪ **UNDEFINED** | 5 | m6_kappa HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL (per Wf-377-A1 + Wf-411-A4 — to be dropped from §3 main-result, promoted top-3 WEAK correlates to §3 supplementary sub-table); m9/m20 not in pipeline; diversity_subpocket; steric_clash; vina_*_test_001 |
+| 🟢 **STRONG_REAL_PAPER_READY** | 7 | m21 NCI-60 9-cell AUC 0.8007±0.0160; m17 DrugOOD OOD 0.7304 (per Wf-R42 §L3 gate PASS); m11 n_distinct=20; m13 RDKit validity 1.000; m14 CFM decode_ratio 0.998 (per Wf-398-A3 + Wf-R42 §L3); ring_size_distribution; metallodrug_vertical_coverage |
+| 🟡 **WEAK_REAL_NEEDS_MORE_DATA** | 7 | m1 Ru AUC BELOW_KRASNOV_PARTIAL (per Wf-413-A1); m2 R² HONEST_NEGATIVE_R2_DEEP (per Wf-388-A1); m3 Vina -3.103 MEASURED_REAL_VINA_SHIP_PARTIAL (per Wf-121 P3 + Wf-141 v2 + Wf-143 P4 + Wf-R42 §L3; bottleneck is covalent mechanism, NOT search thoroughness); m7 Diversity SCAFFOLD-only (per Wf-388-A2); m10 Vina min -4.158; m15 RMSD MEASURED 0.6578 Å (per Wf-R42 §L3 gate PASS); m19 LOMO **0.535 (Rh 0.368) is the R17 baseline** (`metrics/by_metric/metal_lomo_auc_wasserstein.json::r17_baseline_reference`) — current Wf-413-A1 7-pair overall mean = **0.7577** (Rh fold 0.8798 PASS_KRASNOV +0.020; Re fold 0.7088 BELOW_KRASNOV −0.151) but `USABLE_AS_HEADLINE=false` (oversample=500 mixed into TRAIN; only Rh+Re covered of 5 folds); clean re-measurement command + disqualifying_reasons live in the JSON itself (per Wf-A11). |
+| 🔴 **MOCK_NEEDS_REMEASURE** | 3 | m16 ckpt GAP (D-MPNN pIC50 Pt missing); m4 SA SCAFFOLD-only; m8 PB production |
+| ⚪ **UNDEFINED** | 5 | m6_kappa HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL (per Wf-377-A1 + Wf-411-A4 — to be dropped from §3 main-result, promoted top-3 WEAK correlates to §3 supplementary sub-table); m9/m20 not in pipeline; diversity_subpocket; steric_clash; vina_*_test_001; (4 external_scorers MOCK_DELETED per TODO-294 are HISTORICAL DELETIONS, no longer "live" MOCK items) |
 | 🔵 **PROJECTED** (R20 plan) | 8 | R20·P1..P6 + Wf-44 P2 (per TODO-92..99 R20 plan items) |
 
-**Final 22-metric state**: 🟢 7 + 🟡 6 + 🔴 4 + ⚪ 5 = 22 (1 metric moved from 🟡 to ⚪ in this audit: m6_kappa per Wf-377-A1 deep-dive-research move n=5460 MetalCytoToxDB).
+**Final 22-metric state**: 🟢 7 + 🟡 7 + 🔴 3 + ⚪ 5 = 22 (Wf-R42 2026-10-08: 🔴 4 → 3 + 🟡 6 → 7 per the 5 L3 MOCK→REAL gates re-registered; m3 Vina + m15 RMSD + m17 DrugOOD + m21 NCI-60 confirmed REAL-MEASURED on disk).
 
 ### §17.2 Per-question status (Q1-Q5 answers)
 
@@ -172,7 +172,7 @@ TODO/
 - **Q2 (🟡 解决了一半)**: 6 metrics in 🟡 — MEASURED but below gate target; needs USER_OK-gated GPU retrain for lift
 - **Q3 (❌ 完全没解决)**: 0 metrics in ❌ (none unreachable structurally)
 - **Q4 (🟢 真实强数据)**: 7 metrics in 🟢 → paper §4 LEAD claim candidates
-- **Q5 (🔴 Mock/假数据)**: 4 metrics in 🔴 → MOCK→REAL conversion deferred to R20-P3 (TODO-94 + TODO-95)
+- **Q5 (🔴 Mock/假数据)**: **3 metrics in 🔴 after Wf-R42 (2026-10-08)** — down from 4. 4 of the 5 L3 MOCK→REAL gates (`m3_vina_kcal`, `m15_rmsd`, `m17_drugood_assay`, `m21_nci60_9cell`) now PASS with on-disk `_REAL` fields + provenance + honest_framing; m14 was already 🟢 pre-R42. Remaining 🔴: m16 ckpt GAP (D-MPNN pIC50 Pt missing — NOT covered by L3 gate; pending Wf-432 follow-up), m4 SA SCAFFOLD-only (SCAFFOLD gate, not MOCK), m8 PB production. Deferred to R20-P3/P4 (TODO-94 + TODO-95) for the structural MOCK→REAL work still on the GPU side.
 
 ### §17.3 R20 plan items (TODO 92-99 mapping)
 
