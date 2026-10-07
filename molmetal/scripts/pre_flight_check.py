@@ -4834,7 +4834,18 @@ EXPECTED_GATE_COUNTS = {
     # WF43_M2_COHORT_INDEPENDENCE=1 (same Wf-R43 pattern), so the count
     # moves but no existing pre-flight verdict does. Implementation:
     # molmetal/scripts/wf_r43a2_m2_cohort_independence_guard.py.
-    "all": 116,
+    # Wf-R43 m7 (2026-10-08): 116 -> 117, MEASURED via
+    # len(build_gates("all")) == 117 after the m7 diversity_subpocket
+    # uniform-placeholder guard (p3_wf_r43_m7_subpocket_uniform) was
+    # registered. MEASURED: both live metric implementations build the
+    # per-residue weight vector as `[1] * n_residues`, and 2 of the 3
+    # docstring-cited "real weight source" lines are BLANK; separately the
+    # only 30-cell div_subpocket sweep has n_unique=1 (one measurement
+    # replicated 30x). Opt-in via WF43_M7_SUBPOCKET_UNIFORM=1 (same
+    # Wf-R43 pattern), so the count moves but no existing pre-flight
+    # verdict does. Implementation:
+    # molmetal/scripts/wf_r43a3_m7_subpocket_uniform_guard.py.
+    "all": 117,
     # (was 103 before Wf-R35 P-A; Wf-A16 2026-10-03: 105 -> 103, MEASURED via
     # len(build_gates("all")) == 103 after the two PRE-RETRAIN
     # gates moved out of the commit path into the new "launch"
@@ -7768,6 +7779,53 @@ def gate_wf_r43_m1_paper_cohort(
     )
 
     return gate_m1_paper_cohort(
+        name, priority, pipeline, metric_path, repo_root=repo_root
+    )
+
+
+def gate_wf_r43_m7_subpocket_uniform(
+    name: str,
+    priority: str,
+    pipeline: str,
+    metric_path: Path,
+    *,
+    repo_root: Optional[Path] = None,
+) -> Any:
+    """Wf-R43 m7 — diversity_subpocket UNIFORM-PLACEHOLDER guard.
+
+    ``diversity_subpocket.json`` is DESIGN_ONLY and its only measurement
+    is a unit-test fixture.  MEASURED, the two live metric
+    implementations (``r4_lambda_only_run.py`` and ``r4_lib/metrics.py``)
+    both build the per-residue weight vector as ``[1] * n_residues`` — a
+    uniform placeholder that is indifferent to which residue a bit
+    belongs to, i.e. blind to the exact axis the metric claims to
+    measure.  The docstrings defer the real vector to
+    ``voxelization.py:208,255`` / ``vina_adapter.py:961``; MEASURED, two
+    of those three cited lines are BLANK and the third is a voxel-grid
+    origin, so the cited source does not exist.
+
+    Separately, the only 30-cell sweep carrying a ``div_subpocket``
+    column reports that value — and 7 sibling pool-derived metrics —
+    with ZERO between-cell variance (n_unique=1 over 30 cells), i.e. one
+    measurement replicated 30x, the Wf-R43 m2 pathology.
+
+    The gate audits both and FAILs loud while either holds, so no
+    downstream surface can quote 0.653873 as a reproducible
+    across-pocket sub-pocket result.  Defect 1 is CPU-resolvable today
+    (10/10 Wf-30 pockets staged READY + RDKit 2026.03.6 in the venv);
+    defect 2 needs a real sweep.  Opt-in via
+    ``WF43_M7_SUBPOCKET_UNIFORM=1`` (same Wf-R43 opt-in pattern as m16
+    and m1), so registering the gate moves the count 115 -> 116 without
+    changing any existing pre-flight verdict.
+
+    Implementation lives in
+    ``molmetal/scripts/wf_r43a3_m7_subpocket_uniform_guard.py``.
+    """
+    from molmetal.scripts.wf_r43a3_m7_subpocket_uniform_guard import (
+        gate_m7_subpocket_uniform,
+    )
+
+    return gate_m7_subpocket_uniform(
         name, priority, pipeline, metric_path, repo_root=repo_root
     )
 
@@ -12649,6 +12707,40 @@ def build_gates(
                     "P3",
                     "wfr43m2",
                     METRICS_DIR / "m2_r2_per_cohort.json",
+                    repo_root=REPO_ROOT,
+                ),
+            ),
+            # ---- Wf-R43 m7 — diversity_subpocket uniform-placeholder guard.
+            # `diversity_subpocket.json` is DESIGN_ONLY (its only
+            # measurement is a unit-test fixture), and MEASURED the two
+            # live metric implementations (r4_lambda_only_run.py +
+            # r4_lib/metrics.py) both build the per-residue weight vector
+            # as `[1] * n_residues` — a uniform placeholder that is
+            # indifferent to which residue a bit belongs to, i.e. blind to
+            # the exact axis the metric claims to measure. The docstrings
+            # defer the real vector to voxelization.py:208,255 /
+            # vina_adapter.py:961; MEASURED, 2 of those 3 cited lines are
+            # BLANK and the 3rd is a voxel-grid origin, so the cited
+            # source does not exist. Separately, the only 30-cell sweep
+            # with a div_subpocket column reports that value (and 7
+            # sibling pool-derived metrics) with ZERO between-cell
+            # variance — n_unique=1 over 30 cells, i.e. one measurement
+            # replicated 30x (Wf-R43 m2 pathology). This gate FAILs loud
+            # while either holds, so no surface can quote 0.653873 as a
+            # reproducible across-pocket sub-pocket result. Defect 1 is
+            # CPU-resolvable today (10/10 Wf-30 pockets staged READY +
+            # RDKit 2026.03.6 in the venv); defect 2 needs a real sweep.
+            # Opt-in via WF43_M7_SUBPOCKET_UNIFORM=1 (same Wf-R43 opt-in
+            # pattern as m16 + m1 + m2), so the count moves 116 -> 117
+            # without changing any existing pre-flight verdict. See
+            # molmetal/scripts/wf_r43a3_m7_subpocket_uniform_guard.py.
+            (
+                "p3_wf_r43_m7_subpocket_uniform",
+                lambda: gate_wf_r43_m7_subpocket_uniform(
+                    "p3_wf_r43_m7_subpocket_uniform",
+                    "P3",
+                    "wfr43m7",
+                    METRICS_DIR / "diversity_subpocket.json",
                     repo_root=REPO_ROOT,
                 ),
             ),

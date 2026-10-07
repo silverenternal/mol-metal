@@ -33,5 +33,59 @@
   "workflows": [
     "wf_parallel_tasks/phase3d_subpocket_div.md",
     "wf_parallel_tasks/phase4_integration.md"
-  ]
+  ],
+  "wf_r43_m7_guard": {
+    "gate": "p3_wf_r43_m7_subpocket_uniform",
+    "opt_in_env": "WF43_M7_SUBPOCKET_UNIFORM=1",
+    "verdict_on_disk": "FAIL",
+    "guard_module": "molmetal/scripts/wf_r43a3_m7_subpocket_uniform_guard.py",
+    "defect_1_uniform_placeholder_weights": {
+      "status": "MEASURED_FAIL",
+      "uniform_implementations": [
+        "molmetal/scripts/r4_lambda_only_run.py",
+        "molmetal/scripts/r4_lib/metrics.py"
+      ],
+      "pattern": "weights = [1] * int(n_residues)  (n_residues default 4)",
+      "why_it_matters": "A uniform weight vector is indifferent to which residue a Morgan bit belongs to, so the sub-pocket axis the metric name / unit string / lit anchors (Bemis-Murcko 1996, Peter 2019 SPF) claim to measure carries no information. The value is a modulo-partitioned GLOBAL Tanimoto distance, not a local sub-pocket one.",
+      "is_it_just_zero": "NO - misattribution, not a silently-zero metric. MEASURED on 3 triazole SMILES (K=4, radius=2, n_bits=2048): per-residue 0.823502886 / 0.919871795 / 0.522222222 vs plain global Tanimoto distance 0.833333333 / 0.914893617 / 0.512820513 (deltas -0.0098 / +0.0050 / +0.0094). The sparse-bin re-weighting is real; only the sub-pocket attribution is wrong."
+    },
+    "defect_1b_cited_weight_source_does_not_exist": {
+      "status": "MEASURED_FAIL",
+      "cited_by": "docstrings of metric_subpocket_diversity_mean in both impls",
+      "voxelization_py_208": "EMPTY LINE",
+      "voxelization_py_255": "origin = center - half_extent  (voxel-grid origin, not a residue weight)",
+      "vina_adapter_py_961": "EMPTY LINE",
+      "grep_residue_weight_in_sbdd_env": "no matches",
+      "conclusion": "2 of 3 cited 'real weight source' lines are blank; the 3rd is unrelated. The deferred source does not exist."
+    },
+    "defect_2_zero_between_cell_variance": {
+      "status": "MEASURED_FAIL",
+      "sweep": "molmetal/reports/wf_r16_round13_30cell/final.json",
+      "n_cells": 30,
+      "div_subpocket": 0.6538729654113289,
+      "div_subpocket_std": 0.0,
+      "n_unique_across_30_cells": 1,
+      "also_constant": [
+        "div_tan",
+        "div_homo",
+        "novelty",
+        "sa",
+        "qed",
+        "logp",
+        "tpsa",
+        "rotb"
+      ],
+      "conclusion": "All 7+ pool-derived metrics are byte-identical across all 30 (pocket, seed) cells. The sweep carries ONE diversity measurement repeated 30x, not 30 independent ones - the same pathology Wf-R43 m2 just closed for the R2 cohorts. 0.653873 with std 0.0 must NOT be quoted as a reproducible across-pocket result."
+    },
+    "stale_DESIGN_ONLY_justification": {
+      "claim_in_verdict": "'a re-run on a host with RDKit would lift this metric to MEASURED'",
+      "measured": "RDKit 2026.03.6 IS importable in /home/hugo/codes/mol-metal/.venv",
+      "conclusion": "The blocker this file names is not the blocker. RDKit is present; the blockers are the uniform placeholder weights and the missing real sweep."
+    },
+    "cpu_reachable_remediation": {
+      "defect_1": "CPU-resolvable today: 10/10 Wf-30 pockets staged READY under molmetal/reports/wf30_pocket_prep/ with per-pocket receptor.pdbqt + source PDB sha256 on record, and RDKit 2026.03.6 in the venv. A real per-residue weight vector is derivable; the wiring is missing, not the data or the dependency.",
+      "defect_2": "Needs a real sweep with genuine per-cell pool diversity; NOT resolvable by re-aggregating the existing r16 file."
+    }
+  },
+  "honest_framing_note_wf_r43_m7": "Wf-R43 m7 (2026-10-08): this metric was DESIGN_ONLY with a unit-test fixture as its only 'measurement'. Reviewing it against disk found two unfalsifiable defects now guarded fail-loud by p3_wf_r43_m7_subpocket_uniform (opt-in WF43_M7_SUBPOCKET_UNIFORM=1, verified FAIL on disk): (1) both live metric implementations build the per-residue weight vector as the uniform placeholder [1]*n_residues, so the sub-pocket axis carries no information, and the 'real weight source' their docstrings defer to does not exist (2 of 3 cited lines blank); (2) the only 30-cell div_subpocket sweep has ZERO between-cell variance (n_unique=1), so it is one measurement replicated 30x. The metric stays DESIGN_ONLY - it is NOT lifted to MEASURED by this wave, because no non-uniform-weighted, multi-cell measurement exists. Nothing was retrained and no GPU was launched."
 }
