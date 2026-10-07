@@ -47,6 +47,13 @@ EPOCHS="${EPOCHS:-30}"
 SEEDS="${SEEDS:-0 1 2 3 4}"
 METALS="${METALS:-Ru Ir Os Rh Re}"
 MODEL_SELECT="${MODEL_SELECT:-last_epoch}"
+# P-A fix (Wf-R40): was hard-coded `--rh-oversample 500`, which re-injects
+# the fabricated-label Rh cohort on every run and breaks the real-only
+# re-measurement the Wf-432..435 audit requires.  The trainer's default
+# (train_metal_lomo_wasserstein.py:1831) is `default=0` since Wf-R10,
+# so leaving RH_OVERSAMPLE unset = real-only fold.  Set explicitly via
+# env var to reproduce the historical wf125_p1 / wf131_p2 path.
+RH_OVERSAMPLE="${RH_OVERSAMPLE:-0}"
 DRY_RUN=0
 QUICK=0
 
@@ -66,7 +73,7 @@ CMD=("${PY}" "${PROJECT_ROOT}/molmetal/scripts/train_metal_lomo_wasserstein.py"
      --seeds ${SEEDS}
      --epochs "${EPOCHS}"
      --wasserstein-weight 0.05
-     --rh-oversample 500
+     --rh-oversample "${RH_OVERSAMPLE}"
      --model-select "${MODEL_SELECT}"
      --out-dir "${REPORTS_DIR}"
      --out-metric "${METRIC_OUT}")
@@ -84,6 +91,7 @@ echo "  EPOCHS:       ${EPOCHS}"
 echo "  SEEDS:        ${SEEDS}"
 echo "  METALS:       ${METALS}"
 echo "  MODEL_SELECT: ${MODEL_SELECT}"
+echo "  RH_OVERSAMPLE:${RH_OVERSAMPLE}"
 echo "  DRY_RUN:      ${DRY_RUN}"
 echo "  CMD: ${CMD[*]}"
 
