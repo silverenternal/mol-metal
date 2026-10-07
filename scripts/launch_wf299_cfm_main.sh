@@ -141,10 +141,13 @@ WAVE_C_GPU="cuda:0"      # RTX PRO 6000 Blackwell GPU-0 (serial execution)
 # (lines 1491-1731). Wire them into Wave A invocations so the smoke test path
 # covers the Wf-380 SCAFFOLD flag surface per TODO-207 §2.5.
 #
-# Defaults (per Wf-380-B1 §2.2 table):
-#   11 flags default ON  : --use-ot-cfm --stable-vm --so3-average
+# Defaults (per Wf-380-B1 §2.2 table, --stable-vm REMOVED per Wf-R38 honest-negative):
+#   10 flags default ON  : --use-ot-cfm --so3-average
 #                           --log-normal-t --triton-ot --shortcut-distill
 #                           --per-cohort-features (boolean store_true default=True)
+#   1 flag DROPPED       : --stable-vm — FLAG_ONLY on bond loss (trainer
+#                           refuses to start per bond-loss guard); pending
+#                           Wf-R39+ velocity-loss wire-in
 #   5 numeric defaults   : --consistency-weight 1.0 --top-p 0.9 --top-k 50
 #                           --temperature 1.0 --mmd-weight 0.1
 #                           --repulsion-weight 0.05
@@ -172,7 +175,12 @@ WAVE_C_GPU="cuda:0"      # RTX PRO 6000 Blackwell GPU-0 (serial execution)
 # -----------------------------------------------------------------------------
 CFM_NEW_FLAGS=(
     --use-ot-cfm
-    --stable-vm
+    # --stable-vm REMOVED per Wf-R38 honest-negative: FLAG_ONLY on bond loss
+    # (trainer bond-loss guard refuses to start if --stable-vm replaces bond_ce
+    # with stable_vm_loss(logits, zeros) — silently destroys bond objective).
+    # Per trainer msg: "The flag belongs on the VELOCITY loss; either wire it
+    # there or drop it from the config. Refusing to train with a silently
+    # destroyed bond objective." Drop until Wf-R39+ wires it on the velocity loss.
     --so3-average
     --log-normal-t
     --triton-ot
@@ -501,17 +509,23 @@ EOF
     deadline=$(( started_at + ${budget_hr%.*} * 3600 ))
 
     # Background launcher for the trainer; PID captured for kill_then_adapt.
-    # Wf-430-B6 fix (per Wf-430-B6 launch diagnostic + Wf-430-A1 §5 forward-look
-    # sub-fix): the trainer (`molmetal/scripts/train_cfm_yuelbond_wasserstein.py`)
-    # does NOT have a `--config <yaml>` argparse flag — its `parse_args()` only
-    # accepts per-flag args (--epochs, --seed, --pocket-id, --use-ot-cfm, ...).
-    # The YAML path passed via `${config}` is logged for traceability but NOT
-    # forwarded to the trainer. Per kill_then_adapt §0: any wrapper-vs-trainer
-    # flag mismatch aborts via pre-flight + abort_recovery.py cascade; this is
-    # the same pattern as the `--json` argparse bug fixed at line 297 (per
-    # Wf-413-A3) + per_wave_checklist.py invocation at line 397 (per Wf-430-B6).
+    # 2026-10-07 FIX (user directive: "所有启动脚本都用yaml管理…不要用cli,那样不好
+    # 追溯"). The prior comment here claimed the trainer has NO `--config` flag
+    # and therefore logged ${config} "for traceability" without forwarding it.
+    # That was wrong on both counts, and it made the wrapper decorative:
+    #   * `train_cfm_yuelbond_wasserstein.py` DOES declare `--config`
+    #     (L6000) and `parse_args()` ends in
+    #     `apply_yaml_overrides(p, args, args.config)` (L6039-6041).
+    #   * Every hyperparameter therefore came from the argparse DEFAULT, not
+    #     from ${config} — so all three waves ran on defaults while the
+    #     DRY_RUN.log advertised the yaml. That is the Wf-A9 silent-lie class.
+    # ${config} is now forwarded. Precedence inside the trainer is
+    # explicit CLI > YAML > argparse default, so per-wave `"$@"` overrides
+    # (--epochs/--seed/etc.) still win over the yaml — deliberate, and it keeps
+    # the per-wave budgets in this wrapper authoritative.
     CUDA_VISIBLE_DEVICES="${gpu##cuda:}" \
         "${PY}" "${trainer}" \
+            --config "${config}" \
             --out-dir "${out_dir}" \
             "$@" ${EXTRA_FLAGS:-} \
             > "${out_dir}/train.log" 2>&1 &

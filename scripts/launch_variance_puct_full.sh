@@ -219,9 +219,13 @@ echo "=== variance-cPUct L3 full A/B START $(date) ===" | tee -a "${LOG}"
 echo "MODE=${MODE} PROTOCOL_LOCK=${PROTOCOL_LOCK} ARGS=${COMMON_ARGS[*]}" | tee -a "${LOG}"
 
 # AGENTS.md §4 pre-flight v2 gate. --pipeline launch = 'all' + pre-retrain gates.
+# L3 is CPU-only VariancePUCT bench (no metal cohort); declare a virtual
+# 'L3' metal so the wf343c2 grid check resolves a non-empty (metal, seed)
+# grid (n_pairs=1*${N_SEEDS} -> REQUIRED_HR=1*${N_SEEDS}*0.7*1.25).
 PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py \
     --pipeline launch \
     --declared-wave "L3 variance-cPUct full A/B (${MODE} arm)" \
+    --pairs-metals L3 \
     --pairs-seeds "${N_SEEDS}" \
     --budget-hr 1 \
     2>&1 | tee -a "${LOG}" || { echo "FAIL: pre_flight_check"; exit 1; }
@@ -234,6 +238,7 @@ PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py
 rc_c2=0
 PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/wf343c2_per_wave_check.py \
     --wave "L3-variance-puct-${MODE}" \
+    --pairs-metals L3 \
     --pairs-seeds "${N_SEEDS}" \
     --budget-hr 1 \
     --skip-live > "${OUT_BASE}/wf343c2_${MODE}.log" 2>&1 || rc_c2=$?
