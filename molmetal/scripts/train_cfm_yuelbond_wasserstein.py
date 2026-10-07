@@ -942,6 +942,18 @@ class EpochMetrics:
     gen_single_fragment_ratio: float = 0.0
     gen_metal_ratio: float = 0.0
     gen_mean_heavy_atoms: float = 0.0
+    # Wf-R43 m4 — the REAL Ertl-2009 SA observation on GENERATED molecules.
+    # `gen_sa_observed` is the field to branch on: False means this run asked
+    # for no SA or sascorer was unavailable, and `gen_sa_mean` is then a
+    # placeholder that must not be read as "the model generated perfectly
+    # synthesizable chemistry".  `gen_sa_mean` is an OBSERVABLE, deliberately
+    # NOT a loss term — sascorer is a fragment lookup with no gradient, and
+    # the 2026-10-04 audit deleted the surrogate that pretended otherwise.
+    gen_sa_observed: bool = False
+    gen_sa_mean: float = 0.0
+    gen_sa_target: float = 0.0
+    gen_sa_synthesizable_rate: float = 0.0
+    gen_sa_scored: int = 0
     # Round-4 E4 — WHICH NUMBER GATED THIS EPOCH, and its value.
     #
     # `early_stop_metric` is the criterion actually used (which may be a
@@ -2850,8 +2862,14 @@ def train_one_epoch(
         #       typed `-> List[float]`, computed from the DATA clouds rather
         #       than from model output, then wrapped in torch.tensor(float(...))
         #       which severs any graph there might have been.  A constant.
-        #       To make this real the penalty has to be scored on DECODED
-        #       molecules, which is a different piece of work.
+        #       Wf-R43 m4 closed the measurement half of this: the real
+        #       Ertl-2009 score IS now computed on DECODED molecules
+        #       (`decode_chemistry` -> `_score_decoded_sa`) and reported as
+        #       `gen_sa_*`.  The GRADIENT half stays closed on purpose —
+        #       sascorer is a fragment-frequency lookup, so any term built
+        #       from it is non-differentiable by construction and putting it
+        #       back in the sum would re-create the constant this audit
+        #       deleted.
         #   per_cohort_term
         #       Always torch.zeros; its own comment says it contributes 0 and
         #       exists for logging.
@@ -3450,9 +3468,51 @@ def seed_metal_z(cloud: "AtomCloud") -> frozenset:
     return frozenset(int(z) for z in zs if int(z) in _TARGET_METALS)
 
 
+def _score_decoded_sa(mol) -> Optional[float]:
+    """Return the REAL Ertl-2009 SA score of an RDKit ``Mol``, else ``None``.
+
+    Wf-R43 m4.  Why this exists.  Until now ``--sa-penalty`` was consumed by
+    ``_synthesize_sa_scores_from_clouds``, a mapping of DATA-cloud statistics
+    (n_atoms, n_distinct) into the [1, 10] SA band.  That surrogate is a
+    constant w.r.t. the model: it is computed from the batch the trainer was
+    GIVEN, not from anything the model PREDICTED, and it was consequently
+    removed from the ``loss = (...)`` sum on 2026-10-04 (a ``torch.tensor(
+    float(v))`` has no graph).  m4 therefore had no trainer-side SA signal at
+    all — the flag parsed, the arithmetic ran, and nothing about generation
+    was ever measured.
+
+    The only honest place to score SA is on a DECODED MOLECULE, which is what
+    this does.  It is a REPORTED observable, not a loss term: sascorer is a
+    fragment-frequency lookup with no gradient, so wiring it into the loss
+    would re-introduce exactly the constant the 2026-10-04 audit deleted.
+    Reporting it makes ``--sa-penalty``/``--sa-target`` mean something on
+    generated chemistry instead of on input statistics.
+
+    Returns ``None`` (never NaN) when the SA scorer is unavailable, so
+    ``summarise_decode_chemistry`` can count scored vs unscored honestly
+    rather than averaging a NaN into the mean.
+    """
+    if mol is None or not _SA_PENALTY_AVAILABLE:
+        return None
+    try:
+        from molmetal.adapters.flow_matching_lipman.sa_penalty import (
+            compute_sa_score as _compute_sa,
+        )
+
+        val = float(_compute_sa(mol))
+    except Exception:
+        return None
+    # sascorer signals failure with NaN; a NaN that entered a mean would
+    # silently poison the epoch's reported SA.
+    if val != val:  # NaN check without importing math
+        return None
+    return val
+
+
 def decode_chemistry(
     smiles: str,
     expected_metal_z: Optional[frozenset] = None,
+    sa_target: Optional[float] = None,
 ) -> Optional[Dict[str, Any]]:
     """Chemical facts RDKit-strict parsing does NOT establish.
 
@@ -3480,6 +3540,14 @@ def decode_chemistry(
     becomes "the seed metal is present" and ``seed_metal_present`` is the same
     fact named explicitly; when it is omitted the old corpus-wide question is
     asked, so pre-D4 callers are unchanged.
+
+    ``sa_target`` (Wf-R43 m4) additionally scores the decoded molecule with
+    the REAL Ertl-2009 sascorer, and returns it as ``sa_score`` together with
+    the synthesizable flag.  It is ``None`` by default so every pre-m4 caller
+    pays nothing and changes nothing; pass ``args.sa_target`` to switch the
+    SA observation on.  It is an OBSERVABLE, not a loss term — see
+    :func:`_score_decoded_sa` for why a fragment lookup cannot carry a
+    gradient.
     """
     if not RDKIT_AVAILABLE or not smiles:
         return None
@@ -3501,6 +3569,12 @@ def decode_chemistry(
             "has_metal": bool(has_metal),
             "seed_metal_present": bool(has_metal) if expected_metal_z else None,
             "seed_metal_z": sorted(int(z) for z in want),
+            # Wf-R43 m4 — the REAL Ertl-2009 SA score of THIS decoded
+            # molecule.  `None` means "not requested" (sa_target is None) or
+            # "sascorer unavailable"; the key is always present so a caller
+            # can tell "no score" from "row predates the m4 wire-in".
+            "sa_score": _score_decoded_sa(mol) if sa_target is not None else None,
+            "sa_target": float(sa_target) if sa_target is not None else None,
         }
     except Exception:
         return None
@@ -3533,6 +3607,14 @@ def summarise_decode_chemistry(rows: Sequence[Optional[Dict[str, Any]]]) -> Dict
             "n_metal_missing": 0,
             "metal_missing_rate": 0.0,
             "metal_presence_gate": "SKIP",
+            # Wf-R43 m4 — same keys as the populated branch, all zero /
+            # unobserved, so a caller never has to branch on row count.
+            "sa_observed": False,
+            "sa_scored": 0,
+            "sa_mean": 0.0,
+            "sa_target": None,
+            "sa_synthesizable_rate": 0.0,
+            "sa_subcriterion_met": None,
         }
     # Only rows that were actually SEEDED with a metal can be judged on
     # seed-metal presence.  A composition with no metal in it (a ligand-only
@@ -3541,6 +3623,28 @@ def summarise_decode_chemistry(rows: Sequence[Optional[Dict[str, Any]]]) -> Dict
     seeded = [r for r in valid if r.get("seed_metal_present") is not None]
     n_missing = sum(1 for r in seeded if not r["seed_metal_present"])
     miss_rate = (n_missing / len(seeded)) if seeded else 0.0
+    # Wf-R43 m4 — the SA half of the summary.  `sa_scored` counts the rows
+    # that actually got a number; the mean is over THOSE, never over `n`.  A
+    # mean over all rows would read 0.0 on a run where sascorer was simply
+    # absent, which is indistinguishable from a run that generated only
+    # perfectly synthesizable chemistry.
+    sa_vals = [
+        float(r["sa_score"]) for r in valid if r.get("sa_score") is not None
+    ]
+    sa_targets = {
+        float(r["sa_target"]) for r in valid if r.get("sa_target") is not None
+    }
+    sa_target = next(iter(sa_targets)) if len(sa_targets) == 1 else None
+    sa_mean = float(sum(sa_vals) / len(sa_vals)) if sa_vals else 0.0
+    sa_synth_rate = (
+        float(sum(1 for v in sa_vals if v < sa_target) / len(sa_vals))
+        if (sa_vals and sa_target is not None)
+        else 0.0
+    )
+    # `sa_observed` is the honest headline: False means the run asked for no
+    # SA (sa_target was None) or sascorer was unavailable, and `sa_mean` is
+    # then a placeholder that must not be read as a measurement.
+    sa_observed = bool(sa_vals)
     return {
         "n_chemistry_scored": n,
         "largest_fragment_frac_mean": float(
@@ -3556,6 +3660,15 @@ def summarise_decode_chemistry(rows: Sequence[Optional[Dict[str, Any]]]) -> Dict
         "metal_missing_rate": float(miss_rate),
         # DIAGNOSTIC, never a block — see METAL_PRESENCE_WARN / _FAIL below.
         "metal_presence_gate": metal_presence_verdict(miss_rate, len(seeded)),
+        "sa_observed": sa_observed,
+        "sa_scored": len(sa_vals),
+        "sa_mean": sa_mean,
+        "sa_target": sa_target,
+        "sa_synthesizable_rate": sa_synth_rate,
+        # m4 = SA sub-criterion AND QED sub-criterion (Wf-323F).  Only the SA
+        # half is observable here; `None` says exactly that rather than
+        # implying a joint rate of 0.
+        "sa_subcriterion_met": (sa_synth_rate >= 0.5) if sa_observed else None,
     }
 
 
@@ -3596,6 +3709,7 @@ def evaluate_generation_validity(
     seed: int = 0,
     template_offset: int = 0,
     noise_sigma: float = 1.0,
+    sa_target: Optional[float] = None,
     chemistry_out: Optional[Dict[str, Any]] = None,
     chemistry_rows_out: Optional[List[Optional[Dict[str, Any]]]] = None,
 ) -> Tuple[int, int]:
@@ -3610,6 +3724,12 @@ def evaluate_generation_validity(
     parsing does not establish (fragment counts, metal presence) — see
     :func:`decode_chemistry`.  ``n_ok`` alone cannot distinguish a real
     molecule from a string of loose atoms.
+
+    Wf-R43 m4 — pass ``sa_target`` to score every decoded molecule with the
+    real Ertl-2009 sascorer; the summary then carries ``sa_mean`` /
+    ``sa_synthesizable_rate`` measured on GENERATED chemistry.  ``None``
+    (default) leaves scoring off, so a caller that never heard of SA pays
+    nothing.
 
     ``template_offset`` slides the window of val compositions this call
     scores.  2026-10-05 (Round-3 D3): with a multi-seed eval, seed alone only
@@ -3656,7 +3776,9 @@ def evaluate_generation_validity(
             # corpus-wide target set.  Passing the seed in is what turns the
             # saturated 1.000 `metal_ratio` into a metric that can fail.
             chem_rows.append(
-                decode_chemistry(smi, seed_metal_z(cloud)) if smi else None
+                decode_chemistry(smi, seed_metal_z(cloud), sa_target)
+                if smi
+                else None
             )
             if _decode_with_rdkit_strict(decoder, cloud):
                 n_ok += 1
@@ -5421,18 +5543,22 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.0,
         help=(
-            "Wf-388-A3 NEW: weight on the SA penalty term added to "
-            "the CFM velocity loss (Ertl 2009 / Wf-380-A6 SCAFFOLD; "
-            "TODO-205). Default 0.0 (OFF; backward-compat with "
-            "Wf-380-B1). When greater than zero, the trainer multiplies "
-            "sa_aware_sampling_penalty(sa_scores, target_sa, sa_weight) "
-            "by this factor and adds it to the loss. Set to e.g. 0.1 "
-            "to nudge the CFM toward the synthesizable region "
-            "(SA < target_sa). Requires the sa_penalty module to be "
-            "importable; falls back to no-op otherwise. PROJECTED "
-            "3.099 -> 2.5-2.7 SA mean lift on the metallo_drug smoke "
-            "cohort (WEAK_TO_STRONG section 3.6 band; MEASURED requires "
-            "GPU retrain per AGENTS.md section 5.1)."
+            "Wf-388-A3 / Wf-R43-m4: switch on the SA observation "
+            "(Ertl 2009 / TODO-205). Default 0.0 (OFF; "
+            "backward-compatible). When greater than zero the "
+            "generation eval scores every DECODED molecule with the "
+            "real RDKit sascorer and records sa_mean / "
+            "sa_synthesizable_rate / sa_scored in per_epoch_metrics. "
+            "json, the per-epoch CSV, events.jsonl, and the "
+            "[cfm-gen][sa] stdout line. "
+            "IMPORTANT (Wf-R43 m4 correction): this is an OBSERVABLE, "
+            "NOT a loss term. Until now the only consumer was a "
+            "surrogate over DATA-cloud statistics, which the "
+            "2026-10-04 gradient-liveness audit removed from the loss "
+            "sum because it was a constant; sascorer is a fragment "
+            "lookup with no gradient, so no SA term can train the "
+            "model. Any SA-mean lift remains PROJECTED and needs a "
+            "USER_OK-gated GPU retrain per AGENTS.md section 5.1."
         ),
     )
     p.add_argument(
@@ -7343,6 +7469,20 @@ def main() -> int:
                         seed=int(args.seed) * 1_000_000 + int(epoch) * 100 + int(_sd),
                         template_offset=_si * _gen_n,
                         noise_sigma=float(getattr(args, "fm_noise_sigma", 1.0)),
+                        # Wf-R43 m4 — turn the real Ertl-2009 SA
+                        # observation on whenever the run declared a
+                        # synthesizable target.  `--sa-target` has a
+                        # non-None argparse default (2.8), so this fires on
+                        # any run that did not explicitly disable it; pass
+                        # `--gen-validity-samples 0` to skip generation
+                        # eval entirely.  The score lands in
+                        # `chemistry_out`, which reaches
+                        # `per_epoch_metrics.json`.
+                        sa_target=(
+                            float(getattr(args, "sa_target", 0.0)) or None
+                        )
+                        if float(getattr(args, "sa_penalty", 0.0)) > 0.0
+                        else None,
                         chemistry_out=_chem_seed,
                         chemistry_rows_out=_rows_seed,
                     )
@@ -7427,6 +7567,25 @@ def main() -> int:
                     f"(n={_gen_chem.get('n_chemistry_scored', 0)})",
                     flush=True,
                 )
+                # Wf-R43 m4 — the REAL SA observation, printed beside the
+                # chemistry it was measured on.  `sa_observed` gates the
+                # print: without it an un-scored run would emit `sa_mean
+                # = 0.000`, which reads as "every generated molecule was
+                # perfectly synthesizable" rather than "nothing was
+                # scored".
+                if bool(_gen_chem.get("sa_observed")):
+                    print(
+                        f"[cfm-gen][sa] epoch={epoch} "
+                        f"sa_mean={_gen_chem.get('sa_mean', 0.0):.3f} "
+                        f"sa_target={_gen_chem.get('sa_target')} "
+                        f"sa_synthesizable_rate="
+                        f"{_gen_chem.get('sa_synthesizable_rate', 0.0):.3f} "
+                        f"(n={_gen_chem.get('sa_scored', 0)} scored of "
+                        f"{_gen_chem.get('n_chemistry_scored', 0)} parsed) "
+                        f"— MEASURED on generated molecules, "
+                        f"OBSERVABLE not a loss term",
+                        flush=True,
+                    )
                 # 2026-10-05 (D4) — the seed-metal gate, printed on the same
                 # line-group as the chemistry it is derived from.  DIAGNOSTIC
                 # ONLY: nothing below this point aborts, blocks, or skips an
@@ -7506,6 +7665,16 @@ def main() -> int:
                         n_decode_error=int(
                             _gen_chem.get("n_decode_error", 0) or 0
                         ),
+                        # Wf-R43 m4 — real Ertl-2009 SA on the generated
+                        # molecules.  `sa_observed` travels WITH the mean so
+                        # a consumer cannot read a placeholder 0.0 as a
+                        # measurement.
+                        sa_observed=bool(_gen_chem.get("sa_observed", False)),
+                        sa_mean=float(_gen_chem.get("sa_mean", 0.0) or 0.0),
+                        sa_synthesizable_rate=float(
+                            _gen_chem.get("sa_synthesizable_rate", 0.0) or 0.0
+                        ),
+                        sa_scored=int(_gen_chem.get("sa_scored", 0) or 0),
                     )
                 except Exception as _ev_exc:
                     print(
@@ -7614,6 +7783,14 @@ def main() -> int:
             ),
             gen_metal_ratio=float(_gen_chem.get("metal_ratio", 0.0)),
             gen_mean_heavy_atoms=float(_gen_chem.get("mean_heavy_atoms", 0.0)),
+            # Wf-R43 m4 — real SA on generated molecules.
+            gen_sa_observed=bool(_gen_chem.get("sa_observed", False)),
+            gen_sa_mean=float(_gen_chem.get("sa_mean", 0.0) or 0.0),
+            gen_sa_target=float(_gen_chem.get("sa_target", 0.0) or 0.0),
+            gen_sa_synthesizable_rate=float(
+                _gen_chem.get("sa_synthesizable_rate", 0.0) or 0.0
+            ),
+            gen_sa_scored=int(_gen_chem.get("sa_scored", 0) or 0),
             # Round-4 E4 — the criterion that gates, and the caveat on it.
             early_stop_metric=_es_name,
             early_stop_value=_es_value,
@@ -7680,6 +7857,16 @@ def main() -> int:
                     _gen_chem.get("single_fragment_ratio", 0.0)
                 ),
                 gen_metal_ratio=float(_gen_chem.get("metal_ratio", 0.0)),
+                # Wf-R43 m4 — real SA on generated molecules (see the
+                # EpochMetrics field docs for why `gen_sa_observed` is the
+                # field to branch on).
+                gen_sa_observed=bool(_gen_chem.get("sa_observed", False)),
+                gen_sa_mean=float(_gen_chem.get("sa_mean", 0.0) or 0.0),
+                gen_sa_target=float(_gen_chem.get("sa_target", 0.0) or 0.0),
+                gen_sa_synthesizable_rate=float(
+                    _gen_chem.get("sa_synthesizable_rate", 0.0) or 0.0
+                ),
+                gen_sa_scored=int(_gen_chem.get("sa_scored", 0) or 0),
                 # Round-3 D1 — assemble diagnostics.  `assemble_loss` is the
                 # SOFT surrogate that entered the objective; `assemble_fragments`
                 # and `assemble_largest_fragment_frac` are the EXACT hard counts
@@ -8144,6 +8331,12 @@ def main() -> int:
                 "gen_single_fragment_ratio",
                 "gen_metal_ratio",
                 "gen_mean_heavy_atoms",
+                # Wf-R43 m4 — the real SA observation columns.
+                "gen_sa_observed",
+                "gen_sa_mean",
+                "gen_sa_target",
+                "gen_sa_synthesizable_rate",
+                "gen_sa_scored",
                 # Round-4 E4 — the criterion and its value, so the grep
                 # surface carries the same control the JSON does.
                 "early_stop_metric",
@@ -8186,6 +8379,11 @@ def main() -> int:
                     f"{m.gen_single_fragment_ratio:.4f}",
                     f"{m.gen_metal_ratio:.4f}",
                     f"{m.gen_mean_heavy_atoms:.2f}",
+                    int(m.gen_sa_observed),
+                    f"{m.gen_sa_mean:.4f}",
+                    f"{m.gen_sa_target:.2f}",
+                    f"{m.gen_sa_synthesizable_rate:.4f}",
+                    m.gen_sa_scored,
                     m.early_stop_metric,
                     f"{m.early_stop_value:.6f}",
                     int(m.early_stop_improved),

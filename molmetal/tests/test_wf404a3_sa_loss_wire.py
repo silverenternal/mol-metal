@@ -18,6 +18,18 @@ fills that gap by adding a deterministic per-cloud SA-like score
 surrogate (``_synthesize_sa_scores_from_clouds``) so the penalty term
 becomes a real contribution to the loss when ``--sa-penalty > 0``.
 
+.. note::
+   **Superseded in part (Wf-R43 m4, 2026-10-08).**  The surrogate above was
+   a function of the DATA clouds, not of anything the model predicted, and
+   was wrapped in ``torch.tensor(float(...))`` — so it was gradient-dead and
+   commit ``4e1864e8a9`` removed it from the ``loss = (...)`` sum.  This
+   file's assertion #4 was inverted to match.  What replaced the surrogate
+   is an OBSERVABLE, not a loss term: ``decode_chemistry`` now scores every
+   DECODED molecule with the real Ertl-2009 sascorer and the run reports
+   ``gen_sa_mean`` / ``gen_sa_synthesizable_rate`` / ``gen_sa_scored`` in
+   ``per_epoch_metrics.json``, the per-epoch CSV and ``events.jsonl``.
+   See ``molmetal/tests/test_wf_r43_m4_sa_observation.py``.
+
 Tests
 -----
 1. ``test_sa_loss_off_zero_contribution`` — when ``sa_penalty=0`` the
@@ -158,12 +170,32 @@ def test_sa_loss_off_zero_contribution() -> None:
         "if sa_penalty_weight > 0.0 and _SA_PENALTY_AVAILABLE:" in src
     ), "Wf-404-A3: OFF guard must remain so default sa_penalty=0 short-circuits"
 
-    # 4. The loss formula must still multiply sa_penalty_weight * sa_loss.
-    # When sa_loss is 0, this contribution is exactly 0 (bit-for-bit
-    # backward compat with Wf-380-B1).
+    # 4. The loss formula must NOT contain `sa_penalty_weight * sa_loss`.
+    #
+    # This assertion was inverted on 2026-10-08 (Wf-R43 m4).  It used to
+    # require the term in the `loss = (...)` sum, and it was failing from
+    # commit 4e1864e8a9 ("zero gradient-dead loss terms") onward — that
+    # commit removed the term on purpose.  The surrogate scores the DATA
+    # clouds the trainer was given, wraps the result in
+    # `torch.tensor(float(...))`, and therefore carries no gradient: it was
+    # a constant dressed as a training signal.  `molmetal/tests/
+    # test_cfm_loss_gradient_liveness.py` is the guard that made the
+    # removal, and it lists `sa_loss` in its docstring as one of the three
+    # shapes it was written to catch.
+    #
+    # Wf-R43 m4 closed the MEASUREMENT half instead: the real Ertl-2009
+    # score is now computed on DECODED molecules and reported as
+    # `gen_sa_*`.  The GRADIENT half stays closed on purpose — sascorer is
+    # a fragment lookup with no gradient, so no SA term can train this
+    # model.  Requiring the term back would re-create the exact defect the
+    # audit found.
     assert (
-        "+ sa_penalty_weight * sa_loss" in src
-    ), "Wf-404-A3: loss formula must retain sa_penalty_weight * sa_loss term"
+        "+ sa_penalty_weight * sa_loss" not in src
+    ), (
+        "Wf-R43 m4: sa_penalty_weight * sa_loss must stay OUT of the loss "
+        "sum — it is gradient-dead (see 4e1864e8a9 + "
+        "test_cfm_loss_gradient_liveness.py)"
+    )
 
     # 5. AST parse — no syntax errors.
     tree = ast.parse(src)

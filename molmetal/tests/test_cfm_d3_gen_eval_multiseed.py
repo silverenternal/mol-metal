@@ -186,7 +186,7 @@ class TestTemplateWindows:
         """
         captured = {}
 
-        def _fake_gen(model, pool, device, *, method, n_steps, seed):
+        def _fake_gen(model, pool, device, *, method, n_steps, seed, **kwargs):
             captured["pool"] = list(pool)
             captured["seed"] = seed
             # The real generator returns one cloud per template, one that

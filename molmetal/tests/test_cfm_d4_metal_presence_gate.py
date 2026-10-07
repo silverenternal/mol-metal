@@ -295,6 +295,11 @@ def test_gate_does_not_alter_the_eval_return_shape(trainer):
         "n_samples",
         "seed",
         "template_offset",
+        "noise_sigma",
+        # Wf-R43 m4 — the SA observation switch.  Listed here because this
+        # assertion is the tripwire that catches a kwarg added to the eval
+        # without the caller being updated.
+        "sa_target",
         "chemistry_out",
         "chemistry_rows_out",
     ]
