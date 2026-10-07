@@ -1,0 +1,20 @@
+{
+  "variance": {
+    "verdict": "OK",
+    "success_rate": 1.0,
+    "mean_depth": 3.75,
+    "mean_n_distinct": 9.75,
+    "mean_wall_s": 9.309669405221939,
+    "wall_total_s": 148.95471048355103,
+    "tt_cache_hit_rate": 0.1949685534591195
+  },
+  "constant": {
+    "verdict": "OK",
+    "success_rate": 1.0,
+    "mean_depth": 3.75,
+    "mean_n_distinct": 9.75,
+    "mean_wall_s": 11.556482523679733,
+    "wall_total_s": 184.90372037887573,
+    "tt_cache_hit_rate": 0.1949685534591195
+  }
+}

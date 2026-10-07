@@ -287,6 +287,9 @@ print('ARM_SUMMARY ${arm} verdict=%s success_rate=%s mean_depth=%s mean_wall=%s'
 run_arm "${MODE}"
 
 # ---- A/B comparison stub when both arms are present ----
+# Wf-R38 fix: bench JSON nests aggregate metrics under d['agg']; previous
+# code read d.get('success_rate') etc. at top level which returned None.
+# Read from agg + map field names to match the stdout line summary.
 if [ -f "${OUT_BASE}/variance/search_quality_bench.json" ] && [ -f "${OUT_BASE}/constant/search_quality_bench.json" ]; then
     ${PY} -c "
 import json
@@ -295,8 +298,18 @@ out = {}
 for arm in ('variance', 'constant'):
     p = Path('${OUT_BASE}') / arm / 'search_quality_bench.json'
     d = json.load(open(p))
-    out[arm] = {k: d.get(k) for k in ('verdict', 'success_rate', 'mean_depth', 'mean_wall', 'mean_n_distinct')}
+    a = d.get('agg', {})
+    out[arm] = {
+        'verdict': d.get('verdict'),
+        'success_rate': a.get('success_rate'),
+        'mean_depth': a.get('mean_depth_reached'),
+        'mean_n_distinct': a.get('mean_n_distinct'),
+        'mean_wall_s': a.get('mean_wall_time_s'),
+        'wall_total_s': a.get('total_wall_time_s'),
+        'tt_cache_hit_rate': a.get('tt_cache_hit_rate'),
+    }
 Path('${OUT_BASE}/ab_comparison.json').write_text(json.dumps(out, indent=2))
+# raw per-arm metrics only — NO delta claim, NO paper-grade verdict.
 print('ab_comparison.json written (raw per-arm metrics; NO delta claim)')
 "
 else
