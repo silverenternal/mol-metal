@@ -55,6 +55,8 @@
       "lift_vs_baseline": -0.018961477760540024,
       "verdict": "HONEST_NEGATIVE_R2_DEEP",
       "target_name": "pIC50_mean_mcf7_a549_a2780_a2780cis",
+      "cohort_is_alias_of": "platinai_4cell",
+      "cohort_alias_disclosure": "hilbert cohort loader (Wf-331-R5 load_cohort L1099-1101) returns the platinai_4cell pIC50 vector by construction — np.array_equal(X_platinai, X_hilbert) is True. The seed-shift offset is documented in Wf-388-A1 §3.2 and acknowledged in Wf-R43-A2 KNOWN_ALIASES.",
       "elapsed_sec": 0.06635808944702148
     },
     {
@@ -82,6 +84,14 @@
     "mean_r2": -0.029983019522041743,
     "std_r2": 0.16126624620158803,
     "n_cohorts_tested": 3,
+    "n_cohorts_independent": 2,
+    "n_independent_cohorts": ["platinai_4cell", "metalcytotox_combined"],
+    "n_aliased_cohorts": 1,
+    "aliased_cohorts": {
+      "hilbert": "platinai_4cell"
+    },
+    "mean_r2_independent": 0.02703320861077936,
+    "std_r2_independent": 0.1710486688982129,
     "n_cohorts_above_zero": 1,
     "n_cohorts_ceiling_break": 0,
     "n_cohorts_weak_recovery_or_better": 1,

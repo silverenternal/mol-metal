@@ -195,6 +195,12 @@ def audit_m2_cohort_independence(
     for r in rows:
         if not isinstance(r, dict):
             continue
+        # Alias-disclosed rows are intentionally not flagged as duplicate:
+        # they share data by construction (e.g. hilbert = platinai_4cell
+        # under seed-shift, per Wf-331-R5 load_cohort L1099-1101) and the
+        # `cohort_is_alias_of` field in check 1 carries the disclosure.
+        if r.get("cohort_is_alias_of") is not None:
+            continue
         val = r.get("r2_mean")
         name = r.get("cohort")
         if isinstance(val, (int, float)) and isinstance(name, str):
