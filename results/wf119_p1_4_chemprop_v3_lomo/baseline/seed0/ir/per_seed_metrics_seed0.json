@@ -1,0 +1,75 @@
+{
+  "metal": "Ir",
+  "seed": 0,
+  "epochs": 3,
+  "hidden_dim": 300,
+  "depth": 3,
+  "wass_weight": 0.05,
+  "lambda_grl": 0.1,
+  "use_kendall": true,
+  "use_dann": true,
+  "dann_domain_mode": "per_metal",
+  "grad_clip": 1.0,
+  "wf250_use_master_wass": false,
+  "wf250_master_wass_engine": "legacy_wasserstein_transfer",
+  "wf250_use_master_cath": false,
+  "wf250_master_cath_bias_type": null,
+  "wf250_enhanced_head": false,
+  "wf250_metal_attention": false,
+  "n_train": 22255,
+  "n_test": 4546,
+  "pos_rate_train": 0.3135475174118176,
+  "pos_rate_test": 0.49164100307963043,
+  "val_auc": 0.4502577401920781,
+  "test_auc": 0.4502577401920781,
+  "initial_loss": -0.6081631862639714,
+  "final_loss": -3.9291031195109842,
+  "w2_history": [
+    0.6752813790011101,
+    0.6100305265401139,
+    0.6307691835173327
+  ],
+  "log_sigma_history": [
+    [
+      0.7051849961280823,
+      0.6400161981582642,
+      0.6421456933021545,
+      0.6408238410949707,
+      0.6395686268806458
+    ],
+    [
+      0.6354413032531738,
+      0.41083797812461853,
+      0.4196999967098236,
+      0.42049092054367065,
+      0.4168168902397156
+    ],
+    [
+      0.6160996556282043,
+      0.26428574323654175,
+      0.28501805663108826,
+      0.29024067521095276,
+      0.28042346239089966
+    ]
+  ],
+  "w2_epoch_avg_history": [
+    0.6752813790011101,
+    0.6100305265401139,
+    0.6307691835173327
+  ],
+  "coord_epoch_avg_history": [
+    0.008682189483372708,
+    1.5843544230178618e-06,
+    7.76781418342667e-07
+  ],
+  "domain_epoch_avg_history": [
+    0.021362905703342618,
+    1.2375301954721956e-05,
+    3.498613209628739e-06
+  ],
+  "elapsed_seconds": 127.72412490844727,
+  "epoch_count": 3,
+  "status": "ok",
+  "error": null,
+  "ckpt_path": "/home/hugo/codes/mol-metal/molmetal/checkpoints/wf200_chemprop_v2_v3/dmpnn_mtw_v3_ir_seed0.pt"
+}
