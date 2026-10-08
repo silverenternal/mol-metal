@@ -1693,6 +1693,9 @@ def train_one_epoch(
     # on the CLI.
     so3_average: bool = False,  # False = no SO(3)-averaged regulariser
     so3_average_weight: float = 0.1,  # Cao 2025 ICML default weight
+    # 2026-10-08 §5.7 — --so3-averaged-fm-k wire-in.  K = number of SO(3)
+    # rotations averaged by so3_average_loss; was hardcoded to 2 below.
+    so3_averaged_fm_k: int = 2,  # SO(3) rotations averaged (default 2)
     log_normal_t: bool = False,  # False = uniform t-sampling (legacy)
     log_normal_t_mu: float = -0.5,  # Wf-340-A3 log-normal mu
     log_normal_t_sigma: float = 1.0,  # Wf-340-A3 log-normal sigma
@@ -2736,7 +2739,9 @@ def train_one_epoch(
                     ),
                     x_t=x_t,
                     target=target_dx,
-                    n_rotations=2,
+                    # 2026-10-08 §5.7 — --so3-averaged-fm-k wire-in: read the
+                    # K rotations instead of the previous hardcoded 2.
+                    n_rotations=int(so3_averaged_fm_k),
                 )
             except Exception as _so3_exc:  # noqa: BLE001 — warned, not hidden
                 warnings.warn(
@@ -6182,7 +6187,9 @@ def parse_args() -> argparse.Namespace:
         "--so3-averaged-fm-k",
         type=int,
         default=2,
-        help=("Alias for SO(3) averaging rotations per sample (default 2)."),
+        help=("Alias for SO(3) averaging rotations per sample (default 2). "
+              "2026-10-08 §5.7 — wired into so3_average_loss(n_rotations=K); "
+              "was previously a silent no-op."),
     )
     # --- Wf-431-B1 GPU utilization optimization flags (NEW, default OFF) ---
     # Default OFF preserves bit-for-bit backward compat with Wf-380-B1 +
@@ -6298,6 +6305,51 @@ def parse_args() -> argparse.Namespace:
 # ---------------------------------------------------------------------------
 def main() -> int:
     args = parse_args()
+    # 2026-10-08 §5.7 — FLAG_ONLY reject guards.  Each dest below is declared
+    # by argparse but has NO live consumer in this trainer, so a non-default
+    # value would be a silent no-op.  Fail loudly instead of pretending the
+    # flag did something.
+    #
+    # --num-cycle: mirrors OmegaFoldCycle recursive inference, but no such
+    # recursion path exists in this trainer (the only `num_cycle` symbol is a
+    # stub on the OmegafoldConfidenceScaffold dataclass, never reached).
+    if int(getattr(args, "num_cycle", 1)) != 1:
+        raise SystemExit(
+            "--num-cycle has no consumer in train_cfm_yuelbond_wasserstein.py: "
+            "the OmegaFoldCycle recursive-inference path does not exist here, "
+            "so a value != 1 is a silent no-op (§5.7 FLAG_ONLY). Remove the "
+            "flag or wire a real recursion call site before enabling."
+        )
+    # --use-shortcut-consistency: backward-compat alias for the LIVE lever
+    # ``--consistency-weight`` (read at the loss cascade).  The boolean used
+    # to gate nothing; map it onto the real knob so old Wf-341/Wf-385 scripts
+    # keep working AND the flag stops being a silent no-op (§5.7).
+    if bool(getattr(args, "use_shortcut_consistency", False)) and float(
+        getattr(args, "consistency_weight", 0.0)
+    ) == 0.0:
+        args.consistency_weight = 1.0
+        print(
+            "[Wf-341-C3 §5.7] --use-shortcut-consistency -> "
+            "consistency_weight=1.0 (alias of the live --consistency-weight).",
+            flush=True,
+        )
+    # --use-lr-warmup / --lr-warmup-steps: backward-compat aliases for the
+    # LIVE warmup lever.  The real path is --lr-scheduler cosine|onecycle,
+    # which composes a LinearLR warmup from --lr-warmup-epochs via
+    # SequentialLR (see build_lr_scheduler).  The legacy pair gated nothing,
+    # so map it onto the live knob instead of silently no-op'ing (§5.7).
+    if bool(getattr(args, "use_lr_warmup", False)) or int(
+        getattr(args, "lr_warmup_steps", 100)
+    ) != 100:
+        if str(getattr(args, "lr_scheduler", "none")) == "none":
+            args.lr_scheduler = "cosine"
+            print(
+                "[Wf-415-A3 §5.7] --use-lr-warmup/--lr-warmup-steps -> "
+                "--lr-scheduler=cosine (warmup from --lr-warmup-epochs).",
+                flush=True,
+            )
+        # If the caller already chose cosine/onecycle, the legacy flags are
+        # redundant — that is the documented precedence, not a no-op.
     # Wf-130 — GPU-first device defaults (GPU 0 — RTX PRO 6000 Blackwell
     # by default) when allocatable.
     from molmetal.molmetal_lam.sbdd_env.training_utils import (
@@ -7237,6 +7289,9 @@ def main() -> int:
             # OFF semantics (all OFF → zero contribution to loss).
             so3_average=bool(getattr(args, "so3_average", False)),
             so3_average_weight=float(getattr(args, "so3_average_weight", 0.1)),
+            # 2026-10-08 §5.7 — thread --so3-averaged-fm-k (default 2) to the
+            # train_one_epoch SO(3)-averaging K rotations.
+            so3_averaged_fm_k=int(getattr(args, "so3_averaged_fm_k", 2)),
             log_normal_t=bool(getattr(args, "log_normal_t", False)),
             log_normal_t_mu=float(getattr(args, "log_normal_t_mu", -0.5)),
             log_normal_t_sigma=float(getattr(args, "log_normal_t_sigma", 1.0)),

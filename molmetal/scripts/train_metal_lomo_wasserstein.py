@@ -2513,6 +2513,25 @@ def _write_synthesis(
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _parse_args(argv)
+
+    # 2026-10-08 §5.7 FLAG_ONLY guard: --cell-line is a Wf-131 P3 SCAFFOLD
+    # token.  The wrapper `scripts/launch_wf131_p3_pt_4cells.sh` documents
+    # it as SCAFFOLD_NOT_FUNCTIONAL and encodes per-cell identity via the
+    # --out-dir path marker instead — it never forwards --cell-line to this
+    # trainer.  The true per-cell protocol (subset CSV split + per-cell
+    # eval) is ~50 LOC and not wired, so a set --cell-line would silently
+    # no-op.  Fail loudly instead (flag stays in --help for the launcher's
+    # L1 probe).
+    if args.cell_line is not None:
+        raise SystemExit(
+            "[wf131-p3 §5.7] --cell-line "
+            f"{args.cell_line!r} has no live consumer in this trainer "
+            "(per-cell subset split + per-cell eval not wired; see "
+            "scripts/launch_wf131_p3_pt_4cells.sh SCAFFOLD_NOT_FUNCTIONAL). "
+            "Use the --out-dir path marker for per-cell output instead. "
+            "Refusing a silent no-op."
+        )
+
     out_dir = PROJECT_ROOT / args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 

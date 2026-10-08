@@ -298,6 +298,7 @@ def train_one_metal_one_seed(
     split_df: pd.DataFrame,
     ckpt_dir: Path,
     device: Optional[torch.device] = None,
+    max_train_rows: Optional[int] = None,
 ) -> MetalSeedResult:
     """Train a D-MPNN pIC50 model for one metal, one seed.
 
@@ -323,6 +324,11 @@ def train_one_metal_one_seed(
     metals_all = np.asarray(ds.metals).astype(str)
 
     idx_train, idx_val, idx_test = build_metal_split_indices(split_df, ds, metal)
+    # 2026-10-08 §5.7 WIRE-IN: --max-train-rows caps the train split per
+    # metal (smoke-test lever, per the flag's help text).  Applied AFTER the
+    # split is built so val/test are untouched; deterministic first-N slice.
+    if max_train_rows is not None and len(idx_train) > max_train_rows:
+        idx_train = idx_train[: int(max_train_rows)]
     if len(idx_train) < 50:
         raise RuntimeError(
             f"metal={metal} seed={seed}: only {len(idx_train)} train rows (< 50) — skip"
@@ -595,6 +601,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     args.out_dir.mkdir(parents=True, exist_ok=True)
     args.ckpt_dir.mkdir(parents=True, exist_ok=True)
 
+    # 2026-10-08 §5.7 WIRE-IN: --dataset now gates the load instead of only
+    # being echoed into the summary JSON.  Only 'metalcytotox_5metal' is
+    # supported (argparse choices enforce this too); assert the loader path
+    # actually corresponds to the requested tag so a future dataset tag
+    # cannot silently reuse the 5-metal loader.
+    if args.dataset != "metalcytotox_5metal":
+        raise SystemExit(
+            "[wf84 §5.7] --dataset "
+            f"{args.dataset!r} is not wired to a loader; only "
+            "'metalcytotox_5metal' (MetalCytoToxDataset, 5-metal split) is "
+            "supported.  Refusing a silent no-op."
+        )
+
+
     device = (
         torch.device(args.device)
         if args.device
@@ -660,6 +680,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     split_df=split_df,
                     ckpt_dir=args.ckpt_dir,
                     device=device,
+                    max_train_rows=args.max_train_rows,
                 )
             except Exception as exc:
                 print(

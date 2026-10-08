@@ -191,3 +191,52 @@ def test_flag_is_declared_in_argparse(flag: str) -> None:
     assert re.search(rf"['\"]{re.escape(flag)}['\"]", src) or re.search(
         rf"--{re.escape(flag.lstrip('-'))}\b", src
     ), f"Flag {flag!r} not found in trainer argparse block."
+
+# ---------------------------------------------------------------------------
+# 2026-10-08 §5.7 — W₁/W₂ closed-form order flags + cross-trainer guard audit
+# ---------------------------------------------------------------------------
+def test_use_wasserstein_w1_flag_reaches_loss_cascade():
+    """--use-wasserstein-w1 / -2 must select the closed-form order, taking
+    precedence over the use_ot_cfm / w2_gradient_mode selectors.
+
+    Regression: the flags were FLAG_ONLY (declared, never read). They are now
+    wired via wasserstein_pic50_gradient(wasserstein_order=1|2), and the order
+    check is placed BEFORE the OT/sort branches so setting the flag alongside
+    a mode selector cannot silently ignore it.
+    """
+    import inspect
+
+    from molmetal.scripts import train_dmpnn_multitask_wasserstein as _m
+
+    for fn_name in ("main", "train_one_metal_one_seed", "train_one_epoch_joint"):
+        src = inspect.getsource(getattr(_m, fn_name))
+        assert "use_wasserstein_w1" in src, f"{fn_name} must thread use_wasserstein_w1"
+        assert "use_wasserstein_2" in src, f"{fn_name} must thread use_wasserstein_2"
+    epoch_src = inspect.getsource(_m.train_one_epoch_joint)
+    assert "wasserstein_order=2" in epoch_src and "wasserstein_order=1" in epoch_src
+    # Precedence: the explicit flags are tested before the mode selectors.
+    w2_at = epoch_src.index("if use_wasserstein_2:")
+    ot_at = epoch_src.index("elif use_ot_cfm:")
+    assert w2_at < ot_at, "use_wasserstein_2 must be checked before use_ot_cfm"
+
+
+def test_guard_messages_shipped_in_four_trainers():
+    """Each trainer that had a consumer-less flag must now guard it loudly."""
+    import inspect
+
+    from molmetal.scripts import (
+        train_chemprop_v2_v3 as _cp,
+        train_dmpnn_pic50_real as _p50,
+        train_metal_lomo_wasserstein as _lomo,
+    )
+
+    cases = [
+        (_cp, ["chemprop_mode", "chemprop_min_epochs", "chemprop_lomo_init_scale"]),
+        (_lomo, ["cell_line"]),
+        (_p50, ["dataset"]),
+    ]
+    for mod, flags in cases:
+        src = inspect.getsource(mod.main)
+        assert "SystemExit" in src, f"{mod.__name__}.main must guard (SystemExit)"
+        for f in flags:
+            assert f in src, f"{mod.__name__}.main must guard {f}"

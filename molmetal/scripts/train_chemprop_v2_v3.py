@@ -1677,6 +1677,36 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     args = p.parse_args(argv)
 
+    # 2026-10-08 §5.7 FLAG_ONLY guard: --chemprop-mode /
+    # --chemprop-min-epochs / --chemprop-lomo-init-scale are CPU-scaffold
+    # CLI tokens (Wf-321H / Wf-266) that only satisfy the pre-flight
+    # `p3_todo_119_p14_cpu_smoke_ready` gate_help() token grep.  No live
+    # training-path consumer exists for the v3-fix LOMO head-collapse
+    # levers, so a non-default value would silently no-op.  Fail loudly
+    # instead (flag stays in --help for the gate + Wf-321H tests).
+    if args.chemprop_mode != "v3-fallback":
+        raise SystemExit(
+            "[wf321h §5.7] --chemprop-mode "
+            f"{args.chemprop_mode!r} has no live consumer in this trainer "
+            "(the v3-fix LOMO scaffold levers were never wired into the "
+            "training path).  Only the default 'v3-fallback' is functional. "
+            "Refusing a silent no-op."
+        )
+    if args.chemprop_min_epochs != 0:
+        raise SystemExit(
+            "[wf321h §5.7] --chemprop-min-epochs "
+            f"{args.chemprop_min_epochs} has no live consumer in this "
+            "trainer (v3-fix LOMO scaffold not wired).  Only the default 0 "
+            "is functional.  Refusing a silent no-op."
+        )
+    if args.chemprop_lomo_init_scale != 1.0:
+        raise SystemExit(
+            "[wf321h §5.7] --chemprop-lomo-init-scale "
+            f"{args.chemprop_lomo_init_scale} has no live consumer in this "
+            "trainer (v3-fix LOMO scaffold not wired).  Only the default "
+            "1.0 is functional.  Refusing a silent no-op."
+        )
+
     if args.quick:
         args.metals = args.metals[:1]
         args.seeds = args.seeds[:1]

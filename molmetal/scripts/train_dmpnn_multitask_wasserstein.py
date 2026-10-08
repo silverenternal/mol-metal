@@ -1168,6 +1168,12 @@ def train_one_epoch_joint(
     # Wf-251-F4 baseline is preserved bit-for-bit when no flag is
     # set on the CLI.
     use_ot_cfm: bool = False,  # False = use legacy W₂ (sliced/sort)
+    # 2026-10-08 §5.7 — --use-wasserstein-w1 / --use-wasserstein-2 wire-in.
+    # Select the closed-form 1-D penalty order via wasserstein_pic50_gradient
+    # (wasserstein_order=1 → W₁ mean-abs; =2 → W₂ RMS).  Default OFF keeps the
+    # legacy sliced-W₂ path bit-for-bit.
+    use_wasserstein_w1: bool = False,  # True = W₁ closed-form sort penalty
+    use_wasserstein_2: bool = False,  # True = W₂ closed-form RMS penalty
     per_cohort_features: bool = False,  # False = no per-cohort logging
     # Wf-432-A2 — Wf-246-C metal-coordination term wire-in (Fix-B).
     # Default values preserve bit-for-bit backward compat with Wf-131 P1
@@ -1304,11 +1310,30 @@ def train_one_epoch_joint(
         w_pen = torch.zeros((), device=device)
         if w_w > 0.0 and pic50_pred.numel() >= 4:
             ref_dev = ref_pic50_dist.to(device).detach()
+            # 2026-10-08 §5.7 — --use-wasserstein-w1 / -2 explicit order
+            # flags take precedence over every mode selector below: they name
+            # the closed-form order directly, so they must win regardless of
+            # use_ot_cfm / w2_gradient_mode (otherwise setting the flag AND a
+            # sort mode would silently ignore the flag).
+            if use_wasserstein_2:
+                w_pen = wasserstein_pic50_gradient(
+                    pic50_pred,
+                    ref_dev,
+                    w_weight=1.0,
+                    wasserstein_order=2,
+                )
+            elif use_wasserstein_w1:
+                w_pen = wasserstein_pic50_gradient(
+                    pic50_pred,
+                    ref_dev,
+                    w_weight=1.0,
+                    wasserstein_order=1,
+                )
             # Wf-405-A2 — use_ot_cfm flag swap (default OFF preserves
             # legacy W₂). When ON, use OT solver (sort-based W₂,
             # Peyré-Cuturi 2019 §3.1) instead of the legacy Wf-131 P1
             # / Wf-251-F4 sliced/sort path.
-            if use_ot_cfm:
+            elif use_ot_cfm:
                 try:
                     from molmetal.adapters.flow_matching_lipman import (
                         optimal_transport_v2_solver as _ot_v2,
@@ -1334,6 +1359,7 @@ def train_one_epoch_joint(
                     pic50_pred,
                     ref_dev,
                     w_weight=1.0,
+                    wasserstein_order=1,
                 )
             else:
                 # Default — sliced-W₂ (Wf-131 P1 shipped behaviour).
@@ -1563,6 +1589,9 @@ def train_one_metal_one_seed(
     # preserve bit-for-bit backward compat with Wf-131 P1 + Wf-251-F4
     # baseline.
     use_ot_cfm: bool = False,
+    # 2026-10-08 §5.7 — thread --use-wasserstein-w1 / -2 to the loss cascade.
+    use_wasserstein_w1: bool = False,
+    use_wasserstein_2: bool = False,
     per_cohort_features: bool = False,
     use_dann: bool = False,
     # Wf-432-A2 — Wf-246-C metal-coordination term wire-in (Fix-B).
@@ -2029,6 +2058,9 @@ def train_one_metal_one_seed(
             # threaded in from the caller are the canonical source of
             # truth for the flag state.
             use_ot_cfm=use_ot_cfm,
+            # 2026-10-08 §5.7 — thread the W₁/W₂ closed-form order flags.
+            use_wasserstein_w1=use_wasserstein_w1,
+            use_wasserstein_2=use_wasserstein_2,
             per_cohort_features=per_cohort_features,
             # Wf-A9 FIX (2026-10-03) — thread the gradient-clip threshold
             # through to the loss-cascade clipping site.
@@ -2618,7 +2650,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=False,
         help=(
             "Use Wasserstein W₁ (mean abs sort-diff) penalty instead of "
-            "the W₂ (sliced) default. Off by default."
+            "the W₂ (sliced) default. Off by default. 2026-10-08 §5.7 — "
+            "wired via wasserstein_pic50_gradient(wasserstein_order=1)."
         ),
     )
     p.add_argument(
@@ -2629,7 +2662,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=False,
         help=(
             "Use Wasserstein W₂ (RMS sort-diff) closed form via "
-            "wasserstein_2_1d_torchsort. Off by default."
+            "wasserstein_2_1d_torchsort. Off by default. 2026-10-08 §5.7 — "
+            "wired via wasserstein_pic50_gradient(wasserstein_order=2)."
         ),
     )
     # Wf-197 ablation: --single-task restricts joint training pool to the
@@ -3818,6 +3852,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                     # the Wf-424-A1 DANN wire-in reaches the model
                     # constructor.
                     use_ot_cfm=bool(getattr(args, "use_ot_cfm", False)),
+                    # 2026-10-08 §5.7 — thread the W₁/W₂ closed-form flags
+                    # from args into the trainer loss cascade.
+                    use_wasserstein_w1=bool(
+                        getattr(args, "use_wasserstein_w1", False)
+                    ),
+                    use_wasserstein_2=bool(getattr(args, "use_wasserstein_2", False)),
                     per_cohort_features=bool(
                         getattr(args, "per_cohort_features", False)
                     ),
