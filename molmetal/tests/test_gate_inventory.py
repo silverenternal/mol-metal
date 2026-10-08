@@ -68,3 +68,35 @@ def test_gate_inventory_audit_passes() -> None:
     result = gate_gate_inventory_audit("p0_gate_inventory_audit", "P0", "all")
     assert result.status == "PASS"
     assert "zombie_gates=" in result.evidence
+
+
+def test_zombie_audit_is_static_not_executing_gates() -> None:
+    """The audit must NOT run gates — an earlier revision executed all 121,
+    costing ~27s per pre-flight (and ~150s inside the audit gate). Static
+    detection must stay under 2s."""
+    import time
+
+    from molmetal.scripts.gate_inventory import audit_zombie_gates, build_inventory
+
+    inv = build_inventory("all")
+    t0 = time.perf_counter()
+    audit_zombie_gates(inv)
+    assert time.perf_counter() - t0 < 2.0, "zombie audit is executing gates again"
+
+
+def test_opt_in_shape_distinguishes_opt_in_from_downgrade() -> None:
+    """The static shape test flags `not in` (default-SKIP = opt-in) but not
+    `in` (default-enforce = downgrade hatch). Guards the fix for the false
+    positives p0_csv_hash_verify / p0_nci60_split_no_leak."""
+    from molmetal.scripts.gate_inventory import _OPT_IN_SHAPE_RE
+
+    opt_in = (
+        '    if os.environ.get("MY_GATE", "").strip() not in ("1", "true"):\n'
+        '        return SKIP\n'
+    )
+    downgrade = (
+        '    if os.environ.get("MY_HATCH", "").strip() in ("0", "false"):\n'
+        '        return SKIP\n'
+    )
+    assert _OPT_IN_SHAPE_RE.search(opt_in)
+    assert not _OPT_IN_SHAPE_RE.search(downgrade)

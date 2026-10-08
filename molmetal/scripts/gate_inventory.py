@@ -78,6 +78,15 @@ _ENV_READ_RE = re.compile(
 # we detect the SKIP-return on the opt-in path via the SKIP string presence.
 _SKIP_RE = re.compile(r"SKIP")
 
+# Opt-in SHAPE: the gate returns SKIP on the branch where the env var is NOT
+# truthy — i.e. ``if <env-read> ... not in (...): ... SKIP``.  A downgrade hatch
+# has the opposite shape (``if <env-read> in (...): ... SKIP``) and must not be
+# counted as a zombie.  We look for `not in` near an env-read within the same
+# source block.
+_OPT_IN_SHAPE_RE = re.compile(
+    r"os\.(?:environ\.get|getenv)\([^\n]*(\n[^\n]*){0,3}?\bnot\s+in\b",
+)
+
 
 def _callable_name(fn: Callable[..., Any]) -> str:
     """Return the underlying gate-function name a registered callable calls.
@@ -161,11 +170,14 @@ def _gate_source_line(fn: Callable[..., Any]) -> Optional[int]:
 
 
 def _discover_opt_in_env(fn: Callable[..., Any]) -> Optional[str]:
-    """Return the env var a gate SKIPs on, or ``None``.
+    """Return the env var a gate SKIPs on by default, or ``None``.
 
-    A gate is opt-in when its source reads ``os.environ.get("<VAR>")`` and
-    emits a ``SKIP`` on the falsy branch.  We read the dispatched gate
-    function's source and look for the env-var read + a nearby SKIP.
+    A gate is opt-in (a potential zombie) when its source reads
+    ``os.environ.get("<VAR>")`` and emits a ``SKIP`` on the branch taken when
+    the var is NOT truthy.  The shape matters: ``if ENV not in ("1", ...):
+    return SKIP`` is opt-in (default SKIP), whereas ``if ENV in ("0", ...):
+    return SKIP`` is a DOWNGRADE hatch (default enforces) and must NOT be
+    reported as a zombie.  This is detected statically (no gate is run).
     """
     try:
         module = inspect.getmodule(fn)
@@ -181,6 +193,8 @@ def _discover_opt_in_env(fn: Callable[..., Any]) -> Optional[str]:
             return None
         if not _SKIP_RE.search(src):
             return None
+        if not _OPT_IN_SHAPE_RE.search(src):
+            return None  # env read present, but not an opt-in (default-SKIP) shape
         for literal, const_name in _ENV_READ_RE.findall(src):
             var = literal or None
             if var is None and const_name:
@@ -233,25 +247,20 @@ def build_inventory(pipeline: str = "all") -> List[Dict[str, Any]]:
 def audit_zombie_gates(
     inventory: Optional[List[Dict[str, Any]]] = None,
     env: Optional[Dict[str, str]] = None,
-    *,
-    confirm_by_running: bool = True,
 ) -> List[Dict[str, Any]]:
     """Flag opt-in gates that are NEVER enforced in a normal pre-flight run.
 
     A "zombie gate" is registered in :func:`build_gates` but SKIPs by default,
-    so it never blocks anything.  Two things are checked:
+    so it never blocks anything.  Detection is STATIC (no gate is executed —
+    running 121 gates here would cost ~150s and is what this audit must not
+    do): a gate is a zombie iff its source reads an env var in the opt-in
+    SHAPE (``if ENV not in (...): return SKIP``) and that var is unset.
 
-      1. the gate reads an ``opt_in_env`` (the cheap static signal), AND
-      2. (``confirm_by_running``) the gate ACTUALLY emits SKIP when run with
-         that env var unset.
-
-    Step 2 matters because reading an env var is not the same as being opt-in:
-    a gate can read an env var as a *downgrade* switch (default-blocking, env
-    turns it OFF).  ``gate_csv_hash`` is exactly that shape — its
-    ``PREFLIGHT_CSV_HASH_STRICT`` var defaults blocking ON — so a
-    static-only audit wrongly reports it as a zombie.  Running the gate is
-    the only way to tell "SKIPs by default" from "BLOCKS by default, env can
-    downgrade".
+    The shape test matters: a gate can read an env var as a *downgrade* hatch
+    (default-blocking, env turns it OFF — e.g. ``gate_csv_hash``'s
+    ``PREFLIGHT_CSV_HASH_STRICT``).  Those have the opposite shape
+    (``if ENV in (...): return SKIP``) and are NOT zombies; a name-only scan
+    wrongly reports them.  See :func:`_discover_opt_in_env`.
 
     Returns a list of ``{"name", "opt_in_env", "evidence"}`` dicts (one per
     zombie).  ``env`` defaults to ``os.environ`` for the current run.
@@ -268,8 +277,6 @@ def audit_zombie_gates(
         raw = str(env.get(opt_in_env, "")).strip().lower()
         if raw in ("1", "true", "yes"):
             continue  # env var set → gate is live, not a zombie
-        if confirm_by_running and not _skips_by_default(entry["name"]):
-            continue  # env-reading gate that actually enforces by default
         zombies.append(
             {
                 "name": entry["name"],
@@ -283,29 +290,6 @@ def audit_zombie_gates(
             }
         )
     return zombies
-
-
-def _skips_by_default(gate_name: str) -> bool:
-    """Run one registered gate with its opt-in env var cleared; True iff it
-    emits SKIP.  Any exception is treated as "not a clean SKIP" (False) so a
-    crashing gate is not silently filed as a harmless zombie."""
-    from molmetal.scripts.pre_flight_check import build_gates
-
-    fn = dict((g[0], g[1]) for g in build_gates("all")).get(gate_name)
-    if fn is None:
-        return False
-    # Which env var to clear is discovered statically for this one gate.
-    var = _discover_opt_in_env(fn)
-    saved = os.environ.pop(var, None) if var else None
-    try:
-        result = fn()
-        status = getattr(result, "status", None)
-        return status == "SKIP"
-    except Exception:
-        return False
-    finally:
-        if var and saved is not None:
-            os.environ[var] = saved
 
 
 def _summarize(inventory: List[Dict[str, Any]], zombies: List[Dict[str, Any]]) -> str:

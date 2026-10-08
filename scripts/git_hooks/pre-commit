@@ -30,8 +30,13 @@ echo "[pre-commit] Mol-Metal commit gate v1 (AGENTS.md §1.4 + §5.6)"
 # (a) Pre-flight v3 check
 if [[ "${SKIP_PREFLIGHT:-0}" != "1" ]]; then
     if [[ -f "${PRE_FLIGHT}" ]]; then
-        echo "[pre-commit] (1/3) pre-flight v3 gate..."
-        if ! "${REPO_ROOT}/.venv/bin/python" "${PRE_FLIGHT}" --pipeline all; then
+        # PREFLIGHT_JOBS>1 runs gates concurrently (measured 131s -> 43s at
+        # jobs=6 with a byte-identical verdict). Default stays 1 (serial) so
+        # the commit path is unchanged unless the developer opts in, e.g.
+        # `PREFLIGHT_JOBS=6 git commit`.
+        PJ="${PREFLIGHT_JOBS:-1}"
+        echo "[pre-commit] (1/3) pre-flight v3 gate (jobs=${PJ})..."
+        if ! "${REPO_ROOT}/.venv/bin/python" "${PRE_FLIGHT}" --pipeline all --jobs "${PJ}"; then
             echo -e "${RED}[pre-commit] FAIL${NC}: pre-flight v3 gate FAILED — see AGENTS.md §1.4"
             echo "  bypass with: SKIP_PREFLIGHT=1 git commit (NOT recommended)"
             exit 1

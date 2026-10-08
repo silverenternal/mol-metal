@@ -14196,6 +14196,20 @@ def parse_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Print per-gate status to stderr as they run.",
     )
     p.add_argument(
+        "--jobs",
+        type=int,
+        default=1,
+        metavar="N",
+        help=(
+            "Run up to N gates concurrently (default 1 = serial, unchanged "
+            "behaviour). The expensive gates are subprocess-bound "
+            "(pytest / leakage / loader probes) and write disjoint scratch "
+            "paths, so concurrency mostly overlaps I/O wait. Results are "
+            "re-ordered to registration order, so the report is identical. "
+            "N>1 is opt-in: it shortens the commit path but is not the default."
+        ),
+    )
+    p.add_argument(
         "--freeze-csv-hashes",
         nargs="?",
         const=str(CSV_HASH_MANIFEST_DEFAULT),
@@ -14351,12 +14365,13 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     results: List[GateResult] = []
     t_total0 = time.perf_counter()
-    for name, runner in runners:
+
+    def _run_one(name: str, runner: Callable[[], GateResult]) -> GateResult:
         t0 = time.perf_counter()
         try:
-            res = runner()
+            return runner()
         except Exception as exc:  # noqa: BLE001 — surface any gate error
-            res = GateResult(
+            return GateResult(
                 name,
                 "?",
                 args.pipeline,
@@ -14364,14 +14379,39 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"gate raised: {type(exc).__name__}: {exc}",
                 time.perf_counter() - t0,
             )
-        results.append(res)
-        if args.verbose:
-            print(
-                f"[pre_flight] {res.status:<4} {res.priority} "
-                f"{res.pipeline:<14} {res.name:<38} "
-                f"{res.wall_sec:>7.2f}s | {res.evidence[:120]}",
-                file=sys.stderr,
-            )
+
+    jobs = max(1, int(getattr(args, "jobs", 1) or 1))
+    if jobs == 1:
+        for name, runner in runners:
+            res = _run_one(name, runner)
+            results.append(res)
+            if args.verbose:
+                print(
+                    f"[pre_flight] {res.status:<4} {res.priority} "
+                    f"{res.pipeline:<14} {res.name:<38} "
+                    f"{res.wall_sec:>7.2f}s | {res.evidence[:120]}",
+                    file=sys.stderr,
+                )
+    else:
+        # Concurrency is opt-in (--jobs N>1). Results are collected by index
+        # and re-ordered to registration order, so the report is byte-identical
+        # to the serial run regardless of completion order.
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=jobs) as pool:
+            futures = [
+                pool.submit(_run_one, name, runner) for name, runner in runners
+            ]
+            for name, fut in zip((n for n, _ in runners), futures):
+                res = fut.result()
+                results.append(res)
+                if args.verbose:
+                    print(
+                        f"[pre_flight] {res.status:<4} {res.priority} "
+                        f"{res.pipeline:<14} {res.name:<38} "
+                        f"{res.wall_sec:>7.2f}s | {res.evidence[:120]}",
+                        file=sys.stderr,
+                    )
     total_wall = time.perf_counter() - t_total0
 
     n_pass = sum(1 for r in results if r.status == "PASS")
