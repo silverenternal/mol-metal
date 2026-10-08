@@ -1,6 +1,6 @@
 {
   "metric": "metal_lomo_auc_wasserstein",
-  "description": "Mean test ROC-AUC across 2 folds (Rh, Re) \u00d7 N seeds of multi-metal leave-one-metal-out transfer with W\u2082 transfer regularisation + Rh closure-oversample (Wf-125 P2 stacking on Wf-125 P1). Wf-131 P3 DEFERRED 7-run sweep at 50 epochs; 7/7 (metal, seed) pairs completed after Wf-413-A1 launched + waited for Re seed=4 to finish on GPU 0 Blackwell.",
+  "description": "Mean test ROC-AUC across 5 folds (Ru/Ir/Os/Rh/Re) \u00d7 5 seeds of multi-metal leave-one-metal-out transfer with W\u2082 transfer regularisation. STALE-PROSE FIXED (2026-10-08): the historical text said '2 folds (Rh, Re)' \u00d7 N seeds with 'Rh closure-oversample'; the live real-only headline (rh_oversample=0, n_synthetic_rh_appended=0) is the 25-run 5-fold panel below, NOT a 2-fold oversampled run. See real_only_pa_m19_re_measurement_2026_10_08 for the provenance of the retracted 7-run/2-fold oversampled wave.",
   "unit": "ROC-AUC (0-1, higher better)",
   "scope": "tier2_sbdd_ood_lomo_wasserstein",
   "source": "molmetal/scripts/train_metal_lomo_wasserstein.py",
@@ -154,6 +154,57 @@
     "honest_framing": "Wf-R40 P-A 1-line fix (RH_OVERSAMPLE env var) made this re-measurement possible: with --rh-oversample hard-coded to 500, no real-only run was launchable. With default 0, the trainer's append_synthetic_rh_to_dataset() is a no-op (n=0), and the LOMO split sees only the real 5-metal pool. The honest takeaway: the 0.7577 pooled value was held-out BUT contaminated; the 0.5575 real-only pooled value is below the 0.7 GATE_AUC constant, below the 0.5 Rh random-baseline (Rh is genuinely hard), and below the 0.6 overall target. The headline is therefore BELOW 0.5 on Rh and BELOW 0.6 overall, NOT a reproduction of the 0.7577 number on the synthetic-augmented cohort. This is the right number to quote going forward; the synthetic-augmented number stays above for historical diff.",
     "timestamp": "2026-10-08T06:51:17+00:00",
     "wf_tag": "Wf-R40 + Wf-R43 m19 P-A real-only re-measurement"
+  },
+  "real_only_centering_reproduction_2026_10_08": {
+    "description": "F3 'TO CLOSE' item: reproduce the --per-metal-pic50-center lever end-to-end under the REAL-ONLY protocol (--rh-oversample 0), which every historical /tmp/f3_* run did NOT use (all 500-oversample, hence non-comparable to the 0.5575 headline). Runs executed on GPU cuda:0, same protocol as the headline (5 metals x 5 seeds x 30 epochs for the panel; Rh 1-metal x 5 seeds x 30 epochs for the fold + combination runs). No code changed; --per-metal-pic50-center and --alpha are pre-existing wired flags (train_metal_lomo_wasserstein.py:1045/1538 + :1737).",
+    "source_metric_path": "molmetal/reports/m19_per_metal_centering_2026_10_08/metrics.json",
+    "source_per_fold_dir": "molmetal/reports/m19_per_metal_centering_2026_10_08/",
+    "launch_command": ".venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --metals Ru Ir Os Rh Re --seeds 0 1 2 3 4 --epochs 30 --device cuda:0 --rh-oversample 0 --per-metal-pic50-center",
+    "value": 0.5844738262081143,
+    "value_std": 0.07644237694027237,
+    "baseline_value": 0.5575471269535148,
+    "baseline_value_std": 0.09493914640509747,
+    "aggregate_delta": 0.0269266992545995,
+    "per_fold_auc_mean": {
+      "Ru": 0.5617608153895258,
+      "Ir": 0.5513575069782071,
+      "Os": 0.6461868958109559,
+      "Rh": 0.5021526418786693,
+      "Re": 0.6609112709832135
+    },
+    "per_fold_delta": {
+      "Ru": -0.0354003750398979,
+      "Ir": -0.0461560235358870,
+      "Os": 0.0630504833504852,
+      "Rh": 0.1209784735812133,
+      "Re": 0.0321609379163336
+    },
+    "n_runs": 25,
+    "n_folds": 5,
+    "verdict": "HONEST_NEGATIVE_AGGREGATE_INSIDE_NOISE_WORST_FOLD_POSITIVE",
+    "honest_framing": "The +0.027 aggregate lift is INSIDE the run-level noise (value_std 0.0764 on the centering run, 0.0949 on the baseline) and is NOT a resolvable headline improvement; centering is METAL-DEPENDENT, not a uniform lift (helps hard folds Os +0.063 / Rh +0.121 / Re +0.032, hurts strong folds Ru -0.035 / Ir -0.046). The Rh-fold move IS decisive across seeds: baseline [0.378,0.431,0.353,0.381,0.363] vs centering [0.459,0.518,0.466,0.616,0.452], ZERO seed overlap, fold std 0.0265 -> 0.0613. Do NOT flip --per-metal-pic50-center to a default off this aggregate; the only real signal is the worst-fold (Rh) improvement.",
+    "rh_fold_baseline": 0.381174168297456,
+    "rh_fold_centering": 0.5021526418786693,
+    "rh_fold_delta": 0.1209784735812133,
+    "rh_fold_baseline_per_seed": [0.3780821917808219, 0.4309197651663405, 0.35264187866927593, 0.38140900195694716, 0.3628180039138943],
+    "rh_fold_centering_per_seed": [0.4590998043052838, 0.5183953033268102, 0.46634050880626227, 0.6154598825831702, 0.45146771037181993],
+    "alpha_lever_reproduction_rh_only": {
+      "run": ".venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --metals Rh --seeds 0 1 2 3 4 --epochs 30 --device cuda:0 --rh-oversample 0 --alpha 1.0",
+      "note": "MEASURED in the planning session; per-seed values recorded in the F3 file's real-only block. Single-metal (Rh), NOT a 5-metal panel.",
+      "alpha_0_5_baseline_rh": 0.3782,
+      "alpha_1_0_rh": 0.4352,
+      "delta": 0.0570
+    },
+    "centering_plus_alpha1_combination_rh_only": {
+      "run": ".venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --metals Rh --seeds 0 1 2 3 4 --epochs 30 --device cuda:0 --rh-oversample 0 --per-metal-pic50-center --alpha 1.0 --out-dir /tmp/m19_ctr_a1_rh",
+      "source_per_seed_metrics": "molmetal/reports/m19_centering_plus_alpha1_rh_2026_10_08/Rh/per_seed_metrics.json",
+      "value": 0.4185,
+      "value_std": 0.0236,
+      "per_seed": [0.4159, 0.3959, 0.4112, 0.4638, 0.4057],
+      "verdict": "HONEST_NEGATIVE_LEVERS_DO_NOT_STACK",
+      "interpretation": "centering (alpha=0.5) on Rh = 0.5022; adding alpha=1.0 (drop regression) drops it to 0.4185 (-0.084), i.e. WORSE than either centering alone (0.5022) or alpha=1.0 alone (0.4352). The two levers interfere: the centered regression auxiliary is helping, so removing it (alpha=1.0) hurts. Recommendation: use --per-metal-pic50-center ALONE (alpha default 0.5); do not combine with alpha=1.0."
+    },
+    "default_change_recommendation": "NONE. Leave --alpha and --per-metal-pic50-center defaults unchanged. Recorded as a per-fold ablation only."
   },
   "timestamp": "2026-10-08T06:51:17+00:00",
   "n_runs_target": 25,
