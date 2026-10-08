@@ -1675,7 +1675,23 @@ def main(argv: Optional[List[str]] = None) -> int:
             "two-tier pattern). Wf-404-A4 wire-in."
         ),
     )
+    # Wf-A2 NEW: --config YAML override (training config unification).
+    # CLI flags still win when explicitly passed (user-intent > YAML default).
+    # Bit-for-bit backward compat: omit --config = argparse-only path.
+    p.add_argument(
+        "--config",
+        default=None,
+        help=(
+            "Path to YAML config overriding argparse defaults. "
+            "CLI flags win where the user explicitly passes them. "
+            "See configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml for schema."
+        ),
+    )
     args = p.parse_args(argv)
+    # Apply YAML overrides (no-op when --config not supplied).
+    from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+
+    args = apply_yaml_overrides(p, args, args.config)
 
     # 2026-10-08 §5.7 FLAG_ONLY guard: --chemprop-mode /
     # --chemprop-min-epochs / --chemprop-lomo-init-scale are CPU-scaffold

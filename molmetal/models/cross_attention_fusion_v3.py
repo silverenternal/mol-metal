@@ -35,7 +35,7 @@ V3 fix combines four ideas drawn from the SOTA review:
      rotation-invariant so the first gradient step is unbiased.
 
 Forward signature matches :class:`CrossAttentionFusion` so V3 drops into the
-existing :class:`MetalHybridV2Model` slot.
+existing :class:`metal_hybrid.MetalHybridModel` fusion slot.
 """
 
 from __future__ import annotations

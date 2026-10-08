@@ -1,0 +1,75 @@
+schema: molmetal-registry-protocols-v1
+generated_at: '2026-10-08T08:42:52+00:00'
+generator: python -m molmetal.scripts.registry generate
+note: Machine-readable protocol facts. A protocol is LOCKED iff protocol_lock_sha256
+  still matches disk.
+protocols:
+  m1_ru_auc:
+    description: Ru subset binary AUC (D-MPNN multi-task Wasserstein)
+    baseline_paper: Krasnov 2026 (0.810 +/- 0.024)
+    baseline_source: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md §1
+    alignment_level: DATASET + METRIC + SPLIT ALIGN — cohort honest-negative
+    dataset_id: MetalCytoToxDB.csv
+    split: DOI-split 10-fold CV
+    n_folds: 10
+    seeds:
+    - 0
+    epochs: 10
+    trainer_config: configs/dmpnn.yaml
+    protocol_lock_sha256: 2e4c2d0503b582421ddba455fa6916d6807f23913a0969b92b671cf0fc5b9da4
+    protocol_lock_ref: configs/locks/protocol_lock.yaml
+  m2_r2_per_cell:
+    description: R2 per-cell-line (PlatinAI 4-cell Pt cohort)
+    baseline_paper: Rusanov 2025
+    baseline_source: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md §1
+    alignment_level: DATASET + METRIC + SPLIT APPROX ALIGN
+    dataset_id: platinai_4cell.csv
+    split: scaffold 70/10/10 per-cell-line task axis (deterministic SMILES hash)
+    n_folds: 5
+    seeds: null
+    epochs: null
+    trainer_config: configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml
+    protocol_lock_sha256: 2e4c2d0503b582421ddba455fa6916d6807f23913a0969b92b671cf0fc5b9da4
+    protocol_lock_ref: configs/locks/protocol_lock.yaml
+  m17_drugood_ood:
+    description: DrugOOD OOD generalization, 3-split mean AUC
+    baseline_paper: iMoLD / DrugOOD 2022
+    baseline_source: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md §1
+    alignment_level: ALIGN (protocol) / NOT ALIGN (backbone)
+    dataset_id: lbap_refined_ic50_assay.csv
+    split: assay / scaffold / size (Ji 2022 official ood_test)
+    n_folds: 3
+    seeds: null
+    epochs: null
+    trainer_config: configs/locks/drugood.yaml
+    protocol_lock_sha256: 2e4c2d0503b582421ddba455fa6916d6807f23913a0969b92b671cf0fc5b9da4
+    protocol_lock_ref: configs/locks/protocol_lock.yaml
+  m19_lomo:
+    description: Multi-metal LOMO transfer AUC (mean of 5 metals)
+    baseline_paper: null
+    baseline_source: null
+    alignment_level: NOT ALIGN (no paper baseline; m19 lock gap)
+    dataset_id: metalcytotox_5metal_multitask_v4.csv
+    split: LOMO 5-fold (real-only, n_synthetic_rh=0)
+    n_folds: 5
+    seeds: null
+    epochs: null
+    trainer_config: configs/dmpnn.yaml
+    protocol_lock_sha256: 2e4c2d0503b582421ddba455fa6916d6807f23913a0969b92b671cf0fc5b9da4
+    protocol_lock_ref: configs/locks/protocol_lock.yaml
+  m21_nci60_9cell:
+    description: NCI-60 precious 9-cell-line mean AUC
+    baseline_paper: Krasnov 2026
+    baseline_source: TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md §1
+    alignment_level: DATASET ALIGN (split differs)
+    dataset_id: MetalCytoToxDB.csv
+    split: scaffold-split per-cell
+    n_folds: 9
+    seeds:
+    - 0
+    - 1
+    - 2
+    epochs: null
+    trainer_config: configs/dmpnn.yaml
+    protocol_lock_sha256: 2e4c2d0503b582421ddba455fa6916d6807f23913a0969b92b671cf0fc5b9da4
+    protocol_lock_ref: configs/locks/protocol_lock.yaml

@@ -44,8 +44,15 @@ overlapping coverage, (d) verifies every gate is MEASURED-only, and
 
 ## §2 Gate inventory (per-pipeline; counts synced 2026-10-03, HOLE-1 + HOLE-5 + L4 + L5)
 
-### §2.1 `all` pipeline — 118 gates
+### §2.1 `all` pipeline — 119 gates
 
+> **Registry consistency (2026-10-08): 118 → 119.** 1 NEW opt-in gate
+> `p3_registry_consistency` verifying `registry/{datasets,protocols,metrics}.yaml`
+> facts against disk by content hash, so a status refresh QUERIES the registry
+> instead of re-deriving "dataset not ready / protocol lost / metric stale" from
+> prose. Opt-in via `WF_REGISTRY_ENFORCE=1` (report-only default).
+> Implementation: `molmetal/scripts/registry.py`.
+>
 > **Wf-R43 m19 (2026-10-08): 117 → 118.** 1 NEW opt-in fail-loud guard
 > `p3_wf_r43_m19_lomo_headline` guarding the m19 LOMO (Rh+Re) **headline
 > real-data usability**. `metal_lomo_auc_wasserstein.json` records a mean
@@ -370,7 +377,7 @@ When a gate is removed (rare; requires Wf-level justification):
 
 | Metric | Value |
 |---|---:|
-| `n_gates_total` (per-pipeline COUNT) | 118 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 7 (`cfm`) — plus the `launch` pipeline at 120 (`launch` = `all` + the 2 pre-retrain gates; MEASURED by `test_wf344b3_gate_count.py`, whose `launch` constant is stale at 115 — pre-existing, not introduced by Wf-R43) |
+| `n_gates_total` (per-pipeline COUNT) | 119 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 7 (`cfm`) — plus the `launch` pipeline at 121 (`launch` = `all` + the 2 pre-retrain gates; MEASURED by `test_wf344b3_gate_count.py`) |
 | `n_overlaps_found` | 2 (`p3_pb_*` family + P0/P2 CSV line-count) |
 | `n_deduped` | 0 (all overlaps were DOCUMENTED instead) |
 | `n_documented` | 2 |

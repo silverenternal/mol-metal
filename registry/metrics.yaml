@@ -1,0 +1,316 @@
+schema: molmetal-registry-metrics-v1
+generated_at: '2026-10-08T08:42:52+00:00'
+generator: python -m molmetal.scripts.registry generate
+note: Machine-readable metric facts. A metric is CURRENT iff source_json_sha256 still
+  matches disk.
+lines:
+- line1_cfm
+- line2_dmpnn
+- line3_lambda_mcts
+metrics:
+  m14_decode_ratio:
+    source_json: metrics/by_metric/decode_ratio.json
+    source_json_sha256: bbb7c1fb9a3e559d5202333a9236fe2d3749d065a8c38e26d24c35e6ce0c2dde
+    source_json_missing: false
+    value: null
+    status: MEASURED_BUT_NOT_A_QUALITY_METRIC
+    verdict: MEASURED_TARGET_HIT_ON_BOTH_SYNTHETIC_AND_REAL — Wf-124 P2 ship lifts
+      synthetic decode_ratio to 1.000 (192/192) and Wf-148 lifts real NCI-60 + DrugOOD
+      decode_ratio to 0.9980 (5979/5991) on GPU-0 Blackwell, gap vs synthetic only
+      −0.0020 (−0.20pp). Both PASS internal target ≥0.8 and lit target TargetDiff
+      ≥0.5. Real-CFM is essentially at synthetic parity for non-pathological ligands;
+      the 12/6000 failures are RDKit ETKDG embedding limits on heavy Pt-multi-coordinate
+      complexes, not CFM model failure.
+    scope: CFM (Conditional Flow Matching) generate path
+    metric_timestamp: null
+    last_refreshed: '2026-10-08T08:42:52+00:00'
+    target: '>= 0.50'
+    measured_projected: MEASURED
+  cfm_bond_accuracy:
+    source_json: metrics/by_metric/cfm_bond_accuracy.json
+    source_json_sha256: 00eb109cc3b757d9c30aadddd0ea3231a5be76916611cd8167ce7a2c1403b179
+    source_json_missing: false
+    value: null
+    status: MEASURED_PROBE_SCALE
+    verdict: null
+    scope: CFM (EGNN velocity field + YuelBond bond head) on tmQM
+    metric_timestamp: null
+    last_refreshed: '2026-10-08T08:42:52+00:00'
+    target: n/a
+    measured_projected: MEASURED
+  m3_vina_dock:
+    source_json: metrics/by_metric/vina_kcal_per_mol.json
+    source_json_sha256: 842ef580dc7be9e824f150d66b54fc8c553f59e4c2ea493f55b44f2e6f1b8e78
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: 'MEASURED_REAL_VINA_SHIP_PARTIAL — Wf-121 P3 closes the metallodrug m3
+      Vina paper-blocker with cisplatin mean -3.103 kcal/mol on 30/30 records (10
+      pockets × 3 seeds). Wf-141 v2 (TODO-127 Phase 1 SHIP honest-partial) extends
+      with ex=32 mean -3.1575 (delta -0.0545) and 2-pocket ex=64 -3.4345 (saturated).
+      Wf-143 P4 (TODO-128 chemotype Pt VDW framework SHIP honest-partial) extends
+      with chemotype mean -3.1552 (delta 0.000 vs actual baseline -3.1552 — Vina rejects
+      Pt atype, probe falls back to Mg). 0/10 pockets reach industry cutoff ≥ -7 across
+      all 3 workflows — bottleneck is covalent mechanism (Vina does not score Pt-DNA
+      N7 bond), NOT search thoroughness OR VDW tuning. Path to paper-grade metallodrug
+      claim: TODO-128 Phase 2 (re-compile Vina or AD4 proper switch, R20 GPU) + TODO-129
+      covalent docking (Wf-136, R23 follow-up).'
+    scope: CFM generate path (true physical docking) + Wf-121 P3 cisplatin real Vina
+      sweep
+    metric_timestamp: null
+    last_refreshed: '2026-10-08T08:42:52+00:00'
+    target: <= -8.5
+    measured_projected: MEASURED
+  m7_diversity:
+    source_json: metrics/by_metric/m7_diversity.json
+    source_json_sha256: 4533bdc580a79f9b7943da0655439a212e77e9a240fb997ab33cf7de071a57a8
+    source_json_missing: false
+    value: null
+    status: WIRED
+    verdict: WIRED — SCAFFOLD-to-TRAINER-LOSS wire-in COMPLETE; bit-for-bit backward
+      compat preserved; 6/6 flags wired-in; 6/6 default OFF. PROJECTED joint m7 lift
+      +0.02-0.035 per Wf-380-A3 §0; MEASURED end-to-end on Blackwell sm_120 BLOCKED
+      per AGENTS.md §5.1.
+    scope: tier2_diversity_sampling / m7 Diversity Wf-388-A2 wire-in
+    metric_timestamp: '2026-09-30'
+    last_refreshed: '2026-10-08T08:42:52+00:00'
+    target: '>= 0.65'
+    measured_projected: MEASURED
+  m1_ru_auc:
+    source_json: metrics/by_metric/metalcytotox_ru_auc.json
+    source_json_sha256: 225db53153bbeece6ecf0a51ec3e60f3f53d70eb5f8f25d38449dcf4e99c49ca
+    source_json_missing: false
+    value: 0.7613038529802696
+    status: MEASURED_PARTIAL_LIFT
+    verdict: MEASURED_PARTIAL_LIFT — Wf-124 P3 lifts Ru seed=0 test_auc from 0.7123
+      (single-task 5-epoch baseline) to 0.7613 (multi-task 30-epoch + Wasserstein
+      + L2 guard) = +0.049 absolute lift. Wf-131 P1 3-seed × 10-epoch baseline gives
+      mean = 0.7352 ± 0.0023. The Krasnov 2026 ≥ 0.86 gate is NOT YET HIT (gap remaining
+      = -0.099). The mechanism is proven; full 5-seed × 50-epoch ship + deferred innovations
+      (Hilbert-ASTR features, Catherine oversampling, warm-start) required to close
+      the gate. Joint m1+m19 close-out at TODO/completed/131_m1_m19_joint_rescue.md.
+    scope: tier1_precious_metal_anticancer
+    metric_timestamp: '2026-09-27'
+    last_refreshed: '2026-10-08T08:42:52+00:00'
+    target: '>= 0.86'
+    measured_projected: MEASURED
+  m19_lomo:
+    source_json: metrics/by_metric/metal_lomo_auc_wasserstein.json
+    source_json_sha256: 21f714334319dd1140e60fa59420f7348d055d5e03bf90572ae7f4b5a374e004
+    source_json_missing: false
+    value: 0.5575471269535148
+    status: MEASURED_BELOW_TARGET_BASELINE
+    verdict: BELOW_TARGET_BASELINE_REAL_ONLY
+    scope: tier2_sbdd_ood_lomo_wasserstein
+    metric_timestamp: '2026-10-02T08:36:00.641592+00:00'
+    last_refreshed: '2026-10-08T08:42:52+00:00'
+    target: '>= 0.70'
+    measured_projected: MEASURED
+  m2_r2_per_cell:
+    source_json: metrics/by_metric/platinai_4cell_auc.json
+    source_json_sha256: ac50aee848a7fcde1c8e5e09253892f165773f10a1bad6734811cfa78802ff29
+    source_json_missing: false
+    value: null
+    status: MEASURED_SYNTHETIC_LABELS
+    verdict: null
+    scope: tier1_precious_metal_anticancer
+    metric_timestamp: '2026-09-25'
+    last_refreshed: '2026-10-08T08:42:52+00:00'
+    target: '>= 0.85'
+    measured_projected: MEASURED
+  m21_nci60_9cell:
+    source_json: metrics/by_metric/nci60_precious_9cell_auc.json
+    source_json_sha256: 34d8d418ebe25b6bfc031e3346344ee6fa8b94bcffdc06918d9b1e8309c954bc
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier1_precious_metal_anticancer
+    metric_timestamp: '2026-09-25'
+    last_refreshed: '2026-10-08T08:42:52+00:00'
+    target: '>= 0.70'
+    measured_projected: MEASURED
+  l5_hilbert_r2:
+    source_json: metrics/by_metric/hilbert_4cell_r2.json
+    source_json_sha256: 80cd0f7e770eb8638a4e9bf4f916d6957e8e3e4745e7a63e65d4373f11714ec9
+    source_json_missing: false
+    value: null
+    status: MEASURED_BELOW_GATE
+    verdict: MEASURED_HONEST_NEGATIVE_R2_ARCHITECTURAL_CEILING
+    scope: tier1_precious_metal_anticancer / Wf-122 P3 post-fix combined anchor
+    metric_timestamp: '2026-09-27'
+    last_refreshed: '2026-10-08T08:42:52+00:00'
+    target: '>= 0.85'
+    measured_projected: MEASURED
+  l6_closure:
+    source_json: molmetal/reports/wf67_p4_2_closure_r20/reachability_overall.json
+    source_json_sha256: 49e13c420b74c5a64020cffc3207cb931877cefa010bfc3e952e109892209688
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-08T08:42:52+00:00'
+    target: '>= 0.95'
+    measured_projected: MEASURED
+  m6_kappa:
+    source_json: metrics/by_metric/m6_kappa.json
+    source_json_sha256: 35ffffa68a5e3f359a9a645f87e68c4b0e4795fd6fe73a7c622ccb4bf5c6f205
+    source_json_missing: false
+    value: 0.4719079955824899
+    status: MEASURED
+    verdict: MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL
+    scope: drug-likeness panel (metrics_v2 Wf-252 F2 add-on)
+    metric_timestamp: '2026-10-01'
+    last_refreshed: '2026-10-08T08:42:52+00:00'
+    target: '>= 0.60'
+    measured_projected: MEASURED
+uncovered_metric_files:
+- admet_full_coverage
+- affinity_pearson_r
+- affinity_pearson_r_summary
+- ames_mutagen
+- aqueous_solubility_logS
+- atom_vocab_coverage
+- baseline_random_smiles
+- baseline_random_smiles_seed0
+- baseline_random_smiles_seed1
+- baseline_random_smiles_seed2
+- baseline_random_smiles_summary
+- bbb
+- caco2_perm
+- cell_permeability_logPapp
+- cfm_decode_real
+- chemprop_v2_5metal_5seed_50epoch
+- chemprop_v2_lomo_v2
+- chemprop_v2_status_2026_09_27
+- chemprop_v2_status_2026_09_28
+- clearance
+- com_shift
+- com_shift_1h36
+- com_shift_3eml
+- com_shift_3ny8
+- com_shift_4aaw
+- com_shift_4rlu
+- diversity_subpocket
+- diversity_tanimoto
+- dmpnn_ckpt_status
+- docked_pose_rmsd
+- drugood_ood_auc
+- drugood_ood_auc_native_smoke
+- drugood_v3_scaffold
+- external_scorers_summary
+- f3_dmpnn_lomo_target_centering
+- gi50_proxy
+- gi50_proxy_summary
+- half_life
+- hepatotox_index
+- herg_cardio_risk
+- herg_cardio_risk_pool
+- ligand_vs_pocket_rmsd
+- logp7_4
+- m2_r2_per_cohort
+- m4_sa
+- m4_success_rate
+- metal_compliance
+- metal_coord_compliance
+- metal_coord_compliance_phase3g
+- metal_lomo_auc
+- metal_lomo_auc_v2
+- metal_lomo_chemprop_v2
+- metalcytotox_combined_r2
+- metallodrug_vertical_coverage
+- metric18_protein_metal
+- metric18_protein_metal_BACKUP_Wf-247-B
+- metric18_protein_metal_per_residue
+- metric18_protein_metal_v2
+- metric18_protein_metal_v2_BACKUP_Wf-247-B
+- moleculenet_auc
+- multi_task_4domain_v2
+- n_distinct
+- n_train_scaleup
+- nci60_precious_9cell_auc_3seed_5epoch
+- ood_per_element_reachability
+- ood_per_metal_reachability
+- ood_reachability_summary
+- pb_pass_rate
+- pearson_r_pic50
+- per_metal_pic50_wasserstein
+- pharmacophore_pass_rate
+- pharmacophore_pass_rate_prod
+- plasma_protein_binding
+- platinai_3cell_resistance
+- platinai_a2780_pred
+- platinai_combined_r2
+- platinai_mcf7_pred
+- protein_metal_per_residue_summary
+- qed
+- qed_score
+- r13_100x3_partial
+- rdkit_validity
+- reference_tanimoto
+- rigid_fragment_rmsd
+- rigid_fragment_rmsd_1h36
+- rigid_fragment_rmsd_3eml
+- rigid_fragment_rmsd_3ny8
+- rigid_fragment_rmsd_4aaw
+- rigid_fragment_rmsd_4rlu
+- ring_size_distribution
+- sa_mean
+- sa_score
+- steric_clash_pb_dock
+- steric_clash_pb_dock_1h36
+- steric_clash_pb_dock_test_001
+- tier1_summary
+- tier2_summary
+- tmqm_bond_perception
+- tmqm_combined_r2
+- uff_energy_pt_pool
+- vdss
+- vina_high_affinity
+- vina_high_affinity_1h36
+- vina_high_affinity_3eml
+- vina_high_affinity_3ny8
+- vina_high_affinity_4aaw
+- vina_high_affinity_4rlu
+- vina_high_affinity_test_001
+- vina_min_score
+- vina_reference
+- vina_reference_1h36
+- vina_reference_3eml
+- vina_reference_3ny8
+- vina_reference_4aaw
+- vina_reference_4rlu
+- vina_reference_test_001
+- vina_relaxed_success
+- vina_relaxed_success_1h36
+- vina_relaxed_success_3eml
+- vina_relaxed_success_3ny8
+- vina_relaxed_success_4aaw
+- vina_relaxed_success_4rlu
+- vina_relaxed_success_test_001
+- vina_score
+- vina_score_1h36
+- vina_score_3eml
+- vina_score_3ny8
+- vina_score_4aaw
+- vina_score_4rlu
+- vina_score_test_001
+- vina_status
+- vina_triple_success
+- vina_triple_success_1h36
+- vina_triple_success_3eml
+- vina_triple_success_3ny8
+- vina_triple_success_4aaw
+- vina_triple_success_4rlu
+- vina_triple_success_test_001
+- wf181_g5_50epoch_cascade_delta_5metal
+- wf181_g5_50epoch_full_sweep
+- wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold
+- wf30_dock_verify
+- wf30_dock_verify_summary
+- wf32_pb_valid
+- wf32_pb_valid_summary
+- wf32_pb_valid_verify
+- wf32_pb_valid_verify_summary

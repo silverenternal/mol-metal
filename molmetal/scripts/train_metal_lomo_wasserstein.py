@@ -2026,6 +2026,18 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "best_val: the pre-Wf-A4 behaviour, kept for ablation. "
         f"smoothed_val: max trailing-{_MODEL_SELECT_SMOOTH_WINDOW}-epoch mean val AUC.",
     )
+    # Wf-A2 NEW: --config YAML override (training config unification).
+    # CLI flags still win when explicitly passed (user-intent > YAML default).
+    # Bit-for-bit backward compat: omit --config = argparse-only path.
+    p.add_argument(
+        "--config",
+        default=None,
+        help=(
+            "Path to YAML config overriding argparse defaults. "
+            "CLI flags win where the user explicitly passes them. "
+            "See configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml for schema."
+        ),
+    )
     ns = p.parse_args(argv)
     # Wf-E1 — a non-zero weight without --wasserstein-real parses (so every
     # prior YAML / launch script keeps working) but is now a documented
@@ -2041,6 +2053,12 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             DeprecationWarning,
             stacklevel=2,
         )
+    # Wf-A2 NEW: --config YAML override (training config unification).
+    # CLI flags win where the user explicitly passes them; omit --config =
+    # bit-for-bit argparse-only backward compat.
+    from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+
+    ns = apply_yaml_overrides(p, ns, getattr(ns, "config", None))
     return ns
 
 

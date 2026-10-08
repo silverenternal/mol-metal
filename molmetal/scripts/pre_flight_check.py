@@ -4912,7 +4912,16 @@ EXPECTED_GATE_COUNTS = {
     # n=27132. Opt-in via WF43_M19_LOMO_HEADLINE=1 (same Wf-R43 pattern),
     # so the count moves but no existing pre-flight verdict does.
     # Implementation: molmetal/scripts/wf_r43a1_m19_lomo_headline_guard.py.
-    "all": 118,
+    # Registry consistency (2026-10-08): 118 -> 119, MEASURED via
+    # len(build_gates("all")) == 119 after the machine-readable SSOT gate
+    # (p3_registry_consistency) was registered. It verifies
+    # registry/{datasets,protocols,metrics}.yaml facts against disk by content
+    # hash, so a status refresh QUERIES the registry instead of re-deriving
+    # "dataset not ready / protocol lost / metric stale" from prose. Opt-in via
+    # WF_REGISTRY_ENFORCE=1 (report-only default per the approved
+    # "先 report-only 后强制" rollout), so the count moves but no existing
+    # pre-flight verdict does. Implementation: molmetal/scripts/registry.py.
+    "all": 119,
     # (was 103 before Wf-R35 P-A; Wf-A16 2026-10-03: 105 -> 103, MEASURED via
     # len(build_gates("all")) == 103 after the two PRE-RETRAIN
     # gates moved out of the commit path into the new "launch"
@@ -4956,12 +4965,13 @@ EXPECTED_GATE_COUNTS = {
     # --pipeline launch instead of --pipeline all; the commit hook keeps
     # --pipeline all, so a commit never waits on anchor freshness.
     # launch is "all" + the 2 launch-only pre-retrain gates, so it tracks
-    # "all": MEASURED via len(build_gates("launch")) == 120 at "all" == 118.
+    # "all": MEASURED via len(build_gates("launch")) == 121 at "all" == 119.
+    # Registry consistency (2026-10-08): 120 -> 121 with the "all" bump.
     # Wf-R43 m19 (2026-10-08): 115 -> 120. The 115 was stale by 5 — it had
     # not tracked the 4 Wf-R42/Wf-R43 "all" gates that landed before m19, so
     # test_wf344b3_gate_count.py::test_expected_gate_counts_keys_match_pipelines
     # was already FAILing on stashed HEAD before this change.
-    "launch": 120,
+    "launch": 121,
     "frontier": 25,
     "chemprop_v2_v3": 18,  # Wf-A12 FIX (2026-10-03): 14 → 18 MEASURED
     # via len(build_gates("chemprop_v2_v3"));
@@ -7376,6 +7386,7 @@ def gate_wf343c3_data_quality_check(
 # lock files, which a hard-coded single-name exclusion would not.
 PROTOCOL_LOCK_PATH = CONFIGS_DIR / "locks" / "protocol_lock.yaml"
 PROTOCOL_LOCK_OPT_IN_ENV = "WF35_PROTOCOL_LOCK"
+REGISTRY_ENFORCE_ENV = "WF_REGISTRY_ENFORCE"
 
 # Keys whose string values are treated as candidate dataset paths when a
 # trainer config is checked against the lock.  Deliberately narrow: a
@@ -7782,6 +7793,75 @@ def gate_wf35_protocol_lock(
         pipeline,
         result["status"],
         f"{name}: {result['evidence']}",
+        time.perf_counter() - t0,
+    )
+
+
+def gate_registry_consistency(
+    name: str,
+    priority: str,
+    pipeline: str,
+    *,
+    repo_root: Optional[Path] = None,
+) -> GateResult:
+    """Registry gate — verify registry/*.yaml facts against disk by content hash.
+
+    The three registry files (registry/datasets.yaml, protocols.yaml,
+    metrics.yaml) are the machine-readable single source of truth for "is the
+    dataset ready / is the protocol still locked / is the metric current".
+    An agent must QUERY this gate rather than re-derive status from prose docs —
+    the recurring failure mode is an agent re-reading stale docs and reporting a
+    FALSE "dataset not ready / protocol lost / metric stale".
+
+    PASS  — every dataset sha256 matches disk AND every protocol lock hash is
+            intact AND every metric source_json hash is current.
+    STALE — a metric's source_json changed since the registry was generated
+            (re-run `python -m molmetal.scripts.registry generate`).
+    FAIL  — a dataset is missing / drifted, a protocol lock changed, or a
+            metric source_json is gone.
+
+    Opt-in via ``WF_REGISTRY_ENFORCE=1`` (default OFF, report-only per the
+    approved "先 report-only 后强制" rollout) so registering the gate does not
+    change an existing pre-flight run's verdict until the registry is trusted.
+    """
+    t0 = time.perf_counter()
+    if os.environ.get(REGISTRY_ENFORCE_ENV, "").strip() not in (
+        "1",
+        "true",
+        "TRUE",
+        "yes",
+    ):
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"{name}: report-only — set {REGISTRY_ENFORCE_ENV}=1 to enforce "
+            "registry/*.yaml consistency (AGENTS.md §5.6/§5.7 new-gate opt-in "
+            "pattern)",
+            time.perf_counter() - t0,
+        )
+    try:
+        from molmetal.scripts.registry import check_all
+
+        results = check_all(Path(repo_root) if repo_root else REPO_ROOT)
+    except Exception as exc:  # noqa: BLE001 — a broken registry is a FAIL
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"{name}: registry check raised {type(exc).__name__}: {exc}",
+            time.perf_counter() - t0,
+        )
+    worst = "PASS"
+    parts = []
+    for layer in ("datasets", "protocols", "metrics"):
+        r = results[layer]
+        parts.append(f"{layer}={r.status}({r.evidence})")
+        if r.status == "FAIL":
+            worst = "FAIL"
+        elif r.status == "STALE" and worst == "PASS":
+            worst = "STALE"
+    return GateResult(
+        name, priority, pipeline, worst, f"{name}: " + "; ".join(parts),
         time.perf_counter() - t0,
     )
 
@@ -13000,6 +13080,24 @@ def build_gates(
                     "P3",
                     "wf350c1",
                     MOLMETAL_ROOT / "reports" / "wf350c1_gpu_env_check.json",
+                ),
+            ),
+            # ---- Registry consistency — machine-readable single source of
+            # truth (registry/{datasets,protocols,metrics}.yaml).  Stops the
+            # recurring agent misjudgement where a status refresh re-derives
+            # "dataset not ready / protocol lost / metric stale" from prose and
+            # gets it wrong.  The gate verifies every recorded sha256 against
+            # disk.  Opt-in via WF_REGISTRY_ENFORCE=1 (report-only by default
+            # per the "先 report-only 后强制" rollout), so registering it does
+            # not change an existing pre-flight verdict.  See
+            # molmetal/scripts/registry.py.
+            (
+                "p3_registry_consistency",
+                lambda: gate_registry_consistency(
+                    "p3_registry_consistency",
+                    "P3",
+                    "registry",
+                    repo_root=REPO_ROOT,
                 ),
             ),
             # ---- Wf-353-B1 — wire Wf-343c1's 26-gate auto-verifiable

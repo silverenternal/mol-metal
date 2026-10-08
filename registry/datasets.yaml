@@ -1,0 +1,86 @@
+schema: molmetal-registry-datasets-v1
+generated_at: '2026-10-08T08:42:52+00:00'
+generator: python -m molmetal.scripts.registry generate
+note: Machine-readable dataset facts. A dataset is READY iff sha256(path) == sha256
+  here.
+datasets:
+  metalcytotox_5metal_multitask.csv:
+    path: .data/molmetal/metalcytotox_5metal_multitask.csv
+    sha256: f167c11931ecf221ea31f1fa99107a1dfcc5543e517f918597c837bee82ee131
+    n_lines: 26802
+    frozen_at: 2026-10-03T03:04:13+0000
+    source: configs/data_checksums.json
+  metalcytotox_5metal_multitask_v2.csv:
+    path: .data/molmetal/metalcytotox_5metal_multitask_v2.csv
+    sha256: cc3ea24755f1b14a69c8c3acd827db0bc1dd123301479c9ca490920725adf063
+    n_lines: 26633
+    frozen_at: 2026-10-03T03:04:13+0000
+    source: configs/data_checksums.json
+  metalcytotox_5metal_multitask_v3.csv:
+    path: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+    sha256: e42e79915830c85218ac162651bb6f743a2d995faac25626818650e833192ead
+    n_lines: 26633
+    frozen_at: 2026-10-03T03:04:13+0000
+    source: configs/data_checksums.json
+  metalcytotox_5metal_multitask_v4.csv:
+    path: .data/molmetal/metalcytotox_5metal_multitask_v4.csv
+    sha256: 5a2550c83b631169feb3175d610478c3861d7b71e7bac20ba9087120e2b6a93d
+    n_lines: 26633
+    frozen_at: 2026-10-03T03:04:13+0000
+    source: configs/data_checksums.json
+    locked_for:
+    - m1_ru_auc
+    - m19_lomo
+    - m21_nci60_9cell
+  metallo_drugs_500_train.csv:
+    path: molmetal/data/metallo_drugs_500_train.csv
+    sha256: b44e3b809ecc4567dc1aa613aa8d2f13c9b5f1170bfa7e958c8a29c8bb268f9f
+    n_lines: 450
+    frozen_at: 2026-10-03T03:04:13+0000
+    source: configs/data_checksums.json
+  MetalCytoToxDB.csv:
+    path: .data/molmetal/MetalCytoToxDB.csv
+    md5: f270dc907dbdfede953063a14f0825a7
+    sha256: cc2a142764ed022299da30203a7f897fb4e0c6ae8cb9b5217525961138fa0198
+    why: Krasnov 2026 MetalCytoToxDB v2 release — the canonical m1 cohort (MEASURED
+      26,801 rows x 24 cols, 2026-10-07).
+    source: configs/locks/protocol_lock.yaml
+    locked_for:
+    - m1_ru_auc
+    - m21_nci60_9cell
+  platinai_4cell.csv:
+    path: .data/molmetal/platinai_4cell.csv
+    md5: 5a5d8da8d1b05a9647546a5c2101f6f2
+    sha256: 5f939af7eae2a932c467339194d276f366b4fe5b8e7dd54d03f16f60f803f27b
+    why: Pt-only PlatinAI 4-cell-line cohort in the schema the trainer's loader accepts
+      (SMILES_Ligands + pIC50_{mcf7,a549,a2780,a2780cis} + metal). This is the file
+      `--dataset platinai_4cell` resolves to and the file configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml
+      names under `data.csv` (added 2026-10-07; resolves to the live --csv dest, so
+      it is NOT a wfA2_config_loader dead key).
+    source: configs/locks/protocol_lock.yaml
+    locked_for:
+    - m2_r2_per_cell
+  lbap_refined_ic50_assay.csv:
+    path: .data/molmetal/drugood/ic50/csv/lbap_refined_ic50_assay.csv
+    md5: 326f15c276718bb324720c9bc392cf90
+    sha256: 53b55357b111df42d63262477741132ae3258181bc91c03a2c38217c72ae5386
+    why: official DrugOOD IC50 assay split (on disk, MEASURED md5 2026-10-07)
+    source: configs/locks/protocol_lock.yaml
+    locked_for:
+    - m17_drugood_ood
+  lbap_refined_ic50_scaffold.csv:
+    path: .data/molmetal/drugood/ic50/csv/lbap_refined_ic50_scaffold.csv
+    md5: a639bda8acf1a8c4e807af46e22adc14
+    sha256: 275b23675fc0128354e8ecd1510ea09f07462c0c35f376d7278a0171fd8a4907
+    why: official DrugOOD IC50 scaffold split
+    source: configs/locks/protocol_lock.yaml
+    locked_for:
+    - m17_drugood_ood
+  lbap_refined_ic50_size.csv:
+    path: .data/molmetal/drugood/ic50/csv/lbap_refined_ic50_size.csv
+    md5: 7a6d052dab2484446a376d50c877d360
+    sha256: d035edb659675a937396fbd4b07291635f1c1a30199cf8bfe821007030716b2f
+    why: official DrugOOD IC50 size split
+    source: configs/locks/protocol_lock.yaml
+    locked_for:
+    - m17_drugood_ood
