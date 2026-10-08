@@ -102,17 +102,76 @@ LINE_METRICS: Dict[str, Dict[str, str]] = {
 }
 
 METRIC_TARGETS: Dict[str, Dict[str, Any]] = {
-    "m14_decode_ratio": {"target": ">= 0.50", "measured_projected": "MEASURED"},
-    "cfm_bond_accuracy": {"target": "n/a", "measured_projected": "MEASURED"},
-    "m3_vina_dock": {"target": "<= -8.5", "measured_projected": "MEASURED"},
-    "m7_diversity": {"target": ">= 0.65", "measured_projected": "MEASURED"},
-    "m1_ru_auc": {"target": ">= 0.86", "measured_projected": "MEASURED"},
-    "m19_lomo": {"target": ">= 0.70", "measured_projected": "MEASURED"},
-    "m2_r2_per_cell": {"target": ">= 0.85", "measured_projected": "MEASURED"},
-    "m21_nci60_9cell": {"target": ">= 0.70", "measured_projected": "MEASURED"},
-    "l5_hilbert_r2": {"target": ">= 0.85", "measured_projected": "MEASURED"},
-    "l6_closure": {"target": ">= 0.95", "measured_projected": "MEASURED"},
-    "m6_kappa": {"target": ">= 0.60", "measured_projected": "MEASURED"},
+    "m14_decode_ratio": {
+        "value_key": "aggregate.best_measured_real",
+        "target": 0.50,
+        "direction": ">=",
+        "verdict": "PASS",
+        "remains": "nothing for the gate (real 0.9980 / synth 1.000)",
+    },
+    "cfm_bond_accuracy": {
+        "target": None,
+        "direction": None,
+        "verdict": "HONEST_NEGATIVE",
+        "remains": "no scalar emitted on disk; one GPU probe to score it",
+    },
+    "m3_vina_dock": {
+        "value_key": "v3_cohort_median_REAL",
+        "target": -8.5,
+        "direction": "<=",
+        "verdict": "HONEST_NEGATIVE",
+        "remains": "Pt+2 parameterisation (BLOCKED, Wf-299B); real Vina run blocked",
+    },
+    "m7_diversity": {
+        "value_key": "aggregate.best_measured",
+        "target": 0.65,
+        "direction": ">=",
+        "verdict": "HONEST_NEGATIVE",
+        "remains": "GPU launch L1 (flags ON, ~4hr) converts PROJECTED->MEASURED; will not reach 0.65",
+    },
+    "m1_ru_auc": {
+        "target": 0.86,
+        "direction": ">=",
+        "verdict": "HONEST_NEGATIVE",
+        "remains": "cohort honest-negative (591 vs 23 cell lines); no launch closes it",
+    },
+    "m19_lomo": {
+        "target": 0.70,
+        "direction": ">=",
+        "verdict": "HONEST_NEGATIVE",
+        "remains": "P-A drift ALREADY FIXED on disk (real-only 5-fold); doc retag only",
+    },
+    "m2_r2_per_cell": {
+        "target": 0.85,
+        "direction": ">=",
+        "verdict": "HONEST_NEGATIVE",
+        "remains": "closed structural (Wf-369-A2); synthetic labels; no GPU",
+    },
+    "m21_nci60_9cell": {
+        "target": 0.70,
+        "direction": ">=",
+        "verdict": "PASS",
+        "remains": "nothing for gate; scaffold split enforced in code",
+    },
+    "l5_hilbert_r2": {
+        "target": 0.85,
+        "direction": ">=",
+        "verdict": "HONEST_NEGATIVE",
+        "remains": "architectural ceiling (~0.68); drop-from-S3 or metric redefinition; NO GPU",
+    },
+    "l6_closure": {
+        "value_key": "aggregate.closure_reachability_rate",
+        "target": 0.95,
+        "direction": ">=",
+        "verdict": "HONEST_NEGATIVE",
+        "remains": "volume fix (75->100/metal, CPU); reachability ceiling stays",
+    },
+    "m6_kappa": {
+        "target": 0.60,
+        "direction": ">=",
+        "verdict": "HONEST_NEGATIVE",
+        "remains": "drop-from-S3 per Wf-389-A1; same family as L5",
+    },
 }
 
 
@@ -264,7 +323,7 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
                 "source_json": _rel(src_path),
                 "source_json_sha256": _sha256_file(src_path),
                 "source_json_missing": not exists,
-                "value": payload.get("value"),
+                "value": _extract_value(payload, METRIC_TARGETS.get(metric_id, {}).get("value_key")),
                 "status": payload.get("status"),
                 "verdict": payload.get("verdict"),
                 "scope": payload.get("scope"),
@@ -368,6 +427,102 @@ def check_all(repo_root: Path = REPO_ROOT) -> Dict[str, CheckResult]:
     }
 
 
+def _coerce_float(v: Any) -> Optional[float]:
+    if isinstance(v, bool) or v is None:
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+# The metric JSONs store their headline under different keys depending on the
+# wave that produced them.  Try the common ones in order so the registry value
+# tracks the real number rather than reading a misleading None.
+_VALUE_KEYS = (
+    "value",
+    "value_overall_mean_auc",
+    "mean_auc",
+    "aggregate_combined_r2_mean",
+    "reachability_rate",
+)
+
+
+def _extract_value(payload: Dict[str, Any], value_key: Optional[str] = None) -> Any:
+    """Pull the headline number from an arbitrary metric JSON.
+
+    ``value_key`` (from METRIC_TARGETS) may be a dotted path like
+    ``aggregate.best_measured_real``; it wins when present and finite.
+    Otherwise fall through the common top-level + nested keys so the registry
+    value tracks the real number rather than a misleading None.
+    """
+    if value_key:
+        node: Any = payload
+        for part in value_key.split("."):
+            if isinstance(node, dict):
+                node = node.get(part)
+            else:
+                node = None
+                break
+        if _coerce_float(node) is not None:
+            return node
+    for key in _VALUE_KEYS:
+        v = payload.get(key)
+        if _coerce_float(v) is not None:
+            return v
+    # nested aggregate.value / aggregate.best_measured
+    agg = payload.get("aggregate")
+    if isinstance(agg, dict):
+        for key in ("value", "best_measured", "mean_r2", "reachability_rate", "cisplatin_mean"):
+            v = agg.get(key)
+            if _coerce_float(v) is not None:
+                return v
+    return payload.get("value")
+
+
+def gap_table(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
+    """Compute the current-vs-target gap per paper line from the registry.
+
+    The gap is DERIVED (current value - target, read from metrics.yaml), not
+    hand-maintained, so it cannot drift from the metric it describes.  Returns
+    {line: {"metrics": [...], "at_target": N, "total": M}}.
+    """
+    reg = _load_yaml(METRICS_PATH)
+    metrics = reg.get("metrics") or {}
+    out: Dict[str, Any] = {}
+    for line, mapping in LINE_METRICS.items():
+        rows = []
+        at_target = 0
+        for metric_id in mapping:
+            rec = metrics.get(metric_id) or {}
+            cur = _coerce_float(rec.get("value"))
+            target = _coerce_float(rec.get("target"))
+            direction = rec.get("direction")
+            gap: Optional[float] = None
+            hit = None
+            if cur is not None and target is not None and direction:
+                if direction == ">=":
+                    gap = round(cur - target, 4)
+                    hit = cur >= target
+                elif direction == "<=":
+                    gap = round(target - cur, 4)
+                    hit = cur <= target
+            if hit:
+                at_target += 1
+            rows.append(
+                {
+                    "metric": metric_id,
+                    "value": rec.get("value"),
+                    "target": rec.get("target"),
+                    "gap": gap,
+                    "verdict": rec.get("verdict"),
+                    "remains": rec.get("remains"),
+                }
+            )
+        out[line] = {"metrics": rows, "at_target": at_target, "total": len(rows)}
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Generate (writes registry/*.yaml via atomic write per AGENTS.md §5.6)
 # ---------------------------------------------------------------------------
@@ -447,7 +602,20 @@ def main(argv: Optional[List[str]] = None) -> int:
                 worst = "STALE"
         print(f"REGISTRY: {worst}")
         return 0 if worst == "PASS" else 1
-    print(f"unknown command {cmd!r}; use 'generate' or 'check'", file=sys.stderr)
+    if cmd == "gaps":
+        table = gap_table()
+        for line, info in table.items():
+            print(f"== {line}: {info['at_target']}/{info['total']} at target ==")
+            for row in info["metrics"]:
+                gap = row["gap"]
+                gap_s = "n/a" if gap is None else f"{gap:+.4f}"
+                print(
+                    f"   {row['metric']:20s} value={str(row['value'])[:10]:>10s} "
+                    f"target={str(row['target']):>6s} gap={gap_s:>9s} "
+                    f"{row['verdict']}"
+                )
+        return 0
+    print(f"unknown command {cmd!r}; use 'generate', 'check' or 'gaps'", file=sys.stderr)
     return 2
 
 

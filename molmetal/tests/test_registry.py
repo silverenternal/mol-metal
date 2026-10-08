@@ -136,3 +136,25 @@ def test_preflight_gate_registered():
 
     names = [g[0] for g in build_gates("all")]
     assert "p3_registry_consistency" in names
+
+
+def test_gap_table_derives_current_vs_target():
+    """The gap is DERIVED from registry values, so it cannot drift."""
+    reg.generate(REPO_ROOT)
+    table = reg.gap_table(REPO_ROOT)
+    assert set(table) == {"line1_cfm", "line2_dmpnn", "line3_lambda_mcts"}
+    # m21 (0.8007 vs >=0.70) must register as at-target with a positive gap.
+    m21 = next(
+        r for r in table["line2_dmpnn"]["metrics"] if r["metric"] == "m21_nci60_9cell"
+    )
+    assert m21["gap"] is not None and m21["gap"] > 0
+    # m19 (0.5575 vs >=0.70) must show a negative gap.
+    m19 = next(
+        r for r in table["line2_dmpnn"]["metrics"] if r["metric"] == "m19_lomo"
+    )
+    assert m19["gap"] is not None and m19["gap"] < 0
+    # every row carries a verdict + a "what remains" string
+    for line in table.values():
+        for row in line["metrics"]:
+            assert row["verdict"]
+            assert row["remains"]

@@ -1,5 +1,5 @@
 schema: molmetal-registry-metrics-v1
-generated_at: '2026-10-08T08:53:06+00:00'
+generated_at: '2026-10-08T08:56:32+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable metric facts. A metric is CURRENT iff source_json_sha256 still
   matches disk.
@@ -12,160 +12,152 @@ metrics:
     source_json: metrics/by_metric/decode_ratio.json
     source_json_sha256: bbb7c1fb9a3e559d5202333a9236fe2d3749d065a8c38e26d24c35e6ce0c2dde
     source_json_missing: false
-    value: null
+    value: 0.998
     status: MEASURED_BUT_NOT_A_QUALITY_METRIC
-    verdict: MEASURED_TARGET_HIT_ON_BOTH_SYNTHETIC_AND_REAL — Wf-124 P2 ship lifts
-      synthetic decode_ratio to 1.000 (192/192) and Wf-148 lifts real NCI-60 + DrugOOD
-      decode_ratio to 0.9980 (5979/5991) on GPU-0 Blackwell, gap vs synthetic only
-      −0.0020 (−0.20pp). Both PASS internal target ≥0.8 and lit target TargetDiff
-      ≥0.5. Real-CFM is essentially at synthetic parity for non-pathological ligands;
-      the 12/6000 failures are RDKit ETKDG embedding limits on heavy Pt-multi-coordinate
-      complexes, not CFM model failure.
+    verdict: PASS
     scope: CFM (Conditional Flow Matching) generate path
     metric_timestamp: null
-    last_refreshed: '2026-10-08T08:53:06+00:00'
-    target: '>= 0.50'
-    measured_projected: MEASURED
+    last_refreshed: '2026-10-08T08:56:32+00:00'
+    value_key: aggregate.best_measured_real
+    target: 0.5
+    direction: '>='
+    remains: nothing for the gate (real 0.9980 / synth 1.000)
   cfm_bond_accuracy:
     source_json: metrics/by_metric/cfm_bond_accuracy.json
     source_json_sha256: 00eb109cc3b757d9c30aadddd0ea3231a5be76916611cd8167ce7a2c1403b179
     source_json_missing: false
     value: null
     status: MEASURED_PROBE_SCALE
-    verdict: null
+    verdict: HONEST_NEGATIVE
     scope: CFM (EGNN velocity field + YuelBond bond head) on tmQM
     metric_timestamp: null
-    last_refreshed: '2026-10-08T08:53:06+00:00'
-    target: n/a
-    measured_projected: MEASURED
+    last_refreshed: '2026-10-08T08:56:32+00:00'
+    target: null
+    direction: null
+    remains: no scalar emitted on disk; one GPU probe to score it
   m3_vina_dock:
     source_json: metrics/by_metric/vina_kcal_per_mol.json
     source_json_sha256: 842ef580dc7be9e824f150d66b54fc8c553f59e4c2ea493f55b44f2e6f1b8e78
     source_json_missing: false
-    value: null
+    value: -3.103
     status: null
-    verdict: 'MEASURED_REAL_VINA_SHIP_PARTIAL — Wf-121 P3 closes the metallodrug m3
-      Vina paper-blocker with cisplatin mean -3.103 kcal/mol on 30/30 records (10
-      pockets × 3 seeds). Wf-141 v2 (TODO-127 Phase 1 SHIP honest-partial) extends
-      with ex=32 mean -3.1575 (delta -0.0545) and 2-pocket ex=64 -3.4345 (saturated).
-      Wf-143 P4 (TODO-128 chemotype Pt VDW framework SHIP honest-partial) extends
-      with chemotype mean -3.1552 (delta 0.000 vs actual baseline -3.1552 — Vina rejects
-      Pt atype, probe falls back to Mg). 0/10 pockets reach industry cutoff ≥ -7 across
-      all 3 workflows — bottleneck is covalent mechanism (Vina does not score Pt-DNA
-      N7 bond), NOT search thoroughness OR VDW tuning. Path to paper-grade metallodrug
-      claim: TODO-128 Phase 2 (re-compile Vina or AD4 proper switch, R20 GPU) + TODO-129
-      covalent docking (Wf-136, R23 follow-up).'
+    verdict: HONEST_NEGATIVE
     scope: CFM generate path (true physical docking) + Wf-121 P3 cisplatin real Vina
       sweep
     metric_timestamp: null
-    last_refreshed: '2026-10-08T08:53:06+00:00'
-    target: <= -8.5
-    measured_projected: MEASURED
+    last_refreshed: '2026-10-08T08:56:32+00:00'
+    value_key: v3_cohort_median_REAL
+    target: -8.5
+    direction: <=
+    remains: Pt+2 parameterisation (BLOCKED, Wf-299B); real Vina run blocked
   m7_diversity:
     source_json: metrics/by_metric/m7_diversity.json
     source_json_sha256: 4533bdc580a79f9b7943da0655439a212e77e9a240fb997ab33cf7de071a57a8
     source_json_missing: false
     value: null
     status: WIRED
-    verdict: WIRED — SCAFFOLD-to-TRAINER-LOSS wire-in COMPLETE; bit-for-bit backward
-      compat preserved; 6/6 flags wired-in; 6/6 default OFF. PROJECTED joint m7 lift
-      +0.02-0.035 per Wf-380-A3 §0; MEASURED end-to-end on Blackwell sm_120 BLOCKED
-      per AGENTS.md §5.1.
+    verdict: HONEST_NEGATIVE
     scope: tier2_diversity_sampling / m7 Diversity Wf-388-A2 wire-in
     metric_timestamp: '2026-09-30'
-    last_refreshed: '2026-10-08T08:53:06+00:00'
-    target: '>= 0.65'
-    measured_projected: MEASURED
+    last_refreshed: '2026-10-08T08:56:32+00:00'
+    value_key: aggregate.best_measured
+    target: 0.65
+    direction: '>='
+    remains: GPU launch L1 (flags ON, ~4hr) converts PROJECTED->MEASURED; will not
+      reach 0.65
   m1_ru_auc:
     source_json: metrics/by_metric/metalcytotox_ru_auc.json
     source_json_sha256: 225db53153bbeece6ecf0a51ec3e60f3f53d70eb5f8f25d38449dcf4e99c49ca
     source_json_missing: false
     value: 0.7613038529802696
     status: MEASURED_PARTIAL_LIFT
-    verdict: MEASURED_PARTIAL_LIFT — Wf-124 P3 lifts Ru seed=0 test_auc from 0.7123
-      (single-task 5-epoch baseline) to 0.7613 (multi-task 30-epoch + Wasserstein
-      + L2 guard) = +0.049 absolute lift. Wf-131 P1 3-seed × 10-epoch baseline gives
-      mean = 0.7352 ± 0.0023. The Krasnov 2026 ≥ 0.86 gate is NOT YET HIT (gap remaining
-      = -0.099). The mechanism is proven; full 5-seed × 50-epoch ship + deferred innovations
-      (Hilbert-ASTR features, Catherine oversampling, warm-start) required to close
-      the gate. Joint m1+m19 close-out at TODO/completed/131_m1_m19_joint_rescue.md.
+    verdict: HONEST_NEGATIVE
     scope: tier1_precious_metal_anticancer
     metric_timestamp: '2026-09-27'
-    last_refreshed: '2026-10-08T08:53:06+00:00'
-    target: '>= 0.86'
-    measured_projected: MEASURED
+    last_refreshed: '2026-10-08T08:56:32+00:00'
+    target: 0.86
+    direction: '>='
+    remains: cohort honest-negative (591 vs 23 cell lines); no launch closes it
   m19_lomo:
     source_json: metrics/by_metric/metal_lomo_auc_wasserstein.json
     source_json_sha256: 2c95cbdf995694b6af103f5ecba664a633e048e619dd227a8f667814223bfe6e
     source_json_missing: false
     value: 0.5575471269535148
     status: MEASURED_BELOW_TARGET_BASELINE
-    verdict: BELOW_TARGET_BASELINE_REAL_ONLY
+    verdict: HONEST_NEGATIVE
     scope: tier2_sbdd_ood_lomo_wasserstein
     metric_timestamp: '2026-10-08T06:51:17+00:00'
-    last_refreshed: '2026-10-08T08:53:06+00:00'
-    target: '>= 0.70'
-    measured_projected: MEASURED
+    last_refreshed: '2026-10-08T08:56:32+00:00'
+    target: 0.7
+    direction: '>='
+    remains: P-A drift ALREADY FIXED on disk (real-only 5-fold); doc retag only
   m2_r2_per_cell:
     source_json: metrics/by_metric/platinai_4cell_auc.json
     source_json_sha256: ac50aee848a7fcde1c8e5e09253892f165773f10a1bad6734811cfa78802ff29
     source_json_missing: false
-    value: null
+    value: 0.5531726597598308
     status: MEASURED_SYNTHETIC_LABELS
-    verdict: null
+    verdict: HONEST_NEGATIVE
     scope: tier1_precious_metal_anticancer
     metric_timestamp: '2026-09-25'
-    last_refreshed: '2026-10-08T08:53:06+00:00'
-    target: '>= 0.85'
-    measured_projected: MEASURED
+    last_refreshed: '2026-10-08T08:56:32+00:00'
+    target: 0.85
+    direction: '>='
+    remains: closed structural (Wf-369-A2); synthetic labels; no GPU
   m21_nci60_9cell:
     source_json: metrics/by_metric/nci60_precious_9cell_auc.json
     source_json_sha256: 34d8d418ebe25b6bfc031e3346344ee6fa8b94bcffdc06918d9b1e8309c954bc
     source_json_missing: false
-    value: null
+    value: 0.80072017249287
     status: MEASURED
-    verdict: null
+    verdict: PASS
     scope: tier1_precious_metal_anticancer
     metric_timestamp: '2026-09-25'
-    last_refreshed: '2026-10-08T08:53:06+00:00'
-    target: '>= 0.70'
-    measured_projected: MEASURED
+    last_refreshed: '2026-10-08T08:56:32+00:00'
+    target: 0.7
+    direction: '>='
+    remains: nothing for gate; scaffold split enforced in code
   l5_hilbert_r2:
     source_json: metrics/by_metric/hilbert_4cell_r2.json
     source_json_sha256: 80cd0f7e770eb8638a4e9bf4f916d6957e8e3e4745e7a63e65d4373f11714ec9
     source_json_missing: false
-    value: null
+    value: -5.662524090882017
     status: MEASURED_BELOW_GATE
-    verdict: MEASURED_HONEST_NEGATIVE_R2_ARCHITECTURAL_CEILING
+    verdict: HONEST_NEGATIVE
     scope: tier1_precious_metal_anticancer / Wf-122 P3 post-fix combined anchor
     metric_timestamp: '2026-09-27'
-    last_refreshed: '2026-10-08T08:53:06+00:00'
-    target: '>= 0.85'
-    measured_projected: MEASURED
+    last_refreshed: '2026-10-08T08:56:32+00:00'
+    target: 0.85
+    direction: '>='
+    remains: architectural ceiling (~0.68); drop-from-S3 or metric redefinition; NO
+      GPU
   l6_closure:
     source_json: molmetal/reports/wf67_p4_2_closure_r20/reachability_overall.json
     source_json_sha256: 49e13c420b74c5a64020cffc3207cb931877cefa010bfc3e952e109892209688
     source_json_missing: false
-    value: null
+    value: 0.5962
     status: null
-    verdict: null
+    verdict: HONEST_NEGATIVE
     scope: null
     metric_timestamp: null
-    last_refreshed: '2026-10-08T08:53:06+00:00'
-    target: '>= 0.95'
-    measured_projected: MEASURED
+    last_refreshed: '2026-10-08T08:56:32+00:00'
+    value_key: aggregate.closure_reachability_rate
+    target: 0.95
+    direction: '>='
+    remains: volume fix (75->100/metal, CPU); reachability ceiling stays
   m6_kappa:
     source_json: metrics/by_metric/m6_kappa.json
     source_json_sha256: 35ffffa68a5e3f359a9a645f87e68c4b0e4795fd6fe73a7c622ccb4bf5c6f205
     source_json_missing: false
     value: 0.4719079955824899
     status: MEASURED
-    verdict: MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL
+    verdict: HONEST_NEGATIVE
     scope: drug-likeness panel (metrics_v2 Wf-252 F2 add-on)
     metric_timestamp: '2026-10-01'
-    last_refreshed: '2026-10-08T08:53:06+00:00'
-    target: '>= 0.60'
-    measured_projected: MEASURED
+    last_refreshed: '2026-10-08T08:56:32+00:00'
+    target: 0.6
+    direction: '>='
+    remains: drop-from-S3 per Wf-389-A1; same family as L5
 uncovered_metric_files:
 - admet_full_coverage
 - affinity_pearson_r
