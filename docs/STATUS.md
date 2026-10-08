@@ -45,7 +45,7 @@ Selected milestones (one per row; non-trivial diff on MHF version control per co
 - **The 1 FAIL** is `p3_wf343c4_anchor_freshness_24h` — natural, refreshed by single `touch` per Wf-367-A1.
 - **The 3 SKIPs are BY-DESIGN per `party-twenty-spirit` §3.5:**
   - `p3_wf343c4_yuelbond_decoder_env` (env gap; passes on project venv per Wf-422-A2 §0)
-  - `p3_wf343c4_wave_budget_remaining_nonneg` (-183.04h overrun per Wf-262 §7.1)
+  - `p3_wf343c4_wave_budget_remaining_nonneg` (-42.10h overrun per Wf-262 §7.1; post-dedup MEASURED 2026-10-08: 8 waves, cumulative 52.1h, remaining -42.1h)
   - `data_2_1_6_bindingdb_external_honest_negative` (external 1.07M dependency, NOT used in retrain)
 
 ---

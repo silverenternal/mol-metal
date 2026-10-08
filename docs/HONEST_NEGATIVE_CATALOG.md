@@ -493,14 +493,14 @@ Each entry is currently BLOCKED on either user OK (per AGENTS.md §5.1 standing 
 | **Verdict** | **HONEST_NEGATIVE_WAVE_BUDGET** — per Wf-258 §2.1; wave budget tracker `--no-enforce-budget` opt-out preserves PLANNED status; USER_OK-gated for sequential launch |
 | **Source** | `molmetal/reports/wf258_audit/cfm_todo_gap_audit.md` §2.1 + `molmetal/scripts/wave_budget_tracker.py` |
 
-### §5.5 Wave budget -183.04h (5 DEFERRED waves) (HONEST_NEGATIVE_WAVE_BUDGET_CUMULATIVE)
+### §5.5 Wave budget -42.10h (5 DEFERRED waves) (HONEST_NEGATIVE_WAVE_BUDGET_CUMULATIVE)
 
 | Field | Value |
 |---|---|
 | **Workflow** | Wf-339 + Wf-340 + Wf-341 + Wf-342 + Wf-343 (5 DEFERRED waves) |
-| **Status** | Cumulative wave budget overrun = **-183.04 hr** (i.e., 193.04 hr of work scheduled into 10 hr per-session cap) |
-| **Verdict** | **HONEST_NEGATIVE_WAVE_BUDGET_CUMULATIVE** — `p3_wf343c4_wave_budget_remaining_nonneg` gate FAIL (preserved per Wf-357-A1 §3.2) |
-| **Source** | `molmetal/scripts/pre_flight_check.py` + `TODO/completed/357a1_preflight_audit.md` §3.2 |
+| **Status** | Cumulative wave budget overrun = **-42.10 hr** (i.e., 52.1 hr of non-COMPLETE work scheduled into 10 hr per-session cap). Post-dedup MEASURED 2026-10-08: the legacy `Wave-3/4/5/6/7` aliases were collapsed onto their matching config `Wave-dmpnn:*`/`Wave-cfm:*` twins (removing an ~86 hr double-count) and COMPLETE waves are excluded from the cumulative. Prior figure was -183.04 hr / 13 waves / 193.04 hr cumulative. |
+| **Verdict** | **HONEST_NEGATIVE_WAVE_BUDGET_CUMULATIVE** — `p3_wf343c4_wave_budget_remaining_nonneg` gate SKIP (honest-negative; preserved per Wf-357-A1 §3.2) |
+| **Source** | `molmetal/reports/wf262_wave_budget/wave_budget_report.json` + `molmetal/scripts/wave_budget_tracker.py` |
 
 ### §5.6 BindingDB 1.07M NOT on disk (5,257 subset only) (HONEST_NEGATIVE_EXTERNAL_DATA_HOLD)
 

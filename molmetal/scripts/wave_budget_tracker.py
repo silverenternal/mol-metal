@@ -448,6 +448,49 @@ DEFAULT_AUTO_WAVES: List[Tuple[str, float, Optional[str]]] = [
     ),
 ]
 
+# Alias canonicalisation map: legacy ``Wave-N:*`` names (from
+# ``DEFAULT_AUTO_WAVES``) that describe the SAME underlying runs as a
+# config-derived ``Wave-dmpnn:*`` / ``Wave-cfm:*`` name.  When both a
+# config YAML and its legacy alias are present in the auto-discovered
+# wave list, the two families double-count the run's wall-time (the
+# same G4/G5 actuals match BOTH the legacy heuristic and the config
+# name).  This map lets :func:`auto_discover_waves` collapse each alias
+# onto ONE canonical id so the budget is summed exactly once.
+#
+# MEASURED provenance: the on-disk report at
+# ``molmetal/reports/wf262_wave_budget/wave_budget_report.json`` showed
+# all 13 waves summing 193.04h (G4=41.8 + G5=13.17 charged twice;
+# CFM P1.3/P1.4 16+7.5 charged twice) against a 10h budget, which is
+# the ~86h double-count this map removes.
+LEGACY_TO_CANONICAL: Dict[str, str] = {
+    # G4 15-pairs (TODO-180) — legacy Wave-3 ≡ config Wave-dmpnn G4.
+    "Wave-3:chemprop_v3_G4_15_pairs": "Wave-dmpnn:wf124_p3_remaining_metals_g4",
+    # G5 50-epoch full sweep (TODO-181) — legacy Wave-4 ≡ config G5.
+    "Wave-4:chemprop_v3_G5_50ep_full_sweep": "Wave-dmpnn:wf124_p3_50epoch_full_sweep_g5",
+    # G6 per-innovation ablation (TODO-182) — legacy Wave-5 ≡ config G6.
+    "Wave-5:chemprop_v3_G6_per_innovation_ablation_60runs": (
+        "Wave-dmpnn:wf124_p3_per_innovation_ablation_g6"
+    ),
+    # CFM TODO-119 P1.3 — legacy Wave-6 ≡ config Wave-cfm P1.3.
+    "Wave-6:cfm_TODO119_P1.3_real_decode_lift": "Wave-cfm:cfm_real_decode_lift_p1.3",
+    # CFM TODO-119 P1.4 — legacy Wave-7 ≡ config Wave-cfm P1.4.
+    "Wave-7:cfm_TODO119_P1.4_per_innovation_ablation": (
+        "Wave-cfm:cfm_per_innovation_ablation_p1.4"
+    ),
+}
+
+
+def canonical_wave_id(wave_name: str) -> str:
+    """Return the canonical id for ``wave_name`` (alias-collapsed).
+
+    Legacy ``Wave-N:*`` names that alias a config-derived
+    ``Wave-dmpnn:*`` / ``Wave-cfm:*`` run collapse onto the config name
+    (see :data:`LEGACY_TO_CANONICAL`).  Any other name is returned
+    unchanged.
+    """
+    return LEGACY_TO_CANONICAL.get(wave_name, wave_name)
+
+
 # Per-wave name regex (CLI parsing).  Allows optional negative sign on
 # the hr value (so the parser can reject ``Wave-1:-1.0`` with the
 # dedicated "hr must be non-negative" error rather than a generic
@@ -537,6 +580,15 @@ def auto_discover_waves(configs_dir: Path) -> List[Tuple[str, float, Optional[st
     For each YAML in :data:`CONFIG_TO_WAVE` whose file exists under
     ``configs_dir``, emit a wave.  Falls back to :data:`DEFAULT_AUTO_WAVES`
     when no configs match (the canonical baseline from §0.3).
+
+    De-duplication (bug fix): the config-derived ``Wave-dmpnn:*`` /
+    ``Wave-cfm:*`` family and the legacy ``Wave-N:*`` family in
+    :data:`DEFAULT_AUTO_WAVES` describe the SAME runs.  Emitting both
+    double-counts their wall-time (the same G4/G5 actuals match BOTH
+    names via :func:`mine_actual_wall_hr`'s heuristic).  We therefore
+    collapse the two families by :func:`canonical_wave_id` — the legacy
+    name is dropped when its canonical config-derived equivalent is
+    already present, and vice versa (the canonical config name wins).
     """
     out: List[Tuple[str, float, Optional[str]]] = []
     found_any_yaml = False
@@ -549,12 +601,17 @@ def auto_discover_waves(configs_dir: Path) -> List[Tuple[str, float, Optional[st
     # Always prepend the canonical §0.3 baseline (covers cases where no
     # matching YAML exists yet, e.g. fresh clone).
     canonical = list(DEFAULT_AUTO_WAVES)
-    # Dedup: keep the first occurrence of each wave_name.
-    seen = {w[0] for w in out}
+    # Dedup by canonical id: a wave is skipped when an ALREADY-EMITTED
+    # wave (config family or earlier canonical entry) canonicalises to
+    # the same id.  This collapses the legacy ``Wave-N:*`` aliases onto
+    # their config-derived ``Wave-dmpnn:*`` / ``Wave-cfm:*`` twins so the
+    # run's wall-time is counted exactly once.
+    seen = {canonical_wave_id(w[0]) for w in out}
     for w in canonical:
-        if w[0] not in seen:
+        cid = canonical_wave_id(w[0])
+        if cid not in seen:
             out.append(w)
-            seen.add(w[0])
+            seen.add(cid)
     return out, found_any_yaml
 
 
@@ -972,6 +1029,16 @@ def summarise(
     ``deferred_temp_waves`` + ``deferred_permanent_waves`` always
     reflect the full per-class partition so callers can re-filter
     downstream without re-scanning the per-wave list.
+
+    Budget accounting (bug fix): ``cumulative_wave_hr`` sums every
+    wave's cost EXCEPT ``COMPLETE`` — already-incurred history is not
+    part of the remaining-session budget.  ``PLANNED`` / ``RUNNING`` /
+    ``DEFERRED`` estimates are all counted (DEFERRED waves remain the
+    documented cause of the honest-negative over-budget SKIP).  Before
+    the fix, COMPLETE waves were charged at full wall-time against the
+    live budget, which (combined with the legacy/config wave-family
+    double-count) produced the MEASURED remaining_hr=-183.04h on a 10h
+    budget.
     """
     cumulative_wave_hr = sum(
         (
@@ -980,6 +1047,7 @@ def summarise(
             else d.get("estimated_hr", 0.0)
         )
         for d in wave_dicts
+        if d.get("status") != "COMPLETE"
     )
     remaining_hr = round(budget_hr - cumulative_wave_hr, 6)
     deferred_all = [d for d in wave_dicts if d["status"] == "DEFERRED"]
