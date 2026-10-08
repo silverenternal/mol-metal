@@ -1,0 +1,23 @@
+{
+  "seed": 3,
+  "task": "bace",
+  "backbone": "dmpnn",
+  "n_rows": 1513,
+  "n_train": 1060,
+  "n_val": 150,
+  "n_test": 303,
+  "pos_rate_train": 0.4547169811320755,
+  "pos_rate_test": 0.5181518151815182,
+  "class_weight": "balanced",
+  "pos_weight_used": 1.0,
+  "dropout": 0.1,
+  "weight_decay": 1e-05,
+  "patience": 20,
+  "test_metrics": {
+    "roc_auc": 0.6654742169095194,
+    "pr_auc": 0.6688640339978118,
+    "hit_rate_top5pct": 0.6,
+    "n": 303
+  },
+  "epochs": 50
+}

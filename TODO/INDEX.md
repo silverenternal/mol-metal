@@ -896,3 +896,42 @@ Cross-references: TODO/completed/A8_m17_yaml_rewrite.md + TODO/completed/A8_othe
 **Honest framing**: Wf-R39 resolved **3 of 11** docs-only items. The other **8 remain genuinely OPEN** (GPU-USER_OK / GPU-BLOCKED / live chaining). Wf-R39 did **NOT** unblock L4 (LOMO real-only ~6 hr GPU) or L5 (Wasserstein re-bench ~4 hr GPU) — both remain **BLOCKED on the P-A protocol patch + 5-fold real-only re-measure** per Wf-A8c closeout §"Residual gaps" (5 yamls still FAIL 4 yaml gates). No metric was lifted; no PROJECTED number was promoted to MEASURED.
 
 **Standing directives re-confirmed**: AGENTS.md §1 + §5.1 (no GPU launch, no USER_OK consumed) + §5.2 (honest framing — 8 items declared still open) + §5.3 (no paper work per TODO-84) + §5.4 + §5.5 (ls -la evidence above) + §5.6 (`atomic_write_file` for catalog + this entry; `git mv` for the 3 files) + §5.8 (wf token budget) + §5.9 (.venv/bin/python) + §5.10 + §10 (wetlab deprecation).
+
+---
+
+## §22.151 Wf-METRIC-RESCUE 2026-10-08 — 5 honest-negative findings from regressed-metric ultracode (user directive *"回退的东西得想办法把他们补强，启动ultracode基于对现状的洞察去做修复和重测"*)
+
+**Wave**: Wf-METRIC-RESCUE (W1 + G6 + bace-rescue + m19-rh-fix + pearson-readout, 2026-10-08).
+**Status**: 1 GPU launch (W1 arm2 per-epoch, PID 31946, completed 2026-10-09) + 4 NO-GPU result aggregations + 2 NO-GPU trainer-flag wire-ins (molnet `--class-weight` + `--dropout` + `--weight-decay` + `--patience`); **0 paper/* touches** (TODO-84 honored); **0 wet-lab planning** (§10 HARD MANDATE honored); pre-flight v3 still rc=0 (PASS).
+**Closeout**: `TODO/completed/metric_rescue_wfmrr_2026_10_08.md` (this wave's primary closeout — see below for the §22.151 trailer; the full closeout lives in that file).
+
+**5 honest-negative findings** (full detail in `docs/HONEST_NEGATIVE_CATALOG.md` §6.38 — appended 2026-10-09 per AGENTS.md §5.6 atomic-write + §5.5 filesystem-truth):
+
+1. **W₁ W₂ ON/OFF de-confound (3-arm)** — OFF 0.5575 / ON-per-epoch 0.5496 / ON-every-batch 0.5349 — W₂ is **NOT load-bearing** at any tested cadence; turning W₂ ON lowers the metric (per-epoch Δ −0.008, every-batch Δ −0.023). Independent confirmation from G6 18-tuple ablation.
+2. **G6 per-innovation ablation (18 tuples, 3 seeds × 2 metals)** — Wasserstein Δ (Ru +0.007, Rh −0.0001), Kendall Δ (Ru −0.011, Rh +0.003), multi-task Δ (Ru +0.011, Rh +0.001) — ALL inside seed std; **no individual innovation is decisive** at this n.
+3. **bace rescue attempt (hypothesis REFUTED)** — baseline 0.7421 → rescue `--class-weight balanced` 0.6805 (Δ −0.062, WORSE); bbbp no-op control 0.8939 vs 0.9065 (−0.013) bounds harness drift; class-weighting is NOT the cause of the bace gap. 4 NEW flags wired end-to-end in `train_moleculenet.py` (NOT FLAG_ONLY); 11 NEW tests PASS.
+4. **m19 fix-stack aggregate 0.5862 ± 0.1028** — Ru +0.022 / Ir +0.045 / Re +0.032 BUT **Rh 0.5022 → 0.4056** (--rh-loso-validation specifically HURT Rh, Δ −0.097, real signal). Centering baseline (0.5845 / Rh 0.5022) remains the canonical Rh value.
+5. **pIC50 pearson readout — ridge beats head decisively** — pooled ridge 0.4151 ± 0.2027 vs head 0.1543 ± 0.3650; per-metal head on **Os = −0.2782 (anti-correlated)**. The neural head is not a working regressor; ridge-on-encoder + random encoder are within 0.025 of each other (encoder learned only ~+0.025 pIC50 structure over random).
+
+**Code SHIPPED (per §5.5 filesystem-truth rule)**:
+- `molmetal/scripts/train_moleculenet.py` — 4 NEW flags wired (`--class-weight {on,off,balanced}` argparse 806-822 → run 894-897 → `_train_one_seed_dmpnn` 433-436; verified end-to-end, NOT FLAG_ONLY)
+- `molmetal/scripts/train_metal_lomo_wasserstein.py` — inverse no-op guard in `_parse_args` (warns when `--wasserstein-real` passed but `wasserstein_weight <= 0`)
+- `molmetal/tests/test_wf_round2_c3_w2_noop.py` — NEW 11 tests, 11/11 PASS
+
+**Disk artifacts MEASURED (per §5.5 filesystem-truth rule)**:
+- `metrics/by_metric/metal_lomo_auc_wasserstein.json` — `m1_w2_onoff_deconfound_2026_10_08` block (per-fold ON/OFF deltas)
+- `metrics/by_metric/moleculenet_auc_dmpnn_5seed_rescue.json` — bace rescue numbers
+- `molmetal/reports/m1_realonly_w2on_every-batch_30ep/metrics.json` — W1 arm1 (full)
+- `molmetal/reports/m1_realonly_w2on_per-epoch_30ep/metrics.json` — W1 arm2 (full, ts 2026-10-09 00:15)
+- `molmetal/reports/m19_rh_fix_2026_10_08/metrics.json` — fix stack aggregate
+- `molmetal/reports/pearson_head_fix_2026_10_08/seed{0,1,2}.json` — 3-seed pearson probe
+- `results/wf124_p3_per_innovation_ablation_g6/{no_dann,no_kendall,no_multi_task,no_wass}/{Ru,Rh}/seed{0,1,2}/` — 18 G6 tuples
+- `docs/HONEST_NEGATIVE_CATALOG.md` §6.38 (5 sub-entries, 94 total catalog entries, was 86→93 in earlier waves)
+- `docs/ALIGNED_COMPARISON.md` (bace rescue caveat + m19 stale-file flag)
+- `docs/STATUS.md` (Last refreshed + Wave-METRIC-RESCUE row + honest-negative catalog count 93 → 94)
+- `memory/w2-wasserstein-is-not-load-bearing.md` (updated to 3-arm ON/OFF table)
+- `memory/pearson-ridge-beats-neural-head.md` (NEW — pooled ridge 0.4151 vs head 0.1543)
+
+**Pre-flight v3 status preserved**: rc=0 (PASS, 113/1/3/117 per Wf-432 baseline).
+
+**Standing directives re-confirmed**: AGENTS.md §1 + §5.1 (1 GPU launch: W1 arm2 per-epoch — within standing grant per §5.1) + §5.2 (honest framing — every numeric value cites disk path) + §5.3 (no paper work) + §5.4 + §5.5 (ls -la evidence on all artifacts) + §5.6 (`atomic_write_file` for ALL catalog/INDEX/STATUS writes) + §5.7 (molnet flag wire-in smoke-verified end-to-end, NOT FLAG_ONLY) + §5.8 (wf token budget — ≤2 parallel agents per wave; 1 diagnostic agent + 1 measure agent only) + §5.9 (.venv/bin/python) + §5.10 + §10 (wetlab deprecation).

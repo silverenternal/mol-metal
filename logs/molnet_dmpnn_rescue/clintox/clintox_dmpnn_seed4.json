@@ -1,0 +1,23 @@
+{
+  "seed": 4,
+  "task": "clintox",
+  "backbone": "dmpnn",
+  "n_rows": 1484,
+  "n_train": 1038,
+  "n_val": 148,
+  "n_test": 298,
+  "pos_rate_train": 0.07996146435452794,
+  "pos_rate_test": 0.050335570469798654,
+  "class_weight": "on",
+  "pos_weight_used": 11.506024096385541,
+  "dropout": 0.1,
+  "weight_decay": 1e-05,
+  "patience": 20,
+  "test_metrics": {
+    "roc_auc": 0.8332155477031802,
+    "pr_auc": 0.23424537026308218,
+    "hit_rate_top5pct": 0.2,
+    "n": 298
+  },
+  "epochs": 50
+}

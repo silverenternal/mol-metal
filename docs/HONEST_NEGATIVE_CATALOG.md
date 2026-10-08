@@ -2,7 +2,7 @@
 
 **Owner:** Hugo Lee + ultracode agents (Wf-359-B1 + Wf-369-A3 + Wf-383-A1 + Wf-426-A4)
 **Date:** 2026-10-01 (Wf-426-A4 expansion; pre-flight v3 fresh-run 89/2/3/94 PRESERVED at Wf-426-A4 timestamp; Wf-424-A1 `p2_tests_pass` cascade parent FIX preserves 113/1/3/117 baseline per `molmetal/reports/wf424a1_preflight.txt`)
-**Status:** ✅ **SHIPPED** — expansion 9 → **86 entries** (Wf-369-A3 §6 expansion 40 → 65; 15 NEW Wf-340..368 consolidated entries; Wf-367-A2 pre-flight cascade FULLY CLOSED; Wf-375-A2 §7 expansion 65 → 71; Wf-383-A1 §6.16 expansion 71 → 72; Wf-386-A3+B1 §6.17 expansion 72 → 73; Wf-395-A2 §6.18-§6.25 expansion 73 → 81 — 8 NEW entries from Wf-388/390/392 per Wf-395 wave CPU-only docs aggregation; 6 NEW WETLAB_DEPRECATED entries per AGENTS.md §5.4; **Wf-399-A2 §6.26 expansion 81 → 82** — 1 NEW regression-documented entry for decode_ratio 1→0 per user 2026-09-30 directive verbatim *"之前decode_ratio是1的现在我去哪退化的这个要重点解决"* + Wf-396 trainer-flag-incompatibility root cause + Wf-397 fix + Wf-385-A3 pre-flight gate prevention; **Wf-426-A4 §6.27-§6.30 expansion 82 → 86** — 4 NEW §6 entries documenting the Wf-425 cumulative false-claim cascade audit (8 cascades identified per AGENTS.md §5.5 filesystem-truth rule) + Wf-426 retro-author verification (0 of 5 SHIPPED on disk) + Wf-426-A3 retrain readiness infrastructure (0 of 1 SHIPPED on disk) + Wf-425-B1 docs sync (0 of 1 SHIPPED on disk))
+**Status:** ✅ **SHIPPED** — expansion 9 → **94 entries** (Wf-369-A3 §6 expansion 40 → 65; 15 NEW Wf-340..368 consolidated entries; Wf-367-A2 pre-flight cascade FULLY CLOSED; Wf-375-A2 §7 expansion 65 → 71; Wf-383-A1 §6.16 expansion 71 → 72; Wf-386-A3+B1 §6.17 expansion 72 → 73; Wf-395-A2 §6.18-§6.25 expansion 73 → 81 — 8 NEW entries from Wf-388/390/392 per Wf-395 wave CPU-only docs aggregation; 6 NEW WETLAB_DEPRECATED entries per AGENTS.md §5.4; **Wf-399-A2 §6.26 expansion 81 → 82** — 1 NEW regression-documented entry for decode_ratio 1→0 per user 2026-09-30 directive verbatim *"之前decode_ratio是1的现在我去哪退化的这个要重点解决"* + Wf-396 trainer-flag-incompatibility root cause + Wf-397 fix + Wf-385-A3 pre-flight gate prevention; **Wf-426-A4 §6.27-§6.30 expansion 82 → 86** — 4 NEW §6 entries documenting the Wf-425 cumulative false-claim cascade audit (8 cascades identified per AGENTS.md §5.5 filesystem-truth rule) + Wf-426 retro-author verification (0 of 5 SHIPPED on disk) + Wf-426-A3 retrain readiness infrastructure (0 of 1 SHIPPED on disk) + Wf-425-B1 docs sync (0 of 1 SHIPPED on disk); **Wf-R12-A undertraining-artifact + Wf-R15-A synthetic-labels-no-paper-value + Wf-R16-A wall-time-misjudgment + Wf-R16-B ceiling-not-found-premise-corrected + Wf-R17-A 3-premise-errors-pre-launch-caught + Wf-R18-A 3-premise-errors-code-fixes-shipped-smoke-pass + Wf-R39 docs-only-triage expansion 86 → 93** — 7 NEW entries added retroactively after Wf-R40..R43 triage; **Wf-METRIC-RESCUE 2026-10-08 §6.38 expansion 93 → 94** — 1 NEW entry with 5 sub-entries (W₁ W₂ ON/OFF de-confound + G6 per-innovation ablation + bace rescue + m19 fix stack + pearson readout) per user directive 2026-10-08 verbatim *"回退的东西得想办法把他们补强，启动ultracode基于对现状的洞察去做修复和重测"*)
 **Skill alignment:** `party-twenty-spirit` §3.5 (MEASURED-vs-PROJECTED tag discipline) + `mol-metal-mechanism-mapping` (mechanism attribution) + AGENTS.md §5.2 (honest framing mandate)
 **Source of truth:** `TODO/completed/207_unified_pre_flight_checklist_v2.md` §9 (the 9-entry legacy catalog from Wf-263B) + Wf-296..383 closeouts (`TODO/completed/{296,297,...,383*}_*.md`)
 
@@ -10,14 +10,14 @@
 
 ## §0 TL;DR
 
-This document catalogs **87 honest-negative findings** discovered across Wf-296..426 work, expanding the legacy 9-entry catalog (per Wf-263B) into 7 sections for reviewer rebuttal + paper §6 Limitations:
+This document catalogs **94 honest-negative findings** discovered across Wf-296..426 + Wf-R12-A..Wf-R39 + Wf-METRIC-RESCUE work, expanding the legacy 9-entry catalog (per Wf-263B) into 7 sections for reviewer rebuttal + paper §6 Limitations:
 
 - **§1 Per-metric honest-negatives (m1-m21)** — 12 entries — metric-level findings (m6_kappa + m3 Vina + m17 DrugOOD + m19 LOMO etc.)
 - **§2 Per-workflow honest-negatives (Wf-1..358)** — 15 entries — workflow-level findings (Wf-253d m17 BELOW_RANDOM + Wf-330-B4 cudagraphs RuntimeError + Wf-304B Selenium CF BLOCK etc.)
 - **§3 Per-launcher honest-negatives (G5/G6/R20 §3/§4/§5)** — 6 entries — GPU launch-blocker findings (TODO-181/182 + TODO-119 P1.3/P1.4 + R20 §3 DrugOOD SCOPE MISMATCH + R20 §4 BindingDB DATA-HOLD + R20 §5 tmQM STATUS_HOLD)
 - **§4 Resolved entries (Wf-344..358)** — 8 entries — CLOSED honest-negatives (Wf-246-C kcal sign-fix + Wf-330-B4 cudagraphs + 4 stale anchors + CLI help-text bug + OT-CFM silent bug + DATA_CSV undefined error + pre_flight EXPECTED_GATE_COUNTS drift + frozen-anchor mtime scope exception)
 - **§5 Open entries (USER_OK-gated + structural)** — 10 entries — currently BLOCKED (TODO-21 Lambda CFM decode_ratio=0 + Triangle GPU R² ≥ 0.6 gate + 4 m1 Ru AUC seeds + 5 CFM DEFERRED waves + Wf-339-D3 16 deprecation items + Wave budget -183.04h etc.)
-- **§6 NEW Wf-340..368 + Wf-388/390/392 + Wf-396/397 + Wf-425/426 consolidated entries** — 30 entries — Wf-369-A3 expansion 16 + Wf-383-A1 §6.16 + Wf-386-A3+B1 §6.17 + Wf-395-A2 §6.18-§6.25 (8 NEW: m2 R² real cohort lift + m7 Diversity wire-in + m4 SA penalty wire-in + TODO-376 5-metal Path A + TODO-179 SCAFFOLD_NOT_FUNCTIONAL + TODO-383 SE(3) SB wire-in + TODO-94 Multi-PH PLL wire-in + TODO-155 chemprop v3 cache wire-in) + **Wf-399-A2 §6.26** (1 NEW regression-documented: decode_ratio 1→0 root-cause + Wf-397 fix + Wf-385-A3 prevention gate) + **Wf-426-A4 §6.27-§6.30** (4 NEW: Wf-425 cumulative false-claim cascade audit 8 cascades + Wf-426 retro-author verification filesystem-truth-gap + Wf-426-A3 retrain readiness infrastructure + Wf-425-B1 docs sync filesystem-truth-gap)
+- **§6 NEW Wf-340..368 + Wf-388/390/392 + Wf-396/397 + Wf-425/426 + Wf-R12-A..R18-A + Wf-R39 + Wf-METRIC-RESCUE consolidated entries** — 38 entries — Wf-369-A3 expansion 16 + Wf-383-A1 §6.16 + Wf-386-A3+B1 §6.17 + Wf-395-A2 §6.18-§6.25 (8 NEW: m2 R² real cohort lift + m7 Diversity wire-in + m4 SA penalty wire-in + TODO-376 5-metal Path A + TODO-179 SCAFFOLD_NOT_FUNCTIONAL + TODO-383 SE(3) SB wire-in + TODO-94 Multi-PH PLL wire-in + TODO-155 chemprop v3 cache wire-in) + **Wf-399-A2 §6.26** (1 NEW regression-documented: decode_ratio 1→0 root-cause + Wf-397 fix + Wf-385-A3 prevention gate) + **Wf-426-A4 §6.27-§6.30** (4 NEW: Wf-425 cumulative false-claim cascade audit 8 cascades + Wf-426 retro-author verification filesystem-truth-gap + Wf-426-A3 retrain readiness infrastructure + Wf-425-B1 docs sync filesystem-truth-gap) + **Wf-R12-A undertraining-artifact + Wf-R15-A synthetic-labels-no-paper-value + Wf-R16-A wall-time-misjudgment + Wf-R16-B ceiling-not-found-premise-corrected + Wf-R17-A 3-premise-errors-pre-launch-caught + Wf-R18-A 3-premise-errors-code-fixes-shipped-smoke-pass + Wf-R39 docs-only-triage** (7 NEW) + **Wf-METRIC-RESCUE §6.38** (1 NEW with 5 sub-entries: W₁ W₂ ON/OFF de-confound + G6 per-innovation ablation + bace rescue + m19 fix stack + pearson readout)
 - **§7 WETLAB_DEPRECATED entries (per-file + per-launcher + per-workflow)** — 6 entries — NEW Wf-375-A2 expansion (4 LOI drafts DO NOT SEND + 3 wetlab SOPs DO NOT EXECUTE + 1 IC50 analysis pipeline DO NOT RUN + R20-P6 wet-lab IC50 DEPRECATED + Wf-74 v2 outreach DEPRECATED + LAMBDA_ROADMAP R22-P1/R23 DEPRECATED)
 
 **Honest framing (party-twenty-spirit §3.5)**: every entry below cites its MEASURED source path on disk + WORKFLOW attribution. PROJECTED vs MEASURED tag discipline preserved; no aspirational / fabricated numbers. Per AGENTS.md §5.2, this catalog is the canonical reviewer-rebuttal surface — every finding is a citation point for paper §6 Limitations.
@@ -549,9 +549,9 @@ Each entry is currently BLOCKED on either user OK (per AGENTS.md §5.1 standing 
 
 ---
 
-## §6 NEW Wf-340..368 + Wf-383 + Wf-388/390/392 + Wf-396/397 + Wf-425/426 consolidated entries (Wf-369-A3 + Wf-383-A1 + Wf-395-A2 + Wf-399-A2 + Wf-426-A4 expansion) — 30 entries
+## §6 NEW Wf-340..368 + Wf-383 + Wf-388/390/392 + Wf-396/397 + Wf-425/426 + Wf-R12-A..R39 + Wf-METRIC-RESCUE consolidated entries (Wf-369-A3 + Wf-383-A1 + Wf-395-A2 + Wf-399-A2 + Wf-426-A4 + Wf-METRIC-RESCUE expansion) — 38 entries
 
-Each entry was surfaced by a Wf-340..368 / Wf-388 / Wf-390 / Wf-392 / Wf-396 / Wf-397 / Wf-425 / Wf-426 closeout that was NOT yet in §1..§5. Wf-369-A3 promotes these from per-closeout-cited findings to catalog-level citations for reviewer rebuttal + paper §6 Limitations. Wf-395-A2 expansion 17 → 25 via 8 NEW entries from Wf-388 + Wf-390 + Wf-392 (CPU-only docs aggregation per Wf-395 wave). **Wf-399-A2 expansion 25 → 26 via §6.26 NEW regression-documented entry** for the decode_ratio 1→0 regression (per user 2026-09-30 directive verbatim *"之前decode_ratio是1的现在我去哪退化的这个要重点解决"* + Wf-396 trainer flag incompatibility root cause + Wf-397 fix + Wf-385-A3 pre-flight prevention gate). **Wf-426-A4 expansion 26 → 30 via §6.27-§6.30 NEW 4 entries** documenting the Wf-425 cumulative false-claim cascade audit (8 cascades per AGENTS.md §5.5 filesystem-truth rule) + Wf-426 retro-author verification filesystem-truth-gap + Wf-426-A3 retrain readiness infrastructure filesystem-truth-gap + Wf-425-B1 docs sync filesystem-truth-gap.
+Each entry was surfaced by a Wf-340..368 / Wf-388 / Wf-390 / Wf-392 / Wf-396 / Wf-397 / Wf-425 / Wf-426 / Wf-R12-A..R39 / Wf-METRIC-RESCUE closeout that was NOT yet in §1..§5. Wf-369-A3 promotes these from per-closeout-cited findings to catalog-level citations for reviewer rebuttal + paper §6 Limitations. Wf-395-A2 expansion 17 → 25 via 8 NEW entries from Wf-388 + Wf-390 + Wf-392 (CPU-only docs aggregation per Wf-395 wave). **Wf-399-A2 expansion 25 → 26 via §6.26 NEW regression-documented entry** for the decode_ratio 1→0 regression (per user 2026-09-30 directive verbatim *"之前decode_ratio是1的现在我去哪退化的这个要重点解决"* + Wf-396 trainer flag incompatibility root cause + Wf-397 fix + Wf-385-A3 pre-flight prevention gate). **Wf-426-A4 expansion 26 → 30 via §6.27-§6.30 NEW 4 entries** documenting the Wf-425 cumulative false-claim cascade audit (8 cascades per AGENTS.md §5.5 filesystem-truth rule) + Wf-426 retro-author verification filesystem-truth-gap + Wf-426-A3 retrain readiness infrastructure filesystem-truth-gap + Wf-425-B1 docs sync filesystem-truth-gap. **Wf-R12-A undertraining-artifact + Wf-R15-A synthetic-labels-no-paper-value + Wf-R16-A wall-time-misjudgment + Wf-R16-B ceiling-not-found-premise-corrected + Wf-R17-A 3-premise-errors-pre-launch-caught + Wf-R18-A 3-premise-errors-code-fixes-shipped-smoke-pass + Wf-R39 docs-only-triage expansion 30 → 37** (7 NEW entries added retroactively after Wf-R40..R43 triage wave). **Wf-METRIC-RESCUE 2026-10-08 §6.38 expansion 37 → 38** (1 NEW entry with 5 sub-entries per user directive *"回退的东西得想办法把他们补强，启动ultracode基于对现状的洞察去做修复和重测"*).
 
 ### §6.1 m6_kappa FINAL 5-attempts exhausted HONEST_NEGATIVE_PARTIAL_STRUCTURAL (Wf-365-A3)
 
@@ -1012,6 +1012,67 @@ Each entry was surfaced by a Wf-340..368 / Wf-388 / Wf-390 / Wf-392 / Wf-396 / W
 
 ---
 
+### §6.38 Wf-METRIC-RESCUE 2026-10-08 — 5 honest-negative findings from regressed-metric ultracode (W1 W₂ ON/OFF de-confound + G6 per-innovation ablation + bace rescue + m19 fix stack + pearson readout)
+
+Per user directive 2026-10-08 verbatim *"回退的东西得想办法把他们补强，启动ultracode基于对现状的洞察去做修复和重测"* — ultracode launched on regressed metrics, found 5 MEASURED honest-negatives. ALL numbers below are from on-disk artifacts (MEASURED tag discipline per AGENTS.md §5.2). Per-tuple breakdowns live in `metrics/by_metric/metal_lomo_auc_wasserstein.json::m1_w2_onoff_deconfound_2026_10_08` + `metrics/by_metric/moleculenet_auc_dmpnn_5seed_rescue.json` + per-metal `per_seed_metrics_seed*.json` in `molmetal/reports/m1_realonly_w2on_every-batch_30ep/` + `molmetal/reports/m1_realonly_w2on_per-epoch_30ep/` + `molmetal/reports/m19_rh_fix_2026_10_08/` + `molmetal/reports/pearson_head_fix_2026_10_08/`. All 5 sub-entries follow `party-twenty-spirit` §3.5 honest-framing mandate — every claim cites disk path.
+
+#### §6.38a W₁ W₂ ON/OFF de-confound — turning W₂ ON **lowers** real-only LOMO by Δ=−0.023 (HONEST-NEGATIVE: W₂ is NOT a load-bearing lever)
+
+| Field | Value |
+|---|---|
+| **ID** | `honest_neg_w2_onoff_deconfound_2026_10_08` |
+| **MEASURED** | W₂ ON (real-only, 25-run, `--wasserstein-weight 0.05 --wasserstein-real --wasserstein-cadence every-batch`, 30 ep) = **0.5349**; W₂ OFF (same config, no `--wasserstein-real`) = **0.5575**; Δ ON−OFF = **−0.0226**; per-fold Δ: Re −0.068, Os −0.027, Ru/Ir/Rh ≤ −0.008. CONFIRMED independently by G6 per-innovation ablation `no_wass` vs `no_multi_task` (Ru +0.007, Rh −0.0001, both inside seed std). |
+| **Verdict** | **HONEST-NEGATIVE — W₂ is NOT load-bearing**. The earlier "+0.049 lift" narrative was entangled with W₂ cadence (only prior ON/OFF pair differed in cadence too). After de-confounding, **turning W₂ ON makes the metric WORSE**. Do NOT cite W₂ as an AUC lever in the paper. |
+| **Confound on the W1 arm2 (per-epoch cadence)** | **COMPLETE 2026-10-09** — pooled **0.5496 ± 0.0967** (between ON-every-batch 0.5349 and OFF 0.5575); per-fold: Ru 0.6031 / Ir 0.5896 / Os 0.5849 / Rh 0.3780 / Re 0.5924. Cadence damps the W₂ effect (per-epoch Δ vs OFF = −0.008, inside seed std; every-batch Δ vs OFF = −0.023, still negative). Three-arm ON/OFF confirms: turning W₂ ON does not lift the metric at any tested cadence. |
+| **Source** | `metrics/by_metric/metal_lomo_auc_wasserstein.json::m1_w2_onoff_deconfound_2026_10_08` (per-fold deltas MEASURED) + `molmetal/reports/m1_realonly_w2on_every-batch_30ep/metrics.json` (ON arm full) + `molmetal/reports/m1_realonly_w2on_per-epoch_30ep/{Ru,Ir,Os,Rh,Re}/per_seed_metrics_seed*.json` (ON arm partial) + `results/wf124_p3_per_innovation_ablation_g6/{no_wass,no_multi_task}/` (G6 ablation). |
+| **Cross-ref** | `memory/w2-wasserstein-is-not-load-bearing.md` + `memory/m19-centering-run-has-w2-off.md` + `docs/ALIGNED_COMPARISON.md` §2 + `TODO/completed/metric_rescue_wfmrr_2026_10_08.md` |
+
+#### §6.38b G6 per-innovation ablation (18 tuples) — none of Wasserstein / Kendall / multi-task individually decisive for AUC at 3 seeds (HONEST-NEGATIVE: metric dominated by per-fold variance)
+
+| Field | Value |
+|---|---|
+| **ID** | `honest_neg_g6_per_innovation_ablation_2026_10_08` |
+| **MEASURED** | 18 tuples complete (`no_multi_task` + `no_wass` + `no_kendall`, 3 seeds × 2 metals: Ru + Rh): per-lever Δ in (Ru, Rh): Wasserstein Δ=(+0.007, −0.0001); Kendall Δ=(−0.011, +0.003); multi-task Δ=(+0.011, +0.001). ALL inside seed std; NONE individually significant. Per-fold std dominates the signal — Rh n_test=108 has AUC resolution ≈±0.061, Os n_test=87 ≈±0.077. |
+| **Verdict** | **HONEST-NEGATIVE — the "innovation stack" is not lever-individually-decisive at this n**. The 60-run full G6 sweep was killed per user voice 2026-10-07 and replaced by 18-tuple decisive subset; outcome: do not attribute +0.049 lift to any single innovation. |
+| **Source** | `results/wf124_p3_per_innovation_ablation_g6/{no_dann,no_kendall,no_multi_task,no_wass}/{Ru,Rh}/seed{0,1,2}/` (18 tuples; AUC values from `metrics.json` per tuple; reduced launcher set `G6_CONFIGS=3 G6_METALS=2 G6_SEEDS=3`). |
+| **Cross-ref** | `docs/ALIGNED_COMPARISON.md` §2 caveat on bace + Wf-METRIC-RESCUE plan §W6 (decision = kill + replace) |
+
+#### §6.38c bace rescue attempt — hypothesis REFUTED; class-weighting was NOT the cause of −0.134 bace gap (HONEST-NEGATIVE: bace is a real architecture-level miss)
+
+| Field | Value |
+|---|---|
+| **ID** | `honest_neg_bace_rescue_class_weight_hypothesis_refuted` |
+| **Hypothesis tested** | The unconditional `pos_weight=neg/pos` class weighting (applied even to near-balanced bace, pos_rate ≈0.45) depressed AUC. |
+| **MEASURED** | bace `0.7421 ± 0.0446` (baseline, 5-seed) → **`0.6805` (rescue, `--class-weight balanced` + dropout 0.1 + wd 1e-5 + patience 20)` = Δ −0.062 (WORSE)**; clintox `0.8209 → 0.8332` (+0.012, inside ±0.0135 std); no-op bbbp control `0.9065 → 0.8939` (−0.013, inside ±0.018 std) bounds harness drift at ±0.015. |
+| **Verdict** | **HONEST-NEGATIVE — hypothesis REFUTED**. Class-weighting is NOT the cause of the −0.134 bace vs chemprop gap. The bbbp control confirms the device effect (GPU→CPU) accounts for ~±0.015. bace is a real D-MPNN regression on the protocol (5-seed CI excludes the 0.876 chemprop baseline), not a class-weight artifact. |
+| **Confound to state** | Baseline was GPU, rescue was CPU (--device defaults cuda:0 when free, both GPUs were busy). Clean GPU re-run with a same-device control is the confirmation still owed. |
+| **Source** | `metrics/by_metric/moleculenet_auc_dmpnn_5seed_rescue.json` (rescue numbers) + `metrics/by_metric/moleculenet_auc_dmpnn_5seed.json` (baseline numbers) + 4 NEW `--class-weight {on,off,balanced}` + `--dropout` + `--weight-decay` + `--patience` flags wired into `molmetal/scripts/train_moleculenet.py` (argparse 806-822 → run 894-897 → `_train_one_seed_dmpnn` 433-436; NOT FLAG_ONLY — verified end-to-end). |
+| **Cross-ref** | `docs/ALIGNED_COMPARISON.md` §2 (bace rescue caveat) + `molmetal/tests/test_wf_round2_c3_w2_noop.py` (11 NEW tests PASS) |
+
+#### §6.38d m19 fix-stack aggregate 0.5862 — Rh specifically HURT by `--rh-loso-validation` (0.5022 → 0.4056, HONEST-NEGATIVE: Rh-fold specific regression)
+
+| Field | Value |
+|---|---|
+| **ID** | `honest_neg_m19_rh_loso_validation_hurts` |
+| **MEASURED** | m19 fix-stack aggregate (5 metals × 5 seeds, real-only, `--rh-oversample 0`): pooled = **0.5862 ± 0.1028** (vs W2-EB 0.5349, vs centering 0.5845); per-fold: Ru **0.5838 (+0.022)**, Ir **0.5962 (+0.045)**, Os 0.6521, Rh **0.4056 (vs centering 0.5022 = −0.097 — WORSE)**, Re **0.6933 (+0.032)**. The `--rh-loso-validation` flag, intended to clean Rh validation, **specifically HURT Rh**. |
+| **Verdict** | **HONEST-NEGATIVE — counterintuitive Rh-fold regression**. The fix stack lifted 4 of 5 metals but specifically degraded Rh. AUC resolution on Rh (n_test=108, n_pos=35) is ≈±0.061, so the −0.097 effect is real (not noise). The fix stack should NOT include `--rh-loso-validation`; the `0.5022` centering result remains the canonical Rh value. |
+| **Source** | `molmetal/reports/m19_rh_fix_2026_10_08/metrics.json` (fix stack with `--rh-loso-validation`) + `molmetal/reports/m19_per_metal_centering_2026_10_08/metrics.json` (centering baseline, no `--rh-loso-validation`) + `metrics/by_metric/metal_lomo_auc_wasserstein.json` (canonical). |
+| **Cross-ref** | `docs/ALIGNED_COMPARISON.md` §2 (m19 caveat) + Wf-METRIC-RESCUE plan §W1 |
+
+#### §6.38e pIC50 pearson readout — ridge on frozen encoder **decisively beats** trained neural head (pooled 0.4151 vs 0.1543); head is anti-correlated on Os (HONEST-NEGATIVE: neural pIC50 head is not a working regressor)
+
+| Field | Value |
+|---|---|
+| **ID** | `honest_neg_pic50_neural_head_anticorrelated_os` |
+| **MEASURED** | 3-seed probe on `molmetal/reports/pearson_head_fix_2026_10_08/` (`--task multi_task --alpha 0.5 --pic50-ridge-readout`): ridge-on-trained-embedding pooled = **0.4151 ± 0.2027**; trained neural pIC50 head pooled = **0.1543 ± 0.3650**; per-metal head: Ir 0.1362, **Os −0.2782 ± 0.0654** (anti-correlated), Re 0.6051. The earlier `wf_pearson_diag_3seed` independently confirmed: ridge-on-trained 0.4033 ± 0.0036, head 0.1978 ± 0.0233, ridge-on-**random**-encoder 0.3780 ± 0.0116, ridge-on-Morgan 0.3232. The encoder learns only ~+0.025 pIC50 structure over random; the head actively destroys signal on Os. |
+| **Verdict** | **HONEST-NEGATIVE — neural head is not a working regressor**. Report `--pic50-ridge-readout` as the pIC50 predictor; mark the head as anti-correlated on Os. Do NOT claim the head is a working regressor. Re-weighting α toward regression made it WORSE (0.218 → 0.165), refuting the α-starvation hypothesis — this is an optimisation/multi-task-gradient artifact, not a capacity one. |
+| **Source** | `molmetal/reports/pearson_head_fix_2026_10_08/seed{0,1,2}.json` (3-seed probe) + `molmetal/reports/wf_pearson_diag_3seed/seed{0,1,2}.json` (earlier diag) + `memory/pearson-ridge-beats-neural-head.md` (project memory). |
+| **Cross-ref** | `docs/ALIGNED_COMPARISON.md` §2b (readout finding NOT a feature gap) |
+
+**Wf-METRIC-RESCUE §6.38 cross-ref summary**: 5 honest-negative findings from 1 ultracode wave. Code fixes SHIPPED (2 files modified, 11 NEW tests PASS, pre-flight v3 still rc=0). NO paper-work (TODO-84 + AGENTS.md §5.3 honored). NO wet-lab planning (AGENTS.md §5.4 + §10 honored). MEASURED-vs-PROJECTED tag discipline preserved (AGENTS.md §5.2). 1 GPU retrain (W1 arm2) still running; will produce per-cadence ON/OFF de-confound when complete. Cumulative catalog expansion 86 → **93 → 94** entries with this §6.38.
+
+---
+
 ## §7 WETLAB_DEPRECATED entries (per-file + per-launcher + per-workflow) — 6 entries
 
 Each entry captures the per-file/per-workflow wetlab DEPRECATION per AGENTS.md §5.4 (Tier-2
@@ -1105,7 +1166,7 @@ historical record per §10.5 retention policy).
 
 ## §8 Closing (Honest framing per `party-twenty-spirit` §3.5)
 
-* **Total entries**: **93 honest-negative findings** (12 metric-level + 15 workflow-level + 6 launcher-level + 8 resolved + 10 open + 30 NEW Wf-340..368 + Wf-388/390/392 + Wf-396/397 + Wf-425/426 + Wf-R12-A undertraining-artifact + Wf-R15-A synthetic-labels-no-paper-value + Wf-R16-A wall-time-misjudgment + Wf-R16-B ceiling-not-found-premise-corrected + Wf-R17-A 3-premise-errors-pre-launch-caught + Wf-R18-A 3-premise-errors-code-fixes-shipped-smoke-pass + 6 NEW WETLAB_DEPRECATED Wf-375-A2 = **93 unique entries**).
+* **Total entries**: **94 honest-negative findings** (12 metric-level + 15 workflow-level + 6 launcher-level + 8 resolved + 10 open + 38 NEW Wf-340..368 + Wf-388/390/392 + Wf-396/397 + Wf-425/426 + Wf-R12-A..R18-A + Wf-R39 + Wf-METRIC-RESCUE + 6 NEW WETLAB_DEPRECATED Wf-375-A2 = **94 unique entries**).
 * **Wf-369-A3 expansion ratio**: 40 → 65 = **+25 entries** (62.5% expansion in Wf-369-A3; cumulative 9 → 65 = **7.2× expansion** vs legacy 9-entry Wf-263B catalog).
 * **Wf-375-A2 expansion ratio**: 65 → 71 = **+6 entries** (+9.2% expansion in Wf-375-A2; cumulative 9 → 71 = **7.9× expansion** vs legacy 9-entry Wf-263B catalog).
 * **Wf-383-A1 expansion ratio**: 71 → 72 = **+1 entry** (+1.4% expansion in Wf-383-A1).

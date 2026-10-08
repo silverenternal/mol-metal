@@ -69,9 +69,29 @@ D-MPNN backbone (same Bemis-Murcko scaffold split, same ROC-AUC) closes most of 
 (−0.073) / hiv (−0.033) / bbbp (−0.034) gaps are now tuning, not architecture. **`bace` is the one real
 architecture-level miss**: 5 seeds give 0.7421 ± 0.0446 (tightening the 3-seed ± 0.0687 without moving the
 mean), so the −0.134 vs chemprop is a genuine D-MPNN regression and is reported as an honest-negative.
+
+**bace rescue attempt (MEASURED, honest-negative — 2026-10-08):** the hypothesis that the
+unconditional `pos_weight=neg/pos` class weighting (applied even to near-balanced bace, pos_rate≈0.45)
+depressed AUC was tested with a `--class-weight balanced` + dropout 0.1 + wd 1e-5 + patience 20 rescue
+(`moleculenet_auc_dmpnn_5seed_rescue.json`). It did **not** pay off: bace went **0.7421 → 0.6805**
+(−0.062, WORSE); clintox **0.8209 → 0.8332** (+0.012, inside its ±0.0135 std). A no-op **bbbp control**
+(same config, no reg) reproduced **0.8939 vs 0.9065** baseline (−0.013, inside ±0.018 std), bounding
+harness drift. **Confound to state:** the baseline was GPU, the rescue was CPU (`--device` defaults to
+cuda:0 when free; both GPUs were busy); the bbbp control bounds the device effect at ~±0.015 but a
+clean GPU re-run with a same-device control is the confirmation still owed. The class-weighting is
+therefore **not** the cause of the bace gap — do not re-claim it as a fix.
+
 **Caveat on m19:** the older 0.7577 was half-synthetic (500 fabricated Rh rows); the real-only 25-run
 value is 0.5575 and is the honest number. Per-metal pIC50 centering lifts the real-only aggregate to
 0.5845 ± 0.0764 (inside noise) but moves the worst fold **Rh 0.3812 → 0.5022** decisively.
+**Stale-file flag (2026-10-08):** the canonical `metrics/by_metric/metal_lomo_auc_wasserstein.json` still
+carries the older **0.5575 / Rh 0.3812** (ts 06:51) while the newer run report
+`molmetal/reports/m19_per_metal_centering_2026_10_08/metrics.json` carries **0.5845 / Rh 0.5022**
+(ts 21:17). Both are real, different runs; refresh the canonical file after the next re-measure rather
+than citing both. The newer centering run had W₂ **off** (`wasserstein_weight=0.0`), a double class
+correction (`pos_weight_mode=auto` + `balanced_sampler=true`), and no scheduler (`lr_scheduler=none`,
+`weight_decay=0.0`) — the untested levers for any further lift. Note `--wasserstein-real` alone is a
+silent no-op: `w2_enabled` requires `wasserstein_real AND wasserstein_weight > 0.0`.
 
 ### §2b Readout finding — pearson r pIC50 (NOT a feature gap)
 

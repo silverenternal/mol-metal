@@ -3,8 +3,8 @@
 **Owner:** Hugo Lee
 **Created:** 2026-10-02 (Wf-447 PHASE 2)
 **Source of truth:** `AGENTS.md` §6 wave history + `TODO/INDEX.md` §0 + §22
-**Last refreshed:** 2026-10-02 (Wf-449 dual-line: SINGLE start.sh (TUI dashboard) + SINGLE _preflight_check.sh (state-locking YAML))
-**Recent wave:** Wf-449 (2026-10-02) — dual-line per user voice "启动脚本和最终重训前自检脚本分别只能有一个" + "像nvtop一样实时刷新的表，能带训练指标可视化那样最好"; cloned rich + textual + nvitop + aim open-source TUI integrations
+**Last refreshed:** 2026-10-08 (Wf-METRIC-RESCUE: W1 ON/OFF de-confound + G6 ablation + bace rescue + m19 fix + pearson readout; 5 honest-negative findings on disk)
+**Recent wave:** Wf-METRIC-RESCUE (2026-10-08) — per user voice *"回退的东西得想办法把他们补强，启动ultracode基于对现状的洞察去做修复和重测"*
 
 This file gives a one-glance roll-up of what's been shipped, what's still honest-negative,
 and what's still USER_OK-gated. For per-wave detail, read AGENTS.md §6 + TODO/INDEX.md §22.
@@ -17,6 +17,7 @@ Selected milestones (one per row; non-trivial diff on MHF version control per co
 
 | Wave | Ship |
 |------|--------|
+| Wave-METRIC-RESCUE / 2026-10-08 | W1 W₂ ON/OFF de-confound (real-only, 25-run each): ON=0.5349 vs OFF=0.5575, Δ=−0.023 (HONEST-NEGATIVE — W₂ NOT a lever); G6 per-innovation ablation 18 tuples MEASURED on disk (no_multi_task / no_wass / no_kendall, all 3 seeds × 2 metals: W₂ Δ≈0, Kendall Δ≈−0.01, all inside std); bace rescue attempt HONEST-NEGATIVE (0.7421 → 0.6805 with `--class-weight balanced`, class-weighting was NOT the cause, bbbp no-op control 0.9065→0.8939 bounds harness drift ±0.013); m19 fix stack aggregate 0.5862 ± 0.1028 (Ru +0.022, Ir +0.045, Re +0.032 BUT **Rh 0.5022→0.4056**, --rh-loso-validation specifically hurt Rh); pearson readout: pooled ridge 0.4151 vs neural head 0.1543, head anti-correlated on Os (−0.278); 2 code fixes SHIPPED (molnet 4 opt-in flags + W₂ no-op warning guard + 11/11 test); pre-flight v3 still PASS (rc=0); see HONEST_NEGATIVE_CATALOG §6.38 |
 | Wave-447 / R16-ship-coda | Repo metadata: CITATION.cff + .editorconfig + .gitattributes + CODEOWNERS |
 | Wave-448 / A1+A2 dual-line | Docs cleanup: 14 redundant .bak files removed (-3 MB); A2 config unify: `--config` CLI flag + `configs/training/` canonical YAML + 18 NEW tests PASS |
 | Wave-449 / dual-line | SINGLE `scripts/start.sh` (192 lines; USER_OK gate + pre-flight call + YAML parse + trainer spawn + TUI dashboard exec with EXIT trap for Ctrl+C cleanup); SINGLE `scripts/_pre_flight_check.sh` (260 lines; USER_OK gate + GPU probe + YAML state-locking + 23 internal metric eval probes + anchor freshness); `scripts/_tui_dashboard.py` NEW (366 lines; Rich.Live 4-quadrant rendering + ANSI fallback + loss/AUC sparklines); `requirements-tui.txt` NEW; cloned rich + textual + nvitop + aim for reference |
@@ -60,9 +61,9 @@ Selected milestones (one per row; non-trivial diff on MHF version control per co
 
 ## 4. Honest-negative catalog
 
-- **82 → 86 entries** as of Wf-426-A4 + Wf-420-A1 + Wf-424-A1 + Wf-426-A3 findings.
-- **Catalog file:** `docs/HONEST_NEGATIVE_CATALOG.md` (82 → 86 entries).
-- **Test:** `molmetal/tests/test_wf375a2_total_entries_count_is_71.py` snapshot regression (closure = Wf-427-A4 ~1 LOC update to expect 86).
+- **93 → 94 entries** as of Wf-METRIC-RESCUE 2026-10-08 (was 86 → 93 in Wf-R17-A/Wf-R2-residual/Wf-R39).
+- **Catalog file:** `docs/HONEST_NEGATIVE_CATALOG.md` (§6.38 added: 5 sub-entries — W1 W₂ ON/OFF + G6 ablation + bace rescue + m19 fix stack + pearson readout).
+- **Test:** `molmetal/tests/test_wf375a2_total_entries_count_is_71.py` snapshot regression (closure = next wave ~1 LOC update to expect 94).
 
 ---
 

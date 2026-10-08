@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-08",
+  "model": "dmpnn_v4",
+  "backbone": "dmpnn",
+  "featurization": "dmpnn_atom_bond",
+  "split": "scaffold (Bemis-Murcko, 70/10/20)",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "epochs": 50,
+  "batch_size": 64,
+  "lr": 0.001,
+  "hidden": 300,
+  "depth": 3,
+  "class_weight": "balanced",
+  "dropout": 0.1,
+  "weight_decay": 1e-05,
+  "patience": 20,
+  "tasks": {
+    "bace": {
+      "n_seeds_total": 5,
+      "n_seeds_valid": 5,
+      "test_auc_mean": 0.6804880415259172,
+      "test_auc_std": 0.05600876050964262,
+      "test_pr_auc_mean": 0.6377948796611678,
+      "test_hit_top5_mean": 0.6533333333333333,
+      "per_seed_auc": [
+        0.5863570391872279,
+        0.7354239679577624,
+        0.7400854700854701,
+        0.6654742169095194,
+        0.6750995134896064
+      ],
+      "per_seed_pr_auc": [
+        0.5475838813307573,
+        0.6639090433749886,
+        0.7469589332922262,
+        0.6688640339978118,
+        0.5616585063100552
+      ],
+      "per_seed_hit_top5": [
+        0.4666666666666667,
+        0.8666666666666667,
+        0.9333333333333333,
+        0.6,
+        0.4
+      ],
+      "task": "bace",
+      "backbone": "dmpnn",
+      "chemprop_dmpnn_baseline": 0.876,
+      "chemprop_rf_baseline": 0.868,
+      "elapsed_seconds": 24.936502695083618
+    }
+  },
+  "gate_mean_auc_threshold": 0.8,
+  "chemprop_dmpnn_baseline_mean": 0.876
+}
