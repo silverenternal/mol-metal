@@ -113,18 +113,14 @@ Full 5-metal x 5-seed x 50-epoch GPU-1 run, single-task LOMO-safe (Wf-201)::
         --out-dir molmetal/reports/wf201_single_lomo
 
 NOTE: as of Wf-148 ultracode / TODO-148 §3 the ``--model`` default is
-``chemprop_v2`` (Chemprop 2.0 MPNN backbone).  ``ChempropV2MTModel``
-IS implemented at :mod:`molmetal.models.chemprop_v2_mt_model` (Wf-148
-ship) — selecting it instantiates the class.  The legacy LOMO loop
-in :class:`BalancedLOMORunner.run` still uses DMPNN-only APIs
-(``model(atom_f, bond_f, e_src, e_dst)`` and ``_forward_one_mol``), so
-running with ``--model chemprop_v2`` raises ``NotImplementedError``
-from ``_check_model_compat`` with a TODO-148 §4 loop-migration
-pointer.  Use ``--model v3`` for the legacy D-MPNN baseline until
-that loop is rewritten on the Chemprop v2 forward signature.
-``--model v4`` / ``--model v4pretrain`` remain available as fallback
-choices for appendix use; both also raise NotImplementedError today
-(TODO-145 §4).
+``chemprop_v2`` (Chemprop 2.0 MPNN backbone).  LANE-F wire-in: the LOMO
+loop in :class:`BalancedLOMORunner.run` is now family-agnostic — per batch
+it rebuilds the ``(smiles_list, metal_ids)`` inputs and dispatches via
+``_forward_dispatch``, builds the ctor via ``_model_ctor_kwargs``, predicts
+via ``predict_mt_dispatch`` and extracts W₂ embeds via ``_embed_one_mol``.
+All four ``--model`` choices therefore run end-to-end:
+``chemprop_v2`` / ``v4`` / ``v4pretrain`` (dict contract) and ``v3``
+(DMPNN 4-tensor tuple contract).
 
 Re-uses Wf-123 P1 ``wasserstein_transfer_loss`` (M1) + Wf-127 P2 Hilbert
 L2 grad-norm guard.
@@ -229,7 +225,6 @@ from molmetal.baselines.dmpnn_multitask import (
     MT_LR,
     collate_graphs,
     featurize_smiles_list,
-    predict_mt,
 )
 
 # Wf-201 — single-task driver.  Imports the vanilla D-MPNN (no per-metal
@@ -288,6 +283,213 @@ L2_GUARD_MAX_NORM: float = 5.0
 # Wf-127 P3 — value-space clip on predicted pIC50.
 _ASTR_CLIP_MIN: float = -10.0
 _ASTR_CLIP_MAX: float = 10.0
+
+
+# ---------------------------------------------------------------------------
+# Model-family adapters (LANE-F wire-in).
+#
+# The legacy LOMO loop is written against ``DMPNNMultiTaskModel``'s 4-tensor
+# forward ``(atom_f, bond_f, e_src, e_dst) -> (pic50:(B,), active:(B,2))`` and
+# its per-mol oracle ``_forward_one_mol``.  The V4 / chemprop_v2 families use a
+# DIFFERENT contract:
+#
+#   * ctor kwargs    : ``hidden_dim``/``n_layers`` (V4) vs ``hidden``/``depth``
+#                      (DMPNNMultiTaskModel)
+#   * forward inputs : ``(smiles_list, metal_ids:(B,))`` — SMILES + a per-row
+#                      metal id, NOT the pre-featurized tensors
+#   * forward output : ``dict[metal_name -> (B,2) logits]`` plus a "coord" key
+#                      — NOT a bare ``(pic50, active_logits)`` tuple
+#
+# These helpers let ONE LOMO loop drive all three families without a
+# family-specific code path inside the training body.  See AGENTS.md §5.7:
+# the wire-in is incomplete until a CPU smoke exercises each path.
+# ---------------------------------------------------------------------------
+
+#: Model class names whose forward is the DMPNN 4-tensor tuple contract.
+_TUPLE_FWD_MODELS: frozenset = frozenset({"DMPNNMultiTaskModel"})
+#: Model class names whose forward is the per-metal-dict (smiles, metal_ids) contract.
+_DICT_FWD_MODELS: frozenset = frozenset(
+    {
+        "V4MultiTaskDMPNN",
+        "V4MultiTaskDMPNNPretrain",
+        "ChempropV2MTModel",
+    }
+)
+
+
+def _is_dict_fwd_model(model) -> bool:
+    """True when ``model`` uses the (smiles_list, metal_ids) -> dict contract."""
+    return type(model).__name__ in _DICT_FWD_MODELS
+
+
+def _model_ctor_kwargs(model_cls, hidden: int, depth: int, dropout: float) -> dict:
+    """Map the loop's (hidden, depth, dropout) onto the family's ctor kwargs.
+
+    Verified against the live ctors:
+      * ``DMPNNMultiTaskModel(hidden=, depth=, dropout=)``
+      * ``V4MultiTaskDMPNN(hidden_dim=, n_layers=, ...)``  — NO top-level
+        ``dropout`` (it has ``head_dropout``); passing ``dropout`` raises
+        ``TypeError``.
+      * ``ChempropV2MTModel(hidden_dim=, depth=, dropout=)`` — uses ``depth``
+        (NOT ``n_layers``).
+    """
+    name = getattr(model_cls, "__name__", str(model_cls))
+    if name in ("V4MultiTaskDMPNN", "V4MultiTaskDMPNNPretrain"):
+        return {"hidden_dim": hidden, "n_layers": depth}
+    if name == "ChempropV2MTModel":
+        return {"hidden_dim": hidden, "depth": depth, "dropout": dropout}
+    return {"hidden": hidden, "depth": depth, "dropout": dropout}
+
+
+def _forward_dispatch(
+    model,
+    bd,
+    smiles_batch: List[str],
+    metal_name: str,
+):
+    """Run one forward pass for any of the three model families.
+
+    Returns ``(pic50_pred:(B,), active_logits:(B,2))`` — the exact tuple the
+    legacy loop / :func:`predict_mt` / :class:`MultiTaskLoss` expect.
+
+    * DMPNN family : native ``(atom_f, bond_f, e_src, e_dst) -> (pic50, active)``.
+    * V4 / chemprop: ``(smiles_list, metal_ids) -> dict``; the active metal's
+      head is the LOMO-relevant one.  Its ``(B,2)`` logits are the active
+      contract (CrossEntropyLoss).  The regression pIC50 head does NOT exist on
+      these families, so ``pic50_pred`` is a zero vector — the loop's
+      ``wasserstein_weight``/pIC50-MAE terms are then only meaningful on the
+      DMPNN path (documented honest-negative, not a silent fabrication).
+    """
+    if _is_dict_fwd_model(model):
+        import torch as _torch
+
+        name = type(model).__name__
+        metals = list(getattr(model, "metals", ()))
+        if metal_name not in metals:
+            raise NotImplementedError(
+                f"{name} was constructed for metals={metals}; the LOMO fold's "
+                f"active metal {metal_name!r} is not among them.  Pass "
+                f"--metals within {metals} (the V4/chemprop metal-head set)."
+            )
+        metal_ids = _torch.full(
+            (len(smiles_batch),),
+            metals.index(metal_name),
+            dtype=_torch.long,
+            device=next(model.parameters()).device,
+        )
+        out = model(smiles_batch, metal_ids)
+        if not isinstance(out, dict) or metal_name not in out:
+            raise NotImplementedError(
+                f"{name}.forward returned "
+                f"{type(out).__name__}, expected dict with a {metal_name!r} head."
+            )
+        active_logits = out[metal_name]
+        pic50_pred = _torch.zeros(
+            active_logits.size(0),
+            dtype=active_logits.dtype,
+            device=active_logits.device,
+        )
+        return pic50_pred, active_logits
+
+    # DMPNN 4-tensor tuple path.
+    atom_f, bond_f, e_src, e_dst = bd
+    return model(atom_f, bond_f, e_src, e_dst)
+
+
+def _embed_one_mol(model, smiles_b: str, atom_f_b, bond_f_b, e_src_b, e_dst_b):
+    """Per-mol embedding for W₂ extraction, family-agnostic.
+
+    * DMPNN family : ``_forward_one_mol`` (2H pooled).
+    * V4 / chemprop: shared ``encode([smiles])`` -> (1, hidden_dim).
+    """
+    if _is_dict_fwd_model(model):
+        return model.encode([smiles_b])
+    return model._forward_one_mol(atom_f_b, bond_f_b, e_src_b, e_dst_b)
+
+
+@torch.no_grad()
+def predict_mt_dispatch(
+    model,
+    graphs: List,
+    smiles: List[str],
+    pic50_labels: np.ndarray,
+    active_labels: np.ndarray,
+    metal_name: str,
+    batch_size: int = MT_BATCH_SIZE,
+    device: torch.device = torch.device("cpu"),
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Family-agnostic mirror of :func:`predict_mt`.
+
+    Same ``(active_true, active_prob, pic50_pred)`` contract and the same
+    invalid-molecule handling, but routes the forward through
+    :func:`_forward_dispatch` so the V4/chemprop ``(smiles_list, metal_ids)``
+    path works.  ``smiles`` must be index-aligned with ``graphs``.
+    """
+    model.eval()
+    all_active: List[int] = []
+    all_score: List[float] = []
+    all_pic50: List[float] = []
+
+    for start in range(0, len(graphs), batch_size):
+        batch_graphs = graphs[start : start + batch_size]
+        batch_smiles = smiles[start : start + batch_size]
+        batch_pic50 = pic50_labels[start : start + batch_size]
+        batch_active = active_labels[start : start + batch_size]
+
+        valid = [
+            (g, s, p, a)
+            for g, s, p, a in zip(batch_graphs, batch_smiles, batch_pic50, batch_active)
+            if g is not None and not (isinstance(p, float) and np.isnan(p))
+        ]
+        if not valid:
+            for p, a in zip(batch_pic50, batch_active):
+                all_active.append(int(a))
+                all_score.append(0.0)
+                all_pic50.append(0.0)
+            continue
+
+        g_list = [v[0] for v in valid]
+        smiles_batch = [v[1] for v in valid]
+        y_active = np.array([v[3] for v in valid], dtype=np.int64)
+
+        bd = collate_graphs(g_list)
+        if bd is None:
+            for p, a in zip(batch_pic50, batch_active):
+                all_active.append(int(a))
+                all_score.append(0.0)
+                all_pic50.append(0.0)
+            continue
+
+        atom_f, bond_f, e_src, e_dst = bd
+        atom_f = atom_f.to(device)
+        bond_f = bond_f.to(device)
+        e_src = e_src.to(device)
+        e_dst = e_dst.to(device)
+        bd_dev = (atom_f, bond_f, e_src, e_dst)
+
+        pic50_pred, active_logits = _forward_dispatch(
+            model, bd_dev, smiles_batch, metal_name
+        )
+        active_prob = torch.softmax(active_logits, dim=-1)[:, 1].cpu().numpy()
+        pic50_arr = pic50_pred.cpu().numpy()
+
+        vi = 0
+        for g, p, a in zip(batch_graphs, batch_pic50, batch_active):
+            if g is not None and not (isinstance(p, float) and np.isnan(p)):
+                all_active.append(int(y_active[vi]))
+                all_score.append(float(active_prob[vi]))
+                all_pic50.append(float(pic50_arr[vi]))
+                vi += 1
+            else:
+                all_active.append(int(a))
+                all_score.append(0.0)
+                all_pic50.append(0.0)
+
+    return (
+        np.array(all_active, dtype=int),
+        np.array(all_score, dtype=float),
+        np.array(all_pic50, dtype=float),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -585,43 +787,26 @@ class BalancedLOMORunner:
         task_type: str = "multi",
     ) -> None:
         # ------------------------------------------------------------------
-        # P0 #3 — model class switch (Wf-145 P3 / TODO-145 §3.5).
+        # P0 #3 — model class switch (Wf-145 P3 / TODO-145 §3.5, wired by
+        # LANE-F).
         #
-        # The training loop at lines ~400-510 is tightly coupled to
-        # ``DMPNNMultiTaskModel``'s 4-tensor ``(atom_f, bond_f, e_src,
-        # e_dst)`` forward signature and to ``_forward_one_mol`` for
-        # per-metal embedding extraction.  V4 models and the new
-        # ``ChempropV2MTModel`` use a different signature
-        # (``(smiles_list, metal_ids)``) and do not expose
-        # ``_forward_one_mol`` — wiring them through the legacy LOMO
-        # loop would require a substantial refactor.
-        #
-        # To preserve backward compat (default = DMPNNMultiTaskModel)
-        # while exposing the new switch on the CLI, we accept
-        # ``model_cls`` and forward it; non-legacy selections raise
-        # NotImplementedError from the training loop with a clear
-        # migration pointer (TODO-145 §4).  This is the honest framing
-        # required by party-twenty-spirit §3.5.
-        #
-        # Wf-148 ultracode / TODO-148 §3: ``chemprop_v2`` IS the new
-        # CLI default.  ``ChempropV2MTModel`` exists at
-        # :mod:`molmetal.models.chemprop_v2_mt_model` (Wf-148) — we
-        # resolve the class here so the CLI default can be exercised
-        # via ``--model chemprop_v2`` (the model class is instantiated
-        # even though the legacy LOMO loop cannot consume the
-        # (smiles_list, metal_ids) forward signature).  See
-        # ``_check_model_compat`` for the loop-level NotImplementedError
-        # raised at train time.
+        # ``model_cls`` selects the multi-task family.  The training loop is
+        # family-agnostic: per batch it rebuilds the SMILES + metal-id inputs
+        # and routes through the module-level adapters:
+        #   * ``_model_ctor_kwargs``   — hidden/depth vs hidden_dim/n_layers
+        #   * ``_forward_dispatch``    — DMPNN 4-tensor tuple vs
+        #                                (smiles_list, metal_ids) -> dict
+        #   * ``predict_mt_dispatch``  — family-agnostic predict
+        #   * ``_embed_one_mol``       — per-mol W₂ embedding extraction
+        # ``_check_model_compat`` fail-louds on an unknown family only.
         # ------------------------------------------------------------------
         if model_cls is None:
             from molmetal.baselines.dmpnn_multitask import DMPNNMultiTaskModel
 
             model_cls = DMPNNMultiTaskModel
         self._model_cls = model_cls
-        # Wf-148 ultracode — keep the CLI alias (e.g. ``chemprop_v2``)
-        # alongside ``_model_cls`` so ``_check_model_compat`` can raise
-        # NotImplementedError when the alias is not yet implemented,
-        # independent of Python's built-in ``__name__`` semantics.
+        # Wf-148 ultracode — keep the CLI alias (e.g. ``chemprop_v2``) for
+        # diagnostics/logging alongside ``_model_cls``.
         self._model_alias = str(model_alias) if model_alias else None
 
         self.ds = ds
@@ -738,70 +923,39 @@ class BalancedLOMORunner:
     def _check_model_compat(self) -> None:
         """Verify ``self._model_cls`` is supported by the LOMO training loop.
 
-        The loop at lines ~400-510 calls
-        ``model(atom_f, bond_f, e_src, e_dst)`` and
-        ``model._forward_one_mol(atom_f[b], bond_f[b], e_src[b], e_dst[b])``
-        — both of which are DMPNNMultiTaskModel-only APIs.  V4 models
-        (V4MultiTaskDMPNN, V4MultiTaskDMPNNPretrain) use a different
-        signature and do not expose ``_forward_one_mol``.
+        LANE-F wire-in: the loop is now family-agnostic.  Per batch it builds
+        the SMILES list + active metal id and calls :func:`_forward_dispatch`,
+        which routes to the DMPNN 4-tensor tuple path OR the V4/chemprop
+        ``(smiles_list, metal_ids) -> dict`` path.  Per-mol W₂ embedding
+        extraction routes through :func:`_embed_one_mol`.  The ctor is built
+        via :func:`_model_ctor_kwargs`.
 
-        ``ChempropV2MTModel`` (the chemprop_v2 CLI alias) IS instantiated
-        per Wf-148 / TODO-148 §3 — the class lives at
-        :mod:`molmetal.models.chemprop_v2_mt_model`.  However the legacy
-        LOMO loop still calls DMPNN-only APIs, so the chemprop_v2 path
-        is reserved for verification (the class can be instantiated and
-        forward-pass smoke-tested) but ``runner.run()`` raises a
-        NotImplementedError when the loop tries to use the legacy
-        signature.
-
-        We surface a clear NotImplementedError with a TODO pointer
-        instead of silently falling back so the operator immediately
-        sees the mismatch and can switch back to the legacy baseline.
+        All three families are therefore supported:
+        ``DMPNNMultiTaskModel`` (``--model v3``), ``V4MultiTaskDMPNN`` /
+        ``V4MultiTaskDMPNNPretrain`` (``--model v4|v4pretrain``) and
+        ``ChempropV2MTModel`` (``--model chemprop_v2``).
 
         Wf-201: in ``--task-type single`` mode the loop bypasses the
-        multi-task forward signature entirely (see ``_run_single_task``)
-        and uses the vanilla :class:`DMPNNModel` + ``train_epoch`` /
-        ``predict`` from :mod:`molmetal.baselines.dmpnn`.  In that case
-        ``self._model_cls`` is ignored and the compatibility check is
-        skipped.
+        multi-task forward entirely (see ``_run_single_task``) and uses the
+        vanilla :class:`DMPNNModel`; ``self._model_cls`` is ignored, so the
+        compatibility check is skipped.
         """
         # Wf-201 — single-task driver bypasses the multi-task compat
-        # check (the loop calls vanilla DMPNN APIs, not
-        # DMPNNMultiTaskModel APIs).
+        # check (the loop calls vanilla DMPNN APIs, not the multi-task
+        # family's APIs).
         if self.task_type == "single":
             return
         cls_name = getattr(self._model_cls, "__name__", str(self._model_cls))
-        if cls_name in ("V4MultiTaskDMPNN", "V4MultiTaskDMPNNPretrain"):
-            raise NotImplementedError(
-                f"--model {cls_name} is NOT yet wired into "
-                "train_metal_lomo_v2.BalancedLOMORunner.run() — the "
-                "LOMO loop calls model(atom_f, bond_f, e_src, e_dst) and "
-                "model._forward_one_mol(...), which are DMPNNMultiTaskModel-"
-                "specific APIs.  V4 models use the (smiles_list, metal_ids) "
-                "forward signature and do not expose _forward_one_mol.  "
-                "Migration plan: TODO-145 §4 (rewrite LOMO loop on V4 "
-                "encoder API).  Falling back to DMPNNMultiTaskModel — "
-                "re-run without --model v4|v4pretrain."
-            )
-        # Wf-148 ultracode — chemprop_v2 IS implemented (ChempropV2MTModel
-        # at molmetal/models/chemprop_v2_mt_model.py).  When the user
-        # selects ``--model chemprop_v2`` we resolve the class to
-        # ``ChempropV2MTModel`` in main(); the legacy LOMO loop still
-        # uses DMPNN-only APIs, so we raise a clearer NotImplementedError
-        # that distinguishes "class not implemented" (FIXED in Wf-148)
-        # from "loop not yet wired" (TODO-148 §4).
-        if self._model_alias == "chemprop_v2" or cls_name == "ChempropV2MTModel":
-            raise NotImplementedError(
-                "--model chemprop_v2 → ChempropV2MTModel IS instantiated "
-                "(molmetal/models/chemprop_v2_mt_model.py) but the legacy "
-                "LOMO loop in BalancedLOMORunner.run() still calls the "
-                "DMPNN-only APIs ``model(atom_f, bond_f, e_src, e_dst)`` "
-                "and ``model._forward_one_mol(...)``.  ChempropV2MTModel "
-                "exposes ``model(smiles_list, metal_ids)`` only.  "
-                "Migration plan: TODO-148 §4 (rewrite LOMO loop on the "
-                "Chemprop v2 forward signature).  Re-run with --model v3 "
-                "for the legacy DMPNNMultiTaskModel baseline."
-            )
+        if cls_name in _TUPLE_FWD_MODELS or cls_name in _DICT_FWD_MODELS:
+            return
+        # Fail loud on an unknown family rather than silently mis-dispatching.
+        raise NotImplementedError(
+            f"--model resolved to {cls_name}, which is not a recognised "
+            "multi-task family.  Supported: "
+            f"{sorted(_TUPLE_FWD_MODELS | _DICT_FWD_MODELS)}.  See "
+            "train_metal_lomo_v2._forward_dispatch for the two contracts "
+            "(DMPNN 4-tensor tuple vs (smiles_list, metal_ids) -> dict)."
+        )
 
     # ------------------------------------------------------------------
     def run(self, verbose: bool = False) -> BalancedLOMOResult:
@@ -858,6 +1012,10 @@ class BalancedLOMORunner:
         graphs_train = [graphs_all[i] for i in train_idx]
         graphs_val = [graphs_all[i] for i in val_idx] if len(val_idx) else []
         graphs_test = [graphs_all[i] for i in test_idx]
+        # LANE-F — SMILES index-aligned with the val/test graph lists, for the
+        # V4/chemprop predict path (those families take SMILES, not tensors).
+        smiles_val = [str(smiles_all[i]) for i in val_idx] if len(val_idx) else []
+        smiles_test = [str(smiles_all[i]) for i in test_idx]
         pic50_train = pic50_all[train_idx]
         pic50_val = (
             pic50_all[val_idx] if len(val_idx) else np.array([], dtype=np.float32)
@@ -885,9 +1043,9 @@ class BalancedLOMORunner:
         )
 
         model = self._model_cls(
-            hidden=self.hidden,
-            depth=self.depth,
-            dropout=self.dropout,
+            **_model_ctor_kwargs(
+                self._model_cls, self.hidden, self.depth, self.dropout
+            )
         ).to(self.device)
         optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
         # Wf-187 m19 Rh oversample fix — wire pos_weight into MultiTaskLoss
@@ -902,9 +1060,16 @@ class BalancedLOMORunner:
         w2_history: List[float] = []
 
         # Combined training pool: real (non-held-out) + synthetic balanced Rh.
-        all_train_graphs = list(graphs_train) + [
-            g for g in synth_graphs if g is not None
+        # LANE-F — keep an ``all_train_smiles`` list in lockstep with
+        # ``all_train_graphs`` so the V4/chemprop forward can rebuild the
+        # ``(smiles_list, metal_ids)`` batch (those families re-featurize
+        # SMILES internally; the loop only carries graph tensors).
+        _train_smiles_real = [str(smiles_all[i]) for i in train_idx]
+        _synth_pairs = [
+            (str(s), g) for s, g in zip(synth_smis, synth_graphs) if g is not None
         ]
+        all_train_graphs = list(graphs_train) + [g for _, g in _synth_pairs]
+        all_train_smiles = list(_train_smiles_real) + [s for s, _ in _synth_pairs]
         all_train_pic50 = np.concatenate(
             [pic50_train, synth_pic50[: len(all_train_graphs) - len(graphs_train)]]
         )
@@ -946,6 +1111,7 @@ class BalancedLOMORunner:
                 for g in appended_graphs:
                     if g is not None:
                         all_train_graphs.append(g)
+                all_train_smiles = [str(s) for s in os_smiles]
                 all_train_active = np.asarray(os_active, dtype=np.int64)
                 all_train_metals = np.asarray(os_metals, dtype=object)
                 all_train_pic50 = np.asarray(os_pic50, dtype=np.float32)
@@ -969,7 +1135,10 @@ class BalancedLOMORunner:
                 epoch % 5 == 0 or epoch == self.epochs - 1
             ):
                 train_embeds = self._extract_per_metal_embeds(
-                    model, all_train_graphs, all_train_metals
+                    model,
+                    all_train_graphs,
+                    all_train_metals,
+                    smiles=all_train_smiles,
                 )
                 if len(train_embeds) >= 2:
                     w2_loss_t = self.wasserstein_weight * wasserstein_transfer_loss(
@@ -985,18 +1154,22 @@ class BalancedLOMORunner:
             for start in range(0, len(indices), self.batch_size):
                 batch_idx = indices[start : start + self.batch_size]
                 batch_graphs = [all_train_graphs[i] for i in batch_idx]
+                batch_smiles = [all_train_smiles[i] for i in batch_idx]
                 batch_pic50 = all_train_pic50[batch_idx]
                 batch_active = all_train_active[batch_idx]
                 valid = [
-                    (g, p, a)
-                    for g, p, a in zip(batch_graphs, batch_pic50, batch_active)
+                    (g, s, p, a)
+                    for g, s, p, a in zip(
+                        batch_graphs, batch_smiles, batch_pic50, batch_active
+                    )
                     if g is not None and not (isinstance(p, float) and np.isnan(p))
                 ]
                 if not valid:
                     continue
                 g_list = [v[0] for v in valid]
-                y_pic50 = np.array([v[1] for v in valid], dtype=np.float32)
-                y_active = np.array([v[2] for v in valid], dtype=np.int64)
+                smiles_batch = [v[1] for v in valid]
+                y_pic50 = np.array([v[2] for v in valid], dtype=np.float32)
+                y_active = np.array([v[3] for v in valid], dtype=np.int64)
                 bd = collate_graphs(g_list)
                 if bd is None:
                     continue
@@ -1005,17 +1178,23 @@ class BalancedLOMORunner:
                 bond_f = bond_f.to(self.device)
                 e_src = e_src.to(self.device)
                 e_dst = e_dst.to(self.device)
+                bd_dev = (atom_f, bond_f, e_src, e_dst)
                 y_pic50_t = torch.from_numpy(y_pic50).to(self.device)
                 y_active_t = torch.from_numpy(y_active).to(self.device)
 
                 optimizer.zero_grad()
                 # P1 Fix — wrap forward in BF16 autocast when requested
                 # AND CUDA is the device.  CPU always runs FP32.
+                # LANE-F — family-agnostic dispatch (tuple vs dict path).
                 if self._use_bf16:
                     with torch.amp.autocast("cuda", dtype=torch.bfloat16):
-                        pic50_pred, active_logits = model(atom_f, bond_f, e_src, e_dst)
+                        pic50_pred, active_logits = _forward_dispatch(
+                            model, bd_dev, smiles_batch, self.held_out_metal
+                        )
                 else:
-                    pic50_pred, active_logits = model(atom_f, bond_f, e_src, e_dst)
+                    pic50_pred, active_logits = _forward_dispatch(
+                        model, bd_dev, smiles_batch, self.held_out_metal
+                    )
                 loss, _, _ = criterion(pic50_pred, active_logits, y_pic50_t, y_active_t)
                 # Always cast loss to FP32 before backward for numerical
                 # stability (BF16 autocast leaves loss in BF16).
@@ -1038,11 +1217,13 @@ class BalancedLOMORunner:
 
             # validation
             if len(graphs_val) >= 2:
-                _, val_score, _ = predict_mt(
+                _, val_score, _ = predict_mt_dispatch(
                     model,
                     graphs_val,
+                    smiles_val,
                     pic50_val,
                     active_val,
+                    metal_name=self.held_out_metal,
                     batch_size=self.batch_size,
                     device=self.device,
                 )
@@ -1056,7 +1237,10 @@ class BalancedLOMORunner:
                 epoch % 5 == 0 or epoch == self.epochs - 1
             ):
                 train_embeds = self._extract_per_metal_embeds(
-                    model, all_train_graphs, all_train_metals
+                    model,
+                    all_train_graphs,
+                    all_train_metals,
+                    smiles=all_train_smiles,
                 )
                 if len(train_embeds) >= 2:
                     with torch.no_grad():
@@ -1089,11 +1273,13 @@ class BalancedLOMORunner:
             model.load_state_dict(best_state)
 
         # final test
-        _, test_score, test_pic50_pred = predict_mt(
+        _, test_score, test_pic50_pred = predict_mt_dispatch(
             model,
             graphs_test,
+            smiles_test,
             pic50_test,
             active_test,
+            metal_name=self.held_out_metal,
             batch_size=self.batch_size,
             device=self.device,
         )
@@ -1108,7 +1294,10 @@ class BalancedLOMORunner:
 
         # final per-metal W₂
         train_embeds = self._extract_per_metal_embeds(
-            model, all_train_graphs, all_train_metals
+            model,
+            all_train_graphs,
+            all_train_metals,
+            smiles=all_train_smiles,
         )
         per_metal_w2: Dict[str, float] = {}
         keys = list(train_embeds.keys())
@@ -1164,11 +1353,16 @@ class BalancedLOMORunner:
         model,
         graphs: List,
         metals: np.ndarray,
+        smiles: Optional[List[str]] = None,
         max_per_metal: int = 80,
     ) -> Dict[str, torch.Tensor]:
-        """Per-metal 2H-dim embedding extraction (mirrors Wf-125 P2 helper).
+        """Per-metal embedding extraction (mirrors Wf-125 P2 helper).
 
-        Returns dict ``metal -> (N, 2H)`` for every metal with >= 1 sample.
+        Returns dict ``metal -> (N, D)`` for every metal with >= 1 sample.
+        For the DMPNN family ``D == 2H`` (``_forward_one_mol`` oracle); for
+        V4/chemprop ``D == hidden_dim`` (shared ``encode``).  ``smiles`` must
+        be index-aligned with ``graphs`` and is REQUIRED for the dict-fwd
+        families (they re-featurize SMILES internally).
         """
         valid_idx = [i for i, g in enumerate(graphs) if g is not None]
         per_metal: Dict[str, List[int]] = {}
@@ -1187,6 +1381,14 @@ class BalancedLOMORunner:
                 sampled_metals.append(m)
         if not sampled_idx:
             return {}
+
+        use_dict_fwd = _is_dict_fwd_model(model)
+        if use_dict_fwd and smiles is None:
+            raise NotImplementedError(
+                f"{type(model).__name__} uses the (smiles_list, metal_ids) "
+                "contract; _extract_per_metal_embeds requires the index-aligned "
+                "`smiles` list to encode.  The LOMO loop passes it for this family."
+            )
 
         out_embeds: Dict[str, List[torch.Tensor]] = {}
         batch_size = max(1, self.batch_size)
@@ -1212,9 +1414,19 @@ class BalancedLOMORunner:
                 E = valid_edges.sum().item()
                 if E == 0 or V == 0:
                     continue
-                pooled = model._forward_one_mol(
-                    atom_f[b, :V], bond_f[b, :E], e_src[b, :E], e_dst[b, :E]
-                )
+                if use_dict_fwd:
+                    pooled = _embed_one_mol(
+                        model, str(smiles[batch_idx[b]]), None, None, None, None
+                    )
+                else:
+                    pooled = _embed_one_mol(
+                        model,
+                        "",
+                        atom_f[b, :V],
+                        bond_f[b, :E],
+                        e_src[b, :E],
+                        e_dst[b, :E],
+                    )
                 out_embeds.setdefault(batch_metas[b], []).append(pooled.detach().cpu())
 
         return {m: torch.stack(v, dim=0) for m, v in out_embeds.items() if v}
@@ -1623,37 +1835,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     # ------------------------------------------------------------------
     # P0 #3 — Model class switch (Wf-145 P3 / TODO-145 §3.5, updated
-    # by Wf-148 ultracode / TODO-148 §3).
+    # by Wf-148 ultracode / TODO-148 §3, wired by LANE-F).
     #
-    # --model    Select which multi-task D-MPNN class is instantiated
-    #            by :class:`BalancedLOMORunner`.  Mirrors the same
-    #            switch in train_dmpnn_multitask.py.
+    # --model    Select which multi-task class is instantiated by
+    #            :class:`BalancedLOMORunner`.  ALL choices run end-to-end:
+    #            the loop dispatches per batch via ``_forward_dispatch``.
     #
     # Choices:
-    #   * "chemprop_v2"  Chemprop v2 MPNN backbone (NEW DEFAULT per
-    #                   Wf-148 ultracode / TODO-148 §3).  Yang et al.
-    #                   2019 + Chemprop 2.0 message passing.  NOT YET
-    #                   IMPLEMENTED in molmetal.baselines — selecting
-    #                   this raises NotImplementedError from
-    #                   ``_check_model_compat`` with a TODO-148 §4
-    #                   migration pointer.  Honest framing per
-    #                   party-twenty-spirit §3.5.
-    #   * "v3"          DMPNNMultiTaskModel (legacy default).  Dual-
-    #                   head multi-task baseline; uses the 4-tensor
-    #                   forward signature
-    #                   ``(atom_f, bond_f, e_src, e_dst)``.  Use this
-    #                   for backward-compatible runs until chemprop_v2
-    #                   is wired in.
-    #   * "v4"          V4MultiTaskDMPNN (NOT yet wired into this loop;
-    #                   raises NotImplementedError with migration
-    #                   pointer — see _check_model_compat).  Kept as a
-    #                   fallback choice for appendix experiments.
-    #   * "v4pretrain"  V4MultiTaskDMPNNPretrain (same — not yet wired).
+    #   * "chemprop_v2"  Chemprop v2 MPNN backbone (default).  Uses the
+    #                   ``(smiles_list, metal_ids) -> dict`` contract.
+    #   * "v3"          DMPNNMultiTaskModel (legacy).  Dual-head 4-tensor
+    #                   ``(atom_f, bond_f, e_src, e_dst)`` contract.
+    #   * "v4"          V4MultiTaskDMPNN — ``(smiles_list, metal_ids)``.
+    #   * "v4pretrain"  V4MultiTaskDMPNNPretrain — same contract.
     #
-    # Backward compat: ``--model v3`` still maps to
-    # DMPNNMultiTaskModel, preserving the previous default behaviour.
-    # ``--model v4`` and ``--model v4pretrain`` remain available for
-    # appendix use; both raise NotImplementedError today.
+    # Backward compat: ``--model v3`` maps to DMPNNMultiTaskModel,
+    # preserving the previous default behaviour.
     # ------------------------------------------------------------------
     parser.add_argument(
         "--model",
@@ -1661,12 +1858,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         default="chemprop_v2",
         help=(
             "Multi-task model class (default: chemprop_v2 → "
-            "ChempropV2MTModel, NOT YET IMPLEMENTED — selecting it raises "
-            "NotImplementedError with a TODO-148 §4 migration pointer; "
-            "use --model v3 for the legacy DMPNNMultiTaskModel baseline).  "
-            "'v4' and 'v4pretrain' are kept as fallback choices for "
-            "appendix use; both also raise NotImplementedError today "
-            "(see TODO-145 §4)."
+            "ChempropV2MTModel).  All four choices are wired into the LOMO "
+            "loop: 'v3' → DMPNNMultiTaskModel (4-tensor tuple forward); "
+            "'v4'/'v4pretrain' → V4MultiTaskDMPNN(Pretrain); 'chemprop_v2' → "
+            "ChempropV2MTModel (both use the (smiles_list, metal_ids) → dict "
+            "forward)."
         ),
     )
     # ------------------------------------------------------------------
@@ -1766,12 +1962,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     # "chemprop_v2" is the new default (Wf-148 ultracode / TODO-148
     # §3).  The class ``ChempropV2MTModel`` lives at
     # :mod:`molmetal.models.chemprop_v2_mt_model` (Wf-148 ship).
-    # Selecting it instantiates the class; the legacy LOMO loop still
-    # raises NotImplementedError from ``_check_model_compat`` because
-    # the loop uses DMPNN-only APIs (TODO-148 §4).  This preserves the
-    # "explicit failure over silent fallback" contract used for the V4
-    # wiring, while making the chemprop_v2 instantiation real (not a
-    # stub).
+    # Selecting it instantiates the class.  LANE-F wire-in: the LOMO loop
+    # is now family-agnostic (``_forward_dispatch`` + ``_model_ctor_kwargs``
+    # + ``predict_mt_dispatch`` + ``_embed_one_mol``), so all four --model
+    # choices run end-to-end.
     # ------------------------------------------------------------------
     model_cls = None  # default → DMPNNMultiTaskModel (set inside runner)
     if args.model in ("v4", "v4pretrain"):
@@ -1785,8 +1979,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             else _v4_mod.V4MultiTaskDMPNN
         )
         logger.info(
-            "[wf145_p2] --model=%s → %s (NOT YET WIRED — "
-            "runner.run() will raise NotImplementedError; see TODO-145 §4)",
+            "[wf145_p2] --model=%s → %s (LANE-F wired — "
+            "LOMO loop dispatches on the (smiles_list, metal_ids) contract)",
             args.model,
             model_cls.__name__,
         )
@@ -1802,10 +1996,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         model_cls = ChempropV2MTModel
         logger.info(
             "[wf145_p2] --model=chemprop_v2 → ChempropV2MTModel "
-            "(IS INSTANTIATED; runner.run() will raise "
-            "NotImplementedError via _check_model_compat because the "
-            "legacy LOMO loop uses DMPNN-only APIs; see TODO-148 §4 "
-            "for the loop migration).",
+            "(LANE-F wired — LOMO loop dispatches on the "
+            "(smiles_list, metal_ids) contract)",
         )
     # P1 Fix — log the new flags so the operator can see the wiring
     # even before training starts.
