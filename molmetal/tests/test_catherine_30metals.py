@@ -250,3 +250,37 @@ def test_bench_closure_dblock_constants_unchanged():
         from bench_closure_dblock import TASK_SPEC_METALS  # type: ignore
     expected = ("Pt", "Ru", "Ir", "Rh", "Re", "Os", "Au", "Pd", "Ag")
     assert TASK_SPEC_METALS == expected
+
+
+# ---------------------------------------------------------------------------
+# Regression — the verifier must be called with (metal, summary), not
+# (metal, max_depth=..., ...)  (2026-10-08 fix)
+# ---------------------------------------------------------------------------
+def test_smoke_reports_real_six_of_six_not_kwargs_typeerror():
+    """Regression for the 2026-10-08 fix.
+
+    Before the fix ``_run_bench_one_metal`` called
+    ``verify_all_catherine_properties(metal=..., max_depth=..., ...)`` but the
+    verifier signature is ``(metal, summary)`` — so every metal raised
+    TypeError and the bench reported a FALSE 0/6 (0/18 properties).  The smoke
+    banner said PASS because the tests only checked rc + the "ran on N metals"
+    line, never the verdict.  This test pins the real result.
+    """
+    out = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "molmetal.scripts.bench_catherine_30metals",
+            "--smoke",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert out.returncode == 0, f"rc={out.returncode}\n{out.stdout}\n{out.stderr}"
+    # The 3-metal smoke cohort must pass 6/6 each => 3/3 metals, 18/18 props.
+    assert "6/6 PASS                 : 3 / 3" in out.stdout, out.stdout
+    assert "total properties PASS    : 18 / 18" in out.stdout, out.stdout
+    # And the per-metal error field must be absent (the TypeError fingerprint).
+    assert "unexpected keyword argument 'max_depth'" not in out.stdout, out.stdout

@@ -176,13 +176,25 @@ def _run_bench_one_metal(
         from molmetal.math_skills.catherine_properties import (
             verify_all_catherine_properties,
         )
+        # 2026-10-08 fix: the verifier signature is (metal, summary).  The
+        # original code passed max_depth/n_partners/seed kwargs, which raised
+        # TypeError for EVERY metal and produced a false 0/6 verdict.  Build a
+        # real per-metal summary by reusing the proven closure-run helpers from
+        # the 25-metals bench, then hand it to the verifier as ``summary=``.
+        from molmetal.scripts.bench_catherine_6_props_25metals import (
+            _load_partner_terms,
+            _run_closure_for_metal,
+        )
 
-        verdict = verify_all_catherine_properties(
-            metal=metal,
+        partner_terms = _load_partner_terms()[: max(1, int(n_partners))]
+        summary = _run_closure_for_metal(
+            metal,
             max_depth=int(max_depth),
-            n_partners=int(n_partners),
+            max_products=64,
+            partner_terms=partner_terms,
             seed=int(seed),
         )
+        verdict = verify_all_catherine_properties(metal=metal, summary=summary)
     except Exception as exc:  # pragma: no cover - defensive
         return {
             "metal": metal,
