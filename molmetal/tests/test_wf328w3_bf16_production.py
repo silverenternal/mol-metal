@@ -353,3 +353,51 @@ def test_integration_with_trainer():
         assert expected_keys.issubset(
             set(state.keys())
         ), f"configure_bf16 missing keys: {expected_keys - set(state.keys())}"
+
+
+# ---------------------------------------------------------------------------
+# Test 3 (AGENTS.md §5.7) — end-to-end smoke: the compute flags reach the
+# live trainer.  Tests 1-2 pin the helpers/parser only; a flag can be
+# declared + unit-tested yet never consumed by the epoch loop (the FLAG_ONLY
+# regression §5.7 exists to catch).  This runs the production trainer for
+# 1 epoch on a tiny CPU slice with the flags toggled and asserts the
+# [compute] banner reflects the requested state.
+# ---------------------------------------------------------------------------
+import os  # noqa: E402
+import subprocess  # noqa: E402
+
+TRAINER = PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
+DATA_DIR = PROJECT_ROOT / ".data" / "molmetal"
+VENV_PY = PROJECT_ROOT / ".venv" / "bin" / "python"
+
+
+def _run_trainer(tmp_path: Path, *flags: str) -> str:
+    env = dict(os.environ)
+    env["MOLMETAL_DATA_DIR"] = str(DATA_DIR)
+    proc = subprocess.run(
+        [
+            str(VENV_PY), str(TRAINER),
+            "--metals", "Ru", "--seeds", "0", "--epochs", "1",
+            "--max-joint-rows", "128",
+            "--cpu-num-workers", "0", "--device", "cpu",
+            *flags,
+            "--out-dir", str(tmp_path),
+        ],
+        capture_output=True, text=True, env=env, timeout=1800,
+    )
+    assert proc.returncode == 0, proc.stdout[-3000:] + proc.stderr[-3000:]
+    return proc.stdout + proc.stderr
+
+
+def test_bf16_tf32_flags_reach_trainer(tmp_path: Path):
+    """ON banner shows ENABLED; OFF banner shows DISABLED."""
+    on = _run_trainer(
+        tmp_path / "on", "--bf16", "--tf32", "--no-torch-compile"
+    )
+    assert "--tf32 ENABLED" in on, on[-2000:]
+    assert "requested=True apply=False" in on, on[-2000:]  # CPU: no autocast
+    off = _run_trainer(
+        tmp_path / "off", "--no-bf16", "--no-tf32", "--no-torch-compile"
+    )
+    assert "--tf32 DISABLED" in off, off[-2000:]
+    assert "requested=False apply=False" in off, off[-2000:]
