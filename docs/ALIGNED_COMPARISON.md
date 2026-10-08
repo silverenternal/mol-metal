@@ -17,11 +17,12 @@ protocol + same metric 才 comparable."*
 - **Protocol-aligned (same dataset+task+metric) — competitive or winning:** m1 Ru AUC (paper-protocol
   replication 0.7717 vs Krasnov 0.810, cross-cohort), m21 NCI-60 9-cell (0.8007 vs 0.81), Krasnov-aligned
   chemprop 3-metal (0.7812), m15 RMSD (0.6578 Å, 5/5 pass 2.0 Å), decode_ratio (0.998), n_distinct (20 vs
-  gate 3), RDKit validity (1.000), m1 vs our own single-task baseline (+0.049), MoleculeNet mean 0.8161
-  (D-MPNN backbone, passes the 0.80 gate).
-- **Protocol-aligned — genuinely behind:** MoleculeNet clintox (0.8398 vs chemprop-D-MPNN 0.894, −0.054),
-  hiv (0.7832 vs 0.823, −0.040), bbbp (0.9003 vs 0.940, −0.040), bace (0.7412 vs 0.876, honest-negative),
-  m19 LOMO real-only (0.5575 vs target 0.70; 0.5845 with per-metal centering).
+  gate 3), RDKit validity (1.000), m1 vs our own single-task baseline (+0.049), MoleculeNet mean 0.8149
+  (D-MPNN backbone, 5-seed, passes the 0.80 gate).
+- **Protocol-aligned — genuinely behind:** MoleculeNet clintox (0.8209 vs chemprop-D-MPNN 0.894, −0.073),
+  hiv (0.7900 vs 0.823, −0.033), bbbp (0.9065 vs 0.940, −0.034), bace (0.7421 vs 0.876, −0.134 — a real
+  architecture-level miss, not seed noise), m19 LOMO real-only (0.5575 vs target 0.70; 0.5845 with
+  per-metal centering).
 - **Readout finding, NOT a feature gap:** pearson r pIC50 — the bottleneck is the neural head, not the
   multi-task α (3-seed ridge probe on the frozen encoder embedding 0.403 ± 0.004 vs head 0.198 ± 0.023;
   we already beat the same-split Morgan ridge 0.3232). A random encoder scores nearly as well (0.378),
@@ -56,16 +57,18 @@ cell lines). It is a cross-cohort estimate, labelled as such, not a reproduction
 
 | Metric | Ours (MEASURED) | Baseline (same protocol) | Gap | Source JSON |
 |---|---|---|---|---|
-| **MoleculeNet clintox** | 0.7016 (Morgan-MLP) → **0.8398** (D-MPNN) | chemprop D-MPNN **0.894** | −0.192 → **−0.054** | `moleculenet_auc.json::tasks.clintox` / `moleculenet_auc_dmpnn.json::tasks.clintox` |
-| **MoleculeNet hiv** | 0.7470 → **0.7832** (D-MPNN) | chemprop D-MPNN **0.823** | −0.076 → **−0.040** | `moleculenet_auc_dmpnn.json::tasks.hiv` |
-| **MoleculeNet bbbp** | 0.8720 → **0.9003** (D-MPNN) | chemprop D-MPNN **0.940** | −0.068 → **−0.040** | `moleculenet_auc_dmpnn.json::tasks.bbbp` |
-| **MoleculeNet bace** | 0.8609 → 0.7412 (D-MPNN) | chemprop D-MPNN 0.876 | **−0.135** (D-MPNN worse; std 0.069 — likely seed variance, 5-seed rerun pending) | `moleculenet_auc_dmpnn.json::tasks.bace` |
+| **MoleculeNet clintox** | 0.7016 (Morgan-MLP) → **0.8209 ± 0.0122** (D-MPNN, 5-seed) | chemprop D-MPNN **0.894** | −0.192 → **−0.073** | `moleculenet_auc.json::tasks.clintox` / `moleculenet_auc_dmpnn_5seed.json::tasks.clintox` |
+| **MoleculeNet hiv** | 0.7470 → **0.7900 ± 0.0109** (D-MPNN, 5-seed) | chemprop D-MPNN **0.823** | −0.076 → **−0.033** | `moleculenet_auc_dmpnn_5seed.json::tasks.hiv` |
+| **MoleculeNet bbbp** | 0.8720 → **0.9065 ± 0.0227** (D-MPNN, 5-seed) | chemprop D-MPNN **0.940** | −0.068 → **−0.034** | `moleculenet_auc_dmpnn_5seed.json::tasks.bbbp` |
+| **MoleculeNet bace** | 0.8609 → **0.7421 ± 0.0446** (D-MPNN, 5-seed) | chemprop D-MPNN 0.876 | **−0.134** (D-MPNN worse; 5-seed std 0.045 — a REAL regression, not seed noise) | `moleculenet_auc_dmpnn_5seed.json::tasks.bace` |
 | **m19 LOMO (real-only)** | 0.5575 (0.5845 w/ per-metal centering) | target 0.70 | −0.14 (−0.116) | `metal_lomo_auc_wasserstein.json` |
 
 **Caveat on MoleculeNet:** the original run was **Morgan-FP + MLP** (`morgan_fp_2048_r2`); the aligned
-D-MPNN backbone (same Bemis-Murcko scaffold split, same ROC-AUC) closes most of the gap — mean 0.7954 →
-**0.8161**, passing the 0.80 gate. The residual clintox/bbbp gap (−0.054 / −0.040) is now tuning, not
-architecture. `bace` regressed under D-MPNN and is reported as an honest-negative (3-seed std 0.069).
+D-MPNN backbone (same Bemis-Murcko scaffold split, same ROC-AUC) closes most of the gap — Morgan mean
+0.7954 → D-MPNN **0.8149** (5-seed; 3-seed was 0.8161), passing the 0.80 gate. The residual clintox
+(−0.073) / hiv (−0.033) / bbbp (−0.034) gaps are now tuning, not architecture. **`bace` is the one real
+architecture-level miss**: 5 seeds give 0.7421 ± 0.0446 (tightening the 3-seed ± 0.0687 without moving the
+mean), so the −0.134 vs chemprop is a genuine D-MPNN regression and is reported as an honest-negative.
 **Caveat on m19:** the older 0.7577 was half-synthetic (500 fabricated Rh rows); the real-only 25-run
 value is 0.5575 and is the honest number. Per-metal pIC50 centering lifts the real-only aggregate to
 0.5845 ± 0.0764 (inside noise) but moves the worst fold **Rh 0.3812 → 0.5022** decisively.
