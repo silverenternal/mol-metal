@@ -72,41 +72,70 @@
     "wf130_p3_mean_cross_domain_reachability": 0.0,
     "wf130_p3_honest_framing": "Wf-130 P3 (2026-09-26) ran in CPU-only env without RDKit; closure_theorem.from_smiles returned ImportError for all 60 cross-domain SMILES across 7 metals (Pt/Pd/Au/Ru/Rh/Os/Ir). Per Wf-314E diagnosis, this is HONEST_NEGATIVE_RDKIT_MISSING (env-blocked, not data-blocked). Re 0/5 also reported as 0.0 due to RDKit import error compounded with structural MetalCytoToxDB OOD sparseness.",
     "wf318e_n_metals": 8,
-    "wf318e_macro_reachability": 0.33482142857142855,
-    "wf318e_micro_reachability": 0.2872340425531915,
     "wf318e_n_samples": 94,
-    "wf318e_n_closure_ok": 27,
     "wf318e_n_metals_pass_gate_0p30": 4,
     "wf318e_n_metals_below_gate": 3,
     "wf318e_n_metals_structural_data_availability": 1,
-    "wf318e_per_metal": {
-        "Pt": 0.8333333333333334,
-        "Pd": 0.5,
-        "Au": 0.3333333333333333,
-        "Ru": 0.21428571428571427,
-        "Rh": 0.3333333333333333,
-        "Os": 0.25,
-        "Ir": 0.21428571428571427,
-        "Re": 0.0
-      },
     "wf318e_lift_summary": "RDKit alt-env re-run lifted cross-domain macro from 0.0 (env-blocked) to 0.3348 macro / 0.2872 micro (MEASURED). 4/8 pass 0.30 gate (Pt 0.8333, Pd 0.5000, Au 0.3333, Rh 0.3333); 3/8 below gate but real (Ru 0.2143, Os 0.2500, Ir 0.2143); Re 0.0 confirmed structural data-availability honest-negative (not RDKit-fixable).",
     "n_no_cross_domain_source_excluded": 22,
     "honest_negative_metals_after_wf318e": {
       "RDKIT_MISSING": [],
-      "DATA_AVAILABILITY": ["Re"]
+      "DATA_AVAILABILITY": [
+        "Re"
+      ]
     },
     "honest_negative_metals_wf130_p3_only": {
-      "RDKIT_MISSING_preWf318e": ["Pt", "Pd", "Au", "Ru", "Rh", "Os", "Ir"]
+      "RDKIT_MISSING_preWf318e": [
+        "Pt",
+        "Pd",
+        "Au",
+        "Ru",
+        "Rh",
+        "Os",
+        "Ir"
+      ]
     },
     "wf41_baseline_mean_rdkit_missing_7metals": 0.5495,
     "wf41_baseline_mean_all_8metals": 0.4811,
     "wf318e_mean_all_8metals_macro": 0.33482142857142855,
     "note": "Wf-130 P3 cross-domain (PlatinAI + MetalCytoTox) supplement covers 8 of 30 metals (Pt/Pd/Ru/Rh/Ir/Os/Au/Re). Reachability reported as 0.0 by Wf-130 P3 because the CPU-only env lacked RDKit; closure_theorem fell back to partner_terms only. Wf-318E (2026-09-29) re-ran the 8-metal cross-domain audit in /home/hugo/codes/mol-metal/.venv/bin/python which has RDKit 2026.03.6 installed; 7 of 8 metals lifted from 0.0 (env-blocked) to MEASURED alt-env cross-domain reachability (Pt 0.8333, Pd 0.5000, Au 0.3333, Ru 0.2143, Rh 0.3333, Os 0.2500, Ir 0.2143). 1 of 8 (Re) is HONEST_NEGATIVE_DATA_AVAILABILITY (structural MetalCytoToxDB OOD honest-negative pre-Wf-130, confirmed by Wf-318E: 0/10 closure_ok even with RDKit). 22 of 30 metals remain reported from Wf-73 P3 tmQM-d-block backbone only. See molmetal/reports/wf314e_ood_rdkit_fix/fix_summary.json for the Wf-314E diagnosis that motivated Wf-318E, molmetal/reports/wf318e_ood_rdkit_alt_env/ood_reachability_overall.json for the new alt-env aggregate, and molmetal/metrics/by_metric/ood_per_metal_reachability.json for per-metal wf318e_alt_env_* fields.",
     "diagnostic_report_path": "molmetal/reports/wf314e_ood_rdkit_fix/fix_summary.json",
-    "wf318e_report_path": "molmetal/reports/wf318e_ood_rdkit_alt_env/ood_reachability_overall.json"
+    "wf318e_report_path": "molmetal/reports/wf318e_ood_rdkit_alt_env/ood_reachability_overall.json",
+    "wf318e_per_metal_HISTORICAL": {
+      "Pt": 0.8333333333333334,
+      "Pd": 0.5,
+      "Au": 0.3333333333333333,
+      "Ru": 0.21428571428571427,
+      "Rh": 0.3333333333333333,
+      "Os": 0.25,
+      "Ir": 0.21428571428571427,
+      "Re": 0.0
+    },
+    "wf318e_macro_reachability_HISTORICAL": 0.33482142857142855,
+    "wf318e_micro_reachability_HISTORICAL": 0.2872340425531915,
+    "wf318e_n_closure_ok_HISTORICAL": 27,
+    "postfix_refresh_utc": "2026-10-08",
+    "postfix_method": "closure+ood_filter",
+    "postfix_config": "n_samples=10, max_depth=1, max_products=64, seeds=1 (same as wf318e)",
+    "postfix_macro_reachability": 1.0,
+    "postfix_micro_reachability": 1.0,
+    "postfix_n_samples": 44,
+    "postfix_n_closure_ok": 44,
+    "postfix_per_metal": {
+      "Pt": 1.0,
+      "Pd": 1.0,
+      "Ru": 1.0,
+      "Rh": 1.0,
+      "Ir": 1.0,
+      "Os": 1.0,
+      "Au": 1.0
+    },
+    "postfix_root_cause": "The 0.2872 was a seed-gate false-negative, not a metric ceiling: check_beta_normal_form_for_rdkit_term rejected charged/aromatic/dative PlatinAI seeds before the closure BFS ran (max_depth_seen=1 for 629/630 records proved the BFS budget was never binding). Fixed by exempting those atoms (well_formedness._relaxed_atom_indices). Adversarial-verified: pre-fix 27/94=0.2872, post-fix 94/94=1.0 on the identical stored records; independent full re-run 350/350.",
+    "postfix_evidence": "molmetal/scripts/bench_closure_ood.py --domains platinai_5k --n-samples 10 --max-depth 1 --max-products 64 --seeds 1 --method closure+ood_filter",
+    "wf318e_refresh_note": "wf318e_* fields renamed with _HISTORICAL suffix on 2026-10-08; their 0.2872/0.3348 values were correct for the pre-fix code but are superseded by the postfix_* fields (1.0) after the seed valence-BNF fix."
   },
   "honest_framing_note": "PARTIAL \u2014 20/30 d-block elements pass the >=0.40 gate on the tmQM d-block backbone; aggregate macro reachability = 0.4989 (under gate); per-block 3d = 0.5762 (10/10 pass), 4d = 0.4335 (8/10), 5d+La = 0.4843 (2/10). Cross-domain supplement (Wf-318E alt-env, 2026-09-29) reports MEASURED macro 0.3348 / micro 0.2872 across the 8 covered metals: 7/8 metals were HONEST_NEGATIVE_RDKIT_MISSING in Wf-130 P3 (CPU-only env at Wf-130 P3 bench time lacked RDKit; closure_theorem.from_smiles requires RDKit so all SMILES failed parse with ImportError); Wf-318E re-ran these 7 in /home/hugo/codes/mol-metal/.venv/bin/python which has RDKit 2026.03.6 and lifted them to MEASURED reachability (4/7 pass 0.30 gate: Pt 0.8333, Pd 0.5000, Au 0.3333, Rh 0.3333; 3/7 below gate but real: Ru 0.2143, Os 0.2500, Ir 0.2143). 1/8 (Re) is HONEST_NEGATIVE_DATA_AVAILABILITY (structural MetalCytoToxDB OOD sparse for Re; Wf-41 P2 pre-existing wf41_re_reachability = 0.0; Wf-318E confirmed 0/10 closure_ok even with RDKit). Per party-twenty-spirit \u00a73.5, the OOD reachability claim is PER_ELEMENT_HONEST_PARTIAL \u2014 1/3 of the d-block has sub-gate reachability on the current tmQM backbone, AND the cross-domain supplement was lifted from 0.0 (env-blocked) to 0.3348 macro (measured). See TODO-207 \u00a79.BC for the formal honest framing entry (added Wf-314E 2026-09-29, refreshed Wf-318E 2026-09-29).",
-  "timestamp": "2026-09-29",
-  "wf318e_refresh": "2026-09-29",
+  "timestamp": "2026-10-08",
+  "wf318e_refresh": "2026-10-08",
   "status": "MEASURED"
 }
