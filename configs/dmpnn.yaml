@@ -206,6 +206,9 @@ entry:
 
 output:
   out_dir: molmetal/reports/dmpnn_default
+  # canonical checkpoint path (was missing -> the trainer warned
+  # "--ckpt-dir not set" and fell back to <out_dir>/checkpoints per run).
+  ckpt_dir: molmetal/checkpoints
   # start.sh derives its log + events.jsonl paths from `base_dir` (not from
   # `out_dir`). This parser has no `base_dir` dest (MEASURED hasattr
   # base_dir=False), so the key is reported as skipped — it is here anyway so

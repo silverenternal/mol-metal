@@ -230,6 +230,10 @@ eval:
 
 output:
   out_dir: molmetal/reports/cfm_default
+  # canonical checkpoint path (was missing -> the trainer fell back to
+  # <out_dir>/checkpoints per run; the CLI help names "yaml output.ckpt_dir"
+  # as the intended source).
+  ckpt_dir: molmetal/checkpoints
   # `base_dir` has NO dest on the CFM parser (MEASURED hasattr base_dir=False)
   # — the loader reports it as a skipped key. It is here anyway because
   # start.sh derives out_dir, the log path and the events.jsonl path from it
