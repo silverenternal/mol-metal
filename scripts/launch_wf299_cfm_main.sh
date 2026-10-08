@@ -656,7 +656,6 @@ wave_B() {
         --metals Ir --seeds 0 --epochs 50 --batch-size 64 --lr 1e-3 \
         --alpha 0.5 --wasserstein-weight 0.0 \
         --device cuda:0 --no-enforce-budget \
-        --user-ok "REQUIRED" \
         --out-dir "${out}/no_wass_ir" || true
     ok "Wave B no_wass smoke complete"
 }

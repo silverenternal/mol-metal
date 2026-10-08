@@ -239,6 +239,11 @@ run_tuple() {
   set +e
   # GPU 0 (RTX PRO 6000 Blackwell) per the 2026-10-03 all-GPU-0
   # directive; this call site is serial with every other job.
+  # Bug fix 2026-10-08: removed --user-ok "REQUIRED" literal — D-MPNN trainer has
+  # no --user-ok flag; passing it caused argparse rc=2 which the trainer-pipe
+  # to tee previously masked. USER_OK gating is enforced by the outer wrapper
+  # env check (this script gates USER_OK=1 + Wf-310B activation per kill_then_adapt),
+  # NOT by a CLI flag (per chemprop_v3 P1.4 wrapper post-mortem same date).
   CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} \
 --config "${DMPNN_CONFIG}" \
     --metals "${metal}" \
@@ -246,7 +251,6 @@ run_tuple() {
     --csv "${DATA_CSV}" \
     --data-csv "${DATA_CSV}" \
     --out-dir "${OUT_BASE}/${cfg}/${metal}/seed${seed}" \
-    --user-ok "REQUIRED" \
     --ckpt-dir "${OUT_BASE}/${cfg}/${metal}/seed${seed}/ckpts" \
     ${CONFIRMED_FLAGS[$cfg]} \
     "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"

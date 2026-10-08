@@ -238,7 +238,6 @@ for METAL in "${METALS[@]}"; do
                 --epochs "${EPOCHS}" \
                 --balanced-cohort-json "${PHASE1_COHORT}" \
                 --out-dir "${REPORTS_DIR}/${METAL}/seed${SEED}" \
-                --user-ok "REQUIRED" \
                 --device cuda:0 \
                 >> "${RUN_LOG}" 2>&1; then
             ok "metal=${METAL} seed=${SEED} completed"

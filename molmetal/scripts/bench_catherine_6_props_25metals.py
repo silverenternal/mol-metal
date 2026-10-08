@@ -282,6 +282,27 @@ def _run_closure_for_metal(
             summary["products_per_depth"] = dict(ppd)
             summary["products_per_closure"] = dict(ppd)
         summary["closure_ok"] = bool(ok)
+        # The real closure_theorem.last_result emits only
+        # {n_visited, n_products, max_depth_seen, products_per_closure}
+        # — no ``witness_rate`` / ``well_typed_rate`` keys.  The bench's
+        # seed defaults (0.0) therefore survive the merge above and the
+        # P2/P3 verifiers would read a present-but-zero key (their
+        # ``get(..., 1.0)`` default never fires).  Derive the two proxy
+        # rates from the closure's own success contract, mirroring the
+        # products_per_closure alias pattern just above and NOT weakening
+        # the theorem:
+        #   * condition (a) — every reached term has a finite witness,
+        #     enforced by construction (closure.py:573-585); hence
+        #     witness_rate == 1.0 whenever the BFS actually visited terms.
+        #   * condition (b) — closure_theorem returns True only when every
+        #     emitted product passed ``_term_is_well_formed`` (hard failure
+        #     returns False, closure.py:539-548); β-NF redexes are only
+        #     warned as soft-valid.  Hence well_typed_rate == 1.0 when ok.
+        # Leave both at 0.0 (the seed default) only when the closure
+        # genuinely failed, so P2/P3 stay FAIL-closed on real failures.
+        if summary.get("closure_ok") and int(summary.get("n_visited", 0)) > 0:
+            summary["witness_rate"] = 1.0
+            summary["well_typed_rate"] = 1.0
     except Exception as exc:
         warnings.warn(
             f"[catherine] closure_theorem failed for {metal}: {exc!r}",

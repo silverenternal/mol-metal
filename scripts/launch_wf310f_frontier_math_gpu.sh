@@ -240,12 +240,16 @@ EOF
     deadline=$(( started_at + ${budget_hr%.*} * 3600 ))
 
     # Background launcher for the trainer; PID captured for kill_then_adapt.
+    # Bug fix 2026-10-08: removed --user-ok "REQUIRED" literal (G6/chemprop
+    # trainers have no --user-ok flag; passing it caused argparse rc=2
+    # backgrounded so no error visible). USER_OK gating is enforced by the
+    # outer wrapper env check, NOT a CLI flag (per chemprop_v3 P1.4 wrapper
+    # post-mortem same date).
     CUDA_VISIBLE_DEVICES="${gpu##cuda:}" \
         PYTHONPATH=/home/hugo/codes/mol-metal \
         "${PY}" "${trainer}" \
             --config "${config}" \
             --out-dir "${out_dir}" \
-            --user-ok "REQUIRED" \
             "$@" \
             > "${out_dir}/train.log" 2>&1 &
     local pid=$!

@@ -1,7 +1,7 @@
 # Wf-57 Phase 3 — Catherine 6/6 Properties × 25+ d-block metals
 
-**Date**: 2026-09-29T05:42:22Z
-**Wall-time total**: 1.10s
+**Date**: 2026-10-08T03:26:09Z
+**Wall-time total**: 1.13s
 **#metals**: 25 / **#seeds**: 5 / **max_depth**: 1 / **max_products**: 1000
 **Mode**: CPU-only synthetic fallback
 

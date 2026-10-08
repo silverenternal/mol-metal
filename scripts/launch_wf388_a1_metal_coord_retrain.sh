@@ -425,6 +425,11 @@ case "${MODE}" in
         printf '  epochs: %d × %d (metal, seed) pairs = %d total\n' \
             "${EPOCHS}" "${#PAIRS[@]}" \
             "$((EPOCHS * ${#PAIRS[@]}))"
+        # Bug fix 2026-10-08: removed --user-ok "REQUIRED" literal — D-MPNN trainer
+        # has no --user-ok flag; passing it caused argparse rc=2 (the trainer would
+        # exit silently via cmd '>' redirect). USER_OK gating is enforced by
+        # the outer wrapper env check (Wf-310E part 1 gates USER_OK=1; this script
+        # is a child), NOT by a CLI flag (per chemprop_v3 P1.4 wrapper post-mortem).
         PYTHONPATH=/home/hugo/codes/mol-metal \
         exec /home/hugo/codes/mol-metal/.venv/bin/python "${TRAINER}" \
             --config "${DMPNN_CONFIG}" \
@@ -435,7 +440,6 @@ case "${MODE}" in
             --seeds "${SEEDS_ARR[@]}" \
             --epochs ${EPOCHS} \
             --device cuda:0 \
-            --user-ok "REQUIRED" \
             --out-dir "${LOG_DIR}" \
             "${EXTRA_FLAGS[@]}"
         ;;

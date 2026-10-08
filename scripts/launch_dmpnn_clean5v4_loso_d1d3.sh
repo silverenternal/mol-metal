@@ -50,6 +50,18 @@ METRIC_OUT="${REPORTS_DIR}/metrics.json"
 
 mkdir -p "${REPORTS_DIR}"
 
+# -----------------------------------------------------------------------------
+# USER_OK gate (per AGENTS.md §5.1 kill_then_adapt — GPU launch > 1 hr)
+# This wrapper runs on GPU 1 (RTX 5090) for ~3-5 hr; USER_OK=1 must be present.
+# -----------------------------------------------------------------------------
+if [ "${USER_OK:-0}" != "1" ]; then
+    printf '%s[FATAL]%s USER_OK gate refused: this wrapper runs 3-5 hr on GPU 1.\n' \
+        "$(printf '\033[0;31m')" "$(printf '\033[0m')" >&2
+    printf '       USER_OK=1 bash %s --dry-run   # plan only (still requires USER_OK=1)\n' "$0" >&2
+    printf '       USER_OK=1 bash %s              # actual 3-5 hr GPU launch\n' "$0" >&2
+    exit 64
+fi
+
 EPOCHS="${EPOCHS:-30}"
 SEEDS="${SEEDS:-0 1 2 3 4}"
 METALS="${METALS:-Ru Ir Os Rh Re}"

@@ -240,7 +240,6 @@ for METAL in "${RUN_METALS[@]}"; do
                 --hidden "${HIDDEN}" \
                 --depth "${DEPTH}" \
                 --device cuda \
-                --user-ok "REQUIRED" \
                 --time-budget-s $(( ${WALL_BUDGET_MAX_MIN} * 60 )) \
                 --json-dir "${REPORTS_DIR}/${METAL}" \
                 --ckpt-dir "${PROJECT_ROOT}/molmetal/checkpoints/wf310e_wf219_production/${METAL}" \
