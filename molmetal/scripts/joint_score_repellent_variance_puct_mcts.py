@@ -550,12 +550,16 @@ def stage3_mcts_trajectory(
         dirichlet_alpha=0.3,
         dirichlet_fraction=0.25,
         early_stop=False,
-        debug=False,
     )
+    # 2026-10-08 FIX: MCTSProofSearch has NO `debug` / `exploration_strategy`
+    # / `c_var` kwargs (verified ctor: molmetal/molmetal_lam/search_alg/
+    # proof_search.py). Passing them raised TypeError on EVERY construct,
+    # silently swallowed downstream => fabricated all-zero metrics + green
+    # "PASS". `exploration_strategy` maps onto the real ctor lever
+    # `cpuct_mode="variance"`; `c_var` belongs on VarianceMCTSWrapper (below),
+    # not on the base search.
     if strategy in ("score_repellent", "variance"):
-        kwargs["exploration_strategy"] = strategy
-    if strategy == "variance":
-        kwargs["c_var"] = float(c_var)
+        kwargs["cpuct_mode"] = "variance"
     try:
         base_search = MCTSProofSearch(**kwargs)
     except Exception as exc:
@@ -1060,6 +1064,20 @@ def main(argv: Optional[Any] = None) -> int:
             )
         )
     print()
+    # 2026-10-08 FIX: fail-loud gate. A run with 0 successful trajectories
+    # (success_rate == 0) or ALL errors (n_errors == n_runs) must NOT exit 0
+    # / print PASS — previously a TypeError-swallowed run printed green PASS.
+    n_runs = int(agg.get("n_runs", 0))
+    n_errors = int(agg.get("n_errors", 0))
+    success_rate = float(agg.get("success_rate", 0.0))
+    if n_runs == 0 or success_rate == 0.0 or n_errors == n_runs:
+        print(
+            f"FAIL: 0 successful trajectories "
+            f"(n_runs={n_runs}, n_errors={n_errors}, "
+            f"success_rate={success_rate:.4f}) — refusing to report PASS.",
+            file=sys.stderr,
+        )
+        return 1
     print("PASS: Wf-36 Phase-3 joint pipeline complete.")
     return 0
 

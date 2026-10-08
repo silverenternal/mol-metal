@@ -34,7 +34,10 @@
     }
   ],
   "context": {
-    "lambda_mcts_report": "molmetal/reports/wf_lambda1_/tmp/molmetal_external_scorers_smoke/report.json",
+    "lambda_mcts_report": null,
+    "lambda_mcts_report_status": "PROJECTED_NOT_PERSISTED",
+    "lambda_mcts_report_note": "2026-10-08: the previous citation `molmetal/reports/wf_lambda1_/tmp/molmetal_external_scorers_smoke/report.json` does not exist on disk (verified via ls -la; molmetal/reports/wf_lambda1_/ contains only tmp/x and tmp/x2, no smoke run output). The lambda_mcts_mean / lift values in this file remain MEASURED from the original 2026-09-21 run, but the backing report artifact was never persisted to the repo, so the report pointer is demoted to PROJECTED_NOT_PERSISTED rather than citing a dead path. No value was invented.",
+    "lambda_mcts_report_old_path": "molmetal/reports/wf_lambda1_/tmp/molmetal_external_scorers_smoke/report.json",
     "pool_size": 449,
     "known_pt_drug_size": 8,
     "timestamp": "2026-09-21",

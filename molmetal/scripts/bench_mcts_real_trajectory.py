@@ -119,6 +119,13 @@ _SCRIPT_DIR = Path(__file__).resolve().parent
 _MOLMETAL_PKG_DIR = _SCRIPT_DIR.parent
 if str(_MOLMETAL_PKG_DIR) not in sys.path:
     sys.path.insert(0, str(_MOLMETAL_PKG_DIR))
+# 2026-10-08 FIX: also add the repo root so ``from molmetal.utils.device``
+# inside proof_search.py resolves (the package dir alone made
+# ``import molmetal`` hit the nested ``molmetal/molmetal/`` which lacks
+# ``utils`` -> ModuleNotFoundError at proof_search import time).
+_REPO_ROOT = _MOLMETAL_PKG_DIR.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 
 __version__ = "0.1.0-wf39-phase1"
@@ -555,12 +562,14 @@ def _build_proof_search(
         dirichlet_alpha=0.3,
         dirichlet_fraction=0.25,
         early_stop=False,
-        debug=False,
     )
+    # 2026-10-08 FIX: MCTSProofSearch has NO `debug` /
+    # `exploration_strategy` / `c_var` kwargs. Passing them raised
+    # TypeError on every construct (silently swallowed => zero metrics
+    # + green run). `exploration_strategy` maps onto the real ctor lever
+    # `cpuct_mode="variance"`; `c_var` belongs on VarianceMCTSWrapper.
     if exploration_strategy in ("score_repellent", "variance"):
-        kwargs["exploration_strategy"] = exploration_strategy
-    if exploration_strategy == "variance":
-        kwargs["c_var"] = float(c_var)
+        kwargs["cpuct_mode"] = "variance"
     return MCTSProofSearch(**kwargs)
 
 
@@ -1370,9 +1379,24 @@ def _cli_main(argv: Optional[List[str]] = None) -> int:
         smoke=bool(args.smoke),
     )
     try:
-        run_bench(cfg)
+        report = run_bench(cfg)
     except Wf39Error as exc:
         print(f"[wf39] FAIL: {exc}", file=sys.stderr)
+        return 2
+    # 2026-10-08 FIX: fail-loud gate. A run where EVERY trajectory
+    # errored (or produced 0 successes) must NOT exit 0 — previously a
+    # TypeError-swallowed construct printed green.
+    per_strategy = report.get("per_strategy", {}) if isinstance(report, dict) else {}
+    total_traj = sum(int(a.get("n_trajectories", 0)) for a in per_strategy.values())
+    total_ok = sum(int(a.get("n_ok", 0)) for a in per_strategy.values())
+    total_err = sum(int(a.get("n_error", 0)) for a in per_strategy.values())
+    if total_traj == 0 or total_ok == 0 or total_err == total_traj:
+        print(
+            f"[wf39] FAIL: 0 successful trajectories "
+            f"(n_ok={total_ok}, n_error={total_err}, "
+            f"n_traj={total_traj}) — refusing to report success.",
+            file=sys.stderr,
+        )
         return 2
     return 0
 

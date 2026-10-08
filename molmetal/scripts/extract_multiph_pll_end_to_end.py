@@ -1273,6 +1273,13 @@ def main() -> int:
     n_targets = [s["n_target_rows"] for s in per_seed]
     finite_all = all(s["finite_features"] for s in per_seed)
 
+    # 2026-10-08 (honesty fix): a run whose target cohort is empty (every seed
+    # has n_target_rows == 0, e.g. --dataset metalcytotox where no real IC50
+    # rows resolve) previously fell through to r2_mean=+0.0000 / "Done." /
+    # exit 0 — indistinguishable from a MEASURED 0.0. Detect it explicitly and
+    # flag the output + exit non-zero so it cannot be read as a real result.
+    cohort_empty = len(n_targets) > 0 and all(int(t) == 0 for t in n_targets)
+
     aggregate = {
         "n_seeds": int(len(per_seed)),
         "r2_mean_of_means": float(np.mean(r2_means)) if r2_means else 0.0,
@@ -1288,6 +1295,9 @@ def main() -> int:
         "tool": "extract_multiph_pll_end_to_end.py",
         "pilot_id": "wf37_multiph_pll",
         "dataset": str(args.dataset),
+        # 2026-10-08 honesty fix: STATUS field distinguishes an EMPTY_TARGET
+        # cohort from a genuine measured 0.0 (see cohort_empty detection above).
+        "status": "EMPTY_TARGET" if cohort_empty else "MEASURED",
         "n_samples": int(args.n_samples),
         "seeds": [int(s) for s in args.seeds],
         "n_bins": int(args.n_bins),
@@ -1333,6 +1343,21 @@ def main() -> int:
         f"r2_min_of_mins={aggregate['r2_min_of_mins']:+.4f} "
         f"finite={aggregate['finite_features_all_seeds']}"
     )
+
+    # 2026-10-08 honesty fix: empty target cohort => honest-negative, non-zero
+    # exit. The r2=+0.0000 above is an artifact of an empty cohort, NOT a
+    # measured result, and must not be readable as one. The output JSON above
+    # carries "status": "EMPTY_TARGET". Normal path (cohort non-empty) is
+    # unchanged below.
+    if cohort_empty:
+        print(
+            "EMPTY_TARGET: no real target rows resolved for "
+            f"dataset={args.dataset} (n_target_total={aggregate['n_target_total']}); "
+            "r2 is undefined, NOT a measured 0.0 — refusing to report a value. "
+            f"See {bench_path} (status=EMPTY_TARGET)."
+        )
+        return 2
+
     print("Done.")
     return 0
 

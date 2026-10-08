@@ -52,7 +52,10 @@
 # (50-step smoke already passed for both F5+F6 flag changes; this is the
 # full retrain).
 
-set -euo pipefail
+# 2026-10-08 pipefix: drop pipefail (SIGPIPE from forked DataLoader workers
+# flushing stdout after trainer exit killed the wrapper silently via `tee`).
+# Capture trainer rc via ${PIPESTATUS[0]}; suppress tee SIGPIPE with `|| true`.
+set -uo pipefail
 
 PY="${PY:-/home/hugo/codes/mol-metal/.venv/bin/python}"
 PROJECT_ROOT="/home/hugo/codes/mol-metal"
@@ -119,8 +122,13 @@ if [[ ${DRY_RUN} -eq 1 ]]; then
 fi
 
 echo "Starting at $(date -Iseconds)"
-"${CMD[@]}" 2>&1 | tee "${LOG_OUT}"
+"${CMD[@]}" 2>&1 | tee "${LOG_OUT}" || true   # 2026-10-08 pipefix
+RC=${PIPESTATUS[0]}                              # 2026-10-08 pipefix
 echo "Done at $(date -Iseconds)"
+if [ "${RC}" -ne 0 ]; then
+    echo "FAIL: trainer exited rc=${RC}" >&2
+    exit "${RC}"
+fi
 
 echo
 echo "=== Result ==="

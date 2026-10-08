@@ -34,7 +34,10 @@
 # Owner: Hugo Lee + ultracode agent (Wf-446)
 # Date: 2026-10-04
 
-set -euo pipefail
+# 2026-10-08 pipefix: drop pipefail (SIGPIPE from forked DataLoader workers
+# flushing stdout after trainer exit killed the wrapper silently via `tee`).
+# Capture trainer rc via ${PIPESTATUS[0]}; suppress tee SIGPIPE with `|| true`.
+set -uo pipefail
 
 # --- Paths (HARDCODED per §5.9) -------------------------------------------
 PY=/home/hugo/codes/mol-metal/.venv/bin/python
@@ -181,5 +184,10 @@ fi
 # --- Actual launch -------------------------------------------------------
 echo "[$(date -Iseconds)] ${WRAPPER_NAME} launching (est. 4-5 hr)"
 PYTHONPATH=/home/hugo/codes/mol-metal ${PY} "${PROJECT_ROOT}/${TRAINER}" "${TRAIN_ARGS[@]}" \
-    2>&1 | tee "${OUT_DIR}/launch.log"
+    2>&1 | tee "${OUT_DIR}/launch.log" || true   # 2026-10-08 pipefix
+TRAIN_RC=${PIPESTATUS[0]}                        # 2026-10-08 pipefix
 echo "[$(date -Iseconds)] ${WRAPPER_NAME} complete; log at ${OUT_DIR}/launch.log"
+if [ "${TRAIN_RC}" -ne 0 ]; then
+    echo "FAIL: trainer exited rc=${TRAIN_RC}" >&2
+    exit "${TRAIN_RC}"
+fi

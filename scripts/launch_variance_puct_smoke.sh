@@ -23,7 +23,10 @@
 #   USER_OK=1 bash scripts/launch_variance_puct_smoke.sh
 #
 # Exit codes: 0 = PASS, 1 = FAIL, 64 = missing USER_OK.
-set -euo pipefail
+# 2026-10-08 pipefix: drop pipefail from `set -e` (SIGPIPE from forked
+# DataLoader workers flushing stdout after trainer exit killed the wrapper
+# silently via `tee`). rc captured below via ${PIPESTATUS[0]}.
+set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -53,7 +56,7 @@ LOG="$LOG_DIR/${STAMP}.log"
 
 cd "$REPO_ROOT"
 set +e
-WFA2_CONFIG_STRICT=1 "$PY" "$SMOKE" 2>&1 | tee "$LOG"
+WFA2_CONFIG_STRICT=1 "$PY" "$SMOKE" 2>&1 | tee "$LOG" || true   # 2026-10-08 pipefix
 RC="${PIPESTATUS[0]}"
 set -e
 

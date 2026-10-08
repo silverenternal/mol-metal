@@ -19,7 +19,7 @@
   },
   "notes": [
     "PoseBusters 'dock' mode requires the per-pose docked.pdbqt + the receptor PDB + RDKit + clash-distance checks. RDKit and posebusters are not installed in this snapshot, so per-pose clash checks cannot be computed at this time.",
-    "Existing PB pass-rate measurements on this pocket exist in the 'mol' mode (chemistry-only, no protein) at molmetal/metrics/by_metric/pb_pass_rate.json \u2014 that mode does NOT include steric clash.",
+    "Existing PB pass-rate measurements on this pocket exist in the 'mol' mode (chemistry-only, no protein) at metrics/by_metric/pb_pass_rate.json \u2014 that mode does NOT include steric clash. (2026-10-08: stripped stale doubled `molmetal/` prefix; real path metrics/by_metric/pb_pass_rate.json verified on disk.)",
     "Wired-in path: molmetal/molmetal_lam/sbdd_env/posebusters_adapter.py \u2014 PoseBustersAdapter.dock(receptor_pdb, docked_pdbqt) returns a PBResult with the clash check. When RDKit/posebusters are available, the recompute is:",
     "    from molmetal.molmetal_lam.sbdd_env.posebusters_adapter import PoseBustersAdapter",
     "    pb = PoseBustersAdapter(mode='dock')",
@@ -31,5 +31,5 @@
   "timestamp": "2026-09-18",
   "status": "DEFERRED",
   "deferred_reason": "deferred_posebusters_unavailable",
-  "deferred_detail": "RDKit + posebusters Python packages not installed in this snapshot; per-pose steric clash check cannot run. Existing 'mol'-mode PB pass rate is at molmetal/metrics/by_metric/pb_pass_rate.json and does not include the dock-mode clash check."
+  "deferred_detail": "RDKit + posebusters Python packages not installed in this snapshot; per-pose steric clash check cannot run. Existing 'mol'-mode PB pass rate is at metrics/by_metric/pb_pass_rate.json and does not include the dock-mode clash check. (2026-10-08: stripped stale doubled `molmetal/` prefix; real path metrics/by_metric/pb_pass_rate.json verified on disk.)"
 }

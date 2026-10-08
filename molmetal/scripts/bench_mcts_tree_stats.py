@@ -423,12 +423,14 @@ def _build_proof_search(
         early_stop=False,  # Wf-40: disable early-stop so we
         # consume the full sims budget and the
         # tree statistics reflect the full run.
-        debug=False,
     )
+    # 2026-10-08 FIX: MCTSProofSearch has NO `debug` /
+    # `exploration_strategy` / `c_var` kwargs. Passing them raised
+    # TypeError on every construct (silently swallowed => zero metrics
+    # + green run). `exploration_strategy` maps onto the real ctor lever
+    # `cpuct_mode="variance"`; `c_var` belongs on VarianceMCTSWrapper.
     if exploration_strategy in ("score_repellent", "variance"):
-        kwargs["exploration_strategy"] = exploration_strategy
-    if exploration_strategy == "variance":
-        kwargs["c_var"] = float(c_var)
+        kwargs["cpuct_mode"] = "variance"
     return MCTSProofSearch(**kwargs)
 
 
@@ -1512,9 +1514,26 @@ def _cli_main(argv: Optional[List[str]] = None) -> int:
         smoke=bool(args.smoke),
     )
     try:
-        run_bench(cfg)
+        report = run_bench(cfg)
     except Wf40Error as exc:
         print(f"[wf40] FAIL: {exc}", file=sys.stderr)
+        return 2
+    # 2026-10-08 FIX: fail-loud gate. A run where EVERY tree errored
+    # (or produced 0 successes) must NOT exit 0 — previously a
+    # TypeError-swallowed construct printed green. Inspect both
+    # strategies' aggregates (stored as __dict__) from the report.
+    per_strategy = report.get("per_strategy", {}) if isinstance(report, dict) else {}
+    aggs = [a for a in per_strategy.values() if isinstance(a, dict)]
+    total_trees = sum(int(a.get("n_trees", 0)) for a in aggs)
+    total_ok = sum(int(a.get("n_ok", 0)) for a in aggs)
+    total_err = sum(int(a.get("n_error", 0)) for a in aggs)
+    if total_trees == 0 or total_ok == 0 or total_err == total_trees:
+        print(
+            f"[wf40] FAIL: 0 successful trees "
+            f"(n_ok={total_ok}, n_error={total_err}, "
+            f"n_trees={total_trees}) — refusing to report success.",
+            file=sys.stderr,
+        )
         return 2
     return 0
 

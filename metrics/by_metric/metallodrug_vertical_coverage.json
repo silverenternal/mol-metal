@@ -6,9 +6,9 @@
   "status": "MEASURED via local dataset inventory",
   "source_phase": "wf_metallodrug_vertical Phase 1 inventory (2026-09-16)",
   "source_files": [
-    "molmetal/reports/wf_metallodrug_vertical/phase1_inventory.md",
-    "molmetal/reports/wf_metallodrug_vertical/phase1_inventory.json"
+    "molmetal/reports/wf_metallodrug_vertical/phase1_inventory.md"
   ],
+  "source_files_note": "2026-10-08: removed dead citation `molmetal/reports/wf_metallodrug_vertical/phase1_inventory.json` (does not exist on disk — verified via ls -la); the Phase 1 inventory was written as a Markdown doc, not JSON. Remaining citation is the real on-disk file phase1_inventory.md (a doc, not a JSON).",
   "components": {
     "PlatinAI_MBFinder": {
       "records_total": 226918,

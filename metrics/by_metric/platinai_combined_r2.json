@@ -108,7 +108,7 @@
           "n_seeds": 5
         }
       },
-      "source": "molmetal/reports/wf122_p3_post_fix/{mcf7,a549,a2780,a2780cis}/per_seed_metrics.json"
+      "source": "molmetal/reports/wf122_p3_post_fix/mcf7/per_seed_metrics.json + molmetal/reports/wf122_p3_post_fix/a549/per_seed_metrics.json + molmetal/reports/wf122_p3_post_fix/a2780/per_seed_metrics.json + molmetal/reports/wf122_p3_post_fix/a2780cis/per_seed_metrics.json (2026-10-08: expanded glob `{mcf7,a549,a2780,a2780cis}` to the 4 verified-on-disk concrete paths; no component absent)"
     },
     "wf125_p3_172d_multitask/platinai_4cell": {
       "status": "CODE_SHIP_BENCH_DEFERRED",
@@ -196,7 +196,7 @@
       "target_r2_geq_0_30_met": false,
       "target_delta_vs_wf122_p3_post_fix_mean": "+5.5846 (LESS NEGATIVE; Wf-129 P3 -0.0780 BETTER than Wf-122 P3 post-fix -5.6625 on PlatinAI 4-cell)",
       "verdict": "HONEST-NEGATIVE — R² = -0.0780 vs target +0.30 (Δ -0.378). Code + tests + per-cohort metrics SHIP; lift NOT achieved. The Hilbert L2 + ASTSR scale + W₂ pIC50 regularisers PREVENT divergence (no fold produced r2 = -inf; no ASTSR collapse fires; all l2_penalty_last finite) but do not lift the 12-d RDKit signal floor (Wf-49 §Cause 2). The +5.58 R² improvement vs Wf-122 P3 post-fix (-5.66) is consistent with the Hilbert-L2 proximal shrinkage + W₂ pIC50 distribution regulariser stabilising the per-fold predictions on the no-collapse synthetic — but the architectural signal floor remains. Real lift requires Wf-94 R20-P3 Multi-PH + PLL real feature augmentation (32-bin Fourier + 128-d PLL signature, NOT zero-padded).",
-      "source": "molmetal/reports/wf129_p3_multiph_pll/synthesis.md + per_dataset_summary.json + {MCF7,A549,A2780,A2780cis}/per_seed_metrics.json",
+      "source": "molmetal/reports/wf129_p3_multiph_pll/synthesis.md + per_dataset_summary.json + {MCF7,A549,A2780,A2780cis}/per_seed_metrics.json (2026-10-08: glob {} case-sensitive, expanded to verified-on-disk concrete paths molmetal/reports/wf129_p3_multiph_pll/MCF7/per_seed_metrics.json + .../A549/per_seed_metrics.json + .../A2780/per_seed_metrics.json + .../A2780cis/per_seed_metrics.json; no component absent)",
       "close_out_doc": "TODO/completed/129_wf129_p3_multiph_pll_guarded.md + TODO/completed/129_l2_l4_l7_joint_rescue.md §3"
     }
   },
@@ -204,7 +204,7 @@
     "description": "Wf-85 P3 pre-fix anchor (collapse-tricked) preserved for direct comparison",
     "aggregate_combined_r2_mean": -1.503,
     "aggregate_combined_r2_std": 1.3226,
-    "source": "molmetal/reports/wf85_p3_hilbert_astr_combined_real/{mcf7,a549,a2780,a2780cis}/per_seed_metrics.json",
+    "source": "molmetal/reports/wf85_p3_hilbert_astr_combined_real/mcf7/per_seed_metrics.json + molmetal/reports/wf85_p3_hilbert_astr_combined_real/a549/per_seed_metrics.json + molmetal/reports/wf85_p3_hilbert_astr_combined_real/a2780/per_seed_metrics.json + molmetal/reports/wf85_p3_hilbert_astr_combined_real/a2780cis/per_seed_metrics.json (2026-10-08: expanded glob `{mcf7,a549,a2780,a2780cis}` to the 4 verified-on-disk concrete paths; no component absent)",
     "delta_post_fix_vs_pre_fix": -4.1595,
     "interpretation": "Post-fix -5.66 is WORSE than pre-fix -1.50 because the Wf-122 P1.2 scale-guard correctly rejects the ASTSR-collapse trick that was driving the pre-fix pseudo-baseline. The post-fix R² is the TRUE R² on the Wf-49 §Cause 2 signal-floor regime."
   },

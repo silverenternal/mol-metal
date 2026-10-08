@@ -63,7 +63,10 @@
 #
 # AGENTS.md §5.4: no wet-lab work is planned, requested, or implied here.
 
-set -euo pipefail
+# 2026-10-08 pipefix: drop pipefail (SIGPIPE from forked DataLoader workers
+# flushing stdout after trainer exit killed the wrapper silently via `tee`).
+# Trainer rc captured via ${PIPESTATUS[0]}; tee SIGPIPE suppressed with `|| true`.
+set -uo pipefail
 cd /home/hugo/codes/mol-metal
 
 # ---- USER_OK gate (AGENTS.md §5.1 kill_then_adapt; mirrors G5 lines 61-68) ----
@@ -259,7 +262,7 @@ run_arm() {
         --top-k 10 \
         --cpuct-variance-alpha "${CPUCT_ALPHA}" \
         --cpuct-mode "${arm}" \
-        --out-dir "${OUT_BASE}/${arm}" 2>&1 | tee "${OUT_BASE}/${arm}_run.log"
+        --out-dir "${OUT_BASE}/${arm}" 2>&1 | tee "${OUT_BASE}/${arm}_run.log" || true   # 2026-10-08 pipefix
     local rc=${PIPESTATUS[0]}
     local arm_elapsed_s=$(($(date +%s) - arm_start_s))
     echo "ARM_BUDGET_END ${arm} elapsed_s=${arm_elapsed_s} rc=${rc}" | tee -a "${LOG}"

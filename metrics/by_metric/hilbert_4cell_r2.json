@@ -66,7 +66,7 @@
     "description": "Wf-85 P3 pre-fix anchor (collapse-tricked) preserved for direct comparison",
     "aggregate_combined_r2_mean": -1.503,
     "aggregate_combined_r2_std": 1.3226,
-    "source": "molmetal/reports/wf85_p3_hilbert_astr_combined_real/{mcf7,a549,a2780,a2780cis}/per_seed_metrics.json",
+    "source": "molmetal/reports/wf85_p3_hilbert_astr_combined_real/mcf7/per_seed_metrics.json + molmetal/reports/wf85_p3_hilbert_astr_combined_real/a549/per_seed_metrics.json + molmetal/reports/wf85_p3_hilbert_astr_combined_real/a2780/per_seed_metrics.json + molmetal/reports/wf85_p3_hilbert_astr_combined_real/a2780cis/per_seed_metrics.json (2026-10-08: expanded glob `{mcf7,a549,a2780,a2780cis}` to the 4 verified-on-disk concrete paths; no component absent)",
     "delta_combined_r2_mean": -4.1595,
     "interpretation": "Post-fix is WORSE on combined R² because the Wf-122 P1.2 scale-guard correctly rejects the ASTSR-collapse trick (constant predictor yielding R² ≈ -0.014) that was driving the pre-fix pseudo-baseline. The post-fix R² of -5.66 is the TRUE combined R² on the Wf-49 §Cause 2 signal-floor regime."
   },

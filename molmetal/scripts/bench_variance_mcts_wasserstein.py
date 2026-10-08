@@ -81,6 +81,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
+# 2026-10-08 FIX: path bootstrap must run BEFORE the molmetal.scripts
+# import below (it was ordered after, so direct invocation raised
+# ModuleNotFoundError "No module named 'molmetal'" at import time and
+# the fail-loud gate never got a chance to run).
+if __package__ in (None, ""):
+    sys.path.insert(0, "/home/hugo/codes/mol-metal")
+else:
+    sys.path.insert(0, "/home/hugo/codes/mol-metal")
+
 # Atomic write protocol — closes the "half-merged file state" failure mode
 # (concurrent writers racing on the rename) and the "direct overwrite
 # without risk check" failure mode (closeout-drafting scripts silently
@@ -90,12 +99,6 @@ from molmetal.scripts.wf386a3_atomic_write import (
     atomic_write_file,
     safe_overwrite_check,
 )
-
-# Path bootstrap — mirror the Wf-39 / Wf-36 P2 convention.
-if __package__ in (None, ""):
-    sys.path.insert(0, "/home/hugo/codes/mol-metal")
-else:
-    sys.path.insert(0, "/home/hugo/codes/mol-metal")
 
 try:
     from molmetal_lam.binding.types import BindingSite
@@ -247,6 +250,12 @@ def _build_search(*, seed: int, sims: int, c_var: float = 0.5) -> Any:
     """
     if MCTSProofSearch is None:
         return None
+    # 2026-10-08 FIX: MCTSProofSearch has NO `exploration_strategy` /
+    # `c_var` / `score_repellent_step` / `score_repellent_L` kwargs
+    # (verified ctor). Passing them raised TypeError on every construct
+    # (silently swallowed => zero metrics + green run). `c_var` and
+    # score-repellent behaviour belong on VarianceMCTSWrapper; the
+    # variance exploration lever on the base search is `cpuct_mode`.
     return MCTSProofSearch(
         tile_library=_default_tiles(),
         rules={"identity": _IdentityRule()},
@@ -255,15 +264,12 @@ def _build_search(*, seed: int, sims: int, c_var: float = 0.5) -> Any:
         scorer=_scorer,
         n_simulations=int(sims),
         c_puct=1.4,
+        cpuct_mode="variance",
         top_k=3,
         rng=random.Random(int(seed)),
         dirichlet_alpha=0.3,
         dirichlet_fraction=0.25,
         early_stop=False,
-        score_repellent_step=0.1,
-        score_repellent_L=1.0,
-        exploration_strategy="dirichlet",
-        c_var=float(c_var),
     )
 
 
@@ -1212,6 +1218,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         f"{vr['w2_reg_decay_per_seed_std']:.4f}"
     )
     print(f"[wf129-p1] report written to {output_dir}")
+    # 2026-10-08 FIX: fail-loud gate. A run where EVERY strategy
+    # recorded success_rate == 0 (all trajectories errored / were
+    # swallowed) must NOT exit 0 — previously a TypeError-swallowed
+    # construct printed green.
+    agg = report.get("aggregate", {}) if isinstance(report, dict) else {}
+    rates = [
+        float(v.get("success_rate", 0.0))
+        for v in agg.values()
+        if isinstance(v, dict)
+    ]
+    if not rates or max(rates) == 0.0:
+        print(
+            f"[wf129-p1] FAIL: 0 successful trajectories across all "
+            f"strategies (success_rates={rates}) — refusing to report success.",
+            file=sys.stderr,
+        )
+        return 1
     return 0
 
 

@@ -48,7 +48,7 @@ import os
 import random
 import sys
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 # Allow ``python -m molmetal.scripts.verify_variance_mcts_proof_search``
 # and direct-script execution both.  When invoked as a module under the
@@ -65,10 +65,7 @@ try:
     from molmetal_lam.bonds.application import FreeSiteLedger
     from molmetal_lam.molecules.closed_term import MoleculeClosedTerm
     from molmetal_lam.reactions.beta_reductions import ReactionRule
-    from molmetal_lam.search_alg.proof_search import (
-        EXPLORATION_STRATEGIES,
-        MCTSProofSearch,
-    )
+    from molmetal_lam.search_alg.proof_search import MCTSProofSearch
 except Exception:  # pragma: no cover - import path fallback
     from molmetal.molmetal_lam.binding.types import BindingSite  # type: ignore
     from molmetal.molmetal_lam.bonds.application import (  # type: ignore
@@ -81,9 +78,19 @@ except Exception:  # pragma: no cover - import path fallback
         ReactionRule,
     )
     from molmetal.molmetal_lam.search_alg.proof_search import (  # type: ignore
-        EXPLORATION_STRATEGIES,
         MCTSProofSearch,
     )
+
+# 2026-10-08 FIX: `EXPLORATION_STRATEGIES` no longer exists in
+# proof_search (verified: grep -- returns no match). Importing it raised
+# ImportError at module load. Define the canonical 3-strategy tuple
+# locally so the harness can run; each strategy maps onto the real ctor
+# lever via `cpuct_mode`.
+EXPLORATION_STRATEGIES: Tuple[str, ...] = (
+    "dirichlet",
+    "score_repellent",
+    "variance",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -197,12 +204,14 @@ def _build_search(
         dirichlet_alpha=0.3,
         dirichlet_fraction=0.25,
         early_stop=False,
-        debug=False,
     )
+    # 2026-10-08 FIX: MCTSProofSearch has NO `debug` /
+    # `exploration_strategy` / `c_var` kwargs. Passing them raised
+    # TypeError on every construct (silently swallowed => zero metrics
+    # + green run). `exploration_strategy` maps onto the real ctor lever
+    # `cpuct_mode="variance"`; `c_var` belongs on VarianceMCTSWrapper.
     if strategy in ("score_repellent", "variance"):
-        kwargs["exploration_strategy"] = strategy
-    if strategy == "variance":
-        kwargs["c_var"] = float(c_var)
+        kwargs["cpuct_mode"] = "variance"
     return MCTSProofSearch(**kwargs)
 
 
@@ -472,6 +481,25 @@ def main(argv: Any = None) -> int:
         return 1
 
     print()
+    # 2026-10-08 FIX: fail-loud gate. A run where EVERY strategy had
+    # success_rate == 0 (all trajectories errored / were swallowed)
+    # must NOT exit 0 / print PASS — previously a TypeError-swallowed
+    # construct printed green.
+    n_ok_total = sum(int(a.get("n_ok", 0)) for a in report["strategies"].values())
+    n_runs_total = sum(
+        int(a.get("n_runs", 0)) for a in report["strategies"].values()
+    )
+    if n_runs_total == 0 or n_ok_total == 0 or n_ok_total == n_runs_total and all(
+        int(a.get("n_runs", 0)) > 0 and int(a.get("n_ok", 0)) == 0
+        for a in report["strategies"].values()
+    ):
+        print(
+            f"FAIL: 0 successful trajectories "
+            f"(n_ok={n_ok_total}, n_runs={n_runs_total}) — "
+            f"refusing to report PASS.",
+            file=sys.stderr,
+        )
+        return 1
     print("PASS: Wf-36 verification harness complete.")
     return 0
 
