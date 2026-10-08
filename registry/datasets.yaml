@@ -1,5 +1,5 @@
 schema: molmetal-registry-datasets-v1
-generated_at: '2026-10-08T09:09:27+00:00'
+generated_at: '2026-10-08T09:24:23+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable dataset facts. A dataset is READY iff sha256(path) == sha256
   here.
