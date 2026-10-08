@@ -82,33 +82,60 @@
   },
   "expected_lift_projected": {
     "per_lever": [
-      {"lever": "--top-p < 1.0", "projected_m7_lift": "+0.005-0.01", "measured_end_to_end": false},
-      {"lever": "--top-k > 0", "projected_m7_lift": "+0.005", "measured_end_to_end": false},
-      {"lever": "--temperature != 1.0", "projected_m7_lift": "+0.005", "measured_end_to_end": false},
-      {"lever": "--mmd-weight > 0.0", "projected_m7_lift": "+0.005-0.01", "measured_end_to_end": false},
-      {"lever": "--repulsion-weight > 0.0", "projected_m7_lift": "+0.005", "measured_end_to_end": false},
-      {"lever": "--scaffold-conditioning", "projected_m7_lift": "+0.005", "measured_end_to_end": false}
+      {
+        "lever": "--top-p < 1.0",
+        "projected_m7_lift": "+0.005-0.01",
+        "measured_end_to_end": false
+      },
+      {
+        "lever": "--top-k > 0",
+        "projected_m7_lift": "+0.005",
+        "measured_end_to_end": false
+      },
+      {
+        "lever": "--temperature != 1.0",
+        "projected_m7_lift": "+0.005",
+        "measured_end_to_end": false
+      },
+      {
+        "lever": "--mmd-weight > 0.0",
+        "projected_m7_lift": "+0.005-0.01",
+        "measured_end_to_end": false
+      },
+      {
+        "lever": "--repulsion-weight > 0.0",
+        "projected_m7_lift": "+0.005",
+        "measured_end_to_end": false
+      },
+      {
+        "lever": "--scaffold-conditioning",
+        "projected_m7_lift": "+0.005",
+        "measured_end_to_end": false
+      }
     ],
     "joint_multiplicative": "+0.02-0.035",
     "vs_krasnov_2026_sota": "m7 baseline 0.792482 vs SOTA 0.81 (gap -0.018); joint lever set closes fraction of gap (PROJECTED +0.02-0.035 vs gap -0.018 -> 0-1.7x the gap; honest-neg if gap > 0.018 x 1.7)",
-    "blocking": "MEASURED end-to-end on Blackwell sm_120 BLOCKED per AGENTS.md §5.1 + kill_then_adapt §0"
+    "blocking": "MEASURED end-to-end on Blackwell sm_120 BLOCKED per AGENTS.md \u00a75.1 + kill_then_adapt \u00a70",
+    "measured_launch_command_PROJECTED": "CUDA_VISIBLE_DEVICES=0 USER_OK=1 /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config configs/cfm_full_retrain.yaml --seed 0 --out-dir results/cfm_full_retrain_v2/seed0 --save-generated-smiles",
+    "post_run_scoring_step": "/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/wf394a2_property_panel_runner.py --smiles-csv results/cfm_full_retrain_v2/seed0/generated_smiles.csv --out-json metrics/by_metric/r4_m4m5m7_cfm_generated.json --diversity-aware-eval --sa-aware --last-epoch  # --last-epoch mandatory: trainer CSV is append-only across epochs",
+    "decode_panel_link_cpu_verified": "Wf-R44: decode->panel chain is CPU-complete AND final-epoch-filtered. cfm_property_panel.read_smiles_csv(csv, last_epoch=True) + its runner mirror + both CLIs now select the CSV max-epoch only; verified 'pytest molmetal/tests/test_wf_r44_decode_panel_link.py' -> 6 passed in 3.48s (2 NEW last-epoch tests) and live 'wf394a2 ... --last-epoch' -> n_input=2 on a 2-epoch CSV vs n_input=4 unfiltered."
   },
   "honest_framing": {
     "wire_in_status": "SCAFFOLD -> TRAINER LOSS WIRE-IN COMPLETE per Wf-388-A2. All 6 flags now mutate the live training computation when set; defaults preserve bit-for-bit backward compat with Wf-380-B1 / Wf-299.",
-    "no_gpu_launches": "Wf-388-A2 is CPU-only. Wire-in is bit-for-bit verified via 4 NEW pytest contracts (test_wf388a2_diversity_wire.py). MEASURED end-to-end m7 lift deferred to USER_OK-gated GPU retrain per AGENTS.md §5.1.",
+    "no_gpu_launches": "Wf-388-A2 is CPU-only. Wire-in is bit-for-bit verified via 4 NEW pytest contracts (test_wf388a2_diversity_wire.py). MEASURED end-to-end m7 lift deferred to USER_OK-gated GPU retrain per AGENTS.md \u00a75.1.",
     "baseline_gap": "m7 Diversity = 0.792482 MEASURED; Krasnov 2026 SOTA = 0.81; gap -0.018 (~2.2% relative). The PROJECTED joint lift +0.02-0.035 closes or exceeds the gap on paper, but MEASURED end-to-end requires GPU retrain.",
     "audit_trail": "nucleus_sample_invocations counter (no-grad audit) + diversity_term accumulation (loss component); verified via 4 NEW tests: test_top_p_top_k_temperature_flags + test_nucleus_sample_in_c + test_mmd_loss_in_c + test_scaffold_conditioning_in_c.",
-    "standby": "bit-exact backward compat preserved — existing launch wrappers / test suites / pre-flight checks are unaffected when all 6 flags are OFF."
+    "standby": "bit-exact backward compat preserved \u2014 existing launch wrappers / test suites / pre-flight checks are unaffected when all 6 flags are OFF."
   },
   "status": "WIRED",
-  "verdict": "WIRED — SCAFFOLD-to-TRAINER-LOSS wire-in COMPLETE; bit-for-bit backward compat preserved; 6/6 flags wired-in; 6/6 default OFF. PROJECTED joint m7 lift +0.02-0.035 per Wf-380-A3 §0; MEASURED end-to-end on Blackwell sm_120 BLOCKED per AGENTS.md §5.1.",
+  "verdict": "WIRED \u2014 SCAFFOLD-to-TRAINER-LOSS wire-in COMPLETE; bit-for-bit backward compat preserved; 6/6 flags wired-in; 6/6 default OFF. PROJECTED joint m7 lift +0.02-0.035 per Wf-380-A3 \u00a70; MEASURED end-to-end on Blackwell sm_120 BLOCKED per AGENTS.md \u00a75.1.",
   "timestamp": "2026-09-30",
   "wf_phase": "Wf-388-A2 m7 Diversity Wire-In (Wf-380-B1 SCAFFOLD -> train_one_epoch)",
   "cross_references": {
     "close_out_doc": "TODO/completed/388a2_m7_diversity_wire.md",
     "test_file": "molmetal/tests/test_wf388a2_diversity_wire.py",
     "upstream": [
-      "TODO/pending/202_m7_diversity_sampling_improvements.md §2.2 (the canonical 6-flag spec for trainer integration)",
+      "TODO/pending/202_m7_diversity_sampling_improvements.md \u00a72.2 (the canonical 6-flag spec for trainer integration)",
       "molmetal/adapters/flow_matching_lipman/diversity_sampling.py (619 LOC, Wf-380-A3 SCAFFOLD module)",
       "molmetal/adapters/flow_matching_lipman/scaffold_conditioning.py (300 LOC, Wf-380-A3 SCAFFOLD module)",
       "molmetal/tests/test_wf380a3_diversity.py (310 LOC, Wf-380-A3 pre-existing tests for SCAFFOLD layer; 3 PASS)"
@@ -117,12 +144,12 @@
       "TODO/completed/380a3_diversity_sampling.md (Wf-380-A3 SCAFFOLD ship surface; Wf-388-A2 closes the wire-in gap)",
       "TODO/completed/380b1_index_sync.md (Wf-380-B1 SCAFFOLD-only trainer integration; banner + argparse)",
       "TODO/completed/380_final_synthesis.md (Wf-380 final synthesis v25)",
-      "TODO/completed/335_final_synthesis.md §6 (m7 Diversity baseline)"
+      "TODO/completed/335_final_synthesis.md \u00a76 (m7 Diversity baseline)"
     ],
     "standing_directives": [
-      "AGENTS.md §5.1 Standing GPU authorization (USER_OK-gated for end-to-end m7 lift)",
-      "AGENTS.md §5.2 Honest framing mandate (party-twenty-spirit §3.5)",
-      "AGENTS.md §5.3 No paper work without authorization (TODO-84 active)"
+      "AGENTS.md \u00a75.1 Standing GPU authorization (USER_OK-gated for end-to-end m7 lift)",
+      "AGENTS.md \u00a75.2 Honest framing mandate (party-twenty-spirit \u00a73.5)",
+      "AGENTS.md \u00a75.3 No paper work without authorization (TODO-84 active)"
     ]
   }
 }

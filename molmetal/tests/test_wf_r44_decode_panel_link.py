@@ -147,3 +147,56 @@ def test_generated_smiles_csv_feeds_panel(tmp_path):
     assert built["n_parsed"] == 3
     assert built["aggregate"]["sa"]["mean"] > 0.0
     assert 0.0 <= built["aggregate"]["qed"]["mean"] <= 1.0
+
+
+def test_last_epoch_filter_selects_final_epoch(tmp_path):
+    """--last-epoch scores only the trainer's final-epoch cohort.
+
+    The trainer's generated_smiles.csv is append-only, so without the filter
+    the panel pools every epoch's SMILES and mis-states m4/m5/m7.  The filter
+    must keep the max-epoch rows only.
+    """
+    panel = _load_panel()
+    csv_path = tmp_path / "generated_smiles.csv"
+    csv_path.write_text(
+        "epoch,smiles\n"
+        "1,CCO\n"
+        "1,c1ccccc1\n"
+        "2,CC(=O)Oc1ccccc1C(=O)O\n",
+        encoding="utf-8",
+    )
+    assert panel.read_smiles_csv(csv_path) == [
+        "CCO",
+        "c1ccccc1",
+        "CC(=O)Oc1ccccc1C(=O)O",
+    ]
+    assert panel.read_smiles_csv(csv_path, last_epoch=True) == [
+        "CC(=O)Oc1ccccc1C(=O)O"
+    ]
+    built = panel.build_panel(panel.read_smiles_csv(csv_path, last_epoch=True))
+    assert built["n_input"] == 1
+
+
+def test_runner_last_epoch_flag_selects_final_epoch(tmp_path):
+    """The runner's _read_smiles_csv mirrors the last-epoch filter."""
+    import importlib.util as ilu
+
+    path = PROJECT_ROOT / "molmetal" / "scripts" / "wf394a2_property_panel_runner.py"
+    spec = ilu.spec_from_file_location("wf394a2_runner_r44", str(path))
+    assert spec and spec.loader
+    mod = ilu.module_from_spec(spec)
+    sys.modules["wf394a2_runner_r44"] = mod
+    spec.loader.exec_module(mod)
+
+    csv_path = tmp_path / "generated_smiles.csv"
+    csv_path.write_text(
+        "epoch,smiles\n1,CCO\n1,c1ccccc1\n2,CC(=O)Oc1ccccc1C(=O)O\n",
+        encoding="utf-8",
+    )
+    assert mod._read_smiles_csv(csv_path, last_epoch=True) == [
+        "CC(=O)Oc1ccccc1C(=O)O"
+    ]
+    assert len(mod._read_smiles_csv(csv_path)) == 3
+    assert mod._build_parser().parse_args(
+        ["--smiles-csv", str(csv_path), "--out-json", "/tmp/x.json", "--last-epoch"]
+    ).last_epoch is True

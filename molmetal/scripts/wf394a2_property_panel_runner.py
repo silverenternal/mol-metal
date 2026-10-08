@@ -151,13 +151,16 @@ class SaCfg:
 # ---------------------------------------------------------------------------
 
 
-def _read_smiles_csv(path: Path) -> List[str]:
+def _read_smiles_csv(path: Path, last_epoch: bool = False) -> List[str]:
     """Read SMILES from a CSV with a ``smiles`` column.  Lightweight helper.
 
     Mirrors :func:`cfm_sa_aware_panel.read_smiles_csv` semantics so the
-    runner can ingest either panel's CSV output without a hard dep.
+    runner can ingest either panel's CSV output without a hard dep.  With
+    ``last_epoch``, keep only rows whose integer ``epoch`` column equals the
+    CSV's maximum (the trainer's CSV is append-only across epochs).
     """
     out: List[str] = []
+    epochs: List[int] = []
     with path.open("r", encoding="utf-8", newline="") as fh:
         reader = csv.DictReader(fh)
         if "smiles" not in (reader.fieldnames or []):
@@ -167,8 +170,17 @@ def _read_smiles_csv(path: Path) -> List[str]:
             )
         for row in reader:
             smi = (row.get("smiles") or "").strip()
-            if smi:
-                out.append(smi)
+            if not smi:
+                continue
+            out.append(smi)
+            if last_epoch:
+                try:
+                    epochs.append(int(float((row.get("epoch") or "0").strip())))
+                except ValueError:
+                    epochs.append(0)
+    if last_epoch and epochs:
+        top = max(epochs)
+        out = [s for s, e in zip(out, epochs) if e == top]
     return out
 
 
@@ -584,6 +596,15 @@ def _build_parser() -> argparse.ArgumentParser:
         default=0.3,
         help="Linear SA penalty weight (default 0.3).",
     )
+    p.add_argument(
+        "--last-epoch",
+        action="store_true",
+        help=(
+            "If --smiles-csv has an 'epoch' column, score only the final "
+            "epoch's rows (the CFM trainer's generated_smiles.csv is "
+            "append-only across epochs)."
+        ),
+    )
     return p
 
 
@@ -595,7 +616,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
 
     if args.smiles_csv:
-        smiles_list = _read_smiles_csv(Path(args.smiles_csv))
+        smiles_list = _read_smiles_csv(
+            Path(args.smiles_csv), last_epoch=bool(args.last_epoch)
+        )
     else:
         smiles_list = _parse_smiles_literal(args.smiles_literal)
 

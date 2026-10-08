@@ -89,7 +89,7 @@
     "no_signal_platinai_guard_fire_rate_test": 0.8,
     "source": "molmetal/reports/wf122_p2_astr_guard/guard_verification.json"
   },
-  "collapse_detected_post_fix": "0 of 20 (cell × seed) — scale-guard fully active",
+  "collapse_detected_post_fix": "RE-MEASURE NEEDED — the '0 of 20' figure was a FALSE NEGATIVE (documented in wf_r44_eval_guard_mode_c_fix below). It was produced when _collapse_detected detected only mode A (std-ratio collapse); the 2026-10-08 mode-B + mode-C guard (SCALE_MISMATCH_TOLERANCE + WRONG_VARIABLE_R2_FLOOR) now fires on the wrong-variable AST at std-ratio ~1.0 / R² ≤ 0 that produced these R²=-5.66 seeds, so the true post-fix count is ≥1 and is NOT on disk. Do not cite '0 of 20' as a measurement; re-run the bench eval-time guard to obtain the post-fix count. This is prose only — no number was measured here.",
   "alpha_chosen_distribution_post_fix": {
     "alpha_0_0": 13,
     "alpha_0_25": 3,

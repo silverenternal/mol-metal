@@ -64,7 +64,10 @@
       "sa_target_band": "2.5-2.7"
     },
     "projected_lift": "sa-mean lift 3.099 -> 2.5-2.7 band per WEAK_TO_STRONG_PLAN \u00a73.6",
-    "blocking": "MEASURED end-to-end lift requires GPU retrain per AGENTS.md \u00a75.1 + kill_then_adapt \u00a70 \u2014 deferred to downstream Wf-389+ USER_OK-gated wave"
+    "blocking": "MEASURED end-to-end lift requires GPU retrain per AGENTS.md \u00a75.1 + kill_then_adapt \u00a70 \u2014 deferred to downstream Wf-389+ USER_OK-gated wave",
+    "measured_launch_command_PROJECTED": "CUDA_VISIBLE_DEVICES=0 USER_OK=1 /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config configs/cfm_full_retrain.yaml --seed 0 --out-dir results/cfm_full_retrain_v2/seed0 --save-generated-smiles",
+    "post_run_scoring_step": "/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/wf394a2_property_panel_runner.py --smiles-csv results/cfm_full_retrain_v2/seed0/generated_smiles.csv --out-json metrics/by_metric/r4_m4m5m7_cfm_generated.json --diversity-aware-eval --sa-aware --last-epoch  # --last-epoch mandatory: trainer CSV is append-only across epochs",
+    "decode_panel_link_cpu_verified": "Wf-R44: decode->panel chain is CPU-complete AND final-epoch-filtered. cfm_property_panel.read_smiles_csv(csv, last_epoch=True) + its runner mirror + both CLIs now select the CSV max-epoch only; verified 'pytest molmetal/tests/test_wf_r44_decode_panel_link.py' -> 6 passed in 3.48s (2 NEW last-epoch tests) and live 'wf394a2 ... --last-epoch' -> n_input=2 on a 2-epoch CSV vs n_input=4 unfiltered."
   },
   "honest_framing": {
     "wire_in_status": "SCAFFOLD -> TRAINER LOSS WIRE-IN COMPLETE per Wf-388-A3. Both --sa-penalty + --sa-target flags now mutate the live training computation when set; default 0.0 preserves bit-for-bit backward compat with Wf-380-B1 / Wf-299.",

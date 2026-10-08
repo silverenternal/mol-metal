@@ -130,10 +130,11 @@ class TestParseArgs:
         # wall-time; the real gradient now requires --wasserstein-real.
         assert ns.wasserstein_weight == 0.0
         assert ns.wasserstein_real is False
-        assert ns.rh_oversample == 500
+        # Wf-R10 §1: the synthetic-Rh cohort is OFF by default (fabricated-label leak).
+        assert ns.rh_oversample == 0
         assert ns.n_mc == 32
-        # Wf-127 P2 + P3 guards default off (backward-compat with Wf-125 P2).
-        assert ns.use_l2_guard is False
+        # Wf-R19-A1 flipped P2 ON by default (opt out via --no-use-l2-guard); P3 stays off.
+        assert ns.use_l2_guard is True
         assert ns.use_astr_scale_guard is False
         assert ns.l2_guard_max_norm == 5.0
         assert ns.astr_scale_clip_min == -10.0

@@ -193,16 +193,24 @@ def compute_one(smiles: str, sascorer) -> dict[str, Any]:
     return {"smiles": smiles, "sa": sa_val, "qed": qed_val}
 
 
-def read_smiles_csv(path: Path) -> list[str]:
+def read_smiles_csv(path: Path, last_epoch: bool = False) -> list[str]:
     """Read a CSV with a ``smiles`` column.
 
     Accepts both quoted and unquoted SMILES, strips whitespace, drops
     empty rows.  Raises ``ValueError`` if no ``smiles`` column is found.
+
+    When ``last_epoch`` is set, keep only rows whose integer ``epoch``
+    column equals the CSV's maximum epoch.  The trainer's
+    ``generated_smiles.csv`` is append-only across epochs, so this selects
+    the final checkpoint's cohort instead of pooling every epoch.
     """
     smiles_list: list[str] = []
     with path.open("r", encoding="utf-8", newline="") as fh:
         reader = csv.reader(fh)
         header: list[str] | None = None
+        epochs: list[int] = []
+        col_idx: int = -1
+        epoch_idx: int | None = None
         for row_idx, row in enumerate(reader):
             if not row:
                 continue
@@ -215,12 +223,22 @@ def read_smiles_csv(path: Path) -> list[str]:
                     )
                 header = row
                 col_idx = lowered.index("smiles")
+                epoch_idx = lowered.index("epoch") if "epoch" in lowered else None
                 continue
             if col_idx >= len(row):
                 continue
             s = row[col_idx].strip()
-            if s:
-                smiles_list.append(s)
+            if not s:
+                continue
+            smiles_list.append(s)
+            if epoch_idx is not None and epoch_idx < len(row):
+                try:
+                    epochs.append(int(float(row[epoch_idx].strip())))
+                except ValueError:
+                    epochs.append(0)
+    if last_epoch and epochs:
+        top = max(epochs)
+        smiles_list = [s for s, e in zip(smiles_list, epochs) if e == top]
     return smiles_list
 
 
@@ -278,12 +296,21 @@ def _build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Output JSON path; will be created or overwritten.",
     )
+    p.add_argument(
+        "--last-epoch",
+        action="store_true",
+        help=(
+            "If the CSV has an 'epoch' column, score only the final "
+            "epoch's rows (the trainer's append-only generated_smiles.csv "
+            "otherwise pools every epoch)."
+        ),
+    )
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
-    smiles_list = read_smiles_csv(args.smiles_csv)
+    smiles_list = read_smiles_csv(args.smiles_csv, last_epoch=args.last_epoch)
     panel = build_panel(smiles_list)
     args.out_json.parent.mkdir(parents=True, exist_ok=True)
     with args.out_json.open("w", encoding="utf-8") as fh:
