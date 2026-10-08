@@ -1,6 +1,6 @@
 {
   "metric": "metal_lomo_auc_wasserstein",
-  "description": "Mean test ROC-AUC across 2 folds (Rh, Re) × N seeds of multi-metal leave-one-metal-out transfer with W₂ transfer regularisation + Rh closure-oversample (Wf-125 P2 stacking on Wf-125 P1). Wf-131 P3 DEFERRED 7-run sweep at 50 epochs; 7/7 (metal, seed) pairs completed after Wf-413-A1 launched + waited for Re seed=4 to finish on GPU 0 Blackwell.",
+  "description": "Mean test ROC-AUC across 2 folds (Rh, Re) \u00d7 N seeds of multi-metal leave-one-metal-out transfer with W\u2082 transfer regularisation + Rh closure-oversample (Wf-125 P2 stacking on Wf-125 P1). Wf-131 P3 DEFERRED 7-run sweep at 50 epochs; 7/7 (metal, seed) pairs completed after Wf-413-A1 launched + waited for Re seed=4 to finish on GPU 0 Blackwell.",
   "unit": "ROC-AUC (0-1, higher better)",
   "scope": "tier2_sbdd_ood_lomo_wasserstein",
   "source": "molmetal/scripts/train_metal_lomo_wasserstein.py",
@@ -96,7 +96,10 @@
     "rh_cohort_source_was": "/home/hugo/codes/mol-metal/molmetal/reports/wf139_p7_rh_active_cohort/synthetic_rh_pos_neg_normalized.json",
     "n_runs_was": 7,
     "n_folds_was": 2,
-    "metals_was": ["Rh", "Re"],
+    "metals_was": [
+      "Rh",
+      "Re"
+    ],
     "epochs_was": 50,
     "per_fold_auc_mean_was": {
       "Rh": 0.8798174728752262,
@@ -142,7 +145,7 @@
     "rh_real_only_lift_vs_synthetic_baseline": {
       "synthetic_baseline_Rh": 0.8798174728752262,
       "real_only_Rh": 0.381174168297456,
-      "delta": -0.49864330457776974,
+      "delta": -0.49864330457776973,
       "interpretation": "The synthetic-Rh-augmented run REACHED Rh=0.88 because the appended 500 hard-coded active/inactive rows (IC50=0.1 vs IC50=10.0; pIC50=7.0 vs 5.0) supplied a clean active/inactive signal the Rh real-only pool lacks. Removing the synthetic rows (n_synthetic_rh_appended=0) drops Rh by -0.50, which is the size of the artificial lift. The 'synthetic_label_provenance_warning' field above is consistent with this drop."
     },
     "verdict": "MEASURED_REAL_ONLY_BELOW_TARGET_BASELINE",
@@ -152,9 +155,9 @@
     "timestamp": "2026-10-08T06:51:17+00:00",
     "wf_tag": "Wf-R40 + Wf-R43 m19 P-A real-only re-measurement"
   },
-  "timestamp": "2026-10-02T08:36:00.641592+00:00",
-  "n_runs_target": 7,
-  "n_runs_completed": 7,
+  "timestamp": "2026-10-08T06:51:17+00:00",
+  "n_runs_target": 25,
+  "n_runs_completed": 25,
   "rh_cohort_source_evidence": {
     "authoritative_artifact": "/home/hugo/codes/mol-metal/molmetal/reports/wf131_p3_deferred_runs/metal_lomo_auc_wasserstein.json",
     "authoritative_rh_cohort_source": "/home/hugo/codes/mol-metal/molmetal/reports/wf139_p7_rh_active_cohort/synthetic_rh_pos_neg_normalized.json",
@@ -166,5 +169,5 @@
   },
   "cohort_resolution_verdict": "WF139P7_SYNTHETIC_LABELS",
   "synthetic_label_provenance_warning": "The synthetic Rh rows carry FABRICATED potency labels, not measured IC50. molmetal/scripts/train_metal_lomo_wasserstein.py::append_synthetic_rh_to_dataset hard-codes them: active rows get IC50_Dark_value=0.1 / pIC50=7.0, inactive rows IC50_Dark_value=10.0 / pIC50=5.0 (function body ~L595-605). Because the multitask regression head trains on pIC50 as well as the classification label, these constants are direct supervision on a fabricated target. Any pIC50 output from a wave that appended the synthetic Rh cohort is not a measurement. Separately, rows are filtered to Catherine-6/6-PASS Rh compounds in load_rh_synthetic_smiles (~L510-518), so the appended set is doubly non-representative of the real Rh chemical space.",
-  "real_only_fold_value_note": "RETIRED -- no real-only fold exists in this wave. Both folds (Rh and Re) were trained on the same wf139_p7 synthetic Rh block appended to the shared pool, so there is no uncontaminated subset to quote. The previous value 0.7088 (per_fold_auc_mean.Re) was labelled 'real-only' and was WRONG. Best available clean quantity is per_fold_auc_mean.Re = 0.7087853584076347 held out on Re test, but its training pool still contained the 500 synthetic Rh rows. A genuinely real-only number requires a re-run with --rh-cohort-json '' (n_synthetic_rh_appended=0); no such run is on disk."
+  "real_only_fold_value_note": "aligned to the live 25-run real-only measurement (real_only_pa_m19_re_measurement_2026_10_08); the prior 0.381 described the retracted 7-run synthetic wave, preserved under synthetic_augmented_baseline_preserved_for_diff"
 }

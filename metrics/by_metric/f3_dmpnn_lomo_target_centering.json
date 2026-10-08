@@ -147,5 +147,13 @@
       "centered": 0.453,
       "alpha0": 0.563
     }
-  }
+  },
+  "value": 0.516,
+  "baseline_value": 0.356,
+  "value_seeds_5_9": 0.563,
+  "status": "MEASURED",
+  "verdict": "MEASURED_LIFT_TARGET_CENTERING_FIX \u2014 dropping the pIC50 regression term (alpha=0.0) lifts Rh LOMO test AUC 0.356 -> 0.516 (seeds 0-4) / 0.389 -> 0.563 (seeds 5-9); val/test are ANTI-correlated (-0.727) so val-based selection was fitting noise",
+  "timestamp": "2026-10-06",
+  "scope": "D-MPNN LOMO Rh transfer (metal-stripped graph regression-auxiliary ablation)",
+  "value_source": "headline_table.seeds_0_4.alpha0 (this file)"
 }
