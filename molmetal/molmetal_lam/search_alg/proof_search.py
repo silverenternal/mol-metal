@@ -3556,6 +3556,18 @@ class MCTSProofSearch:
     #: use the equal-weight vector ``[1.0] * n_objectives``.
     pareto_weights: Optional[Sequence[float]] = None
 
+    #: TODO-IMPROVEMENT_BACKLOG B3 — debug flag.  When ``True`` the
+    #: :meth:`search` loop emits a per-iteration PUCT trace to stdout and
+    #: populates :attr:`debug_trace`.  ``False`` (default) keeps the hot
+    #: loop byte-for-byte silent and allocation-free, so every existing
+    #: caller is unaffected.
+    debug: bool = False
+    #: TODO-IMPROVEMENT_BACKLOG B3 — structured per-iteration trace.  One
+    #: entry per MCTS simulation when :attr:`debug` is ``True``; each entry
+    #: has keys ``step``, ``path_len``, ``leaf_smiles``, ``best_action``,
+    #: ``reward`` and ``puct_components`` (a list of per-depth PUCT
+    #: component dicts).  Reset at the start of every :meth:`search` call.
+    debug_trace: List[Dict[str, Any]] = field(default_factory=list)
     #: Per-iteration history, populated by :meth:`search`.
     history: List[Dict[str, Any]] = field(default_factory=list)
     #: L-A2 — cumulative variance of leaf reward values over the
@@ -4252,6 +4264,11 @@ class MCTSProofSearch:
 
         # Initialise per-search history buffer.
         self.history = []
+        # TODO-IMPROVEMENT_BACKLOG B3 — reset the debug-trace buffer so a
+        # previous run's entries never leak into this one.  Guarded by
+        # ``self.debug`` so the default (silent) path allocates nothing.
+        if self.debug:
+            self.debug_trace = []
         # L9-9 TREE_DIVERSITY + L9-10 ROLLOUT_DEPTH_DIST — collected here
         # so ``search()`` can populate them in a single one-line patch.
         self.tree_diversity: float = 0.0  # L9-9  (filled at end of search)
@@ -4402,6 +4419,37 @@ class MCTSProofSearch:
                 int(getattr(self, "_max_depth_reached", 0) or 0), len(path)
             )
             leaves_by_smi = self._collect_leaves(root, leaves_by_smi)
+
+            # TODO-IMPROVEMENT_BACKLOG B3 — fold this simulation's debug
+            # data into the structured ``debug_trace`` and emit the LEAF
+            # summary line.  Both guarded behind ``self.debug`` so the hot
+            # (default) loop is byte-for-byte unchanged.
+            if self.debug:
+                _leaf_info = getattr(self, "_debug_last_leaf", {}) or {}
+                _entry = {
+                    "step": int(it),
+                    "path_len": int(_leaf_info.get("path_len", len(path))),
+                    "leaf_smiles": str(_leaf_info.get("leaf_smiles", "")),
+                    "best_action": str(_leaf_info.get("best_action", "")),
+                    "reward": float(_leaf_info.get("reward", 0.0)),
+                    "puct_components": list(
+                        getattr(self, "_debug_components", []) or []
+                    ),
+                }
+                self.debug_trace.append(_entry)
+                try:
+                    print(
+                        "[B3] LEAF step=%d smi=%s rule=%s reward=%.6f path_len=%d"
+                        % (
+                            int(it),
+                            str(_entry["leaf_smiles"]),
+                            str(_entry["best_action"]),
+                            float(_entry["reward"]),
+                            int(_entry["path_len"]),
+                        )
+                    )
+                except Exception:
+                    pass
 
             # Per-iteration history entry — diagnostics for the
             # closed-loop pipeline + paper figures.
@@ -4825,6 +4873,13 @@ class MCTSProofSearch:
         path: List[_MCTSNode] = [root]
         reward_fn = self._resolved_reward()
 
+        # TODO-IMPROVEMENT_BACKLOG B3 — per-simulation debug buffer.  When
+        # ``self.debug`` ``_select_child`` appends one PUCT-component dict
+        # per candidate child; the caller (:meth:`search`) folds the buffer
+        # into a single ``debug_trace`` entry after ``_simulate`` returns.
+        if self.debug:
+            self._debug_components: List[Dict[str, Any]] = []
+
         # 1) SELECT — PUCT traversal down to a leaf or terminal.
         # Only an exhaustive empty expansion establishes chemical termination.
         node = root
@@ -4833,7 +4888,7 @@ class MCTSProofSearch:
             and (not node.is_closed_for_search)
             and len(path) <= max_depth
         ):
-            node = self._select_child(node)
+            node = self._select_child(node, depth=len(path) - 1)
             # Lock the selected child with a virtual loss so any
             # concurrent in-flight simulation that re-enters the same
             # parent is biased *away* from this child until the lock
@@ -4916,6 +4971,27 @@ class MCTSProofSearch:
         ):
             self._maybe_refit_prior()
 
+        # TODO-IMPROVEMENT_BACKLOG B3 — stash the simulation's leaf
+        # summary (reward / path length / leaf SMILES / best action) so
+        # the caller can fold it into the structured ``debug_trace`` entry
+        # without recomputing anything.  Guarded so the hot path stays
+        # untouched when debug is off.
+        if self.debug:
+            try:
+                _leaf_smi = self._canonical_smi(node.state)
+            except Exception:
+                _leaf_smi = "id:%d" % id(node.state)
+            try:
+                _best_action = getattr(node, "rule_name", None)
+            except Exception:
+                _best_action = None
+            self._debug_last_leaf = {
+                "reward": float(value),
+                "path_len": int(len(path)),
+                "leaf_smiles": str(_leaf_smi),
+                "best_action": (str(_best_action) if _best_action else "root"),
+            }
+
         return path
 
     def _cpuct_for(self, node: "_MCTSNode") -> float:
@@ -4955,7 +5031,9 @@ class MCTSProofSearch:
             float(getattr(self, "cpuct_variance_alpha", 0.8)),
         )
 
-    def _select_child(self, node: _MCTSNode) -> _MCTSNode:
+    def _select_child(
+        self, node: _MCTSNode, *, depth: int = 0
+    ) -> _MCTSNode:
         """PUCT selection: pick the child maximising Q + c_puct * P * sqrt(N) / (1 + N).
 
         Implements the canonical PUCT rule used in AlphaZero, augmented
@@ -5081,6 +5159,50 @@ class MCTSProofSearch:
                 + float(Q)
                 - virtual_loss / (1.0 + N_child)
             )
+            # TODO-IMPROVEMENT_BACKLOG B3 — debug trace hook.  When
+            # ``self.debug`` record the PUCT formula components for this
+            # candidate child (one entry per selection) and emit a single
+            # stdout line carrying every component.  Threaded into the
+            # per-simulation trace via ``self._debug_components`` (set up by
+            # :meth:`_simulate`).  Guarded so the hot (debug=False) loop is
+            # byte-for-byte unchanged and allocation-free.
+            if self.debug:
+                _U = w * (P * sqrt_N_parent) / (1.0 + N_child)
+                try:
+                    _child_smi = self._canonical_smi(child.state)
+                except Exception:
+                    _child_smi = "id:%d" % id(child.state)
+                _comp = {
+                    "depth": int(depth),
+                    "Q": float(Q),
+                    "P": float(P),
+                    "N_child": int(N_child),
+                    "sqrt_N_parent": float(sqrt_N_parent),
+                    "cpuct": float(w),
+                    "U": float(_U),
+                    "parent_N": int(N_parent),
+                    "child_smiles": str(_child_smi),
+                }
+                _comps = getattr(self, "_debug_components", None)
+                if _comps is not None:
+                    _comps.append(_comp)
+                try:
+                    print(
+                        "[B3] PUCT depth=%d Q=%.6f P=%.6f N_child=%d "
+                        "sqrt(N_parent)=%.6f cpuct=%.6f U=%.6f child=%s"
+                        % (
+                            int(depth),
+                            float(Q),
+                            float(P),
+                            int(N_child),
+                            float(sqrt_N_parent),
+                            float(w),
+                            float(_U),
+                            str(_child_smi),
+                        )
+                    )
+                except Exception:
+                    pass
             # R20 FIX 3 — FPU bonus.  Added to the *score* (not to ``w``):
             # FPU is a Q-space stand-in that raises an unvisited child's
             # score to ``parent_Q_max - fpu_reduction``.  Scaling the

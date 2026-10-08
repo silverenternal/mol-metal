@@ -106,6 +106,7 @@ def _build_search(
     seed: int,
     sims: int,
     c_puct: float = 1.4,
+    debug: bool = False,
 ) -> MCTSProofSearch:
     """Construct a minimal :class:`MCTSProofSearch` for the CLI run."""
     return MCTSProofSearch(
@@ -120,10 +121,10 @@ def _build_search(
         rng=random.Random(int(seed)),
         dirichlet_alpha=0.0,  # disable Dirichlet noise for determinism
         early_stop=False,  # honour the full budget deterministically
-        # 2026-10-08 FIX: MCTSProofSearch has NO `debug` ctor param (verified
-        # against proof_search.py). Passing it raised TypeError on EVERY
-        # construct -> rc=2. The `--debug-mcts` flag still controls the
-        # optional debug_trace printing in main() via getattr.
+        # TODO-IMPROVEMENT_BACKLOG B3 — `MCTSProofSearch` now carries a
+        # `debug` ctor field (proof_search.py) that enables the per-step
+        # PUCT trace inside `search()`.  `--debug-mcts` drives it.
+        debug=bool(debug),
     )
 
 
@@ -192,6 +193,7 @@ def main(argv: List[str] | None = None) -> int:
             seed=int(args.seed),
             sims=int(args.sims),
             c_puct=float(args.c_puct),
+            debug=bool(args.debug_mcts),
         )
     except Exception as exc:
         print(f"[debug-mcts] search_construct_failed: {exc}", file=sys.stderr)
