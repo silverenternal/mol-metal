@@ -1,5 +1,5 @@
 schema: molmetal-registry-protocols-v1
-generated_at: '2026-10-08T09:24:23+00:00'
+generated_at: '2026-10-08T09:33:34+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable protocol facts. A protocol is LOCKED iff protocol_lock_sha256
   still matches disk.

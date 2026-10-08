@@ -193,6 +193,16 @@ def _now_utc() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
 
 
+def _strip_generated_at(text: str) -> str:
+    """Drop timestamp header lines so a regenerate that only moves the clock
+    compares equal to what is already on disk (avoids needless rewrites)."""
+    return "\n".join(
+        line
+        for line in text.splitlines()
+        if not line.startswith(("generated_at:", "    last_refreshed:"))
+    )
+
+
 def _rel(path: Path) -> str:
     try:
         return str(path.resolve().relative_to(REPO_ROOT))
@@ -564,13 +574,19 @@ def generate(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
         "uncovered_metric_files": uncovered,
     }
 
-    REGISTRY_DIR.mkdir(parents=True, exist_ok=True)
+    out_dir = Path(repo_root) / "registry"
+    out_dir.mkdir(parents=True, exist_ok=True)
     for path, doc in (
-        (DATASETS_PATH, datasets_doc),
-        (PROTOCOLS_PATH, protocols_doc),
-        (METRICS_PATH, metrics_doc),
+        (out_dir / "datasets.yaml", datasets_doc),
+        (out_dir / "protocols.yaml", protocols_doc),
+        (out_dir / "metrics.yaml", metrics_doc),
     ):
-        atomic_write_file(path, yaml.safe_dump(doc, sort_keys=False, allow_unicode=True))
+        text = yaml.safe_dump(doc, sort_keys=False, allow_unicode=True)
+        # Skip a rewrite that would change nothing but the timestamp header, so a
+        # read-only caller (e.g. the test suite) does not dirty the tracked file.
+        if path.is_file() and _strip_generated_at(path.read_text(encoding="utf-8")) == _strip_generated_at(text):
+            continue
+        atomic_write_file(path, text)
 
     return {
         "datasets": len(datasets),
