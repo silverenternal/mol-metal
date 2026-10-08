@@ -376,3 +376,60 @@ def test_closure_metal_seed() -> None:
             check_beta_normal_form_for_rdkit_term(t)
         except Exception:
             pass  # not all reached terms will be valence-saturated
+
+
+# ---------------------------------------------------------------------------
+# WF-437 — seed valence-BNF relaxation for charged / aromatic / dative atoms
+# ---------------------------------------------------------------------------
+def test_closure_theorem_accepts_charged_organometallic_seeds():
+    """A real PlatinAI Pt-complex with ``[CH3-]`` / ``[Br-]`` anions and a
+    dative-bonded ``n`` donor must pass the seed valence-BNF check.
+
+    Regression guard for the closure-OOD reachability gap: the term-level
+    predicate :func:`check_beta_normal_form_for_rdkit_term` previously
+    demanded neutral-integer valence saturation on every atom, which
+    rejected these seeds (charged atoms + dative donors have an RDKit
+    total valence below the neutral primitive valence) BEFORE any BFS
+    could run — capping closure reachability far below the 0.85 gate.
+    """
+    from molmetal_lam.lam_chem.well_formedness import (
+        check_beta_normal_form_for_rdkit_term,
+    )
+
+    smi = (
+        "[CH3-]->[Pt+4]1(<-[CH3-])(<-[Br-])(<-[Br-])"
+        "<-n2ccn(CCOCCOCCOCCOCCn3ccn->1c3)c2"
+    )
+    term = MoleculeClosedTerm.from_smiles(smi, embed_3d=False)
+    assert check_beta_normal_form_for_rdkit_term(term) is True, (
+        "charged/dative Pt-complex seed wrongly rejected by valence-BNF"
+    )
+
+    # Carbene / dative-bonded d-block complex (Os carbene).
+    smi2 = (
+        "CC(C)=C[C-]1=CC=C2=CC(=[C]->[Os+2]<-2<-1(<-[Cl-])"
+        "(<-P(c1ccccc1)(c1ccccc1)c1ccccc1)<-P(c1ccccc1)(c1ccccc1))C(C)(C)C"
+    )
+    term2 = MoleculeClosedTerm.from_smiles(smi2, embed_3d=False)
+    assert check_beta_normal_form_for_rdkit_term(term2) is True, (
+        "dative-carbene Os-complex seed wrongly rejected by valence-BNF"
+    )
+
+
+def test_closure_theorem_still_rejects_radical_seed():
+    """The relaxation must NOT create false positives: an ordinary
+    neutral radical (no charge, no aromatic flag, no dative bond) is
+    still rejected.
+
+    ``[CH2]CCC`` = a methylene radical on a 3-carbon chain: the radical
+    carbon has RDKit total valence 3 < primitive valence 4 and is
+    neither charged, aromatic, nor dative-bonded.
+    """
+    from molmetal_lam.lam_chem.well_formedness import (
+        check_beta_normal_form_for_rdkit_term,
+    )
+
+    term = MoleculeClosedTerm.from_smiles("[CH2]CCC", embed_3d=False)
+    assert check_beta_normal_form_for_rdkit_term(term) is False, (
+        "radical seed wrongly accepted by relaxed valence-BNF"
+    )

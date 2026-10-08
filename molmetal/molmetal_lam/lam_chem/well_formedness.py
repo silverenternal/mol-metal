@@ -306,6 +306,98 @@ def check_beta_normal_form_for_rdkit(a, atom) -> bool:
         return False
 
 
+def _relaxed_atom_indices(term, atoms) -> set:
+    """Indices of atoms whose neutral-primitive valence does not apply.
+
+    The predicate :func:`check_beta_normal_form_for_rdkit_term` compares
+    ``valence_used[i]`` against ``atoms[i].valence`` (the *neutral*
+    covalent valence from the primitive atom table).  That comparison is
+    only chemically meaningful for ordinary neutral, non-aromatic,
+    purely-covalent atoms.  Three classes of atoms legitimately have an
+    RDKit total valence below the primitive neutral valence and must be
+    exempted:
+
+    * **Charged atoms** — a carbanion ``[CH-]``, anionic donors
+      ``[Cl-]`` / ``[Br-]`` / ``[I-]``, metal centres ``[Pt+4]`` etc.
+      carry a formal charge that shifts the valence bookkeeping.
+    * **Aromatic atoms** — an aromatic `[c-]` carbon (charge-flattened
+      after an RDKit round-trip) has an adjusted valence.
+    * **Dative / coordinate-bonded atoms** — a donor atom bonded
+      through a coordinate (``->``) bond has ``degree > covalent
+      valence``; RDKit does not count the dative bond as covalent
+      valence, so ``GetTotalValence()`` under-counts.  RDKit parses
+      the ``->`` notation natively as a ``Chem.BondType.DATIVE`` bond;
+      we flag any atom incident to such a bond, and keep the
+      ``degree > total valence`` heuristic as a fallback for edge
+      cases where the dative flag is lost.
+
+    Why re-parse ``source_smiles``: :meth:`MoleculeClosedTerm.to_rdkit`
+    does **not** preserve formal charges / dative topology (the MLC
+    bond ledger stores ``is_dative=False`` for every RDKit bond — see
+    ``from_rdkit``), so the charges and dative flags are only
+    recoverable from the original SMILES the term was built from.
+    We therefore parse ``term.source_smiles`` afresh and read the
+    authoritative formal charge / aromaticity / degree off that mol.
+
+    Returns an (possibly empty) ``set`` of atom indices to exempt.
+    Falls back to the empty set when ``source_smiles`` is unavailable
+    or RDKit cannot parse it — in that case the predicate keeps its
+    strict behaviour (no false positives).
+    """
+    relaxed: set = set()
+    src = getattr(term, "source_smiles", None)
+    if not src:
+        return relaxed
+    try:
+        from rdkit import Chem  # type: ignore[import-not-found]
+
+        mol = Chem.MolFromSmiles(str(src))
+    except Exception:
+        mol = None
+    if mol is None:
+        return relaxed
+    try:
+        dative_type = Chem.BondType.DATIVE
+    except Exception:
+        dative_type = None
+    n_mol = mol.GetNumAtoms()
+    for i in range(len(atoms)):
+        if i >= n_mol:
+            continue
+        try:
+            rd_atom = mol.GetAtomWithIdx(i)
+        except Exception:
+            continue
+        try:
+            charged = int(rd_atom.GetFormalCharge()) != 0
+        except Exception:
+            charged = False
+        try:
+            aromatic = bool(rd_atom.GetIsAromatic())
+        except Exception:
+            aromatic = False
+        dative = False
+        try:
+            dative = int(rd_atom.GetDegree()) > int(rd_atom.GetTotalValence())
+        except Exception:
+            dative = False
+        # Native dative-bond detection (``->`` notation): an atom
+        # incident to a DATIVE bond is a coordinate donor/acceptor and
+        # its covalent valence is legitimately below the primitive
+        # neutral valence.
+        if not dative and dative_type is not None:
+            try:
+                for bond in rd_atom.GetBonds():
+                    if bond.GetBondType() == dative_type:
+                        dative = True
+                        break
+            except Exception:
+                pass
+        if charged or aromatic or dative:
+            relaxed.add(i)
+    return relaxed
+
+
 def check_beta_normal_form_for_rdkit_term(term) -> bool:
     """Term-level valence-based BNF using ``term.valence_used`` (RDKit-aware).
 
@@ -325,6 +417,15 @@ def check_beta_normal_form_for_rdkit_term(term) -> bool:
     iff ``valence_used[i] >= atoms[i].valence`` — the chemistry-
     correct definition that ignores lone-pair capacity.
 
+    Charged / aromatic / dative-bonded atoms are exempted (see
+    :func:`_relaxed_atom_indices`).  Their RDKit total valence is
+    legitimately below the neutral primitive valence (e.g. ``[Cl-]``
+    has total valence 0; ``[c-]`` aromatic carbanions have total
+    valence 3; dative donors such as a 4-coordinate P have total
+    valence 3).  Requiring neutral-integer valence saturation on
+    these atoms rejects chemically valid PlatinAI / MetalCytoToxDB
+    metal complexes before any closure BFS can run.
+
     Returns ``True`` for an empty / uninitialised term (trivially
     BNF-saturated).
     """
@@ -335,8 +436,13 @@ def check_beta_normal_form_for_rdkit_term(term) -> bool:
     vu = dict(getattr(term, "valence_used", {}) or {})
     for i in range(len(atoms)):
         vu.setdefault(i, 0)
+    # Atoms whose neutral-primitive valence does not apply (charged /
+    # aromatic / dative) are exempt from the saturation requirement.
+    relaxed = _relaxed_atom_indices(term, atoms)
     # Walk all atoms.  If any has valence_used < atom.valence, fail.
     for i, atom in enumerate(atoms):
+        if i in relaxed:
+            continue
         try:
             used = int(vu.get(i, 0))
         except Exception:
