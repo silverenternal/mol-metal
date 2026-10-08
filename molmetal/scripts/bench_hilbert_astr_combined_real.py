@@ -163,6 +163,8 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 # Constants — per Wf-85 P1 + Wf-85 P2 + Wf-49 P2 conventions.
 # ---------------------------------------------------------------------------
 COLLAPSE_RATIO_THRESHOLD: float = 0.10
+SCALE_MISMATCH_TOLERANCE: float = 0.50
+WRONG_VARIABLE_R2_FLOOR: float = 0.0
 PRED_CLIP: float = 1e6
 EPS_STD: float = 1e-3
 INNER_VAL_FRAC: float = 0.10  # Per-fold inner validation slice for alpha.
@@ -536,9 +538,35 @@ def _compute_r2(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 
 
 def _collapse_detected(y_pred: np.ndarray, y_true: np.ndarray) -> bool:
-    if y_true.std() < 1e-12:
+    """Eval-time collapse / mismatch guard (modes A/B/C).
+
+    Mode A: std-ratio collapse (pred is near-constant).
+    Mode B: std-ratio explode (Wf-122 P1.2; pred over-amplifies 50%+).
+    Mode C: wrong-variable — right scale but R² ≤ floor, i.e. no better
+    than the constant-mean predictor.  Without mode C this diagnostic
+    reported 0/20 collapse on the very seeds that produced R²=-5.66
+    (mcf7 wrong-variable AST at std ratio 1.31).
+    """
+    y_pred = np.asarray(y_pred, dtype=np.float64).reshape(-1)
+    y_true = np.asarray(y_true, dtype=np.float64).reshape(-1)
+    if y_true.size == 0 or y_pred.size != y_true.size:
         return True
-    return float(y_pred.std() / max(y_true.std(), 1e-12)) < COLLAPSE_RATIO_THRESHOLD
+    if not np.all(np.isfinite(y_true)) or not np.all(np.isfinite(y_pred)):
+        return True
+    y_std = float(y_true.std())
+    if y_std < 1e-12:
+        return True
+    ratio = float(y_pred.std() / max(y_std, 1e-12))
+    if ratio < COLLAPSE_RATIO_THRESHOLD:
+        return True  # mode A
+    if abs(ratio - 1.0) > SCALE_MISMATCH_TOLERANCE:
+        return True  # mode B
+    ss_tot = float(np.sum((y_true - y_true.mean()) ** 2))
+    if ss_tot > 1e-12:
+        ss_res = float(np.sum((y_true - y_pred) ** 2))
+        if 1.0 - ss_res / ss_tot <= WRONG_VARIABLE_R2_FLOOR:
+            return True  # mode C
+    return False
 
 
 def _choose_alpha(

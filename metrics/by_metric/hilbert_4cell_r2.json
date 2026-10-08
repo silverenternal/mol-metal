@@ -192,5 +192,14 @@
     ],
     "gpu_spent": "none — 0 retrain, 0 CUDA calls (per wf-R32 §4.2: do NOT spend GPU)",
     "paper_touches": "none — TODO-84 + AGENTS.md §5.3 respected"
+  },
+  "wf_r44_eval_guard_mode_c_fix": {
+    "date": "2026-10-08",
+    "defect_found": "bench_hilbert_astr_combined_real.py::_collapse_detected (eval-time diagnostic behind the `collapse_detected` field on every per-seed record and the JSON's `collapse_detected_post_fix = 0 of 20` claim) detected ONLY mode A (std-ratio collapse). It was blind to mode C — a wrong-variable AST with std ratio ~1.0 that regresses on the wrong feature at R2 <= 0. MEASURED on real PlatinAI mcf7: ASTSR best AST = (min v_RingCount v_HBD) at train R2 = -116.3, or with the Wf-122 P3 bench seed (mul (add (add v_FractionCSP3 c_1.0) c_1.0) c_2.0) at train R2 = -2.6092, std ratio 1.308 -> pre-fix _collapse_detected = False. The '0 of 20 collapse' diagnostic was therefore a FALSE NEGATIVE on the exact seeds that produced R2 = -5.66.",
+    "fix": "Added SCALE_MISMATCH_TOLERANCE (mode B, previously absent from this bench copy) + WRONG_VARIABLE_R2_FLOOR = 0.0 (mode C) to molmetal/scripts/bench_hilbert_astr_combined_real.py::_collapse_detected so the eval-time diagnostic is honest. CPU-only; eval-time only, does NOT touch the evolutionary search (a selection-time R2<=0 filter was tried and REVERTED — it kills the initial random population and breaks test_astsr_rdkit_2d_extended_toy_r2_above_threshold).",
+    "fix_verify": "molmetal/tests/test_hilbert_astr_combined_real.py + test_hilbert_astr_post_fix_smoke.py = 32 passed (incl. 2 NEW mode-B/mode-C tests). Post-fix _collapse_detected fires True on the real mcf7 wrong-variable AST; False on a signal prediction (R2>0.5).",
+    "scope_caveat": "The guard is a DIAGNOSTIC, not a signal source. It flags the wrong-variable regime honestly but does NOT lift the L5 ceiling. The true achievable linear R2 on the 12-d RDKit features is ~0 (OLS on real mcf7: train +0.0088, max |rho| 0.022), so the ceiling half of this JSON's verdict stands. The defect fixed here is that the collapse diagnostic was itself a false negative, not that the metric is liftable.",
+    "gpu_spent": "none — 0 retrain, 0 CUDA calls.",
+    "paper_touches": "none."
   }
 }

@@ -69,6 +69,7 @@ for _p in (str(_HERE.parent), str(_REPO_ROOT)):
 from molmetal.scripts.bench_hilbert_astr_combined_real import (  # noqa: E402
     FEATURE_COLUMNS,
     COLLAPSE_RATIO_THRESHOLD,
+    WRONG_VARIABLE_R2_FLOOR,
     PRED_CLIP,
     BLEND_ALPHAS,
     INNER_VAL_FRAC,
@@ -149,6 +150,24 @@ def test_collapse_detector() -> None:
     # Wide-spread prediction ⇒ no collapse.
     assert _collapse_detected(y_true + 0.1, y_true) is False
     assert COLLAPSE_RATIO_THRESHOLD == pytest.approx(0.1, abs=1e-9)
+
+
+def test_collapse_detector_mode_b_explode() -> None:
+    # Right shape but 3x the std ⇒ mode B scale-mismatch.
+    y_true = np.linspace(0.0, 1.0, 100)
+    assert _collapse_detected(y_true * 3.0, y_true) is True
+
+
+def test_collapse_detector_mode_c_wrong_variable() -> None:
+    # Right scale (ratio ~1.0) but near-zero signal ⇒ mode C.
+    rng = np.random.default_rng(0)
+    y_true = rng.normal(5.0, 0.5, 200)
+    y_pred = y_true.mean() + (y_true - y_true.mean())[rng.permutation(200)] * 0.95
+    ratio = y_pred.std() / y_true.std()
+    assert 0.5 < ratio < 1.5, f"precondition: ratio {ratio} must pass modes A/B"
+    assert _compute_r2(y_true, y_pred) <= 0.0
+    assert _collapse_detected(y_pred, y_true) is True
+    assert WRONG_VARIABLE_R2_FLOOR == pytest.approx(0.0, abs=1e-9)
 
 
 # ---------------------------------------------------------------------------
