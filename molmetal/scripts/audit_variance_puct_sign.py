@@ -402,6 +402,18 @@ def _parse_args(argv: Optional[Sequence[str]]) -> Tuple[str, bool]:
     """Return ``(output_path, pretty)`` from CLI args."""
     if argv is None:
         argv = sys.argv[1:]
+    # 2026-10-08 — guard --help/-h: without this the flag was treated as the
+    # output filename and the audit silently wrote a file literally named
+    # "--help" into the CWD (the script has no argparse, so nothing consumed
+    # it). Print a usage block and exit instead.
+    if any(a in ("-h", "--help") for a in argv):
+        print(
+            "usage: audit_variance_puct_sign.py [OUTPUT_PATH] [--no-pretty]\n"
+            "  OUTPUT_PATH   where to write sign_flip_audit.json "
+            "(default: molmetal/reports/wf65_p1_sign_audit/)\n"
+            "  --no-pretty   compact JSON instead of indent=2"
+        )
+        raise SystemExit(0)
     if not argv:
         output_path = os.path.join(
             _REPO_ROOT,
