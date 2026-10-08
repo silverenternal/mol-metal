@@ -102,7 +102,25 @@ PROJECT_ROOT="/home/hugo/codes/mol-metal"
 SCRIPTS_DIR="${PROJECT_ROOT}/molmetal/scripts"
 REPORTS_DIR="${PROJECT_ROOT}/molmetal/reports/wf131_p3_pt_4cells"
 TRAINER="${SCRIPTS_DIR}/train_metal_lomo_wasserstein.py"
-LOMO_CSV="${PROJECT_ROOT}/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+# Per Wf-131 P3 substantive fix: the original LOMO_CSV
+# (`metalcytotox_5metal_multitask_v4.csv`) only contains Ir/Os/Re/Rh/Ru —
+# NO Pt rows.  Holding out Pt on a CSV without Pt gives n_test=0 and
+# AUC=NaN.  Switch to the MERGED CSV built by `melt_platinai_4cell.py`
+# which has:
+#   * 5-metal train fold (Ir/Os/Re/Rh/Ru, 26632 rows from
+#     metalcytotox_5metal_multitask_v4.csv)
+#   * Pt test fold (4078 × 4 cell-lines = 16312 rows melted from
+#     platinai_4cell.csv)
+# Total: 42944 rows.  Synthetic pIC50 (Rusanov 2025 supplementary S4-S5
+# is behind Cloudflare; per .data/molmetal/platinai_4cell.meta.json honest
+# framing).  MEASURED/PROJECTED labels per AGENTS.md §5.2.
+LOMO_CSV="${PROJECT_ROOT}/.data/molmetal/platinai_4cells_with_5metal_train.csv"
+if [[ ! -f "${LOMO_CSV}" ]]; then
+    echo "[wf131-launch] building merged CSV → ${LOMO_CSV}"
+    "${PY}" "${SCRIPTS_DIR}/melt_platinai_4cell.py" \
+        --merged-out "${LOMO_CSV}" \
+        || { echo "FATAL: melt_platinai_4cell.py failed"; exit 1; }
+fi
 
 # 4 cell lines × 5 seeds = 20 (cell, seed) pairs per Rusanov 2025 §1.2
 DEFAULT_CELLS=(
@@ -440,7 +458,14 @@ run_pair() {
   local cell=$1
   local seed=$2
   local pair_log="${OUT_BASE}/Pt/${cell}/seed${seed}/run.log"
+  local pair_done="${OUT_BASE}/Pt/${cell}/seed${seed}/.DONE"
   mkdir -p "${OUT_BASE}/Pt/${cell}/seed${seed}/ckpts"
+
+  # Wf-R43 resume-safety: skip already-completed pairs on restart
+  if [[ -f "${pair_done}" ]]; then
+    echo "PAIR_SKIP Pt ${cell} seed=${seed} reason=.DONE marker present" | tee -a "${LOG}"
+    return 0
+  fi
 
   # Wf-347-B1: per-wave runtime check BEFORE launching this pair
   PYTHONPATH="${PROJECT_ROOT}" ${PY} "${SCRIPTS_DIR}/wf343c2_per_wave_check.py" \
@@ -483,6 +508,9 @@ run_pair() {
   fi
   # Wf-302B guard: verify the pair actually reached target epoch (50)
   wait_until_epoch_reached "${pair_log}" 50 3600 || { echo "FAIL: Pt ${cell} seed=${seed} did not reach epoch 50"; return 1; }
+  # Wf-R43 resume-safety: write .DONE marker only after BOTH trainer + epoch-50 verified
+  echo "PAIR_DONE Pt ${cell} seed=${seed} rc=${rc} epoch=50 verified" > "${pair_done}"
+  echo "PAIR_MARKER Pt ${cell} seed=${seed} .DONE=${pair_done}" | tee -a "${LOG}"
 }
 
 echo "=== Wf-131 P3 Pt × 4-cell-line START $(date) ===" | tee -a "${LOG}"
