@@ -1,0 +1,18 @@
+{
+  "seed": 1,
+  "task": "hiv",
+  "backbone": "dmpnn",
+  "n_rows": 41127,
+  "n_train": 28790,
+  "n_val": 4111,
+  "n_test": 8226,
+  "pos_rate_train": 0.03612365404654394,
+  "pos_rate_test": 0.03099927060539752,
+  "test_metrics": {
+    "roc_auc": 0.7822705346095281,
+    "pr_auc": 0.25767253256683237,
+    "hit_rate_top5pct": 0.2749391727493917,
+    "n": 8226
+  },
+  "epochs": 50
+}

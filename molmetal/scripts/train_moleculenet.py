@@ -71,6 +71,8 @@ import torch
 import torch.nn as nn
 
 from molmetal.baselines.eval_utils import compute_metrics, morgan_features
+from molmetal.baselines.dmpnn_multitask import DMPNNMultiTaskModel
+from molmetal.baselines.dmpnn_attentive import collate_graphs, featurize_smiles_list
 
 # ---------------------------------------------------------------------------
 # Dataset loading
@@ -360,6 +362,135 @@ def _train_one_seed(
 # ---------------------------------------------------------------------------
 # Aggregation + reporting
 # ---------------------------------------------------------------------------
+def _test_metrics_dmpnn(
+    model: DMPNNMultiTaskModel,
+    graphs: List,
+    y_np: np.ndarray,
+    idx: np.ndarray,
+    batch_size: int,
+    device: torch.device,
+) -> Dict[str, float]:
+    """Classification-head ROC-AUC on the subset ``idx`` under the D-MPNN backbone."""
+    model.eval()
+    scores = np.zeros(len(idx), dtype=float)
+    with torch.no_grad():
+        for start in range(0, len(idx), batch_size):
+            bidx = idx[start : start + batch_size]
+            g_list = [graphs[i] for i in bidx]
+            keep = [j for j, g in enumerate(g_list) if g is not None]
+            if not keep:
+                continue
+            batch_data = collate_graphs([g_list[j] for j in keep])
+            if batch_data is None:
+                continue
+            atom_f, bond_f, e_src, e_dst = (t.to(device) for t in batch_data)
+            _p, cls = model(atom_f, bond_f, e_src, e_dst)
+            prob = torch.softmax(cls, dim=-1)[:, 1].cpu().numpy()
+            for k, j in enumerate(keep):
+                scores[start + j] = float(prob[k])
+    return compute_metrics(y_np[idx], scores)
+
+
+def _train_one_seed_dmpnn(
+    task: str,
+    seed: int,
+    epochs: int,
+    batch_size: int,
+    lr: float,
+    hidden: int,
+    depth: int,
+    device: torch.device,
+) -> Dict[str, object]:
+    """D-MPNN backbone on the same MoleculeNet scaffold split as the Morgan-MLP run."""
+    smiles, labels = _load_task(task)
+    print(
+        f"[molnet:{task}] backbone=dmpnn seed={seed}  rows={len(smiles)}  "
+        f"pos_rate={labels.mean():.3f}",
+        flush=True,
+    )
+
+    train_idx, val_idx, test_idx = _scaffold_split(smiles, seed=seed)
+    if len(test_idx) < 5 or len(np.unique(labels[test_idx])) < 2:
+        rng = np.random.default_rng(seed)
+        idx = rng.permutation(len(smiles))
+        n = len(idx)
+        train_idx = idx[: int(0.7 * n)]
+        val_idx = idx[int(0.7 * n) : int(0.8 * n)]
+        test_idx = idx[int(0.8 * n) :]
+        print(f"[molnet:{task}]   scaffold split degenerated; random 70/10/20", flush=True)
+
+    graphs = featurize_smiles_list([str(s) for s in smiles])
+    y_all = labels.astype(np.int64)
+
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    model = DMPNNMultiTaskModel(hidden=hidden, depth=depth).to(device)
+    opt = torch.optim.Adam(model.parameters(), lr=lr)
+    pos = float(y_all[train_idx].sum())
+    neg = float(len(train_idx) - pos)
+    pos_weight = torch.tensor([neg / max(pos, 1.0)], device=device)
+    loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([1.0, pos_weight.item()], device=device))
+
+    best_val = -1.0
+    best_state = None
+    n_train = len(train_idx)
+    for epoch in range(epochs):
+        model.train()
+        perm = np.random.permutation(n_train)
+        total_loss, n_batches = 0.0, 0
+        for start in range(0, n_train, batch_size):
+            bidx = train_idx[perm[start : start + batch_size]]
+            g_list = [graphs[i] for i in bidx]
+            keep = [j for j, g in enumerate(g_list) if g is not None]
+            if not keep:
+                continue
+            batch_data = collate_graphs([g_list[j] for j in keep])
+            if batch_data is None:
+                continue
+            atom_f, bond_f, e_src, e_dst = (t.to(device) for t in batch_data)
+            yb = torch.from_numpy(y_all[[bidx[j] for j in keep]]).to(device)
+            opt.zero_grad()
+            _p, cls = model(atom_f, bond_f, e_src, e_dst)
+            loss = loss_fn(cls, yb)
+            loss.backward()
+            opt.step()
+            total_loss += loss.item()
+            n_batches += 1
+
+        v_metrics = _test_metrics_dmpnn(model, graphs, y_all, val_idx, batch_size, device)
+        if v_metrics["roc_auc"] > best_val:
+            best_val = v_metrics["roc_auc"]
+            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+        if (epoch + 1) % max(1, epochs // 5) == 0 or epoch == 0:
+            print(
+                f"[molnet:{task}]   epoch {epoch+1:3d}/{epochs} "
+                f"loss={total_loss/max(n_batches,1):.4f} val_auc={v_metrics['roc_auc']:.4f}",
+                flush=True,
+            )
+
+    if best_state is not None:
+        model.load_state_dict(best_state)
+    test_metrics = _test_metrics_dmpnn(model, graphs, y_all, test_idx, batch_size, device)
+    print(
+        f"[molnet:{task}]   TEST AUC={test_metrics['roc_auc']:.4f}  "
+        f"PR-AUC={test_metrics['pr_auc']:.4f}",
+        flush=True,
+    )
+    return {
+        "seed": seed,
+        "task": task,
+        "backbone": "dmpnn",
+        "n_rows": len(smiles),
+        "n_train": int(len(train_idx)),
+        "n_val": int(len(val_idx)),
+        "n_test": int(len(test_idx)),
+        "pos_rate_train": float(y_all[train_idx].mean()),
+        "pos_rate_test": float(y_all[test_idx].mean()),
+        "test_metrics": test_metrics,
+        "epochs": epochs,
+    }
+
+
 def _aggregate(per_seed: List[Dict[str, object]]) -> Dict[str, object]:
     aucs = [
         float(d["test_metrics"]["roc_auc"])
@@ -398,21 +529,31 @@ def _run_task(
     hidden: int,
     device: torch.device,
     out_dir: Path,
+    backbone: str = "morgan_mlp",
+    depth: int = 3,
 ) -> Dict[str, object]:
-    print(f"\n=== task {task} ===", flush=True)
+    print(f"\n=== task {task} (backbone={backbone}) ===", flush=True)
     per_seed: List[Dict[str, object]] = []
     t0 = time.time()
     for seed in seeds:
         try:
-            r = _train_one_seed(task, seed, epochs, batch_size, lr, hidden, device)
+            if backbone == "dmpnn":
+                r = _train_one_seed_dmpnn(
+                    task, seed, epochs, batch_size, lr, hidden, depth, device
+                )
+            else:
+                r = _train_one_seed(task, seed, epochs, batch_size, lr, hidden, device)
             per_seed.append(r)
-            (out_dir / f"{task}_seed{seed}.json").write_text(json.dumps(r, indent=2))
+            (out_dir / f"{task}_{backbone}_seed{seed}.json").write_text(
+                json.dumps(r, indent=2)
+            )
         except Exception as e:
             print(f"[molnet:{task}] seed {seed} FAILED: {e}", flush=True)
             per_seed.append(
                 {
                     "seed": seed,
                     "task": task,
+                    "backbone": backbone,
                     "error": str(e),
                     "test_metrics": {
                         "roc_auc": float("nan"),
@@ -423,6 +564,7 @@ def _run_task(
             )
     agg = _aggregate(per_seed)
     agg["task"] = task
+    agg["backbone"] = backbone
     agg["chemprop_dmpnn_baseline"] = CHEMPROP_DMPNN_BASELINE[task]
     agg["chemprop_rf_baseline"] = CHEMPROP_RF_BASELINE[task]
     agg["elapsed_seconds"] = time.time() - t0
@@ -559,7 +701,14 @@ def _parse_args(argv: List[str] | None = None) -> argparse.Namespace:
     p.add_argument("--epochs", type=int, default=50)
     p.add_argument("--batch-size", type=int, default=32)
     p.add_argument("--lr", type=float, default=1e-3)
-    p.add_argument("--hidden", type=int, default=256, help="MLP hidden width")
+    p.add_argument("--hidden", type=int, default=256, help="MLP/D-MPNN hidden width")
+    p.add_argument(
+        "--backbone",
+        choices=["morgan_mlp", "dmpnn"],
+        default="morgan_mlp",
+        help="Classifier backbone: Morgan-FP+MLP (morgan_mlp) or D-MPNN (dmpnn).",
+    )
+    p.add_argument("--depth", type=int, default=3, help="D-MPNN message-passing rounds")
     p.add_argument(
         "--out-dir",
         default="logs/metric_molnet",
@@ -610,7 +759,9 @@ def main(argv: List[str] | None = None) -> int:
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(
-        f"[molnet] device={device}  tasks={args.tasks}  seeds={args.seeds}", flush=True
+        f"[molnet] device={device}  backbone={args.backbone}  tasks={args.tasks}  "
+        f"seeds={args.seeds}",
+        flush=True,
     )
 
     all_results: Dict[str, object] = {}
@@ -624,11 +775,13 @@ def main(argv: List[str] | None = None) -> int:
             args.hidden,
             device,
             out_dir,
+            backbone=args.backbone,
+            depth=args.depth,
         )
         # Pull per-seed rows for the report (read back from disk)
         per_seed: List[Dict[str, object]] = []
         for s in args.seeds:
-            p = out_dir / f"{task}_seed{s}.json"
+            p = out_dir / f"{task}_{args.backbone}_seed{s}.json"
             if p.exists():
                 per_seed.append(json.loads(p.read_text()))
         agg["per_seed"] = per_seed
@@ -637,14 +790,16 @@ def main(argv: List[str] | None = None) -> int:
     # Aggregate JSON
     payload = {
         "date": time.strftime("%Y-%m-%d"),
-        "model": "morgan_mlp_v4",
-        "featurization": "morgan_fp_2048_r2",
+        "model": f"{args.backbone}_v4",
+        "backbone": args.backbone,
+        "featurization": "morgan_fp_2048_r2" if args.backbone == "morgan_mlp" else "dmpnn_atom_bond",
         "split": "scaffold (Bemis-Murcko, 70/10/20)",
         "seeds": args.seeds,
         "epochs": args.epochs,
         "batch_size": args.batch_size,
         "lr": args.lr,
         "hidden": args.hidden,
+        "depth": args.depth,
         "tasks": {
             task: {k: v for k, v in all_results[task].items() if k != "per_seed"}
             for task in args.tasks

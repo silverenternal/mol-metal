@@ -1,0 +1,133 @@
+{
+  "date": "2026-10-08",
+  "model": "dmpnn_v4",
+  "backbone": "dmpnn",
+  "featurization": "dmpnn_atom_bond",
+  "split": "scaffold (Bemis-Murcko, 70/10/20)",
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "epochs": 50,
+  "batch_size": 64,
+  "lr": 0.001,
+  "hidden": 300,
+  "depth": 3,
+  "tasks": {
+    "bbbp": {
+      "n_seeds_total": 3,
+      "n_seeds_valid": 3,
+      "test_auc_mean": 0.9002903880938762,
+      "test_auc_std": 0.015321531402303728,
+      "test_pr_auc_mean": 0.9511161561925161,
+      "test_hit_top5_mean": 0.9521739130434783,
+      "per_seed_auc": [
+        0.8813124197739581,
+        0.9007239028787111,
+        0.9188348416289592
+      ],
+      "per_seed_pr_auc": [
+        0.9245716188623615,
+        0.9606422645875555,
+        0.9681345851276313
+      ],
+      "per_seed_hit_top5": [
+        0.9,
+        0.9565217391304348,
+        1.0
+      ],
+      "task": "bbbp",
+      "backbone": "dmpnn",
+      "chemprop_dmpnn_baseline": 0.94,
+      "chemprop_rf_baseline": 0.728,
+      "elapsed_seconds": 132.5540702342987
+    },
+    "bace": {
+      "n_seeds_total": 3,
+      "n_seeds_valid": 3,
+      "test_auc_mean": 0.7411695789277516,
+      "test_auc_std": 0.06873564320654171,
+      "test_pr_auc_mean": 0.7235083056978822,
+      "test_hit_top5_mean": 0.8666666666666667,
+      "per_seed_auc": [
+        0.6769142806878656,
+        0.8364662509671841,
+        0.7101282051282052
+      ],
+      "per_seed_pr_auc": [
+        0.6639285869310712,
+        0.796808947119973,
+        0.7097873830426025
+      ],
+      "per_seed_hit_top5": [
+        0.8,
+        0.9333333333333333,
+        0.8666666666666667
+      ],
+      "task": "bace",
+      "backbone": "dmpnn",
+      "chemprop_dmpnn_baseline": 0.876,
+      "chemprop_rf_baseline": 0.868,
+      "elapsed_seconds": 119.26574850082397
+    },
+    "hiv": {
+      "n_seeds_total": 3,
+      "n_seeds_valid": 3,
+      "test_auc_mean": 0.7831566036207973,
+      "test_auc_std": 0.010496880270596589,
+      "test_pr_auc_mean": 0.3365569408578487,
+      "test_hit_top5_mean": 0.34350736278447125,
+      "per_seed_auc": [
+        0.7707665596024256,
+        0.7822705346095281,
+        0.7964327166504381
+      ],
+      "per_seed_pr_auc": [
+        0.3759243880743513,
+        0.25767253256683237,
+        0.3760739019323624
+      ],
+      "per_seed_hit_top5": [
+        0.363855421686747,
+        0.2749391727493917,
+        0.39172749391727496
+      ],
+      "task": "hiv",
+      "backbone": "dmpnn",
+      "chemprop_dmpnn_baseline": 0.823,
+      "chemprop_rf_baseline": 0.761,
+      "elapsed_seconds": 1886.614797115326
+    },
+    "clintox": {
+      "n_seeds_total": 3,
+      "n_seeds_valid": 3,
+      "test_auc_mean": 0.8398226579465818,
+      "test_auc_std": 0.025783587600954994,
+      "test_pr_auc_mean": 0.35172584212952634,
+      "test_hit_top5_mean": 0.4666666666666667,
+      "per_seed_auc": [
+        0.8135121457489879,
+        0.8311145246629118,
+        0.8748413034278459
+      ],
+      "per_seed_pr_auc": [
+        0.39393931789767234,
+        0.28389784201124846,
+        0.3773403664796583
+      ],
+      "per_seed_hit_top5": [
+        0.5333333333333333,
+        0.4666666666666667,
+        0.4
+      ],
+      "task": "clintox",
+      "backbone": "dmpnn",
+      "chemprop_dmpnn_baseline": 0.894,
+      "chemprop_rf_baseline": 0.832,
+      "elapsed_seconds": 49.428521394729614
+    }
+  },
+  "gate_mean_auc_threshold": 0.8,
+  "chemprop_dmpnn_baseline_mean": 0.88325
+}
