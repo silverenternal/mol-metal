@@ -130,6 +130,21 @@
       "Os": 1.0,
       "Au": 1.0
     },
+    "postfix_all_domains_refresh_utc": "2026-10-08",
+    "postfix_all_domains_command": "molmetal/scripts/bench_closure_ood.py --domains platinai_5k metalcytotox_5metal tmqm_dblock --n-samples 10 --max-depth 1 --max-products 64 --seeds 1 --method closure+ood_filter",
+    "postfix_all_domains_overall": {
+      "closure_reachability_rate": 1.0,
+      "n_input": 413,
+      "n_ood": 94,
+      "n_closure_ok": 94,
+      "total_wall_s": 366.47
+    },
+    "postfix_all_domains_per_domain": {
+      "platinai_5k": {"reachability": 1.0, "n_closure_ok": 44, "n_samples": 44},
+      "metalcytotox_5metal": {"reachability": 1.0, "n_closure_ok": 50, "n_samples": 50},
+      "tmqm_dblock": {"reachability": 0.0, "n_closure_ok": 0, "n_samples": 0, "note": "no OOD slices surface for this domain at max_depth=1 (n_ood=0 for every metal); contributes 0/0 to the aggregate, not a sub-gate result"}
+    },
+    "postfix_all_domains_note": "The earlier postfix_* block (2026-10-08, same day) recorded only the platinai_5k domain (44/44). This block extends the measurement to ALL THREE bench domains on the identical post-seed-fix code: platinai_5k 44/44 + metalcytotox_5metal 50/50 = 94/94 aggregate; tmqm_dblock yields no OOD slices at this depth (0/0). So the post-fix reachability is 1.0 across every domain that produces OOD samples, not just the 8-metal Pt-group subset.",
     "postfix_root_cause": "The 0.2872 was a seed-gate false-negative, not a metric ceiling: check_beta_normal_form_for_rdkit_term rejected charged/aromatic/dative PlatinAI seeds before the closure BFS ran (max_depth_seen=1 for 629/630 records proved the BFS budget was never binding). Fixed by exempting those atoms (well_formedness._relaxed_atom_indices). Adversarial-verified: pre-fix 27/94=0.2872, post-fix 94/94=1.0 on the identical stored records; independent full re-run 350/350.",
     "postfix_evidence": "molmetal/scripts/bench_closure_ood.py --domains platinai_5k --n-samples 10 --max-depth 1 --max-products 64 --seeds 1 --method closure+ood_filter",
     "wf318e_refresh_note": "wf318e_* fields renamed with _HISTORICAL suffix on 2026-10-08; their 0.2872/0.3348 values were correct for the pre-fix code but are superseded by the postfix_* fields (1.0) after the seed valence-BNF fix."
