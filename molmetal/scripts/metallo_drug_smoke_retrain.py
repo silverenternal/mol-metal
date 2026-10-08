@@ -617,6 +617,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "steps_planned": args.steps,
             "steps_executed": n_param_steps,
             "batch_size": args.batch_size,
+            "decode_smoke_every": args.decode_smoke_every,
             "lr": args.lr,
             "hidden_dim": args.hidden_dim,
             "n_layers": args.n_layers,
