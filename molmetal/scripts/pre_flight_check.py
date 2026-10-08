@@ -5014,6 +5014,177 @@ EXPECTED_GATE_COUNTS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Incremental-gate scope map (--changed-only)
+# ---------------------------------------------------------------------------
+#
+# Maps a gate name to the repo-relative path globs the gate is PROVABLY
+# limited to reading. A gate is skippable under --changed-only ONLY when its
+# name is in this map AND every staged/changed file matches NONE of its globs.
+#
+# CONSERVATISM CONTRACT (the whole safety of the feature rests on this):
+#   * A gate ABSENT from this map ALWAYS runs. The map is an explicit allowlist
+#     of skippable gates, never a denylist of must-run ones — so a gate that is
+#     added later, renamed, or whose reading behaviour changes defaults to RUN.
+#   * Only gates whose registration passes an EXPLICIT, small, enumerable path
+#     list are listed here. Gates that read global state (registry/*.yaml
+#     consistency, run-ledger staleness, the gate-count/inventory audits,
+#     anchor freshness, honest-negative catalogs, whole-repo pytest/leakage
+#     scans) are DELIBERATELY absent — they can never be skipped.
+#   * When in doubt, omit the gate. A wrong skip turns a failing commit green,
+#     which is strictly worse than running a gate that did not need to run.
+#   * NEVER scope a gate to a GITIGNORED path (e.g. ``.data/**``). ``--changed-only``
+#     derives its changed set from ``git diff --cached --name-only``, which CANNOT
+#     report a gitignored file — so a glob over a gitignored path never matches and
+#     the gate is skipped UNCONDITIONALLY, even when the underlying data was
+#     tampered with. A gate reading gitignored state is therefore never skippable
+#     and must be absent from this map. (Regression-guarded by
+#     tests/test_pre_flight_incremental.py::test_no_gitignored_scope.)
+#
+# A glob is matched against a repo-relative POSIX path via fnmatch (``*`` does
+# NOT cross ``/``). Scope VERSION bumps if a listed gate's read-set grows.
+GATE_PATH_SCOPES_VERSION = 1
+
+GATE_PATH_SCOPES: Dict[str, Tuple[str, ...]] = {
+    # --- YAML config gates: read only the enumerated configs/*.yaml set ---
+    "p3_protocol_alignment_yaml_dataset_authorized": ("configs/*.yaml", "configs/**/*.yaml"),
+    "p3_protocol_alignment_yaml_split_matches_baseline": ("configs/*.yaml", "configs/**/*.yaml"),
+    "p3_protocol_alignment_yaml_target_in_baseline_range": ("configs/*.yaml", "configs/**/*.yaml"),
+    "p3_protocol_alignment_yaml_no_inline_cli": ("configs/*.yaml", "configs/**/*.yaml"),
+    "p0_config_schema_verify": ("configs/*.yaml", "configs/**/*.yaml"),
+    # --- CSV/data-file gates: only TRACKED molmetal/data CSVs (never gitignored .data/) ---
+    "p2_data_metallo_drugs_exists": ("molmetal/data/*.csv",),
+    # --- trainer code-grep gates: read only train_chemprop_v2_v3.py ---
+    "p3_wf353b1_code_1_1_1_indices_aliasing_fix": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p3_wf353b1_code_1_1_2_kendall_log_sigma": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p3_wf353b1_code_1_1_3_dann_per_metal": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p3_wf353b1_code_1_1_4_nan_to_num_guard": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p3_wf353b1_code_1_1_5_grad_clip_max_norm": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p3_wf353b1_code_1_1_6_w2_epoch_avg_history": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p3_wf353b1_code_1_1_7_ablation_flags_present": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p3_wf353b1_code_1_1_8_enhanced_metal_head": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p3_wf353b1_code_1_1_9_click_aug_flag": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p3_wf353b1_code_1_1_10_master_modules_flags": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p1_chemprop_indices_fix": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p1_chemprop_kendall_optimizer": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p1_chemprop_dann_per_metal": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p1_chemprop_nan_guard": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p1_chemprop_grad_clip": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p1_chemprop_epoch_avg": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p1_chemprop_ablation_flags": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p1_chemprop_seeds_min": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p1_chemprop_master_wass_flag": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p1_chemprop_master_cath_flag": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p1_chemprop_click_aug_flag": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p3_wf353b1_ablation_1_3_1_flags_present": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p3_wf353b1_ablation_1_3_2_single_metal_flag": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p3_wf353b1_ablation_1_3_3_n_seeds_min_flag": ("molmetal/scripts/train_chemprop_v2_v3.py",),
+    "p3_wf353b1_test_3_1_5_nan_guard_test_present": ("molmetal/tests/test_train_chemprop_v2_v3_nan_guard.py",),
+    # --- CFM artefact-presence gates: named CFM files only ---
+    "p1_cfm_script_exists": ("molmetal/scripts/train_cfm_yuelbond_wasserstein.py",),
+    "p1_cfm_config_exists": ("configs/cfm_full_retrain.yaml",),
+    "p1_cfm_decoder_exists": ("molmetal_lam/lam_chem/cfm_decoder_yuelbond.py",),
+    "p1_cfm_wasserstein_loss_exists": ("molmetal_lam/reward/wasserstein_loss.py",),
+    # --- ADMET metric-JSON gates: named metrics/*.json only ---
+    "p3_admet_ames_druglikeness": ("metrics/by_metric/ames_mutagen.json",),
+    "p3_admet_cell_perm_druglikeness": ("metrics/by_metric/cell_permeability_logPapp.json",),
+    "p3_admet_aq_sol_honest_negative_tag": ("metrics/by_metric/aqueous_solubility_logS.json",),
+    "p3_admet_hepatotox_honest_negative": ("metrics/by_metric/hepatotox_index.json",),
+    "p3_admet_logp7_4_honest_negative": ("metrics/by_metric/logp7_4.json",),
+    "p3_admet_m6_kappa_honest_negative": ("metrics/by_metric/m6_kappa.json",),
+    "p3_sa_score_metric_present": ("metrics/by_metric/sa_score.json",),
+    "p3_qed_score_metric_present": ("metrics/by_metric/qed_score.json",),
+    # --- MOCK->REAL metric-JSON gates: named metric JSON only ---
+    "p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket": ("metrics/by_metric/vina_kcal_per_mol.json",),
+    "p3_mock_to_real_m15_rmsd_REAL_5_pocket": ("metrics/by_metric/docked_pose_rmsd.json",),
+    "p3_mock_to_real_m14_decode_ratio_REAL_30_probes": ("metrics/by_metric/decode_ratio.json",),
+    "p3_mock_to_real_m17_drugood_assay_REAL_3_seeds": ("metrics/by_metric/drugood_ood_auc.json",),
+    "p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds": ("metrics/by_metric/nci60_precious_9cell_auc.json",),
+    # --- named file-presence gates: exact scripts/tests only ---
+    "p3_anchorguard_consumers_adopt": (
+        "molmetal/scripts/pre_flight_check.py",
+        "molmetal/scripts/paper_auto_update.py",
+        "molmetal/scripts/paper_dashboard.py",
+    ),
+    "p3_todo220_drivers_present": (
+        "molmetal/scripts/wf219_temporal_split_driver.py",
+        "molmetal/scripts/nci60_9cell_chemprop_driver.py",
+    ),
+}
+
+
+def _scope_matches(path: str, globs: Tuple[str, ...]) -> bool:
+    """True if ``path`` (repo-relative POSIX) matches any scope glob."""
+    import fnmatch
+
+    for g in globs:
+        if fnmatch.fnmatch(path, g):
+            return True
+    return False
+
+
+def select_changed_gates(
+    runners: List[Tuple[str, Callable[[], GateResult]]],
+    changed_files: Sequence[str],
+) -> Tuple[List[Tuple[str, Callable[[], GateResult]]], List[str], List[str]]:
+    """Filter ``runners`` to the gates a changed-file set can affect.
+
+    Returns ``(kept, skipped, reasons)`` where ``skipped`` is the names of
+    gates dropped, and ``reasons`` maps positionally to the dropped gate.
+
+    SAFETY (per the conservatism contract above):
+      * If ``changed_files`` is empty, ALL gates run (return unchanged).
+      * A gate whose name is absent from :data:`GATE_PATH_SCOPES` ALWAYS runs.
+      * A gate in the map runs if ANY changed file matches one of its globs;
+        it is skipped only when NO changed file matches.
+    """
+    if not changed_files:
+        return list(runners), [], []
+
+    norm = [f.replace("\\", "/").lstrip("./") for f in changed_files if f.strip()]
+    if not norm:
+        return list(runners), [], []
+
+    kept: List[Tuple[str, Callable[[], GateResult]]] = []
+    skipped: List[str] = []
+    reasons: List[str] = []
+    for name, runner in runners:
+        globs = GATE_PATH_SCOPES.get(name)
+        if globs is None:
+            kept.append((name, runner))
+            continue
+        if any(_scope_matches(f, globs) for f in norm):
+            kept.append((name, runner))
+        else:
+            skipped.append(name)
+            reasons.append(f"{name}: no changed file under {globs}")
+    return kept, skipped, reasons
+
+
+def _changed_file_list(explicit: Optional[str]) -> List[str]:
+    """Repo-relative changed-file list for --changed-only.
+
+    ``explicit`` (comma-separated) wins when given; otherwise query git for the
+    staged set (``git diff --cached --name-only``). Returns ``[]`` on any error
+    so the caller falls back to running ALL gates.
+    """
+    if explicit is not None:
+        return [p.strip() for p in explicit.split(",") if p.strip()]
+    try:
+        out = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            text=True,
+            timeout=20.0,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if out.returncode != 0:
+        return []
+    return [line.strip() for line in out.stdout.splitlines() if line.strip()]
+
+
 def gate_p1_hp_provenance_log(
     name: str,
     priority: str,
@@ -14198,15 +14369,15 @@ def parse_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument(
         "--jobs",
         type=int,
-        default=1,
+        default=min(8, os.cpu_count() or 4),
         metavar="N",
         help=(
-            "Run up to N gates concurrently (default 1 = serial, unchanged "
-            "behaviour). The expensive gates are subprocess-bound "
+            "Run up to N gates concurrently. Default is min(8, cpu_count()) "
+            "= parallel. The expensive gates are subprocess-bound "
             "(pytest / leakage / loader probes) and write disjoint scratch "
             "paths, so concurrency mostly overlaps I/O wait. Results are "
-            "re-ordered to registration order, so the report is identical. "
-            "N>1 is opt-in: it shortens the commit path but is not the default."
+            "re-ordered to registration order, so the report is identical to "
+            "a serial run. Use --jobs 1 to force serial."
         ),
     )
     p.add_argument(
@@ -14219,6 +14390,27 @@ def parse_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "One-shot HOLE-6 maintenance command: recompute SHA-256 for the "
             "gated CSVs (gated_csv_specs) and write the frozen manifest "
             "(default: configs/data_checksums.json), then exit. No gates run."
+        ),
+    )
+    p.add_argument(
+        "--changed-only",
+        action="store_true",
+        help=(
+            "OPT-IN, DEFAULT-OFF incremental mode: run only the gates whose "
+            "scope (GATE_PATH_SCOPES) is affected by the staged/changed files, "
+            "plus every gate that is not provably path-scoped (which ALWAYS "
+            "runs). Reads the file list from `git diff --cached --name-only` "
+            "unless --changed-files is given. Falls back to running ALL gates "
+            "when the file list is empty or unavailable. NEVER runs zero gates."
+        ),
+    )
+    p.add_argument(
+        "--changed-files",
+        default=None,
+        metavar="P1,P2,...",
+        help=(
+            "Explicit comma-separated changed-file list for --changed-only "
+            "(repo-relative paths). Overrides the git query; useful for tests."
         ),
     )
     return p.parse_args(argv)
@@ -14355,6 +14547,49 @@ def main(argv: Optional[List[str]] = None) -> int:
             ),
         )
 
+    # --changed-only: OPT-IN, DEFAULT-OFF incremental gate selection.
+    # Falls back to the FULL gate list (never zero gates) when the changed-file
+    # set is empty or git is unavailable. Skipped-gate names are surfaced in the
+    # JSON report so a reviewer can audit exactly what was not run.
+    skipped_incremental: List[str] = []
+    if getattr(args, "changed_only", False):
+        changed = _changed_file_list(getattr(args, "changed_files", None))
+        if not changed:
+            print(
+                "[pre_flight] --changed-only: no changed-file list available "
+                "(empty staged set or git unavailable) → running ALL gates.",
+                file=sys.stderr,
+            )
+        else:
+            runners, skipped_incremental, _reasons = select_changed_gates(
+                runners, changed
+            )
+            # ABSOLUTE SAFETY FLOOR: the incremental filter must never reduce
+            # the run to zero gates; if it somehow did, fall back to all gates.
+            if not runners:
+                print(
+                    "[pre_flight] --changed-only: filter produced ZERO gates → "
+                    "falling back to ALL gates (never run zero gates).",
+                    file=sys.stderr,
+                )
+                runners = build_gates(
+                    args.pipeline,
+                    WaveDeclaration(
+                        wave=getattr(args, "declared_wave", None),
+                        pairs_metals=getattr(args, "pairs_metals", None),
+                        pairs_seeds=getattr(args, "pairs_seeds", None),
+                        budget_hr=getattr(args, "budget_hr", None),
+                    ),
+                )
+                skipped_incremental = []
+            else:
+                print(
+                    f"[pre_flight] --changed-only: {len(changed)} changed file(s) "
+                    f"→ running {len(runners)} gate(s), skipped "
+                    f"{len(skipped_incremental)} provably-scoped gate(s).",
+                    file=sys.stderr,
+                )
+
     if args.verbose:
         label = (
             f"gates={len(runners)}"
@@ -14380,7 +14615,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 time.perf_counter() - t0,
             )
 
-    jobs = max(1, int(getattr(args, "jobs", 1) or 1))
+    _default_jobs = min(8, os.cpu_count() or 4)
+    jobs = max(1, int(getattr(args, "jobs", _default_jobs) or _default_jobs))
     if jobs == 1:
         for name, runner in runners:
             res = _run_one(name, runner)
@@ -14430,6 +14666,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             "total_wall_sec": round(total_wall, 4),
         },
         "gates": [r.to_dict() for r in results],
+        # --changed-only audit surface: names of scoped gates that were NOT run
+        # because no staged file touched their scope. Empty in the default run.
+        "incremental": {
+            "enabled": bool(getattr(args, "changed_only", False)),
+            "gates_skipped": sorted(skipped_incremental),
+            "scope_map_version": GATE_PATH_SCOPES_VERSION,
+        },
         # Wf-350-B3: NeurIPS §3.6 reproducibility manifest as 1st-class
         # artifact in --json output. Embeds the 3 Wf-350 reproducibility
         # gates' outputs (compute + hp_provenance + runtime_energy) so

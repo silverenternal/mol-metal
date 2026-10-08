@@ -38,7 +38,7 @@
         0.324
       ]
     },
-    "alpha=0.0 (no regression term)": {
+    "alpha=0.0 (LABEL CORRECTED 2026-10-08: this is regression-ONLY under the live loss, not \"no regression term\" — see label_correction_2026_10_08)": {
       "mean_test_auc": 0.5158,
       "source": "/tmp/f3_al0.0/Rh/per_seed_metrics.json",
       "per_seed_test_auc": [
@@ -98,7 +98,7 @@
         0.552
       ]
     },
-    "alpha=0.0 (seeds 5-9, held-out)": {
+    "alpha=0.0 (seeds 5-9, held-out; LABEL CORRECTED 2026-10-08)": {
       "mean_test_auc": 0.5626,
       "source": "/tmp/f3_a0b/Rh/per_seed_metrics.json",
       "per_seed_test_auc": [
@@ -126,7 +126,7 @@
     "RF Morgan-fingerprint reference on identical protocol: 0.68 (no_synth 0.683 / synth1000 0.643) => transferable signal EXISTS in the representation",
     "0/5460 molecules in metal_lomo.csv contain the metal atom; featurize._strip_metal_atoms guarantees ligand-only graph"
   ],
-  "root_cause": "MultiTaskLoss mixes a pIC50 MSE term with the BCE term on a METAL-STRIPPED graph. Absolute pIC50 level is not identifiable from the encoder input, so the regression term is pure label noise w.r.t. the trunk and corrupts the shared representation the classification head reads. The alpha sweep shows a sharp cliff: 0.0->0.516, 0.2->0.342, 0.5->0.351.",
+  "root_cause": "MultiTaskLoss mixes a pIC50 MSE term with the BCE term on a METAL-STRIPPED graph. Absolute pIC50 level is not identifiable from the encoder input, so the regression term is pure label noise w.r.t. the trunk and corrupts the shared representation the classification head reads. The alpha sweep shows a sharp cliff: 0.0->0.516, 0.2->0.342, 0.5->0.351. [CORRECTED 2026-10-08: the 'alpha sweep 0.0->0.516, 0.2->0.342, 0.5->0.351' sentence uses an alpha whose direction contradicts the live loss — alpha weights the CLASSIFICATION term, so 0.5->0.2->0.0 monotonically SHRINKS the classification signal and should HURT AUC, yet 0.0 is reported best. The direction of the recorded sweep is therefore inconsistent with '--alpha' on the current trainer. See label_correction_2026_10_08. The underlying hypothesis (an unidentifiable metal-specific pIC50 offset on a metal-stripped graph is label noise) may still be sound, but it is NOT confirmed by these numbers.]",
   "rejected_fixes": {
     "C_capacity (hidden 512 depth 4)": "0.3535 vs 0.3512 baseline - no effect, capacity is NOT the bottleneck",
     "A_metal_embedding": "metal one-hot on RF gave 0.674 vs 0.664 - within noise; and the Rh one-hot column is ALL-ZERO in train under LOMO so it is an unseen category. featurize._strip_metal_atoms already guarantees ligand-only graph, so the embedding is the only metal path and it cannot help the HELD-OUT metal.",
@@ -135,7 +135,7 @@
   },
   "premise_correction": "Brief stated val/test are correlated. MEASURED: across 5 seeds the baseline val/test correlation is -0.727 (ANTI-correlated); under a pure-noise null at n_test=54 the expected correlation is 0.031. val and test were measuring different things, consistent with the val/test distribution mismatch already documented in WassersteinLOMOSplitter.",
   "noise_floor": "n_test=54 at pos_rate~0.32 gives a permutation-null AUC sd of 0.086 (p05=0.358, p95=0.639). Deltas smaller than ~0.10 are not resolvable at this n.",
-  "recommended_fix": "alpha=0.0 (drop the pIC50 regression term) is the single highest-impact change: 0.351/0.356 (baseline) -> 0.516 (seeds 0-4) / 0.563 (seeds 5-9). --per-metal-pic50-center is the partial alternative (0.451/0.453) and is SHIPPED as a flag because it preserves a usable pIC50 head for the paper protocol, but it does not close the gap. NOTE: alpha=0.0 means pic50_pred is untrained, so test_pic50_mae is no longer meaningful and must not be reported.",
+  "recommended_fix": "SUPERSEDED / UNSAFE AS WRITTEN (2026-10-08). The original text said 'alpha=0.0 (drop the pIC50 regression term) ... 0.351/0.356 -> 0.516'. That label is INVERTED: the live loss is total = alpha*loss_cls + (1-alpha)*loss_reg (molmetal/baselines/dmpnn_multitask.py:446), so alpha=0.0 zeroes the CLASSIFICATION term (regression-only) and cannot lift a classification AUC; the value that drops regression is alpha=1.0. MEASURED 2026-10-08 one-liner: alpha=0.0 -> total==loss_reg, alpha=1.0 -> total==loss_cls. The recorded 0.516 at key 'alpha=0.0' is therefore either a mislabel of the flag actually passed or the product of a loss whose alpha weighted regression; it does NOT correspond to '--alpha 0.0' on the current trainer. DO NOT set any alpha default off this file. TO CLOSE: reproduce the lift end-to-end under the REAL-ONLY protocol (rh_oversample=0) — every /tmp/f3_* run used rh_oversample=500, so its numbers are not comparable to the m19 headline 0.5575. --per-metal-pic50-center (0.451) remains a shipped flag and is unaffected by this correction. NOTE (unchanged): with regression truly dropped, test_pic50_mae is not meaningful and must not be reported.",
   "headline_table": {
     "seeds_0_4": {
       "baseline": 0.356,
@@ -152,8 +152,19 @@
   "baseline_value": 0.356,
   "value_seeds_5_9": 0.563,
   "status": "MEASURED",
-  "verdict": "MEASURED_LIFT_TARGET_CENTERING_FIX \u2014 dropping the pIC50 regression term (alpha=0.0) lifts Rh LOMO test AUC 0.356 -> 0.516 (seeds 0-4) / 0.389 -> 0.563 (seeds 5-9); val/test are ANTI-correlated (-0.727) so val-based selection was fitting noise",
+  "verdict": "MEASURED_BUT_LABEL_CORRECTED_2026_10_08 — the recorded Rh LOMO lift (0.356 -> 0.516 @ 'alpha=0.0') came from an ablation whose alpha label does not match the live loss semantics (alpha weights the classification term; dropping regression is alpha=1.0, not 0.0). Lift is NOT confirmed reproducible on the current trainer / real-only protocol. See label_correction_2026_10_08.",
   "timestamp": "2026-10-06",
   "scope": "D-MPNN LOMO Rh transfer (metal-stripped graph regression-auxiliary ablation)",
-  "value_source": "headline_table.seeds_0_4.alpha0 (this file)"
+  "value_source": "headline_table.seeds_0_4.alpha0 (this file)",
+  "label_correction_2026_10_08": {
+    "corrected_by": "manual, 2026-10-08 (deep-dive on the F3 'alpha=0.0' claim)",
+    "what_was_wrong": "The ablation key 'alpha=0.0 (no regression term)' and the recommended_fix/verdict prose claim alpha=0.0 drops the regression term. Under the live loss it does the opposite.",
+    "live_loss": "molmetal/baselines/dmpnn_multitask.py:446 -> total = alpha*loss_cls + (1-alpha)*loss_reg",
+    "measured_semantics": "alpha=0.0 -> total==loss_reg (regression-only); alpha=1.0 -> total==loss_cls. Reproduced 2026-10-08 with a 3-row toy batch through MultiTaskLoss.",
+    "value_that_drops_regression": 1.0,
+    "protocol_mismatch": "All /tmp/f3_* runs used rh_oversample=500 (synthetic Rh injected); the current m19 headline 0.5575 is real-only (rh_oversample=0). F3 numbers are not comparable to m19.",
+    "self_attestation_gap": "The /tmp/f3_* per-seed and aggregate artifacts do not record 'alpha', so no run can self-attest the flag value it used.",
+    "effect": "The F3 ablation NUMBERS are retained as MEASURED but are now labelled as a non-replicating / mislabeled result. No trainer default was changed. The 'set alpha as default to lift m19' plan is BLOCKED until a real-only reproduction confirms the lift.",
+    "next_step": "Reproduce under rh_oversample=0: (a) drop regression correctly (alpha=1.0, or add a clean --no-pic50-reg path — none exists today; alpha is the only knob) and (b) re-run 25-run 5-metal x 5-seed to update the m19 headline. If the lift does not replicate, retract the F3 claim; do not paper over it."
+  }
 }

@@ -134,6 +134,7 @@ markers = [
 [dependency-groups]
 dev = [
     "pre-commit>=4.6.2",
+    "pytest-xdist>=3.6",
 ]
 
 # Download PyTorch's CUDA 13.0 build for cp312.  Default PyPI is still

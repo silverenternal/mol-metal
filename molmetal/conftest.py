@@ -58,10 +58,21 @@ def pytest_collection_modifyitems(
     a cryptic "could not import test module" traceback, we annotate each
     offending item with a clear skip reason so the test report stays
     self-documenting.
+
+    Additionally applies the ``slow`` marker to every item whose module is
+    listed in ``molmetal/tests/_slow_modules.py`` so ``-m "not slow"`` is a
+    real fast subset without hand-editing hundreds of files.
     """
+    try:
+        from molmetal.tests._slow_modules import SLOW_MODULE_STEMS
+    except Exception:  # pragma: no cover - list is optional
+        SLOW_MODULE_STEMS = frozenset()
     for item in items:
         path = str(getattr(item, "fspath", "") or getattr(item, "location", ""))
         if path.endswith((".md", ".rst", ".txt", ".ipynb")):
             item.add_marker(
                 pytest.mark.skip(reason=f"non-test artefact: {Path(path).name}")
             )
+        mod = getattr(item, "module", None)
+        if getattr(mod, "__name__", "").rsplit(".", 1)[-1] in SLOW_MODULE_STEMS:
+            item.add_marker(pytest.mark.slow)

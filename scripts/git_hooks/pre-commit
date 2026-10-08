@@ -30,13 +30,25 @@ echo "[pre-commit] Mol-Metal commit gate v1 (AGENTS.md §1.4 + §5.6)"
 # (a) Pre-flight v3 check
 if [[ "${SKIP_PREFLIGHT:-0}" != "1" ]]; then
     if [[ -f "${PRE_FLIGHT}" ]]; then
-        # PREFLIGHT_JOBS>1 runs gates concurrently (measured 131s -> 43s at
-        # jobs=6 with a byte-identical verdict). Default stays 1 (serial) so
-        # the commit path is unchanged unless the developer opts in, e.g.
-        # `PREFLIGHT_JOBS=6 git commit`.
-        PJ="${PREFLIGHT_JOBS:-1}"
-        echo "[pre-commit] (1/3) pre-flight v3 gate (jobs=${PJ})..."
-        if ! "${REPO_ROOT}/.venv/bin/python" "${PRE_FLIGHT}" --pipeline all --jobs "${PJ}"; then
+        # PREFLIGHT_JOBS overrides the pre-flight default (now parallel:
+        # min(8, cpu_count())). Set PREFLIGHT_JOBS=1 to force serial.
+        # e.g. `PREFLIGHT_JOBS=6 git commit`.
+        PJ="${PREFLIGHT_JOBS:-}"
+        echo "[pre-commit] (1/3) pre-flight v3 gate (jobs=${PJ:-auto})..."
+        if [[ -n "${PJ}" ]]; then
+            PF_ARGS=(--pipeline all --jobs "${PJ}")
+        else
+            PF_ARGS=(--pipeline all)
+        fi
+        # Opt-in incremental gating (DEFAULT OFF). With PREFLIGHT_INCREMENTAL=1
+        # the pre-flight runs only the gates the STAGED change can affect, plus
+        # every gate not provably path-scoped (those ALWAYS run). The pre-flight
+        # script falls back to the full gate list when the staged set is empty.
+        if [[ "${PREFLIGHT_INCREMENTAL:-0}" == "1" ]]; then
+            PF_ARGS+=(--changed-only)
+            echo "[pre-commit] incremental gating ON (PREFLIGHT_INCREMENTAL=1) — running staged-change gates + all global gates"
+        fi
+        if ! "${REPO_ROOT}/.venv/bin/python" "${PRE_FLIGHT}" "${PF_ARGS[@]}"; then
             echo -e "${RED}[pre-commit] FAIL${NC}: pre-flight v3 gate FAILED — see AGENTS.md §1.4"
             echo "  bypass with: SKIP_PREFLIGHT=1 git commit (NOT recommended)"
             exit 1
