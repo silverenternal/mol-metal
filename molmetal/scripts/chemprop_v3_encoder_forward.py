@@ -69,6 +69,17 @@ DEFAULT_CSV = PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
 DEFAULT_HIDDEN_DIM = 300
 ENCODER_ARTIFACT_SUFFIX = "_encoder_300d.npy"
 
+# --- CUDA_VISIBLE_DEVICES default (canonical resolver) ----------
+# Must run BEFORE any torch import: CUDA reads CUDA_VISIBLE_DEVICES
+# once, at init.  See molmetal/scripts/_cuda_default.py.
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.append(str(Path(__file__).resolve().parent))
+from _cuda_default import ensure_cuda_visible_devices_default as _cvd
+
+_cvd()
+del _cvd
+# --- end CUDA default --------------------------------------------
+
 
 # ---------------------------------------------------------------------------
 # Input validation
@@ -332,7 +343,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="Cohort CSV (default platinai_4cell.csv).")
     parser.add_argument("--smiles-column", type=str, default="smiles")
     parser.add_argument("--hidden-dim", type=int, default=DEFAULT_HIDDEN_DIM)
-    parser.add_argument("--device", type=str, default="cpu", choices=["cpu", "cuda"])
+    parser.add_argument(
+        "--device", type=str, default="auto", choices=["cpu", "cuda", "auto"]
+    )
     parser.add_argument("--limit", type=int, default=0,
                         help="Encode at most N rows (0 = all).")
     parser.add_argument("--out-dir", type=Path,
@@ -350,8 +363,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     smiles = validate_csv_schema(args.csv, smiles_column=args.smiles_column)
     if args.limit > 0:
         smiles = smiles[: args.limit]
+    if args.device == "auto":
+        from molmetal.molmetal_lam.sbdd_env.training_utils import resolve_default_device
+
+        device = str(resolve_default_device())
+    else:
+        device = args.device
     enc = ChempropV3EncoderForward(
-        hidden_dim=args.hidden_dim, device=args.device
+        hidden_dim=args.hidden_dim, device=device
     )
     emb = enc.encode_numpy(smiles)
     path = dump_encoder_npy(args.out_dir, args.cohort_name, emb)

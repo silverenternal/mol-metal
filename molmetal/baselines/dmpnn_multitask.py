@@ -243,13 +243,15 @@ class DMPNNMultiTaskModel(nn.Module):
 
         # D rounds of message passing
         for _ in range(self.depth):
-            atom_incoming = torch.zeros(V, self.hidden, device=device)
+            # dtype=h_e.dtype: under bf16 autocast h_e is bf16; a default
+            # float32 accumulator makes index_add_ raise the mixed-dtype error.
+            atom_incoming = torch.zeros(V, self.hidden, device=device, dtype=h_e.dtype)
             atom_incoming.index_add_(0, e_dst, h_e)
             neighbor_sum = atom_incoming[e_src]
             h_e = self.gru_update(h_e, h_v[e_src], neighbor_sum)
 
         # Atom hidden = initial atom emb + sum of outgoing edge hidden
-        outgoing = torch.zeros(V, self.hidden, device=device)
+        outgoing = torch.zeros(V, self.hidden, device=device, dtype=h_e.dtype)
         outgoing.index_add_(0, e_src, h_e)
         h_comb = torch.cat([h_v, outgoing], dim=-1)  # (V, 2H)
         pooled = h_comb.sum(dim=0)  # (2H,)
@@ -309,7 +311,9 @@ class DMPNNMultiTaskModel(nn.Module):
 
         # 4) ``depth`` rounds of message passing on the flat graph.
         for _ in range(self.depth):
-            atom_incoming = torch.zeros(B * max_V, H, device=device)
+            # dtype=h_e.dtype: under bf16 autocast h_e is bf16; a default
+            # float32 accumulator makes index_add_ raise the mixed-dtype error.
+            atom_incoming = torch.zeros(B * max_V, H, device=device, dtype=h_e.dtype)
             atom_incoming.index_add_(0, e_dst_g, h_e)
             neighbor_sum = atom_incoming[e_src_g]
             h_e = self.gru_update(h_e, h_v_flat[e_src_g], neighbor_sum)
@@ -318,7 +322,7 @@ class DMPNNMultiTaskModel(nn.Module):
         #    a flat buffer then view is identical to per-mol index_add_
         #    + stack (the padding slots in atom_incoming / outgoing are
         #    zero by construction because no edge references them).
-        outgoing = torch.zeros(B * max_V, H, device=device)
+        outgoing = torch.zeros(B * max_V, H, device=device, dtype=h_e.dtype)
         outgoing.index_add_(0, e_src_g, h_e)
         outgoing = outgoing.view(B, max_V, H)
         h_comb = torch.cat([h_v, outgoing], dim=-1)  # (B, max_V, 2H)

@@ -325,7 +325,12 @@ class DirectedMPNNPyG(nn.Module):
 
         if E_total == 0:
             # No edges anywhere — pool embedded atoms per molecule.
-            pooled = torch.zeros(batch.batch_size, self.hidden_dim, device=device)
+            # dtype=h_v.dtype: under bf16 autocast h_v is bf16, and a
+            # default float32 accumulator makes index_add_ raise
+            # "self (Float) and source (BFloat16) must have the same scalar type".
+            pooled = torch.zeros(
+                batch.batch_size, self.hidden_dim, device=device, dtype=h_v.dtype
+            )
             pooled.index_add_(0, batch.batch_idx, h_v)
             return pooled
 
@@ -356,7 +361,11 @@ class DirectedMPNNPyG(nn.Module):
         h_v_out = self.readout_mlp(torch.cat([h_v, h_outgoing], dim=-1))  # (N_total, D)
 
         # Per-molecule sum pool: scatter-add per-atom features into (B, D).
-        pooled = torch.zeros(batch.batch_size, self.hidden_dim, device=device)
+        # dtype=h_v_out.dtype: under bf16 autocast h_v_out is bf16; a default
+        # float32 accumulator makes index_add_ raise the mixed-dtype error.
+        pooled = torch.zeros(
+            batch.batch_size, self.hidden_dim, device=device, dtype=h_v_out.dtype
+        )
         pooled.index_add_(0, batch.batch_idx, h_v_out)
         return pooled
 
