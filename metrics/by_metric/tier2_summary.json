@@ -1,6 +1,7 @@
 {
   "date": "2026-09-25",
-  "title": "Tier 2 + LOMO Aggregate — Mol-Metal Paper Section 4 Table 2",
+  "superseded_notice_2026_10_08": "SUPERSEDED 2026-10-08 \u2014 this file is a 2026-09-25 snapshot. Its metric_1_ru_subset_auc=0.7123 is the OLD scaffold-split single-seed value, NOT the current m1 number. The current, protocol-aligned m1 Ru AUC is 0.7717 +/- 0.0380 (DOI-split 10-fold CV, D-MPNN multi-task) in metrics/by_metric/metalcytotox_ru_auc.json::paper_protocol_measurement. Do NOT cite this file's metric_1 for paper Section 3 \u2014 see docs/ALIGNED_COMPARISON.md.",
+  "title": "Tier 2 + LOMO Aggregate \u2014 Mol-Metal Paper Section 4 Table 2",
   "scope": "tier2_sbdd_lomo + tier2_sbdd_molnet + tier2_sbdd_docking",
   "source_workflows": [
     "wf_tier1_metric1_metalcytotox",
@@ -40,7 +41,7 @@
         "value": null,
         "note": "No published precious-metal LOMO AUC baseline; iMoLD reports DrugOOD splits not LOMO"
       },
-      "gate_target": 0.70,
+      "gate_target": 0.7,
       "gate_verdict": "BELOW_GATE",
       "per_fold_auc": {
         "Ru": 0.5894437523696041,
@@ -71,7 +72,7 @@
         "name": "Chemprop RF + Morgan FP",
         "value": 0.728
       },
-      "gate_target": 0.80,
+      "gate_target": 0.8,
       "gate_verdict": "PASS",
       "gap_to_dmpnn": -0.068,
       "gap_to_rf": 0.144,
@@ -138,7 +139,7 @@
       },
       "gate_verdict": "BELOW_GATE",
       "gap_to_dmpnn": -0.192,
-      "gap_to_rf": -0.130,
+      "gap_to_rf": -0.13,
       "source_json": "metrics/by_metric/moleculenet_auc.json"
     },
     "moleculenet_mean_auc": {
@@ -151,7 +152,7 @@
         "name": "Chemprop D-MPNN mean",
         "value": 0.88325
       },
-      "gate_target": 0.80,
+      "gate_target": 0.8,
       "gate_verdict": "BELOW_GATE",
       "gap_to_dmpnn_mean": -0.088,
       "source_json": "metrics/by_metric/moleculenet_auc.json"
@@ -179,7 +180,7 @@
       },
       "gate_target": -8.5,
       "gate_verdict": "BELOW_GATE",
-      "gap_to_targetdiff": 7.10,
+      "gap_to_targetdiff": 7.1,
       "honest_framing": "Single-pocket MMP13 measurement vs CrossDocked mean; CuAAC products miss Zn-coord site (sa_score: 5.95 hard-synthesized Pt-acetylides are above TargetDiff range)",
       "source_json": "metrics/by_metric/vina_score.json"
     },
@@ -198,7 +199,7 @@
         "value": null,
         "note": "Same metric not directly reported; TargetDiff Vina mean -8.45 implies ~high rate"
       },
-      "gate_target": 0.60,
+      "gate_target": 0.6,
       "gate_verdict": "BELOW_GATE",
       "gap_to_targetdiff": null,
       "honest_framing": "0.51 on 100 click products vs MMP13 RS1 ref -1.285 kcal/mol; Trivially high because ref is shallow; needs 100x3 cross-pocket for paper-grade claim",
@@ -245,13 +246,13 @@
       "tier2_alt": {
         "name": "DiffSBDD",
         "value": 0.78,
-        "note": "report unit = sa_unit (1=hard, 0=easy) — i.e. 2.22 in Ertl units; not directly comparable"
+        "note": "report unit = sa_unit (1=hard, 0=easy) \u2014 i.e. 2.22 in Ertl units; not directly comparable"
       },
       "gate_target": 0.65,
       "gate_verdict": "PARTIAL_LIFT",
       "gap_to_targetdiff_low": 0.24,
       "gap_to_targetdiff_high": 0.45,
-      "trajectory": "5.945 → 3.099 (--sa-weight 0.3 lift, pool-diversity plateau)",
+      "trajectory": "5.945 \u2192 3.099 (--sa-weight 0.3 lift, pool-diversity plateau)",
       "source_json": "metrics/by_metric/sa_mean.json"
     },
     "diversity_tanimoto": {
@@ -263,7 +264,7 @@
       "tier1_sota": null,
       "tier2_sota": {
         "name": "TargetDiff (Guan 2023)",
-        "value": 0.860
+        "value": 0.86
       },
       "tier2_alt": {
         "name": "Pocket2Mol (Peng 2022)",
@@ -276,7 +277,7 @@
       "gate_target": 0.65,
       "gate_verdict": "BELOW_GATE",
       "gap_to_targetdiff": -0.7535,
-      "trajectory": "0.000 → 0.1065 (Path A 4 fixes) → 0.1365 (+28% on EV3 --sa-weight)",
+      "trajectory": "0.000 \u2192 0.1065 (Path A 4 fixes) \u2192 0.1365 (+28% on EV3 --sa-weight)",
       "source_json": "metrics/by_metric/diversity_tanimoto.json"
     },
     "pb_pass_rate": {
@@ -299,7 +300,7 @@
         "name": "Uni-Mol+ v2 (Lu 2024)",
         "value": "0.75+"
       },
-      "gate_target": 0.90,
+      "gate_target": 0.9,
       "gate_verdict": "PARTIAL_LIFT_SMOKE",
       "gap_to_targetdiff": -0.094,
       "honest_framing": "Smoke 1-pocket only; production 60 cells search-bound (n_distinct=1 collapse); 0 PB-eligible docked candidates on 10x3 / 30x3 sweeps",
@@ -322,8 +323,8 @@
       },
       "gate_target": 3,
       "gate_verdict": "PASS",
-      "lift_factor": "20x (1 → 20)",
-      "trajectory": "1 (singleton collapse) → 20 (saturated n_top_k cap) on all 30 cells via Path A 4-fix bundle",
+      "lift_factor": "20x (1 \u2192 20)",
+      "trajectory": "1 (singleton collapse) \u2192 20 (saturated n_top_k cap) on all 30 cells via Path A 4-fix bundle",
       "source_json": "metrics/by_metric/n_distinct.json"
     },
     "decode_ratio": {
@@ -335,10 +336,10 @@
       "tier1_sota": null,
       "tier2_sota": null,
       "gate_target": 0.05,
-      "target_target": 0.50,
+      "target_target": 0.5,
       "gate_verdict": "PASS_GATE_BELOW_TARGET",
-      "trajectory": "0/192 (TypeError) → 0.5 (Path B RDKit-strict) → 1.000 (bond-bearing pre-RDKit-strict)",
-      "honest_framing": "Path B lifts CFM decode from 0 → 0.5 RDKit-strict on synthetic Pt-click clouds; production 30/30 smoke = 1.000 on fresh retrain",
+      "trajectory": "0/192 (TypeError) \u2192 0.5 (Path B RDKit-strict) \u2192 1.000 (bond-bearing pre-RDKit-strict)",
+      "honest_framing": "Path B lifts CFM decode from 0 \u2192 0.5 RDKit-strict on synthetic Pt-click clouds; production 30/30 smoke = 1.000 on fresh retrain",
       "source_json": "metrics/by_metric/decode_ratio.json"
     },
     "metal_compliance_with_seed": {
@@ -351,7 +352,7 @@
       "tier2_sota": null,
       "gate_target": 1.0,
       "gate_verdict": "PASS_TRIVIAL",
-      "honest_framing": "Pre-fix 1.0 was trivial (n_distinct=1 single cisplatin). Post-fix trade-off: 0.0 (Pt-acetylide root not strict-Pt_II coord=4) — see n_distinct metric for diversity cost",
+      "honest_framing": "Pre-fix 1.0 was trivial (n_distinct=1 single cisplatin). Post-fix trade-off: 0.0 (Pt-acetylide root not strict-Pt_II coord=4) \u2014 see n_distinct metric for diversity cost",
       "source_json": "metrics/by_metric/metal_compliance.json"
     }
   },
@@ -418,14 +419,14 @@
       },
       {
         "metric": "SA (Ertl)",
-        "molmetal": 3.10,
+        "molmetal": 3.1,
         "TargetDiff": "2.65-2.86",
         "gap": "+0.24 to +0.45 worse"
       },
       {
         "metric": "Diversity (Tanimoto)",
         "molmetal": 0.137,
-        "TargetDiff": 0.860,
+        "TargetDiff": 0.86,
         "Pocket2Mol": 0.681,
         "gap": "-0.753 worse"
       }
@@ -447,20 +448,20 @@
         "molmetal": null,
         "Rusanov 2025": null,
         "gate": "per-line baseline",
-        "verdict": "BLOCKED_DATA — platinai_5k.csv only, no per-cell-line xlsx"
+        "verdict": "BLOCKED_DATA \u2014 platinai_5k.csv only, no per-cell-line xlsx"
       },
       {
         "metric": "Multi-metal LOMO transfer AUC",
         "molmetal": 0.5114,
         "iMoLD-style": null,
-        "gate": 0.70,
+        "gate": 0.7,
         "gap": -0.189,
-        "verdict": "BELOW_GATE — strict OOD by metal identity"
+        "verdict": "BELOW_GATE \u2014 strict OOD by metal identity"
       }
     ]
   },
-  "recommendation": "Below gate on most Tier 2 SBDD metrics (Vina/SA/Diversity/PB all trail TargetDiff) — expected for Lambda-only path without GPU pretraining. Decisive lifts on n_distinct (1→20, ROOT_CAUSE_RESOLVED) and decode_ratio (0→1.000 bond-bearing) are paper-promotable. Tier 1 same-domain (Ru AUC 0.7123) below Krasnov 0.81 baseline; honest negative preserved.",
-  "figure_hook": "Figure 1 — 5-axis radar plot: Vina / SA / QED / Diversity / PB-Valid (our Lambda path vs TargetDiff vs DiffSBDD vs Pocket2Mol). Figure 2 — Diversity scatter (n_distinct vs SA): Mol-Metal + R12 + R16 + PlatinAI (best analog), bubble = n molecules.",
+  "recommendation": "Below gate on most Tier 2 SBDD metrics (Vina/SA/Diversity/PB all trail TargetDiff) \u2014 expected for Lambda-only path without GPU pretraining. Decisive lifts on n_distinct (1\u219220, ROOT_CAUSE_RESOLVED) and decode_ratio (0\u21921.000 bond-bearing) are paper-promotable. Tier 1 same-domain (Ru AUC 0.7123) below Krasnov 0.81 baseline; honest negative preserved.",
+  "figure_hook": "Figure 1 \u2014 5-axis radar plot: Vina / SA / QED / Diversity / PB-Valid (our Lambda path vs TargetDiff vs DiffSBDD vs Pocket2Mol). Figure 2 \u2014 Diversity scatter (n_distinct vs SA): Mol-Metal + R12 + R16 + PlatinAI (best analog), bubble = n molecules.",
   "files_written": [
     "metrics/by_metric/tier2_summary.json (this file)",
     "molmetal/reports/wf_tier2_table2/paper_section4_table2.tex",

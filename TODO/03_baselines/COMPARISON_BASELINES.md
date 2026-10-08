@@ -43,16 +43,16 @@ See §2 for full list + rationale.
 **Task**: Ru/Ir/Rh/Re/Os 抗癌活性分类 (binary classification + pIC50 regression)
 **Why selected**: 同领域 + 同任务 + 同 5-metal subset (Ru/Ir/Rh/Re/Os)
 **Dataset**: MetalCytoToxDB (公开; per `molmetal/reports/wf387a2_balanced_rh_cohort/balanced_rh_cohort.json` schema reference)
-**Paper split**: 5-fold CV (Krasnov paper Table 4)
+**Paper split**: DOI-split 10-fold CV (primary; Krasnov paper Table 4 — see §6.2, the earlier "5-fold CV" reading was superseded 2026-10-04)
 **Paper metric**: binary AUC + pIC50 MAE
 
 **Our alignment**:
 - Dataset: **IDENTICAL** (MetalCytoToxDB) ✓
-- Split: **DIFFERENT** (paper: 5-fold CV; us: scaffold-split 70/10/20 per Wf-261) — note in §6
+- Split: **DIFFERENT** in the m1 replication (we adopted the paper's DOI-split 10-fold CV for m1 per §6.2; the m21 NCI-60 line still uses scaffold-split 70/10/20 per Wf-261) — note in §6
 - Metric: **IDENTICAL** (binary AUC) ✓
 
 **Applicable metrics**:
-- **m1 Ru subset binary AUC**: target ≥ 0.86 vs Krasnov 0.81 (5-fold CV)
+- **m1 Ru subset binary AUC**: 0.7717 ± 0.0380 vs Krasnov 0.81 (DOI-split 10-fold CV) — MEASURED, see §6.2
 - **m21 NCI-60 9-cell AUC**: target ≥ 0.70 (Ru fold) vs Krasnov 0.81 (single-cell-line avg)
 - **m15 Docking RMSD**: NOT directly comparable (different task) — for internal sanity check only
 
