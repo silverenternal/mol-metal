@@ -4227,8 +4227,35 @@ def _build_argparser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--pockets",
         type=int,
-        default=10,
-        help="Number of test pockets (first N rows of crossdocked100_manifest.csv).",
+        default=None,
+        help=(
+            "Number of test pockets (first N rows of the manifest CSV). "
+            "Defaults to 10 when neither --smoke nor --r17-paper-grade is "
+            "set.  See _resolve_paper_sweep_preset()."
+        ),
+    )
+    # R17 paper-sweep presets (ported from r4_lib.cli so the live smoke
+    # launcher ``smoke_lambda.sh --smoke`` works; the R1 refactor created
+    # these flags only in the r4_lib package, leaving the entry module
+    # rejecting --smoke with "unrecognized arguments").
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help=(
+            "Apply the R17 smoke preset: 10 pockets x 1 seed x n_sim=20 "
+            "(~5 min CPU), test_010..test_019 subset manifest.  NOT a "
+            "paper-grade measurement.  Explicit --pockets / --seeds / "
+            "--n-simulations / --manifest overrides win."
+        ),
+    )
+    parser.add_argument(
+        "--r17-paper-grade",
+        action="store_true",
+        help=(
+            "Apply the R17 paper-grade preset: 100 pockets x 3 seeds x "
+            "n_sim=1000, crossdocked100_manifest.csv.  If both --smoke and "
+            "--r17-paper-grade are set, --r17-paper-grade wins."
+        ),
     )
     # WF-Metallodrug-Vertical Phase 3 protocol-align — number of
     # generated molecules per (pocket, seed) cell.  Bumped default from
@@ -4288,18 +4315,23 @@ def _build_argparser() -> argparse.ArgumentParser:
         "--seeds",
         nargs="+",
         type=int,
-        default=[42, 0, 1234],
-        help="Random seeds (space-separated).",
+        default=None,
+        help=(
+            "Random seeds (space-separated).  Default [42, 0, 1234] when "
+            "neither preset is active; --smoke forces [42], "
+            "--r17-paper-grade forces [42, 0, 1234].  See "
+            "_resolve_paper_sweep_preset()."
+        ),
     )
     parser.add_argument(
         "--n-simulations",
         type=int,
-        default=200,
+        default=None,
         help=(
-            "MCTS simulation budget per cell.  WF-Lift-N-Sim-Cap "
-            "(2026-09-14) removed the historical 100-cap; the CLI flag "
-            "now takes effect verbatim up to a 10000 safety maximum "
-            "(to prevent a typo locking the GPU)."
+            "MCTS simulation budget per cell.  Default 200 (legacy) or the "
+            "active preset value.  WF-Lift-N-Sim-Cap (2026-09-14) removed "
+            "the historical 100-cap; the CLI flag now takes effect verbatim "
+            "up to a 10000 safety maximum (to prevent a typo locking the GPU)."
         ),
     )
     parser.add_argument(
@@ -4320,8 +4352,13 @@ def _build_argparser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--manifest",
         type=str,
-        default=str(_REPO_ROOT / "molmetal" / "data" / "crossdocked100_manifest.csv"),
-        help="Path to the crossdocked100 manifest CSV.",
+        default=None,
+        help=(
+            "Path to the manifest CSV.  Default crossdocked100_manifest.csv "
+            "for the legacy / --r17-paper-grade presets, "
+            "test_010_019_subset_manifest for --smoke.  See "
+            "_resolve_paper_sweep_preset()."
+        ),
     )
     parser.add_argument(
         "--prior-disabled",
@@ -4857,8 +4894,86 @@ def _build_argparser() -> argparse.ArgumentParser:
     return parser
 
 
+def _resolve_paper_sweep_preset(args: argparse.Namespace) -> argparse.Namespace:
+    """Apply --smoke / --r17-paper-grade preset overrides to ``args``.
+
+    Resolution order (most-specific wins): explicit user flag > the active
+    preset > the legacy default.  If both --smoke and --r17-paper-grade are
+    set, --r17-paper-grade wins.  Ported from r4_lib.cli so the live entry
+    module exposes the same surface the R17 tests + smoke launcher expect.
+    """
+    from molmetal.scripts.r4_lib.constants import (
+        _R17_LEGACY_DEFAULTS,
+        _R17_PAPER_GRADE_PRESET,
+        _R17_SMOKE_PRESET,
+    )
+
+    if args.r17_paper_grade and args.smoke:
+        log.warning(
+            "Both --smoke and --r17-paper-grade set; "
+            "--r17-paper-grade wins (safer fallback)."
+        )
+
+    if args.r17_paper_grade:
+        preset = _R17_PAPER_GRADE_PRESET
+    elif args.smoke:
+        preset = _R17_SMOKE_PRESET
+    else:
+        preset = _R17_LEGACY_DEFAULTS
+
+    for field_name, preset_value in (
+        ("pockets", preset["pockets"]),
+        ("seeds", preset["seeds"]),
+        ("n_simulations", preset["n_simulations"]),
+        ("manifest", preset["manifest"]),
+    ):
+        if getattr(args, field_name) is None:
+            setattr(args, field_name, preset_value)
+        else:
+            log.info(
+                "r17-preset: keeping user-supplied --%s=%s (would have "
+                "applied preset value %s)",
+                field_name.replace("_", "-"),
+                getattr(args, field_name),
+                preset_value,
+            )
+    args.r17_preset_active = (
+        "paper_grade" if args.r17_paper_grade else "smoke" if args.smoke else "legacy"
+    )
+    return args
+
+
+# Backward-compat alias so the R17 regression tests can read the preset
+# constants off this module (they imported them here historically).
+_R17_LEGACY_DEFAULTS = None
+_R17_SMOKE_PRESET = None
+_R17_PAPER_GRADE_PRESET = None
+
+
+def _load_r17_presets() -> None:
+    """Populate the module-level preset aliases from r4_lib.constants."""
+    global _R17_LEGACY_DEFAULTS, _R17_SMOKE_PRESET, _R17_PAPER_GRADE_PRESET
+    from molmetal.scripts.r4_lib.constants import (
+        _R17_LEGACY_DEFAULTS as _legacy,
+    )
+    from molmetal.scripts.r4_lib.constants import (
+        _R17_PAPER_GRADE_PRESET as _paper,
+    )
+    from molmetal.scripts.r4_lib.constants import (
+        _R17_SMOKE_PRESET as _smoke,
+    )
+
+    _R17_LEGACY_DEFAULTS = _legacy
+    _R17_SMOKE_PRESET = _smoke
+    _R17_PAPER_GRADE_PRESET = _paper
+
+
+_load_r17_presets()
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _build_argparser().parse_args(argv)
+    args = _resolve_paper_sweep_preset(args)
     # WF-Lift-N-Sim-Cap (2026-09-14): the historical 100-simulation
     # hard-cap silently clamped ``--n-simulations`` so the CLI flag had
     # no effect above 100, which capped the diversity ceiling during
