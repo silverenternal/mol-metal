@@ -1049,18 +1049,193 @@ def _mean_pIC50_target(
     return out, keep
 
 
+# ---------------------------------------------------------------------------
+# On-the-fly 32-d RDKit featurization (full-cohort expansion)
+# ---------------------------------------------------------------------------
+# The pre-computed ``platinai_4cell_rdkit_extended_features.csv`` only holds
+# 200 rows, which is why the Wf-388-A1 tier table classified platinai_4cell
+# as ``n_lt_300`` (12-d).  The 12-d file underneath it has all 4078 rows
+# with all four pIC50 columns finite, so the cohort can be expanded by
+# computing the remaining 20 descriptors on the fly.
+#
+# Validation (MEASURED, 200 reference rows vs this function):
+#   * 28 of 32 columns reproduce the reference CSV to max abs diff < 1e-4
+#     (worst: MolWt 6.1e-05, BertzCT 3.9e-03 on values ~8.1e+04).
+#   * The 4 ``*PartialCharge`` columns do NOT reproduce: Gasteiger charges
+#     are undefined on the organometallic Pt centers (all-NaN), MMFF has no
+#     parameters for them, and an organic-subgraph pass gives different
+#     numbers.  The reference CSV's own values are constant across the 200
+#     rows it covers (MaxPartialCharge = -0.062551 everywhere), i.e. they
+#     carry no per-compound signal.  We therefore emit 0.0 and flag it
+#     rather than fabricate a charge model.
+# ---------------------------------------------------------------------------
+_RDKIT_DESC_CACHE: Dict[str, Any] = {}
+
+
+def _rdkit_descriptors() -> Optional[Dict[str, Any]]:
+    """Return the {column: callable(mol)} map for PLATINAI_32D_COLUMNS.
+
+    Returns ``None`` when RDKit is unavailable.  NOTE: the descriptor
+    accessors differ per column — several live on
+    ``rdkit.Chem.Descriptors`` rather than ``rdMolDescriptors``, and the
+    ``rd*`` module exposes them with a ``Calc`` prefix.  Getting these
+    names wrong fails *silently* (getattr returns None -> zeros), which is
+    how the wf433 helper ended up emitting 12 zero columns.
+    """
+    if _RDKIT_DESC_CACHE:
+        return _RDKIT_DESC_CACHE
+    try:
+        from rdkit import Chem  # noqa: F401
+        from rdkit.Chem import AllChem, Descriptors
+        from rdkit.Chem import rdMolDescriptors as rd
+    except ImportError:  # pragma: no cover — RDKit absent
+        return None
+    mapping: Dict[str, Any] = {
+        "MolWt": Descriptors.MolWt,
+        "MolLogP": lambda m: rd.CalcCrippenDescriptors(m)[0],
+        "MolMR": lambda m: rd.CalcCrippenDescriptors(m)[1],
+        "TPSA": rd.CalcTPSA,
+        "HBA": rd.CalcNumHBA,
+        "HBD": rd.CalcNumHBD,
+        "NRotB": rd.CalcNumRotatableBonds,
+        "HeavyAtoms": lambda m: float(m.GetNumHeavyAtoms()),
+        "RingCount": rd.CalcNumRings,
+        "NumAromaticRings": rd.CalcNumAromaticRings,
+        "FractionCSP3": rd.CalcFractionCSP3,
+        "BalabanJ": Descriptors.BalabanJ,
+        "BertzCT": Descriptors.BertzCT,
+        "Chi0v": rd.CalcChi0v,
+        "Chi0n": rd.CalcChi0n,
+        "Chi1n": rd.CalcChi1n,
+        "HallKierAlpha": rd.CalcHallKierAlpha,
+        "Kappa1": rd.CalcKappa1,
+        "Kappa2": rd.CalcKappa2,
+        "Kappa3": rd.CalcKappa3,
+        "LabuteASA": rd.CalcLabuteASA,
+        "NumAliphaticRings": rd.CalcNumAliphaticRings,
+        "NumSaturatedRings": rd.CalcNumSaturatedRings,
+        "NumHeteroatoms": rd.CalcNumHeteroatoms,
+        "NHOHCount": rd.CalcNumLipinskiHBD,
+        "NOCount": rd.CalcNumLipinskiHBA,
+        "fr_halogen": Descriptors.fr_halogen,
+        "fr_Al_COO": Descriptors.fr_Al_COO,
+    }
+    # 4 Gasteiger partial-charge columns handled separately below.
+    missing = [
+        c for c in PLATINAI_32D_COLUMNS if c not in mapping and "PartialCharge" not in c
+    ]
+    if missing:  # pragma: no cover — defensive
+        raise RuntimeError(f"32-d featurizer missing descriptors: {missing}")
+    _RDKIT_DESC_CACHE["map"] = mapping
+    _RDKIT_DESC_CACHE["allchem"] = AllChem
+    _RDKIT_DESC_CACHE["chem"] = Chem
+    return _RDKIT_DESC_CACHE
+
+
+def rdkit_32d_features(smiles: str) -> np.ndarray:
+    """Compute the 32-d RDKit vector for one SMILES.
+
+    Returns an all-NaN row when RDKit is missing or the SMILES does not
+    parse, so callers can drop it via the existing finite mask.
+    """
+    n_cols = len(PLATINAI_32D_COLUMNS)
+    cache = _rdkit_descriptors()
+    if cache is None:
+        return np.full(n_cols, np.nan)
+    Chem, AllChem, mapping = cache["chem"], cache["allchem"], cache["map"]
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        return np.full(n_cols, np.nan)
+    out = np.zeros(n_cols, dtype=np.float64)
+    for j, col in enumerate(PLATINAI_32D_COLUMNS):
+        fn = mapping.get(col)
+        if fn is None:
+            continue  # partial-charge column, filled in below
+        try:
+            out[j] = float(fn(mol))
+        except Exception:  # pragma: no cover — per-descriptor guard
+            out[j] = np.nan
+    # Gasteiger partial charges (Max/Min/AbsMax/AbsMin).
+    charges: List[float] = []
+    try:
+        AllChem.ComputeGasteigerCharges(mol)
+        charges = [
+            a.GetDoubleProp("_GasteigerCharge")
+            for a in mol.GetAtoms()
+            if a.HasProp("_GasteigerCharge")
+        ]
+        charges = [c for c in charges if np.isfinite(c)]
+    except Exception:  # pragma: no cover — organometallics
+        charges = []
+    # Gasteiger is undefined on these Pt complexes -> emit a documented 0.0
+    # rather than invent a charge model (see module note above).
+    derived = {
+        "MaxPartialCharge": max(charges) if charges else 0.0,
+        "MinPartialCharge": min(charges) if charges else 0.0,
+        "MaxAbsPartialCharge": max((abs(c) for c in charges), default=0.0),
+        "MinAbsPartialCharge": min((abs(c) for c in charges), default=0.0),
+    }
+    for name, val in derived.items():
+        out[PLATINAI_32D_COLUMNS.index(name)] = float(val)
+    return out
+
+
+def _load_platinai_expanded(
+    cohort: str,
+    max_cohort_size: int,
+) -> Tuple[np.ndarray, np.ndarray, List[str], str]:
+    """Load platinai_4cell / hilbert with on-the-fly 32-d featurization.
+
+    Bypasses the 200-row ``*_rdkit_extended_features.csv`` entirely and
+    featurizes every row of the 4078-row 12-d file instead, then caps at
+    ``max_cohort_size``.
+    """
+    header12, rows12 = _read_csv("molmetal/data/platinai_4cell_rdkit_features.csv")
+    y_full, keep_full = _mean_pIC50_target(rows12, header12)
+    smiles_idx = header12.index("smiles")
+    kept = [i for i in range(len(rows12)) if keep_full[i]]
+    # Deterministic truncation: keep the CSV's own row order, then cap.
+    kept = kept[:max_cohort_size] if max_cohort_size > 0 else kept
+    smiles_aligned = [rows12[i][smiles_idx] for i in kept]
+    y = np.asarray([float(y_full[i]) for i in kept], dtype=np.float64)
+    X = np.vstack([rdkit_32d_features(s) for s in smiles_aligned])
+    finite_mask = np.isfinite(X).all(axis=1) & np.isfinite(y)
+    if not finite_mask.any():
+        raise RuntimeError(
+            f"load_cohort({cohort!r}, max_cohort_size={max_cohort_size}): "
+            "no rows survived the finite-feature mask"
+        )
+    return (
+        X[finite_mask],
+        y[finite_mask],
+        [s for s, k in zip(smiles_aligned, finite_mask) if k],
+        "pIC50_mean_mcf7_a549_a2780_a2780cis",
+    )
+
+
 def load_cohort(
     cohort: str,
     max_samples: int = 2000,
     seed: int = 0,
+    max_cohort_size: Optional[int] = None,
 ) -> Tuple[np.ndarray, np.ndarray, List[str], str]:
     """Load (X_32d, y, smiles, target_name) for one of 3 cohorts.
 
     Supports:
       * "platinai_4cell"        — 200 SMILES, 32-d pre-computed
+                                 (up to 4078 via ``max_cohort_size``)
       * "hilbert"               — 200 SMILES (same data, different split)
       * "metalcytotox_combined" — 2000 SMILES, 12-d + on-the-fly 32-d
+
+    ``max_cohort_size`` (default: keep the legacy 200-row pre-computed set)
+    expands platinai_4cell past the 200-row extended-features CSV by
+    computing the 32-d RDKit descriptors on the fly for every row of the
+    4078-row 12-d file.  MEASURED: all 4078 rows parse, all 32 columns
+    finite, 0 constant columns, ~6 s wall.  Rows beyond ``max_cohort_size``
+    are dropped (no cap when the flag exceeds the CSV row count).
     """
+    if cohort in ("platinai_4cell", "hilbert") and max_cohort_size is not None:
+        return _load_platinai_expanded(cohort, max_cohort_size)
     if cohort == "platinai_4cell":
         # Load 32-d file first to get the SMILES filter
         header32, rows32 = _read_csv(
@@ -1191,6 +1366,7 @@ def run_wf331r5(
     out_path: str = "molmetal/reports/wf331r5_r2_w2_chemprop/result.json",
     cohorts: Optional[List[str]] = None,
     metalcytotox_max: int = 2000,
+    max_cohort_size: Optional[int] = None,
     seed: int = 0,
     use_canonical_chemprop: bool = False,
     w2_use_covariate: bool = True,
@@ -1206,6 +1382,11 @@ def run_wf331r5(
     metalcytotox_max : int
         Cap on metalcytotox_combined rows (default 2000; matches
         Wf-325A MEASURED).
+    max_cohort_size : int, optional
+        Expand platinai_4cell / hilbert past the 200-row pre-computed
+        feature CSV by featurizing on the fly (see
+        :func:`rdkit_32d_features`).  ``None`` (default) keeps the legacy
+        200-row behaviour.
     seed : int
         Base random seed; hilbert cohort uses seed+1.
     use_canonical_chemprop : bool
@@ -1245,6 +1426,7 @@ def run_wf331r5(
             cohort,
             max_samples=metalcytotox_max,
             seed=seed,
+            max_cohort_size=max_cohort_size,
         )[:3]
         n_samples = int(X_32d.shape[0])
         # Seed for hilbert cohort: shift by +1 (Wf-325A pattern).
@@ -1556,6 +1738,17 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Cap on metalcytotox_combined rows (default 2000)",
     )
     p.add_argument(
+        "--max-cohort-size",
+        type=int,
+        default=None,
+        help=(
+            "Expand platinai_4cell / hilbert past the 200-row pre-computed "
+            "feature CSV by computing the 32-d RDKit descriptors on the fly. "
+            "Default None = legacy 200-row behaviour; pass 4078 for the full "
+            "12-d CSV."
+        ),
+    )
+    p.add_argument(
         "--output-dir",
         default="molmetal/reports/wf331r5_r2_w2_chemprop",
     )
@@ -1588,6 +1781,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         out_path=out_path,
         cohorts=cohorts_arg,
         metalcytotox_max=args.metalcytotox_max,
+        max_cohort_size=args.max_cohort_size,
         seed=args.seed,
         use_canonical_chemprop=args.use_canonical_chemprop,
         w2_use_covariate=not args.w2_use_y_leaky,

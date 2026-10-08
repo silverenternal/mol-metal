@@ -56,7 +56,7 @@
       "verdict": "HONEST_NEGATIVE_R2_DEEP",
       "target_name": "pIC50_mean_mcf7_a549_a2780_a2780cis",
       "cohort_is_alias_of": "platinai_4cell",
-      "cohort_alias_disclosure": "hilbert cohort loader (Wf-331-R5 load_cohort L1099-1101) returns the platinai_4cell pIC50 vector by construction — np.array_equal(X_platinai, X_hilbert) is True. The seed-shift offset is documented in Wf-388-A1 §3.2 and acknowledged in Wf-R43-A2 KNOWN_ALIASES.",
+      "cohort_alias_disclosure": "hilbert cohort loader (Wf-331-R5 load_cohort L1099-1101) returns the platinai_4cell pIC50 vector by construction \u2014 np.array_equal(X_platinai, X_hilbert) is True. The seed-shift offset is documented in Wf-388-A1 \u00a73.2 and acknowledged in Wf-R43-A2 KNOWN_ALIASES.",
       "elapsed_sec": 0.06635808944702148
     },
     {
@@ -85,7 +85,10 @@
     "std_r2": 0.16126624620158803,
     "n_cohorts_tested": 3,
     "n_cohorts_independent": 2,
-    "n_independent_cohorts": ["platinai_4cell", "metalcytotox_combined"],
+    "n_independent_cohorts": [
+      "platinai_4cell",
+      "metalcytotox_combined"
+    ],
     "n_aliased_cohorts": 1,
     "aliased_cohorts": {
       "hilbert": "platinai_4cell"
@@ -220,5 +223,96 @@
       "small_cohort_gap": "HONEST_NEGATIVE_R2_DEEP on platinai_4cell + hilbert (n=200); 50+ feature Ridge OVERFITS small cohorts per Wf-367-B1 + Wf-388-A1 finding \u2014 closure path = Wf-376-A3 Path B (GPU chemprop v3 + Hilbert) USER_OK-gated"
     },
     "honest_framing": "Real-cohort lift (-0.0246 vs Wf-335-M2 baseline +0.2227) does NOT match synthetic projection; WEAK_RECOVERY for n=2000 tier only; HONEST_NEGATIVE_R2_DEEP for n=200 cohorts. Per-cohort config axis VALIDATED as methodology but real-cohort lift required GPU retrain per AGENTS.md \u00a75.1."
+  },
+  "wf_fix3lines_expand_2026_10_09": {
+    "wf_tag": "wf-fix3lines m2 R^2 per-cohort REAL verification at n=4078 (2026-10-09)",
+    "source": "molmetal/scripts/wf_fix3lines_m2_n4078.py + molmetal/reports/wf_fix3lines_plat_expand_2026_10_09/result.json",
+    "status": "MEASURED",
+    "pre_flight_status": "CPU-only Ridge diagnostic; pre-flight v2 gate not required (no retrain / panel / ablation, per AGENTS.md \u00a75.1).",
+    "protocol": "Loader = wf331r5_r2_w2_chemprop.load_cohort(max_cohort_size=4078) -> _load_platinai_expanded (on-the-fly 32-d RDKit over all 4078 rows of molmetal/data/platinai_4cell_rdkit_features.csv; no subsampling, CSV row order). Per-cohort tier table + Ridge CV = wf388a1_m2_per_cohort_real.train_eval_per_cohort, unmodified. 5 seeds x 5-fold CV = 25 splits per cohort.",
+    "delta_vs_n200": {
+      "note": "Before/after is NOT a like-for-like tier comparison: n=200 used the n_lt_300 tier (12-d, alpha=1.0); n=4078 uses the n_gte_1000 tier (32-d RDKit available, alpha=0.1). Both the feature count and the regularisation strength change together, so the delta below mixes cohort-size effect with tier-config effect.",
+      "n200_r2_mean": -0.14401547578768395,
+      "n200_r2_std": 0.03250515219140294,
+      "n200_n_features_used": 12,
+      "n200_tier": "n_lt_300",
+      "n200_alpha": 1.0,
+      "n4078_r2_mean": 0.010248095662493722,
+      "n4078_r2_std": 0.0035890534854773827,
+      "n4078_n_features_used": 32,
+      "n4078_tier": "n_gte_1000",
+      "n4078_alpha": 0.1,
+      "delta_r2_mean": 0.15426357145017766
+    },
+    "feature_count_caveat": "The n_gte_1000 tier requests n_features_expected=50 (12-d RDKit + 12-d chemprop v3 + 24-d Hilbert spectral). The loader supplies only the 32-d RDKit block, so n_features_used=32 (n_features_available=32). This is a 32-d measurement scored under the tier's alpha=0.1, NOT a full 50-d ensemble measurement.",
+    "per_cohort": [
+      {
+        "cohort_size": 4078,
+        "n_features_used": 32,
+        "alpha_used": 0.1,
+        "tier": "n_gte_1000",
+        "r2_mean": 0.010248095662493722,
+        "r2_std": 0.0035890534854773827,
+        "n_splits_effective": 25,
+        "baseline_r2_mechanical": -0.12505399802714393,
+        "lift_vs_baseline": 0.13530209368963764,
+        "verdict": "CEILING_BREAK",
+        "target_name": "pIC50_mean_mcf7_a549_a2780_a2780cis",
+        "cohort_is_alias_of": null,
+        "independent_cohort": true,
+        "cv_seed_offset": 0,
+        "epochs_recorded": 30,
+        "wass_w_recorded": 0.05,
+        "n_features_available": 32,
+        "n_samples": 4078,
+        "smiles_count": 4078,
+        "config_features": "rdkit_50d_chemprop_v3_hilbert",
+        "config_model": "ensemble",
+        "cohort": "platinai_4cell",
+        "loader_max_cohort_size": 4078,
+        "loader": "wf331r5_r2_w2_chemprop.load_cohort(max_cohort_size=4078) -> _load_platinai_expanded",
+        "elapsed_sec": 6.329824924468994
+      },
+      {
+        "cohort_size": 4078,
+        "n_features_used": 32,
+        "alpha_used": 0.1,
+        "tier": "n_gte_1000",
+        "r2_mean": 0.010992081902013942,
+        "r2_std": 0.0035322474024371267,
+        "n_splits_effective": 25,
+        "baseline_r2_mechanical": -0.1268,
+        "lift_vs_baseline": 0.13779208190201395,
+        "verdict": "CEILING_BREAK",
+        "target_name": "pIC50_mean_mcf7_a549_a2780_a2780cis",
+        "cohort_is_alias_of": "platinai_4cell",
+        "independent_cohort": false,
+        "cv_seed_offset": 1,
+        "epochs_recorded": 30,
+        "wass_w_recorded": 0.05,
+        "n_features_available": 32,
+        "n_samples": 4078,
+        "smiles_count": 4078,
+        "config_features": "rdkit_50d_chemprop_v3_hilbert",
+        "config_model": "ensemble",
+        "cohort": "hilbert",
+        "loader_max_cohort_size": 4078,
+        "loader": "wf331r5_r2_w2_chemprop.load_cohort(max_cohort_size=4078) -> _load_platinai_expanded",
+        "elapsed_sec": 6.126855850219727
+      }
+    ],
+    "aggregate": {
+      "mean_r2": 0.010620088782253831,
+      "std_r2": 0.0003719931197601099,
+      "n_cohorts_tested": 2,
+      "n_cohorts_independent": 1,
+      "n_cohorts_aliased": 1,
+      "mean_r2_independent": 0.010248095662493722,
+      "n_cohorts_above_zero": 2,
+      "n_cohorts_ceiling_break": 2,
+      "n_cohorts_weak_recovery_or_better": 2,
+      "aggregate_status": "CEILING_BREAK_MAJORITY"
+    },
+    "elapsed_sec_total": 12.456734657287598
   }
 }

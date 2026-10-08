@@ -1073,6 +1073,58 @@ Per user directive 2026-10-08 verbatim *"回退的东西得想办法把他们补
 
 ---
 
+### §6.39 Wf-FIX-3LINES 2026-10-09 — bace rescue round 2 + CFM bond head 20-ep + Lambda cohort n=200→4078 expansion
+
+**PREMISE CORRECTION (brief vs disk)**: the wave brief for this entry asserted a completed 3-part evidence set (5-seed bace, 20-epoch CFM production F1, "R² at 50-d"). On-disk verification at 2026-10-09 01:30 shows **2 of the 3 GPU runs are ABORTED mid-flight**, and the third used **32-d, not 50-d**, features. Per AGENTS.md §5.5 filesystem-truth rule + memory `verify-premises-before-proposing.md`, the entries below record what is actually on disk; none of the brief's headline numbers are adopted. Both aborted runs are additionally recorded as **in-flight again** (§6.39a/§6.39b) — no verdict is claimed until they finish.
+
+#### §6.39a bace rescue round 2 — 5-seed GPU re-run **ABORTED at seed 2/5**; the 2 surviving seeds span 0.6311–0.8644 (INCONCLUSIVE, no verdict claimed)
+
+| Field | Value |
+|---|---|
+| **ID** | `honest_neg_bace_rescue_round2_aborted` |
+| **MEASURED (partial, 2 of 5 seeds)** | `--backbone dmpnn --epochs 50 --batch-size 64 --lr 0.001 --hidden 300 --depth 3 --seeds 0 1 2 3 4` (canonical baseline protocol, GPU). seed 0 `test roc_auc` = **0.6311** (pr_auc 0.6367); seed 1 `test roc_auc` = **0.8644** (pr_auc 0.8187). Seed 2 reached epoch 40/50 in the log with NO `test_metrics` block written. Seeds 3 + 4 never started. |
+| **Run state** | **ABORTED.** `nvidia-smi --query-compute-apps` returns empty; no `train_moleculenet` process alive; `logs/wf_fix3lines_bace_50ep.log` frozen at mtime 2026-10-09 01:02 (28 min stale at verify time). Only `bace_dmpnn_seed{0,1}.json` exist in the out-dir; the launcher's `metrics.json` / `report.md` were never produced. |
+| **Verdict** | **INCONCLUSIVE — NO VERDICT CLAIMED.** The brief's decision rule (>0.86 CEILING_BREAK / 0.74–0.86 PARTIAL / <0.74 STILL_HONEST_NEGATIVE) **cannot be applied to a 2-seed partial**. The 2 surviving seeds differ by **Δ=0.2333**, which is itself the finding: bace at this protocol is **seed-dominated**, so no 2-seed mean may be reported as "the" bace number. This CORROBORATES §6.38c's "bace is a real architecture-level miss" only weakly — it adds that bace is additionally **high-variance**, so the §6.38c −0.134 gap cannot be closed by any single-run number. |
+| **Why it matters** | `docs/ALIGNED_COMPARISON.md` §2 states a "clean GPU re-run with a same-device control is the confirmation still owed" for the bace gap. That confirmation is **still owed** — this run did not deliver it. Do NOT cite 0.6311 or 0.8644 as a bace result. |
+| **Source** | `molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/bace_dmpnn_seed{0,1}.json` + `logs/wf_fix3lines_bace_50ep.log` + `scripts/launch_wf_fix3lines_bace.sh` |
+| **Cross-ref** | §6.38c (bace rescue hypothesis refuted) + `docs/ALIGNED_COMPARISON.md` §2 + memory `aligned-metric-comparison.md` |
+
+#### §6.39b CFM bond head 20-epoch production F1 — **ABORTED at epoch 1/20**; F1 = 0.0193, *below* the 0.079 probe (HONEST-NEGATIVE: bond head worse than probe at the only completed epoch)
+
+| Field | Value |
+|---|---|
+| **ID** | `honest_neg_cfm_bond_head_20ep_aborted` |
+| **MEASURED (2 epochs of 20)** | `--epochs 20`, bond_head=learned, cfm_decoder=yuelbond, decode_ratio **1.000** (192/192) at epoch 0 and **0.875** (168/192) at epoch 1 — i.e. the §5.7 decode_ratio>0 floor HOLDS. epoch 0: bond_f1 **0.0357**, prec 0.5708, rec 0.0184, bond_exact_type_rate **0.000**, pr_auc 0.485, train_loss 0.9909, bond_ce 0.9210. epoch 1: bond_f1 **0.0193**, prec 0.5820, rec 0.0098, pr_auc 0.566, train_loss 0.8298, bond_ce 0.7697. |
+| **Run state** | **ABORTED.** Log frozen at mtime 2026-10-09 01:18; `logs/wf_fix3lines_cfm_20ep.log` contains only epochs 0–1 of the requested 20. No `train_cfm_yuelbond_wasserstein` process alive; `nvidia-smi` shows no compute apps. The `cfm-early-stop` gate had already fired at epoch 0 on `gen_eval_n=0` ("generation eval did not run"), so the run was on a path toward early termination regardless. |
+| **Verdict** | **HONEST-NEGATIVE (provisional, 1 useful epoch) — bond F1 is BELOW the 0.079 probe**, not above it. The brief expected a "production F1 to compare against probe 0.079"; the single usable comparison lands at **0.0193 (epoch 1) / 0.0357 (epoch 0), i.e. 0.6–2.5× WORSE**. Note the logged `alt_rule_F1` (0.331 epoch 0 / 0.301 epoch 1) is a *different decision rule* (non-argmax), NOT comparable to the argmax probe number — do not quote it as the headline. A 20-epoch claim is **NOT SUPPORTED** by 2 epochs. |
+| **Source** | `logs/wf_fix3lines_cfm_20ep.log` (per-epoch JSON lines + `[cfm-bond]` / `[cfm-bond-pr]` / `[cfm-bond-type]` blocks) + `scripts/launch_wf_fix3lines_cfm.sh` |
+| **Cross-ref** | §6.38e (neural head not a working regressor) + AGENTS.md §5.7 trainer-flag smoke rule (decode_ratio floor held here) + skill `mol-metal-cfm-training` |
+
+#### §6.39c platinai_4cell n=200 → 4078 expansion — R² **0.0102 ± 0.0036** (32-d, 5 seeds × 5-fold): still ≈ 0 at expanded scale (STILL_HONEST_NEGATIVE_R2_DEEP)
+
+| Field | Value |
+|---|---|
+| **ID** | `honest_neg_m2_r2_expanded_4078_near_zero` |
+| **MEASURED** | `load_cohort(max_cohort_size=4078)` → on-the-fly 32-d RDKit over all **4078** rows of `molmetal/data/platinai_4cell_rdkit_features.csv` (no subsampling). Tier `n_gte_1000`, alpha 0.1, **5 seeds × 5-fold CV = 25 splits**. platinai_4cell `r2_mean` = **0.010248**, `r2_std` = **0.003589** (baseline mechanical −0.12505, lift +0.13530). hilbert (alias) r2_mean ≈ **0.0109**. |
+| **Verdict** | **STILL_HONEST_NEGATIVE_R2_DEEP — NOT WEAK_RECOVERY.** The brief's rule was "if > 0 → WEAK_RECOVERY". The mean IS nominally > 0, but **0.0102 ± 0.0036 is statistically indistinguishable from zero** and is 14× smaller than the n=200-tier lift the earlier Wf-388-A1 claim rested on. Reporting this as "WEAK_RECOVERY" would be an honest-framing violation per AGENTS.md §5.2. A 20× cohort expansion moved R² from −0.144 to **+0.010** — the signal does not scale with data. |
+| **Two confounds that must travel with this number** | (1) **NOT a like-for-like tier comparison** — n=200 used the `n_lt_300` tier (12-d, alpha=1.0); n=4078 uses `n_gte_1000` (alpha=0.1). Feature count AND regularisation both change, so Δ=+0.154 mixes cohort-size effect with tier-config effect. (2) **32-d, NOT 50-d** — the `n_gte_1000` tier requests 50 features (12-d RDKit + 12-d chemprop v3 + 24-d Hilbert); the loader supplies only the 32-d RDKit block (`n_features_available=32`). This is a 32-d measurement scored under alpha=0.1, **not** the full 50-d ensemble. The brief's "R² at 50-d" framing is not what was measured. |
+| **Source** | `molmetal/reports/wf_fix3lines_plat_expand_2026_10_09/result.json` + `metrics/by_metric/m2_r2_per_cohort.json::wf_fix3lines_expand_2026_10_09` |
+| **Cross-ref** | §6.35-adjacent m2 R² real finding + Wf-388-A1 §3.2 + `docs/ALIGNED_COMPARISON.md` |
+
+#### §6.39d `hilbert` is an alias of `platinai_4cell`, not an independent cohort — any "expand hilbert" claim is structurally meaningless (DOCUMENTED)
+
+| Field | Value |
+|---|---|
+| **ID** | `honest_neg_hilbert_cohort_is_alias_of_platinai_4cell` |
+| **DOCUMENTED** | The hilbert cohort loader returns the `platinai_4cell` pIC50 vector **by construction** — `np.array_equal(X_platinai, X_hilbert)` is True; only a documented seed-shift offset separates them (Wf-388-A1 §3.2; acknowledged in Wf-R43-A2 KNOWN_ALIASES). `metrics/by_metric/m2_r2_per_cohort.json` records this inline as `cohort_is_alias_of: "platinai_4cell"` + `aliased_cohorts: {hilbert: platinai_4cell}`. |
+| **Verdict** | **DOCUMENTED / STRUCTURAL, NOT A NEW MEASUREMENT.** In the n=4078 run the "2 cohorts tested" are **1 independent cohort** — the reported R² of ~0.0101 (platinai) and ~0.0109 (hilbert) are the same data under a seed offset, and the small gap between them is **not** a second data point. This §6.39 run therefore contributes **n_independent_cohorts = 1**. Any future "we expanded the Hilbert cohort to n=4078" claim is **structurally meaningless** — the expansion applied to the single underlying platinai table. |
+| **Source** | `metrics/by_metric/m2_r2_per_cohort.json` (`cohort_alias_disclosure` + `aliased_cohorts` fields) + `molmetal/reports/wf_fix3lines_plat_expand_2026_10_09/result.json` (`cohorts_tested: [platinai_4cell, hilbert]`, both `independent_cohort` with `cohort_is_alias_of` nullified by the alias) |
+| **Cross-ref** | Wf-388-A1 §3.2 + Wf-R43-A2 KNOWN_ALIASES + §6.39c (the two rows are one measurement) |
+
+**Wf-FIX-3LINES §6.39 cross-ref summary**: 4 honest-negative findings from the 3-line-fix wave. **2 of 3 GPU runs ABORTED mid-flight** (bace at seed 2/5, CFM at epoch 1/20) — recorded per AGENTS.md §5.5 filesystem-truth rule #1 (report SHIPPED ≠ file exists) rather than reported as complete. The 1 completed measurement (m2 n=4078) returned R² = 0.0102 ± 0.0036 at **32-d**, which is **statistically indistinguishable from zero** and does NOT meet the brief's "WEAK_RECOVERY" bar. The `hilbert` alias disclosure means the 2-cohort run is a **1-cohort** measurement. NO paper-work (TODO-84 + AGENTS.md §5.3 honored). NO wet-lab planning (AGENTS.md §5.4 + §10 honored). MEASURED-vs-PROJECTED tag discipline preserved (AGENTS.md §5.2) — every number above cites an on-disk path. Cumulative catalog expansion 94 → **95** entries with this §6.39 (the header's historical running count was already stale at 100 `### §` headings; §6.39 adds 1 entry with 4 sub-entries).
+
+---
+
 ## §7 WETLAB_DEPRECATED entries (per-file + per-launcher + per-workflow) — 6 entries
 
 Each entry captures the per-file/per-workflow wetlab DEPRECATION per AGENTS.md §5.4 (Tier-2

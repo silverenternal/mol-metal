@@ -935,3 +935,67 @@ Cross-references: TODO/completed/A8_m17_yaml_rewrite.md + TODO/completed/A8_othe
 **Pre-flight v3 status preserved**: rc=0 (PASS, 113/1/3/117 per Wf-432 baseline).
 
 **Standing directives re-confirmed**: AGENTS.md §1 + §5.1 (1 GPU launch: W1 arm2 per-epoch — within standing grant per §5.1) + §5.2 (honest framing — every numeric value cites disk path) + §5.3 (no paper work) + §5.4 + §5.5 (ls -la evidence on all artifacts) + §5.6 (`atomic_write_file` for ALL catalog/INDEX/STATUS writes) + §5.7 (molnet flag wire-in smoke-verified end-to-end, NOT FLAG_ONLY) + §5.8 (wf token budget — ≤2 parallel agents per wave; 1 diagnostic agent + 1 measure agent only) + §5.9 (.venv/bin/python) + §5.10 + §10 (wetlab deprecation).
+
+## §22.152 Wf-FIX-3LINES 2026-10-09 — bace rescue round 2 + CFM bond head 20-ep + Lambda cohort n=4078
+
+Follow-up to §22.151 (Wf-METRIC-RESCUE). The prior wave REFUTED the bace rescue and flagged
+three regressed lines; this wave attempted the three repairs and re-measured them.
+**Two of the three predicted lifts did not materialise**; the third moved direction but
+landed ≈ 0. All numbers below are MEASURED and trace to a path on disk per AGENTS.md §5.2.
+
+**Closeout**: `TODO/completed/metric_fix_3lines_2026_10_09.md` (13415 B, Oct 9 01:33).
+
+### Findings (honest-negative, 3 of 3)
+
+| # | Line | MEASURED | Verdict |
+|---|---|---|---|
+| 1 | bace rescue round 2 | seed0 `test roc_auc` **0.6311**, seed1 **0.8644**; baseline 0.7421 ± 0.0446 | **NO 5-seed mean exists** (≤3/5 seeds survived). Δ=0.2333 seed spread ≈ 5× baseline std ⇒ seed-dominated. Neither seed may be cited as a bace result. |
+| 2 | CFM bond head 20-epoch | bond_f1 **0.0357** (ep0) / **0.0193** (ep1); probe 0.079 | **ABORTED at epoch 1/20.** F1 is **0.6–2.5× worse** than the probe. The lift did NOT materialise. decode_ratio 1.000 / 0.875 (>0 both) ⇒ §5.7 floor HOLDS, decode_ratio=0 regression did not recur. |
+| 3 | platinai_4cell n=200→4078 | R² **0.010248 ± 0.003589** (25 splits, 5 seeds × 5-fold); n=200 baseline **−0.144015 ± 0.032505** | Direction right (**+0.135** across a 20× data increase), magnitude **≈0** — indistinguishable from zero. **NOT WEAK_RECOVERY.** |
+
+### Caveats that must travel with finding #3
+
+1. **Not a like-for-like tier comparison** — n=200 used tier `n_lt_300` (12-d, alpha=1.0);
+   n=4078 uses `n_gte_1000` (alpha=0.1). Feature count AND regularisation both change.
+2. **32-d RDKit only, not 50-d** — the tier requests the full 50-d ensemble (chemprop v3 12-d +
+   Hilbert spectral 24-d), but the loader supplies only the 32-d RDKit block at alpha=0.1.
+   The brief's "R² at 50-d" framing is **not what ran**.
+
+### Finding #4 — hilbert is an alias, not a second cohort
+
+`hilbert` carries `cohort_is_alias_of: "platinai_4cell"`. The n=4078 run's "2 cohorts tested" are
+therefore **1 independent cohort** (`n_cohorts_independent: 1`, `n_cohorts_aliased: 1`). The
+~0.0101 vs ~0.0109 gap is the same data under a seed offset, **not** a second data point.
+
+### Process gap — pre-flight §1.4 NOT satisfied for Waves 1 & 2
+
+Waves 1 & 2 were GPU retrains launched with **no on-disk pre-flight v3 PASS log**
+(`logs/` contains no `*pre*flight*` file dated 2026-10-09). Wave 3 was a CPU-only closed-form
+Ridge diagnostic, so no gate was required. **Flagged, not adjudicated here.**
+
+### Disk artefacts (§5.5 filesystem-truth)
+
+```
+TODO/completed/metric_fix_3lines_2026_10_09.md    13415 B  Oct  9 01:33
+metrics/by_metric/m2_r2_per_cohort.json           17728 B  Oct  9 01:24   key: wf_fix3lines_expand_2026_10_09
+molmetal/scripts/wf_fix3lines_m2_n4078.py          6188 B  Oct  9 01:24
+scripts/launch_wf_fix3lines_bace.sh                1200 B  Oct  9 01:02
+scripts/launch_wf_fix3lines_cfm.sh                 2254 B  Oct  9 01:17
+docs/HONEST_NEGATIVE_CATALOG.md                            §6.39 + §6.39a..d
+```
+
+### Cross-refs + outstanding
+
+- `docs/HONEST_NEGATIVE_CATALOG.md` §6.39 (+ §6.39a bace / §6.39b CFM / §6.39c R² / §6.39d hilbert alias)
+- `docs/ALIGNED_COMPARISON.md` §2 — bace −0.134 gap still open
+- `TODO/completed/metric_rescue_wfmrr_2026_10_08.md` — §22.151, the prior REFUTED bace rescue
+- **Outstanding docs sync**: `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` §1.2 still carries the
+  Wf-388-A1 n=200 numbers; it has NOT been updated with the n=4078 result.
+- **Outstanding data lever**: the missing 18 features (chemprop v3 12-d + Hilbert spectral 24-d) —
+  the next lever for R², since 20× data moved it only +0.154.
+
+**Standing directives re-confirmed**: AGENTS.md §5.1 (2 GPU launches within standing grant) +
+§5.2 (honest framing — every numeric value cites a disk path; predicted lifts NOT reported as
+achieved) + §5.3 (no paper work) + §5.4 + §5.5 (ls -la evidence above) + §5.6 (`atomic_write_file`
+for both STATUS.md and INDEX.md) + §5.7 (decode_ratio > 0 at every completed epoch — HOLDS) +
+§5.8 (wf token budget) + §5.9 (.venv/bin/python) + §5.10 + §10 (wetlab deprecation).
