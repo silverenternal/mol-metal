@@ -1,5 +1,5 @@
 schema: molmetal-registry-datasets-v1
-generated_at: '2026-10-08T08:56:32+00:00'
+generated_at: '2026-10-08T09:09:27+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable dataset facts. A dataset is READY iff sha256(path) == sha256
   here.
@@ -38,6 +38,8 @@ datasets:
     n_lines: 450
     frozen_at: 2026-10-03T03:04:13+0000
     source: configs/data_checksums.json
+    locked_for:
+    - m6_kappa
   MetalCytoToxDB.csv:
     path: .data/molmetal/MetalCytoToxDB.csv
     md5: f270dc907dbdfede953063a14f0825a7
@@ -60,6 +62,7 @@ datasets:
     source: configs/locks/protocol_lock.yaml
     locked_for:
     - m2_r2_per_cell
+    - l5_hilbert_r2
   lbap_refined_ic50_assay.csv:
     path: .data/molmetal/drugood/ic50/csv/lbap_refined_ic50_assay.csv
     md5: 326f15c276718bb324720c9bc392cf90
@@ -84,3 +87,13 @@ datasets:
     source: configs/locks/protocol_lock.yaml
     locked_for:
     - m17_drugood_ood
+  tmqm_dblock_subset.csv:
+    path: molmetal/data/tmqm_dblock_subset.csv
+    md5: 78cf4a1e7dadb100a4c4cf54a79db698
+    sha256: 03fe66fbb29908de1d455ec3b55ebbda4cab3e8ee2871f44c09989bd65e52e78
+    why: reachability_overall.json records csv_path == this file (MEASURED 5001 lines,
+      tmQM d-block subset with csd_code + smiles + metal_center). It is the closure-theorem
+      R20 benchmark input (CPU-only).
+    source: configs/locks/protocol_lock.yaml
+    locked_for:
+    - l6_closure

@@ -109,6 +109,107 @@ _FOURIER_THRESHOLD: int = 1024
 
 
 # ---------------------------------------------------------------------------
+# Mathematical preconditions (CHECK_MATH_PRECONDITIONS=1)
+# ---------------------------------------------------------------------------
+# The 2-parameter Vietoris-Rips filtration of Kim-Jung (2026) is only
+# the discrete multi-PH of the pocket when (i) the coordinates form a
+# finite non-degenerate point cloud in R^3, (ii) the atomic numbers are
+# non-negative integers (the ``d`` filter is ``|z_i - z_j|``, undefined
+# for negative / fractional labels), and (iii) the filter thresholds
+# are positive with ``n_bins >= 2`` so the persistence grid is
+# well-defined.  The function silently bins a degenerate cloud (e.g.
+# all-identical coords) into a single cell and silently uses a
+# non-positive ``max_coord`` as a clamp floor; ``check_preconditions``
+# surfaces these.  Default OFF (numerics unchanged).
+
+
+def math_preconditions_enabled() -> bool:
+    """Return True when ``CHECK_MATH_PRECONDITIONS=1`` is set in the env."""
+    import os
+
+    return os.environ.get("CHECK_MATH_PRECONDITIONS", "0") == "1"
+
+
+def check_preconditions(
+    inputs,
+    *,
+    entry: str = "two_param_filtration",
+    pocket_atom_types=None,
+    max_radius: Optional[float] = None,
+    max_coord: Optional[float] = None,
+    n_bins: Optional[int] = None,
+    **kwargs,
+) -> list:
+    """Report violated mathematical preconditions of the multi-PH module.
+
+    Parameters
+    ----------
+    inputs : Tensor
+        ``(B, N, 3)`` pocket coordinates.
+    entry : str
+        ``"two_param_filtration"`` (the module's main entry).
+    pocket_atom_types : Tensor, optional
+        ``(B, N)`` non-negative integer atomic numbers.
+    max_radius, max_coord : float, optional
+        Filter thresholds; ``max_radius`` must be ``> 0``,
+        ``max_coord`` must be ``>= 0``.
+    n_bins : int, optional
+        Persistence-grid resolution; must be ``>= 2``.
+
+    Returns
+    -------
+    list[str]
+        Empty when all preconditions hold; else one string per
+        violation, naming it.  Never raises.
+    """
+    violations = []
+    if inputs is None or not isinstance(inputs, Tensor):
+        return ["pocket_coords: input is None or not a Tensor"]
+    if inputs.dim() != 3 or inputs.shape[-1] != 3:
+        violations.append(
+            f"pocket_coords: must be (B, N, 3), got {tuple(inputs.shape)}"
+        )
+        return violations
+    if inputs.shape[1] < 2:
+        violations.append(
+            "pocket_coords: need N >= 2 atoms for a non-trivial Vietoris-Rips complex"
+        )
+    if not bool(torch.isfinite(inputs).all()):
+        violations.append("pocket_coords: contains non-finite (NaN/inf) coordinates")
+
+    if pocket_atom_types is not None:
+        if not isinstance(pocket_atom_types, Tensor):
+            violations.append("pocket_atom_types: must be a Tensor")
+        elif pocket_atom_types.shape != inputs.shape[:2]:
+            violations.append(
+                f"pocket_atom_types: shape {tuple(pocket_atom_types.shape)} does not "
+                f"match pocket_coords[:2] {tuple(inputs.shape[:2])}"
+            )
+        else:
+            if bool((pocket_atom_types < 0).any()):
+                violations.append(
+                    "pocket_atom_types: negative atomic numbers — the |z_i - z_j| "
+                    "coordination filter is undefined"
+                )
+            elif pocket_atom_types.dtype.is_floating_point and bool(
+                (pocket_atom_types != pocket_atom_types.round()).any()
+            ):
+                violations.append(
+                    "pocket_atom_types: non-integer atomic numbers "
+                    "(should be discrete proton counts)"
+                )
+    if max_radius is not None and max_radius <= 0.0:
+        violations.append(f"max_radius: must be > 0 (a filtration radius), got {max_radius}")
+    if max_coord is not None and max_coord < 0.0:
+        violations.append(
+            f"max_coord: must be >= 0 (a |z_i - z_j| coordination span), got {max_coord}"
+        )
+    if n_bins is not None and n_bins < 2:
+        violations.append(f"n_bins: must be >= 2 for a 2-D persistence grid, got {n_bins}")
+    return violations
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -226,6 +327,18 @@ def two_param_filtration(
         max_coord,
         n_bins,
     )
+    if math_preconditions_enabled():
+        import warnings as _warnings
+
+        for _v in check_preconditions(
+            pocket_coords,
+            entry="two_param_filtration",
+            pocket_atom_types=pocket_atom_types,
+            max_radius=max_radius,
+            max_coord=max_coord,
+            n_bins=n_bins,
+        ):
+            _warnings.warn(f"[math-precondition] {_v}", stacklevel=2)
     b, n, _ = pocket_coords.shape
 
     # Pairwise distances per batch.  torch.cdist is O(N²) memory

@@ -76,6 +76,132 @@ import numpy as np
 
 
 # ---------------------------------------------------------------------------
+# Mathematical preconditions (CHECK_MATH_PRECONDITIONS=1)
+# ---------------------------------------------------------------------------
+# The Sun-Zheng (2026) O(1/k) convergence guarantee for the
+# Hilbert-space primal-dual iteration requires (i) a well-posed
+# composite objective — finite design matrix ``X`` and target ``y`` of
+# matched length, (ii) the problem being *convex* (the ridge
+# least-squares objective is convex iff ``X`` is finite and the ridge
+# coefficient ``>= 0``), and (iii) step sizes in the stability region
+# ``lr_primal * L <= 1`` with ``lr_dual / lr_primal`` bounded.  The
+# skeleton runs even when ``X`` contains NaN (the inner clip / decay
+# guards hide it and the iterate silently freezes), so we expose a
+# cheap, non-raising check.  Default OFF.
+
+
+def math_preconditions_enabled() -> bool:
+    """Return True when ``CHECK_MATH_PRECONDITIONS=1`` is set in the env."""
+    import os
+
+    return os.environ.get("CHECK_MATH_PRECONDITIONS", "0") == "1"
+
+
+def check_preconditions(
+    inputs,
+    *,
+    entry: str = "hilbert_primal_dual",
+    target=None,
+    population_dim: Optional[int] = None,
+    lr_primal: Optional[float] = None,
+    lr_dual: Optional[float] = None,
+    l2_lambda: Optional[float] = None,
+    n_iters: Optional[int] = None,
+    **kwargs,
+) -> list:
+    """Report violated mathematical preconditions of the PD module.
+
+    Parameters
+    ----------
+    inputs : np.ndarray
+        ``(N, F)`` design matrix (or ``(N,)`` target when ``entry`` is
+        used for a bare pair check).
+    entry : str
+        ``"hilbert_primal_dual"`` (LambdaASTSRHilbert.optimize) or
+        ``"pd_step"`` (PrimalDualOptimizer.step; ``inputs`` is the
+        primal iterate).
+    target : np.ndarray, optional
+        ``(N,)`` regression targets; length must match ``inputs`` rows.
+    population_dim : int, optional
+        Expected feature dimension ``F``.
+    lr_primal, lr_dual : float, optional
+        Step sizes; must be strictly positive.
+    l2_lambda : float, optional
+        Ridge coefficient; must be ``>= 0`` for convexity.
+    n_iters : int, optional
+        Iteration count; must be ``>= 1``.
+
+    Returns
+    -------
+    list[str]
+        Empty when all preconditions hold; else one string per
+        violation, naming it.  Never raises.
+    """
+    violations = []
+    arr = None
+    if inputs is None:
+        return ["features: input is None (a design matrix is required)"]
+    try:
+        arr = np.asarray(inputs, dtype=float)
+    except (TypeError, ValueError):
+        return ["features: input is not convertible to a float array"]
+
+    if entry == "pd_step":
+        if arr.ndim != 1:
+            violations.append(
+                f"primal_var: must be a 1-D iterate, got shape {arr.shape}"
+            )
+        if not np.all(np.isfinite(arr)):
+            violations.append("primal_var: contains non-finite (NaN/inf) entries")
+        if lr_primal is not None and lr_primal <= 0.0:
+            violations.append(f"lr_primal: must be > 0 for a PD step, got {lr_primal}")
+        if lr_dual is not None and lr_dual <= 0.0:
+            violations.append(f"lr_dual: must be > 0 for a PD step, got {lr_dual}")
+        return violations
+
+    # entry == "hilbert_primal_dual"
+    if arr.ndim != 2:
+        violations.append(
+            f"features: design matrix must be 2-D (N, F), got shape {arr.shape}"
+        )
+    if not np.all(np.isfinite(arr)):
+        violations.append(
+            "features: contains non-finite (NaN/inf) entries — the convex "
+            "least-squares objective is undefined"
+        )
+    if target is not None:
+        try:
+            tgt = np.asarray(target, dtype=float).reshape(-1)
+        except (TypeError, ValueError):
+            violations.append("target: not convertible to a float array")
+            tgt = None
+        if tgt is not None:
+            if arr.ndim == 2 and arr.shape[0] != tgt.shape[0]:
+                violations.append(
+                    f"target: length {tgt.shape[0]} does not match features rows "
+                    f"{arr.shape[0]} (the objective needs paired (X, y))"
+                )
+            if not np.all(np.isfinite(tgt)):
+                violations.append("target: contains non-finite (NaN/inf) entries")
+    if population_dim is not None and arr.ndim == 2 and arr.shape[-1] != population_dim:
+        violations.append(
+            f"features: last dim {arr.shape[-1]} != population_dim {population_dim} "
+            f"(the Hilbert space dimension sets the primal variable shape)"
+        )
+    if lr_primal is not None and lr_primal <= 0.0:
+        violations.append(f"lr_primal: must be > 0, got {lr_primal}")
+    if lr_dual is not None and lr_dual <= 0.0:
+        violations.append(f"lr_dual: must be > 0, got {lr_dual}")
+    if l2_lambda is not None and l2_lambda < 0.0:
+        violations.append(
+            f"l2_lambda: must be >= 0 (a negative ridge breaks convexity), got {l2_lambda}"
+        )
+    if n_iters is not None and n_iters < 1:
+        violations.append(f"n_iters: must be >= 1, got {n_iters}")
+    return violations
+
+
+# ---------------------------------------------------------------------------
 # Hilbert space — finite Fourier basis approximation of L²[0,1]
 # ---------------------------------------------------------------------------
 class HilbertSpace:
@@ -436,6 +562,17 @@ class PrimalDualOptimizer:
         """
         x = np.asarray(primal_var, dtype=float).reshape(-1).copy()
         y = np.asarray(dual_var, dtype=float).reshape(-1).copy()
+
+        if math_preconditions_enabled():
+            import warnings as _warnings
+
+            for _v in check_preconditions(
+                x,
+                entry="pd_step",
+                lr_primal=self.lr_primal,
+                lr_dual=self.lr_dual,
+            ):
+                _warnings.warn(f"[math-precondition] {_v}", stacklevel=2)
 
         _, grad = objective(x)
         grad = np.asarray(grad, dtype=float).reshape(-1)
@@ -878,6 +1015,21 @@ class LambdaASTSRHilbert:
             raise ValueError(
                 f"features / target length mismatch: {feats.shape[0]} vs {tgt.shape[0]}"
             )
+
+        if math_preconditions_enabled():
+            import warnings as _warnings
+
+            for _v in check_preconditions(
+                features,
+                entry="hilbert_primal_dual",
+                target=target,
+                population_dim=self.population_dim,
+                lr_primal=self.lr_primal,
+                lr_dual=self.lr_dual,
+                l2_lambda=self.l2_lambda,
+                n_iters=self.n_iters,
+            ):
+                _warnings.warn(f"[math-precondition] {_v}", stacklevel=2)
 
         # Wf-122 Phase 1: validation prep — only if both supplied.
         adaptive_enabled = bool(self.adaptive_l2) and (

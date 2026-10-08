@@ -4921,7 +4921,23 @@ EXPECTED_GATE_COUNTS = {
     # WF_REGISTRY_ENFORCE=1 (report-only default per the approved
     # "先 report-only 后强制" rollout), so the count moves but no existing
     # pre-flight verdict does. Implementation: molmetal/scripts/registry.py.
-    "all": 119,
+    # Run ledger (2026-10-08): 119 -> 120, MEASURED via
+    # len(build_gates("all")) == 120 after the append-only run-ledger
+    # staleness gate (p3_run_ledger_staleness) was registered. It compares the
+    # ledger's latest entry per registry metric against the registry row so
+    # "which number is real / when was it produced" is a query against
+    # molmetal/reports/run_ledger.jsonl, not an inference from a historyless
+    # metrics JSON. Opt-in via WF_RUN_LEDGER=1 (report-only default per the
+    # AGENTS.md §5.6/§5.7 new-gate pattern), so the count moves but no existing
+    # pre-flight verdict does. Implementation: molmetal/scripts/run_ledger.py.
+    # Gate inventory (2026-10-08): 120 -> 121, MEASURED via
+    # len(build_gates("all")) == 121 after the report-only gate-inventory
+    # audit (p0_gate_inventory_audit) was registered. It introspects
+    # build_gates() (no gate executed) and emits the registered-gate count +
+    # the "zombie" count (opt-in gates whose env var is unset in a normal run).
+    # REPORT-ONLY: always PASSes, so the count moves but no existing pre-flight
+    # verdict does. Implementation: molmetal/scripts/gate_inventory.py.
+    "all": 121,
     # (was 103 before Wf-R35 P-A; Wf-A16 2026-10-03: 105 -> 103, MEASURED via
     # len(build_gates("all")) == 103 after the two PRE-RETRAIN
     # gates moved out of the commit path into the new "launch"
@@ -4965,13 +4981,21 @@ EXPECTED_GATE_COUNTS = {
     # --pipeline launch instead of --pipeline all; the commit hook keeps
     # --pipeline all, so a commit never waits on anchor freshness.
     # launch is "all" + the 2 launch-only pre-retrain gates, so it tracks
-    # "all": MEASURED via len(build_gates("launch")) == 121 at "all" == 119.
-    # Registry consistency (2026-10-08): 120 -> 121 with the "all" bump.
+    # "all": MEASURED via len(build_gates("launch")) == 123 at "all" == 121.
+    # Gate inventory (2026-10-08): 121 -> 123 with the "all" bump + the
+    # stale-launch correction (launch had been left at 121 while "all"
+    # moved 120 -> 121; MEASURED len(build_gates("launch")) == 123).
+    # Run ledger (2026-10-08): registered as part of the "all"=121 surface.
+    # The append-only run-ledger staleness gate (p3_run_ledger_staleness) is
+    # opt-in via WF_RUN_LEDGER=1 (report-only default per AGENTS.md §5.6/§5.7),
+    # so it counts toward 121 but does not change any existing pre-flight
+    # verdict. Implementation: molmetal/scripts/run_ledger.py.
+    # Registry consistency (2026-10-08): folded into the "all"=121 surface.
     # Wf-R43 m19 (2026-10-08): 115 -> 120. The 115 was stale by 5 — it had
     # not tracked the 4 Wf-R42/Wf-R43 "all" gates that landed before m19, so
     # test_wf344b3_gate_count.py::test_expected_gate_counts_keys_match_pipelines
     # was already FAILing on stashed HEAD before this change.
-    "launch": 121,
+    "launch": 123,
     "frontier": 25,
     "chemprop_v2_v3": 18,  # Wf-A12 FIX (2026-10-03): 14 → 18 MEASURED
     # via len(build_gates("chemprop_v2_v3"));
@@ -7387,6 +7411,7 @@ def gate_wf343c3_data_quality_check(
 PROTOCOL_LOCK_PATH = CONFIGS_DIR / "locks" / "protocol_lock.yaml"
 PROTOCOL_LOCK_OPT_IN_ENV = "WF35_PROTOCOL_LOCK"
 REGISTRY_ENFORCE_ENV = "WF_REGISTRY_ENFORCE"
+RUN_LEDGER_ENFORCE_ENV = "WF_RUN_LEDGER"
 
 # Keys whose string values are treated as candidate dataset paths when a
 # trainer config is checked against the lock.  Deliberately narrow: a
@@ -7862,6 +7887,73 @@ def gate_registry_consistency(
             worst = "STALE"
     return GateResult(
         name, priority, pipeline, worst, f"{name}: " + "; ".join(parts),
+        time.perf_counter() - t0,
+    )
+
+
+def gate_run_ledger_staleness(
+    name: str,
+    priority: str,
+    pipeline: str,
+    *,
+    ledger_path: Optional[Path] = None,
+    registry_metrics_path: Optional[Path] = None,
+) -> GateResult:
+    """Run-ledger staleness gate — is the registry's number backed by a run?
+
+    ``molmetal/reports/run_ledger.jsonl`` is an append-only provenance log: one
+    entry per metric value (value + source_json sha256 + git / data / config
+    hashes).  For each metric in ``registry/metrics.yaml`` this gate compares the
+    ledger's LATEST entry against the registry row:
+
+    PASS — every registry metric has a ledger entry whose source_json sha256
+           matches the registry's (``current``); nothing stale, nothing unseen.
+    WARN — at least one metric is ``stale`` (the registry was refreshed from a
+           source the ledger has not recorded) or ``no_run`` (no ledger entry).
+
+    Report-only by default: emits SKIP unless ``WF_RUN_LEDGER=1`` (AGENTS.md
+    §5.6/§5.7 new-gate opt-in pattern), so registering the gate does not change
+    an existing pre-flight run's verdict.  Implementation lives in
+    ``molmetal/scripts/run_ledger.py``.
+    """
+    t0 = time.perf_counter()
+    if os.environ.get(RUN_LEDGER_ENFORCE_ENV, "").strip() not in (
+        "1",
+        "true",
+        "TRUE",
+        "yes",
+    ):
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"{name}: report-only — set {RUN_LEDGER_ENFORCE_ENV}=1 to enforce "
+            "run-ledger staleness (AGENTS.md §5.6/§5.7 new-gate opt-in pattern)",
+            time.perf_counter() - t0,
+        )
+    try:
+        from molmetal.scripts.run_ledger import check_ledger
+
+        kwargs: Dict[str, Any] = {}
+        if ledger_path is not None:
+            kwargs["ledger_path"] = ledger_path
+        if registry_metrics_path is not None:
+            kwargs["registry_metrics_path"] = registry_metrics_path
+        rep = check_ledger(**kwargs)
+    except Exception as exc:  # noqa: BLE001 — a broken ledger is a FAIL
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"{name}: run-ledger check raised {type(exc).__name__}: {exc}",
+            time.perf_counter() - t0,
+        )
+    c = rep["counts"]
+    parts = [f"current={c['current']}", f"stale={c['stale']}", f"no_run={c['no_run']}"]
+    for mid, info in rep["detail"].items():
+        if info["status"] != "current":
+            parts.append(f"{mid}={info['status']}")
+    return GateResult(
+        name, priority, pipeline, rep["status"], f"{name}: " + " ".join(parts),
         time.perf_counter() - t0,
     )
 
@@ -8510,6 +8602,48 @@ def gate_gate_count_consistency_audit(
         f"EXPECTED_GATE_COUNTS together.",
         elapsed,
     )
+
+
+def gate_gate_inventory_audit(
+    name: str,
+    priority: str,
+    pipeline: str,
+) -> GateResult:
+    """Report-only audit of the registered gate surface (zombie-gate count).
+
+    P0 gate-inventory audit: introspects ``build_gates(pipeline)`` (cheap,
+    no gate is executed) and emits the number of registered gates AND the
+    number of "zombie" gates — opt-in gates whose env var is unset in a
+    normal run (registered but never enforced).  Implementation lives in
+    :mod:`molmetal.scripts.gate_inventory`.
+
+    REPORT-ONLY by design: this gate ALWAYS PASSes and NEVER changes the
+    PASS/FAIL verdict of an existing pre-flight run (it surfaces the zombie
+    count as evidence for a human/agent audit).  A broken inventory build is
+    reported as PASS with an ``error=`` note rather than FAIL so a tooling
+    hiccup cannot block the commit path.
+    """
+    t0 = time.perf_counter()
+    try:
+        from molmetal.scripts.gate_inventory import (
+            audit_zombie_gates,
+            build_inventory,
+        )
+
+        inventory = build_inventory(pipeline)
+        zombies = audit_zombie_gates(inventory)
+        n_gates = len(inventory)
+        zombie_names = ", ".join(sorted(z["name"] for z in zombies)) or "none"
+        evidence = (
+            f"{name}: report-only | registered_gates={n_gates} | "
+            f"zombie_gates={len(zombies)} [{zombie_names}]"
+        )
+    except Exception as exc:  # noqa: BLE001 — report-only, never blocks
+        evidence = (
+            f"{name}: report-only | inventory build error="
+            f"{type(exc).__name__}: {exc}"
+        )
+    return GateResult(name, priority, pipeline, "PASS", evidence, time.perf_counter() - t0)
 
 
 # Wf-432-A1 — PRE_TRAINING_GATE_v2: 32 NEW gate definitions + registrations
@@ -13098,6 +13232,39 @@ def build_gates(
                     "P3",
                     "registry",
                     repo_root=REPO_ROOT,
+                ),
+            ),
+            # ---- Run ledger — append-only provenance for every metric value.
+            # metrics/by_metric/*.json holds only a "current best" with no
+            # history; the ledger records one entry per value (value +
+            # source_json sha256 + git/data/config hashes) so "when was this
+            # produced / is the registry number still backed by the newest run"
+            # is a query, not an inference.  The gate reports staleness per
+            # registry metric.  Opt-in via WF_RUN_LEDGER=1 (report-only default
+            # per the AGENTS.md §5.6/§5.7 new-gate pattern), so registering it
+            # does not change an existing pre-flight verdict.  See
+            # molmetal/scripts/run_ledger.py.
+            (
+                "p3_run_ledger_staleness",
+                lambda: gate_run_ledger_staleness(
+                    "p3_run_ledger_staleness",
+                    "P3",
+                    "run_ledger",
+                ),
+            ),
+            # ---- Gate-inventory audit — makes the pre-flight gate surface
+            # auditable instead of a 14k-line monolith.  Introspects
+            # build_gates() (no gate executed) and emits the registered-gate
+            # count + the "zombie" count (opt-in gates whose env var is unset
+            # in a normal run → registered but never enforced).  REPORT-ONLY:
+            # always PASS; never changes an existing pre-flight verdict.
+            # Implementation: molmetal/scripts/gate_inventory.py.
+            (
+                "p0_gate_inventory_audit",
+                lambda: gate_gate_inventory_audit(
+                    "p0_gate_inventory_audit",
+                    "P0",
+                    "all",
                 ),
             ),
             # ---- Wf-353-B1 — wire Wf-343c1's 26-gate auto-verifiable

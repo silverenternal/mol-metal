@@ -80,6 +80,131 @@ _EPS_ROT = 1.0e-8
 
 
 # ---------------------------------------------------------------------------
+# Mathematical preconditions (CHECK_MATH_PRECONDITIONS=1)
+# ---------------------------------------------------------------------------
+# The math below is only valid when its inputs satisfy the assumptions
+# of Mahmood-Halder-Akhtar (2026): the ``a`` / ``b`` vectors must be
+# probability measures (non-negative, summing to 1), the cost matrix
+# ``C`` must be a genuine transport cost (non-negative, finite), and
+# the SE(3) twist batch must have at least one pose for the self-bridge
+# coupling to be well-defined.  The module trains / runs even when these
+# are violated (e.g. an un-normalised weight vector silently rescales
+# the OT objective; a negative cost entry breaks the log-kernel), so we
+# expose a *cheap*, non-raising ``check_preconditions`` that reports the
+# violations instead.  Default OFF — enabling it must not change any
+# numerical result.
+
+
+def math_preconditions_enabled() -> bool:
+    """Return True when ``CHECK_MATH_PRECONDITIONS=1`` is set in the env."""
+    import os
+
+    return os.environ.get("CHECK_MATH_PRECONDITIONS", "0") == "1"
+
+
+def check_preconditions(
+    inputs,
+    *,
+    entry: str = "sinkhorn",
+    a=None,
+    b=None,
+    C=None,
+    t_values=None,
+    **kwargs,
+) -> list:
+    """Report violated mathematical preconditions of the SB entry points.
+
+    Parameters
+    ----------
+    inputs : Tensor
+        For ``entry="sinkhorn"`` a ``(n, d)`` sample batch ``p0``.  For
+        ``entry="sample"`` a ``(n, 6)`` batch of ``se(3)`` twists.
+    entry : str
+        ``"sinkhorn"`` (LogSinkhornLoss.forward) or ``"sample"``
+        (SchrodingerBridgeSE3.sample).
+    a, b : Tensor, optional
+        Marginal vectors; must be probability measures.
+    C : Tensor, optional
+        ``(n, m)`` cost matrix; must be non-negative + finite.
+    t_values : Tensor, optional
+        1-D evaluation points along the bridge; should lie in ``[0, 1]``.
+
+    Returns
+    -------
+    list[str]
+        Empty when all preconditions hold; otherwise one string per
+        violated precondition, naming the violation.  Never raises on
+        malformed input — a malformed input is itself a violation.
+    """
+    import os
+
+    del os  # keep import local; no global state beyond the env flag
+    violations = []
+    if inputs is None or not isinstance(inputs, Tensor):
+        return ["p0: input is None or not a Tensor (must be a sample batch)"]
+    if entry == "sample":
+        if inputs.dim() != 2 or inputs.shape[-1] != 6:
+            violations.append(
+                f"p0: SE(3) twist batch must be (n, 6), got {tuple(inputs.shape)}"
+            )
+        if inputs.shape[0] < 1:
+            violations.append("p0: batch size n must be >= 1 for the self-bridge coupling")
+        if not bool(torch.isfinite(inputs).all()):
+            violations.append("p0: contains non-finite (NaN/inf) twist entries")
+        if t_values is not None:
+            if not isinstance(t_values, Tensor) or t_values.ndim != 1:
+                violations.append("t_values: must be a 1-D tensor of evaluation points")
+            else:
+                if not bool(torch.isfinite(t_values).all()):
+                    violations.append("t_values: contains non-finite entries")
+                elif bool(((t_values < 0.0) | (t_values > 1.0)).any()):
+                    violations.append(
+                        "t_values: evaluation points must lie in [0, 1] "
+                        "(the bridge is a probability path on t in [0, 1])"
+                    )
+        return violations
+
+    # entry == "sinkhorn"
+    if inputs.dim() != 2:
+        violations.append(
+            f"p0: source samples must be 2-D (n, d), got {tuple(inputs.shape)}"
+        )
+    if inputs.shape[0] < 1:
+        violations.append("p0: source batch size n must be >= 1")
+    if not bool(torch.isfinite(inputs).all()):
+        violations.append("p0: contains non-finite (NaN/inf) sample entries")
+
+    for name, v in (("a", a), ("b", b)):
+        if v is None:
+            continue
+        if not isinstance(v, Tensor) or v.dim() != 1:
+            violations.append(f"{name}: marginal must be a 1-D tensor")
+            continue
+        if not bool(torch.isfinite(v).all()):
+            violations.append(f"{name}: marginal contains non-finite entries")
+            continue
+        if bool((v < 0.0).any()):
+            violations.append(
+                f"{name}: marginal is not a probability measure (has negative mass)"
+            )
+        total = float(v.sum())
+        if abs(total - 1.0) > 1e-4:
+            violations.append(
+                f"{name}: marginal does not sum to 1 (sum={total:.6g}) — "
+                f"not a probability measure"
+            )
+    if C is not None:
+        if not isinstance(C, Tensor) or C.dim() != 2:
+            violations.append("C: cost matrix must be a 2-D tensor")
+        else:
+            if not bool(torch.isfinite(C).all()):
+                violations.append("C: cost matrix contains non-finite entries")
+            elif bool((C < 0.0).any()):
+                violations.append("C: cost matrix has negative entries (not a valid cost)")
+    return violations
+
+
+# ---------------------------------------------------------------------------
 # SO(3) primitives (Rodrigues formula + log map)
 # ---------------------------------------------------------------------------
 
@@ -618,6 +743,12 @@ class LogSinkhornLoss:
             cross = p0 @ p1.T  # (n, m)
             C = (sq0 + sq1 - 2.0 * cross).clamp_min(0.0)
 
+        if math_preconditions_enabled():
+            import warnings as _warnings
+
+            for _v in check_preconditions(p0, entry="sinkhorn", a=a, b=b, C=C):
+                _warnings.warn(f"[math-precondition] {_v}", stacklevel=2)
+
         n, m = C.shape
         device, dtype = C.device, C.dtype
 
@@ -760,6 +891,12 @@ class SchrodingerBridgeSE3:
             raise ValueError(
                 f"t_values must be a 1-D tensor, got shape {tuple(t_values.shape)}"
             )
+
+        if math_preconditions_enabled():
+            import warnings as _warnings
+
+            for _v in check_preconditions(p0, entry="sample", t_values=t_values):
+                _warnings.warn(f"[math-precondition] {_v}", stacklevel=2)
 
         # 1) Build the SE(3)-geodesic cost matrix between every pair
         #    of source poses.  We work in twist coordinates so the

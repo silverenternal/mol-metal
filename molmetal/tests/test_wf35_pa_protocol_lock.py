@@ -2,7 +2,8 @@
 
 CPU-only, no training path touched.  6 tests:
 
-  1. the lock parses and carries the 5 Tier-1 metric keys
+  1. the lock parses and carries the 8 locked metric keys (5 Tier-1 + the
+     line1/line3 extension)
   2. every md5 in the lock matches the artifact actually on disk
   3. verify_protocol_lock PASSes for a metric whose trainer config names a
      locked dataset (m1 -> configs/dmpnn.yaml)
@@ -32,7 +33,19 @@ METRIC_KEYS = (  # noqa: E402
     "m17_drugood_ood",
     "m19_lomo",
     "m21_nci60_9cell",
+    # 2026-10-08: lock-coverage extension (run-ledger wave).  The registry
+    # defines 11 metrics across 3 paper lines; the original 5 covered line2
+    # (m1/m2/m19/m21) + m17.  The three line1/line3 metrics that name a real
+    # dataset artifact on disk get a lock entry too.
+    "l5_hilbert_r2",
+    "l6_closure",
+    "m6_kappa",
 )
+
+# Metrics whose lock is NOT trainer-driven (no `trainer_config`) — the value is
+# produced by a standalone bench / emitter, not a trainer, so a null
+# trainer_config is the honest value rather than a fabricated config path.
+NO_TRAINER_CONFIG = frozenset({"l5_hilbert_r2", "l6_closure", "m6_kappa"})
 
 
 def _lock() -> dict:
@@ -42,12 +55,23 @@ def _lock() -> dict:
 
 
 def test_lock_parses_with_5_tier1_metrics() -> None:
-    """The lock carries exactly the 5 Tier-1 metrics it claims to lock."""
+    """The lock carries every metric it claims to lock.
+
+    Originally the 5 Tier-1 metrics (Wf-R35 P-A); 2026-10-08 extends it to the
+    line1/line3 metrics with a real on-disk dataset artifact (l5/l6/m6).  The
+    trainer-driven entries still require a ``trainer_config``; the standalone
+    bench/emitter entries carry a null one honestly.
+    """
     assert LOCK.is_file(), f"lock missing: {LOCK}"
     metrics = _lock()["metrics"]
     assert sorted(metrics) == sorted(METRIC_KEYS)
     for key, entry in metrics.items():
-        assert entry.get("trainer_config"), f"{key}: no trainer_config"
+        if key in NO_TRAINER_CONFIG:
+            assert entry.get("trainer_config") is None, (
+                f"{key}: standalone metric must carry a null trainer_config"
+            )
+        else:
+            assert entry.get("trainer_config"), f"{key}: no trainer_config"
         assert entry.get("split") is not None, f"{key}: no split"
         assert entry.get("n_folds") is not None, f"{key}: no n_folds"
         assert entry.get("alignment_level"), f"{key}: no alignment_level"

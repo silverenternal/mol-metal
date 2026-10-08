@@ -224,3 +224,116 @@ metrics:
     honest_negative: >-
       Dataset is aligned; the split protocol differs from the paper, so values
       are comparable only as sample-size-scaled estimates.
+
+  # ---------------------------------------------------------------------------
+  # 2026-10-08 (run-ledger protocol-lock coverage extension): the registry
+  # defines 11 metrics across 3 paper lines; the 5 entries above covered only
+  # line2 (m1/m2/m19/m21) + m17.  The three line1/line3 metrics that name a
+  # real dataset artifact on disk get a lock entry below.  Every dataset_md5 is
+  # MEASURED via md5sum on the on-disk artifact on 2026-10-08; every split /
+  # alignment_level is copied from TODO/03_baselines/PROTOCOL_ALIGNMENT_MATRIX.md
+  # §1 (or from the emitting script when the matrix has no row).  Nothing here
+  # is PROJECTED.  Metrics with NO dataset artifact on disk are recorded under
+  # `not_lockable:` with the reason — NOT fabricated.
+  # ---------------------------------------------------------------------------
+  l5_hilbert_r2:
+    description: Mean combined Hilbert primal-dual + ASTSR evolutionary R2 (4 PlatinAI cell lines)
+    trainer_config: null   # bench_hilbert_astr_combined_real.py bench, no trainer config
+    dataset_path: /home/hugo/codes/mol-metal/molmetal/data/platinai_4cell.csv
+    dataset_md5: cbdb7c2d7d236ed3ea05e582a425f855
+    accepted_dataset_md5:
+      - md5: cbdb7c2d7d236ed3ea05e582a425f855
+        path: /home/hugo/codes/mol-metal/molmetal/data/platinai_4cell.csv
+        why: >-
+          The file bench_hilbert_astr_combined_real.py loads
+          (PLATINAI_CSV = molmetal/data/platinai_4cell.csv; MEASURED 4079 lines,
+          4 cell lines, raw-nM serialization).  NOTE: distinct serialization
+          from the .data/molmetal/platinai_4cell.csv that m2 loads (5a5d8da8...);
+          this is the Hilbert bench's own input, kept as its own md5.
+    split: strict-scaffold (Bemis-Murcko) 5-fold x 5 seeds, 90/10 inner validation
+    n_folds: 5
+    seeds: [0, 1, 2, 3, 4]
+    target_metric: R2 per cell line (mean across 4 cells)
+    baseline_paper: null   # no row in the matrix — architectural-ceiling metric
+    baseline_source: null
+    alignment_level: NOT ALIGN (no paper baseline; architectural-ceiling honest-negative)
+    honest_negative: >-
+      L5 sits below the >=0.85 gate (architectural ceiling ~0.68) and has NO
+      external paper baseline in PROTOCOL_ALIGNMENT_MATRIX.md §1, so the value
+      is reported standalone and must never be placed in a comparison table.
+
+  l6_closure:
+    description: Closure-theorem reachability rate (d-block / tmQM)
+    trainer_config: null   # CPU closure-theorem benchmark, no trainer config
+    dataset_path: /home/hugo/codes/mol-metal/molmetal/data/tmqm_dblock_subset.csv
+    dataset_md5: 78cf4a1e7dadb100a4c4cf54a79db698
+    accepted_dataset_md5:
+      - md5: 78cf4a1e7dadb100a4c4cf54a79db698
+        path: /home/hugo/codes/mol-metal/molmetal/data/tmqm_dblock_subset.csv
+        why: >-
+          reachability_overall.json records csv_path == this file (MEASURED
+          5001 lines, tmQM d-block subset with csd_code + smiles + metal_center).
+          It is the closure-theorem R20 benchmark input (CPU-only).
+    split: full-corpus reachability rate (no train/test split; per-complex closure check)
+    n_folds: 1
+    target_metric: closure_reachability_rate
+    baseline_paper: null
+    baseline_source: null
+    alignment_level: NOT ALIGN (no paper baseline; internal closure-theorem benchmark)
+    honest_negative: >-
+      L6 sits below the >=0.95 gate (reachability ceiling stays); reported
+      standalone. Volume fix (75->100/metal) is CPU work, not a paper comparison.
+
+  m6_kappa:
+    description: Shape Kappa Index (mean normalised RDKit Kappa1/2/3) on metallo drugs
+    trainer_config: null   # metrics_v2.py emitter, no trainer config
+    dataset_path: /home/hugo/codes/mol-metal/molmetal/data/metallo_drugs_500_train.csv
+    dataset_md5: e3cde5daf5ccdd8e9494d121b45cd3df
+    accepted_dataset_md5:
+      - md5: e3cde5daf5ccdd8e9494d121b45cd3df
+        path: /home/hugo/codes/mol-metal/molmetal/data/metallo_drugs_500_train.csv
+        why: >-
+          m6_kappa_emit.py sets DATA_CSV == this file and records
+          data_source=metallo_drugs_500_train.csv in the metric JSON (MEASURED
+          450 lines, columns smiles,source).  Dataset-level shape statistic.
+    split: none (whole-cohort panel statistic; no train/test split)
+    n_folds: 1
+    target_metric: mean normalised Kappa index (0-1)
+    baseline_paper: null
+    baseline_source: null
+    alignment_level: NOT ALIGN (no paper baseline; drug-likeness panel add-on)
+    honest_negative: >-
+      M6 sits below the >=0.60 gate; same architectural family as L5. Reported
+      standalone; drop-from-S3 per Wf-389-A1.
+
+# ---------------------------------------------------------------------------
+# not_lockable — registry metrics with NO dataset artifact + split protocol on
+# disk.  Recorded here (with the reason) rather than given a fabricated lock.
+# ---------------------------------------------------------------------------
+not_lockable:
+  m14_decode_ratio:
+    reason: >-
+      CFM generate-path quality metric (fraction of decoded clouds whose SMILES
+      parses RDKit-strict).  Its inputs are GENERATED samples plus the real
+      val geometry; it names no dataset artifact + split on disk.  The tmQM
+      Wiberg-bond shards it reads (tmQM_X{1,2,3}.BO.gz, molmetal/data/tmqm_clouds.py)
+      are ABSENT from the repo (MEASURED 2026-10-08).  Nothing to lock.
+  cfm_bond_accuracy:
+    reason: >-
+      CFM bond-head accuracy vs the corpus TRUE bond graph (Wiberg orders from
+      tmQM .BO shards).  Same absent tmQM .BO shards; no dataset artifact + split
+      on disk.  Currently emits no scalar (value null).  Nothing to lock.
+  m7_diversity:
+    reason: >-
+      Sampling-diversity metric over CFM/TargetDiff GENERATED molecules
+      (Morgan-ECFP4 Tanimoto).  It is a code-state metric (Wf-388-A2 SCAFFOLD ->
+      trainer wire-in status); it names no dataset artifact + split on disk.
+      Nothing to lock.
+  m3_vina_dock:
+    reason: >-
+      Vina docking score of GENERATED molecules into 10 metallodrug pockets.
+      The receptor PDBs live OUTSIDE the repo (/mnt/storage/data/molmetal/
+      crossdocked/...).  The in-repo crossdocked100_manifest.csv overlaps only
+      4 of the 10 pockets the metric's honest_framing names (MEASURED 2026-10-08),
+      so it is NOT the m3 cohort — locking it would be a fabricated alignment.
+      The m3 cohort + protocol is not a stable in-repo artifact.  Nothing to lock.

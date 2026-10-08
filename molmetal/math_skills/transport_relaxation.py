@@ -79,6 +79,106 @@ _EPS_LOG = 1.0e-30
 
 
 # ---------------------------------------------------------------------------
+# Mathematical preconditions (CHECK_MATH_PRECONDITIONS=1)
+# ---------------------------------------------------------------------------
+# The relaxed-OT loss is only the entropy-regularised optimal-transport
+# objective of Jiang-Xu-Zhang (2026) §3.2 when ``a`` and ``b`` are
+# probability measures (non-negative, unit mass) and ``C`` is a genuine
+# transport cost (non-negative, finite).  The soft-marginal blend in
+# ``_soft_marginals`` silently renormalises an un-normalised ``a`` /
+# ``b`` into a probability vector, hiding the fact that the caller's OT
+# problem was malformed; a negative cost entry makes ``M = -C / eps``
+# unbounded and the coupling meaningless.  ``check_preconditions``
+# reports these cheaply and never raises.  Default OFF.
+
+
+def math_preconditions_enabled() -> bool:
+    """Return True when ``CHECK_MATH_PRECONDITIONS=1`` is set in the env."""
+    import os
+
+    return os.environ.get("CHECK_MATH_PRECONDITIONS", "0") == "1"
+
+
+def check_preconditions(
+    inputs,
+    *,
+    entry: str = "relaxed_ot",
+    a=None,
+    b=None,
+    C=None,
+    lambda_relax: Optional[float] = None,
+    **kwargs,
+) -> list:
+    """Report violated mathematical preconditions of the transport module.
+
+    Parameters
+    ----------
+    inputs : Tensor
+        ``(n, d)`` source samples ``p0`` (used to build ``C`` when
+        ``C`` is None).
+    entry : str
+        ``"relaxed_ot"`` (RelaxedOT.forward / coupling).
+    a, b : Tensor, optional
+        Target marginals; must be probability measures.
+    C : Tensor, optional
+        ``(n, m)`` cost matrix; must be non-negative + finite.
+    lambda_relax : float, optional
+        Endpoint relaxation coefficient; must be ``>= 0``.
+
+    Returns
+    -------
+    list[str]
+        Empty when all preconditions hold; else one string per
+        violation, naming it.  Never raises.
+    """
+    violations = []
+    if inputs is None or not isinstance(inputs, Tensor):
+        return ["p0: input is None or not a Tensor (must be a sample batch)"]
+    if inputs.dim() != 2:
+        violations.append(
+            f"p0: source samples must be 2-D (n, d), got {tuple(inputs.shape)}"
+        )
+    if inputs.shape[0] < 1:
+        violations.append("p0: source batch size n must be >= 1")
+    if not bool(torch.isfinite(inputs).all()):
+        violations.append("p0: contains non-finite (NaN/inf) sample entries")
+
+    for name, v in (("a", a), ("b", b)):
+        if v is None:
+            continue
+        if not isinstance(v, Tensor) or v.dim() != 1:
+            violations.append(f"{name}: marginal must be a 1-D tensor")
+            continue
+        if not bool(torch.isfinite(v).all()):
+            violations.append(f"{name}: marginal contains non-finite entries")
+            continue
+        if bool((v < 0.0).any()):
+            violations.append(
+                f"{name}: marginal is not a probability measure (has negative mass)"
+            )
+        total = float(v.sum())
+        if abs(total - 1.0) > 1e-4:
+            violations.append(
+                f"{name}: marginal does not sum to 1 (sum={total:.6g}) — "
+                f"not a probability measure"
+            )
+    if C is not None:
+        if not isinstance(C, Tensor) or C.dim() != 2:
+            violations.append("C: cost matrix must be a 2-D tensor")
+        else:
+            if not bool(torch.isfinite(C).all()):
+                violations.append("C: cost matrix contains non-finite entries")
+            elif bool((C < 0.0).any()):
+                violations.append("C: cost matrix has negative entries (not a valid cost)")
+    if lambda_relax is not None and lambda_relax < 0.0:
+        violations.append(
+            f"lambda_relax: must be >= 0 (alpha = lr/(1+lr) must lie in [0, 1)), "
+            f"got {lambda_relax}"
+        )
+    return violations
+
+
+# ---------------------------------------------------------------------------
 # RelaxedOT — soft endpoint penalty Optimal Transport
 # ---------------------------------------------------------------------------
 
@@ -281,6 +381,14 @@ class RelaxedOT:
         if b is None:
             b = torch.full((m,), 1.0 / m, dtype=C.dtype, device=C.device)
 
+        if math_preconditions_enabled():
+            import warnings as _warnings
+
+            for _v in check_preconditions(
+                p0, entry="relaxed_ot", a=a, b=b, C=C, lambda_relax=self.lambda_relax
+            ):
+                _warnings.warn(f"[math-precondition] {_v}", stacklevel=2)
+
         soft_a, soft_b = self._soft_marginals(a, b)
         P, log_P = self._log_sinkhorn(C, soft_a, soft_b)
 
@@ -312,6 +420,13 @@ class RelaxedOT:
             a = torch.full((n,), 1.0 / n, dtype=C.dtype, device=C.device)
         if b is None:
             b = torch.full((m,), 1.0 / m, dtype=C.dtype, device=C.device)
+        if math_preconditions_enabled():
+            import warnings as _warnings
+
+            for _v in check_preconditions(
+                p0, entry="relaxed_ot", a=a, b=b, C=C, lambda_relax=self.lambda_relax
+            ):
+                _warnings.warn(f"[math-precondition] {_v}", stacklevel=2)
         soft_a, soft_b = self._soft_marginals(a, b)
         P, _ = self._log_sinkhorn(C, soft_a, soft_b)
         return P

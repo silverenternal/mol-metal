@@ -44,7 +44,14 @@ overlapping coverage, (d) verifies every gate is MEASURED-only, and
 
 ## §2 Gate inventory (per-pipeline; counts synced 2026-10-03, HOLE-1 + HOLE-5 + L4 + L5)
 
-### §2.1 `all` pipeline — 119 gates
+### §2.1 `all` pipeline — 121 gates
+
+> **Gate inventory (2026-10-08): 120 → 121.** 1 NEW report-only gate
+> `p0_gate_inventory_audit` that introspects `build_gates()` (no gate
+> executed) and emits the registered-gate count + the "zombie" count
+> (opt-in gates whose env var is unset in a normal run → registered but
+> never enforced). Always PASSes; never changes an existing verdict.
+> Implementation: `molmetal/scripts/gate_inventory.py`.
 
 > **Registry consistency (2026-10-08): 118 → 119.** 1 NEW opt-in gate
 > `p3_registry_consistency` verifying `registry/{datasets,protocols,metrics}.yaml`
@@ -377,7 +384,7 @@ When a gate is removed (rare; requires Wf-level justification):
 
 | Metric | Value |
 |---|---:|
-| `n_gates_total` (per-pipeline COUNT) | 119 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 7 (`cfm`) — plus the `launch` pipeline at 121 (`launch` = `all` + the 2 pre-retrain gates; MEASURED by `test_wf344b3_gate_count.py`) |
+| `n_gates_total` (per-pipeline COUNT) | 121 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 7 (`cfm`) — plus the `launch` pipeline at 123 (`launch` = `all` + the 2 pre-retrain gates; MEASURED by `test_wf344b3_gate_count.py`) |
 | `n_overlaps_found` | 2 (`p3_pb_*` family + P0/P2 CSV line-count) |
 | `n_deduped` | 0 (all overlaps were DOCUMENTED instead) |
 | `n_documented` | 2 |

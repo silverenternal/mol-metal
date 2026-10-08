@@ -114,6 +114,126 @@ _EPS_DRIFT = 1.0e-5
 
 
 # ---------------------------------------------------------------------------
+# Mathematical preconditions (CHECK_MATH_PRECONDITIONS=1)
+# ---------------------------------------------------------------------------
+# The W₂ gradient flow on (P_2(R^d), W_2) is only defined when the
+# particle positions ``x`` and the score field ``s(x)`` live in the
+# *same* space (matched shape, finite) — otherwise the drift
+# ``v = -(s - s_ref)`` is not a tangent vector and the JKO step is
+# meaningless.  The :class:`ReactionStepW2` step further assumes the
+# fingerprint rows are probability vectors over bond types (the simplex
+# metric ``v = p - r`` is only the OT direction when ``r`` and ``p``
+# are both in the simplex).  These are checked cheaply without
+# touching the numerics.  Default OFF.
+
+
+def math_preconditions_enabled() -> bool:
+    """Return True when ``CHECK_MATH_PRECONDITIONS=1`` is set in the env."""
+    import os
+
+    return os.environ.get("CHECK_MATH_PRECONDITIONS", "0") == "1"
+
+
+def check_preconditions(
+    inputs,
+    *,
+    entry: str = "w2_gradient_flow",
+    score=None,
+    reference_score=None,
+    dt: Optional[float] = None,
+    product=None,
+    n_bond_types: Optional[int] = None,
+    **kwargs,
+) -> list:
+    """Report violated mathematical preconditions of the W₂ module.
+
+    Parameters
+    ----------
+    inputs : Tensor
+        ``(B, d)`` particle positions ``x`` (W2GradientFlow) or
+        ``(..., K)`` reactant fingerprint (ReactionStepW2).
+    entry : str
+        ``"w2_gradient_flow"`` (W2GradientFlow.drift / .step) or
+        ``"reaction_step"`` (ReactionStepW2.forward).
+    score : Tensor, optional
+        Score field ``s(x)``; must match ``inputs`` shape.
+    reference_score : Tensor, optional
+        Reference score; must match ``inputs`` shape.
+    dt : float, optional
+        Step size; must be non-negative.
+    product : Tensor, optional
+        Product fingerprint (ReactionStepW2); must match ``inputs`` shape.
+    n_bond_types : int, optional
+        Expected trailing dimension ``K``.
+
+    Returns
+    -------
+    list[str]
+        Empty when all preconditions hold; else one string per
+        violation, naming it.  Never raises.
+    """
+    violations = []
+    if inputs is None or not isinstance(inputs, Tensor):
+        return ["x: input is None or not a Tensor"]
+    if not bool(torch.isfinite(inputs).all()):
+        violations.append("x: contains non-finite (NaN/inf) positions")
+
+    if entry == "reaction_step":
+        if product is not None:
+            if not isinstance(product, Tensor) or product.shape != inputs.shape:
+                violations.append(
+                    f"product: shape {None if not isinstance(product, Tensor) else tuple(product.shape)} "
+                    f"does not match reactant {tuple(inputs.shape)}"
+                )
+            elif not bool(torch.isfinite(product).all()):
+                violations.append("product: contains non-finite entries")
+        if n_bond_types is not None and inputs.shape[-1] != n_bond_types:
+            violations.append(
+                f"reactant: last dim must be n_bond_types={n_bond_types}, "
+                f"got {inputs.shape[-1]}"
+            )
+        # Simplex precondition: each row is a probability vector over K
+        # bond types (non-negative, summing to 1).  The W_2 drift
+        # v = p - r is only the OT direction in the simplex metric.
+        if bool((inputs < 0.0).any()):
+            violations.append(
+                "reactant: has negative entries — not a probability vector over "
+                "bond types"
+            )
+        row_sums = inputs.reshape(-1, inputs.shape[-1]).sum(dim=-1)
+        if bool((row_sums - 1.0).abs().gt(1e-4).any()):
+            bad = float((row_sums - 1.0).abs().max())
+            violations.append(
+                f"reactant: rows are not probability vectors (max |sum-1|={bad:.4g}) — "
+                f"the W2 drift requires the bond-type simplex"
+            )
+        if dt is not None and dt < 0.0:
+            violations.append(f"dt: must be >= 0 for an explicit-Euler step, got {dt}")
+        return violations
+
+    # entry == "w2_gradient_flow"
+    if score is None:
+        violations.append("score: missing — the W2 drift requires the score field s(x)")
+    else:
+        if not isinstance(score, Tensor) or score.shape != inputs.shape:
+            violations.append(
+                f"score: shape {None if not isinstance(score, Tensor) else tuple(score.shape)} "
+                f"does not match x {tuple(inputs.shape)} (drift needs s(x) and x in the same space)"
+            )
+        elif not bool(torch.isfinite(score).all()):
+            violations.append("score: contains non-finite (NaN/inf) entries")
+    if reference_score is not None:
+        if not isinstance(reference_score, Tensor) or reference_score.shape != inputs.shape:
+            violations.append(
+                "reference_score: shape must match x (it is subtracted from the score "
+                "element-wise)"
+            )
+    if dt is not None and dt < 0.0:
+        violations.append(f"dt: must be >= 0 for an explicit-Euler step, got {dt}")
+    return violations
+
+
+# ---------------------------------------------------------------------------
 # W2GradientFlow — KL functional gradient flow on (P_2(R^d), W_2)
 # ---------------------------------------------------------------------------
 
@@ -266,6 +386,16 @@ class W2GradientFlow:
         ref = (
             reference_score if reference_score is not None else torch.zeros_like(score)
         )
+        if math_preconditions_enabled():
+            import warnings as _warnings
+
+            for _v in check_preconditions(
+                x,
+                entry="w2_gradient_flow",
+                score=score,
+                reference_score=reference_score,
+            ):
+                _warnings.warn(f"[math-precondition] {_v}", stacklevel=2)
         return -(smoothed - ref)
 
     def step(
@@ -581,6 +711,17 @@ class ReactionStepW2:
         step = self.dt if dt is None else float(dt)
         if step < 0.0:
             raise ValueError(f"dt must be >= 0, got {step}")
+        if math_preconditions_enabled():
+            import warnings as _warnings
+
+            for _v in check_preconditions(
+                reactant,
+                entry="reaction_step",
+                product=product,
+                dt=step,
+                n_bond_types=self.n_bond_types,
+            ):
+                _warnings.warn(f"[math-precondition] {_v}", stacklevel=2)
         return (reactant + step * self.drift(reactant, product)).detach()
 
     def w2_distance(self, reactant: Tensor, product: Tensor) -> Tensor:

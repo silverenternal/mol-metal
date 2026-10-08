@@ -1,5 +1,5 @@
 schema: molmetal-registry-protocols-v1
-generated_at: '2026-10-08T08:56:32+00:00'
+generated_at: '2026-10-08T09:09:27+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable protocol facts. A protocol is LOCKED iff protocol_lock_sha256
   still matches disk.
@@ -16,7 +16,7 @@ protocols:
     - 0
     epochs: 10
     trainer_config: configs/dmpnn.yaml
-    protocol_lock_sha256: 2e4c2d0503b582421ddba455fa6916d6807f23913a0969b92b671cf0fc5b9da4
+    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m2_r2_per_cell:
     description: R2 per-cell-line (PlatinAI 4-cell Pt cohort)
@@ -29,7 +29,7 @@ protocols:
     seeds: null
     epochs: null
     trainer_config: configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml
-    protocol_lock_sha256: 2e4c2d0503b582421ddba455fa6916d6807f23913a0969b92b671cf0fc5b9da4
+    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m17_drugood_ood:
     description: DrugOOD OOD generalization, 3-split mean AUC
@@ -42,7 +42,7 @@ protocols:
     seeds: null
     epochs: null
     trainer_config: configs/locks/drugood.yaml
-    protocol_lock_sha256: 2e4c2d0503b582421ddba455fa6916d6807f23913a0969b92b671cf0fc5b9da4
+    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m19_lomo:
     description: Multi-metal LOMO transfer AUC (mean of 5 metals)
@@ -55,7 +55,7 @@ protocols:
     seeds: null
     epochs: null
     trainer_config: configs/dmpnn.yaml
-    protocol_lock_sha256: 2e4c2d0503b582421ddba455fa6916d6807f23913a0969b92b671cf0fc5b9da4
+    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m21_nci60_9cell:
     description: NCI-60 precious 9-cell-line mean AUC
@@ -71,5 +71,51 @@ protocols:
     - 2
     epochs: null
     trainer_config: configs/dmpnn.yaml
-    protocol_lock_sha256: 2e4c2d0503b582421ddba455fa6916d6807f23913a0969b92b671cf0fc5b9da4
+    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
+    protocol_lock_ref: configs/locks/protocol_lock.yaml
+  l5_hilbert_r2:
+    description: Mean combined Hilbert primal-dual + ASTSR evolutionary R2 (4 PlatinAI
+      cell lines)
+    baseline_paper: null
+    baseline_source: null
+    alignment_level: NOT ALIGN (no paper baseline; architectural-ceiling honest-negative)
+    dataset_id: platinai_4cell.csv
+    split: strict-scaffold (Bemis-Murcko) 5-fold x 5 seeds, 90/10 inner validation
+    n_folds: 5
+    seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    epochs: null
+    trainer_config: null
+    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
+    protocol_lock_ref: configs/locks/protocol_lock.yaml
+  l6_closure:
+    description: Closure-theorem reachability rate (d-block / tmQM)
+    baseline_paper: null
+    baseline_source: null
+    alignment_level: NOT ALIGN (no paper baseline; internal closure-theorem benchmark)
+    dataset_id: tmqm_dblock_subset.csv
+    split: full-corpus reachability rate (no train/test split; per-complex closure
+      check)
+    n_folds: 1
+    seeds: null
+    epochs: null
+    trainer_config: null
+    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
+    protocol_lock_ref: configs/locks/protocol_lock.yaml
+  m6_kappa:
+    description: Shape Kappa Index (mean normalised RDKit Kappa1/2/3) on metallo drugs
+    baseline_paper: null
+    baseline_source: null
+    alignment_level: NOT ALIGN (no paper baseline; drug-likeness panel add-on)
+    dataset_id: metallo_drugs_500_train.csv
+    split: none (whole-cohort panel statistic; no train/test split)
+    n_folds: 1
+    seeds: null
+    epochs: null
+    trainer_config: null
+    protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
     protocol_lock_ref: configs/locks/protocol_lock.yaml
