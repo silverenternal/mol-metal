@@ -19,7 +19,7 @@
         "name": "Krasnov 2026 (MetalCytoToxDB)",
         "venue": "J. Med. Chem. 2026-04",
         "value": 0.81,
-        "split": "5-fold CV, Ru subset"
+        "split": "DOI-split 10-fold CV, Ru subset"
       },
       "tier2_sota": null,
       "gate_target": 0.86,
