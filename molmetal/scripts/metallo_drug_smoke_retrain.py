@@ -275,6 +275,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--batch-size", type=int, default=8)
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help=(
+            "IMPROVEMENT_BACKLOG B1 smoke preset: --steps 200, "
+            "--batch-size 4, --decode-smoke-every 50, --out-dir "
+            "/tmp/smoke_out.  An explicit flag always wins over the preset "
+            "(e.g. `--smoke --steps 50` keeps steps=50).  Finishes in <2 min "
+            "on CPU and writes ckpt.pt + final.json + final.md."
+        ),
+    )
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--hidden-dim", type=int, default=128)
     parser.add_argument("--n-layers", type=int, default=3)
@@ -351,6 +362,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         "CSV and save it for reuse on subsequent runs.",
     )
     args = parser.parse_args(argv)
+
+    # IMPROVEMENT_BACKLOG B1 — --smoke preset.  Applied BEFORE the --out-dir
+    # required check because the preset supplies out_dir.  An explicitly
+    # passed flag always wins: we detect it by comparing against the parser
+    # default captured on a fresh Namespace.
+    if getattr(args, "smoke", False):
+        _defaults = parser.parse_args([])
+        _smoke_preset = {
+            "steps": 200,
+            "batch_size": 4,
+            "decode_smoke_every": 50,
+            "out_dir": Path("/tmp/smoke_out"),
+        }
+        for _k, _v in _smoke_preset.items():
+            if getattr(args, _k, None) == getattr(_defaults, _k, None):
+                setattr(args, _k, _v)
+        print(
+            f"[metallo_smoke] preset=smoke steps={args.steps} "
+            f"batch={args.batch_size} "
+            f"decode_smoke_every={args.decode_smoke_every} "
+            f"out_dir={args.out_dir}"
+        )
 
     # FLAG-WIRE FIX (2026-10-03): actually apply --config via the shared
     # wfA2_config_loader (no-op when --config is None → CLI-only path is
