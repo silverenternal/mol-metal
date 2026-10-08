@@ -165,6 +165,16 @@
     "protocol_mismatch": "All /tmp/f3_* runs used rh_oversample=500 (synthetic Rh injected); the current m19 headline 0.5575 is real-only (rh_oversample=0). F3 numbers are not comparable to m19.",
     "self_attestation_gap": "The /tmp/f3_* per-seed and aggregate artifacts do not record 'alpha', so no run can self-attest the flag value it used.",
     "effect": "The F3 ablation NUMBERS are retained as MEASURED but are now labelled as a non-replicating / mislabeled result. No trainer default was changed. The 'set alpha as default to lift m19' plan is BLOCKED until a real-only reproduction confirms the lift.",
-    "next_step": "Reproduce under rh_oversample=0: (a) drop regression correctly (alpha=1.0, or add a clean --no-pic50-reg path — none exists today; alpha is the only knob) and (b) re-run 25-run 5-metal x 5-seed to update the m19 headline. If the lift does not replicate, retract the F3 claim; do not paper over it."
+    "next_step": "CLOSED 2026-10-08 by real_only_reproduction_2026_10_08. (a) drop-regression correctly (alpha=1.0): Rh real-only 0.3782 -> 0.4352 (+0.057), direction confirmed but ~half the mislabelled magnitude. (b) 25-run 5-metal re-run of --per-metal-pic50-center: 0.5845 +/- 0.0764 vs 0.5575, aggregate lift INSIDE noise -> not a headline. Worst-fold (Rh) centering lift +0.121 is decisive. No default changed. Centering + alpha=1.0 do NOT stack (Rh 0.4185 < both parents)."
+  },
+  "real_only_reproduction_2026_10_08": {
+    "closes": "recommended_fix / label_correction_2026_10_08 'TO CLOSE' item: reproduce the lever end-to-end under the REAL-ONLY protocol (rh_oversample=0).",
+    "protocol": "Real-only (--rh-oversample 0), GPU cuda:0, 5 seeds x 30 epochs. Every historical /tmp/f3_* run used rh_oversample=500, so its numbers were never comparable to the m19 real-only headline 0.5575.",
+    "alpha_1_0_drops_regression_correctly_rh": "rh 1-metal: alpha=0.5 baseline 0.3782 -> alpha=1.0 0.4352 (+0.0570). Confirms the label correction's direction (dropping regression = alpha=1.0) DOES lift Rh on the real-only protocol, but by ~half the 0.16 the mislabelled F3 'alpha=0.0' implied.",
+    "per_metal_centering_rh": "rh 1-metal: alpha=0.5 raw 0.3782 -> --per-metal-pic50-center 0.5022 (+0.1210). Cross-seed decisive (baseline [0.378,0.431,0.353,0.381,0.363] vs centered [0.459,0.518,0.466,0.616,0.452], no overlap).",
+    "per_metal_centering_5metal": "25-run panel value 0.5845 +/- 0.0764 vs real-only baseline 0.5575 (+0.0269). Aggregate lift is INSIDE noise (baseline std 0.0949) = honest-negative at the headline level. Source: molmetal/reports/m19_per_metal_centering_2026_10_08/metrics.json.",
+    "centering_plus_alpha1_rh": "Rh 1-metal combined: 0.4185 +/- 0.0236 (per-seed [0.4159,0.3959,0.4112,0.4638,0.4057]). WORSE than centering alone (0.5022) and worse than alpha=1.0 alone (0.4352). The two levers do NOT stack; the centered regression auxiliary is helping, so dropping it hurts. Source: molmetal/reports/m19_centering_plus_alpha1_rh_2026_10_08/Rh/per_seed_metrics.json.",
+    "verdict": "REPRODUCED_ON_REAL_ONLY_WORST_FOLD_ONLY. The F3 worst-fold (Rh) lift reproduces under real-only via BOTH alpha=1.0 (+0.057) and per-metal centering (+0.121); the aggregate 5-metal centering lift is inside noise and must not be shipped as a default change. 'TO CLOSE' item is CLOSED.",
+    "timestamp": "2026-10-08"
   }
 }
