@@ -23,7 +23,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PY="${PY:-${REPO_ROOT}/molmetal/venv/bin/python}"
+PY="${PY:-${REPO_ROOT}/.venv/bin/python}"  # 2026-10-08 §5.9: real venv is .venv, not molmetal/venv
 TRAINER="${TRAINER:-}"
 TASK="${TASK:-default}"
 DRY_RUN_LOG="${DRY_RUN_LOG:-${REPO_ROOT}/molmetal/reports/${TASK}/DRY_RUN.log}"

@@ -58,8 +58,17 @@ CANONICAL_MARKERS = {
         r"(?:PY|py|python)[: =].{0,40}/home/hugo/codes/mol-metal/\.venv/bin/python",
         re.IGNORECASE,
     ),
+    # NOTE (2026-10-08): this marker is satisfied by EITHER a `--user-ok` flag
+    # literal OR a wrapper-level `USER_OK:-0} != "1"` env gate (see surface_check).
+    # No trainer on disk declares `--user-ok` (grep verified 0 hits across
+    # train_cfm_yuelbond_wasserstein / train_metal_lomo_v2 /
+    # train_dmpnn_multitask_wasserstein / wf219_krasnov_aligned), so requiring the
+    # literal flagged env-gated wrappers that are correctly gated at the env layer.
     "USER_OK env propagation to trainer": re.compile(r"--user-ok", re.IGNORECASE),
 }
+# An env-gated wrapper (Wf-294B family) satisfies the "propagation" marker even
+# without a --user-ok flag, because the trainer reads no such flag.
+_USER_OK_ENV_GATE_RE = re.compile(r'USER_OK:-0}.*\s*!=\s*"1"', re.IGNORECASE)
 
 # DUPLICATE detector — DOCK_PANEL references the same trainer
 DOCK_PANEL_RE = re.compile(r'DOCK_PANEL|TRAINER\s*=\s*"?([\w_./-]+\.py)"?')
@@ -80,6 +89,12 @@ def surface_check(path: Path) -> dict[str, bool]:
         name: bool(pattern.search(content))
         for name, pattern in CANONICAL_MARKERS.items()
     }
+    # A correctly env-gated wrapper (Wf-294B `USER_OK:-0} != "1"`) satisfies the
+    # trainer-propagation marker: no trainer on disk consumes `--user-ok`, so the
+    # env gate IS the canonical propagation. Prevents a false-positive that would
+    # gate CI on an unsatisfiable condition.
+    if _USER_OK_ENV_GATE_RE.search(content):
+        result["USER_OK env propagation to trainer"] = True
     # exclude the template from classification noise (it's the reference itself)
     result["_template"] = path.name.startswith("_")
     return result
@@ -262,7 +277,12 @@ def main() -> int:
                 print(f"  - {v}")
         print(f"[wrapper_audit] JSON: {AUDIT_JSON}")
 
-    return 1 if args.strict and audit_obj["violations"] else 0
+    # 2026-10-08 gate rc: default run now exits nonzero when violations exist so
+    # the audit can actually gate CI (previously it always returned 0 unless
+    # --strict). --json-only remains an informational escape hatch (exit 0).
+    if args.json_only:
+        return 0
+    return 1 if audit_obj["violations"] else 0
 
 
 if __name__ == "__main__":

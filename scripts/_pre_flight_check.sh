@@ -34,7 +34,7 @@ log_ok() { echo "[pre-flight][OK] $*"; }
 log_skip() { echo "[pre-flight][SKIP] $*"; }
 log_fail() { echo "[pre-flight][FAIL] $*"; }
 
-PYTHON="${PYTHON:-python3}"
+PYTHON="${PYTHON:-${PROJECT_ROOT}/.venv/bin/python}"  # 2026-10-08 §5.9: canonical single-venv default (env override kept)
 
 # ============================================================================
 # 0) USER_OK gate check (per AGENTS.md §5.1)
@@ -168,7 +168,7 @@ if [[ -n "$YAML_ARG" ]]; then
 import sys, yaml
 with open('$YAML_ARG') as f:
     d = yaml.safe_load(f)
-required = $(printf '%s\n' "${REQUIRED_KEYS[@]}" | python3 -c "import sys,json; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))")
+required = $(printf '%s\n' "${REQUIRED_KEYS[@]}" | "$PYTHON" -c "import sys,json; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))")  # 2026-10-08 §5.9 single-venv
 missing = [k for k in required if k not in d]
 if missing:
     print('FAIL:missing=' + ','.join(missing))

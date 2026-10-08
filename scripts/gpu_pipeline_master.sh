@@ -49,6 +49,9 @@
 #   bash scripts/gpu_pipeline_master.sh phase2  # run only Phase 2 (GPU 0)
 
 set -uo pipefail
+# 2026-10-08 §5.9: canonical single-venv interpreter (bare python3 lacks torch/pandas).
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PY="${REPO_ROOT}/.venv/bin/python"
 cd /home/hugo/codes/mol-metal
 
 # ----- Logging helpers -----
@@ -108,7 +111,7 @@ wf343c4_gate() {
 
   # Wf-343C2 per-wave check (7 checks; CPU-only when --skip-live)
   log "Running Wf-343C2 per-wave check (--wave 'PipelineMaster-Phase3')..."
-  python3 molmetal/scripts/wf343c2_per_wave_check.py \
+  "${PY}" molmetal/scripts/wf343c2_per_wave_check.py \
     --wave "PipelineMaster-Phase3" \
     --pairs-metals "Ru,Ir,Os,Rh,Re" \
     --pairs-seeds "0,1,2" \
@@ -127,7 +130,7 @@ wf343c4_gate() {
 
   # Wf-343C3 data quality check (5 checks × every loader)
   log "Running Wf-343C3 data quality check (per-loader surface)..."
-  python3 molmetal/scripts/wf343c3_data_quality_check.py \
+  "${PY}" molmetal/scripts/wf343c3_data_quality_check.py \
     --out-dir molmetal/reports/wf343c3_data_quality \
     ${STRICT_FLAG} 2>&1 \
     | tee -a "${LOG_DIR}/wf343c3_pipeline_master.log"

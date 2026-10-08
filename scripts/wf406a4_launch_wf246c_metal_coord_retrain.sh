@@ -43,9 +43,7 @@
 #   USER_OK=1 bash scripts/wf406a4_launch_wf246c_metal_coord_retrain.sh --dry-run
 #   USER_OK=1 bash scripts/wf406a4_launch_wf246c_metal_coord_retrain.sh --smoke
 #   USER_OK=1 bash scripts/wf406a4_launch_wf246c_metal_coord_retrain.sh \
-#       --metals "Ru Ir Rh" --seeds 0 1 2 --epochs 50
 #   USER_OK=1 bash scripts/wf406a4_launch_wf246c_metal_coord_retrain.sh \
-#       --metals "Ru Ir Rh Os Re" --seeds 0 1 2 3 4 --epochs 50 --actual
 #
 # Exit codes:
 #   0   PASS (smoke or --dry-run)
@@ -61,6 +59,8 @@ set -euo pipefail
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "${SCRIPT_DIR}/.." && pwd )"
 SCAFFOLD="${PROJECT_ROOT}/molmetal/scripts/wf406a4_metal_coord_retrain_scaffold.py"
+# 2026-10-08 §5.9: canonical single-venv interpreter (bare python3 lacks torch/pandas).
+PY="${PROJECT_ROOT}/.venv/bin/python"
 
 # Source the DRY_RUN.log helper (Wf-363-A1 schema)
 DRY_RUN_LOG_HELPER="${PROJECT_ROOT}/scripts/_dry_run_log_helper.sh"
@@ -226,7 +226,7 @@ case "${MODE}" in
     R2_smoke)
         printf '%s[Wf-406-A4]%s R2 SCAFFOLD smoke mode: 5-step CPU smoke.\n' \
             "$(tput bold 2>/dev/null || true)" "$(tput sgr0 2>/dev/null || true)"
-        exec python3 "${SCAFFOLD}" \
+        exec "${PY}" "${SCAFFOLD}" \
             --metal-coord-term \
             --metals "${METALS_ARR[@]}" \
             --seeds "${SEEDS_ARR[@]}" \
@@ -240,7 +240,7 @@ case "${MODE}" in
         printf '  ACTUAL GPU launch BLOCKED per AGENTS.md §5.1 + kill_then_adapt §0\n'
         printf '  Use Wf-355-B1 USER_OK-gated wrapper pattern for actual run.\n'
         printf '  Falling back to R2 SCAFFOLD smoke for now.\n'
-        exec python3 "${SCAFFOLD}" \
+        exec "${PY}" "${SCAFFOLD}" \
             --metal-coord-term \
             --metals "${METALS_ARR[@]}" \
             --seeds "${SEEDS_ARR[@]}" \
