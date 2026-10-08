@@ -8,6 +8,9 @@
     "rate": null,
     "n_passed": null,
     "n_total": 0,
+    "rate_protein_aware_subset": 0.6875,
+    "n_protein_aware_pass": 11,
+    "n_protein_aware_total": 16,
     "criteria": "PoseBusters 'dock' mode — chemistry + protein-ligand clash checks per docked pose",
     "wf323c_smoke_summary": {
       "workflow": "Wf-323C",
@@ -48,6 +51,7 @@
   "n_samples": 0,
   "timestamp": "2026-09-21",
   "status": "MEASURED_SMOKE",
+  "previous_status": "DEFERRED",
   "deferred_reason": "deferred_receptors_missing_and_posebusters_unavailable",
   "deferred_detail": "Receptor missing on disk AND PoseBusters/RDKit not installed; per-pose clash check cannot run.",
   "HONEST_NEGATIVE_BLOCKED": true,

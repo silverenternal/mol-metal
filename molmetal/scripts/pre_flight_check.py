@@ -5965,6 +5965,12 @@ HP_RESOLUTION_EXEMPT_KEYS: Dict[str, str] = {
     # argparse dests only, and this is consumed by start.sh; without the entry
     # it would keep being reported as a dead key that a reader has just fixed.
     "output.events_jsonl": "start.sh -> trainer --no-events-jsonl when false",
+    # 2026-10-08: wired per Wf-R29 — the trainer dest `--use-triton-relu-mlp`
+    # exists AND is threaded main() -> train_one_metal_one_seed() ->
+    # MultiTaskWassersteinModel() (train_dmpnn_multitask_wasserstein.py:2696).
+    # The classifier resolves argparse dests only, so a nested `model.*` key
+    # is reported dead even though the trainer reads it.
+    "model.use_triton_relu_mlp": "trainer --use-triton-relu-mlp (wired Wf-R29)",
     # 2026-10-04: same treatment.  start.sh reads compute.cpu_workers and emits
     # trainer --cpu-num-workers; the classifier resolves against argparse dests
     # only, so a start.sh-consumed key would otherwise be reported dead right
@@ -5978,6 +5984,7 @@ HP_RESOLUTION_EXEMPT_KEYS: Dict[str, str] = {
 HP_RESOLUTION_EXEMPT_PREFIXES: Dict[str, str] = {
     "eval.": "report targets / baselines / metric names; compared by hand",
     "data.split.": "split provenance (type / fracs / seed); the split is computed in-code",
+    "data.split_intent.": "split-intent documentation (renamed from `split:` so the gate does not stringify the dict); the operative split is hardcoded in the loader",
     "data.cohort_filter.": "cohort provenance; selection runs via --metals / --csv",
     "data.n_rows_expected": "row-count provenance",
     "data.expected_columns_subset": "column provenance",

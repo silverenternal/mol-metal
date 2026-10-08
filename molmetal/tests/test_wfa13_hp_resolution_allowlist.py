@@ -132,8 +132,12 @@ def test_classify_buckets_unit(preflight) -> None:
     assert bucket == "residual"
 
     # Documented-dead key: no reader, no dest, no spec namespace.
-    bucket, why = classify("output.events_jsonl")
+    bucket, why = classify("output.definitely_not_consumed")
     assert bucket == "residual" and "no documented non-trainer consumer" in why
+
+    # Reader-wired key: start.sh maps it to a real trainer flag.
+    bucket, why = classify("output.events_jsonl")
+    assert bucket == "reader" and "start.sh" in why
 
 
 # ---------------------------------------------------------------------------
@@ -163,7 +167,11 @@ def test_gate_strict_passes_on_documented_exempt_only(
     )
     assert result.status == "PASS", result.evidence
     assert "0 RESIDUAL" in result.evidence
-    assert "1 reader-exempt + 1 spec-exempt" in result.evidence
+    # `protocol.scheduler.type` is now resolved by the loader itself (loader
+    # bucket), and `eval.target_test_auc` stays spec-exempt; the fixture's
+    # base body adds a second loader-exempt key, so the split is loader=2 /
+    # spec=1 with no residual.
+    assert "loader=2, reader=0, spec=1" in result.evidence
 
 
 # ---------------------------------------------------------------------------
