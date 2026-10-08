@@ -82,26 +82,51 @@ def _clean_record() -> dict:
     }
 
 
+def _contaminated_record() -> dict:
+    """A synthetic-contaminated record that SHOULD FAIL the guard.
+
+    The m19 premise (500 appended synthetic Rh rows, no real-only fold).
+    On-disk this was upgraded to a REAL_COHORT record by Wf-R40/R43
+    (a62df98534), so the FAIL-branch tests drive this fixture instead of the
+    live metric — the guard's contamination logic is still covered, but the
+    tests no longer break when the live record legitimately improves.
+    """
+    rec = _clean_record()
+    rec["value"] = 0.7577
+    rec["n_synthetic_rh_appended"] = 500
+    rec["real_only_fold_value"] = None
+    rec["cohort_resolution_verdict"] = "WF139P7_SYNTHETIC_LABELS"
+    return rec
+
+
 # ---------------------------------------------------------------------------
-# 1-5: the on-disk premise
+# 1-5: the on-disk premise + the guard's contamination branch
 # ---------------------------------------------------------------------------
 
 
-def test_on_disk_record_really_is_synthetic_contaminated():
-    """The m19 premise, straight off disk (no guard logic involved)."""
+def test_on_disk_record_is_real_cohort():
+    """The current on-disk record is a real-data-only headline (Wf-R40/R43).
+
+    The m19 premise (synthetic-contaminated) was resolved by upgrading the
+    record to a REAL_COHORT measurement (n_synthetic_rh_appended == 0, a
+    finite real_only_fold_value, all 5 metals). The guard must PASS it.
+    """
     payload = json.loads(REAL_METRIC.read_text(encoding="utf-8"))
-    assert payload["n_synthetic_rh_appended"] == 500, (
-        "the headline is expected to carry 500 appended synthetic Rh rows; "
-        "if this changed, the guard's premise changed with it"
+    assert payload["n_synthetic_rh_appended"] == 0, (
+        "the headline is expected to be real-data-only (0 appended synthetic "
+        "Rh rows); if this changed, re-check the m19 premise"
     )
-    assert payload["cohort_resolution_verdict"] == "WF139P7_SYNTHETIC_LABELS"
-    assert payload["real_only_fold_value"] is None, (
-        "no real-only fold is expected to exist for this wave"
-    )
-
-
-def test_audit_real_record_fails_and_names_the_contamination():
+    assert payload["real_only_fold_value"] is not None
+    # The guard keys PASS on n_synthetic_rh_appended + a finite
+    # real_only_fold_value, NOT on the cohort_resolution_verdict string (which
+    # is a legacy label on this record).
     result = audit_m19_lomo_headline(REAL_METRIC, repo_root=REPO_ROOT)
+    assert result["status"] == "PASS", result["evidence"]
+
+
+def test_audit_contaminated_record_fails_and_names_the_contamination(tmp_path):
+    p = _write(tmp_path, _contaminated_record())
+    result = audit_m19_lomo_headline(p, repo_root=REPO_ROOT)
     assert result["status"] == "FAIL"
     assert result["n_synthetic_rh_appended"] == 500
     assert result["real_only_fold_value"] is None
@@ -111,8 +136,9 @@ def test_audit_real_record_fails_and_names_the_contamination():
     assert "BEFORE the LOMO split" in ev
 
 
-def test_fail_evidence_forbids_the_real_data_headline_reading():
-    result = audit_m19_lomo_headline(REAL_METRIC, repo_root=REPO_ROOT)
+def test_fail_evidence_forbids_the_real_data_headline_reading(tmp_path):
+    p = _write(tmp_path, _contaminated_record())
+    result = audit_m19_lomo_headline(p, repo_root=REPO_ROOT)
     ev = result["evidence"]
     # must name the fabricated potency supervision (regression head, not just
     # the classification label) and the remediation that is NOT a GPU launch.
@@ -125,10 +151,7 @@ def test_fail_evidence_forbids_the_real_data_headline_reading():
 
 def test_contamination_arithmetic_is_measured_not_asserted(tmp_path):
     """A synthetic record's corroboration must actually compare."""
-    rec = _clean_record()
-    rec["n_synthetic_rh_appended"] = 500
-    rec["real_only_fold_value"] = None
-    p = _write(tmp_path, rec)
+    p = _write(tmp_path, _contaminated_record())
 
     # no repo_root -> no CSV/log measurement -> pool_rows_match stays None
     without = audit_m19_lomo_headline(p)
@@ -144,11 +167,12 @@ def test_contamination_arithmetic_is_measured_not_asserted(tmp_path):
     assert measured["status"] == "FAIL"
 
 
-def test_repo_pool_rows_plus_appended_equals_wave_n():
+def test_repo_pool_rows_plus_appended_equals_wave_n(tmp_path):
     """MEASURED on the repo's own artifacts: 26632 + 500 == 27132."""
     if not POOL_CSV.is_file() or not RUN_LOG.is_file():
         pytest.skip("pool CSV or wave run.log not present on this host")
-    result = audit_m19_lomo_headline(REAL_METRIC, repo_root=REPO_ROOT)
+    p = _write(tmp_path, _contaminated_record())
+    result = audit_m19_lomo_headline(p, repo_root=REPO_ROOT)
     assert result["pool_rows"] is not None
     assert result["observed_rows"] is not None
     assert result["pool_rows_match"] is True
@@ -238,14 +262,19 @@ def test_malformed_json_fails_loudly_and_absent_metric_skips(tmp_path):
     assert "nothing to audit" in missing["evidence"]
 
 
-def test_gate_registered_on_all_and_skips_by_default(monkeypatch):
+def test_gate_registered_on_all_and_skips_by_default(monkeypatch, tmp_path):
     from molmetal.scripts.pre_flight_check import build_gates
 
     gates = build_gates("all")
     assert GATE_NAME in [g[0] for g in gates]
 
     monkeypatch.delenv(OPT_IN_ENV, raising=False)
-    res = audit_m19_lomo_headline(REAL_METRIC, repo_root=REPO_ROOT)
+    # A synthetic-contaminated record must still FAIL loud regardless of the
+    # opt-in env var (the guard runs when invoked; the env var only gates
+    # whether pre-flight registers it).
+    res = audit_m19_lomo_headline(
+        _write(tmp_path, _contaminated_record()), repo_root=REPO_ROOT
+    )
     assert res["status"] == "FAIL", (
         "with the env var set the real record must still FAIL loud"
     )

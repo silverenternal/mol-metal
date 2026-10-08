@@ -40,7 +40,10 @@
 #   USER_OK=1 bash scripts/launch_wf119_p1_4_chemprop_v3_lomo.sh  # REAL launch (after user grants)
 #   USER_OK=1 SKIP_ABLATIONS=bond,closure bash scripts/launch_wf119_p1_4_chemprop_v3_lomo.sh
 
-set -e
+set -eu
+# NB: pipefail INTENTIONALLY DISABLED per Wf-131 P3 post-mortem 2026-10-08
+# (Python DataLoader SIGPIPE on ${PY} trainer | tee log pipes). The wrapper
+# captures ${PIPESTATUS[0]} explicitly after each pipe (see below).
 cd /home/hugo/codes/mol-metal
 
 PY="/home/hugo/codes/mol-metal/.venv/bin/python"
@@ -189,7 +192,13 @@ echo "SCRIPT: ${SCRIPT}"
 echo "GPU: ${GPU}"
 echo ""
 
-ABLATION_BASE_ARGS=("${COMMON_ARGS[@]}" --user-ok "REQUIRED")
+# Bug A fix (2026-10-08): the previous `--user-ok "REQUIRED"` literal was never
+# a valid trainer arg — train_chemprop_v2_v3.py has no --user-ok flag, so the
+# trainer exited with an argparse error (rc=2) before training started. The pipe
+# error below was masked by `tee` returning rc=0 (no pipefail), so the wrapper
+# falsely reported success and moved on. The user-OK gating is enforced by
+# USER_OK env var check above (line ~140), NOT by a CLI flag — so just drop it.
+ABLATION_BASE_ARGS=("${COMMON_ARGS[@]}")
 for ablation in baseline v3_fix_only min_epochs_only lomo_init_scale_only; do
   if ! want_ablation "${ablation}"; then
     echo "  [SKIP] ablation=${ablation}"
@@ -233,11 +242,30 @@ for ablation in baseline v3_fix_only min_epochs_only lomo_init_scale_only; do
       ;;
   esac
   echo "  CMD: ${PY} ${SCRIPT} ${ABLATION_BASE_ARGS[*]} ${ABLATION_ARGS[*]}"
-  ${PY} "${SCRIPT}" "${ABLATION_BASE_ARGS[@]}" "${ABLATION_ARGS[@]}" 2>&1 | tee "${ABLATION_LOG}" || {
-    echo "FAIL: ablation ${ablation} exited non-zero; check ${ABLATION_LOG}"
-    exit 1
-  }
-  echo "  [OK] ablation=${ablation} complete"
+  # Bug B fix (2026-10-08): ${PY} trainer | tee log || { exit 1 } catches
+  # tee's exit code, NOT the trainer's. Without pipefail (disabled above to
+  # avoid SIGPIPE), an argparse error / early trainer exit (rc=2) was masked
+  # by tee rc=0, and the wrapper falsely reported success. Capture the
+  # trainer's actual exit code via ${PIPESTATUS[0]} and bail on rc != 0.
+  set +e
+  ${PY} "${SCRIPT}" "${ABLATION_BASE_ARGS[@]}" "${ABLATION_ARGS[@]}" 2>&1 | tee "${ABLATION_LOG}"
+  trainer_rc=${PIPESTATUS[0]}
+  set -e
+  if [[ ${trainer_rc} -ne 0 ]]; then
+    echo "FAIL: ablation ${ablation} trainer exited rc=${trainer_rc}; check ${ABLATION_LOG}"
+    exit ${trainer_rc}
+  fi
+  # Belt-and-braces: verify the trainer produced output. The trainer writes
+  # training_summary.json (aggregate across metals) at the top level +
+  # per-{metal}/per_seed_metrics_seed{seed}.json per metal. Accept either.
+  if [[ -s "${ABLATION_OUT}/training_summary.json" ]]; then
+    echo "  [OK] ablation=${ablation} complete (training_summary.json present)"
+  elif compgen -G "${ABLATION_OUT}/*/per_seed_metrics_seed*.json" > /dev/null; then
+    echo "  [OK] ablation=${ablation} complete (per-metal per_seed_metrics_seed*.json present)"
+  else
+    echo "FAIL: ablation ${ablation} trainer rc=0 but no training_summary.json or per-metal per_seed_metrics_seed*.json in ${ABLATION_OUT}"
+    exit 2
+  fi
 done
 
 echo ""
