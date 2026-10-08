@@ -327,15 +327,19 @@ def detect_truncation(
             # Both the greppable name and the literal token, so a log line
             # reads `ends_with_todo('TODO')` and either spelling matches.
             return f"{reason}({bad!r})"
-    # Require a closing token. Strip a trailing newline before matching
-    # so we accept e.g. "...end of section.\n" as complete.
+    # Require a closing token. Match against ``stripped`` with a newline
+    # appended so both "...end of section.\n" AND a bare JSON close like
+    # json.dumps' final "}" (which has NO trailing newline) are accepted.
+    # Without this, every json.dumps payload false-positived as
+    # missing_closing_token (the tokens are "\n"-oriented).
+    probe = stripped + "\n"
     for token in _CLOSING_TOKENS:
-        if agent_output.endswith(token):
+        if probe.endswith(token):
             return None
     # If we get here, the output doesn't end with any known close.
     # Check for the most common case: a final paragraph ending in
     # punctuation (period, question mark, exclamation, or right-paren).
-    if stripped.endswith((".", "?", "!", ")", "]")):
+    if stripped.endswith((".", "?", "!", ")", "]", "}", '"')):
         return None
     return "missing_closing_token"
 

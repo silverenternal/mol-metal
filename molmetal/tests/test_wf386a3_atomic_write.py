@@ -307,6 +307,19 @@ class TestDetectTruncationPasses:
         # Default expected_min_length=200 must accept this output.
         assert detect_truncation(output) is None
 
+    def test_json_dumps_payload_passes(self) -> None:
+        """A json.dumps(indent=2) payload ends with a bare ``}`` and NO
+        trailing newline. It must not false-positive as truncated -- the
+        gate_result.json write path (wf385a3) calls detect_truncation on
+        exactly this shape."""
+        import json
+
+        payload = json.dumps(
+            {"verdict": "PASS", "reason": "x" * 300}, indent=2, sort_keys=True
+        )
+        assert not payload.endswith("\n")
+        assert detect_truncation(payload, expected_min_length=200) is None
+
 
 # ---------------------------------------------------------------------------
 # 7. write_closeout integration (3 cases)
