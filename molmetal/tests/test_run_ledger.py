@@ -155,12 +155,18 @@ def test_corrupt_ledger_line_raises(tmp_path):
         rl.latest("m", ledger_path=led)
 
 
-def test_preflight_gate_skips_by_default(monkeypatch):
+def test_preflight_gate_enforced_by_default(monkeypatch):
+    """The gate enforces by default since 2026-10-08; WF_RUN_LEDGER=0 is the
+    downgrade hatch, not an opt-in switch."""
     from molmetal.scripts.pre_flight_check import gate_run_ledger_staleness
 
     monkeypatch.delenv("WF_RUN_LEDGER", raising=False)
     r = gate_run_ledger_staleness("p3_run_ledger_staleness", "P3", "run_ledger")
-    assert r.status == "SKIP"
+    assert r.status in ("PASS", "FAIL"), r.evidence
+
+    monkeypatch.setenv("WF_RUN_LEDGER", "0")
+    r2 = gate_run_ledger_staleness("p3_run_ledger_staleness", "P3", "run_ledger")
+    assert r2.status == "SKIP"
 
 
 def test_preflight_gate_registered():

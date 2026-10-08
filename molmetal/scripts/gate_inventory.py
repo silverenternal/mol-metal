@@ -233,12 +233,25 @@ def build_inventory(pipeline: str = "all") -> List[Dict[str, Any]]:
 def audit_zombie_gates(
     inventory: Optional[List[Dict[str, Any]]] = None,
     env: Optional[Dict[str, str]] = None,
+    *,
+    confirm_by_running: bool = True,
 ) -> List[Dict[str, Any]]:
-    """Flag opt-in gates whose env var is UNSET in a normal run.
+    """Flag opt-in gates that are NEVER enforced in a normal pre-flight run.
 
-    A "zombie gate" is registered in :func:`build_gates` but NEVER enforced in
-    a normal pre-flight run because it SKIPs unless its ``opt_in_env`` is set.
-    These are the "registered but never enforced" set.
+    A "zombie gate" is registered in :func:`build_gates` but SKIPs by default,
+    so it never blocks anything.  Two things are checked:
+
+      1. the gate reads an ``opt_in_env`` (the cheap static signal), AND
+      2. (``confirm_by_running``) the gate ACTUALLY emits SKIP when run with
+         that env var unset.
+
+    Step 2 matters because reading an env var is not the same as being opt-in:
+    a gate can read an env var as a *downgrade* switch (default-blocking, env
+    turns it OFF).  ``gate_csv_hash`` is exactly that shape — its
+    ``PREFLIGHT_CSV_HASH_STRICT`` var defaults blocking ON — so a
+    static-only audit wrongly reports it as a zombie.  Running the gate is
+    the only way to tell "SKIPs by default" from "BLOCKS by default, env can
+    downgrade".
 
     Returns a list of ``{"name", "opt_in_env", "evidence"}`` dicts (one per
     zombie).  ``env`` defaults to ``os.environ`` for the current run.
@@ -255,6 +268,8 @@ def audit_zombie_gates(
         raw = str(env.get(opt_in_env, "")).strip().lower()
         if raw in ("1", "true", "yes"):
             continue  # env var set → gate is live, not a zombie
+        if confirm_by_running and not _skips_by_default(entry["name"]):
+            continue  # env-reading gate that actually enforces by default
         zombies.append(
             {
                 "name": entry["name"],
@@ -268,6 +283,29 @@ def audit_zombie_gates(
             }
         )
     return zombies
+
+
+def _skips_by_default(gate_name: str) -> bool:
+    """Run one registered gate with its opt-in env var cleared; True iff it
+    emits SKIP.  Any exception is treated as "not a clean SKIP" (False) so a
+    crashing gate is not silently filed as a harmless zombie."""
+    from molmetal.scripts.pre_flight_check import build_gates
+
+    fn = dict((g[0], g[1]) for g in build_gates("all")).get(gate_name)
+    if fn is None:
+        return False
+    # Which env var to clear is discovered statically for this one gate.
+    var = _discover_opt_in_env(fn)
+    saved = os.environ.pop(var, None) if var else None
+    try:
+        result = fn()
+        status = getattr(result, "status", None)
+        return status == "SKIP"
+    except Exception:
+        return False
+    finally:
+        if var and saved is not None:
+            os.environ[var] = saved
 
 
 def _summarize(inventory: List[Dict[str, Any]], zombies: List[Dict[str, Any]]) -> str:

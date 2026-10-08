@@ -140,12 +140,18 @@ def test_line_metrics_cover_three_lines():
         assert mapping, f"{line} has no metrics"
 
 
-def test_preflight_gate_skips_by_default(monkeypatch):
+def test_preflight_gate_enforced_by_default(monkeypatch):
+    """The gate enforces by default since 2026-10-08; WF_REGISTRY_ENFORCE=0
+    is the downgrade hatch, not an opt-in switch."""
     from molmetal.scripts.pre_flight_check import gate_registry_consistency
 
     monkeypatch.delenv("WF_REGISTRY_ENFORCE", raising=False)
     r = gate_registry_consistency("p3_registry_consistency", "P3", "registry")
-    assert r.status == "SKIP"
+    assert r.status in ("PASS", "FAIL"), r.evidence
+
+    monkeypatch.setenv("WF_REGISTRY_ENFORCE", "0")
+    r2 = gate_registry_consistency("p3_registry_consistency", "P3", "registry")
+    assert r2.status == "SKIP"
 
 
 def test_preflight_gate_registered():

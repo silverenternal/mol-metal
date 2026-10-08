@@ -7781,20 +7781,20 @@ def gate_wf35_protocol_lock(
             absent (opt-in requested but nothing to enforce against).
     """
     t0 = time.perf_counter()
-    if os.environ.get(PROTOCOL_LOCK_OPT_IN_ENV, "").strip() not in (
-        "1",
-        "true",
-        "TRUE",
-        "yes",
+    if os.environ.get(PROTOCOL_LOCK_OPT_IN_ENV, "").strip().lower() in (
+        "0",
+        "false",
+        "no",
+        "off",
     ):
         return GateResult(
             name,
             priority,
             pipeline,
             "SKIP",
-            f"{name}: opt-in gate — set {PROTOCOL_LOCK_OPT_IN_ENV}=1 to enforce "
-            f"the {metric_key} protocol lock (AGENTS.md §5.6/§5.7 new-gate "
-            f"opt-in pattern)",
+            f"{name}: enforcing by DEFAULT since 2026-10-08 — set "
+            f"{PROTOCOL_LOCK_OPT_IN_ENV}=0 to downgrade the {metric_key} protocol "
+            f"lock check to SKIP",
             time.perf_counter() - t0,
         )
     cfg = trainer_config_path
@@ -7850,20 +7850,20 @@ def gate_registry_consistency(
     change an existing pre-flight run's verdict until the registry is trusted.
     """
     t0 = time.perf_counter()
-    if os.environ.get(REGISTRY_ENFORCE_ENV, "").strip() not in (
-        "1",
-        "true",
-        "TRUE",
-        "yes",
+    if os.environ.get(REGISTRY_ENFORCE_ENV, "").strip().lower() in (
+        "0",
+        "false",
+        "no",
+        "off",
     ):
         return GateResult(
             name,
             priority,
             pipeline,
             "SKIP",
-            f"{name}: report-only — set {REGISTRY_ENFORCE_ENV}=1 to enforce "
-            "registry/*.yaml consistency (AGENTS.md §5.6/§5.7 new-gate opt-in "
-            "pattern)",
+            f"{name}: enforcing by DEFAULT since 2026-10-08 — set "
+            f"{REGISTRY_ENFORCE_ENV}=0 to downgrade registry/*.yaml consistency "
+            "to SKIP",
             time.perf_counter() - t0,
         )
     try:
@@ -7917,19 +7917,19 @@ def gate_run_ledger_staleness(
     ``molmetal/scripts/run_ledger.py``.
     """
     t0 = time.perf_counter()
-    if os.environ.get(RUN_LEDGER_ENFORCE_ENV, "").strip() not in (
-        "1",
-        "true",
-        "TRUE",
-        "yes",
+    if os.environ.get(RUN_LEDGER_ENFORCE_ENV, "").strip().lower() in (
+        "0",
+        "false",
+        "no",
+        "off",
     ):
         return GateResult(
             name,
             priority,
             pipeline,
             "SKIP",
-            f"{name}: report-only — set {RUN_LEDGER_ENFORCE_ENV}=1 to enforce "
-            "run-ledger staleness (AGENTS.md §5.6/§5.7 new-gate opt-in pattern)",
+            f"{name}: enforcing by DEFAULT since 2026-10-08 — set "
+            f"{RUN_LEDGER_ENFORCE_ENV}=0 to downgrade run-ledger staleness to SKIP",
             time.perf_counter() - t0,
         )
     try:

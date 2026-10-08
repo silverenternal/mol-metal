@@ -131,23 +131,26 @@ def test_verify_protocol_lock_unknown_metric_is_fail_not_raise() -> None:
     assert any(c["check"] == "lock_loads" for c in result["checks"])
 
 
-def test_five_gates_registered_and_skip_by_default(monkeypatch) -> None:
-    """The 5 gates are visible on `all` but SKIP unless opted in."""
+def test_five_gates_registered_and_enforced_by_default(monkeypatch) -> None:
+    """The 5 gates are visible on `all` and enforce by default (2026-10-08);
+    WF35_PROTOCOL_LOCK=0 is the downgrade hatch."""
     from molmetal.scripts.pre_flight_check import build_gates
 
     monkeypatch.delenv("WF35_PROTOCOL_LOCK", raising=False)
     names = [n for n, _ in build_gates("all") if n.startswith("p3_wf35_protocol_lock_")]
     assert len(names) == 5, f"expected 5 protocol-lock gates, got {names}"
     runners = dict(build_gates("all"))
-    for name in names:
-        assert runners[name]().status == "SKIP", f"{name} did not SKIP by default"
-
-    monkeypatch.setenv("WF35_PROTOCOL_LOCK", "1")
     statuses = {n: runners[n]().status for n in names}
     assert "PASS" in statuses.values(), (
-        f"opted-in run produced no PASS: {statuses}. If every metric FAILs the "
+        f"default run produced no PASS: {statuses}. If every metric FAILs the "
         f"lock is not tracking any real trainer config."
     )
+    assert all(s != "SKIP" for s in statuses.values()), (
+        f"a protocol-lock gate SKIPped by default: {statuses}"
+    )
+
+    monkeypatch.setenv("WF35_PROTOCOL_LOCK", "0")
+    assert all(runners[n]().status == "SKIP" for n in names)
 
 
 if __name__ == "__main__":
