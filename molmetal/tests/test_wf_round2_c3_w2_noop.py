@@ -163,6 +163,40 @@ def test_nonzero_weight_without_real_warns_and_stays_ignored() -> None:
     )
 
 
+def test_real_without_positive_weight_warns_and_stays_off() -> None:
+    """The INVERSE silent no-op (2026-10-08): ``--wasserstein-real`` without
+    a positive ``--wasserstein-weight`` leaves ``w2_enabled`` False (the
+    property requires real AND weight > 0). The flag is accepted and the fold
+    header would echo ``real=True``, so the caller believes the OOD
+    regulariser runs when it contributes exactly zero. It must warn.
+    """
+    pytest.importorskip("torch")
+    from molmetal.scripts.train_metal_lomo_wasserstein import _parse_args
+
+    # --wasserstein-real alone (weight defaults to 0.0) must warn.
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        ns = _parse_args(["--wasserstein-real"])
+    uw = [w for w in caught if issubclass(w.category, UserWarning)]
+    assert uw, (
+        "--wasserstein-real without a positive --wasserstein-weight must warn: "
+        "w2_enabled requires real AND weight > 0, so the term stays OFF"
+    )
+    assert "--wasserstein-weight" in str(uw[0].message), (
+        "the warning must name the weight flag the caller has to set"
+    )
+    assert ns.wasserstein_real is True
+    assert ns.wasserstein_weight == 0.0
+
+    # The supported combination (real + positive weight) must NOT warn.
+    with warnings.catch_warnings(record=True) as caught2:
+        warnings.simplefilter("always")
+        _parse_args(["--wasserstein-real", "--wasserstein-weight", "0.05"])
+    assert not [
+        w for w in caught2 if issubclass(w.category, UserWarning)
+    ], "--wasserstein-real + positive weight is the supported path; no warning"
+
+
 def test_w2_term_is_grad_free_by_default() -> None:
     """DEFAULT: W2 has no effect on the model.
 

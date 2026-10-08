@@ -1,0 +1,153 @@
+{
+  "date": "2026-10-08",
+  "model": "dmpnn_v4",
+  "backbone": "dmpnn",
+  "featurization": "dmpnn_atom_bond",
+  "split": "scaffold (Bemis-Murcko, 70/10/20)",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "epochs": 50,
+  "batch_size": 64,
+  "lr": 0.001,
+  "hidden": 300,
+  "depth": 3,
+  "note": "RESCUE re-measure with Wf-MOLNET-CWFIX flags (class-weight/dropout/weight-decay/patience). Does NOT overwrite moleculenet_auc_dmpnn_5seed.json. Baseline = class-weight on, no reg.",
+  "baseline_source": "metrics/by_metric/moleculenet_auc_dmpnn_5seed.json",
+  "runs": {
+    "bace": {
+      "config": {
+        "class_weight": "balanced",
+        "dropout": 0.1,
+        "weight_decay": 1e-05,
+        "patience": 20
+      },
+      "baseline_test_auc_mean": 0.7421249278311736,
+      "rescue": {
+        "n_seeds_total": 5,
+        "n_seeds_valid": 5,
+        "test_auc_mean": 0.6804880415259172,
+        "test_auc_std": 0.05600876050964262,
+        "test_pr_auc_mean": 0.6377948796611678,
+        "test_hit_top5_mean": 0.6533333333333333,
+        "per_seed_auc": [
+          0.5863570391872279,
+          0.7354239679577624,
+          0.7400854700854701,
+          0.6654742169095194,
+          0.6750995134896064
+        ],
+        "per_seed_pr_auc": [
+          0.5475838813307573,
+          0.6639090433749886,
+          0.7469589332922262,
+          0.6688640339978118,
+          0.5616585063100552
+        ],
+        "per_seed_hit_top5": [
+          0.4666666666666667,
+          0.8666666666666667,
+          0.9333333333333333,
+          0.6,
+          0.4
+        ],
+        "task": "bace",
+        "backbone": "dmpnn",
+        "chemprop_dmpnn_baseline": 0.876,
+        "chemprop_rf_baseline": 0.868,
+        "elapsed_seconds": 24.936502695083618
+      }
+    },
+    "clintox": {
+      "config": {
+        "class_weight": "on",
+        "dropout": 0.1,
+        "weight_decay": 1e-05,
+        "patience": 20
+      },
+      "baseline_test_auc_mean": 0.8208939647064016,
+      "rescue": {
+        "n_seeds_total": 5,
+        "n_seeds_valid": 5,
+        "test_auc_mean": 0.8332239622679708,
+        "test_auc_std": 0.013528573795608557,
+        "test_pr_auc_mean": 0.2901106609451978,
+        "test_hit_top5_mean": 0.33333333333333337,
+        "per_seed_auc": [
+          0.8317813765182186,
+          0.8224953063662741,
+          0.8583368599238257,
+          0.8202907208283552,
+          0.8332155477031802
+        ],
+        "per_seed_pr_auc": [
+          0.38662317286781545,
+          0.2722216716972065,
+          0.38530632035104273,
+          0.1721567695468419,
+          0.23424537026308218
+        ],
+        "per_seed_hit_top5": [
+          0.4,
+          0.4,
+          0.4666666666666667,
+          0.2,
+          0.2
+        ],
+        "task": "clintox",
+        "backbone": "dmpnn",
+        "chemprop_dmpnn_baseline": 0.894,
+        "chemprop_rf_baseline": 0.832,
+        "elapsed_seconds": 28.080081701278687
+      }
+    },
+    "bbbp_control": {
+      "config": {
+        "class_weight": "on",
+        "dropout": 0.0,
+        "weight_decay": 0.0,
+        "patience": 0
+      },
+      "baseline_test_auc_mean": 0.9065074737375624,
+      "rescue": {
+        "n_seeds_total": 5,
+        "n_seeds_valid": 5,
+        "test_auc_mean": 0.8939119882953618,
+        "test_auc_std": 0.018021864161173167,
+        "test_pr_auc_mean": 0.953505381887373,
+        "test_hit_top5_mean": 0.99,
+        "per_seed_auc": [
+          0.8629660937353245,
+          0.8972029744803109,
+          0.9170123177476119,
+          0.9036545856420505,
+          0.8887239698715108
+        ],
+        "per_seed_pr_auc": [
+          0.914513193390107,
+          0.9628210534593009,
+          0.9639328175475088,
+          0.9617653186698191,
+          0.9644945263701294
+        ],
+        "per_seed_hit_top5": [
+          0.95,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "task": "bbbp",
+        "backbone": "dmpnn",
+        "chemprop_dmpnn_baseline": 0.94,
+        "chemprop_rf_baseline": 0.728,
+        "elapsed_seconds": 35.747899532318115
+      }
+    }
+  },
+  "chemprop_dmpnn_baseline_mean": 0.88325
+}

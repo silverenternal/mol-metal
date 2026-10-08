@@ -391,6 +391,36 @@ def _test_metrics_dmpnn(
     return compute_metrics(y_np[idx], scores)
 
 
+def _resolve_pos_weight(
+    y_train: np.ndarray,
+    class_weight: str,
+) -> float:
+    """Return the positive-class weight (``pos_weight``) for the classification head.
+
+    ``onn`` / ``on``:  weight = neg / pos  (legacy default — over-weights the
+    positive class whenever the task is imbalanced).
+
+    ``off``:  weight = 1.0 (plain unweighted CrossEntropy — Chemprop's default).
+
+    ``balanced``:  auto-decision — apply the neg/pos weight ONLY when the task
+    is genuinely imbalanced (``pos_rate < 0.30`` or ``> 0.70``); for a near-balanced
+    task (0.30 <= pos_rate <= 0.70, e.g. BACE at pos_rate≈0.45) this returns 1.0,
+    i.e. no weighting.  (Wu 2018 / Chemprop use plain BCE on BACE.)
+    """
+    pos = float(y_train.sum())
+    neg = float(len(y_train) - pos)
+    raw = neg / max(pos, 1.0)
+    if class_weight == "off":
+        return 1.0
+    if class_weight == "balanced":
+        pos_rate = pos / max(len(y_train), 1)
+        if 0.30 <= pos_rate <= 0.70:
+            return 1.0
+        return raw
+    # default "on"
+    return raw
+
+
 def _train_one_seed_dmpnn(
     task: str,
     seed: int,
@@ -400,6 +430,10 @@ def _train_one_seed_dmpnn(
     hidden: int,
     depth: int,
     device: torch.device,
+    class_weight: str = "on",
+    dropout: float = 0.0,
+    weight_decay: float = 0.0,
+    patience: int = 0,
 ) -> Dict[str, object]:
     """D-MPNN backbone on the same MoleculeNet scaffold split as the Morgan-MLP run."""
     smiles, labels = _load_task(task)
@@ -424,17 +458,31 @@ def _train_one_seed_dmpnn(
 
     torch.manual_seed(seed)
     np.random.seed(seed)
-    model = DMPNNMultiTaskModel(hidden=hidden, depth=depth).to(device)
-    opt = torch.optim.Adam(model.parameters(), lr=lr)
+    model = DMPNNMultiTaskModel(hidden=hidden, depth=depth, dropout=dropout).to(device)
+    opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    pos_weight_val = _resolve_pos_weight(y_all[train_idx], class_weight)
     pos = float(y_all[train_idx].sum())
-    neg = float(len(train_idx) - pos)
-    pos_weight = torch.tensor([neg / max(pos, 1.0)], device=device)
-    loss_fn = nn.CrossEntropyLoss(weight=torch.tensor([1.0, pos_weight.item()], device=device))
+    pos_rate_train = pos / max(len(train_idx), 1)
+    class_w = torch.tensor([1.0, pos_weight_val], device=device)
+    loss_fn = nn.CrossEntropyLoss(weight=class_w)
+    print(
+        f"[molnet:{task}]   class_weight={class_weight} pos_rate_train={pos_rate_train:.3f} "
+        f"pos_weight={pos_weight_val:.3f} dropout={dropout} wd={weight_decay} patience={patience}",
+        flush=True,
+    )
 
     best_val = -1.0
     best_state = None
     n_train = len(train_idx)
+    epochs_since_improve = 0
     for epoch in range(epochs):
+        if patience and epochs_since_improve >= patience:
+            print(
+                f"[molnet:{task}]   early-stop at epoch {epoch+1} "
+                f"(no val improvement for {patience} epochs)",
+                flush=True,
+            )
+            break
         model.train()
         perm = np.random.permutation(n_train)
         total_loss, n_batches = 0.0, 0
@@ -461,6 +509,9 @@ def _train_one_seed_dmpnn(
         if v_metrics["roc_auc"] > best_val:
             best_val = v_metrics["roc_auc"]
             best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+            epochs_since_improve = 0
+        else:
+            epochs_since_improve += 1
         if (epoch + 1) % max(1, epochs // 5) == 0 or epoch == 0:
             print(
                 f"[molnet:{task}]   epoch {epoch+1:3d}/{epochs} "
@@ -486,6 +537,11 @@ def _train_one_seed_dmpnn(
         "n_test": int(len(test_idx)),
         "pos_rate_train": float(y_all[train_idx].mean()),
         "pos_rate_test": float(y_all[test_idx].mean()),
+        "class_weight": class_weight,
+        "pos_weight_used": float(pos_weight_val),
+        "dropout": dropout,
+        "weight_decay": weight_decay,
+        "patience": patience,
         "test_metrics": test_metrics,
         "epochs": epochs,
     }
@@ -531,6 +587,10 @@ def _run_task(
     out_dir: Path,
     backbone: str = "morgan_mlp",
     depth: int = 3,
+    class_weight: str = "on",
+    dropout: float = 0.0,
+    weight_decay: float = 0.0,
+    patience: int = 0,
 ) -> Dict[str, object]:
     print(f"\n=== task {task} (backbone={backbone}) ===", flush=True)
     per_seed: List[Dict[str, object]] = []
@@ -539,7 +599,9 @@ def _run_task(
         try:
             if backbone == "dmpnn":
                 r = _train_one_seed_dmpnn(
-                    task, seed, epochs, batch_size, lr, hidden, depth, device
+                    task, seed, epochs, batch_size, lr, hidden, depth, device,
+                    class_weight=class_weight, dropout=dropout,
+                    weight_decay=weight_decay, patience=patience,
                 )
             else:
                 r = _train_one_seed(task, seed, epochs, batch_size, lr, hidden, device)
@@ -687,6 +749,16 @@ def _write_report(
         f"* `{out_path}` — this report.",
         "* `metrics/by_metric/moleculenet_auc_dmpnn.json` — aggregate JSON (per-task x per-seed).",
         "",
+        "## Baseline provenance (literature-sourced, protocol-differs)",
+        "",
+        "The Chemprop numbers in the table above are **literature-sourced** "
+        "(`CHEMPROP_DMPNN_BASELINE` / `CHEMPROP_RF_BASELINE`, constant block) and are "
+        "**NOT reproduced under our protocol**. They are best-of-hyperparameter-search "
+        "single-task runs; our runs use a shared-trunk multi-task head at fixed "
+        "hyperparameters. Where our AUC trails the literature value, part of the gap is "
+        "**tuning, not architecture**. Do NOT present the delta as a pure architecture "
+        "result, and do NOT adjust our number to match the literature.",
+        "",
     ]
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -719,6 +791,38 @@ def _parse_args(argv: List[str] | None = None) -> argparse.Namespace:
         help="Classifier backbone: Morgan-FP+MLP (morgan_mlp) or D-MPNN (dmpnn).",
     )
     p.add_argument("--depth", type=int, default=3, help="D-MPNN message-passing rounds")
+    p.add_argument(
+        "--class-weight",
+        choices=["on", "off", "balanced"],
+        default="on",
+        help=(
+            "Positive-class weighting for the classification head. 'on' (default, "
+            "legacy) = neg/pos weight; 'off' = plain unweighted loss (Chemprop "
+            "default); 'balanced' = apply neg/pos ONLY when pos_rate is outside "
+            "[0.30, 0.70] (i.e. skip weighting on near-balanced tasks like BACE)."
+        ),
+    )
+    p.add_argument(
+        "--dropout",
+        type=float,
+        default=0.0,
+        help="Dropout probability threaded into the D-MPNN backbone/readout (default 0.0).",
+    )
+    p.add_argument(
+        "--weight-decay",
+        type=float,
+        default=0.0,
+        help="Adam L2 weight decay (default 0.0).",
+    )
+    p.add_argument(
+        "--patience",
+        type=int,
+        default=0,
+        help=(
+            "Early-stop patience on val ROC-AUC (default 0 = disabled). "
+            "Best-val checkpoint is always kept regardless."
+        ),
+    )
     p.add_argument(
         "--out-dir",
         default="logs/metric_molnet",
@@ -787,6 +891,10 @@ def main(argv: List[str] | None = None) -> int:
             out_dir,
             backbone=args.backbone,
             depth=args.depth,
+            class_weight=args.class_weight,
+            dropout=args.dropout,
+            weight_decay=args.weight_decay,
+            patience=args.patience,
         )
         # Pull per-seed rows for the report (read back from disk)
         per_seed: List[Dict[str, object]] = []
@@ -810,6 +918,10 @@ def main(argv: List[str] | None = None) -> int:
         "lr": args.lr,
         "hidden": args.hidden,
         "depth": args.depth,
+        "class_weight": args.class_weight,
+        "dropout": args.dropout,
+        "weight_decay": args.weight_decay,
+        "patience": args.patience,
         "tasks": {
             task: {k: v for k, v in all_results[task].items() if k != "per_seed"}
             for task in args.tasks

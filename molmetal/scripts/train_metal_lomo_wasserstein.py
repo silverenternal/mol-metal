@@ -2065,6 +2065,26 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
 
     ns = apply_yaml_overrides(p, ns, getattr(ns, "config", None))
+
+    # The inverse silent no-op (2026-10-08): ``--wasserstein-real`` WITHOUT a
+    # positive ``--wasserstein-weight`` leaves ``w2_enabled`` False because
+    # the property requires BOTH (``wasserstein_real and weight > 0``). The
+    # flag is accepted, ``args.wasserstein_real`` is True, and the fold header
+    # prints ``real=True`` — but the W₂ term contributes exactly zero, so the
+    # caller believes the OOD regulariser is running when it is not. Warn after
+    # the YAML merge so a config-set ``wasserstein_real: true`` with an absent
+    # weight is caught too. (The weight!=0-without-real case is handled above.)
+    if ns.wasserstein_real and not (ns.wasserstein_weight > 0.0):
+        warnings.warn(
+            "--wasserstein-real has NO effect unless a positive "
+            "--wasserstein-weight is also passed: w2_enabled requires "
+            "real AND weight > 0, so the W₂ term stays OFF (w2_real=False, "
+            "w2_effective_weight=0.0). The fold header prints real=True "
+            "because it echoes the flag, not the effective state. Add e.g. "
+            "--wasserstein-weight 0.05 to actually apply the regulariser.",
+            UserWarning,
+            stacklevel=2,
+        )
     return ns
 
 
@@ -2147,13 +2167,17 @@ def _run_one(
     if args.device:
         device = torch.device(args.device)
     logger.info(
-        "=== fold held_out=%s seed=%d  epochs=%d  wass_w=%.4f (real=%s)  "
-        "synth_rh=%d  device=%s ===",
+        "=== fold held_out=%s seed=%d  epochs=%d  wass_w=%.4f (real=%s, "
+        "w2_effective=%s)  synth_rh=%d  device=%s ===",
         metal,
         seed,
         args.epochs,
         args.wasserstein_weight,
         bool(getattr(args, "wasserstein_real", False)),
+        bool(
+            getattr(args, "wasserstein_real", False)
+            and args.wasserstein_weight > 0.0
+        ),
         n_synthetic_rh,
         str(device) if device else "auto",
     )

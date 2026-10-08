@@ -1,0 +1,60 @@
+{
+  "wf_tag": "Wf-131 Phase 1 \u2014 5-metal multi-task D-MPNN with Wasserstein pIC50 regularisation (Ru AUC rescue)",
+  "metals": [
+    "Rh"
+  ],
+  "seeds": [
+    0
+  ],
+  "epochs": 50,
+  "alpha": 0.5,
+  "wasserstein_weight": 0.05,
+  "use_l2_guard": true,
+  "lr": 0.001,
+  "batch_size": 256,
+  "hidden": 300,
+  "depth": 3,
+  "device": "cuda:0",
+  "elapsed_seconds_total": 53.13806128501892,
+  "per_metal": {
+    "Rh": {
+      "n_seeds": 1,
+      "n_train": 696,
+      "n_val": 199,
+      "n_test": 223,
+      "test_auc_mean": 0.6823326771653543,
+      "test_auc_std": 0.0,
+      "test_pearson_mean": -0.20618922390005393,
+      "test_pearson_std": 0.0,
+      "test_rmse_mean": 4.5038098407664116,
+      "test_rmse_std": 0.0,
+      "ckpt_paths": [
+        "results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Rh/seed0/ckpts/dmpnn_mtw_rh_seed0.pt"
+      ],
+      "status": "OK"
+    }
+  },
+  "tf32": {
+    "enabled": false,
+    "current_allow_tf32_matmul": false,
+    "current_allow_tf32_cudnn": false,
+    "matmul_precision": "highest"
+  },
+  "bf16": {
+    "requested": true,
+    "apply": true,
+    "device": "cuda:0",
+    "is_cuda": true,
+    "fallback_occurred": false,
+    "fallback_reason": ""
+  },
+  "torch_compile_enabled": false,
+  "torch_compile_mode": "max-autotune-no-cudagraphs",
+  "torch_compile_cuda_graphs_disabled": true,
+  "dmpnn_backend": "pyg",
+  "dmpnn_backend_requested": "pyg",
+  "w2_gradient_mode": "sliced",
+  "ru_auc_target": 0.86,
+  "ru_auc_baseline_single_task": 0.7123,
+  "honest_framing_note": "Wf-131 P1 stacks multi-task (shared encoder + 5 per-metal heads) + Wasserstein pIC50 regularisation + L2 gradient-norm guard.  Smaller metals (Rh/Os/Re < 1.2k rows) give noisier per-seed AUC; per-seed spread is reported unfiltered.  The Ru AUC \u2265 0.86 target is PROJECTED (party-twenty-spirit \u00a73.5), not measured \u2014 the recipe stack has not been validated end-to-end on this cohort, so we report mean \u00b1 std honestly and let the per-seed metrics speak for themselves."
+}

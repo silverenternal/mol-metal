@@ -174,7 +174,7 @@
     },
     "per_fold_delta": {
       "Ru": -0.0354003750398979,
-      "Ir": -0.0461560235358870,
+      "Ir": -0.046156023535887,
       "Os": 0.0630504833504852,
       "Rh": 0.1209784735812133,
       "Re": 0.0321609379163336
@@ -186,21 +186,39 @@
     "rh_fold_baseline": 0.381174168297456,
     "rh_fold_centering": 0.5021526418786693,
     "rh_fold_delta": 0.1209784735812133,
-    "rh_fold_baseline_per_seed": [0.3780821917808219, 0.4309197651663405, 0.35264187866927593, 0.38140900195694716, 0.3628180039138943],
-    "rh_fold_centering_per_seed": [0.4590998043052838, 0.5183953033268102, 0.46634050880626227, 0.6154598825831702, 0.45146771037181993],
+    "rh_fold_baseline_per_seed": [
+      0.3780821917808219,
+      0.4309197651663405,
+      0.35264187866927593,
+      0.38140900195694716,
+      0.3628180039138943
+    ],
+    "rh_fold_centering_per_seed": [
+      0.4590998043052838,
+      0.5183953033268102,
+      0.46634050880626227,
+      0.6154598825831702,
+      0.45146771037181993
+    ],
     "alpha_lever_reproduction_rh_only": {
       "run": ".venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --metals Rh --seeds 0 1 2 3 4 --epochs 30 --device cuda:0 --rh-oversample 0 --alpha 1.0",
       "note": "MEASURED in the planning session; per-seed values recorded in the F3 file's real-only block. Single-metal (Rh), NOT a 5-metal panel.",
       "alpha_0_5_baseline_rh": 0.3782,
       "alpha_1_0_rh": 0.4352,
-      "delta": 0.0570
+      "delta": 0.057
     },
     "centering_plus_alpha1_combination_rh_only": {
       "run": ".venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --metals Rh --seeds 0 1 2 3 4 --epochs 30 --device cuda:0 --rh-oversample 0 --per-metal-pic50-center --alpha 1.0 --out-dir /tmp/m19_ctr_a1_rh",
       "source_per_seed_metrics": "molmetal/reports/m19_centering_plus_alpha1_rh_2026_10_08/Rh/per_seed_metrics.json",
       "value": 0.4185,
       "value_std": 0.0236,
-      "per_seed": [0.4159, 0.3959, 0.4112, 0.4638, 0.4057],
+      "per_seed": [
+        0.4159,
+        0.3959,
+        0.4112,
+        0.4638,
+        0.4057
+      ],
       "verdict": "HONEST_NEGATIVE_LEVERS_DO_NOT_STACK",
       "interpretation": "centering (alpha=0.5) on Rh = 0.5022; adding alpha=1.0 (drop regression) drops it to 0.4185 (-0.084), i.e. WORSE than either centering alone (0.5022) or alpha=1.0 alone (0.4352). The two levers interfere: the centered regression auxiliary is helping, so removing it (alpha=1.0) hurts. Recommendation: use --per-metal-pic50-center ALONE (alpha default 0.5); do not combine with alpha=1.0."
     },
@@ -220,5 +238,36 @@
   },
   "cohort_resolution_verdict": "WF139P7_SYNTHETIC_LABELS",
   "synthetic_label_provenance_warning": "The synthetic Rh rows carry FABRICATED potency labels, not measured IC50. molmetal/scripts/train_metal_lomo_wasserstein.py::append_synthetic_rh_to_dataset hard-codes them: active rows get IC50_Dark_value=0.1 / pIC50=7.0, inactive rows IC50_Dark_value=10.0 / pIC50=5.0 (function body ~L595-605). Because the multitask regression head trains on pIC50 as well as the classification label, these constants are direct supervision on a fabricated target. Any pIC50 output from a wave that appended the synthetic Rh cohort is not a measurement. Separately, rows are filtered to Catherine-6/6-PASS Rh compounds in load_rh_synthetic_smiles (~L510-518), so the appended set is doubly non-representative of the real Rh chemical space.",
-  "real_only_fold_value_note": "aligned to the live 25-run real-only measurement (real_only_pa_m19_re_measurement_2026_10_08); the prior 0.381 described the retracted 7-run synthetic wave, preserved under synthetic_augmented_baseline_preserved_for_diff"
+  "real_only_fold_value_note": "aligned to the live 25-run real-only measurement (real_only_pa_m19_re_measurement_2026_10_08); the prior 0.381 described the retracted 7-run synthetic wave, preserved under synthetic_augmented_baseline_preserved_for_diff",
+  "m1_w2_onoff_deconfound_2026_10_08": {
+    "description": "W1 clean real-only M1 ON/OFF ablation (de-confounds the W2 transfer term). Both arms are 25-run (5 metals x 5 seeds x 30 epochs), rh_oversample=0, real-only. OFF = the canonical headline run (dmpnn_clean5_lomo); ON = --wasserstein-real --wasserstein-weight 0.05 --wasserstein-cadence every-batch. Run on GPU cuda:0.",
+    "source_on_metric": "molmetal/reports/m1_realonly_w2on_every-batch_30ep/metrics.json",
+    "source_off_metric": "molmetal/reports/dmpnn_clean5_lomo/metrics.json",
+    "on_value": 0.5349410615267954,
+    "off_value": 0.5575471269535148,
+    "delta_on_minus_off": -0.0226060654267194,
+    "per_fold_on": {
+      "Ru": 0.5888439057551131,
+      "Ir": 0.5901083751588935,
+      "Os": 0.556015037593985,
+      "Rh": 0.379412915851272,
+      "Re": 0.5603250732747136
+    },
+    "per_fold_off": {
+      "Ru": 0.5971611904294237,
+      "Ir": 0.5975135305140941,
+      "Os": 0.5831364124597207,
+      "Rh": 0.381174168297456,
+      "Re": 0.6287503330668799
+    },
+    "per_fold_delta": {
+      "Ru": -0.0083172846743106,
+      "Ir": -0.0074051553552006,
+      "Os": -0.0271213748657357,
+      "Rh": -0.0017612524461842,
+      "Re": -0.0684252597921663
+    },
+    "verdict": "HONEST-NEGATIVE: turning the W2 transfer term ON (weight 0.05, every-batch) LOWERS the real-only LOMO aggregate by 0.023 (0.5575 -> 0.5349), driven by Re (-0.068). The W2 regulariser is not a lever for this metric. This also matches the G6 per-innovation ablation (no_wass vs no_multi_task on Ru/Rh: delta <= 0.008, inside seed std). De-confounds the earlier +0.049 claim, which was confounded by cadence.",
+    "caveat": "n=5 seeds; per-fold AUC resolution on the small OOD folds (Rh n_test=108, Os n_test=87) is ~0.06, so Re's -0.068 is ~1 resolution unit of a 3668-test fold and is the one fold worth re-checking; Ru/Ir/Os/Rh moves are all below their fold resolution."
+  }
 }
