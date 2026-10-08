@@ -1027,8 +1027,14 @@ class WassersteinLOMORunner:
         # offset, which is pure label noise from the encoder's point of view
         # and actively degrades the shared trunk that the classification head
         # reads.  Measured effect on Rh LOMO (this script, seeds 0-4):
-        # alpha=0.5 (default, raw target) -> 0.338; alpha=0.0 (no regression
-        # term at all) -> 0.516.  Centering keeps the auxiliary signal (which
+        # alpha=0.5 (default, raw target) -> 0.338.  The 0.516 ablation that
+        # this comment once attributed to "alpha=0.0 (no regression term)" is
+        # mislabelled: the live loss is alpha*cls + (1-alpha)*reg, so dropping
+        # regression is alpha=1.0, not 0.0 (alpha=0.0 zeroes the CLASSIFICATION
+        # term).  See metrics/by_metric/f3_dmpnn_lomo_target_centering.json
+        # label_correction_2026_10_08; that lift is unreproduced on the
+        # real-only protocol and must not be used to set any default.
+        # Centering keeps the auxiliary signal (which
         # correlates 0.68-0.81 with the label WITHIN each metal) while
         # removing the unidentifiable component.
         #

@@ -3717,6 +3717,7 @@ def evaluate_generation_validity(
     sa_target: Optional[float] = None,
     chemistry_out: Optional[Dict[str, Any]] = None,
     chemistry_rows_out: Optional[List[Optional[Dict[str, Any]]]] = None,
+    smiles_out: Optional[List[str]] = None,
 ) -> Tuple[int, int]:
     """Generate from noise, decode, and count RDKit-strict successes.
 
@@ -3777,6 +3778,11 @@ def evaluate_generation_validity(
         try:
             res = decoder.decode(cloud)
             smi = getattr(getattr(res, "decoded", None), "smiles", None)
+            # Wf-R44 m4/m5/m7 — persist the decoded SMILES.  These strings were
+            # computed and thrown away here; without them no decode->panel link
+            # exists and m4/m5/m7 stay UNMEASURED (property panel is post-hoc).
+            if smiles_out is not None and smi:
+                smiles_out.append(smi)
             # D4: judge metal presence against THIS sample's seed, not the
             # corpus-wide target set.  Passing the seed in is what turns the
             # saturated 1.000 `metal_ratio` into a metric that can fail.
@@ -4669,6 +4675,23 @@ def parse_args() -> argparse.Namespace:
             "resamples of the same few.  Per-seed gen_validity is written to "
             "events.jsonl (event=gen_eval) so the spread is visible instead "
             "of being averaged away.  Default '0 1 2'."
+        ),
+    )
+    p.add_argument(
+        "--save-generated-smiles",
+        dest="save_generated_smiles",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-R44 NEW: persist the SMILES decoded during generation eval to "
+            "<out_dir>/generated_smiles.csv (columns: epoch,smiles), appended "
+            "each epoch.  This is the missing decode->panel link: before it, "
+            "the decoded strings were discarded and no generated cohort "
+            "existed to feed cfm_property_panel, so m4 SA / m5 QED / m7 "
+            "diversity could not be measured on model output at all.  Needs "
+            "the generation eval on (--gen-validity-samples > 0 or "
+            "--gen-eval-n).  Off by default: a normal run still writes only "
+            "per_epoch_metrics.json (bit-for-bit unchanged)."
         ),
     )
     p.add_argument(
@@ -7505,6 +7528,9 @@ def main() -> int:
                 # parseable SMILES exactly as heavily as a full one.
                 _gen_rows: List[Optional[Dict[str, Any]]] = []
                 _gen_chem_rows: List[Optional[Dict[str, Any]]] = []
+                # Wf-R44 — decoded SMILES for this eval epoch, so they can be
+                # persisted and scored by cfm_property_panel (m4/m5/m7 link).
+                _gen_smiles: List[str] = []
                 _gen_errs = 0
                 _gen_first_err = ""
                 for _si, _sd in enumerate(_gen_seeds):
@@ -7540,6 +7566,7 @@ def main() -> int:
                         else None,
                         chemistry_out=_chem_seed,
                         chemistry_rows_out=_rows_seed,
+                        smiles_out=_gen_smiles,
                     )
                     _gen_ok += int(_ok_s)
                     _gen_tot += int(_tot_s)
@@ -7564,6 +7591,26 @@ def main() -> int:
                 _gen_chem["n_decode_error"] = int(_gen_errs)
                 if _gen_first_err:
                     _gen_chem["decode_error_example"] = _gen_first_err
+                # Wf-R44 — persist the decoded SMILES so a downstream
+                # cfm_property_panel run can score them.  This is the missing
+                # decode->panel link: before it, m4/m5/m7 had no generated
+                # cohort to measure and stayed UNMEASURED.  Gated on the flag
+                # so a normal run pays nothing.
+                if bool(getattr(args, "save_generated_smiles", False)) and _gen_smiles:
+                    _smi_path = out_dir / "generated_smiles.csv"
+                    import csv as _csv
+
+                    # Append-only across epochs: each row carries its epoch so
+                    # a later panel can take the last epoch, or all of them.
+                    _new_file = not _smi_path.exists()
+                    with _smi_path.open("a", encoding="utf-8", newline="") as _fh:
+                        _w = _csv.writer(_fh)
+                        if _new_file:
+                            _w.writerow(["epoch", "smiles"])
+                        for _s in _gen_smiles:
+                            _w.writerow([int(epoch), _s])
+                    _gen_chem["generated_smiles_csv"] = str(_smi_path)
+                    _gen_chem["generated_smiles_n"] = len(_gen_smiles)
             except Exception as _gen_exc:
                 print(
                     f"[cfm-gen][WARNING] generation eval failed "

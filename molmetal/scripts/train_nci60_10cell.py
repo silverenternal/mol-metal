@@ -105,6 +105,7 @@ from molmetal.baselines.dmpnn import (
     collate_graphs,
     _GRUUpdate,
 )
+from molmetal.baselines.dmpnn_multitask import MT_ALPHA
 from molmetal.baselines.eval_utils import compute_metrics
 from molmetal.data.splits import ScaffoldSplitter
 
@@ -157,7 +158,6 @@ MT_DROPOUT: float = DMPNN_DROPOUT
 MT_LR: float = DMPNN_LR
 MT_BATCH_SIZE: int = 32
 MT_EPOCHS: int = 50
-MT_ALPHA: float = 0.5  # BCE weight; (1-alpha) → MSE on pIC50
 
 METRICS_DIR = PROJECT_ROOT / "metrics" / "by_metric"
 REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports"

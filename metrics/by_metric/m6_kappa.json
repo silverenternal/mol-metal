@@ -2,7 +2,7 @@
   "metric": "m6_kappa",
   "description": "Shape Kappa Index — mean of normalised RDKit Kappa1/2/3 in [0, 1] (ChemAxon PMC11387870 convention).  Wf-252-Apply Fix #2 (F2-M6Kappa) additive metric, complementing RDKit Bickerton 2012 QED for metallodrugs.",
   "unit": "ratio (0-1, higher = more branched kappa shape)",
-  "scope": "drug-likeness panel (metrics_v2 Wf-252 F2 add-on)",
+  "scope": "TRAINING-COHORT panel, NOT model output. Measures m6_kappa over metallo_drugs_500_train.csv (n=449, the corpus the CFM trains on); it is a data-property descriptor, NOT a generation-quality metric. Do not read any value here as a claim about CFM-generated molecules. (Wf-R44 scope correction.)",
   "source": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py:m6_kappa_from_smiles",
   "value": 0.4719079955824899,
   "std": 0.15883008562234383,
@@ -12,7 +12,7 @@
   "data_source": "metallo_drugs_500_train.csv",
   "timestamp": "2026-10-01",
   "status": "MEASURED",
-  "verdict": "MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL",
+  "verdict": "MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL (TRAINING-COHORT property — describes metallo_drugs_500_train.csv, not CFM generations; Wf-R44)",
   "wf389a1_supplementary_reframe": {
     "wf": "Wf-389-A1",
     "description": "Wf-389-A1 §3 metric table reframe: m6_kappa DROPPED from §3 main-result; PROMOTE top-3 alternatives (MolLogP + MorganDensity_r2 + Chi3v) to §3 supplementary sub-table; verdict field set to MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL per task brief. Convergence of Wf-376-A4 §3 reframe + Wf-377-A1 §4.2 top-3 promotion.",

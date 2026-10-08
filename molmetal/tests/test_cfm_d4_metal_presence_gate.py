@@ -302,6 +302,11 @@ def test_gate_does_not_alter_the_eval_return_shape(trainer):
         "sa_target",
         "chemistry_out",
         "chemistry_rows_out",
+        # Wf-R44 — the decoded-SMILES collector, so the generation eval can
+        # hand its output to a property panel.  Listed here for the same
+        # reason as sa_target: this assertion is the tripwire that catches a
+        # kwarg added to the eval without the caller being updated.
+        "smiles_out",
     ]
     src = inspect.getsource(trainer.evaluate_generation_validity)
     # The function body must never branch on the gate verdict.

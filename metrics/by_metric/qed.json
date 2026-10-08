@@ -5,7 +5,8 @@
   "scope": "Tier-1 metric \u2014 paper \u00a74 main-result; target >= 0.50",
   "source": "molmetal/molmetal_lam/sbdd_env.qed_scorer.qed_from_smiles(smiles) (existing)",
   "wf_tag": "wf432a1_qed_aware_reward_scaffold",
-  "verdict": "TBD \u2014 QED-aware reward shaping SCAFFOLD shipped per Wf-380-A6 SA penalty module (analog pattern); MEASURED-on-real PlatinAI 500-mol cohort pending GPU retrain USER_OK-gated per AGENTS.md \u00a75.1",
+  "verdict": "TBD \u2014 NO MEASURED VALUE ON CFM OUTPUT. Wf-R44: there is no QED number for generated molecules in this file; the --qed-penalty reward-shaping SCAFFOLD exists but is unwired, and no generated cohort was ever scored. The decode->panel link (trainer --save-generated-smiles -> generated_smiles.csv -> cfm_property_panel) is now on disk (Wf-R44); a real number still needs a GPU retrain with --gen-validity-samples > 0 --save-generated-smiles (PROJECTED/BLOCKED, no GPU in this wave). MEASURED-on-real PlatinAI 500-mol cohort pending GPU retrain USER_OK-gated per AGENTS.md \u00a75.1",
+  "measured_value_present": false,
   "task_id": "A2_fix_step3_cat_b",
   "timestamp": "2026-10-01T21:14:43.243963+00:00",
   "qf388_a1_platinai_500mol_scaffold": {
