@@ -2,7 +2,7 @@
 
 **Date**: 2026-09-27 (Wf-124 P3 gap analysis per `party-twenty-spirit` §3.5)
 **Owner**: Hugo Lee + ultracode agent
-**Status**: 🚧 P1 — IN-FLIGHT (Wf-124 P3 ran 30 epochs due to session time budget; 50-epoch full sweep needed for convergence)
+**Status**: ✅ CLOSED (2026-10-08 disk re-verification) — G5 50-epoch full sweep complete; see `TODO/completed/181_wf181_g5_50epoch_full_sweep_closeout.md` (15/15 pairs after Wf-310A re-aggregation) + the wf131 5-metal REAL LOMO 25/25 run (`TODO/completed/wf131_p3_5metal_lomo_25pairs_complete.md`). This file is the original gap analysis, kept as a historical artifact. See `TODO/completed/laneD_todo_180_181_182_disposition.md` §2.
 **Parent**: `molmetal/reports/wf124_p3_multitask/synthesis.md` §0 + `TODO/pending/120_m1_ru_auc_strengthen.md` §3 P1.2
 **Sibling**: `TODO/pending/180_wf124_p3_remaining_metals_seeds.md` (G4) + `TODO/pending/182_wf124_p3_per_innovation_ablation.md` (G6)
 

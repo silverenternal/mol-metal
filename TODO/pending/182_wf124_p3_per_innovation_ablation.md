@@ -2,7 +2,7 @@
 
 **Date**: 2026-09-27 (Wf-124 P3 gap analysis per `party-twenty-spirit` §3.5)
 **Owner**: Hugo Lee + ultracode agent
-**Status**: 🚧 P1 — IN-FLIGHT (Wf-124 P3 ran all 3 innovations simultaneously; per-innovation ablation NOT done)
+**Status**: 🚧 P1 — PARTIAL (2026-10-08 disk re-verification): a 5-epoch × Ru-seed0 × 4-config ablation IS on disk (`molmetal/reports/wf124_p3_ablation/ablation_report.json`), but the full 60-run matrix (5 metals × 3 seeds × 4 configs × 50 epochs) is NOT run → GPU-BLOCKED (needs USER_OK per AGENTS.md §5.1; not Tier-2-gating per §5.4). See `TODO/completed/laneD_todo_180_181_182_disposition.md` §3.
 **Parent**: `molmetal/reports/wf124_p3_multitask/synthesis.md` §3 honest framing + `TODO/pending/119_decode_ratio_strengthen.md` §1.4
 **Sibling**: `TODO/pending/180_wf124_p3_remaining_metals_seeds.md` (G4) + `TODO/pending/181_wf124_p3_50_epoch_full_sweep.md` (G5)
 

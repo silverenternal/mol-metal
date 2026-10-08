@@ -2,7 +2,7 @@
 
 **Date**: 2026-09-27 (Wf-124 P3 gap analysis per `party-twenty-spirit` §3.5)
 **Owner**: Hugo Lee + ultracode agent
-**Status**: 🚧 P1 — IN-FLIGHT (Wf-124 P3 §4 reports only Ru seed=0 MEASURED; 14 PENDING)
+**Status**: ✅ CLOSED (2026-10-08 disk re-verification) — G4 14 pairs MEASURED; aggregator path-mismatch fixed in `molmetal/reports/wf278a_g4_aggregation_fix/fix_report.md` (0 → 14 pairs). This file is the original gap analysis, kept as a historical artifact. See `TODO/completed/laneD_todo_180_181_182_disposition.md` §1.
 **Parent**: `TODO/pending/120_m1_ru_auc_strengthen.md` §3 P1.2 + `molmetal/reports/wf124_p3_multitask/synthesis.md` §4
 **Sibling**: `TODO/pending/181_wf124_p3_50_epoch_full_sweep.md` (G5) + `TODO/pending/182_wf124_p3_per_innovation_ablation.md` (G6)
 
