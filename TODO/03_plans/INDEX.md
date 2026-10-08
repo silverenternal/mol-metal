@@ -6,7 +6,7 @@ Per-topic strategic plans — one line per R* plan + cross-link to R* file. Repl
 
 ## R17 — CFM + multi-task anti-cancer metric suite
 
-- [`R17_AUC_RECOVERY_PLAN.md`](R17_AUC_RECOVERY_PLAN.md) (~25k LOC) — Multi-task D-MPNN 5-metal retrain; m1_auc recovery ≥ 0.83; closed via Wf-131 P3 + Wf-379-A1 + Wf-413-A1; canonical 7/7 (metal, seed) aggregate `metrics/by_metric/metal_lomo_auc_wasserstein.json`
+- [`R17_AUC_RECOVERY_PLAN.md`](R17_AUC_RECOVERY_PLAN.md) (~25k LOC) — Multi-task D-MPNN 5-metal retrain; m1_auc recovery ≥ 0.83; closed via Wf-131 P3 + Wf-379-A1 + Wf-413-A1; canonical aggregate is now the **real-only 5-fold** `metrics/by_metric/metal_lomo_auc_wasserstein.json` (`n_runs=25`, `n_synthetic_rh_appended=0`, overall `0.5575`; the older 7/7 synthetic-augmented `0.7577` is retired to historical diff)
 
 ## R18 — Mathematical theorem integration
 

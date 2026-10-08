@@ -268,7 +268,7 @@ These 9 hooks run POST-RETRAIN (not pre-retrain — they need actual retrain out
 
 - **Purpose**: Per-seed + per-split 5-fold CV × 5-metal subset (Ru/Ir/Rh/Re/Os) statistics (per `PROTOCOL_ALIGNMENT_MATRIX.md` §1.1)
 - **Spec**: For each (metal × seed × fold) tuple, emit `{mean_auc, std_auc, per_fold_auc, n_positives, n_negatives}` JSON record
-- **Source**: `molmetal/reports/wf131_p3_deferred_runs/per_seed_metrics_seed*.json` (template) + `metrics/by_metric/metal_lomo_auc_wasserstein.json` (current state per Wf-413-A1: 7/7 runs complete, Rh 0.8798 + Re 0.7088 + overall 0.7577)
+- **Source**: `molmetal/reports/wf131_p3_deferred_runs/per_seed_metrics_seed*.json` (template) + `metrics/by_metric/metal_lomo_auc_wasserstein.json` (**current state 2026-10-08**: real-only 5-fold, `n_runs=25`, `n_synthetic_rh_appended=0`, overall `0.5575`; the older synthetic-augmented `0.7577` is superseded and kept only for historical diff)
 - **Verdict gate**: `PASS` if 5+ metals × 5 seeds × 5 folds (125+ records) present; else `WARN`
 - **Wave**: post-retrain
 
