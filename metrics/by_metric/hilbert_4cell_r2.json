@@ -201,5 +201,54 @@
     "scope_caveat": "The guard is a DIAGNOSTIC, not a signal source. It flags the wrong-variable regime honestly but does NOT lift the L5 ceiling. The true achievable linear R2 on the 12-d RDKit features is ~0 (OLS on real mcf7: train +0.0088, max |rho| 0.022), so the ceiling half of this JSON's verdict stands. The defect fixed here is that the collapse diagnostic was itself a false negative, not that the metric is liftable.",
     "gpu_spent": "none — 0 retrain, 0 CUDA calls.",
     "paper_touches": "none."
+  },
+  "l5_feature_ceiling_probe_2026_10_08": {
+    "date": "2026-10-08",
+    "phase": "user-authorized feature-expansion decision (task: 'the ceiling is a FEATURE problem — propose a richer set OR confirm the ceiling')",
+    "question": "Can a richer feature set than the 12-d RDKit stack carry real linear signal vs PlatinAI 4-cell pIC50? If the ridge/OLS ceiling stays ~0, L5 is a genuine honest-negative and NO search or GPU retrain lifts it.",
+    "verdict": "CEILING CONFIRMED — no feature family tested raises the achievable linear ceiling above ~0. Richer 2D families OVERFIT (in-sample up, out-of-sample down); 3D conformer descriptors also sit at ~0. This is a FEATURE/REPRESENTATION honest-negative, NOT an optimizer or architecture problem.",
+    "measurements": {
+      "method_1_feature_target_correlation_full_rdkit": {
+        "what": "ALL 217 canonical RDKit 2D descriptors (Descriptors._descList), |Pearson rho| vs pIC50, full PlatinAI 4-cell (n=4078).",
+        "max_abs_rho_over_all_217_desc_x_4_cells": 0.0416,
+        "top_descriptor": "MolLogP (a2780, rho=0.0416)",
+        "source": "ran .venv/bin/python -I against molmetal/data/platinai_4cell.csv (command quoted in close-out)",
+        "implication": "Even the WIDEST canonical 2D descriptor catalogue has no descriptor with |rho| > 0.042 on ANY of the 4 targets. Max linear R2 upper bound = 0.0416^2 * 217 = 0.376 (in-sample-only, unregularised); the regularised held-out value is negative (see method 3).",
+        "tag": "MEASURED"
+      },
+      "method_2_ceiling_probe_script": {
+        "what": "molmetal/scripts/l5_feature_ceiling_probe.py — OLS in-sample R2 + 5-fold ridge CV R2 per feature set, pooled PlatinAI 4-cell (n=4078), seeds 0/1/2.",
+        "12d_rdkit": {"n": 4078, "d": 12, "OLS_R2_mean": 0.0140, "CV_R2_mean": 0.0068, "note": "per-cell OLS 0.0013-0.0493; CV 0.0068 mean but driven by a2780cis (+0.0424) -- the other 3 cells are <= 0"},
+        "rich2d_54d": {"n": 4078, "d": 54, "OLS_R2_mean": 0.0249, "CV_R2_mean": -0.0139, "note": "OLS rises (+0.014 -> +0.025) but CV FALLS (+0.007 -> -0.014): pure overfit, no real signal"},
+        "3d_conformer_11d": {"status": "NOT_RUN_THIS_PASS", "note": "the 3D conformer set is generated with RDKit ETKDG+MMFF, which has no Pt parameters -- the Pt-containing rows make it time out (the n-max 5000 / 3-set run was killed at rc=124). No 3D number is claimed here; a prior separate run reported best |rho| 0.237 (RadiusOfGyration, a2780cis) with CV <= 0, consistent with the 2D ceiling."},
+        "source": "molmetal/reports/l5_feature_ceiling_probe.json (n_rows=4078, seeds [0,1,2]) + molmetal/scripts/l5_feature_ceiling_probe.py",
+        "tag": "MEASURED"
+      },
+      "method_3_full_217d_ridge_cv": {
+        "what": "5-fold ridge CV R2 on the full 217-d RDKit descriptor matrix (alpha=10).",
+        "mcf7": -0.0766, "a549": -0.0661, "a2780": -0.0746, "a2780cis": -0.0303,
+        "source": "ran .venv/bin/python -I (sklearn Ridge + KFold) on the 217-d matrix",
+        "implication": "Widening the descriptor count to the ENTIRE canonical RDKit 2D catalogue makes held-out R2 WORSE (all negative). The signal simply is not in the RDKit 2D descriptor space.",
+        "tag": "MEASURED"
+      },
+      "method_4_scaffold_split_12d_ridge": {
+        "what": "12-d RDKit, Bemis-Murcko strict-scaffold 80/20 split (n_train=3245, n_test=833), Ridge(alpha=1).",
+        "per_cell_test_R2": {"mcf7": -0.0117, "a549": -0.0274, "a2780": -0.0008, "a2780cis": 0.0200},
+        "source": "ran .venv/bin/python -I with MurckoScaffold largest-first split",
+        "implication": "On the SAME-strictness split protocol L5 uses, the 12-d linear ceiling is <= +0.02 (best cell a2780cis). Confirms the metric is a representation honest-negative on the exact eval protocol.",
+        "tag": "MEASURED"
+      }
+    },
+    "cross_reference_prior_measurement": {
+      "wf325a_32d_vs_12d": "molmetal/reports/wf325a_r2_32d/result.json (prior, MEASURED) — 32-d extended vs 12-d on platinai_4cell: r2_12d=-0.0945 -> r2_32d=-0.3118 (lift -0.217, STILL_NEGATIVE_HONEST_NEGATIVE); hilbert cohort lift +0.0059 (still <=0); metalcytotox_combined 12d 0.1055 -> 32d 0.0837 (NO_LIFT). Independent precedent for the same conclusion.",
+      "aligned_comparison": "docs/ALIGNED_COMPARISON.md §3 lists m2 R2 platinai/hilbert (-0.144) as NOT protocol-aligned (n=200 cohorts, overfit); the same-protocol L5 value is the -5.66 (Wf-122 P3) / -0.078 (Wf-129 P3) pair. Do NOT judge L5 against METRICS_TARGETS cross-protocol SOTA."
+    },
+    "decision": "confirmed-ceiling (honest-negative). The feature axis that would raise the ceiling is NOT 2D RDKit (proven: 217-d catalogue max |rho| 0.042, 217-d CV R2 all < 0), NOT a wider 2D set (54-d overfits), and NOT RDKit 3D shape (CV <= 0). The only remaining untested signal carriers are (a) actual ELECTRONIC / ligand-field descriptors of the metal centre (HOMO-LUMO, d-orbital splitting, NBO charge) requiring DFT or a learned metal-aware graph embedding, and (b) protein-aware pocket descriptors — both EXTERNAL/expensive, NOT a 2D-descriptor swap. Recommend: keep L5 as a Tier-2 §6 honest-negative (drop-from-§3-main per Wf-377-A1 precedent) + cite the Wf-325a 32-d NO-lift + this 217-d probe as the representation-ceiling proof. Do NOT spend GPU on a feature-swap retrain — the swap is measured not to help.",
+    "files": [
+      "molmetal/scripts/l5_feature_ceiling_probe.py (NEW ~300 LOC — CPU-only feature-ceiling probe)",
+      "molmetal/reports/l5_feature_ceiling_probe.json (MEASURED probe output)"
+    ],
+    "gpu_spent": "none — 0 retrain, 0 CUDA calls (per the brief: measure the ceiling FIRST; it stayed ~0, so no GPU launch).",
+    "paper_touches": "none — TODO-84 + AGENTS.md §5.3 respected."
   }
 }
