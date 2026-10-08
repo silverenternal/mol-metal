@@ -144,13 +144,39 @@ fi
 # USER_OK gate (Wf-306D — Wf-300C pattern: user explicit approval required
 # for any 7.5h wall launch; per kill_then_adapt standing directive, never auto-
 # trigger wall-time without user OK).
-if [[ -z "${USER_OK:-}" ]]; then
+if [ "${USER_OK:-0}" != "1" ]; then
   echo "USER OK REQUIRED — kill_then_adapt standing directive."
   echo "G6 = 60 (config × metal × seed) tuples × ~7.5 hr wall-time on RTX 5090."
   echo "Re-run with:  USER_OK=1 bash scripts/launch_wf310b_g6_final.sh"
   exit 1
 fi
 echo "[Wf-310B] USER_OK set — proceeding with 60-tuple G6 launch (wall ~7.5 hr)" | tee -a "${LOG}"
+
+# ---- DRY_RUN.log + plan.json emission (Wf-363-A1 schema) ----
+DRY_RUN_LOG_HELPER="/home/hugo/codes/mol-metal/scripts/_dry_run_log_helper.sh"
+[ -f "${DRY_RUN_LOG_HELPER}" ] || { echo "FATAL: DRY_RUN log helper missing: ${DRY_RUN_LOG_HELPER}"; exit 1; }
+source "${DRY_RUN_LOG_HELPER}"
+mkdir -p "${OUT_BASE}/plan"
+cat >"${OUT_BASE}/DRY_RUN.log" <<EOF
+[DRY-RUN] launch_wf310b_g6_final.sh @ wf310b
+[DRY-RUN] wrapper_name=launch_wf310b_g6_final.sh
+[DRY-RUN] trainer=molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+[DRY-RUN] py=/home/hugo/codes/mol-metal/.venv/bin/python
+[DRY-RUN] user_ok_required: true (USER_OK=1 confirmed)
+EOF
+cat >"${OUT_BASE}/plan.json" <<EOF
+{
+    "wrapper": "launch_wf310b_g6_final.sh",
+    "wf_origin": "wf310b",
+    "mode": "dry-run",
+    "user_ok_required": true,
+    "trainer": "molmetal/scripts/train_dmpnn_multitask_wasserstein.py",
+    "py": "/home/hugo/codes/mol-metal/.venv/bin/python",
+    "out_dir": "${OUT_BASE}",
+    "expected_cohort": {"n_tuples": 60, "wall_hr": 7.5},
+    "kill_then_adapt_directive": "USER_OK gate HARD-REQUIRED per AGENTS.md §5.1"
+}
+EOF
 
 # ---- Pre-flight check (Wf-306C PART 1: 32/32 v3 PASS required) ----
 echo "=== Pre-flight check START $(date) ===" | tee -a "${LOG}"
@@ -220,6 +246,7 @@ run_tuple() {
     --csv "${DATA_CSV}" \
     --data-csv "${DATA_CSV}" \
     --out-dir "${OUT_BASE}/${cfg}/${metal}/seed${seed}" \
+    --user-ok "REQUIRED" \
     --ckpt-dir "${OUT_BASE}/${cfg}/${metal}/seed${seed}/ckpts" \
     ${CONFIRMED_FLAGS[$cfg]} \
     "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"

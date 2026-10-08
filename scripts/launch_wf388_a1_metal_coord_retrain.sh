@@ -137,6 +137,9 @@ set -euo pipefail
 # Locate repo root + scaffold script + real trainer
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "${SCRIPT_DIR}/.." && pwd )"
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
+export PYTHONPATH="/home/hugo/codes/mol-metal"
 TRAINER="${PROJECT_ROOT}/molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
 # 2026-10-07 (user directive: "所有启动脚本都用yaml管理…不要用cli,那样不好追溯").
 # The trainer already accepts --config and ends parse_args() in
@@ -246,6 +249,17 @@ fi
 # -----------------------------------------------------------------------------
 [ -f "${TRAINER}" ]  || die "Trainer script missing: ${TRAINER}"
 [ -f "${DATA_CSV}" ] || die "Cohort CSV missing: ${DATA_CSV} (Wf-261 strict scaffold split + v4 cohort)"
+
+# --- Pre-flight gate (Wf-415-A3 + Wf-427-B1) ------------------------------
+PREFLIGHT_OUT="${LOG_DIR}/preflight.json"
+echo "[$(date -Iseconds)] ${BASH_SOURCE[0]} pre-flight check begin"
+PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python \
+    "${PROJECT_ROOT}/molmetal/scripts/pre_flight_check.py" --pipeline launch \
+    >"${PREFLIGHT_OUT}" 2>&1 \
+    || die "pre_flight_check FAIL — see ${PREFLIGHT_OUT}"
+grep -q '"fail": 0' "${PREFLIGHT_OUT}" \
+    || die "pre_flight_check has FAILs — see ${PREFLIGHT_OUT}"
+echo "[$(date -Iseconds)] pre-flight PASS"
 # Wf-422-B1 / Wf-419-A1: pre-flight check is opt-in via /tmp/preflight_all.json
 # (must be invoked BEFORE this wrapper; per AGENTS.md §1.4 the user's
 # pre-flight verification must be CLEAN before any retrain launch).
@@ -299,7 +313,7 @@ for pair in "${PAIRS[@]}"; do
 done
 
 # Build the trainer flag string for DRY_RUN.log emission (--smoke / --actual)
-TRAINER_FLAGS="(--metal-coord-term --metal-coord-weight 0.5 --cal-sign-vina-convention --metals ${METALS} --seeds ${SEEDS} --epochs ${EPOCHS} --device cuda:0)"
+TRAINER_FLAGS="(--metal-coord-term --metal-coord-weight 0.5 --cal-sign-vina-convention --metals ${METALS} --seeds ${SEEDS} --epochs ${EPOCHS})"
 
 emit_dry_run_log "${LOG_DIR}/DRY_RUN.log" \
     --title "Wf-388-A1 Wf-246-C metal-coord term retrain" \
@@ -411,8 +425,8 @@ case "${MODE}" in
         printf '  epochs: %d × %d (metal, seed) pairs = %d total\n' \
             "${EPOCHS}" "${#PAIRS[@]}" \
             "$((EPOCHS * ${#PAIRS[@]}))"
-        PYTHONPATH="${PROJECT_ROOT}${PYTHONPATH:+:${PYTHONPATH}}" \
-        exec "${PROJECT_ROOT}/.venv/bin/python" "${TRAINER}" \
+        PYTHONPATH=/home/hugo/codes/mol-metal \
+        exec /home/hugo/codes/mol-metal/.venv/bin/python "${TRAINER}" \
             --config "${DMPNN_CONFIG}" \
             --metal-coord-term \
             --metal-coord-weight 0.5 \
@@ -421,6 +435,7 @@ case "${MODE}" in
             --seeds "${SEEDS_ARR[@]}" \
             --epochs ${EPOCHS} \
             --device cuda:0 \
+            --user-ok "REQUIRED" \
             --out-dir "${LOG_DIR}" \
             "${EXTRA_FLAGS[@]}"
         ;;

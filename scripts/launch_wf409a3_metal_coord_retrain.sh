@@ -67,6 +67,23 @@
 # -----------------------------------------------------------------------------
 set -euo pipefail
 
+
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
+
+# --- Pre-flight gate (Wf-415-A3 + Wf-427-B1) ------------------------------
+PREFLIGHT_OUT="${PROJECT_ROOT:-/home/hugo/codes/mol-metal}/molmetal/reports/wf_preflight/preflight.json"
+mkdir -p "$(dirname "${PREFLIGHT_OUT}")"
+echo "[$(date -Iseconds)] ${BASH_SOURCE[0]} pre-flight check begin"
+PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python \
+    "${PROJECT_ROOT:-/home/hugo/codes/mol-metal}/molmetal/scripts/pre_flight_check.py" --pipeline launch \
+    >"${PREFLIGHT_OUT}" 2>&1 \
+    || die "pre_flight_check FAIL — see ${PREFLIGHT_OUT}"
+grep -q '"fail": 0' "${PREFLIGHT_OUT}" \
+    || die "pre_flight_check has FAILs — see ${PREFLIGHT_OUT}"
+echo "[$(date -Iseconds)] pre-flight PASS"
+
 # Locate repo root + scaffold script + real trainer
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "${SCRIPT_DIR}/.." && pwd )"

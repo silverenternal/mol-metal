@@ -69,6 +69,11 @@
 
 set -euo pipefail
 
+
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
+
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
@@ -159,10 +164,10 @@ user_ok_gate() {
         if [ -z "${USER_OK:-}" ]; then
             die "USER_OK env var not set. Re-run with: USER_OK=YES bash $0 --mode R3"
         fi
-        if [ "${USER_OK}" != "YES" ]; then
-            die "USER_OK must equal 'YES' (got: '${USER_OK}')"
+        if [ "${USER_OK}" != "YES" ] && [ "${USER_OK:-0}" != "1" ]; then
+            die "USER_OK must equal 'YES' or '1' (got: '${USER_OK}')"
         fi
-        ok "USER_OK gate passed (USER_OK=YES)"
+        ok "USER_OK gate passed (USER_OK=${USER_OK})"
     else
         if [ -z "${USER_OK:-}" ]; then
             warn "USER_OK not set; Wf-355-B2 R1 mode is smoke-only (CPU)"
@@ -190,6 +195,21 @@ grep -q "LeaveOneGroupOut" "${WF146_TRAINER}" \
 
 log "Wf-355-B2 launch begin — mode=${MODE} dry-run=${DRY_RUN}"
 user_ok_gate "${MODE}"
+
+# Emit plan.json (Wf-363-A1 schema)
+mkdir -p "${REPORTS_DIR:-/home/hugo/codes/mol-metal/molmetal/reports/wf146_deferred_runs}"
+cat >"${REPORTS_DIR:-/home/hugo/codes/mol-metal/molmetal/reports/wf146_deferred_runs}/plan.json" <<EOF
+{
+    "wrapper": "launch_wf146_deferred_runs.sh",
+    "wf_origin": "wf146",
+    "mode": "${MODE}",
+    "dry_run": ${DRY_RUN},
+    "user_ok_required": true,
+    "trainer": "molmetal/scripts/train_chemprop_v2_v3.py",
+    "py": "/home/hugo/codes/mol-metal/.venv/bin/python",
+    "kill_then_adapt_directive": "USER_OK gate HARD-REQUIRED per AGENTS.md §5.1"
+}
+EOF
 
 # -----------------------------------------------------------------------------
 # Pre-launch check #1 — pre_flight_check.py --pipeline chemprop_v2_v3
@@ -355,7 +375,7 @@ build_wf146_flags() {
     fi
 
     if [ "${gpu}" != "cpu" ]; then
-        args+=( --device cuda )
+        args+=( --device=cuda )
     else
         args+=( --device cpu )
     fi

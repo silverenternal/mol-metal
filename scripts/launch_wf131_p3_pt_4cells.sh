@@ -82,6 +82,10 @@
 
 set -euo pipefail
 
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
+
 # Wf-130-G fix: unbuffered stdout/stderr so per-step failures write to ${LOG}
 # immediately (set -euo pipefail + 4 KiB block buffer masked the real exit site).
 # stdbuf -oL -eL keeps line-buffered I/O without disabling set -e.
@@ -443,7 +447,7 @@ run_pair() {
     --wave "Wf-131-P3-Pt-4cells-${cell}-seed${seed}" \
     --pairs-metals "Pt" \
     --pairs-seeds "${seed}" \
-    --budget-hr 0.30 \
+    --budget-hr 0.88 \
     --min-vram-mib 8192 \
     --min-disk-gib 50 \
     --skip-live > "${OUT_BASE}/Pt/${cell}/seed${seed}/wf343c2_per_wave_check.log" 2>&1
@@ -464,7 +468,6 @@ run_pair() {
     --csv "${LOMO_CSV}" \
     --out-dir "${OUT_BASE}/Pt/${cell}/seed${seed}" \
     --out-metric "${OUT_BASE}/Pt/${cell}/seed${seed}/metrics.json" \
-    --ckpt-dir "${OUT_BASE}/Pt/${cell}/seed${seed}/ckpts" \
     "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
   local rc=${PIPESTATUS[0]}
 

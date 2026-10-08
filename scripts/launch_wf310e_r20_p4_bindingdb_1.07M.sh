@@ -71,6 +71,9 @@
 
 set -euo pipefail
 
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
@@ -165,10 +168,10 @@ user_ok_gate() {
     if [ -z "${USER_OK:-}" ]; then
         die "USER_OK env var not set. Re-run with: USER_OK=YES bash $0 --mode ${mode}"
     fi
-    if [ "${USER_OK}" != "YES" ]; then
-        die "USER_OK must equal 'YES' (got: '${USER_OK}')"
+    if [ "${USER_OK}" != "YES" ] && [ "${USER_OK:-0}" != "1" ]; then
+        die "USER_OK must equal 'YES' or '1' (got: '${USER_OK}')"
     fi
-    ok "USER_OK gate passed (USER_OK=YES)"
+    ok "USER_OK gate passed (USER_OK=${USER_OK})"
 }
 
 # -----------------------------------------------------------------------------
@@ -189,6 +192,22 @@ grep -q "load_metal_cytotox" "${CHEMPROP_TRAINER}" \
 
 log "Wf-355-A2 launch begin — mode=${MODE} dry-run=${DRY_RUN} strict_data=${STRICT_DATA}"
 user_ok_gate "${MODE}"
+
+# Emit plan.json (Wf-363-A1 schema)
+mkdir -p "${REPORTS_DIR}"
+cat >"${REPORTS_DIR}/plan.json" <<EOF
+{
+    "wrapper": "launch_wf310e_r20_p4_bindingdb_1.07M.sh",
+    "wf_origin": "wf310e_r20_p4",
+    "mode": "${MODE}",
+    "dry_run": ${DRY_RUN},
+    "user_ok_required": true,
+    "trainer": "molmetal/scripts/train_chemprop_v2_v3.py",
+    "py": "${PY}",
+    "out_dir": "${REPORTS_DIR}",
+    "kill_then_adapt_directive": "USER_OK gate HARD-REQUIRED per AGENTS.md §5.1"
+}
+EOF
 
 # -----------------------------------------------------------------------------
 # Pre-launch check #1 — pre_flight_check.py --pipeline launch

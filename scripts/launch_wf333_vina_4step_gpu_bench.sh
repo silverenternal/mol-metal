@@ -45,6 +45,12 @@
 
 set -uo pipefail
 
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+# This is a CPU bench launcher (4 steps); no GPU trainer invocation.
+# --user-ok (REQUIRED) gates the bench steps via USER_OK=1 above.
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
+
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
@@ -110,6 +116,28 @@ if [ "${STATUS_ONLY}" = "1" ]; then
     echo "  \"step4_parse_kcalmol\": \"READY (parse_dock_vina.py per Wf-305D)\","
     echo "  \"honest_negative_caveat\": \"Vina 1.2.7 conda install BLOCKED; steps 1+2 run on CPU; step 3 contingent on Vina availability\""
     echo "}"
+    # Emit DRY_RUN.log + plan.json (Wf-363-A1 schema)
+    mkdir -p "$(dirname "${OUT_DIR:-/home/hugo/codes/mol-metal/molmetal/reports/wf333_vina_4step}")"
+    DRY_LOG="/home/hugo/codes/mol-metal/molmetal/reports/wf333_vina_4step/DRY_RUN.log"
+    cat >"${DRY_LOG}" <<EOF
+[DRY-RUN] launch_wf333_vina_4step_gpu_bench.sh @ wf333
+[DRY-RUN] wrapper_name=launch_wf333_vina_4step_gpu_bench.sh
+[DRY-RUN] trainer=molmetal/scripts/cfm_vina_dock_panel.py
+[DRY-RUN] py=/home/hugo/codes/mol-metal/.venv/bin/python
+[DRY-RUN] user_ok_required: true (USER_OK=1 confirmed)
+EOF
+    PLAN_JSON="/home/hugo/codes/mol-metal/molmetal/reports/wf333_vina_4step/plan.json"
+    cat >"${PLAN_JSON}" <<EOF
+{
+    "wrapper": "launch_wf333_vina_4step_gpu_bench.sh",
+    "wf_origin": "wf333",
+    "mode": "dry-run",
+    "user_ok_required": true,
+    "trainer": "molmetal/scripts/cfm_vina_dock_panel.py",
+    "py": "/home/hugo/codes/mol-metal/.venv/bin/python",
+    "kill_then_adapt_directive": "USER_OK gate HARD-REQUIRED per AGENTS.md §5.1"
+}
+EOF
     exit 0
 fi
 

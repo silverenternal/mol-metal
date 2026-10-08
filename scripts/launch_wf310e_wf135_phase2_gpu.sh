@@ -55,6 +55,11 @@
 
 set -euo pipefail
 
+
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
+
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
@@ -181,6 +186,16 @@ PLAN_JSON="${REPORTS_DIR}/plan.json"
 } > "${PLAN_JSON}"
 ok "plan emitted → ${PLAN_JSON}"
 
+# Emit DRY_RUN.log (Wf-363-A1 schema)
+DRY_RUN_LOG="/REPORTS_DIR/DRY_RUN.log"
+cat >"${DRY_RUN_LOG}" <<EOF
+[DRY-RUN] launch_wf310e_wf135_phase2_gpu.sh @ wf310e_wf135
+[DRY-RUN] wrapper_name=launch_wf310e_wf135_phase2_gpu.sh
+[DRY-RUN] trainer=${TRAINER}
+[DRY-RUN] py=/home/hugo/codes/mol-metal/.venv/bin/python
+[DRY-RUN] user_ok_required: true (USER_OK=1 confirmed)
+EOF
+
 if [ "${DRY_RUN}" = "1" ]; then
     log "DRY-RUN: skipping GPU launch (USER_OK was still required)"
     log "DRY-RUN: actual invocation would be:"
@@ -189,7 +204,7 @@ if [ "${DRY_RUN}" = "1" ]; then
     log "    --epochs ${EPOCHS} \\"
     log "    --balanced-cohort-json ${PHASE1_COHORT} \\"
     log "    --out-dir ${REPORTS_DIR}/per_seed_results \\"
-    log "    --device cuda:0"
+    log "    --device=cuda:0"
     log ""
     log "DRY-RUN: per-fold sequencing (5 metals x 5 seeds = 25 (metal,seed) tuples; each tuple = 1 Rh-fold + 4 other-fold runs = ~5 LOMO runs)"
     log "DRY-RUN: total wall = ~10 GPU-hr sequential = ~2 calendar weeks worst case"
@@ -223,6 +238,7 @@ for METAL in "${METALS[@]}"; do
                 --epochs "${EPOCHS}" \
                 --balanced-cohort-json "${PHASE1_COHORT}" \
                 --out-dir "${REPORTS_DIR}/${METAL}/seed${SEED}" \
+                --user-ok "REQUIRED" \
                 --device cuda:0 \
                 >> "${RUN_LOG}" 2>&1; then
             ok "metal=${METAL} seed=${SEED} completed"

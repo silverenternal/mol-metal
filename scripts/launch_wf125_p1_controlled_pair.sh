@@ -42,6 +42,10 @@
 
 set -euo pipefail
 
+
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------

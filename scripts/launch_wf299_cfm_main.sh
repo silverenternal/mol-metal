@@ -71,6 +71,11 @@
 
 set -euo pipefail
 
+
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
+
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
@@ -644,13 +649,14 @@ wave_B() {
         "${G6_TRAINER}" "${G6_CONFIG}" "${WAVE_B_GPU}" "${out}" \
         --metals Ru --seeds 0 --epochs 50 --batch-size 64 --lr 1e-3 \
         --alpha 0.5 --wasserstein-weight 0.0 \
-        --device cuda:0 --no-enforce-budget \
+        --device=cuda:0 --no-enforce-budget \
         --out-dir "${out}/no_wass_ru" || true
     run_wave "B" "${WAVE_B_BUDGET_HR}" \
         "${G6_TRAINER}" "${G6_CONFIG}" "${WAVE_B_GPU}" "${out}" \
         --metals Ir --seeds 0 --epochs 50 --batch-size 64 --lr 1e-3 \
         --alpha 0.5 --wasserstein-weight 0.0 \
         --device cuda:0 --no-enforce-budget \
+        --user-ok "REQUIRED" \
         --out-dir "${out}/no_wass_ir" || true
     ok "Wave B no_wass smoke complete"
 }

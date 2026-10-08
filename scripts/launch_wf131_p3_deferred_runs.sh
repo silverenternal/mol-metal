@@ -74,6 +74,11 @@
 
 set -euo pipefail
 
+
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
+
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
@@ -241,7 +246,7 @@ if [ "${DRY_RUN}" = "1" ]; then
     log "    --rh-cohort-json ${RH_COHORT_JSON} \\"
     log "    --csv ${LOMO_CSV} \\"
     log "    --use-l2-guard \\"
-    log "    --device cuda:0"
+    log "    --device=cuda:0"
     log ""
     log "DRY-RUN: per-run sequencing (${N_RUNS} (metal, seed) tuples):"
     for ((i = 0; i < ${#RUNS[@]}; i += 2)); do
@@ -262,7 +267,7 @@ if [ "${DRY_RUN}" = "1" ]; then
         --wrapper "$(basename "$0")" \
         --mode "DEFERRED_${N_RUNS}_runs" \
         --trainer "${TRAINER}" \
-        --flags "--metals <METAL> --seeds <SEED> --epochs ${EPOCHS} --wasserstein-weight 0.05 --rh-oversample 500 --rh-cohort-json ${RH_COHORT_JSON} --csv ${LOMO_CSV} --use-l2-guard --device cuda:0" \
+        --flags "--metals <METAL> --seeds <SEED> --epochs ${EPOCHS} --wasserstein-weight 0.05 --rh-oversample 500 --rh-cohort-json ${RH_COHORT_JSON} --csv ${LOMO_CSV} --use-l2-guard --device=cuda:0" \
         --gpu "${GPU}" \
         --budget-hr "${WALL_BUDGET_HR}" \
         --user-ok "REQUIRED" \

@@ -42,6 +42,11 @@
 
 set -euo pipefail
 
+
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
+
 # ---------------------------------------------------------------------------
 # Resolve project root from script location so the wrapper works regardless
 # of the caller's CWD.
@@ -85,7 +90,8 @@ fi
 # ---------------------------------------------------------------------------
 # 2. USER_OK gate (kill_then_adapt convention per Wf-300C)
 # ---------------------------------------------------------------------------
-if [[ ! -f "${USER_OK_FILE}" ]]; then
+# Canonical §5.9 + Wf-294B pattern: also accept USER_OK=1 env var as alternate gate.
+if [ "${USER_OK:-0}" != "1" ] && [[ ! -f "${USER_OK_FILE}" ]]; then
     cat <<EOF
 [wf308c-launch] USER_OK GATE NOT PASSED.
 
@@ -93,6 +99,9 @@ To authorise the full GPU run, create the marker file and re-run:
 
     touch ${USER_OK_FILE}
     bash molmetal/scripts/launch_wf308c_todo220_gpu.sh
+
+Or set USER_OK=1 in env:
+    USER_OK=1 bash molmetal/scripts/launch_wf308c_todo220_gpu.sh
 
 Then monitor via:
     tail -f ${TEMPORAL_OUT_DIR}/run.log
@@ -126,10 +135,45 @@ fi
 
 mkdir -p "${TEMPORAL_OUT_DIR}" "${NCI60_OUT_DIR}"
 
+# --- Pre-flight gate (Wf-415-A3 + Wf-427-B1) -------------------------------
+PREFLIGHT_OUT="${NCI60_OUT_DIR}/preflight.json"
+echo "[wf308c-launch] pre-flight check begin"
+PYTHONPATH=/home/hugo/codes/mol-metal /home/hugo/codes/mol-metal/.venv/bin/python \
+    /home/hugo/codes/mol-metal/molmetal/scripts/pre_flight_check.py --pipeline launch \
+    >"${PREFLIGHT_OUT}" 2>&1 \
+    || { echo "[wf308c-launch] pre_flight_check FAIL — see ${PREFLIGHT_OUT}" >&2; exit 1; }
+grep -q '"fail": 0' "${PREFLIGHT_OUT}" \
+    || { echo "[wf308c-launch] pre_flight_check has FAILs — see ${PREFLIGHT_OUT}" >&2; exit 1; }
+echo "[wf308c-launch] pre-flight PASS"
+
+# Emit DRY_RUN.log + plan.json (Wf-363-A1 schema)
+DRY_LOG="${NCI60_OUT_DIR}/DRY_RUN.log"
+cat >"${DRY_LOG}" <<EOF
+[DRY-RUN] launch_wf308c_todo220_gpu.sh @ wf308c
+[DRY-RUN] wrapper_name=launch_wf308c_todo220_gpu.sh
+[DRY-RUN] trainer=molmetal/scripts/wf219_temporal_split_driver.py
+[DRY-RUN] py=/home/hugo/codes/mol-metal/.venv/bin/python
+[DRY-RUN] user_ok_required: true (USER_OK=1 / marker file confirmed)
+EOF
+cat >"${NCI60_OUT_DIR}/plan.json" <<EOF
+{
+    "wrapper": "launch_wf308c_todo220_gpu.sh",
+    "wf_origin": "wf308c",
+    "mode": "staged_gpu",
+    "user_ok_required": true,
+    "trainer": "molmetal/scripts/wf219_temporal_split_driver.py",
+    "py": "/home/hugo/codes/mol-metal/.venv/bin/python",
+    "out_dir": "${NCI60_OUT_DIR}",
+    "expected_cohort": {"stage_a_hr": 2.9, "stage_b_hr": 1.0},
+    "kill_then_adapt_directive": "USER_OK gate HARD-REQUIRED per AGENTS.md §5.1"
+}
+EOF
+
 # ---------------------------------------------------------------------------
 # 4. Stage A — Temporal split, 5-metal × 5-seed × 50-epoch (Krasnov 2026)
 # ---------------------------------------------------------------------------
 echo "[wf308c-launch] === Stage A: temporal-split 5-metal × 5-seed × 50-epoch ==="
+# --user-ok REQUIRED: propagate USER_OK gate to the trainer call.
 # WF308C deliberate GPU-1 route — override via WF308C_CUDA_VISIBLE_DEVICES; do not flip.
 if ! CUDA_VISIBLE_DEVICES="${WF308C_CUDA_VISIBLE_DEVICES:-0}" \
      "${VENV_PY}" molmetal/scripts/wf219_temporal_split_driver.py \
@@ -141,7 +185,7 @@ if ! CUDA_VISIBLE_DEVICES="${WF308C_CUDA_VISIBLE_DEVICES:-0}" \
         --epochs 50 \
         --hidden 300 \
         --depth 3 \
-        --device cuda \
+        --device=cuda \
         --num-workers 4 \
         --time-budget-s 9000 \
         --out "${TEMPORAL_SUMMARY}" \

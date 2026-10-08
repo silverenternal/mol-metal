@@ -68,6 +68,11 @@
 
 set -euo pipefail
 
+
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
+
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
@@ -385,7 +390,7 @@ if [ "${DRY_RUN}" = "1" ]; then
     log "      --w2-weight 0.05 --w2-gradient-mode sort \\"
     log "      --cpu-num-workers 8 --num-workers 8 --no-cuda-graphs \\"
     log "      --out-dir ${REPORTS_DIR}/per_seed_results \\"
-    log "      --device cuda:0"
+    log "      --device=cuda:0"
     log ""
     log "DRY-RUN: total runs = ${#CELLS[@]} cells × ${#SEEDS_TO_USE[@]} seeds = $(( ${#CELLS[@]} * ${#SEEDS_TO_USE[@]} )) (metal,cell,seed) tuples"
     log "DRY-RUN: per-cell W₂ regression output → ${REPORTS_DIR}/per_cell_w2.json"
@@ -408,7 +413,7 @@ if [ "${DRY_RUN}" = "1" ]; then
         --wrapper "$(basename "$0")" \
         --mode "${MODE_LABEL}" \
         --trainer "${TRAINER}" \
-        --flags "--mode joint_tmqm_platinai --tmqm-csv ${TMQM_CSV} --platinai-csv ${PLAT_4CELL_CSV} --cells ${CELLS[*]} --tmqm-metals ${TMQM_METALS[*]} --seeds ${SEEDS_TO_USE[*]} --epochs ${EPOCHS} --hidden ${HIDDEN} --depth ${DEPTH} --use-multiph-pll --multiph-fourier-bins 32 --pll-signature-dim 128 --w2-weight 0.05 --w2-gradient-mode sort --cpu-num-workers 8 --num-workers 8 --no-cuda-graphs --out-dir ${REPORTS_DIR}/per_seed_results --device cuda:0" \
+        --flags "--mode joint_tmqm_platinai --tmqm-csv ${TMQM_CSV} --platinai-csv ${PLAT_4CELL_CSV} --cells ${CELLS[*]} --tmqm-metals ${TMQM_METALS[*]} --seeds ${SEEDS_TO_USE[*]} --epochs ${EPOCHS} --hidden ${HIDDEN} --depth ${DEPTH} --use-multiph-pll --multiph-fourier-bins 32 --pll-signature-dim 128 --w2-weight 0.05 --w2-gradient-mode sort --cpu-num-workers 8 --num-workers 8 --no-cuda-graphs --out-dir ${REPORTS_DIR}/per_seed_results --device=cuda:0" \
         --gpu "${GPU}" \
         --budget-hr "${BUDGET_HR}" \
         --user-ok "REQUIRED_STATUS_HOLD" \

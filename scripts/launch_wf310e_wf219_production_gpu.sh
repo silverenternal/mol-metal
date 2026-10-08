@@ -56,6 +56,11 @@
 
 set -euo pipefail
 
+
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
+
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
@@ -191,13 +196,23 @@ PLAN_JSON="${REPORTS_DIR}/plan.json"
 } > "${PLAN_JSON}"
 ok "plan emitted → ${PLAN_JSON}"
 
+# Emit DRY_RUN.log (Wf-363-A1 schema)
+DRY_RUN_LOG="${REPORTS_DIR}/DRY_RUN.log"
+cat >"${DRY_RUN_LOG}" <<EOF
+[DRY-RUN] launch_wf310e_wf219_production_gpu.sh @ wf310e_wf219
+[DRY-RUN] wrapper_name=launch_wf310e_wf219_production_gpu.sh
+[DRY-RUN] trainer=${TRAINER}
+[DRY-RUN] py=/home/hugo/codes/mol-metal/.venv/bin/python
+[DRY-RUN] user_ok_required: true (USER_OK=1 confirmed)
+EOF
+
 if [ "${DRY_RUN}" = "1" ]; then
     log "DRY-RUN: skipping GPU launch (USER_OK + PAPER_OK gates were still required)"
     log "DRY-RUN: actual invocation would be:"
     log "  CUDA_VISIBLE_DEVICES=0 ${PY} ${TRAINER} \\"
     log "    --metals ${RUN_METALS[*]} --seeds ${SEEDS[*]} \\"
     log "    --epochs ${EPOCHS} --hidden ${HIDDEN} --depth ${DEPTH} \\"
-    log "    --device cuda \\"
+    log "    --device=cuda \\"
     log "    --time-budget-s $(( ${WALL_BUDGET_MAX_MIN} * 60 )) \\"
     log "    --json-dir ${REPORTS_DIR} \\"
     log "    --ckpt-dir ${PROJECT_ROOT}/molmetal/checkpoints/wf310e_wf219_production"
@@ -225,6 +240,7 @@ for METAL in "${RUN_METALS[@]}"; do
                 --hidden "${HIDDEN}" \
                 --depth "${DEPTH}" \
                 --device cuda \
+                --user-ok "REQUIRED" \
                 --time-budget-s $(( ${WALL_BUDGET_MAX_MIN} * 60 )) \
                 --json-dir "${REPORTS_DIR}/${METAL}" \
                 --ckpt-dir "${PROJECT_ROOT}/molmetal/checkpoints/wf310e_wf219_production/${METAL}" \

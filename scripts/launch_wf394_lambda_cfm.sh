@@ -40,6 +40,11 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "${SCRIPT_DIR}/.." && pwd )"
 WF299_LAUNCHER="${PROJECT_ROOT}/molmetal/scripts/launch_wf299_cfm_main.sh"
 
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+PY="/home/hugo/codes/mol-metal/.venv/bin/python"
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+export MOLMETAL_DATA_DIR="${MOLMETAL_DATA_DIR:-${PROJECT_ROOT}/.data/molmetal}"
+
 # Source the DRY_RUN.log helper (Wf-363-A1 schema) for consistent
 # per-wrapper DRY_RUN.log + plan.json emission.
 DRY_RUN_LOG_HELPER="${PROJECT_ROOT}/scripts/_dry_run_log_helper.sh"
@@ -166,6 +171,21 @@ fi
 if [ ! -x "${WF299_LAUNCHER}" ]; then
     die "Wf-299 launcher missing or not executable: ${WF299_LAUNCHER}"
 fi
+
+# --- Pre-flight gate (Wf-415-A3 + Wf-427-B1) ------------------------------
+# Per §5.1 standing GPU auth + canonical pattern: pre-flight MUST be PASS
+# before any GPU delegation. Even though we delegate to Wf-299, we run the
+# pre-flight here so USER_OK=1 + dry-run still validates the gate.
+PREFLIGHT_OUT="${PROJECT_ROOT}/molmetal/reports/wf394_lambda_cfm/preflight.json"
+mkdir -p "$(dirname "${PREFLIGHT_OUT}")"
+echo "[$(date -Iseconds)] ${BASH_SOURCE[0]} pre-flight check begin"
+PYTHONPATH=/home/hugo/codes/mol-metal "${PY}" \
+    "${PROJECT_ROOT}/molmetal/scripts/pre_flight_check.py" --pipeline launch \
+    >"${PREFLIGHT_OUT}" 2>&1 \
+    || die "pre_flight_check FAIL — see ${PREFLIGHT_OUT}"
+grep -q '"fail": 0' "${PREFLIGHT_OUT}" \
+    || die "pre_flight_check has FAILs — see ${PREFLIGHT_OUT}"
+echo "[$(date -Iseconds)] pre-flight PASS"
 
 # Default Lambda × CFM coupling flags when caller did not override via
 # EXTRA_FLAGS. We honour caller-supplied EXTRA_FLAGS first, then prepend

@@ -63,6 +63,9 @@
 
 set -euo pipefail
 
+# --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
+export PYTHONPATH="/home/hugo/codes/mol-metal"
+
 # -----------------------------------------------------------------------------
 # Constants
 # -----------------------------------------------------------------------------
@@ -152,6 +155,30 @@ done
 
 log "Wf-310F Day 7 launch begin — wave target = ${WAVE_TARGET} — dry-run = ${DRY_RUN}"
 
+# --- USER_OK gate (canonical §5.9 + Wf-294B pattern) -----------------------
+# Required by AGENTS.md §5.1 + Wf-294B family. The wave-level WF310F_NEXT_WAVE
+# gate is per-wave; this USER_OK=1 gate is the launch-level authorization.
+if [ "${USER_OK:-0}" != "1" ] && [ -z "${WF310F_NEXT_WAVE:-}" ]; then
+    die "USER_OK gate refused: set USER_OK=1 in env (or WF310F_NEXT_WAVE=<wave>) to launch"
+fi
+ok "USER_OK gate cleared"
+
+# Emit plan.json (Wf-363-A1 schema)
+mkdir -p "${REPORTS_DIR}"
+cat >"${REPORTS_DIR}/plan.json" <<EOF
+{
+    "wrapper": "launch_wf310f_frontier_math_gpu.sh",
+    "wf_origin": "wf310f",
+    "mode": "wave_${WAVE_TARGET}",
+    "dry_run": ${DRY_RUN},
+    "user_ok_required": true,
+    "trainer": "${CFM_TRAINER}",
+    "py": "${PY}",
+    "out_dir": "${REPORTS_DIR}",
+    "kill_then_adapt_directive": "USER_OK gate HARD-REQUIRED per AGENTS.md §5.1"
+}
+EOF
+
 # -----------------------------------------------------------------------------
 # Pre-launch check — pre_flight_check.py --pipeline launch
 # -----------------------------------------------------------------------------
@@ -214,10 +241,11 @@ EOF
 
     # Background launcher for the trainer; PID captured for kill_then_adapt.
     CUDA_VISIBLE_DEVICES="${gpu##cuda:}" \
-        PYTHONPATH="${PROJECT_ROOT}" \
+        PYTHONPATH=/home/hugo/codes/mol-metal \
         "${PY}" "${trainer}" \
             --config "${config}" \
             --out-dir "${out_dir}" \
+            --user-ok "REQUIRED" \
             "$@" \
             > "${out_dir}/train.log" 2>&1 &
     local pid=$!

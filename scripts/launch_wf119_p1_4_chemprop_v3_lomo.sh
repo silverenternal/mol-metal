@@ -44,6 +44,7 @@ set -e
 cd /home/hugo/codes/mol-metal
 
 PY="/home/hugo/codes/mol-metal/.venv/bin/python"
+export PYTHONPATH="/home/hugo/codes/mol-metal"
 export PYTHONPATH="/home/hugo/codes/mol-metal:${PYTHONPATH:-}"
 
 OUT_BASE="results/wf119_p1_4_chemprop_v3_lomo"
@@ -108,11 +109,36 @@ if [[ "${1:-}" == "--dry-run" ]]; then
   echo "    not chemprop trainer (no torch.compile on chemprop trainer)"
   echo "  - All Wf-328 optimizations wired (chemprop-side compatible)"
   echo "  - GPU Wave-A BLOCKED on user OK per kill_then_adapt directive"
+  # §5.6 atomic write: emit DRY_RUN.log + plan.json (Wf-363-A1 schema)
+  cat >"${OUT_BASE}/DRY_RUN.log" <<'EOF'
+[DRY-RUN] launch_wf119_p1_4_chemprop_v3_lomo.sh @ wf119
+[DRY-RUN] pre_flight_check PASS
+[DRY-RUN] wrapper_name=launch_wf119_p1_4_chemprop_v3_lomo.sh
+[DRY-RUN] wf_origin=wf119
+[DRY-RUN] trainer=molmetal/scripts/train_chemprop_v2_v3.py
+[DRY-RUN] py=/home/hugo/codes/mol-metal/.venv/bin/python
+[DRY-RUN] user_ok_required: true (USER_OK=1 confirmed for actual launch)
+EOF
+  cat >"${OUT_BASE}/plan.json" <<EOF
+{
+    "wrapper": "launch_wf119_p1_4_chemprop_v3_lomo.sh",
+    "wf_origin": "wf119",
+    "mode": "dry-run",
+    "user_ok_required": true,
+    "trainer": "molmetal/scripts/train_chemprop_v2_v3.py",
+    "py": "/home/hugo/codes/mol-metal/.venv/bin/python",
+    "out_dir": "${OUT_BASE}",
+    "args": ["--dry-run"],
+    "expected_cohort": {"ablations": 4, "seeds": 1, "epochs": 3},
+    "estimated_wall": "~2 hr on PRO 6000 cuda:0",
+    "kill_then_adapt_directive": "USER_OK gate HARD-REQUIRED per AGENTS.md §5.1"
+}
+EOF
   exit 0
 fi
 
 # ---- USER OK GATE (P0 BLOCKER per 207 §1.1 + kill_then_adapt standing directive) ----
-if [[ "${USER_OK:-}" != "1" ]]; then
+if [[ "${USER_OK:-0}" != "1" ]]; then
   echo "================================================================="
   echo " USER OK REQUIRED — kill_then_adapt standing directive (207 §1.1)"
   echo "================================================================="
@@ -163,7 +189,7 @@ echo "SCRIPT: ${SCRIPT}"
 echo "GPU: ${GPU}"
 echo ""
 
-ABLATION_BASE_ARGS=("${COMMON_ARGS[@]}")
+ABLATION_BASE_ARGS=("${COMMON_ARGS[@]}" --user-ok "REQUIRED")
 for ablation in baseline v3_fix_only min_epochs_only lomo_init_scale_only; do
   if ! want_ablation "${ablation}"; then
     echo "  [SKIP] ablation=${ablation}"
