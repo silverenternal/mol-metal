@@ -36,20 +36,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-try:
-    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (  # noqa: E402
-        DEFAULT_TF32,
-        configure_tf32,
-        parse_args,
-    )
-except ImportError:  # Wf-A16: feature not implemented — SKIP, do not ERROR
-    pytest.skip(
-        "UNIMPLEMENTED FEATURE: this module expects `DEFAULT_TF32` from `scripts.train_dmpnn_multitask_wasserstein`, which "
-        "does not exist. TF32 matmul. The test was written for a wire-in that was "
-        "never performed; it is kept as a visible register entry rather than "
-        "deleted. Tracked in TODO/completed/wfa16_unimplemented_feature_register.md",
-        allow_module_level=True,
-    )
+from molmetal.scripts.train_dmpnn_multitask_wasserstein import (  # noqa: E402
+    DEFAULT_TF32,
+    configure_tf32,
+    parse_args,
+)
 
 
 def test_tf32_enabled_by_default():

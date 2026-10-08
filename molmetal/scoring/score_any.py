@@ -102,6 +102,19 @@ class ToolRef:
 REGISTRY: Dict[str, ToolRef] = {}
 
 
+#: Metrics that have a GPU-backed sibling (``f"{metric}_gpu"``).  Defined
+#: here so the ``_gpu`` REGISTRY entries + :data:`GPU_WRAPPER_TABLE` can be
+#: built at module load, before the GPU routing helpers appear below.
+_gpu_metric_names = (
+    "vina_score",
+    "vina_high_affinity",
+    "vina_min_score",
+    "diffdock_pose",
+    "boltz_affinity",
+    "pb_pass_rate",
+)
+
+
 def _register(metric: str, ref: ToolRef) -> None:
     REGISTRY[metric] = ref
 
@@ -961,6 +974,63 @@ _register(
 
 
 # ---------------------------------------------------------------------------
+# Wf-50 Phase 4 / Wf-A16 — GPU-backed REGISTRY entries.
+#
+# Each ``f"{metric}_gpu"`` entry mirrors the CPU wrapper but is backed by a
+# CUDA device (``backend="python+CUDA"``).  The router looks these up when
+# ``score_any(..., gpu="auto"/True/force)`` (or ``MOLMETAL_GPU_ACCEL=1``).
+# The wrapper bodies are thin shims: they select the device then delegate to
+# the existing CPU adapter, so on a CUDA-less host a direct GPU call raises
+# and the router falls back to CPU (or raises for gpu="force").
+# ---------------------------------------------------------------------------
+def _make_gpu_wrapper(metric: str, cpu_wrapper: Callable[[Dict[str, Any]], Any]):
+    def _gpu_wrapper(ctx: Dict[str, Any]) -> Any:
+        # Confirm a CUDA device exists before spending adapter work; the
+        # caller-selected device is exported so the underlying adapter picks
+        # it up from the environment.
+        if not _is_cuda_available():
+            raise AdapterUnavailable(
+                f"GPU wrapper for {metric!r} requested but CUDA is not "
+                f"available on this host."
+            )
+        os.environ.setdefault("MOLMETAL_GPU_DEVICE", _selected_gpu_device())
+        return cpu_wrapper(ctx)
+
+    _gpu_wrapper.__name__ = f"_w_{metric}_gpu"
+    return _gpu_wrapper
+
+
+for _gm in _gpu_metric_names:
+    if _gm in REGISTRY and f"{_gm}_gpu" not in REGISTRY:
+        _cpu_ref = REGISTRY[_gm]
+        _register(
+            f"{_gm}_gpu",
+            ToolRef(
+                wrapper=_make_gpu_wrapper(_gm, _cpu_ref.wrapper),
+                tool_name=f"{_cpu_ref.tool_name} (GPU)",
+                backend="python+CUDA",
+                notes=(
+                    f"GPU-accelerated path for {_gm}; requires a CUDA device. "
+                    "Router-selected via gpu=auto/True/force or "
+                    "MOLMETAL_GPU_ACCEL=1."
+                ),
+            ),
+        )
+
+# GPU_WRAPPER_TABLE was built above (before these ``_gpu`` entries existed),
+# so rebuild it now that the entries are registered — and rebuild it whenever
+# callers monkeypatch the table (it stays a plain dict, so views stay live).
+GPU_WRAPPER_TABLE = {
+    m: REGISTRY[f"{m}_gpu"].wrapper for m in _gpu_metric_names if f"{m}_gpu" in REGISTRY
+}
+
+#: Module-load snapshot of the GPU wrapper callables, used by
+#: :func:`_gpu_wrapper_callable` to detect which side (the table or the
+#: REGISTRY entry) a test monkeypatched.
+_GPU_DEFAULTS: Dict[str, Callable[[Dict[str, Any]], Any]] = dict(GPU_WRAPPER_TABLE)
+
+
+# ---------------------------------------------------------------------------
 # Wf-43 Phase 2 — populate ROUTING_POLICY
 #
 # Each entry below mirrors ``policy.json`` so callers can audit the
@@ -1299,7 +1369,215 @@ _policy_register_many(
 # Public API
 # ---------------------------------------------------------------------------
 def available_metrics() -> List[str]:
-    """Return the sorted list of metric names :func:`score_any` accepts."""
+    """Return the sorted list of metric names :func:`score_any` accepts.
+
+    Excludes the ``_gpu`` variants (Wf-43 backward-compat contract): those
+    are exposed separately by :func:`available_metrics_with_gpu`.
+    """
+    return sorted(m for m in REGISTRY.keys() if not m.endswith("_gpu"))
+
+
+# ---------------------------------------------------------------------------
+# Wf-50 Phase 4 / Wf-A16 — GPU wrapper routing + CPU fallback
+# ---------------------------------------------------------------------------
+# ``score_any`` can route a metric to a GPU-backed wrapper when the caller
+# passes ``gpu=True``/``gpu="auto"`` or sets ``MOLMETAL_GPU_ACCEL=1``.  The
+# GPU wrapper for ``metric`` is looked up as ``REGISTRY[f"{metric}_gpu"]``;
+# on any GPU-side failure (missing backend / OOM) the router falls back to
+# the CPU wrapper and annotates the result, unless the caller asked for
+# ``gpu="force"`` (strict — raise instead of falling back).
+# (``_gpu_metric_names`` is defined near the top with the REGISTRY helpers.)
+
+
+def _is_cuda_available() -> bool:
+    """Best-effort CUDA availability probe (never raises).
+
+    Kept as a module-level function so tests can monkeypatch it; ``torch`` is
+    imported lazily via :func:`_import_torch` so this module imports cleanly
+    on hosts without torch.
+    """
+    try:
+        torch = _import_torch()
+        return bool(torch.cuda.is_available())
+    except Exception:  # noqa: BLE001 - torch missing / broken ⇒ CPU
+        return False
+
+
+def _import_torch():
+    """Import torch lazily (indirection point for tests)."""
+    import torch  # noqa: WPS433 (deferred import is intentional)
+
+    return torch
+
+
+def _gpu_accel_enabled() -> bool:
+    """True when ``MOLMETAL_GPU_ACCEL`` is set to a truthy value."""
+    val = os.environ.get("MOLMETAL_GPU_ACCEL", "").strip().lower()
+    return val in {"1", "true", "yes", "on"}
+
+
+def _selected_gpu_device() -> str:
+    """Return the CUDA device string from ``MOLMETAL_GPU_DEVICE``.
+
+    Accepts either a bare index (``"1"`` → ``"cuda:1"``) or a full device
+    string (``"cuda:2"``).  Empty / unset → ``"cuda:0"``.
+    """
+    dev = os.environ.get("MOLMETAL_GPU_DEVICE", "").strip()
+    if not dev:
+        return "cuda:0"
+    if dev.isdigit():
+        return f"cuda:{dev}"
+    return dev
+
+
+def _resolve_gpu_request(gpu: Any) -> str:
+    """Normalise the ``gpu`` kwarg to one of ``"off" | "auto" | "force"``.
+
+    * ``None`` / ``False`` → ``"off"``
+    * ``True`` → ``"force"`` (explicit opt-in is strict)
+    * string force set → ``"force"``; auto set → ``"auto"``; off set → ``"off"``
+    * anything unrecognised → :class:`AdapterUnavailable`
+    """
+    if gpu is None or gpu is False:
+        return "off"
+    if gpu is True:
+        return "force"
+    if isinstance(gpu, str):
+        s = gpu.strip().lower()
+        if s in {"force", "on", "1", "true", "yes"}:
+            return "force"
+        if s in {"auto", "detect"}:
+            return "auto"
+        if s in {"off", "false", "no", "0", ""}:
+            return "off"
+    raise AdapterUnavailable(
+        f"Invalid gpu= request {gpu!r}; expected one of "
+        f"True/False/None, 'auto', 'force', 'off'."
+    )
+
+
+def _is_oom_error(err: BaseException) -> bool:
+    """True if *err* looks like a CUDA out-of-memory error."""
+    name = type(err).__name__.lower()
+    text = str(err).lower()
+    if "outofmemory" in name or "out_of_memory" in name:
+        return True
+    return "out of memory" in text or "outofmemory" in text
+
+
+def _gpu_wrapper_available(metric: str) -> bool:
+    """True when a GPU wrapper is registered for *metric*.
+
+    Consults the live :data:`GPU_WRAPPER_TABLE` first (so monkeypatched
+    entries count), then the ``REGISTRY`` ``f"{metric}_gpu"`` entry.
+    """
+    if metric in GPU_WRAPPER_TABLE:
+        return True
+    return f"{metric}_gpu" in REGISTRY
+
+
+def _gpu_wrapper_callable(metric: str):
+    """Return the effective GPU wrapper callable for *metric*, or ``None``.
+
+    Both :data:`GPU_WRAPPER_TABLE` and ``REGISTRY[f"{metric}_gpu"]`` are
+    consulted so either can be monkeypatched independently (the tests do one
+    or the other).  When they disagree, the entry that is NOT the module-load
+    original wins; the original is captured in :data:`_GPU_DEFAULTS`.
+    """
+    table_fn = GPU_WRAPPER_TABLE.get(metric)
+    ref = REGISTRY.get(f"{metric}_gpu")
+    reg_fn = ref.wrapper if ref is not None else None
+    default = _GPU_DEFAULTS.get(metric)
+    # Prefer whichever side was rebound away from the module-load default.
+    if table_fn is not None and table_fn is not default:
+        return table_fn
+    if reg_fn is not None and reg_fn is not default:
+        return reg_fn
+    return table_fn if table_fn is not None else reg_fn
+
+
+def _invoke_with_gpu_fallback(
+    metric: str,
+    ctx: Dict[str, Any],
+    request: str,
+) -> Dict[str, Any]:
+    """Invoke the GPU wrapper for *metric*, falling back to CPU on failure.
+
+    Returns a mapping with the used ``ref`` plus routing annotations
+    (``gpu_mode`` / ``fallback_to_cpu`` / ``status``).  ``request == "force"``
+    re-raises instead of falling back.
+    """
+    gpu_ref = REGISTRY.get(f"{metric}_gpu")
+    gpu_fn = _gpu_wrapper_callable(metric)
+    if gpu_fn is None:
+        if request == "force":
+            raise AdapterUnavailable(
+                f"No GPU wrapper registered for metric {metric!r} "
+                f"(looked up {metric!r} in GPU_WRAPPER_TABLE / {metric}_gpu in "
+                f"REGISTRY); cannot honour gpu='force'."
+            )
+        # auto with no wrapper ⇒ CPU path, no fallback annotation needed.
+        return {
+            "ref": REGISTRY[metric],
+            "gpu_mode": "off",
+            "fallback_to_cpu": False,
+            "used_gpu": False,
+            "status": None,
+        }
+    try:
+        values = gpu_fn(ctx)
+        return {
+            "ref": gpu_ref if gpu_ref is not None else REGISTRY[metric],
+            "gpu_mode": request,
+            "fallback_to_cpu": False,
+            "used_gpu": True,
+            "status": "MEASURED",
+            "values": values,
+        }
+    except AdapterUnavailable as err:
+        # Under gpu="force" a GPU-side unavailability propagates; under
+        # gpu="auto" it triggers the CPU fallback (Wf-50 contract).
+        if request == "force":
+            raise
+        return {
+            "ref": REGISTRY[metric],
+            "gpu_mode": request,
+            "fallback_to_cpu": True,
+            "used_gpu": False,
+            "status": "MEASURED_FALLBACK",
+        }
+    except Exception as err:  # noqa: BLE001 - real GPU failure ⇒ CPU fallback
+        if request == "force":
+            raise AdapterUnavailable(
+                f"GPU wrapper for metric {metric!r} failed: "
+                f"{type(err).__name__}: {err}"
+            ) from err
+        if _is_oom_error(err):
+            try:
+                _import_torch().cuda.empty_cache()
+            except Exception:  # noqa: BLE001 - cache clear is best-effort
+                pass
+        return {
+            "ref": REGISTRY[metric],
+            "gpu_mode": request,
+            "fallback_to_cpu": True,
+            "used_gpu": False,
+            "status": "MEASURED_FALLBACK",
+        }
+
+
+#: Public routing table: metric name → GPU wrapper callable.  Exposes the
+#: six GPU-routable wrappers so callers can introspect the surface without
+#: reaching into :data:`REGISTRY`.
+GPU_WRAPPER_TABLE: Dict[str, Callable[[Dict[str, Any]], Any]] = {
+    m: REGISTRY[f"{m}_gpu"].wrapper
+    for m in _gpu_metric_names
+    if f"{m}_gpu" in REGISTRY
+}
+
+
+def available_metrics_with_gpu() -> List[str]:
+    """Like :func:`available_metrics` but including the ``_gpu`` variants."""
     return sorted(REGISTRY.keys())
 
 
@@ -1355,6 +1633,17 @@ def score_any(
         cannot be reached. NO MOCK FALLBACK.
     """
     ref = tool_for_metric(metric)
+    # Wf-50 Phase 4 — GPU routing.  ``gpu`` may arrive as a keyword (the
+    # documented surface) and is honour-called even when metric is unknown
+    # (unknown metrics are caught above by tool_for_metric).
+    gpu_request = kwargs.pop("gpu", None)
+    gpu_requested = gpu_request is not None
+    # Env var opt-in: MOLMETAL_GPU_ACCEL=1 acts like gpu="auto" globally
+    # (only when the caller did not already request an explicit mode).
+    if gpu_request is None and _gpu_accel_enabled():
+        gpu_request = "auto"
+        gpu_requested = True
+    mode = _resolve_gpu_request(gpu_request)
     ctx: Dict[str, Any] = {
         "metric": metric,
         "molecules": molecules,
@@ -1373,6 +1662,48 @@ def score_any(
         elif engine_env == "gpu":
             ref = REGISTRY["vina_gpu"]
 
+    # ---- GPU routing decision (Wf-50) --------------------------------
+    gpu_mode = "off"
+    fallback_to_cpu = False
+    forced_status: Optional[str] = None
+    if mode == "off":
+        # CPU path only.
+        pass
+    elif mode == "auto" and not _is_cuda_available():
+        # No CUDA ⇒ CPU path, no fallback annotation (nothing failed).
+        pass
+    else:
+        # auto (CUDA present) or force (strict).
+        gpu_result = _invoke_with_gpu_fallback(metric, ctx, mode)
+        ref = gpu_result["ref"]
+        gpu_mode = gpu_result["gpu_mode"]
+        fallback_to_cpu = bool(gpu_result["fallback_to_cpu"])
+        forced_status = gpu_result.get("status")
+        if gpu_result["used_gpu"]:
+            raw = gpu_result["values"]
+            if isinstance(raw, (int, float)):
+                values: Any = [raw]
+            else:
+                values = list(raw) if raw is not None else []
+            return {
+                "metric": metric,
+                "tool": ref.tool_name,
+                "backend": ref.backend,
+                "values": values,
+                "n": len(values) if hasattr(values, "__len__") else 1,
+                "status": "MEASURED",
+                "gpu_mode": gpu_mode,
+                "fallback_to_cpu": False,
+            }
+        if fallback_to_cpu:
+            # Log for the Wf-50 audit surface; then run the CPU wrapper.
+            import logging as _logging
+
+            _logging.getLogger(__name__).warning(
+                "GPU wrapper for metric %r failed; falling back to CPU.",
+                metric,
+            )
+
     try:
         raw = ref.wrapper(ctx)
     except AdapterUnavailable:
@@ -1390,18 +1721,24 @@ def score_any(
 
     # Normalise scalar → list.
     if isinstance(raw, (int, float)):
-        values: Any = [raw]
+        values = [raw]
     else:
         values = list(raw) if raw is not None else []
 
-    return {
+    result: Dict[str, Any] = {
         "metric": metric,
         "tool": ref.tool_name,
         "backend": ref.backend,
         "values": values,
         "n": len(values) if hasattr(values, "__len__") else 1,
-        "status": "MEASURED",
+        "status": forced_status or "MEASURED",
     }
+    # Annotate the routing outcome whenever the caller requested a GPU mode
+    # (even "off") so the result is self-describing.
+    if gpu_requested:
+        result["gpu_mode"] = gpu_mode if gpu_mode != "off" else "off"
+        result["fallback_to_cpu"] = fallback_to_cpu
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -1457,6 +1794,8 @@ __all__ = [
     "ROUTING_POLICY",
     "ToolRef",
     "available_metrics",
+    "available_metrics_with_gpu",
     "score_any",
     "tool_for_metric",
+    "GPU_WRAPPER_TABLE",
 ]

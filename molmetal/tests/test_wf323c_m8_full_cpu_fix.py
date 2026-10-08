@@ -226,13 +226,24 @@ def test_wf323c_preflight_gate_pass():
     assert isinstance(
         result, GateResult
     ), f"gate returned wrong type: {type(result).__name__}"
-    assert result.status in ("PASS", "FAIL"), f"unexpected status {result.status!r}"
+    # Wf-445-A1: sub-production n_poses now yields SKIP, not PASS. The
+    # on-disk Wf-323C smoke is n_poses_total=16 < M8_PB_PRODUCTION_MIN_POSES.
+    assert result.status in (
+        "PASS",
+        "SKIP",
+        "FAIL",
+    ), f"unexpected status {result.status!r}"
     if RESULT_JSON.exists() and METRIC_1H36.exists() and WF319B_POOL_JSON.exists():
-        # The gate is intentionally strict — if the 3 artefacts ship
-        # together (which they do post-Wf-323C run), it MUST pass.
-        assert (
-            result.status == "PASS"
+        # Wf-445-A1: the gate is strict, but the on-disk smoke is
+        # sub-production (n_poses_total=16 < 100), so the honest verdict
+        # is SKIP-with-reason. FAIL would mean the artefacts are broken;
+        # PASS would mean production, which they are not.
+        assert result.status in (
+            "PASS",
+            "SKIP",
         ), f"3 artefacts ship but gate FAILED: {result.evidence}"
+        if result.status == "SKIP":
+            assert "NOT PB production" in result.evidence
 
 
 # ---------------------------------------------------------------------------

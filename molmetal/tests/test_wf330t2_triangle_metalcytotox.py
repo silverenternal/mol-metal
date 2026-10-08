@@ -54,30 +54,21 @@ for _p in (str(_REPO_ROOT), str(_SCRIPTS_DIR)):
         sys.path.insert(0, _p)
 
 
-try:
-    from bench_lambda_triangle_end_to_end import (  # noqa: E402
-        DATASET_REGISTRY,
-        DEFAULT_METALCYTO_5METAL_CSV,
-        F5_RDKIT_2D_FEATURE_NAMES,
-        METALCYTO_5METAL_LIST,
-        METALCYTO_5METAL_PROJECTED_MEAN,
-        METALCYTO_5METAL_PROJECTED_R2,
-        METALCYTO_5METAL_TO_IDX,
-        _build_design_matrix,
-        _f5_rdkit_2d_features,
-        _load_metalcytotox_5metal,
-        build_report,
-        METAL_LIST,
-        FEATURE_NAMES,
-    )
-except ImportError:  # Wf-A16: feature not implemented — SKIP, do not ERROR
-    pytest.skip(
-        "UNIMPLEMENTED FEATURE: this module expects `DATASET_REGISTRY` from `bench_lambda_triangle_end_to_end`, which "
-        "does not exist. triangle-bench dataset registry. The test was written for a wire-in that was "
-        "never performed; it is kept as a visible register entry rather than "
-        "deleted. Tracked in TODO/completed/wfa16_unimplemented_feature_register.md",
-        allow_module_level=True,
-    )
+from bench_lambda_triangle_end_to_end import (  # noqa: E402
+    DATASET_REGISTRY,
+    DEFAULT_METALCYTO_5METAL_CSV,
+    F5_RDKIT_2D_FEATURE_NAMES,
+    METALCYTO_5METAL_LIST,
+    METALCYTO_5METAL_PROJECTED_MEAN,
+    METALCYTO_5METAL_PROJECTED_R2,
+    METALCYTO_5METAL_TO_IDX,
+    _build_design_matrix,
+    _f5_rdkit_2d_features,
+    _load_metalcytotox_5metal,
+    build_report,
+    METAL_LIST,
+    FEATURE_NAMES,
+)
 
 
 # ---------------------------------------------------------------------------

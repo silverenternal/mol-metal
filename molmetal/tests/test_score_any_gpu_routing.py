@@ -69,26 +69,17 @@ from molmetal.scoring import (
 # ``X`` to the *function*; we need :func:`importlib.import_module` to
 # reach the actual module for monkeypatching.
 _sa_module = importlib.import_module("molmetal.scoring.score_any")
-try:
-    from molmetal.scoring.score_any import (
-        GPU_WRAPPER_TABLE,
-        ToolRef,
-        _gpu_accel_enabled,
-        _gpu_wrapper_available,
-        _invoke_with_gpu_fallback,
-        _is_cuda_available,
-        _is_oom_error,
-        _resolve_gpu_request,
-        _selected_gpu_device,
-    )
-except ImportError:  # Wf-A16: feature not implemented — SKIP, do not ERROR
-    pytest.skip(
-        "UNIMPLEMENTED FEATURE: this module expects `GPU_WRAPPER_TABLE` from `molmetal.scoring.score_any`, which "
-        "does not exist. GPU wrapper routing table. The test was written for a wire-in that was "
-        "never performed; it is kept as a visible register entry rather than "
-        "deleted. Tracked in TODO/completed/wfa16_unimplemented_feature_register.md",
-        allow_module_level=True,
-    )
+from molmetal.scoring.score_any import (
+    GPU_WRAPPER_TABLE,
+    ToolRef,
+    _gpu_accel_enabled,
+    _gpu_wrapper_available,
+    _invoke_with_gpu_fallback,
+    _is_cuda_available,
+    _is_oom_error,
+    _resolve_gpu_request,
+    _selected_gpu_device,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

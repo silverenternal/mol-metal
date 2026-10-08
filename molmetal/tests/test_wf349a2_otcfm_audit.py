@@ -45,18 +45,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from molmetal.adapters.flow_matching_lipman import optimal_transport_v2 as ot2
 
-try:
-    from molmetal.adapters.flow_matching_lipman.optimal_transport_v2 import (
-        exact_minibatch_ot_coupling,
-    )
-except ImportError:  # Wf-A16: feature not implemented — SKIP, do not ERROR
-    pytest.skip(
-        "UNIMPLEMENTED FEATURE: this module expects `exact_minibatch_ot_coupling` from `molmetal.adapters.flow_matching_lipman.optimal_transport_v2`, which "
-        "does not exist. exact minibatch OT coupling. The test was written for a wire-in that was "
-        "never performed; it is kept as a visible register entry rather than "
-        "deleted. Tracked in TODO/completed/wfa16_unimplemented_feature_register.md",
-        allow_module_level=True,
-    )
+from molmetal.adapters.flow_matching_lipman.optimal_transport_v2 import (
+    exact_minibatch_ot_coupling,
+)
 
 
 # ---------------------------------------------------------------------------

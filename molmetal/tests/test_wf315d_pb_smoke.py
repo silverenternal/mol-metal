@@ -274,7 +274,14 @@ def test_6_preflight_gate_wf315d():
     assert isinstance(
         result, GateResult
     ), f"gate returned wrong type: {type(result).__name__}"
-    assert result.status in ("PASS", "FAIL"), f"unexpected status {result.status!r}"
+    # Wf-445-A1: sub-production n_poses (on-disk smoke n_poses=15) now
+    # yields SKIP rather than PASS so the smoke cannot satisfy a gate
+    # that §17.1 labels "PB production".
+    assert result.status in (
+        "PASS",
+        "SKIP",
+        "FAIL",
+    ), f"unexpected status {result.status!r}"
     # When packages are installed + metric is MEASURED_SMOKE + smoke
     # output exists, the gate should PASS.
     ok, rdkit_v, pb_v = _probe_packages()
@@ -282,7 +289,12 @@ def test_6_preflight_gate_wf315d():
         with METRIC_1H36.open("r", encoding="utf-8") as fh:
             data = json.load(fh)
         if data.get("status") == "MEASURED_SMOKE":
-            assert result.status == "PASS", (
+            # Wf-445-A1: SKIP is the correct verdict while n_poses
+            # (15) is below M8_PB_PRODUCTION_MIN_POSES (100).
+            assert result.status in (
+                "PASS",
+                "SKIP",
+            ), (
                 f"gate FAILED but packages installed + MEASURED_SMOKE + "
                 f"smoke output present: {result.evidence}"
             )

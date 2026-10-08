@@ -31,6 +31,7 @@ from molmetal.scoring.score_any import (
     AdapterUnavailable,
     PolicyEntry,
     available_metrics,
+    available_metrics_with_gpu,
     score_any,
     tool_for_metric,
 )
@@ -41,6 +42,7 @@ __all__ = [
     "AdapterUnavailable",
     "PolicyEntry",
     "available_metrics",
+    "available_metrics_with_gpu",
     "score_any",
     "tool_for_metric",
 ]

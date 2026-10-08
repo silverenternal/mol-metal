@@ -247,6 +247,37 @@ METAL_ATOMS: Dict[str, Atom] = {
     ),
 }
 
+# ---------------------------------------------------------------------------
+# d-block metal symbol set (Wf-A16 wire-in for Wf-28 Phase 1 d-block extraction).
+# ---------------------------------------------------------------------------
+# The Wf-28 d-block metal-complex extraction pipeline (scripts/extract_tmqm_dblock.py)
+# stratifies the tmQM release over the 30 transition-metal symbols.  That set is
+# already canonically defined in ``molmetal.data.tmqm.TRANSITION_METALS``; this
+# module re-exports it (identical order/content) so callers that only import the
+# combinator library can reference the same d-block symbol set without a second
+# import root.  Kept as a tuple to match TRANSITION_METALS' immutable contract;
+# the extraction tests only need membership + ``len == 30``.
+def _load_metal_symbols() -> Tuple[str, ...]:
+    """Return the canonical 30-member d-block metal symbol tuple.
+
+    Sourced from :data:`molmetal.data.tmqm.TRANSITION_METALS` (the single
+    source of truth) with a static fallback so this module stays importable
+    even if the tmqm data module is unavailable in a minimal environment.
+    """
+    try:
+        from molmetal.data.tmqm import TRANSITION_METALS as _TM
+
+        return tuple(_TM)
+    except Exception:  # noqa: BLE001 - minimal-env fallback (identical set)
+        return (
+            "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn",
+            "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd",
+            "La", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg",
+        )
+
+
+METAL_SYMBOLS: Tuple[str, ...] = _load_metal_symbols()
+
 # Expected metal coordination numbers — lookup table for METAL_GEOMETRY_OK.
 # Healthy: 1.0 (these are intrinsic, any drift is a regression).
 _EXPECTED_METAL_CN: Dict[str, int] = {
@@ -576,6 +607,7 @@ __all__ = [
     "AtomInstance",
     "PRIMITIVE_ATOMS",
     "METAL_ATOMS",
+    "METAL_SYMBOLS",
     "sanity_check",
     "assert_well_formed",
     "from_smiles",

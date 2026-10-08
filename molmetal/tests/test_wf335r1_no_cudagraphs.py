@@ -77,21 +77,12 @@ from molmetal.baselines.dmpnn_multitask import (
     MultiTaskLoss,
 )
 
-try:
-    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
-        _make_compiled_encoder_forward,
-        _make_compiled_w2_penalty,
-        parse_args,
-        MultiTaskWassersteinModel,
-    )
-except ImportError:  # Wf-A16: feature not implemented — SKIP, do not ERROR
-    pytest.skip(
-        "UNIMPLEMENTED FEATURE: this module expects `_make_compiled_encoder_forward` from `scripts.train_dmpnn_multitask_wasserstein`, which "
-        "does not exist. no-cudagraphs path. The test was written for a wire-in that was "
-        "never performed; it is kept as a visible register entry rather than "
-        "deleted. Tracked in TODO/completed/wfa16_unimplemented_feature_register.md",
-        allow_module_level=True,
-    )
+from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
+    _make_compiled_encoder_forward,
+    _make_compiled_w2_penalty,
+    parse_args,
+    MultiTaskWassersteinModel,
+)
 
 
 # ---------------------------------------------------------------------------

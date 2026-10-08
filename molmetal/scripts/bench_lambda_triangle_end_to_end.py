@@ -134,6 +134,133 @@ FEATURE_NAMES: Tuple[str, ...] = (
 
 
 # ---------------------------------------------------------------------------
+# Wf-330-T2 / Wf-A16 — MetalCytoToxDB 5-metal cohort registry
+#
+# Extends the bench with a second dataset family (the MetalCytoToxDB 5-metal
+# cohort Ru/Ir/Rh/Os/Re) plus a 12-d RDKit-2D feature mode (F5_RDKIT_2D, from
+# Wf-49 P1 / Wf-249).  The registry exposes the per-cohort metadata the
+# Wf-330-T2 tests pin (feature mode, metal list/index, PROJECTED ledger).
+# ---------------------------------------------------------------------------
+DEFAULT_METALCYTO_5METAL_CSV: str = (
+    ".data/molmetal/metalcytotox_5metal_multitask_v4.csv"
+)
+
+METALCYTO_5METAL_LIST: Tuple[str, ...] = ("Ru", "Ir", "Rh", "Os", "Re")
+METALCYTO_5METAL_TO_IDX: Dict[str, int] = {
+    m: i for i, m in enumerate(METALCYTO_5METAL_LIST)
+}
+
+#: PROJECTED per-metal ``mean_hilbert_r2`` ledger (skill mol-metal-triangle-closure
+#: §4.3).  These are PROJECTED targets, NOT measured (AGENTS.md §5.2).
+METALCYTO_5METAL_PROJECTED_R2: Dict[str, float] = {
+    "Ru": 0.62,
+    "Ir": 0.61,
+    "Rh": 0.60,
+    "Os": 0.58,
+    "Re": 0.57,
+}
+METALCYTO_5METAL_PROJECTED_MEAN: float = 0.622
+
+#: F5_RDKIT_2D — 12 RDKit 2-D descriptor names (Wf-49 P1 / Wf-249 ship surface).
+F5_RDKIT_2D_FEATURE_NAMES: Tuple[str, ...] = (
+    "MolWt",
+    "MolLogP",
+    "TPSA",
+    "HBA",
+    "HBD",
+    "NRotB",
+    "HeavyAtoms",
+    "RingCount",
+    "NumAromaticRings",
+    "FractionCSP3",
+    "MolMR",
+    "BalabanJ",
+)
+
+
+def _f5_rdkit_2d_features(smiles: str) -> Optional[List[float]]:
+    """Extract the 12-d F5_RDKIT_2D descriptor vector from *smiles*.
+
+    Returns ``None`` when RDKit is unavailable or the SMILES fails to parse
+    (callers fall back to the 5-d structural path).  The descriptor order
+    matches :data:`F5_RDKIT_2D_FEATURE_NAMES`.
+    """
+    try:
+        from rdkit import Chem
+        from rdkit.Chem import Crippen, Descriptors, rdMolDescriptors
+        from rdkit.Chem import RDConfig  # noqa: F401
+    except Exception:  # noqa: BLE001 - RDKit not installed ⇒ caller fallback
+        return None
+    if not isinstance(smiles, str) or not smiles.strip():
+        return None
+    try:
+        mol = Chem.MolFromSmiles(smiles.strip())
+        if mol is None:
+            return None
+        # BalabanJ comes from the RDKit Contrib SASA/GraphDescriptors module;
+        # fall back to 0.0 when it is missing rather than failing the row.
+        try:
+            from rdkit.Chem import rdMolDescriptors as _rmd  # noqa: F401
+
+            balabanj = float(Descriptors.BalabanJ(mol))
+        except Exception:  # noqa: BLE001
+            balabanj = 0.0
+        return [
+            float(Descriptors.MolWt(mol)),
+            float(Crippen.MolLogP(mol)),
+            float(rdMolDescriptors.CalcTPSA(mol)),
+            float(rdMolDescriptors.CalcNumHBA(mol)),
+            float(rdMolDescriptors.CalcNumHBD(mol)),
+            float(rdMolDescriptors.CalcNumRotatableBonds(mol)),
+            float(mol.GetNumHeavyAtoms()),
+            float(rdMolDescriptors.CalcNumRings(mol)),
+            float(rdMolDescriptors.CalcNumAromaticRings(mol)),
+            float(rdMolDescriptors.CalcFractionCSP3(mol)),
+            float(Crippen.MolMR(mol)),
+            float(balabanj),
+        ]
+    except Exception:  # noqa: BLE001 - any descriptor failure ⇒ fallback
+        return None
+
+
+def _load_metalcytotox_5metal(csv_path: Path) -> List[Dict[str, str]]:
+    """Load the MetalCytoToxDB 5-metal cohort CSV into a list of row dicts.
+
+    Rows whose ``metal`` is outside :data:`METALCYTO_5METAL_LIST` or whose
+    ``smiles`` is empty are dropped.  Uses the shared metal_cytotox loader so
+    the v3/v4 column-synonym handling is applied uniformly.
+    """
+    if not csv_path.exists():
+        raise FileNotFoundError(
+            f"MetalCytoToxDB 5-metal CSV not found: {csv_path} "
+            f"(repo root = {_REPO_ROOT})"
+        )
+    try:
+        from molmetal.data.metal_cytotox import load_metal_cytotox
+
+        df = load_metal_cytotox(csv_path)
+        rows: List[Dict[str, str]] = []
+        for _, r in df.iterrows():
+            metal = str(r.get("metal", "")).strip()
+            smi = str(r.get("smiles", "")).strip()
+            if not smi or metal not in METALCYTO_5METAL_LIST:
+                continue
+            rows.append({"smiles": smi, "metal": metal})
+        return rows
+    except Exception:  # noqa: BLE001 - fall back to a plain CSV read
+        rows = []
+        with open(csv_path, "r", encoding="utf-8") as fh:
+            reader = csv.DictReader(fh)
+            for row in reader:
+                smi = (row.get("smiles") or row.get("SMILES_Ligands") or "").strip()
+                metal = (row.get("metal") or row.get("Metal") or "").strip()
+                if not smi or metal not in METALCYTO_5METAL_LIST:
+                    continue
+                rows.append({"smiles": smi, "metal": metal})
+        return rows
+
+
+# ---------------------------------------------------------------------------
 # Data loading + feature extraction
 # ---------------------------------------------------------------------------
 def _smiles_features(smiles: str, metal: str) -> Tuple[float, ...]:
@@ -208,6 +335,30 @@ def _load_platinai_5k(csv_path: Path) -> List[Dict[str, str]]:
     return rows
 
 
+#: Dataset registry consumed by the triangle bench + its Wf-330-T2 tests.
+#: Defined AFTER both loaders so the ``loader`` entries resolve.
+DATASET_REGISTRY: Dict[str, Dict[str, Any]] = {
+    "platinai_5k": {
+        "csv": DEFAULT_PLATINAI_CSV,
+        "metal_list": METAL_LIST,
+        "metal_to_idx": METAL_TO_IDX,
+        "feature_mode": "f5_structural_5d",
+        "feature_names": FEATURE_NAMES,
+        "loader": _load_platinai_5k,
+    },
+    "metalcytotox_5metal": {
+        "csv": DEFAULT_METALCYTO_5METAL_CSV,
+        "metal_list": METALCYTO_5METAL_LIST,
+        "metal_to_idx": METALCYTO_5METAL_TO_IDX,
+        "feature_mode": "f5_rdkit_2d",
+        "feature_names": F5_RDKIT_2D_FEATURE_NAMES,
+        "loader": _load_metalcytotox_5metal,
+        "projected_r2": METALCYTO_5METAL_PROJECTED_R2,
+        "projected_mean": METALCYTO_5METAL_PROJECTED_MEAN,
+    },
+}
+
+
 def _sample_rows(
     rows: Sequence[Dict[str, str]],
     n: int,
@@ -253,27 +404,53 @@ def _standardize(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
 def _build_design_matrix(
     sampled_rows: Sequence[Dict[str, str]],
     seed: int,
+    feature_mode: str = "string5d",
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Build a deterministic ``(X, y)`` design matrix from sampled rows.
 
     The synthetic target is drawn from the **standardised** features so
     the noise floor is comparable to the ASTSR / Hilbert fit targets.
 
+    Parameters
+    ----------
+    feature_mode
+        * ``"string5d"`` (default) — the legacy 5-d ``_smiles_features``
+          string-heuristic matrix.
+        * ``"f5_rdkit_2d"`` — the 12-d F5_RDKIT_2D RDKit descriptor
+          matrix (:data:`F5_RDKIT_2D_FEATURE_NAMES`).  Rows whose SMILES
+          cannot be parsed (RDKit missing / bad parse) fall back to a
+          deterministic zero vector so the matrix shape stays stable.
+
     Returns
     -------
     (X, y, weights)
-        ``X`` — ``(n, 5)`` feature matrix.
+        ``X`` — ``(n, d)`` feature matrix (``d`` depends on
+        ``feature_mode``).
         ``y`` — ``(n,)`` synthetic target drawn from a known linear
         combination of ``X`` plus small Gaussian noise.  The weights
         are returned so callers can audit the ground truth.
     """
     n = len(sampled_rows)
-    X = np.zeros((n, len(FEATURE_NAMES)), dtype=float)
-    for i, row in enumerate(sampled_rows):
-        feats = _smiles_features(row.get("smiles", ""), row.get("metal", ""))
-        X[i, :] = feats
+    if feature_mode == "f5_rdkit_2d":
+        names: Tuple[str, ...] = F5_RDKIT_2D_FEATURE_NAMES
+        X = np.zeros((n, len(names)), dtype=float)
+        for i, row in enumerate(sampled_rows):
+            feats = _f5_rdkit_2d_features(row.get("smiles", ""))
+            if feats is not None:
+                X[i, :] = feats
+    elif feature_mode in ("string5d", "f5_structural_5d"):
+        names = FEATURE_NAMES
+        X = np.zeros((n, len(names)), dtype=float)
+        for i, row in enumerate(sampled_rows):
+            feats = _smiles_features(row.get("smiles", ""), row.get("metal", ""))
+            X[i, :] = feats
+    else:
+        raise ValueError(
+            f"unknown feature_mode {feature_mode!r}; expected "
+            "'string5d' or 'f5_rdkit_2d'"
+        )
     rng = np.random.default_rng(int(seed) + 17)
-    weights = rng.standard_normal(len(FEATURE_NAMES))
+    weights = rng.standard_normal(X.shape[1])
     # Standardise X so the target lives in the same scale as the
     # features the ASTSR / Hilbert regressors see (post-standardisation).
     X_std, _, _ = _standardize(X)
@@ -304,6 +481,7 @@ def _run_one_seed(
     hilbert_iters: int,
     X_seed: np.ndarray,
     y_seed: np.ndarray,
+    feature_names: Tuple[str, ...] = FEATURE_NAMES,
 ) -> Dict[str, Any]:
     """Run the full triangle closure for one seed.
 
@@ -350,7 +528,7 @@ def _run_one_seed(
         astsr_v = closure._run_astsr_vertex(
             features=X,
             target=y,
-            feature_names=FEATURE_NAMES,
+            feature_names=feature_names,
             depth=3,
             population=12,
             generations=8,
@@ -460,8 +638,30 @@ def build_report(
     seeds: Sequence[int] = DEFAULT_SEEDS,
     n_arms: int = DEFAULT_N_ARMS,
     hilbert_iters: int = DEFAULT_HILBERT_ITERS,
+    dataset: str = "platinai_5k",
 ) -> Dict[str, Any]:
-    """Build the multi-seed end-to-end triangle bench report."""
+    """Build the multi-seed end-to-end triangle bench report.
+
+    Parameters
+    ----------
+    dataset
+        * ``"platinai_5k"`` (default) — the PlatinAI 5K cohort with the
+          legacy 5-d structural features.
+        * ``"metalcytotox_5metal"`` — the MetalCytoToxDB 5-metal cohort
+          (Ru/Ir/Rh/Os/Re) with the F5_RDKIT_2D 12-d feature mode.  This
+          path additionally emits a ``per_metal_breakdown`` block with
+          the MEASURED-vs-PROJECTED ledger per metal.
+    """
+    if dataset == "metalcytotox_5metal":
+        return _build_metalcytotox_report(
+            csv_path=Path(DEFAULT_METALCYTO_5METAL_CSV),
+            n_trajectories=int(n_trajectories),
+            n_rounds=int(n_rounds),
+            seeds=seeds,
+            n_arms=int(n_arms),
+            hilbert_iters=int(hilbert_iters),
+        )
+
     csv_path = Path(platinai_csv)
     if not csv_path.is_absolute():
         csv_path = _REPO_ROOT / csv_path
@@ -499,6 +699,8 @@ def build_report(
         return float(np.std([r[key] for r in per_seed_results]))
 
     summary = {
+        "dataset": "platinai_5k",
+        "feature_mode": "string5d",
         "n_seeds": int(len(seeds)),
         "n_trajectories": int(n_trajectories),
         "n_rounds": int(n_rounds),
@@ -529,6 +731,106 @@ def build_report(
         "n_rounds": int(n_rounds),
         "seeds": [int(s) for s in seeds],
         "per_seed": per_seed_results,
+        "summary": summary,
+    }
+
+
+def _build_metalcytotox_report(
+    csv_path: Path,
+    n_trajectories: int,
+    n_rounds: int,
+    seeds: Sequence[int],
+    n_arms: int,
+    hilbert_iters: int,
+) -> Dict[str, Any]:
+    """Build the report for the MetalCytoToxDB 5-metal cohort.
+
+    Runs the triangle closure per-metal (each metal's rows form their own
+    design matrix under the F5_RDKIT_2D 12-d feature mode) and emits a
+    ``per_metal_breakdown`` block with the honest MEASURED-vs-PROJECTED
+    ledger.  MEASURED ``mean_hilbert_r2`` is compared against the
+    PROJECTED per-metal target from the skill ledger.
+    """
+    if not csv_path.is_absolute():
+        csv_path = _REPO_ROOT / csv_path
+    rows = _load_metalcytotox_5metal(csv_path)
+    if not rows:
+        raise RuntimeError(f"MetalCytoToxDB CSV at {csv_path} is empty")
+
+    # Group rows by metal.
+    by_metal: Dict[str, List[Dict[str, str]]] = {m: [] for m in METALCYTO_5METAL_LIST}
+    for r in rows:
+        m = r.get("metal", "")
+        if m in by_metal:
+            by_metal[m].append(r)
+
+    per_metal_breakdown: Dict[str, Dict[str, Any]] = {}
+    for metal in METALCYTO_5METAL_LIST:
+        mrows = by_metal.get(metal, [])
+        if not mrows:
+            per_metal_breakdown[metal] = {
+                "mean_hilbert_r2": 0.0,
+                "projected_target": float(METALCYTO_5METAL_PROJECTED_R2[metal]),
+                "MEASURED_vs_PROJECTED": "MEASURED=BELOW_TARGET",
+                "n_rows": 0,
+            }
+            continue
+        r2s: List[float] = []
+        for s in seeds:
+            sampled = _sample_rows(mrows, n=int(n_trajectories), seed=int(s))
+            if not sampled:
+                continue
+            X, y, _ = _build_design_matrix(
+                sampled, seed=int(s), feature_mode="f5_rdkit_2d"
+            )
+            res = _run_one_seed(
+                seed=int(s),
+                n_trajectories=int(n_trajectories),
+                n_rounds=int(n_rounds),
+                n_arms=int(n_arms),
+                hilbert_iters=int(hilbert_iters),
+                X_seed=X,
+                y_seed=y,
+                feature_names=F5_RDKIT_2D_FEATURE_NAMES,
+            )
+            r2s.append(float(res["mean_hilbert_r2"]))
+        measured = float(np.mean(r2s)) if r2s else 0.0
+        target = float(METALCYTO_5METAL_PROJECTED_R2[metal])
+        verdict = (
+            "MEASURED=ON_TARGET" if measured >= target else "MEASURED=BELOW_TARGET"
+        )
+        per_metal_breakdown[metal] = {
+            "mean_hilbert_r2": measured,
+            "projected_target": target,
+            "MEASURED_vs_PROJECTED": verdict,
+            "n_rows": int(len(mrows)),
+        }
+
+    cohort_measured = float(
+        np.mean([v["mean_hilbert_r2"] for v in per_metal_breakdown.values()])
+    )
+    summary = {
+        "dataset": "metalcytotox_5metal",
+        "feature_mode": "f5_rdkit_2d",
+        "n_seeds": int(len(seeds)),
+        "n_trajectories": int(n_trajectories),
+        "n_rounds": int(n_rounds),
+        "n_arms": int(n_arms),
+        "hilbert_iters": int(hilbert_iters),
+        "rows_loaded": int(len(rows)),
+        "mean_hilbert_r2": cohort_measured,
+        "projected_cohort_mean_hilbert_r2": float(METALCYTO_5METAL_PROJECTED_MEAN),
+    }
+    return {
+        "feature_names": list(F5_RDKIT_2D_FEATURE_NAMES),
+        "metal_list": list(METALCYTO_5METAL_LIST),
+        "dataset": "metalcytotox_5metal",
+        "feature_mode": "f5_rdkit_2d",
+        "csv": str(csv_path),
+        "n_trajectories": int(n_trajectories),
+        "n_rounds": int(n_rounds),
+        "seeds": [int(s) for s in seeds],
+        "per_metal_breakdown": per_metal_breakdown,
         "summary": summary,
     }
 

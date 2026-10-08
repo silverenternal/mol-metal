@@ -55,6 +55,66 @@ _CANDIDATES: tuple[Path, ...] = (
 _REQUIRED_COLUMNS = ("smiles", "metal", "pIC50", "active")
 _ACTIVE_THRESHOLD_UM = 10.0  # active := IC50_Dark_value < 10 µM
 
+# ---------------------------------------------------------------------------
+# Wf-323B / Wf-327F2 (Wf-A16 wire-in) — v3/v4 column-synonym map.
+#
+# The original release (v3) uses uppercase ``SMILES_Ligands`` / ``Metal``;
+# the persisted multi-task CSVs (v4) carry BOTH the lowercase canonical AND
+# the uppercase provenance columns.  Renaming the uppercase → lowercase on a
+# v4 frame would collide with the already-present lowercase column and raise
+# ``ValueError: Buffer has wrong number of dimensions``.  The helpers below
+# make the precedence explicit: the lowercase canonical form is always first
+# in each alias tuple, so :func:`_has_column` prefers it and the rename skips
+# when the target already exists.
+#
+# Keys are the canonical output columns; each value is an ordered tuple of
+# source aliases with the preferred (lowercase) form first.
+_COLUMN_SYNONYMS: dict[str, tuple[str, ...]] = {
+    "smiles": ("smiles", "SMILES_Ligands", "smiles_ligands"),
+    "metal": ("metal", "Metal"),
+    "pIC50": ("pic50", "pIC50", "IC50_Dark_value"),
+    "active": ("active", "activity"),
+}
+
+
+def _has_column(df: pd.DataFrame, canonical: str) -> Optional[str]:
+    """Return the first present alias for *canonical* in *df*, else ``None``.
+
+    Iterates ``_COLUMN_SYNONYMS[canonical]`` in order (preferred lowercase
+    form first) so a v4 frame with both ``smiles`` and ``SMILES_Ligands``
+    resolves to ``smiles`` — avoiding the duplicate-column collision.
+    """
+    aliases = _COLUMN_SYNONYMS.get(canonical, (canonical,))
+    for alias in aliases:
+        if alias in df.columns:
+            return alias
+    return None
+
+
+def _rename_v3_to_canonical(df: pd.DataFrame) -> pd.DataFrame:
+    """Rename v3-style uppercase provenance columns to canonical names.
+
+    Behaviour (Wf-323B contract):
+
+    * Only the two v3 provenance columns that must be normalised for the
+      canonical contract are renamed: ``SMILES_Ligands`` → ``smiles`` and
+      ``Metal`` → ``metal``.  The pIC50/active handling stays in the loader
+      (it *derives* rather than renames), so ``pic50`` / ``activity`` are
+      NEVER touched here — that is what makes the v4-like frame a no-op.
+    * When the lowercase canonical column is ALREADY present (v4 path), that
+      column's rename is skipped — no duplicate is introduced.
+    """
+    rename: dict[str, str] = {}
+    for canonical, v3_alias in (("smiles", "SMILES_Ligands"), ("metal", "Metal")):
+        if canonical in df.columns:
+            # Lowercase canonical already present — never rename over it.
+            continue
+        if v3_alias in df.columns:
+            rename[v3_alias] = canonical
+    if not rename:
+        return df
+    return df.rename(columns=rename)
+
 
 def _resolve_csv() -> Path:
     """Return the first existing CSV path.
@@ -115,15 +175,12 @@ def load_metal_cytotox(path: Optional[Path] = None) -> pd.DataFrame:
     csv_path = Path(path) if path is not None else _resolve_csv()
     df = pd.read_csv(csv_path, low_memory=False)
 
-    # Column normalisation.  The original release uses
-    # ``SMILES_Ligands`` for the SMILES column and ``Metal`` for the
-    # metal centre — both are renamed to lowercase canonical names.
-    rename = {}
-    if "SMILES_Ligands" in df.columns:
-        rename["SMILES_Ligands"] = "smiles"
-    if "Metal" in df.columns:
-        rename["Metal"] = "metal"
-    df = df.rename(columns=rename)
+    # Column normalisation via the v3/v4 synonym map (Wf-323B).  The
+    # original release (v3) uses ``SMILES_Ligands`` / ``Metal``; the v4 CSVs
+    # carry BOTH those uppercase columns AND the lowercase canonical ones —
+    # ``_rename_v3_to_canonical`` skips any canonical column already present,
+    # so the v4 collision (duplicate ``smiles``) cannot occur.
+    df = _rename_v3_to_canonical(df)
 
     if "smiles" not in df.columns or "metal" not in df.columns:
         raise ValueError(
@@ -165,4 +222,9 @@ def load_metal_cytotox(path: Optional[Path] = None) -> pd.DataFrame:
     return out
 
 
-__all__ = ["load_metal_cytotox"]
+__all__ = [
+    "load_metal_cytotox",
+    "_COLUMN_SYNONYMS",
+    "_has_column",
+    "_rename_v3_to_canonical",
+]

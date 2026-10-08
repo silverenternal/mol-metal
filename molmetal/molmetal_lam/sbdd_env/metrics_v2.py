@@ -1095,6 +1095,96 @@ def phototherapy_activity_mean(candidates: Sequence[str]) -> Optional[float]:
     return _external_mean("phototherapy_activity", "phototherapy_activity", candidates)
 
 
+# ---------------------------------------------------------------------------
+# m11 — n_distinct (canonical-SMILES deduplication count)
+# ---------------------------------------------------------------------------
+# Wf-253-D TODO-130 G3 / Wf-A16 wire-in.  A self-defined count metric:
+# the number of DISTINCT canonicalised molecules in a Lambda MCTS path /
+# candidate pool.  The collapse-to-1 pathology (n_distinct == 1 regardless
+# of input) is the R12 / wf_round12 diagnostic.  RDKit CPU-only; no model.
+def canonical_smiles(smi: str) -> Optional[str]:
+    """Return the RDKit canonical SMILES for *smi*, or ``None`` on failure.
+
+    ``CCO`` and ``OCC`` both canonicalise to the same string (``CCO``); an
+    unparseable / empty input returns ``None`` (silent-fallback convention,
+    consistent with the rest of this module).
+    """
+    mol = _safe_mol(smi)
+    if mol is None:
+        return None
+    try:
+        return Chem.MolToSmiles(mol)
+    except Exception:  # pragma: no cover - defensive
+        return None
+
+
+def n_distinct_from_smiles(
+    candidates: Sequence[str],
+    min_count_for_ratio: int = 1,
+) -> Dict[str, object]:
+    """Count distinct canonical SMILES in *candidates*.
+
+    Returns a dict with:
+
+    * ``n_input`` — number of raw candidates,
+    * ``n_parsed`` — how many parsed with RDKit,
+    * ``n_failed`` — ``n_input - n_parsed``,
+    * ``n_distinct`` — size of the distinct canonical-SMILES set,
+    * ``distinct_ratio`` — ``n_distinct / max(1, min_count_for_ratio)``
+      clipped to ``[0, 1]`` (only when ``min_count_for_ratio`` is given).
+    """
+    n_input = len(list(candidates))
+    canon: set[str] = set()
+    n_parsed = 0
+    for smi in candidates:
+        c = canonical_smiles(smi)
+        if c is None:
+            continue
+        n_parsed += 1
+        canon.add(c)
+    n_distinct = len(canon)
+    out: Dict[str, object] = {
+        "n_input": int(n_input),
+        "n_parsed": int(n_parsed),
+        "n_failed": int(n_input - n_parsed),
+        "n_distinct": int(n_distinct),
+    }
+    denom = max(1, int(min_count_for_ratio))
+    out["distinct_ratio"] = _clip(float(n_distinct) / float(denom), 0.0, 1.0)
+    return out
+
+
+def n_distinct_score(candidates: Sequence[str]) -> int:
+    """Scalar convenience: the integer distinct canonical-SMILES count."""
+    return int(n_distinct_from_smiles(candidates)["n_distinct"])
+
+
+def n_distinct_summary(candidates: Sequence[str]) -> Dict[str, object]:
+    """n_distinct + the TODO-25 §3 collapse_diagnostic band.
+
+    Bands: ``n_distinct >= 3`` → ``"OK"``; ``== 2`` → ``"WARN"``;
+    ``== 1`` → ``"COLLAPSE"`` (the R12 pathology); ``== 0`` → ``"EMPTY"``.
+    Also reports ``distinct_fraction`` = ``n_distinct / n_parsed``
+    (denominator is ``n_parsed``, NOT ``n_input``).
+    """
+    res = n_distinct_from_smiles(candidates)
+    nd = int(res["n_distinct"])
+    if nd == 0:
+        band = "EMPTY"
+    elif nd == 1:
+        band = "COLLAPSE"
+    elif nd == 2:
+        band = "WARN"
+    else:
+        band = "OK"
+    n_parsed = int(res["n_parsed"])
+    res["collapse_diagnostic"] = band
+    res["distinct_fraction"] = (
+        float(nd) / float(n_parsed) if n_parsed > 0 else 0.0
+    )
+    return res
+
+
 __all__ = [
     # Single-SMILES evaluators
     "logp7_4",
@@ -1133,6 +1223,11 @@ __all__ = [
     # Convenience
     "all_metrics_one",
     "all_metrics_mean",
+    # m11 — n_distinct metric family (Wf-253-D / Wf-A16)
+    "canonical_smiles",
+    "n_distinct_from_smiles",
+    "n_distinct_score",
+    "n_distinct_summary",
     # Flags
     "_RDKIT_AVAILABLE",
 ]

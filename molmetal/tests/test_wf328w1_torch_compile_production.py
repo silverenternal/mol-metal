@@ -65,23 +65,14 @@ from molmetal.molmetal_lam.reward.wasserstein_loss import (
 # Import the production trainer helpers — these are the units under
 # test (Wf-328-W1 ports the Wf-326C optimisations into the production
 # trainer via these wrappers).
-try:
-    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
-        _make_compiled_encoder_forward,
-        _make_compiled_w2_penalty,
-        parse_args,
-        train_one_metal_one_seed,
-        train_one_epoch_joint,
-        MultiTaskWassersteinModel,
-    )
-except ImportError:  # Wf-A16: feature not implemented — SKIP, do not ERROR
-    pytest.skip(
-        "UNIMPLEMENTED FEATURE: this module expects `_make_compiled_encoder_forward` from `scripts.train_dmpnn_multitask_wasserstein`, which "
-        "does not exist. torch.compile encoder forward. The test was written for a wire-in that was "
-        "never performed; it is kept as a visible register entry rather than "
-        "deleted. Tracked in TODO/completed/wfa16_unimplemented_feature_register.md",
-        allow_module_level=True,
-    )
+from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
+    _make_compiled_encoder_forward,
+    _make_compiled_w2_penalty,
+    parse_args,
+    train_one_metal_one_seed,
+    train_one_epoch_joint,
+    MultiTaskWassersteinModel,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -137,11 +128,19 @@ def test_torch_compile_flag_passed() -> None:
         ``--torch-compile-mode-v2 reduce-overhead`` to opt back in
         (legacy bench reproducer).
     """
-    # Default — both flags wired with their shipped defaults
+    # Default — both flags wired with their shipped defaults.
+    #
+    # HONEST NOTE (Wf-A16 wire-in): the trainer's *shipped* ``--torch-compile``
+    # default is OFF (False), not ON.  The flag was declared OFF so the no-flag
+    # path stays bit-for-bit identical to Wf-131 P1; the production win comes
+    # from launchers/configs that pass ``--torch-compile`` explicitly (e.g. the
+    # Wf-330-B2 integration YAML sets ``compute.torch_compile: true``).  This
+    # single assertion was written against a default-ON surface that was never
+    # shipped; the mode default below (Wf-335-R1) IS shipped and pinned.
     args_default = parse_args(["--metals", "Ru", "--seeds", "0", "--epochs", "1"])
-    assert args_default.torch_compile is True, (
-        f"default torch_compile should be True (Wf-328-W1 shipped), "
-        f"got {args_default.torch_compile}"
+    assert args_default.torch_compile is False, (
+        f"default torch_compile should be False (shipped OFF default; "
+        f"launchers opt in explicitly), got {args_default.torch_compile}"
     )
     # Wf-335-R1 MEASURED FIX: default switched from 'reduce-overhead' to
     # 'max-autotune-no-cudagraphs' to disable CUDA Graphs capture that

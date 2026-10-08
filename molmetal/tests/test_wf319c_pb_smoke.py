@@ -305,10 +305,18 @@ def test_gate_wf319c_pb_packages_status_present_exists_and_passes() -> None:
         SMOKE_OUTPUT,
     )
     assert (
-        result.status == "PASS"
+        result.status in ("PASS", "SKIP")
     ), f"gate returned {result.status!r}: {result.evidence}"
     assert "rdkit=" in result.evidence
     assert "posebusters=" in result.evidence
+    # Wf-445-A1: the on-disk smoke is n_poses=15, below
+    # M8_PB_PRODUCTION_MIN_POSES=100, so the gate SKIPs rather than
+    # PASSes. If a future production re-measure lands, this flips to PASS.
+    if result.status == "SKIP":
+        assert "NOT PB production" in result.evidence, (
+            "SKIP must state the smoke-vs-production distinction "
+            f"(evidence={result.evidence!r})"
+        )
 
 
 def test_gate_wf319c_pb_packages_status_present_fails_on_missing_metric() -> None:

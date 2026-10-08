@@ -821,6 +821,80 @@ _extend_mean_field_plan_with_ma()
 
 
 # ---------------------------------------------------------------------------
+# Wf-349-A2 / Wf-A16 — exact minibatch OT coupling (Tong 2023 OT-CFM)
+# ---------------------------------------------------------------------------
+def exact_minibatch_ot_coupling(
+    x0: torch.Tensor,
+    x1: torch.Tensor,
+    exact_max_batch: int = 128,
+    *,
+    seed: Optional[int] = None,
+) -> "tuple[torch.Tensor, torch.Tensor]":
+    """Exact minibatch optimal-transport coupling of two equal-size batches.
+
+    Implements the OT-CFM pair construction of Tong et al. (2024,
+    "Improving and Generalizing Flow-Based Generative Models with Minibatch
+    Optimal Transport", TMLR; arXiv 2302.00482): within each minibatch the
+    source samples ``x0`` are matched to the targets ``x1`` by solving the
+    discrete OT problem with squared-L2 cost, giving a *coupled* pair
+    ``(x0, x1[perm])`` that is the empirical W₂-optimal coupling.
+
+    Parameters
+    ----------
+    x0, x1 : torch.Tensor
+        Source and target batches of identical shape ``(b, ...)``.  Trailing
+        dims are flattened for the cost matrix.
+    exact_max_batch : int, default 128
+        When ``b <= exact_max_batch`` the *exact* Hungarian assignment is
+        solved.  Above this threshold (the Hungarian solver is O(b³) and
+        becomes the bottleneck) the plan falls back to a stochastic
+        :func:`compute_ot_plan(..., mode="random")` pairing, matching the
+        upstream reference's minibatch behaviour.
+    seed : int, optional
+        Seed for the fallback random pairing (ignored on the exact path).
+
+    Returns
+    -------
+    (px0, px1) : tuple[torch.Tensor, torch.Tensor]
+        ``px0`` is ``x0`` (unchanged — the permutation is applied to the
+        target side); ``px1`` is ``x1[perm]`` so ``px1[i]`` is optimally
+        coupled to ``px0[i]``.
+
+    Raises
+    ------
+    ValueError
+        If the batch is empty (``b == 0``) or ``x0`` / ``x1`` shapes differ.
+        Both are raised *before* any reshape so callers get a clean message
+        rather than an opaque ``RuntimeError: cannot reshape tensor``.
+    """
+    # Guard the empty batch BEFORE any reshape (Wf-349-A2 audit gap).
+    if x0.shape[0] < 1:
+        raise ValueError(
+            f"batch size must be >= 1; got {int(x0.shape[0])} (empty batch)."
+        )
+    if x0.shape != x1.shape:
+        raise ValueError(
+            f"`x0` and `x1` must share shape; got {tuple(x0.shape)} vs "
+            f"{tuple(x1.shape)}."
+        )
+
+    b = int(x0.shape[0])
+    if b <= int(exact_max_batch):
+        # Exact discrete OT: Hungarian on the squared-L2 cost matrix.
+        # compute_ot_plan raises on shape mismatch too, but we already
+        # guarded above; this reuses the SAME solver the reference and
+        # the hungarian audit test use, so costs agree to 1e-4.
+        idx = compute_ot_plan(x0, x1, mode="hungarian")
+    else:
+        # Stochastic fallback for large minibatches (avoids the O(b³)
+        # Hungarian blow-up); uses compute_ot_plan, NOT mini_batch_ot_coupling
+        # (the latter requires a batch_idx we do not have here — Wf-349-A2 gap).
+        idx = compute_ot_plan(x0, x1, mode="random", seed=seed)
+    px1 = x1[idx]
+    return x0, px1
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -835,4 +909,6 @@ __all__ = [
     "mean_field_score_smoothed_ot_plan",
     "ma_regularization_factor",
     "ma_regularized_ot_plan",
+    # Wf-349-A2 additions
+    "exact_minibatch_ot_coupling",
 ]

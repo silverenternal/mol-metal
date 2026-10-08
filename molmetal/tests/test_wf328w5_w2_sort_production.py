@@ -42,19 +42,10 @@ if str(PROJECT_ROOT) not in sys.path:
 # Imports — kept inside the test bodies for the helper test below; we pull
 # the constants + parse_args up-front for the wiring assertions.
 # ---------------------------------------------------------------------------
-try:
-    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (  # noqa: E402
-        DEFAULT_W2_GRADIENT_MODE,
-        parse_args,
-    )
-except ImportError:  # Wf-A16: feature not implemented — SKIP, do not ERROR
-    pytest.skip(
-        "UNIMPLEMENTED FEATURE: this module expects `DEFAULT_W2_GRADIENT_MODE` from `scripts.train_dmpnn_multitask_wasserstein`, which "
-        "does not exist. W2 gradient sort mode. The test was written for a wire-in that was "
-        "never performed; it is kept as a visible register entry rather than "
-        "deleted. Tracked in TODO/completed/wfa16_unimplemented_feature_register.md",
-        allow_module_level=True,
-    )
+from molmetal.scripts.train_dmpnn_multitask_wasserstein import (  # noqa: E402
+    DEFAULT_W2_GRADIENT_MODE,
+    parse_args,
+)
 
 
 def test_w2_gradient_mode_sort_default_implemented():
@@ -329,8 +320,11 @@ def test_integration_with_trainer():
         w2_gradient_mode="sort",
         num_workers=0,
     )
-    assert len(losses_sort) == 4
-    total_l, cls_l, reg_l, w_l = losses_sort
+    # Live contract (Wf-A9 extension): the epoch loop returns a 5-tuple
+    # ``(total, cls, reg, w, last_grad_norm)`` — the trailing grad-norm was
+    # appended after Wf-328-W5 wrote this test.  Unpack the first four.
+    assert len(losses_sort) == 5
+    total_l, cls_l, reg_l, w_l = losses_sort[:4]
     for name, val in zip(
         ("total", "cls", "reg", "w"),
         (total_l, cls_l, reg_l, w_l),
@@ -359,10 +353,10 @@ def test_integration_with_trainer():
         w2_gradient_mode="sliced",
         num_workers=0,
     )
-    assert len(losses_sliced) == 4
+    assert len(losses_sliced) == 5
     for name, val in zip(
         ("total", "cls", "reg", "w"),
-        losses_sliced,
+        losses_sliced[:4],
     ):
         assert val == val, f"{name} loss is NaN"
         import math

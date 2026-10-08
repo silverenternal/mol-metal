@@ -50,21 +50,12 @@ if str(PROJECT_ROOT) not in sys.path:
 # Importing the module pulls in the full D-MPNN + Wasserstein graph;
 # on CPU-only hosts the autocast path degrades to ``nullcontext``
 # (no tensor-core benefit on CPU), so the import itself is safe.
-try:
-    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (  # noqa: E402
-        DEFAULT_BF16,
-        bf16_autocast,
-        configure_bf16,
-        parse_args,
-    )
-except ImportError:  # Wf-A16: feature not implemented — SKIP, do not ERROR
-    pytest.skip(
-        "UNIMPLEMENTED FEATURE: this module expects `DEFAULT_BF16` from `scripts.train_dmpnn_multitask_wasserstein`, which "
-        "does not exist. BF16 autocast. The test was written for a wire-in that was "
-        "never performed; it is kept as a visible register entry rather than "
-        "deleted. Tracked in TODO/completed/wfa16_unimplemented_feature_register.md",
-        allow_module_level=True,
-    )
+from molmetal.scripts.train_dmpnn_multitask_wasserstein import (  # noqa: E402
+    DEFAULT_BF16,
+    bf16_autocast,
+    configure_bf16,
+    parse_args,
+)
 
 
 # ---------------------------------------------------------------------------
