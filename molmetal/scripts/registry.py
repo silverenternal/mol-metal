@@ -574,13 +574,12 @@ def generate(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
         "uncovered_metric_files": uncovered,
     }
 
-    out_dir = Path(repo_root) / "registry"
-    out_dir.mkdir(parents=True, exist_ok=True)
     for path, doc in (
-        (out_dir / "datasets.yaml", datasets_doc),
-        (out_dir / "protocols.yaml", protocols_doc),
-        (out_dir / "metrics.yaml", metrics_doc),
+        (DATASETS_PATH, datasets_doc),
+        (PROTOCOLS_PATH, protocols_doc),
+        (METRICS_PATH, metrics_doc),
     ):
+        path.parent.mkdir(parents=True, exist_ok=True)
         text = yaml.safe_dump(doc, sort_keys=False, allow_unicode=True)
         # Skip a rewrite that would change nothing but the timestamp header, so a
         # read-only caller (e.g. the test suite) does not dirty the tracked file.

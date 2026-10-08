@@ -40,6 +40,23 @@ if str(REPO_ROOT) not in str(sys.path):
 
 from molmetal.scripts import registry as reg  # noqa: E402
 
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _isolated_registry(tmp_path, monkeypatch):
+    """Redirect the three registry paths into tmp so a test run never writes
+    the tracked registry/*.yaml (generate() would otherwise move generated_at
+    and dirty the working tree on every pytest invocation). A baseline registry
+    is generated into tmp first, so tests that read/corrupt the file have one."""
+    d = tmp_path / "registry"
+    d.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(reg, "DATASETS_PATH", d / "datasets.yaml")
+    monkeypatch.setattr(reg, "PROTOCOLS_PATH", d / "protocols.yaml")
+    monkeypatch.setattr(reg, "METRICS_PATH", d / "metrics.yaml")
+    reg.generate(REPO_ROOT)
+    yield
+
 
 def test_generate_writes_three_files(tmp_path):
     rep = reg.generate(REPO_ROOT)
