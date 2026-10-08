@@ -632,15 +632,28 @@ def _write_report(
             "| Seed | n_train | n_test | pos_rate_test | ROC-AUC | PR-AUC | Hit@5% |"
         )
         lines.append("|---|---|---|---|---|---|---|")
-        for sd in r.get("per_seed", []):
-            tm = sd.get("test_metrics", {})
-            lines.append(
-                f"| {sd['seed']} | {sd.get('n_train','-')} | {sd.get('n_test','-')} | "
-                f"{sd.get('pos_rate_test', float('nan')):.3f} | "
-                f"{tm.get('roc_auc', float('nan')):.4f} | "
-                f"{tm.get('pr_auc', float('nan')):.4f} | "
-                f"{tm.get('hit_rate_top5pct', float('nan')):.3f} |"
-            )
+        # Prefer the raw per-seed records (carry n_train/n_test/pos_rate).
+        # When those were not retained to disk, fall back to the aggregate
+        # JSON's per-seed value lists so the table is never emitted empty.
+        raw = r.get("per_seed", [])
+        if raw:
+            for sd in raw:
+                tm = sd.get("test_metrics", {})
+                lines.append(
+                    f"| {sd['seed']} | {sd.get('n_train','-')} | {sd.get('n_test','-')} | "
+                    f"{sd.get('pos_rate_test', float('nan')):.3f} | "
+                    f"{tm.get('roc_auc', float('nan')):.4f} | "
+                    f"{tm.get('pr_auc', float('nan')):.4f} | "
+                    f"{tm.get('hit_rate_top5pct', float('nan')):.3f} |"
+                )
+        else:
+            for i, auc in enumerate(r.get("per_seed_auc", [])):
+                pr = r.get("per_seed_pr_auc", [float("nan")] * len(r["per_seed_auc"]))
+                hit = r.get("per_seed_hit_top5", [float("nan")] * len(r["per_seed_auc"]))
+                seed = seeds[i] if i < len(seeds) else i
+                lines.append(
+                    f"| {seed} | - | - | - | {auc:.4f} | {pr[i]:.4f} | {hit[i]:.3f} |"
+                )
         lines.append("")
 
     # Per-task commentary and honest caveats
