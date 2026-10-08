@@ -17,13 +17,19 @@ protocol + same metric 才 comparable."*
 - **Protocol-aligned (same dataset+task+metric) — competitive or winning:** m1 Ru AUC (paper-protocol
   replication 0.7717 vs Krasnov 0.810, cross-cohort), m21 NCI-60 9-cell (0.8007 vs 0.81), Krasnov-aligned
   chemprop 3-metal (0.7812), m15 RMSD (0.6578 Å, 5/5 pass 2.0 Å), decode_ratio (0.998), n_distinct (20 vs
-  gate 3), RDKit validity (1.000), m1 vs our own single-task baseline (+0.049).
-- **Protocol-aligned — genuinely behind:** MoleculeNet clintox (0.7016 vs chemprop-D-MPNN 0.894, −0.19),
-  hiv (0.7470 vs 0.823, −0.08), bbbp (0.8720 vs 0.940, −0.07), m19 LOMO real-only (0.5575 vs target 0.70),
-  pearson r pIC50 (0.309 vs ridge 0.572).
+  gate 3), RDKit validity (1.000), m1 vs our own single-task baseline (+0.049), MoleculeNet mean 0.8161
+  (D-MPNN backbone, passes the 0.80 gate).
+- **Protocol-aligned — genuinely behind:** MoleculeNet clintox (0.8398 vs chemprop-D-MPNN 0.894, −0.054),
+  hiv (0.7832 vs 0.823, −0.040), bbbp (0.9003 vs 0.940, −0.040), bace (0.7412 vs 0.876, honest-negative),
+  m19 LOMO real-only (0.5575 vs target 0.70; 0.5845 with per-metal centering).
+- **Readout finding, NOT a feature gap:** pearson r pIC50 — the bottleneck is the neural head, not the
+  multi-task α (3-seed ridge probe on the frozen encoder embedding 0.403 ± 0.004 vs head 0.198 ± 0.023;
+  we already beat the same-split Morgan ridge 0.3232). A random encoder scores nearly as well (0.378),
+  so the encoder learned little pIC50 structure — the readable signal is generic. See §2b.
 - **Not protocol-aligned (do NOT put in a comparison table):** m17 on the fallback cohort; m2 R² on n=200
-  cohorts (structural overfit, not a protocol gap); the Tier-2 SOTA column in METRICS_TARGETS (100-pocket
-  / Uni-Mol-pretrained numbers we are explicitly not competing with).
+  cohorts (structural overfit, not a protocol gap); the pearson **0.572** ridge (different cohort/split —
+  see §2b); the Tier-2 SOTA column in METRICS_TARGETS (100-pocket / Uni-Mol-pretrained numbers we are
+  explicitly not competing with).
 
 ---
 
@@ -50,18 +56,45 @@ cell lines). It is a cross-cohort estimate, labelled as such, not a reproduction
 
 | Metric | Ours (MEASURED) | Baseline (same protocol) | Gap | Source JSON |
 |---|---|---|---|---|
-| **MoleculeNet clintox** | 0.7016 | chemprop D-MPNN **0.894** | **−0.192** | `moleculenet_auc.json::tasks.clintox` |
-| **MoleculeNet hiv** | 0.7470 | chemprop D-MPNN **0.823** | −0.076 | `moleculenet_auc.json::tasks.hiv` |
-| **MoleculeNet bbbp** | 0.8720 | chemprop D-MPNN **0.940** | −0.068 (we beat chemprop RF 0.728) | `moleculenet_auc.json::tasks.bbbp` |
-| **MoleculeNet bace** | 0.8609 | chemprop D-MPNN 0.876 | −0.015 | `moleculenet_auc.json::tasks.bace` |
-| **m19 LOMO (real-only)** | 0.5575 | target 0.70 | −0.14 | `metal_lomo_auc_wasserstein.json` |
-| **pearson r pIC50** | 0.3091 | ridge 0.572 | −0.263 | `pearson_r_pic50.json` |
+| **MoleculeNet clintox** | 0.7016 (Morgan-MLP) → **0.8398** (D-MPNN) | chemprop D-MPNN **0.894** | −0.192 → **−0.054** | `moleculenet_auc.json::tasks.clintox` / `moleculenet_auc_dmpnn.json::tasks.clintox` |
+| **MoleculeNet hiv** | 0.7470 → **0.7832** (D-MPNN) | chemprop D-MPNN **0.823** | −0.076 → **−0.040** | `moleculenet_auc_dmpnn.json::tasks.hiv` |
+| **MoleculeNet bbbp** | 0.8720 → **0.9003** (D-MPNN) | chemprop D-MPNN **0.940** | −0.068 → **−0.040** | `moleculenet_auc_dmpnn.json::tasks.bbbp` |
+| **MoleculeNet bace** | 0.8609 → 0.7412 (D-MPNN) | chemprop D-MPNN 0.876 | **−0.135** (D-MPNN worse; std 0.069 — likely seed variance, 5-seed rerun pending) | `moleculenet_auc_dmpnn.json::tasks.bace` |
+| **m19 LOMO (real-only)** | 0.5575 (0.5845 w/ per-metal centering) | target 0.70 | −0.14 (−0.116) | `metal_lomo_auc_wasserstein.json` |
 
-**Caveat on MoleculeNet:** our run uses **Morgan-FP + MLP** (`morgan_fp_2048_r2`), not a D-MPNN
-backbone. The −0.19 on clintox is therefore substantially a **representation/architecture** gap, not a
-"method doesn't work" gap — a D-MPNN backbone on the same splits is the natural test.
+**Caveat on MoleculeNet:** the original run was **Morgan-FP + MLP** (`morgan_fp_2048_r2`); the aligned
+D-MPNN backbone (same Bemis-Murcko scaffold split, same ROC-AUC) closes most of the gap — mean 0.7954 →
+**0.8161**, passing the 0.80 gate. The residual clintox/bbbp gap (−0.054 / −0.040) is now tuning, not
+architecture. `bace` regressed under D-MPNN and is reported as an honest-negative (3-seed std 0.069).
 **Caveat on m19:** the older 0.7577 was half-synthetic (500 fabricated Rh rows); the real-only 25-run
-value is 0.5575 and is the honest number.
+value is 0.5575 and is the honest number. Per-metal pIC50 centering lifts the real-only aggregate to
+0.5845 ± 0.0764 (inside noise) but moves the worst fold **Rh 0.3812 → 0.5022** decisively.
+
+### §2b Readout finding — pearson r pIC50 (NOT a feature gap)
+
+3-seed means (seeds 0/1/2, same split, n_test=994), from the per-seed JSONs in
+`molmetal/reports/wf_pearson_diag_3seed/`:
+
+| Probe (same split, mean ± std over seeds 0/1/2) | test Pearson | Source |
+|---|---|---|
+| ridge on **trained** D-MPNN encoder embedding (α=0.2) | **0.4033 ± 0.0036** | `wf_pearson_diag_3seed/seed{0,1,2}.json` |
+| ridge on **trained** encoder embedding (α=0.5) | 0.4019 ± 0.0058 | same |
+| ridge on **random** (untrained) encoder embedding | 0.3780 ± 0.0116 | same |
+| ridge on **Morgan FP** | 0.3232 (split-fixed, no seed var) | same |
+| neural pIC50 head (default α=0.5) | 0.1978 ± 0.0233 | same |
+| neural head, regression-weighted (α=0.2) | 0.1710 ± 0.0057 | same |
+
+The bottleneck is the **readout**, not the multi-task α: a linear probe on the frozen encoder
+embedding extracts **~2×** the signal the trained neural head does (0.403 vs 0.198; the ridge's
+worst seed 0.396 is above the head's best seed 0.219 — no overlap), and re-weighting the loss
+toward regression makes the head *worse* (0.171 < 0.198, refuting the α-starvation hypothesis).
+
+**Honest caveat:** the probe on a **random** encoder is nearly as good as on the trained one
+(0.378 vs 0.403). So most of the readable signal lives in "the pooled embedding has a linear
+pIC50 direction at all", not in what training added to the representation — consistent with §2's
+L5 finding that the input features carry almost no linear signal. The fix is the readout, but do
+not claim the encoder learned a strong pIC50 representation; on this split we already exceed the
+same-split Morgan ridge (0.403 vs 0.323).
 
 ---
 
@@ -71,6 +104,7 @@ value is 0.5575 and is the honest number.
 |---|---|---|
 | m17 OOD AUC | 0.7479 assay | measured on `metacytotox_fallback` (5,207 rows), **not** official DrugOOD IC50 splits; iMoLD margin is gate arithmetic only. Regen pending (official CSVs on disk). |
 | m2 R² platinai/hilbert | −0.144 | n=200 cohorts; structural overfit with 50+-feature Ridge, not a protocol gap. |
+| pearson ridge 0.572 | 0.572 | measured on the `pic50_margin_sweep` cohort (HeLa48h/dark 702 formulations, 383 scaffolds, seeds 42/0/1234) — a **different split** from the 2026-10-08 readout diagnostic (seeds 0/1/2, n_test=994). Same-split Morgan ridge is 0.3232. Do NOT cite as a same-protocol gap; see §2b. |
 | m3 Vina median | −3.103 (cisplatin) / −7.782 (organic) | no external paper baseline exists on our 5-pocket subset. |
 | Tier-2 SOTA column | e.g. TransDiffSBDD −9.37 | 100-pocket / Uni-Mol-pretrained — explicitly out of scope per COMPARISON_BASELINES §2. |
 
