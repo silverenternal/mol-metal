@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
-# launch_wf131_p3_pt_4cells.sh — Pt × 4 cell-line × 5 seeds D-MPNN retrain wrapper
+# launch_wf131_p3_pt_4cells.sh — REAL 5-metal LOMO D-MPNN retrain wrapper
 #                          (USER_OK-gated GPU launch wrapper)
+#
+# 2026-10-08 SUBSTANTIVE PIVOT per user direction
+# "得用真实数据啊,合成数据真的有用吗?":
+#   Original task asked for Pt × 4-cell-line LOMO, but real Pt per-cell
+#   IC50 numerics are not accessible (Rusanov 2025 S4-S5 Cloudflare,
+#   MB-Finder coverage-only API, Selenium blocked, synthetic 99% inactive).
+#   Pivoted to REAL 5-metal LOMO (Ir/Os/Re/Rh/Ru) on MetalCytoToxDB.csv.
 #
 # Date:        2026-10-02
 # Owner:       Hugo Lee + ultracode agent (FIX 3 — Pt 4-cells wrapper author)
@@ -25,34 +32,36 @@
 #   - AGENTS.md §5.7 NEW (Wf-399-A2 trainer flag wire-in smoke-required rule)
 #
 # HONEST FRAMING (party-twenty-spirit §3.5 + AGENTS.md §5.2):
-#   - user_ok_required: true (kill_then_adapt; 4 cells × 5 seeds × 50-ep × ~18 min wall
-#      per pair PROJECTED = ~6 hr GPU wall PROJECTED per Wf-260 G6 timing on RTX 5090)
-#   - Scope: 4 cell lines (MCF-7 + A549 + A2780 + A2780cis per Rusanov 2025 §1.2) × 5 seeds =
-#      20 (cell, seed) pairs TOTAL (per task brief §1)
-#   - Wall: ~6 hr PROJECTED per Wf-260 G6 timing:
-#       - Per-pair (Pt, cell, seed): ~18 min wall × 20 pairs = ~6 hr
+#   - SUBSTANTIVE PIVOT 2026-10-08 per user direction
+#     "得用真实数据啊,合成数据真的有用吗?":
+#     Original task brief asked for Pt × 4-cell-line LOMO, but real Pt per-cell
+#     IC50 numerics are NOT accessible:
+#       * Rusanov 2025 supplementary S4-S5 → Cloudflare JS challenge (Wf-292D)
+#       * MB-Finder portal API → coverage flags only, no IC50 numerics
+#       * Selenium undetected_chromedriver scrape → 0 rows (Wf-304B BLOCK_CF)
+#       * Synthetic PlatinAI 4-cell platinai_4cell.csv → 99% inactive
+#         (pIC50<8.0 for 16309/16312 rows); binary AUC gate ≥0.70 unreachable.
+#     Pivoted to REAL 5-metal LOMO on MetalCytoToxDB.csv (Ir/Os/Re/Rh/Ru,
+#     26632 rows, REAL per-metal IC50 numerics) — same canonical m2 source
+#     as Wf-125 P2 baseline.
+#   - user_ok_required: true (kill_then_adapt; 5 metals × 5 seeds × 50-ep
+#     × ~12 min wall PROJECTED per Wf-260 G6 timing on RTX 5090)
+#   - Scope: 5 metals (Ru + Ir + Os + Rh + Re) × 5 seeds = 25 (metal, seed)
+#     pairs TOTAL
+#   - Wall: ~5 hr PROJECTED per Wf-260 G6 timing:
+#       - Per-pair (metal, seed): ~12 min wall × 25 pairs = ~5 hr
 #       - Sequential overhead + ckpt write: +1 hr
-#       - TOTAL: ~6 hr GPU (conservative; Pt cohort small ~4k rows per Wf-431-B1 §0)
-#   - Per-cell line breakdown (Rusanov 2025 §1.2 protocol alignment):
-#       - MCF-7:   breast cancer
-#       - A549:    non-small-cell lung cancer (NSCLC)
-#       - A2780:   ovarian cancer (cisplatin-sensitive baseline)
-#       - A2780cis: cisplatin-resistant subline (resistance axis)
-#   - Per-pair budget 0.30 hr PROJECTED per Wf-260 G6 timing
-#   - Paper §6 honest limitations: per-cell R² not guaranteed to lift; Wf-431-B1
-#      GPU utilization optimization (--torch-compile + --tf32 + --cudnn-benchmark +
-#      --channels-last) is SCAFFOLD_ONLY at C1 timestamp; MEASURED end-to-end
-#      GPU utilization uplift deferred to actual GPU retrain USER_OK-gated wave.
-#   - **TASK-BRIEF FLAG MISMATCH (BLOCKER 3 pattern per Wf-418-A5)**: task brief
-#      specifies `--metal Pt --cell-line X --seed N` invocation, but the current
-#      trainer `train_metal_lomo_wasserstein.py` does NOT accept:
-#         - `--metal Pt` (singular): trainer uses `--metals METALS [METALS ...]` (plural nargs)
-#         - `--cell-line X`: trainer has NO cell-line flag; per-cell evaluation is
-#              out-of-scope for the canonical LOMO trainer (currently uses 5-metal
-#              subset evaluation via MetalCytoToxDB cohort-split; Rusanov PlatinAI
-#              per-cell protocol would require trainer extension ~50 LOC + per-cell
-#              data adapter)
-#         - `--seed N`: trainer uses `--seeds SEEDS [SEEDS ...]` (plural nargs)
+#       - TOTAL: ~5 hr GPU (conservative; Ru cohort ~19k rows is biggest)
+#   - Per-metal breakdown (canonical m2 MetalCytoToxDB):
+#       - Ru: 18,987 rows (largest cohort, most expensive)
+#       - Ir: 4,546 rows
+#       - Os: 1,113 rows
+#       - Rh: 1,118 rows (with Wf-125 P2 synthetic-oversample per Wf-A3)
+#       - Re: 868 rows
+#   - Per-pair budget 0.6 hr PROJECTED per Wf-260 G6 timing
+#   - Pt × 4-cell-line task BLOCKED on external dependency per AGENTS.md
+#     §5.2 honest-negative framing; documented in
+#     TODO/completed/131_wf131_p3_pt_4cell_blocked_external.md
 #      This wrapper:
 #         (i)   Uses trainer-compatible `--metals Pt --seeds N` (plural) as primary
 #                invocation path (matches Wf-131 P3 + Wf-251-F4 baseline)
@@ -80,7 +89,15 @@
 #   - --dry-run does NOT bypass the gate; it only skips GPU launch.
 #   - Exit code 64 on USER_OK gate refusal (Wf-294B convention).
 
-set -euo pipefail
+set -eu
+# NB: pipefail INTENTIONALLY DISABLED per Wf-131 P3 post-mortem 2026-10-08:
+# The per-pair invocation `${PY} ${TRAINER} ... | tee "${pair_log}"` causes
+# SIGPIPE in `tee` when Python's DataLoader workers (forked at process exit)
+# flush stdout after the trainer's main process has already closed the pipe.
+# pipefail then propagates a non-zero exit to the wrapper, killing it
+# silently between pair completion and .DONE marker write.
+# Fix: drop pipefail; capture trainer rc via PIPESTATUS[0]; explicitly suppress
+# tee failures with `|| true` so SIGPIPE never reaches the wrapper.
 
 # --- §5.9 single-venv + canonical markers (Wf-431-A1) ---------------------
 export PYTHONPATH="/home/hugo/codes/mol-metal"
@@ -102,40 +119,44 @@ PROJECT_ROOT="/home/hugo/codes/mol-metal"
 SCRIPTS_DIR="${PROJECT_ROOT}/molmetal/scripts"
 REPORTS_DIR="${PROJECT_ROOT}/molmetal/reports/wf131_p3_pt_4cells"
 TRAINER="${SCRIPTS_DIR}/train_metal_lomo_wasserstein.py"
-# Per Wf-131 P3 substantive fix: the original LOMO_CSV
-# (`metalcytotox_5metal_multitask_v4.csv`) only contains Ir/Os/Re/Rh/Ru —
-# NO Pt rows.  Holding out Pt on a CSV without Pt gives n_test=0 and
-# AUC=NaN.  Switch to the MERGED CSV built by `melt_platinai_4cell.py`
-# which has:
-#   * 5-metal train fold (Ir/Os/Re/Rh/Ru, 26632 rows from
-#     metalcytotox_5metal_multitask_v4.csv)
-#   * Pt test fold (4078 × 4 cell-lines = 16312 rows melted from
-#     platinai_4cell.csv)
-# Total: 42944 rows.  Synthetic pIC50 (Rusanov 2025 supplementary S4-S5
-# is behind Cloudflare; per .data/molmetal/platinai_4cell.meta.json honest
-# framing).  MEASURED/PROJECTED labels per AGENTS.md §5.2.
-LOMO_CSV="${PROJECT_ROOT}/.data/molmetal/platinai_4cells_with_5metal_train.csv"
+# Per Wf-131 P3 SUBSTANTIVE PIVOT (2026-10-08 user direction
+# "得用真实数据啊,合成数据真的有用吗?"):
+# Real Pt per-cell IC50 numerics are NOT accessible:
+#   * Rusanov 2025 supplementary S4-S5 → Cloudflare JS challenge (Wf-292D)
+#   * MB-Finder portal API → coverage flags only, no IC50 numerics
+#   * Selenium undetected_chromedriver scrape → 0 rows (Wf-304B BLOCK_CF)
+#   * Synthetic PlatinAI 4-cell platinai_4cell.csv → 99% inactive (pIC50<8.0
+#     for 16309/16312 rows); binary AUC gate ≥0.70 unreachable.
+#
+# Substantive pivot: switch to REAL 5-metal LOMO on MetalCytoToxDB
+# (Ir/Os/Re/Rh/Ru, 26632 rows, REAL per-metal IC50 numerics from
+# MetalCytoToxDB.csv).  This is the canonical m2 (metal-LOMO-AUC) source
+# for the Tier-2 paper; Wf-125 P2 baseline is on this same dataset.
+#
+# Pt × 4-cell is BLOCKED on external dependency per AGENTS.md §5.2
+# honest-negative framing; documented in
+# TODO/completed/131_wf131_p3_pt_4cell_blocked_external.md.
+LOMO_CSV="${PROJECT_ROOT}/.data/molmetal/metalcytotox_5metal_multitask_v4.csv"
 if [[ ! -f "${LOMO_CSV}" ]]; then
-    echo "[wf131-launch] building merged CSV → ${LOMO_CSV}"
-    "${PY}" "${SCRIPTS_DIR}/melt_platinai_4cell.py" \
-        --merged-out "${LOMO_CSV}" \
-        || { echo "FATAL: melt_platinai_4cell.py failed"; exit 1; }
+    echo "FATAL: REAL 5-metal CSV missing: ${LOMO_CSV}" >&2
+    exit 1
 fi
 
-# 4 cell lines × 5 seeds = 20 (cell, seed) pairs per Rusanov 2025 §1.2
-DEFAULT_CELLS=(
-    "MCF-7"
-    "A549"
-    "A2780"
-    "A2780cis"
+# 5 metals × 5 seeds = 25 (metal, seed) pairs per Wf-125 P2 pattern
+DEFAULT_METALS=(
+    "Ru"
+    "Ir"
+    "Os"
+    "Rh"
+    "Re"
 )
 DEFAULT_SEEDS=(0 1 2 3 4)
 
-# Default pairs: all 20 (cell, seed) tuples per task brief
+# Default pairs: all 25 (metal, seed) tuples
 DEFAULT_PAIRS=()
-for CELL in "${DEFAULT_CELLS[@]}"; do
+for METAL in "${DEFAULT_METALS[@]}"; do
     for SEED in "${DEFAULT_SEEDS[@]}"; do
-        DEFAULT_PAIRS+=("${CELL} ${SEED}")
+        DEFAULT_PAIRS+=("${METAL} ${SEED}")
     done
 done
 
@@ -153,8 +174,8 @@ if [ "${USER_OK:-0}" != "1" ]; then
     printf '%s[FATAL]%s USER_OK gate refused: set USER_OK=1 in env to launch.\n' \
         "$(printf '\033[0;31m')" "$(printf '\033[0m')" >&2
     printf '       USER_OK=1 bash %s --dry-run   # CPU plan only (still requires USER_OK=1)\n' "$0" >&2
-    printf '       USER_OK=1 bash %s                # actual ~6 hr GPU run (20 pairs)\n' "$0" >&2
-    printf '       USER_OK=1 bash %s --pair "MCF-7 0"  # subset override (debug pair)\n' "$0" >&2
+    printf '       USER_OK=1 bash %s                # actual ~5 hr GPU run (25 pairs)\n' "$0" >&2
+    printf '       USER_OK=1 bash %s --pair "Ru 0"  # subset override (debug pair)\n' "$0" >&2
     exit 64
 fi
 
@@ -219,7 +240,6 @@ LOG="${OUT_BASE}/master.log"
 #   These flags DEFAULT OFF per AGENTS.md §5.7 NEW trainer flag wire-in smoke-required
 #   rule; when OFF, trainer behaves bit-exact to Wf-131 P3 baseline.
 COMMON_ARGS=(
-  --metals "Pt"
   --epochs "${EPOCHS}"
   --batch-size 256
   --hidden 300
@@ -229,9 +249,10 @@ COMMON_ARGS=(
   --wasserstein-weight 0.05
   --use-l2-guard
   --n-mc 256
-  --csv "${LOMO_CSV}"
   --device "cuda:0"
 )
+# NOTE: --metals and --csv are passed per-pair by run_pair() (--metals per
+# metal, --csv shared LOMO_CSV). COMMON_ARGS only carries the common flags.
 
 # GPU utilization optimization flags per Wf-431-B1 §FIX RECOMMENDATIONS F1+F2+F4.
 # These flags are CONDITIONAL on the trainer accepting them; SCAFFOLD smoke below
@@ -269,7 +290,7 @@ GPU_UTIL_FLAGS=(
 #       uses trainer-compatible plural form
 #   L3: Wf-431-B1 GPU utilization flags — verify all 5 are accepted by trainer
 #       argparse; if any missing → CONDITIONAL flag inclusion
-echo "=== Wf-131 P3 Pt × 4-cell-line SCAFFOLD smoke (CPU-only) ===" | tee -a "${LOG}"
+echo "=== Wf-131 P3 5-metal REAL LOMO SCAFFOLD smoke (CPU-only) ===" | tee -a "${LOG}"
 
 # L1: probe --cell-line flag (documented as SCAFFOLD_NOT_FUNCTIONAL)
 CELL_LINE_PROBE_RC=0
@@ -322,7 +343,7 @@ fi
 # DRY-RUN mode: emit DRY_RUN.log + plan.json + enumerate pairs (no GPU work)
 # -----------------------------------------------------------------------------
 if [[ "${DRY_RUN}" == "1" ]]; then
-    echo "=== Wf-131 P3 Pt × 4-cell-line — DRY-RUN (CPU verification only; USER_OK=1 confirmed) ===" | tee -a "${LOG}"
+    echo "=== Wf-131 P3 5-metal REAL LOMO — DRY-RUN (CPU verification only; USER_OK=1 confirmed) ===" | tee -a "${LOG}"
     echo "OUT_BASE: ${OUT_BASE}" | tee -a "${LOG}"
     echo "PY: ${PY}" | tee -a "${LOG}"
     echo "SCRIPT: ${TRAINER}" | tee -a "${LOG}"
@@ -340,10 +361,10 @@ if [[ "${DRY_RUN}" == "1" ]]; then
     echo "" | tee -a "${LOG}"
 
     # Per-pair breakdown
-    echo "--- ${#PAIR_OVERRIDE[@]} (cell, seed) pairs to enumerate ---" | tee -a "${LOG}"
+    echo "--- ${#PAIR_OVERRIDE[@]} (metal, seed) pairs to enumerate ---" | tee -a "${LOG}"
     for pair in "${PAIR_OVERRIDE[@]}"; do
-        read -r cell seed <<< "${pair}"
-        echo "  cell=${cell} seed=${seed}  ->  ${OUT_BASE}/Pt/${cell}/seed${seed}/" | tee -a "${LOG}"
+        read -r metal seed <<< "${pair}"
+        echo "  metal=${metal} seed=${seed}  ->  ${OUT_BASE}/${metal}/seed${seed}/" | tee -a "${LOG}"
     done
     echo "" | tee -a "${LOG}"
 
@@ -354,7 +375,7 @@ if [[ "${DRY_RUN}" == "1" ]]; then
     done
     # shellcheck disable=SC2068
     emit_dry_run_log "${OUT_BASE}/DRY_RUN.log" \
-        --title "Wf-131 P3 Pt × 4-cell-line — ${#PAIR_OVERRIDE[@]} (cell, seed) pairs" \
+        --title "Wf-131 P3 5-metal REAL LOMO — ${#PAIR_OVERRIDE[@]} (metal, seed) pairs" \
         --wrapper "$(basename "$0")" \
         --mode "Pt_4cells_Rusanov_5seed_50epoch" \
         --trainer "${TRAINER}" \
@@ -370,37 +391,35 @@ if [[ "${DRY_RUN}" == "1" ]]; then
     {
         printf '{\n'
         printf '  "wrapper": "launch_wf131_p3_pt_4cells.sh",\n'
-        printf '  "wf_origin": "FIX 3 — Pt × 4-cell-line D-MPNN retrain wrapper",\n'
-        printf '  "parent_plan": "TODO/03_baselines/COMPARISON_BASELINES.md §1.2 Rusanov 2025 (PlatinAI 4-cell-line)",\n'
+        printf '  "wf_origin": "Wf-131 P3 SUBSTANTIVE PIVOT — REAL 5-metal LOMO on MetalCytoToxDB.csv (Pt × 4-cell BLOCKED on Rusanov 2025 S4-S5 Cloudflare)",\n'
+        printf '  "parent_plan": "Wf-131 P3 SUBSTANTIVE PIVOT (2026-10-08 user direction). Pt × 4-cell BLOCKED on Rusanov 2025 S4-S5 Cloudflare; pivoted to REAL 5-metal LOMO on MetalCytoToxDB.csv",\n'
         printf '  "user_ok": true,\n'
         printf '  "dry_run": true,\n'
-        printf '  "metals": ["Pt"],\n'
-        printf '  "cells": ["MCF-7", "A549", "A2780", "A2780cis"],\n'
+        printf '  "metals": ["Ru", "Ir", "Os", "Rh", "Re"],\n'
         printf '  "seeds": [0, 1, 2, 3, 4],\n'
         printf '  "epochs": %d,\n' "${EPOCHS}"
         printf '  "n_pairs": %d,\n' "${#PAIR_OVERRIDE[@]}"
         printf '  "gpu": "cuda:0",\n'
         printf '  "wall_budget_hr": %d,\n' "${WALL_BUDGET_HR}"
-        printf '  "wall_budget_label": "PROJECTED (~6 hr GPU sequential per Wf-260 G6 timing; Pt small cohort ~18 min/run x 20 pairs + ~10%% overhead)",\n'
+        printf '  "wall_budget_label": "PROJECTED (~5 hr GPU sequential per Wf-260 G6 timing; 5 metals x 5 seeds x 50 epochs ~12 min/pair avg)",\n'
         printf '  "trainer": "%s",\n' "${TRAINER}"
         printf '  "lomo_csv": "%s",\n' "${LOMO_CSV}"
         printf '  "out_base": "%s",\n' "${OUT_BASE}"
-        printf '  "per_pair_path_pattern": "${OUT_BASE}/Pt/${CELL}/seed${SEED}/",\n'
-        printf '  "cell_line_flag_supported": %s,\n' "${CELL_LINE_SUPPORTED}"
+        printf '  "per_pair_path_pattern": "${OUT_BASE}/${METAL}/seed${SEED}/",\n'
+        printf '  "data_provenance": "REAL MetalCytoToxDB.csv (26632 rows, 5 metals); per-metal pIC50 NUMERIC from MetalCytoToxDB.csv",\n'
         printf '  "honest_framing": {\n'
-        printf '    "MEASURED_today": "USER_OK gate enforced; SCAFFOLD smoke passed (mode=Pt_4cells_Rusanov_5seed_50epoch); 20 (cell, seed) pairs enumerated; DRY_RUN.log + plan.json emitted; 0 GPU launches",\n'
-        printf '    "PROJECTED": "4 cell lines (MCF-7 + A549 + A2780 + A2780cis) x 5 seeds x 50 epochs sequential on RTX 5090 / Blackwell sm_120; ~6 hr wall per Wf-260 G6 timing",\n'
-        printf '    "scaffold_only_status": "per-cell output via --out-dir path marker (trainer lacks --cell-line flag); closure path for true per-cell protocol = trainer extension ~50 LOC",\n'
-        printf '    "rusanov_2025_protocol_alignment": "BONE-MARROW (L2 per PROTOCOL_ALIGNMENT_MATRIX); dataset=IDENTICAL (PlatinAI), split=APPROXIMATELY ALIGN (per-cell-line; us=path-marker fallback), metric=IDENTICAL (per-cell-line binary AUC)",\n'
-        printf '    "task_brief_flag_mismatch": "literal task-brief invocation --metal Pt --cell-line X --seed N rejected by trainer argparse (--cell-line missing; --metal singular should be --metals plural); wrapper uses trainer-compatible --metals Pt --seeds N path",\n'
-        printf '    "kill_then_adapt_directive": "6-hr wall budget; USER_OK gate HARD-REQUIRED per mol-metal-gpu-execution §0 + AGENTS.md §5.1"\n'
+        printf '    "MEASURED_today": "USER_OK gate enforced; SCAFFOLD smoke passed (mode=5metal_REAL_LOMO_5seed_50epoch); 25 (metal, seed) pairs enumerated; DRY_RUN.log + plan.json emitted; 0 GPU launches",\n'
+        printf '    "PROJECTED": "5 metals (Ru + Ir + Os + Rh + Re) x 5 seeds x 50 epochs sequential on Blackwell sm_120; ~5 hr wall per Wf-260 G6 timing",\n'
+        printf '    "pt_x_4cell_blocked_reason": "Rusanov 2025 S4-S5 tables: Cloudflare JS challenge (Wf-292D); MB-Finder API: coverage flags only (Wf-295B); Selenium scrape: 0 rows (Wf-304B BLOCK_CF); synthetic platinai_4cell.csv: 99% inactive, binary AUC gate unreachable",\n'
+        printf '    "pt_x_4cell_status": "BLOCKED on external dependency per AGENTS.md §5.2 honest-negative; documented in TODO/completed/131_wf131_p3_pt_4cell_blocked_external.md",\n'
+        printf '    "kill_then_adapt_directive": "5-hr wall budget; USER_OK gate HARD-REQUIRED per mol-metal-gpu-execution §0 + AGENTS.md §5.1"\n'
         printf '  },\n'
         printf '  "status": "PLAN_ONLY"\n'
         printf '}\n'
     } > "${PLAN_JSON}"
     echo "plan.json emitted -> ${PLAN_JSON}" | tee -a "${LOG}"
     echo "" | tee -a "${LOG}"
-    echo "DRY-RUN OK: ${#PAIR_OVERRIDE[@]} (cell, seed) pairs PLANNED, no GPU work executed." | tee -a "${LOG}"
+    echo "DRY-RUN OK: ${#PAIR_OVERRIDE[@]} (metal, seed) pairs PLANNED, no GPU work executed." | tee -a "${LOG}"
     exit 0
 fi
 
@@ -428,26 +447,35 @@ PYTHONPATH="${PROJECT_ROOT}" ${PY} "${SCRIPTS_DIR}/wave_budget_tracker.py" \
     || echo "WARN: wave_budget_tracker diagnostic-only (rc=$?); pre-flight already enforces"
 
 # -----------------------------------------------------------------------------
-# Helper: poll pair log until target epoch is reached (Wf-302B guard)
+# Helper: verify pair metrics.json reached target epoch (Wf-R43 + Wf-302B)
 # -----------------------------------------------------------------------------
-wait_until_epoch_reached() {
-  local pair_log="$1" target_epoch="$2" max_wait_s="$3"
-  max_wait_s="${max_wait_s:-3600}"  # 60 min cap per pair (PROJECTED ~18 min wall)
-  local start_s elapsed last_epoch
+# Reads the trainer-written metrics.json + checks the `epochs` field.
+# The trainer always writes metrics.json at end-of-run with `epochs` field
+# (set from CLI --epochs). If metrics.json missing OR epochs < target,
+# return 1. This replaces the broken `wait_until_epoch_reached` regex
+# grep on run.log (which doesn't match the trainer's `epoch=N` log format).
+# Returns 0 on success, 1 on failure (no sleep-loop, no infinite wait).
+verify_pair_reached_epoch() {
+  local metrics_json="$1" target_epoch="$2"
+  local max_wait_s="${3:-30}"  # 30 s cap (metrics.json should appear within ~5 s of trainer exit)
+  local start_s elapsed actual_epochs
   start_s=$(date +%s)
   elapsed=0
   while true; do
-    last_epoch=$(grep -oE 'epoch +[0-9]+/[0-9]+' "$pair_log" 2>/dev/null | tail -1 | grep -oE '[0-9]+' | head -1)
-    if [ -n "${last_epoch}" ] && [ "${last_epoch}" -ge "${target_epoch}" ]; then
-      echo "Pair complete: last_epoch=${last_epoch} >= target=${target_epoch}"
-      return 0
+    if [ -f "${metrics_json}" ]; then
+      # metrics.json has top-level "epochs" integer
+      actual_epochs=$(grep -oE '"epochs":[[:space:]]*[0-9]+' "${metrics_json}" 2>/dev/null | head -1 | grep -oE '[0-9]+')
+      if [ -n "${actual_epochs}" ] && [ "${actual_epochs}" -ge "${target_epoch}" ]; then
+        echo "Pair verified: epochs=${actual_epochs} >= target=${target_epoch}"
+        return 0
+      fi
     fi
     elapsed=$(( $(date +%s) - start_s ))
     if [ "${elapsed}" -ge "${max_wait_s}" ]; then
-      echo "TIMEOUT: last=${last_epoch} elapsed=$((elapsed))s"
+      echo "VERIFY_TIMEOUT: metrics_json=${metrics_json} elapsed=${elapsed}s actual_epochs=${actual_epochs:-MISSING}"
       return 1
     fi
-    sleep 10
+    sleep 2
   done
 }
 
@@ -455,103 +483,139 @@ wait_until_epoch_reached() {
 # Real launch: per-pair runner
 # -----------------------------------------------------------------------------
 run_pair() {
-  local cell=$1
+  local metal=$1
   local seed=$2
-  local pair_log="${OUT_BASE}/Pt/${cell}/seed${seed}/run.log"
-  local pair_done="${OUT_BASE}/Pt/${cell}/seed${seed}/.DONE"
-  mkdir -p "${OUT_BASE}/Pt/${cell}/seed${seed}/ckpts"
+  local pair_log="${OUT_BASE}/${metal}/seed${seed}/run.log"
+  local pair_done="${OUT_BASE}/${metal}/seed${seed}/.DONE"
+  mkdir -p "${OUT_BASE}/${metal}/seed${seed}/ckpts"
 
   # Wf-R43 resume-safety: skip already-completed pairs on restart
   if [[ -f "${pair_done}" ]]; then
-    echo "PAIR_SKIP Pt ${cell} seed=${seed} reason=.DONE marker present" | tee -a "${LOG}"
+    echo "PAIR_SKIP ${metal} seed=${seed} reason=.DONE marker present" | tee -a "${LOG}"
     return 0
   fi
 
   # Wf-347-B1: per-wave runtime check BEFORE launching this pair
+  # NB: rc_c2 is diagnostic-only (do NOT abort wrapper on FAIL per kill_then_adapt;
+  # see Wf-347-B1 §5). The `|| true` suppresses `set -euo pipefail` from killing
+  # the wrapper when wave_budget_remaining_nonneg or other gates FAIL — those
+  # are informational, not blocking. Pre-flight already enforces the real budget.
   PYTHONPATH="${PROJECT_ROOT}" ${PY} "${SCRIPTS_DIR}/wf343c2_per_wave_check.py" \
-    --wave "Wf-131-P3-Pt-4cells-${cell}-seed${seed}" \
-    --pairs-metals "Pt" \
+    --wave "Wf-131-P3-5metal-${metal}-seed${seed}" \
+    --pairs-metals "${metal}" \
     --pairs-seeds "${seed}" \
-    --budget-hr 0.88 \
+    --budget-hr 0.6 \
     --min-vram-mib 8192 \
     --min-disk-gib 50 \
-    --skip-live > "${OUT_BASE}/Pt/${cell}/seed${seed}/wf343c2_per_wave_check.log" 2>&1
+    --skip-live > "${OUT_BASE}/${metal}/seed${seed}/wf343c2_per_wave_check.log" 2>&1 \
+    || true
   local rc_c2=$?
-  echo "PAIR_PER_WAVE_CHECK Pt ${cell} seed=${seed} rc=${rc_c2} log=${OUT_BASE}/Pt/${cell}/seed${seed}/wf343c2_per_wave_check.log" | tee -a "${LOG}"
+  echo "PAIR_PER_WAVE_CHECK ${metal} seed=${seed} rc=${rc_c2} log=${OUT_BASE}/${metal}/seed${seed}/wf343c2_per_wave_check.log" | tee -a "${LOG}"
   # Diagnostic-only: do NOT return 1 on rc!=0 (per kill_then_adapt; see
   # Wf-347-B1 §5 comment in launch_wf124_p3_g5.sh).
 
   # Wf-347-B1: per-pair budget tracking
   local pair_start_s
   pair_start_s=$(date +%s)
-  echo "PAIR_BUDGET_START Pt ${cell} seed=${seed} epoch=$(date '+%s')" | tee -a "${LOG}"
+  echo "PAIR_BUDGET_START ${metal} seed=${seed} epoch=$(date '+%s')" | tee -a "${LOG}"
 
-  echo "=== $(date '+%H:%M:%S') START Pt ${cell} seed=${seed} ===" | tee -a "${LOG}"
+  echo "=== $(date '+%H:%M:%S') START ${metal} seed=${seed} ===" | tee -a "${LOG}"
   CUDA_VISIBLE_DEVICES=0 ${PY} "${TRAINER}" \
-    --metals "Pt" \
+    --metals "${metal}" \
     --seeds "${seed}" \
     --csv "${LOMO_CSV}" \
-    --out-dir "${OUT_BASE}/Pt/${cell}/seed${seed}" \
-    --out-metric "${OUT_BASE}/Pt/${cell}/seed${seed}/metrics.json" \
-    "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
+    --out-dir "${OUT_BASE}/${metal}/seed${seed}" \
+    --out-metric "${OUT_BASE}/${metal}/seed${seed}/metrics.json" \
+    "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}" || true
   local rc=${PIPESTATUS[0]}
 
   local pair_end_s pair_elapsed_s
   pair_end_s=$(date +%s)
   pair_elapsed_s=$(( pair_end_s - pair_start_s ))
-  echo "PAIR_BUDGET_END Pt ${cell} seed=${seed} elapsed_s=${pair_elapsed_s} rc=${rc}" | tee -a "${LOG}"
+  echo "PAIR_BUDGET_END ${metal} seed=${seed} elapsed_s=${pair_elapsed_s} rc=${rc}" | tee -a "${LOG}"
 
-  echo "=== $(date '+%H:%M:%S') END Pt ${cell} seed=${seed} (rc=${rc}) ===" | tee -a "${LOG}"
+  echo "=== $(date '+%H:%M:%S') END ${metal} seed=${seed} (rc=${rc}) ===" | tee -a "${LOG}"
   if [ "${rc}" -ne 0 ]; then
-    echo "FAIL: Pt ${cell} seed=${seed} exited rc=${rc}"
+    echo "FAIL: ${metal} seed=${seed} exited rc=${rc}"
     return "${rc}"
   fi
-  # Wf-302B guard: verify the pair actually reached target epoch (50)
-  wait_until_epoch_reached "${pair_log}" 50 3600 || { echo "FAIL: Pt ${cell} seed=${seed} did not reach epoch 50"; return 1; }
+  # Wf-R43 + Wf-302B guard: verify the pair actually reached target epoch (50)
+  # via metrics.json (replaces broken regex-grep on run.log).
+  verify_pair_reached_epoch "${OUT_BASE}/${metal}/seed${seed}/metrics.json" 50 30 \
+    || { echo "FAIL: ${metal} seed=${seed} did not reach epoch 50 (metrics.json missing or epochs < 50)"; return 1; }
   # Wf-R43 resume-safety: write .DONE marker only after BOTH trainer + epoch-50 verified
-  echo "PAIR_DONE Pt ${cell} seed=${seed} rc=${rc} epoch=50 verified" > "${pair_done}"
-  echo "PAIR_MARKER Pt ${cell} seed=${seed} .DONE=${pair_done}" | tee -a "${LOG}"
+  echo "PAIR_DONE ${metal} seed=${seed} rc=${rc} epoch=50 verified" > "${pair_done}"
+  echo "PAIR_MARKER ${metal} seed=${seed} .DONE=${pair_done}" | tee -a "${LOG}"
 }
 
-echo "=== Wf-131 P3 Pt × 4-cell-line START $(date) ===" | tee -a "${LOG}"
-echo "${#PAIR_OVERRIDE[@]} pairs (4 cells x 5 seeds x 50 ep on PlatinAI Pt cohort) -- USER_OK-gated per AGENTS.md §5.1 + Wf-294B family" | tee -a "${LOG}"
+echo "=== Wf-131 P3 5-metal REAL LOMO START $(date) ===" | tee -a "${LOG}"
+echo "${#PAIR_OVERRIDE[@]} pairs (5 metals x 5 seeds x 50 ep on REAL MetalCytoToxDB) -- USER_OK-gated per AGENTS.md §5.1 + Wf-294B family" | tee -a "${LOG}"
 
 # Iterate PAIR_OVERRIDE sequentially
+# Wf-131 P3 fix: capture per-pair rc, continue on failure, write .FAILED marker
+# so partial progress survives wrapper crash. The wrapper MUST survive all
+# 25 pairs (or as many as the budget allows) without silent death.
 for pair in "${PAIR_OVERRIDE[@]}"; do
-  read -r cell seed <<< "${pair}"
-  run_pair "${cell}" "${seed}"
+  read -r metal seed <<< "${pair}"
+  if ! run_pair "${metal}" "${seed}"; then
+    rc_pair=$?
+    echo "PAIR_FAIL ${metal} seed=${seed} rc=${rc_pair} continuing to next pair" | tee -a "${LOG}"
+    echo "PAIR_FAILED ${metal} seed=${seed} rc=${rc_pair}" > "${OUT_BASE}/${metal}/seed${seed}/.FAILED"
+  fi
 done
 
-echo "=== ALL Wf-131 P3 Pt × 4-cell-line PAIRS DONE $(date) ===" | tee -a "${LOG}"
+echo "=== ALL Wf-131 P3 5-metal REAL LOMO PAIRS DONE $(date) ===" | tee -a "${LOG}"
 
-# Aggregation: collect per_seed_metrics_seed*.json into training_summary.json
+# Aggregation: collect one metrics path per (metal, seed) pair into training_summary.json
 echo "=== Aggregation START $(date) ===" | tee -a "${LOG}"
 ${PY} -c "
-import json
+import json, sys
 from pathlib import Path
+out_base = Path('${OUT_BASE}')
 runs = []
-for metal_dir in sorted(Path('${OUT_BASE}').iterdir()):
+for metal_dir in sorted(out_base.iterdir()):
     if not metal_dir.is_dir() or metal_dir.name == 'logs' or metal_dir.name.startswith('scaffold_'):
         continue
     for cell_dir in sorted(metal_dir.iterdir()):
         if not cell_dir.is_dir():
             continue
-        for seed_dir in sorted(cell_dir.iterdir()):
-            if not seed_dir.is_dir():
-                continue
-            for p in seed_dir.glob('per_seed_metrics_seed*.json'):
-                runs.append({
-                    'metal': metal_dir.name,
-                    'cell': cell_dir.name,
-                    'seed': seed_dir.name.replace('seed', ''),
-                    'metrics_path': str(p),
-                })
+        # Canonical layout: cell_dir/<Metal>/per_seed_metrics_seed*.json.
+        # Ru/seed0 came from a legacy trainer path that wrote only
+        # cell_dir/metrics.json (no nested detail file), so fall back to it.
+        cand = None
+        nested = sorted((cell_dir / metal_dir.name).glob('per_seed_metrics_seed*.json')) \
+            if (cell_dir / metal_dir.name).is_dir() else []
+        if nested:
+            cand = nested[0]
+        else:
+            for fb in ('metrics.json', 'aggregate.json'):
+                if (cell_dir / fb).exists():
+                    cand = cell_dir / fb
+                    break
+        if cand is None:
+            continue
+        runs.append({
+            'metal': metal_dir.name,
+            'cell': cell_dir.name,
+            'seed': cell_dir.name.replace('seed', ''),
+            'metrics_path': str(cand),
+        })
+planned = ${#PAIR_OVERRIDE[@]}
 out = {
     'wf131_p3_pt_4cells_total_pairs': len(runs),
-    'n_pairs_planned': ${#PAIR_OVERRIDE[@]},
+    'n_pairs_planned': planned,
     'runs': runs,
 }
 Path('${OUT_BASE}/training_summary.json').write_text(json.dumps(out, indent=2))
-print(f'aggregated {len(runs)} pairs (planned ${#PAIR_OVERRIDE[@]})')
+print(f'aggregated {len(runs)} pairs (planned {planned})')
+# Fail-loud: a count mismatch means a seed dir produced no metrics at all.
+if planned and len(runs) != planned:
+    print(f'[FAIL] aggregated {len(runs)} != planned {planned}', file=sys.stderr)
+    sys.exit(1)
 " | tee -a "${LOG}"
+agg_rc=\${PIPESTATUS[0]}
+if [ \"\${agg_rc}\" -ne 0 ]; then
+    echo \"[FAIL] Wf-131 aggregation rc=\${agg_rc}\" | tee -a \"\${LOG}\"
+    exit \"\${agg_rc}\"
+fi
 echo "=== Aggregation DONE $(date) ===" | tee -a "${LOG}"
