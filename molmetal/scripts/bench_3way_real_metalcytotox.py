@@ -1109,7 +1109,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument(
         "--no-multitask-backbone", dest="multitask_backbone", action="store_false"
     )
-    parser.add_argument("--device", choices=["cpu", "cuda"], default="cpu")
+    parser.add_argument("--device", choices=["cpu", "cuda", "auto"], default="auto")
     parser.add_argument("--npz-path", type=Path, default=DEFAULT_NPZ_PATH)
     parser.add_argument("--csv-path", type=Path, default=DEFAULT_METALCSV_PATH)
     parser.add_argument("--max-rows", type=int, default=DEFAULT_MAX_ROWS)
@@ -1121,7 +1121,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.device == "cuda" and _HAS_TORCH and torch.cuda.is_available():
+    if args.device == "cpu":
+        device = "cpu"
+    elif _HAS_TORCH and torch.cuda.is_available():
         # Canonical CUDA default (GPU 0; "" = CPU-only still wins).
         # Loaded via the sibling shim so no molmetal package import is
         # needed (see molmetal/scripts/_cuda_default.py).
@@ -1159,6 +1161,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         epochs = min(int(args.epochs), 10)
         n_folds = min(int(args.n_folds), 2)
         max_rows = min(int(args.max_rows), 200)
+        # A smoke run must not overwrite the full run's report in the same dir.
+        args.out_dir = args.out_dir.parent / (args.out_dir.name + "_smoke")
     else:
         epochs = int(args.epochs)
         n_folds = int(args.n_folds)

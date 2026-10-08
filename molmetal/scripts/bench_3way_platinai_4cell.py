@@ -547,6 +547,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         epochs = min(int(args.epochs), 10)
         n_folds = min(int(args.n_folds), 2)
         n_max = min(int(args.n_max), 200)
+        # A smoke run must not overwrite the full run's report in the same dir.
+        args.out_dir = args.out_dir.parent / (args.out_dir.name + "_smoke")
     else:
         # Flatten argparse nargs="+" artifacts.
         flat_cls: List[str] = []

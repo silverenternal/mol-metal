@@ -60,7 +60,7 @@ import statistics
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Sequence, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -576,15 +576,23 @@ def _write_report(
     all_results: Dict[str, object],
     gate_pass: bool,
     requested_tasks: List[str],
+    backbone: str = "morgan_mlp",
+    seeds: Sequence[int] = (0, 1, 2),
 ) -> None:
+    if backbone == "dmpnn":
+        feat_line = "**Featurization:** D-MPNN atom+bond features (atom+bond message passing)"
+        model_line = "**Model:** D-MPNN graph encoder (shared trunk) + per-task classification head"
+    else:
+        feat_line = "**Featurization:** Morgan FP (radius=2, n_bits=2048) — ECFP4"
+        model_line = "**Model:** small MLP (2048 → 256 → 128 → 1) with class-weighted BCE"
     lines = [
         "# Metric Tier 2 — MoleculeNet cross-benchmark (BBBP / BACE / HIV / ClinTox)",
         "",
-        "**Date:** 2026-09-25 (R17)",
         "**Split:** Bemis-Murcko scaffold (70 / 10 / 20) per Chemprop convention",
-        "**Featurization:** Morgan FP (radius=2, n_bits=2048) — ECFP4",
-        "**Model:** small MLP (2048 → 256 → 128 → 1) with class-weighted BCE",
-        "**Seeds:** 0, 1, 2  ",
+        feat_line,
+        model_line,
+        f"**Backbone:** {backbone}",
+        f"**Seeds:** {', '.join(str(s) for s in seeds)}  ",
         "",
         "## Chemprop baselines (Tier 3 reference, Wu 2018)",
         "",
@@ -636,46 +644,35 @@ def _write_report(
         lines.append("")
 
     # Per-task commentary and honest caveats
+    if backbone == "dmpnn":
+        caveats = [
+            "1. **Backbone**: this run uses the D-MPNN graph encoder on the SAME",
+            "   Bemis-Murcko scaffold split and the SAME ROC-AUC metric as the",
+            "   Morgan-FP + MLP baseline, so the two are directly comparable.",
+            "2. **Class-imbalance handling**: HIV and ClinTox are severely imbalanced;",
+            "   per-task tuning (focal loss / calibrated threshold) is not applied here.",
+            "3. **Scaffold split is OOD**: Chemprop baselines above are scaffold-split",
+            "   (Wu 2018 Table 3), so the comparison is protocol-aligned.",
+            "4. **Per-task variance**: small tasks (ClinTox, BACE) have wide per-seed",
+            "   spread; read the per-seed table above, not the mean alone.",
+        ]
+    else:
+        caveats = [
+            "1. **Model capacity**: a 2048 -> 256 -> 128 -> 1 MLP on Morgan FP has far",
+            "   fewer parameters than Chemprop's D-MPNN. Use `--backbone dmpnn` for the",
+            "   apples-to-apples architecture comparison on the same split.",
+            "2. **Class-imbalance handling**: HIV and ClinTox are severely imbalanced;",
+            "   pos_weight alone gives a high-recall bias that depresses PR-AUC.",
+            "3. **Scaffold split is OOD**: Chemprop baselines above are scaffold-split",
+            "   (Wu 2018 Table 3), so the comparison is protocol-aligned.",
+            "4. **Per-task variance**: small tasks (ClinTox, BACE) have wide per-seed",
+            "   spread; read the per-seed table above, not the mean alone.",
+        ]
+    lines += ["## Honest caveats", "", *caveats, "", "## Files", ""]
     lines += [
-        "## Honest caveats",
-        "",
-        "1. **Model capacity**: a 2048 → 256 → 128 → 1 MLP on Morgan FP has far fewer",
-        "   parameters than Chemprop's D-MPNN (atom+bond message passing over 3 rounds with",
-        "   256 hidden). Beating Chemprop on 4/4 tasks with this mismatch is not expected;",
-        "   the headline Tier-2 metric we care about is the *chemprop RF + Morgan FP*",
-        "   baseline, which we beat on **BBBP** (0.872 vs 0.728, +0.144) and match on",
-        "   **BACE** (0.861 vs 0.868, −0.007). On HIV and ClinTox we trail RF — both",
-        "   tasks have severe class imbalance (HIV 3.5 % positive, ClinTox 7.5 %), and",
-        "   the simple class-weighted BCE used here under-trains on the minority class.",
-        "2. **Class-imbalance handling**: HIV (pos_rate 0.035) and ClinTox (pos_rate 0.075)",
-        "   benefit from focal loss or a calibrated threshold; pos_weight alone (neg/pos",
-        "   ratio) gives the model a high-recall bias that depresses precision and PR-AUC",
-        "   without lifting ROC-AUC. PR-AUC on HIV = 0.32 vs RF baseline ≈ 0.30 — close",
-        "   but not enough to recover the gap.",
-        "3. **Scaffold split is OOD**: Chemprop D-MPNN numbers above were measured under",
-        "   scaffold-split and are directly comparable; Chemprop RF numbers are also",
-        "   scaffold-split (Wu 2018 Table 3).",
-        "4. **CPU run**: this measurement ran in CPU-only mode on a 64-core host with",
-        "   several other ultracode workflows (`r4_lambda_only_run`, `train_platinai_4cell`,",
-        "   `wf_lambda_pipeline_10pockets`, `wf_coupling_ablation`) sharing cores.",
-        "   Wall-time was dominated by HIV (41127 rows × 50 epochs × 3 seeds ≈ 13 min).",
-        "   A GPU run would change the numbers only at the margin since the model is",
-        "   small.",
-        "5. **Verdict framing**: even though we did not pass the 0.80 mean gate,",
-        "   we record this as a *measured-below-gate* result, not a regression.",
-        "   The script (`molmetal/scripts/train_moleculenet.py`) is in place and",
-        "   the per-seed JSONs are persisted at `logs/metric_molnet/<task>_seed<n>.json`",
-        "   for re-aggregation. Adding focal loss + per-task hyper-search would",
-        "   likely close the gap; deferred.",
-        "",
-        "## Files",
-        "",
-        "* `molmetal/scripts/train_moleculenet.py` — driver (~520 LOC including docstrings).",
-        "* `molmetal/scripts/_regen_molnet_report.py` — helper to regenerate the report",
-        "  from cached per-seed JSONs (used to recover after a KeyError in the original",
-        "  `_write_report` — fixed in `_write_report`'s `n_seeds_valid` lookup).",
-        "* `metrics/by_metric/moleculenet_auc.json` — aggregate JSON (4-task × 3-seed).",
-        "* `logs/metric_molnet/<task>_seed<n>.json` — 12 per-seed result files.",
+        "* `molmetal/scripts/train_moleculenet.py` — driver.",
+        f"* `{out_path}` — this report.",
+        "* `metrics/by_metric/moleculenet_auc_dmpnn.json` — aggregate JSON (per-task x per-seed).",
         "",
     ]
 
@@ -821,7 +818,11 @@ def main(argv: List[str] | None = None) -> int:
         flush=True,
     )
 
-    _write_report(out_report, all_results, gate_pass, args.tasks)
+    _write_report(
+        out_report, all_results, gate_pass, args.tasks,
+        backbone=getattr(args, "backbone", "morgan_mlp"),
+        seeds=list(args.seeds),
+    )
     print(f"[molnet] wrote {out_report}", flush=True)
     return 0
 

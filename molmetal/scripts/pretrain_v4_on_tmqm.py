@@ -55,6 +55,16 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# --- CUDA_VISIBLE_DEVICES default (canonical resolver) ----------
+# Must run BEFORE any torch / molmetal import: CUDA reads
+# CUDA_VISIBLE_DEVICES once, at init.  See molmetal/scripts/_cuda_default.py.
+sys.path.append(str(Path(__file__).resolve().parent))
+from _cuda_default import ensure_cuda_visible_devices_default as _cvd
+
+_cvd()
+del _cvd
+# --- end CUDA default --------------------------------------------
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -168,11 +178,11 @@ class MaskedAtomDMPNN(nn.Module):
         h_v = self.dropout_layer(F.relu(self.atom_emb(atom_f)))
         h_e = self.dropout_layer(F.relu(self.bond_emb(bond_f)))
         for _ in range(self.depth):
-            atom_incoming = torch.zeros(V, self.hidden, device=device)
+            atom_incoming = torch.zeros(V, self.hidden, device=device, dtype=h_e.dtype)
             atom_incoming.index_add_(0, e_dst, h_e)
             neighbor_sum = atom_incoming[e_src]
             h_e = self.gru_update(h_e, h_v[e_src], neighbor_sum)
-        outgoing = torch.zeros(V, self.hidden, device=device)
+        outgoing = torch.zeros(V, self.hidden, device=device, dtype=h_e.dtype)
         outgoing.index_add_(0, e_src, h_e)
         return torch.cat([h_v, outgoing], dim=-1)  # (V, 2H)
 
@@ -292,7 +302,13 @@ def train(args) -> Dict:
     rng = np.random.default_rng(args.seed)
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    device = torch.device(args.device)
+    if args.device == "auto":
+        from molmetal.molmetal_lam.sbdd_env.training_utils import resolve_default_device
+
+        device = resolve_default_device()
+    else:
+        device = torch.device(args.device)
+    print(f"[pretrain_v4_on_tmqm] device={device}")
 
     smiles, metals = load_csv(Path(args.data), args.max_rows)
     if args.max_rows:
@@ -454,7 +470,9 @@ def main() -> int:
         help="0 = all rows; positive = smoke subsample",
     )
     p.add_argument(
-        "--device", default="cpu", help="cpu / cuda (BF16 only fires on cuda)"
+        "--device",
+        default="auto",
+        help="auto / cpu / cuda (auto -> cuda if allocatable; BF16 only fires on cuda)",
     )
     p.add_argument("--bf16", action="store_true", default=True)
     p.add_argument("--no-bf16", dest="bf16", action="store_false")

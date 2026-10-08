@@ -228,9 +228,9 @@ UNVERIFIED_CONFIGS=""
 # ---- DRY-RUN mode: verify config + CSV paths only (no GPU execution) ----
 # Ordered arrays for DRY_RUN.log per-pair enumeration (Wf-378-A2 — bash
 # associative arrays do not preserve order).
-CONFIRMED_FLAGS_ORDER=(no_multi_task no_wass no_kendall no_dann)
-METALS_ORDER=(Ru Ir Os Rh Re)
-SEEDS_ORDER=(0 1 2)
+CONFIRMED_FLAGS_ORDER=(${G6_CONFIGS:-no_multi_task no_wass no_kendall no_dann})
+METALS_ORDER=(${G6_METALS:-Ru Ir Os Rh Re})
+SEEDS_ORDER=(${G6_SEEDS:-0 1 2})
 
 if [[ "${DRY_RUN}" == "1" ]]; then
   echo "=== Wf-124 P3 G6 — DRY-RUN (CPU verification only; USER_OK=1 confirmed) ==="
@@ -250,7 +250,7 @@ if [[ "${DRY_RUN}" == "1" ]]; then
   echo "CONFIRMED flags: ${VERIFIED_CONFIGS}"
   echo "UNVERIFIED (verify-flag-before-launch): ${UNVERIFIED_CONFIGS}"
   echo ""
-  echo "--- 60 (config, metal, seed) tuples enumerated ---"
+  echo "--- (config, metal, seed) tuples enumerated ---"
   total=0
   for cfg in "${CONFIRMED_FLAGS_ORDER[@]}"; do
     for metal in "${METALS_ORDER[@]}"; do
@@ -400,9 +400,11 @@ echo "CONFIRMED configs: ${VERIFIED_CONFIGS} (60 runs PLANNED post-Wf-296C)" | t
 echo "UNVERIFIED configs: ${UNVERIFIED_CONFIGS:-<none>} (0 runs SKIPPED, all flags verified)" | tee -a "${LOG}"
 
 # 60 (config, metal, seed) tuples enumerated:
-for cfg in no_multi_task no_wass no_kendall no_dann; do
-  for metal in Ru Ir Os Rh Re; do
-    for seed in 0 1 2; do
+# Loop scope is overridable so a reduced decisive subset can be run instead of
+# the full 4x5x3 = 60 tuples (e.g. G6_CONFIGS=... G6_METALS=... G6_SEEDS=...).
+for cfg in ${G6_CONFIGS:-no_multi_task no_wass no_kendall no_dann}; do
+  for metal in ${G6_METALS:-Ru Ir Os Rh Re}; do
+    for seed in ${G6_SEEDS:-0 1 2}; do
       run_tuple "${cfg}" "${metal}" "${seed}"
     done
   done

@@ -82,6 +82,11 @@ def _resolve_default_device() -> str:
         return "cuda:0"
     if info["dgpu_usable"]:
         return "cuda:0"
+    # Any allocatable device that passed the real allocation probe is usable —
+    # the gfx allow-list is AMD-specific, so an NVIDIA box reports gfx=unknown
+    # and would otherwise fall to CPU despite selected_device='cuda:0'.
+    if info["alloc_ok"]:
+        return "cuda:0"
     return "cpu"
 
 
@@ -228,7 +233,7 @@ def get_device() -> torch.device:
     """
     global _WARNED_CPU_FALLBACK
     info = detect_active_gpu()
-    if info["igpu_usable"] or info["dgpu_usable"]:
+    if info["igpu_usable"] or info["dgpu_usable"] or info["alloc_ok"]:
         return torch.device("cuda:0")
     if not _WARNED_CPU_FALLBACK:
         warnings.warn(

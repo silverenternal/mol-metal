@@ -1075,6 +1075,10 @@ class MetalSeedResult:
     wasserstein_history: List[float]
     elapsed_seconds: float
     status: str = "OK"
+    # 2026-10-08 — optional ridge readout on the frozen encoder embedding
+    # (None unless --pic50-ridge-readout).  Reported alongside the neural
+    # head's test_pic50_metrics, never replacing it.
+    pic50_ridge_metrics: Optional[Dict[str, float]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -1598,7 +1602,7 @@ def train_one_epoch_joint(
                     )
 
                     w_pen = _ot_v2.ot_solver(
-                        pic50_pred.detach(),
+                        pic50_pred,
                         ref_dev,
                     )
                 except Exception:
@@ -1942,6 +1946,10 @@ def train_one_metal_one_seed(
     # Kendall tau UW MTL loss actually fires when ``--use-kendall`` is set.
     # Default False preserves Wf-131 P1 + Wf-251-F4 baseline bit-for-bit.
     use_kendall_loss: bool = False,
+    # 2026-10-08 — ridge readout on the frozen encoder embedding (opt-in).
+    # Reported ALONGSIDE the neural head's pearson; default False keeps the
+    # Wf-131 P1 metric path bit-for-bit.
+    pic50_ridge_readout: bool = False,
 ) -> MetalSeedResult:
     """Train a 5-metal multi-task D-MPNN for one (metal, seed).
 
@@ -2569,6 +2577,74 @@ def train_one_metal_one_seed(
     val_pic50_m_final = regression_metrics(target_val_pic50, pic50_pred_v2)
     test_pic50_m_final = regression_metrics(target_test_pic50, pic50_pred_t)
 
+    # 2026-10-08 — opt-in ridge readout on the frozen encoder embedding.
+    # Measured in wf_pearson_r_pic50_head_vs_feature.py: the neural pIC50
+    # head extracts less signal than a Ridge probe on the SAME encoder's
+    # pooled embedding (head 0.08-0.31 vs ridge ~0.38).  Reported alongside
+    # the neural head; never replaces it (default OFF).
+    ridge_test: Optional[Dict[str, float]] = None
+    if pic50_ridge_readout:
+        try:
+            from molmetal.training.pic50_ridge_readout import (
+                ridge_readout_from_model,
+            )
+
+            _train_idx = np.asarray(train_pool_idx, dtype=np.int64)
+            _eval_idx = np.asarray(
+                [i for i in range(len(graphs_all))], dtype=np.int64
+            )
+            # embeddings keyed by the featurised union; map Ru test rows to
+            # their positions in that union.
+            _used_pos = {int(v): k for k, v in enumerate(used_idx)}
+            _metal_ids_all = [
+                metal_to_idx[str(metals_all[int(v)])] for v in used_idx
+            ]
+            _test_pos = np.array(
+                [_used_pos[int(i)] for i in target_test if int(i) in _used_pos],
+                dtype=np.int64,
+            )
+            _train_pos = np.array(
+                [_used_pos[int(i)] for i in train_pool_idx if int(i) in _used_pos],
+                dtype=np.int64,
+            )
+            _y_train = pic50_all[
+                np.array(
+                    [i for i in train_pool_idx if int(i) in _used_pos],
+                    dtype=np.int64,
+                )
+            ]
+            _y_test = pic50_all[
+                np.array(
+                    [i for i in target_test if int(i) in _used_pos],
+                    dtype=np.int64,
+                )
+            ]
+            ridge_test = ridge_readout_from_model(
+                model=model,
+                graphs=graphs_all,
+                metal_ids=_metal_ids_all,
+                train_indices=_train_pos,
+                eval_indices=_test_pos,
+                y_train=_y_train,
+                y_eval=_y_test,
+                batch_size=int(batch_size),
+                device=device,
+            )
+            print(
+                f"  [{metal} seed={seed}] RIDGE-READOUT test_pearson="
+                f"{ridge_test.get('pearson', float('nan')):.4f} "
+                f"(neural head {test_pic50_m_final['pearson']:.4f}, "
+                f"alpha={ridge_test.get('ridge_alpha')})",
+                flush=True,
+            )
+        except Exception as _rr_err:  # never let the diagnostic crash training
+            print(
+                f"  [{metal} seed={seed}] ridge readout failed: "
+                f"{type(_rr_err).__name__}: {_rr_err}",
+                file=sys.stderr,
+                flush=True,
+            )
+
     ckpt_path = ckpt_dir / f"dmpnn_mtw_{metal.lower()}_seed{seed}.pt"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     # Wf-A5 N3 — post-loop save now also writes the resumable schema
@@ -2646,6 +2722,7 @@ def train_one_metal_one_seed(
         test_pic50_metrics=test_pic50_m_final,
         wasserstein_history=w_history,
         elapsed_seconds=float(train_seconds + featurise_seconds),
+        pic50_ridge_metrics=ridge_test,
     )
 
 
@@ -2897,6 +2974,18 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         type=float,
         default=DEFAULT_ALPHA,
         help="BCE weight (default 0.5).",
+    )
+    # 2026-10-08 — ridge readout on frozen encoder embeddings.  Measured:
+    # the neural pIC50 head extracts less signal than a Ridge probe on the
+    # SAME encoder's pooled embedding (WF diagnostic
+    # molmetal/scripts/wf_pearson_r_pic50_head_vs_feature.py).  Default OFF
+    # keeps the Wf-131 P1 neural-head path bit-for-bit.
+    p.add_argument(
+        "--pic50-ridge-readout",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Report a Ridge readout on frozen encoder embeddings alongside "
+        "the neural pIC50 head (default OFF).",
     )
     # Wf-280D NEW + Wf-283B task §6: --no-kendall / --no-dann flags
     # surfaced on the D-MPNN multitask Wasserstein trainer (mirrors the
@@ -4235,6 +4324,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                     use_kendall_loss=bool(
                         getattr(args, "kendall", False)
                     ),
+                    # 2026-10-08 — opt-in ridge readout on frozen encoder
+                    # embeddings (AGENTS.md §5.7 wire-in).
+                    pic50_ridge_readout=bool(
+                        getattr(args, "pic50_ridge_readout", False)
+                    ),
                     # Wf-432-A2 — Wf-246-C metal-coordination term
                     # wire-in (Fix-B).  These kwargs thread from main()
                     # into ``train_one_metal_one_seed()`` →
@@ -4297,6 +4391,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "test_metrics": res.test_metrics,
                 "val_pic50_metrics": res.val_pic50_metrics,
                 "test_pic50_metrics": res.test_pic50_metrics,
+                "pic50_ridge_metrics": res.pic50_ridge_metrics,
                 "wasserstein_history": res.wasserstein_history,
                 "status": res.status,
             }

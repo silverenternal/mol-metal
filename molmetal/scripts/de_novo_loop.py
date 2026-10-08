@@ -77,6 +77,20 @@ import torch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+# --- CUDA_VISIBLE_DEVICES default (canonical resolver) ----------
+# Must run BEFORE any torch / molmetal import: CUDA reads
+# CUDA_VISIBLE_DEVICES once, at init.  See molmetal/scripts/_cuda_default.py.
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.append(str(Path(__file__).resolve().parent))
+# PROJECT_ROOT must precede the package import in the --device auto branch.
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+from _cuda_default import ensure_cuda_visible_devices_default as _cvd
+
+_cvd()
+del _cvd
+# --- end CUDA default --------------------------------------------
+
 
 # ---------------------------------------------------------------------------
 # Module loading — both model classes live inside their trainer scripts.
@@ -301,12 +315,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--dmpnn-ckpt", default=None, help="defaults to dmpnn_mtw_{metal}_seed0.pt")
     ap.add_argument("--method", default="rk4", choices=("euler", "midpoint", "heun", "rk2", "rk4"))
     ap.add_argument("--n-steps", type=int, default=100)
-    ap.add_argument("--device", default="cpu")
+    ap.add_argument(
+        "--device", default="auto", help="auto / cpu / cuda (auto -> cuda if allocatable)"
+    )
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out-dir", default=None)
     args = ap.parse_args(argv)
 
-    device = torch.device(args.device)
+    if args.device == "auto":
+        from molmetal.molmetal_lam.sbdd_env.training_utils import resolve_default_device
+
+        device = resolve_default_device()
+    else:
+        device = torch.device(args.device)
     metal = str(args.metal).strip()
     cfm_ckpt = PROJECT_ROOT / args.cfm_ckpt
     dmpnn_ckpt = (
