@@ -16,14 +16,14 @@
 | # | Finding | Severity | Evidence (file:line / json key) |
 |---|---|---|---|
 | **F1** | **The lock is real but lives at a different path than the planning docs assume.** `PROTOCOL_ALIGNMENT_MATRIX.md` + `COMPARISON_BASELINES.md` are at `TODO/03_baselines/`, **NOT** `TODO/03_plans/`. The R20 retrain plan and PRE_TRAINING_GATE_v2 cross-refs were corrected to `TODO/03_baselines/` (PRE_TRAINING_GATE_v2.md:10-11) but the wave briefs that reference the `03_plans/` path are stale. | **LOW** (docs path drift only, no metric impact) | `ls TODO/03_plans/` (no matrix/baselines file) vs `ls TODO/03_baselines/` (both present) |
-| **F2** | **Line 2 LOMO number is contaminated on the Rh fold.** `metal_lomo_auc_wasserstein.json` ships `value = 0.7577` from **n_folds = 2** (Rh, Re) with **`n_synthetic_rh_appended = 500`** from `balanced_rh_cohort.json`. The trainer's own docstring states this `"lands Rh at 0.338-0.411 regardless"` of the synthetic cohort's chemistry. The Re fold is real-only. So **the 0.7577 is a 2-fold, half-synthetic number**, not the 5-fold real-only number `PROTOCOL_ALIGNMENT_MATRIX.md` §1 m1 locks to Krasnov. | **HIGH** — this is the one real protocol drift that changes a headline number | `metrics/by_metric/metal_lomo_auc_wasserstein.json` keys `value` / `n_folds` / `n_synthetic_rh_appended` / `rh_cohort_source`; `molmetal/scripts/train_metal_lomo_wasserstein.py:41,1030,1844-1845` |
+| **F2** | **~~Line 2 LOMO number is contaminated on the Rh fold.~~ RESOLVED ON DISK 2026-10-08.** The contamination this finding described (`value = 0.7577`, `n_folds = 2`, `n_synthetic_rh_appended = 500`) is **no longer the on-disk state**. `metal_lomo_auc_wasserstein.json` now ships the real-only 5-fold re-measurement: `value = 0.5575`, `n_folds = 5`, `n_synthetic_rh_appended = 0`, `n_runs = 25` (the `real_only_pa_m19_re_measurement_2026_10_08` block). The 0.7577 synthetic-augmented number is retained *above* it for historical diff only. | **RESOLVED** — P-A fix landed; headline is now the real-only number | `metrics/by_metric/metal_lomo_auc_wasserstein.json` → `value` / `n_folds` / `n_synthetic_rh_appended` + `real_only_pa_m19_re_measurement_2026_10_08` |
 | **F3** | **Line 2 m21 has NO drift — the trainer default already matches the matrix.** `train_dmpnn_multitask_wasserstein.py` defaults `split_strategy = "scaffold_70_10_10"` (lines 450, 636) and *hard-fails* on any other value for the NCI-60 path (line 679-681). `COMPARISON_BASELINES.md:129` records ours = scaffold-split per-cell vs paper 5-fold CV per-cell → `DATASET ALIGN (split differs)`. **The default is the locked default.** This is the honest-positive: the lock is enforced in code, not just documented. | **NONE (honest-positive)** | `molmetal/scripts/train_dmpnn_multitask_wasserstein.py:450,636,679-681`; `TODO/03_baselines/COMPARISON_BASELINES.md:129` |
 
 ### §0.2 Six reconciliation phases
 
 | Phase | Scope | Wall | Blocking for GPU? |
 |---|---|---|---|
-| **P-A** | Line 2 LOMO protocol de-contamination (re-run 5 folds real-only, no synthetic Rh) | ~6 hr GPU-0 | **YES — blocks the m1 headline re-measure** |
+| **P-A** | Line 2 LOMO protocol de-contamination (re-run 5 folds real-only, no synthetic Rh) | ~6 hr GPU-0 | **DONE 2026-10-08** — real-only 5-fold landed (`value = 0.5575`, `n_synthetic_rh_appended = 0`); no GPU blocking remains |
 | **P-B** | Line 1 CFM pocket-subset reconciliation (5-pocket shipped vs R20-P4's 100-pocket target) | ~1 hr docs + ~4 hr GPU-0 | **NO — 5-pocket result is already matrix-aligned** |
 | **P-C** | Line 3 L6 closure sample-size reconciliation (2244 @ ~75/metal vs R20-P5's 100+/metal) | ~2 hr CPU | **NO — CPU-only bench** |
 | **P-D** | Line 3 L5 Hilbert R² honest-negative re-scoping (0.85 target vs architectural ceiling) | docs-only | **NO — target is unreachable, do NOT spend GPU** |
@@ -48,7 +48,7 @@ And `PROTOCOL_ALIGNMENT_MATRIX.md:11` restates it verbatim as §0 Principle. The
 
 | Tier-1 metric | Locked baseline | Locked alignment (`PROTOCOL_ALIGNMENT_MATRIX.md:19-25`) | Actual protocol on disk | Drift? |
 |---|---|---|---|---|
-| **m1** Ru binary AUC | Krasnov 2026 | DATASET + METRIC + SPLIT ALIGN — cohort honest-negative | **DUAL**: (a) `metalcytotox_ru_auc.json` DOI-split 10-fold CV, real-only, `mean_auc = 0.7717` — **ALIGNED**; (b) `metal_lomo_auc_wasserstein.json` LOMO 2-fold + 500 synthetic Rh, `value = 0.7577` — **DRIFTED** (F2) | **YES (F2)** — the two m1 records disagree in protocol; only (a) is the matrix number |
+| **m1** Ru binary AUC | Krasnov 2026 | DATASET + METRIC + SPLIT ALIGN — cohort honest-negative | **DUAL**: (a) `metalcytotox_ru_auc.json` DOI-split 10-fold CV, real-only, `mean_auc = 0.7717` — **ALIGNED**; (b) `metal_lomo_auc_wasserstein.json` LOMO **5-fold real-only** (post-P-A), `value = 0.5575` — **ALIGNED protocol** (the 0.7577 2-fold synthetic record is retired to historical diff) | **NO (F2 resolved 2026-10-08)** |
 | **m2** R² per-cell-line | Rusanov 2025 | DATASET + METRIC + SPLIT APPROX ALIGN | cohort-split 70/10/20 + per-cell eval (`COMPARISON_BASELINES.md:70`); PlatinAI per-cell R² **0.5532 ± 0.0093** MEASURED | **NO** — matches lock |
 | **m3** Vina Dock | MolCRAFT / TransDiffSBDD | DATASET + METRIC ALIGN (5 vs 100 pockets) | 5-pocket subset, `m3 = -7.782 kcal/mol` MEASURED PASS | **NO** vs matrix — but **YES** vs R20-P4's 100-pocket target (§2.3) |
 | **m7** Diversity | MolChord / TransDiffSBDD | DATASET + METRIC + SPLIT ALIGN | full ALIGN per matrix; 6 CLI flags wired to trainer loss (Wf-388-A2), all default OFF | **NO** |
@@ -143,7 +143,7 @@ Line 2 carries the **only HIGH-severity drift** in the project. It has three dis
 | Record | Protocol | Value | Matrix-compliant? |
 |---|---|---|---|
 | `metrics/by_metric/metalcytotox_ru_auc.json` | DOI-split **10-fold CV**, real-only | `mean_auc = 0.7717467464034218` (± 0.0380) vs paper LightGBM `0.810 ± 0.024` | **YES** |
-| `metrics/by_metric/metal_lomo_auc_wasserstein.json` | LOMO **2 folds** (Rh, Re) + `n_synthetic_rh_appended = 500` | `value = 0.7576516768181095`, `n_folds = 2`, `n_runs = 7` | **NO — drifted** |
+| `metrics/by_metric/metal_lomo_auc_wasserstein.json` | LOMO **5 folds real-only** (post-P-A 2026-10-08) | `value = 0.5575471269535148`, `n_folds = 5`, `n_runs = 25`, `n_synthetic_rh_appended = 0` | **YES** (the retired 2-fold synthetic `0.7577` record is historical-diff only) |
 
 The shipped record at `metalcytotox_ru_auc.json:9` (`value = 0.7613`, scaffold split, `shipped_filter_spec = null`) is a **third** protocol and is already flagged in-matrix as *"untraceable but superseded"* (`PROTOCOL_ALIGNMENT_MATRIX.md:53`).
 
@@ -250,8 +250,8 @@ This **extends** the existing 2026-09-29 grant (*"显存够就放心大胆用"*,
 
 | # | Launch | Line | Est. wall | Precondition | Status |
 |---|---|---|---|---|---|
-| **L4** | **LOMO 5-metal × 5-seed, `n_synthetic_rh = 0`, real-only folds** (replaces the drifted 2-fold number) | 2 | ~6 hr | Phase P-A protocol patch shipped + §5.7 smoke | **BLOCKED on P-A** |
-| **L5** | LOMO with Wasserstein transfer re-bench (`wasserstein_weight = 0.05` kept, synthetic dropped) | 2 | ~4 hr | after L4 lands | **BLOCKED on L4** |
+| **L4** | **LOMO 5-metal × 5-seed, `n_synthetic_rh = 0`, real-only folds** (replaces the drifted 2-fold number) | 2 | ~6 hr | Phase P-A protocol patch shipped + §5.7 smoke | **DONE 2026-10-08** — 25/25 runs landed; `value = 0.5575` |
+| **L5** | LOMO with Wasserstein transfer re-bench (`wasserstein_weight = 0.05` kept, synthetic dropped) | 2 | ~4 hr | after L4 lands | **UNBLOCKED** — L4 landed |
 
 ### §6.3 CPU-only (no GPU gate)
 
@@ -328,7 +328,8 @@ The `decode_ratio > 0` invariant applies to **CFM** launches (L1). D-MPNN launch
 
 | Number | Tag | Source |
 |---|---|---|
-| LOMO `0.7577` | **MEASURED — CONTAMINATED (quarantine)** | `metrics/by_metric/metal_lomo_auc_wasserstein.json` → `value`; `n_folds = 2`, `n_synthetic_rh_appended = 500` |
+| LOMO `0.5575` | **MEASURED — real-only 5-fold (current headline)** | `metrics/by_metric/metal_lomo_auc_wasserstein.json` → `value`; `n_folds = 5`, `n_synthetic_rh_appended = 0`, `n_runs = 25` |
+| LOMO `0.7577` | MEASURED — CONTAMINATED (retired to historical diff) | same file → `real_only_pa_m19_re_measurement_2026_10_08.rh_real_only_lift_vs_synthetic_baseline.synthetic_baseline_Rh` context |
 | m1 DOI-split `0.7717 ± 0.0380` | **MEASURED — matrix-canonical** | `metrics/by_metric/metalcytotox_ru_auc.json:139,174` |
 | Paper LightGBM `0.810 ± 0.024` | MEASURED (paper) | same file, `baseline_comparison` |
 | m1 shipped `0.7613` | MEASURED — **untraceable, superseded** | `metalcytotox_ru_auc.json:9`; `PROTOCOL_ALIGNMENT_MATRIX.md:53` |
@@ -350,7 +351,7 @@ The `decode_ratio > 0` invariant applies to **CFM** launches (L1). D-MPNN launch
 
 ### §9.2 Deviations from the lock (and why)
 
-1. **LOMO 0.7577 is quarantined** — it does not satisfy `PROTOCOL_ALIGNMENT_MATRIX.md:19`. The matrix number for m1 is the DOI-split `0.7717`. This plan does **not** change the matrix; it changes which record is treated as the m1 headline.
+1. **LOMO 0.7577 is retired** (superseded 2026-10-08 by the real-only 5-fold `0.5575`). The synthetic-augmented number does not satisfy `PROTOCOL_ALIGNMENT_MATRIX.md:19`; it is kept only for historical diff. The real-only record now satisfies the protocol. This plan does **not** change the matrix; it changes which record is treated as the m19 headline.
 2. **R20-P4's m3 target re-scoped** from 100-pocket to the matrix-permitted 5-pocket for the paper comparison. Deviation is *downward in ambition, upward in protocol compliance* — the matrix explicitly allows the subset difference at `:21`.
 3. **R20-P2's L5 0.85 target is NOT re-energised** — 5 architectural attempts are exhausted (`LAMBDA_ROADMAP.md:286`). Re-energising would be aspirational framing, barred by AGENTS.md §5.2.
 4. **R20-P5's L6 100+/metal target**: the sample-count axis is fixed (Phase P-C) but the 0.95 reachability gate stays HONEST_NEGATIVE. Volume ≠ ceiling.
@@ -370,7 +371,7 @@ Append to `TODO/decisions.md` (ADR format) at ship time — **not done by this d
 
 | # | ADR title | Substance |
 |---|---|---|
-| D-R32-01 | LOMO synthetic-Rh cohort quarantined | `n_synthetic_rh = 500` folds are not matrix-comparable; 2-fold `0.7577` retired as the m1 headline in favour of DOI-split `0.7717` |
+| D-R32-01 | LOMO synthetic-Rh cohort retired | `n_synthetic_rh = 500` folds are not matrix-comparable; 2-fold `0.7577` retired as the m19 headline, replaced 2026-10-08 by the real-only 5-fold `0.5575` |
 | D-R32-02 | GPU-0 standing authorization (2026-10-07) | Extends AGENTS.md §5.1 with device scope + no-per-launch-ask; supersedes `R20_BIG_DATASET_FULL_RETRAIN_PLAN.md` §1.4 deferral |
 | D-R32-03 | R20-P2 / R20-P5 targets re-scoped, not re-energised | L5 0.85 and L6 0.95 stay honest-negative; only the protocol-volume axes are fixed |
 | D-R32-04 | Baseline-doc canonical path = `TODO/03_baselines/` | Corrects stale `TODO/03_plans/` refs; neither baseline doc is edited by this plan |
