@@ -1,75 +1,106 @@
 {
-  "metric": "pearson_r_pic50",
-  "description": "Pearson correlation between predicted and experimental pIC50 (HeLa48h/dark cohort)",
-  "unit": "ratio (-1 to 1)",
-  "scope": "pIC50 activity predictor",
-  "measurements": [
-    {
-      "run": "wf_extra1_full (3-seed × 50-epoch, margin=0.25)",
-      "value": 0.198,
-      "n_samples": "test set ~700",
-      "status": "MEASURED",
-      "date_utc": "2026-09-14",
-      "note": "seed-fragile: 0.005 / 0.519 / 0.071"
-    },
-    {
-      "run": "wf_pic50_margin_fix (margin 0.25→1.0)",
-      "value": 0.181,
-      "n_samples": "test set ~700",
-      "status": "MEASURED",
-      "date_utc": "2026-09-14",
-      "note": "ba_acc 0.0→1.0 lifted but pearson within seed-std"
-    },
-    {
-      "run": "wf_pic50_margin_sweep (margin=0.5, BEST)",
-      "value": 0.207,
-      "n_samples": "test set ~700",
-      "status": "MEASURED",
-      "date_utc": "2026-09-14",
-      "note": "best margin 0.5; +0.011 over 1.0; default CENSOR_MARGIN_DEFAULT 1.0→0.5"
-    },
-    {
-      "run": "ridge_baseline (3-seed)",
-      "value": 0.572,
-      "n_samples": "test set ~700",
-      "status": "MEASURED",
-      "note": "ridge remains credible ceiling on exact-row pearson"
-    },
-    {
-      "run": "wf124_p3_30epoch_seed0 (Ru multi-task + Wasserstein + L2 guard, GPU-1 RTX 5090)",
-      "value": 0.3091418378808671,
-      "n_samples": "test set 796",
-      "status": "MEASURED",
-      "date_utc": "2026-09-27",
-      "note": "Ru seed=0 test_pearson (single-seed, 30-epoch multi-task D-MPNN + W₂ pIC50 reg + L2 guard) = 0.3091 — measured on HeLa48h/dark cohort, NOT a HeLa48h cross-cohort. Better than wf_pic50_margin_sweep BEST (0.207) but still below ridge ceiling (0.572). Honest framing: the lift on Ru is real (multi-task + W₂ helps the pIC50 regression side) but ridge remains the credible ceiling. Close-out at TODO/completed/120_m1_ru_auc_strengthen.md and joint TODO/completed/131_m1_m19_joint_rescue.md."
-    },
-    {
-      "run": "wf131_p1_10epoch_3seed (Ru multi-task + Wasserstein + L2 guard, mean)",
-      "value": 0.2600,
-      "n_samples": "test set 796",
-      "status": "MEASURED",
-      "date_utc": "2026-09-27",
-      "note": "Ru × 3-seed × 10-epoch mean test_pearson = 0.260 ± 0.046 (per-seed 0.273 / 0.309 / 0.198). Stable across 3 seeds; better than wf_pic50_margin_sweep BEST (0.207). Same cohort / split as wf124_p3_30epoch_seed0; lower pearson is consistent with shorter training (10 epochs vs 30)."
-    }
-  ],
-  "aggregate": {
-    "best_neural": 0.3091,
-    "best_neural_run": "wf124_p3_30epoch_seed0",
-    "best_neural_seed_count": 1,
-    "best_neural_3seed_mean": 0.2600,
-    "best_neural_3seed_std": 0.046,
-    "best_neural_3seed_run": "wf131_p1_10epoch_3seed",
-    "ridge_baseline": 0.572,
-    "gap_to_ridge_30epoch": -0.263,
-    "gap_to_ridge_3seed_mean": -0.312,
-    "rmse_neural_best": 0.687,
-    "rmse_ridge": 0.597
+ "metric": "pearson_r_pic50",
+ "description": "Pearson correlation between predicted and experimental pIC50 (HeLa48h/dark cohort)",
+ "unit": "ratio (-1 to 1)",
+ "scope": "pIC50 activity predictor",
+ "measurements": [
+  {
+   "run": "wf_extra1_full (3-seed \u00d7 50-epoch, margin=0.25)",
+   "value": 0.198,
+   "n_samples": "test set ~700",
+   "status": "MEASURED",
+   "date_utc": "2026-09-14",
+   "note": "seed-fragile: 0.005 / 0.519 / 0.071"
   },
-  "wf131_joint_close_out": {
-    "close_out_doc": "TODO/completed/131_m1_m19_joint_rescue.md",
-    "date_utc": "2026-09-27",
-    "verdict": "MEASURED_PARTIAL_LIFT — Wf-124 P3 Ru seed=0 (30-epoch, multi-task + W₂ + L2 guard) test_pearson = 0.3091 — +0.102 lift over wf_pic50_margin_sweep BEST (0.207), still −0.263 below ridge baseline (0.572). Wf-131 P1 3-seed × 10-epoch mean = 0.260 ± 0.046 (consistent with shorter training). The m1 mechanism lifts both AUC and pIC50 regression; ridge remains the credible ceiling on exact-row pearson."
+  {
+   "run": "wf_pic50_margin_fix (margin 0.25\u21921.0)",
+   "value": 0.181,
+   "n_samples": "test set ~700",
+   "status": "MEASURED",
+   "date_utc": "2026-09-14",
+   "note": "ba_acc 0.0\u21921.0 lifted but pearson within seed-std"
   },
-  "verdict": "MEASURED_HONEST_NEGATIVE — D-MPNN does not beat ridge on exact-row pearson. Wf-124 P3 Ru seed=0 (30-epoch multi-task + W₂ + L2) lifts test_pearson to 0.3091 — the best MEASURED neural, +0.102 over wf_pic50_margin_sweep BEST (0.207), but still −0.263 below ridge (0.572). Margin sweep identified 0.5 as best (down-shift from 1.0 default). Honest paper framing: ridge remains the credible ceiling; neural adds value via AUC (Ru 0.7123 → 0.7613 in Wf-124 P3) and bound-aware accuracy (ba_acc=1.0 at margin≥0.5).",
-  "honest_framing": "Data source: HeLa48h/dark cohort (Rusanov 2025 phototoxicity subset, exact-row pearson). Model: D-MPNN multi-task + Wasserstein pIC50 reg + L2 guard; ridge regression baseline as ceiling. Protocol: 3-seed × 50-epoch with margin sweep (best margin=0.5). Rusanov 2025 baseline cite-only; iMoLD cite-only. Honest-negative framing per party-twenty-spirit §3.5 (0 容忍 + 不掩盖) — D-MPNN neural (-0.263 below ridge) does not beat ridge on exact-row pearson. Cites TODO-120 (m1 Ru AUC strengthen), TODO-131 (m1+m19 joint rescue), TODO-140/141/142/143/144."
+  {
+   "run": "wf_pic50_margin_sweep (margin=0.5, BEST)",
+   "value": 0.207,
+   "n_samples": "test set ~700",
+   "status": "MEASURED",
+   "date_utc": "2026-09-14",
+   "note": "best margin 0.5; +0.011 over 1.0; default CENSOR_MARGIN_DEFAULT 1.0\u21920.5"
+  },
+  {
+   "run": "ridge_baseline (3-seed)",
+   "value": 0.572,
+   "n_samples": "test set ~700",
+   "status": "MEASURED",
+   "note": "ridge remains credible ceiling on exact-row pearson \u2014 BUT this 0.572 was measured on the pic50_margin_sweep cohort (HeLa48h/dark, 702 formulations / 383 scaffolds, seeds 42/0/1234), which is a DIFFERENT split from the wf_pearson_diag / wf_pearson_ridge_gpu diagnostic (joint split, seeds 0/1/2, n_test=994). Treat 0.572 as NOT same-protocol; on the diagnostic's own split the ridge-on-Morgan baseline is 0.3232.",
+   "same_protocol_as_diagnostic": false
+  },
+  {
+   "run": "wf124_p3_30epoch_seed0 (Ru multi-task + Wasserstein + L2 guard, GPU-1 RTX 5090)",
+   "value": 0.3091418378808671,
+   "n_samples": "test set 796",
+   "status": "MEASURED",
+   "date_utc": "2026-09-27",
+   "note": "Ru seed=0 test_pearson (single-seed, 30-epoch multi-task D-MPNN + W\u2082 pIC50 reg + L2 guard) = 0.3091 \u2014 measured on HeLa48h/dark cohort, NOT a HeLa48h cross-cohort. Better than wf_pic50_margin_sweep BEST (0.207) but still below ridge ceiling (0.572). Honest framing: the lift on Ru is real (multi-task + W\u2082 helps the pIC50 regression side) but ridge remains the credible ceiling. Close-out at TODO/completed/120_m1_ru_auc_strengthen.md and joint TODO/completed/131_m1_m19_joint_rescue.md."
+  },
+  {
+   "run": "wf131_p1_10epoch_3seed (Ru multi-task + Wasserstein + L2 guard, mean)",
+   "value": 0.26,
+   "n_samples": "test set 796",
+   "status": "MEASURED",
+   "date_utc": "2026-09-27",
+   "note": "Ru \u00d7 3-seed \u00d7 10-epoch mean test_pearson = 0.260 \u00b1 0.046 (per-seed 0.273 / 0.309 / 0.198). Stable across 3 seeds; better than wf_pic50_margin_sweep BEST (0.207). Same cohort / split as wf124_p3_30epoch_seed0; lower pearson is consistent with shorter training (10 epochs vs 30)."
+  },
+  {
+   "run": "wf_pearson_ridge_gpu (Ru D-MPNN 30-epoch, neural head vs ridge readout on SAME frozen encoder embedding)",
+   "value": 0.34019591341772404,
+   "n_samples": "test set 994",
+   "status": "MEASURED",
+   "date_utc": "2026-10-08",
+   "note": "DECISIVE head-vs-feature probe on ONE split (Ru, n_train=2262/n_val=394/n_test=994; current MetalCytoToxDB.csv snapshot, NOT the 2026-09 wf124 snapshot). Command: `python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --metals Ru --seeds 0 --epochs 30 --device cuda:0 --no-bf16 --pic50-ridge-readout --csv .data/molmetal/metalcytotox_5metal_multitask_v4.csv --data-csv .data/molmetal/MetalCytoToxDB.csv`. Neural HEAD test_pearson=0.0113; Ridge READOUT on the SAME 2H-dim encoder embedding test_pearson=0.3402 (rmse 0.586 vs head 1.199, ridge_alpha=100). The readout extracts ~30x the signal the neural head extracts. Full report: molmetal/reports/wf_pearson_ridge_gpu/ru/per_seed_metrics_seed0.json."
+  },
+  {
+   "run": "wf_pearson_diag (alpha-refutation arm, 30-epoch Ru, default vs reg-weighted)",
+   "value": 0.4074060909221685,
+   "n_samples": "test set 994 (diag split n_train pool 3480)",
+   "status": "MEASURED",
+   "date_utc": "2026-10-08",
+   "note": "REFUTES the 'regression head is alpha-starved' hypothesis. On the diag split: neural HEAD alpha=0.5 test_pearson=0.2143; neural HEAD alpha=0.2 (reg-weighted) test_pearson=0.1690 (WORSE by -0.045); ridge-on-TRAINED-encoder-embeddings alpha=0.5=0.4074, alpha=0.2=0.3942. Lowering alpha did NOT help the head; a Ridge probe on the same embeddings reaches ~1.9x the head. Ridge-on-Morgan-FP same split=0.3232; ridge-on-RANDOM-encoder-emb=0.3944. Command: `python molmetal/scripts/wf_pearson_r_pic50_head_vs_feature.py --epochs 30 --device cuda:0`. Report: molmetal/reports/wf_pearson_diag/report.json."
+  }
+ ],
+ "aggregate": {
+  "best_neural": 0.3091,
+  "best_neural_run": "wf124_p3_30epoch_seed0",
+  "best_neural_seed_count": 1,
+  "best_neural_3seed_mean": 0.26,
+  "best_neural_3seed_std": 0.046,
+  "best_neural_3seed_run": "wf131_p1_10epoch_3seed",
+  "ridge_baseline": 0.572,
+  "gap_to_ridge_30epoch": -0.263,
+  "gap_to_ridge_3seed_mean": -0.312,
+  "rmse_neural_best": 0.687,
+  "rmse_ridge": 0.597
+ },
+ "wf131_joint_close_out": {
+  "close_out_doc": "TODO/completed/131_m1_m19_joint_rescue.md",
+  "date_utc": "2026-09-27",
+  "verdict": "MEASURED_PARTIAL_LIFT \u2014 Wf-124 P3 Ru seed=0 (30-epoch, multi-task + W\u2082 + L2 guard) test_pearson = 0.3091 \u2014 +0.102 lift over wf_pic50_margin_sweep BEST (0.207), still \u22120.263 below ridge baseline (0.572). Wf-131 P1 3-seed \u00d7 10-epoch mean = 0.260 \u00b1 0.046 (consistent with shorter training). The m1 mechanism lifts both AUC and pIC50 regression; ridge remains the credible ceiling on exact-row pearson."
+ },
+ "verdict": "MEASURED_HONEST_NEGATIVE + ROOT-CAUSE ISOLATED (2026-10-08) \u2014 D-MPNN does not beat ridge on exact-row pearson, AND the bottleneck is the READOUT, not the features or the multi-task alpha. Decisive probe (wf_pearson_ridge_gpu + wf_pearson_diag, one split each): a Ridge probe on the D-MPNN encoder's OWN frozen embedding reaches test_pearson 0.34-0.41, while the neural pIC50 HEAD on the SAME embedding reaches only 0.01-0.21 \u2014 the head extracts ~2-30x less signal than a linear probe. Reg-weighting the loss (alpha 0.5 -> 0.2) makes the head WORSE (0.2143 -> 0.1690), refuting the 'head is alpha-starved' hypothesis. Historical best neural 0.3091 (wf124_p3, older 2026-09 split) remains below the ridge ceiling. Honest paper framing: the gap to the historical ridge 0.572 is a readout/architecture problem to be closed with a ridge-or-better readout on the encoder embedding, not a feature problem.",
+ "honest_framing": "Data source: HeLa48h/dark cohort (Rusanov 2025 phototoxicity subset, exact-row pearson). Model: D-MPNN multi-task + Wasserstein pIC50 reg + L2 guard; ridge regression baseline as ceiling. Protocol: 3-seed \u00d7 50-epoch with margin sweep (best margin=0.5). Rusanov 2025 baseline cite-only; iMoLD cite-only. Honest-negative framing per party-twenty-spirit \u00a73.5 (0 \u5bb9\u5fcd + \u4e0d\u63a9\u76d6) \u2014 D-MPNN neural (-0.263 below ridge) does not beat ridge on exact-row pearson. Cites TODO-120 (m1 Ru AUC strengthen), TODO-131 (m1+m19 joint rescue), TODO-140/141/142/143/144.",
+ "protocol_alignment_2026_10_08": {
+  "question": "Is the historical ridge 0.572 a same-protocol target for our D-MPNN numbers?",
+  "verdict": "NO \u2014 different cohort/split. The 0.572 is from metrics/by_round/pic50_margin_sweep.json (HeLa48h/dark, 702 formulations, 383 scaffolds, seeds 42/0/1234). The 2026-10-08 readout diagnostic runs a joint split with seeds 0/1/2 and n_test=994.",
+  "same_split_baselines_MEASURED": {
+   "ridge_on_morgan_fp": 0.3232,
+   "ridge_on_random_encoder_embedding": 0.3944,
+   "ridge_on_trained_encoder_embedding": 0.4074,
+   "neural_head_default_alpha_0.5": 0.2143,
+   "neural_head_regweighted_alpha_0.2": 0.169
+  },
+  "honest_reading": "On the diagnostic's own split we already exceed the same-split Morgan ridge (0.4074 vs 0.3232). The 'gap to 0.572' is therefore NOT a same-protocol gap and must not be cited as one. The defensible claim is a READOUT finding: a ridge probe on the frozen encoder embedding extracts ~2x more signal than the neural head.",
+  "source": "molmetal/reports/wf_pearson_diag/report.json + molmetal/reports/wf_pearson_ridge_gpu/ru/per_seed_metrics_seed0.json",
+  "tag": "MEASURED"
+ }
 }
