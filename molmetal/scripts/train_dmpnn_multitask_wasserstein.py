@@ -3560,6 +3560,42 @@ def main(argv: Optional[List[str]] = None) -> int:
             "TRITON_MINIBATCH_OT=1 + TRITON_USE_FUSED=1 dispatched",
             flush=True,
         )
+    # 2026-10-08 — §5.7 FLAG_ONLY fix for the three per-kernel Triton gates.
+    #
+    # ``--use-triton-wasserstein-sliced`` IS live: wasserstein_loss.py's
+    # dispatch hook reads ``TRITON_WASSERSTEIN_SLICED`` (plus the global
+    # ``TRITON_USE_FUSED`` master gate), so dispatching the env var here is
+    # all that was missing — flipping the YAML key was previously a silent
+    # no-op because nothing ever set those vars.
+    if bool(getattr(args, "use_triton_wasserstein_sliced", False)):
+        import os as _wf130_os
+
+        _wf130_os.environ.setdefault("TRITON_WASSERSTEIN_SLICED", "1")
+        _wf130_os.environ.setdefault("TRITON_USE_FUSED", "1")
+        print(
+            "[Wf-335-P3] --use-triton-wasserstein-sliced ENABLED: "
+            "TRITON_WASSERSTEIN_SLICED=1 + TRITON_USE_FUSED=1 dispatched",
+            flush=True,
+        )
+    # ``--use-triton-bond-head`` / ``--use-triton-smiles-featurize`` have NO
+    # consumer in this trainer: the fused kernels expect a 3-layer bond-head
+    # MLP / a featurisation call site that this architecture does not have
+    # (UnifiedAtomBondFlowHead.bond_head is a single Linear; featurisation
+    # runs through RDKit upstream).  Rather than accept the flag and silently
+    # compute nothing (§5.7's exact failure mode), refuse it loudly.
+    for _dead_flag in (
+        "use_triton_bond_head",
+        "use_triton_smiles_featurize",
+    ):
+        if bool(getattr(args, _dead_flag, False)):
+            raise SystemExit(
+                f"--{_dead_flag.replace('_', '-')} has no consumer in "
+                "train_dmpnn_multitask_wasserstein.py: the fused kernel's "
+                "target call site does not exist in this architecture. "
+                "Setting it would be a silent no-op (§5.7 FLAG_ONLY), so it "
+                "is rejected instead. Remove the flag or wire a real call "
+                "site before enabling. See configs/dmpnn.yaml model.* notes."
+            )
     # per_cohort_features: log the per-cohort feature config at
     # training start (Wf-380-A2 SCAFFOLD wire-in).
     if bool(getattr(args, "per_cohort_features", False)):

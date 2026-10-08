@@ -53,17 +53,23 @@ model:
   #     load_state_dict across the ON/OFF boundary FAILS. Leave this false
   #     unless you are starting a cold run; flipping it on a run you intend to
   #     --resume-from will break the resume.
-  #   use_triton_smiles_featurize — WIRE-IN PENDING (TODO: needs a consumer in
-  #     this trainer). The fused kernel exists at
+  #   use_triton_smiles_featurize — REJECTED (verified 2026-10-08). The fused
+  #     kernel exists at
   #     adapters/flow_matching_lipman/_reference/fused_smiles_featurize.py, but
-  #     NOTHING in train_dmpnn_multitask_wasserstein.py reads this dest — the
-  #     arg has no effect until a featurisation call site is added.
-  #   use_triton_bond_head — WIRE-IN PENDING (TODO: needs a consumer in this
-  #     trainer). Same status: fused_bond_head_aggregation.py exists, but this
-  #     dest is read nowhere in the trainer.
-  # Keeping the two PENDING keys costs nothing — they resolve and parse cleanly —
-  # but flipping them to `true` is currently a no-op. Do not read a Triton-accelerated
-  # run into any report until a consumer exists.
+  #     NO call site in train_dmpnn_multitask_wasserstein.py featurises SMILES
+  #     through a Triton kernel (featurisation runs through RDKit upstream).
+  #     Setting this true now raises SystemExit in main() rather than silently
+  #     computing nothing (§5.7 FLAG_ONLY). Wire a real call site before use.
+  #   use_triton_bond_head — REJECTED (verified 2026-10-08). fused_bond_head_
+  #     aggregation.py expects a 3-layer bond-head MLP; this trainer's only
+  #     bond head (UnifiedAtomBondFlowHead.bond_head) is a single Linear, so
+  #     the kernel has no valid target here. Setting true raises SystemExit
+  #     (§5.7). See flowmol_unified.py before attempting a wire-in.
+  #   use_triton_wasserstein_sliced — WIRED (2026-10-08). wasserstein_loss.py's
+  #     dispatch hook gates on TRITON_WASSERSTEIN_SLICED + TRITON_USE_FUSED;
+  #     main() now dispatches both env vars from this key, so flipping it true
+  #     activates the fused sliced-W₂ path on CUDA (falls back to the PyTorch
+  #     reference otherwise). Previously a silent no-op (§5.7 FLAG_ONLY).
   use_triton_smiles_featurize: false
   use_triton_relu_mlp: false
   use_triton_bond_head: false

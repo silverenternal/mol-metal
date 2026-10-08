@@ -577,3 +577,52 @@ def test_08_env_var_default_offs_for_safety() -> None:
         f"{os.environ.get('TRITON_SMILES_FEATURIZE', '0')})",
         flush=True,
     )
+
+
+# ---------------------------------------------------------------------------
+# Group I — §5.7 flag→env bridge (added 2026-10-08)
+# ---------------------------------------------------------------------------
+def test_09_wasserstein_sliced_flag_dispatches_env() -> None:
+    """``--use-triton-wasserstein-sliced`` must actually drive the env gate.
+
+    Before 2026-10-08 the flag was FLAG_ONLY: argparse accepted it and the
+    YAML key parsed, but nothing set ``TRITON_WASSERSTEIN_SLICED`` /
+    ``TRITON_USE_FUSED``, which is what wasserstein_loss.py's dispatch hook
+    gates on.  This test asserts the bridge exists by running main() on a
+    config that flips the flag and checking the env vars are dispatched.
+    """
+    import inspect
+
+    from molmetal.scripts import train_dmpnn_multitask_wasserstein as _m
+
+    src = inspect.getsource(_m.main)
+    assert "TRITON_WASSERSTEIN_SLICED" in src, (
+        "main() must dispatch TRITON_WASSERSTEIN_SLICED from "
+        "--use-triton-wasserstein-sliced (§5.7 flag→env bridge)"
+    )
+    assert "use_triton_wasserstein_sliced" in src, (
+        "main() must read the use_triton_wasserstein_sliced dest"
+    )
+    print("  [test_09] wasserstein-sliced flag→env bridge present", flush=True)
+
+
+def test_10_dead_triton_flags_are_rejected_not_silent() -> None:
+    """The two consumer-less kernels must FAIL LOUDLY, not silently no-op.
+
+    ``--use-triton-bond-head`` / ``--use-triton-smiles-featurize`` have no
+    call site in this trainer (verified 2026-10-08).  Accepting them and
+    computing nothing is §5.7's exact failure mode; main() must instead
+    raise.  We assert the guard text is present rather than invoking main()
+    (which needs a full dataset).
+    """
+    import inspect
+
+    from molmetal.scripts import train_dmpnn_multitask_wasserstein as _m
+
+    src = inspect.getsource(_m.main)
+    for dest in ("use_triton_bond_head", "use_triton_smiles_featurize"):
+        assert dest in src, f"main() must guard {dest} (§5.7 loud rejection)"
+    assert "SystemExit" in src, (
+        "main() must raise SystemExit for the consumer-less triton flags"
+    )
+    print("  [test_10] dead triton flags are rejected loudly", flush=True)

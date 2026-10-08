@@ -124,6 +124,17 @@ SCRIPTS_DIR = (
 LAM_CHEM_DIR = MOLMETAL_ROOT / "molmetal_lam" / "lam_chem"
 CONFIGS_DIR = REPO_ROOT / "configs"
 
+# Wf-445-A1: PoseBusters 'dock' mode smoke vs production threshold.
+# Both on-disk m8 smoke outputs are sub-production
+# (wf315d m8_prod_1h36.json n_poses=15; wf323c result.json
+# n_poses_total=16).  A sub-production n MUST NOT be reported as
+# "PB production" (TODO/INDEX.md §17.1 row 3).  Below this threshold the
+# gates emit SKIP (exit 2) instead of PASS, so the smoke cannot silently
+# satisfy a production-labelled gate.  Production re-measurement needs
+# the receptor + Vina GPU path (Wf-323C honest-negative: Vina 1.2.7
+# rejects Pt+2 octahedral geometry) -- GPU + external-data gated.
+M8_PB_PRODUCTION_MIN_POSES = 100
+
 
 def _discover_active_configs() -> Tuple[Path, ...]:
     """Discover the active configs instead of listing them by hand.
@@ -3312,6 +3323,21 @@ def gate_wf315d_pb_smoke(
                 f"n_protein_aware_pass={n_pass!r}, n_poses={n_total!r})",
                 elapsed,
             )
+        if n_total < M8_PB_PRODUCTION_MIN_POSES:
+            return GateResult(
+                name,
+                priority,
+                pipeline,
+                "SKIP",
+                f"packages available (rdkit={rdkit_v}, posebusters={pb_v}); "
+                f"{json_path}: status=MEASURED_SMOKE; smoke output "
+                f"m8_protein_aware_pass_rate={rate:.4f} ({n_pass}/{n_total} pass) "
+                f"but n_poses={n_total} < M8_PB_PRODUCTION_MIN_POSES="
+                f"{M8_PB_PRODUCTION_MIN_POSES} (Wf-445-A1) -- SMOKE only, "
+                f"NOT PB production. Re-measure needs receptor + Vina GPU "
+                f"path (Wf-323C honest-negative: Vina 1.2.7 rejects Pt+2).",
+                elapsed,
+            )
         return GateResult(
             name,
             priority,
@@ -3542,6 +3568,22 @@ def gate_wf323c_m8_full_pass_rate_documented(
         )
 
     elapsed = time.perf_counter() - t0
+    n_total = result.get("n_poses_total", n_pre)
+    if n_total < M8_PB_PRODUCTION_MIN_POSES:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"result.m8_full={full_rate:.4f} (n_pre={n_pre}, n_pt_zn={n_pt_zn}, "
+            f"n_poses_total={n_total}); metric MEASURED_SMOKE; "
+            f"pool={n_conformers} conformers -- but n_poses_total={n_total} "
+            f"< M8_PB_PRODUCTION_MIN_POSES={M8_PB_PRODUCTION_MIN_POSES} "
+            f"(Wf-445-A1): SMOKE only, NOT PB production. Re-measure needs "
+            f"receptor + Vina GPU path (Wf-323C honest-negative: Vina 1.2.7 "
+            f"rejects Pt+2 octahedral geometry).",
+            elapsed,
+        )
     return GateResult(
         name,
         priority,
@@ -3698,6 +3740,21 @@ def gate_wf319c_pb_packages_status_present(
         )
 
     elapsed = time.perf_counter() - t0
+    if n_total < M8_PB_PRODUCTION_MIN_POSES:
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "SKIP",
+            f"venv={venv_python} rdkit={rdkit_v} posebusters={pb_v}; "
+            f"{metric_json.name}=MEASURED_SMOKE; smoke m8 rate={rate:.4f} "
+            f"({n_pass}/{n_total} pass) but n_poses={n_total} < "
+            f"M8_PB_PRODUCTION_MIN_POSES={M8_PB_PRODUCTION_MIN_POSES} "
+            f"(Wf-445-A1) -- SMOKE only, NOT PB production. Re-measure "
+            f"needs receptor + Vina GPU path (Wf-323C honest-negative: "
+            f"Vina 1.2.7 rejects Pt+2 octahedral geometry).",
+            elapsed,
+        )
     return GateResult(
         name,
         priority,
@@ -5971,6 +6028,16 @@ HP_RESOLUTION_EXEMPT_KEYS: Dict[str, str] = {
     # The classifier resolves argparse dests only, so a nested `model.*` key
     # is reported dead even though the trainer reads it.
     "model.use_triton_relu_mlp": "trainer --use-triton-relu-mlp (wired Wf-R29)",
+    # 2026-10-08: honest disposition of the remaining Triton gate keys.
+    # wasserstein_sliced IS now wired (main() dispatches the env var the
+    # loss-layer hook gates on); the other two have NO consumer in the
+    # trainer and main() REJECTS them with SystemExit so they can never be a
+    # silent no-op (§5.7). Exempted from the residual warning because the
+    # reader's correct action is "leave false / don't set" — the opposite of
+    # a dead key someone should wire.
+    "model.use_triton_wasserstein_sliced": "trainer dispatches TRITON_WASSERSTEIN_SLICED (wired 2026-10-08)",
+    "model.use_triton_bond_head": "no trainer consumer; main() rejects (SystemExit) — leave false",
+    "model.use_triton_smiles_featurize": "no trainer consumer; main() rejects (SystemExit) — leave false",
     # 2026-10-04: same treatment.  start.sh reads compute.cpu_workers and emits
     # trainer --cpu-num-workers; the classifier resolves against argparse dests
     # only, so a start.sh-consumed key would otherwise be reported dead right
