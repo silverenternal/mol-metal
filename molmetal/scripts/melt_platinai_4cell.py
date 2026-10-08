@@ -164,6 +164,14 @@ def main() -> int:
         return 1
 
     long_df = melt(args.src, args.out)
+    # Degenerate-run gate: refuse to report success when the melt produced
+    # no rows or no metal coverage.
+    if len(long_df) == 0 or long_df["metal"].nunique() < 1:
+        print(
+            "[FAIL] melt produced no rows / no metal coverage",
+            file=sys.stderr,
+        )
+        return 1
     print(f"[melt_platinai_4cell] OK: {len(long_df)} long-format rows → {args.out}")
     print(f"[melt_platinai_4cell] unique SMILES: {long_df['smiles'].nunique()}")
     print(f"[melt_platinai_4cell] cell lines: {sorted(long_df['cell_line'].unique())}")

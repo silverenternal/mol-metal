@@ -5,10 +5,10 @@
 - max_depth: 0
 - n_partners: 4
 - seed: 0
-- wall_time_s: 1.6173
+- wall_time_s: 1.7921
 
 | metal | 6/6 PASS | n_pass | wall_time_s | error |
 |---|---|---|---|---|
-| Sc | True | 6 | 1.6116 |  |
-| Ti | True | 6 | 0.0029 |  |
-| V | True | 6 | 0.0027 |  |
+| Sc | True | 6 | 1.7857 |  |
+| Ti | True | 6 | 0.0033 |  |
+| V | True | 6 | 0.0030 |  |

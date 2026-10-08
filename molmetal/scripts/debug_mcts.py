@@ -233,6 +233,15 @@ def main(argv: List[str] | None = None) -> int:
         if args.debug_mcts and getattr(search, "debug_trace", None):
             print(f"[debug-mcts] debug_trace_len=" f"{len(search.debug_trace)}")
 
+    # Degenerate-run gate: a search that produced zero candidates did not
+    # actually explore, so refuse to report success.
+    if len(cands) == 0:
+        print(
+            "[debug-mcts] FAIL: 0 candidates — refusing success",
+            file=sys.stderr,
+        )
+        return 2
+
     return 0
 
 

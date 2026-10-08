@@ -389,6 +389,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     # the 3-metal subset.  The 9->30 expansion is the formal contract
     # (the script can bench any number in [1, 30] from DBLOCK_30_METALS).
     expected_min = 3 if args.smoke else max(9, args.metals)
+    # Degenerate-run gate: coverage alone is not sufficient.  If the bench
+    # ran on the requested metals but ZERO of them passed 6/6, the run is
+    # degenerate (e.g. the historical false-0/6 verifier bug) and must not
+    # be reported as a PASS.
+    if report["n_six_of_six_pass"] == 0:
+        print(
+            "[FAIL] 0 metals passed 6/6 — refusing PASS",
+            file=sys.stderr,
+        )
+        return 1
     if report["n_metals"] >= expected_min:
         print(
             f"[PASS] Catherine 30-metal bench ran on {report['n_metals']} "
