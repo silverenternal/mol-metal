@@ -17,9 +17,20 @@ asymmetry is the whole reason a test is needed: without this, the bug is
 invisible until someone runs ``registry generate`` to refresh a stale lock,
 which is exactly when it is least convenient to fail.
 
-The test drives ``generate()`` in-process with ``PYTHONPATH`` scrubbed from the
-environment, so it reproduces the original failure rather than relying on the
-test runner's own import setup.
+Why this test restores the registry (fixed 2026-10-10)
+-------------------------------------------------------
+``generate()`` writes to the module-level ``DATASETS_PATH`` /
+``PROTOCOLS_PATH`` / ``METRICS_PATH`` constants — the ``repo_root`` parameter
+does NOT redirect the output. So an earlier version of this test left
+``registry/metrics.yaml`` modified after every green run, which meant the next
+``git commit -a`` anywhere in the repo would ship regenerated registry state
+(churned ``generated_at`` / ``last_refreshed`` timestamps, plus coverage
+counters) as though it had been authored. A test that dirties tracked files is
+a CI hazard, not just untidy.
+
+The fix is to snapshot the three files and restore them byte-for-byte in a
+``finally``, then assert the tree came back clean. The test still exercises the
+real ``generate`` path — it just does not leave a mess behind.
 """
 
 from __future__ import annotations
@@ -33,6 +44,8 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 REGISTRY_PY = REPO_ROOT / "molmetal" / "scripts" / "registry.py"
+REGISTRY_DIR = REPO_ROOT / "registry"
+REGISTRY_FILES = ("datasets.yaml", "protocols.yaml", "metrics.yaml")
 
 
 def _run(args: list[str], env: dict[str, str]) -> subprocess.CompletedProcess:
@@ -61,8 +74,8 @@ def test_registry_module_is_importable_from_script_dir():
     )
 
 
-def test_registry_generate_runs_without_pythonpath(tmp_path: Path):
-    """`registry generate` must succeed with PYTHONPATH unset.
+def test_registry_generate_runs_without_pythonpath():
+    """`registry generate` must succeed with PYTHONPATH unset, and leave no trace.
 
     `check` (no package imports) is asserted too, so a future change that
     breaks one path but not the other is caught rather than masked.
@@ -70,13 +83,27 @@ def test_registry_generate_runs_without_pythonpath(tmp_path: Path):
     if not REGISTRY_PY.is_file():
         pytest.skip("registry.py not present")
 
-    gen = _run(["generate"], os.environ)
-    assert gen.returncode == 0, (
-        "`registry generate` failed without PYTHONPATH — this is the "
-        "ModuleNotFoundError regression.\n"
-        f"stdout:\n{gen.stdout}\nstderr:\n{gen.stderr}"
-    )
-    assert "ModuleNotFoundError" not in gen.stderr
+    snapshot = {name: (REGISTRY_DIR / name).read_bytes() for name in REGISTRY_FILES
+                if (REGISTRY_DIR / name).is_file()}
+    try:
+        gen = _run(["generate"], os.environ)
+        assert gen.returncode == 0, (
+            "`registry generate` failed without PYTHONPATH — this is the "
+            "ModuleNotFoundError regression.\n"
+            f"stdout:\n{gen.stdout}\nstderr:\n{gen.stderr}"
+        )
+        assert "ModuleNotFoundError" not in gen.stderr
 
-    chk = _run(["check"], os.environ)
-    assert chk.returncode == 0, f"`registry check` regressed:\n{chk.stderr}"
+        chk = _run(["check"], os.environ)
+        assert chk.returncode == 0, f"`registry check` regressed:\n{chk.stderr}"
+    finally:
+        # generate() always writes; put the tracked files back exactly as they
+        # were so a green run never dirties the working tree.
+        for name, blob in snapshot.items():
+            (REGISTRY_DIR / name).write_bytes(blob)
+
+    for name, blob in snapshot.items():
+        assert (REGISTRY_DIR / name).read_bytes() == blob, (
+            f"registry/{name} was not restored byte-for-byte after this test — "
+            "the test is dirtying tracked files."
+        )

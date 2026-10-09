@@ -2576,12 +2576,36 @@ def _metric_resolution(
 
 
 def _aggregate(per_run: List[Dict[str, object]], n_seeds: int = 1) -> Dict[str, object]:
-    aucs = [float(d["test_auc"]) for d in per_run if "test_auc" in d]
+    # A degenerate fold yields NaN AUC. ``statistics.mean`` silently returns
+    # nan for it, but ``statistics.pstdev`` RAISES (Python 3.12:
+    # AttributeError: 'float' object has no attribute 'numerator'), so an
+    # unfiltered list here aborts the run at the aggregate step -- before the
+    # metrics payload is ever written. That defeats the point of the per-metal
+    # guard at the write site, whose comment says "a degenerate fold must be
+    # reported, not fatal". Filter non-finite values here too, and report how
+    # many were dropped so the exclusion is visible rather than silent.
+    def _finite_runs() -> Tuple[List[float], int]:
+        vals: List[float] = []
+        n_nonfinite = 0
+        for d in per_run:
+            if "test_auc" not in d:
+                continue
+            v = float(d["test_auc"])
+            if math.isfinite(v):
+                vals.append(v)
+            else:
+                n_nonfinite += 1
+        return vals, n_nonfinite
+
+    aucs, n_nonfinite = _finite_runs()
     per_fold: Dict[str, List[float]] = {}
     for d in per_run:
         if "test_auc" not in d:
             continue
-        per_fold.setdefault(d["fold"], []).append(float(d["test_auc"]))
+        v = float(d["test_auc"])
+        if not math.isfinite(v):
+            continue
+        per_fold.setdefault(d["fold"], []).append(v)
     resolution = _metric_resolution(per_run, n_seeds)
     worst = max(
         (v["auc_resolution"] for v in resolution.values() if v["auc_resolution"] is not None),
@@ -2589,6 +2613,7 @@ def _aggregate(per_run: List[Dict[str, object]], n_seeds: int = 1) -> Dict[str, 
     )
     return {
         "n_runs": len(aucs),
+        "n_runs_nonfinite_excluded": n_nonfinite,
         "n_folds": len(per_fold),
         "test_auc_mean": float(statistics.mean(aucs)) if aucs else float("nan"),
         "test_auc_std": float(statistics.pstdev(aucs)) if len(aucs) > 1 else 0.0,

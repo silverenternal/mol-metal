@@ -39,7 +39,7 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**关键点：D-MPNN 在项目里承担 7 个角色，116 个文件引用它。**
+**关键点：D-MPNN 在项目里承担 7 个角色**；`grep -rli dmpnn molmetal/scripts` 命中 **119** 个脚本（另有 tests 180 / configs 25，计数于 2026-10-10）。
 "XGB 在某个子任务上更好"只与其中 1 个角色相关，**不能据此把 D-MPNN 降级**——
 这个判断我犯过一次，已写入 `todo.json :: dmpnn_roles_2026_10_10`。
 
@@ -258,7 +258,7 @@ flow-matching 目标把残余生成能力翻了一倍以上**（代价是 bond h
 ## 8. 相关记录
 
 - 同协议总账：[`docs/ALIGNED_COMPARISON.md`](ALIGNED_COMPARISON.md) ← **写论文前必读**
-- 指标 SSOT：`metrics/by_metric/`（159 个文件）
+- 指标 SSOT：`metrics/by_metric/`（161 个文件，计数于 2026-10-10）
 - 诚实负面台账：`docs/HONEST_NEGATIVE_CATALOG.md`
 - blocker 全集：`todo.json`；D-MPNN 七角色：`todo.json :: dmpnn_roles_2026_10_10`
 - 根因分析：`todo.json :: root_cause_analysis_2026_10_10`

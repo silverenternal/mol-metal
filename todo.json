@@ -2767,6 +2767,44 @@
       },
       "paper_wording": "Ir: 'exceeds the published value under either tie rule'。Ru: 'at parity with the published 0.81'，并报两种规则的区间。**不得写 'Ru exceeds Krasnov' 的无条件表述。**",
       "lesson": "我曾把这条写进置顶文档、seed-stability 产物和 commit message 当成稳健头条。数值本身没错，错的是**未验证结论是否承重于某个任意选择**。凡是 'X 超过 Y' 形式的跨研究比较，都要问一句：换个同样合理的处理方式，这条还成立吗。"
+    },
+    "premerge_audit_2026_10_10": {
+      "method": "分支合并前派独立 agent 对 6d1c796d89..HEAD 做对抗式审阅（要求证伪而非赞扬），逐条复核后修复。",
+      "defects_found_and_fixed": {
+        "D1_incomplete_nan_guard_MOST_SEVERE": {
+          "where": "molmetal/scripts/train_metal_lomo_wasserstein.py::_aggregate",
+          "bug": "上一轮 workflow agent 加的 isfinite 防护只覆盖了写盘前的 per-metal 块（:2879），_aggregate() 本身无过滤，且在 payload 写出之前被调用（:2908）。statistics.pstdev([0.6, nan]) 在 Python 3.12 抛 AttributeError: 'float' object has no attribute 'numerator' —— 所以它自己注释里写的『退化折应被报告而不是致命』根本没生效。",
+          "fix": "_aggregate 现在同样过滤非有限值，并新增 n_runs_nonfinite_excluded 字段让排除可见而非静默。",
+          "verified": "_aggregate([{Ru,0.6},{Ir,nan},{Ru,0.7}]) -> n_runs=2, n_runs_nonfinite_excluded=1, mean=0.65, std=0.05，不再崩溃"
+        },
+        "D2_my_own_test_dirtied_tracked_files": {
+          "where": "molmetal/tests/test_registry_generate_import_path.py",
+          "bug": "该测试 shell out 跑 `registry.py generate`，而 generate() 写的是模块级 DATASETS_PATH/PROTOCOLS_PATH/METRICS_PATH 常量（repo_root 参数管不到输出位置）。所以每次绿灯运行都会把 registry/metrics.yaml 弄脏 —— 下一次 `git commit -a` 会把重新生成的 registry 状态（churned generated_at / last_refreshed、覆盖率计数）当作人工编写的内容提交。",
+          "fix": "测试改为快照三个文件 + finally 字节级还原，并断言还原成功。",
+          "verified": "跑完测试后 `git status --porcelain registry/` 为空"
+        },
+        "D3_wrong_catalog_count": {
+          "found": "DESIGN_BOUNDARY 写 96，catalog 自己的 status 行写 94",
+          "fix": "统一为 94（文件对自身的声明），并标注该文件自相矛盾：status 行 94 / §-headers 合计 95 / ### 计数 96",
+          "lesson": "引用一个文件的条目数时，以该文件对自身的声明为准，不是外部重新 grep"
+        },
+        "D4_self_invalidating_count": {
+          "found": "置顶文档写 159 个 metrics 文件，实际 161",
+          "cause": "我在上一轮刚把 113 刷成 159，紧接着又新增两个产物（seed_stability 与 tie_sensitivity）并把 metal_activity_transfer.json 纳入 git，159 当场作废。",
+          "fix": "统一改为 161，并**全部标注计数日期**，避免同类静默失效"
+        },
+        "D5_untraceable_claim": {
+          "found": "置顶文档写『116 个文件引用 D-MPNN』，任何口径都对不上：scripts 119 / tests 180 / configs 25 / 全仓 .py+.sh+.yaml 404",
+          "fix": "换成可复现口径 `grep -rli dmpnn molmetal/scripts` = 119，并标注计数日期与命令"
+        }
+      },
+      "areas_reviewed_and_found_clean": [
+        "registry.py 的 sys.path 引导：位置正确（after __future__/import sys/Path，before try: import yaml），_REPO_ROOT 与模块自有 REPO_ROOT 不同名故无遮蔽；实测移除后确实 ModuleNotFoundError，且 molmetal 未 pip 安装，故测试不是靠已装包蒙混过关的",
+        "scripts/_retired/：无破坏性悬空引用（_patch_i2_preflight_wrapper.py:48-50 有 if not p.exists(): SKIP），discover_wrappers 非递归故天然出范围，被引数字的溯源未丢失",
+        "collapse_ligand_duplicates()：实跑 metal_lomo.csv 5271→1950，逐金属 {Ru 3668→1255, Ir 1242→534, Re 166→74, Rh 108→51, Os 87→36} 与 probe 完全一致；keep='first' 而非 groupby-isin 有实据（列 dtype 为 ArrowStringArray，MultiIndex 往返失效）",
+        "泄漏规则与默认值：blocked 用 test_idx 的 SMILES，synthetic 行豁免，两个开关均 store_true + False 默认，存量行为不变；遥测字段 n_train_rows_dropped_as_leaked 命名一致"
+      ],
+      "post_fix_verification": "三个 gate rc=0；registry PASS；40 tests passed；测试后 registry 保持干净"
     }
   },
   "paper_narrative_2026_10_10": {

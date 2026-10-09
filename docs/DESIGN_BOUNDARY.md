@@ -13,7 +13,7 @@ Mirrors the `flowa` DESIGN_BOUNDARY.md pattern (~80 lines).
   - **Paper consequence:** this cannot be presented as "Paper §3.4 main result" on reachability grounds. Any closure claim must carry the 0.85 gate and the per-metal table. See `docs/00_MODEL_NARRATIVE.md` §7 limitations.
 - **chemprop v2 trainer** (`molmetal/scripts/train_chemprop_v2_v3.py`) — `v3-fallback` mode default per Wf-263A (LOMO head-collapse fix). 19/25 + 25/25 + 9/9 MEASURED-on-disk cohorts per `metrics/by_metric/chemprop_v2_*.json`.
 - **MECHANISM_METRIC_MAPPING** (`TODO/02_metrics/MECHANISM_METRIC_MAPPING.md`) — 21 mechanisms M1-M21 + 22 metrics + 7 ablation design table. Per-Wf-313H 33/33 + Wf-320G 107/107 regression tests.
-- **HONEST_NEGATIVE_CATALOG** (`docs/HONEST_NEGATIVE_CATALOG.md`) — 9 → 96 entries expansion history (Wf-263B → Wf-358-C2 → Wf-359-B1 → Wf-369-A3 → Wf-395-A2 → Wf-398-A2 → Wf-399-A2 → Wf-411-A4 → Wf-415-A3 → Wf-426-A4 → Wf-430-B5).
+- **HONEST_NEGATIVE_CATALOG** (`docs/HONEST_NEGATIVE_CATALOG.md`) — 9 → 94 entries expansion history (count as declared by the catalog's own status line; its §-headers sum to 95 and `###` headings to 96 — the file disagrees with itself, so cite the status line and treat the others as drift) (Wf-263B → Wf-358-C2 → Wf-359-B1 → Wf-369-A3 → Wf-395-A2 → Wf-398-A2 → Wf-399-A2 → Wf-411-A4 → Wf-415-A3 → Wf-426-A4 → Wf-430-B5).
 
 ## STABLE (R17-R19 ship surface, backwards-compat by default)
 
