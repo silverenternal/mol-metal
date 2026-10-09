@@ -1,0 +1,92 @@
+{
+  "metric": "metal_activity_transfer_tie_sensitivity",
+  "description": "How much does the headline within-metal ROC-AUC move when the duplicate-collapse tie rule is flipped? The collapse predicate is `sum*2 >= n`, so an exact tie resolves to ACTIVE -- the anti-conservative direction for an activity claim. Several docstrings described it as 'ties -> inactive, the conservative choice'; that was wrong and is corrected 2026-10-10. This artifact records the size of the effect rather than leaving it in comments.",
+  "why_it_matters": "A tie means the ligand has contradictory measurements, which the project's own root-cause analysis established is expected (RC1: contradiction rate rises with measurement count). So neither direction is 'right' -- but any claim presented as robust to the choice must actually be robust to it.",
+  "tie_groups_measured": {
+    "Ru": 59,
+    "Ir": 19,
+    "Rh": 2,
+    "Os": 0,
+    "Re": 0,
+    "total": 80,
+    "share_of_dedup_cohort": 0.041,
+    "all_labelled_active_under_current_rule": 80
+  },
+  "within_metal_auc_by_rule": {
+    "ties_to_ACTIVE_current": {
+      "Ru": {
+        "seed42": 0.8363,
+        "seeds_42_43_44_49_123": [
+          0.8363,
+          0.8292,
+          0.8349,
+          0.8128,
+          0.8223
+        ],
+        "min": 0.8128,
+        "max": 0.8363,
+        "spread": 0.0235,
+        "pos_rate": 0.2574
+      },
+      "Ir": {
+        "seed42": 0.8295,
+        "seeds_42_43_44_49_123": [
+          0.8295,
+          0.8341,
+          0.8597,
+          0.8521,
+          0.8397
+        ],
+        "min": 0.8295,
+        "max": 0.8597,
+        "spread": 0.0302,
+        "pos_rate": 0.4532
+      }
+    },
+    "ties_to_INACTIVE_conservative": {
+      "Ru": {
+        "seed42": 0.7929,
+        "seeds_42_43_44_49_123": [
+          0.7929,
+          0.8038,
+          0.788,
+          0.8082,
+          0.8066
+        ],
+        "min": 0.788,
+        "max": 0.8082,
+        "spread": 0.0202,
+        "pos_rate": 0.2104
+      },
+      "Ir": {
+        "seed42": 0.8319,
+        "seeds_42_43_44_49_123": [
+          0.8319,
+          0.8237,
+          0.8374,
+          0.836,
+          0.8345
+        ],
+        "min": 0.8237,
+        "max": 0.8374,
+        "spread": 0.0136,
+        "pos_rate": 0.4176
+      }
+    }
+  },
+  "krasnov_published": {
+    "Ru": 0.81,
+    "Ir": 0.73
+  },
+  "verdict": {
+    "Ir_claim_IS_robust": "Ir exceeds Krasnov 0.73 under BOTH rules and every seed (conservative min 0.8237; current min 0.8295). Safe to state.",
+    "Ru_claim_IS_NOT_robust": "Under the conservative rule Ru spans 0.7880-0.8082, i.e. entirely at or just BELOW Krasnov 0.81. Under the current rule it spans 0.8128-0.8363, entirely above. **The direction of 'Ru beats Krasnov' is decided by the tie rule, not by the chemistry.**",
+    "correct_how_to_state_it": "Ir: 'exceeds the published value under either tie rule'. Ru: 'at parity with the published 0.81', with the apparent margin reported as rule-dependent. Do NOT write 'Ru exceeds Krasnov' unqualified.",
+    "recommendation": "Keep the current rule (both the probe and the D-MPNN matched switch use it, and switching would invalidate the committed seed-stability artifact), but state the Ru claim as parity and report both rules. The honest framing is stronger for not depending on an arbitrary tie-break."
+  },
+  "measured_by": "recomputed 2026-10-10 with the probe's exact XGB params and StratifiedKFold(5)",
+  "companion_artifacts": [
+    "metrics/by_metric/metal_activity_transfer.json (seed 42, current rule)",
+    "metrics/by_metric/metal_activity_transfer_seed_stability.json (5 seeds, current rule)"
+  ]
+}

@@ -2729,6 +2729,44 @@
       "third_error": "用 3 targets x 3 seeds、max_depth 3 的 pilot 判定 MCTS 价值通道'无可测影响'并写成诚实负面。正确表述是'本规模下不可判定'。",
       "user_feedback_2026_10_10": "用户指出我不懂这些组件怎么组合、低估了项目、负面结论过多。核对后成立。",
       "corrected_in": "docs/00_MODEL_NARRATIVE.md（2026-10-10 全文重写）+ 本文件 BLK-P2 / BLK-C15"
+    },
+    "tie_rule_is_load_bearing_AUDIT_FINDING": {
+      "found_during": "分支审计（commit 40d4b98fd7 合并前）",
+      "the_bug": "去重折叠判据 `sum*2 >= n` 让**恰好平票的配体判 ACTIVE**，而四处 docstring/comment 写的是 'ties -> inactive, the conservative choice' —— 方向相反。已在 metal_activity_transfer_probe.py 与 train_metal_lomo_wasserstein.py 全部更正。",
+      "magnitude": "MetalCytoToxDB 上 80 个配体组平票（Ru 59 / Ir 19 / Rh 2 / Os 0 / Re 0），占去重语料 1950 的 4.1%，当前规则下全部判 active。",
+      "impact_on_the_headline": {
+        "Ru": {
+          "current_ties_to_active": [
+            0.8128,
+            0.8363
+          ],
+          "conservative_ties_to_inactive": [
+            0.788,
+            0.8082
+          ],
+          "krasnov": 0.81,
+          "verdict": "**不稳健** —— 保守规则下整体跌破 0.81。'Ru 超过 Krasnov' 的方向由平票规则决定，不由化学决定。"
+        },
+        "Ir": {
+          "current_ties_to_active": [
+            0.8295,
+            0.8597
+          ],
+          "conservative_ties_to_inactive": [
+            0.8237,
+            0.8374
+          ],
+          "krasnov": 0.73,
+          "verdict": "**稳健** —— 两种规则、每个种子都远高于 0.73。"
+        }
+      },
+      "resolution": {
+        "code": "保留当前规则（probe 与 D-MPNN matched 开关都用它，改了会使已提交的 seed-stability 产物失效），但注释改成如实描述方向，并显式写明该规则是承重的。",
+        "docs": "docs/00_MODEL_NARRATIVE.md §2.3 新增「平票规则的敏感性」小节；§2.3 表、§6 撤回表、§7 打包建议与局限段全部改为 'Ir 稳健超过 / Ru 持平'。",
+        "artifact": "metrics/by_metric/metal_activity_transfer_tie_sensitivity.json"
+      },
+      "paper_wording": "Ir: 'exceeds the published value under either tie rule'。Ru: 'at parity with the published 0.81'，并报两种规则的区间。**不得写 'Ru exceeds Krasnov' 的无条件表述。**",
+      "lesson": "我曾把这条写进置顶文档、seed-stability 产物和 commit message 当成稳健头条。数值本身没错，错的是**未验证结论是否承重于某个任意选择**。凡是 'X 超过 Y' 形式的跨研究比较，都要问一句：换个同样合理的处理方式，这条还成立吗。"
     }
   },
   "paper_narrative_2026_10_10": {

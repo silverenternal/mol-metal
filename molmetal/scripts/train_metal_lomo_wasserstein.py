@@ -341,7 +341,7 @@ def collapse_ligand_duplicates(
     """One row per unique ligand *within each metal*; label = majority.
 
     Mirrors ``metal_activity_transfer_probe.py::collapse_duplicates`` exactly
-    (majority label, ties -> inactive) so that a D-MPNN number and the probe's
+    (majority label, ties -> ACTIVE via sum*2>=n) so a D-MPNN number and the probe's
     XGB number are measured on the same cohort. Grouping is per (metal, ligand)
     rather than per ligand because the probe dedups each metal's cohort
     independently before running leave-one-metal-out; the cross-metal
@@ -373,8 +373,14 @@ def collapse_ligand_duplicates(
     # trip (measured 2026-10-10: isin kept 5271/5271 rows instead of 1950).
     keep_mask = ~df.duplicated(subset=keys, keep="first")
 
-    # Majority label per group: sum*2 >= n, so a tie (sum*2 == n) resolves to
-    # inactive -- the probe's conservative choice for an activity claim.
+    # Majority label per group: sum*2 >= n, so an exact tie (sum*2 == n) also
+    # satisfies the predicate and resolves to ACTIVE. This is the
+    # ANTI-conservative direction for an activity claim, and it matches
+    # metal_activity_transfer_probe.py exactly -- which is the point of the
+    # switch. Do not "fix" it to `>` without re-measuring: the conservative
+    # rule moves Ru within-metal 0.8363 -> 0.7929 and drops it below the
+    # Krasnov 0.81 reference, so the tie rule is load-bearing for that claim.
+    # See metrics/by_metric/metal_activity_transfer_tie_sensitivity.json.
     lab = df[label_col].astype(bool)
     grouper = [df[k] for k in keys]
     pos_sum = lab.groupby(grouper).transform("sum")
@@ -399,7 +405,7 @@ def collapse_ligand_duplicates(
         "pos_rate_after": float(np.asarray(out[label_col]).astype(bool).mean()) if label_col in df.columns else None,
         "per_metal_before": {str(k): int(v) for k, v in per_metal_before.items()},
         "per_metal_after": {str(k): int(v) for k, v in per_metal_after.items()},
-        "rule": "one row per unique ligand within a metal; label = majority; ties -> inactive",
+        "rule": "one row per unique ligand within a metal; label = majority; ties -> ACTIVE (sum*2>=n, anti-conservative; see metal_activity_transfer_tie_sensitivity.json)",
     }
     return out, stats
 
@@ -1962,7 +1968,7 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help=(
             "PROTOCOL SWITCH (Wf-DMPNN-MATCH). Collapse duplicate ligand rows "
             "to one row per unique ligand within each metal, label = majority, "
-            "ties -> inactive -- identical to "
+            "ties -> ACTIVE (sum*2>=n) -- identical to "
             "metal_activity_transfer_probe.py::collapse_duplicates, so this "
             "run and that probe measure the SAME cohort. Raw "
             "MetalCytoToxDB rows are 64%% duplicates (one ligand measured up "
