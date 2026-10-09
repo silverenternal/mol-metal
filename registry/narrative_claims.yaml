@@ -234,3 +234,163 @@ claims:
     tol: 0.001
     source: molmetal/reports/wf130_p2_closure_30_5000/Ir/reachability.json
     field: summary.closure_reachability_rate
+
+  # ---- bace: the one genuine architecture-level miss (Phase 1 / R1) -------
+  # Both arms below are the SAME scaffold split seed-by-seed (n_test
+  # 302/300/306/303/303, pos_rate identical to 7 dp), which is what makes the
+  # "attentivefp ties D-MPNN" comparison a paired one rather than two numbers
+  # from different protocols.
+  - id: bace_attentivefp_auc
+    claim: MoleculeNet bace, attentivefp backbone, 5-seed mean
+    value: 0.7635877150135512
+    tol: 0.0005
+    source: molmetal/reports/blk_d1_attentivefp_5seed_2026_10_09/metrics.json
+    field: tasks.bace.test_auc_mean
+    note: >
+      Ties our D-MPNN arm (delta +0.0131, inside noise), which is why R1
+      decided NOT to swap backbones.
+  - id: bace_attentivefp_std
+    claim: MoleculeNet bace, attentivefp, 5-seed std
+    value: 0.03978966964594605
+    tol: 0.0005
+    source: molmetal/reports/blk_d1_attentivefp_5seed_2026_10_09/metrics.json
+    field: tasks.bace.test_auc_std
+  - id: bace_dmpnn_matched_auc
+    claim: MoleculeNet bace, D-MPNN, same split as the attentivefp arm
+    value: 0.7504830500562101
+    tol: 0.0005
+    source: molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/metrics.json
+    field: tasks.bace.test_auc_mean
+    note: >
+      NOT metrics/by_metric/moleculenet_auc_dmpnn_5seed_rescue.json::runs.bace.rescue
+      (0.6805) — that is a different arm despite the similar name. See the
+      _disambiguation_2026_10_10 note in both files.
+  - id: bace_dmpnn_matched_std
+    claim: MoleculeNet bace, D-MPNN matched arm, 5-seed std
+    value: 0.04557354922033418
+    tol: 0.0005
+    source: molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/metrics.json
+    field: tasks.bace.test_auc_std
+  - id: bace_classweight_rescue_auc
+    claim: bace after the class-weighting rescue — WORSE, so the hypothesis is falsified
+    value: 0.6804880415259172
+    tol: 0.001
+    source: metrics/by_metric/moleculenet_auc_dmpnn_5seed_rescue.json
+    field: runs.bace.rescue.test_auc_mean
+    note: >
+      0.7421 -> 0.6805. This is the evidence that class weighting is NOT the
+      cause of the bace gap, so R1 must not re-offer it as a fix.
+
+  # ---- closure reachability, aggregate view (limits section) --------------
+  - id: closure_macro_reachability
+    claim: closure reachability macro-averaged over 30 d-block elements
+    value: 0.4989
+    tol: 0.0005
+    source: metrics/by_metric/ood_reachability_summary.json
+    field: aggregate_reachability_macro
+    note: >
+      Replaces DESIGN_BOUNDARY's old ">= 0.95" claim, which was wrong by ~2x
+      against every target metal. Verdict in the file is
+      PER_ELEMENT_HONEST_PARTIAL.
+  - id: closure_5d_pass_rate
+    claim: closure gate pass rate for the 5d+La block — where the target metals live
+    value: 0.5
+    tol: 0.0005
+    source: metrics/by_metric/ood_reachability_summary.json
+    field: per_block_aggregate.5d+La.gate_pass_rate
+
+  # ---- CFM generation arm (bond_f1 must never be quoted alone) ------------
+  - id: cfm_fmtrue_bond_f1
+    claim: bond_f1, fm=true arm at epoch 29
+    value: 0.6703
+    tol: 0.0005
+    source: molmetal/reports/cfm_fm_ab_2026_10_09/per_epoch_metrics.json
+    field: per_epoch_metrics.29.bond_f1
+    note: >
+      Always quote alongside decode_ratio and gen_validity — bond_f1 rises as
+      generation dies, so it is not a standalone generation-quality metric.
+  - id: cfm_fmtrue_decode_ratio
+    claim: decode_ratio, fm=true arm at epoch 29 — the strongest generation claim
+    value: 0.5833
+    tol: 0.0005
+    source: molmetal/reports/cfm_fm_ab_2026_10_09/per_epoch_metrics.json
+    field: per_epoch_metrics.29.decode_ratio_rdkit_strict
+  - id: cfm_fmfalse_bond_f1
+    claim: bond_f1, fm=false arm — the 0.7836 "record" that came from a run generating nothing
+    value: 0.7836
+    tol: 0.0005
+    source: molmetal/reports/cfm_fm_control_2026_10_09/per_epoch_metrics.json
+    field: per_epoch_metrics.29.bond_f1
+  - id: cfm_fmfalse_gen_validity
+    claim: gen_validity, fm=false arm at epoch 29 — zero, which is why its F1 is meaningless
+    value: 0.0
+    tol: 1e-9
+    source: molmetal/reports/cfm_fm_control_2026_10_09/per_epoch_metrics.json
+    field: per_epoch_metrics.29.gen_validity
+  - id: cfm_bond_pos_rate
+    claim: positive rate of the bond-scoring corpus — sets the all-positive F1 baseline
+    value: 0.2986
+    tol: 0.0005
+    source: molmetal/reports/cfm_fm_ab_2026_10_09/per_epoch_metrics.json
+    field: per_epoch_metrics.29.bond_pos_rate
+    note: An all-positive predictor scores F1 ~ 0.460 here; both arms beat that.
+
+  # ---- cross-metal pooled (secondary finding) ----------------------------
+  - id: cross_pooled_seed42
+    claim: pooled cross-metal AUC, seed 42
+    value: 0.5996
+    tol: 0.0005
+    source: metrics/by_metric/metal_activity_transfer_seed_stability.json
+    field: cross_metal_per_seed.42.POOLED
+
+  # ---- label noise (limitations L4) --------------------------------------
+  - id: label_noise_rate_n2
+    claim: label contradiction rate for ligands measured twice
+    value: 0.140777
+    tol: 0.001
+    source: metrics/by_metric/cytotox_label_noise.json
+    field: contradiction_rate_by_measurement_count.2.rate
+  - id: label_noise_rate_n5
+    claim: label contradiction rate for ligands measured five times — the load-bearing figure
+    value: 0.395161
+    tol: 0.001
+    source: metrics/by_metric/cytotox_label_noise.json
+    field: contradiction_rate_by_measurement_count.5.rate
+    note: >
+      The RATE RISING with n is the finding; the absolute value is not a ceiling.
+      Never quote a "Bayes accuracy ceiling" from this table — see
+      implication_CORRECTED in the same file for why the earlier 92% figure was
+      withdrawn.
+  - id: label_noise_flip_rate
+    claim: per-measurement symmetric flip rate fitted at n=2
+    value: 0.0762
+    tol: 0.001
+    source: metrics/by_metric/cytotox_label_noise.json
+    field: symmetric_flip_model.flip_rate_p
+    note: The model under-predicts at n=5 (0.281 vs 0.395); order-of-magnitude only.
+
+  # ---- deduplicated cohort sizes (limitations L2) -------------------------
+  - id: dedup_n_os
+    claim: unique ligands after dedup, Os — too small to resolve
+    value: 36
+    tol: 0
+    source: metrics/by_metric/metal_activity_transfer.json
+    field: duplication.Os.n_unique
+  - id: dedup_n_rh
+    claim: unique ligands after dedup, Rh — too small to resolve
+    value: 51
+    tol: 0
+    source: metrics/by_metric/metal_activity_transfer.json
+    field: duplication.Rh.n_unique
+  - id: dedup_n_re
+    claim: unique ligands after dedup, Re
+    value: 74
+    tol: 0
+    source: metrics/by_metric/metal_activity_transfer.json
+    field: duplication.Re.n_unique
+  - id: dedup_n_ru
+    claim: unique ligands after dedup, Ru — 64% of the cohort
+    value: 1255
+    tol: 0
+    source: metrics/by_metric/metal_activity_transfer.json
+    field: duplication.Ru.n_unique

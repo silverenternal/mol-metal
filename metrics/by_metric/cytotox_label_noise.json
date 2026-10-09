@@ -1,0 +1,52 @@
+{
+  "metric": "cytotox_label_noise",
+  "description": "How often does the same ligand carry BOTH an active and an inactive label in MetalCytoToxDB, as a function of how many measurements it has? A label that were a deterministic property of the ligand would become MORE consistent with more measurements. It becomes less consistent.",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/data/cytotox.py via MetalCytotoxDataset.from_csv, 5 metals, CytotoxFilter(time_threshold=24.0, ic50_min=0.01)",
+  "contradiction_rate_by_measurement_count": {
+    "2": {
+      "groups": 412,
+      "contradictory": 58,
+      "rate": 0.140777
+    },
+    "3": {
+      "groups": 365,
+      "contradictory": 95,
+      "rate": 0.260274
+    },
+    "4": {
+      "groups": 246,
+      "contradictory": 71,
+      "rate": 0.288618
+    },
+    "5": {
+      "groups": 124,
+      "contradictory": 49,
+      "rate": 0.395161
+    },
+    "6": {
+      "groups": 84,
+      "contradictory": 29,
+      "rate": 0.345238
+    },
+    "7": {
+      "groups": 40,
+      "contradictory": 18,
+      "rate": 0.45
+    }
+  },
+  "symmetric_flip_model": {
+    "fitted_on": "n=2",
+    "flip_rate_p": 0.0762,
+    "formula": "P(contradiction | n) = (1 - (1-2p)^n) / 2",
+    "predicted_rate_n5": 0.2812,
+    "measured_rate_n5": 0.395161,
+    "note": "The model under-predicts at n=5 (0.281 vs 0.395), so the independent-per-measurement-noise story is directionally supported but NOT a good quantitative fit. Treat p as an order-of-magnitude estimate only."
+  },
+  "implication_CORRECTED": {
+    "what_is_solid": "Contradiction rate rises monotonically from 0.141 at n=2 to 0.395 at n=5 — the qualitative conclusion (labels carry per-measurement noise, not a deterministic ligand property) is well supported by 58/95/71/49 contradictory groups.",
+    "what_is_NOT_solid": "An earlier draft of todo.json asserted a 'Bayes accuracy ceiling of ~92%'. That number is 1-p, the probability that a SINGLE measurement is correct — it is not a ceiling on achievable AUC, and no such ceiling follows from a symmetric flip model (majority vote over repeated measurements converges to the true label). DO NOT quote a Bayes ceiling derived from this table.",
+    "correct_statement": "Label noise attenuates the observed within-metal AUC relative to the underlying chemistry, and part of the gap to 1.0 is irreducible. The size of that part is not quantified here."
+  },
+  "measured_by": "recomputed 2026-10-10; supersedes the prose-only figures in todo.json :: root_cause_analysis.RC1"
+}
