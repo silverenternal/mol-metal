@@ -4851,6 +4851,11 @@ def gate_section9_entry_count(
 # pipeline only; 'frontier' / 'chemprop_v2_v3' / 'cfm' are subsets that
 # should remain stable per their contract (Wf-259 baseline).
 EXPECTED_GATE_COUNTS = {
+    # 2026-10-10 (narrative claim provenance, AGENTS.md §5.2): "all" 123 -> 124
+    # and "launch" 125 -> 126, MEASURED via len(build_gates(...)) after adding
+    # p3_narrative_claims_check, which re-resolves every claim in
+    # registry/narrative_claims.yaml against the JSON field it names.
+    # Same-edit doc sync: TODO/completed/321d_preflight_gate_audit.md.
     # Wf-R42 MOCK->REAL (2026-10-08): 108 -> 113, MEASURED via
     # len(build_gates("all")) == 113 after 5 L3 MOCK→REAL gates were
     # re-registered into build_gates (previously dropped in Wf-437 as
@@ -4937,7 +4942,19 @@ EXPECTED_GATE_COUNTS = {
     # the "zombie" count (opt-in gates whose env var is unset in a normal run).
     # REPORT-ONLY: always PASSes, so the count moves but no existing pre-flight
     # verdict does. Implementation: molmetal/scripts/gate_inventory.py.
-    "all": 121,
+    # §5.11 (2026-10-09): 121 -> 123, MEASURED via len(build_gates("all"))
+    # after two launch gates were added — p3_yaml_only_launch_check (wrappers
+    # must pass --config only) and p3_config_trainer_binding_check (every config
+    # key must resolve to a dest of the parser its own entry.script names).
+    # Both are launch-pipeline in behaviour but registered on "all" like the
+    # other p3_* gates; neither is opt-in, so an existing pre-flight verdict
+    # can now FAIL where it previously passed — by design, that is the point.
+    #
+    # 2026-10-10: 123 -> 124 (the §5.2 narrative-claims gate above). The 121 -> 123
+    # step and its two gates were already in the working tree uncommitted when
+    # this edit landed; they are recorded here now so the count's provenance is
+    # readable rather than implied. Measured: len(build_gates("all")) == 124.
+    "all": 124,
     # (was 103 before Wf-R35 P-A; Wf-A16 2026-10-03: 105 -> 103, MEASURED via
     # len(build_gates("all")) == 103 after the two PRE-RETRAIN
     # gates moved out of the commit path into the new "launch"
@@ -4995,7 +5012,10 @@ EXPECTED_GATE_COUNTS = {
     # not tracked the 4 Wf-R42/Wf-R43 "all" gates that landed before m19, so
     # test_wf344b3_gate_count.py::test_expected_gate_counts_keys_match_pipelines
     # was already FAILing on stashed HEAD before this change.
-    "launch": 123,
+    # §5.11 (2026-10-09): 121 -> 123 with the two gates above; then
+    # 2026-10-10: 125 -> 126 with the narrative-claims gate.
+    # Measured: len(build_gates("launch")) == 126.
+    "launch": 126,
     "frontier": 25,
     "chemprop_v2_v3": 18,  # Wf-A12 FIX (2026-10-03): 14 → 18 MEASURED
     # via len(build_gates("chemprop_v2_v3"));
@@ -6541,8 +6561,71 @@ def gate_wf343c4_hyperparams_config_complete(
                 return section_obj[key], (section, key)
         return None, None
 
+    # Cache of entry-trainer's real dest set, keyed by script path. Reading the
+    # trainer's SOURCE for flag literals is not enough: `add_argument("--hidden",
+    # dest="hidden_dim")` renames the dest, so a source grep for the canonical
+    # name would wrongly report a knob missing. This parses the parser instead.
+    _dest_cache: Dict[str, Optional[frozenset]] = {}
+
+    def _entry_trainer_dests(cfg_path: Path) -> Optional[frozenset]:
+        """argparse dests of the trainer this config names, or None if unknown.
+
+        None means "could not determine", and callers must treat that as NOT
+        exempt — an unreadable trainer must never silently relax the contract.
+        """
+        key = str(cfg_path)
+        if key in _dest_cache:
+            return _dest_cache[key]
+        result: Optional[frozenset] = None
+        try:
+            obj = _yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+            entry = obj.get("entry") if isinstance(obj, dict) else None
+            script = entry.get("script") if isinstance(entry, dict) else None
+            if not script:
+                template = str(
+                    (entry or {}).get("command_template") or (entry or {}).get("command") or ""
+                )
+                m = re.search(r"\btrain_[a-z0-9_]+\.py\b", template)
+                if m:
+                    script = ("molmetal/scripts/" + m.group(0)) if "/" not in m.group(0) else m.group(0)
+            if script:
+                sp = Path(script)
+                if not sp.is_absolute():
+                    sp = REPO_ROOT / sp
+                if sp.is_file():
+                    src = sp.read_text(encoding="utf-8", errors="replace")
+                    result = frozenset(
+                        m for m in re.findall(r'dest\s*=\s*"([a-z0-9_]+)"', src)
+                    ) | frozenset(
+                        "--" + f.replace("_", "-")
+                        for f in re.findall(r'add_argument\(\s*"(--[a-z0-9-]+)"', src)
+                        if True
+                    )
+                    # Normalise flags to dest-style names too.
+                    result |= frozenset(
+                        f.lstrip("-").replace("-", "_")
+                        for f in re.findall(r'add_argument\(\s*"(--[a-z0-9-]+)"', src)
+                    )
+        except Exception:  # noqa: BLE001 - unknown => not exempt
+            result = None
+        _dest_cache[key] = result
+        return result
+
+    def _trainer_lacks_dest(cfg_path: Path, section: str, key: str, alias_map) -> bool:
+        """True only when the entry trainer provably declares NO alias dest."""
+        dests = _entry_trainer_dests(cfg_path)
+        if dests is None:
+            return False
+        for _s, k in alias_map.get((section, key), [(section, key)]):
+            if k in dests:
+                return False
+        return True
+
     missing: List[str] = []
     wrong_type: List[str] = []
+    # §5.11 (2026-10-09): required hyperparams skipped because the config's own
+    # entry trainer declares no dest for them. Reported, never silent.
+    structural_n_exempt: List[str] = []
     invalid_yaml: List[str] = []
     passed: List[str] = []
     alias_resolutions: Dict[str, str] = {}  # yaml_name → "key:resolved_alias"
@@ -6590,6 +6673,23 @@ def gate_wf343c4_hyperparams_config_complete(
         cfg_ok = True
         yaml_aliases: List[str] = []
         for section, key, expected_type in REQUIRED_HYPERPARAMS:
+            # §5.11 structural exemption (2026-10-09). A required hyperparam is
+            # only meaningful if the config's OWN entry trainer has a dest for it
+            # under any alias. train_chemprop_v3_frozen_dmpnn_head.py is a
+            # FROZEN chemprop_v3 encoder + trainable MLP head: it declares no
+            # message-passing depth at all (0 occurrences of n_layers / --depth),
+            # so `model.n_layers` can never appear in its config without being a
+            # dead key that scripts/_config_binding_gate.py would then reject.
+            # The contract is N/A for that trainer, not violated by it.
+            #
+            # Deliberately narrow: the exemption requires the trainer to declare
+            # NO matching dest. A trainer that HAS the knob and whose config
+            # omits it still FAILs, which is the case this gate exists for — the
+            # three cfm_bond_head_* yamls created 2026-10-09 that never declared
+            # `lr` and were therefore running at DEFAULT_LR by accident.
+            if _trainer_lacks_dest(p, section, key, KEY_ALIASES):
+                structural_n_exempt.append(f"{p.name}:{section}.{key}")
+                continue
             value, resolved = _resolve_key(obj, section, key)
             if value is None or resolved is None:
                 missing.append(f"{p.name}:{section}.{key} (not found in any alias)")
@@ -6636,6 +6736,15 @@ def gate_wf343c4_hyperparams_config_complete(
         problems.append(f"{len(missing)} missing hyperparam(s): {missing[:3]}")
     if wrong_type:
         problems.append(f"{len(wrong_type)} wrong-type hyperparam(s): {wrong_type[:3]}")
+    # Exemptions go into the EVIDENCE, never into problems(): they are not a
+    # defect. Reporting them here is the point — an exemption nobody can see is
+    # just a hole with a comment on it.
+    exemption_note = ""
+    if structural_n_exempt:
+        exemption_note = (
+            f"; {len(structural_n_exempt)} required hyperparam(s) structurally N/A "
+            f"for their entry trainer (no such dest declared): {structural_n_exempt[:4]}"
+        )
 
     # Wf-A12/Wf-A13 — assemble the resolution report and emit it LOUDLY.
     # Wf-A13 split: only RESIDUAL keys are debt (full list on stderr +
@@ -6715,7 +6824,7 @@ def gate_wf343c4_hyperparams_config_complete(
             "FAIL",
             f"{len(yaml_paths) - len(passed)}/{len(yaml_paths)} YAMLs missing "
             f"AGENTS.md §5.1 standing GPU grant hyperparam contract: "
-            f"{'; '.join(problems)}" + resolution_suffix,
+            f"{'; '.join(problems)}" + resolution_suffix + exemption_note,
             elapsed,
         )
     if resolution_strict and (n_residual or required_unresolved):
@@ -7567,6 +7676,164 @@ def gate_wf343c3_data_quality_check(
         f"out_dir={out_dir or 'default'} --strict): {tail}",
         elapsed,
     )
+
+
+def gate_yaml_only_launch(
+    name: str,
+    priority: str,
+    pipeline: str,
+    script_path: Path,
+    *,
+    timeout: float = 120.0,
+) -> GateResult:
+    """AGENTS.md §5.11 — every launch wrapper must pass --config only.
+
+    The rule (user directive 2026-10-09, verbatim "以后要求能且只能用yaml配置
+    启动训练和推理，no cli参数") is only worth anything if something refuses a
+    violation, so this is the enforcement point. Before the gate existed, 54
+    hyperparameters across 6 wrappers were set on command lines rather than in
+    configs — including five BLK-C5 levers and every MoleculeNet backbone
+    hyperparameter — which is how `use_fm_objective` came to be silently absent
+    from five CFM configs while the velocity field was built and trained anyway.
+
+    Launch-time only, same reasoning as the other ``p3_*`` gates: it inspects
+    launch surfaces, not data or metrics, so it has no business failing a commit
+    that touches neither. CPU-only — it reads shell wrappers and does not import
+    torch.
+
+    PASS  : every scripts/launch_*.sh passes --config (or --out-dir/--ckpt-dir)
+            only, and scripts/start.sh refuses --extra-flags.
+    FAIL  : any wrapper smuggles a trainer flag, or start.sh still accepts one.
+    """
+    t0 = time.perf_counter()
+    if not script_path.is_file():
+        return GateResult(
+            name,
+            priority,
+            pipeline,
+            "FAIL",
+            f"script missing: {script_path}",
+            time.perf_counter() - t0,
+        )
+    rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
+    elapsed = time.perf_counter() - t0
+    blob = (out + "\n" + err).strip()
+    if rc == 0:
+        tail = blob.splitlines()[-1] if blob else "(no output)"
+        return GateResult(
+            name, priority, pipeline, "PASS",
+            f"yaml-only launch gate PASS (AGENTS.md §5.11): {tail}", elapsed,
+        )
+    violations = [ln.strip() for ln in blob.splitlines() if "VIOLATION" in ln]
+    head = violations[0] if violations else (blob.splitlines()[-1] if blob else "")
+    return GateResult(
+        name, priority, pipeline, "FAIL",
+        f"yaml-only launch gate FAIL (AGENTS.md §5.11, rc={rc}): "
+        f"{len(violations)} violation(s); first: {head}",
+        elapsed,
+    )
+
+
+def gate_config_trainer_binding(
+    name: str,
+    priority: str,
+    pipeline: str,
+    script_path: Path,
+    *,
+    timeout: float = 900.0,
+) -> GateResult:
+    """Every YAML key must reach the parser of the trainer its entry.script names.
+
+    Companion to :func:`gate_yaml_only_launch`. That gate proves the launch
+    command carries no hyperparameters; this one proves the config it names
+    still lands somewhere. The two together close §5.11: a config is the single
+    source of truth, and it is a *reachable* one.
+
+    A key that resolves to no dest is dropped without a warning, so the run
+    trains something other than what the file says. That is not theoretical —
+    ``use_fm_objective`` was absent from 5 of 7 CFM configs while
+    ``use_egnn_velocity`` was present, so a 518k-parameter velocity field was
+    built and trained with no flow-matching target.
+
+    Wall budget is the reason for the generous timeout: the gate imports every
+    trainer a config names (torch + chemprop + rdkit), so a cold run is ~1-3 min.
+    Launch-time only, for the same reason as the other ``p3_*`` gates.
+    """
+    t0 = time.perf_counter()
+    if not script_path.is_file():
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"script missing: {script_path}", time.perf_counter() - t0,
+        )
+    rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
+    elapsed = time.perf_counter() - t0
+    blob = (out + "\n" + err).strip()
+    inert = sum(1 for ln in blob.splitlines() if "DECLARED-INERT" in ln)
+    if rc == 0:
+        tail = blob.splitlines()[-1] if blob else "(no output)"
+        return GateResult(
+            name, priority, pipeline, "PASS",
+            f"config↔trainer binding gate PASS (AGENTS.md §5.11): {tail} "
+            f"[{inert} declared-inert key(s) reported, not hidden]",
+            elapsed,
+        )
+    violations = [ln.strip() for ln in blob.splitlines() if "VIOLATION" in ln]
+    head = violations[0] if violations else (blob.splitlines()[-1] if blob else "")
+    return GateResult(
+        name, priority, pipeline, "FAIL",
+        f"config↔trainer binding gate FAIL (AGENTS.md §5.11, rc={rc}): "
+        f"{len(violations)} key(s) resolve to no dest; first: {head}",
+        elapsed,
+    )
+
+
+def gate_narrative_claims(
+    name: str,
+    priority: str,
+    pipeline: str,
+    script_path: Path,
+    *,
+    timeout: float = 300.0,
+) -> GateResult:
+    """Every headline number in the pinned narrative must still exist on disk.
+
+    AGENTS.md §5.2 requires each quoted number to trace to a JSON/report path.
+    That was enforced by hand until 2026-10-10, and hand enforcement missed two
+    real defects: `ALIGNED_COMPARISON.md` labelled PC3's 0.870 as A549's and the
+    value was copied into the pinned narrative, and `n_distinct`'s headline "20"
+    is a saturated ``n_top_k`` cap rather than a measurement. Neither was visible
+    to a reader who trusted the prose.
+
+    ``registry/narrative_claims.yaml`` declares each claim once with its source
+    file and dotted field path; this gate re-resolves all of them. It checks
+    existence and value only — whether a claim *belongs* in the paper is a
+    judgement, not provenance.
+    """
+    t0 = time.perf_counter()
+    if not script_path.is_file():
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"script missing: {script_path}", time.perf_counter() - t0,
+        )
+    rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
+    elapsed = time.perf_counter() - t0
+    blob = (out + "\n" + err).strip()
+    if rc == 0:
+        tail = blob.splitlines()[-1] if blob else "(no output)"
+        return GateResult(
+            name, priority, pipeline, "PASS",
+            f"narrative claims PASS (AGENTS.md §5.2): {tail}", elapsed,
+        )
+    drift = [ln.strip() for ln in blob.splitlines() if "DRIFT" in ln]
+    unknown = [ln.strip() for ln in blob.splitlines() if "??" in ln]
+    head = drift[0] if drift else (unknown[0] if unknown else (blob.splitlines()[-1] if blob else ""))
+    return GateResult(
+        name, priority, pipeline, "FAIL",
+        f"narrative claims FAIL (AGENTS.md §5.2, rc={rc}): "
+        f"{len(drift)} drifted / {len(unknown)} unverifiable; first: {head}",
+        elapsed,
+    )
+
 
 
 # Wf-447: the lock lives under configs/locks/ so that it is OUT of
@@ -13090,6 +13357,48 @@ def build_gates(
                     "P3",
                     "wf347a1",
                     SCRIPT_DIR / "wf343c3_data_quality_check.py",
+                ),
+            ),
+            # ---- §5.11 (2026-10-09) — yaml-only launch gate.
+            # Launch-time, for the same reason as p3_wf343c2_per_wave_runtime_check
+            # above: it inspects launch surfaces, so a commit that touches no
+            # wrapper should not be able to FAIL on it.
+            (
+                "p3_yaml_only_launch_check",
+                lambda: gate_yaml_only_launch(
+                    "p3_yaml_only_launch_check",
+                    "P3",
+                    "ag511_yaml_only",
+                    REPO_ROOT / "scripts" / "_yaml_only_gate.py",
+                ),
+            ),
+            # ---- §5.11 sibling — config↔trainer binding.
+            # The gate above proves wrappers pass --config only; this proves the
+            # config they name actually reaches that trainer. A key that resolves
+            # to no dest is dropped silently and the run trains something other
+            # than what the file says — the failure mode `use_fm_objective`
+            # exhibited across 5 CFM configs before the audit.
+            (
+                "p3_config_trainer_binding_check",
+                lambda: gate_config_trainer_binding(
+                    "p3_config_trainer_binding_check",
+                    "P3",
+                    "ag511_binding",
+                    REPO_ROOT / "scripts" / "_config_binding_gate.py",
+                ),
+            ),
+            # ---- §5.2 — narrative claim provenance.
+            # Every headline number in docs/00_MODEL_NARRATIVE.md is declared in
+            # registry/narrative_claims.yaml with the JSON field it came from;
+            # this gate re-resolves them so a retrain that moves a number cannot
+            # leave the paper quietly quoting the old one.
+            (
+                "p3_narrative_claims_check",
+                lambda: gate_narrative_claims(
+                    "p3_narrative_claims_check",
+                    "P3",
+                    "ag52_narrative_claims",
+                    REPO_ROOT / "molmetal" / "scripts" / "verify_narrative_claims.py",
                 ),
             ),
             # ---- Wf-R35 P-A — per-metric protocol lock gates (5 NEW)

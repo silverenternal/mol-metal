@@ -537,3 +537,33 @@ the HOLE-5 comment claimed v1 "is not a trainer input", which is FALSE):
 * `TODO/completed/321a_wf135_phase2_cpu_scaffold.md` — Wf-321A ship (Wf-135 Phase 2 CPU scaffold)
 * `TODO/completed/321e_ablation_runner_integration_test.md` — Wf-321E ship (ABLATION_TABLE registry mirror)
 * `AGENTS.md` §1 (MEASURED-vs-PROJECTED) + §5.2 (honest framing)
+
+---
+
+## §8 2026-10-10 — narrative claim provenance gate (AGENTS.md §5.2)
+
+**Gate added:** `p3_narrative_claims_check` (pipeline `ag52_narrative_claims`).
+Gate counts moved `all` **123 → 124** and `launch` **125 → 126**,
+MEASURED via `len(build_gates("all")) == 124` / `len(build_gates("launch")) == 126`.
+
+**What it checks.** Every headline number in `docs/00_MODEL_NARRATIVE.md` is
+declared once in `registry/narrative_claims.yaml` together with the JSON file
+and dotted field path it came from. The gate re-resolves all 27 claims and
+fails if any stated value no longer equals what is on disk.
+
+**Why it exists.** §5.2 traceability was being enforced by hand, and hand
+enforcement missed two real defects during the 2026-10-10 audit:
+
+1. `docs/ALIGNED_COMPARISON.md` §1 listed "MCF7 0.846 / A549 0.870 / A2780cis
+   0.721". On disk: MCF7 **0.7441**, A549 **0.7758**, A2780cis **0.7278** — and
+   the 0.870 belongs to **PC3**. Those values had been copied verbatim into the
+   pinned narrative.
+2. `n_distinct`'s headline "20" is `aggregate.n_top_k_cap` — the file's own
+   interpretation says "saturate the n_top_k cap on every cell". Rendering it
+   as "20 vs gate 3 = 6.7×" presents a saturated cap as a measurement.
+
+Neither was visible to a reader who trusted the prose, which is exactly the
+failure mode this gate exists to convert from silent into red.
+
+**Scope limit.** The gate checks existence and value only. Whether a claim
+*belongs* in the paper is a judgement, not provenance, and is not gated here.

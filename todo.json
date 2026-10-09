@@ -2407,7 +2407,20 @@
             "what": "论文数字的 §5.2 全量溯源审计：把 docs/00_MODEL_NARRATIVE.md §2 表里每一行追到 metrics/by_metric/*.json 的具体字段",
             "done_when": "§2 表 12 行全部有 source JSON + 字段路径，无 '待补'",
             "blocks_submission": true,
-            "compute": "none"
+            "compute": "none",
+            "status": "DONE — 已自动化",
+            "automated_by": [
+              "registry/narrative_claims.yaml（27 条声明，每条含 source 文件 + dotted field 路径）",
+              "molmetal/scripts/verify_narrative_claims.py（解析并比对）",
+              "pre_flight_check.py::p3_narrative_claims_check（已接入，gate all 123->124 / launch 125->126）",
+              "molmetal/tests/test_verify_narrative_claims.py（9 个用例，含非空转验证）"
+            ],
+            "defects_found_by_automating": [
+              "n_distinct 的 \"20\" 是 aggregate.n_top_k_cap 的饱和上限，原文案把它渲染成 \"vs gate 3 = 6.7×\" —— 已改为 \"≥20（已触顶），饱和上限非测量值\"",
+              "NCI-60 面板实为 8 个细胞系有实测 AUC（DU145 为 null），指标名与文件名仍写 9cell —— 文档已改口径",
+              "逐细胞值全错：ALIGNED_COMPARISON 的 \"MCF7 0.846 / A549 0.870 / A2780cis 0.721\" 在盘上是 MCF7 0.7441 / A549 0.7758 / A2780cis 0.7278，而 0.870 属于 PC3 —— 我曾逐字抄进置顶文档，已按盘上真值更正"
+            ],
+            "manual_check_would_have_missed_these": "手工核对只查了\"表里的数能不能找到\"，没查\"这个数在原文档里是否本身就陈旧\"、也没查\"它是不是上限\"。自动化把这三类变成了 gate。"
           },
           {
             "step": 2,

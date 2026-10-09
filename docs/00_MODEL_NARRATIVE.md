@@ -60,12 +60,12 @@
 | └ hiv | 0.7900 ± 0.0109 | 0.823 | −0.033（已从 −0.076 补回） | 同上 |
 | **m15  docking RMSD** | **0.6578 Å**（5/5 pockets ≤ 2.0 Å） | DiffDock 38.2% < 2 Å | **通过率 100% vs 38.2%** | `docked_pose_rmsd.json` |
 | **m14  decode_ratio** | **0.9647–0.998** | TargetDiff 文献 ≥ 0.5 | **约 2×** | `decode_ratio.json` |
-| **m21  NCI-60 9-cell AUC** | **0.8007 ± 0.0160** | Krasnov 0.81 | **≈ 打平**（−0.009） | `nci60_precious_9cell_auc.json` |
+| **m21  NCI-60 面板 AUC** | **0.8007 ± 0.0160** | Krasnov 0.81 | **≈ 打平**（−0.009） | `nci60_precious_9cell_auc.json::value_overall_mean_auc` |
 | **Krasnov 对齐 chemprop（3 金属）** | **0.7812**（Re 0.8027 / Os 0.7884 / Rh 0.7525） | Krasnov per-metal | scaffold split, 9/9 runs | `wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold.json` |
 | **m1 Ru AUC 论文协议复现** | 0.7717 ± 0.0380 | Krasnov 0.810 ± 0.024 | −0.038，**跨队列**（我们 591 vs 论文 23 细胞系） | `metalcytotox_ru_auc.json::paper_protocol_measurement` |
 | **m1 vs 自家单任务基线** | 0.7613 | 0.7123 | **+0.049 内部同口径** | `metalcytotox_ru_auc.json` |
 | **m13  RDKit validity** | **1.000** | SOTA 0.99–1.00 | 达标 | `rdkit_validity.json` |
-| **n_distinct** | **20** | gate ≥ 3 | **6.7× gate** | `n_distinct.json` |
+| **n_distinct** | **≥ 20（已触顶）** | gate ≥ 3 | **饱和上限，非测量值** | `n_distinct.json::aggregate.best_measured_with_all_fixes` |
 
 ### 2.2 真正落后的（同协议，5 项）
 
@@ -139,7 +139,7 @@ Ru/Ir 恰好是唯二样本量够分辨的金属（n=1255 / 534，其余 51 / 36
 | 金属内活性 | XGB (Morgan FP + GBDT) 胜出 | Ru 0.8363 / Ir 0.8295 |
 | 跨金属迁移 | D-MPNN (LOMO) | 0.5845 ± 0.0764 |
 | 分子对接 | 自建 Vina 流程 | 中位 RMSD **0.6578 Å**，5/5 ≤ 2.0 Å |
-| NCI-60 9 细胞系 | 自建多细胞系轴 | **0.8007 ± 0.0160** ≈ Krasnov |
+| NCI-60 贵金属面板 | 自建多细胞系轴 | **0.8007 ± 0.0160** ≈ Krasnov（9 个细胞系中 **8 个**有实测 AUC，DU145 为 null） |
 | MoleculeNet bace | attentivefp（与 D-MPNN 打平） | Δ +0.0131，在噪声内 |
 
 ---
@@ -239,9 +239,9 @@ flow-matching 目标把残余生成能力翻了一倍以上**（代价是 bond h
 **论文主线（按强度排序）**：
 
 1. **通用性质预测**：D-MPNN 骨干 MoleculeNet 均值 **0.8149**（5-seed，过 gate），相对 Morgan 骨干 +0.0195
-2. **结构生成可用性**：decode_ratio **0.9647–0.998** vs 文献 ~0.5；RDKit validity **1.000**；n_distinct **20**（6.7× gate）
+2. **结构生成可用性**：decode_ratio **0.9647–0.998** vs 文献 ~0.5；RDKit validity **1.000**；n_distinct **≥ 20（触顶）** —— 是饱和上限而非测量值，不要写成 gate 的倍数
 3. **对接精度**：中位 RMSD **0.6578 Å**，5/5 pockets 通过 —— 对 DiffDock 的 38.2% 通过率
-4. **金属活性**：NCI-60 9-cell **0.8007 ± 0.0160** ≈ Krasnov；金属内 **Ir 在两种平票规则下均超过 Krasnov**
+4. **金属活性**：NCI-60 面板 **0.8007 ± 0.0160** ≈ Krasnov（逐细胞：PC3 0.870 / HL60 0.932 / SKOV3 0.905 / A549 0.776 / HCT116 0.758 / MCF7 0.744 / A2780cis 0.728 / A2780 0.693；**DU145 无实测**）；金属内 **Ir 在两种平票规则下均超过 Krasnov**
    （保守 0.8237–0.8374 / 当前 0.8295–0.8597 vs 0.73）；**Ru 与 Krasnov 持平**（保守 0.7880–0.8082 /
    当前 0.8128–0.8363 vs 0.81，方向取决于平票规则）
 5. **方法学贡献**：跨金属迁移代价的量化（次要，带 per-metal 表与不可分辨声明）

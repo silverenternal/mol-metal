@@ -1,0 +1,236 @@
+# Narrative claims — machine-checkable provenance for docs/00_MODEL_NARRATIVE.md
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# AGENTS.md §5.2 requires every number in agent output to trace to a JSON or
+# report path on disk. Until now that rule was enforced by hand, and hand
+# enforcement failed: a manual audit on 2026-10-10 found that ALIGNED_COMPARISON
+# carried stale per-cell values (A549 0.870 is actually PC3's) that were copied
+# verbatim into the pinned narrative, and that n_distinct's headline "20" is a
+# saturated cap rather than a measurement.
+#
+# So the claims are declared here, once, with an explicit source pointer, and
+# `molmetal/scripts/verify_narrative_claims.py` resolves each pointer against
+# disk. It runs in pre-flight, so a drifted claim is a red gate rather than
+# something the next reader has to notice.
+#
+# Each claim:
+#   id       stable key the narrative cites
+#   claim    one-line human description
+#   value    the number the narrative states
+#   tol      absolute tolerance (defaults to 5e-4)
+#   source   path relative to repo root
+#   field    dotted path inside the JSON; a list index is allowed
+#   note     why the claim is worded the way it is, when that is not obvious
+#
+# A claim that is CAPPED, PROXY, or otherwise not a direct measurement must say
+# so in `note` — that is how n_distinct went wrong.
+
+schema: molmetal-narrative-claims-v1
+narrative_doc: docs/00_MODEL_NARRATIVE.md
+
+claims:
+
+  # ---- MoleculeNet, D-MPNN backbone, 5-seed --------------------------------
+  - id: mn_bbbp_auc
+    claim: MoleculeNet bbbp 5-seed mean test ROC-AUC
+    value: 0.9065074737375624
+    tol: 0.0005
+    source: metrics/by_metric/moleculenet_auc_dmpnn_5seed.json
+    field: tasks.bbbp.test_auc_mean
+  - id: mn_bbbp_std
+    claim: MoleculeNet bbbp 5-seed std
+    value: 0.02273224599129567
+    tol: 0.0005
+    source: metrics/by_metric/moleculenet_auc_dmpnn_5seed.json
+    field: tasks.bbbp.test_auc_std
+  - id: mn_clintox_auc
+    claim: MoleculeNet clintox 5-seed mean
+    value: 0.8208939647064016
+    tol: 0.0005
+    source: metrics/by_metric/moleculenet_auc_dmpnn_5seed.json
+    field: tasks.clintox.test_auc_mean
+  - id: mn_clintox_std
+    claim: MoleculeNet clintox 5-seed std
+    value: 0.012191582180950832
+    tol: 0.0005
+    source: metrics/by_metric/moleculenet_auc_dmpnn_5seed.json
+    field: tasks.clintox.test_auc_std
+  - id: mn_hiv_auc
+    claim: MoleculeNet hiv 5-seed mean
+    value: 0.7900185433915105
+    tol: 0.0005
+    source: metrics/by_metric/moleculenet_auc_dmpnn_5seed.json
+    field: tasks.hiv.test_auc_mean
+  - id: mn_hiv_std
+    claim: MoleculeNet hiv 5-seed std
+    value: 0.010850668099344549
+    tol: 0.0005
+    source: metrics/by_metric/moleculenet_auc_dmpnn_5seed.json
+    field: tasks.hiv.test_auc_std
+  - id: mn_bace_auc
+    claim: MoleculeNet bace 5-seed mean — the one genuine architecture-level miss
+    value: 0.7421
+    tol: 0.001
+    source: metrics/by_metric/moleculenet_auc_dmpnn_5seed.json
+    field: tasks.bace.test_auc_mean
+    note: chemprop-D-MPNN reference is 0.876; the -0.134 gap is reported, not fixed.
+
+  # ---- Docking -------------------------------------------------------------
+  - id: dock_rmsd_median
+    claim: m15 median best heavy-atom RMSD across 5 pockets x 3 seeds
+    value: 0.6578
+    tol: 0.0005
+    source: metrics/by_metric/docked_pose_rmsd.json
+    field: value
+    note: "2 A pass rate is 5/5 = 100%, vs DiffDock's published 38.2%."
+
+  # ---- Generation quality --------------------------------------------------
+  - id: rdkit_validity
+    claim: m13 fraction of generated samples that round-trip through RDKit
+    value: 1.0
+    tol: 1e-6
+    source: metrics/by_metric/rdkit_validity.json
+    field: value
+  - id: n_distinct_capped
+    claim: n_distinct after the 4-fix bundle — SATURATED CAP, not a measurement
+    value: 20
+    tol: 0
+    source: metrics/by_metric/n_distinct.json
+    field: aggregate.best_measured_with_all_fixes
+    note: >-
+      This equals aggregate.n_top_k_cap = 20; the file's own interpretation
+      says 'saturate the n_top_k cap on every cell'. So the true statement is
+      '>= 20, capped' — NOT '20 vs gate 3 = 6.7x'. Never render this as a
+      multiplier of the gate.
+
+  # ---- NCI-60 9-cell panel ------------------------------------------------
+  - id: nci60_mean_auc
+    claim: NCI-60 precious-metal panel mean AUC (over the cells that have one)
+    value: 0.80072017249287
+    tol: 0.0005
+    source: metrics/by_metric/nci60_precious_9cell_auc.json
+    field: value_overall_mean_auc
+    note: >
+      Krasnov reference is 0.81. The mean is over 8 cells, not 9 — DU145 has
+      auc_mean = null across all 3 seeds. The metric's own `corrections` field
+      records this and sets n_cells = 8. The metric NAME and filename still say
+      "9cell"; do not propagate that label into prose.
+  - id: nci60_mean_std
+    claim: NCI-60 panel mean AUC std
+    value: 0.01598032473882782
+    tol: 0.0005
+    source: metrics/by_metric/nci60_precious_9cell_auc.json
+    field: value_overall_mean_std
+  - id: nci60_cells_with_auc
+    claim: NCI-60 cells that actually have a measured AUC
+    value: 8
+    tol: 0
+    source: metrics/by_metric/nci60_precious_9cell_auc.json
+    field: n_cells_with_measured_auc
+  - id: nci60_mcf7_auc
+    claim: NCI-60 per-cell AUC, MCF7
+    value: 0.7440865820927224
+    tol: 0.0005
+    source: metrics/by_metric/nci60_precious_9cell_auc.json
+    field: per_cell_line.MCF7.auc_mean
+    note: >
+      ALIGNED_COMPARISON.md §1 says "MCF7 0.846 / A549 0.870 / A2780cis 0.721".
+      Those are stale/wrong on disk: MCF7 is 0.7441, A549 is 0.7758, A2780cis is
+      0.7278, and 0.870 belongs to PC3. Do not copy that line.
+  - id: nci60_a549_auc
+    claim: NCI-60 per-cell AUC, A549
+    value: 0.7758007705918343
+    tol: 0.0005
+    source: metrics/by_metric/nci60_precious_9cell_auc.json
+    field: per_cell_line.A549.auc_mean
+  - id: nci60_pc3_auc
+    claim: NCI-60 per-cell AUC, PC3 (the 0.870 that ALIGNED_COMPARISON mislabels as A549)
+    value: 0.87
+    tol: 0.0005
+    source: metrics/by_metric/nci60_precious_9cell_auc.json
+    field: per_cell_line.PC3.auc_mean
+
+  # ---- Ru within-metal (MetalCytoToxDB) ------------------------------------
+  - id: ru_single_task_auc
+    claim: m1 Ru AUC, our own single-task baseline (for the internal +0.049 delta)
+    value: 0.7613038529802696
+    tol: 0.0005
+    source: metrics/by_metric/metalcytotox_ru_auc.json
+    field: value
+  - id: ru_single_task_baseline
+    claim: m1 Ru AUC, the single-task 5-epoch baseline we beat by +0.049
+    value: 0.7122770919067215
+    tol: 0.0005
+    source: metrics/by_metric/metalcytotox_ru_auc.json
+    field: baseline_value
+  - id: ru_paper_protocol_auc
+    claim: m1 Ru AUC under the Krasnov paper protocol (DOI-split 10-fold CV)
+    value: 0.7717467464034218
+    tol: 0.0005
+    source: metrics/by_metric/metalcytotox_ru_auc.json
+    field: paper_protocol_measurement.mean_auc
+    note: >
+      Cross-cohort against Krasnov's 0.810 +- 0.024: ours is 591 ligands, the
+      paper's is 23 cell lines. Labelled a cross-cohort estimate, NOT a
+      reproduction. std_auc on disk is 0.03796, i.e. +-0.0380.
+  - id: ru_paper_protocol_std
+    claim: m1 Ru paper-protocol std across the 10 folds
+    value: 0.037955584760391604
+    tol: 0.0005
+    source: metrics/by_metric/metalcytotox_ru_auc.json
+    field: paper_protocol_measurement.std_auc
+
+  # ---- Cross-metal transfer (secondary finding) ---------------------------
+  - id: ru_within_seedspan
+    claim: Ru within-metal AUC spread across 5 seeds
+    value: 0.0235
+    tol: 0.001
+    source: metrics/by_metric/metal_activity_transfer_seed_stability.json
+    field: within_metal_stability.Ru.spread
+    note: >
+      Across seeds 42/43/44/49/123. Os's spread is 0.2734 — 11.6x Ru's. That
+      ratio, not an n<200 declaration, is what makes the resolvability argument.
+  - id: os_within_seedspan
+    claim: Os within-metal AUC spread across 5 seeds (the unresolvable one)
+    value: 0.2734
+    tol: 0.001
+    source: metrics/by_metric/metal_activity_transfer_seed_stability.json
+    field: within_metal_stability.Os.spread
+  - id: tie_groups_affected
+    claim: ligand groups whose duplicate-collapse label is a tie
+    value: 80
+    tol: 0
+    source: metrics/by_metric/metal_activity_transfer_tie_sensitivity.json
+    field: tie_groups_measured.total
+    note: >
+      All 80 are labelled ACTIVE because the predicate is sum*2 >= n. Under the
+      conservative rule Ru drops to 0.7880-0.8082 and falls below Krasnov's 0.81,
+      so "Ru exceeds Krasnov" is NOT robust. Ir is.
+  - id: ru_conservative_min
+    claim: Ru within-metal minimum AUC under the conservative tie rule
+    value: 0.788
+    tol: 0.001
+    source: metrics/by_metric/metal_activity_transfer_tie_sensitivity.json
+    field: within_metal_auc_by_rule.ties_to_INACTIVE_conservative.Ru.min
+  - id: ir_conservative_min
+    claim: Ir within-metal minimum AUC under the conservative tie rule
+    value: 0.8237
+    tol: 0.001
+    source: metrics/by_metric/metal_activity_transfer_tie_sensitivity.json
+    field: within_metal_auc_by_rule.ties_to_INACTIVE_conservative.Ir.min
+
+  # ---- Closure reachability (limits section) ------------------------------
+  - id: closure_ru_reachability
+    claim: closure reachability, Ru (30 metals x 5000 samples, gate 0.85)
+    value: 0.652
+    tol: 0.001
+    source: molmetal/reports/wf130_p2_closure_30_5000/Ru/reachability.json
+    field: summary.closure_reachability_rate
+    note: gate_pass is false. DESIGN_BOUNDARY's old ">= 0.95" was wrong by ~2x.
+  - id: closure_ir_reachability
+    claim: closure reachability, Ir — the worst of the six target metals
+    value: 0.359
+    tol: 0.001
+    source: molmetal/reports/wf130_p2_closure_30_5000/Ir/reachability.json
+    field: summary.closure_reachability_rate
