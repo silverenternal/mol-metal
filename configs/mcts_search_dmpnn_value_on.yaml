@@ -1,0 +1,51 @@
+# MCTS search-quality bench — D-MPNN learned-value channel ON.
+#
+# Plan A Step 1 (Wf-R24-A). This is the ONE-VARIABLE flip of the OFF baseline
+# at molmetal/reports/r20_search_quality_baseline/search_quality_bench.json.
+# Every other field below is copied verbatim from that run's recorded
+# `config` block, so the pair is comparable.
+#
+# Why it exists: the baseline ran with `"dmpnn_value": false` and
+# `"dmpnn_ckpt": null` — `n_dmpnn_eval: 0`, `mean_dmpnn_value: 0.0` — so the
+# algorithm-layer → value-layer wire in
+# molmetal/molmetal_lam/search_alg/proof_search.py:855 has never been
+# measured. See docs/00_MODEL_NARRATIVE.md §4-G2.
+#
+# §5.11: launched via `--config` only. No CLI hyperparameters.
+
+entry:
+  script: molmetal/scripts/bench_mcts_search_quality.py
+
+# --- copied verbatim from the OFF baseline's recorded config ---
+protocol:
+  n_targets: 3
+  n_seeds: 3
+  n_simulations: 50
+  max_depth: 3
+  top_k: 10
+  seed_base: 0
+  seed_filter: reactive
+  include_stuck_seeds: false
+  cross_search_tt: false
+  cpuct_mode: constant
+  fpu_reduction: 0.0
+
+# --- the single flipped variable ---
+#
+# NOTE (2026-10-10): these four keys MUST live under a whitelisted section
+# name. `wfA2_config_loader._LEAF_FALLBACK_SECTIONS` is
+# {protocol, model, flow, data, compute, eval, output, train}; a leaf under
+# any OTHER section name is flattened to `dmpnn_dmpnn_value` and silently
+# skipped. The first attempt at this config put them under a `dmpnn:` block
+# and the whole block resolved to no dest — the bench ran with the channel
+# OFF and reported dmpnn_enabled=false / n_dmpnn_eval=0.
+# `dmpnn_value` etc. are written FLAT at top level on purpose.
+dmpnn_value: true
+dmpnn_ckpt: molmetal/checkpoints/dmpnn_mtw_ir_seed0.pt
+dmpnn_metal: wildcard
+dmpnn_pocket: wildcard
+
+output:
+  # MUST differ from the OFF baseline's out_dir, or this overwrites the
+  # control arm and destroys the pair (AGENTS.md §5.5).
+  out_dir: molmetal/reports/r20_search_quality_dmpnn_on

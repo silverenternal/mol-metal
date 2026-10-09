@@ -113,6 +113,8 @@ del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
 import argparse
 import json
 import logging
+import math  # 2026-10-09 — isfinite() guard on per-seed test AUC (see the
+             # aggregate block; a NaN fold previously crashed the whole run)
 import random  # Wf-R19-A1: seeded alongside torch/numpy for full RNG coverage
 import statistics
 import sys
@@ -121,7 +123,7 @@ import warnings
 from collections import OrderedDict  # Wf-A4 — bounded trailing window of states
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # Wf-50 pre-condition: ensure MOLMETAL_DATA_DIR defaults to project-local data dir
 from pathlib import Path as _wf50_Path
@@ -330,6 +332,78 @@ def synthetic_row_mask(df: "pd.DataFrame") -> "np.ndarray":
 
 
 # ---------------------------------------------------------------------------
+def collapse_ligand_duplicates(
+    df: "pd.DataFrame",
+    smiles_col: str = "SMILES_Ligands",
+    metal_col: str = "Metal",
+    label_col: str = "active",
+) -> Tuple["pd.DataFrame", Dict[str, Any]]:
+    """One row per unique ligand *within each metal*; label = majority.
+
+    Mirrors ``metal_activity_transfer_probe.py::collapse_duplicates`` exactly
+    (majority label, ties -> inactive) so that a D-MPNN number and the probe's
+    XGB number are measured on the same cohort. Grouping is per (metal, ligand)
+    rather than per ligand because the probe dedups each metal's cohort
+    independently before running leave-one-metal-out; the cross-metal
+    de-duplication that would otherwise apply is done by the leakage rule
+    (``WassersteinLOMOSplitter.drop_leaked_ligands``).
+
+    Raw MetalCytoToxDB rows are 64 % duplicates (one ligand measured up to 15
+    times), so on the un-deduplicated cohort a fingerprint can straddle the
+    LOMO split on identity alone and inflate cross-metal transfer. Measured on
+    ``metal_lomo.csv`` 2026-10-10: Ru 3668 -> 1255, Ir 1242 -> 534,
+    Rh 108 -> 51, Os 87 -> 36, Re 166 -> 74 (total 5271 -> 1950).
+
+    The kept row is the group's first row in file order with its ``active``
+    column rewritten to the majority label; every other column (pIC50, cell
+    line, DOI ...) is left as-is because the splitter only reads the label and
+    the metal.
+    """
+    import pandas as pd  # local import: keeps module import cheap
+
+    if smiles_col not in df.columns:
+        raise KeyError(
+            f"dedup needs column {smiles_col!r}; have {list(df.columns)[:8]}..."
+        )
+
+    keys = [metal_col, smiles_col] if metal_col in df.columns else [smiles_col]
+    # First row of every (metal, ligand) group. ``duplicated`` is used rather
+    # than a groupby-index ``isin`` because this frame's columns are Arrow
+    # string arrays, whose scalar equality does not survive a MultiIndex round
+    # trip (measured 2026-10-10: isin kept 5271/5271 rows instead of 1950).
+    keep_mask = ~df.duplicated(subset=keys, keep="first")
+
+    # Majority label per group: sum*2 >= n, so a tie (sum*2 == n) resolves to
+    # inactive -- the probe's conservative choice for an activity claim.
+    lab = df[label_col].astype(bool)
+    grouper = [df[k] for k in keys]
+    pos_sum = lab.groupby(grouper).transform("sum")
+    n_grp = lab.groupby(grouper).transform("size")
+    majority = (pos_sum * 2 >= n_grp).to_numpy()
+
+    out = df.loc[keep_mask].reset_index(drop=True).copy()
+    out[label_col] = majority[keep_mask.to_numpy()].astype(int)
+
+    has_metal = metal_col in df.columns
+    per_metal_before = (
+        df[metal_col].astype(str).value_counts().to_dict() if has_metal else {}
+    )
+    per_metal_after = (
+        out[metal_col].astype(str).value_counts().to_dict() if has_metal else {}
+    )
+    stats = {
+        "n_rows_before": int(len(df)),
+        "n_rows_after": int(len(out)),
+        "duplication_rate": float(1.0 - len(out) / max(1, len(df))),
+        "pos_rate_before": float(np.asarray(df[label_col]).astype(bool).mean()) if label_col in df.columns else None,
+        "pos_rate_after": float(np.asarray(out[label_col]).astype(bool).mean()) if label_col in df.columns else None,
+        "per_metal_before": {str(k): int(v) for k, v in per_metal_before.items()},
+        "per_metal_after": {str(k): int(v) for k, v in per_metal_after.items()},
+        "rule": "one row per unique ligand within a metal; label = majority; ties -> inactive",
+    }
+    return out, stats
+
+
 # LOMO splitter — same as train_metal_lomo.py but with optional synthetic
 # Rh oversample support (the synthetic cohort is appended *after* the
 # train/val/test split so it never leaks into the test fold).
@@ -357,6 +431,13 @@ class WassersteinLOMOSplitter:
     # the other half test, so val and test are both drawn from the target
     # domain and val_auc is an honest early-stopping proxy for test_auc.
     rh_loso_validation: bool = False
+    # 2026-10-10 (Wf-DMPNN-MATCH) — match ``metal_activity_transfer_probe``'s
+    # leakage_rule: "a ligand appearing in ANY other metal is dropped from the
+    # LOMO train pool". Off by default so every historical run keeps its exact
+    # meaning; the matched rerun turns it on together with ``--dedup-ligands``
+    # so the D-MPNN and the XGB probe see the same cohort.
+    drop_leaked_ligands: bool = False
+    n_leaked_dropped: int = 0
 
     def _label_array(self, dataset: MetalCytotoxDataset) -> Optional[np.ndarray]:
         """Binary activity label per row, or None if unavailable."""
@@ -395,6 +476,41 @@ class WassersteinLOMOSplitter:
         # for a non-held-out metal they were already in the pool, and for the
         # held-out metal this is where they are meant to be learned from.
         train_pool = np.where(~test_mask)[0].astype(np.int64)
+
+        # ---- leakage rule (Wf-DMPNN-MATCH) -------------------------------
+        # Drop every train-pool row whose ligand also occurs in the held-out
+        # metal. Matched against ``metal_activity_transfer_probe.cross_metal``,
+        # which builds ``blocked = set(te_s)`` from the held-out metal's
+        # deduplicated ligands and skips any training row in that set. Keyed on
+        # the raw ``SMILES_Ligands`` string — the same key the probe uses
+        # (``MetalCytotoxDataset.smiles``), NOT ``_strip_metal_atoms``, so the
+        # two sides block exactly the same ligands. Synthetic oversample rows
+        # are exempt: they are generated compounds, never measured ones, so
+        # they cannot be the source of a leak.
+        self.n_leaked_dropped = 0
+        if self.drop_leaked_ligands:
+            smiles_col = (
+                "SMILES_Ligands"
+                if "SMILES_Ligands" in dataset.df.columns
+                else "smiles"
+            )
+            if smiles_col in dataset.df.columns:
+                all_smi = dataset.df[smiles_col].astype(str).to_numpy()
+                blocked = set(all_smi[test_idx].tolist())
+                is_leak = np.array(
+                    [s in blocked for s in all_smi[train_pool]], dtype=bool
+                )
+                is_leak &= ~synth[train_pool]
+                self.n_leaked_dropped = int(is_leak.sum())
+                train_pool = train_pool[~is_leak]
+                logger.info(
+                    "leakage rule: held_out=%s dropped %d train rows sharing a "
+                    "ligand with the held-out metal (train_pool %d -> %d)",
+                    self.held_out_metal,
+                    self.n_leaked_dropped,
+                    len(train_pool) + self.n_leaked_dropped,
+                    len(train_pool),
+                )
 
         # ---- E2 fix: val drawn from the held-out metal's REAL rows ----------
         # Scoped to Rh only (the "fix only Rh" contract): for any other
@@ -791,6 +907,9 @@ class WassersteinLOMOResult:
     # distinguish a balanced 500 from an all-inactive 500.
     n_synthetic_rh_in_train: int = 0
     n_synthetic_rh_pos_in_train: int = 0
+    # Wf-DMPNN-MATCH: how many train rows the leakage rule removed because
+    # their ligand also occurs in the held-out metal (0 when the switch is off).
+    n_train_rows_dropped_as_leaked: int = 0
     # Wf-A4: which epoch's weights produced ``test_auc``, and the full val
     # curve.  ``val_auc`` above is the *selection criterion's* value (best-val
     # mode: the max; last_epoch / smoothed_val: the val AUC of the epoch whose
@@ -833,6 +952,7 @@ class WassersteinLOMORunner:
         wasserstein_real: bool = False,
         wasserstein_cadence: str = "per-epoch",
         rh_loso_validation: bool = False,
+        drop_leaked_ligands: bool = False,
         per_metal_pic50_center: bool = False,
         metal_strip_mode: str = "retain",
         # Wf-R19 Fix 3 — LR schedule. Defaults match the CFM trainer's flag
@@ -928,6 +1048,7 @@ class WassersteinLOMORunner:
             held_out_metal=held_out_metal,
             seed=self.seed,
             rh_loso_validation=bool(rh_loso_validation),
+            drop_leaked_ligands=bool(drop_leaked_ligands),
         )
         self.synthetic_rh_count = int(synthetic_rh_count)
         # Wf-127 P2 — grad-norm clip (mirrors D-MPNN multitask trainer).
@@ -1594,6 +1715,7 @@ class WassersteinLOMORunner:
             n_synthetic_rh=self.synthetic_rh_count,
             n_synthetic_rh_in_train=synth_in_train,
             n_synthetic_rh_pos_in_train=synth_pos_in_train,
+            n_train_rows_dropped_as_leaked=int(self.splitter.n_leaked_dropped),
             pos_rate_train=float(active_train.mean()) if len(active_train) else 0.0,
             pos_rate_test=float(active_test.mean()) if len(active_test) else 0.0,
             val_auc=float(selected_val_auc),
@@ -1831,6 +1953,37 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "metal-specific offset. Measured on Rh LOMO seeds 0-4: raw "
             "0.338 -> centered 0.52 (see TODO notes). Default: False "
             "(historical path unchanged)."
+        ),
+    )
+    p.add_argument(
+        "--dedup-ligands",
+        dest="dedup_ligands",
+        action="store_true",
+        help=(
+            "PROTOCOL SWITCH (Wf-DMPNN-MATCH). Collapse duplicate ligand rows "
+            "to one row per unique ligand within each metal, label = majority, "
+            "ties -> inactive -- identical to "
+            "metal_activity_transfer_probe.py::collapse_duplicates, so this "
+            "run and that probe measure the SAME cohort. Raw "
+            "MetalCytoToxDB rows are 64%% duplicates (one ligand measured up "
+            "to 15 times), MEASURED on metal_lomo.csv 2026-10-10: total "
+            "5271 -> 1950, Ru 3668 -> 1255, Ir 1242 -> 534, Rh 108 -> 51, "
+            "Os 87 -> 36, Re 166 -> 74. Default: False, so every archived "
+            "run keeps its exact row count and meaning."
+        ),
+    )
+    p.add_argument(
+        "--drop-leaked-ligands",
+        dest="drop_leaked_ligands",
+        action="store_true",
+        help=(
+            "PROTOCOL SWITCH (Wf-DMPNN-MATCH). LOMO leakage rule: any ligand "
+            "that appears in the HELD-OUT metal is dropped from the training "
+            "pool, so no fingerprint can straddle the split on identity alone "
+            "-- identical to metal_activity_transfer_probe.cross_metal's "
+            "'a ligand appearing in ANY other metal is dropped'. Synthetic "
+            "oversample rows are exempt (generated, never measured, so they "
+            "cannot be the source of a leak). Default: False."
         ),
     )
     p.add_argument(
@@ -2120,6 +2273,27 @@ def _build_dataset(
     df = _add_active(df)
     ds = MetalCytotoxDataset(df=df, cache_dir=cache_dir)
 
+    # ---- ligand dedup (Wf-DMPNN-MATCH, opt-in) --------------------------
+    # Applied BEFORE ``--quick`` subsampling and BEFORE the synthetic Rh
+    # cohort is appended, so (a) the subsample is drawn from the deduplicated
+    # cohort and (b) generated compounds never take part in a majority vote
+    # about measured ones. Rebuild the dataset from the deduplicated frame so
+    # the cached ``_metals`` / ``_years`` arrays are recomputed too.
+    if bool(getattr(args, "dedup_ligands", False)):
+        df_dedup, dedup_stats = collapse_ligand_duplicates(ds.df)
+        ds = MetalCytotoxDataset(df=df_dedup, cache_dir=cache_dir)
+        ds_dedup_stats = dedup_stats
+        logger.info(
+            "dedup_ligands: %d -> %d rows (duplication %.3f, pos_rate %.4f -> %.4f)",
+            dedup_stats["n_rows_before"],
+            dedup_stats["n_rows_after"],
+            dedup_stats["duplication_rate"],
+            dedup_stats["pos_rate_before"] or 0.0,
+            dedup_stats["pos_rate_after"] or 0.0,
+        )
+    else:
+        ds_dedup_stats = None
+
     if args.quick and len(ds) > 1000:
         rng = np.random.default_rng(0)
         keep = rng.permutation(len(ds))[:1000]
@@ -2153,6 +2327,16 @@ def _build_dataset(
         synth_n - synth_pos,
         getattr(args, "rh_cohort_active_json", "") != "",
     )
+    if ds_dedup_stats is not None:
+        logger.info(
+            "dedup_ligands per-metal rows: before=%s after=%s",
+            ds_dedup_stats["per_metal_before"],
+            ds_dedup_stats["per_metal_after"],
+        )
+        # Stash on args so the metric writer records the exact cohort that was
+        # trained on; avoids widening _build_dataset's 2-tuple return, which
+        # every caller unpacks.
+        setattr(args, "dedup_stats", ds_dedup_stats)
     return ds, n_appended
 
 
@@ -2231,6 +2415,7 @@ def _run_one(
         balanced_sampler=_balanced,
         model_select=str(getattr(args, "model_select", "last_epoch")),
         rh_loso_validation=bool(getattr(args, "rh_loso_validation", False)),
+        drop_leaked_ligands=bool(getattr(args, "drop_leaked_ligands", False)),
         per_metal_pic50_center=bool(
             getattr(args, "per_metal_pic50_center", False)
         ),
@@ -2255,6 +2440,12 @@ def _run_one(
         "n_synthetic_rh": res.n_synthetic_rh,
         "n_synthetic_rh_in_train": res.n_synthetic_rh_in_train,
         "n_synthetic_rh_pos_in_train": res.n_synthetic_rh_pos_in_train,
+        # Wf-DMPNN-MATCH — how much of the train pool the leakage rule removed
+        # (0 when the switch is off). Paired with n_test this makes the cohort
+        # auditable from the per-seed file alone.
+        "n_train_rows_dropped_as_leaked": int(
+            res.n_train_rows_dropped_as_leaked
+        ),
         # E2 fix provenance: was the val fold drawn from the target metal
         # (Rh) or from the other metals? A per-fold record that omits this
         # cannot be compared against one that includes it.
@@ -2641,6 +2832,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                     "n_synthetic_rh_pos_in_train": d.get(
                         "n_synthetic_rh_pos_in_train"
                     ),
+                    "n_train_rows_dropped_as_leaked": d.get(
+                        "n_train_rows_dropped_as_leaked"
+                    ),
                     "pos_rate_train": d.get("pos_rate_train"),
                     "pos_rate_test": d.get("pos_rate_test"),
                     "val_auc": d.get("val_auc"),
@@ -2668,7 +2862,32 @@ def main(argv: Optional[List[str]] = None) -> int:
             ],
         }
         # Mean over the seeds that actually ran.
-        _aucs = [float(d["test_auc"]) for d in per_metal_runs[metal] if "test_auc" in d]
+        # 2026-10-09 — filter non-finite AUCs. A fold whose test set is empty
+        # yields NaN, and statistics.pstdev([nan, nan, ...]) raises
+        # AttributeError('float' object has no attribute 'numerator'), which
+        # killed the whole run at the very END: 4 folds x 5 seeds had already
+        # trained and written their per-seed JSONs, and one bad fold destroyed
+        # the aggregate for every other fold too. A degenerate fold must be
+        # reported, not fatal.
+        _aucs = [
+            float(d["test_auc"])
+            for d in per_metal_runs[metal]
+            if "test_auc" in d and math.isfinite(float(d["test_auc"]))
+        ]
+        _n_nonfinite = sum(
+            1
+            for d in per_metal_runs[metal]
+            if "test_auc" in d and not math.isfinite(float(d["test_auc"]))
+        )
+        if _n_nonfinite:
+            per_metal_payload["n_seeds_nonfinite_auc"] = _n_nonfinite
+            logger.warning(
+                "%s: %d/%d seed(s) produced a non-finite AUC and are EXCLUDED "
+                "from the mean/std (empty or single-class test fold)",
+                metal,
+                _n_nonfinite,
+                len(per_metal_runs[metal]),
+            )
         if _aucs:
             per_metal_payload["test_auc_mean"] = float(statistics.mean(_aucs))
             per_metal_payload["test_auc_std"] = (
@@ -2716,6 +2935,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         "seeds": args.seeds,
         "epochs": args.epochs,
         "wasserstein_weight": args.wasserstein_weight,
+        # Wf-DMPNN-MATCH — the cohort this number was measured on. Without
+        # these two flags a raw-vs-deduplicated AUC is unlabelled, which is
+        # exactly how "D-MPNN 0.5575 vs XGB 0.5996" became an invalid claim.
+        "dedup_ligands": bool(getattr(args, "dedup_ligands", False)),
+        "drop_leaked_ligands": bool(getattr(args, "drop_leaked_ligands", False)),
+        "dedup_stats": getattr(args, "dedup_stats", None),
         # Wf-E1 — the honest pair. Read ``w2_effective_weight``, not
         # ``wasserstein_weight``, to know whether W₂ touched the model.
         "w2_real": bool(getattr(args, "wasserstein_real", False)),

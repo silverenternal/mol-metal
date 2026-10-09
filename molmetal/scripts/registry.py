@@ -63,6 +63,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+# Make ``molmetal.*`` importable when this file is run directly as
+# ``python molmetal/scripts/registry.py``. Without this, only the script's own
+# directory is on sys.path and ``generate()``'s
+# ``from molmetal.scripts.wf386a3_atomic_write import atomic_write_file``
+# raises ModuleNotFoundError — while ``check()`` keeps working, because it
+# imports nothing from the package. That asymmetry is what makes the bug easy
+# to miss: the read path looks healthy and only the write path breaks.
+# Measured 2026-10-10; canonical pattern copied from pre_flight_check.py:69-71.
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 try:
     import yaml  # type: ignore
 except ImportError:  # pragma: no cover - PyYAML is a hard dep of this repo

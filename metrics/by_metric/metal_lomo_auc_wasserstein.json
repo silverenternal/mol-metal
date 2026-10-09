@@ -1,6 +1,6 @@
 {
   "metric": "metal_lomo_auc_wasserstein",
-  "description": "Mean test ROC-AUC across 5 folds (Ru/Ir/Os/Rh/Re) \u00d7 5 seeds of multi-metal leave-one-metal-out transfer with W\u2082 transfer regularisation. STALE-PROSE FIXED (2026-10-08): the historical text said '2 folds (Rh, Re)' \u00d7 N seeds with 'Rh closure-oversample'; the live real-only headline (rh_oversample=0, n_synthetic_rh_appended=0) is the 25-run 5-fold panel below, NOT a 2-fold oversampled run. See real_only_pa_m19_re_measurement_2026_10_08 for the provenance of the retracted 7-run/2-fold oversampled wave.",
+  "description": "Mean test ROC-AUC across 5 folds (Ru/Ir/Os/Rh/Re) × 5 seeds of multi-metal leave-one-metal-out transfer with W₂ transfer regularisation. STALE-PROSE FIXED (2026-10-08): the historical text said '2 folds (Rh, Re)' × N seeds with 'Rh closure-oversample'; the live real-only headline (rh_oversample=0, n_synthetic_rh_appended=0) is the 25-run 5-fold panel below, NOT a 2-fold oversampled run. See real_only_pa_m19_re_measurement_2026_10_08 for the provenance of the retracted 7-run/2-fold oversampled wave.",
   "unit": "ROC-AUC (0-1, higher better)",
   "scope": "tier2_sbdd_ood_lomo_wasserstein",
   "source": "molmetal/scripts/train_metal_lomo_wasserstein.py",
@@ -269,5 +269,26 @@
     },
     "verdict": "HONEST-NEGATIVE: turning the W2 transfer term ON (weight 0.05, every-batch) LOWERS the real-only LOMO aggregate by 0.023 (0.5575 -> 0.5349), driven by Re (-0.068). The W2 regulariser is not a lever for this metric. This also matches the G6 per-innovation ablation (no_wass vs no_multi_task on Ru/Rh: delta <= 0.008, inside seed std). De-confounds the earlier +0.049 claim, which was confounded by cadence.",
     "caveat": "n=5 seeds; per-fold AUC resolution on the small OOD folds (Rh n_test=108, Os n_test=87) is ~0.06, so Re's -0.068 is ~1 resolution unit of a 3668-test fold and is the one fold worth re-checking; Ru/Ir/Os/Rh moves are all below their fold resolution."
+  },
+  "_disambiguation_2026_10_10": {
+    "issue": "本文件是 m19 LOMO 的 canonical，但它比另一个更新更晚的 run 旧。",
+    "this_file": {
+      "value": 0.5575471269535148,
+      "std": 0.09493914640509747,
+      "rh_fold": 0.381174168297456,
+      "timestamp": "2026-10-08T06:51:17+00:00",
+      "centered": false
+    },
+    "newer_run": {
+      "value": 0.5844738262081143,
+      "std": 0.07644237694027237,
+      "rh_fold": 0.5021526418786693,
+      "path": "molmetal/reports/m19_per_metal_centering_2026_10_08/metrics.json",
+      "centered": true,
+      "caveat": "该臂 wasserstein_weight=0.0（W2 关），且带 pos_weight auto + balanced_sampler 双重修正"
+    },
+    "which_to_cite": "引用 m19 时**必须写明是哪一臂**：0.5575（无 centering）或 0.5845（per-metal pIC50 centering）。两者不可混引，也不可取平均。两者 Rh 都远低于 gate，centering 只是把最差折从 0.3812 抬到 0.5022。",
+    "resolution_deferred": "ALIGNED_COMPARISON §2 的处置是 'refresh the canonical file after the next re-measure'。**尚未发生重测**，所以此处只加注记不覆盖。真正的解决需要一次匹配协议的重测。",
+    "self_contradiction_warning": "注意 molmetal/reports/dmpnn_clean5_lomo/aggregate.json（0.5575 那臂）的 description 写着 '+ Rh closure-oversample'，而同文件的 rh_oversample=0 / n_synthetic_rh_appended=0 / Rh n_test=108。**结构化字段是权威的**：0.5575 那臂未被 synthetic Rh 污染，过时的只有 description 字符串。"
   }
 }

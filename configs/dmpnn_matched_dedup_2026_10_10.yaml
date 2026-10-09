@@ -1,0 +1,155 @@
+# Wf-DMPNN-MATCH — the MATCHED arm (2026-10-10)
+#
+# WHAT THIS RUN IS FOR
+#   The claim "D-MPNN does not beat a GBDT baseline" was made across two
+#   DIFFERENT cohorts and is therefore invalid:
+#
+#     ours   molmetal/reports/dmpnn_clean5_lomo/metrics.json
+#            0.5575 mean / Ru 0.5972, per-seed files show n_test=3668 for Ru
+#            -> the RAW, 64 %-duplicated row set (Ru 3668 rows).
+#     XGB    metrics/by_metric/metal_activity_transfer.json
+#            0.5996 pooled / Ru 0.6179
+#            -> the DEDUPLICATED cohort (Ru 1255 unique ligands).
+#
+#   This run re-measures the D-MPNN on the probe's cohort so the two numbers
+#   finally describe the same data. Protocol switches are the two opt-in flags
+#   added to train_metal_lomo_wasserstein.py for exactly this purpose:
+#   `dedup_ligands` and `drop_leaked_ligands` (both default False, so no
+#   archived run changes meaning).
+#
+# VERIFIED COHORT IDENTITY (dry run 2026-10-10, splitter-level, no training)
+#   metal   probe n_unique   this config   probe dropped-as-leaked   ours
+#   Ru            1255           1255                     17                17
+#   Ir             534            534                     25                25
+#   Rh              51             51                     25                25
+#   Os              36             36                     17                17
+#   Re              74             74                      0                 0
+#   total         1908           1950   (1908 = the same 1950 counted globally;
+#                                          each cross-metal ligand is counted
+#                                          once per metal it appears in, and
+#                                          17+25+25+17+0 = 84 = 2 x (1950-1908))
+#
+#   The train pool differs from the probe's n_train_unique only by the 10 %
+#   val_fraction this trainer has always carved out, and by the row-level
+#   (not group-level) tie handling — both sides are reported side by side above
+#   so a reader can see the cohort matches rather than take it on trust.
+#
+# ONE VARIABLE ONLY
+#   Everything else is replicated from scripts/launch_dmpnn_clean5_lomo.sh,
+#   which produced the 0.5575 arm, so the delta between 0.5575 and this run
+#   is attributable to the cohort definition and to nothing else.
+#
+#   EXCEPT `rh_oversample`, and the exception is deliberate. The launcher log
+#   (molmetal/reports/dmpnn_clean5_lomo/launcher.log, disk truth) records
+#   `dataset loaded: n=5771 ... n_synthetic_rh_appended=500`, so the 0.5575
+#   arm DID train on 500 generated Catherine compounds that appear nowhere in
+#   the XGB probe's cohort. Holding them would make the arm less matched, not
+#   more. They are set to 0 here. The one-variable-vs-0.5575 arm that keeps
+#   them is a separate config (…_rhow500.yaml) and must not be quoted as the
+#   matched comparison.
+#
+# AGENTS.md §5.11: this config is the ONLY launch surface. The wrapper passes
+# --config and --out-dir and nothing else. Both switches are also reachable as
+# --dedup-ligands / --drop-leaked-ligands; the YAML round-trip is verified
+# (parse_args(["--config", this]) returns True/True, typed bool).
+
+data:
+  # MUST be a YAML list. `--metals` is nargs="+"; a space-joined string here
+  # arrives as ONE token named "Ru Ir Os Rh Re", matches no rows, and yields
+  # test_auc=nan for every seed (already happened once — see
+  # configs/m19_lomo_4metal_sensitivity.yaml:57-75).
+  metals: [Ru, Ir, Os, Rh, Re]
+  rh_oversample: 0
+
+model:
+  # Explicit, not left to argparse: MT_HIDDEN defaults to 128 and the 5-metal
+  # launcher never passed --hidden, so the 0.5575 arm ran at 128. Stated so
+  # the arm is reproducible rather than accidentally re-read as 300.
+  hidden: 128
+  depth: 3
+  alpha: 0.5
+
+train:
+  batch_size: 64             # parser default; the 0.5575 arm ran here
+  lr: 0.001                  # parser default; the 0.5575 arm ran here
+  epochs: 30
+  seeds: [0, 1, 2, 3, 4]
+  wasserstein_weight: 0.05   # DECLARED BUT INERT — replicated verbatim.
+                            # --wasserstein-real was never passed by the
+                            # clean5 launcher, so the 0.5575 headline was
+                            # measured with W2 OFF and its
+                            # wasserstein_loss_history is all 0.0. It must not
+                            # be described as a W2 result. Not set here: adding
+                            # --wasserstein-real would change a second
+                            # variable and turn this into a W2 test.
+  model_select: last_epoch
+
+# THE VARIABLE UNDER TEST — both default False in argparse, so every archived
+# run keeps its exact row count and meaning.
+protocol:
+  dedup_ligands: true        # one row per unique ligand within a metal,
+                             # label = majority, ties -> inactive (identical to
+                             # metal_activity_transfer_probe.collapse_duplicates)
+  drop_leaked_ligands: true  # a ligand appearing in the held-out metal is
+                             # dropped from the LOMO train pool (identical to
+                             # the probe's leakage_rule)
+  # The two keys below are READ BY scripts/start.sh, not by the trainer
+  # (`N_SEEDS`/`EPOCHS` env for the TUI readout — start.sh:479,485). They are
+  # display-only: they do NOT set the run's size. Without them the TUI
+  # displayed "n_seeds=1 / epochs=50" (the start.sh defaults) while the
+  # trainer actually ran train.seeds=[0,1,2,3,4] and train.epochs=30 —
+  # measured 2026-10-10 on the first launch of this arm. They are restated
+  # here so the launcher readout matches what the trainer executes.
+  n_seeds: 5
+  epochs: 30
+
+# Wf-343C2 (AGENTS.md §4) requires all 9 of data/model/flow/train/protocol/
+# eval/output/compute/honest_framing. `flow` is flow-matching vocabulary and
+# `eval` here is the CFM W1/W2/OT-cascade vocabulary; this arm is a D-MPNN
+# encoder-decoder LOMO probe, which consumes NEITHER. Both sections are declared
+# empty ON PURPOSE rather than filled with plausible-looking keys: a key with
+# no dest is exactly the failure mode §5.11 exists to catch, so adding keys
+# here to satisfy a section-presence check would reintroduce it.
+# The Wasserstein weights this run would carry live under `eval` in
+# configs/dmpnn.yaml are set to their inert values under `train` above.
+flow: {}
+
+eval: {}
+
+directives:
+  # AGENTS.md §5.1 standing GPU authorization is granted, but USER_OK=1 is
+  # still passed explicitly on the command line — this key only feeds the
+  # TUI's DIRECTIVES_USER_OK label (scripts/start.sh:487).
+  user_ok_required: true
+  per_wave_user_ok_required: false
+  # No extra pre-flight gate list for this arm: the two protocol switches are
+  # verified by the round-trip check, not by a per-key gate.
+  pre_flight_gates_required: []
+
+compute:
+  device: cuda:0
+
+output:
+  base_dir: molmetal/reports/dmpnn_matched_2026_10_10
+  out_dir: molmetal/reports/dmpnn_matched_2026_10_10
+  out_metric: molmetal/reports/dmpnn_matched_2026_10_10/metrics.json
+  # start.sh:680 does `: > "$LOG_FILE"` with LOG_FILE = output.log_master.
+  # Without this key LOG_FILE is the empty string and start.sh dies with
+  # `line 708: : No such file or directory` BEFORE spawning the trainer —
+  # measured on the first launch attempt of this arm (2026-10-10).
+  log_master: molmetal/reports/dmpnn_matched_2026_10_10/master.log
+  training_summary: molmetal/reports/dmpnn_matched_2026_10_10/training_summary.md
+
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+
+honest_framing:
+  purpose: Make the D-MPNN-vs-XGB comparison fair by measuring both on one cohort
+  do_not_claim:
+  - That the 0.5575-vs-0.5996 gap was a model-quality gap (it was a data gap)
+  - That Rh/Os/Re fold AUCs are resolvable — n_test is 51/36/74 after dedup,
+    below the probe's MIN_UNIQUE_FOR_GATE=200, and must not be gated
+  - That this arm is a W2 result — wasserstein_real stays off
+  gate_context: the in-code GATE_AUC is 0.70 and the Krasnov baseline is 0.86;
+    both are correct conventions (memory two-gate-conventions-lomo)

@@ -5,10 +5,15 @@ Mirrors the `flowa` DESIGN_BOUNDARY.md pattern (~80 lines).
 
 ## FROZEN (paper-grounded, do not modify without §5.5 filesystem-truth audit)
 
-- **Catherine closure theorem** (`molmetal/molmetal_lam/lam_chem/closure.py`) — 6/6 properties PASS on ≥ 25 d-block metals × 1000 samples per `molmetal/scripts/verify_closure_theorem.py`. Per-metal reachability ≥ 0.95 on PlatinAI 4-cell OOD cohort. Paper §3.4 main result.
+- **Catherine closure theorem** (`molmetal/molmetal_lam/lam_chem/closure.py`) — closure-benchmarked over **30 d-block metals × 5,000 samples each** per `molmetal/scripts/verify_closure_theorem.py` (`molmetal/reports/wf130_p2_closure_30_5000/`, `gate_target 0.85`). **⚠️ Corrected 2026-10-10:** this entry previously read "6/6 properties PASS on ≥ 25 d-block metals × 1000 samples… **Per-metal reachability ≥ 0.95 on PlatinAI 4-cell OOD cohort**". The reachability figure was wrong by ~2× against every target metal, and the PlatinAI attribution has no artifact behind it:
+  - closure reachability on the six target metals — **Ru 0.652 / Rh 0.6162 / Re 0.5616 / Pt 0.5348 / Os 0.4758 / Ir 0.359**, all against gate 0.85, **all `gate_pass: false`**
+  - the separate `ood_per_metal_reachability.json` (scope `tier2_d_block_ood`, strict `reachability_rate`) — **Ru 0.4667 / Rh 0.4833 / Os 0.3636 / Ir 0.3333 / Re 0.2500**
+  - **no PlatinAI-scoped reachability metric exists in `metrics/by_metric/`** — the earlier "≥ 0.95 on PlatinAI 4-cell" cited a cohort with no record
+  - the "6/6 properties PASS" half is **UNVERIFIED** and deliberately left in place pending a check; note `wf123_p2_closure_bias/per_function_verification.json :: closure_oversample` reports `catherine_6of6_pass_rate = 0.0339` on Rh, which is the *per-compound* all-six rate and is a different quantity — do not read it as a property-level pass/fail.
+  - **Paper consequence:** this cannot be presented as "Paper §3.4 main result" on reachability grounds. Any closure claim must carry the 0.85 gate and the per-metal table. See `docs/00_MODEL_NARRATIVE.md` §7 limitations.
 - **chemprop v2 trainer** (`molmetal/scripts/train_chemprop_v2_v3.py`) — `v3-fallback` mode default per Wf-263A (LOMO head-collapse fix). 19/25 + 25/25 + 9/9 MEASURED-on-disk cohorts per `metrics/by_metric/chemprop_v2_*.json`.
 - **MECHANISM_METRIC_MAPPING** (`TODO/02_metrics/MECHANISM_METRIC_MAPPING.md`) — 21 mechanisms M1-M21 + 22 metrics + 7 ablation design table. Per-Wf-313H 33/33 + Wf-320G 107/107 regression tests.
-- **HONEST_NEGATIVE_CATALOG** (`docs/HONEST_NEGATIVE_CATALOG.md`) — 9 → 81 entries expansion history (Wf-263B → Wf-358-C2 → Wf-359-B1 → Wf-369-A3 → Wf-395-A2 → Wf-398-A2 → Wf-399-A2 → Wf-411-A4 → Wf-415-A3 → Wf-426-A4 → Wf-430-B5).
+- **HONEST_NEGATIVE_CATALOG** (`docs/HONEST_NEGATIVE_CATALOG.md`) — 9 → 96 entries expansion history (Wf-263B → Wf-358-C2 → Wf-359-B1 → Wf-369-A3 → Wf-395-A2 → Wf-398-A2 → Wf-399-A2 → Wf-411-A4 → Wf-415-A3 → Wf-426-A4 → Wf-430-B5).
 
 ## STABLE (R17-R19 ship surface, backwards-compat by default)
 

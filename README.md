@@ -15,7 +15,7 @@ Agent-facing entry point: [`AGENTS.md`](AGENTS.md) — project rules + skill cat
 - [`docs/HONEST_NEGATIVE_CATALOG.md`](docs/HONEST_NEGATIVE_CATALOG.md) — MEASURED-vs-PROJECTED honesty ledger
 - [`docs/DESIGN_BOUNDARY.md`](docs/DESIGN_BOUNDARY.md) — FROZEN / STABLE / PROPOSED / OUT-OF-SCOPE surface
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — 21-mechanism M1-M21 phase diagram
-- [`metrics/`](metrics/) — single source of truth for MEASURED numbers (113+ files)
+- [`metrics/`](metrics/) — single source of truth for MEASURED numbers (159 files)
 - [`molmetal/reports/`](molmetal/reports/) — per-workflow JSON/MD reports
 
 ## Wave-versioning policy (2026-10-01)

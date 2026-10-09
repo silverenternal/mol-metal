@@ -1,0 +1,81 @@
+# Wf-DMPNN-MATCH — the matched rerun command (2026-10-10)
+#
+# PURPOSE
+#   Re-measure the D-MPNN LOMO model on the SAME deduplicated cohort that
+#   metrics/by_metric/metal_activity_transfer.json (the XGB probe) used, so
+#   "D-MPNN 0.5575 vs XGB 0.5996" becomes a like-for-like comparison instead of
+#   a comparison across two different datasets.
+#
+# WHAT WAS CHANGED IN THE TRAINER (both DEFAULT OFF, so nothing archived moves)
+#   molmetal/scripts/train_metal_lomo_wasserstein.py
+#     - collapse_ligand_duplicates()  new; mirrors the probe's
+#       collapse_duplicates: one row per unique ligand WITHIN a metal,
+#       label = majority, ties -> inactive.
+#     - WassersteinLOMOSplitter.drop_leaked_ligands  the probe's leakage_rule:
+#       a ligand appearing in the held-out metal is dropped from the train pool.
+#     - CLI: --dedup-ligands, --drop-leaked-ligands  (also reachable from YAML:
+#       `protocol: {dedup_ligands, drop_leaked_ligands}`, round-trip verified to
+#       return Python bool True/True, not strings).
+#
+# VERIFIED COHORT IDENTITY (splitter dry run, 2026-10-10, no training)
+#   metal   n_test before -> after   probe n_unique   probe/ours leaked-rows dropped
+#   Ru          3668 ->  1255             1255              17 / 17
+#   Ir          1242 ->   534              534              25 / 25
+#   Rh           108 ->    51               51              25 / 25
+#   Os            87 ->    36               36              17 / 17
+#   Re           166 ->    74               74               0 /  0
+#   total       5271 ->  1950             1908
+#   (the probe's 1908 is the same 1950 after its own cross-metal de-duplication)
+#
+# ---------------------------------------------------------------------------
+# THE COMMAND — §5.11 YAML-only launch surface. Do NOT add CLI hyperparameters.
+# ---------------------------------------------------------------------------
+export MOLMETAL_DATA_DIR=/home/hugo/codes/mol-metal/.data/molmetal
+cd /home/hugo/codes/mol-metal
+
+USER_OK=1 bash scripts/start.sh configs/dmpnn_matched_dedup_2026_10_10.yaml
+
+# Equivalent direct invocation (same trainer, same config; --out-dir only).
+# `command_template` in the config is:
+#   /home/hugo/codes/mol-metal/.venv/bin/python \
+#     molmetal/scripts/train_metal_lomo_wasserstein.py \
+#     --config configs/dmpnn_matched_dedup_2026_10_10.yaml \
+#     --out-dir molmetal/reports/dmpnn_matched_2026_10_10
+#
+# MOLMETAL_DATA_DIR is REQUIRED, not optional: without it cytotox.DEFAULT_CSV
+# falls back to a /mnt/storage mount that does not exist on this host
+# (measured FileNotFoundError 2026-10-10).
+#
+# ---------------------------------------------------------------------------
+# SECONDARY ARM — do NOT quote this one as "the matched comparison"
+# ---------------------------------------------------------------------------
+# Identical except `rh_oversample: 500`, which is what
+# scripts/launch_dmpnn_clean5_lomo.sh actually passed (its launcher.log records
+# `dataset loaded: n=5771 ... n_synthetic_rh_appended=500`). That arm is the
+# one-variable-vs-0.5575 comparison; it is NOT matched to the XGB probe,
+# because the 500 generated Catherine compounds exist in no XGB cohort. The
+# primary arm above sets rh_oversample: 0 for that reason.
+
+# ---------------------------------------------------------------------------
+# PRE-FLIGHT (AGENTS.md §4/§5.1) — run before the launch
+# ---------------------------------------------------------------------------
+# .venv/bin/python molmetal/scripts/pre_flight_check.py
+# .venv/bin/python molmetal/scripts/wf343c2_per_wave_check.py --skip-live
+# .venv/bin/python molmetal/scripts/wf343c3_data_quality_check.py --strict
+#
+# COST / EXPECTATION (PROJECTED, not measured — the run has NOT been executed)
+#   5 metals x 5 seeds x 30 epochs. The clean5 arm at 5836 rows/epoch-window
+#   took ~30 s per Ru seed on GPU; the deduplicated cohort is 1950 rows total,
+#   so expect roughly a third of that, i.e. well under 1 hr GPU in total.
+#   The trainer exits 3 rather than overwriting
+#   metrics/by_metric/metal_lomo_auc_wasserstein.json; the arm writes to
+#   molmetal/reports/dmpnn_matched_2026_10_10/metrics.json only.
+#
+# HONEST-NEGATIVE carried into the result (must survive into any write-up)
+#   - After dedup, Rh n_test=51, Os 36, Re 74 — all below the probe's
+#     MIN_UNIQUE_FOR_GATE=200. Those three folds are NOT resolvable and must
+#     not be gated. Only Ru (1255) and Ir (534) carry a claimable AUC.
+#   - Ru is 1255 of the 1950 deduplicated rows (64%), so the POOLED mean is
+#     dominated by Ru and must never be quoted without the per-metal table.
+#   - wasserstein_real stays OFF, so wasserstein_loss_history will again be all
+#     0.0. This arm is NOT a W2 result and must not be described as one.
