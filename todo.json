@@ -2351,170 +2351,201 @@
     }
   ],
   "execution_order": {
-    "rationale": "Fix infra first (enables reliable retests), then highest-value metric lift, then paper sync. Each step has a clear done_when criterion.",
-    "sequence": [
+    "rewritten": "2026-10-10 — 依据 docs/00_MODEL_NARRATIVE.md（置顶）+ 全量 status 补齐后的真实分布",
+    "supersedes_rationale": "旧版把 BLK-I1 / BLK-D1 排在第 1、2 步 —— 两者现已关闭。旧版也把跨金属当主线，而该轴已降为次要发现（无同协议基线）。",
+    "headline": "**论文现在就可提交。** Phase 1 全部为零计算成本；Phase 2/3 是改进，不是阻塞项。把 Phase 2 当成收尾的一部分会拖住投稿。",
+    "phases": [
       {
-        "step": 1,
-        "blocker_id": "BLK-I1",
-        "what": "Fix launcher silent death",
-        "done_when": "5/5 bace seeds complete without silent death (BLK-D1 retest enabler)",
-        "wall_min": 40
+        "phase": 0,
+        "name": "收尾闭环",
+        "gate": "DONE",
+        "compute": "none",
+        "items": [
+          {
+            "id": "R1",
+            "what": "bace 决定接受并披露",
+            "status": "DONE",
+            "note": "两条修复路径均已实测证伪（attentivefp 打平 / class-weighting 更差）"
+          },
+          {
+            "id": "R2",
+            "what": "DESIGN_BOUNDARY 可达性假表述更正",
+            "status": "DONE",
+            "note": "≥0.95 → 实测 Ru 0.652 / Ir 0.359 等，gate 0.85 全部未过"
+          },
+          {
+            "id": "R3",
+            "what": "两处 SSOT 同名两值加消歧注记",
+            "status": "DONE",
+            "note": "未覆盖任何测量字段；registry 重锁后 PASS"
+          },
+          {
+            "id": "R4",
+            "what": "7 个退役 wrapper 归档 + §5.9 venv 路径修正",
+            "status": "DONE",
+            "note": "_wrapper_audit 由 rc=1 转 rc=0"
+          },
+          {
+            "id": "R5",
+            "what": "registry.py generate() ModuleNotFoundError",
+            "status": "DONE",
+            "note": "已修 + 回归测试（已验证非空转）"
+          }
+        ]
       },
       {
-        "step": 2,
-        "blocker_id": "BLK-D1",
-        "what": "bace 5-seed retest",
-        "done_when": "5-seed mean +/- std MEASURED + section 5.5 ls -la evidence",
-        "wall_min": 40
+        "phase": 1,
+        "name": "论文可提交性（零计算成本，阻塞投稿）",
+        "gate": "TODO",
+        "compute": "none",
+        "wall_min": 60,
+        "rationale": "Phase 1 做完即可投稿。它不是'还能更好'，是'缺的诚实性检查'。",
+        "items": [
+          {
+            "step": 1,
+            "id": "P-VERIFY",
+            "what": "论文数字的 §5.2 全量溯源审计：把 docs/00_MODEL_NARRATIVE.md §2 表里每一行追到 metrics/by_metric/*.json 的具体字段",
+            "done_when": "§2 表 12 行全部有 source JSON + 字段路径，无 '待补'",
+            "blocks_submission": true,
+            "compute": "none"
+          },
+          {
+            "step": 2,
+            "id": "P-LIMIT",
+            "what": "写 §6 局限段：bace −0.134 / Os·Re 跨金属低于随机且 Rh·Os·Re 不可分辨 / 5d 贵金属可达性不足 / 标签噪声 ~92% Bayes 上限",
+            "done_when": "四段各有 MEASURED 数字与出处，无 PROJECTED 混入",
+            "blocks_submission": true,
+            "compute": "none"
+          },
+          {
+            "step": 3,
+            "id": "P-CHECK",
+            "what": "核对 §5.2 标签纪律：论文里每个数字带 MEASURED/PROJECTED 标签，PROJECTED 一律带 @Rx",
+            "done_when": "grep 检查无裸数字",
+            "blocks_submission": true,
+            "compute": "none"
+          },
+          {
+            "step": 4,
+            "id": "BLK-P4b",
+            "what": "把 R2 更正的 reachability 事实同步进论文局限（DESIGN_BOUNDARY 已改，论文还没写）",
+            "done_when": "局限段含 0.85 gate 与 per-metal 表",
+            "blocks_submission": true,
+            "compute": "none"
+          }
+        ]
       },
       {
-        "step": 3,
-        "blocker_id": "BLK-C1",
-        "what": "CFM bond head 20-ep retest",
-        "done_when": "20 epochs complete + bond_f1 + exact_match + pr_auc MEASURED",
-        "wall_min": 20
+        "phase": 2,
+        "name": "CFM 生成目标函数（唯一真实工程问题，非投稿阻塞）",
+        "gate": "BLOCKED on design decision",
+        "compute": "GPU",
+        "rationale": "C11/C12/C13/C15 是**同一个问题的四个面**：loss 里没有生成目标，于是 bond head 单调涨 F1 而生成崩塌。修好它会改变生成侧的所有数字，所以它属于'下一个工作项'而不是'收尾'。",
+        "items": [
+          {
+            "step": 1,
+            "id": "BLK-C15",
+            "what": "定义生成目标函数到底是什么",
+            "done_when": "写下一个可判定的目标式（当前 12 项 loss 里 8 项恒为零）",
+            "blocking": "需要用户方向 —— 这是设计决策不是实现",
+            "note": "先读 arXiv:2410.10516 (UniGEM) 的 late-stage bond-head activation，它是本条的直接先例"
+          },
+          {
+            "step": 2,
+            "id": "BLK-C13",
+            "what": "bond_head_warmup_epochs 不再冻结整条 loss",
+            "done_when": "§5.7 50 步 CPU smoke：loss[0] > loss[49] 且期间有生成项梯度",
+            "depends_on": "BLK-C15"
+          },
+          {
+            "step": 3,
+            "id": "BLK-C12",
+            "what": "让生成目标真正进入 loss",
+            "done_when": "逐项打印 loss 组成，零项 ≤ 4",
+            "depends_on": "BLK-C15"
+          },
+          {
+            "step": 4,
+            "id": "BLK-C11",
+            "what": "重测崩塌是否解决",
+            "done_when": "gen_validity > 0 且不单调塌向 majority；bond_f1 必须与 decode_ratio/gen_validity/exact_match 联合报告",
+            "depends_on": "BLK-C12, BLK-C13"
+          }
+        ]
       },
       {
-        "step": 4,
-        "blocker_id": "BLK-C4",
-        "what": "m5 QED on CFM output: wire --qed-penalty + --qed-target + retrain + measure",
-        "done_when": "m5 QED MEASURED on CFM-generated cohort, r4_m4m5m7_cfm_generated.json §5.5 ls -la",
-        "wall_min": 165
-      },
-      {
-        "step": 5,
-        "blocker_id": "BLK-C5",
-        "what": "m4 SA on CFM output: per-batch SA scoring path + retrain + measure",
-        "done_when": "SA mean 2.5-2.7 band MEASURED, r4_m4m5m7_cfm_generated.json §5.5 ls -la",
-        "wall_min": 195
-      },
-      {
-        "step": 6,
-        "blocker_id": "BLK-C6",
-        "what": "m7 diversity on CFM output: all 6 flags ON + retrain + measure Tanimoto",
-        "done_when": "m7 diversity >= 0.81 (Krasnov SOTA) MEASURED, r4_m4m5m7_cfm_generated.json §5.5 ls -la",
-        "wall_min": 145
-      },
-      {
-        "step": 7,
-        "blocker_id": "BLK-C7",
-        "what": "CFM Vina via cfm_vina_dock_panel: chemotype atype + 10-pocket re-bench",
-        "done_when": "CFM Vina median MEASURED on 10-pocket cohort + chemotype_atype_accepted evidence",
-        "wall_min": 255
-      },
-      {
-        "step": 8,
-        "blocker_id": "BLK-C8",
-        "what": "CFM OT-CFM e2e: 5-metal x 5-seed with --use-ot-cfm",
-        "done_when": "m1_auc lift MEASURED vs OFF arm + per-fold delta",
-        "wall_min": 105
-      },
-      {
-        "step": 9,
-        "blocker_id": "BLK-C9",
-        "what": "m22 SE(3) SB production F1: wire + retrain + measure",
-        "done_when": "F1 lift MEASURED vs EGNN baseline + per-class breakdown",
-        "wall_min": 235
-      },
-      {
-        "step": 10,
-        "blocker_id": "BLK-C10",
-        "what": "CFM click chemistry 5 reactions: panel run on CFM-generated cohort",
-        "done_when": "5 reactions x 3 seeds x 192 cells = 2880 click attempts; pass-rate MEASURED",
-        "wall_min": 165
-      },
-      {
-        "step": 11,
-        "blocker_id": "BLK-D2",
-        "what": "m19 drop-Rh-folds sensitivity",
-        "done_when": "4-metal mean MEASURED + Rh-fold contribution quantified",
-        "wall_min": 75
-      },
-      {
-        "step": 12,
-        "blocker_id": "BLK-L1",
-        "what": "Fix wf433_m2_extended + 50-d feature wire",
-        "done_when": "R2 MEASURED at 50-d, n=4078",
-        "wall_min": 165
-      },
-      {
-        "step": 13,
-        "blocker_id": "BLK-C3",
-        "what": "CFM chemistry validity metric",
-        "done_when": "chemistry_validity_pass_rate MEASURED over 192 val clouds",
-        "wall_min": 45
-      },
-      {
-        "step": 14,
-        "blocker_id": "BLK-L2",
-        "what": "Fix stale line ref + alias doc sync",
-        "done_when": "JSON ref 1274-1276 + Wf-R43-A2 closeout mentions alias",
-        "wall_min": 15
-      },
-      {
-        "step": 15,
-        "blocker_id": "BLK-I2",
-        "what": "pre-flight section 1.4 wrapper",
-        "done_when": "Every scripts/launch_*.sh gates on pre-flight",
-        "wall_min": 65
-      },
-      {
-        "step": 16,
-        "blocker_id": "BLK-C2",
-        "what": "W2 framing fix (docs only, user-gated)",
-        "done_when": "User approves W2-as-regulariser framing in paper section 3.4",
-        "wall_min": 30
-      },
-      {
-        "step": 17,
-        "blocker_id": "BLK-L3",
-        "what": "m4 + m22 DEFERRED framing (docs only, user-gated)",
-        "done_when": "User approves Limitations section 6 framing",
-        "wall_min": 15
-      },
-      {
-        "step": 18,
-        "blocker_id": "BLK-I3",
-        "what": "paper section 1.2 sync (user-gated)",
-        "done_when": "User approves n=4078 column + honest-negative framing",
-        "wall_min": 30
-      },
-      {
-        "step": 19,
-        "blocker_id": "ALL",
-        "what": "Final section 6.39 update + commit",
-        "done_when": "HONEST_NEGATIVE_CATALOG updated + section 22.153 trailer + commit",
-        "wall_min": 15
+        "phase": 3,
+        "name": "可选增强（GPU，时间富余才做）",
+        "gate": "OPTIONAL",
+        "compute": "GPU",
+        "rationale": "都不是投稿阻塞项。列在这里是为了不丢线索，不是为了催。",
+        "items": [
+          {
+            "id": "BLK-G1",
+            "what": "CFM bond head 用 tmQM 预训练 D-MPNN 初始化",
+            "why_first": "唯一没试过、且成本低的独立杠杆（方案 C 只读检查 ≈ 30 min CPU）",
+            "done_when": "预训练特征在活性任务上确实优于随机初始化；否则整条 init 线关闭",
+            "wall_min": 30
+          },
+          {
+            "id": "BLK-P1",
+            "what": "D-MPNN 在与 XGB 完全同一 cohort 上测金属内 AUC",
+            "why": "工具已就绪（--dedup-ligands / --drop-leaked-ligands，dry-run 行数逐个吻合）",
+            "but_note": "跨金属已降为次要发现，本条从'最高优先级'降为可选。它只支撑 §3 细分任务路由表，不支撑任何头条数字",
+            "rerun_cmd": "molmetal/reports/dmpnn_matched_2026_10_10/RERUN_CMD.txt"
+          },
+          {
+            "id": "BLK-P2b",
+            "what": "MCTS 价值通道在更大队列上重测",
+            "blocked": "预算决策。按实测 9.1× 成本放大，默认规模 50×10 不便宜",
+            "if_done": "需 n_targets 50 / n_seeds 10、max_depth 5-6、并扫 w_dmpnn_value"
+          },
+          {
+            "id": "BLK-L1",
+            "what": "platinai_4cell R² 接 50-d 特征",
+            "status": "PARTIALLY_RESOLVED —— R² 已实测 +0.01025±0.00359（≈0），真正没修的是 chemprop_v3 + Hilbert 50-d 从未接进 loader"
+          },
+          {
+            "id": "BLK-D2",
+            "what": "m19 gate 0.70 重设",
+            "demoted_because": "跨金属是次要发现，一个次要轴的 gate 不需要为了通过而重设。且项目记忆记录 0.70 与 0.86 是两套都正确的约定，不要合并",
+            "still_worth_doing_because": "test_registry.py:174-178 钉住 gap<0；不改就会永久 BELOW_GATE，掩盖真实发现"
+          },
+          {
+            "id": "BLK-C4/C6",
+            "what": "补验 m5 QED / m7 diversity 的接线与实测值",
+            "status": "NEEDS_VERIFICATION —— 本轮未核实，不是结论",
+            "wall_min": 15
+          }
+        ]
       }
     ],
-    "total_wall_min": 1820,
-    "total_wall_h": 30.33
+    "reading_rule": "汇报状态前读 blocker_status_sweep_2026_10_10.rollup，**不要用 len(blockers)**。"
   },
   "next_actions": [
     {
       "priority": 1,
-      "action": "BLK-C11 is now MEASURED (clean A/B above). The next step is BLK-C12: decide what the generation objective is, then implement UniGEM's late-stage bond-head activation. Both arms collapsing at ep18 while bond_f1 climbs monotonically is the evidence that the bond CE term is what is winning.",
-      "blocking": "design decision on the generation objective — needs user direction"
+      "phase": 1,
+      "action": "Phase 1 四步（零计算成本）—— 这是唯一阻塞投稿的东西。做完即可投。",
+      "blocking": "none — 全部可立即开工"
     },
     {
       "priority": 2,
-      "action": "Read arXiv:2410.10516 (UniGEM) before implementing BLK-C11 Step 2 — it is the direct precedent for late-stage head activation.",
-      "blocking": "none (reading)"
+      "phase": 2,
+      "action": "BLK-C15 生成目标函数设计决策。这是唯一真实的工程问题，但它属于下一个工作项，不是收尾项 —— 修好会改变生成侧所有数字。",
+      "blocking": "**需要用户方向**（设计决策，非实现）"
     },
     {
       "priority": 3,
-      "action": "BLK-C12: decide what the generation objective is. Nothing in the loss currently asks the model to generate well.",
-      "blocking": "design decision, needs user direction"
+      "phase": 3,
+      "action": "BLK-G1 方案 C 只读可行性检查（30 min CPU）—— 唯一没试过的低成本独立杠杆。",
+      "blocking": "none"
     },
     {
       "priority": 4,
-      "action": "BLK-C10 re-scope: either build a module that reads CFM-generated substrates and scores conversion, or close as NOT-ANSWERABLE.",
-      "blocking": "needs user decision on which"
-    },
-    {
-      "priority": 5,
-      "action": "Wire scripts/_launcher_hardening_gate.py into pre_flight_check.py — the gate exists and covers BLK-I2 but is not invoked by the pre-launch surface, so BLK-I2 is NOT closed.",
-      "blocking": "none (CPU)"
+      "phase": 3,
+      "action": "BLK-C4 / BLK-C6 补验（15 min）—— 目前标 NEEDS_VERIFICATION，不是结论。",
+      "blocking": "none"
     }
   ],
   "literature_2026_10_10": {
