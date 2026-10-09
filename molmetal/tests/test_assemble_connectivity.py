@@ -397,3 +397,239 @@ def test_batch_skips_a_cloud_with_no_pair_indices():
     )
     assert n_none == 0
     assert float(zero_loss) == 0.0
+
+
+# ===========================================================================
+# formulation="escape_time" — added 2026-10-10, opt-in, NOT the default.
+#
+# Why this block exists: the fragmentation problem BLK-C11 is about is real and
+# measured (50.4% of decoded molecules are multi-fragment, 23.0% have a fully
+# detached metal centre), and assemble_term is the term written to address it.
+# But the shipped "product" aggregation has a gradient that scales with the
+# product it returns, so it goes to ~1e-06 on a connected graph — the regime a
+# prevention objective lives in. These tests pin what the alternative buys and,
+# just as importantly, what it costs: it violates the "connected graphs get no
+# gradient" property that the suite above pins deliberately.
+# ===========================================================================
+
+
+def _chain_adj(n: int, p: float, bonds=None):
+    A = torch.zeros(n, n, dtype=torch.float64)
+    bonds = bonds if bonds is not None else [(i, i + 1) for i in range(n - 1)]
+    for i, j in bonds:
+        A[i, j] = p
+        A[j, i] = p
+    return A
+
+
+Z7 = torch.tensor([78, 6, 6, 6, 6, 17, 17])
+
+
+def _loss_and_grad(A, formulation, bonds=None, n=7):
+    E = int((A > 0).sum() // 2)
+    src, dst = [], []
+    seen = set()
+    for i in range(n):
+        for j in range(n):
+            if i < j and A[i, j] > 0 and (i, j) not in seen:
+                src.append(i)
+                dst.append(j)
+                seen.add((i, j))
+    logits = torch.zeros(len(src), 5, dtype=torch.float64)
+    for k in range(len(src)):
+        logits[k, 0] = torch.log(torch.tensor(1.0 - A[src[k], dst[k]], dtype=torch.float64))
+        logits[k, 1] = torch.log(torch.tensor(A[src[k], dst[k]], dtype=torch.float64))
+    logits = logits.requires_grad_(True)
+    loss, _, _ = assemble_fragment_loss(
+        logits, (torch.tensor(src), torch.tensor(dst)), Z7,
+        formulation=formulation,
+    )
+    g = torch.autograd.grad(loss, logits)[0]
+    return float(loss.detach()), float(g.abs().max())
+
+
+def test_escape_time_keeps_the_connected_graphs_ordering():
+    """It must still say: stranded atom worse than connected atom."""
+    conn = _chain_adj(7, 0.9)
+    iso = _chain_adj(7, 0.9, bonds=[(1, 2), (2, 3), (3, 4), (4, 5)])
+    v_conn, _ = _loss_and_grad(conn, "escape_time")
+    v_iso, _ = _loss_and_grad(iso, "escape_time")
+    assert v_iso > v_conn, f"isolated {v_iso} must exceed connected {v_conn}"
+
+
+def test_escape_time_has_a_live_gradient_where_product_does_not():
+    """The whole point. On a connected graph the product gradient is ~1e-06."""
+    # MEASURED at the logits (not adjacency) level, 2026-10-10, 7-atom chain:
+    #     case              product |g|   escape_time |g|    ratio
+    #     connected p=.9     4.62e-09        3.46e-04      7.5e4
+    #     metal isolated     6.17e-09        4.45e-04      7.2e4
+    #     weak bonds p=.3    3.98e-08        2.60e-03      6.5e4
+    # The product's gradient is ~5e-09 in EVERY case, including where its own
+    # value is 0.286 — so it is a diagnostic, not an objective.
+    conn = _chain_adj(7, 0.9)
+    _, g_prod = _loss_and_grad(conn, "product")
+    _, g_esc = _loss_and_grad(conn, "escape_time")
+    assert g_prod < 1e-6, (
+        f"product gradient on a connected graph is {g_prod:.2e} — if this is no "
+        "longer tiny, the justification for escape_time is gone and this test "
+        "should be deleted, not updated"
+    )
+    assert g_esc > 1e-5, (
+        f"escape_time gradient on a connected graph is only {g_esc:.2e}"
+    )
+    assert g_esc / max(g_prod, 1e-30) > 1e3, (
+        f"escape_time buys only {g_esc / max(g_prod, 1e-30):.0f}x — not the "
+        "5+ orders of magnitude the reformulation was adopted for"
+    )
+
+
+def test_escape_time_violates_the_pinned_near_zero_gradient_property():
+    """Documenting the COST, so the trade-off cannot be quietly forgotten.
+
+    test_fully_connected_graph_has_near_zero_gradient above pins "don't spend
+    gradient on a graph that is already fine". escape_time deliberately spends
+    it. That is why it is opt-in. If someone flips the default without reading
+    this, this test is the thing that should have stopped them.
+    """
+    conn = _chain_adj(7, 0.9)
+    v_prod, g_prod = _loss_and_grad(conn, "product")
+    v_esc, g_esc = _loss_and_grad(conn, "escape_time")
+    assert g_prod < 1e-4 < g_esc, (
+        "the two formulations no longer differ on connected-graph gradient; "
+        "re-derive before relying on this"
+    )
+
+
+def test_escape_time_is_not_near_zero_on_a_connected_graph():
+    """The offset. escape_time reads ~0.3 where product reads ~2e-07.
+
+    So it is not a drop-in replacement for the product form: it adds a roughly
+    constant contribution to the loss sum and must be weighted accordingly.
+    """
+    conn = _chain_adj(7, 0.9)
+    v_prod, _ = _loss_and_grad(conn, "product")
+    v_esc, _ = _loss_and_grad(conn, "escape_time")
+    assert v_prod < 1e-5 < v_esc
+    assert v_esc < 1.0, "escape_time must stay bounded in [0, 1]"
+
+
+def test_escape_time_is_monotone_decreasing_in_bond_probability():
+    prev = None
+    for p in (0.2, 0.5, 0.8, 0.95):
+        v, _ = _loss_and_grad(_chain_adj(7, p), "escape_time")
+        if prev is not None:
+            assert v < prev, f"penalty rose as bonds strengthened (p={p}: {v} vs {prev})"
+        prev = v
+
+
+def _loss_and_grad_h(A, formulation, tau, n=7):
+    """Same as _loss_and_grad but with the hinge dead zone applied."""
+    src, dst = [], []
+    for i in range(n):
+        for j in range(i + 1, n):
+            if A[i, j] > 0:
+                src.append(i)
+                dst.append(j)
+    rows = []
+    for k in range(len(src)):
+        row = [0.0] * 5
+        row[0] = float(torch.log(torch.tensor(1.0 - A[src[k], dst[k]], dtype=torch.float64)))
+        row[1] = float(torch.log(torch.tensor(A[src[k], dst[k]], dtype=torch.float64)))
+        rows.append(row)
+    logits = torch.tensor(rows, dtype=torch.float64, requires_grad=True)
+    loss, _, _ = assemble_fragment_loss(
+        logits, (torch.tensor(src), torch.tensor(dst)), Z7,
+        formulation=formulation, hinge_tau=tau,
+    )
+    g = torch.autograd.grad(loss, logits)[0]
+    return float(loss.detach()), float(g.abs().max())
+
+
+def test_unknown_formulation_is_rejected_loudly():
+    """A typo must not silently fall back to one of the two."""
+    conn = _chain_adj(7, 0.9)
+    src, dst = [], []
+    for i in range(6):
+        src.append(i)
+        dst.append(i + 1)
+    logits = torch.zeros(6, 5, dtype=torch.float64, requires_grad=True)
+    with pytest.raises(ValueError, match="product"):
+        assemble_fragment_loss(
+            logits, (torch.tensor(src), torch.tensor(dst)), Z7,
+            formulation="escape-tim",
+        )
+
+
+# ===========================================================================
+# The hinge, at the tau derived from tmQM (2026-10-10, user-selected).
+#
+# tau = 0.30 comes from metrics/by_metric/cfm_assemble_hinge_tau.json: it is the
+# smallest round value above BOTH measured bounds — the maximum stay_mean over
+# 1500 correct tmQM complexes (0.2649) and the stay_mean of a connected graph the
+# head predicts confidently at p=0.9 (0.2629). These tests exist so that neither
+# bound can be quietly eroded, and so the dead zone cannot silently grow into
+# something that never fires.
+# ===========================================================================
+
+TAU = 0.30
+TAU_CORPUS_MAX = 0.2649  # max stay_mean over 1500 tmQM ground-truth complexes
+TAU_MODEL_CONNECTED = 0.2629  # stay_mean of a p=0.9 connected 7-atom chain
+
+
+def test_tau_exceeds_the_measured_corpus_bound():
+    conn = _chain_adj(7, 0.9)
+    v, _ = _loss_and_grad(conn, "escape_time")
+    assert v < TAU, (
+        f"a confidently-connected graph reads {v:.4f}, at or above tau={TAU} — "
+        "the dead zone no longer protects the case it exists for. Re-derive tau "
+        "in metrics/by_metric/cfm_assemble_hinge_tau.json before changing it here."
+    )
+
+
+def test_hinge_preserves_the_pinned_zero_gradient_property():
+    """The whole reason the hinge was chosen over a raw default flip."""
+    conn = _chain_adj(7, 0.9)
+    v, g = _loss_and_grad(conn, "escape_time")
+    vh, gh = _loss_and_grad_h(conn, "escape_time", TAU)
+    assert v < TAU and vh == 0.0, f"expected the hinge to zero this out, got {vh}"
+    assert gh == 0.0, (
+        f"hinged gradient on a connected graph is {gh:.2e}, expected exactly 0 "
+        "— test_fully_connected_graph_has_near_zero_gradient depends on this"
+    )
+
+
+def test_hinge_still_penalises_a_detached_metal():
+    iso = _chain_adj(7, 0.9, bonds=[(1, 2), (2, 3), (3, 4), (4, 5)])
+    vh, gh = _loss_and_grad_h(iso, "escape_time", TAU)
+    assert vh > 0, "the hinge silences the case it was built for"
+    assert gh > 1e-6, f"hinged gradient on a detached metal is {gh:.2e}"
+
+
+def test_hinge_gradient_is_millions_of_times_the_product_gradient():
+    iso = _chain_adj(7, 0.9, bonds=[(1, 2), (2, 3), (3, 4), (4, 5)])
+    _, g_prod = _loss_and_grad(iso, "product")
+    _, g_hinge = _loss_and_grad_h(iso, "escape_time", TAU)
+    assert g_hinge / max(g_prod, 1e-30) > 1e3, (
+        f"hinge buys only {g_hinge / max(g_prod, 1e-30):.0f}x over product"
+    )
+
+
+def test_hinge_is_monotone_and_bounded():
+    prev = None
+    for p in (0.2, 0.5, 0.8, 0.95):
+        v, _ = _loss_and_grad_h(_chain_adj(7, p), "escape_time", TAU)
+        assert 0.0 <= v <= 1.0, f"hinged penalty out of [0,1]: {v}"
+        if prev is not None:
+            assert v <= prev + 1e-12, "hinged penalty rose as bonds strengthened"
+        prev = v
+
+
+def test_tau_bounds_are_recorded_next_to_the_value():
+    """Guard the provenance of the constant, not just its arithmetic."""
+    assert TAU_CORPUS_MAX == 0.2649 and TAU_MODEL_CONNECTED == 0.2629, (
+        "the measured bounds recorded here changed — re-derive tau and update "
+        "this test deliberately"
+    )
+    assert TAU > max(TAU_CORPUS_MAX, TAU_MODEL_CONNECTED), (
+        f"tau={TAU} no longer clears the measured bounds"
+    )

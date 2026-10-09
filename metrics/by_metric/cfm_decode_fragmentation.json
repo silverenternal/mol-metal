@@ -1,0 +1,47 @@
+{
+  "metric": "cfm_decode_fragmentation",
+  "description": "Fragmentation of decoded CFM molecules — the failure mode that BLK-C11 is actually about, once the (withdrawn) valence story is set aside.",
+  "tag": "MEASURED",
+  "date": "2026-10-10",
+  "source_script": "RDKit on the generated_smiles.csv of three real CFM runs",
+  "protocol": "every decoded SMILES, metal atoms identified by symbol, n_fragments via Chem.GetMolFrags",
+  "headline": {
+    "n_molecules": 2146,
+    "multifragment_rate": 0.504,
+    "metal_detached_rate": 0.23,
+    "metal_detached_and_multifragment": 494,
+    "statement": "Half of the decoded molecules come out as two or more disconnected fragments, and in 23% of them the metal centre has NO bonds at all. Every zero-coordination case is also a multi-fragment case — these are one failure, not two."
+  },
+  "per_run": {
+    "cfm_fm_ab_2026_10_09": {
+      "n": 1128,
+      "metal_coord0": 275,
+      "metal_coord0_rate": 0.244,
+      "multifragment": 504,
+      "multifragment_rate": 0.447
+    },
+    "cfm_fm_control_2026_10_09": {
+      "n": 871,
+      "metal_coord0": 217,
+      "metal_coord0_rate": 0.249,
+      "multifragment": 457,
+      "multifragment_rate": 0.525
+    },
+    "cfm_blk_c5_repair_2026_10_09": {
+      "n": 147,
+      "metal_coord0": 2,
+      "metal_coord0_rate": 0.014,
+      "multifragment": 120,
+      "multifragment_rate": 0.816
+    }
+  },
+  "note_on_the_odd_run": "cfm_blk_c5_repair splits the two rates: 1.4% detached metal but 81.6% multi-fragment. So the ligands fall off while the metal usually stays attached there — fragmentation and metal-detachment are strongly but not perfectly coupled, and any objective should be scored on both.",
+  "why_this_is_the_real_blocker": {
+    "the_term_that_targets_it": "molmetal/molmetal_lam/lam_chem/assemble_connectivity.py::assemble_fragment_loss, wired into the loss sum as `assemble_term`",
+    "measured_defect": "the shipped 'product' aggregation returns prod_{k=1..12}(P^k)[i,i], whose gradient scales with the product. MEASURED at the logits: ~5e-09 in every case — connected chain 4.62e-09, metal-isolated 6.17e-09, weak bonds 3.98e-08 — against a bond_ce gradient of O(1). It is ~8 orders of magnitude too small to train anything.",
+    "consequence": "assemble_loss_weight is 0.0 in every config on disk, and even at weight 1.0 the term read exactly 0.0 on the tmQM cohort because the product underflows on a connected graph. Enabling it as-is would be the FLAG_ONLY failure this module was written to prevent, one level up.",
+    "reformulation": "`formulation='escape_time'` takes the ARITHMETIC mean of the same per-step stay probabilities instead of their product. Same ordering, bounded in [0,1], gradient ~3.5e-04 to 2.6e-03 — about 7e4x larger. All four invariants the module was written for still hold.",
+    "NOT_MADE_DEFAULT": "Flipping the default breaks 10 of 21 tests, including test_fully_connected_graph_has_near_zero_gradient, which pins 'a connected graph gets no gradient' as a DELIBERATE property. The two formulations are in genuine tension and the choice is a judgement call, not a bug fix. Left opt-in; see todo.json BLK-C11."
+  },
+  "also_fixed": "_soft_bond_probabilities returned fp32 unconditionally (logits.float()) while the caller builds `adj` at logits.dtype, so a float64 input made index_put raise. Now casts back to logits.dtype, keeping the fp32 softmax for bf16 stability."
+}

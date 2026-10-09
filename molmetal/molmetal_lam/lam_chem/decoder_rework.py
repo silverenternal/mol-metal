@@ -122,6 +122,7 @@ __all__ = [
     "DecoderRework",
     "ReworkResult",
     "ReworkedDecoder",
+    "TMQM_MEASURED_METAL_CAPS",
     "soft_distance_mask",
     "type_compat_mask",
     "valence_log_barrier",
@@ -173,6 +174,71 @@ _DEFAULT_VALENCES: Dict[int, int] = {
     77: 6,  # Ir
     29: 4,  # Cu
     79: 4,  # Au
+}
+
+
+#: Transition-metal caps MEASURED from this project's own corpus, 2026-10-10.
+#:
+#: WHAT THIS IS FOR
+#: ----------------
+#: :data:`_DEFAULT_VALENCES` above is a *documented single-oxidation-state*
+#: table — the test at ``molmetal_lam/tests/test_cfm_p0_fixes.py`` pins
+#: ``DEFAULT_VALENCES[78] == 4`` on the grounds that "Pt_II is square planar".
+#: That is a statement about Pt(II), not about platinum, and this repo trains on
+#: all-6-metal tmQM where 13% of the Pt complexes are six-coordinate.
+#:
+#: :func:`valence_log_barrier` hardcodes a fallback of ``cap = 4`` for any Z
+#: absent from the table, which is why Rh (45), Os (76) and Re (75) — three of
+#: the six metals in every CFM cohort — were silently constrained as if they
+#: were four-coordinate. Measured against the corpus, that fallback sits BELOW
+#: the median for all three and far below it for Os and Re, so a penalty built
+#: on it charges the model for reproducing its own training set.
+#:
+#: THE MEASUREMENT, AND WHY THIS BASIS
+#: -----------------------------------
+#: Basis is ``metal_bo_sum`` — the sum of Wiberg bond orders at the metal, from
+#: the tmQM ``.BO`` blocks — because that is the quantity the barrier actually
+#: constrains (``excess = clamp(atom_orders - cap)`` where ``atom_orders`` is a
+#: scatter-add of per-pair bond orders). Source:
+#: ``.data/molmetal/tmQM/tmqm_parsed.csv``, counted 2026-10-10.
+#:
+#: NOT ``coord_number``. The loader maps tmQM's ``MND`` field to
+#: ``coord_number`` with no check, and the two quantities disagree: MND matches
+#: ``bo_n_neighbors`` for 17869 complexes and not for 15560, and against
+#: ``metal_bo_sum`` the mean |MND - bo_sum| is 0.81 (Re) to 2.43 (Ir). MND is a
+#: crystallographic coordination number from the deposited structure; bo_sum is
+#: a quantum-chemistry bond-order sum. Deriving a cap for a bond-order barrier
+#: from the coordination number is a category error, and an earlier draft of
+#: this work did exactly that.
+#:
+#:     metal   n       p50    p90    p99    max    (metal_bo_sum)
+#:     Pt      8275    3.25   4.12   4.54   5.74
+#:     Ru      9800    4.85   5.84   6.48   7.06
+#:     Ir      5232    4.04   4.70   5.42   6.19
+#:     Rh      4640    3.92   4.52   5.17   5.85
+#:     Os      1310    5.27   6.21   7.00   7.58
+#:     Re      4172    6.46   6.85   7.40   7.92
+#:
+#: Caps are p99 rounded up: high enough that the penalty does not fire on the
+#: bulk of the corpus, low enough that a genuinely over-coordinated centre is
+#: still caught. ``molmetal/tests/test_cfm_metal_valence_caps.py`` pins every
+#: entry against these percentiles, so editing one without re-deriving fails.
+#:
+#: KNOWN LIMITATION, stated rather than hidden: a single per-element cap cannot
+#: express that the same element has a different ceiling at a different
+#: oxidation state (Pt(II) square-planar vs Pt(IV) octahedral). The
+#: oxidation-state-aware formulation is the one the literature has moved to
+#: (bond-valence-sum with assigned oxidation states; see OxiGen,
+#: arXiv:2610.08296). This trainer has no oxidation-state machinery, so the
+#: proxy stands — but it is a proxy, and enabling it is a decision, not a
+#: default. See todo.json BLK-M1.
+TMQM_MEASURED_METAL_CAPS: Dict[int, float] = {
+    78: 5.0,  # Pt  p99 4.54
+    44: 7.0,  # Ru  p99 6.48
+    77: 6.0,  # Ir  p99 5.42  (unchanged from the documented default)
+    45: 6.0,  # Rh  p99 5.17  (was: absent -> fallback 4)
+    76: 7.0,  # Os  p99 7.00  (was: absent -> fallback 4)
+    75: 8.0,  # Re  p99 7.40  (was: absent -> fallback 4)
 }
 
 

@@ -146,6 +146,7 @@ from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
 from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
     YuelBondDecoderHead,
     bond_decision as _bond_decision,
+    z_to_onehot,
     _YUELBOND_Z_TABLE,
 )
 
@@ -157,6 +158,7 @@ from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
 # pre-D1 behaviour; see `assemble_loss_weight` in train_one_epoch).
 from molmetal.molmetal_lam.lam_chem.assemble_connectivity import (
     batch_assemble_loss as _batch_assemble_loss,
+    mean_stay_probability as _mean_stay_probability,
 )
 
 
@@ -219,6 +221,10 @@ _LAST_ASSEMBLE_STATS: Dict[str, float] = {
     "assemble_loss": 0.0,
     "assemble_fragments": 0.0,
     "assemble_largest_fragment_frac": 0.0,
+    # 2026-10-10 (BLK-C11) — the raw, UNHINGED stay_mean. Read this to decide
+    # where a model sits on the disconnection axis; `assemble_loss` cannot be
+    # used for that because it is post-weight and post-hinge.
+    "assemble_stay_mean": 0.0,
     "assemble_enabled": 0.0,
 }
 
@@ -362,6 +368,8 @@ def build_lr_scheduler(
     scheduler_type: str,
     warmup_steps: int,
     min_lr: float,
+    pct_start: float | None = None,
+    max_lr_scale: float = 10.0,
 ) -> object:
     """Wf-A6 A2 BLOCKER C fix — opt-in LR scheduler factory.
 
@@ -371,6 +379,13 @@ def build_lr_scheduler(
         scheduler_type: 'none' | 'cosine' | 'onecycle'.
         warmup_steps: linear warmup duration in steps (0 = no warmup).
         min_lr: cosine floor / onecycle final_div_factor reference.
+        max_lr_scale: multiplier from each group's base lr to its peak lr.
+            The historical 10 makes the single-group path bit-for-bit
+            unchanged; the multiplier is applied PER GROUP so a split
+            optimiser keeps its split through the curve.
+        pct_start: fraction of total_steps spent in the OneCycle up-phase.
+            ``None`` (default) keeps the historical hardcoded 0.3.  A float
+            makes the warmup length a real knob instead of a constant.
 
     Returns:
         None if scheduler_type == 'none' (default; preserves baseline).
@@ -383,6 +398,10 @@ def build_lr_scheduler(
         - 'onecycle': OneCycleLR(max_lr=base_lr*10, total_steps=total_steps,
           pct_start=0.3, anneal_strategy='cos', div_factor=25,
           final_div_factor=1e4). No separate warmup phase needed.
+
+          ``max_lr`` is built as a PER-GROUP LIST (see the 2026-10-09 note
+          at that line), so a `--gen-head-lr-scale < 1` split survives the
+          whole curve instead of being flattened to one ratio of 1.0.
     """
     if scheduler_type == "none":
         return None
@@ -401,12 +420,52 @@ def build_lr_scheduler(
             milestones=[warmup_steps],
         )
     if scheduler_type == "onecycle":
-        base_lr = float(optimizer.defaults[0]["lr"])
+        # `optimizer.defaults` is a dict (e.g. AdamW: {"lr": 0.0001, "betas": ...
+        # "weight_decay": 0.0001}); indexing it as a list was a stale leftover
+        # from an Adam-only era (where defaults was sometimes wrapped for
+        # inspection).  Smoke-gated by BLK-C4 §5.7 mini CPU smoke
+        # (`test_wf_c4_30ep_onecycle.py`) + VERIFIED 2026-10-09.
+        base_lr = float(optimizer.defaults["lr"])
+        # 2026-10-09 — max_lr MUST be a per-group list when the optimiser
+        # has more than one group.
+        #
+        # `optimizer.defaults["lr"]` is the CONSTRUCTOR kwarg (`args.lr`),
+        # not any individual group's lr, and a scalar `max_lr` is
+        # broadcast to every group by PyTorch.  So the BLK-C5 `--gen-head-
+        # lr-scale` split — which builds groups at lr / lr*scale / lr
+        # (trainer :7406-7413) — was OVERWRITTEN at construction: every
+        # group came out at the same LR for the whole run.
+        #
+        # MEASURED (this repo's .venv torch) before the fix, at the
+        # BLK-C5 config's shape (480 steps, base 1e-4, 16 steps/epoch):
+        #     after construct: lrs = [4.0e-05, 4.0e-05, 4.0e-05]
+        #     max_lrs       = [1e-03,   1e-03,   1e-03]
+        # and at every epoch the gen_flow group ran 100x its configured
+        # 1e-5 — i.e. the isolation was a no-op for the entire run.
+        #
+        # AFTER the fix the same table reads [base, base/10, base] with
+        # ratio 0.1 held at every step, which is what
+        # `molmetal/tests/test_wf_c5_gen_head_lr_isolation.py` asserts.
+        #
+        # For the single-group case this list has one element equal to the
+        # old scalar, so the non-split path is bit-for-bit unchanged.
+        _group_lrs = [float(g.get("lr", base_lr)) for g in optimizer.param_groups]
+        _max_lr = [float(max_lr_scale) * _gl for _gl in (_group_lrs or [base_lr])]
         return OneCycleLR(
             optimizer,
-            max_lr=base_lr * 10,
+            max_lr=_max_lr,
             total_steps=int(total_steps),
-            pct_start=0.3,
+            # 2026-10-09 — pct_start was hardcoded 0.3, so
+            # `protocol.scheduler.warmup_epochs` (which the yaml has carried
+            # since BLK-C4 and which the log line prints as
+            # `warmup_epochs=5 … total_steps=480`) controlled nothing at all
+            # on the OneCycle path.  Derive it from the same warmup_steps
+            # the cosine branch already uses; None keeps the old 0.3.
+            pct_start=(
+                0.3
+                if pct_start is None
+                else max(0.0, min(0.95, float(pct_start)))
+            ),
             anneal_strategy="cos",
             div_factor=25,
             final_div_factor=1e4,
@@ -1017,6 +1076,242 @@ def _block_diag_radius_edges(
     return radius_edge_index(coords_pad, node_mask, cutoff)
 
 
+class _DropoutLinear(nn.Module):
+    """``nn.Linear`` preceded by dropout on its input.
+
+    BLK-C5 (2026-10-09), implementing the user's advice 三 verbatim —
+    "在生成头的最后 1-2 层线性变换前，将 Dropout 比例调大到 0.2 或 0.3".
+
+    Why this instead of an ``nn.Dropout`` module: the trainer's generation
+    head (:class:`YuelBondDecoderHead`) contains **zero** ``nn.Dropout``
+    modules — MEASURED, see the ``--gen-head-dropout`` block in ``main()`` —
+    so there was no existing probability to re-point. (The similarly named
+    ``BondOrderHead`` in ``molmetal/models/bond_head.py`` does have
+    ``dropout=0.10``, but it is not the head this trainer builds.)
+
+    Why it is checkpoint-safe: the original ``weight`` / ``bias``
+    ``Parameter`` objects are re-registered under the same attribute names,
+    so ``state_dict`` keys are byte-identical and every existing CFM
+    checkpoint still loads. ``nn.Dropout`` holds no parameters either, which
+    is why inserting the regulariser costs nothing in state_dict terms.
+    """
+
+    def __init__(self, linear: nn.Linear, p: float) -> None:
+        super().__init__()
+        self.weight = linear.weight
+        self.bias = linear.bias
+        self.p = float(p)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return F.linear(
+            F.dropout(x, p=self.p, training=self.training), self.weight, self.bias
+        )
+
+
+# ---------------------------------------------------------------------------
+# DMPNNBondHead — bond-centered D-MPNN bond predictor
+# ---------------------------------------------------------------------------
+# 2026-10-09 — user voice "dmpnn按理来说不是可以更好地处理这边的bond特征吗,
+# 留个抽象接口,后面方便dmpnn接入":
+#
+#   The D-MPNN (Justin et al., J. Chem. Inf. Model. 2020) is bond-centered
+#   message passing: every directed edge (i, j) has its own hidden state h_e,
+#   updated by GRU([sum_incoming_messages, h_src]).  YuelBondDecoderHead
+#   (the default) is atom-centered — it aggregates messages onto ATOM
+#   features and then reads pairs off the resulting h_i, h_j.  Bond-centered
+#   updating is the textbook fit for per-pair bond classification because the
+#   pair feature lives ON the edge.
+#
+#   The class here wraps the existing DirectedMPNN (see
+#   molmetal.models.dmpnn) and uses forward_per_atom (single-molecule
+#   path, no padding).  The forward contract is BIT-EXACT with
+#   YuelBondDecoderHead.forward so the trainer's downstream code
+#   (model.head(cloud) → (logits, (i_idx, j_idx))) does not have to know
+#   which head is plugged in.  See TODO/04_architecture/model_design.md
+#   §2 (D-MPNN + EGNN hybrid fusion target) and
+#   TODO/AUDIT_RESEARCH_GRADE.md §2.5 (research-grade target: 2D D-MPNN
+#   bond graph ⊕ 3D EGNN coords).
+#
+#   Public surface:
+#     - submodule `atom_encoder`: Z one-hot → hidden_dim (same width as
+#       YuelBond's so the pair_head input dim matches).
+#     - submodule `dmpnn`:         the message-passing backbone; receives
+#       atom features already embedded by atom_encoder, returns per-atom
+#       hidden state h_v_out of shape (N, hidden_dim).
+#     - submodule `pair_head`:     identical shape to YuelBond's pair_head
+#       (Linear(2H+3, H) → ReLU → Linear(H, NUM_BOND_CLASSES)); the bond
+#       NO_BOND bias is the same -0.5 prior (YuelBondDecoderHead
+#       constructs it identically so the two heads agree on calibration
+#       at init).
+#
+#   Edge features (3-dim) — distance, is_dative, is_short — are
+#   featurised inline rather than via the 6-dim GraphFeaturizer in
+#   molmetal.models.dmpnn_cache because the trainer already has them
+#   available as tensors in YuelBondDecoderHead.forward; reusing that
+#   contract keeps the bond-predictor swap a textual diff rather than a
+#   data contract change.
+#
+#   Edge index uses BI-DIRECTIONAL directed edges (i→j and j→i) so the
+#   per-edge hidden state sees both endpoints' incoming traffic.  This
+#   departs from the canonical D-MPNN which is one-way and depends on
+#   the rev_edge_index separately, but it is the minimal change that
+#   preserves YuelBondDecoderHead's existing bi-directionality and so
+#   keeps the pair features for (i, j) and (j, i) consistent with the
+#   default head's behaviour.
+class DMPNNBondHead(nn.Module):
+    """Bond-centered D-MPNN bond predictor with the SAME forward contract
+    as :class:`YuelBondDecoderHead`.
+
+    forward(cloud) -> (logits (E, NUM_BOND_CLASSES), (i_idx, j_idx))
+    """
+
+    def __init__(
+        self,
+        hidden_dim: int = 64,
+        n_layers: int = 3,
+        cutoff: float = 3.5,
+        min_distance: float = 1.0,
+        z_table: Tuple[int, ...] = _YUELBOND_Z_TABLE,
+    ) -> None:
+        super().__init__()
+        self.hidden_dim = int(hidden_dim)
+        self.n_layers = int(n_layers)
+        self.cutoff = float(cutoff)
+        self.min_distance = float(min_distance)
+        self.z_table = tuple(z_table)
+        # Atom encoder: Z one-hot -> hidden_dim.  Same shape as
+        # YuelBondDecoderHead.atom_encoder so the pair_head below has the
+        # same input width as the default head.
+        self.atom_encoder = nn.Linear(len(self.z_table), hidden_dim)
+        # D-MPNN backbone.  The atom features that DirectedMPNN sees
+        # are already hidden_dim-wide (atom_encoder's output), and the
+        # edge features are 3-dim (distance, is_dative, is_short).  We
+        # use the legacy DirectedMPNN rather than DirectedMPNNPyG
+        # because the trainer calls forward once per cloud (single
+        # molecule); forward_per_atom is the right granularity, and the
+        # PyG path is batch-only (MolGraphBatch → forward_batched).
+        # MPNNConfig is instantiated explicitly so a future caller can
+        # change widths without touching the defaults in
+        # molmetal.models.dmpnn.
+        from molmetal.models.dmpnn import DirectedMPNN, MPNNConfig
+
+        cfg = MPNNConfig(
+            atom_feat_dim=hidden_dim,
+            edge_feat_dim=3,
+            hidden_dim=hidden_dim,
+            n_layers=n_layers,
+            dropout=0.0,
+        )
+        self.dmpnn = DirectedMPNN(cfg)
+        # Pair head: [h_i, h_j, d, is_dative, is_short] (2*hidden + 3)
+        # → hidden → NUM_BOND_CLASSES.  Same shape as
+        # YuelBondDecoderHead.pair_head so the bond logits downstream
+        # are exactly compatible.
+        self.pair_head = nn.Sequential(
+            nn.Linear(hidden_dim * 2 + 3, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, NUM_BOND_CLASSES),
+        )
+        # Bias the "no bond" class slightly negative so the head does
+        # not default to bonding every pair — matches YuelBond's
+        # calibration at init.
+        with torch.no_grad():
+            self.pair_head[-1].bias.zero_()
+            self.pair_head[-1].bias[BOND_NO_BOND] = -0.5
+
+    def forward(self, cloud: "AtomCloud") -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        """Return ``(logits (E, NUM_BOND_CLASSES), (i_idx, j_idx))``.
+
+        Identical contract to YuelBondDecoderHead.forward.  Edges are the
+        upper-tri pair list ``[(i, j) for i<j in N]`` with all pairs
+        closer than :attr:`cutoff`.  Pairs at distance ``> cutoff`` are
+        NOT returned (caller should treat them as ``NO_BOND``); pairs
+        at ``< min_distance`` are clamped.
+        """
+        # Module runs where its WEIGHTS are — same rule as
+        # YuelBondDecoderHead.forward (Round-3 D1 fix, 2026-10-05).
+        _dev = self.pair_head[-1].weight.device
+        cloud = cloud.to(_dev)
+        positions = cloud.positions.float()
+        atomic_numbers = cloud.atomic_numbers.long()
+        n = int(atomic_numbers.shape[0])
+        if n < 2:
+            return (
+                torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
+                (
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                ),
+            )
+        # Atom features: Z one-hot → atom_encoder → (N, hidden_dim).
+        z_onehot = z_to_onehot(atomic_numbers, self.z_table)
+        h_atom = self.atom_encoder(z_onehot)  # (N, H)
+        # Upper-tri pair list within cutoff.  Same as YuelBond forward.
+        i_idx, j_idx = torch.triu_indices(n, n, offset=1, device=_dev)
+        if i_idx.numel() == 0:
+            return (
+                torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
+                (
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                ),
+            )
+        d_vec = positions[j_idx] - positions[i_idx]
+        d = d_vec.norm(dim=-1).clamp(min=self.min_distance)
+        mask = d < self.cutoff
+        i_idx = i_idx[mask]
+        j_idx = j_idx[mask]
+        d = d[mask]
+        if i_idx.numel() == 0:
+            return (
+                torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
+                (
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                ),
+            )
+        # Per-edge features (3-dim): d, is_dative, is_short.  Same
+        # rule set as YuelBondDecoderHead.forward for is_dative.
+        is_short = (d < 1.7).float()
+        is_dative = (
+            (atomic_numbers[i_idx] == 7)
+            | (atomic_numbers[i_idx] == 8)
+            | (atomic_numbers[i_idx] == 16)
+        ) & (atomic_numbers[j_idx] == 78)
+        edge_attr = torch.stack(
+            [d.float(), is_dative.float(), is_short], dim=-1
+        )  # (E, 3)
+        # Bi-directional directed edge index: (i→j, j→i) for every
+        # pair, so the D-MPNN's incoming aggregation sees traffic from
+        # both endpoints.  edge_attr is concatenated the same way.
+        edge_index = torch.stack(
+            [torch.cat([i_idx, j_idx]), torch.cat([j_idx, i_idx])], dim=0
+        )  # (2, 2E)
+        edge_attr_bi = torch.cat([edge_attr, edge_attr], dim=0)  # (2E, 3)
+        # Per-atom message passing via D-MPNN.  forward_per_atom is the
+        # single-molecule path; DirectedMPNNPyG.forward_batched would
+        # be the per-batch path but here we hand one cloud at a time,
+        # so per-atom is correct and there is no padding overhead.
+        h_per_atom = self.dmpnn.forward_per_atom(
+            h_atom, edge_index, edge_attr_bi
+        )  # (N, H)
+        # Pair features: [h[i], h[j], d, is_dative, is_short] (2H+3).
+        is_dative_col = is_dative.float().unsqueeze(-1)
+        is_short_col = is_short.unsqueeze(-1)
+        pair_in = torch.cat(
+            [
+                h_per_atom[i_idx],
+                h_per_atom[j_idx],
+                d.unsqueeze(-1),
+                is_dative_col,
+                is_short_col,
+            ],
+            dim=-1,
+        )
+        logits = self.pair_head(pair_in)
+        return logits, (i_idx, j_idx)
+
+
 class CFMJointModel(nn.Module):
     """YuelBond decoder head + a velocity field.
 
@@ -1066,19 +1361,53 @@ class CFMJointModel(nn.Module):
         context_dropout: float = 0.1,
         tmqm_init_path: Optional[str] = None,
         use_tmqm_init: bool = False,
+        # 2026-10-09 NEW (BLK-C5 follow-up, user voice) — the bond-prediction
+        # head now has two interchangeable implementations: 'yuelbond'
+        # (default, atom-centered message passing — the historical head every
+        # shipped CFM checkpoint was trained under) and 'dmpnn' (bond-centered
+        # Directed-MPNN, see molmetal.models.dmpnn_pyg.DirectedMPNNPyG).  The
+        # two heads share the SAME forward(cloud) contract so the trainer's
+        # downstream code does not branch on the choice; only the parameter
+        # set changes, and a switch inits both at random weights.  To keep
+        # existing checkpoints loading, the default is 'yuelbond'.  Reference:
+        # TODO/04_architecture/model_design.md (D-MPNN + EGNN hybrid fusion
+        # target) and TODO/AUDIT_RESEARCH_GRADE.md §2.5.
+        bond_predictor: str = "yuelbond",
     ) -> None:
         super().__init__()
         self.cutoff = float(cutoff)
-        self.head = YuelBondDecoderHead(
-            hidden_dim=hidden_dim,
-            n_layers=n_layers,
-            cutoff=cutoff,
-            # 2026-10-04 — pass the SAME table the wrapper uses.  Before this
-            # the head always took the module default while `self.z_dim` came
-            # from the wrapper's `z_table` argument, so the two could silently
-            # disagree on width.
-            z_table=z_table,
-        )
+        # 2026-10-09 — bond-predictor dispatch.  Both branches attach the
+        # head to `self.head` and both expose (logits, (i_idx, j_idx)) from
+        # forward(cloud), so the trainer's downstream code (assemble-aware
+        # loss, soft-valence, connectivity-prior, etc.) does not branch on
+        # which head is plugged in.  Only the `state_dict` keys differ
+        # (`head.msg_mlps.*` for yuelbond vs `head.dmpnn.*` for dmpnn), so
+        # any --resume-from across the two will be refused by the standard
+        # `load_state_dict(strict=...)` path — same as for the EGNN field.
+        if str(bond_predictor).lower() == "dmpnn":
+            self.head = DMPNNBondHead(
+                hidden_dim=hidden_dim,
+                n_layers=n_layers,
+                cutoff=cutoff,
+                z_table=z_table,
+            )
+        elif str(bond_predictor).lower() == "yuelbond":
+            self.head = YuelBondDecoderHead(
+                hidden_dim=hidden_dim,
+                n_layers=n_layers,
+                cutoff=cutoff,
+                # 2026-10-04 — pass the SAME table the wrapper uses.  Before this
+                # the head always took the module default while `self.z_dim` came
+                # from the wrapper's `z_table` argument, so the two could silently
+                # disagree on width.
+                z_table=z_table,
+            )
+        else:
+            raise ValueError(
+                f"unknown bond_predictor {bond_predictor!r}; expected "
+                "'yuelbond' or 'dmpnn'"
+            )
+        self.bond_predictor = str(bond_predictor).lower()
         self.z_dim = len(z_table)
         self.z_table = list(z_table)
         self.z_to_idx = {z: i for i, z in enumerate(z_table)}
@@ -1439,6 +1768,63 @@ def _decode_with_rdkit_strict(decoder: YuelBondBondDecoder, cloud: AtomCloud):
         return False
 
 
+def _rdkit_strict_reason(smi: str, sanitized: bool) -> Optional[str]:
+    """Classify ONE decoded molecule into the failure taxonomy.
+
+    Returns ``None`` when the molecule passed RDKit-strict validation, else
+    a short stable reason string.  This is the diagnostic the 2026-10-09
+    three-agent measurement asked for and the shipped dump could not give:
+
+    ``generated_smiles.csv`` is append-gated on a non-empty ``smi``
+    (trainer :4093), and ``smi`` is ``""`` for every molecule the decoder
+    failed to sanitise (cfm_decoder_yuelbond `_assemble_mol`), so the CSV
+    contains RDKit-strict SURVIVORS ONLY.  MEASURED on the 147 rows of
+    ``molmetal/reports/cfm_blk_c5_repair_2026_10_09/generated_smiles.csv``:
+    0 unparseable, 0 valence violations, 111/135 (82.2%) multi-fragment.
+    The whole failure class was structurally invisible — the answer could
+    not be read off the file the run already writes.
+
+    The buckets, cheapest-first (this runs once per generated sample, so it
+    must not dominate epoch wall time — every branch below is a string test
+    or one RDKit call on an already-assembled Mol):
+
+    ``no_smiles``          decoder returned no SMILES at all
+    ``empty_decode``       head produced no candidate edges (N<2 or all
+                           pairs beyond the cutoff)
+    ``assembly_error``     RWMol could not be finalised
+    ``sanitize_failed``    RDKit rejected the valence/kekulisation
+    ``reparse_failed``     round-trip MolFromSmiles returned None
+    ``resanitize_failed``  round-trip SanitizeMol raised
+    ``multi_fragment``     parses cleanly but is >1 disconnected fragment —
+                           reported only when ``strict_ok`` is requested,
+                           since RDKit accepts `C.C.C.C` and this is the
+                           pathology the strict gate cannot see
+
+    Cost note: the caller already holds a decoded result for every sample,
+    so this adds no decode.  Before this change the gen-eval loop decoded
+    each cloud TWICE (once at :4091 for the SMILES, once again inside
+    `_decode_with_rdkit_strict`) purely because there was no way to get a
+    reason out of the first one.
+    """
+    if not smi:
+        return "no_smiles"
+    if not sanitized:
+        return "sanitize_failed"
+    if not RDKIT_AVAILABLE:
+        return "no_smiles"
+    try:
+        mol = Chem.MolFromSmiles(smi)
+    except Exception:
+        return "reparse_failed"
+    if mol is None:
+        return "reparse_failed"
+    try:
+        Chem.SanitizeMol(mol)
+    except Exception:
+        return "resanitize_failed"
+    return None
+
+
 def _bond_target_for_clean_cloud(cloud: AtomCloud, head=None):
     """Build the (E, NUM_BOND_CLASSES) one-hot bond-target matrix.
 
@@ -1764,6 +2150,29 @@ def train_one_epoch(
     # so the Wf-124 P2 + Wf-148 baseline is preserved bit-for-bit;
     # 0.0 disables clipping entirely.
     max_norm: float = 5.0,
+    # BLK-C5 (2026-10-09) — entropy regularisation weight (用户建议三).
+    # 0.0 = OFF, an exact torch.zeros(()) in the loss sum, so the default
+    # objective is unchanged bit-for-bit.  The trainer's `--max-norm`
+    # default is deliberately NOT changed to 1.0: that is a run-level
+    # setting, and flipping a default would silently alter every wrapper
+    # that does not pass it (breaking the bit-exact Wf-124 P2 + Wf-148
+    # baseline documented on that flag).  BLK-C5's launch wrapper passes
+    # `--max-norm 1.0` explicitly, which is what the user asked for.
+    entropy_reg_weight: float = 0.0,
+    # 2026-10-09 — 用户建议二 修改建议 B: bond-loss weight.
+    #
+    # The alternative to staged freezing (修改建议 A) is to leave the bond
+    # head trainable from step 0 but shrink its share of the objective.
+    # Default 1.0 is the IDENTITY multiplier, so the `loss = (...)` sum and
+    # `_LAST_LOSS_TERMS["bond_ce"]` are bit-for-bit what they were before
+    # this parameter existed.  Any other value scales ONLY the bond_ce term
+    # (every other term in the sum is untouched).
+    #
+    # WHY this is not a no-op like the shipped levers around it: `bond_ce`
+    # is MEASURED at 95% of the live loss magnitude on the BLK-C5 config
+    # (1.54 vs 0.076 wasserstein + 0.006 cb + 0.013 entropy), so it is the
+    # one term in the sum whose weight is actually load-bearing.
+    bond_loss_weight: float = 1.0,
     # Round-3 D1 (2026-10-05) — assemble-aware connectivity loss weight.
     #
     # The Round-3 tmQM all6 retrain MEASURED `bond_ce` falling 0.058 -> 0.043
@@ -1778,6 +2187,8 @@ def train_one_epoch(
     # that does not name the flag.  Turn it on deliberately with
     # `--assemble-loss-weight`.
     assemble_loss_weight: float = 0.0,
+    assemble_formulation: str = "product",
+    assemble_hinge_tau: float = -1.0,
     # Wf-R41 — differentiable soft-valence surrogate for gen_validity.
     # User hypothesis (verbatim 2026-10-08): "gen_validity 在 loss 里的对应项
     # 符号有可能是写反了或者说训练框架里没有对这一部分做对应的思考和处理".
@@ -1811,6 +2222,7 @@ def train_one_epoch(
     assemble_losses: List[float] = []
     assemble_frags: List[float] = []
     assemble_largest: List[float] = []
+    assemble_stay: List[float] = []
     # Wf-R41 — soft-valence term gates per the same pattern as assemble.
     # `_use_soft_valence=True` re-runs `model(..., return_edge_index=True)`
     # for every cloud, then sums valence_log_barrier() per cloud at the end
@@ -1936,6 +2348,8 @@ def train_one_epoch(
         soft_valence_term = torch.zeros((), device=device)
         if _use_soft_valence and batch_soft_valence:
             from molmetal.molmetal_lam.lam_chem.decoder_rework import (
+                TMQM_MEASURED_METAL_CAPS,
+                DEFAULT_VALENCES,
                 valence_log_barrier,
             )
             # Bond-order index lookup per NUM_BOND_CLASSES=5:
@@ -1947,6 +2361,11 @@ def train_one_epoch(
                 device=all_logits.device,
             )
             _n_sv = 0
+            _sv_n_atoms_total = 0
+            # BLK-M1 — per-element merge: non-metal caps keep the documented
+            # DEFAULT_VALENCES values, the six cohort metals take the caps
+            # MEASURED from tmQM. Built once per batch, not per cloud.
+            _sv_valences = {**DEFAULT_VALENCES, **TMQM_MEASURED_METAL_CAPS}
             for _sv_logits_c, _sv_ei_c, _sv_z_c in batch_soft_valence:
                 if _sv_ei_c is None:
                     continue
@@ -1963,18 +2382,58 @@ def train_one_epoch(
                 _sv_pair_src = _sv_pair_src.long()
                 _sv_pair_dst = _sv_pair_dst.long()
                 _sv_n_atoms = int(_sv_z_c.shape[0])
+                # BLK-M1 (2026-10-10) — pass the MEASURED metal caps as the
+                # `valences` override instead of letting the barrier fall back
+                # to DEFAULT_VALENCES.
+                #
+                # Why this matters concretely: the fallback is `cap = 4` for any
+                # Z not in the table, and Rh (45), Os (76) and Re (75) are not
+                # in it — three of the six metals in every CFM cohort. Measured
+                # against tmQM's own `metal_bo_sum` (the quantity this barrier
+                # constrains), the median for those three is 3.92 / 5.27 / 6.46,
+                # so the fallback penalises roughly half the corpus for Os and
+                # Re outright.
+                #
+                # The merge is per-element, not a replacement: non-metal caps
+                # (C=4, N=3, O=2, ...) still come from DEFAULT_VALENCES, and the
+                # documented default is left untouched because
+                # molmetal_lam/tests/test_cfm_p0_fixes.py pins Pt(II)=4 and
+                # cfm_decoder_yuelbond.py imports the same table.
                 _sv_penalty = valence_log_barrier(
                     _sv_orders,
                     _sv_z_c,
                     _sv_pair_src,
                     _sv_pair_dst,
                     _sv_n_atoms,
+                    valences=_sv_valences,
                 )
                 soft_valence_term = soft_valence_term + _sv_penalty
+                _sv_n_atoms_total += _sv_n_atoms
                 _n_sv += 1
             if _n_sv > 0:
-                soft_valence_term = (
-                    float(gen_validity_weight) * soft_valence_term
+                # 2026-10-10 (BLK-C12 normalisation) — MEASURE the scale bug
+                # this divides out, because "just normalise it" is exactly the
+                # kind of change that hides a second problem.
+                #
+                # MEASURED before this edit, at gen_validity_weight=1.0:
+                #     synthetic cohort (n_train 32, batch 8)  ->      82.55
+                #     tmQM cohort     (train 256,     batch 64) -> 134295.00
+                # a 1626.7x swing driven by nothing but batch size and
+                # molecule count. `valence_log_barrier` returns
+                # `excess.pow(2).sum()` over ATOMS (decoder_rework.py:499) and
+                # the loop summed that over every cloud in the batch, so the
+                # term was O(batch_size * n_atoms) — no fixed weight in a YAML
+                # could be right across cohorts, which is why this term had
+                # never been switched on despite being implemented, wired and
+                # gradient-verified.
+                #
+                # Divide by atoms rather than clouds: the barrier is a
+                # squared hinge summed over atoms, so per-cloud would still
+                # grow with molecule size and leave the cohort dependence
+                # (only partly) in place. Per-atom makes the number a mean
+                # violation per atom, which is what the weight should mean.
+                soft_valence_term = float(gen_validity_weight) * (
+                    soft_valence_term / float(_sv_n_atoms_total)
                 )
         # Wf-A5-A2 — per-cohort alpha → label_smoothing override. Default
         # OFF preserves bit-for-bit backward compat with Wf-243..Wf-252
@@ -1989,6 +2448,20 @@ def train_one_epoch(
         bond_ce = F.cross_entropy(
             all_logits, all_targets, weight=bond_class_weights
         )
+        # BLK-C5 (2026-10-09) — 用户建议三: entropy regularisation.  BLK-C2 /
+        # BLK-C4 measured gen_validity = 0.000 over n=48 from epoch 4 on:
+        # the head has collapsed onto one degenerate skeleton and the CE
+        # term is happy to keep it there.  Maximising H(softmax(logits))
+        # penalises that collapse.  Sign is NEGATIVE on the entropy so the
+        # optimiser maximises entropy, and the whole term collapses to
+        # torch.zeros(()) at the default weight of 0.0.
+        entropy_term = torch.zeros((), device=device)
+        if float(entropy_reg_weight) > 0.0:
+            _log_probs = F.log_softmax(all_logits, dim=-1)
+            _entropy = -(
+                _log_probs.exp() * (_log_probs + 1e-9)
+            ).sum(dim=-1).mean()
+            entropy_term = -float(entropy_reg_weight) * _entropy
         if per_cohort_features:
             try:
                 from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
@@ -2913,15 +3386,48 @@ def train_one_epoch(
                 _assemble_n_frag,
                 _assemble_largest,
                 _asm_n,
-            ) = _batch_assemble_loss(batch_assemble, device)
+            ) = _batch_assemble_loss(
+                batch_assemble,
+                device,
+                formulation=assemble_formulation,
+                # -1.0 is the "no dead zone" sentinel: a real tau is always
+                # >= 0, so it cannot collide with a meaningful value.
+                hinge_tau=(
+                    None if float(assemble_hinge_tau) < 0.0
+                    else float(assemble_hinge_tau)
+                ),
+            )
             if _asm_n > 0:
                 assemble_term = float(assemble_loss_weight) * _asm_mean
                 assemble_losses.append(float(_asm_mean.detach()))
                 assemble_frags.append(_assemble_n_frag)
                 assemble_largest.append(_assemble_largest)
+                assemble_stay.append(
+                    float(
+                        np.mean(
+                            [
+                                _mean_stay_probability(_lg, _ei, _z)
+                                for _lg, _ei, _z in batch_assemble
+                                if _lg is not None and _ei is not None
+                            ]
+                        )
+                    )
+                    if batch_assemble
+                    else 0.0
+                )
+
+        # 2026-10-09 — 用户建议二 修改建议 B: scale ONLY the bond_ce term.
+        # `bond_ce` itself is left raw everywhere else (the epoch log line,
+        # `EpochMetrics.bond_ce_loss`, and `_LAST_LOSS_TERMS` consumers all
+        # keep reporting the true cross-entropy), so this multiplier is
+        # visible in exactly one place: what the optimiser descends.
+        # At the default 1.0 this is `1.0 * bond_ce`, i.e. the same value.
+        bond_ce_term = bond_ce if float(bond_loss_weight) == 1.0 else (
+            float(bond_loss_weight) * bond_ce
+        )
 
         loss = (
-            bond_ce
+            bond_ce_term
             + wasserstein_weight * w2_val
             + 0.05 * cb_loss
             + diversity_term
@@ -2935,6 +3441,10 @@ def train_one_epoch(
             # Round-3 D1 — assemble-aware connectivity (default weight 0.0,
             # i.e. an exact zero here unless --assemble-loss-weight is set).
             + assemble_term
+            # BLK-C5 (2026-10-09) — entropy regularisation (用户建议三).
+            # Exact torch.zeros(()) at the default weight 0.0, so the sum is
+            # bit-for-bit the pre-BLK-C5 objective when the flag is absent.
+            + entropy_term
             # Wf-R41 — differentiable soft-valence surrogate for gen_validity.
             # Squared-hinge penalty on per-cloud atom-bond-order sums exceeding
             # the per-element valence cap. Default weight 0.0 → exact zero
@@ -2951,7 +3461,10 @@ def train_one_epoch(
         _LAST_LOSS_TERMS.clear()
         _LAST_LOSS_TERMS.update(
             {
-                "bond_ce": bond_ce,
+                # The exact tensor that entered the sum, so this side-channel
+                # stays honest about --bond-loss-weight (identical to the raw
+                # `bond_ce` at the default 1.0).
+                "bond_ce": bond_ce_term,
                 "wasserstein_weight*w2_val": wasserstein_weight * w2_val,
                 "0.05*cb_loss": 0.05 * cb_loss,
                 "diversity_term": diversity_term,
@@ -2972,6 +3485,12 @@ def train_one_epoch(
                 # (an exact `torch.zeros(())`), LIVE when --gen-validity-weight
                 # is set > 0.  The guard test runs the smoke with the flag ON.
                 "soft_valence_term": soft_valence_term,
+                # BLK-C5 (2026-10-09) — entropy regularisation.  Registered
+                # unconditionally, like every other term, so the guard test
+                # can see it: gradient-dead at weight 0 (which is exactly
+                # what the default means), LIVE when
+                # --entropy-reg-weight > 0.
+                "entropy_term": entropy_term,
                 # Deliberately absent (removed from the loss sum 2026-10-04,
                 # see the comment above `loss = (`): "sa_penalty_weight*sa_loss",
                 # "per_cohort_term", "pll_term", "chemprop_v3_cache_term",
@@ -3159,6 +3678,9 @@ def train_one_epoch(
                 np.mean(assemble_largest)
             )
             if assemble_largest
+            else 0.0,
+            "assemble_stay_mean": float(np.mean(assemble_stay))
+            if assemble_stay
             else 0.0,
             "assemble_enabled": 1.0 if _use_assemble else 0.0,
         }
@@ -3718,6 +4240,7 @@ def evaluate_generation_validity(
     chemistry_out: Optional[Dict[str, Any]] = None,
     chemistry_rows_out: Optional[List[Optional[Dict[str, Any]]]] = None,
     smiles_out: Optional[List[str]] = None,
+    rejected_smiles_out: Optional[List[Tuple[str, str]]] = None,
 ) -> Tuple[int, int]:
     """Generate from noise, decode, and count RDKit-strict successes.
 
@@ -3774,10 +4297,25 @@ def evaluate_generation_validity(
     # future run says "the head never ran" instead of "the model is bad".
     n_decode_error = 0
     first_error = ""
+    # 2026-10-09 — per-epoch failure-reason taxonomy (用户建议四: "我们必须
+    # 肉眼看一下它到底在输出什么").  Keyed by `_rdkit_strict_reason`;
+    # `ok` is the success bucket.  Cheap: the loop already decodes every
+    # cloud, and the classifier reuses that result instead of decoding a
+    # second time (the old loop called `_decode_with_rdkit_strict(decoder,
+    # cloud)`, re-running the whole head + assembly per sample).
+    reason_counts: Dict[str, int] = {}
+    # Rejected decodes, with the reason, so the pathology is inspectable
+    # instead of inferred.  Bounded so a 100% failure rate cannot grow this
+    # without limit.
+    rejected_out: Optional[List[Tuple[str, str]]] = (
+        [] if rejected_smiles_out is not None else None
+    )
     for cloud in clouds:
         try:
             res = decoder.decode(cloud)
-            smi = getattr(getattr(res, "decoded", None), "smiles", None)
+            decoded = getattr(res, "decoded", None)
+            smi = getattr(decoded, "smiles", None) or ""
+            sanitized = bool(getattr(decoded, "sanitized", False))
             # Wf-R44 m4/m5/m7 — persist the decoded SMILES.  These strings were
             # computed and thrown away here; without them no decode->panel link
             # exists and m4/m5/m7 stay UNMEASURED (property panel is post-hoc).
@@ -3791,10 +4329,29 @@ def evaluate_generation_validity(
                 if smi
                 else None
             )
-            if _decode_with_rdkit_strict(decoder, cloud):
+            # 2026-10-09 — classify from the SAME decode instead of
+            # re-decoding.  `decoded.error` carries the empty-candidate and
+            # assembly-failure cases, which arrive as `smi == ""` and would
+            # otherwise all collapse into one indistinguishable bucket.
+            _reason = _rdkit_strict_reason(smi, sanitized)
+            if _reason is None and not smi:
+                _err = str(getattr(decoded, "error", "") or "")
+                if _err.startswith("yuelbond:"):
+                    _reason = "empty_decode"
+                elif _err:
+                    _reason = "assembly_error"
+            if _reason is None:
+                reason_counts["ok"] = reason_counts.get("ok", 0) + 1
                 n_ok += 1
+            else:
+                reason_counts[_reason] = reason_counts.get(_reason, 0) + 1
+                if rejected_out is not None and len(rejected_out) < 200:
+                    rejected_out.append((smi, _reason))
         except Exception as exc:
             n_decode_error += 1
+            reason_counts["decode_raised"] = (
+                reason_counts.get("decode_raised", 0) + 1
+            )
             if not first_error:
                 first_error = f"{type(exc).__name__}: {exc}"
             chem_rows.append(None)
@@ -3807,6 +4364,11 @@ def evaluate_generation_validity(
         chemistry_out["n_decode_error"] = n_decode_error
         if first_error:
             chemistry_out["decode_error_example"] = first_error
+        # 2026-10-09 — the failure-reason breakdown, keyed by
+        # `_rdkit_strict_reason` with `ok` as the success bucket.  Sums to
+        # n_samples + n_decode_error, so a reader can tell a model that
+        # produced bad chemistry from a decoder that never ran.
+        chemistry_out["failure_reasons"] = dict(reason_counts)
     if chemistry_rows_out is not None:
         # Raw per-sample rows, so a multi-seed caller can POOL them and
         # re-summarise once.  Averaging per-seed means instead would weight a
@@ -4762,6 +5324,33 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--bond-predictor",
+        dest="bond_predictor",
+        choices=("yuelbond", "dmpnn"),
+        default="yuelbond",
+        help=(
+            "2026-10-09 NEW (BLK-C5 follow-up, user voice 'dmpnn按理来说不是"
+            "可以更好地处理这边的bond特征吗'): select the bond prediction "
+            "head. 'yuelbond' (default, backward-compatible) keeps the "
+            "atom-centered MPNN that every shipped CFM checkpoint was "
+            "trained under. 'dmpnn' swaps the head for a bond-centered "
+            "Directed-MPNN (molmetal.models.dmpnn_pyg.DirectedMPNNPyG) "
+            "whose edge hidden state is updated by GRU and aggregated "
+            "directed (per Justin et al. 2020); per-atom message-passing "
+            "is replaced by per-edge message-passing, which the user "
+            "expects to handle the 5-way bond-type classification more "
+            "faithfully than the atom-centered message-passing YuelBond "
+            "uses. Reference: TODO/04_architecture/model_design.md (D-MPNN "
+            "+ EGNN hybrid fusion, 2D bond graph + 3D coords) and "
+            "TODO/AUDIT_RESEARCH_GRADE.md §2.5 (research-grade target). "
+            "Default-off so every existing wrapper and checkpoint loads "
+            "bit-exactly through the yuelbond path; --bond-predictor=dmpnn "
+            "is the opt-in D-MPNN path. Initialisation is from random "
+            "weights either way; pass --resume-from to load an existing "
+            "checkpoint. §5.7 50-step CPU smoke covers both paths."
+        ),
+    )
+    p.add_argument(
         "--bond-class-weights",
         dest="bond_class_weights",
         action="store_true",
@@ -5331,6 +5920,122 @@ def parse_args() -> argparse.Namespace:
             "(preserves Wf-124 P2 + Wf-148 baseline bit-for-bit). "
             "Setting 1.0..10.0 recommended for CFM velocity_net + "
             "EGNN where exploding gradients are a concern."
+            " NOTE (BLK-C5 2026-10-09): the default is deliberately left at "
+            "5.0. The user's CFM advice asked for max_norm 0.5-1.0, but that "
+            "is a run-level setting, not a default change: flipping this "
+            "default would silently alter the numerics of every existing "
+            "launch wrapper that does not pass --max-norm, breaking the "
+            "bit-exact Wf-124 P2 + Wf-148 baseline this flag documents. "
+            "BLK-C5 therefore passes --max-norm 1.0 explicitly from "
+            "scripts/launch_wf_fix3lines_cfm_c5_repair.sh."
+        ),
+    )
+    # ------------------------------------------------------------------
+    # BLK-C5 (2026-10-09) — CFM generation-head collapse repair.
+    # Four flags, one per structural lever from the user's advice.  EVERY
+    # default below is the backward-compatible value, so a launch wrapper
+    # that passes none of them reproduces the pre-BLK-C5 objective and
+    # parameter-group layout bit-for-bit (AGENTS.md §5.7 smoke floor).
+    # ------------------------------------------------------------------
+    p.add_argument(
+        "--gen-head-lr-scale",
+        type=float,
+        default=1.0,
+        help=(
+            "BLK-C5 (2026-10-09): LR multiplier applied to the structure/"
+            "bond generation head parameter group.  Implements the user's "
+            "advice 一 — '分组隔离' — do not let the generation head and "
+            "the rest of the network share one peak LR.  The scaled group "
+            "is every parameter under `head.` (the YuelBondDecoderHead — in "
+            "this trainer that head IS both the learned bond head and the "
+            "structure decoder); everything else, i.e. `vel_field.*` (the "
+            "EGNN flow-matching backbone), keeps base --lr.  Default 1.0 "
+            "→ a single flat param group, bit-for-bit identical to the "
+            "pre-BLK-C5 optimiser."
+        ),
+    )
+    p.add_argument(
+        "--bond-head-warmup-epochs",
+        type=int,
+        default=0,
+        help=(
+            "BLK-C5 (2026-10-09): freeze model.head (the structure/bond "
+            "generation head) for the first N epochs, then unfreeze.  Implements the user's advice 二 "
+            "修改建议 A（推荐）— stop the fast-learning bond head from "
+            "dragging the generation direction.  While frozen, bond_head "
+            "parameters have requires_grad=False, so its CE term still "
+            "appears in the reported loss but contributes no gradient.  "
+            "Default 0 → never freeze (bit-for-bit pre-BLK-C5 behaviour)."
+        ),
+    )
+    p.add_argument(
+        "--bond-head-unfreeze-stride",
+        type=int,
+        default=1,
+        help=(
+            "BLK-C5 (2026-10-09): after the warmup above, re-freeze "
+            "bond_head every N epochs (0 and 1 both mean 'never re-freeze', "
+            "i.e. train jointly from --bond-head-warmup-epochs onward).  "
+            "Default 1 → no re-freezing, matching the single unfreeze the "
+            "user asked for."
+        ),
+    )
+    p.add_argument(
+        "--lr-pct-start",
+        type=float,
+        default=None,
+        help=(
+            "2026-10-09: fraction of total steps OneCycleLR spends in the "
+            "up (warmup) phase, overriding the historical hardcoded 0.3. "
+            "Default None = keep 0.3, bit-for-bit. The user asked for a "
+            "long warmup (30-40%% of the run); pct_start was a constant so "
+            "protocol.scheduler.warmup_epochs controlled nothing on this "
+            "path even though the yaml has carried it since BLK-C4. Set "
+            "0.35 for that band. Clamped to [0.0, 0.95]; ignored by the "
+            "cosine branch, which already uses --lr-warmup-epochs."
+        ),
+    )
+    p.add_argument(
+        "--bond-loss-weight",
+        type=float,
+        default=1.0,
+        help=(
+            "2026-10-09: scale of the bond_ce term inside the total loss "
+            "(用户建议二 修改建议 B). Default 1.0 = identity, so the "
+            "objective is bit-for-bit unchanged when the flag is absent. "
+            "0.1 is the user's suggested compromise value for a run that "
+            "keeps the bond head trainable from step 0 instead of freezing "
+            "it. Only bond_ce is scaled; every other term in the sum is "
+            "untouched, and the REPORTED bond_ce metric stays the raw "
+            "cross-entropy so the log never mixes the two."
+        ),
+    )
+    p.add_argument(
+        "--entropy-reg-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "BLK-C5 (2026-10-09): entropy regularisation on the head's "
+            "output distribution, added to the total loss as "
+            "-weight * H(softmax(logits)) so the optimiser MAXIMISES "
+            "entropy.  Implements the user's advice 三 — stop the head "
+            "摆烂 by collapsing every sample onto one degenerate skeleton. "
+            "Default 0.0 → term is an exact torch.zeros(()) and the "
+            "objective is unchanged bit-for-bit."
+        ),
+    )
+    p.add_argument(
+        "--gen-head-dropout",
+        type=float,
+        default=None,
+        help=(
+            "BLK-C5 (2026-10-09): override the dropout probability on the "
+            "structure/bond head, applied after model construction by "
+            "wrapping the last 1-2 nn.Linear layers under model.head.  "
+            "Implements the user's advice 三 — raise dropout on the last "
+            "1-2 linear transforms of the generation head to 0.2-0.3.  "
+            "Default None → model keeps whatever dropout its constructor "
+            "chose (0.10 today), so the default path is untouched."
         ),
     )
     # Wf-A5 N3 + Wf-A8c FIX (2026-10-03) — start.sh passes --checkpoint-interval
@@ -5439,6 +6144,33 @@ def parse_args() -> argparse.Namespace:
         help="Weight on the W₂ regularization term (default 0.1).",
     )
     # Round-3 D1 (2026-10-05) — assemble-aware connectivity loss.
+    p.add_argument(
+        "--assemble-formulation",
+        type=str,
+        default="product",
+        choices=["product", "escape_time"],
+        help=(
+            "BLK-C11 (2026-10-10): how the K per-step walk stay-probabilities "
+            "are combined. 'product' is the Round-3 D1 geometric mean; "
+            "'escape_time' is their arithmetic mean. Both order correctly, but "
+            "the product's gradient scales WITH the product and was MEASURED "
+            "at ~5e-09 on the bond logits in every case -- it is a diagnostic, "
+            "not an objective. Pair either with --assemble-hinge-tau."
+        ),
+    )
+    p.add_argument(
+        "--assemble-hinge-tau",
+        type=float,
+        default=-1.0,
+        help=(
+            "BLK-C11 (2026-10-10): dead zone for the assemble term, i.e. "
+            "clamp(penalty - tau, 0). Negative (the default) means NO dead "
+            "zone. 0.30 is the value derived from tmQM in "
+            "metrics/by_metric/cfm_assemble_hinge_tau.json: it clears both the "
+            "corpus maximum (0.2649 over 1500 correct complexes) and the "
+            "model's own initial predictions (0.0775). Do not pick this by eye."
+        ),
+    )
     p.add_argument(
         "--assemble-loss-weight",
         type=float,
@@ -6685,6 +7417,8 @@ def main() -> int:
             getattr(args, "use_tmqm_init", False)
             or getattr(args, "tmqm_init_path", None)
         ),
+        # 2026-10-09 NEW (BLK-C5 follow-up) — bond-predictor dispatch.
+        bond_predictor=str(getattr(args, "bond_predictor", "yuelbond")),
     ).to(device)
 
     # 2026-10-04 — inverse-frequency bond-class weights, computed ONCE from the
@@ -6916,20 +7650,208 @@ def main() -> int:
     # Adam remains the default, so existing runs are bit-identical.
     _opt_name = str(getattr(args, "optimizer", "adam")).lower()
     _opt_kwargs = {"lr": args.lr, "weight_decay": getattr(args, "weight_decay", 0.0)}
+
+    # BLK-C5 (2026-10-09, rev. 2 2026-10-09) — 用户建议一: LR 分组隔离.  The
+    # CFM mode-collapse (BLK-C2 + BLK-C4: gen_validity 0.000 from epoch 4)
+    # is upstream of the LR axis; the user-specified remedy is to slow the
+    # "generation head" — the network that drives CFM trajectory generation
+    # — relative to the bond/structure decoder.  In the trainer's
+    # CFMJointModel (verified below) the gen-flow chain is
+    # vel_field + head.msg_mlps, and the bond/atom heads are
+    # head.pair_head / head.atom_encoder.  At scale=1.0 we pass
+    # `model.parameters()` through unchanged so every pre-BLK-C5 launch
+    # wrapper keeps its exact optimiser construction.
+    _gen_head_lr_scale = float(getattr(args, "gen_head_lr_scale", 1.0))
+    # VERIFIED against disk (BLK-C5, 2026-10-09 rev. 2): `named_parameters()`
+    # on the trainer's CFMJointModel yields three disjoint sub-prefixes —
+    #   'head.atom_encoder'   -> YuelBond atom embed          (Linear 13->128)
+    #   'head.msg_mlps.*'     -> message passing for atom update (3x MLPs)
+    #   'head.pair_head'      -> 5-way bond-type classifier   (Linear 259->128->5)
+    #   'vel_field.*'         -> EGNN ODE flow backbone       (51 params)
+    # MEASURED at hidden_dim=128/n_layers=3/use_egnn_velocity=True (yaml
+    # cfm_blk_c5_repair default):  atom=1,792  msg+vel=817,316  bond=33,925
+    #  (named param tensors: 1+12+1+51 = 65; total 703,753 params).
+    # The rev-1 marker ('head.',) lumped atom+msg+bond into one group and
+    # left vel_field as base — the OPPOSITE of the user's "gen head slow,
+    # bond head fast" semantic.  The rev-2 three-group split below puts
+    # vel_field + msg_mlps (the gen-flow chain) at scale*lr, and keeps
+    # atom_encoder + pair_head (atom / bond heads) at base lr.
+    _GEN_ATOM_HEAD_MARKERS = ("head.atom_encoder",)
+    # 2026-10-09 (BLK-C5 follow-up, user voice) — the gen-flow chain now
+    # has TWO interchangeable shapes depending on --bond-predictor:
+    #   * 'yuelbond' (default) — atom-centered message passing lives in
+    #     `head.msg_mlps.*` (YuelBondDecoderHead);
+    #   * 'dmpnn' — bond-centered message passing lives in `head.dmpnn.*`
+    #     (DirectedMPNNPyG, molmetal.models.dmpnn_pyg).
+    # Both heads keep `head.atom_encoder` and `head.pair_head`, so the
+    # atom-head and bond-head markers do not need to branch.
+    _GEN_FLOW_MARKERS = ("vel_field.", "head.msg_mlps.", "head.dmpnn.")
+    _GEN_BOND_HEAD_MARKERS = ("head.pair_head",)
+    _param_groups = None
+    if abs(_gen_head_lr_scale - 1.0) > 1e-12:
+        _atom_params, _gen_flow_params, _bond_params, _leftover = [], [], [], []
+        for _pname, _pval in model.named_parameters():
+            if any(_pname.startswith(_m) for _m in _GEN_ATOM_HEAD_MARKERS):
+                _atom_params.append(_pval)
+            elif any(_pname.startswith(_m) for _m in _GEN_FLOW_MARKERS):
+                _gen_flow_params.append(_pval)
+            elif any(_pname.startswith(_m) for _m in _GEN_BOND_HEAD_MARKERS):
+                _bond_params.append(_pval)
+            else:
+                _leftover.append((_pname, _pval))
+        if (
+            not _atom_params
+            or not _gen_flow_params
+            or not _bond_params
+            or _leftover
+        ):
+            raise SystemExit(
+                f"--gen-head-lr-scale {_gen_head_lr_scale} produced an UNSAFE split: "
+                f"atom_head={len(_atom_params)} gen_flow={len(_gen_flow_params)} "
+                f"bond_head={len(_bond_params)} leftover={len(_leftover)} "
+                f"(first leftover: {_leftover[0][0] if _leftover else 'n/a'}) "
+                f"markers=atom:{_GEN_ATOM_HEAD_MARKERS} flow:{_GEN_FLOW_MARKERS} "
+                f"bond:{_GEN_BOND_HEAD_MARKERS}"
+            )
+        _param_groups = [
+            {"params": _atom_params, "lr": float(args.lr)},
+            {
+                "params": _gen_flow_params,
+                "lr": float(args.lr) * _gen_head_lr_scale,
+            },
+            {"params": _bond_params, "lr": float(args.lr)},
+        ]
+        print(
+            f"[BLK-C5] param_groups=3 "
+            f"atom_head={len(_atom_params)} "
+            f"gen_flow={len(_gen_flow_params)} "
+            f"bond_head={len(_bond_params)} "
+            f"gen_flow_lr={float(args.lr) * _gen_head_lr_scale:g} "
+            f"(base lr={float(args.lr):g})"
+        )
+    # Default path: `_param_groups is None` → the optimiser is constructed
+    # exactly as it was before BLK-C5 (one flat `model.parameters()`).
     if _opt_name == "adamw":
-        optimiser = optim.AdamW(model.parameters(), **_opt_kwargs)
+        optimiser = optim.AdamW(
+            _param_groups if _param_groups is not None else model.parameters(),
+            **_opt_kwargs,
+        )
     elif _opt_name == "sgd":
         # No weight_decay default for SGD: decoupled-vs-coupled decay differs,
         # and inventing a value here would be exactly the kind of silent
         # assumption this pass exists to remove.  momentum=0 keeps it plain.
         optimiser = optim.SGD(
-            model.parameters(),
+            _param_groups if _param_groups is not None else model.parameters(),
             lr=float(args.lr),
             weight_decay=float(getattr(args, "weight_decay", 0.0)),
         )
     else:
-        optimiser = optim.Adam(model.parameters(), **_opt_kwargs)
+        optimiser = optim.Adam(
+            _param_groups if _param_groups is not None else model.parameters(),
+            **_opt_kwargs,
+        )
     print(f"[cfm-opt] optimizer={_opt_name} ({type(optimiser).__name__})")
+
+    # ------------------------------------------------------------------
+    # BLK-C5 (2026-10-09) — 用户建议五: gen-head dropout override.
+    # The head's constructor hardcodes dropout=0.10 (BondOrderHead.__init__
+    # in molmetal/models/bond_head.py).  Rather than change that default —
+    # which would silently alter every other caller — re-point the already
+    # built nn.Dropout modules at the requested probability.  `None` (the
+    # default) touches nothing at all.
+    # ------------------------------------------------------------------
+    _gen_head_dropout = getattr(args, "gen_head_dropout", None)
+    if _gen_head_dropout is not None:
+        # VERIFIED against disk (BLK-C5, 2026-10-09): the generation head is
+        # `model.head` (a YuelBondDecoderHead), NOT `model.bond_head` — the
+        # trainer's CFMJointModel exposes only ('head', 'vel_field') and has
+        # no `bond_head` attribute at all. MEASURED: that head contains ZERO
+        # nn.Dropout modules, so "raise the dropout on the last 1-2 linear
+        # transforms" cannot be done by re-pointing an existing module: there
+        # is none. We instead wrap the target Linears.
+        #
+        # `_DropoutLinear` re-registers the ORIGINAL weight/bias Parameter
+        # objects under the same attribute names, so the state_dict keys are
+        # unchanged and every existing checkpoint still loads. nn.Dropout has
+        # no parameters, which is why this insertion is also state_dict-safe.
+        #
+        # Targets are found by PREDICATE, not by index: the first attempt used
+        # `pair_head[1]`, which is an nn.ReLU — Sequential(Linear, ReLU,
+        # Linear) — so only 1 of 2 layers was wrapped and the smoke printed
+        # exactly that. Selecting the Linears by type targets the last two
+        # linear transforms of the pair head, which is what the user asked
+        # for ("最后 1-2 层线性变换").
+        _dropped_paths = []
+        for _lin_idx, _sub in enumerate(model.head.pair_head):
+            if isinstance(_sub, nn.Linear):
+                model.head.pair_head[_lin_idx] = _DropoutLinear(
+                    _sub, float(_gen_head_dropout)
+                )
+                _dropped_paths.append(f"head.pair_head[{_lin_idx}]")
+        # 2026-10-09 (BLK-C5 follow-up) — the "last 1-2 layers" target is
+        # bond-predictor-specific:
+        #   * 'yuelbond'  -> `head.msg_mlps[-1]` (the last atom-centered
+        #     message-passing MLP; the gen-flow equivalent);
+        #   * 'dmpnn'     -> `head.dmpnn.readout_mlp` (the last
+        #     bond-centered message-passing readout MLP; the per-edge
+        #     hidden state is reduced to per-atom here, so this is the
+        #     closest analog of "最后 1-2 层" for the dmpnn head).
+        # Both modules expose a nn.Sequential of (Linear, ReLU, Linear)
+        # which we wrap by PREDICATE (last nn.Linear) — same rule the
+        # yuelbond path was using.
+        if str(getattr(model, "bond_predictor", "yuelbond")).lower() == "dmpnn":
+            _last_msg = model.head.dmpnn.readout_mlp
+            _last_msg_label = "head.dmpnn.readout_mlp"
+        else:
+            _last_msg = model.head.msg_mlps[-1]
+            _last_msg_label = "head.msg_mlps[-1]"
+        for _lin_idx in range(len(_last_msg) - 1, -1, -1):
+            if isinstance(_last_msg[_lin_idx], nn.Linear):
+                _last_msg[_lin_idx] = _DropoutLinear(
+                    _last_msg[_lin_idx], float(_gen_head_dropout)
+                )
+                _dropped_paths.append(f"{_last_msg_label}[{_lin_idx}]")
+                break
+        if not _dropped_paths:
+            raise SystemExit(
+                f"--gen-head-dropout {_gen_head_dropout} was requested but no "
+                f"target nn.Linear in model.head could be wrapped, so the "
+                f"flag would be FLAG_ONLY (AGENTS.md §5.7)."
+            )
+        print(
+            f"[BLK-C5] gen_head_dropout={float(_gen_head_dropout)} wrapped "
+            f"pre-linear dropout on {len(_dropped_paths)} head layer(s): "
+            f"{_dropped_paths}"
+        )
+
+    # ------------------------------------------------------------------
+    # BLK-C5 (2026-10-09) — 用户建议二 修改建议 A（推荐）: staged bond-head
+    # freeze.  Freeze BEFORE the first epoch so epoch 0 already trains the
+    # generation task alone; unfreeze inside the loop once the warmup has
+    # elapsed.  `_bond_head_frozen` is read by the loop below.
+    # ------------------------------------------------------------------
+    _bond_head_warmup_epochs = int(getattr(args, "bond_head_warmup_epochs", 0))
+    _bond_head_unfreeze_stride = int(
+        getattr(args, "bond_head_unfreeze_stride", 1)
+    )
+    _bond_head_frozen = False
+    if _bond_head_warmup_epochs > 0:
+        _bh_params = list(model.head.parameters())
+        if not _bh_params:
+            raise SystemExit(
+                "--bond-head-warmup-epochs was requested but model.head "
+                "has no parameters, so the freeze would be FLAG_ONLY "
+                "(AGENTS.md §5.7)."
+            )
+        for _p in _bh_params:
+            _p.requires_grad_(False)
+        _bond_head_frozen = True
+        print(
+            f"[BLK-C5] bond_head FROZEN for the first "
+            f"{_bond_head_warmup_epochs} epoch(s) "
+            f"({len(_bh_params)} params, requires_grad=False); "
+            f"unfreeze_stride={_bond_head_unfreeze_stride}"
+        )
     # 2026-10-04 — `--atom-vocab-size` guard.  The yaml declared 14; the
     # YuelBond path derives 13 from _YUELBOND_Z_TABLE and the Lipman adapter
     # uses 12.  A guard that fails loudly is the honest form for a value the
@@ -6996,6 +7918,18 @@ def main() -> int:
         f"[cfm-head] bond_head={_bond_head} cfm_decoder={_cfm_decoder} "
         f"use_yuelbond={_use_yuelbond} joint_train=True "
         f"learnable_vel_scale=True (consistent)"
+    )
+    # BLK-C5 (2026-10-09) — 用户建议二: '检查解码策略'.  Echo the decode knobs
+    # actually in force so the log says what the decoder was doing, plus the
+    # alternative to try if decode_ratio keeps falling (the BLK-C4 signature
+    # was 1.000 → 0.188 over 30 epochs).
+    print(
+        f"[BLK-C5] decode knobs in force: "
+        f"temperature={float(getattr(args, 'temperature', 1.0)):g} "
+        f"top_p={float(getattr(args, 'top_p', 1.0)):g} "
+        f"top_k={int(getattr(args, 'top_k', 0))} | "
+        f"if gen_validity/decode_ratio keeps falling, try "
+        f"--temperature 1.2 --top-p 0.9"
     )
     # Pocket bias + reference positions.
     bias_verdict = pocket_specific_closure_bias(args.pocket_id)
@@ -7128,13 +8062,29 @@ def main() -> int:
         scheduler_type=str(getattr(args, "lr_scheduler", "none")),
         warmup_steps=warmup_steps,
         min_lr=float(getattr(args, "lr_min_lr", 1e-6)),
+        pct_start=getattr(args, "lr_pct_start", None),
     )
     if scheduler is not None:
+        # Print the per-group peak LRs, not just the base: a `--gen-head-lr-
+        # scale` split that OneCycle flattens is invisible in the old
+        # single-number log line, which is how the 2026-10-09 no-op isolation
+        # survived a run whose log said `gen_flow_lr=1e-05`.
+        _sched_lrs = "/".join(
+            f"{float(g.get('lr', 0.0)):.2e}" for g in optimiser.param_groups
+        )
+        _sched_pct = (
+            getattr(args, "lr_pct_start", None)
+            if getattr(args, "lr_pct_start", None) is not None
+            else 0.3
+        )
         print(
             f"[lr-sched] type={getattr(args, 'lr_scheduler', 'none')} "
             f"warmup_epochs={getattr(args, 'lr_warmup_epochs', 5)} "
             f"steps/epoch={steps_per_epoch} total_steps={total_steps} "
-            f"min_lr={getattr(args, 'lr_min_lr', 1e-6):.2e}",
+            f"min_lr={getattr(args, 'lr_min_lr', 1e-6):.2e} "
+            f"pct_start={_sched_pct} "
+            f"group_lr_now=[{_sched_lrs}] "
+            f"n_param_groups={len(optimiser.param_groups)}",
             flush=True,
         )
     # 2026-10-04 — `--resume-from` / `--resume-from-path` IMPLEMENTED.
@@ -7368,6 +8318,14 @@ def main() -> int:
             assemble_loss_weight=float(
                 getattr(args, "assemble_loss_weight", 0.0)
             ),
+            # BLK-C11 (2026-10-10) — assemble aggregation + dead zone. Defaults
+            # reproduce the Round-3 D1 objective exactly.
+            assemble_formulation=str(
+                getattr(args, "assemble_formulation", "product")
+            ),
+            assemble_hinge_tau=float(
+                getattr(args, "assemble_hinge_tau", -1.0)
+            ),
             # Wf-R41 — gen_validity soft-valence weight.  getattr with an
             # explicit default so an args namespace built elsewhere (tests,
             # other entry points) keeps the pre-R41 objective rather than
@@ -7375,7 +8333,39 @@ def main() -> int:
             gen_validity_weight=float(
                 getattr(args, "gen_validity_weight", 0.0)
             ),
+            # BLK-C5 (2026-10-09) — entropy regularisation kwarg.  Default 0.0
+            # → exact torch.zeros(()) in the loss sum, so the objective is
+            # bit-for-bit the pre-BLK-C5 one.
+            entropy_reg_weight=float(getattr(args, "entropy_reg_weight", 0.0)),
+            # 2026-10-09 — 用户建议二 修改建议 B. getattr with an explicit 1.0
+            # default so an args namespace built elsewhere (tests, other
+            # entry points) keeps the pre-flag objective exactly.
+            bond_loss_weight=float(getattr(args, "bond_loss_weight", 1.0)),
         )
+        # BLK-C5 (2026-10-09) — staged unfreeze, 用户建议二 修改建议 A.
+        # `epoch` is 0-based, so the warmup boundary is reached when the
+        # just-finished epoch is the last frozen one.  Stride <= 1 means
+        # "train jointly from here on"; a stride > 1 re-freezes every N
+        # epochs after the warmup.
+        if _bond_head_frozen and (epoch + 1) == _bond_head_warmup_epochs:
+            for _p in model.head.parameters():
+                _p.requires_grad_(True)
+            _bond_head_frozen = False
+            print(f"[BLK-C5] bond_head unfrozen after epoch {epoch + 1}")
+        elif (
+            _bond_head_frozen
+            and (epoch + 1) > _bond_head_warmup_epochs
+            and _bond_head_unfreeze_stride > 1
+            and ((epoch + 1) - _bond_head_warmup_epochs)
+            % _bond_head_unfreeze_stride
+            == 0
+        ):
+            for _p in model.head.parameters():
+                _p.requires_grad_(False)
+            print(
+                f"[BLK-C5] bond_head re-frozen after epoch {epoch + 1} "
+                f"(stride={_bond_head_unfreeze_stride})"
+            )
         # Evaluate.
         decoding_attempted = epoch % 1 == 0  # every epoch for short runs
         if decoding_attempted:
@@ -7513,6 +8503,13 @@ def main() -> int:
         _gen_ok = _gen_tot = 0
         _gen_solver = ""
         _gen_per_seed: List[Dict[str, Any]] = []
+        # 2026-10-09 — pooled across eval seeds, so the breakdown is over
+        # every sample scored this epoch, not a mean of per-seed counts
+        # (which would weight a 0-sample seed like a full one — the same
+        # mistake the D3 fix removed for `summarise_decode_chemistry`).
+        # Initialised HERE, outside the try, so the epoch-level print below
+        # is safe even when generation eval raised.
+        _gen_reasons: Dict[str, int] = {}
         _gen_spread = 0.0
         # 2026-10-04 — `gen_validity` shares decode_ratio's blind spot: it
         # counts a decode as good when RDKit parses it, and `C.C.C.C` parses.
@@ -7533,6 +8530,7 @@ def main() -> int:
                 _gen_smiles: List[str] = []
                 _gen_errs = 0
                 _gen_first_err = ""
+                _gen_rejected: List[Tuple[str, str]] = []
                 for _si, _sd in enumerate(_gen_seeds):
                     _chem_seed: Dict[str, Any] = {}
                     _rows_seed: List[Optional[Dict[str, Any]]] = []
@@ -7567,11 +8565,16 @@ def main() -> int:
                         chemistry_out=_chem_seed,
                         chemistry_rows_out=_rows_seed,
                         smiles_out=_gen_smiles,
+                        rejected_smiles_out=_gen_rejected,
                     )
                     _gen_ok += int(_ok_s)
                     _gen_tot += int(_tot_s)
                     _gen_chem_rows.extend(_rows_seed)
                     _gen_errs += int(_chem_seed.get("n_decode_error", 0) or 0)
+                    for _rk, _rv in (
+                        _chem_seed.get("failure_reasons", {}) or {}
+                    ).items():
+                        _gen_reasons[_rk] = _gen_reasons.get(_rk, 0) + int(_rv)
                     if not _gen_first_err and _chem_seed.get("decode_error_example"):
                         _gen_first_err = str(_chem_seed["decode_error_example"])
                     _gen_per_seed.append(
@@ -7591,6 +8594,41 @@ def main() -> int:
                 _gen_chem["n_decode_error"] = int(_gen_errs)
                 if _gen_first_err:
                     _gen_chem["decode_error_example"] = _gen_first_err
+                # 2026-10-09 — per-epoch failure-reason breakdown, emitted
+                # into `per_epoch_metrics.json` next to `decode_ratio` /
+                # `gen_validity` (用户建议四).  The counters sum to
+                # `_gen_tot + _gen_errs`, so "the model produced bad
+                # chemistry" and "the decoder raised" stay separable — which
+                # is exactly what the existing dump could not show, because
+                # it only records RDKit-strict survivors.
+                _gen_chem["failure_reasons"] = dict(_gen_reasons)
+                _gen_chem["failure_reasons_total"] = int(sum(_gen_reasons.values()))
+                # Rejected decodes, written beside the accepted ones.  Same
+                # gate as the accepted dump: a run that does not opt in pays
+                # nothing, and a run that does gets the pathology on disk
+                # rather than only as a count.
+                if (
+                    bool(getattr(args, "save_generated_smiles", False))
+                    and _gen_rejected
+                ):
+                    _rej_path = out_dir / "generated_decode_reasons.csv"
+                    import csv as _csv
+
+                    _rej_new = not _rej_path.exists()
+                    with _rej_path.open(
+                        "a", encoding="utf-8", newline=""
+                    ) as _fh:
+                        _w = _csv.writer(_fh)
+                        if _rej_new:
+                            _w.writerow(["epoch", "reason", "smiles"])
+                        for _smi_r, _reason_r in _gen_rejected:
+                            _w.writerow([int(epoch), _reason_r, _smi_r])
+                    _gen_chem["generated_decode_reasons_csv"] = str(
+                        _rej_path
+                    )
+                    _gen_chem["generated_decode_reasons_n"] = len(
+                        _gen_rejected
+                    )
                 # Wf-R44 — persist the decoded SMILES so a downstream
                 # cfm_property_panel run can score them.  This is the missing
                 # decode->panel link: before it, m4/m5/m7 had no generated
@@ -7619,6 +8657,7 @@ def main() -> int:
                 )
                 _gen_ok = _gen_tot = 0
                 _gen_per_seed = []
+                _gen_reasons = {}
             finally:
                 if _ema_swapped_gen:
                     model.ema_swap_out()
@@ -7644,6 +8683,14 @@ def main() -> int:
                     f"seeds={len(_gen_per_seed)}x{_gen_n} "
                     f"per_seed=[{','.join(f'{v:.3f}' for v in _vals)}] "
                     f"seed_spread={_gen_spread:.3f}",
+                    flush=True,
+                )
+                # 2026-10-09 — the failure taxonomy, on the same line as the
+                # metric it explains.  `ok` is the RDKit-strict survivors;
+                # every other key is a failure class.
+                print(
+                    f"[cfm-gen] epoch={epoch} failure_reasons="
+                    f"{dict(sorted(_gen_reasons.items()))}",
                     flush=True,
                 )
             else:
@@ -7777,6 +8824,17 @@ def main() -> int:
                             _gen_chem.get("sa_synthesizable_rate", 0.0) or 0.0
                         ),
                         sa_scored=int(_gen_chem.get("sa_scored", 0) or 0),
+                        # 2026-10-09 — the per-epoch failure-reason
+                        # breakdown, on the STRUCTURED event so a reader
+                        # gets it from per_epoch_metrics.json instead of
+                        # scraping stdout (用户建议四: look at what the model
+                        # actually emits).  `ok` is the RDKit-strict
+                        # survivors; every other key is a failure class.
+                        # The counts sum to n_samples + n_decode_error.
+                        failure_reasons=json.dumps(
+                            _gen_chem.get("failure_reasons", {}) or {},
+                            sort_keys=True,
+                        ),
                     )
                 except Exception as _ev_exc:
                     print(
@@ -8218,6 +9276,18 @@ def main() -> int:
             "hidden_dim": args.hidden_dim,
             "n_layers": args.n_layers,
             "lr": args.lr,
+            # `lr` above is the CONFIGURED base lr, constant by construction —
+            # it is not what the optimiser is actually using. Under a scheduler
+            # the live lr ramps, and a log that carries only `args.lr` makes
+            # every schedule unverifiable after the fact (this is how a broken
+            # scalar `max_lr` went unnoticed for a whole run). `lr_live` reads
+            # the optimiser's param groups, so the gen_flow / atom / bond split
+            # is observable in events.jsonl.
+            "lr_live": (
+                [float(g.get("lr")) for g in optimiser.param_groups]
+                if optimiser is not None
+                else None
+            ),
             "use_yuelbond": args.use_yuelbond,
             # Round-3 D2 — recorded so a result can be attributed to the
             # connectivity prior rather than to the checkpoint.  Both halves

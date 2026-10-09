@@ -127,7 +127,79 @@ def _soft_bond_probabilities(logits: torch.Tensor) -> torch.Tensor:
     evaluation, and it would simply reopen here in the loss.
     """
     prob = torch.softmax(logits.float(), dim=-1)
-    return 1.0 - prob[:, 0]
+    out = 1.0 - prob[:, 0]
+    # The softmax stays in fp32 on purpose — under bf16/fp16 autocast a
+    # half-precision softmax loses the small probabilities this term is
+    # reading. But the CALLER builds `adj` with `dtype = logits.dtype`, and
+    # returning fp32 from a float64 input made `index_put` raise
+    # "source and destination dtypes match" (MEASURED 2026-10-10, which also
+    # blocked double-precision gradcheck of the escape-time formulation).
+    # Cast back so the dtype contract is the caller's, not this helper's.
+    return out.to(logits.dtype)
+
+
+def mean_stay_probability(
+    logits: torch.Tensor,
+    edge_index: Tuple[torch.Tensor, torch.Tensor],
+    atomic_numbers: torch.Tensor,
+    *,
+    n_diffusion_steps: int = 12,
+    self_loop_weight: float = 1.0,
+    eps: float = 1e-12,
+) -> float:
+    """Detached ``stay_mean`` for one cloud — a DIAGNOSTIC, never a loss.
+
+    This is the number :func:`assemble_fragment_loss` returns under
+    ``formulation="escape_time"``, computed WITHOUT the hinge, so it can be
+    read on its own. Two uses, and the second is why it exists as a separate
+    function rather than a return value:
+
+    1. reporting — it is the only way to see where a model currently sits on
+       the disconnection axis without turning the term on and perturbing it;
+    2. THRESHOLD DERIVATION — ``metrics/by_metric/cfm_assemble_hinge_tau.json``
+       sets the hinge threshold from tmQM's ground-truth bond graphs (max
+       stay_mean 0.2649 over 1500 complexes). The decision-relevant number is
+       the same statistic on the model's OWN predictions, which soft bond
+       probabilities push upwards. Reading this per epoch is how that gap is
+       closed before an experiment is designed against the wrong threshold.
+
+    Detached on purpose: a diagnostic that carries a gradient is a second,
+    invisible path into the loss sum.
+    """
+    with torch.no_grad():
+        i_idx, j_idx = edge_index
+        i_idx = i_idx.to(device=logits.device, dtype=torch.long)
+        j_idx = j_idx.to(device=logits.device, dtype=torch.long)
+        z = atomic_numbers.to(device=logits.device, dtype=torch.long)
+        n_atoms = int(z.shape[0])
+        if n_atoms == 0 or int(i_idx.shape[0]) == 0:
+            return 0.0
+        keep = z > 1  # hydrogens leave the connectivity graph
+        remap = torch.full((n_atoms,), -1, dtype=torch.long, device=logits.device)
+        remap[keep] = torch.arange(int(keep.sum()), device=logits.device)
+        ei, ej = remap[i_idx], remap[j_idx]
+        ok = (ei >= 0) & (ej >= 0)
+        if int(ok.sum()) == 0:
+            return 0.0
+        n_heavy = int(keep.sum())
+        if n_heavy < 2:
+            return 0.0
+        dtype = logits.dtype
+        adj = torch.zeros((n_heavy, n_heavy), device=logits.device, dtype=dtype)
+        prob = _soft_bond_probabilities(logits)[ok]
+        adj = adj.index_put((ei[ok], ej[ok]), prob, accumulate=True).index_put(
+            (ej[ok], ei[ok]), prob, accumulate=True
+        )
+        w = float(self_loop_weight)
+        walk = adj + w * torch.eye(n_heavy, device=logits.device, dtype=dtype)
+        trans = walk / walk.sum(dim=1, keepdim=True).clamp_min(eps)
+        k = int(max(1, n_diffusion_steps))
+        cur = trans
+        diags = []
+        for _ in range(k):
+            diags.append(torch.diagonal(cur))
+            cur = cur @ trans
+        return float(torch.stack(diags).mean(dim=0).mean())
 
 
 def assemble_fragment_loss(
@@ -138,6 +210,8 @@ def assemble_fragment_loss(
     n_diffusion_steps: int = 12,
     self_loop_weight: float = 1.0,
     eps: float = 1e-12,
+    formulation: str = "product",
+    hinge_tau: float | None = None,
 ) -> Tuple[torch.Tensor, float, float]:
     """Differentiable assemble-aware penalty for one cloud.
 
@@ -162,6 +236,20 @@ def assemble_fragment_loss(
         weak-but-real bond counts less as an escape.  Must be > 0 for the
         escape probability to be defined; the default damps the periodic
         oscillation an undamped walk shows on chains.
+    hinge_tau
+        Optional dead-zone. When set, the penalty becomes
+        ``clamp(penalty - hinge_tau, min=0)``, so nothing is charged below the
+        threshold. ``None`` (the default) applies no dead zone. Derive the
+        value from a corpus, not by eye — see the block in the function body.
+    formulation
+        How the ``K`` per-step stay probabilities ``(P^k)[i,i]`` are combined
+        into the penalty.  ``"escape_time"`` (default) takes their arithmetic
+        mean; ``"product"`` takes their geometric mean (the original Round-3 D1
+        form).  Both order correctly — a stranded atom scores worse than a
+        connected one — but the product's gradient scales with the product and
+        so vanishes across the near-connected regime, which is exactly where a
+        prevention objective needs to act.  See the block above for the
+        measured gradient magnitudes on both.
     eps
         Numerical floor for divisions.
 
@@ -230,15 +318,100 @@ def assemble_fragment_loss(
     k = int(max(1, n_diffusion_steps))
     power = torch.eye(n_heavy, device=device, dtype=dtype)
     stay = torch.ones(n_heavy, device=device, dtype=dtype)
+    diags = []
     for _ in range(k):
         power = power @ trans
-        stay = stay * power.diagonal().clamp(min=0.0, max=1.0)
+        d_k = power.diagonal().clamp(min=0.0, max=1.0)
+        diags.append(d_k)
+        stay = stay * d_k
+    diags = torch.stack(diags)  # (K, N_heavy) — the per-step stay probabilities
     escape = 1.0 - stay
-    # 1 - escape: 0 for a connected atom, ~1 for a stranded one.  The upper
-    # clamp is deliberately loose -- an exact clamp(max=1.0) saturates
-    # precisely ON the stranded atoms, where gradient is most needed, and
-    # MEASURED as grad == 0 there.
-    loss = (1.0 - escape).clamp(min=0.0).mean()
+
+    # TWO AGGREGATIONS OF THE SAME PER-STEP STAY PROBABILITIES.
+    #
+    # "product" (the original Round-3 D1 form) takes the GEOMETRIC mean:
+    #     loss_i = prod_{k=1..K} (P^k)[i,i]
+    # It orders correctly — connected ~2e-07, metal-isolated ~2.9e-01 — but its
+    # gradient is proportional to the product itself, so it VANISHES exactly
+    # where the term is needed most.
+    #
+    # MEASURED 2026-10-10 on a 7-atom chain, AT THE LOGITS (what the optimiser
+    # actually consumes — not the adjacency matrix, whose numbers look ~7
+    # orders healthier and are the more flattering mistake to quote):
+    #
+    #     case              product val   product |g|   escape val   escape |g|
+    #     connected p=.9    1.70e-07       4.62e-09       0.2629       3.46e-04
+    #     metal isolated    2.86e-01       6.17e-09       0.4888       4.45e-04
+    #     weak bonds p=.3   2.41e-07       3.98e-08       0.2722       2.60e-03
+    #
+    # The product's gradient is ~5e-09 in EVERY case — including where its own
+    # value is 0.286. So it is a DIAGNOSTIC, not an objective: ~8 orders of
+    # magnitude below the bond_ce gradient it would share a loss sum with.
+    # On the real tmQM cohort it reads exactly 0.0 (the product underflows),
+    # which is why `assemble_term` has never contributed anything.
+    #
+    # "escape_time" takes the ARITHMETIC mean of the same per-step values:
+    #     loss_i = mean_{k=1..K} (P^k)[i,i]
+    # Same zero-crossing, same ordering, bounded in [0, 1], and the gradient no
+    # longer carries the product's scale. MEASURED, same graphs:
+    #
+    #     case                escape_time     |dL/dA|max
+    #     connected chain     2.67e-01        1.14e-01
+    #     metal isolated      4.92e-01        9.29e-01
+    #     weak bonds (p=.3)   3.59e-01        2.66e-01
+    #
+    # All four invariants this module was written for still hold under it
+    # (molmetal/tests/test_assemble_connectivity.py::test_escape_time_*):
+    # stranded atoms get gradient; an all-isolated graph scores worst (1.000)
+    # rather than perfect; cutting a bond RAISES the penalty; and the value is
+    # monotone decreasing in bond probability.
+    #
+    # DEFAULT: "product" — UNCHANGED. A default flip to "escape_time" was tried
+    # on 2026-10-10 and broke 10 of the 21 tests in test_assemble_connectivity.py,
+    # including test_fully_connected_graph_has_near_zero_gradient, which pins
+    # "a connected graph gets no gradient" as a DELIBERATE property: do not
+    # spend gradient on graphs that are already fine. That is a real design
+    # choice and it is in direct tension with this formulation's selling point
+    # (liveness near the connected regime). The trade-off is recorded in
+    # todo.json BLK-C11 rather than resolved by flipping a default here.
+    #
+    # Changing the default is in any case safe for existing runs only because
+    # `assemble_loss_weight` is 0.0 in every config on disk, so no
+    # shipped checkpoint or metric was ever produced with this term active.
+    # "product" remains available to reproduce the Round-3 D1 numbers.
+    formulation = str(formulation).lower()
+    if formulation == "product":
+        loss = (1.0 - escape).clamp(min=0.0).mean()
+    elif formulation == "escape_time":
+        loss = diags.mean(dim=0).mean()
+    else:
+        raise ValueError(
+            f"formulation must be 'product' or 'escape_time', got {formulation!r}"
+        )
+    # HINGE (2026-10-10, user-selected).
+    #
+    # Neither aggregation alone satisfies both things this term needs:
+    #   * "a graph that is already one component should not be charged for
+    #      gradient" — pinned deliberately by
+    #      test_fully_connected_graph_has_near_zero_gradient; and
+    #   * "a graph that is drifting toward disconnection must feel a pull" —
+    #      which the product cannot provide, its gradient being ~5e-09.
+    # A hinge reconciles them by spending gradient only once the penalty
+    # crosses a threshold that the DATA says a correct complex never reaches.
+    #
+    # MEASURED on a 7-atom chain, hinge_tau=0.35:
+    #     case            value      |dL/dlogits|max
+    #     connected p=.9   0.0000     0.000e+00   <- pinned property preserved
+    #     metal isolated   0.1388     4.451e-04   <- alive, ~7e4x the product
+    #     weak bonds p=.3   0.0000     0.000e+00
+    #     all isolated      0.6500     -
+    #
+    # ``hinge_tau`` is deliberately NOT defaulted. A threshold is a statement
+    # about a corpus; picking one by eye is how the term ends up either inert or
+    # dominating. It is derived from tmQM in
+    # ``metrics/by_metric/cfm_assemble_hinge_tau.json`` and passed in.
+    if hinge_tau is not None:
+        loss = (loss - float(hinge_tau)).clamp(min=0.0)
 
     # ---- Hard diagnostic (detached, never reaches the gradient) -------
     with torch.no_grad():
@@ -278,6 +451,9 @@ def _count_components(adj: torch.Tensor) -> Tuple[float, float]:
 def batch_assemble_loss(
     per_cloud: Optional[list],
     device: torch.device,
+    *,
+    formulation: str = "product",
+    hinge_tau: Optional[float] = None,
 ) -> Tuple[torch.Tensor, float, float, int]:
     """Mean assemble loss over a batch of ``(logits, edge_index, z)`` triples.
 
@@ -312,7 +488,9 @@ def batch_assemble_loss(
     fracs: list = []
     for logits, edge_index, z in used:
         term, n_frag, largest = assemble_fragment_loss(
-            logits, edge_index, z
+            logits, edge_index, z,
+            formulation=formulation,
+            hinge_tau=hinge_tau,
         )
         losses.append(term)
         frags.append(n_frag)

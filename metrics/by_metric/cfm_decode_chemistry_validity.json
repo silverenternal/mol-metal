@@ -1,0 +1,163 @@
+{
+  "metric": "cfm_decode_chemistry_validity",
+  "description": "Chemistry validity of molecules actually decoded by three real CFM runs, plus the two property metrics on the same molecules (m5 QED, m4 SA). REWRITTEN 2026-10-10 after the validity check itself was found to be broken.",
+  "tag": "MEASURED",
+  "date": "2026-10-10",
+  "source_script": "molmetal/scripts/cfm_property_panel.py --decode-chemistry-validity",
+  "gate_metric": "cfm_property_panel.py::panel_version wf264-sa/v1 (post-fix)",
+  "RETRACTION": {
+    "previous_value": "chemistry_validity_pass_rate = 0.000 (0/2146 valence_ok)",
+    "why_it_was_wrong": "cfm_property_panel.py called `Atom.GetAllowedValences()`, which does not exist in RDKit 2026.03.6 — the valence table lives on PeriodicTable. Every molecule raised AttributeError, the surrounding `except Exception` converted it to `valence_ok = False`, and the panel emitted a chemistry verdict that had never been computed. 0/2146 was a crashed check, not a property of the generator.",
+    "corrected_value": "chemistry_validity_pass_rate = 1823/2146 = 0.8495",
+    "consequence_reversed": "An earlier entry in this session concluded that 'the model has never once been penalised for an impossible valence' and that this was the visible root cause of generation collapse. That conclusion is WITHDRAWN. The generator produces chemically valid molecules at 84.9%; there was no valence crisis to fix, and the generation A/B designed to address it was aimed at a non-problem.",
+    "bug_class": "swallowed exception presenting a failed check as a metric — same class as the false 0/6 from a swallowed TypeError recorded in project memory"
+  },
+  "headline": {
+    "total_molecules": 2146,
+    "all_pass": 1823,
+    "all_pass_rate": 0.8495,
+    "valence_ok_all": 2146,
+    "metal_coord_ok_all": 2146,
+    "statement": "1823 of 2146 decoded molecules pass every sub-check. The organic atoms are 100% valence-legal (2146/2146) and no metal centre exceeds its MEASURED coordination cap (2146/2146). The binding constraint is `no_radical_ok` — that alone accounts for all 323 failures."
+  },
+  "metal_coordination_measurement": {
+    "THIRD_CORRECTION_2026_10_10": {
+      "two_prior_bases_were_wrong": "(1) rdkit allowed-valence list — no model for transition metals; (2) tmQM coord_number (MND) — a crystallographic coordination number on a different scale from the bond-order sum the barrier constrains.",
+      "correct_basis": "metal_bo_sum — sum of Wiberg bond orders at the metal, from the tmQM .BO blocks. This is what valence_log_barrier's excess = clamp(atom_orders - cap) actually constrains, and what RDKit's Atom.GetTotalValence() returns.",
+      "why_MND_is_not_interchangeable": {
+        "MND == bo_n_neighbors": {
+          "agree": 17869,
+          "disagree": 15560
+        },
+        "mean_abs_MND_minus_bo_sum": {
+          "Pt": 0.99,
+          "Ru": 2.29,
+          "Ir": 2.43,
+          "Rh": 2.24,
+          "Os": 1.7,
+          "Re": 0.81
+        },
+        "verdict": "MND is a coordination number from the deposited structure; bo_sum is a quantum-chemistry bond-order sum. Different quantities, different scales."
+      },
+      "bo_sum_percentiles": {
+        "Pt": {
+          "p50": 3.25,
+          "p90": 4.12,
+          "p99": 4.54,
+          "max": 5.74,
+          "n": 8275
+        },
+        "Ru": {
+          "p50": 4.85,
+          "p90": 5.84,
+          "p99": 6.48,
+          "max": 7.06,
+          "n": 9800
+        },
+        "Ir": {
+          "p50": 4.04,
+          "p90": 4.7,
+          "p99": 5.42,
+          "max": 6.19,
+          "n": 5232
+        },
+        "Rh": {
+          "p50": 3.92,
+          "p90": 4.52,
+          "p99": 5.17,
+          "max": 5.85,
+          "n": 4640
+        },
+        "Os": {
+          "p50": 5.27,
+          "p90": 6.21,
+          "p99": 7.0,
+          "max": 7.58,
+          "n": 1310
+        },
+        "Re": {
+          "p50": 6.46,
+          "p90": 6.85,
+          "p99": 7.4,
+          "max": 7.92,
+          "n": 4172
+        }
+      },
+      "shipped_caps_p99_rounded_up": {
+        "Pt": 5.0,
+        "Ru": 7.0,
+        "Ir": 6.0,
+        "Rh": 6.0,
+        "Os": 7.0,
+        "Re": 8.0
+      },
+      "previous_claim_corrected": "An earlier revision of this file said the existing caps sit below the median for three of six metals and below p90 for all six. That was measured against MND and is WITHDRAWN. Against the correct quantity: Pt=4 is mildly tight (p99 4.54), Ru=6 and Ir=6 are fine, and only Rh/Os/Re were genuinely wrong — absent from the table entirely, falling back to cap=4, which is below the median for all three and far below it for Os and Re.",
+      "metric_stability_across_bases": "Re-measured with the stricter, correctly-based caps: all_pass = 1823/2146 = 0.8495 and metal_coord_ok = 2146/2146, identical to the MND-based run. The lenient caps were not hiding anything."
+    },
+    "load_bearing_sites": {
+      "loss_side": "molmetal/molmetal_lam/lam_chem/decoder_rework.py::TMQM_MEASURED_METAL_CAPS, passed into valence_log_barrier via its existing `valences` override from train_cfm_yuelbond_wasserstein.py",
+      "metric_side": "molmetal/scripts/cfm_property_panel.py imports the SAME constant — one basis, two consumers",
+      "shared_default_untouched": "DEFAULT_VALENCES is left alone: it is shared with cfm_decoder_yuelbond.py and molmetal_lam/tests/test_cfm_p0_fixes.py pins Pt(II)=4, which is a statement about an oxidation state rather than about the element"
+    },
+    "gate": "molmetal/tests/test_cfm_metal_valence_caps.py (7 tests). Non-vacuity verified: passes the correct table, and FAILS all four broken variants including the MND-basis caps that were the actual mistake.",
+    "known_limitation": "A single per-element cap cannot express that the same element has a different ceiling at a different oxidation state (Pt(II) square-planar vs Pt(IV) octahedral). The oxidation-state-aware formulation (bond-valence-sum with assigned oxidation states; cf. OxiGen, arXiv:2610.08296) is where the field has moved. This trainer has no oxidation-state machinery, so the proxy stands — but it is a proxy."
+  },
+  "findings": {
+    "BLK-C3_disclosure_now_has_a_real_number": "decode_ratio ~0.998 counts RDKit-parseable strings. The chemistry-validity rate behind it is 0.8495, not 0. The disclosure BLK-C3 asked for still stands, and the number is far more defensible than the one first computed.",
+    "BLK-C4_m5_QED": "MEASURED 0.1984 / 0.2008 / 0.1749 against a >=0.50 target — HONEST-NEGATIVE. This stands; it was computed with RDKit's own QED and is unaffected by the valence bug.",
+    "m7_diversity_still_uninterpretable": "0.916 / 0.922 / 0.867 mean pairwise Tanimoto distance. The earlier caveat that these are not chemically meaningful is WITHDRAWN along with the 0/2146 premise — the molecules are 84.9% valid, so the diversity numbers should be re-examined on their own terms. Not re-measured yet."
+  },
+  "rows": [
+    {
+      "run": "cfm_fm_ab_2026_10_09",
+      "n": 1128,
+      "all_pass": 950,
+      "valence_ok": 1128,
+      "metal_coord_ok": 1128,
+      "sanitize_ok": 1128,
+      "no_radical_ok": 950,
+      "ring_ok": 1128,
+      "all_pass_rate": 0.8422,
+      "m5_qed_mean": 0.1984,
+      "m5_qed_std": 0.101,
+      "m4_sa_mean": 7.3688,
+      "m4_sa_std": 1.3774
+    },
+    {
+      "run": "cfm_fm_control_2026_10_09",
+      "n": 871,
+      "all_pass": 728,
+      "valence_ok": 871,
+      "metal_coord_ok": 871,
+      "sanitize_ok": 871,
+      "no_radical_ok": 728,
+      "ring_ok": 871,
+      "all_pass_rate": 0.8358,
+      "m5_qed_mean": 0.2008,
+      "m5_qed_std": 0.1048,
+      "m4_sa_mean": 7.4506,
+      "m4_sa_std": 1.4115
+    },
+    {
+      "run": "cfm_blk_c5_repair_2026_10_09",
+      "n": 147,
+      "all_pass": 145,
+      "valence_ok": 147,
+      "metal_coord_ok": 147,
+      "sanitize_ok": 147,
+      "no_radical_ok": 145,
+      "ring_ok": 147,
+      "all_pass_rate": 0.9864,
+      "m5_qed_mean": 0.1749,
+      "m5_qed_std": 0.1217,
+      "m4_sa_mean": 6.6633,
+      "m4_sa_std": 0.827
+    }
+  ],
+  "pre_existing_red_test": {
+    "test": "molmetal/molmetal_lam/tests/test_cfm_p0_fixes.py::test_decoder_wired_in_generate",
+    "symptom": "decoder produced no bonds across 2 mols (n_bonds=[0, 0])",
+    "verified_pre_existing": "fails identically with the 2026-10-10 changes stashed; not caused by this work",
+    "note": "Recorded so it is not later attributed to the cap work."
+  }
+}

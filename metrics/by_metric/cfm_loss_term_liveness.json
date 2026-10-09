@@ -1,0 +1,241 @@
+{
+  "metric": "cfm_loss_term_liveness",
+  "description": "Per-term gradient liveness of the 12-term CFM loss cascade, read from the trainer's own _LAST_LOSS_TERMS side-channel after ONE real epoch. This is the measurement BLK-C12 asserted ('8 of 12 terms are exact zeros') but never produced: its status_basis read '待跑：逐项打印 loss 组成'.",
+  "source_script": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py::train_one_epoch",
+  "probe": "molmetal/tests/test_cfm_loss_gradient_liveness.py harness, run out-of-tree",
+  "tag": "MEASURED",
+  "date": "2026-10-10",
+  "n_terms": 12,
+  "arms": {
+    "arm_A_all_flags_on": {
+      "cohort": "synthetic Pt-click (n_train 32, n_val 16, batch 8)",
+      "purpose": "proves every term's ACTIVE branch carries a gradient",
+      "n_live": 12,
+      "note": "reproduces tests/test_cfm_loss_gradient_liveness.py, which pins ALLOWED_DEAD={}"
+    },
+    "arm_B_shipped_cfm_yaml": {
+      "cohort": "tmQM real, metals=Pt (train 256 / val 192, batch 64)",
+      "config": "configs/cfm.yaml, unmodified",
+      "purpose": "what the PRODUCTION config actually trains",
+      "n_live": 4,
+      "n_dead": 8
+    },
+    "arm_C_shipped_plus_weights_1.0": {
+      "cohort": "same as arm_B",
+      "purpose": "raw (unweighted) magnitude of the three dead generation-side terms",
+      "n_live": 7,
+      "extra_flags": {
+        "gen_validity_weight": 1.0,
+        "assemble_loss_weight": 1.0,
+        "entropy_reg_weight": 1.0
+      }
+    }
+  },
+  "findings": {
+    "C12_confirmed": "Under the shipped configs/cfm.yaml exactly 8 of 12 terms are gradient-dead: diversity_term, shortcut_distill_loss, consistency_term, so3_term, edm_term, assemble_term, soft_valence_term, entropy_term. The claim is arithmetically correct.",
+    "C12_misattributed": "The zero terms are NOT missing engineering. All 12 branches are implemented and arm_A shows 12/12 live. Six of the eight are gated on a CONFIG VALUE that appears in ZERO config files (gen_validity_weight, assemble_loss_weight, mmd/repulsion, so3_average, edm_preconditioning); two are gated on a FLAG left off (shortcut-distill, consistency-weight).",
+    "no_generation_objective_is_real": "Of the 4 terms live under cfm.yaml, only bond_ce touches the decoded molecule's chemistry and it is a PER-EDGE cross-entropy. fm_term (13.31) trains the velocity field, w2 (0.082) and cb (0.00047) are regularisers. There is no molecule-level term, so BLK-C11 mode collapse has nothing to trade off against.",
+    "soft_valence_is_not_scale_invariant": {
+      "raw_value_synthetic_cohort_batch8": 4.127412796020508,
+      "raw_value_tmqm_cohort_batch64": 134294.75,
+      "ratio": 32537.271321512068,
+      "cause": "train_cfm_yuelbond_wasserstein.py:2377 sums valence_log_barrier() over every cloud in the batch with no division by n_clouds or n_atoms, and decoder_rework.py:499 returns excess.pow(2).sum() over atoms. The term is O(batch_size * n_atoms).",
+      "consequence": "No fixed weight in the YAML can be correct across cohorts. At weight 0.05 the tmQM cohort contributes ~6715 against a total live loss of ~15.6 — the term would swamp every other objective. This, not a missing wire-in, is why the term was never enabled.",
+      "still_true": true
+    },
+    "assemble_has_nothing_to_act_on_for_tmqm": {
+      "STATUS": "still true, and it is the remaining live idea",
+      "note": "assemble_term penalises multi-fragment disconnection. tmQM complexes are single-fragment, so it reads 0 even at weight 1.0. Among the 8 dead terms it is the only one whose premise is untouched by the retraction — but it needs a multi-fragment cohort to act on, so it is not a fix for the tmQM runs either."
+    },
+    "entropy_is_scale_stable": "entropy_term raw = -1.416 at weight 1.0 on tmQM vs -0.0158*100 = -1.58 at weight 0.01 in arm_A — the same order across a 8x cohort change, because it is an entropy of a fixed-width distribution, not a sum over atoms. Sign is negative as specified (the optimiser maximises entropy).",
+    "BLK_C11_root_cause_is_visible": {
+      "STATUS": "WITHDRAWN 2026-10-10 — the root cause it pointed to does not exist",
+      "what_it_claimed": "0/2146 generated molecules were valence-invalid, so the soft-valence term (the only thing that could penalise that) being switched off was the visible cause of generation collapse.",
+      "why_withdrawn": "The 0/2146 came from cfm_property_panel.py calling a nonexistent RDKit API and swallowing the AttributeError. With the check fixed and metal caps measured from tmQM, the validity rate is 0.8495 — see metrics/by_metric/cfm_decode_chemistry_validity.json. There is no valence crisis for this term to fix.",
+      "what_survives": "The 12/12-vs-4/12 loss-term liveness measurement stands unchanged: the engineering is complete and the shipped config leaves 8 terms off, including both molecule-level ones. That is still true and still worth acting on — just not for the reason originally given."
+    }
+  },
+  "rows": [
+    {
+      "term": "bond_ce",
+      "arm_A_all_flags_on": {
+        "requires_grad": true,
+        "value": 1.659972906112671
+      },
+      "arm_B_shipped_cfm_yaml": {
+        "requires_grad": true,
+        "value": 2.156707525253296
+      },
+      "arm_C_shipped_plus_three_weights_1.0": {
+        "requires_grad": true,
+        "value": 2.1772828102111816
+      }
+    },
+    {
+      "term": "wasserstein_weight*w2_val",
+      "arm_A_all_flags_on": {
+        "requires_grad": true,
+        "value": 0.07370354235172272
+      },
+      "arm_B_shipped_cfm_yaml": {
+        "requires_grad": true,
+        "value": 0.08178278058767319
+      },
+      "arm_C_shipped_plus_three_weights_1.0": {
+        "requires_grad": true,
+        "value": 0.08176197856664658
+      }
+    },
+    {
+      "term": "0.05*cb_loss",
+      "arm_A_all_flags_on": {
+        "requires_grad": true,
+        "value": 0.0006110431859269738
+      },
+      "arm_B_shipped_cfm_yaml": {
+        "requires_grad": true,
+        "value": 0.0004417927411850542
+      },
+      "arm_C_shipped_plus_three_weights_1.0": {
+        "requires_grad": true,
+        "value": 0.00046706065768375993
+      }
+    },
+    {
+      "term": "diversity_term",
+      "arm_A_all_flags_on": {
+        "requires_grad": true,
+        "value": 0.17082153260707855
+      },
+      "arm_B_shipped_cfm_yaml": {
+        "requires_grad": false,
+        "value": 0.0
+      },
+      "arm_C_shipped_plus_three_weights_1.0": {
+        "requires_grad": false,
+        "value": 0.0
+      }
+    },
+    {
+      "term": "shortcut_distill_loss",
+      "arm_A_all_flags_on": {
+        "requires_grad": true,
+        "value": 2.1352431774139404
+      },
+      "arm_B_shipped_cfm_yaml": {
+        "requires_grad": false,
+        "value": 0.0
+      },
+      "arm_C_shipped_plus_three_weights_1.0": {
+        "requires_grad": false,
+        "value": 0.0
+      }
+    },
+    {
+      "term": "consistency_term",
+      "arm_A_all_flags_on": {
+        "requires_grad": true,
+        "value": 0.04388953372836113
+      },
+      "arm_B_shipped_cfm_yaml": {
+        "requires_grad": false,
+        "value": 0.0
+      },
+      "arm_C_shipped_plus_three_weights_1.0": {
+        "requires_grad": false,
+        "value": 0.0
+      }
+    },
+    {
+      "term": "so3_term",
+      "arm_A_all_flags_on": {
+        "requires_grad": true,
+        "value": 0.2179272472858429
+      },
+      "arm_B_shipped_cfm_yaml": {
+        "requires_grad": false,
+        "value": 0.0
+      },
+      "arm_C_shipped_plus_three_weights_1.0": {
+        "requires_grad": false,
+        "value": 0.0
+      }
+    },
+    {
+      "term": "edm_term",
+      "arm_A_all_flags_on": {
+        "requires_grad": true,
+        "value": 2.2201993465423584
+      },
+      "arm_B_shipped_cfm_yaml": {
+        "requires_grad": false,
+        "value": 0.0
+      },
+      "arm_C_shipped_plus_three_weights_1.0": {
+        "requires_grad": false,
+        "value": 0.0
+      }
+    },
+    {
+      "term": "fm_term",
+      "arm_A_all_flags_on": {
+        "requires_grad": true,
+        "value": 2.1350533962249756
+      },
+      "arm_B_shipped_cfm_yaml": {
+        "requires_grad": true,
+        "value": 12.458138465881348
+      },
+      "arm_C_shipped_plus_three_weights_1.0": {
+        "requires_grad": true,
+        "value": 13.3148775100708
+      }
+    },
+    {
+      "term": "assemble_term",
+      "arm_A_all_flags_on": {
+        "requires_grad": true,
+        "value": 0.0
+      },
+      "arm_B_shipped_cfm_yaml": {
+        "requires_grad": false,
+        "value": 0.0
+      },
+      "arm_C_shipped_plus_three_weights_1.0": {
+        "requires_grad": true,
+        "value": 0.0
+      }
+    },
+    {
+      "term": "soft_valence_term",
+      "arm_A_all_flags_on": {
+        "requires_grad": true,
+        "value": 4.127412796020508
+      },
+      "arm_B_shipped_cfm_yaml": {
+        "requires_grad": false,
+        "value": 0.0
+      },
+      "arm_C_shipped_plus_three_weights_1.0": {
+        "requires_grad": true,
+        "value": 134294.75
+      }
+    },
+    {
+      "term": "entropy_term",
+      "arm_A_all_flags_on": {
+        "requires_grad": true,
+        "value": -0.01578563079237938
+      },
+      "arm_B_shipped_cfm_yaml": {
+        "requires_grad": false,
+        "value": 0.0
+      },
+      "arm_C_shipped_plus_three_weights_1.0": {
+        "requires_grad": true,
+        "value": -1.4161285161972046
+      }
+    }
+  ],
+  "registry_note": "new metric file; registry.py generate required before commit"
+}

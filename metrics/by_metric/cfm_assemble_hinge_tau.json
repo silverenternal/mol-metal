@@ -1,0 +1,58 @@
+{
+  "metric": "cfm_assemble_hinge_tau",
+  "description": "Threshold for the assemble-term dead zone, derived from tmQM rather than chosen by eye. The hinge must sit above every correctly-formed complex so the penalty never fires on data the model is supposed to reproduce.",
+  "tag": "MEASURED",
+  "date": "2026-10-10",
+  "quantity": "stay_mean = mean over heavy atoms of mean over k=1..12 of (P^k)[i,i] on the lazy walk — the same number `formulation='escape_time'` returns",
+  "corpus_basis": {
+    "source": ".data/molmetal/tmQM via molmetal.data.tmqm_clouds.load_tmqm_clouds, 6 cohort metals, n_clouds=1500, seed 0",
+    "graph": "tmQM's OWN Wiberg bond graph; bond existence probability = min(1, bond class order) from the same {0,1,2,3,1.5} table the loss uses",
+    "n": 1500,
+    "percentiles": {
+      "p50": 0.1748,
+      "p90": 0.1889,
+      "p99": 0.2134,
+      "max": 0.2649
+    }
+  },
+  "cross_check_model_side": {
+    "why": "the model predicts a SOFT graph, and softer bond probabilities push stay_mean UP, so a threshold derived only from ground truth could fire on confident-but-correct predictions",
+    "measured": "a 7-atom chain predicted at p_bond=0.9 — i.e. a well-connected graph the head is confident about — sits at stay_mean 0.2629, essentially at the corpus max of 0.2649",
+    "conclusion": "both constraints coincide at ~0.27, so one threshold satisfies both"
+  },
+  "tau": 0.3,
+  "why_030": "the smallest round value above BOTH measured bounds (corpus max 0.2649, confidently-predicted connected graph 0.2629), leaving ~13% headroom. An earlier draft used 0.35; that also satisfies both constraints but was eyeballed, and a threshold with no derivation is how a term becomes inert or dominating without anyone noticing.",
+  "sensitivity": {
+    "0.28": "penetrates the corpus tail; not recommended",
+    "0.30": "selected — 0.00% of 1500 correct complexes penalised",
+    "0.35": "also safe, ~32% more dead zone than needed",
+    "0.40+": "start rejecting genuinely weak-but-connected structures"
+  },
+  "PRECHECK_2026_10_10_model_side": {
+    "question": "tau was derived from tmQM's GROUND-TRUTH bond graph. The decision-relevant number is the same statistic on the model's OWN predictions, which softer bond probabilities push upwards. If that sat above tau, the term would charge the head for uncertainty rather than for disconnection.",
+    "measured": {
+      "assemble_stay_mean": 0.07754535572894383,
+      "assemble_fragments": 1.0,
+      "assemble_largest_fragment_frac": 1.0,
+      "cohort": "tmQM metals=Pt, 1 epoch, cuda:0, cfm.yaml otherwise unmodified",
+      "how": "_LAST_ASSEMBLE_STATS, new side channel written by the trainer"
+    },
+    "verdict": "PASS — 0.0775 sits far below both the corpus max (0.2649) and tau (0.30), so the dead zone stays quiet unless the predicted graph actually degrades toward disconnection.",
+    "corroborates": "assemble_fragments=1.0 and largest_fragment_frac=1.0 at initialisation explain every earlier reading of exactly 0.0 for the product formulation: the predicted graph is single-fragment, so the escape product underflows. Nothing was numerically broken.",
+    "SCOPE_LIMIT": "Initialisation, one metal (Pt), one epoch. Not established: whether the distribution stays below tau as training proceeds, nor on Ru/Ir/Rh/Os/Re. The documented collapse trajectory (the head sharpening toward argmax NO_BOND) would push stay_mean UP, which is precisely the regime the term exists for — but that is a prediction, not a measurement, and the A/B should log assemble_stay_mean per epoch to settle it.",
+    "code": "molmetal.molmetal_lam.lam_chem/assemble_connectivity.py::mean_stay_probability (detached, never a loss), reported via _LAST_ASSEMBLE_STATS['assemble_stay_mean']"
+  },
+  "AB_unblocked": "YES — the precheck passed. Record assemble_stay_mean per epoch during the A/B to confirm the distribution stays below tau.",
+  "SCOPE_COHORT_DEPENDENCE_2026_10_10": {
+    "finding": "tau is NOT portable across cohorts",
+    "measured": {
+      "model_on_tmqm_Pt": 0.07754535572894383,
+      "model_on_synthetic_click_cohort": 0.2093104780651629,
+      "corpus_ground_truth_max": 0.2649,
+      "tau": 0.3
+    },
+    "what_it_means": "On the synthetic multi-fragment click cohort the model's predicted stay_mean is 2.7x higher than on tmQM and sits just under the tmQM corpus maximum. There the hinge zeroes the term (assemble_loss = 0.0, MEASURED), i.e. it is essentially inert — not because it is broken, but because tau was derived from a different corpus.",
+    "implication": "Any run on the synthetic cohort needs its own tau, derived the same way (its own ground-truth graphs). Carrying 0.30 across cohorts would be the same class of error as the cap table being derived from the wrong column.",
+    "verified_wiring": "§5.7 smoke on the synthetic cohort: assemble_loss 0.0, assemble_term requires_grad=True value 0.0, stay_mean 0.2093 — the dead zone fires exactly as designed below tau."
+  }
+}

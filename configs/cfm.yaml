@@ -103,6 +103,47 @@ train:
   # trainer; these two keys turn the schedule on.
   lr_scheduler: cosine
   lr_warmup_epochs: 5
+  # 2026-10-10 — start COLD, always. This is a real hazard, not a style rule.
+  #
+  # `resume_from` defaults to "auto", which picks up
+  # <ckpt_dir>/cfm_yuelbond_wasserstein_seed0.pt if a file is lying there. A
+  # stale one from before `--use-egnn-velocity` existed is not a soft failure —
+  # it aborts the run outright:
+  #     Missing key(s): "vel_field.vel_scale", "vel_field.time_mlp...", 54 more
+  #     Unexpected key(s): "vel_probe.0.weight", ..., 8 more
+  #     size mismatch for head.atom_encoder.weight: checkpoint [128, 13]
+  #                                      vs this model [128, 18] (all6 vocab)
+  # MEASURED 2026-10-10 03:38 — both arms of the BLK-C11 A/B died this way in
+  # 37 s before a single epoch ran.
+  #
+  # A stale repo-global checkpoint silently changing what a run trains is the
+  # same class of bug as a config key that never reaches a dest: the run looks
+  # reproducible and is not. Checkpoints are loaded explicitly by the
+  # resume-capable launchers, never by accident.
+  resume_from: none
+  # 2026-10-10 (BLK-C13) — bond-head staged freeze, written out EXPLICITLY as 0.
+  #
+  # This is documentation, not a behaviour change: the argparse default was
+  # already 0, so this file was never paying for the freeze. It is here because
+  # FOUR sibling configs do set it to 5
+  # (cfm_blk_c5_repair / cfm_fm_ab / cfm_fm_control / cfm_gen_collapse_fm), and
+  # that setting is actively harmful to the generation objective:
+  #
+  #   bond_head_warmup_epochs freezes model.head.parameters() (L7730-7743), and
+  #   BOTH generation-side terms are built from model.head's own bond-order
+  #   softmax — valence_log_barrier reads the per-pair class probabilities, and
+  #   the entropy regulariser reads the same logits. So with the freeze on, both
+  #   terms are gradient-dead for the first 5 epochs no matter what weight they
+  #   are given.
+  #
+  # MEASURED consequence: those four runs are the ones that generated the 2146
+  # molecules scored in metrics/by_metric/cfm_decode_chemistry_validity.json,
+  # every one of which has valence_ok = false. The model was never once
+  # penalised for an impossible valence.
+  #
+  # Do not set this above 0 in any config that turns on gen_validity_weight or
+  # entropy_reg_weight — the two settings are mutually defeating.
+  bond_head_warmup_epochs: 0
 
 flow:
   # 2026-10-07 (Wf-R31) — ROOT FIX for `bond_exact_type_rate` pinned at 0.
