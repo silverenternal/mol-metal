@@ -7,6 +7,10 @@
 # Gate per that TODO is non-negative delta, so a CI is what makes the gate
 # decidable. 5 seeds x 30 epochs per AGENTS.md §6.
 
+entry:
+  script: molmetal/scripts/finetune_metalcytotox_from_tmqm.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/finetune_metalcytotox_from_tmqm.py
+    --config {yaml_path} --out-dir molmetal/reports/tmqm_ab_metalcytotox_30ep_init_on
 metal: Ru
 init: tmqm
 encoder: models/tmqm_pretrained/tmqm_pretrained_encoder.pt

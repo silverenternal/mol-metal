@@ -29,6 +29,10 @@
 # that learns nothing sits at 0.50. Anything at 0.50 here means the
 # signal was not learned.
 
+entry:
+  script: molmetal/scripts/train_platinai_4cell.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_platinai_4cell.py
+    --config {yaml_path} --out-dir molmetal/reports/platinai_4cell_desc_v1_rerun
 data: molmetal/data/platinai_4cell_desc_v1.csv
 
 seeds: [0, 1, 2]

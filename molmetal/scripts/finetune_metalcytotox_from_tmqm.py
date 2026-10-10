@@ -418,14 +418,26 @@ def _build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def main() -> int:
-    p = _build_parser()
-    args = p.parse_args()
+def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    """Module-level entry point for the config-binding gate.
 
-    if args.config:
+    scripts/_config_binding_gate.py looks for a module attribute named
+    `_parse_args` or `parse_args` and calls it to capture the argparse
+    namespace, then falls back to `main([])` — which this script does not
+    accept. Without this function every config naming this script reports
+    "could not capture a parser namespace" and its keys go unaudited.
+    """
+    p = _build_parser()
+    args = p.parse_args(argv)
+    if getattr(args, "config", None):
         from wfA2_config_loader import apply_yaml_overrides
 
-        args = apply_yaml_overrides(p, args, args.config)
+        args = apply_yaml_overrides(p, args, args.config, argv=list(argv or []))
+    return args
+
+
+def main() -> int:
+    args = parse_args()
 
     out_dir: Path = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)

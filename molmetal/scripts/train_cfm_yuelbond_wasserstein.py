@@ -2236,6 +2236,101 @@ def get_step_timing() -> Dict[str, float]:
     return dict(_STEP_TIMING)
 
 
+def apply_fm_distortion(
+    x_t: torch.Tensor,
+    t: torch.Tensor,
+    cloud_sizes: Sequence[int],
+    *,
+    p_distort: float = 0.0,
+    t_distort: float = 0.25,
+    sigma_distort: float = 0.5,
+    atom_mask: Optional[torch.Tensor] = None,
+    generator: Optional[torch.Generator] = None,
+) -> torch.Tensor:
+    """FlowMol3-style train-time geometry distortion of the interpolant.
+
+        X_t  <-  X_t + 1[t >= t_distort] * Bernoulli(p_distort) * (M * eps),
+        eps ~ N(0, sigma_distort)
+
+    WHY THIS EXISTS.  ``gen_validity`` / ``gen_single_fragment_ratio`` /
+    ``decode_ratio`` have no live loss term, and the review verdict on this
+    repo is that an auxiliary LOSS term is the wrong instrument for them:
+    auxiliary terms trade one axis against another, and the one term already
+    built for validity (``soft_valence_term``) is a one-sided squared hinge
+    with zero gradient in the feasible region — it only pushes bond orders
+    DOWN, i.e. it buys validity with bond-type precision.
+
+    The published mechanism is a change to the TRAINING DISTRIBUTION, not a
+    penalty.  Vost et al., Digital Discovery 2025, DOI 10.1039/D4DD00331D,
+    train with distorted molecules as the conditioning context; their Table 3
+    on ZINC reports RDKit sanitisation 56.3% -> 97.2%, PoseBusters
+    40.8% -> 66.5%, all-atoms-connected 63.7% -> 94.4%.  FlowMol3
+    (arXiv:2508.12629) reports 96% PoseBusters against 93% on its own clean
+    training data by the same route.  The connectivity sub-metric is exactly
+    the fragmentation axis this repo is chasing.
+
+    PER-CLOUD, NOT PER-ATOM.  The same reasoning as ``fm_t_per_cloud`` (F6)
+    applies: the CFM conditional is ONE expectation per molecule, so a cloud
+    is distorted as a whole or not at all.  ``t`` is per-atom on the wire and
+    is collapsed exactly the way ``CFMJointModel.fm_velocity`` collapses it —
+    first atom of each block — so the gate uses the same t the velocity field
+    is conditioned on.
+
+    *** THE p=1.0 / t_distort=0 TRAP — DO NOT "IMPROVE" THESE DEFAULTS. ***
+    FlowMol3 section S10 reports that p_distort = 1.0 with t_distort = 0
+    reaches ~100% validity, and in the SAME sentence reports that it
+    COLLAPSES functional-group diversity.  That is the failure this knob
+    invites: set p_distort to 1.0 because the headline validity number went
+    up, and the model has been taught to generate one geometry family.  The
+    0.7 / 0.25 defaults are the documented compromise; raising p_distort is
+    an ABLATION with a measured diversity cost, never an improvement.
+
+    OFF IS BIT-FOR-BIT.  ``p_distort <= 0`` (the argparse default) returns the
+    SAME tensor object and consumes no RNG, so the 12-term loss, the
+    gradients and the RNG stream are unchanged.
+
+    TRAIN-TIME ONLY.  The sampler ``generate_clouds_from_noise`` never calls
+    this: distorting its initial state would corrupt the generation PRIOR,
+    and the model would be evaluated on a distribution it was not trained to
+    start from.
+    """
+    p = float(p_distort)
+    sig = float(sigma_distort)
+    if p <= 0.0 or sig <= 0.0:
+        return x_t
+    sizes = [int(s) for s in cloud_sizes]
+    n_c = len(sizes)
+    if n_c == 0:
+        return x_t
+    if sum(sizes) != int(x_t.shape[0]):
+        raise ValueError(
+            f"cloud_sizes sum to {sum(sizes)} but x_t has {int(x_t.shape[0])} atoms"
+        )
+
+    dev = x_t.device
+    # Same first-atom-of-each-block collapse fm_velocity performs, so the
+    # distortion gate is read off the t the field actually sees.
+    t_cloud = t.reshape(-1).to(dev)
+    starts = torch.tensor(
+        [sum(sizes[:i]) for i in range(n_c)], device=dev, dtype=torch.long
+    )
+    t_cloud = t_cloud[starts]
+
+    draw = torch.rand(n_c, device=dev, generator=generator)
+    hit = (draw < p) & (t_cloud >= float(t_distort))
+    if not bool(hit.any()):
+        return x_t
+
+    eps = torch.randn(
+        x_t.shape, device=dev, dtype=x_t.dtype, generator=generator
+    ) * sig
+    per_atom = hit.repeat_interleave(torch.tensor(sizes, device=dev))
+    gate = per_atom.reshape(-1, 1).to(x_t.dtype)
+    if atom_mask is not None:
+        gate = gate * atom_mask.reshape(-1, 1).to(x_t.dtype)
+    return x_t + gate * eps
+
+
 def train_one_epoch(
     model: CFMJointModel,
     decoder: YuelBondBondDecoder,
@@ -2341,6 +2436,16 @@ def train_one_epoch(
     fm_noise_sigma: float = 1.0,
     fm_log_normal_mu: float = -0.5,  # only used when fm_t_dist="log_normal"
     fm_log_normal_sigma: float = 1.0,  # only used when fm_t_dist="log_normal"
+    # 2026-10-11 (TRACK 4) — FlowMol3 train-time geometry distortion.  See
+    # `apply_fm_distortion` for the mechanism and for the p=1.0/t_distort=0
+    # diversity-collapse warning.  `fm_p_distort` defaults to 0.0 = OFF, which
+    # returns the interpolant bit-for-bit; the FlowMol3 operating point
+    # (0.7 / 0.25 / 0.5) lives in
+    # configs/cfm_fm_distort_2026_10_11.yaml, NOT in the argparse default, so
+    # that no config predating this flag silently starts distorting.
+    fm_p_distort: float = 0.0,
+    fm_t_distort: float = 0.25,
+    fm_sigma_distort: float = 0.5,
     # 2026-10-04 NEW — frontier-math OT coupling of the FM objective's (x0, x1)
     # pair.  `flow.bass_martingale` / `flow.se3_sb` in the yaml; both require
     # fm_objective and are mutually exclusive (make_ot_sampler raises).
@@ -3312,6 +3417,20 @@ def train_one_epoch(
                 )
             t_col = t.reshape(-1, 1)
             x_t = (1.0 - t_col) * x0 + t_col * x1
+            # 2026-10-11 (TRACK 4) — FlowMol3 train-time geometry distortion.
+            # Identity (same tensor, no RNG consumed) while fm_p_distort is 0,
+            # so every run predating this flag is bit-for-bit unchanged.
+            # `target_dx` is deliberately NOT distorted: the velocity target is
+            # still x1 - x0, so the field is taught to Denoise FROM a distorted
+            # state rather than to reproduce the distortion.
+            x_t = apply_fm_distortion(
+                x_t,
+                t,
+                _cloud_sizes,
+                p_distort=float(fm_p_distort),
+                t_distort=float(fm_t_distort),
+                sigma_distort=float(fm_sigma_distort),
+            )
             target_dx = x1 - x0
             fm_term = float(fm_weight) * F.mse_loss(
                 model.fm_velocity(x_t, t, z_all, cloud_sizes=_cloud_sizes), target_dx
@@ -5752,6 +5871,43 @@ def parse_args() -> argparse.Namespace:
             "density swings 0.843 (t=0) -> 0.259 (t=1) at sigma=1, versus "
             "0.186 -> 0.259 when the prior matches the data, so the EGNN's "
             "neighbourhood stops being a function of t. Set 2.505 for tmQM."
+        ),
+    )
+    # 2026-10-11 (TRACK 4) — FlowMol3 train-time geometry distortion.  See
+    # `apply_fm_distortion` for the mechanism, the citation and the warning.
+    # `--fm-p-distort` defaults to 0.0 = OFF (bit-for-bit); the FlowMol3
+    # operating point 0.7/0.25/0.5 is set in
+    # configs/cfm_fm_distort_2026_10_11.yaml so that no existing config starts
+    # distorting without someone deliberately writing the key down.
+    p.add_argument(
+        "--fm-p-distort",
+        type=float,
+        default=0.0,
+        help=(
+            "Probability that a given cloud's interpolant is distorted at "
+            "train time (FlowMol3 form: X_t += 1[t >= t_distort]*Bernoulli"
+            "(p)*sigma*eps). Default 0.0 = OFF, bit-for-bit identical to the "
+            "pre-2026-10-11 interpolant. FlowMol3 uses 0.7. DO NOT set 1.0: "
+            "FlowMol3 S10 reports p=1.0 with t_distort=0 reaches ~100% "
+            "validity AND collapses functional-group diversity."
+        ),
+    )
+    p.add_argument(
+        "--fm-t-distort",
+        type=float,
+        default=0.25,
+        help=(
+            "Flow time at/after which distortion applies. Default 0.25 "
+            "(FlowMol3). Only consulted when --fm-p-distort > 0."
+        ),
+    )
+    p.add_argument(
+        "--fm-sigma-distort",
+        type=float,
+        default=0.5,
+        help=(
+            "Per-coordinate std of the distortion noise eps. Default 0.5 "
+            "(FlowMol3). Only consulted when --fm-p-distort > 0."
         ),
     )
     # 2026-10-04 — frontier-math OT couplings, driven by the yaml
@@ -8585,6 +8741,11 @@ def main() -> int:
             # config that predates this flag still gets the corrected draw.
             fm_t_per_cloud=bool(int(getattr(args, "fm_t_per_cloud", 1))),
             fm_noise_sigma=float(getattr(args, "fm_noise_sigma", 1.0)),
+            # 2026-10-11 (TRACK 4) — FlowMol3 train-time geometry distortion.
+            # getattr default 0.0 = OFF, matching the argparse default.
+            fm_p_distort=float(getattr(args, "fm_p_distort", 0.0)),
+            fm_t_distort=float(getattr(args, "fm_t_distort", 0.25)),
+            fm_sigma_distort=float(getattr(args, "fm_sigma_distort", 0.5)),
             # 2026-10-04 NEW — frontier-math OT coupling kwargs.
             bass_martingale=bool(getattr(args, "bass_martingale", False)),
             se3_sb=bool(getattr(args, "se3_sb", False)),
