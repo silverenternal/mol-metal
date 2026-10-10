@@ -1,0 +1,25 @@
+# tmQM-pretrained init vs random init on MetalCytoToxDB — OFF arm.
+# §5.11 YAML-only launch. Byte-identical to ..._init_on.yaml except `init:`,
+# so the two arms differ by exactly one bool.
+
+metal: Ru
+init: random
+encoder: models/tmqm_pretrained/tmqm_pretrained_encoder.pt
+
+model:
+  hidden: 128
+  depth: 3
+  dropout: 0.1
+
+train:
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 30
+  batch: 128
+  lr: 0.001
+  max_atoms: 120
+  max_edges: 240
+
+device: cuda:1
+
+output:
+  out_dir: molmetal/reports/tmqm_ab_metalcytotox_30ep_init_off

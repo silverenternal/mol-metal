@@ -378,7 +378,7 @@ def _load_metalcytotox(metal: str) -> MetalCytotoxDataset:
     )
 
 
-def main() -> int:
+def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="Fine-tune D-MPNN on MetalCytoToxDB metal subset (init=tmqm|random)"
     )
@@ -401,7 +401,31 @@ def main() -> int:
     p.add_argument("--dropout", type=float, default=DMPNN_DROPOUT)
     p.add_argument("--max-atoms", type=int, default=120)
     p.add_argument("--max-edges", type=int, default=240)
+    p.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="YAML config (§5.11). Keys resolve to the dests above; an "
+        "explicit CLI flag still wins.",
+    )
+    p.add_argument(
+        "--device",
+        type=str,
+        default="cpu",
+        help="cpu | cuda | cuda:N. Default cpu preserves the bit-for-bit "
+        "behaviour of every recorded run before this flag existed.",
+    )
+    return p
+
+
+def main() -> int:
+    p = _build_parser()
     args = p.parse_args()
+
+    if args.config:
+        from wfA2_config_loader import apply_yaml_overrides
+
+        args = apply_yaml_overrides(p, args, args.config)
 
     out_dir: Path = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -442,6 +466,14 @@ def main() -> int:
     test_idx_full = valid_idx[test_idx_full]
 
     device = torch.device("cpu")
+    if args.device and args.device != "cpu":
+        if not torch.cuda.is_available():
+            print(
+                f"[finetune] --device {args.device} requested but CUDA is "
+                f"unavailable; staying on cpu"
+            )
+        else:
+            device = torch.device(args.device)
     seed_aucs: List[Dict[str, float]] = []
 
     for seed in args.seeds:

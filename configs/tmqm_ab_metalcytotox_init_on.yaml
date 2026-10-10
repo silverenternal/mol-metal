@@ -1,0 +1,30 @@
+# tmQM-pretrained init vs random init on MetalCytoToxDB — ON arm.
+# §5.11 YAML-only launch. The ONLY difference from the OFF arm is `init:`.
+#
+# This closes the follow-up named in TODO/completed/42_tmqm_pretrain_v4_encoder.md:
+# the recorded A/B (logs/finetune_tmqm_vs_random/) is n=1 seed / 5 epochs, so its
+# +0.046 delta carries no CI, while paper/sections/04_method.tex §4.4 cites it.
+# Gate per that TODO is non-negative delta, so a CI is what makes the gate
+# decidable. 5 seeds x 30 epochs per AGENTS.md §6.
+
+metal: Ru
+init: tmqm
+encoder: models/tmqm_pretrained/tmqm_pretrained_encoder.pt
+
+model:
+  hidden: 128
+  depth: 3
+  dropout: 0.1
+
+train:
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 30
+  batch: 128
+  lr: 0.001
+  max_atoms: 120
+  max_edges: 240
+
+device: cuda:1
+
+output:
+  out_dir: molmetal/reports/tmqm_ab_metalcytotox_30ep_init_on
