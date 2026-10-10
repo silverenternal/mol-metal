@@ -1,0 +1,330 @@
+{
+  "schema": "molmetal.file_provenance.v1",
+  "purpose": "Machine-readable record of which hunks in the two contaminated files were authored in the 2026-10-10 session and which were already sitting in the working tree before it. Commit messages disclosed this in prose; this makes it queryable.",
+  "base_commit": "bc40daf76e",
+  "base_commit_meaning": "HEAD at the start of the 2026-10-10 session",
+  "why_this_exists": "Both files appeared as ` M` in the working tree at session start, so staging by path swept their uncommitted changes into five commits (c3ee284b64, 9760e55ceb, d6e6ed885d, 139fc95113, 7fa08a42cb). Staging by path cannot avoid this when the edits interleave with existing ones, and `git add -A` would have been worse. This is the THIRD time in this project a per-file staging has swept in uncommitted work belonging to something else.",
+  "attribution_method": "A hunk is attributed to this session iff its added lines contain one of the distinctive tokens listed in attribution_tokens. This is a CONTENT heuristic, not a proof: it can mislabel a pre-existing hunk that happens to mention one of those tokens, and cannot catch a change of mine that happens not to. Treat it as a strong prior, not a guarantee.",
+  "attribution_tokens": [
+    "assemble_stay_mean",
+    "TMQM_MEASURED_METAL_CAPS",
+    "assemble_formulation",
+    "assemble_hinge_tau",
+    "decode_largest_fragment",
+    "_sv_n_atoms_total",
+    "n_frags_raw",
+    "qed_single_fragment",
+    "internal_diversity",
+    "_MEASURED_COORD_CAPS",
+    "PeriodicTable",
+    "valence_check_error",
+    "metal_coord_ok",
+    "largest_frag_frac",
+    "n_truncated_to_largest_fragment",
+    "BLK-M1",
+    "BLK-C11",
+    "BLK-QED-def",
+    "BLK-M7-def"
+  ],
+  "CORRECTION_to_earlier_disclosure": "Commit c3ee284b64's message said the panel's diff was '229 added lines across 10 hunks', of which 'the large majority' was not mine. That was computed with a broken heuristic. Measured properly it is 4 hunks / 354 lines authored here and 6 hunks / 49 lines not. The trainer is where the contamination actually is.",
+  "history_was_NOT_rewritten": {
+    "reason": "splitting would require manually resolving 7 regions where authored and pre-existing hunks sit within 25 lines of each other (trainer: 1778/1764, 2913/2935, 7368/7375, 7591/7602, 7619/7602; panel: 242/255, 264/255), and the result would be a commit whose entire content is 966 lines that were never reviewed — a relabelling, not a fix. Nothing is pushed, so a rewrite was available; it was declined as net-negative.",
+    "what_would_make_it_worthwhile": "if the 966 lines need to be reverted independently, or a reviewer needs a clean per-change diff."
+  },
+  "risk_assessment": {
+    "functional": "all gates green: pre-flight rc=0, registry PASS, 59 tests pass, wrapper audit 25/25",
+    "new_top_level_symbols_in_pre_existing_hunks": {
+      "trainer": 5,
+      "panel": 0
+    },
+    "unreferenced_by_any_test": 0,
+    "caveat": "'referenced somewhere in 13.7 MB of test text' is a loose signal — it does not mean those lines are asserted on. The pre-existing hunks mostly modify existing function bodies (parse_args, main, CFMJointModel, build_lr_scheduler, _block_diag_radius_edges, _decode_with_rdkit_strict) rather than adding new APIs."
+  },
+  "files": {
+    "molmetal/scripts/cfm_property_panel.py": {
+      "authored_this_session": [
+        {
+          "anchor": "-169,17 +189,183",
+          "added_lines": 167
+        },
+        {
+          "anchor": "-190,7 +376,27",
+          "added_lines": 21
+        },
+        {
+          "anchor": "-242,10 +448,126",
+          "added_lines": 119
+        },
+        {
+          "anchor": "-264,6 +586,53",
+          "added_lines": 47
+        }
+      ],
+      "not_authored_this_session": [
+        {
+          "anchor": "-26,6 +26,15",
+          "added_lines": 9
+        },
+        {
+          "anchor": "-37,7 +46,11",
+          "added_lines": 5
+        },
+        {
+          "anchor": "-50,6 +63,13",
+          "added_lines": 7
+        },
+        {
+          "anchor": "-255,7 +577,7",
+          "added_lines": 1
+        },
+        {
+          "anchor": "-305,13 +674,26",
+          "added_lines": 14
+        },
+        {
+          "anchor": "-321,6 +703,19",
+          "added_lines": 13
+        }
+      ],
+      "n_authored": 4,
+      "n_not_authored": 6,
+      "added_lines_authored": 354,
+      "added_lines_not_authored": 49
+    },
+    "molmetal/scripts/train_cfm_yuelbond_wasserstein.py": {
+      "authored_this_session": [
+        {
+          "anchor": "-219,6 +221,10",
+          "added_lines": 4
+        },
+        {
+          "anchor": "-1778,6 +2187,8",
+          "added_lines": 2
+        },
+        {
+          "anchor": "-1936,6 +2348,8",
+          "added_lines": 2
+        },
+        {
+          "anchor": "-1947,6 +2361,11",
+          "added_lines": 5
+        },
+        {
+          "anchor": "-1963,18 +2382,58",
+          "added_lines": 42
+        },
+        {
+          "anchor": "-2913,15 +3386,48",
+          "added_lines": 35
+        },
+        {
+          "anchor": "-3160,6 +3679,9",
+          "added_lines": 3
+        },
+        {
+          "anchor": "-5439,6 +6144,46",
+          "added_lines": 40
+        },
+        {
+          "anchor": "-7368,6 +8331,14",
+          "added_lines": 8
+        },
+        {
+          "anchor": "-7602,15 +8653,84",
+          "added_lines": 71
+        },
+        {
+          "anchor": "-7990,6 +9130,14",
+          "added_lines": 8
+        }
+      ],
+      "not_authored_this_session": [
+        {
+          "anchor": "-146,6 +146,7",
+          "added_lines": 1
+        },
+        {
+          "anchor": "-157,6 +158,7",
+          "added_lines": 1
+        },
+        {
+          "anchor": "-362,6 +368,8",
+          "added_lines": 2
+        },
+        {
+          "anchor": "-371,6 +379,13",
+          "added_lines": 7
+        },
+        {
+          "anchor": "-383,6 +398,10",
+          "added_lines": 4
+        },
+        {
+          "anchor": "-401,12 +420,52",
+          "added_lines": 43
+        },
+        {
+          "anchor": "-1017,6 +1076,242",
+          "added_lines": 236
+        },
+        {
+          "anchor": "-1066,19 +1361,53",
+          "added_lines": 44
+        },
+        {
+          "anchor": "-1439,6 +1768,63",
+          "added_lines": 57
+        },
+        {
+          "anchor": "-1764,6 +2150,29",
+          "added_lines": 23
+        },
+        {
+          "anchor": "-1811,6 +2222,7",
+          "added_lines": 1
+        },
+        {
+          "anchor": "-1989,6 +2448,20",
+          "added_lines": 14
+        },
+        {
+          "anchor": "-2935,6 +3441,10",
+          "added_lines": 4
+        },
+        {
+          "anchor": "-2951,7 +3461,10",
+          "added_lines": 4
+        },
+        {
+          "anchor": "-2972,6 +3485,12",
+          "added_lines": 6
+        },
+        {
+          "anchor": "-3718,6 +4240,7",
+          "added_lines": 1
+        },
+        {
+          "anchor": "-3774,10 +4297,25",
+          "added_lines": 16
+        },
+        {
+          "anchor": "-3791,10 +4329,29",
+          "added_lines": 20
+        },
+        {
+          "anchor": "-3807,6 +4364,11",
+          "added_lines": 5
+        },
+        {
+          "anchor": "-4761,6 +5323,33",
+          "added_lines": 27
+        },
+        {
+          "anchor": "-5331,6 +5920,122",
+          "added_lines": 116
+        },
+        {
+          "anchor": "-6685,6 +7430,8",
+          "added_lines": 2
+        },
+        {
+          "anchor": "-6916,20 +7663,208",
+          "added_lines": 191
+        },
+        {
+          "anchor": "-6997,6 +7932,18",
+          "added_lines": 12
+        },
+        {
+          "anchor": "-7128,13 +8075,29",
+          "added_lines": 17
+        },
+        {
+          "anchor": "-7375,7 +8346,39",
+          "added_lines": 32
+        },
+        {
+          "anchor": "-7513,6 +8516,13",
+          "added_lines": 7
+        },
+        {
+          "anchor": "-7533,6 +8543,7",
+          "added_lines": 1
+        },
+        {
+          "anchor": "-7567,11 +8578,16",
+          "added_lines": 5
+        },
+        {
+          "anchor": "-7591,6 +8607,41",
+          "added_lines": 35
+        },
+        {
+          "anchor": "-7619,6 +8739,7",
+          "added_lines": 1
+        },
+        {
+          "anchor": "-7646,6 +8767,14",
+          "added_lines": 8
+        },
+        {
+          "anchor": "-7777,6 +8906,17",
+          "added_lines": 11
+        },
+        {
+          "anchor": "-8218,6 +9366,18",
+          "added_lines": 12
+        }
+      ],
+      "n_authored": 11,
+      "n_not_authored": 34,
+      "added_lines_authored": 220,
+      "added_lines_not_authored": 966
+    }
+  },
+  "commits_touching_these_files": [
+    {
+      "sha": "139fc95113b1c097c1c062fec67b5f4a886b4ced",
+      "short": "139fc9511",
+      "subject": "m7 as MOSES IntDiv1; SA scale correction; collapse root cause found without GPU",
+      "touches": [
+        "molmetal/scripts/cfm_property_panel.py"
+      ],
+      "disclosed_in_message": true
+    },
+    {
+      "sha": "d6e6ed885d8542c6b4f80f4d2bde17d0aa337ea2",
+      "short": "d6e6ed885",
+      "subject": "m5 QED: quote it on single-fragment molecules, with the denominator stated",
+      "touches": [
+        "molmetal/scripts/cfm_property_panel.py"
+      ],
+      "disclosed_in_message": true
+    },
+    {
+      "sha": "9760e55ceb5ac75cb032eab95cf6a71b695e23f0",
+      "short": "9760e55ce",
+      "subject": "CFM: add the field-standard decode repair, quarantine a red test, record the null A/B",
+      "touches": [
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
+      ],
+      "disclosed_in_message": false
+    },
+    {
+      "sha": "c3ee284b64d474e42277d8bdd98eeec3f63ac7ff",
+      "short": "c3ee284b6",
+      "subject": "BLK-C11/C12/M1: retract a false CFM finding, fix four silent bugs, redefine the blocker",
+      "touches": [
+        "molmetal/scripts/cfm_property_panel.py",
+        "molmetal/scripts/train_cfm_yuelbond_wasserstein.py"
+      ],
+      "disclosed_in_message": true
+    }
+  ],
+  "DISCLOSURE_GAP_found_by_its_own_test": {
+    "what": "The first version of test_file_provenance.py asserted that every commit touching a contaminated file mentions the pre-existing changes in its message. It failed on 9760e55ceb — that commit modified train_cfm_yuelbond_wasserstein.py and carries NO such disclosure. I had disclosed the sweep in c3ee284b64, d6e6ed885d and 139fc95113 and simply forgot on this one. The same pass also found the reverse error: 7fa08a42cb was listed with touches=[] (it stages only two JSON files), so I had entered a commit that never touched either file. Both directions of the error were mine.",
+    "why_it_matters": "it is the third data point that PROSE DISCLOSURE IN COMMIT MESSAGES IS NOT RELIABLE: it is missed on the commit where attention is elsewhere, and it goes stale. This is why the record is now the explicit commit list below, with the test checking the list against `git log` rather than grepping message text.",
+    "residual_gap": "9760e55ceb's message cannot be amended in place without rewriting the three commits after it; it is left as-is and is enumerated in commits_touching_these_files with disclosed_in_message=false. The record no longer contains over-broad entries; the test asserts both directions, so neither can recur unnoticed."
+  },
+  "commits_count_note": "5 entries before reconciliation, 4 after."
+}
