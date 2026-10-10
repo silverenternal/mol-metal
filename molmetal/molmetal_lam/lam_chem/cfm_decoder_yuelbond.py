@@ -606,10 +606,19 @@ class YuelBondBondDecoder:
         # `max(logits[:, 1:])` is the same confidence the selector uses, so
         # the prior and the selector rank the head the same way.
         best_logit = logits[:, 1:].max(dim=-1).values.tolist()
+        # Hoisted out of the loop below. Indexing a CUDA tensor with a Python
+        # int (`int(edge_index[0][k])`) is a device-to-host transfer, so the
+        # original form paid one sync PER CANDIDATE PAIR — hundreds per
+        # generated molecule, times every molecule of the per-epoch gen eval.
+        # `_select_bonds` above already reads these two rows with a single
+        # `.tolist()` each; this is the same read, and it returns the same
+        # ints, so the candidate list is unchanged.
+        ei_all = edge_index[0].tolist()
+        ej_all = edge_index[1].tolist()
         candidates = []
         for k in range(edge_index.shape[1]):
-            i = int(edge_index[0][k])
-            j = int(edge_index[1][k])
+            i = int(ei_all[k])
+            j = int(ej_all[k])
             if i == j or i >= n_atoms or j >= n_atoms:
                 continue
             if z_list[i] == 1 or z_list[j] == 1:

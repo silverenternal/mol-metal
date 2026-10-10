@@ -2190,6 +2190,28 @@ def apply_closure_bounded_mask(
 # ---------------------------------------------------------------------------
 # Training loop
 # ---------------------------------------------------------------------------
+# 2026-10-10 (profiling). Per-stage wall time for one optimizer step.
+# Same shape as `_LAST_LOSS_TERMS` / `_LAST_ASSEMBLE_STATS`: a module-level
+# dict the caller reads after the epoch. OFF by default and guarded by a
+# single bool check per stage, so the default path pays one predictable branch
+# per section and nothing else — no perf_counter, no allocation, and NO change
+# to any value on the loss path.
+_STEP_TIMING: Dict[str, float] = {}
+_STEP_TIMING_ON: bool = False
+
+
+def set_step_timing(on: bool) -> None:
+    """Enable/disable the per-stage timer. Read it via ``get_step_timing()``."""
+    global _STEP_TIMING_ON
+    _STEP_TIMING_ON = bool(on)
+    if not on:
+        _STEP_TIMING.clear()
+
+
+def get_step_timing() -> Dict[str, float]:
+    return dict(_STEP_TIMING)
+
+
 def train_one_epoch(
     model: CFMJointModel,
     decoder: YuelBondBondDecoder,
@@ -2415,6 +2437,7 @@ def train_one_epoch(
     rng = np.random.default_rng(seed=int(time.time()) % (2**31 - 1))
     order = rng.permutation(n_train).tolist()
     for batch_start in range(0, n_train, batch_size):
+        _t_loop0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
         batch_indices = order[batch_start : batch_start + batch_size]
         if not batch_indices:
             continue
@@ -2477,9 +2500,15 @@ def train_one_epoch(
             # asking for them unconditionally is what lets the bond target be
             # built from the logits this pass already produced instead of
             # re-running the head a second time.
+            _t_mf0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
             logits, velocities, edge_index = model(
                 cloud, return_edge_index=True
             )
+            if _STEP_TIMING_ON:
+                _STEP_TIMING["model_fwd_s"] = (
+                    _STEP_TIMING.get("model_fwd_s", 0.0)
+                    + time.perf_counter() - _t_mf0
+                )
             # A head that emits no pair indices gives the assemble term
             # nothing to rebuild a graph from, so it is skipped rather
             # than handed a `None` it would fail to unpack.
@@ -2493,11 +2522,17 @@ def train_one_epoch(
                 if (_use_soft_valence and edge_index is not None)
                 else None
             )
+            _t_tg0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
             tgt_logits, tgt_y = _bond_target_for_clean_cloud(
                 cloud,
                 head=model.head,
                 precomputed=(logits, edge_index),
             )
+            if _STEP_TIMING_ON:
+                _STEP_TIMING["bond_target_s"] = (
+                    _STEP_TIMING.get("bond_target_s", 0.0)
+                    + time.perf_counter() - _t_tg0
+                )
             if tgt_y is None or tgt_logits is None:
                 continue
             if _assemble_item is not None:
@@ -3560,6 +3595,7 @@ def train_one_epoch(
         _assemble_n_frag = 0.0
         _assemble_largest = 0.0
         if _use_assemble:
+            _t_as0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
             (
                 _asm_mean,
                 _assemble_n_frag,
@@ -3576,7 +3612,13 @@ def train_one_epoch(
                     else float(assemble_hinge_tau)
                 ),
             )
+            if _STEP_TIMING_ON:
+                _STEP_TIMING["assemble_loss_s"] = (
+                    _STEP_TIMING.get("assemble_loss_s", 0.0)
+                    + time.perf_counter() - _t_as0
+                )
             if _asm_n > 0:
+                _t_st0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
                 assemble_term = float(assemble_loss_weight) * _asm_mean
                 assemble_losses.append(float(_asm_mean.detach()))
                 assemble_frags.append(_assemble_n_frag)
@@ -3594,6 +3636,11 @@ def train_one_epoch(
                     if batch_assemble
                     else 0.0
                 )
+                if _STEP_TIMING_ON:
+                    _STEP_TIMING["assemble_stay_diag_s"] = (
+                        _STEP_TIMING.get("assemble_stay_diag_s", 0.0)
+                        + time.perf_counter() - _t_st0
+                    )
 
         # 2026-10-09 — 用户建议二 修改建议 B: scale ONLY the bond_ce term.
         # `bond_ce` itself is left raw everywhere else (the epoch log line,
@@ -3789,7 +3836,13 @@ def train_one_epoch(
                 }
             )
         else:
+            _t_bwd0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
             loss.backward()
+            if _STEP_TIMING_ON:
+                _STEP_TIMING["backward_s"] = (
+                    _STEP_TIMING.get("backward_s", 0.0)
+                    + time.perf_counter() - _t_bwd0
+                )
         # Wf-A8 (2026-10-03) gradient clipping per --max-norm flag (per
         # AGENTS.md §5.7 trainer flag wire-in smoke-required rule; bit-exact
         # baseline preserved when max_norm=0.0).
@@ -3801,7 +3854,18 @@ def train_one_epoch(
         grad_norm = float(
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=_clip_norm)
         )
+        _t_step0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
         optimiser.step()
+        if _STEP_TIMING_ON:
+            _el = time.perf_counter() - _t_step0
+            _STEP_TIMING["clip_plus_step_s"] = (
+                _STEP_TIMING.get("clip_plus_step_s", 0.0) + _el
+            )
+            _STEP_TIMING["batch_total_s"] = (
+                _STEP_TIMING.get("batch_total_s", 0.0)
+                + time.perf_counter() - _t_loop0
+            )
+            _STEP_TIMING["n_batches"] = _STEP_TIMING.get("n_batches", 0.0) + 1.0
         # 2026-10-04 — EMA update, in the one place it is correct: immediately
         # after the optimizer step and before anything reads the weights.  With
         # `use_ema` off this is a no-op (the snapshot is never created), so the

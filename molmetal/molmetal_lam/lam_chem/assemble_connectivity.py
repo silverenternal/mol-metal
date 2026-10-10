@@ -115,6 +115,15 @@ import torch
 #: is a valence detail, not a separate molecule.
 _Z_HYDROGEN = 1
 
+#: How often :func:`_count_components` pays for its host-side convergence test.
+#: The test is a device comparison read on the host, i.e. a full queue drain;
+#: amortising it costs at most this many minus one extra (no-op) propagation
+#: rounds and cannot change the partition — see the proof note in that
+#: function. 8 sits above the propagation diameter of the graphs this sees
+#: (tmQM complexes, N ~ 20-40 heavy atoms), so the common case still exits on
+#: the first test that follows convergence.
+_COMPONENT_CHECK_EVERY = 8
+
 
 def _soft_bond_probabilities(logits: torch.Tensor) -> torch.Tensor:
     """P(bonded) per candidate pair.
@@ -433,14 +442,26 @@ def _count_components(adj: torch.Tensor) -> Tuple[float, float]:
     if n == 0:
         return 0.0, 0.0
     labels = torch.arange(n, device=adj.device, dtype=torch.long)
-    for _ in range(n + 1):
+    # Both operands are loop-invariant and were being rebuilt every round: an
+    # (N, N) comparison and an (N, N) allocation, per round, for a predicate
+    # and a constant that cannot change while the loop runs.
+    adj_pos = adj > 0
+    absent = torch.full((1, n), n, device=adj.device, dtype=torch.long)
+    for it in range(n + 1):
         # Every atom takes the smallest label among itself and its neighbours;
         # this is monotone, so the loop converges in <= n rounds.
-        nbr = torch.where(
-            adj > 0, labels.unsqueeze(0), torch.full_like(labels.unsqueeze(0), n)
-        )
+        nbr = torch.where(adj_pos, labels.unsqueeze(0), absent)
         new = torch.minimum(labels, nbr.min(dim=1).values)
-        if bool(torch.equal(new, labels)):
+        # `bool(torch.equal(...))` is a device comparison read on the host, so
+        # it drains the whole CUDA queue — once per round, up to N+1 times,
+        # for a call that runs once per cloud per optimizer step. Testing only
+        # every _COMPONENT_CHECK_EVERY rounds returns the IDENTICAL partition:
+        # the update is idempotent at its fixed point (if `new == labels` then
+        # the next round recomputes from an unchanged `labels` and returns the
+        # same thing), so any round past convergence is a no-op and skipping
+        # the intermediate tests cannot skip a real update. The cost of the
+        # amortisation is at most _COMPONENT_CHECK_EVERY-1 extra rounds.
+        if it % _COMPONENT_CHECK_EVERY == 0 and bool(torch.equal(new, labels)):
             break
         labels = new
     uniq, counts = torch.unique(labels, return_counts=True)
