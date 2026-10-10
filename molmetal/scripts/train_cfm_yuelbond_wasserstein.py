@@ -1947,7 +1947,7 @@ def _rdkit_strict_reason(smi: str, sanitized: bool) -> Optional[str]:
     return None
 
 
-def _bond_target_for_clean_cloud(cloud: AtomCloud, head=None):
+def _bond_target_for_clean_cloud(cloud: AtomCloud, head=None, precomputed=None):
     """Build the (E, NUM_BOND_CLASSES) one-hot bond-target matrix.
 
     For a clean cisplatin-like Pt-click cloud (5 atoms: Pt + 2 Cl +
@@ -1986,10 +1986,31 @@ def _bond_target_for_clean_cloud(cloud: AtomCloud, head=None):
             hidden_dim=DEFAULT_HIDDEN_DIM,
             n_layers=DEFAULT_N_LAYERS,
         )
-    yres = dec.featurise(cloud)
-    if not yres.decode_succeeded or yres.logits.shape[0] == 0:
-        return None, None
-    edge_index = yres.edge_index
+    # 2026-10-10 (speed). The caller in `train_one_epoch` has ALREADY run the
+    # head on this cloud — `CFMJointModel.forward` starts with
+    # `out = self.head(cloud)` — and on the default path threw those logits
+    # away, after which this function re-ran the identical forward through
+    # `featurise`. Two full head passes per cloud per step, one of them
+    # discarded.
+    #
+    # It is worse than merely redundant: the head carries dropout, so in
+    # train() the two passes return DIFFERENT logits, and bond_ce was being
+    # fitted to the second sample while the first was dropped on the floor.
+    # Reusing the first therefore does not just halve the head cost — it makes
+    # the loss see the same draw the rest of the step already used.
+    #
+    # `precomputed` is `(logits, edge_index)` from that first pass. When it is
+    # absent the old path runs unchanged, so every other caller (decode, eval,
+    # the per-epoch accuracy scoring) is untouched.
+    if precomputed is not None:
+        logits, edge_index = precomputed
+        if edge_index is None or logits.shape[0] == 0:
+            return None, None
+    else:
+        yres = dec.featurise(cloud)
+        if not yres.decode_succeeded or yres.logits.shape[0] == 0:
+            return None, None
+        logits, edge_index = yres.logits, yres.edge_index
 
     # ------------------------------------------------------------------
     # 2026-10-04 — REAL bond targets, when the corpus supplies them.
@@ -2043,7 +2064,7 @@ def _bond_target_for_clean_cloud(cloud: AtomCloud, head=None):
                 BOND_SINGLE if (zs == pt_z or zd == pt_z) else BOND_NO_BOND
             )
     y = torch.tensor(targets, dtype=torch.long, device=cloud.positions.device)
-    return yres.logits, y
+    return logits, y
 
 
 _BOND_TARGET_FALLBACK_WARNED = False
@@ -2416,30 +2437,32 @@ def train_one_epoch(
             # cloud skipped for having no bond target must not leave a
             # dangling entry here, or the assemble list would drift out of
             # step with the batch it is supposed to describe.
-            if _need_edge_index:
-                logits, velocities, edge_index = model(
-                    cloud, return_edge_index=True
-                )
-                # A head that emits no pair indices gives the assemble term
-                # nothing to rebuild a graph from, so it is skipped rather
-                # than handed a `None` it would fail to unpack.
-                _assemble_item = (
-                    (logits, edge_index, cloud.atomic_numbers)
-                    if (_use_assemble and edge_index is not None)
-                    else None
-                )
-                _sv_item = (
-                    (logits, edge_index, cloud.atomic_numbers)
-                    if (_use_soft_valence and edge_index is not None)
-                    else None
-                )
-            else:
-                logits, velocities = model(cloud)
-                _assemble_item = None
-                _sv_item = None
+            # 2026-10-10 (speed). ALWAYS ask for the edge index now. It is
+            # free — `CFMJointModel.forward`'s own docstring notes the head
+            # already computes those pair indices to produce its logits — and
+            # asking for them unconditionally is what lets the bond target be
+            # built from the logits this pass already produced instead of
+            # re-running the head a second time.
+            logits, velocities, edge_index = model(
+                cloud, return_edge_index=True
+            )
+            # A head that emits no pair indices gives the assemble term
+            # nothing to rebuild a graph from, so it is skipped rather
+            # than handed a `None` it would fail to unpack.
+            _assemble_item = (
+                (logits, edge_index, cloud.atomic_numbers)
+                if (_use_assemble and edge_index is not None)
+                else None
+            )
+            _sv_item = (
+                (logits, edge_index, cloud.atomic_numbers)
+                if (_use_soft_valence and edge_index is not None)
+                else None
+            )
             tgt_logits, tgt_y = _bond_target_for_clean_cloud(
                 cloud,
                 head=model.head,
+                precomputed=(logits, edge_index),
             )
             if tgt_y is None or tgt_logits is None:
                 continue
@@ -9309,9 +9332,7 @@ def main() -> int:
         # 2026-10-04 — seed-qualified.  The unqualified name was shared by
         # every seed in a sweep (the launcher passes no --ckpt-dir), so the
         # five seeds overwrote one another and only the last survived.
-        ckpt_path = ckpt_dir / (
-            f"cfm_yuelbond_wasserstein_seed{int(args.seed)}{_tag}.pt"
-        )
+        ckpt_path = ckpt_dir / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}.pt"
 
         def _save_cfm_checkpoint(
             _epoch: int, _decode_ratio: float, _tag: str = ""
@@ -9332,6 +9353,13 @@ def main() -> int:
             and the selected checkpoint keeps the unqualified name, which is
             also the one downstream readers already expect.
             """
+            # `_tag` lives here, not at the `ckpt_path` definition above: that
+            # one is evaluated in the enclosing scope where _tag does not
+            # exist. The periodic save passes "_last" so it cannot clobber the
+            # selected checkpoint.
+            _ckpt_path = (
+                ckpt_dir / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}{_tag}.pt"
+            )
             torch.save(
                 {
                     "model_state_dict": model.state_dict(),
@@ -9345,7 +9373,7 @@ def main() -> int:
                     "closure_bias": closure_bias,
                     "wasserstein_weight": args.wasserstein_weight,
                 },
-                ckpt_path,
+                _ckpt_path,
             )
 
         # Target / early stopping.
