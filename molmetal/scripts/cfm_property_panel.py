@@ -448,6 +448,110 @@ def read_smiles_csv(path: Path, last_epoch: bool = False) -> list[str]:
     return smiles_list
 
 
+def internal_diversity(
+    smiles_list: list[str],
+    *,
+    radius: int = 2,
+    n_bits: int = 1024,
+    max_mols: int = 300,
+    seed: int = 0,
+) -> dict[str, Any]:
+    """MOSES IntDiv1 over the generated cohort (BLK-M7-def).
+
+    ``IntDiv1 = 1 - mean_{m1,m2 in G} T(m1,m2)`` — Polykovskiy et al. 2018
+    (arXiv:1811.12823), which is exactly "mean pairwise Tanimoto distance",
+    the quantity the project has been calling ``diversity_tanimoto``. Two
+    details are matched to the definition rather than left implicit:
+
+      * the sum runs over ALL ORDERED pairs INCLUDING self-pairs (T=1), which
+        is what ``|G|^2`` in the MOSES formula means. With a 300-molecule
+        sample, excluding self-pairs shifts the value by roughly 1/300;
+      * Morgan radius 2 / **1024** bits, MOSES's ECFP4 setting. This project
+        previously used 2048 bits in an ad-hoc script, which is not the
+        reference configuration.
+
+    WHY THE 0.88 THRESHOLD IS IN THE RETURN VALUE
+    ---------------------------------------------
+    MEASURED CFM value: 0.90-0.93, against a MOSES training-set reference of
+    0.857 and a model range of 0.851-0.874. So this cohort scores ABOVE the
+    data it was trained on. The field's own reading of that (Vendi Score,
+    arXiv:2210.02410) is that values above ~0.88 on MOSES are rare and usually
+    indicate distribution shift rather than genuine novelty — their HMM model
+    posts one of the highest IntDiv1 scores (0.871) while ranking lowest on
+    Vendi Score, i.e. IntDiv cannot separate real diversity from combinatorial
+    randomness. IntDiv is also near-useless as a discriminator between models;
+    it is a mode-collapse alarm, not a quality score.
+
+    Consequence for reporting: a HIGH value here is not a win and must not be
+    presented as one. The same paper notes GA/search methods collapse to
+    0.13-0.15 on JNK3/sEH — which is exactly what the Lambda MCTS path's
+    0.1366 looks like, and is the number on that path that IS diagnostic.
+
+    ``max_mols`` subsamples deterministically (seeded) because the pairwise sum
+    is O(n^2); the sample size actually used is returned so the number is
+    never read as if it covered the whole cohort.
+    """
+    import random as _random
+
+    from rdkit import Chem, DataStructs  # noqa: WPS433
+    from rdkit.Chem import rdFingerprintGenerator  # noqa: WPS433
+
+    uniq = sorted({s for s in smiles_list if s})
+    if len(uniq) > max_mols:
+        _random.Random(seed).shuffle(uniq)
+        uniq = uniq[:max_mols]
+    fpgen = rdFingerprintGenerator.GetMorganGenerator(
+        radius=radius, fpSize=n_bits
+    )
+    fps = []
+    for s in uniq:
+        m = Chem.MolFromSmiles(s)
+        if m is not None:
+            fps.append(fpgen.GetFingerprint(m))
+    n = len(fps)
+    if n == 1:
+        # A cohort that dedupes to ONE distinct molecule is not "undefined" —
+        # it is maximally collapsed, and IntDiv is a collapse alarm, so
+        # returning None here would hide exactly the signal the metric exists
+        # for. IntDiv over |G|=1 is 1 - T(m,m) = 0 by the same formula.
+        return {"intdiv1": 0.0, "n_used": 1,
+                "n_unique": len(set(smiles_list)),
+                "radius": radius, "n_bits": n_bits, "self_pairs": True,
+                "moses_train_set_reference": 0.857,
+                "above_reference_flag": False,
+                "note": ("every molecule in the cohort is identical after "
+                         "deduplication — this is total mode collapse, and "
+                         "IntDiv1 is 0 by the same formula, not undefined")}
+    if n < 1:
+        return {"intdiv1": None, "n_used": n,
+                "n_unique": len(set(smiles_list)),
+                "radius": radius, "n_bits": n_bits, "self_pairs": True,
+                "moses_train_set_reference": 0.857,
+                "note": "no molecule parsed"}
+    total = 0.0
+    for i in range(n):
+        sims = DataStructs.BulkTanimotoSimilarity(fps[i], fps)
+        total += sum(sims)          # includes the self-pair, T=1
+    return {
+        "intdiv1": 1.0 - (total / (n * n)),
+        "n_used": n,
+        "n_unique": len(set(smiles_list)),
+        "radius": radius,
+        "n_bits": n_bits,
+        "self_pairs": True,
+        "moses_train_set_reference": 0.857,
+        "moses_model_range": [0.851, 0.874],
+        "above_reference_flag": (1.0 - (total / (n * n))) > 0.88,
+        "note": (
+            "IntDiv1 per MOSES (arXiv:1811.12823). A value above 0.88 exceeds "
+            "the MOSES training-set reference and is usually read as "
+            "distribution shift / combinatorial randomness rather than genuine "
+            "novelty (Vendi Score, arXiv:2210.02410). Do not present a high "
+            "value here as a strength."
+        ),
+    }
+
+
 def build_panel(
     smiles_list: list[str],
     *,
@@ -518,6 +622,10 @@ def build_panel(
     aggregate["multifragment_rate"] = (
         (n_input - n_single) / n_input if n_input > 0 else 0.0
     )
+    # 2026-10-10 (BLK-M7-def) — m7 as a reproducible MOSES IntDiv1, replacing a
+    # number that previously existed only in an ad-hoc script.
+    aggregate["internal_diversity"] = internal_diversity(smiles_list)
+
     aggregate["qed_contamination_note"] = (
         "aggregate['qed'] is QED of the WHOLE parsed SMILES and RDKit accepts "
         "multi-fragment input, so on a fragmented cohort it scores a bag of "

@@ -1,5 +1,5 @@
 schema: molmetal-registry-metrics-v1
-generated_at: '2026-10-10T04:02:11+00:00'
+generated_at: '2026-10-10T05:06:09+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable metric facts. A metric is CURRENT iff source_json_sha256 still
   matches disk.
@@ -17,7 +17,7 @@ metrics:
     verdict: PASS
     scope: CFM (Conditional Flow Matching) generate path
     metric_timestamp: null
-    last_refreshed: '2026-10-10T04:02:11+00:00'
+    last_refreshed: '2026-10-10T05:06:09+00:00'
     value_key: aggregate.best_measured_real
     target: 0.5
     direction: '>='
@@ -31,7 +31,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: CFM (EGNN velocity field + YuelBond bond head) on tmQM
     metric_timestamp: null
-    last_refreshed: '2026-10-10T04:02:11+00:00'
+    last_refreshed: '2026-10-10T05:06:09+00:00'
     target: null
     direction: null
     remains: no scalar emitted on disk; one GPU probe to score it
@@ -45,7 +45,7 @@ metrics:
     scope: CFM generate path (true physical docking) + Wf-121 P3 cisplatin real Vina
       sweep
     metric_timestamp: null
-    last_refreshed: '2026-10-10T04:02:11+00:00'
+    last_refreshed: '2026-10-10T05:06:09+00:00'
     value_key: v3_cohort_median_REAL
     target: -8.5
     direction: <=
@@ -65,7 +65,7 @@ metrics:
       number also needs a GPU retrain with --gen-validity-samples > 0 and --save-generated-smiles
       (PROJECTED/BLOCKED, no GPU in this wave).'
     metric_timestamp: '2026-09-30'
-    last_refreshed: '2026-10-10T04:02:11+00:00'
+    last_refreshed: '2026-10-10T05:06:09+00:00'
     value_key: aggregate.best_measured
     target: 0.65
     direction: '>='
@@ -80,7 +80,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: tier1_precious_metal_anticancer
     metric_timestamp: '2026-09-27'
-    last_refreshed: '2026-10-10T04:02:11+00:00'
+    last_refreshed: '2026-10-10T05:06:09+00:00'
     target: 0.86
     direction: '>='
     remains: cohort honest-negative (591 vs 23 cell lines); no launch closes it
@@ -93,7 +93,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: tier2_sbdd_ood_lomo_wasserstein
     metric_timestamp: '2026-10-08T06:51:17+00:00'
-    last_refreshed: '2026-10-10T04:02:11+00:00'
+    last_refreshed: '2026-10-10T05:06:09+00:00'
     target: 0.7
     direction: '>='
     remains: P-A drift ALREADY FIXED on disk (real-only 5-fold); doc retag only
@@ -106,7 +106,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: tier1_precious_metal_anticancer
     metric_timestamp: '2026-09-25'
-    last_refreshed: '2026-10-10T04:02:11+00:00'
+    last_refreshed: '2026-10-10T05:06:09+00:00'
     target: 0.85
     direction: '>='
     remains: closed structural (Wf-369-A2); synthetic labels; no GPU
@@ -119,7 +119,7 @@ metrics:
     verdict: PASS
     scope: tier1_precious_metal_anticancer
     metric_timestamp: '2026-09-25'
-    last_refreshed: '2026-10-10T04:02:11+00:00'
+    last_refreshed: '2026-10-10T05:06:09+00:00'
     target: 0.7
     direction: '>='
     remains: nothing for gate; scaffold split enforced in code
@@ -132,7 +132,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: tier1_precious_metal_anticancer / Wf-122 P3 post-fix combined anchor
     metric_timestamp: '2026-09-27'
-    last_refreshed: '2026-10-10T04:02:11+00:00'
+    last_refreshed: '2026-10-10T05:06:09+00:00'
     target: 0.85
     direction: '>='
     remains: architectural ceiling (~0.68); drop-from-S3 or metric redefinition; NO
@@ -146,7 +146,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: null
     metric_timestamp: null
-    last_refreshed: '2026-10-10T04:02:11+00:00'
+    last_refreshed: '2026-10-10T05:06:09+00:00'
     value_key: aggregate.closure_reachability_rate
     target: 0.95
     direction: '>='
@@ -163,7 +163,7 @@ metrics:
       a generation-quality metric. Do not read any value here as a claim about CFM-generated
       molecules. (Wf-R44 scope correction.)
     metric_timestamp: '2026-10-01'
-    last_refreshed: '2026-10-10T04:02:11+00:00'
+    last_refreshed: '2026-10-10T05:06:09+00:00'
     target: 0.6
     direction: '>='
     remains: drop-from-S3 per Wf-389-A1; same family as L5
@@ -186,8 +186,11 @@ uncovered_metric_files:
 - cfm_decode_chemistry_validity
 - cfm_decode_fragmentation
 - cfm_decode_real
+- cfm_generation_collapse_rootcause
+- cfm_internal_diversity_intdiv1
 - cfm_loss_term_liveness
 - cfm_qed_fragment_aware
+- cfm_sa_reference_scale
 - chemprop_v2_5metal_5seed_50epoch
 - chemprop_v2_lomo_v2
 - chemprop_v2_status_2026_09_27

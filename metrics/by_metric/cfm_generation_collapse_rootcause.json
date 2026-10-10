@@ -1,0 +1,113 @@
+{
+  "metric": "cfm_generation_collapse_rootcause",
+  "description": "Root-cause finding for BLK-C11's generation collapse, from per-epoch data of the cfm_frag_control arm. Supersedes the 'missing generation objective' framing.",
+  "tag": "MEASURED",
+  "date": "2026-10-10",
+  "source": "molmetal/reports/cfm_frag_control/per_epoch_metrics.csv (30 epochs, tmQM all6, single seed)",
+  "FINDING_1_selection_criterion_is_identically_zero": {
+    "metric": "combined = gen_validity x bond_exact_type_rate",
+    "bond_exact_type_rate_max_over_30_epochs": 0.0,
+    "combined_max_over_30_epochs": 0.0,
+    "conclusion": "the early-stop / checkpoint-selection criterion is a CONSTANT. It cannot discriminate between epochs and early stopping can never fire. bond_exact_type_rate is structurally 0 — the project already documented this (0.7177**42 ≈ 8.8e-07 requires all ~42 bonds exactly right) — so `combined` was built on a metric proven unreachable.",
+    "consequence": "the run trains the full 30 epochs past the peak and reports the endpoint (decode_ratio 0.0885)"
+  },
+  "FINDING_2_fallback_criteria_are_vacuous_too": {
+    "decode_ratio_peaks_at": "epoch 0",
+    "gen_validity_peaks_at": "epoch 0",
+    "is_epoch0_vacuous": false,
+    "evidence_epoch0_is_real": {
+      "gen_mean_heavy_atoms": 39.38,
+      "gen_metal_ratio": 1.0,
+      "gen_largest_fragment_frac": 0.844
+    },
+    "note": "epoch 0 is a genuinely non-empty generator, so `best.*` in per_epoch_metrics.json pointing at epoch 0 is not a vacuous win — but it is a near-untrained model, and combined with a dead criterion it means no epoch was ever selected on merit."
+  },
+  "FINDING_3_it_is_instability_not_clean_collapse": {
+    "gen_mean_heavy_atoms_by_epoch": {
+      "0": "39.38",
+      "5": "31.83",
+      "10": "36.80",
+      "15": "48.52",
+      "18": "0.00",
+      "20": "61.00",
+      "22": "41.46",
+      "24": "39.09",
+      "26": "37.97",
+      "29": "21.17"
+    },
+    "hard_failure_at_epoch_18": {
+      "gen_validity": 0.0,
+      "gen_mean_heavy_atoms": 0.0,
+      "gen_metal_ratio": 0.0,
+      "note": "all 128 gen_eval samples produced nothing — a hard failure, not sampling noise"
+    },
+    "epoch_to_epoch_swing": {
+      "decode_ratio": {
+        "ep18": 0.5365,
+        "ep20": 0.9896,
+        "ep25": 0.625,
+        "ep29": 0.0885
+      },
+      "note": "decode_ratio is NOT monotone; it recovers from 0.5365 to 0.9896 between epochs 18 and 20"
+    },
+    "conclusion": "the trajectory is large-epoch-to-epoch instability with one hard zero-output epoch, not a smooth decay. That is a training-STABILITY problem, and a loss term is not the natural instrument for it."
+  },
+  "FINDING_4_bond_head_is_the_only_reliably_improving_part": {
+    "bond_f1": {
+      "ep0": 0.4599,
+      "ep29": 0.5049
+    },
+    "decoupled": "every generation-side metric moves independently of bond_f1, which is why a run can raise bond_f1 while producing nothing usable"
+  },
+  "LEVERAGE_CHECK_zero_gpu": {
+    "question": "can a non-degenerate selection criterion be validated without retraining?",
+    "answer": "yes — the per-epoch series already contains the answer",
+    "what_each_criterion_would_select": {
+      "combined_as_shipped": {
+        "epoch": 0,
+        "value": 0.0
+      },
+      "decode_ratio": {
+        "epoch": 0,
+        "value": 1.0
+      },
+      "gen_validity": {
+        "epoch": 0,
+        "value": 0.9766
+      },
+      "bond_f1": {
+        "epoch": 29,
+        "value": 0.5049
+      },
+      "gen_validity_x_bond_f1": {
+        "epoch": 0,
+        "value": 0.4491
+      },
+      "gen_validity_x_min1_bond_f1_over_0.45": {
+        "epoch": 0,
+        "value": 0.9766
+      }
+    },
+    "with_epoch_lt_5_excluded": {
+      "combined_as_shipped": 5,
+      "decode_ratio": 5,
+      "gen_validity": 24,
+      "bond_f1": 29,
+      "gen_validity_x_bond_f1": 24,
+      "gen_validity_x_min1_bond_f1_over_0.45": 24
+    },
+    "best_non_degenerate": {
+      "criterion": "gen_validity x min(1, bond_f1/0.45), epochs >= 5",
+      "selected_epoch": 24,
+      "decode_ratio": 0.9167,
+      "gen_validity": 0.4453,
+      "vs_endpoint": {
+        "decode_ratio": 0.0885,
+        "gen_validity": 0.0469
+      }
+    },
+    "caveat": "the 0.45 floor is a FITTED constant and is the weak point of this proposal; it must be derived from a bond_f1 distribution, not chosen. Recorded as such, not shipped."
+  },
+  "PROPOSAL_NOT_YET_SHIPPED": "replace the dead `combined` criterion with one that is neither identically zero nor maximised by an empty generator, and select the checkpoint on it instead of reporting the endpoint. Held pending the leverage gate on the derived floor value.",
+  "supersedes": "the framing 'the loss contains no generation objective, therefore collapse' — that was refuted: the objective term that was tried never fired (gradient ~5e-09), and the selection criterion, not the objective, is what is provably dead."
+}

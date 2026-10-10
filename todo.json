@@ -2880,28 +2880,32 @@
           {
             "step": 6,
             "id": "BLK-M7-def",
-            "status": "TODO — 零成本",
+            "status": "DONE",
             "what": "m7 diversity 口径重定或撤下",
-            "why": "0.916 在多片段输出上不可解释"
+            "why": "0.916 在多片段输出上不可解释",
+            "result": "m7 改为可复现 MOSES IntDiv1；0.90-0.93 高于训练集基准，按文献不可作优点"
           },
           {
             "step": 7,
             "id": "BLK-SA-rootcause",
-            "status": "TODO — 需查证",
+            "status": "PARTIAL",
             "what": "定位 m4 SA=7.37 的根因",
             "lead": "SA 低者碎裂率高，方向与『结构复杂度』同向；需先确认这不是批次效应",
-            "compute": "可能零成本（分析已有产物）"
+            "compute": "可能零成本（分析已有产物）",
+            "result": "碎裂被排除；体积 corr +0.27~+0.48；尺度不可比已确认（顺铂 7.467）。实成分未量化。"
           },
           {
             "step": 8,
             "id": "BLK-COLLAPSE-rootcause",
-            "status": "TODO — 需查证",
+            "status": "ROOT CAUSE FOUND",
             "what": "继续定位崩塌根因",
             "excluded": [
               "价键（已证伪）",
               "assemble loss（梯度死）"
             ],
-            "assessment": "已排除两条后边际收益低；若做必须先过杠杆闸"
+            "assessment": "已排除两条后边际收益低；若做必须先过杠杆闸",
+            "result": "选择判据 combined 恒为 0；崩塌是不稳定非衰减；杠杆检查零 GPU 通过",
+            "blocked_by": "0.45 下限需从 bond_f1 分布反解（杠杆闸第二问）"
           }
         ]
       },
@@ -3691,15 +3695,24 @@
           "blk_c5_repair": 6.6633
         },
         "scale": "Ertl 1-10，越低越好；成药分子约 2-3",
-        "severity": "最差的一项，超出可用区间两倍",
-        "root_cause": "未定位",
-        "lead": "方向线索：SA 最低的 blk_c5_repair(6.66) 碎裂率 81.6%，另两个(7.37/7.45)碎裂率 44.7%/52.5%。SA 高与『生成了更大更复杂的结构』同向。但 n=147 的那个 run 与另两个不同批，证据强度有限。"
+        "severity": "DOWNGRADED —— 先前『最差的一项、超出可用区间两倍』是拿有机分子的 SA 尺度比有机金属配合物",
+        "root_cause": "部分定位：尺度不可比（Ertl SA 在有机库上标定）+ 分子体积（corr +0.27~+0.48）。碎裂已被排除为驱动因素。",
+        "lead": "方向线索：SA 最低的 blk_c5_repair(6.66) 碎裂率 81.6%，另两个(7.37/7.45)碎裂率 44.7%/52.5%。SA 高与『生成了更大更复杂的结构』同向。但 n=147 的那个 run 与另两个不同批，证据强度有限。",
+        "reference_points": "顺铂（PubChem 带电式，临床在用）SA=7.467；苯 1.000；乙酰氨基酚 1.407。我们的 6.66-7.93 与顺铂同带。",
+        "RETRACTED": "我先前说『SA 低者碎裂率高』是错的——blk_c5_repair 碎片最少(3.52)且 SA 最低；fm_ab 碎片最多(10.04)但 SA 居中。那是比较不同批次的 n=147 run 造成的假象。",
+        "REMAINING_UNCERTAINTY": "6.66-7.93 里有多大比例是体积、多少是片段稀有度、多少是真化学差，未量化。39 重原子的有机分子应得 2-3 而非 7.9，说明除尺度外还有实成分。",
+        "artifact": "metrics/by_metric/cfm_sa_reference_scale.json"
       },
       "generation_collapse": {
         "trajectory": "gen_validity 0.9766→0.0469；decode_ratio 1.000→0.0885（30 轮）",
-        "root_cause": "未定位。已排除两条：价键（0/2146 是崩掉的检查，真值 0.8495）、assemble loss（梯度 ~5e-09，30 轮未触发）",
+        "root_cause": "已定位为主因：选择判据 combined = gen_validity × bond_exact_type_rate 在 30 轮里恒为 0，是常数，early stopping 不可能触发；于是训满 30 轮并报末轮(0.0885)。",
         "reproducibility": "control 臂 cfm_frag_control 30 轮稳定复现，非偶发",
-        "assessment": "CFM 线最实在的未解问题，但已排除两条根因后继续盲试的边际收益低"
+        "assessment": "CFM 线最实在的未解问题，但已排除两条根因后继续盲试的边际收益低",
+        "REFRAMED": "不是『缺生成目标导致崩塌』。三个证据：(1) 唯一试过的目标项梯度 ~5e-09、从未 engage；(2) 崩塌形态是不稳定而非干净衰减——ep18 是 128 个样本全空的硬失败，decode_ratio 在 ep18→ep20 从 0.5365 反弹到 0.9896；(3) bond_f1 是唯一稳定改善的部分(0.4599→0.5049)，与所有生成侧指标脱钩。",
+        "classification": "训练稳定性问题 + 模型选择问题，不是目标函数问题。loss 项不是它的自然工具。",
+        "leverage_check": "通过，零 GPU：用现有 per-epoch CSV 即可算出每个候选判据会选中哪一轮。非退化判据 gen_validity×min(1,bond_f1/0.45)（排除 ep<5）选中 ep24，decode 0.9167 / gen_validity 0.4453，对比末轮 0.0885 / 0.0469。",
+        "OPEN_WEAKNESS": "0.45 这个下限是拟合常数，是该提案的弱点，必须从 bond_f1 分布反解而非拍定。已记录，未实施。",
+        "artifact": "metrics/by_metric/cfm_generation_collapse_rootcause.json"
       },
       "fragmentation": {
         "measured_today": {
@@ -3763,8 +3776,32 @@
           "fm_control": 0.9215,
           "blk_c5_repair": 0.8674
         },
-        "status": "不可解释 —— 分子 84.95% 有效但其中大量为多片段，Morgan 距离衡量的是碎片间发散",
-        "not_comparable_with": "diversity_tanimoto.json 的 0.1366（Lambda MCTS 路径，协议不同）"
+        "status": "FIXED —— m7 不是优点，而是可疑值；已改为可复现的 MOSES IntDiv1",
+        "not_comparable_with": "diversity_tanimoto.json 的 0.1366（Lambda MCTS 路径，协议不同）",
+        "FIXED_2026_10_10": {
+          "intdiv1": {
+            "cfm_fm_ab": 0.8995,
+            "cfm_fm_control": 0.9074,
+            "cfm_blk_c5_repair": 0.8516,
+            "cfm_frag_control": 0.9145,
+            "cfm_frag_assemble": 0.9117
+          },
+          "reference": {
+            "moses_training_set": 0.857,
+            "moses_models": [
+              0.851,
+              0.874
+            ],
+            "field_warning_threshold": 0.88
+          },
+          "REVERSES_MY_OWN_EARLIER_CAVEAT": "我先前写『0.916 在无效结构上算、不解释』。查证证明碎裂不是原因：整条 0.9159 / 只取单片段 0.9024 / 只取最大分量 0.9090，怎么切都在 0.90-0.93。那个警告是错的，已撤回。",
+          "why_it_is_still_not_a_strength": "CFM 的 0.90-0.93 高于 MOSES 训练集基准 0.857。Vendi Score (arXiv:2210.02410) 指出 >0.88 通常意味着分布偏移而非真正新颖性，且 IntDiv 无法区分真实多样性与组合随机性。",
+          "INTERNAL_CONTRADICTION": "在我们自己的五个 run 里，IntDiv1 与化学质量【反相关】：blk_c5_repair 是唯一低于 0.88 的（0.8516，贴着训练集基准），同时它 validity 最好(0.9864)、SA 最好(6.663)；最碎的 run IntDiv 最高。IntDiv 奖励组合随机性这个失效模式，在我们自己的数据里复现了。",
+          "conclusion": "m7 对 CFM 线既不能当优点也不能当缺点用；它是崩塌报警器，不是质量分。",
+          "lambda_path_note": "同一文献指出 GA/搜索方法在 JNK3/sEH 上塌到 0.13-0.15 —— Lambda MCTS 的 0.1366 正是这个形态，那条路径上的低值才是诊断信号。",
+          "artifact": "metrics/by_metric/cfm_internal_diversity_intdiv1.json",
+          "tests": "molmetal/tests/test_m7_internal_diversity.py（7 个，含去重后仅剩 1 个分子必须报 0.0 崩塌而非 None）"
+        }
       },
       "decode_ratio": {
         "reported": 0.998,

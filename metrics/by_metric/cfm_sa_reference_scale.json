@@ -1,0 +1,44 @@
+{
+  "metric": "cfm_sa_reference_scale",
+  "description": "Reference points for m4 SA on organometallics, and the correction of a severity claim made earlier today.",
+  "tag": "MEASURED",
+  "date": "2026-10-10",
+  "why": "I called SA=7.37 'the worst metric, ~2x outside the usable range' by comparing it to the organic drug-like scale (2-3). That comparison is not valid for organometallics.",
+  "reference_points": {
+    "benzene": {
+      "sa": 1.0,
+      "heavy": 6
+    },
+    "paracetamol": {
+      "sa": 1.407,
+      "heavy": 11
+    },
+    "Pt(NH3)2Cl2_pyridine": {
+      "sa": 3.121,
+      "heavy": 11
+    },
+    "cisplatin_pubchem_charged": {
+      "sa": 7.467,
+      "heavy": 8
+    },
+    "cisplatin_neutral": {
+      "sa": 5.945,
+      "heavy": 5
+    }
+  },
+  "our_output": {
+    "sa_range": [
+      6.663,
+      7.925
+    ],
+    "mean_heavy_atoms": 39.1
+  },
+  "FINDING": "A clinically used drug (cisplatin, PubChem canonical charged form) scores SA 7.467 — the same band as our generated organometallics. Organic drug-like molecules score 1.0-3.1. So SA=7 is not evidence of broken chemistry; it is evidence that the Ertl scale was calibrated on organic libraries and organometallics sit outside its domain, where the fragment-rarity term bites hardest.",
+  "visible_drivers_within_our_own_data": {
+    "size": "corr(SA, heavy atom count) = +0.274 (blk_c5_repair) / +0.480 (fm_ab) / +0.459 (frag_control). The best-SA run generates the SMALLEST molecules (35.4 vs 39.3 heavy atoms).",
+    "fragmentation": "NOT the driver. blk_c5_repair has both the fewest fragments (3.52) and the lowest SA; fm_ab has the most fragments (10.04) but a mid SA. My earlier 'lower SA means more fragmented' was an artifact of comparing a different-batch n=147 run against the others."
+  },
+  "honest_remaining_uncertainty": "Our molecules are ~39 heavy atoms, 4-5x cisplatin's 8, so size alone accounts for part of the gap — but a 39-atom organic molecule would score ~2-3, not 7.9. So there is likely a real component beyond pure domain mismatch. NOT quantified: what fraction of the 6.66-7.93 band is size, fragment rarity, or genuinely poor chemistry.",
+  "not_a_metric_fix_yet": "Recorded as a scale-comparability finding. No code changed. Deciding whether to define an organometallic-specific SA reference would need tmQM molecules scored through RDKit, which failed to construct (metal valences) — that is itself worth a follow-up.",
+  "artifact_source": "rdkit sascorer via cfm_property_panel._load_sascorer, 2026-10-10"
+}

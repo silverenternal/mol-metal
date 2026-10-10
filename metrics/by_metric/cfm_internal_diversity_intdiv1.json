@@ -1,0 +1,116 @@
+{
+  "metric": "cfm_internal_diversity_intdiv1",
+  "description": "m7 as a reproducible MOSES IntDiv1. Replaces a number that existed only in an ad-hoc script and was being read as a strength against a Guan 2023 target of 0.860.",
+  "tag": "MEASURED",
+  "date": "2026-10-10",
+  "source_script": "molmetal/scripts/cfm_property_panel.py::internal_diversity",
+  "definition": "IntDiv1 = 1 - mean_{m1,m2 in G} T(m1,m2), MOSES (arXiv:1811.12823); Morgan radius 2 / 1024 bits ECFP4; ordered pairs INCLUDING self-pairs; deterministic 300-molecule subsample",
+  "previous_definition_differs": "the project computed 2048-bit Morgan and excluded self-pairs in a throwaway script — not the reference configuration",
+  "reference_values": {
+    "moses_training_set_zinc_clean_leads": 0.857,
+    "moses_models_charRNN_vae_aae_latentgan": [
+      0.851,
+      0.874
+    ],
+    "moses_combinatorial_ngram_hmm": [
+      0.847,
+      0.874
+    ],
+    "field_warning_threshold": 0.88
+  },
+  "VERDICT": "m7 is NOT a strength for this project, and must not be presented as one",
+  "literature": {
+    "vendi_score_arxiv_2210_02410": "values above ~0.88 on MOSES are rare and usually indicate distribution shift rather than genuine novelty; their HMM model posts one of the highest IntDiv1 (0.871) while ranking LOWEST on Vendi Score, i.e. IntDiv cannot separate real diversity from combinatorial randomness",
+    "intdiv_is_a_collapse_alarm_not_a_quality_score": "nearly every architecture clusters in 0.85-0.87, so it barely discriminates between models",
+    "lambda_path_context": "the same source notes GA/search methods collapsing to 0.13-0.15 on JNK3/sEH — which is exactly the Lambda MCTS path's 0.1366. On THAT path the low number is the diagnostic one, not a defect to be raised."
+  },
+  "INTERNAL_EVIDENCE": {
+    "finding": "within our own five runs, IntDiv1 is INVERSELY related to chemical quality — the run with the best validity and best SA scores lowest",
+    "table": [
+      {
+        "run": "cfm_fm_ab_2026_10_09",
+        "intdiv1": 0.8995,
+        "above_reference": true,
+        "chemistry_validity_all_pass": 0.8422,
+        "sa_mean": 7.369
+      },
+      {
+        "run": "cfm_fm_control_2026_10_09",
+        "intdiv1": 0.9074,
+        "above_reference": true,
+        "chemistry_validity_all_pass": 0.8358,
+        "sa_mean": 7.451
+      },
+      {
+        "run": "cfm_blk_c5_repair_2026_10_09",
+        "intdiv1": 0.8516,
+        "above_reference": false,
+        "chemistry_validity_all_pass": 0.9864,
+        "sa_mean": 6.663
+      },
+      {
+        "run": "cfm_frag_control",
+        "intdiv1": 0.9145,
+        "above_reference": true,
+        "chemistry_validity_all_pass": null,
+        "sa_mean": 7.925
+      },
+      {
+        "run": "cfm_frag_assemble",
+        "intdiv1": 0.9117,
+        "above_reference": true,
+        "chemistry_validity_all_pass": null,
+        "sa_mean": 8.039
+      }
+    ],
+    "reading": "cfm_blk_c5_repair is the ONLY run below 0.88 and sits essentially at the MOSES training-set reference (0.8516 vs 0.857). It also has the best chemistry validity (0.9864) and the best SA (6.663). The most fragmented runs score highest. That is the Vendi Score failure mode reproduced inside this project's own data.",
+    "consequence": "m7 cannot be used as a quality metric for the CFM line at all — not as a strength and not as a weakness."
+  },
+  "fix_shipped": {
+    "code": "internal_diversity() in cfm_property_panel.py, wired into build_panel's aggregate",
+    "edge_case_fixed": "a cohort deduping to ONE molecule now returns IntDiv1 = 0.0 with a 'total mode collapse' note, rather than None. IntDiv is a collapse alarm, so returning undefined would have hidden the exact signal it exists for.",
+    "tests": "molmetal/tests/test_m7_internal_diversity.py (7)"
+  },
+  "rows": [
+    {
+      "run": "cfm_fm_ab_2026_10_09",
+      "intdiv1": 0.8995012269210476,
+      "n_used": 300,
+      "above_reference": true,
+      "chemistry_validity_all_pass": 0.8422,
+      "sa_mean": 7.369
+    },
+    {
+      "run": "cfm_fm_control_2026_10_09",
+      "intdiv1": 0.9073651839130847,
+      "n_used": 300,
+      "above_reference": true,
+      "chemistry_validity_all_pass": 0.8358,
+      "sa_mean": 7.451
+    },
+    {
+      "run": "cfm_blk_c5_repair_2026_10_09",
+      "intdiv1": 0.8516357388239933,
+      "n_used": 147,
+      "above_reference": false,
+      "chemistry_validity_all_pass": 0.9864,
+      "sa_mean": 6.663
+    },
+    {
+      "run": "cfm_frag_control",
+      "intdiv1": 0.9145056854405709,
+      "n_used": 300,
+      "above_reference": true,
+      "chemistry_validity_all_pass": null,
+      "sa_mean": 7.925
+    },
+    {
+      "run": "cfm_frag_assemble",
+      "intdiv1": 0.9117187804529528,
+      "n_used": 300,
+      "above_reference": true,
+      "chemistry_validity_all_pass": null,
+      "sa_mean": 8.039
+    }
+  ]
+}
