@@ -810,7 +810,18 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=None,
         help="Path to markdown report (default: molmetal/reports/wf_tier1_metric2_platinai/final.md)",
     )
-    return p.parse_args(argv)
+    p.add_argument(
+        "--config",
+        default=None,
+        help="YAML config (§5.11). Keys resolve to the dests above; an "
+        "explicit CLI flag still wins.",
+    )
+    args = p.parse_args(argv)
+    if getattr(args, "config", None):
+        from wfA2_config_loader import apply_yaml_overrides
+
+        args = apply_yaml_overrides(p, args, args.config, argv=list(argv or []))
+    return args
 
 
 def _build_splitter(args: argparse.Namespace, seed: int):

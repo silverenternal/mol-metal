@@ -39,6 +39,22 @@ range (0.1 µM – 100 µM, log-normal) using:
                           + resistance_scale * (line == "A2780cis")
                           + ε ~ N(0, σ)
 
+⚠️ THIS DESCRIPTOR TERM IS ONLY PRESENT UNDER `--descriptor-terms`.
+The default path (which produced molmetal/data/platinai_4cell.csv, the
+measured provenance of metrics/by_metric/platinai_4cell_auc.json) emits
+NO descriptor term at all:
+
+    log10(IC50_nM)_cell = BASE + cell_offset[cell]
+                          - RESISTANCE_BOOST * (line == "A2780cis" and n_heavy > 25)
+                          + ε ~ N(0, SIGMA)
+
+so for MCF7 / A549 / A2780 every molecule-dependent term is identically
+zero and the label is a per-cell-line constant plus independent noise —
+a NULL SIGNAL whose population-optimal AUC is 0.5.  Measured
+corr(log10 IC50, heavy_atom_count) on the shipped CSV is -0.0095 / -0.0254
+/ -0.0324 for those three lines vs -0.2161 for A2780cis.  Only A2780cis
+carries a structure-dependent term in the default build.
+
 where:
 * `base` = 6.0 (geometric mean around 1 µM — typical Pt IC50)
 * `cell_offset` = {MCF7: 0, A549: 0.1, A2780: 0.3, A2780cis: 0.9}
@@ -120,6 +136,54 @@ CELL_LINES: Tuple[str, ...] = ("MCF7", "A549", "A2780", "A2780cis")
 BASE_LOG10_IC50_NM: float = 3.95  # ~9 µM (just below active threshold)
 SIGMA: float = 0.45  # log-scale assay noise (real Pt IC50 CV ≈ 30-50 %)
 RESISTANCE_BOOST: float = 0.30  # pIC50 boost for large Pt complexes in resistant line
+
+# ---------------------------------------------------------------------------
+# --descriptor-terms mode: DFT linear model coefficients
+# ---------------------------------------------------------------------------
+# Provenance: NOT fitted.  No real per-cell-line IC50 table is joinable to the
+# tmQM DFT descriptors on this host — MetalCytoToxDB.csv has 0 Pt rows and 0
+# smiles==csd_code matches against tmqm_parsed.csv (MEASURED 2026-10-11), and the
+# Rusanov 2025 S4-S5 supplementary xlsx is Cloudflare-blocked.  So these are
+# A-PRIORI coefficients chosen for sign and rough magnitude only.  They are
+# recorded in the output metadata JSON so any downstream AUC on the descriptor
+# dataset is traceable to these exact numbers.
+#
+# Units are z-scores against the tmQM Pt population (MEASURED from
+# .data/molmetal/tmQM/tmqm_parsed.csv, metal == 'Pt', n=3598 matched to
+# molmetal/data/platinai_4cell.csv on 2026-10-11; stats recomputed at build
+# time by `_descriptor_zscores`, not hard-coded).
+#
+# Sign conventions chosen:
+#   beta_gap   > 0 : a smaller HOMO-LUMO gap = easier intramolecular charge
+#                   transfer = softer, more readily activated Pt(II) species =
+#                   more cytotoxic => lower IC50 (lower log10_nM). Because
+#                   `_generate_ic50_nm` ADDS this term to log10_nm, a POSITIVE
+#                   coefficient is what makes a small gap lower the IC50. This
+#                   was -0.35, which contradicted the rationale directly above
+#                   and inverted the term: MEASURED oracle AUC for "is active"
+#                   was 0.1950 on +desc_term and 0.8050 on -desc_term.
+#   beta_homo  > 0 : a higher (less negative) HOMO is a weaker donor to the
+#                   guanine N7 => weaker DNA adduct => higher IC50.
+#   beta_lumo  > 0 : a higher (less negative) LUMO is a weaker acceptor =>
+#                   weaker backbonding => higher IC50.
+#   beta_pol   > 0 : larger polarizability tracks larger / more lipophilic
+#                   complexes, which in this corpus track higher IC50
+#                   (the same direction as the heavy-atom term above).
+# Magnitudes give a descriptor term with MEASURED sd 0.384 log10 units against
+# SIGMA=0.45 (SNR 0.85, not the ~0.45 previously claimed here), i.e. a signal a
+# D-MPNN can learn but that cannot be read off a single draw.
+DESCRIPTOR_TERMS: Tuple[str, ...] = ("HOMO_Energy", "LUMO_Energy", "HL_Gap", "Polarizability")
+BETA_HOMO: float = 0.10
+BETA_LUMO: float = 0.10
+BETA_GAP: float = 0.35
+BETA_POL: float = 0.05
+# Descriptor-term linear predictor: BETA_HOMO*z(homo) + ... + BETA_POL*z(pol).
+BETA_BY_TERM: Dict[str, float] = {
+    "HOMO_Energy": BETA_HOMO,
+    "LUMO_Energy": BETA_LUMO,
+    "HL_Gap": BETA_GAP,
+    "Polarizability": BETA_POL,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -235,24 +299,85 @@ def _row_seed(complex_id: str, smiles: str) -> int:
     return int(h)
 
 
+def _load_tmqm_descriptors(env_dir: Path) -> Dict[str, Dict[str, float]]:
+    """csd_code -> {HOMO_Energy, LUMO_Energy, HL_Gap, Polarizability} for Pt rows.
+
+    Reuses the existing tmQM parsed cache (same file `_collect_from_tmqm`
+    already reads); no new descriptor code is introduced.
+    """
+    p = env_dir / "tmQM" / "tmqm_parsed.csv"
+    if not p.is_file():
+        return {}
+    out: Dict[str, Dict[str, float]] = {}
+    with p.open() as f:
+        for row in csv.DictReader(f):
+            if row.get("metal", "") != "Pt":
+                continue
+            code = row.get("csd_code", "")
+            if not code:
+                continue
+            try:
+                out[code] = {t: float(row[t]) for t in DESCRIPTOR_TERMS}
+            except (TypeError, ValueError, KeyError):
+                continue
+    return out
+
+
+def _descriptor_zscores(
+    descriptors: Dict[str, Dict[str, float]]
+) -> Dict[str, Dict[str, float]]:
+    """Z-score each descriptor across the population. Deterministic."""
+    stats: Dict[str, Tuple[float, float]] = {}
+    for term in DESCRIPTOR_TERMS:
+        vals = [d[term] for d in descriptors.values()]
+        n = len(vals)
+        mean = sum(vals) / n if n else 0.0
+        var = sum((v - mean) ** 2 for v in vals) / n if n else 0.0
+        sd = var**0.5 or 1.0
+        stats[term] = (mean, sd)
+    return {
+        code: {t: (d[t] - stats[t][0]) / stats[t][1] for t in DESCRIPTOR_TERMS}
+        for code, d in descriptors.items()
+    }
+
+
+def _descriptor_linear_term(desc: Optional[Dict[str, float]]) -> float:
+    """beta_HOMO*z(homo) + beta_LUMO*z(lumo) + beta_gap*z(gap) + beta_pol*z(pol).
+
+    Returns 0.0 when a row has no tmQM descriptor record (descriptor absent =>
+    no molecule-dependent contribution, never an invented one).
+    """
+    if not desc:
+        return 0.0
+    return sum(BETA_BY_TERM[t] * desc[t] for t in DESCRIPTOR_TERMS)
+
+
 def _generate_ic50_nm(
     complex_id: str,
     smiles: str,
     rng_seed: int,
     n_heavy: int,
+    desc: Optional[Dict[str, float]] = None,
+    use_descriptor_terms: bool = False,
 ) -> Dict[str, float]:
     """Return {MCF7, A549, A2780, A2780cis} : IC50 in nM.
 
     The model:
         log10(IC50_nM)_cell = BASE + cell_offset[cell]
+                              + descriptor_term   (only if use_descriptor_terms)
                               + ε
         active = IC50 ≤ 10000 nM (10 µM)
+
+    With use_descriptor_terms=False (the historical default, and what produced
+    molmetal/data/platinai_4cell.csv) the descriptor term is identically zero,
+    so MCF7/A549/A2780 labels are a per-cell-line constant plus noise.
 
     Heavy-atom count injects a small bonus for A2780cis (large complexes
     can bypass DNA-adduct resistance) — this gives the model a learnable
     per-cell-line signal without giving away the answer.
     """
     r = random.Random(rng_seed)
+    desc_term = _descriptor_linear_term(desc) if use_descriptor_terms else 0.0
     out: Dict[str, float] = {}
     for line in CELL_LINES:
         eps = r.gauss(0.0, SIGMA)
@@ -260,7 +385,13 @@ def _generate_ic50_nm(
             RESISTANCE_BOOST if (line == "A2780cis" and n_heavy > 25) else 0.0
         )
         # log10 nM
-        log10_nm = BASE_LOG10_IC50_NM + CELL_OFFSETS_NM[line] - resistance_bonus + eps
+        log10_nm = (
+            BASE_LOG10_IC50_NM
+            + CELL_OFFSETS_NM[line]
+            - resistance_bonus
+            + desc_term
+            + eps
+        )
         # Convert to nM, clip to [1, 1e6] nM
         ic50_nm = 10**log10_nm
         ic50_nm = max(1.0, min(1.0e6, ic50_nm))
@@ -299,12 +430,38 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=None,
         help="Optional JSON metadata output path",
     )
+    p.add_argument(
+        "--descriptor-terms",
+        action="store_true",
+        help=(
+            "Use the HOMO/LUMO/gap/Polarizability linear model the module "
+            "docstring promises. Off by default: the OFF path is what produced "
+            "molmetal/data/platinai_4cell.csv, whose MCF7/A549/A2780 labels "
+            "carry no molecule-dependent term. With this flag, rows whose "
+            "source id matches a Pt row in the tmQM parsed cache get "
+            "beta_HOMO*z(HOMO) + beta_LUMO*z(LUMO) + beta_gap*z(gap) + "
+            "beta_pol*z(Polarizability); unmatched rows get exactly 0.0. "
+            "Coefficients are A-PRIORI, not fitted (see BETA_BY_TERM)."
+        ),
+    )
     return p.parse_args(argv)
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = _parse_args(argv)
     out_path = Path(args.out)
+    canonical = PROJECT_ROOT / "molmetal" / "data" / "platinai_4cell.csv"
+    if args.descriptor_terms and out_path.resolve() == canonical.resolve():
+        print(
+            "[platinai-4cell] REFUSING to write --descriptor-terms output over "
+            "molmetal/data/platinai_4cell.csv. That file is the measured "
+            "provenance of metrics/by_metric/platinai_4cell_auc.json. Pass a "
+            "versioned --out, e.g. "
+            "--out molmetal/data/platinai_4cell_desc_v1.csv",
+            file=sys.stderr,
+            flush=True,
+        )
+        return 1
     out_path.parent.mkdir(parents=True, exist_ok=True)
     env_dir = Path(args.env_dir)
 
@@ -357,7 +514,26 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
 
     # Build CSV
+    desc_z: Dict[str, Dict[str, float]] = {}
+    if args.descriptor_terms:
+        raw_desc = _load_tmqm_descriptors(env_dir)
+        desc_z = _descriptor_zscores(raw_desc)
+        print(
+            f"[platinai-4cell] descriptor mode ON: {len(desc_z)} Pt complexes "
+            f"with tmQM DFT descriptors; coefficients "
+            f"{ {t: BETA_BY_TERM[t] for t in DESCRIPTOR_TERMS} } (a-priori)",
+            flush=True,
+        )
+    else:
+        print(
+            "[platinai-4cell] descriptor mode OFF: MCF7/A549/A2780 labels are "
+            "a per-cell-line constant plus N(0, %.2f) noise (NULL SIGNAL)."
+            % SIGMA,
+            flush=True,
+        )
+
     n_written = 0
+    n_with_desc = 0
     n_active_per_line = {line: 0 for line in CELL_LINES}
     rows: List[Dict[str, object]] = []
     for canon in keys:
@@ -366,7 +542,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Use the original source SMILES (we canonicalised for dedup)
         # but write the canonical one for downstream consistency.
         seed = _row_seed(cid, canon)
-        ic50 = _generate_ic50_nm(cid, canon, seed, n_heavy)
+        src_id = sources.get(canon, "unknown")
+        desc = desc_z.get(src_id)
+        if desc is not None:
+            n_with_desc += 1
+        ic50 = _generate_ic50_nm(
+            cid,
+            canon,
+            seed,
+            n_heavy,
+            desc=desc,
+            use_descriptor_terms=args.descriptor_terms,
+        )
         row = {
             "complex_id": f"pt4_{n_written:04d}",
             "smiles": canon,
@@ -374,7 +561,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "ic50_a549_nm": round(ic50["A549"], 2),
             "ic50_a2780_nm": round(ic50["A2780"], 2),
             "ic50_a2780cis_nm": round(ic50["A2780cis"], 2),
-            "source": sources.get(canon, "unknown"),
+            "source": src_id,
         }
         for line, val in ic50.items():
             if val <= 10_000.0:
@@ -427,6 +614,22 @@ def main(argv: Optional[List[str]] = None) -> int:
         "cell_offsets_log10_nm": CELL_OFFSETS_NM,
         "base_log10_ic50_nm": BASE_LOG10_IC50_NM,
         "sigma": SIGMA,
+        "descriptor_terms_enabled": bool(args.descriptor_terms),
+        "descriptor_coefficients_apriori": (
+            {t: BETA_BY_TERM[t] for t in DESCRIPTOR_TERMS}
+            if args.descriptor_terms
+            else None
+        ),
+        "descriptor_coefficient_provenance": (
+            "A-PRIORI, NOT FITTED. No real per-cell-line IC50 table is joinable "
+            "to the tmQM DFT descriptors on this host (MetalCytoToxDB.csv has 0 "
+            "Pt rows and 0 smiles==csd_code matches against tmqm_parsed.csv; the "
+            "Rusanov 2025 S4-S5 xlsx is Cloudflare-blocked). Signs and "
+            "magnitudes are a modelling choice documented at BETA_BY_TERM."
+            if args.descriptor_terms
+            else None
+        ),
+        "n_rows_with_tmqm_descriptor": n_with_desc,
         "active_threshold_nm": 10000.0,
         "n_active_per_cell_line": n_active_per_line,
         "ic50_columns": [

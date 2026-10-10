@@ -1,0 +1,49 @@
+{
+  "n_rows": 4078,
+  "n_target": 4078,
+  "seed": 42,
+  "sources": {
+    "platinai_5k_pt": 874,
+    "known_pt_drugs": 7,
+    "tmQM_pt": 7854,
+    "unique_after_dedup": 7432
+  },
+  "cell_lines": [
+    "MCF7",
+    "A549",
+    "A2780",
+    "A2780cis"
+  ],
+  "cell_offsets_log10_nm": {
+    "MCF7": 0.0,
+    "A549": 0.15,
+    "A2780": -0.3,
+    "A2780cis": 0.4
+  },
+  "base_log10_ic50_nm": 3.95,
+  "sigma": 0.45,
+  "descriptor_terms_enabled": true,
+  "descriptor_coefficients_apriori": {
+    "HOMO_Energy": 0.1,
+    "LUMO_Energy": 0.1,
+    "HL_Gap": 0.35,
+    "Polarizability": 0.05
+  },
+  "descriptor_coefficient_provenance": "A-PRIORI, NOT FITTED. No real per-cell-line IC50 table is joinable to the tmQM DFT descriptors on this host (MetalCytoToxDB.csv has 0 Pt rows and 0 smiles==csd_code matches against tmqm_parsed.csv; the Rusanov 2025 S4-S5 xlsx is Cloudflare-blocked). Signs and magnitudes are a modelling choice documented at BETA_BY_TERM.",
+  "n_rows_with_tmqm_descriptor": 3598,
+  "active_threshold_nm": 10000.0,
+  "n_active_per_cell_line": {
+    "MCF7": 2176,
+    "A549": 1779,
+    "A2780": 2972,
+    "A2780cis": 1651
+  },
+  "ic50_columns": [
+    "ic50_mcf7_nm",
+    "ic50_a549_nm",
+    "ic50_a2780_nm",
+    "ic50_a2780cis_nm"
+  ],
+  "framing": "synthetic IC50 labels for pipeline test; NOT directly comparable to Rusanov 2025 Table S4-S5",
+  "timestamp": "2026-10-11T04:59:57"
+}

@@ -1,0 +1,46 @@
+# PlatinAI 4-cell re-run on the descriptor-labelled cohort.
+#
+# WHY THIS RUN EXISTS
+# -------------------
+# metrics/by_metric/platinai_4cell_auc.json is VOID (see its
+# void_auc_measurement block, and commit 5781dd98f7): _predict scored
+# every AUC on the first batch only, so the recorded numbers came from 32
+# molecules rather than n_test=815. Those numbers must be replaced, not
+# repaired.
+#
+# It also runs against a DIFFERENT cohort than the original. The original
+# molmetal/data/platinai_4cell.csv has no molecule-dependent label term
+# for MCF7/A549/A2780 - the label is a per-cell-line constant plus
+# N(0, 0.45) noise (MEASURED corr(log10 IC50, heavy_atom_count) =
+# -0.0095 / -0.0254 / -0.0324), so those three lines CANNOT exceed chance
+# no matter what the model does. Only A2780cis carries a structure term,
+# and it is gated on n_heavy > 25.
+#
+# platinai_4cell_desc_v1.csv is the versioned cohort built by
+# `build_platinai_4cell.py --descriptor-terms`: it adds the HOMO/LUMO/gap/
+# Polarizability linear model that the builder's own docstring always
+# promised but never implemented. Its coefficients are A-PRIORI, NOT
+# fitted - no real per-cell-line IC50 table is joinable to the tmQM DFT
+# descriptors on this host. So this measures whether the model can LEARN
+# a known linear signal; it is not evidence about real cytotoxicity.
+#
+# ORACLE CEILING, MEASURED (z-scored descriptors, n=3598 with a match):
+# scoring on -desc_term gives AUC 0.81-0.83 on all four lines; a D-MPNN
+# that learns nothing sits at 0.50. Anything at 0.50 here means the
+# signal was not learned.
+
+data: molmetal/data/platinai_4cell_desc_v1.csv
+
+seeds: [0, 1, 2]
+epochs: 50
+batch_size: 32
+lr: 1.0e-3
+alpha: 0.5
+hidden: 128
+depth: 3
+scaffold_split: true
+cuda_visible_devices: "0"
+
+out_dir: molmetal/reports/platinai_4cell_desc_v1_rerun
+out_metric: molmetal/reports/platinai_4cell_desc_v1_rerun/metrics.json
+out_report: molmetal/reports/platinai_4cell_desc_v1_rerun/final.md
