@@ -340,6 +340,15 @@ output:
   # before/after this edit, via `start.sh --dry-run`. configs/cfm_full_retrain.yaml
   # carries the same key for the same reason.
   base_dir: molmetal/reports/cfm_default
+  # 2026-10-10 — start.sh:477/476 read these two and have NO default:
+  # an absent key yields an empty string, and start.sh:708 then runs `: > ""`
+  # and dies with `No such file or directory` BEFORE the trainer starts.
+  # MEASURED: `scripts/start.sh --dry-run` printed an empty `log file:` and
+  # the launch produced an empty run dir, no process and an idle GPU. So the
+  # canonical cfm.yaml could not be launched through the single canonical
+  # entry point at all. Both keys are output paths, not trainer flags.
+  log_master: molmetal/reports/cfm_default/master.log
+  training_summary: molmetal/reports/cfm_default/synthesis.md
 
 
 # ---------------------------------------------------------------------------
