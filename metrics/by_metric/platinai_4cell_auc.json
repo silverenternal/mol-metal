@@ -55,5 +55,59 @@
   "framing": "synthetic IC50 labels for pipeline test; see build_platinai_4cell.py for honest framing",
   "split": "scaffold",
   "model": "dmpnn_4cell_multitask",
-  "honest_framing": "Data source: PlatinAI 4,078 Pt 4-cell dataset with synthetic IC50 labels (see build_platinai_4cell.py for honest framing). Model: D-MPNN 4-cell-line multi-task (dmpnn_4cell_multitask) with 4 cls + 4 reg heads. Protocol: scaffold split, 3 seeds [0,1,2], 50 epochs. Rusanov 2025 baseline cite-only (numbers in paper Tables S4-S5 supplementary xlsx Cloudflare-blocked); iMoLD cite-only. NOT a head-to-head against Rusanov chemprop v2 — same-protocol comparison requires chemprop v2 backbone + full training, out of scope for this D-MPNN paper. Cites TODO-140/141/142/143/144."
+  "honest_framing": "Data source: PlatinAI 4,078 Pt 4-cell dataset with synthetic IC50 labels (see build_platinai_4cell.py for honest framing). Model: D-MPNN 4-cell-line multi-task (dmpnn_4cell_multitask) with 4 cls + 4 reg heads. Protocol: scaffold split, 3 seeds [0,1,2], 50 epochs. Rusanov 2025 baseline cite-only (numbers in paper Tables S4-S5 supplementary xlsx Cloudflare-blocked); iMoLD cite-only. NOT a head-to-head against Rusanov chemprop v2 — same-protocol comparison requires chemprop v2 backbone + full training, out of scope for this D-MPNN paper. Cites TODO-140/141/142/143/144.",
+  "null_signal_annotation": {
+    "verdict": "SYNTHETIC_NULL_SIGNAL",
+    "null_signal_cell_lines": [
+      "MCF7",
+      "A549",
+      "A2780"
+    ],
+    "informative_cell_lines": [
+      "A2780cis"
+    ],
+    "basis": "molmetal/scripts/build_platinai_4cell.py::_generate_ic50_nm (lines 375-390 post-edit) sets log10(IC50_nM) = BASE_LOG10_IC50_NM + CELL_OFFSETS_NM[line] - resistance_bonus + eps, with resistance_bonus gated to (line=='A2780cis' AND n_heavy>25). For MCF7/A549/A2780 every molecule-dependent term is identically zero, so the label is a per-cell-line constant plus independent Gaussian noise (SIGMA=0.45).",
+    "measured_evidence": {
+      "n_rows": 4078,
+      "pearson_r_log10_ic50_vs_heavy_atom_count": {
+        "MCF7": -0.009511,
+        "A549": -0.025422,
+        "A2780": -0.032444,
+        "A2780cis": -0.216126
+      },
+      "sd_log10_ic50": {
+        "MCF7": 0.4477,
+        "A549": 0.4472,
+        "A2780": 0.4482,
+        "A2780cis": 0.4698
+      },
+      "n_rows_with_heavy_atom_count_gt_25": 2657,
+      "dataset": "molmetal/data/platinai_4cell.csv"
+    },
+    "interpretation": "For MCF7/A549/A2780 the population-optimal AUC is 0.5 and every recorded value is a finite-sample noise draw. The recorded A2780 value of 0.35047619047619044 is a LOW noise draw, NOT evidence of inverted labels and NOT evidence about model quality. Only A2780cis carries a genuine structure-dependent term and only A2780cis AUC (0.6475694444444444) is informative about model quality. Do not average these four AUCs into a single headline number, and do not compare any of them head-to-head to Rusanov 2025.",
+    "measurement_date": "2026-10-11",
+    "see_also": "metric description field is preserved verbatim from HEAD; this annotation is additive."
+  },
+
+  "void_auc_measurement": {
+    "verdict": "VOID_MEASUREMENT",
+    "what_is_void": "per_cell_line.* (auc_mean / auc_std / per_seed) for all four cell lines, and every AUC reproduced in molmetal/reports/wf_tier1_metric2_platinai/final.md. These are NOT valid model measurements and must not be cited, averaged, or compared to any baseline.",
+    "cause": "train_platinai_4cell.py::_predict wrote results back with the BATCH-local index k instead of the row index (start + k). Every batch overwrote rows 0..batch_size-1 and left the rest at the -1 sentinel, so the caller's '>= 0' mask retained exactly batch_size rows. With MT2_BATCH_SIZE=32 and the recorded n_test=815, each AUC was computed on 32 molecules.",
+    "fix_commit": "5781dd98f7",
+    "evidence": {
+      "n_test_recorded": 815,
+      "batch_size": 32,
+      "n_rows_actually_scored": 32,
+      "exact_rationals_in_the_recorded_json": {
+        "0.65625": "21/32",
+        "0.640625": "41/64",
+        "0.33714285714285713": "59/175",
+        "0.5887445887445888": "136/231"
+      },
+      "why_this_is_the_tell": "an AUC over 815 rows does not land on an exact rational whose denominator divides 32; these do, on all three seeds of all four lines."
+    },
+    "also_void": "the derived claim 'A2780cis is the only cell line clearly above chance (0.6476)'. It was measured on 32 molecules and is not evidence that the model works on that line.",
+    "survives": "null_signal_annotation is UNCHANGED and still holds: it is a statement about the LABEL GENERATOR (constant + Gaussian noise for MCF7/A549/A2780), not about any AUC, so it is independent of this defect. Its pearson/sd evidence was recomputed over all 4078 rows.",
+    "required_before_reuse": "re-run molmetal/scripts/train_platinai_4cell.py against the fixed _predict and regenerate this file; the numbers will not reproduce."
+  }
 }
