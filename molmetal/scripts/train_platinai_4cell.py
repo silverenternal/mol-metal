@@ -519,10 +519,18 @@ def _predict(
         _, cls_logits = model(atom_f, bond_f, e_src, e_dst)
         probs = torch.softmax(cls_logits, dim=-1)[..., 1].cpu().numpy()  # (B, 4)
         for vi, k in enumerate(valid_rows):
+            # `k` indexes the BATCH; `out_active` is indexed by ROW, so the
+            # global offset `start` has to be added. Writing `out_active[k]`
+            # made every batch overwrite rows 0..batch_size-1 and left the
+            # rest at -1, so the >= 0 mask kept only batch_size rows: every
+            # AUC recorded from this function was measured on 32 molecules
+            # instead of n_test=815. The exact rationals in the recorded JSON
+            # (0.65625 = 21/32, 0.33714285714285713 = 59/175) are the tell.
+            gk = start + k
             for line_idx in range(N_CELL_LINES):
                 if batch_active[k, line_idx] >= 0:
-                    out_active[k, line_idx] = int(batch_active[k, line_idx])
-                    out_prob[k, line_idx] = float(probs[vi, line_idx])
+                    out_active[gk, line_idx] = int(batch_active[k, line_idx])
+                    out_prob[gk, line_idx] = float(probs[vi, line_idx])
     return out_active, out_prob
 
 
@@ -926,7 +934,7 @@ def _write_report(
         "",
         "## Our results (this run)",
         "",
-        "| Cell line | n_test (avg) | AUC mean ± std | Active rate |",
+        "| Cell line | n eval'd rows for this line (avg) | AUC mean ± std | Active rate |",
         "|---|---|---|---|",
     ]
     for line in CELL_LINES:
