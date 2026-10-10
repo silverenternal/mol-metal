@@ -1970,19 +1970,20 @@ def _bond_target_for_clean_cloud(cloud: AtomCloud, head=None, precomputed=None):
         model's head so the edge_index lookup happens on the same
         device as ``cloud``.
     """
-    from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
-        YuelBondDecoder,
-    )
+    # 2026-10-10 (speed). Build the decoder ONLY when we are going to use it.
+    # It was constructed unconditionally on every call, including the
+    # `precomputed` path that never touches `dec`. Constructing it costs more
+    # than the label lookup it enables: after the .tolist() removal the target
+    # construction had barely moved (2.314 -> 2.244 ms/cloud), and the object
+    # build was what was left.
+    dec = None
+    if precomputed is None:
+        from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
+            YuelBondDecoder,
+        )
 
-    if head is not None:
         dec = YuelBondDecoder(
             head=head,
-            hidden_dim=DEFAULT_HIDDEN_DIM,
-            n_layers=DEFAULT_N_LAYERS,
-        )
-    else:
-        dec = YuelBondDecoder(
-            head=None,
             hidden_dim=DEFAULT_HIDDEN_DIM,
             n_layers=DEFAULT_N_LAYERS,
         )
@@ -2038,33 +2039,66 @@ def _bond_target_for_clean_cloud(cloud: AtomCloud, head=None, precomputed=None):
     # ------------------------------------------------------------------
     bonds = getattr(cloud, "bonds", None)
     bond_types = getattr(cloud, "bond_types", None)
+    _dev = cloud.positions.device
+    _n = int(cloud.atomic_numbers.shape[0])
+    # (2, E): row 0 is the source, row 1 the destination. NOT concatenated —
+    # the head already emits each pair in BOTH directions, so stacking the two
+    # rows would duplicate every pair and (with the dense-table gather) silently
+    # produce a target twice the expected length. The first version of this
+    # rewrite did that and test_target_has_both_positives_and_negatives caught
+    # it.
+    #
+    # The pair list arrives in TWO shapes and the difference is load-bearing:
+    #   * `YuelBondDecoder.featurise(...).edge_index` -> a (2, E) tensor
+    #   * `CFMJointModel(..., return_edge_index=True)[2]` and `head(cloud)[1]`
+    #     -> a TUPLE (i_idx, j_idx)          <-- the training path
+    # The vectorised rewrite assumed the tensor form, which would have raised
+    # AttributeError on every training step. The unit tests missed it because
+    # they all fed the featurise form. Both are now normalised here and the
+    # training shape has its own test.
+    if isinstance(edge_index, (tuple, list)):
+        ei = torch.stack([torch.as_tensor(edge_index[0]),
+                          torch.as_tensor(edge_index[1])], dim=0).to(_dev).long()
+    else:
+        ei = edge_index.to(_dev).long()
     if bonds is not None and bond_types is not None:
-        lookup = {
-            (int(i), int(j)): int(t)
-            for i, j, t in zip(
-                bonds[0].tolist(), bonds[1].tolist(), bond_types.tolist()
-            )
-        }
-        targets = [
-            lookup.get(
-                (int(s), int(d)), lookup.get((int(d), int(s)), BOND_NO_BOND)
-            )
-            for s, d in zip(edge_index[0].tolist(), edge_index[1].tolist())
-        ]
+        # 2026-10-10 (speed). This used to build a python dict keyed by
+        # (i, j) tuples and then loop over every candidate pair calling
+        # .get() twice per pair. It cost 2.314 ms/cloud — 43.5% of
+        # model.forward, for what is only a table lookup — and it called
+        # `.tolist()` FIVE times per cloud, each of which forces a
+        # device-to-host sync. At n_train=26715 that is ~134,000 syncs per
+        # epoch.
+        #
+        # Both are now gone. Truth goes into a dense (N, N) table and the
+        # candidate pairs read it with one gather; N is ~40 for tmQM
+        # complexes, so the table is ~1600 entries and never leaves the GPU.
+        # The table is written symmetrically, which is exactly the canonical
+        # (min, max) keying the dict did via its second .get().
+        b = bonds.to(_dev).long()
+        bt = bond_types.to(_dev).long()
+        _truth = torch.zeros((_n, _n), dtype=torch.long, device=_dev)
+        _truth[b[0], b[1]] = bt
+        _truth[b[1], b[0]] = bt
+        y = _truth[ei[0], ei[1]]
     else:
         _warn_bond_target_fallback_once()
         pt_z = 78
-        z = cloud.atomic_numbers.tolist()
-        targets = []
-        for s, d in zip(edge_index[0].tolist(), edge_index[1].tolist()):
-            zs, zd = int(z[int(s)]), int(z[int(d)])
-            # Pt_II is at most 4 bonds; the canonical GT in a 5-atom
-            # cisplatin-like cloud has exactly 4 Pt-donor singles.
-            targets.append(
-                BOND_SINGLE if (zs == pt_z or zd == pt_z) else BOND_NO_BOND
-            )
-    y = torch.tensor(targets, dtype=torch.long, device=cloud.positions.device)
-    return logits, y
+        z = cloud.atomic_numbers.to(_dev).long()
+        is_pt = (z == pt_z)
+        # Pt_II is at most 4 bonds; the canonical GT in a 5-atom
+        # cisplatin-like cloud has exactly 4 Pt-donor singles.
+        # NOTE the shape: ei is (2, E), so torch.full_like(ei, ...) would be
+        # (2, E) and broadcast the whole result to twice the pair count. The
+        # targets must be (E,). The 50-step smoke in
+        # wf385a3_scaffold_wire_in_gate.py caught this — loss read 0.0 at
+        # every step — which is exactly what that gate exists for.
+        y = torch.where(
+            is_pt[ei[0]] | is_pt[ei[1]],
+            torch.full_like(ei[0], BOND_SINGLE),
+            torch.full_like(ei[0], BOND_NO_BOND),
+        )
+    return logits, y.long()
 
 
 _BOND_TARGET_FALLBACK_WARNED = False

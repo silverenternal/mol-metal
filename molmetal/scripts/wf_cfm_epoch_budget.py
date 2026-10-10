@@ -120,8 +120,17 @@ def main() -> int:
     t_model = timeit(lambda: [model(c) for c in clouds])
 
     def target_only():
+        # MUST pass precomputed. The probe originally called this without it,
+        # which measures the RECOMPUTE path — whose cost is a second full head
+        # forward, not label construction. That mislabelled the row as
+        # "bond target construction 2.24 ms/cloud" when the real label work is
+        # orders of magnitude smaller, and sent two rounds of optimisation at
+        # the wrong thing (.tolist() syncs, then the decoder object build).
         for c in clouds:
-            T._bond_target_for_clean_cloud(c, head=head)
+            _logits, _ei = head(c)
+            T._bond_target_for_clean_cloud(
+                c, head=head, precomputed=(_logits, _ei)
+            )
 
     t_target = timeit(target_only)
 
@@ -146,10 +155,15 @@ def main() -> int:
     t_eval = timeit(lambda: T.evaluate_bond_accuracy(model, val_clouds))
 
     vel = max(per_cloud_model - per_cloud_head, 0.0)
+    # target_only() must run the head first, because the reuse path needs its
+    # logits — so t_target INCLUDES one head forward. Subtracting it is the
+    # only honest reading; the first version of this probe reported the sum and
+    # mislabelled the whole second head forward as "target construction".
+    per_cloud_target_only = max(per_cloud_target - per_cloud_head, 0.0)
     rows = [
         ("bond head  YuelBondDecoderHead.forward", per_cloud_head),
         ("velocity field (model - head)", vel),
-        ("bond target construction", per_cloud_target),
+        ("bond target construction (net of head)", per_cloud_target_only),
     ]
     print()
     print(f"  n_train={N_TRAIN}  batch_size={BATCH}  steps/epoch={steps_per_epoch}")
@@ -159,7 +173,7 @@ def main() -> int:
     print(f"  {'component':<40}{'ms / cloud':>12}{'% of model.forward':>20}")
     print("  " + "-" * 72)
     for name, v in rows:
-        pct = (v / per_cloud_model * 100) if per_cloud_model else 0.0
+        pct = (v / (per_cloud_model + per_cloud_target_only) * 100) if per_cloud_model else 0.0
         print(f"  {name:<40}{v*1000:>12.3f}{pct:>19.1f}%")
     print(f"  {'model.forward TOTAL':<40}{per_cloud_model*1000:>12.3f}")
     print()
