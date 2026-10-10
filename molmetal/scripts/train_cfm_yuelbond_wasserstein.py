@@ -2200,6 +2200,30 @@ _STEP_TIMING: Dict[str, float] = {}
 _STEP_TIMING_ON: bool = False
 
 
+def _stage_tick() -> float:
+    """Start a timed stage: drain the GPU queue, then stamp the clock.
+
+    WITHOUT the drain these numbers are meaningless, and that is not a
+    subtlety — it is how a whole round of profiling went wrong. CUDA kernel
+    launches are asynchronous, so ``perf_counter`` around a region measures
+    how long the CPU spent ENQUEUEING, not how long the GPU spent computing.
+    The queue then drains inside whichever stage happens to be running when
+    it empties, so work is credited to a stage that may not have issued it.
+    A measurement taken that way reported ``model.forward`` at 940 ms/step and
+    put ``fm_velocity`` in the "untimed remainder" at 861 ms — when the same
+    quantity measured properly, with a warm-up and a synchronize, is 3.4 ms
+    per batch. The "unexplained" time was forward work charged to the wrong
+    bucket.
+
+    The drain is paid only while the timer is on, and profiling runs are not
+    production runs. ``torch.cuda.synchronize()`` is a no-op on CPU-only
+    hosts, so this stays correct there without a branch on device type.
+    """
+    if _STEP_TIMING_ON and torch.cuda.is_available():
+        torch.cuda.synchronize()
+    return time.perf_counter() if _STEP_TIMING_ON else 0.0
+
+
 def set_step_timing(on: bool) -> None:
     """Enable/disable the per-stage timer. Read it via ``get_step_timing()``."""
     global _STEP_TIMING_ON
@@ -2437,7 +2461,7 @@ def train_one_epoch(
     rng = np.random.default_rng(seed=int(time.time()) % (2**31 - 1))
     order = rng.permutation(n_train).tolist()
     for batch_start in range(0, n_train, batch_size):
-        _t_loop0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
+        _t_loop0 = _stage_tick()
         batch_indices = order[batch_start : batch_start + batch_size]
         if not batch_indices:
             continue
@@ -2500,7 +2524,7 @@ def train_one_epoch(
             # asking for them unconditionally is what lets the bond target be
             # built from the logits this pass already produced instead of
             # re-running the head a second time.
-            _t_mf0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
+            _t_mf0 = _stage_tick()
             logits, velocities, edge_index = model(
                 cloud, return_edge_index=True
             )
@@ -2522,7 +2546,7 @@ def train_one_epoch(
                 if (_use_soft_valence and edge_index is not None)
                 else None
             )
-            _t_tg0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
+            _t_tg0 = _stage_tick()
             tgt_logits, tgt_y = _bond_target_for_clean_cloud(
                 cloud,
                 head=model.head,
@@ -3595,7 +3619,7 @@ def train_one_epoch(
         _assemble_n_frag = 0.0
         _assemble_largest = 0.0
         if _use_assemble:
-            _t_as0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
+            _t_as0 = _stage_tick()
             (
                 _asm_mean,
                 _assemble_n_frag,
@@ -3618,7 +3642,7 @@ def train_one_epoch(
                     + time.perf_counter() - _t_as0
                 )
             if _asm_n > 0:
-                _t_st0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
+                _t_st0 = _stage_tick()
                 assemble_term = float(assemble_loss_weight) * _asm_mean
                 assemble_losses.append(float(_asm_mean.detach()))
                 assemble_frags.append(_assemble_n_frag)
@@ -3836,7 +3860,7 @@ def train_one_epoch(
                 }
             )
         else:
-            _t_bwd0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
+            _t_bwd0 = _stage_tick()
             loss.backward()
             if _STEP_TIMING_ON:
                 _STEP_TIMING["backward_s"] = (
@@ -3854,7 +3878,7 @@ def train_one_epoch(
         grad_norm = float(
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=_clip_norm)
         )
-        _t_step0 = time.perf_counter() if _STEP_TIMING_ON else 0.0
+        _t_step0 = _stage_tick()
         optimiser.step()
         if _STEP_TIMING_ON:
             _el = time.perf_counter() - _t_step0
