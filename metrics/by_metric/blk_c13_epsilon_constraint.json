@@ -1,0 +1,605 @@
+{
+  "purpose": "Locate the knee and the epsilon-constraint slices of the generation x bond-type Pareto front on the two recorded 29-epoch runs. In-sample by construction; epsilon is a preference.",
+  "scope": {
+    "runs": [
+      "control",
+      "fm_ab"
+    ],
+    "seeds": "one seed per run (seed 0)",
+    "in_sample": true,
+    "not_established": "No claim that any epsilon produces a better model. No claim that the front is fundamental \u2014 BLK-C12 records 8 of 12 loss terms dead, so this may be the front of a broken objective."
+  },
+  "epsilon_is_a_preference": "epsilon is the bound on the generation objective. It is not discovered here; the knee is reported so the choice can be made against a number.",
+  "analyses": [
+    {
+      "run": "control",
+      "second_objective": "bond_type_macro_f1",
+      "n_epochs": 30,
+      "pareto_front": [
+        {
+          "epoch": 10,
+          "gen_validity": 1.0,
+          "bond_type_macro_f1": 0.1515
+        },
+        {
+          "epoch": 15,
+          "gen_validity": 0.9792,
+          "bond_type_macro_f1": 0.2424
+        },
+        {
+          "epoch": 17,
+          "gen_validity": 0.875,
+          "bond_type_macro_f1": 0.2871
+        },
+        {
+          "epoch": 18,
+          "gen_validity": 0.6042,
+          "bond_type_macro_f1": 0.2875
+        },
+        {
+          "epoch": 19,
+          "gen_validity": 0.2083,
+          "bond_type_macro_f1": 0.3034
+        },
+        {
+          "epoch": 20,
+          "gen_validity": 0.0208,
+          "bond_type_macro_f1": 0.3102
+        },
+        {
+          "epoch": 29,
+          "gen_validity": 0.0,
+          "bond_type_macro_f1": 0.377
+        }
+      ],
+      "knee": {
+        "epoch": 17,
+        "gen_validity": 0.875,
+        "bond_type_macro_f1": 0.2871,
+        "implied_epsilon": 0.875,
+        "note": "furthest from the chord joining the front's two extremes, both axes normalised. A standard evidence-based default, not a measurement of the right trade-off."
+      },
+      "epsilon_slices": [
+        {
+          "epsilon": 0.0,
+          "feasible": true,
+          "best_epoch": 29,
+          "bond_type_macro_f1": 0.377,
+          "gen_validity_at_best": 0.0,
+          "n_epochs_satisfying": 30
+        },
+        {
+          "epsilon": 0.2,
+          "feasible": true,
+          "best_epoch": 19,
+          "bond_type_macro_f1": 0.3034,
+          "gen_validity_at_best": 0.2083,
+          "n_epochs_satisfying": 20
+        },
+        {
+          "epsilon": 0.4,
+          "feasible": true,
+          "best_epoch": 18,
+          "bond_type_macro_f1": 0.2875,
+          "gen_validity_at_best": 0.6042,
+          "n_epochs_satisfying": 19
+        },
+        {
+          "epsilon": 0.6,
+          "feasible": true,
+          "best_epoch": 18,
+          "bond_type_macro_f1": 0.2875,
+          "gen_validity_at_best": 0.6042,
+          "n_epochs_satisfying": 19
+        },
+        {
+          "epsilon": 0.7,
+          "feasible": true,
+          "best_epoch": 17,
+          "bond_type_macro_f1": 0.2871,
+          "gen_validity_at_best": 0.875,
+          "n_epochs_satisfying": 18
+        },
+        {
+          "epsilon": 0.75,
+          "feasible": true,
+          "best_epoch": 17,
+          "bond_type_macro_f1": 0.2871,
+          "gen_validity_at_best": 0.875,
+          "n_epochs_satisfying": 18
+        },
+        {
+          "epsilon": 0.8,
+          "feasible": true,
+          "best_epoch": 17,
+          "bond_type_macro_f1": 0.2871,
+          "gen_validity_at_best": 0.875,
+          "n_epochs_satisfying": 18
+        },
+        {
+          "epsilon": 0.85,
+          "feasible": true,
+          "best_epoch": 17,
+          "bond_type_macro_f1": 0.2871,
+          "gen_validity_at_best": 0.875,
+          "n_epochs_satisfying": 18
+        },
+        {
+          "epsilon": 0.9,
+          "feasible": true,
+          "best_epoch": 15,
+          "bond_type_macro_f1": 0.2424,
+          "gen_validity_at_best": 0.9792,
+          "n_epochs_satisfying": 16
+        },
+        {
+          "epsilon": 0.95,
+          "feasible": true,
+          "best_epoch": 15,
+          "bond_type_macro_f1": 0.2424,
+          "gen_validity_at_best": 0.9792,
+          "n_epochs_satisfying": 14
+        },
+        {
+          "epsilon": 1.0,
+          "feasible": true,
+          "best_epoch": 10,
+          "bond_type_macro_f1": 0.1515,
+          "gen_validity_at_best": 1.0,
+          "n_epochs_satisfying": 5
+        }
+      ],
+      "no_checkpoint_satisfies_both": {
+        "rule": "gen_validity >= 0.85 AND bond_type_macro_f1 >= 0.50",
+        "threshold_basis": "OpenBabel reference macro-F1 = 0.539",
+        "epochs": [],
+        "note": "empty means the front is a real trade-off, not an artifact"
+      }
+    },
+    {
+      "run": "control",
+      "second_objective": "bond_pr_auc",
+      "n_epochs": 30,
+      "pareto_front": [
+        {
+          "epoch": 10,
+          "gen_validity": 1.0,
+          "bond_pr_auc": 0.5078
+        },
+        {
+          "epoch": 15,
+          "gen_validity": 0.9792,
+          "bond_pr_auc": 0.5794
+        },
+        {
+          "epoch": 14,
+          "gen_validity": 0.9583,
+          "bond_pr_auc": 0.5799
+        },
+        {
+          "epoch": 17,
+          "gen_validity": 0.875,
+          "bond_pr_auc": 0.5928
+        },
+        {
+          "epoch": 18,
+          "gen_validity": 0.6042,
+          "bond_pr_auc": 0.624
+        },
+        {
+          "epoch": 19,
+          "gen_validity": 0.2083,
+          "bond_pr_auc": 0.6299
+        },
+        {
+          "epoch": 20,
+          "gen_validity": 0.0208,
+          "bond_pr_auc": 0.6333
+        },
+        {
+          "epoch": 29,
+          "gen_validity": 0.0,
+          "bond_pr_auc": 0.8459
+        }
+      ],
+      "knee": {
+        "epoch": 20,
+        "gen_validity": 0.0208,
+        "bond_pr_auc": 0.6333,
+        "implied_epsilon": 0.0208,
+        "note": "furthest from the chord joining the front's two extremes, both axes normalised. A standard evidence-based default, not a measurement of the right trade-off."
+      },
+      "epsilon_slices": [
+        {
+          "epsilon": 0.0,
+          "feasible": true,
+          "best_epoch": 29,
+          "bond_pr_auc": 0.8459,
+          "gen_validity_at_best": 0.0,
+          "n_epochs_satisfying": 30
+        },
+        {
+          "epsilon": 0.2,
+          "feasible": true,
+          "best_epoch": 19,
+          "bond_pr_auc": 0.6299,
+          "gen_validity_at_best": 0.2083,
+          "n_epochs_satisfying": 20
+        },
+        {
+          "epsilon": 0.4,
+          "feasible": true,
+          "best_epoch": 18,
+          "bond_pr_auc": 0.624,
+          "gen_validity_at_best": 0.6042,
+          "n_epochs_satisfying": 19
+        },
+        {
+          "epsilon": 0.6,
+          "feasible": true,
+          "best_epoch": 18,
+          "bond_pr_auc": 0.624,
+          "gen_validity_at_best": 0.6042,
+          "n_epochs_satisfying": 19
+        },
+        {
+          "epsilon": 0.7,
+          "feasible": true,
+          "best_epoch": 17,
+          "bond_pr_auc": 0.5928,
+          "gen_validity_at_best": 0.875,
+          "n_epochs_satisfying": 18
+        },
+        {
+          "epsilon": 0.75,
+          "feasible": true,
+          "best_epoch": 17,
+          "bond_pr_auc": 0.5928,
+          "gen_validity_at_best": 0.875,
+          "n_epochs_satisfying": 18
+        },
+        {
+          "epsilon": 0.8,
+          "feasible": true,
+          "best_epoch": 17,
+          "bond_pr_auc": 0.5928,
+          "gen_validity_at_best": 0.875,
+          "n_epochs_satisfying": 18
+        },
+        {
+          "epsilon": 0.85,
+          "feasible": true,
+          "best_epoch": 17,
+          "bond_pr_auc": 0.5928,
+          "gen_validity_at_best": 0.875,
+          "n_epochs_satisfying": 18
+        },
+        {
+          "epsilon": 0.9,
+          "feasible": true,
+          "best_epoch": 14,
+          "bond_pr_auc": 0.5799,
+          "gen_validity_at_best": 0.9583,
+          "n_epochs_satisfying": 16
+        },
+        {
+          "epsilon": 0.95,
+          "feasible": true,
+          "best_epoch": 14,
+          "bond_pr_auc": 0.5799,
+          "gen_validity_at_best": 0.9583,
+          "n_epochs_satisfying": 14
+        },
+        {
+          "epsilon": 1.0,
+          "feasible": true,
+          "best_epoch": 10,
+          "bond_pr_auc": 0.5078,
+          "gen_validity_at_best": 1.0,
+          "n_epochs_satisfying": 5
+        }
+      ],
+      "no_checkpoint_satisfies_both": null
+    },
+    {
+      "run": "fm_ab",
+      "second_objective": "bond_type_macro_f1",
+      "n_epochs": 30,
+      "pareto_front": [
+        {
+          "epoch": 13,
+          "gen_validity": 1.0,
+          "bond_type_macro_f1": 0.1599
+        },
+        {
+          "epoch": 17,
+          "gen_validity": 0.9792,
+          "bond_type_macro_f1": 0.1851
+        },
+        {
+          "epoch": 20,
+          "gen_validity": 0.9167,
+          "bond_type_macro_f1": 0.2813
+        },
+        {
+          "epoch": 21,
+          "gen_validity": 0.8125,
+          "bond_type_macro_f1": 0.2852
+        },
+        {
+          "epoch": 22,
+          "gen_validity": 0.6875,
+          "bond_type_macro_f1": 0.2855
+        },
+        {
+          "epoch": 23,
+          "gen_validity": 0.6667,
+          "bond_type_macro_f1": 0.3095
+        },
+        {
+          "epoch": 27,
+          "gen_validity": 0.3125,
+          "bond_type_macro_f1": 0.3161
+        },
+        {
+          "epoch": 28,
+          "gen_validity": 0.1042,
+          "bond_type_macro_f1": 0.3162
+        },
+        {
+          "epoch": 29,
+          "gen_validity": 0.0625,
+          "bond_type_macro_f1": 0.3219
+        }
+      ],
+      "knee": {
+        "epoch": 20,
+        "gen_validity": 0.9167,
+        "bond_type_macro_f1": 0.2813,
+        "implied_epsilon": 0.9167,
+        "note": "furthest from the chord joining the front's two extremes, both axes normalised. A standard evidence-based default, not a measurement of the right trade-off."
+      },
+      "epsilon_slices": [
+        {
+          "epsilon": 0.0,
+          "feasible": true,
+          "best_epoch": 29,
+          "bond_type_macro_f1": 0.3219,
+          "gen_validity_at_best": 0.0625,
+          "n_epochs_satisfying": 30
+        },
+        {
+          "epsilon": 0.2,
+          "feasible": true,
+          "best_epoch": 27,
+          "bond_type_macro_f1": 0.3161,
+          "gen_validity_at_best": 0.3125,
+          "n_epochs_satisfying": 26
+        },
+        {
+          "epsilon": 0.4,
+          "feasible": true,
+          "best_epoch": 23,
+          "bond_type_macro_f1": 0.3095,
+          "gen_validity_at_best": 0.6667,
+          "n_epochs_satisfying": 24
+        },
+        {
+          "epsilon": 0.6,
+          "feasible": true,
+          "best_epoch": 23,
+          "bond_type_macro_f1": 0.3095,
+          "gen_validity_at_best": 0.6667,
+          "n_epochs_satisfying": 24
+        },
+        {
+          "epsilon": 0.7,
+          "feasible": true,
+          "best_epoch": 21,
+          "bond_type_macro_f1": 0.2852,
+          "gen_validity_at_best": 0.8125,
+          "n_epochs_satisfying": 22
+        },
+        {
+          "epsilon": 0.75,
+          "feasible": true,
+          "best_epoch": 21,
+          "bond_type_macro_f1": 0.2852,
+          "gen_validity_at_best": 0.8125,
+          "n_epochs_satisfying": 22
+        },
+        {
+          "epsilon": 0.8,
+          "feasible": true,
+          "best_epoch": 21,
+          "bond_type_macro_f1": 0.2852,
+          "gen_validity_at_best": 0.8125,
+          "n_epochs_satisfying": 22
+        },
+        {
+          "epsilon": 0.85,
+          "feasible": true,
+          "best_epoch": 20,
+          "bond_type_macro_f1": 0.2813,
+          "gen_validity_at_best": 0.9167,
+          "n_epochs_satisfying": 21
+        },
+        {
+          "epsilon": 0.9,
+          "feasible": true,
+          "best_epoch": 20,
+          "bond_type_macro_f1": 0.2813,
+          "gen_validity_at_best": 0.9167,
+          "n_epochs_satisfying": 19
+        },
+        {
+          "epsilon": 0.95,
+          "feasible": true,
+          "best_epoch": 17,
+          "bond_type_macro_f1": 0.1851,
+          "gen_validity_at_best": 0.9792,
+          "n_epochs_satisfying": 16
+        },
+        {
+          "epsilon": 1.0,
+          "feasible": true,
+          "best_epoch": 13,
+          "bond_type_macro_f1": 0.1599,
+          "gen_validity_at_best": 1.0,
+          "n_epochs_satisfying": 7
+        }
+      ],
+      "no_checkpoint_satisfies_both": {
+        "rule": "gen_validity >= 0.85 AND bond_type_macro_f1 >= 0.50",
+        "threshold_basis": "OpenBabel reference macro-F1 = 0.539",
+        "epochs": [],
+        "note": "empty means the front is a real trade-off, not an artifact"
+      }
+    },
+    {
+      "run": "fm_ab",
+      "second_objective": "bond_pr_auc",
+      "n_epochs": 30,
+      "pareto_front": [
+        {
+          "epoch": 13,
+          "gen_validity": 1.0,
+          "bond_pr_auc": 0.5508
+        },
+        {
+          "epoch": 17,
+          "gen_validity": 0.9792,
+          "bond_pr_auc": 0.5965
+        },
+        {
+          "epoch": 19,
+          "gen_validity": 0.8958,
+          "bond_pr_auc": 0.6025
+        },
+        {
+          "epoch": 22,
+          "gen_validity": 0.6875,
+          "bond_pr_auc": 0.6117
+        },
+        {
+          "epoch": 24,
+          "gen_validity": 0.3333,
+          "bond_pr_auc": 0.6196
+        },
+        {
+          "epoch": 27,
+          "gen_validity": 0.3125,
+          "bond_pr_auc": 0.6718
+        },
+        {
+          "epoch": 28,
+          "gen_validity": 0.1042,
+          "bond_pr_auc": 0.7061
+        },
+        {
+          "epoch": 29,
+          "gen_validity": 0.0625,
+          "bond_pr_auc": 0.7096
+        }
+      ],
+      "knee": {
+        "epoch": 24,
+        "gen_validity": 0.3333,
+        "bond_pr_auc": 0.6196,
+        "implied_epsilon": 0.3333,
+        "note": "furthest from the chord joining the front's two extremes, both axes normalised. A standard evidence-based default, not a measurement of the right trade-off."
+      },
+      "epsilon_slices": [
+        {
+          "epsilon": 0.0,
+          "feasible": true,
+          "best_epoch": 29,
+          "bond_pr_auc": 0.7096,
+          "gen_validity_at_best": 0.0625,
+          "n_epochs_satisfying": 30
+        },
+        {
+          "epsilon": 0.2,
+          "feasible": true,
+          "best_epoch": 27,
+          "bond_pr_auc": 0.6718,
+          "gen_validity_at_best": 0.3125,
+          "n_epochs_satisfying": 26
+        },
+        {
+          "epsilon": 0.4,
+          "feasible": true,
+          "best_epoch": 22,
+          "bond_pr_auc": 0.6117,
+          "gen_validity_at_best": 0.6875,
+          "n_epochs_satisfying": 24
+        },
+        {
+          "epsilon": 0.6,
+          "feasible": true,
+          "best_epoch": 22,
+          "bond_pr_auc": 0.6117,
+          "gen_validity_at_best": 0.6875,
+          "n_epochs_satisfying": 24
+        },
+        {
+          "epsilon": 0.7,
+          "feasible": true,
+          "best_epoch": 19,
+          "bond_pr_auc": 0.6025,
+          "gen_validity_at_best": 0.8958,
+          "n_epochs_satisfying": 22
+        },
+        {
+          "epsilon": 0.75,
+          "feasible": true,
+          "best_epoch": 19,
+          "bond_pr_auc": 0.6025,
+          "gen_validity_at_best": 0.8958,
+          "n_epochs_satisfying": 22
+        },
+        {
+          "epsilon": 0.8,
+          "feasible": true,
+          "best_epoch": 19,
+          "bond_pr_auc": 0.6025,
+          "gen_validity_at_best": 0.8958,
+          "n_epochs_satisfying": 22
+        },
+        {
+          "epsilon": 0.85,
+          "feasible": true,
+          "best_epoch": 19,
+          "bond_pr_auc": 0.6025,
+          "gen_validity_at_best": 0.8958,
+          "n_epochs_satisfying": 21
+        },
+        {
+          "epsilon": 0.9,
+          "feasible": true,
+          "best_epoch": 17,
+          "bond_pr_auc": 0.5965,
+          "gen_validity_at_best": 0.9792,
+          "n_epochs_satisfying": 19
+        },
+        {
+          "epsilon": 0.95,
+          "feasible": true,
+          "best_epoch": 17,
+          "bond_pr_auc": 0.5965,
+          "gen_validity_at_best": 0.9792,
+          "n_epochs_satisfying": 16
+        },
+        {
+          "epsilon": 1.0,
+          "feasible": true,
+          "best_epoch": 13,
+          "bond_pr_auc": 0.5508,
+          "gen_validity_at_best": 1.0,
+          "n_epochs_satisfying": 7
+        }
+      ],
+      "no_checkpoint_satisfies_both": null
+    }
+  ]
+}
