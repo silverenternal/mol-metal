@@ -6145,6 +6145,19 @@ def parse_args() -> argparse.Namespace:
     )
     # Round-3 D1 (2026-10-05) — assemble-aware connectivity loss.
     p.add_argument(
+        "--decode-largest-fragment",
+        action="store_true",
+        help=(
+            "BLK-C11 (2026-10-10): write only the largest connected component "
+            "of each decoded molecule. This is the field-standard post-process "
+            "(`--all_frags` in the EDM/DiffSBDD family) for the disconnection "
+            "measured at 85.1% across three runs. It DISCARDS atoms rather "
+            "than reconnecting them, so it raises validity without improving "
+            "quality — the run therefore also records how many molecules were "
+            "truncated and how many atoms were dropped. Default OFF."
+        ),
+    )
+    p.add_argument(
         "--assemble-formulation",
         type=str,
         default="product",
@@ -8640,15 +8653,84 @@ def main() -> int:
 
                     # Append-only across epochs: each row carries its epoch so
                     # a later panel can take the last epoch, or all of them.
+                    # 2026-10-10 (BLK-C11, literature-determined). The
+                    # standard post-processing for disconnection in 3D
+                    # generative pipelines is to keep the largest connected
+                    # component (`--all_frags` in the EDM/DiffSBDD family).
+                    # MEASURED here: 85.1% of decoded molecules across three
+                    # runs are multi-fragment and 23.0% have a metal centre
+                    # with no bonds at all.
+                    #
+                    # WHAT THIS DOES NOT DO, stated because the field says so
+                    # explicitly: it "inflates validity without improving
+                    # quality — you discard atoms rather than reconnecting
+                    # them". DiffSBDD instead DISCARDS unconnected molecules,
+                    # which the same literature calls "the more honest but
+                    # lower-yield choice". Either way the disclosure has to be
+                    # data, not prose — so every row carries its own raw
+                    # fragment count and largest-fragment mass fraction, and
+                    # the truncation total lands in _gen_chem. A reader can
+                    # therefore tell exactly how much of any reported validity
+                    # was bought by dropping atoms.
+                    _take_largest = bool(
+                        getattr(args, "decode_largest_fragment", False)
+                    )
+                    _n_trunc = 0
+                    _atoms_dropped = 0
                     _new_file = not _smi_path.exists()
                     with _smi_path.open("a", encoding="utf-8", newline="") as _fh:
                         _w = _csv.writer(_fh)
                         if _new_file:
-                            _w.writerow(["epoch", "smiles"])
+                            _w.writerow(
+                                ["epoch", "smiles", "n_frags_raw",
+                                 "largest_frag_frac"]
+                            )
                         for _s in _gen_smiles:
-                            _w.writerow([int(epoch), _s])
+                            _s_out, _nfrag, _lfrac = _s, 1, 1.0
+                            try:
+                                from rdkit import Chem as _ChemLFF
+
+                                _m = _ChemLFF.MolFromSmiles(_s)
+                                if _m is not None:
+                                    _frs = _ChemLFF.GetMolFrags(
+                                        _m, asMols=True, sanitizeFrags=False
+                                    )
+                                    _nfrag = len(_frs)
+                                    _heavy = _m.GetNumHeavyAtoms()
+                                    _lfrac = (
+                                        max(f.GetNumHeavyAtoms() for f in _frs)
+                                        / _heavy
+                                    ) if _heavy else 0.0
+                                    if _take_largest and _nfrag > 1:
+                                        _best = max(
+                                            _frs,
+                                            key=lambda f: f.GetNumHeavyAtoms(),
+                                        )
+                                        _s_out = _ChemLFF.MolToSmiles(_best)
+                                        _n_trunc += 1
+                                        _atoms_dropped += (
+                                            _heavy - _best.GetNumHeavyAtoms()
+                                        )
+                            except Exception:  # noqa: BLE001
+                                pass
+                            _w.writerow(
+                                [int(epoch), _s_out, _nfrag, round(_lfrac, 4)]
+                            )
                     _gen_chem["generated_smiles_csv"] = str(_smi_path)
                     _gen_chem["generated_smiles_n"] = len(_gen_smiles)
+                    _gen_chem["decode_largest_fragment"] = _take_largest
+                    _gen_chem["n_truncated_to_largest_fragment"] = int(_n_trunc)
+                    _gen_chem["atoms_dropped_by_largest_fragment"] = int(
+                        _atoms_dropped
+                    )
+                    _gen_chem["largest_fragment_disclosure"] = (
+                        "Taking the largest connected component DISCARDS atoms; "
+                        "it does not reconnect them, so it raises validity "
+                        "without improving quality (field consensus). "
+                        "n_truncated_to_largest_fragment and "
+                        "atoms_dropped_by_largest_fragment say how much of the "
+                        "reported validity was bought that way."
+                    )
             except Exception as _gen_exc:
                 print(
                     f"[cfm-gen][WARNING] generation eval failed "
@@ -9047,6 +9129,14 @@ def main() -> int:
                 ),
                 assemble_enabled=float(
                     _LAST_ASSEMBLE_STATS.get("assemble_enabled", 0.0)
+                ),
+                # 2026-10-10 (BLK-C11) — the raw un-hinged stay_mean. Added
+                # because its absence is what made the null A/B unreadable: the
+                # two arms produced no stay column, so the dead zone's closure
+                # could not be confirmed post-hoc. Note it is 0.0 by DEFINITION
+                # when the term is off, same caveat as `assemble_enabled`.
+                assemble_stay_mean=float(
+                    _LAST_ASSEMBLE_STATS.get("assemble_stay_mean", 0.0)
                 ),
                 lr=float(args.lr),
                 epoch_time_sec=float(elapsed),
