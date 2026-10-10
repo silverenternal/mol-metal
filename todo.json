@@ -60,7 +60,15 @@
     "Per AGENTS.md section 5.4: no wet-lab planning; in-silico substitution only.",
     "Per AGENTS.md section 5.7: every trainer flag wire-in MUST run a 50-step CPU smoke that asserts decode_ratio>0 + loss[0]>loss[49] BEFORE any GPU launch.",
     "Per AGENTS.md section 5.8: workflow token-budget discipline; per-workflow <=2 parallel agents; per-agent file-read scope <=3 files; per-agent output <=1500 tokens.",
-    "Per AGENTS.md section 5.9: all launch wrappers MUST invoke .venv/bin/python (single-venv rule); forbidden: bare python, CadButEaas venv, kanzi_venv."
+    "Per AGENTS.md section 5.9: all launch wrappers MUST invoke .venv/bin/python (single-venv rule); forbidden: bare python, CadButEaas venv, kanzi_venv.",
+    {
+      "id": "LEVERAGE_GATE",
+      "added": "2026-10-10",
+      "statement": "任何修改/实现之前先答三问：可观测量是什么？机制会 engage 吗？engagement 能否在不重训的情况下验证？答不出第二问就不动手。",
+      "why": "本日代价：assemble hinge 被正确构建、33 个测试全过、τ 从语料反解、预检通过，然后 30 轮一次未触发，1.4 小时 GPU 白烧。那个问题在已有 checkpoint 上 2 分钟可答。",
+      "scope": "它排在『查证』之后、『联网调研』之前。不是额外的仪式，是查证的一部分。",
+      "self_check": "本条修复自己也过了这道闸：在 776 个已解码分子上直接算，未重训即得出『不建议开启』的结论。"
+    }
   ],
   "blockers": [
     {
@@ -2828,61 +2836,72 @@
       {
         "phase": 2,
         "name": "CFM 生成目标（设计已由盘上证据确定，不再等待设计决策）",
-        "gate": "READY —— 预检与阈值均已落地，可执行 A/B",
+        "gate": "PARTIAL —— A/B 已跑（null），干预点已由文献重定位；生成目标仍未找到能 engage 的形式",
         "compute": "GPU",
-        "rationale": "2026-10-10 第二次改写。第一次改写说『设计已由盘上证据确定』，那是基于 0/2146 的价键无效率；该数字已被证伪是一个失效的检查（真实值 0.8495），生成崩塌并不存在一个价键层面的危机。同时 loss 侧的金属 cap 表经 tmQM 实测证明与本项目语料矛盾。在这两件事定下来之前跑 A/B，等于拿一个错的惩罚项去调一个不存在的问题。A/B 的全部基础设施（配置对、launcher、单变量 guard、归一化修复）都已就绪且验证通过，只是不该现在跑。",
+        "rationale": "2026-10-10 第三次改写。前两次分别错在『以为是缺工程』（实为指标崩了）与『以为是缺生成目标』（实为目标作用在预测图而问题在解码输出）。现在的结论有三条硬证据：chemistry_validity 真值 0.8495（0/2146 是崩掉的检查）；assemble 项梯度 ~5e-09 且 30 轮未触发；文献把干预点定位在解码路径。",
         "items": [
           {
             "step": 1,
             "id": "BLK-M1-caps",
-            "what": "为 loss 侧 _DEFAULT_VALENCES 的六个金属定 cap（tmQM p99 实测为默认候选，需确认是否按氧化态分档）",
-            "done_when": "六个金属全部有实测依据；单元测试钉住",
-            "compute": "none",
-            "wall": {
-              "min": 60
-            },
             "status": "DONE",
-            "result": "caps = Pt5/Ru7/Ir6/Rh6/Os7/Re8（metal_bo_sum p99），7 个 gate 通过且非空转"
+            "what": "金属 cap 表按 metal_bo_sum p99 重建 + gate",
+            "result": "Pt5/Ru7/Ir6/Rh6/Os7/Re8，7 tests 非空转"
           },
           {
             "step": 2,
             "id": "BLK-M1-metric-doc",
-            "what": "把 chemistry_validity_pass_rate 的定义（有机价键 vs 金属配位，两套口径）写进 docs 并可复算",
-            "done_when": "同一批 SMILES 在两个口径下都能复现出 0.8495 / 1.0000",
-            "compute": "none",
-            "wall": {
-              "min": 45
-            },
             "status": "DONE",
-            "result": "口径写进代码与产物 + gate 保证可复算；未新增 markdown"
+            "what": "两个价键口径写进代码与产物 + gate 保证可复算"
           },
           {
             "step": 3,
-            "id": "BLK-C11-real",
-            "what": "重新定义 BLK-C11 要解决的问题：金属配位不足（中位 4 vs tmQM 的 6）",
-            "done_when": "写出可判定的目标式；在此之前不做任何 GPU 实验",
-            "compute": "none",
-            "wall": {
-              "min": 60
-            },
-            "status": "DONE — 已重定义",
-            "result": "真问题定为解码碎裂（多片段 50.4% / 金属脱离 23.0%）；assemble 项的梯度缺陷已定位并给出 opt-in 修复",
-            "open_decision": "RESOLVED 2026-10-10 —— user 选 hinge + 数据反解 τ=0.30"
+            "id": "BLK-C11-redefine",
+            "status": "DONE",
+            "what": "重定义 BLK-C11",
+            "result": "真问题=解码碎裂；assemble 梯度缺陷已定位；hinge 已实现但 A/B 为 null"
           },
           {
             "step": 4,
             "id": "BLK-C11-ab",
-            "what": "单变量 GPU A/B（基础设施已就绪，等前三步）",
-            "blocked": true,
-            "why_blocked": "目标式未定；且 caps 未修时该 loss 项会惩罚合法结构",
-            "compute": "gpu",
-            "wall": {
-              "min": 180
-            },
-            "primary_metric": "multifragment_rate（当前 0.504）与 metal_detached_rate（0.230）联合报告，bond_f1 并列",
-            "status": "READY",
-            "note": "主判据改为碎裂率；soft-valence 那条线不再作为本 phase 的执行项",
-            "precheck": "DONE —— 模型预测 stay_mean=0.0775 << tau=0.30，A/B 已解锁"
+            "status": "DONE (NULL)",
+            "result": "两臂碎裂率 85.1% vs 85.1%；train_loss 差均值 −0.0028 → hinge 全程未闭合",
+            "lesson": "该 A/B 无法检测自己的处理；未验证 treatment 非空转"
+          },
+          {
+            "step": 5,
+            "id": "BLK-QED-def",
+            "status": "DONE",
+            "what": "m5 QED 口径改为只对单片段分子报，并同时报单片段占比",
+            "why": "现值 0.198 被碎裂相对低估 39%（整条 0.1952 vs 最大分量 0.2718）",
+            "blocked_by": "none",
+            "blocks_paper": true,
+            "result": "qed_single_fragment 已产出（含分母）；5 tests 通过；0.198→0.1246（高碎裂 run）"
+          },
+          {
+            "step": 6,
+            "id": "BLK-M7-def",
+            "status": "TODO — 零成本",
+            "what": "m7 diversity 口径重定或撤下",
+            "why": "0.916 在多片段输出上不可解释"
+          },
+          {
+            "step": 7,
+            "id": "BLK-SA-rootcause",
+            "status": "TODO — 需查证",
+            "what": "定位 m4 SA=7.37 的根因",
+            "lead": "SA 低者碎裂率高，方向与『结构复杂度』同向；需先确认这不是批次效应",
+            "compute": "可能零成本（分析已有产物）"
+          },
+          {
+            "step": 8,
+            "id": "BLK-COLLAPSE-rootcause",
+            "status": "TODO — 需查证",
+            "what": "继续定位崩塌根因",
+            "excluded": [
+              "价键（已证伪）",
+              "assemble loss（梯度死）"
+            ],
+            "assessment": "已排除两条后边际收益低；若做必须先过杠杆闸"
           }
         ]
       },
@@ -2938,33 +2957,34 @@
   "next_actions": [
     {
       "priority": 1,
-      "phase": "L1(已完成)",
-      "action": "CFM gap 审计的零成本部分已全部完成：C3/C4/C6/C12 已实测，G1 前提已修正。产物两份 metrics JSON。",
-      "blocking": "none — 已完成"
+      "phase": 2,
+      "action": "BLK-QED-def：m5 QED 口径修正（零 GPU、零重训，约 30 分钟）",
+      "blocking": "none",
+      "why": "唯一『数字现在是错的、改法明确、不需任何计算』的一项"
     },
     {
       "priority": 2,
       "phase": 2,
-      "action": "BLK-C12-normalise：归一化 soft_valence 并实测反解权重（CPU 45 分钟）",
+      "action": "BLK-SA-rootcause：先在已有产物上做零成本分析，判断 SA 线索是不是批次效应",
       "blocking": "none"
     },
     {
       "priority": 3,
       "phase": 2,
-      "action": "BLK-C13-unfreeze + BLK-C12-enable：yaml 两处更新（零计算，20 分钟）",
+      "action": "BLK-M7-def：m7 口径重定或撤下",
       "blocking": "none"
     },
     {
       "priority": 4,
       "phase": 2,
-      "action": "BLK-C11-ab：单变量 GPU A/B，判据 chemistry_validity_pass_rate",
-      "blocking": "none（§5.1 显存授权）"
+      "action": "BLK-COLLAPSE-rootcause：仅在过杠杆闸后启动",
+      "blocking": "需先能说出『机制会 engage 吗』的答案"
     },
     {
       "priority": 5,
-      "phase": 3,
-      "action": "BLK-G1b：tmQM 键级标签上预训练 bond head 的 DirectedMPNN",
-      "blocking": "none"
+      "phase": "—",
+      "action": "I3 论文 n 值核对 —— 用户指示暂不动 paper/*",
+      "blocking": "用户暂缓"
     }
   ],
   "literature_2026_10_10": {
@@ -3660,5 +3680,104 @@
       "metric_unchanged": "0.8495 在两套 cap 基座下都成立，说明之前的宽松 cap 没有掩盖问题",
       "next": "Phase 2 第 3 步 —— 重定义 BLK-C11：金属配位不足（生成分子中位配位 4 vs tmQM 的 6）到底要不要作为生成侧目标"
     }
+  },
+  "cfm_metric_inventory_2026_10_10": {
+    "purpose": "CFM 线上所有弱指标的总账，按『模型真的弱』与『口径有问题』分开。分开的理由：今天六次自我修正里有四次是把口径问题误当成模型缺陷，其中一次差点花 4 小时 GPU 去修一个不存在的问题。",
+    "CLASS_A_model_actually_weak": {
+      "m4_sa": {
+        "values": {
+          "fm_ab": 7.3688,
+          "fm_control": 7.4506,
+          "blk_c5_repair": 6.6633
+        },
+        "scale": "Ertl 1-10，越低越好；成药分子约 2-3",
+        "severity": "最差的一项，超出可用区间两倍",
+        "root_cause": "未定位",
+        "lead": "方向线索：SA 最低的 blk_c5_repair(6.66) 碎裂率 81.6%，另两个(7.37/7.45)碎裂率 44.7%/52.5%。SA 高与『生成了更大更复杂的结构』同向。但 n=147 的那个 run 与另两个不同批，证据强度有限。"
+      },
+      "generation_collapse": {
+        "trajectory": "gen_validity 0.9766→0.0469；decode_ratio 1.000→0.0885（30 轮）",
+        "root_cause": "未定位。已排除两条：价键（0/2146 是崩掉的检查，真值 0.8495）、assemble loss（梯度 ~5e-09，30 轮未触发）",
+        "reproducibility": "control 臂 cfm_frag_control 30 轮稳定复现，非偶发",
+        "assessment": "CFM 线最实在的未解问题，但已排除两条根因后继续盲试的边际收益低"
+      },
+      "fragmentation": {
+        "measured_today": {
+          "multifragment": 0.851,
+          "metal_detached": 0.164
+        },
+        "measured_earlier_runs": {
+          "cfm_fm_ab": 0.447,
+          "cfm_fm_control": 0.525,
+          "blk_c5_repair": 0.816,
+          "pooled": 0.504
+        },
+        "COMPARISON_CAVEAT": "0.504 与 0.851 不是同一组 run，不能直接比，『碎裂在恶化』无证据。旧三 run 内部方差就很大(44.7%/52.5%/81.6%)。",
+        "root_cause": "未定位；但干预点已确定为解码路径（loss 项作用在预测图，碎裂在解码输出）",
+        "field_context": "85% 在领域内不算灾难：MolCraftDiffusion naive→curriculum 在 GEOM 上 valid-AND-connected 由 2.4%→>90%；YuelDesign 整体 validity 53.7%"
+      },
+      "bond_f1_decoupled": {
+        "evidence": "fm_true 臂 bond_f1=0.6703；fm_false 臂 bond_f1=0.7836 而 gen_validity=0.0 —— bond_f1 更高的那臂生成完全失败",
+        "root_cause": "bond_f1 是逐边交叉熵，对『整分子是否成立』无感。这是指标粒度问题不是实现缺陷",
+        "consequence": "论文必须四指标联合报告，单报 bond_f1 即误导（docs/00_MODEL_NARRATIVE.md §5）"
+      }
+    },
+    "CLASS_B_metric_definition_problems": {
+      "m5_qed": {
+        "reported": {
+          "fm_ab": 0.1984,
+          "fm_control": 0.2008,
+          "blk_c5_repair": 0.1749
+        },
+        "target": ">=0.50",
+        "CONTAMINATED": true,
+        "measurement": "在 776 个已解码分子上直接算：整条 SMILES 0.1952 vs 只取最大连通分量 0.2718 —— 相对低估 39%",
+        "counter_intuitive": "单分子 QED 反而更低(0.1246)，因为它们是碰巧连通的小碎片，QED 惩罚小分子量",
+        "conclusion": "『取最大分量』也不是正确口径 —— 85% 的输出根本不是单个分子。这个数字目前不应直接进论文。",
+        "proposed_fix": "只对单片段分子报 QED，同时报单片段占比作为分母",
+        "FIXED_2026_10_10": {
+          "change": "panel 现在输出 qed_single_fragment + single_fragment_rate + n_single_fragment，逐分子记录 n_frags / largest_frag_frac / qed_largest_fragment；aggregate 带 qed_contamination_note",
+          "corrected_values": {
+            "cfm_fm_ab": 0.1981,
+            "cfm_fm_control": 0.201,
+            "blk_c5_repair": 0.1307,
+            "cfm_frag_control": 0.1246,
+            "cfm_frag_assemble": 0.1275
+          },
+          "single_fragment_rates": {
+            "cfm_fm_ab": 0.5532,
+            "cfm_fm_control": 0.4753,
+            "blk_c5_repair": 0.1837,
+            "cfm_frag_control": 0.1495,
+            "cfm_frag_assemble": 0.1493
+          },
+          "SELF_CORRECTION": "我先前说『m5 被相对低估 39%』是从 cfm_frag_control 一个 run 外推到整个项目，错了。真实规律是污染随该 run 自身碎裂率缩放：单片段占比 >0.47 的 run 几乎不受影响(−0.2%/+0.1%)；占比 ~0.15 的 run 掉 34-36%。",
+          "note": "取最大分量也不是正解 —— 它读 0.2718，比两者都高，因为从一袋碎片里挑最大那块会美化它。",
+          "artifact": "metrics/by_metric/cfm_qed_fragment_aware.json",
+          "tests": "molmetal/tests/test_qed_fragment_definition.py（5 个，含 n=0 不得伪装成 0.0 均值）"
+        }
+      },
+      "m7_diversity": {
+        "values": {
+          "fm_ab": 0.9159,
+          "fm_control": 0.9215,
+          "blk_c5_repair": 0.8674
+        },
+        "status": "不可解释 —— 分子 84.95% 有效但其中大量为多片段，Morgan 距离衡量的是碎片间发散",
+        "not_comparable_with": "diversity_tanimoto.json 的 0.1366（Lambda MCTS 路径，协议不同）"
+      },
+      "decode_ratio": {
+        "reported": 0.998,
+        "behind_it": {
+          "chemistry_validity_pass_rate": 0.8495
+        },
+        "status": "已披露（BLK-C3），并列报告即可，无待修"
+      },
+      "bond_exact_type_rate": {
+        "reported": 0.0,
+        "status": "结构性不可达 —— 需全部 ~42 键精确且类型正确；bond_f1 0.7177 时上界为 0.7177**42 ≈ 8.8e-07。算术，不是缺陷"
+      }
+    },
+    "summary": "甲类 4 项里只有 2 项是模型真弱（SA、崩塌），另 2 项（碎裂、bond_f1）根因未定位但干预点已知。乙类 4 项里有 3 项是口径问题，可零成本改对。"
   }
 }

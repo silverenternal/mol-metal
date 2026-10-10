@@ -1,0 +1,63 @@
+{
+  "metric": "cfm_qed_fragment_aware",
+  "description": "m5 QED recomputed on single-fragment molecules only, with the single-fragment rate as its stated denominator. Supersedes the whole-SMILES QED in cfm_decode_chemistry_validity.json.",
+  "tag": "MEASURED",
+  "date": "2026-10-10",
+  "source_script": "molmetal/scripts/cfm_property_panel.py (build_panel, post BLK-QED-def)",
+  "gate_metric": "cfm_property_panel.py::panel_version wf264-sa/v1",
+  "WHY": "The panel computed QED on the whole parsed SMILES. RDKit accepts multi-fragment SMILES, so on a fragmented cohort that number scores a bag of fragments rather than a molecule.",
+  "target": ">=0.50 (metrics/by_metric/qed.json)",
+  "correction_magnitude_is_run_dependent": {
+    "finding": "My earlier statement that m5 was 'understated by 39%' was derived from ONE run (cfm_frag_control) and over-generalised. The real pattern is that the contamination scales with the run's own fragmentation rate.",
+    "rows": [
+      {
+        "run": "cfm_fm_ab_2026_10_09",
+        "n": 1128,
+        "single_fragment_rate": 0.5532,
+        "qed_whole_contaminated": 0.1984,
+        "qed_single_fragment": 0.1981,
+        "relative_change_pct": -0.2
+      },
+      {
+        "run": "cfm_fm_control_2026_10_09",
+        "n": 871,
+        "single_fragment_rate": 0.4753,
+        "qed_whole_contaminated": 0.2008,
+        "qed_single_fragment": 0.201,
+        "relative_change_pct": 0.1
+      },
+      {
+        "run": "cfm_blk_c5_repair_2026_10_09",
+        "n": 147,
+        "single_fragment_rate": 0.1837,
+        "qed_whole_contaminated": 0.1749,
+        "qed_single_fragment": 0.1307,
+        "relative_change_pct": -25.3
+      },
+      {
+        "run": "cfm_frag_control",
+        "n": 776,
+        "single_fragment_rate": 0.1495,
+        "qed_whole_contaminated": 0.1952,
+        "qed_single_fragment": 0.1246,
+        "relative_change_pct": -36.2
+      },
+      {
+        "run": "cfm_frag_assemble",
+        "n": 757,
+        "single_fragment_rate": 0.1493,
+        "qed_whole_contaminated": 0.1934,
+        "qed_single_fragment": 0.1275,
+        "relative_change_pct": -34.1
+      }
+    ]
+  },
+  "conclusion": {
+    "low_fragmentation_runs": "single_fragment_rate > 0.47 → the whole-SMILES QED is essentially unchanged (−0.2% / +0.1%). No contamination to correct.",
+    "high_fragmentation_runs": "single_fragment_rate ~0.15 → the reported value drops 34-36%. Those runs were flattering the metric by more than half.",
+    "what_to_quote": "qed_single_fragment together with single_fragment_rate. Never qed alone.",
+    "direction_of_the_fix": "the corrected number is WORSE, not better. A metric fix is allowed to make the project look worse; that is the sign it was a fix."
+  },
+  "not_the_fix_taken": "QED on the largest fragment is also wrong — it reads 0.2718 on cfm_frag_control, HIGHER than both, because taking the biggest piece of a bag of fragments flatters it. Recorded as qed_largest_fragment_all for comparison only.",
+  "caution": "Every row is a single training run. frag_control (qed_single 0.1246) and frag_assemble (0.1275) differ by less than a seed's worth of variation; do not read a direction into that pair."
+}

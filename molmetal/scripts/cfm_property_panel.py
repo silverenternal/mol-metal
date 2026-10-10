@@ -345,6 +345,27 @@ def compute_one(
 
     sa_val: Any = None
     qed_val: Any = None
+    # 2026-10-10 (BLK-QED-def) — fragmentation-aware QED.
+    #
+    # `qed` above is QED of the WHOLE parsed molecule, and RDKit happily
+    # accepts a multi-fragment SMILES. So on a cohort where most decoded
+    # molecules are disconnected, that number is not the drug-likeness of a
+    # molecule — it is a score for a bag of fragments. MEASURED on 776 decoded
+    # CFM molecules (85.1% multi-fragment):
+    #
+    #     QED on the whole SMILES          0.1952   <- what used to be reported
+    #     QED on the largest fragment      0.2718
+    #
+    # a 39% relative understatement. And taking the largest fragment is NOT the
+    # fix either: single-fragment molecules here score LOWER still (0.1246),
+    # because they are small connected fragments and QED penalises small
+    # molecules. So both readings are wrong in different directions, which is
+    # why the per-molecule record now carries the raw facts —
+    # `n_frags`, `largest_frag_frac`, `qed_largest_fragment` — and the
+    # aggregate reports the single-fragment-only QED with its denominator.
+    n_frags: Any = None
+    largest_frag_frac: Any = None
+    qed_largest: Any = None
     mol = Chem.MolFromSmiles(smiles)
     if mol is not None:
         try:
@@ -355,7 +376,24 @@ def compute_one(
             qed_val = float(QED.qed(mol))
         except Exception:  # noqa: BLE001
             qed_val = None
-    out: dict[str, Any] = {"smiles": smiles, "sa": sa_val, "qed": qed_val}
+        try:
+            frags = Chem.GetMolFrags(mol, asMols=True, sanitizeFrags=False)
+            n_frags = len(frags)
+            heavy = mol.GetNumHeavyAtoms()
+            if frags and heavy:
+                best = max(frags, key=lambda f: f.GetNumHeavyAtoms())
+                largest_frag_frac = best.GetNumHeavyAtoms() / heavy
+                qed_largest = float(QED.qed(best))
+        except Exception:  # noqa: BLE001
+            pass
+    out: dict[str, Any] = {
+        "smiles": smiles,
+        "sa": sa_val,
+        "qed": qed_val,
+        "n_frags": n_frags,
+        "largest_frag_frac": largest_frag_frac,
+        "qed_largest_fragment": qed_largest,
+    }
     if include_validity:
         out["validity"] = _validate_molecule(mol)
     return out
@@ -458,6 +496,34 @@ def build_panel(
             n_all_pass / n_input if n_input > 0 else 0.0
         )
         aggregate["chemistry_validity_breakdown"] = breakdown
+
+    # 2026-10-10 (BLK-QED-def) — the single-fragment-only view, with its
+    # denominator stated. This is the number to quote for m5; `qed` above is
+    # kept only for continuity and is explicitly labelled contaminated.
+    n_single = sum(1 for m in per_molecule if m.get("n_frags") == 1)
+    sf_qed = [
+        m["qed"] for m in per_molecule
+        if m.get("n_frags") == 1 and m.get("qed") is not None
+    ]
+    lf_qed = [
+        m["qed_largest_fragment"] for m in per_molecule
+        if m.get("qed_largest_fragment") is not None
+    ]
+    aggregate["n_single_fragment"] = n_single
+    aggregate["single_fragment_rate"] = (
+        n_single / n_input if n_input > 0 else 0.0
+    )
+    aggregate["qed_single_fragment"] = _percentiles(sf_qed)
+    aggregate["qed_largest_fragment_all"] = _percentiles(lf_qed)
+    aggregate["multifragment_rate"] = (
+        (n_input - n_single) / n_input if n_input > 0 else 0.0
+    )
+    aggregate["qed_contamination_note"] = (
+        "aggregate['qed'] is QED of the WHOLE parsed SMILES and RDKit accepts "
+        "multi-fragment input, so on a fragmented cohort it scores a bag of "
+        "fragments. Report 'qed_single_fragment' together with "
+        "'single_fragment_rate'; do not quote 'qed' alone."
+    )
 
     return {
         "panel_version": PANEL_VERSION,
