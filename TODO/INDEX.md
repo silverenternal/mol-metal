@@ -930,7 +930,7 @@ Cross-references: TODO/completed/A8_m17_yaml_rewrite.md + TODO/completed/A8_othe
 - `docs/ALIGNED_COMPARISON.md` (bace rescue caveat + m19 stale-file flag)
 - `docs/STATUS.md` (Last refreshed + Wave-METRIC-RESCUE row + honest-negative catalog count 93 → 94)
 - `memory/w2-wasserstein-is-not-load-bearing.md` (updated to 3-arm ON/OFF table)
-- `memory/pearson-ridge-beats-neural-head.md` (NEW — pooled ridge 0.4151 vs head 0.1543)
+- `memory/pearson-ridge-beats-neural-head.md` (NEW — pooled ridge 0.4302 vs head 0.2036 (corrected 2026-10-11; 0.4151/0.1543 were not reproducible from disk))
 
 **Pre-flight v3 status preserved**: rc=0 (PASS, 113/1/3/117 per Wf-432 baseline).
 

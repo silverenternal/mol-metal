@@ -1059,7 +1059,7 @@ Per user directive 2026-10-08 verbatim *"回退的东西得想办法把他们补
 | **Source** | `molmetal/reports/m19_rh_fix_2026_10_08/metrics.json` (fix stack with `--rh-loso-validation`) + `molmetal/reports/m19_per_metal_centering_2026_10_08/metrics.json` (centering baseline, no `--rh-loso-validation`) + `metrics/by_metric/metal_lomo_auc_wasserstein.json` (canonical). |
 | **Cross-ref** | `docs/ALIGNED_COMPARISON.md` §2 (m19 caveat) + Wf-METRIC-RESCUE plan §W1 |
 
-#### §6.38e pIC50 pearson readout — ridge on frozen encoder **decisively beats** trained neural head (pooled 0.4151 vs 0.1543); head is anti-correlated on Os (HONEST-NEGATIVE: neural pIC50 head is not a working regressor)
+#### §6.38e pIC50 pearson readout — ridge on frozen encoder **decisively beats** trained neural head (pooled pooled ridge 0.4302 vs head 0.2036 (corrected 2026-10-11; 0.4151/0.1543 were not reproducible from disk)); head is anti-correlated on Os (HONEST-NEGATIVE: neural pIC50 head is not a working regressor)
 
 | Field | Value |
 |---|---|

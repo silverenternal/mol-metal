@@ -169,3 +169,29 @@ memory/pearson-ridge-beats-neural-head.md                  (NEW)
 - AGENTS.md §5.5 + §5.6 + §5.7 + §5.8 + §5.9 + §10
 - `molmetal/scripts/wf386a3_atomic_write.py` — atomic_write_file implementation (used for this closeout)
 - `molmetal/scripts/wf399a1_smoke_protocol.py` — §5.7 trainer flag wire-in smoke (the molnet 4 NEW flags verified via this surface)
+
+
+---
+
+## CORRECTION 2026-10-11 (appended, not rewritten, per AGENTS.md §5.5 rule #6)
+
+The pooled pair in item 5 above — ridge **0.4151 ± 0.2027** / head **0.1543 ± 0.3650** —
+is **not reproducible from any file on disk**. The source it cites,
+`molmetal/reports/pearson_head_fix_2026_10_08/seed{0,1,2}.json`, does not exist; the real
+layout is `<metal>/per_seed_metrics_seed{N}.json`. Recomputed from all 15 of those files:
+
+| Quantity | This document | Recomputed 2026-10-11 |
+|---|---|---|
+| Ridge on trained D-MPNN embedding, pooled | 0.4151 ± 0.2027 | **0.4302 ± 0.1644** |
+| Trained neural pIC50 head, pooled | 0.1543 ± 0.3650 | **0.2036 ± 0.2878** |
+
+(mean-of-metal-means over 5 metals × 3 seeds, population sd.)
+
+The **per-metal** figures in this document were already correct and still reproduce:
+Ir 0.1362, Os −0.2782 ± 0.0654, Re 0.6051; Rh 0.3295 was missing and is added.
+
+**The conclusion is unchanged**: the neural pIC50 head is not a working regressor, and
+ridge beats it on all five metals individually. Pooling across n_test 994/231/16/13/13
+puts 78.5% of the weight on Ru, so the pooled sd should not be quoted as a spread.
+
+Corrected in `docs/HONEST_NEGATIVE_CATALOG.md` §6.38e and `TODO/INDEX.md`.
