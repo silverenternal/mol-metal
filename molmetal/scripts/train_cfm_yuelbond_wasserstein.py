@@ -708,6 +708,7 @@ EARLY_STOP_METRICS: Tuple[str, ...] = (
     "decode_ratio",
     "gen_validity",
     "bond_exact_type",
+    "bond_type_f1",
     "combined",
 )
 #: Default is the chemistry criterion, per the E4 brief.
@@ -729,6 +730,7 @@ def resolve_early_stop_criterion(
     gen_n: int,
     bond_exact_type_rate: float,
     bond_n_scored: float,
+    bond_type_macro_f1: Optional[float] = None,
 ) -> Tuple[str, float, str]:
     """Resolve the early-stop criterion to a MEASURABLE ``(name, value, note)``.
 
@@ -742,6 +744,10 @@ def resolve_early_stop_criterion(
     bond_n_scored
         How many complexes carried Wiberg bond truth.  ``0`` likewise means
         unscored, not perfect.
+    bond_type_macro_f1
+        Macro-F1 over bond TYPE, from ``evaluate_bond_accuracy``.  Optional so
+        every existing caller and test keeps its old behaviour; see the
+        ``combined`` branch for why ``combined`` wants it.
 
     Returns
     -------
@@ -803,8 +809,73 @@ def resolve_early_stop_criterion(
                 float(bond_exact_type_rate),
                 _bond_floor,
             )
+    elif req == "bond_type_f1":
+        # 2026-10-10. Selectable on its own, for a run that wants the bond
+        # axis alone without the generation factor. Degrades exactly like the
+        # others: an unscored corpus cannot supply it.
+        if (
+            have_bond
+            and bond_type_macro_f1 is not None
+            and float(bond_type_macro_f1) > 0.0
+        ):
+            return "bond_type_f1", float(bond_type_macro_f1), _bond_floor
     else:  # combined
+        # 2026-10-10 (BLK-C13 follow-on). `bond_exact_type_rate` is not merely
+        # "at its floor" on this corpus — it is STRUCTURALLY UNREACHABLE, and
+        # `combined` was therefore the constant 0.0 at every epoch of both
+        # recorded 29-epoch runs (MEASURED: the value set of
+        # bond_exact_type_rate across all epochs of cfm_fm_control and
+        # cfm_fm_ab is {0.0000}, and early_stop_value ran 0.000000 ->
+        # 0.000000). A gate that cannot move selects nothing, and the run
+        # stops on a criterion that cannot tell a trained model from an
+        # untrained one.
+        #
+        # Why it is unreachable: exact-type demands that EVERY bond in a
+        # ~45-bond complex match the Wiberg truth. At the measured bond F1 of
+        # 0.78 that is arithmetically out of reach, so the metric reports 0
+        # whether the head is excellent or untrained.
+        #
+        # The replacement half is `bond_type_macro_f1` — macro-F1 over bond
+        # TYPE, which is the axis `metrics/by_metric/tmqm_bond_perception.json`
+        # establishes is the one that matters (connectivity is nearly free at
+        # F1 ~0.985 from geometry alone; TYPE is where everything fails). It
+        # is already computed every epoch by evaluate_bond_accuracy and
+        # already written to per_epoch_metrics.csv.
+        #
+        # Chosen on evidence, not on taste: corr(gen_validity, bond_type_f1)
+        # is NEGATIVE (-0.825 control / -0.736 fm_ab), so a product is not
+        # obviously the right form either — but replayed over both recorded
+        # runs, gen_validity x bond_type_f1 peaks at ep17 (control, gen 0.875)
+        # and ep20 (fm_ab, gen 0.917), i.e. inside a HEALTHY generation
+        # window, whereas gen_validity alone peaks at ep6 on a nearly
+        # untrained model. The swap is a defect fix — replacing a constant with
+        # a signal that moves — NOT a tuning pass: it is the same recorded
+        # curves the choice was read off, so it is in-sample and carries no
+        # out-of-sample guarantee.
+        _bond_half = float(bond_exact_type_rate)
+        _bond_half_name = "bond_exact_type"
+        _swap_note = ""
+        if (
+            float(bond_exact_type_rate) <= 0.0
+            and bond_type_macro_f1 is not None
+            and float(bond_type_macro_f1) > 0.0
+        ):
+            _bond_half = float(bond_type_macro_f1)
+            _bond_half_name = "bond_type_macro_f1"
+            _swap_note = (
+                f"combined's bond half swapped {bond_exact_type_rate:.4f} "
+                f"bond_exact_type -> {_bond_half:.4f} bond_type_macro_f1 "
+                "(exact-type is structurally unreachable: it needs every bond "
+                "in a ~45-bond complex exactly right)"
+            )
         if have_gen and have_bond:
+            return (
+                "combined",
+                float(gen_validity) * _bond_half,
+                "; ".join(
+                    x for x in (_gen_saturated, _bond_floor, _swap_note) if x
+                ),
+            )
             return (
                 "combined",
                 float(gen_validity) * float(bond_exact_type_rate),
@@ -8958,6 +9029,11 @@ def main() -> int:
             gen_n=int(_gen_tot),
             bond_exact_type_rate=float(_bond_acc.get("bond_exact_type_rate", 0.0)),
             bond_n_scored=float(_bond_acc.get("n_scored", 0.0)),
+            # 2026-10-10: the bond half `combined` falls back to when
+            # exact-type is pinned at 0. Passed always (not conditionally) so
+            # the fallback can never be a function of whether the caller
+            # remembered to supply it.
+            bond_type_macro_f1=_bond_acc.get("bond_type_macro_f1_pooled"),
         )
         if _es_note and epoch == 0:
             print(
