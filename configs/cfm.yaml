@@ -241,6 +241,25 @@ compute:
   triton_ot: false
 
 eval:
+  # Epsilon-constraint checkpoint selection. The generation objective is bound
+  # to a floor; among epochs that clear it, the best bond-type macro-F1 wins.
+  #
+  # Why this replaced `combined`: `combined` is a scalarisation, and the front
+  # it sits on is FLAT where it matters. Measured on the control arm, dropping
+  # epsilon 0.85 -> 0.6 costs 0.27 of gen_validity (0.875 -> 0.604) to gain
+  # 0.0004 of macro-F1. A product cannot express that trade; a constraint can.
+  #
+  # epsilon = 0.85 is read off metrics/by_metric/blk_c13_epsilon_constraint.json,
+  # not chosen by hand: the slice is insensitive over [0.7, 0.85] across all
+  # four (run x bond-objective) analyses, and the criterion reproduces the
+  # knee that analysis found (ep17 control / ep20 fm_ab) when replayed over
+  # the recorded runs — pinned by
+  # test_epsilon_criterion_reproduces_the_knee.
+  #
+  # epsilon remains a PREFERENCE, not a discovered optimum, and the front may
+  # be the front of a broken objective (BLK-C12: 8 of 12 loss terms dead).
+  early_stop_metric: bond_type_f1_eps
+  early_stop_epsilon: 0.85
   # Weight of the Wasserstein regulariser in the loss cascade (default 0.1).
   # 0 gives the G6 "no_wass" ablation arm.
   wasserstein_weight: 0.1

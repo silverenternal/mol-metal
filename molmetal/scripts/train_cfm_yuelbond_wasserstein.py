@@ -709,6 +709,7 @@ EARLY_STOP_METRICS: Tuple[str, ...] = (
     "gen_validity",
     "bond_exact_type",
     "bond_type_f1",
+    "bond_type_f1_eps",
     "combined",
 )
 #: Default is the chemistry criterion, per the E4 brief.
@@ -717,6 +718,10 @@ DEFAULT_EARLY_STOP_METRIC = "combined"
 #: still governs the legacy `decode_ratio` criterion, so every historical run
 #: keeps the patience it was launched with.
 DEFAULT_EARLY_STOP_PATIENCE = 3
+#: Generation-validity floor for the epsilon-constrained criterion. Read off
+#: metrics/by_metric/blk_c13_epsilon_constraint.json, not chosen by hand —
+#: see the argparse help on --early-stop-epsilon for the slice sensitivity.
+DEFAULT_EARLY_STOP_EPSILON = 0.85
 #: Rounding bars for `hit_target`, same reasoning as _TARGET_EXACT_TYPE_RATE.
 _TARGET_GEN_VALIDITY = 0.80
 _TARGET_COMBINED = _TARGET_GEN_VALIDITY * _TARGET_EXACT_TYPE_RATE
@@ -731,6 +736,7 @@ def resolve_early_stop_criterion(
     bond_exact_type_rate: float,
     bond_n_scored: float,
     bond_type_macro_f1: Optional[float] = None,
+    early_stop_epsilon: float = DEFAULT_EARLY_STOP_EPSILON,
 ) -> Tuple[str, float, str]:
     """Resolve the early-stop criterion to a MEASURABLE ``(name, value, note)``.
 
@@ -819,6 +825,51 @@ def resolve_early_stop_criterion(
             and float(bond_type_macro_f1) > 0.0
         ):
             return "bond_type_f1", float(bond_type_macro_f1), _bond_floor
+    elif req == "bond_type_f1_eps":
+        # 2026-10-10. Epsilon-constraint, the form the front was actually
+        # analysed in (metrics/by_metric/blk_c13_epsilon_constraint.json):
+        # bind the GENERATION objective to a floor, maximise BOND TYPE over
+        # whatever survives. The hyperplane is gen_validity >= epsilon.
+        #
+        # Why not just a product: `combined` scalarises, which collapses the
+        # front to one number and hides how flat it is. Measured here — going
+        # from epsilon 0.85 to 0.6 in the control arm costs 0.27 of
+        # gen_validity (0.875 -> 0.604) to gain 0.0004 of macro-F1. A product
+        # cannot express that; the constraint can.
+        #
+        # The NEGATION below is the whole mechanism. An epoch that satisfies
+        # the constraint scores its macro-F1 in [0, 1]; one that violates it
+        # scores in [-1, 0]. Since the gate keeps the max, every satisfying
+        # epoch outranks every violating one, while the ordering WITHIN each
+        # group is preserved — so the selected checkpoint is the best bond
+        # type among the feasible ones, exactly what epsilon-constraint says.
+        #
+        # It also degrades safely: `_best_gate` starts at -inf, so the first
+        # epoch improves whatever its score and a checkpoint is still written.
+        # A hard zero or -inf here would leave a run that never satisfies
+        # epsilon with no checkpoint at all.
+        if (
+            have_bond
+            and have_gen
+            and bond_type_macro_f1 is not None
+            and float(bond_type_macro_f1) > 0.0
+        ):
+            _eps = float(early_stop_epsilon)
+            _gv = float(gen_validity)
+            _f1 = float(bond_type_macro_f1)
+            _ok = _gv >= _eps - 1e-12
+            _eps_note = (
+                f"gen_validity {_gv:.4f} {'>=' if _ok else '<'} epsilon {_eps:.4f}; "
+                f"bond_type_macro_f1 {_f1:.4f} scored "
+                f"{'+' if _ok else '-'}{_f1:.4f}"
+            )
+            return (
+                "bond_type_f1_eps",
+                _f1 if _ok else -_f1,
+                "; ".join(
+                    x for x in (_eps_note, _bond_floor, _gen_saturated) if x
+                ),
+            )
     else:  # combined
         # 2026-10-10 (BLK-C13 follow-on). `bond_exact_type_rate` is not merely
         # "at its floor" on this corpus — it is STRUCTURALLY UNREACHABLE, and
@@ -6184,6 +6235,23 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--early-stop-epsilon",
+        type=float,
+        default=DEFAULT_EARLY_STOP_EPSILON,
+        help=(
+            "Generation-validity floor for --early-stop-metric "
+            "bond_type_f1_eps (epsilon-constraint). Only epochs at or above "
+            f"this gen_validity are eligible to be selected; among those the "
+            "best bond_type_macro_f1 wins. MEASURED default 0.85 from "
+            "metrics/by_metric/blk_c13_epsilon_constraint.json: the slice is "
+            "insensitive over epsilon in [0.7, 0.85] across all four "
+            "(run x bond-objective) analyses, and dropping 0.85 -> 0.6 in "
+            "the control arm costs 0.27 of gen_validity to gain 0.0004 of "
+            "macro-F1. epsilon is a PREFERENCE chosen against that curve, not "
+            "a discovered optimum. Ignored by every other criterion."
+        ),
+    )
+    p.add_argument(
         "--early-stop-patience",
         type=int,
         default=DEFAULT_EARLY_STOP_PATIENCE,
@@ -9034,6 +9102,9 @@ def main() -> int:
             # the fallback can never be a function of whether the caller
             # remembered to supply it.
             bond_type_macro_f1=_bond_acc.get("bond_type_macro_f1_pooled"),
+            early_stop_epsilon=float(
+                getattr(args, "early_stop_epsilon", DEFAULT_EARLY_STOP_EPSILON)
+            ),
         )
         if _es_note and epoch == 0:
             print(

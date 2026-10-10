@@ -175,3 +175,82 @@ def test_bond_type_f1_is_selectable_on_its_own():
 def test_bond_type_f1_is_an_accepted_criterion_name():
     mod = _load_trainer()
     assert "bond_type_f1" in mod.EARLY_STOP_METRICS
+
+# ---------------------------------------------------------------------------
+# epsilon-constraint criterion. The strong assertion is the last one: the
+# wired criterion must REPRODUCE the knee that motivated it, on the real runs.
+# ---------------------------------------------------------------------------
+
+def _resolve_curve(resolve, curve, metric, epsilon=None):
+    vals = []
+    for c in curve:
+        kw = dict(
+            decode_ratio=c["decode_ratio"],
+            gen_validity=c["gen_validity"],
+            gen_n=c["gen_n"],
+            bond_exact_type_rate=c["bond_exact_type_rate"],
+            bond_n_scored=c["bond_n_scored"],
+            bond_type_macro_f1=c["bond_type_macro_f1"],
+        )
+        if epsilon is not None:
+            kw["early_stop_epsilon"] = epsilon
+        vals.append(resolve(metric, **kw))
+    return vals
+
+
+def test_satisfying_epochs_outrank_violating_ones():
+    """The negation is the whole mechanism, so pin the ordering directly.
+
+    A satisfying epoch with a WORSE macro-F1 must still beat a violating epoch
+    with a better one, or the constraint is not being enforced.
+    """
+    resolve = _load_trainer().resolve_early_stop_criterion
+    _, good, _ = resolve(
+        "bond_type_f1_eps",
+        decode_ratio=0.8, gen_validity=0.90, gen_n=48,
+        bond_exact_type_rate=0.0, bond_n_scored=192.0,
+        bond_type_macro_f1=0.10, early_stop_epsilon=0.85,
+    )
+    _, bad, _ = resolve(
+        "bond_type_f1_eps",
+        decode_ratio=0.8, gen_validity=0.10, gen_n=48,
+        bond_exact_type_rate=0.0, bond_n_scored=192.0,
+        bond_type_macro_f1=0.37, early_stop_epsilon=0.85,
+    )
+    assert good > bad, (
+        f"a violating epoch scored {bad} and outranked a satisfying one at "
+        f"{good} — the epsilon constraint is not enforced"
+    )
+    assert bad < 0.0 <= good, "the two groups are not cleanly separated"
+
+
+@pytest.mark.parametrize("run,expected", [("control", 17), ("fm_ab", 20)])
+def test_epsilon_criterion_reproduces_the_knee(run, expected):
+    """The criterion must select the knee the analysis found.
+
+    blk_c13_epsilon_constraint.json located the knee at ep17 (control) and
+    ep20 (fm_ab) on gen_validity x bond_type_macro_f1. If the wired criterion
+    selects anything else, the implementation and the analysis that justified
+    it have drifted apart — which is exactly the failure mode where a number
+    gets quoted from an analysis that no longer describes the code.
+    """
+    resolve = _load_trainer().resolve_early_stop_criterion
+    curve = _read_curve(RECORDED_RUNS[run])
+    resolved = _resolve_curve(resolve, curve, "bond_type_f1_eps", epsilon=0.85)
+    best_i = max(range(len(resolved)), key=lambda i: resolved[i][1])
+    assert int(curve[best_i]["epoch"]) == expected, (
+        f"{run}: epsilon-constraint selected epoch "
+        f"{int(curve[best_i]['epoch'])}, but the knee analysis located "
+        f"{expected}. Re-run wf_blk_c13_epsilon_constraint.py and reconcile "
+        "before quoting either number."
+    )
+
+
+@pytest.mark.parametrize("run", sorted(RECORDED_RUNS))
+def test_epsilon_criterion_is_not_constant(run):
+    resolve = _load_trainer().resolve_early_stop_criterion
+    curve = _read_curve(RECORDED_RUNS[run])
+    values = [v for _, v, _ in _resolve_curve(resolve, curve, "bond_type_f1_eps", 0.85)]
+    assert len(set(round(v, 6) for v in values)) > 1, (
+        f"{run}: bond_type_f1_eps is constant across the run"
+    )
