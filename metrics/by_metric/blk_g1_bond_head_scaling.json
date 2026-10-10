@@ -1,0 +1,66 @@
+{
+  "metric": "blk_g1_bond_head_scaling",
+  "description": "Is the CFM bond head data-starved? The head trained ALONE on nested prefixes of one tmQM reservoir sample (256 / 1024 / 4096), scored on one fixed held-out split that is IDENTICAL across arms. Isolates head data volume from every other variable including the velocity field.",
+  "unit": "ratio (0-1)",
+  "scope": "CFM DMPNNBondHead alone, tmQM six target metals, no CFM training",
+  "source_json": "molmetal/reports/wf_blk_g1_head_scaling/head_scaling.json",
+  "measured": {
+    "n_val_clouds": 192,
+    "n_truth_bonds_val": 8634,
+    "val_cohort_identity": "n_truth_bonds=8634 matches cfm_bond_accuracy.json exactly, so this is the SAME 192-cloud val set that probe scored",
+    "grad_steps_per_arm": {
+      "256": 5766,
+      "1024": 5548,
+      "4096": 5476
+    },
+    "pairs_per_arm": 800000,
+    "compute_matched": true,
+    "tail4_mean": {
+      "256": {
+        "bond_f1": 0.9912,
+        "bond_type_macro_f1_pooled": 0.7247,
+        "bond_exact_match": 0.0273,
+        "bond_pr_auc": 0.9996
+      },
+      "1024": {
+        "bond_f1": 0.9901,
+        "bond_type_macro_f1_pooled": 0.6981,
+        "bond_exact_match": 0.0234,
+        "bond_pr_auc": 0.9996
+      },
+      "4096": {
+        "bond_f1": 0.9891,
+        "bond_type_macro_f1_pooled": 0.6864,
+        "bond_exact_match": 0.0104,
+        "bond_pr_auc": 0.9996
+      }
+    },
+    "no_bond_fraction_of_candidate_pairs": {
+      "256": 0.6972,
+      "1024": 0.6985,
+      "note": "measured twice on six-metal cohorts; a third and fourth run give the same ~0.70"
+    }
+  },
+  "answer": "NO — the head is not data-starved",
+  "finding": "16x more labelled complexes (256 -> 4096) at matched compute (~5500 grad steps, 800k candidate pairs per arm) produces NO measurable change in either axis that matters. Bond-type macro-F1 tail means 0.7247 / 0.6981 / 0.6864 and exact-match 0.0273 / 0.0234 / 0.0104, with the arms' per-epoch RANGES OVERLAPPING (1024 spans 0.619-0.754, containing 256's 0.702-0.748). Existence F1 is flat at ~0.990 across all three arms and saturates within 2 epochs. Correct reading is FLAT, not DECREASING: the spread is inside single-epoch noise.",
+  "precondition_refutations": {
+    "BLOCKER_1_no_negatives_FALSE": "todo.json recorded class0 NO_BOND = 0 occurrences. That count was taken over the truth .BO blocks, which by construction store only bonded pairs. The head is scored over CANDIDATE pairs and every unlisted one defaults to BOND_NO_BOND. Measured four independent times: 69.7-69.9% of candidate pairs are NO_BOND, on cohorts of 16 / 256 / 1024 complexes. NO_BOND is the LARGEST class.",
+    "BLOCKER_2_imbalance_FALSE": "already handled. The trainer computes sqrt-softened inverse-frequency weights renormalised on sum_c p_c w_c = 1; the exponent was swept MEASURED (power 0.5 beats 0.0 and 1.0 on both F1 and PR-AUC) and 0.5 is the default.",
+    "proposed_mechanism_UNNECESSARY": "BLK-G1 proposed pretraining a separate encoder and transferring it. The labels are ALREADY on the training path — the same _bond_target_for_clean_cloud reads them every step. Only volume was missing."
+  },
+  "unexplained_gap": {
+    "what": "Head-only training reaches bond F1 0.9912 / PR-AUC 0.9996 where cfm_bond_accuracy.json records a 4-epoch CFM probe at F1 0.481 / PR-AUC 0.593 — on the IDENTICAL val cohort (8634 truth bonds). Same metric function, same target function, same class-weight rule.",
+    "verified_not_the_stale_bug": "It is NOT the pre-fix invented-Pt-donor target: metrics/by_metric/cfm_bond_accuracy.json was committed in the SAME commit (f7fec1f360, 2026-10-04 15:38) as the fix that read the truth instead. So 0.481 was measured with correct targets.",
+    "candidate_unverified": "CFM epochs are not head updates. The recorded probe used batch_size 16 over a 946-cloud cohort = ~59 steps/epoch, so 4 epochs = ~236 head steps, against 1024 head steps at my epoch 4. That 4.3x gap is PLAUSIBLE but NOT MEASURED — no controlled run isolates it.",
+    "why_it_matters": "If joint training suppresses the head, that is a different and larger problem than data volume, and it is adjacent to BLK-C12 (8 of 12 loss terms dead) and to the generation-collapse story. This is a LEAD, not a conclusion."
+  },
+  "honest_framing": {
+    "measured": "All numbers MEASURED on this host, 2026-10-10, GPU 0, single seed 0. Targets and scores come from the production _bond_target_for_clean_cloud and evaluate_bond_accuracy, imported unchanged — no metric was reimplemented for this probe.",
+    "scope_caveats": [
+      "SINGLE SEED. seed=0 only.",
+      "Bond-TYPE macro-F1 swings 0.53-0.75 between consecutive epochs WITHIN one arm, which is why the arm comparison is reported as ranges and tail means rather than final-epoch values."
+    ],
+    "not_established": "Nothing about the CFM generation task. This probe never trains the velocity field and never decodes. Whether a better head changes gen_validity or decode_ratio is UNTESTED.",
+    "not_a_wet_lab_or_experimental_measurement": "None. Computational only."
+  }
+}

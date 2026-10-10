@@ -2186,7 +2186,7 @@
       "id": "BLK-G1",
       "line": "D-MPNN",
       "title": "CFM bond head 是随机初始化的，而 tmQM 预训练 D-MPNN 就在盘上 —— 两条线从未接通",
-      "status": "OPEN — 前提检查：标签可用但缺 NO_BOND 负样本，需先构造",
+      "status": "CLOSED_AS_HONEST_NEGATIVE_2026_10_10",
       "finding": "生成器的成键组件是 DMPNNBondHead（train_cfm_yuelbond_wasserstein.py:1156），在 :1383 全新构造，无任何 init 路径。同时配置 use_tmqm_init: true 只接到 EGNNVelocityField（:7307-7310），接不到 bond head。而 .ckpt/tmqm_pretrained_dmpnn.pt 是在 tmQM 上预训练的 —— tmQM 正是 CFM 的生成语料。",
       "why_it_matters": "BLK-C11（生成崩塌）与 BLK-C13（5 epoch 冻结整条损失）的所有既有尝试，都是在随机初始化的 bond head 上调 LR / 熵正则 / 冻结策略。预训练初始化是一条从未试过的、且成本低的独立杠杆。",
       "measured_obstacle": {
@@ -2263,7 +2263,41 @@
         },
         "verdict": "G1 改写后的路径（用 tmQM 键级标签预训练 bond head 自己的 DirectedMPNN）方向仍成立，但必须先解决两件事：(1) 从半径图构造 NO_BOND 负样本；(2) 处理 53:43:3:0.3 的极度不均衡。这两件都没做，所以不启动训练。",
         "already_known": "前提已于本日修正：预训练编码器(tmqm_pretrained_encoder.pt，Chemprop GRU，12 张量)与 bond head 的 DirectedMPNN(42 张量)键名重叠 0，无法直接加载。方案 A 作废。"
-      }
+      },
+      "verdict": "head is NOT data-starved — 16x data at matched compute buys nothing measurable",
+      "metric": "metrics/by_metric/blk_g1_bond_head_scaling.json",
+      "result": {
+        "answer": "NO",
+        "tail4_typeF1": {
+          "256": 0.7247,
+          "1024": 0.6981,
+          "4096": 0.6864
+        },
+        "tail4_exact_match": {
+          "256": 0.0273,
+          "1024": 0.0234,
+          "4096": 0.0104
+        },
+        "existence_F1_flat_at": 0.99,
+        "arms_overlap": "1024 的 per-epoch 区间 [0.619,0.754] 完整包含 256 的 [0.702,0.748]。正确读法是【持平】而非【下降】——差异落在单 epoch 噪声内",
+        "compute_matched": "5766/5548/5476 梯度步，各 80 万候选对"
+      },
+      "preconditions_were_both_false": {
+        "BLOCKER_1": "class0 出现 0 次 —— 假。那是在真值 .BO 块上数的，该块按构造只存成键对。head 是在【候选对】上打分的，未列出的默认为 NO_BOND。四次独立实测 69.7-69.9%，NO_BOND 是最大类",
+        "BLOCKER_2": "极度不均衡未处理 —— 假。sqrt 软化逆频率权重 + sum_c p_c w_c=1 归一早已实现并做过指数扫描（0.5 在 F1 与 PR-AUC 上同时最优）",
+        "机制本身也不必要": "标签本来就在训练路径上（_bond_target_for_clean_cloud 每个 step 都读）。缺的只是量"
+      },
+      "new_lead_not_a_conclusion": {
+        "gap": "head 单独训练 F1 0.9912 / PR-AUC 0.9996，而 cfm_bond_accuracy.json 记录的 4-epoch CFM 探针是 0.481 / 0.593 —— 且【是同一批 192 个 val 云、同样的 8634 条真值】",
+        "ruled_out": "不是旧的『凭空造标签』bug。cfm_bond_accuracy.json 与那个修复是同一个 commit(f7fec1f360, 2026-10-04 15:38)写的，所以 0.481 是在正确标签下测的",
+        "candidate_UNVERIFIED": "CFM 的 epoch 不等于 head 更新次数。记录里的探针 batch 16 / 946 云 = 约59 步每 epoch，4 epoch ≈ 236 次 head 更新；我这边 epoch 4 是 1024 次。4.3 倍差距是【合理但未实测】",
+        "why_it_matters": "若联合训练在压制 head，那是比数据量更大、且与 BLK-C12(12 项里 8 项死) 相邻的问题。这是线索，不是结论"
+      },
+      "caveats": [
+        "单种子（seed=0）",
+        "bond-type macro-F1 在【同一臂内】相邻 epoch 间就摆动 0.53-0.75，故报区间与末段均值而非终值",
+        "本探针不训练速度场、不解码；对 gen_validity / decode_ratio 的影响未测"
+      ]
     },
     {
       "id": "BLK-P1",
@@ -3884,5 +3918,24 @@
       }
     ],
     "conclusion": "Phase 3 六项里，五项已因预算、先前负面或刻意降级而不该动。唯一值得推进的是 BLK-G1，而它的前提检查刚发现缺负样本。所以 Phase 3 当前的实际可执行量是【一步】：构造 NO_BOND 负样本 + 决定不均衡处理策略。"
-  }
+  },
+  "launcher_defects_found_2026_10_10": [
+    {
+      "id": "BLK-LAUNCH-1",
+      "severity": "HIGH",
+      "silent": true,
+      "defect": "config 缺 output.log_master 时，start.sh:708 执行 `: > \"$LOG_FILE\"` 对空路径报错 `No such file or directory`，训练器从未 spawn",
+      "measured": "本仓库 30 个 yaml 中 12 个未声明该键",
+      "why_undetected": "start.sh 会先跑自己的 pre-flight 并 PASS —— 它只在【dry-run】分支前做拼装，pre_flight_check.py 从不真正启动训练器。两个 §5.11 gate 也都查不出",
+      "found_by": "为 BLK-G1 新建 config 时实际撞上"
+    },
+    {
+      "id": "BLK-LAUNCH-2",
+      "severity": "MEDIUM",
+      "silent": true,
+      "defect": "start.sh:506 只从 protocol.weight_decay 读取该超参。写在 train: 下会被静默注入 `--weight-decay 0.0` 覆盖",
+      "why_undetected": "config-binding gate 只检查键能否解析到 dest，而它确实能解析到 weight_decay；§5.1 hyperparam 契约 gate 也不查这个",
+      "found_by": "读 start.sh --dry-run 的输出，而不是靠 gate"
+    }
+  ]
 }
