@@ -2186,7 +2186,7 @@
       "id": "BLK-G1",
       "line": "D-MPNN",
       "title": "CFM bond head 是随机初始化的，而 tmQM 预训练 D-MPNN 就在盘上 —— 两条线从未接通",
-      "status": "OPEN — 未测，属新发现",
+      "status": "OPEN — 前提检查：标签可用但缺 NO_BOND 负样本，需先构造",
       "finding": "生成器的成键组件是 DMPNNBondHead（train_cfm_yuelbond_wasserstein.py:1156），在 :1383 全新构造，无任何 init 路径。同时配置 use_tmqm_init: true 只接到 EGNNVelocityField（:7307-7310），接不到 bond head。而 .ckpt/tmqm_pretrained_dmpnn.pt 是在 tmQM 上预训练的 —— tmQM 正是 CFM 的生成语料。",
       "why_it_matters": "BLK-C11（生成崩塌）与 BLK-C13（5 epoch 冻结整条损失）的所有既有尝试，都是在随机初始化的 bond head 上调 LR / 熵正则 / 冻结策略。预训练初始化是一条从未试过的、且成本低的独立杠杆。",
       "measured_obstacle": {
@@ -2235,7 +2235,35 @@
         "revised_cheapest_path": "方案 B 改写为：在 tmQM 的 Wiberg 键级标签上预训练【bond head 自己的】DirectedMPNN。同架构、无需 key 适配，且这些标签在盘上（tmqm_parsed.csv 的 metal_bo_*，trainer 报 6634/6634 请求的复合物都有 Wiberg BO block）。",
         "option_C_answer": "已做完（30 分钟只读检查的等价物，比预算更省）：结论是架构不兼容，故 A/B 按上述改写。"
       },
-      "fixes_shipped_2026_10_10": null
+      "fixes_shipped_2026_10_10": null,
+      "precondition_check_2026_10_10": {
+        "gate": "CONDITIONALLY VIABLE — 前提未满足，按现状实施会训出错误的 head",
+        "label_source_ok": true,
+        "label_source": "400/400 tmQM cloud 都有 Wiberg 键级块，无缺失",
+        "class_distribution": {
+          "class4_aromatic": 9053,
+          "class1_single": 7339,
+          "class2_double": 531,
+          "class3_triple": 52,
+          "class0_no_bond": 0,
+          "total": 16975
+        },
+        "BLOCKER_1_no_negatives": "class 0 (NO_BOND) 出现 0 次 —— BO 块只存【已成键】的原子对，而非键候选对根本没被记录。head 在半径图(3.5Å)里遇到的绝大多数候选对都是非键，所以这是它最需要学会判负的类。按现状预训练，head 会一律预测成键。",
+        "fix_required": "必须先从半径图枚举候选对，把不在 bonds 里的那些标为 class 0。这不是训练细节，是标签构造的前提。",
+        "BLOCKER_2_severe_imbalance": {
+          "aromatic_pct": 53.3,
+          "single_pct": 43.2,
+          "double_pct": 3.1,
+          "triple_pct": 0.3,
+          "note": "芳香占 53% —— 注意 soft_valence 把 class 4 映射为键级 1.5，所以超过一半的键在 loss 里按 1.5 计"
+        },
+        "arithmetic_check": {
+          "aromatic_pct_of_total": 53.3,
+          "note": "修正：芳香 9053/16975 = 53.3%（先前口述的 45% 是分母算错，已改）"
+        },
+        "verdict": "G1 改写后的路径（用 tmQM 键级标签预训练 bond head 自己的 DirectedMPNN）方向仍成立，但必须先解决两件事：(1) 从半径图构造 NO_BOND 负样本；(2) 处理 53:43:3:0.3 的极度不均衡。这两件都没做，所以不启动训练。",
+        "already_known": "前提已于本日修正：预训练编码器(tmqm_pretrained_encoder.pt，Chemprop GRU，12 张量)与 bond head 的 DirectedMPNN(42 张量)键名重叠 0，无法直接加载。方案 A 作废。"
+      }
     },
     {
       "id": "BLK-P1",
@@ -2897,7 +2925,7 @@
           {
             "step": 8,
             "id": "BLK-COLLAPSE-rootcause",
-            "status": "ROOT CAUSE FOUND",
+            "status": "ROOT CAUSE FOUND / FIX NOT DERIVABLE",
             "what": "继续定位崩塌根因",
             "excluded": [
               "价键（已证伪）",
@@ -2905,7 +2933,7 @@
             ],
             "assessment": "已排除两条后边际收益低；若做必须先过杠杆闸",
             "result": "选择判据 combined 恒为 0；崩塌是不稳定非衰减；杠杆检查零 GPU 通过",
-            "blocked_by": "0.45 下限需从 bond_f1 分布反解（杠杆闸第二问）"
+            "blocked_by": "判据退化为 gen_validity + 人工守卫；守卫取值决定两个定性不同的模型，数据无法裁决。不编造下限。"
           }
         ]
       },
@@ -3712,7 +3740,11 @@
         "classification": "训练稳定性问题 + 模型选择问题，不是目标函数问题。loss 项不是它的自然工具。",
         "leverage_check": "通过，零 GPU：用现有 per-epoch CSV 即可算出每个候选判据会选中哪一轮。非退化判据 gen_validity×min(1,bond_f1/0.45)（排除 ep<5）选中 ep24，decode 0.9167 / gen_validity 0.4453，对比末轮 0.0885 / 0.0469。",
         "OPEN_WEAKNESS": "0.45 这个下限是拟合常数，是该提案的弱点，必须从 bond_f1 分布反解而非拍定。已记录，未实施。",
-        "artifact": "metrics/by_metric/cfm_generation_collapse_rootcause.json"
+        "artifact": "metrics/by_metric/cfm_generation_collapse_rootcause.json",
+        "floor_derivation": "NEGATIVE —— 判据无法从现有数据推导，未实施。F∈[0.20,0.60] 全选 ep24（clamp 从不饱和，判据退化为纯 gen_validity）；真正的自由参数是最小轮次守卫，在 3/4 处有断崖。",
+        "floor_derivation_detail": "假设『epoch0 是均值复制退化』被证伪：ep0-3 的平均最近邻相似度仅 0.2060（分子彼此不雷同）。反而是训练后期趋同（0.2060→0.3630，+76%）。",
+        "not_shipped_reason": "守卫取 3 还是 4 决定选出一个『未训练但有效』还是『训练过但半有效』的模型——这是判断不是推导，数据回答不了。按 LEVERAGE_GATE 第二问不实施；编一个下限来让它能上线正是该规则要防的事。",
+        "bonus_signal": "模式崩塌确实存在，但只在多样性轴可见：最近邻相似度 +76%，而 IntDiv1 平坦在 0.89-0.91、decode_ratio/gen_validity 非单调。项目报的两个生成侧指标都看不见它。未加入 panel、未用于任何主张（n 小、单 run 单 seed）。"
       },
       "fragmentation": {
         "measured_today": {
@@ -3816,5 +3848,41 @@
       }
     },
     "summary": "甲类 4 项里只有 2 项是模型真弱（SA、崩塌），另 2 项（碎裂、bond_f1）根因未定位但干预点已知。乙类 4 项里有 3 项是口径问题，可零成本改对。"
+  },
+  "phase3_screen_2026_10_10": {
+    "method": "每项过 LEVERAGE_GATE：可观测量是什么？机制会 engage 吗？能否不重训验证？",
+    "results": [
+      {
+        "id": "BLK-G1",
+        "verdict": "CONDITIONAL — 唯一值得做的一项，但前提未满足",
+        "detail": "标签全在，但 class0 负样本 0 个，且 53:43:3:0.3 极度不均衡。先构造负样本再谈训练"
+      },
+      {
+        "id": "BLK-P1",
+        "verdict": "PASS but low value",
+        "detail": "这是【测量】不是修复，没有机制需要 engage。工具就绪、RERUN_CMD 在盘上，但只支撑 §3 路由表，不支撑任何头条数字；跨金属已降为次要发现"
+      },
+      {
+        "id": "BLK-P2b",
+        "verdict": "BLOCKED — 预算",
+        "detail": "9.1× 实测成本放大。杠杆闸第二问无法预先回答（正是未测项），所以无法证明它会 engage"
+      },
+      {
+        "id": "BLK-L1",
+        "verdict": "PRIOR NEGATIVE",
+        "detail": "本日早前的结论：32-d 特征对 platinai_4cell 的 max |rho| 仅 0.042，held-out R² ≤ 0 —— 特征天花板已确认。加到 50-d 面对的是同一个天花板"
+      },
+      {
+        "id": "BLK-D2",
+        "verdict": "DEFERRED by design",
+        "detail": "已刻意降级；且项目记忆记录 0.70 与 0.86 是两套都正确的约定，不得合并"
+      },
+      {
+        "id": "BLK-C4/C6",
+        "verdict": "DONE today",
+        "detail": "m5 QED 与 m7 均已实测并修正口径"
+      }
+    ],
+    "conclusion": "Phase 3 六项里，五项已因预算、先前负面或刻意降级而不该动。唯一值得推进的是 BLK-G1，而它的前提检查刚发现缺负样本。所以 Phase 3 当前的实际可执行量是【一步】：构造 NO_BOND 负样本 + 决定不均衡处理策略。"
   }
 }

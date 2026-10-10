@@ -109,5 +109,79 @@
     "caveat": "the 0.45 floor is a FITTED constant and is the weak point of this proposal; it must be derived from a bond_f1 distribution, not chosen. Recorded as such, not shipped."
   },
   "PROPOSAL_NOT_YET_SHIPPED": "replace the dead `combined` criterion with one that is neither identically zero nor maximised by an empty generator, and select the checkpoint on it instead of reporting the endpoint. Held pending the leverage gate on the derived floor value.",
-  "supersedes": "the framing 'the loss contains no generation objective, therefore collapse' — that was refuted: the objective term that was tried never fired (gradient ~5e-09), and the selection criterion, not the objective, is what is provably dead."
+  "supersedes": "the framing 'the loss contains no generation objective, therefore collapse' — that was refuted: the objective term that was tried never fired (gradient ~5e-09), and the selection criterion, not the objective, is what is provably dead.",
+  "FLOOR_DERIVATION_ATTEMPTED_2026_10_10": {
+    "verdict": "NEGATIVE — the criterion is not derivable from the available data. NOT SHIPPED.",
+    "step_1_the_bond_f1_floor_is_inert": {
+      "swept_F": [
+        0.2,
+        0.25,
+        0.3,
+        0.35,
+        0.4,
+        0.45,
+        0.5,
+        0.55,
+        0.6
+      ],
+      "selected_epoch_at_every_F": 24,
+      "why": "bond_f1 never falls below 0.1767 in the run, so min(1, bond_f1/F) is almost never saturated across the whole plausible F range; the criterion collapses to plain gen_validity",
+      "implication": "the 0.45 I proposed was doing no work at all"
+    },
+    "step_2_the_real_free_parameter_has_a_cliff": {
+      "parameter": "minimum-epoch guard",
+      "guard_0_to_3": {
+        "selects": "epoch 0-3",
+        "gen_validity": "0.8984-0.9766",
+        "decode_ratio": 1.0,
+        "mean_heavy": 39.4
+      },
+      "guard_4_to_15": {
+        "selects": "epoch 24",
+        "gen_validity": 0.4453,
+        "decode_ratio": 0.9167,
+        "mean_heavy": 39.1
+      },
+      "consequence": "whether the guard is 3 or 4 decides between a qualitatively different pair of models"
+    },
+    "step_3_tested_whether_epoch0_is_a_degenerate_mean_copy_HYPOTHESIS_REFUTED": {
+      "hypothesis": "epoch 0's gen_validity 0.9766 might just be the model emitting something close to the data mean",
+      "test": "mean nearest-neighbour Tanimoto similarity within each epoch band, plus IntDiv1",
+      "measured": {
+        "epochs_0_3": {
+          "n": 488,
+          "unique": 488,
+          "intdiv1": 0.8933,
+          "mean_nn_similarity": 0.206
+        },
+        "epochs_10_14": {
+          "n": 10,
+          "unique": 10,
+          "intdiv1": 0.9082,
+          "mean_nn_similarity": 0.1647
+        },
+        "epochs_20_24": {
+          "n": 100,
+          "unique": 96,
+          "intdiv1": 0.8915,
+          "mean_nn_similarity": 0.3562
+        },
+        "epochs_25_29": {
+          "n": 58,
+          "unique": 56,
+          "intdiv1": 0.8984,
+          "mean_nn_similarity": 0.363
+        }
+      },
+      "verdict": "REFUTED — epoch 0's molecules are mutually dissimilar (NN 0.206), not copies of one another",
+      "incidental": "epochs 10-14 contributed only 10 saved molecules, so any per-band statistic there is unreliable"
+    },
+    "WHY_NO_FLOOR_WAS_CHOSEN": "the proposal reduces to `gen_validity` plus a hand-set guard, and the guard's value chooses between 'untrained but valid' and 'trained but half-valid'. That is a judgement, not a derivation, and the data on disk cannot settle it. Per the LEVERAGE_GATE added 2026-10-10, the second question — will the mechanism engage on a DERIVED value — has no answer, so the change is not implemented. Manufacturing a floor to make it shippable is exactly what that rule exists to stop."
+  },
+  "BONUS_SIGNAL_mode_collapse_is_visible_only_in_the_diversity_axis": {
+    "finding": "mean nearest-neighbour Tanimoto similarity rises 0.2060 (ep0-3) -> 0.3630 (ep25-29), a 76% increase. Outputs converge onto each other as training proceeds, while IntDiv1 stays flat at 0.89-0.91 throughout and decode_ratio/gen_validity are non-monotone.",
+    "why_it_matters": "the two metrics the project reports for generation quality — decode_ratio and gen_validity — do not see this at all. It is the same blind spot the Vendi Score paper identifies from the other side: IntDiv cannot separate real diversity from combinatorial randomness, and here the reverse also holds — a real collapse signal hides in nearest-neighbour similarity while every reported metric is flat.",
+    "status": "recorded as a candidate metric; NOT added to the panel and NOT used in any claim",
+    "honest_caveat": "n per band is small (10-488) and derived from the append-only generated_smiles.csv, which only holds decodes that passed the gate. Not a validated metric; one run, one seed."
+  }
 }
