@@ -46,6 +46,21 @@ model:
   # term the `flow:` block turns on was regularising a placeholder. Note this
   # also changes state_dict keys, so it cannot resume an MLP-path checkpoint.
   use_egnn_velocity: true
+  # Warm-start the EGNN velocity field from the tmQM-pretrained encoder.
+  # MEASURED working on this host: direct construction logs
+  #   "[load_tmQM_pretrained] Loaded tmQM-pretrained encoder:
+  #    47/51 params transferred (0 unexpected, 4 missing)"
+  # against models/tmqm_pretrained/tmqm_pretrained_encoder.pt, which exists.
+  # Documented in TODO/AUDIT_RESEARCH_GRADE.md 3.4 and TODO/risks.md R6.
+  #
+  # WHY THIS WAS MISSING: 9 ablation configs (cfm_fm_control, cfm_fm_ab,
+  # cfm_blk_c5_repair, cfm_full_retrain, cfm_per_innovation_ablation_p1.4,
+  # cfm_real_decode_lift_p1.3, cfm_tmqm_all6, cfm_gen_collapse_fm,
+  # cfm_bond_head_30ep_onecycle) all declare `use_tmqm_init: true`, but
+  # cfm.yaml did NOT. So the production config trained its velocity field from
+  # random init while the ablations warm-started it — an unrecorded confound in
+  # any production-vs-ablation comparison.
+  use_tmqm_init: true
   # F5 (Wf-R5/Round-7): FM objective gating. Without this, the velocity field
   # was trained on a zero target because `use_fm_objective` was missing from
   # the config — cfm_round2/D6 best_decode_ratio=0.402 was the *untrained*
@@ -65,9 +80,31 @@ model:
   connectivity_prior_min_logit: 0.0
 
 train:
+  # n_train DECLARED, not inherited. Until now this key was absent, so the
+  # trainer fell back to DEFAULT_TRAIN_CLOUDS=256 -- 0.77% of the corpus --
+  # while `load_tmqm_clouds` was printing "26715/26715 requested complexes
+  # have a Wiberg BO block" on every run. MEASURED, same val split, same
+  # hidden_dim and lr:
+  #     n_train 256   -> bond_type_macro_f1 0.3770 (cfm_fm_control_2026_10_09)
+  #     n_train 26715 -> bond_type_macro_f1 0.9470 (cfm_r9_fix_v2)
+  # 2.51x, from 104x more complexes (~417x vs 4 optimizer steps per epoch).
+  #
+  # NOT ATTRIBUTED TO ONE VARIABLE: r9 also differs in batch_size and epoch
+  # budget, so this config bundles n_train + batch_size. metrics/by_metric/
+  # cfm_run_census.json carries every run's own recorded config; see
+  # `already_answers` before launching anything else on this axis.
+  #
+  # WALL CLOCK: cfm_r9_fix_v2 ran 29,681 s for 11 epochs (~45 min/epoch) and
+  # early-stopped at patience 3. A 50-epoch run on this cohort is NOT a
+  # ~1 hour job.
+  n_train: 26715
   # argparse defaults: epochs=50, batch_size=64, lr=3.0e-4 (DEFAULT_LR).
   epochs: 50
-  batch_size: 64
+  # 64 -> 16. Every strong run on disk used 16 (n_train 256: 0.322-0.637
+  # typeF1; n_train 26715: 0.421-0.947). The only two runs at 64 are
+  # cfm_frag_control/assemble, which are the two WORST at 0.270/0.176.
+  # Also 4x more optimizer steps per epoch.
+  batch_size: 16
   lr: 3.0e-4
   weight_decay: 0.0
   max_norm: 5.0

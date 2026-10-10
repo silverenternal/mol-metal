@@ -9309,13 +9309,28 @@ def main() -> int:
         # 2026-10-04 — seed-qualified.  The unqualified name was shared by
         # every seed in a sweep (the launcher passes no --ckpt-dir), so the
         # five seeds overwrote one another and only the last survived.
-        ckpt_path = ckpt_dir / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}.pt"
+        ckpt_path = ckpt_dir / (
+            f"cfm_yuelbond_wasserstein_seed{int(args.seed)}{_tag}.pt"
+        )
 
-        def _save_cfm_checkpoint(_epoch: int, _decode_ratio: float) -> None:
+        def _save_cfm_checkpoint(
+            _epoch: int, _decode_ratio: float, _tag: str = ""
+        ) -> None:
             """Write the resume-complete checkpoint for this seed.
 
             Records both the epoch just finished AND the running best, so a
             periodic save cannot roll the best-so-far backwards on resume.
+
+            `_tag` writes to a DISTINCT filename. 2026-10-10: every save path
+            shared one name, so the end-of-run / checkpoint-interval save
+            OVERWROTE the checkpoint the early-stop gate had selected. That
+            defeats the gate entirely — it picks an epoch and the last save
+            then replaces those weights with the final epoch's. MEASURED on
+            both recorded 29-epoch runs: the surviving .pt held `epoch=29`
+            while `best_epoch=0`, i.e. the weights on disk were never the ones
+            the criterion chose. The periodic path now writes `..._last.pt`
+            and the selected checkpoint keeps the unqualified name, which is
+            also the one downstream readers already expect.
             """
             torch.save(
                 {
@@ -9436,7 +9451,9 @@ def main() -> int:
             and _cki > 0
             and ((epoch + 1) % _cki == 0 or (epoch + 1) >= int(args.epochs))
         ):
-            _save_cfm_checkpoint(epoch, decode_ratio)
+            # Distinct file: this save must not overwrite the checkpoint the
+            # early-stop gate selected (see _save_cfm_checkpoint's docstring).
+            _save_cfm_checkpoint(epoch, decode_ratio, _tag="_last")
 
         # Wf-A6 A2 BLOCKER C fix — LR scheduler step (per-epoch).
         # Default OFF (scheduler is None) preserves Wf-124 P2 + Wf-148

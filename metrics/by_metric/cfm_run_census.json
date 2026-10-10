@@ -1,0 +1,410 @@
+{
+  "metric": "cfm_run_census",
+  "purpose": "Every CFM run on disk with its own recorded config and results, so a proposal can be checked against what is already measured before another run is launched.",
+  "source": "each run's own per_epoch_metrics.{csv,json}; nothing re-derived",
+  "n_runs": 15,
+  "runs": [
+    {
+      "run": "cfm_blk_c5_repair_2026_10_09",
+      "n_epochs_run": 30,
+      "config": {
+        "n_train": 256,
+        "n_val": 192,
+        "batch_size": 16,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0001,
+        "epochs": 30
+      },
+      "bond_f1": 0.7362,
+      "bond_type_macro_f1": 0.3963,
+      "bond_exact_type_rate": 0.0,
+      "bond_pr_auc": 0.778,
+      "decode_ratio": 0.2865,
+      "gen_validity_max": 0.8541666666666666,
+      "gen_validity_end": 0.0625,
+      "optimizer_steps_per_epoch": 16,
+      "gate_metric": "combined",
+      "gate_value": 0.0,
+      "best_epoch": 0
+    },
+    {
+      "run": "cfm_bond_head_100ep_2026_10_09",
+      "n_epochs_run": 100,
+      "config": {
+        "n_train": 256,
+        "n_val": 192,
+        "batch_size": 16,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0003,
+        "epochs": 100
+      },
+      "bond_f1": 0.9911,
+      "bond_type_macro_f1": 0.637,
+      "bond_exact_type_rate": 0.1302,
+      "bond_pr_auc": 0.9974,
+      "decode_ratio": 0.4323,
+      "gen_validity_max": null,
+      "gen_validity_end": null,
+      "optimizer_steps_per_epoch": 16,
+      "gate_metric": "bond_exact_type",
+      "gate_value": 0.15104166666666666,
+      "best_epoch": 93
+    },
+    {
+      "run": "cfm_bond_head_20ep_2026_10_09",
+      "n_epochs_run": 19,
+      "config": {
+        "n_train": 256,
+        "n_val": 192,
+        "batch_size": 16,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0003,
+        "epochs": 20
+      },
+      "bond_f1": 0.8033,
+      "bond_type_macro_f1": 0.3236,
+      "bond_exact_type_rate": 0.0104,
+      "bond_pr_auc": 0.942,
+      "decode_ratio": 0.1458,
+      "gen_validity_max": null,
+      "gen_validity_end": null,
+      "optimizer_steps_per_epoch": 16,
+      "gate_metric": "bond_exact_type",
+      "gate_value": 0.010416666666666666,
+      "best_epoch": 15
+    },
+    {
+      "run": "cfm_bond_head_30ep_onecycle_2026_10_09",
+      "n_epochs_run": 30,
+      "config": {
+        "n_train": 256,
+        "n_val": 192,
+        "batch_size": 16,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0001,
+        "epochs": 30
+      },
+      "bond_f1": 0.6593,
+      "bond_type_macro_f1": 0.4163,
+      "bond_exact_type_rate": 0.0,
+      "bond_pr_auc": 0.7053,
+      "decode_ratio": 0.1875,
+      "gen_validity_max": 1.0,
+      "gen_validity_end": 0.0,
+      "optimizer_steps_per_epoch": 16,
+      "gate_metric": "combined",
+      "gate_value": 0.0,
+      "best_epoch": 0
+    },
+    {
+      "run": "cfm_fm_ab_2026_10_09",
+      "n_epochs_run": 30,
+      "config": {
+        "n_train": 256,
+        "n_val": 192,
+        "batch_size": 16,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0001,
+        "epochs": 30
+      },
+      "bond_f1": 0.6703,
+      "bond_type_macro_f1": 0.3219,
+      "bond_exact_type_rate": 0.0,
+      "bond_pr_auc": 0.7096,
+      "decode_ratio": 0.5833,
+      "gen_validity_max": 1.0,
+      "gen_validity_end": 0.0625,
+      "optimizer_steps_per_epoch": 16,
+      "gate_metric": "combined",
+      "gate_value": 0.0,
+      "best_epoch": 0
+    },
+    {
+      "run": "cfm_fm_control_2026_10_09",
+      "n_epochs_run": 30,
+      "config": {
+        "n_train": 256,
+        "n_val": 192,
+        "batch_size": 16,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0001,
+        "epochs": 30
+      },
+      "bond_f1": 0.7836,
+      "bond_type_macro_f1": 0.377,
+      "bond_exact_type_rate": 0.0,
+      "bond_pr_auc": 0.8459,
+      "decode_ratio": 0.25,
+      "gen_validity_max": 1.0,
+      "gen_validity_end": 0.0,
+      "optimizer_steps_per_epoch": 16,
+      "gate_metric": "combined",
+      "gate_value": 0.0,
+      "best_epoch": 0
+    },
+    {
+      "run": "cfm_frag_assemble",
+      "n_epochs_run": 30,
+      "config": {
+        "n_train": 256,
+        "n_val": 192,
+        "batch_size": 64,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0003,
+        "epochs": 30
+      },
+      "bond_f1": 0.259,
+      "bond_type_macro_f1": 0.1756,
+      "bond_exact_type_rate": 0.0,
+      "bond_pr_auc": 0.6043,
+      "decode_ratio": 0.1302,
+      "gen_validity_max": 0.9765625,
+      "gen_validity_end": 0.0390625,
+      "optimizer_steps_per_epoch": 4,
+      "gate_metric": "combined",
+      "gate_value": 0.0,
+      "best_epoch": 0
+    },
+    {
+      "run": "cfm_frag_control",
+      "n_epochs_run": 30,
+      "config": {
+        "n_train": 256,
+        "n_val": 192,
+        "batch_size": 64,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0003,
+        "epochs": 30
+      },
+      "bond_f1": 0.5049,
+      "bond_type_macro_f1": 0.2703,
+      "bond_exact_type_rate": 0.0,
+      "bond_pr_auc": 0.6198,
+      "decode_ratio": 0.0885,
+      "gen_validity_max": 0.9765625,
+      "gen_validity_end": 0.046875,
+      "optimizer_steps_per_epoch": 4,
+      "gate_metric": "combined",
+      "gate_value": 0.0,
+      "best_epoch": 0
+    },
+    {
+      "run": "cfm_r11_eval256",
+      "n_epochs_run": 1,
+      "config": {
+        "n_train": 26715,
+        "n_val": 6714,
+        "batch_size": 16,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0003,
+        "epochs": 20
+      },
+      "bond_f1": 0.9964,
+      "bond_type_macro_f1": 0.9456,
+      "bond_exact_type_rate": 0.4374,
+      "bond_pr_auc": 0.9999,
+      "decode_ratio": 0.3725,
+      "gen_validity_max": 0.69140625,
+      "gen_validity_end": 0.69140625,
+      "optimizer_steps_per_epoch": 1670,
+      "gate_metric": "combined",
+      "gate_value": null,
+      "best_epoch": 19
+    },
+    {
+      "run": "cfm_r17_eval512",
+      "n_epochs_run": 1,
+      "config": {
+        "n_train": 26715,
+        "n_val": 6714,
+        "batch_size": 16,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0003,
+        "epochs": 20
+      },
+      "bond_f1": 0.9913,
+      "bond_type_macro_f1": 0.7795,
+      "bond_exact_type_rate": 0.0652,
+      "bond_pr_auc": 0.9994,
+      "decode_ratio": 0.273,
+      "gen_validity_max": 0.0849609375,
+      "gen_validity_end": 0.0849609375,
+      "optimizer_steps_per_epoch": 1670,
+      "gate_metric": "combined",
+      "gate_value": null,
+      "best_epoch": 0
+    },
+    {
+      "run": "cfm_r8_cosine_40ep",
+      "n_epochs_run": 9,
+      "config": {
+        "n_train": 26715,
+        "n_val": 6714,
+        "batch_size": 16,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0003,
+        "epochs": 40
+      },
+      "bond_f1": 0.7177,
+      "bond_type_macro_f1": 0.4206,
+      "bond_exact_type_rate": 0.0,
+      "bond_pr_auc": 0.7714,
+      "decode_ratio": 0.1141,
+      "gen_validity_max": 0.11458333333333333,
+      "gen_validity_end": 0.11458333333333333,
+      "optimizer_steps_per_epoch": 1670,
+      "gate_metric": "combined",
+      "gate_value": 0.0,
+      "best_epoch": 0
+    },
+    {
+      "run": "cfm_r9_fix_v2",
+      "n_epochs_run": 11,
+      "config": {
+        "n_train": 26715,
+        "n_val": 6714,
+        "batch_size": 16,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0003,
+        "epochs": 40
+      },
+      "bond_f1": 0.9959,
+      "bond_type_macro_f1": 0.947,
+      "bond_exact_type_rate": 0.3849,
+      "bond_pr_auc": 0.9999,
+      "decode_ratio": 0.3856,
+      "gen_validity_max": 0.7239583333333334,
+      "gen_validity_end": 0.5677083333333334,
+      "optimizer_steps_per_epoch": 1670,
+      "gate_metric": "combined",
+      "gate_value": 0.22050860763578592,
+      "best_epoch": 7
+    },
+    {
+      "run": "cfm_tmqm_all6_retrain",
+      "n_epochs_run": 11,
+      "config": {
+        "n_train": 26715,
+        "n_val": 6714,
+        "batch_size": 16,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0003,
+        "epochs": 20
+      },
+      "bond_f1": null,
+      "bond_type_macro_f1": null,
+      "bond_exact_type_rate": null,
+      "bond_pr_auc": null,
+      "decode_ratio": 0.4181,
+      "gen_validity_max": 0.75,
+      "gen_validity_end": 0.75,
+      "optimizer_steps_per_epoch": 1670,
+      "gate_metric": "decode_ratio",
+      "gate_value": 0.5308310991957105,
+      "best_epoch": 0
+    },
+    {
+      "run": "r17_smoke_50step",
+      "n_epochs_run": 1,
+      "config": {
+        "n_train": 32,
+        "n_val": 16,
+        "batch_size": 8,
+        "hidden_dim": 128,
+        "n_layers": 3,
+        "lr": 0.0003,
+        "epochs": 1
+      },
+      "bond_f1": 0.4248,
+      "bond_type_macro_f1": 0.0776,
+      "bond_exact_type_rate": 0.0,
+      "bond_pr_auc": 0.4005,
+      "decode_ratio": 0.0,
+      "gen_validity_max": 0.020833333333333332,
+      "gen_validity_end": 0.020833333333333332,
+      "optimizer_steps_per_epoch": 4,
+      "gate_metric": "combined",
+      "gate_value": null,
+      "best_epoch": 0
+    },
+    {
+      "run": "wf124_p2_cfm_full_smoke",
+      "n_epochs_run": 3,
+      "config": {
+        "n_train": 64,
+        "n_val": 32,
+        "batch_size": 32,
+        "hidden_dim": 32,
+        "n_layers": 2,
+        "lr": 0.0003,
+        "epochs": 3
+      },
+      "bond_f1": null,
+      "bond_type_macro_f1": null,
+      "bond_exact_type_rate": null,
+      "bond_pr_auc": null,
+      "decode_ratio": 1.0,
+      "gen_validity_max": null,
+      "gen_validity_end": null,
+      "optimizer_steps_per_epoch": 2,
+      "gate_metric": null,
+      "gate_value": null,
+      "best_epoch": 0
+    }
+  ],
+  "already_answers": {
+    "does the bond head keep improving with more epochs at n_train=256?": [
+      "cfm_bond_head_100ep_2026_10_09 (typeF1 0.6370 @100ep vs 0.3770 @30ep, same n_train=256)",
+      "cfm_bond_head_20ep_2026_10_09 (typeF1 0.3236 @19ep)"
+    ],
+    "does training on the FULL tmQM corpus beat the 256-cloud cohort?": [
+      "cfm_r9_fix_v2 (n_train=26715 -> typeF1 0.9470, exact_type 0.3849)",
+      "cfm_r11_eval256 (n_train=26715 -> typeF1 0.9456, exact_type 0.4374)",
+      "cfm_r17_eval512 (n_train=26715 -> typeF1 0.7795, exact_type 0.0652; NOTE worse than r9)"
+    ],
+    "does flow matching help or hurt, at fixed n_train=256?": [
+      "cfm_fm_ab_2026_10_09 (fm=true: decode 0.5833, gv 0.0625)",
+      "cfm_fm_control_2026_10_09 (fm=false: decode 0.2500, gv 0.0000)"
+    ],
+    "does the assemble/connectivity term help or hurt?": [
+      "cfm_frag_assemble (typeF1 0.1756) vs cfm_frag_control (typeF1 0.2703)",
+      "-> NULL on bond type; both collapse gv to ~0.04"
+    ],
+    "is bond_exact_type_rate ALWAYS zero (i.e. is `combined` always constant)?": [
+      "NO. cfm_r9_fix_v2 = 0.3849, cfm_r11_eval256 = 0.4374, cfm_bond_head_100ep = 0.1302. It is zero in the n_train=256 runs (cfm_fm_*, cfm_blk_c5_repair, cfm_frag_*) but NOT in the full-corpus runs.",
+      "So the constant-0 gate is a property of the SMALL cohort, not a universal defect. cfm.yaml declares no early_stop_metric, so it inherits `combined` and inherits this."
+    ],
+    "does use_tmqm_init actually load pretrained weights end-to-end?": [
+      "2026-10-10 live run: '[load_tmQM_pretrained] Loaded tmQM-pretrained encoder: 47/51 params transferred' inside a full CFM trainer run.",
+      "ckpt.yaml (shipped) does NOT declare it; 9 ablation configs do."
+    ],
+    "does the epsilon-constraint gate wire correctly?": [
+      "2026-10-10 live run logged 'criterion=bond_type_f1_eps value=0.0613 (gen_validity 0.9753 >= epsilon 0.8500; bond_type_macro_f1 0.0613 scored +0.0613)'.",
+      "NOT answered: which epoch it ultimately selects (both runs killed at ep5/ep2 of 30). cfm_r9_fix_v2 is the closest existing evidence (best @ ep7 under `combined`, gate_value 0.2205)."
+    ],
+    "yuelbond vs dmpnn bond head (isolated)?": [
+      "2026-10-10 head-only A/B, same val split: yuelbond typeF1 0.7653 / exact 0.0573 vs dmpnn typeF1 0.6593 / exact 0.0169 at n_train=256; same ordering at 1024. yuelbond wins on the type axis.",
+      "NOT answered: inside joint CFM training."
+    ]
+  },
+  "not_counted": "Runs killed before their first per_epoch_metrics.csv write leave no row. Two exist from 2026-10-10 (wf_cfm_eps_gate_2026_10_10 and wf_cfm_eps_gate_tmqminit_2026_10_10, stopped at ep5/ep2 of 30); their master.log holds the only record of the epsilon-gate note and the tmQM weight load.",
+  "headline_gap": {
+    "best_on_disk_typeF1": "cfm_r9_fix_v2 0.9470 (n_train=26715)",
+    "canonical_config_typeF1": "cfm_fm_control_2026_10_09 0.3770 (n_train=256)",
+    "ratio": 2.51,
+    "cause_candidate": "n_train 26715 vs 256 = 104x more complexes; with batch 16 vs 64 that is ~417x vs 4 optimizer steps per epoch. NOT yet attributed to a single variable \u2014 r9 also differs in batch size, lr and epoch budget."
+  }
+}
