@@ -1606,7 +1606,7 @@
         "shipped": [
           "configs/cfm_entropy_reg_012_2026_10_11.yaml —— 单变量臂：entropy_reg_weight=0.12，assemble_loss_weight 故意缺席(=0.0)。WFA2_CONFIG_STRICT=1 下 round-trip 通过，按类型校验（float 0.12 / float 0.0）。",
           "molmetal/scripts/train_cfm_yuelbond_wasserstein.py —— 新增模块常量 ENTROPY_REG_MEASURED_FLOOR = 0.12，及 main() 内的亚阈值 WARNING（0.0 < w < 0.12 时打印，含实测占比、实测区间、指向新 config）。是告警不是改行为，不 clamp 不改权重。",
-          "molmetal/tests/test_wf_blk_c14_entropy_weight_floor.py —— 6 个测试。已做 red 验证：删掉 guard → 2 failed；把 floor 改成 0.001 → 3 failed；两次均恢复后 6 passed。"
+          "molmetal/tests/test_wf_blk_c14_entropy_weight_floor.py —— 7 个测试（pytest --collect-only 实测）。已做 red 验证：删掉 guard → 2 failed；把 floor 改成 0.001 → 4 failed；把 argparse default 改回 0.01 → 1 failed；三次均恢复后全绿。计数于 2026-10-11 更正：本条此前写'6 个测试 / floor→3 failed'，与盘上的 7 个测试及重跑结果 4 failed 均不符。"
         ],
         "still_open": "0.12 没有任何 run。configs/cfm_entropy_reg_012_2026_10_11.yaml 尚未启动，因此'0.12 能改善任何指标'是 PROJECTED，NOT MEASURED。§5.7 smoke gate（50 步 CPU，断言 raw entropy 离开 1.2-1.43 平坦带）未跑。本轮 CPU-only，未启 GPU（两轮 CFM seed run 占用双卡）。"
       }

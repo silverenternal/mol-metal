@@ -34,6 +34,66 @@
 # HONEST STATUS: the WEIGHTS below are unvalidated. The gradient magnitudes
 # and directions are measured; the choice of 1.0 and 0.01 is not. Treat a run
 # from this file as a first measurement, not a tuned configuration.
+#
+# RETRACTION (2026-10-11) — THIS RUN IS NOT A RESULT. Read this before quoting
+# its gate_value.
+#
+# The run under this config reached gate bond_type_f1 = 0.93049 (MEASURED,
+# molmetal/reports/cfm_objective_terms_2026_10_11/per_epoch_metrics.json
+# `gate_value`, best epoch 5) against the production baseline's 0.91941
+# (MEASURED, molmetal/reports/cfm_fullcorpus_2026_10_10/per_epoch_metrics.json,
+# best epoch 10). That +0.011 gap MUST NOT be read as this arm beating the
+# baseline, because NEITHER TERM BELOW IS FUNCTIONAL ON THIS RUN — so the two
+# runs differ in no live term at all, and the gap is run-to-run variation:
+#
+#   assemble_loss_weight 1.0 — MEASURED INERT.
+#     molmetal/reports/cfm_objective_terms_2026_10_11/events.jsonl, every epoch
+#     0..8: assemble_loss = 0.0 with assemble_enabled = 1.0.
+#     Mechanism: the hinge is (escape_time - hinge_tau).clamp(min=0)
+#     (molmetal/molmetal_lam/lam_chem/assemble_connectivity.py:429); the
+#     observed escape_time (assemble_stay_mean) runs 0.1456..0.1747 and never
+#     approaches hinge_tau = 0.30, so the clamp floors the term at exactly
+#     zero. `assemble_enabled = 1.0` beside `assemble_loss = 0.0` is exactly
+#     the "knob reads as ON while doing nothing" shape of BLK-C5/BLK-C14.
+#
+#   entropy_reg_weight 0.01 — MEASURED UNOBSERVABLE.
+#     BLK-C14 (todo.json /blockers/19) measured a 42-step CPU probe: raw
+#     H(softmax(bond logits)) ranged 1.2-1.43 with NO trend, and the weight
+#     required for parity with the bond CE term is 0.12-0.15.
+#     Re-derived independently 2026-10-11 against this run's own MEASURED
+#     epoch-5 train_loss of 9.28459 (per_epoch_metrics.csv):
+#         |entropy_term| = 0.01 * H = 0.010..0.018  =  0.11%..0.19% of the loss
+#         at 0.12 it would be                        1.3%..2.3%
+#     So the term CANNOT be what moved 0.91941 -> 0.93049. Note the
+#     arithmetic explicitly, because the tempting phrasing here is wrong: the
+#     term (0.010..0.018) is 1.08x..1.62x the measured gate gap
+#     (0.93049 - 0.91941 = 0.01108), i.e. the SAME order of magnitude and
+#     numerically LARGER. "Two orders of magnitude below" is false. What
+#     makes the term non-causal is not its size relative to the gap but that
+#     its only functional difference from baseline is a knob measured inert --
+#     the size comparison alone would not decide it.
+#
+# The honest statement of this run: it is an effectively-unregularised seed-0
+# run whose gate value landed 0.011 above another effectively-unregularised
+# seed-0 run. Attributing that gap to either knob below would be inventing a
+# mechanism. Anyone citing 0.93049 as "the objective-terms arm" is quoting a
+# number whose only support is this sentence.
+#
+# The single-variable follow-up that DOES isolate one live term is
+# configs/cfm_entropy_reg_012_2026_10_11.yaml (entropy 0.12, assemble
+# absent). Its guard test is
+# molmetal/tests/test_wf_blk_c14_entropy_weight_floor.py, and the sub-threshold
+# warning it relies on lives in train_cfm_yuelbond_wasserstein.py::main.
+#
+#   BUT 0.12 IS MORE AGGRESSIVE THAN "1.3%..2.3% OF LOSS" SUGGESTS.
+#     The BLK-C14 band 0.12-0.15 was derived for parity with bond_ce AT PROBE
+#     TIME (epoch 0, bond_ce 0.31585 -> 0.46..0.68x, genuinely parity). At this
+#     run's OWN operating point (epoch 5, bond_ce 0.03936) the same 0.12 weight
+#     gives an entropy term of 0.1440..0.1716 = 3.66x..4.36x the bond CE.
+#     The guard test also reports against train_loss, a THIRD denominator.
+#     So "0.12" is not a mild correction; it is a stronger regulariser than the
+#     probe-time derivation implies, and whether it helps is UNMEASUREED -- no
+#     run at 0.12 exists.
 compute:
   device: auto
   tf32: false
