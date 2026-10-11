@@ -1,0 +1,147 @@
+# Paper scope A / B and the shared-asset manifest
+
+Decided 2026-10-11. Two papers, one repository for now; the repository split is
+deferred until Paper A is submitted. Nothing here touches `paper/` (AGENTS.md
+§5.3, TODO-84).
+
+## Why two papers rather than one
+
+The two lines carry evidence of very different strength, and a single paper
+would either hide the strong half or be dragged down by the weak half.
+
+| | Paper A — predictive | Paper B — generative |
+|---|---|---|
+| strongest number | cross-metal collapse, see below | `bond_type_f1` 0.9194 vs OpenBabel 0.505 |
+| honest ceiling of the weak half | — | `gen_validity` 0.23–0.38 |
+| reviewer pool | cheminformatics / QSAR | generative modelling |
+| readiness | submit-ready once §"open contradictions" is closed | **not ready** |
+
+## PAPER A — scope
+
+### Claim 1 (headline). Metal-specific activity does not transfer across metals.
+
+MEASURED, `metrics/by_metric/metal_activity_transfer.json` and
+`metal_activity_transfer_seed_stability.json`:
+
+| metal | within-metal (5-fold) | cross-metal LOMO (3 seeds) |
+|---|---|---|
+| Ru | 0.8363 | 0.6174 |
+| Ir | 0.8295 | 0.5341 |
+| Rh | 0.7381 | 0.4919 |
+| Os | 0.4900 | 0.5195 |
+| Re | 0.9278 | ~0.46 |
+
+Os and Re cross-metal AUC sit **below chance**. This axis has no organic
+analogue — ligand-level activity models transfer across organic scaffolds, but
+here the metal itself is the confound. That is the novelty.
+
+### Claim 2. tmQM pre-training transfers to an activity head.
+
+MEASURED, `metrics/by_metric/tmqm_pretrain_init_ab_ru.json`, 5 seeds × 30
+epochs, paired, deterministic scaffold split, `init:` the only difference:
+
+```
+tmqm   0.8189 ± 0.0052
+random 0.8007 ± 0.0146
+paired delta +0.0181   95% CI [+0.0035, +0.0328]   t(4)=3.431, 5/5 seeds positive
+```
+
+Secondary: seed variance falls ~2.8×. Transfer is verified, not assumed — both
+arms print `loaded 12 backbone tensors from tmQM`.
+
+### Claim 3. Honest-negative against the published protocol.
+
+MEASURED, `metrics/by_metric/metalcytotox_ru_auc.json::paper_protocol_measurement`:
+under the paper's own **DOI-split 10-fold CV** on the Krasnov-2026 cohort we
+score **0.7717 ± 0.0380** against their LightGBM **0.810 ± 0.024** — 0.0383
+**below**, 3/10 folds at or above 0.81, different model class. This is reported,
+not buried.
+
+### Supporting
+
+- `m21_nci60_9cell` 0.8007 ± 0.0160, target 0.70 — **PASS**
+  (`metrics/by_metric/nci60_precious_9cell_auc.json`)
+- Ir within-metal exceeds Krasnov 0.73 under **both** tie rules and all 5 seeds
+  (conservative min 0.8237) — **safe to state**
+- tmQM bond-perception reference table: 360 complexes, 6 metals, ground truth
+  from tmQM `.BO` Wiberg shards; the file records that **no published number
+  exists for this task on any transition-metal corpus**
+  (`metrics/by_metric/tmqm_bond_perception.json`)
+
+## PAPER A — open contradictions that must be closed before submission
+
+1. **`0.8363` is recorded twice with opposite verdicts.**
+   `metal_activity_transfer.json::within_metal_cv` records Ru 0.8363 / Ir 0.8295
+   as MEASURED and its own tie-sensitivity file calls the Ir claim robust and
+   the **Ru claim NOT robust** (conservative rule: 0.7880–0.8082, at or below
+   Krasnov 0.81). Meanwhile `todo.json::withdrawn_claims_2026_10_10` withdraws
+   the same numbers entirely as a random-split artefact. **Reconcile before
+   writing.** The cross-metal collapse (Claim 1) is unaffected — it uses the
+   cross column, not the within column.
+
+2. **Tie rule is documented backwards.** `collapse_duplicates` uses
+   `int(v.sum()*2 >= len(v))`, which sends ties to **ACTIVE**; four docstrings
+   and configs state "ties → inactive". Both sides use the same rule so the
+   comparison is not corrupted, but the documentation is false and a reviewer
+   reading the code will find it.
+
+3. **`cfm_decode_real.json` reports an aggregate with no data.**
+   `n_nci60_loaded: 0`, `n_drugood_loaded: 0`, both paths null — the run loaded
+   nothing and still wrote a number.
+
+4. **`dmpnn_platinai_4cell_50ep` is routed at by nothing useful.** Its own
+   recorded test_aucs are 0.4949 / 0.4799 / 0.5064 / 0.5765, and fed the real
+   cohort its probabilities do not track the base rate at all (A2780 is 72.9%
+   active, the model scores it 0.467). The strong PlatinAI model
+   (`train_platinai_4cell.py`, 0.7050) persists **no weights** — `torch.save`
+   appears zero times in that file.
+
+## PAPER B — scope, and why it is not ready
+
+Scope: flow-matching generation of metal complexes with an explicit bond-order
+head; `bond_type_f1` 0.9194 against OpenBabel 0.505 on real tmQM Wiberg truth,
+192 held-out complexes.
+
+**Not ready, and the reason is measured, not assumed.** Decode-side quality is
+`gen_validity` 0.23–0.38 and fragmentation is the binding constraint. Every
+cheap lever has been tested and failed:
+
+- valence budget is a **local optimum** — raising caps, lowering bond cost,
+  withholding budget for the bridge, and removing the budget entirely are each
+  worse on **both** connectivity and sanitisation
+  (`metrics/by_metric/cfm_valence_budget_variant_ab.json`)
+- train-time geometry distortion is worse on fragmentation at **8/8** matched
+  epochs (neutral on `decode_ratio` and `gen_validity`, 4/8 each)
+- `entropy_reg_weight` 0.01 is a **functional no-op** (todo.json BLK-C14)
+- `assemble_loss` is exactly **0.0** at every epoch despite
+  `assemble_enabled=1.0` — it is inert by construction, not by wiring
+
+So the valence-budget work is a **design argument**, not a performance result,
+and must not be presented as one.
+
+## Shared-asset manifest
+
+Two papers, two repositories later. These are the files that must not be
+duplicated into both, because they are the same object appearing in both
+stories:
+
+| asset | path | used by |
+|---|---|---|
+| tmQM pretrained encoder | `models/tmqm_pretrained/tmqm_pretrained_encoder.pt` | **A and B** |
+| tmQM cloud loader | `molmetal/data/tmqm_clouds.py` (7/27 CFM scripts import it) | **A and B** |
+| D-MPNN backbone | `molmetal/baselines/dmpnn.py` | A (heads) and B (none directly) |
+| multitask model | `molmetal/scripts/train_dmpnn_multitask_wasserstein.py` | A |
+| featuriser + collate | `molmetal.baselines.dmpnn::{featurize_smiles_list, collate_graphs}` | A |
+| inference scorer | `molmetal/scripts/de_novo_loop.py::{load_pic50_scorer, score_pic50}` | A |
+| metal valence caps | `TMQM_MEASURED_METAL_CAPS` in `molmetal/molmetal_lam/lam_chem/decoder_rework.py` | **A and B** |
+| tmQM bond-perception benchmark | `molmetal/scripts/bench_tmqm_bond_perception.py` | **A and B** |
+
+## Sequencing
+
+1. Close the four open contradictions in Paper A.
+2. **Paper A cites Paper B's encoder explicitly.** Pretraining is shared; saying
+   so up front is strictly better than a reviewer noticing the same checkpoint
+   in two papers.
+3. Submit Paper A.
+4. Only then extract Paper B into a second repository depending on a shared
+   core package. Splitting before A is submitted would hide the shared origin.
