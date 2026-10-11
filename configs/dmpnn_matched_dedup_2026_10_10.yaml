@@ -88,8 +88,11 @@ train:
 # run keeps its exact row count and meaning.
 protocol:
   dedup_ligands: true        # one row per unique ligand within a metal,
-                             # label = majority, ties -> inactive (identical to
-                             # metal_activity_transfer_probe.collapse_duplicates)
+                             # label = majority. The predicate is sum*2 >= n,
+                             # so an exact tie resolves to ACTIVE - this comment
+                             # used to say "ties -> inactive", which was wrong.
+                             # Corrected 2026-10-11; identical to
+                             # metal_activity_transfer_probe.collapse_duplicates.
   drop_leaked_ligands: true  # a ligand appearing in the held-out metal is
                              # dropped from the LOMO train pool (identical to
                              # the probe's leakage_rule)

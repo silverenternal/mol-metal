@@ -17,7 +17,7 @@
   "aggregate_n_total": 818,
   "value": 0.9938875305623472,
   "gap_vs_synthetic": -0.006112469437652757,
-  "wall_time_s": 113.50991606712341,
+  "wall_time_s": 108.33977127075195,
   "device": "cpu",
   "pocket_id": "1h36",
   "jitter": 0.05,
@@ -32,12 +32,18 @@
       "n_samples": 818,
       "n_ok": 813,
       "decode_ratio": 0.9938875305623472,
-      "wall_time_s": 3.4836745262145996,
+      "wall_time_s": 2.214215040206909,
       "device": "cpu",
       "closure_bounded": true,
       "pocket_id": "1h36"
     }
   ],
   "honest_framing": "PARTIAL: real 0.9939 < synthetic 1.000 (expected \u2014 synthetic is upper bound; real < synthetic is the honest framing per party-twenty-spirit \u00a73.5)",
-  "notes": "Synthetic baseline = 1.000 (Wf-124 ship on Pt-click clouds). Real CFM may be lower; this measurement is the honest gap."
+  "notes": "Synthetic baseline = 1.000 (Wf-124 ship on Pt-click clouds). Real CFM may be lower; this measurement is the honest gap.",
+  "coverage_note": {
+    "what_actually_ran": "Only the PlatinAI-Pt arm. n_sampled 818 drawn from platinai_5k_pt (n_total_platinai 5000, n_pt_subset 874). The NCI-60 and DrugOOD arms did NOT run: n_nci60_loaded 0, n_drugood_loaded 0, both paths null. The scope string says 'on real ligands' without that qualification, which overstates the coverage.",
+    "what_the_value_counts": "aggregate_n_ok 813 of 818 = 0.9939 is the fraction that RDKit could parse and re-serialise. It is NOT a chemistry metric: no valence, aromaticity, ring or radical check runs here. Same defect as m14 / BLK-C3.",
+    "not_a_generation_result": "This is decode-from-seeded-geometry (pocket_id 1h36, jitter 0.05, device cpu), not free generation from a noise prior. gen_validity from the free-running CFM runs is 0.23-0.38, roughly 3x lower than the 0.9939 recorded here.",
+    "status_qualifier": "MEASURED_PASS stands for 'the decode path does not crash and RDKit accepts the output', and nothing stronger. It must not be cited as evidence of generation quality."
+  }
 }

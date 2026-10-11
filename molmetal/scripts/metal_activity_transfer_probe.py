@@ -35,8 +35,16 @@ apparent transfer inflates. Measured effect of removing duplicates:
                                                 appear in other metals)
     Re fold AUC      0.5701       ->  0.4179   (below chance)
 
-Duplicates are collapsed by majority label; a tie resolves to inactive,
-which is the conservative choice for an activity claim.
+Duplicates are collapsed by majority label. The predicate is `sum * 2 >= n`,
+so an exact tie resolves to ACTIVE -- the ANTI-conservative direction for an
+activity claim. An earlier version of this docstring said "a tie resolves to
+inactive, which is the conservative choice"; that was wrong and is corrected
+here 2026-10-11. The effect is real, not cosmetic: 80 ligand groups tie on
+MetalCytoToxDB and all 80 are labelled active, and re-running within-metal
+under the conservative rule moves Ru 0.8363 -> 0.7929, below Krasnov's
+published 0.81, while Ir is unchanged. See
+`metrics/by_metric/metal_activity_transfer_tie_sensitivity.json` and the
+`collapse_duplicates` docstring below.
 
 Honest-negative carried by this script
 --------------------------------------

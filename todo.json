@@ -40,7 +40,7 @@
       "rule": "honest-negatives are never deleted from this file; they carry the measurement history the next attempt needs"
     },
     "withdrawn_claims_2026_10_10": {
-      "metal_within_beats_literature": "Ru 0.8363 / Ir 0.8295 vs Krasnov 0.81 / 0.73 —— WITHDRAWN（随机切分假象，DOI-grouped 下为 0.6350 / 0.6065）",
+      "metal_within_beats_literature": "Ru 0.8363 / Ir 0.8295 vs Krasnov 0.81 / 0.73 -- WITHDRAWN, but the previous justification was WRONG. It cited 'DOI-grouped 0.6350 / 0.6065'; neither number exists anywhere on disk (the only 0.6351 in the repo is an Os per-seed value in metal_lomo_auc.json, a different experiment). The real reasons are two, both on disk: (1) COHORT MISMATCH -- within_metal_cv is 5-fold CV on the LOMO dedup cohort (Ru n_unique=1255, pos_rate 0.2574) while Krasnov's 0.81/0.73 come from a cancer-only cohort of 15,799 rows / 4,793 complexes / 591 cell lines; comparing them is invalid regardless of value. (2) TIE SENSITIVITY -- under the conservative collapse rule Ru spans 0.7880-0.8082, at or below Krasnov 0.81 (metal_activity_transfer_tie_sensitivity.json). Ir exceeds 0.73 under BOTH rules and all 5 seeds, so the claim is defensible for Ir ONLY. Like-for-like on THEIR protocol we score 0.7717 +/- 0.0380 vs their LightGBM 0.810 +/- 0.024, i.e. 0.0383 BELOW (metalcytotox_ru_auc.json::paper_protocol_measurement). See metal_activity_transfer.json::comparability_note.",
       "transfer_penalty_0.22_0.48": "Ru -0.2184 / Ir -0.3019 —— DOWNGRADED to DERIVED 0.0171 / 0.0789，待单次复跑",
       "xgb_beats_dmpnn": "0.5996 vs 0.5575 —— VOID（跨 cohort 且跨估计量）；同口径实为打平 Δ=-0.0142"
     },
@@ -1563,13 +1563,53 @@
         "BLK-C5",
         "BLK-C12"
       ],
-      "status": "PARTIALLY_RESOLVED — 误导性默认 0.01 已改成 0.0",
+      "status": "PARTIALLY_RESOLVED — 误导性默认 0.01 已改成 0.0；2026-10-11 补上 0.12 的可用 config + 亚阈值告警，但 0.12 本身尚未实跑",
       "status_basis_2026_10_10": {
         "basis": "entropy_reg_weight 的函数默认值现在是 0.0（:2156），且 :2404 有 >0 才计算的守卫。原 blocker 说的是 '0.01 是功能性 no-op' —— 那个误导性默认已不存在。但'实测需要 0.12-0.15'这条是否已写进 config，本轮未核实。",
         "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2156,2404",
         "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
       },
-      "fixes_shipped_2026_10_10": null
+      "fixes_shipped_2026_10_10": null,
+      "reverification_2026_10_11": {
+        "verdict": "BLK-C14 的 0.12-0.15 结论复现成立；但原 default 0.01 早已不是 default，故本条不是新修复而是补齐记录 + 撤回一个误读。",
+        "entropy_claim_reverified": {
+          "method": "独立复算，不直接采信 blocker 里的数字。用该 run 自己的 MEASURED epoch-5 train_loss 做分母。",
+          "raw_H_band_used": "1.2-1.8（BLK-C14 42-step 探针读到 1.2-1.43，告警里向上取整到 1.8）",
+          "live_train_loss": 9.28459,
+          "live_train_loss_source": "molmetal/reports/cfm_objective_terms_2026_10_11/per_epoch_metrics.csv epoch 5",
+          "term_at_0.01": "0.010-0.018 = live loss 的 0.11%-0.19%（<1%，与 BLK-C14 一致）",
+          "term_at_0.12": "0.144-0.216 = live loss 的 1.3%-2.3%",
+          "conclusion": "CONFIRMED —— 0.01 确实低于可观测阈值。"
+        },
+        "assemble_claim_reverified": {
+          "verdict": "CONFIRMED INERT —— 比 BLK-C14 描述的更严重：不是'小'，是恒等于 0.0。",
+          "evidence": "molmetal/reports/cfm_objective_terms_2026_10_11/events.jsonl，epoch 0..8 每一行 assemble_loss=0.0 且 assemble_enabled=1.0",
+          "mechanism": "hinge 为 (escape_time - hinge_tau).clamp(min=0)，见 molmetal/molmetal_lam/lam_chem/assemble_connectivity.py:429；实测 assemble_stay_mean 0.1456..0.1747 从不接近 hinge_tau=0.30，故 clamp 把整项压成精确 0.0",
+          "note": "这正是 BLK-C5/BLK-C14 说的'旋钮显示 ON 而实际无作用'。"
+        },
+        "retraction": {
+          "claim_retracted": "「OBJTERM 是最佳臂，gate bond_type_f1 0.9305 vs baseline 0.9194」",
+          "arm_gate_value_MEASURED": 0.9304940339315385,
+          "arm_source": "molmetal/reports/cfm_objective_terms_2026_10_11/per_epoch_metrics.json gate_value, best epoch 5",
+          "baseline_gate_value_MEASURED": 0.9194141126592557,
+          "baseline_source": "molmetal/reports/cfm_fullcorpus_2026_10_10/per_epoch_metrics.json gate_value, best epoch 10",
+          "why_withdrawn": "该臂相对 baseline 的唯一两个差异项（assemble 1.0、entropy 0.01）经上面两条实测都是非功能性的，因此两轮之间没有任何活跃项不同，0.011 的差是 run-to-run 波动，不能归因给任何机制。",
+          "where_the_claim_was_found": "NOT ON DISK —— 全仓 grep 0.9305 / 'best arm' 在 .md/.json/.yaml 里只命中 metrics/by_metric/cfm_valence_budget_variant_ab.json 的 run 名（该文件不含此结论）。config 原有的 HONEST STATUS 段本就已经写明'权重未验证、不是调好的配置'。所以无需撤回任何已落盘文本。",
+          "corrective_written": "configs/cfm_objective_terms_2026_10_11.yaml 顶部新增 RETRACTION 段，写明该 run 不是结果、0.9305 不可引用为'该臂成绩'，并附上两条机制实测。",
+          "noise_caveat": "0.011 的 run-to-run 幅度本身未单独测量（盘上只有这一对可比 run），故 '是噪声' 严格说是『无法归因、且幅度小于两项非功能项可能造成的量级』，不是已测出的噪声分布。"
+        },
+        "default_is_not_0.01": {
+          "finding": "shipped default 早已是 0.0，不是 0.01。argparse default=0.0，且 main() 里有 >0 才计算的守卫。",
+          "evidence": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py 的 --entropy-reg-weight 声明 default=0.0；失活分支 torch.zeros(())",
+          "implication": "因此本轮没有改任何 default；DEFAULT-OFF 的 bit-for-bit 契约未被触碰。"
+        },
+        "shipped": [
+          "configs/cfm_entropy_reg_012_2026_10_11.yaml —— 单变量臂：entropy_reg_weight=0.12，assemble_loss_weight 故意缺席(=0.0)。WFA2_CONFIG_STRICT=1 下 round-trip 通过，按类型校验（float 0.12 / float 0.0）。",
+          "molmetal/scripts/train_cfm_yuelbond_wasserstein.py —— 新增模块常量 ENTROPY_REG_MEASURED_FLOOR = 0.12，及 main() 内的亚阈值 WARNING（0.0 < w < 0.12 时打印，含实测占比、实测区间、指向新 config）。是告警不是改行为，不 clamp 不改权重。",
+          "molmetal/tests/test_wf_blk_c14_entropy_weight_floor.py —— 6 个测试。已做 red 验证：删掉 guard → 2 failed；把 floor 改成 0.001 → 3 failed；两次均恢复后 6 passed。"
+        ],
+        "still_open": "0.12 没有任何 run。configs/cfm_entropy_reg_012_2026_10_11.yaml 尚未启动，因此'0.12 能改善任何指标'是 PROJECTED，NOT MEASURED。§5.7 smoke gate（50 步 CPU，断言 raw entropy 离开 1.2-1.43 平坦带）未跑。本轮 CPU-only，未启 GPU（两轮 CFM seed run 占用双卡）。"
+      }
     },
     {
       "id": "BLK-D2",
@@ -3937,5 +3977,73 @@
       "why_undetected": "config-binding gate 只检查键能否解析到 dest，而它确实能解析到 weight_decay；§5.1 hyperparam 契约 gate 也不查这个",
       "found_by": "读 start.sh --dry-run 的输出，而不是靠 gate"
     }
-  ]
+  ],
+  "launcher_read_path_defects_2026_10_10": {
+    "summary": "start.sh 从 yaml 的三个位置读启动参数，而现有配置把它们写在别处。三者都静默，都过 pre-flight，都过 --dry-run 检查，结果是配置声明的值没有生效。",
+    "measured": [
+      {
+        "key": "resume_from",
+        "start_sh_reads": "output.resume_from (default 'auto')",
+        "cfm_yaml_declares": "train.resume_from: none",
+        "actual": "--resume-from auto 被注入",
+        "line": "scripts/start.sh:454"
+      },
+      {
+        "key": "lr_scheduler",
+        "start_sh_reads": "protocol.scheduler.type (default 'none')",
+        "cfm_yaml_declares": "train.lr_scheduler: cosine",
+        "actual": "--lr-scheduler none 被注入，cosine 丢失",
+        "line": "scripts/start.sh:498"
+      },
+      {
+        "key": "log_master",
+        "start_sh_reads": "output.log_master",
+        "cfm_yaml_declares": "(缺失)",
+        "actual": "LOG_FILE 为空，start.sh:708 `: > \"\"` 报 No such file or directory，训练器从未 spawn",
+        "line": "scripts/start.sh:477 + 708"
+      }
+    ],
+    "precedence_note": "按 AGENTS.md 5.11『显式 CLI flag > YAML』，这些键必须声明在启动器读取的位置；在 train: 下重复声明会被启动器注入的 flag 静默覆盖。",
+    "consequence": "通过 start.sh 启动 cfm.yaml，从未跑过它声明的余弦调度，也从未真正从零开始训练（resume-from auto 会尝试继承 checkpoint）。",
+    "why_nothing_caught_it": "pre_flight_check.py 不启动任何东西；config-binding gate 只检查键能否解析到 dest，而这些键确实能解析到 trainer 的 dest —— 问题在 start.sh 读的是另一个 yaml 路径。",
+    "status": "CONFIRMED_UNFIXED_IN_cfm_yaml —— 验证配置绕过了它（声明在正确位置），cfm.yaml 本身尚未修改"
+  },
+  "checkpoint_clobber_2026_10_10": {
+    "defect": "所有保存路径共用同一文件名，checkpoint-interval / 收尾保存会覆盖早停门选中的 checkpoint",
+    "measured": "两个 29-epoch run 的 .pt 内记录均为 epoch=29 而 best_epoch=0 —— 盘上的权重从来不是判据选中的那个",
+    "fix": "定期保存改写 ..._last.pt；被选中的 checkpoint 保留原文件名，下游读取方无需改动",
+    "commit": "随 epsilon 验证一起提交",
+    "found_by": "为验证接线做 dry-run 时发现，不是验证本身发现的"
+  },
+  "cfm_pareto_front_2026_10_10": {
+    "finding": "gen_validity 与 bond 质量在本项目上真实负相关: corr(gen_validity, bond_f1) = -0.907(control) / -0.839(fm_ab); 与 type_macro_f1 = -0.825 / -0.736。不是 artifact。",
+    "joint_feasibility": "两条臂上都不存在任何 epoch 同时满足 gen_validity>=0.85 且 type_macro_f1>=0.50",
+    "front_shape": "control 7 个非支配 epoch，fm_ab 9 个",
+    "knee": {
+      "control": "ep17 (gv 0.875, typeF1 0.2871)",
+      "fm_ab": "ep20 (gv 0.917, typeF1 0.2813)"
+    },
+    "knee_agrees_with_product": "乘积标量化 gv*typeF1 的 argmax 与 ε-constraint 膝点独立重合",
+    "PR_AUC_is_the_wrong_bond_half": "用 PR-AUC 时膝点落到崩塌区 (control gv 0.021 / fm_ab gv 0.333)，因为 PR-AUC 在崩塌过程中仍在上升。macro-F1 才是正确的一半。",
+    "epsilon_sensitivity": "ε 在 [0.7, 0.85] 上四种分析全部给出同一答案；control 臂 ε 0.85→0.6 代价是 gen_validity 掉 0.27、typeF1 只涨 0.0004",
+    "wired": "early_stop_metric=bond_type_f1_eps, early_stop_epsilon=0.85 (cfm.yaml)",
+    "scope_caveat": "两个 run、单种子、且前沿与切片读自同一条曲线 (in-sample)。证明权衡为真并定位膝点，不证明任何 ε 得到更好的模型。也不证明该前沿是根本性的 —— BLK-C12 记录 12 项 loss 有 8 项是死的。",
+    "metric": "metrics/by_metric/blk_c13_epsilon_constraint.json"
+  },
+  "fm_does_not_trigger_collapse_2026_10_10": {
+    "measured": {
+      "control_fm_false": {
+        "zero_gen_validity_epochs": 9,
+        "gv_at_ep21": 0.0,
+        "gv_at_ep29": 0.0
+      },
+      "fm_ab_fm_true": {
+        "zero_gen_validity_epochs": 0,
+        "gv_at_ep22": 0.6875,
+        "gv_at_ep29": 0.0625
+      }
+    },
+    "contradicts": "todo.json 早前记录的『两臂同在 ep18 起崩』——以 gen_validity 为准时 fm=true 并未崩塌到 0",
+    "status": "OPEN_DISCREPANCY —— 已记录，未调和。可能两个记录用的是不同信号（decode_ratio vs gen_validity），需要核对后再改原记录"
+  }
 }
