@@ -102,11 +102,27 @@ def main() -> int:
     a = ckpt["args"]
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # The vocab must come from the checkpoint, not the CFMJointModel default.
+    # The default z_table is the 13-entry "pt" preset; every all6 checkpoint
+    # was trained against an 18-wide head.atom_encoder, so loading state_dict
+    # into a default-built model dies with a size mismatch - which is why this
+    # probe had never produced any recorded output.
+    # The vocab must come from the checkpoint, not the CFMJointModel default.
+    # The default z_table is the 13-entry "pt" preset; every all6 checkpoint
+    # was trained against an 18-wide head.atom_encoder, so loading state_dict
+    # into a default-built model dies with a size mismatch - which is why this
+    # probe had never produced any recorded output.
+    from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import get_z_table
+
     model = T.CFMJointModel(
         hidden_dim=int(a["hidden_dim"]),
         n_layers=int(a["n_layers"]),
+        cutoff=float(a.get("cutoff", 3.5)),
         use_egnn_velocity=bool(a.get("use_egnn_velocity", True)),
         fm_objective=bool(a.get("use_fm_objective", False)),
+        max_atomic_number=int(a.get("max_atomic_number", 100)),
+        context_dropout=float(a.get("context_dropout", 0.1)),
+        z_table=tuple(get_z_table(str(a.get("yuelbond_vocab", "pt")))),
         bond_predictor=str(a.get("bond_predictor", "yuelbond")),
     ).to(device)
     model.load_state_dict(ckpt["model_state_dict"])

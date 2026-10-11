@@ -1,0 +1,52 @@
+{
+  "metric": "cfm_valence_budget_variant_ab",
+  "tag": "MEASURED",
+  "run": "cfm_objective_terms_2026_10_11",
+  "checkpoint": "molmetal/reports/cfm_objective_terms_2026_10_11/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+  "checkpoint_epoch": 5,
+  "n_clouds": 64,
+  "split": "val (real tmQM clouds, NOT ODE-from-noise)",
+  "variants": {
+    "as_shipped": {
+      "n": 64,
+      "single_fragment_ratio": 0.1406,
+      "decode_ratio": 0.2031
+    },
+    "aromatic_1.0": {
+      "n": 64,
+      "single_fragment_ratio": 0.0469,
+      "decode_ratio": 0.0625
+    },
+    "metals_8": {
+      "n": 64,
+      "single_fragment_ratio": 0.125,
+      "decode_ratio": 0.1875
+    },
+    "both": {
+      "n": 64,
+      "single_fragment_ratio": 0.0469,
+      "decode_ratio": 0.0625
+    },
+    "reserve_0.5": {
+      "n": 64,
+      "single_fragment_ratio": 0.1406,
+      "decode_ratio": 0.2031
+    },
+    "reserve_1.0": {
+      "n": 64,
+      "single_fragment_ratio": 0.0156,
+      "decode_ratio": 0.0781
+    },
+    "reserve_2.0": {
+      "n": 64,
+      "single_fragment_ratio": 0.0,
+      "decode_ratio": 0.0625
+    },
+    "no_budget": {
+      "n": 64,
+      "single_fragment_ratio": 0.125,
+      "decode_ratio": 0.125
+    }
+  },
+  "note": "'no_budget' is the degenerate control, not a proposal. Metric-gaming direction: raising single_fragment_ratio by dropping or ignoring valence enforcement without reporting the decode_ratio cost."
+}
