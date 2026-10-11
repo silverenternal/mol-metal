@@ -12,7 +12,7 @@ would either hide the strong half or be dragged down by the weak half.
 | | Paper A — predictive | Paper B — generative |
 |---|---|---|
 | strongest number | cross-metal collapse, see below | bond EXISTENCE F1 0.9961 vs OpenBabel 0.9771 and exact-type rate 0.0978 vs 0.0300, same 900 complexes |
-| honest ceiling of the weak half | — | `gen_validity` 0.23–0.38, and macro-F1(type) 0.4723 still **behind** OpenBabel 0.5051 |
+| honest ceiling of the weak half | — | macro-F1(type) 0.4723 still **behind** OpenBabel 0.5051; `gen_validity` reaches 0.59–0.62 but is measured at n=768 and swings 0.44–0.62 within a run |
 | reviewer pool | cheminformatics / QSAR | generative modelling |
 | readiness | submit-ready once §"open contradictions" is closed | **not ready** |
 
@@ -128,9 +128,16 @@ The previous framing here ("0.9194 vs OpenBabel 0.505") was withdrawn: those two
 numbers used different aggregations, different model scales and different
 cohorts, and the same checkpoint scores 0.4723 under this protocol.
 
-**Not ready, and the reason is measured, not assumed.** Decode-side quality is
-`gen_validity` 0.23–0.38 and fragmentation is the binding constraint. Every
-cheap lever has been tested and failed:
+**Not ready, and the reason is measured, not assumed.** Fragmentation is the
+binding constraint. `gen_validity` reaches 0.59–0.62 on the three full-corpus
+seeds at the same protocol (n=768, midpoint/50,
+`metrics/by_metric/cfm_bond_type_f1_3seed.json`), which is HIGHER than the
+0.23–0.38 this document previously quoted as the honest ceiling — that earlier
+band came from `cfm_objective_terms` (9 epochs) and `cfm_fm_distort` (8
+epochs), i.e. short runs, and quoting them as a ceiling was wrong. Within a
+single run the value still swings 0.44–0.62, so it is not yet a tight number.
+
+Every cheap lever has been tested and failed:
 
 - valence budget is a **local optimum** — raising caps, lowering bond cost,
   withholding budget for the bridge, and removing the budget entirely are each

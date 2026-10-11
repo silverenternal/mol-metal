@@ -1,0 +1,70 @@
+{
+  "metric": "cfm_bond_type_f1_3seed",
+  "tag": "MEASURED",
+  "date": "2026-10-12",
+  "source_runs": [
+    "cfm_fullcorpus_2026_10_10",
+    "cfm_fullcorpus_seed1",
+    "cfm_fullcorpus_seed2"
+  ],
+  "protocol": "n_train 26715 tmQM, 50-epoch budget, gate=early_stop_metric bond_type_f1 (epsilon 0.85, patience 3); only the seed differs between arms",
+  "gate_metric_definition": "bond_type_macro_f1_pooled = macro-F1 over bond TYPE, POOLED across all scored pairs (train_cfm_yuelbond_wasserstein.py:5010). NOT the per-complex aggregation the bench uses -- see tmqm_bond_perception.json::production_scale_comparison_2026_10_11 for why the two cannot be placed side by side.",
+  "n_scored_complexes": 192,
+  "seeds": [
+    {
+      "seed": 0,
+      "gate_value": 0.9194,
+      "best_epoch": 10,
+      "n_epochs_run": 14,
+      "best_decode_ratio": 0.276,
+      "bond_exact_type_rate": 0.3281,
+      "hit_target": true,
+      "wall_time_hr": 4.96,
+      "gen_validity_max": 0.5964,
+      "gen_validity_last": 0.5964,
+      "gen_validity_n": 768
+    },
+    {
+      "seed": 1,
+      "gate_value": 0.9297,
+      "best_epoch": 11,
+      "n_epochs_run": 15,
+      "best_decode_ratio": 0.349,
+      "bond_exact_type_rate": 0.3802,
+      "hit_target": true,
+      "wall_time_hr": 4.5,
+      "gen_validity_max": 0.6198,
+      "gen_validity_last": 0.4414,
+      "gen_validity_n": 768
+    },
+    {
+      "seed": 2,
+      "gate_value": 0.9703,
+      "best_epoch": 24,
+      "n_epochs_run": 28,
+      "best_decode_ratio": 0.3385,
+      "bond_exact_type_rate": 0.3802,
+      "hit_target": true,
+      "wall_time_hr": 7.36,
+      "gen_validity_max": 0.5885,
+      "gen_validity_last": 0.5104,
+      "gen_validity_n": 768
+    }
+  ],
+  "gate_value_mean": 0.9398,
+  "gate_value_std": 0.0269,
+  "gate_value_min": 0.9194,
+  "gate_value_max": 0.9703,
+  "gate_value_spread": 0.0509,
+  "n_seeds": 3,
+  "KEY_FINDING": "The three seeds did NOT differ by noise; they differed by how long they trained. seed0 and seed1 early-stopped at ep14/15 (patience 3) at 0.9194/0.9297, while seed2 ran to ep28 and reached 0.9703. The gate value tracks training duration, so the 0.0269 std is a convergence-time spread, not a measurement noise floor. Patience 3 is too short on this cohort: seed0 was still improving when it stopped.",
+  "consequence_for_prior_claims": "The retracted \"objective_terms is the best arm\" reading (0.93049 vs 0.91941, gap 0.011) is confirmed refuted and on stronger grounds than first stated: seed1 with NO special configuration reaches 0.9297, inside 0.0005 of that arm. The gap is smaller than the between-seed spread (0.0509), so it cannot support any mechanism claim.",
+  "do_not_claim": "That 0.9398 +/- 0.0269 beats OpenBabel 0.5051 -- different aggregation (pooled vs per-complex), different cohort (192 val vs 900 bench). A same-protocol re-score of all three checkpoints is the only valid comparison and is recorded separately.",
+  "root_cause_found_2026_10_12": {
+    "finding": "DEFAULT_EARLY_STOP_PATIENCE = 3 (train_cfm_yuelbond_wasserstein.py:720) and NO config sets it. bond_type_f1 routes through --early-stop-patience, NOT the legacy --patience (default 10) that governs decode_ratio.",
+    "evidence": "seed0 last three epochs 0.9031 / 0.8922 / 0.9144 -- still oscillating upward when patience 3 fired at ep13. seed1 stopped at ep15. seed2 escaped the same early window and ran to ep28, reaching 0.9703.",
+    "consequence": "The 0.0269 std is a CONVERGENCE-TIME spread, not a measurement noise floor. seed0's 0.9194 has been serving as this config's headline while it was still improving, so it is a lower bound on the config, not its value.",
+    "fix": "Set train.early_stop_patience explicitly in configs/cfm_fullcorpus_seed*.yaml. Raising it is a protocol change and must be declared in the config with the reason, per AGENTS.md 5.11 -- it must not be left to an argparse default.",
+    "not_yet_measured": "What seed0 / seed1 would reach at patience 10 is UNKNOWN. seed2 is evidence that the ceiling exists, not a measurement of it for those seeds."
+  }
+}

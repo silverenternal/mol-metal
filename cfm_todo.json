@@ -1,0 +1,277 @@
+{
+  "schema": "cfm_todo/v1",
+  "created": "2026-10-12",
+  "source": "mol-metal CFM (generative) line only. The predictive line has its own file and was delegated to another agent on 2026-10-12.",
+  "purpose": "Plan and order the remaining work on the flow-matching / bond-head generative line (Paper B). Split out of todo.json because that file mixes both lines and the CFM blockers are no longer the minority of it.",
+  "companion_docs": {
+    "scope_and_shared_assets": "docs/PAPER_SCOPE.md (Paper A/B split + 8-item shared-asset manifest)",
+    "submission_plan": "docs/SUBMISSION_PLAN.md (Paper A; Paper B has no submission plan yet because B is not ready)",
+    "generation_design": "docs/GENERATION_OBJECTIVE_METRIC_DESIGN.md",
+    "honest_negatives": "docs/HONEST_NEGATIVE_CATALOG.md",
+    "aligned_comparison": "docs/ALIGNED_COMPARISON.md"
+  },
+  "readiness": {
+    "verdict": "NOT READY. The blocking item is BLK-C-M4 (no decode path that integrates the ODE), not a metric that needs reinterpreting.",
+    "strongest_measured_number": "bond EXISTENCE F1 0.9961 vs OpenBabel 0.9771, and exact-type rate 0.0978 vs 0.0300, same 900 complexes, same non-hydrogen scope (metrics/by_metric/tmqm_bond_perception.json::production_scale_comparison_2026_10_11)",
+    "strongest_honest_negative": "macro-F1 over bond TYPE 0.4723 vs OpenBabel 0.5051 — still BEHIND, on the axis the bond head exists to win",
+    "what_blocks_submission": "m4 QED / m5 SA / m7 diversity are UNMEASURED for FREE generation. Every number on disk for them comes from a script that never integrates the ODE."
+  },
+  "rules": [
+    "Every MEASURED value cites its JSON or report path on disk; PROJECTED values carry a projected_source field.",
+    "AGENTS.md 5.2: no number in this file may be described as achievable/promising without a PROJECTED tag.",
+    "AGENTS.md 5.3: no paper/* edits from this line's work without explicit user OK (TODO-84).",
+    "AGENTS.md 5.7: every NEW trainer flag must pass a 50-step CPU smoke asserting decode_ratio > 0 and loss[0] > loss[49].",
+    "AGENTS.md 5.11: every hyperparameter lives in configs/*.yaml and resolves to a real argparse dest; verify the round-trip BY TYPE. A key written at the TOP level of a YAML never reaches a dest — see MEMORY flat-yaml-keys-silently-ignored.",
+    "Two numbers may only be placed side by side if they share dataset AND protocol AND metric. This rule has caught four separate errors in this line; see corrections_2026_10_12."
+  ],
+  "the_organising_principle_2026_10_12": {
+    "statement": "The last several weeks of A/B work in this line were run at patience 3, which early-stops runs that are still improving. Any arm that happened to escape the early-stop window looks better than it is. This does not PROVE past A/B results are artifacts — it makes them uninterpretable until re-run.",
+    "evidence": "seed0 stopped at ep14 with 0.9194 while its last three epochs were 0.9031 / 0.8922 / 0.9144 (still oscillating up); seed1 stopped ep15 at 0.9297; seed2 escaped and ran to ep28 reaching 0.9703. Three-seed mean 0.9398 +/- 0.0269 is a convergence-TIME spread, not a noise floor.",
+    "root_cause": "DEFAULT_EARLY_STOP_PATIENCE = 3 at train_cfm_yuelbond_wasserstein.py:720, and no config sets it. bond_type_f1 routes through --early-stop-patience, NOT the legacy --patience (default 10) that governs decode_ratio.",
+    "source": "metrics/by_metric/cfm_bond_type_f1_3seed.json",
+    "this_is_the_single_highest_value_open_item": true
+  },
+  "blockers": [
+    {
+      "id": "BLK-C-M1",
+      "line": "CFM",
+      "title": "patience 3 early-stops runs that have not converged; seed0's headline 0.9194 is a lower bound, not the config's value",
+      "priority": 1,
+      "status": "OPEN — fix is prepared, measurement not yet run",
+      "metric": {
+        "MEASURED_3seed": {
+          "value": "0.9398 +/- 0.0269 (seed0 0.9194 / seed1 0.9297 / seed2 0.9703)",
+          "source": "metrics/by_metric/cfm_bond_type_f1_3seed.json"
+        },
+        "MEASURED_early_stop_fired": {
+          "value": "ep14 / ep15 / ep28 — a 2x spread caused by the stop criterion, not by config differences",
+          "source": "molmetal/reports/cfm_fullcorpus_2026_10_10/events.jsonl and _seed1/_seed2 equivalents"
+        }
+      },
+      "root_cause": "DEFAULT_EARLY_STOP_PATIENCE = 3 (train_cfm_yuelbond_wasserstein.py:720); no config sets early_stop_patience. Verified by parse_args: early_stop_patience = 3 (int) from configs/cfm_fullcorpus_seed2.yaml.",
+      "fix_prepared": {
+        "config": "configs/cfm_patience10_seed0_2026_10_12.yaml",
+        "single_variable": "early_stop_patience: 10, plus output paths (diff verified)",
+        "round_trip_verified": "parse_args returns int 10, != default 3",
+        "why_10": "It is the value the legacy --patience already defaults to for the decode_ratio criterion. It is not a tuned constant — it is the other existing default in the same file."
+      },
+      "why_this_is_first": "It determines whether any other A/B in this line is interpretable. Running it is cheaper than re-litigating each past result.",
+      "expected_outcomes": {
+        "if_seed0_reaches_~0.97": "most past A/B differences were early-stop artifacts; re-run the load-bearing ones before drawing any conclusion from them",
+        "if_seed0_stalls_at_~0.93": "seed2's 0.9703 is a real signal and the training-length hypothesis is wrong"
+      },
+      "PROJECTED_wall": "5-8 hr GPU (ep14 -> ep30-ish; seed2 took 7.36 hr for 28 epochs)",
+      "PROJECTED_source": "seed2's measured 7.36 hr for 28 epochs, linearly scaled",
+      "smoke_gate_5_7": "not required — early_stop_patience is an existing flag, not a new wire-in",
+      "do_not_claim": "That patience 10 raises the score. seed2 shows a ceiling EXISTS; it does not measure that ceiling for seed0."
+    },
+    {
+      "id": "BLK-C-M2",
+      "line": "CFM",
+      "title": "No decode path integrates the ODE, so m4 QED / m5 SA / m7 diversity are UNMEASURED for free generation",
+      "priority": 2,
+      "status": "OPEN",
+      "what_exists": "molmetal/scripts/wf_cfm_decode_dump_smiles.py writes generated_smiles.csv for 3 runs",
+      "what_it_actually_does": "Loads REAL tmQM geometries (load_tmqm_clouds) and runs only the bond head — featurise, _select_bonds, _bridge_components, _assemble_mol. It never calls the sampler.",
+      "the_gap": "The trainer's real generation path is evaluate_generation_validity -> generate_clouds_from_noise (train_cfm_yuelbond_wasserstein.py:4683). Nothing in the dump script reaches it.",
+      "consequence": "Every SMILES in those CSVs is a BOND-HEAD RECONSTRUCTION OF A REAL CORPUS MOLECULE. QED 0.2209 / SA 4.974 / chemistry validity 100% / single_fragment 0.7838 all describe reconstruction, not generation.",
+      "independent_evidence": {
+        "real_tmQM_SA_mean": "4.9781 over 31150 complexes",
+        "three_CSV_SA_mean": "5.0146 over 120 molecules",
+        "gap": "+0.1365 — the output is as synthesisable as its input, because the geometry was supplied",
+        "batch_effect_ruled_out": "per-run means 4.974 / 5.033 / 5.032, eta^2 = 0.0006, corr(SA, epoch) = -0.021",
+        "size_matched": "real corpus at n=192 is 4.8781 — 1.5-2.8 SA BETTER at every heavy-atom bucket"
+      },
+      "fix": "Add an ODE-integrating decode path that calls generate_clouds_from_noise and writes the same CSV schema, so cfm_property_panel.py can finally score free generation.",
+      "already_solved_by_the_trainer": "evaluate_generation_validity already integrates and already has --save-generated-smiles; the flag is declared at ~:5629 and consumed at :9069/9095 but no config sets it. The cheapest fix may be a config that sets it, not new code.",
+      "PROJECTED_wall": "1-2 hr including a §5.7 smoke if a new flag is needed",
+      "blocks": "BLK-C-M5, BLK-C-M6, and every downstream panel metric"
+    },
+    {
+      "id": "BLK-C-M3",
+      "line": "CFM",
+      "title": "gen_validity has no noise floor; per-epoch n varies from 48 to 768 across runs and the metric swings 0.0-1.0 on the small-n runs",
+      "priority": 3,
+      "status": "OPEN",
+      "finding": "Taking max() over a run's gen_validity is meaningless when n is small. cfm_fm_ab_2026_10_09 evaluates n=48 per epoch and alternates between 0.6875 and 0.0625; cfm_bond_head_30ep_onecycle hits 0.0208 then exactly 0.0000 for six consecutive epochs.",
+      "consequence": "Any 'this run reached gen_validity 1.0' claim drawn from an n=48 run is a sampling artefact. Runs are only comparable at the same n and solver.",
+      "comparable_subset": {
+        "protocol": "n=768, midpoint/50",
+        "fullcorpus_3seed_max": "0.589 / 0.620 / 0.589",
+        "fullcorpus_b64_max": 0.4648,
+        "objective_terms_max": 0.2982,
+        "fm_distort_max": 0.2344,
+        "note": "the last two are 9- and 8-epoch runs; they are snapshots, not a ceiling"
+      },
+      "correction_made": "docs/PAPER_SCOPE.md no longer quotes 0.23-0.38 as the honest ceiling",
+      "fix": "Fix n per epoch (768) for every run whose gen_validity is cited, and record a noise floor by scoring the SAME checkpoint at several seeds.",
+      "PROJECTED_wall": "1 hr CPU for the noise floor"
+    },
+    {
+      "id": "BLK-C-M4",
+      "line": "CFM",
+      "title": "macro-F1 over bond TYPE still loses to OpenBabel (0.4723 vs 0.5051) — the axis the bond head exists to win",
+      "priority": 4,
+      "status": "OPEN — honest-negative, must appear in the paper",
+      "source": "metrics/by_metric/tmqm_bond_perception.json::production_scale_comparison_2026_10_11",
+      "wins": "existence F1 0.9961 vs 0.9771; exact-type rate 0.0978 vs 0.0300 (3.3x)",
+      "loss": "macro-F1(type) 0.4723 vs 0.5051, i.e. 0.0328 behind",
+      "scale_effect_is_real": "at n_train 256 the same protocol gave F1(exist) 0.6118 / type 0.2801 / exact 0.0011; the head went from failing every axis to winning two of three",
+      "do_not": "present the two wins without the loss — that is selective reporting",
+      "levers_tested_and_failed": [
+        "valence budget is a local optimum: 8 variants, every one worse on BOTH connectivity and sanitisation (metrics/by_metric/cfm_valence_budget_variant_ab.json)",
+        "train-time geometry distortion: worse on fragmentation at 8/8 matched epochs",
+        "entropy_reg_weight 0.01 is a functional no-op (todo.json BLK-C14); 0.12 config exists but has NEVER been run",
+        "assemble_loss is exactly 0.0 at every epoch despite assemble_enabled=1.0 — inert by construction",
+        "Uncertainty Weighting REJECTED by analysis: it would amplify the deliberately-down-weighted 0.05*cb_loss to effective weight 74.21 = 1484x designed, and the clamp cannot reach parity because the real fm/cb spread is 19231x",
+        "PCGrad fix REJECTED by analysis: the guard is dead code in the default adaptive config (task set and live set come from the same dict, so `missing` is always empty)"
+      ],
+      "open_lever": "configs/cfm_entropy_reg_012_2026_10_11.yaml — entropy 0.12, single-variable, never launched. NOT MEASURED whether it helps.",
+      "important_caveat_2026_10_12": "0.12 is MORE aggressive than '1.3%-2.3% of loss' suggests. The BLK-C14 band was derived for parity with bond_ce at PROBE time (ep0, bond_ce 0.31585). At this run's own operating point (ep5, bond_ce 0.03936) the same 0.12 gives an entropy term 3.66x-4.36x the bond CE. The guard test reports against a THIRD denominator (train_loss). Three denominators, one number."
+    },
+    {
+      "id": "BLK-C-M5",
+      "line": "CFM",
+      "title": "m4 QED 口径 — the definition fix is correct but its measured magnitude is provenance-lost",
+      "priority": 5,
+      "status": "PARTLY DONE",
+      "definition": "CORRECT and verified. cfm_property_panel.py::build_panel filters n_frags==1 and reports single_fragment_rate as its denominator. Independently recomputed on the per_molecule rows: mean matches the aggregate exactly (0.11392229108218548, n=21).",
+      "problem": "The 5-run magnitude table in cfm_qed_fragment_aware.json has NO CSV behind it — cfm_frag_control / cfm_frag_assemble / cfm_fm_ab_* / cfm_fm_control_* / cfm_blk_c5_repair_* have no generated_smiles.csv and never did in git history. Treat as provenance-lost, not evidence.",
+      "sign_conflict": "The 4 CSVs that DO exist (written today by BLK-C-M2's script) show +3.7%..+8.5%, the opposite sign to the lost table's -34%..-36%.",
+      "why_the_sign_flips": "Two effects compete: mixing fragments into whole-SMILES QED lowers it, but restricting to single fragments also changes the population (connected molecules are larger, and QED penalises small ones). On a high-connectivity cohort the second wins; on a heavily-fragmenting generation cohort the first wins.",
+      "blocked_by": "BLK-C-M2 — these rows are reconstructions, so they cannot be compared with the free-generation rows"
+    },
+    {
+      "id": "BLK-C-M6",
+      "line": "CFM",
+      "title": "cross-application to the NCI-60 classifiers scored reconstructions, not generated molecules",
+      "priority": 6,
+      "status": "CORRECTED (records), OPEN (measurement)",
+      "source": "metrics/by_metric/cfm_generated_to_nci60_cross_application.json::provenance_correction_2026_10_11",
+      "second_problem": "n_generated = 37 is far too small for a per-cell-line mean over 5 seeds, independent of the provenance issue",
+      "what_survives": "The per-cell SPREAD is real and is a BOND-PERCEPTION result: A549 0.8335 / A2780cis 0.8065 vs A2780 0.4010 and HCT116 0.4314 is the bond head reproducing cis-vs-trans geometry distinctions on KNOWN molecules.",
+      "what_does_not_survive": "Any reading about what the generator produces. gen_validity for FREE generation is 0.23-0.38; this cohort is seeded-geometry reconstruction.",
+      "honesty_check_still_owed": "a metal complex scored by a classifier trained mostly on organic compounds is an out-of-distribution question. Check whether metal-containing compounds are in the NCI-60 training distribution at all before saying anything about activity."
+    },
+    {
+      "id": "BLK-C-M7",
+      "line": "CFM",
+      "title": "RE-AUDIT every past CFM A/B — they were all run at patience 3",
+      "priority": 7,
+      "status": "OPEN — not yet started",
+      "why": "BLK-C-M1 shows the stop criterion, not the config, decided the run length on at least 2 of 3 seeds. An arm that escaped the window would beat an arm that did not, with no relation to the mechanism being tested.",
+      "scope": "the CFM A/B and ablation reports: cfm_fullcorpus_b64_2026_10_11, cfm_objective_terms_2026_10_11, cfm_fm_distort_2026_10_11, cfm_entropy_reg_012_*, cfm_valence_budget_variant_ab, plus the fm_ab / fm_control / frag_* / blk_c5_* families",
+      "cheap_first_pass": "For each, read n_epochs_run vs best_epoch from events.jsonl. If best_epoch is within 3 of n_epochs_run, the arm was still improving and its number is a lower bound. That is a file read, not a re-run.",
+      "cost": "0 GPU for the triage; re-runs only for the arms that pass the triage as load-bearing",
+      "depends_on": "BLK-C-M1 must be resolved first, or the triage has no reference point"
+    }
+  ],
+  "execution_order": {
+    "principle": "Resolve the measurement instrument before trusting any number it produced. BLK-C-M1 is first because it decides whether BLK-C-M7 is worth doing at all.",
+    "phases": [
+      {
+        "phase": 0,
+        "name": "口径 corrections (no GPU)",
+        "status": "DONE",
+        "items": [
+          "withdraw 0.9194 as a comparison against OpenBabel 0.5051 (three variables differed) — b0082c6a7b / 4f4a674608",
+          "correct the four records the adversarial pass refuted (test count, arithmetic, uncited .py, parity denominator) — b0082c6a7b",
+          "add the ODE provenance correction to every artifact the dump script produced — b2547f6f8f",
+          "record the 3-seed result and the patience root cause — metrics/by_metric/cfm_bond_type_f1_3seed.json"
+        ]
+      },
+      {
+        "phase": 1,
+        "name": "Fix the instrument",
+        "gate": "BLK-C-M1 result read out",
+        "compute": "~5-8 hr GPU",
+        "items": ["launch configs/cfm_patience10_seed0_2026_10_12.yaml on GPU 0"]
+      },
+      {
+        "phase": 2,
+        "name": "Build the missing decode path",
+        "gate": "BLK-C-M2 done",
+        "compute": "1-2 hr",
+        "items": [
+          "check first whether setting --save-generated-smiles in a config is enough; the trainer already integrates and already persists",
+          "only write new code if that fails",
+          "then re-run cfm_property_panel.py on genuine free generation for m4/m5/m7 (BLK-C-M5, BLK-C-M3)"
+        ]
+      },
+      {
+        "phase": 3,
+        "name": "Re-audit the A/B record",
+        "gate": "BLK-C-M1 resolved",
+        "compute": "0 GPU for triage, hours for re-runs",
+        "items": ["BLK-C-M7 triage, then re-run only the load-bearing arms"]
+      },
+      {
+        "phase": 4,
+        "name": "Attack macro-F1(type)",
+        "gate": "BLK-C-M2 + M3 closed, so the metric has a noise floor",
+        "compute": "GPU",
+        "items": [
+          "run configs/cfm_entropy_reg_012_2026_10_11.yaml (never launched; 0.12 is 3.66-4.36x bond_ce at the run's own operating point)",
+          "any new lever must beat 0.4723 by MORE than the 0.0328 gap to OpenBabel, on the same protocol"
+        ]
+      }
+    ]
+  },
+  "corrections_2026_10_12": {
+    "shared_lesson": "All four of these were two individually-true numbers placed side by side. None of them was a wrong number. The check that catches them is one rule: same dataset AND same protocol AND same metric, or do not put them in the same table.",
+    "items": [
+      {
+        "what": "bond_type_f1 0.9194 vs OpenBabel 0.5051",
+        "variables_that_differed": ["aggregation pooled vs per-complex", "model scale 26715 vs 256", "cohort 192 vs 900"],
+        "resolution": "same checkpoint re-scored under the bench protocol gives 0.4723; 0.9194 withdrawn from the paper"
+      },
+      {
+        "what": "top-level YAML keys never reached a dest",
+        "resolution": "configs/platinai_4cell_desc_v1_rerun.yaml had six hyperparameters at the top level; all six equalled argparse defaults so the run was accidentally correct. Moved under train:/model:."
+      },
+      {
+        "what": "'two orders of magnitude below' the gate spread",
+        "resolution": "the entropy term is 1.08x-1.62x the measured gate gap, i.e. LARGER not smaller. The conclusion held but for a different reason: the knob is inert, not small."
+      },
+      {
+        "what": "gen_validity 0.23-0.38 quoted as the honest ceiling",
+        "resolution": "those values come from 8- and 9-epoch runs. At the same protocol (n=768, midpoint/50) the three full-corpus seeds reach 0.589-0.620."
+      }
+    ]
+  },
+  "next_actions": [
+    {
+      "priority": 1,
+      "action": "launch configs/cfm_patience10_seed0_2026_10_12.yaml",
+      "blocking": "none",
+      "why": "BLK-C-M1. Decides whether ~6 weeks of A/B in this line are interpretable."
+    },
+    {
+      "priority": 2,
+      "action": "BLK-C-M7 triage — read n_epochs_run vs best_epoch from each CFM A/B's events.jsonl",
+      "blocking": "BLK-C-M1",
+      "why": "0 GPU, decides which arms (if any) need re-running"
+    },
+    {
+      "priority": 3,
+      "action": "build the ODE-integrating decode path",
+      "blocking": "none",
+      "why": "BLK-C-M2. Without it m4/m5/m7 stay UNMEASURED for free generation and no panel number is publishable."
+    },
+    {
+      "priority": 4,
+      "action": "run configs/cfm_entropy_reg_012_2026_10_11.yaml",
+      "blocking": "BLK-C-M1 (an arm stopped at ep9 tells you nothing)",
+      "why": "the only untested lever left against macro-F1(type) 0.4723"
+    }
+  ],
+  "do_not": [
+    "Compare bond_type_f1 (pooled, 192 val) against OpenBabel macro_f1_type (per-complex, 900 bench) in any table.",
+    "Quote 0.9194 as this configuration's value — it is seed0's, cut off at ep14 while still improving.",
+    "Report a gen_validity maximum from any run whose per-epoch n is below ~256.",
+    "Present the bond head's two wins without the macro-F1(type) loss on the same table.",
+    "Treat the valence-budget work as a performance result. It is a design argument: all 8 variants are worse.",
+    "Attribute the objective_terms 0.93049 to its two knobs. seed1, with no special config, reaches 0.9297 — a gap of 0.0005, against a between-seed spread of 0.0509."
+  ],
+  "updated": "2026-10-12"
+}

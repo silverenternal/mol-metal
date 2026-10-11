@@ -21,7 +21,7 @@ a **new manuscript**; see §4.
 **为什么 JCIM 而不是备选 1：** Paper A 的核心是**评价协议**（跨金属迁移这个轴在文献里空着），
 不是分子性质预测精度。JCIM 的读者群正是做 QSAR/描述符/基准的人，会关心"你的协议为什么和他们
 的不一样"。Digital Discovery 偏生成与自动化合成，会追问生成分支——那是 Paper B 的战场，
-会审到我们 `gen_validity` 0.23–0.38 的诚实负面，等于把 Paper B 的弱点提前暴露在 Paper A 的
+会审到我们 macro-F1(type) 0.4723 落后 OpenBabel 0.5051 的诚实负面，等于把 Paper B 的弱点提前暴露在 Paper A 的
 审稿人面前。
 
 **已知风险：** JCIM 审稿人熟悉 MetalCytoToxDB，很可能问"为什么你的 0.7717 比 Krasnov 的 0.810

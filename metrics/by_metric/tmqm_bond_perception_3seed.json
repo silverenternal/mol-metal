@@ -1,0 +1,51 @@
+{
+  "metric": "tmqm_bond_perception_3seed",
+  "tag": "MEASURED",
+  "date": "2026-10-12",
+  "why": "The single-seed row in production_scale_comparison_2026_10_11 could not separate a real win from a lucky seed. All three full-corpus checkpoints are re-scored under ONE protocol.",
+  "protocol": "900 complexes (150 per metal, six metals), non-hydrogen pair scope, BO threshold 0.3, decision=threshold@0.5, per-complex aggregation, seed-0 geometry sample -- identical for all four rows",
+  "per_seed": {
+    "0": {
+      "f1_exist_of_successes": 0.9961,
+      "macro_f1_type_of_successes": 0.4723,
+      "exact_type_rate_of_successes": 0.0978
+    },
+    "1": {
+      "f1_exist_of_successes": 0.997,
+      "macro_f1_type_of_successes": 0.4829,
+      "exact_type_rate_of_successes": 0.1056
+    },
+    "2": {
+      "f1_exist_of_successes": 0.9955,
+      "macro_f1_type_of_successes": 0.4801,
+      "exact_type_rate_of_successes": 0.0833
+    }
+  },
+  "aggregate_3seed": {
+    "f1_exist": {
+      "mean": 0.9962,
+      "std": 0.0008
+    },
+    "macro_f1_type": {
+      "mean": 0.4784,
+      "std": 0.0055
+    },
+    "exact_type_rate": {
+      "mean": 0.0956,
+      "std": 0.0113
+    }
+  },
+  "openbabel_same_protocol": {
+    "f1_exist": 0.9771,
+    "macro_f1_type": 0.5051,
+    "exact_type_rate": 0.03
+  },
+  "verdict": {
+    "bond_EXISTENCE": "WIN. 0.9962 +/- 0.0008 vs 0.9771. Margin 0.0191 is 24x the between-seed std.",
+    "exact_type_rate": "WIN, 3.2x. 0.0956 +/- 0.0113 vs 0.0300.",
+    "macro_F1_over_TYPE": "LOSS, consistent across all three seeds. 0.4784 +/- 0.0055 vs 0.5051, i.e. -0.0267 behind. This is the axis the bond head exists to win and it is still lost. Reported, not buried.",
+    "seed_noise_floor_check": "All three conclusions survive: existence margin 0.0191 vs std 0.0008; exact-type margin 0.0656 vs std 0.0113; type margin 0.0267 vs std 0.0055. No gap is within seed noise.",
+    "closes_the_withdrawal_loop": "The same checkpoints score 0.9398 +/- 0.0269 under the trainer's POOLED gate (cfm_bond_type_f1_3seed.json) and 0.4784 +/- 0.0055 under per-complex aggregation -- nearly a factor of two apart. That is exactly why 0.9194 must never be placed beside OpenBabel's 0.5051.",
+    "what_it_does_NOT_change": "macro-F1(type) still loses. Scale helped enormously (n_train 256 gave F1(exist) 0.6118 / type 0.2801 / exact 0.0011) but has not closed the type gap."
+  }
+}
