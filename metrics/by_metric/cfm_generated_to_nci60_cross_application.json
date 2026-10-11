@@ -1,0 +1,338 @@
+{
+  "metric": "generated_to_activity_cross_application",
+  "tag": "MEASURED",
+  "source_csv": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv",
+  "family": "nci60",
+  "n_generated": 37,
+  "checkpoint_dir": "molmetal/reports/dmpnn_nci60_9cell_50ep",
+  "n_seeds_per_cell": {
+    "MCF7": 5,
+    "A549": 5,
+    "A2780": 5,
+    "A2780cis": 5,
+    "HCT116": 5,
+    "PC3": 5,
+    "HL60": 5,
+    "SKOV3": 5,
+    "DU145": 5
+  },
+  "per_cell": {
+    "MCF7": {
+      "n": 37,
+      "n_seeds": 5,
+      "mean_prob": 0.5982,
+      "seed_std": 0.1126,
+      "per_seed_mean": [
+        0.7493,
+        0.6261,
+        0.5438,
+        0.6265,
+        0.4454
+      ]
+    },
+    "A549": {
+      "n": 37,
+      "n_seeds": 5,
+      "mean_prob": 0.8335,
+      "seed_std": 0.0804,
+      "per_seed_mean": [
+        0.8154,
+        0.737,
+        0.8492,
+        0.9574,
+        0.8086
+      ]
+    },
+    "A2780": {
+      "n": 37,
+      "n_seeds": 5,
+      "mean_prob": 0.401,
+      "seed_std": 0.1319,
+      "per_seed_mean": [
+        0.3627,
+        0.2395,
+        0.5792,
+        0.3408,
+        0.4827
+      ]
+    },
+    "A2780cis": {
+      "n": 37,
+      "n_seeds": 5,
+      "mean_prob": 0.8065,
+      "seed_std": 0.112,
+      "per_seed_mean": [
+        0.7176,
+        0.7702,
+        0.6938,
+        0.9256,
+        0.9253
+      ]
+    },
+    "HCT116": {
+      "n": 37,
+      "n_seeds": 5,
+      "mean_prob": 0.4314,
+      "seed_std": 0.1833,
+      "per_seed_mean": [
+        0.5959,
+        0.6154,
+        0.4333,
+        0.3339,
+        0.1786
+      ]
+    },
+    "PC3": {
+      "n": 37,
+      "n_seeds": 5,
+      "mean_prob": 0.5871,
+      "seed_std": 0.1139,
+      "per_seed_mean": [
+        0.6263,
+        0.7443,
+        0.4315,
+        0.5492,
+        0.5838
+      ]
+    },
+    "HL60": {
+      "n": 37,
+      "n_seeds": 5,
+      "mean_prob": 0.5583,
+      "seed_std": 0.1607,
+      "per_seed_mean": [
+        0.711,
+        0.4153,
+        0.4714,
+        0.7534,
+        0.4402
+      ]
+    },
+    "SKOV3": {
+      "n": 37,
+      "n_seeds": 5,
+      "mean_prob": 0.7495,
+      "seed_std": 0.0759,
+      "per_seed_mean": [
+        0.679,
+        0.6581,
+        0.8235,
+        0.8068,
+        0.7802
+      ]
+    },
+    "DU145": {
+      "n": 37,
+      "n_seeds": 5,
+      "mean_prob": 0.5156,
+      "seed_std": 0.1088,
+      "per_seed_mean": [
+        0.3894,
+        0.5733,
+        0.4378,
+        0.5136,
+        0.6641
+      ]
+    }
+  },
+  "honest_framing": "A classifier trained on a real cohort, scoring de-novo generated structures. High predicted activity is NOT evidence of efficacy. The only defensible reading is distributional: are the generated molecules in-distribution for these activity models or not.",
+  "mean_over_cell_lines": 0.609,
+  "min_over_cell_lines": 0.401,
+  "max_over_cell_lines": 0.8335,
+  "reference": {
+    "cohort_csv": "/home/hugo/codes/mol-metal/molmetal/data/nci60_precious_9cell.csv",
+    "n_rows": 7823,
+    "per_cell_limit": 400,
+    "per_cell": {
+      "MCF7": {
+        "n": 400,
+        "n_seeds": 5,
+        "mean_prob": 0.5008,
+        "seed_std": 0.0235,
+        "per_seed_mean": [
+          0.5152,
+          0.5228,
+          0.4888,
+          0.5118,
+          0.4655
+        ]
+      },
+      "A549": {
+        "n": 400,
+        "n_seeds": 5,
+        "mean_prob": 0.5901,
+        "seed_std": 0.0685,
+        "per_seed_mean": [
+          0.5365,
+          0.5665,
+          0.6013,
+          0.7039,
+          0.5422
+        ]
+      },
+      "A2780": {
+        "n": 400,
+        "n_seeds": 5,
+        "mean_prob": 0.2987,
+        "seed_std": 0.0567,
+        "per_seed_mean": [
+          0.2472,
+          0.2651,
+          0.2983,
+          0.2892,
+          0.3935
+        ]
+      },
+      "A2780cis": {
+        "n": 400,
+        "n_seeds": 5,
+        "mean_prob": 0.4253,
+        "seed_std": 0.0636,
+        "per_seed_mean": [
+          0.3627,
+          0.3936,
+          0.4039,
+          0.5283,
+          0.4379
+        ]
+      },
+      "HCT116": {
+        "n": 400,
+        "n_seeds": 5,
+        "mean_prob": 0.4592,
+        "seed_std": 0.0446,
+        "per_seed_mean": [
+          0.4539,
+          0.4577,
+          0.4236,
+          0.4266,
+          0.534
+        ]
+      },
+      "PC3": {
+        "n": 275,
+        "n_seeds": 5,
+        "mean_prob": 0.6272,
+        "seed_std": 0.0575,
+        "per_seed_mean": [
+          0.7085,
+          0.6171,
+          0.5565,
+          0.6544,
+          0.5998
+        ]
+      },
+      "HL60": {
+        "n": 225,
+        "n_seeds": 5,
+        "mean_prob": 0.3139,
+        "seed_std": 0.1017,
+        "per_seed_mean": [
+          0.4158,
+          0.2445,
+          0.1719,
+          0.3649,
+          0.3724
+        ]
+      },
+      "SKOV3": {
+        "n": 191,
+        "n_seeds": 5,
+        "mean_prob": 0.3092,
+        "seed_std": 0.082,
+        "per_seed_mean": [
+          0.2121,
+          0.2932,
+          0.4253,
+          0.3509,
+          0.2644
+        ]
+      },
+      "DU145": {
+        "n": 161,
+        "n_seeds": 5,
+        "mean_prob": 0.3215,
+        "seed_std": 0.0705,
+        "per_seed_mean": [
+          0.1999,
+          0.3443,
+          0.3288,
+          0.3542,
+          0.3802
+        ]
+      }
+    },
+    "mean_over_cell_lines": 0.4273
+  },
+  "delta_mean_generated_minus_real": 0.1817,
+  "metal_audit": {
+    "generated": {
+      "n_parsed": 37,
+      "n_metal_bearing_molecules": 37,
+      "pct_metal_bearing": 100.0,
+      "n_metal_atoms": 37,
+      "metal_Z_counts": {
+        "44": 10,
+        "45": 8,
+        "75": 4,
+        "76": 3,
+        "77": 12
+      }
+    },
+    "reference_cohort": {
+      "path": "/home/hugo/codes/mol-metal/molmetal/data/nci60_precious_9cell.csv",
+      "n_rows": 7823,
+      "n_parsed": 7823,
+      "n_metal_bearing_molecules": 0,
+      "pct_metal_bearing": 0.0,
+      "n_metal_atoms": 0,
+      "metal_Z_counts": {},
+      "substrate_match": {
+        "n_unique_cohort_smiles": 5207,
+        "n_matching_substrate_SSMILES_Ligands": 5118,
+        "pct_match": 98.29
+      },
+      "row_metal_origin_counts": {
+        "Re": 246,
+        "Ir": 1351,
+        "Ru": 5612,
+        "Os": 579,
+        "Rh": 358
+      },
+      "note": "metal_origin names the metal each cohort ROW was measured as; n_metal_bearing_molecules counts metals present IN THE GRAPH. The two disagree because the substrate keeps them in separate columns."
+    },
+    "featurizer_onehot_Z": [
+      6,
+      7,
+      8,
+      9,
+      15,
+      16,
+      17,
+      26,
+      29,
+      45,
+      46,
+      77,
+      78
+    ],
+    "featurizer_onehot_note": "Ru(44), Os(76) and Re(75) are NOT one-hot encoded and land in the single catch-all z_other bit."
+  },
+  "framing": "DISTRIBUTIONAL ONLY. The NCI-60 heads reach MEASURED test AUC 0.7617-0.9549 (per-cell, 5 seeds, 50 epochs, scaffold split) on REAL data, and here they score the GENERATED molecules at 0.609 against 0.4273 on that same real cohort through the identical code path. This does NOT mean the generated structures are predicted anticancer agents. MEASURED: the training cohort carries a precious metal in 0/7823 molecular graphs (the metal sits in a separate MetalCytoToxDB column that is never joined into the graph), while 37/37 generated molecules DO carry one. The model was fitted on metal-free graphs and is scoring metal-bearing ones. The number answers 'where do these de-novo structures sit relative to real measured complexes under this model', nothing about efficacy.",
+  "caveats": [
+    "n=37 generated molecules. The per-cell spread (A549 0.8335 vs A2780 0.4010) is within what 37 draws can produce by chance; do not read per-cell structure into it.",
+    "The reference column scores BELOW 0.5 on 6/9 cell lines. That is not a calibration success: mean predicted probability tracks the cohort's 0.3818 active base rate, so the delta is partly a base-rate artefact of comparing against a cohort that is 38% active, not evidence of predicted activity.",
+    "featurizer z_onehot omits Ru(44)/Os(76)/Re(75), so 17/37 generated molecules carry a metal indistinguishable from any other unlisted element.",
+    "Per-cell reference pools are capped at --reference-limit (400); small cells (DU145 161 unique, SKOV3 191) are fully covered, large ones are subsampled."
+  ],
+  "provenance_correction_2026_10_11": {
+    "severity": "This measurement's source is NOT generated molecules.",
+    "finding": "source_csv was produced by molmetal/scripts/wf_cfm_decode_dump_smiles.py, which loads REAL tmQM geometries (load_tmqm_clouds) and runs only the bond head. It never calls the ODE sampler, so the trainer's real generation path (evaluate_generation_validity -> generate_clouds_from_noise, train_cfm_yuelbond_wasserstein.py:4683) is never executed.",
+    "what_the_numbers_actually_describe": "The bond head RECONSTRUCTING real corpus molecules, then a classifier scoring that reconstruction. They say nothing about what the generator produces.",
+    "independent_evidence": "Real tmQM itself scores SA 4.9781 mean over 31150 complexes vs 5.0146 over these three CSVs -- a 0.14 gap, because the geometry was supplied rather than sampled. Per-run means 4.974/5.033/5.032 (eta^2=0.0006, corr(SA,epoch)=-0.021) rule out a batch effect.",
+    "second_problem": "n_generated=37 is far too small for a per-cell-line mean over 5 seeds, independent of the provenance issue.",
+    "what_remains_valid": "The per-cell-line SPREAD is still real and still informative: A549 0.8335 and A2780cis 0.8065 vs A2780 0.4010 and HCT116 0.4314 is the bond head reproducing cis-vs-trans geometry distinctions on known molecules. That is a statement about bond perception, not about de-novo design.",
+    "do_not_claim": "That the generator produces anticancer-active structures. gen_validity for FREE generation is 0.23-0.38; this cohort is seeded-geometry reconstruction.",
+    "date": "2026-10-11"
+  }
+}

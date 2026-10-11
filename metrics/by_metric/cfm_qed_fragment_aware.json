@@ -59,5 +59,69 @@
     "direction_of_the_fix": "the corrected number is WORSE, not better. A metric fix is allowed to make the project look worse; that is the sign it was a fix."
   },
   "not_the_fix_taken": "QED on the largest fragment is also wrong — it reads 0.2718 on cfm_frag_control, HIGHER than both, because taking the biggest piece of a bag of fragments flatters it. Recorded as qed_largest_fragment_all for comparison only.",
-  "caution": "Every row is a single training run. frag_control (qed_single 0.1246) and frag_assemble (0.1275) differ by less than a seed's worth of variation; do not read a direction into that pair."
+  "caution": "Every row is a single training run. frag_control (qed_single 0.1246) and frag_assemble (0.1275) differ by less than a seed's worth of variation; do not read a direction into that pair.",
+  "reproducibility_2026_10_11": {
+    "verdict": "the five rows in correction_magnitude_is_run_dependent above are NOT ON DISK and could not be recomputed. No generated_smiles.csv exists for any of those five runs (verified by a pruned find over the whole repo on 2026-10-11). The only four generated_smiles.csv files that exist belong to different runs, and were produced by molmetal/scripts/wf_cfm_decode_dump_smiles.py replaying decode from checkpoints on 2026-10-11. Treat the old table as PROVENANCE-LOST, not as evidence.",
+    "recomputed_2026_10_11_rows": [
+      {
+        "run": "cfm_fullcorpus_b64_2026_10_11",
+        "n_molecules": 40,
+        "single_fragment_rate": 0.75,
+        "n_single_fragment": 30,
+        "qed_whole_smiles_SUPERSEDED": 0.2275,
+        "qed_single_fragment_CURRENT": 0.236,
+        "qed_largest_fragment_all_DIAGNOSTIC_ONLY": 0.2785,
+        "relative_change_pct": 3.7,
+        "csv_on_disk": "molmetal/reports/cfm_fullcorpus_b64_2026_10_11/generated_smiles.csv"
+      },
+      {
+        "run": "cfm_fullcorpus_2026_10_10",
+        "n_molecules": 37,
+        "single_fragment_rate": 0.7838,
+        "n_single_fragment": 29,
+        "qed_whole_smiles_SUPERSEDED": 0.2209,
+        "qed_single_fragment_CURRENT": 0.2397,
+        "qed_largest_fragment_all_DIAGNOSTIC_ONLY": 0.2595,
+        "relative_change_pct": 8.5,
+        "csv_on_disk": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv"
+      },
+      {
+        "run": "cfm_objective_terms_2026_10_11",
+        "n_molecules": 43,
+        "single_fragment_rate": 0.6744,
+        "n_single_fragment": 29,
+        "qed_whole_smiles_SUPERSEDED": 0.2042,
+        "qed_single_fragment_CURRENT": 0.2241,
+        "qed_largest_fragment_all_DIAGNOSTIC_ONLY": 0.2571,
+        "relative_change_pct": 9.8,
+        "csv_on_disk": "molmetal/reports/cfm_objective_terms_2026_10_11/generated_smiles.csv"
+      },
+      {
+        "run": "wf124_p2_cfm_full",
+        "n_molecules": 47,
+        "single_fragment_rate": 0.4468,
+        "n_single_fragment": 21,
+        "qed_whole_smiles_SUPERSEDED": 0.1071,
+        "qed_single_fragment_CURRENT": 0.1139,
+        "qed_largest_fragment_all_DIAGNOSTIC_ONLY": 0.122,
+        "relative_change_pct": 6.4,
+        "csv_on_disk": "molmetal/reports/wf124_p2_cfm_full/generated_smiles.csv"
+      }
+    ],
+    "direction_on_the_four_csvs_that_exist": "OPPOSITE to the table above. On all four real cohorts the single-fragment QED is HIGHER than the whole-SMILES QED (+3.7% to +9.8%), not 34-36% lower. The sign of the correction is therefore NOT established: it was negative on the two high-fragmentation runs cited (sfr 0.15-0.18) and is positive on every cohort that can actually be re-scored today (sfr 0.45-0.78).",
+    "mechanism": "The two effects compete. Taking the whole parsed SMILES mixes fragments into one score; restricting to single-fragment molecules ALSO changes the population, because connected molecules are typically the larger ones and QED penalises small molecules. Which effect dominates depends on the cohort's fragmentation rate, so no single fixed percentage is the correction.",
+    "code_verification": "molmetal/scripts/cfm_property_panel.py::build_panel filters on n_frags == 1 per molecule. Verified independently: recomputing the mean of 'qed' over the n_frags==1 subset of per_molecule reproduces aggregate['qed_single_fragment']['mean'] exactly (0.11392229108218548 on wf124_p2_cfm_full, n=21). The definition fix is correct; only the magnitude table was unverifiable.",
+    "sample_size_caution": "n = 37-47 per cohort, one training run each, one epoch each. These are small. The +3.7% to +9.8% band is an order-of-magnitude-of-the-effect observation, not a tight interval.",
+    "how_to_reproduce": "/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/cfm_property_panel.py --smiles-csv <csv> --out-json <out.json>   # read aggregate.qed vs aggregate.qed_single_fragment",
+    "tests_passing": "molmetal/tests/test_qed_fragment_definition.py + test_qed_scorer_no_silent_zero.py -> 20 passed; test_wf_c4_qed_penalty.py -> 21 passed"
+  },
+  "recomputed_rows_provenance_correction_2026_10_11": {
+    "severity": "The four rows in recomputed_2026_10_11_rows are NOT generated molecules.",
+    "finding": "Their CSVs come from molmetal/scripts/wf_cfm_decode_dump_smiles.py, which loads REAL tmQM geometries and runs only the bond head. It never calls generate_clouds_from_noise, so the ODE is never integrated. Every SMILES in those files is a bond-head RECONSTRUCTION of a real corpus molecule.",
+    "consequence": "The +3.7%..+8.5% QED improvement recorded for these runs is the single-fragment filter doing its job on RECONSTRUCTIONS. It is not evidence about the generator, and it must not be compared against the older table's -34%..-36% rows, which DID come from free generation (gen_validity 0.23-0.38).",
+    "why_the_sign_flipped": "Two effects compete: mixing fragments into a whole-SMILES QED lowers it, but restricting to single fragments also changes the population (connected molecules are larger, and QED penalises small ones). On a reconstruction cohort with high connectivity (single_fragment_rate 0.67-0.78) the second effect wins; on a free-generation cohort that fragments heavily (0.15-0.18) the first wins.",
+    "still_valid": "The definition fix itself is correct and verified -- cfm_property_panel.py::build_panel filters n_frags==1 and reports single_fragment_rate as its denominator. The numbers above are real measurements of real molecules; they just are not measurements of the generator.",
+    "do_not_claim": "That m5 QED improved, or worsened, for these runs. Free-generation QED is still UNMEASURED and requires a decode path that integrates the ODE.",
+    "date": "2026-10-11"
+  }
 }

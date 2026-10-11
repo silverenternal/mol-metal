@@ -20,12 +20,36 @@ decoded SMILES string was computed and dropped on the floor. That leaves
 `cfm_property_panel.py` with nothing to score, which is exactly why m4 (QED),
 m5 (SA) and m7 (diversity) are UNMEASURED rather than bad: they were never fed.
 
-This replays decode from each checkpoint and writes the CSV those tools want,
-so the panel and any downstream classifier can finally run on real generated
-molecules instead of on a fixed input cohort.
+This replays the BOND HEAD from each checkpoint and writes the CSV those tools
+want, so the panel and any downstream classifier can finally run on decoded
+molecules instead of on nothing.
 
 It does NOT retrain and does NOT change any metric already on disk. It writes
 one new CSV per run.
+
+!! THESE ARE NOT GENERATED MOLECULES. MEASURED 2026-10-11. !!
+    This script loads REAL tmQM geometries via load_tmqm_clouds (:142) and runs
+    only the bond head: featurise -> _select_bonds -> _bridge_components ->
+    _assemble_mol. It never calls the sampler. The trainer's real generation path
+    is evaluate_generation_validity -> generate_clouds_from_noise
+    (train_cfm_yuelbond_wasserstein.py:4683), which integrates the ODE from
+    noise; this script calls none of it.
+
+    So every SMILES it writes is a BOND-HEAD RECONSTRUCTION OF A REAL CORPUS
+    MOLECULE, not a de-novo structure. Any panel metric computed from these CSVs
+    (QED, SA, single-fragment ratio, diversity) describes the bond head
+    reconstructing known chemistry -- NOT the generator. The proof is that real
+    tmQM itself scores SA 4.9781 mean over 31150 complexes, against 5.0146 over
+    these three CSVs: a gap of 0.14 SA, because the geometry was supplied.
+
+    Independent confirmation that the gap is population, not batch: per-run
+    means 4.974 / 5.033 / 5.032 (eta^2 = 0.0006, corr(SA, epoch) = -0.021), and
+    size-matched to 192 the real corpus is 4.8781 -- 1.5-2.8 SA BETTER than these
+    at every heavy-atom bucket.
+
+    Reporting these as generator quality would be the same class of error as
+    `gen_validity` itself, which is 0.23-0.38 for free generation and ~1.0 for
+    seeded reconstruction.
 
 COLUMNS
     epoch,seed,smiles,sanitized,n_fragments,largest_fragment_frac,metal_z
