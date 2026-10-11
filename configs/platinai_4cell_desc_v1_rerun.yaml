@@ -34,15 +34,29 @@ entry:
   command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_platinai_4cell.py
     --config {yaml_path} --out-dir molmetal/reports/platinai_4cell_desc_v1_rerun
 data: molmetal/data/platinai_4cell_desc_v1.csv
-
 seeds: [0, 1, 2]
-epochs: 50
-batch_size: 32
-lr: 1.0e-3
-alpha: 0.5
-hidden: 128
-depth: 3
-scaffold_split: true
+
+# SECTIONS, NOT FLAT KEYS (AGENTS.md §5.11).
+#
+# These six keys were flat at the top level until 2026-10-11 and the
+# pre-flight gate flagged them. MEASURED cause: apply_yaml_overrides walks the
+# NESTED structure, so a top-level `batch_size:` never reaches the dest. Every
+# value here happened to equal its argparse default, so the run was not wrong --
+# but any edit to them would have been silently ignored. Verified after the
+# move: parse_args(["--config", this]) returns 32 / 1e-3 / 128 / 3 / 50 /
+# 0.5 by TYPE and by value, and a probe config with non-default values in
+# these same sections reaches every dest.
+train:
+  epochs: 50
+  batch_size: 32
+  lr: 1.0e-3
+  alpha: 0.5
+  scaffold_split: true
+
+model:
+  hidden: 128
+  depth: 3
+
 cuda_visible_devices: "0"
 
 out_dir: molmetal/reports/platinai_4cell_desc_v1_rerun

@@ -110,6 +110,68 @@
       "new_value": "adds a controlled three-way comparison on one non-hydrogen scope",
       "reason": "A reference table with no learned-model row could not support any claim about the project's own bond head. Measured under one scope, the head currently loses to OpenBabel on both existence and type.",
       "date": "2026-10-04"
+    },
+    {
+      "field": "(new section) production_scale_comparison_2026_10_11",
+      "old_value": "Paper B headline 'bond_type_f1 0.9194 vs OpenBabel 0.505' (docs/PAPER_SCOPE.md)",
+      "new_value": "same-protocol 900-complex table: CFM macro-F1(type) 0.4723 vs OpenBabel 0.5051 (still behind); CFM wins F1(exist) 0.9961 vs 0.9771 and exact-type 0.0978 vs 0.0300",
+      "reason": "the old pair differed in aggregation, model scale, and cohort simultaneously; re-scored under one protocol",
+      "date": "2026-10-11"
     }
-  ]
+  ],
+  "production_scale_comparison_2026_10_11": {
+    "date": "2026-10-11",
+    "why": "PAPER_SCOPE.md quoted 'bond_type_f1 0.9194 vs OpenBabel 0.505' as Paper B's headline. That pairs two numbers that differ in THREE variables at once. The same checkpoint was therefore re-scored under the bench's own protocol so the comparison is like-for-like.",
+    "variables_that_differed_in_the_old_pairing": {
+      "aggregation": "trainer gate = POOLED over all scored pairs (train_cfm_yuelbond_wasserstein.py:5010); bench = per-complex F1 then mean (bench_tmqm_bond_perception.py:752). The trainer's own comment at :4996 says they are 'not interchangeable' and the field name carries the _pooled suffix for exactly that reason.",
+      "model_scale": "trainer gate came from n_train=26715; the bench's CFM row on disk came from a probe at n_train=256, epoch 3.",
+      "cohort": "trainer gate used its own 192-complex val split; bench samples 900 (150 x 6 metals)."
+    },
+    "production_checkpoint_rescored": {
+      "cfm_ckpt": "molmetal/reports/cfm_fullcorpus_2026_10_10/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+      "cfm_provenance": {
+        "epoch": 10,
+        "best_epoch": 10,
+        "n_train": 26715,
+        "n_val": 192,
+        "decision": "threshold",
+        "decision_threshold": 0.5
+      },
+      "protocol": "identical to controlled_comparison_2026_10_04: 900 complexes, 150 per metal, non-hydrogen pair scope, BO threshold 0.3, per-complex aggregation",
+      "out_dir": "molmetal/reports/tmqm_bond_perception_fullcorpus"
+    },
+    "table_same_protocol_900_complexes": {
+      "cfm": {
+        "success_rate": 1.0,
+        "f1_exist": 0.9961467097825613,
+        "macro_f1_type": 0.4722586183030306,
+        "exact_type_rate": 0.09777777777777778,
+        "scope": "non-hydrogen pairs"
+      },
+      "openbabel": {
+        "success_rate": 1.0,
+        "f1_exist": 0.9771082656114081,
+        "macro_f1_type": 0.5050830737078369,
+        "exact_type_rate": 0.03,
+        "scope": "non-hydrogen pairs"
+      },
+      "rdkit_stripped": {
+        "success_rate": 0.30333333333333334,
+        "f1_exist": 0.9997852237672075,
+        "macro_f1_type": 0.2809488328407126,
+        "exact_type_rate": 0.02197802197802198,
+        "scope": "non-metal AND non-hydrogen pairs"
+      }
+    },
+    "verdict": {
+      "the_0.9194_figure_is_withdrawn": "The same checkpoint scores macro_f1_type 0.4723 here and 0.9194 under the trainer's pooled gate. Nearly a factor of two. 0.9194 is a real number for its own protocol but must NOT be placed beside OpenBabel's 0.5051, which is per-complex averaged.",
+      "the_head_does_beat_OpenBabel_on_two_of_three_axes": "MEASURED at production scale, same 900 complexes: bond EXISTENCE F1 0.9961 vs 0.9771, and exact-type rate 0.0978 vs 0.0300 (3.3x). Both were losses at probe scale.",
+      "the_head_still_loses_on_macro_f1_type": "0.4723 vs 0.5051, i.e. 0.0328 BEHIND. This remains the honest-negative on the axis the bond head was supposed to win.",
+      "scale_effect_is_real_and_large": "Same protocol, n_train 256 -> 26715: F1(exist) 0.6118 -> 0.9961, macro-F1(type) 0.2801 -> 0.4723, exact-type 0.0011 -> 0.0978. The earlier 'does not beat OpenBabel at this training scale' verdict was true at 256 and is now only partly true."
+    },
+    "for_paper_b": {
+      "cite": "the 900-complex same-protocol table, including the macro_f1_type loss",
+      "do_not_cite": "0.9194 as a comparison against OpenBabel 0.5051; it is a different aggregation on a different cohort"
+    }
+  }
 }

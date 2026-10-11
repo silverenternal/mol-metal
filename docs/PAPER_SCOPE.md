@@ -11,10 +11,18 @@ would either hide the strong half or be dragged down by the weak half.
 
 | | Paper A — predictive | Paper B — generative |
 |---|---|---|
-| strongest number | cross-metal collapse, see below | `bond_type_f1` 0.9194 vs OpenBabel 0.505 |
-| honest ceiling of the weak half | — | `gen_validity` 0.23–0.38 |
+| strongest number | cross-metal collapse, see below | bond EXISTENCE F1 0.9961 vs OpenBabel 0.9771 and exact-type rate 0.0978 vs 0.0300, same 900 complexes |
+| honest ceiling of the weak half | — | `gen_validity` 0.23–0.38, and macro-F1(type) 0.4723 still **behind** OpenBabel 0.5051 |
 | reviewer pool | cheminformatics / QSAR | generative modelling |
 | readiness | submit-ready once §"open contradictions" is closed | **not ready** |
+
+**Corrected 2026-10-11.** This table previously read "`bond_type_f1` 0.9194 vs OpenBabel
+0.505". That pair differed in three variables at once — aggregation (pooled vs per-complex),
+model scale (n_train 26715 vs 256) and cohort (192 vs 900 complexes). The production checkpoint
+was re-scored under the bench's own protocol
+(`molmetal/reports/tmqm_bond_perception_fullcorpus/`); the same checkpoint scores **0.4723**
+there, not 0.9194. Full record in
+`metrics/by_metric/tmqm_bond_perception.json::production_scale_comparison_2026_10_11`.
 
 ## PAPER A — scope
 
@@ -99,8 +107,26 @@ not buried.
 ## PAPER B — scope, and why it is not ready
 
 Scope: flow-matching generation of metal complexes with an explicit bond-order
-head; `bond_type_f1` 0.9194 against OpenBabel 0.505 on real tmQM Wiberg truth,
-192 held-out complexes.
+head, scored against real tmQM Wiberg truth on 900 held-out complexes (150 per
+metal, six metals, non-hydrogen pair scope, per-complex aggregation).
+
+**What the head actually earns, MEASURED at production scale**
+(`molmetal/reports/tmqm_bond_perception_fullcorpus/`):
+
+| | CFM (n_train 26715) | OpenBabel | verdict |
+|---|---|---|---|
+| bond EXISTENCE F1 | **0.9961** | 0.9771 | **win** |
+| exact-type rate | **0.0978** | 0.0300 | **win, 3.3×** |
+| macro-F1(type) | 0.4723 | **0.5051** | **loss, 0.0328 behind** |
+
+The scale effect is real and large: the same protocol at n_train 256 gave
+F1(exist) 0.6118 / type 0.2801 / exact 0.0011. The bond head went from failing
+on every axis to winning two of three. It still **loses the axis it was
+designed to win** — bond ORDER — and that is the honest-negative of this paper.
+
+The previous framing here ("0.9194 vs OpenBabel 0.505") was withdrawn: those two
+numbers used different aggregations, different model scales and different
+cohorts, and the same checkpoint scores 0.4723 under this protocol.
 
 **Not ready, and the reason is measured, not assumed.** Decode-side quality is
 `gen_validity` 0.23–0.38 and fragmentation is the binding constraint. Every

@@ -1,5 +1,5 @@
 schema: molmetal-registry-metrics-v1
-generated_at: '2026-10-10T05:06:09+00:00'
+generated_at: '2026-10-11T10:25:47+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable metric facts. A metric is CURRENT iff source_json_sha256 still
   matches disk.
@@ -17,7 +17,7 @@ metrics:
     verdict: PASS
     scope: CFM (Conditional Flow Matching) generate path
     metric_timestamp: null
-    last_refreshed: '2026-10-10T05:06:09+00:00'
+    last_refreshed: '2026-10-11T10:25:47+00:00'
     value_key: aggregate.best_measured_real
     target: 0.5
     direction: '>='
@@ -31,7 +31,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: CFM (EGNN velocity field + YuelBond bond head) on tmQM
     metric_timestamp: null
-    last_refreshed: '2026-10-10T05:06:09+00:00'
+    last_refreshed: '2026-10-11T10:25:47+00:00'
     target: null
     direction: null
     remains: no scalar emitted on disk; one GPU probe to score it
@@ -45,27 +45,21 @@ metrics:
     scope: CFM generate path (true physical docking) + Wf-121 P3 cisplatin real Vina
       sweep
     metric_timestamp: null
-    last_refreshed: '2026-10-10T05:06:09+00:00'
+    last_refreshed: '2026-10-11T10:25:47+00:00'
     value_key: v3_cohort_median_REAL
     target: -8.5
     direction: <=
     remains: Pt+2 parameterisation (BLOCKED, Wf-299B); real Vina run blocked
   m7_diversity:
     source_json: metrics/by_metric/m7_diversity.json
-    source_json_sha256: ee74ed97c249f4346fa67c4878091817d0d79d3d065e9c9467ec52f2cc3c1e6c
+    source_json_sha256: adfd4e02cc3a493034af7a838beb118b7bb112e174e4a0b1c4f63c5e85bca8e9
     source_json_missing: false
-    value: null
-    status: WIRED
+    value: 0.8690399367522098
+    status: null
     verdict: HONEST_NEGATIVE
-    scope: 'tier2_diversity_sampling / m7 Diversity Wf-388-A2 wire-in.  WARNING (Wf-R44):
-      ''value'' here is a WIRED FLAG COUNT (n_flags_wired_in), NOT a measured diversity
-      score. No diversity number on CFM output exists in this file. The generated-cohort
-      measurement needs the decode->panel link (trainer --save-generated-smiles ->
-      generated_smiles.csv -> cfm_property_panel), added by Wf-R44; producing a real
-      number also needs a GPU retrain with --gen-validity-samples > 0 and --save-generated-smiles
-      (PROJECTED/BLOCKED, no GPU in this wave).'
-    metric_timestamp: '2026-09-30'
-    last_refreshed: '2026-10-10T05:06:09+00:00'
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-11T10:25:47+00:00'
     value_key: aggregate.best_measured
     target: 0.65
     direction: '>='
@@ -80,7 +74,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: tier1_precious_metal_anticancer
     metric_timestamp: '2026-09-27'
-    last_refreshed: '2026-10-10T05:06:09+00:00'
+    last_refreshed: '2026-10-11T10:25:47+00:00'
     target: 0.86
     direction: '>='
     remains: cohort honest-negative (591 vs 23 cell lines); no launch closes it
@@ -93,20 +87,20 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: tier2_sbdd_ood_lomo_wasserstein
     metric_timestamp: '2026-10-08T06:51:17+00:00'
-    last_refreshed: '2026-10-10T05:06:09+00:00'
+    last_refreshed: '2026-10-11T10:25:47+00:00'
     target: 0.7
     direction: '>='
     remains: P-A drift ALREADY FIXED on disk (real-only 5-fold); doc retag only
   m2_r2_per_cell:
     source_json: metrics/by_metric/platinai_4cell_auc.json
-    source_json_sha256: ac50aee848a7fcde1c8e5e09253892f165773f10a1bad6734811cfa78802ff29
+    source_json_sha256: aab62a3db331f095501fe3af51388edc553e82186177b6e8cc99e4f7fd3f5826
     source_json_missing: false
     value: 0.5531726597598308
     status: MEASURED_SYNTHETIC_LABELS
     verdict: HONEST_NEGATIVE
     scope: tier1_precious_metal_anticancer
     metric_timestamp: '2026-09-25'
-    last_refreshed: '2026-10-10T05:06:09+00:00'
+    last_refreshed: '2026-10-11T10:25:47+00:00'
     target: 0.85
     direction: '>='
     remains: closed structural (Wf-369-A2); synthetic labels; no GPU
@@ -119,7 +113,7 @@ metrics:
     verdict: PASS
     scope: tier1_precious_metal_anticancer
     metric_timestamp: '2026-09-25'
-    last_refreshed: '2026-10-10T05:06:09+00:00'
+    last_refreshed: '2026-10-11T10:25:47+00:00'
     target: 0.7
     direction: '>='
     remains: nothing for gate; scaffold split enforced in code
@@ -132,7 +126,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: tier1_precious_metal_anticancer / Wf-122 P3 post-fix combined anchor
     metric_timestamp: '2026-09-27'
-    last_refreshed: '2026-10-10T05:06:09+00:00'
+    last_refreshed: '2026-10-11T10:25:47+00:00'
     target: 0.85
     direction: '>='
     remains: architectural ceiling (~0.68); drop-from-S3 or metric redefinition; NO
@@ -146,7 +140,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: null
     metric_timestamp: null
-    last_refreshed: '2026-10-10T05:06:09+00:00'
+    last_refreshed: '2026-10-11T10:25:47+00:00'
     value_key: aggregate.closure_reachability_rate
     target: 0.95
     direction: '>='
@@ -163,7 +157,7 @@ metrics:
       a generation-quality metric. Do not read any value here as a claim about CFM-generated
       molecules. (Wf-R44 scope correction.)
     metric_timestamp: '2026-10-01'
-    last_refreshed: '2026-10-10T05:06:09+00:00'
+    last_refreshed: '2026-10-11T10:25:47+00:00'
     target: 0.6
     direction: '>='
     remains: drop-from-S3 per Wf-389-A1; same family as L5
@@ -180,6 +174,9 @@ uncovered_metric_files:
 - baseline_random_smiles_seed2
 - baseline_random_smiles_summary
 - bbb
+- blk_c13_adaptive_head_replay
+- blk_c13_epsilon_constraint
+- blk_g1_bond_head_scaling
 - caco2_perm
 - cell_permeability_logPapp
 - cfm_assemble_hinge_tau
@@ -190,7 +187,9 @@ uncovered_metric_files:
 - cfm_internal_diversity_intdiv1
 - cfm_loss_term_liveness
 - cfm_qed_fragment_aware
+- cfm_run_census
 - cfm_sa_reference_scale
+- cfm_valence_budget_variant_ab
 - chemprop_v2_5metal_5seed_50epoch
 - chemprop_v2_lomo_v2
 - chemprop_v2_status_2026_09_27
@@ -280,6 +279,7 @@ uncovered_metric_files:
 - tier2_summary
 - tmqm_bond_perception
 - tmqm_combined_r2
+- tmqm_pretrain_init_ab_ru
 - uff_energy_pt_pool
 - vdss
 - vina_high_affinity
