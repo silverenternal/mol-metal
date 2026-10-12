@@ -16,8 +16,19 @@ What is recomputed vs carried
   and the XGB within from ``metal_activity_transfer_seed_stability_v2.json``.
 * the permutation null — recomputed from the report's stored seed-42
   ``test_probs``/``test_labels`` via the probe's own ``permutation_null``.
+* ``permutation_null_holm`` — recomputed from those per-metal two-sided p-values
+  (Holm-Bonferroni over the 5-metal family), mirroring
+  ``metal_activity_transfer_permutation_null.json``.
+* ``cross_metal_bootstrap_ci`` — recomputed by bootstrapping the seed-42 cross
+  ranking (2,000 resamples, seed 42), the same method and budget as the
+  significance artifact's ``cross_metal_bootstrap_ci``.
 * ``why`` / ``caveats`` / ``verdict_vs_BLK_PA3`` / ``cross_only_first_run`` —
   carried as constants (commentary, not measurement).
+
+Parity gap (honest): the report stores per-fold AUCs for the within-metal
+column but no per-ligand OOF scores, so ``within_metal_bootstrap_ci`` and
+``transfer_penalty_ci`` cannot be recomputed here without a GPU re-run that
+dumps those scores. Only the cross column carries a CI.
 
 The report itself is a GPU (bf16) artifact and drifts run-to-run; this synthesis
 is deterministic *given* that report, exactly like the tmQM syntheses.
@@ -51,6 +62,8 @@ CROSS_ONLY_REPORT = "molmetal/reports/pa3_chemprop_lomo/metrics_cross_only_2026_
 
 PERM_SEED = 42
 N_PERMUTATIONS = 1000
+N_BOOTSTRAP = 2000
+BOOT_SEED = 42
 
 # --- prose carried verbatim (commentary, not measurement) -------------------
 WHY = (
@@ -67,8 +80,9 @@ CAVEATS: List[str] = [
     "label-permutation null on the fixed seed-42 ranking is the reference used "
     "here (1,000 shuffles, matching metal_activity_transfer_permutation_null.json); "
     "at those sizes the null sd is ~0.09-0.11, so a nominal 0.5 is not the right line.",
-    "Only the CROSS column is seed-42 for the permutation null; the reported cross "
-    "AUCs are 5-seed means.",
+    "Only the CROSS column is seed-42 for the permutation null and the bootstrap "
+    "CI; the reported cross AUCs are 5-seed means.  The CI's observed_auc is the "
+    "seed-42 ranking, so it sits inside the seed spread around the 5-seed mean.",
     "GPU bf16 training is not bit-reproducible run-to-run (~0.01-0.03 per-seed AUC "
     "drift).  Metal means are stable to <=0.02 across two independent launches.",
     "The scorer is a single pooled BinaryClassificationFFN over the chemprop encoder "
@@ -120,6 +134,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument("--stability-metric", default=STABILITY_METRIC)
     p.add_argument("--n-permutations", type=int, default=N_PERMUTATIONS)
     p.add_argument("--perm-seed", type=int, default=PERM_SEED)
+    p.add_argument("--n-bootstrap", type=int, default=N_BOOTSTRAP)
+    p.add_argument("--boot-seed", type=int, default=BOOT_SEED)
     p.add_argument(
         "--out-metric",
         default="metrics/by_metric/pa3_chemprop_lomo_probe_cohort.json",
@@ -141,6 +157,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     }
 
     comparison: Dict[str, Dict[str, object]] = {}
+    cross_ci: Dict[str, Dict[str, object]] = {}
+    p_two_sided: Dict[str, float] = {}
+    from molmetal.data.leakage_utils import bootstrap_auc
+
     for fold in report["per_fold"]:  # type: ignore[index]
         m = fold["metal"]
         within = report["within_metal"][m]  # type: ignore[index]
@@ -149,6 +169,17 @@ def main(argv: Optional[List[str]] = None) -> int:
             seed42["test_labels"], seed42["test_probs"],
             args.n_permutations, args.perm_seed,
         )
+        p_two_sided[m] = float(perm["p_two_sided"])
+        _mean, _lo, _hi, _ = bootstrap_auc(
+            seed42["test_labels"], seed42["test_probs"],
+            args.n_bootstrap, args.boot_seed,
+        )
+        cross_ci[m] = {
+            "n_boot": int(args.n_bootstrap),
+            "observed_auc": float(seed42["test_auc"]),
+            "ci95": [float(_lo), float(_hi)],
+            "ci_excludes_chance": bool(float(_lo) > 0.5 or float(_hi) < 0.5),
+        }
         cross_mean = float(fold["mean_auc"])
         within_mean = float(within["mean_auc"])
         xc, xw = xgb_cross[m], xgb_within[m]
@@ -171,12 +202,29 @@ def main(argv: Optional[List[str]] = None) -> int:
             "permutation_p_above_chance": float(perm["p_above_chance"]),
         }
 
+    # Holm-Bonferroni over the 5-metal family, on the two-sided empirical p.
+    _items = sorted(p_two_sided.items(), key=lambda kv: kv[1])
+    _n = len(_items)
+    _adj: Dict[str, float] = {}
+    _running = 0.0
+    for _rank, (_m, _p) in enumerate(_items):
+        _running = max(_running, min(1.0, float(_p) * (_n - _rank)))
+        _adj[_m] = _running
+    holm = {
+        "correction": "Holm-Bonferroni (family = 5 held-out metals)",
+        "n_family": _n,
+        "p_two_sided_holm": _adj,
+        "significant_after_holm_0.05": [m for m, p in _adj.items() if p < 0.05],
+    }
+
     out = dict(report)
     out.update({
         "status": "MEASURED",
         "MEASURED_vs_PROJECTED": "MEASURED",
         "why": WHY,
         "comparison_vs_xgb_probe": comparison,
+        "permutation_null_holm": holm,
+        "cross_metal_bootstrap_ci": cross_ci,
         "cross_only_first_run": {"report": CROSS_ONLY_REPORT, "note": CROSS_ONLY_NOTE},
         "verdict_vs_BLK_PA3": VERDICT_VS_BLK_PA3,
         "caveats": CAVEATS,
@@ -190,10 +238,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     atomic_write_file(dest, json.dumps(out, indent=2, default=float, ensure_ascii=False))
 
     for m, d in comparison.items():
+        ci = cross_ci[m]["ci95"]
         print(f"{m:>4}  cross {d['chemprop_cross_mean_auc']:.4f} "
-              f"(XGB {d['xgb_cross_seed42_auc']:.4f})  within "
-              f"{d['chemprop_within_mean_auc']:.4f}  "
+              f"[{ci[0]:.4f},{ci[1]:.4f}] (XGB {d['xgb_cross_seed42_auc']:.4f})  "
+              f"within {d['chemprop_within_mean_auc']:.4f}  "
               f"{d['permutation_null_verdict']}")
+    print(f"holm significant: {holm['significant_after_holm_0.05']}")
     print(f"wrote {dest}")
     return 0
 

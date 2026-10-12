@@ -12972,6 +12972,68 @@
       "permutation_p_above_chance": 0.001
     }
   },
+  "permutation_null_holm": {
+    "correction": "Holm-Bonferroni (family = 5 held-out metals)",
+    "n_family": 5,
+    "p_two_sided_holm": {
+      "Re": 0.01,
+      "Ru": 0.04,
+      "Ir": 0.22799999999999998,
+      "Os": 1.0,
+      "Rh": 1.0
+    },
+    "significant_after_holm_0.05": [
+      "Re",
+      "Ru"
+    ]
+  },
+  "cross_metal_bootstrap_ci": {
+    "Ru": {
+      "n_boot": 2000,
+      "observed_auc": 0.5467402569792317,
+      "ci95": [
+        0.5074797863910683,
+        0.5880285890834509
+      ],
+      "ci_excludes_chance": true
+    },
+    "Ir": {
+      "n_boot": 2000,
+      "observed_auc": 0.4559889052417072,
+      "ci95": [
+        0.4062343309218309,
+        0.5033103817473282
+      ],
+      "ci_excludes_chance": false
+    },
+    "Rh": {
+      "n_boot": 2000,
+      "observed_auc": 0.4991349480968858,
+      "ci95": [
+        0.3243008936355711,
+        0.6858974358974359
+      ],
+      "ci_excludes_chance": false
+    },
+    "Os": {
+      "n_boot": 2000,
+      "observed_auc": 0.5217391304347826,
+      "ci95": [
+        0.3310822597960279,
+        0.7078479149944576
+      ],
+      "ci_excludes_chance": false
+    },
+    "Re": {
+      "n_boot": 2000,
+      "observed_auc": 0.7607142857142858,
+      "ci95": [
+        0.6202083333333334,
+        0.8903518188800446
+      ],
+      "ci_excludes_chance": true
+    }
+  },
   "cross_only_first_run": {
     "report": "molmetal/reports/pa3_chemprop_lomo/metrics_cross_only_2026_10_12.json",
     "note": "The first PA3 launch ran --mode cross only.  The rerun (mode=both) reproduced the cross column within GPU bf16 run-to-run variation: e.g. Ru seed42 0.5697 -> 0.5467, Re seed42 0.7583 -> 0.7607.  The 5-seed metal means moved by <=0.02.  Non-determinism is from cuDNN/bf16 reductions; the script seeds torch and numpy but does not call torch.use_deterministic_algorithms(True)."
@@ -12979,7 +13041,7 @@
   "verdict_vs_BLK_PA3": "CHEMPROP REPRODUCES THE CROSS-METAL COLLAPSE ON 2 OF 5 METALS (Ir, Rh), with a within-minus-cross penalty that is positive on 4 OF 5 (Ru, Ir, Rh, Re) — the same sign as the XGB probe.  It is significantly ABOVE chance only on Ru, Re and significantly BELOW chance on Ir; Rh, Os sit in the null band.  Ru: cross 0.5621 (XGB 0.6179, -0.0558); within 0.7853 (XGB 0.8271); penalty +0.2232. Ir: cross 0.4841 (XGB 0.5276, -0.0435); within 0.7901 (XGB 0.8430); penalty +0.3060. Rh: cross 0.4915 (XGB 0.5190, -0.0275); within 0.6658 (XGB 0.6974); penalty +0.1743. Os: cross 0.5559 (XGB 0.4950, +0.0609); within 0.4133 (XGB 0.4960); penalty -0.1425. Re: cross 0.7368 (XGB 0.4429, +0.2939); within 0.8972 (XGB 0.9480); penalty +0.1604.",
   "caveats": [
     "Per-metal test folds are small for Rh (n=51), Os (n=36) and Re (n=74).  The label-permutation null on the fixed seed-42 ranking is the reference used here (1,000 shuffles, matching metal_activity_transfer_permutation_null.json); at those sizes the null sd is ~0.09-0.11, so a nominal 0.5 is not the right line.",
-    "Only the CROSS column is seed-42 for the permutation null; the reported cross AUCs are 5-seed means.",
+    "Only the CROSS column is seed-42 for the permutation null and the bootstrap CI; the reported cross AUCs are 5-seed means.  The CI's observed_auc is the seed-42 ranking, so it sits inside the seed spread around the 5-seed mean.",
     "GPU bf16 training is not bit-reproducible run-to-run (~0.01-0.03 per-seed AUC drift).  Metal means are stable to <=0.02 across two independent launches.",
     "The scorer is a single pooled BinaryClassificationFFN over the chemprop encoder with no metal features — deliberately matching the XGB probe's contract.  The existing per-metal-head chemprop LOMO (metal_lomo_chemprop_v2.json) is a different, non-comparable design."
   ]
