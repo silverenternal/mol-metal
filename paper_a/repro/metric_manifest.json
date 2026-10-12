@@ -163,7 +163,8 @@
       "inputs": ["$MOLMETAL_DATA_DIR/MetalCytoToxDB.csv", "{FOLDS}/fold_*.json"],
       "cost_class": "cpu_minutes",
       "reproducible_from_committed_code": true,
-      "repro_notes": "Requires the DOI-split fold files. They default to /tmp/wf_m1_paper_cv/folds; ship them in the submission package and pass --folds-dir. --regenerate-folds rebuilds a leak-free partition that does NOT match the stored folds, so use the shipped files.",
+      "diff_ignore": ["fold_source"],
+      "repro_notes": "Requires the DOI-split fold files. They default to /tmp/wf_m1_paper_cv/folds; ship them in the submission package and pass --folds-dir. --regenerate-folds rebuilds a leak-free partition that does NOT match the stored folds, so use the shipped files. The artifact's fold_source field is a verbatim echo of --folds-dir, so it is environment-specific and excluded from the diff (diff_ignore); the fold content is validated transitively by the 10 per-fold roc_auc/pr_auc values.",
       "used_by": ["paper_a/sections/04_results.tex tab:krasnov"]
     },
     {
