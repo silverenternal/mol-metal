@@ -1,0 +1,206 @@
+{
+  "metric": "metal_activity_transfer_seed_stability",
+  "description": "Within-metal and cross-metal ROC-AUC across seeds 42/43/44/49/123, same deduplicated cohort and same scorer as metal_activity_transfer.json. Answers: are the headline within-metal numbers lockable, or do they drift with the seed? Unlike the superseded artifact, the cross-metal column is complete over every seed.",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/metal_activity_transfer_seed_stability.py",
+  "wraps": "molmetal/scripts/metal_activity_transfer_probe.py",
+  "model": "morgan_fp(radius=2, 2048bit) + xgboost",
+  "data_source": "MetalCytoToxDB (Krasnov et al., J. Med. Chem. 2026)",
+  "seeds": [
+    42,
+    43,
+    44,
+    49,
+    123
+  ],
+  "seed_reference_artifact": "metrics/by_metric/metal_activity_transfer.json (seed 42)",
+  "krasnov_published_within_metal": {
+    "Ru": 0.81,
+    "Ir": 0.73,
+    "Rh": null,
+    "Os": null,
+    "Re": null
+  },
+  "within_metal_per_seed": {
+    "42": {
+      "Ru": 0.8362931423415294,
+      "Ir": 0.8294775551950762,
+      "Rh": 0.7380952380952381,
+      "Os": 0.49000000000000005,
+      "Re": 0.9277777777777777
+    },
+    "43": {
+      "Ru": 0.8292150324770107,
+      "Ir": 0.8341119586350028,
+      "Rh": 0.7178571428571427,
+      "Os": 0.5866666666666667,
+      "Re": 0.95
+    },
+    "44": {
+      "Ru": 0.8349087309749075,
+      "Ir": 0.8596959648850774,
+      "Rh": 0.6428571428571428,
+      "Os": 0.31333333333333335,
+      "Re": 0.9722222222222221
+    },
+    "49": {
+      "Ru": 0.8128159155044828,
+      "Ir": 0.8521133263357944,
+      "Rh": 0.6738095238095237,
+      "Os": 0.55,
+      "Re": 0.9819444444444445
+    },
+    "123": {
+      "Ru": 0.8223432130014199,
+      "Ir": 0.8397246508188314,
+      "Rh": 0.7142857142857143,
+      "Os": 0.54,
+      "Re": 0.9083333333333334
+    }
+  },
+  "within_metal_stability": {
+    "Ru": {
+      "n_seeds": 5,
+      "mean": 0.8271152068598701,
+      "min": 0.8128159155044828,
+      "max": 0.8362931423415294,
+      "spread": 0.02347722683704656,
+      "std": 0.008678991232982195
+    },
+    "Ir": {
+      "n_seeds": 5,
+      "mean": 0.8430246911739564,
+      "min": 0.8294775551950762,
+      "max": 0.8596959648850774,
+      "spread": 0.030218409690001224,
+      "std": 0.011263983461837643
+    },
+    "Rh": {
+      "n_seeds": 5,
+      "mean": 0.6973809523809524,
+      "min": 0.6428571428571428,
+      "max": 0.7380952380952381,
+      "spread": 0.09523809523809534,
+      "std": 0.03432537388750498
+    },
+    "Os": {
+      "n_seeds": 5,
+      "mean": 0.4960000000000001,
+      "min": 0.31333333333333335,
+      "max": 0.5866666666666667,
+      "spread": 0.2733333333333333,
+      "std": 0.09641115656972024
+    },
+    "Re": {
+      "n_seeds": 5,
+      "mean": 0.9480555555555554,
+      "min": 0.9083333333333334,
+      "max": 0.9819444444444445,
+      "spread": 0.07361111111111107,
+      "std": 0.027295818881196077
+    }
+  },
+  "cross_metal_per_seed": {
+    "42": {
+      "Ru": 0.6179377217342776,
+      "Ir": 0.5275953809577719,
+      "Rh": 0.5190311418685121,
+      "Os": 0.49498327759197325,
+      "Re": 0.44285714285714284,
+      "POOLED": 0.5996070623471688
+    },
+    "43": {
+      "Ru": 0.6134880878034521,
+      "Ir": 0.529350164157138,
+      "Rh": 0.5017301038062284,
+      "Os": 0.5384615384615384,
+      "Re": 0.45476190476190476,
+      "POOLED": 0.5975113540491925
+    },
+    "44": {
+      "Ru": 0.6208294024634927,
+      "Ir": 0.5453554851126459,
+      "Rh": 0.45501730103806226,
+      "Os": 0.5250836120401338,
+      "Re": 0.4797619047619047,
+      "POOLED": 0.6037709280014302
+    },
+    "49": {
+      "Ru": 0.6047765051355983,
+      "Ir": 0.5283737122155554,
+      "Rh": 0.48269896193771633,
+      "Os": 0.5217391304347827,
+      "Re": 0.47023809523809523,
+      "POOLED": 0.5904405579249365
+    },
+    "123": {
+      "Ru": 0.6134681566324294,
+      "Ir": 0.5371334767349711,
+      "Rh": 0.4982698961937716,
+      "Os": 0.5518394648829431,
+      "Re": 0.43809523809523804,
+      "POOLED": 0.597382782987967
+    }
+  },
+  "cross_metal_stability": {
+    "Ru": {
+      "n_seeds": 5,
+      "mean": 0.61409997475385,
+      "min": 0.6047765051355983,
+      "max": 0.6208294024634927,
+      "spread": 0.01605289732789439,
+      "std": 0.005435332274777198
+    },
+    "Ir": {
+      "n_seeds": 5,
+      "mean": 0.5335616438356166,
+      "min": 0.5275953809577719,
+      "max": 0.5453554851126459,
+      "spread": 0.017760104154873946,
+      "std": 0.006813224943195218
+    },
+    "Rh": {
+      "n_seeds": 5,
+      "mean": 0.4913494809688581,
+      "min": 0.45501730103806226,
+      "max": 0.5190311418685121,
+      "spread": 0.06401384083044981,
+      "std": 0.021525717667814234
+    },
+    "Os": {
+      "n_seeds": 5,
+      "mean": 0.5264214046822742,
+      "min": 0.49498327759197325,
+      "max": 0.5518394648829431,
+      "spread": 0.05685618729096986,
+      "std": 0.018990059620840636
+    },
+    "Re": {
+      "n_seeds": 5,
+      "mean": 0.45714285714285713,
+      "min": 0.43809523809523804,
+      "max": 0.4797619047619047,
+      "spread": 0.041666666666666685,
+      "std": 0.015847201230755944
+    },
+    "POOLED": {
+      "n_seeds": 5,
+      "mean": 0.597742537062139,
+      "min": 0.5904405579249365,
+      "max": 0.6037709280014302,
+      "spread": 0.013330370076493625,
+      "std": 0.004320178694335258
+    }
+  },
+  "verdict": {
+    "headline_lockable": true,
+    "why": "Ru spans 0.8128-0.8363 over 5 seeds; even the worst seed exceeds the Krasnov published 0.81. Ir spans 0.8295-0.8597, all far above 0.73. 'Match-or-exceed Krasnov within-metal' is seed-robust, not a lucky-seed artifact.",
+    "unresolvable_confirmed_quantitatively": "Os swings 0.3133-0.5867 (spread 0.2733) across seeds -- far larger than Ru/Ir. That swing IS the unresolvability: at n=36 unique ligands the estimate moves more than any method would move it.",
+    "tie_rule_caveat": "Every number above is under the default tie rule (ties -> ACTIVE, ``sum*2>=n``). Under the conservative rule Ru spans 0.7880-0.8082 and no longer clears Krasnov 0.81 on every seed -- see metal_activity_transfer_tie_sensitivity.json. So 'Ru beats Krasnov' is seed-robust but NOT tie-rule robust: state it as parity. Ir is robust under either rule."
+  },
+  "supersedes": {
+    "path": "metrics/by_metric/metal_activity_transfer_seed_stability.json",
+    "reason": "The superseded artifact's cross_metal_per_seed covers only 3 of its 5 seeds (the sweep was still running when it was written) and its producer was an ad-hoc workflow script that no longer exists. Preserved verbatim per AGENTS.md \u00a75.5."
+  }
+}

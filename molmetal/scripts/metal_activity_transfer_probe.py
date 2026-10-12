@@ -158,23 +158,27 @@ def _load_env_default() -> None:
 
 
 def collapse_duplicates(
-    smiles: np.ndarray, y: np.ndarray
+    smiles: np.ndarray, y: np.ndarray, tie_rule: str = "active"
 ) -> Tuple[List[str], np.ndarray, int]:
     """One row per unique ligand; label = majority, **ties resolve to ACTIVE**.
 
     Returns ``(unique_smiles, unique_labels, n_raw_rows)``.
 
-    ⚠️ The tie rule is ``sum * 2 >= n``, so an exact tie (sum*2 == n) yields
-    ``True`` → label 1. That is the **anti-conservative** direction for an
-    activity claim, and earlier versions of this docstring (and of the matching
-    trainer) described it as "ties resolve to inactive, the conservative
-    choice" — that was wrong, verified 2026-10-10 by evaluating the expression
-    on n=2/sum=1 and n=4/sum=2 (both → label 1).
+    ``tie_rule="active"`` (default) uses the predicate ``sum * 2 >= n``, so an
+    exact tie (sum*2 == n) yields ``True`` → label 1. That is the
+    **anti-conservative** direction for an activity claim, and earlier versions
+    of this docstring (and of the matching trainer) described it as "ties
+    resolve to inactive, the conservative choice" — that was wrong, verified
+    2026-10-10 by evaluating the expression on n=2/sum=1 and n=4/sum=2 (both →
+    label 1). ``tie_rule="inactive"`` uses ``sum * 2 > n`` and is the
+    conservative counterpart; the two are compared in
+    ``metal_activity_transfer_tie_sensitivity.json``.
 
     It is not a harmless typo: on MetalCytoToxDB 80 ligand groups tie (Ru 59,
-    Ir 19, Rh 2), and all 80 are labelled active. Re-running within-metal with
-    the conservative rule ``sum * 2 > n`` moves Ru 0.8363 → 0.7929 (below
-    Krasnov's published 0.81) while Ir is unchanged (0.8295 → 0.8319). See
+    Ir 19, Rh 2), and all 80 are labelled active under the default rule.
+    Re-running within-metal with the conservative rule ``sum * 2 > n`` moves Ru
+    0.8363 → 0.7929 (below Krasnov's published 0.81) while Ir is unchanged
+    (0.8295 → 0.8319). See
     ``metrics/by_metric/metal_activity_transfer_tie_sensitivity.json``.
 
     Keep the rule, but state its direction honestly. The tie itself is genuine
@@ -184,8 +188,13 @@ def collapse_duplicates(
     """
     import pandas as pd
 
+    if tie_rule not in ("active", "inactive"):
+        raise ValueError(f"unknown tie_rule {tie_rule!r} (expected active|inactive)")
     df = pd.DataFrame({"s": [str(x) for x in smiles], "y": np.asarray(y, dtype=int)})
-    agg = df.groupby("s")["y"].agg(lambda v: int(v.sum() * 2 >= len(v)))
+    if tie_rule == "active":
+        agg = df.groupby("s")["y"].agg(lambda v: int(v.sum() * 2 >= len(v)))
+    else:
+        agg = df.groupby("s")["y"].agg(lambda v: int(v.sum() * 2 > len(v)))
     return list(agg.index), agg.to_numpy(dtype=int), len(df)
 
 
@@ -655,6 +664,7 @@ def run(
     n_permutations: int = 0,
     n_bootstrap: int = 0,
     with_baselines: bool = False,
+    tie_rule: str = "active",
 ) -> Dict[str, object]:
     _load_env_default()
     import pandas as pd
@@ -671,7 +681,7 @@ def run(
         )
         s_raw = [str(x) for x in ds.smiles]
         y_raw = np.asarray(ds.active, dtype=int)
-        s_u, y_u, n_raw = collapse_duplicates(ds.smiles, ds.active)
+        s_u, y_u, n_raw = collapse_duplicates(ds.smiles, ds.active, tie_rule=tie_rule)
         raw[m] = (s_raw, y_raw)
         dedup[m] = (s_u, y_u)
         dup_stats[m] = {
@@ -998,6 +1008,17 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     p.add_argument(
+        "--tie-rule",
+        choices=("active", "inactive"),
+        default="active",
+        help=(
+            "how collapse_duplicates resolves an exact majority tie: 'active' "
+            "(sum*2>=n, the default and the anti-conservative direction) or "
+            "'inactive' (sum*2>n). The two are compared in "
+            "metal_activity_transfer_tie_sensitivity.json"
+        ),
+    )
+    p.add_argument(
         "--out-metric",
         default="metrics/by_metric/metal_activity_transfer.json",
     )
@@ -1013,6 +1034,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         n_permutations=args.permutation_null,
         n_bootstrap=args.bootstrap_ci,
         with_baselines=args.with_baselines,
+        tie_rule=args.tie_rule,
     )
 
     from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
