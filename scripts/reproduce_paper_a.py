@@ -8,7 +8,7 @@ result with the on-disk artifact using a tolerance-based structural diff
 (``scripts/_metric_diff.py``).
 
 The on-disk artifact is NEVER overwritten (AGENTS.md §5.5): output goes to
-``--out-dir`` (default ``/tmp/paper_a_repro``), and only the comparison is
+``--out-dir`` (default ``<repo>/.repro_out``), and only the comparison is
 reported. Exit code is 0 when every executed entry matches, 1 otherwise. GPU
 entries are skipped unless ``--include-gpu-long`` is passed.
 
@@ -37,7 +37,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from scripts._metric_diff import structural_diff  # noqa: E402
 
 DEFAULT_MANIFEST = PROJECT_ROOT / "paper_a" / "repro" / "metric_manifest.json"
-DEFAULT_OUT_DIR = Path("/tmp/paper_a_repro")
+DEFAULT_OUT_DIR = PROJECT_ROOT / ".repro_out"
 
 CPU_CLASSES = {"cpu_seconds", "cpu_minutes"}
 
@@ -65,6 +65,12 @@ def _build_command(entry: Dict[str, object], out_file: Path, folds_dir: Path) ->
     cmd = []
     for tok in entry["exact_command"]:  # type: ignore[index]
         cmd.append(str(tok).replace("{OUT}", str(out_file)).replace("{FOLDS}", str(folds_dir)))
+    # The manifest pins the canonical interpreter (``.venv/bin/python``). Run the
+    # producer under the interpreter that is executing this driver, so the
+    # submission package works from any venv/conda env (no hardcoded path).
+    if cmd and (cmd[0] in (".venv/bin/python", "python", "python3")
+                or cmd[0].endswith("/python") or cmd[0].endswith("/python3")):
+        cmd[0] = sys.executable
     return cmd
 
 

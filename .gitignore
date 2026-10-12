@@ -226,3 +226,8 @@ results/gate_scratch/
 results/**/preflight.json
 results/**/events.jsonl
 molmetal/reports/**/events.jsonl
+
+# 2026-10-12 — Paper-A reproducibility scratch. `make paper-a-repro` writes the
+# regenerated metrics here for a tolerance diff against metrics/by_metric/; it
+# is never a source of truth (AGENTS.md 5.5 — the on-disk artifact is).
+.repro_out/

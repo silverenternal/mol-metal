@@ -2,8 +2,8 @@
   "manifest": "paper_a_metric_reproducibility",
   "description": "Every quantitative artifact cited by paper_a/, with its producing script, exact command, inputs and cost class. Consumed by scripts/reproduce_paper_a.sh, which regenerates the CPU-only subset into a scratch directory and diffs it against the on-disk artifact (never overwriting it, AGENTS.md 5.5).",
   "repo": "mol-metal",
-  "source_commit": "324b0e456d",
-  "source_commit_note": "Probe/scaffold/permutation/PA3 producers landed in c94c9bf1de; the four synthesis/stability producers landed in 324b0e456d. This manifest describes the tree at 324b0e456d.",
+  "source_commit": "b2fcaff66a",
+  "source_commit_note": "Probe/scaffold/permutation/PA3 producers landed in c94c9bf1de; the four synthesis/stability producers in 324b0e456d; the repro driver + this manifest in 539dfcc9c0; the PA3 bootstrap-CI/Holm synthesis in b2fcaff66a. This manifest describes the tree at b2fcaff66a; the driver's interpreter substitution and package-relative out-dir landed immediately after.",
   "env": {
     "MOLMETAL_DATA_DIR": ".data/molmetal",
     "MOLMETAL_TMQM_DIR": ".data/molmetal/tmQM"
