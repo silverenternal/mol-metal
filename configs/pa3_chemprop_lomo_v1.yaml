@@ -1,0 +1,87 @@
+# PA3 — chemprop v2 official D-MPNN cross-metal LOMO on the Paper-A cohort.
+# AGENTS.md §5.11: training launches from this YAML; the wrapper passes --config
+# (and --out-dir) and nothing else.  Every hyperparameter below resolves to a
+# dest of train_chemprop_lomo_paper_cohort.py's own parser (verified by
+# scripts/_config_binding_gate.py), or is a registered non-trainer / declared-
+# inert key.
+#
+# WHY (BLK-PA3)
+# -------------
+# Paper A's Claim-1 collapse is measured with a Morgan-FP + XGBoost probe.  The
+# "it is the metal axis, not a broken backbone" argument currently rests on
+# MoleculeNet, where this repo's D-MPNN loses to the chemprop reference on 4/4
+# tasks.  This run replaces the scorer with the official chemprop v2
+# AtomMessagePassing backbone (d_h=300, depth=3) on the SAME cohort and the SAME
+# ligand-disjoint LOMO split as metrics/by_metric/metal_activity_transfer.json.
+# If the collapse reproduces under chemprop, it is not an artefact of a weak
+# backbone.
+
+entry:
+  script: molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+    --config {yaml_path}
+
+data:
+  # Probe cohort = MetalCytotoxDataset.from_csv(CytotoxFilter(...)) + dedup,
+  # per metal.  Identical to metal_activity_transfer_probe.py.
+  cohort_filter: "CytotoxFilter(time_threshold=24h, ic50_min=0.01uM, metal_whitelist=[m]) then collapse_duplicates (one row per unique ligand, majority label, ties -> ACTIVE)"
+  n_rows_expected: 9666
+  time_threshold: 24.0
+  ic50_min: 0.01
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  # chemprop v2 production defaults (d_h=300 / depth=3) + a single pooled
+  # BinaryClassificationFFN binary head, no metal features — the probe's
+  # scorer contract, so the comparison isolates the scorer not the cohort.
+  hidden: 300
+  depth: 3
+  ffn_hidden: 300
+  ffn_layers: 1
+  dropout: 0.0
+
+train:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  bf16: true
+
+protocol:
+  wave_decomposition: "LOMO 5 folds (Ru/Ir/Rh/Os/Re held out) x 5 seeds; ligand-disjoint train pool (a ligand in the held-out metal's test set is dropped from train)"
+  seeds: [42, 43, 44, 49, 123]
+
+# --- run shape -------------------------------------------------------------
+# both = the cross-metal LOMO column AND the within-metal 5-fold CV column, so
+# the chemprop within-vs-cross penalty is on the same footing as the XGB
+# probe's Table-1 pair.
+mode: both
+n_splits: 5
+# Label-permutation null on the --perm-seed cross-fold predictions; mirrors
+# metal_activity_transfer_permutation_null.json (1,000 shuffles, seed 42).
+n_permutations: 1000
+perm_seed: 42
+
+eval:
+  gate_target: 0.7
+  krasnov_2026_baseline_auc:
+    Ru: 0.81
+    Ir: 0.73
+
+compute:
+  gpu: 0
+  device: cuda:0
+
+output:
+  base_dir: molmetal/reports/pa3_chemprop_lomo
+  out_json: molmetal/reports/pa3_chemprop_lomo/metrics.json
+  log_master: molmetal/reports/pa3_chemprop_lomo/master.log
+
+directives:
+  user_ok_required: true
+
+honest_framing: >
+  MEASURED only.  Every AUC is sklearn roc_auc_score on the sigmoid of the
+  pooled head's logit over the held-out metal's deduplicated ligands.  If the
+  chemprop collapse is smaller than the XGB probe's, that is the finding: the
+  BLK-PA3 honest-negative fallback downgrades the D-MPNN to a representative GNN
+  and lets the XGB probe carry the main claim.  No number here is PROJECTED.
