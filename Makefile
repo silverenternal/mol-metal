@@ -18,7 +18,7 @@ TESTS     := $(PROJECT)/molmetal/tests
 LOGS      := $(PROJECT)/logs
 RPT       := $(PROJECT)/molmetal/reports
 
-.PHONY: help setup eval pitfall test smoke reproduce coverage lint clean paper
+.PHONY: help setup eval pitfall test smoke reproduce coverage lint clean paper paper-a-repro paper-a-repro-plan
 .DEFAULT_GOAL := help
 
 # ----- help -----------------------------------------------------------------
@@ -62,6 +62,13 @@ smoke:                      ## 200-step CFM smoke (metallo_drug_smoke_retrain)
 # ----- R17 full reproduce ---------------------------------------------------
 reproduce:                  ## bash molmetal/scripts/wf_reproduce_R17.sh
 	cd $(PROJECT) && bash $(SCRIPTS)/wf_reproduce_R17.sh
+
+# ----- Paper-A metric reproducibility ---------------------------------------
+paper-a-repro:              ## regenerate + diff every CPU-reproducible Paper-A metric
+	cd $(PROJECT) && bash scripts/reproduce_paper_a.sh
+
+paper-a-repro-plan:         ## print the Paper-A repro plan (run nothing)
+	cd $(PROJECT) && bash scripts/reproduce_paper_a.sh --dry-run
 
 # ----- paper build (4-pass pdflatex + bibtex) -------------------------------
 paper:                      ## cd paper && 4-pass pdflatex+bibtex build

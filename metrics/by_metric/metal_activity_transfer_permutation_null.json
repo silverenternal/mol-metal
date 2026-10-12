@@ -332,6 +332,20 @@
       "above_chance_significant": false
     }
   },
+  "permutation_null_holm": {
+    "correction": "Holm-Bonferroni (family = 5 held-out metals)",
+    "n_family": 5,
+    "p_two_sided_holm": {
+      "Ru": 0.0,
+      "Ir": 1.0,
+      "Re": 1.0,
+      "Rh": 1.0,
+      "Os": 1.0
+    },
+    "significant_after_holm_0.05": [
+      "Ru"
+    ]
+  },
   "transfer_penalty": {
     "Ru": {
       "within_auc": 0.8362931423415294,

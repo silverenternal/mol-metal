@@ -37,6 +37,10 @@ OFF_ARM = "molmetal/reports/tmqm_ab_metalcytotox_30ep_init_off/finetune_random_R
 BOOTSTRAP_N = 20000
 BOOTSTRAP_SEED = 0
 
+# The raw arm reports carry no timestamp, so the artifact records the date the
+# BLK-PA12-fixed A/B was run. A constant, not a clock read.
+RERUN_DATE = "2026-10-12"
+
 # Frozen historical record of the superseded (degenerate-splitter) measurement.
 # Carried verbatim per AGENTS.md §5.5; never recomputed.
 SUPERSEDES: Dict[str, object] = {
@@ -213,13 +217,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             ),
         },
         "transfer_verified": "both arms printed 'loaded 12 backbone tensors from tmQM'",
-        "timestamp": on.get("timestamp") or "",
+        "timestamp": on.get("timestamp") or RERUN_DATE,
     }
 
     from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
 
     out = PROJECT_ROOT / args.out_metric
-    atomic_write_file(out, json.dumps(report, indent=2, default=float))
+    # ensure_ascii=False keeps the non-ASCII (the BLK-PA12 fallback quote is in
+    # Chinese) readable in the artifact; the canonical was written this way.
+    atomic_write_file(out, json.dumps(report, indent=2, default=float, ensure_ascii=False))
 
     print(f"tmqm   mean={arms['tmqm']['mean']:.4f} std={arms['tmqm']['std']:.4f}")
     print(f"random mean={arms['random']['mean']:.4f} std={arms['random']['std']:.4f}")

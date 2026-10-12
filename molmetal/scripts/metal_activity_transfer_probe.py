@@ -127,6 +127,46 @@ METALS = ["Ru", "Ir", "Rh", "Os", "Re"]
 # rather than merely asserted. `None` = not reported for that metal.
 KRASNOV_WITHIN_METAL_AUC = {"Ru": 0.81, "Ir": 0.73, "Rh": None, "Os": None, "Re": None}
 
+# Emitted on request (--comparability-note) into the base report. This block used
+# to be added to metal_activity_transfer.json by hand, which made the canonical
+# unreproducible from committed code. It is prose that references other
+# artifacts, so it lives here as a constant rather than being recomputed.
+COMPARABILITY_NOTE = {
+    "verdict": "WITHIN COLUMN IS NOT COMPARABLE TO KRASNOV 2026. The two use different cohorts.",
+    "ours": (
+        "within_metal_cv is 5-fold CV on the LOMO dedup cohort (Ru n_unique=1255 "
+        "pos_rate 0.2574; Ir n_unique=534 pos_rate 0.4532)."
+    ),
+    "krasnov": (
+        "Their 0.81 / 0.73 come from a cancer-only cohort of 15,799 rows / 4,793 "
+        "complexes / 591 cell lines (see "
+        "metalcytotox_ru_auc.json::paper_protocol_measurement)."
+    ),
+    "our_number_on_their_cohort": (
+        "0.7717 +/- 0.0380 under their DOI-split 10-fold CV, which is 0.0383 BELOW "
+        "their LightGBM 0.810 +/- 0.024, with 3/10 folds at or above. That is the "
+        "only like-for-like comparison on disk."
+    ),
+    "tie_sensitivity": (
+        "Both sides use the identical collapse predicate (sum*2 >= n, ties -> "
+        "ACTIVE), so the tie rule does not confound the cross-metal comparison. It "
+        "DOES move the within column: conservative rule gives Ru 0.7880-0.8082 (at "
+        "or below Krasnov 0.81) while Ir is unchanged and stays above 0.73 under "
+        "both rules and all 5 seeds."
+    ),
+    "withdrawn": (
+        "The CLAIM 'within-metal matches or beats the published result' is "
+        "WITHDRAWN for Ru. It is defensible for Ir only."
+    ),
+    "supersedes_a_bad_citation": (
+        "todo.json::withdrawn_claims_2026_10_10 justified this withdrawal by citing "
+        "'DOI-grouped 0.6350 / 0.6065'. Those two numbers DO NOT EXIST anywhere on "
+        "disk; the only 0.6351 in the repo is an Os per-seed value in "
+        "metal_lomo_auc.json, a different experiment. The withdrawal conclusion is "
+        "correct; that citation was not traceable."
+    ),
+}
+
 # Mirrors baseline_lomo_cv's XGBClassifier params exactly.
 XGB_PARAMS = {
     "n_estimators": 500,
@@ -665,6 +705,7 @@ def run(
     n_bootstrap: int = 0,
     with_baselines: bool = False,
     tie_rule: str = "active",
+    comparability_note: bool = False,
 ) -> Dict[str, object]:
     _load_env_default()
     import pandas as pd
@@ -955,6 +996,9 @@ def run(
     if include_raw:
         report["cross_metal_lomo_RAW_undeduplicated"] = cross_metal(raw, seed, radius, nbits)
 
+    if comparability_note:
+        report["comparability_note"] = COMPARABILITY_NOTE
+
     return report
 
 
@@ -1019,6 +1063,17 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     p.add_argument(
+        "--comparability-note",
+        action="store_true",
+        help=(
+            "emit the comparability_note block: the within column is not "
+            "comparable to Krasnov 2026 (different cohorts), the Ru "
+            "'matches-or-beats' claim is withdrawn, and the tie rule's effect on "
+            "it. Prose, so it is a constant, not recomputed. On for the canonical "
+            "base artifact only"
+        ),
+    )
+    p.add_argument(
         "--out-metric",
         default="metrics/by_metric/metal_activity_transfer.json",
     )
@@ -1035,6 +1090,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         n_bootstrap=args.bootstrap_ci,
         with_baselines=args.with_baselines,
         tie_rule=args.tie_rule,
+        comparability_note=args.comparability_note,
     )
 
     from molmetal.scripts.wf386a3_atomic_write import atomic_write_file

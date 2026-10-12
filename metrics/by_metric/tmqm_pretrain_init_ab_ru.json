@@ -4,11 +4,12 @@
   "value_std": 0.025128,
   "tag": "MEASURED_HONEST_NEGATIVE",
   "source_script": "molmetal/scripts/finetune_metalcytotox_from_tmqm.py",
+  "synthesis_script": "molmetal/scripts/synthesize_tmqm_pretrain_init_ab_ru.py",
   "configs": [
     "configs/tmqm_ab_metalcytotox_init_on.yaml",
     "configs/tmqm_ab_metalcytotox_init_off.yaml"
   ],
-  "protocol": "MetalCytoToxDB Ru subset; FIXED Bemis-Murcko scaffold split (BLK-PA12: ScaffoldSplitter desalt-aware _scaffold_for, molmetal/data/splits.py mtime 2026-10-12 01:56:12); seeds vary model init only; 30 epochs; batch 128; lr 1e-3; hidden 128 depth 3; n_rows 19135; n_test 215; the ONLY difference between arms is init: tmqm|random",
+  "protocol": "MetalCytoToxDB Ru subset; FIXED Bemis-Murcko scaffold split (BLK-PA12: ScaffoldSplitter desalt-aware _scaffold_for); seeds vary model init only; 30 epochs; batch 128; lr 0.001; n_rows 19135; n_test 215; the ONLY difference between arms is init: tmqm|random",
   "arms": {
     "tmqm": {
       "mean": 0.777773,

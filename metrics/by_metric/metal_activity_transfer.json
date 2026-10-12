@@ -7,7 +7,7 @@
   "model": "morgan_fp(radius=2, 2048bit) + xgboost",
   "data_source": "MetalCytoToxDB (Krasnov et al., J. Med. Chem. 2026, 69(8), 8838)",
   "seed": 42,
-  "dedup_rule": "one row per unique ligand; label = majority; ties -> inactive",
+  "dedup_rule": "one row per unique ligand; label = majority; ties -> ACTIVE (sum*2>=n; anti-conservative direction; see tie_sensitivity field)",
   "leakage_rule": "a ligand appearing in ANY other metal is dropped from the LOMO train pool",
   "krasnov_within_metal_auc": {
     "Ru": 0.81,
@@ -410,7 +410,7 @@
     }
   },
   "comparability_note": {
-    "verdict": "WITHIN-COUMN IS NOT COMPARABLE TO KRASNOV 2026. The two use different cohorts.",
+    "verdict": "WITHIN COLUMN IS NOT COMPARABLE TO KRASNOV 2026. The two use different cohorts.",
     "ours": "within_metal_cv is 5-fold CV on the LOMO dedup cohort (Ru n_unique=1255 pos_rate 0.2574; Ir n_unique=534 pos_rate 0.4532).",
     "krasnov": "Their 0.81 / 0.73 come from a cancer-only cohort of 15,799 rows / 4,793 complexes / 591 cell lines (see metalcytotox_ru_auc.json::paper_protocol_measurement).",
     "our_number_on_their_cohort": "0.7717 +/- 0.0380 under their DOI-split 10-fold CV, which is 0.0383 BELOW their LightGBM 0.810 +/- 0.024, with 3/10 folds at or above. That is the only like-for-like comparison on disk.",
