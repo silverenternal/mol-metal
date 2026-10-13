@@ -3195,6 +3195,13 @@ def train_one_epoch(
             continue
         # Accumulate per-batch loss.
         optimiser.zero_grad(set_to_none=True)
+        # ``batch`` is conditionally assigned inside ``if fm_objective and
+        # batch_clouds`` below; initialise here so the loss-aggregation
+        # block (QEDLoss / NaturalChargeLoss / etc.) can safely reference
+        # ``batch`` attributes even when the FM step was skipped (e.g.
+        # the smoke gate's empty-batch edge case).  Wf-A30 (2026-10-14)
+        # pre-flight fix per HONEST_NEGATIVE_CATALOG §6.53.
+        batch = None
         batch_bond_losses = []
         batch_velocities = []
         batch_targets = []
@@ -4400,23 +4407,23 @@ def train_one_epoch(
         qed_term = QEDLoss(
             weight=float(qed_loss_weight),
             enabled=float(qed_loss_weight) > 0.0,
-        ).compute(decoded_mols=None, device=device)
+        ).compute(decoded_smiles_batch=None, device=device)
         molecule_term = MoleculeLoss(
             weight=float(molecule_loss_weight),
             enabled=float(molecule_loss_weight) > 0.0,
-        ).compute(decoded_mols=None, device=device)
+        ).compute(decoded_smiles_batch=None, device=device)
         stereo_term = StereoCentreSuppressionLoss(
             weight=float(stereo_loss_weight),
             enabled=float(stereo_loss_weight) > 0.0,
-        ).compute(decoded_mols=None, device=device)
+        ).compute(decoded_smiles_batch=None, device=device)
         fragment_term = SingleFragmentLoss(
             weight=float(fragment_loss_weight),
             enabled=float(fragment_loss_weight) > 0.0,
-        ).compute(decoded_mols=None, device=device)
+        ).compute(decoded_smiles_batch=None, device=device)
         property_term = MolecularPropertyTargetLoss(
             weight=float(property_loss_weight),
             enabled=float(property_loss_weight) > 0.0,
-        ).compute(decoded_mols=None, target_value=0.0, device=device)
+        ).compute(decoded_smiles_batch=None, device=device)
         # Wf-A27 (2026-10-13) step-4 — standalone ClashPenalty wire-in.
         # The trainer's in-model ``_compute_clash_penalty`` (Line 2311)
         # already computes a per-cloud scalar and stashes it on
@@ -4481,7 +4488,13 @@ def train_one_epoch(
         if model.last_q_preds:
             _q_pred = torch.cat(model.last_q_preds, dim=0)  # (N_total,)
         _q_target: Optional[torch.Tensor] = None
-        if "natural_charge" in dir(batch) and batch.natural_charge is not None:
+        # Wf-A30-FIXUP-2 (2026-10-14): ``batch`` is only assigned inside
+        # the ``if fm_objective and batch_clouds:`` block at L3802; when
+        # the FM objective is OFF (the legacy default) this name is not
+        # in scope.  Guard with ``fm_objective`` first so the short-
+        # circuit path never reaches ``dir(batch)`` when ``batch`` does
+        # not exist as a local.
+        if fm_objective and "natural_charge" in dir(batch) and batch.natural_charge is not None:
             _q_target = batch.natural_charge.to(device)
         natural_charge_term = NaturalChargeLoss(
             weight=float(natural_charge_mse_weight),
@@ -4502,7 +4515,17 @@ def train_one_epoch(
         # guards pass, the term is
         # ``wasserstein_pocket_weight *
         #   wasserstein_pocket_loss(vel, pocket_dist, n_mc=...)``.
-        _wpp_weight = float(getattr(args, "wasserstein_pocket_weight", 0.0))
+        #
+        # Wf-A30 (2026-10-14) §6.53 — ``args`` was referenced here but is
+        # NOT in the local scope of train_one_epoch (the argparse Namespace
+        # lives in main()).  Default the two values to their inactive
+        # defaults (0.0 / 64) so the term collapses to torch.zeros(())
+        # regardless of the (unreachable) CLI flag.  If a future wave
+        # wants to actually wire this in, the right fix is to add
+        # ``wasserstein_pocket_weight`` + ``wasserstein_pocket_n_mc`` to
+        # the train_one_epoch signature and plumb them from main() — but
+        # that is out of scope for the pre-flight fix here.
+        _wpp_weight = 0.0
         _wpp_dist = None
         if _wpp_weight > 0.0:
             _batch_ctx = locals().get("batch_ctx")
@@ -4517,9 +4540,7 @@ def train_one_epoch(
                     _wpp_vel.detach(),
                     _wpp_dist,
                     pocket_id=None,
-                    n_mc=int(
-                        getattr(args, "wasserstein_pocket_n_mc", 64)
-                    ),
+                    n_mc=64,
                     seed=0,
                 )
             else:

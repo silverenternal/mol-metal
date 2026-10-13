@@ -176,7 +176,7 @@ def load_platinai_features(
     *,
     n_samples: int = DEFAULT_N_SAMPLES,
     seed: int = DEFAULT_SEED,
-    feature_names: Sequence[str] = default_feature_columns(),
+    feature_names: Sequence[str] = default_feature_columns("f5_legacy"),
 ) -> PlatinAIFeatures:
     """Load PlatinAI 5K, compute F5 features, return ``(X, y)``.
 
@@ -650,7 +650,7 @@ def run_extended_cv_benchmark(
     n_samples: int = DEFAULT_N_SAMPLES,
     k_folds: int = DEFAULT_K_FOLDS,
     seed: int = DEFAULT_SEED,
-    feature_names: Sequence[str] = default_feature_columns(),
+    feature_names: Sequence[str] = default_feature_columns("f5_legacy"),
     population_dim: Optional[int] = None,
     hilbert_n_iters: Optional[int] = None,
     hilbert_lr_primal: Optional[float] = None,

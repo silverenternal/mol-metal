@@ -390,6 +390,20 @@ class HilbertASTSRComposite:
                 out = np.asarray(
                     self.hilbert_optimizer.predict(feats_h), dtype=float
                 ).reshape(-1)
+                # Wf-44 Phase 4 loss-scale correction.  When ``fit`` scaled
+                # the target by ``loss_scale > 1`` to keep squared
+                # residuals above the fp32 underflow floor, the
+                # optimizer's ``best_params_`` was fit against the SCALED
+                # target.  R² is invariant to affine target scaling, but
+                # ``predict`` returns predictions in the SCALED units
+                # which would be wildly wrong against the unscaled
+                # ``y_test``.  Undo the scaling here so the R² callers
+                # compute matches the in-train best_r2_train_.
+                if (
+                    float(self.last_loss_scale_used_) > 1.0
+                    and self.last_loss_scale_used_ != 0.0
+                ):
+                    out = out / float(self.last_loss_scale_used_)
                 self.last_predictions_ = out.copy()
                 return out
             except RuntimeError:

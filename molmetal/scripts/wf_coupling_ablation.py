@@ -99,7 +99,7 @@ _CENTROID_BITS: np.ndarray | None = None
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-FEATURE_NAMES: Tuple[str, ...] = default_feature_columns()
+FEATURE_NAMES: Tuple[str, ...] = default_feature_columns("f5_legacy")
 #: Target = ``qed_mean * qed_mean`` (a **pure quadratic** in
 #: `qed_mean`).  The quadratic has substantial non-linear variance
 #: that F5's pure-linear hypothesis class cannot capture (F5 R² ≈
