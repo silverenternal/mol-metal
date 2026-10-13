@@ -1921,6 +1921,34 @@ class CFMJointModel(nn.Module):
         """The EMA snapshot, ready for a checkpoint."""
         return dict(getattr(self, "_ema_state", None) or {})
 
+    def load_ema_state(self, sd: dict) -> bool:
+        """Restore the EMA snapshot from a checkpoint.  Returns True if
+        the snapshot was non-empty and was applied; False if the ckpt
+        carried no EMA (e.g. it was written before --use-ema existed).
+
+        Tolerates an empty dict (the pre-Wf-A20 ckpt shape): a no-op
+        is preferable to a hard failure because the EMA is an EVAL-TIME
+        signal, not a training signal — a missing EMA simply means
+        eval will use the live weights instead of the EMA snapshot.
+        """
+        if not isinstance(sd, dict) or not sd:
+            return False
+        state = getattr(self, "_ema_state", None)
+        if state is None:
+            self._ema_state = {}
+            state = self._ema_state
+        # Apply key-by-key; ignore keys that no longer exist (the
+        # model was rebuilt with a different param list after the ckpt
+        # was written).  This matches the strict=False pattern the
+        # model.load_state_dict call uses for the live weights.
+        for k, v in sd.items():
+            if k in state and isinstance(v, torch.Tensor):
+                state[k].copy_(v.detach().to(state[k].device))
+            elif k in state:
+                # New key, register verbatim.
+                state[k] = v.detach().clone()
+        return True
+
     def forward(
         self,
         cloud: AtomCloud,
@@ -9728,6 +9756,23 @@ def main() -> int:
                     "optimiser.",
                     flush=True,
                 )
+        # Wf-A20 (2026-10-13) — restore EMA snapshot if the ckpt carries
+        # one AND --use-ema is on.  The pre-Wf-A20 ckpt has no
+        # ``ema_state_dict`` key, so ``_rsd.get("ema_state_dict", {})``
+        # returns {} and load_ema_state is a no-op.  The init_ema call
+        # above (line ~9030) must already have run for the restore to
+        # succeed; the fallback print below keeps the resume path
+        # useful even when EMA is OFF.
+        if bool(getattr(args, "use_ema", False)):
+            try:
+                model.load_ema_state(_rsd.get("ema_state_dict", {}))
+            except Exception as exc:
+                print(
+                    f"[cfm-resume][WARNING] EMA state not restored "
+                    f"({type(exc).__name__}: {exc}); continuing with live "
+                    "weights for EMA eval.",
+                    flush=True,
+                )
         _last_epoch = int(_rsd.get("epoch", -1))
         _start_epoch = _last_epoch + 1
         # Prefer the recorded best over the last-written decode_ratio: a
@@ -10857,6 +10902,15 @@ def main() -> int:
                     "pocket_id": args.pocket_id,
                     "closure_bias": closure_bias,
                     "wasserstein_weight": args.wasserstein_weight,
+                    # Wf-A20 (2026-10-13) — EMA snapshot round-trip.  Key is
+                    # present only when --use-ema=True; the load_ema_state
+                    # reader is a no-op when the value is empty, so
+                    # pre-Wf-A20 checkpoints still load.
+                    "ema_state_dict": (
+                        model.ema_state_dict()
+                        if bool(getattr(args, "use_ema", False))
+                        else {}
+                    ),
                 },
                 _ckpt_path,
             )
