@@ -5479,5 +5479,115 @@
     "not_a_blocker": {
       "pa18_doi_fold_vs_krasnov": "pa18 DOI-fold Ru 0.731 vs Krasnov 0.81 是跨队列估计 (我们 591 cell lines vs 论文 23), 不是弱指标; 同口径 within-metal 是 0.836 vs 0.81 (我们赢)。见 06_limitations 与 P1B.2 [W2]"
     }
+  },
+  "model_unification_2026_10_14": {
+    "created": "2026-10-14",
+    "decision": "预测线主模型统一为 chemprop v2 D-MPNN; 非主模型对照保留但必须显式标注为对照/复现",
+    "main_model": {
+      "impl": "chemprop v2 AtomMessagePassing (official)",
+      "config": "d_h=300, depth=3, FFN 1x300, dropout 0.0, metal_mode=none, 50ep/batch64/lr1e-3/bf16",
+      "producer": "molmetal/scripts/train_chemprop_lomo_paper_cohort.py",
+      "where_used": "Table 1 (within ceiling + cross LOMO), FSMA K-curve, C2/C3/C4 ablations, PA3, PA15"
+    },
+    "second_model_problem": {
+      "impl": "in-house dmpnn_v4 / dmpnn_multitask_wasserstein",
+      "note": "论文里这一支也被写成 'This work (D-MPNN)', 与主模型冲突; 04_results.tex:215(0.8545=chemprop v2) 与 :220(0.7717=in-house) 同表同标签",
+      "producer": "molmetal/scripts/train_dmpnn_multitask_wasserstein.py, train_moleculenet.py"
+    },
+    "must_rerun_on_main": [
+      {
+        "id": "U1",
+        "item": "DOI-split 10-fold Ru D-MPNN 行 (0.7717 +/- 0.0380)",
+        "current": "metrics/by_metric/metalcytotox_ru_auc.json (in-house dmpnn_multitask_wasserstein)",
+        "need": "chemprop v2 在 paper-funnel 队列 + DOI-grouped 10-fold (同 fold 划分)",
+        "why": "Table 'Krasnov' 的 D-MPNN 行必须与 Table 1 同模型",
+        "status": "TODO"
+      },
+      {
+        "id": "U2",
+        "item": "tmQM pretraining A/B (Ru, Ir)",
+        "current": "metrics/by_metric/tmqm_pretrain_init_ab_ru.json (in-house, hidden 128)",
+        "need": "chemprop v2 backbone 重跑 A/B",
+        "why": "supplement 把 'our model' 的 tmQM A/B 当主张; 应同主模型",
+        "status": "TODO"
+      },
+      {
+        "id": "U3",
+        "item": "tmQM bond-perception reference",
+        "current": "metrics/by_metric/tmqm_bond_perception*.json",
+        "need": "确认是否模型主张; 若是则 chemprop v2 重跑",
+        "why": "supplement 引用",
+        "status": "CHECK_FIRST"
+      }
+    ],
+    "reframe_only": [
+      {
+        "id": "U4",
+        "item": "MoleculeNet backbone control (supplement)",
+        "current": "'This work (D-MPNN 512/4)' = in-house dmpnn_v4",
+        "action": "把 chemprop v2 列改为 'our model'; in-house 列改标 'in-house D-MPNN (alternative backbone)' 或删; artifact 已存在: moleculenet_auc_chemprop_v2_same_protocol.json",
+        "status": "TODO"
+      }
+    ],
+    "keep_as_labelled_controls": [
+      {
+        "id": "U5",
+        "item": "Krasnov 对齐",
+        "artifacts": [
+          "metalcytotox_ru_paper_lightgbm_cv.json",
+          "m1_top23_*"
+        ],
+        "label": "published model class (LightGBM)",
+        "why": "用意是复现论文模型类"
+      },
+      {
+        "id": "U6",
+        "item": "C5 跨骨干复核",
+        "artifacts": [
+          "fsma_xgb_warmstart_kshot.json"
+        ],
+        "label": "cross-backbone control (XGBoost)",
+        "why": "证明效果非 GNN 专属"
+      },
+      {
+        "id": "U7",
+        "item": "transfer-penalty 探针",
+        "artifacts": [
+          "metal_activity_transfer*.json"
+        ],
+        "label": "provenance (XGBoost probe), superseded by PA3",
+        "why": "原始发现; Table 1 已改用 chemprop"
+      },
+      {
+        "id": "U8",
+        "item": "Krasnov-aligned classical columns",
+        "artifacts": [
+          "pa18_*",
+          "pa20_*"
+        ],
+        "label": "Krasnov-aligned classical columns",
+        "why": "模型类对照/对齐"
+      }
+    ],
+    "text_fixes": [
+      {
+        "id": "U9",
+        "file": "paper_a/sections/04_results.tex",
+        "lines": "215,220",
+        "fix": "区分两个 D-MPNN 或在 U1 重跑后用 chemprop v2 数替换 0.7717 行"
+      },
+      {
+        "id": "U10",
+        "file": "paper_a/supplement.tex",
+        "lines": "163",
+        "fix": "MoleculeNet 表头 'This work (D-MPNN 512/4)' -> chemprop v2"
+      },
+      {
+        "id": "U11",
+        "file": "paper_a/sections/03_method.tex",
+        "fix": "显式声明 'single backbone',并点名哪些列是对照/复现"
+      }
+    ],
+    "gpu_cost": "U1 (chemprop v2 Ru DOI-10fold) + U2 (chemprop v2 tmQM A/B Ru/Ir) —— 两个 GPU run; U4/U9-U11 纯文本"
   }
 }
