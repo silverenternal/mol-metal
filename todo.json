@@ -5204,6 +5204,65 @@
         "93a218a7 Paper-A P3: rewrite paper_a as the FSMA method paper"
       ],
       "note": "New figures + supplement.pdf landed in a follow-up commit; W2 /tmp diagnostics persisted to molmetal/reports/m1_top23/ (gitignored, on-disk)."
+    },
+    "metric_alignment_2026_10_13": {
+      "goal": "把同数据集论文(Krasnov 2026)报告的指标在我们队列上对齐跑一遍",
+      "same_dataset_paper": "Krasnov 2026 (MetalCytoToxDB) — reports binary ROC-AUC + pIC50 MAE",
+      "T1_pic50_regression": {
+        "status": "DONE (2026-10-13)",
+        "artifact": "metrics/by_metric/pa18_pic50_regression_5metal.json",
+        "producer": "molmetal/scripts/pa18_pic50_regression_5metal.py",
+        "protocol": "paper-funnel per metal; DOI-grouped 10-fold CV (seed=0); Morgan-FP(2,2048); LightGBM/XGBoost regressor; row-level pIC50",
+        "measured_lightgbm": {
+          "Ru": {
+            "mae": 0.563,
+            "rmse": 0.7231,
+            "r2": 0.1214,
+            "pearson_r": 0.415
+          },
+          "Ir": {
+            "mae": 0.5792,
+            "rmse": 0.7295,
+            "r2": 0.008,
+            "pearson_r": 0.353
+          },
+          "Rh": {
+            "mae": 0.5466,
+            "rmse": 0.6947,
+            "r2": 0.0172,
+            "pearson_r": 0.467
+          },
+          "Os": {
+            "mae": 0.7556,
+            "rmse": 0.9434,
+            "r2": -0.5419,
+            "pearson_r": 0.201
+          },
+          "Re": {
+            "mae": 0.4825,
+            "rmse": 0.6229,
+            "r2": -0.0196,
+            "pearson_r": 0.362
+          },
+          "pooled": {
+            "mae": 0.5854,
+            "rmse": 0.7427,
+            "r2": -0.083,
+            "pearson_r": 0.3595
+          }
+        },
+        "random_vs_doi_diagnostic_lightgbm": {
+          "pooled_random_r2": 0.6919,
+          "pooled_doi_r2": -0.083,
+          "pooled_random_mae": 0.3135,
+          "pooled_doi_mae": 0.5854,
+          "reading": "DOI-grouped (paper/assay) split is the hard axis; same pattern as binary AUC random-vs-DOI"
+        },
+        "blocker": "Krasnov pIC50 MAE reference value NOT captured in repo -> recorded null; needs transcription from the source paper for a head-to-head",
+        "commit": "90f9082ccb"
+      },
+      "T2_pending": "threshold classification metrics (MCC/F1/acc/sens/spec/bal-acc) — needs per-ligand prediction dump + re-run",
+      "T3_pending": "Brier / calibration"
     }
   }
 }
