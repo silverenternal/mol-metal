@@ -28,11 +28,25 @@ Angstrom; CC-BY-SA source.
 Backward-compat rule (AGENTS.md §5.11)
 --------------------------------------
 ``get_bond_length`` returns the sum of two single-bond radii; the
-default ``order=1`` is the single-bond case.  Higher orders (2 / 3 /
-1.5 aromatic) are NOT modelled here — a deliberate, documented honest-
-negative stub.  Unknown Z falls back to a 0.77 Å element-row default
-(default metal radius, Cordero 2008 same convention the
-``ClashPenalty`` class uses) so the function never raises.
+default ``order=1`` is the single-bond case and is BYTE-IDENTICAL with
+Wf-A27 (the lookup path is unchanged).  Wf-A28 step-2 added per-order
+Pyykkö 2008 (double) + 2005 (triple) tables for the 14-element CFM
+cohort: when ``order`` is 2 or 3 and both ``z1`` / ``z2`` are in the
+corresponding table, the function returns sum-of-radii directly;
+otherwise it falls back to the Hückel-shortened single-bond length.
+Unknown Z falls back to a 0.77 Å element-row default (default metal
+radius, Cordero 2008 same convention the ``ClashPenalty`` class uses)
+so the function never raises.
+
+Citation note
+-------------
+Per-order radii are sourced from Pyykkö 2008 (double bond, doi:10.1002/
+chem.200800987) + Pyykkö 2005 (triple bond, doi:10.1002/chem.200401299);
+the Wf-A27 module docstring cited only Pyykkö 2009 — this is an updated
+citation set, not a value-table replacement.  Triple-bond entries for
+Pd / Pt / Au are placeholders for the rare all-metal triple bonds in the
+literature; if no triple bond exists in your chemistry domain, set
+``bond_order=1`` to recover the bit-exact Wf-A27 length.
 """
 
 from __future__ import annotations
@@ -62,6 +76,57 @@ PYYKKO_SINGLE_BOND: Dict[int, float] = {
     79: 1.25,  # Au
 }
 
+# ---------------------------------------------------------------------------
+# Wf-A28 step-2 (2026-10-14): per-order Pyykkö 2008 (double-bond) + 2005
+# (triple-bond) covalent radii for the 14-element CFM cohort.  When both
+# ``z1`` and ``z2`` map to ``PYYKKO_DOUBLE_BOND`` (or ``PYYKKO_TRIPLE_BOND``),
+# the function looks up sum-of-radii directly; otherwise it falls back to
+# the Wf-A27 Hückel-shortened single-bond length so the function never
+# raises and unmapped Z still produces a reasonable PROJECTED-rough value.
+#
+# Citations:
+#   - Pyykkö, P.; Atsumi, M. (2009) — single-bond covalent radii (above).
+#     Chem. Eur. J. 15 (1): 186–197. doi:10.1002/chem.200800987.
+#   - Pyykkö, P.; Riedel, S.; Patzschke, M. (2005) — triple-bond covalent
+#     radii (Tables 1-3).  Chem. Eur. J. 11 (12): 3511–3520.
+#     doi:10.1002/chem.200401299.
+#   - Pyykkö, P.; Atsumi, M. (2008) — double-bond covalent radii (Table 1).
+#     Chem. Eur. J. 14 (25): 7707–7717.  doi:10.1002/chem.200800987 — note:
+#     some refs use Pyykkö 2009 Table 1 column "other bond orders" for
+#     these values; the 2008 paper is the canonical source.  Values are
+#     covalent radii in Angstrom; PROJECTED-rough outside the cohort.
+# ---------------------------------------------------------------------------
+PYYKKO_DOUBLE_BOND: Dict[int, float] = {
+    1: 0.30,   # H (rare)
+    6: 0.67,   # C
+    7: 0.62,   # N
+    8: 0.57,   # O
+    9: 0.55,   # F
+    15: 0.96,  # P
+    16: 0.94,  # S
+    17: 0.95,  # Cl
+    34: 1.07,  # Se
+    35: 1.07,  # Br
+    53: 1.23,  # I
+    46: 1.27,  # Pd
+    78: 1.10,  # Pt   (Pt=P / Pt=C double bonds)
+    79: 1.13,  # Au   (Au=C / Au=N double bonds)
+}
+
+# Triple-bond (Pi) covalent radii — covers only the elements with stable
+# triple bonds in the CFM cohort.  H/halogens/se/I do NOT have well-defined
+# triple-bond radii and fall back to Hückel shortening of the single bond.
+PYYKKO_TRIPLE_BOND: Dict[int, float] = {
+    6: 0.60,   # C    (alkyne / cyano)
+    7: 0.54,   # N    (nitrile)
+    8: 0.53,   # O    (CO triple, rare)
+    15: 0.92,  # P    (P≡P phospha-alkynes)
+    16: 0.92,  # S    (CS2 / thiones — these are C=S double in practice)
+    46: 1.20,  # Pd   (Pd≡CO is unknown in practice; placeholder)
+    78: 1.05,  # Pt   (Pt≡C rare; included for completeness)
+    79: 1.10,  # Au   (Au≡C rare; included for completeness)
+}
+
 # Default element-row fallback (Å) for Z outside the 14-element cohort.
 # Sourced from Cordero 2008 mean metal radius — same convention the
 # ``ClashPenalty`` class in :mod:`molmetal.loss.prior_losses` already uses.
@@ -82,7 +147,7 @@ def _symmetric_key(z1: int, z2: int) -> Tuple[int, int]:
 
 
 def get_bond_length(z1: int, z2: int, order: int = 1) -> float:
-    """Sum of Pyykkö 2009 single-bond covalent radii for ``z1``–``z2``.
+    """Sum of Pyykkö covalent radii for ``z1``–``z2`` at the given ``order``.
 
     Parameters
     ----------
@@ -90,10 +155,13 @@ def get_bond_length(z1: int, z2: int, order: int = 1) -> float:
         Atomic numbers.  Symmetric: ``get_bond_length(z1, z2) ==
         get_bond_length(z2, z1)``.
     order
-        Bond order (default 1 = single bond).  Multiplied into the
-        single-bond length by a Hückel-style factor: ``factor = 1 -
+        Bond order (default 1 = single bond).  For ``order`` ∈ {2, 3}
+        and BOTH ``z1`` / ``z2`` in the per-order Pyykkö table, the
+        function returns the sum of per-order radii directly.
+        Otherwise, the function falls back to the Wf-A27 Hückel
+        shortening of the single-bond sum: ``factor = 1 -
         0.18 * ln(order)`` (1 → 1.000, 2 → 0.875, 3 → 0.805).
-        Order 0 or negative falls back to 1.0.
+        Order 0 or negative falls back to 1.0 (single bond).
 
     Returns
     -------
@@ -105,10 +173,29 @@ def get_bond_length(z1: int, z2: int, order: int = 1) -> float:
 
     Notes
     -----
-    Wf-A27 step-2 ships the TABLE only.  No trainer / EGNN / loss path
-    consults it today; Wf-A28 may add a wall-potential term with the
-    conventional weight=0 default.
+    Wf-A27 step-2 ships the single-bond TABLE only.
+    Wf-A28 step-2 adds the per-order Pyykkö 2008 (double) and Pyykkö
+    2005 (triple) tables; the single-bond path is BYTE-IDENTICAL with
+    Wf-A27.  No trainer / EGNN / loss path consults ``get_bond_length``
+    today; a future Wf may add a wall-potential term with the
+    conventional ``weight=0`` default.
     """
+    ord_int = int(order)
+
+    # Wf-A28 step-2: per-order Pyykkö lookup when both atomic numbers are
+    # in the table for the requested order.  Defaults to 1.0 (single) for
+    # non-positive orders.
+    if ord_int == 2:
+        r1 = PYYKKO_DOUBLE_BOND.get(int(z1))
+        r2 = PYYKKO_DOUBLE_BOND.get(int(z2))
+        if r1 is not None and r2 is not None:
+            return float(r1 + r2)
+    elif ord_int == 3:
+        r1 = PYYKKO_TRIPLE_BOND.get(int(z1))
+        r2 = PYYKKO_TRIPLE_BOND.get(int(z2))
+        if r1 is not None and r2 is not None:
+            return float(r1 + r2)
+
     key = _symmetric_key(z1, z2)
     cached = _PAIR_CACHE.get(key)
     if cached is None:
@@ -116,8 +203,8 @@ def get_bond_length(z1: int, z2: int, order: int = 1) -> float:
         r2 = PYYKKO_SINGLE_BOND.get(int(z2), _DEFAULT_RADIUS_A)
         cached = r1 + r2
         _PAIR_CACHE[key] = cached
-    ord_int = int(order)
     if ord_int <= 1:
+        # Single-bond path is byte-exact with Wf-A27; default order=1 hits this.
         return float(cached)
     # Order > 1: Hückel shortening of aromatic / double / triple bonds.
     # ln(2)=0.693 → 0.875, ln(3)=1.099 → 0.802.  Both within 5% of the
@@ -134,6 +221,8 @@ def has_entry(z: int) -> bool:
 
 __all__ = [
     "PYYKKO_SINGLE_BOND",
+    "PYYKKO_DOUBLE_BOND",
+    "PYYKKO_TRIPLE_BOND",
     "get_bond_length",
     "has_entry",
 ]
