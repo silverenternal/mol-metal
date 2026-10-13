@@ -470,6 +470,35 @@ class YuelBondDecoderHead(nn.Module):
         logits = self.pair_head(pair_in)
         return logits, (i_idx, j_idx)
 
+    # ------------------------------------------------------------------
+    # EMA stubs (Wf-A30-1 / 2026-10-14) — see
+    # ``molmetal/scripts/train_cfm_yuelbond_wasserstein.py`` for the
+    # full EMA implementation on the trainer's model class.  These
+    # accept the same API so ``cross_dataset.py`` / ``linear_probe.py``
+    # can carry an EMA snapshot through inference without an import
+    # cycle.  ``load_ema_state`` just stashes the dict; ``ema_swap_in``
+    # returns True iff a snapshot was supplied.  The full EMA update
+    # happens in the trainer, not here — the head's weights are static
+    # at decode time, so the swap is a no-op.
+    def load_ema_state(self, sd):  # type: ignore[no-untyped-def]
+        """No-op EMA loader for the inference-side head.
+
+        Keeps the same contract as the trainer-side
+        :meth:`metal_hybrid_v4.YuelBondEMABearing.load_ema_state` so a
+        checkpoint reader can swap EMA in for either model without
+        branching.
+        """
+        self._ema_sd = sd if isinstance(sd, dict) else {}
+        return bool(self._ema_sd)
+
+    def ema_swap_in(self):  # type: ignore[no-untyped-def]
+        """Mirror ``ema_swap_in``; returns True iff an EMA was loaded."""
+        return bool(getattr(self, "_ema_sd", None))
+
+    def ema_swap_out(self) -> None:
+        """Clear the EMA flag — inference never restores live weights."""
+        self._ema_sd = {}
+
 
 # ---------------------------------------------------------------------------
 # YuelBondDecoder — wrapper that emits PairFeature + BondAwareDecoder output

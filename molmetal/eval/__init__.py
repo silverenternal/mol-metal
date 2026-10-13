@@ -1,0 +1,48 @@
+"""Mol-Metal eval package.
+
+Wf-A30-1 (2026-10-14) A7 — exposes :func:`ckpt_is_smoke_stub`, the
+canonical helper for refusing the smoke-stub ``.pt`` artefacts that
+the Wf-124 P3 / Wf-299 3-wave CPU smoke produced.  Reading one of
+those checkpoints through a real training or decoding path silently
+produces pass-through output that looks like a successful
+measurement but carries no trained signal — the helper exists so a
+single ``is True / is False`` call covers all eval modules
+(:mod:`cross_dataset`, :mod:`linear_probe`, future additions) with
+one definition.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+
+def ckpt_is_smoke_stub(path: "Path") -> bool:
+    """Return True when ``path`` is the smoke-stub ``.pt`` artefact.
+
+    The smoke-stub convention was introduced by Wf-A30-1 (2026-10-14):
+    when a checkpoint file ends in ``.smoke_stub.pt``, downstream
+    readers must refuse to treat its weights as a trained model.  The
+    marker is purely lexical (the suffix on the file stem) so the
+    rule stays in source control rather than relying on file size or
+    modification time.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Candidate checkpoint path.  A non-``.pt`` file, a path with
+        no recognised stem suffix, or a non-existent path all return
+        ``False`` — ``ckpt_is_smoke_stub`` is purely a name check and
+        does not touch the filesystem.
+
+    Returns
+    -------
+    bool
+        ``True`` iff ``path.suffix == ".pt"`` AND ``path.stem``
+        ends in ``".smoke_stub"``.
+    """
+    suffix = path.suffix.lower()
+    stem = path.stem
+    return suffix == ".pt" and stem.endswith(".smoke_stub")
+
+
+__all__ = ["ckpt_is_smoke_stub"]

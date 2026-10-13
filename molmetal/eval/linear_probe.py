@@ -376,6 +376,32 @@ def run_cross_dataset_linear_probe(
     try:
         head = YuelBondDecoderHead(hidden_dim=hidden_dim, n_layers=n_layers)
         head.load_state_dict(head_sd, strict=False)
+        # Wf-A30-1 (2026-10-14) A6 — EMA round-trip.  When the
+        # checkpoint was written with ``--use-ema`` (Wf-A20 round-trip)
+        # it carries an ``ema_state_dict``; swap it into the head
+        # before we train the probe, so the logistic regression
+        # observes the EMA-averaged encoder (consistent with what
+        # cross_dataset.decode does).
+        _ema_applied = False
+        _ema_state = state.get("ema_state_dict", {})
+        if isinstance(_ema_state, dict) and _ema_state:
+            try:
+                head.load_ema_state(_ema_state)
+                _ema_applied = bool(head.ema_swap_in())
+                if _ema_applied:
+                    LOG.info(
+                        "[linear-probe] applied EMA snapshot to head "
+                        "(%d tensors)",
+                        len(_ema_state),
+                    )
+            except Exception as exc:
+                LOG.warning(
+                    "[linear-probe] EMA round-trip failed: %s; "
+                    "using live weights",
+                    exc,
+                )
+        else:
+            LOG.info("[ckpt-load] no ema_state_dict; using live weights")
     except Exception as exc:
         return {
             "linear_probe": None,

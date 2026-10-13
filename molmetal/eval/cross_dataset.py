@@ -35,6 +35,11 @@ from typing import Dict, List, Optional
 
 LOG = logging.getLogger("molmetal.eval.cross_dataset")
 
+# Wf-A30-1 (2026-10-14) A7 — import the canonical helper from the eval
+# package so a single definition covers every eval module.  The local
+# ``_ckpt_is_smoke_stub`` alias keeps legacy callers working without
+# changing the public surface; both names resolve to the same code path.
+from molmetal.eval import ckpt_is_smoke_stub as _ckpt_is_smoke_stub
 
 def _load_pretrained_checkpoint(ckpt_path: Path, device: str = "cpu") -> Dict:
     """Load a CFM checkpoint into a flat dict.
@@ -43,7 +48,15 @@ def _load_pretrained_checkpoint(ckpt_path: Path, device: str = "cpu") -> Dict:
     ``epoch``, ``metrics``.  Tolerates files saved by both the
     legacy ``torch.save`` (single dict) and the new ``atomic_write``
     path (same shape).
+
+    Wf-A30-1 (2026-10-14) A7 — refuse the smoke-stub checkpoint up
+    front, with a clear error, rather than silently passing through.
     """
+    if _ckpt_is_smoke_stub(ckpt_path):
+        raise ValueError(
+            f"[cross-dataset] refusing smoke-stub checkpoint {ckpt_path}; "
+            f"rename to a non-`.smoke_stub.pt` path after a real retrain."
+        )
     import torch
     obj = torch.load(ckpt_path, map_location=device, weights_only=False)
     if isinstance(obj, dict) and "model_state_dict" in obj:
@@ -59,6 +72,7 @@ def _predict_smiles(
     dataset_smiles: List[str],
     device: str = "cpu",
     max_n: int = 64,
+    ema_state: Optional[Dict] = None,
 ) -> List[str]:
     """Decode dataset SMILES through the loaded CFM YuelBond head.
 
@@ -71,10 +85,16 @@ def _predict_smiles(
     2. Construct :class:`YuelBondDecoderHead` and ``load_state_dict``
        from the head-prefixed entries (bit-tolerant: unknown keys are
        dropped, ``strict=False``).
-    3. For each input SMILES, build an :class:`AtomCloud` via
+    3. **Wf-A30-1 (2026-10-14) A6** — if ``ema_state`` is non-empty
+       (the checkpoint was written with ``--use-ema``), call
+       ``head.load_ema_state(ema_state)`` and ``ema_swap_in()`` so the
+       decode runs against the EMA snapshot, not the live weights.
+       A ``log "[ckpt-load] no ema_state_dict; using live weights"``
+       is emitted when the ckpt carries no EMA.
+    4. For each input SMILES, build an :class:`AtomCloud` via
        :func:`molmetal.eval.linear_probe.smiles_to_atom_cloud` (3-D
        RDKit conformer + largest fragment + heavy-atom packing).
-    4. Run :class:`YuelBondBondDecoder` (wraps the head + valence-aware
+    5. Run :class:`YuelBondBondDecoder` (wraps the head + valence-aware
        selector) and return ``result.decoded.smiles``.
 
     On any error (ckpt shape mismatch, RDKit parse failure, valence
@@ -107,8 +127,15 @@ def _predict_smiles(
         )
         return list(dataset_smiles)
 
+    # Wf-A30-1 (2026-10-14) A5 — read `atom_encoder.weight`, NOT
+    # `head.atom_encoder.weight`. The ``k[len("head."):]`` strip above
+    # already removes the prefix, so the correct key is just
+    # ``atom_encoder.weight``. The legacy spelling caused a KeyError
+    # on every ckpt that did NOT pre-strip the prefix in the writer,
+    # which silently took the warn-and-pass-through branch above and
+    # emitted a 0/0 cross-dataset record.
     try:
-        atom_w = head_sd["head.atom_encoder.weight"]
+        atom_w = head_sd["atom_encoder.weight"]
         hidden_dim = int(atom_w.shape[0])
         n_layers = sum(
             1
@@ -130,12 +157,43 @@ def _predict_smiles(
         # strip above; pass strict=False so any future layer additions
         # do not break the loader.
         head.load_state_dict(head_sd, strict=False)
+        LOG.info(
+            "[cross-dataset] loaded head from ckpt (hidden_dim=%d, n_layers=%d)",
+            hidden_dim,
+            n_layers,
+        )
     except Exception as exc:
         LOG.warning(
             "[cross-dataset] head load_state_dict failed: %s; pass-through",
             exc,
         )
         return list(dataset_smiles)
+
+    # Wf-A30-1 (2026-10-14) A6 — EMA round-trip.  When the saved
+    # checkpoint carries an EMA snapshot AND the head's stubs accept
+    # it, swap it in before any forward pass so the decode runs on
+    # the EMA-averaged weights.  Without this, every cross-dataset
+    # metric was measured against the post-final-step live weights,
+    # which on a 50-epoch run is dominated by the SGD noise of the
+    # last few batches.
+    _ema_applied = False
+    if isinstance(ema_state, dict) and ema_state:
+        try:
+            head.load_ema_state(ema_state)
+            _ema_applied = bool(head.ema_swap_in())
+            if _ema_applied:
+                LOG.info(
+                    "[cross-dataset] applied EMA snapshot to head "
+                    "(%d tensors)",
+                    len(ema_state),
+                )
+        except Exception as exc:
+            LOG.warning(
+                "[cross-dataset] EMA round-trip failed: %s; using live weights",
+                exc,
+            )
+    else:
+        LOG.info("[ckpt-load] no ema_state_dict; using live weights")
 
     decoder = YuelBondBondDecoder(head=head)
     out: List[str] = []
@@ -161,6 +219,15 @@ def _predict_smiles(
             )
             out.append(smi)
             n_fallback += 1
+    # Wf-A30-1 A6 — restore the live weights if we swapped the EMA in,
+    # so the head's caller (e.g. linear_probe.py, which shares the
+    # same checkpoint-loader code path) observes the same state we'd
+    # see had no EMA existed.
+    if _ema_applied:
+        try:
+            head.ema_swap_out()
+        except Exception:
+            pass
     if n_fallback:
         LOG.info(
             "[cross-dataset] decode: %d/%d fell back to input SMILES",
@@ -266,7 +333,18 @@ def run_cross_dataset_validation(
     for ds_name in datasets:
         smiles = _load_smiles(ds_name)
         if smiles:
-            decoded = _predict_smiles(state["model_state_dict"], smiles, device=device)
+            # Wf-A30-1 (2026-10-14) A6 — pull the EMA snapshot out of the
+            # checkpoint (the trainer wrote ``ema_state_dict`` since
+            # Wf-A20 when ``--use-ema=True``) and forward it to the
+            # decoder.  A pre-Wf-A20 ckpt or an EMA-disabled run leaves
+            # this empty; the decoder logs "no ema_state_dict; using
+            # live weights" and continues.
+            decoded = _predict_smiles(
+                state["model_state_dict"],
+                smiles,
+                device=device,
+                ema_state=state.get("ema_state_dict", {}),
+            )
             for oracle in ("pocket2mol_score", "softmol_score", "targetdiff_score"):
                 scores = _score_oracle(decoded, oracle)
                 valid = [s for s in scores if s == s]  # NaN-safe filter

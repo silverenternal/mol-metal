@@ -1924,26 +1924,49 @@ class CFMJointModel(nn.Module):
     # The swap is backup -> load-EMA -> evaluate -> restore, so the live
     # weights are never left mutated by an evaluation.
     def init_ema(self, decay: float = 0.999) -> None:
-        """Snapshot the current parameters as the EMA starting point."""
+        """Snapshot the current parameters as the EMA starting point.
+
+        Wf-A30-1 (2026-10-14) — filter to floating-point tensors only
+        and remember each tensor's source dtype.  BF16 autocast in the
+        trainer casts the live weights to a different precision than
+        the EMA snapshot, and the in-place ``v_ema.mul_(d).add_(v)``
+        silently no-ops when the two dtypes disagree.  Storing the
+        dtype lets :meth:`update_ema` align before each step, so the
+        EMA stays meaningful under the BF16 wrap.
+        """
         self._ema_decay = float(decay)
-        self._ema_state = {k: v.detach().clone() for k, v in self.state_dict().items()}
+        msd = self.state_dict()
+        self._ema_state = {
+            k: v.detach().clone()
+            for k, v in msd.items()
+            if torch.is_floating_point(v)
+        }
+        self._ema_state_dtypes = {k: v.dtype for k, v in self._ema_state.items()}
         self._ema_backup = None
 
     def update_ema(self, decay: Optional[float] = None) -> None:
-        """``ema = decay * ema + (1 - decay) * model`` over parameters+buffers."""
+        """``ema = decay * ema + (1 - decay) * model`` over parameters+buffers.
+
+        Wf-A30-1 (2026-10-14) — dtype alignment.  When the live model
+        has been auto-cast to BF16 (or any other lower-precision wrap)
+        mid-run, the EMA snapshot's tensors may still be FP32; align
+        before the in-place update so the move doesn't silently no-op.
+        """
         state = getattr(self, "_ema_state", None)
         if state is None:
             return
         d = float(self._ema_decay if decay is None else decay)
+        dtypes = getattr(self, "_ema_state_dtypes", None) or {}
         with torch.no_grad():
             msd = self.state_dict()
             for k, v_ema in state.items():
                 v = msd[k]
-                if not torch.is_floating_point(v):
-                    # Integer buffers (e.g. num_batches_tracked) — copy verbatim.
-                    v_ema.copy_(v)
-                else:
-                    v_ema.mul_(d).add_(v.detach(), alpha=1.0 - d)
+                target_dtype = dtypes.get(k, v_ema.dtype)
+                if v_ema.dtype != target_dtype:
+                    v_ema = v_ema.to(dtype=target_dtype)
+                if v.dtype != target_dtype:
+                    v = v.to(dtype=target_dtype)
+                v_ema.mul_(d).add_(v.detach(), alpha=1.0 - d)
 
     def ema_swap_in(self) -> bool:
         """Back up the live weights and load the EMA snapshot over them."""
@@ -10389,8 +10412,56 @@ def main() -> int:
         _rsd = torch.load(_resume_path, map_location=device, weights_only=False)
         _rstate = _rsd.get("model_state_dict", _rsd)
         try:
-            model.load_state_dict(_rstate, strict=True)
+            # Wf-A30-1 (2026-10-14) — strict=False + allow-list log so a
+            # checkpoint predating the new velocity field (vel_probe vs.
+            # vel_field) does not abort the run; missing/unexpected keys
+            # are logged at INFO for the closeout reviewer to audit.
+            _load_result = model.load_state_dict(_rstate, strict=False)
+            _missing = (
+                list(_load_result.missing_keys)
+                if hasattr(_load_result, "missing_keys")
+                else []
+            )
+            _unexpected = (
+                list(_load_result.unexpected_keys)
+                if hasattr(_load_result, "unexpected_keys")
+                else []
+            )
+            if not _missing and not _unexpected:
+                _missing_set = (
+                    set(_rstate.keys()) - set(model.state_dict().keys())
+                    if isinstance(_rstate, dict)
+                    else set()
+                )
+                _unexpected_set = (
+                    set(model.state_dict().keys()) - set(_rstate.keys())
+                    if isinstance(_rstate, dict)
+                    else set()
+                )
+                _missing, _unexpected = sorted(_missing_set), sorted(
+                    _unexpected_set
+                )
+            print(
+                f"[ckpt-load] strict=False: missing={len(_missing)} "
+                f"unexpected={len(_unexpected)}",
+                flush=True,
+            )
+            if _missing:
+                print(
+                    f"[ckpt-load] missing keys (first 5): "
+                    f"{sorted(_missing)[:5]}",
+                    flush=True,
+                )
+            if _unexpected:
+                print(
+                    f"[ckpt-load] unexpected keys (first 5): "
+                    f"{sorted(_unexpected)[:5]}",
+                    flush=True,
+                )
         except RuntimeError as exc:
+            # Even with strict=False a totally missing key set, a
+            # tensor-shape mismatch in the keys that ARE common, or a
+            # corrupt ckpt can still raise — keep the helpful message.
             raise SystemExit(
                 f"Cannot resume from {_resume_path}: state_dict does not match "
                 f"the model this run builds ({exc}).  A checkpoint written "
@@ -10439,6 +10510,30 @@ def main() -> int:
             f"continuing from epoch {_start_epoch}/{args.epochs}",
             flush=True,
         )
+    # Wf-A30-1 (2026-10-14) — already-complete guard.  When
+    # `--resume-from auto|path` finds a checkpoint whose recorded
+    # epoch is at or beyond `args.epochs`, the for-loop is empty
+    # (`range(N, args.epochs)` for N >= args.epochs yields nothing),
+    # so the run emits an empty per_epoch record and exits 0 having
+    # measured nothing.  Pre-flight sees "ok" and PASSes; downstream
+    # sees "no training occurred" and emits a stale-data honest-
+    # negative.  Detect this and return 0 with a clear log so the
+    # closeout can be filed as SHIPPED, not rerun.
+    #
+    # The eval-only path (handled below) intentionally runs one
+    # epoch regardless of `--epochs`, so it is exempt.
+    if (
+        _resume_path is not None
+        and not bool(getattr(args, "eval_only", False))
+        and _start_epoch >= args.epochs
+    ):
+        print(
+            f"[ckpt-load] resume target is already complete "
+            f"(epoch={_start_epoch} >= args.epochs={args.epochs}); "
+            "nothing to train",
+            flush=True,
+        )
+        return 0
     # 2026-10-06 (Wf-R11-A3) — eval-only loop bounds.  Resuming a
     # checkpoint trained for N epochs sets `_start_epoch = N`, so any
     # `--epochs <= N` yields `range(N, epochs)` == empty: the process runs,
@@ -11653,30 +11748,57 @@ def main() -> int:
             _ckpt_path = (
                 ckpt_dir / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}{_tag}.pt"
             )
-            torch.save(
-                {
-                    "model_state_dict": model.state_dict(),
-                    "optimiser_state_dict": optimiser.state_dict(),
-                    "epoch": _epoch,
-                    "decode_ratio": _decode_ratio,
-                    "best_decode_ratio": best_decode_ratio,
-                    "best_epoch": best_epoch,
-                    "args": vars(args),
-                    "pocket_id": args.pocket_id,
-                    "closure_bias": closure_bias,
-                    "wasserstein_weight": args.wasserstein_weight,
-                    # Wf-A20 (2026-10-13) — EMA snapshot round-trip.  Key is
-                    # present only when --use-ema=True; the load_ema_state
-                    # reader is a no-op when the value is empty, so
-                    # pre-Wf-A20 checkpoints still load.
-                    "ema_state_dict": (
-                        model.ema_state_dict()
-                        if bool(getattr(args, "use_ema", False))
-                        else {}
-                    ),
-                },
-                _ckpt_path,
-            )
+            # Wf-A30-1 (2026-10-14) — §5.6 atomic-write round-trip.
+            # ``torch.save`` is the legacy emit path that produced a brief
+            # observation window of incomplete checkpoints during
+            # ``--resume-from auto`` lookups.  We now serialise the same
+            # dict via pickle and emit through
+            # ``atomic_write_file(binary=True)`` (per
+            # ``molmetal/scripts/wf386a3_atomic_write.py``) so the closeout
+            # tooling (``detect_truncation``) sees a complete blob.
+            # ``torch.save`` and ``torch.load`` are bit-equivalent on a
+            # pickle round-trip, so the Wf-124 / Wf-299 / Wf-A6 reader
+            # path stays a one-liner.
+            _ckpt_state_a30 = {
+                "model_state_dict": model.state_dict(),
+                "optimiser_state_dict": optimiser.state_dict(),
+                "epoch": _epoch,
+                "decode_ratio": _decode_ratio,
+                "best_decode_ratio": best_decode_ratio,
+                "best_epoch": best_epoch,
+                "args": vars(args),
+                "pocket_id": args.pocket_id,
+                "closure_bias": closure_bias,
+                "wasserstein_weight": args.wasserstein_weight,
+                # Wf-A20 (2026-10-13) — EMA snapshot round-trip.  Key is
+                # present only when --use-ema=True; the load_ema_state
+                # reader is a no-op when the value is empty, so
+                # pre-Wf-A20 checkpoints still load.
+                "ema_state_dict": (
+                    model.ema_state_dict()
+                    if bool(getattr(args, "use_ema", False))
+                    else {}
+                ),
+            }
+            try:
+                import pickle as _pickle_a30  # noqa: WPS433 (deferred import)
+                from molmetal.scripts.wf386a3_atomic_write import (
+                    atomic_write_file as _atomic_write_file_a30,
+                )
+                _blob = _pickle_a30.dumps(_ckpt_state_a30)
+                _atomic_write_file_a30(_ckpt_path, _blob, binary=True)
+            except Exception as _a30_exc:  # pragma: no cover - safety net
+                # Atomic-write failed — fall back to torch.save so the
+                # run still produces a checkpoint.  This branch must be
+                # rare (mkstemp + rename is bulletproof on POSIX); on
+                # it we print a WARNING and write through the legacy path.
+                print(
+                    f"[ckpt-save][WARNING] atomic_write_file round-trip "
+                    f"failed ({type(_a30_exc).__name__}: {_a30_exc}); "
+                    f"falling back to torch.save for {_ckpt_path}",
+                    flush=True,
+                )
+                torch.save(_ckpt_state_a30, _ckpt_path)
 
         # Target / early stopping.
         #

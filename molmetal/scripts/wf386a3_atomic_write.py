@@ -146,10 +146,11 @@ class TruncationDetected(RuntimeError):
 
 def atomic_write_file(
     path: Union[str, Path],
-    content: str,
+    content: "Union[str, bytes]",
     *,
     encoding: str = "utf-8",
     fsync: bool = True,
+    binary: bool = False,
 ) -> None:
     """Atomically write ``content`` to ``path`` via temp-file + rename.
 
@@ -185,11 +186,33 @@ def atomic_write_file(
         )
         tmp_path = Path(tmp_str)
         try:
-            with os.fdopen(fd, "w", encoding=encoding) as f:
-                f.write(content)
-                if fsync:
-                    f.flush()
-                    os.fsync(f.fileno())
+            # Wf-A30-1 (2026-10-14) — binary mode for checkpoint blobs.
+            # ``atomic_write_file`` historically took text content only;
+            # checkpoints are pickled (``pickle.dumps`` → ``bytes``), and
+            # decoding them as utf-8 corrupts the blob.  ``binary=True``
+            # opens the temp file in 'wb' and writes the raw bytes.
+            if binary:
+                if not isinstance(content, (bytes, bytearray)):
+                    raise TypeError(
+                        f"atomic_write_file(binary=True) requires bytes; "
+                        f"got {type(content).__name__}"
+                    )
+                with os.fdopen(fd, "wb") as f:
+                    f.write(content)
+                    if fsync:
+                        f.flush()
+                        os.fsync(f.fileno())
+            else:
+                if not isinstance(content, str):
+                    raise TypeError(
+                        f"atomic_write_file(binary=False) requires str; "
+                        f"got {type(content).__name__}"
+                    )
+                with os.fdopen(fd, "w", encoding=encoding) as f:
+                    f.write(content)
+                    if fsync:
+                        f.flush()
+                        os.fsync(f.fileno())
             # 2026-10-04 FIX — `tempfile.mkstemp` creates the file 0600 by
             # design, and `os.replace` carries that mode onto the target.  So
             # every artifact written through this helper silently became
