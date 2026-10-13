@@ -7854,6 +7854,26 @@ def parse_args() -> argparse.Namespace:
             "pre-Wf-A24 per_epoch_metrics.json."
         ),
     )
+    # Wf-A24 (2026-10-13) — Track E paper-table emit.
+    #
+    # End-of-training canonical paper-table row: m14 decode + ADMET8 panel
+    # + m4 SA + m5 PlatinAI pIC50 + m7 diversity Tanimoto, fused into one
+    # JSON at PROJECT_ROOT/metrics/by_metric/paper_table.json. Reads
+    # existing sidecar JSONs verbatim (m4 / m5 / m7) so honest-negative
+    # framings are preserved.  Wrapped in try/except so a paper-table
+    # failure CANNOT abort the run.
+    p.add_argument(
+        "--emit-paper-table",
+        dest="emit_paper_table",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-A24 (Track E, paper table): emit build_paper_table(...) "
+            "at end of training to "
+            "metrics/by_metric/paper_table.json. Off by default → bit-exact "
+            "pre-Wf-A24 per_epoch_metrics.json + done event."
+        ),
+    )
     # Wf-A15 (2026-10-13) — Layer E.  Opt-in toggle for the 5 chemistry
     # channels (BO continuous / natural_charge / oxidation_state /
     # coord_neighbors / metal_proximity) appended to
@@ -11692,6 +11712,49 @@ def main() -> int:
     (out_dir / "per_epoch_metrics.json").write_text(
         json.dumps(metrics_payload, indent=2) + "\n"
     )
+    # Wf-A24 (2026-10-13) — Track E paper-table emit.
+    #
+    # Build the canonical paper-table row (m14 decode + ADMET8 + m4/m5/m7
+    # sidecar JSONs) and write to
+    # PROJECT_ROOT/metrics/by_metric/paper_table.json. End-of-training
+    # only — the sidecar metrics_dir is read AFTER the final
+    # per_epoch_metrics.json is on disk, so the m4/m5/m7 readings reflect
+    # the run's last write. Wrapped in try/except so a paper-table
+    # failure cannot abort the run.
+    if bool(getattr(args, "emit_paper_table", False)):
+        try:
+            from molmetal.eval.scoring import paper_table as _pt_a24
+            # Last-epoch generated SMILES (in-memory; zero extra decode).
+            _paper_smiles = list(_gen_smiles) if _gen_smiles else None
+            _smiles_csv = out_dir / "generated_smiles.csv"
+            _paper_row = _pt_a24.build_paper_table(
+                cohort_id=str(getattr(args, "out_dir", "tmqm_default")),
+                smiles=_paper_smiles,
+                metrics_dir=PROJECT_ROOT / "metrics" / "by_metric",
+                smiles_csv=_smiles_csv if _smiles_csv.exists() else None,
+                largest_frac_min=0.80,
+                min_atoms=2,
+            )
+            _pt_out = (
+                PROJECT_ROOT / "metrics" / "by_metric" / "paper_table.json"
+            )
+            _pt_a24.write_paper_table_json(_paper_row, _pt_out)
+            try:
+                emit_event(
+                    "paper_table",
+                    path=str(_pt_out),
+                    cohort_id=str(_paper_row.cohort_id),
+                    n_smiles=int(_paper_row.n_smiles),
+                    protocol_version=str(_paper_row.protocol_version),
+                )
+            except Exception:
+                pass
+        except Exception as _pt_exc:
+            print(
+                f"[cfm-gen][WARNING] paper_table emit failed "
+                f"({type(_pt_exc).__name__}: {_pt_exc}); run continues.",
+                flush=True,
+            )
     # Wf-TUI NEW: emit structured 'done' event for the full run.
     try:
         emit_event(
