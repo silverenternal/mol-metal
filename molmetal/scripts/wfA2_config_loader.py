@@ -309,6 +309,17 @@ DECLARED_INERT_PATHS: frozenset[str] = frozenset(
         # invocation per arm, which is why the grid cannot live on the command
         # line — it would drift from the config that documents it.
         "sweep.biases",
+        # 2026-10-14 (Wf-A28 step-3) — `model.per_loss_projection_lr` is
+        # registered here to RESOLVE a disk-vs-doc mismatch (§5.5
+        # filesystem-truth rule): the §6.47d honest-negative catalog entry
+        # stated the key was "reserved in DECLARED_INERT_PATHS" but disk
+        # verification showed the string was missing from this frozenset.
+        # Per AGENTS.md §5.11 spec verbatim: "the key MUST BE REMOVED from
+        # DECLARED_INERT_PATHS the first time a model attribute matches the
+        # loss-projection naming convention" — this INERT entry is the
+        # documented reservation until that time; cfm_todo.json DEC_per_loss_projection_inert
+        # tracks the disposal commitment. See HONEST_NEGATIVE_CATALOG.md §6.50.
+        "model.per_loss_projection_lr",
     }
 )
 

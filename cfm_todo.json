@@ -183,6 +183,16 @@
       "resolution": "Wf-A22 (commits 25028c43dd/6f285abaef/58e1a6fa00/ab17e22af0/4b589a7a76/30910ff485) + Wf-A24 (dcbbc7e9a5/f63e3932db/1a8d7ac83a) closed L7 (pocket_lr_multiplier) + L8 (per_pocket_decode_ratio module) + L9 (per_pocket_w2 column) on disk. The Wf-A22 §6.43f emit_paper_table shim is the residual; closed by adding emit_paper_table shim function in molmetal/eval/scoring/paper_table.py in this same commit (2026-10-13 Wf-A26 fix-up).",
       "closed_at": "2026-10-13",
       "closed_by": "Wf-A26 fix-up commit"
+    },
+    {
+      "id": "DEC_per_loss_projection_inert",
+      "blocking": "not blocking; DECLARED_INERT by design per AGENTS.md §5.11",
+      "question": "The 9-layer table row `per_loss_projection` is by-design DECLARED_INERT — no `LossProjection` class exists in any of the 5 loss modules (`chemistry_losses.py`, `distillation_losses.py`, `regularization_losses.py`, `property_losses.py`, `stererochemistry_losses.py`) and no trainer dest `--per-loss-projection-lr` exists. Per §5.11 verbatim: 'the key MUST BE REMOVED from DECLARED_INERT_PATHS the first time a model attribute matches the loss-projection naming convention'. Wf-A28 step-3 (2026-10-14) resolved a §5.5 filesystem-truth disk-vs-doc mismatch: §6.47d claimed the key was reserved in `DECLARED_INERT_PATHS` but the string was missing from the frozenset at `molmetal/scripts/wfA2_config_loader.py:242`. Step-3 added the entry; total frozenset size 39 → 40. This DEC tracks the disposal commitment: any future `LossProjection` `nn.Module` landing in any of the 5 loss modules with a matching argparse dest `--per-loss-projection-lr` must trigger the removal.",
+      "DECLARE_INERT_STATUS": "active",
+      "reserved_in_frozenset": "molmetal/scripts/wfA2_config_loader.py:312 (after the Wf-A28 step-3 commit)",
+      "disposal_trigger": "First `LossProjection` class landing in any loss module with a `--per-loss-projection-lr` dest → remove from DECLARED_INERT_PATHS + add to consuming entry",
+      "added_by": "Wf-A28 step-3 commit (2026-10-14)",
+      "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.49c"
     }
   ],
   "what_throw_away": [
