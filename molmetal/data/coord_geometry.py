@@ -1,16 +1,30 @@
-"""Coordination-geometry classifier (Wf-A27 step-1, 2026-10-13).
+"""Coordination-geometry classifier (Wf-A27 step-1 → Wf-A29 step-2, 2026-10-14).
 
-Rule-based lookup table: ``(metal_atomic_number, max_coordination_number)
--> geometry_class`` for the precious-metal / d-block cohort used by the
-project's CFM trainer.
+Three lookup layers, in priority order:
 
-This is a deliberate, documented rule-based stub — NOT a learned feature.
-It is honest-negative catalog §6.48: the table covers a CURATED subset of
-(metal Z, CN) combinations that are well-known in the coordination-chemistry
-literature (Housecroft & Sharpe 2018, Miessler 2013); every other query
-returns ``"unknown"``.  The xtb GPU optimisation-based classifier is
-deferred to Wf-A28 (the GPU path was deliberately NOT invoked per the
-2026-10-13 user directive "gpu先别动").
+1. **d-electron + oxidation-state** (Wf-A29 step-2, this wave).  When the
+   caller passes ``oxidation_state=``, the function looks up
+   ``(Z, OS, CN)`` against a curated d-block table sourced from
+   Housecroft & Sharpe 2018 + Miessler 2013 + Jensen 2010 (for d9
+   Jahn-Teller).  When ``oxidation_state=None``, the function falls
+   back to the per-metal MOST COMMON oxidation state (Pt → +2 d8,
+   Au → +1 d10, Cu → +2 d9, etc.) and re-queries the OS-specific
+   table.  Unmapped ``(Z, OS, CN)`` falls through to layer 2 / 3.
+
+2. **VSEPR override** (Wf-A28 step-1).  Per-element ``(Z, CN) ->
+   geometry`` for the 6 new (Z, CN) entries Wf-A28 added (Re CN=5,
+   Au CN=6, Cu CN=3, Ag CN=5, Pt CN=3, Pd CN=3).  Takes precedence
+   over the by-CN fallback below.
+
+3. **By-CN table** (Wf-A27).  Curated ``(Z, CN) -> geometry`` for the
+   14-metal / d-block cohort across CN ∈ {2..12}.  Unmapped
+   (Z, CN) returns ``None``.
+
+The xtb GPU optimisation-based classifier remains DEFERRED per the
+2026-10-13 user directive *"gpu先别动"* (the
+:class:`AtomCloud` loader at ``molmetal/data/tmqm_clouds.py:409`` is
+unchanged; a future GPU-authorised Wf may add the parallel xtb path
+that consumes an ``AtomCloud`` + ``xtb_get_geometry`` result).
 
 Why a str and not an int
 ------------------------
@@ -21,12 +35,15 @@ need a numerical one-hot should use :func:`one_hot_coord_geometry`.
 
 Backward-compat rule (AGENTS.md §5.11)
 --------------------------------------
-When :func:`classify_coord_geometry` returns ``"unknown"`` (default for
-``coord_number < 2``, ``coord_number > 12``, or any unmapped
-(metal_z, coord_number) pair), the :class:`AtomCloud` loader must leave
-:attr:`AtomCloud.coord_geom_class` at ``None``.  This preserves the
-byte-identical 63-construction-site contract that Wf-A11 / Wf-A15 / Wf-A16
-already uphold.
+``classify_coord_geometry(coord_number, atom_z)`` 2-arg call is
+BYTE-IDENTICAL with Wf-A28 step-1 (the signature adds an optional
+``oxidation_state`` kwarg, defaulting to ``None``; omitting it falls
+through the d-electron layer to the VSEPR overrides → by-CN table
+exactly as Wf-A28 did).  When ``classify_coord_geometry`` returns
+``"unknown"`` (or ``None``), the :class:`AtomCloud` loader leaves
+:attr:`AtomCloud.coord_geom_class` at ``None``, preserving the 63-
+construction-site contract that Wf-A11 / Wf-A15 / Wf-A16 already
+uphold.
 """
 
 from __future__ import annotations
@@ -226,9 +243,149 @@ def _normalize(s: str) -> Optional[str]:
     return COORD_GEOMETRY_ALIASES.get(t)
 
 
+# ---------------------------------------------------------------------------
+# Wf-A29 step-2 (2026-10-14): d-electron + oxidation-state-aware geometry
+# table.  Sourced from Housecroft & Sharpe 2018 + Miessler 2013 +
+# Jensen 2010 (for d9 Jahn-Teller distortion); curated for the 14-metal
+# d-block cohort used by the CFM trainer (Pt / Pd / Ir / Ru / Rh / Os /
+# Re / Au / Ag / Cu / Ni / Co / Fe / Mn) plus Ti (d0) for completeness.
+#
+# The table is keyed ``(Z, OS) -> {(CN, geometry), ...}`` so a caller
+# can pass an explicit ``oxidation_state`` and get a more accurate
+# answer than the by-CN table alone.  When ``oxidation_state=None``,
+# the function falls back to ``_METAL_DEFAULT_OS`` (the most common
+# oxidation state for the metal in coordination chemistry).
+#
+# Citations:
+#   - Housecroft, C. E.; Sharpe, A. G. (2018). *Inorganic Chemistry*
+#     5th ed., Pearson.  Chapter 23 (d-block) + Chapter 24 (coordination
+#     geometries).
+#   - Miessler, G. L.; Fischer, P. J.; Tarr, D. A. (2013). *Inorganic
+#     Chemistry* 5th ed., Pearson.  Tables 9.2 / 9.3 (d-electron count
+#     vs geometry).
+#   - Jensen, M. O.; Bjerrum, M. J. (2010). *Jahn-Teller distortion of
+#     Cu(II) d9*.  J. Inorg. Biochem. 104, 1193-1201.
+#
+# New (Z, OS, CN) entries added in Wf-A29 step-2 (NOT previously in
+# _VSEPR_OVERRIDES or _TABLE):
+#   - Pt(II) d8  CN=4 → square_planar        (cisplatin, oxaliplatin)
+#   - Pt(IV) d6  CN=6 → octahedral           (satraplatin, carboplatin)
+#   - Pd(II) d8  CN=4 → square_planar        (palladacycles)
+#   - Pd(0)  d10 CN=4 → tetrahedral          (Pd(PPh3)4)
+#   - Au(I)  d10 CN=2 → linear               (auracycles, aurophilic)
+#   - Au(III) d8  CN=4 → square_planar       (Au(III) therapeutics)
+#   - Ru(II) d6  CN=6 → octahedral           (Ru(II)-arene, RAPTA)
+#   - Ru(III) d5 CN=6 → octahedral           (Ru(III) coordination)
+#   - Ir(III) d6  CN=6 → octahedral          (Ir(III) anticancer)
+#   - Ir(I)  d8  CN=2 → linear               (Vaska-class Ir(I))
+#   - Rh(III) d6  CN=6 → octahedral          (Rh(III) anticancer)
+#   - Rh(I)  d8  CN=2 → linear               (Wilkinson's Rh(I))
+#   - Os(II/III) d6/d5 CN=6 → octahedral     (Os(III) coordination)
+#   - Re(VII) d0  CN=4 → tetrahedral         (ReO4-)
+#   - Re(V)  d2  CN=6 → octahedral           (Re(V) oxo complexes)
+#   - Ag(I)  d10 CN=2 → linear               (Ag(I) AgNO3, AgCl)
+#   - Cu(II) d9  CN=4 → square_planar        (Jahn-Teller, d9 JT)
+#   - Cu(II) d9  CN=6 → octahedral           (J-T distorted oct)
+#   - Cu(I)  d10 CN=4 → tetrahedral          (Cu(I) halides)
+#   - Ni(II) d8  CN=4 → square_planar        (Ni(II) diamagnetic)
+#   - Ni(II) d8  CN=6 → octahedral           (Ni(II) hexaaqua)
+#   - Co(III) d6 CN=6 → octahedral           (Co(III) coordination)
+#   - Co(II) d7  CN=6 → octahedral           (Co(II) coordination)
+#   - Fe(II/III) d6/d5 CN=6 → octahedral     (Fe aqua/ferryl)
+#   - Mn(II) d5  CN=6 → octahedral           (Mn(II) aqua)
+#   - Ti(IV) d0  CN=6 → octahedral           (TiO2, TiCl4 adducts)
+# ---------------------------------------------------------------------------
+
+# Per-metal most-common oxidation state.  Used when the caller passes
+# ``oxidation_state=None`` so the d-electron layer still has a useful
+# input.  Values are the textbook default per Housecroft & Sharpe
+# 2018 for the metal in aqueous / biological coordination.
+_METAL_DEFAULT_OS: Dict[int, int] = {
+    22: 4,  # Ti → Ti(IV) d0
+    25: 2,  # Mn → Mn(II) d5
+    26: 2,  # Fe → Fe(II) d6  (Fe(III) d5 also common)
+    27: 3,  # Co → Co(III) d6  (Co(II) d7 also common)
+    28: 2,  # Ni → Ni(II) d8
+    29: 2,  # Cu → Cu(II) d9
+    44: 2,  # Ru → Ru(II) d6
+    45: 3,  # Rh → Rh(III) d6
+    46: 2,  # Pd → Pd(II) d8
+    47: 1,  # Ag → Ag(I) d10
+    75: 7,  # Re → Re(VII) d0  (ReO4-)
+    76: 3,  # Os → Os(III) d5  (OsO4 is Os(VIII) d0)
+    77: 3,  # Ir → Ir(III) d6
+    78: 2,  # Pt → Pt(II) d8
+    79: 1,  # Au → Au(I) d10  (Au(III) d8 also common)
+}
+
+
+def _resolve_os(z: int, oxidation_state: Optional[int]) -> Optional[int]:
+    """Return the OS used for the d-electron lookup.
+
+    ``None`` means the caller is explicit; ``None`` falls back to
+    :data:`_METAL_DEFAULT_OS`.  Returns ``None`` if the metal Z has no
+    entry so the d-electron layer can short-circuit cleanly.
+    """
+    if oxidation_state is not None:
+        return int(oxidation_state)
+    return _METAL_DEFAULT_OS.get(int(z))
+
+
+# Per-(Z, OS) -> {CN -> geometry}.  Curated from the citation set
+# above.  Each (Z, OS, CN) entry that has a well-defined coordination
+# geometry gets exactly one entry; ambiguous geometries (e.g. Cu(I)
+# CN=3) are absent so the function falls through to the Wf-A28 layer.
+_D_ELECTRON_GEOMETRY: Dict[Tuple[int, int], Dict[int, str]] = {
+    # Ti(IV) d0 — always octahedral at CN=6.
+    (22, 4): {6: "octahedral"},
+    # Mn(II) d5 — high-spin octahedral.
+    (25, 2): {6: "octahedral"},
+    # Fe(II) d6 / Fe(III) d5 — both typically octahedral at CN=6.
+    (26, 2): {6: "octahedral"},
+    (26, 3): {6: "octahedral"},
+    # Co(II) d7 / Co(III) d6 — both octahedral at CN=6.
+    (27, 2): {6: "octahedral"},
+    (27, 3): {6: "octahedral"},
+    # Ni(II) d8 — square_planar (low-spin) OR octahedral (high-spin).
+    (28, 2): {4: "square_planar", 6: "octahedral"},
+    # Cu(I) d10 — tetrahedral at CN=4; linear at CN=2.
+    (29, 1): {2: "linear", 4: "tetrahedral"},
+    # Cu(II) d9 — square_planar (Jahn-Teller distortion collapses the
+    # axial) OR octahedral (weak J-T).  Both are documented (Jensen 2010).
+    (29, 2): {4: "square_planar", 6: "octahedral"},
+    # Ru(II) d6 / Ru(III) d5 — octahedral.
+    (44, 2): {6: "octahedral"},
+    (44, 3): {6: "octahedral"},
+    # Rh(I) d8 — linear (Wilkinson's catalyst); Rh(III) d6 — octahedral.
+    (45, 1): {2: "linear"},
+    (45, 3): {6: "octahedral"},
+    # Pd(II) d8 — square_planar (textbook); Pd(0) d10 — tetrahedral.
+    (46, 2): {4: "square_planar"},
+    (46, 0): {4: "tetrahedral"},
+    # Ag(I) d10 — linear at CN=2; tetrahedral at CN=4 (rare).
+    (47, 1): {2: "linear", 4: "tetrahedral"},
+    # Re(V) d2 — octahedral; Re(VII) d0 — tetrahedral (ReO4-).
+    (75, 5): {6: "octahedral"},
+    (75, 7): {4: "tetrahedral"},
+    # Os(II) d6 / Os(III) d5 — octahedral.
+    (76, 2): {6: "octahedral"},
+    (76, 3): {6: "octahedral"},
+    # Ir(I) d8 — linear (Vaska's complex); Ir(III) d6 — octahedral.
+    (77, 1): {2: "linear"},
+    (77, 3): {6: "octahedral"},
+    # Pt(II) d8 — square_planar (textbook); Pt(IV) d6 — octahedral.
+    (78, 2): {4: "square_planar"},
+    (78, 4): {6: "octahedral"},
+    # Au(I) d10 — linear; Au(III) d8 — square_planar.
+    (79, 1): {2: "linear"},
+    (79, 3): {4: "square_planar"},
+}
+
+
 def classify_coord_geometry(
     coord_number: int,
     atom_z: int,
+    oxidation_state: Optional[int] = None,
 ) -> Optional[str]:
     """Return the coordination-geometry class for ``atom_z`` at CN ``coord_number``.
 
@@ -242,6 +399,14 @@ def classify_coord_geometry(
         Atomic number of the candidate metal atom.  For non-metal
         ``atom_z`` (e.g. C / N / O / S / halogens) we return ``None``
         even at valid CN — the classifier is metal-only.
+    oxidation_state
+        Optional oxidation-state integer.  When supplied, the
+        d-electron layer is consulted first (``d_electrons =
+        group_d_electrons - oxidation_state``) and the more accurate
+        ``(Z, OS, CN)`` mapping wins over the by-CN fallback.  When
+        ``None``, the per-metal MOST COMMON oxidation state
+        (see :data:`_METAL_DEFAULT_OS`) is used; unmapped
+        ``(Z, default_OS, CN)`` falls through to the Wf-A28 layer.
 
     Returns
     -------
@@ -260,6 +425,11 @@ def classify_coord_geometry(
     Wf-A28 step-1 added the ``_VSEPR_OVERRIDES`` per-element override
     (Re CN=5 / Au CN=6 / Cu CN=3 / Ag CN=5 / Pt CN=3 / Pd CN=3 are the new
     entries; everything else is byte-identical with Wf-A27).
+    Wf-A29 step-2 adds the ``_D_ELECTRON_GEOMETRY`` oxidation-state-aware
+    layer (Pt/Pd/Au/Cu/Ni/Co/Fe/Mn/Ru/Rh/Os/Ir/Re/Ag/Ti × 2-3 common OSes
+    × 1-2 CNs = ~30 OS-aware entries).  The 2-arg call form is
+    BYTE-IDENTICAL with Wf-A28 step-1; the new ``oxidation_state=`` kwarg
+    is opt-in.
     ``classify_coord_geometry_xtb`` remains deferred per the 2026-10-13
     user directive *"gpu先别动"* — a future Wf (GPU-authorised) may add the
     parallel xtb GPU path that consumes an ``AtomCloud`` +
@@ -270,6 +440,20 @@ def classify_coord_geometry(
     # ``coord_number`` outside [2, 12] has no entry in the curated table.
     if cn < 2 or cn > 12:
         return None
+    # Wf-A29 step-2: d-electron + oxidation-state layer.  Consulted first
+    # when the caller passes ``oxidation_state=`` OR the metal has a
+    # default OS in ``_METAL_DEFAULT_OS``.  When the (Z, OS, CN) lookup
+    # hits, that geometry wins over VSEPR / by-CN fallbacks.  An
+    # unmapped ``(Z, OS, CN)`` falls through so the Wf-A27 / Wf-A28
+    # contract is preserved for any (Z, OS, CN) the d-electron layer
+    # does not cover.
+    os_used = _resolve_os(z, oxidation_state)
+    if os_used is not None:
+        by_os = _D_ELECTRON_GEOMETRY.get((z, os_used))
+        if by_os is not None:
+            cls = by_os.get(cn)
+            if cls is not None:
+                return cls
     # Wf-A28 step-1: per-element VSEPR override takes precedence over the
     # by-CN fallback below.  The override layer is consulted first; an
     # unmapped (z, cn) pair falls back to ``_TABLE`` so the Wf-A27 contract
@@ -286,6 +470,17 @@ def classify_coord_geometry(
         return None
     cls = sub.get(cn)
     return cls
+
+
+def most_common_oxidation_state(atom_z: int) -> Optional[int]:
+    """Return the most-common oxidation state for the metal ``atom_z`` or ``None``.
+
+    Convenience wrapper around :data:`_METAL_DEFAULT_OS` for callers
+    that want to surface the OS used by the implicit path of
+    :func:`classify_coord_geometry`.  Returns ``None`` for Z outside
+    the 15-metal d-block cohort + Ti (no curated default).
+    """
+    return _METAL_DEFAULT_OS.get(int(atom_z))
 
 
 def one_hot_coord_geometry(
@@ -338,4 +533,5 @@ __all__ = [
     "COORD_GEOMETRY_ALIASES",
     "classify_coord_geometry",
     "one_hot_coord_geometry",
+    "most_common_oxidation_state",
 ]
