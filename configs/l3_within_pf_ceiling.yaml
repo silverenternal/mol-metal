@@ -1,0 +1,67 @@
+# L3 within-metal CEILING on the paper_funnel cohort (P2.2 recovery-to-ceiling).
+#
+# WHAT THIS ANSWERS
+#   The C1 K-shot curve reports a paired delta vs zero-shot.  The paper's second
+#   strong metric is recovery-to-ceiling: how much of the within-metal headroom
+#   (stratified 5-fold CV inside each metal) the K-shot adaptation recovers.
+#   This run supplies that ceiling on the SAME cohort as the K-shot curve.
+#
+# AGENTS.md §5.11: launched from this YAML; the wrapper passes --config only.
+entry:
+  script: molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  cohort_filter: "build_paper_cohort (Krasnov-style: IC50-present -> metal -> measurement-level dedup -> 76-name non-cancer exclusion; NO time window) then collapse_duplicates"
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 300
+  depth: 3
+  ffn_hidden: 300
+  ffn_layers: 1
+  dropout: 0.0
+  metal_mode: none
+  metal_embed_dim: 16
+
+train:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  bf16: true
+
+# no adaptation — this is the ceiling arm
+k_shot: 0
+k_shot_ft_epochs: 20
+k_shot_ft_lr: 0.001
+k_shot_adapt_scope: full
+support_sampler: stratified
+kshot_control_arms: []
+
+protocol:
+  wave_decomposition: "within-metal stratified 5-fold CV per metal; 10 seeds (paper_funnel cohort) — the K-shot curve's ceiling"
+  seeds: [42, 43, 44, 49, 123, 7, 8, 9, 10, 11]
+
+mode: within
+n_permutations: 0
+perm_seed: 42
+
+compute:
+  gpu: cuda:0
+
+output:
+  base_dir: molmetal/reports/l3_within_pf_ceiling
+  out_json: molmetal/reports/l3_within_pf_ceiling/metrics.json
+  log_master: molmetal/reports/l3_within_pf_ceiling/master.log
+
+metric_name: l3_within_pf_ceiling
+
+directives:
+  user_ok_required: true
+
+honest_framing: >
+  MEASURED only.  This is the within-metal ceiling (stratified 5-fold CV inside
+  each metal), the denominator of recovery-to-ceiling.  Ru dominates the pooled
+  mean; per-metal rows are reported.

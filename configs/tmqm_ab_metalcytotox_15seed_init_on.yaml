@@ -1,0 +1,51 @@
+# W7: seeds extended 5 -> 15 (variance-reduction lever) from tmqm_ab_metalcytotox_init_on.yaml
+# tmQM-pretrained init vs random init on MetalCytoToxDB — ON arm.
+# §5.11 YAML-only launch. The ONLY difference from the OFF arm is `init:`.
+#
+# This closes the follow-up named in TODO/completed/42_tmqm_pretrain_v4_encoder.md:
+# the recorded A/B (logs/finetune_tmqm_vs_random/) is n=1 seed / 5 epochs, so its
+# +0.046 delta carries no CI, while paper/sections/04_method.tex §4.4 cites it.
+# Gate per that TODO is non-negative delta, so a CI is what makes the gate
+# decidable. 5 seeds x 30 epochs per AGENTS.md §6.
+
+entry:
+  script: molmetal/scripts/finetune_metalcytotox_from_tmqm.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/finetune_metalcytotox_from_tmqm.py
+    --config {yaml_path} --out-dir {out_dir}
+metal: Ru
+init: tmqm
+encoder: models/tmqm_pretrained/tmqm_pretrained_encoder.pt
+
+# Sections required by scripts/_pre_flight_check.sh (data/model/protocol/
+# output/directives). `data.n_rows_expected` is a DECLARED_INERT_PATH and
+# `protocol.scaffold_split` a _NON_TRAINER_PATH, so neither shadows a dest.
+data:
+  n_rows_expected: 19135
+protocol:
+  scaffold_split: true
+directives:
+  user_ok_required: true
+
+model:
+  hidden: 128
+  depth: 3
+  dropout: 0.1
+
+train:
+  seeds: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+  epochs: 30
+  batch: 128
+  lr: 0.001
+  max_atoms: 120
+  max_edges: 240
+
+device: cuda:1
+
+output:
+  # base_dir drives start.sh's {out_dir} substitution; out_dir is the trainer
+  # dest; log_master / training_summary are required by start.sh (an empty
+  # log_master makes `: > "$LOG_FILE"` abort under `set -e`).
+  base_dir: molmetal/reports/tmqm_ab_metalcytotox_15seed_init_on
+  out_dir: molmetal/reports/tmqm_ab_metalcytotox_15seed_init_on
+  log_master: molmetal/reports/tmqm_ab_metalcytotox_15seed_init_on/master.log
+  training_summary: molmetal/reports/tmqm_ab_metalcytotox_15seed_init_on/training_summary.json

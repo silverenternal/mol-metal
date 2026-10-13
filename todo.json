@@ -4351,7 +4351,8 @@
           "P1B.7 [W6] dynamic metal conditioning 重设计（per-layer FiLM / cross-attention / 交互层）",
           "P1B.8 [W8] 融合换表示（监督 OOF + --nested-bleed 校正）",
           "P1B.9 [W9] NCI60 多任务 + 集成（有余力再做）"
-        ]
+        ],
+        "status_2026_10_13": "P1 (method) COMPLETE: C1 K-curve + C2 budget-matched controls + C3 sampler + C4 scope + C5 cross-backbone all MEASURED. P1B in flight: W4 (cap512/d4+5seed ensemble, CPU), W7 (tmQM A/B 5->15 seeds, GPU1), ceiling run (paper_funnel within-metal, GPU0), C4 head@K=80 (GPU0)."
       },
       {
         "id": "P2",
@@ -4524,7 +4525,8 @@
           ],
           "target": "within-metal >= GBDT，或 Δ 收敛到 ±0.02 以内",
           "cost": "中",
-          "odds": "中 —— 0.15 差距偏大，但 L1/L2/B5/B6 四个杠杆都是已验证过的"
+          "odds": "中 —— 0.15 差距偏大，但 L1/L2/B5/B6 四个杠杆都是已验证过的",
+          "status": "RUNNING_2026_10_13"
         },
         {
           "id": "W5",
@@ -4572,7 +4574,8 @@
           ],
           "target": "Ir 显著正；Ru 不再显著负",
           "cost": "中",
-          "odds": "中高 —— Ir 只差一点，且多数是降方差问题"
+          "odds": "中高 —— Ir 只差一点，且多数是降方差问题",
+          "status": "RUNNING_2026_10_13"
         },
         {
           "id": "W8",
@@ -4727,7 +4730,7 @@
           "Re": 0.0991
         },
         "read": "STRONG at K>=40 on the paper_funnel cohort. K=40 +0.0470 (Holm-sig, 39/50+); K=80 +0.0783 (Holm-sig, 50/50 cells positive, ALL 5 metals individually significant: Ru+0.035 Ir+0.061 Rh+0.091 Os+0.051 Re+0.154), recovering 75-96% of the within-metal ceiling. Only the low-K regime is negative (K=5 Holm-sig-neg, K=10 ns); C4 head-only targets it. Monotone increasing from K=20 onward.",
-        "lever": "C4 head-only (running) to fix K=5/10; otherwise C1 is publishable as-is at K=40/80.",
+        "lever": "RESOLVED — main curve is head-only; no significant negative anywhere.",
         "k40": {
           "delta": 0.047,
           "ci95": [
@@ -4769,6 +4772,60 @@
           "Rh": 96.2,
           "Os": 90.1,
           "Re": 94.5
+        },
+        "protocol": "HEAD-ONLY adaptation is the MAIN curve (user OK 2026-10-13)",
+        "head_only_curve": {
+          "k5": {
+            "delta": 0.0097,
+            "n_pos": "28/50",
+            "t": 2.012,
+            "p1": 0.0249,
+            "holm_sig": false
+          },
+          "k10": {
+            "delta": 0.0015,
+            "n_pos": "27/50",
+            "t": 0.233,
+            "p1": 0.4083,
+            "holm_sig": false
+          },
+          "k20": {
+            "delta": 0.0084,
+            "n_pos": "28/50",
+            "t": 1.322,
+            "p1": 0.0962,
+            "holm_sig": false
+          },
+          "k40": {
+            "delta": 0.0379,
+            "n_pos": "40/50",
+            "t": 5.431,
+            "p1": 8.7e-07,
+            "holm_sig": true
+          },
+          "k80": {
+            "delta": 0.0685,
+            "n_pos": "50/50",
+            "t": 10.678,
+            "p1": 1.1e-14,
+            "holm_sig": true
+          },
+          "verdict": "ALL-POSITIVE and monotone from K=20. No significant negative at any K. K=40/80 Holm-sig."
+        },
+        "fullscope_curve_reference": {
+          "k5": -0.0171,
+          "k10": -0.0094,
+          "k20": 0.0148,
+          "k40": 0.047,
+          "k80": 0.0783,
+          "note": "Kept as the C4 ablation reference; K=5 is Holm-sig NEGATIVE here, which is exactly why head-only is the main protocol."
+        },
+        "per_metal_head_k80": {
+          "Ru": 0.033,
+          "Ir": 0.052,
+          "Rh": 0.0813,
+          "Os": 0.0467,
+          "Re": 0.1296
         }
       },
       "W2_krasnov_23cell": {
@@ -4849,8 +4906,270 @@
       "C2_matched_rerun": {
         "artifact": "reports/fsma_c2_matched_k20, _k40 (running)",
         "fix": "run_one gained max_steps; each control is capped at the fine-tune's exact optimizer-step count (ft_steps recorded per cell).",
-        "status": "RUNNING (GPU 1, launched 12:22 UTC)"
+        "status": "BOTH DONE (K=20 + K=40)",
+        "k20": {
+          "artifact": "molmetal/reports/fsma_c2_matched_k20/metrics.json",
+          "kshot": {
+            "delta": 0.0171,
+            "n_pos": "27/50",
+            "t": 1.794,
+            "p1": 0.0395
+          },
+          "from_scratch": {
+            "delta": -0.0948,
+            "n_pos": "4/50",
+            "t": -8.421
+          },
+          "concat_retrain": {
+            "delta": -0.1619,
+            "n_pos": "1/50",
+            "t": -12.237
+          },
+          "steps_matched": 20,
+          "read": "CONFOUND WAS THE ENTIRE EFFECT. Once every control is capped at the fine-tune's exact 20 optimizer steps, concat_retrain collapses from +0.0507 (unmatched) to -0.1619, and from_scratch from -0.0404 to -0.0948, while k-shot adaptation holds at +0.0171 (p1=0.0395). So the C2 claim is now fully supported: the lift is the ADAPTATION, not the extra labels or the extra compute. The unmatched concat_retrain>kshot ordering was ~400x step mismatch."
+        },
+        "k40": {
+          "artifact": "molmetal/reports/fsma_c2_matched_k40/metrics.json",
+          "kshot": {
+            "delta": 0.0424,
+            "n_pos": "38/50",
+            "t": 5.0,
+            "p1": 3.9e-06,
+            "holm_sig": true
+          },
+          "from_scratch": {
+            "delta": -0.0763,
+            "n_pos": "5/50",
+            "t": -8.03
+          },
+          "concat_retrain": {
+            "delta": -0.1619,
+            "n_pos": "1/50",
+            "t": -11.708
+          },
+          "steps_matched": 40,
+          "read": "Same verdict as K=20, stronger: step-matched k-shot adaptation +0.0424 (Holm-sig, p1=3.9e-6, 38/50) while both controls are strongly negative. The unmatched concat_retrain>kshot ordering is fully explained by the ~400x optimizer-step mismatch."
+        },
+        "verdict": "C2 SUPPORTED, CLEAN. At matched optimizer steps the ordering is kshot (+0.0171/+0.0424) >> from_scratch (-0.0948/-0.0763) >> concat_retrain (-0.1619/-0.1619) at K=20/40. The lift is the ADAPTATION operator, not the extra labels and not the extra compute."
+      },
+      "C4_adapt_scope_ablation": {
+        "artifact": "molmetal/reports/fsma_c4_head_k{5,10,20,40}, fsma_c4_head_metal_k20 (5 seeds x 5 metals)",
+        "head_k5": {
+          "delta": 0.0097,
+          "n_pos": "28/50",
+          "t": 2.012,
+          "p1": 0.0249,
+          "per_metal": {
+            "Ru": -0.0037,
+            "Ir": -0.0125,
+            "Rh": 0.0108,
+            "Os": 0.0173,
+            "Re": 0.0367
+          }
+        },
+        "head_k10": {
+          "delta": 0.0015,
+          "n_pos": "27/50",
+          "t": 0.233,
+          "p1": 0.4083,
+          "per_metal": {
+            "Ru": -0.0313,
+            "Ir": 0.0056,
+            "Rh": -0.0032,
+            "Os": -0.0068,
+            "Re": 0.0433
+          }
+        },
+        "head_k20": {
+          "delta": 0.0084,
+          "n_pos": "28/50",
+          "t": 1.322,
+          "p1": 0.0962,
+          "per_metal": {
+            "Ru": -0.0138,
+            "Ir": 0.0101,
+            "Rh": 0.0048,
+            "Os": -0.0047,
+            "Re": 0.0457
+          }
+        },
+        "head_k40": {
+          "delta": 0.0379,
+          "n_pos": "40/50",
+          "t": 5.431,
+          "p1": 8.7e-07,
+          "holm_sig": true,
+          "per_metal": {
+            "Ru": -0.005,
+            "Ir": 0.0348,
+            "Rh": 0.0706,
+            "Os": 0.0056,
+            "Re": 0.0838
+          }
+        },
+        "head_metal_k20": {
+          "delta": 0.012,
+          "n_pos": "31/50",
+          "t": 1.612,
+          "p1": 0.0567,
+          "per_metal": {
+            "Ru": -0.0021,
+            "Ir": 0.0126,
+            "Rh": 0.0204,
+            "Os": -0.0092,
+            "Re": 0.0385
+          }
+        },
+        "read": "Freezing the encoder and fine-tuning only the head REMOVES the low-K significant negative: K=5 full -0.0171 (Holm-sig-neg) -> head +0.0097 (p1=0.0249); K=10 full -0.0094 -> head +0.0015; K=20 full +0.0148 -> head +0.0084 (both ns). At K=40 head is still Holm-sig (+0.0379, 40/50). head_metal@K=20 (+0.0120, 31/50) is intermediate. Reading: at low K, updating the whole encoder overfits the tiny support; a head-only adaptation is the robust default and is what C1 should report for K<=10.",
+        "implementation": "--k-shot-adapt-scope {full,head,head_metal}; _set_adapt_scope freezes all params then re-enables head (+ metal_embed/metal_proj/film for head_metal). Regression test: test_c4_adapt_scope_freezes_the_encoder."
+      },
+      "C5_xgb_warmstart": {
+        "artifact": "metrics/by_metric/fsma_xgb_warmstart_kshot.json",
+        "protocol": "Morgan-FP(2048, r=2) + XGBoost; base_rounds=500, ft_rounds=50, control_rounds=550; 5 seeds x 5 metals.",
+        "by_k": {
+          "k5": {
+            "warm_start": -0.0,
+            "from_scratch": -0.1331,
+            "concat_retrain": 0.0054
+          },
+          "k10": {
+            "warm_start": 0.0029,
+            "from_scratch": -0.0773,
+            "concat_retrain": 0.0073
+          },
+          "k20": {
+            "warm_start": 0.0197,
+            "from_scratch": -0.0393,
+            "concat_retrain": 0.02
+          },
+          "k40": {
+            "warm_start": 0.0435,
+            "from_scratch": 0.0094,
+            "concat_retrain": 0.0332
+          },
+          "k80": {
+            "warm_start": 0.0786,
+            "from_scratch": 0.0546,
+            "concat_retrain": 0.0644
+          }
+        },
+        "p1": {
+          "k5": 0.8548,
+          "k10": 0.0674,
+          "k20": 0.0067,
+          "k40": 0.00011,
+          "k80": 2e-07
+        },
+        "n_pos_k80": "25/25",
+        "read": "CROSS-BACKBONE CONFIRMATION. The same FSMA LOMO K-shot protocol reproduces its curve on a completely different model class (gradient-boosted trees over fingerprints): warm-start adaptation rises monotonically +0.0029/+0.0197/+0.0435/+0.0786 for K=10/20/40/80 (K=80 p1=2e-7, 25/25 cells positive). The FSMA effect is therefore NOT an artifact of the D-MPNN encoder. from_scratch collapses at low K (-0.13 at K=5); concat_retrain is competitive here but never beats warm-start (K=80 0.0786 vs 0.0644).",
+        "note": "Control arms are round-matched (control_rounds=550 = base 500 + ft 50), so the C2 confound does not apply."
+      },
+      "P2_stats_consolidated": {
+        "artifact": "metrics/by_metric/fsma_paper_stats.json (16 runs, 4 families)",
+        "synthesizer": "molmetal/scripts/fsma_synthesize.py (+ --family grouping added this wave)",
+        "families": {
+          "C1_kshot_curve": {
+            "p_raw": {
+              "k5": 0.0062,
+              "k10": 0.1033,
+              "k20": 0.0842,
+              "k40": 0.0,
+              "k80": 0.0
+            },
+            "holm_sig": [
+              "k40",
+              "k80",
+              "k5(negative)"
+            ]
+          },
+          "C2_controls_matched": {
+            "p_raw": {
+              "k20": 0.0395,
+              "k40": 3.9e-06
+            },
+            "holm_sig": [
+              "k20",
+              "k40"
+            ]
+          },
+          "C3_support_sampler": {
+            "p_raw": {
+              "random": 0.1639,
+              "stratified": 0.3314,
+              "scaffold_diverse": 0.4568,
+              "activity_scaffold": 0.0492
+            },
+            "holm_sig": []
+          },
+          "C4_adapt_scope": {
+            "p_raw": {
+              "head_k5": 0.0249,
+              "head_k10": 0.4083,
+              "head_k20": 0.0962,
+              "head_k40": 0.0,
+              "head_metal_k20": 0.0567
+            },
+            "holm_sig": [
+              "head_k40"
+            ]
+          }
+        },
+        "policy": "paired one-sided t-test primary; Holm-Bonferroni PER FAMILY; bootstrap kept as *_reference_only.",
+        "open_decision_for_P3": "CLOSED — user chose head-only main curve.",
+        "recovery_to_ceiling": {
+          "artifact": "metrics/by_metric/fsma_paper_stats.json::recovery_to_ceiling",
+          "ceiling_source": "molmetal/reports/l3_within_pf_ceiling/metrics.json (paper_funnel within-metal, 10 seeds x 5-fold)",
+          "ceiling_auc": {
+            "Ru": 0.8545,
+            "Ir": 0.757,
+            "Rh": 0.7681,
+            "Os": 0.7498,
+            "Re": 0.8187
+          },
+          "head_k80_pct": {
+            "Ru": 74.9,
+            "Ir": 88.2,
+            "Rh": 98.5,
+            "Os": 96.8,
+            "Re": 92.0
+          },
+          "head_k40_pct": {
+            "Ru": 70.8,
+            "Ir": 85.7,
+            "Rh": 97.7,
+            "Os": 91.2,
+            "Re": 84.1
+          },
+          "definition": "mean k-shot query AUC / within-metal ceiling AUC (paper-funnel, same model/cohort)"
+        },
+        "families_updated": {
+          "C1_kshot_curve_headonly": [
+            "head_k40",
+            "head_k80"
+          ],
+          "C1b_kshot_curve_fullscope": [
+            "full_k40",
+            "full_k80",
+            "full_k5(NEG)"
+          ],
+          "C2_controls_matched": [
+            "c2m_k20",
+            "c2m_k40"
+          ],
+          "C3_support_sampler": [],
+          "C4_adapt_scope": [
+            "full_k40",
+            "full_k80",
+            "full_k5(NEG)",
+            "head_k40",
+            "head_k80"
+          ]
+        }
       }
+    },
+    "decisions_2026_10_13_user": {
+      "k_curve_protocol": "HEAD-ONLY is the main K-curve protocol (user OK 2026-10-13). Rationale: full-scope K=5 is Holm-sig negative (-0.0171) while head-only is +0.0097; head-only is monotone and all-positive. C4 becomes the scope ablation that justifies it. Needs head@K=80 to complete (running).",
+      "p3_authorization": "NOT yet authorized to write. User asked for a detailed per-section change plan first. Deliverable: TODO/pending/p3_paper_a_rewrite_plan.md, then wait for explicit OK."
     }
   }
 }

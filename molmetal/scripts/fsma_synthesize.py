@@ -128,8 +128,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--run", action="append", default=[],
                    help="label=path to a run dir (repeatable)")
+    p.add_argument("--family", action="append", default=[],
+                   help="name=label1,label2,... Holm-Bonferroni family over the "
+                        "pooled k-shot delta (repeatable). Without this, one "
+                        "family spans every --run, which mixes K values / "
+                        "samplers / adapt scopes and is not a valid family.")
     p.add_argument("--xgb-json", default=None,
                    help="optional fsma_xgb_warmstart_kshot.json for the C5 block")
+    p.add_argument("--ceiling-run", default=None,
+                   help="path to a --mode within run dir on the SAME cohort; its "
+                        "within_metal[*].mean_auc becomes the ceiling denominator "
+                        "of a recovery_to_ceiling block (P2.2).")
     p.add_argument("--out-metric",
                    default="metrics/by_metric/fsma_kshot_curve_paperfunnel.json")
     args = p.parse_args(argv)
@@ -184,6 +193,48 @@ def main(argv: Optional[List[str]] = None) -> int:
         block["controls_present"] = present
         report["per_run"][label] = block
 
+    if args.ceiling_run:
+        cpath = PROJECT_ROOT / args.ceiling_run
+        if (cpath / "metrics.json").exists():
+            crep = json.loads((cpath / "metrics.json").read_text(encoding="utf-8"))
+            ceiling = {
+                m: float(v["mean_auc"])
+                for m, v in crep.get("within_metal", {}).items()
+                if v.get("status") == "MEASURED" and v.get("mean_auc") == v.get("mean_auc")
+            }
+            rec: Dict[str, object] = {
+                "ceiling_source": str(cpath.relative_to(PROJECT_ROOT)),
+                "ceiling_within_metal_mean_auc": ceiling,
+                "note": ("recovery_to_ceiling[m] = mean k-shot query AUC / within-metal "
+                         "ceiling AUC, both on the paper-funnel cohort. >100% is possible "
+                         "when the LOMO source pool adds information the within-metal CV "
+                         "does not see."),
+                "per_run": {},
+            }
+            for label, block in report["per_run"].items():
+                if block.get("status") != "MEASURED":
+                    continue
+                d = runs[label]
+                cells, _ = _load_run(d)
+                rows: Dict[str, List[float]] = {}
+                for key, cell in cells.items():
+                    metal = key.split("|")[0]
+                    v = cell.get("kshot_query_auc")
+                    if v is None or v != v:
+                        continue
+                    rows.setdefault(metal, []).append(float(v))
+                per_m = {
+                    m: {
+                        "kshot_query_mean": float(np.mean(vs)),
+                        "ceiling": ceiling.get(m),
+                        "recovery_pct": (100.0 * float(np.mean(vs)) / ceiling[m])
+                        if ceiling.get(m) else None,
+                    }
+                    for m, vs in rows.items()
+                }
+                rec["per_run"][label] = per_m
+            report["recovery_to_ceiling"] = rec
+
     # family correction across K values, on the pooled k-shot delta
     pvals: Dict[str, float] = {}
     for label, block in report["per_run"].items():
@@ -199,6 +250,25 @@ def main(argv: Optional[List[str]] = None) -> int:
             k for k, v in _holm(pvals).items() if v < 0.05
         ),
     }
+
+    # per-family Holm: each family is a set of run labels that share a single
+    # inferential context (one K curve, one sampler sweep, one scope sweep).
+    if args.family:
+        families: Dict[str, Dict[str, object]] = {}
+        for spec in args.family:
+            name, _, labels_s = spec.partition("=")
+            labels = [x for x in labels_s.split(",") if x]
+            fam_p = {lb: pvals[lb] for lb in labels if lb in pvals}
+            fam_holm = _holm(fam_p)
+            families[name] = {
+                "runs": labels,
+                "p_raw": fam_p,
+                "p_holm": fam_holm,
+                "significant_after_holm_0.05": sorted(
+                    k for k, v in fam_holm.items() if v < 0.05
+                ),
+            }
+        report["families"] = families
 
     if args.xgb_json:
         xp = PROJECT_ROOT / args.xgb_json
@@ -229,6 +299,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                       f"p_t={mm['p_one_sided_ttest']:.4f} "
                       f"{mm['n_positive']}/{mm['n_cells']}+")
     print("significant after Holm:", report["family_holm_across_runs"]["significant_after_holm_0.05"])
+    for name, fam in report.get("families", {}).items():
+        print(f"  family[{name}] holm-sig: {fam['significant_after_holm_0.05']}")
     print(f"wrote {out}")
     return 0
 

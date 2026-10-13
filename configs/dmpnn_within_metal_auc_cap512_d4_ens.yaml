@@ -1,0 +1,64 @@
+# W4 — D-MPNN *within-metal* ROC-AUC, capacity + ensemble lever.
+#
+# WHAT THIS ANSWERS
+#   configs/dmpnn_within_metal_auc.yaml measured the D-MPNN within-metal column at
+#   hidden=128 / depth=3 / 1 training seed (Ru 0.7041 vs XGB 0.8271, delta -0.123).
+#   W4's levers are cap512/d4 (verified +0.05 on MoleculeNet) and a multi-seed
+#   ensemble (verified +0.0123).  This config applies both on the SAME cohort and
+#   the SAME folds, so the per-metal delta vs the 128/3 column and vs XGB is paired.
+#
+# AGENTS.md §5.11: every leaf resolves to a dest of dmpnn_within_metal_auc.py's own
+# parser (verified by scripts/_config_binding_gate.py).  Analysis script invoked
+# directly (like metal_activity_transfer_probe.py), not a start.sh launcher.
+
+entry:
+  script: molmetal/scripts/dmpnn_within_metal_auc.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/dmpnn_within_metal_auc.py
+    --config {yaml_path}
+
+data:
+  # nargs="+" — MUST be a YAML list (see configs/dmpnn_within_metal_auc.yaml:22-24).
+  metals: [Ru, Ir, Rh, Os, Re]
+
+# --- folds (identical to the 128/3 run so the delta is paired) ---------------
+protocol:
+  split_seeds: [42, 43, 44, 49, 123]
+  n_splits: 5
+
+# --- model: cap512 / depth4 ------------------------------------------------
+model:
+  hidden: 512
+  depth: 4
+  dropout: 0.1
+
+train:
+  lr: 0.001
+  epochs: 60
+  batch_size: 64
+  max_atoms: 120
+  max_edges: 240
+  # 5 training seeds averaged within each fold = the W4 ensemble lever.
+  train_seeds: [0, 1, 2, 3, 4]
+  class_weight: true
+  mask_padding: true
+
+# --- xgboost reference (same folds) -----------------------------------------
+radius: 2
+nbits: 2048
+
+# --- run shape --------------------------------------------------------------
+compute:
+  device: cpu
+
+max_fold_n: 0
+
+output:
+  out_metric: metrics/by_metric/dmpnn_within_metal_auc_cap512_d4_ens.json
+
+honest_framing:
+  purpose: >-
+    Test whether capacity (512/4) + a 5-seed ensemble closes the D-MPNN's
+    within-metal gap to the XGB column on the probe's cohort and folds.
+  do_not_claim:
+    - A pooled 5-metal mean: Ru is ~64% of the deduplicated cohort.
+    - That Rh/Os/Re (n<200) are resolvable — reported, not gated.
