@@ -5748,5 +5748,96 @@
       "metrics/by_metric/nci60_precious_9cell_auc.json"
     ],
     "cost": "大: phase2 是主线全量 GPU 重跑; 先只做 phase1(M1-M6)"
+  },
+  "positioning_and_model_innovation_2026_10_14": {
+    "created": "2026-10-14",
+    "serves": "贵金属抗癌药物设计 (precious-metal anticancer drug design)",
+    "problem": "当目标金属(如 Os/Re)几乎没有该金属的活性数据时, 预测金属配合物的抗癌活性",
+    "key_fact": "SMILES_Ligands 不含金属中心 —— Ru 19135 行中含 '[Ru' 的为 0 行 (Ir/Rh/Os/Re 同样全 0)。输入只有配体+反离子。所以现有全部模型(含 chemprop v2)都是【金属盲】的: 金属只是被留出的标签。",
+    "differentiation": {
+      "chemprop_v2": "金属盲的同分布 QSAR —— 单金属、同分布、一次性预测; metal_mode=none; 完全没有'金属位移'这个概念, 评测协议也不测它。",
+      "our_line": "金属感知的跨金属适配 —— 把金属当成一等输入来建模, 目标是'未见金属 + K 个标签'。",
+      "one_liner": "chemprop v2 是'金属盲的同分布 QSAR'; 我们自研的是'金属感知的跨金属适配模型'。",
+      "why_it_matters_for_drug_design": "贵金属药设的真实场景就是: 你在 Ru 上有一堆数据, 但要评估一个新的 Ir/Os 候选。金属盲模型在这里会塌缩 (transfer penalty 0.05-0.25)。"
+    },
+    "model_innovation": [
+      {
+        "id": "I1",
+        "title": "金属中心作为图的一等对象",
+        "desc": "把金属原子作为节点加进分子图(而不是当成标签), 用 Oxidation_state / Charge_complex / Valence_e / Atomic_number / 配位数 / 配位几何。这是 chemprop v2 明确不做、而我们数据天然支持的事。",
+        "novelty": "把'金属身份'从监督标签变成可学习的图结构"
+      },
+      {
+        "id": "I2",
+        "title": "可跨金属泛化的金属描述符",
+        "desc": "周期表位置 + 配体场分裂 Δ + 氧化还原电位 + HSAB 硬度 —— 使未见金属可插值。PA15 的 desc 臂只用了周期表常量(无配体场/氧化还原), 所以这条路其实还没被公平测过。",
+        "novelty": "为金属维度设计的归纳偏置(inductive bias), 而非通用原子特征"
+      },
+      {
+        "id": "I3",
+        "title": "金属感知的消息传递",
+        "desc": "金属信息必须进 message passing 内部, 不是加到 head 上。PA15 教训: 加 head (token/desc/FiLM) 无效, token 甚至显著更差(-0.0488)。",
+        "novelty": "metal-aware message passing, 区别于 chemprop 的 metal_mode=none"
+      },
+      {
+        "id": "I4",
+        "title": "适配友好的结构",
+        "desc": "为 FSMA 少样本适配而设计: 在金属感知层挂低秩 adapter, 使 K 个标签能有效移动'金属条件', 而不是只动最后的 head。",
+        "novelty": "模型结构与适配协议协同设计 —— 这正是 WM1 低 K 失效的结构性修法"
+      }
+    ],
+    "reuse_assets": {
+      "note": "之前预测线的工作不白做 —— 以下资产全部可复用",
+      "models": [
+        "molmetal/baselines/dmpnn.py::DMPNNModel  —— 主模型",
+        "molmetal/models/metal_hybrid.py        —— D-MPNN + EGNN 3D 双流 + FusionMLP + 双头",
+        "molmetal/models/metal_hybrid_v3.py     —— + tmQM 预训练 init + 坐标精修头",
+        "molmetal/models/metal_hybrid_v4.py     —— + 真 Satorras EGNN + Perceiver 潜变量融合 + LLRD + Kendall 损失",
+        "molmetal/models/equivariant_dmpnn.py   —— SO(3)-equivariant 消息传递骨架",
+        "molmetal/models/fusion.py, cross_attention_fusion.py, v4_multitask_dmpnn.py, chemprop_v2_mt_model.py"
+      ],
+      "data": [
+        "molmetal/data/transition_metals_30.csv        —— 金属描述符表(PA15 desc 臂用过)",
+        "molmetal/data/metalcytotox_rdkit_features.csv, platinai_*_rdkit_*_features.csv  —— 预计算特征",
+        "molmetal/data/metal_lomo.csv"
+      ],
+      "training_levers": [
+        "focal loss (B5, train_moleculenet.py)",
+        "seed ensemble (B6)",
+        "cap512/d4 容量杠杆",
+        "tmQM 预训练 A/B (注意: ckpt 当前不在盘上, 见 open_check)"
+      ],
+      "protocol": [
+        "FSMA K-curve runner + C2 预算匹配对照 + C3 采样消融 + C4 适配深度消融",
+        "l3_metalcond (metal conditioning 三臂) —— 可改造为 metal-aware message passing",
+        "DOI / LOMO / scaffold / temporal splitters",
+        "显著性基础设施 (paired one-sided t + Holm + bootstrap)",
+        "repro manifest + reproduce driver"
+      ],
+      "alignment": [
+        "pa18 classification (PR-AUC/ECE/AD)",
+        "pa18 regression (pIC50)",
+        "pa20 external temporal"
+      ]
+    },
+    "prior_evidence": {
+      "metal_hybrid_v4_temporal": {
+        "test_auc": 0.5731,
+        "std": 0.0685,
+        "seeds": [
+          42,
+          133,
+          256
+        ],
+        "dmpnn_multitask_baseline": 0.5135,
+        "delta": 0.0596,
+        "v3_reference": 0.4708,
+        "source": "molmetal/reports/metal_hybrid_v4_round3_report.md",
+        "reading": "金属感知的 V4 已在最难的时间切分上超过 D-MPNN 多任务基线 +0.0596 —— 这是金属感知方向的先行证据, 不是从零开始"
+      },
+      "pa15_metal_conditioning": "token -0.0488 (CI 排除 0, 显著更差), desc -0.0215 (ns), verdict='CONDITIONING DOES NOT RECOVER THE COLLAPSE'。含义: 创新点必须是'金属进消息传递', 而不是'金属加 head'。"
+    },
+    "link_to_strengthening_plan": "I1-I4 与 in_house_main_model_2026_10_14 的 M1-M6 是同一件事的两面: M1 特征扩展 -> 顺手加金属描述符(I2); M2/M3 更新/读出 -> 让金属进消息传递(I3); I1 金属节点与 I4 adapter 是新增的结构改动。",
+    "open_check": "tmQM 预训练 ckpt (molmetal/checkpoints/dmpnn_tmqm_pretrained.pt) 当前不在盘上 —— 若复用 V3/V4 需重跑 tmQM 预训练"
   }
 }
