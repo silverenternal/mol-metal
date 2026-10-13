@@ -2975,6 +2975,13 @@ def train_one_epoch(
     # edm_preconditioning / shortcut_distill) keep driving the inline path
     # untouched — these NEW keys are an opt-in second call site that closes
     # the L8 DEAD count without changing the shipped default.
+    # Wf-A27 (2026-10-13) step-4 — clash penalty wire-in (passed through
+    # to the trainer's ``clash_penalty_term`` aggregation in the loss
+    # block).  Default 0.0 ⇒ ``last_clash_penalty_per_cloud`` list is
+    # reset-empty every batch ⇒ bit-exact pre-Wf-A27 / pre-Wf-A15.
+    # The standalone ``molmetal.loss.prior_losses.ClashPenalty`` class is
+    # imported inside the loss block — see the wire-in comment there.
+    clash_penalty_weight: float = 0.0,
     consistency_term_weight: float = 0.0,  # 0.0 = ConsistencyTerm off (bit-exact pre-Wf-A23)
     so3_term_weight: float = 0.0,  # 0.0 = SO3Term off (bit-exact pre-Wf-A23)
     edm_term_weight: float = 0.0,  # 0.0 = EDMTerm off (bit-exact pre-Wf-A23)
