@@ -7815,6 +7815,25 @@ def parse_args() -> argparse.Namespace:
             "pre-Wf-A15 eval output."
         ),
     )
+    # Wf-A24 (2026-10-13) — Track E m14 per-atom decode wire-in.
+    #
+    # Adds a per-atom-aware decode-ratio (decode_gate.gate_ratio at
+    # largest_frac_min=0.80, min_atoms=2) over the generated SMILES cohort.
+    # Default OFF → bit-exact pre-Wf-A24 per_epoch_metrics.json.
+    # Per-epoch emission lands at PROJECT_ROOT/metrics/by_metric/cfm_decode_atomic.json.
+    p.add_argument(
+        "--eval-m14-per-atom",
+        dest="eval_m14_per_atom",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-A24 (Track E, m14 per-atom): compute per-atom-aware decode "
+            "ratio (decode_gate.gate_ratio with largest_frac_min=0.80, "
+            "min_atoms=2) over the generated SMILES cohort and emit "
+            "per-epoch to metrics/by_metric/cfm_decode_atomic.json. Off by "
+            "default → bit-exact pre-Wf-A24 per_epoch_metrics.json."
+        ),
+    )
     # Wf-A15 (2026-10-13) — Layer E.  Opt-in toggle for the 5 chemistry
     # channels (BO continuous / natural_charge / oxidation_state /
     # coord_neighbors / metal_proximity) appended to
@@ -10713,6 +10732,60 @@ def main() -> int:
                         "atoms_dropped_by_largest_fragment say how much of the "
                         "reported validity was bought that way."
                     )
+                # Wf-A24 (2026-10-13) — Track E m14 per-atom wire-in.
+                #
+                # Re-uses the in-memory ``_gen_smiles`` collector (zero extra
+                # decode cost) and routes through decode_gate.gate_ratio with
+                # the standard MOSES floor (largest_frac_min=0.80, min_atoms=2).
+                # Gated on ``--eval-m14-per-atom`` so a run that did not opt in
+                # pays nothing and its per_epoch_metrics.json is bit-exact.
+                if bool(getattr(args, "eval_m14_per_atom", False)) and _gen_smiles:
+                    try:
+                        from molmetal.eval.scoring import decode_gate as _dg_a24
+                        _m14 = _dg_a24.gate_ratio(
+                            list(_gen_smiles),
+                            largest_frac_min=0.80,
+                            min_atoms=2,
+                        )
+                        _gen_chem["m14_per_atom"] = _m14
+                        # Per-epoch emission (paper §4 + atomic, NOT a
+                        # cohort-rollup).  Atomic write via tmpfile + os.replace
+                        # (§5.6 protocol).
+                        _m14_out = (
+                            PROJECT_ROOT
+                            / "metrics" / "by_metric" / "cfm_decode_atomic.json"
+                        )
+                        _m14_out.parent.mkdir(parents=True, exist_ok=True)
+                        import json as _json_a24
+                        import os as _os_a24
+                        import tempfile as _tmpfile_a24
+                        _m14_payload = {
+                            "epoch": int(epoch),
+                            "seed": int(args.seed),
+                            "out_dir": str(out_dir),
+                            "m14_per_atom": _m14,
+                            "protocol_version": "cfm_decode_atomic/2026-10-13",
+                        }
+                        _fd_a24, _tmp_a24 = _tmpfile_a24.mkstemp(
+                            prefix=_m14_out.name, suffix=".tmp",
+                            dir=str(_m14_out.parent),
+                        )
+                        try:
+                            with _os_a24.fdopen(_fd_a24, "w", encoding="utf-8") as _fh:
+                                _json_a24.dump(_m14_payload, _fh, indent=2, sort_keys=True)
+                                _fh.flush()
+                                _os_a24.fsync(_fh.fileno())
+                            _os_a24.replace(_tmp_a24, _m14_out)
+                        except Exception:
+                            try:
+                                _os_a24.unlink(_tmp_a24)
+                            except OSError:
+                                pass
+                            raise
+                    except Exception as _m14_exc:
+                        _gen_chem["m14_per_atom_error"] = (
+                            f"{type(_m14_exc).__name__}: {_m14_exc}"
+                        )
             except Exception as _gen_exc:
                 print(
                     f"[cfm-gen][WARNING] generation eval failed "
