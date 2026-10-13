@@ -172,13 +172,19 @@ from molmetal.molmetal_lam.lam_chem.assemble_connectivity import (
 # top-level ``sa_loss`` symbol to avoid shadowing the trainer's
 # (post-Wf-A13) ``_sa_local``.
 from molmetal.loss import (
+    ConsistencyTerm,
     ContinuousBOLoss,
     DiversityRegularizer,
+    EDMTerm,
+    EnergyConservation,
     EntropyTerm,
+    FmOdeTerm,
     MoleculeLoss,
     MolecularPropertyTargetLoss,
     NaturalChargeLoss,
     QEDLoss,
+    SBOO3Term,
+    SO3Term,
     ShortcutDistillLoss,
     SingleFragmentLoss,
     StereoCentreSuppressionLoss,
@@ -2835,6 +2841,24 @@ def train_one_epoch(
     log_normal_t_sigma: float = 1.0,  # Wf-340-A3 log-normal sigma
     edm_preconditioning: bool = False,  # False = no EDM σ-preconditioning
     edm_sigma_data: float = 1.5,  # EDM σ_data for 3D coord (Å)
+    # Wf-A23 (2026-10-13) — 7 NEW class-wrapper YAML-only loss keys (per
+    # §5.11).  Each delegates to an existing inline module when the wrapper
+    # class is instantiated.  Default 0.0 ⇒ class returns torch.zeros(())
+    # ⇒ the loss sum is bit-exact identical to pre-Wf-A23.  The legacy
+    # ``*_weight`` keys above (consistency_weight / so3_average_weight /
+    # edm_preconditioning / shortcut_distill) keep driving the inline path
+    # untouched — these NEW keys are an opt-in second call site that closes
+    # the L8 DEAD count without changing the shipped default.
+    consistency_term_weight: float = 0.0,  # 0.0 = ConsistencyTerm off (bit-exact pre-Wf-A23)
+    so3_term_weight: float = 0.0,  # 0.0 = SO3Term off (bit-exact pre-Wf-A23)
+    edm_term_weight: float = 0.0,  # 0.0 = EDMTerm off (bit-exact pre-Wf-A23)
+    shortcut_distill_term_weight: float = 0.0,  # 0.0 = ShortcutDistillLoss class off
+    fm_ode_term_weight: float = 0.0,  # 0.0 = FmOdeTerm off (bit-exact pre-Wf-A23)
+    energy_conservation_weight: float = 0.0,  # 0.0 = EnergyConservation off
+    sboo3_term_weight: float = 0.0,  # 0.0 = SBOO3Term off (bit-exact pre-Wf-A23)
+    sboo3_alpha: float = 0.5,  # SBO × O(3) mixing weight
+    sboo3_n_perm: int = 4,  # SBO permutations per batch
+    sboo3_n_rot: int = 4,  # O(3) rotations per batch
     chemprop_v3_cache: bool = False,  # False = no chemprop v3 cache
     # Wf-409-A2 — TODO-155 WIRE-IN: CFM-side ChempropV3FeaturizationCache
     # wire-in kwarg.  Default OFF preserves bit-for-bit backward compat
@@ -4276,6 +4300,125 @@ def train_one_epoch(
         else:
             wasserstein_pocket_term = torch.zeros((), device=device)
 
+        # Wf-A23 (2026-10-13) — 7 NEW class-wrapper loss terms.  Each is a
+        # second call site alongside the inline path the trainer already
+        # uses.  The default ``*_term_weight=0.0`` ⇒ each class returns
+        # ``torch.zeros(())`` ⇒ the loss sum is bit-exact identical to
+        # pre-Wf-A23 when no NEW flag is set.  These close the L8 DEAD
+        # count without disturbing the shipped path.  Inline modules
+        # (`_cr`, `_so3`, `_edm`, `_sd`) are NOT touched — bit-exact
+        # invariant from Wf-A14/A17/A20/A22.
+        #
+        # Term 1 — ConsistencyTerm class wrapper (step 2).  Class exists
+        # in ``molmetal.loss.regularization_losses.ConsistencyTerm``; it
+        # delegates to the same `_cr.consistency_loss_fn` inline path.  At
+        # weight 0.0 the class short-circuits to ``torch.zeros(())``.
+        consistency_class_term = ConsistencyTerm(
+            weight=float(consistency_term_weight),
+            enabled=float(consistency_term_weight) > 0.0,
+        ).compute(
+            pred_fn=(lambda x: model.fm_velocity(
+                x, t, z_all, cloud_sizes=_cloud_sizes
+            )) if (fm_objective and x_t is not None) else None,
+            x_t=x_t,
+            device=device,
+        )
+        # Term 2 — SO3Term class wrapper (step 3).  Class delegates to the
+        # same `_so3.so3_average_loss` inline path.
+        so3_class_term = SO3Term(
+            weight=float(so3_term_weight),
+            enabled=float(so3_term_weight) > 0.0,
+        ).compute(
+            pred_fn=(lambda x: model.fm_velocity(
+                x, t, z_all, cloud_sizes=_cloud_sizes
+            )) if (fm_objective and x_t is not None and t is not None) else None,
+            x_t=x_t,
+            target=target_dx,
+            n_rotations=int(so3_averaged_fm_k),
+            device=device,
+        )
+        # Term 3 — EDMTerm class wrapper (step 4).  Class delegates to the
+        # same `_edm.preconditioned_loss` inline path.
+        _edm_sigma = None
+        if fm_objective and x_t is not None:
+            _edm_sigma = torch.full(
+                (int(x_t.shape[0]),),
+                float(edm_sigma_data),
+                dtype=torch.float32,
+                device=device,
+            )
+        edm_class_term = EDMTerm(
+            weight=float(edm_term_weight),
+            enabled=float(edm_term_weight) > 0.0,
+        ).compute(
+            pred_raw=(
+                model.fm_velocity(x_t, t, z_all, cloud_sizes=_cloud_sizes)
+                if (fm_objective and x_t is not None)
+                else None
+            ),
+            x_t=x_t,
+            target_dx=target_dx,
+            sigma=_edm_sigma,
+            device=device,
+        )
+        # Term 4 — ShortcutDistillLoss class wrapper (step 5).  Class
+        # delegates to the KL or self-consistency branch.  Default weight
+        # 0.0 ⇒ ``torch.zeros(())`` (bit-exact pre-Wf-A23).
+        shortcut_distill_class_term = ShortcutDistillLoss(
+            weight=float(shortcut_distill_term_weight),
+            enabled=float(shortcut_distill_term_weight) > 0.0,
+        ).compute(
+            student_logits=(
+                model.fm_velocity(x_t, t, z_all, cloud_sizes=_cloud_sizes)
+                if (fm_objective and x_t is not None)
+                else None
+            ),
+            teacher_logits=None,  # class path uses self-consistency; teacher
+            # path remains on the inline ``_sd.shortcut_distillation_loss``
+            # block, untouched.
+            x_prime=None,
+            device=device,
+        )
+        # Term 5 — FmOdeTerm NEW (step 6).  RK4 ODE closure penalty.
+        fm_ode_class_term = FmOdeTerm(
+            weight=float(fm_ode_term_weight),
+            enabled=float(fm_ode_term_weight) > 0.0,
+        ).compute(
+            pred_fn=(lambda x: model.fm_velocity(
+                x, t, z_all, cloud_sizes=_cloud_sizes
+            )) if (fm_objective and x_t is not None) else None,
+            x0=x_t,  # current flow state as integration seed
+            x1=(batch.positions if (fm_objective and x_t is not None) else None),
+            n_steps=4,
+            device=device,
+        )
+        # Term 6 — EnergyConservation NEW (step 7).  KE+PE drift penalty.
+        energy_class_term = EnergyConservation(
+            weight=float(energy_conservation_weight),
+            enabled=float(energy_conservation_weight) > 0.0,
+        ).compute(
+            pred_fn=(lambda x: model.fm_velocity(
+                x, t, z_all, cloud_sizes=_cloud_sizes
+            )) if (fm_objective and x_t is not None) else None,
+            x_t=x_t,
+            device=device,
+        )
+        # Term 7 — SBOO3Term NEW (step 8).  SBO × O(3) joint variance.
+        sboo3_class_term = SBOO3Term(
+            weight=float(sboo3_term_weight),
+            enabled=float(sboo3_term_weight) > 0.0,
+            alpha=float(sboo3_alpha),
+            n_perm=int(sboo3_n_perm),
+            n_rot=int(sboo3_n_rot),
+        ).compute(
+            per_sample_loss=(bond_ce if 'bond_ce' in locals() else None),
+            pred_fn=(lambda x: model.fm_velocity(
+                x, t, z_all, cloud_sizes=_cloud_sizes
+            )) if (fm_objective and x_t is not None) else None,
+            x_t=x_t,
+            device=device,
+        )
+
         loss = (
             bond_ce_term
             + wasserstein_weight * w2_val
@@ -4320,6 +4463,23 @@ def train_one_epoch(
             # weight 0.0 + no ``pocket_dist`` → exact zero here; the
             # 12-term pre-Wf-A22 sum is preserved bit-for-bit.
             + wasserstein_pocket_term
+            # Wf-A23 (2026-10-13) — 7 NEW class-wrapper loss terms (steps
+            # 2-8).  Each ``*_class_term`` defaults to ``torch.zeros(())``
+            # when its ``*_term_weight`` is 0.0, so the sum is bit-exact
+            # identical to pre-Wf-A23 when no NEW flag is set.  Opt-in
+            # via ``--consistency-term-weight``, ``--so3-term-weight``,
+            # ``--edm-term-weight``, ``--shortcut-distill-term-weight``,
+            # ``--fm-ode-term-weight``, ``--energy-conservation-weight``,
+            # ``--sboo3-term-weight``.  The inline ``consistency_term`` /
+            # ``so3_term`` / ``edm_term`` / ``shortcut_distill_loss`` lines
+            # above are KEPT (driven by their legacy ``*_weight`` flags).
+            + consistency_class_term
+            + so3_class_term
+            + edm_class_term
+            + shortcut_distill_class_term
+            + fm_ode_class_term
+            + energy_class_term
+            + sboo3_class_term
         )
         # 2026-10-04 — refresh the per-term side-channel read by
         # tests/test_cfm_loss_gradient_liveness.py.  Each value is the exact
@@ -4383,6 +4543,19 @@ def train_one_epoch(
                 # when --wasserstein-pocket-weight > 0 AND a
                 # ``pocket_dist`` is threaded via batch_ctx.
                 "wasserstein_pocket_term": wasserstein_pocket_term,
+                # Wf-A23 (2026-10-13) — 7 NEW class-wrapper loss terms
+                # (steps 2-8).  Same gradient-dead-at-weight-0 convention
+                # as ``assemble_term``: registered unconditionally so
+                # the guard test can see them; LIVE when the corresponding
+                # ``*_term_weight`` flag is set > 0.  At default weight
+                # 0.0 each is ``torch.zeros(())`` ⇒ bit-exact pre-Wf-A23.
+                "consistency_class_term": consistency_class_term,
+                "so3_class_term": so3_class_term,
+                "edm_class_term": edm_class_term,
+                "shortcut_distill_class_term": shortcut_distill_class_term,
+                "fm_ode_class_term": fm_ode_class_term,
+                "energy_class_term": energy_class_term,
+                "sboo3_class_term": sboo3_class_term,
                 # Deliberately absent (removed from the loss sum 2026-10-04,
                 # see the comment above `loss = (`): "sa_penalty_weight*sa_loss",
                 # "per_cohort_term", "pll_term", "chemprop_v3_cache_term",
@@ -7742,6 +7915,36 @@ def parse_args() -> argparse.Namespace:
             "(the legacy fast-path collapses to a single group)."
         ),
     )
+    # Wf-A22 (2026-10-13) step-4: pocket_lr_multiplier (Layer 7+).
+    # Opt-in differential-LR slot for the c-flow pocket encoder +
+    # pocket injector.  Default 1.0 → pocket params fall into backbone
+    # at base_lr (the legacy fast-path) → bit-exact pre-Wf-A22
+    # optimiser when --use-differential-lr is set.
+    p.add_argument(
+        "--pocket-encoder-lr-multiplier",
+        dest="pocket_encoder_lr_multiplier",
+        type=float,
+        default=1.0,
+        help=(
+            "Wf-A22 L7: when ``--use-differential-lr`` is set, the "
+            "pocket (encoder + injector) learning rate is "
+            "``base_lr * pocket_encoder_lr_multiplier``.  Default 1.0 "
+            "= bit-exact pre-Wf-A22 single-group fast-path (no 8th "
+            "param group emitted)."
+        ),
+    )
+    p.add_argument(
+        "--pocket-encoder-hints",
+        dest="pocket_encoder_hints",
+        nargs="+",
+        default=["pocket_injector", "pocket_encoder"],
+        help=(
+            "Wf-A22 L7: parameter-name substrings that mark a parameter "
+            "as a c-flow pocket parameter in the differential optimiser. "
+            "Default ``('pocket_injector', 'pocket_encoder')`` covers "
+            "the c-flow injector + the trainer's pocket encoder."
+        ),
+    )
     p.add_argument(
         "--no-wasserstein",
         dest="wasserstein_weight",
@@ -9399,13 +9602,27 @@ def main() -> int:
             head_hints=tuple(_chem_head_hints),
             q_channel_lr_multiplier=_q_channel_lr_mult,
             q_channel_hints=tuple(_q_channel_hints),
+            # Wf-A22 (2026-10-13) step-4: pocket LR multiplier slot.
+            # Default 1.0 → bit-exact pre-Wf-A22 single-group fast-path.
+            pocket_lr_multiplier=float(
+                getattr(args, "pocket_encoder_lr_multiplier", 1.0)
+            ),
+            pocket_hints=tuple(
+                getattr(
+                    args,
+                    "pocket_encoder_hints",
+                    ("pocket_injector", "pocket_encoder"),
+                )
+            ),
         )
         print(
             f"[Wf-A15] differential_optimizer=ON "
             f"head_lr_mult={_chem_head_lr_mult} "
             f"hints={_chem_head_hints} "
             f"q_lr_mult={_q_channel_lr_mult} "
-            f"q_hints={_q_channel_hints}"
+            f"q_hints={_q_channel_hints} "
+            f"pocket_lr_mult={float(getattr(args, 'pocket_encoder_lr_multiplier', 1.0))} "
+            f"pocket_hints={list(getattr(args, 'pocket_encoder_hints', ('pocket_injector', 'pocket_encoder')))}"
         )
     elif _opt_name == "adamw":
         optimiser = optim.AdamW(

@@ -80,30 +80,43 @@ def _split_params(
     no_decay_param_names: Sequence[str],
     head_hints: Sequence[str],
     q_channel_hints: Optional[Sequence[str]] = None,
-) -> Tuple[List[nn.Parameter], List[nn.Parameter], List[nn.Parameter], List[nn.Parameter], List[nn.Parameter], List[nn.Parameter]]:
-    """Bucket model parameters into 4 (legacy) or 6 (Track-A q-channel) groups.
+    pocket_hints: Optional[Sequence[str]] = None,
+) -> Tuple[List[nn.Parameter], List[nn.Parameter], List[nn.Parameter], List[nn.Parameter], List[nn.Parameter], List[nn.Parameter], List[nn.Parameter], List[nn.Parameter]]:
+    """Bucket model parameters into 4 / 6 / 8 groups.
 
-    Returns ``(head_decay, head_no_decay, q_decay, q_no_decay, backbone_decay,
-    backbone_no_decay)`` when ``q_channel_hints`` matches at least one
-    parameter.  Returns the same 6-tuple but with ``q_decay`` /
-    ``q_no_decay`` empty when no parameter matches.
+    Returns
+    -------
+    8-tuple ``(head_decay, head_no_decay, q_decay, q_no_decay,
+    pocket_decay, pocket_no_decay, backbone_decay, backbone_no_decay)``.
+
+    The pocket bucket is appended in priority order AFTER q_channel but
+    BEFORE backbone.  When ``pocket_hints`` matches no parameter, both
+    pocket lists are empty and the bucket falls through to backbone
+    (bit-exact with pre-Wf-A22 behaviour when
+    ``pocket_lr_multiplier == 1.0``).
 
     A parameter is:
 
     * "head" iff any of its fully-qualified attribute names (joined with
       ``.``) contains a substring from ``head_hints`` AND does not contain
-      a substring from ``q_channel_hints``.
+      a substring from ``q_channel_hints`` or ``pocket_hints``.
     * "q_channel" iff its name contains a substring from ``q_channel_hints``
       (priority over "head" so the q-prediction head can be tuned
-      independently).
+      independently) and not from ``pocket_hints``.
+    * "pocket" iff its name contains a substring from ``pocket_hints``
+      (priority over head + backbone so the c-flow pocket encoder /
+      injector can be tuned independently).
     * "backbone" otherwise.
     """
     no_decay_set = set(no_decay_param_names)
     q_set = set(q_channel_hints) if q_channel_hints else set()
+    pocket_set = set(pocket_hints) if pocket_hints else set()
     head_decay: List[nn.Parameter] = []
     head_no_decay: List[nn.Parameter] = []
     q_decay: List[nn.Parameter] = []
     q_no_decay: List[nn.Parameter] = []
+    pocket_decay: List[nn.Parameter] = []
+    pocket_no_decay: List[nn.Parameter] = []
     backbone_decay: List[nn.Parameter] = []
     backbone_no_decay: List[nn.Parameter] = []
 
@@ -111,12 +124,21 @@ def _split_params(
         if not param.requires_grad:
             continue
         is_q = any(h in name for h in q_set) if q_set else False
-        is_head = (not is_q) and any(h in name for h in head_hints)
+        is_pocket = (
+            (not is_q) and (any(h in name for h in pocket_set) if pocket_set else False)
+        )
+        is_head = (
+            (not is_q) and (not is_pocket) and any(h in name for h in head_hints)
+        )
         no_decay = any(name.endswith(suf) for suf in no_decay_set)
         if is_q and no_decay:
             q_no_decay.append(param)
         elif is_q:
             q_decay.append(param)
+        elif is_pocket and no_decay:
+            pocket_no_decay.append(param)
+        elif is_pocket:
+            pocket_decay.append(param)
         elif is_head and no_decay:
             head_no_decay.append(param)
         elif is_head:
@@ -130,6 +152,8 @@ def _split_params(
         head_no_decay,
         q_decay,
         q_no_decay,
+        pocket_decay,
+        pocket_no_decay,
         backbone_decay,
         backbone_no_decay,
     )
@@ -144,8 +168,10 @@ def build_differential_optimizer(
     head_hints: Optional[Sequence[str]] = None,
     q_channel_lr_multiplier: float = 1.0,
     q_channel_hints: Optional[Sequence[str]] = None,
+    pocket_lr_multiplier: float = 1.0,
+    pocket_hints: Optional[Sequence[str]] = None,
 ) -> Optimizer:
-    """Build a :class:`torch.optim.Adam` for differential head + q-channel LR.
+    """Build a :class:`torch.optim.Adam` for differential head + q-channel + pocket LR.
 
     Parameters
     ----------
@@ -155,41 +181,31 @@ def build_differential_optimizer(
     base_lr : float, default 1e-4
         Backbone learning rate.  Head learning rate is
         ``base_lr * head_lr_multiplier``.  Q-channel learning rate is
-        ``base_lr * q_channel_lr_multiplier``.
-    head_lr_multiplier : float, default 1.0
-        When ``1.0`` (legacy), the returned optimizer collapses to a
-        single-group Adam with the same flat ``weight_decay`` the legacy
-        Wf-13 trainer shipped with — no behaviour change.  When ``!= 1.0``
-        (e.g. ``0.1``), four param groups are produced.
-    weight_decay : float, default 1e-5
-        Weight-decay term applied to the decay groups only.
-    no_decay_param_names : sequence of str, optional
-        Parameter-name suffixes (matched via ``str.endswith``) that should
-        be excluded from weight decay.  Default: ``("bias",
-        "LayerNorm.weight", "layer_norm.weight")``.
-    head_hints : sequence of str, optional
+        ``base_lr * q_channel_lr_multiplier``.  Pocket learning rate is
+        ``base_lr * pocket_lr_multiplier`` (Wf-A22 step-4).
+    pocket_lr_multiplier : float, default 1.0
+        When ``1.0`` (default; bit-exact pre-Wf-A22), the returned
+        optimizer collapses to the same single-group / 4-group /
+        6-group fast-path it would have without this slot — pocket
+        parameters fall into the backbone bucket at backbone LR.
+        When ``!= 1.0``, an 8th param group is emitted (priority over
+        head + backbone, after q-channel) so the c-flow pocket encoder
+        + pocket injector can have an independent LR.
+    pocket_hints : sequence of str, optional
         Substrings whose presence in a parameter's fully-qualified name
-        marks it as a head parameter.  Default: ``("head",)``.
-    q_channel_lr_multiplier : float, default 1.0
-        When ``1.0`` (Track-A legacy OFF), no 5th group is emitted even
-        if ``q_channel_hints`` matches — the q-channel parameters fall
-        into the backbone bucket at backbone LR.  When ``!= 1.0``, a
-        separate q-channel group is emitted (priority over the head
-        match).  Default ``1.0`` preserves bit-exactness with the
-        pre-Track-A trainer when the q-head is OFF.
-    q_channel_hints : sequence of str, optional
-        Substrings whose presence in a parameter's fully-qualified name
-        marks it as a Track-A q-channel parameter.  Default:
-        ``("q_channel", "natural_charge_proj", "charge_head", "q_head")``.
+        marks it as belonging to the c-flow pocket module.  Default:
+        ``("pocket_injector", "pocket_encoder")`` (covers both
+        ``molmetal/adapters/egnn_extensions.py:PerLayerPocketInjector``
+        and the trainer's ``model.pocket_encoder``).
+    no_decay_param_names, head_hints, q_channel_*, ...
+        Unchanged from pre-Wf-A22.
 
     Returns
     -------
     torch.optim.Adam
-        Single-group when both ``head_lr_multiplier`` AND
-        ``q_channel_lr_multiplier`` equal ``1.0``.  4-group when only
-        ``head_lr_multiplier != 1.0``.  6-group when
-        ``q_channel_lr_multiplier != 1.0`` AND at least one parameter
-        matches ``q_channel_hints``.
+        Single-group when head_lr_multiplier == q_channel_lr_multiplier
+        == pocket_lr_multiplier == 1.0 (legacy fast-path).  8-group
+        when any non-1.0 multiplier is set AND its hints match.
     """
     if no_decay_param_names is None or no_decay_param_names is Iterable:
         no_decay_param_names = _DEFAULT_NO_DECAY_NAMES
@@ -197,28 +213,40 @@ def build_differential_optimizer(
         head_hints = _DEFAULT_HEAD_HINTS
     if q_channel_hints is None:
         q_channel_hints = _DEFAULT_Q_CHANNEL_HINTS
+    if pocket_hints is None:
+        pocket_hints = ("pocket_injector", "pocket_encoder")
 
     (
         head_decay,
         head_no_decay,
         q_decay,
         q_no_decay,
+        pocket_decay,
+        pocket_no_decay,
         backbone_decay,
         backbone_no_decay,
     ) = _split_params(
-        model, no_decay_param_names, head_hints, q_channel_hints
+        model,
+        no_decay_param_names,
+        head_hints,
+        q_channel_hints,
+        pocket_hints,
     )
 
     head_lr = float(base_lr) * float(head_lr_multiplier)
     q_lr = float(base_lr) * float(q_channel_lr_multiplier)
+    pocket_lr = float(base_lr) * float(pocket_lr_multiplier)
 
     # Legacy fast-path: when head lr == backbone lr AND q lr == backbone
-    # lr, collapse to a single group so the optimizer behaves identically
-    # to a flat Adam.  This is what the Wf-13 baseline shipped with;
-    # preserving it preserves the benchmark baseline.
+    # lr AND pocket lr == backbone lr, collapse to a single group so the
+    # optimizer behaves identically to a flat Adam.  This is what the
+    # Wf-13 baseline shipped with; preserving it preserves the benchmark
+    # baseline AND keeps the Wf-A22 step-4 commit bit-exact with
+    # pre-Wf-A22 builds when the new kwarg is absent.
     if (
         abs(head_lr - float(base_lr)) < 1e-12
         and abs(q_lr - float(base_lr)) < 1e-12
+        and abs(pocket_lr - float(base_lr)) < 1e-12
     ):
         return Adam(
             [
@@ -228,6 +256,8 @@ def build_differential_optimizer(
                         + list(backbone_no_decay)
                         + list(q_decay)
                         + list(q_no_decay)
+                        + list(pocket_decay)
+                        + list(pocket_no_decay)
                     ),
                     "weight_decay": float(weight_decay),
                 }
@@ -235,11 +265,8 @@ def build_differential_optimizer(
             lr=float(base_lr),
         )
 
-    # 4- or 6-group path: head vs q_channel vs backbone, decay vs no-decay.
-    # q_channel group is emitted between head and backbone in the
-    # returned list — Adam is order-insensitive for the first step but
-    # the param-group key influences state_dict keys (legacy fast-path
-    # above collapses to single-group so old checkpoints resume).
+    # 4-, 6-, or 8-group path: head vs q_channel vs pocket vs backbone,
+    # decay vs no-decay.  Order: head, q_channel, pocket, backbone.
     param_groups: List[dict] = []
     if head_decay:
         param_groups.append(
@@ -258,6 +285,18 @@ def build_differential_optimizer(
     if q_no_decay and abs(q_lr - float(base_lr)) > 1e-12:
         param_groups.append(
             {"params": q_no_decay, "lr": q_lr, "weight_decay": 0.0}
+        )
+    # Pocket group (Wf-A22 step-4): only emitted when pocket_lr != base_lr
+    # AND at least one parameter matched a pocket hint.  Priority over
+    # backbone so the c-flow pocket encoder + pocket injector can be tuned
+    # independently without contaminating the chemistry-aware backbone.
+    if pocket_decay and abs(pocket_lr - float(base_lr)) > 1e-12:
+        param_groups.append(
+            {"params": pocket_decay, "lr": pocket_lr, "weight_decay": float(weight_decay)}
+        )
+    if pocket_no_decay and abs(pocket_lr - float(base_lr)) > 1e-12:
+        param_groups.append(
+            {"params": pocket_no_decay, "lr": pocket_lr, "weight_decay": 0.0}
         )
     if backbone_decay:
         param_groups.append(
