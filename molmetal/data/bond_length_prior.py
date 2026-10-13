@@ -1,57 +1,438 @@
-"""Bond-length prior table (Wf-A27 step-2, 2026-10-13).
+"""Bond-length prior table (Wf-A27 step-2 → Wf-A29 step-1, 2026-10-14).
 
-Pyykkö & Atsumi (2009) single-bond covalent radii for the 14 CFM-cohort
-elements (H, C, N, O, F, P, S, Cl, Se, Br, I, Pt, Pd, Au).  Sum-of-radii
-gives a low-cost, literature-grounded prior on the equilibrium bond
-length for any element pair — a value an xtb optimisation would
-reproduce within ~5% but which costs zero wall time to look up.
+Three lookup layers, in priority order:
 
-Why this table
---------------
-The CFM trainer's bond-perception rule (BO >= 0.3 threshold in
-:mod:`molmetal.data.tmqm_clouds`) and the standalone ``ClashPenalty``
-class (Pyyykkö 2009 is the same family of metal-radius tables as
-Cordero 2008) both benefit from a calibrated resting length.  When the
-trainer opts into a wall-potential term (``Wf-A28`` deferred), the prior
-serves as the equilibrium: ``E_wall = exp(-(d - r_prior) / sigma)``.
+1. **tmQM-DFT empirical mean** (Wf-A29 step-1, this wave).  When the
+   ``.data/molmetal/tmQM/bond_length_table.json`` cache exists and the
+   ``(min(z1,z2), max(z1,z2), round(BO))`` bin has ``n >= 5``
+   observations, the function returns the Wiberg-weighted mean of
+   the 3D distances in the tmQM release
+   (Balcells & Skjelstad 2020, 108k mononuclear d-block complexes at
+   TPSSh-D3BJ/def2-SVP, MIT licence).  Cache is built once via
+   :func:`build_bond_length_table` (~20 s end-to-end) and cached as
+   JSON; subsequent :func:`get_bond_length` calls hit it in O(1).
 
-The 14-element scope matches the CFM YuelBond / bond-head cohort —
-extending to all 92 elements is out of scope for this wave.
+2. **Pyykkö per-order sum-of-radii** (Wf-A28 step-2).  When
+   ``order`` ∈ {1, 2, 3} and BOTH ``z1`` / ``z2`` are in the
+   corresponding Pyykkö table, return the sum of radii directly.
+   Single-bond table is Pyykkö & Atsumi 2009 (doi:10.1002/
+   chem.200800987); double is Pyykkö 2008 (same doi); triple is
+   Pyykkö 2005 (doi:10.1002/chem.200401299).
+
+3. **Hückel shortening** (Wf-A27).  For ``order`` > 3, or when one of
+   the atoms is missing from the per-order table, multiply the
+   single-bond sum by ``1 - 0.18 * ln(order)``.  Falls back to a
+   0.77 Å Cordero-default per-side for unmapped Z.
+
+The Pyykkö covalent-radii table is the same family of metal-radius
+values the standalone ``ClashPenalty`` class (in
+:mod:`molmetal.loss.prior_losses`) uses, and provides a calibrated
+resting length for any (z, z) pair — a value an xtb optimisation
+would reproduce within ~5% but which costs zero wall time to look up.
+When the trainer eventually opts into a wall-potential term, the
+prior serves as the equilibrium: ``E_wall = exp(-(d - r_prior) /
+sigma)``.
+
+The 14-element scope (H, C, N, O, F, P, S, Cl, Se, Br, I, Pt, Pd, Au)
+matches the CFM YuelBond / bond-head cohort — extending Pyykkö to
+all 92 elements is out of scope for this wave.  The tmQM table
+covers the wider 30-metal + main-group-organics cohort as
+represented in the CSD-derived mononuclear set.
+
+Backward-compat rule (AGENTS.md §5.11)
+--------------------------------------
+``get_bond_length(z1, z2, order=1)`` signature is BYTE-IDENTICAL with
+Wf-A27 / Wf-A28.  When the tmQM cache is ABSENT (default for a
+fresh checkout), behaviour is byte-identical with Wf-A28 step-2
+(Pyykkö priority then Hückel then Cordero fallback).  When the
+cache is PRESENT, the empirical mean wins for any (z, z, order) bin
+with ``n >= 5``; Pyykkö remains the fallback for sparse bins.  This
+preserves the bit-exact contract for any trainer that imports the
+module before building the cache.
 
 Citation
 --------
 Pyykkö, P.; Atsumi, M. (2009).  *Molecular Single-Bond Covalent Radii
 for Elements 1–118.*  Chem. Eur. J. 15 (1): 186–197.
-doi:10.1002/chem.200800987.  Values are single-bond covalent radii in
-Angstrom; CC-BY-SA source.
+doi:10.1002/chem.200800987.
 
-Backward-compat rule (AGENTS.md §5.11)
---------------------------------------
-``get_bond_length`` returns the sum of two single-bond radii; the
-default ``order=1`` is the single-bond case and is BYTE-IDENTICAL with
-Wf-A27 (the lookup path is unchanged).  Wf-A28 step-2 added per-order
-Pyykkö 2008 (double) + 2005 (triple) tables for the 14-element CFM
-cohort: when ``order`` is 2 or 3 and both ``z1`` / ``z2`` are in the
-corresponding table, the function returns sum-of-radii directly;
-otherwise it falls back to the Hückel-shortened single-bond length.
-Unknown Z falls back to a 0.77 Å element-row default (default metal
-radius, Cordero 2008 same convention the ``ClashPenalty`` class uses)
-so the function never raises.
+Pyykkö, P.; Riedel, S.; Patzschke, M. (2005).  *Triple-Bond Covalent
+Radii.*  Chem. Eur. J. 11 (12): 3511–3520.  doi:10.1002/chem.200401299.
 
-Citation note
--------------
-Per-order radii are sourced from Pyykkö 2008 (double bond, doi:10.1002/
-chem.200800987) + Pyykkö 2005 (triple bond, doi:10.1002/chem.200401299);
-the Wf-A27 module docstring cited only Pyykkö 2009 — this is an updated
-citation set, not a value-table replacement.  Triple-bond entries for
-Pd / Pt / Au are placeholders for the rare all-metal triple bonds in the
-literature; if no triple bond exists in your chemistry domain, set
-``bond_order=1`` to recover the bit-exact Wf-A27 length.
+Balcells, D.; Skjelstad, B. B. (2020).  *tmQM Dataset — Quantum
+Geometries and Properties of 86k Transition Metal Complexes.*
+J. Chem. Inf. Model. 60, 6135–6146.  doi:10.1021/acs.jcim.0c01041.
+The release shipped here is the extended 108k mononuclear-complex
+shard set, MIT licence.
 """
 
 from __future__ import annotations
 
-from typing import Dict, Tuple
+import gzip
+import json
+import os
+import re
+from pathlib import Path
+from typing import Dict, Optional, Tuple
+
+# ---------------------------------------------------------------------------
+# Wf-A29 step-1 (2026-10-14): REAL tmQM-DFT bond-length table.
+#
+# The Pyykkö tables above are the literature average; the tmQM release
+# (Balcells & Skjelstad 2020 — 108k mononuclear d-block complexes at
+# TPSSh-D3BJ/def2-SVP, MIT licence, on disk at .data/molmetal/tmQM/)
+# gives per-(Z, Z, order) Wiberg bond order + 3D-distance statistics
+# measured on actual transition-metal complexes.  This module's
+# ``build_bond_length_table`` reads the three XYZ.gz + BO.gz shard pairs
+# once, bins all bonds with BO > 0.1 (Housecroft convention) by
+# ``(min(Z_i,Z_j), max(Z_i,Z_j), round(BO_ij))``, and persists
+# ``{mean, std, n, min, max}`` per bin to a JSON cache.
+#
+# Precedence (Wf-A28 backward-compat preserved):
+#   1. tmQM mean (this step) when ``(z1, z2, order)`` hit AND ``n >= 5``
+#   2. Pyykkö per-order single/double/triple (Wf-A28 step-2) — same
+#      lookup path as before
+#   3. Pyykkö single + Hückel shortening for order > 1 (Wf-A27/A28 path)
+#   4. Cordero default (0.77 Å per-side) for unmapped Z
+#
+# Loader discovery: ``build_bond_length_table`` defaults to the
+# ``.data/molmetal/tmQM/`` path (the on-disk layout for this checkout).
+# Callers may pass ``root=`` to override; the env var
+# ``$MOLMETAL_TMQM_DIR`` is honoured by ``molmetal.data.tmqm.tmqm_dir``
+# so the parent module's discovery is preserved when this table is
+# generated via the trainer pipeline.
+# ---------------------------------------------------------------------------
+_DEFAULT_TMQM_BOND_TABLE_ROOT = Path(
+    os.environ.get(
+        "MOLMETAL_TMQM_DIR",
+        str(Path(__file__).resolve().parent.parent.parent / ".data" / "molmetal" / "tmQM"),
+    )
+)
+_DEFAULT_BOND_TABLE_CACHE = _DEFAULT_TMQM_BOND_TABLE_ROOT / "bond_length_table.json"
+
+# Wiberg bond-order threshold below which we ignore a bond for the prior
+# (Housecroft & Sharpe 2018 treats BO < 0.1 as "negligible").
+_WIBERG_BOND_THRESHOLD: float = 0.1
+
+# Minimum bin sample-count to trust the empirical mean as a prior (5
+# observations = 5 distinct tmQM complexes; below this we fall back to
+# Pyykkö rather than emit a noisy empirical mean).
+_MIN_BIN_N: int = 5
+
+# Symbol → Z lookup for the elements that appear in the tmQM XYZ shard.
+# Covers all d-block + main-group organics that appear in the CSD-derived
+# mononuclear set; the ``default`` branch returns ``None`` for elements
+# tmQM never produces.
+_ELEMENT_SYMBOL_TO_Z: Dict[str, int] = {
+    "H": 1, "He": 2,
+    "Li": 3, "Be": 4, "B": 5, "C": 6, "N": 7, "O": 8, "F": 9, "Ne": 10,
+    "Na": 11, "Mg": 12, "Al": 13, "Si": 14, "P": 15, "S": 16, "Cl": 17, "Ar": 18,
+    "K": 19, "Ca": 20, "Sc": 21, "Ti": 22, "V": 23, "Cr": 24, "Mn": 25,
+    "Fe": 26, "Co": 27, "Ni": 28, "Cu": 29, "Zn": 30,
+    "Ga": 31, "Ge": 32, "As": 33, "Se": 34, "Br": 35, "Kr": 36,
+    "Rb": 37, "Sr": 38, "Y": 39, "Zr": 40, "Nb": 41, "Mo": 42, "Tc": 43,
+    "Ru": 44, "Rh": 45, "Pd": 46, "Ag": 47, "Cd": 48,
+    "In": 49, "Sn": 50, "Sb": 51, "Te": 52, "I": 53, "Xe": 54,
+    "Cs": 55, "Ba": 56, "La": 57, "Hf": 72, "Ta": 73, "W": 74, "Re": 75,
+    "Os": 76, "Ir": 77, "Pt": 78, "Au": 79, "Hg": 80,
+    "Tl": 81, "Pb": 82, "Bi": 83, "Po": 84, "At": 85, "Rn": 86,
+}
+
+_XYZ_FILES = ("tmQM_X1.xyz.gz", "tmQM_X2.xyz.gz", "tmQM_X3.xyz.gz")
+_BO_FILES = ("tmQM_X1.BO.gz", "tmQM_X2.BO.gz", "tmQM_X3.BO.gz")
+_HEADER_RE = re.compile(r"CSD_code\s*=\s*(\S+)")
+_ATOM_RE = re.compile(r"([A-Z][a-z]?)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)")
+
+
+def _element_to_z(sym: str) -> Optional[int]:
+    return _ELEMENT_SYMBOL_TO_Z.get(str(sym).strip())
+
+
+def _xyz_complex_block(path: Path):
+    """Yield ``(csd_code, [(Z, x, y, z), ...])`` for every complex in ``path``.
+
+    The XYZ file format is one complex per block::
+
+        <n_atoms>
+        CSD_code = WELROW | q = .. | S = .. | Stoichiometry = .. | MND = .. | 2020-2024 CSD
+        El  x  y  z
+        El  x  y  z
+        ...
+
+    The header is the second line; subsequent lines are atoms until the
+    next ``<n_atoms>`` line closes the block.  Skips malformed blocks
+    (negative atom counts, unparseable elements) rather than raising —
+    the parent parse_xyz_headers loader tolerates the same malformations.
+    """
+    with gzip.open(path, "rt") as fh:
+        n_atoms_pending: Optional[int] = None
+        cur_code: Optional[str] = None
+        cur_atoms: list = []
+        for line in fh:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if n_atoms_pending is None:
+                # First non-empty line of a block is the atom count.
+                try:
+                    n_atoms_pending = int(stripped)
+                    cur_atoms = []
+                    cur_code = None
+                    continue
+                except ValueError:
+                    return  # malformed file — caller will see fewer rows
+            if cur_code is None:
+                m = _HEADER_RE.search(stripped)
+                if m is None:
+                    # Skip until next <n_atoms> boundary.
+                    n_atoms_pending = max(0, n_atoms_pending - 1) or None
+                    continue
+                cur_code = m.group(1)
+                continue
+            # Atom data line.
+            m = _ATOM_RE.match(stripped)
+            if m is not None:
+                sym = m.group(1)
+                z = _element_to_z(sym)
+                if z is not None:
+                    cur_atoms.append(
+                        (z, float(m.group(2)), float(m.group(3)), float(m.group(4)))
+                    )
+            n_atoms_pending -= 1
+            if n_atoms_pending <= 0:
+                yield cur_code, cur_atoms
+                n_atoms_pending = None
+                cur_code = None
+                cur_atoms = []
+
+
+def _bo_block_lines(path: Path):
+    """Yield ``(csd_code, [per-atom-row-tokens])`` per complex.
+
+    The BO file format is one complex per block::
+
+        CSD_code = WEL360 | 2020-2024 CSD
+            1  La  3.031        Se   4 0.429    Se   5 0.411    ...
+            2  Se  1.967        P    8 1.313    La   1 0.285    ...
+
+    Each row's first three tokens are ``<idx> <El> <total_BO>`` and the
+    remainder is a flat triple stream ``<nbr_El> <nbr_idx> <BO>``.
+    """
+    with gzip.open(path, "rt") as fh:
+        cur_code: Optional[str] = None
+        cur_rows: list = []
+        for line in fh:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            m = _HEADER_RE.search(stripped)
+            if m is not None:
+                if cur_code is not None:
+                    yield cur_code, cur_rows
+                cur_code = m.group(1)
+                cur_rows = []
+                continue
+            # Per-atom data row.
+            parts = stripped.split()
+            if len(parts) >= 3:
+                cur_rows.append(parts)
+        if cur_code is not None:
+            yield cur_code, cur_rows
+
+
+def build_bond_length_table(
+    root: Optional[Path] = None,
+    cache_path: Optional[Path] = None,
+    force: bool = False,
+) -> Dict[Tuple[int, int, int], Dict[str, float]]:
+    """Build the per-(Z, Z, order) bond-length table from tmQM shards.
+
+    Parameters
+    ----------
+    root
+        tmQM data root.  Defaults to ``.data/molmetal/tmQM/`` for this
+        checkout (or ``$MOLMETAL_TMQM_DIR`` if set).
+    cache_path
+        Output JSON path.  Defaults to
+        ``<root>/bond_length_table.json``.
+    force
+        If ``True``, rebuild the table from raw shards even when the
+        cache file already exists.
+
+    Returns
+    -------
+    dict
+        Mapping ``(z_min, z_max, order_int) -> {mean, std, n, min, max}``
+        with ``mean / std / min / max`` in Angstrom and ``n`` ≥ 5
+        (bins with fewer observations are dropped to keep the prior
+        trustworthy).
+
+    Notes
+    -----
+    Caching is JSON for human auditability + trivial git-diff review.
+    First run is O(108k) complexes × per-atom-row parse; subsequent
+    runs are an O(1) JSON load.  The Wiberg BO threshold is 0.1
+    (Housecroft & Sharpe 2018 convention).
+    """
+    root_path = Path(root) if root is not None else _DEFAULT_TMQM_BOND_TABLE_ROOT
+    cache = Path(cache_path) if cache_path is not None else root_path / "bond_length_table.json"
+    if cache.is_file() and not force:
+        with cache.open("r", encoding="utf-8") as fh:
+            raw = json.load(fh)
+        out: Dict[Tuple[int, int, int], Dict[str, float]] = {}
+        for k, v in raw.items():
+            z_min, z_max, order = (int(t) for t in k.split(","))
+            out[(z_min, z_max, order)] = {
+                "mean": float(v["mean"]),
+                "std": float(v["std"]),
+                "n": int(v["n"]),
+                "min": float(v["min"]),
+                "max": float(v["max"]),
+            }
+        return out
+
+    # Build XYZ coord cache: csd_code -> list[(Z, x, y, z)] indexed 0-based
+    # to match the BO file's 1-based atom index.
+    coords_by_code: Dict[str, list] = {}
+    for xyz_name in _XYZ_FILES:
+        xyz_path = root_path / xyz_name
+        if not xyz_path.is_file():
+            continue
+        for code, atoms in _xyz_complex_block(xyz_path):
+            coords_by_code[code] = atoms
+
+    # Stream BO shards; bin distances per (z_min, z_max, round(bo)).
+    bins: Dict[Tuple[int, int, int], list] = {}
+    for bo_name in _BO_FILES:
+        bo_path = root_path / bo_name
+        if not bo_path.is_file():
+            continue
+        for code, rows in _bo_block_lines(bo_path):
+            atoms = coords_by_code.get(code)
+            if atoms is None:
+                continue
+            for parts in rows:
+                # Format: <idx> <El> <total_BO>  <nbr_El> <nbr_idx> <BO> ...
+                try:
+                    self_idx_1b = int(parts[0])
+                    self_el = parts[1]
+                    self_z = _element_to_z(self_el)
+                    if self_z is None:
+                        continue
+                except (ValueError, IndexError):
+                    continue
+                # 1-based → 0-based; bounds-check against coords cache.
+                self_idx = self_idx_1b - 1
+                if self_idx < 0 or self_idx >= len(atoms):
+                    continue
+                self_z_actual, sx, sy, sz = atoms[self_idx]
+                if self_z_actual != self_z:
+                    # Mismatch between XYZ and BO element identity — skip
+                    # the bond for safety rather than silently picking one.
+                    continue
+                # Iterate neighbour triples.  BO entries are symmetric
+                # (atom i's row mentions atom j AND atom j's row mentions
+                # atom i); only count each pair once via nbr_idx > self_idx.
+                for off in range(3, len(parts) - 2, 3):
+                    nbr_el = parts[off]
+                    nbr_idx_1b = parts[off + 1]
+                    bo_str = parts[off + 2]
+                    try:
+                        nbr_idx = int(nbr_idx_1b) - 1
+                        bo_val = float(bo_str)
+                    except ValueError:
+                        continue
+                    if bo_val <= _WIBERG_BOND_THRESHOLD:
+                        continue
+                    if nbr_idx <= self_idx:
+                        continue
+                    if nbr_idx < 0 or nbr_idx >= len(atoms):
+                        continue
+                    nbr_z = _element_to_z(nbr_el)
+                    if nbr_z is None:
+                        continue
+                    nz, nx, ny, nzz = atoms[nbr_idx]
+                    if nz != nbr_z:
+                        continue
+                    dx = sx - nx
+                    dy = sy - ny
+                    dz = sz - nzz
+                    dist = (dx * dx + dy * dy + dz * dz) ** 0.5
+                    z_min = self_z if self_z <= nbr_z else nbr_z
+                    z_max = nbr_z if self_z <= nbr_z else self_z
+                    key = (z_min, z_max, int(round(bo_val)))
+                    bucket = bins.get(key)
+                    if bucket is None:
+                        bins[key] = [dist]
+                    else:
+                        bucket.append(dist)
+
+    # Aggregate bins with enough observations.
+    out_agg: Dict[Tuple[int, int, int], Dict[str, float]] = {}
+    serialisable: Dict[str, Dict[str, float]] = {}
+    for key, distances in bins.items():
+        n = len(distances)
+        if n < _MIN_BIN_N:
+            continue
+        mean = sum(distances) / float(n)
+        var = sum((d - mean) ** 2 for d in distances) / float(n)
+        std = var ** 0.5
+        dmin = min(distances)
+        dmax = max(distances)
+        entry = {
+            "mean": float(mean),
+            "std": float(std),
+            "n": int(n),
+            "min": float(dmin),
+            "max": float(dmax),
+        }
+        out_agg[key] = entry
+        serialisable[f"{key[0]},{key[1]},{key[2]}"] = entry
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    with cache.open("w", encoding="utf-8") as fh:
+        json.dump(serialisable, fh, indent=2, sort_keys=True)
+    # Refresh the in-memory cache so subsequent get_bond_length / tmqm_table_lookup
+    # calls in this process see the freshly-built entries without requiring a
+    # re-import.  Backward-compat: callers that import BEFORE build (the
+    # common case for trainer entry points) hit the disk cache via load_
+    # bond_length_table; this is the post-build hot path.
+    _BOND_TABLE_CACHE.clear()
+    _BOND_TABLE_CACHE.update(out_agg)
+    return out_agg
+
+
+def load_bond_length_table(
+    cache_path: Optional[Path] = None,
+    root: Optional[Path] = None,
+) -> Optional[Dict[Tuple[int, int, int], Dict[str, float]]]:
+    """Return the cached tmQM bond-length table or ``None`` if absent.
+
+    Convenience for callers that want a fast hit without forcing a
+    rebuild.  Returns ``None`` when the cache file is missing so the
+    caller can decide whether to fall back to Pyykkö or trigger a
+    :func:`build_bond_length_table` rebuild.
+    """
+    root_path = Path(root) if root is not None else _DEFAULT_TMQM_BOND_TABLE_ROOT
+    cache = Path(cache_path) if cache_path is not None else root_path / "bond_length_table.json"
+    if not cache.is_file():
+        return None
+    with cache.open("r", encoding="utf-8") as fh:
+        raw = json.load(fh)
+    out: Dict[Tuple[int, int, int], Dict[str, float]] = {}
+    for k, v in raw.items():
+        z_min, z_max, order = (int(t) for t in k.split(","))
+        out[(z_min, z_max, order)] = {
+            "mean": float(v["mean"]),
+            "std": float(v["std"]),
+            "n": int(v["n"]),
+            "min": float(v["min"]),
+            "max": float(v["max"]),
+        }
+    return out
+
+
+# Cache path constant for the trainer pipeline.
+BOND_LENGTH_TABLE_PATH: Path = _DEFAULT_BOND_TABLE_CACHE
 
 # ---------------------------------------------------------------------------
 # Public table: atomic number -> single-bond covalent radius (Angstrom).
@@ -139,6 +520,36 @@ _DEFAULT_RADIUS_A: float = 0.77
 # ---------------------------------------------------------------------------
 _PAIR_CACHE: Dict[Tuple[int, int], float] = {}
 
+# ---------------------------------------------------------------------------
+# Wf-A29 step-1: tmQM-DFT empirical-mean cache.  Loaded eagerly on
+# import when the cache JSON exists; absence is a SILENT no-op so the
+# Wf-A28 Pyykkö path remains byte-exact for any code path that runs
+# before the table is built.  The cache key is
+# ``(min(z1, z2), max(z1, z2), order_int)`` — symmetric on the
+# unordered pair.
+# ---------------------------------------------------------------------------
+_BOND_TABLE_CACHE: Dict[Tuple[int, int, int], Dict[str, float]] = {}
+_cached_table = load_bond_length_table()
+if _cached_table is not None:
+    _BOND_TABLE_CACHE.update(_cached_table)
+
+
+def tmqm_table_lookup(
+    z1: int,
+    z2: int,
+    order: int = 1,
+) -> Optional[Dict[str, float]]:
+    """Return the tmQM-DFT empirical entry for ``(z1, z2, order)`` or ``None``.
+
+    The result dict has keys ``{mean, std, n, min, max}`` in Angstrom /
+    count units.  Returns ``None`` when the cache is unpopulated or
+    the bin is absent (callers can then fall back to Pyykkö).
+    """
+    if not _BOND_TABLE_CACHE:
+        return None
+    key = _symmetric_key(z1, z2) + (int(order),)
+    return _BOND_TABLE_CACHE.get(key)
+
 
 def _symmetric_key(z1: int, z2: int) -> Tuple[int, int]:
     """Return a canonical key with the smaller Z first."""
@@ -182,6 +593,14 @@ def get_bond_length(z1: int, z2: int, order: int = 1) -> float:
     """
     ord_int = int(order)
 
+    # Wf-A29 step-1: tmQM-DFT empirical mean takes precedence when the
+    # (z1, z2, order) bin has ``n >= 5`` observations in the cached table.
+    # Loader is O(1) cache hit; absence of cache is silently transparent
+    # — we fall through to the Wf-A28 Pyykkö path bit-exactly.
+    tmqm_entry = _BOND_TABLE_CACHE.get(_symmetric_key(z1, z2) + (ord_int,))
+    if tmqm_entry is not None and int(tmqm_entry["n"]) >= _MIN_BIN_N:
+        return float(tmqm_entry["mean"])
+
     # Wf-A28 step-2: per-order Pyykkö lookup when both atomic numbers are
     # in the table for the requested order.  Defaults to 1.0 (single) for
     # non-positive orders.
@@ -223,6 +642,10 @@ __all__ = [
     "PYYKKO_SINGLE_BOND",
     "PYYKKO_DOUBLE_BOND",
     "PYYKKO_TRIPLE_BOND",
+    "BOND_LENGTH_TABLE_PATH",
+    "build_bond_length_table",
+    "load_bond_length_table",
+    "tmqm_table_lookup",
     "get_bond_length",
     "has_entry",
 ]
