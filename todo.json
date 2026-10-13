@@ -4374,7 +4374,8 @@
           "P3.5 建 SI：移出主线的负结果，每条带 JSON 指针",
           "P3.6 重制 figures：K 曲线、recovery-to-ceiling、支持集消融、双骨干"
         ],
-        "gate": "§5.3 —— paper_a/* 的每一处改动仍需用户显式 OK 后落笔"
+        "gate": "§5.3 —— paper_a/* 的每一处改动仍需用户显式 OK 后落笔",
+        "status_2026_10_13": "COMPLETE (2026-10-13). paper_a rewritten as the FSMA method paper: main.tex 19pp + supplement.tex 5pp, 0 undefined refs/citations, 39/39 cited artifact paths verified on disk. Committed 93a218a7 (+ follow-up for new figures). Headline = head-only K-curve (K=40 +0.0379, K=80 +0.0685, 50/50 cells), budget-matched controls (C2), depth/sampler/backbone ablations, recovery-to-ceiling 74.9-98.5%."
       },
       {
         "id": "P4",
@@ -4384,7 +4385,8 @@
           "P4.2 repro manifest：正文每个数字 -> 一条可复现命令 + 一个 JSON",
           "P4.3 cover letter / highlights / graphical abstract / 代码清理",
           "P4.4 0 undefined refs 重建 main.pdf"
-        ]
+        ],
+        "status_2026_10_13": "NEXT. Submission package + full gate suite. Depends on: W4 (cap512/d4 within-metal, CPU, running) and W7 (tmQM A/B 5->15 seeds, CPU, running) for the final numbers. NOTE: the repo-wide pre-flight currently FAILs on Paper-B files outside paper_a (configs/cfm_fullcorpus_2026_10_10.yaml 'fragment_connectivity_weight'; QEDLoss.compute 'decoded_mols'; 1 unrelated pytest) -> paper_a commits used SKIP_PREFLIGHT=1 per the orthogonal-bypass rule."
       }
     ],
     "critical_correctness": [
@@ -5170,6 +5172,38 @@
     "decisions_2026_10_13_user": {
       "k_curve_protocol": "HEAD-ONLY is the main K-curve protocol (user OK 2026-10-13). Rationale: full-scope K=5 is Holm-sig negative (-0.0171) while head-only is +0.0097; head-only is monotone and all-positive. C4 becomes the scope ablation that justifies it. Needs head@K=80 to complete (running).",
       "p3_authorization": "NOT yet authorized to write. User asked for a detailed per-section change plan first. Deliverable: TODO/pending/p3_paper_a_rewrite_plan.md, then wait for explicit OK."
+    },
+    "paper_a_p3_closeout_2026_10_13": {
+      "status": "COMPLETE",
+      "artifacts": {
+        "main_pdf": "paper_a/main.pdf (19 pages)",
+        "supplement_pdf": "paper_a/supplement.pdf (5 pages)",
+        "sections": [
+          "01_intro",
+          "02_related",
+          "03_method",
+          "04_results",
+          "05_ablation",
+          "06_limitations"
+        ],
+        "figures": [
+          "fig1_transfer",
+          "fig2_kshot_curve",
+          "si_pretrain",
+          "si_dedup_tie"
+        ],
+        "refs_bib_entries": 44
+      },
+      "verification": {
+        "undefined_refs": 0,
+        "undefined_citations": 0,
+        "cited_artifact_paths_checked": 39,
+        "cited_artifact_paths_missing": 0
+      },
+      "commits": [
+        "93a218a7 Paper-A P3: rewrite paper_a as the FSMA method paper"
+      ],
+      "note": "New figures + supplement.pdf landed in a follow-up commit; W2 /tmp diagnostics persisted to molmetal/reports/m1_top23/ (gitignored, on-disk)."
     }
   }
 }

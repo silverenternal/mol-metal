@@ -3,7 +3,7 @@
   "description": "Every quantitative artifact cited by paper_a/, with its producing script, exact command, inputs and cost class. Consumed by scripts/reproduce_paper_a.sh, which regenerates the CPU-only subset into a scratch directory and diffs it against the on-disk artifact (never overwriting it, AGENTS.md 5.5).",
   "repo": "mol-metal",
   "source_commit": "b2fcaff66a",
-  "source_commit_note": "Probe/scaffold/permutation/PA3 producers landed in c94c9bf1de; the four synthesis/stability producers in 324b0e456d; the repro driver + this manifest in 539dfcc9c0; the PA3 bootstrap-CI/Holm synthesis in b2fcaff66a. source_commit is the commit of the last PRODUCER change (b2fcaff66a); later commits touch packaging only -- the driver's interpreter substitution + package-relative out-dir (b1077c41e4) and the fold_source diff_ignore above (3898b5d8aa) -- so checking out source_commit still yields every producer this manifest names.",
+  "source_commit_note": "Probe/scaffold/permutation/PA3 producers landed in c94c9bf1de; the four synthesis/stability producers in 324b0e456d; the repro driver + this manifest in 539dfcc9c0; the PA3 bootstrap-CI/Holm synthesis in b2fcaff66a. source_commit is the commit of the last PRODUCER change (b2fcaff66a); later commits touch packaging only -- the driver's interpreter substitution + package-relative out-dir (b1077c41e4) and the fold_source diff_ignore above (3898b5d8aa) -- so checking out source_commit still yields every producer this manifest names. | 2026-10-13 P4.2: added the FSMA entries (fsma_paper_stats reproducible byte-for-byte) + the l3_kshot_pf_ceiling/c2/c3 report entries + pa15/w1/bond_perception_3seed/moleculenet_cap512_d4 + the m1_top23 diagnostic; wrapper scripts/reproduce_fsma_paper_stats.sh added in the same commit.",
   "env": {
     "MOLMETAL_DATA_DIR": ".data/molmetal",
     "MOLMETAL_TMQM_DIR": ".data/molmetal/tmQM"
@@ -384,6 +384,309 @@
       "repro_notes": "The producer is committed, but the artifact does not pin the exact command/config (it records n_runs_completed/n_runs_target, i.e. a partially completed sweep). Not reproducible until the run's config is pinned. Cited in paper_a/sections/06_limitations.tex for the cohort-trap numbers.",
       "used_by": [
         "paper_a/sections/06_limitations.tex (cohort-trap paragraph)"
+      ]
+    },
+    {
+      "name": "fsma_paper_stats",
+      "metric_file": "metrics/by_metric/fsma_paper_stats.json",
+      "producer_script": "molmetal/scripts/fsma_synthesize.py",
+      "producer_tracked_in_git": true,
+      "exact_command": [
+        "scripts/reproduce_fsma_paper_stats.sh",
+        "{OUT}"
+      ],
+      "config": null,
+      "inputs": [
+        "molmetal/reports/fsma_c4_head_k{5,10,20,40,80}/metrics.json",
+        "molmetal/reports/l3_kshot_pf_k{5,10,20,40,80}/metrics.json",
+        "molmetal/reports/fsma_c2_matched_k{20,40}/metrics.json",
+        "molmetal/reports/fsma_c3_{random,stratified,scaffold_diverse,activity_scaffold}_k20/metrics.json",
+        "molmetal/reports/fsma_c4_head_metal_k20/metrics.json",
+        "metrics/by_metric/fsma_xgb_warmstart_kshot.json",
+        "molmetal/reports/l3_within_pf_ceiling/metrics.json"
+      ],
+      "cost_class": "cpu_seconds",
+      "reproducible_from_committed_code": true,
+      "repro_notes": "Pure CPU aggregation over 17 report metrics.json files + the XGB json + the ceiling report. Reproduces the on-disk artifact BYTE-FOR-BYTE (verified cmp -s, 2026-10-13). The wrapper scripts/reproduce_fsma_paper_stats.sh carries the full --run/--family recipe; the 17 reports are GPU-produced by train_chemprop_lomo_paper_cohort.py --config configs/<run>.yaml.",
+      "used_by": [
+        "paper_a/sections/04_results.tex tab:kshot/tab:kshotmetal/tab:ceiling",
+        "paper_a/sections/05_ablation.tex tab:controls/tab:scope/tab:sampler",
+        "paper_a/sections/06_limitations.tex",
+        "paper_a/main.tex"
+      ]
+    },
+    {
+      "name": "fsma_xgb_warmstart_kshot",
+      "metric_file": "metrics/by_metric/fsma_xgb_warmstart_kshot.json",
+      "producer_script": "molmetal/scripts/fsma_xgb_warmstart_kshot.py",
+      "producer_tracked_in_git": true,
+      "exact_command": [
+        ".venv/bin/python",
+        "molmetal/scripts/fsma_xgb_warmstart_kshot.py",
+        "--cohort-spec",
+        "paper_funnel",
+        "--metals",
+        "Ru",
+        "Ir",
+        "Rh",
+        "Os",
+        "Re",
+        "--ks",
+        "5",
+        "10",
+        "20",
+        "40",
+        "80",
+        "--seeds",
+        "42",
+        "43",
+        "44",
+        "49",
+        "123",
+        "--out-metric",
+        "{OUT}"
+      ],
+      "config": null,
+      "inputs": [
+        "MetalCytoToxDB paper-funnel cohort"
+      ],
+      "cost_class": "cpu_minutes",
+      "reproducible_from_committed_code": true,
+      "repro_notes": "Morgan-FP(2048,r=2) + XGBoost warm-start adaptation, CPU. base_rounds=500 / ft_rounds=50 / control_rounds=550 are the argparse defaults. Small thread-level nondeterminism possible in XGBoost; metal means stable.",
+      "used_by": [
+        "paper_a/sections/05_ablation.tex tab:backbone"
+      ]
+    },
+    {
+      "name": "l3_within_pf_ceiling",
+      "metric_file": "molmetal/reports/l3_within_pf_ceiling/metrics.json",
+      "producer_script": "molmetal/scripts/train_chemprop_lomo_paper_cohort.py",
+      "producer_tracked_in_git": true,
+      "exact_command": [
+        ".venv/bin/python",
+        "molmetal/scripts/train_chemprop_lomo_paper_cohort.py",
+        "--config",
+        "configs/l3_within_pf_ceiling.yaml"
+      ],
+      "config": "configs/l3_within_pf_ceiling.yaml",
+      "inputs": [
+        "MetalCytoToxDB paper-funnel cohort"
+      ],
+      "cost_class": "gpu_minutes",
+      "reproducible_from_committed_code": true,
+      "repro_notes": "GPU chemprop v2 D-MPNN (d_h=300, depth=3), bf16; not bit-reproducible run-to-run (~0.01-0.03 per-seed AUC drift, metal means stable to <=0.02). Source of the within-metal ceiling in Table 1."
+    },
+    {
+      "name": "fsma_kshot_pf_k40",
+      "metric_file": "molmetal/reports/l3_kshot_pf_k40/metrics.json",
+      "producer_script": "molmetal/scripts/train_chemprop_lomo_paper_cohort.py",
+      "producer_tracked_in_git": true,
+      "exact_command": [
+        ".venv/bin/python",
+        "molmetal/scripts/train_chemprop_lomo_paper_cohort.py",
+        "--config",
+        "configs/l3_kshot_pf_k40.yaml"
+      ],
+      "config": "configs/l3_kshot_pf_k40.yaml",
+      "inputs": [
+        "MetalCytoToxDB paper-funnel cohort"
+      ],
+      "cost_class": "gpu_minutes",
+      "reproducible_from_committed_code": true,
+      "repro_notes": "GPU. Source of the zero-shot cross-metal column (zero_shot_query_auc) of Table 1 and the K=40 full-scope curve point. bf16 nondeterminism as above."
+    },
+    {
+      "name": "fsma_c2_matched_k20",
+      "metric_file": "molmetal/reports/fsma_c2_matched_k20/metrics.json",
+      "producer_script": "molmetal/scripts/train_chemprop_lomo_paper_cohort.py",
+      "producer_tracked_in_git": true,
+      "exact_command": [
+        ".venv/bin/python",
+        "molmetal/scripts/train_chemprop_lomo_paper_cohort.py",
+        "--config",
+        "configs/fsma_c2_matched_k20.yaml"
+      ],
+      "config": "configs/fsma_c2_matched_k20.yaml",
+      "inputs": [
+        "MetalCytoToxDB paper-funnel cohort"
+      ],
+      "cost_class": "gpu_minutes",
+      "reproducible_from_committed_code": true,
+      "repro_notes": "GPU. Budget-matched C2 controls at K=20 (from_scratch / concat_retrain capped at the fine-tune's optimizer-step count)."
+    },
+    {
+      "name": "fsma_c2_matched_k40",
+      "metric_file": "molmetal/reports/fsma_c2_matched_k40/metrics.json",
+      "producer_script": "molmetal/scripts/train_chemprop_lomo_paper_cohort.py",
+      "producer_tracked_in_git": true,
+      "exact_command": [
+        ".venv/bin/python",
+        "molmetal/scripts/train_chemprop_lomo_paper_cohort.py",
+        "--config",
+        "configs/fsma_c2_matched_k40.yaml"
+      ],
+      "config": "configs/fsma_c2_matched_k40.yaml",
+      "inputs": [
+        "MetalCytoToxDB paper-funnel cohort"
+      ],
+      "cost_class": "gpu_minutes",
+      "reproducible_from_committed_code": true,
+      "repro_notes": "GPU. Budget-matched C2 controls at K=40."
+    },
+    {
+      "name": "fsma_c3_random_k20",
+      "metric_file": "molmetal/reports/fsma_c3_random_k20/metrics.json",
+      "producer_script": "molmetal/scripts/train_chemprop_lomo_paper_cohort.py",
+      "producer_tracked_in_git": true,
+      "exact_command": [
+        ".venv/bin/python",
+        "molmetal/scripts/train_chemprop_lomo_paper_cohort.py",
+        "--config",
+        "configs/fsma_c3_random_k20.yaml"
+      ],
+      "config": "configs/fsma_c3_random_k20.yaml",
+      "inputs": [
+        "MetalCytoToxDB paper-funnel cohort"
+      ],
+      "cost_class": "gpu_minutes",
+      "reproducible_from_committed_code": true,
+      "repro_notes": "GPU. C3 support-sampler ablation, random arm (siblings: stratified / scaffold_diverse / activity_scaffold, each its own config)."
+    },
+    {
+      "name": "pa15_metalcond_lomo",
+      "metric_file": "metrics/by_metric/pa15_metalcond_lomo.json",
+      "producer_script": "molmetal/scripts/pa15_metalcond_analysis.py",
+      "producer_tracked_in_git": true,
+      "exact_command": [
+        ".venv/bin/python",
+        "molmetal/scripts/pa15_metalcond_analysis.py",
+        "--n-bootstrap",
+        "10000",
+        "--boot-seed",
+        "42",
+        "--out-metric",
+        "{OUT}"
+      ],
+      "config": null,
+      "inputs": [
+        "molmetal/reports/pa15_metalcond_lomo/ (GPU D-MPNN LOMO runs)"
+      ],
+      "cost_class": "cpu_seconds",
+      "reproducible_from_committed_code": true,
+      "repro_notes": "CPU synthesis (paired bootstrap over 25 metal x seed cells + Holm-Bonferroni over the 2 conditioned arms). Protocol (seeds 42/43/44/49/123, d_h=300/depth=3) is recorded in the artifact's `protocol` block.",
+      "used_by": [
+        "paper_a/supplement.tex sec:si:metalcond"
+      ]
+    },
+    {
+      "name": "w1_cohort_expansion_probe",
+      "metric_file": "metrics/by_metric/w1_cohort_expansion_probe.json",
+      "producer_script": "molmetal/scripts/blk_w1_cohort_expansion_probe.py",
+      "producer_tracked_in_git": true,
+      "exact_command": [
+        ".venv/bin/python",
+        "molmetal/scripts/blk_w1_cohort_expansion_probe.py",
+        "--seeds",
+        "42",
+        "43",
+        "44",
+        "49",
+        "123",
+        "--radius",
+        "2",
+        "--nbits",
+        "2048",
+        "--out-metric",
+        "{OUT}"
+      ],
+      "config": null,
+      "inputs": [
+        "MetalCytoToxDB (current 24h filter vs paper_funnel)"
+      ],
+      "cost_class": "cpu_minutes",
+      "reproducible_from_committed_code": true,
+      "repro_notes": "Morgan-FP + XGBoost cohort-size probe. Protocol recorded in the artifact's `protocol` block.",
+      "used_by": [
+        "paper_a/sections/03_method.tex (cohort sizes)"
+      ]
+    },
+    {
+      "name": "moleculenet_auc_dmpnn_5seed_cap512_d4",
+      "metric_file": "metrics/by_metric/moleculenet_auc_dmpnn_5seed_cap512_d4.json",
+      "producer_script": "molmetal/scripts/train_moleculenet.py",
+      "producer_tracked_in_git": true,
+      "exact_command": null,
+      "config": null,
+      "inputs": [
+        "MoleculeNet bbbp/hiv/bace/clintox"
+      ],
+      "cost_class": "gpu_hours",
+      "reproducible_from_committed_code": false,
+      "repro_notes": "5 seeds x 4 tasks, hidden=512 / depth=4 / epochs=50 (recorded in the artifact). Per-task configs and launcher are not yet pinned, the same gap as the moleculenet_auc_dmpnn_5seed entry. TODO: pin before submission.",
+      "used_by": [
+        "paper_a/supplement.tex sec:si:moleculenet"
+      ]
+    },
+    {
+      "name": "tmqm_bond_perception_3seed",
+      "metric_file": "metrics/by_metric/tmqm_bond_perception_3seed.json",
+      "producer_script": "molmetal/scripts/synthesize_tmqm_bond_perception.py",
+      "producer_tracked_in_git": true,
+      "exact_command": [
+        ".venv/bin/python",
+        "molmetal/scripts/synthesize_tmqm_bond_perception.py",
+        "--base-report",
+        "molmetal/reports/tmqm_bond_perception/tmqm_bond_perception.json",
+        "--scoped-report",
+        "molmetal/reports/tmqm_bond_perception_scoped/tmqm_bond_perception.json",
+        "--fullcorpus-report",
+        "molmetal/reports/tmqm_bond_perception_fullcorpus/tmqm_bond_perception.json",
+        "--out-metric",
+        "{OUT}"
+      ],
+      "config": null,
+      "inputs": [
+        "molmetal/reports/tmqm_bond_perception*/tmqm_bond_perception.json"
+      ],
+      "cost_class": "cpu_seconds",
+      "reproducible_from_committed_code": true,
+      "repro_notes": "CPU synthesis over three bench reports (produced by bench_tmqm_bond_perception.py, CPU). Same chain as the tmqm_bond_perception entry, extended to the 3-seed protocol.",
+      "used_by": [
+        "paper_a/supplement.tex sec:si:bond"
+      ]
+    },
+    {
+      "name": "m1_top23_split_sensitivity",
+      "metric_file": "molmetal/reports/m1_top23/doi_grouped_cv_summary.json",
+      "producer_script": "molmetal/scripts/m1_paper_lightgbm_cv.py",
+      "producer_tracked_in_git": true,
+      "exact_command": null,
+      "config": null,
+      "inputs": [
+        "/tmp/m1_top23_randfolds (ephemeral)"
+      ],
+      "cost_class": "blocked",
+      "reproducible_from_committed_code": false,
+      "repro_notes": "W2 diagnostic only. The DOI-grouped top-23-line summary consumed a /tmp fold source that is not in the repo, and the top-23 cell-line subset is OUR choice (the source paper does not publish which 23 lines it used), so the number is not a reproduction of the published 0.810. Reported in 04_results as a protocol-sensitivity diagnostic; the like-for-like comparison is the within-metal axis.",
+      "used_by": [
+        "paper_a/sections/04_results.tex sec:results:krasnov"
+      ]
+    },
+    {
+      "name": "m1_top23_random_split",
+      "metric_file": "molmetal/reports/m1_top23/random_split_summary.json",
+      "producer_script": "molmetal/scripts/m1_paper_lightgbm_cv.py",
+      "producer_tracked_in_git": true,
+      "exact_command": null,
+      "config": null,
+      "inputs": [
+        "/tmp/m1_top23_randfolds (ephemeral)"
+      ],
+      "cost_class": "blocked",
+      "reproducible_from_committed_code": false,
+      "repro_notes": "W2 diagnostic, same caveat as m1_top23_split_sensitivity: the fold source is ephemeral and the top-23 subset is our choice. Used only to show the published 0.810 is reachable under a non-DOI-grouped split (0.9182) vs DOI-grouped (0.7511); not a reproduction of the published number.",
+      "used_by": [
+        "paper_a/sections/04_results.tex sec:results:krasnov"
       ]
     }
   ]
