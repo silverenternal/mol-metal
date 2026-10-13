@@ -698,6 +698,15 @@ def load_tmqm_clouds(
     min_per_metal: int = 0,
     # ---- Wf-A16 (2026-10-13) c-flow pocket threading (backward-compat) ----
     pocket_path: Optional[str] = None,
+    # ---- Wf-A22 (2026-10-13) step-1: per-cloud pocket draw from a 100K
+    #      CrossDocked pool.  When pocket_pool_per_cloud=False (default),
+    #      behaviour is bit-exact identical to the legacy pocket_path path
+    #      (no second load, no per-cloud redraw).
+    # ------------------------------------------------------------------------
+    pocket_pool_per_cloud: bool = False,
+    pocket_pool_path: Optional[str] = None,
+    pocket_pool_size: int = 0,
+    pocket_draw_seed: int = 0,
     # ---- Wf-A14 (2026-10-13) Bemis-Murcko scaffold split (backward-compat) ----
     split_kind: str = "random",
 ) -> List["object"]:
@@ -814,6 +823,30 @@ def load_tmqm_clouds(
         print(
             f"[tmqm-clouds] pocket loaded: {pocket.pocket_id} "
             f"P={int(pocket.coords.shape[0])} from {pocket_path}",
+            flush=True,
+        )
+
+    # Wf-A22 (2026-10-13) step-1: per-cloud pocket pool draw.
+    #
+    # When ``pocket_pool_per_cloud=True``, each cloud gets ONE pocket
+    # drawn from a reservoir-sampled prefix of ``list_pocket_pool(split="train")``
+    # (default size 0 = full pool; 100K is the CrossDocked-2020 train
+    # manifest).  The draw is deterministic via ``pocket_draw_seed`` and
+    # keyed on the CSD code so the same code always maps to the same
+    # pocket.  When the flag is OFF (legacy default), the cohort-wide
+    # ``pocket`` (above) is used and behaviour is bit-exact identical to
+    # pre-Wf-A22.
+    pocket_pool: Optional[List["object"]] = None
+    if pocket_pool_per_cloud:
+        from molmetal.data.crossdocked_pool import list_pocket_pool
+        _pool_kwargs: Dict[str, object] = {"split": "train"}
+        if int(pocket_pool_size) > 0:
+            _pool_kwargs["max_n"] = int(pocket_pool_size)
+        pocket_pool = list_pocket_pool(**_pool_kwargs)
+        print(
+            f"[tmqm-clouds] pocket_pool loaded: {len(pocket_pool)} entries "
+            f"(size={pocket_pool_size if int(pocket_pool_size) > 0 else 'all'}); "
+            f"draw_seed={pocket_draw_seed}",
             flush=True,
         )
 
@@ -1133,6 +1166,21 @@ def load_tmqm_clouds(
         # contract, so every existing call site sees byte-equivalent clouds.
         bo_info = bo_full_index.get(code) if bo_full_index else None
         row = meta.get(code, {})
+        # Wf-A22 (2026-10-13) step-1: per-cloud pocket draw.
+        #
+        # When ``pocket_pool`` is populated (pocket_pool_per_cloud=True),
+        # draw ONE pocket for THIS cloud from the pool keyed on the CSD
+        # code via a deterministic hash.  Otherwise pass through the
+        # cohort-wide ``pocket`` (legacy / bit-exact).
+        _cloud_pocket = pocket
+        if pocket_pool is not None and pocket_pool:
+            import hashlib as _hashlib
+            _h = _hashlib.sha256(
+                f"{code}|{int(pocket_draw_seed)}".encode("utf-8")
+            ).hexdigest()
+            _idx = int(_h, 16) % len(pocket_pool)
+            _pocket_entry = pocket_pool[_idx]
+            _cloud_pocket = load_pocket_from_pdb(_pocket_entry.pocket_path)
         cloud = _build_cloud_from_kept(
             code=code,
             keep_idx=keep_idx,
@@ -1142,7 +1190,7 @@ def load_tmqm_clouds(
             row=row,
             bo_info=bo_info,
             natural_charges_map=natural_charges_map,
-            pocket=pocket,
+            pocket=_cloud_pocket,
         )
         if cloud is None:
             n_skip_symbol += 1
@@ -1281,6 +1329,17 @@ def load_tmqm_clouds(
             # clouds carry the same 19 new fields as the main-loop clouds.
             bo_info = bo_full_index.get(code) if bo_full_index else None
             row = meta.get(code, {})
+            # Wf-A22 (2026-10-13) step-1: per-cloud pocket draw (mirrors the
+            # main-loop logic so back-fill rows see the same c-flow).
+            _cloud_pocket = pocket
+            if pocket_pool is not None and pocket_pool:
+                import hashlib as _hashlib
+                _h = _hashlib.sha256(
+                    f"{code}|{int(pocket_draw_seed)}".encode("utf-8")
+                ).hexdigest()
+                _idx = int(_h, 16) % len(pocket_pool)
+                _pocket_entry = pocket_pool[_idx]
+                _cloud_pocket = load_pocket_from_pdb(_pocket_entry.pocket_path)
             cloud = _build_cloud_from_kept(
                 code=code,
                 keep_idx=keep_idx,
@@ -1290,7 +1349,7 @@ def load_tmqm_clouds(
                 row=row,
                 bo_info=bo_info,
                 natural_charges_map=natural_charges_map,
-                pocket=pocket,
+                pocket=_cloud_pocket,
             )
             if cloud is None:
                 continue
