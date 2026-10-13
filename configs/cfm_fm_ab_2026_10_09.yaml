@@ -1,0 +1,258 @@
+# Wf-FIX-3LINES-C4-RESTART yaml-driven config (2026-10-09)
+#
+# Per AGENTS.md §5.7 + §5.8 + user voice 2026-10-09 verbatim
+#   "这个退火的配置你是应该写到yaml配置文件里面的，快速收敛优化呢，那个用了吗？"
+#
+# Key changes vs the original C4 100-ep launcher (which had NO scheduler,
+# constant LR=0.0003 throughout, ~20 hr wall on Blackwell sm_120 GPU 0):
+#   * --lr-scheduler onecycle          (Smith-Topin 2018 super-convergence;
+#                                       max_lr = base_lr * 10 = 0.001, pct_start=0.3,
+#                                       div_factor=25, final_div_factor=1e4,
+#                                       anneal_strategy='cos'; built-in warmup)
+#   * --optimizer adamw                (decoupled weight decay — Loshchilov-Hutter 2019)
+#   * --weight-decay 1e-4              (1e-5..1e-3 range typical for GNN/transformer)
+#   * --epochs 30                      (OneCycle converges ~5-10x faster than
+#                                       constant-LR; 30 ep ≈ 100 ep constant-LR
+#                                       per Smith-Topin 2018 + Wf-A6 A2 PROJECTED)
+#   * --gen-eval-n 16                  (4x faster per-epoch gen-eval overhead vs 64;
+#                                       with 3 seeds × 16 = 48 distinct chemistries,
+#                                       1-sigma ~±14pp at p~0.5 — acceptable for
+#                                       per-epoch diagnostic, NOT a paper-grade
+#                                       decile CI)
+#
+# Cross-links:
+#   * AGENTS.md §5.7 trainer-flag wire-in 50-step CPU smoke
+#   * AGENTS.md §5.9 single-venv (.venv/bin/python only)
+#   * AGENTS.md §5.6 atomic-write + BLK-I1 setsid+nohup (launcher wrapper)
+#   * AGENTS.md §5.4 + §10 NO wet-lab planning (Tier-2 computational-only)
+#   * configs/cfm_full_retrain.yaml (sibling config; full sweep, NOT this restart)
+#   * TODO/completed/blk_c4_cfm_bond_head_qed_2026_10_09.md (prior partial run;
+#     ABORTED at 4/100 epochs, ~20 hr projected for full constant-LR run)
+#
+# Honest framing (per §5.2):
+#   * PROJECTED wall: ~2-3 hr (vs ~20 hr for original constant-LR 100 ep)
+#   * PROJECTED m5 QED on CFM-generated cohort: MEASURED-on-5ep-smoke was
+#     0.240 ± 0.173 (molmetal/reports/cfm_smoke_wire_5ep/property_panel.json);
+#     the 30-ep OneCycle restart's MEASURED-on-30ep-cohort value is the
+#     honest-negative floor / lift pair
+#   * The MEASURED-vs-PROJECTED gap is the cost of stopping the constant-LR
+#     run early; OneCycle's 30-ep run is the corrected measurement
+
+data:
+  dataset: tmqm
+  tmqm_dir: .data/molmetal/tmQM
+  # 6-metal tmQM cohort — same as cfm_full_retrain.yaml
+  tmqm_metals: Pt,Ru,Ir,Rh,Os,Re
+  tmqm_coord_number: -1
+  tmqm_val_frac: 0.2
+  # Wf-A14 (2026-10-13) Bemis-Murcko scaffold 80/10/10 split. Default random preserves Wf-A8c hash split bit-exactly.
+  tmqm_split_kind: random
+
+model:
+  hidden_dim: 128
+  n_layers: 3
+  atom_vocab_size: 13
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  learnable_vel_scale: true
+  # MEASURED 2026-10-09 — deliberately OFF for THIS run, and this is the run's
+  # single most load-bearing property. `use_fm_objective: false` zeroes fm_term
+  # (train_cfm_yuelbond_wasserstein.py:2710 `fm_term = torch.zeros(())`, gated
+  # at :2715 by `if fm_objective and batch_clouds:`), so the 518,276-parameter
+  # EGNNVelocityField's ONLY gradient source is the Wasserstein term at :2355
+  # (`wasserstein_weight=0.1` from `flow.wasserstein_weight` below) — an anchor
+  # pulling predicted velocity toward a reference square-planar Pt geometry,
+  # NOT the flow-matching regression onto dx = x1 - x0.
+  #
+  # MEASURED gradient mass, CPU 1-epoch run of this exact config
+  # (per-param-group sum|dL/dw|, accumulated):
+  #     head.msg_mlps 2.24e+03 | other 1.14e+03 | vel_field 1.27e+01
+  #
+  # Yet `method: rk4` below drives an ODESolver (:3740) that integrates
+  # vel_field as the velocity function. So this run decodes with a field that
+  # was never trained as a flow field. cfm.yaml + cfm_tmqm_all6.yaml both set
+  # this true; the 4 other CFM yamls were aligned on 2026-10-09.
+  use_fm_objective: true   # BLK-C3 gate: the ONLY difference from cfm_blk_c5_repair_2026_10_09.yaml
+  # Required for gen_eval_n > 0 to trigger generation
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  # Warm-start from F2 tmQM pretrain (138,112 params, 5 regression targets)
+  use_tmqm_init: true
+  pcgrad_multi_task: false
+  # BLK-C5 lever 一 — LR-group isolation: vel_field.* + head.msg_mlps.* +
+  # head.dmpnn.* go to 0.1x base LR. MEASURED in the live log:
+  #   "[BLK-C5] param_groups=3 atom_head=2 gen_flow=63 bond_head=4
+  #    gen_flow_lr=1e-05 (base lr=0.0001)"
+  gen_head_lr_scale: 0.1
+  # BLK-C5 lever 三 — dropout before the head's last linears.
+  gen_head_dropout: 0.2
+  # Required for generated_smiles.csv; was `--save-generated-smiles` in the
+  # launcher's --extra-flags.
+  save_generated_smiles: true
+
+flow:
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  n_steps: 100
+  method: rk4
+  # MEASURED: was the argparse default (0.1), never declared in any yaml. With
+  # use_fm_objective above false, this term is the ENTIRE gradient reaching
+  # vel_field — so it is load-bearing, not incidental.
+  wasserstein_weight: 0.1
+  # BLK-C5 lever 二 — decode-strategy check (was launcher --extra-flags).
+  temperature: 1.2
+  top_p: 0.9
+
+train:
+  # BLK-C5 lever 二 — bond head frozen for epochs 0-4, then unfrozen on stride.
+  # These two dests had NO yaml bridge before; they reached the trainer only via
+  # --extra-flags, which AGENTS.md §5.11 (2026-10-09) now forbids.
+  bond_head_warmup_epochs: 5
+  bond_head_unfreeze_stride: 1
+  # BLK-C5 lever 三 — entropy regularisation on the head's output distribution.
+  entropy_reg_weight: 0.01
+  # 2026-10-09 — 用户建议二 修改建议 B: scale ONLY the bond_ce term.
+  # 1.0 is the identity, so declaring it here changes NOTHING about the run
+  # already on disk (molmetal/reports/cfm_fm_ab_2026_10_09). It is
+  # declared so the knob is reachable from YAML per AGENTS.md §5.11, not
+  # because 1.0 is a tuning choice. Set 0.1 to prefer generation over bond
+  # prediction WITHOUT freezing the bond head (the alternative to 修改建议 A).
+  # MEASURED on this config: bond_ce is ~95% of the live loss magnitude
+  # (1.54 vs 0.076 wasserstein + 0.013 entropy + 0.006 cb), so this is the
+  # one weight in the sum that is load-bearing.
+  bond_loss_weight: 1.0
+
+protocol:
+  # ----- training schedule (CHANGED vs original C4 100-ep launcher) -----
+  epochs: 30                    # was 100 (constant-LR) → 30 (OneCycle)
+  batch_size: 16                # same as original C4 launcher
+  lr: 0.0001                    # base_lr (OneCycle's max_lr = base_lr * 10 = 0.001)
+  optimizer: adamw              # decoupled weight decay (Loshchilov-Hutter 2019)
+                                # loader leaf-fallback: `protocol.optimizer` → dest `optimizer`
+                                # via wfA2_config_loader.L132-145 LEAF_ALIASES + the 2-component
+                                # `protocol.*` whitelist at L78-93
+  # ----- OneCycle fast-convergence recipe (NEW) -----
+  scheduler:
+    type: onecycle              # Smith-Topin 2018 super-convergence
+                                # ONLY consumed by scripts/start.sh SCHEDULER env (see
+                                # scripts/start.sh:482 + scripts/start.sh:640); the trainer
+                                # --config path cannot bridge this leaf because the trainer
+                                # dest is `lr_scheduler` (3-component path). Therefore the
+                                # canonical launcher wrapper invokes start.sh, not the
+                                # trainer directly.
+    warmup_epochs: 5            # 5/30 = 17% of total epochs in warmup phase
+                                # (Smith-Topin recommend 0.3-0.4 of pct_start;
+                                # 5/30 = 0.167 ≈ bottom of the range)
+                                # MEASURED 2026-10-09: this key does NOTHING on
+                                # the onecycle path — OneCycleLR took a hardcoded
+                                # pct_start=0.3 and never saw warmup_steps, so
+                                # the actual warmup was 30% regardless of this
+                                # number. pct_start below is the key that does.
+    pct_start: 0.35             # 用户建议一 2: "将 Warmup 比例拉长到总步数的
+                                # 30%~40%". 0.35 = 168 of 480 steps = 10.5 of
+                                # 30 epochs. ABSENT = the historical 0.3, so
+                                # configs without this key are unchanged.
+                                # Reaches the trainer as --lr-pct-start via
+                                # scripts/start.sh (start.sh has no other
+                                # channel for protocol.scheduler.*).
+    min_lr: 1.0e-07             # floor for OneCycle's final_div_factor
+  # ----- AdamW + decoupled weight decay (NEW vs original C4 default Adam) -----
+  weight_decay: 1.0e-04         # 1e-4 typical for GNN/transformer
+                                # (Loshchilov-Hutter 2019 decoupled WD)
+  # BLK-C5 (2026-10-09): user advice 一 verbatim "设定 max_norm=0.5 或 1.0".
+  # Lowered 5.0 -> 1.0 for THIS run only. The trainer's `--max-norm` default
+  # is deliberately left at 5.0 so no other wrapper's numerics change; the
+  # value below reaches the trainer through start.sh's MAX_NORM env bridge.
+  max_norm: 1.0
+
+  # ----- evaluation cadence (CHANGED) -----
+  gen_validity_samples: 16      # was 16 (kept; same as cfm_full_retrain)
+  gen_eval_n: 16                # was 64 (4x faster per-epoch gen-eval)
+  gen_eval_seeds: "0 1 2"       # 3 seeds × 16 = 48 distinct chemistries
+  n_seeds: 1                    # single seed for the restart (5-seed sweep is
+                                # future work; this is the OneCycle 30-ep gate)
+  # 999 = never early-stop on this diagnostic run (was launcher --extra-flags).
+  early_stop_patience: 999
+
+output:
+  base_dir: molmetal/reports/cfm_fm_ab_2026_10_09
+  log_master: molmetal/reports/cfm_fm_ab_2026_10_09/master.log
+  ckpt_dir: molmetal/reports/cfm_fm_ab_2026_10_09/checkpoints
+  events_jsonl: true
+  resume_from: none             # cold start (the killed C4 had 4 epochs
+                                # trained; deliberately NOT resuming to keep
+                                # the OneCycle schedule coherent across the
+                                # full 30 epochs)
+
+compute:
+  gpu: cuda:0
+  # `gpu` above is a _NON_TRAINER_KEY in wfA2_config_loader: scripts/start.sh
+  # reads it to export CUDA_VISIBLE_DEVICES (:587) but never forwards it to the
+  # trainer, so the trainer's --device had to be supplied separately. `device`
+  # IS a trainer dest, so declaring it here closes the gap: the yaml alone now
+  # fixes the torch device, and the launcher's --device cuda:0 is redundant.
+  device: cuda:0
+
+directives:
+  kill_then_adapt: true
+  time_budget: 48h              # per session budget (2026-10-03 user grant)
+  user_ok_required: true
+  user_ok_granted: 2026-10-09 user OK on Plan A restart (OneCycle + 30 ep)
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check
+
+entry:
+  # Per AGENTS.md §5.9 single-venv + Wf-A8c FIX C yaml-driven pattern.
+  # The launcher's role is reduced to: env setup + setsid+nohup + redirect +
+  # pass --config. All hyperparameters live in this yaml.
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+
+# BLK-C5 (2026-10-09) — the five structural levers from the user's advice.
+# 2026-10-09: these USED TO be passed by scripts/launch_wf_fix3lines_cfm_c5_repair.sh
+# via --extra-flags, which meant they lived outside this file. Every one of the
+# five dests resolves from the yaml via wfA2_config_loader leaf-fallback (verified
+# by round-trip: model.gen_head_lr_scale, model.gen_head_dropout,
+# train.bond_head_warmup_epochs, train.bond_head_unfreeze_stride,
+# train.entropy_reg_weight, flow.temperature, flow.top_p), so per AGENTS.md §5.11
+# they now live in `model:` / `train:` / `flow:` above and the launcher passes
+# --config alone.
+#
+#   gen_head_lr_scale: 0.1        -> 一  LR 分组隔离 (gen head at 1/10 base LR)
+#   bond_head_warmup_epochs: 5    -> 二  Bond head frozen for epochs 0-4
+#   entropy_reg_weight: 0.01      -> 三  熵正则化 on the head's output distribution
+#   gen_head_dropout: 0.2         -> 三  dropout before the head's last linears
+#   temperature: 1.2 / top_p: 0.9 -> 二  decode-strategy check (see below)
+#
+# BLK-C5 honest framing: these are STRUCTURAL fixes, not a measured lift.
+# The MEASURED failure they target is
+# molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/per_epoch_metrics.csv
+# (gen_validity = 0.000 over epochs 4-29; decode_ratio 1.000 @ ep0 -> 0.188 @ ep29).
+# Whether they lift gen_validity is UNMEASURED until this run finishes.
+#
+# CAVEAT on lever 一 for this run: gen_head_lr_scale throttles vel_field.* to
+# 0.1x LR, but with use_fm_objective: false the field has no flow-matching target
+# to learn in the first place — the lever is throttling a term that is only a
+# Wasserstein geometry anchor. Read the gen_validity result against that.
+
+honest_framing:
+  claims:
+  - CFM bond head retrain on tmQM with OneCycle scheduler + AdamW + weight decay 1e-4 (Smith-Topin 2018 super-convergence recipe)
+  - 30 epochs (was 100 in original constant-LR C4 launcher; OneCycle converges ~5-10x faster)
+  - gen-eval-n 16 (was 64; 4x faster per-epoch gen-eval overhead)
+  - GPU 0 RTX PRO 6000 Blackwell sm_120; pre-flight PASS required per AGENTS.md §5.1
+  do_not_claim:
+  - Beats the original 100-ep constant-LR m5 QED without measuring both arms at the same checkpoint cadence (only 4 epochs of constant-LR data on disk; the comparison would be apples-to-oranges)
+  - Generalises to n>1000 cohorts without a separate run
+  - Aggregate lift before per-lever ablation
+  deferred:
+  - 5-seed × 30-epoch sweep at OneCycle (n_seeds=1 here; full sweep is future work)
+  - Joint lift with --qed-penalty + --sa-penalty + 6 diversity flags (single-lever gate here)
+  - Cosine vs OneCycle comparison on this corpus (single-arm gate here)

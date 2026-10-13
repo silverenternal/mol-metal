@@ -1,0 +1,120 @@
+# Entropy regularisation at the MEASURED-observability weight (0.12).
+#
+# WHY A SEPARATE FILE FROM configs/cfm_objective_terms_2026_10_11.yaml
+# ---------------------------------------------------------------------
+# That file runs entropy 0.01 AND assemble 1.0 together. BOTH of those are
+# MEASURED inert, so it cannot attribute anything to either knob:
+#
+#   assemble_loss_weight 1.0, formulation escape_time, hinge_tau 0.30
+#     MEASURED 2026-10-11, molmetal/reports/cfm_objective_terms_2026_10_11/events.jsonl
+#       epoch 0..8: assemble_loss = 0.0 at EVERY epoch, assemble_enabled = 1.0
+#       assemble_stay_mean = 0.1456 .. 0.1747 (never approaches tau=0.30)
+#     WHY: the hinge is (escape_time - hinge_tau).clamp(min=0)
+#     (molmetal/molmetal_lam/lam_chem/assemble_connectivity.py:429). The
+#     observed escape_time never crosses 0.30, so the clamp floors the whole
+#     term at exactly 0.0 — zero VALUE and, in the flat region, zero GRADIENT.
+#     assemble_enabled=1.0 next to assemble_loss=0.0 is precisely the
+#     "knob reads as ON while doing nothing" failure BLK-C5/BLK-C14 name.
+#
+#   entropy_reg_weight 0.01
+#     MEASURED 2026-10-11 by direct probe (see the fraction arithmetic below):
+#     the term is 0.10-0.19% of the live loss at this run's scale.
+#
+# WHY 0.12 AND NOT 0.01 — the number is DERIVED, not chosen
+# ----------------------------------------------------------
+# BLK-C14 (todo.json, /blockers/19) measured a 42-step CPU probe:
+#   raw entropy H(softmax(bond logits)) ranged 1.2 - 1.43 with NO trend
+#   across the whole probe, and the weight required for the term to reach
+#   parity with the bond CE term was 0.12-0.15 (12-15x the 0.01 that was
+#   then the default).
+#
+# At 0.01, with H ~ 1.0-1.8 (the trainer's `all_logits` is (E, 6) over the
+# all6 YuelBond vocab):
+#     |entropy_term| = 0.01 * H          = 0.010 .. 0.018
+#     live train_loss at epoch 5         = 9.28459   (per_epoch_metrics.csv)
+#     -> 0.11% .. 0.19% of the loss the optimiser actually descends.
+# At 0.12 that becomes 1.3% .. 2.3% — a term that can be SEEN in the loss and
+# therefore argued about. 0.12 is the LOW end of the measured 0.12-0.15 band:
+# pick the low end so that if the term turns out to be too aggressive, the
+# first correction tried is raising it, not that we already overshot.
+#
+# This does NOT weaken, delete or edit the failing-test-pinned decision that
+# the trainer DEFAULT stays 0.0 (BLK-C14 is already recorded as
+# PARTIALLY_RESOLVED on that basis). This file is opt-in and single-variable:
+# it differs from the objective-terms arm ONLY in entropy_reg_weight, and it
+# differs from the production baseline ONLY in that one key too.
+#
+# NOT CLAIMED: that 0.12 fixes anything. No run at 0.12 exists on disk. The
+# honest status is PROJECTED-UNTIL-MEASURED; see the BLK-C14 smoke gate.
+compute:
+  device: auto
+  tf32: false
+  torch_compile: false
+  triton_ot: false
+data:
+  tmqm_coord_number: -1
+  tmqm_dir: .data/molmetal/tmQM
+  tmqm_metals: Pt,Ru,Ir,Rh,Os,Re
+  tmqm_val_frac: 0.2
+  # Wf-A14 (2026-10-13) Bemis-Murcko scaffold 80/10/10 split. Default random preserves Wf-A8c hash split bit-exactly.
+  tmqm_split_kind: random
+directives:
+  kill_then_adapt: true
+  time_budget: 48h
+  user_ok_granted: 48h budget + RTX PRO 6000 Blackwell + project root results/ (2026-09-28)
+  user_ok_required: true
+entry:
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+    --config {yaml_path} --seed {seed}
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+eval:
+  early_stop_epsilon: 0.85
+  early_stop_metric: bond_type_f1
+  gen_eval_n: 256
+  gen_eval_seeds: 0 1 2 3
+  method: midpoint
+  n_steps: 50
+  wasserstein_weight: 0.1
+flow:
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  monge_ampere: false
+  use_ot_cfm: false
+model:
+  connectivity_prior: 'on'
+  connectivity_prior_min_logit: 0.0
+  fm_t_per_cloud: 1
+  hidden_dim: 128
+  n_layers: 3
+  use_egnn_velocity: true
+  use_fm_objective: true
+  use_tmqm_init: true
+  yuelbond_vocab: all6
+output:
+  base_dir: molmetal/reports/cfm_fullcorpus_2026_10_10
+  checkpoint_interval: 5
+  ckpt_dir: molmetal/reports/cfm_entropy_reg_012_2026_10_11/checkpoints
+  log_master: molmetal/reports/cfm_entropy_reg_012_2026_10_11/master.log
+  out_dir: molmetal/reports/cfm_entropy_reg_012_2026_10_11
+  training_summary: molmetal/reports/cfm_entropy_reg_012_2026_10_11/synthesis.md
+protocol:
+  seed: 0
+train:
+  batch_size: 16
+  bond_head_warmup_epochs: 0
+  ema_decay: 0.999
+  epochs: 50
+  fm_noise_sigma: 2.485
+  lr: 0.0003
+  lr_scheduler: cosine
+  lr_warmup_epochs: 5
+  max_norm: 5.0
+  n_train: 26715
+  resume_from: none
+  weight_decay: 0.0
+  # The ONE variable. 0.12 = the low end of BLK-C14's measured 0.12-0.15 band.
+  entropy_reg_weight: 0.12
+  # assemble_loss_weight is deliberately ABSENT (= argparse default 0.0).
+  # At 1.0 it is MEASURED to contribute exactly 0.0 at every epoch, so
+  # carrying it forward would reintroduce a second dead knob and make this
+  # arm unattributable for the same reason the objective-terms arm was.

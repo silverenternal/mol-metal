@@ -559,6 +559,53 @@ class LigandDeduplicatedSplitter:
 # ---------------------------------------------------------------------------
 # 5. Scaffold splitter (Bemis-Murcko)
 # ---------------------------------------------------------------------------
+def _bemis_murcko_key(smi: str, include_chirality: bool = False) -> str:
+    """Bemis-Murcko scaffold key for one SMILES, robust to metal-organic rows.
+
+    Guards against two failure modes (BLK-PA12, MEASURED 2026-10-12):
+
+    1. **Wrong call signature.** ``MurckoScaffold.GetScaffoldForMol`` in the
+       installed rdkit (2026.03.6) takes a *single* argument — passing
+       ``includeChirality=`` raises ``TypeError``, which a bare ``except``
+       turns into an empty scaffold for *every* molecule. A splitter fed that
+       way is silently molecule-level (a random split), not scaffold-level.
+       We use ``MurckoScaffoldSmiles``, whose Python signature does accept
+       ``includeChirality`` (applied to the output SMILES).
+    2. **Multi-fragment metal-organic rows.** Rows such as
+       ``ligand.solvent.counterion`` (MetalCytoToxDB: 2-6 fragments) would
+       otherwise merge solvent/counterion rings into the ligand scaffold, so
+       we desalt to the largest fragment first. Single-fragment rows are left
+       untouched, so organic cohorts keep their exact previous scaffold keys.
+
+    Returns ``""`` when no scaffold can be computed (unparseable, acyclic, or
+    a valence error raised inside RDKit's Murcko decomposition).
+    """
+    from rdkit import Chem, RDLogger
+    from rdkit.Chem.MolStandardize import rdMolStandardize
+    from rdkit.Chem.Scaffolds import MurckoScaffold
+
+    RDLogger.DisableLog("rdApp.*")
+    mol = Chem.MolFromSmiles(smi)
+    if mol is None:
+        return ""
+    try:
+        if len(Chem.GetMolFrags(mol)) > 1:
+            mol = rdMolStandardize.FragmentParent(mol)
+            # FragmentParent leaves RingInfo uninitialised → Murcko raises;
+            # re-parse to sanitise.
+            mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
+            if mol is None or mol.GetNumAtoms() == 0:
+                return ""
+        return (
+            MurckoScaffold.MurckoScaffoldSmiles(
+                mol=mol, includeChirality=include_chirality
+            )
+            or ""
+        )
+    except Exception:
+        return ""
+
+
 class ScaffoldSplitter:
     """Split rows so that each Bemis-Murcko scaffold appears in exactly one split.
 
@@ -569,6 +616,12 @@ class ScaffoldSplitter:
     land in the same split.  This is a *stronger* OOD chemistry split than
     ``LigandDeduplicatedSplitter`` — it forces the test set to contain
     scaffolds the model has never seen at all.
+
+    Multi-fragment rows (metal-organic salts such as
+    ``ligand.solvent.counterion``) are desalted to their largest organic
+    fragment before the scaffold is computed — see
+    :func:`_bemis_murcko_key`.  Without that step the whole-molecule
+    scaffold would mix counterion/solvent rings into the ligand's key.
 
     Parameters
     ----------
@@ -612,22 +665,14 @@ class ScaffoldSplitter:
         return canon
 
     def _scaffold_for(self, canon_smiles: str) -> str:
-        from rdkit import Chem, RDLogger
-        from rdkit.Chem.Scaffolds import MurckoScaffold
-
-        RDLogger.DisableLog("rdApp.*")
-        try:
-            mol = Chem.MolFromSmiles(canon_smiles)
-            if mol is None:
-                return ""
-            scaffold = MurckoScaffold.GetScaffoldForMol(
-                mol, includeChirality=self.include_chirality
-            )
-            if scaffold is None:
-                return ""
-            return Chem.MolToSmiles(scaffold)
-        except Exception:
-            return ""
+        # Delegates to :func:`_bemis_murcko_key` (BLK-PA12): the previous
+        # inline ``GetScaffoldForMol(mol, includeChirality=...)`` call raised
+        # ``TypeError`` on the installed rdkit and, swallowed by the bare
+        # ``except``, gave every molecule the empty key — degenerating the
+        # split to molecule-level for EVERY cohort.
+        return _bemis_murcko_key(
+            canon_smiles, include_chirality=self.include_chirality
+        )
 
     def _assign_groups(
         self,

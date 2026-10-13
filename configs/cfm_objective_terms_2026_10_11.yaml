@@ -104,6 +104,8 @@ data:
   tmqm_dir: .data/molmetal/tmQM
   tmqm_metals: Pt,Ru,Ir,Rh,Os,Re
   tmqm_val_frac: 0.2
+  # Wf-A14 (2026-10-13) Bemis-Murcko scaffold 80/10/10 split. Default random preserves Wf-A8c hash split bit-exactly.
+  tmqm_split_kind: random
 directives:
   kill_then_adapt: true
   time_budget: 48h

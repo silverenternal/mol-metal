@@ -300,18 +300,59 @@ class CrossDockedDataset:
         heavy_atoms_range: Tuple[int, int] = (HEAVY_ATOMS_MIN, HEAVY_ATOMS_MAX),
         split: str = "train",
         auto_extract: bool = True,
+        manifest_csv: Optional[Path] = None,
     ) -> None:
+        """Build a CrossDocked2020 dataset.
+
+        Parameters
+        ----------
+        manifest_csv : Path, optional
+            Wf-A14 (2026-10-13) — when provided, the loader iterates this
+            CSV (the canonical 100K CrossDocked 2020 manifest from
+            ``molmetal.data.crossdocked_pool``) instead of re-extracting
+            the legacy tarball.  Each row's ``pocket_path`` and
+            ``reference_ligand_path`` are used directly, so this path
+            does NOT need ``archive_path`` / ``extracted_dir`` to exist
+            and skips the entire ``_ensure_extracted`` call.
+
+            Precedence:
+
+            1. ``manifest_csv`` (when not None) — preferred, no tarball
+               work.
+            2. legacy tarball path (``archive_path`` + ``extracted_dir``
+               + ``auto_extract=True``) — preserved bit-exactly for the
+               Wf-A8c smoke tests that ship with a self-contained
+               tarball.
+
+            Manifest rows whose ``split_role`` does not match ``split``
+            are filtered out at load time.  Backward-compat: when
+            ``manifest_csv`` is ``None``, every other argument behaves
+            identically to the pre-Wf-A14 version.
+        """
         self.archive_path = Path(archive_path)
         self.extracted_dir = Path(extracted_dir)
-        self.extracted_dir.mkdir(parents=True, exist_ok=True)
+        # Wf-A14 (2026-10-13) — only mkdir when we are actually going to
+        # use the tarball path.  The manifest_csv path takes absolute
+        # paths straight from the CSV, so the legacy extracted_dir
+        # (default /mnt/storage/data/...) is irrelevant; skipping the
+        # mkdir avoids a PermissionError on hosts where that mount is
+        # not writable.
+        if manifest_csv is None:
+            self.extracted_dir.mkdir(parents=True, exist_ok=True)
         self.rmsd_max = float(rmsd_max)
         self.heavy_atoms_range = (int(heavy_atoms_range[0]), int(heavy_atoms_range[1]))
         self.split = str(split)
         self._tarball_path: Optional[Path] = None
         self._split_path: Optional[Path] = None
+        self._manifest_path: Optional[Path] = (
+            Path(manifest_csv) if manifest_csv is not None else None
+        )
         self._pairs: List[Tuple[str, str]] = []
 
-        if auto_extract:
+        if self._manifest_path is not None:
+            # Manifest-driven path — skip tarball extraction entirely.
+            self._pairs = self._load_manifest(self._manifest_path)
+        elif auto_extract:
             self._ensure_extracted()
 
     # ------------------------------------------------------------------
@@ -374,6 +415,42 @@ class CrossDockedDataset:
             else:
                 # Best-effort fallback
                 out.append((str(entry), ""))
+        return out
+
+    def _load_manifest(self, manifest_path: Path) -> List[Tuple[str, str]]:
+        """Load pairs from a CrossDocked 2020 manifest CSV (Wf-A14).
+
+        The manifest columns we consume are ``pocket_path`` and
+        ``reference_ligand_path``; ``split_role`` filters the rows so
+        the same manifest file can be passed for both ``split="train"``
+        and ``split="test"``.  The return shape matches
+        :meth:`_load_split` — a list of ``(pocket_path, ligand_path)``
+        tuples — so ``__getitem__`` and ``summary`` work unchanged.
+        """
+        import csv as _csv
+
+        manifest_path = Path(manifest_path)
+        if not manifest_path.is_file():
+            raise FileNotFoundError(
+                f"CrossDocked 2020 manifest not found: {manifest_path}"
+            )
+        out: List[Tuple[str, str]] = []
+        with manifest_path.open("r", encoding="utf-8") as fh:
+            reader = _csv.DictReader(fh)
+            for row in reader:
+                if str(row.get("split_role", "")).strip() != self.split:
+                    continue
+                pocket = str(row.get("pocket_path", "")).strip()
+                ligand = str(row.get("reference_ligand_path", "")).strip()
+                if not pocket or not ligand:
+                    continue
+                out.append((pocket, ligand))
+        if not out:
+            raise RuntimeError(
+                f"Manifest {manifest_path} contained 0 rows with "
+                f"split_role={self.split!r} — check the upstream "
+                f"prepare step."
+            )
         return out
 
     # ------------------------------------------------------------------

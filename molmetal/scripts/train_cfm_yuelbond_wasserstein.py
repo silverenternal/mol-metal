@@ -160,6 +160,47 @@ from molmetal.molmetal_lam.lam_chem.assemble_connectivity import (
     batch_assemble_loss as _batch_assemble_loss,
     mean_stay_probability as _mean_stay_probability,
 )
+# Wf-A13 (2026-10-13) — loss-layer modular refactor.  Replaces inline
+# entropy_term (2999-3005) + diversity_term (3142-3269) blocks in
+# train_one_epoch with class calls.  Bit-exact identical to pre-Wf-A13
+# on the default path (every new class is an exact ``torch.zeros(())``
+# when its weight is 0.0).  See AGENTS.md §5.11 backward-compat rule
+# and DESIGN G.4 — bond_ce / cb_loss / wasserstein are KEPT INLINE
+# because they cross out of range (2640-2680 = per-cloud call is owned
+# by sibling territory; the 3817-3840 sum block is owned by sum-block
+# agent).  See D-NEW-1 — this __init__ deliberately does NOT export a
+# top-level ``sa_loss`` symbol to avoid shadowing the trainer's
+# (post-Wf-A13) ``_sa_local``.
+from molmetal.loss import (
+    ContinuousBOLoss,
+    DiversityRegularizer,
+    EntropyTerm,
+    FragmentConnectivityLoss,
+    MoleculeLoss,
+    MolecularPropertyTargetLoss,
+    NaturalChargeLoss,
+    QEDLoss,
+    ShortcutDistillLoss,
+    SingleFragmentLoss,
+    StereoCentreSuppressionLoss,
+)
+
+
+# ---------------------------------------------------------------------------
+# Wf-A15 (2026-10-13) — chemistry-signal pipeline full-link fix.
+#
+# Three import paths that close the gap where every per-cloud chemistry
+# signal (oxidation_state, spin_state, natural_charge, coord_neighbors,
+# per-pair bond_orders_continuous, dative_pair flag, etc.) was loaded
+# onto the AtomCloud but never consumed by a gradient path.
+# ---------------------------------------------------------------------------
+from molmetal.eval.discriminators import (
+    ChemistryDiscriminator,
+    MetalAwareADMET,
+    ModelOutputAlignment,
+    TopologyDiscriminator,
+)
+from molmetal.optim.differential_lr import build_differential_optimizer
 
 
 # ---------------------------------------------------------------------------
@@ -607,6 +648,14 @@ from molmetal.models.bond_head import (
     BOND_SINGLE,
     NUM_BOND_CLASSES,
 )
+# Wf-A11 (2026-10-13) — single chokepoint for collation. Replaces 3 inlined
+# collate sites (FM flat-concat at line 3367, per-cloud passthrough in
+# train_one_epoch at line 2828, per-bucket padded-tensor inner in
+# generate_clouds_from_noise at lines 4509-4526) + 3 of 4 historical
+# ``getattr(cloud, "bonds", None)`` defaults in this trainer. The fourth
+# site (`_bond_target_from_*` lines 2242-2243) is an INTENDED fallback for
+# clouds with no truth; the design rationale is at line 2237-2240 above.
+from molmetal.data.batch import Batch  # noqa: E402  (post-bond_head import)
 
 # RDKit — for sanitisation
 try:
@@ -1158,25 +1207,36 @@ class EpochMetrics:
 def _to_device_cloud(cloud: AtomCloud, device: torch.device) -> AtomCloud:
     """Move a cloud to *device*, CARRYING its bond truth.
 
-    ONE definition, because two independent copies of this rebuild is exactly
-    how the 2026-10-04 bug survived a fix: the outer ``train_clouds_d`` build
-    stripped ``bonds`` before ``train_one_epoch`` ever saw the clouds, so
-    fixing the inner rebuild alone changed nothing and cost a retrain to
-    discover.  Any site that rebuilds a cloud to move it MUST go through here;
-    ``molmetal/tests/test_cfm_bond_target_truth.py`` pins the training-loop
-    sites.
+    Wf-A11 (2026-10-13) — this helper now routes through ``Batch.collate_fn``
+    so the single chokepoint owns the truth-carrying contract.  Old call
+    sites that pass a single :class:`AtomCloud` get back the same single
+    cloud (via collate → to → split-off-first-cloud); the trainer's other
+    call sites should move to ``Batch.collate_fn(clouds).to(device)``
+    directly, which collapses the 3 inlined collate sites + 4 getattr
+    defaults in one place.
 
-    Generation-from-noise callers legitimately have no truth to carry and
-    build ``AtomCloud`` directly — those are not this case.
+    One definition, because two independent copies of this rebuild is exactly
+    how the 2026-10-04 bug survived a fix: the outer ``train_clouds_d``
+    build stripped ``bonds`` before ``train_one_epoch`` ever saw the clouds,
+    so fixing the inner rebuild alone changed nothing and cost a retrain to
+    discover.  Any site that rebuilds a cloud to move it MUST go through
+    here; ``molmetal/tests/test_cfm_bond_target_truth.py`` pins the
+    training-loop sites.
     """
-    _b = getattr(cloud, "bonds", None)
-    _bt = getattr(cloud, "bond_types", None)
-    return AtomCloud(
-        positions=cloud.positions.to(device),
-        atomic_numbers=cloud.atomic_numbers.to(device),
-        bonds=(_b.to(device) if _b is not None else None),
-        bond_types=(_bt.to(device) if _bt is not None else None),
-    )
+    batch = Batch.collate_fn([cloud]).to(device)
+    start = int(batch.cloud_offsets[0].item())
+    end = int(batch.cloud_offsets[1].item())
+    kwargs: Dict[str, object] = {
+        "positions": batch.positions[start:end],
+        "atomic_numbers": batch.atomic_numbers[start:end],
+    }
+    if int(batch.bonds.shape[1]) > 0:
+        kwargs["bonds"] = batch.bonds
+        kwargs["bond_types"] = batch.bond_types
+        if int(batch.bond_orders_continuous.shape[0]) > 0:
+            kwargs["bond_orders_continuous"] = batch.bond_orders_continuous
+            kwargs["is_dative_pair"] = batch.is_dative_pair
+    return AtomCloud(**kwargs)
 
 
 def _block_diag_radius_edges(
@@ -1495,9 +1555,61 @@ class CFMJointModel(nn.Module):
         # TODO/04_architecture/model_design.md (D-MPNN + EGNN hybrid fusion
         # target) and TODO/AUDIT_RESEARCH_GRADE.md §2.5.
         bond_predictor: str = "yuelbond",
+        # ---- Wf-A11 (2026-10-13) trainer surface (all backward-compat) ----
+        # Round-10 CFMJointModel.__init__ had no knobs for these. Each new
+        # kwarg has a YAML-loadable default that matches the legacy silent
+        # behaviour, so an empty cfg_loader pass keeps every existing caller
+        # bit-identical.
+        #
+        # * t_eval_grid : list of flow times at which the velocity field is
+        #   evaluated for inference / t-grid diagnostic sweeps. Training
+        #   (CFMJointModel.forward) keeps the historical t=1 anchor so the
+        #   W2 baseline is unchanged; forward_with_t_grid is the only path
+        #   that walks the list.  Default [1.0] = same as Round-10.
+        # * clash_penalty_weight : strength of an inter-atomic clash penalty
+        #   attached to vel_field generations. 0.0 disables (Round-10
+        #   behaviour).
+        # * bond_pattern_mask_in_train : intent flag — when True, the
+        #   BondOrderHead's forbidden-pattern mask is applied at train time
+        #   (mask lives on BondOrderHead; out-of-scope for YuelBondDecoderHead
+        #   which is the trainer's default head).  Stored on the model for
+        #   checkpointing + downstream audit but does NOT change forward's
+        #   return signature.
+        t_eval_grid: Sequence[float] = (1.0,),
+        clash_penalty_weight: float = 0.0,
+        bond_pattern_mask_in_train: bool = False,
+        # ---- Wf-A16 (2026-10-13) c-flow pocket threading ----
+        # Default True registers a PocketEncoder that turns
+        # ``batch_ctx.pocket_coords`` (B, P_max, 3) + ``pocket_mask`` into
+        # a (B, hidden_dim) embedding.  When ``use_pocket_encoder=False``
+        # the encoder is omitted and ``CFMJointModel.forward`` reads
+        # ``batch_ctx.pocket_features`` (the lazy mean-pool produced by
+        # ``Batch.collate_fn``).  ``hidden_dim=128`` matches the
+        # PocketEncoder default + ``EGNNVelocityField(hidden_dim=128)``
+        # so the same embedding feeds both the EGNN per-layer injector
+        # and the BondOrderHead pocket-bias projector without an
+        # extra Linear.
+        use_pocket_encoder: bool = True,
     ) -> None:
         super().__init__()
         self.cutoff = float(cutoff)
+        # Wf-A11 store-and-log the new knobs.  All three are exposed to YAML
+        # via `flow.*` (the cfg loader's leaf fallback walks every section).
+        self.t_eval_grid: Tuple[float, ...] = tuple(float(t) for t in t_eval_grid)
+        if not self.t_eval_grid:
+            raise ValueError("t_eval_grid must be non-empty")
+        for _t in self.t_eval_grid:
+            if not (0.0 <= float(_t) <= 1.0):
+                raise ValueError(
+                    f"t_eval_grid entries must lie in [0, 1], got {_t}"
+                )
+        self.clash_penalty_weight: float = float(clash_penalty_weight)
+        self.bond_pattern_mask_in_train: bool = bool(bond_pattern_mask_in_train)
+        # Per-call scratch for `clash_penalty_value` (the scalar tensor
+        # produced by the most recent forward).  Trainer consumers outside
+        # the body of forward() can read it as `model.last_clash_penalty`.
+        # Stays None when clash_penalty_weight <= 0.
+        self.last_clash_penalty: Optional[torch.Tensor] = None
         # 2026-10-09 — bond-predictor dispatch.  Both branches attach the
         # head to `self.head` and both expose (logits, (i_idx, j_idx)) from
         # forward(cloud), so the trainer's downstream code (assemble-aware
@@ -1615,6 +1727,24 @@ class CFMJointModel(nn.Module):
                 tmqm_init_path=tmqm_init_path,
                 use_tmqm_init=bool(use_tmqm_init),
             )
+        # Wf-A16 (2026-10-13) c-flow pocket encoder.
+        #
+        # Registered alongside the velocity field so the trainer has a
+        # single nn.Module ownership point for ``model.pocket_encoder``.
+        # Forward-time call site is CFMJointModel.forward, which reads
+        # ``batch_ctx.pocket_coords`` / ``pocket_mask`` and produces a
+        # (B, hidden_dim) embedding that's broadcast to vel_field
+        # (pocket_embed=) and BondOrderHead (pocket_features=).
+        self.use_pocket_encoder: bool = bool(use_pocket_encoder)
+        if self.use_pocket_encoder:
+            from molmetal.adapters.flow_matching_lipman import PocketEncoder
+            self.pocket_encoder = PocketEncoder(
+                hidden_dim=int(hidden_dim),
+                max_atomic_number=int(max_atomic_number),
+                n_layers=1,
+            )
+        else:
+            self.pocket_encoder = None
 
     def fm_velocity(
         self,
@@ -1773,7 +1903,30 @@ class CFMJointModel(nn.Module):
         return dict(getattr(self, "_ema_state", None) or {})
 
     def forward(
-        self, cloud: AtomCloud, return_edge_index: bool = False
+        self,
+        cloud: AtomCloud,
+        return_edge_index: bool = False,
+        # Wf-A16 (2026-10-13) c-flow pocket threading — Batch output from
+        # ``Batch.collate_fn``.  When set AND ``cloud.pocket`` is not
+        # None: the trainer produces a (B, H) embedding via
+        # ``self.pocket_encoder`` (or reads
+        # ``pocket_batch_ctx.pocket_features`` when the encoder is
+        # disabled) and threads it to both ``vel_field(pocket_embed=)``
+        # and ``head(pocket_features=)``.  When None: legacy single-cloud
+        # forward, identical to Wf-A15.
+        #
+        # NOTE: deliberately named ``pocket_batch_ctx`` rather than
+        # ``batch_ctx`` to avoid collision with the Wf-A15 chemistry
+        # ``batch_ctx`` dict already on the signature.
+        pocket_batch_ctx: Optional["Batch"] = None,
+        # Wf-A15 (2026-10-13) — chemistry-signal context pass-through.  When
+        # ``None`` (legacy 1-cloud call) the model's outputs are bit-exactly
+        # identical to the pre-Wf-A15 contract.  When a dict is supplied it
+        # is forwarded to ``self.head(cloud, batch_ctx=...)`` and to the
+        # EGNN velocity field; the EquivariantGraphConv layers in the
+        # ``molmetal.adapters.egnn_rocm`` family append 5 chemistry channels
+        # to the per-edge mlp_in when ``batch_ctx`` is provided.
+        batch_ctx: Optional[dict] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return (bond_logits, predicted_velocities) for a single cloud.
 
@@ -1795,7 +1948,20 @@ class CFMJointModel(nn.Module):
         The default keeps the 2-tuple contract every existing caller relies
         on.
         """
-        out = self.head(cloud)
+        # Wf-A16 (2026-10-13) c-flow pocket threading — only BondOrderHead
+        # (molmetal/models/bond_head.py) accepts a ``pocket_features`` kwarg;
+        # YuelBondDecoderHead and DMPNNBondHead ignore it.  Inspect the
+        # signature so a future head that adds pocket support picks up
+        # the kwarg without a code change here.
+        import inspect as _inspect  # noqa: WPS433 (deferred import)
+        _head_supports_pocket = (
+            "pocket_features"
+            in _inspect.signature(self.head.forward).parameters
+        )
+        if _head_supports_pocket:
+            out = self.head(cloud, pocket_features=pocket_embed)
+        else:
+            out = self.head(cloud)
         # `out` is a tuple (logits, (i_idx, j_idx)) — unpack.
         #
         # Round-3 D1 fix (2026-10-05): this was named `edge_index`, and the
@@ -1823,6 +1989,40 @@ class CFMJointModel(nn.Module):
             logits, head_pair_index = out
         else:
             logits = out
+        # Wf-A16 (2026-10-13) c-flow pocket embedding.
+        #
+        # Produce a (B, hidden_dim) tensor when ``pocket_batch_ctx`` is
+        # supplied AND ``cloud.pocket`` is not None.  Two paths:
+        #
+        #   * self.pocket_encoder is set (default ON): run a tiny
+        #     EGNN-Lite over the padded pocket coords/atom_types/mask.
+        #     Lazy fallback: train EGNN-Lite only when ``cloud.pocket`` is
+        #     present on the cohort (single-pocket loader) so that the
+        #     encoder output dimension matches the velocity-field + bond-
+        #     head hidden_dim.  ``pocket_batch_ctx=None`` → pocket_embed=None.
+        #   * self.pocket_encoder is None (opt-out): use the lazy
+        #     ``pocket_batch_ctx.pocket_features`` produced by
+        #     ``Batch.collate_fn`` — a (B, hidden_dim) mean-pool of the
+        #     pocket coords plus the per-pocket size scalar.
+        #
+        # Both paths yield ``None`` (legacy Wf-A15) when neither
+        # ``pocket_batch_ctx`` nor ``cloud.pocket`` is supplied.
+        pocket_embed: Optional[torch.Tensor] = None
+        if (
+            pocket_batch_ctx is not None
+            and getattr(cloud, "pocket", None) is not None
+        ):
+            if (
+                self.pocket_encoder is not None
+                and getattr(pocket_batch_ctx, "pocket_coords", None) is not None
+            ):
+                pocket_embed = self.pocket_encoder(
+                    coords=pocket_batch_ctx.pocket_coords,
+                    atom_types=pocket_batch_ctx.pocket_atom_types,
+                    mask=pocket_batch_ctx.pocket_mask,
+                )
+            elif getattr(pocket_batch_ctx, "pocket_features", None) is not None:
+                pocket_embed = pocket_batch_ctx.pocket_features
         if self.use_egnn_velocity:
             # Evaluate the field AT THE DATA, i.e. t = 1.  Under the CFM
             # convention `x_t = (1 - t) x_0 + t x_1`, t = 1 is exactly
@@ -1843,9 +2043,16 @@ class CFMJointModel(nn.Module):
             )
             t_b = torch.ones(1, device=pos.device)
             out_vel = self.vel_field(
-                x_pad, z_pad, vel_edge_index, t_b, edge_mask=edge_mask
+                x_pad, z_pad, vel_edge_index, t_b, edge_mask=edge_mask,
+                batch_ctx=batch_ctx,
+                # Wf-A16 (2026-10-13) c-flow pocket threading — the EGNN
+                # velocity field's per-layer injector + first-layer bias
+                # both consume this (see adapters/flow_matching_lipman/
+                # __init__.py:1699-1701 + :1708-1709).  None → legacy.
+                pocket_embed=pocket_embed,
             )
             velocities = out_vel["vel"][0]  # (N, 3)
+            self._maybe_stash_clash_penalty(cloud)
             if return_edge_index:
                 return logits, velocities, head_pair_index
             return logits, velocities
@@ -1859,9 +2066,141 @@ class CFMJointModel(nn.Module):
         z_oh = F.one_hot(idx, num_classes=self.z_dim).float()
         feats = torch.cat([z_oh, cloud.positions.float()], dim=-1)
         velocities = self.vel_probe(feats)
+        self._maybe_stash_clash_penalty(cloud)
         if return_edge_index:
             return logits, velocities, head_pair_index
         return logits, velocities
+
+    def _maybe_stash_clash_penalty(self, cloud: "AtomCloud") -> None:
+        """Wf-A11 (M-A4) — compute + stash the clash penalty scalar.
+
+        Kept off the return path so forward()'s 2-/3-tuple contract stays
+        intact for every existing caller.  When
+        :attr:`clash_penalty_weight` is 0 the stash is left at ``None``,
+        which is the Round-10 default.
+        """
+        if self.clash_penalty_weight <= 0.0:
+            self.last_clash_penalty = None
+            return
+        self.last_clash_penalty = self._compute_clash_penalty(
+            cloud.positions.float(),
+            cloud.atomic_numbers.long(),
+        )
+
+    # ------------------------------------------------------------------
+    # Wf-A11 (2026-10-13) — t-grid inference + clash penalty helpers
+    # ------------------------------------------------------------------
+    def forward_with_t_grid(
+        self,
+        cloud: AtomCloud,
+        t_grid: Optional[Sequence[float]] = None,
+    ) -> Dict[str, torch.Tensor]:
+        """Evaluate the velocity field over a list of flow times.
+
+        Distinct from :meth:`forward`: the training path keeps the
+        historical ``t=1`` anchor (the W₂ anchor needs to walk the same
+        geometry the FM objective walks), so this method is the ONLY
+        entry point that sweeps ``t``.  Inference / t-grid ablation
+        bench scripts use it; training never calls it.
+
+        Returns
+        -------
+        dict with keys:
+            ``velocities``  : (T, N, 3) tensor, one velocity per t.
+            ``t_grid``      : list[float], the times actually used.
+            ``atomic_numbers`` : (N,) the cloud's atomic numbers
+                                (carried for downstream consumers that
+                                rebuild the (Z_i, Z_j) per-pair tuple).
+        Raises
+        ------
+        RuntimeError when the model was built without
+        ``use_egnn_velocity=True`` — only the EGNN path supports an
+        arbitrary t grid.
+        """
+        if not self.use_egnn_velocity:
+            raise RuntimeError(
+                "forward_with_t_grid requires the EGNN velocity field; "
+                "build the model with use_egnn_velocity=True."
+            )
+        ts = tuple(self.t_eval_grid if t_grid is None else t_grid)
+        for tt in ts:
+            if not (0.0 <= float(tt) <= 1.0):
+                raise ValueError(
+                    f"t_grid entries must lie in [0, 1], got {tt}"
+                )
+        pos = cloud.positions.float()
+        z = cloud.atomic_numbers.long()
+        x_pad = pos.unsqueeze(0)  # (1, N, 3)
+        z_pad = z.unsqueeze(0)  # (1, N)
+        node_mask = torch.ones(
+            1, pos.shape[0], dtype=torch.bool, device=pos.device
+        )
+        vel_edge_index, edge_mask = _block_diag_radius_edges(
+            x_pad, node_mask, self.cutoff
+        )
+        vels = []
+        for tt in ts:
+            t_b = torch.full((1,), float(tt), device=pos.device)
+            out_vel = self.vel_field(
+                x_pad, z_pad, vel_edge_index, t_b, edge_mask=edge_mask,
+                batch_ctx=None,
+            )
+            vels.append(out_vel["vel"][0])  # (N, 3)
+        velocities = torch.stack(vels, dim=0)  # (T, N, 3)
+        return {
+            "velocities": velocities,
+            "t_grid": ts,
+            "atomic_numbers": z,
+        }
+
+    @staticmethod
+    def _compute_clash_penalty(
+        positions: torch.Tensor,
+        atomic_numbers: torch.Tensor,
+        rcov_scale: float = 0.7,
+        sharpness: float = 50.0,
+    ) -> torch.Tensor:
+        """Wf-A11 (M-A4) — soft inter-atomic clash penalty.
+
+        Returns a scalar ``sum_{i<j, d_ij < rcov_scale*(rcov_i + rcov_j)}
+        exp((rcov_scale*(rcov_i + rcov_j) - d_ij) * sharpness)``.
+
+        Built on a small covalent-radius table (``{1:0.31, 6:0.76, ...,
+        78:1.28}``) — defaults to the Cordero 2008 single-bond radii that
+        the rest of the project uses for the pocket-closure bias.
+        Smaller-clipped to ``min(rcov)`` for elements outside the table
+        so the gradient can still flow back when the chemistry expands.
+
+        Returns ``torch.zeros(())`` when the cloud has fewer than two
+        atoms — guard, not the common path.
+        """
+        n = int(positions.shape[0])
+        if n < 2:
+            return torch.zeros((), device=positions.device, dtype=positions.dtype)
+        # Covalent radii (Cordero 2008, single-bond) for the 12-cohort.
+        _RCOV = {
+            1: 0.31, 6: 0.76, 7: 0.71, 8: 0.66, 9: 0.57,
+            15: 1.07, 16: 1.05, 17: 0.99, 34: 1.20, 35: 1.14,
+            53: 1.33, 78: 1.28,
+        }
+        rcov = torch.tensor(
+            [_RCOV.get(int(zi), 0.77) for zi in atomic_numbers.tolist()],
+            dtype=positions.dtype,
+            device=positions.device,
+        )
+        # Pairwise distances via |r_i - r_j|.
+        diff = positions.unsqueeze(0) - positions.unsqueeze(1)
+        d = diff.norm(dim=-1)  # (N, N)
+        iu = torch.triu_indices(n, n, offset=1, device=positions.device)
+        d_ij = d[iu[0], iu[1]]
+        rsum_ij = (rcov[iu[0]] + rcov[iu[1]]) * float(rcov_scale)
+        mask = d_ij < rsum_ij
+        if not bool(mask.any()):
+            return torch.zeros((), device=positions.device, dtype=positions.dtype)
+        d_in = d_ij[mask]
+        r_in = rsum_ij[mask]
+        penalty = torch.exp((r_in - d_in) * float(sharpness)).sum()
+        return penalty
 
 
 # ---------------------------------------------------------------------------
@@ -2331,6 +2670,24 @@ def apply_fm_distortion(
     return x_t + gate * eps
 
 
+#: Low end of the entropy weight at which the regulariser is OBSERVABLE in
+#: the loss it is added to. Below this, a nonzero weight is still
+#: gradient-live but contributes too little to distinguish the arm from a
+#: 0.0 run, which is the BLK-C14 failure mode ("a regulariser whose weight is
+#: 12x too small to observe").
+#:
+#: MEASURED (todo.json BLK-C14, 42-step CPU probe): raw H(softmax(bond
+#: logits)) ranged 1.2-1.43 with no trend, and 0.12-0.15 is the band measured
+#: to reach parity with the bond CE term. Re-derived 2026-10-11 against the
+#: MEASURED epoch-5 train_loss 9.28459 of the objective-terms arm: at 0.01 the
+#: term is 0.11%..0.19% of the loss; at 0.12 it is 1.3%..2.3%.
+#:
+#: The argparse DEFAULT stays 0.0 (AGENTS.md §5.11 bit-for-bit default-off);
+#: this constant only bounds what may be set SILENTLY. See the sub-threshold
+#: guard in ``main()`` and configs/cfm_entropy_reg_012_2026_10_11.yaml.
+ENTROPY_REG_MEASURED_FLOOR = 0.12
+
+
 def train_one_epoch(
     model: CFMJointModel,
     decoder: YuelBondBondDecoder,
@@ -2532,6 +2889,16 @@ def train_one_epoch(
     # Default OFF (0.0) preserves bit-for-bit backward compat with all
     # Wf-388-A3 / Wf-405-A2 / Wf-406-A2 / Wf-408-A2 / Wf-409-A1 baselines.
     gen_validity_weight: float = 0.0,
+    # Wf-A15 (2026-10-13) — 6 NEW chemistry-signal loss terms (Layer F).
+    # Defaults preserve bit-for-bit backward compat with pre-Wf-A15.
+    chem_loss_weight: float = 0.0,
+    qed_loss_weight: float = 0.0,
+    molecule_loss_weight: float = 0.0,
+    stereo_loss_weight: float = 0.0,
+    fragment_loss_weight: float = 0.0,
+    property_loss_weight: float = 0.0,
+    fragment_connectivity_weight: float = 0.0,
+    natural_charge_weight: float = 0.0,
 ) -> Tuple[float, float, float, float, float]:
     """Train one epoch over the synthetic Pt-click cloud cohort.
 
@@ -2598,20 +2965,14 @@ def train_one_epoch(
             # with per-class logit means [+32.9, -3.0, -5.4, -15.6, -8.7], i.e.
             # it had learned to say "no bond" very confidently, and every
             # decode came back as loose atoms.
-            cloud = AtomCloud(
-                positions=cloud.positions.to(device),
-                atomic_numbers=cloud.atomic_numbers.to(device),
-                bonds=(
-                    getattr(cloud, "bonds", None).to(device)
-                    if getattr(cloud, "bonds", None) is not None
-                    else None
-                ),
-                bond_types=(
-                    getattr(cloud, "bond_types", None).to(device)
-                    if getattr(cloud, "bond_types", None) is not None
-                    else None
-                ),
-            )
+            #
+            # Wf-A11 (2026-10-13) — site 2 of 3 inlined collate sites. The
+            # ``getattr(cloud, "bonds", None)`` defaults silently swallowed the
+            # 4 new AtomCloud fields, so adding any of them was a no-op at the
+            # training site. Now routes through ``_to_device_cloud`` which goes
+            # through ``Batch.col`` — the single chokepoint that carries
+            # every truth field end-to-end.
+            cloud = _to_device_cloud(cloud, device)
             batch_clouds.append(cloud)
             # Round-3 D1: ask the head for its pair indices so the
             # assemble-aware term can rebuild the connectivity graph.  Only
@@ -2798,13 +3159,15 @@ def train_one_epoch(
         # penalises that collapse.  Sign is NEGATIVE on the entropy so the
         # optimiser maximises entropy, and the whole term collapses to
         # torch.zeros(()) at the default weight of 0.0.
-        entropy_term = torch.zeros((), device=device)
-        if float(entropy_reg_weight) > 0.0:
-            _log_probs = F.log_softmax(all_logits, dim=-1)
-            _entropy = -(
-                _log_probs.exp() * (_log_probs + 1e-9)
-            ).sum(dim=-1).mean()
-            entropy_term = -float(entropy_reg_weight) * _entropy
+        #
+        # Wf-A13 (2026-10-13) — replaced inline 7-line block with a class
+        # call.  Bit-exact identical: when ``entropy_reg_weight <= 0.0``
+        # the class returns ``torch.zeros((), device=device)`` matching
+        # the legacy default.
+        entropy_term = EntropyTerm(
+            weight=float(entropy_reg_weight),
+            enabled=float(entropy_reg_weight) > 0.0,
+        ).compute(logits=all_logits, device=device)
         if per_cohort_features:
             try:
                 from molmetal.scripts.wf380a2_m2_r2_per_cohort import (
@@ -2946,129 +3309,34 @@ def train_one_epoch(
         # loss adds a small regulariser that nudges the head toward
         # the diversity constraint.
         #
-        # Lazy import: ``mallet.top_self.diversity`` lives outside the
-        # trainer's hot import path.  Import on demand so the
-        # default-OFF path is bit-exact identical to Wf-380-B1.
-        diversity_term = torch.zeros((), device=device)
+        # Wf-A13 (2026-10-13) — replaced inline 130-line block with a
+        # ``DiversityRegularizer`` class call.  Bit-exact identical on
+        # the default path (every sub-flag at its default → class
+        # returns ``(torch.zeros((), device=device), None, 0)`` matching
+        # the legacy ``diversity_term / custom_bond_ce / nucleus_sample_invocations``
+        # triple).  The ``nucleus_sample_invocations`` audit counter is
+        # now returned by the class so line 4103 still sees it.
         nucleus_sample_invocations = 0
-        if (
-            top_p < 1.0
-            or top_k > 0
-            or temperature != 1.0
-            or mmd_weight > 0.0
-            or repulsion_weight > 0.0
-            or scaffold_conditioning
-        ):
-            try:
-                from molmetal.adapters.flow_matching_lipman import (
-                    diversity_sampling as _ds,
-                )
-                from molmetal.adapters.flow_matching_lipman import (
-                    scaffold_conditioning as _sc,
-                )
-            except Exception:
-                _ds = None
-                _sc = None
-            if _ds is not None and _sc is not None:
-                # --- (a) nucleus sampling audit (Wf-388-A2 §1) ---
-                # Apply nucleus_sample on logits when any of the
-                # top-p / top-k / temperature flags are non-default.
-                # The output is a discrete sample; we sum it as a
-                # zero-cost audit (proves the path executed; the
-                # sampled indices carry no gradient, so the
-                # backward pass is bit-identical when the diversity
-                # flag is OFF).
-                if top_p < 1.0 or top_k > 0 or temperature != 1.0:
-                    with torch.no_grad():
-                        sampled = _ds.nucleus_sample(
-                            all_logits,
-                            p=float(top_p),
-                            k=int(top_k),
-                            temperature=float(temperature),
-                        )
-                        nucleus_sample_invocations += int(sampled.numel())
-                # --- (b) MMD regulariser (Wf-388-A2 §2) ---
-                # Computed on velocity probes (positions) vs the
-                # reference positions.  mmd_weight=0 skips.
-                if mmd_weight > 0.0 and batch_velocities:
-                    vel = torch.cat(batch_velocities, dim=0)
-                    if reference_positions is not None:
-                        ref = reference_positions.to(device)
-                        n_vel = vel.shape[0]
-                        if ref.shape[0] < n_vel:
-                            ref = ref.repeat((n_vel // ref.shape[0] + 1, 1))[:n_vel]
-                        # RBF sigma via median-heuristic (Gretton 2012 §6).
-                        with torch.no_grad():
-                            _sigma = float(
-                                torch.cdist(vel, ref).median().clamp(min=1e-3)
-                            )
-                        # 2026-10-04: `vel` used to be `vel.detach()` here, so
-                        # this regulariser was a constant -- measured
-                        # requires_grad=False at value 0.17 even with
-                        # mmd_weight=1.0, i.e. it reached the loss and trained
-                        # nothing.  `vel` is the model's own velocity output;
-                        # only the TARGET side (ref) stays detached.  `_sigma`
-                        # is a bandwidth, not something to differentiate.
-                        mmd_val = _ds.mmd_loss(
-                            vel,
-                            ref.detach(),
-                            sigma=_sigma,
-                            unbiased=False,
-                        )
-                        diversity_term = diversity_term + mmd_weight * mmd_val
-                # --- (c) Repulsion loss (Wf-388-A2 §3) ---
-                # Applied to velocity probes; pushes generated
-                # positions apart via cosine-sim penalty.
-                if repulsion_weight > 0.0 and batch_velocities:
-                    vel = torch.cat(batch_velocities, dim=0)
-                    if vel.shape[0] >= 2:
-                        # 2026-10-04: same fix as the MMD call above -- the
-                        # `vel.detach()` made this a constant.  The term's whole
-                        # purpose is to push generated positions apart, which
-                        # requires the gradient to reach `vel`.
-                        rep_val = _ds.repulsion_loss(
-                            vel,
-                            margin=0.95,
-                            reduce=True,
-                        )
-                        diversity_term = diversity_term + repulsion_weight * rep_val
-                # --- (d) Scaffold conditioning (Wf-388-A2 §4) ---
-                # Apply scaffold_condition to logits before bond-CE.
-                # scaffold_bias=None is the bit-exact identity path
-                # (backward compat).  We pass a synthetic
-                # zero-bias table when the flag is on so the path
-                # runs and is verified.
-                if scaffold_conditioning:
-                    # Per-batch scaffold index: cycle hash of
-                    # atomic_numbers modulo 256 (matches
-                    # ScaffoldConditioningConfig.n_scaffolds).
-                    batch_n = all_logits.shape[0]
-                    if all_logits.dim() == 2:
-                        scaffold_idx = torch.zeros(
-                            batch_n,
-                            dtype=torch.long,
-                            device=device,
-                        )
-                        scaffold_bias = torch.zeros(
-                            (256, all_logits.shape[-1]),
-                            dtype=all_logits.dtype,
-                            device=device,
-                        )
-                        conditioned = _sc.scaffold_condition(
-                            all_logits,
-                            scaffold_idx,
-                            n_scaffolds=256,
-                            scaffold_bias=scaffold_bias,
-                        )
-                        # Re-compute bond-CE on conditioned logits.
-                        # This is the audit anchor for the Wf-388-A2
-                        # wire-in — the gradient flows through the
-                        # model via the bias zeroing so the path is
-                        # bit-exact equivalent to the Wf-380-B1
-                        # behaviour when scaffold_bias is None.
-                        bond_ce = F.cross_entropy(
-                            conditioned, all_targets, weight=bond_class_weights
-                        )
+        diversity_term, _custom_bond_ce, _nuc = DiversityRegularizer(
+            weight=1.0,  # gated internally on ``_any_subflag_active``
+            enabled=True,
+            top_p=float(top_p),
+            top_k=int(top_k),
+            temperature=float(temperature),
+            mmd_weight=float(mmd_weight),
+            repulsion_weight=float(repulsion_weight),
+            scaffold_conditioning=bool(scaffold_conditioning),
+        ).compute(
+            all_logits=all_logits,
+            all_targets=all_targets,
+            batch_velocities=batch_velocities,
+            bond_class_weights=bond_class_weights,
+            reference_positions=reference_positions,
+            device=device,
+        )
+        nucleus_sample_invocations = _nuc
+        if _custom_bond_ce is not None:
+            bond_ce = _custom_bond_ce
         # Wf-388-A3 + Wf-404-A3 — SA-aware loss penalty wire-in (Wf-380-A6
         # SCAFFOLD; TODO-205). Default 0 (sa_loss = 0) preserves bit-for-bit
         # backward compat with Wf-380-B1 / Wf-299 train outputs. When
@@ -3086,7 +3354,16 @@ def train_one_epoch(
         # default.  When `sa_scores_batch` IS injected (e.g. via a
         # sampler hook that knows real molecules), the injected values
         # win.
-        sa_loss = torch.zeros((), device=device)
+        #
+        # Wf-A13 (2026-10-13) — D-NEW-1 rename: the local was called
+        # ``sa_loss`` which shadowed any new ``loss/sa_loss`` module
+        # symbol.  Per ``corrections_2026_10_12.D2`` the term was
+        # REMOVED from the loss sum on 2026-10-04, so this local is
+        # no longer read by any post-3300 code — it is safe to rename
+        # without breaking downstream consumers.  Renamed to
+        # ``_sa_local`` (per D-NEW-1) to free the public ``sa_loss``
+        # namespace for any future SA-aware loss class.
+        _sa_local = torch.zeros((), device=device)
         sa_penalty_weight = float(sa_penalty)
         if sa_penalty_weight > 0.0 and _SA_PENALTY_AVAILABLE:
             _sa_target = float(sa_target)
@@ -3230,10 +3507,13 @@ def train_one_epoch(
         z_all: Optional[torch.Tensor] = None
         target_dx: Optional[torch.Tensor] = None
         if fm_objective and batch_clouds:
-            x1 = torch.cat([c.positions.float().to(device) for c in batch_clouds], dim=0)
-            z_all = torch.cat(
-                [c.atomic_numbers.long().to(device) for c in batch_clouds], dim=0
-            )
+            # Wf-A11 (2026-10-13) — site 1 of 3 inlined collate sites collapsed
+            # to ``Batch.collate_fn(clouds).to(device)``. The flat view is
+            # exactly what the FM objective needs: positions concatenated in
+            # cloud order, atomic_numbers likewise, orig_n_atoms preserved.
+            batch = Batch.collate_fn(batch_clouds).to(device)
+            x1 = batch.positions
+            z_all = batch.atomic_numbers
             n_atoms = int(x1.shape[0])
             # Real per-cloud atom counts, in the concatenation order above.
             # The EGNN velocity field needs these to keep message passing
@@ -3243,7 +3523,7 @@ def train_one_epoch(
             # older equal-split heuristic, which is only valid when every
             # cloud happens to have the same size; this list is exact either
             # way.
-            _cloud_sizes = [int(c.positions.shape[0]) for c in batch_clouds]
+            _cloud_sizes = batch.orig_n_atoms.tolist()
             # 2026-10-06 (R7-N1) — data-matched prior scale.  x0 and x1 must
             # live on the same scale or the interpolant is a path between two
             # differently-scaled clouds and the learned velocity carries a
@@ -3795,6 +4075,45 @@ def train_one_epoch(
             float(bond_loss_weight) * bond_ce
         )
 
+        # Wf-A15 (2026-10-13) — 6 NEW chemistry-signal loss terms (Layer F).
+        # Each class returns ``torch.zeros((), device=device)`` at the
+        # default weight 0.0, so the 18-term sum is bit-exact identical to
+        # the pre-Wf-A15 12-term sum when every ``*_weight`` arg is 0.0.
+        # Per-cloud / per-pair inputs (logits_for_bo, bond_orders_continuous,
+        # decoded_mol, smiles, etc.) are passed when available, else None.
+        chem_loss_term = ContinuousBOLoss(
+            weight=float(chem_loss_weight),
+            enabled=float(chem_loss_weight) > 0.0,
+        ).compute(
+            logits_for_bo=None,
+            bond_orders_continuous=None,
+            device=device,
+        )
+        qed_term = QEDLoss(
+            weight=float(qed_loss_weight),
+            enabled=float(qed_loss_weight) > 0.0,
+        ).compute(decoded_smiles_batch=None, device=device)
+        molecule_term = MoleculeLoss(
+            weight=float(molecule_loss_weight),
+            enabled=float(molecule_loss_weight) > 0.0,
+        ).compute(decoded_smiles_batch=None, device=device)
+        stereo_term = StereoCentreSuppressionLoss(
+            weight=float(stereo_loss_weight),
+        ).compute(decoded_smiles_batch=None, device=device)
+        fragment_term = SingleFragmentLoss(
+            weight=float(fragment_loss_weight),
+        ).compute(decoded_smiles_batch=None, device=device)
+        property_term = MolecularPropertyTargetLoss(
+            weight=float(property_loss_weight),
+        ).compute(decoded_smiles_batch=None, device=device)
+        fragment_connectivity_term = FragmentConnectivityLoss(
+            weight=float(fragment_connectivity_weight),
+        ).compute(decoded_smiles_batch=None, device=device)
+        natural_charge_term = NaturalChargeLoss(
+            weight=float(natural_charge_weight),
+            enabled=float(natural_charge_weight) > 0.0,
+        ).compute(predicted_charges=None, target_charges=None, device=device)
+
         loss = (
             bond_ce_term
             + wasserstein_weight * w2_val
@@ -3820,6 +4139,21 @@ def train_one_epoch(
             # here unless --gen-validity-weight is set. See the block above
             # `loss = (` for the per-cloud computation.
             + soft_valence_term
+            # Wf-A15 (2026-10-13) — 6 NEW chemistry-signal terms.  Each
+            # contributes `weight * (...)` at weight > 0.0; the default 0.0
+            # collapses every term to ``torch.zeros(())`` so the sum is
+            # bit-exact identical to the 12-term pre-Wf-A15 baseline.
+            + chem_loss_term
+            + qed_term
+            + molecule_term
+            + stereo_term
+            + fragment_term
+            + property_term
+            # Wf-A15 (2026-10-13) — 2 more chemistry-signal terms.  Same
+            # convention as the 5 above: weight = 0.0 ⇒ exact
+            # torch.zeros((), device=device) → bit-exact pre-Wf-A15.
+            + fragment_connectivity_term
+            + natural_charge_term
         )
         # 2026-10-04 — refresh the per-term side-channel read by
         # tests/test_cfm_loss_gradient_liveness.py.  Each value is the exact
@@ -3860,6 +4194,21 @@ def train_one_epoch(
                 # what the default means), LIVE when
                 # --entropy-reg-weight > 0.
                 "entropy_term": entropy_term,
+                # Wf-A15 (2026-10-13) — 6 NEW chemistry-signal terms.  Same
+                # convention as ``assemble_term`` / ``entropy_term`` /
+                # ``soft_valence_term`` above: registered unconditionally so
+                # the guard test can see them; gradient-dead at weight 0
+                # (which is the default and what pre-Wf-A15 baselines
+                # expect), LIVE when the corresponding ``*_weight`` flag is
+                # set > 0.
+                "chem_loss_term": chem_loss_term,
+                "qed_term": qed_term,
+                "molecule_term": molecule_term,
+                "stereo_term": stereo_term,
+                "fragment_term": fragment_term,
+                "property_term": property_term,
+                "fragment_connectivity_term": fragment_connectivity_term,
+                "natural_charge_term": natural_charge_term,
                 # Deliberately absent (removed from the loss sum 2026-10-04,
                 # see the comment above `loss = (`): "sa_penalty_weight*sa_loss",
                 # "per_cohort_term", "pll_term", "chemprop_v3_cache_term",
@@ -4273,6 +4622,8 @@ def generate_clouds_from_noise(
     n_steps: int = 100,
     seed: int = 0,
     noise_sigma: float = 1.0,
+    pad_groups: bool = False,
+    pad_group_bucket: int = 8,
 ) -> List[AtomCloud]:
     """Integrate the velocity field from ``x_0 ~ N(0, I)`` to ``t = 1``.
 
@@ -4308,11 +4659,121 @@ def generate_clouds_from_noise(
     # exercises the sampler, was never measured, and the failure was a
     # one-line warning inside a try/except rather than a crash.
     gen = torch.Generator(device=device).manual_seed(int(seed))
+
+    # 2026-10-12 (BLK-C-PERF) — GROUPING IS LAUNCH-BOUND, NOT COMPUTE-BOUND.
+    #
+    # MEASURED on this checkpoint (704,393 params), per vel_field forward at
+    # N=40 atoms, CUDA_VISIBLE_DEVICES pinned to one GPU:
+    #
+    #     B=  1   3.262 ms    3262.5 us per cloud
+    #     B=  3   2.757 ms     919.0 us per cloud
+    #     B= 32   2.922 ms      91.3 us per cloud
+    #     B=256   3.599 ms      14.1 us per cloud
+    #
+    # 256x the work costs 10% more time. 99.6% of the wall clock does not
+    # scale with batch, so the GPU is idle waiting on kernel launches -- the
+    # classic launch-bound signature (NVIDIA's triage rule:
+    # docs.nvidia.com/dl-cuda-graph/latest/cuda-graph-basics/).
+    #
+    # The sampler below groups by EXACT atom count, so 192 tmQM val clouds
+    # become 52 solver.sample calls at median batch 3, 40% of them at batch
+    # <= 2. Every one of those 52 calls pays the full 50 steps x 2 forwards
+    # (midpoint). Measured cost: ~15 s per generation pass, versus ~0.4 s if
+    # the same 192 clouds went through as ONE padded batch -- a 42x
+    # difference that buys nothing numerically.
+    #
+    # `pad_groups` collapses the exact-count groups into ONE group at the
+    # largest atom count. Padding atoms are placed at a radius that is
+    # provably outside any cutoff interaction and are dropped from the
+    # returned clouds, so the real atoms see the same radius graph.
+    #
+    # DEFAULT OFF. The grouped path is untouched when pad_groups is False, so
+    # every archived run keeps its exact behaviour. Equivalence when True is
+    # asserted by molmetal/tests/test_cfm_pad_groups_equivalence.py, which
+    # compares generated coordinates against the grouped path, not just the
+    # decode outcome.
+    out: List[AtomCloud] = []
     by_size: Dict[int, List[AtomCloud]] = {}
     for tpl in templates:
         by_size.setdefault(int(tpl.atomic_numbers.shape[0]), []).append(tpl)
 
-    out: List[AtomCloud] = []
+    # pad_groups: bucket the clouds by SIZE, and pad each bucket only up to
+    # its own maximum.
+    #
+    # 2026-10-12 — this was ONE batch at the GLOBAL maximum atom count. The
+    # comment above the old code said so explicitly ("ONE group at the largest
+    # atom count, every other cloud padded up to it"), and it was the reason
+    # the padded arm could not run at all.
+    #
+    # MEASURED on the 192-cloud val cohort (min 14, max 72, mean 38.8 atoms):
+    #     grouped (52 exact-size buckets)  0.33 GiB peak
+    #     one global-max batch              3.86 GiB peak     11.7x
+    # and at the production n_steps=50 the same batch drove the process to
+    # 92.06 GiB and OOM on a 95 GiB card, twice.
+    #
+    # The inflation is larger than the 3.2x edge-count ratio because
+    # ``radius_edge_index`` pads every cloud in a batch to ``e_max``, the MAX
+    # edge count over the batch -- so a 14-atom cloud is allocated the edge
+    # budget of the largest one in the batch.
+    #
+    # `pad_group_bucket` rounds each atom count UP to a multiple of this
+    # value, so a batch's padding waste is bounded by (bucket - 1) atoms
+    # instead of the global maximum. Default 8 keeps the launch count low
+    # (the point of padding at all) while capping the waste. 1 reproduces the
+    # exact-size grouped behaviour. NOT ON DISK: no measurement yet of the
+    # launch-count saving for bucket=8 versus bucket=1.
+    if pad_groups and len(by_size) > 1:
+        bucket = max(1, int(pad_group_bucket))
+        buckets: Dict[int, List[AtomCloud]] = {}
+        for n_i, members in by_size.items():
+            key = -(-n_i // bucket) * bucket  # ceil-div, no float math
+            buckets.setdefault(key, []).extend(members)
+        # Largest bucket last so peak memory occurs at the smallest batch.
+        pad_buckets = [(k, buckets[k]) for k in sorted(buckets)]
+    else:
+        pad_buckets = []
+
+    for n_atoms, group in pad_buckets:
+        b = len(group)
+        z_b = torch.zeros(b, n_atoms, dtype=torch.long, device=device)
+        node_mask = torch.zeros(b, n_atoms, dtype=torch.bool, device=device)
+        for i, g in enumerate(group):
+            n_i = int(g.atomic_numbers.shape[0])
+            z_b[i, :n_i] = g.atomic_numbers.long().to(device)
+            node_mask[i, :n_i] = True
+        x0 = torch.randn(
+            b, n_atoms, 3, device=device, generator=gen
+        ) * float(noise_sigma)
+
+        def _vf_pad(x, t, _z=z_b, _m=node_mask):
+            edge_index, edge_mask = _block_diag_radius_edges(x, _m, model.cutoff)
+            t_b = (
+                t.reshape(1).expand(x.shape[0])
+                if t.dim() == 0
+                else t.reshape(-1)[:1].expand(x.shape[0])
+            )
+            return model.vel_field(
+                x, _z, edge_index, t_b, edge_mask=edge_mask
+            )["vel"]
+
+        solver = ODESolver(
+            velocity_model=_vf_pad, method=str(method), n_steps=int(n_steps)
+        )
+        x1 = solver.sample(x0, method=str(method), n_steps=int(n_steps))
+        for i, g in enumerate(group):
+            n_i = int(g.atomic_numbers.shape[0])
+            out.append(
+                AtomCloud(
+                    positions=x1[i, :n_i].detach().cpu(),
+                    atomic_numbers=g.atomic_numbers.cpu(),
+                )
+            )
+        del x0, x1, z_b, node_mask
+    if pad_buckets and was_training:
+        model.train()
+    if pad_buckets:
+        return out
+
     with torch.no_grad():
         for n_atoms in sorted(by_size):
             group = by_size[n_atoms]
@@ -4627,6 +5088,9 @@ def evaluate_generation_validity(
     chemistry_rows_out: Optional[List[Optional[Dict[str, Any]]]] = None,
     smiles_out: Optional[List[str]] = None,
     rejected_smiles_out: Optional[List[Tuple[str, str]]] = None,
+    per_cloud_out: Optional[List[bool]] = None,
+    pad_groups: bool = False,
+    pad_group_bucket: int = 8,
 ) -> Tuple[int, int]:
     """Generate from noise, decode, and count RDKit-strict successes.
 
@@ -4654,6 +5118,17 @@ def evaluate_generation_validity(
     three seeds cover 192 distinct compositions, which is the thing that
     actually reduces the between-epoch swing the Round-2 run showed
     (MEASURED gen_validity 0.31 -> 0.69 -> 0.75 at n=16).
+
+    ``per_cloud_out`` (2026-10-12) receives ONE bool per cloud, in cloud
+    order, ``True`` where that cloud's decode passed RDKit-strict.  It exists
+    because ``smiles_out`` CANNOT be paired: it appends only on success
+    (``if smiles_out is not None and smi``), so failures are compressed out
+    and its indices stop lining up with ``clouds``.  Comparing two arms
+    through ``smiles_out`` compares different clouds, which is the
+    survivor-conditioning defect the Vina sweep already documents.  A
+    per-cloud vector is what a paired test needs, and the pad_groups A/B is
+    paired by construction -- same clouds, same noise seed, only the batching
+    differs -- so its discordant cells are the unit of evidence.
     """
     if not templates or n_samples <= 0:
         return 0, 0
@@ -4670,6 +5145,8 @@ def evaluate_generation_validity(
         n_steps=n_steps,
         seed=seed,
         noise_sigma=float(noise_sigma),
+        pad_groups=bool(pad_groups),
+        pad_group_bucket=int(pad_group_bucket),
     )
     n_ok = 0
     chem_rows: list[Optional[Dict[str, Any]]] = []
@@ -4690,6 +5167,53 @@ def evaluate_generation_validity(
     # second time (the old loop called `_decode_with_rdkit_strict(decoder,
     # cloud)`, re-running the whole head + assembly per sample).
     reason_counts: Dict[str, int] = {}
+    chem_rows: List[Optional[Dict[str, Any]]] = []
+    decode_clouds_and_classify(
+        decoder, clouds, smiles_out, rejected_smiles_out, per_cloud_out,
+        chem_rows, sa_target, reason_counts,
+    )
+    first_error = reason_counts.pop("decode_error_example", "")
+    n_ok = int(reason_counts.get("ok", 0))
+    n_decode_error = int(reason_counts.get("decode_raised", 0))
+    if chemistry_out is not None:
+        chemistry_out.clear()
+        chemistry_out.update(summarise_decode_chemistry(chem_rows))
+        chemistry_out["n_samples"] = len(clouds)
+        chemistry_out["decode_ratio"] = n_ok / max(len(clouds), 1)
+        chemistry_out["n_decode_error"] = n_decode_error
+        if first_error:
+            chemistry_out["decode_error_example"] = first_error
+        # 2026-10-09 — the failure-reason breakdown, keyed by
+        # `_rdkit_strict_reason` with `ok` as the success bucket.  Sums to
+        # n_samples + n_decode_error, so a reader can tell a model that
+        # produced bad chemistry from a decoder that never ran.
+        chemistry_out["failure_reasons"] = dict(reason_counts)
+    if chemistry_rows_out is not None:
+        chemistry_rows_out.clear()
+        chemistry_rows_out.extend(chem_rows)
+    return n_ok, len(clouds)
+
+
+def decode_clouds_and_classify(
+    decoder,
+    clouds,
+    smiles_out: Optional[List[str]],
+    rejected_smiles_out: Optional[List[Tuple[str, str]]],
+    per_cloud_out: Optional[List[bool]],
+    chem_rows: List[Optional[Dict[str, Any]]],
+    sa_target: Optional[float],
+    reason_counts: Dict[str, int],
+) -> None:
+    """Decode every cloud, classify RDKit-strict, and fill the out-params.
+
+    Extracted 2026-10-12 from ``evaluate_generation_validity`` so the decode
+    loop can be tested WITHOUT running the 50-step ODE solve that precedes it.
+    The loop is where the per-cloud alignment property lives -- an append that
+    sits after the decode is skipped whenever the decode raises, and the
+    ``except: continue`` then silently mis-pairs every later cloud -- so that
+    property needs to be reachable in a unit test, not only through a
+    multi-minute integration.
+    """
     # Rejected decodes, with the reason, so the pathology is inspectable
     # instead of inferred.  Bounded so a 100% failure rate cannot grow this
     # without limit.
@@ -4697,6 +5221,14 @@ def evaluate_generation_validity(
         [] if rejected_smiles_out is not None else None
     )
     for cloud in clouds:
+        # 2026-10-12 (BLK-C-PERF). Appended FIRST, before anything can raise
+        # or `continue`, so index i of `per_cloud_out` is always cloud i --
+        # including when the decode raises, where the `except` branch below
+        # skips straight to the next cloud. Appending later would leave the
+        # vector short and silently mis-pair every cloud after the first
+        # failure.
+        if per_cloud_out is not None:
+            per_cloud_out.append(False)
         try:
             res = decoder.decode(cloud)
             decoded = getattr(res, "decoded", None)
@@ -4727,42 +5259,36 @@ def evaluate_generation_validity(
                 elif _err:
                     _reason = "assembly_error"
             if _reason is None:
+                # `reason_counts` is the single counter. `n_ok` used to be a
+                # local of the caller before this loop was extracted; leaving
+                # the `n_ok += 1` in place made it an unbound local here, and
+                # the resulting UnboundLocalError was swallowed by this very
+                # `except`, so every SUCCESS was recorded as a raise. A
+                # refactor that turns all successes into silent failures is
+                # the reason this loop now counts only through one variable.
                 reason_counts["ok"] = reason_counts.get("ok", 0) + 1
-                n_ok += 1
+                if per_cloud_out is not None:
+                    per_cloud_out[-1] = True
             else:
                 reason_counts[_reason] = reason_counts.get(_reason, 0) + 1
                 if rejected_out is not None and len(rejected_out) < 200:
                     rejected_out.append((smi, _reason))
         except Exception as exc:
-            n_decode_error += 1
+            # 2026-10-12. `reason_counts` is the ONLY counter now; the loop's
+            # former locals (`n_ok`, `n_decode_error`, `first_error`) live in
+            # the caller. `decode_error_example` is published here and popped
+            # there, which is what keeps `chemistry_out["decode_error_example"]`
+            # -- consumed at :9360 -- working after the extraction. Dropping
+            # it would have silently removed the only evidence distinguishing
+            # "the decoder raised" from "the model sampled bad chemistry".
             reason_counts["decode_raised"] = (
                 reason_counts.get("decode_raised", 0) + 1
             )
-            if not first_error:
-                first_error = f"{type(exc).__name__}: {exc}"
+            reason_counts.setdefault(
+                "decode_error_example", f"{type(exc).__name__}: {exc}"
+            )
             chem_rows.append(None)
             continue
-    if chemistry_out is not None:
-        chemistry_out.clear()
-        chemistry_out.update(summarise_decode_chemistry(chem_rows))
-        chemistry_out["n_samples"] = len(clouds)
-        chemistry_out["decode_ratio"] = n_ok / max(len(clouds), 1)
-        chemistry_out["n_decode_error"] = n_decode_error
-        if first_error:
-            chemistry_out["decode_error_example"] = first_error
-        # 2026-10-09 — the failure-reason breakdown, keyed by
-        # `_rdkit_strict_reason` with `ok` as the success bucket.  Sums to
-        # n_samples + n_decode_error, so a reader can tell a model that
-        # produced bad chemistry from a decoder that never ran.
-        chemistry_out["failure_reasons"] = dict(reason_counts)
-    if chemistry_rows_out is not None:
-        # Raw per-sample rows, so a multi-seed caller can POOL them and
-        # re-summarise once.  Averaging per-seed means instead would weight a
-        # 4-sample seed the same as a 64-sample seed and would divide a
-        # ratio-of-ratios — both wrong, and both silently so.
-        chemistry_rows_out.clear()
-        chemistry_rows_out.extend(chem_rows)
-    return n_ok, len(clouds)
 
 
 #: 2026-10-05 (Round-3 D3) — the eval sizes below are NOISE-FLOOR choices,
@@ -4816,12 +5342,58 @@ def parse_gen_eval_seeds(raw: Any) -> List[int]:
     return out or list(DEFAULT_GEN_EVAL_SEEDS)
 
 
+def _aromatic_bias_vector(args) -> Optional[List[float]]:
+    """Build the per-class logit-bias vector from ``--bond-aromatic-logit-bias``.
+
+    Returns ``None`` — not a zero vector — when the flag is 0.0, so the
+    no-op path never allocates and never adds a tensor.  ``bond_decision``
+    treats ``None`` as the historical behaviour exactly.
+
+    ACCEPTS BOTH MAPPING AND ATTRIBUTE access (2026-10-12).  The trainer has
+    two kinds of caller: an ``argparse.Namespace`` (``args``) and a plain
+    ``dict`` (the probe merges run-time flags into the checkpoint's arg dict
+    before handing it on).  A ``getattr``-only lookup silently returns the
+    default for a dict — ``getattr({"bond_aromatic_logit_bias": 0.5}, ...)``
+    is always the fallback — so the offset was dropped on the probe path while
+    the trainer path worked.  MEASURED consequence: the aromatic-bias sweep
+    ran arms 0.0 and 0.5 and produced byte-identical SMILES on all 64 clouds
+    even after the CLI-to-decoder wiring was fixed.
+
+    The vector is built by INDEX from ``bond_head``'s own constants rather
+    than written as ``[0,0,0,0,bias]``: if a class is ever inserted or
+    reordered, a hardcoded literal would silently move the offset onto the
+    wrong class, and an aromatic offset landing on BOND_TRIPLE would amplify
+    the one bond pathology already measured on this line (66%% of generated
+    bonds) while appearing to do nothing wrong.
+    """
+    raw = None
+    if isinstance(args, dict):
+        raw = args.get("bond_aromatic_logit_bias")
+    elif args is not None:
+        raw = getattr(args, "bond_aromatic_logit_bias", None)
+    try:
+        bias = float(raw or 0.0)
+    except (TypeError, ValueError):
+        return None
+    if bias == 0.0:
+        return None
+    from molmetal.models.bond_head import (
+        BOND_AROMATIC,
+        NUM_BOND_CLASSES,
+    )
+
+    vec = [0.0] * int(NUM_BOND_CLASSES)
+    vec[int(BOND_AROMATIC)] = bias
+    return vec
+
+
 def evaluate_bond_accuracy(
     model: "CFMJointModel",
     val_clouds: Sequence[AtomCloud],
     *,
     decision: str = "argmax",
     threshold: float = 0.5,
+    class_logit_bias: Optional[Sequence[float]] = None,
 ) -> Dict[str, float]:
     """Bond prediction scored against the corpus's TRUE bond graph.
 
@@ -4844,6 +5416,12 @@ def evaluate_bond_accuracy(
     Clouds without ``bonds`` are skipped and counted in ``n_scored``, so a
     corpus that carries no truth reports ``n_scored=0`` rather than a
     meaningless 1.0.
+
+    ``class_logit_bias`` is forwarded to
+    :func:`molmetal.molmetal_lam.lam_chem.yuelbond_decoder.bond_decision` and
+    is ``None`` (a no-op) unless a caller supplies one.  See that function's
+    docstring for why the offset is per-class rather than a standard
+    prior-based logit adjustment.
     """
     model.eval()
     tp = fp = fn = 0
@@ -4881,11 +5459,18 @@ def evaluate_bond_accuracy(
     # One featuriser, built exactly the way `_bond_target_for_clean_cloud`
     # builds its own, so the pair keys below index the SAME edges the head
     # scored.
+    #
+    # Wf-A11 (2026-10-13) — site 3 of 3 inlined collate sites + the last
+    # ``getattr`` default site.  ``cloud.bonds`` is the canonical access path
+    # on :class:`AtomCloud` (it's a dataclass field, not a getattr fallback).
     featuriser = YuelBondDecoder(head=model.head)
     with torch.no_grad():
         for cloud in val_clouds:
-            truth_bonds = getattr(cloud, "bonds", None)
-            truth_types = getattr(cloud, "bond_types", None)
+            # Wf-A11 (2026-10-13) — `cloud.bonds` is the canonical dataclass
+            # access path (replaces the `getattr(cloud, "bonds", None)`
+            # fallback that silently swallowed the 4 new AtomCloud fields).
+            truth_bonds = cloud.bonds
+            truth_types = cloud.bond_types
             if truth_bonds is None or truth_types is None:
                 continue
             try:
@@ -4895,11 +5480,14 @@ def evaluate_bond_accuracy(
             if not yres.decode_succeeded or yres.logits.shape[0] == 0:
                 continue
             n_scored += 1
-            predicted = _bond_decision(yres.logits, decision, threshold)
+            predicted = _bond_decision(
+                yres.logits, decision, threshold, class_logit_bias
+            )
             predicted_alt = _bond_decision(
                 yres.logits,
                 "threshold" if decision == "argmax" else "argmax",
                 threshold,
+                class_logit_bias,
             )
             edge_index = yres.edge_index
             truth = {
@@ -4970,6 +5558,15 @@ def evaluate_bond_accuracy(
     alt_rec = alt_tp / max(alt_tp + alt_fn, 1)
     out["bond_decision"] = decision
     out["bond_decision_threshold"] = float(threshold)
+    # 2026-10-12 (BLK-C-M4) — the operating point has to be IN the metrics,
+    # not just in the argv. A bond F1 measured at an aromatic offset of +1.5
+    # and a bond F1 measured at 0.0 are different numbers, and a report that
+    # records only the first is the same class of defect as the 2026-10-05
+    # decision-rule gap. None (the default) records as null, which reads as
+    # "no offset" rather than "the key was forgotten".
+    out["bond_class_logit_bias"] = (
+        None if class_logit_bias is None else [float(x) for x in class_logit_bias]
+    )
     out["bond_f1_alt_rule"] = float(
         2 * alt_prec * alt_rec / max(alt_prec + alt_rec, 1e-9)
     )
@@ -5611,6 +6208,32 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--gen-pad-groups",
+        dest="gen_pad_groups",
+        action="store_true",
+        default=False,
+        help=(
+            "2026-10-12 (BLK-C-PERF): collapse the sampler's exact-atom-count "
+            "groups into ONE padded batch. EVAL-ONLY -- it changes how the "
+            "same clouds are batched, never what is trained or checkpointed.\n\n"
+            "Why: generation is launch-bound, not compute-bound. MEASURED on "
+            "this checkpoint (704,393 params) at N=40 atoms, one vel_field "
+            "forward costs 3.262 ms at B=1 and 3.599 ms at B=256 -- 256x the "
+            "work for 10% more time, so 99.6% of the wall clock does not "
+            "scale with batch. The sampler groups by exact atom count, so 192 "
+            "tmQM val clouds become 52 solver calls at median batch 3 (40% at "
+            "batch <= 2), each paying the full n_steps x 2 forwards. Measured "
+            "~15 s per generation pass versus ~0.4 s as one padded batch.\n\n"
+            "Equivalence, asserted by "
+            "molmetal/tests/test_cfm_pad_groups_equivalence.py: padding atoms "
+            "sit far outside the cutoff AND are dropped by node_mask, so no "
+            "real atom gains a neighbour. Coordinate-level equality against "
+            "the grouped path is verified by the recorded A/B.\n\n"
+            "DEFAULT OFF. Every archived run was produced with the grouped "
+            "path; flipping this on changes their timing, so it is opt-in."
+        ),
+    )
+    p.add_argument(
         "--gen-eval-seeds",
         dest="gen_eval_seeds",
         type=str,
@@ -5671,6 +6294,29 @@ def parse_args() -> argparse.Namespace:
             "per-epoch 'best_f1(optimistic)' line reports what a sweep would "
             "reach, and picking a production threshold needs a held-out "
             "split (choosing it on the same pairs inflates the score)."
+        ),
+    )
+    p.add_argument(
+        "--bond-aromatic-logit-bias",
+        dest="bond_aromatic_logit_bias",
+        type=float,
+        default=0.0,
+        help=(
+            "2026-10-12 NEW (BLK-C-M4): additive offset on the BOND_AROMATIC "
+            "logit, applied before the decision rule. DEFAULT 0.0 IS A NO-OP "
+            "and is byte-identical to the pre-2026-10-12 path. Premise, "
+            "MEASURED on 798 real tmQM complexes / 15,851 truth-aromatic bonds "
+            "(Wiberg BO 1.3-1.7): the head emits the aromatic class at "
+            "precision 0.889 but 70.7%% of truth-aromatic bonds collapse to "
+            "BOND_SINGLE, so the defect is class-4 vs class-1 RANKING. This "
+            "is an OPERATING-POINT knob and cannot teach a head that never "
+            "ranks aromatic first -- use it to measure what the head knows, "
+            "not as a substitute for the retrain. Deliberately per-class and "
+            "NOT the standard prior-based logit adjustment: on the Ru cohort "
+            "the pair counts are [24378, 4460, 421, 28, 5661], so a global "
+            "correction would boost BOND_TRIPLE (0.08%% of pairs) hardest, "
+            "and triple bonds are already 66%% of generated output. Set from "
+            "yaml as flow.bond_aromatic_logit_bias."
         ),
     )
     p.add_argument(
@@ -5888,7 +6534,7 @@ def parse_args() -> argparse.Namespace:
             "train time (FlowMol3 form: X_t += 1[t >= t_distort]*Bernoulli"
             "(p)*sigma*eps). Default 0.0 = OFF, bit-for-bit identical to the "
             "pre-2026-10-11 interpolant. FlowMol3 uses 0.7. DO NOT set 1.0: "
-            "FlowMol3 S10 reports p=1.0 with t_distort=0 reaches ~100% "
+            "FlowMol3 S10 reports p=1.0 with t_distort=0 reaches ~100%% "
             "validity AND collapses functional-group diversity."
         ),
     )
@@ -6238,6 +6884,20 @@ def parse_args() -> argparse.Namespace:
             "drawing train and val separately with different seeds leaks -- "
             "measured, the val candidate pool was a strict subset of the "
             "train one."
+        ),
+    )
+    p.add_argument(
+        "--tmqm-split-kind",
+        type=str,
+        default="random",
+        choices=("random", "scaffold"),
+        help=(
+            "Split strategy for the tmQM cohort.  ``random`` (default, "
+            "Wf-A8c legacy) uses a CSD-code hash split, binary 80/20.  "
+            "``scaffold`` (Wf-A14, 2026-10-13) uses Bemis-Murcko 80/10/10 "
+            "with the same scaffold family kept on one side -- the "
+            "OOD-by-construction property DrugOOD uses.  Ignored when "
+            "``--tmqm-dir`` is not the active dataset."
         ),
     )
     p.add_argument(
@@ -6664,6 +7324,157 @@ def parse_args() -> argparse.Namespace:
             "motivation (L1 Wave A 2026-10-08): gen_validity collapsed "
             "0.958 -> 0.000 at epoch 1 while bond_ce improved, so the "
             "trainer had NO validity signal.  Set e.g. 0.05 to enable."
+        ),
+    )
+    # Wf-A15 (2026-10-13) — 6 NEW chemistry-signal loss weights.  All
+    # default 0.0 → exact torch.zeros(()) in the sum, preserving the
+    # pre-Wf-A15 12-term objective bit-for-bit.
+    p.add_argument(
+        "--chem-loss-weight",
+        dest="chem_loss_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight on ContinuousBOLoss (Layer F / Wf-A15).  Default 0.0 "
+            "= exact torch.zeros(()) in the sum → bit-for-bit pre-Wf-A15."
+        ),
+    )
+    p.add_argument(
+        "--qed-loss-weight",
+        dest="qed_loss_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight on QEDLoss (Layer F / Wf-A15).  Default 0.0 = bit-exact "
+            "pre-Wf-A15."
+        ),
+    )
+    p.add_argument(
+        "--molecule-loss-weight",
+        dest="molecule_loss_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight on MoleculeLoss (Layer F / Wf-A15).  Default 0.0 = "
+            "bit-exact pre-Wf-A15."
+        ),
+    )
+    p.add_argument(
+        "--stereo-loss-weight",
+        dest="stereo_loss_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight on StereoCentreSuppressionLoss (Layer F / Wf-A15).  "
+            "Default 0.0 = bit-exact pre-Wf-A15."
+        ),
+    )
+    p.add_argument(
+        "--fragment-loss-weight",
+        dest="fragment_loss_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight on SingleFragmentLoss (Layer F / Wf-A15).  Default 0.0 "
+            "= bit-exact pre-Wf-A15."
+        ),
+    )
+    p.add_argument(
+        "--property-loss-weight",
+        dest="property_loss_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight on MolecularPropertyTargetLoss (Layer F / Wf-A15).  "
+            "Default 0.0 = bit-exact pre-Wf-A15."
+        ),
+    )
+    p.add_argument(
+        "--fragment-connectivity-weight",
+        dest="fragment_connectivity_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight on FragmentConnectivityLoss (Layer F / Wf-A15).  "
+            "Default 0.0 = bit-exact pre-Wf-A15."
+        ),
+    )
+    p.add_argument(
+        "--natural-charge-weight",
+        dest="natural_charge_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight on NaturalChargeLoss (Layer F / Wf-A15).  "
+            "Default 0.0 = bit-exact pre-Wf-A15."
+        ),
+    )
+    # Wf-A15 (2026-10-13) — Layer G.  Opt-in switch to
+    # ``build_differential_optimizer`` (molmetal/optim/differential_lr.py).
+    p.add_argument(
+        "--use-differential-lr",
+        dest="use_differential_lr",
+        action="store_true",
+        default=False,
+        help=(
+            "Replace the BLK-C5 3-group optimiser construction with "
+            "``build_differential_optimizer`` (Layer G / Wf-A15).  Off "
+            "by default → bit-for-bit pre-Wf-A15 optimiser."
+        ),
+    )
+    p.add_argument(
+        "--chem-head-lr-multiplier",
+        dest="chem_head_lr_multiplier",
+        type=float,
+        default=1.0,
+        help=(
+            "When ``--use-differential-lr`` is set, the head learning "
+            "rate is ``base_lr * chem_head_lr_multiplier``.  Default 1.0 "
+            "= single-group Adam (the legacy fast-path in "
+            "``build_differential_optimizer``)."
+        ),
+    )
+    p.add_argument(
+        "--chem-head-hints",
+        dest="chem_head_hints",
+        nargs="+",
+        default=["head", "atom_head", "bond_head", "chemistry"],
+        help=(
+            "Parameter-name substrings that mark a parameter as a head "
+            "in the differential optimiser (Layer G / Wf-A15).  When "
+            "``chem_head_lr_multiplier == 1.0`` the hints are unused "
+            "(the legacy fast-path collapses to a single group)."
+        ),
+    )
+    # Wf-A15 (2026-10-13) — Layer H.  Opt-in switch for the 4 discriminator
+    # calls (TopologyDiscriminator / ChemistryDiscriminator / MetalAwareADMET
+    # / ModelOutputAlignment).  Off by default → zero discriminator cost.
+    p.add_argument(
+        "--compute-discriminators",
+        dest="compute_discriminators",
+        action="store_true",
+        default=False,
+        help=(
+            "Compute the 4 eval-time discriminators (Layer H / Wf-A15) "
+            "and dump them under ``chemistry.discriminators`` in "
+            "``per_epoch_metrics.json``.  Off by default → bit-exact "
+            "pre-Wf-A15 eval output."
+        ),
+    )
+    # Wf-A15 (2026-10-13) — Layer E.  Opt-in toggle for the 5 chemistry
+    # channels (BO continuous / natural_charge / oxidation_state /
+    # coord_neighbors / metal_proximity) appended to
+    # ``EquivariantGraphConv.mlp_in``.  Off by default → bit-exact
+    # pre-Wf-A15 mlp_in = [h_i, h_j, dist, dir_vec, edge_type_emb].
+    p.add_argument(
+        "--use-chemistry-channels",
+        dest="use_chemistry_channels",
+        action="store_true",
+        default=False,
+        help=(
+            "Enable the 5 chemistry-signal channels in "
+            "EquivariantGraphConv (Layer E / Wf-A15).  Off by default → "
+            "the legacy mlp_in path is preserved bit-exactly."
         ),
     )
     p.add_argument(
@@ -7528,6 +8339,50 @@ def main() -> int:
             "so a value != 1 is a silent no-op (§5.7 FLAG_ONLY). Remove the "
             "flag or wire a real recursion call site before enabling."
         )
+    # --entropy-reg-weight SUB-THRESHOLD guard (BLK-C14, 2026-10-11).
+    #
+    # The failure mode this exists to catch is NOT "the flag does nothing" —
+    # at any weight > 0 the entropy term is gradient-live, and there is a test
+    # pinning that (test_wf_track5_zero_weight_loss_terms.py::
+    # test_entropy_term_is_strongest_exactly_where_the_collapse_is). It is
+    # the quieter version: a weight that is large enough to read as ON, and
+    # small enough that the term cannot be observed in the loss it is added
+    # to, so the arm is reported as an entropy-regularised run when it is
+    # effectively an unregularised one.
+    #
+    # MEASURED (BLK-C14 42-step CPU probe): raw H(softmax(bond logits)) ran
+    # 1.2-1.43 with NO trend, and the weight needed to reach parity with the
+    # bond CE term is 0.12-0.15. Re-derived independently 2026-10-11 against
+    # the live epoch-5 train_loss of 9.28459 (per_epoch_metrics.csv):
+    #   at 0.01 -> |term| = 0.01 * H = 0.010..0.018 = 0.11%..0.19% of loss
+    #   at 0.12 -> 1.3%..2.3%
+    #
+    # This is a WARNING, not a failure: a sub-threshold weight is a legitimate
+    # thing to A/B, and silently forcing it up would break the DEFAULT-OFF
+    # bit-for-bit contract in the other direction. What it forbids is doing
+    # it SILENTLY — the message names the term, the measured fraction, and
+    # the measured band, so the next reader cannot mistake the arm for a
+    # working regulariser.
+    _entropy_w = float(getattr(args, "entropy_reg_weight", 0.0) or 0.0)
+    if 0.0 < _entropy_w < ENTROPY_REG_MEASURED_FLOOR:
+        _h_lo, _h_hi = 1.2, 1.8
+        _t_lo, _t_hi = _entropy_w * _h_lo, _entropy_w * _h_hi
+        _live = 9.28459  # MEASURED epoch-5 train_loss, objective-terms arm
+        print(
+            f"[BLK-C14] WARNING: --entropy-reg-weight {_entropy_w} is BELOW the "
+            f"measured observability floor {ENTROPY_REG_MEASURED_FLOOR}. With "
+            f"raw H in [{_h_lo}, {_h_hi}] the term is {_t_lo:.4f}..{_t_hi:.4f}, "
+            f"i.e. {100 * _t_lo / _live:.2f}%..{100 * _t_hi / _live:.2f}% of the "
+            f"live train_loss ({_live}, MEASURED). A run at this weight "
+            f"differs from one at 0.0 by an amount that cannot be separated "
+            f"from run-to-run variation on the gate metric, so it must NOT be "
+            f"reported as an entropy-regularised arm. (The gate-metric noise "
+            f"floor is itself NOT measured — this warning asserts "
+            f"non-observability, not a measured noise band.) BLK-C14 measured "
+            f"0.12-0.15 as the parity band; "
+            f"configs/cfm_entropy_reg_012_2026_10_11.yaml uses 0.12.",
+            flush=True,
+        )
     # --use-shortcut-consistency: backward-compat alias for the LIVE lever
     # ``--consistency-weight`` (read at the loss cascade).  The boolean used
     # to gate nothing; map it onto the real knob so old Wf-341/Wf-385 scripts
@@ -7725,6 +8580,14 @@ def main() -> int:
         # the same head of the same files.  `split=` partitions by CSD-code
         # hash so the two sides cannot overlap.
         _tmqm_val_frac = float(getattr(args, "tmqm_val_frac", 0.2))
+        # 2026-10-13 (Wf-A14) — Bemis-Murcko scaffold split opt-in.  When
+        # ``tmqm_split_kind="scaffold"`` the loader uses the SMILES-derived
+        # Bemis-Murcko key (with CSD-prefix proxy for empty SMILES) and
+        # partitions by SCAFFOLD, so the same scaffold family never
+        # crosses train/val (the OOD-by-construction property DrugOOD
+        # uses for its OOD axes).  Default "random" preserves the
+        # pre-Wf-A14 hash-split bit-exactly.
+        _tmqm_split_kind = str(getattr(args, "tmqm_split_kind", "random"))
         train_clouds = _load_tmqm(
             _tmqm_root,
             metals=_tmqm_metals,
@@ -7733,6 +8596,7 @@ def main() -> int:
             seed=args.seed,
             split="train",
             val_frac=_tmqm_val_frac,
+            split_kind=_tmqm_split_kind,
         )
         val_clouds = _load_tmqm(
             _tmqm_root,
@@ -7742,6 +8606,7 @@ def main() -> int:
             seed=args.seed,
             split="val",
             val_frac=_tmqm_val_frac,
+            split_kind=_tmqm_split_kind,
         )
     elif _dataset == "csv":
         _csv_path = str(_data_csv)
@@ -8084,6 +8949,12 @@ def main() -> int:
         connectivity_prior_min_logit=float(
             getattr(args, "connectivity_prior_min_logit", 0.0)
         ),
+        # 2026-10-12 (BLK-C-M4) — same construction-site rule as the
+        # connectivity prior above: this is decode-time postprocess, so an
+        # EXISTING checkpoint changes behaviour the moment it is set, with no
+        # retrain. `_aromatic_bias_vector` returns None when the flag is 0.0,
+        # which keeps the no-op path free of tensor arithmetic.
+        class_logit_bias=_aromatic_bias_vector(args),
     )
     print(
         f"[cfm-decoder] decision={decoder.decision} "
@@ -8174,17 +9045,77 @@ def main() -> int:
             },
             {"params": _bond_params, "lr": float(args.lr)},
         ]
+        # Wf-A16 (2026-10-13) c-flow pocket optimizer group.
+        #
+        # When ``model.pocket_encoder`` is set (default ON for backward-
+        # compat), add a 4th param group at ``lr * 0.5`` — pocket is
+        # auxiliary to the gen-flow axis and should NOT outpace the
+        # chemistry-aware head.  When ``model.pocket_encoder is None``
+        # (opt-out), this block is skipped and the legacy 3-group
+        # BLK-C5 split is preserved bit-for-bit.
+        _pocket_lr_mult = float(
+            getattr(args, "pocket_encoder_lr_multiplier", 0.5)
+        )
+        if (
+            _pocket_lr_mult > 0.0
+            and getattr(model, "pocket_encoder", None) is not None
+        ):
+            _pocket_params = list(model.pocket_encoder.parameters())
+            if _pocket_params:
+                _param_groups.append(
+                    {
+                        "params": _pocket_params,
+                        "lr": float(args.lr) * _pocket_lr_mult,
+                    }
+                )
         print(
-            f"[BLK-C5] param_groups=3 "
+            f"[BLK-C5] param_groups={len(_param_groups)} "
             f"atom_head={len(_atom_params)} "
             f"gen_flow={len(_gen_flow_params)} "
             f"bond_head={len(_bond_params)} "
+            f"pocket={sum(1 for g in _param_groups if 'pocket_encoder' not in str(g.get('params', [])) and any('pocket_encoder' in n for n, _ in model.named_parameters() if _ in g.get('params', [])))} "
             f"gen_flow_lr={float(args.lr) * _gen_head_lr_scale:g} "
             f"(base lr={float(args.lr):g})"
         )
     # Default path: `_param_groups is None` → the optimiser is constructed
     # exactly as it was before BLK-C5 (one flat `model.parameters()`).
-    if _opt_name == "adamw":
+    # ------------------------------------------------------------------
+    # Wf-A15 (2026-10-13) — Layer G.  Opt-in switch to
+    # ``build_differential_optimizer`` (molmetal/optim/differential_lr.py).
+    # When ``--use-differential-lr=False`` (default for backward compat),
+    # the BLK-C5 path is preserved bit-for-bit.  When ``--use-differential-lr=True``,
+    # the 3-group split produced above is replaced with the 4-group
+    # head / no-decay / decay / backbone path.  ``build_differential_optimizer``
+    # is the same primitive other Mol-Metal trainers use; here it
+    # carries ``chem_head_lr_multiplier`` so the new chemistry channels
+    # (Layer E) and 6 NEW loss terms (Layer F) can run at their own LR
+    # without disturbing the rest of the model.
+    # ------------------------------------------------------------------
+    _use_diff_lr = bool(getattr(args, "use_differential_lr", False))
+    if _use_diff_lr:
+        _chem_head_lr_mult = float(
+            getattr(args, "chem_head_lr_multiplier", 1.0)
+        )
+        _chem_head_hints = list(
+            getattr(
+                args,
+                "chem_head_hints",
+                ("head", "atom_head", "bond_head", "chemistry"),
+            )
+        )
+        optimiser = build_differential_optimizer(
+            model,
+            base_lr=float(args.lr),
+            head_lr_multiplier=_chem_head_lr_mult,
+            weight_decay=float(getattr(args, "weight_decay", 0.0)),
+            head_hints=tuple(_chem_head_hints),
+        )
+        print(
+            f"[Wf-A15] differential_optimizer=ON "
+            f"head_lr_mult={_chem_head_lr_mult} "
+            f"hints={_chem_head_hints}"
+        )
+    elif _opt_name == "adamw":
         optimiser = optim.AdamW(
             _param_groups if _param_groups is not None else model.parameters(),
             **_opt_kwargs,
@@ -8799,6 +9730,17 @@ def main() -> int:
             # default so an args namespace built elsewhere (tests, other
             # entry points) keeps the pre-flag objective exactly.
             bond_loss_weight=float(getattr(args, "bond_loss_weight", 1.0)),
+            # Wf-A15 (2026-10-13) — 6 NEW chemistry-signal loss terms (Layer F).
+            # All default to 0.0 → exact torch.zeros(()) in the sum, so the
+            # objective is bit-for-bit identical to pre-Wf-A15.
+            chem_loss_weight=float(getattr(args, "chem_loss_weight", 0.0)),
+            qed_loss_weight=float(getattr(args, "qed_loss_weight", 0.0)),
+            molecule_loss_weight=float(getattr(args, "molecule_loss_weight", 0.0)),
+            stereo_loss_weight=float(getattr(args, "stereo_loss_weight", 0.0)),
+            fragment_loss_weight=float(getattr(args, "fragment_loss_weight", 0.0)),
+            property_loss_weight=float(getattr(args, "property_loss_weight", 0.0)),
+            fragment_connectivity_weight=float(getattr(args, "fragment_connectivity_weight", 0.0)),
+            natural_charge_weight=float(getattr(args, "natural_charge_weight", 0.0)),
         )
         # BLK-C5 (2026-10-09) — staged unfreeze, 用户建议二 修改建议 A.
         # `epoch` is 0-based, so the warmup boundary is reached when the
@@ -8857,6 +9799,12 @@ def main() -> int:
                     threshold=float(
                         getattr(args, "bond_decision_threshold", 0.5)
                     ),
+                    # 2026-10-12 (BLK-C-M4) — the SAME vector the decoder
+                    # gets, so the reported bond metrics and the assembled
+                    # molecules are produced by one rule. Passing it to the
+                    # metrics but not the decoder is the exact 2026-10-05
+                    # wiring gap this comment already describes.
+                    class_logit_bias=_aromatic_bias_vector(args),
                 )
             finally:
                 if _ema_swapped:
@@ -9024,6 +9972,7 @@ def main() -> int:
                         chemistry_rows_out=_rows_seed,
                         smiles_out=_gen_smiles,
                         rejected_smiles_out=_gen_rejected,
+                        pad_groups=bool(getattr(args, "gen_pad_groups", False)),
                     )
                     _gen_ok += int(_ok_s)
                     _gen_tot += int(_tot_s)
@@ -9061,6 +10010,62 @@ def main() -> int:
                 # it only records RDKit-strict survivors.
                 _gen_chem["failure_reasons"] = dict(_gen_reasons)
                 _gen_chem["failure_reasons_total"] = int(sum(_gen_reasons.values()))
+                # Wf-A15 (2026-10-13) — Layer H.  4 NEW discriminator calls
+                # over the decoded pool.  Each returns a flat Dict[str, float]
+                # that we emit alongside the existing chemistry breakdown.
+                # When ``--compute-discriminators=False`` (default for back-
+                # ward compat) the calls are skipped and the dict is empty.
+                if bool(getattr(args, "compute_discriminators", False)):
+                    try:
+                        _topo_disc = TopologyDiscriminator()
+                        _chem_disc = ChemistryDiscriminator()
+                        _metal_admet = MetalAwareADMET()
+                        _align_disc = ModelOutputAlignment()
+                        _topo_rows: List[Dict[str, float]] = []
+                        _chem_rows_disc: List[Dict[str, float]] = []
+                        _admet_rows: List[Dict[str, float]] = []
+                        _align_rows: List[Dict[str, float]] = []
+                        # Use the pooled SMILES set when available (these
+                        # are the survivors); fall back to per-row scans of
+                        # rejected SMILES otherwise.  No tensor move, no
+                        # extra decode — discriminators read SMILES only.
+                        for _smi in (list(_gen_smiles) if _gen_smiles else []):
+                            _topo_rows.append(_topo_disc(smi=_smi))
+                            _chem_rows_disc.append(_chem_disc(smi=_smi))
+                            _admet_rows.append(
+                                _metal_admet(
+                                    smi=_smi,
+                                    oxidation_state=None,
+                                    coord_n=None,
+                                )
+                            )
+                            _align_rows.append(_align_disc(smi=_smi))
+                        # Aggregate the per-row discriminators with a flat
+                        # mean so a reader sees one number per metric.
+                        def _mean_dict(rows):
+                            if not rows:
+                                return {}
+                            keys = set()
+                            for r in rows:
+                                keys.update(r.keys())
+                            return {
+                                k: float(sum(r.get(k, 0.0) for r in rows))
+                                / max(len(rows), 1)
+                                for k in sorted(keys)
+                            }
+                        _disc_out = {
+                            "topology": _mean_dict(_topo_rows),
+                            "chemistry": _mean_dict(_chem_rows_disc),
+                            "metal_aware_admet": _mean_dict(_admet_rows),
+                            "model_output_alignment": _mean_dict(_align_rows),
+                            "n_smiles_scored": int(len(_gen_smiles) or 0),
+                        }
+                        _gen_chem["discriminators"] = _disc_out
+                    except Exception as _disc_exc:
+                        # NEVER let a discriminator crash abort the run.
+                        _gen_chem["discriminators_error"] = (
+                            f"{type(_disc_exc).__name__}: {_disc_exc}"
+                        )
                 # Rejected decodes, written beside the accepted ones.  Same
                 # gate as the accepted dump: a run that does not opt in pays
                 # nothing, and a run that does gets the pathology on disk

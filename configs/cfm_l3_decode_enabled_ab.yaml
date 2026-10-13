@@ -1,0 +1,60 @@
+# configs/cfm_l3_decode_enabled_ab.yaml — L3 sampling-time guidance A/B,
+# decode ON, on the cfm_fullcorpus_2026_10_10 checkpoint.
+#
+# Consumed by: molmetal/scripts/wf_blkc_l3_guidance_probe.py
+# Invoke with:  .venv/bin/python molmetal/scripts/wf_blkc_l3_guidance_probe.py \
+#                  --config configs/cfm_l3_decode_enabled_ab.yaml \
+#                  --out <arm.json> --arm <arm_label> --guidance-strength <0.0|0.05>
+#
+# WHY THIS EXISTS (cfm_todo.json::next_actions[2] priority 3, 2026-10-12)
+# -------------------------------------------------------------------------
+# The earlier 0.05 arm on cfm_patience10_seed0 measured the geometry gain
+# (min_pair_distance 0.570 -> 1.155 A, metal-ligand 1.234 -> 1.602 A) but
+# ran with --skip-decode, so the QED / SA / aromatic-pair-distance axis
+# is NOT yet measured. This file re-runs the same pair on the
+# fullcorpus_2026_10_10 checkpoint with decode ON so the SMILES-level
+# axis becomes a number, not a project.
+#
+# cfm_todo.json::next_actions[2].blocking: BLK-C-M4 sub-question ii
+# (gen-side substrate) and BLK-C-L3 (geometry axis). cfm_todo.json::
+# next_actions[2].why_priority_3: the geometry gain is already MEASURED
+# (0.72 of 0.72 A on min pair distance; 0.585 A on metal-ligand first
+# shell); the decode-enabled variant is the missing measurement.
+#
+# No retrain. Same seed, same clouds, same checkpoint, only guidance_strength
+# differs. AGENTS.md 5.1 standing GPU grant covers this; pre-flight 7/7 PASS.
+
+model:
+  # The fullcorpus_2026_10_10 checkpoint (cfm_todo.json::next_actions[2]
+  # names this one explicitly). Lives under `model:` per AGENTS.md 5.11 +
+  # the existing L3 sweep YAML's convention.
+  ckpt: molmetal/reports/cfm_fullcorpus_2026_10_10/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt
+
+eval:
+  # Match the anchor sweep (configs/cfm_l3_guidance_sweep_2026_10_12.yaml)
+  # on n_clouds / n_steps / method / seed so the A/B is comparable.
+  n_clouds: 64
+  n_steps: 50
+  method: midpoint
+  seed: 1234
+  # decode ON. This is the point of the A/B: geometry alone cannot answer
+  # whether the L3 axis is exhausted.
+  skip_decode: false
+  compare_real: true
+
+output:
+  # Per-arm JSON path is supplied on the CLI; the YAML holds the default
+  # so a bare `--config` invocation lands somewhere sensible. The
+  # cfm_l3_decode_enabled_ab launcher overwrites this with --out.
+  out: molmetal/reports/cfm_l3_decode_enabled_ab/control.json
+
+entry:
+  # scripts/_config_binding_gate.py requires every configs/*.yaml to
+  # name the script it launches.
+  script: molmetal/scripts/wf_blkc_l3_guidance_probe.py
+  command_template: >-
+    {python} {script} --config {yaml_path}
+  # `--config {yaml_path}` alone is a complete invocation: ckpt, n_clouds,
+  # n_steps, method, seed, skip_decode, compare_real all come from the
+  # YAML. --guidance-strength and --arm are passed per arm by the
+  # A/B launcher; --out names the destination file.

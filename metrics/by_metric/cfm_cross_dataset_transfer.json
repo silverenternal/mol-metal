@@ -1,0 +1,38 @@
+{
+  "config": {
+    "ckpt_path": "molmetal/checkpoints/cfm_yuelbond_wasserstein.pt",
+    "datasets": [
+      "platinai_4cell"
+    ],
+    "device": "cpu",
+    "out_json": "metrics/by_metric/cfm_cross_dataset_transfer.json"
+  },
+  "results": [
+    {
+      "dataset": "platinai_4cell",
+      "n_input": 0,
+      "n_decoded": 0,
+      "n_valid_oracle": 0,
+      "oracle": "<linear-probe-only>",
+      "mean_score": NaN,
+      "linear_probe": {
+        "head_kind": "CFMEncoderProbe",
+        "frozen_param_count": 47685,
+        "trainable_param_count": 0,
+        "epochs": 20,
+        "n_input": 200,
+        "n_decoded": 196,
+        "test_auc_per_label": {
+          "MCF7": 0.5,
+          "A549": 0.47500000000000003,
+          "A2780": 0.5,
+          "A2780cis": 0.5
+        },
+        "test_auc_mean": 0.49375,
+        "wall_time_s": 48.38277888298035
+      },
+      "linear_probe_reason": null
+    }
+  ],
+  "wall_time_s": 48.680607318878174
+}

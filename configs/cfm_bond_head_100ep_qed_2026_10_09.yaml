@@ -1,0 +1,58 @@
+# CFM bond-head 100-epoch QED-eval run (BLK-C2 variant).
+#
+# 2026-10-09 (AGENTS.md §5.11 — "只能 yaml 启动，no cli参数"): created when
+# scripts/launch_wf_fix3lines_cfm_100ep_qed.sh stopped passing hyperparameters as CLI flags. The values
+# below are a FAITHFUL transcription of what that wrapper's command line
+# actually passed, so this file is a true record of the run rather than a
+# post-hoc tidy-up. In particular see `model.use_fm_objective` — it is OFF
+# because the wrapper never set it and the argparse default is False, NOT
+# because it was reviewed and chosen.
+#
+# Only variant of the three that set --use-egnn-velocity, so this is
+# the only one of them whose velocity path is a real SE(3) field — and it still
+# has use_fm_objective off, so per configs/cfm_blk_c5_repair_2026_10_09.yaml
+# the field is trained by the Wasserstein geometry anchor alone.
+data:
+  dataset: tmqm
+  tmqm_dir: .data/molmetal/tmQM
+  tmqm_coord_number: -1
+model:
+  hidden_dim: 128
+  n_layers: 3
+  use_egnn_velocity: true
+  use_fm_objective: false
+  save_generated_smiles: true
+flow:
+  method: rk4
+  n_steps: 100
+protocol:
+  batch_size: 16
+  # 2026-10-09: declared so the run is traceable. The pre-§5.11 command line
+  # never passed --lr, so this ran at the trainer's DEFAULT_LR
+  # (train_cfm_yuelbond_wasserstein.py:862 = 3.0e-4) by accident rather than by
+  # choice. p3_wf343c4_hyperparams_config_complete FAILs a config that omits it,
+  # which is the correct behaviour — a value nobody wrote down is a value nobody
+  # can reproduce.
+  lr: 0.0003
+
+  early_stop_patience: 999
+  n_seeds: 1
+  epochs: 100
+  gen_eval_n: 64
+  gen_validity_samples: 16
+compute:
+  gpu: cuda:0
+  device: cuda:0
+output:
+  base_dir: molmetal/reports/cfm_bond_head_100ep_qed_2026_10_09
+  log_master: molmetal/reports/cfm_bond_head_100ep_qed_2026_10_09/master.log
+  ckpt_dir: molmetal/reports/cfm_bond_head_100ep_qed_2026_10_09/checkpoints
+  events_jsonl: true
+  resume_from: none
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+    --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  note: FAITHFUL TRANSCRIPTION of the pre-§5.11 command line. Not a reviewed hyperparameter
+    choice.

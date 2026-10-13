@@ -1,0 +1,97 @@
+# configs/cfm_l3_guidance_sweep_2026_10_12.yaml — sampling-time guidance sweep.
+#
+# Consumed by: molmetal/scripts/wf_blkc_l3_guidance_probe.py
+# Invoke with:  .venv/bin/python molmetal/scripts/wf_blkc_l3_guidance_probe.py \
+#                  --ckpt <ckpt> --out <out.json> --config configs/cfm_l3_guidance_sweep_2026_10_12.yaml
+#
+# WHY THIS EXISTS (user directive 2026-10-12, AGENTS.md 5.11)
+# ------------------------------------------------------------
+# The first guidance measurement was a single arm at strength 0.05 on 24 clouds
+# with decode SKIPPED. One point is not a sweep, and skipping decode means the
+# result cannot answer the question that matters: cfm_todo.json::
+# the_objective_2026_10_12 asks for better QED / SA / ADMET, and none of those
+# exist until the sampled geometry is decoded into a molecule.
+#
+# WHAT THE 0.05 ARM ALREADY SHOWED (metrics/by_metric/cfm_l3_guidance_ab.json)
+#   min_pair_distance  0.570 -> 1.155 A   (real tmQM 1.172, abs err 0.602 -> 0.017)
+#   metal-ligand       1.234 -> 1.602 A   (real tmQM 1.953, gap 0.351 A still OPEN)
+#   frac_pairs_hard_clash 0.0148 -> 0.0023
+#   clouds with >=1 clash  24/24 -> 13/24
+#
+# THE STRENGTH GRID, and why these four numbers
+# ----------------------------------------------
+# The only measured point is 0.05, which OVERSHOOTS the global minimum (1.155 vs
+# 1.172 real: it pushed past the target) while UNDER-shooting the metal-ligand
+# contact (1.602 vs 1.953). Those two facts bracket the useful range: the force
+# needs to be strong enough to separate atoms that still overlap, but 0.05 is
+# already past the right answer on the global metric. So the grid brackets 0.05
+# on BOTH sides rather than scaling outward from it:
+#
+#   0.00  the control. MUST be present in every sweep; without it the other
+#         arms have nothing to be different from.
+#   0.01  the bracket that tests the overshoot claim. If abs error to the real
+#         1.172 is SMALLER here than at 0.05, then 0.05 overshot and the useful
+#         maximum is below it.
+#   0.05  the one arm with a prior measurement. Re-run identically so the sweep
+#         is anchored to a number already on disk rather than to nothing.
+#   0.15  the bracket that tests whether the metal-ligand gap (0.351 A, the
+#         biggest remaining precious-metal-specific gap in the line) closes at
+#         all. If 0.15 does not move 1.602 meaningfully, guidance strength is
+#         not the lever for coordination geometry and that is a real result.
+#
+# These are NOT hyperparameter guesses at a training recipe — guidance is
+# inference-time and this run trains nothing. They are the grid that brackets
+# the one measured point, which is what the standing-GPU-grant constraint
+# ("cite peer papers, do not guess") reduces to when there is no peer paper for
+# a force that exists only in this repo.
+#
+# n_clouds is 64 (up from 24) so a clash-count difference has a denominator
+# worth quoting. n_steps is 50, matching the shipped eval protocol, NOT the 20
+# used in the 0.05 probe — a sweep whose axis differs from its anchor measures
+# something else.
+
+# SECTION NAMES ARE NOT FREE
+# ---------------------------
+# wfA2_config_loader._resolve_dest matches a leaf only when the YAML path is
+# exactly two components AND the section is in _LEAF_FALLBACK_SECTIONS
+# (protocol | model | flow | data | compute | eval | output | train). A key
+# under any other section resolves to nothing and is reported as SKIPPED --
+# the Wf-A9 silent-lie class. This file first used a `run:` section and
+# scripts/_config_binding_gate.py failed with "10 key(s) resolve to no dest".
+# So the sections below are chosen from the whitelist, not for taste.
+
+model:
+  # The checkpoint under evaluation. This is a MODEL artefact, which is why it
+  # lives under `model:` rather than `data:`.
+  ckpt: molmetal/reports/cfm_patience10_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt
+
+eval:
+  n_clouds: 64
+  n_steps: 50
+  method: midpoint
+  seed: 1234
+  # decode ON. This is the point of the sweep: geometry without SMILES cannot
+  # be scored on QED / SA / ADMET.
+  skip_decode: false
+  compare_real: true
+
+output:
+  out: molmetal/reports/cfm_l3_guidance_sweep_seed0/arm_strength0.0.json
+
+sweep:
+  strengths: [0.0, 0.01, 0.05, 0.15]
+  arm_prefix: strength
+entry:
+  # scripts/_config_binding_gate.py requires every configs/*.yaml to name the
+  # script it launches, and AGENTS.md 5.11 requires command_template to use
+  # only {placeholder} values -- a literal value or a bare switch there is a
+  # violation, because it is a hyperparameter smuggled past the YAML.
+  script: molmetal/scripts/wf_blkc_l3_guidance_probe.py
+  command_template: >-
+    {python} {script} --config {yaml_path}
+  # `--config {yaml_path}` alone is a complete invocation: the values above
+  # (ckpt, out, n_clouds, n_steps, method, seed, skip_decode, compare_real)
+  # cover everything except guidance_strength, whose 0.0 default IS the control
+  # arm. scripts/launch_cfm_l3_guidance_sweep.sh reads sweep.strengths from
+  # this same file and passes --out and --guidance-strength per arm, so the
+  # grid cannot drift from the config that documents it.

@@ -19,6 +19,8 @@ data:
   tmqm_metals: Pt,Ru,Ir,Rh,Os,Re
   tmqm_coord_number: -1
   tmqm_val_frac: 0.2
+  # Wf-A14 (2026-10-13) Bemis-Murcko scaffold 80/10/10 split. Default random preserves Wf-A8c hash split bit-exactly.
+  tmqm_split_kind: random
 model:
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'backbone' removed (no --backbone dest).
   hidden_dim: 128
@@ -35,6 +37,17 @@ model:
   # for the full rationale).  Without this the trainer builds CFMJointModel,
   # whose velocity path is a 2-layer MLP placeholder, and every `flow:` term
   # below regularises that placeholder instead of a real SE(3) field.
+  # 2026-09-09 ALIGNMENT — this key was ABSENT, so the argparse default (False)
+  # applied. With it off, fm_term is an exact zero
+  # (train_cfm_yuelbond_wasserstein.py:2710 initialises it; :2715 gates the whole
+  # block on `if fm_objective and batch_clouds:`), so the EGNN velocity field's
+  # ONLY gradient source is the Wasserstein geometry anchor at :2355 — an anchor
+  # pulling predicted velocity toward a reference square-planar Pt geometry, NOT
+  # the flow-matching regression onto dx = x1 - x0. MEASURED gradient census on
+  # the sibling configs/cfm_blk_c5_repair_2026_10_09.yaml (same model shape,
+  # CPU 1-epoch): head.msg_mlps 2.24e+03 | other 1.14e+03 | vel_field 1.27e+01.
+  # Aligned with cfm.yaml + cfm_tmqm_all6.yaml, which both set this true.
+  use_fm_objective: true
   use_egnn_velocity: true
   egnn_max_atomic_number: 100
   egnn_context_dropout: 0.1
@@ -177,8 +190,12 @@ directives:
   - p3_wf343c4_anchor_freshness_24h
   - p3_wf343c2_per_wave_runtime_check
 entry:
+  # 2026-10-09 (§5.11): `--config {yaml_path}` was MISSING from this template,
+  # so apply_yaml_overrides never ran and every yaml section in this file was
+  # decorative — the run was driven purely by the template placeholders below.
+  # The bare `--use-yuelbond` switch is gone too: flow.use_yuelbond carries it.
   script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
-  command_template: CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --epochs {epochs} --use-yuelbond --pocket-id {pocket_id} --seed {seed} --out-dir {out_dir}
+  command_template: CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --epochs {epochs} --pocket-id {pocket_id} --seed {seed} --out-dir {out_dir}
 honest_framing:
   # 2026-10-04 CORRECTION — the first claim used to read "Real-CFM
   # decode_ratio lift smoke on 26632-row MetalCytoToxDB 5-metal v2 (...)".

@@ -43,6 +43,17 @@ data:
   # train and val separately with different seeds LEAKS: MEASURED, the val
   # candidate pool was a strict subset of the train one, 160/160.
   tmqm_val_frac: 0.2
+  # Wf-A14 (2026-10-13) Bemis-Murcko scaffold 80/10/10 split. Default random preserves Wf-A8c hash split bit-exactly.
+  tmqm_split_kind: random
+  # Wf-A11 (2026-10-13) — 5 new keys re-enabling loader-output fields that
+  # were silently dropped by the 4 getattr defaults before this round (A1
+  # root cause = float BO strip at tmqm_clouds.py:248-249; D1 = missing
+  # tmQM_X.q reader; A5 = per-atom coord-neighbour list collapse).
+  use_natural_charges: true
+  use_dft_properties: true
+  use_continuous_bo: true
+  use_coord_neighbors: true
+  use_stoichiometry: true
 model:
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'backbone' removed (no --backbone dest).
   hidden_dim: 128
@@ -60,6 +71,17 @@ model:
   # for the full rationale).  Without this the trainer builds CFMJointModel,
   # whose velocity path is a 2-layer MLP placeholder, and every `flow:` term
   # below regularises that placeholder instead of a real SE(3) field.
+  # 2026-09-09 ALIGNMENT — this key was ABSENT, so the argparse default (False)
+  # applied. With it off, fm_term is an exact zero
+  # (train_cfm_yuelbond_wasserstein.py:2710 initialises it; :2715 gates the whole
+  # block on `if fm_objective and batch_clouds:`), so the EGNN velocity field's
+  # ONLY gradient source is the Wasserstein geometry anchor at :2355 — an anchor
+  # pulling predicted velocity toward a reference square-planar Pt geometry, NOT
+  # the flow-matching regression onto dx = x1 - x0. MEASURED gradient census on
+  # the sibling configs/cfm_blk_c5_repair_2026_10_09.yaml (same model shape,
+  # CPU 1-epoch): head.msg_mlps 2.24e+03 | other 1.14e+03 | vel_field 1.27e+01.
+  # Aligned with cfm.yaml + cfm_tmqm_all6.yaml, which both set this true.
+  use_fm_objective: true
   use_egnn_velocity: true
   egnn_max_atomic_number: 100
   egnn_context_dropout: 0.1
@@ -70,6 +92,24 @@ model:
   # velocity field trained from random init in every shipped run.
   use_tmqm_init: true
   pcgrad_multi_task: false
+  # ----------------------------------------------------------------------
+  # Wf-A11 (2026-10-13) bond-head surface — APPENDED, never rearranged.
+  # ----------------------------------------------------------------------
+  # Reaches BondOrderHead (molmetal/models/bond_head.py:650) when the
+  # Lipman adapter / BondAwareDecoder consume it; CFMJointModel's
+  # YuelBondDecoderHead is unaffected.  Defaults match the Round-10
+  # BondOrderHead.__init__ kwargs so omitting this block keeps the
+  # legacy shape exactly.  See TODO/completed/wfa11_bond_head_redo.md.
+  bond_head_hidden_dim: 128
+  bond_head_n_layers: 4
+  bond_head_dropout: 0.15
+  bond_head_continuous_bo: false
+  bond_head_training_mode: "joint"
+  head_use_cloud_ctx: false
+  # Wf-A11 (2026-10-13) — BondOrderHead in_dim 9 → 11 (D5: 1 of the 9
+  # shipped features was hardcoded 0.0; the slot now carries the real
+  # distance_to_metal + bond_orders_continuous supervision target).
+  bond_head_in_dim: 11
 flow:
   # 2026-10-04 — bond head objective + decision rule.  See
   # configs/cfm_tmqm_all6.yaml for the full reasoning and the MEASURED
@@ -118,6 +158,28 @@ flow:
   # ("cutoff=3.5 A excludes 4.1 A Cl-Cl"), and --edge-cutoff now carries
   # it into YuelBondDecoderHead.  Changing this number now changes the run.
   edge_cutoff: 3.5
+  # Wf-A11 (2026-10-13) — auxiliary MSE on the float Wiberg BO the loader
+  # now carries end-to-end. Weight 0.1 matches the design brief; 0.0
+  # disables the term and falls back to legacy CE-only training (no
+  # behavioural change for pre-Wf-A11 runs).
+  bond_continuous_mse_weight: 0.1
+  # Wf-A11 (2026-10-13) — when true, BondAwareDecoder + ConnectivityAwareDecoder
+  # replace the hardcoded 0.0 angle_to_metal with a real angle deviation
+  # computed from `metal_atom_index` (closes D5 + #12 honest-negative).
+  angle_to_metal_enabled: true
+  # ----------------------------------------------------------------------
+  # Wf-A11 (2026-10-13) trainer-level intent — APPENDED, never rearranged.
+  # ----------------------------------------------------------------------
+  # Reach CFMJointModel.__init__ via the cfg loader's leaf fallback.
+  # t_eval_grid drives `forward_with_t_grid(...)`; training (forward())
+  # still anchors at t=1 so the W2 baseline is unchanged.
+  # clash_penalty_weight gates whether `_compute_clash_penalty(...)` runs
+  # inside forward() and stashes a scalar on `model.last_clash_penalty`.
+  # bond_pattern_mask_in_train is an INTENT flag recorded on the model —
+  # BondOrderHead applies the mask in its own forward path when True.
+  t_eval_grid: [1.0]
+  clash_penalty_weight: 0.01
+  bond_pattern_mask_in_train: true
   # 2026-10-04 — REMOVED the eval:/orchestration keys and the
   # protocol.full_protocol block.  They described an evaluation panel
   # (decode-smoke cadence, 5-pocket sweep, per-pocket output dirs,
@@ -216,6 +278,80 @@ entry:
   # Original inline-CLI command preserved as legacy_inline_command for backward-compat rollback only
   # NOT used by start.sh per AGENTS.md §5.8 + §5.5 filesystem-truth
   legacy_inline_command: "CUDA_VISIBLE_DEVICES=0 /home/hugo/codes/mol-metal/.venv/bin/python \\n  molmetal/scripts/metallo_drug_smoke_retrain.py\\n  --csv .data/molmetal/metalcytotox_5metal_multitask_v2.csv \\n  --n-train 26632 \\n  --steps 5000 \\n  --batch-size 16 \\n  --lr 1e-4 \\n  --hidden-dim 128 \\n  --n-layers 3 \\n  --joint-train \\n  --bond-head learned \\n  --decode-smoke-every 500 \\n  --decode-smoke-samples 16 \\n  --seed {seed} \\n  --out-dir {out_dir}\n"
+# ---------------------------------------------------------------------------
+# EGNN refactor — S3, S4, S-A3..S-A10 (2026-10-13 Wf-T-implement)
+#
+# 8 NEW YAML keys documenting the EGNN module-side refactor landed in
+# molmetal/adapters/egnn_rocm.py + egnn_extensions.py +
+# molmetal/adapters/flow_matching_lipman/__init__.py.  Per AGENTS.md §5.11,
+# these are added APPEND-only and are wired by a future wave that brings
+# molmetal/scripts/train_cfm_yuelbond_wasserstein.py flags in line.  The
+# module code-path changes (in_edge_dim expansion, dual coord scale,
+# SinusoidalEmbedding per-layer t, PerLayerPocketInjector) are live now,
+# guarded by their own defaults to keep the legacy bit-exact contract on
+# existing callers — every key in this block currently inert in the CFM
+# trainer's argparse.
+# ---------------------------------------------------------------------------
+egnn:
+  # S4 wiring — auto-fill EDGE_TYPE_SINGLE when caller passes None.
+  use_edge_types_default: true
+  # S3 wiring — auto-derive dative mask from edge_types when caller passes None.
+  use_dative_bond_edge_attr_default: true
+  # S-A10 — dative coord scale init (overridable via YAML).
+  coord_scale_dative_init: 0.85
+  # S-A5 — covariant coord scale init (separate learnable per-edge scale).
+  coord_scale_covalent_init: 1.0
+  # S-A6 — degree normalization toggle (sum -> sum / max(deg, 1)).
+  use_degree_normalization: true
+  # S-A7 — message dropout (applied AFTER SiLU, before aggregation).
+  message_dropout: 0.0
+  # S6 / S-A9 — SinusoidalEmbedding dim per layer. 0 = legacy scalar.
+  t_embedding_dim: 32
+  # S7 / S-A8 — per-layer pocket injection toggle.
+  pocket_per_layer: true
+
+# ---------------------------------------------------------------------------
+# Wf-A15 (2026-10-13) — chemistry-signal pipeline full-link fix
+# APPEND-only, additive, opt-in.  Defaults preserve bit-for-bit backward
+# compat with the pre-Wf-A15 12-term objective (per AGENTS.md §5.11
+# YAML-only mandate + §5.7 backward-compat rule).  Per the
+# ``chem_head_hints`` list, the head hints ARE a list, not a space-separated
+# string (per AGENTS.md §5.11 list-valued flag mandate).
+# ---------------------------------------------------------------------------
+wfa15:
+  # Layer E (egnn_rocm.py — EquivariantGraphConv): 5 chemistry channels
+  # appended to mlp_in (BO cont / natural_charge / oxidation_state /
+  # coord_neighbors / metal_proximity).  Defaults OFF → bit-exact legacy
+  # mlp_in = [h_i, h_j, dist, dir_vec, edge_type_emb].
+  operator:
+    use_chemistry_channels: false
+  # Layer F (trainer loss sum): 6 NEW chemistry-signal loss terms.
+  # Each weight defaults to 0.0 → exact torch.zeros(()) in the sum so
+  # the 12-term objective is preserved bit-exactly.  Set > 0 to enable.
+  loss:
+    chem_loss_weight: 0.0
+    qed_loss_weight: 0.0
+    molecule_loss_weight: 0.0
+    stereo_loss_weight: 0.0
+    fragment_loss_weight: 0.0
+    property_loss_weight: 0.0
+  # Layer G (build_differential_optimizer): opt-in switch from the
+  # BLK-C5 3-group optimiser to the Wf-A11 4-group differential_lr.
+  optimizer:
+    use_differential_lr: false
+    chem_head_lr_multiplier: 1.0
+    # LIST per AGENTS.md §5.11 list-valued flag mandate (verified on
+    # 2026-10-09 — a space-string silently delivers ONE literal string
+    # to ``chem_head_hints`` instead of 4 substrings).
+    chem_head_hints:
+      - head
+      - atom_head
+      - bond_head
+      - chemistry
+  # Layer H (eval discriminators): 4 NEW discriminator calls.
+  eval:
+    compute_discriminators: false
+
 honest_framing:
   # 2026-10-04 CORRECTION — the four `claims` below used to assert a
   # MetalCytoToxDB 5-metal v2 corpus (26632 rows, Wf-261 strict Bemis-Murcko
@@ -251,3 +387,156 @@ honest_framing:
   - m17 DrugOOD forward pass (Wf-256 deferred)
   - Flow-matching ODE sampler (n_steps / method / ot_solver) — NOT IMPLEMENTED in this trainer; the pieces exist in molmetal/adapters/flow_matching_lipman incl. the cloned reference solver
   - Evaluation panel (decode-smoke cadence, 5-pocket sweep, per-pocket output dirs, launch_loop.sh) — NOT IMPLEMENTED; this trainer takes one --pocket-id and has no panel driver
+
+# ----------------------------------------------------------------------
+# Wf-A12 (2026-10-13) operator-layer enhancements — APPENDED, opt-in.
+# ----------------------------------------------------------------------
+# Drop-in surface from molmetal.adapters.egnn_operator_enhancements.
+# All flags default true so the new operators engage; set any to false
+# to fall back to the legacy EquivariantGraphConv path bit-exactly.
+# Per AGENTS.md §5.6 atomic-write + §5.11 YAML-only.
+operator:
+  use_enhanced_mlp: true
+  use_enhanced_coord_update: true
+  use_enhanced_aggregate: true
+  use_enhanced_feature_update: true
+  aggregate_mode: "sum_edge_type_weighted"   # {sum, sum_degree_norm, sum_edge_type_weighted, attention}
+  chem_embed_dim: 16
+  dative_angular_strictness: 0.5             # [0=soft, 1=hard]
+
+
+# ----------------------------------------------------------------------
+# Wf-A13 (2026-10-13) loss-layer modular surface — APPENDED, opt-in.
+# ----------------------------------------------------------------------
+# Drop-in surface from molmetal.loss.* (consumed by the sum-block agent
+# post-Wf-A13; for now, no argparse dest exists in the CFM trainer for
+# ``loss.*`` keys, so they appear in pre-flight's skip report.  Defaults
+# are documented intent; flipping any to true activates the corresponding
+# class with the documented default weight.
+#
+# Per AGENTS.md §5.11 — every key reaches a dest, has a verified
+# non-trainer consumer (``molmetal.loss.<Class>.compute(...)``), or is
+# DECLARED_INERT.  These are PENDING non-trainer consumers: the sum-block
+# agent wires them in a sibling wave; for now, they are inert-but-known.
+#
+# Cross-links: TODO/pending/wfa13_loss_layer_modular.md (DRAFT).
+loss:
+  # L-A3 — read chemistry from the DECODED cloud, not the real one.
+  use_molecule_loss: true
+  molecule_loss_weight: 0.1
+  # L1 / L-A1 — continuous BO supervision on head.continuous_bo_logits.
+  bo_continuous_mse_weight: 0.1
+  # L-A8 — Tanimoto-diversity over decoded SMILES (decoded path).
+  diversity_term_weight: 0.1
+  # L6 / L-A7 — assemble formulation.  ``arithmetic_mean`` is ~7e4x the
+  # gradient magnitude of the shipped ``product`` formulation.
+  assemble_formulation: "arithmetic_mean"
+  # Default OFF: opt-in breaks test_fully_connected_graph_has_near_zero_gradient.
+  assemble_term_weight: 0.0
+  # Standalone clash penalty (independent of model-side clash_penalty_weight).
+  clash_penalty_weight_override: 0.01
+
+# ----------------------------------------------------------------------
+# Wf-A14 (2026-10-13) end-of-training orchestrator — APPENDED, opt-in.
+# ----------------------------------------------------------------------
+# 9 keys wiring molmetal/end_of_training.py::auto_run(cfg) on_train_end.
+# Per AGENTS.md §5.11 YAML-only: every key here resolves to a dest inside
+# end_of_training.auto_run's cfg-dict consumer. Defaults are all true
+# except cross_dataset_validation (deferred until 8-wave bench completes).
+# Cross-links: TODO/completed/wf_design_ultracode9_eot.md §A-§G.
+end_of_training:
+  # FIX END-A4 — sascorer.py now uses the canonical LigandDiff algorithm
+  # + fpscores.pkl.gz bundled on disk (sha256 verified).
+  use_liganddiff_scoring: true
+  # FIX END-A3 — torch.jit.script with eager fallback. HONEST-NEGATIVE-099:
+  # ≥60% expected failure on EGNN + YuelBond + BondOrderHead.
+  use_torchscript_export: true
+  # FIX END-A5 — PaperTable emits Tables 1-3 in LigandDiff + tmcinvdes
+  # combined format with MEASURED / PROJECTED provenance tracked per cell.
+  use_paper_table_liganddiff_format: true
+  # FIX END-A6 + END7 — FastAPI deployment surface
+  # (/health, /decode).  Eager-fallback returns HONEST-NEGATIVE when no
+  # TorchScript ckpt is provided.
+  use_deployment_api: true
+  # DEFERRED until the 8-wave bench completes (TODO-pending post-R21).
+  cross_dataset_validation: false
+  # FIX END5 — 12-field reproducibility manifest (git / torch / CUDA /
+  # yaml sections / RNG / dataset / ckpt / environment) written as
+  # YAML + JSON + paper-appendix MD.
+  manifest_generator: true
+  # Per AGENTS.md §5.10 license-header mandate — every NEW file under
+  # molmetal/{eval/reporting,manifest,api,end_of_training.py} carries
+  # an Apache-2.0 SPDX header.
+  license_header: "Apache-2.0"
+  # Cite LigandDiff (PRIMARY_1, Jin & Merz J. Chem. Theory Comput. 2024
+  # DOI: 10.1021/acs.jctc.4c00232) and tmcinvdes (SECONDARY_1, Balcells &
+  # Skjelstad JACS Au 2025) in paper Tables 1-3.
+  cite_liganddiff: true
+  cite_tmcinvdes: true
+
+# ---------------------------------------------------------------------------
+# Wf-A11 (2026-10-13) — Optimizer wave APPEND
+# 8 NEW YAML keys documenting molmetal/optim/* primitives.  Per
+# AGENTS.md §5.11, all 8 are added APPEND-only and have trainer-side
+# default values that match the legacy Wf-13 path, so the bit-exact
+# contract on existing callers is preserved.
+# ---------------------------------------------------------------------------
+optimizer:
+  # bf16 hardware-compatibility gate.  When true, the trainer calls
+  # check_bf16_compatibility() and disables autocast on sm<8.0.
+  bf16_auto_disable: true
+  # Minimum acceptable compute capability (Ampere A100 sm_80 = the
+  # conservative floor).  Override per-config (e.g. RTX 5090 = 12.0).
+  bf16_min_compute_capability: 8.0
+  # Differential LR: 4-group param split (head_decay/head_no_decay /
+  # backbone_decay/backbone_no_decay).  When true AND
+  # head_lr_multiplier != 1.0, the trainer builds a 4-group Adam;
+  # otherwise falls back to flat single-group Adam.
+  use_differential_lr: true
+  # Head LR multiplier (head_lr = base_lr * 0.1 by default).
+  head_lr_multiplier: 0.1
+  # No-decay parameter suffixes (canonical Transformer convention).
+  no_decay_param_names: ["bias", "LayerNorm.weight", "layer_norm.weight"]
+  # EMA shadow decay (was 0.999 in legacy 1.x trainer; 0.9999 is the
+  # post-Wf-A11 default for stable R^2 fits at 50 epochs).
+  ema_decay: 0.9999
+  # Linear warmup steps (200 = default; 0 = no warmup, legacy Wf-13).
+  warmup_steps: 200
+  # EGNN gradient-checkpointing default (true = checkpoint ON by default).
+  gradient_checkpointing_default: true
+
+# ---------------------------------------------------------------------------
+# Wf-A11 (2026-10-13) — Eval wave APPEND
+# 9 NEW YAML keys documenting molmetal/eval/discriminators/* primitives.
+# All 9 are added APPEND-only.  When all keys are at default, the
+# trainer preserves the legacy Wf-13 eval path (no discriminator call,
+# bond_type_f1 early stop, plain checkpoint save).
+# ---------------------------------------------------------------------------
+eval:
+  # Master switch for the 4-discriminator audit trail
+  # (TopologyDiscriminator + ChemistryDiscriminator + MetalAwareADMET
+  # + ModelOutputAlignment).  When false, the trainer emits no
+  # discriminator metrics — bit-exact match to Wf-13 behaviour.
+  use_real_discriminators: true
+  # Discriminator weights (currently informational only; the Wf-13
+  # trainer does not loss-blend the discriminator metrics — they are
+  # audit-only).
+  discriminator_weight_single_fragment: 1.0
+  discriminator_weight_ring_size: 1.0
+  # Decode mode for YuelBondDecoder: "threshold" (legacy, default) or
+  # "argmax" (Wf-A11 new).
+  decode_mode: "argmax"
+  # Toggle for MetalAwareADMET: when true, the 8 ADMET proxies carry a
+  # per-metal offset proportional to (EN(metal) - 2.0).
+  metal_aware_admet: true
+  # Early-stop patience (was 3 in legacy 1.x trainer; 20 = new default
+  # for the val_loss criterion).
+  early_stop_patience: 20
+  # Early-stop criterion: "val_loss" (new), "bond_type_f1" (legacy),
+  # "gen_validity" (legacy).  The criterion drives which scalar the
+  # trainer compares against the patience window.
+  early_stop_metric: "val_loss"
+  # ReduceLROnPlateau(val_loss, patience=10) — only honoured when
+  # early_stop_metric == "val_loss".
+  use_reduce_lr_on_plateau: true
+  reduce_lr_patience: 10

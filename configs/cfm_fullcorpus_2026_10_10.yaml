@@ -181,6 +181,17 @@ train:
   # Do not set this above 0 in any config that turns on gen_validity_weight or
   # entropy_reg_weight — the two settings are mutually defeating.
   bond_head_warmup_epochs: 0
+  # Wf-A15 (2026-10-13) — 5 NEW chemistry-signal loss weights.
+  # Per §5.11 + L-A2 docstring: every default is 0.0 → the term is
+  # exact torch.zeros((), device=device) in the sum, so this config
+  # remains bit-for-bit identical to the pre-Wf-A15 12-term baseline.
+  # A user opts in by overriding any key > 0 (cf. molmetal/loss/__init__.py
+  # backward-compat contract).
+  stereo_loss_weight: 0.0
+  fragment_loss_weight: 0.0
+  property_loss_weight: 0.0
+  fragment_connectivity_weight: 0.0
+  natural_charge_weight: 0.0
 
 flow:
   # 2026-10-07 (Wf-R31) — ROOT FIX for `bond_exact_type_rate` pinned at 0.
@@ -295,7 +306,18 @@ eval:
   #
   # epsilon remains a PREFERENCE, not a discovered optimum, and the front may
   # be the front of a broken objective (BLK-C12: 8 of 12 loss terms dead).
-  early_stop_metric: bond_type_f1_eps
+  # 2026-10-11 — was `bond_type_f1_eps` with epsilon 0.85. MEASURED on the
+  # first launch of this run: epoch 0 logged
+  #   [cfm-early-stop] criterion=bond_type_f1_eps value=-0.6446
+  #     (gen_validity 0.0586 < epsilon 0.8500; ...)
+  # The criterion NEGATES the score when gen_validity cannot reach epsilon,
+  # and the gate keeps the HIGHER value — so with epsilon unreachable the gate
+  # keeps the LOWEST bond_type_macro_f1. That is the opposite of the intent.
+  # Epsilon 0.85 was derived on the n_train=256 cohort where gen_validity did
+  # reach it; it is not reachable here (full corpus + use_fm_objective). The
+  # epsilon-constraint gate is left in place in cfm.yaml for a regime where
+  # gen_validity approaches it; this run scores the metric directly.
+  early_stop_metric: bond_type_f1
   early_stop_epsilon: 0.85
   # Weight of the Wasserstein regulariser in the loss cascade (default 0.1).
   # 0 gives the G6 "no_wass" ablation arm.
@@ -340,6 +362,13 @@ output:
   # before/after this edit, via `start.sh --dry-run`. configs/cfm_full_retrain.yaml
   # carries the same key for the same reason.
   base_dir: molmetal/reports/cfm_fullcorpus_2026_10_10
+  # start.sh:453 reads this with a default of 50, and cfm.yaml never declared
+  # it, so the first launch of this run saved weights ONLY at the very end.
+  # Combined with an inverted gate that is a 54-hour run whose only artefact
+  # is the worst bond head. At 5 every epoch is kept, which also makes the
+  # epoch-5 fragmentation collapse comparable: there is a pre-collapse
+  # checkpoint to replay against a post-collapse one.
+  checkpoint_interval: 5
   # 2026-10-10 — start.sh:477/476 read these two and have NO default:
   # an absent key yields an empty string, and start.sh:708 then runs `: > ""`
   # and dies with `No such file or directory` BEFORE the trainer starts.
@@ -389,6 +418,8 @@ data:
   # -1 = no coordination-number filter (4 = square-planar, 6 = octahedral).
   tmqm_coord_number: -1
   tmqm_val_frac: 0.2
+  # Wf-A14 (2026-10-13) Bemis-Murcko scaffold 80/10/10 split. Default random preserves Wf-A8c hash split bit-exactly.
+  tmqm_split_kind: random
 
 protocol:
   # Only keys absent from train:/eval: above, to avoid last-key-wins clashes.
