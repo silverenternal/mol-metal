@@ -154,11 +154,71 @@ def _threshold_metrics(y_true, y_score, thr: float = 0.5) -> Dict[str, float]:
     }
 
 
+def _calibration(y_true, y_score, n_bins: int = 10) -> Dict[str, object]:
+    """Expected Calibration Error + reliability-diagram bins (uniform bins).
+
+    ECE is the count-weighted mean |mean_pred - frac_pos| over ``n_bins`` equal
+    width bins on [0, 1].  Reported alongside the per-bin (mean_pred, frac_pos,
+    count) so a reliability diagram can be redrawn from the artifact without
+    re-running the model.
+    """
+    y_true = np.asarray(y_true).astype(int)
+    y_score = np.asarray(y_score).astype(float)
+    edges = np.linspace(0.0, 1.0, n_bins + 1)
+    idx = np.clip(np.digitize(y_score, edges[1:-1]), 0, n_bins - 1)
+    n = int(len(y_true))
+    ece = 0.0
+    rows: List[Dict[str, object]] = []
+    for b in range(n_bins):
+        m = idx == b
+        cnt = int(m.sum())
+        if cnt == 0:
+            rows.append({
+                "bin_lo": float(edges[b]), "bin_hi": float(edges[b + 1]),
+                "count": 0, "mean_pred": None, "frac_pos": None,
+            })
+            continue
+        mp = float(y_score[m].mean())
+        fp = float(y_true[m].mean())
+        ece += (cnt / n) * abs(fp - mp)
+        rows.append({
+            "bin_lo": float(edges[b]), "bin_hi": float(edges[b + 1]),
+            "count": cnt, "mean_pred": mp, "frac_pos": fp,
+        })
+    return {"ece": float(ece), "n_bins": int(n_bins), "reliability_bins": rows}
+
+
+def _ad_max_tanimoto(X_tr: np.ndarray, X_te: np.ndarray) -> np.ndarray:
+    """Max Tanimoto similarity of each test row to the fold's training set.
+
+    Morgan fingerprints are binary; Tanimoto = |a & b| / |a | b|.  Vectorised
+    as ``(X_te @ X_tr.T)`` for the intersection, with the union derived from the
+    row sums.  Returns an ``(n_test,)`` array in [0, 1].
+    """
+    a = X_te.astype(np.float32)
+    b = X_tr.astype(np.float32)
+    inter = a @ b.T
+    union = a.sum(axis=1)[:, None] + b.sum(axis=1)[None, :] - inter
+    with np.errstate(divide="ignore", invalid="ignore"):
+        tan = np.where(union > 0, inter / union, 0.0)
+    return tan.max(axis=1)
+
+
+def _auc_or_nan(y_true, y_score) -> float:
+    from sklearn.metrics import roc_auc_score
+
+    y_true = np.asarray(y_true).astype(int)
+    if len(y_true) == 0 or len(np.unique(y_true)) < 2:
+        return float("nan")
+    return float(roc_auc_score(y_true, np.asarray(y_score).astype(float)))
+
+
 def run_metal(
     df: pd.DataFrame, metal: str, models: List[str], n_folds: int, seed: int,
     radius: int, nbits: int, n_jobs: int, thr: float = 0.5,
+    ad_thr: float = 0.4, cal_bins: int = 10,
 ) -> Dict[str, object]:
-    from sklearn.metrics import roc_auc_score
+    from sklearn.metrics import average_precision_score, roc_auc_score
     from molmetal.baselines.eval_utils import morgan_features
     from molmetal.data import cytotox as C
 
@@ -212,40 +272,80 @@ def run_metal(
 
     for model in models:
         aucs: List[float] = []
+        pr_aucs: List[float] = []
         per_fold: List[Dict[str, object]] = []
         thr_acc: Dict[str, List[float]] = {}
+        ad_cov: List[float] = []
+        ad_auc_in: List[float] = []
+        ad_auc_out: List[float] = []
+        oof_prob = np.full(n_rows, np.nan, dtype=float)
         for f in folds:
             tr, te = np.asarray(f["train_idx"]), np.asarray(f["val_idx"])
             prob = _fit_predict(model, X[tr], y[tr], X[te], seed, n_jobs)
             auc = float(roc_auc_score(y[te], prob))
+            pr_auc = float(average_precision_score(y[te], prob))
             aucs.append(auc)
+            pr_aucs.append(pr_auc)
+            oof_prob[te] = prob
             tm = _threshold_metrics(y[te], prob, thr)
             for k, v in tm.items():
                 if k in ("threshold", "n_positive", "n_negative"):
                     continue
                 thr_acc.setdefault(k, []).append(float(v))
+            # Applicability domain: Tanimoto of each test row to the train set.
+            maxtan = _ad_max_tanimoto(X[tr], X[te])
+            in_ad = maxtan >= ad_thr
+            cov = float(in_ad.mean())
+            auc_in = _auc_or_nan(y[te][in_ad], prob[in_ad])
+            auc_out = _auc_or_nan(y[te][~in_ad], prob[~in_ad])
+            ad_cov.append(cov)
+            if np.isfinite(auc_in):
+                ad_auc_in.append(auc_in)
+            if np.isfinite(auc_out):
+                ad_auc_out.append(auc_out)
             row = {
                 "fold": int(f["fold"]),
                 "n_train": int(len(tr)),
                 "n_test": int(len(te)),
                 "roc_auc": auc,
+                "pr_auc": pr_auc,
+                "ad_coverage": cov,
+                "ad_auc_in": auc_in,
+                "ad_auc_out": auc_out,
             }
             row.update({k: v for k, v in tm.items() if k not in ("n_positive", "n_negative")})
             per_fold.append(row)
             print(
                 f"[{metal}] {model} fold {f['fold']} auc={auc:.4f} "
-                f"acc={tm['accuracy']:.4f} f1={tm['f1']:.4f} mcc={tm['mcc']:.4f} "
-                f"sens={tm['sensitivity']:.3f} spec={tm['specificity']:.3f}",
+                f"pr_auc={pr_auc:.4f} acc={tm['accuracy']:.4f} f1={tm['f1']:.4f} "
+                f"mcc={tm['mcc']:.4f} sens={tm['sensitivity']:.3f} "
+                f"spec={tm['specificity']:.3f} ad_cov={cov:.3f}",
                 flush=True,
             )
         thr_mean = {k: float(np.mean(v)) for k, v in thr_acc.items()}
         thr_std = {k: float(np.std(v)) for k, v in thr_acc.items()}
+        calib = _calibration(y, oof_prob, cal_bins)
         out["models"][model] = {
             "mean_auc": float(np.mean(aucs)),
             "std_auc": float(np.std(aucs)),
+            "mean_pr_auc": float(np.mean(pr_aucs)),
+            "std_pr_auc": float(np.std(pr_aucs)),
             "threshold": float(thr),
             "threshold_metrics_mean": thr_mean,
             "threshold_metrics_std": thr_std,
+            "applicability_domain": {
+                "definition": (
+                    "max Tanimoto (Morgan r=2, 2048-bit) of each held-out test "
+                    "molecule to that fold's training set"
+                ),
+                "threshold": float(ad_thr),
+                "mean_coverage_in_ad": float(np.mean(ad_cov)),
+                "mean_auc_in_ad": float(np.mean(ad_auc_in)) if ad_auc_in else None,
+                "n_folds_auc_in_ad": int(len(ad_auc_in)),
+                "mean_auc_out_of_ad": float(np.mean(ad_auc_out)) if ad_auc_out else None,
+                "n_folds_auc_out_of_ad": int(len(ad_auc_out)),
+            },
+            "calibration": calib,
             "per_fold": per_fold,
             "model_spec": (
                 f"morgan_fp(radius={radius}, {nbits}bit) + {model}"
@@ -253,6 +353,8 @@ def run_metal(
         }
         print(
             f"[{metal}] {model}: mean={np.mean(aucs):.4f} +/- {np.std(aucs):.4f} "
+            f"pr_auc={np.mean(pr_aucs):.4f} ece={calib['ece']:.4f} "
+            f"ad_cov={np.mean(ad_cov):.3f} "
             f"| acc={thr_mean['accuracy']:.4f} balacc={thr_mean['balanced_accuracy']:.4f} "
             f"f1={thr_mean['f1']:.4f} mcc={thr_mean['mcc']:.4f}",
             flush=True,
@@ -280,6 +382,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     ap.add_argument("--radius", type=int, default=2)
     ap.add_argument("--nbits", type=int, default=2048)
+    ap.add_argument(
+        "--ad-threshold",
+        type=float,
+        default=0.4,
+        help=(
+            "Tanimoto cut for the applicability domain: a held-out molecule is "
+            "'in AD' when its max Tanimoto to the fold's training set is >= this "
+            "value.  0.4 is a common conservative QSAR cut; fixed, not tuned."
+        ),
+    )
+    ap.add_argument(
+        "--calibration-bins",
+        type=int,
+        default=10,
+        help="number of equal-width bins for the ECE / reliability diagram.",
+    )
     ap.add_argument(
         "--n-jobs",
         type=int,
@@ -314,6 +432,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         per_metal[metal] = run_metal(
             df, metal, list(args.models), args.n_folds, args.seed,
             args.radius, args.nbits, args.n_jobs, thr=args.threshold,
+            ad_thr=args.ad_threshold, cal_bins=args.calibration_bins,
         )
 
     dmpnn: Dict[str, object] = {"source": None, "per_metal": {}}
@@ -344,11 +463,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         "status": "MEASURED",
         "MEASURED_vs_PROJECTED": "MEASURED",
         "unit": (
-            "ROC-AUC (threshold-free) + classification metrics at a fixed "
-            "decision threshold (accuracy / balanced_accuracy / sensitivity / "
-            "specificity / precision / f1 / mcc / cohen_kappa / brier)"
+            "ROC-AUC + PR-AUC (threshold-free) + classification metrics at a "
+            "fixed decision threshold (accuracy / balanced_accuracy / sensitivity "
+            "/ specificity / precision / f1 / mcc / cohen_kappa / brier) + "
+            "calibration (ECE, reliability bins) + applicability-domain "
+            "coverage/AUC (Tanimoto-to-train)"
         ),
         "decision_threshold": float(args.threshold),
+        "applicability_domain_threshold": float(args.ad_threshold),
+        "calibration_bins": int(args.calibration_bins),
         "scope": "tier2_precious_metal_anticancer / paper-funnel cohort per metal",
         "source": "molmetal/scripts/pa18_model_class_5metal.py",
         "cohort_rule": (
@@ -403,7 +526,15 @@ def main(argv: Optional[List[str]] = None) -> int:
             "Ru and Ir; the other three metals have no external reference.  "
             "The classification metrics are computed at a FIXED threshold "
             f"({args.threshold}); they are not threshold-tuned, and the AUC axis "
-            "remains the primary (threshold-free) metric."
+            "remains the primary (threshold-free) metric.  PR-AUC (average "
+            "precision) is added because the label is imbalanced (active_rate "
+            "0.31-0.53).  Calibration (ECE + reliability bins) is computed on the "
+            "POOLED out-of-fold probabilities across the 10 folds — each molecule "
+            "appears once, scored by the model that did not train on it.  The "
+            f"applicability domain is a fixed Tanimoto cut ({args.ad_threshold}) "
+            "to the fold's training set; out-of-AD AUC is reported only for folds "
+            "whose out-of-AD slice contains both classes (else omitted, never "
+            "fabricated)."
         ),
     }
 

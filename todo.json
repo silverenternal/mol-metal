@@ -5207,62 +5207,79 @@
     },
     "metric_alignment_2026_10_13": {
       "goal": "把同数据集论文(Krasnov 2026)报告的指标在我们队列上对齐跑一遍",
-      "same_dataset_paper": "Krasnov 2026 (MetalCytoToxDB) — reports binary ROC-AUC + pIC50 MAE",
+      "same_dataset_paper": "Krasnov 2026 (MetalCytoToxDB; J. Med. Chem. 2026, 69(8) 8838-8851, DOI 10.1021/acs.jmedchem.5c02755) — a CLASSIFICATION paper (assign the cytotoxicity class within Ru/Ir subsets + external validation + multimetal prediction). It reports NO pIC50 MAE; the earlier 'binary AUC + pIC50 MAE' description was unverified and is retracted.",
       "T1_pic50_regression": {
-        "status": "DONE (2026-10-13)",
+        "status": "DONE + STRENGTHENED (2026-10-13)",
         "artifact": "metrics/by_metric/pa18_pic50_regression_5metal.json",
         "producer": "molmetal/scripts/pa18_pic50_regression_5metal.py",
-        "protocol": "paper-funnel per metal; DOI-grouped 10-fold CV (seed=0); Morgan-FP(2,2048); LightGBM/XGBoost regressor; row-level pIC50",
+        "protocol": "paper-funnel per metal; DOI-grouped 10-fold CV (seed=0); morgan+rdkit+counterion features; LightGBM/XGBoost regressor; row-level pIC50",
         "measured_lightgbm": {
           "Ru": {
-            "mae": 0.563,
-            "rmse": 0.7231,
-            "r2": 0.1214,
-            "pearson_r": 0.415
+            "mae": 0.5205,
+            "r2": 0.234,
+            "pearson_r": 0.517
           },
           "Ir": {
-            "mae": 0.5792,
-            "rmse": 0.7295,
-            "r2": 0.008,
-            "pearson_r": 0.353
+            "mae": 0.5183,
+            "r2": 0.2043,
+            "pearson_r": 0.499
           },
           "Rh": {
-            "mae": 0.5466,
-            "rmse": 0.6947,
-            "r2": 0.0172,
-            "pearson_r": 0.467
+            "mae": 0.5256,
+            "r2": 0.1021,
+            "pearson_r": 0.498
           },
           "Os": {
-            "mae": 0.7556,
-            "rmse": 0.9434,
-            "r2": -0.5419,
-            "pearson_r": 0.201
+            "mae": 0.7139,
+            "r2": -0.2291,
+            "pearson_r": 0.309
           },
           "Re": {
-            "mae": 0.4825,
-            "rmse": 0.6229,
-            "r2": -0.0196,
-            "pearson_r": 0.362
+            "mae": 0.4717,
+            "r2": 0.048,
+            "pearson_r": 0.393
           },
           "pooled": {
-            "mae": 0.5854,
-            "rmse": 0.7427,
-            "r2": -0.083,
-            "pearson_r": 0.3595
+            "mae": 0.55,
+            "rmse": 0.6892,
+            "r2": 0.0719,
+            "pearson_r": 0.4432
           }
         },
         "random_vs_doi_diagnostic_lightgbm": {
-          "pooled_random_r2": 0.6919,
-          "pooled_doi_r2": -0.083,
-          "pooled_random_mae": 0.3135,
-          "pooled_doi_mae": 0.5854,
-          "reading": "DOI-grouped (paper/assay) split is the hard axis; same pattern as binary AUC random-vs-DOI"
+          "pooled_random_r2": 0.7269,
+          "pooled_doi_r2": 0.0719,
+          "reading": "DOI-grouped (paper/assay) split is the hard axis; same pattern as the binary AUC random-vs-DOI"
         },
-        "blocker": "Krasnov pIC50 MAE reference value NOT captured in repo -> recorded null; needs transcription from the source paper for a head-to-head",
-        "commit": "90f9082ccb"
+        "note": "Krasnov reports no pIC50 MAE (classification paper) -> no head-to-head numeric on this axis; it is our own regression baseline.",
+        "commit": "f9f7a3f277"
       },
-      "T2_pending": "threshold classification metrics (MCC/F1/acc/sens/spec/bal-acc) — needs per-ligand prediction dump + re-run",
-      "T3_pending": "Brier / calibration"
+      "T2_threshold_classification": {
+        "status": "DONE (2026-10-14)",
+        "artifact": "metrics/by_metric/pa18_model_class_5metal.json",
+        "producer": "molmetal/scripts/pa18_model_class_5metal.py",
+        "metrics": "accuracy / balanced_accuracy / sensitivity / specificity / precision / f1 / mcc / cohen_kappa / brier at a FIXED threshold (0.5)",
+        "commit": "8b09aab2dd"
+      },
+      "T3_calibration_and_ranking": {
+        "status": "DONE (2026-10-14)",
+        "artifact": "metrics/by_metric/pa18_model_class_5metal.json",
+        "metrics": "PR-AUC (average precision) per fold; ECE + reliability bins on pooled out-of-fold probs; applicability-domain coverage + in/out-of-AD AUC (Tanimoto-to-train, cut 0.4)"
+      },
+      "T4_external_temporal": {
+        "status": "DONE (2026-10-14)",
+        "artifact": "metrics/by_metric/pa20_external_temporal_5metal.json",
+        "producer": "molmetal/scripts/pa20_external_temporal_5metal.py",
+        "protocol": "prospective temporal holdout: train Year<=2021, test Year>2021 (DOI-constant Year, straddle asserted 0); random-split reference at the same test size gives the temporal gap",
+        "measured_temporal_auc_lightgbm": {
+          "Ru": 0.739,
+          "Ir": 0.619,
+          "Rh": 0.626,
+          "Os": 0.566,
+          "Re": 0.773
+        },
+        "note": "Strongest external validation available offline; no second same-rule DB on host."
+      }
     }
   }
 }

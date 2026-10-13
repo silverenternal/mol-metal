@@ -1,0 +1,328 @@
+{
+  "metric": "pa20_external_temporal_5metal",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "unit": "ROC-AUC + PR-AUC + threshold-classification metrics on a prospective temporal holdout (train Year <= cutoff, test Year > cutoff); random-split AUC with the same test size reported as the gap reference",
+  "scope": "tier2_precious_metal_anticancer / paper-funnel cohort per metal",
+  "source": "molmetal/scripts/pa20_external_temporal_5metal.py",
+  "cohort_rule": "per metal: cytotox.build_paper_cohort_indices(df, metal=m) — same cohort rule as pa18_model_class_5metal",
+  "split": "temporal: train = Year <= 2021, test = Year > 2021; Year is per-DOI so no paper straddles (asserted)",
+  "label_rule": "active := IC50_Dark_value < 10 uM (paper cut)",
+  "decision_threshold": 0.5,
+  "models": [
+    "lightgbm",
+    "xgboost"
+  ],
+  "per_metal": {
+    "Ru": {
+      "n_rows": 15799,
+      "cutoff_year": 2021,
+      "n_train": 11983,
+      "n_test": 3816,
+      "doi_straddle_count": 0,
+      "active_rate_train": 0.3151965284152549,
+      "active_rate_test": 0.3031970649895178,
+      "models": {
+        "lightgbm": {
+          "temporal_auc": 0.7391985536637364,
+          "temporal_pr_auc": 0.5776621610796486,
+          "threshold": 0.5,
+          "threshold_metrics": {
+            "threshold": 0.5,
+            "accuracy": 0.7085953878406709,
+            "balanced_accuracy": 0.671284198769821,
+            "sensitivity": 0.5764909248055315,
+            "specificity": 0.7660774727341105,
+            "precision": 0.517455391776571,
+            "f1": 0.5453802125919869,
+            "mcc": 0.33292320330079,
+            "cohen_kappa": 0.33187449910961575,
+            "brier": 0.1924858162887016
+          },
+          "n_test_positive": 1157,
+          "n_test_negative": 2659,
+          "random_reference_auc_mean": 0.915431211279611,
+          "random_reference_auc_std": 0.005749794986237544,
+          "random_reference_pr_auc_mean": 0.8543950943058526,
+          "n_random_seeds_used": 3,
+          "temporal_gap_auc": 0.1762326576158746,
+          "model_spec": "morgan_fp(radius=2, 2048bit) + lightgbm"
+        },
+        "xgboost": {
+          "temporal_auc": 0.7315330949860277,
+          "temporal_pr_auc": 0.584376449780588,
+          "threshold": 0.5,
+          "threshold_metrics": {
+            "threshold": 0.5,
+            "accuracy": 0.7117400419287212,
+            "balanced_accuracy": 0.6630438916378971,
+            "sensitivity": 0.5393258426966292,
+            "specificity": 0.7867619405791652,
+            "precision": 0.5239294710327456,
+            "f1": 0.5315161839863713,
+            "mcc": 0.32347434489811006,
+            "cohen_kappa": 0.3234036009706005,
+            "brier": 0.1931687770917135
+          },
+          "n_test_positive": 1157,
+          "n_test_negative": 2659,
+          "random_reference_auc_mean": 0.904860427814343,
+          "random_reference_auc_std": 0.006232392122448285,
+          "random_reference_pr_auc_mean": 0.837463857723217,
+          "n_random_seeds_used": 3,
+          "temporal_gap_auc": 0.17332733282831525,
+          "model_spec": "morgan_fp(radius=2, 2048bit) + xgboost"
+        }
+      }
+    },
+    "Ir": {
+      "n_rows": 3674,
+      "cutoff_year": 2021,
+      "n_train": 2185,
+      "n_test": 1489,
+      "doi_straddle_count": 0,
+      "active_rate_train": 0.588558352402746,
+      "active_rate_test": 0.43451981195433176,
+      "models": {
+        "lightgbm": {
+          "temporal_auc": 0.6187896265240265,
+          "temporal_pr_auc": 0.5382347387599071,
+          "threshold": 0.5,
+          "threshold_metrics": {
+            "threshold": 0.5,
+            "accuracy": 0.6104768300873069,
+            "balanced_accuracy": 0.6060063439150913,
+            "sensitivity": 0.5718701700154559,
+            "specificity": 0.6401425178147269,
+            "precision": 0.549777117384844,
+            "f1": 0.5606060606060606,
+            "mcc": 0.21116280702101825,
+            "cohen_kappa": 0.2110306974670616,
+            "brier": 0.28495680562358583
+          },
+          "n_test_positive": 647,
+          "n_test_negative": 842,
+          "random_reference_auc_mean": 0.9138140857719271,
+          "random_reference_auc_std": 0.004144212550243955,
+          "random_reference_pr_auc_mean": 0.9218943051530143,
+          "n_random_seeds_used": 3,
+          "temporal_gap_auc": 0.29502445924790066,
+          "model_spec": "morgan_fp(radius=2, 2048bit) + lightgbm"
+        },
+        "xgboost": {
+          "temporal_auc": 0.6283559788095614,
+          "temporal_pr_auc": 0.5514368391800359,
+          "threshold": 0.5,
+          "threshold_metrics": {
+            "threshold": 0.5,
+            "accuracy": 0.6178643384822028,
+            "balanced_accuracy": 0.6120014905263467,
+            "sensitivity": 0.5672333848531684,
+            "specificity": 0.6567695961995249,
+            "precision": 0.5594512195121951,
+            "f1": 0.5633154259401382,
+            "mcc": 0.22365961021766725,
+            "cohen_kappa": 0.2236427463316788,
+            "brier": 0.27193581949814877
+          },
+          "n_test_positive": 647,
+          "n_test_negative": 842,
+          "random_reference_auc_mean": 0.8993664270609321,
+          "random_reference_auc_std": 0.007812157826176736,
+          "random_reference_pr_auc_mean": 0.9089621005596459,
+          "n_random_seeds_used": 3,
+          "temporal_gap_auc": 0.27101044825137066,
+          "model_spec": "morgan_fp(radius=2, 2048bit) + xgboost"
+        }
+      }
+    },
+    "Rh": {
+      "n_rows": 951,
+      "cutoff_year": 2021,
+      "n_train": 624,
+      "n_test": 327,
+      "doi_straddle_count": 0,
+      "active_rate_train": 0.5192307692307693,
+      "active_rate_test": 0.4434250764525994,
+      "models": {
+        "lightgbm": {
+          "temporal_auc": 0.6261083743842364,
+          "temporal_pr_auc": 0.6168389351966354,
+          "threshold": 0.5,
+          "threshold_metrics": {
+            "threshold": 0.5,
+            "accuracy": 0.6452599388379205,
+            "balanced_accuracy": 0.6126184160666919,
+            "sensitivity": 0.32413793103448274,
+            "specificity": 0.9010989010989011,
+            "precision": 0.7230769230769231,
+            "f1": 0.44761904761904764,
+            "mcc": 0.28038306677460095,
+            "cohen_kappa": 0.2386190285026094,
+            "brier": 0.2884112806001366
+          },
+          "n_test_positive": 145,
+          "n_test_negative": 182,
+          "random_reference_auc_mean": 0.8734580634543015,
+          "random_reference_auc_std": 0.02133709565030571,
+          "random_reference_pr_auc_mean": 0.8588659938504489,
+          "n_random_seeds_used": 3,
+          "temporal_gap_auc": 0.24734968907006516,
+          "model_spec": "morgan_fp(radius=2, 2048bit) + lightgbm"
+        },
+        "xgboost": {
+          "temporal_auc": 0.5803334596438046,
+          "temporal_pr_auc": 0.5818583684224404,
+          "threshold": 0.5,
+          "threshold_metrics": {
+            "threshold": 0.5,
+            "accuracy": 0.6452599388379205,
+            "balanced_accuracy": 0.6070102311481622,
+            "sensitivity": 0.2689655172413793,
+            "specificity": 0.945054945054945,
+            "precision": 0.7959183673469388,
+            "f1": 0.4020618556701031,
+            "mcc": 0.2978890606535063,
+            "cohen_kappa": 0.22946290728853502,
+            "brier": 0.2975318957849842
+          },
+          "n_test_positive": 145,
+          "n_test_negative": 182,
+          "random_reference_auc_mean": 0.8714647845416077,
+          "random_reference_auc_std": 0.015477538986332867,
+          "random_reference_pr_auc_mean": 0.8601310894487421,
+          "n_random_seeds_used": 3,
+          "temporal_gap_auc": 0.29113132489780313,
+          "model_spec": "morgan_fp(radius=2, 2048bit) + xgboost"
+        }
+      }
+    },
+    "Os": {
+      "n_rows": 966,
+      "cutoff_year": 2021,
+      "n_train": 697,
+      "n_test": 269,
+      "doi_straddle_count": 0,
+      "active_rate_train": 0.4332855093256815,
+      "active_rate_test": 0.6319702602230484,
+      "models": {
+        "lightgbm": {
+          "temporal_auc": 0.5655674390968508,
+          "temporal_pr_auc": 0.7604415810923749,
+          "threshold": 0.5,
+          "threshold_metrics": {
+            "threshold": 0.5,
+            "accuracy": 0.5204460966542751,
+            "balanced_accuracy": 0.5868389780154486,
+            "sensitivity": 0.3352941176470588,
+            "specificity": 0.8383838383838383,
+            "precision": 0.7808219178082192,
+            "f1": 0.4691358024691358,
+            "mcc": 0.18836373426198869,
+            "cohen_kappa": 0.1441783609144942,
+            "brier": 0.40538686223026094
+          },
+          "n_test_positive": 170,
+          "n_test_negative": 99,
+          "random_reference_auc_mean": 0.9264267794471716,
+          "random_reference_auc_std": 0.010677549226087638,
+          "random_reference_pr_auc_mean": 0.9226836534473515,
+          "n_random_seeds_used": 3,
+          "temporal_gap_auc": 0.36085934035032075,
+          "model_spec": "morgan_fp(radius=2, 2048bit) + lightgbm"
+        },
+        "xgboost": {
+          "temporal_auc": 0.6394236482471777,
+          "temporal_pr_auc": 0.8059621766997448,
+          "threshold": 0.5,
+          "threshold_metrics": {
+            "threshold": 0.5,
+            "accuracy": 0.6059479553903345,
+            "balanced_accuracy": 0.6671420083184789,
+            "sensitivity": 0.43529411764705883,
+            "specificity": 0.898989898989899,
+            "precision": 0.8809523809523809,
+            "f1": 0.5826771653543307,
+            "mcc": 0.34788216373583924,
+            "cohen_kappa": 0.2829552884373585,
+            "brier": 0.33314552345705184
+          },
+          "n_test_positive": 170,
+          "n_test_negative": 99,
+          "random_reference_auc_mean": 0.931780874145331,
+          "random_reference_auc_std": 0.008902098207803594,
+          "random_reference_pr_auc_mean": 0.9251156263385671,
+          "n_random_seeds_used": 3,
+          "temporal_gap_auc": 0.2923572258981533,
+          "model_spec": "morgan_fp(radius=2, 2048bit) + xgboost"
+        }
+      }
+    },
+    "Re": {
+      "n_rows": 666,
+      "cutoff_year": 2021,
+      "n_train": 323,
+      "n_test": 343,
+      "doi_straddle_count": 0,
+      "active_rate_train": 0.4024767801857585,
+      "active_rate_test": 0.21574344023323616,
+      "models": {
+        "lightgbm": {
+          "temporal_auc": 0.77270672159148,
+          "temporal_pr_auc": 0.5082778900354824,
+          "threshold": 0.5,
+          "threshold_metrics": {
+            "threshold": 0.5,
+            "accuracy": 0.8279883381924198,
+            "balanced_accuracy": 0.6944137445996182,
+            "sensitivity": 0.4594594594594595,
+            "specificity": 0.929368029739777,
+            "precision": 0.6415094339622641,
+            "f1": 0.5354330708661418,
+            "mcc": 0.4424987284553326,
+            "cohen_kappa": 0.43340706106335924,
+            "brier": 0.14234957277067023
+          },
+          "n_test_positive": 74,
+          "n_test_negative": 269,
+          "random_reference_auc_mean": 0.8505280872488333,
+          "random_reference_auc_std": 0.0222323389392488,
+          "random_reference_pr_auc_mean": 0.7858298196043417,
+          "n_random_seeds_used": 3,
+          "temporal_gap_auc": 0.07782136565735331,
+          "model_spec": "morgan_fp(radius=2, 2048bit) + lightgbm"
+        },
+        "xgboost": {
+          "temporal_auc": 0.5760825881643726,
+          "temporal_pr_auc": 0.3634416401106419,
+          "threshold": 0.5,
+          "threshold_metrics": {
+            "threshold": 0.5,
+            "accuracy": 0.5889212827988338,
+            "balanced_accuracy": 0.5273033256304632,
+            "sensitivity": 0.4189189189189189,
+            "specificity": 0.6356877323420075,
+            "precision": 0.24031007751937986,
+            "f1": 0.3054187192118227,
+            "mcc": 0.046369861892039295,
+            "cohen_kappa": 0.04301798682153668,
+            "brier": 0.30892445645705047
+          },
+          "n_test_positive": 74,
+          "n_test_negative": 269,
+          "random_reference_auc_mean": 0.8513109365782793,
+          "random_reference_auc_std": 0.010728937295177614,
+          "random_reference_pr_auc_mean": 0.7779837243515729,
+          "n_random_seeds_used": 3,
+          "temporal_gap_auc": 0.27522834841390664,
+          "model_spec": "morgan_fp(radius=2, 2048bit) + xgboost"
+        }
+      }
+    }
+  },
+  "krasnov_2026_reference": {
+    "note": "Krasnov 2026 (J. Med. Chem. 69(8) 8838-8851) is a classification paper and reports its own external validation; this temporal holdout is our analogue.  No same-dataset temporal number is published there, so no numeric reference is recorded."
+  },
+  "why": "Close the 'external validation' metric gap: pa18 is internal DOI-grouped CV only.  A prospective temporal holdout is the strongest external validation available offline and exposes the in-distribution leakage via the random-split reference.",
+  "honest_framing_note": "MEASURED only.  This is a TEMPORAL holdout, not a cross-database external set (none is available on the host with the same label rule and metal scope).  The random-split reference is a seeded diagnostic, not a second protocol.  Test active rates differ from train (recorded per metal) — that shift is the point of the axis, not a defect."
+}
