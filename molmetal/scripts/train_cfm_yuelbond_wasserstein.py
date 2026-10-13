@@ -7834,6 +7834,26 @@ def parse_args() -> argparse.Namespace:
             "default → bit-exact pre-Wf-A24 per_epoch_metrics.json."
         ),
     )
+    # Wf-A24 (2026-10-13) — Track E 8 ADMET proxy wire-in.
+    #
+    # Adds the standalone 8-set ADMET (SA/QED/logP/TPSA/HBD/HBA/RotB/
+    # aromatic_rings) over the generated SMILES cohort. Default OFF →
+    # bit-exact pre-Wf-A24 per_epoch_metrics.json.
+    # Per-epoch emission lands at
+    # PROJECT_ROOT/metrics/by_metric/cfm_8admet.json.
+    p.add_argument(
+        "--eval-admet-proxy",
+        dest="eval_admet_proxy",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-A24 (Track E, 8 ADMET proxy): compute the standalone 8-set "
+            "ADMET (SA/QED/logP/TPSA/HBD/HBA/RotB/aromatic_rings) over the "
+            "generated SMILES cohort and emit per-epoch to "
+            "metrics/by_metric/cfm_8admet.json. Off by default → bit-exact "
+            "pre-Wf-A24 per_epoch_metrics.json."
+        ),
+    )
     # Wf-A15 (2026-10-13) — Layer E.  Opt-in toggle for the 5 chemistry
     # channels (BO continuous / natural_charge / oxidation_state /
     # coord_neighbors / metal_proximity) appended to
@@ -10785,6 +10805,58 @@ def main() -> int:
                     except Exception as _m14_exc:
                         _gen_chem["m14_per_atom_error"] = (
                             f"{type(_m14_exc).__name__}: {_m14_exc}"
+                        )
+                # Wf-A24 (2026-10-13) — Track E 8 ADMET proxy wire-in.
+                #
+                # Re-uses the in-memory ``_gen_smiles`` collector (zero extra
+                # decode cost) and routes through admet8.compute_admet8_panel.
+                # The function never raises — empty cohort returns a sentinel
+                # with cohort_empty=True — so no exception path is needed.
+                # Gated on ``--eval-admet-proxy`` so a run that did not opt
+                # in pays nothing.
+                if bool(getattr(args, "eval_admet_proxy", False)) and _gen_smiles:
+                    try:
+                        from molmetal.eval.scoring import admet8 as _a8_a24
+                        _a8 = _a8_a24.compute_admet8_panel(
+                            list(_gen_smiles),
+                            cohort_tag=str(args.out_dir),
+                        )
+                        _gen_chem["admet8"] = _a8
+                        # Per-epoch emission (§5.6 atomic write).
+                        _a8_out = (
+                            PROJECT_ROOT
+                            / "metrics" / "by_metric" / "cfm_8admet.json"
+                        )
+                        _a8_out.parent.mkdir(parents=True, exist_ok=True)
+                        import json as _json_a8a24
+                        import os as _os_a8a24
+                        import tempfile as _tmpfile_a8a24
+                        _a8_payload = {
+                            "epoch": int(epoch),
+                            "seed": int(args.seed),
+                            "out_dir": str(out_dir),
+                            "admet8": _a8,
+                            "protocol_version": "cfm_8admet/2026-10-13",
+                        }
+                        _fd_a8a24, _tmp_a8a24 = _tmpfile_a8a24.mkstemp(
+                            prefix=_a8_out.name, suffix=".tmp",
+                            dir=str(_a8_out.parent),
+                        )
+                        try:
+                            with _os_a8a24.fdopen(_fd_a8a24, "w", encoding="utf-8") as _fh:
+                                _json_a8a24.dump(_a8_payload, _fh, indent=2, sort_keys=True)
+                                _fh.flush()
+                                _os_a8a24.fsync(_fh.fileno())
+                            _os_a8a24.replace(_tmp_a8a24, _a8_out)
+                        except Exception:
+                            try:
+                                _os_a8a24.unlink(_tmp_a8a24)
+                            except OSError:
+                                pass
+                            raise
+                    except Exception as _a8_exc:
+                        _gen_chem["admet8_error"] = (
+                            f"{type(_a8_exc).__name__}: {_a8_exc}"
                         )
             except Exception as _gen_exc:
                 print(
