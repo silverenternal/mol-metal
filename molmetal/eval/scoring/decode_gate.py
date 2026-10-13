@@ -257,6 +257,21 @@ def gate_ratio(
               "largest_frac_min": float,
               "min_atoms": int,
             }
+
+    NOTE (Wf-A30-4 D4, 2026-10-14, doc-only): this function is called
+    TWICE in :func:`molmetal.eval.scoring.paper_table.build_paper_table` —
+    first with the project-strict params (largest_frac_min, min_atoms from
+    the caller's defaults — historically 0.80 / 2), then with
+    ``largest_frac_min=0.0, min_atoms=0`` as the RDKit-strict proxy.  When
+    the first call uses NON-ZERO strict params, the second call is a
+    STRICT SUPERSET of the first: dropping both thresholds can only widen
+    the ok=True population.  The ``rdkit_strict_proxy`` field is therefore
+    identical to ``per_atom_validity`` once strict params are non-zero,
+    and the pair is emitted as separate fields for backward-compat with
+    the ``paper_table.md`` JSON contract (m14 row schema).  This is by
+    DESIGN — do NOT silence the duplicate call as a "no-op": the field
+    is part of the on-disk contract and downstream readers index into it
+    by name.  See HONEST_NEGATIVE_CATALOG.md §6.52f.
     """
     n_total = len(smiles)
     if n_total == 0:

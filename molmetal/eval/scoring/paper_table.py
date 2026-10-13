@@ -272,6 +272,9 @@ def build_paper_table(
         )
         a8 = _admet8.compute_admet8_panel(smiles_list, cohort_tag=cohort_id)
         # RDKit-strict proxy (legacy behaviour) for side-by-side.
+        # Wf-A30-4 D4 (2026-10-14, doc-only): second call = RDKit-strict proxy;
+        # result is a strict superset of the strict call above (no-op when
+        # strict params are non-zero) — see HONEST_NEGATIVE_CATALOG.md §6.52f.
         rs = _decode_gate.gate_ratio(
             smiles_list, largest_frac_min=0.0, min_atoms=0,
         )

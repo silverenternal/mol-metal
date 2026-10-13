@@ -11932,6 +11932,22 @@ def main() -> int:
             # early-stop gate selected (see _save_cfm_checkpoint's docstring).
             _save_cfm_checkpoint(epoch, decode_ratio, _tag="_last")
 
+        # Wf-A30-4 D2 (2026-10-14) — Historical `.pt` files may hold the
+        # FINAL epoch, not the gate-selected one (the periodic save now
+        # routes to `..._last.pt` so it can't clobber the selected ckpt,
+        # but pre-Wf-A30-1 runs are unrecoverable from this surface alone).
+        # If a reviewer needs the original gate-selected weights back from
+        # a pre-A30-1 run directory, run
+        # `molmetal/scripts/post_hoc_reselect_ckpt.py <RUN_DIR>` — it
+        # reads `per_epoch_metrics.json::best.epoch`, scans the surviving
+        # `.pt` files for the matching embedded epoch, and copies the
+        # winner to `..._best_epoch{N}.pt`.  When no `.pt` matches, the
+        # helper prints HONEST-NEGATIVE and exits 1 — the weights are
+        # unrecoverable and the run must be re-trained.  Actual reselect
+        # of the 2 affected historical waves is DEFERRED to a follow-up
+        # (no GPU, no run state to inspect).  See
+        # HONEST_NEGATIVE_CATALOG.md §6.52e.
+
         # Wf-A6 A2 BLOCKER C fix — LR scheduler step (per-epoch).
         # Default OFF (scheduler is None) preserves Wf-124 P2 + Wf-148
         # baseline bit-for-bit. Cosine + SequentialLR get one step

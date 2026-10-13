@@ -2628,6 +2628,19 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """Honest-negative scope statement (Wf-A30-4 D3, 2026-10-14).
+
+    **Vina panel scope reduction**: UFF (the force-field Meeko uses) cannot
+    parameterise Pt/Pd/Ir/Ru/Au/Rh coordination shells.  When ``pt_strip=True``
+    the entire coordination shell is removed and Vina scores only the
+    post-strip organic fragment.  This is BLOCKED on EVERY precious-metal
+    coordination, not just Pt+2 as the Wf-299B brief assumed — see
+    :data:`UFF_UNSUPPORTED_ATOMIC_NUMS` (line ~562) for the full set.  Any
+    Vina score returned for a precious-metal coordination complex is the
+    score of the post-strip organic fragment alone, which is NOT a
+    metallodrug-vs-pocket affinity measurement.  See
+    HONEST_NEGATIVE_CATALOG.md §6.52d.
+    """
     parser = _build_parser()
     args = parser.parse_args(argv)
 
