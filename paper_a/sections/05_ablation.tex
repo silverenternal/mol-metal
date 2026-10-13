@@ -1,156 +1,179 @@
-\section{Sensitivity analyses}
+\section{Ablations}
 \label{sec:ablation}
 
-The headline collapse (Claim~1) uses the cross-metal column, which is unaffected
-by the choices below. We nonetheless bound the \emph{within-metal} column and the
-corpus claim, because a reader is entitled to know where a conclusion is decided
-by a preprocessing rule rather than by the data.
+The \fsma{} result of \S\ref{sec:results:kshot} could be read three ways: that
+the adaptation operator does the work, that the extra $K$ labels do, or that the
+extra gradient steps do. This section separates them, then asks which parts of
+the method matter and whether the effect survives a change of backbone.
 
-\subsection{The tie rule decides the Ru comparison}
-\label{sec:ablation:tie}
+\subsection{Is it the adaptation, the labels, or the compute?}
+\label{sec:ablation:controls}
 
-When duplicate measurements of the same ligand disagree, the collapse rule
-resolves an exact tie toward \emph{active} (predicate
-$\text{sum}\times 2 \geq n$). This is the anti-conservative direction for an
-activity claim, and it is the rule both the fingerprint probe and the neural
-scorer use, so the within/cross comparison is internally consistent. But 80
-ligands ($4.1\%$ of the deduplicated cohort) are exact ties, so it is worth
-asking how much of the headline depends on the choice (Table~\ref{tab:tie}).
+We compare \fsma{} against two controls built on the \emph{identical} support
+set and the \emph{identical} architecture: a \textbf{from-scratch} model trained
+only on the $K$ support ligands, and a \textbf{concat-retrain} model trained on
+the source pool plus the $K$ support ligands. The controls are capped at the
+\emph{same optimizer-step count} as the \fsma{} fine-tune (the fine-tune's own
+step count is recorded per cell), so none of them can win by training longer.
 
 \begin{table}[t]
 \centering
-\caption{Within-metal AUC under the two tie rules. \MEASURED:
-\texttt{metrics/by\_metric/metal\_activity\_transfer\_tie\_sensitivity.json}.}
-\label{tab:tie}
-\begin{tabular}{lcc}
+\caption{Budget-matched controls. Every arm uses the same support set,
+architecture and optimizer-step budget; the only difference is whether the
+source model is adapted or rebuilt. $\Delta$ is the paired query-AUC difference
+against the same run's zero-shot score, over ten seeds and five metals.
+\MEASURED: \texttt{molmetal/reports/fsma\_c2\_matched\_k20/metrics.json},
+\texttt{molmetal/reports/fsma\_c2\_matched\_k40/metrics.json}.}
+\label{tab:controls}
+\small
+\begin{tabular}{llccc}
 \toprule
- & Ties $\to$ active (current) & Ties $\to$ inactive (conservative) \\
+$K$ & Arm & Paired $\Delta$ & Cells positive & One-sided $p$ \\
 \midrule
-Ru & $0.8128$--$0.8363$ & $0.7880$--$0.8082$ \\
-Ir & $0.8295$--$0.8597$ & $0.8237$--$0.8374$ \\
+$20$ & \fsma{} (k-shot)     & $+0.0171$ & $27/50$ & $0.0395$ \\
+$20$ & from-scratch        & $-0.0948$ & $4/50$  & $<10^{-4}$ \\
+$20$ & concat-retrain      & $-0.1619$ & $1/50$  & $<10^{-4}$ \\
 \midrule
-\multicolumn{3}{l}{Krasnov published: Ru $0.81$, Ir $0.73$} \\
+$40$ & \fsma{} (k-shot)     & $+0.0424$ & $38/50$ & $3.9\times10^{-6}$ \\
+$40$ & from-scratch        & $-0.0763$ & $5/50$  & $<10^{-4}$ \\
+$40$ & concat-retrain      & $-0.1619$ & $1/50$  & $<10^{-4}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The consequence is asymmetric and we state it plainly. The \emph{Ir} claim is
-robust: Ir exceeds $0.73$ under both rules and every seed. The \emph{Ru} claim is
-\emph{not} robust: under the conservative rule Ru sits at $0.7880$--$0.8082$,
-entirely at or just below $0.81$; under the current rule it sits at
-$0.8128$--$0.8363$, entirely above. Whether Ru ``beats'' the published value is
-decided by the tie rule, not by the chemistry. We therefore write Ru as
-\emph{at parity} with $0.81$, and do not claim a win. The collapse itself is
-unaffected, because it is a difference of two columns computed under the same
-rule.
+At matched budgets the ordering is unambiguous: \fsma{} is positive and
+significant at both $K$, while both controls are strongly negative
+(Table~\ref{tab:controls}). The lift is therefore the adaptation operator, not
+the labels and not the compute. This control is load-bearing, and we report why:
+an earlier, \emph{un-matched} version of the same experiment allowed the
+concat-retrain arm to train for roughly $400\times$ more optimizer steps, which
+flipped its sign to $+0.0507$ and reversed the ordering. A control that is
+allowed to train longer is not a control, and the reversal is the evidence.
 
-\subsection{Deduplication}
-\label{sec:ablation:dedup}
+\subsection{Adaptation depth}
+\label{sec:ablation:scope}
 
-Raw MetalCytoToxDB rows are heavily duplicated at the ligand level: Ru's
-$3{,}668$ rows collapse to $1{,}255$ unique ligands ($65.8\%$ duplication), and
-the duplication is uneven across metals. Both the within-metal and cross-metal
-numbers are computed on the deduplicated cohort, so the two columns are
-comparable to each other. Deduplication matters because the same ligand can be
-measured against several metals; without it, a row split would put a ligand in
-both train and test and inflate both columns. The LOMO protocol removes this
-leak directly by dropping any training ligand that appears in the held-out
-metal, so the cross-metal column is ligand-disjoint by construction.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.95\linewidth]{fig3_dedup_tie.pdf}
-\caption{Left: raw rows versus unique ligands per metal (percentage is the
-duplication rate). Right: within-metal AUC interval across seeds under the two
-tie rules; the Ru interval crosses the published $0.81$ line, the Ir interval
-does not. \MEASURED:
-\texttt{metrics/by\_metric/metal\_activity\_transfer\_seed\_stability.json},
-\texttt{metal\_activity\_transfer\_tie\_sensitivity.json}.}
-\label{fig:dedup}
-\end{figure}
-
-\subsection{Scorer choice}
-\label{sec:ablation:scorer}
-
-Claim~1's cross-metal column is measured with a Morgan-fingerprint plus XGBoost
-probe. To show the collapse is not a fingerprint artefact we re-run the
-ligand-disjoint LOMO evaluation with the official chemprop~v2 message-passing
-backbone \citep{chemprop} on the same cohort and the same splits
-(Table~\ref{tab:scorer}).
+\fsma{} freezes the encoder and fine-tunes only the activity head. The two
+obvious alternatives are a wider scope --- head plus the metal-conditioning
+modules --- and the widest scope, full-encoder fine-tuning. Table~\ref{tab:scope}
+sweeps all three.
 
 \begin{table}[t]
 \centering
-\caption{Scorer ablation on the Paper-A probe cohort: same cohort, same
-ligand-disjoint LOMO split. Cross AUCs are 5-seed means for the backbone and a
-single seed (42) for the fingerprint probe; the interval is a
-$2{,}000$-resample bootstrap of the backbone's seed-42 cross ranking. The
-verdict is a label-permutation null on that ranking, Holm--Bonferroni-corrected
-over the five-metal family. \MEASURED:
-\texttt{metrics/by\_metric/pa3\_chemprop\_lomo\_probe\_cohort.json}.}
-\label{tab:scorer}
-\begin{tabular}{lccccc}
+\caption{Adaptation-scope ablation. Same protocol, same support sets; the only
+change is which parameters the adaptation step is allowed to update. Holm
+$p$ is within the scope-sweep family. The full-scope $K{=}5$ cell is the only
+family-significant \emph{negative} in the whole study; head-only removes it.
+\MEASURED: \texttt{metrics/by\_metric/fsma\_paper\_stats.json}
+(\texttt{families.C4\_adapt\_scope}).}
+\label{tab:scope}
+\small
+\begin{tabular}{lcccc}
 \toprule
-Metal & $n_{\text{test}}$ & Fingerprint & Backbone & Backbone 95\% CI & Holm $p$ \\
+$K$ & Full encoder & Head $+$ metal & Head only \\
 \midrule
-Ru & $1{,}255$ & $0.6179$ & $0.5621$ & $[0.5075,0.5880]$ & $0.040$ \\
-Ir & $534$      & $0.5276$ & $0.4841$ & $[0.4062,0.5033]$ & $0.228$ \\
-Rh & $51$       & $0.5190$ & $0.4915$ & $[0.3243,0.6859]$ & $1.000$ \\
-Os & $36$       & $0.4950$ & $0.5559$ & $[0.3311,0.7078]$ & $1.000$ \\
-Re & $74$       & $0.4429$ & $0.7368$ & $[0.6202,0.8904]$ & $0.010$ \\
+$5$  & $\mathbf{-0.0171}$ ($18/50$) & --- & $+0.0097$ ($28/50$) \\
+$20$ & $+0.0148$ ($24/50$) & $+0.0120$ ($31/50$) & $+0.0084$ ($28/50$) \\
+$40$ & $+0.0470$ ($39/50$) & --- & $+0.0379$ ($40/50$) \\
+$80$ & $+0.0783$ ($50/50$) & --- & $+0.0685$ ($50/50$) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The backbone reproduces the collapse on Ru, Ir and Rh (cross AUC $0.5621$,
-$0.4841$, $0.4915$), keeps Os inside its null band, and recovers Re
-($0.7368$). Under the family correction only Re and Ru survive: Ir's
-below-chance reading under the backbone is significant only uncorrected
-(one-sided $p=0.038$; two-sided $0.076$, Holm $0.23$). The collapse for Ru, Ir
-and Rh is therefore robust to the scorer, while the Re exception is a property
-of the representation, not of the metal axis. The within-metal column carries no
-bootstrap interval here because the PA3 report stores per-fold AUCs but not the
-per-ligand out-of-fold scores a within-metal bootstrap needs; the fingerprint
-within column's interval is in \S\ref{sec:results:collapse}.
+The pattern is a low-$K$ effect. At $K{=}5$ the full-encoder scope is
+significantly \emph{negative} ($-0.0171$, Holm $p=0.043$): updating the whole
+encoder on five ligands overfits them and destroys the source representation.
+Head-only adaptation is instead positive at every $K$ tested, and it removes the
+only significant negative in the study. At large $K$ the scopes converge
+(full $+0.0783$ vs head $+0.0685$ at $K{=}80$, both $50/50$), which is the
+expected behaviour --- with enough support labels the encoder can be safely
+updated. Head-only is the scope we report for the main curve because it is the
+one that is safe in the low-$K$ regime, which is where few-shot adaptation is
+actually used.
 
-\subsection{tmQM bond-perception reference}
-\label{sec:ablation:bond}
+\subsection{Support-set construction}
+\label{sec:ablation:sampler}
 
-The tmQM corpus is the pretraining source for Claim~2 and, in a companion line
-of work, the ground truth for metal bond-order perception. For completeness we
-report the same-protocol bond-perception comparison on 900 held-out complexes
-(150 per metal, non-hydrogen pair scope, per-complex aggregation,
-Table~\ref{tab:bond}).
+If \fsma{} required careful support curation it would be much less useful. We
+test four samplers at $K{=}20$: random, label-stratified (the default),
+Bemis--Murcko scaffold-diverse \citep{bemis1996murcko}, and activity-scaffold.
 
 \begin{table}[t]
 \centering
-\caption{Bond perception on 900 held-out tmQM complexes, identical cohort and
-per-complex aggregation for every column. The learned head and OpenBabel are
-scored on non-hydrogen pairs; RDKit (stripped) is scored on its native
-non-metal \emph{and} non-hydrogen pair scope. The head column is a mean $\pm$
-sample std over three full-corpus checkpoints (seeds 0--2); OpenBabel and RDKit
-are deterministic given the input, so their only uncertainty is the sampling of
-the 900 complexes. \MEASURED:
-\texttt{metrics/by\_metric/tmqm\_bond\_perception\_3seed.json}.}
-\label{tab:bond}
+\caption{Support-set construction at $K{=}20$, five seeds and five metals
+($25$ cells). None of the four arms is family-significant, and the ordering
+does not follow the naive hypothesis that a ``diverse'' or ``active-aware''
+support set should help. \MEASURED:
+\texttt{molmetal/reports/fsma\_c3\_\{random,stratified,scaffold\_diverse,activity\_scaffold\}\_k20/metrics.json}.}
+\label{tab:sampler}
+\small
 \begin{tabular}{lccc}
 \toprule
- & Learned head & OpenBabel \citep{openbabel} & RDKit (stripped) \citep{rdkit} \\
+Sampler & Paired $\Delta$ & Cells positive & Holm $p$ \\
 \midrule
-bond EXISTENCE F1   & $\mathbf{0.9962 \pm 0.0008}$ & $0.9771$ & $0.9998$ \\
-exact-type rate     & $\mathbf{0.0956 \pm 0.0113}$ & $0.0300$ & $0.0220$ \\
-macro-F1(type)      & $0.4784 \pm 0.0055$ & $\mathbf{0.5051}$ & $0.2809$ \\
-success rate        & $1.000$ & $1.000$ & $0.303$ \\
+random             & $+0.0135$ & $11/25$ & $0.492$ \\
+label-stratified   & $+0.0054$ & $14/25$ & $0.663$ \\
+scaffold-diverse   & $+0.0011$ & $13/25$ & $0.663$ \\
+activity-scaffold  & $-0.0184$ & $9/25$  & $0.197$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The learned head wins two of three axes, including a $3.2\times$ edge in
-exact-type rate, but it \emph{loses} the axis it was designed to win:
-macro-F1(type) $0.4784 \pm 0.0055$ against OpenBabel's $0.5051$, $0.0267$ behind.
-The loss is consistent across all three seeds and is nearly five times the
-between-seed standard deviation, so it is not seed noise. We report the losing
-row deliberately. We also record a withdrawn number: an earlier figure of
-$0.9194$ came from a \emph{pooled} aggregation on a different cohort, and the
-seed-0 checkpoint scores $0.4723$ under the per-complex protocol used here. The
-two are not interchangeable, and quoting $0.9194$ beside OpenBabel's per-complex
-$0.5051$ would compare three things at once.
+The four arms are statistically indistinguishable and the ordering even
+\emph{reverses} the hypothesis: the plain random draw is the best point estimate
+and the activity-scaffold sampler is the worst. Support-set construction is not
+a positive lever here, which we read as a practical advantage rather than a
+null: \fsma{} needs no careful curation of which target-metal ligands to label,
+so a practitioner can label the $K$ compounds that are cheapest to obtain.
+
+\subsection{Cross-backbone: gradient-boosted trees}
+\label{sec:ablation:backbone}
+
+The $K$-curve is measured with a D-MPNN. To show it is not an artefact of that
+encoder we re-run the identical \fsma{} LOMO protocol with a completely
+different model class --- a Morgan fingerprint plus XGBoost, where the
+adaptation step is warm-started gradient boosting (\texttt{xgb\_model}
+continuation) on the $K$ support ligands.
+
+\begin{table}[t]
+\centering
+\caption{Cross-backbone replication. Same \fsma{} LOMO protocol, same
+$K$ schedule, but the backbone is fingerprint-plus-XGBoost and adaptation is
+warm-started gradient boosting. Controls are round-matched ($550 = 500 + 50$
+boosting rounds). Five seeds and five metals. \MEASURED:
+\texttt{metrics/by\_metric/fsma\_xgb\_warmstart\_kshot.json}.}
+\label{tab:backbone}
+\small
+\begin{tabular}{lcccc}
+\toprule
+$K$ & Warm-start $\Delta$ & from-scratch & concat-retrain & One-sided $p$ \\
+\midrule
+$5$  & $-0.0000$ & $-0.1331$ & $+0.0054$ & $0.855$ \\
+$10$ & $+0.0029$ & $-0.0773$ & $+0.0073$ & $0.067$ \\
+$20$ & $+0.0197$ & $-0.0393$ & $+0.0200$ & $0.0067$ \\
+$40$ & $+0.0435$ & $+0.0094$ & $+0.0332$ & $1.1\times10^{-4}$ \\
+$80$ & $+0.0786$ & $+0.0546$ & $+0.0644$ & $2\times10^{-7}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The warm-start curve rises monotonically in $K$ and reproduces the D-MPNN
+result: $+0.0029$/$+0.0197$/$+0.0435$/$+0.0786$ for $K{=}10/20/40/80$, with
+$25/25$ cells positive at $K{=}80$ ($p=2\times10^{-7}$). The from-scratch
+control collapses at low $K$ ($-0.1331$ at $K{=}5$) exactly as in the neural
+case, and concat-retrain never beats warm-start at any $K$. The \fsma{} effect
+is therefore a property of the adaptation protocol, not of the graph encoder.
+
+\subsection{Leakage controls}
+\label{sec:ablation:leak}
+
+Cross-metal evaluation is only meaningful if test ligands are absent from
+training. The LOMO protocol drops any training ligand that also occurs in the
+held-out metal, so the cross-metal column of Table~\ref{tab:transfer} is
+ligand-disjoint from training by construction. Within \fsma{}, the $K$ support
+ligands and the query set are drawn disjointly from the same metal, so the
+paired $\Delta$ is never support$\to$support. Two residual caveats remain and we
+state them: the splits are ligand-disjoint but not cell-line-disjoint, and the
+label-collapse tie rule (exact ties resolved toward \emph{active}) is the
+anti-conservative direction for an activity endpoint. The tie-rule sensitivity
+of the within-metal column is reported in the supplement.

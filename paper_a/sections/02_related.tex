@@ -1,10 +1,11 @@
 \section{Related work}
 \label{sec:related}
 
-Our study sits at the intersection of three literatures: ligand-based activity
+Our study sits at the intersection of four literatures: ligand-based activity
 prediction and the transfer assumption behind its evaluation, machine learning
-for transition-metal complexes, and evaluation protocols for distribution
-shift. We take each in turn and close with the specific gap we address.
+for transition-metal complexes, few-shot and meta-learning, and evaluation
+protocols for distribution shift. We take each in turn and close with the
+specific gap we address.
 
 \subsection{Ligand-based activity prediction and its transfer assumption}
 
@@ -70,7 +71,27 @@ spanning Ru, Ir, Rh, Re and Os, and reported per-metal binary activity models
 (Ru 0.81, Ir 0.73 AUC) trained on Morgan fingerprints with gradient-boosted
 trees under a DOI-grouped 10-fold split. That work establishes both the data and
 the protocol we adopt, and it is the baseline against which we measure our
-honest negative in \S\ref{sec:results}.
+within-metal comparison in \S\ref{sec:results:krasnov}.
+
+\subsection{Few-shot and meta-learning}
+
+Adapting a model to a new task from a handful of labelled examples is the
+setting of few-shot learning, and its dominant formalisation is
+gradient-based meta-learning: MAML \citep{maml2017} learns an initialisation
+from which a few gradient steps adapt to a new task, and Reptile
+\citep{reptile2018} simplifies that outer loop to a first-order update. In
+molecular property prediction the idea has been applied as one-shot learning
+over a shared embedding across many tasks \citep{oneshotdrug2017}, where the
+scarcity is labels per task. Our setting differs in what plays the role of the
+task. The tasks are \emph{metals}, the tasks share an organic ligand space, and
+the shift between them is not a new label function over the same compounds but a
+different conditional relationship between the ligand features and the label.
+\fsma{} is deliberately weaker than a learned meta-learner --- a frozen source
+encoder plus a retrained head, with no outer loop --- and we present it as a
+strong baseline for this axis rather than a new meta-learning algorithm. The
+result that matters is that even this minimal adaptation is enough to repair the
+collapse, which is the evidence that the collapse is a target-distribution
+problem rather than a representation one.
 
 \subsection{Evaluation protocols and distribution shift}
 \label{sec:related:shift}
@@ -103,7 +124,8 @@ reported \emph{within} a metal or across organic chemical space. A per-metal
 model answers ``how well can we predict activity for this metal''; it does not
 answer ``does what we learn about one metal help with another''. No study in
 either line publishes a cross-metal leave-one-metal-out measurement, and none
-uses a same-metal scaffold split as the control that separates the metal axis
-from ordinary novel-scaffold generalisation. We make cross-metal transfer the
-primary measurement, and we report it under two independent scorers so that the
-conclusion does not rest on one model class.
+reports a repair that is validated against budget-matched controls and a
+different model class. We make cross-metal transfer the primary measurement,
+report a minimal adaptation protocol that recovers it, and establish that the
+recovery is the adaptation rather than the extra labels, the extra compute, or
+the choice of encoder.

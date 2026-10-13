@@ -1,77 +1,39 @@
-\section{Limitations and honest negatives}
+\section{Scope and limitations}
 \label{sec:limitations}
 
-We separate what the study establishes from what it does not.
+We separate what the study establishes from what it does not. Results moved out
+of the main text for length --- the probe-cohort collapse decomposition, the
+tmQM pretraining A/B, the MoleculeNet control, the tie-rule sensitivity and the
+cohort-construction trap --- are collected in the supplement, each with its
+artifact pointer.
 
-\subsection{Cohort scope and the cross-cohort caveat}
+\subsection{Cohort scope and the cross-cohort comparison}
 \label{sec:lim:caveat}
 
-The head-to-head in Table~\ref{tab:krasnov} is a \emph{cross-cohort} estimate.
-Our funnel keeps $591$ cell lines against the paper's $23$; we adopt their split
-scheme and dedup rule exactly, but the underlying population differs. We can now
-attribute the $0.0383$ gap: running the published model class on our identical
-cohort and fold partition closes it to $-0.0040$, so the gap is cohort scope, not
-model class. The claim we defend is therefore: under the published protocol, on
-a broader and more heterogeneous cohort, a D-MPNN and the published LightGBM are
-statistically indistinguishable, and both sit $0.038$ below the number the paper
-reports on its narrower cohort.
+The DOI-split comparison to the published $0.810$ is a \emph{cross-cohort}
+estimate: our funnel keeps $591$ cell lines against the paper's $23$. Running
+the published model class on our identical cohort and fold partition closes the
+gap to $-0.0040$, so the residual is cohort scope, not model class. The
+like-for-like comparison is the within-metal axis
+(\S\ref{sec:results:krasnov}), which holds our cohort fixed.
 
-\subsection{Small per-metal cohorts make part of the result unresolvable}
-\label{sec:lim:small}
-
-Three of the five metals have too few unique ligands to resolve an effect:
-Rh $51$, Re $74$, Os $36$. Os is the clearest case: its within-metal AUC swings
-from $0.3133$ to $0.5867$ across five seeds (spread $0.2734$), larger than any
-method change would move it. That swing \emph{is} the unresolvability. We
-therefore report Os, Rh and Re as measured-but-not-gated and draw no metal-level
-conclusion from them individually. In particular, the sub-$0.5$ cross-metal
-point estimates for Os ($0.4950$) and Re ($0.4429$) are \emph{not} a
-below-chance effect: a label-permutation null on the fixed cross-metal ranking
-places both inside the null (null SD $\pm0.10$ at $n=36$, $\pm0.09$ at $n=74$),
-and only Ru is significantly above chance under the fingerprint scorer after
-Holm correction (the message-passing backbone places Re above chance at $0.7368$,
-Holm $p=0.010$; see
-\S\ref{sec:results:collapse}). Re's three-seed cross-metal range
-($0.4429$--$0.4798$) is tight, but a tight range around an unresolvable level is
-still unresolvable.
-
-\subsection{The pooled cross-metal mean is Ru-dominated}
+\subsection{The pooled mean is Ru-dominated}
 \label{sec:lim:pooled}
 
-Ru is $64\%$ of the deduplicated cohort. Any pooled cross-metal mean is largely
-a Ru number, and quoting it without the per-metal table would overstate the
-breadth of the finding. We quote per-metal throughout and treat the pooled value
-as descriptive only.
+Ru is the largest metal in the cohort. Any pooled \fsma{} delta is largely a Ru
+number, so we report per-metal rows throughout and treat the pooled value as
+descriptive only.
 
-\subsection{A cohort-construction trap in a related protocol}
-\label{sec:lim:cohort}
+\subsection{Per-metal resolution}
+\label{sec:lim:small}
 
-A preprocessing filter applied to a pre-filtered artifact can manufacture a
-below-chance result, so we record one we hit while building a related
-leave-one-metal-out protocol. The default cohort file is a snapshot already
-filtered to short exposure times ($\leq24$\,h); raising the threshold at training
-time cannot recover the dropped rows, and the loaded cohort stayed
-byte-identical --- the filter silently did nothing. The consequence is a
-below-chance fold: the Rh held-out set collapses to $108$ test ligands and scores
-$0.3812$, dragging the pooled LOMO mean to $0.5575$, with no change to the model.
-Readers building on MetalCytoToxDB can hit the same trap. \MEASURED:
-\texttt{metrics/by\_metric/metal\_lomo\_auc\_wasserstein.json}.
-
-\subsection{Two MoleculeNet task gaps remain}
-\label{sec:lim:bace}
-
-Under a protocol-matched comparison (our own chemprop~v2 re-run, same scaffold
-split and seeds) the D-MPNN wins bbbp ($+0.0133$) and hiv ($+0.0082$) and loses
-bace ($0.7933 \pm 0.0250$ against $0.8458 \pm 0.0113$, $-0.0525$) and clintox
-($0.8303$ against $0.8847$, $-0.0544$). Both losses exceed seed noise, so we
-report them as honest negatives. They are generic ADMET endpoints outside this
-paper's target chemistry and do not bear on the metal-axis claims; the backbone
-is otherwise competitive (mean $0.8280$), which is what lets us argue in
-\S\ref{sec:results:moleculenet} that the metal collapse is a property of the
-axis and not of a broken model. Seed-ensembling the five runs is a free
-inference-time lever that lifts the mean by $+0.0123$ on a pinned-split
-replication (\texttt{l2\_moleculenet\_ensemble.json}) without closing the bace
-gap.
+Constructing the cohort under the published protocol's rule --- with no
+short-exposure-time window --- is what makes all five metals resolvable, and it
+is why this paper reports no unresolvable metal. The smallest cohort (Re, $250$
+ligands) still resolves both the within-metal ceiling and the \fsma{} effect.
+Readers who apply an additional exposure-time filter can reintroduce the
+small-sample regime; the supplement documents the trap
+we hit.
 
 \subsection{Leakage controls}
 \label{sec:lim:leak}
@@ -79,94 +41,70 @@ gap.
 Cross-metal evaluation is only meaningful if test ligands are absent from
 training. The LOMO protocol drops any training ligand that appears in the
 held-out metal, so the cross-metal column is ligand-disjoint by construction.
-The within-metal column uses 5-fold CV over a metal's own ligands and shares no
-ligands across folds by construction. The scaffold control in
-Table~\ref{tab:transfer} holds out whole Bemis--Murcko scaffolds within a metal,
-so its ``net metal'' column is the collapse with the ordinary novel-scaffold
-penalty already removed. Two caveats remain: the scaffold-split control is a
-single seed ($42$), and both the cross-metal and scaffold splits are
-ligand-/scaffold-disjoint but not cell-line-disjoint.
+The within-metal column uses stratified 5-fold CV over a metal's own ligands,
+and the \fsma{} support and query sets are drawn disjointly from the same metal.
+Two residual caveats remain: the splits are ligand-disjoint but not
+cell-line-disjoint, and the label-collapse tie rule (ties toward active) is the
+anti-conservative direction for an activity endpoint.
 
 \subsection{What we do not claim}
 \label{sec:lim:notclaim}
 
 \begin{itemize}
 \item We do not claim the collapse is caused by any specific chemical mechanism.
-We measure that it happens; we do not identify why.
-\item We do not claim any metal's cross-metal AUC is \emph{below} chance under
-the fingerprint scorer. Under its label-permutation null none is, and only Ru is
-significantly above chance after Holm correction. The message-passing backbone
-moves Re above chance ($0.7368$, Holm $p=0.010$); Ir's below-chance reading is
-significant only as an uncorrected one-sided test ($p=0.038$, two-sided $0.076$,
-Holm $0.23$) and does not survive the family correction, so we do not claim it.
-The sub-$0.5$ fingerprint point estimates for Os and Re are unresolvable at
-$n=36$--$74$.
-\item We do not claim metal is the \emph{only} shift axis. A same-metal scaffold
-split already costs $0.10$--$0.12$ on the two metals where the penalty resolves;
-the metal axis is the largest single remaining shift, not the sole source of the
-collapse.
-\item We do not claim to beat the published model on its DOI-split replication:
-we are $0.0383$ below it cross-cohort, and the same-cohort model-class gap is
-$-0.0040$. We \emph{do} claim a within-metal win for Ir with the
-fingerprint-plus-XGBoost scorer (Table~\ref{tab:transfer}: $+0.09$ to $+0.13$,
-robust to both tie rules and every seed); Ru is at parity, decided by the tie
-rule. The within-metal column is that scorer's, not the D-MPNN's: re-measured
-on the same cohort and folds the D-MPNN scores $0.7041$ (Ru) and $0.6912$ (Ir)
-against the GBDT's $0.8271$ and $0.8430$, i.e.\ below on all five metals.
+We measure that it happens and that adaptation repairs it; we do not identify
+why the metal axis breaks transfer.
+\item We do not claim \fsma{} is optimal. It is a deliberately minimal protocol
+--- one frozen encoder, one trained head --- and we present it as a strong
+baseline rather than a new meta-learning algorithm. A learned inner-loop
+optimiser could plausibly recover more.
 \item We do not claim a tmQM pretraining benefit. On the fixed scaffold split,
-measured on two metals, no Holm-corrected effect is significant: Ru's paired
-delta is $-0.0094$ (t-based 95\% CI $[-0.0406,+0.0218]$), and Ir's is a
-suggestive $+0.0486$ that does not clear the paired $t$-test ($3/5$ seeds
-positive, CI includes zero, one-sided $p=0.068$; the 5-seed bootstrap's
-$p=0.012$ is anti-conservative at that sample size). The earlier $+0.0181$ came
-from a degenerate, molecule-level splitter and does not survive the fix.
-\item We do not claim the bond-perception head wins. It loses macro-F1(type).
-\item We do not claim Ru exceeds the published $0.81$ unqualified; that is
-decided by the tie rule (\S\ref{sec:ablation:tie}).
-\item We do not claim static metal conditioning mitigates the collapse. A metal
-token, a metal-descriptor embedding and FiLM all leave the cross-metal mean at
-or below the unconditioned baseline (\S\ref{sec:results:method}); the mitigation
-that works is few-shot adaptation to the target metal, and it needs $20$--$40$
-labelled ligands.
+measured on two metals, no Holm-corrected effect is significant; see the
+supplement.
+\item We do not claim the D-MPNN is the best within-metal scorer. The within-metal
+column is reported for the shared backbone; the fingerprint-plus-GBDT scorer is
+competitive on this tabular-size cohort and is the subject of the supplement's
+scorer comparison.
+\item We do not claim the MoleculeNet bace and clintox gaps are closed; they are
+generic ADMET endpoints outside this paper's target chemistry and are carried in
+the supplement.
+\item We do not claim static metal conditioning mitigates the collapse. It is
+addressed in the supplement: a metal token, a descriptor embedding and FiLM all
+leave the cross-metal mean at or below the unconditioned baseline, which is the
+control that motivates adaptation rather than conditioning as the repair.
 \end{itemize}
 
 \section{Conclusion}
 \label{sec:conclusion}
 
 Metal identity is a first-class distribution shift for ligand-based activity
-models. On a deduplicated MetalCytoToxDB cohort, a single shared scorer loses
-$0.18$--$0.51$ ROC-AUC when it moves from a metal it has seen to one it has not,
-and a same-metal scaffold-split control shows that only about half of that drop
-is ordinary novel-scaffold generalisation. Under a Holm-corrected label-permutation null, and
-at the cohort sizes available, the cross-metal signal is significantly above
-chance only for Ru under the fingerprint scorer; an independent message-passing
-backbone additionally recovers Re ($0.7368$, Holm $p=0.010$), which is why we report
-Re as representation-dependent rather than as a failed transfer. The sub-$0.5$
-fingerprint point estimates for Os and Re are not below-chance effects. tmQM
-pre-training of the encoder does \emph{not} transfer to the activity head on a
-genuine scaffold split, on either of the two metals tested (Ru $-0.0094$; Ir a
-suggestive $+0.0486$ that does not clear the paired $t$-test, $p=0.068$), and
-running the
-published protocol's own model class on our
-identical cohort and folds reproduces it to within $-0.0040$ --- so the honest
-negative is about cohort scope, not model class.
+models. On a deduplicated MetalCytoToxDB cohort, one shared model loses
+$0.06$--$0.24$ ROC-AUC when it moves from metals it has seen to one it has not,
+and every metal incurs the loss. Few-shot metal adaptation --- freezing the
+source model and fine-tuning only its activity head on a handful of labelled
+target-metal ligands --- recovers most of it: the paired delta is positive at
+every $K$ we test, reaches $+0.0685$ at $K{=}80$ with all $50$
+metal$\times$seed cells positive, and recovers $74.9$--$98.5\%$ of the
+within-metal ceiling. Matched-budget controls show the lift is the adaptation
+operator, not the extra labels or compute; a scope ablation shows that head-only
+adaptation is what keeps the low-$K$ regime non-negative; a sampler ablation
+shows the method needs no careful support curation; and a fingerprint-plus-XGBoost
+replication shows the effect is not an artefact of the graph encoder.
 
 The actionable reading is narrow but clear. A ligand-only QSAR model trained on
 one metal should not be deployed to rank candidates for a different metal without
 re-validation: the features that carry within-metal signal do not survive the
-metal change, and feeding the model the metal identity does not repair this ---
-static metal conditioning (token, descriptor, FiLM) leaves the cross-metal mean
-at or below the unconditioned baseline. What does work is cheap: a handful of
-labelled ligands from the target metal ($20$--$40$) recovers most of the collapse
-($+0.058$ to $+0.091$ AUC, Holm $p<0.004$). We therefore recommend (i) few-shot
-adaptation to the target metal rather than a metal-conditioned zero-shot model,
-and (ii) reporting cross-metal leave-one-metal-out alongside the within-metal
-number --- with a same-metal scaffold split as the control --- whenever a
-dataset spans more than one metal. Cross-metal transfer deserves to be a
-reported benchmark axis, not an implicit assumption.
+metal change, and supplying the metal identity does not repair this. What does
+work is cheap --- a few dozen labelled ligands from the target metal, a frozen
+encoder and a retrained head. We therefore recommend (i) few-shot adaptation to
+the target metal rather than a metal-conditioned zero-shot model, and
+(ii) reporting cross-metal leave-one-metal-out alongside the within-metal number
+whenever a dataset spans more than one metal. Cross-metal transfer deserves to
+be a reported benchmark axis, not an implicit assumption.
 
 \section*{Data and code availability}
 
 All cohorts, configs and scripts are versioned in the accompanying repository.
 Every quantitative claim in this paper cites a JSON artifact under
-\texttt{metrics/by\_metric/}, listed at the corresponding table or figure.
+\texttt{metrics/by\_metric/} or a run report under \texttt{molmetal/reports/},
+listed at the corresponding table or figure.

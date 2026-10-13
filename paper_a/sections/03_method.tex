@@ -4,107 +4,123 @@
 \subsection{Cohort and deduplication}
 \label{sec:method:cohort}
 
-We use MetalCytoToxDB \citep{krasnov2026metalcytotoxdb}, restricted to the five
-metals it covers: Ru, Ir, Rh, Re and Os. Cytotoxicity is binarised from the
-dark IC50 with a $10\,\mu$M activity threshold; rows below a $0.01\,\mu$M
-noise floor are dropped.
+We use MetalCytoToxDB \citep{krasnov2026metalcytotoxdb} under the source paper's
+own cohort-construction rule: keep rows with an IC50 value, keep the five metals
+the database covers (Ru, Ir, Rh, Os, Re), apply measurement-level deduplication
+on (\texttt{SMILES\_Ligands}, \texttt{Cell\_line}, \texttt{Time(h)}), and apply
+the paper's 76-name non-cancer cell-line exclusion. We deliberately do
+\emph{not} impose a short-exposure-time window: an earlier internal protocol
+restricted rows to $\leq24$\,h, which silently truncated the smaller metals
+(the supplement documents the trap). Dropping that window raises the cohort to
+$4{,}793$ (Ru), $1{,}281$ (Ir), $334$ (Rh), $333$ (Os) and $250$ (Re) unique
+ligands, and is what makes all five metals resolvable. \MEASURED:
+\texttt{metrics/by\_metric/w1\_cohort\_expansion\_probe.json}.
 
-Measurement-level duplicates are collapsed to one row per unique ligand:
-for every ligand the label is the majority over its measurements, and ties are
-broken \emph{toward active} (the predicate is $\text{sum} \times 2 \geq n$).
-Ties going to active is the conservative choice for a cytotoxicity endpoint and
-is the rule the released code actually implements. Duplication is severe and
-uneven: Ru has a $65.8\%$ duplication rate ($3{,}668 \to 1{,}255$ unique
-ligands), Ir $57.0\%$, Os $58.6\%$, Rh $52.8\%$. Because the same organic
-ligand can be measured against several metals, a raw row split leaks ligands
-across the train/test boundary; the LOMO protocol below removes that leak
+Cytotoxicity is binarised from the dark IC50 with a $10\,\mu$M activity
+threshold; rows below a $0.01\,\mu$M noise floor are dropped. Ligand-level
+duplicates are then collapsed to one row per unique ligand: for every ligand the
+label is the majority over its measurements, and exact ties are broken
+\emph{toward active} (the predicate is $\text{sum}\times 2 \geq n$). Ties going
+to active is the conservative choice for a cytotoxicity endpoint and is the rule
+the released code actually implements. Because the same organic ligand can be
+measured against several metals, a raw row split leaks ligands across the
+train/test boundary; the leave-one-metal-out protocol below removes that leak
 explicitly.
 
-\subsection{Three evaluation regimes}
+\subsection{Evaluation regimes}
 \label{sec:method:regimes}
 
-We hold the cohort and the scorer fixed and vary only the split.
+We hold the cohort and the model fixed and vary only the split.
 
-\textbf{Within-metal.} For each metal, 5-fold cross-validation over that metal's
-unique ligands. This is the setting the source paper reports, and it answers
-``how well can activity be predicted for a metal we have data on''.
+\textbf{Within-metal (ceiling).} For each metal, stratified 5-fold
+cross-validation over that metal's unique ligands, ten seeds. This is the
+setting the source paper reports, and it is the \emph{ceiling} against which
+cross-metal transfer is measured.
 
-\textbf{Within-metal scaffold (control).} For each metal, the same 5-fold CV but
-with whole Bemis--Murcko scaffolds held out, so train and test share no scaffold
-\citep{bemis1996murcko}. This measures the ordinary novel-scaffold generalisation
-penalty on this cohort and is the reference the cross-metal number must beat
-before a metal-specific effect can be claimed.
+\textbf{Cross-metal (LOMO, zero-shot).} For each held-out metal $m$, train on
+the unique ligands of the other four metals and test on $m$. The leakage rule is
+strict: any training ligand that also occurs in the held-out metal is dropped
+from the train pool before fitting, so the test set is ligand-disjoint from
+training by construction. This is the \emph{collapse} regime.
 
-\textbf{Cross-metal (LOMO).} For each held-out metal $m$, train on the unique
-ligands of the other four metals and test on $m$. The leakage rule is strict:
-any training ligand that also occurs in \emph{any} other metal, including the
-held-out one, is dropped from the train pool before fitting. This makes the test
-set ligand-disjoint from training by construction.
+\textbf{Few-shot metal adaptation (\fsma).} Starting from the frozen zero-shot
+LOMO model, fine-tune on $K$ labelled support ligands drawn from the held-out
+metal, then score a query set from the same metal that is disjoint from the
+support set. The reported quantity is the \emph{paired} difference between the
+adapted query AUC and the \emph{same run's} zero-shot query AUC, so
+metal-to-metal difficulty and seed variance cancel.
 
-The three regimes differ in more than the held-out metal: their training sets,
-sizes and label priors all change. We therefore do not read the raw
-within-to-cross drop as a pure metal effect. We decompose it into the
-novel-scaffold penalty (within $-$ scaffold) and the residual metal effect
-(scaffold $-$ cross), and report both in Table~\ref{tab:transfer}.
+The three regimes share the cohort and the model; only the split and the
+adaptation step differ, which is what lets us read the LOMO drop as a metal
+effect rather than a preprocessing artefact.
 
-Per-metal cohorts are small --- Ru $1{,}255$ unique ligands, Ir $534$,
-Re $74$, Rh $51$, Os $36$ --- so we report each metal separately and never quote
-a pooled cross-metal mean without the per-metal table. Ru is $64\%$ of the
-deduplicated cohort, so a pooled number is largely a Ru number.
-
-\subsection{Models}
+\subsection{Model}
 \label{sec:method:models}
 
-\textbf{Probe scorer (Claim~1).} Morgan fingerprints (radius 2, 2048 bits) with
-XGBoost. This is the standard ligand-based baseline and keeps the
-within/cross comparison free of any neural architecture confound: the collapse,
-if real, must appear for a fingerprint model too.
+The backbone is the official chemprop~v2 atom message-passing encoder
+\citep{chemprop, dmpnn2019} with a single pooled binary-classification head:
+$d_h=300$, depth $3$, FFN $1\times300$, dropout $0.0$, trained for $50$ epochs
+at batch $64$ and learning rate $10^{-3}$ with class weighting, under the
+ligand-disjoint LOMO split. No metal features are supplied
+(\texttt{metal\_mode: none}); metal identity enters only through the adaptation
+step below. The same architecture and schedule are used for every regime, so the
+within-metal ceiling, the zero-shot LOMO column and the \fsma{} curve are
+directly comparable. \MEASURED:
+\texttt{metrics/by\_metric/pa3\_chemprop\_lomo\_probe\_cohort.json}.
 
-\textbf{D-MPNN backbone (Claims~2--4).} A directed message-passing neural
-network \citep{dmpnn2019} with a shared encoder and per-metal activity heads,
-trained with a Wasserstein multi-task objective. Hidden width 128, depth 3,
-batch 64, learning rate $10^{-3}$, 30 epochs, seeds $\{0,\dots,4\}$. The
-activity loss is binary cross-entropy with a per-metal positive weight; no
-sampler is used. The MoleculeNet backbone control
-(\S\ref{sec:results:moleculenet}) uses the same encoder at hidden width 512,
-depth 4 --- the configuration that maximises the organic-property control ---
-and is otherwise trained identically.
+ROC-AUC on held-out ligands, averaged over seeds, is the reported metric. We
+also report PR-AUC because the positive rate varies across metals.
 
-\textbf{Scorer.} ROC-AUC on held-out ligands, macro-averaged over seeds. We also
-report PR-AUC because the positive rate varies across metals.
-
-\subsection{Metal conditioning and few-shot adaptation}
+\subsection{Few-shot metal adaptation (\fsma)}
 \label{sec:method:method}
 
-To ask what repairs the collapse (\S\ref{sec:results:method}) we hold the
-backbone, cohort and ligand-disjoint LOMO split fixed and change only how the
-target metal enters. In the \emph{static conditioning} arms the metal identity is
-supplied at training time as (i) a metal token concatenated to the graph
-embedding, (ii) a learned embedding of a metal-descriptor vector, or (iii) a
-FiLM scale-and-shift $h \mapsto (1+\gamma)\odot h + \beta$ on the pooled readout,
-where $(\gamma,\beta)$ is produced from the metal descriptor. In the
-\emph{few-shot} arm the zero-shot model is frozen and then fine-tuned for $20$
-epochs on $K$ labelled support ligands drawn from the held-out metal, and scored
-on a disjoint query set from the same metal, so the reported delta is paired
-against the same run's zero-shot query AUC. We sweep $K\in\{5,10,20,40\}$ over
-ten seeds and all five metals and correct across the family with
-Holm--Bonferroni. The support and query sets are ligand-disjoint, so no query
-ligand is seen during adaptation.
+\fsma{} has four parts.
 
-\subsection{tmQM pretraining (A/B)}
-\label{sec:method:pretrain}
+\textbf{1. Source model.} Pretrain the encoder on the pooled ligands of the
+four source metals under the LOMO split, giving a zero-shot scorer
+$f_{\theta_0}$ for the held-out metal. This is the model whose query AUC appears
+in the cross-metal column.
 
-The encoder is either initialised from a checkpoint pretrained on the tmQM
-transition-metal corpus \citep{tmqm2020}, or from a random seed. The two arms
-are identical in every other respect: same cohort, same Bemis--Murcko scaffold
-split, same 30 epochs, same five seeds, and the seed varies only the model
-initialisation. We run the A/B on two metals (Ru, Ir) rather than one. Both
-arms log the number of backbone tensors loaded from tmQM, so an arm that
-silently failed to load would be visible rather than masquerading as a
-successful transfer. The measured quantity is the \emph{paired} per-seed delta,
-not the difference of means, and it is tested with a paired one-sided $t$-test
-over the five seeds (a 5-seed bootstrap is anti-conservative; see
-\S\ref{sec:method:stats}).
+\textbf{2. Support set.} Draw $K$ labelled ligands from the held-out metal,
+disjoint from the query set. By default the draw is label-stratified (each class
+contributes proportionally). The support set is the \emph{only} new supervision
+\fsma{} uses.
+
+\textbf{3. Adaptation operator.} Freeze the encoder and fine-tune \emph{only
+the activity head} for $20$ epochs at learning rate $10^{-3}$. We call this the
+head-only scope. The alternative scopes --- full-encoder fine-tuning, and
+head plus metal-conditioning modules --- are the subject of the depth ablation
+(\S\ref{sec:ablation:scope}); head-only is the default because it is the
+scope that keeps the low-$K$ regime non-negative.
+
+\textbf{4. Query evaluation.} Score the disjoint query set with the adapted
+model and report $\Delta = \mathrm{AUC}_{\text{adapted}} -
+\mathrm{AUC}_{\text{zero-shot}}$ per (metal, seed) cell, then aggregate.
+
+The design is deliberately minimal: one frozen encoder, one trained head, $K$
+labels, no architecture change. We sweep $K\in\{5,10,20,40,80\}$ over ten seeds
+and all five metals.
+
+\subsection{Controls and ablations}
+\label{sec:method:controls}
+
+To separate ``the adaptation operator'' from ``more labels'' and ``more
+compute'', every control is capped at the \emph{same optimizer-step count} as
+the \fsma{} fine-tune (itself $20$ steps at these $K$): a
+\textbf{from-scratch} model trained only on the $K$ support ligands, and a
+\textbf{concat-retrain} model trained on the source pool plus the $K$ support
+ligands. Both use the identical architecture and the identical support set. A
+control that is allowed to train for more steps is not a control, and we show in
+\S\ref{sec:ablation:controls} that the un-matched version reverses the
+conclusion.
+
+The support-set construction rule is ablated with four samplers: random,
+label-stratified (default), Bemis--Murcko scaffold-diverse
+\citep{bemis1996murcko}, and activity-scaffold. Adaptation depth is ablated with
+three scopes: head-only, head plus metal-conditioning modules, and full-encoder.
+The backbone is ablated by re-running the identical protocol with a
+fingerprint-plus-XGBoost scorer whose adaptation step is warm-started gradient
+boosting (\texttt{xgb\_model} continuation) instead of head fine-tuning.
 
 \subsection{Replication of the published protocol}
 \label{sec:method:krasnov}
@@ -112,39 +128,37 @@ over the five seeds (a 5-seed bootstrap is anti-conservative; see
 For the head-to-head against \citet{krasnov2026metalcytotoxdb} we adopt their
 criteria rather than our own: measurement-level dedup on
 (\texttt{SMILES\_Ligands}, \texttt{Cell\_line}, \texttt{Time(h)}) keeping the
-first record, a 76-name non-cancer cell-line exclusion applied by exact
-stripped-uppercase match, and the paper's primary evaluation scheme, a
-DOI-grouped 10-fold cross-validation in which all rows sharing a DOI fall in the
-same fold (DOI-disjointness verified). Our cohort is larger than theirs ---
-$15{,}799$ rows / $4{,}793$ complexes / $591$ cell lines, against
-$11{,}294$ / $4{,}399$ / $23$ --- so the comparison is a cross-cohort estimate,
-labelled as such, not a reproduction. The like-for-like numbers are the two
-same-cohort rows in \S\ref{sec:results}, which hold our cohort and fold
-partition fixed and vary only the model class; the comparison to the published
-$0.810$ is cross-cohort and labelled as such.
+first record, the 76-name non-cancer cell-line exclusion, and their primary
+evaluation scheme, a DOI-grouped 10-fold cross-validation in which all rows
+sharing a DOI fall in the same fold (DOI-disjointness verified). Our cohort is
+larger than theirs --- $15{,}799$ rows / $4{,}793$ complexes / $591$ cell lines,
+against $11{,}294$ / $4{,}399$ / $23$ --- so the DOI-split comparison is a
+cross-cohort estimate, labelled as such. The like-for-like comparison is the
+within-metal axis, where we hold our cohort fixed and compare to the published
+within-metal values. \MEASURED:
+\texttt{metrics/by\_metric/metalcytotox\_ru\_auc.json::paper\_protocol\_measurement},
+\texttt{metalcytotox\_ru\_paper\_lightgbm\_cv.json}.
 
 \subsection{Statistics}
 \label{sec:method:stats}
 
-The cross-metal transfer penalty (within $-$ cross, and scaffold $-$ cross) is
-reported with a $95\%$ percentile bootstrap confidence interval ($2{,}000$
-resamples of the held-out ligands) \citep{efron1979}, computed on the fixed
-seed-$42$ measurement. The pretraining delta in Table~\ref{tab:pretrain} is a
-per-seed \emph{paired} quantity, so seed-to-seed variance cancels; it is tested
-with a paired one-sided $t$-test over the five seeds. A percentile bootstrap on
-five deltas is recorded in the artifact for reference but is anti-conservative,
-so the family correction is not based on it. Because
-we test five held-out metals against a label-permutation null, we control the
-family-wise error rate over that family of five with a Holm--Bonferroni
-step-down correction \citep{holm1979} and report which metals survive it; the
-uncorrected per-metal verdicts are shown alongside so a reader can see both. All
-p-values are two-sided.
+Every claim is a \emph{paired} quantity over (metal $\times$ seed) cells, tested
+with a one-sided paired $t$-test as the primary test. A percentile bootstrap is
+recorded in the artifacts as a reference only: at $n=5$ seeds it cannot generate
+enough distinct resamples and is anti-conservative, so the family correction is
+never based on it. Within each \emph{family} --- one $K$-curve, one sampler
+sweep, one scope sweep, one control set --- we control the family-wise error
+rate with a Holm--Bonferroni step-down correction \citep{holm1979} and report
+which cells survive. Per-metal rows are always reported; a pooled row is labelled
+Ru-dominated, since Ru is the largest metal. All $p$-values are one-sided in the
+direction of the claim. \MEASURED:
+\texttt{metrics/by\_metric/fsma\_paper\_stats.json}.
 
 \subsection{Reproducibility}
 \label{sec:method:repro}
 
 Every number in this paper traces to a JSON artifact under
-\texttt{metrics/by\_metric/}; the mapping from claim to file is given at each
-table and figure. Scripts, configs and cohorts are versioned in the same
-repository. We follow a strict MEASURED/PROJECTED discipline: no projected value
-appears in a results table.
+\texttt{metrics/by\_metric/} or a run report under \texttt{molmetal/reports/};
+the mapping from claim to file is given at each table and figure. Scripts,
+configs and cohorts are versioned in the same repository. We follow a strict
+MEASURED/PROJECTED discipline: no projected value appears in a results table.
