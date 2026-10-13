@@ -158,6 +158,59 @@ _TABLE: Dict[int, Dict[int, str]] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Per-element VSEPR overrides (Wf-A28 step-1, 2026-10-14).
+#
+# Sourced from Housecroft & Sharpe 2018 + Miessler 2013 VSEPR tables for the
+# 14-metal/d-block cohort; takes PRECEDENCE over the by-CN fallback below.
+# Each entry documents the dominant VSEPR per (oxidation-state, d-electron-
+# count) — the d-electron-aware path lives here as a CPU constant per the
+# 2026-10-13 user directive verbatim *"gpu先别动"* (xtb GPU optimisation path
+# remains deferred; ``classify_coord_geometry_xtb`` is a separate stub surface
+# at the caller's option once xtb is on the GPU path again).
+#
+# Adding entries here does NOT change the function signature —
+# ``classify_coord_geometry(coord_number, atom_z) -> Optional[str]`` is
+# byte-identical with the Wf-A27 signature (loader at
+# ``molmetal/data/tmqm_clouds.py:409`` is unchanged), and the function falls
+# back to ``_TABLE`` for any (z, cn) NOT in this override.
+#
+# New (z, cn) entries added in Wf-A28 (NOT previously in _TABLE):
+#   - Re (Z=75) CN=5 → "trigonal_bipyramidal" (Re(V/VII) oxo complex)
+#   - Au (Z=79) CN=6 → "octahedral"          (Au(III/IV) extended)
+#   - Cu (Z=29) CN=3 → "trigonal_planar"     (Cu(I) triangular)
+#   - Ag (Z=47) CN=5 → "square_pyramidal"    (Ag(II) rare 5-coord)
+#   - Pt (Z=78) CN=3 → "trigonal_planar"     (Pt(0) T-shaped / Pt(II) 3-coord)
+#   - Pd (Z=46) CN=3 → "trigonal_planar"     (Pd(0) T-shaped)
+# ---------------------------------------------------------------------------
+_VSEPR_OVERRIDES: Dict[int, Dict[int, str]] = {
+    # Re — Re(V) d0, Re(VII) d2; oxo complexes span CN=4..7.
+    75: {
+        5: "trigonal_bipyramidal",
+    },
+    # Au — Au(I) d10 linear; Au(III) d8 square_planar; Au(III/IV) extended oct.
+    79: {
+        6: "octahedral",
+    },
+    # Cu — Cu(I) d10; 3-coordinate is trigonal_planar (olefin complexes).
+    29: {
+        3: "trigonal_planar",
+    },
+    # Ag — Ag(II) d9 rare 5-coordinate (Wadas / Wojciechowski-class).
+    47: {
+        5: "square_pyramidal",
+    },
+    # Pt — Pt(0) d10 T-shaped / Pt(II) rare 3-coordinate.
+    78: {
+        3: "trigonal_planar",
+    },
+    # Pd — Pd(0) d10 T-shaped / Pd(II) rare 3-coordinate.
+    46: {
+        3: "trigonal_planar",
+    },
+}
+
+
 def _normalize(s: str) -> Optional[str]:
     """Map a free-form string to one of the canonical classes.
 
@@ -204,15 +257,30 @@ def classify_coord_geometry(
     -----
     Wf-A27 step-1 deliberately does NOT use an xtb GPU optimisation path —
     it is the CPU lookup the §6.48 honest-negative close-out requires.
-    Wf-A28 may add a parallel ``classify_coord_geometry_xtb(...)`` that
-    consumes an ``AtomCloud`` + an ``xtb_get_geometry`` result; today that
-    is out of scope.
+    Wf-A28 step-1 added the ``_VSEPR_OVERRIDES`` per-element override
+    (Re CN=5 / Au CN=6 / Cu CN=3 / Ag CN=5 / Pt CN=3 / Pd CN=3 are the new
+    entries; everything else is byte-identical with Wf-A27).
+    ``classify_coord_geometry_xtb`` remains deferred per the 2026-10-13
+    user directive *"gpu先别动"* — a future Wf (GPU-authorised) may add the
+    parallel xtb GPU path that consumes an ``AtomCloud`` +
+    ``xtb_get_geometry`` result.
     """
     cn = int(coord_number)
     z = int(atom_z)
     # ``coord_number`` outside [2, 12] has no entry in the curated table.
     if cn < 2 or cn > 12:
         return None
+    # Wf-A28 step-1: per-element VSEPR override takes precedence over the
+    # by-CN fallback below.  The override layer is consulted first; an
+    # unmapped (z, cn) pair falls back to ``_TABLE`` so the Wf-A27 contract
+    # is byte-identical for any pair the override doesn't cover.  See the
+    # ``_VSEPR_OVERRIDES`` docstring for sources + new-entry coverage.
+    vsepr = _VSEPR_OVERRIDES.get(z)
+    if vsepr is not None:
+        cls = vsepr.get(cn)
+        if cls is not None:
+            return cls
+    # Fallback: curated (Z, CN) table from Wf-A27.
     sub = _TABLE.get(z)
     if sub is None:
         return None
