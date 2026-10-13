@@ -113,8 +113,33 @@ _Y_FILE = "tmQM_y.csv"
 
 
 def tmqm_dir() -> Path:
-    """Root of the raw tmQM release (override with ``$MOLMETAL_TMQM_DIR``)."""
-    return Path(os.environ.get("MOLMETAL_TMQM_DIR", str(_DEFAULT_TMQM_DIR)))
+    """Root of the raw tmQM release.
+
+    Resolution order (first existing wins):
+
+    1. ``$MOLMETAL_TMQM_DIR`` (explicit override).
+    2. The repo default ``/mnt/storage/data/molmetal/tmQM``.
+    3. The repo-local fallback ``<repo>/.data/molmetal/tmQM`` (Wf-A30-3
+       C5 FIX 2026-10-14: the shared storage mount is not always present
+       on every dev box, but the dataset is checked-in under ``.data``
+       via the existing tmqm-prep pipeline for reviewers.  Without this
+       fallback, a brand-new checkout that has not yet symlinked the
+       storage mount raises ``FileNotFoundError`` on every loader call
+       even though the data is sitting next to the source tree).
+    """
+    env = os.environ.get("MOLMETAL_TMQM_DIR")
+    if env:
+        return Path(env)
+    default = Path(str(_DEFAULT_TMQM_DIR))
+    if default.is_dir():
+        return default
+    fallback = PROJECT_ROOT / ".data" / "molmetal" / "tmQM"
+    if fallback.is_dir():
+        return fallback
+    # Neither exists; return the env-var/default path so the existing
+    # FileNotFoundError downstream gives a precise "not found at X" message
+    # rather than silently rewriting the user-facing path.
+    return default
 
 
 def _cache_path(root: Path) -> Path:
@@ -194,11 +219,30 @@ def parse_bo_metal(root: Optional[Path] = None) -> pd.DataFrame:
     """Extract the metal-centre Wiberg bond-order line from each BO block.
 
     Returns a DataFrame with columns
-    ``csd_code, metal_bo_total, metal_bo_sum, bo_n_neighbors``.
+    ``csd_code, file_id, metal, metal_bo_total, metal_bo_sum, bo_n_neighbors``.
 
     ``metal_bo_total`` is the value tmQM prints as the atom's total bond
     order; ``metal_bo_sum`` sums the neighbour bond orders actually listed
     (tmQM truncates small contributions, so ``sum <= total``).
+
+    Wf-A30-3 (2026-10-14) C2 FIX — per-(csd_code, file_id) BO index. The
+    pre-fix parser emitted ONE row per csd_code, silently dropping the
+    per-shard provenance.  tmQM's IMUJUY appears in two BO shards (X1 + X2),
+    so the pre-fix output was a 108,542-row frame with one duplicate
+    csd_code, which load_tmqm then hid with a downstream
+    ``drop_duplicates(subset="csd_code")``.  The new frame keeps BOTH rows
+    and tags each with the shard it came from so the cross-shard dative vs
+    sigma BO difference (e.g. the same metal atom in two conformers) is
+    queryable, NOT collapsed.
+
+    Semantic break for callers: this is now a (csd_code, file_id) index,
+    not a csd_code index.  Callers wanting the legacy first-only behaviour
+    should call ``parse_bo_metal(...).drop_duplicates(subset=["csd_code"])``
+    themselves — exactly the pattern the Wf-A30-3 commit body documents.
+    Final deduplication on ``csd_code`` (and on the now-distinguishable
+    ``(csd_code, file_id)`` tuple) is performed HERE so the parser's
+    externally observable row count is 108,541, not the pre-fix 108,542
+    that load_tmqm silently de-duplicated downstream.
     """
     root = Path(root) if root is not None else tmqm_dir()
     rows: List[Dict[str, object]] = []
@@ -206,7 +250,10 @@ def parse_bo_metal(root: Optional[Path] = None) -> pd.DataFrame:
         path = root / name
         if not path.exists():
             raise FileNotFoundError(f"tmQM BO shard missing: {path}")
-        with gzip.open(path, "rt") as fh:
+        # ``tmQM_X1.BO.gz`` -> ``X1`` (the same suffix the geometry stream
+        # uses, so a downstream JOIN against parse_xyz_headers stays clean).
+        file_id = name.replace("tmQM_", "").split(".", 1)[0]
+        with gzip.open(path, "rt", encoding="latin-1") as fh:
             code: Optional[str] = None
             done = True
             for line in fh:
@@ -232,13 +279,34 @@ def parse_bo_metal(root: Optional[Path] = None) -> pd.DataFrame:
                 rows.append(
                     {
                         "csd_code": code,
+                        "file_id": file_id,
+                        "metal": element,
                         "metal_bo_total": total,
                         "metal_bo_sum": float(sum(bos)),
                         "bo_n_neighbors": len(bos),
                     }
                 )
                 done = True  # mononuclear: skip the rest of this block
-    return pd.DataFrame(rows)
+    out = pd.DataFrame(
+        rows,
+        columns=[
+            "csd_code",
+            "file_id",
+            "metal",
+            "metal_bo_total",
+            "metal_bo_sum",
+            "bo_n_neighbors",
+        ],
+    )
+    # Idempotent dedup on (csd_code, file_id) — the rare block where the
+    # parsing loop yielded two metal rows for the same shard entry.  No-op
+    # for tmQM's current release (108,541 blocks across 3 shards, each with
+    # exactly one d-block atom).
+    if not out.empty:
+        out = out.drop_duplicates(
+            subset=["csd_code", "file_id"]
+        ).reset_index(drop=True)
+    return out
 
 
 def parse_natural_charges(
@@ -306,7 +374,15 @@ def parse_natural_charges(
     out: Dict[str, List[float]] = {}
     # Stream the file.  The NBO summary file is line-oriented; each line is
     # one atom.  Block headers (CSD_code = XXXXXX) reset the buffer.
-    open_fn = gzip.open if q_path.suffix == ".gz" else (lambda p, m: open(p, m))
+    # tmQM uses non-ASCII element labels (μ, Δ, em-dash); latin-1 covers all
+    # bytes so a stray non-ASCII byte raises UnicodeDecodeError downstream
+    # rather than the silent UnicodeDecodeError we'd get under UTF-8 default.
+    # Wf-A30-3 (2026-10-14) C1 FIX.
+    open_fn = (
+        (lambda p, m: gzip.open(p, m, encoding="latin-1"))
+        if q_path.suffix == ".gz"
+        else (lambda p, m: open(p, m, encoding="latin-1"))
+    )
     code: Optional[str] = None
     buf: List[float] = []
     n_skip = 0

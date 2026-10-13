@@ -135,7 +135,10 @@ def _rdkit_descriptors(smiles: np.ndarray) -> np.ndarray:
                 vals.append(0.0)
         rows.append(vals)
     X = np.asarray(rows, dtype=float)
-    return np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+    X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+    # Some RDKit descriptors (e.g. Ipc) are astronomically large; XGBoost's
+    # float32 DMatrix rejects them ("value too large").  Clip to a safe range.
+    return np.clip(X, -1e6, 1e6)
 
 
 def build_features(

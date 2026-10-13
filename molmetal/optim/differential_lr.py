@@ -44,7 +44,7 @@ Lit anchors
 
 from __future__ import annotations
 
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -164,7 +164,7 @@ def build_differential_optimizer(
     base_lr: float = 1e-4,
     head_lr_multiplier: float = 1.0,
     weight_decay: float = 1e-5,
-    no_decay_param_names: Optional[Sequence[str]] = Iterable,  # type: ignore[assignment]
+    no_decay_param_names: Optional[Sequence[str]] = None,
     head_hints: Optional[Sequence[str]] = None,
     q_channel_lr_multiplier: float = 1.0,
     q_channel_hints: Optional[Sequence[str]] = None,
@@ -207,7 +207,16 @@ def build_differential_optimizer(
         == pocket_lr_multiplier == 1.0 (legacy fast-path).  8-group
         when any non-1.0 multiplier is set AND its hints match.
     """
-    if no_decay_param_names is None or no_decay_param_names is Iterable:
+    if no_decay_param_names is None:
+        # Wf-A30-3 (2026-10-14) C3 FIX — sentinel used to be
+        # ``Optional[Sequence[str]] = Iterable`` + ``is Iterable`` check.
+        # That over-loaded a runtime check on a typing alias identity,
+        # which both confuses mypy (the `# type: ignore[assignment]` was
+        # load-bearing) and silently shadows any caller that ever passed a
+        # non-default Sequence subclass.  Sentinel is now ``None``; the
+        # fallback fires on the single, easy-to-read condition below, and
+        # any caller passing a Sequence (the only other supported shape)
+        # flows straight through.
         no_decay_param_names = _DEFAULT_NO_DECAY_NAMES
     if head_hints is None:
         head_hints = _DEFAULT_HEAD_HINTS

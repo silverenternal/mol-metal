@@ -833,6 +833,15 @@ def load_tmqm_clouds(
     if not parsed.is_file():
         raise FileNotFoundError(f"tmqm_parsed.csv not found under {root}")
 
+    # Wf-A30-3 (2026-10-14) C5 FIX — log the actually-resolved root so a
+    # reviewer/agent can tell at a glance which shard was loaded (the
+    # repo-local fallback under .data/molmetal/tmQM vs the shared-storage
+    # mount /mnt/storage/data/molmetal/tmQM).
+    print(
+        f"[tmqm-clouds] root={root}",
+        flush=True,
+    )
+
     # Wf-A16 (2026-10-13) c-flow pocket threading.
     #
     # tmQM is a small-molecule corpus with no protein context, so the

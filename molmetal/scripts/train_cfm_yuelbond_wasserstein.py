@@ -7455,12 +7455,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--tmqm-metals",
         type=str,
-        default="Pt",
+        nargs="+",
+        default=["Pt"],
         help=(
-            "Comma-separated metal symbols to keep from tmQM "
-            "(Pt,Ru,Ir,Rh,Os,Re).  NOTE: the YuelBond Z table currently "
-            "contains Pt only, so non-Pt metals reach the decoder as padding "
-            "until the vocab is extended."
+            "Metal symbols to keep from tmQM (Pt Ru Ir Rh Os Re).  Accepts "
+            "one or more whitespace-separated tokens on the CLI "
+            "(e.g. ``--tmqm-metals Pt Ru``); YAML entries that supply a "
+            "LIST are forwarded unchanged through apply_yaml_overrides.  "
+            "NOTE: the YuelBond Z table currently contains Pt only, so "
+            "non-Pt metals reach the decoder as padding until the vocab "
+            "is extended."
         ),
     )
     p.add_argument(
@@ -9413,9 +9417,30 @@ def main() -> int:
                     f"--tmqm-dir '{_tmqm_dir}' not found (tried {_tmqm_dir!r} "
                     f"and {_alt})."
                 )
-        _tmqm_metals = [
-            s.strip() for s in str(getattr(args, "tmqm_metals", "Pt")).split(",") if s.strip()
-        ]
+        # Wf-A30-3 (2026-10-14) C4 FIX — ``--tmqm-metals`` is now
+        # ``nargs="+"`` so it arrives as a list.  We coerce defensively for
+        # three other arrival shapes that surface in this codebase:
+        #
+        # * YAML cohort as a list (apply_yaml_overrides forwards verbatim).
+        # * A legacy single-string call site (older launcher; happens to
+        #   be a comma-separated string once split).
+        # * The argparse default ``["Pt"]`` so we always end up with a list.
+        #
+        # Per §5.11 LIST-flag safety: an explicitly-passed CLI list wins
+        # over a YAML cohort, and the reverse for the YAML-provided value,
+        # so this branch never silently widens or narrows.  We also strip
+        # and filter empties in one pass — the old ``str(...).split(",")``
+        # path DID NOT survive a YAML list of `[Pt, Ru]` arriving as a
+        # single string with no comma in it (the §5.11 trap).
+        _raw_metals = getattr(args, "tmqm_metals", ["Pt"])
+        if isinstance(_raw_metals, str):
+            # Most-likely a comma-separated legacy string ("Pt,Ru,Ir").
+            _candidate = _raw_metals.split(",")
+        else:
+            _candidate = list(_raw_metals)
+        _tmqm_metals = [s.strip() for s in _candidate if isinstance(s, str) and s.strip()]
+        if not _tmqm_metals:
+            _tmqm_metals = ["Pt"]
         _cn = int(getattr(args, "tmqm_coord_number", 4))
         # 2026-10-04 — DISJOINT split.  Calling this twice with different
         # seeds LEAKS: MEASURED, the val candidate pool (160) was a strict
