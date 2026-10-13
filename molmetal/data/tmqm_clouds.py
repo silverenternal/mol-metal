@@ -387,6 +387,27 @@ def _build_cloud_from_kept(
     stoich = str(row.get("stoichiometry", "")).strip()
     smi = str(row.get("smiles", "")).strip()
 
+    # ---- Wf-A27 (2026-10-13) step-1 coord_geom_class — metal site ----
+    # Rule-based classifier (no xtb GPU path: Wf-A28 deferred).  Looks up
+    # the dominant metal site (Pt/Ir/Pd/Au/etc.) by its coordination
+    # number (number of bonded neighbours).  When the metal is not in
+    # :data:`TMQM_METAL_Z`, the CN is outside [2, 12], or the (Z, CN)
+    # pair is unmapped, the loader leaves the slot at ``None`` —
+    # preserving the byte-identical 63-site constructor contract.
+    #
+    # Lazy import to keep the cold-start cost of every other loader
+    # call unchanged; the loader runs once at the start of training.
+    coord_geom_class: Optional[str] = None
+    if (
+        metal_z is not None
+        and metal_idx_in_kept is not None
+        and bo_info is not None
+    ):
+        metal_cn = len(bo_info.per_atom_nbr_zsets.get(metal_idx_in_kept, []))
+        if metal_cn >= 2 and metal_cn <= 12:
+            from molmetal.data.coord_geometry import classify_coord_geometry
+            coord_geom_class = classify_coord_geometry(metal_cn, int(metal_z))
+
     try:
         return AtomCloud(
             positions=pos,
@@ -416,6 +437,10 @@ def _build_cloud_from_kept(
             # through by load_tmqm_clouds when ``pocket_path`` is set.
             # None preserves the 63 legacy construction sites.
             pocket=pocket,
+            # Wf-A27 (2026-10-13) step-1 — coord_geom_class slot.  Loader-
+            # attached; ``None`` when unmapped ⇒ no change for the 63
+            # other construction sites that go through ``AtomCloud(...)``.
+            coord_geom_class=coord_geom_class,
         )
     except ValueError:
         return None

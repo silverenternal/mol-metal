@@ -491,6 +491,16 @@ class AtomCloud:
     # the field is non-None (same contract as the other optional
     # tensors above).
     pocket: Optional[PocketCloud] = None
+    # ---- Wf-A27 (2026-10-13) coord_geom_class slot ----
+    # Rule-based coordination-geometry class for the dominant metal
+    # site in the cloud (Pt Z=78 @ CN=4 -> 'square_planar' etc.) from
+    # :mod:`molmetal.data.coord_geometry`.  Loader-attached; str
+    # rather than int keeps the JSON side-channel human-readable and
+    # matches the :mod:`molmetal.eval.scoring.pocket2mol_score`
+    # vocabulary.  Default ``None`` so the 63 construction sites keep
+    # a byte-identical signature.  Wf-A28 may add a parallel
+    # ``coord_geom_oh`` (one-hot) field — kept opt-in for now.
+    coord_geom_class: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.positions.dim() != 2 or self.positions.shape[1] != 3:
