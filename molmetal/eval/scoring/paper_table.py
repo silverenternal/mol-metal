@@ -424,10 +424,84 @@ COHORT_KEYS: List[str] = [
 
 AVAILABLE: bool = _decode_gate.AVAILABLE and _admet8.AVAILABLE
 
+
+# Wf-A22 §6.43h RESIDUAL + Wf-A24 §6.45c emit-paper-table shim.
+# Per the Wf-A21 §6.42g FAIL and the Wf-A22 §6.43h RESIDUAL
+# note: the trainer's eval loop (molmetal/scripts/train_cfm_yuelbond_wasserstein.py)
+# calls ``build_paper_table`` directly.  This shim wraps the
+# build + write + sidecar-read into a single convenience that
+# downstream callers (the cross_dataset CLI, the refresh_21_metrics
+# script, the cfm_pad_groups_mcnemar script) can use without
+# re-implementing the file-path conventions.
+#
+# Behaviour:
+#   1. Calls build_paper_table(cohort_id, smiles, metrics_dir, ...)
+#   2. Calls write_paper_table_json(row, out_path)
+#   3. Returns the out_path (so callers can chain .exists() or
+#      json.loads(open(out_path)))
+#
+# Default-OFF / no side-effects: when out_path is None the function
+# returns the in-memory PaperTableRow (no write).  When the cohort
+# is unknown, the function falls back to the sidecar-only path
+# (metrics_dir walk) so the shim is a strict superset of the
+# direct build_paper_table call.
+def emit_paper_table(
+    cohort_id: str,
+    smiles: Optional[Sequence[str]] = None,
+    *,
+    metrics_dir: Path,
+    out_path: Optional[Path] = None,
+    smiles_csv: Optional[Path] = None,
+    largest_frac_min: float = 0.80,
+    min_atoms: int = 2,
+) -> "PaperTableRow | Path":
+    """Single-call wrapper: build + write + return.
+
+    Parameters
+    ----------
+    cohort_id : str
+        One of COHORT_KEYS (e.g. "platinai_pt_subset_5k").
+    smiles : Sequence[str], optional
+        Generated SMILES cohort.  If None, falls back to smiles_csv.
+    metrics_dir : Path
+        Directory holding the sidecar JSONs (m14/m4/m5/m7).
+    out_path : Path, optional
+        Where to write the paper_table.json.  When None, the in-memory
+        PaperTableRow is returned without writing (no file I/O).
+    smiles_csv : Path, optional
+        CSV fallback when smiles is None.  Defaults to
+        ``metrics_dir/cohort_id_smiles.csv``.
+    largest_frac_min : float, default 0.80
+        Forwarded to build_paper_table (per Wf-269C honest-negative
+        pre-condition: 0.80 matches paper §X published threshold).
+    min_atoms : int, default 2
+        Forwarded to build_paper_table.
+
+    Returns
+    -------
+    PaperTableRow or Path
+        When out_path is None: returns the in-memory row (no write).
+        When out_path is given: returns the Path (always written per
+        §5.6 atomic-write protocol).
+    """
+    row = build_paper_table(
+        cohort_id=cohort_id,
+        smiles=list(smiles) if smiles is not None else None,
+        metrics_dir=metrics_dir,
+        smiles_csv=smiles_csv,
+        largest_frac_min=largest_frac_min,
+        min_atoms=min_atoms,
+    )
+    if out_path is None:
+        return row
+    return write_paper_table_json(row, out_path)
+
+
 __all__ = [
     "PaperTableRow",
     "build_paper_table",
     "write_paper_table_json",
+    "emit_paper_table",  # Wf-A22 §6.43h RESIDUAL shim (closes §6.42g FAIL)
     "COHORT_KEYS",
     "PROTOCOL_VERSION",
     "AVAILABLE",
