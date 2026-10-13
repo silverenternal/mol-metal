@@ -1252,6 +1252,7 @@ class EGNNVelocityField(nn.Module):
         tmqm_init_path: Optional[str] = None,
         use_tmqm_init: bool = False,
         context_dropout: float = 0.1,
+        q_head_enabled: bool = False,
     ) -> None:
         """Construct the velocity field.
 
@@ -1442,6 +1443,36 @@ class EGNNVelocityField(nn.Module):
         # uninformative (all zeros) at init.
         self.cross_attn_norm = nn.LayerNorm(hidden_dim)
 
+        # Track-A (Wf-A15, 2026-10-13) — Layer 3a q-prediction head.
+        #
+        # When ``q_head_enabled=True``, attach a tiny zero-init
+        # ``Linear(hidden_dim, 1)`` that emits per-atom NBO natural
+        # charge from the final per-atom ``h`` (the same tensor used by
+        # ``atom_head``).  The head is ZERO-INIT so a fresh
+        # ``EGNNVelocityField`` produces ``q_pred = 0`` everywhere —
+        # ``NaturalChargeLoss.compute(pred=0, target=any)`` returns
+        # ``mse_loss(0, target) * weight``, which collapses to a zero
+        # tensor when ``weight=0`` (the YAML default).  When
+        # ``q_head_enabled=False`` (legacy), no q_head is registered on
+        # the module — bit-exact pre-Track-A: ``state_dict`` does not
+        # gain keys, every existing checkpoint resumes, and the forward
+        # dict never carries ``q_pred``.
+        #
+        # The head sits in the ``q_channel`` param group when the
+        # trainer enables ``--q-channel-lr-multiplier`` (Layer 7,
+        # :mod:`molmetal.optim.differential_lr`); it falls into the
+        # backbone bucket otherwise — same behaviour as the
+        # ``atom_head`` (zero-init, default LR).
+        self.q_head_enabled = bool(q_head_enabled)
+        if self.q_head_enabled:
+            self.q_head = nn.Linear(hidden_dim, 1, bias=True)
+            nn.init.zeros_(self.q_head.weight)
+            nn.init.zeros_(self.q_head.bias)
+        else:
+            # Register a None placeholder for stable introspection; this
+            # is never consulted on the bit-exact default path.
+            self.q_head = None
+
         # Optional: warm-start the encoder from a tmQM pre-trained checkpoint
         # (see F2 report).  Failures degrade gracefully to random init.
         if use_tmqm_init:
@@ -1541,6 +1572,7 @@ class EGNNVelocityField(nn.Module):
         dative_bond_edge_attr: Optional[torch.Tensor] = None,  # (B, E)  bool, T9 opt-in
         pocket_atom_embed: Optional[torch.Tensor] = None,  # (B, P, max_atomic_number)
         pocket_atom_mask: Optional[torch.Tensor] = None,  # (B, P) bool
+        batch_ctx: Optional[dict] = None,  # Track-A L3b — chemistry context dict
     ) -> dict:
         """Predict per-atom velocity (B, N, 3) AND atom-type logits (B, N, max_z).
 
@@ -1686,7 +1718,26 @@ class EGNNVelocityField(nn.Module):
         relative_to_centroid = x_t - x_t.mean(dim=1, keepdim=True)
         vel = self.vel_head(h) * self.vel_scale * relative_to_centroid + last_v
         atom_logits = self.atom_head(h)  # (B, N, max_atomic_number)
-        return {"vel": vel, "atom_logits": atom_logits, "h": h}
+        # Track-A (Wf-A15, 2026-10-13) — Layer 3a q-prediction.
+        #
+        # When ``self.q_head_enabled=True`` and ``self.q_head`` is set,
+        # emit per-atom q predictions (``q_pred``) from the same final
+        # per-atom ``h`` that feeds ``atom_logits``.  The head is
+        # zero-init at construction so a fresh field returns
+        # ``q_pred == 0``; ``NaturalChargeLoss(weight=0)`` then returns
+        # a zero tensor — bit-exact pre-Track-A.  When
+        # ``q_head_enabled=False`` (the YAML default), the dict does NOT
+        # carry ``q_pred`` — existing callers that destructure the
+        # return dict via ``out["vel"]`` / ``out["atom_logits"]`` /
+        # ``out["h"]`` keep working unchanged.
+        out: Dict[str, torch.Tensor] = {
+            "vel": vel,
+            "atom_logits": atom_logits,
+            "h": h,
+        }
+        if self.q_head is not None:
+            out["q_pred"] = self.q_head(h).squeeze(-1)  # (B, N)
+        return out
 
     # ------------------------------------------------------------------
     # T9: square-planar Pt(II) geometric prior (opt-in)

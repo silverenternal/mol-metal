@@ -70,6 +70,15 @@ model:
   # velocity field trained from random init in every shipped run.
   use_tmqm_init: true
   pcgrad_multi_task: false
+  # Wf-A15 (2026-10-13) Track-A L3a — opt-in per-atom q-prediction head.
+  # When ``false`` (YAML default) the EGNN velocity field does NOT
+  # register a ``q_head`` parameter, the forward dict never carries
+  # ``q_pred``, and the legacy bit-exact path is preserved.  When
+  # ``true`` the q_head emits per-atom NBO Loewdin q targets but the
+  # loss term stays at weight 0 until ``natural_charge_mse_weight``
+  # is also set > 0 (see below).  Both keys are part of the proof-
+  # of-concept binding for AGENTS.md §5.11 round-trip.
+  q_head_enabled: false
 flow:
   # 2026-10-04 — bond head objective + decision rule.  See
   # configs/cfm_tmqm_all6.yaml for the full reasoning and the MEASURED
@@ -174,6 +183,24 @@ output:
   # present; 'none' = cold start; 'path' = --resume-from-path.
   resume_from: auto
   resume_from_path: null
+# Wf-A15 (2026-10-13) Track-A L6 — per-atom NBO natural-charge MSE loss.
+# Both keys are part of the AGENTS.md §5.11 round-trip binding proof:
+# YAML leaf → argparse dest.  Default OFF (weight=0, enabled=False) so
+# the legacy bit-exact sum is preserved.
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+# Wf-A15 (2026-10-13) Track-A L7 — q-channel param group in the
+# differential optimiser.  Default 1.0 = legacy single-group Adam
+# fast-path in build_differential_optimizer; no 5th group emitted.
+q_channel_lr_multiplier: 1.0
+# q-channel param-name substrings (LIST per AGENTS.md §5.11 trap
+# warning).  Empty list ⇒ disable; explicit list ⇒ enable the
+# Trainer's ``--q-channel-hints`` opt-in.
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
 compute:
   gpu: cuda:0
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'cpu_workers: 4' removed (CFM trainer has no --cpu-num-workers dest; only D-MPNN does).

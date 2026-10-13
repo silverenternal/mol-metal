@@ -241,6 +241,115 @@ def parse_bo_metal(root: Optional[Path] = None) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def parse_natural_charges(
+    q_path: Optional[Path] = None,
+    root: Optional[Path] = None,
+) -> Dict[str, List[float]]:
+    """Stream the ``tmQM_X.q`` (NBO natural-charge) file and return per-complex
+    per-atom q values.
+
+    Parameters
+    ----------
+    q_path
+        Direct path to the ``.q`` / ``.q.gz`` file.  If ``None`` (the default),
+        the function probes the standard tmQM root for ``tmQM_X.q`` /
+        ``tmQM_X.q.gz``.  Both plain and gzipped variants are supported; tmQM's
+        own release ships plain.
+    root
+        Raw-data directory.  Only used when ``q_path`` is None; defaults to
+        :func:`tmqm_dir`.
+
+    Returns
+    -------
+    dict[str, list[float]]
+        Mapping ``csd_code -> [q_1, q_2, ...]`` (1-based indices become
+        0-based list positions; the list is exactly as long as the complex's
+        heavy-atom count in the matched geometry block).
+
+    Format
+    ------
+    The file uses the same ``CSD_code = XXXXXX`` block-header format as
+    :func:`parse_bo_metal` (and the XYZ shards).  Per-atom lines are read as
+    ``<index> <element> <charge>`` triples — the typical Gaussian NBO summary
+    layout tmQM ships.  Anything we cannot parse is logged and SKIPPED; the
+    function NEVER silently drops a complex (which would make a missing
+    per-atom field indistinguishable from a parse failure downstream — exactly
+    the failure mode the natural-charge field exists to fix per SCOUT D1).
+
+    Raises
+    ------
+    FileNotFoundError
+        When ``q_path`` (or the resolved standard path) is absent.  This is
+        a FATAL condition: the function has no way to know which complexes
+        were intended, so a missing source cannot become a silent empty dict
+        (an empty dict would mean ``natural_charges=None`` for every cloud,
+        which is the bug we are fixing).
+    """
+    import logging
+
+    if q_path is None:
+        root = Path(root) if root is not None else tmqm_dir()
+        for candidate in (root / "tmQM_X.q", root / "tmQM_X.q.gz"):
+            if candidate.is_file():
+                q_path = candidate
+                break
+        if q_path is None:
+            raise FileNotFoundError(
+                f"tmQM natural-charge file not found under {root}: tried "
+                f"'tmQM_X.q' and 'tmQM_X.q.gz'"
+            )
+    q_path = Path(q_path)
+    if not q_path.is_file():
+        raise FileNotFoundError(f"tmQM natural-charge file missing: {q_path}")
+
+    logger = logging.getLogger(__name__)
+    out: Dict[str, List[float]] = {}
+    # Stream the file.  The NBO summary file is line-oriented; each line is
+    # one atom.  Block headers (CSD_code = XXXXXX) reset the buffer.
+    open_fn = gzip.open if q_path.suffix == ".gz" else (lambda p, m: open(p, m))
+    code: Optional[str] = None
+    buf: List[float] = []
+    n_skip = 0
+    with open_fn(q_path, "rt") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("CSD_code"):
+                if code is not None and buf:
+                    out[code] = buf
+                code = line.split("=", 1)[1].split("|", 1)[0].strip()
+                buf = []
+                continue
+            if code is None:
+                # Per-atom lines arriving before any block header — the file
+                # is malformed; skip but log so a future code review sees it.
+                n_skip += 1
+                continue
+            parts = line.split()
+            if len(parts) < 3:
+                n_skip += 1
+                continue
+            try:
+                # 1-based index in the file -> we just need the q value
+                # (the i-th atom's charge becomes the i-1 slot of the list).
+                _idx = int(parts[0])
+                q_val = float(parts[2])
+            except ValueError:
+                n_skip += 1
+                continue
+            buf.append(q_val)
+    if code is not None and buf:
+        out[code] = buf
+    if n_skip:
+        logger.warning(
+            "parse_natural_charges: skipped %d unparseable line(s) in %s",
+            n_skip,
+            q_path,
+        )
+    return out
+
+
 def parse_properties(root: Optional[Path] = None) -> pd.DataFrame:
     """Load ``tmQM_y.csv`` (';'-separated DFT properties + SMILES)."""
     root = Path(root) if root is not None else tmqm_dir()
@@ -382,14 +491,166 @@ def summarize(df: pd.DataFrame) -> TmqmStats:
     )
 
 
+# ---------------------------------------------------------------------------
+# Wf-A16 (2026-10-13) — pocket loader (c-flow end-to-end propagation).
+#
+# tmQM is a small-molecule corpus with no protein context, so the loader
+# below reads a SEPARATE protein pocket from a .pdb side-car (typically a
+# CrossDocked / PDBBind receptor).  Heavy atoms only; hydrogen-free for
+# parity with the tmQM heavy-atom convention; capped at ``max_atoms`` to
+# bound the EGNN-Lite message-passing cost in PocketEncoder.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PocketCloud:
+    """A small frozen protein-pocket point cloud (Wf-A16 protocol).
+
+    Attributes
+    ----------
+    coords : (P, 3) tensor
+        Heavy-atom coordinates in Angstrom.
+    atom_types : (P,) int64 tensor
+        Atomic numbers (1=H, 6=C, 7=N, 8=O, 16=S, ...).
+    mask : (P,) bool tensor
+        True for every real atom (always all-True; reserved for future
+        padding when callers batch pockets of unequal size).
+    pocket_id : str
+        CSD code / PDB id / hash of the source file.
+    """
+
+    coords: "torch.Tensor"
+    atom_types: "torch.Tensor"
+    mask: "torch.Tensor"
+    pocket_id: str = ""
+
+    def __post_init__(self) -> None:
+        # Defer torch import to keep tmqm.py usable without torch if needed.
+        import torch as _torch  # noqa: WPS433 (deferred)
+
+        if self.coords.dim() != 2 or int(self.coords.shape[1]) != 3:
+            raise ValueError(
+                f"PocketCloud.coords must be (P, 3); got {tuple(self.coords.shape)}"
+            )
+        if int(self.coords.shape[0]) != int(self.atom_types.shape[0]):
+            raise ValueError(
+                "PocketCloud.coords and atom_types must agree on P="
+                f"{int(self.coords.shape[0])} vs {int(self.atom_types.shape[0])}"
+            )
+        if int(self.mask.shape[0]) != int(self.coords.shape[0]):
+            raise ValueError("PocketCloud.mask must match coords on P")
+        if self.coords.dtype != _torch.float32:
+            raise ValueError(
+                f"PocketCloud.coords dtype must be float32; got {self.coords.dtype}"
+            )
+        if self.atom_types.dtype != _torch.int64:
+            raise ValueError(
+                f"PocketCloud.atom_types dtype must be int64; got {self.atom_types.dtype}"
+            )
+
+
+def load_pocket_from_pdb(
+    pdb_path: str | Path,
+    max_atoms: int = 256,
+) -> PocketCloud:
+    """Load a protein pocket as a :class:`PocketCloud` from a .pdb file.
+
+    Reads via :func:`rdkit.Chem.MolFromPDBFile` (already on the venv per
+    :file:`scripts/setup_molmetal_env.sh`).  Hydrogen atoms are skipped for
+    parity with the tmQM heavy-atom convention; atoms beyond ``max_atoms``
+    are truncated by selecting the residues nearest the centroid (keeps
+    the binding-site core, drops the periphery).
+
+    Args
+    ----
+    pdb_path
+        Path to a .pdb file.  Raises :class:`FileNotFoundError` when missing.
+    max_atoms
+        Cap on returned heavy atoms.  Default 256 matches the pocket
+        message-passing budget in :class:`PocketEncoder`.
+
+    Returns
+    -------
+    PocketCloud
+        Frozen dataclass with ``coords``, ``atom_types``, ``mask``, and
+        ``pocket_id = Path(pdb_path).stem``.
+
+    Raises
+    ------
+    ImportError
+        When RDKit is unavailable.
+    FileNotFoundError
+        When ``pdb_path`` does not exist.
+    ValueError
+        When the PDB has zero heavy atoms or parsing fails.
+    """
+    import torch as _torch  # noqa: WPS433
+
+    p = Path(pdb_path)
+    if not p.is_file():
+        raise FileNotFoundError(f"pdb_path not found: {p}")
+
+    try:
+        from rdkit import Chem  # type: ignore
+    except Exception as exc:  # pragma: no cover - RDKit missing
+        raise ImportError(
+            "load_pocket_from_pdb requires RDKit; install rdkit or run the "
+            "protein-pocket prep step on a host with rdkit available."
+        ) from exc
+
+    mol = Chem.MolFromPDBFile(str(p), removeHs=True, sanitize=False)
+    if mol is None:
+        raise ValueError(f"RDKit MolFromPDBFile returned None for {p}")
+
+    conf = mol.GetConformer()
+    if conf is None:
+        raise ValueError(f"No conformer found in {p}")
+
+    coords_list = []
+    types_list = []
+    for atom in mol.GetAtoms():
+        z = int(atom.GetAtomicNum())
+        if z == 1:
+            continue  # skip hydrogens
+        pos = conf.GetAtomPosition(atom.GetIdx())
+        coords_list.append((float(pos.x), float(pos.y), float(pos.z)))
+        types_list.append(z)
+
+    if not coords_list:
+        raise ValueError(f"PDB {p} has zero heavy atoms")
+
+    coords = _torch.tensor(coords_list, dtype=_torch.float32)
+    atom_types = _torch.tensor(types_list, dtype=_torch.int64)
+
+    # Truncate to max_atoms by nearest-to-centroid (binding-site core).
+    if int(coords.shape[0]) > int(max_atoms):
+        centroid = coords.mean(dim=0)
+        d = _torch.norm(coords - centroid.unsqueeze(0), dim=-1)
+        keep = _torch.argsort(d)[: int(max_atoms)]
+        coords = coords[keep].contiguous()
+        atom_types = atom_types[keep].contiguous()
+
+    n = int(coords.shape[0])
+    mask = _torch.ones(n, dtype=_torch.bool)
+    return PocketCloud(
+        coords=coords,
+        atom_types=atom_types,
+        mask=mask,
+        pocket_id=str(p.stem),
+    )
+
+
 __all__ = [
     "PAPER_METALS",
+    "PocketCloud",
     "TRANSITION_METALS",
     "TmqmStats",
     "filter_by_metal",
+    "load_pocket_from_pdb",
     "load_tmqm",
     "metal_from_stoichiometry",
     "parse_bo_metal",
+    "parse_natural_charges",
     "parse_properties",
     "parse_xyz_headers",
     "summarize",
