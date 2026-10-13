@@ -176,11 +176,61 @@ def list_pocket_pool(
     out: List[PocketEntry] = []
     with manifest.open("r", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
+        # Wf-A30-2 B1 (2026-10-14) — schema-drift guard.
+        # Every CrossDocked 2020 manifest must carry these canonical
+        # columns; if any are missing the upstream prepare step has
+        # drifted (e.g. re-export from a newer version that renamed
+        # ligand_path -> reference_ligand_path). The legacy names
+        # ``ligand_path`` / ``ligand_sha256`` are accepted by alias so
+        # older manifests from Wf-124 / Wf-181 (G4/G5/G6 launchers)
+        # keep working. Fail loud rather than silently skipping every
+        # row with KeyError, which was the prior behaviour and masked
+        # the upstream schema drift until the per-pocket pool came
+        # back empty.
+        expected_cols = {
+            "target_id",
+            "pocket_path",
+            "pocket_sha256",
+            "reference_ligand_path",
+            "reference_ligand_sha256",
+        }
+        # Per-column legacy alias map.  When the upstream prepare step
+        # renamed ``ligand_path`` -> ``reference_ligand_path`` (Wf-32
+        # schema bump), the two columns can be substituted one-for-one;
+        # other columns have no legacy equivalent.
+        legacy_alias_map = {
+            "reference_ligand_path": "ligand_path",
+            "reference_ligand_sha256": "ligand_sha256",
+        }
+        actual_cols = set(reader.fieldnames or [])
+        missing = expected_cols - actual_cols
+        if missing:
+            # Allow legacy alias only for the two columns that were
+            # renamed in Wf-32 schema bump.
+            unaliasable = [m for m in missing if m not in legacy_alias_map]
+            if unaliasable:
+                raise ValueError(
+                    f"[crossdocked_pool] manifest schema drift: missing "
+                    f"cols={sorted(missing)} (no legacy alias available for "
+                    f"{sorted(unaliasable)}); re-run the upstream prepare "
+                    f"step"
+                )
+            LOG.info(
+                "[crossdocked_pool] %s manifest uses legacy column "
+                "names %s; aliasing to reference_ligand_*",
+                split, sorted(legacy_alias_map[m] for m in missing),
+            )
         for row in reader:
             try:
                 native_ok = str(
                     row.get("native_ligand_allowed_for_generation", "false")
                 ).strip().lower() in ("true", "1", "yes")
+                # Translate legacy column names if the alias path
+                # accepted them above.
+                if "reference_ligand_path" not in row and "ligand_path" in row:
+                    row["reference_ligand_path"] = row["ligand_path"]
+                if "reference_ligand_sha256" not in row and "ligand_sha256" in row:
+                    row["reference_ligand_sha256"] = row["ligand_sha256"]
                 entry = PocketEntry(
                     target_id=str(row["target_id"]).strip(),
                     pocket_path=str(row["pocket_path"]).strip(),

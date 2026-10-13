@@ -48,7 +48,7 @@ These rules apply to **every** agent action in this repo. Violations are honest-
 | "What's every file's status?" | [`TODO/INDEX.md`](TODO/INDEX.md) |
 | "What's the recent Wf timeline?" | [`TODO/INDEX.md`](TODO/INDEX.md) §0 + §22 |
 | "What's the project status today?" | [`README.md`](README.md) §0 |
-| "Where are measured numbers?" | [`metrics/by_metric/*.json`](metrics/) (161 files, counted 2026-10-10) |
+| "Where are measured numbers?" | [`metrics/by_metric/*.json`](metrics/) (244 files, counted 2026-10-14) |
 | "What are the architectural decisions?" | [`TODO/decisions.md`](TODO/decisions.md) |
 | "What are the open blockers?" | [`TODO/risks.md`](TODO/risks.md) |
 | **"What's the paper's model narrative?"** | **[`docs/00_MODEL_NARRATIVE.md`](docs/00_MODEL_NARRATIVE.md) — PINNED. Authoritative for how the two models + the algorithm integrate. Overrides README/ARCHITECTURE/DESIGN_BOUNDARY on conflict.** |
@@ -155,7 +155,7 @@ launchers + `gpu_pipeline_master.sh wf343c4`). Full pipeline: §4.
 
 Per `party-twenty-spirit` §3.5. **Every numeric value MUST trace to a JSON / report path on
 disk** with MEASURED / PROJECTED tag. Zero tolerance for fabricated / aspirational numbers.
-See `docs/HONEST_NEGATIVE_CATALOG.md` (94 entries; Wf-369-A3 latest expansion; counted 2026-10-10).
+See `docs/HONEST_NEGATIVE_CATALOG.md` (95 entries; Wf-A30-2 latest expansion 2026-10-14 adding §6.51 composite honest-negative for Wf-A14..A28 cross-dataset claims; counted 2026-10-14).
 
 ### §5.3 No paper work without authorization — INLINE
 
@@ -352,7 +352,7 @@ Per `workflow-authoring` skill (system-bundled) + Wf-291C regression workaround:
 - "How do I frame a metric?" → Check §5.2 honest framing. MEASURED + cite source, or label PROJECTED.
 - "What skill do I need?" → Check §3 skill catalog by keyword.
 - "What workflow is in flight?" → Check §6 recent Wf history + active background IDs.
-- "What's the canonical honest-negative catalog?" → `docs/HONEST_NEGATIVE_CATALOG.md` (94 entries; Wf-369-A3 latest expansion; counted 2026-10-10). 6 sections: per-metric + per-workflow + per-launcher + resolved + open + Wf-340..368 consolidated.
+- "What's the canonical honest-negative catalog?" → `docs/HONEST_NEGATIVE_CATALOG.md` (95 entries; Wf-A30-2 latest expansion 2026-10-14 adding §6.51 composite honest-negative for Wf-A14..A28 cross-dataset claims; counted 2026-10-14). 6 sections: per-metric + per-workflow + per-launcher + resolved + open + Wf-340..368 consolidated.
 
 ---
 

@@ -39,12 +39,12 @@ See §2 for full list + rationale.
 
 ### 1.1 Krasnov 2026 (J. Med. Chem.) — MetalCytoToxDB
 
-**Citation**: Krasnov et al., *J. Med. Chem.* 2026-04 (Tier 1)
-**Task**: Ru/Ir/Rh/Re/Os 抗癌活性分类 (binary classification + pIC50 regression)
+**Citation**: Krasnov, Malikov, Kiseleva, Nykhrikova, Tatarin, Bezzubov, *J. Med. Chem.* **2026**, 69(8), 8838–8851. DOI 10.1021/acs.jmedchem.5c02755 (PMID 41969144). Preprint: ChemRxiv (CC-BY).
+**Task** (VERIFIED 2026-10-14 from the abstract via Europe PMC + Semantic Scholar): **classification** — "machine learning models were created to accurately assign the **cytotoxicity class** within the **ruthenium and iridium** subsets", plus **external validation** on unseen data and **multimetal predictions**. The paper also proposes an HTS screening pipeline for Ru.
 **Why selected**: 同领域 + 同任务 + 同 5-metal subset (Ru/Ir/Rh/Re/Os)
 **Dataset**: MetalCytoToxDB (公开; per `molmetal/reports/wf387a2_balanced_rh_cohort/balanced_rh_cohort.json` schema reference)
 **Paper split**: DOI-split 10-fold CV (primary; Krasnov paper Table 4 — see §6.2, the earlier "5-fold CV" reading was superseded 2026-10-04)
-**Paper metric**: binary AUC + pIC50 MAE
+**Paper metric**: **classification metrics (cytotoxicity class)**. ⚠️ CORRECTED 2026-10-14: this line previously read "binary AUC + pIC50 MAE". The abstract reports a **classification** task, not a pIC50 regression; no regression metric (MAE/RMSE/R²) appears in the abstract. The "pIC50 MAE" claim was unverified and is retracted. Exact classification metrics (AUC vs accuracy vs F1) require the full text — the ACS + ChemRxiv full text is Cloudflare-blocked from this host (MEASURED 2026-10-14); the abstract-level task type is confirmed. Any regression axis we report is therefore an **extra** metric, not a Krasnov-aligned one.
 
 **Our alignment**:
 - Dataset: **IDENTICAL** (MetalCytoToxDB) ✓

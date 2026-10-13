@@ -92,31 +92,31 @@ metrics:
     direction: '>='
     remains: P-A drift ALREADY FIXED on disk (real-only 5-fold); doc retag only
   m2_r2_per_cell:
-    source_json: metrics/by_metric/platinai_4cell_auc.json
-    source_json_sha256: aab62a3db331f095501fe3af51388edc553e82186177b6e8cc99e4f7fd3f5826
+    source_json: metrics/by_metric/m2_r2_per_cell.json
+    source_json_sha256: 9ff99cc92201e0d36fa9e7f02ab99532f3350f0345c452a75e5b5785c246ca8f
     source_json_missing: false
-    value: 0.5531726597598308
-    status: MEASURED_SYNTHETIC_LABELS
+    value: null
+    status: REINDEX_PENDING
     verdict: HONEST_NEGATIVE
     scope: tier1_precious_metal_anticancer
     metric_timestamp: '2026-09-25'
-    last_refreshed: '2026-10-11T11:42:48+00:00'
+    last_refreshed: '2026-10-14T00:00:00+00:00'
     target: 0.85
     direction: '>='
-    remains: closed structural (Wf-369-A2); synthetic labels; no GPU
+    remains: REINDEX_PENDING — original source_json path was deleted; placeholder JSON created by Wf-A30-2 B5; re-run `.venv/bin/python molmetal/scripts/registry.py reindex m2_r2_per_cell` once the underlying PlatinAI 4-cell cohort JSON is restored (see HONEST_NEGATIVE_CATALOG.md §6.51e)
   m21_nci60_9cell:
-    source_json: metrics/by_metric/nci60_precious_9cell_auc.json
-    source_json_sha256: 34d8d418ebe25b6bfc031e3346344ee6fa8b94bcffdc06918d9b1e8309c954bc
+    source_json: metrics/by_metric/m21_nci60_9cell.json
+    source_json_sha256: 9a3654ab8cb181f30667cad034975f41e84a3914193a5edcf0298917cf9de9df
     source_json_missing: false
-    value: 0.80072017249287
-    status: MEASURED
-    verdict: PASS
+    value: null
+    status: REINDEX_PENDING
+    verdict: HONEST_NEGATIVE
     scope: tier1_precious_metal_anticancer
     metric_timestamp: '2026-09-25'
-    last_refreshed: '2026-10-11T11:42:48+00:00'
+    last_refreshed: '2026-10-14T00:00:00+00:00'
     target: 0.7
     direction: '>='
-    remains: nothing for gate; scaffold split enforced in code
+    remains: REINDEX_PENDING — original source_json path was deleted; placeholder JSON created by Wf-A30-2 B5; re-run `.venv/bin/python molmetal/scripts/registry.py reindex m21_nci60_9cell` once the underlying NCI-60 9-cell cohort JSON is restored (see HONEST_NEGATIVE_CATALOG.md §6.51e)
   l5_hilbert_r2:
     source_json: metrics/by_metric/hilbert_4cell_r2.json
     source_json_sha256: 14bef681b645f83bf9dfe7cf4050420542c7c868fc172a601c5e5bbeda3b8cd4

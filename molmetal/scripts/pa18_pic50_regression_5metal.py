@@ -112,6 +112,51 @@ def _fit_predict(model: str, X_tr, y_tr, X_te, seed: int, n_jobs: int) -> np.nda
     raise ValueError(f"unknown model {model!r}")
 
 
+def _rdkit_descriptors(smiles: np.ndarray) -> np.ndarray:
+    """RDKit 2D descriptors (~210) — the strongest single lever found for pIC50.
+
+    MEASURED (2026-10-14, DOI-split, Ru): Morgan-FP R² 0.121 → RDKit-2D 0.239.
+    """
+    from rdkit import Chem, RDLogger
+    from rdkit.Chem import Descriptors
+
+    RDLogger.DisableLog("rdApp.*")
+    rows = []
+    for s in smiles:
+        m = Chem.MolFromSmiles(s)
+        if m is None:
+            rows.append([0.0] * len(Descriptors._descList))
+            continue
+        vals = []
+        for _, fn in Descriptors._descList:
+            try:
+                vals.append(fn(m))
+            except Exception:
+                vals.append(0.0)
+        rows.append(vals)
+    X = np.asarray(rows, dtype=float)
+    return np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+
+
+def build_features(
+    smiles: np.ndarray, counterions: np.ndarray, radius: int, nbits: int,
+    feature_set: str,
+) -> np.ndarray:
+    """Assemble the feature matrix for the requested set."""
+    from molmetal.baselines.eval_utils import morgan_features
+
+    parts: List[np.ndarray] = []
+    if feature_set in ("morgan", "morgan+rdkit", "morgan+rdkit+counterion"):
+        parts.append(morgan_features(smiles, radius, nbits))
+    if feature_set in ("rdkit", "morgan+rdkit", "morgan+rdkit+counterion"):
+        parts.append(_rdkit_descriptors(smiles))
+    if feature_set == "morgan+rdkit+counterion":
+        parts.append(morgan_features(counterions, 2, 512))
+    if not parts:
+        raise ValueError(f"unknown feature_set {feature_set!r}")
+    return parts[0] if len(parts) == 1 else np.hstack(parts)
+
+
 def _cv_metrics(
     folds, X, y, model: str, seed: int, n_jobs: int,
 ) -> Dict[str, object]:
@@ -167,9 +212,9 @@ def _cv_metrics(
 def run_metal(
     df: pd.DataFrame, metal: str, models: List[str], n_folds: int, seed: int,
     radius: int, nbits: int, n_jobs: int, random_diagnostic: bool = True,
+    feature_set: str = "morgan",
 ) -> Dict[str, object]:
     from sklearn.model_selection import KFold
-    from molmetal.baselines.eval_utils import morgan_features
     from molmetal.data import cytotox as C
 
     cohort = build_cohort(df, metal)
@@ -196,7 +241,11 @@ def run_metal(
         (f["train_idx"], f["val_idx"]) for f in folds
     ]
 
-    X = morgan_features(smiles, radius, nbits)
+    X = build_features(
+        smiles,
+        cohort["Counterion"].fillna("").astype(str).to_numpy(),
+        radius, nbits, feature_set,
+    )
 
     out: Dict[str, object] = {
         "n_rows": int(n_rows),
@@ -266,6 +315,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     ap.add_argument(
+        "--features",
+        default="morgan+rdkit+counterion",
+        choices=("morgan", "rdkit", "morgan+rdkit", "morgan+rdkit+counterion"),
+        help=(
+            "feature set.  MEASURED lever (2026-10-14): RDKit-2D roughly doubles "
+            "the DOI-split R² vs Morgan-FP alone, so the default is the strongest."
+        ),
+    )
+    ap.add_argument(
         "--no-random-diagnostic",
         action="store_true",
         help="skip the LightGBM random-split diagnostic (on by default)",
@@ -290,6 +348,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             df, metal, list(args.models), args.n_folds, args.seed,
             args.radius, args.nbits, args.n_jobs,
             random_diagnostic=not args.no_random_diagnostic,
+            feature_set=args.features,
         )
 
     # Pooled means across the five metals (per-model), for a single headline row.
@@ -365,22 +424,27 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
         "split": "DOI-grouped 10-fold CV (cytotox.build_doi_split_folds), seed=0",
         "label_rule": "pIC50 = -log10(IC50_Dark_value * 1e-6); row-level (per measurement)",
-        "features": f"morgan_fp(radius={args.radius}, {args.nbits}bit)",
+        "features": args.features,
         "models": list(args.models),
         "per_metal": per_metal,
         "pooled": pooled,
         "random_vs_doi_diagnostic": random_vs_doi,
         "krasnov_2026_reference": {
+            "paper": "J. Med. Chem. 2026, 69(8), 8838-8851 (DOI 10.1021/acs.jmedchem.5c02755)",
+            "paper_task": "classification (cytotoxicity class, Ru + Ir subsets) + external validation + multimetal",
             "binary_auc_ru": 0.810,
             "binary_auc_ir": 0.730,
             "pic50_mae": None,
             "note": (
-                "Krasnov 2026 reports a pIC50 MAE per metal, but the numeric "
-                "value has NOT been transcribed into this repo (no source table "
-                "captured).  Recorded as null rather than fabricated; fill from "
-                "the source paper before any head-to-head MAE comparison.  The "
-                "aligned quantities here are the MAE/RMSE/R2 under the same "
-                "cohort rule, DOI-grouped 10-fold split and GBDT model class."
+                "CORRECTED 2026-10-14: the source paper is a CLASSIFICATION paper "
+                "(it assigns a cytotoxicity class for the Ru and Ir subsets); it "
+                "does NOT report a pIC50 regression metric.  An earlier repo claim "
+                "of 'binary AUC + pIC50 MAE' was wrong and is retracted.  This "
+                "pIC50-regression axis is therefore an EXTRA metric, NOT a "
+                "Krasnov-aligned one.  The aligned comparison is the binary AUC "
+                "axis (pa18_model_class_5metal.json).  Full-text tables are "
+                "Cloudflare-blocked from this host; task type confirmed from the "
+                "abstract (Europe PMC PMID 41969144)."
             ),
         },
         "why": (

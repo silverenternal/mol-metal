@@ -687,7 +687,79 @@ def _build_parser() -> argparse.ArgumentParser:
             "sanitize, e.g. anti-aromatic 4n+2-on-4n, hypervalent C)."
         ),
     )
+    # Wf-A30-2 B6 (2026-10-14) — persist the gated cohort so m14 + the
+    # downstream metric chain become reproducible post-hoc.  Without this
+    # flag the panel emits only an aggregate JSON; downstream consumers
+    # (paper table, ADMET8 panel, decode_gate) had to re-parse the
+    # original SMILES CSV + re-apply the gate from scratch.  With the
+    # flag, the gated SMILES (+ their per-row sa/qed/validity flags) are
+    # written to disk so a later reviewer can re-run any downstream step
+    # without re-deriving the gate.
+    p.add_argument(
+        "--out-smiles-csv",
+        type=Path,
+        default=None,
+        help=(
+            "Wf-A30-2 B6: write the gated cohort (per-row SMILES + "
+            "sa + qed + chemistry-validity flags when --decode-chemistry-validity "
+            "is set) to a CSV.  Default None (no CSV).  The 'gate' is "
+            "all_pass=True when --decode-chemistry-validity is set, "
+            "else parsed_ratio (sa and qed are not None)."
+        ),
+    )
     return p
+
+
+def _build_gated_csv_rows(
+    panel: dict[str, Any],
+    *,
+    include_validity: bool,
+) -> tuple[list[str], list[dict[str, Any]]]:
+    """Wf-A30-2 B6 — return (header, rows) for the gated cohort CSV.
+
+    A row is "gated" iff:
+      - include_validity=True  ->  validity.all_pass is True
+      - include_validity=False  ->  sa and qed are both not None
+    Returns the full per-row payload (smiles + sa + qed + validity if
+    present) so a downstream consumer can re-score without re-parsing.
+    """
+    per_mol = panel.get("per_molecule", [])
+    rows: list[dict[str, Any]] = []
+    for m in per_mol:
+        smi = m.get("smiles")
+        sa = m.get("sa")
+        qed = m.get("qed")
+        validity = m.get("validity") if include_validity else None
+        # Decide if the row is in the gated cohort.
+        if include_validity and validity is not None:
+            gated = bool(validity.get("all_pass"))
+        else:
+            gated = (sa is not None) and (qed is not None)
+        if not gated:
+            continue
+        row = {"smiles": smi or "", "sa": sa, "qed": qed}
+        if validity is not None:
+            for k in (
+                "parse_ok",
+                "sanitize_ok",
+                "valence_ok",
+                "ring_ok",
+                "no_radical_ok",
+                "all_pass",
+            ):
+                row[k] = bool(validity.get(k))
+        rows.append(row)
+    header = ["smiles", "sa", "qed"]
+    if include_validity:
+        header.extend([
+            "parse_ok",
+            "sanitize_ok",
+            "valence_ok",
+            "ring_ok",
+            "no_radical_ok",
+            "all_pass",
+        ])
+    return header, rows
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -697,6 +769,38 @@ def main(argv: list[str] | None = None) -> int:
     args.out_json.parent.mkdir(parents=True, exist_ok=True)
     with args.out_json.open("w", encoding="utf-8") as fh:
         json.dump(panel, fh, indent=2)
+    # Wf-A30-2 B6 — persist gated cohort when --out-smiles-csv is set.
+    # Uses atomic_write_file (§5.6) so a partial write cannot truncate
+    # the downstream consumer's view.
+    if args.out_smiles_csv is not None:
+        # Lazy import: atomic_write_file is in molmetal/scripts/wf386a3
+        # Add repo root to sys.path so this script can be run as
+        # ``python molmetal/scripts/cfm_property_panel.py`` (the
+        # standard `scripts/cfm_property_panel.py` invocation puts the
+        # scripts/ dir on sys.path but NOT the repo root, so the
+        # ``molmetal`` package isn't importable until we add it).
+        _repo_root = Path(__file__).resolve().parent.parent.parent
+        if str(_repo_root) not in sys.path:
+            sys.path.insert(0, str(_repo_root))
+        from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
+
+        header, rows = _build_gated_csv_rows(
+            panel, include_validity=args.decode_chemistry_validity,
+        )
+        args.out_smiles_csv.parent.mkdir(parents=True, exist_ok=True)
+        # Build with stdlib csv module then dump to a string + atomic write.
+        import io as _io
+        buf = _io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=header)
+        writer.writeheader()
+        for r in rows:
+            writer.writerow(r)
+        atomic_write_file(args.out_smiles_csv, buf.getvalue())
+        print(
+            f"[wf264-sa] gated cohort written: {args.out_smiles_csv} "
+            f"({len(rows)} of {panel['n_input']} rows; "
+            f"gate={'all_pass' if args.decode_chemistry_validity else 'parsed'})"
+        )
     print(
         f"[wf264-sa] n_input={panel['n_input']} "
         f"n_parsed={panel['n_parsed']} "

@@ -1935,6 +1935,31 @@ class EGNNVelocityField(nn.Module):
                 MetalGeometryPrior,
             )
         except ImportError:
+            # Wf-A30-2 B3 (2026-10-14) — warn (not silent). The prior
+            # # was a soft penalty on every k_every-th sampling step,
+            # # so failing to import left the prior at zero for every
+            # # step without any signal to the user. Surfacing a
+            # # one-time ImportWarning preserves the soft-fail
+            # # behaviour (the trainer keeps running) while making the
+            # # missing prior visible in the trainer stderr. The
+            # # module-level ``_metal_geometry_import_warned`` gate
+            # # prevents per-step log spam: callers invoke this
+            # # function once per sampling step (CFM trainer has 50-200
+            # # steps per molecule), so an ungated warn would produce
+            # # 50-200 identical lines per molecule.
+            global _metal_geometry_import_warned
+            if not _metal_geometry_import_warned:
+                warnings.warn(
+                    "[flow_matching_lipman] MetalGeometryPrior import "
+                    "failed; apply_metal_geometry_step returns 0 for "
+                    "every step. Check that "
+                    "molmetal.molmetal_lam.priors.metal_geometry is "
+                    "importable. This warning is emitted once per "
+                    "Python process.",
+                    ImportWarning,
+                    stacklevel=2,
+                )
+                _metal_geometry_import_warned = True
             return torch.zeros((), device=positions.device, dtype=positions.dtype)
         prior = MetalGeometryPrior(weight=weight)
         if positions.dim() == 2:
@@ -2062,6 +2087,14 @@ class EGNNVelocityField(nn.Module):
         # Standard CFG combination: v_uncond + s · (v_cond − v_uncond).
         diff = v_cond - v_uncond
         return v_uncond + cfg_scale * diff
+
+
+# Wf-A30-2 B3 (2026-10-14) — module-level once-per-process gate for
+# the MetalGeometryPrior ImportWarning. CFM sampling invokes
+# apply_metal_geometry_step once per integration step (50-200 steps per
+# molecule), so an unguarded warnings.warn would emit 50-200 identical
+# lines per molecule.
+_metal_geometry_import_warned: bool = False
 
 
 # ---------------------------------------------------------------------------

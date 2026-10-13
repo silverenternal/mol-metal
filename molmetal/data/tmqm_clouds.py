@@ -1238,6 +1238,21 @@ def load_tmqm_clouds(
         f"skipped {n_skip_symbol} (unmapped element) + {n_skip_no_metal} "
         f"(metal missing from geometry)"
     )
+    # Wf-A30-2 B2 (2026-10-14) — surface the n_smiles_empty cohort.
+    # Earlier, ~9.8% of tmQM rows have an empty SMILES column and the
+    # loader silently drops smiles into ``None``. The downstream
+    # Bemis-Murcko scaffold branch + the per_loss_projection consumer
+    # both rely on the smiles being present; the dropout was invisible
+    # to a reader of the loader summary. Counting here makes the gap
+    # visible at INFO so a stale corpus can be detected without
+    # grepping the source.
+    n_smiles_empty = sum(1 for c in reservoir if c.smiles is None)
+    print(
+        f"[tmqm-clouds] smiles_empty: {n_smiles_empty} "
+        f"({n_smiles_empty * 100 / max(len(reservoir), 1):.1f}%) "
+        f"of {len(reservoir)} cloud(s) have smiles=None (Bemis-Murcko "
+        f"scaffold branch falls back to CSD-prefix proxy for these rows)"
+    )
     if not reservoir:
         raise RuntimeError("load_tmqm_clouds produced 0 clouds")
 

@@ -90,6 +90,46 @@ from molmetal.eval.scoring import decode_gate as _decode_gate
 PROTOCOL_VERSION = "paper_table_e/2026-10-13"
 
 
+# Wf-A30-2 B4 (2026-10-14) — SEMANTIC BREAKING CHANGE.
+# Per Wf-A22 §6.43h honest-negative close + L9 (2026-10-13) we used to
+# emit ``status="NOT_COMPUTED"`` when cfm_per_pocket_metric.json was
+# missing on disk.  That silent fallback hid a category of regressions
+# (smoke-stub checkpoint runs producing zero per-pocket JSONs while
+# the trainer logged "panel ready") for every paper table emission from
+# Wf-A14..A28.  A caller asking "is the per-pocket W₂ panel real?"
+# got a JSON that looked fine (status="NOT_COMPUTED" with a long
+# honest_negative string) and could proceed to cite the cohort as
+# MEASURED through sheer inattention.
+#
+# The new contract is: if a downstream consumer calls build_paper_table
+# with a cohort where the per-pocket JSON is REQUIRED (i.e. the caller
+# passes ``require_per_pocket=True``), the missing JSON raises
+# MissingRequiredInput — a FileNotFoundError subclass so existing
+# callers that wrapped the call in ``try: ... except FileNotFoundError``
+# keep working.  The default behaviour is unchanged for the legacy
+# side-JSON readers (m4 / m5 / m7 / m14), which still emit
+# ``status="MISSING"`` honestly.
+class MissingRequiredInput(FileNotFoundError):
+    """Raised when paper_table requires a JSON that is not on disk.
+
+    Inherits FileNotFoundError so callers that already wrap the call
+    in ``except FileNotFoundError`` keep working unchanged.  Carries
+    the missing path + the action the caller should take in
+    ``.missing_path`` / ``.remediation``.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        missing_path: Optional[str] = None,
+        remediation: Optional[str] = None,
+    ) -> None:
+        super().__init__(message)
+        self.missing_path = missing_path
+        self.remediation = remediation
+
+
 # ---------------------------------------------------------------------------
 # Side-JSON readers — preserve honest-negative verbatim
 # ---------------------------------------------------------------------------
@@ -182,6 +222,14 @@ def build_paper_table(
     smiles_csv: Optional[Path] = None,
     largest_frac_min: float = 0.80,
     min_atoms: int = 2,
+    # Wf-A30-2 B4 (2026-10-14) — semantic break gate.  When True
+    # (default-off for backward compat), a missing
+    # cfm_per_pocket_metric.json raises MissingRequiredInput instead of
+    # silently emitting status="NOT_COMPUTED".  Paper-table consumers
+    # that ship to a paper §X table MUST set this to True; the
+    # trainer eval-loop call site (which knows the L8 panel may not
+    # be on disk during a partial run) leaves it False.
+    require_per_pocket: bool = False,
 ) -> PaperTableRow:
     """Build the canonical Track-E paper-table row.
 
@@ -347,6 +395,21 @@ def build_paper_table(
     pp_path = metrics_dir / "cfm_per_pocket_metric.json"
     pp_raw = _read_pp(pp_path)
     if pp_raw is None:
+        # Wf-A30-2 B4 (2026-10-14) — semantic-break gate.
+        if require_per_pocket:
+            raise MissingRequiredInput(
+                f"paper_table requires {pp_path} (Wf-A22 L9 honest-negative "
+                f"close); run per_pocket_metric.run_full_per_pocket_panel() "
+                f"first to populate the per-pocket W₂ + decode JSON",
+                missing_path=str(pp_path),
+                remediation=(
+                    "python -m molmetal.scripts.cfm_vina_dock_panel "
+                    "--per-pocket-metric (or call "
+                    "molmetal.eval.scoring.per_pocket_metric."
+                    "run_full_per_pocket_panel() programmatically) "
+                    "to write the JSON before re-calling build_paper_table"
+                ),
+            )
         per_pocket_out: Dict[str, Any] = {
             "source": "metrics/by_metric/cfm_per_pocket_metric.json",
             "status": "NOT_COMPUTED",
@@ -454,6 +517,10 @@ def emit_paper_table(
     smiles_csv: Optional[Path] = None,
     largest_frac_min: float = 0.80,
     min_atoms: int = 2,
+    # Wf-A30-2 B4 (2026-10-14) — semantic break gate, propagated from
+    # build_paper_table.  When True, MissingRequiredInput propagates out
+    # of this shim instead of being caught silently.
+    require_per_pocket: bool = False,
 ) -> "PaperTableRow | Path":
     """Single-call wrapper: build + write + return.
 
@@ -476,6 +543,10 @@ def emit_paper_table(
         pre-condition: 0.80 matches paper §X published threshold).
     min_atoms : int, default 2
         Forwarded to build_paper_table.
+    require_per_pocket : bool, default False
+        Wf-A30-2 B4 — propagated from build_paper_table.  When True,
+        missing cfm_per_pocket_metric.json raises MissingRequiredInput
+        instead of silently emitting status="NOT_COMPUTED".
 
     Returns
     -------
@@ -491,6 +562,7 @@ def emit_paper_table(
         smiles_csv=smiles_csv,
         largest_frac_min=largest_frac_min,
         min_atoms=min_atoms,
+        require_per_pocket=require_per_pocket,
     )
     if out_path is None:
         return row
@@ -502,6 +574,7 @@ __all__ = [
     "build_paper_table",
     "write_paper_table_json",
     "emit_paper_table",  # Wf-A22 §6.43h RESIDUAL shim (closes §6.42g FAIL)
+    "MissingRequiredInput",  # Wf-A30-2 B4 — semantic-break exception class
     "COHORT_KEYS",
     "PROTOCOL_VERSION",
     "AVAILABLE",
