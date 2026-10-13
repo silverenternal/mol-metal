@@ -362,7 +362,13 @@ output:
 # own default — stated explicitly so the launch is traceable.
 data:
   tmqm_dir: .data/molmetal/tmQM
-  tmqm_metals: Pt,Ru,Ir,Rh,Os,Re
+  tmqm_metals:
+    - Pt
+    - Ru
+    - Ir
+    - Rh
+    - Os
+    - Re
   # -1 = no coordination-number filter (4 = square-planar, 6 = octahedral).
   tmqm_coord_number: -1
   tmqm_val_frac: 0.2

@@ -36,7 +36,13 @@ data:
   tmqm_dir: .data/molmetal/tmQM
   # All six target metals.  Order is irrelevant; it is a filter, and the
   # loader raises on an unknown symbol rather than dropping it.
-  tmqm_metals: Pt,Ru,Ir,Rh,Os,Re
+  tmqm_metals:
+    - Pt
+    - Ru
+    - Ir
+    - Rh
+    - Os
+    - Re
   # -1 = no coordination-number filter (4 = square-planar, 6 = octahedral).
   tmqm_coord_number: -1
   # Val fraction of the DISJOINT split (assigned by CSD-code hash).  Drawing

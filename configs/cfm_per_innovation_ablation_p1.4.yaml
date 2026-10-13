@@ -19,7 +19,13 @@ data:
   # D-MPNN entry.  tmQM carries the metal in the geometry.
   dataset: tmqm
   tmqm_dir: .data/molmetal/tmQM
-  tmqm_metals: Pt,Ru,Ir,Rh,Os,Re
+  tmqm_metals:
+    - Pt
+    - Ru
+    - Ir
+    - Rh
+    - Os
+    - Re
   tmqm_coord_number: -1
   tmqm_val_frac: 0.2
   # Wf-A14 (2026-10-13) Bemis-Murcko scaffold 80/10/10 split. Default random preserves Wf-A8c hash split bit-exactly.

@@ -17,7 +17,13 @@ entry:
 
 data:
   tmqm_dir: .data/molmetal/tmQM
-  tmqm_metals: Pt,Ru,Ir,Rh,Os,Re
+  tmqm_metals:
+    - Pt
+    - Ru
+    - Ir
+    - Rh
+    - Os
+    - Re
   tmqm_val_frac: 0.2
   # Same as the trainer's DEFAULT_VAL_CLOUDS, and held IDENTICAL across arms.
   n_val: 192
