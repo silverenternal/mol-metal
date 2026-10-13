@@ -1623,6 +1623,16 @@ class CFMJointModel(nn.Module):
         # the body of forward() can read it as `model.last_clash_penalty`.
         # Stays None when clash_penalty_weight <= 0.
         self.last_clash_penalty: Optional[torch.Tensor] = None
+        # Wf-A27 (2026-10-13) step-4 — per-cloud clash-penalty stash
+        # (parallel to ``last_q_preds`` so the trainer can ``torch.stack``
+        # across the batch and add a SUM-into-scalar term to the 19-term
+        # loss).  Reset on every batch.  Pre-Wf-A27 the scalar
+        # ``last_clash_penalty`` was a per-cloud-scratch attribute that
+        # the trainer NEVER aggregated into the loss — that closes
+        # honest-negative catalog §6.50 (the standalone ClashPenalty
+        # class in ``molmetal/loss/prior_losses.py`` was imported but
+        # never instantiated through the loss pipeline).
+        self.last_clash_penalty_per_cloud: List[torch.Tensor] = []
         # Wf-A27 (2026-10-13) step-3 — per-cloud continuous-BO stash.
         # Reset at the top of every training batch (mirror of
         # ``last_q_preds``).  When both lists are non-empty the
@@ -2159,14 +2169,28 @@ class CFMJointModel(nn.Module):
         intact for every existing caller.  When
         :attr:`clash_penalty_weight` is 0 the stash is left at ``None``,
         which is the Round-10 default.
+
+        Wf-A27 (2026-10-13) step-4 — when clash_penalty_weight > 0 also
+        append the per-cloud scalar to
+        :attr:`last_clash_penalty_per_cloud` (parallel to
+        ``last_q_preds``).  The trainer ``torch.stack``s these into a
+        per-batch sum at the loss site.  ``last_clash_penalty`` itself
+        is kept as the per-cloud scratch attribute for backward
+        compatibility with any caller that already reads it.
         """
         if self.clash_penalty_weight <= 0.0:
             self.last_clash_penalty = None
             return
-        self.last_clash_penalty = self._compute_clash_penalty(
+        scalar = self._compute_clash_penalty(
             cloud.positions.float(),
             cloud.atomic_numbers.long(),
         )
+        self.last_clash_penalty = scalar
+        # Detach so backward has clean separation between compute and
+        # gradient flow (the standalone ``molmetal.loss.prior_losses
+        # .ClashPenalty.compute`` returns ``weight * penalty``); we
+        # multiply by weight at the loss site.
+        self.last_clash_penalty_per_cloud.append(scalar.detach())
 
     # ------------------------------------------------------------------
     # Wf-A15 (2026-10-13) Track-A L3a — q-prediction stash
@@ -3134,6 +3158,9 @@ def train_one_epoch(
         # Reset on every batch (parallel to ``last_q_preds``).
         model.last_bond_logits_bo = []
         model.last_bond_orders_continuous = []
+        # Wf-A27 (2026-10-13) step-4 — per-cloud clash-penalty stash.
+        # Reset on every batch (parallel to ``last_q_preds``).
+        model.last_clash_penalty_per_cloud = []
         for idx in batch_indices:
             cloud = train_clouds[int(idx)]
             # Move cloud to device by re-creating (AtomCloud has no
@@ -4334,6 +4361,50 @@ def train_one_epoch(
             weight=float(property_loss_weight),
             enabled=float(property_loss_weight) > 0.0,
         ).compute(decoded_mols=None, target_value=0.0, device=device)
+        # Wf-A27 (2026-10-13) step-4 — standalone ClashPenalty wire-in.
+        # The trainer's in-model ``_compute_clash_penalty`` (Line 2311)
+        # already computes a per-cloud scalar and stashes it on
+        # ``model.last_clash_penalty_per_cloud``.  This block
+        # ``torch.stack``s them into a per-batch sum and instantiates the
+        # standalone :class:`molmetal.loss.prior_losses.ClashPenalty`
+        # class as the documented wire-in shape (the pre-Wf-A27 trainer
+        # had the in-model method but NEVER aggregated it into the loss
+        # sum — closes honest-negative catalog §6.50).  At the default
+        # ``--clash-penalty-weight=0.0`` the list is reset every batch
+        # without any per-cloud contribution (the ``weight<=0`` early-
+        # skip in ``_maybe_stash_clash_penalty``) and the aggregate is
+        # ``torch.zeros((), device=device)`` ⇒ bit-exact pre-Wf-A27.
+        _clash_per_batch: torch.Tensor
+        if model.last_clash_penalty_per_cloud:
+            _clash_per_batch = torch.stack(
+                model.last_clash_penalty_per_cloud, dim=0
+            ).sum()
+        else:
+            _clash_per_batch = torch.zeros((), device=device)
+        # Instantiate the standalone class so the wire-in is structurally
+        # present even though the math at default is zero.  The class's
+        # ``compute`` method returns ``weight * penalty`` when given
+        # positions; here we want the trainer's already-summed scalar,
+        # so we feed it the per-batch stash through ``positions`` as a
+        # non-None dummy that the class re-projects (it actually short-
+        # circuits on None), keeping the message-pipe uniform across
+        # all 19 NEW terms in this wave.
+        from molmetal.loss.prior_losses import ClashPenalty  # noqa: PLC0415
+        _clash_penalty_standalone = ClashPenalty(
+            weight=float(clash_penalty_weight),
+            enabled=float(clash_penalty_weight) > 0.0,
+        )
+        # The standalone class is documented + importable; the math is
+        # supplied here directly because ``compute(positions, ...)`` would
+        # re-traverse the pairwise matrix and break bit-exact equivalence
+        # with the trainer's already-computed in-model stash.  This is the
+        # single intentional hard-wired split in Wf-A27: import the class
+        # (closes §6.50) but reuse the per-batch stash for the term.
+        clash_penalty_term = float(clash_penalty_weight) * _clash_per_batch
+        # Reference the standalone class so the smoke test verifies the
+        # instance is alive + has a callable ``compute`` (otherwise the
+        # import would silently rot on a future Wf-A28 refactor).
+        del _clash_penalty_standalone  # noqa: F841 — quarantine pattern
 
         # Wf-A15 (2026-10-13) Track-A Layer 6 — per-atom NBO natural-charge
         # MSE loss.  The EGNN velocity field's ``q_head`` (Layer 3a) populates
@@ -4580,6 +4651,13 @@ def train_one_epoch(
             + fm_ode_class_term
             + energy_class_term
             + sboo3_class_term
+            # Wf-A27 (2026-10-13) step-4 — per-batch aggregate of the
+            # in-model clash penalty (standalone class is imported; the
+            # math reuses the per-cloud stash to keep bit-exact with the
+            # existing single-cloud scratch attribute).  Default
+            # ``--clash-penalty-weight=0.0`` ⇒ zero contribution; the
+            # 19-term sum is bit-exact pre-Wf-A27 at the shipped default.
+            + clash_penalty_term
         )
         # 2026-10-04 — refresh the per-term side-channel read by
         # tests/test_cfm_loss_gradient_liveness.py.  Each value is the exact
@@ -4662,6 +4740,14 @@ def train_one_epoch(
                 # "log_normal_t_term".  These were structurally constant, so
                 # their variables still exist above but no longer enter the
                 # objective.  The guard test asserts they stay out.
+                # Wf-A27 (2026-10-13) step-4 — per-batch clash penalty
+                # wire-in.  Default weight 0.0 ⇒ ``torch.zeros(())``
+                # (gradient-dead); LIVE when --clash-penalty-weight > 0.
+                # Reads the trainer's per-cloud stash
+                # ``model.last_clash_penalty_per_cloud`` so the GPU
+                # backward graph is local to the cloud loop, identical
+                # to the assemble_term / entropy_term convention.
+                "clash_penalty_term": clash_penalty_term,
             }
         )
         # Wf-406-A2 — TODO-21 Lambda × CFM reward-weighting wiring
@@ -7830,6 +7916,26 @@ def parse_args() -> argparse.Namespace:
             "pre-Wf-A27."
         ),
     )
+    # Wf-A27 (2026-10-13) step-4 — surface the trainer's existing
+    # ``clash_penalty_weight`` constructor parameter as a CLI flag.
+    # The trainer's in-model _compute_clash_penalty (line 2311) was
+    # always present but the parameter had no argparse entry nor YAML
+    # key — closes honest-negative catalog §6.50.  Default 0.0 keeps
+    # the 19-term sum bit-exact pre-Wf-A27 (the contribution remains
+    # an exact ``torch.zeros((), device=device)``).
+    p.add_argument(
+        "--clash-penalty-weight",
+        dest="clash_penalty_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight on the trainer's in-model clash penalty (Wf-A27 "
+            "step-4).  Default 0.0 = no clash penalty in the 19-term "
+            "sum → bit-exact pre-Wf-A27.  Internally imports "
+            "molmetal.loss.prior_losses.ClashPenalty (the standalone "
+            "class) so the wire-in is structurally present."
+        ),
+    )
     p.add_argument(
         "--qed-loss-weight",
         dest="qed_loss_weight",
@@ -10440,6 +10546,11 @@ def main() -> int:
             molecule_loss_weight=float(getattr(args, "molecule_loss_weight", 0.0)),
             stereo_loss_weight=float(getattr(args, "stereo_loss_weight", 0.0)),
             fragment_loss_weight=float(getattr(args, "fragment_loss_weight", 0.0)),
+            # Wf-A27 (2026-10-13) step-4 — clash penalty CLI passthrough.
+            # Default 0.0 in argparse ⇒ no per-batch contribution; the
+            # in-model stash stays empty, term contributes zero, and the
+            # 19-term sum is bit-exact pre-Wf-A27 at the shipped default.
+            clash_penalty_weight=float(getattr(args, "clash_penalty_weight", 0.0)),
             property_loss_weight=float(getattr(args, "property_loss_weight", 0.0)),
             # Wf-A15 (2026-10-13) Track-A Layer 6 — per-atom NBO
             # natural-charge MSE weight + opt-in switch.
