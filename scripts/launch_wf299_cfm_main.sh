@@ -529,7 +529,7 @@ EOF
     # (--epochs/--seed/etc.) still win over the yaml — deliberate, and it keeps
     # the per-wave budgets in this wrapper authoritative.
     CUDA_VISIBLE_DEVICES="${gpu##cuda:}" \
-        "${PY}" "${trainer}" \
+setsid nohup         "${PY}" "${trainer}" \
             --config "${config}" \
             --out-dir "${out_dir}" \
             "$@" ${EXTRA_FLAGS:-} \
@@ -585,7 +585,7 @@ EOF
     # that any actual abort now produces a valid recovery.json.
     if [ "${aborted}" -eq 1 ] || ! grep -qi "wave_${wave_label,,}_complete\|done" "${out_dir}/train.log"; then
         warn "Wave ${wave_label} FAIL — invoking abort_recovery.py"
-        "${PY}" "${ABORT_RECOVERY}" --wave "wave_${wave_label,,}" \
+setsid nohup         "${PY}" "${ABORT_RECOVERY}" --wave "wave_${wave_label,,}" \
             --pattern cfm-collapse \
             > "${out_dir}/recovery.json" 2>&1 || true
         die "Wave ${wave_label} aborted — recovery at ${out_dir}/recovery.json"

@@ -119,90 +119,152 @@ WF335M2_BEST_R2: Dict[str, float] = {
 # ---------------------------------------------------------------------------
 # EXTENDED feature computation (32-d RDKit + 128-d PLL proxy = 160-d)
 # ---------------------------------------------------------------------------
+class UnresolvedDescriptorColumn(KeyError):
+    """A requested column name has no descriptor implementation.
+
+    Raised instead of silently emitting 0.0.  The old ``else`` branch
+    emitted ``CalcMolWt`` for any unrecognised name, which turned a typo
+    into a collinear duplicate of an existing column rather than
+    surfacing it.
+    """
+
+
+def _build_descriptor_map() -> Dict[str, Any]:
+    """Map every canonical 32-d column name to a live ``callable(mol)``.
+
+    Resolved once at import; a name that cannot be resolved is recorded
+    in :func:`unresolved_descriptor_columns` rather than degrading to a
+    zero column.  Note the module split that made this necessary: the
+    ``rd*`` namespaces prefix their callables with ``Calc``
+    (``CalcChi0v``, not ``Chi0v``) and the Lipinski / Fragments
+    descriptors do not live on ``rdMolDescriptors`` at all — looking
+    them up on the wrong module returns ``None`` and, before this fix,
+    quietly produced an all-zero column.
+    """
+    from rdkit.Chem import AllChem, Descriptors, Lipinski  # noqa: WPS433
+    from rdkit.Chem import Fragments  # noqa: WPS433
+
+    def _chi(name: str) -> Any:
+        # Chi0v / Chi0n / Chi1n -> CalcChi0v / CalcChi0n / CalcChi1n.
+        fn = getattr(rdMolDescriptors, f"Calc{name}", None)
+        if fn is None:
+            raise UnresolvedDescriptorColumn(
+                f"no Calc{name} on rdMolDescriptors "
+                f"(available: {[n for n in dir(rdMolDescriptors) if 'Chi' in n]})"
+            )
+        return fn
+
+    def _kappa(order: int) -> Any:
+        fn = getattr(rdMolDescriptors, f"CalcKappa{order}", None)
+        if fn is None:
+            raise UnresolvedDescriptorColumn(f"no CalcKappa{order} on rdMolDescriptors")
+        return fn
+
+    def _fragment(name: str) -> Any:
+        fn = getattr(Fragments, name, None)
+        if fn is None:
+            raise UnresolvedDescriptorColumn(f"no {name} on rdkit.Chem.Fragments")
+        return fn
+
+    mapping: Dict[str, Any] = {
+        "MolWt": rdMolDescriptors.CalcExactMolWt,
+        "MolLogP": lambda m: rdMolDescriptors.CalcCrippenDescriptors(m)[0],
+        "MolMR": lambda m: rdMolDescriptors.CalcCrippenDescriptors(m)[1],
+        "TPSA": rdMolDescriptors.CalcTPSA,
+        "HBA": rdMolDescriptors.CalcNumHBA,
+        "HBD": rdMolDescriptors.CalcNumHBD,
+        "NRotB": rdMolDescriptors.CalcNumRotatableBonds,
+        "HeavyAtoms": lambda m: float(m.GetNumHeavyAtoms()),
+        "RingCount": rdMolDescriptors.CalcNumRings,
+        "NumAromaticRings": rdMolDescriptors.CalcNumAromaticRings,
+        "FractionCSP3": rdMolDescriptors.CalcFractionCSP3,
+        "BalabanJ": Descriptors.BalabanJ,
+        "BertzCT": Descriptors.BertzCT,
+        "HallKierAlpha": rdMolDescriptors.CalcHallKierAlpha,
+        "LabuteASA": rdMolDescriptors.CalcLabuteASA,
+        "NumAliphaticRings": rdMolDescriptors.CalcNumAliphaticRings,
+        "NumSaturatedRings": rdMolDescriptors.CalcNumSaturatedRings,
+        "NumHeteroatoms": rdMolDescriptors.CalcNumHeteroatoms,
+        "NHOHCount": Lipinski.NHOHCount,
+        "NOCount": Lipinski.NOCount,
+    }
+    for name in ("Chi0v", "Chi0n", "Chi1n"):
+        mapping[name] = _chi(name)
+    for order in (1, 2, 3):
+        mapping[f"Kappa{order}"] = _kappa(order)
+    for name in ("fr_halogen", "fr_Al_COO"):
+        mapping[name] = _fragment(name)
+
+    # Partial charges: delegate to the canonical counted resolver so a
+    # metallodrug's metal-free-organic fallback rate is REPORTED rather
+    # than hidden behind a constant 0.0.
+    from molmetal.data.rdkit_2d_extended import (  # noqa: WPS433
+        _cached_partial_charges,
+    )
+
+    _PC = ("MaxPartialCharge", "MinPartialCharge", "MaxAbsPartialCharge",
+           "MinAbsPartialCharge")
+    for i, name in enumerate(_PC):
+        mapping[name] = (lambda m, _i=i: _cached_partial_charges(m)[_i])
+
+    _ = AllChem  # imported for parity with the historical header
+    return mapping
+
+
+_DESCRIPTOR_MAP: Optional[Dict[str, Any]] = None
+
+
+def _descriptor_map() -> Dict[str, Any]:
+    """Return the cached name -> callable map, building it on first use."""
+    global _DESCRIPTOR_MAP
+    if _DESCRIPTOR_MAP is None:
+        _DESCRIPTOR_MAP = _build_descriptor_map()
+    return _DESCRIPTOR_MAP
+
+
+def unresolved_descriptor_columns(
+    columns: Tuple[str, ...],
+) -> List[str]:
+    """Return the subset of ``columns`` with no descriptor implementation.
+
+    This is the check that would have caught defects A/B/C: every name in
+    the shipped column list must resolve to something that actually runs.
+    """
+    mapping = _descriptor_map()
+    return [c for c in columns if c not in mapping]
+
+
 def _rdkit_features(smiles: str, columns: Tuple[str, ...]) -> np.ndarray:
     """Compute RDKit descriptor features for a single SMILES.
 
     Falls back to zeros for any SMILES that fails to parse (matches Wf-331-R5
     graceful-failure contract; per-cohort verdict uses real cohort loaders
     that pre-filter failures).
+
+    Raises
+    ------
+    UnresolvedDescriptorColumn
+        If any name in ``columns`` has no descriptor implementation. The
+        previous code had an ``else`` branch emitting ``CalcMolWt``, which
+        made a typo indistinguishable from a real descriptor and produced
+        collinear duplicates of an existing column.
     """
     if not _HAS_RDKIT:
         return np.zeros(len(columns), dtype=np.float64)
+    mapping = _descriptor_map()
+    missing = [c for c in columns if c not in mapping]
+    if missing:
+        raise UnresolvedDescriptorColumn(
+            f"_rdkit_features got {len(missing)} column(s) with no descriptor: "
+            f"{missing}. Refusing to emit a duplicate/silent-zero column."
+        )
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return np.zeros(len(columns), dtype=np.float64)
     out = np.zeros(len(columns), dtype=np.float64)
     for j, col in enumerate(columns):
         try:
-            if col == "MolWt":
-                out[j] = float(rdMolDescriptors.CalcExactMolWt(mol))
-            elif col == "MolLogP":
-                out[j] = float(rdMolDescriptors.CalcCrippenDescriptors(mol)[0])
-            elif col == "TPSA":
-                out[j] = float(rdMolDescriptors.CalcTPSA(mol))
-            elif col == "HBA":
-                out[j] = float(rdMolDescriptors.CalcNumHBA(mol))
-            elif col == "HBD":
-                out[j] = float(rdMolDescriptors.CalcNumHBD(mol))
-            elif col == "NRotB":
-                out[j] = float(rdMolDescriptors.CalcNumRotatableBonds(mol))
-            elif col == "HeavyAtoms":
-                out[j] = float(mol.GetNumHeavyAtoms())
-            elif col == "RingCount":
-                out[j] = float(rdMolDescriptors.CalcNumRings(mol))
-            elif col == "NumAromaticRings":
-                out[j] = float(rdMolDescriptors.CalcNumAromaticRings(mol))
-            elif col == "FractionCSP3":
-                out[j] = float(rdMolDescriptors.CalcFractionCSP3(mol))
-            elif col == "MolMR":
-                out[j] = float(rdMolDescriptors.CalcCrippenDescriptors(mol)[1])
-            elif col == "BalabanJ":
-                out[j] = float(rdMolDescriptors.CalcBalabanJ(mol))
-            elif col == "BertzCT":
-                out[j] = float(rdMolDescriptors.CalcBertzCT(mol))
-            elif col.startswith("Chi"):
-                order = int(col[3])
-                kind = col[4:]
-                fn = getattr(rdMolDescriptors, f"Chi{order}{kind}", None)
-                if fn:
-                    out[j] = float(fn(mol))
-            elif col == "HallKierAlpha":
-                out[j] = float(rdMolDescriptors.CalcHallKierAlpha(mol))
-            elif col.startswith("Kappa"):
-                order = int(col[5:])
-                fn = getattr(rdMolDescriptors, f"Kappa{order}", None)
-                if fn:
-                    out[j] = float(fn(mol))
-            elif col == "LabuteASA":
-                out[j] = float(rdMolDescriptors.CalcLabuteASA(mol))
-            elif col == "MaxPartialCharge":
-                charges = [float(a.GetFormalCharge()) for a in mol.GetAtoms()]
-                out[j] = max(charges) if charges else 0.0
-            elif col == "MinPartialCharge":
-                charges = [float(a.GetFormalCharge()) for a in mol.GetAtoms()]
-                out[j] = min(charges) if charges else 0.0
-            elif col == "MaxAbsPartialCharge":
-                charges = [abs(float(a.GetFormalCharge())) for a in mol.GetAtoms()]
-                out[j] = max(charges) if charges else 0.0
-            elif col == "MinAbsPartialCharge":
-                charges = [abs(float(a.GetFormalCharge())) for a in mol.GetAtoms()]
-                out[j] = min(charges) if charges else 0.0
-            elif col == "NumAliphaticRings":
-                out[j] = float(rdMolDescriptors.CalcNumAliphaticRings(mol))
-            elif col == "NumSaturatedRings":
-                out[j] = float(rdMolDescriptors.CalcNumSaturatedRings(mol))
-            elif col == "NumHeteroatoms":
-                out[j] = float(rdMolDescriptors.CalcNumHeteroatoms(mol))
-            elif col == "NHOHCount":
-                out[j] = float(rdMolDescriptors.CalcNHOHCount(mol))
-            elif col == "NOCount":
-                out[j] = float(rdMolDescriptors.CalcNOCount(mol))
-            elif col.startswith("fr_"):
-                fn = getattr(rdMolDescriptors, f"CalcNum{col[3:]}", None)
-                if fn:
-                    out[j] = float(fn(mol))
-            else:
-                out[j] = float(rdMolDescriptors.CalcMolWt(mol))  # fallback
+            out[j] = float(mapping[col](mol))
         except Exception:
             out[j] = 0.0
     return out

@@ -129,6 +129,27 @@ def main() -> int:
     ap.add_argument("--run", default="cfm_objective_terms_2026_10_11")
     ap.add_argument("--n-clouds", type=int, default=64)
     ap.add_argument("--out-json", default=None)
+    ap.add_argument(
+        "--ode",
+        action="store_true",
+        help=(
+            "2026-10-12: generate the clouds by integrating the CFM from the "
+            "noise prior instead of loading real tmQM coordinates. This is the "
+            "path the project's generation numbers actually come from; the "
+            "default (real geometry) measures bond PERCEPTION, where this "
+            "checkpoint scores 0.9962 existence F1 and variant differences "
+            "are compressed."
+        ),
+    )
+    ap.add_argument("--n-steps", type=int, default=50, help="ODE steps when --ode")
+    ap.add_argument(
+        "--method", default="midpoint", help="ODE solver when --ode"
+    )
+    ap.add_argument(
+        "--pad-groups",
+        action="store_true",
+        help="pass pad_groups to the sampler; see BLK-C-PERF",
+    )
     args_cli = ap.parse_args()
 
     import yaml
@@ -164,7 +185,7 @@ def main() -> int:
     cfg = yaml.safe_load((REPO / "configs" / "cfm_tmqm_all6.yaml").read_text())
     from molmetal.data.tmqm_clouds import load_tmqm_clouds
 
-    clouds = load_tmqm_clouds(
+    template_clouds = load_tmqm_clouds(
         cfg["data"]["tmqm_dir"],
         metals=[s.strip() for s in cfg["data"]["tmqm_metals"].split(",")],
         coord_number=None,
@@ -173,6 +194,56 @@ def main() -> int:
         split="val",
         val_frac=float(cfg["data"]["tmqm_val_frac"]),
     )
+
+    # 2026-10-12 (--ode): generate the geometry from the noise prior instead of
+    # loading real tmQM coordinates.
+    #
+    # Why this is cheap enough to do inside the variant loop's setup: the ODE
+    # integration calls `model.vel_field`, and the valence-budget tables are
+    # read only by the BOND HEAD at decode time (cfm_decoder_yuelbond.py:485,
+    # :601). So the generated geometry is identical across all eight variants
+    # and can be computed ONCE, exactly like the featurise-once step below.
+    #
+    # Why it matters: on the reconstruction path the bond EXISTENCE F1 of this
+    # checkpoint family is 0.9962, i.e. the task is near-solved and differences
+    # between variants are compressed. Whether a budget variant helps is a
+    # question about GENERATION, where the same checkpoint reaches only ~0.34
+    # yield. A variant table measured on the easy task cannot answer it.
+    if args_cli.ode:
+        from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
+            YuelBondBondDecoder as _Dec,
+        )
+
+        _dec_for_gen = _Dec(
+            head=model.head,
+            hidden_dim=int(a["hidden_dim"]),
+            n_layers=int(a["n_layers"]),
+            decision=str(a.get("bond_decision", "threshold")),
+            decision_threshold=float(a.get("bond_decision_threshold", 0.5)),
+            connectivity_prior=str(a.get("connectivity_prior", "on")) == "on",
+            connectivity_prior_min_logit=float(
+                a.get("connectivity_prior_min_logit", 0.0)
+            ),
+        )
+        print(
+            f"[ab] integrating the ODE from noise ({args_cli.n_steps} steps, "
+            f"{args_cli.method}) -- valence budget does NOT affect this stage, "
+            "so it is done once for all variants",
+            flush=True,
+        )
+        with torch.no_grad():
+            clouds = T.generate_clouds_from_noise(
+                model,
+                template_clouds,
+                device,
+                method=args_cli.method,
+                n_steps=args_cli.n_steps,
+                seed=int(a.get("seed", 0)),
+                pad_groups=bool(args_cli.pad_groups),
+            )
+        print(f"[ab] generated {len(clouds)} clouds", flush=True)
+    else:
+        clouds = template_clouds
 
     # Featurise ONCE so every variant sees identical logits.
     print("[ab] featurising clouds ...", flush=True)
@@ -191,38 +262,34 @@ def main() -> int:
     saved_val = copy.deepcopy(C._COVALENT_VALENCE)
 
     results = {}
-    for name, spec in VARIANTS.items():
-        C._CLASS_VALENCE_COST.clear()
-        C._CLASS_VALENCE_COST.update(saved_cost)
-        C._COVALENT_VALENCE.clear()
-        C._COVALENT_VALENCE.update(saved_val)
-        if spec is not None:
-            C._CLASS_VALENCE_COST[4] = float(spec["aromatic_cost"])
-            for z, cap in dict(spec["metal_caps"]).items():
-                C._COVALENT_VALENCE[int(z)] = int(cap)
-        # One decoder for the variant. The tables above are module globals, so
-        # the decoder picks them up at construction; there is no per-variant
-        # constructor knob and the shipped decoder source stays untouched.
-        #
-        # The reserve acts by shrinking the caps the SELECTOR reads, because
-        # that is the only place budget can be withheld from selection while
-        # still leaving the bridge its full cap.
-        _reserve = float((spec or {}).get("reserve", 0.0) or 0.0)
-        if _reserve:
-            for _z, _c in list(C._COVALENT_VALENCE.items()):
-                C._COVALENT_VALENCE[_z] = max(0, int(_c) - int(round(_reserve)))
-        dec = C.YuelBondBondDecoder(
-            head=model.head,
-            hidden_dim=int(a["hidden_dim"]),
-            n_layers=int(a["n_layers"]),
-            decision=str(a.get("bond_decision", "threshold")),
-            decision_threshold=float(a.get("bond_decision_threshold", 0.5)),
-            connectivity_prior=str(a.get("connectivity_prior", "on")) == "on",
-            connectivity_prior_min_logit=float(a.get("connectivity_prior_min_logit", 0.0)),
-        )
-        if spec is None:
-            # Degenerate control: every bond is free.
-            C._CLASS_VALENCE_COST.update({k: 0.0 for k in saved_cost})
+    # 2026-10-12 -- the two tables below are MODULE GLOBALS that the decoder
+    # reads live (_CLASS_VALENCE_COST at :485 and :601 of
+    # cfm_decoder_yuelbond.py; _COVALENT_VALENCE is snapshotted into a local
+    # `table` at :194). An exception anywhere in this loop used to leave them
+    # mutated for the rest of the process -- and the `no_budget` variant, which
+    # is the LAST one, sets every cost to 0.0, so a caller running after this
+    # script inherited a budget-free table. try/finally restores unconditionally.
+    try:
+        for name, spec in VARIANTS.items():
+            C._CLASS_VALENCE_COST.clear()
+            C._CLASS_VALENCE_COST.update(saved_cost)
+            C._COVALENT_VALENCE.clear()
+            C._COVALENT_VALENCE.update(saved_val)
+            if spec is not None:
+                C._CLASS_VALENCE_COST[4] = float(spec["aromatic_cost"])
+                for z, cap in dict(spec["metal_caps"]).items():
+                    C._COVALENT_VALENCE[int(z)] = int(cap)
+            # One decoder for the variant. The tables above are module globals, so
+            # the decoder picks them up at construction; there is no per-variant
+            # constructor knob and the shipped decoder source stays untouched.
+            #
+            # The reserve acts by shrinking the caps the SELECTOR reads, because
+            # that is the only place budget can be withheld from selection while
+            # still leaving the bridge its full cap.
+            _reserve = float((spec or {}).get("reserve", 0.0) or 0.0)
+            if _reserve:
+                for _z, _c in list(C._COVALENT_VALENCE.items()):
+                    C._COVALENT_VALENCE[_z] = max(0, int(_c) - int(round(_reserve)))
             dec = C.YuelBondBondDecoder(
                 head=model.head,
                 hidden_dim=int(a["hidden_dim"]),
@@ -232,40 +299,92 @@ def main() -> int:
                 connectivity_prior=str(a.get("connectivity_prior", "on")) == "on",
                 connectivity_prior_min_logit=float(a.get("connectivity_prior_min_logit", 0.0)),
             )
-
-        single, decoded_ok, n = 0, 0, 0
-        with torch.no_grad():
-            for cloud, yres in feats:
-                if yres.logits is None or yres.logits.shape[0] == 0:
-                    continue
-                sel, dative, _k, _o = dec._select_bonds(cloud, yres)
-                sel2, _d2, _added = dec._bridge_components(
-                    cloud, yres, list(sel), list(dative)
+            if spec is None:
+                # Degenerate control: every bond is free.
+                C._CLASS_VALENCE_COST.update({k: 0.0 for k in saved_cost})
+                dec = C.YuelBondBondDecoder(
+                    head=model.head,
+                    hidden_dim=int(a["hidden_dim"]),
+                    n_layers=int(a["n_layers"]),
+                    decision=str(a.get("bond_decision", "threshold")),
+                    decision_threshold=float(a.get("bond_decision_threshold", 0.5)),
+                    connectivity_prior=str(a.get("connectivity_prior", "on")) == "on",
+                    connectivity_prior_min_logit=float(a.get("connectivity_prior_min_logit", 0.0)),
                 )
-                res = dec._assemble_mol(cloud, sel2, [])
-                n += 1
-                if getattr(res, "sanitized", False) and getattr(res, "smiles", ""):
-                    decoded_ok += 1
-                    from rdkit import Chem
 
-                    m = Chem.MolFromSmiles(res.smiles)
-                    if m is not None and len(Chem.GetMolFrags(m)) == 1:
-                        single += 1
-        results[name] = {
-            "n": n,
-            "single_fragment_ratio": round(single / n, 4) if n else None,
-            "decode_ratio": round(decoded_ok / n, 4) if n else None,
-        }
-        print(
-            f"  {name:14} single_frag={results[name]['single_fragment_ratio']}"
-            f"  decode_ratio={results[name]['decode_ratio']}  (n={n})",
-            flush=True,
-        )
+            single, decoded_ok, n = 0, 0, 0
+            n_frags_sum = 0
+            with torch.no_grad():
+                for cloud, yres in feats:
+                    if yres.logits is None or yres.logits.shape[0] == 0:
+                        continue
+                    sel, dative, _k, _o = dec._select_bonds(cloud, yres)
+                    sel2, _d2, _added = dec._bridge_components(
+                        cloud, yres, list(sel), list(dative)
+                    )
+                    res = dec._assemble_mol(cloud, sel2, [])
+                    n += 1
+                    if getattr(res, "sanitized", False) and getattr(res, "smiles", ""):
+                        decoded_ok += 1
+                        from rdkit import Chem
 
-    C._CLASS_VALENCE_COST.clear()
-    C._CLASS_VALENCE_COST.update(saved_cost)
-    C._COVALENT_VALENCE.clear()
-    C._COVALENT_VALENCE.update(saved_val)
+                        m = Chem.MolFromSmiles(res.smiles)
+                        if m is not None:
+                            n_frags = len(Chem.GetMolFrags(m))
+                            n_frags_sum += n_frags
+                            if n_frags == 1:
+                                single += 1
+            # 2026-10-12 — THIS SCRIPT REPORTED A MISLEADING NUMBER AND WAS FIXED.
+            #
+            # `single_fragment_ratio` here was single / n, where n counts every
+            # cloud the decoder was ASKED about. The trainer's metric of the same
+            # name (train_cfm_yuelbond_wasserstein.py:4667) uses n = the molecules
+            # that PASSED the chemistry check, i.e. the denominator excludes
+            # failures. Two different denominators under one name.
+            #
+            # MEASURED consequence, on the SAME checkpoint
+            # (cfm_objective_terms seed0 epoch 5):
+            #     this script          single_fragment_ratio = 0.1406  (9/64)
+            #     trainer, ODE path    gen_single_fragment_ratio = 0.73 / 0.90 / 0.88
+            # A 5-6x gap between two numbers that share a metric name.
+            #
+            # Both are now reported. `single_fragment_ratio` keeps the original
+            # denominator so the archived 8-variant table stays comparable with
+            # itself; `single_fragment_ratio_of_decoded` divides by the molecules
+            # that actually decoded, which is what the trainer reports and is the
+            # one to compare against it. n_frags_mean is new and is the cheapest
+            # way to see the difference at a glance.
+            denom_decoded = decoded_ok or 0
+            results[name] = {
+                "n": n,
+                "single_fragment_ratio": round(single / n, 4) if n else None,
+                "single_fragment_ratio_of_decoded": (
+                    round(single / denom_decoded, 4) if denom_decoded else None
+                ),
+                "n_frags_mean": (
+                    round(n_frags_sum / denom_decoded, 4) if denom_decoded else None
+                ),
+                "decode_ratio": round(decoded_ok / n, 4) if n else None,
+                "denominator_note": (
+                    "single_fragment_ratio divides by every cloud attempted; "
+                    "single_fragment_ratio_of_decoded divides by the molecules that "
+                    "decoded, which is the trainer's convention and the one "
+                    "comparable with gen_single_fragment_ratio."
+                ),
+            }
+            print(
+                f"  {name:14} single_frag={results[name]['single_fragment_ratio']}"
+                f"  (of_decoded={results[name]['single_fragment_ratio_of_decoded']})"
+                f"  n_frags={results[name]['n_frags_mean']}"
+                f"  decode_ratio={results[name]['decode_ratio']}  (n={n})",
+                flush=True,
+            )
+
+    finally:
+        C._CLASS_VALENCE_COST.clear()
+        C._CLASS_VALENCE_COST.update(saved_cost)
+        C._COVALENT_VALENCE.clear()
+        C._COVALENT_VALENCE.update(saved_val)
 
     print()
     print("  READ THE TWO COLUMNS TOGETHER. A variant that lifts")
@@ -282,7 +401,12 @@ def main() -> int:
             "checkpoint": str(ckpt_path.relative_to(REPO)),
             "checkpoint_epoch": ckpt.get("epoch"),
             "n_clouds": args_cli.n_clouds,
-            "split": "val (real tmQM clouds, NOT ODE-from-noise)",
+            "split": (
+                f"ODE-from-noise ({args_cli.method}/{args_cli.n_steps} steps)"
+                if args_cli.ode
+                else "val (real tmQM clouds, NOT ODE-from-noise)"
+            ),
+            "decode_path": "ode" if args_cli.ode else "reconstruction",
             "variants": results,
             "note": (
                 "'no_budget' is the degenerate control, not a proposal. "

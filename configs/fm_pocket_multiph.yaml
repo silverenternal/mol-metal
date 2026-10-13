@@ -70,4 +70,4 @@ entry:
   # "could not parse YAML".  `{hidden}` maps to model.hidden_dim and `{depth}`
   # to model.depth; the multi_ph_* and max_* placeholders were added to
   # start.sh for this entry.
-  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_fm_pocket.py --epochs {epochs} --batch {batch_size} --lr {lr} --hidden-dim {hidden} --n-layers {depth} --max-atoms {max_atoms} --max-pocket-atoms {max_pocket_atoms} --use-multi-ph --multi-ph-bins {multi_ph_bins} --multi-ph-max-radius {multi_ph_max_radius} --multi-ph-max-coord {multi_ph_max_coord}
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_fm_pocket.py --config {yaml_path} --epochs {epochs} --batch {batch_size} --lr {lr} --hidden-dim {hidden} --n-layers {depth} --max-atoms {max_atoms} --max-pocket-atoms {max_pocket_atoms} --multi-ph-bins {multi_ph_bins} --multi-ph-max-radius {multi_ph_max_radius} --multi-ph-max-coord {multi_ph_max_coord}

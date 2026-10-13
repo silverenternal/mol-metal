@@ -367,7 +367,7 @@ run_pair() {
   # GPU 0 (RTX PRO 6000) — aligns with this script's GPU="cuda:0" header
   # and the --cuda-visible-devices 0 flag above; the old '1' predated the
   # GPU-0 resolver default.  (G6 recovery holds GPU-1.)
-  CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} \
+  CUDA_VISIBLE_DEVICES=0 setsid nohup ${PY} ${SCRIPT} \
     --config "${DMPNN_CONFIG}" \
     --metals "${metal}" \
     --seeds "${seed}" \
@@ -375,7 +375,7 @@ run_pair() {
     --data-csv "${DATA_CSV}" \
     --out-dir "${OUT_BASE}/${metal}/seed${seed}" \
     --ckpt-dir "${OUT_BASE}/${metal}/seed${seed}/ckpts" \
-    "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
+"${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
   local rc=${PIPESTATUS[0]}
 
   # Wf-347-B1: per-pair budget tracking — capture end time + emit delta

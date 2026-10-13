@@ -56,15 +56,25 @@ PAPER_RU_LIGHTGBM = {"mean": 0.810, "std": 0.024}
 DMPNN_OURS = {"mean": 0.7717467464034218, "std": 0.037955584760391604}
 
 
-def build_cohort(df: pd.DataFrame):
-    """Paper funnel: IC50-present -> Ru -> dedup -> 76-name non-cancer exclusion."""
+def build_cohort(df: pd.DataFrame, top_cell_lines: int = 0):
+    """Paper funnel: IC50-present -> Ru -> dedup -> 76-name non-cancer exclusion.
+
+    ``top_cell_lines > 0`` additionally restricts to the top-N cell lines by row
+    volume — the Krasnov-23 reconstruction (W2, 2026-10-13).  Returns
+    ``(cohort, positional_index_into_df)`` so a fold JSON written against the
+    full funnel can be intersected with this cohort.
+    """
     from molmetal.data import cytotox as C
 
-    idx = C.build_paper_cohort_indices(df)
+    lines = None
+    if int(top_cell_lines) > 0:
+        probe = df.loc[C.build_paper_cohort_indices(df)]
+        lines = C.top_cell_lines(probe, int(top_cell_lines))
+    idx = C.build_paper_cohort_indices(df, cell_lines=lines)
     cohort = df.iloc[idx].reset_index(drop=True)
     cohort = C._add_pic50(cohort)
     cohort = C._add_active(cohort)
-    return cohort
+    return cohort, np.asarray(idx, dtype=np.int64)
 
 
 def load_folds(folds_dir: Path, n_folds: int) -> List[Dict[str, np.ndarray]]:
@@ -130,7 +140,7 @@ def run(args) -> dict:
         raise SystemExit(f"CSV not found: {csv_path}")
 
     df = pd.read_csv(csv_path, low_memory=False)
-    cohort = build_cohort(df)
+    cohort, cohort_pos = build_cohort(df, int(args.top_cell_lines))
     y = np.asarray(cohort["active"], dtype=int)
     smiles = cohort["SMILES_Ligands"].astype(str).to_numpy()
     n_rows = len(cohort)
@@ -148,6 +158,25 @@ def run(args) -> dict:
     else:
         folds = load_folds(Path(args.folds_dir), args.n_folds)
         fold_source = str(args.folds_dir)
+        # doi_split_cv.py writes positions into the RAW CSV; this script indexes
+        # the cohort frame.  Map raw position -> cohort row.  Rows outside the
+        # cohort (i.e. filtered away by the funnel / cell-line restriction) are
+        # dropped, which preserves the DOI partition exactly.
+        raw2cohort = {int(p): i for i, p in enumerate(cohort_pos)}
+        folds = [
+            {
+                "fold": f["fold"],
+                "train_idx": np.asarray(
+                    [raw2cohort[int(i)] for i in f["train_idx"] if int(i) in raw2cohort],
+                    dtype=np.int64,
+                ),
+                "val_idx": np.asarray(
+                    [raw2cohort[int(i)] for i in f["val_idx"] if int(i) in raw2cohort],
+                    dtype=np.int64,
+                ),
+            }
+            for f in folds
+        ]
 
     # Partition sanity: every row exactly once across held-out folds.
     all_val = np.concatenate([f["val_idx"] for f in folds])
@@ -219,6 +248,7 @@ def run(args) -> dict:
             "complexes": int(cohort[["SMILES_Ligands", "Metal"]].drop_duplicates().shape[0]),
             "cell_lines": int(cohort["Cell_line"].astype(str).nunique()),
             "active_rate": float(y.mean()),
+            "top_cell_lines": int(args.top_cell_lines),
         },
         "fold_source": fold_source,
         "fold_leakage_check": {
@@ -260,6 +290,16 @@ def main(argv=None) -> int:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--radius", type=int, default=2)
     ap.add_argument("--nbits", type=int, default=2048)
+    ap.add_argument(
+        "--top-cell-lines",
+        type=int,
+        default=0,
+        help=(
+            "0 = full paper funnel (all surviving cell lines); 23 = the "
+            "Krasnov-23 reconstruction (W2).  The stored folds are intersected "
+            "with the restricted cohort, so the DOI partition is preserved."
+        ),
+    )
     ap.add_argument(
         "--out",
         default="metrics/by_metric/metalcytotox_ru_paper_lightgbm_cv.json",

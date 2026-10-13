@@ -57,6 +57,11 @@ CLI
     --pockets N        : first N pockets of the manifest (default 1)
     --seeds S1 S2 ...  : seeds (default [42])
     --n-simulations K  : MCTS budget per cell (default 200)
+    --crossdocked-root DIR : root to repoint the manifest's
+                         ligand_path/receptor_path at when the
+                         manifest's own absolute prefix is absent
+                         (default $MOLMETAL_CROSSDOCKED_ROOT, then a
+                         built-in candidate list)
     --output-dir DIR   : output prefix (default
                          molmetal/reports/wf_click_effect_<DIR>/)
 
@@ -75,6 +80,7 @@ import csv
 import json
 import logging
 import math
+import os
 import statistics
 import sys
 import time
@@ -87,6 +93,8 @@ _REPO_ROOT = _HERE.parent.parent
 for _p in (str(_HERE.parent), str(_REPO_ROOT)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
+
+from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E402
 
 # Imported lazily inside run_study() so --help works without the
 # heavy Lambda stack.
@@ -126,6 +134,66 @@ RULE_CITATIONS: Dict[str, str] = {
     "Suzuki": "Suzuki 2011 Angew (Pd cross-coupling)",
     "AmideCoupling": "Kolb 2001 Angew (click canon, amide-coupling)",
 }
+
+
+# ---------------------------------------------------------------------------
+# CrossDocked root resolution
+# ---------------------------------------------------------------------------
+#: Env var read when ``--crossdocked-root`` is not given.
+CROSSDOCKED_ROOT_ENV = "MOLMETAL_CROSSDOCKED_ROOT"
+
+#: Last-resort candidate roots, tried in order.  The manifest itself
+#: always wins over these (see :func:`resolve_crossdocked_path`), so a
+#: future mount that restores ``/mnt/storage/...`` keeps working
+#: without any edit here.
+DEFAULT_CROSSDOCKED_ROOTS: Tuple[str, ...] = (
+    "/home/hugo/codes/pocket/data/crossdocked2020/pocket10/crossdocked_pocket10",
+)
+
+
+def resolve_crossdocked_path(
+    raw_path: str,
+    crossdocked_root: Optional[str] = None,
+) -> Tuple[Path, str]:
+    """Resolve a manifest ``receptor_path`` / ``ligand_path`` to a real file.
+
+    The manifest stores machine-local absolute paths (they were generated
+    on the box where CrossDocked2020 was extracted).  When the original
+    mount point is absent, repoint the path at another root by trying
+    progressively *shorter* trailing path segments, longest first::
+
+        /mnt/.../crossdocked_pocket10/BSD_ASPTE_1_130_0/x.sdf
+          k=3 -> <root>/crossdocked_pocket10/BSD_ASPTE_1_130_0/x.sdf
+          k=2 -> <root>/BSD_ASPTE_1_130_0/x.sdf            <-- hit
+
+    Filenames are never rewritten; only the root prefix is swapped.
+    Returns ``(resolved_path, source_tag)`` where ``source_tag`` is
+    ``"manifest"`` (path was already valid), ``"flag"``, ``"env"``,
+    ``"default:<root>"`` or ``"unresolved"``.  On failure the ORIGINAL
+    path is returned so callers see a real ``.exists()`` failure rather
+    than a fabricated one.
+    """
+    original = Path(raw_path)
+    if original.exists():
+        return original, "manifest"
+
+    roots: List[Tuple[str, Path]] = []
+    if crossdocked_root:
+        roots.append(("flag", Path(crossdocked_root)))
+    env_root = os.environ.get(CROSSDOCKED_ROOT_ENV)
+    if env_root:
+        roots.append(("env", Path(env_root)))
+    roots.extend((f"default:{r}", Path(r)) for r in DEFAULT_CROSSDOCKED_ROOTS)
+
+    parts = original.parts[1:] if original.is_absolute() else original.parts
+    for tag, root in roots:
+        if not root.is_dir():
+            continue
+        for k in range(len(parts), 0, -1):
+            candidate = root.joinpath(*parts[-k:])
+            if candidate.exists():
+                return candidate, tag
+    return original, "unresolved"
 
 
 # ---------------------------------------------------------------------------
@@ -180,6 +248,7 @@ def _run_one_rule_cell(
     n_simulations: int,
     n_top_k: int,
     rule: str,
+    metal_seed: Optional[str] = None,
 ) -> Any:
     """Run a single cell with ``click_rules=[rule]`` (the rule in
     isolation) using :func:`r4_lambda_only_run.run_one_cell`.
@@ -191,9 +260,14 @@ def _run_one_rule_cell(
     the pocket reference ligand and the auto-pt-strict gate is moot
     for non-Pt seeds.
 
-    When ``--metal-seed`` IS passed, we still respect the rule list
-    so the chemistry is single-rule; the scaffold-aware narrowing
-    only applies when ``click_rules`` contains an ``auto-*`` alias.
+    When ``--metal-seed`` IS passed, it is forwarded to
+    ``run_one_cell(metal_seed=...)``, which overrides
+    ``reference_smiles`` as the MCTS *root* term (r4_lambda_only_run
+    lines 2835-2853).  Consequence worth stating: the pocket reference
+    ligand then no longer seeds the search, so the run measures
+    "rule R starting from [Pt]C#C", not "rule R starting from the
+    docked CrossDocked ligand".  The two are different experiments and
+    the payload records which one ran (``metal_seed`` in ``config``).
     """
     cell = r4_lambda_only_run.run_one_cell(
         pocket_id=pocket_id,
@@ -202,6 +276,7 @@ def _run_one_rule_cell(
         n_simulations=n_simulations,
         n_top_k=n_top_k,
         click_rules=[rule],
+        metal_seed=metal_seed,
     )
     return cell
 
@@ -218,6 +293,7 @@ def run_study(
     n_top_k: int,
     output_dir: Path,
     metal_seed: Optional[str] = None,
+    crossdocked_root: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run the 5x3 grid (rules x (pockets x seeds)) and return the
     full study payload.  Also writes study.json + study.csv under
@@ -235,11 +311,27 @@ def run_study(
     started = time.time()
     # cells[rule] = list of (pocket, seed, CellResult)
     cells_by_rule: Dict[str, List[Dict[str, Any]]] = {r: [] for r in STUDY_RULES}
+    # Cohort-resolvability bookkeeping (honest framing: a run with
+    # reference_smiles=None on every pocket measures nothing about the
+    # pocket chemistry).
+    n_reference_smiles: List[int] = []
+    resolve_sources: Dict[str, int] = {}
     # Also store elapsed_s per cell.
     for row in rows:
         pid = row.get("pocket_id", "?")
-        ligand_path = Path(row.get("ligand_path", "") or "")
+        ligand_path, resolve_tag = resolve_crossdocked_path(
+            row.get("ligand_path", "") or "", crossdocked_root
+        )
+        resolve_sources[resolve_tag] = resolve_sources.get(resolve_tag, 0) + 1
         reference_smiles = r4_lambda_only_run.load_reference_smiles(ligand_path)
+        n_reference_smiles.append(0 if reference_smiles is None else 1)
+        log.info(
+            "pocket=%s ligand=%s resolved_via=%s reference_smiles=%s",
+            pid,
+            ligand_path,
+            resolve_tag,
+            "yes" if reference_smiles else "NONE",
+        )
         for seed in seeds:
             for rule in STUDY_RULES:
                 log.info(
@@ -257,6 +349,7 @@ def run_study(
                     n_simulations=n_simulations,
                     n_top_k=n_top_k,
                     rule=rule,
+                    metal_seed=metal_seed,
                 )
                 cells_by_rule[rule].append(
                     {
@@ -318,6 +411,9 @@ def run_study(
             "n_top_k": n_top_k,
             "metal_seed": metal_seed,
             "manifest_path": str(manifest_path),
+            "crossdocked_root": crossdocked_root,
+            "path_resolve_sources": resolve_sources,
+            "n_pockets_with_reference_smiles": sum(n_reference_smiles),
         },
         "panel_mean": panel,
         "panel_std": panel_std,
@@ -329,33 +425,33 @@ def run_study(
         "n_cells_total": sum(len(cells_by_rule[r]) for r in STUDY_RULES),
     }
 
-    # ---- write JSON ----
+    # ---- write JSON (atomic, AGENTS.md §5.6) ----
     json_path = output_dir / "study.json"
-    with open(json_path, "w") as f:
-        json.dump(payload, f, indent=2)
+    atomic_write_file(json_path, json.dumps(payload, indent=2) + "\n")
     log.info("Wrote %s", json_path)
 
     # ---- write CSV (flat rows) ----
     csv_path = output_dir / "study.csv"
-    with open(csv_path, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["rule", "metric", "mean", "std", "n", "cohens_d_vs_others"])
-        for rule in STUDY_RULES:
-            for metric in STUDY_METRICS:
-                w.writerow(
-                    [
-                        rule,
-                        metric,
-                        f"{panel[rule][metric]:.4f}",
-                        f"{panel_std[rule][metric]:.4f}",
-                        panel_n[rule][metric],
-                        (
-                            f"{effect_sizes[rule][metric]:.3f}"
-                            if effect_sizes[rule][metric] is not None
-                            else "NA"
-                        ),
-                    ]
-                )
+    buf: List[str] = []
+    w = csv.writer(_ListWriter(buf))
+    w.writerow(["rule", "metric", "mean", "std", "n", "cohens_d_vs_others"])
+    for rule in STUDY_RULES:
+        for metric in STUDY_METRICS:
+            w.writerow(
+                [
+                    rule,
+                    metric,
+                    f"{panel[rule][metric]:.4f}",
+                    f"{panel_std[rule][metric]:.4f}",
+                    panel_n[rule][metric],
+                    (
+                        f"{effect_sizes[rule][metric]:.3f}"
+                        if effect_sizes[rule][metric] is not None
+                        else "NA"
+                    ),
+                ]
+            )
+    atomic_write_file(csv_path, "".join(buf))
     log.info("Wrote %s", csv_path)
 
     # ---- write summary.md ----
@@ -364,6 +460,18 @@ def run_study(
     log.info("Wrote %s", summary_path)
 
     return payload
+
+
+class _ListWriter:
+    """Minimal file-like sink so ``csv.writer`` can render to a string
+    (the atomic writer takes text, not a file object)."""
+
+    def __init__(self, sink: List[str]) -> None:
+        self._sink = sink
+
+    def write(self, text: str) -> int:
+        self._sink.append(text)
+        return len(text)
 
 
 def _write_summary(path: Path, payload: Dict[str, Any]) -> None:
@@ -383,6 +491,12 @@ def _write_summary(path: Path, payload: Dict[str, Any]) -> None:
         f"- pockets={cfg['n_pockets']}, seeds={cfg['seeds']}, "
         f"n_simulations={cfg['n_simulations']}, n_top_k={cfg['n_top_k']}, "
         f"metal_seed={cfg['metal_seed']!r}"
+    )
+    lines.append(
+        f"- crossdocked_root={cfg.get('crossdocked_root')!r}; "
+        f"path_resolve_sources={cfg.get('path_resolve_sources')}; "
+        f"pockets with a real reference_smiles = "
+        f"{cfg.get('n_pockets_with_reference_smiles')} / {cfg['n_pockets']}"
     )
     lines.append("")
     lines.append("## Panel (mean across cells)")
@@ -440,9 +554,21 @@ def _write_summary(path: Path, payload: Dict[str, Any]) -> None:
         "is 'best' — they only say which rules shift the metric "
         "panel *more* than the average of the others."
     )
+    if cfg.get("metal_seed"):
+        lines.append(
+            f"- `metal_seed={cfg['metal_seed']!r}` OVERRIDES the pocket "
+            "reference ligand as the MCTS root term inside "
+            "`r4_lambda_only_run.run_one_cell` (lines ~2835-2853). "
+            "This run therefore measures 'rule R from a bare-metal "
+            "seed', NOT 'rule R from the docked CrossDocked ligand'."
+        )
+    lines.append(
+        "- The 4 metrics are Lambda-MCTS downstream outcomes. None of "
+        "them is a per-reaction chemical yield; a run of this module "
+        "cannot answer a yield question."
+    )
     lines.append("")
-    with open(path, "w") as f:
-        f.write("\n".join(lines) + "\n")
+    atomic_write_file(path, "\n".join(lines) + "\n")
 
 
 # ---------------------------------------------------------------------------
@@ -503,6 +629,19 @@ def _build_argparser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--crossdocked-root",
+        type=str,
+        default=None,
+        help=(
+            "Root directory the manifest's ligand_path/receptor_path "
+            "suffixes are repointed at when the manifest's own absolute "
+            "prefix is absent. Only the root is swapped; filenames are "
+            "unchanged. Falls back to $%s then to a built-in candidate "
+            "list. The manifest path itself always wins when it exists."
+            % CROSSDOCKED_ROOT_ENV
+        ),
+    )
+    p.add_argument(
         "--output-dir",
         type=str,
         required=True,
@@ -532,6 +671,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         n_top_k=args.n_top_k,
         output_dir=out,
         metal_seed=args.metal_seed,
+        crossdocked_root=args.crossdocked_root,
     )
     print(
         json.dumps(

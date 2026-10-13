@@ -1,3 +1,7 @@
+# Apache-2.0 License
+# Copyright 2024 SoftMol authors and contributors
+# Adapted from molmetal/references/SoftMol/eval_sbdd.py
+# Per AGENTS.md §5.10 license-header mandate.
 """SoftMol scoring wrapper — clone-reuse from SoftMol repo.
 
 Source

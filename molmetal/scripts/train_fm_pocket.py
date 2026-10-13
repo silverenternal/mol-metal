@@ -1077,7 +1077,23 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "6000 Blackwell)."
         ),
     )
-    return p.parse_args(argv)
+    # AGENTS.md §5.11 (user directive 2026-10-09, "以后要求能且只能用yaml配置
+    # 启动训练和推理，no cli参数"): this trainer had no YAML surface, even
+    # though --use-multi-ph's own helpstring says "Driven by the yaml
+    # `flow.multi_ph` key" — the key existed in configs/fm_pocket_multiph.yaml
+    # and reached nothing. Same wiring as the other trainers: resolve the config
+    # after the defaults are known, and let an explicit CLI flag still win.
+    p.add_argument(
+        "--config",
+        default=None,
+        help="YAML config path; values here override the argparse defaults (§5.11).",
+    )
+    args = p.parse_args(argv)
+    if args.config:
+        from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+
+        args = apply_yaml_overrides(p, args, args.config)
+    return args
 
 
 # ---------------------------------------------------------------------------

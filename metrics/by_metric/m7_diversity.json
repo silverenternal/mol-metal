@@ -1,155 +1,87 @@
 {
   "metric": "m7_diversity",
-  "description": "m7 Diversity sampling SCAFFOLD -> TRAINER WIRE-IN via Wf-388-A2. The 6 m7 diversity CLI flags from Wf-380-B1 SCAFFOLD layer (top-p, top-k, temperature, mmd-weight, repulsion-weight, scaffold-conditioning) are now wired into the actual loss / sampling computation in molmetal/scripts/train_cfm_yuelbond_wasserstein.py:train_one_epoch. Wf-388-A2 closes the Wf-380-B1 SCAFFOLD-only-to-TRAINER-LOSS gap.",
-  "unit": "CLI flag count wired-in (count 0-6; 6 = all wired-in)",
-  "scope": "tier2_diversity_sampling / m7 Diversity Wf-388-A2 wire-in.  WARNING (Wf-R44): 'value' here is a WIRED FLAG COUNT (n_flags_wired_in), NOT a measured diversity score. No diversity number on CFM output exists in this file. The generated-cohort measurement needs the decode->panel link (trainer --save-generated-smiles -> generated_smiles.csv -> cfm_property_panel), added by Wf-R44; producing a real number also needs a GPU retrain with --gen-validity-samples > 0 and --save-generated-smiles (PROJECTED/BLOCKED, no GPU in this wave).",
-  "measured_value_present": false,
-  "value_is_flag_count_not_a_score": true,
-  "source": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py + molmetal/adapters/flow_matching_lipman/diversity_sampling.py + molmetal/adapters/flow_matching_lipman/scaffold_conditioning.py",
-  "wf_tag": "Wf-388-A2 m7 Diversity Wire-In (Wf-380-B1 SCAFFOLD -> train_one_epoch)",
-  "n_flags_total": 6,
-  "n_flags_wired_in": 6,
-  "n_flags_default_off": 6,
-  "wire_in_status": "WIRED",
-  "cli_flags": [
-    {
-      "flag": "--top-p",
-      "default": 1.0,
-      "wf_380_b1_default": 0.9,
-      "default_semantics": "no nucleus truncation (OFF)",
-      "wf_380_b1_default_semantics": "does truncation (SCAFFOLD-ON)",
-      "activation_condition": "top_p < 1.0",
-      "wired_via": "diversity_sampling.nucleus_sample (Holtzman 2020)",
-      "audit_anchor": "nucleus_sample_invocations counter"
-    },
-    {
-      "flag": "--top-k",
-      "default": 0,
-      "wf_380_b1_default": 50,
-      "default_semantics": "no top-k truncation (OFF)",
-      "wf_380_b1_default_semantics": "does truncation (SCAFFOLD-ON)",
-      "activation_condition": "top_k > 0",
-      "wired_via": "diversity_sampling.nucleus_sample (Holtzman 2020)",
-      "audit_anchor": "nucleus_sample_invocations counter"
-    },
-    {
-      "flag": "--temperature",
-      "default": 1.0,
-      "wf_380_b1_default": 1.0,
-      "default_semantics": "no rescaling (OFF)",
-      "wf_380_b1_default_semantics": "no rescale (SCAFFOLD-OFF match)",
-      "activation_condition": "temperature != 1.0",
-      "wired_via": "diversity_sampling.nucleus_sample (Holtzman 2020)",
-      "audit_anchor": "nucleus_sample_invocations counter"
-    },
-    {
-      "flag": "--mmd-weight",
-      "default": 0.0,
-      "wf_380_b1_default": 0.1,
-      "default_semantics": "no MMD term (OFF)",
-      "wf_380_b1_default_semantics": "MMD ON (SCAFFOLD-ON)",
-      "activation_condition": "mmd_weight > 0.0",
-      "wired_via": "diversity_sampling.mmd_loss (Gretton 2012, median-heuristic sigma, biased V-statistic)",
-      "audit_anchor": "diversity_term += mmd_weight * mmd_val"
-    },
-    {
-      "flag": "--repulsion-weight",
-      "default": 0.0,
-      "wf_380_b1_default": 0.05,
-      "default_semantics": "no repulsion term (OFF)",
-      "wf_380_b1_default_semantics": "repulsion ON (SCAFFOLD-ON)",
-      "activation_condition": "repulsion_weight > 0.0",
-      "wired_via": "diversity_sampling.repulsion_loss (Liu 2021, margin=0.95)",
-      "audit_anchor": "diversity_term += repulsion_weight * rep_val"
-    },
-    {
-      "flag": "--scaffold-conditioning",
-      "default": false,
-      "wf_380_b1_default": "not shipped",
-      "default_semantics": "scaffold_bias=None (OFF)",
-      "wf_380_b1_default_semantics": "not shipped",
-      "activation_condition": "scaffold_conditioning=True",
-      "wired_via": "scaffold_conditioning.scaffold_condition (zero bias table by default; bit-exact backward compat)",
-      "audit_anchor": "bond_ce = F.cross_entropy(conditioned, all_targets)"
-    }
+  "tag": "MEASURED",
+  "date": "2026-10-11",
+  "definition_status": "REDEFINED — m7 is now a reproducible MOSES IntDiv1 with a value on disk",
+  "definition": "IntDiv1 = 1 - mean_{m1,m2 in G} T(m1,m2), MOSES (arXiv:1811.12823); Morgan radius 2 / 1024-bit ECFP4; ordered pairs INCLUDING self-pairs; deterministic subsample (max 300). Implementation: molmetal/scripts/cfm_property_panel.py::internal_diversity, reached via build_panel['aggregate']['internal_diversity'].",
+  "unit": "MOSES IntDiv1 (unitless, 0-1)",
+  "why_this_definition": "This file previously used 'unit': 'CLI flag count wired-in (count 0-6)'. That is not what the metric's name denotes: m7 DIVERSITY must measure diversity, and a count of wired-in argparse flags measures the trainer's plumbing, not any generated molecule. The number in BLK-C6's title (0.9159 / 0.9215 / 0.8674) came from a throwaway script using 2048-bit Morgan and EXCLUDING self-pairs, i.e. not the reference configuration; it was being read as a strength against a 0.81 target while measuring nothing reproducible.",
+
+  "supersedes": {
+    "old_unit": "CLI flag count wired-in (count 0-6)",
+    "old_values": {"fm_ab": 0.9159, "fm_control": 0.9215, "blk_c5_repair": 0.8674},
+    "old_protocol": "Morgan r=2 / 2048 bit, self-pairs EXCLUDED, ad-hoc script — NOT the MOSES configuration",
+    "why_retired": "unreproducible (the generating script was not kept, and the run cohorts that produced these numbers have no generated_smiles.csv on disk) AND on a non-reference protocol",
+    "code_moved_to": "metrics/by_metric/cfm_internal_diversity_intdiv1.json (side file, Wf 2026-10-10) — that redefinition was real but landed OUTSIDE this canonical slot, so this file kept contradicting it. Merged here."
+  },
+
+  "aggregate": {
+    "best_measured": 0.8690399367522098,
+    "best_measured_run": "cfm_fullcorpus_2026_10_10",
+    "best_measured_n": 37,
+    "cohort_mean_3_runs": 0.86743,
+    "metric_name_measured": true,
+    "n_runs_measured": 4
+  },
+
+  "measured_rows": [
+    {"run": "cfm_fullcorpus_2026_10_10", "intdiv1": 0.8690399367522098, "n_used": 37, "n_unique": 37, "source_csv": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv"},
+    {"run": "cfm_objective_terms_2026_10_11", "intdiv1": 0.8670613979253008, "n_used": 43, "n_unique": 43, "source_csv": "molmetal/reports/cfm_objective_terms_2026_10_11/generated_smiles.csv"},
+    {"run": "cfm_fullcorpus_b64_2026_10_11", "intdiv1": 0.8662410865671835, "n_used": 40, "n_unique": 40, "source_csv": "molmetal/reports/cfm_fullcorpus_b64_2026_10_11/generated_smiles.csv"},
+    {"run": "wf124_p2_cfm_full", "intdiv1": 0.8335268023255074, "n_used": 47, "n_unique": 47, "source_csv": "molmetal/reports/wf124_p2_cfm_full/generated_smiles.csv", "note": "older G4-era run, retained for spread only"}
   ],
-  "backward_compatibility": {
-    "when_all_off": "trainer loss / sampling output matches Wf-380-B1 / Wf-299 byte-for-byte (verified via the audit path nucleus_sample_invocations == 0 + diversity_term == 0)",
-    "bit_exact_preserved": true,
-    "legacy_loss_formula": "bond_ce + wasserstein_weight * w2_val + 0.05 * cb_loss + diversity_term (diversity_term == 0 when all OFF)",
-    "wf_380_b1_compat": "preserved bit-for-bit when all 6 flags are OFF",
-    "wf_299_compat": "preserved bit-for-bit when all 6 flags are OFF"
+
+  "FINITE_SAMPLE_WARNING": {
+    "finding": "IntDiv1 is strongly n-dependent, so these cohorts CANNOT be compared to the MOSES 0.857 reference, which is computed over ~1.9M molecules.",
+    "measured_on_training_corpus": {
+      "corpus": "molmetal/data/tmqm_dblock_subset.csv (5000 molecules, the project's own d-block training distribution)",
+      "protocol": "MOSES IntDiv1, random subsample, seed 0",
+      "intdiv1_by_n": {"20": 0.8663, "25": 0.8747, "30": 0.8820, "35": 0.8843, "37": 0.8845, "100": 0.8973, "300": 0.9044, "1000": 0.9079, "3000": 0.9101},
+      "reading": "the SAME corpus rises ~0.044 from n=20 to n=3000 purely from sample size"
+    },
+    "n_matched_comparison": {
+      "generated": "cfm_fullcorpus_2026_10_10, IntDiv1 0.8690 at n=37",
+      "training_at_same_n": "0.8845 +/- 0.0058 (sd over 40 subsamples)",
+      "delta": -0.0155,
+      "stable_across_n": {"n20": -0.0184, "n25": -0.0172, "n30": -0.0178, "n35": -0.0165, "n37": -0.0155},
+      "reading": "at every matched n, the generated cohort sits ~0.017 BELOW the training distribution. The delta is stable in n, so it is a property of the cohort, not of the sample size."
+    },
+    "consequence": "The 0.88 'distribution shift' warning threshold from Vendi Score (arXiv:2210.02410) does not apply to an n=37-47 cohort — an n=37 sample of the TRAINING DATA ITSELF already sits at 0.885 and would trip that threshold. No m7 comparison against MOSES/Guan 2023 numbers is valid until a >=1000-molecule generated cohort exists."
   },
-  "expected_lift_projected": {
-    "per_lever": [
-      {
-        "lever": "--top-p < 1.0",
-        "projected_m7_lift": "+0.005-0.01",
-        "measured_end_to_end": false
-      },
-      {
-        "lever": "--top-k > 0",
-        "projected_m7_lift": "+0.005",
-        "measured_end_to_end": false
-      },
-      {
-        "lever": "--temperature != 1.0",
-        "projected_m7_lift": "+0.005",
-        "measured_end_to_end": false
-      },
-      {
-        "lever": "--mmd-weight > 0.0",
-        "projected_m7_lift": "+0.005-0.01",
-        "measured_end_to_end": false
-      },
-      {
-        "lever": "--repulsion-weight > 0.0",
-        "projected_m7_lift": "+0.005",
-        "measured_end_to_end": false
-      },
-      {
-        "lever": "--scaffold-conditioning",
-        "projected_m7_lift": "+0.005",
-        "measured_end_to_end": false
-      }
-    ],
-    "joint_multiplicative": "+0.02-0.035",
-    "vs_krasnov_2026_sota": "m7 baseline 0.792482 vs SOTA 0.81 (gap -0.018); joint lever set closes fraction of gap (PROJECTED +0.02-0.035 vs gap -0.018 -> 0-1.7x the gap; honest-neg if gap > 0.018 x 1.7)",
-    "blocking": "MEASURED end-to-end on Blackwell sm_120 BLOCKED per AGENTS.md \u00a75.1 + kill_then_adapt \u00a70",
-    "measured_launch_command_PROJECTED": "CUDA_VISIBLE_DEVICES=0 USER_OK=1 /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config configs/cfm_full_retrain.yaml --seed 0 --out-dir results/cfm_full_retrain_v2/seed0 --save-generated-smiles",
-    "post_run_scoring_step": "/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/wf394a2_property_panel_runner.py --smiles-csv results/cfm_full_retrain_v2/seed0/generated_smiles.csv --out-json metrics/by_metric/r4_m4m5m7_cfm_generated.json --diversity-aware-eval --sa-aware --last-epoch  # --last-epoch mandatory: trainer CSV is append-only across epochs",
-    "decode_panel_link_cpu_verified": "Wf-R44: decode->panel chain is CPU-complete AND final-epoch-filtered. cfm_property_panel.read_smiles_csv(csv, last_epoch=True) + its runner mirror + both CLIs now select the CSV max-epoch only; verified 'pytest molmetal/tests/test_wf_r44_decode_panel_link.py' -> 6 passed in 3.48s (2 NEW last-epoch tests) and live 'wf394a2 ... --last-epoch' -> n_input=2 on a 2-epoch CSV vs n_input=4 unfiltered."
+
+  "correction_to_prior_claim": {
+    "claim_retracted": "cfm_internal_diversity_intdiv1.json's INTERNAL_EVIDENCE asserts 'within our own five runs, IntDiv1 is INVERSELY related to chemical quality' (the best-validity, best-SA run cfm_blk_c5_repair scored lowest, 0.8516).",
+    "why_retracted": "NONE of those five runs has a generated_smiles.csv on disk (molmetal/reports/cfm_fm_ab_2026_10_09/, cfm_fm_control_2026_10_09/, cfm_blk_c5_repair_2026_10_09/, cfm_frag_control/, cfm_frag_assemble/ contain only per_epoch_metrics.{csv,json} + logs). The numbers are not reproducible from disk.",
+    "on_the_four_cohorts_that_DO_exist": "the relationship REVERSES. cfm_fullcorpus_2026_10_10 has both the highest IntDiv1 of the four (0.8690) and among the best SA (4.974) and single-fragment QED (0.2397), while the older wf124_p2_cfm_full has the lowest IntDiv1 (0.8335) and the worst SA (6.489) and worst QED (0.1071). IntDiv1 is POSITIVELY related to quality on the reproducible data.",
+    "what_survives": "the narrow, defensible part — IntDiv is a mode-collapse ALARM, not a quality score, and a high value is not by itself a strength — stands on the MOSES/Vendi literature and needs no project-internal table."
   },
-  "honest_framing": {
-    "wire_in_status": "SCAFFOLD -> TRAINER LOSS WIRE-IN COMPLETE per Wf-388-A2. All 6 flags now mutate the live training computation when set; defaults preserve bit-for-bit backward compat with Wf-380-B1 / Wf-299.",
-    "no_gpu_launches": "Wf-388-A2 is CPU-only. Wire-in is bit-for-bit verified via 4 NEW pytest contracts (test_wf388a2_diversity_wire.py). MEASURED end-to-end m7 lift deferred to USER_OK-gated GPU retrain per AGENTS.md \u00a75.1.",
-    "baseline_gap": "m7 Diversity = 0.792482 MEASURED; Krasnov 2026 SOTA = 0.81; gap -0.018 (~2.2% relative). The PROJECTED joint lift +0.02-0.035 closes or exceeds the gap on paper, but MEASURED end-to-end requires GPU retrain.",
-    "audit_trail": "nucleus_sample_invocations counter (no-grad audit) + diversity_term accumulation (loss component); verified via 4 NEW tests: test_top_p_top_k_temperature_flags + test_nucleus_sample_in_c + test_mmd_loss_in_c + test_scaffold_conditioning_in_c.",
-    "standby": "bit-exact backward compat preserved \u2014 existing launch wrappers / test suites / pre-flight checks are unaffected when all 6 flags are OFF."
+
+  "target": {
+    "value": null,
+    "note": "NO target is asserted. The previously recorded 0.65 (registry) / 0.81 (BLK-C6, Krasnov 2026) / 0.860 (Guan 2023) targets all presume a cohort size comparable to the reference. With n=37-47 they are not measurable, so no target is claimed rather than a target that would be decided in advance."
   },
-  "status": "WIRED",
-  "verdict": "WIRED \u2014 SCAFFOLD-to-TRAINER-LOSS wire-in COMPLETE; bit-for-bit backward compat preserved; 6/6 flags wired-in; 6/6 default OFF. PROJECTED joint m7 lift +0.02-0.035 per Wf-380-A3 \u00a70; MEASURED end-to-end on Blackwell sm_120 BLOCKED per AGENTS.md \u00a75.1.",
-  "timestamp": "2026-09-30",
-  "wf_phase": "Wf-388-A2 m7 Diversity Wire-In (Wf-380-B1 SCAFFOLD -> train_one_epoch)",
+
+  "verdict": "MEASURED_NOT_A_CLAIM — m7 now measures its name (IntDiv1 on a real generated cohort) and the number is neither a strength nor a weakness. It is a collapse alarm, and at the cohort sizes that currently exist it cannot be compared to any published value.",
+
+  "diversity_term_wiring": {
+    "note": "The 6 trainer diversity flags (top-p / top-k / temperature / mmd-weight / repulsion-weight / scaffold-conditioning) remain wired in molmetal/scripts/train_cfm_yuelbond_wasserstein.py per Wf-388-A2, all default OFF, diversity_term == 0 when all OFF. That wiring is preserved and is a TRAINER-side fact. It is simply no longer what this metric file reports — the previous conflation of 'flag count' with 'm7 value' is what made the metric unreadable.",
+    "n_flags_total": 6,
+    "n_flags_wired_in": 6,
+    "n_flags_default_off": 6,
+    "cross_ref": "TODO/completed/388a2_m7_diversity_wire.md, molmetal/adapters/flow_matching_lipman/diversity_sampling.py"
+  },
+
+  "restore_condition": "m7 becomes comparable to published values when a generated_smiles.csv with >=1000 unique molecules exists (a GPU run with --gen-validity-samples >= 1000 --save-generated-smiles). At that n the finite-sample curve has flattened (0.9079 at n=1000 vs 0.9101 at n=3000) and an n-matched training-distribution control can be run in the same call, making the MOSES comparison valid. CPU-only today; BLOCKED on GPU (AGENTS.md 5.1).",
+
+  "tests": "molmetal/tests/test_m7_internal_diversity.py (7, MEASURED 7 passed in 0.68s on 2026-10-11) — includes the MOSES-configuration check (1024 bits, radius 2, self-pairs on), total-collapse -> 0.0 rather than None, and the 1-1/n ceiling.",
+
+  "not_comparable_with": "metrics/by_metric/diversity_tanimoto.json (0.1366) — that is the Lambda MCTS GA/search path, a different protocol; the low value there is the diagnostic one per the same literature.",
+
   "cross_references": {
-    "close_out_doc": "TODO/completed/388a2_m7_diversity_wire.md",
-    "test_file": "molmetal/tests/test_wf388a2_diversity_wire.py",
-    "upstream": [
-      "TODO/pending/202_m7_diversity_sampling_improvements.md \u00a72.2 (the canonical 6-flag spec for trainer integration)",
-      "molmetal/adapters/flow_matching_lipman/diversity_sampling.py (619 LOC, Wf-380-A3 SCAFFOLD module)",
-      "molmetal/adapters/flow_matching_lipman/scaffold_conditioning.py (300 LOC, Wf-380-A3 SCAFFOLD module)",
-      "molmetal/tests/test_wf380a3_diversity.py (310 LOC, Wf-380-A3 pre-existing tests for SCAFFOLD layer; 3 PASS)"
-    ],
-    "downstream": [
-      "TODO/completed/380a3_diversity_sampling.md (Wf-380-A3 SCAFFOLD ship surface; Wf-388-A2 closes the wire-in gap)",
-      "TODO/completed/380b1_index_sync.md (Wf-380-B1 SCAFFOLD-only trainer integration; banner + argparse)",
-      "TODO/completed/380_final_synthesis.md (Wf-380 final synthesis v25)",
-      "TODO/completed/335_final_synthesis.md \u00a76 (m7 Diversity baseline)"
-    ],
-    "standing_directives": [
-      "AGENTS.md \u00a75.1 Standing GPU authorization (USER_OK-gated for end-to-end m7 lift)",
-      "AGENTS.md \u00a75.2 Honest framing mandate (party-twenty-spirit \u00a73.5)",
-      "AGENTS.md \u00a75.3 No paper work without authorization (TODO-84 active)"
-    ]
+    "definition_side_file": "metrics/by_metric/cfm_internal_diversity_intdiv1.json",
+    "implementation": "molmetal/scripts/cfm_property_panel.py::internal_diversity (L451) + build_panel (L627)",
+    "csv_reader": "cfm_property_panel.read_smiles_csv (last_epoch=True selects the final checkpoint; these CSVs are single-epoch so pooled == last)",
+    "literature": ["MOSES arXiv:1811.12823", "Vendi Score arXiv:2210.02410"],
+    "registry": "registry/metrics.yaml::m7_diversity"
   }
 }

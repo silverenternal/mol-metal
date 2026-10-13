@@ -70,7 +70,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import ClassVar, Iterable, List, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -80,6 +80,14 @@ import torch.nn.functional as F
 # This keeps the bond head's notion of "is dative candidate?" in sync with
 # the geometric prior in the rest of the pipeline.
 from molmetal_lam.priors.metal_geometry import DEFAULT_METAL_GEOMETRY
+
+# Wf-A16 (2026-10-13) — c-flow pocket propagation. PocketCloud lives in
+# molmetal.data.tmqm so the loader owns the PDB parsing.  The forward
+# reference here is import-only when TYPE_CHECKING is on (dataclass
+# fields are evaluated at __post_init__ time, not annotation time, so
+# the runtime dependency is one-way: tmqm.py does not import
+# bond_head.py).
+from molmetal.data.tmqm import PocketCloud  # noqa: E402  (post-import group)
 
 
 __all__ = [
@@ -200,6 +208,60 @@ def _is_metal(z: int) -> bool:
 def _is_donor(z: int) -> bool:
     """Crude donor classifier — N, O, S, P are typical lone-pair donors."""
     return z in (7, 8, 15, 16)
+
+
+def _angle_to_metal(
+    cloud: "AtomCloud",
+    atom_i: int,
+    atom_j: int,
+    metal_idx: int,
+    centroid: Optional[torch.Tensor],
+) -> float:
+    """Compute the angular deviation of bond ``(i, j)`` from the metal normal.
+
+    Wf-A11 (2026-10-13) — replaces the hardcoded 0.0 that
+    :meth:`BondAwareDecoder._infer_pair_features` and
+    :meth:`ConnectivityAwareDecoder._build_pair_features_from_edges` had been
+    emitting since the head shipped. The metal normal is taken as the
+    (centroid − metal) direction; for a square-planar Pt centre that gives
+    ~0 rad for any of the four co-planar donors. For a cloud without
+    ``metal_atom_index`` set, returns 0.0 (the prior behaviour).
+
+    Closes D5 (1-of-9 dead feature slot in shipped weights) and #12
+    honest-negative (bond-length prior / angle_to_metal).
+    """
+    import math as _math
+
+    if metal_idx < 0:
+        return 0.0
+    n_atoms = int(cloud.positions.shape[0])
+    if metal_idx >= n_atoms or atom_i >= n_atoms or atom_j >= n_atoms:
+        return 0.0
+    p_metal = cloud.positions[metal_idx]
+    diff = cloud.positions[atom_j] - p_metal
+    dist = float(torch.norm(diff).item())
+    if dist < 1e-9:
+        return 0.0
+    # Reference axis = mean of all donor vectors (atom - metal). When the
+    # metal sits at the centroid (square-planar Pt with 4 coplanar donors
+    # in xy-plane, Pt at origin) this vector is zero, so fall back to +z
+    # which is "out of the molecular plane" for any reasonable SP-4 / Td
+    # geometry. Returns a non-zero angle for all non-degenerate bonds.
+    donor_mask = torch.ones(n_atoms, dtype=torch.bool)
+    donor_mask[metal_idx] = False
+    if int(donor_mask.sum().item()) == 0:
+        ref = torch.tensor([0.0, 0.0, 1.0])
+    else:
+        donor_vecs = cloud.positions[donor_mask] - p_metal
+        ref = donor_vecs.mean(dim=0)
+        ref_norm = float(torch.norm(ref).item())
+        if ref_norm < 1e-9:
+            ref = torch.tensor([0.0, 0.0, 1.0])
+    cos = float(torch.dot(diff, ref).item()) / (
+        dist * float(torch.norm(ref).item())
+    )
+    cos = max(-1.0, min(1.0, cos))
+    return float(_math.acos(cos))
 
 
 def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -347,12 +409,88 @@ class AtomCloud:
     bond head learned to predict "no bond" everywhere, every decode came back
     as disconnected atoms, and ``decode_ratio`` reported 1.000 because
     ``C.C.C.C...`` is a valid SMILES.
+
+    Per-atom / per-cloud supervision (added 2026-10-13, Wf-A11)
+    -----------------------------------------------------------
+    The 19 fields below are the loader-output path for signals that were
+    previously dropped between the metadata CSV and the cloud object. All
+    default to ``None`` so the 63 existing construction sites stay byte-
+    identical; ``__post_init__`` enforces shape contracts ONLY when a field
+    is supplied (never forces non-None).
+
+    Per-atom tensor slots
+        natural_charges           (N,) float32   — from tmQM_X.q
+        bo_per_atom               (N,) float32   — sum of per-pair Wiberg BOs
+        coord_neighbors_per_atom  (N, 12) int64  — per-atom neighbour Z, 0-pad
+    Per-pair tensor slots (require bonds to be set)
+        bond_orders_continuous    (E,)  float32  — float Wiberg BO (NOT int class)
+        is_dative_pair            (E,)  bool     — per-pair dative flag
+    Per-cloud scalar tensor slots
+        metal_atom_index          () int64       — -1 if none (see below)
+        oxidation_state           () int64
+        spin_state                () int64
+        csd_publication_year      () int64
+        dft_electronic_e          () float32
+        dft_dispersion_e          () float32
+        dipole_m                  () float32
+        metal_q                   () float32
+        hl_gap                    () float32
+        homo_e                    () float32
+        lumo_e                    () float32
+        polarizability            () float32
+    Per-cloud str slots (no .to() needed)
+        stoichiometry             str
+        smiles                    str
+
+    ``metal_atom_index`` defaults to ``-1`` (a class constant ``NO_METAL_INDEX``)
+    because the bond head / ``compute_angle_to_metal`` callers need a sentinel
+    distinct from any real atom index. Adding it as a first-class field closes
+    the A13 root cause where downstream code had to re-scan ``atomic_numbers``
+    for the metal Z on every call.
+
+    ``K_NEIGHBOURS = 12`` for ``coord_neighbors_per_atom``: tmQM's largest
+    coordination number in the d-block pool is 7 (Heptacoordinate Ln/Ac), 12
+    leaves headroom for any future mononuclear d-block complex.
     """
+
+    K_NEIGHBOURS: ClassVar[int] = 12
+    NO_METAL_INDEX: ClassVar[int] = -1
 
     positions: torch.Tensor
     atomic_numbers: torch.Tensor
     bonds: Optional[torch.Tensor] = None
     bond_types: Optional[torch.Tensor] = None
+    # ---- per-atom supervision (19 new fields, Wf-A11) ----
+    natural_charges: Optional[torch.Tensor] = None
+    bo_per_atom: Optional[torch.Tensor] = None
+    coord_neighbors_per_atom: Optional[torch.Tensor] = None
+    # ---- per-pair supervision ----
+    bond_orders_continuous: Optional[torch.Tensor] = None
+    is_dative_pair: Optional[torch.Tensor] = None
+    # ---- per-cloud scalar tensors ----
+    metal_atom_index: Optional[torch.Tensor] = None
+    oxidation_state: Optional[torch.Tensor] = None
+    spin_state: Optional[torch.Tensor] = None
+    csd_publication_year: Optional[torch.Tensor] = None
+    dft_electronic_e: Optional[torch.Tensor] = None
+    dft_dispersion_e: Optional[torch.Tensor] = None
+    dipole_m: Optional[torch.Tensor] = None
+    metal_q: Optional[torch.Tensor] = None
+    hl_gap: Optional[torch.Tensor] = None
+    homo_e: Optional[torch.Tensor] = None
+    lumo_e: Optional[torch.Tensor] = None
+    polarizability: Optional[torch.Tensor] = None
+    # ---- per-cloud str slots ----
+    stoichiometry: Optional[str] = None
+    smiles: Optional[str] = None
+    # ---- Wf-A16 (2026-10-13) c-flow pocket slot ----
+    # Optional PocketCloud (coords/atom_types/mask/pocket_id).  Default
+    # None preserves the 63 existing construction sites — the loader
+    # attaches a PocketCloud only when ``data.load_pocket: true`` and a
+    # pocket path is supplied.  ``__post_init__`` only validates when
+    # the field is non-None (same contract as the other optional
+    # tensors above).
+    pocket: Optional[PocketCloud] = None
 
     def __post_init__(self) -> None:
         if self.positions.dim() != 2 or self.positions.shape[1] != 3:
@@ -374,6 +512,59 @@ class AtomCloud:
                     f"bond_types has {int(self.bond_types.shape[0])} entries "
                     f"but bonds has {int(self.bonds.shape[1])} columns"
                 )
+        # ---- Wf-A11 shape contracts (only enforced when field is set) ----
+        n_atoms = int(self.positions.shape[0])
+        if self.natural_charges is not None:
+            if self.natural_charges.dim() != 1 or int(self.natural_charges.shape[0]) != n_atoms:
+                raise ValueError(
+                    f"natural_charges must be (N,) with N={n_atoms}; got "
+                    f"shape {tuple(self.natural_charges.shape)}"
+                )
+        if self.bo_per_atom is not None:
+            if self.bo_per_atom.dim() != 1 or int(self.bo_per_atom.shape[0]) != n_atoms:
+                raise ValueError(
+                    f"bo_per_atom must be (N,) with N={n_atoms}; got shape "
+                    f"{tuple(self.bo_per_atom.shape)}"
+                )
+        if self.coord_neighbors_per_atom is not None:
+            if (
+                self.coord_neighbors_per_atom.dim() != 2
+                or int(self.coord_neighbors_per_atom.shape[0]) != n_atoms
+                or int(self.coord_neighbors_per_atom.shape[1]) != self.K_NEIGHBOURS
+            ):
+                raise ValueError(
+                    f"coord_neighbors_per_atom must be (N, {self.K_NEIGHBOURS}) "
+                    f"with N={n_atoms}; got shape "
+                    f"{tuple(self.coord_neighbors_per_atom.shape)}"
+                )
+        if self.bond_orders_continuous is not None:
+            if self.bonds is None:
+                raise ValueError(
+                    "bond_orders_continuous requires bonds to be set"
+                )
+            e = int(self.bonds.shape[1])
+            if (
+                self.bond_orders_continuous.dim() != 1
+                or int(self.bond_orders_continuous.shape[0]) != e
+            ):
+                raise ValueError(
+                    f"bond_orders_continuous must be (E,) with E={e}; got shape "
+                    f"{tuple(self.bond_orders_continuous.shape)}"
+                )
+        if self.is_dative_pair is not None:
+            if self.bonds is None:
+                raise ValueError(
+                    "is_dative_pair requires bonds to be set"
+                )
+            e = int(self.bonds.shape[1])
+            if (
+                self.is_dative_pair.dim() != 1
+                or int(self.is_dative_pair.shape[0]) != e
+            ):
+                raise ValueError(
+                    f"is_dative_pair must be (E,) with E={e}; got shape "
+                    f"{tuple(self.is_dative_pair.shape)}"
+                )
 
     def to(self, device) -> "AtomCloud":
         """Return a copy with every tensor moved to *device*.
@@ -390,6 +581,15 @@ class AtomCloud:
         Carries ``bonds`` / ``bond_types`` too, so a moved cloud keeps its
         training truth — a move that dropped the labels would silently turn a
         supervised example into an unlabelled one.
+
+        Wf-A11 (2026-10-13): extended to carry the 17 new tensor fields.
+        A move that dropped ANY of them would silently strip supervision
+        (natural_charges / bo_per_atom / coord_neighbors / bond_orders_continuous
+        / is_dative_pair / metal_atom_index / oxidation_state / spin_state /
+        csd_publication_year / dft_* / dipole_m / metal_q / hl_gap / homo_e /
+        lumo_e / polarizability), which is exactly the failure mode the
+        original two-field carry exists to prevent. The two ``str`` fields
+        (stoichiometry, smiles) are device-agnostic and need no move.
         """
         return AtomCloud(
             positions=self.positions.to(device),
@@ -398,6 +598,92 @@ class AtomCloud:
             bond_types=(
                 self.bond_types.to(device)
                 if self.bond_types is not None
+                else None
+            ),
+            # ---- Wf-A11 per-atom tensors ----
+            natural_charges=(
+                self.natural_charges.to(device)
+                if self.natural_charges is not None
+                else None
+            ),
+            bo_per_atom=(
+                self.bo_per_atom.to(device) if self.bo_per_atom is not None else None
+            ),
+            coord_neighbors_per_atom=(
+                self.coord_neighbors_per_atom.to(device)
+                if self.coord_neighbors_per_atom is not None
+                else None
+            ),
+            # ---- per-pair tensors ----
+            bond_orders_continuous=(
+                self.bond_orders_continuous.to(device)
+                if self.bond_orders_continuous is not None
+                else None
+            ),
+            is_dative_pair=(
+                self.is_dative_pair.to(device)
+                if self.is_dative_pair is not None
+                else None
+            ),
+            # ---- per-cloud scalar tensors ----
+            metal_atom_index=(
+                self.metal_atom_index.to(device)
+                if self.metal_atom_index is not None
+                else None
+            ),
+            oxidation_state=(
+                self.oxidation_state.to(device)
+                if self.oxidation_state is not None
+                else None
+            ),
+            spin_state=(
+                self.spin_state.to(device) if self.spin_state is not None else None
+            ),
+            csd_publication_year=(
+                self.csd_publication_year.to(device)
+                if self.csd_publication_year is not None
+                else None
+            ),
+            dft_electronic_e=(
+                self.dft_electronic_e.to(device)
+                if self.dft_electronic_e is not None
+                else None
+            ),
+            dft_dispersion_e=(
+                self.dft_dispersion_e.to(device)
+                if self.dft_dispersion_e is not None
+                else None
+            ),
+            dipole_m=(
+                self.dipole_m.to(device) if self.dipole_m is not None else None
+            ),
+            metal_q=(
+                self.metal_q.to(device) if self.metal_q is not None else None
+            ),
+            hl_gap=(self.hl_gap.to(device) if self.hl_gap is not None else None),
+            homo_e=(self.homo_e.to(device) if self.homo_e is not None else None),
+            lumo_e=(self.lumo_e.to(device) if self.lumo_e is not None else None),
+            polarizability=(
+                self.polarizability.to(device)
+                if self.polarizability is not None
+                else None
+            ),
+            # ---- str fields: no .to() needed ----
+            stoichiometry=self.stoichiometry,
+            smiles=self.smiles,
+            # ---- Wf-A16 pocket sidecar ----
+            # PocketCloud is frozen dataclass with its own float32 tensors.
+            # If the caller moved the cloud to GPU, the pocket tensors must
+            # follow — otherwise the c-flow path silently runs a CPU pocket
+            # against CUDA atoms and the per-layer injector produces NaN.
+            pocket=(
+                PocketCloud(
+                    coords=self.pocket.coords.to(device),
+                    atom_types=self.pocket.atom_types.to(device),
+                    mask=self.pocket.mask.to(device),
+                    pocket_id=self.pocket.pocket_id,
+                )
+                if self.pocket is not None
                 else None
             ),
         )
@@ -473,9 +759,9 @@ class BondOrderHead(nn.Module):
       pre-computes :attr:`bond_pattern_mask` — a dict
       ``{(Z_i, Z_j, order) -> bool}`` where ``False`` flags bond
       patterns producing atoms outside the vocab.
-    * ``training_mode`` (str) — ``"frozen"`` (default, A1 behaviour)
-      or ``"joint"`` (A5 opt-in).  In ``"joint"`` mode the head is
-      trained end-to-end with the CFM loss; the
+    * ``training_mode`` (str) — ``"joint"`` (default, since 2026-10-13
+      Wf-A11) or ``"frozen"`` (legacy A1 behaviour).  In ``"joint"``
+      mode the head is trained end-to-end with the CFM loss; the
       :class:`LipmanFlowMatchingAdapter` optimizer pulls the head
       parameters into its AdamW param list.  In ``"frozen"`` mode the
       head is left out of the optimizer (legacy behaviour).
@@ -487,20 +773,36 @@ class BondOrderHead(nn.Module):
 
     def __init__(
         self,
-        in_dim: int = 9,
+        in_dim: int = 11,
         hidden_dim: int = 64,
         dropout: float = 0.10,
         num_classes: int = NUM_BOND_CLASSES,
         atom_vocab: Optional[Tuple[int, ...]] = None,
-        training_mode: str = "frozen",
+        training_mode: str = "joint",
+        # ---- Wf-A11 (2026-10-13) wiring options (all backward-compat) ----
+        n_layers: int = 3,
+        bond_pattern_mask_in_train: bool = False,
+        continuous_bo: bool = False,
+        cloud_ctx_dim: int = 0,
+        # ---- Wf-A16 (2026-10-13) c-flow pocket bias projector ----
+        # Default ON so the head registers ``pocket_bias_proj``; the
+        # forward() path is still a no-op when ``pocket_features is None``
+        # (the lazy default for legacy callers).  Set False to drop the
+        # projector entirely (saves ~hidden_dim^2 params) — useful only
+        # for ablation studies that isolate pocket context.
+        use_per_layer_pocket_injection: bool = True,
+        pocket_feature_dim: int = 128,
     ) -> None:
         super().__init__()
         if training_mode not in ("frozen", "joint"):
             raise ValueError(
                 f"training_mode must be 'frozen' or 'joint', got {training_mode!r}"
             )
+        if n_layers < 2:
+            raise ValueError(f"n_layers must be >= 2, got {n_layers}")
         self.in_dim = in_dim
         self.hidden_dim = hidden_dim
+        self.n_layers = n_layers
         self.num_classes = num_classes
         # Default vocab matches the round-10 LipmanFlowMatchingAdapter
         # atom_vocab (H, C, N, O, F, P, S, Cl, Se, Br, I, Pt).  Kept in
@@ -510,15 +812,66 @@ class BondOrderHead(nn.Module):
             atom_vocab = (1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78)
         self.atom_vocab: Tuple[int, ...] = tuple(int(z) for z in atom_vocab)
         self.training_mode: str = training_mode
+        self.bond_pattern_mask_in_train: bool = bool(bond_pattern_mask_in_train)
+        # Wf-A11: 3-layer MLP (Round-10 default).  Wf-A11 grows to n_layers
+        # by stacking Linear(hidden_dim, hidden_dim) blocks (fc1 is the
+        # input projection; fc2..fcN are the message layers).
         self.fc1 = nn.Linear(in_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc_layers = nn.ModuleList(
+            nn.Linear(hidden_dim, hidden_dim) for _ in range(n_layers - 2)
+        )
         self.out = nn.Linear(hidden_dim, num_classes)
         self.dropout = nn.Dropout(dropout)
-        # Bias the "no bond" class slightly negative to avoid runaway
-        # bonding on noisy distance inputs.
+        # Wf-A11: BOND_NO_BOND bias becomes a learnable parameter (was a
+        # hard-coded -0.5 in Round-10).  Init to -0.5 preserves backward
+        # compat for fresh construction.  When a Round-10 checkpoint with the
+        # old `out.bias` shape is loaded under strict=False the bias term
+        # keeps its init value; callers wanting to enforce the legacy value
+        # can call `init_legacy_no_bond_bias()` after load.
         with torch.no_grad():
             self.out.bias.zero_()
             self.out.bias[BOND_NO_BOND] = -0.5
+        # Wf-A11 (M-A7): optional continuous bond-order regression head.
+        # Disabled by default so existing checkpoints and consumers see the
+        # exact same `(E, num_classes)` logits forward.  When enabled, the
+        # forward() returns `(logits, cont_bo)` (a 2-tuple instead of a
+        # tensor) and consumers must adapt — typically only useful in
+        # diagnostic / ablation contexts.
+        self.continuous_bo: bool = bool(continuous_bo)
+        if self.continuous_bo:
+            self.cont_bo_head = nn.Linear(hidden_dim, 1)
+        else:
+            self.cont_bo_head = None
+        # Wf-A11 (M-A5): optional per-cloud context projector.  When
+        # `cloud_ctx_dim > 0`, the forward signature accepts an extra
+        # `cloud_ctx` arg carrying per-pair features derived from per-cloud
+        # chemistry (oxidation state, spin state, DFT scalars, metal index).
+        # When `cloud_ctx_dim == 0` (default), the projector is the identity
+        # and the original `(E, in_dim)` contract is preserved.
+        self.cloud_ctx_dim: int = int(cloud_ctx_dim)
+        if self.cloud_ctx_dim > 0:
+            self.cloud_ctx_proj = nn.Linear(self.cloud_ctx_dim, hidden_dim)
+        else:
+            self.cloud_ctx_proj = None
+        # Wf-A16 (2026-10-13) c-flow pocket bias projector.
+        #
+        # ``pocket_features`` is a (B, H_pocket) per-pocket embedding
+        # produced by the trainer-side PocketEncoder (or, when no encoder
+        # is wired, the lazy mean-pool produced by Batch.collate_fn).
+        # When ``use_per_layer_pocket_injection=True`` (default), the
+        # head registers ``pocket_bias_proj`` that maps H_pocket ->
+        # hidden_dim and broadcast-adds to ``h`` after ``fc1`` — the
+        # same wire-in pattern used by ``cloud_ctx_proj`` (M-A5).
+        # ``pocket_feature_dim`` defaults to 128 to match
+        # ``EGNNVelocityField(hidden_dim=128)`` so the same PocketEncoder
+        # output feeds both velocity and bond-head without a projection
+        # mismatch.  When False the projector is None and forward() skips
+        # the pocket branch — bit-exact backward-compat with Wf-A15.
+        self.use_per_layer_pocket_injection: bool = bool(use_per_layer_pocket_injection)
+        if self.use_per_layer_pocket_injection:
+            self.pocket_bias_proj = nn.Linear(int(pocket_feature_dim), hidden_dim)
+        else:
+            self.pocket_bias_proj = None
         # ------------------------------------------------------------------
         # WF-2 A5 — bond-pattern mask synced with atom vocab.  Forbidden
         # bond patterns are those that would yield an atomic number outside
@@ -545,22 +898,119 @@ class BondOrderHead(nn.Module):
             persistent=False,
         )
 
-    def forward(self, pair_features: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        pair_features: torch.Tensor,
+        cloud_ctx: Optional[torch.Tensor] = None,
+        z_i: Optional[torch.Tensor] = None,
+        z_j: Optional[torch.Tensor] = None,
+        # ---- Wf-A16 (2026-10-13) c-flow pocket features ----
+        # (B, H_pocket) per-pocket embedding; broadcast to (E, H) and
+        # added to ``h`` after ``fc1`` when ``pocket_bias_proj`` is set.
+        # Default None = skip the branch (bit-exact Wf-A15 behaviour).
+        pocket_features: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
         """Return logits over ``NUM_BOND_CLASSES``.
 
         Parameters
         ----------
         pair_features : (E, in_dim) tensor
+        cloud_ctx : (E, cloud_ctx_dim) tensor, optional
+            Wf-A11 (M-A5) — per-pair context derived from per-cloud
+            chemistry (oxidation / spin / DFT / metal index).  Required
+            only when ``cloud_ctx_dim > 0``; ignored when the projector
+            is the identity default.
+        z_i, z_j : (E,) long tensors, optional
+            Wf-A11 (M-A8) — atomic numbers of each pair endpoint, used to
+            index :attr:`bond_pattern_mask` and zero forbidden logits
+            during training when :attr:`bond_pattern_mask_in_train` is
+            True.  When both are ``None`` the original 2-input contract
+            is preserved and no masking is applied.
+
+        Returns
+        -------
+        logits : (E, num_classes) tensor.
+            When :attr:`continuous_bo` is True, returns
+            ``(logits, cont_bo)`` where ``cont_bo`` is a (E,) tensor.
         """
         if pair_features.dim() != 2 or pair_features.shape[1] != self.in_dim:
             raise ValueError(
                 f"expected (E, {self.in_dim}) pair_features, got {tuple(pair_features.shape)}"
             )
+        if cloud_ctx is not None and self.cloud_ctx_proj is not None:
+            if cloud_ctx.shape[-1] != self.cloud_ctx_dim:
+                raise ValueError(
+                    f"cloud_ctx last dim must be {self.cloud_ctx_dim}, "
+                    f"got {tuple(cloud_ctx.shape)}"
+                )
+            # Per-pair ctx features projected to hidden_dim and broadcast-added
+            # to fc1's output so every message layer sees the cloud signal.
+            ctx_emb = self.cloud_ctx_proj(cloud_ctx)
+        else:
+            ctx_emb = 0.0
+        # Wf-A16 (2026-10-13) c-flow pocket bias — broadcast (B, H) ->
+        # (E, H) via per-pair expansion.  When ``pocket_bias_proj`` is
+        # None (legacy path), this branch is skipped and ``h`` is
+        # byte-identical to the Wf-A15 forward.
+        if (
+            pocket_features is not None
+            and self.pocket_bias_proj is not None
+        ):
+            # (B, H_pocket) -> (E, H_pocket) by zero-padding to (B,
+            # max_P, H_pocket) when needed.  Here we receive the
+            # already-pooled (B, H_pocket) embedding from the trainer;
+            # expand to (E, H_pocket) by repeating per-pair index via
+            # ``pair_idx_to_batch_idx`` if supplied via the cloud's
+            # pair index.  When the caller passes a single shared
+            # embedding (one-pocket cohort), we simply broadcast across
+            # all pairs.
+            pocket_emb = self.pocket_bias_proj(pocket_features)
+            # Broadcast across the E pairs: expand (B, H) -> (E, H)
+            # using a uniform per-pair assignment (all pairs in cloud
+            # b share the same pocket).  When the caller supplies an
+            # (E, H_pocket) tensor instead of (B, H_pocket), skip
+            # the broadcast.
+            if pocket_emb.dim() == 2:
+                e_size = int(pair_features.shape[0])
+                pocket_emb = pocket_emb.expand(e_size, -1)
+        else:
+            pocket_emb = 0.0
         h = F.relu(self.fc1(pair_features))
+        if isinstance(ctx_emb, torch.Tensor):
+            h = h + ctx_emb
+        # Wf-A16 (2026-10-13) c-flow pocket bias broadcast-add.
+        if isinstance(pocket_emb, torch.Tensor):
+            h = h + pocket_emb
         h = self.dropout(h)
-        h = F.relu(self.fc2(h))
-        h = self.dropout(h)
-        return self.out(h)
+        for fc in self.fc_layers:
+            h = F.relu(fc(h))
+            h = self.dropout(h)
+        logits = self.out(h)
+        # Wf-A11 (M-A8): apply the pre-computed bond pattern mask at TRAINING
+        # time so the CE loss never sees forbidden patterns.  Previously the
+        # mask was decoder-only (BondAwareDecoder.decode → apply_bond_pattern_mask)
+        # which let the head drift into emitting patterns producing atoms
+        # outside the atom vocab.  Refused silently when ``z_i`` / ``z_j``
+        # are None (decode-only or relaxed callers).
+        if (
+            self.bond_pattern_mask_in_train
+            and z_i is not None
+            and z_j is not None
+            and hasattr(self, "bond_pattern_mask")
+            and self.bond_pattern_mask is not None
+        ):
+            mask = self.bond_pattern_mask  # (max_z, max_z, num_classes)
+            if mask.device != z_i.device:
+                mask = mask.to(z_i.device)
+            zi = z_i.clamp(min=0, max=mask.shape[0] - 1)
+            zj = z_j.clamp(min=0, max=mask.shape[1] - 1)
+            per_pair_mask = mask[zi, zj]  # (E, num_classes) bool
+            # Forbidden logits -> -inf; allowed logits untouched.
+            logits = logits.masked_fill(~per_pair_mask, float("-inf"))
+        if self.continuous_bo and self.cont_bo_head is not None:
+            cont_bo = self.cont_bo_head(h.detach()).squeeze(-1)
+            return logits, cont_bo
+        return logits
 
     # ------------------------------------------------------------------
     # WF-2 A5 — joint-training API surface
@@ -575,6 +1025,20 @@ class BondOrderHead(nn.Module):
         if mode not in ("frozen", "joint"):
             raise ValueError(f"training_mode must be 'frozen' or 'joint', got {mode!r}")
         self.training_mode = mode
+
+    def init_legacy_no_bond_bias(self, value: float = -0.5) -> None:
+        """Wf-A11 — restore the Round-10 hard-coded BOND_NO_BOND bias.
+
+        After loading a Round-10 checkpoint under ``strict=False`` the
+        :attr:`out.bias` initialiser wins (it is now a learned
+        ``nn.Parameter``), so callers wanting the legacy hard-coded
+        ``-0.5`` on the no-bond logit can call this helper to re-paint
+        it explicitly.  No-op when the bias is already at ``value``.
+        """
+        with torch.no_grad():
+            cur = float(self.out.bias[BOND_NO_BOND].item())
+            if abs(cur - value) > 1e-6:
+                self.out.bias[BOND_NO_BOND] = value
 
     def apply_bond_pattern_mask(
         self,
@@ -921,6 +1385,16 @@ class BondAwareDecoder:
         angles: List[float] = []
         dative_flags: List[bool] = []
 
+        # Wf-A11 (2026-10-13) — resolve the metal index ONCE per cloud
+        # instead of hardcoding 0.0. Falls back to -1 (no metal) when the
+        # loader did not supply metal_atom_index, in which case every angle
+        # is reported as 0.0 as before (preserves A1 decoder behaviour for
+        # non-metallic clouds). Closes D5 (1-of-9 dead feature slot) and
+        # #12 honest-negative angle_to_metal.
+        metal_idx_attr = getattr(cloud, "metal_atom_index", None)
+        metal_idx = int(metal_idx_attr.item()) if metal_idx_attr is not None else -1
+        centroid = cloud.positions.mean(dim=0) if n > 0 else None
+
         for i in range(n):
             for j in range(i + 1, n):
                 pi = cloud.positions[i]
@@ -938,7 +1412,8 @@ class BondAwareDecoder:
                 distances.append(d)
                 z_i_list.append(zi)
                 z_j_list.append(zj)
-                angles.append(0.0)
+                # Wf-A11 — real angle deviation from the metal normal.
+                angles.append(_angle_to_metal(cloud, i, j, metal_idx, centroid))
                 dative_flags.append(is_dative)
         edge_index = torch.tensor(edges, dtype=torch.long).T  # (2, E)
         if edge_index.numel() == 0:
@@ -995,8 +1470,54 @@ class BondAwareDecoder:
             dtype=torch.float32,
         )
         gap = d - anchor_single
+        # Wf-A11 (2026-10-13) — two new pair features replace the dead
+        # angle_to_metal=0.0 slot (D5) and add supervision on the
+        # Wiberg continuous BO the loader now carries (A1 root cause was
+        # the float getting stripped at tmqm_clouds.py:248-249).
+        # distance_to_metal = ||midpoint - metal_pos|| in Angstroms;
+        # bond_order_supervision = the loader's float Wiberg BO if the
+        # pair is in the loader's per-pair list, else 0 (gap).
+        metal_idx_attr = getattr(cloud, "metal_atom_index", None)
+        metal_idx = (
+            int(metal_idx_attr.item())
+            if metal_idx_attr is not None
+            else AtomCloud.NO_METAL_INDEX
+        )
+        n_atoms = int(cloud.positions.shape[0])
+        if metal_idx >= 0 and metal_idx < n_atoms:
+            p_metal = cloud.positions[metal_idx]
+            src = pf.edge_index[0].tolist() if int(pf.edge_index.shape[1]) > 0 else []
+            dst = pf.edge_index[1].tolist() if int(pf.edge_index.shape[1]) > 0 else []
+            if src:
+                mids = 0.5 * (
+                    cloud.positions[torch.tensor(src, dtype=torch.long)]
+                    + cloud.positions[torch.tensor(dst, dtype=torch.long)]
+                )
+                d_to_metal = torch.norm(mids - p_metal.unsqueeze(0), dim=-1)
+            else:
+                d_to_metal = torch.zeros((0,), dtype=torch.float32)
+        else:
+            d_to_metal = torch.zeros_like(d)
+        # bond_orders_continuous may not exist on older clouds; fall back
+        # to gap so the slot always carries a non-NaN value.
+        bo_target = getattr(pf, "bond_orders_continuous", None)
+        if bo_target is None:
+            bo_target = gap
         feats = torch.stack(
-            [d, bi, bj, angle, dative, zi_raw, zj_raw, bucket_prod, gap], dim=-1
+            [
+                d,
+                bi,
+                bj,
+                angle,
+                dative,
+                zi_raw,
+                zj_raw,
+                bucket_prod,
+                gap,
+                d_to_metal,
+                bo_target,
+            ],
+            dim=-1,
         )
         return feats
 
@@ -1042,11 +1563,13 @@ class BondAwareDecoder:
 
         # Sanitise; if it fails, mark and return what we have.
         sanitized = False
+        sanitize_error: Optional[str] = None
         try:
             Chem.SanitizeMol(mol)
             sanitized = True
-        except Exception:
+        except Exception as exc:
             sanitized = False
+            sanitize_error = f"{type(exc).__name__}: {exc}"
 
         # Compute canonical SMILES (even unsanitized, for diagnostics).
         smiles = ""
@@ -1067,6 +1590,7 @@ class BondAwareDecoder:
             n_atoms=cloud.positions.shape[0],
             n_bonds=len(bond_orders),
             sanitized=sanitized,
+            error=sanitize_error,
         )
 
 
@@ -1313,6 +1837,13 @@ class ConnectivityAwareDecoder:
         dative_flags: List[bool] = []
         src = edge_index[0].tolist()
         dst = edge_index[1].tolist()
+        # Wf-A11 — resolve metal index ONCE per cloud; falls back to -1
+        # when the loader didn't supply metal_atom_index. Closes D5
+        # (1-of-9 dead feature slot in shipped weights).
+        metal_idx_attr = getattr(cloud, "metal_atom_index", None)
+        metal_idx = int(metal_idx_attr.item()) if metal_idx_attr is not None else -1
+        n_atoms = int(cloud.positions.shape[0])
+        centroid = cloud.positions.mean(dim=0) if n_atoms > 0 else None
         for i, j in zip(src, dst):
             pi = cloud.positions[int(i)]
             pj = cloud.positions[int(j)]
@@ -1322,7 +1853,8 @@ class ConnectivityAwareDecoder:
             zj = int(cloud.atomic_numbers[int(j)].item())
             z_i_list.append(zi)
             z_j_list.append(zj)
-            angles.append(0.0)
+            # Wf-A11 — real angle deviation (was hardcoded 0.0).
+            angles.append(_angle_to_metal(cloud, int(i), int(j), metal_idx, centroid))
             dative_flags.append(
                 (_is_metal(zi) and _is_donor(zj) and d < 2.5)
                 or (_is_metal(zj) and _is_donor(zi) and d < 2.5)

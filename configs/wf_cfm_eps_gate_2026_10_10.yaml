@@ -350,20 +350,7 @@ output:
 # one jittered square-planar Pt layout and yields decode_ratio 1.000 for the
 # wrong reason (see the note above this section).
 #
-# `protocol:
-  # start.sh:498/499 read the scheduler from `protocol.scheduler.*`, defaulting
-  # to {type: none, warmup_epochs: 5}. cfm.yaml declares
-  # `train.lr_scheduler: cosine` / `train.lr_warmup_epochs: 5`, which the
-  # launcher does not read. Per AGENTS.md 5.11 precedence an explicitly-passed
-  # CLI flag beats YAML, so the values MUST live here to survive — repeating
-  # them under `train:` would be silently overridden by the flag start.sh
-  # injects from the literal 'none'.
-  scheduler:
-    type: cosine
-    warmup_epochs: 5
-  # start.sh:506 reads weight_decay from `protocol.` only. cfm.yaml declares
-  # it under `train:`, so the launcher injects its own default.
-  weight_decay: 0.0` repeats no key that `train:` already carries — the loader is
+# `protocol:` repeats no key that `train:` already carries — the loader is
 # last-key-wins within the YAML, so duplicating `epochs` here would silently
 # override `train.epochs` depending on file order. Only run-shaping values
 # that no other section declares are placed here.

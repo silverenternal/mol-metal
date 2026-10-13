@@ -122,7 +122,7 @@ echo "[wf308c-launch] GPU probe ..."
 CUDA_PROBE_OUT=$(
     # GPU 0 (RTX PRO 6000 Blackwell) per the 2026-10-03 all-GPU-0 directive;
     # override via WF308C_CUDA_VISIBLE_DEVICES if a run genuinely needs another card.
-    CUDA_VISIBLE_DEVICES="${WF308C_CUDA_VISIBLE_DEVICES:-0}" \
+setsid nohup     CUDA_VISIBLE_DEVICES="${WF308C_CUDA_VISIBLE_DEVICES:-0}" \
     MOLMETAL_ALLOW_CPU=0 \
     "${VENV_PY}" -c "import torch; print(torch.cuda.is_available(), torch.cuda.device_count() if torch.cuda.is_available() else 0)" 2>&1
 ) || true

@@ -48,7 +48,7 @@ the same intuition that motivates this decoder.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -154,6 +154,7 @@ def bond_decision(
     logits: torch.Tensor,
     decision: str = "argmax",
     threshold: float = 0.5,
+    class_logit_bias: Optional[Sequence[float]] = None,
 ) -> list:
     """Turn per-pair class logits into predicted bond classes.
 
@@ -178,7 +179,51 @@ def bond_decision(
     bond" from "which bond", which is what the data supports: the existence
     question has a ~29% positive rate, the type question is nearly
     deterministic given existence.
+
+    ``class_logit_bias`` — a per-class additive offset on the logits, applied
+    BEFORE either decision rule.  ``None`` (the default) is byte-identical to
+    the pre-2026-10-12 behaviour: no tensor is built, no arithmetic runs.
+
+    WHY IT IS HERE (BLK-C-M4, measured premise).  On real tmQM geometry the
+    head emits the aromatic class but under-ranks it: on 15,851 truth-aromatic
+    bonds (Wiberg BO 1.3-1.7) measured over 798 complexes, 11,209 (70.7%)
+    are predicted BOND_SINGLE instead, while single-bond recall is 0.966.
+    The defect is therefore class-4 vs class-1 RANKING, not a class the head
+    never emits, and an offset is the smallest thing that can move a ranking.
+
+    WHY IT IS NOT THE STANDARD logit adjustment.  Menon 2020 (ICLR'21,
+    arXiv:2007.07314) post-hoc adjustment subtracts ``tau * log(pi_c)`` for
+    EVERY class, which is the right tool when the classes are imbalanced in
+    the usual way.  It is the WRONG tool here for a measured reason: on the
+    256-cloud Ru cohort the candidate-pair counts are
+    [24378, 4460, 421, 28, 5661], so BOND_TRIPLE holds 0.08% of pairs and
+    would receive by far the largest boost -- and triple bonds are ALREADY a
+    pathology on this line (66% of generated bonds, per
+    docs/CFM_STATUS_2026_10_12.md BLK-C-OBJ).  A global prior correction
+    would amplify a known disease while trying to treat another.  So the
+    offset is per-class and explicit: setting index 4 moves aromatic and
+    nothing else, and an all-zeros vector is a no-op.
+
+    This is an OPERATING-POINT knob, not a model change.  It cannot fix a head
+    whose aromatic logits rank below single for every input; it moves the
+    operating point so the caller can see what the head actually knows.  A
+    genuine fix to the ranking is a retrain question (BLK-C-M4), and this
+    deliberately does not pretend to be one.
     """
+    if class_logit_bias is not None:
+        bias = torch.as_tensor(
+            list(class_logit_bias), dtype=logits.dtype, device=logits.device
+        )
+        if bias.numel() != logits.shape[-1]:
+            raise ValueError(
+                f"class_logit_bias has {bias.numel()} entries but the logits "
+                f"have {logits.shape[-1]} classes. A short vector would "
+                f"broadcast-misalign the classes silently -- the offset for "
+                f"BOND_AROMATIC would land on whatever class happened to be "
+                f"at that index."
+            )
+        logits = logits + bias
+
     if decision == "argmax":
         return logits.argmax(dim=-1).tolist()
     if decision != "threshold":
@@ -543,6 +588,44 @@ class YuelBondDecoder:
             edge_index=edge_index,
             decode_succeeded=True,
         )
+
+    # ------------------------------------------------------------------
+    # Wf-A11 — discriminator metrics on the decoded pair list
+    # ------------------------------------------------------------------
+    def decode_discriminator_metrics(
+        self, pf: Optional[PairFeature], logits: torch.Tensor
+    ) -> Dict[str, float]:
+        """Return 4 discriminator metrics on the decoded bond-pair list.
+
+        These are computed BEFORE the bond-class threshold is applied, so
+        they reflect what the *model* decided (not what the chemistry
+        ultimately accepted).  All four are backward-compat (the default
+        ``threshold`` decode mode fills them with zeros for unchanged
+        behaviour).
+
+        Returns
+        -------
+        dict
+            single_fragment_rate  — always 0.0 at decode-time (no mol)
+            ring_size_distribution — always 0.0 at decode-time (no mol)
+            dative_bond_rate      — fraction of pairs whose is_dative
+                                     flag is True.
+            metal_coord_1_rate    — always 0.0 at decode-time (no mol)
+        """
+        result: Dict[str, float] = {
+            "single_fragment_rate": 0.0,
+            "ring_size_distribution": 0.0,
+            "dative_bond_rate": 0.0,
+            "metal_coord_1_rate": 0.0,
+        }
+        if pf is None:
+            return result
+        n = int(pf.is_dative_candidate.shape[0])
+        if n <= 0:
+            return result
+        n_dative = int(pf.is_dative_candidate.sum().item())
+        result["dative_bond_rate"] = float(n_dative) / float(n)
+        return result
 
 
 __all__ = [

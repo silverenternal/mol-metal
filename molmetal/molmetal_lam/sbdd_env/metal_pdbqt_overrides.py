@@ -108,6 +108,100 @@ COORDINATION_ATYPE = "M1"
 #: ``status="MEASURED_GENERIC_ATOM"``.
 VINA_FALLBACK_ATYPE = "Mg"
 
+# -----------------------------------------------------------------
+# Element coverage — MEASURED 2026-10-12 against Vina 1.2.7
+# -----------------------------------------------------------------
+#
+# WHY THIS EXISTS
+# ---------------
+# ``PT_GROUP_ELEMENTS`` covers 8 metals. It does NOT cover the rest of
+# the tmQM periodic table, so every ligand carrying boron, silicon,
+# selenium, arsenic, titanium, ... sailed through
+# :func:`bench_cisplatin_real_vina._rewrite_metal_atype_for_vina`
+# untouched and died at ``set_ligand_from_file`` with
+# ``PDBQT parsing error: Atom type B is not a valid AutoDock type``.
+# Boron is in 6.22% of tmQM complexes, so this is not a corner case.
+#
+# HOW IT WAS MEASURED (not guessed)
+# ---------------------------------
+# MEASURED by *asking Vina*, not by reading a table. For each of the
+# 44 element symbols that occur in ``.data/molmetal/tmQM/tmQM_X1.xyz.gz``
+# we took a real meeko-emitted cisplatin ligand PDBQT
+# (``molmetal/reports/wf121_cisplatin_real_vina/830c/cisplatin.pdbqt``),
+# substituted the symbol into the atom-name field ``[12:16]`` and the
+# AutoDock atype field ``[77:79]``, and called
+# ``Vina(sf_name="vina").set_ligand_from_file()``. A parse error means
+# Vina has no row for that symbol. Script + raw verdict:
+# ``molmetal/scripts/vina_element_atype_probe.py``; verdict persisted to
+# ``metrics/by_metric/vina_127_element_atypes.json``.
+#
+# 44 symbols probed: 21 ACCEPTED, 23 REJECTED. Corpus element counts
+# live in ``metrics/by_metric/tmqm_element_inventory.json``.
+#
+# NOTE this list is strictly larger than :data:`PT_GROUP_ELEMENTS`.
+# ``Ni``/``Cu``/``Co``/``Cd``/``Hg``/``W``/``Se``/``Fe``/``Mn``/``Zn``
+# ARE accepted natively and must therefore NEVER be rewritten — the
+# old code would have clobbered them with ``Mg`` if the match were
+# naively widened to "every metal".
+
+#: Elements Vina 1.2.7's PDBQT parser accepts natively as an atom type.
+#: Substituting any of these is a REGRESSION, not a fix.
+VINA_ACCEPTED_ELEMENTS = frozenset(
+    {
+        "H", "C", "N", "O", "F", "P", "S", "Cl", "Br", "I",
+        "Si", "Se",
+        # metals Vina has a real row for
+        "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Cd", "Hg", "W",
+    }
+)
+
+#: Elements present in tmQM that Vina 1.2.7 REJECTS. These are the
+#: only elements that may ever be rewritten. Every one of them, if
+#: left alone, kills the whole pocket with a parse error.
+VINA_REJECTED_ELEMENTS = frozenset(
+    {
+        # metalloid / p-block
+        "B", "As",
+        # d-block + f-block beyond Vina's table
+        "Ti", "V", "Cr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru",
+        "Rh", "Pd", "Ag", "La", "Hf", "Ta", "Re", "Os", "Ir",
+        "Pt", "Au", "Sc",
+    }
+)
+
+#: Non-metal rejected elements and their SURROGATE. These are NOT
+#: metals, so sending them to ``Mg`` would be chemically incoherent —
+#: ``Mg`` is a divalent metal ion and carries a metal VDW/charge
+#: assumption that a boron or arsenic atom does not have.
+#:
+#: Justification is by COVALENT RADIUS proximity among Vina-accepted
+#: non-metals (RDKit periodic table, MEASURED):
+#:
+#:   * ``B``  Rcov 0.84 A. Nearest accepted non-metal is ``C``
+#:     (Rcov 0.76 A, |d| 0.08). Boron is a small covalent p-block
+#:     atom; carbon is its nearest neighbour in both size and
+#:     bonding. Cost of being wrong: a B gets carbon's aromatic/
+#:     hydrophobic typing, so a borole ring scores as if it were a
+#:     carbocycle. That is a real but bounded error, and it is FAR
+#:     smaller than ``B -> Mg``.
+#:   * ``As`` Rcov 1.19 A. Nearest accepted non-metal is ``P``
+#:     (Rcov 1.07 A, |d| 0.12) — same group 15, and P is a
+#:     Vina-accepted atype. ``As`` in tmQM is almost always an
+#:     arsenate/arsinothiol auxiliary group, i.e. P-like.
+#:     Cost of being wrong: an As is scored with P's VDW radius.
+#:
+#: What a WRONG rewrite would cost, concretely: the atype column
+#: drives BOTH the VDW term AND the hydrogen-bond donor/acceptor
+#: typing. Getting it wrong does not merely shift the score — it
+#: silently changes the molecule Vina believes it is scoring, and the
+#: resulting kcal/mol is reported as a real measurement. That is why
+#: the rule is an explicit allowlist keyed on a MEASURED rejection
+#: set, and never a broad "anything that is not C/H/N/O" heuristic.
+VINA_NONMETAL_SURROGATES = {
+    "B": "C",
+    "As": "P",
+}
+
 #: Path to the aggregated per-metal VDW literature-mining table
 #: (Wf-143 Stage 2). When this file is missing or unreadable we fall
 #: back to :data:`GENERIC_ATYPE` for all metals.
@@ -471,6 +565,9 @@ def verify_metal_smarts() -> Dict[str, Dict[str, int]]:
 
 __all__ = [
     "PT_GROUP_ELEMENTS",
+    "VINA_ACCEPTED_ELEMENTS",
+    "VINA_REJECTED_ELEMENTS",
+    "VINA_NONMETAL_SURROGATES",
     "GENERIC_ATYPE",
     "COORDINATION_ATYPE",
     "VINA_FALLBACK_ATYPE",

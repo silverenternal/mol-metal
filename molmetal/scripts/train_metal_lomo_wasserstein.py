@@ -2640,7 +2640,13 @@ def _write_synthesis(
     aggregate: Dict[str, object],
     per_run: List[Dict[str, object]],
     n_synthetic_rh: int,
+    run_date: Optional[str] = None,
 ) -> None:
+    # The report Date must be the RUN date, not the date this file happens to
+    # be written. On a fresh run they coincide; when a report is regenerated
+    # from aggregate.json they do not, so prefer the recorded timestamp.
+    date_str = (run_date or time.strftime("%Y-%m-%d"))[:10]
+
     auc_mean = aggregate["test_auc_mean"]
     auc_std = aggregate["test_auc_std"]
     rh_auc = aggregate["per_fold_auc_mean"].get("Rh", float("nan"))
@@ -2649,58 +2655,115 @@ def _write_synthesis(
     rh_target_hit = bool(not np.isnan(rh_auc) and rh_auc >= TARGET_RH_AUC)
     overall_target_hit = bool(auc_mean >= TARGET_OVERALL_AUC)
 
-    lines = [
-        "# Wf-131 Phase 3 — LOMO 5-fold × 5-seed × 50-epoch full re-bench on MetalCytoToxDB 5-metal",
+    n_folds = len(args.metals)
+    w2_applied = (
+        args.wasserstein_weight
+        if (getattr(args, "wasserstein_real", False) and args.wasserstein_weight > 0)
+        else 0.0
+    )
+
+    # §1 Goal is rendered from the ACTUAL config. The previous template
+    # hard-coded the Wf-125 P2 Wasserstein + Rh-oversample stack (and a stale
+    # "Wf-131 Phase 3 / 50-epoch" title) regardless of what actually ran, so
+    # a BCE-only cohort-repair run was documented as a Wasserstein result.
+    goal_lines: List[str] = [
+        "## §1 Goal",
         "",
-        f"**Date**: {time.strftime('%Y-%m-%d')}  ",
-        f"**Metals**: {' '.join(args.metals)}  ",
+        "Leave-one-metal-out (LOMO) cross-metal transfer benchmark: hold out",
+        "one metal's rows entirely, train a multi-task D-MPNN on the rest, and",
+        "measure ROC-AUC on the held-out metal (the m19 protocol). The active",
+        "components are echoed from the config below — not asserted.",
+        "",
+    ]
+    if w2_applied > 0:
+        goal_lines += [
+            f"1. **Wasserstein transfer regularisation — ON** (weight {w2_applied}).",
+            "   Sliced-W₂ over per-metal embeddings (canonical M1 primitive from",
+            "   `molmetal_lam.reward.wasserstein_loss.wasserstein_transfer_loss`),",
+            "   added to the BCE+MSE loss and injected every 5 epochs.",
+            "   **Wf-E1 (2026-10-05)**: this term is a NO-OP unless",
+            "   `--wasserstein-real` is passed — the pre-Wf-E1 code detached the",
+            "   per-metal embeddings, so W₂ contributed ZERO gradient while",
+            "   costing 2.4x wall-time (Rh LOMO seeds 0-2, mean Δ test_AUC",
+            "   = −0.0023, within noise). `w2_effective_weight` in the per-seed",
+            "   JSON is the authoritative record of whether W₂ reached the graph.",
+        ]
+    else:
+        goal_lines += [
+            "1. **Wasserstein transfer regularisation — OFF** (weight 0.0).",
+            "   The objective is BCE + L2 guard only. Do NOT read this run as a",
+            "   Wasserstein result: per Wf-E1 the term requires BOTH a non-zero",
+            "   `wasserstein_weight` AND `--wasserstein-real`.",
+        ]
+    if args.rh_oversample > 0:
+        goal_lines += [
+            f"2. **Rh closure-theorem oversampling — ON** ({n_synthetic_rh} synthetic",
+            "   Rh rows appended to the Rh train pool; Wf-125 P1 Catherine 6/6",
+            "   PASS cohort). It is *inactive* by design (MetalCytoToxDB Rh is",
+            "   ~85 % inactive at the IC50<10 µM gate) — a *chemistry*",
+            "   augmentation, not a *label* augmentation.",
+        ]
+    else:
+        goal_lines += [
+            "2. **Rh closure-theorem oversampling — OFF** "
+            f"(requested {args.rh_oversample}; {n_synthetic_rh} rows appended).",
+        ]
+    goal_lines += [
+        "3. **Multi-task D-MPNN backbone** with per-metal embedding extraction",
+        "   (pooled `2H`-dim vector before the readout head); computed every",
+        "   epoch end only when W₂ is active.",
+    ]
+    if args.use_l2_guard:
+        goal_lines += [
+            "4. **Wf-127 P2 L2 grad-norm guard — ON** "
+            f"(clips grad-norm to ≤ {args.l2_guard_max_norm} each step).",
+        ]
+    else:
+        goal_lines += [
+            "4. **Wf-127 P2 L2 grad-norm guard — OFF** "
+            f"(threshold {args.l2_guard_max_norm}; engage with `--use-l2-guard`).",
+        ]
+    if args.use_astr_scale_guard:
+        goal_lines += [
+            "5. **Wf-127 P3 ASTSR scale clip — ON** "
+            "(value-space clip on predicted pIC50 at test time to "
+            f"[{args.astr_scale_clip_min}, {args.astr_scale_clip_max}]).",
+        ]
+    else:
+        goal_lines += [
+            "5. **Wf-127 P3 ASTSR scale clip — OFF** "
+            f"(range [{args.astr_scale_clip_min}, {args.astr_scale_clip_max}]; "
+            "engage with `--use-astr-scale-guard`).",
+        ]
+    goal_lines += [""]
+
+    # Only show the Time(h) threshold when it is known. A fresh run always has
+    # the argparse default; a report regenerated from an old aggregate.json
+    # may not, and printing "None" would imply no filter was applied.
+    thr = getattr(args, "time_threshold", None)
+    thr_lines = [f"**Time(h) filter threshold**: {thr}  "] if thr is not None else []
+
+    lines = [
+        f"# LOMO {n_folds}-fold × {len(args.seeds)}-seed × {args.epochs}-epoch "
+        "cross-metal re-bench on MetalCytoToxDB",
+        "",
+        f"**Date**: {date_str}  ",
+        f"**Metals (held-out folds)**: {' '.join(args.metals)}  ",
         f"**Seeds**: {' '.join(str(s) for s in args.seeds)}  ",
         f"**Epochs/seed**: {args.epochs}  ",
+        f"**Cohort CSV**: {getattr(args, 'csv', '?')}  ",
+        *thr_lines,
+        f"**Leak-controlled (--drop-leaked-ligands)**: "
+        f"{bool(getattr(args, 'drop_leaked_ligands', False))}  ",
         f"**Wasserstein weight (requested)**: {args.wasserstein_weight}  ",
-        f"**W₂ actually applied to the gradient (Wf-E1)**: "
-        f"{args.wasserstein_weight if (getattr(args, 'wasserstein_real', False) and args.wasserstein_weight > 0) else 0.0}  ",
+        f"**W₂ actually applied to the gradient (Wf-E1)**: {w2_applied}  ",
         f"**Rh oversample**: {args.rh_oversample} ({n_synthetic_rh} actually appended)  ",
         f"**Quick mode**: {bool(args.quick)}  ",
         f"**Wf-127 P2 L2 guard (grad-norm clip ≤ {args.l2_guard_max_norm})**: {bool(args.use_l2_guard)}  ",
         f"**Wf-127 P3 ASTSR scale clip [{args.astr_scale_clip_min}, {args.astr_scale_clip_max}]**: "
         f"{bool(args.use_astr_scale_guard)}  ",
         "",
-        "## §1 Goal",
-        "",
-        "TODO-121 + Wf-125 Phase 2 stacks three innovations on top of the",
-        "existing LOMO trainer:",
-        "",
-        "1. **Wasserstein transfer regularisation** — sliced-W₂ over per-metal",
-        "   embeddings (canonical M1 primitive from",
-        "   `molmetal_lam.reward.wasserstein_loss.wasserstein_transfer_loss`),",
-        "   added to the BCE+MSE loss with weight",
-        f"   `{args.wasserstein_weight}`.",
-        "   **Wf-E1 (2026-10-05)**: this term is OFF unless",
-        "   `--wasserstein-real` is passed. Wf-C3 measured that the",
-        "   pre-Wf-E1 code detached the per-metal embeddings, so the W₂",
-        "   contributed ZERO gradient while costing 2.4x wall-time",
-        "   (Rh LOMO seeds 0-2, mean Δ test_AUC = −0.0023, within noise).",
-        "   `--wasserstein-real` keeps the graph so the W₂ really backprops;",
-        "   the per-epoch extraction is then evaluated at the epoch-start",
-        "   parameters (stale-direction pull within the injection epoch).",
-        "2. **Rh closure-theorem oversampling** — the 500-compound Catherine 6/6",
-        "   PASS synthetic Rh cohort from Wf-125 P1 is appended to the train",
-        "   pool when the held-out metal is Rh.",
-        "3. **Multi-task D-MPNN backbone with per-metal embedding extraction** —",
-        "   the existing D-MPNN-MT backbone is reused; per-metal embeddings",
-        "   (pooled `2H`-dim vector before the readout head) are extracted",
-        "   every epoch end so the W₂ penalty can be computed per-metal.",
-        "4. **Wf-127 P2 L2 grad-norm guard** (engaged by ``--use-l2-guard``) —",
-        "   clips grad-norm to ``≤ {l2_max:.1f}`` each step. Belt-and-braces",
-        "   against the W₂ penalty blowing up the optimisation; off by",
-        "   default to preserve Wf-125 P2 ship behaviour.".format(
-            ),
-        "5. **Wf-127 P3 ASTSR scale clip** (engaged by ``--use-astr-scale-guard``)",
-        "   — value-space clip on predicted pIC50 at test time to",
-        f"   ``[{args.astr_scale_clip_min}, {args.astr_scale_clip_max}]``.",
-        "   Catches explosive predictions the W₂ regulariser can produce",
-        "   early in training; off by default.",
-        "",
+        *goal_lines,
         "## §2 MEASURED (this run)",
         "",
         f"**Overall LOMO mean test AUC = {auc_mean:.4f} ± {auc_std:.4f}**  ",
@@ -2748,8 +2811,15 @@ def _write_synthesis(
         "host with the chosen (epochs, seeds, wasserstein_weight) configuration.",
         "No silent PROJECTED-to-MEASURED promotion.",
         "",
-        "**PROJECTED (TODO-121 §4)**: Rh LOMO AUC ≥ 0.50 (vs current 0.368);",
-        "overall LOMO mean ≥ 0.60 (vs current 0.535).",
+        "**PROJECTED (TODO-121 §4)**: Rh LOMO AUC ≥ 0.50; overall LOMO mean",
+        "≥ 0.60.",
+        "",
+        "**Baseline reference (MEASURED, pre-repair ≤24 h cohort)**: Rh 0.3812,",
+        "overall 0.5575 — see",
+        "`molmetal/reports/wf_a2_m19_rh_diagnosis/diagnosis.json`. That baseline",
+        "used a DIFFERENT cohort (`molmetal/data/metal_lomo.csv`), so any delta",
+        "must be computed against the same cohort; the cohort CSV for THIS run",
+        "is echoed in the header above.",
         "",
         f"**Hit / miss summary**: Rh target {'HIT' if rh_target_hit else 'MISS'},",
         f"overall target {'HIT' if overall_target_hit else 'MISS'},",
@@ -3073,7 +3143,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "PASS" if gate_pass else "BELOW_GATE",
     )
 
-    _write_synthesis(out_dir, args, agg, per_run, n_synthetic_rh)
+    _write_synthesis(
+        out_dir, args, agg, per_run, n_synthetic_rh, run_date=payload.get("timestamp")
+    )
     logger.info("wrote %s", out_dir / "synthesis.md")
 
     if guard_error:

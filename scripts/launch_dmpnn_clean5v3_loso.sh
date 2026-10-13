@@ -39,6 +39,22 @@
 # 2026-10-08 pipefix: drop pipefail (SIGPIPE from forked DataLoader workers
 # flushing stdout after trainer exit killed the wrapper silently via `tee`).
 # Capture trainer rc via ${PIPESTATUS[0]}; suppress tee SIGPIPE with `|| true`.
+
+# BLK-I2 (2026-10-09): pre-flight gate per AGENTS.md §1.4.
+# Per `todo.json` BLK-I2 fix_steps: every trainer-launching
+# scripts/launch_*.sh runs `pre_flight_check.py` first; rc != 0
+# aborts before the trainer is invoked. Captures stdout to
+# logs/preflight_<script>_<ts>.log so the gate evidence is on disk.
+LOG_DIR=logs
+mkdir -p "$LOG_DIR"
+TS=$(date -u +%Y%m%dT%H%M%SZ)
+PREFLIGHT_LOG="$LOG_DIR/preflight_$(basename "$0" .sh)_$TS.log"
+if ! PYTHONPATH=/home/hugo/codes/mol-metal ${PY:-.venv/bin/python}     molmetal/scripts/pre_flight_check.py     --pipeline launch     >"$PREFLIGHT_LOG" 2>&1; then
+  echo "FAIL: pre_flight_check (BLK-I2 gate); see $PREFLIGHT_LOG" >&2
+  exit 1
+fi
+echo "[BLK-I2] pre_flight_check PASS (log: $PREFLIGHT_LOG)"
+
 set -uo pipefail
 
 PY="${PY:-/home/hugo/codes/mol-metal/.venv/bin/python}"
@@ -136,7 +152,7 @@ if [[ ${DRY_RUN} -eq 1 ]]; then
 fi
 
 echo "Starting at $(date -Iseconds)"
-"${CMD[@]}" 2>&1 | tee "${LOG_OUT}" || true   # 2026-10-08 pipefix
+setsid nohup "${CMD[@]}" 2>&1 | tee "${LOG_OUT}" || true   # 2026-10-08 pipefix
 RC=${PIPESTATUS[0]}                              # 2026-10-08 pipefix
 echo "Done at $(date -Iseconds)"
 if [ "${RC}" -ne 0 ]; then

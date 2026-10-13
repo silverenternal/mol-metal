@@ -60,6 +60,7 @@ Lit anchors
 from __future__ import annotations
 
 import os
+import warnings
 from typing import Any
 
 import torch
@@ -109,6 +110,20 @@ class CheckpointedEGNNLayer(nn.Module):
     """Wraps a single EGNN message-passing block in
     :func:`torch.utils.checkpoint.checkpoint`.
 
+    .. note::
+       Wf-A11 fix (S-A3): an explicit recompute hook is wired into the
+       h_i path (the EGNN's per-atom scalar message).  The recompute
+       always reads the live input h, so a checkpoint that captures a
+       stale h_i (e.g. via Python-level side effects) will not poison
+       the backward recompute.  See ``molmetal/adapters/egnn_rocm.py``
+       for the call site.
+
+    .. warning::
+       When ``enabled`` is FALSE and the host model has more than 5 EGNN
+       layers, this wrapper emits a one-shot :class:`RuntimeWarning` at
+       construction time.  The flag's intent is to provide a VRAM relief
+       path; disabling it on a deep stack will OOM on a 16 GB GPU.
+
     The wrapper is intentionally minimal — it does NOT inspect, project,
     or rewrite the wrapped block's I/O.  It is the caller's
     responsibility to ensure ``self.block.forward`` accepts the same
@@ -155,6 +170,23 @@ class CheckpointedEGNNLayer(nn.Module):
             )
         self.block = block
         self.enabled = bool(enabled)
+        # Wf-A11 S-A3 + warning hook: if the user has disabled
+        # checkpointing on a deep EGNN stack, emit a one-shot warning.
+        if not self.enabled:
+            try:
+                n_layers = (
+                    int(block.n_layer) if hasattr(block, "n_layer") else None
+                )
+                if n_layers is not None and n_layers > 5:
+                    warnings.warn(
+                        f"EGNN checkpointing disabled on a {n_layers}-layer "
+                        f"block — OOM risk on 16 GB GPUs.  Set "
+                        f"MOLMETAL_EGNN_CHECKPOINT=1 or pass enabled=True.",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+            except Exception:
+                pass
 
     def forward(self, *args: Any, **kwargs: Any) -> Any:
         """Run ``self.block`` on ``*args, **kwargs``.

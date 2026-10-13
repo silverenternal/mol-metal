@@ -14,6 +14,16 @@ Mixed precision via :func:`torch.autocast` halves the activation
 footprint (FP32 -> BF16) and is **the cheapest single lever** to
 claw back ~30-40 %% of VRAM.  The wrinkle on ROCm gfx1101 is that:
 
+.. note::
+   Wf-A11 SCOUT finding (2026-10-13): the autocast scope here is **NOT**
+   consumed by the main CFM trainer
+   (``molmetal/scripts/train_cfm_yuelbond_wasserstein.py``) — the main
+   trainer uses its own FP32 loss accumulator pattern.  ``CFMAMPContext``
+   is consumed by :file:`molmetal/scripts/metallo_drug_smoke_retrain.py`
+   and a handful of metallo_drug_smoke callers.  ``OB1/OB5/OB6`` in the
+   Wave-2 SCOUT nuancing list therefore do not apply here; the BF16 guard
+   in :mod:`molmetal.optim.bf16_guard` is the canonical hardware probe.
+
 * ``torch.cuda.amp.GradScaler`` is **not** needed for BF16 (BF16 has
   the same exponent range as FP32 — no overflow / underflow problem
   to scale around).  FP16 *does* need a GradScaler, but the project

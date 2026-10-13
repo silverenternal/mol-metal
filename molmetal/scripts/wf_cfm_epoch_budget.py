@@ -154,6 +154,47 @@ def main() -> int:
     val_clouds = [c.to(device) for c in val_clouds]
     t_eval = timeit(lambda: T.evaluate_bond_accuracy(model, val_clouds))
 
+    # --- the REAL training step: forward + backward + optimiser ---
+    # forward-only accounted for 2.4 min of a 45 min epoch. This measures the
+    # thing that actually runs, so the 84% residual stops being a guess.
+    opt = torch.optim.AdamW(model.parameters(), lr=3e-4)
+
+    def full_step():
+        opt.zero_grad(set_to_none=True)
+        loss = 0.0
+        for c in clouds:
+            logits, _v, ei = model(c, return_edge_index=True)
+            _lg, y = T._bond_target_for_clean_cloud(
+                c, head=model.head, precomputed=(logits, ei)
+            )
+            if y is not None:
+                loss = loss + torch.nn.functional.cross_entropy(logits, y)
+        loss.backward()
+        opt.step()
+
+    t_step = timeit(full_step)
+
+    # --- per-cloud AtomCloud rebuild: the loop reconstructs each cloud ---
+    from molmetal.models.bond_head import AtomCloud
+
+    def rebuild():
+        for c in clouds:
+            AtomCloud(
+                positions=c.positions,
+                atomic_numbers=c.atomic_numbers,
+            )
+
+    t_rebuild = timeit(rebuild)
+
+    # --- host -> device transfer for one batch ---
+    cpu_clouds = [c.to("cpu") for c in clouds]
+
+    def h2d():
+        for c in cpu_clouds:
+            c.to(device)
+
+    t_h2d = timeit(h2d)
+
     vel = max(per_cloud_model - per_cloud_head, 0.0)
     # target_only() must run the head first, because the reuse path needs its
     # logits — so t_target INCLUDES one head forward. Subtracting it is the
@@ -177,7 +218,12 @@ def main() -> int:
         print(f"  {name:<40}{v*1000:>12.3f}{pct:>19.1f}%")
     print(f"  {'model.forward TOTAL':<40}{per_cloud_model*1000:>12.3f}")
     print()
-    print(f"  one epoch, training only      : {train_s/60:8.1f} min")
+    print(f"  one epoch, forward only       : {train_s/60:8.1f} min")
+    step_s = steps_per_epoch * t_step
+    print(f"  one epoch, fwd+bwd+opt        : {step_s/60:8.1f} min   "
+          f"({t_step*1000:.1f} ms/step, {steps_per_epoch} steps)")
+    print(f"  one epoch, AtomCloud rebuild  : {steps_per_epoch*t_rebuild/60:8.1f} min")
+    print(f"  one epoch, host->device       : {steps_per_epoch*t_h2d/60:8.1f} min")
     print(f"  one epoch, val bond eval      : {t_eval/60:8.1f} min "
           f"({len(val_clouds)} clouds)")
     print(f"  one epoch, extrapolated total : {(train_s+t_eval)/60:8.1f} min")

@@ -381,7 +381,7 @@ run_tuple() {
     || { echo "=== $(date '+%H:%M:%S') FAIL ${cfg}/${metal}/seed=${seed} (per-wave check) ===" | tee -a "${LOG}"; return 1; }
   # GPU 0 (RTX PRO 6000 Blackwell) per the 2026-10-03 all-GPU-0
   # directive; this call site is serial with every other job.
-  CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} \
+  CUDA_VISIBLE_DEVICES=0 setsid nohup ${PY} ${SCRIPT} \
     --config "${DMPNN_CONFIG}" \
     --metals "${metal}" \
     --seeds "${seed}" \
@@ -390,7 +390,7 @@ run_tuple() {
     --out-dir "${OUT_BASE}/${cfg}/${metal}/seed${seed}" \
     --ckpt-dir "${OUT_BASE}/${cfg}/${metal}/seed${seed}/ckpts" \
     ${CONFIRMED_FLAGS[$cfg]} \
-    "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
+"${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
   echo "=== $(date '+%H:%M:%S') END ${cfg}/${metal}/seed=${seed} ===" | tee -a "${LOG}"
 }
 

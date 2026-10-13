@@ -32,9 +32,6 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from sklearn.linear_model import Ridge
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import r2_score
 
 REPO = Path("/home/hugo/codes/mol-metal")
 sys.path.insert(0, str(REPO))
@@ -53,6 +50,7 @@ from molmetal.scripts.train_dmpnn_multitask_wasserstein import (  # noqa: E402
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset  # noqa: E402
 from molmetal.training.collate_multimetal import collate_multimetal  # noqa: E402
 from molmetal.baselines.dmpnn_multitask import regression_metrics  # noqa: E402
+from molmetal.training.pic50_ridge_readout import fit_ridge_readout  # noqa: E402
 from molmetal.molmetal_lam.reward.wasserstein_loss import (  # noqa: E402
     WassersteinConfig,
 )
@@ -101,17 +99,11 @@ def extract_embeddings(model, graphs, metal_ids, idx, batch_size, device):
 
 
 def ridge_pearson(X_train, y_train, X_test, y_test, alphas=(0.1, 1.0, 10.0, 100.0)):
-    sc = StandardScaler().fit(X_train)
-    Xtr = sc.transform(X_train)
-    Xte = sc.transform(X_test)
-    best = None
-    for a in alphas:
-        r = Ridge(alpha=a).fit(Xtr, y_train)
-        p = r.predict(Xte)
-        m = regression_metrics(y_test, p)
-        if best is None or m["pearson"] > best["pearson"]:
-            best = dict(m, ridge_alpha=a, r2=float(r2_score(y_test, p)))
-    return best
+    # alpha is selected on a val fold carved off the train rows, never on
+    # X_test -- otherwise the reported pearson is the max over the grid on the
+    # very rows it is scored on. Shared implementation with the trainer path
+    # (molmetal.training.pic50_ridge_readout.fit_ridge_readout).
+    return fit_ridge_readout(X_train, y_train, X_test, y_test, alphas=alphas)
 
 
 def main():

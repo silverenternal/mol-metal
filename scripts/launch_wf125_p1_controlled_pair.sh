@@ -351,11 +351,11 @@ run_controlled_pair_run() {
   echo "RUN_BUDGET_START run_mode=${run_mode} epoch=$(date '+%s')" | tee -a "${LOG}"
 
   echo "=== $(date '+%H:%M:%S') START CONTROLD PAIR run_mode=${run_mode} ===" | tee -a "${LOG}"
-  CUDA_VISIBLE_DEVICES=0 ${PY} "${TRAINER}" \
+  CUDA_VISIBLE_DEVICES=0 setsid nohup ${PY} "${TRAINER}" \
     --out-dir "${OUT_BASE}/run_${run_mode}" \
     --out-metric "${OUT_BASE}/run_${run_mode}/metrics.json" \
     --ckpt-dir "${OUT_BASE}/run_${run_mode}/ckpts" \
-    "${COMMON_ARGS[@]}" \
+"${COMMON_ARGS[@]}" \
     "${cohort_args[@]+"${cohort_args[@]}"}" \
     2>&1 | tee "${run_log}"
   local rc=${PIPESTATUS[0]}

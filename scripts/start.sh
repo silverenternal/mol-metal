@@ -97,7 +97,23 @@ shift
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=1; shift ;;
-    --extra-flags) EXTRA_FLAGS="$2"; shift 2 ;;
+    # AGENTS.md §5.11 (user directive 2026-10-09, verbatim "以后要求能且只能用
+    # yaml配置启动训练和推理，no cli参数"): --extra-flags is REFUSED, not
+    # deprecated. Every dest it used to carry resolves from the YAML through
+    # wfA2_config_loader's leaf-fallback, verified by round-trip on 2026-10-09
+    # against all 7 CFM configs. The refusal lives here, at the surface every
+    # launch_*.sh wrapper funnels through, so the escape hatch cannot be
+    # re-introduced by a future wrapper.
+    --extra-flags)
+      echo "[start.sh][FAIL] --extra-flags is refused by AGENTS.md §5.11."
+      echo "[start.sh]        Training and inference launch from YAML only; every"
+      echo "[start.sh]        hyperparameter must be declared in the config file."
+      echo "[start.sh]        Each flag that used to be passed here has a YAML"
+      echo "[start.sh]        home — e.g. --gen-head-lr-scale -> model.gen_head_lr_scale,"
+      echo "[start.sh]        --entropy-reg-weight -> train.entropy_reg_weight,"
+      echo "[start.sh]        --device -> compute.device."
+      exit 1
+      ;;
     --no-tui) TUI_ENABLED=0; shift ;;
     --tui) TUI_ENABLED=1; shift ;;
     --tui-interval) TUI_INTERVAL="$2"; shift 2 ;;
@@ -158,13 +174,28 @@ from pathlib import Path
 yaml_path, env_path = sys.argv[1], sys.argv[2]
 with open(yaml_path) as f:
     d = yaml.safe_load(f)
+
+
+def _sec(name):
+    """Return section ``name`` as a dict, or ``{}`` if absent / a scalar.
+
+    2026-10-12: some legacy configs write ``data: <csv-path>`` as a scalar
+    string (e.g. configs/platinai_4cell_desc_v1_rerun.yaml).  ``.get()`` on
+    that string raised ``AttributeError: 'str' object has no attribute
+    'get'`` and start.sh reported it as "could not parse YAML".  Treat any
+    non-dict section as empty so a scalar section simply yields defaults.
+    """
+    v = d.get(name)
+    return v if isinstance(v, dict) else {}
+
+
 e = d.get('entry', {})
 # Wf-A8 (2026-10-03) backward compat: legacy yamls (R17-R20 era like
 # configs/default.yaml) lack an `entry` section. Synthesize from
 # data.dataset to keep backward-compat functional (per A8_yaml_unify
 # _closeout.md §0 backward-compat contract + AGENTS.md §5.5).
 if not e:
-    ds = (d.get('data', {}) or {}).get('dataset', 'qm9')
+    ds = _sec('data').get('dataset', 'qm9')
     if ds == 'qm9':
         legacy_script = 'molmetal/scripts/train_cfm_yuelbond_wasserstein.py'
         e = {
@@ -272,9 +303,9 @@ _cmd_template_or_legacy = e.get('command_template') or e.get('command', '')
 cmd = _cmd_template_or_legacy.format(
     out_dir=d.get('output', {}).get('base_dir', 'results/auto'),
     ckpt_dir=d.get('output', {}).get('ckpt_dir', 'results/auto/ckpts'),
-    hidden=(d.get('model', {}) or {}).get('hidden_dim', 128),
-    n_layers=(d.get('model', {}) or {}).get('n_layers')
-    or (d.get('model', {}) or {}).get('depth', 4),
+    hidden=_sec('model').get('hidden_dim', 128),
+    n_layers=_sec('model').get('n_layers')
+    or _sec('model').get('depth', 4),
     n_steps=(d.get('flow', {}) or {}).get('n_steps', 100),
     method=(d.get('flow', {}) or {}).get('method', 'rk4'),
     # 2026-10-03: these read `protocol.*` because that is where the shipped
@@ -287,16 +318,16 @@ cmd = _cmd_template_or_legacy.format(
     batch_size=_proto_or_train(d, 'batch_size', 32),
     lr=_proto_or_train(d, 'lr', 1e-4),
     epochs=_proto_or_train(d, 'epochs', 30),
-    dataset=(d.get('data', {}) or {}).get('dataset', 'qm9'),
+    dataset=_sec('data').get('dataset', 'qm9'),
     # placeholders the wf124/cfm templates need to stop hardcoding values the
     # yaml already declares
-    alpha=(d.get('model', {}) or {}).get('alpha', 0.5),
-    wasserstein_weight=(d.get('model', {}) or {}).get('wasserstein_weight', 0.0),
-    n_mc=(d.get('model', {}) or {}).get('n_mc', 256),
-    w2_gradient_mode=(d.get('model', {}) or {}).get('w2_gradient_mode', 'sliced'),
-    ablation_config=(d.get('model', {}) or {}).get('ablation_config', 'mtl_baseline'),
-    depth=(d.get('model', {}) or {}).get('depth', 3),
-    use_l2_guard='--use-l2-guard' if (d.get('model', {}) or {}).get('use_l2_guard') else '',
+    alpha=_sec('model').get('alpha', 0.5),
+    wasserstein_weight=_sec('model').get('wasserstein_weight', 0.0),
+    n_mc=_sec('model').get('n_mc', 256),
+    w2_gradient_mode=_sec('model').get('w2_gradient_mode', 'sliced'),
+    ablation_config=_sec('model').get('ablation_config', 'mtl_baseline'),
+    depth=_sec('model').get('depth', 3),
+    use_l2_guard='--use-l2-guard' if _sec('model').get('use_l2_guard') else '',
     device=(d.get('compute', {}) or {}).get('gpu', 'cuda:0'),
     # NOTE: the launchers pass --cpu-num-workers 8 (Wf-326B optimal on this
     # 24-core host) while the shipped yamls declare 4.  Wiring the yaml through
@@ -313,8 +344,8 @@ cmd = _cmd_template_or_legacy.format(
     # (train_fm_pocket.py).  Without these, a template naming any of them dies
     # with KeyError, which start.sh reports as "could not parse YAML" -- a
     # misleading message for what is really an unsupported placeholder.
-    max_atoms=(d.get('data', {}) or {}).get('max_atoms', 40),
-    max_pocket_atoms=(d.get('data', {}) or {}).get('max_pocket_atoms', 200),
+    max_atoms=_sec('data').get('max_atoms', 40),
+    max_pocket_atoms=_sec('data').get('max_pocket_atoms', 200),
     multi_ph_bins=(d.get('flow', {}) or {}).get('multi_ph_bins', 32),
     multi_ph_max_radius=(d.get('flow', {}) or {}).get('multi_ph_max_radius', 5.0),
     multi_ph_max_coord=(d.get('flow', {}) or {}).get('multi_ph_max_coord', 4.0),
@@ -417,8 +448,8 @@ if any(
     for w in _script_candidates
     if w
 ):
-    _task_v = str((d.get('model', {}) or {}).get('task', 'multi_task'))
-    _pin_v = bool((d.get('data', {}) or {}).get('pin_memory', True))
+    _task_v = str(_sec('model').get('task', 'multi_task'))
+    _pin_v = bool(_sec('data').get('pin_memory', True))
     _grad_accum_v = int(_proto_or_train(d, 'gradient_accumulation_steps', 1))
     _dmpnn_new_flags = (
         f'--task {shlex.quote(_task_v)} '
@@ -482,6 +513,11 @@ lines = [
     f'SCHEDULER={shlex.quote(str(d.get("protocol", {}).get("scheduler", {}).get("type", "none")))}',
     f'LR_WARMUP_EPOCHS={int(d.get("protocol", {}).get("scheduler", {}).get("warmup_epochs", 5))}',
     f'LR_MIN_LR={d.get("protocol", {}).get("scheduler", {}).get("min_lr", 1e-6)}',
+    # 2026-10-09 — OneCycle pct_start (warmup fraction of total steps).
+    # EMITTED EMPTY when the yaml does not declare it, so the trainer keeps
+    # its own None default (historical hardcoded 0.3) and the `_add_flag`
+    # guard above appends nothing.
+    f'LR_PCT_START={shlex.quote(str(d.get("protocol", {}).get("scheduler", {}).get("pct_start", "")))}',
     f'WEIGHT_DECAY={d.get("protocol", {}).get("weight_decay", 0.0)}',
     # Wf-A8 (2026-10-03) — max-norm gradient clipping threshold. Default
     # 5.0 (Pascanu 2013 standard for transformer/GNN stability). The
@@ -640,6 +676,14 @@ _add_flag --resume-from RESUME_FROM
 _add_flag --lr-scheduler SCHEDULER
 _add_flag --lr-warmup-epochs LR_WARMUP_EPOCHS
 _add_flag --lr-min-lr LR_MIN_LR
+# 2026-10-09 — OneCycle warmup fraction. OPTIONAL: the trainer's
+# --lr-pct-start default is None, meaning "keep the historical hardcoded
+# 0.3". Only append when the yaml actually declared
+# protocol.scheduler.pct_start, so every config that predates the key runs
+# exactly as before.
+if [[ -n "${LR_PCT_START:-}" ]]; then
+  _add_flag --lr-pct-start LR_PCT_START
+fi
 _add_flag --weight-decay WEIGHT_DECAY
 _add_flag --max-norm MAX_NORM
 # Same treatment for the events sink: an entry with neither form gets no flag

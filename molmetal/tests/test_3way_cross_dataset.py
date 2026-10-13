@@ -243,7 +243,15 @@ def test_aggregate_cell_line_per_seed_summary():
 # 8. PlatinAI smoke bench — produces artifacts.
 # ---------------------------------------------------------------------------
 def test_platinai_smoke_bench_produces_artifacts(tmp_path):
-    out_dir = tmp_path / "wf128_p3_plat_smoke"
+    out_dir = tmp_path / "wf128_p3_plat"
+    # The bench redirects a --smoke run out of the REQUESTED dir
+    # (bench_3way_platinai_4cell.py:550 — `args.out_dir = args.out_dir.parent
+    # / (args.out_dir.name + "_smoke")`) so a smoke cannot overwrite the full
+    # run's synthesis.md. That redirect is deliberate. argv must therefore keep
+    # the BASE path (passing the suffixed one would redirect twice, landing in
+    # wf128_p3_plat_smoke_smoke), and only the assertions below look at where
+    # the artifacts actually land.
+    artifacts_dir = tmp_path / "wf128_p3_plat_smoke"
     argv = [
         "--smoke",
         "--out-dir",
@@ -256,9 +264,9 @@ def test_platinai_smoke_bench_produces_artifacts(tmp_path):
     except Exception as exc:
         pytest.skip(f"PlatinAI bench unavailable: {exc!r}")
     assert rc == 0
-    assert (out_dir / "synthesis.md").exists()
-    assert (out_dir / "mcf7" / "per_seed_metrics.json").exists()
-    payload = json.loads((out_dir / "mcf7" / "per_seed_metrics.json").read_text())
+    assert (artifacts_dir / "synthesis.md").exists()
+    assert (artifacts_dir / "mcf7" / "per_seed_metrics.json").exists()
+    payload = json.loads((artifacts_dir / "mcf7" / "per_seed_metrics.json").read_text())
     assert payload["cell_line"] == "mcf7"
     assert "per_seed" in payload and len(payload["per_seed"]) == 1
     assert "config" in payload

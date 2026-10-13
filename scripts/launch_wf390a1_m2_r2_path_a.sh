@@ -382,14 +382,14 @@ run_pair() {
   echo "PAIR_BUDGET_START ${metal} seed=${seed} epoch=$(date '+%s')" | tee -a "${LOG}"
 
   echo "=== $(date '+%H:%M:%S') START ${metal} seed=${seed} ===" | tee -a "${LOG}"
-  CUDA_VISIBLE_DEVICES=0 ${PY} "${TRAINER}" \
+  CUDA_VISIBLE_DEVICES=0 setsid nohup ${PY} "${TRAINER}" \
     --config "${DMPNN_CONFIG}" \
     --metals "${metal}" \
     --seeds "${seed}" \
     --csv "${DATA_CSV}" \
     --out-dir "${OUT_BASE}/${metal}/seed${seed}" \
     --ckpt-dir "${OUT_BASE}/${metal}/seed${seed}/ckpts" \
-    "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
+"${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
   local rc=${PIPESTATUS[0]}
 
   local pair_end_s pair_elapsed_s

@@ -12,24 +12,45 @@ MEASURED baseline on the 449 metallo-drug cohort is
 mean SA of the wf_sa_fragment_pool_optimize CFM run (filtered pool
 220 to 210 tiles) is ``3.099`` (see ``metrics/by_metric/sa_mean.json``).
 
-This module adds a **per-sample SA penalty** that can be plugged
-into the CFM sampler (sample-time reweighting) and the trainer
-(loss-time gradient nudge).  The penalty is:
+This module computes a **per-sample SA penalty** intended for
+generation-time reweighting.  The penalty is:
 
     penalty(sa) = max(0, sa - target_sa) * sa_weight
 
 which is ``0`` for SA <= target and grows linearly with how far the
 sample overshoots.  This is the simplest monotone, non-negative
-penalty that pushes the CFM toward the synthesizable region without
+penalty that pushes sampling toward the synthesizable region without
 clipping low-SA samples — the canonical form recommended by
 Ertl & Schuffenhauer 2009 §3 for generation-time SA reweighting.
 
+**The loss-term use does NOT work, and the earlier version of this
+docstring claimed it did.**  That claim has been removed because it was
+false in two independent ways:
+
+1. **sascorer has no gradient.**  It is a fragment-frequency lookup, so any
+   value it returns is a constant with respect to the model parameters.  The
+   trainer's 2026-10-04 audit deleted the surrogate that had pretended
+   otherwise (``train_cfm_yuelbond_wasserstein.py``, the ``gen_sa_observed``
+   comment block).
+2. **The replacement is still a constant.**  When no ``sa_scores_batch`` is
+   injected, the trainer synthesises proxy scores from cloud statistics
+   (``n_atoms`` + ``n_distinct_elements``) — but then wraps the mean in
+   ``torch.tensor(float(...))`` (line ~2711), which yields
+   ``requires_grad=False`` and ``grad_fn=None``.  Verified on this host.
+
+So with ``--sa-penalty > 0`` the term appears in the logged loss value and
+contributes **zero** to ``backward``.  Parameter updates are bit-for-bit
+identical to ``--sa-penalty 0``.  The flag is wired into the loss *expression*,
+not into the learning: do not cite it as a gradient lever, and do not expect the
+PROJECTED m4 lift below from the loss path.
+
 Wf-380-A6 honest framing (party-twenty-spirit §3.5):
-* SCAFFOLD only — actual integration into ``train_cfm_yuelbond_wasserstein.py``
-  is deferred to Wf-380-B1 (requires `--sa-penalty` CLI flag + hook into
-  the EGNN node aggregation + sampler).
-* PROJECTED lift on m4 SA: ``3.099 -> 2.5-2.7`` (WEAK_TO_STRONG §3.6 band).
-* No GPU launches; pure CPU penalty arithmetic on pre-computed SA scores.
+* The sampling-time reweighting use is the supported one.  The loss-time use is
+  inert for the reasons above.
+* The m4 lift ``3.099 -> 2.5-2.7`` (WEAK_TO_STRONG §3.6 band) was PROJECTED and
+  was never MEASURED.  It is reachable, if at all, only through sampling-time
+  reweighting.
+* ``metrics/by_metric/m4_success_rate.json`` remains the baseline of record.
 """
 
 from __future__ import annotations

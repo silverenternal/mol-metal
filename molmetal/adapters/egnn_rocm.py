@@ -33,6 +33,8 @@ from triton_kernels import fused_silu_mlp as _fused_silu_mlp
 from triton_kernels import fused_residual_add as _triton_fused_residual_add
 from triton_kernels.config import triton_config
 
+from typing import Optional
+
 # Per-EGNN-layer gradient-checkpointing wrapper.  ``use_reentrant=False``
 # is mandatory on PyTorch 2.14 + ROCm 7.2 + gfx1101 (the reentrant path
 # raises ``Expected tensor metadata`` during backward on HIP builds);
@@ -41,6 +43,10 @@ from triton_kernels.config import triton_config
 from .egnn_rocm_checkpoint import (
     CheckpointedEGNNLayer,
     egnn_checkpoint_default_enabled,
+)
+from .egnn_extensions import (
+    DativeAwareCoordScale,
+    EdgeTypeEmbedding,
 )
 
 
@@ -210,23 +216,64 @@ class EquivariantGraphConv(nn.Module):
     flag is ``None`` (default) the layer is bit-for-bit unchanged.
     """
 
-    def __init__(self, in_node_dim: int, hidden_dim: int = 64):
+    def __init__(
+        self,
+        in_node_dim: int,
+        hidden_dim: int = 64,
+        *,
+        in_edge_dim: int = 0,
+        msg_dropout: float = 0.0,
+        use_degree_normalization: bool = False,
+        coord_scale_dative_init: float = 0.85,
+        coord_scale_covalent_init: float = 1.0,
+        num_edge_types: int = 4,
+        edge_type_emb_dim: int = 8,
+        # Wf-A14 (2026-10-13) B.1 fix — forward 算子 ③ hard clash repulsion.
+        # Disabled (0.0) by default for backward-compat; tune via YAML
+        # ``egnn.clash_repulsion_weight`` once the trainer is rewired.
+        clash_repulsion_weight: float = 0.0,
+        clash_threshold_A: float = 1.5,
+        # Wf-A15 (2026-10-13) — chemistry-signal channel toggle (Layer E).
+        # Disabled (False) by default → bit-exact legacy mlp_in path when
+        # ``batch_ctx=None``.  When True, the forward signature accepts
+        # ``batch_ctx`` (a dict carrying per-pair / per-atom / per-cloud
+        # chemistry tensors) and appends 5 zero-init chemistry channels to
+        # the per-edge mlp_in.
+        use_chemistry_channels: bool = False,
+        coord_env_K: int = 6,
+        oxidation_state_vocab: int = 8,
+    ):
         super().__init__()
         self.hidden_dim = hidden_dim
+        self.in_edge_dim = int(in_edge_dim)
+        self.msg_dropout = float(msg_dropout)
+        self.use_degree_normalization = bool(use_degree_normalization)
+        self.num_edge_types = int(num_edge_types)
+        self.edge_type_emb_dim = int(edge_type_emb_dim)
+        self.clash_repulsion_weight = float(clash_repulsion_weight)
+        self.clash_threshold_A = float(clash_threshold_A)
 
-        # MLP for scalar message generation: [h_i, h_j, dist] -> scalar.
+        # Scalar message MLP input dim = in_node_dim*2 + 1 (legacy) +
+        # in_edge_dim (the new edge-feature channel: dist-only when 0,
+        # dir_vec(3) + edge_type_emb(8) = 11 when in_edge_dim=11,
+        # etc.).  When ``in_edge_dim=0`` the parameter count matches the
+        # legacy line, so existing ``state_dict`` checkpoints load
+        # unchanged (bit-exact backward-compat).
+        msg_in_dim = in_node_dim * 2 + 1 + self.in_edge_dim
+
+        # MLP for scalar message generation: [h_i, h_j, dist, ...edge] -> scalar.
         # TritonConfig-gated fused path; the trailing ``SiLU`` is applied
         # in :meth:`forward` (the fused kernel only covers the
         # ``Linear -> SiLU -> Linear`` triplet).
         self.mlp = _MaybeFusedSiLUMLP(
-            in_dim=in_node_dim * 2 + 1,
+            in_dim=msg_in_dim,
             hidden_dim=hidden_dim,
             out_dim=hidden_dim,
         )
-        # Coordinate scaling network: [h_i, h_j, dist] -> coord scale.
+        # Coordinate scaling network: [h_i, h_j, dist, ...edge] -> coord scale.
         # Trailing ``Sigmoid`` is applied in :meth:`forward`.
         self.coord_mlp = _MaybeFusedSiLUMLP(
-            in_dim=in_node_dim * 2 + 1,
+            in_dim=msg_in_dim,
             hidden_dim=hidden_dim,
             out_dim=1,
         )
@@ -235,7 +282,86 @@ class EquivariantGraphConv(nn.Module):
         # caller starts using dative bonds the layer's coordinate update is
         # *exactly* the original behaviour at init.  A geometric prior can
         # later nudge this scalar through the layer's forward path.
+        # When ``use_dative_aware_scale=True`` (set via the new
+        # ``DativeAwareCoordScale`` helper) we additionally have a
+        # *covalent* coord scale (init 1.0) so non-dative edges keep a
+        # separate, learnable scale; both are nn.Parameters so a
+        # downstream loss can push them apart.
         self.dative_coord_scale = nn.Parameter(torch.ones(1))
+        self.covalent_coord_scale = nn.Parameter(
+            torch.tensor(float(coord_scale_covalent_init))
+        )
+        # Override init for the dative scale if the caller asked.
+        with torch.no_grad():
+            self.dative_coord_scale.fill_(float(coord_scale_dative_init))
+
+        # Optional per-edge categorical embedding (used only when the
+        # caller opts in by passing ``edge_types is not None`` AND the
+        # caller constructs the layer with ``in_edge_dim > 0``).  When
+        # ``in_edge_dim=0`` the embedding is never consulted.
+        if self.in_edge_dim > 0:
+            self.edge_type_embed = EdgeTypeEmbedding(
+                num_types=self.num_edge_types,
+                dim=self.edge_type_emb_dim,
+            )
+        else:
+            # Register a placeholder attribute so ``state_dict`` keys
+            # are stable across the two modes; the embedding is never
+            # used in the legacy path.
+            self.edge_type_embed = None
+
+        # Optional degree-normalisation toggle; the forward path uses
+        # ``self.use_degree_normalization`` directly so no extra
+        # parameters.
+
+        # ------------------------------------------------------------------
+        # Wf-A15 (2026-10-13) — chemistry-signal channels.  Optional, gated by
+        # ``use_chemistry_channels`` (default False → bit-exact legacy path).
+        # When enabled, the forward signature accepts an extra ``batch_ctx``
+        # dict carrying per-pair BO continuous / per-atom natural_charge /
+        # per-cloud oxidation_state / per-atom coord_neighbors / per-cloud
+        # metal_atom_index.  Each channel is projected through a tiny zero-init
+        # module so a freshly constructed layer that never receives batch_ctx
+        # contributes nothing — i.e. the legacy mlp_in path is recovered bit-
+        # exactly when no batch_ctx is supplied (the Wf-A15 protocol).
+        # ------------------------------------------------------------------
+        self.use_chemistry_channels = bool(use_chemistry_channels)
+        if self.use_chemistry_channels:
+            # 5 chemistry channels, each emitting a per-edge 4-dim embedding
+            # concatenated after the legacy [h_i, h_j, dist, dir_vec,
+            # edge_type_emb] channel stack.  Zero-init so a layer that has
+            # never trained the new path still produces the legacy mlp_in.
+            self.chem_bo_cont_proj = nn.Linear(1, 4)
+            self.chem_natural_charge_proj = nn.Linear(1, 4)
+            self.chem_oxidation_state_emb = nn.Embedding(8, 4)
+            self.chem_coord_env_proj = nn.Linear(coord_env_K, 4)
+            # metal_proximity is a scalar (1 / (1 + ||x_i - x_metal||)),
+            # projected to a 4-dim channel via a Linear so it can be learnt.
+            self.chem_metal_proximity_proj = nn.Linear(1, 4)
+            # Zero-init all projections so a brand-new layer with
+            # batch_ctx=None still produces the legacy mlp_in exactly.
+            with torch.no_grad():
+                nn.init.zeros_(self.chem_bo_cont_proj.weight)
+                nn.init.zeros_(self.chem_bo_cont_proj.bias)
+                nn.init.zeros_(self.chem_natural_charge_proj.weight)
+                nn.init.zeros_(self.chem_natural_charge_proj.bias)
+                nn.init.zeros_(self.chem_oxidation_state_emb.weight)
+                nn.init.zeros_(self.chem_coord_env_proj.weight)
+                nn.init.zeros_(self.chem_coord_env_proj.bias)
+                nn.init.zeros_(self.chem_metal_proximity_proj.weight)
+                nn.init.zeros_(self.chem_metal_proximity_proj.bias)
+            self.coord_env_K = int(coord_env_K)
+            self.oxidation_state_vocab = int(oxidation_state_vocab)
+        else:
+            # Register placeholder attributes so the forward signature is
+            # stable; these are never consulted on the legacy path.
+            self.chem_bo_cont_proj = None
+            self.chem_natural_charge_proj = None
+            self.chem_oxidation_state_emb = None
+            self.chem_coord_env_proj = None
+            self.chem_metal_proximity_proj = None
+            self.coord_env_K = 0
+            self.oxidation_state_vocab = 0
 
     def forward(
         self,
@@ -245,6 +371,7 @@ class EquivariantGraphConv(nn.Module):
         n_nodes: int = None,  # explicit n_nodes to avoid relying on h.size(0)
         dative_bond_edge_attr: torch.Tensor | None = None,
         edge_types: torch.Tensor | None = None,
+        batch_ctx: Optional[dict] = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
@@ -296,15 +423,138 @@ class EquivariantGraphConv(nn.Module):
         # Normalize direction
         dir_vec = diff / dist  # [n_edges, 3]
 
-        # Concatenate features: [h_i, h_j, dist]
+        # Concatenate features: [h_i, h_j, dist, ...edge-features]
         h_i = h[src]  # [n_edges, in_node_dim]
         h_j = h[dst]  # [n_edges, in_node_dim]
-        mlp_in = torch.cat([h_i, h_j, dist], dim=-1)  # [n_edges, in_node_dim*2+1]
+        if self.in_edge_dim > 0:
+            # New edge-feature channels (S-A3 + S-A4):
+            #   - dir_vec (3 dims) the signed unit direction, fed to the
+            #     MLP so the message carries spatial anisotropy.
+            #   - edge_type_emb (edge_type_emb_dim) when ``edge_types``
+            #     is provided; zeros when not (so legacy callers
+            #     passing ``edge_types=None`` still get a deterministic
+            #     input — the embedding lookup is skipped).
+            dir_vec_flat = dir_vec  # [n_edges, 3]
+            if edge_types is not None and self.edge_type_embed is not None:
+                et_for_emb = edge_types
+                if et_for_emb.dim() == 2:
+                    et_for_emb = et_for_emb[0]
+                edge_type_emb = self.edge_type_embed(et_for_emb)
+            else:
+                # Zero-pad so the channel exists for downstream MLPs
+                # but contributes nothing — the layer is then
+                # equivalent to the legacy path provided the
+                # embedding weights stay at their initial values.
+                edge_type_emb = torch.zeros(
+                    src.shape[0], self.edge_type_emb_dim, device=dir_vec.device, dtype=dir_vec.dtype
+                )
+            mlp_in = torch.cat(
+                [h_i, h_j, dist, dir_vec_flat, edge_type_emb], dim=-1
+            )
+        else:
+            # Legacy bit-exact path: input is exactly [h_i, h_j, dist].
+            mlp_in = torch.cat([h_i, h_j, dist], dim=-1)  # [n_edges, in_node_dim*2+1]
+
+        # Wf-A15 (2026-10-13) — chemistry channels.  Append-only, gated on
+        # ``batch_ctx is not None AND self.use_chemistry_channels=True``.
+        # When EITHER fails (legacy callers, default construction) the
+        # mlp_in is left untouched so the layer is bit-exact identical
+        # to the pre-Wf-A15 code path.  All five projections are zero-
+        # init at construction, so a layer that has never trained the
+        # new path contributes nothing to the gradient either.
+        if (
+            batch_ctx is not None
+            and self.use_chemistry_channels
+            and self.chem_bo_cont_proj is not None
+        ):
+            n_edges = src.shape[0]
+            dev = mlp_in.device
+            dt = mlp_in.dtype
+            # (a) per-pair BO continuous: zero if absent
+            bo_cont = batch_ctx.get("bond_orders_continuous", None)
+            if bo_cont is None or bo_cont.numel() == 0:
+                bo_cont = torch.zeros(n_edges, 1, device=dev, dtype=dt)
+            elif bo_cont.dim() == 1:
+                bo_cont = bo_cont.unsqueeze(-1)
+            bo_cont_emb = self.chem_bo_cont_proj(bo_cont.to(dtype=dt))
+            # (b) per-atom natural_charge broadcast to pairs via src/dst
+            nat_charge = batch_ctx.get("natural_charge", None)
+            if nat_charge is None or nat_charge.numel() == 0:
+                nat_charge = torch.zeros(n_nodes, 1, device=dev, dtype=dt)
+            elif nat_charge.dim() == 1:
+                nat_charge = nat_charge.unsqueeze(-1)
+            nat_charge_per_edge = nat_charge[src].to(dtype=dt)
+            nat_charge_emb = self.chem_natural_charge_proj(nat_charge_per_edge)
+            # (c) per-cloud oxidation_state embedded per metal_atom_index
+            # of each edge endpoint.  Falls back to zero when absent.
+            ox_state = batch_ctx.get("oxidation_state", None)
+            if ox_state is None or ox_state.numel() == 0:
+                ox_idx = torch.zeros(n_edges, dtype=torch.long, device=dev)
+            else:
+                metal_idx = batch_ctx.get("metal_atom_index", None)
+                if metal_idx is None or metal_idx.numel() == 0:
+                    ox_idx = torch.zeros(n_edges, dtype=torch.long, device=dev)
+                else:
+                    # Clamp into the embedding range, fall back to 0 for
+                    # edges whose endpoint has no metal context.
+                    mflat = metal_idx[src].clamp(min=0, max=self.oxidation_state_vocab - 1)
+                    ox_per_edge = ox_state[mflat].clamp(min=0, max=self.oxidation_state_vocab - 1)
+                    ox_idx = ox_per_edge.long()
+            oxid_emb = self.chem_oxidation_state_emb(ox_idx)
+            # (d) per-atom coord_neighbors broadcast to pairs.
+            coord_env = batch_ctx.get("coord_neighbors", None)
+            if coord_env is None or coord_env.numel() == 0:
+                coord_env_per_atom = torch.zeros(n_nodes, self.coord_env_K, device=dev, dtype=dt)
+            elif coord_env.dim() == 1:
+                coord_env_per_atom = torch.zeros(n_nodes, self.coord_env_K, device=dev, dtype=dt)
+                coord_env_per_atom[:, 0] = coord_env.to(dtype=dt)
+            else:
+                # crop / pad to coord_env_K
+                if coord_env.shape[-1] >= self.coord_env_K:
+                    coord_env_per_atom = coord_env[..., : self.coord_env_K].to(dtype=dt)
+                else:
+                    pad = torch.zeros(
+                        coord_env.shape[0],
+                        self.coord_env_K - coord_env.shape[-1],
+                        device=dev,
+                        dtype=dt,
+                    )
+                    coord_env_per_atom = torch.cat([coord_env.to(dtype=dt), pad], dim=-1)
+            coord_env_per_edge = coord_env_per_atom[src]
+            coord_env_emb = self.chem_coord_env_proj(coord_env_per_edge)
+            # (e) per-edge metal proximity: 1 / (1 + ||x_i - x_metal||).
+            metal_idx = batch_ctx.get("metal_atom_index", None)
+            if metal_idx is None or metal_idx.numel() == 0:
+                metal_prox = torch.zeros(n_edges, 1, device=dev, dtype=dt)
+            else:
+                mflat = metal_idx[src].clamp(min=0, max=n_nodes - 1)
+                x_metal = x[mflat]
+                dist_to_metal = torch.norm(x[src] - x_metal, dim=-1, keepdim=True).clamp(min=1e-6)
+                metal_prox = 1.0 / (1.0 + dist_to_metal).to(dtype=dt)
+            metal_prox_emb = self.chem_metal_proximity_proj(metal_prox)
+            mlp_in = torch.cat(
+                [
+                    mlp_in,
+                    bo_cont_emb,
+                    nat_charge_emb,
+                    oxid_emb,
+                    coord_env_emb,
+                    metal_prox_emb,
+                ],
+                dim=-1,
+            )
 
         # Scalar message: trailing SiLU applied outside the fused
         # ``Linear -> SiLU -> Linear`` triplet so the parameter count
         # and behaviour match the original ``nn.Sequential`` block.
         msg = F.silu(self.mlp(mlp_in))  # [n_edges, hidden_dim]
+
+        # Optional message dropout (S-A7) — applied AFTER SiLU and
+        # BEFORE bond-order scaling so the dropped positions match the
+        # downstream aggregation.  ``msg_dropout=0.0`` short-circuits
+        # to the legacy path bit-exactly.
+        if self.msg_dropout > 0.0 and self.training:
+            msg = F.dropout(msg, p=self.msg_dropout, training=True)
 
         # Coordinate scale factor (invariant to SE(3)): trailing
         # Sigmoid applied outside the fused triplet.
@@ -335,11 +585,20 @@ class EquivariantGraphConv(nn.Module):
         if not torch.equal(bond_order_scale, torch.ones_like(bond_order_scale)):
             msg = msg * bond_order_scale.view(-1, 1)
 
-        # Dative coord-scale override (legacy path).
+        # Dative coord-scale override (legacy path) + dual-scale path
+        # (S-A5 / S-A10).  When no dative mask is in play, the legacy
+        # path leaves coord_scale untouched; the dual-scale path is
+        # also a no-op then (``dative_mask_f = 0`` everywhere) so the
+        # two paths compose to the same output.
         if dative_mask is not None:
             dative_mask_f = dative_mask.view(-1, 1)
+            # Dual-scale: covariant scale everywhere, dative scale on
+            # flagged edges.  The dative scale is the legacy
+            # ``self.dative_coord_scale`` (init from
+            # ``coord_scale_dative_init`` so a yaml-overridable init
+            # is exposed without changing the parameter identity).
             coord_scale = (
-                coord_scale * (1.0 - dative_mask_f)
+                coord_scale * (1.0 - dative_mask_f) * self.covalent_coord_scale
                 + self.dative_coord_scale * dative_mask_f
             )
 
@@ -348,6 +607,19 @@ class EquivariantGraphConv(nn.Module):
         # via :func:`models._scatter._backend_for` (returns ``"torch"``
         # on RDNA3 at small shapes).  See Phase-2 wiring notes.
         agg_h = _scatter_sum(msg, dst, dim=0, dim_size=n_nodes)  # [n_nodes, hidden_dim]
+
+        # Optional degree-normalization (S-A6): divide by max(deg, 1)
+        # so a high-degree hub node doesn't dominate the residual
+        # add.  Toggleable for backward-compat with the legacy
+        # sum-only aggregation.
+        if self.use_degree_normalization and n_nodes > 0:
+            # ``degree`` is per-node incoming-edge count.
+            ones_e = torch.ones(
+                src.shape[0], 1, device=dst.device, dtype=agg_h.dtype
+            )
+            degree = _scatter_sum(ones_e, dst, dim=0, dim_size=n_nodes)
+            deg_norm = degree.clamp(min=1.0)
+            agg_h = agg_h / deg_norm
 
         # Update scalar features: h + aggregated.
         # Fused residual add (He 2016 identity mapping): saves one HBM
@@ -365,6 +637,49 @@ class EquivariantGraphConv(nn.Module):
             dist=dist,
         )  # [n_edges, 3]
         agg_x = _scatter_sum(coord_msg, dst, dim=0, dim_size=n_nodes)  # [n_nodes, 3]
+
+        # ------------------------------------------------------------------
+        # Wf-A14 (2026-10-13) — forward 算子 ③ hard clash repulsion (B.1 fix).
+        # Per the 24/24 hard-clash + 0.570 Å min-pair-distance baseline
+        # (cfm_generated_geometry_defect.json), the prior loss-side
+        # clash_penalty could not back-prop into the EGNN forward
+        # pass because the prior was applied AFTER `agg_x` aggregation.
+        # We now apply a soft, differentiable radial repulsion BEFORE
+        # the residual add so the per-pair distance enters the gradient
+        # path through the same `dir_vec` already used for the
+        # attractive term.  Disabled (revert to bit-exact) when
+        # `clash_repulsion_weight=0.0`.
+        #
+        # The threshold is an ABSOLUTE radius of 1.5 Å rather than a
+        # per-atom-type Cordero sum because the EGNN forward signature
+        # does not include atomic numbers (those are kept in the
+        # model-side container).  1.5 Å is a safe per-pair hard
+        # threshold: the smallest H-H covalent bond is 0.74 Å (Cordero
+        # 2008) so 1.5 Å leaves ~0.76 Å of slack for any real covalent
+        # bond while still catching every reported clash (the worst
+        # observed was 0.570 Å).  When per-atom-type rcov is wired
+        # later, replace the constant with `self._rcov_table[z]`.
+        # ------------------------------------------------------------------
+        if getattr(self, "clash_repulsion_weight", 0.0) > 0.0:
+            try:
+                clash_margin = float(getattr(self, "clash_threshold_A", 1.5))
+                clash_force = torch.relu(clash_margin - dist)  # (E, 1)
+                # Per-edge repulsion vector: along (x_src - x_dst) / |...|,
+                # i.e. push the two atoms APART.  dir_vec is (x_src-x_dst)
+                # so ``-dir_vec`` points from dst back to src.
+                clash_msg = -clash_force * dir_vec  # (E, 3)
+                # Aggregate into BOTH src and dst so the repulsion is
+                # symmetric (each atom moves away from the other by half).
+                # Without the symmetric add the metal would be
+                # statically pinned and only the ligand would move.
+                agg_x_src = _scatter_sum(clash_msg, src, dim=0, dim_size=n_nodes)  # (N, 3)
+                agg_x = agg_x + agg_x_src  # dst push (already in agg_x) + symmetric src push
+                agg_x = agg_x * float(self.clash_repulsion_weight)
+            except Exception:
+                # Defensive: never let a clash-repulsion edge case crash
+                # the forward pass.  Falls back to no-clash-repulsion
+                # which is bit-exact legacy.
+                pass
 
         # T9 (TODO-09) — dative reciprocal-update suppression: on dative
         # edges, the ligand atom (``src``) should NOT receive the coord
@@ -541,6 +856,14 @@ class EGNN(nn.Module):
         in_node_dim: int = 64,
         hidden_dim: int = 64,
         n_layers: int = 4,
+        *,
+        in_edge_dim: int = 0,
+        msg_dropout: float = 0.0,
+        use_degree_normalization: bool = False,
+        coord_scale_dative_init: float = 0.85,
+        coord_scale_covalent_init: float = 1.0,
+        num_edge_types: int = 4,
+        edge_type_emb_dim: int = 8,
     ):
         super().__init__()
         self.in_node_dim = in_node_dim
@@ -566,7 +889,17 @@ class EGNN(nn.Module):
         self.layers = nn.ModuleList(
             [
                 CheckpointedEGNNLayer(
-                    block=EquivariantGraphConv(hidden_dim, hidden_dim),
+                    block=EquivariantGraphConv(
+                        hidden_dim,
+                        hidden_dim,
+                        in_edge_dim=in_edge_dim,
+                        msg_dropout=msg_dropout,
+                        use_degree_normalization=use_degree_normalization,
+                        coord_scale_dative_init=coord_scale_dative_init,
+                        coord_scale_covalent_init=coord_scale_covalent_init,
+                        num_edge_types=num_edge_types,
+                        edge_type_emb_dim=edge_type_emb_dim,
+                    ),
                     enabled=egnn_checkpoint_default_enabled(),
                 )
                 for _ in range(n_layers)

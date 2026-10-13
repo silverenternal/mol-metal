@@ -93,13 +93,43 @@ class _HeadOnly:
 
 
 def build_head(args: argparse.Namespace) -> torch.nn.Module:
-    from molmetal.scripts.train_cfm_yuelbond_wasserstein import DMPNNBondHead
+    """Build EXACTLY what the trainer's `--bond-predictor` dispatch builds.
 
-    return DMPNNBondHead(
-        hidden_dim=int(args.hidden_dim),
-        n_layers=int(args.n_layers),
-        cutoff=float(args.edge_cutoff),
-    )
+    Duplicated from train_cfm_yuelbond_wasserstein.py:1508-1513 rather than
+    imported, because that dispatch lives inside `CFMJointModel.__init__` and
+    dragging the whole joint model in would pull the velocity field with it —
+    which is the very thing this probe exists to hold out.
+
+      yuelbond -> YuelBondDecoderHead  (atom-centred msg_mlps)  == PRODUCTION
+      dmpnn    -> DMPNNBondHead        (bond-centred DirectedMPNN)
+
+    The distinction is load-bearing and was got wrong once: every shipped CFM
+    run used `yuelbond` (no config in configs/ sets bond_predictor, and the
+    argparse default is yuelbond), while the first version of this probe
+    hardcoded DMPNNBondHead — i.e. it measured the head production does NOT
+    run. Every conclusion drawn here is about one of the two, so the choice has
+    to be explicit and recorded, never implicit.
+    """
+    which = str(args.bond_head).lower()
+    if which == "dmpnn":
+        from molmetal.scripts.train_cfm_yuelbond_wasserstein import DMPNNBondHead
+
+        return DMPNNBondHead(
+            hidden_dim=int(args.hidden_dim),
+            n_layers=int(args.n_layers),
+            cutoff=float(args.edge_cutoff),
+        )
+    if which == "yuelbond":
+        from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
+            YuelBondDecoderHead,
+        )
+
+        return YuelBondDecoderHead(
+            hidden_dim=int(args.hidden_dim),
+            n_layers=int(args.n_layers),
+            cutoff=float(args.edge_cutoff),
+        )
+    raise ValueError(f"unknown --bond-head {which!r}; expected yuelbond or dmpnn")
 
 
 def class_weights_from_counts(
@@ -276,6 +306,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     p.add_argument("--hidden-dim", type=int, default=64)
     p.add_argument("--n-layers", type=int, default=3)
     p.add_argument("--edge-cutoff", type=float, default=3.5)
+    # yuelbond = what every shipped CFM run actually used; dmpnn = the
+    # bond-centred head the design calls for and no config ever selected.
+    p.add_argument("--bond-head", type=str, default="yuelbond",
+                   choices=("yuelbond", "dmpnn"))
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--weight-decay", type=float, default=1e-5)
     p.add_argument("--grad-clip", type=float, default=5.0)
@@ -352,6 +386,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             "split": "CSD-code hash (disjoint by construction)",
             "nested_arms": "arm n uses train_pool[:n] — arms are nested prefixes",
             "pair_budget_per_arm": int(args.pair_budget),
+            "bond_head": str(args.bond_head),
             "hidden_dim": int(args.hidden_dim),
             "n_layers": int(args.n_layers),
             "edge_cutoff": float(args.edge_cutoff),

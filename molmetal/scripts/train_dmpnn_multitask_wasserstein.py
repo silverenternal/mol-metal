@@ -2619,6 +2619,20 @@ def train_one_metal_one_seed(
                     dtype=np.int64,
                 )
             ]
+            # 2026-10-11 — the ridge alpha is selected on the TARGET-METAL VAL
+            # fold, never on the test fold, so the reported test pearson is
+            # unbiased by alpha selection (the neural head was never tuned on
+            # test, so this is what makes the two comparable).
+            _val_pos = np.array(
+                [_used_pos[int(i)] for i in target_val if int(i) in _used_pos],
+                dtype=np.int64,
+            )
+            _y_val = pic50_all[
+                np.array(
+                    [i for i in target_val if int(i) in _used_pos],
+                    dtype=np.int64,
+                )
+            ]
             ridge_test = ridge_readout_from_model(
                 model=model,
                 graphs=graphs_all,
@@ -2627,6 +2641,8 @@ def train_one_metal_one_seed(
                 eval_indices=_test_pos,
                 y_train=_y_train,
                 y_eval=_y_test,
+                val_indices=_val_pos,
+                y_val=_y_val,
                 batch_size=int(batch_size),
                 device=device,
             )
@@ -3783,6 +3799,25 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "first iteration. Default OFF."
         ),
     )
+    # PA18 (2026-10-12) — bit-reproducible CUDA training.  The D-MPNN was
+    # measured to be run-to-run non-deterministic on CUDA (MEASURED, Re fold 0:
+    # 0.6658 / 0.8242 / 0.6206 across three FRESH runs with torch / numpy /
+    # random / cuda all seeded, and with PYTHONHASHSEED=0).  That is fine for a
+    # single headline but not for a comparison table that must reproduce.
+    # --deterministic pins cuBLAS / cuDNN to deterministic kernels; MEASURED,
+    # two fresh Re fold-0 runs then agree to the last digit (0.7397154345808845).
+    p.add_argument(
+        "--deterministic",
+        dest="deterministic",
+        action="store_true",
+        default=False,
+        help=(
+            "force bit-reproducible CUDA training: CUBLAS_WORKSPACE_CONFIG="
+            ":4096:8 + cudnn.deterministic=True + cudnn.benchmark=False + "
+            "torch.use_deterministic_algorithms(True). Slower, but makes a "
+            "single-seed run reproducible across processes. Default OFF."
+        ),
+    )
     p.add_argument(
         "--channels-last",
         dest="channels_last",
@@ -3805,6 +3840,23 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
+    # PA18 (2026-10-12) — --deterministic must take effect BEFORE any CUDA /
+    # cuBLAS initialisation, so it runs here at the top of main rather than
+    # beside the tf32/cudnn flags (which are applied inside the per-seed
+    # trainer, after the CUDA context exists).
+    if bool(getattr(args, "deterministic", False)):
+        import os as _det_os
+
+        _det_os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        torch.use_deterministic_algorithms(True)
+        print(
+            "[compute] --deterministic ENABLED (cudnn.deterministic=True, "
+            "cudnn.benchmark=False, use_deterministic_algorithms=True, "
+            "CUBLAS_WORKSPACE_CONFIG=:4096:8)",
+            flush=True,
+        )
     # 2026-10-04 — `model.task` (dest `task`) validation.  The multi-task
     # head layout is hardcoded (shared encoder + one head pair per cohort
     # member), so any other value must FAIL LOUDLY instead of being

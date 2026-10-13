@@ -1,3 +1,7 @@
+# Apache-2.0 License
+# Copyright 2024 Pocket2Mol authors and contributors
+# Adapted from molmetal/references/Pocket2Mol/evaluation/scoring_func.py
+# Per AGENTS.md §5.10 license-header mandate.
 """Pocket2Mol scoring wrapper — clone-reuse from Pocket2Mol repo.
 
 Source

@@ -117,7 +117,7 @@ echo "[$(date -Iseconds)] GPU 0 free=${FREE_MIB} MiB (>= 8192 required) — OK"
 
 # --- Pre-flight gate (per Wf-415-A3 + Wf-427-B1) -------------------------
 echo "[$(date -Iseconds)] ${WRAPPER_NAME} pre-flight check begin"
-PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py --pipeline launch \
+setsid nohup PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py --pipeline launch \
     >"${OUT_DIR}/preflight.json" 2>&1 \
     || die "pre_flight_check FAIL — see ${OUT_DIR}/preflight.json"
 grep -q '"fail": 0' "${OUT_DIR}/preflight.json" \
@@ -183,7 +183,7 @@ fi
 
 # --- Actual launch -------------------------------------------------------
 echo "[$(date -Iseconds)] ${WRAPPER_NAME} launching (est. 4-5 hr)"
-PYTHONPATH=/home/hugo/codes/mol-metal ${PY} "${PROJECT_ROOT}/${TRAINER}" "${TRAIN_ARGS[@]}" \
+setsid nohup PYTHONPATH=/home/hugo/codes/mol-metal ${PY} "${PROJECT_ROOT}/${TRAINER}" "${TRAIN_ARGS[@]}" \
     2>&1 | tee "${OUT_DIR}/launch.log" || true   # 2026-10-08 pipefix
 TRAIN_RC=${PIPESTATUS[0]}                        # 2026-10-08 pipefix
 echo "[$(date -Iseconds)] ${WRAPPER_NAME} complete; log at ${OUT_DIR}/launch.log"

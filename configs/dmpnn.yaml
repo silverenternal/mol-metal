@@ -73,6 +73,13 @@ model:
   use_triton_smiles_featurize: false
   use_triton_relu_mlp: false
   use_triton_bond_head: false
+  # REPORT-ONLY ridge readout on the frozen encoder embedding, reported next
+  # to (never replacing) test_pic50_metrics. Default false is the trainer's
+  # argparse default; the pinned "bit-for-bit Wf-131 P1" contract is unchanged.
+  # Value must be an unquoted YAML boolean: apply_yaml_overrides coerces via
+  # the action's type= and argparse.BooleanOptionalAction has no type=, so a
+  # quoted "true" arrives as str 'true' (MEASURED 2026-10-11).
+  pic50_ridge_readout: false
 
 train:
   # argparse defaults: DEFAULT_EPOCHS=50, MT_BATCH_SIZE=64, DEFAULT_LR=1e-3.
@@ -96,8 +103,17 @@ train:
   kendall: true
 
 data:
-  csv: null
-  data_csv: null
+  # 2026-10-09 (§5.11): this path used to live ONLY as a literal
+  # `--csv <path> --data-csv <path>` inside entry.command_template, with
+  # `data.csv: null` below it. Removing that literal to satisfy §5.11 also
+  # removed the config's only dataset reference, and
+  # p3_wf35_protocol_lock_m19_lomo immediately FAILED with "trainer config
+  # names NO dataset artifact" — a lock entry with no cohort behind it is the
+  # untraceable case the lock exists to prevent.
+  #
+  # The general hazard: deleting a CLI literal can delete the ONLY copy of a
+  # value. The value belongs in the yaml; the literal should never have.
+  csv: /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv
   # Lists are ALWAYS YAML-wins per the loader's list special case.
   metals:
     - auto
@@ -202,7 +218,7 @@ entry:
   # configs/cfm.yaml). start.sh also has no `{csv_path}` placeholder (grep: 0
   # hits in scripts/start.sh), so naming one here would die with KeyError,
   # which start.sh reports as the misleading "could not parse YAML".
-  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --csv /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv --data-csv /home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv --out-dir {out_dir}
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir}
 
 output:
   out_dir: molmetal/reports/dmpnn_default

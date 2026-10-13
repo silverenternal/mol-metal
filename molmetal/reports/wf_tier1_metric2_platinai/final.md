@@ -20,7 +20,7 @@ heads can learn per-cell-line signal on the same schema.
 
 ## Our results (this run)
 
-| Cell line | n_test (avg) | AUC mean ± std | Active rate |
+| Cell line | n (avg per line, eval'd rows) | AUC mean ± std | Active rate |
 |---|---|---|---|
 | MCF7 | 32 | 0.5844 ± 0.0232 | 65.62% |
 | A549 | 32 | 0.6302 ± 0.0300 | 40.62% |

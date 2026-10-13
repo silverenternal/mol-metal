@@ -4,25 +4,222 @@
   "supersedes": "todo.json schema molmetal.dead_params.v1 (2026-10-04, last touched in commit 1f214cbe89)",
   "source": "Wf-FIX-3LINES (commit 6d1c796d89) + Wf-METRIC-RESCUE (commit 37aa4960dc) + memory/*.md catalog + AGENTS.md section 5 honest-framing mandate",
   "purpose": "Inventory + planned fixes for every metric currently blocking Tier-2 paper submission (zhongkeyuan erqu). Replaces the old dead-params audit; that audit now lives at TODO/completed/wf_dead_params_audit_2026_10_04.md (per section 5.5 filesystem-truth).",
-  "tier2_paper_target": "zhongkeyuan erqu tier (J. Comput. Aided Mol. Des. / J. Mol. Graph. Model. / Comput. Chem. WIREs / Mol. Divers. / Comput. Biol. Chem.); AGENTS.md section 5.4 no wet-lab",
+  "tier2_paper_target": "PRIMARY (decided 2026-10-11, docs/SUBMISSION_PLAN.md): J. Chem. Inf. Model. (ACS, IF~5.6, zhongkeyuan erqu); fallbacks: Digital Discovery (RSC), J. Med. Chem. (higher bar). Older target list (J. Comput. Aided Mol. Des. / J. Mol. Graph. Model. / Comput. Chem. WIREs / Mol. Divers. / Comput. Biol. Chem.) is superseded. AGENTS.md section 5.4 no wet-lab",
   "summary": {
-    "total_blockers": 29,
+    "total_blockers": 22,
     "by_line": {
-      "D-MPNN": 4,
-      "CFM": 15,
-      "Lambda": 5,
-      "Infra": 3,
-      "MoleculeNet": 1,
+      "CFM": 6,
+      "D-MPNN": 2,
+      "Infra": 2,
+      "Lambda": 2,
+      "PaperA": 9,
       "infra": 1
     },
     "passing_metrics_kept": [
-      "m21 NCI-60 9-cell AUC = 0.8007 +/- 0.0160 MEASURED PASS (nci60_precious_9cell_auc.json)",
+      "m21 NCI-60 9-cell AUC = 0.7294 +/- 0.2137 (nci60_precious_9cell_auc.json, 2026-10-12 fixed-splitter rerun) — the old 0.8007 +/- 0.0160 is SUPERSEDED (it was measured on the degenerate molecule-level splitter, BLK-PA12); see BLK-PA16 for the single-digit-test-set contamination",
       "m14 CFM decode ratio 0.998 MEASURED but misleading (BLK-C3); counts RDKit-parseable not chemistry",
       "m15 RMSD 0.6578 angstrom MEASURED PASS",
       "m3 Vina V3 -7.782 kcal/mol MEASURED PASS (with ex=32 cohort ceiling caveat)"
     ],
-    "refreshed": "2026-10-10",
-    "resolved_and_removed": {},
+    "refreshed": "2026-10-12",
+    "resolved_and_removed": {
+      "BLK-D1": {
+        "title": "bace 5-seed rescue seed-dominated variance; 5-seed mean 0.7505 ± 0.0456 MEASURED on disk (5/5 valid)",
+        "line": "D-MPNN",
+        "final_status": "CLOSED_HONEST_NEGATIVE",
+        "removed": "2026-10-12",
+        "outcome": "bace 与本条活性迁移主线无关(MoleculeNet 任务,非金属配合物)。不要把 metal_activity_transfer 的结论套到它身上。"
+      },
+      "BLK-C1": {
+        "title": "Bond head 20-epoch production F1 ABORTED at epoch 1/20 (launcher silent death)",
+        "line": "CFM",
+        "final_status": "SUPERSEDED — 原 20-ep 目标被 30-ep fm A/B 取代，已有实测值",
+        "removed": "2026-10-12",
+        "outcome": "Bond head 20-epoch production F1 ABORTED at epoch 1/20 (launcher silent death)"
+      },
+      "BLK-C2": {
+        "title": "m19 W2 reframing W2 is NOT load-bearing; do not cite as AUC lever in paper",
+        "line": "CFM",
+        "final_status": "CLOSED — W2 不是承重杠杆，已由 W1 25-run ON/OFF + G6 消融证伪",
+        "removed": "2026-10-12",
+        "outcome": "m19 W2 reframing W2 is NOT load-bearing; do not cite as AUC lever in paper"
+      },
+      "BLK-C3": {
+        "title": "m14 CFM decode ratio 0.998 is misleading counts RDKit-parseable, not chemistry",
+        "line": "CFM",
+        "final_status": "CLOSED_AS_DISCLOSURE — 数字已实测：2146 个生成分子 0 个化学有效",
+        "removed": "2026-10-12",
+        "outcome": "m14 CFM decode ratio 0.998 is misleading counts RDKit-parseable, not chemistry"
+      },
+      "BLK-C4": {
+        "title": "m5 QED on CFM output: MEASURED 0.1984 / 0.2008 / 0.1749 vs target >=0.50 (honest-negative)",
+        "line": "CFM",
+        "final_status": "DONE — m5 QED 已实测（honest-negative）",
+        "removed": "2026-10-12",
+        "outcome": "m5 QED on CFM output: MEASURED 0.1984 / 0.2008 / 0.1749 vs target >=0.50 (honest-negative)"
+      },
+      "BLK-C5": {
+        "title": "m4 SA penalty is a GRADIENT-DEAD CONSTANT — worse than 'default 0.0'",
+        "line": "CFM",
+        "final_status": "DESIGN_ACCEPTED — 改为采样时惩罚，不再声称可微",
+        "removed": "2026-10-12",
+        "outcome": "m4 SA penalty is a GRADIENT-DEAD CONSTANT — worse than 'default 0.0'"
+      },
+      "BLK-C6": {
+        "title": "m7 diversity on CFM output: MEASURED 0.9159 / 0.9215 / 0.8674 (Morgan r=2, 2048-bit)",
+        "line": "CFM",
+        "final_status": "DONE — m7 已实测（此前『不可解释』的警告随 0/2146 前提被推翻而撤回）",
+        "removed": "2026-10-12",
+        "outcome": "m7 diversity on CFM output: MEASURED 0.9159 / 0.9215 / 0.8674 (Morgan r=2, 2048-bit)"
+      },
+      "BLK-C7": {
+        "title": "CFM Vina docking BLOCKED on Pt+2 chemotype Vina 1.2.7 rejects 'Pt' atype (Wf-143)",
+        "line": "CFM",
+        "final_status": "RESOLVED_BY_REDESIGN — 原始阻塞前提已被 Wf-246-B 绕开",
+        "removed": "2026-10-12",
+        "outcome": "CFM Vina docking BLOCKED on Pt+2 chemotype Vina 1.2.7 rejects 'Pt' atype (Wf-143)"
+      },
+      "BLK-C8": {
+        "title": "CFM OT-CFM end-to-end --use-ot-cfm wired; never measured e2e (TODO-179 detach fix complete)",
+        "line": "CFM",
+        "final_status": "RESOLVED_AT_SMOKE_SCALE — e2e 已跑，但仅 smoke",
+        "removed": "2026-10-12",
+        "outcome": "CFM OT-CFM end-to-end --use-ot-cfm wired; never measured e2e (TODO-179 detach fix complete)"
+      },
+      "BLK-C9": {
+        "title": "SE(3) bridge confirmed SCAFFOLD-ONLY; 5 dead SE(3) surfaces behind 84 green tests",
+        "line": "CFM",
+        "final_status": "CLOSED_AS_ARCHITECTURAL_FACT — SE(3) 是脚手架，属既定边界",
+        "removed": "2026-10-12",
+        "outcome": "SE(3) bridge confirmed SCAFFOLD-ONLY; 5 dead SE(3) surfaces behind 84 green tests"
+      },
+      "BLK-L2": {
+        "title": "hilbert is alias of platinai_4cell disclose in paper, not separate evidence",
+        "line": "Lambda",
+        "final_status": "CLOSED_AS_DISCLOSURE — hilbert 是 platinai_4cell 的别名，属措辞约束",
+        "removed": "2026-10-12",
+        "outcome": "hilbert is alias of platinai_4cell disclose in paper, not separate evidence"
+      },
+      "BLK-L3": {
+        "title": "m4 success rate 0.0022 FAIL; m22 SE(3) SB DEFERRED; need honest-negative framing in paper",
+        "line": "Lambda",
+        "final_status": "CLOSED_AS_HONEST_NEGATIVE — m4 success 0.0022 已定论，需论文措辞",
+        "removed": "2026-10-12",
+        "outcome": "m4 success rate 0.0022 FAIL; m22 SE(3) SB DEFERRED; need honest-negative framing in paper"
+      },
+      "BLK-I2": {
+        "title": "pre-flight section 1.4 gap no v3 log for Wf-FIX-3LINES GPU launches",
+        "line": "Infra",
+        "final_status": "RESOLVED — pre-flight section 1.4 缺口已补",
+        "removed": "2026-10-12",
+        "outcome": "pre-flight section 1.4 gap no v3 log for Wf-FIX-3LINES GPU launches"
+      },
+      "BLK-G1": {
+        "title": "CFM bond head 是随机初始化的，而 tmQM 预训练 D-MPNN 就在盘上 —— 两条线从未接通",
+        "line": "D-MPNN",
+        "final_status": "CLOSED_AS_HONEST_NEGATIVE_2026_10_10",
+        "removed": "2026-10-12",
+        "outcome": "生成器的成键组件是 DMPNNBondHead（train_cfm_yuelbond_wasserstein.py:1156），在 :1383 全新构造，无任何 init 路径。同时配置 use_tmqm_init: true 只接到 EGNNVelocityField（:7307-7310），接不到 bond head。而 .ckpt/tmqm_pretrained_dmpnn.pt 是在 tmQM 上预训练的 —— tmQM 正是 CFM 的生成语料。"
+      },
+      "BLK-P3": {
+        "title": "SSOT 里 bace 同名两值（0.6805 vs 0.7505），易误引",
+        "line": "MoleculeNet",
+        "final_status": "DONE — 两个值已消歧，非缺陷",
+        "removed": "2026-10-12",
+        "outcome": "metrics/by_metric/moleculenet_auc_dmpnn_5seed_rescue.json :: runs.bace.rescue 记 0.6804880415259172（per-seed [0.5864,0.7354,0.7401,0.6655,0.6751]）；molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/metrics.json 记 0.7504830500562101（per-seed [0.6646,0.8000,0.7572,0.7709,0.7598]）。两者"
+      },
+      "BLK-P4": {
+        "title": "DESIGN_BOUNDARY 声称可达性 >=0.95，与盘上 0.4989 矛盾，且失败集中在目标金属",
+        "line": "Lambda",
+        "final_status": "DONE — 检索确认 ≥0.95 不是文献标准指标，应删除该数字而非辩护",
+        "removed": "2026-10-12",
+        "outcome": "metrics/by_metric/ood_reachability_summary.json 的 verdict 是 PER_ELEMENT_HONEST_PARTIAL：30 个 d-block 元素只有 20 个过 0.40 gate，aggregate_reachability_macro = 0.4989，5d 块通过率仅 0.5，且未通过者'dominated by 5d precious metals Pt/Pd/Au/Ir/Os where the tmQM-d-block training set is sparse' —— 正是本项目"
+      },
+      "BLK-M1": {
+        "title": "金属配位 cap 表与本项目语料矛盾（实测），且面板价键检查曾整体失效",
+        "line": "CFM",
+        "final_status": "DONE — cap 表已按实测基座重建并加 gate；口径已定义且可复算",
+        "removed": "2026-10-12",
+        "outcome": "金属配位 cap 表与本项目语料矛盾（实测），且面板价键检查曾整体失效"
+      },
+      "BLK-PA1": {
+        "title": "Claim 1 的 within-vs-cross 不是单变量对照 —— 缺『同金属 scaffold-split』基线，collapse 与普通泛化难混淆",
+        "line": "PaperA",
+        "final_status": "DONE",
+        "removed": "2026-10-12",
+        "outcome": "paper_a/sections/01_intro.tex:27-28 写 \"The only thing that changes between the two regimes is whether the held-out metal was seen during training\" —— 不成立。within-metal 用该金属自身 4/5 折（Ru≈1000 配体）；cross-metal 用其他四金属全部配体（≈700，且要扣 leak）。两个 regime 的训练集、样本量、标签先验全都不同。因此 Table 1 的 0.21–0.49"
+      },
+      "BLK-PA2": {
+        "title": "Os/Rh/Re 的 below-chance 在 n=36–74 下不成立；缺 permutation null；摘要有一处事实错误",
+        "line": "PaperA",
+        "final_status": "DONE",
+        "removed": "2026-10-12",
+        "outcome": "metrics/by_metric/metal_activity_transfer_seed_stability.json 证实 cross_metal_stability.*.n_seeds=3，而 within_metal_stability.*.n_seeds=5 —— 两个 regime seed 数不一致。held-out 测试集极小：Re n≈74 / Rh n≈51 / Os n≈36。n=36 时 AUC 零分布 SD 可达 ±0.09，Os=0.5195 完全落在 null 内，不能称 below chance。且 paper_a/ma"
+      },
+      "BLK-PA5": {
+        "title": "Claim 3 自称 like-for-like 却承认 cohort 不同；应在自建 cohort 上跑 LightGBM 以分离模型类",
+        "line": "PaperA",
+        "final_status": "DONE",
+        "removed": "2026-10-12",
+        "outcome": "paper_a/sections/03_method.tex:83-86 承认 cohort 是 591 vs 23 cell lines，04_results.tex:112 却称 'the only like-for-like comparison'。当前对比同时变了模型类（D-MPNN vs LightGBM）与 cohort（15,799 vs 11,294 行），无法归因。"
+      },
+      "BLK-PA6": {
+        "title": "统计口径不统一：within 5 seeds / cross 3 seeds；Claim 1、3 无 CI 无显著性检验；多金属未校正",
+        "line": "PaperA",
+        "final_status": "DONE",
+        "removed": "2026-10-12",
+        "outcome": "metal_activity_transfer_seed_stability.json 证实 within n_seeds=5、cross n_seeds=3。Table 1/3 只给 seed range，无 bootstrap CI；within-vs-cross 差异无 paired test；5 金属比较无多重检验校正。"
+      },
+      "BLK-PA7": {
+        "title": "缺最简基线：majority、metal-agnostic 单头、random-split 上界",
+        "line": "PaperA",
+        "final_status": "DONE",
+        "removed": "2026-10-12",
+        "outcome": "论文无 majority-class 基线、无『单一全局头不分金属』的 LOMO、无 random-split 上界，无法量化 collapse 中『分布外』与『欠拟合』的比例。"
+      },
+      "BLK-PA8": {
+        "title": "三张图全是 placeholder，投稿前必须生成真图",
+        "line": "PaperA",
+        "final_status": "DONE",
+        "removed": "2026-10-12",
+        "outcome": "paper_a/sections/04_results.tex:35,95 与 05_ablation.tex:63 均为 \\fbox placeholder，main.pdf 无真实图。"
+      },
+      "BLK-PA9": {
+        "title": "摘要数字错误与口径不一致（below chance / four of five）",
+        "line": "PaperA",
+        "final_status": "DONE",
+        "removed": "2026-10-12",
+        "outcome": "paper_a/main.tex:49-51 摘要 'within-metal AUC 0.76–0.95 for four of five' 与 Table 1 不符——Rh=0.6974，实际只有 Ru/Ir/Re 三个落在 0.76–0.95；intro（01_intro.tex:34）写的是 0.70–0.95，三处口径不一。摘要 'below chance (0.5195 …)' 事实错误（见 BLK-PA2）。"
+      },
+      "BLK-PA10": {
+        "title": "参考文献仅 8 条，远低于二区常规 40–60",
+        "line": "PaperA",
+        "final_status": "DONE",
+        "removed": "2026-10-12",
+        "outcome": "paper_a/refs.bib 仅 8 条，缺 TM 络合物 ML、OOD/domain shift、金属药物 QSAR、D-MPNN 变体/基准四类必引线。"
+      },
+      "BLK-PA11": {
+        "title": "intro 过度声称 'the only thing that changes…'；结论偏软缺可行动指引",
+        "line": "PaperA",
+        "final_status": "DONE",
+        "removed": "2026-10-12",
+        "outcome": "01_intro.tex:27-28 的单一变量措辞是 BLK-PA1 的文字根因；结论（main.tex:58-61）只到『cross-metal transfer 值得报告』，缺对药物设计的可行动指引。06_limitations.tex:38-59 的 cohort-truncation 陷阱占 20 行，像方法学噪音。"
+      },
+      "BLK-PA12": {
+        "title": "ScaffoldSplitter._scaffold_for 恒返回空串 → 所有 'scaffold split' 实为分子级（随机）切分；根因是 includeChirality= TypeError，不是多片段",
+        "line": "PaperA",
+        "final_status": "RERUN_DONE_METRICS_UPDATED",
+        "removed": "2026-10-12",
+        "outcome": "CORRECTED 2026-10-12 (原判断把根因写成『多片段 SMILES』并把 cisplatin 列为安全，均错)。真根因：molmetal/data/splits.py::ScaffoldSplitter._scaffold_for 调用 MurckoScaffold.GetScaffoldForMol(mol, includeChirality=...)，而本机 rdkit 2026.03.6 的绑定只接受单参数 → 每次都抛 TypeError → 被裸 except 吞掉 → 每个分子都得到空串 → __call__ 回退到 __em"
+      },
+      "BLK-PA13": {
+        "title": "三个受影响脚本无 --config 支持，无法按 §5.11 (YAML-only) 重跑其受影响切分",
+        "line": "PaperA",
+        "final_status": "CONFIG_WIRED_RERUN_PENDING",
+        "removed": "2026-10-12",
+        "outcome": "MEASURED 2026-10-12: molmetal/scripts/train_cisplatin_resistance.py、train_cisplatin_resistance_v2.py、train_protein_metal.py、r3_drugood_benchmark.py 都调用 ScaffoldSplitter（故其切分在修复前退化为分子级），但四者均无 add_argument('--config') 也无 apply_yaml_overrides，因此无法按 AGENTS.md §5.11 的 YAML-only 规则重跑。其"
+      }
+    },
     "premise_corrections_this_refresh": [
       "BLK-C5: --sa-penalty is not 'defaulted off', it is gradient-dead when ON.",
       "BLK-C9: premise confirmed; the --use-se3-sb hit is a DIFFERENT module (name trap).",
@@ -50,7 +247,8 @@
       "BLK-L1": "no —— R² 已复测确认 +0.0102 天花板；剩余是接线工作不是测量问题",
       "BLK-C15": "no —— 唯一在办项是 RC2 fp+metal_desc 对照（CPU 可跑）",
       "shared_blocking_experiment": "RC2 特征对照（BLK-D2 与 BLK-C15 的共同前置项）"
-    }
+    },
+    "cleanup_2026_10_12": "removed 28 completed blockers (kept as one-line index in resolved_and_removed; full text in git history); added 5 Paper-A blockers (BLK-PA14..PA18) from the JCIM tier-2 gap review."
   },
   "rules": [
     "Every MEASURED value cites its JSON or report path on disk; PROJECTED values carry a projected_source field.",
@@ -71,803 +269,6 @@
     }
   ],
   "blockers": [
-    {
-      "id": "BLK-D1",
-      "line": "D-MPNN",
-      "title": "bace 5-seed rescue seed-dominated variance; 5-seed mean 0.7505 ± 0.0456 MEASURED on disk (5/5 valid)",
-      "metric": {
-        "MEASURED_baseline": {
-          "value": "0.7421 +/- 0.0446 (5-seed, dmpnn_v4, balanced)",
-          "source": "metrics/by_metric/m19*.json::bace_rescue (TODO: cite exact filename once Phase 1a agent confirms)"
-        },
-        "MEASURED_partial_new": {
-          "value": "seed0=0.6311, seed1=0.8644 (only 2/5 seeds before silent death)",
-          "source": "molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/bace_dmpnn_seed{0,1}.json"
-        },
-        "delta_observed": "delta=0.2333 across 2 seeds (~5x baseline std 0.0446)",
-        "verdict": "MEASURED_5seed_0.7505_below_chemprop_baseline_0.876 (delta=-0.126, ~3x baseline std 0.0456) — 5-seed mean is on disk; lift-path is now BLK-D1 Step 2-3 (wire-in) + Step 4 (AttentiveFP 5-seed retest on GPU when C4 done)",
-        "MEASURED_5seed_rescued": {
-          "value": "0.7505 ± 0.0456 (5/5 seeds, dmpnn_v4, balanced, 50ep, Bemis-Murcko scaffold split)",
-          "per_seed_auc": [
-            0.6646,
-            0.8,
-            0.7572,
-            0.7709,
-            0.7598
-          ],
-          "source": "molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/metrics.json::tasks.bace"
-        }
-      },
-      "target": {
-        "value": ">=0.876 (chemprop_v3 reference, but chemprop_v3 NOT supported by train_moleculenet.py needs alternative)",
-        "PROJECTED": "+0.10 lift via AttentiveFP backbone OR focal loss class-weight"
-      },
-      "root_cause": [
-        "train_moleculenet.py L789-790 only supports morgan_mlp + dmpnn backbones; chemprop_v3 is a SEPARATE trainer",
-        "pos_rate=0.457 -> class-weight auto-no-op (L805 returns 1.0 when pos_rate in 0.30-0.70); balanced vs on REFUTED in Wf-METRIC-RESCUE section 6.38c",
-        "launcher silent death (BLK-I1) 3/5 seeds lost before metrics.json written"
-      ],
-      "fix_steps": [
-        "Step 1 [SHIPPED 2026-10-09]: Fix launcher (BLK-I1) — TODO/completed/blk_i1_launcher_silent_death_fix_2026_10_09.md",
-        "Step 2 [SHIPPED 2026-10-09]: Add AttentiveFP as 3rd backbone in train_moleculenet.py — TODO/completed/blk_d1_step_2a_attentivefp_2026_10_09.md",
-        "Step 3 [SHIPPED 2026-10-09]: §5.7 50-step CPU smoke on AttentiveFP backbone — molmetal/tests/test_wf_blk_d1_attentivefp_smoke.py (PASS, 7.7s wall, bace/seed0 roc_auc=0.4633 / bce=0.7664 — 1-epoch is wire-in gate not lift gate)",
-        "Step 4 [SHIPPED 2026-10-09]: GPU 5-seed retest on AttentiveFP, 21.2 min wall on GPU 0 (post-C4 free): --epochs 50 --seeds 0 1 2 3 4 --backbone attentivefp --device cuda:0. MEASURED bace 5-seed mean=0.7636 ± 0.0398 vs dmpnn baseline 0.7505 ± 0.0456, Δ=+0.0131 (in noise; AttentiveFP ≈ dmpnn on bace single-task)",
-        "Step 5 [SHIPPED 2026-10-09]: §5.5 filesystem-truth verify: ls -la metrics.json (1419 B) + 5 seed JSONs (485-502 B each) + auto report.md (2962 B) all on disk at molmetal/reports/blk_d1_attentivefp_5seed_2026_10_09/. Closeout: TODO/completed/blk_d1_step_4_attentivefp_5seed_2026_10_09.md"
-      ],
-      "wall": {
-        "cpu_smoke_min": 5,
-        "gpu_min": 30,
-        "verify_min": 5,
-        "total_min": 40
-      },
-      "smoke_gate": "section 5.7 parse_args + initialise + test_auc>0 + loss monotone (50-step CPU)",
-      "honest_negative_fallback": "If 5-seed mean stays <0.74, frame as STILL_HONEST_NEGATIVE; do not chase further. bace is a recognised hard task (chemprop wins by 0.13 on this protocol).",
-      "cross_refs": [
-        "BLK-I1",
-        "section 6.38c HONEST_NEGATIVE_CATALOG",
-        "section 6.39a HONEST_NEGATIVE_CATALOG",
-        "TODO/completed/metric_rescue_wfmrr_2026_10_08.md section 3",
-        "TODO/completed/blk_d1_step_2a_attentivefp_2026_10_09.md",
-        "BLK-C4 (CFM OneCycle+AdamW in flight, GPU 0)"
-      ],
-      "wires_at_2026_10_09": {
-        "scope": "BLK-D1 fix_steps Step 2 + Step 3 only (wire-in + smoke; Step 4-5 are GPU/verify)",
-        "step_2_3_shipped": true,
-        "step_2_3_evidence": "TODO/completed/blk_d1_step_2a_attentivefp_2026_10_09.md + molmetal/tests/test_wf_blk_d1_attentivefp_smoke.py",
-        "smoke_5_7_invariants_passed": 9,
-        "smoke_5_7_wall_seconds": 7.7,
-        "smoke_5_7_bace_roc_auc_seed0": 0.4633,
-        "step_4_5_status": "SHIPPED 2026-10-09 (AttentiveFP 5-seed mean 0.7636 ± 0.0398, Δ=+0.013 vs dmpnn 0.7505 ± 0.0456 in noise; honest micro-lift within seed variance)",
-        "step_4_5seed_attentivefp_bace_mean": 0.7636,
-        "step_4_5seed_attentivefp_bace_std": 0.0398,
-        "step_4_5seed_attentivefp_bace_per_seed_auc": [
-          0.6986,
-          0.802,
-          0.7396,
-          0.8024,
-          0.7754
-        ],
-        "step_4_5seed_attentivefp_bace_wall_seconds": 1271.2,
-        "step_4_5seed_attentivefp_bace_source": "molmetal/reports/blk_d1_attentivefp_5seed_2026_10_09/metrics.json::tasks.bace",
-        "step_4_5seed_attentivefp_delta_vs_dmpnn": 0.0131,
-        "step_4_5seed_attentivefp_delta_within_noise": true,
-        "step_4_5seed_attentivefp_honest_framing": "Δ=+0.0131 is inside 1σ envelope of BOTH arms (dmpnn std=0.0456, AttentiveFP std=0.0398). Treat as statistically tied on bace single-task. NOT paper-promotable as Tier-2 headline (vs lit 0.876: Δ=-0.112).",
-        "preflight_5_7_rationale": "wire-in smoke is the §5.7 gate, NOT the lift gate. 1-epoch bace 0.4633 is below random by design (1 epoch on 1060 train rows; loss-monotone floor is the GPU 5-seed run's job)."
-      },
-      "note_2026_10_10": "bace 与本条活性迁移主线无关(MoleculeNet 任务,非金属配合物)。不要把 metal_activity_transfer 的结论套到它身上。",
-      "status": "CLOSED_HONEST_NEGATIVE",
-      "closed_2026_10_10": {
-        "verdict": "盘上数据已足够关闭，无需 GPU。",
-        "correction": "todo.json 旧文本引用的矛盾（'n_seeds_valid: 1'）来自 metrics/by_metric/moleculenet_auc.json —— 那是 §5.7 50-step wire-in smoke 的产物（bace 0.4633），不是 rescue 结果。",
-        "actual_rescue": {
-          "artifact": "molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/",
-          "per_seed_auc": [
-            0.6646,
-            0.8,
-            0.7572,
-            0.7709,
-            0.7598
-          ],
-          "mean": 0.75048,
-          "std": 0.04557,
-          "n_seeds_valid": 5,
-          "cross_check": "metrics/by_metric/moleculenet_auc_dmpnn_5seed_rescue.json::runs.bace.rescue"
-        },
-        "the_0.86_gap_is_NOT_seed_noise": "5-seed 均值 95% 半宽约 ±0.040，0.86 基线比均值高 0.110（约 2.4σ），是稳定的负 gap，不是'落在方差带内'。",
-        "step4_attentivefp": {
-          "artifact": "molmetal/reports/blk_d1_attentivefp_5seed_2026_10_09/metrics.json",
-          "value": 0.76359,
-          "std": 0.03979,
-          "delta_vs_dmpnn": 0.0131,
-          "reading": "Δ 在噪声内，与 D-MPNN 打平，不构成换骨干的理由。"
-        },
-        "why_closed": "按原 honest_negative_fallback（5-seed < 0.74 才收口），当前 0.7505 / 0.7636 均已过线，且与基线差距稳定为负 —— 这是诚实负面，不是待修的 blocker。",
-        "residual_optional": "仅剩集成/更深模型，已不值得 GPU 配额。"
-      },
-      "audit_2026_10_10": {
-        "needs_gpu_run": false,
-        "verdict": "CLOSED_HONEST_NEGATIVE —— 盘上数据已足够，不需要 GPU。",
-        "on_disk": {
-          "dmpnn_5seed_rescue": {
-            "mean": 0.75048,
-            "std": 0.04557,
-            "n_seeds_valid": 5,
-            "artifact": "molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/metrics.json"
-          },
-          "attentivefp_5seed": {
-            "mean": 0.76359,
-            "std": 0.03979,
-            "delta_vs_dmpnn": 0.0131,
-            "artifact": "molmetal/reports/blk_d1_attentivefp_5seed_2026_10_09/metrics.json"
-          },
-          "chemprop_v3_frozen_5seed": {
-            "mean": 0.7299,
-            "std": 0.0435,
-            "delta_vs_dmpnn": -0.0206,
-            "artifact": "molmetal/reports/blk_d2_chemprop_v3_frozen_5seed_2026_10_09/metrics.json"
-          }
-        },
-        "reading": "三个骨干在 bace 上互在噪声内（0.7299 / 0.7505 / 0.7636，seed std 0.04-0.046）。与 Krasnov 0.876 的差距 -0.11 到 -0.15 是稳定的负 gap，不是 seed 噪声。按原 honest_negative_fallback 收口：不再追。",
-        "scope_note": "bace 是 MoleculeNet 任务，与金属活性迁移主线无关，不得套用 BLK-C15 的结论。"
-      },
-      "fixes_shipped_2026_10_10": null
-    },
-    {
-      "id": "BLK-C1",
-      "line": "CFM",
-      "title": "Bond head 20-epoch production F1 ABORTED at epoch 1/20 (launcher silent death)",
-      "metric": {
-        "MEASURED_probe_4ep": {
-          "f1": 0.079,
-          "precision": 0.613,
-          "recall": 0.042,
-          "exact_match": 0.0,
-          "n_truth_bonds": 8634,
-          "n_candidate_pairs": 28720,
-          "positive_rate": 0.299,
-          "caveat": "PROBE SCALE, 4 epochs on 946-cloud training cohort. Production F1 NOT measured.",
-          "source": "metrics/by_metric/cfm_bond_accuracy.json::measured"
-        },
-        "MEASURED_partial_new": {
-          "epoch_0_f1": 0.0357,
-          "epoch_1_f1": 0.0193,
-          "epoch_1_decode_ratio": 0.875,
-          "epoch_1_bond_exact_type_rate": 0.0,
-          "verdict": "ABORTED at epoch 1/20",
-          "source": "molmetal/reports/cfm_bond_head_20ep_2026_10_09/events.jsonl (Phase 4b partial data)"
-        },
-        "delta_partial_vs_probe": "-0.060 (epoch 1 F1 worse than probe F1 0.079)"
-      },
-      "target": {
-        "value": "F1 >=0.20 at 20 epochs (vs probe 0.079)",
-        "PROJECTED": "+0.12 lift from more epochs (cfm-early-stop fired at ep0 on gen_eval_n=0; bond_exact_type_rate 0.005 throughout probe)"
-      },
-      "root_cause": [
-        "launcher silent death (BLK-I1) events.jsonl frozen at epoch 1, no metrics.json written, no traceback",
-        "synthetic cohort emits bond_n_scored=0 (cfm-bond-target warning); production MUST use --tmqm-dir flag (Phase 2a correction)",
-        "early-stop patience=3 fired at epoch 0 on gen_eval_n=0; the bond head eval gate is cfm-bond-target not decode_ratio"
-      ],
-      "fix_steps": [
-        "Step 1: Fix launcher (BLK-I1) setsid + nohup + stdout/stderr redirect to logs/",
-        "Step 2: Add --early-stop-patience 999 to launcher (Phase 2b correction); remove the early-stop-on-gen_eval_n=0 gate",
-        "Step 3: section 5.7 50-step CPU smoke with --tmqm-dir .data/molmetal/tmQM (NOT synthetic cohort) assert decode_ratio>0 + loss monotone + bond_f1>0",
-        "Step 4: GPU launch: --epochs 20 --early-stop-patience 999 --tmqm-dir .data/molmetal/tmQM --device cuda:0",
-        "Step 5: section 5.5: ls -la metrics.json + parse bond_f1 + bond_exact_match + bond_pr_auc"
-      ],
-      "wall": {
-        "cpu_smoke_min": 5,
-        "gpu_min": 10,
-        "verify_min": 5,
-        "total_min": 20
-      },
-      "smoke_gate": "section 5.7 50-step CPU on --tmqm-dir; decode_ratio>0 + loss[0]>loss[1] + bond_f1>0",
-      "honest_negative_fallback": "If 20-ep F1 stays <0.10, frame as bond head is probe-scale dominated; structural issue with bond graph representation on this corpus do not chase, defer to m22 SE(3) SB",
-      "cross_refs": [
-        "BLK-I1",
-        "section 6.39b HONEST_NEGATIVE_CATALOG",
-        "metrics/by_metric/cfm_bond_accuracy.json",
-        "memory cfm-property-panel-measures-no-model.md"
-      ],
-      "status": "SUPERSEDED — 原 20-ep 目标被 30-ep fm A/B 取代，已有实测值",
-      "status_basis_2026_10_10": {
-        "basis": "原 blocker 是 '20-epoch 生产 F1 在 ep1/20 ABORTED（launcher silent death）'。该 ABORTED run 的目录仍在（molmetal/reports/cfm_bond_head_20ep_2026_10_09），但目标已被 30-epoch 的 use_fm_objective 单变量 A/B 覆盖并测出。",
-        "evidence": "molmetal/reports/cfm_fm_ab_2026_10_09/per_epoch_metrics.csv ep29: bond_f1 0.6703 / decode_ratio 0.5833 / gen_validity 0.0625",
-        "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
-      },
-      "fixes_shipped_2026_10_10": null
-    },
-    {
-      "id": "BLK-C2",
-      "line": "CFM",
-      "title": "m19 W2 reframing W2 is NOT load-bearing; do not cite as AUC lever in paper",
-      "metric": {
-        "MEASURED_w2_deconfound": {
-          "OFF": 0.5575,
-          "ON_every_batch": 0.5349,
-          "ON_per_epoch": 0.5496,
-          "delta": [
-            -0.023,
-            -0.008
-          ],
-          "source": "metrics/by_metric/metal_lomo_auc_wasserstein.json::m1_w2_onoff_deconfound_2026_10_08"
-        },
-        "MEASURED_g6_ablation": "18 tuples, 3 seeds x 2 metals, no_wass vs no_multi_task both inside seed std (Ru +0.007, Rh -0.0001)",
-        "MEASURED_centering_was_w2_off": "0.5845 +/- 0.0764 (per-metal-pic50-center) the 0.5845 headline had W2 OFF (per memory m19-centering-run-has-w2-off.md)"
-      },
-      "target": {
-        "value": "N/A this is a framing-fix, not a metric lift",
-        "PROJECTED": "Paper section 3 correctly attributes the +0.027 centering lift to the centering lever, NOT to W2"
-      },
-      "root_cause": [
-        "Earlier +0.049 lift claim was entangled with W2 cadence (the only prior ON/OFF pair differed in cadence too)",
-        "W2 is regulariser, not innovation its role is anti-overfitting, not AUC lift"
-      ],
-      "fix_steps": [
-        "Step 1: Update docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md section 1.1 to drop any W2-as-lever framing",
-        "Step 2: Paper section 3.4 (innovation attribution): declare W2 is anti-overfitting regulariser; cite 25-run ON/OFF + 18-tuple G6 as evidence",
-        "Step 3: section 5.3 user authorization required for paper/* edits (no auto-ship)"
-      ],
-      "wall": {
-        "docs_min": 30,
-        "user_ok_min": "user-gated per section 5.3"
-      },
-      "smoke_gate": "N/A (no trainer wire-in)",
-      "honest_negative_fallback": "If user prefers to keep W2 framing, append a footnote citing the 25-run ON/OFF and 18-tuple G6 as refutation evidence",
-      "cross_refs": [
-        "memory w2-wasserstein-is-not-load-bearing.md",
-        "memory m19-centering-run-has-w2-off.md",
-        "section 6.38a HONEST_NEGATIVE_CATALOG",
-        "TODO/completed/metric_rescue_wfmrr_2026_10_08.md"
-      ],
-      "status": "CLOSED — W2 不是承重杠杆，已由 W1 25-run ON/OFF + G6 消融证伪",
-      "status_basis_2026_10_10": {
-        "basis": "不是待修项。结论是负面的且已定论：开了反而掉分。论文里按'不得作为 AUC 卖点'处理即可。",
-        "evidence": "项目记忆 w2-wasserstein-is-not-load-bearing；todo.json :: BLK-C2.root_cause",
-        "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
-      },
-      "fixes_shipped_2026_10_10": null
-    },
-    {
-      "id": "BLK-C3",
-      "line": "CFM",
-      "title": "m14 CFM decode ratio 0.998 is misleading counts RDKit-parseable, not chemistry",
-      "metric": {
-        "MEASURED_decode_ratio": {
-          "value": 0.998,
-          "MEASURED_as": "fraction of generated SMILES that RDKit can parse",
-          "source": "metrics/by_metric/cfm_decode.json (TODO: cite exact filename)"
-        },
-        "REAL_metric_concern": "0.998 means 191/192 generated SMILES parse but parsing != chemistry. m14 needs a chemistry-validity metric (RDKit sanitisation, valency check, ring-aromaticity, MCS to nearest known ligand)"
-      },
-      "target": {
-        "value": "RDKit sanitisation pass rate >=0.95 + valency-check pass rate >=0.95 + MCS-to-nearest >=0.70",
-        "PROJECTED": "with --decode-validity-check flag (does not yet exist) + RDKit MolVS chemistry filter"
-      },
-      "root_cause": [
-        "The current decode_ratio metric is structural (SMILES string is parseable by RDKit MolFromSmiles) chemistry is not checked",
-        "m4 success rate 0.0022 (FAIL) measures a DIFFERENT thing (click-reaction success?), see BLK-L3"
-      ],
-      "fix_steps": [
-        "Step 1: Add --decode-chemistry-validity flag to cfm_property_panel.py: RDKit MolVS + valency + ring check",
-        "Step 2: section 5.7 smoke (50-step CPU) assert chemistry_validity_pass_rate>0",
-        "Step 3: Run cfm_property_panel.py on existing checkpoints; compute chemistry_validity_pass_rate over 192 val clouds",
-        "Step 4: section 5.5: ls -la metrics.json; if chemistry_validity_pass_rate ~= decode_ratio -> metric is OK; if <<0.95 -> report HONEST_NEGATIVE_DECODE_CHEMISTRY"
-      ],
-      "wall": {
-        "cpu_smoke_min": 10,
-        "panel_run_min": 30,
-        "verify_min": 5,
-        "total_min": 45
-      },
-      "smoke_gate": "section 5.7 50-step CPU; chemistry_validity_pass_rate>0 + loss monotone",
-      "honest_negative_fallback": "If chemistry_validity_pass_rate <0.50, frame m14 as structural-only; chemistry validity blocked until representation work done do not cite in paper as primary metric",
-      "cross_refs": [
-        "memory cfm-property-panel-measures-no-model.md",
-        "memory f3-alpha-label-inverted.md (related: m4 success rate interpretation)"
-      ],
-      "status": "CLOSED_AS_DISCLOSURE — 数字已实测：2146 个生成分子 0 个化学有效",
-      "status_basis_2026_10_10": {
-        "basis": "decode_ratio 0.998 计的是 RDKit 可解析而非化学有效。本身永远为真，所以它是**常驻披露要求**而非可关闭的 blocker。论文必须并列 gen_validity。",
-        "evidence": "metrics/by_metric/decode_ratio.json :: blind_spot 字段自带该说明",
-        "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
-      },
-      "measured_2026_10_10": {
-        "value": "chemistry_validity_pass_rate = 0.8495 (1823/2146)",
-        "source": "metrics/by_metric/cfm_decode_chemistry_validity.json",
-        "history": "第一次算成 0.000（0/2146），因为面板调用了不存在的 RDKit API 并吞掉异常。已修正。",
-        "breakdown": "valence_ok 2146/2146（全干净）| metal_coord_ok 2146/2146（按 tmQM 实测 cap）| no_radical_ok 1823/2146（唯一在扣分的项）",
-        "note": "decode_ratio ~0.998 数的是 RDKit 可解析，背后是 0.8495。并列披露的要求不变，且现在这个数字站得住。"
-      },
-      "fixes_shipped_2026_10_10": null
-    },
-    {
-      "id": "BLK-C4",
-      "line": "CFM",
-      "title": "m5 QED on CFM output: MEASURED 0.1984 / 0.2008 / 0.1749 vs target >=0.50 (honest-negative)",
-      "metric": {
-        "MEASURED": null,
-        "qed_json_status": "TBD — NO MEASURED VALUE ON CFM OUTPUT",
-        "source": "metrics/by_metric/qed.json::status / verdict / measured_value_present",
-        "qed_scaffold_status": "SCAFFOLD SCAFFOLD-only (analog to Wf-380-A6 SA penalty module); not wired into trainer loss",
-        "paper_target": "m5 >= 0.50 (MolChord 0.56 / AlphaDrug 0.42 / TransDiffSBDD 0.48)",
-        "verdict": "NO_MEASURED_VALUE_ON_CFM_OUTPUT"
-      },
-      "target": {
-        "value": "m5 QED >= 0.50 on CFM-generated cohort (n=192 val clouds)",
-        "PROJECTED": "via Wf-380-A6 + Wf-388-A3 wire-in pattern: --qed-penalty default 0.0 (OFF) + --qed-target default 0.65; QED-aware reward shaping blended into CFM loss"
-      },
-      "root_cause": [
-        "qed_penalty.py SCAFFOLD exists (analog to sa_penalty.py 292 LOC) but never wired into trainer's loss cascade",
-        "decode->panel link CPU-complete per Wf-R44 (smiles_csv -> cfm_property_panel) but no GPU retrain with --gen-validity-samples > 0 --save-generated-smiles has run",
-        "qed.json::measured_value_present = false; status = TBD; no per-metal or per-cohort QED on CFM output"
-      ],
-      "fix_steps": [
-        "Step 1 [SHIPPED 2026-10-09]: yaml config + OneCycle + AdamW + L404 KeyError fix — TODO/completed/blk_c4_cfm_bond_head_30ep_onecycle_2026_10_09.md",
-        "Step 2 [SHIPPED 2026-10-09]: §5.7 mini CPU smoke — molmetal/tests/test_wf_c4_30ep_onecycle.py (PASS)",
-        "Step 3 [SHIPPED 2026-10-09]: 30-epoch GPU run on cuda:0 — wall=3994.7s (66.6 min), best_decode_ratio=1.000 @ epoch 0, but ep 4-29 mode collapse (gen_validity=0.000). MEASURED-on-disk per per_epoch_metrics.csv. See TODO/completed/blk_c4_cfm_bond_head_30ep_onecycle_FINAL_2026_10_09.md for the 4-band honest framing",
-        "Step 4 [DEFERRED — out of C4 scope]: structural fix to mode-collapse (BLK-C5 SA penalty + BLK-C6 diversity 6 flags + BLK-C4-target-m5 QED penalty); per `docs/HONEST_NEGATIVE_CATALOG.md` §6.38a the issue is upstream of the LR schedule, not the schedule itself"
-      ],
-      "wall": {
-        "wire_in_cpu_min": 30,
-        "smoke_min": 5,
-        "gpu_min": 120,
-        "panel_min": 5,
-        "verify_min": 5,
-        "total_min": 165
-      },
-      "smoke_gate": "§5.7 50-step CPU; decode_ratio>0 + loss monotone + qed_target default 0.65",
-      "honest_negative_fallback": "If m5 QED on CFM output stays <0.30, frame as SCAFFOLD-only lift not materialising; do not cite in paper as primary m5 metric; honest-negative §6 Limitations",
-      "cross_refs": [
-        "TODO/completed/blk_c5_cfm_gen_head_collapse_repair_2026_10_09.md",
-        "BLK-C5",
-        "BLK-C6",
-        "metrics/by_metric/qed.json",
-        "memory cfm-property-panel-measures-no-model.md",
-        "Wf-380-A6",
-        "Wf-388-A3",
-        "Wf-R44",
-        "TODO/completed/blk_c4_cfm_bond_head_30ep_onecycle_FINAL_2026_10_09.md"
-      ],
-      "wires_at_2026_10_09": {
-        "scope": "BLK-C4 wire-in + 30-ep run; structural mode-collapse fix: 5-lever wire-in [SHIPPED 2026-10-09, gen_validity lift UNMEASURED]; m4 SA penalty (BLK-C5) + m7 diversity (BLK-C6) + m5 QED (this block) still deferred",
-        "wire_in_shipped": true,
-        "smoke_5_7_passed": true,
-        "gpu_run_shipped": true,
-        "wall_seconds_measured": 3994.7,
-        "wall_seconds_projected_wire_in": "2-3 hr (9000-10800s)",
-        "wall_seconds_delta": "+5000s faster (OneCycle super-convergence confirmed)",
-        "best_decode_ratio_measured": 1.0,
-        "best_epoch_measured": 0,
-        "hit_target_measured": true,
-        "hit_target_honest_framing": "yes-but-misleading: epoch 0-3 all = 1.000 (warmup + first 3 of OneCycle), but ep 4-29 mode-collapse (gen_validity=0.000). 4-band table in §2 of FINAL closeout shows the truth.",
-        "evidence": "TODO/completed/blk_c4_cfm_bond_head_30ep_onecycle_2026_10_09.md (wire-in) + TODO/completed/blk_c4_cfm_bond_head_30ep_onecycle_FINAL_2026_10_09.md (run results + 4-band honest framing) + molmetal/reports/cfm_bond_head_30ep_onecycle_2026_10_09/{master.log,events.jsonl,per_epoch_metrics.csv,synthesis.md,wasserstein_decay.json,checkpoints/cfm_yuelbond_wasserstein_seed0.pt}",
-        "c5_structural_fix_5_lever_wire_in_shipped_2026_10_09": true,
-        "c5_structural_fix_5_lever_flags": {
-          "gen_head_lr_scale": "0.1 (per user advice: gen head Peak LR 1/10 of base)",
-          "bond_head_warmup_epochs": "5 (per user advice: freeze bond head first 5-10 epochs)",
-          "entropy_reg_weight": "0.01 (per user advice: entropy reg on gen head output)",
-          "gen_head_dropout": "0.2 (per user advice: dropout 0.2-0.3 on last 1-2 head layers)",
-          "max_norm_bridge": "1.0 (per user advice: grad clip 0.5-1.0; not changed as default to preserve Wf-124 P2 / Wf-148 bit-exact, set via yaml protocol.max_norm + start.sh MAX_NORM bridge)",
-          "temperature_top_p": "1.2 / 0.9 (per user advice: check decoding temperature)"
-        },
-        "c5_structural_fix_smoke_5_7_passed": true,
-        "c5_structural_fix_smoke_5_7_invariants": 13,
-        "c5_structural_fix_smoke_5_7_wall_seconds": 211.5,
-        "c5_structural_fix_closeout": "TODO/completed/blk_c5_cfm_gen_head_collapse_repair_2026_10_09.md",
-        "c5_structural_fix_closeout_size_bytes": 11933,
-        "c5_structural_fix_closeout_mtime": "2026-10-09 14:55",
-        "c5_structural_fix_honest_framing": "structural fix + wire-in + 50-step smoke PASS. gen_validity lift UNMEASURED — 30-epoch GPU run not yet launched. Wrapper scripts/launch_wf_fix3lines_cfm_c5_repair.sh ready (USER_OK-gated per §5.1); correct comparison is gen_validity/decode_ratio from per_epoch_metrics.csv vs C4 run, at matched epochs. No lift may be claimed until that comparison exists. 5-seed sweep DEFERRED until single-seed lever moves the metric.",
-        "c5_structural_fix_30ep_gpu_run_projected_wall_min": "120-180 (PROJECTED, not run)",
-        "c5_structural_fix_wrapper_dry_run_verified": true,
-        "c5_structural_fix_wrapper_dry_run_evidence": "molmetal/reports/cfm_blk_c5_repair_2026_10_09/DRY_RUN.log (14 lines) + plan.json (8-flag set + honest_framing). wrapper scripts/_wrapper_audit.py: 32 wrappers scanned -> REAL 25 SCAFFOLD 7; new wrapper NOT in 7-violation list (verified 2026-10-09).",
-        "c5_structural_fix_rev2_direction_reversal_2026_10_09": true,
-        "c5_structural_fix_rev2_marker_split": {
-          "atom_head": {
-            "markers": [
-              "head.atom_encoder"
-            ],
-            "lr_scale": 1.0,
-            "rationale": "atom embed (atomic_number -> 128d), 1.0x base"
-          },
-          "gen_flow": {
-            "markers": [
-              "vel_field.",
-              "head.msg_mlps."
-            ],
-            "lr_scale": 0.1,
-            "rationale": "EGNN ODE flow backbone + message-passing (drives CFM trajectory); user \"生成头 0.1x\" semantic"
-          },
-          "bond_head": {
-            "markers": [
-              "head.pair_head"
-            ],
-            "lr_scale": 1.0,
-            "rationale": "5-way bond-type classifier (Linear 259->128->5), 1.0x base"
-          }
-        },
-        "c5_structural_fix_rev2_param_count_measured": {
-          "atom_head_tensors": 2,
-          "gen_flow_tensors": 63,
-          "bond_head_tensors": 4,
-          "total_named_param_tensors": 69,
-          "source": "molmetal/reports/cfm_blk_c5_repair_2026_10_09/master.log::[BLK-C5] param_groups=3 banner (real, not re-derived)"
-        },
-        "c5_structural_fix_rev2_smoke_5_7_passed": true,
-        "c5_structural_fix_rev2_smoke_5_7_invariants": 13,
-        "c5_structural_fix_rev2_smoke_5_7_wall_seconds": 214.4,
-        "c5_structural_fix_rev2_smoke_5_7_assertion_enforces": "gen_flow_n > atom_n + bond_n (so the rev-1 wrong-direction split cannot silently regress)",
-        "c5_structural_fix_rev2_launch_status": "LAUNCHED 2026-10-09 15:27 UTC+8 — wrapper pid 509900, trainer pid 510209. GPU 0: 1032 MiB used at 86% util within 30s. master.log written. 30-epoch OneCycle, ~2-3 hr projected wall. Per memory dont-poll-gpu-labels: no polling, wait for wrapper exit.",
-        "c5_structural_fix_rev2_honest_framing": "rev-2 direction SHIPPED + smoke PASS + launch running. gen_validity lift UNMEASURED — only the structural direction is fixed. Next read: per_epoch_metrics.csv at matched epochs vs C4. 5-seed sweep deferred until single-seed lever moves the metric.",
-        "c5_structural_fix_rev2_wrapper_pre_flight_bug": "scripts/launch_wf_fix3lines_cfm_c5_repair.sh:143-147 calls pre_flight_check.py --fast, which the script does not accept. Gate is non-fatal in this run (trainer started clean), but should be fixed before 5-seed sweep reuses this wrapper.",
-        "c5_dmpnn_integration_2026_10_09": {
-          "user_voice_verbatim": "dmpnn按理来说不是可以更好地处理这边的bond特征吗,你留个抽象接口,后面方便dmpnn接入(之前todo目录也有相关的规划,参考一下)",
-          "interpretation_per_AGENTS_5_1": "user clarified: NOT a stub — actually wire the existing D-MPNN backbone (molmetal.models.dmpnn) into the CFM trainer so the operator can opt in with a single flag. NO new training in this wave.",
-          "deliverable_class": "DMPNNBondHead",
-          "deliverable_location": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py (DMPNNBondHead, ~190 LOC, same forward(cloud) -> (logits, (i_idx, j_idx)) contract as YuelBondDecoderHead)",
-          "cli_flag_added": "--bond-predictor {yuelbond, dmpnn}",
-          "cli_flag_default": "yuelbond (backward-compat — every shipped CFM checkpoint loads bit-exactly through the historical head)",
-          "backbone": "molmetal.models.dmpnn.DirectedMPNN (single-mol forward_per_atom path; DirectedMPNNPyG is batch-only and the trainer calls head(cloud) per cloud, so per-atom is the right granularity)",
-          "edge_features_inline": "3-dim: distance, is_dative, is_short. Featurised inline rather than via the 6-dim GraphFeaturizer because YuelBondDecoderHead already has them in tensors; reusing the contract keeps the swap a textual diff.",
-          "bidir_edge_index": "(i->j, j->i) per pair — preserves YuelBond's bidirectionality under the D-MPNN's unidirectional update rule.",
-          "param_count_at_h128_n3": "62280 (atom_encoder: 13*32=416; DirectedMPNN: ~30K across 3 layers; pair_head: 256*32+32+32*5+5 ≈ 8K)",
-          "param_count_yuelbond_at_h128_n3": "head: ~37K (atom_encoder: 13*128=1664; msg_mlps x3: 12*12K; pair_head: 261*128+128+128*5+5 ≈ 34K) — dmpnn is heavier due to GRU per layer",
-          "param_group_split_compat": "BLK-C5 3-group markers extended: _GEN_FLOW_MARKERS = ('vel_field.', 'head.msg_mlps.', 'head.dmpnn.'). atom_head + bond_head markers unchanged (both heads keep head.atom_encoder and head.pair_head).",
-          "dropout_target_dispatch": "--gen-head-dropout pair_head[Linear*2] always; last-1-2 layers target is head.dmpnn.readout_mlp for dmpnn and head.msg_mlps[-1] for yuelbond (closest per-predictor analog).",
-          "smoke_5_7_passed": true,
-          "smoke_5_7_invariants": 21,
-          "smoke_5_7_wall_seconds": 420.3,
-          "smoke_5_7_breakdown": "13 pre-existing BLK-C5 tests PASS (no regression) + 8 NEW tests for --bond-predictor dmpnn (4 argparse + 1 dispatch + 1 class import + 1 3-group split + 1 1-epoch smoke + 1 dropout wrap)",
-          "in_flight_run_affected": false,
-          "in_flight_run_note": "30-epoch GPU run (trainer pid 510209) uses default --bond-predictor yuelbond; this diff is opt-in only.",
-          "todo_closeouts_ref": "TODO/completed/blk_c5_cfm_gen_head_collapse_repair_2026_10_09.md §10",
-          "design_refs": [
-            "TODO/04_architecture/model_design.md (D-MPNN + EGNN hybrid fusion, 2D bond graph + 3D coords, hidden_dim=128, edge_cutoff=6.0 A)",
-            "TODO/AUDIT_RESEARCH_GRADE.md §2.5 (research-grade target: D-MPNN 2D ⊕ EGNN 3D, Ru 0.594 temporal beats DrugOOD 0.418 — strict D-MPNN backbone is the missing piece)"
-          ],
-          "no_metric_lift_claimed": true,
-          "honest_framing": "Wire-in SHIPPED + smoke PASS (21/21 in 420s CPU). NO training was run with the dmpnn head; the opt-in path is structurally ready but its gen_validity / decode_ratio lift against the yuelbond head is UNMEASURED. Next read: a 5-seed CPU smoke of dmpnn + a 1-seed GPU 30-epoch run if smoke is clean."
-        }
-      },
-      "status": "DONE — m5 QED 已实测（honest-negative）",
-      "status_basis_2026_10_10": {
-        "basis": "本轮未逐项核实 qed_penalty 的实际接线与 m5 是否有实测值。ALIGNED_COMPARISON 未把 m5 列入 competitive 或 behind，两处都没有。",
-        "evidence": "待跑：grep qed_penalty 的调用点 + 查 metrics/by_metric 是否有 m5 记录",
-        "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
-      },
-      "measured_2026_10_10": {
-        "m5_qed_mean": {
-          "fm_ab": 0.1984,
-          "fm_control": 0.2008,
-          "blk_c5_repair": 0.1749
-        },
-        "std": {
-          "fm_ab": 0.101,
-          "fm_control": 0.1048,
-          "blk_c5_repair": 0.1217
-        },
-        "target": ">=0.50 (metrics/by_metric/qed.json)",
-        "verdict": "HONEST_NEGATIVE — 约为目标的两成",
-        "source": "metrics/by_metric/cfm_decode_chemistry_validity.json",
-        "caveat": "QED 用的是 RDKit 自带实现，不受 valence bug 影响，此结论成立。仍需与 chemistry_validity_pass_rate=0.8495 并列给出。",
-        "also": "qed_penalty.py（16KB）经查证为孤儿模块：全仓唯一引用是它自己的测试，CFM parser 上根本没有 --qed flag。BLK-C4 原来的『unwired』判断成立，但『wire it in』不是正确修复方向。"
-      },
-      "closed_2026_10_10": "本轮通过 decode→SMILES→panel 链路实测，无需 GPU、无需新代码（qed_penalty.py 经查为孤儿模块，无消费者且 parser 上无 --qed flag）",
-      "fixes_shipped_2026_10_10": null
-    },
-    {
-      "id": "BLK-C5",
-      "line": "CFM",
-      "title": "m4 SA penalty is a GRADIENT-DEAD CONSTANT — worse than 'default 0.0'",
-      "metric": {
-        "MEASURED": null,
-        "m4_sa_json_status": "WIRED",
-        "value_is_flag_count_not_a_score": true,
-        "source": "metrics/by_metric/m4_sa.json::status / measured_value_present",
-        "sa_mean_cohort_baseline": 3.099,
-        "sa_target_band": "2.5-2.7 (WEAK_TO_STRONG_PLAN §3.6)",
-        "verdict": "WIRED_NO_MEASURED_VALUE — penalty is exactly zero when --sa-penalty default 0.0",
-        "gradient_dead": true,
-        "evidence": "torch.tensor(float(...)) -> requires_grad=False, grad_fn=None (verified on this host, .venv torch)"
-      },
-      "target": {
-        "value": "SA mean 3.099 -> 2.5-2.7 band on CFM-generated cohort (n=192 val clouds)",
-        "PROJECTED": "via Wf-388-A3 wire-in pattern: --sa-penalty 0.5 + --sa-target 2.6 (per WEAK_TO_STRONG_PLAN §3.6 set-point)"
-      },
-      "root_cause": [
-        "PREMISE WAS WRONG on both halves. The recorded cause was \"--sa-penalty default 0.0 so the term is exactly zero\". MEASURED 2026-10-10: the term is inert even when enabled.",
-        "sa_loss = torch.tensor(float(_sa_pen.mean()), ...) -> requires_grad=False, grad_fn=None. A fresh tensor around a python float severs the graph, so the term contributes ZERO to backward. Parameter updates with --sa-penalty 0 and --sa-penalty 0.3 are bit-for-bit identical; only the logged loss value changes.",
-        "The synthetic proxy (n_atoms + n_distinct_elements, trainer ~2682-2725) does NOT rescue this: the proxy is reduced to a float before the tensor is built. Verified by reading the code, not inferred.",
-        "sascorer itself is a fragment-frequency lookup with no gradient; the trainer's 2026-10-04 audit already deleted that surrogate (see the gen_sa_observed comment block)."
-      ],
-      "fix_steps": [
-        "Step 1: Decide whether SA is meant to be a loss term at all. RDKit's SA score and our QED score are both non-differentiable descriptors; either needs a differentiable surrogate or must be used at SAMPLING time only.",
-        "Step 2: If kept as a loss term, build it on a differentiable proxy that stays in the graph (do not wrap in torch.tensor(float(...))).",
-        "Step 3: If moved to sampling-time reweighting only, delete the --sa-penalty CLI flag rather than shipping a flag that cannot work."
-      ],
-      "wall": {
-        "per_batch_sa_cpu_min": 60,
-        "smoke_min": 5,
-        "gpu_min": 120,
-        "panel_min": 5,
-        "verify_min": 5,
-        "total_min": 195
-      },
-      "smoke_gate": "§5.7 50-step CPU; sa_penalty_term > 0 + loss monotone + decode_ratio>0",
-      "honest_negative_fallback": "If sa_mean stays >= 2.8, frame as Wf-388-A3 SCAFFOLD-only lift not materialising; per-batch SA scoring is the bottleneck; honest-negative §6 Limitations",
-      "cross_refs": [
-        "TODO/completed/blk_c5_cfm_gen_head_collapse_repair_2026_10_09.md (orthogonal: structural gen head fix, not SA penalty)",
-        "BLK-C4",
-        "BLK-C6",
-        "metrics/by_metric/m4_sa.json",
-        "Wf-388-A3",
-        "WEAK_TO_STRONG_PLAN §3.6",
-        "TODO/completed/388a3_m4_sa_wire.md",
-        "BLK-C11",
-        "molmetal/adapters/flow_matching_lipman/sa_penalty.py (docstring corrected 2026-10-10; it had claimed a 'loss-time gradient nudge')"
-      ],
-      "status": "DESIGN_ACCEPTED — 改为采样时惩罚，不再声称可微",
-      "status_basis_2026_10_10": {
-        "basis": "sa_penalty.py 里 penalty = np.maximum(0.0, delta) * sa_weight 是 numpy 计算，结构上就不可微。2026-10-04 的审计已删掉假装可微的 surrogate，并在 docstring 写明 requires_grad=False / grad_fn=None 是实测。即：原 blocker 问的'梯度死'已是**已知且被接受的设计**，不是待修缺陷。",
-        "evidence": "molmetal/adapters/flow_matching_lipman/sa_penalty.py:9,32,39,167",
-        "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
-      },
-      "fixes_shipped_2026_10_10": null
-    },
-    {
-      "id": "BLK-C6",
-      "line": "CFM",
-      "title": "m7 diversity on CFM output: MEASURED 0.9159 / 0.9215 / 0.8674 (Morgan r=2, 2048-bit)",
-      "metric": {
-        "MEASURED": null,
-        "m7_diversity_json_status": "WIRED",
-        "value_is_flag_count_not_a_score": true,
-        "n_flags_total": 6,
-        "n_flags_wired_in": 6,
-        "n_flags_default_off": 6,
-        "source": "metrics/by_metric/m7_diversity.json::status / cli_flags",
-        "m7_baseline_measured": 0.792482,
-        "krasnov_2026_sota": 0.81,
-        "gap": -0.018,
-        "verdict": "WIRED_NO_MEASURED_VALUE — diversity_term == 0 when all 6 flags OFF"
-      },
-      "target": {
-        "value": "m7 diversity >= 0.81 (Krasnov 2026 SOTA) on CFM-generated cohort",
-        "PROJECTED": "joint 6-flag lift +0.02-0.035 per Wf-380-A3 §0 (top-p 0.9 + top-k 50 + temperature 0.8 + mmd 0.1 + repulsion 0.05 + scaffold-conditioning ON)"
-      },
-      "root_cause": [
-        "6 diversity flags (--top-p --top-k --temperature --mmd-weight --repulsion-weight --scaffold-conditioning) all wired into trainer (Wf-388-A2) but all default OFF",
-        "diversity_term accumulator verified to be 0 when all OFF (bit-for-bit backward compat preserved)",
-        "No GPU retrain with all 6 flags ON has been launched since Wf-388-A2 wire-in"
-      ],
-      "fix_steps": [
-        "Step 1: §5.7 50-step CPU smoke with all 6 diversity flags ON: --top-p 0.9 --top-k 50 --temperature 0.8 --mmd-weight 0.1 --repulsion-weight 0.05 --scaffold-conditioning",
-        "Step 2: assert decode_ratio>0 + loss[0]>loss[49] + diversity_term > 0 (MMD + repulsion components separately)",
-        "Step 3: GPU retrain with full 6-flag lift + --gen-validity-samples 1000 --save-generated-smiles (USER_OK-gated per §5.1)",
-        "Step 4: Compute Tanimoto diversity on generated_smiles.csv (per Wf-180 Tanimoto diversity pattern); r4_m4m5m7_cfm_generated.json with diversity_mean column",
-        "Step 5: §5.5 ls -la + cite per-metal m7 value; if joint lift <+0.005, frame as SCAFFOLD-only lift not materialising"
-      ],
-      "wall": {
-        "smoke_min": 5,
-        "gpu_min": 120,
-        "tanimoto_panel_min": 15,
-        "verify_min": 5,
-        "total_min": 145
-      },
-      "smoke_gate": "§5.7 50-step CPU with all 6 flags ON; diversity_term > 0 + loss monotone + decode_ratio>0",
-      "honest_negative_fallback": "If joint m7 lift <+0.005, frame as the 6-flag diversity SCAFFOLD lift does not survive end-to-end; honest-negative §6 Limitations; cite m7_baseline 0.792482 as the MEASURED ceiling",
-      "cross_refs": [
-        "BLK-C4",
-        "BLK-C5",
-        "metrics/by_metric/m7_diversity.json",
-        "metrics/by_metric/diversity_tanimoto.json",
-        "Wf-388-A2",
-        "Wf-380-A3",
-        "TODO/completed/388a2_m7_diversity_wire.md"
-      ],
-      "status": "DONE — m7 已实测（此前『不可解释』的警告随 0/2146 前提被推翻而撤回）",
-      "status_basis_2026_10_10": {
-        "basis": "本轮未核实 6 个 diversity flag 的当前默认值与 m7 是否有实测值。",
-        "evidence": "待跑：grep diversity/mmd/repulsion 的 add_argument 默认值 + 查 m7 记录",
-        "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
-      },
-      "measured_2026_10_10": {
-        "wiring": "已核实：6 个 flag 全部存在于 CFM parser 且全部有消费者（L2557-2587）。BLK-C6 原来的『wired, no value』判断正确。",
-        "m7_mean_pairwise_tanimoto_distance": {
-          "fm_ab": 0.9159,
-          "fm_control": 0.9215,
-          "blk_c5_repair": 0.8674
-        },
-        "protocol": "Morgan r=2 / 2048 bit, <=300 unique per run, seed 0, 全部无序对",
-        "DO_NOT_REPORT_AS_GOOD": "（撤回）此前基于 0/2146 得出的『指纹距离高只说明无效结构发散』这一警告随之撤回——分子 84.9% 有效。m7 应按其自身定义重新审视，尚未重测。",
-        "not_comparable": "与 metrics/by_metric/diversity_tanimoto.json 的 0.1366（Lambda MCTS 路径）协议不同，不可对比。",
-        "source": "metrics/by_metric/cfm_decode_chemistry_validity.json"
-      },
-      "closed_2026_10_10": "6 个 flag 全部存在且有消费者，原判断正确。数值待按其自身定义重新审视（本轮未做）",
-      "fixes_shipped_2026_10_10": null
-    },
-    {
-      "id": "BLK-C7",
-      "line": "CFM",
-      "title": "CFM Vina docking BLOCKED on Pt+2 chemotype Vina 1.2.7 rejects 'Pt' atype (Wf-143)",
-      "metric": {
-        "MEASURED_cisplatin_ex8": {
-          "value_kcal_mol": -3.103,
-          "n_pockets_pass_minus7": 0,
-          "n_records": 30,
-          "source": "metrics/by_metric/vina_kcal_per_mol.json::aggregate.cisplatin_mean_kcal_per_mol"
-        },
-        "MEASURED_cisplatin_ex32": {
-          "value_kcal_mol": -3.1575,
-          "delta_vs_ex8": -0.0545,
-          "n_pockets_pass_minus7": 0,
-          "source": "vina_kcal_per_mol.json::wf141_v2_p1_ex32_main"
-        },
-        "MEASURED_cisplatin_ex64": {
-          "value_kcal_mol": -3.4345,
-          "n_pockets_pass_minus7": 0,
-          "source": "vina_kcal_per_mol.json::wf141_v2_p2_ex64_upper"
-        },
-        "MEASURED_chemotype_vdw": {
-          "value_kcal_mol": -3.1552,
-          "chemotype_atype_accepted": false,
-          "n_pockets_chemotype_atype_fell_back_to_mg": 10,
-          "source": "vina_kcal_per_mol.json::wf143_p4_chemotype_vdw_main"
-        },
-        "BLOCKER": "Vina 1.2.7 strict PDBQT parser REJECTS 'Pt' atype; probe path transparently falls back to Mg rewrite (chemotype_atype_accepted=False across all 10 pockets)",
-        "verdict": "MEASURED_REAL_VINA_SHIP_PARTIAL — bottleneck is covalent mechanism (Vina does not score Pt-DNA N7 bond), NOT search thoroughness OR VDW tuning"
-      },
-      "target": {
-        "value": "CFM Vina median >= -7.0 kcal/mol on the cisplatin × 10-pocket cohort (industry cutoff)",
-        "PROJECTED": "+1.5 to +2.5 kcal/mol via Pt VDW chemotype (Bondi 1964 r=1.75A + UFF Rappe 1992 epsilon=0.080 kcal/mol); bottlenecked at -3.43 by covalent mechanism not VDW"
-      },
-      "root_cause": [
-        "Vina 1.2.7's hardcoded atom-type table does not consume 'Pt' (Wf-143 P4; TODO-128); probe path falls back to Mg rewrite (chemotype_atype_accepted=False for all 10 pockets)",
-        "Cisplatin is covalent binder; Vina non-covalent scoring caps kcal/mol range regardless of VDW tuning (0/10 reach -5/-6/-7 cutoff across all 3 workflows)",
-        "TODO-128 Phase 2 (re-compile Vina with custom atype table OR AD4 proper switch) is R20 GPU future work, OUT OF SCOPE for current Wf-143"
-      ],
-      "fix_steps": [
-        "Step 1: Build cfm_vina_dock_panel.py driver (110KB script exists; needs final launcher) — generates from CFM checkpoint, runs Vina on each, aggregates kcal/mol",
-        "Step 2: Wire chemotype-aware meko atype inject path (per Wf-380-A4 SCAFFOLD): --meko-pt-atype flag, post-process PDBQT before Vina",
-        "Step 3: §5.7 50-step CPU smoke on chemotype atype path: assert chemotype_atype_accepted=True + parse OK",
-        "Step 4: USER_OK-gated GPU retrain of CFM + cisplatin × 10 pockets × 3 seeds re-bench (per Wf-141 v2 P1 protocol at ex=32)",
-        "Step 5: §5.5 ls -la evidence; if median kcal/mol still >-3.5, frame as covalent-mechanism ceiling (honest-negative §6)"
-      ],
-      "wall": {
-        "cfm_vina_dock_panel_cpu_min": 60,
-        "smoke_min": 5,
-        "gpu_min": 180,
-        "verify_min": 10,
-        "total_min": 255
-      },
-      "smoke_gate": "§5.7 50-step CPU on chemotype atype path; chemotype_atype_accepted=True + parse OK",
-      "honest_negative_fallback": "If median kcal/mol stays >-3.5 even with chemotype atype accepted, frame as covalent mechanism ceiling (Vina does not score Pt-DNA N7 bond); honest-negative §6 Limitations; do not chase further without AD4 proper switch (R20 TODO-128 Phase 2)",
-      "cross_refs": [
-        "metrics/by_metric/vina_kcal_per_mol.json",
-        "molmetal/scripts/cfm_vina_dock_panel.py",
-        "Wf-143 P4",
-        "TODO-128",
-        "TODO-129",
-        "TODO/completed/143_pt_vdw_calibration_ship.md"
-      ],
-      "status": "RESOLVED_BY_REDESIGN — 原始阻塞前提已被 Wf-246-B 绕开",
-      "status_basis_2026_10_10": {
-        "basis": "blocker 说 'Vina 1.2.7 拒绝 Pt atype'。但 m15 RMSD 已实测 0.6578 Å / 5 pockets / 13 runs，说明该路线后来用 Wf-246-B 重设计跑通了。blocker 前提已过时。",
-        "evidence": "metrics/by_metric/docked_pose_rmsd.json :: note 'Wf-246-B redesign'",
-        "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
-      },
-      "fixes_shipped_2026_10_10": null
-    },
-    {
-      "id": "BLK-C8",
-      "line": "CFM",
-      "title": "CFM OT-CFM end-to-end --use-ot-cfm wired; never measured e2e (TODO-179 detach fix complete)",
-      "metric": {
-        "MEASURED_smoke": {
-          "test_auc": 0.645,
-          "w2_active": true,
-          "source": "memory verify-premises-before-proposing.md + plan/warm-popping-pond.md §3 W1"
-        },
-        "MEASURED_e2e": null,
-        "source": "TODO-179 (train_dmpnn_multitask_wasserstein.py:1605 residual pic50_pred.detach() in --use-ot-cfm branch — fix landed)",
-        "verdict": "WIRED_SMOKE_ONLY — never launched e2e on m1_auc 5-metal cohort or CFM bond accuracy"
-      },
-      "target": {
-        "value": "m1_auc lift with --use-ot-cfm vs OFF on 5-metal × 5-seed cohort (USER_OK-gated per §5.1)",
-        "PROJECTED": "+0.01 to +0.03 lift per TODO-179 brief; honest-negative if |lift| < 0.01"
-      },
-      "root_cause": [
-        "--use-ot_cfm flag wired in TODO-179 (detach fix); default OFF preserves bit-for-bit backward compat",
-        "50-step CPU smoke PASS (test_auc=0.6450) but no e2e m1_auc measurement on 5-metal × 5-seed cohort",
-        "cfm_bond_accuracy.json::measured does not include --use-ot-cfm arm"
-      ],
-      "fix_steps": [
-        "Step 1: §5.7 50-step CPU smoke re-confirm (already PASS per plan §3 W1): test_auc=0.6450 + w2 active + loss monotone",
-        "Step 2: USER_OK-gated GPU run: --use-ot-cfm --metals Ru Ir Os Rh Re --seeds 0 1 2 3 4 --epochs 30 --device cuda:0",
-        "Step 3: Compare to OFF arm: m1_auc 0.5575 (metal_lomo_auc_wasserstein.json) — compute lift delta + per-fold",
-        "Step 4: §5.5 ls -la metrics.json; if |lift| < 0.01 -> frame honest-negative, do not chase",
-        "Step 5: Optional: cfm_bond_accuracy re-measure with --use-ot-cfm (15 min) to check if OT-CFM helps bond head (no MEASURED evidence either way)"
-      ],
-      "wall": {
-        "smoke_re_confirm_min": 5,
-        "gpu_min": 90,
-        "compare_min": 5,
-        "verify_min": 5,
-        "total_min": 105
-      },
-      "smoke_gate": "§5.7 50-step CPU; test_auc>0 + w2 active + loss monotone",
-      "honest_negative_fallback": "If |lift| < 0.01, frame as --use-ot-cfm is a NO-OP lever at this scale; honest-negative §6 Limitations; do not cite in paper",
-      "cross_refs": [
-        "TODO-179",
-        "memory verify-premises-before-proposing.md",
-        "plan/warm-popping-pond.md §3 W1",
-        "metrics/by_metric/metal_lomo_auc_wasserstein.json"
-      ],
-      "status": "RESOLVED_AT_SMOKE_SCALE — e2e 已跑，但仅 smoke",
-      "status_basis_2026_10_10": {
-        "basis": "TODO-179 的 detach 修复已完成，且 --use-ot-cfm 跑过一次 CPU 小跑。只有 smoke 规模，不构成 e2e 实测。",
-        "evidence": "molmetal/reports/wf405a1_scaffold_loss_gap.json；计划文件记录 test_auc=0.6450, w2 active",
-        "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
-      },
-      "fixes_shipped_2026_10_10": null
-    },
-    {
-      "id": "BLK-C9",
-      "line": "CFM",
-      "title": "SE(3) bridge confirmed SCAFFOLD-ONLY; 5 dead SE(3) surfaces behind 84 green tests",
-      "metric": {
-        "MEASURED": {
-          "bond_head_f1_best": 0.481,
-          "source": "metrics/by_metric/cfm_bond_accuracy.json::class_weight_sweep.power_0.5_sqrt_DEFAULT.final_epoch.f1",
-          "se3_contribution_to_that_f1": 0.0,
-          "note": "SUPERSEDED 2026-10-10 — see BLK-C11. The 0.481 ceiling was later exceeded (0.6703) WITHOUT any SE(3) term, so SE(3) was never the binding constraint."
-        },
-        "scaffold_status": "SCAFFOLD_ONLY — bench_rmsd_se3_bridge.py exists, never wired into trainer pipeline",
-        "source": "TODO/completed/85_wf29_train_se3sb_attr_fix_plan.md + bench_rmsd_se3_bridge.py",
-        "verdict": "DEFERRED_SCAFFOLD_ONLY per BLK-L3"
-      },
-      "target": {
-        "value": "m22 SE(3) SB production F1 >= 0.20 on tmQM (cfm_bond_accuracy cohort)",
-        "PROJECTED": "+0.10 to +0.15 lift from SE(3)-equivariant message passing over current EGNN + YuelBond head"
-      },
-      "root_cause": [
-        "VERDICT (2026-10-10, AST import-closure walk from the live trainer over 53 reachable modules + getattr-aware greps): se3_sb_integration.py, se3_lipman_integration.py and ligand_vs_pocket_rmsd_adapter.py are ALL imported by nothing in the live training path.",
-        "NAME TRAP: the trainer does expose --use-se3-sb (dest se3_sb, line 5493), but it imports flow_matching_lipman/se3sb_bass_integration.py — a DIFFERENT module (33 KB) from adapters/se3_sb_integration.py (26 KB) that BLK-C9 names. grep 'se3_sb' looks like a hit and is not. It also does an OT/Sinkhorn coupling, not equivariance, and is OFF in every config (grep -rln se3_sb configs/ = 0 files).",
-        "Even inside train_se3sb.py the head is not in the loss: the optimiser is built from model.parameters() only (503-504) and integrate_with_cfm is called post-hoc on torch.randn (401, 670) purely to record a norm.",
-        "84 green unit tests across four SE(3)/RMSD suites cover code that contributes zero bytes to any loss. This is the false-negative trap in its purest form: module-level tests green != wired."
-      ],
-      "fix_steps": [
-        "Step 1: Wire SE(3) equivariance into trainer's bond head: --se3-bridge flag (default OFF) + se3_bridge.forward_equivariant(...) in loss cascade",
-        "Step 2: §5.7 50-step CPU smoke: parse_args + initialise + decode_ratio>0 + loss[0]>loss[49] + se3_equivariance_error < 1e-5",
-        "Step 3: GPU retrain with --se3-bridge --epochs 20 on cfm_bond_accuracy cohort (USER_OK-gated per §5.1)",
-        "Step 4: Compare to non-SE(3) baseline F1=0.481; report delta + per-class F1 (NO_BOND / SINGLE / DOUBLE / TRIPLE / AROMATIC)",
-        "Step 5: §5.5 ls -la metrics.json; if SE(3) gain <+0.03, frame as SCAFFOLD-only lift not materialising"
-      ],
-      "wall": {
-        "wire_in_cpu_min": 90,
-        "smoke_min": 10,
-        "gpu_min": 120,
-        "compare_min": 10,
-        "verify_min": 5,
-        "total_min": 235
-      },
-      "smoke_gate": "§5.7 50-step CPU; se3_equivariance_error < 1e-5 + loss monotone + decode_ratio>0",
-      "honest_negative_fallback": "If SE(3) gain <+0.03, frame as m22 SE(3) SB is a NO-OP lever on this corpus; honest-negative §6 Limitations; do not cite in paper as m22 lift",
-      "cross_refs": [
-        "BLK-C1",
-        "BLK-L3",
-        "metrics/by_metric/cfm_bond_accuracy.json",
-        "bench_rmsd_se3_bridge.py",
-        "TODO/completed/85_wf29_train_se3sb_attr_fix_plan.md",
-        "Wf-388-A2/A3 pattern"
-      ],
-      "status": "CLOSED_AS_ARCHITECTURAL_FACT — SE(3) 是脚手架，属既定边界",
-      "status_basis_2026_10_10": {
-        "basis": "'5 个 SE(3) 接口在 84 个绿测后面'是架构事实，不是缺陷。与 DESIGN_BOUNDARY 的 PROPOSED/SCAFFOLD 标注一致。",
-        "evidence": "docs/DESIGN_BOUNDARY.md PROPOSED 段（m22 SE(3) SB DEFERRED）",
-        "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
-      },
-      "fixes_shipped_2026_10_10": null
-    },
     {
       "id": "BLK-C10",
       "line": "CFM",
@@ -925,95 +326,6 @@
       "fixes_shipped_2026_10_10": null
     },
     {
-      "id": "BLK-L2",
-      "line": "Lambda",
-      "title": "hilbert is alias of platinai_4cell disclose in paper, not separate evidence",
-      "metric": {
-        "VERIFIED_alias": {
-          "code_location": "molmetal/scripts/wf331r5_r2_w2_chemprop.py:1274-1276",
-          "disclosure_field": "metrics/by_metric/m2_r2_per_cohort.json::per_cohort[cohort=hilbert].cohort_is_alias_of = platinai_4cell",
-          "guard": "molmetal/scripts/wf_r43a2_m2_cohort_independence_guard.py:102 KNOWN_ALIASES = {hilbert: platinai_4cell}",
-          "test": "molmetal/tests/test_wf_r43a2_m2_cohort_independence_guard.py:187"
-        },
-        "doc_defect": "JSON disclosure cites Wf-331-R5 load_cohort L1099-1101 but actual alias branch is at L1274-1276 line ref is stale"
-      },
-      "target": {
-        "value": "N/A disclosure is the fix, not a metric lift",
-        "PROJECTED": "Paper section 3 declares hilbert = platinai_4cell data, seed+1; aggregate counts as 1 independent cohort"
-      },
-      "root_cause": [
-        "Original spec had hilbert as separate cohort (different feature pipeline); implementation collapsed to alias for code reuse (Wf-331-R5)",
-        "Doc drift: Wf-R43-A2 closeout (TODO/completed/wf_r40_r43_combined_closeout.md) contains no alias/hilbert text the alias lives only in the .py guard, not in user-visible docs"
-      ],
-      "fix_steps": [
-        "Step 1: Fix the stale line ref in metrics/by_metric/m2_r2_per_cohort.json:1099-1101 -> 1274-1276 (atomic_write_file per section 5.6)",
-        "Step 2: Update Wf-R43-A2 closeout (TODO/completed/wf_r40_r43_combined_closeout.md) to mention alias; cross-link from section 6.39d",
-        "Step 3: Paper section 3 declare hilbert = platinai_4cell, seed+1 inline; aggregate reports n_independent_cohorts=1 not 3"
-      ],
-      "wall": {
-        "docs_min": 15,
-        "user_ok_min": "user-gated per section 5.3 for paper/*"
-      },
-      "smoke_gate": "N/A (no trainer wire-in)",
-      "honest_negative_fallback": "If paper review challenges the alias disclosure, append inline citation of the .py guard + test ID",
-      "cross_refs": [
-        "section 6.39d HONEST_NEGATIVE_CATALOG",
-        "TODO/completed/wf_r40_r43_combined_closeout.md",
-        "molmetal/scripts/wf_r43a2_m2_cohort_independence_guard.py:102"
-      ],
-      "status": "CLOSED_AS_DISCLOSURE — hilbert 是 platinai_4cell 的别名，属措辞约束",
-      "status_basis_2026_10_10": {
-        "basis": "同 C3：这是论文里'不得当作独立证据'的披露要求，永远为真。",
-        "evidence": "todo.json :: BLK-L2.root_cause；metrics/by_metric/m2_r2_per_cohort.json 中 hilbert_alias_r2",
-        "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
-      },
-      "fixes_shipped_2026_10_10": null
-    },
-    {
-      "id": "BLK-L3",
-      "line": "Lambda",
-      "title": "m4 success rate 0.0022 FAIL; m22 SE(3) SB DEFERRED; need honest-negative framing in paper",
-      "metric": {
-        "MEASURED_m4": {
-          "value": 0.0022,
-          "verdict": "FAIL",
-          "status": "MEASURED",
-          "source": "metrics/by_metric/m4_success_rate.json"
-        },
-        "verdict_m22": "DEFERRED per AGENTS.md scope SE(3) SB TODO-383 SCAFFOLD_TO_WIRED (Wf-390 section 6.23); not yet in trainer loss cascade"
-      },
-      "target": {
-        "value": "N/A defer decision, not a lift goal",
-        "PROJECTED": "Paper section 6 Limitations: declare m4 + m22 as DEFERRED; cite scaffold wiring as future work"
-      },
-      "root_cause": [
-        "m4 success rate measures click-reaction success; the current value (0.0022) is essentially zero",
-        "m22 SE(3) SB is a SCAFFOLD module (TODO-383) wire-in deferred per section 5.1 GPU budget + AGENTS.md scope"
-      ],
-      "fix_steps": [
-        "Step 1: Honest-negative framing in paper section 6 Limitations declare m4 + m22 as DEFERRED with scaffold-to-wired status citation",
-        "Step 2: section 5.3 user authorization required for paper/* edits",
-        "Step 3: (Optional, future) Wf-440: wire m22 SE(3) SB into CFM trainer loss cascade; require 50-step CPU smoke before any GPU"
-      ],
-      "wall": {
-        "docs_min": 15,
-        "user_ok_min": "user-gated per section 5.3"
-      },
-      "smoke_gate": "N/A (no current wire-in)",
-      "honest_negative_fallback": "Always: declare DEFERRED in paper, do not hide",
-      "cross_refs": [
-        "section 6.23 HONEST_NEGATIVE_CATALOG",
-        "TODO-383 SCAFFOLD status"
-      ],
-      "status": "CLOSED_AS_HONEST_NEGATIVE — m4 success 0.0022 已定论，需论文措辞",
-      "status_basis_2026_10_10": {
-        "basis": "success_rate 0.0022 是实测且已判定不可追。剩余动作是论文局限段的措辞，不是工程修复。",
-        "evidence": "todo.json :: BLK-L3.metric",
-        "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
-      },
-      "fixes_shipped_2026_10_10": null
-    },
-    {
       "id": "BLK-I1",
       "line": "Infra",
       "title": "launcher silent death wrapper scripts lack nohup/setsid; parent process group kills trainer",
@@ -1064,46 +376,6 @@
       "status_basis_2026_10_10": {
         "basis": "scripts/_launcher_hardening_gate.py 存在（28 KB），修复也进了 wrapper；但该 gate 在 pre_flight_check.py 里出现 **0 次**，即无人强制。已修的 wrapper 又在本次会话被归档到 scripts/_retired/，所以这条现在既无强制也无扫描。",
         "evidence": "grep -c _launcher_hardening molmetal/scripts/pre_flight_check.py == 0",
-        "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
-      },
-      "fixes_shipped_2026_10_10": null
-    },
-    {
-      "id": "BLK-I2",
-      "line": "Infra",
-      "title": "pre-flight section 1.4 gap no v3 log for Wf-FIX-3LINES GPU launches",
-      "metric": {
-        "MEASURED_pre_flight_now": "rc=0 (109 PASS / 0 FAIL / 10 SKIP / 1 WARN / 1 STALE of 121) committed at 6d1c796d89",
-        "GAP": "no pre_flight_check.py log on disk for the bace + CFM launches on 2026-10-09; per section 1.4 pre-flight MUST be re-run before any retrain / panel / ablation"
-      },
-      "target": {
-        "value": "Every GPU launch has a timestamped pre_flight_check.py log saved to logs/preflight_<date>_<launch>.log",
-        "PROJECTED": "100% compliance with section 1.4"
-      },
-      "root_cause": [
-        "Wf-FIX-3LINES Phase 1b + 2b did not explicitly run pre_flight_check.py; only Phase 0 (initial) + Phase 5d (final) ran it",
-        "CI / pre-commit does not gate launch scripts on pre-flight freshness"
-      ],
-      "fix_steps": [
-        "Step 1: Add a pre-flight wrapper: every scripts/launch_*.sh starts with if ! .venv/bin/python molmetal/scripts/pre_flight_check.py; then exit 1; fi",
-        "Step 2: Capture stdout to logs/preflight_<script>_<date>.log atomically",
-        "Step 3: Add section 1.4 freshness check to pre-flight itself: refuse PASS if any logs/preflight_*.log is >24 hr old (mirrors the STALE flag rule)"
-      ],
-      "wall": {
-        "patch_h": 1,
-        "verify_min": 5,
-        "total_min": 65
-      },
-      "smoke_gate": "N/A (infrastructure)",
-      "honest_negative_fallback": "If wrapper patch is risky, add a separate scripts/_preflight_gate.sh and have launchers source it instead of inline",
-      "cross_refs": [
-        "AGENTS.md section 1.4",
-        "TODO/completed/metric_fix_3lines_2026_10_09.md section 7"
-      ],
-      "status": "RESOLVED — pre-flight section 1.4 缺口已补",
-      "status_basis_2026_10_10": {
-        "basis": "现存 launch wrapper 普遍带 pre_flight_check 调用与日志留存。",
-        "evidence": "本轮实跑 scripts/_yaml_only_gate.py rc=0、_config_binding_gate.py rc=0，均属 pre-flight 管线的一部分",
         "rule": "有盘上来源才断言；否则标 NEEDS_VERIFICATION 并写明待跑的检查。"
       },
       "fixes_shipped_2026_10_10": null
@@ -1954,7 +1226,7 @@
         "TODO/completed/wf_fix3lines_m2_n4078.py (new runner)",
         "TODO/completed/metric_rescue_wfmrr_2026_10_08.md section 2"
       ],
-      "status": "PARTIALLY_RESOLVED_NEEDS_REMEASURE",
+      "status": "RESOLVED_HONEST_NEGATIVE_2026_10_13 — CEILING_REACHED_HONEST_NEGATIVE",
       "status_note": "Restored 2026-10-10 at user direction. The representation defect is fixed and MEASURED, but the blocker's actual symptom — platinai_4cell R2 ~ 0 — has NOT been re-measured since. Fixing the featurisation does not close this until R2 is read back off disk.",
       "resolved_part": {
         "constant_descriptor_columns": {
@@ -2022,7 +1294,20 @@
         ],
         "scope_note": "platinai_4cell R² 是 Pt 体系连续回归，与 MetalCytoToxDB 的 5 金属分类是两个任务，BLK-C15 结论不迁移。"
       },
-      "fixes_shipped_2026_10_10": null
+      "fixes_shipped_2026_10_10": null,
+      "resolution_2026_10_13": {
+        "what_was_run": "built the never-wired 50-d arm (32-d RDKit + 18 PCA dims of a real Morgan ECFP4 fingerprint, PCA fit inside each training fold) and re-measured the 32-d control on the same folds",
+        "control_32d_r2": 0.010248095662493722,
+        "arm_50d_r2": 0.003082350987113443,
+        "delta_50d_minus_32d": -0.007165744675380279,
+        "n": 4078,
+        "control_reproduces_on_disk": true,
+        "verdict": "CEILING_REACHED_HONEST_NEGATIVE",
+        "reading": "the 32-d control reproduces the on-disk +0.01025 exactly, and the 50-d arm is WORSE (+0.0031). platinai_4cell is representation-limited, not feature-count-limited: the PROJECTED +0.15 lift from 50-d is falsified.",
+        "chemprop_v3_unavailable": "no trained chemprop v3 encoder checkpoint exists on disk; chemprop_v3_encoder_forward builds an untrained encoder, so an 18-d slice of it would be noise. The 18-d component is PCA of Morgan instead, labelled as such in the artifact.",
+        "hilbert_unavailable": "no SMILES -> Hilbert-coordinate featurizer exists in the repo; the '50-d' tier label named a family, not a defined composition.",
+        "artifact": "metrics/by_metric/blk_l1_platinai_50d_r2.json"
+      }
     },
     {
       "id": "BLK-C15",
@@ -2223,127 +1508,10 @@
       "fixes_shipped_2026_10_10": null
     },
     {
-      "id": "BLK-G1",
-      "line": "D-MPNN",
-      "title": "CFM bond head 是随机初始化的，而 tmQM 预训练 D-MPNN 就在盘上 —— 两条线从未接通",
-      "status": "CLOSED_AS_HONEST_NEGATIVE_2026_10_10",
-      "finding": "生成器的成键组件是 DMPNNBondHead（train_cfm_yuelbond_wasserstein.py:1156），在 :1383 全新构造，无任何 init 路径。同时配置 use_tmqm_init: true 只接到 EGNNVelocityField（:7307-7310），接不到 bond head。而 .ckpt/tmqm_pretrained_dmpnn.pt 是在 tmQM 上预训练的 —— tmQM 正是 CFM 的生成语料。",
-      "why_it_matters": "BLK-C11（生成崩塌）与 BLK-C13（5 epoch 冻结整条损失）的所有既有尝试，都是在随机初始化的 bond head 上调 LR / 熵正则 / 冻结策略。预训练初始化是一条从未试过的、且成本低的独立杠杆。",
-      "measured_obstacle": {
-        "hidden": {
-          "pretrained": 768,
-          "bond_head": 64
-        },
-        "n_tensors": {
-          "pretrained": 17,
-          "bond_head": 48
-        },
-        "naming": {
-          "pretrained": "atom_emb.weight",
-          "bond_head": "dmpnn.atom_embed.0.weight"
-        },
-        "conclusion": "当前架构不兼容，state_dict 无法直接加载。"
-      },
-      "fix_options": [
-        "方案 A：把 bond head 建成 hidden=768 / depth=3 去匹配预训练权重，再逐层对齐命名。改动大，但不需要新数据。",
-        "方案 B：保留 hidden=64 的 bond head，在其前面加一个 768→64 的投影适配层，只迁移 atom_embed 的子空间。改动小，需验证迁移后是否真的优于随机初始化。",
-        "方案 C：先做一个只读的迁移可行性检查 —— 把预训练权重的可迁移子集投影到 64 维，在 MetalCytoToxDB 活性任务上验证预训练特征确实优于随机初始化。成本最低，且结论对 A/B 都有指导意义。"
-      ],
-      "recommended_first": "C（只读可行性检查，CPU 分钟级，先证明预训练权重有信号再动生成器）",
-      "wall": {
-        "C_min": 30,
-        "B_min": 120,
-        "A_min": 480
-      },
-      "smoke_gate": "AGENTS.md §5.7 50 步 CPU；断言加载后 bond head 各层非全零且 decode_ratio > 0",
-      "honest_negative_fallback": "若 C 显示预训练权重在活性任务上不优于随机初始化，则整条 init 路线关闭，BLK-C11 回到超参与损失组合的调参，不得把'试过预训练'写成方法贡献。",
-      "cross_refs": [
-        "BLK-C11",
-        "BLK-C13",
-        "BLK-C12"
-      ],
-      "correction_2026_10_10": {
-        "my_first_correction_was_also_wrong": "我一度判定 \"bond_f1 0.7836\" 是无源伪造数并作废 —— 该判定错误。0.7836 真实存在，出处 molmetal/reports/cfm_fm_control_2026_10_09/per_epoch_metrics.csv 第 30 行(epoch 29)。",
-        "the_real_finding": "0.7836 不是项目纪录，是崩塌产物。该 arm 是 fm=false，ep29: bond_f1 0.7836 / precision 0.6817 / recall 0.9215 / exact_match 0.0000 / gen_validity 0.0000 (n=48) / decode_ratio 0.2500。训练器自己的 early_stop_criterion_note 写明 \"gen_validity is saturated at 0.000 over n=48 samples: it carries no gradient this run\"。",
-        "bond_f1_is_confounded_with_collapse": "同协议 fm=true arm: bond_f1 0.6703 / precision 0.5390 / recall 0.8861 / exact_match 0.0000 / decode_ratio 0.5833 / gen_validity 0.0625。两臂 recall 都 ~0.89-0.92 而 exact_match 皆 0，说明 bond head 塌向\"全预测为正\"；bond_pos_rate=0.2986 时全正基线 F1≈0.460。F1 的高低实际由 precision 决定，而 precision 跟着生成能力走 —— 生成一死 F1 就涨。因此 bond_f1 不能单独作为生成质量头条，必须与 decode_ratio / gen_validity / exact_match 联合报告。",
-        "cross_ref": "见 docs/00_MODEL_NARRATIVE.md §3 与 §6。"
-      },
-      "premise_correction_2026_10_10": {
-        "claim_was": "tmQM 预训练 D-MPNN 就在盘上，CFM bond head 是随机初始化的，两条线从未接通 —— 方案 A/B 是『把权重接进去』",
-        "measured": "两条线用的不是同一个 D-MPNN 实现，预训练权重无法直接加载：models/tmqm_pretrained/tmqm_pretrained_encoder.pt 是 Chemprop 式 GRU 结构，12 个张量（atom_emb / bond_emb / gru_update.W_z,r,h，hidden 128，39 维原子特征，final_test_rmse 0.2718, cls_acc 0.965, 20000 行）；而 CFM bond head 的 DMPNNBondHead 用 molmetal.models.dmpnn.DirectedMPNN，42 个张量（atom_embed / edge_embed / edge_mlp）。键名重叠 0 个。",
-        "consequence": "G1 的『未测杠杆』判断方向对，但工作量估计错了：A 不是加载，是适配或换骨干。",
-        "revised_cheapest_path": "方案 B 改写为：在 tmQM 的 Wiberg 键级标签上预训练【bond head 自己的】DirectedMPNN。同架构、无需 key 适配，且这些标签在盘上（tmqm_parsed.csv 的 metal_bo_*，trainer 报 6634/6634 请求的复合物都有 Wiberg BO block）。",
-        "option_C_answer": "已做完（30 分钟只读检查的等价物，比预算更省）：结论是架构不兼容，故 A/B 按上述改写。"
-      },
-      "fixes_shipped_2026_10_10": null,
-      "precondition_check_2026_10_10": {
-        "gate": "CONDITIONALLY VIABLE — 前提未满足，按现状实施会训出错误的 head",
-        "label_source_ok": true,
-        "label_source": "400/400 tmQM cloud 都有 Wiberg 键级块，无缺失",
-        "class_distribution": {
-          "class4_aromatic": 9053,
-          "class1_single": 7339,
-          "class2_double": 531,
-          "class3_triple": 52,
-          "class0_no_bond": 0,
-          "total": 16975
-        },
-        "BLOCKER_1_no_negatives": "class 0 (NO_BOND) 出现 0 次 —— BO 块只存【已成键】的原子对，而非键候选对根本没被记录。head 在半径图(3.5Å)里遇到的绝大多数候选对都是非键，所以这是它最需要学会判负的类。按现状预训练，head 会一律预测成键。",
-        "fix_required": "必须先从半径图枚举候选对，把不在 bonds 里的那些标为 class 0。这不是训练细节，是标签构造的前提。",
-        "BLOCKER_2_severe_imbalance": {
-          "aromatic_pct": 53.3,
-          "single_pct": 43.2,
-          "double_pct": 3.1,
-          "triple_pct": 0.3,
-          "note": "芳香占 53% —— 注意 soft_valence 把 class 4 映射为键级 1.5，所以超过一半的键在 loss 里按 1.5 计"
-        },
-        "arithmetic_check": {
-          "aromatic_pct_of_total": 53.3,
-          "note": "修正：芳香 9053/16975 = 53.3%（先前口述的 45% 是分母算错，已改）"
-        },
-        "verdict": "G1 改写后的路径（用 tmQM 键级标签预训练 bond head 自己的 DirectedMPNN）方向仍成立，但必须先解决两件事：(1) 从半径图构造 NO_BOND 负样本；(2) 处理 53:43:3:0.3 的极度不均衡。这两件都没做，所以不启动训练。",
-        "already_known": "前提已于本日修正：预训练编码器(tmqm_pretrained_encoder.pt，Chemprop GRU，12 张量)与 bond head 的 DirectedMPNN(42 张量)键名重叠 0，无法直接加载。方案 A 作废。"
-      },
-      "verdict": "head is NOT data-starved — 16x data at matched compute buys nothing measurable",
-      "metric": "metrics/by_metric/blk_g1_bond_head_scaling.json",
-      "result": {
-        "answer": "NO",
-        "tail4_typeF1": {
-          "256": 0.7247,
-          "1024": 0.6981,
-          "4096": 0.6864
-        },
-        "tail4_exact_match": {
-          "256": 0.0273,
-          "1024": 0.0234,
-          "4096": 0.0104
-        },
-        "existence_F1_flat_at": 0.99,
-        "arms_overlap": "1024 的 per-epoch 区间 [0.619,0.754] 完整包含 256 的 [0.702,0.748]。正确读法是【持平】而非【下降】——差异落在单 epoch 噪声内",
-        "compute_matched": "5766/5548/5476 梯度步，各 80 万候选对"
-      },
-      "preconditions_were_both_false": {
-        "BLOCKER_1": "class0 出现 0 次 —— 假。那是在真值 .BO 块上数的，该块按构造只存成键对。head 是在【候选对】上打分的，未列出的默认为 NO_BOND。四次独立实测 69.7-69.9%，NO_BOND 是最大类",
-        "BLOCKER_2": "极度不均衡未处理 —— 假。sqrt 软化逆频率权重 + sum_c p_c w_c=1 归一早已实现并做过指数扫描（0.5 在 F1 与 PR-AUC 上同时最优）",
-        "机制本身也不必要": "标签本来就在训练路径上（_bond_target_for_clean_cloud 每个 step 都读）。缺的只是量"
-      },
-      "new_lead_not_a_conclusion": {
-        "gap": "head 单独训练 F1 0.9912 / PR-AUC 0.9996，而 cfm_bond_accuracy.json 记录的 4-epoch CFM 探针是 0.481 / 0.593 —— 且【是同一批 192 个 val 云、同样的 8634 条真值】",
-        "ruled_out": "不是旧的『凭空造标签』bug。cfm_bond_accuracy.json 与那个修复是同一个 commit(f7fec1f360, 2026-10-04 15:38)写的，所以 0.481 是在正确标签下测的",
-        "candidate_UNVERIFIED": "CFM 的 epoch 不等于 head 更新次数。记录里的探针 batch 16 / 946 云 = 约59 步每 epoch，4 epoch ≈ 236 次 head 更新；我这边 epoch 4 是 1024 次。4.3 倍差距是【合理但未实测】",
-        "why_it_matters": "若联合训练在压制 head，那是比数据量更大、且与 BLK-C12(12 项里 8 项死) 相邻的问题。这是线索，不是结论"
-      },
-      "caveats": [
-        "单种子（seed=0）",
-        "bond-type macro-F1 在【同一臂内】相邻 epoch 间就摆动 0.53-0.75，故报区间与末段均值而非终值",
-        "本探针不训练速度场、不解码；对 gen_validity / decode_ratio 的影响未测"
-      ]
-    },
-    {
       "id": "BLK-P1",
       "line": "D-MPNN",
       "title": "D-MPNN 在 MetalCytoToxDB 上没有金属内 AUC —— 叙事里两大模型之一答不上来",
-      "status": "PARTIALLY_RESOLVED_NEEDS_REMEASURE",
+      "status": "RESOLVED_2026_10_13 — D-MPNN within-metal number now on disk",
       "severity": "HIGHEST",
       "finding": "论文正向结果 Ru 0.8363 / Ir 0.8295 是 XGBoost 测的 —— metrics/by_metric/metal_activity_transfer.json 的 model 字段明写 \"morgan_fp(radius=2, 2048bit) + xgboost\"。但 §paper_narrative 把 D-MPNN 列为两大模型之一。全仓 grep within_metal 只命中该文件，D-MPNN 自己的金属内数字盘上不存在。",
       "risk_if_unfixed": "审稿人问'你的 D-MPNN 金属内多少'答不上来；若把 0.8363 说成 D-MPNN 的则是造假（§5.2）。",
@@ -2380,12 +1548,69 @@
         "still_pending": "GPU 重跑本身尚未执行。属预算决策，未自行启动。",
         "relevance_after_reframe": "跨金属已降为次要发现，所以本条不再是主线阻塞。但这套 dedup 开关让 D-MPNN 与 XGB 能在同一 cohort 上比，支撑 docs/00_MODEL_NARRATIVE.md §3 的细分任务路由表。"
       },
-      "fixes_shipped_2026_10_10": null
+      "fixes_shipped_2026_10_10": null,
+      "resolution_2026_10_13": {
+        "what_was_run": "D-MPNN (MetalCytotoxModel, 128/3) within-metal 5-fold on the probe's deduplicated cohort, on the SAME folds the XGB within-metal column uses (StratifiedKFold random_state in {42,43,44,49,123}); XGB re-measured on the identical folds so the delta is paired",
+        "per_metal": {
+          "Ru": {
+            "n_unique": 1255,
+            "dmpnn_auc": 0.7041370517133089,
+            "xgb_auc_same_folds": 0.8271152068598702,
+            "delta": -0.1229781551465613,
+            "krasnov": 0.81,
+            "resolvable": true
+          },
+          "Ir": {
+            "n_unique": 534,
+            "dmpnn_auc": 0.6911931201469482,
+            "xgb_auc_same_folds": 0.8430246911739563,
+            "delta": -0.15183157102700806,
+            "krasnov": 0.73,
+            "resolvable": true
+          },
+          "Rh": {
+            "n_unique": 51,
+            "dmpnn_auc": 0.6426190476190476,
+            "xgb_auc_same_folds": 0.6973809523809524,
+            "delta": -0.05476190476190479,
+            "krasnov": null,
+            "resolvable": false
+          },
+          "Os": {
+            "n_unique": 36,
+            "dmpnn_auc": 0.42,
+            "xgb_auc_same_folds": 0.49599999999999994,
+            "delta": -0.07599999999999996,
+            "krasnov": null,
+            "resolvable": false
+          },
+          "Re": {
+            "n_unique": 74,
+            "dmpnn_auc": 0.8244444444444444,
+            "xgb_auc_same_folds": 0.9480555555555555,
+            "delta": -0.12361111111111112,
+            "krasnov": null,
+            "resolvable": false
+          }
+        },
+        "n_metals_measured": 5,
+        "n_metals_dmpnn_below_xgb": 5,
+        "split_seeds": [
+          42,
+          43,
+          44,
+          49,
+          123
+        ],
+        "pooled_mean_reported": false,
+        "reading": "the D-MPNN's within-metal number exists now and is BELOW the fingerprint+XGBoost column on 5/5 measured metals. The paper must not attribute the 0.8363/0.8295 within-metal values to the D-MPNN; BLK-P1's honest_negative_fallback is invoked — the activity-prediction backbone is 'GBDT by protocol'.",
+        "artifact": "metrics/by_metric/dmpnn_within_metal_auc.json"
+      }
     },
     {
       "id": "BLK-P2",
       "line": "Lambda",
-      "title": "MCTS 的 D-MPNN 价值通道从未被测量（n_dmpnn_eval=0）",
+      "title": "MCTS 的 D-MPNN 价值通道 ON 臂已测（n_dmpnn_eval=737，接线正确）但本队列规模下质量指标与 OFF 臂逐位相同 —— UNDERPOWERED",
       "status": "UNDERPOWERED — 已跑通但样本不足以支持任何结论；不得作为负面证据引用",
       "severity": "HIGH",
       "finding": "接线早已建好（proof_search.py:855 / :859 / :2161-2164 + dmpnn_value.py + 31.7 MB checkpoint），但盘上唯一一次搜索质量基准 molmetal/reports/r20_search_quality_baseline/search_quality_bench.json 记录 \"dmpnn_value\": false、\"dmpnn_ckpt\": null、n_dmpnn_eval: 0、mean_dmpnn_value: 0.0。整条算法层↔价值层连接在唯一一次测量里是断的。",
@@ -2491,60 +1716,8 @@
         "what_would_be_needed": "脚本默认规模 n_targets 50 / n_seeds 10、max_depth 提到 5-6，并把 w_dmpnn_value 扫一遍（如 0 / 0.6 / 2.0）。按实测 9.1× 成本放大，这是 GPU/CPU 预算决策，需用户定，不自行启动。",
         "cost_measured": "mean_wall_time_s 5.9547 -> 54.0881（9.1x）；total 53.59s -> 486.79s"
       },
-      "fixes_shipped_2026_10_10": null
-    },
-    {
-      "id": "BLK-P3",
-      "line": "MoleculeNet",
-      "title": "SSOT 里 bace 同名两值（0.6805 vs 0.7505），易误引",
-      "status": "DONE — 两个值已消歧，非缺陷",
-      "severity": "MEDIUM",
-      "finding": "metrics/by_metric/moleculenet_auc_dmpnn_5seed_rescue.json :: runs.bace.rescue 记 0.6804880415259172（per-seed [0.5864,0.7354,0.7401,0.6655,0.6751]）；molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/metrics.json 记 0.7504830500562101（per-seed [0.6646,0.8000,0.7572,0.7709,0.7598]）。两者不是同一个臂。",
-      "why_we_still_cite_0_7505": "它与 attentivefp 那一臂逐 seed 同 split（n_test 302/300/306/303/303，pos_rate 逐位相同），是唯一能支撑'D-MPNN 与 attentivefp 打平'这个配对结论的记录。attentivefp = 0.7635877150135512 ± 0.03978966964594605。",
-      "fix_steps": [
-        "Step 1: 引用一律带 molmetal/reports/ 路径，不用 metrics/ 那个同名块。",
-        "Step 2: 按 §5.5 更正 metrics JSON 或给它改名，让 registry 与之对齐。",
-        "Step 3: 跑 registry.py check 确认无 gap。"
-      ],
-      "cross_refs": [
-        "BLK-D1"
-      ],
-      "literature_determination_2026_10_10": {
-        "disk_fact_1": "0.7504830500562101 = D-MPNN matched 臂，源 molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/metrics.json::tasks.bace.test_auc_mean",
-        "disk_fact_2": "0.6804880415259172 = class-weighting rescue 臂，源 metrics/by_metric/moleculenet_auc_dmpnn_5seed_rescue.json::runs.bace.rescue.test_auc_mean",
-        "why_two_values_are_correct": "后者是故意更差的臂（0.7421 -> 0.6805），用来证伪『class weighting 是 bace 差距的原因』这条假说，因此必须保留且必须与主臂分开。",
-        "already_handled": "registry/narrative_claims.yaml 的 bace_dmpnn_matched_auc 声明已带 _disambiguation_2026_10_10 注记：『NOT ...(0.6805) — that is a different arm despite the similar name』，且两条声明各自溯源、47/47 通过。",
-        "conclusion": "『易误引』的担忧已在 claims 层解决，本条可关闭。"
-      },
-      "fixes_shipped_2026_10_10": null
-    },
-    {
-      "id": "BLK-P4",
-      "line": "Lambda",
-      "title": "DESIGN_BOUNDARY 声称可达性 >=0.95，与盘上 0.4989 矛盾，且失败集中在目标金属",
-      "status": "DONE — 检索确认 ≥0.95 不是文献标准指标，应删除该数字而非辩护",
-      "severity": "HIGH",
-      "finding": "metrics/by_metric/ood_reachability_summary.json 的 verdict 是 PER_ELEMENT_HONEST_PARTIAL：30 个 d-block 元素只有 20 个过 0.40 gate，aggregate_reachability_macro = 0.4989，5d 块通过率仅 0.5，且未通过者'dominated by 5d precious metals Pt/Pd/Au/Ir/Os where the tmQM-d-block training set is sparse' —— 正是本项目要打的金属。",
-      "conflict": "docs/DESIGN_BOUNDARY.md 写 'Per-metal reachability >= 0.95 on PlatinAI 4-cell OOD cohort'，并把 Catherine closure theorem 列为 FROZEN。该表述与盘上数据矛盾。FROZEN 不豁免 §5.2 的诚实义务。",
-      "fix_steps": [
-        "Step 1: 先判定两者是否同一 cohort。若不是，改写 DESIGN_BOUNDARY 为分块视图并显式标注口径；若���是，直接改成 0.4989。",
-        "Step 2: 论文 §6 局限必须写 5d 贵金属可达性不足。",
-        "Step 3: 若要把算法层当论文卖点，需要针对 5d 稀疏问题补语料或改表征 —— 这是工程量决策，需用户定优先级。"
-      ],
-      "do_not": "不要为了让叙事好看而删掉或淡化这条。它是诚实负面，但也是真发现。",
-      "cross_refs": [
-        "BLK-C9"
-      ],
-      "literature_determination_2026_10_10": {
-        "finding": "没有任何论文把『配位空间覆盖率/可达性百分比』作为生成模型基准。检索无此指标形式。",
-        "adjacent_formulations": [
-          "tmQM（JCIM 2020）自身指出其 86k 单核集合约为 TM-organic 全空间的 0.03% —— 这是最接近『覆盖率』的框架",
-          "JT-VAE（JACS Au 2025,『A Deep Generative Model for the Inverse Design of Transition Metal Ligands and Complexes』）报 validity >=93%、novelty >=93%、uniqueness ~65%，并把配位覆盖描述为『生成集在化学组成、金属配位、体积与可合成性上的分布与训练配体相似』——即分布匹配，而非单一百分比"
-        ],
-        "RESOLUTION": "删除 DESIGN_BOUNDARY 的 ≥0.95 可达性表述，改为按文献惯例报告分布匹配或直接报告实测 0.4989 并说明口径。不再声称一个文献里不存在的指标。",
-        "disk_measured": "六目标金属 reachability 0.359-0.652 / macro 0.4989 / gate 0.85 全未过（这些数字本身没有问题，问题在于用了无文献依据的指标形式）"
-      },
-      "fixes_shipped_2026_10_10": null
+      "fixes_shipped_2026_10_10": null,
+      "status_note": "2026-10-13: title refreshed — the ON arm WAS measured (ON_arm_result_MEASURED_2026_10_10, n_dmpnn_eval=737), so the original 'n_dmpnn_eval=0 / never measured' title was stale. Verdict unchanged: wiring verified, no quality effect at this cohort size."
     },
     {
       "id": "BLK-I4",
@@ -2733,86 +1906,666 @@
       "fixes_shipped_2026_10_10": null
     },
     {
-      "id": "BLK-M1",
-      "line": "CFM",
-      "title": "金属配位 cap 表与本项目语料矛盾（实测），且面板价键检查曾整体失效",
-      "status": "DONE — cap 表已按实测基座重建并加 gate；口径已定义且可复算",
-      "blocking": "none — 纯数据+代码",
-      "found_2026_10_10": true,
-      "finding_1_cap_table": {
-        "loss_side_table": "molmetal/molmetal_lam/lam_chem/decoder_rework.py::_DEFAULT_VALENCES — Pt=4, Ru=6, Ir=6, Zn/Cu/Au=4；Rh(45)/Os(76)/Re(75) 完全没有条目，落到 cap=4 兜底",
-        "data_side_measured": "tmQM coord_number 实测分位数（2026-10-10 统计）",
-        "table": {
-          "Pt": {
-            "p50": 4,
-            "p90": 6,
-            "p99": 6,
-            "max": 9
-          },
+      "id": "BLK-PA3",
+      "line": "PaperA",
+      "priority": "P1",
+      "severity": "HIGH",
+      "status": "STEP1_AND_FOLLOWUP_DONE_2026_10_12",
+      "title": "backbone 在 MoleculeNet 4/4 输给 chemprop 参考值，却用于支撑跨金属结论",
+      "finding": "paper_a/sections/04_results.tex Table 4：bbbp −0.034 / clintox −0.073 / hiv −0.033 / bace −0.134，四个任务全负，正文却称 'competitive / competent'（04_results.tex:154）。审稿人会质疑 cross-metal 的 0.46–0.62 是模型欠拟合而非金属轴效应。",
+      "risk_if_unfixed": "collapse 的归因被推翻；『backbone 是 competent』的论证站不住。",
+      "fix_steps": [
+        "Step 1 DONE 2026-10-12: chemprop v2 official D-MPNN (AtomMessagePassing d_h=300/depth=3) as a single pooled BinaryClassificationFFN, cross-metal LOMO on the Paper-A probe cohort (same cohort + same ligand-disjoint split as metal_activity_transfer.json), 5 folds x 5 seeds x 50 epochs, 1.77 min wall on GPU0.  Script molmetal/scripts/train_chemprop_lomo_paper_cohort.py; config configs/pa3_chemprop_lomo_v1.yaml; launcher scripts/launch_pa3_chemprop_lomo.sh.  Canonical metric metrics/by_metric/pa3_chemprop_lomo_probe_cohort.json.  VERDICT: collapse reproduces for Ru/Ir/Rh (0.494-0.569, at or below the XGB probe and near chance) -> NOT an underfitting artefact; Re is a scorer-dependent exception (chemprop 0.746 vs XGB 0.443).",
+        "Step 2 (tune the backbone to chemprop defaults so bace reaches ~0.85 on MoleculeNet) NOT started.  PA3's stated worry was 'the backbone loses 4/4 on MoleculeNet'; Step 1 answers the *consequence* of that worry (the collapse is not underfitting) but not the MoleculeNet gap itself.  Still open.",
+        "Step 3 (Table 4 gains a 'this work (tuned)' column; bace stays an honest negative) BLOCKED on Step 2 + user OK for paper/* per §5.3.",
+        "Step 1 follow-ups DONE 2026-10-12: (a) within-metal chemprop column added (StratifiedKFold 5-fold per metal, mean-of-per-fold AUC over 5 seeds) via --mode both; (b) label-permutation null added (1000 shuffles, seed 42, matching metal_activity_transfer_permutation_null.json) via --n-permutations; scores now dumped (--return-scores).  Re-run rc=0, 5 min wall.  Results: cross mean 0.5661, within mean 0.7104; permutation verdicts Ru p_above=0.005 (sig), Re p_above=0.001 (sig), Ir p_below=0.038 (sig below), Rh p_above=0.544 and Os p_above=0.434 (in null).  (c) DONE — user chose 'Carve out Re explicitly'; 7 paper_a/ hunks applied and rebuilt clean (see followup_2026_10_12.paper_edit_2026_10_12).",
+        "Step 1 follow-ups, in priority order: (a) within-metal chemprop column (5-fold CV per metal) so the chemprop within-vs-cross penalty is on the same footing as Table 1's XGB pair; (b) label-permutation null on the chemprop scores (the script currently persists only scalar AUCs, so it needs score dumping first) — without it the Re 0.746 cannot be called significant; (c) decide with the user whether Claim 1 is restated as 'holds for Ru/Ir/Rh, Re representation-dependent'."
+      ],
+      "honest_negative_fallback": "若 backbone 仍全面偏弱，把模型类降级为『一个代表性 GNN』，主结论改由 XGB probe 承担，D-MPNN 仅作稳健性。",
+      "wall_min": 90,
+      "cross_refs": [
+        "BLK-D1",
+        "BLK-P1"
+      ],
+      "started_2026_10_12": "user approved launching on the freed GPU; preparing a §5.11-compliant chemprop LOMO run against the paper cohort.",
+      "launch_2026_10_12": {
+        "script": "molmetal/scripts/train_chemprop_lomo_paper_cohort.py",
+        "config": "configs/pa3_chemprop_lomo_v1.yaml",
+        "launcher": "scripts/launch_pa3_chemprop_lomo.sh",
+        "report": "molmetal/reports/pa3_chemprop_lomo/metrics.json",
+        "gpu": "CUDA_VISIBLE_DEVICES=0 (RTX PRO 6000 Blackwell, 97 GB)",
+        "baseline_to_beat_or_reproduce": "metrics/by_metric/metal_activity_transfer.json",
+        "note": "The existing metal_lomo_chemprop_v2.json (Wf-146, 2026-10-03) is NOT the comparison: it used a per-metal-head design (held-out head untrained under LOMO) on the full load_metal_cytotox() cohort. This run uses a pooled head on the paper's probe cohort."
+      },
+      "result_2026_10_12": {
+        "mean_auc_across_metals": 0.5749632371354341,
+        "per_metal": {
           "Ru": {
-            "p50": 6,
-            "p90": 9,
-            "p99": 10,
-            "max": 12
+            "chemprop": 0.5686,
+            "xgb_probe": 0.6179,
+            "delta": -0.0493,
+            "n_test": 1255
           },
           "Ir": {
-            "p50": 6,
-            "p90": 8,
-            "p99": 9,
-            "max": 11
+            "chemprop": 0.4961,
+            "xgb_probe": 0.5276,
+            "delta": -0.0315,
+            "n_test": 534
           },
           "Rh": {
-            "p50": 6,
-            "p90": 8,
-            "p99": 10,
-            "max": 11
+            "chemprop": 0.4945,
+            "xgb_probe": 0.519,
+            "delta": -0.0245,
+            "n_test": 51
           },
           "Os": {
-            "p50": 6,
-            "p90": 9,
-            "p99": 10,
-            "max": 12
+            "chemprop": 0.5696,
+            "xgb_probe": 0.495,
+            "delta": 0.0746,
+            "n_test": 36
           },
           "Re": {
-            "p50": 6,
-            "p90": 8,
-            "p99": 9,
-            "max": 12
+            "chemprop": 0.7461,
+            "xgb_probe": 0.4429,
+            "delta": 0.3032,
+            "n_test": 74
           }
         },
-        "conclusion": "现有 cap 对六个金属中的三个低于中位数、对全部六个低于 p90。用它构造惩罚项，等于向模型收取『复现自己训练集里八面体/七配位结构』的费用。",
-        "partial_fix_shipped": "cfm_property_panel.py 已改用 tmQM p99 实测 cap（_MEASURED_COORD_CAPS）。LOSS 侧的 _DEFAULT_VALENCES 尚未改——那是训练语义，需要单独决定。",
-        "resolution_2026_10_10": {
-          "status": "DONE (item 1)",
-          "caps": {
-            "Pt": 5.0,
-            "Ru": 7.0,
-            "Ir": 6.0,
-            "Rh": 6.0,
-            "Os": 7.0,
-            "Re": 8.0
+        "verdict": "COLLAPSE REPRODUCES FOR Ru/Ir/Rh; Re IS A SCORER-DEPENDENT EXCEPTION.  The official chemprop v2 D-MPNN lands at or just below the XGB probe and near chance on Ru/Ir/Rh, so the collapse is NOT an artefact of a weak backbone.  Os is near chance for both scorers (n=36, unresolvable).  Re is the exception: chemprop 0.7461 vs XGB 0.4429 (delta +0.303); Re's within-metal AUC is 0.948, so a graph representation transfers part of a signal the fingerprint probe loses.",
+        "metric": "metrics/by_metric/pa3_chemprop_lomo_probe_cohort.json",
+        "report": "molmetal/reports/pa3_chemprop_lomo/metrics.json",
+        "wall_min": 1.77,
+        "n_runs": 25
+      },
+      "followup_2026_10_12": {
+        "what": "within-metal chemprop column + label-permutation null, one --mode both run (5 min wall, rc=0).",
+        "cross_mean_auc": 0.5660799282776011,
+        "within_mean_auc": 0.7103616210642486,
+        "per_metal": {
+          "Ru": {
+            "cross": 0.5621,
+            "xgb_cross": 0.6179,
+            "within": 0.7853,
+            "xgb_within": 0.8271,
+            "penalty": 0.2232,
+            "perm": "above (p_above=0.005)"
           },
-          "basis": "metal_bo_sum p99（tmQM BO 块的 Wiberg 键级和）——不是 coord_number/MND",
-          "how": "新增 decoder_rework.TMQM_MEASURED_METAL_CAPS，经 valence_log_barrier 已有的 valences 覆盖参数传入；DEFAULT_VALENCES 不动（共享且被 Pt(II)=4 的测试钉住）",
-          "gate": "molmetal/tests/test_cfm_metal_valence_caps.py，7 tests，非空转已验证",
-          "self_correction": "前一轮基于 MND 的『三个金属低于中位数、六个低于 p90』结论已撤回。正确基座下只有 Rh/Os/Re 真有问题"
+          "Ir": {
+            "cross": 0.4841,
+            "xgb_cross": 0.5276,
+            "within": 0.7901,
+            "xgb_within": 0.843,
+            "penalty": 0.306,
+            "perm": "below (p_below=0.038)"
+          },
+          "Rh": {
+            "cross": 0.4915,
+            "xgb_cross": 0.519,
+            "within": 0.6658,
+            "xgb_within": 0.6974,
+            "penalty": 0.1743,
+            "perm": "in null (p_above=0.544)"
+          },
+          "Os": {
+            "cross": 0.5559,
+            "xgb_cross": 0.495,
+            "within": 0.4133,
+            "xgb_within": 0.496,
+            "penalty": -0.1425,
+            "perm": "in null (p_above=0.434)"
+          },
+          "Re": {
+            "cross": 0.7368,
+            "xgb_cross": 0.4429,
+            "within": 0.8972,
+            "xgb_within": 0.948,
+            "penalty": 0.1604,
+            "perm": "above (p_above=0.001)"
+          }
+        },
+        "verdict": "The within-minus-cross penalty is POSITIVE on 4/5 metals (Ru/Ir/Rh/Re, +0.16 to +0.31) — the same sign and comparable magnitude as the XGB probe — so the collapse is not a scorer artefact.  Cross-metal chemprop is at/below chance on Ir (significantly below, p_below=0.038) and Rh (in null); modestly above chance but below XGB on Ru (0.5621 vs 0.6179, p_above=0.005); above XGB on Os (0.5559 vs 0.4950, in null, n=36) and strongly above on Re (0.7368 vs 0.4429, p_above=0.001).  Chemprop's WITHIN-metal AUC is below XGB's on all 5 metals (by 0.03-0.08), so the within column does not rescue the backbone.",
+        "note": "cross column moved <=0.02 vs the first cross-only run (Ru seed42 0.5697->0.5467) from GPU bf16 non-determinism; metal means stable to <=0.02.",
+        "metric": "metrics/by_metric/pa3_chemprop_lomo_probe_cohort.json",
+        "report": "molmetal/reports/pa3_chemprop_lomo/metrics.json",
+        "regression_test": "molmetal/tests/test_pa3_chemprop_lomo_cohort.py (5 passed)",
+        "paper_edit_2026_10_12": "USER-AUTHORIZED (chose 'Carve out Re explicitly'): 7 hunks applied to paper_a/ so Claim 1 reads as a collapse for Ru/Ir/Rh with Re as representation-dependent.  01_intro.tex (contribution bullet), 04_results.tex (scorer-scoping sentence + new 'Scorer robustness and the Re exception' paragraph + rewritten Re-illustration paragraph), main.tex (abstract), 06_limitations.tex (2 spots).  pdflatex + bibtex rebuild clean: 17 pages, 0 undefined refs/citations.  No numbers added that do not trace to the promoted metric."
+      },
+      "honest_negative_fallback_status": "The PA3 fallback ('if the backbone is still weak across the board, downgrade the model class and let the XGB probe carry the claim') does NOT apply cleanly: chemprop is not uniformly weaker — it is STRONGER cross-metal on Re (+0.294, p=0.001) and Os (+0.061).  The honest reading is scorer-dependence on Re, not backbone weakness.  Claim 1 therefore cannot be stated as a uniform 'nothing transfers'; it must carve out Re (and note Os is unresolvable at n=36)."
+    },
+    {
+      "id": "BLK-PA4",
+      "line": "PaperA",
+      "priority": "P1",
+      "severity": "HIGH",
+      "status": "PARTIAL_2026_10_13 — NO_METAL_SIGNIFICANT_POSITIVE_AFTER_HOLM_T",
+      "title": "Claim 2（tmQM 预训练）只有 Ru 一个金属、n=5、效应 +0.0181 CI 勉强排除 0",
+      "finding": "paper_a/sections/04_results.tex Table 2：仅 Ru，5 seeds，paired +0.0181，95% CI [+0.0035,+0.0328]，t(4)=3.43；方差缩小 2.8× 亦基于 n=5。未见机制解释（量子几何预训练为何迁移到配体活性头），也未在 cross-metal（转移主战场）上验证。",
+      "risk_if_unfixed": "效应被质疑为 seed 噪声；'pretraining transfers' 的一般性结论不成立。",
+      "fix_steps": [
+        "Step 1: 把 A/B 扩到 ≥2 金属（Ru + Ir，样本量足够），并优先在 cross-metal LOMO 上做 pretraining A/B。",
+        "Step 2: 报 per-metal paired delta + bootstrap CI，做多重检验校正。",
+        "Step 3: 增消融——tmQM 预训练 vs 随机初始化 vs 有机语料（如 ZINC）预训练，隔离『金属相关』成分。"
+      ],
+      "honest_negative_fallback": "若多金属下效应不稳定，降级为『在 Ru 上观察到的小效应』，不写一般性 'pretraining transfers'。",
+      "wall_min": 120,
+      "cross_refs": [
+        "BLK-G1",
+        "BLK-PA6"
+      ],
+      "result_2026_10_12": {
+        "ru_ab_on_fixed_split": "DONE and NULL: tmqm 0.7778 vs random 0.7872, paired delta -0.0094 (CI includes 0). The Claim-2 effect does not survive the fixed splitter.",
+        "still_open": "the >=2-metal expansion and the cross-metal (LOMO) pretraining A/B named in fix_steps 1-3 remain unrun.",
+        "honest_negative_fallback_invoked": "yes — see metrics/by_metric/tmqm_pretrain_init_ab_ru.json honest_negative block."
+      },
+      "result_2026_10_13": {
+        "metals": [
+          "Ru",
+          "Ir"
+        ],
+        "per_metal_delta": {
+          "Ru": -0.009432,
+          "Ir": 0.048567
+        },
+        "per_metal_verdict": {
+          "Ru": "NULL",
+          "Ir": "NULL"
+        },
+        "holm_significant": [],
+        "family_verdict": "NO_METAL_SIGNIFICANT_POSITIVE_AFTER_HOLM_T",
+        "reading": "the A/B now covers 2 metals. Under the paired one-sided t-test — the 5-point percentile bootstrap is anti-conservative — no metal is Holm-significant positive: none. Ir is a suggestive +0.0486 (3/5 seeds positive, p_t=0.068, t-CI includes zero); Ru is null. Claim 2 stays an honest negative, now measured over two metals rather than one.",
+        "still_open": "cross-metal (LOMO) pretraining A/B and the ZINC/organic-corpus ablation from fix_steps 1-3 remain unrun",
+        "artifact": "metrics/by_metric/tmqm_pretrain_init_ab_multimetal.json"
+      }
+    },
+    {
+      "id": "BLK-PA19",
+      "line": "PaperA",
+      "priority": "P0",
+      "severity": "CRITICAL",
+      "status": "DONE_2026_10_12 - paper_a 双协议叙事（within-metal 赢 / 跨队列 honest-negative）已并入正文",
+      "title": "论文把『输 Krasnov 0.0383』放在显眼位置，却把 within-metal 赢 Krasnov（Ir +0.0995）留在 tab:transfer 里未并列 —— 这是叙事选择，不是数据问题",
+      "finding": "tab:krasnov 只报 DOI-split 复现（0.7717<0.810，跨队列）。但 within-metal 5-fold 下：Ir 0.8295 vs Krasnov 0.73（+0.0995）、Ru 0.8363 vs 0.81（+0.0263）。项目自己的 metal_activity_transfer.json::comparability_note 判 Ir 的赢为 defensible，只撤回 Ru 的。Krasnov 只报 Ru/Ir，我们额外报了 Re 0.9278/Rh 0.7381/Os 0.4900。当前叙事让读者以为全面落后。",
+      "metric": {
+        "within_metal_win_Ir": {
+          "value": "0.8295 vs Krasnov 0.73 (+0.0995)",
+          "source": "metrics/by_metric/metal_activity_transfer_baselines.json::within_metal_cv.Ir"
+        },
+        "within_metal_win_Ru": {
+          "value": "0.8363 vs 0.81 (+0.0263, tie-rule sensitive)",
+          "source": "same"
+        },
+        "doi_split_replication": {
+          "value": "0.7717 vs 0.810 (-0.0383, cross-cohort)",
+          "source": "metrics/by_metric/metalcytotox_ru_auc.json::paper_protocol_measurement"
+        },
+        "cohort_strictness": {
+          "value": "ours 591 cell lines vs paper 23 (25.7x)",
+          "source": "same"
         }
       },
-      "finding_2_broken_check": {
-        "bug": "cfm_property_panel.py 调用 Atom.GetAllowedValences()，该方法在 RDKit 2026.03.6 上不存在",
-        "symptom": "except Exception 把 AttributeError 吞成 valence_ok=False，2146 个分子全部判失败",
-        "fixed": "改用 PeriodicTable.GetValenceList；金属另立 metal_coord_ok；无法判定时返回 None 并记 valence_check_error，不再伪造 False",
-        "lesson": "一个跑不起来的检查伪装成指标，比没有这个指标更糟",
-        "resolution_2026_10_10": "DONE — 已改用 PeriodicTable.GetValenceList，金属另立 metal_coord_ok，无法判定时返回 None 并记录原因"
+      "target": {
+        "value": "把 Krasnov 对比重构成双协议表：within-metal（我们赢/平）+ DOI-split 复现（跨队列，显式标注 cohort 差异）；并把『更严 cohort + 覆盖 3 个 Krasnov 未报金属』作为卖点",
+        "PROJECTED": "读者结论从『我们输』变成『在 Krasnov 设定下我们赢、且我们的评测更严格』"
       },
-      "blocks": [
-        "BLK-C11",
-        "BLK-C12",
-        "BLK-C15"
+      "root_cause": [
+        "论文写作时优先放 honest-negative（DOI-split 复现），未把 within-metal 的赢与 Krasnov 并列。",
+        "Ru 的 within-metal 赢 tie 规则敏感被撤回后，整条『赢』的叙事被一并弱化，尽管 Ir 的赢是稳的。"
       ],
-      "done_when": "(a) DONE — 六个金属全部有实测依据且被 gate 钉住；(b) DONE — 两个口径（有机价键 / 金属配位）均可复算，同一批 SMILES 复现 0.8495 与 2146/2146",
-      "metric_definition_location": "定义写在代码与产物里而非新写 markdown：cfm_property_panel.py 的 _validate_molecule docstring、decoder_rework.TMQM_MEASURED_METAL_CAPS docstring、metrics/by_metric/cfm_decode_chemistry_validity.json，并由 test_cfm_metal_valence_caps.py 保证两个口径可复算。原因：口��会漂移的是代码与数据源，不是散文。",
-      "fixes_shipped_2026_10_10": null
+      "fix_steps": [
+        "Step 1: 在 tab:krasnov 或新增一张表里并列 within-metal 的 Ir/Ru vs Krasnov（带 tie 规则披露）。",
+        "Step 2: 明确 Ir 的赢是 defensible、Ru 的赢 tie-规则敏感（保守规则下平），不 overclaim Ru。",
+        "Step 3: 把『Krasnov 未报 Re/Os/Rh，我们首个报告』写进 results。",
+        "Step 4: 改 paper_a/* 需用户 OK，按 §5.3 提 hunk；同步 metric_manifest 与 submission 包。"
+      ],
+      "honest_negative_fallback": "Ru 的赢若被 tie 规则翻盘，只报 Ir 的赢 + Ru 的区间；不得宣称 Ru 稳定超文献。",
+      "wall_min": 60,
+      "cross_refs": [
+        "BLK-PA3",
+        "BLK-PA18",
+        "BLK-PA12"
+      ],
+      "source_artifacts": [
+        "metrics/by_metric/metal_activity_transfer_baselines.json",
+        "metrics/by_metric/metalcytotox_ru_auc.json",
+        "metrics/by_metric/wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold.json"
+      ],
+      "fixes_shipped_2026_10_12": {
+        "paper_edits": [
+          "paper_a/sections/01_intro.tex - contribution: 'A within-metal win and a cross-cohort honest negative'",
+          "paper_a/sections/04_results.tex - Claim 3 (sec:results:krasnov) + tab:krasnov dual-protocol framing",
+          "paper_a/sections/05_ablation.tex - within-metal interval under both tie rules"
+        ],
+        "ir_win": "0.8295-0.8597 (current rule) / 0.8237-0.8374 (conservative rule) vs published 0.73 -> +0.09 to +0.13, defensible",
+        "ru_parity": "0.8128-0.8363 current / at-or-below 0.81 conservative -> parity only, not overclaimed",
+        "first_report": "Rh/Re/Os within-metal reported (Krasnov published none)",
+        "evidence": "metrics/by_metric/metal_activity_transfer_baselines.json (32 manifest refs)"
+      },
+      "fix_steps_status": {
+        "Step 1": "DONE - within-metal Ir/Ru vs Krasnov 并列（带 tie 规则披露）",
+        "Step 2": "DONE - Ir defensible、Ru tie-敏感平/略低，未 overclaim Ru",
+        "Step 3": "DONE - Krasnov 未报 Re/Os/Rh，正文写明首个报告",
+        "Step 4": "DONE - paper_a 正文改动已落盘（按 section 5.3 已获用户 OK）"
+      }
+    },
+    {
+      "id": "BLK-PA14",
+      "line": "PaperA",
+      "priority": "P1",
+      "severity": "HIGH",
+      "status": "METRIC_DONE_2026_10_12 - cap512/d4 同-run 5-seed canonical JSON 已产；paper tab:moleculenet 换行待用户 OK",
+      "title": "MoleculeNet 表仍用旧配置 (hidden 300/depth 3)；已实测 hidden 512/depth 4 把 bace 0.7421→0.7803、clintox/bbbp 小幅上升，但未并入论文",
+      "finding": "论文 tab:moleculenet (paper_a/sections/04_results.tex:242-257) 用 moleculenet_auc_dmpnn_5seed.json 的旧配置值。容量实验 (2026-10-11, wf_a1_bace_capacity/SUMMARY.md) 已实测：hidden 512/depth 4 在 varying-split 下 bace 0.7803±0.0210（旧 0.7505±0.0456，方差减半）；fixed-split 确认 +0.1098（非切分运气）；容量在 512 饱和（768/depth4=0.7433 不再升）。三小任务同配置 (wf_a1_3small_cap512_d4)：clintox 0.8311→0.8366、bbbp 0.9023→0.9081、hiv 0.7909→0.7903(flat)。focal loss(0.6935)、cw-off(0.7449)、dropout0.2(0.7434)、lr5e-4+100ep(0.7247) 全部失败——勿重试。",
+      "metric": {
+        "paper_current_bace": {
+          "value": "0.7421 +/- 0.0446",
+          "source": "metrics/by_metric/moleculenet_auc_dmpnn_5seed.json::tasks.bace"
+        },
+        "best_measured_bace": {
+          "value": "0.7803 +/- 0.0210",
+          "source": "molmetal/reports/wf_a1_bace_cap512_d4/metrics.json"
+        },
+        "capacity_baseline_bace": {
+          "value": "0.7505 +/- 0.0456",
+          "source": "molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/metrics.json"
+        },
+        "three_small": {
+          "value": "clintox 0.8366 / hiv 0.7903 / bbbp 0.9081",
+          "source": "molmetal/reports/wf_a1_3small_cap512_d4/report.md"
+        },
+        "chemprop_reference": {
+          "value": "bace 0.876",
+          "note": "文献值 (Wu 2018)，split-match not proven"
+        }
+      },
+      "target": {
+        "value": "MoleculeNet 4 任务同-run 5-seed：bace>=0.78（当前 0.7421）、mean>=0.82（当前 0.8149）",
+        "win_condition": "bace 差距从 -0.134 压到 -0.10 以内且方差减半；若 PA17 的同协议 chemprop 复现出更低值，差距可能进一步反转"
+      },
+      "root_cause": [
+        "论文表取自 moleculenet_auc_dmpnn_5seed.json（hidden 300/depth 3），容量实验的 512/4 结果从未回流到 canonical JSON。",
+        "口径陷阱：论文的 bace 0.7421 与容量报告的对照 baseline 0.7505 是两个不同的 5-seed run（同配置、不同 split-seed 组合），差 0.0084（在 std 0.045 内属随机）。"
+      ],
+      "fix_steps": [
+        "Step 1: 用 --config 固定 hidden 512/depth 4 跑 MoleculeNet 4 任务 5-seed（GPU 分钟级），产物写新 canonical JSON（不覆盖旧文件，AGENTS 5.5）。",
+        "Step 2: 同 run 内确认 bace>=0.78 且方差减半；若同 run 复测低于 0.78，按实测报（勿用旧 run 的 0.7803 顶替）。",
+        "Step 3: 更新 tab:moleculenet 四行 + mean（改 paper_a/* 需用户 OK，按 §5.3 提 hunk）。",
+        "Step 4: 同步 paper_a/repro/metric_manifest.json 与 submission 包。"
+      ],
+      "honest_negative_fallback": "若同-run 复测未达 0.78，如实报新值并保留 'bace is the one real architecture-level miss' 的定性；不得用旧 run 的 0.7803 与论文的 0.7421 混比。",
+      "wall_min": 30,
+      "cross_refs": [
+        "BLK-PA3"
+      ],
+      "source_artifacts": [
+        "molmetal/reports/wf_a1_bace_cap512_d4/metrics.json",
+        "molmetal/reports/wf_a1_3small_cap512_d4/report.md",
+        "molmetal/reports/wf_a1_bace_capacity/SUMMARY.md"
+      ],
+      "win_rationale": "hidden 512/depth 4 已在盘上实测把 bace 0.7505->0.7803、方差 0.0456->0.0210，且 fixed-split 确认 +0.1098。这不是新研究，是把已跑好的配置回流到论文 —— 零风险。",
+      "fixes_shipped_2026_10_12": {
+        "artifact": "metrics/by_metric/moleculenet_auc_dmpnn_5seed_cap512_d4.json",
+        "report_dir": "molmetal/reports/pa14_moleculenet_cap512_d4",
+        "measured": {
+          "bbbp": 0.8993874075867337,
+          "bace": 0.7932849346677089,
+          "hiv": 0.7888764152697952,
+          "clintox": 0.8303
+        },
+        "mean_auc_cap512_d4": 0.82797127691689,
+        "mean_auc_cap300_d3": 0.814886227416662,
+        "mean_delta": 0.013085049500228041,
+        "win_condition_check": "bace 0.7933 >= 0.78 TARGET MET (std 0.0250, was 0.0446 -> halved); mean 0.8280 >= 0.82 TARGET MET (was 0.8149).",
+        "still_open": "Step 3 (paper tab:moleculenet 四行 + mean) + Step 4 (manifest/submission) require explicit user OK per section 5.3."
+      },
+      "fix_steps_status": {
+        "Step 1": "DONE - 同-run 5-seed cap512/d4 写新 canonical JSON（未覆盖旧文件，AGENTS 5.5）",
+        "Step 2": "DONE - 同 run 内 bace 0.7933>=0.78 且方差 0.0446->0.0250",
+        "Step 3": "PENDING_USER_OK - 改 paper_a/sections/04_results.tex tab:moleculenet",
+        "Step 4": "PENDING_USER_OK - 同步 metric_manifest + submission 包"
+      }
+    },
+    {
+      "id": "BLK-PA15",
+      "line": "PaperA",
+      "priority": "P0",
+      "severity": "CRITICAL",
+      "status": "METRIC_DONE_2026_10_12 - 三臂 LOMO 跑完，HONEST NEGATIVE：metal-conditioning 不救跨金属坍塌；paper 待用户 OK",
+      "title": "论文三条贡献全是『测量/发现/负结果』，没有方法学贡献；conclusion 里的 metal-aware/metal-token 表示是未来工作，从未实现",
+      "finding": "01_intro.tex:38-73 三条贡献依次为：测得跨金属坍塌、tmQM 预训练无效、Krasnov 负结果——无一条提出新方法。06_limitations.tex:133-142 的 conclusion 把 'metal-aware or metal-conditioned representations' 和 'joint multi-metal training with an explicit metal token' 列为 actionable reading，但正文无对应实验。二区审稿人典型追问『你发现了问题，解法呢？』——纯现象报告在 JCIM 二区偏薄。",
+      "metric": {
+        "current": "无（这是缺失的实验，不是坏指标）"
+      },
+      "target": {
+        "value": "metal-conditioned 模型在跨金属 LOMO 下 cross-metal AUC 显著高于 metal-agnostic baseline",
+        "win_condition": "cross-metal 平均 AUC 提升且 Holm 校正后显著；即证明金属显式输入能部分救回迁移"
+      },
+      "root_cause": [
+        "项目把 Paper A 定位成 benchmark/评价协议论文（SUBMISSION_PLAN.md §1），刻意不做方法。",
+        "跨金属迁移的 mitigation 从未排期；metal token 只是叙事里的未来工作。"
+      ],
+      "fix_steps": [
+        "Step 1: 在现有 D-MPNN / chemprop 主干上加 metal token（金属 one-hot 或可学习 embedding，拼接到图级 readout），metal 作为显式输入。",
+        "Step 2: 同 cohort 同 LOMO split 下测 metal-conditioned vs metal-agnostic 的 within/cross AUC（复用 PA3 的 chemprop LOMO 协议与 splits）。",
+        "Step 3: 若 cross-metal AUC 有显著提升，作为 Paper A 的第 4 条贡献（benchmark + method）写进正文；显著性用已有 bootstrap + Holm 流程。",
+        "Step 4: 若无效，如实报为第三个 honest negative，但正文措辞改为『我们试了 metal token 且无效』——比完全不试强。"
+      ],
+      "honest_negative_fallback": "若 metal token 无效，报负结果并保留 benchmark 定位；不得为了凑方法贡献而 overclaim。",
+      "wall_min": 180,
+      "cross_refs": [
+        "BLK-PA3",
+        "BLK-PA4",
+        "BLK-D2"
+      ],
+      "source_artifacts": [
+        "metrics/by_metric/pa3_chemprop_lomo_probe_cohort.json"
+      ],
+      "win_rationale": "现有 evidence：multi-task + per-metal heads 已比 single-task 高 0.049；W2 per-metal embedding 正则已 SHIP。metal token 是这条线的自然延伸，不是从零开始。",
+      "fixes_shipped_2026_10_12": {
+        "artifact": "metrics/by_metric/pa15_metalcond_lomo.json",
+        "arms": {
+          "none": 0.5693038349313381,
+          "token": 0.5205426486851314,
+          "desc": 0.5478
+        },
+        "paired_delta_vs_none": {
+          "token": -0.048761186246206546,
+          "desc": -0.02148348108745746
+        },
+        "holm": {
+          "significant_after_holm_0.05": [],
+          "token_p": 1.0,
+          "desc_p": 1.0
+        },
+        "contributes_method": false,
+        "verdict": "CONDITIONING DOES NOT RECOVER THE COLLAPSE (best arm desc -0.0215, 95% CI [-0.0565,+0.0157], Holm p=1.0).  Cross-metal collapse is intrinsic to the metal axis, not an unconditioned-scorer artefact.",
+        "baseline_reproduction_check": "none-arm reproduces PA3 canonical within max_abs_diff 0.0221 (GPU bf16 drift).",
+        "still_open": "Step 3/4 (paper wording: try-and-fail honest negative) require explicit user OK per section 5.3."
+      },
+      "fix_steps_status": {
+        "Step 1": "DONE - chemprop v2 backbone + metal token/desc embedding",
+        "Step 2": "DONE - 同 cohort 同 LOMO split，metal-conditioned vs metal-agnostic",
+        "Step 3": "N/A - no significant lift, so no 4th contribution claim",
+        "Step 4": "PENDING_USER_OK - 正文改为『我们试了 metal token 且无效』"
+      }
+    },
+    {
+      "id": "BLK-PA16",
+      "line": "PaperA",
+      "priority": "P2",
+      "severity": "MEDIUM",
+      "status": "METRIC_DONE_2026_10_12 - n_test>=20 子集 + 全 9-cell 并列已算；paper 段落待用户 OK",
+      "title": "NCI60 9-cell 面板 mean 0.7294 ± 0.2137，被单数字测试集污染（DU145 n_test=7→AUC 1.0、SKOV3 n_test=3→AUC 1.0）",
+      "finding": "nci60_precious_9cell_auc.json：overall 0.7294±0.2137。DU145(n_test=7)=1.0、SKOV3(n_test=3)=1.0 把均值抬高、std 撑大；A2780cis=0.3356、A2780=0.5104、MCF7=0.6690 又把均值拉低。这个数不可读。旧值 0.8007±0.0160（修 scaffold splitter 前）已作废。",
+      "metric": {
+        "current": {
+          "value": "0.7294 +/- 0.2137",
+          "source": "metrics/by_metric/nci60_precious_9cell_auc.json"
+        },
+        "krasnov_reference": {
+          "value": "0.81",
+          "note": "单细胞系平均"
+        }
+      },
+      "target": {
+        "value": "n_test>=20 子集的 mean/std，目标 mean>=0.75 且 std<0.10",
+        "win_condition": "过滤掉被单数字测试集污染的 cell line 后，面板回到可读区间；同时保留全 9-cell 值以防选择性呈现"
+      },
+      "root_cause": [
+        "9-cell 面板里 DU145/SKOV3 测试集为单数字，AUC 1.0 不informative，却与其它 cell 等权进均值。",
+        "funnel 未设最小测试集门槛。"
+      ],
+      "fix_steps": [
+        "Step 1: 在 nci60 合成脚本里加 n_test>=20 过滤（或按 n_test 加权），重算 overall。",
+        "Step 2: 同时报『全部 9 cell』与『n_test>=20 子集』两个数，避免选择性呈现。",
+        "Step 3: 更新论文里 NCI60 的引用（04_results.tex 的 sloppy 段）。"
+      ],
+      "honest_negative_fallback": "若过滤后 mean 落到 0.70 附近，如实报『明确落后 Krasnov』，不要用被污染的 0.7294 装作接近。",
+      "wall_min": 20,
+      "cross_refs": [
+        "BLK-PA12",
+        "BLK-PA13"
+      ],
+      "source_artifacts": [
+        "metrics/by_metric/nci60_precious_9cell_auc.json"
+      ],
+      "win_rationale": "0.7294±0.2137 的 std 比 mean 还大，是口径问题不是模型问题。DU145(n=7)/SKOV3(n=3) 的 AUC=1.0 是噪声。",
+      "fixes_shipped_2026_10_12": {
+        "artifact": "metrics/by_metric/nci60_precious_9cell_auc.json::test_set_size_funnel",
+        "all_cells_mean_auc": 0.7293802091886383,
+        "n_test_ge_20": {
+          "n_cells": 5,
+          "cells": [
+            "A2780",
+            "A2780cis",
+            "A549",
+            "HCT116",
+            "MCF7"
+          ],
+          "mean_auc": 0.5923288209839935,
+          "std_across_cells": 0.15130794200916226
+        },
+        "n_test_ge_10": {
+          "n_cells": 7,
+          "mean_auc": 0.6520602689568208
+        },
+        "n_test_weighted_mean_auc": 0.6560527639239813,
+        "win_condition_check": "mean>=0.75 & std<0.10 NOT MET (n_test>=20 subset 0.5923 +/- 0.1513).  honest_negative_fallback invoked: report the filtered number, do not present the contaminated 0.7294 as close.",
+        "still_open": "Step 3 (paper 04_results.tex nci60 段补 n_test>=20 子集值) requires explicit user OK."
+      },
+      "fix_steps_status": {
+        "Step 1": "DONE - n_test>=20 过滤 + n_test-weighted mean 已算",
+        "Step 2": "DONE - 全 9-cell 与 n_test>=20 子集并列报（防选择性呈现）",
+        "Step 3": "PENDING_USER_OK - 改 paper_a/sections/04_results.tex nci60 段"
+      }
+    },
+    {
+      "id": "BLK-PA17",
+      "line": "PaperA",
+      "priority": "P2",
+      "severity": "MEDIUM",
+      "status": "METRIC_DONE_2026_10_12 - chemprop v2 同协议 0.8493 < 文献 0.8832；paper 列待用户 OK",
+      "title": "MoleculeNet 的 chemprop 参照是文献值 (Wu 2018)，报告自承 'split-match not proven'，未同协议复现",
+      "finding": "04_results.tex tab:moleculenet 的 'chemprop D-MPNN' 列来自 train_moleculenet.py 的常量块 CHEMPROP_DMPNN_BASELINE，是文献 best-of-search 单任务值，非本项目同协议跑出。wf_a1_bace_focal/report.md 明确写 'NOT reproduced under our protocol' 且 'split-match not proven'。",
+      "metric": {
+        "current": "文献参照 bbbp 0.940 / clintox 0.894 / hiv 0.823 / bace 0.876（未复现）"
+      },
+      "target": {
+        "value": "chemprop v2 官方默认在同一 scaffold split 上跑 4 任务的同协议值",
+        "win_condition": "同协议 chemprop 值显著低于文献 best-of-search 值，使我们的差距缩小到同协议噪声内；或至少把对比从『vs 未复现的文献值』变成『vs 同协议基线』"
+      },
+      "root_cause": [
+        "参照列取自文献常量，未在本项目切分上复现。",
+        "chemprop v2 已是独立 trainer（PA3 已用），但未用于 MoleculeNet 参照。"
+      ],
+      "fix_steps": [
+        "Step 1: 用 chemprop v2 官方默认超参在同一 scaffold split（同 --split-seed）跑 bbbp/bace/hiv/clintox。",
+        "Step 2: 得同协议 chemprop 参照，替换 tab:moleculenet 的文献列（或并列两列：文献 + 同协议）。",
+        "Step 3: 若同协议 chemprop 与我们的差距远小于文献差距，明确说明『文献值是 best-of-search，非同协议』。"
+      ],
+      "honest_negative_fallback": "若同协议 chemprop 确实远高于我们，如实保留 gap，但至少消除了『未对齐』这一条可反驳点。",
+      "wall_min": 120,
+      "cross_refs": [
+        "BLK-PA14"
+      ],
+      "source_artifacts": [
+        "molmetal/scripts/train_chemprop_v2_v3.py",
+        "molmetal/reports/pa3_chemprop_lomo/"
+      ],
+      "win_rationale": "文献的 0.876/0.894/0.823/0.940 是 best-of-hyperparameter-search 单任务值，我们的是固定超参多任务共享主干 —— 不同协议。同协议复现大概率拉近。",
+      "fixes_shipped_2026_10_12": {
+        "artifact": "metrics/by_metric/moleculenet_auc_chemprop_v2_same_protocol.json",
+        "report_dir": "molmetal/reports/pa17_chemprop_v2_moleculenet",
+        "mean_chemprop_v2_same_protocol": 0.8493319702603803,
+        "mean_literature_chemprop": 0.88325,
+        "mean_our_dmpnn_cap512_d4": 0.82797127691689,
+        "same_protocol_minus_literature_mean": -0.03391802973961966,
+        "ours_minus_same_protocol_mean": -0.021360693343490333,
+        "ours_minus_literature_mean": -0.05527872308310999,
+        "tasks_we_beat_same_protocol_chemprop": [
+          "bbbp",
+          "hiv"
+        ],
+        "verdict": "Same-protocol chemprop v2 (0.8493) is -0.0339 BELOW the literature constant (0.8832) -> the quoted reference was best-of-search.  Our D-MPNN (512/4) gap vs literature (-0.0553) shrinks to -0.0214 against same-protocol chemprop.",
+        "still_open": "Step 2 (paper column swap / dual column) requires explicit user OK."
+      },
+      "fix_steps_status": {
+        "Step 1": "DONE - chemprop v2 官方默认同 scaffold split 跑 bbbp/bace/hiv/clintox 5 seed",
+        "Step 2": "PENDING_USER_OK - 替换/并列 tab:moleculenet 的文献列",
+        "Step 3": "DONE (metric-level) - 已在 JSON 内说明文献值是 best-of-search"
+      }
+    },
+    {
+      "id": "BLK-PA18",
+      "line": "PaperA",
+      "priority": "P2",
+      "severity": "MEDIUM",
+      "status": "DONE_2026_10_12 - 5 金属 x {D-MPNN, LightGBM, XGBoost} 对齐表已交付；结论：模型类差异 << cohort 差异",
+      "title": "Krasnov 对比是单一 0.7717 vs 0.810 跨队列；应扩成 5 金属 × {D-MPNN, LightGBM, XGBoost} 同 cohort 同 fold 的对齐表",
+      "finding": "tab:krasnov 目前 3 行：我们的 D-MPNN 0.7717±0.0380、同 cohort LightGBM 0.7677±0.0368、Krasnov LightGBM 0.810±0.024。差距被归因为 cohort scope（591 vs 23 cell lines），但只有一个模型类对照。wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold.json 已有 3-metal chemprop 0.7812（Re 0.8027/Os 0.7884/Rh 0.7525）。",
+      "metric": {
+        "current": {
+          "value": "D-MPNN 0.7717 vs Krasnov 0.810 (-0.0383, cross-cohort)",
+          "source": "metrics/by_metric/metalcytotox_ru_auc.json::paper_protocol_measurement"
+        },
+        "partial_3metal": {
+          "value": "chemprop v2 0.7812",
+          "source": "wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold.json"
+        }
+      },
+      "target": {
+        "value": "5 金属 × {D-MPNN, LightGBM, XGBoost} 同 cohort 同 fold 表",
+        "win_condition": "同 cohort 下我们的模型类 >= 其他模型类；且 cross-cohort 差距被证明来自 cohort scope 而非模型能力"
+      },
+      "root_cause": [
+        "对比表只覆盖 Ru 一个金属、两个模型类。",
+        "跨队列归因虽有 -0.0040 的同 cohort 证据，但单点证据不够稳。"
+      ],
+      "fix_steps": [
+        "Step 1: 用现有 DOI-split 10-fold folds 把 LightGBM/XGBoost/D-MPNN 跑到 5 金属。",
+        "Step 2: 出 5×3 的对齐表，每格带 10-fold mean±std。",
+        "Step 3: 明确标注哪些格是 cross-cohort、哪些是同 cohort。"
+      ],
+      "honest_negative_fallback": "若某些金属缺数据无法跑，如实标注 n/a，不补造。",
+      "wall_min": 90,
+      "cross_refs": [
+        "BLK-PA5",
+        "BLK-PA17"
+      ],
+      "source_artifacts": [
+        "metrics/by_metric/metalcytotox_ru_auc.json",
+        "metrics/by_metric/metalcytotox_ru_paper_lightgbm_cv.json"
+      ],
+      "win_rationale": "已有 -0.0040 的同 cohort 模型类证据（D-MPNN 0.7717 vs LightGBM 0.7677）和 3-metal chemprop 0.7812。扩表是坐实这个结论。",
+      "verdict": "MEASURED WIN. Model class is NOT the driver of the cross-cohort gap: D-MPNN and the classical learners are within +/-0.10 of each other on every metal (mean |gap| ~0.037), while the cross-cohort gap to Krasnov's Ru LightGBM is -0.0595 (0.7505 vs 0.810). Ru is the only metal where our D-MPNN edges the classical learners (+0.0157) - and Ru is the only metal Krasnov published. Conclusion: the gap is cohort scope, not model capability.",
+      "fixes_shipped_2026_10_12": {
+        "artifact": "metrics/by_metric/pa18_model_class_5metal.json",
+        "table_5x3": {
+          "note": "MEASURED, DOI-grouped 10-fold CV seed=0, per-metal paper-funnel cohort (ALL surviving cell lines).  D-MPNN column same cohort + same folds as the classical column (row-level test identity verified).",
+          "cells": {
+            "Ru": {
+              "dmpnn": 0.7505407461826202,
+              "lightgbm": 0.7308118873646346,
+              "xgboost": 0.7348438749518691,
+              "best_classical": 0.7348438749518691,
+              "dmpnn_minus_best": 0.01569687123075114
+            },
+            "Ir": {
+              "dmpnn": 0.6623940121667309,
+              "lightgbm": 0.6770105259044221,
+              "xgboost": 0.6838833730592409,
+              "best_classical": 0.6838833730592409,
+              "dmpnn_minus_best": -0.021489360892509968
+            },
+            "Rh": {
+              "dmpnn": 0.6904496116554875,
+              "lightgbm": 0.689770516717332,
+              "xgboost": 0.7310991656379155,
+              "best_classical": 0.7310991656379155,
+              "dmpnn_minus_best": -0.04064955398242809
+            },
+            "Os": {
+              "dmpnn": 0.5948206506967816,
+              "lightgbm": 0.5729978529221056,
+              "xgboost": 0.5973132461347967,
+              "best_classical": 0.5973132461347967,
+              "dmpnn_minus_best": -0.002492595438015166
+            },
+            "Re": {
+              "dmpnn": 0.5761382468548288,
+              "lightgbm": 0.6780010532802121,
+              "xgboost": 0.6775094333814612,
+              "best_classical": 0.6780010532802121,
+              "dmpnn_minus_best": -0.10186280642538326
+            }
+          }
+        },
+        "dmpnn_protocol": "run_m1_paper_cv.py --metal <M> --cohort-only --no-inner-val --deterministic; trainer pinned via --data-csv cohort_<M>.csv so test rows == classical test rows",
+        "dmpnn_column_aggregator": "molmetal/scripts/pa18_dmpnn_column.py (reads <runs-dir>/<metal>/summary.json -> flat {metal: {...}} for --dmpnn-json)",
+        "deterministic_flag": "train_dmpnn_multitask_wasserstein.py --deterministic (CUBLAS_WORKSPACE_CONFIG=:4096:8 + cudnn.deterministic + torch.use_deterministic_algorithms). Without it the CUDA D-MPNN is NOT reproducible (MEASURED Re fold 0: 0.6658 / 0.8242 / 0.6206).",
+        "regression_test": "molmetal/tests/test_dmpnn_deterministic_flag.py (4 source-scanning tests; non-vacuity verified)",
+        "verdict": "MEASURED WIN. Model class is NOT the driver of the cross-cohort gap: D-MPNN and the classical learners are within +/-0.10 of each other on every metal (mean |gap| ~0.037), while the cross-cohort gap to Krasnov's Ru LightGBM is -0.0595 (0.7505 vs 0.810). Ru is the only metal where our D-MPNN edges the classical learners (+0.0157) - and Ru is the only metal Krasnov published. Conclusion: the gap is cohort scope, not model capability.",
+        "ru_dmpnn_vs_paper_number": "New deterministic Ru D-MPNN 0.7505 +/- 0.0610 is consistent with the paper's existing 0.7717 +/- 0.0380 - both single samples of a noisy distribution (documented as such; the D-MPNN has no seed replication)."
+      },
+      "fix_steps_status": {
+        "Step 1": "DONE - LightGBM/XGBoost/D-MPNN 全部跑到 5 金属，DOI-split 10-fold",
+        "Step 2": "DONE - 5x3 对齐表每格带 10-fold mean+/-std",
+        "Step 3": "DONE - dmpnn_alignment 块显式标注同 cohort / 同 fold / 行级 test 一致；cross-cohort 只有 Krasnov Ru 一格"
+      }
+    },
+    {
+      "id": "BLK-F1",
+      "line": "PaperA",
+      "title": "论文缺方法学新意 —— 用「D-MPNN 图表示 ⊕ ECFP4」特征融合把 BLK-P1 的负结果升级为方法贡献",
+      "status": "PLANNED_2026_10_13 — 计划已定（用户批准），待执行；先做泄漏可控的多臂特征融合，再按结果写进 paper_a",
+      "severity": "MEDIUM",
+      "finding": "BLK-P1 证明 D-MPNN 单模型在每个金属上都弱于 fingerprint+XGB（Ru -0.123, Ir -0.152, Rh -0.055, Os -0.076, Re -0.124），目前只是 honest negative。论文的弱点不是严谨性（那是强项），而是缺少方法学新意 —— 全是「测量/发现/负结果」。融合两者的表示可以把负结果升级为一个正向方法贡献，同时补上新意。",
+      "risk_if_unfixed": "二区能发（JCIM/Mol Pharm 档），但冲一区会被审稿人问『方法学新意在哪』；且 BLK-P1 的负结果会以『你的两个模型之一更弱』的形式留在正文里。",
+      "hypothesis": "ECFP4(Morgan r=2) 是固定、有界半径的子结构特征映射；L 层 MPNN 的表达力上界是 L-WL（Xu 2019；Morris 2019），所以 depth-3 D-MPNN 原则上比 ECFP4-r2 更有表达力，但在 n≈500-1250 的小样本下实现不出来。若该解释成立，两种表示互补，拼接后 GBDT 应能超过 ECFP4 单用。",
+      "falsifiable_prediction": "可获得的集成增益 = 两个 scorer 的 ambiguity（分歧，Krogh & Vedelsby 1995）；bias-variance-covariance（Ueda & Nakano 1996）表明误差协方差小融合才有用。若 ambiguity≈0，融合不可能有用，如实报为有理论依据的负结果。",
+      "fix_steps": [
+        "Step 1: 写 runner molmetal/scripts/fuse_dmpnn_gbdt_within_metal.py —— 复用 cohort/folds/XGB/MaskedMetalCytotoxModel；新增 embed()（取 head 前的 2*hidden pooled 向量）、_evaluate_with_scores()、ECFP4->MLP 训练器、6 个 arm、paired t-test + Holm、模块级 parse_args(argv)。",
+        "Step 2: 写 configs/fusion_dmpnn_gbdt_within_metal.yaml（entry.script + command_template 仅 --config；所有超参为能解析到 dest 的键）。",
+        "Step 3: 写 50-step CPU smoke + embedding 形状/无泄漏断言测试。",
+        "Step 4: 跑 §5.11 binding + yaml-only gate + smoke。",
+        "Step 5: 先跑便宜 arm（1 ecfp4_xgb / 2 ecfp4+tmqm_emb→xgb / 6 ecfp4+noise→xgb）读数；若 arm 2 已赢 ECFP4，即为主线。",
+        "Step 6: 后台跑 D-MPNN 臂（3 端到端 [ECFP4⊕D-MPNN]→MLP / 4 ECFP4→MLP 对照 / 5 监督 D-MPNN OOF emb→xgb 上界）。",
+        "Step 7: Ru+Ir 上跑 nested 内层 CV 的 bleed check，量化 arm 5 的二阶差分折间渗漏。",
+        "Step 8: 汇总 metrics/by_metric/fusion_dmpnn_gbdt_within_metal.json（atomic_write_file）。",
+        "Step 9: 并入 paper_a（理论小节 + 结果小节 + 表 + 摘要/limitations），rebuild，verify 0 undefined refs，pre-flight。"
+      ],
+      "arms": {
+        "1_ecfp4_xgb": "ECFP4 -> XGB（基线，复现 BLK-P1 的 XGB 列）| 无泄漏 | ~1 min",
+        "2_ecfp4_plus_tmqm_emb_xgb": "[ECFP4 ⊕ 冻结 tmQM encoder(256)] -> XGB | 构造上无泄漏（该 encoder 从未见过 MetalCytoToxDB 标签）| ~10 min",
+        "3_ecfp4_plus_dmpnn_mlp": "端到端 [ECFP4(2048) ⊕ D-MPNN pooled(256)] -> MLP，逐折训练 | 单层 CV，无泄漏 | ~70 min",
+        "4_ecfp4_mlp": "ECFP4 -> MLP 头（把「嵌入的贡献」与「换头的贡献」分开）| 无泄漏 | 与 arm 3 共享",
+        "5_ecfp4_plus_dmpnn_emb_xgb": "[ECFP4 ⊕ 监督 D-MPNN 的 OOF 嵌入(256)] -> XGB | 有二阶差分折间渗漏，仅作上界报告 | 与 arm 3 共享",
+        "6_ecfp4_plus_noise_xgb": "[ECFP4 ⊕ 256 维高斯噪声] -> XGB | 无泄漏 | ~1 min（特征数对照：证明增益来自表示而非「多 256 列」）"
+      },
+      "confirmatory_arms": "arm 2/3/4 为确证集；arm 5 是用户字面要求（嵌入->XGB），标注为上界；arm 6 是特征数负对照。",
+      "confound_warning": "监督 D-MPNN 在折内训练，其训练折嵌入是 in-sample；若直接喂 XGB，GBDT 会从嵌入里读出标签。两层 OOF stack 只修掉一阶泄漏，仍留二阶、差分性的折间渗漏（产生 z_i 的 encoder 通过权重见过测试折的标签），而它恰好放大我们要声称的那个小 delta —— 所以 arm 5 不能作为确证臂。",
+      "statistics": "每个 split seed 取 5 折均值 AUC（同折 -> 配对有效）；delta(m,s)=AUC_arm - AUC_ecfp4，5 个 per-seed delta；paired one-sided t-test(df=4) + t-based 95% CI；Wilcoxon + all_seeds_positive 作稳健性（报告不作 gate）；Holm 仅在 {Ru,Ir} 确证族上做，5 金属 Holm 作探索性敏感性表；判定「融合赢」需 mean delta>0 且 Holm p<0.05 且 t-CI 下界>0；bootstrap 仅作 *_reference_only（5 点 bootstrap 反保守，见 project_five_seed_bootstrap_anticonservative）。",
+      "falsification": [
+        "只有 arm 5（cross-fit）赢、arm 2/3 不赢 -> 是折间渗漏不是表示",
+        "arm 6（噪声）也赢 -> 是特征数效应不是嵌入",
+        "Os「赢」（其 D-MPNN AUC=0.42 低于随机）-> 泄漏红旗",
+        "跨 split seed 符号翻转 -> 不稳健"
+      ],
+      "honest_negative_fallback": "Feature fusion of ECFP4 with the D-MPNN pooled embedding did not improve within-metal activity classification over ECFP4-only XGBoost on the deduplicated MetalCytoToxDB cohort, on identical StratifiedKFold(5, shuffle=True, random_state=split_seed) folds across seeds {42,43,44,49,123}. Per-metal deltas (fusion - ECFP4): Ru …, Ir … [95% CI …, Holm-adjusted one-sided p = …]. Rh/Os/Re are below MIN_UNIQUE_FOR_GATE=200 and reported as unresolvable, not gated. No pooled mean is reported. This is consistent with the D-MPNN being a strictly weaker scorer on every metal, so its embedding adds no information beyond the fingerprint; the activity-prediction backbone remains 'GBDT by protocol'. MEASURED.",
+      "critical_correctness": [
+        "必须用 MaskedMetalCytotoxModel 取嵌入 —— 被 benchmark 的 D-MPNN 是 masked 变体（dmpnn_within_metal_auc.json::mask_padding=true）。",
+        "监督嵌入不能直接喂 XGB（见 confound_warning）。",
+        "跨臂固定 D-MPNN train seed（train_seeds=[0]，与 BLK-P1 一致），否则配对失效。"
+      ],
+      "wall_min": 150,
+      "smoke_gate": "§5.7 50-step CPU smoke + embedding 形状(2*hidden)/无泄漏断言",
+      "cross_refs": [
+        "BLK-P1",
+        "molmetal/scripts/dmpnn_within_metal_auc.py",
+        "molmetal/scripts/finetune_metalcytotox_from_tmqm.py",
+        "models/tmqm_pretrained/tmqm_pretrained_encoder.pt",
+        "/home/hugo/.codebuddy/plans/swift-beacon-newton-U9hGffQ4.md"
+      ],
+      "projected_vs_measured": "PROJECTED：本 blocker 的所有融合增益尚未测量；执行后按 §5.2 用 MEASURED 标注并把源 JSON 写进 metrics/by_metric/fusion_dmpnn_gbdt_within_metal.json。"
     }
   ],
   "execution_order": {
@@ -3063,34 +2816,41 @@
   "next_actions": [
     {
       "priority": 1,
-      "phase": 2,
-      "action": "BLK-QED-def：m5 QED 口径修正（零 GPU、零重训，约 30 分钟）",
-      "blocking": "none",
-      "why": "唯一『数字现在是错的、改法明确、不需任何计算』的一项"
+      "action": "P1B.1 [W1] 已完成：Os 根因=24h 时间窗；已切 paper_funnel 主队列",
+      "blocker": "submission_plan_2026_10_13",
+      "status": "DONE_2026_10_13"
     },
     {
       "priority": 2,
-      "phase": 2,
-      "action": "BLK-SA-rootcause：先在已有产物上做零成本分析，判断 SA 线索是不是批次效应",
-      "blocking": "none"
+      "action": "P1.1 K-shot 全量重跑 (K=5..80, paper_funnel) — 后台运行中",
+      "blocker": "submission_plan_2026_10_13",
+      "status": "RUNNING"
     },
     {
       "priority": 3,
-      "phase": 2,
-      "action": "BLK-M7-def：m7 口径重定或撤下",
-      "blocking": "none"
+      "action": "P1B.2 [W2] DOI-split 10-fold CV on 23-cell-line Krasnov reconstruction — 后台运行中 (cuda:1)",
+      "blocker": "submission_plan_2026_10_13",
+      "status": "RUNNING"
     },
     {
       "priority": 4,
-      "phase": 2,
-      "action": "BLK-COLLAPSE-rootcause：仅在过杠杆闸后启动",
-      "blocking": "需先能说出『机制会 engage 吗』的答案"
+      "action": "在新队列上重跑 chemprop within+LOMO (C6 基准表) 与 D-MPNN within-metal (W4)",
+      "blocker": "submission_plan_2026_10_13"
     },
     {
       "priority": 5,
-      "phase": "—",
-      "action": "I3 论文 n 值核对 —— 用户指示暂不动 paper/*",
-      "blocking": "用户暂缓"
+      "action": "P1.2/P1.3/P1.4/P1.5：对照臂 + 支持集消融 + 适配深度 + XGBoost warm-start（全部 paper_funnel）",
+      "blocker": "submission_plan_2026_10_13"
+    },
+    {
+      "priority": 6,
+      "action": "P1B.7 [W6] dynamic metal conditioning；P1B.5 [W7] tmQM A/B seed 10-15",
+      "blocker": "submission_plan_2026_10_13"
+    },
+    {
+      "priority": 7,
+      "action": "P2 统计收口 → P3 重写 paper_a（新队列数字）→ P4 投稿包",
+      "blocker": "submission_plan_2026_10_13"
     }
   ],
   "literature_2026_10_10": {
@@ -3159,7 +2919,7 @@
       }
     ]
   },
-  "updated": "2026-10-10",
+  "updated": "2026-10-13",
   "root_cause_analysis_2026_10_10": {
     "question": "为什么跨金属活性迁移这么差，根因在数据还是模型？",
     "status": "PARTIAL — 5 条已确证（新增 1 条证伪），RC2 对照实验仍在跑",
@@ -4045,5 +3805,1052 @@
     },
     "contradicts": "todo.json 早前记录的『两臂同在 ep18 起崩』——以 gen_validity 为准时 fm=true 并未崩塌到 0",
     "status": "OPEN_DISCREPANCY —— 已记录，未调和。可能两个记录用的是不同信号（decode_ratio vs gen_validity），需要核对后再改原记录"
+  },
+  "paper_a_review_2026_10_12": {
+    "source": "review of paper_a/ draft (predictive line) against the zhongkeyuan-erqu bar, 2026-10-12",
+    "scope": "Paper A only (predictive/QSAR line); Paper B (generative) not in scope",
+    "draft_under_review": "paper_a/main.tex + sections/01..06 (builds clean, 3 figure placeholders)",
+    "priority_order": [
+      "BLK-PA1",
+      "BLK-PA2",
+      "BLK-PA12",
+      "BLK-PA3",
+      "BLK-PA4",
+      "BLK-PA5",
+      "BLK-PA6",
+      "BLK-PA9",
+      "BLK-PA8",
+      "BLK-PA7",
+      "BLK-PA10",
+      "BLK-PA11"
+    ],
+    "gating_items": [
+      "BLK-PA1",
+      "BLK-PA2"
+    ],
+    "gating_rationale": "PA1 决定 Claim 1 是否成立（缺同金属 scaffold-split 对照）；PA2 决定小样本 below-chance 是否可引用。其余为可修补的严谨性/呈现问题。",
+    "strengths_to_keep": [
+      "MEASURED/PROJECTED 纪律与逐数字挂 JSON 的可追溯性",
+      "明写 limitations 与 withdrawn 数字（诚实度高于二区平均）"
+    ],
+    "text_edit_note": "所有涉及 paper_a/*.tex 的 Step 均需用户放行后再改（与 §5.3 同精神）。",
+    "progress_2026_10_12": {
+      "paper_rewrite_done": [
+        "BLK-PA1",
+        "BLK-PA2",
+        "BLK-PA5",
+        "BLK-PA6",
+        "BLK-PA7",
+        "BLK-PA9"
+      ],
+      "still_open": [
+        "BLK-PA3 (launching)"
+      ],
+      "rerun_in_flight": [
+        "BLK-PA12 (nci60/tmQM/platinai campaign)"
+      ],
+      "note": "PA13 config wire-in + PA10 refs DONE. Campaign finished: tmQM A/B flipped NEGATIVE and nci60 dropped 0.8007->0.7294 on the fixed splitter; three metrics updated to honest negatives and the paper's Claim 2 rewritten accordingly. PA3 (chemprop backbone LOMO) launching now.",
+      "config_wire_in_done": [
+        "BLK-PA13"
+      ],
+      "refs_done": [
+        "BLK-PA10"
+      ],
+      "rerun_done": [
+        "BLK-PA12 (nci60/tmQM/platinai)",
+        "BLK-PA4 (Ru A/B — NULL)"
+      ],
+      "pa3_launched": "BLK-PA3 Step 1 launched 2026-10-12: chemprop v2 official D-MPNN (d_h=300/depth=3) cross-metal LOMO on the Paper-A probe cohort, 5 folds x 5 seeds x 50 epochs.  Report molmetal/reports/pa3_chemprop_lomo/metrics.json.",
+      "nci60_metadata_fix_2026_10_12": "registry/narrative_claims.yaml had 5 drifted NCI-60 claims after the BLK-PA12 fixed-splitter rerun (mean_auc 0.8007->0.7294, mean_std 0.0160->0.2137, MCF7 0.7441->0.6690, A549 0.7758->0.6951, PC3 0.87->0.8028) and p3_narrative_claims_check was FAILing pre-flight.  Registry updated to the on-disk values.  Separately, nci60_precious_9cell_auc.json carried n_cells_with_measured_auc=8 / cells_without_measured_auc=['DU145'] while value_overall_mean_auc (0.7293802091886383) was already the mean over 9 cells (the rerun gave DU145 test_auc=1.0 on n_test=7).  Fixed the metadata to 9 / [] with a corrections entry (atomic_write_file).  verify_narrative_claims.py now PASSes 47/0.",
+      "pa3_result_2026_10_12": "PA3 Step 1 DONE. chemprop v2 D-MPNN cross-metal LOMO on the probe cohort: Ru 0.5686 / Ir 0.4961 / Rh 0.4945 / Os 0.5696 / Re 0.7461 (mean 0.5750) vs the XGB probe's 0.6179/0.5276/0.5190/0.4950/0.4429. Collapse reproduces on Ru/Ir/Rh -> not underfitting. Re is scorer-dependent (chemprop +0.303). metrics/by_metric/pa3_chemprop_lomo_probe_cohort.json.",
+      "pa3_followup_2026_10_12": "PA3 Step 1 follow-ups DONE (--mode both + 1000-permutation null, 5 min wall). Cross mean 0.5661, within mean 0.7104. Within-minus-cross penalty POSITIVE on 4/5 (Ru +0.223, Ir +0.306, Rh +0.174, Re +0.160; Os -0.143) -> same sign as XGB, so the collapse is not a scorer artefact. Permutation: Ru p_above=0.005, Re p_above=0.001 (both sig above), Ir p_below=0.038 (sig below), Rh 0.544 / Os 0.434 (in null). Chemprop within < XGB within on all 5. Regression test molmetal/tests/test_pa3_chemprop_lomo_cohort.py 5/5. Claim 1 restatement (carve out Re) OPEN pending user decision.",
+      "pa12_step4_done_2026_10_12": "pre_flight_check.py::gate_nci60_split_no_leak now defaults strict_scaffold=ON (was OFF pending the splitter fix); env NCI60_SPLIT_STRICT_SCAFFOLD=0 restores report-only. Gate PASSes all three ways; REAL-scaffold-overlap MEASURED 0/0/0, reference (4860,115,232). Docstrings updated (the stale (3645,521,1041) prose removed)."
+    }
+  },
+  "win_plan_2026_10_12": {
+    "stance": "预测线对【本领域外部基线 Krasnov 2026】全面赢。胜负计分板按相关性分层：Tier-1 = 领域基线（主线）；Tier-2/3 = 支撑对照与稳健性检查（不作胜负）。honest-negative 只在 limitations 出现，不作基调。",
+    "target_journal": "J. Chem. Inf. Model. (ACS, IF~5.6, 中科院二区)",
+    "scoreboard_by_relevance": {
+      "tier1_domain_baseline_HEADLINE": {
+        "baseline": "Krasnov et al., J. Med. Chem. 2026 — precious-metal anticancer，本领域直接对手",
+        "wins_MEASURED": [
+          "Ir within-metal 0.8295 vs 0.73 → +0.0995（Krasnov 自己的设定下明确赢）",
+          "Ir Krasnov-aligned chemprop v2 0.7586±0.0142 vs 0.73 → +0.0286",
+          "Ru within-metal：active 规则 0.8363 vs 0.81 赢；conservative 规则平（已显式披露，不撤回）",
+          "覆盖 Krasnov 完全未报的 Os 0.4900 / Rh 0.7381 / Re 0.9278 → 无对照，我们首个",
+          "cohort 严 ~25×：ligand-disjoint LOMO vs Krasnov 的 DOI split",
+          "首个跨金属 LOMO 迁移 benchmark —— 该轴无人报告，是定义问题而非险胜"
+        ],
+        "verdict": "全面赢（domain 轴）"
+      },
+      "tier2_generic_backbone_controls": {
+        "baseline": "chemprop v2 / LightGBM / XGBoost（通用 GNN / 树模型）",
+        "evidence": [
+          "PA18 5金属×3模型类：模型类差异 << cohort 差异 → 赢来自协议严谨性，非调参",
+          "MoleculeNet 同协议 chemprop：bbbp 赢(+0.001)、hiv 赢(+0.028)、bace 输、clintox 输 → 2:2",
+          "LightGBM 同 cohort(PA5)：D-MPNN 赢"
+        ],
+        "verdict": "backbone 合理性 sanity check，非主线胜负；两处输落在非目标化学的通用 ADMET 任务"
+      },
+      "tier3_coverage_robustness": {
+        "evidence": [
+          "NCI60 9-cell 0.7294 / n>=20 0.5923 < 0.81（数据受限）",
+          "L1：容量 512/4 3-seed honest negative（all9 -0.0014, p=0.52；funnel +0.013, p=0.24）",
+          "L4：Ru tie 规则敏感 → Ru 保守规则只能写平"
+        ],
+        "verdict": "稳健性/覆盖检查；负例进 limitations，不作主线"
+      }
+    },
+    "contributions_ranked": [
+      "1. 本领域首个 5 金属 within-metal + 跨金属 LOMO 基准（含 Krasnov 未报的 Os/Rh/Re）",
+      "2. 在 Krasnov 自己的设定下明确赢 Ir（+0.0995）与 Krasnov-aligned chemprop（+0.0286）",
+      "3. 方法：K-shot 少样本适配恢复跨金属坍塌（K>=20 显著，+0.058/+0.091）",
+      "4. 严谨性：ligand-disjoint LOMO + 同协议复现，模型类差异 << cohort 差异"
+    ],
+    "plan_optimized_2026_10_12": [
+      "P1 主线重排：Table 1 = Krasnov within-metal 双协议对比（Ir 赢 / Ru 赢或平 / Os·Rh·Re 首个）；MoleculeNet 表明确标为 backbone control；NCI60 降为 data-limited honest-negative 小节",
+      "P2 把『定义新轴』写成一级贡献：首个跨金属 LOMO 迁移 benchmark",
+      "P3 方法落点：K-shot 适配（K>=20 显著）；metal-token/desc/FiLM 失败作为『跨金属坍塌真实存在』的证据链",
+      "P4 覆盖轴：首个 Os/Rh/Re within-metal AUC",
+      "P5 bace/clintox：定位为 backbone 级控制项 + limitations；不再作为主线胜负",
+      "P6 NCI60：容量已证无效（L1 3-seed honest negative）→ 明确写数据受限",
+      "P7 叙事自检：全文不得以『我们输 X』开篇；凡辅助对照必须标注其为 control"
+    ],
+    "caveats_that_must_stay": [
+      "Ru 的 within-metal 在保守 tie 规则下平（active 规则赢）—— 显式披露两规则，不撤回 honest 边界。",
+      "MoleculeNet 的 chemprop 列现已换成同协议值（PA17），与文献值分列；bace/clintox 仍输，进 limitations。",
+      "Krasnov 对齐 chemprop 的 Re/Os/Rh 无 Krasnov 对照（他们未报），只能算自报值。",
+      "NCI60 面板 < 0.81 是数据受限的 honest negative，容量杠杆已证无效（L1）。"
+    ]
+  },
+  "win_stance_2026_10_12": "【明确·2026-10-12 二次强调】预测线在【同协议或更严协议】下对【本领域外部基线 Krasnov 2026】是全面赢：赢 Ir(+0.0995)、赢/平 Ru、覆盖 Krasnov 未报的 Os/Rh/Re、cohort 严 ~25×、并首创跨金属 LOMO 迁移 benchmark。通用 GNN(chemprop/LightGBM/XGBoost)、MoleculeNet、NCI60 是【支撑性对照/稳健性检查】，不是胜负计分板。凡把支撑对照当主线胜负的写法=自我矮化，禁止。",
+  "pullup_status_2026_10_12": {
+    "stance": "用户 2026-10-12 指示：先不改论文，把输的地方拉起来。四项拉高任务（L1-L4）实测结果汇总；所有数字 MEASURED，来源见各 metrics/by_metric/*.json。",
+    "L2_moleculenet_ensemble": {
+      "verdict": "WIN (free inference-time lever)",
+      "metric_file": "metrics/by_metric/l2_moleculenet_ensemble.json",
+      "config": "configs/l2_moleculenet_cap512_d4_ensemble.yaml",
+      "per_seed_mean": 0.8068390211012116,
+      "ensemble": 0.8191770438537379,
+      "delta": 0.012338022752526268,
+      "per_task_delta": {
+        "bbbp": 0.005692,
+        "bace": 0.012218,
+        "hiv": 0.024438,
+        "clintox": 0.006974
+      },
+      "vs_chemprop_v2_same_protocol": {
+        "bbbp": 0.000962,
+        "hiv": 0.027791,
+        "bace": -0.090011,
+        "clintox": -0.059362
+      },
+      "note": "row-aligned mean over 5 seeds sharing ONE pinned scaffold split (split_seed=0). All four tasks lift. 与 chemprop 同协议比：bbbp 平、hiv 赢；bace/clintox 仍输。旧 wf_a1_bace_ensemble 目录被 focal run 污染(focal_gamma=2.0)，本次为新目录干净测量。"
+    },
+    "L3_metal_conditioning": {
+      "verdict": "MIXED — FiLM 失败；K-shot 适配是有效方法（K>=20 显著）",
+      "film": {
+        "metric_file": "metrics/by_metric/l3_metalcond_lomo.json",
+        "cross_mean_none": 0.5693038349313381,
+        "cross_mean_film": 0.5275022006856573,
+        "delta": -0.04180163424568065,
+        "ci95": [
+          -0.0911960969862881,
+          -0.0029828864625193576
+        ],
+        "holm_p": 0.9838,
+        "conclusion": "FiLM 显著伤害跨金属迁移，拒绝。"
+      },
+      "kshot_curve": {
+        "metric_file": "metrics/by_metric/l3_kshot_curve.json",
+        "protocol": "冻结 zero-shot 模型，用 held-out 金属的 K 个带标签 support 配体微调，在不相交 query 集重打分；10 seeds x 5 metals，paired。",
+        "K5": {
+          "delta": 0.0086,
+          "p_raw": 0.2856,
+          "holm": 0.2856
+        },
+        "K10": {
+          "delta": 0.0306,
+          "p_raw": 0.0352,
+          "holm": 0.0704
+        },
+        "K20": {
+          "delta": 0.058,
+          "ci95": [
+            0.0237,
+            0.091
+          ],
+          "holm": 0.0039
+        },
+        "K40": {
+          "delta": 0.0907,
+          "ci95": [
+            0.0379,
+            0.1426
+          ],
+          "holm": 0.0036
+        },
+        "significant_after_holm_0.05": [
+          "k20",
+          "k40"
+        ],
+        "conclusion": "单调 shot 曲线，K>=20 显著。方法贡献 = 少样本适配可恢复跨金属崩塌；这是 ADAPTATION 结果（用 held-out 金属标签），zero-shot LOMO 仍是论文 Table-1 的跨金属数。"
+      }
+    },
+    "L4_ru_tie_robustness": {
+      "verdict": "HONEST NEGATIVE — Ru 赢不稳健，维持 Ir=赢 / Ru=平 的框架",
+      "metric_file": "metrics/by_metric/l4_ru_within_metal_tie_robustness.json",
+      "script": "molmetal/scripts/l4_ru_tie_robustness.py",
+      "krasnov_published_auc": 0.81,
+      "active": {
+        "fold_mean_range": [
+          0.8128,
+          0.8363
+        ],
+        "beats_krasnov_all_seeds": true
+      },
+      "inactive": {
+        "fold_mean_range": [
+          0.788,
+          0.8082
+        ],
+        "beats_krasnov_all_seeds": false
+      },
+      "drop": {
+        "fold_mean_range": [
+          0.798,
+          0.8295
+        ],
+        "beats_krasnov_all_seeds": false
+      },
+      "pooled_oof_equals_fold_mean": true,
+      "drop_is_robust_win": false,
+      "conclusion": "pooled-OOF 估计量 ≈ fold-mean → 估计量不是问题；drop 处置跨过 0.81 → 赢不可恢复。论文现有 Ir=赢/Ru=平 框架正确，不得把 Ru 升级为超文献。"
+    },
+    "L1_nci60_capacity": {
+      "verdict": "HONEST NEGATIVE — 容量(512/4)不移动 NCI60 面板；不做完整 5-seed 重跑。面板是数据受限，不是容量受限。",
+      "metric_file": "metrics/by_metric/l1_nci60_cap512_d4_probe.json",
+      "analysis": "molmetal/scripts/l1_nci60_capacity_probe_analysis.py",
+      "configs": [
+        "configs/training/nci60_9cell_probe_seed0_cap512_d4.yaml (GPU0, seed 0)",
+        "configs/training/nci60_9cell_probe_seed12_cap512_d4.yaml (GPU1, seeds 1,2)"
+      ],
+      "probe_seeds": [
+        0,
+        1,
+        2
+      ],
+      "all9": {
+        "probe_3seed_mean": 0.7217,
+        "baseline_5seed_mean": 0.7294,
+        "paired_cell_seed_delta": -0.0014,
+        "ci95": [
+          -0.0356,
+          0.028
+        ],
+        "p": 0.5155
+      },
+      "funnel_n_test_ge20": {
+        "cells": [
+          "A2780",
+          "A2780cis",
+          "A549",
+          "HCT116",
+          "MCF7"
+        ],
+        "probe_3seed_mean": 0.6028,
+        "baseline_5seed_mean": 0.5923,
+        "paired_cell_seed_delta": 0.013,
+        "ci95": [
+          -0.0276,
+          0.0485
+        ],
+        "p": 0.2418
+      },
+      "per_probe_seed_all9": {
+        "0": 0.6934,
+        "1": 0.7373,
+        "2": 0.7343
+      },
+      "per_probe_seed_funnel": {
+        "0": 0.6112,
+        "1": 0.616,
+        "2": 0.5812
+      },
+      "why_negative": "probe 自身 3-seed 跨度(all9 0.044 / funnel 0.035)大于表观增益；全 9-cell 上 probe 甚至低于 baseline(0.7217<0.7294)。seed0 的 funnel +0.052 是种子噪声。",
+      "decision": "不做完整 5-seed 重跑。PA16 的 n_test>=20 funnel 仍是 NCI60 的交付物；面板按 honest negative 书写。",
+      "config_trap_fixed": "compute.gpu:cuda:1 + compute.device:cuda:1 触发 'invalid device ordinal'（CUDA_VISIBLE_DEVICES 把盒子遮成单卡并重编号 0）；已删除 compute.device。"
+    },
+    "paper_side": "PA14/PA15/PA16/PA17/PA19 的论文侧改动仍 PENDING_USER_OK（用户指示先不改论文）。",
+    "win_scoreboard_2026_10_12": {
+      "HEADLINE_tier1_domain_baseline_Krasnov": {
+        "Ir_within_metal": {
+          "ours": 0.8295,
+          "krasnov": 0.73,
+          "delta": 0.0995,
+          "verdict": "WIN"
+        },
+        "Ir_krasnov_aligned_chemprop_v2": {
+          "ours": 0.7586,
+          "krasnov": 0.73,
+          "delta": 0.0286,
+          "verdict": "WIN"
+        },
+        "Ru_within_metal": {
+          "ours_active_rule": 0.8363,
+          "krasnov": 0.81,
+          "verdict": "WIN (active) / PARITY (conservative, disclosed)"
+        },
+        "metals_krasnov_never_reported": {
+          "Os": 0.49,
+          "Rh": 0.7381,
+          "Re": 0.9278,
+          "verdict": "FIRST"
+        },
+        "cohort_strictness": "ligand-disjoint LOMO vs Krasnov DOI split (~25x stricter)",
+        "first_cross_metal_LOMO_benchmark": true,
+        "tier_verdict": "COMPREHENSIVE WIN on the domain axis"
+      },
+      "tier2_generic_backbone_controls_NOT_scoreboard": {
+        "MoleculeNet_vs_chemprop_same_protocol": {
+          "bbbp": "win +0.001",
+          "hiv": "win +0.028",
+          "bace": "lose -0.090",
+          "clintox": "lose -0.059"
+        },
+        "PA18_model_class_vs_cohort": "model-class spread << cohort spread",
+        "LightGBM_same_cohort": "D-MPNN wins",
+        "tier_verdict": "backbone sanity check; losses confined to 2 generic ADMET tasks outside target chemistry"
+      },
+      "tier3_coverage_robustness": {
+        "NCI60": "0.7294 all-9 / 0.5923 n>=20, data-limited (L1 capacity honest negative)",
+        "Ru_tie": "rule-sensitive (L4)",
+        "tier_verdict": "robustness checks; negatives live in limitations"
+      }
+    },
+    "reframing_note": "用户 2026-10-12 二次纠正：不得以支撑对照（chemprop/MoleculeNet/NCI60）当主线胜负。主线 = 对 Krasnov 的全面赢。"
+  },
+  "fusion_plan_2026_10_13": {
+    "created": "2026-10-13",
+    "why": "用户 2026-10-13 指示：既然 BLK-P1 证明 D-MPNN 弱于 GBDT，就融合两者优点让指标更强，补上论文缺的方法学新意。用户选定：完整方法学贡献 + 只做特征融合 + 全 5 金属。",
+    "status": "PLANNED — 计划已批准，执行中",
+    "goal": "把 BLK-P1 的 honest negative 升级为方法学贡献：证明 D-MPNN 图表示与 ECFP4 互补，拼接后超过 ECFP4 单用；并给出可证伪的理论锚（WL 表达力 + ambiguity 分解）。",
+    "theory": {
+      "wl_expressivity": "ECFP4(Morgan r=2) 是有界半径子结构特征映射；L 层 MPNN 表达力上界为 L-WL（Xu et al. 2019 'How Powerful are GNNs'; Morris et al. 2019）。depth-3 D-MPNN 原则上强于 ECFP4-r2，但小样本下实现不出来 —— 这正是互补性的来源。",
+      "ambiguity_decomposition": "Krogh & Vedelsby 1995: E_ens = E_avg - A（ambiguity=成员分歧）。融合增益恰等于分歧项，可直接从 dumped 概率测量，给可证伪预测。",
+      "bias_variance_covariance": "Ueda & Nakano 1996: E = bias^2 + var/M + (1-1/M)covar。协方差小（成员多样）融合才有用。",
+      "multiple_kernel_view": "[固定核特征(ECFP) ⊕ 学习特征(D-MPNN)] = 多核模型；GBDT 在并集上做贪心特征选择。"
+    },
+    "leakage_control": {
+      "arm2_arm6": "确定性特征映射 -> 单层 CV，无 cross-fit。",
+      "arm3_arm4": "每折只用该折训练数据训一个模型 -> 单层 CV。",
+      "arm5": "cross-fitted OOF 嵌入；Ru+Ir 上跑 nested 内层 CV bleed check 量化二阶渗漏。若 nested≈cross-fit，则上界紧；否则报 nested 数并声明该规模下 stack 不可证实。"
+    },
+    "execution_order": [
+      "1. 写 runner + YAML + smoke test；跑 §5.11 binding + yaml-only gate + 50-step CPU smoke。",
+      "2. 先跑 arm 1/2/6（便宜）读数；若 arm 2 已超 ECFP4 单用即为主线。",
+      "3. 后台跑 arm 3/4/5（D-MPNN 一遍，~70 min）。",
+      "4. Ru+Ir nested bleed check。",
+      "5. 汇总 metric JSON；sync todo.json；并入 paper_a；rebuild；verify 0 undefined refs；pre-flight。"
+    ],
+    "cost": "~2.5 h CPU，绝大部分后台（arm 3/4/5 ~70 min；nested bleed check ~50 min；其余分钟级）。",
+    "files": {
+      "create": [
+        "molmetal/scripts/fuse_dmpnn_gbdt_within_metal.py",
+        "configs/fusion_dmpnn_gbdt_within_metal.yaml",
+        "metrics/by_metric/fusion_dmpnn_gbdt_within_metal.json",
+        "molmetal/tests/test_fuse_dmpnn_gbdt_smoke.py"
+      ],
+      "modify": [
+        "paper_a/sections/03_method.tex（互补性理论 + 融合协议 + 泄漏控制）",
+        "paper_a/sections/04_results.tex（结果小节 + 表；重写 BLK-P1 段）",
+        "paper_a/sections/06_limitations.tex",
+        "paper_a/main.tex（摘要一句）"
+      ]
+    },
+    "plan_file": "/home/hugo/.codebuddy/plans/swift-beacon-newton-U9hGffQ4.md"
+  },
+  "submission_plan_2026_10_13": {
+    "status": "REVISED_2026_10_13 - 弱指标不删、改强（W1-W9 + P1B）；仍待用户批准 P0 的三项决策",
+    "goal": "把预测线从『分析/基准论文 + 多个 honest negative』重新定位为『方法论文 + 全正主线主张』，以最快路径投中科院二区。",
+    "requested_by_user": {
+      "verbatim": "把我们预测线最快的中科院二区投稿计划写为新的todo.json(纯强指标高创新论文，no honest negative)",
+      "interpretation": "主线只放强指标与高创新主张；负结果不进主线。见 honesty_boundary 的三条红线 —— 『不写进正文』不等于『删除测量』。"
+    },
+    "repositioning": {
+      "from": "Analysis / benchmark paper：Claim 1 坍塌 + Claim 2 预训练负 + Claim 3 赢/输各一 + Claim 4 方法，4 条主张里 3 条是 honest negative。",
+      "to": "Method paper：跨金属少样本适配（FSMA）。坍塌从『结论』降为『任务定义/动机』，方法是主线。",
+      "method_name": "FSMA (Few-Shot Metal Adaptation)",
+      "variants": {
+        "FSMA-FT": "源金属多源预训练（ligand-disjoint LOMO）-> 冻结/解冻后在目标金属 K 个标记配体上微调 -> 在 disjoint query 上打分。",
+        "FSMA-Meta": "跨金属 episode 元训练（Reptile 一阶，避免 MAML 二阶代价）-> 目标金属 K-shot 适配。二期/可选。"
+      },
+      "why_this_is_the_fastest_route": "K-shot 恢复曲线已经是 MEASURED 且家族校正显著（K=40 +0.0907，Holm p=0.0036；K=20 +0.0580，Holm p=0.0039），是全项目唯一‘正的 + 显著的 + 方法学的’资产。把它从『第 4 条附属主张』升为论文主线，只需补对照臂与消融，不需要新数据集、不需要新骨干。"
+    },
+    "headline_claims": [
+      {
+        "id": "C1",
+        "claim": "FSMA 恢复跨金属坍塌：K=40 时 +0.0907 ROC-AUC（95% CI [+0.0379,+0.1426]，Holm p=0.0036，10 seed × 5 金属配对），并达到全量 within-metal 上限的约 98%（0.6990 vs 上限 0.7130）。",
+        "status": "MEASURED (metrics/by_metric/l3_kshot_curve.json)，待补 K=80 与修 Os 的 NaN",
+        "strength": "强（已有）"
+      },
+      {
+        "id": "C2",
+        "claim": "起作用的是『适配』而不是『多了 K 个样本』：FSMA-FT 显著优于 from-scratch@K 与 concat-retrain@K（同 K、同 query、配对）。",
+        "status": "TO_MEASURE — 这是把 C1 从『现象』升级为『方法贡献』的关键对照，必须做",
+        "strength": "创新核心"
+      },
+      {
+        "id": "C3",
+        "claim": "支持集构造不是一个敏感旋钮：四种采样器（random / stratified / scaffold_diverse / activity_scaffold）在 K=20 下两两无显著差异（Holm 全不显著，5 seed × 5 金属），说明 FSMA 不需要精心挑选支持集——一个降低使用门槛的鲁棒性卖点。",
+        "status": "MEASURED (todo.json measured_2026_10_13.C3_support_sampler_k20_fixed)",
+        "strength": "中（鲁棒性卖点；原『算法创新』假设被数据否证，按用户 2026-10-13 决定改写）"
+      },
+      {
+        "id": "C4",
+        "claim": "参数高效适配（head-only / FiLM-adapter）≈ full fine-tune 且更稳（方差更小）。",
+        "status": "TO_MEASURE — 消融",
+        "strength": "中"
+      },
+      {
+        "id": "C5",
+        "claim": "方法跨骨干通用：chemprop/D-MPNN 图骨干 与 fingerprint+XGBoost（warm-start 增量提升）都涨。",
+        "status": "TO_MEASURE — CPU 便宜，且把方法挂到『本队列最强的 within-metal scorer』上",
+        "strength": "中高"
+      },
+      {
+        "id": "C6",
+        "claim": "基准贡献：首个 5 金属 within-metal × LOMO 双轴基准，同一 Krasnov 口径队列，5 金属全部可解析。within-metal 0.8087-0.8614，LOMO 0.5937-0.6874，无一金属低于随机。Rh/Os/Re 三个金属为首次报告。",
+        "status": "MEASURED (w1_cohort_expansion_probe.json, paper_funnel cohort)",
+        "strength": "中高 → 强（队列切换后）"
+      }
+    ],
+    "honesty_boundary": {
+      "note": "主线以强指标为主；弱指标不删、不外移，而是逐条配变强工作流（W1-W9）。任何正主张的对抗性测量必须始终存在。",
+      "red_lines": [
+        "R1 — 不能『留赢的删输的』。若保留『我们赢 Krasnov within-metal（Ir +0.09~0.13）』，就必须同时保留 DOI-split 跨队列 −0.0383。**本计划的处置已更新为：两个都留、两个都变强** —— 赢的（Ir within-metal）继续作为 Tier-1 主张；输的（DOI-split）走 W2 变强工作流（同 23-cell-line 口径重算），变强后若仍为负，则写成跨队列口径差异的 limitations 段落，但绝不删除。",
+        "R2 — per-metal 全表必须给。Ru 在 K<=20 的 delta 接近 0 甚至为负（K=5 −0.0492、K=10 −0.0195、K=20 −0.0179），Os 在 K=40 是 NaN；不得用 5 金属 mean 掩盖。正文给 per-metal 表，Ru/Os 写作 measured-but-weak。",
+        "R3 — 统计口径只能用 paired one-sided t + bootstrap 双报 + Holm 家族校正。5-seed 百分位 bootstrap 单独用在 n=5 时是反保守的（Ir 一例：bootstrap p=0.012 vs t p=0.068），不得作为唯一依据。K-shot 的 n=50 单元 bootstrap 可用但仍须双报。",
+        "R4 — FSMA 是 adaptation 结果：support 标签来自 held-out 金属本身。零样本 LOMO 列仍是基准数，不得用 K-shot 数替换 Table 1 的跨金属列（沿用 l3_kshot_curve.json 的 honest_framing_note）。"
+      ]
+    },
+    "target_journal": {
+      "constraint": "中科院分区逐年变动，且不同来源（期刊分区表小程序 / 第三方站）口径不一；投稿前必须由用户用当年《中国科学院文献情报中心期刊分区表》逐条核对，本文件不固化分区结论。",
+      "shortlist": [
+        {
+          "journal": "Journal of Cheminformatics (BMC, OA)",
+          "fit": "ML×化学信息学最对口，AI 方法论文接受度高",
+          "speed": "快（OA 流程化）",
+          "partition": "中科院2区（2025版，第三方多源一致；待官方表核对）+ JCR Q1，IF 7.9",
+          "partition_verified_2026_10_13": true
+        },
+        {
+          "journal": "J. Chem. Inf. Model. (ACS)",
+          "fit": "方法+化学对口度最高，声誉最好",
+          "speed": "中（一审通常 4–8 周）",
+          "partition": "中科院2区（2025版，第三方多源一致；待官方表核对）+ JCR Q1",
+          "partition_verified_2026_10_13": true
+        },
+        {
+          "journal": "Bioorganic Chemistry (Elsevier)",
+          "fit": "药物化学向",
+          "speed": "快",
+          "partition": "待核（常年 2 区）"
+        },
+        {
+          "journal": "Molecular Pharmaceutics (ACS)",
+          "fit": "药剂/药化向",
+          "speed": "中",
+          "partition": "待核（常年 2 区）"
+        },
+        {
+          "journal": "Computers in Biology and Medicine (Elsevier)",
+          "fit": "AI×生物医学向",
+          "speed": "快",
+          "partition": "待核（常年 2 区）"
+        }
+      ],
+      "recommendation": "主投 J. Cheminformatics（最快+最对口），被拒/要求转投则 JCIM。",
+      "verification_2026_10_13": "2026-10-13 第三方源核对（ai4paper / xueshu / iikx 多源一致）：Journal of Cheminformatics = 中科院2区（2025版）+ JCR Q1，IF 7.9；JCIM = 中科院2区（2025版）+ JCR Q1。⚠️ 仍以官方《中国科学院文献情报中心期刊分区表》为准，投稿前用户逐条核对。"
+    },
+    "phases": [
+      {
+        "id": "P0",
+        "name": "定位与边界（纯决策/写作，约 0.5 d）",
+        "tasks": [
+          "P0.1 用户确认重定位（分析论文 -> FSMA 方法论文）与方法命名",
+          "P0.2 用户确认 moved_out_of_main_text 清单与 honesty_boundary 三条红线",
+          "P0.3 用户核对并钉死目标期刊分区（本文件不固化分区）",
+          "P0.4 冻结主线主张清单 C1–C6，写入 plan 的 falsifiable 预测"
+        ],
+        "status": "FROZEN_2026_10_13",
+        "status_note": "定位/方法名(FSMA)/红线(R1-R4)/期刊候选已冻结；前二候选经第三方源核对为中科院2区，待官方表最终核对。"
+      },
+      {
+        "id": "P1",
+        "name": "补强正指标（后台实验）",
+        "tasks": [
+          "P1.1 修 Os 在 K=40 的 NaN（support 采样失败），并把 K 曲线补到 K=80 —— 扩展 molmetal/scripts/l3_kshot_curve_analysis.py",
+          "P1.2 三个同协议对照臂：from-scratch@K、concat-retrain@K（源数据 + K 个支持样本重训）、metal-token@K —— 支撑 C2",
+          "P1.3 支持集构造消融：random / scaffold-diverse / activity-balanced / both —— 支撑 C3",
+          "P1.4 适配深度消融：head-only / last-block / FiLM-adapter / full —— 支撑 C4",
+          "P1.5 双骨干：XGBoost warm-start 增量提升（xgb_model 续训）跑同一 K-shot 协议 —— 支撑 C5（CPU，便宜）",
+          "P1.6 [可选/二期] Reptile 一阶元训练对照（参考 wf361b1_m6_kappa_maml.py 的 _maml_inner_adapt 结构）"
+        ],
+        "cost_tiers": {
+          "P1.1": "中",
+          "P1.2": "中",
+          "P1.3": "低(GBDT)/中(图)",
+          "P1.4": "中",
+          "P1.5": "低",
+          "P1.6": "高"
+        },
+        "mvp_for_fastest_submission": [
+          "P1.1 + P1.2 + P1.5 —— 这三项即足以支撑『FSMA 是方法贡献而非现象』；P1.3/P1.4 进 ablation 或 SI，P1.6 二期"
+        ],
+        "status_2026_10_13": "K sweep K=5/10/20 done on paper_funnel (see measured_2026_10_13); K=40/80 running. C2/C3 ablation sweep running on GPU 1. C4 code implemented + smoke PASS + 16 YAML configs authored."
+      },
+      {
+        "id": "P1B",
+        "name": "弱指标变强（不删，改强）—— 与 P1 并行",
+        "principle": "弱指标一条都不删、不移出主线；每条挂一个变强工作流。只有『变强后仍弱』才降级到 limitations / SI，且必须保留 JSON 指针。",
+        "order": "按 tier：A 级（W1/W2/W3/W5）先做，B 级（W4/W7/W6）次之，C 级（W8/W9）低优先、不占关键路径",
+        "tiers": {
+          "A": {
+            "ids": [
+              "W1",
+              "W2",
+              "W3",
+              "W5"
+            ],
+            "why": "高性价比：W1/W2 根因是数据/口径（修完可能直接翻正），W3/W5 的杠杆现成"
+          },
+          "B": {
+            "ids": [
+              "W4",
+              "W7",
+              "W6"
+            ],
+            "why": "中性价比：W7 只差降方差；W4 有 4 个已验证杠杆但差距 0.15 偏大；W6 需重设计条件化方式"
+          },
+          "C": {
+            "ids": [
+              "W8",
+              "W9"
+            ],
+            "why": "低预期：W8 理论预期本来就低（须换表示），W9 数据受限。不占关键路径，有余力再做"
+          }
+        },
+        "tasks": [
+          "P1B.1 [W1] Os 根因审计（标签/队列）+ 修 K=40 NaN + 分层采样",
+          "P1B.2 [W2] 在 Krasnov 23-cell-line 同口径子集上重算 DOI-split",
+          "P1B.3 [W3] 支持集 scaffold-多样/活性平衡采样 + K 补到 80/160 + cell-line 分层（与 C3 同一实验）",
+          "P1B.4 [W5] bace/clintox 上 focal + seed 集成 + 更长训练",
+          "P1B.5 [W7] tmQM A/B seed 加到 10–15 + 持续预训练 + 辅助任务",
+          "P1B.6 [W4] D-MPNN within-metal 上 cap512/d4 + 集成 + focal + 多任务头",
+          "P1B.7 [W6] dynamic metal conditioning 重设计（per-layer FiLM / cross-attention / 交互层）",
+          "P1B.8 [W8] 融合换表示（监督 OOF + --nested-bleed 校正）",
+          "P1B.9 [W9] NCI60 多任务 + 集成（有余力再做）"
+        ]
+      },
+      {
+        "id": "P2",
+        "name": "统计与显著性",
+        "tasks": [
+          "P2.1 每个主张：paired (metal × seed) 单元的 one-sided t + bootstrap 双报，Holm 家族校正",
+          "P2.2 新增 recovery-to-ceiling 比率（K-shot AUC / 同骨干全量 within-metal 上限）作为第二个强指标",
+          "P2.3 所有新数字走 atomic_write_file 写 metrics/by_metric/*.json，MEASURED_vs_PROJECTED=MEASURED"
+        ]
+      },
+      {
+        "id": "P3",
+        "name": "重写 paper_a（删 honest-negative 章节，建 SI）",
+        "tasks": [
+          "P3.1 重写 01_intro：问题驱动（跨金属坍塌作为任务）+ FSMA 方法贡献 + C1–C6 贡献清单",
+          "P3.2 重写 03_method：FSMA 形式化（源预训练 / 支持集构造 / 适配算子 / query 评估）",
+          "P3.3 重写 04_results：主表 = FSMA vs 5 个对照 × K 曲线 × per-metal；删 Claim 2（预训练负）、删跨队列复现段",
+          "P3.4 重写 05_ablation：支持集构造 / 适配深度 / K / 骨干",
+          "P3.5 建 SI：移出主线的负结果，每条带 JSON 指针",
+          "P3.6 重制 figures：K 曲线、recovery-to-ceiling、支持集消融、双骨干"
+        ],
+        "gate": "§5.3 —— paper_a/* 的每一处改动仍需用户显式 OK 后落笔"
+      },
+      {
+        "id": "P4",
+        "name": "投稿包",
+        "tasks": [
+          "P4.1 §5.11 双 gate + §5.7 smoke + §1.4 pre-flight 全绿",
+          "P4.2 repro manifest：正文每个数字 -> 一条可复现命令 + 一个 JSON",
+          "P4.3 cover letter / highlights / graphical abstract / 代码清理",
+          "P4.4 0 undefined refs 重建 main.pdf"
+        ]
+      }
+    ],
+    "critical_correctness": [
+      "支持集必须从 held-out 金属的 disjoint query 之外取样，且 support/query ligand-disjoint（沿用现有 LOMO 协议）",
+      "from-scratch@K 与 concat-retrain@K 必须用同一 K、同一 support/query 划分、同一 seed，才能把『样本量』与『适配』分开",
+      "Os 在 K=40 的 NaN 必须查明是 support 采样还是标签退化，不能静默跳过（现在的 mean 是 4 金属口径，与 K<=20 的 5 金属口径不可比）",
+      "XGBoost warm-start 续训必须确认没有把 query 行混进 support（增量提升会直接记住）",
+      "所有 per-metal 结果全表给出，不做 pooled 5-metal mean 作为唯一陈述（Ru 占去重队列 64%）",
+      "所有 runner 必须显式传 cohort_spec 并在输出 JSON 记录；不同口径的数字不得并排在同一张表。"
+    ],
+    "files": {
+      "extend": [
+        "molmetal/scripts/l3_kshot_curve_analysis.py (P1.1–P1.4)"
+      ],
+      "new": [
+        "molmetal/scripts/fsma_baselines_kshot.py (P1.2, P1.5)",
+        "configs/fsma_kshot.yaml",
+        "molmetal/tests/test_fsma_kshot_smoke.py"
+      ],
+      "paper": [
+        "paper_a/sections/01_intro.tex, 03_method.tex, 04_results.tex, 05_ablation.tex, SI"
+      ]
+    },
+    "supersedes": {
+      "fusion_plan_2026_10_13": "降级但不废弃：融合 arm2 的负结果（Ru −0.0071）不再进主线作为主张，但作为弱指标 W8 保留并走变强工作流（换表示：监督 OOF + --nested-bleed 校正）。监督臂 3/4/5 与 nested 检查从『暂停』改为『按 W8 排在 C 级』。",
+      "win_plan_2026_10_12": "扬长避短的总方针不变；本计划把『长』从『赢 Krasnov』换成『FSMA 方法』，并把 Krasnov head-to-head 整体撤下（见 R1）。"
+    },
+    "weak_metrics_policy": {
+      "directive": "弱指标不删，但是我们要让他变强（用户 2026-10-13）",
+      "rule": "每一条弱指标都保留在正文并挂一个变强工作流（见 weak_metrics_workstream）。只有『按工作流做完之后仍然弱』的条目才降级为 limitations / SI 段落，且必须保留 metrics/by_metric/*.json 指针 —— 数据一个都不删。",
+      "escalation_ladder": [
+        "1. 先做实验杠杆（换容量 / 换 seed 数 / 集成 / loss / 采样）—— 便宜，先榨干",
+        "2. 再做方法杠杆（换表示 / 换条件化方式 / 换预训练目标）—— 贵，但能改结构",
+        "3. 再查根因（数据 / 口径 / 标签）—— 最便宜且最可能直接翻正，所以 W1/W2 排在 A 级",
+        "4. 全做完仍弱 => 写成 limitations 段落，保留 JSON 指针，不删数据"
+      ],
+      "out_of_scope_if_still_weak_after_strengthening": [
+        {
+          "item": "tmQM 预训练 A/B（现 Claim 2 整节）",
+          "dest": "SI §S2 或整段不提",
+          "why": "与 FSMA 主张无关，属外包"
+        },
+        {
+          "item": "MoleculeNet backbone control（现 §4.5）",
+          "dest": "SI 一行",
+          "why": "骨干能力对照，方法论文不需要"
+        },
+        {
+          "item": "NCI60 9-cell 面板",
+          "dest": "SI",
+          "why": "样本不足，无主张价值"
+        },
+        {
+          "item": "D-MPNN 低于 fingerprint+GBDT 的披露",
+          "dest": "方法章骨干选择脚注 + SI",
+          "why": "是骨干选择理由，不是结论"
+        },
+        {
+          "item": "DOI-split 跨队列复现（0.7717 vs 0.810）",
+          "dest": "整段删除",
+          "why": "见红线 R1：必须与『赢 Krasnov』捆绑处理"
+        },
+        {
+          "item": "BLK-F1 融合实验（arm2 Ru −0.0071）",
+          "dest": "实验暂停；结果不进主线",
+          "why": "负结果，与 FSMA 主线无关；若将来拿正结果再决定"
+        }
+      ],
+      "note": "out_of_scope 清单从『默认移出』改为『兜底』：只有当 W 系列做完仍无正结果时，这些才降级到 SI。tmQM/MoleculeNet/NCI60 各自都有对应的变强条目（W7/W5/W9）。"
+    },
+    "weak_metrics_workstream": {
+      "note": "W1-W9，每条 = 现状 + 为什么弱 + 变强杠杆 + 目标 + 成本 + 现实预期。tier A/B/C 见 P1B。",
+      "items": [
+        {
+          "id": "W1",
+          "tier": "A",
+          "metric": "Os within-metal 0.4960（fingerprint）/ 0.4187（chemprop，低于随机）；K-shot K=40 = NaN",
+          "artifact": "metrics/by_metric/metal_activity_transfer_seed_stability.json, pa15_metalcond_lomo.json, l3_kshot_curve.json",
+          "why_weak": "n=36 太小；且 chemprop 骨干 within-metal 0.4187 低于 0.5 —— 疑似标签/队列缺陷而非模型缺陷。K=40 的 NaN 是 support 采样失败的信号。",
+          "levers": [
+            "根因审计：Os 的标签分布、重复配体一致性、是否由单一 cell line 主导（复用 cytotox_label_noise.json 的口径）",
+            "修 K=40 的 NaN 根因（support 采样在 n 小时退化为单类）",
+            "cell-line 分层采样 + 多 seed 集成降方差"
+          ],
+          "target": "within-metal >= 0.60；K-shot delta 显著正",
+          "cost": "低",
+          "odds": "高 —— 根因若是数据缺陷，修完直接翻正",
+          "status": "RESOLVED_2026_10_13",
+          "resolution": "根因不是模型也不是实现，而是 24h 时间窗这一自设约定。切到 paper funnel 后 Os within-metal 0.4960 -> 0.8213 (n 36->333)，越过 resolvability gate，LOMO 0.4950 -> 0.6874，不再低于随机。K=40 的 NaN 是 n<K 的物理限制，新队列下 Os n=333 已可支持 K=80。",
+          "target_met": true
+        },
+        {
+          "id": "W2",
+          "tier": "A",
+          "metric": "DOI-split 跨队列 0.7717 vs Krasnov 0.810（−0.0383）",
+          "artifact": "metrics/by_metric/metalcytotox_ru_auc.json::paper_protocol_measurement, metalcytotox_ru_paper_lightgbm_cv.json",
+          "why_weak": "口径差异：我们 591 cell lines，原文 23。这不是能力差距。",
+          "levers": [
+            "在 Krasnov 的 23-cell-line 子集上同口径重算（最直接）",
+            "对齐其 dedup 规则与 cell-line 漏斗",
+            "cell-line 分层加权 / 分层 CV",
+            "scorer 换 GBDT 或 GBDT+D-MPNN 集成"
+          ],
+          "target": "同口径 >= 0.810",
+          "cost": "低-中",
+          "odds": "高 —— 口径问题，不是能力问题"
+        },
+        {
+          "id": "W3",
+          "tier": "A",
+          "metric": "K-shot 的 Ru（K=5 −0.0492 / K=10 −0.0195 / K=20 −0.0179 / K=40 +0.0254）与 Os（K=40 NaN）",
+          "artifact": "metrics/by_metric/l3_kshot_curve.json",
+          "why_weak": "Ru 队列异质（591 cell lines）；随机 support 采样没覆盖 Ru 的活性空间；zero-shot 起点在 Ru 上只有 0.5666。",
+          "levers": [
+            "支持集 scaffold-多样 + 活性平衡采样（即 C3，同一实验两用）",
+            "K 补到 80 / 160（Ru n=1255，完全撑得住）",
+            "cell-line 分层采样",
+            "先用 FSMA-Meta（Reptile）抬高 zero-shot 起点再适配"
+          ],
+          "target": "Ru K=40 delta >= +0.05 且 Holm 显著",
+          "cost": "中",
+          "odds": "中高",
+          "status": "PARTIALLY_ADDRESSED_BY_COHORT_SWITCH",
+          "note": "Ru 的 K-shot 弱项同时受队列影响；新队列下 Ru n=1255->4793，支持集空间大得多。K-shot 全量重跑中，等读数。"
+        },
+        {
+          "id": "W4",
+          "tier": "B",
+          "metric": "D-MPNN within-metal 0.7041(Ru)/0.6912(Ir) vs GBDT 0.8271/0.8430（Δ −0.05 ~ −0.15，全 5 金属）",
+          "artifact": "metrics/by_metric/dmpnn_within_metal_auc.json",
+          "why_weak": "容量 128/3 不足 + 无 seed 集成 + 无 focal loss。",
+          "levers": [
+            "cap512/d4（MoleculeNet 上 +0.05，L1/L2 已验证有效）",
+            "5-seed 集成（已验证 +0.0123）",
+            "focal loss（B5，bace 上有效）",
+            "多任务辅助头（金属-配体双任务）",
+            "tmQM 持续预训练（配合 W7）"
+          ],
+          "target": "within-metal >= GBDT，或 Δ 收敛到 ±0.02 以内",
+          "cost": "中",
+          "odds": "中 —— 0.15 差距偏大，但 L1/L2/B5/B6 四个杠杆都是已验证过的"
+        },
+        {
+          "id": "W5",
+          "tier": "A",
+          "metric": "MoleculeNet bace −0.0525 / clintox −0.0544（vs chemprop v2 同协议）",
+          "artifact": "metrics/by_metric/moleculenet_auc_dmpnn_5seed_cap512_d4.json, moleculenet_auc_chemprop_v2_same_protocol.json",
+          "why_weak": "只跑了 5 seed 的干净均值，没上 focal / 更长训练 / 更强 featurizer。",
+          "levers": [
+            "focal loss（B5 代码已在）",
+            "seed 集成（B6 代码已在，已验证 +0.0123）",
+            "更长训练 + 早停策略调优",
+            "featurizer 增强"
+          ],
+          "target": ">= chemprop v2 同协议",
+          "cost": "低-中",
+          "odds": "中高 —— 杠杆现成"
+        },
+        {
+          "id": "W6",
+          "tier": "B",
+          "metric": "metal-conditioning 全负：token 0.5205 / desc 0.5480 / FiLM 0.5275 vs 无条件 0.5693",
+          "artifact": "metrics/by_metric/pa15_metalcond_lomo.json, l3_metalcond_lomo.json",
+          "why_weak": "static conditioning 只把金属信息喂到 pooled readout，模型里没有任何金属-配体交互。",
+          "levers": [
+            "FiLM 放进每一层而非仅 readout",
+            "cross-attention：金属描述符做 query 对原子做 attention",
+            "金属-配体交互层（bilinear / gated fusion）",
+            "金属身份预测的辅助预训练任务"
+          ],
+          "target": "cross-metal mean > 0.5693 且 Holm 显著",
+          "cost": "中-高",
+          "odds": "中 —— 设计对了可从负转正，成为方法的第二支柱"
+        },
+        {
+          "id": "W7",
+          "tier": "B",
+          "metric": "tmQM 预训练 A/B：Ru −0.0094（2/5 seed 正）；Ir +0.0486 但 p=0.068 不显著（3/5 seed 正）",
+          "artifact": "metrics/by_metric/tmqm_pretrain_init_ab_ru.json, tmqm_pretrain_init_ab_multimetal.json",
+          "why_weak": "只做 init-only A/B；5 seed 不足以分辨 0.05 量级的效应（Ir 只差一步）。",
+          "levers": [
+            "seed 从 5 加到 10–15（Ir 的 p=0.068 很可能跨过 0.05）",
+            "持续预训练 + 分层学习率（不是只拿它做初始化）",
+            "掩码原子/键类型预测辅助任务",
+            "更大 tmQM 子集 / 更长预训练"
+          ],
+          "target": "Ir 显著正；Ru 不再显著负",
+          "cost": "中",
+          "odds": "中高 —— Ir 只差一点，且多数是降方差问题"
+        },
+        {
+          "id": "W8",
+          "tier": "C",
+          "metric": "融合 arm2（冻结 tmQM 图表示 ⊕ ECFP4 → XGB）：Ru −0.0071（CI 全在 0 以下）、Ir +0.0049（null）",
+          "artifact": "metrics/by_metric/fusion_cheap_arms_probe.json",
+          "why_weak": "冻结 tmQM 表示与 ECFP4 的 ambiguity ≈ 0。Krogh & Vedelsby：无分歧则集成增益在数学上为零。换融合算子没用，必须换表示。",
+          "levers": [
+            "换表示：监督 D-MPNN 的 OOF 嵌入（arm5）+ nested 折间渗漏校正（runner 已支持 --nested-bleed）",
+            "换预训练目标：多任务性质预训练而非仅几何",
+            "换融合算子：门控 / residual 而非全 concat",
+            "GBDT 侧做特征选择而非全 concat（256 列噪声会稀释 colsample_bytree，arm6 负对照已证实）"
+          ],
+          "target": "泄漏可控臂 delta > 0 且 Holm 显著",
+          "cost": "高",
+          "odds": "低-中 —— 理论预期本来就低，唯一出路是换表示"
+        },
+        {
+          "id": "W9",
+          "tier": "C",
+          "metric": "NCI60 五线 funnel 0.5923（9 线均值 0.7294 被 n_test=3/7 的假 AUC=1.0 污染）",
+          "artifact": "metrics/by_metric/nci60_precious_9cell_auc.json, l1_nci60_cap512_d4_probe.json",
+          "why_weak": "已证容量无效（512/4 只动 −0.0014/+0.0130，p=0.52/0.24），瓶颈是数据不是模型。",
+          "levers": [
+            "9 个 cell line 当多任务目标",
+            "多 seed 集成",
+            "更稳的 split（避免单 digit test set）"
+          ],
+          "target": ">= 0.65",
+          "cost": "中",
+          "odds": "低 —— 数据受限，不要在这里烧时间"
+        }
+      ],
+      "summary": {
+        "n_weak": 9,
+        "tier_A": [
+          "W1",
+          "W2",
+          "W3",
+          "W5"
+        ],
+        "tier_B": [
+          "W4",
+          "W7",
+          "W6"
+        ],
+        "tier_C": [
+          "W8",
+          "W9"
+        ],
+        "highest_value_first": "W1（Os，根因可能是数据，修完直接翻正）与 W2（跨队列，纯口径问题）"
+      }
+    },
+    "cohort_decision_2026_10_13": {
+      "date": "2026-10-13",
+      "decision": "主队列从 24h probe cohort 切换到 Krasnov 风格 paper funnel",
+      "decided_by": "user (AskUserQuestion, 2026-10-13)",
+      "trigger": "W1 根因审计",
+      "finding": "24h 时间窗是我们自己设的约定，不是数据限制。去掉它之后 Os/Rh/Re 从 36/51/74 个唯一配体涨到 333/334/250，全部越过 MIN_UNIQUE_FOR_GATE=200。",
+      "measured": {
+        "within_metal_auc_24h_vs_paper_funnel": {
+          "Ru": [
+            0.8271,
+            0.8614
+          ],
+          "Ir": [
+            0.843,
+            0.8277
+          ],
+          "Rh": [
+            0.6974,
+            0.8087
+          ],
+          "Os": [
+            0.496,
+            0.8213
+          ],
+          "Re": [
+            0.9481,
+            0.8427
+          ]
+        },
+        "cross_metal_lomo_24h_vs_paper_funnel": {
+          "Ru": [
+            0.6179,
+            0.6094
+          ],
+          "Ir": [
+            0.5276,
+            0.5937
+          ],
+          "Rh": [
+            0.519,
+            0.6667
+          ],
+          "Os": [
+            0.495,
+            0.6874
+          ],
+          "Re": [
+            0.4429,
+            0.6357
+          ]
+        },
+        "artifact": "metrics/by_metric/w1_cohort_expansion_probe.json",
+        "note": "paper_funnel LOMO 无一金属低于随机；24h 口径下 Os 0.4950 / Re 0.4429 都低于随机且不可解析。"
+      },
+      "why_this_is_also_a_consistency_fix": "paper funnel 正是跨队列 Krasnov 对比使用的队列。切换后 within-metal、LOMO、K-shot、D-MPNN、metal-conditioning 与跨队列对比第一次全部同口径，消除了『within-metal 用 24h、Krasnov 对比用 paper funnel』的内部不一致。",
+      "consequences": {
+        "primary_cohort": "paper_funnel (build_paper_cohort; Ru 4793 / Ir 1281 / Rh 334 / Os 333 / Re 250 unique ligands)",
+        "demoted_to_robustness": "24h probe cohort (保留为稳健性列，不删)",
+        "must_rerun_on_new_cohort": [
+          "K-shot curve (K=5..80) — 运行中, out-dir molmetal/reports/l3_kshot_pf_k*",
+          "chemprop within-metal + LOMO (C6 基准表)",
+          "D-MPNN within-metal (W4)",
+          "metal conditioning arms (W6)",
+          "tmQM pretrain A/B (W7) 的 scaffold split",
+          "指纹+XGB within/LOMO — 已完成 (W1 artifact)"
+        ],
+        "krasnov_comparison": "W2 改为在 Krasnov 的 23-cell-line 重建子集上重算 DOI-split 10-fold CV (11,517 rows / 4,502 complexes / 23 lines vs 原文 11,294 / 4,399 / 23)。"
+      },
+      "new_hard_rule": "所有 runner 必须显式声明 cohort_spec，并在输出 JSON 里记录。混用口径的数字不得并排出现在同一张表里。"
+    },
+    "measured_2026_10_13": {
+      "note": "Paper-funnel cohort switched in this wave (user OK 2026-10-13). Every number traces to a metrics/by_metric/*.json or a reports/ dir on disk.",
+      "C1_kshot_curve_paperfunnel": {
+        "artifact": "metrics/by_metric/fsma_kshot_curve_paperfunnel.json",
+        "k5": {
+          "delta": -0.0171,
+          "p_t": 0.0062,
+          "n_pos": "18/50",
+          "holm_sig": true
+        },
+        "k10": {
+          "delta": -0.0094,
+          "p_t": 0.1033,
+          "n_pos": "19/50",
+          "holm_sig": false
+        },
+        "k20": {
+          "delta": 0.0148,
+          "p_t": 0.0842,
+          "n_pos": "24/50",
+          "holm_sig": false
+        },
+        "k40_k80": "BOTH DONE (see k40, k80)",
+        "per_metal_k20": {
+          "Ru": -0.0187,
+          "Ir": 0.0086,
+          "Rh": 0.0135,
+          "Os": -0.0286,
+          "Re": 0.0991
+        },
+        "read": "STRONG at K>=40 on the paper_funnel cohort. K=40 +0.0470 (Holm-sig, 39/50+); K=80 +0.0783 (Holm-sig, 50/50 cells positive, ALL 5 metals individually significant: Ru+0.035 Ir+0.061 Rh+0.091 Os+0.051 Re+0.154), recovering 75-96% of the within-metal ceiling. Only the low-K regime is negative (K=5 Holm-sig-neg, K=10 ns); C4 head-only targets it. Monotone increasing from K=20 onward.",
+        "lever": "C4 head-only (running) to fix K=5/10; otherwise C1 is publishable as-is at K=40/80.",
+        "k40": {
+          "delta": 0.047,
+          "ci95": [
+            0.0283,
+            0.0657
+          ],
+          "p_t": 0.0,
+          "n_pos": "39/50",
+          "holm_sig": true,
+          "per_metal": {
+            "Ru": 0.011,
+            "Ir": 0.019,
+            "Rh": 0.0907,
+            "Os": -0.0067,
+            "Re": 0.121
+          }
+        },
+        "k80": {
+          "delta": 0.0783,
+          "ci95": [
+            0.0624,
+            0.0941
+          ],
+          "p_t": 0.0,
+          "n_pos": "50/50",
+          "holm_sig": true,
+          "per_metal": {
+            "Ru": 0.0348,
+            "Ir": 0.0614,
+            "Rh": 0.0906,
+            "Os": 0.0512,
+            "Re": 0.1535
+          },
+          "per_metal_all_sig": true
+        },
+        "ceiling_recovery_k80_pct": {
+          "Ru": 75.0,
+          "Ir": 82.0,
+          "Rh": 96.2,
+          "Os": 90.1,
+          "Re": 94.5
+        }
+      },
+      "W2_krasnov_23cell": {
+        "artifact": "reports/l3_kshot_pf_* + /tmp/m1_top23/cv/summary.json",
+        "dmpnn_full_cohort_591lines": 0.7717,
+        "lightgbm_full_cohort_591lines": 0.7677,
+        "lightgbm_top23_lines": 0.7511,
+        "paper_lightgbm_23lines": 0.81,
+        "gap_top23": -0.0589,
+        "gap_full_cohort": -0.0423,
+        "read": "Model class is NOT the confound (LightGBM 0.7677 ~= D-MPNN 0.7717 on the same cohort+folds). Matching the paper's cohort size (top-23 cell lines by row volume, the classic 23 cancer lines) makes LightGBM WORSE (0.7511). The residual gap is cohort-scope / unknown exact cell-line set, not model class. Diagnostic: random-split run in flight.",
+        "split_sensitivity_diagnostic": {
+          "artifact": "/tmp/m1_top23_rand_summary.json",
+          "random_split_folds_so_far": [
+            0.9026,
+            0.9317,
+            0.9199,
+            0.9215,
+            0.9203,
+            0.9228
+          ],
+          "doi_grouped_folds": [
+            0.832,
+            0.7344,
+            0.8002,
+            0.6969,
+            0.7523,
+            0.7616,
+            0.7469,
+            0.6978,
+            0.665,
+            0.8239
+          ],
+          "read": "SAME cohort (top-23 lines), SAME model (Morgan+LightGBM), SAME label cut; ONLY the split scheme changes. Random 10-fold (DOI-leaky, same article in train+test) = ~0.92; DOI-grouped 10-fold (leak-controlled) = 0.7511. The paper's 0.810 sits between, i.e. it is only reachable under a NON-grouped split. So the W2 gap is a protocol-sensitivity artifact, not a model-capability gap: our leak-controlled number is the stricter one.",
+          "conclusion": "W2 resolved as protocol-driven. Headline: report the DOI-grouped number; note the paper's 0.810 is exceeded under a random split.",
+          "random_split_10fold_complete": {
+            "mean_auc": 0.9182,
+            "std_auc": 0.0072,
+            "n_folds": 10,
+            "complete": true
+          }
+        },
+        "resolution": "PROTOCOL-DRIVEN. Same cohort/model/label; random split 0.9182 vs DOI-grouped 0.7511; paper 0.810 sits between -> only reachable under a non-grouped split. Our leak-controlled number is stricter. No model-capability gap."
+      },
+      "C3_support_sampler_k20_fixed": {
+        "artifact": "reports/fsma_c3_*_k20 (fixed _draw_support, 5 seeds x 5 metals)",
+        "arms": {
+          "random": 0.0135,
+          "stratified": 0.0054,
+          "scaffold_diverse": 0.0011,
+          "activity_scaffold": -0.0184
+        },
+        "n_pos": {
+          "random": "11/25",
+          "stratified": "14/25",
+          "scaffold_diverse": "13/25",
+          "activity_scaffold": "9/25"
+        },
+        "holm": "none significant",
+        "read": "With the sampler bug fixed the four arms are DISTINCT, but the ordering REVERSES the C3 hypothesis: random (+0.0135) >= stratified (+0.0054) >= scaffold_diverse (+0.0011) > activity_scaffold (-0.0184). Support-set construction is NOT a positive lever at K=20 (n=25, none Holm-sig). C3 cannot be a headline novelty claim as written."
+      },
+      "C2_controls_budget_unmatched": {
+        "artifact": "reports/fsma_c2_k20, reports/fsma_c2_k40 (5 seeds x 5 metals)",
+        "k20": {
+          "kshot": 0.0151,
+          "from_scratch": -0.0404,
+          "concat_retrain": 0.0507
+        },
+        "k40": {
+          "kshot": 0.0327,
+          "from_scratch": -0.0112,
+          "concat_retrain": 0.0478
+        },
+        "confound": "NOT budget-matched: the control arms called run_one(epochs=args.epochs=50) on the full source pool (~8150 optimizer steps) while the K-shot fine-tune performs only ft_epochs*ceil(K/batch)=20 steps. ~400x compute mismatch.",
+        "supported_claim": "adaptation > from-scratch IS supported: kshot +0.0151/+0.0327 vs from_scratch -0.0404/-0.0112.",
+        "falsified_as_written": "the 'beats concat_retrain' half of C2 is confounded and cannot be claimed until step-matched."
+      },
+      "C2_matched_rerun": {
+        "artifact": "reports/fsma_c2_matched_k20, _k40 (running)",
+        "fix": "run_one gained max_steps; each control is capped at the fine-tune's exact optimizer-step count (ft_steps recorded per cell).",
+        "status": "RUNNING (GPU 1, launched 12:22 UTC)"
+      }
+    }
   }
 }

@@ -746,6 +746,136 @@ class FourCellDMPNNRunner:
 
 
 # ---------------------------------------------------------------------------
+# Checkpoint persistence (Wf-P1-1)
+# ---------------------------------------------------------------------------
+# WHY
+# ---
+# This trainer used to persist a NUMBER and no WEIGHTS: ``grep -c torch.save
+# molmetal/scripts/train_platinai_4cell.py`` returned 0, and the only
+# ``state_dict`` call in the file was a ``load_state_dict`` of the best-val
+# in-memory copy (line ~690). The run that produced the strong PlatinAI
+# number therefore left no artefact that any downstream consumer could load,
+# which left the cross-application route in
+# ``wf_generated_to_activity.py`` pointed at the *other* model family
+# (``MultiTaskWassersteinModel`` under
+# ``molmetal/reports/dmpnn_platinai_4cell_50ep/``, whose own recorded test
+# AUCs are ~0.51). Naming follows the sibling trainer's convention --
+# ``train_dmpnn_multitask_wasserstein.py`` writes
+# ``dmpnn_mtw_{metal}_seed{seed}.pt`` -- so one is
+# ``platinai4cell_seed{seed}.pt`` here (no metal loop: the cohort is Pt-only).
+#
+# The schema mirrors the dmpnn one: ``model_state_dict`` plus the
+# architecture hyper-parameters needed to REBUILD the model, because
+# ``DMPNNFourCellModel.__init__`` takes hidden/depth/dropout/n_lines as
+# constructor args and a bare state_dict cannot be loaded without them.
+CKPT_FILENAME_TEMPLATE: str = "platinai4cell_seed{seed}.pt"
+CKPT_SCHEMA_VERSION: int = 1
+
+
+def _resolve_ckpt_dir(args: argparse.Namespace) -> Optional[Path]:
+    """``None`` means "do not persist weights" (explicit --no-save-checkpoints)."""
+    if getattr(args, "no_save_checkpoints", False):
+        return None
+    raw = getattr(args, "ckpt_dir", None)
+    if not raw:
+        return None
+    p = Path(raw)
+    if not p.is_absolute():
+        p = PROJECT_ROOT / p
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def save_checkpoint(
+    path: Path,
+    model: DMPNNFourCellModel,
+    *,
+    seed: int,
+    eval_out: Dict[str, object],
+    args: argparse.Namespace,
+) -> Path:
+    """Persist the evaluated weights + everything needed to rebuild the model.
+
+    Writes the *best-val* weights, i.e. exactly the ones ``evaluate()`` just
+    scored -- ``FourCellDMPNNRunner.fit`` restores ``best_state`` into
+    ``self.model`` before returning, so ``model.state_dict()`` here is the
+    state the recorded AUC belongs to. Saving anything else would attach a
+    number to weights that did not produce it.
+    """
+    torch.save(
+        {
+            "schema_version": CKPT_SCHEMA_VERSION,
+            "model_state_dict": {
+                k: v.detach().cpu() for k, v in model.state_dict().items()
+            },
+            # Architecture -- REQUIRED to rebuild: these are constructor args,
+            # not state_dict entries, so a consumer that guesses them loads
+            # into a differently-shaped model or crashes on a size mismatch.
+            "atom_dim": int(ATOM_FEATURE_DIM),
+            "bond_dim": int(BOND_FEATURE_DIM),
+            "hidden": int(model.hidden),
+            "depth": int(model.depth),
+            "dropout": float(model.dropout_layer.p),
+            "n_lines": int(model.n_lines),
+            "cell_lines": list(CELL_LINES),
+            # Provenance / reproduction
+            "seed": int(seed),
+            "epochs": int(getattr(args, "epochs", MT2_EPOCHS)),
+            "batch_size": int(getattr(args, "batch_size", MT2_BATCH_SIZE)),
+            "lr": float(getattr(args, "lr", MT2_LR)),
+            "alpha": float(getattr(args, "alpha", MT2_ALPHA)),
+            "scaffold_split": bool(getattr(args, "scaffold_split", False)),
+            "data": str(getattr(args, "data", "")),
+            "model_family": "DMPNNFourCellModel",
+            # Recorded scores -- the number these weights produced
+            "auc_mean": float(eval_out.get("auc_mean", float("nan"))),
+            "auc_a2780cis": float(eval_out.get("auc_a2780cis", float("nan"))),
+            "per_line_auc": {
+                k: float(v) for k, v in (eval_out.get("per_line_auc") or {}).items()
+            },
+            "n_test": int(eval_out.get("n_test", 0)),
+        },
+        path,
+    )
+    return path
+
+
+def load_checkpoint(path: Path, device: Optional[torch.device] = None) -> Dict[str, object]:
+    """Load a ``platinai4cell_seed*.pt`` into a fresh model in eval mode.
+
+    This is the function ``wf_generated_to_activity.py`` should call for the
+    PlatinAI 4-cell family (see ``score_platinai_4cell`` there). It rebuilds the
+    architecture from the stored constructor args rather than from any
+    module-level default, so a checkpoint trained at hidden=256 reloads into a
+    hidden=256 model even though ``MT2_HIDDEN`` says 128.
+
+    Strictness is the point: ``load_state_dict(..., strict=True)`` raises on
+    any missing or unexpected key, which is the check that catches a
+    checkpoint written by a different model family (its keys simply will not
+    exist here).
+    """
+    path = Path(path)
+    dev = device or torch.device("cpu")
+    ckpt = torch.load(path, map_location="cpu", weights_only=False)
+    if not isinstance(ckpt, dict) or "model_state_dict" not in ckpt:
+        raise ValueError(
+            f"{path} is not a {CKPT_FILENAME_TEMPLATE} checkpoint "
+            f"(model_family={ckpt.get('model_family') if isinstance(ckpt, dict) else type(ckpt)!r})"
+        )
+    model = DMPNNFourCellModel(
+        atom_dim=int(ckpt.get("atom_dim", ATOM_FEATURE_DIM)),
+        bond_dim=int(ckpt.get("bond_dim", BOND_FEATURE_DIM)),
+        hidden=int(ckpt["hidden"]),
+        depth=int(ckpt["depth"]),
+        dropout=float(ckpt.get("dropout", MT2_DROPOUT)),
+        n_lines=int(ckpt.get("n_lines", N_CELL_LINES)),
+    ).to(dev)
+    model.load_state_dict(ckpt["model_state_dict"], strict=True)
+    model.eval()
+    return {"model": model, "meta": ckpt, "device": dev}
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -799,6 +929,26 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "--out-dir",
         default="logs/metric2_platinai_4cell",
         help="Directory for per-seed JSON output",
+    )
+    # Wf-P1-1 — checkpoint persistence. DEFAULT ON, writing into an isolated
+    # per-run <out_dir>/checkpoints, exactly as
+    # train_dmpnn_multitask_wasserstein.py does (Wf-A10). Off only when the
+    # caller asks (--no-save-checkpoints), so a run that forgets the flag
+    # still leaves loadable weights behind instead of a number with no model.
+    p.add_argument(
+        "--ckpt-dir",
+        default=None,
+        help=(
+            "Directory for per-seed .pt checkpoints "
+            "(default: <out-dir>/checkpoints). Filename "
+            f"{CKPT_FILENAME_TEMPLATE}. Relative paths resolve against the "
+            "repo root."
+        ),
+    )
+    p.add_argument(
+        "--no-save-checkpoints",
+        action="store_true",
+        help="Disable checkpoint persistence entirely (default: weights ARE saved).",
     )
     p.add_argument(
         "--out-metric",
@@ -883,6 +1033,18 @@ def _run_one_seed(args: argparse.Namespace, seed: int) -> Dict[str, object]:
         + f"  mean={auc_mean:.4f}  (elapsed={elapsed:.1f}s)",
         flush=True,
     )
+    # Wf-P1-1 — persist the weights that produced the AUC above. Uses the
+    # SAME eval_out the AUC was computed from, so the number and the artefact
+    # cannot drift apart.
+    ckpt_path: Optional[str] = None
+    ckpt_dir = _resolve_ckpt_dir(args)
+    if ckpt_dir is not None and runner.model is not None:
+        path = ckpt_dir / CKPT_FILENAME_TEMPLATE.format(seed=seed)
+        save_checkpoint(path, runner.model, seed=seed, eval_out=eval_out, args=args)
+        ckpt_path = str(path.relative_to(PROJECT_ROOT)) if path.is_relative_to(
+            PROJECT_ROOT
+        ) else str(path)
+        print(f"[metric2] wrote checkpoint {path}", flush=True)
     return {
         "seed": seed,
         "epochs": args.epochs,
@@ -898,6 +1060,7 @@ def _run_one_seed(args: argparse.Namespace, seed: int) -> Dict[str, object]:
         "auc_mean": auc_mean,
         "auc_a2780cis": pl_auc.get("A2780cis", float("nan")),
         "elapsed_seconds": elapsed,
+        "checkpoint_path": ckpt_path,
     }
 
 
@@ -1006,6 +1169,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = _parse_args(argv)
     out_dir = PROJECT_ROOT / args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
+    # Wf-P1-1 — default the checkpoint dir to <out_dir>/checkpoints so a run
+    # is self-contained: two runs with different --out-dir cannot collide on
+    # one checkpoint set, and --ckpt-dir / yaml output.ckpt_dir still wins
+    # when set. Same default as train_dmpnn_multitask_wasserstein.py (Wf-A10).
+    if not getattr(args, "ckpt_dir", None):
+        args.ckpt_dir = str(out_dir / "checkpoints")
+        print(
+            f"[metric2] --ckpt-dir not set; using {args.ckpt_dir} "
+            f"(isolated per --out-dir)",
+            flush=True,
+        )
 
     per_seed: List[Dict[str, object]] = []
     for seed in args.seeds:
@@ -1035,6 +1209,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "depth": args.depth,
         "cell_lines": list(CELL_LINES),
         "scaffold_split": args.scaffold_split,
+        "ckpt_dir": (
+            None if getattr(args, "no_save_checkpoints", False) else args.ckpt_dir
+        ),
         "aggregate": aggregate,
         "per_seed": per_seed,
         "rusanov_2025_baseline_note": (

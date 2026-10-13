@@ -411,7 +411,14 @@ def test_write_synthesis_md_contains_metals(tmp_path):
 # ---------------------------------------------------------------------------
 def test_smoke_bench_produces_artifacts(tmp_path):
     """End-to-end smoke: invoke main() and confirm artifacts are written."""
-    out_dir = tmp_path / "wf128_p2_smoke"
+    out_dir = tmp_path / "wf128_p2"
+    # The bench redirects a --smoke run out of the REQUESTED dir
+    # (bench_3way_real_metalcytotox.py:1164 — `args.out_dir =
+    # args.out_dir.parent / (args.out_dir.name + "_smoke")`) so a smoke cannot
+    # overwrite the full run's synthesis.md. That redirect is deliberate. argv
+    # must keep the BASE path (passing the suffixed one redirects twice), and
+    # only the assertions below look at where the artifacts actually land.
+    artifacts_dir = tmp_path / "wf128_p2_smoke"
     argv = [
         "--smoke",
         "--out-dir",
@@ -424,9 +431,9 @@ def test_smoke_bench_produces_artifacts(tmp_path):
 
     rc = main(argv)
     assert rc == 0
-    assert (out_dir / "synthesis.md").exists()
-    assert (out_dir / "Ru" / "per_seed_metrics.json").exists()
-    payload = json.loads((out_dir / "Ru" / "per_seed_metrics.json").read_text())
+    assert (artifacts_dir / "synthesis.md").exists()
+    assert (artifacts_dir / "Ru" / "per_seed_metrics.json").exists()
+    payload = json.loads((artifacts_dir / "Ru" / "per_seed_metrics.json").read_text())
     assert payload["metal"] == "Ru"
     assert "per_seed" in payload and len(payload["per_seed"]) == 1
     assert "config" in payload
@@ -442,6 +449,10 @@ def test_smoke_bench_produces_artifacts(tmp_path):
 # ---------------------------------------------------------------------------
 def test_wasserstein_weight_and_guards_serialised(tmp_path):
     out_dir = tmp_path / "wf128_p2_serialise"
+    # Same deliberate --smoke redirect as test_smoke_bench_produces_artifacts
+    # above; see that comment. argv keeps the base path, assertions read the
+    # suffixed one.
+    artifacts_dir = tmp_path / "wf128_p2_serialise_smoke"
     argv = [
         "--smoke",
         "--metals",
@@ -459,7 +470,7 @@ def test_wasserstein_weight_and_guards_serialised(tmp_path):
 
     rc = main(argv)
     assert rc == 0
-    payload = json.loads((out_dir / "Ru" / "per_seed_metrics.json").read_text())
+    payload = json.loads((artifacts_dir / "Ru" / "per_seed_metrics.json").read_text())
     cfg = payload["config"]
     assert cfg["wasserstein_weight"] == 0.10
     assert cfg["use_l2_guard"] is False

@@ -3,54 +3,54 @@
   "description": "Test ROC-AUC per cell line on PlatinAI 4,078 Pt 4-cell-line dataset (synthetic IC50 labels) with D-MPNN 4-cell-line multi-task (4 cls + 4 reg heads).",
   "unit": "ROC-AUC (0-1, higher better) per cell line",
   "scope": "tier1_precious_metal_anticancer",
-  "source": "molmetal/scripts/train_platinai_4cell.py (seeds=[0, 1, 2], epochs=50, scaffold_split=True)",
-  "rusanov_2025_baseline_note": "Rusanov 2025 reports per-cell-line AUC for 4,078 Pt / 18,995 IC50, 4 cell lines (MCF-7, A549, A2780, A2780cis). Exact numbers in paper Tables S4-S5 (supplementary xlsx, Cloudflare-blocked from this host). Our dataset is built with synthetic IC50 labels \u2014 see build_platinai_4cell.py for the honest framing.",
-  "value_overall_mean_auc": 0.5531726597598308,
-  "value_overall_mean_std": 0.009325184754621551,
-  "value_a2780cis_auc": 0.6475694444444444,
-  "value_a2780cis_std": 0.00649593296314921,
+  "source": "molmetal/scripts/train_platinai_4cell.py via configs/platinai_4cell_desc_v1_rerun.yaml (seeds=[0, 1, 2], epochs=50, scaffold_split=True)",
+  "rusanov_2025_baseline_note": "Rusanov 2025 reports per-cell-line AUC for 4,078 Pt / 18,995 IC50, 4 cell lines (MCF-7, A549, A2780, A2780cis). Exact numbers in paper Tables S4-S5 (supplementary xlsx, Cloudflare-blocked from this host). Our dataset is built with synthetic IC50 labels — see build_platinai_4cell.py for the honest framing.",
+  "value_overall_mean_auc": 0.7104930443183348,
+  "value_overall_mean_std": 0.0027938628629214854,
+  "value_a2780cis_auc": 0.7029249105373672,
+  "value_a2780cis_std": 0.005433182039966514,
   "per_cell_line": {
     "MCF7": {
-      "auc_mean": 0.5844155844155844,
-      "auc_std": 0.023178035215308816,
+      "auc_mean": 0.7120124850500278,
+      "auc_std": 0.0026507089425786994,
       "per_seed": [
-        0.5887445887445888,
-        0.6103896103896104,
-        0.5541125541125541
+        0.7138502377410227,
+        0.7139231644351097,
+        0.7082640529739507
       ]
     },
     "A549": {
-      "auc_mean": 0.6302294197031039,
-      "auc_std": 0.029994751377723162,
+      "auc_mean": 0.7085039585039586,
+      "auc_std": 0.005333010240541262,
       "per_seed": [
-        0.6032388663967612,
-        0.6720647773279352,
-        0.6153846153846154
+        0.7123405873405874,
+        0.700962325962326,
+        0.7122089622089622
       ]
     },
     "A2780": {
-      "auc_mean": 0.35047619047619044,
-      "auc_std": 0.018856180831641284,
+      "auc_mean": 0.7185308231819859,
+      "auc_std": 0.011894441544883958,
       "per_seed": [
-        0.33714285714285713,
-        0.33714285714285713,
-        0.37714285714285717
+        0.7068290882244371,
+        0.7348468069398302,
+        0.7139165743816905
       ]
     },
     "A2780cis": {
-      "auc_mean": 0.6475694444444444,
-      "auc_std": 0.00649593296314921,
+      "auc_mean": 0.7029249105373672,
+      "auc_std": 0.005433182039966514,
       "per_seed": [
-        0.65625,
-        0.6458333333333333,
-        0.640625
+        0.6952947091355396,
+        0.7059562890012716,
+        0.7075237334752904
       ]
     }
   },
   "n_seeds": 3,
   "n_rows": 4078,
-  "timestamp": "2026-09-25",
-  "data_source": "molmetal/data/platinai_4cell.csv (synthesised from platinai_5k + known_pt_drugs + tmQM)",
+  "timestamp": "2026-10-12",
+  "data_source": "molmetal/data/platinai_4cell_desc_v1.csv (descriptor-labelled synthetic cohort, built by build_platinai_4cell.py --descriptor-terms)",
   "status": "MEASURED_SYNTHETIC_LABELS",
   "framing": "synthetic IC50 labels for pipeline test; see build_platinai_4cell.py for honest framing",
   "split": "scaffold",
@@ -86,9 +86,10 @@
     },
     "interpretation": "For MCF7/A549/A2780 the population-optimal AUC is 0.5 and every recorded value is a finite-sample noise draw. The recorded A2780 value of 0.35047619047619044 is a LOW noise draw, NOT evidence of inverted labels and NOT evidence about model quality. Only A2780cis carries a genuine structure-dependent term and only A2780cis AUC (0.6475694444444444) is informative about model quality. Do not average these four AUCs into a single headline number, and do not compare any of them head-to-head to Rusanov 2025.",
     "measurement_date": "2026-10-11",
-    "see_also": "metric description field is preserved verbatim from HEAD; this annotation is additive."
+    "see_also": "metric description field is preserved verbatim from HEAD; this annotation is additive.",
+    "applies_to_cohort": "molmetal/data/platinai_4cell.csv (superseded)",
+    "cohort_note": "This annotation is about the LABEL GENERATOR of platinai_4cell.csv and is retained for provenance. It does NOT apply to platinai_4cell_desc_v1.csv, whose descriptor term removes the MCF7/A549/A2780 null signal; on that cohort all four lines are learnable (see fixed_split_rerun_2026_10_12)."
   },
-
   "void_auc_measurement": {
     "verdict": "VOID_MEASUREMENT",
     "what_is_void": "per_cell_line.* (auc_mean / auc_std / per_seed) for all four cell lines, and every AUC reproduced in molmetal/reports/wf_tier1_metric2_platinai/final.md. These are NOT valid model measurements and must not be cited, averaged, or compared to any baseline.",
@@ -108,6 +109,75 @@
     },
     "also_void": "the derived claim 'A2780cis is the only cell line clearly above chance (0.6476)'. It was measured on 32 molecules and is not evidence that the model works on that line.",
     "survives": "null_signal_annotation is UNCHANGED and still holds: it is a statement about the LABEL GENERATOR (constant + Gaussian noise for MCF7/A549/A2780), not about any AUC, so it is independent of this defect. Its pearson/sd evidence was recomputed over all 4078 rows.",
-    "required_before_reuse": "re-run molmetal/scripts/train_platinai_4cell.py against the fixed _predict and regenerate this file; the numbers will not reproduce."
+    "required_before_reuse": "re-run molmetal/scripts/train_platinai_4cell.py against the fixed _predict and regenerate this file; the numbers will not reproduce.",
+    "superseded_by": "fixed_split_rerun_2026_10_12"
+  },
+  "fixed_split_rerun_2026_10_12": {
+    "why": "The prior per_cell_line values were VOID (batch-local index bug, fix_commit 5781dd98f7) AND were measured on the degenerate scaffold splitter (BLK-PA12: ScaffoldSplitter._scaffold_for returned '' for every molecule, so the 'scaffold' split was molecule-level). Both defects are now fixed and the metric re-measured.",
+    "config": "configs/platinai_4cell_desc_v1_rerun.yaml",
+    "report_dir": "molmetal/reports/platinai_4cell_desc_v1_rerun",
+    "splitter_fix": "molmetal/data/splits.py mtime 2026-10-12 01:56:12 (BLK-PA12 Step 1: _bemis_murcko_key + desalt-aware _scaffold_for); run started 2026-10-12 02:34:25, so the run used the FIXED splitter.",
+    "cohort": "platinai_4cell_desc_v1.csv -- NOT the platinai_4cell.csv the void values were measured on. It adds the HOMO/LUMO/gap/Polarizability linear term the builder always promised, so MCF7/A549/A2780 carry a genuine structure term here (oracle ceiling MEASURED at AUC 0.81-0.83 on z-scored descriptors). Values are therefore NOT directly comparable to the void numbers or to Rusanov 2025.",
+    "measured": {
+      "mean_auc": 0.7104930443183348,
+      "mean_auc_std": 0.0027938628629214854,
+      "a2780cis_auc": 0.7029249105373672,
+      "a2780cis_std": 0.005433182039966514,
+      "n_seeds": 3,
+      "per_cell_line": {
+        "MCF7": 0.7120124850500278,
+        "A549": 0.7085039585039586,
+        "A2780": 0.7185308231819859,
+        "A2780cis": 0.7029249105373672
+      }
+    },
+    "trainer_caveat": "train_platinai_4cell.py:1273 hardcodes the metrics.json 'data_source' string as 'molmetal/data/platinai_4cell.csv (...)', so the rerun's own metrics.json reports the wrong cohort even though it loaded desc_v1 via args.data (line 1003). This file corrects the field; the trainer's hardcoded string is a separate, still-open defect.",
+    "prior_values_superseded": {
+      "value_overall_mean_auc": 0.5531726597598308,
+      "value_overall_mean_std": 0.009325184754621551,
+      "value_a2780cis_auc": 0.6475694444444444,
+      "value_a2780cis_std": 0.00649593296314921,
+      "per_cell_line": {
+        "MCF7": {
+          "auc_mean": 0.5844155844155844,
+          "auc_std": 0.023178035215308816,
+          "per_seed": [
+            0.5887445887445888,
+            0.6103896103896104,
+            0.5541125541125541
+          ]
+        },
+        "A549": {
+          "auc_mean": 0.6302294197031039,
+          "auc_std": 0.029994751377723162,
+          "per_seed": [
+            0.6032388663967612,
+            0.6720647773279352,
+            0.6153846153846154
+          ]
+        },
+        "A2780": {
+          "auc_mean": 0.35047619047619044,
+          "auc_std": 0.018856180831641284,
+          "per_seed": [
+            0.33714285714285713,
+            0.33714285714285713,
+            0.37714285714285717
+          ]
+        },
+        "A2780cis": {
+          "auc_mean": 0.6475694444444444,
+          "auc_std": 0.00649593296314921,
+          "per_seed": [
+            0.65625,
+            0.6458333333333333,
+            0.640625
+          ]
+        }
+      },
+      "data_source": "molmetal/data/platinai_4cell.csv (synthesised from platinai_5k + known_pt_drugs + tmQM)",
+      "timestamp": "2026-09-25",
+      "source": "molmetal/scripts/train_platinai_4cell.py (seeds=[0, 1, 2], epochs=50, scaffold_split=True)"
+    }
   }
 }

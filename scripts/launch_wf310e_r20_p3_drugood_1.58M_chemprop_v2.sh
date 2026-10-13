@@ -421,13 +421,13 @@ run_phase() {
     aborted=0
 
     if [ "${gpu}" = "cpu" ]; then
-        "${PY}" "${trainer}" "$@" \
+setsid nohup         "${PY}" "${trainer}" "$@" \
             > "${out_dir}/train.log" 2>&1 &
         pid=$!
     else
         local idx="${gpu##cuda:}"
         CUDA_VISIBLE_DEVICES="${idx}" \
-            "${PY}" "${trainer}" "$@" \
+setsid nohup             "${PY}" "${trainer}" "$@" \
                 > "${out_dir}/train.log" 2>&1 &
         pid=$!
     fi

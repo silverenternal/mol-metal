@@ -86,6 +86,16 @@ ALL_TERMS = frozenset(
         # gradcheck, and the per-cloud loop; the entry HERE is what stops
         # the wire-in silently rotting back into a constant.
         "soft_valence_term",
+        # BLK-C5 (2026-10-09) — entropy regularisation on the bond head's
+        # output distribution (`-weight * H(softmax(all_logits))`, so the
+        # optimiser maximises entropy).  Targets the C4 mode-collapse:
+        # gen_validity 0.000 from epoch 4 while bond_f1 stayed fine.  Same
+        # gating pattern as assemble_term / soft_valence_term — exact
+        # `torch.zeros(())` at the default weight 0.0, LIVE above it.
+        # molmetal/tests/test_wf_blk_c5_cfm_collapse_repair_smoke.py pins
+        # the sign (term is negative at weight>0, i.e. entropy is maximised)
+        # and the exact-zero default.
+        "entropy_term",
     }
 )
 
@@ -123,6 +133,12 @@ EXPECTED_LIVE = frozenset(
         # should INCREASE the penalty; gradient flows back through the bond
         # head).
         "soft_valence_term",
+        # BLK-C5 (2026-10-09) — entropy regularisation.  The smoke args below
+        # must pass --entropy-reg-weight > 0, since the default 0.0 is an
+        # exact zero and therefore correctly gradient-dead.  Gradient flows
+        # through softmax(all_logits) back into the bond head, so this entry
+        # is what stops the term silently rotting back into a constant.
+        "entropy_term",
         # Wired 2026-10-04 onto that path.  Each of these was previously
         # unusable for want of an (x0, x1, x_t, t) input, not for want of care:
         # shortcut/consistency were `weight * torch.tensor(0.0)`; so3/edm
@@ -205,6 +221,10 @@ _SMOKE_ARGS = [
     # to check.
     "--gen-validity-weight",
     "0.05",
+    # BLK-C5 (2026-10-09): same gating pattern for the entropy regulariser —
+    # OFF by default, so the smoke switches it on explicitly.
+    "--entropy-reg-weight",
+    "0.01",
 ]
 
 _PROBE = """

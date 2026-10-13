@@ -992,7 +992,19 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     # Drop --train-max-per-metal which is meaningless here (no metal axis).
     # add_common_args adds it unconditionally; we override the default to 0.
     p.set_defaults(train_max_per_metal=0)
-    return p.parse_args(argv)
+    p.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="YAML config (§5.11). Keys resolve to the dests above; an "
+        "explicit CLI flag still wins.",
+    )
+    args = p.parse_args(argv)
+    if getattr(args, "config", None):
+        from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+
+        args = apply_yaml_overrides(p, args, args.config, argv=list(argv or []))
+    return args
 
 
 # ---------------------------------------------------------------------------

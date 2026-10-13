@@ -5,10 +5,13 @@
 # Original yaml preserved in .bak.wfa8other (yaml.safe_dump loses comments by design)
 model:
   hidden_dim: 128
-  n_layers: 4
-flow:
-  n_steps: 100
-  method: rk4
+  # 2026-10-09: declared via the alias the D-MPNN trainer actually has.
+  # `n_layers` was removed earlier as a dead key (that trainer declares
+  # --depth, not --n-layers), which was correct but left the hyperparam
+  # contract unsatisfied. --depth defaults to None, meaning "use
+  # DMPNN_DEPTH=3" (train_dmpnn_multitask_wasserstein.py:3458-3461), so 3 is
+  # the value the run has been using all along.
+  depth: 3
 train:
   batch_size: 32
   lr: 0.0001
@@ -36,7 +39,6 @@ data:
     train_frac: 0.7
     val_frac: 0.1
     test_frac: 0.2
-  target_index: null
 device: cuda
 # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'seed: 42' removed — D-MPNN dest is --seeds (list), not --seed; seed enumeration is per-pair.
 output:

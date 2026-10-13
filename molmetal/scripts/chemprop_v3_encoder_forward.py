@@ -204,6 +204,36 @@ class ChempropV3EncoderForward:
     def parameters(self):
         return self.encoder.parameters()
 
+    def train(self, mode: bool = True) -> "ChempropV3EncoderForward":
+        """Delegate to the underlying ``ChempropV2Encoder`` (an ``nn.Module``).
+
+        Added in BLK-D2 Step 2 wire-in (2026-10-09) so callers using
+        ``.train()`` / ``.eval()`` on the wrapper — typical when the encoder
+        is a sub-module of a larger head-attached trainer (e.g. the
+        ``train_chemprop_v3_frozen_dmpnn_head.py`` domain-adaptation path) —
+        get the same ``self.encoder.train()`` / ``self.encoder.eval()``
+        behavior they would get from any other ``nn.Module``. Without this
+        delegate, ``encoder.eval()`` raises ``AttributeError`` because the
+        wrapper is a plain Python class, not an ``nn.Module``.
+        """
+        self.encoder.train(mode)
+        return self
+
+    def eval(self) -> "ChempropV3EncoderForward":
+        self.encoder.eval()
+        return self
+
+    def __call__(self, smiles_list: Sequence[str]) -> "Any":
+        """Delegate to ``forward`` so ``encoder(smiles_list)`` is callable.
+
+        Added in BLK-D2 Step 2 wire-in (2026-10-09) so the wrapper is
+        callable the same way an ``nn.Module`` is.  Without this delegate,
+        ``encoder(batch_smiles)`` raises ``TypeError: object is not
+        callable`` (plain Python classes do not auto-wire ``__call__`` to
+        ``forward``; that is an ``nn.Module``-only behavior).
+        """
+        return self.forward(smiles_list)
+
     def forward(self, smiles_list: Sequence[str]) -> "Any":
         """Encode SMILES -> ``(B, hidden_dim)`` torch tensor.
 

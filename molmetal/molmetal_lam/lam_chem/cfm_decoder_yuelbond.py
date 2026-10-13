@@ -54,7 +54,7 @@ that follows in Wf-124 P1.3.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -289,6 +289,7 @@ class YuelBondBondDecoder:
         valence_cap: Optional[Dict[int, int]] = None,
         decision: str = "argmax",
         decision_threshold: float = 0.5,
+        class_logit_bias: Optional[Sequence[float]] = None,
         connectivity_prior: bool = True,
         connectivity_prior_min_logit: float = 0.0,
     ) -> None:
@@ -320,6 +321,26 @@ class YuelBondBondDecoder:
         # moment the operating point moves.
         self.decision = str(decision)
         self.decision_threshold = float(decision_threshold)
+        # 2026-10-12 (BLK-C-M4) — per-class logit offset, decode-time only.
+        #
+        # Same construction-site rule as the connectivity prior below: it is
+        # postprocess on an existing checkpoint's logits, so no retrain is
+        # needed for it to take effect and `None` restores the previous
+        # decode exactly. See
+        # `yuelbond_decoder.bond_decision` for why this is per-class and not
+        # a prior-based logit adjustment (a global correction would boost
+        # BOND_TRIPLE, which holds 0.08% of pairs and is already 66% of
+        # generated output).
+        if class_logit_bias is not None:
+            _b = [float(x) for x in class_logit_bias]
+            if any(x != 0.0 for x in _b):
+                self.class_logit_bias = _b
+            else:
+                # An all-zeros vector is a no-op; drop it rather than pay for
+                # the add on every pair of every cloud.
+                self.class_logit_bias = None
+        else:
+            self.class_logit_bias = None
         if self.decision not in ("argmax", "threshold"):
             # Fail HERE, not at the first decode.  A yaml typo like
             # `bond_decision: treshold` otherwise decodes with argmax and the
@@ -440,7 +461,10 @@ class YuelBondBondDecoder:
         # 2026-10-05 — the decision rule is a CONFIGURED INPUT, not a
         # hardcoded argmax. See `__init__` for why this was a real gap.
         predicted = _bond_decision(
-            logits, self.decision, self.decision_threshold
+            logits,
+            self.decision,
+            self.decision_threshold,
+            self.class_logit_bias,
         )
         # Confidence score = max logit per pair (skip NO_BOND class for
         # a stronger "is this pair bonded" signal).
@@ -703,15 +727,33 @@ class YuelBondBondDecoder:
                 error=f"RWMol.GetMol failed: {exc}",
                 n_atoms=cloud.positions.shape[0],
             )
+        # 2026-10-13 (BLK-C-L3 / instrument-fix) — SanitizeMol branch must
+        # populate ``DecodedMol.error`` so the rejection reason reaches the
+        # caller.  Pre-fix the branch swallowed the exception and set
+        # ``smiles=""``; the only downstream signal was ``sanitized=False``
+        # and an empty SMILES, which the wf_blkc_l3 guidance probe read as
+        # ``error_stage="unknown_no_error_field"`` on every one of 64/64
+        # bias-3.0 decodes.  That made the post-hoc aromatic-offset sweep
+        # uninterpretable: there was no way to tell a bond-head rejection
+        # from an RDKit valence refusal.
+        #
+        # The ``error`` field is NEW INFORMATION on this path; ``smiles``,
+        # ``bond_orders``, ``dative_bonds``, ``n_atoms``, ``n_bonds``, and
+        # ``sanitized`` are all set identically to the pre-fix values, so no
+        # existing numeric result (or downstream consumer that gates on
+        # ``sanitized`` or ``smiles``) changes.  The string only ever
+        # materialises when SanitizeMol already raised.
         sanitized = False
         smiles = ""
+        sanitize_error: Optional[str] = None
         try:
             Chem.SanitizeMol(mol)
             sanitized = True
             smiles = Chem.MolToSmiles(mol)
-        except Exception:
+        except Exception as exc:
             sanitized = False
             smiles = ""
+            sanitize_error = f"{type(exc).__name__}: {exc}"
         return DecodedMol(
             mol=mol,
             smiles=smiles,
@@ -720,6 +762,7 @@ class YuelBondBondDecoder:
             n_atoms=cloud.positions.shape[0],
             n_bonds=len(bond_orders),
             sanitized=sanitized,
+            error=sanitize_error,
         )
 
     def _empty_decoded(

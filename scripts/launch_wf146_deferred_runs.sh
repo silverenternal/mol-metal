@@ -429,13 +429,13 @@ run_pair() {
     aborted=0
 
     if [ "${gpu}" = "cpu" ]; then
-        "${PY}" "${WF146_TRAINER}" "${args[@]}" \
+setsid nohup         "${PY}" "${WF146_TRAINER}" "${args[@]}" \
             > "${out_dir}/train.log" 2>&1 &
         pid=$!
     else
         local idx="${gpu##cuda:}"
         CUDA_VISIBLE_DEVICES="${idx}" \
-            "${PY}" "${WF146_TRAINER}" "${args[@]}" \
+setsid nohup             "${PY}" "${WF146_TRAINER}" "${args[@]}" \
                 > "${out_dir}/train.log" 2>&1 &
         pid=$!
     fi

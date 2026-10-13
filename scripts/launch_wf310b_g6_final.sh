@@ -244,7 +244,7 @@ run_tuple() {
   # to tee previously masked. USER_OK gating is enforced by the outer wrapper
   # env check (this script gates USER_OK=1 + Wf-310B activation per kill_then_adapt),
   # NOT by a CLI flag (per chemprop_v3 P1.4 wrapper post-mortem same date).
-  CUDA_VISIBLE_DEVICES=0 ${PY} ${SCRIPT} \
+  CUDA_VISIBLE_DEVICES=0 setsid nohup ${PY} ${SCRIPT} \
 --config "${DMPNN_CONFIG}" \
     --metals "${metal}" \
     --seeds "${seed}" \
@@ -253,7 +253,7 @@ run_tuple() {
     --out-dir "${OUT_BASE}/${cfg}/${metal}/seed${seed}" \
     --ckpt-dir "${OUT_BASE}/${cfg}/${metal}/seed${seed}/ckpts" \
     ${CONFIRMED_FLAGS[$cfg]} \
-    "${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
+"${COMMON_ARGS[@]}" 2>&1 | tee "${pair_log}"
   local rc=${PIPESTATUS[0]}
   set -e
   if [[ ${rc} -ne 0 ]]; then

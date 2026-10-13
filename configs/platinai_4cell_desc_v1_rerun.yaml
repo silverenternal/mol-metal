@@ -32,7 +32,7 @@
 entry:
   script: molmetal/scripts/train_platinai_4cell.py
   command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_platinai_4cell.py
-    --config {yaml_path} --out-dir molmetal/reports/platinai_4cell_desc_v1_rerun
+    --config {yaml_path} --out-dir {out_dir}
 data: molmetal/data/platinai_4cell_desc_v1.csv
 seeds: [0, 1, 2]
 
@@ -59,6 +59,40 @@ model:
 
 cuda_visible_devices: "0"
 
+# Sections required by scripts/_pre_flight_check.sh (data/model/protocol/
+# output/directives). `protocol.scaffold_split` is a _NON_TRAINER_PATH, so it
+# does not shadow the `train.scaffold_split` dest.
+protocol:
+  scaffold_split: true
+output:
+  base_dir: molmetal/reports/platinai_4cell_desc_v1_rerun
+  out_dir: molmetal/reports/platinai_4cell_desc_v1_rerun
+  log_master: molmetal/reports/platinai_4cell_desc_v1_rerun/master.log
+  training_summary: molmetal/reports/platinai_4cell_desc_v1_rerun/training_summary.json
+directives:
+  user_ok_required: true
+
 out_dir: molmetal/reports/platinai_4cell_desc_v1_rerun
 out_metric: molmetal/reports/platinai_4cell_desc_v1_rerun/metrics.json
 out_report: molmetal/reports/platinai_4cell_desc_v1_rerun/final.md
+
+# Wf-P1-1 (2026-10-11) — CHECKPOINT PERSISTENCE.
+# Before this key, the trainer's only output was the JSON above: `torch.save`
+# appeared zero times in train_platinai_4cell.py, so the strong PlatinAI model
+# existed as a NUMBER with no WEIGHTS behind it and the cross-application
+# route in wf_generated_to_activity.py had to fall back to the much weaker
+# MultiTaskWassersteinModel family (its own recorded test AUCs ~0.51).
+#
+# The trainer now defaults ckpt_dir to <out_dir>/checkpoints when it is unset,
+# so this key is not strictly required — it is pinned here so the location is
+# written down rather than inferred, and so the same dir is named by both the
+# writer (this config) and the consumer:
+#
+#   .venv/bin/python molmetal/scripts/wf_generated_to_activity.py \
+#       --family platinai_4cell \
+#       --ckpt-dir molmetal/reports/platinai_4cell_desc_v1_rerun/checkpoints \
+#       --smiles-csv <generated_smiles.csv>
+#
+# Filenames are platinai4cell_seed{seed}.pt (one file per seed; the cohort is
+# Pt-only, so there is no metal in the name).
+ckpt_dir: molmetal/reports/platinai_4cell_desc_v1_rerun/checkpoints

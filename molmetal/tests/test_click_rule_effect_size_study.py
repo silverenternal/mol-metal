@@ -371,3 +371,197 @@ def test_output_csv_schema(tmp_path, monkeypatch):
     assert seen == {
         (rule, metric) for rule in ces.STUDY_RULES for metric in ces.STUDY_METRICS
     }
+
+
+# ---------------------------------------------------------------------------
+# 7) CrossDocked root resolution (2026-10-09) — FAILS without the fix
+# ---------------------------------------------------------------------------
+def test_resolve_crossdocked_path_repoints_to_root(tmp_path):
+    """A manifest path under an absent /mnt prefix must resolve under a
+    configured root, with the filename untouched."""
+    root = tmp_path / "extracted" / "crossdocked_pocket10"
+    pocket = root / "BSD_ASPTE_1_130_0"
+    pocket.mkdir(parents=True)
+    lig = pocket / "2z3h_A_rec_1wn6_bst_lig_tt_docked_3.sdf"
+    lig.write_text("dummy")
+
+    manifest_path = (
+        "/mnt/storage/data/molmetal/crossdocked/extracted/crossdocked_pocket10"
+        "/BSD_ASPTE_1_130_0/2z3h_A_rec_1wn6_bst_lig_tt_docked_3.sdf"
+    )
+    assert not Path(manifest_path).exists()
+
+    resolved, tag = ces.resolve_crossdocked_path(manifest_path, str(root))
+    assert resolved == lig, f"expected repoint to {lig}, got {resolved}"
+    assert tag == "flag"
+    assert resolved.name == "2z3h_A_rec_1wn6_bst_lig_tt_docked_3.sdf"
+
+
+def test_resolve_crossdocked_path_manifest_wins(tmp_path, monkeypatch):
+    """When the manifest's own absolute path exists, it must NOT be
+    repointed — a future mount keeps working without any edit."""
+    monkeypatch.delenv(ces.CROSSDOCKED_ROOT_ENV, raising=False)
+    real = tmp_path / "crossdocked_pocket10" / "POCK" / "lig.sdf"
+    real.parent.mkdir(parents=True)
+    real.write_text("dummy")
+    resolved, tag = ces.resolve_crossdocked_path(str(real), None)
+    assert resolved == real
+    assert tag == "manifest"
+
+
+def test_resolve_crossdocked_path_unresolved_returns_original(tmp_path):
+    """No candidate root holds the file -> return the ORIGINAL path so
+    the caller sees a genuine .exists() failure."""
+    missing = "/nonexistent_root_x/y/z.sdf"
+    resolved, tag = ces.resolve_crossdocked_path(
+        missing, str(tmp_path / "also_missing")
+    )
+    assert resolved == Path(missing)
+    assert tag == "unresolved"
+
+
+def test_run_study_reports_resolved_reference_smiles(tmp_path, monkeypatch):
+    """End-to-end: with a synthetic CrossDocked root, run_study must
+    report a real reference_smiles (not None) for its pockets.
+
+    Before the path-repointing fix the loader saw an absent /mnt path
+    and every cell ran with reference_smiles=None.
+    """
+    from molmetal.scripts import r4_lambda_only_run
+    from rdkit import Chem
+
+    root = tmp_path / "root" / "crossdocked_pocket10" / "POCK_A"
+    root.mkdir(parents=True)
+    # A real SDF (ethanol) so load_reference_smiles succeeds.
+    mol = Chem.MolFromSmiles("CCO")
+    Chem.MolToMolFile(mol, str(root / "lig.sdf"))
+
+    manifest = tmp_path / "manifest.csv"
+    manifest.write_text(
+        "pocket_id,receptor_path,ligand_path,ref_path,metal_atoms,"
+        "n_atoms,n_residues,source\n"
+        f"p0,/mnt/absent/rec.pdb,/mnt/absent/crossdocked_pocket10/POCK_A/lig.sdf,,,,Smoke\n"
+    )
+
+    seen_refs = []
+
+    def fake_run_one_cell(
+        *, pocket_id, reference_smiles, seed, n_simulations, n_top_k,
+        click_rules=None, **kwargs,
+    ):
+        seen_refs.append(reference_smiles)
+        rule = click_rules[0] if click_rules else "CuAAC"
+        return _StubCell(pocket_id, seed, rule)
+
+    monkeypatch.setattr(r4_lambda_only_run, "run_one_cell", fake_run_one_cell)
+
+    out = tmp_path / "out"
+    payload = ces.run_study(
+        manifest_path=manifest,
+        n_pockets=1,
+        seeds=[42],
+        n_simulations=20,
+        n_top_k=10,
+        output_dir=out,
+        crossdocked_root=str(tmp_path / "root"),
+    )
+
+    assert all(r is not None and r.strip() for r in seen_refs), (
+        f"reference_smiles never resolved: {seen_refs}"
+    )
+    assert payload["config"]["n_pockets_with_reference_smiles"] == 1
+    assert payload["config"]["path_resolve_sources"] == {"flag": 1}
+
+
+# ---------------------------------------------------------------------------
+# 8) --metal-seed is threaded to run_one_cell (2026-10-09) — FAILS without the fix
+# ---------------------------------------------------------------------------
+def test_metal_seed_reaches_run_one_cell(tmp_path, monkeypatch):
+    """--metal-seed was accepted, stored in the payload and printed in
+    the summary, but never passed to run_one_cell.  Assert it arrives.
+    """
+    from molmetal.scripts import r4_lambda_only_run
+
+    got = []
+
+    def fake_run_one_cell(
+        *, pocket_id, reference_smiles, seed, n_simulations, n_top_k,
+        click_rules=None, metal_seed=None, **kwargs,
+    ):
+        got.append(metal_seed)
+        rule = click_rules[0] if click_rules else "CuAAC"
+        return _StubCell(pocket_id, seed, rule)
+
+    monkeypatch.setattr(r4_lambda_only_run, "run_one_cell", fake_run_one_cell)
+    monkeypatch.setattr(
+        r4_lambda_only_run, "load_reference_smiles", lambda p: "CCO"
+    )
+
+    manifest = tmp_path / "manifest.csv"
+    manifest.write_text(
+        "pocket_id,receptor_path,ligand_path,ref_path,metal_atoms,"
+        "n_atoms,n_residues,source\n"
+        "p0,/tmp/r.pdb,/tmp/l.sdf,,,,Smoke\n"
+    )
+    out = tmp_path / "out"
+    ces.run_study(
+        manifest_path=manifest,
+        n_pockets=1,
+        seeds=[42],
+        n_simulations=20,
+        n_top_k=10,
+        output_dir=out,
+        metal_seed="cisplatin",
+    )
+
+    assert len(got) == len(ces.STUDY_RULES)
+    assert set(got) == {"cisplatin"}, (
+        f"metal_seed not forwarded to run_one_cell: {got}"
+    )
+
+
+def test_metal_seed_defaults_to_none(tmp_path, monkeypatch):
+    """Default run must still forward None explicitly (no regression)."""
+    from molmetal.scripts import r4_lambda_only_run
+
+    got = []
+
+    def fake_run_one_cell(
+        *, pocket_id, reference_smiles, seed, n_simulations, n_top_k,
+        click_rules=None, metal_seed=None, **kwargs,
+    ):
+        got.append(metal_seed)
+        rule = click_rules[0] if click_rules else "CuAAC"
+        return _StubCell(pocket_id, seed, rule)
+
+    monkeypatch.setattr(r4_lambda_only_run, "run_one_cell", fake_run_one_cell)
+    monkeypatch.setattr(
+        r4_lambda_only_run, "load_reference_smiles", lambda p: "CCO"
+    )
+    manifest = tmp_path / "manifest.csv"
+    manifest.write_text(
+        "pocket_id,receptor_path,ligand_path,ref_path,metal_atoms,"
+        "n_atoms,n_residues,source\n"
+        "p0,/tmp/r.pdb,/tmp/l.sdf,,,,Smoke\n"
+    )
+    ces.run_study(
+        manifest_path=manifest,
+        n_pockets=1,
+        seeds=[42],
+        n_simulations=20,
+        n_top_k=10,
+        output_dir=tmp_path / "out",
+    )
+    assert set(got) == {None}
+
+
+def test_cli_help_lists_crossdocked_root():
+    proc = subprocess.run(
+        [sys.executable, str(SCRIPT), "--help"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert proc.returncode == 0
+    out = (proc.stdout or "") + (proc.stderr or "")
+    assert "--crossdocked-root" in out

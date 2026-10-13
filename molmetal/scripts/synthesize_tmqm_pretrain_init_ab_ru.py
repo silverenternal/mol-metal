@@ -88,10 +88,14 @@ def _load(path: Path) -> Dict[str, object]:
 
 
 def _paired_stats(deltas: np.ndarray) -> Dict[str, object]:
+    from scipy import stats as _st
+
     n = int(deltas.size)
     mean = float(deltas.mean())
     sd = float(deltas.std(ddof=1)) if n > 1 else 0.0
     se = float(sd / np.sqrt(n)) if n > 0 else 0.0
+    t = float(mean / se) if se else 0.0
+    tcrit = float(_st.t.ppf(0.975, df=n - 1)) if n > 1 else 0.0
     rng = np.random.default_rng(BOOTSTRAP_SEED)
     boot = deltas[rng.integers(0, n, size=(BOOTSTRAP_N, n))].mean(axis=1)
     lo, hi = (float(x) for x in np.percentile(boot, [2.5, 97.5]))
@@ -99,13 +103,22 @@ def _paired_stats(deltas: np.ndarray) -> Dict[str, object]:
         "mean": round(mean, 6),
         "sd": round(sd, 6),
         "se": round(se, 6),
+        # ``ci95`` is retained as the original percentile-bootstrap interval
+        # (historical field; do not repurpose). ``ci95_ttest`` is the
+        # conventional t-based interval and is the one the paper quotes, so
+        # Ru and Ir are presented with the same estimator. At n=5 the
+        # bootstrap is anti-conservative; see p_one_sided_ttest.
         "ci95": [round(lo, 6), round(hi, 6)],
-        "t_df4": round(mean / se, 4) if se else None,
+        "ci95_bootstrap": [round(lo, 6), round(hi, 6)],
+        "ci95_ttest": [round(mean - tcrit * se, 6), round(mean + tcrit * se, 6)],
+        "t_df4": round(t, 4) if se else None,
+        "p_one_sided_ttest": round(float(_st.t.sf(t, df=n - 1)), 6) if se else None,
         "n_seeds": n,
+        "n_seeds_positive": int((deltas > 0).sum()),
         "all_seeds_positive": bool((deltas > 0).all()),
         "ci_method": (
             f"percentile bootstrap, {BOOTSTRAP_N} resamples, seed {BOOTSTRAP_SEED} "
-            "(paired per-seed deltas)"
+            "(paired per-seed deltas); t-based interval also recorded"
         ),
     }
 
@@ -147,7 +160,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "per_seed": [round(x, 6) for x in random_ps],
         },
     }
-    ci = delta["ci95"]
+    ci = delta["ci95_ttest"]
     null_result = bool(ci[0] <= 0.0 <= ci[1])
 
     report = {
@@ -176,7 +189,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             "verdict": "FAIL" if delta["mean"] < 0 else "PASS",
             "why": (
                 f"the paired delta is {'NEGATIVE' if delta['mean'] < 0 else 'positive'} "
-                f"({delta['mean']:+.4f}) and its 95% CI [{ci[0]:+.4f}, {ci[1]:+.4f}] "
+                f"({delta['mean']:+.4f}) and its t-based 95% CI "
+                f"[{ci[0]:+.4f}, {ci[1]:+.4f}] "
                 f"{'includes' if null_result else 'excludes'} 0; on the fixed "
                 "scaffold split tmQM pretraining shows "
                 f"{'no' if null_result else 'a'} effect on Ru"
@@ -188,7 +202,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"does {'NOT ' if null_result else ''}improve Ru test AUC over "
                 f"random init ({arms['tmqm']['mean']:.4f} vs "
                 f"{arms['random']['mean']:.4f}; paired delta {delta['mean']:+.4f}, "
-                f"95% CI [{ci[0]:+.4f}, {ci[1]:+.4f}], "
+                f"t-based 95% CI [{ci[0]:+.4f}, {ci[1]:+.4f}], "
                 f"t(4)={delta['t_df4']:.2f}). The previously recorded +0.0181 "
                 "(CI [+0.0035, +0.0328]) was measured on the degenerate splitter "
                 "and is not reproducible under a genuine scaffold split."

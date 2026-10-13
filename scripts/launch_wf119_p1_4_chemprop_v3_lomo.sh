@@ -87,7 +87,7 @@ if [[ "${1:-}" == "--dry-run" ]]; then
   echo "USER OK REQUIRED for real launch. Set USER_OK=1 after user grants per 207 §1.1."
   echo ""
   echo "--- Pre-flight gate check (Wf-321H CPU scaffold) ---"
-  ${PY} molmetal/scripts/pre_flight_check.py --pipeline chemprop_v2_v3 2>&1 | grep -E "p3_todo_119_p14_cpu_smoke_ready|p1_chemprop_smoke" | head -5
+setsid nohup   ${PY} molmetal/scripts/pre_flight_check.py --pipeline chemprop_v2_v3 2>&1 | grep -E "p3_todo_119_p14_cpu_smoke_ready|p1_chemprop_smoke" | head -5
   echo ""
   echo "--- Chemprop trainer CLI sanity (--help token check) ---"
   for tok in "--chemprop-mode" "--chemprop-min-epochs" "--chemprop-lomo-init-scale" "v3-fix"; do
@@ -180,7 +180,7 @@ want_ablation() {
 echo ""
 echo "=== WAVE TOOL GUARDS ==="
 echo "pre_flight_check.py (chemprop_v2_v3 pipeline):"
-${PY} molmetal/scripts/pre_flight_check.py --pipeline chemprop_v2_v3 2>&1 | tail -3 || { echo "FAIL: pre_flight_check"; exit 1; }
+setsid nohup ${PY} molmetal/scripts/pre_flight_check.py --pipeline chemprop_v2_v3 2>&1 | tail -3 || { echo "FAIL: pre_flight_check"; exit 1; }
 echo ""
 
 # ============================================================================
@@ -248,7 +248,7 @@ for ablation in baseline v3_fix_only min_epochs_only lomo_init_scale_only; do
   # by tee rc=0, and the wrapper falsely reported success. Capture the
   # trainer's actual exit code via ${PIPESTATUS[0]} and bail on rc != 0.
   set +e
-  ${PY} "${SCRIPT}" "${ABLATION_BASE_ARGS[@]}" "${ABLATION_ARGS[@]}" 2>&1 | tee "${ABLATION_LOG}"
+setsid nohup   ${PY} "${SCRIPT}" "${ABLATION_BASE_ARGS[@]}" "${ABLATION_ARGS[@]}" 2>&1 | tee "${ABLATION_LOG}"
   trainer_rc=${PIPESTATUS[0]}
   set -e
   if [[ ${trainer_rc} -ne 0 ]]; then

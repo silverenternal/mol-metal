@@ -18,7 +18,7 @@
     ],
     "field_warning_threshold": 0.88
   },
-  "VERDICT": "m7 is NOT a strength for this project, and must not be presented as one",
+  "VERDICT": "PROVENANCE ONLY — superseded by metrics/by_metric/m7_diversity.json. The m7 IntDiv1 redefinition is real and shipped; the five-run quality table below it rested on is retracted as unreproducible.",
   "literature": {
     "vendi_score_arxiv_2210_02410": "values above ~0.88 on MOSES are rare and usually indicate distribution shift rather than genuine novelty; their HMM model posts one of the highest IntDiv1 (0.871) while ranking LOWEST on Vendi Score, i.e. IntDiv cannot separate real diversity from combinatorial randomness",
     "intdiv_is_a_collapse_alarm_not_a_quality_score": "nearly every architecture clusters in 0.85-0.87, so it barely discriminates between models",
@@ -63,8 +63,9 @@
         "sa_mean": 8.039
       }
     ],
-    "reading": "cfm_blk_c5_repair is the ONLY run below 0.88 and sits essentially at the MOSES training-set reference (0.8516 vs 0.857). It also has the best chemistry validity (0.9864) and the best SA (6.663). The most fragmented runs score highest. That is the Vendi Score failure mode reproduced inside this project's own data.",
-    "consequence": "m7 cannot be used as a quality metric for the CFM line at all — not as a strength and not as a weakness."
+    "consequence": "m7 cannot be used as a quality metric for the CFM line at all — not as a strength and not as a weakness.",
+    "RETRACTED_2026_10_11": "The 'IntDiv1 is inversely related to chemical quality' claim below is NOT reproducible: none of the five runs named here (cfm_fm_ab_2026_10_09, cfm_fm_control_2026_10_09, cfm_blk_c5_repair_2026_10_09, cfm_frag_control, cfm_frag_assemble) has a generated_smiles.csv on disk — those directories contain only per_epoch_metrics.{csv,json} + logs. On the four cohorts whose CSV DOES exist the relationship REVERSES: the highest-IntDiv1 run (cfm_fullcorpus_2026_10_10, 0.8690) also has among the best SA (4.974) and single-fragment QED (0.2397), while the lowest (wf124_p2_cfm_full, 0.8335) has the worst SA (6.489) and QED (0.1071). Do not cite this table.",
+    "what_survives": "The narrow claim that survives is the literature one: IntDiv is a mode-collapse ALARM, not a quality score, and a high value is not by itself a strength. That rests on MOSES (arXiv:1811.12823) and Vendi Score (arXiv:2210.02410) and needs no project-internal table."
   },
   "fix_shipped": {
     "code": "internal_diversity() in cfm_property_panel.py, wired into build_panel's aggregate",
@@ -112,5 +113,6 @@
       "chemistry_validity_all_pass": null,
       "sa_mean": 8.039
     }
-  ]
+  ],
+  "SUPERSEDED_BY": "metrics/by_metric/m7_diversity.json (2026-10-11) — the canonical m7 slot now carries the IntDiv1 definition and value. This side file is kept for provenance only."
 }

@@ -1,3 +1,7 @@
+# Apache-2.0 License
+# Copyright 2024 TargetDiff authors and contributors
+# Adapted from molmetal/references/targetdiff/utils/evaluation/scoring_func.py
+# Per AGENTS.md §5.10 license-header mandate.
 """TargetDiff scoring wrapper — clone-reuse from targetdiff repo.
 
 Source

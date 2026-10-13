@@ -104,5 +104,20 @@ EOF
 fi
 
 # Actual launch
+# Under `set -o pipefail` (line 31) a trainer that exits while DataLoader workers
+# still hold the pipe open makes tee see EOF first and the trainer's next write
+# take SIGPIPE; the pipeline then reports 141 rather than the trainer's own
+# status, and `set -e` aborts here with no traceback — which is how BLK-C1 (bond
+# head died at epoch 1/20) and BLK-D1 (3 of 5 seeds lost) failed. Keep the tee,
+# it is the only diagnostic, but drop pipefail for this one command so the
+# trainer's real status is readable from PIPESTATUS[0].
+#
+# `rc=${PIPESTATUS[0]}` on the line AFTER the pipeline is NOT sufficient: errexit
+# fires at the pipeline and never reaches it (measured, 2026-10-09). The
+# `set +o pipefail` below is load-bearing.
+set +o pipefail
 PYTHONPATH=/home/hugo/codes/mol-metal ${PY} ${TRAINER} "$@" 2>&1 | tee "${OUT_DIR}/launch.log"
-echo "[$(date -Iseconds)] ${WRAPPER_NAME} complete; log at ${OUT_DIR}/launch.log"
+rc=${PIPESTATUS[0]}
+set -o pipefail
+echo "[$(date -Iseconds)] ${WRAPPER_NAME} exit=${rc}; log at ${OUT_DIR}/launch.log"
+exit "${rc}"

@@ -32,6 +32,7 @@ MetalCytoToxDB (Ru subset, t≤24 h).
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 import time
@@ -100,9 +101,11 @@ SUBSETS: Dict[str, Dict[str, object]] = {
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def load_trained_model(device: torch.device) -> AttentiveDMPNNModel:
+def load_trained_model(
+    device: torch.device, ckpt_path: Path = CKPT_PATH
+) -> AttentiveDMPNNModel:
     """Load the pre-trained attentive D-MPNN checkpoint (Ru, pIC50 head)."""
-    bundle = torch.load(CKPT_PATH, map_location="cpu", weights_only=False)
+    bundle = torch.load(ckpt_path, map_location="cpu", weights_only=False)
     kwargs = dict(bundle["model_kwargs"])
     model = AttentiveDMPNNModel(**kwargs)
     model.load_state_dict(bundle["state_dict"])
@@ -147,11 +150,13 @@ def predict_pic50(
     return preds
 
 
-def active_from_pic50(pic50_pred: np.ndarray) -> np.ndarray:
-    """Convert predicted pIC50 → binary active using the 10µM threshold."""
+def active_from_pic50(
+    pic50_pred: np.ndarray, threshold: float = PIC50_ACTIVITY_THRESHOLD
+) -> np.ndarray:
+    """Convert predicted pIC50 → binary active using the pIC50 threshold."""
     out = np.zeros(len(pic50_pred), dtype=np.int64)
     valid = ~np.isnan(pic50_pred)
-    out[valid] = (pic50_pred[valid] >= PIC50_ACTIVITY_THRESHOLD).astype(np.int64)
+    out[valid] = (pic50_pred[valid] >= threshold).astype(np.int64)
     return out
 
 
@@ -168,6 +173,8 @@ def eval_subset(
     ds: MetalCytotoxDataset,
     model: AttentiveDMPNNModel,
     device: torch.device,
+    seed: int = SEED,
+    threshold: float = PIC50_ACTIVITY_THRESHOLD,
 ) -> Dict[str, object]:
     """Build subset indices, predict, score AUC, return dict."""
     smiles_all = ds.smiles
@@ -176,7 +183,7 @@ def eval_subset(
     if spec["kind"] == "scaffold_split_test":
         # Re-use the same ScaffoldSplitter the ID baseline uses.
         splitter = ScaffoldSplitter(
-            strategy="largest_first", fractions=(0.8, 0.1, 0.1), seed=SEED
+            strategy="largest_first", fractions=(0.8, 0.1, 0.1), seed=seed
         )
         sr = splitter(ds)
         test_idx = sr.test_idx
@@ -210,7 +217,7 @@ def eval_subset(
     elapsed = time.time() - t0
     y_true = ds.active[test_idx].astype(np.int64)
     # ROC-AUC on the *predicted* active classifier (regression head → threshold).
-    y_score = active_from_pic50(pic50_pred).astype(np.float32)
+    y_score = active_from_pic50(pic50_pred, threshold).astype(np.float32)
     auc = auc_safe(y_true, y_score)
     # Also report classification on predicted pIC50 vs observed pIC50
     # (regression agreement) as a sanity check.
@@ -236,25 +243,117 @@ def eval_subset(
 
 
 # ---------------------------------------------------------------------------
+# CLI (§5.11 — YAML-only launch)
+# ---------------------------------------------------------------------------
+def _build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        description="R3 — DrugOOD-style scaffold + 2 OOD-assay benchmark (Ru)."
+    )
+    p.add_argument(
+        "--metal",
+        type=str,
+        default="Ru",
+        help="MetalCytoToxDB metal whitelist entry for the cohort.",
+    )
+    p.add_argument(
+        "--time-threshold",
+        type=float,
+        default=24.0,
+        help="CytotoxFilter time_threshold in hours (default: %(default)s).",
+    )
+    p.add_argument(
+        "--ckpt",
+        type=Path,
+        default=CKPT_PATH,
+        help="Attentive D-MPNN checkpoint to evaluate (default: %(default)s).",
+    )
+    p.add_argument(
+        "--out-json",
+        type=Path,
+        default=None,
+        help="Where to write the raw JSON. Default: "
+        "molmetal/reports/r3_drugood_benchmark.json",
+    )
+    p.add_argument(
+        "--pic50-threshold",
+        type=float,
+        default=PIC50_ACTIVITY_THRESHOLD,
+        help="Predicted pIC50 >= threshold ⇒ active (default: %(default)s).",
+    )
+    p.add_argument(
+        "--seed",
+        type=int,
+        default=SEED,
+        help="RNG seed for the Bemis-Murcko scaffold split (default: %(default)s).",
+    )
+    p.add_argument(
+        "--device",
+        type=str,
+        default=None,
+        help="cpu | cuda | cuda:N. Default: auto (cuda if available).",
+    )
+    p.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="YAML config (§5.11). Keys resolve to the dests above; an "
+        "explicit CLI flag still wins.",
+    )
+    return p
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Module-level entry point for the config-binding gate (§5.11)."""
+    p = _build_parser()
+    args = p.parse_args(argv)
+    if getattr(args, "config", None):
+        from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+
+        args = apply_yaml_overrides(p, args, args.config, argv=list(argv or []))
+    return args
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def main() -> int:
-    print("[R3] Loading MetalCytoToxDB (Ru, t≤24h) ...")
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+
+    out_json = (
+        Path(args.out_json)
+        if args.out_json is not None
+        else REPORTS_DIR / "r3_drugood_benchmark.json"
+    )
+    out_json.parent.mkdir(parents=True, exist_ok=True)
+    ckpt_path = Path(args.ckpt)
+
+    print(f"[R3] Loading MetalCytoToxDB ({args.metal}, t≤{args.time_threshold}h) ...")
     ds = MetalCytotoxDataset.from_csv(
-        metal_whitelist=["Ru"],
-        filters=CytotoxFilter(time_threshold=24.0),
+        metal_whitelist=[args.metal],
+        filters=CytotoxFilter(time_threshold=args.time_threshold),
     )
     print(f"[R3] n_rows = {len(ds)}  metals = {ds.metal_counts()}")
     print(f"[R3] Year range = {ds.summary()['year_min']}–{ds.summary()['year_max']}")
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if args.device:
+        device = torch.device(args.device)
+    else:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[R3] Device = {device}")
-    model = load_trained_model(device)
+    model = load_trained_model(device, ckpt_path)
 
     results: List[Dict[str, object]] = []
     for name, spec in SUBSETS.items():
         print(f"[R3] Evaluating subset: {name}")
-        r = eval_subset(name, spec, ds, model, device)
+        r = eval_subset(
+            name,
+            spec,
+            ds,
+            model,
+            device,
+            seed=args.seed,
+            threshold=args.pic50_threshold,
+        )
         results.append(r)
         print(
             f"    n={r['n_test']:5d}  AUC={r['auc_pic50_thresholded']:.4f}  "
@@ -273,18 +372,22 @@ def main() -> int:
             else float("nan")
         )
 
+    try:
+        ckpt_label = str(ckpt_path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        ckpt_label = str(ckpt_path)
+
     # Persist raw JSON next to the markdown for reproducibility.
-    out_json = REPORTS_DIR / "r3_drugood_benchmark.json"
     with out_json.open("w") as fh:
         json.dump(
             {
-                "checkpoint": str(CKPT_PATH.relative_to(PROJECT_ROOT)),
+                "checkpoint": ckpt_label,
                 "checkpoint_meta": {
-                    "metal": "Ru",
+                    "metal": args.metal,
                     "checkpoint_training_n_rows": 1600,
                     "checkpoint_training_split": "random (seed=42)",
                     "checkpoint_reported_test_pearson_r": 0.407,
-                    "pic50_activity_threshold": PIC50_ACTIVITY_THRESHOLD,
+                    "pic50_activity_threshold": args.pic50_threshold,
                 },
                 "subsets": results,
             },

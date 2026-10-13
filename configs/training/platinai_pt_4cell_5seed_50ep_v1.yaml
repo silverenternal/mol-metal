@@ -270,6 +270,7 @@ output:
 # outstanding, and no GPU run falls back to CPU. Nothing further to close here.
 # =============================================================================
 compute:
+  device: cuda:0
   gpu: cuda:0  # RTX PRO 6000 Blackwell (per TODO/decisions/0002-tier2-scope.md)
   cpu_workers: 8  # PyTorch DataLoader docs; cross-ref: Wf-358-A3
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16: false' removed — the 'only CFM trainer has --bf16' claim is FALSE: grep shows zero bf16/autocast in the CFM trainer too.
@@ -321,7 +322,10 @@ entry:
   # All retrain hyperparameters live in yaml sections above (data + model + protocol); trainer applies via wfA2_config_loader.py
   # FIX C: only --config + --device (debug) + --seed + --out-dir + --ckpt-dir CLI flags remain
   # (per task brief DEBUG_FLAG_OVERRIDES = {"--device", "--dry-run", "--no-enforce-budget", "--config"})
-  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir} --ckpt-dir {ckpt_dir} --device cuda:0
+  # 2026-10-09 (§5.11): the literal `--device cuda:0` that used to sit here
+  # moved to `compute.device` below — a command_template literal reaches nothing
+  # else, and start.sh's CUDA_VISIBLE_DEVICES comes from compute.gpu regardless.
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
   warm_start_checkpoint: "n/a"  # cold-start each seed; --resume-from auto per output.resume_from
   # Original inline-CLI command preserved as legacy_inline_command for backward-compat rollback only
   # NOT used by start.sh per AGENTS.md §5.8 + §5.5 filesystem-truth

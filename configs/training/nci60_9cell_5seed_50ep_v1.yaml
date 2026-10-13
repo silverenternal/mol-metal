@@ -216,6 +216,7 @@ output:
 # interpreter, but because the launch is the user's to make.
 # ============================================================================
 compute:
+  device: cuda:0
   gpu: cuda:0  # GPU 0 only, per standing user directive "只用gpu0吧"
   cpu_workers: 8
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'bf16: false' removed (no AMP path exists to disable).
@@ -244,7 +245,10 @@ directives:
 entry:
   # --dataset / --task-axis / --metals arrive from the data: section above via
   # the Wf-A2 config loader; only the run-scoped flags are spelled out here.
-  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir} --ckpt-dir {ckpt_dir} --device cuda:0
+  # 2026-10-09 (§5.11): the literal `--device cuda:0` that used to sit here
+  # moved to `compute.device` below — a command_template literal reaches nothing
+  # else, and start.sh's CUDA_VISIBLE_DEVICES comes from compute.gpu regardless.
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
   warm_start_checkpoint: "n/a"  # cold start each seed; --resume-from auto per output.resume_from
 
 # ============================================================================

@@ -186,10 +186,131 @@ _NON_TRAINER_PATHS: dict[str, str] = {
         "scripts/start.sh SCHEDULER env (reads protocol.scheduler.type, "
         "passes it back as --lr-scheduler)"
     ),
+    "protocol.scheduler.pct_start": (
+        "scripts/start.sh LR_PCT_START env (reads "
+        "protocol.scheduler.pct_start, passes it back as --lr-pct-start; "
+        "omitted entirely when the yaml does not declare it)"
+    ),
     "output.events_jsonl": (
         "scripts/start.sh events_jsonl_disabled (reads output.events_jsonl)"
     ),
 }
+
+# 2026-10-09 (config↔trainer binding audit).  These resolve to no trainer dest
+# but DO have a verified non-trainer consumer, found by grepping for the literal
+# key across molmetal/scripts/*.py + scripts/*.sh and reading each hit:
+#   eval.target_test_auc      -> pre_flight_check.py
+#   protocol.enumerated_runs  -> scripts/start.sh
+#   protocol.n_runs_total     -> wf229_ablation_launcher / wf240_ablation_launcher
+#                                / wf311b_paper4_hard_metric_aggregate
+#   protocol.total_runs       -> gpu_launch_aggregator.py + launch_wf124_p3_g5.sh
+#                                + gpu_launch_dashboard.sh (+ 3 more launchers)
+#   scaffold_split            -> train_nci60_10cell / train_platinai_4cell
+#                                / pre_flight_check / check_data_leakage
+#                                / wf343c3_data_quality_check
+# Before this audit they were indistinguishable from genuinely dead keys, which
+# is what made a "0 dead keys" claim uncheckable for the wf124 sweep configs.
+_NON_TRAINER_PATHS.update(
+    {
+        "eval.target_test_auc": "molmetal/scripts/pre_flight_check.py",
+        "protocol.enumerated_runs": "scripts/start.sh",
+        "protocol.n_runs_total": "wf229/wf240_ablation_launcher, wf311b_aggregate",
+        "protocol.total_runs": "gpu_launch_aggregator.py, gpu_launch_dashboard.sh",
+        "data.split.scaffold_split": "train_nci60_10cell.py, train_platinai_4cell.py",
+        "model.scaffold_split": "train_nci60_10cell.py, train_platinai_4cell.py",
+        "protocol.scaffold_split": "train_nci60_10cell.py, train_platinai_4cell.py",
+    }
+)
+
+#: Keys that resolve to no dest and have NO consumer anywhere in the repo —
+#: grepped 2026-10-09 for the literal key across every *.py and *.sh under
+#: molmetal/ and scripts/ (0 hits each).  They document sweep/ablation INTENT in
+#: the wf124_p3_* configs; nothing reads them.
+#:
+#: These are NOT excused from the skip report — a key being inert is a fact a
+#: reader needs, and silencing it would recreate the blind spot this audit was
+#: run to close (AGENTS.md memory: the `entry:` section was a dead-key blind
+#: spot precisely because its skips were invisible).  They are registered here
+#: only so `scripts/_config_binding_gate.py` can label them DECLARED-INERT and
+#: print them every run instead of treating them as unknown.
+#:
+#: TODO: either give each a consumer (the G5/G6 aggregators read the sibling
+#: `protocol.total_runs`, so the rest of this family was probably intended for
+#: them) or delete it from the yamls. Left in place, declared, until someone
+#: decides which — deleting a config key that a human reads costs more than
+#: keeping an inert one that is loudly reported.
+DECLARED_INERT_PATHS: frozenset[str] = frozenset(
+    {
+        # --- split-protocol documentation (configs/training/*) ---------------
+        # Describe HOW the cohort was split, for reproducibility of the number.
+        # The trainer takes the resulting split from the data loader, not from
+        # these keys, so they are prose that happens to be machine-readable.
+        "data.split",
+        "data.split.type",
+        "data.split.metals",
+        "data.split.implementation",
+        "data.split.strategy",
+        "data.split.seed",
+        "data.split.grouped_on",
+        "data.split.train_frac",
+        "data.split.val_frac",
+        "data.split.test_frac",
+        "data.split.split_column",
+        "data.split_intent",
+        "data.n_rows_expected",
+        "data.expected_columns_subset",
+        "data.cohort_filter",
+        # --- sweep / ablation structure (wf124_p3_*) ------------------------
+        "protocol.wave_decomposition",
+        "protocol.enumerated_runs",
+        "eval.per_pair_metrics",
+        "eval.per_run_metrics",
+        "eval.per_cell_line_metrics",
+        "eval.comparison_metrics",
+        "eval.attribution_matrix",
+        "output.per_metal_dir",
+        "output.per_config_dir",
+        "output.per_cell_line_dir",
+        "output.wasserstein_decay_dir",
+        "output.comparison_30vs50",
+        "output.ablation_report",
+        "output.comparison_matrix",
+        # --- MEASURED baselines + gates, recorded as the comparison target ---
+        # These are the numbers a retrain is judged against, written into the
+        # config so the comparison cannot drift the way prose does
+        # (AGENTS.md §5.2: every numeric value must trace to a path on disk).
+        # They are read by humans and by the report generators, not by the
+        # trainer — removing them would destroy the provenance chain, so they
+        # are declared inert, never deleted.
+        "eval.baseline_per_cell_line_MEASURED",
+        "eval.baseline_overall_MEASURED",
+        "eval.baseline_per_cell_line",
+        "eval.krasnov_2026_baseline_auc",
+        "eval.gate_target",
+        "eval.target_per_cell_line",
+        "eval.target_overall",
+        # --- sweep GRID, read by the launcher rather than by any trainer ----
+        # A list of values to iterate is a property of the RUNNER, not of a
+        # training run: no trainer has a --strengths dest because a trainer is
+        # invoked once. The launcher (scripts/launch_cfm_l3_guidance_sweep.sh)
+        # reads these to emit one invocation per arm, which is why the grid
+        # cannot live on the command line and must be in the YAML — the whole
+        # point is that it cannot drift from the config documenting it.
+        #
+        # Declared inert, not deleted: removing them would move the grid back
+        # into a shell script, which is exactly how use_fm_objective went
+        # missing from five of seven CFM configs (AGENTS.md 5.11).
+        "sweep.strengths",
+        "sweep.arm_prefix",
+        # 2026-10-12 (BLK-C-M4) — the aromatic logit-offset grid, same
+        # rationale as sweep.strengths one line up: a list of values to
+        # iterate belongs to the RUNNER, not to a trainer, which is invoked
+        # once. Read by scripts/launch_cfm_aromatic_bias_sweep.sh to emit one
+        # invocation per arm, which is why the grid cannot live on the command
+        # line — it would drift from the config that documents it.
+        "sweep.biases",
+    }
+)
 
 #: Report of the most recent apply_yaml_overrides() call (module-global so
 #: tests / gates can inspect it without re-parsing).
@@ -401,29 +522,128 @@ def _dest_converters(parser: argparse.ArgumentParser) -> dict[str, Any]:
     return out
 
 
+def _values_equal(a: Any, b: Any) -> bool:
+    """``==`` that never raises (numpy-ish values can return an array)."""
+    try:
+        return bool(a == b)
+    except Exception:  # pragma: no cover - exotic value types
+        return a is b
+
+
+def _argv_probe_disabled() -> bool:
+    return os.environ.get("WFA2_CONFIG_ARGV_PROBE", "").strip().lower() in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
+def _supplied_dests(parser: argparse.ArgumentParser, argv: list[str]) -> Optional[set[str]]:
+    """Dests the caller ACTUALLY typed on ``argv``.
+
+    Implemented the documented-argparse way: temporarily swap every action's
+    ``default`` for ``argparse.SUPPRESS``, parse, and read off which attributes
+    appeared.  ``SUPPRESS`` is never set by argparse itself, so a dest that is
+    present in the namespace can only have come from a real occurrence on the
+    command line.  Returns ``None`` when the parse could not be done.
+    """
+    saved: list[tuple[Any, Any]] = [
+        (action, action.default) for action in parser._actions if hasattr(action, "default")
+    ]
+    try:
+        for action, _default in saved:
+            action.default = argparse.SUPPRESS
+        namespace, _unknown = parser.parse_known_args(list(argv))
+    except BaseException:
+        # SystemExit (required args / --help), argparse errors, anything odd:
+        # the caller gets no explicitness signal and we fall back.
+        return None
+    finally:
+        for action, default in saved:
+            action.default = default
+    return {
+        dest
+        for dest, value in vars(namespace).items()
+        if value is not argparse.SUPPRESS
+    }
+
+
+def _explicit_cli_dests(
+    parser: argparse.ArgumentParser,
+    args: argparse.Namespace,
+    argv: Optional[list[str]],
+) -> Optional[set[str]]:
+    """Dests explicitly supplied on the command line, or ``None`` if unknown.
+
+    Why not just compare against the default?  2026-10-09 — ``cur == dft``
+    conflates "user passed nothing" with "user passed exactly the default",
+    which is precisely the case where YAML must NOT win (a launcher that
+    spells out ``--epochs 50`` because that is what it wants, against a config
+    whose ``train.epochs`` is 3).  ``--epochs 50`` is silently rewritten to 3.
+
+    The real signal is whether argparse saw the token.  It can only be read
+    back from the argv the caller parsed, which this function does not
+    receive, so the argv is re-parsed here — but ONLY after two guards prove
+    that argv is in fact the argv that produced ``args``:
+
+      1. the probe parse leaves no unrecognised tokens (an argv carrying the
+         ambient test-runner flags fails this immediately), and
+      2. the probe namespace equals ``args`` on every parser dest.
+
+    If either guard fails — or the caller opts out with
+    ``WFA2_CONFIG_ARGV_PROBE=0`` — the answer is ``None`` and
+    :func:`apply_yaml_overrides` falls back to the historical
+    "value equals default" proxy, so callers that pass nothing keep their
+    current behaviour byte for byte.
+    """
+    if argv is None:
+        if _argv_probe_disabled():
+            return None
+        argv = list(sys.argv[1:])
+    try:
+        probe, unknown = parser.parse_known_args(list(argv))
+    except BaseException:
+        return None
+    if unknown:
+        # Not this parser's argv (e.g. the ambient pytest command line).
+        return None
+    for action in parser._actions:
+        dest = getattr(action, "dest", None)
+        if not dest or dest == argparse.SUPPRESS:
+            continue
+        if not _values_equal(getattr(probe, dest, _MISSING), getattr(args, dest, _MISSING)):
+            return None
+    return _supplied_dests(parser, argv)
+
+
 def apply_yaml_overrides(
     parser: argparse.ArgumentParser,
     args: argparse.Namespace,
     config_path: Optional[str],
+    *,
+    argv: Optional[list[str]] = None,
 ) -> argparse.Namespace:
     """If config_path is set, override args with YAML values where the user
-    did NOT explicitly pass the corresponding CLI flag (i.e., value matches
-    the default).
+    did NOT explicitly pass the corresponding CLI flag.
 
     Algorithm:
       1. Re-parse with [] to capture pure-default namespace.
-      2. For each YAML (key, value):
+      2. Determine which dests were EXPLICITLY supplied on the command line
+         (``_explicit_cli_dests``); when that cannot be established, fall back
+         to the legacy proxy "value still equals the argparse default".
+      3. For each YAML (key, value):
          - normalize key -> argparse dest
-         - if args.dest exists:
-           cur = getattr(args, dest)
-           dft = getattr(defaults, dest, _MISSING)
-           if cur == dft (user did not pass): setattr(args, dest, value)
-           else: keep CLI value (explicit override)
+         - if args.dest exists and the dest was not explicitly supplied:
+           setattr(args, dest, value)
+           else: keep the CLI value (explicit override)
 
     Args:
       parser: the full argparse.ArgumentParser that produced args.
       args: post-parse namespace.
       config_path: path to YAML config (None = no-op).
+      argv: the argv ``args`` was parsed from.  Omit and the loader re-probes
+        ``sys.argv[1:]`` (guarded); pass it explicitly to remove all doubt.
 
     Returns: same args object (mutated).
     """
@@ -440,6 +660,16 @@ def apply_yaml_overrides(
     # Re-parse with [] to get a pure-default namespace.
     defaults = parser.parse_args([])
     converters = _dest_converters(parser)
+
+    # 2026-10-09 — which dests did the caller actually TYPE?  ``None`` means
+    # "cannot tell", in which case each dest falls back to the historical
+    # "still equals the argparse default" proxy.
+    explicit = _explicit_cli_dests(parser, args, argv)
+
+    def _user_supplied(dest: str, cur: Any, dft: Any) -> bool:
+        if explicit is not None:
+            return dest in explicit
+        return not _values_equal(cur, dft)
 
     # Wf-A11 PASS 1 — resolve every leaf.  ``direct_dests`` records dests a
     # non-alias YAML key writes; aliases (_LEAF_ALIASES) yield to those
@@ -488,14 +718,18 @@ def apply_yaml_overrides(
         # unconditionally, which made `cur == dft` unreachable for lists.
         # Guarding on `cur == dft` restores the documented precedence
         # (explicit CLI > YAML > argparse default) for lists too.
+        #
+        # 2026-10-09: the guard is now `_user_supplied`, which reads the REAL
+        # signal (did argparse see the token?) whenever it can be established,
+        # and falls back to the `cur == dft` proxy otherwise.
         if isinstance(value, list) and isinstance(cur, list):
-            if cur == dft:
+            if not _user_supplied(dest, cur, dft):
                 setattr(args, dest, value)
                 yaml_written.add(dest)
             continue
         # `dest in yaml_written` keeps last-key-wins among YAML keys mapping
         # to the same dest (a prior YAML write must not look like a CLI pass).
-        if cur == dft or dest in yaml_written:
+        if not _user_supplied(dest, cur, dft) or dest in yaml_written:
             # Wf-A9 FIX (2026-10-03) — run the value through the action's
             # own ``type=`` converter so YAML and CLI values have the same
             # type (notably Path-valued flags, which would otherwise blow
@@ -504,9 +738,39 @@ def apply_yaml_overrides(
             if conv is not None and not isinstance(value, list):
                 try:
                     value = conv(value)
-                except (TypeError, ValueError):
-                    # Not convertible to the argparse type — keep the
-                    # default rather than crashing the launch.
+                except (TypeError, ValueError) as exc:
+                    # 2026-10-09 — was a bare `continue`, which made a
+                    # TYPE-MISMATCHED value indistinguishable from an absent
+                    # key: the run silently trained on the argparse default
+                    # that the config author never chose, with no warning and
+                    # no entry in the skip report. Every other skip in this
+                    # function is collected, classified and (under
+                    # WFA2_CONFIG_STRICT=1) made fatal — this one path
+                    # bypassed all of it.
+                    #
+                    # Measured on 2026-10-09 against
+                    # train_cfm_yuelbond_wasserstein.py:
+                    #     assemble_loss_weight: 0.25          -> 0.25  ok
+                    #     assemble_loss_weight: "0.25"        -> 0.25  ok (coerced)
+                    #     assemble_loss_weight: "nonsense"    -> 0.0   SILENT
+                    #     assemble_loss_weight: null          -> 0.0   SILENT
+                    #
+                    # Keeping the default is still the right behaviour (a bad
+                    # value in one key should not abort a 30-epoch run), but
+                    # it must now be VISIBLE: recorded in `skipped` with a
+                    # reason, so it reaches the stderr report, the strict mode,
+                    # and scripts/_config_binding_gate.py's view of the file.
+                    skipped.append(
+                        _skip_entry(
+                            path,
+                            value,
+                            reason=(
+                                f"type mismatch: cannot convert {value!r} to "
+                                f"{getattr(conv, '__name__', conv)} for dest "
+                                f"'{dest}'; kept the argparse default"
+                            ),
+                        )
+                    )
                     continue
             # User did NOT pass CLI -> YAML applies
             setattr(args, dest, value)

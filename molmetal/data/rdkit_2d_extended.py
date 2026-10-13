@@ -67,7 +67,7 @@ Lit anchors
 from __future__ import annotations
 
 import sys
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -77,7 +77,7 @@ import numpy as np
 # defensive pattern used in extract_rdkit_2d_descriptors.py).
 try:
     from rdkit import Chem, RDLogger  # type: ignore
-    from rdkit.Chem import Descriptors  # type: ignore
+    from rdkit.Chem import AllChem, Descriptors  # type: ignore
 
     RDLogger.DisableLog("rdApp.*")
     _HAS_RDKIT = True
@@ -86,6 +86,7 @@ except Exception as _exc:  # pragma: no cover — defensive
     Chem = None  # type: ignore
     RDLogger = None  # type: ignore
     Descriptors = None  # type: ignore
+    AllChem = None  # type: ignore
     _HAS_RDKIT = False
     _RDKIT_IMPORT_ERROR = _exc
 
@@ -259,10 +260,10 @@ _EXTRA_20D_DESCRIPTORS: Tuple[Tuple[str, Callable], ...] = (
     ("Kappa2", Descriptors.Kappa2),
     ("Kappa3", Descriptors.Kappa3),
     ("LabuteASA", Descriptors.LabuteASA),
-    ("MaxPartialCharge", Descriptors.MaxPartialCharge),
-    ("MinPartialCharge", Descriptors.MinPartialCharge),
-    ("MaxAbsPartialCharge", Descriptors.MaxAbsPartialCharge),
-    ("MinAbsPartialCharge", Descriptors.MinAbsPartialCharge),
+    ("MaxPartialCharge", None),  # resolved by _partial_charges() — see below
+    ("MinPartialCharge", None),
+    ("MaxAbsPartialCharge", None),
+    ("MinAbsPartialCharge", None),
     ("NumAliphaticRings", Descriptors.NumAliphaticRings),
     ("NumSaturatedRings", Descriptors.NumSaturatedRings),
     ("NumHeteroatoms", Descriptors.NumHeteroatoms),
@@ -279,6 +280,199 @@ _EXTRA_20D_DESCRIPTORS: Tuple[Tuple[str, Callable], ...] = (
 RDKIT_2D_EXTENDED_DESCRIPTORS: Tuple[Tuple[str, Callable], ...] = (
     _BASE_12D_DESCRIPTORS + _EXTRA_20D_DESCRIPTORS
 )
+
+
+#: Names of the 4 partial-charge columns, in canonical order.
+PARTIAL_CHARGE_COLUMNS: Tuple[str, ...] = (
+    "MaxPartialCharge",
+    "MinPartialCharge",
+    "MaxAbsPartialCharge",
+    "MinAbsPartialCharge",
+)
+
+#: Metal elements Gasteiger cannot parameterize.  When a charge model
+#: fails on one of these we retry on the metal-free organic subgraph
+#: rather than emitting a fabricated or constant-zero charge.
+_METAL_SYMBOLS: frozenset = frozenset(
+    {
+        "Li", "Be", "Na", "Mg", "Al", "K", "Ca", "Sc", "Ti", "V", "Cr",
+        "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Rb", "Sr", "Y", "Zr",
+        "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb",
+        "Te", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Sm", "Eu", "Gd", "Tb",
+        "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os",
+        "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Th", "U",
+    }
+)
+
+#: How each molecule's partial charges were obtained.  Reset per-process;
+#: read via :func:`partial_charge_stats` so a caller can REPORT the
+#: fallback rate instead of silently ingesting zeros.
+PARTIAL_CHARGE_STATS: Dict[str, int] = {
+    "n_molecules": 0,
+    "n_rdkit_native": 0,  # Descriptors.*PartialCharge returned finite values
+    "n_gasteiger_full": 0,  # fell back to Gasteiger on the whole molecule
+    "n_gasteiger_organic": 0,  # Gasteiger on the metal-free organic subgraph
+    "n_failed": 0,  # no finite charge at all -> 0.0 emitted (counted)
+}
+
+
+def reset_partial_charge_stats() -> None:
+    """Zero the per-process partial-charge provenance counters."""
+    for key in PARTIAL_CHARGE_STATS:
+        PARTIAL_CHARGE_STATS[key] = 0
+
+
+def partial_charge_stats() -> Dict[str, int]:
+    """Return a copy of the partial-charge provenance counters.
+
+    ``n_gasteiger_organic`` + ``n_failed`` is the fallback count — how
+    many molecules RDKit's native partial-charge descriptors could not
+    parameterize.  Reported rather than assumed, because a silent 0.0
+    is indistinguishable from a real neutral molecule downstream.
+    """
+    return dict(PARTIAL_CHARGE_STATS)
+
+
+def _gasteiger_charges(mol) -> List[float]:
+    """Return the finite Gasteiger charges on ``mol`` ([] when undefined)."""
+    try:
+        AllChem.ComputeGasteigerCharges(mol)
+    except Exception:
+        return []
+    out: List[float] = []
+    for atom in mol.GetAtoms():
+        if not atom.HasProp("_GasteigerCharge"):
+            continue
+        val = float(atom.GetDoubleProp("_GasteigerCharge"))
+        if np.isfinite(val):
+            out.append(val)
+    return out
+
+
+def _partial_charges(mol) -> Tuple[float, float, float, float]:
+    """Compute the 4 partial-charge columns for ``mol``.
+
+    Resolution order, first that yields finite values wins:
+
+      1. ``rdkit.Chem.Descriptors.{Max,Min,MaxAbs,MinAbs}PartialCharge``
+         — bit-identical to the historical path on ordinary organics.
+      2. ``ComputeGasteigerCharges`` on the whole molecule.
+      3. ``ComputeGasteigerCharges`` on the metal-free organic subgraph —
+         Gasteiger has no parameters for Pt/Ru/Ir centers, so on these
+         metallodrugs step 1 returns NaN and step 2 returns all-NaN.
+      4. ``0.0`` for all four, with ``n_failed`` incremented.
+
+    Every outcome is counted in :data:`PARTIAL_CHARGE_STATS`.
+    """
+    PARTIAL_CHARGE_STATS["n_molecules"] += 1
+
+    # 1. RDKit's own descriptor — preserves historical values where valid.
+    try:
+        native = (
+            float(Descriptors.MaxPartialCharge(mol)),
+            float(Descriptors.MinPartialCharge(mol)),
+            float(Descriptors.MaxAbsPartialCharge(mol)),
+            float(Descriptors.MinAbsPartialCharge(mol)),
+        )
+        if all(np.isfinite(v) for v in native):
+            PARTIAL_CHARGE_STATS["n_rdkit_native"] += 1
+            return native
+    except Exception:
+        pass
+
+    # 2. Explicit Gasteiger on the full molecule.
+    charges = _gasteiger_charges(mol)
+    if charges:
+        PARTIAL_CHARGE_STATS["n_gasteiger_full"] += 1
+        return (
+            max(charges),
+            min(charges),
+            max(abs(c) for c in charges),
+            min(abs(c) for c in charges),
+        )
+
+    # 3. Gasteiger on the metal-free organic subgraph.
+    metal_idx = [a.GetIdx() for a in mol.GetAtoms() if a.GetSymbol() in _METAL_SYMBOLS]
+    if metal_idx:
+        editable = Chem.RWMol(mol)
+        for idx in sorted(metal_idx, reverse=True):
+            editable.RemoveAtom(idx)
+        stripped = editable.GetMol()
+        try:
+            Chem.SanitizeMol(stripped)
+        except Exception:
+            stripped = None
+        if stripped is not None and stripped.GetNumAtoms() > 0:
+            charges = _gasteiger_charges(stripped)
+            if charges:
+                PARTIAL_CHARGE_STATS["n_gasteiger_organic"] += 1
+                return (
+                    max(charges),
+                    min(charges),
+                    max(abs(c) for c in charges),
+                    min(abs(c) for c in charges),
+                )
+
+    # 4. Nothing worked — emit a counted 0.0 rather than a silent NaN.
+    PARTIAL_CHARGE_STATS["n_failed"] += 1
+    return (0.0, 0.0, 0.0, 0.0)
+
+
+#: Per-name partial-charge accessor, so the generic descriptor loop can
+#: stay a plain ``(name, callable)`` dispatch.
+_PARTIAL_CHARGE_ACCESSORS: Dict[str, Callable] = {
+    "MaxPartialCharge": lambda mol: _partial_charges(mol)[0],
+    "MinPartialCharge": lambda mol: _partial_charges(mol)[1],
+    "MaxAbsPartialCharge": lambda mol: _partial_charges(mol)[2],
+    "MinAbsPartialCharge": lambda mol: _partial_charges(mol)[3],
+}
+# Each accessor recomputes the tuple; memoize per-molecule so the 4 columns
+# cost one charge model evaluation, not four.
+_ORG_CACHE_ATTR = "_molmetal_gasteiger_cache"
+
+
+def _cached_partial_charges(mol) -> Tuple[float, float, float, float]:
+    """Memoize :func:`_partial_charges` on the molecule object itself."""
+    try:
+        cached = mol.GetProp(_ORG_CACHE_ATTR)
+        return tuple(float(x) for x in cached.split(","))  # type: ignore[return-value]
+    except KeyError:
+        pass
+    vals = _partial_charges(mol)
+    try:
+        mol.SetProp(_ORG_CACHE_ATTR, ",".join(repr(float(v)) for v in vals))
+    except Exception:
+        pass
+    return vals
+
+
+for _name in PARTIAL_CHARGE_COLUMNS:
+    _PARTIAL_CHARGE_ACCESSORS[_name] = (
+        lambda mol, _i=PARTIAL_CHARGE_COLUMNS.index(_name): _cached_partial_charges(mol)[
+            _i
+        ]
+    )
+del _name
+
+# Replace the four None placeholders with the memoized accessors.
+_EXTRA_20D_DESCRIPTORS = tuple(
+    (_name, _PARTIAL_CHARGE_ACCESSORS[_name])
+    if _name in PARTIAL_CHARGE_COLUMNS
+    else (_name, _fn)
+    for _name, _fn in _EXTRA_20D_DESCRIPTORS
+)
+RDKIT_2D_EXTENDED_DESCRIPTORS = _BASE_12D_DESCRIPTORS + _EXTRA_20D_DESCRIPTORS
+
+#: Column names that no longer resolve to a live descriptor callable.
+UNRESOLVED_DESCRIPTOR_COLUMNS: Tuple[str, ...] = tuple(
+    _name for _name, _fn in RDKIT_2D_EXTENDED_DESCRIPTORS if _fn is None
+)
+if UNRESOLVED_DESCRIPTOR_COLUMNS:
+    raise RDKit2DExtendedError(
+        "32-d registry has columns with no descriptor callable: "
+        f"{list(UNRESOLVED_DESCRIPTOR_COLUMNS)} — every column name must "
+        "resolve to a real descriptor or the vector silently ships zeros."
+    )
 
 
 def _require_rdkit() -> None:

@@ -336,9 +336,25 @@ def test_anchor_version_pin_required_version_passes(anchor_path: str) -> None:
     if not path.exists():
         pytest.skip(f"anchor not on disk: {path}")
 
+    # 2026-10-09 — calendar-independence fix. The window was 7 days and the
+    # docstring above said "anchors written earlier today are still fresh",
+    # which made this a TIME BOMB: it began failing 7 days after the Wf-188 /
+    # Wf-253d / Wf-219 anchors were written, with no code change at all
+    # (measured age at failure: 60929 s ≈ 16.9 days). A test whose subject is
+    # the VERSION-PIN contract must not also assert that the repo's historical
+    # artifacts are recent.
+    #
+    # Freshness is covered where it belongs:
+    #   * test_fresh_anchor_passes / test_stale_anchor_raises in this file, both
+    #     on synthetic tmp_path anchors (so they test the LOGIC, not the clock);
+    #   * pre_flight_check.py's anchor-freshness gates, which judge real anchors
+    #     at their intended 24 hr horizon and are the right place for a real
+    #     "these artifacts have aged out" signal.
     guard = AnchorGuard(
         path=path,
-        max_age_sec=7 * 86400.0,  # 7-day freshness window
+        # Effectively unbounded: see above. The guard is still constructed with
+        # required_version so the version-pin LOGIC is still what is exercised.
+        max_age_sec=100 * 365 * 86400.0,
         required_version="1.0.0",
         version_field="version",
     )

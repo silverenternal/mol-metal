@@ -41,7 +41,17 @@
       "ratio": 32537.271321512068,
       "cause": "train_cfm_yuelbond_wasserstein.py:2377 sums valence_log_barrier() over every cloud in the batch with no division by n_clouds or n_atoms, and decoder_rework.py:499 returns excess.pow(2).sum() over atoms. The term is O(batch_size * n_atoms).",
       "consequence": "No fixed weight in the YAML can be correct across cohorts. At weight 0.05 the tmQM cohort contributes ~6715 against a total live loss of ~15.6 — the term would swamp every other objective. This, not a missing wire-in, is why the term was never enabled.",
-      "still_true": true
+      "still_true": false,
+      "STATUS_2026_10_12": {
+        "verdict": "REFUTED. The premise was stale on arrival -- the per-atom division shipped in the SAME commit that created this file.",
+        "landed_in": "commit c3ee284b64, 2026-10-10 04:57:26, which is the same commit that created cfm_loss_term_liveness.json (mtime 03:53:26). The finding and its fix are siblings.",
+        "cited_line_does_not_exist": "train_cfm_yuelbond_wasserstein.py:2377 is not in the current tree. The division is at :2796-2798 (divides by _sv_n_atoms_total), with the per-atom rationale written at :2772-2795.",
+        "the_32537x_was_never_a_batch_size_effect": "It is a SYNTHETIC-vs-tmQM COHORT difference. Holding cohort fixed and changing only the partition: the same 64 tmQM Pt clouds cut into 1x64 / 2x32 / 4x16 / 8x8 give mean-of-means 0.47990 / 0.47990 / 0.48017 / 0.47948, a ratio of 1.002. The reduction is exactly batch-size invariant, which is what it was written to be.",
+        "why_the_original_number_looked_alarming": "Two measured confounds, not one: (1) _LAST_LOSS_TERMS is last-batch-only; (2) train_cfm_yuelbond_wasserstein.py:2584 seeds the batch order from int(time.time()), so two runs drew different clouds. The statistic is also heavy-tailed -- per-cloud per-atom ranges 0.0134 to 2.383, a 177.8x spread. Any weight for this term must be tuned on an epoch mean, never on a _LAST_LOSS_TERMS print.",
+        "what_survives": "The heavier claim in the adjacent finding is unchanged: there is no molecule-level objective. That is what this term was going to serve, and it still is not wired.",
+        "guarded_by": "molmetal/tests/test_cfm_soft_valence_scale.py (red check reported: reverting the division fails with 'trainer emitted 99.363335 but sum(calls)/sum(n_atoms) is 2.484083 (8 clouds / 40 atoms)', 40x off)",
+        "measurements": "metrics/by_metric/cfm_soft_valence_scale.json"
+      }
     },
     "assemble_has_nothing_to_act_on_for_tmqm": {
       "STATUS": "still true, and it is the remaining live idea",

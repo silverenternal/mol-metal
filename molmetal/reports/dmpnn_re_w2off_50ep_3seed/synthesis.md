@@ -1,9 +1,11 @@
-# Wf-131 Phase 3 — LOMO 5-fold × 5-seed × 50-epoch full re-bench on MetalCytoToxDB 5-metal
+# LOMO 1-fold × 3-seed × 50-epoch cross-metal re-bench on MetalCytoToxDB
 
 **Date**: 2026-10-07  
-**Metals**: Re  
+**Metals (held-out folds)**: Re  
 **Seeds**: 0 1 2  
 **Epochs/seed**: 50  
+**Cohort CSV**: molmetal/data/metal_lomo.csv  
+**Leak-controlled (--drop-leaked-ligands)**: False  
 **Wasserstein weight (requested)**: 0.0  
 **W₂ actually applied to the gradient (Wf-E1)**: 0.0  
 **Rh oversample**: 500 (500 actually appended)  
@@ -13,38 +15,25 @@
 
 ## §1 Goal
 
-TODO-121 + Wf-125 Phase 2 stacks three innovations on top of the
-existing LOMO trainer:
+Leave-one-metal-out (LOMO) cross-metal transfer benchmark: hold out
+one metal's rows entirely, train a multi-task D-MPNN on the rest, and
+measure ROC-AUC on the held-out metal (the m19 protocol). The active
+components are echoed from the config below — not asserted.
 
-1. **Wasserstein transfer regularisation** — sliced-W₂ over per-metal
-   embeddings (canonical M1 primitive from
-   `molmetal_lam.reward.wasserstein_loss.wasserstein_transfer_loss`),
-   added to the BCE+MSE loss with weight
-   `0.0`.
-   **Wf-E1 (2026-10-05)**: this term is OFF unless
-   `--wasserstein-real` is passed. Wf-C3 measured that the
-   pre-Wf-E1 code detached the per-metal embeddings, so the W₂
-   contributed ZERO gradient while costing 2.4x wall-time
-   (Rh LOMO seeds 0-2, mean Δ test_AUC = −0.0023, within noise).
-   `--wasserstein-real` keeps the graph so the W₂ really backprops;
-   the per-epoch extraction is then evaluated at the epoch-start
-   parameters (stale-direction pull within the injection epoch).
-2. **Rh closure-theorem oversampling** — the 500-compound Catherine 6/6
-   PASS synthetic Rh cohort from Wf-125 P1 is appended to the train
-   pool when the held-out metal is Rh.
-3. **Multi-task D-MPNN backbone with per-metal embedding extraction** —
-   the existing D-MPNN-MT backbone is reused; per-metal embeddings
-   (pooled `2H`-dim vector before the readout head) are extracted
-   every epoch end so the W₂ penalty can be computed per-metal.
-4. **Wf-127 P2 L2 grad-norm guard** (engaged by ``--use-l2-guard``) —
-   clips grad-norm to ``≤ {l2_max:.1f}`` each step. Belt-and-braces
-   against the W₂ penalty blowing up the optimisation; off by
-   default to preserve Wf-125 P2 ship behaviour.
-5. **Wf-127 P3 ASTSR scale clip** (engaged by ``--use-astr-scale-guard``)
-   — value-space clip on predicted pIC50 at test time to
-   ``[-10.0, 10.0]``.
-   Catches explosive predictions the W₂ regulariser can produce
-   early in training; off by default.
+1. **Wasserstein transfer regularisation — OFF** (weight 0.0).
+   The objective is BCE + L2 guard only. Do NOT read this run as a
+   Wasserstein result: per Wf-E1 the term requires BOTH a non-zero
+   `wasserstein_weight` AND `--wasserstein-real`.
+2. **Rh closure-theorem oversampling — ON** (500 synthetic
+   Rh rows appended to the Rh train pool; Wf-125 P1 Catherine 6/6
+   PASS cohort). It is *inactive* by design (MetalCytoToxDB Rh is
+   ~85 % inactive at the IC50<10 µM gate) — a *chemistry*
+   augmentation, not a *label* augmentation.
+3. **Multi-task D-MPNN backbone** with per-metal embedding extraction
+   (pooled `2H`-dim vector before the readout head); computed every
+   epoch end only when W₂ is active.
+4. **Wf-127 P2 L2 grad-norm guard — OFF** (threshold 5.0; engage with `--use-l2-guard`).
+5. **Wf-127 P3 ASTSR scale clip — OFF** (range [-10.0, 10.0]; engage with `--use-astr-scale-guard`).
 
 ## §2 MEASURED (this run)
 
@@ -76,8 +65,15 @@ existing LOMO trainer:
 host with the chosen (epochs, seeds, wasserstein_weight) configuration.
 No silent PROJECTED-to-MEASURED promotion.
 
-**PROJECTED (TODO-121 §4)**: Rh LOMO AUC ≥ 0.50 (vs current 0.368);
-overall LOMO mean ≥ 0.60 (vs current 0.535).
+**PROJECTED (TODO-121 §4)**: Rh LOMO AUC ≥ 0.50; overall LOMO mean
+≥ 0.60.
+
+**Baseline reference (MEASURED, pre-repair ≤24 h cohort)**: Rh 0.3812,
+overall 0.5575 — see
+`molmetal/reports/wf_a2_m19_rh_diagnosis/diagnosis.json`. That baseline
+used a DIFFERENT cohort (`molmetal/data/metal_lomo.csv`), so any delta
+must be computed against the same cohort; the cohort CSV for THIS run
+is echoed in the header above.
 
 **Hit / miss summary**: Rh target MISS,
 overall target MISS,

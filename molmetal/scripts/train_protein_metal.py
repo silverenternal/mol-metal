@@ -134,7 +134,19 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=10,
         help="Early-stopping patience on val AUC (0 disables).",
     )
-    return p.parse_args(argv)
+    p.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="YAML config (§5.11). Keys resolve to the dests above; an "
+        "explicit CLI flag still wins.",
+    )
+    args = p.parse_args(argv)
+    if getattr(args, "config", None):
+        from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+
+        args = apply_yaml_overrides(p, args, args.config, argv=list(argv or []))
+    return args
 
 
 # ---------------------------------------------------------------------------

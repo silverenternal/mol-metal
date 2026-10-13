@@ -1313,8 +1313,10 @@ def render_table(seeds: List[Dict[str, Any]], stats: Dict[str, int]) -> str:
             "## Honest framing",
             "",
             "* pIC50 is real (NCI-60) where available; PlatinAI 4-cell is "
-            "**synthetic** (the IC50 columns were generated from HOMO/LUMO/"
-            "Gap/Polarizability per ``build_platinai_4cell.py``).",
+            "**synthetic** (per ``build_platinai_4cell.py`` the IC50 columns "
+            "are a per-cell-line constant plus N(0, 0.45) noise; only A2780cis "
+            "has a molecule-dependent term, so MCF7/A549/A2780 are a null "
+            "signal whose AUC is uninformative about model quality).",
             "* Speedup is the real Wf-37 lever (Hilbert PD is deterministic, "
             "population=1, while ASTSR is evolutionary, population=32 × 25 gens).",
             "* Wall-time is machine-dependent; speedup column is the intended "

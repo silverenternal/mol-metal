@@ -11,7 +11,7 @@
     {
       "seed": 0,
       "device": "cpu",
-      "elapsed_train_seconds": 1.5705432891845703,
+      "elapsed_train_seconds": 1.1156830787658691,
       "per_line_auc": {},
       "per_line_ap": {},
       "per_line_n": {},

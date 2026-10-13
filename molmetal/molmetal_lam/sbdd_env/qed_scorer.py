@@ -4,7 +4,8 @@ The :class:`QEDScorer` class provides a small, dependency-tolerant API for
 scoring individual molecules or lists of SMILES strings.  RDKit is imported
 at module load time when available; installations without RDKit can still
 import this module, in which case scoring methods return ``None`` (or a list
-of ``None`` values).  Invalid SMILES are represented by a score of ``0.0``.
+of ``None`` values).  A SMILES that RDKit cannot parse is likewise ``None``,
+never ``0.0`` — see :func:`qed_from_smiles` for why that distinction is load-bearing.
 
 ``score_with_sa`` combines QED with the Ertl synthetic accessibility score
 from :mod:`sa_score` for callers that need both common SBDD objectives.
@@ -26,23 +27,59 @@ except Exception:  # pragma: no cover - depends on the runtime environment
     _RDKIT_AVAILABLE = False
 
 
-def qed_from_smiles(smi: str) -> float | None:
-    """Return RDKit QED for *smi*, ``0.0`` for invalid input.
+#: Number of inputs that RDKit could not turn into a molecule.  A caller that
+#: averages qed_from_smiles() output MUST check this, because ``None`` values
+#: are dropped from means and would otherwise be invisible in the total.
+_QED_FALLBACK_COUNT = 0
 
-    ``None`` is returned when RDKit is unavailable.  Empty and malformed
-    strings are ordinary invalid molecules and therefore return ``0.0``.
+
+def qed_fallback_count() -> int:
+    """How many inputs have been unparseable since import.
+
+    Exists because the failure this guards against is invisible in the output:
+    a batch where 5 of 818 molecules are unparseable returns a mean that looks
+    exactly like a clean batch, just very slightly lower.
     """
+    return _QED_FALLBACK_COUNT
+
+
+def qed_reset_fallback_count() -> None:
+    """Zero the counter.  For callers that report per-cohort fallback rates."""
+    global _QED_FALLBACK_COUNT
+    _QED_FALLBACK_COUNT = 0
+
+
+def qed_from_smiles(smi: str) -> float | None:
+    """Return RDKit QED for *smi*, or ``None`` when it cannot be computed.
+
+    ``None`` covers three distinct cases: RDKit unavailable, input not a
+    non-empty string, and RDKit refusing to parse the molecule.  Each counts
+    toward :func:`qed_fallback_count`.
+
+    This used to return ``0.0`` for invalid input.  That silently conflated
+    "RDKit could not parse this" with "a real molecule whose QED is exactly
+    zero", and because the callers here average the returned list, every
+    unparseable molecule quietly dragged a cohort mean toward zero.  The
+    arithmetic callers (e.g. ``r4_lib/metrics.py``) already skip ``None`` and
+    ``NaN``, so returning ``None`` excludes unparseable rows from the mean
+    instead of corrupting it.  Do not change this back to ``0.0``.
+    """
+    global _QED_FALLBACK_COUNT
     if not _RDKIT_AVAILABLE:
+        _QED_FALLBACK_COUNT += 1
         return None
     if not isinstance(smi, str) or not smi.strip():
-        return 0.0
+        _QED_FALLBACK_COUNT += 1
+        return None
     try:
         mol = Chem.MolFromSmiles(smi.strip())
         if mol is None:
-            return 0.0
+            _QED_FALLBACK_COUNT += 1
+            return None
         return float(QED.qed(mol))
     except Exception:
-        return 0.0
+        _QED_FALLBACK_COUNT += 1
+        return None
 
 
 class QEDScorer:
@@ -62,10 +99,23 @@ class QEDScorer:
     def score(self, smiles_or_mol: Union[str, Any]) -> float:
         """Score one SMILES string or an RDKit ``Mol`` instance.
 
-        Invalid molecules yield ``0.0``; ``None`` is returned if RDKit is
-        unavailable (despite the nominal float return annotation).
+        Returns ``None`` for anything RDKit cannot score — an unparseable
+        string, a ``None`` molecule, an exception, or RDKit being unavailable.
+        It used to return ``0.0`` for the first three, which was
+        indistinguishable from a genuine QED of zero inside any mean; see
+        :func:`qed_from_smiles`.  Each ``None`` counts toward
+        :func:`qed_fallback_count`.
         """
+        global _QED_FALLBACK_COUNT
         if not _RDKIT_AVAILABLE:
+            _QED_FALLBACK_COUNT += 1
+            return None  # type: ignore[return-value]
+        # Chem.MolFromSmiles("") returns an EMPTY Mol, not None, so an empty
+        # string would otherwise sail past the `mol is None` branch below and be
+        # scored as a real (0-atom) molecule. qed_from_smiles already guards
+        # this; score() must too, or the two entry points disagree.
+        if isinstance(smiles_or_mol, str) and not smiles_or_mol.strip():
+            _QED_FALLBACK_COUNT += 1
             return None  # type: ignore[return-value]
         try:
             if isinstance(smiles_or_mol, str):
@@ -73,10 +123,12 @@ class QEDScorer:
             else:
                 mol = smiles_or_mol
             if mol is None:
-                return 0.0
+                _QED_FALLBACK_COUNT += 1
+                return None  # type: ignore[return-value]
             return float(QED.qed(mol))
         except Exception:
-            return 0.0
+            _QED_FALLBACK_COUNT += 1
+            return None  # type: ignore[return-value]
 
     def score_batch(self, smiles_list: list[str]) -> list[float]:
         """Return one QED score per SMILES, preserving input order."""
@@ -113,4 +165,10 @@ class QEDScorer:
         return records
 
 
-__all__ = ["QEDScorer", "qed_from_smiles", "_RDKIT_AVAILABLE"]
+__all__ = [
+    "QEDScorer",
+    "qed_from_smiles",
+    "qed_fallback_count",
+    "qed_reset_fallback_count",
+    "_RDKIT_AVAILABLE",
+]

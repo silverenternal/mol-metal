@@ -247,7 +247,7 @@ EOF
     # post-mortem same date).
     CUDA_VISIBLE_DEVICES="${gpu##cuda:}" \
         PYTHONPATH=/home/hugo/codes/mol-metal \
-        "${PY}" "${trainer}" \
+setsid nohup         "${PY}" "${trainer}" \
             --config "${config}" \
             --out-dir "${out_dir}" \
             "$@" \
@@ -279,10 +279,26 @@ EOF
         sleep 60
     done
 
-    wait "${pid}" 2>/dev/null || true
+    # Capture the trainer's REAL exit status. The previous `wait ... || true`
+    # discarded it, so a trainer that died instantly on an unknown flag
+    # (argparse rc=2) still let the wave return 0 and print "complete".
+    local trainer_rc=0
+    wait "${pid}" 2>/dev/null || trainer_rc=$?
 
     local wall_sec=$(( $(date +%s) - started_at ))
-    log "Wave ${wave_label} wall=${wall_sec}s ($(echo "scale=2; ${wall_sec}/3600" | bc) hr)"
+    log "Wave ${wave_label} wall=${wall_sec}s ($(echo "scale=2; ${wall_sec}/3600" | bc) hr) rc=${trainer_rc}"
+
+    if [ "${trainer_rc}" -ne 0 ]; then
+        warn "Wave ${wave_label} trainer exited rc=${trainer_rc} — see ${out_dir}/train.log"
+        # rc=2 is argparse's "unrecognized arguments", i.e. the wave asked for a
+        # flag the trainer does not implement. That is a BLOCKED wave, not a
+        # completed one; say so instead of letting ok "complete" follow.
+        if [ "${trainer_rc}" -eq 2 ]; then
+            warn "Wave ${wave_label} BLOCKED: the trainer rejected an argument (rc=2)."
+            warn "  Check the flags in this wave against: ${trainer} --help"
+        fi
+        return "${trainer_rc}"
+    fi
 
     # Post-wave abort criteria sweep (per TODO-207 v2 §7.2)
     if [ "${aborted}" -eq 1 ] || ! grep -q "wave_${wave_label,,}_complete\|done" "${out_dir}/train.log"; then
@@ -304,14 +320,25 @@ EOF
 # -----------------------------------------------------------------------------
 wave_A() {
     local out="${REPORTS_DIR}/wave_a"
+    # --frontier-multi-ph / --frontier-multi-ph-bins are NOT implemented in
+    # ${CFM_TRAINER} (verified: neither the flag string nor the dest
+    # frontier_multi_ph appears in the file). Passing them makes argparse exit
+    # rc=2. Guard here so the wave reports BLOCKED rather than launching into
+    # a guaranteed failure.
+    if ! "${PY}" "${CFM_TRAINER}" --help 2>&1 | grep -q -- "--frontier-multi-ph"; then
+        warn "Wave A BLOCKED: ${CFM_TRAINER} has no --frontier-multi-ph."
+        warn "  augment_pocket_embedding (W2.3) was never wired into the trainer."
+        warn "  This wave is NOT_IMPLEMENTED, not pending GPU time."
+        return 3
+    fi
     log "Wave A plan: P1.4 CFM trainer with --frontier-multi-ph (~1.5 hr, cuda:0)"
-    log "  wires augment_pocket_embedding (W2.3) into PocketEncoder output"
     run_wave "A" "${WAVE_A_BUDGET_HR}" \
         "${CFM_TRAINER}" "${P1_4_CONFIG}" "${WAVE_A_GPU}" "${out}" \
         --epochs 3 --seed 0 --pocket-id pocket_a \
         --frontier-multi-ph --frontier-multi-ph-bins 8 \
-        --out-dir "${out}/frontier_multiph" || true
-    ok "Wave A complete"
+        --out-dir "${out}/frontier_multiph" \
+        && ok "Wave A complete" \
+        || warn "Wave A did not complete (see above)"
 }
 
 # -----------------------------------------------------------------------------
@@ -319,15 +346,23 @@ wave_A() {
 # -----------------------------------------------------------------------------
 wave_B() {
     local out="${REPORTS_DIR}/wave_b"
+    # Same guard as wave A: --frontier-se3 is not implemented in
+    # ${DMPNN_TRAINER} (no "--frontier" string, no frontier_se3 dest).
+    if ! "${PY}" "${DMPNN_TRAINER}" --help 2>&1 | grep -q -- "--frontier-se3"; then
+        warn "Wave B BLOCKED: ${DMPNN_TRAINER} has no --frontier-se3."
+        warn "  SE3LipmanSolver (Integration 1) was never wired into the trainer."
+        warn "  This wave is NOT_IMPLEMENTED, not pending GPU time."
+        return 3
+    fi
     log "Wave B plan: G6 D-MPNN multi-task trainer with --frontier-se3 (~0.5 hr, cuda:0)"
-    log "  wires SE3LipmanSolver (Integration 1) into the trainer manifold"
     run_wave "B" "${WAVE_B_BUDGET_HR}" \
         "${DMPNN_TRAINER}" "${G6_CONFIG}" "${WAVE_B_GPU}" "${out}" \
         --metals Ru --seeds 0 --epochs 10 --batch-size 64 --lr 1e-3 \
         --alpha 0.5 --wasserstein-weight 0.0 \
         --device cuda:0 --frontier-se3 \
-        --out-dir "${out}/frontier_se3_ru" || true
-    ok "Wave B complete"
+        --out-dir "${out}/frontier_se3_ru" \
+        && ok "Wave B complete" \
+        || warn "Wave B did not complete (see above)"
 }
 
 # -----------------------------------------------------------------------------

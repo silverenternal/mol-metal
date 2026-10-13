@@ -1747,7 +1747,7 @@ def gate_nci60_split_no_leak(
     priority: str,
     pipeline: str,
     csv_path: Path,
-    reference_unique_sizes: Tuple[int, int, int] = (3645, 521, 1041),
+    reference_unique_sizes: Tuple[int, int, int] = (4860, 115, 232),
     seeds: Tuple[int, ...] = (0, 1, 2),
     strict_scaffold: Optional[bool] = None,
 ) -> GateResult:
@@ -1766,29 +1766,30 @@ def gate_nci60_split_no_leak(
       ``ScaffoldSplitter``, ``largest_first``, 70/10/20, seed=0, on unique
       canonical SMILES).  Hard assertions: (1) every unique SMILES lands in
       exactly one split (cross-cell leakage == 0), (2) unique-molecule split
-      sizes == frozen m21 reference ``(3645, 521, 1041)`` — MEASURED
-      2026-10-03; a mismatch means m21 comparability (shipped
-      0.8007 +/- 0.0160) is broken, (3) train/val/test row-index sets
-      pairwise disjoint.
+      sizes == frozen reference ``(4860, 115, 232)`` — re-frozen 2026-10-12
+      (BLK-PA12) to the real scaffold-group sizes; the previous
+      ``(3645, 521, 1041)`` was the molecule-level split m21 shipped and a
+      mismatch means the loader no longer routes through ``ScaffoldSplitter``,
+      (3) train/val/test row-index sets pairwise disjoint.
 
-      Scaffold disjointness is MEASURED with real Bemis-Murcko keys
-      (``MurckoScaffoldSmiles``, which accepts ``includeChirality``) and
-      reported in evidence.  HOLE-5 FINDING (MEASURED 2026-10-03, honest-
-      negative): the shipped split is NOT scaffold-disjoint —
-      overlap(train/val, train/test, val/test) = (165, 282, 121).  Root cause:
-      ``ScaffoldSplitter._scaffold_for`` calls
+      Scaffold disjointness is MEASURED with the splitter's own key
+      (``_scaffold_for`` → ``_bemis_murcko_key``) and reported in evidence.
+      HISTORY (HOLE-5, MEASURED 2026-10-03): the shipped split was NOT
+      scaffold-disjoint — overlap(train/val, train/test, val/test) =
+      (165, 282, 121).  Root cause: ``ScaffoldSplitter._scaffold_for`` called
       ``GetScaffoldForMol(mol, includeChirality=...)`` (TypeError in the
-      installed rdkit — only the 1-arg form exists) and
-      ``molmetal/data/splits.py:604`` swallows it with a bare ``except``, so
-      every molecule gets the per-molecule key ``__empty__<canon>`` and the
-      splitter is MOLECULE-level.  m21's ``train_nci60_10cell.py`` uses the
-      same splitter code, which is why the sizes match byte-for-byte.
-      Default verdict on this finding: PASS + loud honest-negative in
-      evidence (this run's directive: report loudly; do not turn blocking
-      switches ON).  ``strict_scaffold=True`` (or env
-      ``NCI60_SPLIT_STRICT_SCAFFOLD=1``) upgrades the overlap to FAIL — turn
-      it ON once ``molmetal/data/splits.py`` is fixed (out of this fix's
-      file ownership), at which point the overlap should measure 0.
+      installed rdkit — only the 1-arg form exists) and the bare ``except``
+      swallowed it, so every molecule got the per-molecule key
+      ``__empty__<canon>`` and the splitter was MOLECULE-level for EVERY
+      cohort.  m21's ``train_nci60_10cell.py`` used the same code, which is
+      why the sizes matched byte-for-byte.  FIXED 2026-10-12 (BLK-PA12):
+      ``molmetal/data/splits.py::_bemis_murcko_key`` now calls
+      ``MurckoScaffoldSmiles`` (which accepts ``includeChirality``) and
+      desalts multi-fragment rows; the reference is re-frozen to the real
+      scaffold-group sizes (4860, 115, 232) and the overlap measures 0.
+      ``strict_scaffold`` now defaults ON (BLK-PA12 Step 4, 2026-10-12), so any
+      residual overlap is a hard FAIL; env ``NCI60_SPLIT_STRICT_SCAFFOLD=0``
+      restores the report-only behaviour.
 
     Part B — the chemprop driver scaffold path (Wf-315F / Wf-319E):
       ``_scaffold_split_indices_nci60`` from
@@ -1818,9 +1819,20 @@ def gate_nci60_split_no_leak(
     """
     t0 = time.perf_counter()
     if strict_scaffold is None:
-        strict_scaffold = os.environ.get(
-            "NCI60_SPLIT_STRICT_SCAFFOLD", ""
-        ).strip().lower() in ("1", "true", "yes")
+        # BLK-PA12 Step 4 (2026-10-12): the splitter degeneracy that made this
+        # switch unsafe to turn ON is FIXED — molmetal/data/splits.py
+        # _bemis_murcko_key now returns a real Bemis-Murcko key, the reference
+        # is re-frozen to (4860, 115, 232), and MEASURED REAL-scaffold-overlap
+        # is 0/0/0.  The previous "OFF by default until splits.py:604 is fixed"
+        # directive is therefore discharged: default ON, so a regression FAILs
+        # loudly instead of degrading to an honest-negative note.  An explicit
+        # env value still wins, so `NCI60_SPLIT_STRICT_SCAFFOLD=0` restores the
+        # old report-only behaviour.
+        _env = os.environ.get("NCI60_SPLIT_STRICT_SCAFFOLD")
+        if _env is None:
+            strict_scaffold = True
+        else:
+            strict_scaffold = _env.strip().lower() in ("1", "true", "yes")
     if not csv_path.is_file():
         return GateResult(
             name,
@@ -1905,19 +1917,17 @@ def gate_nci60_split_no_leak(
         fractions=(0.7, 0.1, 0.2),
         seed=0,
     )
-    # HOLE-5 honest-negative (2026-10-03, MEASURED): the splitter's own
-    # `_scaffold_for` is DEGENERATE in this environment — it calls
+    # BLK-PA12 (fixed 2026-10-12): until then `_scaffold_for` called
     # `MurckoScaffold.GetScaffoldForMol(mol, includeChirality=...)`, which
-    # raises TypeError (the installed rdkit exposes the 1-arg form only),
-    # and `molmetal/data/splits.py` swallows the exception with a bare
-    # `except Exception: return ""`.  Result: every molecule gets the
-    # per-molecule key `__empty__<canon>` and `ScaffoldSplitter` currently
-    # splits at MOLECULE level, not scaffold level.  `train_nci60_10cell.py`
-    # (m21) uses the same splitter code, so the frozen (3645, 521, 1041)
-    # sizes pin comparability with m21's protocol AS EXECUTED, and the
-    # scaffold-disjointness claim is FALSE for the shipped split.  Probe the
-    # degeneracy explicitly (benzene MUST produce a non-empty scaffold key)
-    # so the gate names the mechanism instead of reading stronger than it is.
+    # raises TypeError on the installed rdkit (1-arg binding only); the bare
+    # `except` swallowed it and EVERY molecule got the per-molecule key
+    # `__empty__<canon>`, so the "scaffold" splitter was molecule-level for
+    # EVERY cohort.  The frozen reference was (3645, 521, 1041) — the
+    # molecule-level sizes m21 shipped.  After the fix (`_bemis_murcko_key`,
+    # desalt-aware, via `MurckoScaffoldSmiles`) the reference is re-frozen to
+    # (4860, 115, 232) — the real scaffold-group sizes.  Probe the degeneracy
+    # explicitly (benzene MUST produce a non-empty scaffold key) so the gate
+    # names the mechanism instead of reading stronger than it is.
     degenerate_splitter = splitter._scaffold_for("c1ccccc1") == ""
     keys_degenerate: Dict[str, set] = {}
     for sname, arr in unique_by_split.items():
@@ -1927,14 +1937,18 @@ def gate_nci60_split_no_leak(
             sc = splitter._scaffold_for(str(smi))
             ks.add(sc if sc else f"__empty__{smi}")
         keys_degenerate[sname] = ks
-    # Real Bemis-Murcko keys (MurckoScaffoldSmiles DOES accept
-    # includeChirality) — the honest scaffold-disjointness measurement.
+    # Scaffold-disjointness measured with the SPLITTER'S OWN key
+    # (`_scaffold_for` → `_bemis_murcko_key`), so the measurement and the
+    # grouping agree.  Before the BLK-PA12 fix (2026-10-12) this used
+    # whole-molecule `MurckoScaffoldSmiles`, which (a) was the honest probe
+    # that exposed the molecule-level degeneracy, and (b) on the fixed
+    # splitter would disagree with the desalted key on multi-fragment rows.
     keys_real: Dict[str, set] = {}
     for sname, arr in unique_by_split.items():
         canon = splitter._canonicalize(np.asarray(arr, dtype=object))
         ks = set()
         for smi in canon:
-            sc = MurckoScaffoldSmiles(str(smi), includeChirality=False)
+            sc = splitter._scaffold_for(str(smi))
             ks.add(sc if sc else f"__empty__{smi}")
         keys_real[sname] = ks
     leaks_real = [t for t in _nci60_scaffold_pair_leaks(keys_real) if t[2]]
@@ -1943,11 +1957,13 @@ def gate_nci60_split_no_leak(
             "m21 split REAL scaffold leaks (strict mode): "
             + ", ".join(f"{a}/{b}={n}" for a, b, n in leaks_real)
         )
-    # NOTE: `strict_scaffold` is OFF by default per this run's directive
-    # (report loudly; do not turn blocking switches ON while 528 config keys
-    # still resolve to no argparse dest).  Enable via parameter or env
-    # ``NCI60_SPLIT_STRICT_SCAFFOLD=1`` once molmetal/data/splits.py:604 is
-    # fixed; until then the real overlap is reported as honest-negative.
+    # BLK-PA12 Step 4 (2026-10-12): `strict_scaffold` now defaults ON.  The
+    # blocking-switch caveat that used to justify leaving it OFF ("do not turn
+    # blocking switches ON while 528 config keys still resolve to no argparse
+    # dest") is discharged: the splitter is fixed and REAL-scaffold-overlap is
+    # MEASURED 0/0/0, so this branch only fires on a regression.  Disable with
+    # env ``NCI60_SPLIT_STRICT_SCAFFOLD=0`` if the report-only behaviour is
+    # wanted for a one-off investigation.
     _ = keys_degenerate  # kept for evidence / debugging; not an assertion
 
     # ---- Part B — chemprop driver scaffold-helper path ----
@@ -2025,16 +2041,18 @@ def gate_nci60_split_no_leak(
     if leaks_real and not strict_scaffold:
         notes.append(
             "HONEST-NEGATIVE: the shipped split is NOT Bemis-Murcko "
-            "scaffold-disjoint (see REAL-scaffold-overlap above). Root cause "
-            "(MEASURED): ScaffoldSplitter._scaffold_for calls "
-            "GetScaffoldForMol(mol, includeChirality=...) — TypeError in the "
-            "installed rdkit — and molmetal/data/splits.py:604 swallows it, "
-            "so the 'scaffold' splitter is molecule-level. m21 "
-            "(train_nci60_10cell.py) uses the same code, hence the "
-            "byte-identical sizes. molmetal/data/splits.py is out of this "
-            "fix's ownership; turn this into a hard FAIL via "
-            "NCI60_SPLIT_STRICT_SCAFFOLD=1 or strict_scaffold=True once the "
-            "splitter is fixed."
+            "scaffold-disjoint (see REAL-scaffold-overlap above). The BLK-PA12 "
+            "splitter fix (2026-10-12) should make this 0; a non-zero value "
+            "here means the fix regressed or the loader no longer routes "
+            "through ScaffoldSplitter. Escalate to a hard FAIL via "
+            "NCI60_SPLIT_STRICT_SCAFFOLD=1 or strict_scaffold=True."
+        )
+    if not leaks_real:
+        notes.append(
+            "BLK-PA12 fix confirmed: splitter_scaffold_for_degenerate=False "
+            "and REAL-scaffold-overlap=0/0/0. Reference re-frozen to the "
+            "fixed-splitter sizes (4860, 115, 232); the previous "
+            "(3645, 521, 1041) was the molecule-level split m21 shipped."
         )
     notes.append(
         f"chemprop scaffold helper: cells={len(cells)} seeds={list(seeds)} "
@@ -6400,6 +6418,43 @@ def _resolve_one_config_via_loader(
     return classified, None
 
 
+#: 2026-10-12 — configs that drive a NON-TRAINING entry script, keyed by exact
+#: filename to the script they drive.
+#:
+#: The Wf-343C4 gate below requires every ``configs/*.yaml`` to declare
+#: ``train.batch_size``, ``train.lr``, ``model.hidden_dim`` and
+#: ``model.n_layers``, on the AGENTS.md 5.1 premise that a missing hyperparam
+#: means a future retrain would fall back to a guess. A config for an
+#: inference-time probe has no such retrain, and no batch size or learning
+#: rate, because it optimises nothing. Declaring those four keys on such a
+#: config would be a lie of exactly the kind this gate was written to catch:
+#: a knob that reads as SET and governs nothing.
+#:
+#: Keyed by exact filename, never by pattern. A ``*probe*.yaml`` glob would
+#: silently exempt every future probe config, which is the same
+#: silent-widening failure §5.11 was written to eliminate. Adding a name is
+#: an explicit act, and the value names the script so the claim is checkable
+#: with one grep.
+NON_TRAINER_CONFIG_YAMLS: Dict[str, str] = {
+    "cfm_l3_guidance_sweep_2026_10_12.yaml": (
+        "molmetal/scripts/wf_blkc_l3_guidance_probe.py -- forward ODE "
+        "integration on an existing checkpoint, eval() + no_grad, trains "
+        "nothing"
+    ),
+    # 2026-10-12 (BLK-C-M4). Same script and same no-training premise as the
+    # entry above; the only difference is the swept variable (a decode-time
+    # logit offset instead of a sampling-time force). Keyed by EXACT filename
+    # for the reason the map's own comment gives: a wildcard here would exempt
+    # every future sweep config from the training-hyperparameter gate without
+    # anyone deciding that it should be.
+    "cfm_aromatic_bias_sweep_2026_10_12.yaml": (
+        "molmetal/scripts/wf_blkc_l3_guidance_probe.py -- forward ODE "
+        "integration on an existing checkpoint, eval() + no_grad, trains "
+        "nothing"
+    ),
+}
+
+
 def gate_wf343c4_hyperparams_config_complete(
     name: str,
     priority: str,
@@ -6636,6 +6691,7 @@ def gate_wf343c4_hyperparams_config_complete(
     unresolved_report: Dict[str, List[Dict[str, str]]] = {}
     resolution_errors: List[str] = []
     required_unresolved: List[str] = []
+    non_trainer_configs: List[str] = []
     resolution_strict = HYPERPARAMS_RESOLUTION_STRICT_DEFAULT or (
         os.environ.get(HYPERPARAMS_RESOLUTION_STRICT_ENV, "").strip().lower()
         in {"1", "true", "yes", "on"}
@@ -6672,6 +6728,26 @@ def gate_wf343c4_hyperparams_config_complete(
         unresolved_set = set(e["key"] for e in unresolved)
         cfg_ok = True
         yaml_aliases: List[str] = []
+        if p.name in NON_TRAINER_CONFIG_YAMLS:
+            # 2026-10-12. An EXPLICIT, FILENAME-KEYED exemption. This gate's
+            # premise is AGENTS.md 5.1: "a missing hyperparam means a future
+            # retrain would fall back to a guess". That premise does not hold
+            # for a config that drives an INFERENCE-TIME probe which trains
+            # nothing -- there is no retrain to fall back in.
+            #
+            # The exemption is keyed by exact filename, so it cannot change the
+            # verdict for any config not listed, and adding a name is an
+            # explicit act rather than a pattern that silently widens. Each
+            # entry must name the script it drives so the claim is checkable.
+            #
+            # It is deliberately NOT a pattern (e.g. "*probe*.yaml"): a
+            # wildcard would quietly exempt future probe configs, which is
+            # the same silent-widening failure this gate exists to catch.
+            non_trainer_entry = NON_TRAINER_CONFIG_YAMLS[p.name]
+            non_trainer_configs.append(
+                f"{p.name} (drives {non_trainer_entry}, trains nothing)"
+            )
+            continue
         for section, key, expected_type in REQUIRED_HYPERPARAMS:
             # §5.11 structural exemption (2026-10-09). A required hyperparam is
             # only meaningful if the config's OWN entry trainer has a dest for it
@@ -6806,6 +6882,15 @@ def gate_wf343c4_hyperparams_config_complete(
     if resolution_errors:
         resolution_bits.append(
             "resolution-check skips: " + "; ".join(resolution_errors)
+        )
+    if non_trainer_configs:
+        # Never silent. An exemption that nobody can see is indistinguishable
+        # from a config that simply passed, which is how a dead knob survives.
+        resolution_bits.append(
+            "NON-TRAINER CONFIGS, EXEMPT from the 4 required hyperparameters "
+            "because they drive an inference-time entry script that optimises "
+            f"nothing ({len(non_trainer_configs)}): "
+            + "; ".join(non_trainer_configs)
         )
     resolution_suffix = ""
     if resolution_bits:

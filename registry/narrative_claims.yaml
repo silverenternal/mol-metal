@@ -107,7 +107,7 @@ claims:
   # ---- NCI-60 9-cell panel ------------------------------------------------
   - id: nci60_mean_auc
     claim: NCI-60 precious-metal panel mean AUC (over the cells that have one)
-    value: 0.80072017249287
+    value: 0.7293802091886383
     tol: 0.0005
     source: metrics/by_metric/nci60_precious_9cell_auc.json
     field: value_overall_mean_auc
@@ -115,41 +115,66 @@ claims:
       Krasnov reference is 0.81. The mean is over 8 cells, not 9 — DU145 has
       auc_mean = null across all 3 seeds. The metric's own `corrections` field
       records this and sets n_cells = 8. The metric NAME and filename still say
-      "9cell"; do not propagate that label into prose.
+      "9cell"; do not propagate that label into prose. UPDATED 2026-10-12: this
+      value was 0.80072017249287 before the BLK-PA12 fixed-splitter rerun. The
+      rerun (nci60_precious_9cell_auc.json::fixed_split_rerun_2026_10_12) also
+      dropped the std to 0.21366749340562713 because several cell lines now have
+      single-digit test sets (SKOV3 n_test=3, DU145 n_test=7); the panel no
+      longer supports a tie against the 0.81 comparator.
   - id: nci60_mean_std
     claim: NCI-60 panel mean AUC std
-    value: 0.01598032473882782
+    value: 0.21366749340562713
     tol: 0.0005
     source: metrics/by_metric/nci60_precious_9cell_auc.json
     field: value_overall_mean_std
+    note: >
+      UPDATED 2026-10-12 (BLK-PA12 fixed-splitter rerun): was
+      0.01598032473882782 on the degenerate splitter. The spread is real, not
+      noise — A2780cis 0.3356 and A2780 0.5104 pull the panel down while HL60 /
+      SKOV3 / DU145 sit at 0.8-1.0 on single-digit test sets.
   - id: nci60_cells_with_auc
     claim: NCI-60 cells that actually have a measured AUC
-    value: 8
+    value: 9
     tol: 0
     source: metrics/by_metric/nci60_precious_9cell_auc.json
     field: n_cells_with_measured_auc
+    note: >
+      UPDATED 2026-10-12 (BLK-PA12 fixed-splitter rerun): was 8, with
+      cells_without_measured_auc=['DU145'] (DU145's per-seed AUC was null under
+      the degenerate splitter). The rerun trained DU145 and it scored
+      test_auc=1.0 on n_test=7, so all 9 panel cells now carry a measured AUC.
+      Two of the nine have single-digit test sets (DU145 n_test=7, SKOV3
+      n_test=3) and score 1.0 — the mean is reported over all 9 to stay
+      consistent with value_overall_mean_auc, and the paper flags the tiny-test-
+      set caveat rather than quoting a tidy 8-cell number.
   - id: nci60_mcf7_auc
     claim: NCI-60 per-cell AUC, MCF7
-    value: 0.7440865820927224
+    value: 0.6689655172413793
     tol: 0.0005
     source: metrics/by_metric/nci60_precious_9cell_auc.json
     field: per_cell_line.MCF7.auc_mean
     note: >
       ALIGNED_COMPARISON.md §1 says "MCF7 0.846 / A549 0.870 / A2780cis 0.721".
-      Those are stale/wrong on disk: MCF7 is 0.7441, A549 is 0.7758, A2780cis is
-      0.7278, and 0.870 belongs to PC3. Do not copy that line.
+      Those are stale/wrong on disk. UPDATED 2026-10-12 (BLK-PA12 fixed-splitter
+      rerun, n_test=90): MCF7 is 0.6690, A549 is 0.6951, A2780cis is 0.3356, and
+      0.8028 (was 0.870) belongs to PC3. Do not copy the ALIGNED_COMPARISON line.
   - id: nci60_a549_auc
     claim: NCI-60 per-cell AUC, A549
-    value: 0.7758007705918343
+    value: 0.6950859950859951
     tol: 0.0005
     source: metrics/by_metric/nci60_precious_9cell_auc.json
     field: per_cell_line.A549.auc_mean
+    note: >
+      UPDATED 2026-10-12 (BLK-PA12 fixed-splitter rerun, n_test=107): was
+      0.7758007705918343.
   - id: nci60_pc3_auc
     claim: NCI-60 per-cell AUC, PC3 (the 0.870 that ALIGNED_COMPARISON mislabels as A549)
-    value: 0.87
+    value: 0.8027777777777778
     tol: 0.0005
     source: metrics/by_metric/nci60_precious_9cell_auc.json
     field: per_cell_line.PC3.auc_mean
+    note: >
+      UPDATED 2026-10-12 (BLK-PA12 fixed-splitter rerun, n_test=18): was 0.87.
 
   # ---- Ru within-metal (MetalCytoToxDB) ------------------------------------
   - id: ru_single_task_auc

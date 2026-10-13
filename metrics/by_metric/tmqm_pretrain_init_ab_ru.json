@@ -42,18 +42,28 @@
       -0.027989,
       0.011591
     ],
+    "ci95_bootstrap": [
+      -0.027989,
+      0.011591
+    ],
+    "ci95_ttest": [
+      -0.040633,
+      0.021769
+    ],
     "t_df4": -0.8393,
+    "p_one_sided_ttest": 0.775732,
     "n_seeds": 5,
+    "n_seeds_positive": 2,
     "all_seeds_positive": false,
-    "ci_method": "percentile bootstrap, 20000 resamples, seed 0 (paired per-seed deltas)"
+    "ci_method": "percentile bootstrap, 20000 resamples, seed 0 (paired per-seed deltas); t-based interval also recorded"
   },
   "gate": {
     "criterion": "non-negative delta (TODO/completed/42_tmqm_pretrain_v4_encoder.md)",
     "verdict": "FAIL",
-    "why": "the paired delta is NEGATIVE (-0.0094) and its 95% CI [-0.0280, +0.0116] includes 0; on the fixed scaffold split tmQM pretraining shows no effect on Ru"
+    "why": "the paired delta is NEGATIVE (-0.0094) and its t-based 95% CI [-0.0406, +0.0218] includes 0; on the fixed scaffold split tmQM pretraining shows no effect on Ru"
   },
   "honest_negative": {
-    "statement": "On the fixed Bemis-Murcko scaffold split, tmQM-pretrained init does NOT improve Ru test AUC over random init (0.7778 vs 0.7872; paired delta -0.0094, 95% CI [-0.0280, +0.0116], t(4)=-0.84). The previously recorded +0.0181 (CI [+0.0035, +0.0328]) was measured on the degenerate splitter and is not reproducible under a genuine scaffold split.",
+    "statement": "On the fixed Bemis-Murcko scaffold split, tmQM-pretrained init does NOT improve Ru test AUC over random init (0.7778 vs 0.7872; paired delta -0.0094, t-based 95% CI [-0.0406, +0.0218], t(4)=-0.84). The previously recorded +0.0181 (CI [+0.0035, +0.0328]) was measured on the degenerate splitter and is not reproducible under a genuine scaffold split.",
     "fallback_invoked": "BLK-PA12 honest_negative_fallback: '若重跑后 tmQM A/B 的配对 delta 变得不显著，如实报告为随机切分下的 +0.0181 不稳健'. Here it is not merely non-significant -- the point estimate flipped sign.",
     "what_survives": "The paired design still cancels seed variance; the arms remain identical apart from init; both arms loaded the tmQM encoder tensors (so the ON arm was not a silent random arm)."
   },

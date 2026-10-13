@@ -10,43 +10,96 @@
     "as_shipped": {
       "n": 64,
       "single_fragment_ratio": 0.1406,
-      "decode_ratio": 0.2031
+      "single_fragment_ratio_of_decoded": 0.6923,
+      "n_frags_mean": 1.4615,
+      "decode_ratio": 0.2031,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
     },
     "aromatic_1.0": {
       "n": 64,
       "single_fragment_ratio": 0.0469,
-      "decode_ratio": 0.0625
+      "single_fragment_ratio_of_decoded": 0.75,
+      "n_frags_mean": 1.25,
+      "decode_ratio": 0.0625,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
     },
     "metals_8": {
       "n": 64,
       "single_fragment_ratio": 0.125,
-      "decode_ratio": 0.1875
+      "single_fragment_ratio_of_decoded": 0.6667,
+      "n_frags_mean": 1.5,
+      "decode_ratio": 0.1875,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
     },
     "both": {
       "n": 64,
       "single_fragment_ratio": 0.0469,
-      "decode_ratio": 0.0625
+      "single_fragment_ratio_of_decoded": 0.75,
+      "n_frags_mean": 1.25,
+      "decode_ratio": 0.0625,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
     },
     "reserve_0.5": {
       "n": 64,
       "single_fragment_ratio": 0.1406,
-      "decode_ratio": 0.2031
+      "single_fragment_ratio_of_decoded": 0.6923,
+      "n_frags_mean": 1.4615,
+      "decode_ratio": 0.2031,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
     },
     "reserve_1.0": {
       "n": 64,
       "single_fragment_ratio": 0.0156,
-      "decode_ratio": 0.0781
+      "single_fragment_ratio_of_decoded": 0.2,
+      "n_frags_mean": 3.0,
+      "decode_ratio": 0.0781,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
     },
     "reserve_2.0": {
       "n": 64,
       "single_fragment_ratio": 0.0,
-      "decode_ratio": 0.0625
+      "single_fragment_ratio_of_decoded": 0.0,
+      "n_frags_mean": 8.5,
+      "decode_ratio": 0.0625,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
     },
     "no_budget": {
       "n": 64,
       "single_fragment_ratio": 0.125,
-      "decode_ratio": 0.125
+      "single_fragment_ratio_of_decoded": 1.0,
+      "n_frags_mean": 1.0,
+      "decode_ratio": 0.125,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
     }
   },
-  "note": "'no_budget' is the degenerate control, not a proposal. Metric-gaming direction: raising single_fragment_ratio by dropping or ignoring valence enforcement without reporting the decode_ratio cost."
+  "note": "'no_budget' is the degenerate control, not a proposal. Metric-gaming direction: raising single_fragment_ratio by dropping or ignoring valence enforcement without reporting the decode_ratio cost.",
+  "corrected_2026_10_12": {
+    "summary": "TWO BUGS FIXED. The headline reading ('all 8 variants are worse, so the valence budget is a local optimum') was an artefact of a wrong denominator plus a broken loop. Under the correct denominators the picture is a TRADE-OFF, not a local optimum.",
+    "bug_1_wrong_denominator": {
+      "what": "single_fragment_ratio divided single by the number of clouds ATTEMPTED. The trainer's metric of the same name (train_cfm_yuelbond_wasserstein.py:4667) divides by molecules that PASSED the chemistry check.",
+      "evidence": "same checkpoint (cfm_objective_terms seed0 epoch 5): this script 0.1406 vs the trainer's own ODE path 0.73/0.90/0.88.",
+      "fix": "both are now reported; single_fragment_ratio_of_decoded matches the trainer's convention."
+    },
+    "bug_2_loop_ran_one_variant": {
+      "what": "while adding try/finally around the variant loop (for global-state restore, itself a real fix), the loop body was left at the old indent level, so only `no_budget` -- the LAST variant -- was measured. Exit code was 0.",
+      "how_caught": "grep -c 'single_frag=' returned 1 instead of 8. Verified structurally with ast: the for-loop body went from 1 statement to 15.",
+      "note": "third instance this session of a script failing SILENTLY with a clean exit code (CUDA invalid device ordinal; ModuleNotFoundError; this)."
+    },
+    "bug_3_global_state_not_restored_on_exception": {
+      "what": "_CLASS_VALENCE_COST and _COVALENT_VALENCE are module globals the decoder reads live (cfm_decoder_yuelbond.py:485, :601). The restore block sat OUTSIDE the loop, so an exception left them mutated for the rest of the process -- and no_budget, being last, sets every cost to 0.",
+      "fix": "try/finally."
+    },
+    "THE_REVISED_FINDING": {
+      "headline_now": "as_shipped is not a 'local optimum' in the sense the earlier record claimed. It is one point on a measured trade-off between CONNECTIVITY and DECODE SUCCESS.",
+      "no_budget": "connectivity of_decoded = 1.000 and n_frags_mean = 1.000 -- every molecule it decodes IS a single connected fragment. Its weakness is decode_ratio 0.125 vs as_shipped 0.2031, not connectivity. The old table read that decode failure as a connectivity loss.",
+      "reserve_monotone": "tightening the reserve collapses connectivity monotonically: of_decoded 0.692 -> 0.200 -> 0.000 and n_frags_mean 1.46 -> 3.00 -> 8.50. That IS a real, correctly-measured relationship.",
+      "reserve_0.5_is_a_no_op": "reserve_0.5 is byte-identical to as_shipped on all three columns, because the reserve is applied via int(round(reserve)) and 0.5 rounds to 0. The variant does nothing."
+    },
+    "STILL_TRUE_AND_UNCHANGED": {
+      "the_mechanism_is_load_bearing": "no_budget does decode fewer molecules (0.125 vs 0.2031), so the budget does buy sanitisation.",
+      "this_is_still_the_reconstruction_path": "The whole table decodes REAL tmQM geometry, not ODE-from-noise. Bond EXISTENCE F1 on this checkpoint family is 0.9962, i.e. the task is near-solved and differences between variants are compressed. The honest-negative in PAPER_SCOPE about the valence budget being a design argument rather than a performance result SURVIVES -- and is now better supported.",
+      "needed_to_close": "re-run all 8 variants through the ODE path before any of this is quoted as a generation-quality statement."
+    },
+    "source_of_rerun": "molmetal/scripts/wf_cfm_valence_budget_ab.py --run cfm_objective_terms_2026_10_11 --n-clouds 64 (same checkpoint, epoch 5, same 64 val clouds as the archived table)"
+  }
 }

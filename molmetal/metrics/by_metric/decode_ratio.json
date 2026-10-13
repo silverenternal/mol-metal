@@ -1,7 +1,7 @@
 {
   "hook": "decode_ratio",
-  "date": "2026-09-25T22:31:48+0800",
-  "wall_clock_s": 0.0040051937103271484,
+  "date": "2026-10-13T02:34:09+0800",
+  "wall_clock_s": 2.5003058910369873,
   "checkpoint_path": "/tmp/__nonexistent_ckpt_for_test__.pt",
   "n_samples": 4,
   "n_steps": 8,
@@ -10,7 +10,5 @@
   "pocket_id": "synthetic:decode_ratio",
   "checkpoint_loaded": false,
   "n_decoded": 0,
-  "decode_ratio": 0.0,
-  "error": "RuntimeError: Triton kernel received CPU tensor(s); the caller must call `.to(device)` (typically `cuda:0` / `hip:0`) before invoking scatter_sum / aggregate_vectors.  CPU-typed argument(s): ['edge_src', 'edge_dst', 'edge_mask', 'edge_feat', 'out'].  Hint: build `mask`, `edge_index` and `edge_features` on the same CUDA device as the EGNN hidden state (or pass `device='cuda'` to the upstream helper).",
-  "trace": "Traceback (most recent call last):\n  File \"/home/hugo/codes/mol-metal/molmetal/molmetal_lam/sbdd_env/metric_hooks.py\", line 508, in compute_decode_ratio\n    mols = adapter.generate(pocket, config)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hugo/codes/mol-metal/molmetal/adapters/flow_matching_lipman/__init__.py\", line 2572, in generate\n    return self._generate_impl(pocket, config, generator)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hugo/codes/mol-metal/molmetal/adapters/flow_matching_lipman/__init__.py\", line 2622, in _generate_impl\n    pocket_embed = self._encode_pocket(pocket, b=n_samples,\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hugo/codes/mol-metal/molmetal/adapters/flow_matching_lipman/__init__.py\", line 3009, in _encode_pocket\n    embed = self.pocket_encoder(pocket_coords, pocket_atom_types, pocket_mask)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: Triton kernel received CPU tensor(s); the caller must call `.to(device)` (typically `cuda:0` / `hip:0`) before invoking scatter_sum / aggregate_vectors.  CPU-typed argument(s): ['edge_src', 'edge_dst', 'edge_mask', 'edge_feat', 'out'].  Hint: build `mask`, `edge_index` and `edge_features` on the same CUDA device as the EGNN hidden state (or pass `device='cuda'` to the upstream helper).\n"
+  "decode_ratio": 0.0
 }

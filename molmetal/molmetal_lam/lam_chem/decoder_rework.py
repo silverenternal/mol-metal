@@ -901,13 +901,15 @@ class DecoderRework(nn.Module):
                     error=f"RWMol.GetMol failed: {exc}",
                     n_atoms=cloud.positions.shape[0],
                 )
+            sanitize_error: Optional[str] = None
             try:
                 Chem.SanitizeMol(mol)
                 sanitized = True
                 smiles = Chem.MolToSmiles(mol)
-            except Exception:
+            except Exception as exc:
                 sanitized = False
                 smiles = ""
+                sanitize_error = f"{type(exc).__name__}: {exc}"
             return DecodedMol(
                 mol=mol,
                 smiles=smiles,
@@ -916,6 +918,7 @@ class DecoderRework(nn.Module):
                 n_atoms=cloud.positions.shape[0],
                 n_bonds=len(bond_orders),
                 sanitized=sanitized,
+                error=sanitize_error,
             )
         # Inner BondAwareDecoder — same as before, just filtered to
         # viable pairs.

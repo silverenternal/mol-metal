@@ -225,7 +225,7 @@ echo "MODE=${MODE} PROTOCOL_LOCK=${PROTOCOL_LOCK} ARGS=${COMMON_ARGS[*]}" | tee 
 # L3 is CPU-only VariancePUCT bench (no metal cohort); declare a virtual
 # 'L3' metal so the wf343c2 grid check resolves a non-empty (metal, seed)
 # grid (n_pairs=1*${N_SEEDS} -> REQUIRED_HR=1*${N_SEEDS}*0.7*1.25).
-PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py \
+setsid nohup PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py \
     --pipeline launch \
     --declared-wave "L3 variance-cPUct full A/B (${MODE} arm)" \
     --pairs-metals L3 \
@@ -239,7 +239,7 @@ PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/pre_flight_check.py
 # installed) are pre-existing and unrelated to a CPU MCTS bench. The JSON
 # evidence is captured for post-run audit.
 rc_c2=0
-PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/wf343c2_per_wave_check.py \
+setsid nohup PYTHONPATH=/home/hugo/codes/mol-metal ${PY} molmetal/scripts/wf343c2_per_wave_check.py \
     --wave "L3-variance-puct-${MODE}" \
     --pairs-metals L3 \
     --pairs-seeds "${N_SEEDS}" \
@@ -254,7 +254,7 @@ run_arm() {
     echo "=== $(date '+%H:%M:%S') START arm=${arm} ===" | tee -a "${LOG}"
     local arm_start_s
     arm_start_s=$(date +%s)
-    PYTHONPATH=/home/hugo/codes/mol-metal ${PY} "${SCRIPT}" \
+setsid nohup     PYTHONPATH=/home/hugo/codes/mol-metal ${PY} "${SCRIPT}" \
         --n-targets "${N_TARGETS}" \
         --n-seeds "${N_SEEDS}" \
         --n-simulations "${N_SIMULATIONS}" \

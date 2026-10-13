@@ -100,7 +100,12 @@ def test_lomo_split_matches_probe_folds(probe_cohort):
 
     per_metal, _ = probe_cohort
     for metal, (_nu, n_train, n_test, n_leak) in FROZEN.items():
-        tr_s, tr_y, te_s, te_y, n_leaked = lomo_split(per_metal, metal)
+        # lomo_split returns (tr_s, tr_y, tr_metal, te_s, te_y, te_metal, n_leaked)
+        # since the metal-conditioning tensors were added (2026-10); the test
+        # predated that and unpacked 5 values.
+        tr_s, tr_y, tr_metal, te_s, te_y, te_metal, n_leaked = lomo_split(
+            per_metal, metal
+        )
         assert len(te_s) == n_test, f"{metal}: test {len(te_s)} != {n_test}"
         assert len(tr_s) == n_train, f"{metal}: train {len(tr_s)} != {n_train}"
         assert n_leaked == n_leak, f"{metal}: leaked {n_leaked} != {n_leak}"
@@ -132,3 +137,85 @@ def test_config_roundtrip_is_typed():
     assert isinstance(a.mode, str) and a.mode == "both"
     assert a.hidden == 300 and a.depth == 3
     assert a.n_splits == 5 and a.n_permutations == 1000 and a.perm_seed == 42
+
+
+def _toy_sampler_inputs():
+    import numpy as np
+
+    rng = np.random.default_rng(0)
+    n = 60
+    y = (rng.random(n) < 0.4).astype(int)
+    # 20 distinct scaffolds, 3 rows each, so scaffold coverage is measurable.
+    scaffolds = [f"S{i // 3}" for i in range(n)]
+    return y, scaffolds, n
+
+
+def test_c3_support_samplers_are_distinct():
+    """C3 regression (2026-10-13): the four support samplers must be four
+    DISTINCT arms.  Before the fix ``scaffold_diverse`` and
+    ``activity_scaffold`` shared one code path (both label-stratified), so the
+    ablation had only three arms and the scaffold-coverage hypothesis could
+    not be tested.
+    """
+    from molmetal.scripts.train_chemprop_lomo_paper_cohort import _draw_support
+
+    y, scaffolds, n = _toy_sampler_inputs()
+    k = 20
+    arms = {
+        s: set(_draw_support(y, scaffolds, k, 42, s).tolist())
+        for s in ("random", "stratified", "scaffold_diverse", "activity_scaffold")
+    }
+    pairs = [
+        ("random", "stratified"),
+        ("random", "scaffold_diverse"),
+        ("random", "activity_scaffold"),
+        ("stratified", "scaffold_diverse"),
+        ("stratified", "activity_scaffold"),
+        ("scaffold_diverse", "activity_scaffold"),
+    ]
+    for a, b in pairs:
+        assert arms[a] != arms[b], f"{a} and {b} produced the identical support set"
+
+
+def test_scaffold_diverse_maximises_scaffold_coverage():
+    """scaffold_diverse must cover strictly more distinct scaffolds than the
+    label-stratified arms on a cohort where that is achievable."""
+    from molmetal.scripts.train_chemprop_lomo_paper_cohort import _draw_support
+
+    y, scaffolds, _ = _toy_sampler_inputs()
+    k = 20
+
+    def _coverage(idx):
+        return len({scaffolds[i] for i in idx})
+
+    cov_div = _coverage(_draw_support(y, scaffolds, k, 42, "scaffold_diverse"))
+    cov_strat = _coverage(_draw_support(y, scaffolds, k, 42, "stratified"))
+    assert cov_div > cov_strat, (cov_div, cov_strat)
+    assert cov_div == 20, f"expected full scaffold coverage, got {cov_div}"
+
+
+def test_c4_adapt_scope_freezes_the_encoder():
+    """C4 regression: head-only adaptation must leave ONLY the head trainable;
+    'full' must leave everything trainable."""
+    import torch
+    from molmetal.scripts.train_chemprop_lomo_paper_cohort import _set_adapt_scope
+
+    class _Toy(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.encoder = torch.nn.Linear(4, 4)
+            self.head = torch.nn.Linear(4, 1)
+            self.film = torch.nn.Linear(4, 8)
+
+    m = _Toy()
+    _set_adapt_scope(m, "head")
+    assert all(not p.requires_grad for p in m.encoder.parameters())
+    assert all(not p.requires_grad for p in m.film.parameters())
+    assert all(p.requires_grad for p in m.head.parameters())
+
+    _set_adapt_scope(m, "head_metal")
+    assert all(not p.requires_grad for p in m.encoder.parameters())
+    assert all(p.requires_grad for p in m.film.parameters())
+
+    _set_adapt_scope(m, "full")
+    assert all(p.requires_grad for p in m.parameters())

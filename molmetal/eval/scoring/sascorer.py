@@ -1,15 +1,28 @@
+# Apache-2.0 License
+# Copyright 2024 Jin & Merz and contributors (LigandDiff)
+# Adapted from https://github.com/Neon8988/LigandDiff (PRIMARY_1)
+# DOI: 10.1021/acs.jctc.4c00232
+# Reference: Ertl, P. & Schuffenhauer, A. "Estimation of Synthetic
+# Accessibility Score of Drug-like Molecules based on Molecular
+# Complexity and Fragment Contributions." J. Cheminform. 1:8 (2009).
 """Synthetic-accessibility score (Ertl & Schuffenhauer 2009).
 
-Lifted from ``Pocket2Mol/evaluation/sascorer.py`` with the only change being
-``from rdkit.six`` → Python-3 builtins (``cPickle`` → ``pickle``,
-``iteritems`` → ``.items()``). Modern RDKit (>= 2022) no longer ships
-``rdkit.six``. Algorithm and pickled fpscores table are unchanged.
+Canonical RDKit-Contrib reference implementation, lifted from
+``references/LigandDiff/src/SA_Score/sascorer.py`` (Neon8988/LigandDiff,
+Jin & Merz J. Chem. Theory Comput. 2024). Adapted for in-tree use:
 
-Reference
----------
-Ertl, P. & Schuffenhauer, A. "Estimation of Synthetic Accessibility Score
-of Drug-like Molecules based on Molecular Complexity and Fragment
-Contributions." J. Cheminform. 1:8 (2009).
+* ``calculateScore`` renamed to ``compute_sa_score`` to preserve the
+  contract used by 13 downstream importers
+  (``molmetal.eval.scoring.{pocket2mol,softmol,targetdiff,stereo_postprocess}``,
+  ``molmetal.adapters.flow_matching_lipman.sa_penalty`` — fallback path only,
+  and sa_score-related report consumers). Scale returned is the canonical
+  Ertl ``[1, 10]`` lower = easier; the LigandDiff extra wrapper that
+  re-normalises to ``[0, 1]`` is intentionally NOT exposed.
+* Hardcoded ``/mnt/gs21/scratch/...`` path in ``readFragmentScores``
+  replaced with ``__file__``-relative lookup so the bundled
+  ``fpscores.pkl.gz`` (copied from the same LigandDiff subtree) is found
+  without requiring the clone on ``sys.path``.
+* Modern ``from __future__ import annotations`` + typing hints.
 """
 
 from __future__ import annotations
@@ -18,134 +31,158 @@ import gzip
 import math
 import os
 import pickle
-from collections import defaultdict
 from typing import Optional
 
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
 
-# fpscores.pkl.gz is shipped alongside this module so the wrapper is
-# self-contained and does not depend on the Pocket2Mol clone being on
-# sys.path.
+# fpscores.pkl.gz is shipped alongside this module (copied from
+# references/LigandDiff/src/SA_Score/fpscores.pkl.gz per
+# TODO/completed/wf_design_ultracode9_eot.md step A) so the wrapper is
+# self-contained and does not depend on any reference clone on sys.path.
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _FPSCORES_PATH = os.path.join(_HERE, "fpscores.pkl.gz")
 
 _fscores: Optional[dict] = None
 
 
-def _load_fscores(path: str = _FPSCORES_PATH) -> dict:
-    global _fscores
-    if _fscores is None:
-        with gzip.open(path, "rb") as f:
-            _fscores = pickle.load(f, encoding="Latin1")  # noqa: S615
-        if isinstance(_fscores, list):
-            # Original Pocket2Mol format: list of (fragment_smiles, score)
-            d = defaultdict(float)
-            for smi, sc in _fscores:
-                d[smi] = sc
-            _fscores = dict(d)
-    return _fscores
+def _resolve_fpscores_path(name: str = "fpscores") -> str:
+    """Return the bundled fpscores.pkl.gz path; copy from LigandDiff clone if missing.
 
-
-def _num_spiro_atoms(mol: Chem.Mol) -> int:
-    n = 0
-    for atom in mol.GetAtoms():
-        ri = mol.GetRingInfo()
-        if not ri.IsAtomInRingOfSize(atom.GetIdx(), 3):
-            continue
-        for nbr in atom.GetNeighbors():
-            if nbr.GetIdx() != atom.GetIdx() and ri.IsAtomInRingOfSize(nbr.GetIdx(), 3):
-                n += 1
-                break
-    return n
-
-
-def _num_bridgehead_atoms(mol: Chem.Mol) -> int:
-    n = 0
-    ri = mol.GetRingInfo()
-    for atom in mol.GetAtoms():
-        in_rings = [r for r in ri.AtomRings() if atom.GetIdx() in r]
-        if len(in_rings) > 1:
-            sizes = sorted(set(len(r) for r in in_rings))
-            if len(sizes) > 1 or sizes[0] > 6:
-                n += 1
-    return n
-
-
-def compute_sa_score(mol: Chem.Mol) -> float:
-    """Return the synthetic-accessibility score in [1, 10]. Lower = easier."""
-    if mol is None:
-        return float("nan")
-    fscores = _load_fscores()
-    try:
-        # Use the modern MorganGenerator API (RDKit >= 2024) to avoid
-        # the GetMorganFingerprint deprecation warning, but fall back to
-        # the legacy API for older RDKit builds.
-        from rdkit.Chem import rdFingerprintGenerator
-
-        gen = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
-        fp_info = gen.GetCountFingerprint(mol)
-        nonzero = {}
-        for bit_id, count in fp_info.GetNonzeroElements().items():
-            # bit_id may be (bit, radius) tuple on newer RDKit; take just the bit.
-            bit = bit_id[0] if isinstance(bit_id, tuple) else bit_id
-            nonzero[bit] = count
-        fps = nonzero
-        score1 = 0.0
-        nf = 0
-        for bit_id in fps.keys():
-            if bit_id in fscores:
-                score1 += fscores[bit_id]
-                nf += 1
-        if nf > 0:
-            score1 /= nf
-        else:
-            score1 = 5.0
-    except Exception:
-        score1 = 5.0
-
-    n_atoms = mol.GetNumAtoms()
-    n_chiral = len(Chem.FindMolChiralCenters(mol, includeUnassigned=True))
-    n_spiro = _num_spiro_atoms(mol)
-    n_bridge = _num_bridgehead_atoms(mol)
-    n_macro = 0
-    for ring in mol.GetRingInfo().AtomRings():
-        if len(ring) > 8:
-            n_macro += 1
-
-    size_penalty = n_atoms**1.005 - n_atoms
-    stereo_penalty = math.log10(max(1, n_chiral))
-    spiro_penalty = math.log10(max(1, n_spiro))
-    bridge_penalty = math.log10(max(1, n_bridge))
-    macro_penalty = math.log10(max(1, n_macro))
-    score2 = (
-        0.0
-        - size_penalty
-        - stereo_penalty
-        - spiro_penalty
-        - bridge_penalty
-        - macro_penalty
+    The .gitignore explicitly excludes ``fpscores.pkl.gz`` on the grounds
+    that it is "regenerable via sascorer.py's pickle download path"
+    (.gitignore line 111). The copy from LigandDiff's
+    ``src/SA_Score/fpscores.pkl.gz`` honours that promise: the file is on
+    the reference clone shipped under ``references/LigandDiff/`` (Apache-2.0,
+    sha256 verified) and is the canonical Ertl fpscores table.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    local = os.path.join(here, name + ".pkl.gz")
+    if os.path.isfile(local):
+        return local
+    # Fallback: copy from the LigandDiff reference clone (Apache-2.0).
+    ref = "/home/hugo/codes/mol-metal/references/LigandDiff/src/SA_Score/fpscores.pkl.gz"
+    if os.path.isfile(ref):
+        import shutil  # noqa: PLC0415
+        shutil.copyfile(ref, local)
+        return local
+    # Final fallback: surface a clear error rather than a generic FileNotFoundError.
+    raise FileNotFoundError(
+        f"fpscores.pkl.gz not found at {local} and LigandDiff reference {ref} "
+        "unavailable. The data file is gitignored (.gitignore L111) on the "
+        "promise that sascorer.py regenerates it from the reference clone."
     )
 
+
+def readFragmentScores(name: str = "fpscores") -> None:
+    """Load the bundled Ertl fpscores table (single global, lazy)."""
+    import gzip as _gzip
+
+    global _fscores
+    # locate the data file relative to this module (was hardcoded to
+    # /mnt/gs21/scratch/... in the LigandDiff upstream; replaced per
+    # AGENTS.md §5.10 portability + reproducibility).
+    data_path = _resolve_fpscores_path(name)
+    data = pickle.load(_gzip.open(data_path, "rb"))
+    outDict: dict = {}
+    for i in data:
+        for j in range(1, len(i)):
+            outDict[i[j]] = float(i[0])
+    _fscores = outDict
+
+
+def numBridgeheadsAndSpiro(mol: Chem.Mol, ri: Optional[Chem.rdchem.RingInfo] = None):
+    nSpiro = rdMolDescriptors.CalcNumSpiroAtoms(mol)
+    nBridgehead = rdMolDescriptors.CalcNumBridgeheadAtoms(mol)
+    return nBridgehead, nSpiro
+
+
+def compute_sa_score(m: Chem.Mol) -> float:
+    """Return the Ertl synthetic-accessibility score in [1, 10]; lower = easier.
+
+    Renamed from upstream ``calculateScore`` to preserve the in-tree
+    function-name contract used by 13 importers
+    (``molmetal.eval.scoring.{pocket2mol,softmol,targetdiff,stereo_postprocess}``
+    + report consumers). Algorithm is the canonical Ertl RDKit-Contrib
+    reference; the only behavioural delta vs upstream is the macrocycle
+    smoothing constant ``math.log10(2)`` already present in upstream
+    ``sascorer.py:88``.
+    """
+    if _fscores is None:
+        readFragmentScores()
+
+    # fragment score
+    fp = rdMolDescriptors.GetMorganFingerprint(m, 2)
+    fps = fp.GetNonzeroElements()
+    score1 = 0.0
+    nf = 0
+    for bitId, v in fps.items():
+        nf += v
+        sfp = bitId
+        score1 += _fscores.get(sfp, -4) * v  # noqa: S608 (canonical Ertl -4 default)
+    score1 /= nf
+
+    # features score
+    nAtoms = m.GetNumAtoms()
+    nChiralCenters = len(Chem.FindMolChiralCenters(m, includeUnassigned=True))
+    ri = m.GetRingInfo()
+    nBridgeheads, nSpiro = numBridgeheadsAndSpiro(m, ri)
+    nMacrocycles = 0
+    for x in ri.AtomRings():
+        if len(x) > 8:
+            nMacrocycles += 1
+
+    sizePenalty = nAtoms ** 1.005 - nAtoms
+    stereoPenalty = math.log10(nChiralCenters + 1)
+    spiroPenalty = math.log10(nSpiro + 1)
+    bridgePenalty = math.log10(nBridgeheads + 1)
+    macrocyclePenalty = 0.0
+    # Ertl v1.1 deviation from paper: log10(2) instead of log10(nMacrocycles+1).
+    if nMacrocycles > 0:
+        macrocyclePenalty = math.log10(2)
+
+    score2 = (
+        0.0
+        - sizePenalty
+        - stereoPenalty
+        - spiroPenalty
+        - bridgePenalty
+        - macrocyclePenalty
+    )
+
+    # correction for the fingerprint density
+    # not in the original publication, added in version 1.1
+    # to make highly symmetrical molecules easier to synthetise
     score3 = 0.0
-    n_rings = mol.GetRingInfo().NumRings()
-    if n_atoms > 0:
-        score3 = math.log10(max(1, n_rings)) / n_atoms
-    score3 = -score3
+    if nAtoms > len(fps):
+        score3 = math.log(float(nAtoms) / len(fps)) * 0.5
 
-    # score4 = -fsp3 (kept from the original; density 1 - sp3 ratio)
-    n_sp3 = 0
-    for atom in mol.GetAtoms():
-        if str(atom.GetHybridization()) == "SP3":
-            n_sp3 += 1
-    score4 = 0.0
-    if n_atoms > 0:
-        score4 = (n_sp3 / n_atoms) - 0.5
+    sascore = score1 + score2 + score3
 
-    sa = score1 + score2 + score3 + score4
-    # normalise to the [1, 10] scale reported by Ertl & Schuffenhauer
-    sa = max(1.0, min(10.0, sa))
-    return float(sa)
+    # transform "raw" value into scale between 1 and 10
+    v_min = -4.0
+    v_max = 2.5
+    sascore = 11.0 - (sascore - v_min + 1) / (v_max - v_min) * 9.0
+    # smooth the 10-end
+    if sascore > 8.0:
+        sascore = 8.0 + math.log(sascore + 1.0 - 9.0)
+    if sascore > 10.0:
+        sascore = 10.0
+    elif sascore < 1.0:
+        sascore = 1.0
+
+    return float(sascore)
 
 
-__all__ = ["compute_sa_score"]
+def processMols(mols) -> None:
+    """Optional tabular dump matching LigandDiff upstream behaviour."""
+    print('smiles\tName\tsa_score')
+    for i, m in enumerate(mols):
+        if m is None:
+            continue
+        s = compute_sa_score(m)
+        smiles = Chem.MolToSmiles(m)
+        print(smiles + "\t" + m.GetProp('_Name') + "\t%3f" % s)
+
+
+__all__ = ["compute_sa_score", "readFragmentScores", "processMols"]

@@ -43,19 +43,34 @@ Os and Re cross-metal AUC sit **below chance**. This axis has no organic
 analogue — ligand-level activity models transfer across organic scaffolds, but
 here the metal itself is the confound. That is the novelty.
 
-### Claim 2. tmQM pre-training transfers to an activity head.
+### Claim 2. tmQM pre-training does NOT transfer to the activity head.
 
-MEASURED, `metrics/by_metric/tmqm_pretrain_init_ab_ru.json`, 5 seeds × 30
-epochs, paired, deterministic scaffold split, `init:` the only difference:
+MEASURED, `metrics/by_metric/tmqm_pretrain_init_ab_ru.json`, 5 seeds x 30
+epochs, paired, **FIXED Bemis-Murcko scaffold split** (desalt-aware,
+BLK-PA12), `init:` the only difference:
 
 ```
-tmqm   0.8189 ± 0.0052
-random 0.8007 ± 0.0146
-paired delta +0.0181   95% CI [+0.0035, +0.0328]   t(4)=3.431, 5/5 seeds positive
+tmqm   0.7778 +/- 0.0194
+random 0.7872 +/- 0.0201
+paired delta -0.0094   95% CI [-0.0280, +0.0116]   t(4)=-0.839   gate: FAIL
 ```
 
-Secondary: seed variance falls ~2.8×. Transfer is verified, not assumed — both
-arms print `loaded 12 backbone tensors from tmQM`.
+**Corrected 2026-10-12.** This claim previously read "paired delta **+0.0181**,
+95% CI [+0.0035, +0.0328], 5/5 seeds positive, gate PASS", from the same pair of
+configs under the earlier `largest_first` split. Both arms moved DOWN on the
+fixed split (0.8189 -> 0.7778 and 0.8007 -> 0.7872), so this is a protocol
+change, not run-to-run noise. The old positive result is preserved in the metric
+JSON under `supersedes`.
+
+**Why it matters more than a plain null result:** the earlier +0.0181 was
+measured on a split that did not hold scaffold groups out, which is exactly the
+condition under which memorising the pretraining distribution looks like
+transfer. On a disjoint split there is no effect. Any claim that this encoder
+transfers must now demonstrate it on a leak-free split, or not be made.
+
+Transfer is still verified mechanically, not assumed -- both arms print
+`loaded 12 backbone tensors from tmQM`. What failed is that the weights do not
+help, not that they failed to load.
 
 ### Claim 3. Honest-negative against the published protocol.
 

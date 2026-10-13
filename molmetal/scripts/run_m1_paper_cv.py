@@ -63,29 +63,67 @@ PYTHON = str(PROJECT_ROOT / ".venv" / "bin" / "python")
 TRAINER = "molmetal.scripts.train_dmpnn_multitask_wasserstein"
 SPLIT_COLUMNS = ("smiles", "metal", "scaffold_id", "split", "activity")
 
+# Krasnov 2026 external references (LightGBM, DOI-split 10-fold CV).  Only Ru
+# and Ir were published; the std is published for Ru only, so Ir records the
+# mean alone rather than an invented spread.  Metals with no published
+# reference map to None — never a fabricated number.
+_PAPER_REFERENCE = {
+    "Ru": "0.810 +/- 0.024 (LightGBM, DOI-split 10CV)",
+    "Ir": "0.73 (LightGBM, DOI-split 10CV; std not published)",
+}
+
 
 def build_fold_csvs(
-    csv_path: Path, folds_dir: Path, tmp_dir: Path, top_n: int
+    csv_path: Path,
+    folds_dir: Path,
+    tmp_dir: Path,
+    top_n: int,
+    metal: str = "Ru",
+    no_inner_val: bool = False,
 ) -> list[dict]:
-    """Write one split-table CSV per fold and return the fold metadata."""
+    """Write one split-table CSV per fold and return the fold metadata.
+
+    ``top_n <= 0`` means "every surviving cell line" — the PA18 alignment
+    cohort (``build_paper_cohort_indices(df, metal=m)`` with no cell-line
+    restriction).  ``top_n = 23`` is the Ru-specific Krasnov-23
+    reconstruction.  The fold JSONs in ``folds_dir`` must have been generated
+    with the SAME ``metal`` and the SAME cell-line scope, or the split table
+    will not be the fold it claims to be.
+    """
     from molmetal.data import cytotox
 
     df = pd.read_csv(csv_path)
-    _probe = df.loc[cytotox.build_paper_cohort_indices(df, metal="Ru")]
-    lines = cytotox.top_cell_lines(_probe, top_n)
+    _probe = df.loc[cytotox.build_paper_cohort_indices(df, metal=metal)]
+    lines = cytotox.top_cell_lines(_probe, top_n) if int(top_n) > 0 else None
     cohort = cytotox.build_paper_cohort_indices(
-        df, metal="Ru", cell_lines=lines
+        df, metal=metal, cell_lines=lines
+    )
+    scope = (
+        f"top-{top_n} cell lines (Krasnov-23 reconstruction)"
+        if int(top_n) > 0
+        else "all surviving cell lines"
     )
     print(
-        f"[m1-cv] cohort: {len(cohort)} rows, {len(lines)} cell lines "
-        f"(paper: 11,294 / 23)",
+        f"[m1-cv] metal={metal} cohort: {len(cohort)} rows, "
+        f"{len(lines) if lines else 'all'} cell lines ({scope})",
         flush=True,
     )
+
+    # Cohort-only CSV for the ``--cohort-only`` mode: pinning the trainer's
+    # dataset (``--data-csv``) to exactly the paper-funnel rows makes the
+    # D-MPNN train AND test on the same rows as pa18_model_class_5metal.py's
+    # classical column.  Without it, the trainer keeps every row of that
+    # metal (loose filter) and its held-out set becomes "all rows sharing a
+    # cohort-test SMILES" — a strict superset (MEASURED Re fold 0: 158 rows
+    # vs the cohort's 114), which would confound the model-class comparison
+    # with a cohort change.
+    cohort_csv = tmp_dir / f"cohort_{metal}.csv"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    df.iloc[cohort].to_csv(cohort_csv, index=False)
 
     sub = df.loc[cohort].reset_index(drop=True)
     out: list[dict] = []
     folds_dir.mkdir(parents=True, exist_ok=True)
-    tmp_dir.mkdir(parents=True, exist_ok=True)
     for k in range(10):
         fp = folds_dir / f"fold_{k}.json"
         if not fp.is_file():
@@ -133,6 +171,15 @@ def build_fold_csvs(
 
         # Inner validation slice, grouped so early stopping cannot leak.
         #
+        # `--no-inner-val` SKIPS this: the trainer then sees an empty val set
+        # and trains a fixed epoch budget with final-epoch weights.  That is
+        # the protocol behind the paper's existing Ru D-MPNN number
+        # (metalcytotox_ru_auc.json::paper_protocol_measurement, 0.7717 +/- 0.0380
+        # on this exact cohort) and it matches the classical learners, which
+        # also train a fixed budget with no epoch selection — so a same-cohort
+        # model-class comparison is not confounded by the D-MPNN getting an
+        # early-stopping advantage.
+        #
         # Groups come from `cytotox.doi_group_ids`, NOT from raw DOI: a
         # complex appearing in two articles links those articles into one
         # group (MEASURED, 6.1% of cohort complexes span >1 DOI, up to 13), so
@@ -144,22 +191,23 @@ def build_fold_csvs(
         # over the full frame instead merges MORE DOIs (it sees more
         # complex-article links), which disagrees with the outer fold and
         # still leaked 1 group (MEASURED, fold 2).
-        groups_full = pd.Series(-1, index=full.index, dtype=np.int64)
-        groups_cohort = cytotox.doi_group_ids(
-            doi_series.iloc[cohort].reset_index(drop=True),
-            smiles=smi_series.iloc[cohort].reset_index(drop=True),
-        )
-        groups_full.iloc[cohort] = groups_cohort
-        train_groups = sorted({int(groups_full.iloc[i]) for i in sorted(tr)})
-        rng = np.random.RandomState(1000 + int(k))
-        perm = rng.permutation(len(train_groups))
-        n_inner = max(1, int(round(0.10 * len(train_groups))))
-        val_groups = {train_groups[j] for j in perm[:n_inner]}
-        group_in_val = groups_full.isin(list(val_groups)).to_numpy()
-        is_inner_pool = np.array(
-            [i in tr and label[i] == "train" for i in range(len(full))]
-        )
-        label[is_inner_pool & group_in_val] = "val"
+        if not no_inner_val:
+            groups_full = pd.Series(-1, index=full.index, dtype=np.int64)
+            groups_cohort = cytotox.doi_group_ids(
+                doi_series.iloc[cohort].reset_index(drop=True),
+                smiles=smi_series.iloc[cohort].reset_index(drop=True),
+            )
+            groups_full.iloc[cohort] = groups_cohort
+            train_groups = sorted({int(groups_full.iloc[i]) for i in sorted(tr)})
+            rng = np.random.RandomState(1000 + int(k))
+            perm = rng.permutation(len(train_groups))
+            n_inner = max(1, int(round(0.10 * len(train_groups))))
+            val_groups = {train_groups[j] for j in perm[:n_inner]}
+            group_in_val = groups_full.isin(list(val_groups)).to_numpy()
+            is_inner_pool = np.array(
+                [i in tr and label[i] == "train" for i in range(len(full))]
+            )
+            label[is_inner_pool & group_in_val] = "val"
 
         # ONE label per SMILES, resolved with priority test > val > train.
         # Rows repeat a SMILES across cell lines, and `build_metal_split_
@@ -224,6 +272,7 @@ def build_fold_csvs(
             {
                 "fold": k,
                 "csv": str(path),
+                "cohort_csv": str(cohort_csv),
                 "n_train": int((cohort_labels == "train").sum()),
                 "n_val": int((cohort_labels == "val").sum()),
                 "n_test": int((cohort_labels == "test").sum()),
@@ -247,7 +296,7 @@ def run_fold(meta: dict, args) -> dict:
     cmd = [
         PYTHON, "-m", TRAINER,
         "--dataset", "metalcytotox_5metal",
-        "--metals", "Ru",
+        "--metals", args.metal,
         "--seeds", "0",
         "--epochs", str(args.epochs),
         "--batch-size", str(args.batch_size),
@@ -258,6 +307,16 @@ def run_fold(meta: dict, args) -> dict:
         # paper does not apply (it keeps time as a feature).
         "--loose-filter",
     ]
+    if getattr(args, "cohort_only", False) and meta.get("cohort_csv"):
+        # Pin the dataset to the paper-funnel cohort so train/test rows equal
+        # the classical column's rows (see build_fold_csvs).
+        cmd += ["--data-csv", meta["cohort_csv"]]
+    if getattr(args, "deterministic", False):
+        # PA18 — bit-reproducible CUDA training (see the trainer's
+        # --deterministic help).  MEASURED: without it, three fresh Re fold-0
+        # runs gave 0.6658 / 0.8242 / 0.6206; with it, two fresh runs agree to
+        # the last digit.
+        cmd += ["--deterministic"]
     t0 = time.time()
     with log.open("w") as fh:
         rc = subprocess.call(cmd, stdout=fh, stderr=subprocess.STDOUT, env=env)
@@ -317,12 +376,58 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--csv", default=None, help="default: MetalCytoToxDB.csv under MOLMETAL_DATA_DIR")
     ap.add_argument("--folds-dir", default=None, help="default: <out-dir>/folds")
-    ap.add_argument("--top-cell-lines", type=int, default=23)
+    ap.add_argument(
+        "--metal",
+        default="Ru",
+        help=(
+            "metal for the paper cohort.  The fold JSONs in --folds-dir must "
+            "have been generated with the same metal (doi_split_cv.py "
+            "--metal)."
+        ),
+    )
+    ap.add_argument(
+        "--top-cell-lines",
+        type=int,
+        default=23,
+        help=(
+            "restrict the cohort to the top-N cell lines by row volume; "
+            "0 = all surviving cell lines (the PA18 alignment cohort, which "
+            "is what the D-MPNN column of pa18_model_class_5metal.json uses)."
+        ),
+    )
     ap.add_argument("--n-folds", type=int, default=10)
     ap.add_argument("--epochs", type=int, default=10)
     ap.add_argument("--batch-size", type=int, default=64)
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--folds", default="all", help="'all' or comma-separated fold ids")
+    ap.add_argument(
+        "--cohort-only",
+        action="store_true",
+        help=(
+            "pin the trainer's dataset to the paper-funnel cohort via "
+            "--data-csv, so train/test rows equal the classical column's rows. "
+            "Required for a same-cohort model-class comparison; OFF by default "
+            "to preserve the historical Krasnov-comparable protocol."
+        ),
+    )
+    ap.add_argument(
+        "--no-inner-val",
+        action="store_true",
+        help=(
+            "write NO inner-val slice: the trainer trains a fixed epoch budget "
+            "with final-epoch weights (no best-checkpoint selection).  This is "
+            "the protocol behind the paper's existing Ru number and matches the "
+            "classical learners' fixed budget."
+        ),
+    )
+    ap.add_argument(
+        "--deterministic",
+        action="store_true",
+        help=(
+            "forward --deterministic to the trainer for bit-reproducible CUDA "
+            "training.  OFF by default so the historical protocol is unchanged."
+        ),
+    )
     ap.add_argument("--out-dir", default="/tmp/m1_paper_cv")
     args = ap.parse_args(argv)
 
@@ -338,7 +443,14 @@ def main(argv=None) -> int:
     tmp_dir = out_dir / "split_csvs"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    metas = build_fold_csvs(csv_path, folds_dir, tmp_dir, args.top_cell_lines)
+    metas = build_fold_csvs(
+        csv_path,
+        folds_dir,
+        tmp_dir,
+        args.top_cell_lines,
+        metal=args.metal,
+        no_inner_val=bool(args.no_inner_val),
+    )
     wanted = (
         [m["fold"] for m in metas]
         if args.folds == "all"
@@ -349,20 +461,50 @@ def main(argv=None) -> int:
     aucs = [r["test_auc"] for r in rows if r["test_auc"] is not None]
     n_requested = len(wanted)
     complete = len(aucs) == n_requested and n_requested > 0
+    if int(args.top_cell_lines) > 0:
+        cohort_desc = (
+            f"paper funnel + top-{args.top_cell_lines} cell lines by row volume"
+        )
+        note = (
+            "The paper does not publish which 23 cell lines it used; this "
+            "subset is OUR choice. MEASURED it gives 11,517 rows / 4,502 "
+            "complexes / 23 lines vs the paper's 11,294 / 4,399 / 23. "
+            "Mean/std over fewer than 10 folds is NOT the paper's number "
+            "— check `complete` before quoting a mean."
+        )
+    else:
+        cohort_desc = (
+            "paper funnel, ALL surviving cell lines (no cell-line subsetting)"
+        )
+        note = (
+            "No cell-line subsetting: the Krasnov-23 reconstruction is a "
+            "Ru-specific comparison device.  This cohort is the one "
+            "pa18_model_class_5metal.py uses for its classical column, so a "
+            "D-MPNN mean measured here is same-cohort with the LightGBM/"
+            "XGBoost means in that file.  Fold JSONs must be generated with "
+            "doi_split_cv.py --metal and NO --top-cell-lines."
+        )
     summary = {
         "protocol": {
-            "cohort": f"paper funnel + top-{args.top_cell_lines} cell lines by row volume",
-            "split": "DOI-grouped 10-fold CV; held-out fold = TEST, inner "
-                     "10%-of-DOIs slice of the training rows = VAL (early stop)",
+            "metal": args.metal,
+            "cohort": cohort_desc,
+            "cohort_only_dataset": bool(getattr(args, "cohort_only", False)),
+            "deterministic_cuda": bool(getattr(args, "deterministic", False)),
+            "inner_val": (
+                "none (fixed epochs, final-epoch weights -> no selection bias)"
+                if args.no_inner_val
+                else "10%-of-train-DOIs slice (early stopping)"
+            ),
+            "split": (
+                "DOI-grouped 10-fold CV; held-out fold = TEST, all remaining "
+                "rows = TRAIN (no inner-val slice)"
+                if args.no_inner_val
+                else "DOI-grouped 10-fold CV; held-out fold = TEST, inner "
+                     "10%-of-DOIs slice of the training rows = VAL (early stop)"
+            ),
             "metric": "binary ROC-AUC (toxic < 10 uM) on the held-out fold",
             "epochs": args.epochs,
-            "note": (
-                "The paper does not publish which 23 cell lines it used; this "
-                "subset is OUR choice. MEASURED it gives 11,517 rows / 4,502 "
-                "complexes / 23 lines vs the paper's 11,294 / 4,399 / 23. "
-                "Mean/std over fewer than 10 folds is NOT the paper's number "
-                "— check `complete` before quoting a mean."
-            ),
+            "note": note,
         },
         "n_requested_folds": n_requested,
         "n_folds_run": len(aucs),
@@ -370,14 +512,16 @@ def main(argv=None) -> int:
         "per_fold_auc": aucs,
         "mean": float(np.mean(aucs)) if aucs else None,
         "std": float(np.std(aucs)) if aucs else None,
-        "paper_reference": "0.810 +/- 0.024 (LightGBM, DOI-split 10CV)",
+        "paper_reference": _PAPER_REFERENCE.get(args.metal),
         "per_fold": rows,
     }
     (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     if aucs:
+        ref = _PAPER_REFERENCE.get(args.metal) or "no published reference"
         print(
-            f"[m1-cv] folds={len(aucs)}  mean={np.mean(aucs):.4f} "
-            f"+/- {np.std(aucs):.4f}   paper=0.810 +/- 0.024",
+            f"[m1-cv] metal={args.metal} folds={len(aucs)}  "
+            f"mean={np.mean(aucs):.4f} +/- {np.std(aucs):.4f}   "
+            f"paper={ref}",
             flush=True,
         )
     print(f"[m1-cv] wrote {out_dir / 'summary.json'}", flush=True)

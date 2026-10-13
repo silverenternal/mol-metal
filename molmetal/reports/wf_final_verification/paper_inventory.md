@@ -1,6 +1,6 @@
 # Paper inventory — R18 ship
 
-Generated: `2026-10-06T20:50:26.075754+00:00`  
+Generated: `2026-10-12T03:22:26.303954+00:00`  
 Tool: `verify_paper_build.py`  
 Repo root: `/home/hugo/codes/mol-metal`
 

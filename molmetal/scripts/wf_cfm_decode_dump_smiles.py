@@ -67,7 +67,7 @@ import importlib.util
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List, Optional
 
 import torch
 
@@ -175,52 +175,77 @@ def main() -> int:
 
         rows: List[Dict[str, object]] = []
         n_ok = n_sanitized = 0
+        # ── CORRECTED 2026-10-12. THIS IS THE ODE PATH. ────────────────────
+        # The loop that used to be here called head.featurise / _select_bonds
+        # / _assemble_mol on the REAL tmQM clouds loaded above. That
+        # reconstructs known molecules with the bond head; it never sampled
+        # anything, so every SMILES it wrote was a reconstruction. See the
+        # provenance note in the module docstring and
+        # metrics/by_metric/cfm_generated_to_nci60_cross_application.json::
+        # provenance_correction_2026_10_11.
+        #
+        # evaluate_generation_validity is the trainer's own generation path
+        # (train_cfm_yuelbond_wasserstein.py:4631). It calls
+        # generate_clouds_from_noise (:4683) -- the real integrator -- and
+        # fills smiles_out with what the MODEL produced. MEASURED to produce
+        # free-generation SMILES on molmetal/reports/cfm_ode_link_probe/
+        # 2026-10-12, which is how this was confirmed rather than assumed.
+        smiles: List[str] = []
+        rejected: List[tuple] = []
+        chem_rows: List[Optional[Dict[str, Any]]] = []
+        chem_summary: Dict[str, Any] = {}
         with torch.no_grad():
-            for cloud in clouds:
-                c = T._to_device_cloud(cloud, device)
-                yres = head.featurise(c)
-                if yres.logits is None or yres.logits.shape[0] == 0:
-                    continue
-                sel, dative, _k, _o = dec._select_bonds(c, yres)
-                sel2, _d2, _added = dec._bridge_components(
-                    c, yres, list(sel), list(dative)
-                )
-                res = dec._assemble_mol(c, sel2, [])
-                # `_assemble_mol` returns DecodedMol DIRECTLY (it carries
-                # .smiles/.sanitized itself); it is not wrapped in a
-                # YuelBondDecodeResult, so reading `res.decoded` yields None
-                # and silently writes zero rows.
-                dec_mol = res
-                smi = getattr(dec_mol, "smiles", None) or ""
-                sanitized = bool(getattr(dec_mol, "sanitized", False))
-                nfrag, largest = 0, 0.0
-                if smi:
-                    n_ok += 1
-                    n_sanitized += int(sanitized)
-                    m = Chem.MolFromSmiles(smi)
-                    if m is not None:
-                        frags = Chem.GetMolFrags(m, asMols=False)
-                        nfrag = len(frags)
-                        sizes = [len(f) for f in frags]
-                        largest = (
-                            max(sizes) / sum(sizes) if sum(sizes) else 0.0
-                        )
-                    metal_z = ""
-                    for z in c.atomic_numbers.tolist():
-                        if int(z) in (78, 44, 77, 45, 76, 75, 46, 29, 79, 28, 26, 30):
-                            metal_z = int(z)
-                            break
-                    rows.append(
-                        {
-                            "epoch": epoch,
-                            "seed": int(a.get("seed", 0)),
-                            "smiles": smi,
-                            "sanitized": int(sanitized),
-                            "n_fragments": nfrag,
-                            "largest_fragment_frac": round(largest, 4),
-                            "metal_z": metal_z,
-                        }
-                    )
+            n_ok, n_tot = T.evaluate_generation_validity(
+                model,
+                dec,
+                clouds,
+                device,
+                method=str(a.get("method", "euler")),
+                n_steps=int(a.get("n_steps", 100)),
+                n_samples=args_cli.n_clouds,
+                seed=int(a.get("seed", 0)),
+                template_offset=0,
+                noise_sigma=float(a.get("fm_noise_sigma", 1.0)),
+                chemistry_out=chem_summary,
+                chemistry_rows_out=chem_rows,
+                smiles_out=smiles,
+                rejected_smiles_out=rejected,
+            )
+        # chemistry_rows_out carries the per-molecule fragment / metal facts
+        # that RDKit-strict parsing does not establish, in the same order as
+        # `smiles`.
+        for i, smi in enumerate(smiles):
+            row = (chem_rows[i] if i < len(chem_rows) else None) or {}
+            frags = row.get("n_fragments")
+            largest = row.get("largest_fragment_frac")
+            if frags is None or largest is None:
+                m = Chem.MolFromSmiles(smi)
+                if m is not None:
+                    parts = Chem.GetMolFrags(m, asMols=False)
+                    frags = len(parts)
+                    sizes = [len(f) for f in parts]
+                    largest = max(sizes) / sum(sizes) if sum(sizes) else 0.0
+                else:
+                    frags, largest = 0, 0.0
+            n_sanitized += int(bool(row.get("sanitized", False)))
+            rows.append(
+                {
+                    "epoch": epoch,
+                    "seed": int(a.get("seed", 0)),
+                    "smiles": smi,
+                    "sanitized": int(bool(row.get("sanitized", False))),
+                    "n_fragments": int(frags or 0),
+                    "largest_fragment_frac": round(float(largest or 0.0), 4),
+                    "metal_z": row.get("metal_z", ""),
+                }
+            )
+        print(
+            f"  {run}: gen_validity={n_ok}/{n_tot} "
+            f"({(n_ok / n_tot) if n_tot else 0.0:.3f})  "
+            f"rejected={len(rejected)}  wrote={len(rows)}"
+        )
+        if chem_summary:
+            print(f"    chemistry: {json.dumps(chem_summary)[:400]}")
 
         with out_csv.open("w", newline="") as fh:
             w = csv.DictWriter(

@@ -56,6 +56,46 @@ def test_fit_ridge_readout_selects_from_alpha_grid():
     assert "r2" in m
 
 
+def test_fit_ridge_readout_alpha_not_selected_on_eval():
+    """Guards the 2026-10-11 leak fix: alpha must come from the val fold.
+
+    Property checked directly: relabelling the EVAL fold must not move the
+    chosen alpha. Under the old select-on-eval loop the argmax over the grid
+    was a function of exactly those labels, so at least one permutation below
+    flips it.
+    """
+    rng = np.random.default_rng(7)
+    X = rng.normal(size=(600, 8)).astype(np.float32)
+    y = (X @ rng.normal(size=8) + rng.normal(size=600) * 1.5).astype(np.float32)
+    Xtr, ytr = X[:400], y[:400]
+    Xval, yval = X[400:500], y[400:500]
+    Xte, yte = X[500:], y[500:]
+
+    base = fit_ridge_readout(Xtr, ytr, Xte, yte, X_val=Xval, y_val=yval)
+    assert base["ridge_alpha"] in (0.1, 1.0, 10.0, 100.0)
+    assert base["n_val"] == 100 and base["n_train"] == 400
+
+    for s in range(5):
+        perm = np.random.default_rng(100 + s).permutation(len(yte))
+        other = fit_ridge_readout(Xtr, ytr, Xte, yte[perm], X_val=Xval, y_val=yval)
+        assert other["ridge_alpha"] == base["ridge_alpha"], (
+            f"seed {s}: alpha moved {base['ridge_alpha']} -> "
+            f"{other['ridge_alpha']} when only the eval labels changed"
+        )
+
+
+def test_fit_ridge_readout_internal_val_split_is_deterministic():
+    """No-val callers must carve the same split on every call (reproducible)."""
+    rng = np.random.default_rng(11)
+    X = rng.normal(size=(200, 6)).astype(np.float32)
+    y = (X @ rng.normal(size=6)).astype(np.float32)
+    a = fit_ridge_readout(X[:150], y[:150], X[150:], y[150:])
+    b = fit_ridge_readout(X[:150], y[:150], X[150:], y[150:])
+    assert a["ridge_alpha"] == b["ridge_alpha"]
+    assert a["pearson"] == b["pearson"]
+    assert a["n_val"] == 30 and a["n_train"] == 150
+
+
 # ===========================================================================
 # 4. AGENTS.md §5.7 — trainer flag wire-in smoke (end-to-end)
 # ===========================================================================
@@ -91,3 +131,23 @@ def test_pic50_ridge_readout_flag_reaches_eval_path(tmp_path: Path):
     assert "RIDGE-READOUT" in on, on[-2000:]
     off = _run_trainer(tmp_path / "off", "--no-pic50-ridge-readout")
     assert "RIDGE-READOUT" not in off, off[-2000:]
+
+
+def test_pic50_ridge_readout_is_yaml_bindable_and_typed():
+    """§5.11: the flag must be settable from `model:` in the launch YAML.
+
+    Asserted BY TYPE, not by value: ``apply_yaml_overrides`` coerces through
+    the action's ``type=`` and ``argparse.BooleanOptionalAction`` declares
+    none, so a QUOTED "true" in the YAML survives as ``str 'true'`` and
+    ``bool('false')``-style truthiness downstream would silently enable it.
+    """
+    import sys
+
+    sys.path.insert(0, str(PROJECT_ROOT))
+    from molmetal.scripts.train_dmpnn_multitask_wasserstein import parse_args
+
+    cfg = PROJECT_ROOT / "configs" / "dmpnn.yaml"
+    args = parse_args(["--config", str(cfg)])
+    assert isinstance(args.pic50_ridge_readout, bool), type(args.pic50_ridge_readout)
+    # Default stays OFF: the report-only contract is unchanged by being bindable.
+    assert args.pic50_ridge_readout is False

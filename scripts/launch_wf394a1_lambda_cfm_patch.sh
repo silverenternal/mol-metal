@@ -381,7 +381,7 @@ for key in full_stack yuelbond_only w2_only catherine_only; do
     printf '[Wf-394-A1] === Config: %s (flags: %s) ===\n' \
         "${key}" "${ABLATION_FLAG_TUPLE}"
     CUDA_VISIBLE_DEVICES=0 \
-        "${PY}" "${CFM_TRAINER}" \
+setsid nohup         "${PY}" "${CFM_TRAINER}" \
             --config "${CFG}" \
             --epochs "${EPOCHS}" \
             --seed "${SEED}" \

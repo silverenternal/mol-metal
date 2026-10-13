@@ -192,25 +192,42 @@ def _safe_float(x) -> Optional[float]:
 # ``status="MEASURED_CHEMOTYPE_VDW"`` (chemotype atype accepted by
 # Vina) or ``status="MEASURED_GENERIC_ATOM"`` (Mg fallback), NOT a
 # full-fidelity Vina score for Pt-group metallodrugs.
+_PT_GROUP = frozenset({"Pt", "Ru", "Ir", "Os", "Rh", "Pd", "Au", "Re"})
+
+
 def _rewrite_metal_atype_for_vina(
     lig_pdbqt: Path,
     chemotype_vdw: bool = True,
     fallback_atype: str = "Mg",
+    record: Optional[List[Tuple[str, str, str]]] = None,
 ) -> Path:
-    """Rewrite the atype column so Vina 1.2.7 accepts the metal atom.
+    """Rewrite the atype column so Vina 1.2.7 accepts the ligand.
 
-    Two-tier behaviour (Wf-143 P3):
+    Three-tier behaviour:
 
-    * **PRIMARY** (default ``chemotype_vdw=True``): rewrite ``M`` →
+    * **PT-group chemotype** (``chemotype_vdw=True``): rewrite ``M`` →
       chemotype-specific element symbol (e.g. ``Pt``, ``Ru``, ...).
       Vina then drives the metal-atom VDW term from its own (r, ε)
-      table; if Vina has no row for that element the parser logs a
-      warning but still runs.
-    * **FALLBACK**: rewrite ``M`` → ``fallback_atype`` (``Mg`` by
-      default). This matches Wf-121 P1 behaviour and is used when
-      ``chemotype_vdw=False`` OR when the caller has detected that
-      Vina rejects the chemotype atype (see
-      :func:`_probe_vina_accepts_chemotype_atype`).
+      table.
+    * **METAL FALLBACK**: rewrite any other Vina-rejected metal →
+      ``fallback_atype`` (``Mg`` by default). ``Pt`` is the live case:
+      Vina 1.2.7 has no ``Pt`` row, so ``chemotype_vdw=True`` is probed
+      by :func:`_probe_vina_accepts_chemotype_atype` and lands here
+      (status ``MEASURED_GENERIC_ATOM``).
+    * **NON-METAL SURROGATE** (new, 2026-10-12): rewrite a Vina-rejected
+      NON-metal (``B``, ``As``) to its covalent-radius-nearest
+      Vina-accepted non-metal (``B``→``C``, ``As``→``P``). Sending these
+      to ``Mg`` would be incoherent — ``Mg`` is a divalent metal ion —
+      and they are exactly what killed the 2026-10-12 sweep with
+      ``Atom type B is not a valid AutoDock type``.
+
+    The rewrite set is an explicit allowlist keyed on
+    ``VINA_REJECTED_ELEMENTS``, which is MEASURED against Vina 1.2.7 by
+    :mod:`molmetal.scripts.vina_element_atype_probe`. It is deliberately
+    NOT "every non-C/H/N/O atom": Vina natively accepts ``Ni``, ``Cu``,
+    ``Co``, ``Cd``, ``Hg``, ``W``, ``Se``, ``Fe``, ``Mn``, ``Zn``, and
+    rewriting those to ``Mg`` would destroy a correct atype. Only the
+    23 measured-rejected symbols are touched.
 
     The element column at the end of the PDBQT row is unchanged so
     RDKit / meeko can still reverse-parse the file.
@@ -225,20 +242,56 @@ def _rewrite_metal_atype_for_vina(
     fallback_atype : str, default ``"Mg"``
         The atype to substitute when chemotype rewriting is disabled or
         when Vina rejects the chemotype atype.
+    record : list, optional
+        Mutated in place with one ``(element, atype, kind)`` tuple per
+        substitution, where ``kind`` is ``"chemotype"`` (M → the real
+        element symbol, which Vina scored correctly), ``"fallback"``
+        (M → ``fallback_atype``), or ``"surrogate"`` (a Vina-rejected
+        element replaced by a covalent stand-in, e.g. B→C, As→P).
+
+        This exists because the caller's ``status`` field cannot be
+        derived from the rewritten file. After this function runs, a
+        boron atom is indistinguishable from a carbon one and a
+        titanium atom from a magnesium one, so
+        :func:`_probe_vina_accepts_chemotype_atype` -- which scans the
+        post-rewrite atype column for a Vina-rejected symbol -- finds
+        nothing and returns the bare ``fallback_atype``. That string
+        does not end in ``-fallback``, so a ligand scored as a carbon
+        stand-in was recorded as ``MEASURED_CHEMOTYPE_VDW``. Twenty-two
+        hard parse crashes had already been traded for twenty-two
+        mislabelled records. See ``test_vina_surrogate_status.py``.
 
     Returns
     -------
     pathlib.Path
         The same path (modified in place).
     """
+    from molmetal.molmetal_lam.sbdd_env.metal_pdbqt_overrides import (
+        VINA_NONMETAL_SURROGATES,
+        VINA_REJECTED_ELEMENTS,
+    )
+
     text = lig_pdbqt.read_text()
     rewritten: List[str] = []
     n_chemotype = 0
     n_fallback = 0
+    n_surrogate = 0
     for line in text.splitlines(keepends=True):
         if line.startswith(("ATOM", "HETATM")) and len(line) >= 79:
             atype = line[77:79].strip()
-            if atype == "M":
+            # 2026-10-12 FIX. This used to test `atype == "M"` only. With
+            # add_metal_atom_types(chemotype_vdw=True) -- the default the
+            # adapter passes -- meeko emits the chemotype ATYPE ITSELF
+            # ("Re", "Ru", "Pt", ...) rather than a generic "M", so the
+            # rewrite was a silent no-op and every such ligand died at
+            # `set_ligand_from_file` with "Atom type Re is not a valid
+            # AutoDock type". The whole metallodrug docking path therefore
+            # returned n=0 for every generated molecule AND for the
+            # cisplatin positive control. Match any Pt-group symbol, not just
+            # "M"; `M` remains covered because it is not one of them but is
+            # still accepted by the element extractor below.
+            _raw_elem = _extract_element_from_pdbqt_line(line)
+            if atype == "M" or atype in _PT_GROUP or _raw_elem in _PT_GROUP:
                 # Pull the element symbol from the tail of the PDBQT
                 # row (columns 77-79 are the atype; the element column
                 # for meeko output is columns [12:16] for the atom name
@@ -248,27 +301,58 @@ def _rewrite_metal_atype_for_vina(
                 # the element in meeko output. We fall back to the
                 # atype when we cannot disambiguate.
                 elem_symbol = _extract_element_from_pdbqt_line(line)
-                if chemotype_vdw and elem_symbol in {
-                    "Pt",
-                    "Ru",
-                    "Ir",
-                    "Os",
-                    "Rh",
-                    "Pd",
-                    "Au",
-                    "Re",
-                }:
-                    new_atype = elem_symbol
+                # 2026-10-12 FIX. _extract_element_from_pdbqt_line returns the
+                # atom-name field verbatim, and PDB atom names are UPPERCASE
+                # ("PT1", "RU1"), while the element table is mixed case ("Pt",
+                # "Ru"). The comparison therefore never matched and EVERY
+                # ligand silently took the fallback branch -- which is why
+                # chemotype_vdw=True returned Mg instead of Pt. Compare
+                # case-folded.
+                _elem_key = elem_symbol[:1].upper() + elem_symbol[1:].lower()
+                if chemotype_vdw and _elem_key in _PT_GROUP:
+                    new_atype = _elem_key
                     n_chemotype += 1
+                    if record is not None:
+                        record.append((_elem_key, new_atype, "chemotype"))
                 else:
                     new_atype = fallback_atype
                     n_fallback += 1
+                    if record is not None:
+                        record.append((_elem_key, new_atype, "fallback"))
                 # Replace exactly the atype columns [77:79] — keep
                 # the rest of the line (incl. element column at the
                 # end) unchanged so RDKit/meeko can still reverse it.
                 line = line[:77] + new_atype.ljust(2)[:2] + line[79:]
+            # 2026-10-12 FIX #3. Third invalid-atype class: Vina-rejected
+            # NON-metals. Boron (6.22% of tmQM complexes) and arsenic
+            # (0.58%) reached Vina untouched and raised
+            #   PDBQT parsing error: Atom type B is not a valid AutoDock type
+            # which aborted the whole sweep, not just that molecule.
+            # Handled on a SEPARATE branch from the metal path above so a
+            # non-metal never inherits the metal's Mg/chemotype decision.
+            else:
+                _elem_key = _extract_element_from_pdbqt_line(line)
+                _elem_key = _elem_key[:1].upper() + _elem_key[1:].lower()
+                if _elem_key in VINA_NONMETAL_SURROGATES:
+                    new_atype = VINA_NONMETAL_SURROGATES[_elem_key]
+                    line = line[:77] + new_atype.ljust(2)[:2] + line[79:]
+                    n_surrogate += 1
+                    if record is not None:
+                        record.append((_elem_key, new_atype, "surrogate"))
+                elif (
+                    _elem_key in VINA_REJECTED_ELEMENTS
+                    and _elem_key not in VINA_NONMETAL_SURROGATES
+                ):
+                    # Vina-rejected metal outside the Pt group (e.g. Ti, Zr,
+                    # Mo). The caller applies the generic-atom fallback via
+                    # the existing chemotype probe; record it as a fallback so
+                    # the log counts it the same way as the Pt-group path.
+                    line = line[:77] + fallback_atype.ljust(2)[:2] + line[79:]
+                    n_fallback += 1
+                    if record is not None:
+                        record.append((_elem_key, fallback_atype, "fallback"))
         rewritten.append(line)
-    if n_chemotype or n_fallback:
+    if n_chemotype or n_fallback or n_surrogate:
         lig_pdbqt.write_text("".join(rewritten))
         if n_chemotype:
             LOG.info(
@@ -283,6 +367,14 @@ def _rewrite_metal_atype_for_vina(
                 "fallback atype(s) in %s",
                 n_fallback,
                 fallback_atype,
+                lig_pdbqt.name,
+            )
+        if n_surrogate:
+            LOG.info(
+                "_rewrite_metal_atype_for_vina: rewrote %d non-metal atype(s) "
+                "→ %s in %s (Vina 1.2.7 has no B/As row; 2026-10-12 fix)",
+                n_surrogate,
+                VINA_NONMETAL_SURROGATES,
                 lig_pdbqt.name,
             )
     return lig_pdbqt
@@ -362,20 +454,25 @@ def _probe_vina_accepts_chemotype_atype(
         )
         return f"{fallback_atype}-fallback"
 
-    # Detect the chemotype atype present in the file. We restrict the
-    # probe to the 8 Pt-group elements (the only ones we would have
-    # rewritten in chemotype_vdw mode) so we don't accidentally trip
-    # over common organic atypes (C, N, O, H, Cl, …) that appear in
-    # the ligand too.
+    # Detect the chemotype atype present in the file.
+    #
+    # 2026-10-12 FIX. This used to scan for `atype in PT_GROUP_ELEMENTS`
+    # only. The chemotype branch of
+    # :func:`_rewrite_metal_atype_for_vina` deliberately writes the
+    # chemotype symbol (Pt, Ru, ...) because a passing test pins that
+    # behaviour, so the PROBE is the thing that has to catch Vina's
+    # rejection and fall back to Mg. Scanning only 8 symbols meant any
+    # OTHER rejected element that reached Vina was never probed and
+    # aborted the run. Scan the full measured rejection set instead.
     from molmetal.molmetal_lam.sbdd_env.metal_pdbqt_overrides import (
-        PT_GROUP_ELEMENTS,
+        VINA_REJECTED_ELEMENTS,
     )
 
     chemotype_atype = ""
     for line in lig_pdbqt.read_text().splitlines():
         if line.startswith(("ATOM", "HETATM")) and len(line) >= 79:
             atype = line[77:79].strip()
-            if atype in PT_GROUP_ELEMENTS:
+            if atype in VINA_REJECTED_ELEMENTS:
                 chemotype_atype = atype
                 break
 
@@ -409,6 +506,46 @@ def _probe_vina_accepts_chemotype_atype(
         return f"{fallback_atype}-fallback"
 
 
+def _vina_record_status(
+    subs: List[Tuple[str, str, str]],
+    accepted: str,
+) -> str:
+    """Label a docked ligand by what Vina ACTUALLY scored.
+
+    ``subs`` is the ``record`` list filled in by
+    :func:`_rewrite_metal_atype_for_vina`; ``accepted`` is the return of
+    :func:`_probe_vina_accepts_chemotype_atype`.
+
+    Three outcomes, in decreasing order of how much the returned kcal/mol
+    value is worth:
+
+    ``MEASURED_SURROGATE_ATOM``
+        A Vina-rejected element was scored as a covalent stand-in
+        (B→C, As→P). Vina produced a real number for a molecule it
+        believes is a different element. This outranks the probe because
+        the probe is structurally unable to see it -- after the rewrite
+        the file holds "C", which is not in ``VINA_REJECTED_ELEMENTS``.
+    ``MEASURED_GENERIC_ATOM``
+        Vina rejected the chemotype atype and the atom was scored as
+        ``Mg``, or a Vina-rejected metal outside the Pt group took that
+        branch directly.
+    ``MEASURED_CHEMOTYPE_VDW``
+        Vina scored the real element symbol (Pt, Ru, ...).
+
+    Extracted 2026-10-12 so that the decision is callable and testable;
+    it was previously inline in the pocket-sweep ``try`` block, where a
+    test could only re-implement it and thereby prove the copy correct
+    rather than the code.
+    """
+    if any(kind == "surrogate" for _, _, kind in subs):
+        return "MEASURED_SURROGATE_ATOM"
+    if accepted.endswith("-fallback") or any(
+        kind == "fallback" for _, _, kind in subs
+    ):
+        return "MEASURED_GENERIC_ATOM"
+    return "MEASURED_CHEMOTYPE_VDW"
+
+
 def _replace_chemotype_atype_with_fallback(
     lig_pdbqt: Path,
     chemotype_atype: str,
@@ -423,6 +560,12 @@ def _replace_chemotype_atype_with_fallback(
     the path the probe takes when Vina rejects the chemotype atype
     after :func:`_rewrite_metal_atype_for_vina` has already emitted
     ``Pt`` / ``Ru`` / etc. into the PDBQT.
+
+    2026-10-12: ``chemotype_atype`` may now be any Vina-rejected symbol,
+    not just the 8 Pt-group ones, so a ligand carrying e.g. a rewritten
+    ``Ti`` is handled on the same path. The substitution is still
+    restricted to the single named symbol; Vina-accepted elements are
+    never touched.
     """
     text = lig_pdbqt.read_text()
     rewritten: List[str] = []
@@ -931,17 +1074,25 @@ def run_pocket_sweep(
         # ``status`` reflects the post-rewrite atype acceptance:
         #   - MEASURED_CHEMOTYPE_VDW when chemotype atype accepted by Vina
         #   - MEASURED_GENERIC_ATOM   when chemotype atype rejected (fallback to Mg)
+        #   - MEASURED_SURROGATE_ATOM when a Vina-rejected element was scored
+        #     as a covalent stand-in (B→C, As→P, Ti→Mg). Added 2026-10-12.
         status = "MEASURED_GENERIC_ATOM"
+        subs: List[Tuple[str, str, str]] = []
         lig_pdbqt = _rewrite_metal_atype_for_vina(
             lig_pdbqt,
             chemotype_vdw=chemotype_vdw,
+            record=subs,
         )
         if chemotype_vdw:
             accepted = _probe_vina_accepts_chemotype_atype(lig_pdbqt)
-            if accepted.endswith("-fallback"):
-                status = "MEASURED_GENERIC_ATOM"
-            else:
-                status = "MEASURED_CHEMOTYPE_VDW"
+            status = _vina_record_status(subs, accepted)
+            if status == "MEASURED_SURROGATE_ATOM":
+                LOG.warning(
+                    "%s: ligand scored as a covalent SURROGATE (%s); the kcal/mol "
+                    "value describes the stand-in, not the element",
+                    pocket_id,
+                    sorted({f"{e}->{a}" for e, a, k in subs if k == "surrogate"}),
+                )
     except MetalPDBQTUnavailable as exc:
         # P1/P2 patch succeeded for cisplatin; this branch is defensive
         # in case a future SMILES change re-introduces a meeko edge case.

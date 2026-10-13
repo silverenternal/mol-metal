@@ -482,7 +482,7 @@ def _per_cell_auc(
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def main() -> int:
+def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--data", type=Path, default=DEFAULT_DATA)
     p.add_argument("--encoder", type=Path, default=DEFAULT_ENCODER_CKPT)
@@ -495,7 +495,29 @@ def main() -> int:
     p.add_argument(
         "--limit", type=int, default=None, help="Debug: cap n rows (post-split)"
     )
-    args = p.parse_args()
+    p.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="YAML config (§5.11). Keys resolve to the dests above; an "
+        "explicit CLI flag still wins.",
+    )
+    return p
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Module-level entry point for the config-binding gate (§5.11)."""
+    p = _build_parser()
+    args = p.parse_args(argv)
+    if getattr(args, "config", None):
+        from molmetal.scripts.wfA2_config_loader import apply_yaml_overrides
+
+        args = apply_yaml_overrides(p, args, args.config, argv=list(argv or []))
+    return args
+
+
+def main() -> int:
+    args = parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     amp_dtype = torch.bfloat16 if device.type == "cuda" else torch.float32
