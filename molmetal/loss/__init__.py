@@ -55,7 +55,10 @@ from molmetal.loss.prior_losses import ClashPenalty
 from molmetal.loss.regularization_losses import (
     ConsistencyTerm,
     EDMTerm,
+    EnergyConservation,
     EntropyTerm,
+    FmOdeTerm,
+    SBOO3Term,
     SO3Term,
 )
 from molmetal.loss.property_losses import MolecularPropertyTargetLoss
@@ -86,7 +89,10 @@ __all__ = [
     # regularization_losses.py
     "ConsistencyTerm",
     "EDMTerm",
+    "EnergyConservation",
     "EntropyTerm",
+    "FmOdeTerm",
+    "SBOO3Term",
     "SO3Term",
     # stererochemistry_losses.py (Wf-A14, A.3 fix)
     "FragmentConnectivityLoss",
