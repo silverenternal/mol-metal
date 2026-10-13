@@ -1623,6 +1623,14 @@ class CFMJointModel(nn.Module):
         # the body of forward() can read it as `model.last_clash_penalty`.
         # Stays None when clash_penalty_weight <= 0.
         self.last_clash_penalty: Optional[torch.Tensor] = None
+        # Wf-A27 (2026-10-13) step-3 — per-cloud continuous-BO stash.
+        # Reset at the top of every training batch (mirror of
+        # ``last_q_preds``).  When both lists are non-empty the
+        # ContinuousBOLoss at line 4209 reads them and produces a real
+        # MSE penalty at ``--bo-continuous-weight > 0``; otherwise
+        # ``.compute(None, None, ...)`` returns the pre-Wf-A27 zero.
+        self.last_bond_logits_bo: List[torch.Tensor] = []
+        self.last_bond_orders_continuous: List[torch.Tensor] = []
         # 2026-10-09 — bond-predictor dispatch.  Both branches attach the
         # head to `self.head` and both expose (logits, (i_idx, j_idx)) from
         # forward(cloud), so the trainer's downstream code (assemble-aware
@@ -2043,6 +2051,18 @@ class CFMJointModel(nn.Module):
             logits, head_pair_index = out
         else:
             logits = out
+        # Wf-A27 (2026-10-13) step-3 — per-cloud ContinuousBOLoss material.
+        # When ``logits`` is a per-pair prediction (shape ``(E, NUM_BOND_CLASSES=5)``)
+        # and the cloud carries ``bond_orders_continuous`` as ground-truth,
+        # convert the discrete head logits into a continuous BO prediction
+        # via the weighted class-centre expectation so the
+        # ``ContinuousBOLoss`` (Layer F / Wf-A15) can actually supervise.
+        # Stash only when BOTH the cloud has truth AND the head emitted a
+        # differentiable prediction; otherwise the lists stay empty and the
+        # trainer falls back to ``compute(None, None, ...)`` (the
+        # pre-Wf-A27 zero path).  ``last_*`` lists are reset per-batch
+        # (parallel to ``last_q_preds``).
+        self._maybe_stash_bond_continuous_bo(logits, cloud)
         # Wf-A16 (2026-10-13) c-flow pocket embedding.
         #
         # Produce a (B, hidden_dim) tensor when ``pocket_batch_ctx`` is
@@ -2151,6 +2171,62 @@ class CFMJointModel(nn.Module):
     # ------------------------------------------------------------------
     # Wf-A15 (2026-10-13) Track-A L3a — q-prediction stash
     # ------------------------------------------------------------------
+    def _maybe_stash_bond_continuous_bo(
+        self,
+        head_logits: torch.Tensor,
+        cloud: "AtomCloud",
+    ) -> None:
+        """Wf-A27 (2026-10-13) step-3 — stash per-cloud bond-continuous-IO.
+
+        :attr:`head_logits` is the per-pair discrete-class prediction
+        from the bond head (``(E, 5)`` shape on the YuelBond / D-MPNN
+        paths; ``(E, 1)`` on a hypothetical continuous head — neither
+        of which matters here because we always re-project through
+        the BOND_LABELS centres).  :attr:`cloud.bond_orders_continuous`
+        is the per-pair ground-truth Wiberg BO tensor.  When both are
+        populated and the prediction has the expected ``(E, 5)`` shape
+        (round-up for ``torch.allclose`` equality in the smoke
+        protocol), the per-cloud pair is appended to
+        ``last_bond_logits_bo`` / ``last_bond_orders_continuous`` for
+        the trainer to ``torch.cat`` at the loss site.  Stays empty
+        when the cloud has no bonds — bit-exact with pre-Wf-A27.
+        """
+        if head_logits is None or head_logits.numel() == 0:
+            return
+        target = getattr(cloud, "bond_orders_continuous", None)
+        if target is None or target.numel() == 0:
+            return
+        if int(head_logits.shape[0]) != int(target.shape[0]):
+            return
+        # Project discrete logits -> continuous BO via softmax-weighted
+        # class-centre expectation.  Centres chosen so that "none" -> 0,
+        # "single" -> 1, "double" -> 2, "triple" -> 3, "aromatic" -> 4 —
+        # a linear mapping onto Wiberg-index scale.  Output is reshaped
+        # to ``(E, 1)`` so :class:`ContinuousBOLoss.compute` (which does
+        # ``squeeze(-1)`` internally) keeps the column shape contract.
+        #
+        # IMPORTANT: :meth:`ContinuousBOLoss.compute` applies
+        # ``target = log(bo + 1)`` (Layer F / Wf-A15 convention), so the
+        # pred must live in the SAME log-space for a clean loss.
+        # ``torch.log(expectation + 1)`` is the natural matched transform.
+        BOND_CENTRES = (0.0, 1.0, 2.0, 3.0, 4.0)
+        try:
+            import torch.nn.functional as F  # noqa: N818 — deferred import
+            centres = head_logits.new_tensor(BOND_CENTRES, dtype=head_logits.dtype)
+            probs = F.softmax(head_logits.detach(), dim=-1)
+            pred_bo_lin = (probs * centres).sum(dim=-1)  # (E,) Wiberg scale
+            pred_bo = torch.log(pred_bo_lin + 1.0).unsqueeze(-1)  # (E, 1) log-space
+        except Exception:
+            return  # Graceful: any shape mismatch leaves the lists empty.
+        # Move target to the pred device so ``torch.cat`` works; both are
+        # element-wise float32 tensors (the loader's contract).
+        tgt = target.detach().to(pred_bo.device, dtype=pred_bo.dtype)
+        # Clamp to the Wiberg-index range so out-of-range truths (rare
+        # dative outliers) do not inject unbounded gradients at weight>0.
+        tgt = tgt.clamp(0.0, 4.0)
+        self.last_bond_logits_bo.append(pred_bo.contiguous())
+        self.last_bond_orders_continuous.append(tgt.contiguous())
+
     def _maybe_stash_q_pred(
         self, q_pred: Optional[torch.Tensor]
     ) -> None:
@@ -3054,6 +3130,10 @@ def train_one_epoch(
         # Reset on every batch so the trainer can ``torch.cat`` over
         # the cloud order that produced ``Batch.natural_charge``.
         model.last_q_preds = []
+        # Wf-A27 (2026-10-13) step-3 — per-cloud continuous-BO stash.
+        # Reset on every batch (parallel to ``last_q_preds``).
+        model.last_bond_logits_bo = []
+        model.last_bond_orders_continuous = []
         for idx in batch_indices:
             cloud = train_clouds[int(idx)]
             # Move cloud to device by re-creating (AtomCloud has no
@@ -4206,12 +4286,32 @@ def train_one_epoch(
         # the pre-Wf-A15 12-term sum when every ``*_weight`` arg is 0.0.
         # Per-cloud / per-pair inputs (logits_for_bo, bond_orders_continuous,
         # decoded_mol, smiles, etc.) are passed when available, else None.
+        #
+        # Wf-A27 (2026-10-13) step-3 — pass REAL tensors from per-cloud
+        # stash when available.  The two ``last_*`` lists are reset on
+        # every batch (model.last_bond_logits_bo /
+        # model.last_bond_orders_continuous), populated per-cloud by
+        # ``_maybe_stash_bond_continuous_bo`` only when the cloud had
+        # ground-truth BOs.  When at least one cloud contributed we
+        # ``torch.cat`` to one ``(E_total,)`` pair; otherwise the
+        # ``compute(None, None, ...)`` zero-path matches pre-Wf-A27
+        # bit-exactly (the default; reviewer's documented contract).
+        _bo_logits_cat: Optional[torch.Tensor] = None
+        _bo_targets_cat: Optional[torch.Tensor] = None
+        if (
+            model.last_bond_logits_bo
+            and model.last_bond_orders_continuous
+        ):
+            _bo_logits_cat = torch.cat(model.last_bond_logits_bo, dim=0)
+            _bo_targets_cat = torch.cat(
+                model.last_bond_orders_continuous, dim=0
+            )
         chem_loss_term = ContinuousBOLoss(
             weight=float(chem_loss_weight),
             enabled=float(chem_loss_weight) > 0.0,
         ).compute(
-            logits_for_bo=None,
-            bond_orders_continuous=None,
+            logits_for_bo=_bo_logits_cat,
+            bond_orders_continuous=_bo_targets_cat,
             device=device,
         )
         qed_term = QEDLoss(
@@ -7711,6 +7811,23 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Weight on ContinuousBOLoss (Layer F / Wf-A15).  Default 0.0 "
             "= exact torch.zeros(()) in the sum → bit-for-bit pre-Wf-A15."
+        ),
+    )
+    # Wf-A27 (2026-10-13) step-3 — alias for the chem-loss-weight dest
+    # under a name readers parse as "BOND continuous supervision".
+    # Sharing ``dest`` keeps both flags addressing the SAME weight;
+    # whichever comes last on the command line wins.
+    p.add_argument(
+        "--bo-continuous-weight",
+        dest="chem_loss_weight",
+        type=float,
+        default=None,
+        help=(
+            "Alias of --chem-loss-weight (Wf-A27 step-3).  Lets the YAML "
+            "key 'train.bo_continuous_loss_weight' map to the same "
+            "ContinuousBOLoss wire-in.  Default (None) lets --chem-loss-"
+            "weight's 0.0 default flow through unchanged → bit-exact "
+            "pre-Wf-A27."
         ),
     )
     p.add_argument(
