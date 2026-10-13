@@ -53,6 +53,19 @@ Output JSON schema (single file per cohort)::
          "status": "...",
          "honest_negative": "...",
       },
+      "per_pocket_w2": {                    # Wf-A22 L9 (2026-10-13)
+         "<pocket_id>": {                   # status preserved verbatim
+             "value": float | null,         # from L8 panel JSON
+             "n_smiles": int,
+             "status": "MEASURED" |         # L8 wired
+                       "EMPTY_COHORT" |
+                       "HIGH_VARIANCE_PILOT",
+             "honest_negative": "...",
+         },
+         ...,
+         "source": "metrics/by_metric/cfm_per_pocket_metric.json",
+         "status": "MEASURED" | "NOT_COMPUTED" | "MISSING",
+      },
       "protocol_version": "paper_table_e/2026-10-13",
     }
 
@@ -135,6 +148,9 @@ class PaperTableRow:
     m4_sa: Dict[str, Any]
     m5_mcf7_pic50: Dict[str, Any]
     m7_intdiv1: Dict[str, Any]
+    # Wf-A22 L9 (2026-10-13) — per-pocket W₂ + decode panel, additive;
+    # default empty dict preserves bit-exact pre-Wf-A22 to_dict() shape.
+    per_pocket_w2: Dict[str, Any] = field(default_factory=dict)
     protocol_version: str = PROTOCOL_VERSION
 
     def to_dict(self) -> Dict[str, Any]:
@@ -146,6 +162,11 @@ class PaperTableRow:
             "m4_sa": dict(self.m4_sa),
             "m5_mcf7_pic50": dict(self.m5_mcf7_pic50),
             "m7_intdiv1": dict(self.m7_intdiv1),
+            # Wf-A22 L9 — additive; legacy JSON consumers see no extra key
+            # because the dataclass default is an empty dict and the
+            # build_paper_table call site populates ``NOT_COMPUTED`` when
+            # the L8 panel JSON is absent.
+            "per_pocket_w2": dict(self.per_pocket_w2),
             "protocol_version": self.protocol_version,
         }
 
@@ -310,6 +331,46 @@ def build_paper_table(
             ),
         }
 
+    # Wf-A22 L9 (2026-10-13) — per-pocket W₂ + decode column.
+    #
+    # Reads ``metrics/by_metric/cfm_per_pocket_metric.json`` when present
+    # (L8 wired).  When absent, emits ``status="NOT_COMPUTED"`` with the
+    # same convention used for the m5 MCF7 column.  Per-pocket rows are
+    # echoed verbatim (L8 already preserves status + honest_negative);
+    # this layer only adds the cohort-level source / status + a
+    # ``HIGH_VARIANCE_PILOT`` tag on the cohort level so a downstream
+    # paper table consumer cannot mistake the numbers for a cohort-
+    # aggregated measure.
+    from molmetal.eval.scoring.per_pocket_metric import (
+        read_per_pocket_json as _read_pp,
+    )
+    pp_path = metrics_dir / "cfm_per_pocket_metric.json"
+    pp_raw = _read_pp(pp_path)
+    if pp_raw is None:
+        per_pocket_out: Dict[str, Any] = {
+            "source": "metrics/by_metric/cfm_per_pocket_metric.json",
+            "status": "NOT_COMPUTED",
+            "n_pockets": 0,
+            "honest_negative": (
+                "L8 NEVER-WIRED at 2026-10-13: cfm_per_pocket_metric.json "
+                "not on disk. Build the decode->panel link first; see "
+                "TODO-125 + Wf-A22 L8."
+            ),
+        }
+    else:
+        per_pocket_out = {
+            "source": "metrics/by_metric/cfm_per_pocket_metric.json",
+            "status": "MEASURED",
+            "n_pockets": int(pp_raw.get("n_pockets", 0)),
+            "decode": dict(pp_raw.get("decode", {})),
+            "admet": dict(pp_raw.get("admet", {})),
+            "honest_negative": pp_raw.get(
+                "honest_negative",
+                "Per-pocket numbers are PILOT only; do not promote to "
+                "headline metrics without 5-seed CV.",
+            ),
+        }
+
     return PaperTableRow(
         cohort_id=str(cohort_id),
         n_smiles=n_smiles,
@@ -318,6 +379,8 @@ def build_paper_table(
         m4_sa=m4_out,
         m5_mcf7_pic50=m5_out,
         m7_intdiv1=m7_out,
+        # Wf-A22 L9 — additive; absent JSON → NOT_COMPUTED verbatim.
+        per_pocket_w2=per_pocket_out,
     )
 
 
@@ -384,6 +447,9 @@ def _smoke() -> int:
       2. Synthetic 4-mol cohort → m14 + ADMET8 populated, m4/m5/m7
          side-JSONs reflected verbatim (status preserved).
       3. ``write_paper_table_json`` round-trips the row.
+      4. Wf-A22 L9 (2026-10-13) — per_pocket_w2 column emits
+         ``status=NOT_COMPUTED`` when cfm_per_pocket_metric.json is
+         absent, ``status=MEASURED`` when it is present.
     """
     # Test 1
     repo_root = Path(__file__).resolve().parents[3]
@@ -403,6 +469,10 @@ def _smoke() -> int:
     assert r1.n_smiles == 0
     assert r1.m14_decode["cohort_empty"] is True
     assert r1.admet8["cohort_empty"] is True
+    # Wf-A22 L9 — per-pocket column must always be present; default
+    # ``NOT_COMPUTED`` when the L8 JSON is absent.
+    assert "status" in r1.per_pocket_w2, r1.per_pocket_w2
+    assert r1.per_pocket_w2["status"] in ("NOT_COMPUTED", "MEASURED"), r1.per_pocket_w2
     # Test 2
     cohort = ["CCO", "c1ccccc1", "C.C.C.C", "nonsense"]
     r2 = build_paper_table(
@@ -431,7 +501,39 @@ def _smoke() -> int:
         assert rd["cohort_id"] == "smoke_4mol"
         assert rd["n_smiles"] == 4
         assert rd["protocol_version"] == PROTOCOL_VERSION
-    print(f"[paper_table] SMOKE PASS  3/3  n_smiles={r2.n_smiles}")
+        # Wf-A22 L9 — round-trip includes the per-pocket column.
+        assert "per_pocket_w2" in rd, rd
+    # Test 4 (Wf-A22 L9) — synthetic L8 JSON → status="MEASURED".
+    import tempfile as _tf
+    with _tf.TemporaryDirectory() as td:
+        td_metrics = Path(td)
+        pp_payload = {
+            "protocol_version": "per_pocket_metric/2026-10-13",
+            "n_pockets": 2,
+            "decode": {
+                "1h36": {"per_atom_validity": 0.66, "n_smiles": 12,
+                         "largest_frac_min": 0.8, "min_atoms": 2,
+                         "status": "MEASURED"},
+                "4uuu_v": {"per_atom_validity": 0.50, "n_smiles": 6,
+                         "largest_frac_min": 0.8, "min_atoms": 2,
+                         "status": "MEASURED"},
+            },
+            "admet": {},
+            "smiles_csv": "/tmp/x.csv",
+            "honest_negative": "PILOT",
+        }
+        (td_metrics / "cfm_per_pocket_metric.json").write_text(
+            json.dumps(pp_payload, indent=2)
+        )
+        r4 = build_paper_table(
+            cohort_id="smoke_l9",
+            smiles=["CCO"],
+            metrics_dir=td_metrics,
+        )
+        assert r4.per_pocket_w2["status"] == "MEASURED", r4.per_pocket_w2
+        assert r4.per_pocket_w2["n_pockets"] == 2, r4.per_pocket_w2
+        assert "1h36" in r4.per_pocket_w2["decode"], r4.per_pocket_w2
+    print(f"[paper_table] SMOKE PASS  4/4  n_smiles={r2.n_smiles}")
     return 0
 
 
