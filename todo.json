@@ -5652,7 +5652,16 @@
         "ours": 0.828,
         "chemprop_v2": 0.8493,
         "literature": 0.8833
-      }
+      },
+      "our_actual_run_config": {
+        "hidden": 512,
+        "depth": 4,
+        "epochs": 50,
+        "dropout": 0.0,
+        "class_weight": "on",
+        "note": "来自 metrics/by_metric/moleculenet_auc_dmpnn_5seed_cap512_d4.json 的 config 字段"
+      },
+      "correction_2026_10_14": "初版误判: 以为我们没开类权重。实际我们的 run 是 class_weight=on (weight=neg/pos), chemprop v2 same-protocol 是 class_weight=off —— 我们带着类权重+更大容量仍然输, 所以差距更明确是特征/更新算子/读出, 不是损失或容量。"
     },
     "borrow_points": [
       {
@@ -5693,9 +5702,9 @@
       {
         "id": "M4",
         "lever": "loss / class balance",
-        "ours": "nn.BCEWithLogitsLoss() 裸用, 无类权重 (dmpnn.py:509)",
-        "chemprop_v2": "same-protocol 也是 class_weight=off",
-        "action": "加 pos_weight 或 focal loss (bace/clintox 高度不平衡); 复用已有 focal 基础设施",
+        "ours": "class_weight=on (weight=neg/pos, train_moleculenet.py:293); dropout 0.0",
+        "chemprop_v2": "class_weight=off (unweighted BCE)",
+        "action": "不要盲目加权重 —— 我们已经有。改为消融 class_weight ∈ {on, off, balanced}: bace pos_rate~0.45 属近平衡, Wu2018/chemprop 用 plain BCE, 我们可能被权重拖累; clintox 更不平衡可保留权重或试 focal",
         "targets": [
           "bace",
           "clintox"
@@ -5705,9 +5714,9 @@
       {
         "id": "M5",
         "lever": "training recipe",
-        "ours": "dropout 0.1, 无显式 init, 30 epochs",
+        "ours": "dropout 0.0, hidden 512/depth 4, 50 epochs (cap512/d4 run), 无显式 init",
         "chemprop_v2": "dropout 0.0, 300/3, 50 epochs",
-        "action": "init(xavier/kaiming) + dropout + epochs + lr 扫描",
+        "action": "hidden/depth 已够; 重点试 weight init (xavier/kaiming) 与 lr/epochs 微调",
         "targets": [
           "all"
         ],
