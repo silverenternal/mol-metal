@@ -5588,6 +5588,156 @@
         "fix": "显式声明 'single backbone',并点名哪些列是对照/复现"
       }
     ],
-    "gpu_cost": "U1 (chemprop v2 Ru DOI-10fold) + U2 (chemprop v2 tmQM A/B Ru/Ir) —— 两个 GPU run; U4/U9-U11 纯文本"
+    "gpu_cost": "U1 (chemprop v2 Ru DOI-10fold) + U2 (chemprop v2 tmQM A/B Ru/Ir) —— 两个 GPU run; U4/U9-U11 纯文本",
+    "SUPERSEDED_BY": "in_house_main_model_2026_10_14",
+    "superseded_note": "方向反转(2026-10-14 用户决定): 主模型必须是自研, 不是 chemprop v2。本块的 U1/U2(在 chemprop v2 上重跑 DOI-split / tmQM)作废; U4-U11 的\"对照显式标注\"仍然有效。"
+  },
+  "in_house_main_model_2026_10_14": {
+    "created": "2026-10-14",
+    "directive": "预测线主模型必须是仓库自研 D-MPNN; chemprop v2 只作参照实现, 不进主线; 我们哪里输给它, 就在关键代码处借鉴并补强",
+    "supersedes": "model_unification_2026_10_14 (该块曾把主模型定为 chemprop v2, 现反转)",
+    "main_model": {
+      "impl": "in-house D-MPNN",
+      "file": "molmetal/baselines/dmpnn.py::DMPNNModel",
+      "artifact_label": "dmpnn_v4 / dmpnn_multitask_wasserstein",
+      "producers": [
+        "molmetal/scripts/train_moleculenet.py",
+        "molmetal/scripts/train_dmpnn_multitask_wasserstein.py"
+      ],
+      "already_used_in": [
+        "Krasnov DOI-split row (0.7717)",
+        "MoleculeNet control",
+        "NCI60 control",
+        "tmQM A/B"
+      ]
+    },
+    "reference_impl": {
+      "impl": "chemprop v2.3.1 AtomMessagePassing (open-source, github.com/chemprop/chemprop)",
+      "role": "REFERENCE ONLY — 用作补强的借鉴源与对照, 不作为论文主线模型",
+      "currently_main_line_in_paper": [
+        "Table 1 (within+cross)",
+        "FSMA K-curve",
+        "C2/C3/C4",
+        "PA3",
+        "PA15"
+      ]
+    },
+    "diagnosis": {
+      "key_insight": "ours 用 512/4, chemprop 用 300/3 —— 我们容量更大却输, 所以差距不是容量, 是特征/更新算子/读出/训练配方",
+      "where_we_lose_moleculenet": {
+        "bace": {
+          "ours": 0.7933,
+          "chemprop_v2": 0.8458,
+          "gap": -0.0525
+        },
+        "clintox": {
+          "ours": 0.8303,
+          "chemprop_v2": 0.8847,
+          "gap": -0.0544
+        }
+      },
+      "where_we_win": {
+        "bbbp": {
+          "ours": 0.8994,
+          "chemprop_v2": 0.8861,
+          "gap": 0.0133
+        },
+        "hiv": {
+          "ours": 0.7889,
+          "chemprop_v2": 0.7807,
+          "gap": 0.0082
+        }
+      },
+      "mean": {
+        "ours": 0.828,
+        "chemprop_v2": 0.8493,
+        "literature": 0.8833
+      }
+    },
+    "borrow_points": [
+      {
+        "id": "M1",
+        "lever": "featurization",
+        "ours": "atom 39-dim / bond 10-dim",
+        "chemprop_v2": "atom 72-dim / bond 14-dim (SimpleMoleculeMolGraphFeaturizer)",
+        "action": "把自研特征集扩到 chemprop 的对齐或更丰富(缺的原子类型/度/形式电荷/手性/杂化/环/共轭等)",
+        "targets": [
+          "bace",
+          "clintox"
+        ],
+        "status": "TODO"
+      },
+      {
+        "id": "M2",
+        "lever": "message-passing update",
+        "ours": "GRU(h_e, h_v[src], m)",
+        "chemprop_v2": "tau(H_0 + W_h(M)) 残差式更新",
+        "action": "实现残差式更新, 与 GRU 做消融, 取更优者",
+        "targets": [
+          "bace",
+          "clintox"
+        ],
+        "status": "TODO"
+      },
+      {
+        "id": "M3",
+        "lever": "readout",
+        "ours": "cat(h_v, sum_out h_e) -> sum pool -> MLP",
+        "chemprop_v2": "tau(W_o(cat(V, M)))",
+        "action": "对齐读出形式并消融(含 sum vs mean pool)",
+        "targets": [
+          "all"
+        ],
+        "status": "TODO"
+      },
+      {
+        "id": "M4",
+        "lever": "loss / class balance",
+        "ours": "nn.BCEWithLogitsLoss() 裸用, 无类权重 (dmpnn.py:509)",
+        "chemprop_v2": "same-protocol 也是 class_weight=off",
+        "action": "加 pos_weight 或 focal loss (bace/clintox 高度不平衡); 复用已有 focal 基础设施",
+        "targets": [
+          "bace",
+          "clintox"
+        ],
+        "status": "TODO"
+      },
+      {
+        "id": "M5",
+        "lever": "training recipe",
+        "ours": "dropout 0.1, 无显式 init, 30 epochs",
+        "chemprop_v2": "dropout 0.0, 300/3, 50 epochs",
+        "action": "init(xavier/kaiming) + dropout + epochs + lr 扫描",
+        "targets": [
+          "all"
+        ],
+        "status": "TODO"
+      },
+      {
+        "id": "M6",
+        "lever": "throughput",
+        "ours": "per-molecule 展开 forward (慢, 需 OMP_NUM_THREADS=1)",
+        "chemprop_v2": "BatchMolGraph 向量化 forward",
+        "action": "向量化 batched forward —— 解锁后面整条主线的大批重跑",
+        "targets": [
+          "infra"
+        ],
+        "status": "TODO"
+      }
+    ],
+    "rerun_plan": {
+      "phase1": "先做 M1-M6 补强, 在 MoleculeNet(bace/clintox 为主) + FSMA probe 上验证自研模型达到或超过 chemprop v2",
+      "gate": "phase1 不达标就不要进 phase2, 否则主线白跑",
+      "phase2": "在补强后的自研模型上重跑整条主线: Table1(within ceiling + cross LOMO), FSMA K曲线(K=5/10/20/40/80 x head/full), C2 预算匹配对照, C3 采样消融, C4 适配深度, PA3 探针, PA15 金属条件",
+      "phase3": "paper_a 文字: 03_method 换成自研 backbone 描述; Table1/K曲线/消融全部换数; chemprop v2 降为'参照实现'一列或附录"
+    },
+    "existing_in_house_runs_to_audit": [
+      "metrics/by_metric/metal_lomo_auc_wasserstein.json (LOMO — 可能已有主线 cross 列)",
+      "metrics/by_metric/metalcytotox_ru_auc.json (DOI-split)",
+      "metrics/by_metric/moleculenet_auc_dmpnn_5seed_cap512_d4.json",
+      "metrics/by_metric/tmqm_pretrain_init_ab_ru.json",
+      "metrics/by_metric/nci60_precious_9cell_auc.json"
+    ],
+    "cost": "大: phase2 是主线全量 GPU 重跑; 先只做 phase1(M1-M6)"
   }
 }
