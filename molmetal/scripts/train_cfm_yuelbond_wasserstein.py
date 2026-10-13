@@ -1556,6 +1556,18 @@ class CFMJointModel(nn.Module):
         # the pre-Track-A bit-exact path: no q_head parameter, no
         # q_pred in the forward dict.
         q_head_enabled: bool = False,
+        # Wf-A27 (2026-10-13) step-5 — opt-in per-layer sinusoidal-t.
+        # ``t_embedding_dim=0`` (the default) preserves the legacy
+        # scalar-t path bit-exactly (no SinusoidalEmbedding, no
+        # projection Linear).  When ``>0`` the velocity field
+        # materialises a fixed-frequency sinusoidal embedding with a
+        # zero-init ``Linear`` projection to ``hidden_dim``; the
+        # optimiser then trains it jointly with the rest of the
+        # field.  ``pocket_per_layer=False`` adds the projection
+        # only at the input layer; ``True`` broadcasts it to every
+        # EGNN layer via ``cond_per_node``.
+        t_embedding_dim: int = 0,
+        pocket_per_layer: bool = False,
         # 2026-10-09 NEW (BLK-C5 follow-up, user voice) — the bond-prediction
         # head now has two interchangeable implementations: 'yuelbond'
         # (default, atom-centered message passing — the historical head every
@@ -1770,6 +1782,13 @@ class CFMJointModel(nn.Module):
                 # When ``False`` (default), no q_head is registered on the
                 # EGNN and the forward dict never carries ``q_pred``.
                 q_head_enabled=bool(q_head_enabled),
+                # Wf-A27 (2026-10-13) step-5 — per-layer sinusoidal-t
+                # opt-in.  Default 0 / False keeps the legacy scalar-t
+                # path bit-exactly (the ``EGNNVelocityField`` skips the
+                # SinusoidalEmbedding + projection construction when
+                # t_embedding_dim == 0).
+                t_embedding_dim=int(t_embedding_dim),
+                pocket_per_layer=bool(pocket_per_layer),
             )
         # Wf-A16 (2026-10-13) c-flow pocket encoder.
         #
@@ -1780,6 +1799,13 @@ class CFMJointModel(nn.Module):
         # (B, hidden_dim) embedding that's broadcast to vel_field
         # (pocket_embed=) and BondOrderHead (pocket_features=).
         self.use_pocket_encoder: bool = bool(use_pocket_encoder)
+        # Wf-A27 (2026-10-13) step-5 — per-layer sinusoidal-t opt-in.
+        # Stored here so a future `--resume-from` can audit the legacy
+        # vs augmented path without re-reading the velocity-field
+        # sub-attributes.  Both default values preserve the legacy
+        # scalar-t behaviour bit-for-bit.
+        self.t_embedding_dim: int = int(t_embedding_dim)
+        self.pocket_per_layer: bool = bool(pocket_per_layer)
         if self.use_pocket_encoder:
             from molmetal.adapters.flow_matching_lipman import PocketEncoder
             self.pocket_encoder = PocketEncoder(
@@ -8149,6 +8175,43 @@ def parse_args() -> argparse.Namespace:
             "dict, bit-exact pre-Track-A."
         ),
     )
+    # Wf-A27 (2026-10-13) step-5 — per-layer sinusoidal-t opt-in.
+    # ``--t-embedding-dim=0`` (the default) preserves pre-Wf-A27
+    # numerics: no SinusoidalEmbedding module is constructed, no
+    # projection Linear is added, every layer's ``cond_per_node``
+    # carries the legacy scalar-t path bit-exactly.  When > 0 the
+    # velocity field materialises a fixed-frequency sinusoidal
+    # embedding plus a zero-init ``Linear`` projection to
+    # ``hidden_dim``; ``--pocket-per-layer`` opts to broadcast the
+    # addend into EVERY EGNN layer's ``cond_per_node`` instead of
+    # only the input projection.
+    p.add_argument(
+        "--t-embedding-dim",
+        dest="t_embedding_dim",
+        type=int,
+        default=0,
+        help=(
+            "Wf-A27 step-5: dim of the per-layer sinusoidal-t "
+            "embedding (SinusoidalEmbedding).  Default 0 ⇒ no "
+            "SinusoidalEmbedding module is constructed on the "
+            "EGNN → bit-exact pre-Wf-A27.  Set to 32 / 64 for an "
+            "opt-in bench; the projection Linear is zero-init so a "
+            "fresh init contributes nothing until trained."
+        ),
+    )
+    p.add_argument(
+        "--pocket-per-layer",
+        dest="pocket_per_layer",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-A27 step-5: when --t-embedding-dim>0, broadcast the "
+            "sinusoidal-t addend to EVERY EGNN layer's "
+            "``cond_per_node`` instead of only the input projection.  "
+            "Default False ⇒ legacy scalar-t path.  Has no effect "
+            "when --t-embedding-dim=0."
+        ),
+    )
     p.add_argument(
         "--natural-charge-mse-weight",
         dest="natural_charge_mse_weight",
@@ -9491,6 +9554,16 @@ def main() -> int:
         # ``--q-head-enabled`` CLI flag below.
         q_head_enabled=bool(
             getattr(args, "q_head_enabled", False)
+        ),
+        # Wf-A27 (2026-10-13) step-5 — per-layer sinusoidal-t opt-in.
+        # Defaults 0 / False preserve the legacy scalar-t path
+        # bit-for-bit; yaml keys ``model.t_embedding_dim`` and
+        # ``model.pocket_per_layer`` map here.
+        t_embedding_dim=int(
+            getattr(args, "t_embedding_dim", 0)
+        ),
+        pocket_per_layer=bool(
+            getattr(args, "pocket_per_layer", False)
         ),
         # 2026-10-09 NEW (BLK-C5 follow-up) — bond-predictor dispatch.
         bond_predictor=str(getattr(args, "bond_predictor", "yuelbond")),

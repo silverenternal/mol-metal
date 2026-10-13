@@ -1253,6 +1253,14 @@ class EGNNVelocityField(nn.Module):
         use_tmqm_init: bool = False,
         context_dropout: float = 0.1,
         q_head_enabled: bool = False,
+        # Wf-A27 (2026-10-13) step-5 — per-layer sinusoidal-t opt-in.
+        # Default 0 keeps pre-Wf-A27 numerics bit-exact (the legacy
+        # scalar-t path).  When > 0 the velocity field materialises a
+        # :class:`molmetal.adapters.egnn_extensions.SinusoidalEmbedding`
+        # and adds its output at every EGNN layer (``pocket_per_layer``)
+        # or only at the input projection (legacy-equivalent).
+        t_embedding_dim: int = 0,
+        pocket_per_layer: bool = False,
     ) -> None:
         """Construct the velocity field.
 
@@ -1483,6 +1491,36 @@ class EGNNVelocityField(nn.Module):
             # ``tmqm_init_path`` argument still works without the new flag.
             self._load_tmqm_checkpoint(tmqm_init_path, strict=False)
 
+        # Wf-A27 (2026-10-13) step-5 — per-layer sinusoidal-t materialisation.
+        # Only constructed when ``t_embedding_dim > 0`` so the default
+        # path stays bit-exact (no new sub-module, no new parameter).  At
+        # ``dim=0`` the legacy ``t_per_atom`` path keeps running; the
+        # :attr:`t_emb_per_layer` attribute stays ``None``, and the
+        # per-layer additions in ``forward`` are no-ops at the syntactic
+        # level — they fail the ``is None`` short-circuit and the input
+        # / per-layer additions are skipped.
+        self.t_embedding_dim = int(t_embedding_dim)
+        self.pocket_per_layer = bool(pocket_per_layer)
+        if self.t_embedding_dim > 0:
+            from molmetal.adapters.egnn_extensions import SinusoidalEmbedding
+            self.t_emb_per_layer = SinusoidalEmbedding(dim=self.t_embedding_dim)
+            # Project the (B, dim) sinusoidal output to (B, hidden_dim)
+            # so it can be added at every layer's ``cond_per_node`` slot
+            # without changing the EGNNLayer signature.  Zero-init the
+            # Linear weight so this projection is identically zero at
+            # init — preserves the bit-exact legacy output for any
+            # already-trained checkpoint that opted in to this surface
+            # without updating the warm-start.
+            self.t_to_h = nn.Linear(
+                in_features=self.t_embedding_dim,
+                out_features=hidden_dim,
+                bias=False,
+            )
+            nn.init.zeros_(self.t_to_h.weight)
+        else:
+            self.t_emb_per_layer = None  # type: ignore[assignment]
+            self.t_to_h = None  # type: ignore[assignment]
+
     def _load_tmqm_checkpoint(
         self,
         path: str,
@@ -1628,6 +1666,17 @@ class EGNNVelocityField(nn.Module):
         elif t.dim() == 1:
             t = t.unsqueeze(-1)  # (B, 1)
         t_per_atom = self.time_mlp(t).unsqueeze(1).expand(b, n, -1)
+        # Wf-A27 (2026-10-13) step-5 — sinusoidal-t per-layer materialisation.
+        # When ``self.t_emb_per_layer is None`` (the shipped default
+        # ``t_embedding_dim=0``) the projected addend is ``None`` and the
+        # downstream ``cond_per_node`` carries the legacy scalar-t path
+        # bit-exactly.  When ``t_embedding_dim > 0`` the projection is
+        # zero-init so a fresh random init folds the contribution to
+        # zero — pre-existing checkpoints keep loading unchanged.
+        t_per_layer_addend: Optional[torch.Tensor] = None
+        if self.t_emb_per_layer is not None and self.t_to_h is not None:
+            t_sin = self.t_emb_per_layer(t.squeeze(-1))  # (B, dim)
+            t_per_layer_addend = self.t_to_h(t_sin).unsqueeze(1)  # (B, 1, H)
         # Pocket conditioning (T5): additive bias to atom embeddings,
         # broadcast across all ligand atoms.  When None, use zero bias
         # so the unconditioned forward is unchanged.
@@ -1656,18 +1705,48 @@ class EGNNVelocityField(nn.Module):
                 pocket_bias = pocket_embed.unsqueeze(1).expand(b, n, -1) * keep
             else:
                 pocket_bias = pocket_embed.unsqueeze(1).expand(b, n, -1)
-        h = self.atom_embed(atom_types) + t_per_atom + pocket_bias
+        # Wf-A27 (2026-10-13) step-5 — when ``pocket_per_layer=False`` the
+        # sinusoidal-t addend joins the input projection exactly once
+        # (``t_per_layer_addend`` is None in the default-path so this is a
+        # bit-exact no-op for ``t_embedding_dim=0``).
+        _input_addend = (
+            t_per_layer_addend.expand(b, n, -1) if t_per_layer_addend is not None
+            else 0
+        )
+        if isinstance(_input_addend, int):
+            h = self.atom_embed(atom_types) + t_per_atom + pocket_bias
+        else:
+            h = (
+                self.atom_embed(atom_types)
+                + t_per_atom
+                + pocket_bias
+                + _input_addend
+            )
         last_v = torch.zeros_like(x_t)
         for layer in self.layers:
             # Pass t_per_atom as cond_per_node so the EGNNLayer's
             # update_mlp (which expects 3H+1 with cond) gets the
             # right shape.  Without this, update_mlp would receive
             # only 2H+1 and fail on the matmul.
+            #
+            # Wf-A27 (2026-10-13) step-5 — when ``pocket_per_layer=True``
+            # AND ``t_embedding_dim>0`` the sinusoidal-t addend is
+            # broadcast to ``cond_per_node`` at every EGNN layer; the
+            # zero-init ``t_to_h`` keeps a fresh field's contribution
+            # identically zero, so pre-Wf-A27 checkpoints that opted in
+            # load with no immediate change to the velocity field.
+            if (
+                self.pocket_per_layer
+                and t_per_layer_addend is not None
+            ):
+                _layer_cond = t_per_atom + t_per_layer_addend
+            else:
+                _layer_cond = t_per_atom
             h, last_v = layer(
                 h,
                 x_t,
                 edge_index,
-                cond_per_node=t_per_atom,
+                cond_per_node=_layer_cond,
                 edge_mask=edge_mask,
             )
         # WF-CFM-Phase-2 (P1.3) — cross-attention pocket conditioning.
