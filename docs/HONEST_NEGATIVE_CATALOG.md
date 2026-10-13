@@ -1165,7 +1165,7 @@ Per user directive 2026-10-08 verbatim *"回退的东西得想办法把他们补
 | Sub-entry | Issue | Affected paper claims |
 |---|---|---|
 | §6.51a | Wf-A14..A28 `cross_dataset` results ran on `cfm_yuelbond_wasserstein.smoke_stub.pt` (renamed from `cfm_yuelbond_wasserstein.pt` in A30-1) | Every numeric headline from Wf-A14..A28 that depended on the `cross_dataset` CLI's checkpoint load |
-| §6.51b | Wf-A14..A28 `cross_dataset` decode was a pass-through (returned `x_t = x_0`) due to A5 `KeyError` fix at `molmetal/scripts/cross_dataset.py:111` | Every decoded-SMILES cohort from Wf-A14..A28 was effectively `x_0` |
+| §6.51b | Wf-A14..A28 `cross_dataset` decode was a pass-through (returned `x_t = x_0`) due to A5 `KeyError` fix at `molmetal/eval/cross_dataset.py:138` | Every decoded-SMILES cohort from Wf-A14..A28 was effectively `x_0` |
 | §6.51c | Wf-A14..A28 `cross_dataset` used live weights, not EMA | Every per-epoch R² / AUC figure from Wf-A14..A28 |
 | §6.51d | `cfm_per_pocket_metric.json` was never written; L8 honest-negative | Every per-pocket W₂ headline from Wf-A14..A28 |
 | §6.51e | m2_r2_per_cell + m21_nci60_9cell registry STALE; original source_json paths deleted | Every aggregate m2 / m21 number cited from registry |

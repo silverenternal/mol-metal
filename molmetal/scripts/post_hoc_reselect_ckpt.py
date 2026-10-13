@@ -26,7 +26,7 @@ Given a run directory containing ``per_epoch_metrics.json`` + ``checkpoints/``:
 
 If no checkpoint matches (typical: every surviving ``.pt`` is the FINAL epoch,
 not the gate-selected one), the script prints a one-line honest-negative and
-exits 0 — the user has just demonstrated that the selected epoch is unrecoverable
+exits 1 — the user has just demonstrated that the selected epoch is unrecoverable
 from this run directory and must be re-trained.
 
 The actual post-hoc reselect of the 2 affected pre-A30-1 waves (the ones
