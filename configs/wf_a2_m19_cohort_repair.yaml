@@ -1,0 +1,63 @@
+# wf_a2_m19_cohort_repair.yaml — M1b: m19 LOMO cohort repair (canonical CSV + <=96h).
+#
+# WHY THIS CONFIG EXISTS (see molmetal/reports/wf_a2_m19_rh_diagnosis/):
+#   The trainer default reads molmetal/data/metal_lomo.csv, which is ALREADY a
+#   <=24h snapshot (it carries a Time(h) column). Passing --time-threshold to
+#   the trainer is therefore a DEAD LEVER: the filter can only remove rows,
+#   never recover the 1026 Rh rows (of 1134) dropped at build time. MEASURED:
+#   wf_a2_m19_time96.yaml bound time_threshold=96.0 correctly yet loaded
+#   Rh=108 (master.log:6) -> identical to baseline.
+#
+#   This config instead points --csv at the CANONICAL source (which HAS
+#   Time(h)), so --time-threshold 96 is actually operative:
+#     .data/molmetal/MetalCytoToxDB.csv @<=96h -> n=25802
+#       Ru 18189 / Ir 4514 / Rh 1131 / Os 1100 / Re 868
+#   Rh recovers 108 -> 1131 rows, 51 -> 337 ligands, pos_rate 0.324 -> 0.468.
+#
+# HONEST FRAMING (§5.2): this is a COHORT REPAIR, producing a NEW protocol
+# number. It is NOT comparable to the shipped 0.5575 +/- 0.0949 baseline
+# (which used the truncated 5271-row cohort). Do NOT report it as a lift.
+#
+# data.metals MUST stay a YAML list (nargs="+"); a space-joined string made
+# every fold NaN in a past run (see the sibling config's header).
+data:
+  csv: .data/molmetal/MetalCytoToxDB.csv   # canonical source (HAS Time(h))
+  metals:
+    - Ru
+    - Ir
+    - Os
+    - Rh
+    - Re
+  rh_oversample: 0           # real-only protocol
+  time_threshold: 96         # now operative (canonical CSV has Time(h))
+model:
+  hidden: 128
+  depth: 3
+  alpha: 0.5
+protocol:
+  batch_size: 64
+  lr: 0.001
+  epochs: 30
+  seeds: [0, 1, 2, 3, 4]
+  wasserstein_weight: 0.05
+  model_select: last_epoch
+compute:
+  device: cuda:0
+output:
+  base_dir: molmetal/reports/wf_a2_m19_cohort_repair
+  out_dir: molmetal/reports/wf_a2_m19_cohort_repair
+  log_master: molmetal/reports/wf_a2_m19_cohort_repair/master.log
+  training_summary: molmetal/reports/wf_a2_m19_cohort_repair/training_summary.json
+  out_metric: molmetal/reports/wf_a2_m19_cohort_repair/metrics.json
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: M1b — does repairing the m19 cohort (canonical CSV @<=96h; Rh 108->1131) lift the Rh fold above random?
+  note: PROJECTED until the run lands; the 0.5575 +/- 0.0949 baseline is MEASURED on the TRUNCATED cohort and is NOT comparable.
+  not_a_lift: This is a cohort repair (new protocol); any change reflects the cohort, not a model improvement.

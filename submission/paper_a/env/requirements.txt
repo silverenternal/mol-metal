@@ -1,0 +1,20 @@
+# Paper-A CPU-reproducibility environment.
+#
+# Versions MEASURED on the packaging host (Python 3.12) with
+#   .venv/bin/python -c "import numpy, pandas, sklearn, xgboost, rdkit, matplotlib, scipy; ..."
+#
+# The CPU subset driven by ../reproduce.sh needs only the pins below.  The
+# optional GPU retrains (see the manifest's gpu_* entries) additionally need
+# torch, triton and pyyaml; those are NOT required to reproduce any number the
+# paper quotes from the shipped artifacts.
+numpy==2.5.3
+pandas==3.0.5
+scikit-learn==1.9.1
+xgboost==3.4.1
+lightgbm==4.7.0
+rdkit==2026.03.6
+matplotlib==3.11.2
+scipy==1.18.1
+
+# Optional: only for re-running the GPU trainers from their YAML configs.
+# pyyaml>=6.0

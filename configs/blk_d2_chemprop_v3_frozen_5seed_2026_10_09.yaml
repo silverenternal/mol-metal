@@ -1,0 +1,31 @@
+# `output.out_dir` is the trainer dest (`base_dir` is a
+# _NON_TRAINER_KEY the loader skips by design — it feeds start.sh).
+data:
+  csv: .data/molmetal/moleculenet/bace.csv
+  smiles_col: mol
+  label_col: Class
+model:
+  hidden: 32
+  dropout: 0.1
+protocol:
+  epochs: 50
+  batch_size: 32
+  lr: 0.001
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+output:
+  base_dir: molmetal/reports/blk_d2_chemprop_v3_frozen_5seed_2026_10_09
+  events_jsonl: true
+  out_dir: molmetal/reports/blk_d2_chemprop_v3_frozen_5seed_2026_10_09
+entry:
+  script: molmetal/scripts/train_chemprop_v3_frozen_dmpnn_head.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_chemprop_v3_frozen_dmpnn_head.py
+    --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  note: FAITHFUL TRANSCRIPTION of the pre-§5.11 command line.
+  residual: '`data.scaffold_split` is declared True because the trainer''s --scaffold-split
+    default is True (store_true, default=True), so the wrapper never had to pass it.'

@@ -1,0 +1,66 @@
+{
+  "metric": "cfm_l5_metal_deletion_control",
+  "tag": "MEASURED",
+  "date": "2026-10-12",
+  "question": "Is 'deleting the metal repairs the embedding' a property of our generated complexes, or of RDKit's embedder applied to metal complexes in general?",
+  "protocol": {
+    "embedder": "RDKit ETKDGv3, useRandomCoords=True, maxAttempts=1, randomSeed=0xF00D",
+    "identical_to": "metrics/by_metric/cfm_embed_failure_localisation.json",
+    "deletion": "Chem.DeleteSubstructs(metal SMARTS, onlyFrags=True)",
+    "metals": [
+      "Ir",
+      "Os",
+      "Pt",
+      "Re",
+      "Rh",
+      "Ru"
+    ]
+  },
+  "cohort_provenance": {
+    "real": "/home/hugo/codes/mol-metal/.data/molmetal/tmQM/tmqm_parsed.csv -- REAL tmQM SMILES with their metal identity. NOT real_tmqm_reference.csv, which the BLK-C-L4 audit showed is 636/636 decoder output with bracket-atom notation and would measure our bond head against itself.",
+    "generated": "/home/hugo/codes/mol-metal/molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv"
+  },
+  "cohorts": [
+    {
+      "cohort": "generated (our bond head, ODE)",
+      "n_input": 66,
+      "n_parsed": 66,
+      "n_unparsed_smiles": 0,
+      "n_embeddable_with_metal": 54,
+      "embed_rate_with_metal": 0.8182,
+      "n_failed_with_metal": 12,
+      "of_which_repaired_by_deleting_metals": 11,
+      "of_which_still_failing": 1,
+      "of_which_had_no_metal_to_delete": 0,
+      "unparsable_after_deletion": 0,
+      "REPAIR_RATE_given_failure": 0.9167,
+      "repair_rate_n": 12
+    },
+    {
+      "cohort": "real tmQM (CONTROL)",
+      "n_input": 600,
+      "n_parsed": 600,
+      "n_unparsed_smiles": 0,
+      "n_embeddable_with_metal": 380,
+      "embed_rate_with_metal": 0.6333,
+      "n_failed_with_metal": 220,
+      "of_which_repaired_by_deleting_metals": 209,
+      "of_which_still_failing": 11,
+      "of_which_had_no_metal_to_delete": 0,
+      "unparsable_after_deletion": 0,
+      "REPAIR_RATE_given_failure": 0.95,
+      "repair_rate_n": 220
+    }
+  ],
+  "VERDICT": {
+    "generated_repair_rate": 0.9167,
+    "real_repair_rate": 0.95,
+    "difference": -0.0333,
+    "verdict": "LOCALISATION DOES NOT SURVIVE the control: RDKit repairs real tmQM metal complexes at nearly the same rate as it repairs the generated ones, so '11 of 12 embed once the metal is deleted' is a base rate of the embedder, not evidence about our bond head. next_actions[0] and the L5 localisation must be re-scoped before any fix is designed.",
+    "threshold_used": 0.15
+  },
+  "what_this_does_not_settle": [
+    "n is still small on the generated side (12 failures). This establishes whether the effect is worth pursuing, not its size.",
+    "Embeddability is a proxy. It says nothing about whether the complex is a plausible anticancer agent -- the ligand set and geometry still have to be judged separately."
+  ]
+}

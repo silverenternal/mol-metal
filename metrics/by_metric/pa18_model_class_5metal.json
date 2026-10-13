@@ -1,0 +1,962 @@
+{
+  "metric": "pa18_model_class_5metal",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_precious_metal_anticancer / paper-funnel cohort per metal",
+  "source": "molmetal/scripts/pa18_model_class_5metal.py",
+  "cohort_rule": "per metal: cytotox.build_paper_cohort_indices(df, metal=m) — IC50-present -> metal -> measurement-level dedup -> 76-name non-cancer exclusion; all surviving cell lines",
+  "split": "DOI-grouped 10-fold CV (cytotox.build_doi_split_folds), seed=0",
+  "label_rule": "active := IC50_Dark_value < 10 uM (paper cut)",
+  "models": [
+    "lightgbm",
+    "xgboost"
+  ],
+  "per_metal": {
+    "Ru": {
+      "n_rows": 15799,
+      "n_complexes": 4793,
+      "n_cell_lines": 591,
+      "active_rate": 0.31229824672447626,
+      "n_folds": 10,
+      "fold_straddle": {
+        "raw_doi": 0,
+        "complex_merged": 0
+      },
+      "models": {
+        "lightgbm": {
+          "mean_auc": 0.7308118873646346,
+          "std_auc": 0.0409747982058342,
+          "per_fold": [
+            {
+              "fold": 0,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.7384277368554737
+            },
+            {
+              "fold": 1,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.6500418660287082
+            },
+            {
+              "fold": 2,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.6811669319260625
+            },
+            {
+              "fold": 3,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.7927202300296812
+            },
+            {
+              "fold": 4,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.7663775862068964
+            },
+            {
+              "fold": 5,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.7251650625377785
+            },
+            {
+              "fold": 6,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.7188886423045727
+            },
+            {
+              "fold": 7,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.721880963740458
+            },
+            {
+              "fold": 8,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.7796222728864656
+            },
+            {
+              "fold": 9,
+              "n_train": 14220,
+              "n_test": 1579,
+              "roc_auc": 0.7338275811302502
+            }
+          ],
+          "model_spec": "morgan_fp(radius=2, 2048bit) + lightgbm"
+        },
+        "xgboost": {
+          "mean_auc": 0.7348438749518691,
+          "std_auc": 0.04098963510774144,
+          "per_fold": [
+            {
+              "fold": 0,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.7225654051308101
+            },
+            {
+              "fold": 1,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.6506937799043062
+            },
+            {
+              "fold": 2,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.6902939492935724
+            },
+            {
+              "fold": 3,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.7911605529745773
+            },
+            {
+              "fold": 4,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.784576724137931
+            },
+            {
+              "fold": 5,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.72129256919674
+            },
+            {
+              "fold": 6,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.74067076607637
+            },
+            {
+              "fold": 7,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.7223237262896136
+            },
+            {
+              "fold": 8,
+              "n_train": 14219,
+              "n_test": 1580,
+              "roc_auc": 0.7670931733747193
+            },
+            {
+              "fold": 9,
+              "n_train": 14220,
+              "n_test": 1579,
+              "roc_auc": 0.7577681031400509
+            }
+          ],
+          "model_spec": "morgan_fp(radius=2, 2048bit) + xgboost"
+        }
+      }
+    },
+    "Ir": {
+      "n_rows": 3674,
+      "n_complexes": 1281,
+      "n_cell_lines": 154,
+      "active_rate": 0.5261295590636909,
+      "n_folds": 10,
+      "fold_straddle": {
+        "raw_doi": 0,
+        "complex_merged": 0
+      },
+      "models": {
+        "lightgbm": {
+          "mean_auc": 0.6770105259044221,
+          "std_auc": 0.07812319106455308,
+          "per_fold": [
+            {
+              "fold": 0,
+              "n_train": 3306,
+              "n_test": 368,
+              "roc_auc": 0.7816685267857143
+            },
+            {
+              "fold": 1,
+              "n_train": 3306,
+              "n_test": 368,
+              "roc_auc": 0.6219443705477224
+            },
+            {
+              "fold": 2,
+              "n_train": 3306,
+              "n_test": 368,
+              "roc_auc": 0.7292814120526943
+            },
+            {
+              "fold": 3,
+              "n_train": 3306,
+              "n_test": 368,
+              "roc_auc": 0.6982679496669134
+            },
+            {
+              "fold": 4,
+              "n_train": 3307,
+              "n_test": 367,
+              "roc_auc": 0.7155490161108139
+            },
+            {
+              "fold": 5,
+              "n_train": 3307,
+              "n_test": 367,
+              "roc_auc": 0.5475099963649582
+            },
+            {
+              "fold": 6,
+              "n_train": 3307,
+              "n_test": 367,
+              "roc_auc": 0.7808264462809917
+            },
+            {
+              "fold": 7,
+              "n_train": 3307,
+              "n_test": 367,
+              "roc_auc": 0.6372908105532727
+            },
+            {
+              "fold": 8,
+              "n_train": 3307,
+              "n_test": 367,
+              "roc_auc": 0.6945308212913847
+            },
+            {
+              "fold": 9,
+              "n_train": 3307,
+              "n_test": 367,
+              "roc_auc": 0.5632359093897555
+            }
+          ],
+          "model_spec": "morgan_fp(radius=2, 2048bit) + lightgbm"
+        },
+        "xgboost": {
+          "mean_auc": 0.6838833730592409,
+          "std_auc": 0.09751920091777058,
+          "per_fold": [
+            {
+              "fold": 0,
+              "n_train": 3306,
+              "n_test": 368,
+              "roc_auc": 0.7629433283730159
+            },
+            {
+              "fold": 1,
+              "n_train": 3306,
+              "n_test": 368,
+              "roc_auc": 0.5554668794892258
+            },
+            {
+              "fold": 2,
+              "n_train": 3306,
+              "n_test": 368,
+              "roc_auc": 0.7361419782909782
+            },
+            {
+              "fold": 3,
+              "n_train": 3306,
+              "n_test": 368,
+              "roc_auc": 0.7424574389341229
+            },
+            {
+              "fold": 4,
+              "n_train": 3307,
+              "n_test": 367,
+              "roc_auc": 0.7331014802924914
+            },
+            {
+              "fold": 5,
+              "n_train": 3307,
+              "n_test": 367,
+              "roc_auc": 0.5089785532533624
+            },
+            {
+              "fold": 6,
+              "n_train": 3307,
+              "n_test": 367,
+              "roc_auc": 0.8410909090909091
+            },
+            {
+              "fold": 7,
+              "n_train": 3307,
+              "n_test": 367,
+              "roc_auc": 0.6737389077481983
+            },
+            {
+              "fold": 8,
+              "n_train": 3307,
+              "n_test": 367,
+              "roc_auc": 0.6921224315590514
+            },
+            {
+              "fold": 9,
+              "n_train": 3307,
+              "n_test": 367,
+              "roc_auc": 0.5927918235610543
+            }
+          ],
+          "model_spec": "morgan_fp(radius=2, 2048bit) + xgboost"
+        }
+      }
+    },
+    "Rh": {
+      "n_rows": 951,
+      "n_complexes": 334,
+      "n_cell_lines": 82,
+      "active_rate": 0.4931650893796004,
+      "n_folds": 10,
+      "fold_straddle": {
+        "raw_doi": 0,
+        "complex_merged": 0
+      },
+      "models": {
+        "lightgbm": {
+          "mean_auc": 0.689770516717332,
+          "std_auc": 0.11946440308924815,
+          "per_fold": [
+            {
+              "fold": 0,
+              "n_train": 855,
+              "n_test": 96,
+              "roc_auc": 0.42348484848484846
+            },
+            {
+              "fold": 1,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.659891598915989
+            },
+            {
+              "fold": 2,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.7424645390070922
+            },
+            {
+              "fold": 3,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.6818181818181819
+            },
+            {
+              "fold": 4,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.7179144385026738
+            },
+            {
+              "fold": 5,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.5238413547237077
+            },
+            {
+              "fold": 6,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.7581699346405231
+            },
+            {
+              "fold": 7,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.7934397163120567
+            },
+            {
+              "fold": 8,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.8177257525083613
+            },
+            {
+              "fold": 9,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.778954802259887
+            }
+          ],
+          "model_spec": "morgan_fp(radius=2, 2048bit) + lightgbm"
+        },
+        "xgboost": {
+          "mean_auc": 0.7310991656379155,
+          "std_auc": 0.12411859344560079,
+          "per_fold": [
+            {
+              "fold": 0,
+              "n_train": 855,
+              "n_test": 96,
+              "roc_auc": 0.49469696969696975
+            },
+            {
+              "fold": 1,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.7393857271906052
+            },
+            {
+              "fold": 2,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.7677304964539008
+            },
+            {
+              "fold": 3,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.7521994134897361
+            },
+            {
+              "fold": 4,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.786096256684492
+            },
+            {
+              "fold": 5,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.49710338680926913
+            },
+            {
+              "fold": 6,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.7559912854030502
+            },
+            {
+              "fold": 7,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.8590425531914895
+            },
+            {
+              "fold": 8,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.7959866220735786
+            },
+            {
+              "fold": 9,
+              "n_train": 856,
+              "n_test": 95,
+              "roc_auc": 0.862758945386064
+            }
+          ],
+          "model_spec": "morgan_fp(radius=2, 2048bit) + xgboost"
+        }
+      }
+    },
+    "Os": {
+      "n_rows": 966,
+      "n_complexes": 333,
+      "n_cell_lines": 59,
+      "active_rate": 0.4886128364389234,
+      "n_folds": 10,
+      "fold_straddle": {
+        "raw_doi": 0,
+        "complex_merged": 0
+      },
+      "models": {
+        "lightgbm": {
+          "mean_auc": 0.5729978529221056,
+          "std_auc": 0.14527265993217892,
+          "per_fold": [
+            {
+              "fold": 0,
+              "n_train": 737,
+              "n_test": 229,
+              "roc_auc": 0.6837147215865751
+            },
+            {
+              "fold": 1,
+              "n_train": 884,
+              "n_test": 82,
+              "roc_auc": 0.882554945054945
+            },
+            {
+              "fold": 2,
+              "n_train": 884,
+              "n_test": 82,
+              "roc_auc": 0.5543024227234754
+            },
+            {
+              "fold": 3,
+              "n_train": 884,
+              "n_test": 82,
+              "roc_auc": 0.605
+            },
+            {
+              "fold": 4,
+              "n_train": 884,
+              "n_test": 82,
+              "roc_auc": 0.2945205479452055
+            },
+            {
+              "fold": 5,
+              "n_train": 885,
+              "n_test": 81,
+              "roc_auc": 0.5886118598382749
+            },
+            {
+              "fold": 6,
+              "n_train": 883,
+              "n_test": 83,
+              "roc_auc": 0.4967532467532467
+            },
+            {
+              "fold": 7,
+              "n_train": 884,
+              "n_test": 82,
+              "roc_auc": 0.6002506265664161
+            },
+            {
+              "fold": 8,
+              "n_train": 884,
+              "n_test": 82,
+              "roc_auc": 0.442042042042042
+            },
+            {
+              "fold": 9,
+              "n_train": 885,
+              "n_test": 81,
+              "roc_auc": 0.5822281167108753
+            }
+          ],
+          "model_spec": "morgan_fp(radius=2, 2048bit) + lightgbm"
+        },
+        "xgboost": {
+          "mean_auc": 0.5973132461347967,
+          "std_auc": 0.18812844600279197,
+          "per_fold": [
+            {
+              "fold": 0,
+              "n_train": 737,
+              "n_test": 229,
+              "roc_auc": 0.6583905415713196
+            },
+            {
+              "fold": 1,
+              "n_train": 884,
+              "n_test": 82,
+              "roc_auc": 0.8853021978021978
+            },
+            {
+              "fold": 2,
+              "n_train": 884,
+              "n_test": 82,
+              "roc_auc": 0.5810359231411864
+            },
+            {
+              "fold": 3,
+              "n_train": 884,
+              "n_test": 82,
+              "roc_auc": 0.76625
+            },
+            {
+              "fold": 4,
+              "n_train": 884,
+              "n_test": 82,
+              "roc_auc": 0.13622526636225268
+            },
+            {
+              "fold": 5,
+              "n_train": 885,
+              "n_test": 81,
+              "roc_auc": 0.5491913746630728
+            },
+            {
+              "fold": 6,
+              "n_train": 883,
+              "n_test": 83,
+              "roc_auc": 0.6863636363636363
+            },
+            {
+              "fold": 7,
+              "n_train": 884,
+              "n_test": 82,
+              "roc_auc": 0.6604010025062657
+            },
+            {
+              "fold": 8,
+              "n_train": 884,
+              "n_test": 82,
+              "roc_auc": 0.5009009009009009
+            },
+            {
+              "fold": 9,
+              "n_train": 885,
+              "n_test": 81,
+              "roc_auc": 0.5490716180371353
+            }
+          ],
+          "model_spec": "morgan_fp(radius=2, 2048bit) + xgboost"
+        }
+      }
+    },
+    "Re": {
+      "n_rows": 666,
+      "n_complexes": 250,
+      "n_cell_lines": 48,
+      "active_rate": 0.3063063063063063,
+      "n_folds": 10,
+      "fold_straddle": {
+        "raw_doi": 0,
+        "complex_merged": 0
+      },
+      "models": {
+        "lightgbm": {
+          "mean_auc": 0.6780010532802121,
+          "std_auc": 0.16880498919693604,
+          "per_fold": [
+            {
+              "fold": 0,
+              "n_train": 552,
+              "n_test": 114,
+              "roc_auc": 0.7939993813795236
+            },
+            {
+              "fold": 1,
+              "n_train": 570,
+              "n_test": 96,
+              "roc_auc": 0.42592592592592593
+            },
+            {
+              "fold": 2,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.6904255319148936
+            },
+            {
+              "fold": 3,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.6978723404255319
+            },
+            {
+              "fold": 4,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.9825396825396826
+            },
+            {
+              "fold": 5,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.6531620553359685
+            },
+            {
+              "fold": 6,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.7395833333333334
+            },
+            {
+              "fold": 7,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.8189655172413794
+            },
+            {
+              "fold": 8,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.39191176470588235
+            },
+            {
+              "fold": 9,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.5856250000000001
+            }
+          ],
+          "model_spec": "morgan_fp(radius=2, 2048bit) + lightgbm"
+        },
+        "xgboost": {
+          "mean_auc": 0.6775094333814612,
+          "std_auc": 0.16441098748718075,
+          "per_fold": [
+            {
+              "fold": 0,
+              "n_train": 552,
+              "n_test": 114,
+              "roc_auc": 0.8001855861429014
+            },
+            {
+              "fold": 1,
+              "n_train": 570,
+              "n_test": 96,
+              "roc_auc": 0.4316239316239316
+            },
+            {
+              "fold": 2,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.675531914893617
+            },
+            {
+              "fold": 3,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.39574468085106385
+            },
+            {
+              "fold": 4,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.9777777777777779
+            },
+            {
+              "fold": 5,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.7045454545454546
+            },
+            {
+              "fold": 6,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.8275462962962963
+            },
+            {
+              "fold": 7,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.6637931034482759
+            },
+            {
+              "fold": 8,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.6389705882352941
+            },
+            {
+              "fold": 9,
+              "n_train": 609,
+              "n_test": 57,
+              "roc_auc": 0.659375
+            }
+          ],
+          "model_spec": "morgan_fp(radius=2, 2048bit) + xgboost"
+        }
+      }
+    }
+  },
+  "dmpnn_column": {
+    "source": "/tmp/pa18_dmpnn/dmpnn_column.json",
+    "per_metal": {
+      "Ru": {
+        "mean_auc": 0.7505407461826202,
+        "std_auc": 0.060985127563228464,
+        "per_fold_auc": [
+          0.8848895097790197,
+          0.6766277910685805,
+          0.6948286633718658,
+          0.7813871144663828,
+          0.8163922413793103,
+          0.7410145534012182,
+          0.7203075932039618,
+          0.6851533584894749,
+          0.7521313890166941,
+          0.752675247649694
+        ],
+        "n_folds": 10,
+        "complete": true,
+        "source": "/tmp/pa18_dmpnn/Ru/summary.json",
+        "protocol": {
+          "metal": "Ru",
+          "cohort": "paper funnel, ALL surviving cell lines (no cell-line subsetting)",
+          "cohort_only_dataset": true,
+          "inner_val": "none (fixed epochs, final-epoch weights -> no selection bias)",
+          "split": "DOI-grouped 10-fold CV; held-out fold = TEST, inner 10%-of-DOIs slice of the training rows = VAL (early stop)",
+          "metric": "binary ROC-AUC (toxic < 10 uM) on the held-out fold",
+          "epochs": 10,
+          "note": "No cell-line subsetting: the Krasnov-23 reconstruction is a Ru-specific comparison device.  This cohort is the one pa18_model_class_5metal.py uses for its classical column, so a D-MPNN mean measured here is same-cohort with the LightGBM/XGBoost means in that file.  Fold JSONs must be generated with doi_split_cv.py --metal and NO --top-cell-lines."
+        }
+      },
+      "Ir": {
+        "mean_auc": 0.6623940121667309,
+        "std_auc": 0.07845703303445993,
+        "per_fold_auc": [
+          0.6176525297619048,
+          0.5150897106204368,
+          0.7813959480787195,
+          0.7338267949666912,
+          0.6405386124487248,
+          0.6167757179207561,
+          0.7341652892561983,
+          0.6242629980346613,
+          0.6137887933662582,
+          0.7464437272129579
+        ],
+        "n_folds": 10,
+        "complete": true,
+        "source": "/tmp/pa18_dmpnn/Ir/summary.json",
+        "protocol": {
+          "metal": "Ir",
+          "cohort": "paper funnel, ALL surviving cell lines (no cell-line subsetting)",
+          "cohort_only_dataset": true,
+          "inner_val": "none (fixed epochs, final-epoch weights -> no selection bias)",
+          "split": "DOI-grouped 10-fold CV; held-out fold = TEST, inner 10%-of-DOIs slice of the training rows = VAL (early stop)",
+          "metric": "binary ROC-AUC (toxic < 10 uM) on the held-out fold",
+          "epochs": 10,
+          "note": "No cell-line subsetting: the Krasnov-23 reconstruction is a Ru-specific comparison device.  This cohort is the one pa18_model_class_5metal.py uses for its classical column, so a D-MPNN mean measured here is same-cohort with the LightGBM/XGBoost means in that file.  Fold JSONs must be generated with doi_split_cv.py --metal and NO --top-cell-lines."
+        }
+      },
+      "Rh": {
+        "mean_auc": 0.6904496116554875,
+        "std_auc": 0.11517498825788085,
+        "per_fold_auc": [
+          0.7383838383838385,
+          0.7768744354110209,
+          0.6970301418439717,
+          0.6656891495601173,
+          0.6876114081996435,
+          0.48841354723707664,
+          0.7685185185185185,
+          0.7420212765957447,
+          0.4804905239687847,
+          0.8594632768361581
+        ],
+        "n_folds": 10,
+        "complete": true,
+        "source": "/tmp/pa18_dmpnn/Rh/summary.json",
+        "protocol": {
+          "metal": "Rh",
+          "cohort": "paper funnel, ALL surviving cell lines (no cell-line subsetting)",
+          "cohort_only_dataset": true,
+          "inner_val": "none (fixed epochs, final-epoch weights -> no selection bias)",
+          "split": "DOI-grouped 10-fold CV; held-out fold = TEST, inner 10%-of-DOIs slice of the training rows = VAL (early stop)",
+          "metric": "binary ROC-AUC (toxic < 10 uM) on the held-out fold",
+          "epochs": 10,
+          "note": "No cell-line subsetting: the Krasnov-23 reconstruction is a Ru-specific comparison device.  This cohort is the one pa18_model_class_5metal.py uses for its classical column, so a D-MPNN mean measured here is same-cohort with the LightGBM/XGBoost means in that file.  Fold JSONs must be generated with doi_split_cv.py --metal and NO --top-cell-lines."
+        }
+      },
+      "Os": {
+        "mean_auc": 0.5948206506967816,
+        "std_auc": 0.13227230978137788,
+        "per_fold_auc": [
+          0.5085812356979404,
+          0.6201923076923077,
+          0.5075187969924813,
+          0.9346875,
+          0.6552511415525114,
+          0.6344339622641509,
+          0.6311688311688312,
+          0.5025062656641605,
+          0.4558558558558558,
+          0.4980106100795756
+        ],
+        "n_folds": 10,
+        "complete": true,
+        "source": "/tmp/pa18_dmpnn/Os/summary.json",
+        "protocol": {
+          "metal": "Os",
+          "cohort": "paper funnel, ALL surviving cell lines (no cell-line subsetting)",
+          "cohort_only_dataset": true,
+          "inner_val": "none (fixed epochs, final-epoch weights -> no selection bias)",
+          "split": "DOI-grouped 10-fold CV; held-out fold = TEST, inner 10%-of-DOIs slice of the training rows = VAL (early stop)",
+          "metric": "binary ROC-AUC (toxic < 10 uM) on the held-out fold",
+          "epochs": 10,
+          "note": "No cell-line subsetting: the Krasnov-23 reconstruction is a Ru-specific comparison device.  This cohort is the one pa18_model_class_5metal.py uses for its classical column, so a D-MPNN mean measured here is same-cohort with the LightGBM/XGBoost means in that file.  Fold JSONs must be generated with doi_split_cv.py --metal and NO --top-cell-lines."
+        }
+      },
+      "Re": {
+        "mean_auc": 0.5761382468548288,
+        "std_auc": 0.2059561196058964,
+        "per_fold_auc": [
+          0.7397154345808845,
+          0.47720797720797725,
+          0.6031914893617021,
+          0.12340425531914896,
+          0.915873015873016,
+          0.6136363636363635,
+          0.3969907407407407,
+          0.710591133004926,
+          0.5051470588235294,
+          0.675625
+        ],
+        "n_folds": 10,
+        "complete": true,
+        "source": "/tmp/pa18_dmpnn/Re/summary.json",
+        "protocol": {
+          "metal": "Re",
+          "cohort": "paper funnel, ALL surviving cell lines (no cell-line subsetting)",
+          "cohort_only_dataset": true,
+          "inner_val": "none (fixed epochs, final-epoch weights -> no selection bias)",
+          "split": "DOI-grouped 10-fold CV; held-out fold = TEST, inner 10%-of-DOIs slice of the training rows = VAL (early stop)",
+          "metric": "binary ROC-AUC (toxic < 10 uM) on the held-out fold",
+          "epochs": 10,
+          "note": "No cell-line subsetting: the Krasnov-23 reconstruction is a Ru-specific comparison device.  This cohort is the one pa18_model_class_5metal.py uses for its classical column, so a D-MPNN mean measured here is same-cohort with the LightGBM/XGBoost means in that file.  Fold JSONs must be generated with doi_split_cv.py --metal and NO --top-cell-lines."
+        }
+      }
+    }
+  },
+  "dmpnn_alignment": {
+    "cohort": "per-metal paper-funnel cohort, ALL surviving cell lines — the same cohort the classical column uses",
+    "split": "cytotox.build_doi_split_folds(cohort, n_folds=10, seed=0) — the SAME folds as the classical column",
+    "protocol": "run_m1_paper_cv.py --cohort-only --no-inner-val --deterministic",
+    "row_level_identity": "verified: the D-MPNN is pinned to the cohort via --data-csv, so its test rows equal the classical column's test rows EXACTLY (checked per metal x fold, not just by count)",
+    "reproducibility": "--deterministic pins cuBLAS/cuDNN so the single-seed run is bit-reproducible; without it the D-MPNN varies run-to-run on CUDA (MEASURED Re fold 0: 0.6658 / 0.8242 / 0.6206)."
+  },
+  "verdicts": {
+    "Ru": {
+      "classical_means": {
+        "lightgbm": 0.7308118873646346,
+        "xgboost": 0.7348438749518691
+      },
+      "best_classical_mean": 0.7348438749518691,
+      "dmpnn_mean": 0.7505407461826202,
+      "dmpnn_minus_best_classical": 0.01569687123075114
+    },
+    "Ir": {
+      "classical_means": {
+        "lightgbm": 0.6770105259044221,
+        "xgboost": 0.6838833730592409
+      },
+      "best_classical_mean": 0.6838833730592409,
+      "dmpnn_mean": 0.6623940121667309,
+      "dmpnn_minus_best_classical": -0.021489360892509968
+    },
+    "Rh": {
+      "classical_means": {
+        "lightgbm": 0.689770516717332,
+        "xgboost": 0.7310991656379155
+      },
+      "best_classical_mean": 0.7310991656379155,
+      "dmpnn_mean": 0.6904496116554875,
+      "dmpnn_minus_best_classical": -0.04064955398242809
+    },
+    "Os": {
+      "classical_means": {
+        "lightgbm": 0.5729978529221056,
+        "xgboost": 0.5973132461347967
+      },
+      "best_classical_mean": 0.5973132461347967,
+      "dmpnn_mean": 0.5948206506967816,
+      "dmpnn_minus_best_classical": -0.002492595438015166
+    },
+    "Re": {
+      "classical_means": {
+        "lightgbm": 0.6780010532802121,
+        "xgboost": 0.6775094333814612
+      },
+      "best_classical_mean": 0.6780010532802121,
+      "dmpnn_mean": 0.5761382468548288,
+      "dmpnn_minus_best_classical": -0.10186280642538326
+    }
+  },
+  "krasnov_2026_ru_lightgbm": {
+    "mean": 0.81,
+    "std": 0.024
+  },
+  "why": "BLK-PA18: widen the Krasnov contrast from a single Ru point and one model-class pair to 5 metals x {D-MPNN, LightGBM, XGBoost} on each metal's own paper-funnel cohort and DOI folds, so the cross-cohort gap is attributable to cohort scope rather than model capability.",
+  "honest_framing_note": "MEASURED only.  The D-MPNN column is merged from --dmpnn-json when supplied and otherwise recorded as absent.  Krasnov published only Ru and Ir; the other three metals have no external reference."
+}

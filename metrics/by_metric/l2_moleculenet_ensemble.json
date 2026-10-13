@@ -1,0 +1,71 @@
+{
+ "metric": "l2_moleculenet_ensemble",
+ "status": "MEASURED",
+ "MEASURED_vs_PROJECTED": "MEASURED",
+ "unit": "ROC-AUC (0-1, higher better)",
+ "scope": "tier2_precious_metal_anticancer / MoleculeNet backbone control",
+ "source": "molmetal/reports/l2_moleculenet_cap512_d4_ensemble/metrics.json",
+ "config": "configs/l2_moleculenet_cap512_d4_ensemble.yaml",
+ "protocol": {
+  "backbone": "dmpnn_v4 (dmpnn atom+bond)",
+  "hidden": 512,
+  "depth": 4,
+  "epochs": 50,
+  "batch_size": 64,
+  "lr": 0.001,
+  "class_weight": "on",
+  "seeds": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "split": "Bemis-Murcko scaffold 70/10/20",
+  "split_seed": 0,
+  "ensemble_method": "row-aligned mean over the shared per-seed test set (all 5 seeds share ONE scaffold split via split_seed=0)"
+ },
+ "tasks": {
+  "bbbp": {
+   "per_seed_mean": 0.8813812967659121,
+   "per_seed_std": 0.009632749086920658,
+   "ensemble": 0.8870730409191947,
+   "ensemble_minus_mean": 0.005691744153282552,
+   "pa14_unpinned_split_mean": 0.8993874075867337,
+   "chemprop_v2_same_protocol": 0.886110902094704,
+   "ensemble_minus_chemprop_same_protocol": 0.0009621388244906992
+  },
+  "bace": {
+   "per_seed_mean": 0.7435985398249549,
+   "per_seed_std": 0.014936965722942237,
+   "ensemble": 0.7558165105334917,
+   "ensemble_minus_mean": 0.012217970708536807,
+   "pa14_unpinned_split_mean": 0.7932849346677089,
+   "chemprop_v2_same_protocol": 0.8458277317654259,
+   "ensemble_minus_chemprop_same_protocol": -0.09001122123193417
+  },
+  "hiv": {
+   "per_seed_mean": 0.7840260453848298,
+   "per_seed_std": 0.009134102336714524,
+   "ensemble": 0.8084643729501195,
+   "ensemble_minus_mean": 0.02443832756528974,
+   "pa14_unpinned_split_mean": 0.7888764152697952,
+   "chemprop_v2_same_protocol": 0.7806732168585615,
+   "ensemble_minus_chemprop_same_protocol": 0.027791156091558022
+  },
+  "clintox": {
+   "per_seed_mean": 0.8183502024291498,
+   "per_seed_std": 0.014099506348343989,
+   "ensemble": 0.8253542510121458,
+   "ensemble_minus_mean": 0.00700404858299597,
+   "pa14_unpinned_split_mean": 0.8303363501433222,
+   "chemprop_v2_same_protocol": 0.8847160303228296,
+   "ensemble_minus_chemprop_same_protocol": -0.05936177931068387
+  }
+ },
+ "mean_per_seed": 0.8068390211012116,
+ "mean_ensemble": 0.8191770438537379,
+ "mean_ensemble_minus_mean": 0.012338022752526268,
+ "why": "L2: seed-ensembling is a free inference-time lever on the same 5 runs. The prior ensemble dir (wf_a1_bace_ensemble) was clobbered by the focal run (focal_gamma=2.0), so the lever was never cleanly measured.",
+ "honest_framing_note": "MEASURED only. Ensemble and per-seed mean come from the SAME run and the SAME pinned split, so the delta is clean. NOTE the pinned split seed 0 is harder than PA14's unpinned run (per-seed mean 0.8069 here vs 0.8280 there), so the ensemble number is NOT directly comparable to PA14's 0.8280 - it is comparable to the same-run per-seed mean 0.8069. The ensemble lifts all four tasks, most on hiv (+0.0245)."
+}

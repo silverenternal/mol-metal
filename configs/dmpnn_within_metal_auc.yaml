@@ -1,0 +1,94 @@
+# BLK-P1 — D-MPNN *within-metal* ROC-AUC on the probe's deduplicated cohort.
+#
+# WHAT THIS ANSWERS
+#   The paper's positive metal-cytotox number (within-metal Ru 0.8363 / Ir
+#   0.8295) is measured by metal_activity_transfer_probe.py with a Morgan-FP +
+#   XGBoost scorer.  The narrative names the D-MPNN as a predictive-line model,
+#   so a reviewer can ask "what is your D-MPNN's within-metal number?" — and the
+#   repo had no such number on this cohort (BLK-P1).  This run produces it on
+#   the SAME cohort and the SAME folds, so the per-metal delta is paired.
+#
+# AGENTS.md §5.11: every hyperparameter below resolves to a dest of
+# dmpnn_within_metal_auc.py's own parser (verified by
+# scripts/_config_binding_gate.py).  This is an analysis script invoked directly
+# (like metal_activity_transfer_probe.py), not a start.sh training launcher.
+
+entry:
+  script: molmetal/scripts/dmpnn_within_metal_auc.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/dmpnn_within_metal_auc.py
+    --config {yaml_path}
+
+data:
+  # nargs="+" — MUST be a YAML list (a space-joined string arrives as ONE token
+  # and matches no metal; see configs/m19_lomo_4metal_sensitivity.yaml:57-75).
+  metals: [Ru, Ir, Rh, Os, Re]
+
+# --- folds ------------------------------------------------------------------
+# StratifiedKFold(n_splits=5, shuffle=True, random_state=s), the exact
+# constructor call the probe's within_metal uses.  seed 42 reproduces the
+# probe's published folds (the paired slice); the full set matches PA3's 5-seed
+# protocol so the XGB / chemprop / D-MPNN within columns are comparable.
+protocol:
+  split_seeds: [42, 43, 44, 49, 123]
+  n_splits: 5
+
+# --- model ------------------------------------------------------------------
+# MetalCytotoxModel = the repo's from-scratch D-MPNN backbone (atom_emb /
+# bond_emb / GRU edge update) + a 2-way head.  hidden=128 / depth=3 is the same
+# capacity the metal-LOMO arm (configs/dmpnn_matched_dedup_2026_10_10.yaml) uses
+# and is appropriate for the small Rh/Os/Re folds (n=51/36/74).
+model:
+  hidden: 128
+  depth: 3
+  dropout: 0.1
+
+train:
+  lr: 0.001
+  epochs: 30
+  batch_size: 64
+  max_atoms: 120
+  max_edges: 240
+  # average out training-seed noise within each fold (the fold split is fixed)
+  train_seeds: [0]
+  # inverse-class-frequency weighting, matching the probe's scale_pos_weight
+  class_weight: true
+  # Mask the pooled readout over each molecule's TRUE atom count. The reused
+  # MetalCytotoxModel pools over the padded width (max_atoms=120); the median Ru
+  # ligand is 35 atoms, so ~68% of pooled slots are zero-padding whose
+  # relu(atom_emb(0)) bias vectors are NOT zero. Weights/arch are identical.
+  mask_padding: true
+
+# --- xgboost reference (same folds) -----------------------------------------
+# Top-level, not under an `xgb:` section: the loader only falls back to the bare
+# leaf name for two-component paths under a whitelisted section, so `xgb.radius`
+# would flatten to `xgb_radius` and resolve to nothing (config-binding gate).
+radius: 2
+nbits: 2048
+
+# --- run shape --------------------------------------------------------------
+# CPU deliberately: the D-MPNN forward loops over molecules in Python, so at
+# this size CPU is FASTER than GPU (measured 6.7 s vs 17.4 s for the same
+# 200-ligand smoke) and bit-reproducible.
+compute:
+  device: cpu
+
+# smoke only (0 = full cohort)
+max_fold_n: 0
+
+output:
+  out_metric: metrics/by_metric/dmpnn_within_metal_auc.json
+
+honest_framing:
+  purpose: >-
+    Give the D-MPNN a within-metal number on the probe's cohort so the paper
+    never attributes the XGB probe's 0.8363 to the D-MPNN.
+  do_not_claim:
+    - That this D-MPNN number is the paper's headline within-metal result if it
+      lands below the XGB column — the honest reading is then "GBDT by
+      protocol", per BLK-P1's fallback.
+    - A pooled 5-metal mean: Ru is 64% of the deduplicated cohort.
+    - That Rh/Os/Re (n=51/36/74) are resolvable — they are below
+      MIN_UNIQUE_FOR_GATE=200 and are reported but not gated.
+  gate_context: >-
+    Krasnov 2026 within-metal AUC = 0.81 (Ru) / 0.73 (Ir); the probe's XGB
+    column is re-measured here on the identical folds for the paired delta.

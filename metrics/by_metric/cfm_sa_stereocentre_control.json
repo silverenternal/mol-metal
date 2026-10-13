@@ -1,0 +1,65 @@
+{
+  "metric": "cfm_sa_stereocentre_control",
+  "tag": "MEASURED",
+  "date": "2026-10-12",
+  "why_this_control": "sascorer._score2 penalises log10(nChiralCentres+1) where nChiralCentres = Chem.FindMolChiralCenters(includeUnassigned=True), i.e. POTENTIAL centres, not recorded ones. The obvious control (Chem.RemoveStereochemistry on the real corpus) is VACUOUS: that function only clears stereo ANNOTATIONS, so a stereo-stripped copy has identical counts. Verified by running it. This file therefore reports assigned vs unassigned separately, which CAN discriminate.",
+  "chiral_penalty_formula": "log10(n_unassigned_potential_centres + 1)",
+  "generated": {
+    "n": 66,
+    "unassigned_potential_centres_per_mol": 6.257575757575758,
+    "assigned_centres_per_mol": 0.0,
+    "unassigned_non_metal_adjacent_per_mol": 4.666666666666667,
+    "frac_molecules_with_any_unassigned": 0.9696969696969697,
+    "frac_molecules_with_any_assigned": 0.0
+  },
+  "real_tmqm": {
+    "n": 4000,
+    "unassigned_potential_centres_per_mol": 0.201,
+    "assigned_centres_per_mol": 0.0,
+    "unassigned_non_metal_adjacent_per_mol": 0.1805,
+    "frac_molecules_with_any_unassigned": 0.11,
+    "frac_molecules_with_any_assigned": 0.0
+  },
+  "generated_cohort": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv (66 rows)",
+  "real_cohort": "tmQM_y.csv filtered to {Pt78,Ir77,Ru44,Rh45,Os76,Re75}, first 4000",
+  "corrections_2026_10_12": [
+    {
+      "date": "2026-10-12",
+      "raised_by": "adversarial review of the objective-inventory stream (defect D1), reproduced by this pass",
+      "what_was_wrong": "TWO DENOMINATORS, ONE PASS. The headline SA gap uses n=31150 real molecules; the stereocentre denominator that is claimed to carry 71.6% of that gap uses the FIRST 4,000 rows of the same filter (real_cohort field, verbatim). The prefix is not a random sample of the corpus.",
+      "remeasured_same_protocol_this_pass": {
+        "protocol": "sascorer.py:73 -- Chem.FindMolChiralCenters(m, includeUnassigned=True) on the SMILES-parsed mol, no AddHs, matching the metric exactly",
+        "corpus": ".data/molmetal/tmQM/tmQM_y.csv filtered to {Pt,Ru,Ir,Rh,Os,Re}",
+        "prefix_4000": {
+          "n": 4000,
+          "mean_potential_centres": 0.201,
+          "zero_stereocentre_fraction": 0.89
+        },
+        "FULL_31150": {
+          "n": 31150,
+          "mean_potential_centres": 0.315795,
+          "zero_stereocentre_fraction": 0.8322
+        },
+        "generated_66": {
+          "n": 66,
+          "mean_potential_centres": 6.257576
+        },
+        "ratio_generated_over_real": {
+          "on_prefix_4000": 31.1,
+          "on_full_corpus": 19.83
+        },
+        "mean_stereo_penalty_log10": {
+          "real_full_31150": 0.070155,
+          "generated_66": 0.802485
+        }
+      },
+      "corrected_claims": {
+        "ratio": "31x -> 19.8x. The prefix overstates it by 57%.",
+        "zero_stereocentre_fraction_of_real": "89% -> 83.2%.",
+        "share_of_the_sa_gap": "71.6% -> 69.3%. The sascorer stereo term is log10(nPotentialCentres+1); averaged per molecule the real value rises from 0.079543 (prefix) to 0.119188 (full), so the generated-minus-real term falls from 0.7229 to 0.6833 raw and its share of the 1.464219 SA-unit gap from 71.6% to 69.3%."
+      },
+      "conclusion_unchanged": "The stereocentre penalty still carries ~69% of the SA gap and the generated/real ratio is still ~20x. Only the magnitude of the overstatement is corrected. Three numbers quoted from the prefix must not be quoted again.",
+      "status": "prefix-based figures superseded by the FULL_31150 block above; the file's original values are retained as history per AGENTS.md 5.5."
+    }
+  ]
+}

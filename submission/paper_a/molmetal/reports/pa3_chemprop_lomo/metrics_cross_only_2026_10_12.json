@@ -1,0 +1,657 @@
+{
+  "metric": "pa3_chemprop_lomo_probe_cohort",
+  "description": "Cross-metal (leave-one-metal-out) ROC-AUC of the official chemprop v2 message-passing backbone on the Paper-A probe cohort \u2014 the same cohort and split as the Morgan-FP + XGBoost probe in metrics/by_metric/metal_activity_transfer.json.  Answers BLK-PA3: is the cross-metal collapse an artefact of a weak backbone?",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/train_chemprop_lomo_paper_cohort.py",
+  "model": "chemprop v2 AtomMessagePassing (d_h=300, depth=3) + BinaryClassificationFFN (single pooled head, no metal features)",
+  "data_source": "MetalCytoToxDB (Krasnov et al., J. Med. Chem. 2026, 69(8), 8838) \u2014 probe cohort",
+  "cohort_rule": "per metal: MetalCytotoxDataset.from_csv(CytotoxFilter(time_threshold=24.0, ic50_min=0.01, metal_whitelist=[m])) then collapse_duplicates (one row per unique ligand, label = majority, ties -> ACTIVE)",
+  "leakage_rule": "a ligand appearing in the held-out metal's test set is dropped from the LOMO training pool",
+  "split_protocol": "LOMO (leave-one-metal-out), ligand-disjoint",
+  "comparison_baseline": "metrics/by_metric/metal_activity_transfer.json",
+  "seeds": [
+    42,
+    43,
+    44,
+    49,
+    123
+  ],
+  "duplication": {
+    "Ru": {
+      "n_rows_raw": 3668,
+      "n_unique": 1255,
+      "pos_rate_dedup": 0.25737051792828686
+    },
+    "Ir": {
+      "n_rows_raw": 1242,
+      "n_unique": 534,
+      "pos_rate_dedup": 0.45318352059925093
+    },
+    "Rh": {
+      "n_rows_raw": 108,
+      "n_unique": 51,
+      "pos_rate_dedup": 0.3333333333333333
+    },
+    "Os": {
+      "n_rows_raw": 87,
+      "n_unique": 36,
+      "pos_rate_dedup": 0.3611111111111111
+    },
+    "Re": {
+      "n_rows_raw": 166,
+      "n_unique": 74,
+      "pos_rate_dedup": 0.1891891891891892
+    }
+  },
+  "config": {
+    "metals": [
+      "Ru",
+      "Ir",
+      "Rh",
+      "Os",
+      "Re"
+    ],
+    "seeds": [
+      42,
+      43,
+      44,
+      49,
+      123
+    ],
+    "epochs": 50,
+    "hidden": 300,
+    "depth": 3,
+    "ffn_hidden": 300,
+    "ffn_layers": 1,
+    "dropout": 0.0,
+    "batch_size": 64,
+    "lr": 0.001,
+    "time_threshold": 24.0,
+    "ic50_min": 0.01,
+    "device": "cuda:0",
+    "bf16_autocast": true
+  },
+  "per_fold": [
+    {
+      "metal": "Ru",
+      "status": "MEASURED",
+      "n_train": 678,
+      "n_test": 1255,
+      "n_train_rows_dropped_as_leaked": 17,
+      "pos_rate_test": 0.25737051792828686,
+      "per_seed_auc": {
+        "42": 0.5697441502013048,
+        "43": 0.5881190289533478,
+        "44": 0.5663558511274399,
+        "49": 0.552269496007122,
+        "123": 0.5666481749691066
+      },
+      "mean_auc": 0.5686273402516642,
+      "std": 0.011470213766907805,
+      "n_seeds_ok": 5,
+      "per_seed": {
+        "42": {
+          "seed": 42,
+          "n_train": 678,
+          "n_test": 1255,
+          "test_auc": 0.5697441502013048,
+          "test_pr_auc": 0.36354401956503213,
+          "final_train_loss": 0.3698241449562849,
+          "elapsed_s": 15.292544603347778
+        },
+        "43": {
+          "seed": 43,
+          "n_train": 678,
+          "n_test": 1255,
+          "test_auc": 0.5881190289533478,
+          "test_pr_auc": 0.37501291460487207,
+          "final_train_loss": 0.38856443921021655,
+          "elapsed_s": 5.368528127670288
+        },
+        "44": {
+          "seed": 44,
+          "n_train": 678,
+          "n_test": 1255,
+          "test_auc": 0.5663558511274399,
+          "test_pr_auc": 0.36921582404371706,
+          "final_train_loss": 0.33011914530334924,
+          "elapsed_s": 8.904287576675415
+        },
+        "49": {
+          "seed": 49,
+          "n_train": 678,
+          "n_test": 1255,
+          "test_auc": 0.552269496007122,
+          "test_pr_auc": 0.37664527438385365,
+          "final_train_loss": 0.3324583444447644,
+          "elapsed_s": 4.066932678222656
+        },
+        "123": {
+          "seed": 123,
+          "n_train": 678,
+          "n_test": 1255,
+          "test_auc": 0.5666481749691066,
+          "test_pr_auc": 0.37204941375646633,
+          "final_train_loss": 0.35751158588052145,
+          "elapsed_s": 1.4933686256408691
+        }
+      }
+    },
+    {
+      "metal": "Ir",
+      "status": "MEASURED",
+      "n_train": 1391,
+      "n_test": 534,
+      "n_train_rows_dropped_as_leaked": 25,
+      "pos_rate_test": 0.45318352059925093,
+      "per_seed_auc": {
+        "42": 0.48967649722631046,
+        "43": 0.4889689233555983,
+        "44": 0.4698856560624929,
+        "49": 0.5481574776406657,
+        "123": 0.48375410392845014
+      },
+      "mean_auc": 0.4960885316427035,
+      "std": 0.026987800727616425,
+      "n_seeds_ok": 5,
+      "per_seed": {
+        "42": {
+          "seed": 42,
+          "n_train": 1391,
+          "n_test": 534,
+          "test_auc": 0.48967649722631046,
+          "test_pr_auc": 0.4327052551579658,
+          "final_train_loss": 0.2339757044245921,
+          "elapsed_s": 3.651432991027832
+        },
+        "43": {
+          "seed": 43,
+          "n_train": 1391,
+          "n_test": 534,
+          "test_auc": 0.4889689233555983,
+          "test_pr_auc": 0.44726270100421683,
+          "final_train_loss": 0.26090499527329253,
+          "elapsed_s": 2.9049322605133057
+        },
+        "44": {
+          "seed": 44,
+          "n_train": 1391,
+          "n_test": 534,
+          "test_auc": 0.4698856560624929,
+          "test_pr_auc": 0.42698966633794877,
+          "final_train_loss": 0.25672486615129547,
+          "elapsed_s": 2.8631396293640137
+        },
+        "49": {
+          "seed": 49,
+          "n_train": 1391,
+          "n_test": 534,
+          "test_auc": 0.5481574776406657,
+          "test_pr_auc": 0.4857151569265334,
+          "final_train_loss": 0.2450801271980054,
+          "elapsed_s": 2.6155712604522705
+        },
+        "123": {
+          "seed": 123,
+          "n_train": 1391,
+          "n_test": 534,
+          "test_auc": 0.48375410392845014,
+          "test_pr_auc": 0.43639460122015133,
+          "final_train_loss": 0.24460261942327322,
+          "elapsed_s": 2.4912867546081543
+        }
+      }
+    },
+    {
+      "metal": "Rh",
+      "status": "MEASURED",
+      "n_train": 1874,
+      "n_test": 51,
+      "n_train_rows_dropped_as_leaked": 25,
+      "pos_rate_test": 0.3333333333333333,
+      "per_seed_auc": {
+        "42": 0.44809688581314877,
+        "43": 0.5657439446366782,
+        "44": 0.532871972318339,
+        "49": 0.45328719723183386,
+        "123": 0.47231833910034604
+      },
+      "mean_auc": 0.49446366782006923,
+      "std": 0.04667305755008966,
+      "n_seeds_ok": 5,
+      "per_seed": {
+        "42": {
+          "seed": 42,
+          "n_train": 1874,
+          "n_test": 51,
+          "test_auc": 0.44809688581314877,
+          "test_pr_auc": 0.3489785348195637,
+          "final_train_loss": 0.2874263342601131,
+          "elapsed_s": 5.234649658203125
+        },
+        "43": {
+          "seed": 43,
+          "n_train": 1874,
+          "n_test": 51,
+          "test_auc": 0.5657439446366782,
+          "test_pr_auc": 0.3642276698175979,
+          "final_train_loss": 0.32249360958565515,
+          "elapsed_s": 3.8205225467681885
+        },
+        "44": {
+          "seed": 44,
+          "n_train": 1874,
+          "n_test": 51,
+          "test_auc": 0.532871972318339,
+          "test_pr_auc": 0.37530451078716104,
+          "final_train_loss": 0.28573541678766556,
+          "elapsed_s": 3.7018485069274902
+        },
+        "49": {
+          "seed": 49,
+          "n_train": 1874,
+          "n_test": 51,
+          "test_auc": 0.45328719723183386,
+          "test_pr_auc": 0.3486335461697547,
+          "final_train_loss": 0.3116146871857862,
+          "elapsed_s": 3.3924262523651123
+        },
+        "123": {
+          "seed": 123,
+          "n_train": 1874,
+          "n_test": 51,
+          "test_auc": 0.47231833910034604,
+          "test_pr_auc": 0.3801695740204632,
+          "final_train_loss": 0.2969932272441868,
+          "elapsed_s": 3.685575485229492
+        }
+      }
+    },
+    {
+      "metal": "Os",
+      "status": "MEASURED",
+      "n_train": 1897,
+      "n_test": 36,
+      "n_train_rows_dropped_as_leaked": 17,
+      "pos_rate_test": 0.3611111111111111,
+      "per_seed_auc": {
+        "42": 0.5451505016722408,
+        "43": 0.5685618729096991,
+        "44": 0.6655518394648829,
+        "49": 0.5484949832775919,
+        "123": 0.520066889632107
+      },
+      "mean_auc": 0.5695652173913043,
+      "std": 0.05040745158694504,
+      "n_seeds_ok": 5,
+      "per_seed": {
+        "42": {
+          "seed": 42,
+          "n_train": 1897,
+          "n_test": 36,
+          "test_auc": 0.5451505016722408,
+          "test_pr_auc": 0.4551338974415898,
+          "final_train_loss": 0.258141021831889,
+          "elapsed_s": 3.7532577514648438
+        },
+        "43": {
+          "seed": 43,
+          "n_train": 1897,
+          "n_test": 36,
+          "test_auc": 0.5685618729096991,
+          "test_pr_auc": 0.5135621698272943,
+          "final_train_loss": 0.3176516370359822,
+          "elapsed_s": 3.8135793209075928
+        },
+        "44": {
+          "seed": 44,
+          "n_train": 1897,
+          "n_test": 36,
+          "test_auc": 0.6655518394648829,
+          "test_pr_auc": 0.5950820667139451,
+          "final_train_loss": 0.2975398130679545,
+          "elapsed_s": 3.776681900024414
+        },
+        "49": {
+          "seed": 49,
+          "n_train": 1897,
+          "n_test": 36,
+          "test_auc": 0.5484949832775919,
+          "test_pr_auc": 0.47599807599807603,
+          "final_train_loss": 0.2741669994407286,
+          "elapsed_s": 3.848034381866455
+        },
+        "123": {
+          "seed": 123,
+          "n_train": 1897,
+          "n_test": 36,
+          "test_auc": 0.520066889632107,
+          "test_pr_auc": 0.43300260174248734,
+          "final_train_loss": 0.24916153626185564,
+          "elapsed_s": 4.345790863037109
+        }
+      }
+    },
+    {
+      "metal": "Re",
+      "status": "MEASURED",
+      "n_train": 1876,
+      "n_test": 74,
+      "n_train_rows_dropped_as_leaked": 0,
+      "pos_rate_test": 0.1891891891891892,
+      "per_seed_auc": {
+        "42": 0.7583333333333334,
+        "43": 0.6958333333333333,
+        "44": 0.6273809523809524,
+        "49": 0.7732142857142857,
+        "123": 0.8755952380952382
+      },
+      "mean_auc": 0.7460714285714286,
+      "std": 0.08279468773695765,
+      "n_seeds_ok": 5,
+      "per_seed": {
+        "42": {
+          "seed": 42,
+          "n_train": 1876,
+          "n_test": 74,
+          "test_auc": 0.7583333333333334,
+          "test_pr_auc": 0.45947839374435817,
+          "final_train_loss": 0.30832227727751743,
+          "elapsed_s": 3.3823201656341553
+        },
+        "43": {
+          "seed": 43,
+          "n_train": 1876,
+          "n_test": 74,
+          "test_auc": 0.6958333333333333,
+          "test_pr_auc": 0.3354922854922855,
+          "final_train_loss": 0.32949435749033623,
+          "elapsed_s": 3.3705976009368896
+        },
+        "44": {
+          "seed": 44,
+          "n_train": 1876,
+          "n_test": 74,
+          "test_auc": 0.6273809523809524,
+          "test_pr_auc": 0.25585182375504956,
+          "final_train_loss": 0.30465400670128845,
+          "elapsed_s": 3.3650951385498047
+        },
+        "49": {
+          "seed": 49,
+          "n_train": 1876,
+          "n_test": 74,
+          "test_auc": 0.7732142857142857,
+          "test_pr_auc": 0.503858520740104,
+          "final_train_loss": 0.29677153243693205,
+          "elapsed_s": 3.3707640171051025
+        },
+        "123": {
+          "seed": 123,
+          "n_train": 1876,
+          "n_test": 74,
+          "test_auc": 0.8755952380952382,
+          "test_pr_auc": 0.7901196282903036,
+          "final_train_loss": 0.2658559029925861,
+          "elapsed_s": 3.3706932067871094
+        }
+      }
+    }
+  ],
+  "mean_auc_across_metals": 0.5749632371354341,
+  "total_min": 1.768178610006968,
+  "honest_framing_note": "PA3 chemprop v2 (AtomMessagePassing d_h=300, depth=3) + single pooled BinaryClassificationFFN (1x300, dropout=0.0) cross-metal LOMO on the Paper-A probe cohort (MetalCytotoxDataset + CytotoxFilter(time<=24.0h, ic50>=0.01uM) + collapse_duplicates, leak-dropped train pool). 25 (fold, seed) runs in 1.77 min wall.  AUCs are MEASURED with sklearn roc_auc_score on the sigmoid of the pooled head's logit.  This is the same cohort and the same LOMO split as metrics/by_metric/metal_activity_transfer.json (the XGB probe); the comparison isolates the scorer, not the cohort.",
+  "runs": [
+    {
+      "metal": "Ru",
+      "seed": 42,
+      "n_train": 678,
+      "n_test": 1255,
+      "test_auc": 0.5697441502013048,
+      "test_pr_auc": 0.36354401956503213,
+      "final_train_loss": 0.3698241449562849,
+      "elapsed_s": 15.292544603347778
+    },
+    {
+      "metal": "Ru",
+      "seed": 43,
+      "n_train": 678,
+      "n_test": 1255,
+      "test_auc": 0.5881190289533478,
+      "test_pr_auc": 0.37501291460487207,
+      "final_train_loss": 0.38856443921021655,
+      "elapsed_s": 5.368528127670288
+    },
+    {
+      "metal": "Ru",
+      "seed": 44,
+      "n_train": 678,
+      "n_test": 1255,
+      "test_auc": 0.5663558511274399,
+      "test_pr_auc": 0.36921582404371706,
+      "final_train_loss": 0.33011914530334924,
+      "elapsed_s": 8.904287576675415
+    },
+    {
+      "metal": "Ru",
+      "seed": 49,
+      "n_train": 678,
+      "n_test": 1255,
+      "test_auc": 0.552269496007122,
+      "test_pr_auc": 0.37664527438385365,
+      "final_train_loss": 0.3324583444447644,
+      "elapsed_s": 4.066932678222656
+    },
+    {
+      "metal": "Ru",
+      "seed": 123,
+      "n_train": 678,
+      "n_test": 1255,
+      "test_auc": 0.5666481749691066,
+      "test_pr_auc": 0.37204941375646633,
+      "final_train_loss": 0.35751158588052145,
+      "elapsed_s": 1.4933686256408691
+    },
+    {
+      "metal": "Ir",
+      "seed": 42,
+      "n_train": 1391,
+      "n_test": 534,
+      "test_auc": 0.48967649722631046,
+      "test_pr_auc": 0.4327052551579658,
+      "final_train_loss": 0.2339757044245921,
+      "elapsed_s": 3.651432991027832
+    },
+    {
+      "metal": "Ir",
+      "seed": 43,
+      "n_train": 1391,
+      "n_test": 534,
+      "test_auc": 0.4889689233555983,
+      "test_pr_auc": 0.44726270100421683,
+      "final_train_loss": 0.26090499527329253,
+      "elapsed_s": 2.9049322605133057
+    },
+    {
+      "metal": "Ir",
+      "seed": 44,
+      "n_train": 1391,
+      "n_test": 534,
+      "test_auc": 0.4698856560624929,
+      "test_pr_auc": 0.42698966633794877,
+      "final_train_loss": 0.25672486615129547,
+      "elapsed_s": 2.8631396293640137
+    },
+    {
+      "metal": "Ir",
+      "seed": 49,
+      "n_train": 1391,
+      "n_test": 534,
+      "test_auc": 0.5481574776406657,
+      "test_pr_auc": 0.4857151569265334,
+      "final_train_loss": 0.2450801271980054,
+      "elapsed_s": 2.6155712604522705
+    },
+    {
+      "metal": "Ir",
+      "seed": 123,
+      "n_train": 1391,
+      "n_test": 534,
+      "test_auc": 0.48375410392845014,
+      "test_pr_auc": 0.43639460122015133,
+      "final_train_loss": 0.24460261942327322,
+      "elapsed_s": 2.4912867546081543
+    },
+    {
+      "metal": "Rh",
+      "seed": 42,
+      "n_train": 1874,
+      "n_test": 51,
+      "test_auc": 0.44809688581314877,
+      "test_pr_auc": 0.3489785348195637,
+      "final_train_loss": 0.2874263342601131,
+      "elapsed_s": 5.234649658203125
+    },
+    {
+      "metal": "Rh",
+      "seed": 43,
+      "n_train": 1874,
+      "n_test": 51,
+      "test_auc": 0.5657439446366782,
+      "test_pr_auc": 0.3642276698175979,
+      "final_train_loss": 0.32249360958565515,
+      "elapsed_s": 3.8205225467681885
+    },
+    {
+      "metal": "Rh",
+      "seed": 44,
+      "n_train": 1874,
+      "n_test": 51,
+      "test_auc": 0.532871972318339,
+      "test_pr_auc": 0.37530451078716104,
+      "final_train_loss": 0.28573541678766556,
+      "elapsed_s": 3.7018485069274902
+    },
+    {
+      "metal": "Rh",
+      "seed": 49,
+      "n_train": 1874,
+      "n_test": 51,
+      "test_auc": 0.45328719723183386,
+      "test_pr_auc": 0.3486335461697547,
+      "final_train_loss": 0.3116146871857862,
+      "elapsed_s": 3.3924262523651123
+    },
+    {
+      "metal": "Rh",
+      "seed": 123,
+      "n_train": 1874,
+      "n_test": 51,
+      "test_auc": 0.47231833910034604,
+      "test_pr_auc": 0.3801695740204632,
+      "final_train_loss": 0.2969932272441868,
+      "elapsed_s": 3.685575485229492
+    },
+    {
+      "metal": "Os",
+      "seed": 42,
+      "n_train": 1897,
+      "n_test": 36,
+      "test_auc": 0.5451505016722408,
+      "test_pr_auc": 0.4551338974415898,
+      "final_train_loss": 0.258141021831889,
+      "elapsed_s": 3.7532577514648438
+    },
+    {
+      "metal": "Os",
+      "seed": 43,
+      "n_train": 1897,
+      "n_test": 36,
+      "test_auc": 0.5685618729096991,
+      "test_pr_auc": 0.5135621698272943,
+      "final_train_loss": 0.3176516370359822,
+      "elapsed_s": 3.8135793209075928
+    },
+    {
+      "metal": "Os",
+      "seed": 44,
+      "n_train": 1897,
+      "n_test": 36,
+      "test_auc": 0.6655518394648829,
+      "test_pr_auc": 0.5950820667139451,
+      "final_train_loss": 0.2975398130679545,
+      "elapsed_s": 3.776681900024414
+    },
+    {
+      "metal": "Os",
+      "seed": 49,
+      "n_train": 1897,
+      "n_test": 36,
+      "test_auc": 0.5484949832775919,
+      "test_pr_auc": 0.47599807599807603,
+      "final_train_loss": 0.2741669994407286,
+      "elapsed_s": 3.848034381866455
+    },
+    {
+      "metal": "Os",
+      "seed": 123,
+      "n_train": 1897,
+      "n_test": 36,
+      "test_auc": 0.520066889632107,
+      "test_pr_auc": 0.43300260174248734,
+      "final_train_loss": 0.24916153626185564,
+      "elapsed_s": 4.345790863037109
+    },
+    {
+      "metal": "Re",
+      "seed": 42,
+      "n_train": 1876,
+      "n_test": 74,
+      "test_auc": 0.7583333333333334,
+      "test_pr_auc": 0.45947839374435817,
+      "final_train_loss": 0.30832227727751743,
+      "elapsed_s": 3.3823201656341553
+    },
+    {
+      "metal": "Re",
+      "seed": 43,
+      "n_train": 1876,
+      "n_test": 74,
+      "test_auc": 0.6958333333333333,
+      "test_pr_auc": 0.3354922854922855,
+      "final_train_loss": 0.32949435749033623,
+      "elapsed_s": 3.3705976009368896
+    },
+    {
+      "metal": "Re",
+      "seed": 44,
+      "n_train": 1876,
+      "n_test": 74,
+      "test_auc": 0.6273809523809524,
+      "test_pr_auc": 0.25585182375504956,
+      "final_train_loss": 0.30465400670128845,
+      "elapsed_s": 3.3650951385498047
+    },
+    {
+      "metal": "Re",
+      "seed": 49,
+      "n_train": 1876,
+      "n_test": 74,
+      "test_auc": 0.7732142857142857,
+      "test_pr_auc": 0.503858520740104,
+      "final_train_loss": 0.29677153243693205,
+      "elapsed_s": 3.3707640171051025
+    },
+    {
+      "metal": "Re",
+      "seed": 123,
+      "n_train": 1876,
+      "n_test": 74,
+      "test_auc": 0.8755952380952382,
+      "test_pr_auc": 0.7901196282903036,
+      "final_train_loss": 0.2658559029925861,
+      "elapsed_s": 3.3706932067871094
+    }
+  ]
+}

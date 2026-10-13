@@ -1,0 +1,55 @@
+# wf_a1_bace_cap512_d4.yaml — B3: BACE, wider/deeper net (hidden 512, depth 4).
+#
+# Single-variable change vs the baseline config
+#   configs/wf_fix3lines_bace_50ep_2026_10_09.yaml
+#   (targets molmetal/scripts/train_moleculenet.py)
+# -> model.hidden: 512 and model.depth: 4 (capacity increase). Everything else
+#    is held at the baseline: tasks [bace], scaffold_split true, backbone dmpnn,
+#    epochs 50, batch_size 64, lr 0.001, seeds [0,1,2,3,4]. class_weight stays
+#    at its default 'on'.
+#
+# NOTE: the task framing calls this one variable ("capacity"); it is the pair
+# (hidden, depth) moved together, which is the single capacity axis.
+#
+# HONEST FRAMING (§5.2): the number this arm produces is PROJECTED until the
+# run lands. The baseline it is compared against is MEASURED:
+#   molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/metrics.json
+#   bace test_auc_mean = 0.7505 +/- 0.0456 (5 seeds, 50 epochs).
+data:
+  tasks:
+  - bace
+  scaffold_split: true
+model:
+  backbone: dmpnn
+  hidden: 512                # <-- B3: capacity (hidden)
+  depth: 4                   # <-- B3: capacity (message-passing rounds)
+protocol:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+output:
+  base_dir: molmetal/reports/wf_a1_bace_cap512_d4
+  out_dir: molmetal/reports/wf_a1_bace_cap512_d4
+  log_master: molmetal/reports/wf_a1_bace_cap512_d4/master.log
+  training_summary: molmetal/reports/wf_a1_bace_cap512_d4/training_summary.json
+  out_metric: molmetal/reports/wf_a1_bace_cap512_d4/metrics.json
+  out_report: molmetal/reports/wf_a1_bace_cap512_d4/report.md
+  events_jsonl: true
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_moleculenet.py
+    --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: B3 — does a wider/deeper D-MPNN (512/4) lift BACE AUC over the 0.7505 baseline?
+  note: PROJECTED until the run lands; baseline 0.7505 +/- 0.0456 is MEASURED (5 seeds, 50 ep).

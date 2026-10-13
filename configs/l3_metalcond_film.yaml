@@ -1,0 +1,65 @@
+# L3 (arm: film) — the metal descriptor drives a per-channel FiLM (scale+shift)
+# on the pooled graph readout, instead of being concatenated to it.
+#
+# WHY: PA15's concat arm (desc) already gave the head the metal descriptor and
+# did not recover the cross-metal collapse (-0.0215, Holm p=1.0).  A concat
+# lets the FFN use the metal only additively after the encoder has already
+# pooled; FiLM modulates the encoder output multiplicatively, so the metal can
+# gate WHICH ligand features reach the head.  Same cohort, same ligand-disjoint
+# LOMO split, same seeds, same descriptor table — the only change vs the desc
+# arm is concat -> FiLM.
+#
+# AGENTS.md §5.11: launched from this YAML; the wrapper passes --config only.
+
+entry:
+  script: molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+    --config {yaml_path}
+
+data:
+  cohort_filter: "CytotoxFilter(time_threshold=24h, ic50_min=0.01uM, metal_whitelist=[m]) then collapse_duplicates (one row per unique ligand, majority label, ties -> ACTIVE)"
+  time_threshold: 24.0
+  ic50_min: 0.01
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 300
+  depth: 3
+  ffn_hidden: 300
+  ffn_layers: 1
+  dropout: 0.0
+  metal_mode: film
+  metal_embed_dim: 16
+
+train:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  bf16: true
+
+protocol:
+  wave_decomposition: "LOMO 5 folds (Ru/Ir/Rh/Os/Re held out) x 5 seeds; ligand-disjoint train pool"
+  seeds: [42, 43, 44, 49, 123]
+
+mode: cross
+n_permutations: 0
+perm_seed: 42
+
+compute:
+  gpu: cuda:1
+
+output:
+  base_dir: molmetal/reports/l3_metalcond_film
+  out_json: molmetal/reports/l3_metalcond_film/metrics.json
+  log_master: molmetal/reports/l3_metalcond_film/master.log
+
+metric_name: l3_metalcond_film
+
+directives:
+  user_ok_required: true
+
+honest_framing: >
+  MEASURED only.  Same cohort, same split, same seeds as the PA15 none/desc
+  arms.  The descriptor is a public constant, so no label crosses the split.
+  If FiLM does not beat the none arm, the collapse is not recoverable by
+  readout-level conditioning — that is the finding.

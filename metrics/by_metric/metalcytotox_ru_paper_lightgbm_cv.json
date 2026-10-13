@@ -1,0 +1,113 @@
+{
+  "metric": "metalcytotox_ru_paper_lightgbm_cv",
+  "description": "Morgan-FP + LightGBM on the paper-funnel Ru cohort and the SAME DOI-grouped 10-fold partition used by the D-MPNN paper-protocol measurement. Isolates model class from cohort (BLK-PA5).",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier1_precious_metal_anticancer / paper-protocol Ru cohort",
+  "source": "molmetal/scripts/m1_paper_lightgbm_cv.py",
+  "model": "morgan_fp(radius=2, 2048bit) + lightgbm",
+  "seed": 0,
+  "label_rule": "active := IC50_Dark_value < 10 uM (paper cut)",
+  "cohort": {
+    "rows": 15799,
+    "complexes": 4793,
+    "cell_lines": 591,
+    "active_rate": 0.31229824672447626
+  },
+  "fold_source": "/tmp/wf_m1_paper_cv/folds",
+  "fold_leakage_check": {
+    "straddling_groups_raw_doi": 0,
+    "straddling_groups_complex_merged": 28,
+    "note": "Straddling groups = DOI groups appearing on both sides of a fold. Non-zero under the complex-merged grouping means a complex can sit in train and test; this applies to BOTH arms equally and does not bias the model-class contrast."
+  },
+  "n_folds": 10,
+  "per_fold": [
+    {
+      "fold": 0,
+      "n_train": 14219,
+      "n_test": 1580,
+      "roc_auc": 0.8023831070889894,
+      "pr_auc": 0.619769459910891
+    },
+    {
+      "fold": 1,
+      "n_train": 14219,
+      "n_test": 1580,
+      "roc_auc": 0.7135136693017128,
+      "pr_auc": 0.6531907706009822
+    },
+    {
+      "fold": 2,
+      "n_train": 14219,
+      "n_test": 1580,
+      "roc_auc": 0.7643344298245613,
+      "pr_auc": 0.5407210160705355
+    },
+    {
+      "fold": 3,
+      "n_train": 14219,
+      "n_test": 1580,
+      "roc_auc": 0.7543509005373411,
+      "pr_auc": 0.6208844946261304
+    },
+    {
+      "fold": 4,
+      "n_train": 14219,
+      "n_test": 1580,
+      "roc_auc": 0.778814012383019,
+      "pr_auc": 0.593368268686099
+    },
+    {
+      "fold": 5,
+      "n_train": 14219,
+      "n_test": 1580,
+      "roc_auc": 0.7118138192033084,
+      "pr_auc": 0.5844612645932886
+    },
+    {
+      "fold": 6,
+      "n_train": 14219,
+      "n_test": 1580,
+      "roc_auc": 0.8000560640641277,
+      "pr_auc": 0.6429015990715207
+    },
+    {
+      "fold": 7,
+      "n_train": 14219,
+      "n_test": 1580,
+      "roc_auc": 0.7456662344696905,
+      "pr_auc": 0.6389365426724748
+    },
+    {
+      "fold": 8,
+      "n_train": 14219,
+      "n_test": 1580,
+      "roc_auc": 0.7719279508370418,
+      "pr_auc": 0.7108391320708144
+    },
+    {
+      "fold": 9,
+      "n_train": 14220,
+      "n_test": 1579,
+      "roc_auc": 0.8340377626027915,
+      "pr_auc": 0.7074273122614956
+    }
+  ],
+  "mean_auc": 0.7676897950312582,
+  "std_auc": 0.036778204585634806,
+  "comparison": {
+    "lightgbm_this_cohort": {
+      "mean": 0.7676897950312582,
+      "std": 0.036778204585634806
+    },
+    "dmpnn_this_cohort": {
+      "mean": 0.7717467464034218,
+      "std": 0.037955584760391604
+    },
+    "delta_lightgbm_minus_dmpnn": -0.004056951372163553,
+    "paper_lightgbm_reference_cross_cohort": {
+      "mean": 0.81,
+      "std": 0.024
+    }
+  },
+  "verdict": "Like-for-like model-class comparison on the SAME cohort and folds: LightGBM 0.7677 +/- 0.0368 vs D-MPNN 0.7717 +/- 0.0380 (delta -0.0041)."
+}

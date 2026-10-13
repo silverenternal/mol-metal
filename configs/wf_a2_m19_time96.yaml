@@ -1,0 +1,60 @@
+# wf_a2_m19_time96.yaml — M1: m19 LOMO, exposure-time threshold raised 24h -> 96h.
+#
+# Structure copied from configs/m19_lomo_4metal_sensitivity.yaml, which targets
+#   molmetal/scripts/train_metal_lomo_wasserstein.py
+# Single-variable change vs that file: the cohort is restored to all five
+# metals [Ru, Ir, Os, Rh, Re] (Rh is NOT dropped here) and data.time_threshold
+# is raised from the trainer default 24.0 to 96.
+#
+# WHY 96h: --time-threshold is the CytotoxFilter max exposure time. MEASURED
+# (trainer help, Wf-R10-A3): the hardcoded 24.0 silently capped the Rh block at
+# 108 of 1134 source rows; 96 admits 1131 Rh rows (test fold ~565). Raising it
+# also changes the label base rate (Rh pos_rate 24h 0.33 -> 96h 0.53), so this
+# is a cohort + label-shift arm, not a pure capacity test.
+#
+# data.metals MUST stay a YAML list (nargs="+"); a space-joined string made
+# every fold NaN in a past run (see the sibling config's header).
+#
+# HONEST FRAMING (§5.2): the number this arm produces is PROJECTED until the
+# run lands. The 5-metal headline it is compared against is MEASURED:
+#   metrics/by_metric/metal_lomo_auc_wasserstein.json = 0.5575 +/- 0.0949.
+data:
+  metals:
+    - Ru
+    - Ir
+    - Os
+    - Rh
+    - Re
+  rh_oversample: 0           # real-only protocol
+  time_threshold: 96         # <-- M1: the single variable under test (default 24.0)
+model:
+  hidden: 128
+  depth: 3
+  alpha: 0.5
+protocol:
+  batch_size: 64
+  lr: 0.001
+  epochs: 30
+  seeds: [0, 1, 2, 3, 4]
+  wasserstein_weight: 0.05
+  model_select: last_epoch
+compute:
+  device: cuda:0
+output:
+  base_dir: molmetal/reports/wf_a2_m19_time96
+  out_dir: molmetal/reports/wf_a2_m19_time96
+  log_master: molmetal/reports/wf_a2_m19_time96/master.log
+  training_summary: molmetal/reports/wf_a2_m19_time96/training_summary.json
+  out_metric: molmetal/reports/wf_a2_m19_time96/metrics.json
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: M1 — does raising the CytotoxFilter exposure threshold 24h -> 96h change m19 LOMO AUC?
+  note: PROJECTED until the run lands; 5-metal baseline 0.5575 +/- 0.0949 is MEASURED.
+  not_a_lift: This re-filters the cohort; any change reflects the label base-rate shift as much as the model.

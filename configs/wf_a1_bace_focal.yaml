@@ -1,0 +1,55 @@
+# Wave A1 — BACE D-MPNN, focal loss (Lever B5), 5 seeds, 50 epochs.
+#
+# Mirror of configs/wf_fix3lines_bace_50ep_2026_10_09.yaml (the recorded
+# pre-§5.11 command line) with the single change `model.loss: focal` +
+# `model.focal_gamma: 2.0`.  Everything else — task, backbone, width, depth,
+# epochs, batch, lr, seeds — is identical to the baseline arm, so the only
+# difference between the two runs is the classification loss.
+#
+# 2026-10-11 (AGENTS.md §5.11 — "以后要求能且只能用yaml配置启动训练和推理，
+# no cli参数"): the focal lever is declared here, not on a wrapper command line.
+# `train_moleculenet.py` grew `--loss {bce,focal}` + `--focal-gamma` on
+# 2026-10-11; `bce` (the argparse default) keeps the baseline loss
+# byte-identical, so the baseline arm is unchanged.
+data:
+  tasks:
+  - bace
+  scaffold_split: true
+model:
+  backbone: dmpnn
+  hidden: 300
+  depth: 3
+  loss: focal
+  focal_gamma: 2.0
+protocol:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+output:
+  base_dir: molmetal/reports/wf_a1_bace_focal
+  out_dir: molmetal/reports/wf_a1_bace_focal
+  log_master: molmetal/reports/wf_a1_bace_focal/master.log
+  training_summary: molmetal/reports/wf_a1_bace_focal/training_summary.json
+  out_metric: molmetal/reports/wf_a1_bace_focal/metrics.json
+  out_report: molmetal/reports/wf_a1_bace_focal/report.md
+  events_jsonl: true
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_moleculenet.py
+    --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  note: BACE arm with focal loss (Lever B5). Baseline arm for comparison is
+    configs/wf_fix3lines_bace_50ep_2026_10_09.yaml (loss=bce, same seed set).
+  residual: '`data.scaffold_split` is declared True because the trainer''s --scaffold-split
+    default is True (store_true, default=True).'

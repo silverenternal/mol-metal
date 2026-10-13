@@ -1,0 +1,63 @@
+# Wave A1 — BACE D-MPNN, seed-ensembled inference (Lever B6), 5 seeds, 50 epochs.
+#
+# Mirror of configs/wf_fix3lines_bace_50ep_2026_10_09.yaml (the recorded
+# pre-§5.11 command line) with the single addition `protocol.ensemble_seeds:
+# true`.  Everything else — task, backbone, width, depth, epochs, batch, lr,
+# seeds — is identical to the baseline arm, so the only difference between the
+# two runs is that the per-seed test scores are averaged into `ensemble_auc`.
+#
+# 2026-10-11 (AGENTS.md §5.11): the ensemble lever is declared here, not on a
+# wrapper command line.  `train_moleculenet.py` grew `--ensemble-seeds` on
+# 2026-10-11; off (the argparse default) keeps the payload byte-identical.
+#
+# MEASURED 2026-10-11: without `protocol.split_seed` the Bemis-Murcko scaffold
+# split is seeded by the training seed, so the 5 seeds do NOT share a test set
+# (BACE: 5 distinct test sets, intersection 0, union 1052/1513) and the
+# ensemble averages each molecule's score over the seeds whose test set
+# contains it.  `protocol.split_seed: 0` pins ONE scaffold split for every
+# training seed, so all 5 test sets are identical and the ensemble reduces to a
+# row-aligned mean of the per-seed score vectors (see `_ensemble_auc` in
+# molmetal/scripts/train_moleculenet.py).
+data:
+  tasks:
+  - bace
+  scaffold_split: true
+model:
+  backbone: dmpnn
+  hidden: 300
+  depth: 3
+protocol:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  ensemble_seeds: true
+  split_seed: 0
+output:
+  base_dir: molmetal/reports/wf_a1_bace_ensemble
+  out_dir: molmetal/reports/wf_a1_bace_ensemble
+  log_master: molmetal/reports/wf_a1_bace_ensemble/master.log
+  training_summary: molmetal/reports/wf_a1_bace_ensemble/training_summary.json
+  out_metric: molmetal/reports/wf_a1_bace_ensemble/metrics.json
+  out_report: molmetal/reports/wf_a1_bace_ensemble/report.md
+  events_jsonl: true
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_moleculenet.py
+    --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  note: BACE arm with seed-ensembled inference (Lever B6). Baseline arm for
+    comparison is configs/wf_fix3lines_bace_50ep_2026_10_09.yaml (same seed set,
+    per-seed mean).
+  residual: '`data.scaffold_split` is declared True because the trainer''s --scaffold-split
+    default is True (store_true, default=True).'

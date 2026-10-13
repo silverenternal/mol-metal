@@ -1,0 +1,196 @@
+{
+  "wf_tag": "Wf-131 Phase 1 \u2014 5-metal multi-task D-MPNN with Wasserstein pIC50 regularisation (Ru AUC rescue)",
+  "metals": [
+    "A2780",
+    "A2780cis",
+    "A549",
+    "DU145",
+    "HCT116",
+    "HL60",
+    "MCF7",
+    "PC3",
+    "SKOV3"
+  ],
+  "seeds": [
+    0
+  ],
+  "epochs": 50,
+  "alpha": 0.5,
+  "wasserstein_weight": 0.05,
+  "use_l2_guard": true,
+  "lr": 0.001,
+  "batch_size": 32,
+  "hidden": 512,
+  "depth": 4,
+  "device": "cuda:0",
+  "elapsed_seconds_total": 7616.491943836212,
+  "per_metal": {
+    "A2780": {
+      "n_seeds": 1,
+      "n_train": 1031,
+      "n_val": 16,
+      "n_test": 48,
+      "test_auc_mean": 0.5259259259259259,
+      "test_auc_std": 0.0,
+      "test_pearson_mean": 0.11302858311245895,
+      "test_pearson_std": 0.0,
+      "test_rmse_mean": 2.144832219639798,
+      "test_rmse_std": 0.0,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed0_cap512_d4/checkpoints/dmpnn_mtw_a2780_seed0.pt"
+      ],
+      "status": "OK"
+    },
+    "A2780cis": {
+      "n_seeds": 1,
+      "n_train": 530,
+      "n_val": 6,
+      "n_test": 28,
+      "test_auc_mean": 0.29444444444444445,
+      "test_auc_std": 0.0,
+      "test_pearson_mean": 0.24777241263346134,
+      "test_pearson_std": 0.0,
+      "test_rmse_mean": 1.8213510972513862,
+      "test_rmse_std": 0.0,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed0_cap512_d4/checkpoints/dmpnn_mtw_a2780cis_seed0.pt"
+      ],
+      "status": "OK"
+    },
+    "A549": {
+      "n_seeds": 1,
+      "n_train": 2482,
+      "n_val": 58,
+      "n_test": 107,
+      "test_auc_mean": 0.6912366912366913,
+      "test_auc_std": 0.0,
+      "test_pearson_mean": 0.2906099840249768,
+      "test_pearson_std": 0.0,
+      "test_rmse_mean": 1.2902783898057697,
+      "test_rmse_std": 0.0,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed0_cap512_d4/checkpoints/dmpnn_mtw_a549_seed0.pt"
+      ],
+      "status": "OK"
+    },
+    "DU145": {
+      "n_seeds": 1,
+      "n_train": 150,
+      "n_val": 4,
+      "n_test": 7,
+      "test_auc_mean": 1.0,
+      "test_auc_std": 0.0,
+      "test_pearson_mean": 0.968353888706977,
+      "test_pearson_std": 0.0,
+      "test_rmse_mean": 0.37154518639420153,
+      "test_rmse_std": 0.0,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed0_cap512_d4/checkpoints/dmpnn_mtw_du145_seed0.pt"
+      ],
+      "status": "OK"
+    },
+    "HCT116": {
+      "n_seeds": 1,
+      "n_train": 658,
+      "n_val": 12,
+      "n_test": 31,
+      "test_auc_mean": 0.8333333333333334,
+      "test_auc_std": 0.0,
+      "test_pearson_mean": 0.4453600412497441,
+      "test_pearson_std": 0.0,
+      "test_rmse_mean": 0.7012234352764276,
+      "test_rmse_std": 0.0,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed0_cap512_d4/checkpoints/dmpnn_mtw_hct116_seed0.pt"
+      ],
+      "status": "OK"
+    },
+    "HL60": {
+      "n_seeds": 1,
+      "n_train": 202,
+      "n_val": 12,
+      "n_test": 11,
+      "test_auc_mean": 0.6428571428571428,
+      "test_auc_std": 0.0,
+      "test_pearson_mean": 0.4912718955793026,
+      "test_pearson_std": 0.0,
+      "test_rmse_mean": 1.2599142368425322,
+      "test_rmse_std": 0.0,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed0_cap512_d4/checkpoints/dmpnn_mtw_hl60_seed0.pt"
+      ],
+      "status": "OK"
+    },
+    "MCF7": {
+      "n_seeds": 1,
+      "n_train": 1829,
+      "n_val": 45,
+      "n_test": 90,
+      "test_auc_mean": 0.7111362351611079,
+      "test_auc_std": 0.0,
+      "test_pearson_mean": 0.15539550192196652,
+      "test_pearson_std": 0.0,
+      "test_rmse_mean": 1.1637069434225165,
+      "test_rmse_std": 0.0,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed0_cap512_d4/checkpoints/dmpnn_mtw_mcf7_seed0.pt"
+      ],
+      "status": "OK"
+    },
+    "PC3": {
+      "n_seeds": 1,
+      "n_train": 250,
+      "n_val": 7,
+      "n_test": 18,
+      "test_auc_mean": 0.5416666666666666,
+      "test_auc_std": 0.0,
+      "test_pearson_mean": 0.19251848896836146,
+      "test_pearson_std": 0.0,
+      "test_rmse_mean": 1.0491804028523117,
+      "test_rmse_std": 0.0,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed0_cap512_d4/checkpoints/dmpnn_mtw_pc3_seed0.pt"
+      ],
+      "status": "OK"
+    },
+    "SKOV3": {
+      "n_seeds": 1,
+      "n_train": 188,
+      "n_val": 0,
+      "n_test": 3,
+      "test_auc_mean": 1.0,
+      "test_auc_std": 0.0,
+      "test_pearson_mean": 0.244324115156652,
+      "test_pearson_std": 0.0,
+      "test_rmse_mean": 1.5530393629982293,
+      "test_rmse_std": 0.0,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed0_cap512_d4/checkpoints/dmpnn_mtw_skov3_seed0.pt"
+      ],
+      "status": "OK"
+    }
+  },
+  "tf32": {
+    "enabled": true,
+    "current_allow_tf32_matmul": true,
+    "current_allow_tf32_cudnn": true,
+    "matmul_precision": "high"
+  },
+  "bf16": {
+    "requested": true,
+    "apply": true,
+    "device": "cuda:0",
+    "is_cuda": true,
+    "fallback_occurred": false,
+    "fallback_reason": ""
+  },
+  "torch_compile_enabled": false,
+  "torch_compile_mode": "max-autotune-no-cudagraphs",
+  "torch_compile_cuda_graphs_disabled": true,
+  "dmpnn_backend": "pyg",
+  "dmpnn_backend_requested": "pyg",
+  "w2_gradient_mode": "sliced",
+  "ru_auc_target": 0.86,
+  "ru_auc_baseline_single_task": 0.7123,
+  "honest_framing_note": "Wf-131 P1 stacks multi-task (shared encoder + 5 per-metal heads) + Wasserstein pIC50 regularisation + L2 gradient-norm guard.  Smaller metals (Rh/Os/Re < 1.2k rows) give noisier per-seed AUC; per-seed spread is reported unfiltered.  The Ru AUC \u2265 0.86 target is PROJECTED (party-twenty-spirit \u00a73.5), not measured \u2014 the recipe stack has not been validated end-to-end on this cohort, so we report mean \u00b1 std honestly and let the per-seed metrics speak for themselves."
+}

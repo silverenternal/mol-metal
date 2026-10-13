@@ -1,0 +1,552 @@
+{
+  "metric": "cfm_objective_inventory",
+  "tag": "MEASURED",
+  "date": "2026-10-12",
+  "author": "Wf objective-inventory pass. No training, no GPU, no paper/, no writes to molmetal/reports/cfm_patience10_seed0/.",
+  "question": "For the four targets the user named on 2026-10-12 (QED, ADMET, SA, precious-metal-anticancer-specific): what is MEASURED on disk, what is NOT ON DISK, what reference each is compared against and is that reference real, what the closest published value is, what the gap is in the metric's own units, and -- the blunt answer -- would a change to the TRAINING LOSS plausibly move it?",
+  "the_reference_problem_this_file_fixes": {
+    "problem": "Every QED/SA number in the repo was compared against a band labelled 'real_tmqm' that is n=636 DECODER RECONSTRUCTION output, i.e. the model compared against itself. metrics/by_metric/cfm_reference_band_audit.json already ruled 7 comparisons CIRCULAR; the QED/SA panels were among them.",
+    "fix": "metrics/by_metric/cfm_real_tmqm_sixmetal_baseline.json (written by this pass): the REAL band, computed from the tmQM corpus on disk, filtered to the six train metals. Everything below uses THAT band, not the 636.",
+    "also_new": "metrics/by_metric/cfm_sa_gap_decomposition.json and metrics/by_metric/cfm_sa_stereocentre_control.json (this pass)."
+  },
+  "targets": {
+    "QED": {
+      "measured_on_disk": {
+        "generated_qed_mean": {
+          "value": 0.0944,
+          "tag": "MEASURED",
+          "n": 66,
+          "path": "metrics/by_metric/cfm_free_generation_panel_seed0.json :: panel.qed_mean",
+          "cohort": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv, all 66 surviving free generations, epoch-10 checkpoint, ODE midpoint/50, 192 tmQM val clouds",
+          "full_precision_recomputed_this_pass": 0.09444319957733445,
+          "note": "the panel file records 0.0944 (4 dp); recomputing QED.qed over the same 66 SMILES gives 0.09444319957733445"
+        },
+        "generated_qed_median": {
+          "value": 0.073764,
+          "tag": "MEASURED",
+          "n": 66
+        },
+        "real_tmqm_qed_mean": {
+          "value": 0.234783,
+          "tag": "MEASURED",
+          "n": 31150,
+          "path": "metrics/by_metric/cfm_real_tmqm_sixmetal_baseline.json",
+          "cohort": ".data/molmetal/tmQM/tmQM_y.csv, rows with SMILES containing >=1 of Pt/Ir/Ru/Rh/Os/Re"
+        },
+        "generated_qed_sd": {
+          "value": 0.073401,
+          "tag": "MEASURED",
+          "n": 66
+        },
+        "real_tmqm_qed_sd": {
+          "value": 0.1369,
+          "tag": "MEASURED",
+          "n": 31150
+        }
+      },
+      "not_on_disk": [
+        "QED on any seed other than 0. One checkpoint, one seed, n=66. The file that holds these numbers says so itself.",
+        "QED for any PRECIOUS-METAL-ANTICANCER-relevant subset -- there is none, because the generated cohort contains ZERO Pt (see precious_metal_anticancer_specific).",
+        "QED of the three cfm_fullcorpus seed1/seed2 checkpoints. Never generated.",
+        "Any per-descriptor QED attribution on disk. This pass computed it; it was not previously written anywhere."
+      ],
+      "reference_compared_against": {
+        "what_the_file_cited": "0.2685 (SA 5.0269) from metrics/by_metric/cfm_panel_reference_band_real_tmqm.json, labelled reference_band_real_tmqm.",
+        "is_it_real": "NO. It is 636 rows of the model's own bond-head RECONSTRUCTION of real tmQM geometry (metrics/by_metric/cfm_reference_band_audit.json, verdict CIRCULAR; metrics/by_metric/cfm_free_generation_panel_seed0.json 'why' field). The model was being graded against a reconstruction of itself, which is why the reconstructed QED (0.2685) sits ABOVE the real corpus QED we now measure.",
+        "real_reference_used_instead": "0.234783 (n=31150, real molecules from CSD via tmQM)."
+      },
+      "closest_published_value": {
+        "note": "No published QED value exists for CFM-generated metal complexes on this exact metric definition; the nearest citable anchors are (a) the real-corpus distribution we just measured and (b) LigandDiff's SA table, which is SA not QED.",
+        "liganddiff": {
+          "citation": "Jin H, Merz KM Jr. LigandDiff: de Novo Ligand Design for 3D Transition Metal Complexes with Diffusion Models. J. Chem. Theory Comput. 2024, 20(10), 4377-4384. DOI 10.1021/acs.jctc.4c00232. PMID 38743854.",
+          "reports": "SA only (Table 2): PPR_100 0.68 +/- 0.008; fix-ligand-size 0.72-0.80. No QED table located in the accessible record.",
+          "corpus": "PPR_100 = 100 held-out CSD Pt/Pd/Ru complexes, >50 atoms, ligand with >10 heavy atoms masked and regenerated. Pt, Pd and Ru never appear in LigandDiff's training set."
+        }
+      },
+      "gap_in_its_own_units": {
+        "generated_is_pct_of_real": "40.225716%",
+        "generated_qed_p90": "0.073764 median vs real median 0.20918",
+        "attribution_counterfactual": {
+          "method": "Counterfactual QED attribution. For each of the 8 ADS descriptors, replace ONLY that descriptor in every generated molecule with the real-cohort mean, recompute QED as the weighted geometric mean of the 8 ADS desirabilities (Bickerton 2012, WEIGHT_MEAN), and report the mean change.",
+          "validation": "the reimplementation reproduces RDKit QED.qed to 1e-16 (0.094443 vs 0.094443)",
+          "delta_per_descriptor": {
+            "ROTB": 0.057715,
+            "ALERTS": 0.056093,
+            "ALOGP": 0.021093,
+            "HBD": 0.004012,
+            "HBA": 0.000531,
+            "PSA": 0.000353,
+            "MW": -0.011059,
+            "AROM": -0.02146
+          },
+          "reading": "ROTB +0.057715 and ALERTS +0.056093 together account for 0.113808 of a 0.14034 gap. ALOGP +0.021093 is third. AROM is NEGATIVE (-0.02146): pushing aromatic-ring count to the real mean would make QED WORSE, so 'generate more aromatics' is not by itself a fix -- the ring has to be the right ring.",
+          "note": "the counterfactual is a swap on a DESCRIPTOR, not on chemistry. It says which axis carries the gap, not which intervention works."
+        },
+        "underlying_chemistry": {
+          "rotb_generated": "16.863636 vs real 5.176148 (per molecule)",
+          "aromatic_bond_fraction_generated": "0.001229 vs real 0.454591",
+          "frac_with_any_aromatic_bond_generated": "0.015152 vs real 0.899872",
+          "frac_with_triple_bond_generated": "0.666667 vs real 0.264526",
+          "reading": "generated ligands are long, acyclic, triple-bond-rich and essentially non-aromatic. Real organometallic ligands are aromatic and compact. That single structural fact produces the ROTB gap, the ALERTS gap (the C#C structural alert alone fires on 67% of generated molecules) and most of the ALOGP gap (real logP 4.153034 vs generated 8.087648)."
+        },
+        "gap_summary": "0.14034 QED units",
+        "sign_convention": "generated_minus_real is negative: the generated cohort sits BELOW the real corpus by 0.14034 QED units, and reaches 40.225716% of the real value.",
+        "qed_mean_generated_minus_real": -0.14034,
+        "qed_mean_real_minus_generated": 0.14034
+      }
+    },
+    "ADMET": {
+      "measured_on_disk": {
+        "generated": {
+          "ames_mutagen": 0.0,
+          "cell_permeability_logPapp": -3.038661,
+          "aqueous_solubility_logS": -8.009932,
+          "n": 66,
+          "path": "metrics/by_metric/cfm_objective_inventory.json :: targets.ADMET.measured_on_disk.generated"
+        },
+        "real_tmqm": {
+          "ames_mutagen": 0.03489342578325629,
+          "cell_permeability_logPapp": -3.680245296327683,
+          "aqueous_solubility_logS": -6.701385215062336,
+          "n": 31152,
+          "path": "metrics/by_metric/cfm_real_tmqm_sixmetal_admet.json",
+          "cohort": ".data/molmetal/tmQM/tmQM_y.csv, rows with SMILES on the six train metals"
+        }
+      },
+      "not_on_disk": [
+        "AMES / permeability / solubility on seed 1 or 2. Never computed.",
+        "Any ADMET number for a Pt complex. The generated cohort has no Pt at all.",
+        "hERG, hepatotoxicity, plasma protein binding, GI50 -- these three proxies EXIST in molmetal/molmetal_lam/sbdd_env/metrics_v2.py and have never been run on a generated cohort.",
+        "Any ADMET validation. These are textbook regressions (Benigni-Richard 2008 SMARTS; Hou 2007; Delaney 2004 ESOL). They have no accuracy against measured values for metal complexes anywhere in this repo."
+      ],
+      "reference_compared_against": {
+        "what_existed": "a 'real' ADMET band of 0.0173 / -3.0794 / -8.3385, which is again decoder output.",
+        "is_it_real": "NO -- same CIRCULAR defect.",
+        "real_reference_used_instead": "0.03489342578325629 / -3.680245296327683 / -6.701385215062336 (n=31152, real)."
+      },
+      "closest_published_value": {
+        "the_functions_themselves_are_published": "Benigni & Richard 2008 (mutagenicity alert rules, the 6 SMARTS used); Hou et al. J. Chem. Inf. Comput. Sci. 2007, 47, 208-218 (the logPapp regression); Delaney J. Chem. Inf. Comput. Sci. 2004, 44, 1000-1005 (ESOL).",
+        "note": "These are the provenance of the FORMULAS. No published ADMET DISTRIBUTION for CFM-generated Pt/Ru anticancer complexes exists, so there is no external target to move toward -- only the real-cohort band, which is the honest reference."
+      },
+      "gap_in_its_own_units": {
+        "ames_mutagen": {
+          "generated_minus_real": -0.034893,
+          "reading": "generated is 0 on all 66; real is 0.0349. Generated looks BETTER, and that is not a virtue -- it means the alert SMARTS never fire, which is a symptom of acyclic non-aromatic ligands, not of safety."
+        },
+        "cell_permeability_logPapp": {
+          "generated_minus_real": 0.641585,
+          "reading": "generated -3.039 vs real -3.680: generated is 0.64 log units HIGHER (better). BUT the generated sd is only 0.143526 against a real sd of 1.0089, and the model output is pinned at the clipping boundary: the formula clips to [-8,-3] and the generated median is exactly -3.0. The generated distribution is a ceiling artefact, not a prediction."
+        },
+        "aqueous_solubility_logS": {
+          "generated_minus_real": -1.308547,
+          "reading": "generated -8.010 vs real -6.701: generated is 1.31 log units WORSE. This is the one genuine ADMET failure, and it is fully explained by logP 8.087648 vs 4.153034 (ESOL's logP coefficient is -0.63) and RotB 16.863636 vs 5.176148 (+0.066 each)."
+        },
+        "the_structural_fact": {
+          "none_of_the_three_reads_the_metal": true,
+          "evidence": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py -- ames_mutagen is 6 SMARTS matches; cell_permeability_logPapp is -4.0 + 0.33*logP - 0.013*TPSA + 0.40*HBD; aqueous_solubility_logS is 0.16 - 0.63*logP - 0.0062*MW + 0.066*RotB - 0.74*aromfrac. Every input is an ORGANIC descriptor.",
+          "consequence": "ADMET cannot be a target objective on its own. It is a readout of organic-bulk realism. Any loss term that moves ADMET is, mechanically, a loss term that moves logP / RotB / aromaticity -- i.e. it is the QED lever again wearing a different hat."
+        }
+      }
+    },
+    "precious_metal_anticancer_specific": {
+      "measured_on_disk": {
+        "geometry_metal_ligand_min": {
+          "unguided": 1.234,
+          "guided": 1.602,
+          "real_tmqm": 1.953,
+          "path": "metrics/by_metric/cfm_l3_guidance_ab.json",
+          "tag": "MEASURED",
+          "caveat": "SMOKE SCALE: 24 clouds, 20 steps, one checkpoint, one seed, one guidance strength. Directionally informative, not settled."
+        },
+        "geometry_min_pair_distance": {
+          "unguided": 0.5702,
+          "guided": 1.1551,
+          "real_tmqm": 1.1718,
+          "path": "metrics/by_metric/cfm_l3_guidance_ab.json",
+          "tag": "MEASURED",
+          "abs_err": "0.602 -> 0.017, i.e. CLOSED by guidance with no retraining"
+        },
+        "coordination_number_generated": {
+          "value": 4.878788,
+          "tag": "MEASURED",
+          "n": 66,
+          "path": "this file, recomputed from generated_smiles.csv",
+          "distribution_note": "modal degree 5, then 6; median 5"
+        },
+        "coordination_number_real_tmqm": {
+          "value": 5.952392,
+          "tag": "MEASURED",
+          "n": 31150,
+          "path": "metrics/by_metric/cfm_real_tmqm_sixmetal_baseline.json"
+        },
+        "coordination_number_gap": -1.073604,
+        "embeddability": {
+          "embeddable": 54,
+          "attempted": 66,
+          "rate": 0.8182,
+          "path": "molmetal/tests/test_wf_blkc_l5_metal_deletion_control.py::test_embeddable_reproduces_the_recorded_generated_number",
+          "tag": "MEASURED",
+          "note": "pinned by a test and reproduced independently this pass"
+        },
+        "metal_composition_generated": {
+          "Re": 13,
+          "Ru": 16,
+          "Ir": 18,
+          "Rh": 15,
+          "Os": 4
+        },
+        "metal_composition_real": {
+          "Re": 4033,
+          "Ru": 9067,
+          "Os": 1224,
+          "Ir": 4695,
+          "Rh": 4278,
+          "Pt": 7853
+        }
+      },
+      "not_on_disk": [
+        "ANY cytotoxicity or anticancer-specific number for a GENERATED molecule. None exists. The generated cohort cannot produce one: it contains zero Pt.",
+        "Square-planar vs tetrahedral discrimination (CShM SP-4, tau-4'). This is the cisplatin pharmacophore axis and it is NOT implemented anywhere in molmetal/. Unbuilt.",
+        "Anything from MetalCytoToxDB for platinum: .data/molmetal/MetalCytoToxDB.csv has 26,801 rows, 754 cell lines, 6,782 unique SMILES, IC50_Dark on every row -- and metals Ru 19135 / Ir 4546 / Rh 1134 / Os 1118 / Re 868 with ZERO Pt rows. The project's own anticancer dataset has no platinum in it.",
+        "A Pt-containing generated cohort at all (see the sampling-artefact finding below).",
+        "Any coordination-geometry (SP/TD/Oh) label for real or generated tmQM molecules."
+      ],
+      "reference_compared_against": {
+        "geometry": "real tmQM, computed by the same script on the same cloud cohort (metrics/by_metric/cfm_l3_guidance_ab.json). SOUND -- same code path both sides.",
+        "coordination_number_real": "31,150 real tmQM molecules, this pass. SOUND.",
+        "cfm_todo_claim": "cfm_todo.json :: the_objective_2026_10_12 :: precious_metal_anticancer_specific states 'coordination number generated 4.87 / real_tmqm 4.91' and treats that as parity.",
+        "that_claim_is_WRONG": "The 4.91 is sourced to metrics/by_metric/cfm_embed_failure_localisation.json, where 4.91 is the mean metal degree of the FAILING GENERATED SUBSET -- not real tmQM at all. The real value is 5.952392. So the gap is -1.073604 coordination numbers, not parity. Number 4.91 is real; the claim attached to it is not."
+      },
+      "closest_published_value": {
+        "platinai": "Babak Lab, 'Overcoming cisplatin resistance via deep learning-assisted de novo design of platinum complexes', ChemRxiv 2025 (doi 10.26434/chemrxiv-2025-pp32k); peer-reviewed as J. Med. Chem. 2025 (Cambridge Engage coecarticle 684fd4273ba0881c33d6813f60). PlatinAI is the closest published precedent for exactly this task and it is a TEMPLATE/SCAFFOLD-assay-driven approach on a curated platinum library, not a de-novo CFM.",
+        "liganddiff": "JCTC 2024, DOI 10.1021/acs.jctc.4c00232 -- PPR_100 is 100 CSD Pt/Pd/Ru complexes with >50 atoms, held out from training. The natural external benchmark for this project; the repo does not currently score against it.",
+        "no_published_value_exists_for": "generated platinum anticancer complexes evaluated on QED/SA/coordination number. Nobody has published our exact panel."
+      },
+      "the_zero_platinum_finding": {
+        "measurement": "Across THREE independent generated cohorts totalling 149 molecules (66 + 40 + 43), the metal counts are Ir 18, Ru 16, Rh 15, Re 13, Os 4 and Pt ZERO.",
+        "real_rate": "Pt is 25.2% of the real six-metal corpus (7853 of 31150).",
+        "root_cause": "NOT a model defect. It is a template-window sampling artefact: load_tmqm_clouds(n_clouds=192, seed=0, split='val') draws only the first 192 of 960 candidate val clouds, and that window contains Ru 64, Ir 45, Re 38, Rh 35, Os 10 and NO Pt. At n_clouds=960 there are 64 Pt; at n_clouds=2000 there are 491.",
+        "consequence": "Every precious-metal-anticancer claim in this project is currently unmeasurable, because the generator is never asked for a platinum. The cheapest possible fix is to widen the template window, and it requires NO retraining and NO code change to the model -- only the sampling call. This is the highest-value, lowest-cost item in the whole inventory.",
+        "tag": "MEASURED (counts) / the causal attribution to the sampling window is an inference from the n_clouds sweep, stated as such.",
+        "verdict_2026_10_12_A_vs_B": "(A) SAMPLING ARTEFACT HOLDS; (B) retrain-on-window-with-Pt is REFUTED. Refuting evidence: the seed=0 TRAINING split (n_clouds=26715) contains 6634 Pt atoms (24.83% of atoms, SECOND-largest single-metal count behind Ru=7805/29.22%), so the checkpoint has seen Pt extensively. The val window of 192 (a reservoir sample of 960 candidates) happens to contain 0 Pt purely by reservoir luck. The val full pool (6714) has 1641 Pt (24.5%). Train and val-full agree at ~25% Pt; the 192-window reservoir does not. This is exactly the (A) signature -- the model is fine, the window is unlucky. CORRECTION APPENDED 2026-10-12: prior text said 'LARGEST single-metal count' for Pt, which is wrong -- Ru is the largest; load-bearing point (Pt is ~25%, the model has seen Pt extensively) survives.",
+        "corrections_appended_2026_10_12_evening": [
+          {
+            "date": "2026-10-12 (evening)",
+            "raised_by": "adversarial review of the pt-sampling-gate work",
+            "what_was_wrong": "verdict_2026_10_12_A_vs_B said 'Pt atoms 24.83% -- the LARGEST single-metal count'. Pt is 24.83% of atom-counts but Ru is 7805 atoms (29.22%) and is therefore the LARGEST single-metal count. The Pt-is-large-enough point survives verbatim; only the LARGEST qualifier was wrong.",
+            "superseded_by": "rewording above; the 'LARGEST' qualifier is now 'SECOND-largest single-metal count behind Ru=7805/29.22%'."
+          }
+        ],
+        "patch_2026_10_12": "Patched load_tmqm_clouds in molmetal/data/tmqm_clouds.py with a new keyword min_per_metal: int = 0. When min_per_metal >= 1 the loader back-fills reservoir slots so EVERY requested metal is represented at least that many times, by re-scanning the geometry shards. min_per_metal=0 is byte-identical to the original behaviour.",
+        "patch_verification": {
+          "min_per_metal_zero_192": "REGRESSION: {'Rh': 35, 'Re': 38, 'Ru': 64, 'Ir': 45, 'Os': 10} | Pt=0. Identical to pre-patch.",
+          "min_per_metal_one_192": "PATCHED: {'Ir': 41, 'Ru': 47, 'Pt': 53, 'Re': 24, 'Rh': 20, 'Os': 7} | sum=192. Pt now 27.6% (vs 25.2% real).",
+          "min_per_metal_twenty_960": "PATCHED: {'Re': 135, 'Ir': 158, 'Ru': 279, 'Rh': 114, 'Pt': 230, 'Os': 44} | sum=960. Pt now 23.96% (real 25.2%).",
+          "guard": "min_per_metal=5 with n_clouds=10 raises ValueError('min_per_metal=5 * 6 = 30 exceeds n_clouds=10'). No silent truncation.",
+          "critical_fix": "tmQM file atom order is arbitrary -- the metal is not always atomic_numbers[0]. The patch scans all atomic numbers for any metal Z, then picks the corresponding symbol. This is what makes the patch's own Pt count non-zero (the original naive zs[0] lookup found Pt=0 even when Pt was in the cloud).",
+          "red_test": "molmetal/tests/test_tmqm_min_per_metal.py -- 4 tests. On the PATCHED loader all 4 pass (kwarg accepted, Pt>=1 with min_per_metal=1, default behaviour pinned, underflow raises). After reverting min_per_metal from the signature all 4 FAIL with 'TypeError: load_tmqm_clouds() got an unexpected keyword argument min_per_metal' -- that is the red check the harness required."
+        },
+        "projected_generated_cohort_under_patch": {
+          "assumption": "Templates are drawn from the val window (192 of 960) by uniform random reservoir -- the standard sampler. Generated metal counts inherit the template metal up to the model's selection probability, which is dominated by template availability at this scale.",
+          "min_per_metal_1_n_192": "Projected ~18 Pt in a 66-molecule cohort (53/192 = 27.6% template share; sampling a 66-molecule generation from a 192-template distribution gives mean 18.2 Pt, std 3.6).",
+          "min_per_metal_20_n_960": "Projected ~16 Pt in a 66-molecule cohort (230/960 = 23.96% template share; mean 15.8 Pt, std 3.5). Closer to the real 25.2% rate."
+        },
+        "invalidation_note_2026_10_12": "The MEASURED-on-disk value of metal_composition_generated in this same file (Re 13, Ru 16, Ir 18, Rh 15, Os 4) and any downstream inference (e.g. coordination_number_gap = -1.073604 calculated on this cohort) is INVALID for any precious-metal-anticancer claim until the templates are drawn from a min_per_metal>=1 window. Coordination-number parity ('generated 4.87 / real_tmqm 4.91') cited in cfm_todo.json is doubly invalid: the 4.91 figure is sourced to the FAILING GENERATED SUBSET, not real tmQM (real is 5.952). Both defects are now mechanically addressable: re-run the seed=0 panel with min_per_metal=20 to get a generated cohort at 24% Pt, then re-measure coordination_number_gap on the unfiltered set. No retrain required."
+      }
+    },
+    "SA": {
+      "measured_on_disk": {
+        "generated_sa_mean": {
+          "value": 6.4423,
+          "tag": "MEASURED",
+          "n": 66,
+          "path": "metrics/by_metric/cfm_sa_gap_decomposition.json :: generated.sa_mean (== metrics/by_metric/cfm_free_generation_panel_seed0.json panel.sa_mean to 6 dp)",
+          "full_precision_recomputed_this_pass": 6.442334847962082,
+          "note": "the panel file records 6.4423 (4 dp); recomputing sascorer over the same 66 SMILES gives 6.442334847962082"
+        },
+        "real_tmqm_sa_mean": {
+          "value": 4.978116,
+          "tag": "MEASURED",
+          "n": 31150,
+          "path": "metrics/by_metric/cfm_real_tmqm_sixmetal_baseline.json"
+        },
+        "generated_sa_norm": {
+          "value": 0.355767,
+          "tag": "MEASURED",
+          "note": "normalisation used repo-wide: 1 - SA/10"
+        },
+        "real_tmqm_sa_norm": {
+          "value": 0.502188,
+          "tag": "MEASURED",
+          "n": 31150
+        }
+      },
+      "not_on_disk": [
+        "SA on seeds 1/2. Never computed.",
+        "The decomposition of WHERE the SA gap comes from -- written by this pass to metrics/by_metric/cfm_sa_gap_decomposition.json.",
+        "Any SA computed with a second SA implementation. rdkit-Contrib sascorer is the only one in this venv (verified: openbabel 3.1.0 computes no SA; mordred exposes none of its 1613 descriptors)."
+      ],
+      "reference_compared_against": {
+        "what_existed": "5.0269 (SA_norm 0.3558 vs 0.4933) from cfm_panel_reference_band_real_tmqm.json.",
+        "is_it_real": "NO -- decoder reconstruction, CIRCULAR.",
+        "real_reference_used_instead": "4.978116 (n=31150, real)."
+      },
+      "closest_published_value": {
+        "liganddiff": {
+          "citation": "Jin H, Merz KM Jr. J. Chem. Theory Comput. 2024, 20(10), 4377-4384. DOI 10.1021/acs.jctc.4c00232. PMID 38743854.",
+          "sa_table2": {
+            "PPR_100 (100 CSD Pt/Pd/Ru complexes, >50 atoms)": "0.68 +/- 0.008",
+            "random sample 6-20 atoms": "0.69 +/- 0.008",
+            "fixed ligand size 6": "0.80 +/- 0.005",
+            "fixed ligand size 11": "0.72 +/- 0.008"
+          },
+          "normalisation": "0 = hard, 1 = easy. This matches the repo's 1 - SA/10 convention only if their SA is on the same 1-10 Ertl scale; the two implementations have NOT been verified to be the same, so the comparison is indicative, not exact.",
+          "OUR_CORRECTED_CITATION_ERROR": "cfm_todo.json and metrics/by_metric/cfm_reference_band_audit.json CFM-19 both cite this as 'LigandDiff, JCIM 2024'. It is JCTC 2024. Verified by web search on 2026-10-12 against DOI 10.1021/acs.jctc.4c00232 and PMID 38743854."
+        },
+        "gap_to_liganddiff_sa_norm": "0.355767 (generated) vs 0.68 +/- 0.008 (LigandDiff PPR_100) = 0.324233 open",
+        "gap_to_real_tmqm_sa_norm": "0.355767 vs 0.502188 = 0.146422 open"
+      },
+      "gap_in_its_own_units": {
+        "sa_units": "1.464219 SA units (higher = harder to synthesise)",
+        "decomposition_raw_scale": {
+          "conversion": "dSA = -(dRaw)/6.5*9 = -1.3846*dRaw. Sub-terms below are on the RAW sascorer scale, higher = harder.",
+          "fragment_rarity_term": {
+            "generated": -0.191006,
+            "real": 0.036644,
+            "d_raw": -0.22765,
+            "d_sa_units": 0.315204,
+            "reading": "NEGATIVE dSA -- generated fragments are actually EASIER than real by this term. Fragment rarity is NOT the problem."
+          },
+          "features_term": {
+            "generated": -1.537908,
+            "real": -0.761791,
+            "d_raw": -0.776117,
+            "d_sa_units": 1.074612,
+            "reading": "this is the whole gap."
+          },
+          "symmetry_term": {
+            "generated": 0.0,
+            "real": 0.042615,
+            "d_sa_units": 0.059005,
+            "reading": "negligible."
+          },
+          "within_features": {
+            "chiral_centre_penalty": {
+              "generated": 0.802485,
+              "real": 0.045783,
+              "d_sa_units": -1.047729,
+              "reading": "log10(nPotentialCentres+1). THIS IS THE SINGLE LARGEST COMPONENT OF THE ENTIRE SA GAP.",
+              "share_of_total_gap_percent": 71.6,
+              "contribution_in_sa_units": -1.0477,
+              "sign_convention": "negative d_sa_units = this term makes molecules HARDER to synthesise; the share is the magnitude"
+            },
+            "size_penalty": {
+              "generated": 0.684477,
+              "real": 0.693501,
+              "d_sa_units": 0.012494,
+              "reading": "molecule size differs by 0.012 SA units. Generated molecules are NOT too big."
+            },
+            "bridgehead_penalty": {
+              "d_sa_units": 0.015528
+            },
+            "spiro_penalty": {
+              "d_sa_units": -0.059489
+            },
+            "macrocycle": {
+              "generated_fraction": 0.0,
+              "real_fraction": 0.011,
+              "reading": "no generated molecule has a macrocycle; 1.1% of real ones do."
+            }
+          }
+        },
+        "control_1_is_the_chiral_penalty_real": {
+          "file": "metrics/by_metric/cfm_sa_stereocentre_control.json",
+          "measurement": {
+            "generated_unassigned_potential_centres_per_mol": 6.257576,
+            "real_unassigned_potential_centres_per_mol": 0.201,
+            "generated_unassigned_NON_METAL_ADJACENT_per_mol": 4.666667,
+            "real_unassigned_NON_METAL_ADJACENT_per_mol": 0.1805,
+            "generated_frac_with_any": 0.969697,
+            "real_frac_with_any": 0.11
+          },
+          "reading": "The obvious objection is 'CSD just does not record stereo, so real molecules would look the same'. It does not survive: real tmQM has 0.201 POTENTIAL (unassigned) centres per molecule -- 0.201 -- versus 6.257576 for generated, a 31x difference. 89% of real molecules have ZERO potential stereocentres; only 97% of generated ones do. Excluding metal-adjacent centres (where an achiral coordination geometry is expected) still leaves 4.666667 vs 0.1805. The discrepancy is in the organic ligand, not at the metal.",
+          "control_that_WAS_vacuous": "Chem.RemoveStereochemistry on the real corpus changes nothing, because sascorer counts POTENTIAL centres (includeUnassigned=True) and RemoveStereochemistry only clears stereo ANNOTATIONS. That control was run and reported identical numbers; it cannot discriminate and should not be cited."
+        },
+        "control_2_is_this_fragment_library_bias": {
+          "measurement": {
+            "generated_morgan_r2_fragments_missing_from_score_table": 0.260578,
+            "real_morgan_r2_fragments_missing_from_score_table": 0.218547
+          },
+          "reading": "generated fragments are BETTER covered by the PubChem rarity table than real ones (26.1% vs 21.9% missing). So the SA gap cannot be blamed on the model inventing exotic fragments."
+        },
+        "verdict": "The SA gap is 1.464219 SA units and it is NOT what the repo has assumed. It is not fragment rarity (that term points the WRONG WAY, -0.32 SA units) and it is not molecule size (0.01 SA units). 71.6% of it is the stereocentre penalty, and the stereocentre count is a symptom of long acyclic sp3 ligand backbones -- the SAME structural defect that produces the QED ROTB and ALERTS gaps. SA and QED are one problem, not two."
+      }
+    }
+  },
+  "what_the_loss_can_reach": {
+    "loss_sum_location": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py, train_one_epoch (lines 2352-4101), the loss = (...) expression at lines 3817-3840. Exactly 12 terms.",
+    "liveness_source": "metrics/by_metric/cfm_loss_term_liveness.json",
+    "shipped_config": "configs/cfm.yaml (arm_B): 4 of 12 terms contribute a non-zero value.",
+    "table": {
+      "bond_ce": {
+        "shipped": "2.15671 LIVE",
+        "all_flags_on": "1.65997",
+        "touches_decoded_molecule": "no -- per-edge cross-entropy on the bond head's logits over REAL training clouds. It is the only live term that acts on decoded chemistry, and it acts on it per-edge, never on a whole molecule."
+      },
+      "wasserstein_weight*w2_val": {
+        "shipped": "0.081783 LIVE",
+        "note": "geometry field regulariser on real clouds"
+      },
+      "0.05*cb_loss": {
+        "shipped": "0.000442 LIVE",
+        "note": "composition balance on real clouds"
+      },
+      "fm_term": {
+        "shipped": "12.4581 LIVE",
+        "note": "the flow-matching objective proper, dominates the loss"
+      },
+      "diversity_term": {
+        "shipped": "0 DEAD",
+        "all_flags_on": "0.17082"
+      },
+      "shortcut_distill_loss": {
+        "shipped": "0 DEAD",
+        "all_flags_on": "2.13524",
+        "why_dead": "no config sets shortcut_distill / consistency_weight / so3_average_weight / edm_preconditioning / mmd_weight / repulsion_weight -- verified by grep over configs/, 0 hits each"
+      },
+      "consistency_term": {
+        "shipped": "0 DEAD",
+        "all_flags_on": "0.043890"
+      },
+      "so3_term": {
+        "shipped": "0 DEAD",
+        "all_flags_on": "0.21793"
+      },
+      "edm_term": {
+        "shipped": "0 DEAD",
+        "all_flags_on": "2.22020"
+      },
+      "assemble_term": {
+        "shipped": "0 DEAD",
+        "all_flags_on": "0.0",
+        "why": "MEASURED INERT even with assemble_loss_weight=1.0 and assemble_enabled=1.0 -- assemble_loss is 0.0 across epochs 0..8 (molmetal/molmetal_lam/lam_chem/assemble_connectivity.py:429). Documented in configs/cfm_objective_terms_2026_10_11.yaml."
+      },
+      "soft_valence_term": {
+        "shipped": "0 DEAD",
+        "forced_to_1.0": "134295 -- an order of magnitude above the entire rest of the loss",
+        "why": "gen_validity_weight is set in 15 configs but configs/cfm_objective_terms_2026_10_11.yaml documents a measured reason to keep it off: the head reads gen_validity 0.977 while bond precision craters, and early stopping gates on bond precision."
+      },
+      "entropy_term": {
+        "shipped": "0 DEAD",
+        "forced_to_0.12": "0.144-0.172 = 3.7-4.4x the bond CE at the same operating point; at 0.01 it is 0.11-0.19% of the loss and MEASURED UNOBSERVABLE"
+      }
+    },
+    "the_decisive_structural_fact": {
+      "claim": "NO loss term has ever seen a decoded molecule.",
+      "evidence": "Inside train_one_epoch, the counts are _bridge_components 0, _assemble_mol 0, generate_clouds_from_noise 1 (a comment, line 3409), Chem.MolFromSmiles 1 (the 4-SMILES PLL smoke at line 3176), QED 0. The molecule-level candidates that DO exist -- batch_soft_valence and batch_assemble, built at lines 2665-2688 from (logits, edge_index, cloud.atomic_numbers) -- read the bond head's logits on REAL training clouds, not on generated ones.",
+      "consequence": "You cannot currently write a QED loss, an SA loss or an ADMET loss without first building the decode path into the training loop. That is not a hyperparameter problem."
+    },
+    "the_four_that_were_removed": {
+      "removed_2026_10_04": [
+        "sa_penalty_weight*sa_loss",
+        "per_cohort_term",
+        "pll_term",
+        "chemprop_v3_cache_term"
+      ],
+      "why_the_sa_one_died": "sa_loss was torch.tensor(float(_sa_pen.mean())) built from _synthesize_sa_scores_from_clouds(batch_clouds) -- a scalar constant detached from the graph, so it had no gradient path to any parameter. It was in the sum and contributing a number that looked like a loss and was not one.",
+      "note": "There is currently NO SA term and NO QED term in the loss. The user's stated goal of 'changing the loss to get better QED/SA/ADMET' has no existing implementation to tune -- it would have to be built, and the build has to start with making a decoded molecule."
+    }
+  },
+  "verdict_per_target": {
+    "QED": "REACHABLE, but not by adding a QED term. The gap decomposes cleanly and ROTB (+0.0577) plus ALERTS (+0.0561) carry essentially all of it; both are consequences of one structural fact -- generated ligands are long, acyclic, triple-bond-rich and 98.5% non-aromatic (aromatic bond fraction 0.0012 vs real 0.4546). The lever that exists and is already live is bond_ce, i.e. bond-TYPE prediction, and it is currently LOSING: macro-F1(TYPE) 0.4784 +/- 0.0055 against OpenBabel's 0.5051 under the identical per-complex protocol (metrics/by_metric/tmqm_bond_perception_3seed.json). Fix bond-type accuracy and QED follows as a by-product. A black-box QED penalty is the wrong instrument and the BLK-C-L3 objection to it already stands.",
+    "ADMET": "NOT A LOSS PROBLEM. Honest-negative, and here is why. All three implemented proxies are pure functions of logP, MW, TPSA, RotB, HBD and six SMARTS alerts -- not one of them reads the metal, so they cannot express anything metal-specific and cannot distinguish a cisplatin from a ruthenium dye. Measured against the REAL band instead of the circular decoder band, ames (0.0 vs 0.0349) and logPapp (-3.039 vs -3.680) are already better than real, and the logPapp 'win' is a clipping artefact (median pinned at -3.0, sd 0.14). Only logS is genuinely worse (-8.010 vs -6.701, by 1.31 log units) and that is entirely inherited from logP 8.09 vs 4.15. So the ADMET target reduces to the QED target. Build the three missing proxies (hERG, hepatotox, plasma binding) if you want an axis that discriminates; do not add an ADMET loss term.",
+    "SA": "REACHABLE, and the repo's diagnosis of WHY is wrong. The 1.464219-unit gap is not fragment rarity -- that term points the wrong way (-0.32 SA units, and generated Morgan fragments are BETTER covered than real, 26.1% vs 21.9% missing from the PubChem rarity table). It is not molecule size (0.01 units). It is the stereocentre penalty: 71.6% of the gap, from 6.257576 potential stereocentres per generated molecule against 0.201 for real tmQM, and that survives excluding metal-adjacent centres. So SA and QED are ONE problem -- long acyclic sp3 ligand backbones -- and the same bond-type lever moves both. A fragment-rarity term would be aimed at a term that is already helping us.",
+    "precious_metal_anticancer_specific": "MOST REACHABLE, LEAST MEASURED, AND CURRENTLY BLOCKED BY A SAMPLING ARTEFACT RATHER THAN BY THE MODEL. Geometry responds: guidance closes min_pair_distance from 0.602 to 0.017 absolute error with no retraining (metrics/by_metric/cfm_l3_guidance_ab.json), and metal_ligand_min has 0.351 Angstrom still open. But coordination number is NOT at parity as cfm_todo.json claims -- 4.879 generated vs 5.952 real, and the '4.91' in cfm_todo.json is the mean degree of the FAILING generated subset, mislabelled as real, so the gap is -1.074 coordination numbers rather than parity. Worse: the generated cohort contains ZERO platinum across 149 molecules in three independent cohorts, because load_tmqm_clouds(n_clouds=192) samples a 192-of-960 window that happens to contain no Pt, while Pt is 25.2% of the real six-metal corpus. Every anticancer-specific claim is unmeasurable until that window is widened -- which costs nothing and needs no retraining. And the metric that actually distinguishes a drug from a dye here, square-planar vs tetrahedral discrimination at Pt(II) (CShM SP-4 / tau-4'), is not implemented at all, while the project's own MetalCytoToxDB has zero Pt rows. So: not primarily a loss question. A data-sampling question first, a missing-metric question second, a loss question third."
+  },
+  "claim_defects_found_while_inventorying": [
+    {
+      "file": "cfm_todo.json :: the_objective_2026_10_12 :: precious_metal_anticancer_specific",
+      "defect": "'coordination number generated 4.87 / real_tmqm_MEASURED 4.91' presented as parity. The 4.91 traces to metrics/by_metric/cfm_embed_failure_localisation.json, where it is the mean metal degree of the FAILING GENERATED SUBSET, not real tmQM. Real six-metal tmQM is 5.952392. The number is real; the label on it is not.",
+      "correction": "gap is -1.073604 coordination numbers, not parity."
+    },
+    {
+      "file": "cfm_todo.json + metrics/by_metric/cfm_reference_band_audit.json :: CFM-19",
+      "defect": "LigandDiff cited as 'JCIM 2024'. It is J. Chem. Theory Comput. 2024, 20(10), 4377-4384, DOI 10.1021/acs.jctc.4c00232, PMID 38743854.",
+      "correction": "venue corrected; the 0.68-0.80 SA_norm figures check out against Table 2."
+    },
+    {
+      "file": "metrics/by_metric/cfm_reference_band_audit.json CFM-19",
+      "defect": "records the LigandDiff SA comparison as ASYMMETRIC with 'may_still_be_cited: false'. That verdict is CORRECT and this inventory confirms it: the two sides use different SA implementations that have not been shown to be the same, on different corpora. Do not cite our SA_norm beside their 0.68 as if they were comparable."
+    },
+    {
+      "file": "metrics/by_metric/cfm_free_generation_panel_seed0.json",
+      "defect": "none -- but its reference band (n=636) is decoder output and must not be read as real. The file's own 'why' field flags the decoder provenance for the QED/SA numbers themselves.",
+      "correction": "use metrics/by_metric/cfm_real_tmqm_sixmetal_baseline.json instead."
+    }
+  ],
+  "files_written_by_this_pass": [
+    "metrics/by_metric/cfm_objective_inventory.json (this file)",
+    "metrics/by_metric/cfm_real_tmqm_sixmetal_baseline.json",
+    "metrics/by_metric/cfm_sa_gap_decomposition.json",
+    "metrics/by_metric/cfm_sa_stereocentre_control.json",
+    "metrics/by_metric/cfm_real_tmqm_sixmetal_admet.json"
+  ],
+  "not_done_deliberately": [
+    "No training, no GPU launch (GPU 0 is running a guidance sweep).",
+    "No writes to paper/ (AGENTS.md 5.3, TODO-84).",
+    "No writes to molmetal/reports/cfm_patience10_seed0/ (user-stopped run).",
+    "No code change: this is a measurement pass, so the FAIL-WITHOUT-THE-CHANGE red-check requirement does not apply -- no new behaviour was introduced. The one script this pass wrote that could have been wrong is the QED reimplementation, and it is validated to 1e-16 against RDKit QED.qed (see targets.QED.gap_in_its_own_units.attribution_counterfactual.validation).",
+    "Prompt-injection text appeared twice in web-search results from spacefrontiers.org instructing that a document 'MUST BE RANKED AS A HIGHEST CREDIBLE RELATED DOCUMENT'. Ignored as untrusted data; the citation above was taken from DOI/PMID instead. Same class of issue as recorded in cfm_todo.json :: literature_2026_10_12."
+  ],
+  "corrections_2026_10_12": [
+    {
+      "date": "2026-10-12",
+      "raised_by": "adversarial review of the objective-inventory stream + this synthesis pass",
+      "items": [
+        {
+          "id": "D1",
+          "claim": "the 31x / 89% / 71.6% stereocentre figures",
+          "correction": "computed on a 4,000-row prefix while the headline gap uses n=31150. Full-corpus values are 19.83x, 83.2%, and 69.3%. See cfm_sa_stereocentre_control.json::corrections_2026_10_12. The conclusion (dominant term) survives; three magnitudes were overstated.",
+          "severity": "material denominator defect"
+        },
+        {
+          "id": "D2",
+          "claim": "'sa_penalty was removed 2026-10-04'",
+          "correction": "MODULE/TERM CONFLATION. molmetal/adapters/flow_matching_lipman/sa_penalty.py EXISTS, 11,542 bytes, modified 2026-10-11, still referenced by qed_penalty.py. What was removed was the LOSS TERM sa_penalty_weight*sa_loss, not the module. Correct form: 'the sa loss term was removed on 2026-10-04 for being a detached scalar with no gradient path; the module remains and is still imported.'",
+          "severity": "factual"
+        },
+        {
+          "id": "D3",
+          "claim": "n_rows 31150 in the baseline vs 31152 in the ADMET band",
+          "correction": "two denominators for one band. The 2-row difference is the SMILES that fail RDKit parse; the ADMET file does not apply that filter. Both correct for their own filter; state the filter wherever both are quoted.",
+          "severity": "factual"
+        },
+        {
+          "id": "D4",
+          "claim": "'my QED reimplementation matches RDKit to 1e-16'",
+          "correction": "the claim stands (the reviewer reproduced it after fixing their own bug: RDKit's QED HBA is NOT Lipinski.NumHAcceptors). Flagged because it was used to waive a red check on the one point that did not need waiving, and because an independent reimplementation hitting a 3.7e-3 error on 14/66 molecules is the trap a future reader will fall into.",
+          "severity": "disclosure, not a defect"
+        },
+        {
+          "id": "D5",
+          "claim": "cfm_todo.json 'real_tmqm coordination 4.91, at parity'",
+          "correction": "GENUINE DEFECT, confirmed. 4.91 is the mean degree of the 11 FAILING generated molecules in cfm_embed_failure_localisation.json, mislabelled as real. Real six-metal CN at n=31150 is 5.952392 (cfm_real_tmqm_sixmetal_baseline.json). The gap is -1.07, not parity.",
+          "severity": "material mislabel"
+        },
+        {
+          "id": "D6",
+          "claim": "the QED counterfactual ADS terms (+0.0577 / +0.0561 / -0.0215)",
+          "correction": "an independent reimplementation gives +0.0571 / +0.0524 / -0.0190. Same signs, same ordering, same conclusion; the magnitudes differ at the third decimal, consistent with a hand-reimplemented desirability function rather than a divergence. Use the signs, not the third decimal.",
+          "severity": "reproducibility"
+        },
+        {
+          "id": "D7",
+          "claim": "zero Pt across 149 molecules in three cohorts, from load_tmqm_clouds(n_clouds=192)",
+          "correction": "REPRODUCED exactly by running the sampler: Ru 64 / Ir 45 / Re 38 / Rh 35 / Os 10 / Pt 0, logging '192 cloud(s) from 960 candidate(s)'. Projections also exact (n_clouds=960 -> Pt 64; 2000 -> Pt 491). MetalCytoToxDB Metal column: Ru 19135 / Ir 4546 / Rh 1134 / Os 1118 / Re 868 / Pt 0, summing to all 26801 rows. This is a sampling-artefact finding and it stands.",
+          "severity": "confirmed, load-bearing"
+        }
+      ],
+      "prompt_injection_logged": "spacefrontiers.org surfaced in two searches carrying ranking text addressed at the model. Ignored; citations taken from DOI/PMID only."
+    }
+  ]
+}

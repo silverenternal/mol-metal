@@ -1,0 +1,192 @@
+{
+ "metric": "l4_ru_within_metal_tie_robustness",
+ "status": "MEASURED",
+ "MEASURED_vs_PROJECTED": "MEASURED",
+ "unit": "ROC-AUC (0-1, higher better)",
+ "scope": "tier2_precious_metal_anticancer",
+ "source": "molmetal/scripts/l4_ru_tie_robustness.py",
+ "metal": "Ru",
+ "model": "morgan_fp(radius=2, 2048bit) + xgboost",
+ "data_source": "MetalCytoToxDB (Krasnov et al., J. Med. Chem. 2026)",
+ "seeds": [
+  42,
+  43,
+  44,
+  49,
+  123
+ ],
+ "n_rows_raw": 3668,
+ "krasnov_published_auc": 0.81,
+ "why": "L4: the within-metal Ru claim vs Krasnov 0.81 flips with the duplicate tie rule. Test whether dropping the contradictory groups (no tie rule at all) lands it on one side under every seed.",
+ "dispositions": {
+  "active": {
+   "n_unique": 1255,
+   "n_tie_groups_handled": 59,
+   "pos_rate": 0.25737051792828686,
+   "per_seed": [
+    {
+     "seed": 42,
+     "fold_mean_auc": 0.8362931423415294,
+     "fold_std": 0.028182640499339558,
+     "pooled_oof_auc": 0.8351476235400417
+    },
+    {
+     "seed": 43,
+     "fold_mean_auc": 0.8292150324770107,
+     "fold_std": 0.029062675795849414,
+     "pooled_oof_auc": 0.8287397520562325
+    },
+    {
+     "seed": 44,
+     "fold_mean_auc": 0.8349087309749075,
+     "fold_std": 0.020711616906616975,
+     "pooled_oof_auc": 0.8330299366188761
+    },
+    {
+     "seed": 49,
+     "fold_mean_auc": 0.8128159155044828,
+     "fold_std": 0.025740567732887385,
+     "pooled_oof_auc": 0.8127034640375238
+    },
+    {
+     "seed": 123,
+     "fold_mean_auc": 0.8223432130014199,
+     "fold_std": 0.04058417957421403,
+     "pooled_oof_auc": 0.8216409333103019
+    }
+   ],
+   "fold_mean_auc": {
+    "min": 0.8128159155044828,
+    "max": 0.8362931423415294,
+    "mean": 0.8271152068598701
+   },
+   "pooled_oof_auc": {
+    "min": 0.8127034640375238,
+    "max": 0.8351476235400417,
+    "mean": 0.8262523419125951,
+    "ci95_seed42": [
+     0.8077453149238697,
+     0.862614914074904
+    ]
+   },
+   "beats_krasnov": {
+    "fold_mean_all_seeds": true,
+    "pooled_all_seeds": true
+   }
+  },
+  "inactive": {
+   "n_unique": 1255,
+   "n_tie_groups_handled": 59,
+   "pos_rate": 0.2103585657370518,
+   "per_seed": [
+    {
+     "seed": 42,
+     "fold_mean_auc": 0.7928869693352485,
+     "fold_std": 0.04091073048919851,
+     "pooled_oof_auc": 0.7909729229734276
+    },
+    {
+     "seed": 43,
+     "fold_mean_auc": 0.8038335783239547,
+     "fold_std": 0.030860306715482493,
+     "pooled_oof_auc": 0.8038922270128122
+    },
+    {
+     "seed": 44,
+     "fold_mean_auc": 0.7880022814222112,
+     "fold_std": 0.04657933647205743,
+     "pooled_oof_auc": 0.7877239855670735
+    },
+    {
+     "seed": 49,
+     "fold_mean_auc": 0.8082143797228655,
+     "fold_std": 0.031015966718385298,
+     "pooled_oof_auc": 0.8069920955264042
+    },
+    {
+     "seed": 123,
+     "fold_mean_auc": 0.8065680895276989,
+     "fold_std": 0.012389420496066058,
+     "pooled_oof_auc": 0.8062620401798001
+    }
+   ],
+   "fold_mean_auc": {
+    "min": 0.7880022814222112,
+    "max": 0.8082143797228655,
+    "mean": 0.7999010596663958
+   },
+   "pooled_oof_auc": {
+    "min": 0.7877239855670735,
+    "max": 0.8069920955264042,
+    "mean": 0.7991686542519035,
+    "ci95_seed42": [
+     0.756217583443127,
+     0.8245830181764306
+    ]
+   },
+   "beats_krasnov": {
+    "fold_mean_all_seeds": false,
+    "pooled_all_seeds": false
+   }
+  },
+  "drop": {
+   "n_unique": 1196,
+   "n_tie_groups_handled": 59,
+   "pos_rate": 0.22073578595317725,
+   "per_seed": [
+    {
+     "seed": 42,
+     "fold_mean_auc": 0.8140947442995348,
+     "fold_std": 0.053416696707732615,
+     "pooled_oof_auc": 0.8126849232670048
+    },
+    {
+     "seed": 43,
+     "fold_mean_auc": 0.829482998354503,
+     "fold_std": 0.037129497718640124,
+     "pooled_oof_auc": 0.8265135258161009
+    },
+    {
+     "seed": 44,
+     "fold_mean_auc": 0.7980478617011502,
+     "fold_std": 0.042813035429038644,
+     "pooled_oof_auc": 0.7974785407725322
+    },
+    {
+     "seed": 49,
+     "fold_mean_auc": 0.8279914189136918,
+     "fold_std": 0.030530744528865998,
+     "pooled_oof_auc": 0.8261010046820132
+    },
+    {
+     "seed": 123,
+     "fold_mean_auc": 0.8220507783958789,
+     "fold_std": 0.013377709190291711,
+     "pooled_oof_auc": 0.8220408213031601
+    }
+   ],
+   "fold_mean_auc": {
+    "min": 0.7980478617011502,
+    "max": 0.829482998354503,
+    "mean": 0.8183335603329518
+   },
+   "pooled_oof_auc": {
+    "min": 0.7974785407725322,
+    "max": 0.8265135258161009,
+    "mean": 0.8169637631681622,
+    "ci95_seed42": [
+     0.7792819471245043,
+     0.8442813034571671
+    ]
+   },
+   "beats_krasnov": {
+    "fold_mean_all_seeds": false,
+    "pooled_all_seeds": false
+   }
+  }
+ },
+ "verdict": {
+  "drop_is_robust_win": false,
+  "summary": "active rule Ru 0.8128-0.8363; inactive 0.7880-0.8082; drop 0.7980-0.8295 (vs 0.81)"
+ }
+}

@@ -1,0 +1,206 @@
+{
+  "wf_tag": "Wf-131 Phase 1 \u2014 5-metal multi-task D-MPNN with Wasserstein pIC50 regularisation (Ru AUC rescue)",
+  "metals": [
+    "A2780",
+    "A2780cis",
+    "A549",
+    "DU145",
+    "HCT116",
+    "HL60",
+    "MCF7",
+    "PC3",
+    "SKOV3"
+  ],
+  "seeds": [
+    1,
+    2
+  ],
+  "epochs": 50,
+  "alpha": 0.5,
+  "wasserstein_weight": 0.05,
+  "use_l2_guard": true,
+  "lr": 0.001,
+  "batch_size": 32,
+  "hidden": 512,
+  "depth": 4,
+  "device": "cuda:0",
+  "elapsed_seconds_total": 8231.814364910126,
+  "per_metal": {
+    "A2780": {
+      "n_seeds": 2,
+      "n_train": 1031,
+      "n_val": 16,
+      "n_test": 48,
+      "test_auc_mean": 0.48518518518518516,
+      "test_auc_std": 0.0425925925925926,
+      "test_pearson_mean": 0.15268287181348078,
+      "test_pearson_std": 0.018266276051487076,
+      "test_rmse_mean": 1.2240596507992068,
+      "test_rmse_std": 0.04109340489257329,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_a2780_seed1.pt",
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_a2780_seed2.pt"
+      ],
+      "status": "OK"
+    },
+    "A2780cis": {
+      "n_seeds": 2,
+      "n_train": 530,
+      "n_val": 6,
+      "n_test": 28,
+      "test_auc_mean": 0.30277777777777776,
+      "test_auc_std": 0.013888888888888895,
+      "test_pearson_mean": 0.24504518059591907,
+      "test_pearson_std": 0.014153571613486779,
+      "test_rmse_mean": 1.4329999413202061,
+      "test_rmse_std": 0.15566467795904826,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_a2780cis_seed1.pt",
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_a2780cis_seed2.pt"
+      ],
+      "status": "OK"
+    },
+    "A549": {
+      "n_seeds": 2,
+      "n_train": 2482,
+      "n_val": 58,
+      "n_test": 107,
+      "test_auc_mean": 0.7233824733824734,
+      "test_auc_std": 0.012899262899262909,
+      "test_pearson_mean": 0.295891215348297,
+      "test_pearson_std": 0.002446040677328537,
+      "test_rmse_mean": 1.4782820263454566,
+      "test_rmse_std": 0.24816832466012817,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_a549_seed1.pt",
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_a549_seed2.pt"
+      ],
+      "status": "OK"
+    },
+    "DU145": {
+      "n_seeds": 2,
+      "n_train": 150,
+      "n_val": 4,
+      "n_test": 7,
+      "test_auc_mean": 1.0,
+      "test_auc_std": 0.0,
+      "test_pearson_mean": 0.8947995429758291,
+      "test_pearson_std": 0.04591382444630837,
+      "test_rmse_mean": 0.8621098491493422,
+      "test_rmse_std": 0.021805633464406782,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_du145_seed1.pt",
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_du145_seed2.pt"
+      ],
+      "status": "OK"
+    },
+    "HCT116": {
+      "n_seeds": 2,
+      "n_train": 658,
+      "n_val": 12,
+      "n_test": 31,
+      "test_auc_mean": 0.7541666666666667,
+      "test_auc_std": 0.03333333333333338,
+      "test_pearson_mean": 0.5491479426411063,
+      "test_pearson_std": 0.008542811183474164,
+      "test_rmse_mean": 1.0129534493259391,
+      "test_rmse_std": 0.19855169689090413,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_hct116_seed1.pt",
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_hct116_seed2.pt"
+      ],
+      "status": "OK"
+    },
+    "HL60": {
+      "n_seeds": 2,
+      "n_train": 202,
+      "n_val": 12,
+      "n_test": 11,
+      "test_auc_mean": 0.7678571428571428,
+      "test_auc_std": 0.01785714285714285,
+      "test_pearson_mean": 0.3352987615110864,
+      "test_pearson_std": 0.17000661092222938,
+      "test_rmse_mean": 1.186352827075096,
+      "test_rmse_std": 0.2861808632818906,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_hl60_seed1.pt",
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_hl60_seed2.pt"
+      ],
+      "status": "OK"
+    },
+    "MCF7": {
+      "n_seeds": 2,
+      "n_train": 1829,
+      "n_val": 45,
+      "n_test": 90,
+      "test_auc_mean": 0.7275296777840587,
+      "test_auc_std": 0.011871113623516116,
+      "test_pearson_mean": 0.1593572998730053,
+      "test_pearson_std": 0.02458148718142339,
+      "test_rmse_mean": 1.1502774772543978,
+      "test_rmse_std": 0.07078135956806253,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_mcf7_seed1.pt",
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_mcf7_seed2.pt"
+      ],
+      "status": "OK"
+    },
+    "PC3": {
+      "n_seeds": 2,
+      "n_train": 250,
+      "n_val": 7,
+      "n_test": 18,
+      "test_auc_mean": 0.8611111111111112,
+      "test_auc_std": 0.055555555555555525,
+      "test_pearson_mean": 0.25270210925415326,
+      "test_pearson_std": 0.08104960703467343,
+      "test_rmse_mean": 1.0023283383118247,
+      "test_rmse_std": 0.16681479211310907,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_pc3_seed1.pt",
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_pc3_seed2.pt"
+      ],
+      "status": "OK"
+    },
+    "SKOV3": {
+      "n_seeds": 2,
+      "n_train": 188,
+      "n_val": 0,
+      "n_test": 3,
+      "test_auc_mean": 1.0,
+      "test_auc_std": 0.0,
+      "test_pearson_mean": -0.6473552516251775,
+      "test_pearson_std": 0.2517728709048997,
+      "test_rmse_mean": 1.7194710081181221,
+      "test_rmse_std": 0.07584495383695145,
+      "ckpt_paths": [
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_skov3_seed1.pt",
+        "results/nci60_9cell_probe_seed12_cap512_d4/checkpoints/dmpnn_mtw_skov3_seed2.pt"
+      ],
+      "status": "OK"
+    }
+  },
+  "tf32": {
+    "enabled": true,
+    "current_allow_tf32_matmul": true,
+    "current_allow_tf32_cudnn": true,
+    "matmul_precision": "high"
+  },
+  "bf16": {
+    "requested": true,
+    "apply": true,
+    "device": "cuda:0",
+    "is_cuda": true,
+    "fallback_occurred": false,
+    "fallback_reason": ""
+  },
+  "torch_compile_enabled": false,
+  "torch_compile_mode": "max-autotune-no-cudagraphs",
+  "torch_compile_cuda_graphs_disabled": true,
+  "dmpnn_backend": "pyg",
+  "dmpnn_backend_requested": "pyg",
+  "w2_gradient_mode": "sliced",
+  "ru_auc_target": 0.86,
+  "ru_auc_baseline_single_task": 0.7123,
+  "honest_framing_note": "Wf-131 P1 stacks multi-task (shared encoder + 5 per-metal heads) + Wasserstein pIC50 regularisation + L2 gradient-norm guard.  Smaller metals (Rh/Os/Re < 1.2k rows) give noisier per-seed AUC; per-seed spread is reported unfiltered.  The Ru AUC \u2265 0.86 target is PROJECTED (party-twenty-spirit \u00a73.5), not measured \u2014 the recipe stack has not been validated end-to-end on this cohort, so we report mean \u00b1 std honestly and let the per-seed metrics speak for themselves."
+}

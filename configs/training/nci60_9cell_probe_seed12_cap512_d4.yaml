@@ -1,0 +1,138 @@
+# =============================================================================
+# nci60_9cell_probe_seed12_cap512_d4.yaml — L1 probe seed-extension (2026-10-12)
+#
+# PURPOSE
+# -------
+# Companion to nci60_9cell_probe_seed0_cap512_d4.yaml.  That file is a
+# 1-seed (seed 0) direction check for the hidden=512/depth=4 capacity lever
+# on the NCI-60 9-cell panel; it runs on cuda:0.  A single seed cannot
+# separate a real panel effect from seed noise, so this file extends the
+# probe to seeds 1 and 2 on the OTHER GPU (cuda:1) and runs concurrently.
+#
+# Together the two files give a 3-seed probe (seeds 0,1,2) of the SAME
+# declared change, which is enough to decide whether the full 5-seed
+# capacity rerun is worth the 8-15 hr GPU job.  Nothing else differs.
+#
+# DESIGN — one declared variable
+# ------------------------------
+# Byte-identical to nci60_9cell_5seed_50ep_v1.yaml EXCEPT:
+#   * model.hidden 128 -> 512
+#   * model.depth    3 -> 4
+#   * protocol.seeds [0,1,2,3,4] -> [1,2]   (seed 0 handled by the sibling)
+#   * compute.device / gpu cuda:0 -> cuda:1 (run concurrently with seed 0)
+#   * output dirs -> results/nci60_9cell_probe_seed12_cap512_d4
+# Same cohort, same scaffold split (seed 0), same epochs, same lr/bs,
+# same Wasserstein machinery.
+#
+# HONEST FRAMING
+# --------------
+# A 3-seed probe is a direction check, not a headline result.  Do NOT quote
+# these numbers as the panel's value.  If the 3-seed delta is ~0, the full
+# rerun is not worth it and the panel stays an honest negative; if it is a
+# consistent win, this file is superseded by a 5-seed variant.
+# =============================================================================
+
+data:
+  dataset: nci60_9cell
+  task_axis: cell_line
+  metals: [auto]
+  cohort_filter:
+    cells: [MCF7, A549, A2780, A2780cis, HCT116, PC3, HL60, SKOV3, DU145]
+  expected_columns_subset: [smiles, cell_line, pIC50, active]
+  split:
+    type: bemis_murcko_scaffold
+    implementation: molmetal.data.splits.ScaffoldSplitter
+    strategy: largest_first
+    seed: 0
+    train_frac: 0.7
+    val_frac: 0.1
+    test_frac: 0.2
+    grouped_on: unique_canonical_smiles
+  cpu_num_workers: 8
+  pin_memory: true
+
+model:
+  ablation_config: mtl_baseline
+  hidden: 512
+  depth: 4
+  task: multi_task
+  wasserstein_weight: 0.05
+  alpha: 0.5
+  n_mc: 256
+  w2_gradient_mode: sliced
+  use_l2_guard: true
+
+protocol:
+  n_seeds: 2
+  seeds: [1, 2]
+  epochs: 50
+  batch_size: 32
+  lr: 1.0e-3
+  weight_decay: 1.0e-5
+  max_norm: 5.0
+  gradient_accumulation_steps: 1
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-6
+  n_runs_total: 18  # 9 cell lines x 2 seeds
+
+eval:
+  per_pair_metrics: [test_auc, val_auc, wasserstein_final, best_epoch]
+  per_cell_line_metrics:
+    - MCF7_test_auc
+    - A549_test_auc
+    - A2780_test_auc
+    - A2780cis_test_auc
+    - HCT116_test_auc
+    - PC3_test_auc
+    - HL60_test_auc
+    - SKOV3_test_auc
+    - DU145_test_auc
+  krasnov_2026_baseline_auc: 0.81
+  gate_target: 0.7
+
+output:
+  base_dir: results/nci60_9cell_probe_seed12_cap512_d4
+  out_dir: results/nci60_9cell_probe_seed12_cap512_d4
+  per_metal_dir: results/nci60_9cell_probe_seed12_cap512_d4/{metal}/per_seed_metrics_seed{seed}.json
+  training_summary: results/nci60_9cell_probe_seed12_cap512_d4/training_summary.json
+  log_master: results/nci60_9cell_probe_seed12_cap512_d4/master.log
+  ckpt_dir: results/nci60_9cell_probe_seed12_cap512_d4/checkpoints
+  checkpoint_interval: 50
+  resume_from: auto
+  events_jsonl_path: results/nci60_9cell_probe_seed12_cap512_d4/events.jsonl
+  events_jsonl: true
+
+# NOTE: only `gpu:` is declared.  start.sh turns it into
+# CUDA_VISIBLE_DEVICES=1, which masks the box down to ONE visible device
+# (re-indexed 0); declaring `device: cuda:1` as well would pass --device
+# cuda:1 to the trainer and crash with "invalid device ordinal".  The
+# trainer's default device (cuda:0 within the mask) IS physical GPU 1.
+compute:
+  gpu: cuda:1
+  cpu_workers: 8
+  torch_compile: false
+  cudnn_benchmark: false
+  channels_last: false
+
+directives:
+  kill_then_adapt: true
+  time_budget: 6h
+  user_ok_required: true
+  per_wave_user_ok_required: false
+  pre_flight_gates_required:
+    - p3_protocol_alignment_user_ok_gate
+    - p3_protocol_alignment_baseline_paper_refs_bib
+    - p3_wf385_scaffold_loss_wire_in_verified
+    - p3_wf343c4_anchor_freshness_24h
+
+entry:
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  warm_start_checkpoint: "n/a"
+
+cross_references:
+  - configs/training/nci60_9cell_probe_seed0_cap512_d4.yaml
+  - configs/training/nci60_9cell_5seed_50ep_v1.yaml
+  - metrics/by_metric/nci60_precious_9cell_auc.json
+  - molmetal/scripts/l1_nci60_capacity_probe_analysis.py

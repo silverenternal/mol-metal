@@ -1,0 +1,426 @@
+{
+  "aromatic_hi": 1.7,
+  "aromatic_lo_values": [
+    1.3,
+    1.45,
+    1.5
+  ],
+  "ask_user_about_constant_edit": "AROMATIC_LO at molmetal/data/tmqm_clouds.py:174-179 (the _BO_TYPE_BANDS BOND_AROMATIC lo boundary) and at molmetal/tests/test_wf_blkc_qed_lever_aromatic_head.py:81 should be moved only after the user OKs. This probe alone cannot decide; it shows the band RELOCATES vs FIXES the collapse (see verdict), but the constant edit is a training+evaluation label change and is per the brief explicitly a follow-up that requires user OK.",
+  "atomic_write_helper": "molmetal/scripts/wf386a3_atomic_write.py::atomic_write_file",
+  "cohort_protocol": "Same 150-per-metal 900-complex 6-metal balanced cohort as the 2026-10-13 sub-band diagnostic (molmetal/reports/cfm_blkc_m4_subband_diagnostic_2026_10_13/), seed 0, same checkpoint (cfm_fullcorpus_2026_10_10/checkpoints/cfm_yuelbond_wasserstein_seed0.pt). The 1.30 per_subband + headline are cited verbatim from that on-disk diagnostic.json (per the brief 'Do not recompute it from scratch'). The 1.30 full-bond precision + the 1.45 and 1.50 per_subband + full-bond precision are measured by fresh forward passes that store ALL in-scope bond records (not filtered to truth-aromatic, so the round-7 caveat is honoured).",
+  "date": "2026-10-13",
+  "deltas_vs_1_30": {
+    "1.30_to_1.45": {
+      "arom_to_single_frac_delta": -0.1601106384987504,
+      "f1_delta": -0.10659952251331173,
+      "n_truth_aromatic_lost": 13911,
+      "n_truth_aromatic_lost_pct": 0.8132234303753069,
+      "precision_delta": -0.6288138653186496,
+      "recall_delta": 0.16011063849875046
+    },
+    "1.30_to_1.50": {
+      "arom_to_single_frac_delta": -0.44432082862866945,
+      "f1_delta": -0.22331640538750272,
+      "n_truth_aromatic_lost": 16175,
+      "n_truth_aromatic_lost_pct": 0.9455746521688296,
+      "precision_delta": -0.7638562917494133,
+      "recall_delta": 0.4443208286286695
+    }
+  },
+  "headline_sweep": {
+    "arom_to_single_frac": [
+      0.7128492926458553,
+      0.5527386541471049,
+      0.26852846401718583
+    ],
+    "aromatic_f1_full": [
+      0.43382645175535434,
+      0.3272269292420426,
+      0.21051004636785162
+    ],
+    "aromatic_lo": [
+      1.3,
+      1.45,
+      1.5
+    ],
+    "aromatic_precision": [
+      0.8868026719624481,
+      0.25798880664379853,
+      0.12294638021303485
+    ],
+    "aromatic_recall": [
+      0.2871507073541447,
+      0.4472613458528952,
+      0.7314715359828142
+    ],
+    "n_predicted_aromatic": [
+      4912,
+      1429,
+      681
+    ],
+    "n_predicted_aromatic_full": [
+      5539,
+      5539,
+      5539
+    ],
+    "n_truth_aromatic": [
+      17106,
+      3195,
+      931
+    ]
+  },
+  "metric": "cfm_m4_aromatic_lo_band_sweep",
+  "per_setting": {
+    "1.30": {
+      "arom_bond_frac_predicted": 0.2871507073541447,
+      "arom_to_single_collapse_distribution": {
+        "max_bo": 1.698,
+        "mean_bo": 1.4093808430375596,
+        "median_bo": 1.415,
+        "min_bo": 1.3,
+        "n_arom_to_single": 12194,
+        "per_subband_counts": {
+          "1.30-1.40": 5212,
+          "1.40-1.45": 5216,
+          "1.45-1.50": 1516,
+          "1.50-1.60": 204,
+          "1.60-1.70": 46
+        }
+      },
+      "arom_to_single_frac": 0.7128492926458553,
+      "aromatic_f1_full": 0.43382645175535434,
+      "aromatic_hi": 1.7,
+      "aromatic_lo": 1.3,
+      "aromatic_precision": 0.8868026719624481,
+      "aromatic_recall": 0.2871507073541447,
+      "aromatic_recall_full": 0.2871507073541447,
+      "n_arom_to_single_collapse": 12194,
+      "n_complexes_succeeded": 900,
+      "n_predicted_aromatic": 4912,
+      "n_predicted_aromatic_but_not_truth_aromatic": 627,
+      "n_predicted_aromatic_full": 5539,
+      "n_truth_aromatic": 17106,
+      "n_truth_aromatic_and_pred_aromatic": 4912,
+      "path": "molmetal/reports/cfm_blkc_m4_subband_diagnostic_2026_10_13/",
+      "per_subband": [
+        {
+          "aromatic_recall": 0.19168734491315137,
+          "aromatic_to_single_count": 5212,
+          "aromatic_to_single_fraction": 0.8083126550868487,
+          "band": "1.30-1.40",
+          "logit_margin_max": 9.399499893188477,
+          "logit_margin_mean": -0.7323187677462403,
+          "logit_margin_median": -0.9438886642456055,
+          "logit_margin_min": -8.956486701965332,
+          "n": 6448,
+          "predicted_counts": {
+            "AROMATIC": 1236,
+            "SINGLE": 5212
+          },
+          "predicted_fractions": {
+            "AROMATIC": 0.19168734491315137,
+            "SINGLE": 0.8083126550868487
+          }
+        },
+        {
+          "aromatic_recall": 0.3010853544151146,
+          "aromatic_to_single_count": 5216,
+          "aromatic_to_single_fraction": 0.6989146455848855,
+          "band": "1.40-1.45",
+          "logit_margin_max": 6.030297756195068,
+          "logit_margin_mean": -0.45590514819168076,
+          "logit_margin_median": -0.4150238037109375,
+          "logit_margin_min": -5.432295322418213,
+          "n": 7463,
+          "predicted_counts": {
+            "AROMATIC": 2247,
+            "SINGLE": 5216
+          },
+          "predicted_fractions": {
+            "AROMATIC": 0.3010853544151146,
+            "SINGLE": 0.6989146455848855
+          }
+        },
+        {
+          "aromatic_recall": 0.3303886925795053,
+          "aromatic_to_single_count": 1516,
+          "aromatic_to_single_fraction": 0.6696113074204947,
+          "band": "1.45-1.50",
+          "logit_margin_max": 6.239930629730225,
+          "logit_margin_mean": -0.39376417971331323,
+          "logit_margin_median": -0.39686059951782227,
+          "logit_margin_min": -4.131477117538452,
+          "n": 2264,
+          "predicted_counts": {
+            "AROMATIC": 748,
+            "SINGLE": 1516
+          },
+          "predicted_fractions": {
+            "AROMATIC": 0.3303886925795053,
+            "SINGLE": 0.6696113074204947
+          }
+        },
+        {
+          "aromatic_recall": 0.6633663366336634,
+          "aromatic_to_single_count": 204,
+          "aromatic_to_single_fraction": 0.33663366336633666,
+          "band": "1.50-1.60",
+          "logit_margin_max": 8.320971965789795,
+          "logit_margin_mean": 0.4143683426450975,
+          "logit_margin_median": 0.38648009300231934,
+          "logit_margin_min": -4.2462663650512695,
+          "n": 606,
+          "predicted_counts": {
+            "AROMATIC": 402,
+            "SINGLE": 204
+          },
+          "predicted_fractions": {
+            "AROMATIC": 0.6633663366336634,
+            "SINGLE": 0.33663366336633666
+          }
+        },
+        {
+          "aromatic_recall": 0.8584615384615385,
+          "aromatic_to_single_count": 46,
+          "aromatic_to_single_fraction": 0.14153846153846153,
+          "band": "1.60-1.70",
+          "logit_margin_max": 6.726038217544556,
+          "logit_margin_mean": 1.301968532708975,
+          "logit_margin_median": 1.127535104751587,
+          "logit_margin_min": -5.222915887832642,
+          "n": 325,
+          "predicted_counts": {
+            "AROMATIC": 279,
+            "SINGLE": 46
+          },
+          "predicted_fractions": {
+            "AROMATIC": 0.8584615384615385,
+            "SINGLE": 0.14153846153846153
+          }
+        }
+      ],
+      "pred_arom_truth_label_breakdown": {
+        "aromatic": 4912,
+        "double": 178,
+        "single": 423,
+        "triple": 26
+      },
+      "source_diagnostic": "on-disk baseline: molmetal/reports/cfm_blkc_m4_subband_diagnostic_2026_10_13/diagnostic.json",
+      "source_probe_full_bond": "new probe: molmetal/reports/cfm_blkc_m4_band_sweep_1.30_2026_10_13/diagnostic.json"
+    },
+    "1.45": {
+      "arom_bond_frac_predicted": 0.4472613458528952,
+      "arom_to_single_collapse_distribution": {
+        "max_bo": 1.698,
+        "mean_bo": 1.4724830124575312,
+        "median_bo": 1.456,
+        "min_bo": 1.45,
+        "n_arom_to_single": 1766,
+        "per_subband_counts": {
+          "1.30-1.40": 0,
+          "1.40-1.45": 0,
+          "1.45-1.50": 1516,
+          "1.50-1.60": 204,
+          "1.60-1.70": 46,
+          ">=1.70": 0
+        }
+      },
+      "arom_to_single_frac": 0.5527386541471049,
+      "aromatic_f1_full": 0.3272269292420426,
+      "aromatic_hi": 1.7,
+      "aromatic_lo": 1.45,
+      "aromatic_precision": 0.25798880664379853,
+      "aromatic_recall": 0.4472613458528952,
+      "aromatic_recall_full": 0.4472613458528952,
+      "n_arom_to_single_collapse": 1766,
+      "n_complexes_succeeded": 900,
+      "n_predicted_aromatic": 1429,
+      "n_predicted_aromatic_but_not_truth_aromatic": 4110,
+      "n_predicted_aromatic_full": 5539,
+      "n_truth_aromatic": 3195,
+      "n_truth_aromatic_and_pred_aromatic": 1429,
+      "path": "molmetal/reports/cfm_blkc_m4_band_sweep_1.45_2026_10_13/",
+      "per_subband": [
+        {
+          "band": "1.30-1.40",
+          "n": 0
+        },
+        {
+          "band": "1.40-1.45",
+          "n": 0
+        },
+        {
+          "aromatic_recall": 0.3303886925795053,
+          "aromatic_to_single_count": 1516,
+          "aromatic_to_single_fraction": 0.6696113074204947,
+          "band": "1.45-1.50",
+          "logit_margin_max": 6.239930629730225,
+          "logit_margin_mean": -0.39376417971331323,
+          "logit_margin_median": -0.39686059951782227,
+          "logit_margin_min": -4.131477117538452,
+          "n": 2264,
+          "predicted_counts": {
+            "AROMATIC": 748,
+            "SINGLE": 1516
+          },
+          "predicted_fractions": {
+            "AROMATIC": 0.3303886925795053,
+            "SINGLE": 0.6696113074204947
+          }
+        },
+        {
+          "aromatic_recall": 0.6633663366336634,
+          "aromatic_to_single_count": 204,
+          "aromatic_to_single_fraction": 0.33663366336633666,
+          "band": "1.50-1.60",
+          "logit_margin_max": 8.320971965789795,
+          "logit_margin_mean": 0.4143683426450975,
+          "logit_margin_median": 0.38648009300231934,
+          "logit_margin_min": -4.2462663650512695,
+          "n": 606,
+          "predicted_counts": {
+            "AROMATIC": 402,
+            "SINGLE": 204
+          },
+          "predicted_fractions": {
+            "AROMATIC": 0.6633663366336634,
+            "SINGLE": 0.33663366336633666
+          }
+        },
+        {
+          "aromatic_recall": 0.8584615384615385,
+          "aromatic_to_single_count": 46,
+          "aromatic_to_single_fraction": 0.14153846153846153,
+          "band": "1.60-1.70",
+          "logit_margin_max": 6.726038217544556,
+          "logit_margin_mean": 1.301968532708975,
+          "logit_margin_median": 1.127535104751587,
+          "logit_margin_min": -5.222915887832642,
+          "n": 325,
+          "predicted_counts": {
+            "AROMATIC": 279,
+            "SINGLE": 46
+          },
+          "predicted_fractions": {
+            "AROMATIC": 0.8584615384615385,
+            "SINGLE": 0.14153846153846153
+          }
+        },
+        {
+          "band": ">=1.70",
+          "n": 0
+        }
+      ],
+      "pred_arom_truth_label_breakdown": {
+        "aromatic": 1429,
+        "double": 178,
+        "single": 3906,
+        "triple": 26
+      },
+      "source_diagnostic": "new probe: molmetal/reports/cfm_blkc_m4_band_sweep_1.45_2026_10_13/diagnostic.json"
+    },
+    "1.50": {
+      "arom_bond_frac_predicted": 0.7314715359828142,
+      "arom_to_single_collapse_distribution": {
+        "max_bo": 1.698,
+        "mean_bo": 1.554636,
+        "median_bo": 1.5375,
+        "min_bo": 1.5,
+        "n_arom_to_single": 250,
+        "per_subband_counts": {
+          "1.30-1.40": 0,
+          "1.40-1.45": 0,
+          "1.45-1.50": 0,
+          "1.50-1.60": 204,
+          "1.60-1.70": 46,
+          ">=1.70": 0
+        }
+      },
+      "arom_to_single_frac": 0.26852846401718583,
+      "aromatic_f1_full": 0.21051004636785162,
+      "aromatic_hi": 1.7,
+      "aromatic_lo": 1.5,
+      "aromatic_precision": 0.12294638021303485,
+      "aromatic_recall": 0.7314715359828142,
+      "aromatic_recall_full": 0.7314715359828142,
+      "n_arom_to_single_collapse": 250,
+      "n_complexes_succeeded": 900,
+      "n_predicted_aromatic": 681,
+      "n_predicted_aromatic_but_not_truth_aromatic": 4858,
+      "n_predicted_aromatic_full": 5539,
+      "n_truth_aromatic": 931,
+      "n_truth_aromatic_and_pred_aromatic": 681,
+      "path": "molmetal/reports/cfm_blkc_m4_band_sweep_1.50_2026_10_13/",
+      "per_subband": [
+        {
+          "band": "1.30-1.40",
+          "n": 0
+        },
+        {
+          "band": "1.40-1.45",
+          "n": 0
+        },
+        {
+          "band": "1.45-1.50",
+          "n": 0
+        },
+        {
+          "aromatic_recall": 0.6633663366336634,
+          "aromatic_to_single_count": 204,
+          "aromatic_to_single_fraction": 0.33663366336633666,
+          "band": "1.50-1.60",
+          "logit_margin_max": 8.320971965789795,
+          "logit_margin_mean": 0.4143683426450975,
+          "logit_margin_median": 0.38648009300231934,
+          "logit_margin_min": -4.2462663650512695,
+          "n": 606,
+          "predicted_counts": {
+            "AROMATIC": 402,
+            "SINGLE": 204
+          },
+          "predicted_fractions": {
+            "AROMATIC": 0.6633663366336634,
+            "SINGLE": 0.33663366336633666
+          }
+        },
+        {
+          "aromatic_recall": 0.8584615384615385,
+          "aromatic_to_single_count": 46,
+          "aromatic_to_single_fraction": 0.14153846153846153,
+          "band": "1.60-1.70",
+          "logit_margin_max": 6.726038217544556,
+          "logit_margin_mean": 1.301968532708975,
+          "logit_margin_median": 1.127535104751587,
+          "logit_margin_min": -5.222915887832642,
+          "n": 325,
+          "predicted_counts": {
+            "AROMATIC": 279,
+            "SINGLE": 46
+          },
+          "predicted_fractions": {
+            "AROMATIC": 0.8584615384615385,
+            "SINGLE": 0.14153846153846153
+          }
+        },
+        {
+          "band": ">=1.70",
+          "n": 0
+        }
+      ],
+      "pred_arom_truth_label_breakdown": {
+        "aromatic": 681,
+        "double": 178,
+        "single": 4654,
+        "triple": 26
+      },
+      "source_diagnostic": "new probe: molmetal/reports/cfm_blkc_m4_band_sweep_1.50_2026_10_13/diagnostic.json"
+    }
+  },
+  "red_check_tests_unregressed": [
+    "molmetal/tests/test_a4_receptive_field.py",
+    "molmetal/tests/test_head_ring_size_behaviour.py"
+  ],
+  "round7_caveat_honoured": true,
+  "tag": "MEASURED",
+  "verdict": "AT AROMATIC_LO=1.30 THE HEAD IS HIGH-PRECISION/LOW-RECALL (P=0.887, R=0.287, F1=0.434). TIGHTENING THE BAND TO 1.45 TRADES PRECISION FOR RECALL (P=0.258 -0.629, R=0.447 +0.160, F1=0.327 -0.107) AND TO 1.50 SHARPENS THE TRADE (P=0.123 -0.764, R=0.731 +0.444, F1=0.211 -0.223). F1 IS MAXIMISED AT 1.30, the current threshold. THE HEAD'S 5539 AROMATIC PREDICTIONS ARE CONCENTRATED IN BO 1.30-1.50 (4912 of 5539 = 88.7% fall inside [1.30, 1.70)); tightening the band relabels those 'correct' predictions as 'false positive' rather than 'correct' and F1 falls. THE COLLAPSE IS RELOCATED, NOT FIXED: the constant edit would lower F1, not raise it. The binding axis is the head's intrinsic over-prediction of aromatic on lower-BO bonds, not the band boundary."
+}

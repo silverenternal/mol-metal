@@ -1,0 +1,72 @@
+{
+  "metric": "cfm_head_ring_size_behaviour",
+  "tag": "MEASURED",
+  "date": "2026-10-13",
+  "question": "Claim A4 was refuted on CAPACITY (ring size is recoverable from the distance pattern). This measures BEHAVIOUR: does the TRAINED head, on CLEAN geometry, actually close rings of the right size?",
+  "setup": {
+    "checkpoint": "molmetal/reports/cfm_patience10_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+    "checkpoint_epoch": 24,
+    "checkpoint_decode_ratio": 0.296875,
+    "head_n_layers": 3,
+    "head_hidden_dim": 128,
+    "head_z_table": "all6 (width 18) -- REQUIRED; the default Pt-only table is width 13 and fails strict loading",
+    "state_dict_loaded": "strict=True (0 missing, 0 unexpected)",
+    "decision_rule": "argmax over the 5 bond classes. NOTE the checkpoint's own bond_decision is 'threshold' at 0.5; this script uses argmax and says so.",
+    "loader": "molmetal.data.tmqm_clouds.load_tmqm_clouds",
+    "n_clouds_requested": 120,
+    "n_clouds_used": 120,
+    "seed": 1234,
+    "geometry": "CLEAN tmQM coordinates -- in-distribution for a head trained on clean CSD structures",
+    "n_candidate_pairs": 14705,
+    "n_predicted_bonds": 3562
+  },
+  "truth_ring_size": {
+    "3": 120,
+    "4": 14,
+    "5": 165,
+    "6": 335,
+    "7": 2,
+    "8": 2,
+    "9": 1,
+    "10": 2,
+    "11": 6,
+    "12": 3,
+    "13": 3,
+    "18": 1,
+    "19": 1,
+    "20": 1,
+    "23": 1
+  },
+  "head_ring_size": {
+    "3": 39,
+    "4": 10,
+    "5": 55,
+    "6": 197,
+    "8": 1,
+    "9": 1,
+    "10": 1,
+    "11": 1
+  },
+  "n_truth_rings": 657,
+  "n_head_rings": 305,
+  "frac_5_or_6": {
+    "truth": 0.76103500761035,
+    "head": 0.8262295081967214
+  },
+  "frac_3_membered": {
+    "truth": 0.182648401826484,
+    "head": 0.12786885245901639
+  },
+  "verdict": "THE HEAD IS NOT THE RING DEFECT. On clean geometry the trained head's ring-size distribution is CLOSER to the real corpus than the truth bonds are: it UNDER-produces 3-rings and OVER-produces 5/6-rings relative to truth. The 89.81% three-membered rate in generated output therefore cannot be blamed on a head that, fed clean geometry, gets ring size right.",
+  "where_the_defect_must_live": "Upstream, in the geometry the velocity field supplies. That is what ARCH-4 (make sampled geometry in-distribution) and ARCH-1 (the head never sees a noisy sample) address -- NOT the retrain slot for the bond head.",
+  "what_this_does_NOT_say": [
+    "It does NOT say the head is fine. It predicts 305 rings against 657 in truth: it drops bonds. A correct ring-size DISTRIBUTION is not a correct ring-size COUNT.",
+    "It does NOT touch the macro-F1 deficit against OpenBabel (0.4784 vs 0.5051, metrics/by_metric/tmqm_bond_perception_3seed.json). That remains a real, separate honest-negative.",
+    "It rules out the specific hypothesis 'the head cannot do ring closure, so retrain it for that'. It does not rule out spending the slot on the macro-F1 deficit."
+  ],
+  "smoke_scale_caveat": "120 clouds, one checkpoint, one seed, CPU, no GPU. Directional, not a settled number.",
+  "related": {
+    "capacity_refutation": "metrics/by_metric/cfm_a4_receptive_field.json",
+    "generated_side_for_contrast": "metrics/by_metric/cfm_opt2_ring_dative_correction.json (generated 89.81 percent 3-membered, like-for-like real 12.38 percent)"
+  }
+}

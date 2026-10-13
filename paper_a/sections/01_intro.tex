@@ -1,0 +1,100 @@
+\section{Introduction}
+\label{sec:intro}
+
+Ligand-based activity prediction rests on an assumption that is rarely stated
+explicitly: that the chemical features which determine whether a compound is
+active are carried by the organic scaffold, and therefore that a model trained
+on one set of compounds will rank a new set of compounds sensibly even if the
+scaffolds differ. This assumption is the reason scaffold splits
+\citep{bemis1996murcko} are treated as the honest evaluation for molecular
+property models, and the reason transfer across organic chemical space is
+considered a solved-enough problem to build benchmarks on
+\citep{moleculenet2018}.
+
+For organometallic and coordination compounds the assumption is weaker in a
+specific, testable way. Two complexes can share an identical ligand set and
+differ only in the coordinated metal, and that single change can move the
+measured anticancer activity by orders of magnitude. The metal is not a
+substituent; it sets the geometry, the accessible oxidation states, the
+hydrolysis rate, and the DNA-binding mode. If a ligand-based model has learned
+``which scaffolds are toxic'', it should transfer across metals. If it has
+learned ``which metal--ligand combinations are toxic'', it should not.
+
+We test this directly. Using the MetalCytoToxDB cohort of precious- and
+platinum-group anticancer complexes \citep{krasnov2026metalcytotoxdb}, we
+evaluate the \emph{same} model and the \emph{same} scorer under three regimes:
+within-metal 5-fold cross-validation, a same-metal Bemis--Murcko scaffold-split
+control, and cross-metal leave-one-metal-out (LOMO) transfer. The within- and
+cross-metal regimes differ in more than the held-out metal --- their training
+sets, sample sizes and label priors all change --- so we use the scaffold
+control to measure how much of the within-to-cross drop is ordinary
+novel-scaffold generalisation and how much is specific to the metal axis.
+Neither the ligand-based nor the transition-metal literature reports this
+cross-metal measurement (\S\ref{sec:related}), so we treat it as the primary
+object of study rather than an incidental split.
+
+Our contributions are:
+
+\begin{enumerate}
+\item \textbf{A measured collapse, its decomposition, and its robustness.}
+Within-metal ROC-AUC is $0.70$--$0.95$ for Ru, Ir, Rh and Re (Os's within-metal
+signal does not resolve), but cross-metal LOMO AUC falls to $0.44$--$0.62$ for
+the same model. A same-metal Bemis--Murcko scaffold-split control costs
+$0.10$--$0.12$ on the two metals where it resolves, so roughly half of the
+collapse is ordinary novel-scaffold generalisation and the metal axis is the
+largest single remaining shift, not the only one. The collapse is not an
+artefact of the scorer: it reproduces under an independent message-passing
+backbone on the same cohort and split, which additionally recovers Re
+($0.737$, Holm $p=0.010$) where the fingerprint probe scores $0.443$ --- so we
+report Re as representation-dependent. Under a Holm-corrected label-permutation
+null the fingerprint scorer leaves only Ru significantly above chance, and the
+backbone leaves only Re and Ru significant: Ir's below-chance reading is
+significant only uncorrected ($p=0.038$) and does not survive the correction. We argue metal
+identity is a distribution shift with no routine organic analogue, and that it
+should be reported as a benchmark axis in its own right.
+\MEASURED. \S\ref{sec:results}.
+
+\item \textbf{No significant pretraining transfer, measured on two metals.}
+A graph encoder pretrained on the tmQM transition-metal corpus
+\citep{tmqm2020} does not raise the activity head on a genuine scaffold split.
+On Ru the paired delta is $-0.0094$ (t-based 95\% CI $[-0.0406,+0.0218]$,
+$t(4)=-0.84$, 2/5 seeds positive); on Ir it is a suggestive $+0.0486$ that does
+not clear the paired $t$-test ($3/5$ seeds positive, one-sided $p=0.068$, CI
+includes zero). An earlier $+0.0181$ was measured on a
+degenerate, molecule-level splitter and does not survive the fix. Both arms
+print the tensor-load count, so a silent no-op is excluded; the null is a null
+of the effect, not of the measurement.
+\MEASURED. \S\ref{sec:results}.
+
+\item \textbf{A within-metal win and a cross-cohort honest negative.} On the
+source paper's own within-metal axis our fingerprint-plus-XGBoost scorer exceeds
+the published $0.73$ under both tie rules and every seed
+($0.8237$--$0.8597$); Ru is at parity,
+decided by the tie rule; and we report the first within-metal values for Rh, Os
+and Re, which the source paper does not cover. Under their DOI-split 10-fold
+cross-validation our model scores $0.7717 \pm 0.0380$ against the published
+LightGBM $0.810 \pm 0.024$: $0.0383$ below, with 3 of 10 folds at or above
+$0.81$, on a cohort $25\times$ wider. We report both the win and the gap rather
+than burying either. \MEASURED. \S\ref{sec:results}.
+
+\item \textbf{A method, and a clean negative for the obvious alternative.}
+Static metal conditioning --- a metal token, a metal-descriptor embedding, or a
+FiLM scale-and-shift --- does not repair the collapse: all three leave the
+cross-metal mean at or below the unconditioned baseline (FiLM $-0.0418$, Holm
+$p=0.984$). What does work is few-shot adaptation. Fine-tuning on $K$ labelled
+ligands from the held-out metal recovers AUC monotonically, by $+0.058$ at
+$K{=}20$ and $+0.091$ at $K{=}40$ (Holm $p<0.004$, ten seeds). The collapse is
+therefore not a missing-input problem but a target-distribution problem, and a
+handful of target-metal labels is the cheap fix. \MEASURED.
+\S\ref{sec:results:method}.
+\end{enumerate}
+
+The paper is organised as follows. \S\ref{sec:related} positions the work
+against ligand-based QSAR and transition-metal machine learning.
+\S\ref{sec:method} defines the cohort, the two evaluation regimes, and the
+model. \S\ref{sec:results} reports the four claims.
+\S\ref{sec:ablation} gives the sensitivity analyses that bound the conclusions
+(tie rule, deduplication, pretraining A/B). \S\ref{sec:limitations} states what
+the study does \emph{not} establish, including a cohort-truncation effect we
+found in a related protocol and the small per-metal sample sizes that make part
+of the result unresolvable.

@@ -1,0 +1,53 @@
+{
+ "metric": "cfm_sa_gap_decomposition",
+ "tag": "MEASURED",
+ "date": "2026-10-12",
+ "note": "SA gap decomposition using the RDKit-Contrib sascorer internals. raw = fragment(score1) + features(score2) + symmetry(score3); sascore = 11 - (raw+5)/6.5*9, so dSA = -(dRaw)/6.5*9 = -1.3846*dRaw. Each sub-term below is reported on the RAW scale (higher = harder to synthesise).",
+ "formula": "dSA = -(dRaw)/6.5*9 -> dSA = -1.3846*dRaw",
+ "generated": {
+  "n": 66,
+  "sa_mean": 6.442334847962082,
+  "fragment_term_mean": -0.1910061185605144,
+  "features_term_mean": -1.5379079699478895,
+  "symmetry_term_mean": 0.0,
+  "unassigned_stereocentres_per_mol": 6.257575757575758,
+  "chiral_penalty_mean": 0.8024845600405336,
+  "size_penalty_mean": 0.6844767057444592,
+  "bridge_penalty_mean": 0.007229109919994885,
+  "spiro_penalty_mean": 0.04371759424290169,
+  "macrocycle_fraction": 0.0,
+  "morgan_frag_missing_from_score_table": 0.26057795901107705
+ },
+ "real_tmqm": {
+  "n": 4000,
+  "sa_mean": 5.009784514380766,
+  "fragment_term_mean": 0.03664368873374966,
+  "features_term_mean": -0.7617908766843137,
+  "symmetry_term_mean": 0.04261485201393843,
+  "unassigned_stereocentres_per_mol": 0.201,
+  "chiral_penalty_mean": 0.045782761995071995,
+  "size_penalty_mean": 0.693500578772261,
+  "bridge_penalty_mean": 0.018443630975516805,
+  "spiro_penalty_mean": 0.0007525749891599529,
+  "macrocycle_fraction": 0.011,
+  "morgan_frag_missing_from_score_table": 0.21854655353766575
+ },
+ "real_tmqm_stereo_stripped": {
+  "n": 4000,
+  "sa_mean": 5.009784514380766,
+  "fragment_term_mean": 0.03664368873374966,
+  "features_term_mean": -0.7617908766843137,
+  "symmetry_term_mean": 0.04261485201393843,
+  "unassigned_stereocentres_per_mol": 0.201,
+  "chiral_penalty_mean": 0.045782761995071995,
+  "size_penalty_mean": 0.693500578772261,
+  "bridge_penalty_mean": 0.018443630975516805,
+  "spiro_penalty_mean": 0.0007525749891599529,
+  "macrocycle_fraction": 0.011,
+  "morgan_frag_missing_from_score_table": 0.21854655353766575
+ },
+ "n_real_sample": 4000,
+ "corpus": "/home/hugo/codes/mol-metal/.data/molmetal/tmQM/tmQM_y.csv filtered to {Pt78,Ir77,Ru44,Rh45,Os76,Re75}",
+ "generated_cohort": "/home/hugo/codes/mol-metal/molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv, all 66 rows",
+ "smoothing_note": "sascorer smooths scores >8; the three raw sub-terms therefore sum to slightly less than the total SA gap and the residual is that smoothing."
+}

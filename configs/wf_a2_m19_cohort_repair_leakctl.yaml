@@ -1,0 +1,61 @@
+# wf_a2_m19_cohort_repair_leakctl.yaml — M1c: cohort repair + leak-controlled.
+#
+# Same cohort as wf_a2_m19_cohort_repair.yaml (canonical source @<=96h, which
+# recovered Rh 108 -> 1131 rows), with ONE protocol switch turned on:
+#   data.drop_leaked_ligands: true
+# i.e. any training ligand that also occurs in the held-out metal is dropped
+# from the LOMO train pool, so no ligand can straddle the split on identity
+# alone (trainer --drop-leaked-ligands; matches
+# metal_activity_transfer_probe.cross_metal's leakage rule).
+#
+# WHY (M1c confirmation): the M1b cohort-repair run moved Rh 0.3812 -> 0.6261
+# and the pooled AUC 0.5575 -> 0.6855. MEASURED leak audit: BOTH the old and
+# the new cohort were run with drop_leaked_ligands OFF, and the new cohort leaks
+# LESS (26.8% vs 38.0% of Rh test rows share a ligand with train), so the lift
+# is not a leakage artefact. This run removes the confound entirely.
+#
+# HONEST FRAMING (§5.2): a NEW protocol number again (cohort change + leakage
+# rule). Comparable to wf_a2_m19_cohort_repair (same cohort, leakage rule is the
+# only delta), NOT to the shipped 0.5575 baseline.
+data:
+  csv: .data/molmetal/MetalCytoToxDB.csv   # canonical source (HAS Time(h))
+  metals:
+    - Ru
+    - Ir
+    - Os
+    - Rh
+    - Re
+  rh_oversample: 0           # real-only protocol
+  time_threshold: 96         # operative on the canonical CSV
+  drop_leaked_ligands: true  # <-- M1c: the single switch under test
+model:
+  hidden: 128
+  depth: 3
+  alpha: 0.5
+protocol:
+  batch_size: 64
+  lr: 0.001
+  epochs: 30
+  seeds: [0, 1, 2, 3, 4]
+  wasserstein_weight: 0.05
+  model_select: last_epoch
+compute:
+  device: cuda:0
+output:
+  base_dir: molmetal/reports/wf_a2_m19_cohort_repair_leakctl
+  out_dir: molmetal/reports/wf_a2_m19_cohort_repair_leakctl
+  log_master: molmetal/reports/wf_a2_m19_cohort_repair_leakctl/master.log
+  training_summary: molmetal/reports/wf_a2_m19_cohort_repair_leakctl/training_summary.json
+  out_metric: molmetal/reports/wf_a2_m19_cohort_repair_leakctl/metrics.json
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: M1c — does the M1b lift (Rh 0.3812->0.6261) survive dropping every train ligand that appears in the held-out metal?
+  note: PROJECTED until the run lands; M1b (0.6855) is MEASURED on the same cohort with the leak rule OFF.
+  not_a_lift: Cohort repair + leakage rule = new protocol; not comparable to the 0.5575 baseline.

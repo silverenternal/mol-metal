@@ -1,0 +1,590 @@
+{
+  "metric": "cfm_l3_guidance_sweep",
+  "tag": "MEASURED",
+  "date": "2026-10-12",
+  "question": "Does sampling-time guidance improve the DECODED MOLECULE, or only the sampled coordinates? The geometry half was already answered at strength 0.05 on 24 clouds; this sweep asks the harder half.",
+  "design": {
+    "control_strength": 0.0,
+    "strengths": [
+      0.0,
+      0.01,
+      0.05,
+      0.15
+    ],
+    "held_fixed": [
+      "checkpoint",
+      "template cohort",
+      "initial noise seed",
+      "ODE method",
+      "n_steps"
+    ],
+    "note": "0.05 overshot the global minimum (1.155 vs 1.172 real) while under-shooting the metal-ligand contact, so the grid brackets it on BOTH sides rather than scaling outward from it."
+  },
+  "HEADLINE": "best GEOMETRY (closest to real tmQM, total abs error over all geometry metrics): strength 0.05 at 0.4973 A, vs control 1.4925 A\n*** OVERSHOOT at strength 0.15 (DECODE WINNER) -- worse than the control on: p01_pair_distance=1.727 vs real 1.337; radius_of_gyration=4.727 vs real 3.960\nbest DECODED MOLECULE (decode rate): strength 0.15 at 0.8281 (53/64)\n*** CONTRADICTION: the arm with the best geometry is NOT the arm that decodes best (geometry wants 0.05, decode wants 0.15). Sampling-time guidance may improve the coordinates while leaving -- or worsening -- what the bond head makes of them. Do not report the geometry win alone.\nQED moves the OPPOSITE WAY: control 0.2358 -> best-decode arm 0.1327. The decode gain is NOT a quality gain.\nSELECTION EFFECT, and it is not small: each arm's properties are computed on the molecules THAT ARM SUCCEEDED IN DECODING (n = 0.0:22, 0.01:23, 0.05:32, 0.15:53). Stronger guidance ADDS molecules the weaker arms could not produce at all, so the cohorts differ in composition, not only in sampling. The property columns are therefore not a like-for-like comparison of the same molecules at different settings.\ndecode successes by strength: {0.0: 22, 0.01: 23, 0.05: 32, 0.15: 53}\nn is small per arm. A difference smaller than the within-arm spread is not a finding, and no arm here clears that bar on decode.",
+  "arms": [
+    {
+      "arm": "strength0.0",
+      "strength": 0.0,
+      "file": "molmetal/reports/cfm_l3_guidance_sweep_seed0/arm_strength0.0.json",
+      "checkpoint": "/home/hugo/codes/mol-metal/molmetal/reports/cfm_patience10_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "n_clouds": 64,
+      "n_steps": 50,
+      "seed": 1234,
+      "geometry": {
+        "min_pair_distance": {
+          "generated": 0.5337826757937747,
+          "real_tmqm": 1.2293129181619091,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.6955302423681344
+        },
+        "p01_pair_distance": {
+          "generated": 1.1310833652787895,
+          "real_tmqm": 1.3370497043661165,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.20596633908732698
+        },
+        "median_pair_distance": {
+          "generated": 4.853138248787527,
+          "real_tmqm": 5.166545336331252,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.3134070875437249
+        },
+        "frac_pairs_hard_clash": {
+          "generated": 0.014486336850612978,
+          "real_tmqm": 0.0,
+          "direction_wanted": "down",
+          "abs_err_unguided_form": 0.014486336850612978
+        },
+        "radius_of_gyration": {
+          "generated": 3.696705403362381,
+          "real_tmqm": 3.959807645165732,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.26310224180335107
+        }
+      },
+      "decode": {
+        "n_attempted": 64,
+        "n_with_smiles": 22,
+        "decode_rate": 0.34375,
+        "single_fragment_ratio": 0.6363636363636364,
+        "n_errors": 0,
+        "all_clouds_errored": false
+      },
+      "properties_on_decoded": {
+        "qed": {
+          "mean": 0.2358,
+          "std": 0.1511,
+          "n": 22
+        },
+        "sa": {
+          "mean": 6.4865,
+          "std": 0.7521,
+          "n": 22
+        },
+        "ames_mutagen": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 22
+        },
+        "cell_permeability_logPapp": {
+          "mean": -3.2276,
+          "std": 0.3923,
+          "n": 22
+        },
+        "aqueous_solubility_logS": {
+          "mean": -5.6993,
+          "std": 2.4523,
+          "n": 22
+        },
+        "n_input": 22,
+        "n_parsed": 22,
+        "n_failed_to_parse": 0
+      }
+    },
+    {
+      "arm": "strength0.01",
+      "strength": 0.01,
+      "file": "molmetal/reports/cfm_l3_guidance_sweep_seed0/arm_strength0.01.json",
+      "checkpoint": "/home/hugo/codes/mol-metal/molmetal/reports/cfm_patience10_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "n_clouds": 64,
+      "n_steps": 50,
+      "seed": 1234,
+      "geometry": {
+        "min_pair_distance": {
+          "generated": 0.902564185925327,
+          "real_tmqm": 1.2293129181619091,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.3267487322365822
+        },
+        "p01_pair_distance": {
+          "generated": 1.2967785862008636,
+          "real_tmqm": 1.3370497043661165,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.04027111816525286
+        },
+        "median_pair_distance": {
+          "generated": 4.894388577664884,
+          "real_tmqm": 5.166545336331252,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.2721567586663678
+        },
+        "frac_pairs_hard_clash": {
+          "generated": 0.008282551131098442,
+          "real_tmqm": 0.0,
+          "direction_wanted": "down",
+          "abs_err_unguided_form": 0.008282551131098442
+        },
+        "radius_of_gyration": {
+          "generated": 3.7414556255157714,
+          "real_tmqm": 3.959807645165732,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.21835201964996065
+        }
+      },
+      "decode": {
+        "n_attempted": 64,
+        "n_with_smiles": 23,
+        "decode_rate": 0.359375,
+        "single_fragment_ratio": 0.7391304347826086,
+        "n_errors": 0,
+        "all_clouds_errored": false
+      },
+      "properties_on_decoded": {
+        "qed": {
+          "mean": 0.2293,
+          "std": 0.1538,
+          "n": 23
+        },
+        "sa": {
+          "mean": 6.3005,
+          "std": 0.6303,
+          "n": 23
+        },
+        "ames_mutagen": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 23
+        },
+        "cell_permeability_logPapp": {
+          "mean": -3.1889,
+          "std": 0.3528,
+          "n": 23
+        },
+        "aqueous_solubility_logS": {
+          "mean": -5.8655,
+          "std": 2.7542,
+          "n": 23
+        },
+        "n_input": 23,
+        "n_parsed": 23,
+        "n_failed_to_parse": 0
+      }
+    },
+    {
+      "arm": "strength0.05",
+      "strength": 0.05,
+      "file": "molmetal/reports/cfm_l3_guidance_sweep_seed0/arm_strength0.05.json",
+      "checkpoint": "/home/hugo/codes/mol-metal/molmetal/reports/cfm_patience10_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "n_clouds": 64,
+      "n_steps": 50,
+      "seed": 1234,
+      "geometry": {
+        "min_pair_distance": {
+          "generated": 1.1353925556679874,
+          "real_tmqm": 1.2293129181619091,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.09392036249392177
+        },
+        "p01_pair_distance": {
+          "generated": 1.5124692311914172,
+          "real_tmqm": 1.3370497043661165,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.1754195268253007
+        },
+        "median_pair_distance": {
+          "generated": 5.000364817839171,
+          "real_tmqm": 5.166545336331252,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.16618051849208104
+        },
+        "frac_pairs_hard_clash": {
+          "generated": 0.002638854446248293,
+          "real_tmqm": 0.0,
+          "direction_wanted": "down",
+          "abs_err_unguided_form": 0.002638854446248293
+        },
+        "radius_of_gyration": {
+          "generated": 4.018989794601284,
+          "real_tmqm": 3.959807645165732,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.05918214943555178
+        }
+      },
+      "decode": {
+        "n_attempted": 64,
+        "n_with_smiles": 32,
+        "decode_rate": 0.5,
+        "single_fragment_ratio": 0.71875,
+        "n_errors": 0,
+        "all_clouds_errored": false
+      },
+      "properties_on_decoded": {
+        "qed": {
+          "mean": 0.1873,
+          "std": 0.1467,
+          "n": 32
+        },
+        "sa": {
+          "mean": 6.294,
+          "std": 0.8335,
+          "n": 32
+        },
+        "ames_mutagen": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 32
+        },
+        "cell_permeability_logPapp": {
+          "mean": -3.1442,
+          "std": 0.395,
+          "n": 32
+        },
+        "aqueous_solubility_logS": {
+          "mean": -6.9825,
+          "std": 3.3318,
+          "n": 32
+        },
+        "n_input": 32,
+        "n_parsed": 32,
+        "n_failed_to_parse": 0
+      }
+    },
+    {
+      "arm": "strength0.15",
+      "strength": 0.15,
+      "file": "molmetal/reports/cfm_l3_guidance_sweep_seed0/arm_strength0.15.json",
+      "checkpoint": "/home/hugo/codes/mol-metal/molmetal/reports/cfm_patience10_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+      "n_clouds": 64,
+      "n_steps": 50,
+      "seed": 1234,
+      "geometry": {
+        "min_pair_distance": {
+          "generated": 1.3678683871066484,
+          "real_tmqm": 1.2293129181619091,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.13855546894473925
+        },
+        "p01_pair_distance": {
+          "generated": 1.7269543404381555,
+          "real_tmqm": 1.3370497043661165,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.38990463607203907
+        },
+        "median_pair_distance": {
+          "generated": 5.169105954263761,
+          "real_tmqm": 5.166545336331252,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.0025606179325095013
+        },
+        "frac_pairs_hard_clash": {
+          "generated": 9.164333960853804e-05,
+          "real_tmqm": 0.0,
+          "direction_wanted": "down",
+          "abs_err_unguided_form": 9.164333960853804e-05
+        },
+        "radius_of_gyration": {
+          "generated": 4.726745686650943,
+          "real_tmqm": 3.959807645165732,
+          "direction_wanted": "up",
+          "abs_err_unguided_form": 0.7669380414852114
+        }
+      },
+      "decode": {
+        "n_attempted": 64,
+        "n_with_smiles": 53,
+        "decode_rate": 0.828125,
+        "single_fragment_ratio": 0.8113207547169812,
+        "n_errors": 0,
+        "all_clouds_errored": false
+      },
+      "properties_on_decoded": {
+        "qed": {
+          "mean": 0.1327,
+          "std": 0.1115,
+          "n": 53
+        },
+        "sa": {
+          "mean": 6.0335,
+          "std": 0.7581,
+          "n": 53
+        },
+        "ames_mutagen": {
+          "mean": 0.0,
+          "std": 0.0,
+          "n": 53
+        },
+        "cell_permeability_logPapp": {
+          "mean": -3.025,
+          "std": 0.1122,
+          "n": 53
+        },
+        "aqueous_solubility_logS": {
+          "mean": -8.5938,
+          "std": 3.2128,
+          "n": 53
+        },
+        "n_input": 53,
+        "n_parsed": 53,
+        "n_failed_to_parse": 0
+      }
+    }
+  ],
+  "geometry_deltas_vs_control": [
+    {
+      "arm": "strength0.0",
+      "strength": 0.0,
+      "metric": "min_pair_distance",
+      "control": 0.5337826757937747,
+      "guided": 0.5337826757937747,
+      "delta": 0.0,
+      "real_tmqm": 1.2293129181619091,
+      "abs_err_control": 0.6955302423681344,
+      "abs_err_guided": 0.6955302423681344,
+      "moved_toward_real": false
+    },
+    {
+      "arm": "strength0.0",
+      "strength": 0.0,
+      "metric": "p01_pair_distance",
+      "control": 1.1310833652787895,
+      "guided": 1.1310833652787895,
+      "delta": 0.0,
+      "real_tmqm": 1.3370497043661165,
+      "abs_err_control": 0.20596633908732698,
+      "abs_err_guided": 0.20596633908732698,
+      "moved_toward_real": false
+    },
+    {
+      "arm": "strength0.0",
+      "strength": 0.0,
+      "metric": "median_pair_distance",
+      "control": 4.853138248787527,
+      "guided": 4.853138248787527,
+      "delta": 0.0,
+      "real_tmqm": 5.166545336331252,
+      "abs_err_control": 0.3134070875437249,
+      "abs_err_guided": 0.3134070875437249,
+      "moved_toward_real": false
+    },
+    {
+      "arm": "strength0.0",
+      "strength": 0.0,
+      "metric": "frac_pairs_hard_clash",
+      "control": 0.014486336850612978,
+      "guided": 0.014486336850612978,
+      "delta": 0.0,
+      "real_tmqm": 0.0,
+      "abs_err_control": 0.014486336850612978,
+      "abs_err_guided": 0.014486336850612978,
+      "moved_toward_real": false
+    },
+    {
+      "arm": "strength0.0",
+      "strength": 0.0,
+      "metric": "radius_of_gyration",
+      "control": 3.696705403362381,
+      "guided": 3.696705403362381,
+      "delta": 0.0,
+      "real_tmqm": 3.959807645165732,
+      "abs_err_control": 0.26310224180335107,
+      "abs_err_guided": 0.26310224180335107,
+      "moved_toward_real": false
+    },
+    {
+      "arm": "strength0.01",
+      "strength": 0.01,
+      "metric": "min_pair_distance",
+      "control": 0.5337826757937747,
+      "guided": 0.902564185925327,
+      "delta": 0.368782,
+      "real_tmqm": 1.2293129181619091,
+      "abs_err_control": 0.6955302423681344,
+      "abs_err_guided": 0.3267487322365822,
+      "moved_toward_real": true
+    },
+    {
+      "arm": "strength0.01",
+      "strength": 0.01,
+      "metric": "p01_pair_distance",
+      "control": 1.1310833652787895,
+      "guided": 1.2967785862008636,
+      "delta": 0.165695,
+      "real_tmqm": 1.3370497043661165,
+      "abs_err_control": 0.20596633908732698,
+      "abs_err_guided": 0.04027111816525286,
+      "moved_toward_real": true
+    },
+    {
+      "arm": "strength0.01",
+      "strength": 0.01,
+      "metric": "median_pair_distance",
+      "control": 4.853138248787527,
+      "guided": 4.894388577664884,
+      "delta": 0.04125,
+      "real_tmqm": 5.166545336331252,
+      "abs_err_control": 0.3134070875437249,
+      "abs_err_guided": 0.2721567586663678,
+      "moved_toward_real": true
+    },
+    {
+      "arm": "strength0.01",
+      "strength": 0.01,
+      "metric": "frac_pairs_hard_clash",
+      "control": 0.014486336850612978,
+      "guided": 0.008282551131098442,
+      "delta": -0.006204,
+      "real_tmqm": 0.0,
+      "abs_err_control": 0.014486336850612978,
+      "abs_err_guided": 0.008282551131098442,
+      "moved_toward_real": true
+    },
+    {
+      "arm": "strength0.01",
+      "strength": 0.01,
+      "metric": "radius_of_gyration",
+      "control": 3.696705403362381,
+      "guided": 3.7414556255157714,
+      "delta": 0.04475,
+      "real_tmqm": 3.959807645165732,
+      "abs_err_control": 0.26310224180335107,
+      "abs_err_guided": 0.21835201964996065,
+      "moved_toward_real": true
+    },
+    {
+      "arm": "strength0.05",
+      "strength": 0.05,
+      "metric": "min_pair_distance",
+      "control": 0.5337826757937747,
+      "guided": 1.1353925556679874,
+      "delta": 0.60161,
+      "real_tmqm": 1.2293129181619091,
+      "abs_err_control": 0.6955302423681344,
+      "abs_err_guided": 0.09392036249392177,
+      "moved_toward_real": true
+    },
+    {
+      "arm": "strength0.05",
+      "strength": 0.05,
+      "metric": "p01_pair_distance",
+      "control": 1.1310833652787895,
+      "guided": 1.5124692311914172,
+      "delta": 0.381386,
+      "real_tmqm": 1.3370497043661165,
+      "abs_err_control": 0.20596633908732698,
+      "abs_err_guided": 0.1754195268253007,
+      "moved_toward_real": true
+    },
+    {
+      "arm": "strength0.05",
+      "strength": 0.05,
+      "metric": "median_pair_distance",
+      "control": 4.853138248787527,
+      "guided": 5.000364817839171,
+      "delta": 0.147227,
+      "real_tmqm": 5.166545336331252,
+      "abs_err_control": 0.3134070875437249,
+      "abs_err_guided": 0.16618051849208104,
+      "moved_toward_real": true
+    },
+    {
+      "arm": "strength0.05",
+      "strength": 0.05,
+      "metric": "frac_pairs_hard_clash",
+      "control": 0.014486336850612978,
+      "guided": 0.002638854446248293,
+      "delta": -0.011847,
+      "real_tmqm": 0.0,
+      "abs_err_control": 0.014486336850612978,
+      "abs_err_guided": 0.002638854446248293,
+      "moved_toward_real": true
+    },
+    {
+      "arm": "strength0.05",
+      "strength": 0.05,
+      "metric": "radius_of_gyration",
+      "control": 3.696705403362381,
+      "guided": 4.018989794601284,
+      "delta": 0.322284,
+      "real_tmqm": 3.959807645165732,
+      "abs_err_control": 0.26310224180335107,
+      "abs_err_guided": 0.05918214943555178,
+      "moved_toward_real": true
+    },
+    {
+      "arm": "strength0.15",
+      "strength": 0.15,
+      "metric": "min_pair_distance",
+      "control": 0.5337826757937747,
+      "guided": 1.3678683871066484,
+      "delta": 0.834086,
+      "real_tmqm": 1.2293129181619091,
+      "abs_err_control": 0.6955302423681344,
+      "abs_err_guided": 0.13855546894473925,
+      "moved_toward_real": true
+    },
+    {
+      "arm": "strength0.15",
+      "strength": 0.15,
+      "metric": "p01_pair_distance",
+      "control": 1.1310833652787895,
+      "guided": 1.7269543404381555,
+      "delta": 0.595871,
+      "real_tmqm": 1.3370497043661165,
+      "abs_err_control": 0.20596633908732698,
+      "abs_err_guided": 0.38990463607203907,
+      "moved_toward_real": false
+    },
+    {
+      "arm": "strength0.15",
+      "strength": 0.15,
+      "metric": "median_pair_distance",
+      "control": 4.853138248787527,
+      "guided": 5.169105954263761,
+      "delta": 0.315968,
+      "real_tmqm": 5.166545336331252,
+      "abs_err_control": 0.3134070875437249,
+      "abs_err_guided": 0.0025606179325095013,
+      "moved_toward_real": true
+    },
+    {
+      "arm": "strength0.15",
+      "strength": 0.15,
+      "metric": "frac_pairs_hard_clash",
+      "control": 0.014486336850612978,
+      "guided": 9.164333960853804e-05,
+      "delta": -0.014395,
+      "real_tmqm": 0.0,
+      "abs_err_control": 0.014486336850612978,
+      "abs_err_guided": 9.164333960853804e-05,
+      "moved_toward_real": true
+    },
+    {
+      "arm": "strength0.15",
+      "strength": 0.15,
+      "metric": "radius_of_gyration",
+      "control": 3.696705403362381,
+      "guided": 4.726745686650943,
+      "delta": 1.03004,
+      "real_tmqm": 3.959807645165732,
+      "abs_err_control": 0.26310224180335107,
+      "abs_err_guided": 0.7669380414852114,
+      "moved_toward_real": false
+    }
+  ],
+  "what_this_does_not_establish": [
+    "One checkpoint, one noise seed. A guidance effect measured on a single seed of a single checkpoint is a direction, not a result.",
+    "Decode rate is the primary read-out; a molecule can decode and still be chemically poor, which is why the property columns matter and why they are scored on the SAME SMILES rather than re-decoded.",
+    "Nothing here says whether a guidance term belongs in a TRAINING loss. It acts at sampling time, so it does not change the model."
+  ],
+  "DO_NOT_COMPARE_ACROSS_CHECKPOINTS": "The property columns in this file are NOT comparable to cfm_checkpoint_property_benchmark.json. That panel was measured on 66 molecules from cfm_fullcorpus_2026_10_10 epoch 10; this sweep decodes 64 clouds from cfm_patience10_seed0 at midpoint/50. For reference the control arm here scores QED {'mean': 0.2358, 'std': 0.1511, 'n': 22} where the panel recorded 0.0944, and logS {'mean': -5.6993, 'std': 2.4523, 'n': 22} where the panel recorded -8.0099. Those are two different checkpoints and two different cohorts, not a property improvement. Read arms against the control of THIS sweep and nothing else."
+}

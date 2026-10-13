@@ -1,0 +1,115 @@
+{
+  "metric": "tmqm_pretrain_init_ab_metalcytotox_ru",
+  "value": -0.009432,
+  "value_std": 0.025128,
+  "tag": "MEASURED_HONEST_NEGATIVE",
+  "source_script": "molmetal/scripts/finetune_metalcytotox_from_tmqm.py",
+  "synthesis_script": "molmetal/scripts/synthesize_tmqm_pretrain_init_ab_ru.py",
+  "configs": [
+    "configs/tmqm_ab_metalcytotox_init_on.yaml",
+    "configs/tmqm_ab_metalcytotox_init_off.yaml"
+  ],
+  "protocol": "MetalCytoToxDB Ru subset; FIXED Bemis-Murcko scaffold split (BLK-PA12: ScaffoldSplitter desalt-aware _scaffold_for); seeds vary model init only; 30 epochs; batch 128; lr 0.001; n_rows 19135; n_test 215; the ONLY difference between arms is init: tmqm|random",
+  "arms": {
+    "tmqm": {
+      "mean": 0.777773,
+      "std": 0.019359,
+      "per_seed": [
+        0.765625,
+        0.806989,
+        0.755909,
+        0.782216,
+        0.778125
+      ]
+    },
+    "random": {
+      "mean": 0.787205,
+      "std": 0.020091,
+      "per_seed": [
+        0.791989,
+        0.7975,
+        0.779148,
+        0.757273,
+        0.810114
+      ]
+    }
+  },
+  "paired_delta": {
+    "mean": -0.009432,
+    "sd": 0.025128,
+    "se": 0.011238,
+    "ci95": [
+      -0.027989,
+      0.011591
+    ],
+    "t_df4": -0.8393,
+    "n_seeds": 5,
+    "all_seeds_positive": false,
+    "ci_method": "percentile bootstrap, 20000 resamples, seed 0 (paired per-seed deltas)"
+  },
+  "gate": {
+    "criterion": "non-negative delta (TODO/completed/42_tmqm_pretrain_v4_encoder.md)",
+    "verdict": "FAIL",
+    "why": "the paired delta is NEGATIVE (-0.0094) and its 95% CI [-0.0280, +0.0116] includes 0; on the fixed scaffold split tmQM pretraining shows no effect on Ru"
+  },
+  "honest_negative": {
+    "statement": "On the fixed Bemis-Murcko scaffold split, tmQM-pretrained init does NOT improve Ru test AUC over random init (0.7778 vs 0.7872; paired delta -0.0094, 95% CI [-0.0280, +0.0116], t(4)=-0.84). The previously recorded +0.0181 (CI [+0.0035, +0.0328]) was measured on the degenerate splitter and is not reproducible under a genuine scaffold split.",
+    "fallback_invoked": "BLK-PA12 honest_negative_fallback: '若重跑后 tmQM A/B 的配对 delta 变得不显著，如实报告为随机切分下的 +0.0181 不稳健'. Here it is not merely non-significant -- the point estimate flipped sign.",
+    "what_survives": "The paired design still cancels seed variance; the arms remain identical apart from init; both arms loaded the tmQM encoder tensors (so the ON arm was not a silent random arm)."
+  },
+  "supersedes": {
+    "previous_value": 0.018136,
+    "previous_paired_delta": {
+      "mean": 0.018136,
+      "sd": 0.011819,
+      "se": 0.005285,
+      "ci95": [
+        0.003464,
+        0.032808
+      ],
+      "t_df4": 3.4313,
+      "n_seeds": 5,
+      "all_seeds_positive": true
+    },
+    "previous_arms": {
+      "tmqm": {
+        "mean": 0.818864,
+        "std": 0.005248,
+        "per_seed": [
+          0.819404,
+          0.820819,
+          0.819812,
+          0.824186,
+          0.810099
+        ]
+      },
+      "random": {
+        "mean": 0.800728,
+        "std": 0.014589,
+        "per_seed": [
+          0.816771,
+          0.788467,
+          0.80354,
+          0.811818,
+          0.783044
+        ]
+      }
+    },
+    "previous_protocol": "MetalCytoToxDB Ru subset; scaffold split (deterministic, largest_first); seeds vary model init only; 30 epochs; batch 128; lr 1e-3; hidden 128 depth 3; n_rows 19135; n_test 714; the ONLY difference between arms is init: tmqm|random",
+    "previous_gate": {
+      "criterion": "non-negative delta (TODO/completed/42_tmqm_pretrain_v4_encoder.md)",
+      "verdict": "PASS",
+      "why": "all 5 seeds positive and the 95% CI excludes 0"
+    },
+    "why": "the previous run (n_test 714) was on the degenerate scaffold splitter -- molecule-level, not scaffold-disjoint (BLK-PA12). The fixed splitter gives n_test 215 and a different (null) result.",
+    "cited_by": "paper_a/sections/04_results.tex tab:pretrain (Claim 2) -- updated 2026-10-12 to the honest negative"
+  },
+  "comparator": {
+    "Krasnov2026_Ru_subset_auc": 0.81,
+    "tmqm_arm": 0.777773,
+    "random_arm": 0.787205,
+    "note": "both arms sit below the named 0.81 comparator; the gate is the delta, not the absolute"
+  },
+  "transfer_verified": "both arms printed 'loaded 12 backbone tensors from tmQM'",
+  "timestamp": "2026-10-12"
+}

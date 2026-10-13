@@ -1,0 +1,120 @@
+# BLK-F1 — D-MPNN graph representation ⊕ ECFP4 feature fusion (within-metal).
+#
+# WHAT THIS ANSWERS
+#   BLK-P1 showed the D-MPNN is below the fingerprint+XGBoost column on every
+#   metal (Ru 0.7041 vs 0.8271, Ir 0.6912 vs 0.8430, ...).  BLK-F1 asks the
+#   method question that follows: if the D-MPNN's graph representation carries
+#   information the fingerprint does not, fusing them should beat ECFP4 alone.
+#   The answer is either a method contribution (complementarity) or a
+#   theoretically-anchored negative (ambiguity ≈ 0).  See the runner docstring
+#   for the pre-registered theory (WL expressivity + Krogh-Vedelsby ambiguity)
+#   and the leakage control.
+#
+# AGENTS.md §5.11: every hyperparameter below resolves to a dest of
+# fuse_dmpnn_gbdt_within_metal.py's own parser (verified by
+# scripts/_config_binding_gate.py).  This is an analysis script invoked directly
+# (like dmpnn_within_metal_auc.py), not a start.sh training launcher.
+
+entry:
+  script: molmetal/scripts/fuse_dmpnn_gbdt_within_metal.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/fuse_dmpnn_gbdt_within_metal.py
+    --config {yaml_path}
+
+data:
+  # nargs="+" — MUST be a YAML list.  A space-joined string arrives as ONE
+  # token and matches no metal (see configs/m19_lomo_4metal_sensitivity.yaml).
+  metals: [Ru, Ir, Rh, Os, Re]
+
+# --- folds + arms -----------------------------------------------------------
+protocol:
+  # StratifiedKFold(n_splits=5, shuffle=True, random_state=s); identical to the
+  # probe's within_metal and to BLK-P1, so deltas are paired with BLK-P1's XGB
+  # column and with the published Krasnov within-metal numbers.
+  split_seeds: [42, 43, 44, 49, 123]
+  n_splits: 5
+  train_seeds: [0]
+  # Arm keys (quote them: they start with a digit).  Arm 1 is the reference
+  # every delta is taken against and is auto-added if omitted.
+  #   1 = ECFP4 -> XGB (anchor, reproduces BLK-P1's XGB column)
+  #   2 = [ECFP4 ⊕ frozen tmQM encoder(256)] -> XGB (leak-free; confirmatory)
+  #   3 = end-to-end [ECFP4 ⊕ supervised D-MPNN pooled(256)] -> MLP (confirmatory)
+  #   4 = ECFP4 -> MLP (head-change control for arm 3)
+  #   5 = [ECFP4 ⊕ supervised D-MPNN OOF emb(256)] -> XGB (UPPER BOUND, fold-bleed)
+  #   6 = [ECFP4 ⊕ 256-d Gaussian noise] -> XGB (feature-count negative control)
+  arms:
+    - "1_ecfp4_xgb"
+    - "2_ecfp4_plus_tmqm_emb_xgb"
+    - "3_ecfp4_plus_dmpnn_mlp"
+    - "4_ecfp4_mlp"
+    - "5_ecfp4_plus_dmpnn_oof_emb_xgb"
+    - "6_ecfp4_plus_noise_xgb"
+  # Inner-CV bleed check for arm 5 (quantifies its second-order fold-bleed).
+  # Expensive: runs (inner_splits + 1) D-MPNN trainings per outer fold.  Kept
+  # OFF in the default run; step 7 of the plan enables it for Ru + Ir.
+  nested_bleed: false
+  nested_bleed_metals: [Ru, Ir]
+  nested_split_seeds: [42]
+  nested_inner_splits: 4
+
+# --- model ------------------------------------------------------------------
+model:
+  # D-MPNN backbone (the BLK-P1 scorer): hidden=128 / depth=3, masked pooling,
+  # inverse-class-frequency loss — the same capacity the small Rh/Os/Re folds
+  # (n=51/36/74) can support.
+  hidden: 128
+  depth: 3
+  dropout: 0.1
+  # width of the fusion / ECFP-only MLP heads (arms 3, 4)
+  mlp_hidden: 128
+  # feature-count control (arm 6)
+  noise_dim: 256
+  noise_seed: 0
+  # frozen tmQM encoder for arm 2 (never saw MetalCytoToxDB labels -> leak-free)
+  encoder: models/tmqm_pretrained/tmqm_pretrained_encoder.pt
+
+train:
+  lr: 0.001
+  epochs: 30
+  batch_size: 64
+  max_atoms: 120
+  max_edges: 240
+
+# --- xgboost reference (same folds) -----------------------------------------
+# Top-level, not under an `xgb:` section: the loader only falls back to the bare
+# leaf name for two-component paths under a whitelisted section, so `xgb.radius`
+# would flatten to `xgb_radius` and resolve to nothing (config-binding gate).
+radius: 2
+nbits: 2048
+
+# --- run shape --------------------------------------------------------------
+# CPU deliberately: the D-MPNN forward loops over molecules in Python, so at
+# this size CPU is FASTER than GPU and bit-reproducible (BLK-P1 measured 6.7 s
+# vs 17.4 s for the same 200-ligand smoke).
+compute:
+  device: cpu
+
+# smoke only (0 = full cohort)
+max_fold_n: 0
+
+output:
+  out_metric: metrics/by_metric/fusion_dmpnn_gbdt_within_metal.json
+
+honest_framing:
+  purpose: >-
+    Test whether the D-MPNN graph representation and ECFP4 are complementary —
+    turning BLK-P1's negative (D-MPNN weaker than GBDT) into either a method
+    contribution or a theoretically-anchored negative.
+  do_not_claim:
+    - A confirmatory fusion gain from arm 5 (its OOF embeddings carry a
+      second-order differential fold-bleed); arm 5 is an upper bound only, and
+      --nested-bleed quantifies the gap.
+    - That a gain from arm 6 (noise) means anything — it is a negative control
+      proving a gain comes from the representation, not from "256 extra columns".
+    - A pooled 5-metal mean — Ru is 64% of the deduplicated cohort.
+    - That Rh/Os/Re (n=51/36/74) are resolvable — below MIN_UNIQUE_FOR_GATE=200,
+      reported but not gated.
+  statistics: >-
+    Paired one-sided t-test on the 5 per-seed deltas (df=4) + t-based 95% CI is
+    the gate; the percentile bootstrap is *_reference_only (anti-conservative at
+    n=5 — see project_five_seed_bootstrap_anticonservative).  "Fusion wins"
+    requires mean delta > 0 AND Holm p < 0.05 over {Ru, Ir} AND t-CI lower > 0.

@@ -1,0 +1,72 @@
+{
+  "metric": "cfm_panel_reference_band_real_tmqm",
+  "tag": "MEASURED",
+  "date": "2026-10-12",
+  "purpose": "PREV-2 in cfm_todo.json::prevention_mechanisms_2026_10_12. A generated cohort whose panel metrics land inside this band is not evidence of generation quality -- it is the signature of a reconstruction that passed real molecules through. Without a recorded reference nobody can recognise that, which is exactly how the 0.9194 / reconstruction error survived.",
+  "how_built": "2000 real tmQM val clouds (6 metals) decoded through the SAME YuelBond bond head as any other run, 636 of which yielded a SMILES. Scored by cfm_property_panel.py --decode-chemistry-validity.",
+  "source_script": "molmetal/scripts/cfm_property_panel.py",
+  "n": 636,
+  "reference_band": {
+    "sa_mean": 5.0269,
+    "sa_std": 1.0396,
+    "sa_min": 2.6469,
+    "sa_max": 8.6709,
+    "qed_mean": 0.2685,
+    "qed_std": 0.1701,
+    "qed_min": 0.018,
+    "qed_max": 0.8128,
+    "largest_fragment_frac_mean": 0.9488,
+    "single_fragment_rate": 0.8365,
+    "n_fragments_mean": 1.211,
+    "n_fragments_median": 1,
+    "chemistry_validity_pass_rate": 0.998
+  },
+  "comparison_the_defect_it_would_have_caught": {
+    "real_tmqm_reference": {
+      "n": 636,
+      "chemistry_validity": 0.998,
+      "sa": 5.0269,
+      "single_fragment_rate": 0.8365
+    },
+    "reconstruction_cohort_from_wf_cfm_decode_dump_smiles": {
+      "n": 37,
+      "chemistry_validity": 1.0,
+      "sa": 4.974,
+      "single_fragment_rate": 0.7838
+    },
+    "real_free_generation_probe_ep1": {
+      "n": 10,
+      "chemistry_validity": 0.7,
+      "sa": 5.5013
+    },
+    "reading": "The reconstruction cohort is INDISTINGUISHABLE from real chemistry on every axis -- and its chemistry_validity of 1.000 EXCEEDS the real corpus's 0.998, which is impossible for genuine generated output. A generator cannot be more valid than its training distribution. That single comparison is the check that was missing."
+  },
+  "the_use": [
+    "A generated cohort scoring chemistry_validity >= 0.99 while claiming to be de-novo is a RED FLAG, not a success: real chemistry tops out at 0.998.",
+    "A generated cohort whose SA sits within ~0.2 of 5.03 has not moved away from its input distribution and is not learning to synthesise.",
+    "Report single_fragment_rate or largest_fragment_frac beside any chemistry_validity number. The reference makes the comparison possible."
+  ],
+  "limitations": [
+    "n=636 is the subset of 2000 clouds that decoded at all; the 1364 that did not are themselves a quality signal and are NOT represented here.",
+    "This is one bond head (seed0, fullcorpus) applied to real geometry. It is a reference for the panel's scale, not a claim about generation.",
+    "QED 0.2685 for real tmQM metal complexes is low in absolute drug-likeness terms; the band describes THIS corpus, not the ideal."
+  ],
+  "does_not_claim": "That real generation reaches any of these numbers. The only free-generation measurement on disk is the 2-epoch probe (n=10), which is far below this band on chemistry_validity (0.700) and the trained-checkpoint dump is still running.",
+  "corrections_2026_10_12": [
+    {
+      "date": "2026-10-12",
+      "raised_by": "metrics/by_metric/cfm_reference_band_audit.json (CFM-05..CFM-12, verdict CIRCULAR) + the 2026-10-12 adversarial reviews",
+      "what_was_wrong": "This file is labelled 'real_tmqm' and is used repo-wide as the real reference band for QED / SA / ADMET / single_fragment_ratio. It is NOT the real corpus. 2000 real tmQM val clouds were decoded through OUR OWN YuelBond bond head and the 636 rows that produced a SMILES were scored. 636/636 rows carry bracket-atom notation; row 1 is 'CC(C)P(C(C)C)[C](C)(C)[Os]([Br])([Br])...'. No reference corpus carries [C]/[Rh] notation. It is a RECONSTRUCTION floor.",
+      "superseded_by": "metrics/by_metric/cfm_real_tmqm_sixmetal_baseline.json (n=31150, real tmQM_y.csv, no decoder in the path)",
+      "per_claim_correction": {
+        "single_fragment_ratio (CFM-05)": "SIGN FLIPS. Real tmQM (600 rows, production seeded sampler) = 0.9983, not 0.8365. Generated 0.9697 is BELOW the real corpus. The 'connectivity advantage' does not exist. NOTE the replacement is near-tautological: only 127/31152 = 0.4% of real tmQM rows contain a '.', so this metric cannot discriminate on real data and must not be quoted as a band.",
+        "QED (CFM-09)": "DIRECTION SURVIVES, MAGNITUDE DOES NOT. Real n=31150 QED = 0.234783 (cfm_real_tmqm_sixmetal_baseline.json). Generated 0.0944 is 39% of real, not 35%. Per-metal real QED spans 0.2138 (Os) to 0.2638 (Pt).",
+        "SA (CFM-10)": "DIRECTION SURVIVES, MAGNITUDE CHANGES. Real n=31150 SA = 4.978116. Gap is 1.464219, not 1.42.",
+        "AMES / logPapp / logS (CFM-11, CFM-12)": "Both values reproduced exactly against the 636 band, but the band is the wrong population. Real n=31152: ames 0.034893, logPapp -3.680245, logS -6.701385 (cfm_real_tmqm_sixmetal_admet.json). Against real, ames and logPapp are BETTER for the generated cohort and only logS is worse, by 1.31 log units, entirely inherited from logP 8.09 vs 4.15. The logPapp 'parity' was a 0.04-log-unit gap inside a clamp (median pinned at -3.0).",
+        "chemistry_validity (CFM-06, CFM-07)": "The evaluator is charge-asymmetric AND the cohorts differ in notation. MEASURED: 600/600 real tmQM rows carry '->'/'<-' dative arrows; 0/636 decoder rows and 0/66 generated do. RDKit charges DATIVE 0.0, so every metal ligand reads under-valent. 1383 of 1766 violating atoms are metal-adjacent and the largest class is anion-with-dative. tmQM writes [O+]#[C-]->[Re+] (30/600 rows). So 'generated validity 1.000 vs real 0.998, indistinguishable' compares two neutral cohorts and says nothing about the 98.5% of real molecules that are charge-separated."
+      },
+      "denominator_defect_also_found": "cfm_real_tmqm_sixmetal_baseline.json says n_rows 31150; cfm_real_tmqm_sixmetal_admet.json says 31152 for the same six-metal band. Two denominators, one band, one pass. The 2-row difference is the SMILES that fail RDKit parse; the ADMET file does not apply that filter. Both numbers are correct for their own filter and the discrepancy must be stated wherever both are quoted.",
+      "status": "SUPERSEDED. Do not cite the 636 band as 'real' anywhere. The values above remain in the file as history per AGENTS.md 5.5; they are not to be deleted."
+    }
+  ]
+}

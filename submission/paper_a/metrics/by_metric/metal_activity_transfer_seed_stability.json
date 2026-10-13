@@ -1,0 +1,164 @@
+{
+  "metric": "metal_activity_transfer_seed_stability",
+  "description": "Within-metal and cross-metal ROC-AUC across seeds 42/43/44/49/123, same deduplicated cohort and same scorer as metal_activity_transfer.json. Answers: are the headline within-metal numbers lockable, or do they drift with the seed?",
+  "scope": "tier2_precious_metal_anticancer",
+  "model": "morgan_fp(radius=2, 2048bit) + xgboost (identical to the seed-42 artifact)",
+  "seed_reference_artifact": "metrics/by_metric/metal_activity_transfer.json (seed 42)",
+  "krasnov_published_within_metal": {
+    "Ru": 0.81,
+    "Ir": 0.73
+  },
+  "within_metal_per_seed": {
+    "42": {
+      "Ru": 0.8363,
+      "Ir": 0.8295,
+      "Rh": 0.7381,
+      "Os": 0.49,
+      "Re": 0.9278
+    },
+    "43": {
+      "Ru": 0.8292,
+      "Ir": 0.8341,
+      "Rh": 0.7179,
+      "Os": 0.5867,
+      "Re": 0.95
+    },
+    "44": {
+      "Ru": 0.8349,
+      "Ir": 0.8597,
+      "Rh": 0.6429,
+      "Os": 0.3133,
+      "Re": 0.9722
+    },
+    "49": {
+      "Ru": 0.8128,
+      "Ir": 0.8521,
+      "Rh": 0.6738,
+      "Os": 0.55,
+      "Re": 0.9819
+    },
+    "123": {
+      "Ru": 0.8223,
+      "Ir": 0.8397,
+      "Rh": 0.7143,
+      "Os": 0.54,
+      "Re": 0.9083
+    }
+  },
+  "within_metal_stability": {
+    "Ru": {
+      "n_seeds": 5,
+      "min": 0.8128,
+      "max": 0.8363,
+      "spread": 0.0235,
+      "mean": 0.8271
+    },
+    "Ir": {
+      "n_seeds": 5,
+      "min": 0.8295,
+      "max": 0.8597,
+      "spread": 0.0302,
+      "mean": 0.84302
+    },
+    "Rh": {
+      "n_seeds": 5,
+      "min": 0.6429,
+      "max": 0.7381,
+      "spread": 0.0952,
+      "mean": 0.6974
+    },
+    "Os": {
+      "n_seeds": 5,
+      "min": 0.3133,
+      "max": 0.5867,
+      "spread": 0.2734,
+      "mean": 0.496
+    },
+    "Re": {
+      "n_seeds": 5,
+      "min": 0.9083,
+      "max": 0.9819,
+      "spread": 0.0736,
+      "mean": 0.94804
+    }
+  },
+  "cross_metal_per_seed": {
+    "42": {
+      "Ru": 0.6179,
+      "Ir": 0.5276,
+      "Rh": 0.519,
+      "Os": 0.495,
+      "Re": 0.4429,
+      "POOLED": 0.5996
+    },
+    "43": {
+      "Ru": 0.6135,
+      "Ir": 0.5294,
+      "Rh": 0.5017,
+      "Os": 0.5385,
+      "Re": 0.4548,
+      "POOLED": 0.5975
+    },
+    "44": {
+      "Ru": 0.6208,
+      "Ir": 0.5454,
+      "Rh": 0.455,
+      "Os": 0.5251,
+      "Re": 0.4798,
+      "POOLED": 0.6038
+    }
+  },
+  "cross_metal_stability": {
+    "Ru": {
+      "n_seeds": 3,
+      "min": 0.6135,
+      "max": 0.6208,
+      "spread": 0.0073,
+      "mean": 0.6174
+    },
+    "Ir": {
+      "n_seeds": 3,
+      "min": 0.5276,
+      "max": 0.5454,
+      "spread": 0.0178,
+      "mean": 0.534133
+    },
+    "Rh": {
+      "n_seeds": 3,
+      "min": 0.455,
+      "max": 0.519,
+      "spread": 0.064,
+      "mean": 0.4919
+    },
+    "Os": {
+      "n_seeds": 3,
+      "min": 0.495,
+      "max": 0.5385,
+      "spread": 0.0435,
+      "mean": 0.519533
+    },
+    "Re": {
+      "n_seeds": 3,
+      "min": 0.4429,
+      "max": 0.4798,
+      "spread": 0.0369,
+      "mean": 0.459167
+    },
+    "POOLED": {
+      "n_seeds": 3,
+      "min": 0.5975,
+      "max": 0.6038,
+      "spread": 0.0063,
+      "mean": 0.6003
+    }
+  },
+  "verdict": {
+    "headline_lockable": true,
+    "why": "Ru spans 0.8128-0.8363 over 5 seeds; even the WORST seed (0.8128) exceeds the Krasnov published 0.81. Ir spans 0.8295-0.8597, all five far above 0.73. 'match-or-exceed Krasnov within-metal' is seed-robust, not a lucky-seed artifact.",
+    "unresolvable_confirmed_quantitatively": "Os swings 0.3133-0.5867 (spread 0.2734) across seeds -- far larger than Ru/Ir. That swing IS the unresolvability: at n=36 unique ligands the estimate moves more than any method would move it.",
+    "cross_metal_note": "Cross-metal rows are captured only for seeds whose full fold set completed (POOLED present). The probe was still running when this artifact was written; re-run to extend if a 5-seed cross-metal CI is needed.",
+    "caveat": "Same caveats as the seed-42 artifact: duplicates collapsed by majority (ties -> inactive); Rh/Os/Re n=51/36/74 are below MIN_UNIQUE_FOR_GATE=200 and are reported, not gated."
+  },
+  "raw_log_preserved_at": "molmetal/reports/metal_activity_seed_sweep_2026_10_10/a3_raw.log",
+  "produced_by": "/tmp/wf_probe_attack/attack3.py (workflow wf_afc35b9d-7c4, probe-skeptic)"
+}

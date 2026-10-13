@@ -1,0 +1,56 @@
+# wf_a1_bace_cap512_d4_do01_split0.yaml — B3b: BACE, wider/deeper net (hidden 512,
+# depth 4) + dropout 0.1, with ONE shared scaffold split (protocol.split_seed: 0).
+#
+# Single-variable change vs the fixed-split B3 arm
+#   configs/wf_a1_bace_cap512_d4_split0.yaml
+#   (targets molmetal/scripts/train_moleculenet.py)
+# -> model.dropout: 0.1 (the trainer's --dropout default is 0.0). Everything
+#    else is held at that arm: tasks [bace], scaffold_split true, backbone dmpnn,
+#    hidden 512, depth 4, epochs 50, batch_size 64, lr 0.001, seeds [0,1,2,3,4],
+#    protocol.split_seed 0.
+#
+# HONEST FRAMING (§5.2): the number this arm produces is PROJECTED until the
+# run lands. The fixed split is seed 0. The historical varying-split baseline it
+# is compared against is MEASURED:
+#   molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/metrics.json
+#   bace test_auc_mean = 0.7505 +/- 0.0456 (5 seeds, 50 epochs).
+data:
+  tasks:
+  - bace
+  scaffold_split: true
+model:
+  backbone: dmpnn
+  hidden: 512                # <-- B3b: capacity (hidden)
+  depth: 4                   # <-- B3b: capacity (message-passing rounds)
+  dropout: 0.1               # <-- B3b: the single variable under test
+protocol:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  split_seed: 0              # <-- B3b: ONE shared scaffold split for all seeds
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+output:
+  base_dir: molmetal/reports/wf_a1_bace_cap512_d4_do01_split0
+  out_dir: molmetal/reports/wf_a1_bace_cap512_d4_do01_split0
+  log_master: molmetal/reports/wf_a1_bace_cap512_d4_do01_split0/master.log
+  training_summary: molmetal/reports/wf_a1_bace_cap512_d4_do01_split0/training_summary.json
+  out_metric: molmetal/reports/wf_a1_bace_cap512_d4_do01_split0/metrics.json
+  out_report: molmetal/reports/wf_a1_bace_cap512_d4_do01_split0/report.md
+  events_jsonl: true
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_moleculenet.py
+    --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: B3b — does adding dropout 0.1 to the 512/4 D-MPNN change BACE AUC on the fixed split?
+  note: PROJECTED until the run lands; the fixed split is seed 0. Historical varying-split baseline 0.7505 +/- 0.0456 is MEASURED (5 seeds, 50 ep).

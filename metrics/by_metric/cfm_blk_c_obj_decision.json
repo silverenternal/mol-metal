@@ -1,0 +1,86 @@
+{
+  "metric": "cfm_blk_c_obj_decision",
+  "tag": "MEASURED-AND-DECIDED",
+  "date": "2026-10-12",
+  "author": "BLK-C-OBJ synthesis pass. No training, no GPU, no paper/, no writes to molmetal/reports/cfm_patience10_seed0/.",
+  "question": "For the four targets the user named on 2026-10-12 (QED, ADMET, SA, precious-metal-specific): is a change to the CFM training LOSS the right instrument, and if so which term? A recommendation to change nothing on a target is a valid and recorded answer.",
+  "inputs_this_decision_rests_on": [
+    "metrics/by_metric/cfm_reference_band_audit.json -- 34 claims, 20 not citable",
+    "metrics/by_metric/cfm_real_tmqm_sixmetal_baseline.json -- the REAL band, n=31150",
+    "metrics/by_metric/cfm_objective_inventory.json -- per-target reachability",
+    "metrics/by_metric/cfm_metal_geometry.json + metrics/by_metric/cfm_metal_geometry_pairing_control.json -- the coordination-geometry axis, measured",
+    "molmetal/metrics/by_metric/tmqm_bond_perception_3seed.json -- the one live molecule-level term"
+  ],
+  "the_one_thing_that_changed_the_decision": {
+    "old_framing": "the loss has no molecule-level objective, so add one",
+    "what_the_measurements_say": "Of the 4 terms live under the shipped config, bond_ce is the only one that touches decoded chemistry and it is PER-EDGE. But the per-target decomposition shows that for 3 of the 4 named targets, a NEW molecule-level term would be aimed at a defect that bond_ce -- an existing, live, already-in-the-loss term -- is causing. The correct instrument is a fix to bond_ce's target, not a new term next to it.",
+    "why_this_is_not_the_same_as_doing_nothing": "It names a specific existing term, a specific measured defect in it (macro-F1(TYPE) 0.4784 vs OpenBabel 0.5051 under the identical per-complex protocol), and a specific test that would show the fix worked."
+  },
+  "decision_per_target": {
+    "QED": {
+      "verdict": "REACHABLE -- but NOT by adding a QED term. DO NOT BUILD a differentiable QED loss.",
+      "premise": "MEASURED n=66 vs n=31150: QED 0.094443 vs 0.234783, gap -0.140340. Counterfactual attribution on the 8 QED desirability functions (reimplementation agreeing with RDKit to 0.00e+00 after a documented HBA fix) puts ROTB +0.0571 and ALERTS +0.0524 on essentially the whole gap; AROM is NEGATIVE (-0.0190). Both trace to one structural fact: generated ligands are long, acyclic, triple-bond-rich and 98.5% non-aromatic (aromatic bond fraction 0.001229 vs real 0.454591).",
+      "the_live_lever_is": "bond_ce, i.e. bond-TYPE prediction. Its macro-F1(TYPE) is 0.4784 +/- 0.0055 (3 seeds: 0.4723 / 0.4829 / 0.4801) against OpenBabel 0.5051 under the identical per-complex protocol. It is LOSING to a rule-of-thumb tool.",
+      "literature_basis": "None needed for this recommendation -- it is a statement about our own loss, not about the literature. The literature objection to a black-box QED penalty (BLK-C-L3) STANDS and is unchanged: QED's ADS functions were fitted on ~771 oral organic drugs; metal centres, coordination numbers and inorganic geometry are outside the calibration domain.",
+      "what_would_falsify_this": "If bond-type accuracy were raised to OpenBabel level and the aromatic bond fraction stayed at 0.0012, QED would not move, and the ROTB/ALERTS attribution would be wrong."
+    },
+    "ADMET": {
+      "verdict": "NOT A LOSS PROBLEM. CHANGE NOTHING. Honest-negative.",
+      "premise": "MEASURED. All three implemented proxies are pure functions of logP, MW, TPSA, RotB, HBD and six SMARTS alerts (metrics_v2.py:304 Benigni-Richard AMES, :229 Hou 2007 closed-form logPapp, :402 Delaney 2004 ESOL). NOT ONE OF THEM READS THE METAL. They cannot express anything metal-specific and cannot distinguish a cisplatin from a ruthenium dye.",
+      "against_the_REAL_band": "n=66 vs n=31152: ames 0.0000 vs 0.034893 (BETTER), logPapp -3.0387 vs -3.680245 (BETTER), logS -8.0099 vs -6.701385 (WORSE by 1.31 log units, entirely inherited from logP 8.09 vs 4.15). The earlier 'all three are at parity' reading came from the CIRCULAR 636-row decoder band; against real data two of three are already better.",
+      "the_logPapp_win_is_an_artefact": "median pinned at -3.0093, sd 1.009: the Hou 2007 form is clamped at -3.0, so the 'win' is a clipping artefact and must not be quoted as headroom.",
+      "what_to_do_instead": "If a metal-discriminating ADMET axis is wanted, it needs a metric that reads the metal. None of the three exists on disk and building one is a metric task, not a loss task. Until then ADMET reduces to the QED lever.",
+      "explicitly_not_authorised": "No ADMET loss term. No ADMET term on the grounds that 'ADMET is a stated goal'."
+    },
+    "SA": {
+      "verdict": "REACHABLE -- but the repo's diagnosis of WHY is wrong, and a fragment-rarity term would be aimed at a term that is already helping us. DO NOT BUILD a fragment-rarity SA term.",
+      "premise": "MEASURED n=66 vs n=31150: SA 6.442335 vs 4.978116, gap +1.464219. The repo attributed this to fragment rarity. Decomposition of the sascorer raw terms: fragment_rarity d_sa_units +0.315204 (NEGATIVE direction -- generated Morgan fragments are BETTER covered than real: 26.1% vs 21.9% missing from the rarity table); size +0.012494 (negligible); symmetry +0.059005; the chiral-centre penalty carries the rest.",
+      "corrected_share": "69.3% of the gap, not 71.6%. The 71.6% figure was computed on a 4,000-row prefix of the real corpus while the headline gap uses n=31150; on the full corpus mean potential stereocentres are 0.315795 (prefix 0.201) against generated 6.257576, a ratio of 19.8x not 31x. Conclusion unchanged, three magnitudes corrected.",
+      "and_this_is_one_problem_with_QED": "Both the SA chiral penalty and the QED ROTB/ALERTS terms trace to the same structural fact -- long acyclic sp3 ligand backbones with potential stereocentres and no rings. The same bond-type lever moves both.",
+      "literature_basis": "Gao & Coley, J. Chem. Inf. Model. 2020, 60, 5714, DOI 10.1021/acs.jcim.0c00174 (CONFIRMED); Balcells et al. use that normalisation and a post-hoc histogram filter excluding B/Si/P/As/Se/I, applied to COMPLETED generations -- it is a filter, not a loss. Our metals are Pt/Ru/Ir/Rh/Os/Re, so their filter does not touch our metals."
+    },
+    "precious_metal_anticancer_specific": {
+      "verdict": "MOST REACHABLE, LEAST MEASURED. NOT a loss question yet: it is a sampling question first, a missing-metric question second, a loss question third.",
+      "premise_1_sampling": "MEASURED and reproduced by running the sampler: load_tmqm_clouds(n_clouds=192, seed=0, split='val') returns Ru 64 / Ir 45 / Re 38 / Rh 35 / Os 10 / Pt 0, logging '192 cloud(s) from 960 candidate(s)'. The generated cohort has ZERO Pt across 149 molecules in three independent cohorts, while Pt is 25.2% of the real six-metal corpus (7,853 of 31,150). Projections exact: n_clouds=960 -> Pt 64; n_clouds=2000 -> Pt 491. FIX COSTS NOTHING AND NEEDS NO RETRAIN.",
+      "premise_2_missing_metric": "MEASURED n=3000 REAL_DFT: CN=4 splits 486 square_planar / 31 tetrahedral (94.0% SP of 517); CN=6 splits 1149 octahedral_like / 6 no_trans_pair. So the real band for the cisplatin pharmacophore now EXISTS and it is 94.0% square-planar at CN=4. GENERATED has 6 CN=4 molecules, 5 scored, all 5 tetrahedral, 0 square_planar, and 0 Pt -- below the n=66 resolution floor.",
+      "premise_3_the_embedder_owns_the_verdict": "MEASURED PAIRED, molecule for molecule (n=600, 99 paired CN=4 scores): 91 of 99 molecules whose DFT geometry is square_planar become TETRAHEDRAL under ETKDG (6 stay tetrahedral, 2 unmeasured). Any square-planar verdict computed from generated SMILES under our embedder is a statement about ETKDG, not about the generator. This is the load-bearing control and it is why the geometry term is NOT yet designable.",
+      "toolchain_blocker": "pymatgen is NOT INSTALLED in /home/hugo/codes/mol-metal/.venv (ModuleNotFoundError), so the ChemEnv coordination-environment machinery behind MetalHawk's 96.51% CSD balanced-accuracy SP-4-vs-T-4 classifier is unavailable as written. openbabel 3.1.0 IS present and computes no coordination geometry."
+    }
+  },
+  "the_coordination_geometry_gate": {
+    "question": "BLK-C-OBJ required a measured real-tmqm reference band for the coordination-geometry axis before any term could be designed against it.",
+    "answer": "THE BAND EXISTS. THE TERM IS NOT YET DESIGNABLE.",
+    "what_is_measured": "REAL_DFT n=3000, six train metals, coordinates from tmQM_X1.xyz.gz intersected with the csv population BEFORE the cap: CN=4 -> 486 square_planar / 31 tetrahedral (94.0% SP); coordination_number_mean 6.1797; M-L bond lengths per metal (Pt median 2.1832, Ru 2.2644, Ir 2.2046, Rh ..., mean 2.18, sd 0.1921); donors C 43.4% / N 20.8% / Cl 10.5% / P 10.2%.",
+    "what_is_missing": [
+      "(1) Pt in the generated cohort. 0 of 66. Until load_tmqm_clouds is widened there is no Pt(II) square-planar pharmacophore to score.",
+      "(2) A geometry source for GENERATED that is not ETKDG. The generated SMILES are the only artefact on disk; the sampled clouds that produced them are 24 per arm and are not retained alongside the SMILES. 91/99 paired square-planar molecules are destroyed by the embedder, so the metric cannot be applied to our output at all in its current form.",
+      "(3) A population whose embeddability is not selected by the defect being measured. MEASURED: 12 of 66 generated do not embed; per cfm_l5_metal_deletion_control.json 11 of those 12 embed once the metal is deleted. Scoring only the 54 that embed selects the cohort ON the outcome variable. n <= 54, or <= 24 if the coordinate source is the sampled clouds.",
+      "(4) The toolchain. pymatgen absent."
+    ],
+    "design_if_and_when": "The published recipe is T-REX, Digital Discovery 2026, DOI 10.1039/D6DD00129G (Kevlishvili & Dorabawila, Baylor): a trans-pair map on 63,375 tmQMg structures, dipole R^2 0.845 vs 0.715 bond-only, 5 isomer classes, <1.2% of stereoisomer-capable complexes actually resolved. The local version is already implemented -- the trans-pair test is in wf_blk_c_obj_metal_geometry.py::_trans_pairs and is what labels CN=6 octahedral_like rather than octahedral (the planarity ratio gives 1.0 for BOTH an ideal octahedron and an ideal trigonal prism and cannot separate them). What is missing is not the classifier; it is a retained coordinate source for the generated arm.",
+    "no_term_is_proposed": "Explicitly NOT proposing a coordination-geometry loss term. Proposing one now would be tuning against an instrument that MEASURED erases the property at n it would be applied at."
+  },
+  "what_the_next_experiment_is": {
+    "name": "decode-enabled guidance sweep with the cloud coordinates retained",
+    "why_this_and_not_a_loss_change": "Three independent things must be measured before a loss term can be designed, and none of them is a retrain. (a) does guidance-improved 3D geometry decode to better SMILES -- currently NOT ON DISK, because the existing A/B did not run decode; (b) does the improved geometry survive the ETKDG embedder, which is where the pharmacophore dies; (c) does the square-planar fraction of the generated arm move at all once Pt is in the sampling window. A retrain before those three answers would spend the single authorised retrain on an unmeasured premise.",
+    "the_sweep_also_answers_the_coordination_gate": "Retaining the cloud coordinates removes missing item (2) directly, and widening the sampling window to n_clouds >= 960 removes item (1). Both are config changes plus an output-retention change; neither is a loss change.",
+    "wall_time_estimate": {
+      "tag": "PROJECTED",
+      "basis": "MEASURED rate on the CPU vina sweep: ~31 s per molecule-pocket record (119 records over 62 min). The guidance A/B arms are 24 clouds each at 20 ODE steps.",
+      "n_arms": "1 unguided + 3 guidance strengths = 4 arms x 24 clouds, plus a decode step per cloud",
+      "estimate": "3-5 hr wall on the existing checkpoint, CPU-viable for the decode/geometry half; the ODE half is the cost and is the user's call on GPU",
+      "not_on_disk": "every kcal/mol, QED, SA and geometry number for the new arms. Nothing about the outcome is claimed here."
+    }
+  },
+  "what_was_deliberately_not_done": [
+    "No training, no GPU, no retrain. The single authorised retrain is held until the three measurements above land.",
+    "No new loss term proposed for QED, ADMET or SA -- two are recommended AGAINST and one is recommended against its own stated mechanism.",
+    "No coordination-geometry loss term proposed, with the reasons enumerated rather than assumed.",
+    "No metric JSON deleted. Every correction is an APPENDED correction block per AGENTS.md 5.5; the original values stay readable.",
+    "paper/ untouched (AGENTS.md 5.3, TODO-84).",
+    "molmetal/reports/cfm_patience10_seed0/ untouched.",
+    "The vina sweep was NOT relaunched and NOT touched; it is running under its own PID and its remaining pockets are PROJECTED."
+  ],
+  "residual_risk_stated_plainly": "Every model-level claim in this file inherits n=66 generated molecules, one checkpoint, one seed, one epoch, and the 66 SMILES are unsanitised radicals (sanitized=0 on all 66 rows of molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv, [O]/[C] bracket notation) compared against real dative-bond complexes. QED's ADS functions were fitted on ~771 oral ORGANIC drugs. The absolute QED and SA values are NOT drug-like-comparable; the directions are robust. Every conclusion drawn here is a negative or a conservative direction, which is the safe side to err on.",
+  "what_is_measured": "REAL_DFT n=3000, six train metals, coordinates from tmQM_X1.xyz.gz intersected with the csv population BEFORE the cap: CN=4 -> 486 square_planar / 31 tetrahedral (94.0% SP of 517); coordination_number_mean 6.1797; M-L bond lengths per metal (median: Pt 2.1832 n=3571, Ru 2.2644 n=5723, Ir 2.2046 n=3549, Rh 2.2062 n=2374, Os 2.2403 n=844, Re 2.1286 n=2457); pooled 18518 bonds, mean 2.18, sd 0.1921; donors C 43.4% / N 20.8% / Cl 10.5% / P 10.2% / H 5.2%."
+}

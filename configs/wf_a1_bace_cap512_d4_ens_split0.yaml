@@ -1,0 +1,68 @@
+# wf_a1_bace_cap512_d4_ens_split0.yaml — combine BOTH positive BACE levers:
+# capacity (hidden 512 / depth 4) AND fixed-split seed-ensemble (Lever B6).
+#
+# Two single-variable arms already exist and are MEASURED:
+#   configs/wf_a1_bace_cap512_d4_split0.yaml  -> bace 0.7467 +/- 0.0233
+#     (capacity 512/4, fixed split seed 0, 5 training seeds, NO ensemble)
+#   configs/wf_a1_bace_ensemble.yaml          -> capacity 300/3 + ensemble
+# This config stacks the two positive levers: 512/4 AND ensemble on ONE shared
+# scaffold split (split_seed 0), so the 5 per-seed test sets are row-aligned and
+# the ensemble is a plain mean of the per-seed score vectors (see `_ensemble_auc`
+# in molmetal/scripts/train_moleculenet.py).
+#
+# The isolation target is the already-MEASURED fixed-split single-seed-mean arm
+#   molmetal/reports/wf_a1_bace_cap512_d4_split0/metrics.json
+#   bace test_auc_mean = 0.7467 +/- 0.0233 (5 seeds, 50 ep)
+# so `ensemble_auc` minus 0.7467 is the pure ensemble gain at fixed split.
+#
+# AGENTS.md §5.11: every hyperparameter lives here; no CLI flag sets what to train.
+#
+# HONEST FRAMING (§5.2): the number this arm produces is PROJECTED until the run
+# lands. Both comparison numbers (0.7467 fixed-split mean; 0.7505 +/- 0.0456
+# historical varying-split baseline) are MEASURED.
+data:
+  tasks:
+  - bace
+  scaffold_split: true
+model:
+  backbone: dmpnn
+  hidden: 512                # <-- capacity (hidden)
+  depth: 4                   # <-- capacity (message-passing rounds)
+protocol:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  split_seed: 0              # <-- ONE shared scaffold split for all seeds
+  ensemble_seeds: true       # <-- Lever B6: average per-seed test scores
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+compute:
+  # NOTE: train_moleculenet.py has NO --device dest (device is auto-selected via
+  # _cuda_default); start.sh reads compute.gpu for CUDA_VISIBLE_DEVICES, and
+  # `gpu` is a registered non-trainer key. `compute.device` would resolve to no
+  # dest and fail scripts/_config_binding_gate.py, so the pin is spelled as gpu.
+  gpu: cuda:0
+output:
+  base_dir: molmetal/reports/wf_a1_bace_cap512_d4_ens_split0
+  out_dir: molmetal/reports/wf_a1_bace_cap512_d4_ens_split0
+  log_master: molmetal/reports/wf_a1_bace_cap512_d4_ens_split0/master.log
+  training_summary: molmetal/reports/wf_a1_bace_cap512_d4_ens_split0/training_summary.json
+  out_metric: molmetal/reports/wf_a1_bace_cap512_d4_ens_split0/metrics.json
+  out_report: molmetal/reports/wf_a1_bace_cap512_d4_ens_split0/report.md
+  events_jsonl: true
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_moleculenet.py
+    --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: Combine both positive BACE levers — capacity (512/4) + fixed-split seed ensemble.
+  note: PROJECTED until the run lands. Isolation target wf_a1_bace_cap512_d4_split0 = 0.7467 +/- 0.0233 is MEASURED (fixed split seed 0, 5 seeds, 50 ep).

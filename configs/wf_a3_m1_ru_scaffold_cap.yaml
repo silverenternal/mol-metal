@@ -1,0 +1,64 @@
+# wf_a3_m1_ru_scaffold_cap.yaml — R2: M1 multi-task D-MPNN, Ru arm, scaffold split.
+#
+# Targets molmetal/scripts/train_dmpnn_multitask_wasserstein.py (structure
+# mirrored from configs/training/nci60_9cell_5seed_50ep_v1.yaml, which targets
+# the same trainer).
+#
+# Single-variable change: the metal cohort is pinned to [Ru] (the trainer's
+# default is the full 5-metal pool). The Ru CSV is NOT a hand-written path —
+# it is resolved by the trainer from data.dataset via _resolve_default_csv_path():
+#   dataset=metalcytotox_5metal -> .data/molmetal/metalcytotox_5metal_multitask_v4.csv
+# (do not invent a `data.csv` value; the selector is the schema, matching the
+# example config which names dataset=nci60_9cell instead of a csv path).
+#
+# data.metals MUST be a YAML list (--metals is nargs="+"); a space-joined string
+# silently matches zero metals and NaNs every fold.
+#
+# NOTE: this trainer has NO --out-metric / --out-report / --scaffold-split dest,
+# so none is declared here (declaring one would fail _config_binding_gate.py).
+#
+# HONEST FRAMING (§5.2): the number this arm produces is PROJECTED until the run
+# lands. No measured Ru-only scaffold baseline is claimed here; the parent
+# 5-metal multi-task number lives in metrics/by_metric/ and must be read from
+# disk before any comparison is quoted.
+data:
+  dataset: metalcytotox_5metal
+  task_axis: metal
+  metals: [Ru]               # <-- R2: the single variable under test
+  split:                     # documentation of the fixed protocol (inert, not a trainer dest)
+    type: bemis_murcko_scaffold
+    seed: 0
+    train_frac: 0.7
+    val_frac: 0.1
+    test_frac: 0.2
+model:
+  hidden: 300
+  depth: 3
+protocol:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  lr_scheduler: cosine
+  weight_decay: 1.0e-5
+  seeds: [0, 1, 2, 3, 4]
+  wasserstein_weight: 0.05
+compute:
+  device: cuda:0
+output:
+  base_dir: molmetal/reports/wf_a3_m1_ru_scaffold_cap
+  out_dir: molmetal/reports/wf_a3_m1_ru_scaffold_cap
+  log_master: molmetal/reports/wf_a3_m1_ru_scaffold_cap/master.log
+  training_summary: molmetal/reports/wf_a3_m1_ru_scaffold_cap/training_summary.json
+  ckpt_dir: molmetal/reports/wf_a3_m1_ru_scaffold_cap/checkpoints
+  events_jsonl: true
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_dmpnn_multitask_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: R2 — a Ru-only multi-task D-MPNN arm (scaffold split, cosine, w2 0.05) to probe the weak Ru metric.
+  note: PROJECTED until the run lands; read the parent multi-task baseline from metrics/by_metric/ before comparing.

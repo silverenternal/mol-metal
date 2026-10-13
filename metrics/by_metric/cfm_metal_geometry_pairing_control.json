@@ -1,0 +1,467 @@
+{
+  "metric": "cfm_metal_geometry_pairing_control",
+  "tag": "MEASURED",
+  "date": "2026-10-12",
+  "population": {
+    "dft_requested": 600,
+    "dft_measured": 600,
+    "etkdg_measured": 600,
+    "coverage_dft_reachable_on_etkdg_side": 1.0,
+    "paired_scored": 99,
+    "note": "REAL_ETKDG_SAME_MOLECULES is built from the SAME csd_code list as REAL_DFT, so this floor is free of population drift; the coverage is MEASURED above and the script raises if it drops below 0.9, rather than claiming it in prose. metrics/by_metric/cfm_metal_geometry.json does NOT have this -- at --real-limit 3000 its two cohorts share 329 of 3,000."
+  },
+  "real_dft": {
+    "label": "REAL_DFT",
+    "n_molecules": 600,
+    "n_with_metal_centre": 600,
+    "geometry_unmeasured": 0,
+    "geometry_implausible_rejected": 0,
+    "n_geometries_scored": 600,
+    "coordination_number_mean": 6.2367,
+    "coordination_number_distribution": {
+      "2": 1,
+      "3": 1,
+      "4": 105,
+      "5": 72,
+      "6": 222,
+      "7": 42,
+      "8": 87,
+      "9": 65,
+      "10": 5
+    },
+    "donor_element_counts": {
+      "C": 1645,
+      "N": 751,
+      "Cl": 434,
+      "P": 382,
+      "H": 179,
+      "O": 176,
+      "S": 98,
+      "Br": 29,
+      "Si": 17,
+      "B": 16,
+      "As": 6,
+      "Se": 5,
+      "I": 3,
+      "F": 1
+    },
+    "donor_element_top5_fraction": {
+      "C": 0.4396,
+      "N": 0.2007,
+      "Cl": 0.116,
+      "P": 0.1021,
+      "H": 0.0478
+    },
+    "geometry_class_counts": {
+      "other": 271,
+      "octahedral_like": 222,
+      "square_planar": 95,
+      "tetrahedral": 10,
+      "unmeasured": 2
+    },
+    "cn4_geometry_class_counts": {
+      "square_planar": 95,
+      "tetrahedral": 10
+    },
+    "cn4_trans_pair_distribution": {
+      "0": 6,
+      "1": 3,
+      "2": 96
+    },
+    "cn6_geometry_class_counts": {
+      "octahedral_like": 222
+    },
+    "cn4_planarity_ratio": {
+      "n": 105,
+      "mean": 0.0869,
+      "median": 0.011,
+      "sd": 0.2065,
+      "p10": 0.0005,
+      "p90": 0.1404,
+      "min": 0.0,
+      "max": 0.93
+    },
+    "cn4_planarity_ratio_histogram": {
+      "[0.00,0.10)": 86,
+      "[0.10,0.20)": 10,
+      "[0.20,0.30)": 1,
+      "[0.30,0.40)": 0,
+      "[0.40,0.50)": 0,
+      "[0.50,0.60)": 1,
+      "[0.60,0.80)": 2,
+      "[0.80,1.00)": 5
+    },
+    "all_planarity_ratio": {
+      "n": 598,
+      "mean": 0.6981,
+      "median": 0.8699,
+      "sd": 0.3362,
+      "p10": 0.0189,
+      "p90": 0.9574,
+      "min": 0.0,
+      "max": 0.9969
+    },
+    "metal_bond_length_A": {
+      "n": 3742,
+      "mean": 2.1826,
+      "median": 2.2241,
+      "sd": 0.1903,
+      "p10": 1.9484,
+      "p90": 2.3849,
+      "min": 1.5019,
+      "max": 2.5988
+    },
+    "metal_bond_length_per_metal_A": {
+      "Pt": {
+        "n": 671,
+        "mean": 2.1837,
+        "median": 2.1513,
+        "sd": 0.1917,
+        "p10": 1.977,
+        "p90": 2.4738,
+        "min": 1.576,
+        "max": 2.5988
+      },
+      "Ru": {
+        "n": 1210,
+        "mean": 2.1989,
+        "median": 2.2683,
+        "sd": 0.1911,
+        "p10": 1.9318,
+        "p90": 2.3676,
+        "min": 1.5019,
+        "max": 2.5987
+      },
+      "Ir": {
+        "n": 719,
+        "mean": 2.1815,
+        "median": 2.2101,
+        "sd": 0.1618,
+        "p10": 2.0083,
+        "p90": 2.3549,
+        "min": 1.5137,
+        "max": 2.5809
+      },
+      "Rh": {
+        "n": 491,
+        "mean": 2.1955,
+        "median": 2.2134,
+        "sd": 0.1506,
+        "p10": 1.9999,
+        "p90": 2.341,
+        "min": 1.5042,
+        "max": 2.589
+      },
+      "Os": {
+        "n": 192,
+        "mean": 2.1603,
+        "median": 2.2287,
+        "sd": 0.2511,
+        "p10": 1.8548,
+        "p90": 2.3963,
+        "min": 1.5795,
+        "max": 2.567
+      },
+      "Re": {
+        "n": 459,
+        "mean": 2.1357,
+        "median": 2.14,
+        "sd": 0.2248,
+        "p10": 1.9371,
+        "p90": 2.4349,
+        "min": 1.603,
+        "max": 2.592
+      }
+    },
+    "geometry_class_per_metal": {
+      "Pt": {
+        "square_planar": 75,
+        "octahedral_like": 23,
+        "other": 41,
+        "unmeasured": 1,
+        "tetrahedral": 1
+      },
+      "Ru": {
+        "other": 101,
+        "octahedral_like": 63,
+        "square_planar": 1
+      },
+      "Ir": {
+        "octahedral_like": 41,
+        "other": 60,
+        "square_planar": 6,
+        "unmeasured": 1
+      },
+      "Rh": {
+        "square_planar": 13,
+        "other": 42,
+        "octahedral_like": 20,
+        "tetrahedral": 2
+      },
+      "Os": {
+        "octahedral_like": 16,
+        "other": 12,
+        "tetrahedral": 2
+      },
+      "Re": {
+        "octahedral_like": 59,
+        "other": 15,
+        "tetrahedral": 5
+      }
+    }
+  },
+  "real_etkdg_same_molecules": {
+    "label": "REAL_ETKDG_SAME_MOLECULES",
+    "n_molecules": 600,
+    "n_with_metal_centre": 600,
+    "geometry_unmeasured": 244,
+    "geometry_implausible_rejected": 23,
+    "n_geometries_scored": 333,
+    "coordination_number_mean": 6.01,
+    "coordination_number_distribution": {
+      "3": 3,
+      "4": 161,
+      "5": 50,
+      "6": 219,
+      "7": 14,
+      "8": 86,
+      "9": 67
+    },
+    "donor_element_counts": {
+      "C": 1666,
+      "N": 751,
+      "Cl": 435,
+      "P": 382,
+      "O": 172,
+      "S": 100,
+      "Br": 30,
+      "I": 24,
+      "Si": 17,
+      "B": 16,
+      "Se": 6,
+      "As": 6,
+      "F": 1
+    },
+    "donor_element_top5_fraction": {
+      "C": 0.462,
+      "N": 0.2083,
+      "Cl": 0.1206,
+      "P": 0.1059,
+      "O": 0.0477
+    },
+    "geometry_class_counts": {
+      "tetrahedral": 154,
+      "octahedral_like": 110,
+      "other": 43,
+      "no_trans_pair_cn6": 24,
+      "unmeasured": 2
+    },
+    "cn4_geometry_class_counts": {
+      "tetrahedral": 154
+    },
+    "cn4_trans_pair_distribution": {
+      "0": 146,
+      "1": 7,
+      "2": 1
+    },
+    "cn6_geometry_class_counts": {
+      "octahedral_like": 110,
+      "no_trans_pair_cn6": 24
+    },
+    "cn4_planarity_ratio": {
+      "n": 154,
+      "mean": 0.8511,
+      "median": 0.9107,
+      "sd": 0.1496,
+      "p10": 0.6586,
+      "p90": 0.9831,
+      "min": 0.3167,
+      "max": 0.9968
+    },
+    "cn4_planarity_ratio_histogram": {
+      "[0.00,0.10)": 0,
+      "[0.10,0.20)": 0,
+      "[0.20,0.30)": 0,
+      "[0.30,0.40)": 5,
+      "[0.40,0.50)": 1,
+      "[0.50,0.60)": 3,
+      "[0.60,0.80)": 34,
+      "[0.80,1.00)": 111
+    },
+    "all_planarity_ratio": {
+      "n": 331,
+      "mean": 0.8524,
+      "median": 0.8846,
+      "sd": 0.1234,
+      "p10": 0.6694,
+      "p90": 0.9738,
+      "min": 0.3167,
+      "max": 0.9968
+    },
+    "metal_bond_length_A": {
+      "n": 1645,
+      "mean": 2.1263,
+      "median": 2.0953,
+      "sd": 0.2368,
+      "p10": 1.8576,
+      "p90": 2.4304,
+      "min": 1.505,
+      "max": 3.0863
+    },
+    "metal_bond_length_per_metal_A": {
+      "Pt": {
+        "n": 549,
+        "mean": 2.1313,
+        "median": 2.091,
+        "sd": 0.2388,
+        "p10": 1.8795,
+        "p90": 2.4202,
+        "min": 1.5808,
+        "max": 3.0863
+      },
+      "Ru": {
+        "n": 377,
+        "mean": 2.1156,
+        "median": 2.0891,
+        "sd": 0.2539,
+        "p10": 1.8178,
+        "p90": 2.4639,
+        "min": 1.5098,
+        "max": 2.9655
+      },
+      "Ir": {
+        "n": 206,
+        "mean": 2.0864,
+        "median": 2.0476,
+        "sd": 0.2134,
+        "p10": 1.8786,
+        "p90": 2.3762,
+        "min": 1.5686,
+        "max": 2.9917
+      },
+      "Rh": {
+        "n": 138,
+        "mean": 2.1331,
+        "median": 2.1042,
+        "sd": 0.229,
+        "p10": 1.8817,
+        "p90": 2.4359,
+        "min": 1.6583,
+        "max": 2.8256
+      },
+      "Os": {
+        "n": 82,
+        "mean": 2.0247,
+        "median": 1.9819,
+        "sd": 0.287,
+        "p10": 1.734,
+        "p90": 2.4313,
+        "min": 1.5704,
+        "max": 2.816
+      },
+      "Re": {
+        "n": 293,
+        "mean": 2.184,
+        "median": 2.216,
+        "sd": 0.1969,
+        "p10": 1.9191,
+        "p90": 2.3916,
+        "min": 1.505,
+        "max": 2.9503
+      }
+    },
+    "geometry_class_per_metal": {
+      "Pt": {
+        "tetrahedral": 116,
+        "octahedral_like": 12,
+        "unmeasured": 1,
+        "other": 2
+      },
+      "Ru": {
+        "other": 25,
+        "octahedral_like": 34,
+        "no_trans_pair_cn6": 5,
+        "tetrahedral": 4
+      },
+      "Ir": {
+        "tetrahedral": 11,
+        "octahedral_like": 18,
+        "no_trans_pair_cn6": 2,
+        "other": 8
+      },
+      "Rh": {
+        "no_trans_pair_cn6": 4,
+        "tetrahedral": 20,
+        "octahedral_like": 4,
+        "other": 2
+      },
+      "Os": {
+        "tetrahedral": 2,
+        "no_trans_pair_cn6": 5,
+        "octahedral_like": 6,
+        "unmeasured": 1,
+        "other": 1
+      },
+      "Re": {
+        "octahedral_like": 36,
+        "no_trans_pair_cn6": 8,
+        "other": 5,
+        "tetrahedral": 1
+      }
+    }
+  },
+  "embedder_floor_paired": {
+    "coordination_number_mean": {
+      "real_dft_minus_real_etkdg_paired": 0.2267,
+      "abs_floor": 0.2267
+    },
+    "cn4_planarity_ratio": {
+      "real_dft_minus_real_etkdg_paired": -0.7642,
+      "abs_floor": 0.7642
+    },
+    "metal_bond_length_A": {
+      "real_dft_minus_real_etkdg_paired": 0.0563,
+      "abs_floor": 0.0563
+    }
+  },
+  "generator_gap_versus_paired_floor": {
+    "coordination_number_mean": {
+      "generated_minus_real_etkdg_paired": -1.1312,
+      "abs_generator_gap": 1.1312,
+      "abs_paired_embedder_floor": 0.2267,
+      "verdict": "generator gap EXCEEDS the embedder floor"
+    },
+    "cn4_planarity_ratio": {
+      "generated_minus_real_etkdg_paired": 0.0227,
+      "abs_generator_gap": 0.0227,
+      "abs_paired_embedder_floor": 0.7642,
+      "verdict": "generator gap is WITHIN the embedder floor -- not a finding"
+    },
+    "metal_bond_length_A": {
+      "generated_minus_real_etkdg_paired": 0.1344,
+      "abs_generator_gap": 0.1344,
+      "abs_paired_embedder_floor": 0.0563,
+      "verdict": "generator gap EXCEEDS the embedder floor"
+    }
+  },
+  "paired_cn4_class_table": {
+    "n_paired_cn4": 99,
+    "table": {
+      "dft=square_planar|etkdg=tetrahedral": 91,
+      "dft=square_planar|etkdg=unmeasured": 2,
+      "dft=tetrahedral|etkdg=tetrahedral": 6
+    }
+  },
+  "cn_definition_agreement": {
+    "n_compared": 600,
+    "n_agree": 470,
+    "fraction": 0.7833,
+    "note": "A fraction well below 1.0 means 'REAL_DFT CN' and 'generated CN' are not the same definition, so a coordination-number gap measured across them is partly a definition gap."
+  },
+  "cn_definition_agreement_dft_vs_etkdg_paired": {
+    "n_compared": 600,
+    "n_agree": 442,
+    "fraction": 0.7367,
+    "note": "Measured on identical molecules, so this is a pure DEFINITION gap: DFT counts donors in a 2.6 A window, ETKDG counts RDKit graph degree. Any coordination-number gap quoted across the two cohorts contains it."
+  }
+}

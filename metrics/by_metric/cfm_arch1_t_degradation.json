@@ -1,0 +1,345 @@
+{
+  "metric": "cfm_arch1_t_degradation",
+  "tag": "MEASURED",
+  "date": "2026-10-13",
+  "checkpoint": "/home/hugo/codes/mol-metal/molmetal/reports/cfm_patience10_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+  "tmqm_dir": "/home/hugo/codes/mol-metal/.data/molmetal/tmQM",
+  "n_clouds": 32,
+  "n_clouds_with_truth": 32,
+  "seed": 0,
+  "noise_sigma": 2.485,
+  "hidden_dim": 128,
+  "n_layers": 3,
+  "metals_filter": null,
+  "convention": {
+    "formula": "x_t = (1-t)*x_0 + t*x_1",
+    "t1_means": "clean geometry (x_1)",
+    "t0_means": "pure Gaussian noise (x_0)",
+    "noise_distribution": "N(0, 2.485^2) I_3 per coordinate",
+    "source": "train_cfm_yuelbond_wasserstein.py:3443 + ARCH-1 checkpoint_settings_read_from_disk"
+  },
+  "protocol": {
+    "head": "YuelBondDecoderHead (checkpoint trained under this head)",
+    "score": "macro-F1 over all 5 bond classes (none/single/double/triple/aromatic) + per-class recall/precision + bond-EXISTENCE F1. Per-pair scoring with the same edge_index the training pipeline would build (YuelBondDecoder.featurise on the CLEAN cloud). Truth from AtomCloud.bonds / bond_types (tmQM Wiberg).",
+    "scale": "32 clouds, seed 0, single-pass, CPU only -- smoke-scale diagnostic, not a settled number."
+  },
+  "per_t": [
+    {
+      "t": 1.0,
+      "n_clouds_scored": 32,
+      "n_pair_scored": 3770,
+      "n_truth_bonds": 1156,
+      "n_pred_bonds": 943,
+      "exist_precision": 0.9819724284199364,
+      "exist_recall": 0.801038062283737,
+      "exist_f1": 0.8823249166269652,
+      "macro_f1_all_classes": 0.6108482787269279,
+      "per_class_f1": {
+        "none": 0.954603933100533,
+        "single": 0.5786163522012578,
+        "double": 0.6896551724137931,
+        "triple": 0.0,
+        "aromatic": 0.8313659359190556
+      },
+      "per_class_recall": {
+        "none": 0.9934965570007651,
+        "single": 0.4831932773109244,
+        "double": 0.5405405405405406,
+        "triple": 0.0,
+        "aromatic": 0.8162251655629139
+      },
+      "per_class_precision": {
+        "none": 0.9186416696144323,
+        "single": 0.7210031347962382,
+        "double": 0.9523809523809523,
+        "triple": 0.0,
+        "aromatic": 0.8470790378006873
+      },
+      "per_class_support": {
+        "none": 2614,
+        "single": 476,
+        "double": 74,
+        "triple": 2,
+        "aromatic": 604
+      }
+    },
+    {
+      "t": 0.9,
+      "n_clouds_scored": 32,
+      "n_pair_scored": 3770,
+      "n_truth_bonds": 1156,
+      "n_pred_bonds": 964,
+      "exist_precision": 0.3791208791208791,
+      "exist_recall": 0.23875432525951557,
+      "exist_f1": 0.2929936305732484,
+      "macro_f1_all_classes": 0.23279662830991113,
+      "per_class_f1": {
+        "none": 0.7644978783592645,
+        "single": 0.23710208562019758,
+        "double": 0.03738317757009346,
+        "triple": 0.0,
+        "aromatic": 0.125
+      },
+      "per_class_recall": {
+        "none": 0.8270849273144606,
+        "single": 0.226890756302521,
+        "double": 0.02702702702702703,
+        "triple": 0.0,
+        "aromatic": 0.08940397350993377
+      },
+      "per_class_precision": {
+        "none": 0.7107166337935569,
+        "single": 0.2482758620689655,
+        "double": 0.06060606060606061,
+        "triple": 0.0,
+        "aromatic": 0.2076923076923077
+      },
+      "per_class_support": {
+        "none": 2614,
+        "single": 476,
+        "double": 74,
+        "triple": 2,
+        "aromatic": 604
+      }
+    },
+    {
+      "t": 0.75,
+      "n_clouds_scored": 32,
+      "n_pair_scored": 3770,
+      "n_truth_bonds": 1156,
+      "n_pred_bonds": 1146,
+      "exist_precision": 0.3576248313090418,
+      "exist_recall": 0.2292387543252595,
+      "exist_f1": 0.27938850817079597,
+      "macro_f1_all_classes": 0.20562589162342126,
+      "per_class_f1": {
+        "none": 0.7577529682792841,
+        "single": 0.24870466321243526,
+        "double": 0.0,
+        "triple": 0.0,
+        "aromatic": 0.021671826625386997
+      },
+      "per_class_recall": {
+        "none": 0.8179035960214232,
+        "single": 0.3025210084033613,
+        "double": 0.0,
+        "triple": 0.0,
+        "aromatic": 0.011589403973509934
+      },
+      "per_class_precision": {
+        "none": 0.7058435127104655,
+        "single": 0.21114369501466276,
+        "double": 0.0,
+        "triple": 0.0,
+        "aromatic": 0.16666666666666666
+      },
+      "per_class_support": {
+        "none": 2614,
+        "single": 476,
+        "double": 74,
+        "triple": 2,
+        "aromatic": 604
+      }
+    },
+    {
+      "t": 0.5,
+      "n_clouds_scored": 32,
+      "n_pair_scored": 3770,
+      "n_truth_bonds": 1156,
+      "n_pred_bonds": 1177,
+      "exist_precision": 0.32857142857142857,
+      "exist_recall": 0.21885813148788927,
+      "exist_f1": 0.26272066458982346,
+      "macro_f1_all_classes": 0.19537901761351342,
+      "per_class_f1": {
+        "none": 0.7470609191307446,
+        "single": 0.22330888345558272,
+        "double": 0.0,
+        "triple": 0.0,
+        "aromatic": 0.0065252854812398045
+      },
+      "per_class_recall": {
+        "none": 0.8022188217291507,
+        "single": 0.28781512605042014,
+        "double": 0.0,
+        "triple": 0.0,
+        "aromatic": 0.0033112582781456954
+      },
+      "per_class_precision": {
+        "none": 0.699,
+        "single": 0.18242343541944075,
+        "double": 0.0,
+        "triple": 0.0,
+        "aromatic": 0.2222222222222222
+      },
+      "per_class_support": {
+        "none": 2614,
+        "single": 476,
+        "double": 74,
+        "triple": 2,
+        "aromatic": 604
+      }
+    },
+    {
+      "t": 0.25,
+      "n_clouds_scored": 32,
+      "n_pair_scored": 3770,
+      "n_truth_bonds": 1156,
+      "n_pred_bonds": 990,
+      "exist_precision": 0.3492957746478873,
+      "exist_recall": 0.22202327663384064,
+      "exist_f1": 0.2714833059660646,
+      "macro_f1_all_classes": 0.200116218196077,
+      "per_class_f1": {
+        "none": 0.7595302619692864,
+        "single": 0.20368744512730466,
+        "double": 0.024096385542168676,
+        "triple": 0.0,
+        "aromatic": 0.013266998341625208
+      },
+      "per_class_recall": {
+        "none": 0.8198127925117005,
+        "single": 0.2543859649122807,
+        "double": 0.013513513513513514,
+        "triple": 0.0,
+        "aromatic": 0.006837606837606838
+      },
+      "per_class_precision": {
+        "none": 0.7075058902726354,
+        "single": 0.1698389458272328,
+        "double": 0.1111111111111111,
+        "triple": 0.0,
+        "aromatic": 0.2222222222222222
+      },
+      "per_class_support": {
+        "none": 2564,
+        "single": 456,
+        "double": 74,
+        "triple": 2,
+        "aromatic": 585
+      }
+    },
+    {
+      "t": 0.1,
+      "n_clouds_scored": 32,
+      "n_pair_scored": 3770,
+      "n_truth_bonds": 1156,
+      "n_pred_bonds": 741,
+      "exist_precision": 0.28842832469775476,
+      "exist_recall": 0.1630859375,
+      "exist_f1": 0.2083593262632564,
+      "macro_f1_all_classes": 0.19358268723861477,
+      "per_class_f1": {
+        "none": 0.7571291866028708,
+        "single": 0.18537590113285274,
+        "double": 0.0,
+        "triple": 0.0,
+        "aromatic": 0.02540834845735027
+      },
+      "per_class_recall": {
+        "none": 0.8276150627615063,
+        "single": 0.2127659574468085,
+        "double": 0.0,
+        "triple": 0.0,
+        "aromatic": 0.013307984790874524
+      },
+      "per_class_precision": {
+        "none": 0.6977072310405644,
+        "single": 0.16423357664233576,
+        "double": 0.0,
+        "triple": 0.0,
+        "aromatic": 0.28
+      },
+      "per_class_support": {
+        "none": 2390,
+        "single": 423,
+        "double": 73,
+        "triple": 2,
+        "aromatic": 526
+      }
+    },
+    {
+      "t": 0.0,
+      "n_clouds_scored": 32,
+      "n_pair_scored": 3770,
+      "n_truth_bonds": 1156,
+      "n_pred_bonds": 511,
+      "exist_precision": 0.3284823284823285,
+      "exist_recall": 0.17458563535911603,
+      "exist_f1": 0.227994227994228,
+      "macro_f1_all_classes": 0.1996283736991034,
+      "per_class_f1": {
+        "none": 0.7716602646180111,
+        "single": 0.18726591760299624,
+        "double": 0.0,
+        "triple": 0.0,
+        "aromatic": 0.0392156862745098
+      },
+      "per_class_recall": {
+        "none": 0.8484279680900986,
+        "single": 0.1989389920424403,
+        "double": 0.0,
+        "triple": 0.0,
+        "aromatic": 0.022026431718061675
+      },
+      "per_class_precision": {
+        "none": 0.7076320939334638,
+        "single": 0.17688679245283018,
+        "double": 0.0,
+        "triple": 0.0,
+        "aromatic": 0.17857142857142858
+      },
+      "per_class_support": {
+        "none": 2131,
+        "single": 377,
+        "double": 72,
+        "triple": 2,
+        "aromatic": 454
+      }
+    }
+  ],
+  "curve_summary": {
+    "macro_f1_all_classes_curve": [
+      0.6108482787269279,
+      0.23279662830991113,
+      0.20562589162342126,
+      0.19537901761351342,
+      0.200116218196077,
+      0.19358268723861477,
+      0.1996283736991034
+    ],
+    "exist_f1_curve": [
+      0.8823249166269652,
+      0.2929936305732484,
+      0.27938850817079597,
+      0.26272066458982346,
+      0.2714833059660646,
+      0.2083593262632564,
+      0.227994227994228
+    ],
+    "t_sweep": [
+      1.0,
+      0.9,
+      0.75,
+      0.5,
+      0.25,
+      0.1,
+      0.0
+    ]
+  },
+  "verdict": {
+    "monotonic_nonincreasing": false,
+    "has_any_degradation": true,
+    "cliff_drop_macro_f1": 0.41726559148831316,
+    "curve_shape": "CLIFF_THEN_PLATEAU -- a sharp drop from t=1 to t<1 (the head IS hurt by noise) followed by a non-monotonic plateau around the post-cliff value. ARCH-1's 'monotonic decrease' prediction is REFUTED on the load-bearing half: the head's quality stops depending on t once the geometry is sufficiently off-clean. A pure ARCH-1 retrain (noising the input) might raise the post-cliff floor but cannot recover the t=1 regime from noisy x_t.",
+    "t1_macro_f1": 0.6108482787269279,
+    "t1_macro_f1_vs_baseline": {
+      "baseline_mean": 0.4784,
+      "baseline_std": 0.0055,
+      "abs_diff": 0.13244827872692794,
+      "consistent_within_4std": false,
+      "explanation": "Protocol difference, NOT a finding about the curve. The baseline (metrics/by_metric/tmqm_bond_perception_3seed.json) is macro_f1_type OVER SUCCESSES -- a TYPE-only macro-F1 that EXCLUDES BOND_NO_BOND. The script's macro_f1_all_classes averages over ALL 5 classes INCLUDING BOND_NO_BOND, which is the easy class with the largest support (2614 of 3770 pairs at t=1) and the head classifies it well (F1 0.95). Including the easy class inflates the macro average relative to a type-only average. Additionally, the baseline uses 900 complexes (150 per metal, 3 seeds); this run uses 32 mixed-metal clouds and 1 seed. A higher t=1 number is the direction the protocol difference predicts; the gap is expected."
+    },
+    "verdict_label": "ARCH-1 PARTIALLY REFUTED. The head IS hurt by noise (sharp cliff from t=1 to t=0.9) but the post-cliff floor does not depend on t, so the strict-monotonic prediction fails. The retrain slot should NOT be spent on ARCH-1 alone -- the cliff-then-plateau shape suggests a capacity floor not bridged by noising the input."
+  }
+}

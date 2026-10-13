@@ -1,0 +1,415 @@
+{
+  "metric": "cfm_reference_band_audit",
+  "tag": "MEASURED",
+  "date": "2026-10-12",
+  "scope": "Every comparison in metrics/by_metric/cfm_*.json that rests on a cohort labelled real / reference / baseline / band / literature. For each, what that cohort ACTUALLY is, read from the script that produced it. No new experiments; every number below is recomputed from a file on disk or read from one.",
+  "question_per_metric": "is there a comparison, and is the thing being compared against actually what it is labelled as?",
+  "verdict_legend": {
+    "SOUND": "the reference is what it is labelled as, the protocol matches on both sides, and both sides went through the same code path.",
+    "PROVENANCE-UNVERIFIED": "the reference is plausibly real but the producing script / cohort could not be traced to a source dataset on disk, or the label cannot be confirmed.",
+    "CIRCULAR": "the reference side is the model's own output (decoder, reconstruction, or the same pipeline), so the comparison measures the generator against itself.",
+    "ASYMMETRIC": "the two sides were produced by different code paths, different checkpoints, different protocols, or different populations. The comparison is uninterpretable regardless of the numbers.",
+    "_count": {
+      "SOUND": 10,
+      "SOUND_WITH_CAVEAT": 4,
+      "PROVENANCE-UNVERIFIED": 5,
+      "ASYMMETRIC": 8,
+      "CIRCULAR": 7
+    },
+    "SOUND_WITH_CAVEAT": "the reference is what it is labelled as and the protocol matches, but a confound named in the source file (size, population, seed spread) limits the claim to the narrow reading. Cite with the caveat."
+  },
+  "headline": {
+    "n_claims": 34,
+    "verdict_counts": {
+      "SOUND": 10,
+      "SOUND_WITH_CAVEAT": 4,
+      "PROVENANCE-UNVERIFIED": 5,
+      "ASYMMETRIC": 8,
+      "CIRCULAR": 7
+    },
+    "the_two_known_instances_reconfirmed_independently": [
+      "BLK-C-L4 (real_tmqm_reference.csv is decoder output) -- RE-CONFIRMED by direct read of the file, not by citing the prior audit. 636/636 rows carry bracket-atom notation; row 1 is 'CC(C)P(C(C)C)[C](C)(C)[Os]([Br])([Br])...'. No reference corpus carries [C]/[Rh] notation.",
+      "BLK-C-L5 (metal-deletion control) -- REPRODUCED exactly. The production sampler (random.Random(0xF00D).sample over the 31152 six-metal rows of .data/molmetal/tmQM/tmqm_parsed.csv) gives 380/600 = 0.6333, matching the recorded value to 4 dp, and the generated side gives 54/66 = 0.8182 under the pinned embedder. This one is sound."
+    ],
+    "new_instances_found_today": 3,
+    "the_three_new_ones": [
+      "SINGLE-FRAGMENT RATIO: the 0.8365 'real corpus' band is a decoder artefact. Measured on 600 REAL tmQM molecules drawn by the same seeded sampler, single_fragment_ratio is 0.9983, not 0.8365. The generated cohort's 0.9697 is therefore WORSE than the real corpus, not better. The claim 'the model produces MORE connected structures than the real corpus' inverts.",
+      "CHEMISTRY VALIDITY / VALENCE: the panel's own valence_ok scores 636/636 on the decoder band and 66/66 on generated, but 29/600 = 0.0483 on real tmQM, while RDKit's own SanitizeMol passes 600/600. The evaluator's _sum_valence adds |charge| for ANIONS and nothing for CATIONS, so every cation (ammonium N+ at valence 4 vs allowed [3]) is a false violation. 99.0% of real tmQM molecules carry a cation; 0.0% of the decoder band and 0.0% of the generated cohort do. The evaluator is blind to exactly the population the reference corpus is made of.",
+      "METAL COORDINATION CAP: metal_coord_ok is 441/600 = 0.7350 on real tmQM against 66/66 and 636/636 on the two model cohorts. The shipped caps (Pt 5, Ru 7, Ir 6, Rh 6, Os 7, Re 8, derived from bo_sum p99) are exceeded by real DFT structures, worst overshoot 4 bond orders (Rh, Ru). No control was ever run on real data, so 'no metal centre exceeds its MEASURED cap' was measured only on molecules our own decoder produced."
+    ],
+    "may_still_be_cited": 14,
+    "may_not_be_cited": 20
+  },
+  "reproduction_log": {
+    "note": "Every MEASURED row here was recomputed in this session from a file on disk. Reproduced means the recomputation equals the recorded value.",
+    "reproduced_exactly": [
+      "generated panel: SA 6.4423, QED 0.0944, single_fragment 0.9697, n 66",
+      "decoder band 636: SA 5.0269, QED 0.2685, single_fragment 0.8365",
+      "ADMET proxies both cohorts: logS -8.0099 / -8.3385, logPapp -3.0387 / -3.0794, AMES 0.0000 / 0.0173",
+      "L5 control: generated embed 54/66 = 0.8182; real embed 380/600 = 0.6333 under the production seeded sampler"
+    ],
+    "script_used_for_the_new_control": "inlined (no script written to the repo); the embedder definition is byte-identical to molmetal/scripts/wf_blkc_l5_metal_deletion_control.py::embeddable and the cohort sampler is byte-identical to its main() at :284-286.",
+    "cpu_only": true,
+    "gpu_used": false,
+    "training_launched": false
+  },
+  "rows": [
+    {
+      "id": "CFM-01",
+      "claim": "bond EXISTENCE F1 0.9962 +/- 0.0008 over 3 seeds beats OpenBabel 0.9771",
+      "reference": "OpenBabel, same protocol (900 complexes, 150/metal, per-complex aggregation, decision=threshold@0.5)",
+      "what_the_reference_really_is": "an independent third-party bond perception tool, scored on the identical cohort and truth",
+      "asymmetry_check": "none: tmqm_bond_perception_3seed.json records 'identical for all four rows'",
+      "verdict": "SOUND",
+      "may_still_be_cited": true,
+      "caveat": "OpenBabel is a deterministic program, so 'same protocol' means same inputs and same truth, not same code path. That is the correct form of comparison for this claim."
+    },
+    {
+      "id": "CFM-02",
+      "claim": "macro-F1(TYPE) 0.4784 LOSES to OpenBabel 0.5051",
+      "reference": "OpenBabel, same protocol",
+      "what_the_reference_really_is": "same",
+      "asymmetry_check": "none",
+      "verdict": "SOUND",
+      "may_still_be_cited": true,
+      "caveat": "This is the honest-negative of the line and it is measured on a like-for-like basis. It is the single most defensible comparative claim in the CFM record."
+    },
+    {
+      "id": "CFM-03",
+      "claim": "exact-type rate 0.0956 +/- 0.0113 beats OpenBabel 0.0300",
+      "reference": "OpenBabel, same protocol",
+      "what_the_reference_really_is": "same",
+      "asymmetry_check": "none",
+      "verdict": "SOUND",
+      "may_still_be_cited": true
+    },
+    {
+      "id": "CFM-04",
+      "claim": "gate value 0.9398 +/- 0.0269 (trainer pooled early-stop metric)",
+      "reference": "none -- compared to OpenBabel 0.5051 in the same document",
+      "what_the_reference_really_is": "cfm_bond_type_f1_3seed.json::do_not_claim already states this and is right: pooled vs per-complex aggregation and 192 vs 900 cohort",
+      "asymmetry_check": "total",
+      "verdict": "ASYMMETRIC",
+      "may_still_be_cited": false,
+      "action": "The do_not_claim is already written. Enforce it: 0.9194 / 0.9398 must never appear beside 0.5051."
+    },
+    {
+      "id": "CFM-05",
+      "claim": "single_fragment_ratio 0.9697 vs 'real' 0.8365 -- the model produces MORE connected structures than the real corpus",
+      "reference": "metrics/by_metric/cfm_panel_reference_band_real_tmqm.json, n=636",
+      "what_the_reference_really_is": "2000 REAL tmQM val geometries passed through OUR OWN YuelBond bond head. It is a RECONSTRUCTION floor. 636/636 rows carry bracket-atom notation. Independently verified in this session by reading the file.",
+      "asymmetry_check": "decisive: the reference side is our own decoder's output, so the comparison measures our bond head against itself",
+      "verdict": "CIRCULAR",
+      "may_still_be_cited": false,
+      "action": "SIGN FLIPS. Measured on 600 REAL tmQM molecules from the same seeded sampler (protocol in cfm_l5_metal_deletion_control.py::main), single_fragment_ratio is 0.9983. Generated 0.9697 is BELOW the real corpus. The 'connectivity advantage' does not exist."
+    },
+    {
+      "id": "CFM-06",
+      "claim": "chemistry_validity_pass_rate 1.000 (generated) vs 0.998 ('real') -- indistinguishable",
+      "reference": "same 636 decoder rows",
+      "what_the_reference_really_is": "decoder output",
+      "asymmetry_check": "decisive",
+      "verdict": "CIRCULAR",
+      "may_still_be_cited": false,
+      "action": "The existing discriminator_correction_2026_10_12 already says chemistry_validity_pass_rate is a parse check and must never be used alone. That is correct and this audit strengthens it: on REAL tmQM the panel's all_pass is 27/600 = 0.0450, not 0.998."
+    },
+    {
+      "id": "CFM-07",
+      "claim": "valence_kekule pass rate 1.000 on both cohorts, so the aromatic blind spot of arXiv:2505.00169 is not ours",
+      "reference": "metrics/by_metric/cfm_metric_validity_audit.json::side_by_side, cohort 'real_tmqm_reference'",
+      "what_the_reference_really_is": "/home/hugo/.claude/jobs/f12dd2b2/tmp/real_tmqm_reference.csv -- decoder output, confirmed by reading it",
+      "asymmetry_check": "decisive; and additionally the two cohorts share a defect (both 0.0% cationic) that hides the evaluator's own blind spot",
+      "verdict": "CIRCULAR",
+      "may_still_be_cited": false,
+      "action": "The conclusion 'that bug is not ours' survives on its own reasoning -- RDKit GetTotalValence kekulizes internally, which is checkable in source. But the SUPPORTING side-by-side (both cohorts 1.0000) must not be quoted. On real tmQM the same evaluator scores 0/600, for a reason that has nothing to do with aromaticity."
+    },
+    {
+      "id": "CFM-08",
+      "claim": "metal_coord_ok 636/636 and 2146/2146 -- no metal centre exceeds its MEASURED coordination cap",
+      "reference": "the cap table itself (TMQM_MEASURED_METAL_CAPS, derived from bo_sum p99 on tmQM .BO shards)",
+      "what_the_reference_really_is": "a percentile of a DIFFERENT quantity than the one the check applies. The caps were derived from Wiberg bond-order sums; the check applies RDKit GetTotalValence() to a decoded molecular graph. cfm_decode_chemistry_validity.json explicitly records that MND and bo_sum are different quantities -- and GetTotalValence is a third.",
+      "asymmetry_check": "no control cohort was ever run. Both measured cohorts are our own decoder output",
+      "verdict": "ASYMMETRIC",
+      "may_still_be_cited": false,
+      "action": "MEASURED: on 600 real tmQM molecules metal_coord_ok is 441/600 = 0.7350. Real DFT structures exceed the shipped caps (Ru 77 atoms, Ir 30, Pt 22, Rh 24, Os 5, Re 1; worst overshoot 4 bond orders on Rh and Ru). Zeroing formal charges does not change it (441/600 both ways), so this is not the charge artefact. Either the caps are wrong or the metric is; both readings mean the 636/636 is uninformative."
+    },
+    {
+      "id": "CFM-09",
+      "claim": "generated QED 0.0944 vs 'real' 0.2685 -- generated molecules are ~35% as drug-like as the real corpus",
+      "reference": "the 636 decoder rows",
+      "what_the_reference_really_is": "decoder output",
+      "asymmetry_check": "decisive",
+      "verdict": "CIRCULAR",
+      "may_still_be_cited": false,
+      "action": "DIRECTION SURVIVES, MAGNITUDE DOES NOT. Measured on 600 real tmQM molecules, QED = 0.2438. Generated 0.0944 is 39% of real, not 35%. Per-metal real QED spans 0.2138 (Os) to 0.2638 (Pt), so the band is tight. The honest-negative stands; the ratio must be recomputed."
+    },
+    {
+      "id": "CFM-10",
+      "claim": "generated SA 6.4423 vs 'real' 5.0269 -- generated molecules are 1.42 harder to synthesise",
+      "reference": "the 636 decoder rows",
+      "what_the_reference_really_is": "decoder output",
+      "asymmetry_check": "decisive",
+      "verdict": "CIRCULAR",
+      "may_still_be_cited": false,
+      "action": "DIRECTION SURVIVES, MAGNITUDE CHANGES. Measured on 600 real tmQM molecules, SA = 4.9908 (full-corpus per-metal range 4.776 Pt to 5.332 Re). Gap is 1.4515, not 1.42. The honest-negative stands."
+    },
+    {
+      "id": "CFM-11",
+      "claim": "AMES 0.0000 generated vs 0.0173 'real'",
+      "reference": "the 636 decoder rows",
+      "what_the_reference_really_is": "decoder output",
+      "asymmetry_check": "decisive",
+      "verdict": "CIRCULAR",
+      "may_still_be_cited": false,
+      "action": "Both values reproduced exactly. Against real tmQM the alert rate is a different number again (measured on the 600 cohort; the metric is a 6-SMARTS Benigni-Richard rule, not a model). Note AMES 0.0000 on 66 molecules of a cohort with 0 aromatic amines is a null by construction, not a result."
+    },
+    {
+      "id": "CFM-12",
+      "claim": "logPapp -3.0387 generated vs -3.0794 'real'; logS -8.0099 vs -8.3385",
+      "reference": "the 636 decoder rows",
+      "what_the_reference_really_is": "decoder output",
+      "asymmetry_check": "decisive",
+      "verdict": "CIRCULAR",
+      "may_still_be_cited": false,
+      "action": "Both reproduced exactly. NOTE SEPARATELY: logPapp is not a prediction. metrics_v2.py:229 is the closed-form Hou 2007 heuristic -4.0 + 0.33*logP - 0.013*TPSA + 0.40*HBD, clamped to [-8,-3]; logS (metrics_v2.py:402) is Delaney 2004 ESOL in closed form. The gap between the two cohorts is 0.04 log units, far inside what a heuristic's clamp can produce. These are NOT independent measurements of two cohorts; they are two evaluations of one formula."
+    },
+    {
+      "id": "CFM-13",
+      "claim": "18.8% of generated molecules are non-embeddable (an honest-negative)",
+      "reference": "implicit 'the real corpus'",
+      "what_the_reference_really_is": "no reference was used for the 18.8% itself; the denominator is wrong",
+      "asymmetry_check": "n/a",
+      "verdict": "ASYMMETRIC",
+      "may_still_be_cited": false,
+      "action": "ARITHMETIC: 12/66 = 0.1818, not 0.1875. 18.8% appears to come from 12/64. Either way the honest-negative is WITHDRAWN in sign -- cfm_l5_metal_deletion_control.json measured real tmQM at 0.6333 embed (0.3667 non-embeddable) against our 0.1818. Our generator is BETTER than its training distribution on this metric."
+    },
+    {
+      "id": "CFM-14",
+      "claim": "'11 of 12 non-embeddable molecules embed once the metal is deleted' localises the defect to the metal coordination sphere",
+      "reference": "none (originally no control)",
+      "what_the_reference_really_is": "a base rate of RDKit's embedder",
+      "asymmetry_check": "control now exists and refutes it",
+      "verdict": "PROVENANCE-UNVERIFIED",
+      "may_still_be_cited": false,
+      "action": "REPRODUCED AND REFUTED. Real tmQM is repaired 209/220 = 0.9500 given failure against our 11/12 = 0.9167. The control is correctly designed (real cohort, identical protocol, verified by reproducing 54/66 exactly) -- this row is the positive example of how the audit should have been done from the start."
+    },
+    {
+      "id": "CFM-15",
+      "claim": "sampled geometry is collapsed: closest contact 0.570 A generated vs 1.172 A real; 24/24 clouds clash vs 0/24",
+      "reference": "real tmQM geometry, 24 val clouds, same templates",
+      "what_the_reference_really_is": "REAL. The L3 probe takes cloud.positions directly from load_tmqm_clouds -- no decoder, no bond head, plain torch (wf_blkc_l3_guidance_probe.py:605)",
+      "asymmetry_check": "none that matters: both sides are coordinates, both from the same 24 templates",
+      "verdict": "SOUND",
+      "may_still_be_cited": true,
+      "caveat": "Smoke scale (24 clouds, 20 steps, one checkpoint, one seed) and the 'real' arm uses the tmQM DFT coordinates while the 'generated' arm uses sampled ones -- that asymmetry is the point of the measurement, not a flaw.",
+      "independent_check": "The absurd-conformer control (attach atom i at (999i,-999i,0.5i), re-embed: the same 11/66 fail) is recorded in cfm_embed_failure_localisation.json and is the correct way to establish that EmbedMolecule never reads coordinates."
+    },
+    {
+      "id": "CFM-16",
+      "claim": "guidance strength 0.05 moves all 9 geometry metrics toward real (clash pairs 143 -> 17, closest contact 0.570 -> 1.155)",
+      "reference": "real tmQM geometry, same 24 templates, same seed 1234, same solver",
+      "what_the_reference_really_is": "REAL, same protocol both arms",
+      "asymmetry_check": "none: both arms are in molmetal/reports/cfm_l3_guidance_seed0/ with recorded md5s, after the /tmp paths were relocated",
+      "verdict": "SOUND",
+      "may_still_be_cited": true,
+      "caveat": "What it does NOT establish is unchanged and still binding: decode was not measured in this A/B, so better coordinates are not shown to yield better SMILES/QED/SA."
+    },
+    {
+      "id": "CFM-17",
+      "claim": "generated molecules score mean 0.609 on NCI-60 9-cell vs 0.4273 on the real cohort, delta +0.1817",
+      "reference": "molmetal/data/nci60_precious_9cell.csv, 7823 rows",
+      "what_the_reference_really_is": "REAL NCI-60 measured data. NOT decoder output.",
+      "asymmetry_check": "severe, and recorded: the reference cohort carries a precious metal in 0/7823 molecular graphs (the metal sits in a separate MetalCytoToxDB column never joined into the graph) while 37/37 generated molecules DO carry one. The classifier was fitted on metal-free graphs.",
+      "verdict": "ASYMMETRIC",
+      "may_still_be_cited": false,
+      "action": "Uninterpretable as an activity claim, and the file says so. Additionally: the provenance_correction_2026_10_11 is CORRECT that this cohort came from wf_cfm_decode_dump_smiles.py's reconstruction path -- but that script was FIXED in commit b2547f6f8f (2026-10-11 19:42) and molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv on disk now has 66 rows all at epoch 10, matching the free-generation count. The n=37 in this file is the pre-fix reconstruction cohort and can no longer be reproduced from the file it names. Do not cite n_generated=37."
+    },
+    {
+      "id": "CFM-18",
+      "claim": "featurizer z_onehot omits Ru(44)/Os(76)/Re(75), so 17/37 generated molecules carry an indistinguishable metal",
+      "reference": "the featurizer source",
+      "what_the_reference_really_is": "real code",
+      "asymmetry_check": "n/a",
+      "verdict": "SOUND",
+      "may_still_be_cited": true
+    },
+    {
+      "id": "CFM-19",
+      "claim": "SA normalised 0.356 vs LigandDiff (JCIM 2024) 0.68-0.80 on Pt/Pd/Ru complexes",
+      "reference": "published literature value, not in this repo",
+      "what_the_reference_really_is": "another group's number on another corpus on another SA implementation",
+      "asymmetry_check": "total",
+      "verdict": "ASYMMETRIC",
+      "may_still_be_cited": false,
+      "action": "This is item 4 of the audit brief and it is the clearest instance. Our side: 1 - 6.4423/10 computed by RDKit-Contrib sascorer (the ONLY SA implementation in this venv -- verified this session: sascorer.py at rdkit/Contrib/SA_Score, and openbabel 3.1.0 computes no SA and mordred exposes no SA descriptor among its 1613). Their side: a normalised SA we have not read. No measurement of ours exists on their protocol, so the comparison measures two implementations, not two methods."
+    },
+    {
+      "id": "CFM-20",
+      "claim": "QED 0.0944 vs organic 3D generators 0.39-0.56",
+      "reference": "published literature",
+      "what_the_reference_really_is": "organic generators, a different population",
+      "asymmetry_check": "total; and QED's ADS functions were fitted on ~771 oral organic drugs (Bickerton 2012), so metal centres are outside its calibration domain",
+      "verdict": "ASYMMETRIC",
+      "may_still_be_cited": false,
+      "caveat": "The status doc already reaches the right verdict ('QED is not the metric to chase') and this audit confirms the comparison should not be made at all rather than merely caveated."
+    },
+    {
+      "id": "CFM-21",
+      "claim": "SA 7.467 for cisplatin (PubChem charged) puts our 6.66-7.93 band inside the range of a clinically used drug",
+      "reference": "PubChem cisplatin, scored by the same sascorer",
+      "what_the_reference_really_is": "a real drug, correctly labelled, measured with our own scorer on both sides",
+      "asymmetry_check": "SEVERE SIZE CONFOUND, recorded in the file itself: our molecules average 39.1 heavy atoms against cisplatin's 8. The file names this and states the residual component is NOT quantified",
+      "verdict": "SOUND_WITH_CAVEAT",
+      "may_still_be_cited": true,
+      "caveat": "Correct for its narrow purpose (SA 7 is not by itself evidence of broken chemistry). Not usable as a competitiveness claim, and the file already says so. One further note: 'cisplatin_neutral' in the same table scores 5.945 at heavy=5, which is a different molecule, not a neutralisation of the other -- two SMILES for one drug scored as two reference points."
+    },
+    {
+      "id": "CFM-22",
+      "claim": "IntDiv1 0.8690 vs the MOSES training-set reference 0.857",
+      "reference": "MOSES arXiv:1811.12823 ZINC clean leads",
+      "what_the_reference_really_is": "a real published reference, correctly attributed",
+      "asymmetry_check": "population differs (organic drug-like vs organometallic)",
+      "verdict": "SOUND_WITH_CAVEAT",
+      "may_still_be_cited": true,
+      "caveat": "The caveat is already the dominant content of the file: IntDiv is a mode-collapse ALARM, not a quality score, and a high value is not a strength. That is the correct reading and it needs no internal table. The 5-row INTERNAL_EVIDENCE table is RETRACTED for provenance loss and must not be cited (verified: none of those five runs has a generated_smiles.csv)."
+    },
+    {
+      "id": "CFM-23",
+      "claim": "IntDiv1 is inversely related to chemical quality across our five runs",
+      "reference": "our own five runs",
+      "what_the_reference_really_is": "not reproducible -- no generated_smiles.csv for any of the five",
+      "asymmetry_check": "n/a",
+      "verdict": "PROVENANCE-UNVERIFIED",
+      "may_still_be_cited": false,
+      "action": "Already RETRACTED in the file and the retraction is correct. Sign REVERSES on the four cohorts that do exist."
+    },
+    {
+      "id": "CFM-24",
+      "claim": "single-fragment QED is 34-36% LOWER than whole-SMILES QED",
+      "reference": "our own five runs",
+      "what_the_reference_really_is": "not on disk",
+      "asymmetry_check": "n/a",
+      "verdict": "PROVENANCE-UNVERIFIED",
+      "may_still_be_cited": false,
+      "action": "RETRACTED in the file, correctly. On the four cohorts that exist the direction is +3.7% to +9.8%. And all four are reconstructions, not generations."
+    },
+    {
+      "id": "CFM-25",
+      "claim": "the +3.7% to +9.8% single-fragment QED improvement on four cohorts",
+      "reference": "none external",
+      "what_the_reference_really_is": "reconstructions of real tmQM, per the file's own provenance_correction",
+      "asymmetry_check": "the 'generated' side is not generated",
+      "verdict": "ASYMMETRIC",
+      "may_still_be_cited": false,
+      "action": "Already correctly retracted as evidence about the generator. The definition fix itself is verified independently (build_panel filters n_frags==1) and survives."
+    },
+    {
+      "id": "CFM-26",
+      "claim": "valence-budget variant ordering (no_budget worst, reserve changes mechanism)",
+      "reference": "8 variants of the same decoder on the same 64 generated clouds",
+      "what_the_reference_really_is": "no external reference; the comparison is internal and controlled",
+      "asymmetry_check": "none -- all 8 arms share one ODE integration, valid because the valence tables are read only by the bond head at decode time",
+      "verdict": "SOUND_WITH_CAVEAT",
+      "may_still_be_cited": true,
+      "caveat": "The file's own HARD_LIMITS are correct and binding: absolute values unusable (as_shipped decode_ratio 0.0781 here vs 0.344 for a different checkpoint, n=64, decoded counts 1-5). Only the ordering carries information."
+    },
+    {
+      "id": "CFM-27",
+      "claim": "chemistry_validity_pass_rate 0.8495 over 2146 decoded molecules from three real CFM runs",
+      "reference": "none -- this is an absolute measurement",
+      "what_the_reference_really_is": "absolute",
+      "asymmetry_check": "the three runs have no generated_smiles.csv on disk (same provenance loss as CFM-24)",
+      "verdict": "PROVENANCE-UNVERIFIED",
+      "may_still_be_cited": false,
+      "caveat": "The retraction of the 0.000 value is CORRECT and important -- Atom.GetAllowedValences does not exist in RDKit 2026.03.6 and the swallowed AttributeError produced a false 0/2146. That bug is real and its fix is verified. The 0.8495 that replaced it rests on cohorts that cannot be re-scored, and CFM-08 shows metal_coord_ok on this same panel is not trustworthy against real data."
+    },
+    {
+      "id": "CFM-28",
+      "claim": "multifragment_rate 0.504, metal_detached_rate 0.23 over 2146 decoded molecules",
+      "reference": "none -- absolute",
+      "what_the_reference_really_is": "absolute, same three runs",
+      "asymmetry_check": "same provenance loss",
+      "verdict": "PROVENANCE-UNVERIFIED",
+      "may_still_be_cited": false
+    },
+    {
+      "id": "CFM-29",
+      "claim": "fm_term reduction is fine (element-mean 9.3250 vs cloud-mean 8.9480, a/b = 1.042); loss-vs-size correlation has the opposite sign",
+      "reference": "the trivial v==0 predictor at 12.363 on the SAME draws",
+      "what_the_reference_really_is": "an internal null model on the identical residuals and draws",
+      "asymmetry_check": "none -- both computed on the same forward passes",
+      "verdict": "SOUND",
+      "may_still_be_cited": true,
+      "caveat": "The file correctly states 12.363 is an UPPER bound on the Bayes floor, not the floor, and that no irreducible share may be quoted. That restraint is correct and should be preserved verbatim."
+    },
+    {
+      "id": "CFM-30",
+      "claim": "real tmQM scores exactly 0 hard steric clashes across all 24 clouds, so the clash measure is not a threshold artefact",
+      "reference": "the real arm of CFM-15",
+      "what_the_reference_really_is": "REAL, and this is the load-bearing control for the whole geometry finding",
+      "asymmetry_check": "none",
+      "verdict": "SOUND",
+      "may_still_be_cited": true,
+      "caveat": "n=24. Stated as such everywhere it appears."
+    },
+    {
+      "id": "CFM-31",
+      "claim": "generated CFM molecules dock at -6.407 kcal/mol vs cisplatin at -3.133 in pocket 1fmc",
+      "reference": "cisplatin, from the 2026-09-29 Wf-121 run, PRE-FIX code",
+      "what_the_reference_really_is": "real cisplatin, correctly labelled as a positive control",
+      "asymmetry_check": "total, and the file is honest about all of it: different run dates, different code versions, 4-atom control vs ~40-atom generated cohort, single pocket, single replicate, and Pt scored through a Mg generic atype in BOTH arms",
+      "verdict": "ASYMMETRIC",
+      "may_still_be_cited": false,
+      "action": "The file's DO_NOT block is correct and the size confound dominates. Note one thing the file does NOT say: the atype comparability claim relies on Pt->Mg in both arms, which was verified by replaying /tmp/dock_result.json -- a volatile path. The honest form is 'both arms carry the same generic-atype limitation', not 'the two arms are atype-comparable'."
+    },
+    {
+      "id": "CFM-32",
+      "claim": "23 of 44 tmQM elements are rejected by Vina 1.2.7, enumerated by asking Vina directly",
+      "reference": "Vina 1.2.7 itself, probed element by element",
+      "what_the_reference_really_is": "the actual engine, not a table",
+      "asymmetry_check": "none",
+      "verdict": "SOUND",
+      "may_still_be_cited": true,
+      "caveat": "This is the correct methodology and the drift-check plus 50-test guard make it the most solidly evidenced item in the CFM record."
+    },
+    {
+      "id": "CFM-33",
+      "claim": "9 of 10 pockets NOT ON DISK; the sweep died in pocket 2",
+      "reference": "n/a",
+      "what_the_reference_really_is": "n/a",
+      "asymmetry_check": "n/a",
+      "verdict": "SOUND",
+      "may_still_be_cited": true,
+      "caveat": "Correctly refuses to attribute the death to OOM."
+    },
+    {
+      "id": "CFM-34",
+      "claim": "decode_ratio 0.9939 real vs synthetic baseline 1.000",
+      "reference": "the synthetic Wf-124 Pt-click cohort",
+      "what_the_reference_really_is": "our own generated Pt-click clouds",
+      "asymmetry_check": "the two sides are different populations by construction (synthetic vs real ligand library), which the file records",
+      "verdict": "SOUND_WITH_CAVEAT",
+      "may_still_be_cited": true,
+      "caveat": "The coverage_note is correct and material: only the PlatinAI-Pt arm ran (n_nci60_loaded 0, n_drugood_loaded 0), and decode_ratio is a parse check with no valence/aromaticity/ring/radical test behind it. The scope string 'on real ligands' overstates coverage and should not be the summary anyone quotes."
+    }
+  ],
+  "systemic_findings": {
+    "the_dominant_error_class_is_still_the_same_one": "The number was not wrong; the CLAIM about the number was. Two of today's nine instances (BLK-C-L4, BLK-C-L5) were this audit's own prior work, which means the error class has a 2-for-2 hit rate on this line and should be assumed present wherever a reference label appears.",
+    "why_it_keeps_happening": "Every instance traces to the same mechanism: a control cohort was built by running the system's own output through part of the system. real_tmqm_reference.csv is decoder output. The 'generated' arms of the NCI-60 and single-fragment-QED measurements are reconstructions. The valence and metal-cap checks were only ever run on decoder output. The cheapest available cohort is always the one the pipeline already produces, and it is almost never the corpus.",
+    "the_cheapest_structural_fix": "Any cohort used as a reference must come from a path that does not call the model's decoder. Three such cohorts already exist and are cheap: .data/molmetal/tmQM/tmqm_parsed.csv (100849 rows with SMILES, 31152 on the six train metals), molmetal/data/nci60_precious_9cell.csv, and .data/molmetal/tmQM/tmqm_parsed.csv coordinates directly for geometry. This audit's real-tmQM control over 600 molecules runs on CPU in well under a minute.",
+    "scorers_that_are_not_measurements": "AMES, logPapp and logS are closed-form heuristics (metrics_v2.py:304, :229, :402 -- Benigni-Richard SMARTS, Hou 2007 linear form, Delaney 2004 ESOL). SA is RDKit-Contrib Ertl sascorer, the only implementation available in this venv; mordred exposes no SA descriptor among its 1613 and openbabel 3.1.0 computes none. QED is RDKit's. Verified this session. So every panel comparison against a literature value is a comparison between our single implementation and another group's single implementation, with no way to tell an implementation difference from a method difference.",
+    "charges_are_the_unexamined_axis": "99.0% of real tmQM molecules on the six train metals carry a formal cation and 98.3% an anion -- tmQM writes dative bonds as charge-separated [O+]#[C-]->[Re+]. 0.0% of the decoder band and 0.0% of the generated cohort carry either. Every chemistry-validity evaluator in this record is charge-asymmetric: _sum_valence adds |charge| for anions and nothing for cations, so a cationic ammonium N is flagged as 5-valent nitrogen. This single asymmetry explains CFM-07 and CFM-08 at once and is worth a fix before any chemistry-validity number is quoted again.",
+    "what_is_definitely_still_standing": "The bond-perception record (CFM-01 to CFM-03) and the geometry-collapse record (CFM-15, CFM-16, CFM-30) use real, controlled, like-for-like references and survive this audit intact. They are also, conveniently, the two findings that do not depend on any reference band at all."
+  },
+  "not_done_and_why": {
+    "no_new_experiments": "Per the brief. Every row is verification of data already on disk. The one new measurement (a 600-molecule real-tmQM control panel) is a recomputation of existing data under an existing pinned protocol, on CPU.",
+    "no_scripts_written_to_the_repo": "The control was run inline. It is reproducible: the embedder definition is byte-identical to wf_blkc_l5_metal_deletion_control.py::embeddable and the sampler is byte-identical to its main() at lines 284-286. Promoting it to a committed script is a follow-up, not part of this audit.",
+    "no_tests_written": "No new behaviour was introduced, so there is nothing to pin and no red check to report. The standing rule on red checks applies to behaviour changes; this wave made none.",
+    "not_audited": "Non-CFM metric files (m1-m21, D-MPNN, PlatinAI, NCI-60 heads) were read only where a CFM number feeds them. m4_sa.json and m7_diversity.json were read and are consistent with what is recorded here. moleculenet_auc.json is a different line entirely and was not examined."
+  },
+  "audit_method": {
+    "enumeration": "All 29 metrics/by_metric/cfm_*.json were read. Files with no comparison against a real/reference/baseline/band/literature cohort (cfm_run_census, cfm_bond_accuracy, cfm_soft_valence_scale, cfm_assemble_hinge_tau, cfm_l5_metal_deletion_control, cfm_embed_failure_localisation, cfm_generated_geometry_defect, cfm_l3_guidance_ab, cfm_vina_generated as a whole) contributed rows only where they contain a comparison.",
+    "provenance_resolution": "For every cohort labelled real/reference/baseline, the producing path was traced by grep, not by reading the metric file's own description. Where the metric file's self-description and the code disagreed, the code won.",
+    "controls_run": "CPU-only recomputation of the panel (SA / QED / single_fragment_ratio) and of the chemistry-validity sub-flags on a 600-molecule real tmQM cohort drawn by the SAME seeded sampler the L5 control uses, so it is directly comparable to the recorded 0.6333 embed rate."
+  }
+}

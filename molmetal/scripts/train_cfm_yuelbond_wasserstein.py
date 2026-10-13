@@ -175,7 +175,6 @@ from molmetal.loss import (
     ContinuousBOLoss,
     DiversityRegularizer,
     EntropyTerm,
-    FragmentConnectivityLoss,
     MoleculeLoss,
     MolecularPropertyTargetLoss,
     NaturalChargeLoss,
@@ -1543,6 +1542,13 @@ class CFMJointModel(nn.Module):
         context_dropout: float = 0.1,
         tmqm_init_path: Optional[str] = None,
         use_tmqm_init: bool = False,
+        # Wf-A15 (2026-10-13) Track-A L3a — opt-in per-atom q-prediction head.
+        # When ``True`` the EGNN velocity field carries a zero-init
+        # ``Linear(hidden_dim, 1)`` that emits per-atom NBO natural
+        # charge from the final per-atom ``h``.  Default ``False`` keeps
+        # the pre-Track-A bit-exact path: no q_head parameter, no
+        # q_pred in the forward dict.
+        q_head_enabled: bool = False,
         # 2026-10-09 NEW (BLK-C5 follow-up, user voice) — the bond-prediction
         # head now has two interchangeable implementations: 'yuelbond'
         # (default, atom-centered message passing — the historical head every
@@ -1705,6 +1711,15 @@ class CFMJointModel(nn.Module):
         # off these keys never enter the `state_dict`, so every checkpoint
         # written before this change still resumes.
         self.use_egnn_velocity = bool(use_egnn_velocity)
+        # Wf-A15 (2026-10-13) Track-A L3a — q-prediction stash.
+        # Per-cloud ``(N_atoms,)`` q-prediction tensors are appended
+        # here by ``forward()`` whenever the EGNN velocity field's
+        # ``q_head`` is registered (i.e. ``q_head_enabled=True``).
+        # The trainer concatenates these into a flat ``(N_total,)``
+        # tensor that matches ``Batch.natural_charge``'s cloud-major
+        # flattening.  When ``q_head`` is ``None`` (the legacy
+        # default) this list stays empty — bit-exact pre-Track-A.
+        self.last_q_preds: List[torch.Tensor] = []
         if self.use_egnn_velocity:
             from molmetal.adapters.flow_matching_lipman import (
                 EGNNVelocityField,
@@ -1726,6 +1741,10 @@ class CFMJointModel(nn.Module):
                 context_dropout=float(context_dropout),
                 tmqm_init_path=tmqm_init_path,
                 use_tmqm_init=bool(use_tmqm_init),
+                # Wf-A15 (2026-10-13) Track-A L3a — q-prediction head flag.
+                # When ``False`` (default), no q_head is registered on the
+                # EGNN and the forward dict never carries ``q_pred``.
+                q_head_enabled=bool(q_head_enabled),
             )
         # Wf-A16 (2026-10-13) c-flow pocket encoder.
         #
@@ -2053,6 +2072,9 @@ class CFMJointModel(nn.Module):
             )
             velocities = out_vel["vel"][0]  # (N, 3)
             self._maybe_stash_clash_penalty(cloud)
+            # Wf-A15 Track-A L3a — stash q_pred (None when q_head is OFF,
+            # the bit-exact legacy default).
+            self._maybe_stash_q_pred(out_vel.get("q_pred"))
             if return_edge_index:
                 return logits, velocities, head_pair_index
             return logits, velocities
@@ -2067,6 +2089,10 @@ class CFMJointModel(nn.Module):
         feats = torch.cat([z_oh, cloud.positions.float()], dim=-1)
         velocities = self.vel_probe(feats)
         self._maybe_stash_clash_penalty(cloud)
+        # Wf-A15 Track-A L3a — no q_head on the legacy velocity probe
+        # path (no EGNN, no q_pred).  Stash None so the legacy list
+        # stays empty and the trainer skips the q_loss entirely.
+        self._maybe_stash_q_pred(None)
         if return_edge_index:
             return logits, velocities, head_pair_index
         return logits, velocities
@@ -2086,6 +2112,24 @@ class CFMJointModel(nn.Module):
             cloud.positions.float(),
             cloud.atomic_numbers.long(),
         )
+
+    # ------------------------------------------------------------------
+    # Wf-A15 (2026-10-13) Track-A L3a — q-prediction stash
+    # ------------------------------------------------------------------
+    def _maybe_stash_q_pred(
+        self, q_pred: Optional[torch.Tensor]
+    ) -> None:
+        """Append a per-cloud q-prediction tensor to :attr:`last_q_preds`.
+
+        The trainer concatenates :attr:`last_q_preds` across the batch
+        to produce a flat ``(N_total,)`` tensor matching :attr:`Batch.natural_charge`.
+        When ``q_pred`` is ``None`` (no q_head registered, the legacy
+        bit-exact path) nothing is appended — ``last_q_preds`` stays
+        empty and the trainer skips the q_loss entirely.
+        """
+        if q_pred is None:
+            return
+        self.last_q_preds.append(q_pred.detach())
 
     # ------------------------------------------------------------------
     # Wf-A11 (2026-10-13) — t-grid inference + clash penalty helpers
@@ -2897,8 +2941,11 @@ def train_one_epoch(
     stereo_loss_weight: float = 0.0,
     fragment_loss_weight: float = 0.0,
     property_loss_weight: float = 0.0,
-    fragment_connectivity_weight: float = 0.0,
-    natural_charge_weight: float = 0.0,
+    # Wf-A15 (2026-10-13) Track-A Layer 6 — per-atom NBO natural-charge
+    # MSE loss weight.  Default 0.0 → INERT (NaturalChargeLoss returns
+    # zero), bit-exact pre-Track-A.
+    natural_charge_mse_weight: float = 0.0,
+    use_natural_charges: bool = False,
 ) -> Tuple[float, float, float, float, float]:
     """Train one epoch over the synthetic Pt-click cloud cohort.
 
@@ -2950,6 +2997,10 @@ def train_one_epoch(
         # term.  Mirrors batch_assemble exactly; only constructed when the
         # term is weighted so the default-path memory layout is untouched.
         batch_soft_valence: List[Tuple] = []
+        # Wf-A15 (2026-10-13) Track-A L3a — per-cloud q predictions.
+        # Reset on every batch so the trainer can ``torch.cat`` over
+        # the cloud order that produced ``Batch.natural_charge``.
+        model.last_q_preds = []
         for idx in batch_indices:
             cloud = train_clouds[int(idx)]
             # Move cloud to device by re-creating (AtomCloud has no
@@ -2991,8 +3042,29 @@ def train_one_epoch(
             # built from the logits this pass already produced instead of
             # re-running the head a second time.
             _t_mf0 = _stage_tick()
+            # Wf-A15 (2026-10-13) Track-A Layer 3b — chemistry-signal
+            # batch_ctx population.  ``AtomCloud.natural_charges`` (per-
+            # cloud ``(N,)`` float32 from ``tmQM_X.q``) is placed in
+            # the canonical ``batch_ctx["natural_charge"]`` key so any
+            # downstream consumer reading from
+            # ``batch_ctx.get("natural_charge", None)`` sees a real
+            # tensor.  When the loader's .q file is absent (the
+            # Wf-A14 host, network-blocked), the field is ``None`` —
+            # every consumer short-circuits to the bit-exact legacy
+            # path (zero-init chem_natural_charge_proj + zero-init
+            # q_head).  No flag gate: populating the dict is cheap,
+            # and downstream consumers must always be able to read
+            # from the canonical key.
+            _cloud_batch_ctx: Optional[dict] = None
+            _cloud_nat_q = getattr(cloud, "natural_charges", None)
+            if _cloud_nat_q is not None:
+                _cloud_batch_ctx = {
+                    "natural_charge": _cloud_nat_q.to(device),
+                }
             logits, velocities, edge_index = model(
-                cloud, return_edge_index=True
+                cloud,
+                return_edge_index=True,
+                batch_ctx=_cloud_batch_ctx,
             )
             if _STEP_TIMING_ON:
                 _STEP_TIMING["model_fwd_s"] = (
@@ -4092,27 +4164,53 @@ def train_one_epoch(
         qed_term = QEDLoss(
             weight=float(qed_loss_weight),
             enabled=float(qed_loss_weight) > 0.0,
-        ).compute(decoded_smiles_batch=None, device=device)
+        ).compute(decoded_mols=None, device=device)
         molecule_term = MoleculeLoss(
             weight=float(molecule_loss_weight),
             enabled=float(molecule_loss_weight) > 0.0,
-        ).compute(decoded_smiles_batch=None, device=device)
+        ).compute(decoded_mols=None, device=device)
         stereo_term = StereoCentreSuppressionLoss(
             weight=float(stereo_loss_weight),
-        ).compute(decoded_smiles_batch=None, device=device)
+            enabled=float(stereo_loss_weight) > 0.0,
+        ).compute(decoded_mols=None, device=device)
         fragment_term = SingleFragmentLoss(
             weight=float(fragment_loss_weight),
-        ).compute(decoded_smiles_batch=None, device=device)
+            enabled=float(fragment_loss_weight) > 0.0,
+        ).compute(decoded_mols=None, device=device)
         property_term = MolecularPropertyTargetLoss(
             weight=float(property_loss_weight),
-        ).compute(decoded_smiles_batch=None, device=device)
-        fragment_connectivity_term = FragmentConnectivityLoss(
-            weight=float(fragment_connectivity_weight),
-        ).compute(decoded_smiles_batch=None, device=device)
+            enabled=float(property_loss_weight) > 0.0,
+        ).compute(decoded_mols=None, target_value=0.0, device=device)
+
+        # Wf-A15 (2026-10-13) Track-A Layer 6 — per-atom NBO natural-charge
+        # MSE loss.  The EGNN velocity field's ``q_head`` (Layer 3a) populates
+        # ``model.last_q_preds`` with one ``(N,)`` tensor per cloud;
+        # ``Batch.natural_charge`` (Layer 2) carries the q target in the same
+        # cloud-major flattened order.  Both default OFF:
+        # ``natural_charge_mse_weight=0.0`` → ``NaturalChargeLoss.compute``
+        # returns ``torch.zeros(())`` — bit-exact pre-Track-A.
+        #
+        # When ``q_head_enabled=False`` (the legacy default) ``q_pred`` is
+        # ``None`` and ``NaturalChargeLoss`` short-circuits on the ``None``
+        # pred guard.  When ``q_head_enabled=True`` but the .q file is
+        # absent on disk (the Wf-A14 host), every target is the PAD_CHARGE
+        # sentinel and the aggregator masks all atoms → ``n_atoms=0``.
+        # Both paths are explicit (inert, pre-discussed in HONEST_NEGATIVE
+        # entry), not silent.
+        _q_pred: Optional[torch.Tensor] = None
+        if model.last_q_preds:
+            _q_pred = torch.cat(model.last_q_preds, dim=0)  # (N_total,)
+        _q_target: Optional[torch.Tensor] = None
+        if "natural_charge" in dir(batch) and batch.natural_charge is not None:
+            _q_target = batch.natural_charge.to(device)
         natural_charge_term = NaturalChargeLoss(
-            weight=float(natural_charge_weight),
-            enabled=float(natural_charge_weight) > 0.0,
-        ).compute(predicted_charges=None, target_charges=None, device=device)
+            weight=float(natural_charge_mse_weight),
+            enabled=bool(use_natural_charges) or float(natural_charge_mse_weight) > 0.0,
+        ).compute(
+            predicted_charges=_q_pred,
+            target_charges=_q_target,
+            device=device,
+        )
 
         loss = (
             bond_ce_term
@@ -4149,10 +4247,10 @@ def train_one_epoch(
             + stereo_term
             + fragment_term
             + property_term
-            # Wf-A15 (2026-10-13) — 2 more chemistry-signal terms.  Same
-            # convention as the 5 above: weight = 0.0 ⇒ exact
-            # torch.zeros((), device=device) → bit-exact pre-Wf-A15.
-            + fragment_connectivity_term
+            # Wf-A15 (2026-10-13) Track-A Layer 6 — per-atom NBO
+            # natural-charge MSE.  ``weight=0`` collapses to a zero
+            # tensor; opt-in via --use-natural-charges +
+            # --natural-charge-mse-weight.
             + natural_charge_term
         )
         # 2026-10-04 — refresh the per-term side-channel read by
@@ -4207,7 +4305,9 @@ def train_one_epoch(
                 "stereo_term": stereo_term,
                 "fragment_term": fragment_term,
                 "property_term": property_term,
-                "fragment_connectivity_term": fragment_connectivity_term,
+                # Wf-A15 (2026-10-13) Track-A Layer 6 — per-atom NBO
+                # natural-charge MSE.  Same gradient-dead-at-weight-0
+                # convention as the other chemistry-signal terms.
                 "natural_charge_term": natural_charge_term,
                 # Deliberately absent (removed from the loss sum 2026-10-04,
                 # see the comment above `loss = (`): "sa_penalty_weight*sa_loss",
@@ -7389,26 +7489,6 @@ def parse_args() -> argparse.Namespace:
             "Default 0.0 = bit-exact pre-Wf-A15."
         ),
     )
-    p.add_argument(
-        "--fragment-connectivity-weight",
-        dest="fragment_connectivity_weight",
-        type=float,
-        default=0.0,
-        help=(
-            "Weight on FragmentConnectivityLoss (Layer F / Wf-A15).  "
-            "Default 0.0 = bit-exact pre-Wf-A15."
-        ),
-    )
-    p.add_argument(
-        "--natural-charge-weight",
-        dest="natural_charge_weight",
-        type=float,
-        default=0.0,
-        help=(
-            "Weight on NaturalChargeLoss (Layer F / Wf-A15).  "
-            "Default 0.0 = bit-exact pre-Wf-A15."
-        ),
-    )
     # Wf-A15 (2026-10-13) — Layer G.  Opt-in switch to
     # ``build_differential_optimizer`` (molmetal/optim/differential_lr.py).
     p.add_argument(
@@ -7475,6 +7555,90 @@ def parse_args() -> argparse.Namespace:
             "Enable the 5 chemistry-signal channels in "
             "EquivariantGraphConv (Layer E / Wf-A15).  Off by default → "
             "the legacy mlp_in path is preserved bit-exactly."
+        ),
+    )
+    # Wf-A15 (2026-10-13) — Track-A Layer 3a / Layer 6 / Layer 7.
+    # Three new opt-in switches:
+    #
+    # * ``--q-head-enabled`` (Layer 3a) — attach a zero-init
+    #   ``Linear(hidden_dim, 1)`` to ``EGNNVelocityField`` that emits
+    #   per-atom NBO natural charge from the final per-atom ``h``.
+    #   When ``False`` (default) no q_head parameter is registered on
+    #   the EGNN, the forward dict never has ``q_pred``, and the legacy
+    #   bit-exact path is preserved.
+    # * ``--natural-charge-mse-weight`` (Layer 6) — weight on the
+    #   per-atom NBO q MSE loss.  When ``0.0`` (default) the loss term
+    #   returns ``torch.zeros(())`` and never enters the sum.
+    # * ``--use-natural-charges`` (Layer 6) — explicit opt-in switch
+    #   alongside the weight.  Both keys are declared in
+    #   :class:`molmetal.loss.chemistry_losses.NaturalChargeLoss`.
+    # * ``--q-channel-lr-multiplier`` (Layer 7) — when ``!= 1.0``,
+    #   ``build_differential_optimizer`` emits a 5th param group for
+    #   the q_head (and any other parameter whose name matches the
+    #   q-channel hints).  Default ``1.0`` collapses to the legacy
+    #   single-group fast-path — bit-exact pre-Track-A.
+    # * ``--q-channel-hints`` (Layer 7) — parameter-name substrings
+    #   that mark a parameter as belonging to the q-channel group.
+    #   Default ``("q_channel", "natural_charge_proj", "charge_head",
+    #   "q_head")`` covers every Track-A wire-in.
+    p.add_argument(
+        "--q-head-enabled",
+        dest="q_head_enabled",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-A15 Track-A Layer 3a: attach a zero-init per-atom q "
+            "prediction head to the EGNN velocity field.  Off by "
+            "default → no q_head parameter, no q_pred in the forward "
+            "dict, bit-exact pre-Track-A."
+        ),
+    )
+    p.add_argument(
+        "--natural-charge-mse-weight",
+        dest="natural_charge_mse_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Wf-A15 Track-A Layer 6: weight on the per-atom NBO "
+            "natural-charge MSE loss.  0.0 (default) = INERT, "
+            "preserves the legacy bit-exact sum."
+        ),
+    )
+    p.add_argument(
+        "--use-natural-charges",
+        dest="use_natural_charges",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-A15 Track-A Layer 6: opt-in switch alongside "
+            "--natural-charge-mse-weight.  When both are set the loss "
+            "term is composed into the trainer's loss cascade."
+        ),
+    )
+    p.add_argument(
+        "--q-channel-lr-multiplier",
+        dest="q_channel_lr_multiplier",
+        type=float,
+        default=1.0,
+        help=(
+            "Wf-A15 Track-A Layer 7: when ``--use-differential-lr`` is "
+            "set, the q-channel learning rate is "
+            "``base_lr * q_channel_lr_multiplier``.  Default 1.0 = "
+            "single-group Adam (the legacy fast-path in "
+            "``build_differential_optimizer``)."
+        ),
+    )
+    p.add_argument(
+        "--q-channel-hints",
+        dest="q_channel_hints",
+        nargs="+",
+        default=["q_channel", "natural_charge_proj", "charge_head", "q_head"],
+        help=(
+            "Wf-A15 Track-A Layer 7: parameter-name substrings that "
+            "mark a parameter as a q-channel parameter in the "
+            "differential optimiser (Layer 7 / Wf-A15).  When "
+            "``q_channel_lr_multiplier == 1.0`` the hints are unused "
+            "(the legacy fast-path collapses to a single group)."
         ),
     )
     p.add_argument(
@@ -8735,6 +8899,13 @@ def main() -> int:
             getattr(args, "use_tmqm_init", False)
             or getattr(args, "tmqm_init_path", None)
         ),
+        # Wf-A15 (2026-10-13) Track-A L3a — pass q-head flag through.
+        # ``q_head_enabled`` defaults to ``False`` when the flag is
+        # absent (legacy / pre-Track-A YAMLs); see the new
+        # ``--q-head-enabled`` CLI flag below.
+        q_head_enabled=bool(
+            getattr(args, "q_head_enabled", False)
+        ),
         # 2026-10-09 NEW (BLK-C5 follow-up) — bond-predictor dispatch.
         bond_predictor=str(getattr(args, "bond_predictor", "yuelbond")),
     ).to(device)
@@ -9103,17 +9274,37 @@ def main() -> int:
                 ("head", "atom_head", "bond_head", "chemistry"),
             )
         )
+        # Wf-A15 (2026-10-13) Track-A L7 — q-channel param group.
+        # When ``q_channel_lr_multiplier != 1.0`` the optimiser
+        # emits a separate q-channel group between the head and
+        # backbone groups.  ``q_channel_hints`` defaults to the
+        # Track-A canonical set so the q_head + projector (when
+        # present) land in this group.
+        _q_channel_lr_mult = float(
+            getattr(args, "q_channel_lr_multiplier", 1.0)
+        )
+        _q_channel_hints = list(
+            getattr(
+                args,
+                "q_channel_hints",
+                ("q_channel", "natural_charge_proj", "charge_head", "q_head"),
+            )
+        )
         optimiser = build_differential_optimizer(
             model,
             base_lr=float(args.lr),
             head_lr_multiplier=_chem_head_lr_mult,
             weight_decay=float(getattr(args, "weight_decay", 0.0)),
             head_hints=tuple(_chem_head_hints),
+            q_channel_lr_multiplier=_q_channel_lr_mult,
+            q_channel_hints=tuple(_q_channel_hints),
         )
         print(
             f"[Wf-A15] differential_optimizer=ON "
             f"head_lr_mult={_chem_head_lr_mult} "
-            f"hints={_chem_head_hints}"
+            f"hints={_chem_head_hints} "
+            f"q_lr_mult={_q_channel_lr_mult} "
+            f"q_hints={_q_channel_hints}"
         )
     elif _opt_name == "adamw":
         optimiser = optim.AdamW(
@@ -9739,8 +9930,14 @@ def main() -> int:
             stereo_loss_weight=float(getattr(args, "stereo_loss_weight", 0.0)),
             fragment_loss_weight=float(getattr(args, "fragment_loss_weight", 0.0)),
             property_loss_weight=float(getattr(args, "property_loss_weight", 0.0)),
-            fragment_connectivity_weight=float(getattr(args, "fragment_connectivity_weight", 0.0)),
-            natural_charge_weight=float(getattr(args, "natural_charge_weight", 0.0)),
+            # Wf-A15 (2026-10-13) Track-A Layer 6 — per-atom NBO
+            # natural-charge MSE weight + opt-in switch.
+            natural_charge_mse_weight=float(
+                getattr(args, "natural_charge_mse_weight", 0.0)
+            ),
+            use_natural_charges=bool(
+                getattr(args, "use_natural_charges", False)
+            ),
         )
         # BLK-C5 (2026-10-09) — staged unfreeze, 用户建议二 修改建议 A.
         # `epoch` is 0-based, so the warmup boundary is reached when the

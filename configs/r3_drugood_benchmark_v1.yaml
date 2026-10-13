@@ -1,0 +1,50 @@
+# R3 DrugOOD-style scaffold + 2 OOD-assay benchmark — §5.11 YAML-only launch.
+#
+# WHY THIS CONFIG EXISTS (BLK-PA13)
+# ---------------------------------
+# r3_drugood_benchmark.py builds its ID anchor with ScaffoldSplitter
+# (molmetal/data/splits.py) and therefore inherited the degenerate-splitter
+# defect fixed 2026-10-12 (BLK-PA12: every molecule got an empty scaffold key, so
+# the "scaffold" test was molecule-level).  The published
+# metrics/by_metric/drugood_ood_auc.json / drugood_v3_scaffold.json therefore
+# describe a molecule-level split labelled scaffold.
+#
+# The script had NO argparse at all, so it could not be re-run under §5.11.  It
+# now exposes a parser (--metal / --time-threshold / --ckpt / --out-json /
+# --pic50-threshold / --seed / --device / --config) plus --config.
+#
+# NOTE: this benchmark does not train — it evaluates a fixed pre-trained
+# checkpoint.  The config therefore carries no `train:` block, only the
+# evaluation knobs; `data` is a documented-intent mapping (no --data dest exists
+# on this script) so the pre-flight REQUIRED_KEYS still hold.
+
+entry:
+  script: molmetal/scripts/r3_drugood_benchmark.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/r3_drugood_benchmark.py
+    --config {yaml_path}
+
+# `data` has no dest on this script; a mapping with a DECLARED_INERT leaf keeps
+# the pre-flight REQUIRED_KEYS satisfied without a phantom dest.
+data:
+  n_rows_expected: 3668
+
+model:
+  scaffold_split: true
+protocol:
+  scaffold_split: true
+directives:
+  user_ok_required: true
+
+# --- evaluation knobs (bind to the script's argparse dests) -------------------
+metal: Ru
+time_threshold: 24.0
+ckpt: molmetal/checkpoints/dmpnn_attn_ru_pic50.pt
+pic50_threshold: 5.0
+seed: 42
+device: cuda:0
+out_json: molmetal/reports/r3_drugood_scaffoldfix/r3_drugood_benchmark.json
+
+output:
+  base_dir: molmetal/reports/r3_drugood_scaffoldfix
+  log_master: molmetal/reports/r3_drugood_scaffoldfix/master.log
+  training_summary: molmetal/reports/r3_drugood_scaffoldfix/training_summary.json

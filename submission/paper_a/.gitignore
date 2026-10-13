@@ -1,0 +1,8 @@
+# Scratch output from reproduce.sh — regenerated each run, never shipped.
+.repro_out/
+# Local interpreter and raw data (see data/README.md).
+.venv/
+.data/
+# Python caches.
+__pycache__/
+*.pyc

@@ -1,0 +1,253 @@
+{
+  "metric": "cfm_geom_classifier_dft",
+  "purpose": "REAL_DFT baseline for the new ETKDG-free classifier",
+  "created": "2026-10-12",
+  "protocol": {
+    "module": "molmetal.scripts.wf_blkc_geom_classifier.measure_clouds",
+    "donor_cutoff_A": 2.6,
+    "trans_angle_cut_deg": 150.0,
+    "planarity_cut": 0.15,
+    "min_plausible_ml_bond_A": 1.5,
+    "train_metals": [
+      "Pt",
+      "Ru",
+      "Ir",
+      "Rh",
+      "Os",
+      "Re"
+    ],
+    "sample_seed": 20261012,
+    "real_limit_requested": 3000
+  },
+  "cohort": {
+    "label": "REAL_DFT (new module, no ETKDG, no RDKit)",
+    "n_clouds": 2848,
+    "n_with_metal_centre": 2848,
+    "geometry_unmeasured": 0,
+    "geometry_implausible_rejected": 1,
+    "n_geometries_scored": 2847,
+    "coordination_number_mean": 6.1924,
+    "coordination_number_distribution": {
+      "2": 12,
+      "3": 10,
+      "4": 499,
+      "5": 315,
+      "6": 1100,
+      "7": 209,
+      "8": 403,
+      "9": 277,
+      "10": 22,
+      "11": 1
+    },
+    "donor_element_counts": {
+      "C": 7706,
+      "N": 3763,
+      "Cl": 1890,
+      "P": 1756,
+      "O": 878,
+      "H": 860,
+      "S": 528,
+      "Br": 158,
+      "B": 72,
+      "I": 17,
+      "F": 8
+    },
+    "donor_element_top5_fraction": {
+      "C": 0.4369,
+      "N": 0.2134,
+      "Cl": 0.1072,
+      "P": 0.0996,
+      "O": 0.0498
+    },
+    "geometry_class_counts": {
+      "other": 1227,
+      "octahedral_like": 1093,
+      "square_planar": 472,
+      "tetrahedral": 27,
+      "unmeasured": 22,
+      "no_trans_pair_cn6": 6
+    },
+    "cn4_geometry_class_counts": {
+      "square_planar": 472,
+      "tetrahedral": 27
+    },
+    "cn4_trans_pair_distribution": {
+      "0": 9,
+      "1": 9,
+      "2": 481
+    },
+    "cn6_geometry_class_counts": {
+      "octahedral_like": 1093,
+      "no_trans_pair_cn6": 6
+    },
+    "cn4_planarity_ratio": {
+      "n": 499,
+      "mean": 0.0498,
+      "median": 0.0105,
+      "sd": 0.1302,
+      "p10": 0.0002,
+      "p90": 0.1016,
+      "min": 0.0,
+      "max": 0.93
+    },
+    "cn4_planarity_ratio_histogram": {
+      "[0.00,0.10)": 448,
+      "[0.10,0.20)": 32,
+      "[0.20,0.30)": 4,
+      "[0.30,0.40)": 0,
+      "[0.40,0.50)": 0,
+      "[0.50,0.60)": 4,
+      "[0.60,0.80)": 3,
+      "[0.80,1.00)": 8
+    },
+    "all_planarity_ratio": {
+      "n": 2825,
+      "mean": 0.6927,
+      "median": 0.8682,
+      "sd": 0.3423,
+      "p10": 0.0138,
+      "p90": 0.963,
+      "min": 0.0,
+      "max": 0.9999
+    },
+    "metal_bond_length_A": {
+      "n": 17630,
+      "mean": 2.179,
+      "median": 2.2163,
+      "sd": 0.1895,
+      "p10": 1.9501,
+      "p90": 2.3844,
+      "min": 1.5012,
+      "max": 2.6
+    },
+    "metal_bond_length_per_metal_A": {
+      "Pt": {
+        "n": 3386,
+        "mean": 2.1852,
+        "median": 2.1735,
+        "sd": 0.1902,
+        "p10": 1.9779,
+        "p90": 2.4669,
+        "min": 1.5048,
+        "max": 2.6
+      },
+      "Ru": {
+        "n": 5504,
+        "mean": 2.1981,
+        "median": 2.2647,
+        "sd": 0.1902,
+        "p10": 1.9459,
+        "p90": 2.3691,
+        "min": 1.5019,
+        "max": 2.5987
+      },
+      "Ir": {
+        "n": 3404,
+        "mean": 2.1729,
+        "median": 2.2045,
+        "sd": 0.1695,
+        "p10": 2.0057,
+        "p90": 2.356,
+        "min": 1.5069,
+        "max": 2.5968
+      },
+      "Rh": {
+        "n": 2232,
+        "mean": 2.189,
+        "median": 2.2029,
+        "sd": 0.155,
+        "p10": 1.9963,
+        "p90": 2.3471,
+        "min": 1.5012,
+        "max": 2.6
+      },
+      "Os": {
+        "n": 786,
+        "mean": 2.1752,
+        "median": 2.2383,
+        "sd": 0.2425,
+        "p10": 1.8734,
+        "p90": 2.4379,
+        "min": 1.5337,
+        "max": 2.5942
+      },
+      "Re": {
+        "n": 2318,
+        "mean": 2.1252,
+        "median": 2.1258,
+        "sd": 0.2129,
+        "p10": 1.9392,
+        "p90": 2.4183,
+        "min": 1.6011,
+        "max": 2.5938
+      }
+    },
+    "geometry_class_per_metal": {
+      "Pt": {
+        "square_planar": 377,
+        "octahedral_like": 129,
+        "other": 184,
+        "unmeasured": 18,
+        "tetrahedral": 10
+      },
+      "Ru": {
+        "other": 445,
+        "octahedral_like": 302,
+        "square_planar": 4
+      },
+      "Ir": {
+        "octahedral_like": 211,
+        "other": 258,
+        "square_planar": 36,
+        "no_trans_pair_cn6": 3,
+        "tetrahedral": 2,
+        "unmeasured": 1
+      },
+      "Rh": {
+        "other": 209,
+        "square_planar": 54,
+        "octahedral_like": 82,
+        "tetrahedral": 4,
+        "unmeasured": 3
+      },
+      "Os": {
+        "no_trans_pair_cn6": 1,
+        "octahedral_like": 69,
+        "other": 54,
+        "tetrahedral": 3
+      },
+      "Re": {
+        "octahedral_like": 300,
+        "other": 77,
+        "tetrahedral": 8,
+        "square_planar": 1,
+        "no_trans_pair_cn6": 2
+      }
+    },
+    "n_requested": 3000
+  },
+  "interpretation_rules": [
+    "This cohort IS the like-for-like baseline for a future GENERATED measurement that uses the same module on sampled clouds. It must be re-derived whenever the module's tolerance values change.",
+    "Numbers should match cfm_metal_geometry.json::cohorts.REAL_DFT under the round-1 instrument measure_dft_frame; any drift indicates a tolerance change."
+  ],
+  "corrections_2026_10_12_evening": {
+    "summary": "Several prose claims made in the prior §9.4 (docs/CFM_STATUS_2026_10_12.md) about the values in this JSON were stale or numerically wrong. The values in THIS file are the ground truth; the prose that misquoted them is withdrawn. The corrections are: (1) Pt bond median 2.1832 was from the round-1 instrument, not this JSON -- the new value is 2.1735 (per_metal.Pt.median); (2) the 'Within 3%' claim is FALSE for T-4 (real -12.9% off) and for oct (real -4.87% off); (3) the 'Mean 2.179 matches 2.180 to 4 decimals' claim is FALSE -- the JSON's mean is 2.179 (not 2.180), and the round-1 mean was a different number; (4) the '2847/3000 frames' claim misrepresents the count -- 2847 were SCORED out of 2848 CLOUDS (=99.96% of clouds; 3000 was the original SAMPLE REQUEST, of which 2848 passed the metal-centre check and 1 was rejected as implausible); (5) the trigonal-prism 'explanation' of why T-4 was -12.9% off was FABRICATED -- h=r in a right triangle gives 53.13 / 101.54 / 126.87 degrees, which is not in (90, 100) and not the criterion this classifier uses.",
+    "what_was_wrong": [
+      "Prose claim: 'Pt bond median 2.1832 (n=3571)'. Actual: 2.1735 (n=3386). The 2.1832 was the round-1 instrument's value; this JSON's measurement supersedes it. Bond COUNT is also different (3386 not 3571, because the new instrument applies donor_cutoff_A=2.6 and rejects a few Pt clouds that the round-1 instrument kept).",
+      "Prose claim: 'Within 3%' of the real value for T-4 and oct. Actual: T-4 real fraction 27/499 = 5.41% vs generated ... (the generated arm is the one not yet scored; for the real arm, T-4 = 5.41% of CN=4 complexes). The 'within 3%' was claimed for a generated-vs-real comparison that has not been measured; the 'within 3%' wording should not have appeared in any context for this axis.",
+      "Prose claim: 'Mean 2.179 matches 2.180 to 4 decimals'. Actual: this JSON's mean IS 2.179 (line 115), not 2.180. The number 2.180 was the round-1 instrument's number. The two numbers are not 'the same to 4 decimals'; the third decimal differs.",
+      "Prose claim: '2847/3000 frames'. Actual: 2847 scored out of 2848 clouds (=99.96% of clouds that had a metal centre). 3000 was the SAMPLE REQUEST, not the population -- 152 of the 3000 sampled were rejected for missing the metal-centre check (n_clouds=2848) and 1 additional was rejected for implausible geometry (n_geometries_scored=2847).",
+      "Prose claim: trigonal-prism TBP/90-deg angles explain why T-4 is off. Actual: this classifier's T-4 criterion is NOT 90-degree angles -- it is a trans_pair count of 0/1 (no trans pair, so classified as T-4) vs 2 (classified as square_planar). The trigonal-prism / 90-deg explanation was made up to fill a gap and does not match the module's logic."
+    ],
+    "what_was_landed_2026_10_12": [
+      "Updated docs/CFM_STATUS_2026_10_12.md §9.4 to use this JSON's values: Pt 2.1735 (n=3386), Ru 2.2647 (n=5504), Ir 2.2045 (n=3404), Rh 2.2029 (n=2232), Os 2.2383 (n=786), Re 2.1258 (n=2318); pooled 17,630 bonds, sd 0.1895; CN=4: 472 SP / 27 T (94.6% SP of 499); CN=6: 1093 octahedral_like / 6 no_trans_pair; CN mean 6.1924.",
+      "Added a NOTE 2026-10-12 (corrections_round1) callout in §9.4 listing the five withdrawn prose claims and pointing readers to this corrections block for full detail.",
+      "Appended this corrections_2026_10_12_evening block to the JSON itself, so the file is the source of truth and any future read of the JSON carries the disclaimer."
+    ],
+    "what_is_NOT_changed": [
+      "All numeric values in this JSON (n_clouds=2848, n_geometries_scored=2847, coordination_number_mean=6.1924, geometry_class_counts, cn4_geometry_class_counts, metal_bond_length_A, metal_bond_length_per_metal_A, donor_element_counts, donor_element_top5_fraction, planarity_ratio fields) are UNCHANGED. The JSON is the ground truth; the corrections are about prose claims ABOUT the JSON, not the JSON itself.",
+      "cfm_metal_geometry.json's REAL_DFT cohort and the round-1 instrument (measure_dft_frame) are separate cohorts. The 6,872 vs 5,754 population gap documented in cfm_metal_geometry.json::corrections_2026_10_12[0] is unrelated to the overstatements corrected here."
+    ],
+    "downstream_decision_recorded_not_acted_on": "Re-running the generated arm against this real baseline (the actual generated-vs-real T-4 / SP / oct fractions) is the next experiment in cfm_todo.json::next_actions[0] -- the decode-enabled guidance sweep. Until that runs, the 'Within 3%' / 'matches 2.180 to 4 decimals' / 'trigonal-prism' prose was always incorrect (the generated arm is not yet measured) and the corrections above are independent of that future measurement."
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "metric": "cfm_free_generation_panel_seed0",
+  "tag": "MEASURED",
+  "date": "2026-10-12",
+  "why": "FIRST honest free-generation panel measurement in this project. Every previous QED/SA/diversity number came from wf_cfm_decode_dump_smiles.py, which reconstructs real tmQM geometry with the bond head and never integrates the ODE (see metrics/by_metric/cfm_generated_to_nci60_cross_application.json::provenance_correction_2026_10_11).",
+  "how": "molmetal/scripts/wf_cfm_decode_dump_smiles.py after the 2026-10-12 fix, replaying ODE integration from cfm_fullcorpus_2026_10_10 checkpoint (epoch 10), 192 tmQM val clouds, midpoint/50, then cfm_property_panel.py --decode-chemistry-validity.",
+  "checkpoint": "molmetal/reports/cfm_fullcorpus_2026_10_10/checkpoints/cfm_yuelbond_wasserstein_seed0.pt (epoch 10, n_train 26715)",
+  "generation": {
+    "n_attempted": 192,
+    "n_valid": 66,
+    "gen_validity": 0.344,
+    "rejected_by_decode": 0,
+    "single_fragment_ratio": 0.9697,
+    "largest_fragment_frac_mean": 0.9984,
+    "metal_ratio": 1.0,
+    "mean_heavy_atoms": 37.15
+  },
+  "panel": {
+    "n_input": 66,
+    "parsed_ratio": 1.0,
+    "chemistry_validity_pass_rate": 1.0,
+    "sa_mean": 6.4423,
+    "qed_mean": 0.0944
+  },
+  "reference_band_real_tmqm": {
+    "source": "metrics/by_metric/cfm_panel_reference_band_real_tmqm.json",
+    "n": 636,
+    "sa_mean": 5.0269,
+    "qed_mean": 0.2685,
+    "single_fragment_rate": 0.8365,
+    "chemistry_validity_pass_rate": 0.998
+  },
+  "comparison": {
+    "SA": "generation 6.4423 vs real 5.0269 -- generated molecules are HARDER to synthesise (+1.42)",
+    "QED": "generation 0.0944 vs real 0.2685 -- generated molecules are LESS drug-like, at about 35% of the real corpus",
+    "connectivity": "generation 0.9697 single-fragment vs real 0.8365 -- the model produces MORE connected structures than the real corpus",
+    "chemistry_validity": "1.000 vs 0.998 -- indistinguishable, and NOT a discriminator on its own (see below)"
+  },
+  "the_discriminator_correction_2026_10_12": {
+    "what_was_wrong_first": "cfm_todo.json PREV-2 originally stated a red-flag rule: 'a generated cohort scoring chemistry_validity >= 0.99 is a RED FLAG, real chemistry tops out at 0.998.' The real free generation scored exactly 1.000, so the rule fired on a legitimate result.",
+    "why_the_rule_failed": "chemistry_validity asks whether RDKit accepts each atom in isolation. Both the reconstruction and the real generation pass it. It cannot tell them apart.",
+    "the_real_discriminator": "direction of the DEVIATION from the reference band. Reconstruction sits BELOW real connectivity (single_fragment 0.7838 vs 0.8365) because it fragments real molecules. Real generation sits ABOVE it (0.9697) because the bond head has learned to fill coordination sites. Same validity number, opposite failure modes.",
+    "rule_corrected_to": "Judge a generated cohort by (a) single_fragment_rate or largest_fragment_frac RELATIVE to the real-corpus reference, and (b) SA and QED relative to it. chemistry_validity_pass_rate is a parse check, not a quality metric, and must never be used alone."
+  },
+  "honest_negative": {
+    "bond_type_is_not_the_bottleneck": "Bond EXISTENCE F1 on this same checkpoint is 0.9962 and generated connectivity is 0.9697, better than the real corpus. The bond head is working.",
+    "what_is_the_bottleneck": "Ligand realism. SA 6.44 (harder than real) and QED 0.094 (a third of real) both point the same way. Inspecting the output, the metal centres are filled with small inorganic ligands -- e.g. [Re] bound to (OH)(OH)(N(O)O) -- so the head learned 'fill the coordination sphere' without learning 'make the ligands drug-like'.",
+    "generation_yield": "66 of 192 attempts (34.4%) yield a usable molecule. The rest are fragments that gen_validity rejects. This yield is the honest headline, not the 1.000 validity of the survivors."
+  },
+  "single_seed_caveat": "ONE seed, ONE checkpoint, n=66 survivors. This is a first real measurement, not a settled number. Repeating across the three full-corpus checkpoints is the obvious next step and is cheap now that the dump script integrates the ODE.",
+  "not_a_drug_claim": "These are de-novo metal complexes from a generator trained on 26715 DFT structures. SA 6.44 and QED 0.094 mean these are neither readily synthesisable nor drug-like. Nothing here supports an activity or efficacy statement."
+}

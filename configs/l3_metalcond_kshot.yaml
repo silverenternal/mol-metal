@@ -1,0 +1,70 @@
+# L3 (arm: kshot) — zero-shot cross-metal transfer fails; can a few LABELLED
+# ligands from the held-out metal recover it?
+#
+# WHY: PA15 established that readout-level metal conditioning (token / desc)
+# does not recover the cross-metal collapse.  The remaining question a
+# reviewer asks is the practical one: "I have a handful of measured compounds
+# for my new metal — does that help?"  This arm holds out K=10 labelled
+# ligands from the held-out metal as a support set, fine-tunes the frozen
+# zero-shot model on them, and re-scores the disjoint query set.  The query
+# rows are identical across the zero-shot and k-shot evaluations, so the
+# delta is paired.  The base scorer is the metal-agnostic PA3 arm (mode none).
+#
+# AGENTS.md §5.11: launched from this YAML; the wrapper passes --config only.
+
+entry:
+  script: molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+    --config {yaml_path}
+
+data:
+  cohort_filter: "CytotoxFilter(time_threshold=24h, ic50_min=0.01uM, metal_whitelist=[m]) then collapse_duplicates (one row per unique ligand, majority label, ties -> ACTIVE)"
+  time_threshold: 24.0
+  ic50_min: 0.01
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 300
+  depth: 3
+  ffn_hidden: 300
+  ffn_layers: 1
+  dropout: 0.0
+  metal_mode: none
+  metal_embed_dim: 16
+
+train:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  bf16: true
+
+k_shot: 10
+k_shot_ft_epochs: 20
+k_shot_ft_lr: 0.001
+
+protocol:
+  wave_decomposition: "LOMO 5 folds (Ru/Ir/Rh/Os/Re held out) x 5 seeds; ligand-disjoint train pool; K=10 stratified support from the held-out metal"
+  seeds: [42, 43, 44, 49, 123]
+
+mode: cross
+n_permutations: 0
+perm_seed: 42
+
+compute:
+  gpu: cuda:1
+
+output:
+  base_dir: molmetal/reports/l3_metalcond_kshot
+  out_json: molmetal/reports/l3_metalcond_kshot/metrics.json
+  log_master: molmetal/reports/l3_metalcond_kshot/master.log
+
+metric_name: l3_metalcond_kshot
+
+directives:
+  user_ok_required: true
+
+honest_framing: >
+  MEASURED only.  zero_shot_query_auc and kshot_query_auc are scored on the
+  identical query rows, so the delta is paired.  The support set is drawn from
+  the held-out metal, so this is an ADAPTATION result, not a zero-shot one;
+  the zero-shot LOMO number remains the paper's Table-1 cross column.

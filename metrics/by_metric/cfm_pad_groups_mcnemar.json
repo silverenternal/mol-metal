@@ -1,0 +1,52 @@
+{
+  "metric": "cfm_pad_groups_mcnemar",
+  "tag": "MEASURED",
+  "date": "2026-10-12",
+  "question": "Does pad_groups change the GENERATED RESULT, or only the wall time? Paired: same clouds, same noise seed, only the batching differs.",
+  "speedup_measured_x": 4.78,
+  "wall_seconds": {
+    "grouped": 1958.01,
+    "padded": 409.74
+  },
+  "decode_rate": {
+    "grouped": 0.19270833333333334,
+    "padded": 0.2708333333333333
+  },
+  "paired_test": {
+    "n_clouds": 192,
+    "contingency": {
+      "both_pass": 13,
+      "grouped_only": 24,
+      "padded_only": 39,
+      "neither": 116
+    },
+    "mcnemar": {
+      "n_discordant": 63,
+      "net": -15,
+      "exact_two_sided_p": 0.07692583360960925,
+      "verdict": "SUB-FLOOR (p >= 0.05)"
+    },
+    "wilson_independently": {
+      "grouped": {
+        "n": 192,
+        "mean": 0.192708,
+        "lo": 0.143167,
+        "hi": 0.254305
+      },
+      "padded": {
+        "n": 192,
+        "mean": 0.270833,
+        "lo": 0.212928,
+        "hi": 0.337729
+      }
+    },
+    "interpretation": "McNemar is the licensed test here: the arms share clouds AND the noise seed, so the difference is within-cloud flips. The Wilson intervals are shown for reference only and are strictly looser because they discard the pairing."
+  },
+  "verdict": "NO CLEAR DIFFERENCE -- the discordant flips do not clear the exact test",
+  "what_this_does_not_establish": [
+    "One seed. The discordant count is the evidence; a second seed would bound the between-seed spread.",
+    "Coordinates are NOT compared and cannot be: the two paths draw differently-shaped noise, so the 7.58 A max difference in equiv2.txt measures the noise draw, not the batching.",
+    "This tests the GENERATION path only. It says nothing about whether a trained model under pad_groups would train the same, which is the question that matters for deployment."
+  ],
+  "coordinate_verdict_status": "FALSE NEGATIVE -- mis-specified criterion, superseded"
+}

@@ -1,0 +1,39 @@
+{
+  "abs_delta_pt_fraction": 0.25,
+  "cohort_after_path": "molmetal/reports/cfm_opt3_min_per_metal/after/cohort.json",
+  "cohort_before_path": "molmetal/reports/cfm_opt3_min_per_metal/before/cohort.json",
+  "control_min_per_metal": 0,
+  "date": "2026-10-13",
+  "guard_test_count": 4,
+  "guard_test_pass": true,
+  "metal_counts_after": {
+    "Ir": 59,
+    "Os": 20,
+    "Pt": 125,
+    "Re": 67,
+    "Rh": 74,
+    "Ru": 155
+  },
+  "metal_counts_before": {
+    "Ir": 0,
+    "Os": 38,
+    "Pt": 0,
+    "Re": 165,
+    "Rh": 0,
+    "Ru": 297
+  },
+  "method": "load_tmqm_clouds(tmqm_dir=PROJECT_ROOT/.data/molmetal/tmQM, metals=[Pt,Ir,Ru,Rh,Os,Re], n_clouds=500, seed=0, min_per_metal={0,20}). tmQM is mononuclear -> metal_counts[Pt] == number of Pt clouds in the reservoir sample.",
+  "metric": "cfm_opt3_min_per_metal",
+  "n_clouds_requested": 500,
+  "n_clouds_returned_after": 500,
+  "n_clouds_returned_before": 500,
+  "path": "molmetal/reports/cfm_opt3_min_per_metal/",
+  "pt_count_after": 125,
+  "pt_count_before": 0,
+  "pt_fraction_after": 0.25,
+  "pt_fraction_before": 0.0,
+  "rel_delta_pt_fraction": Infinity,
+  "seed": 0,
+  "tag": "MEASURED",
+  "treatment_min_per_metal": 20
+}

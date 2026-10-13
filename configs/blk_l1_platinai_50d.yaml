@@ -1,0 +1,48 @@
+# BLK-L1 — platinai_4cell R² at a genuine 50-d representation.
+#
+# The on-disk control is +0.01025 at 32 features (alpha=0.1, n=4078) — the tier
+# table says n>=1000 should use 50-d, but the loader only ever emitted 32. This
+# config drives the run that builds the 50-d arm (32-d RDKit + 18 PCA dims of a
+# real Morgan ECFP4 fingerprint, PCA fit inside each training fold) and
+# re-measures the control alongside it.
+#
+# AGENTS.md §5.11: every key below resolves to a dest of
+# blk_l1_platinai_50d_r2.py's own parser (verified by
+# scripts/_config_binding_gate.py). Analysis script, invoked directly.
+
+entry:
+  script: molmetal/scripts/blk_l1_platinai_50d_r2.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/blk_l1_platinai_50d_r2.py
+    --config {yaml_path}
+
+# cohort + protocol (top-level keys so each resolves to its own dest; the loader
+# only falls back to a bare leaf name for whitelisted sections)
+max_cohort_size: 4078
+n_splits: 5
+n_seeds: 5
+alpha: 0.1          # the n_gte_1000 tier alpha, same as the on-disk control
+seed_offset: 0      # platinai_4cell offset (hilbert uses 1)
+target_r2: 0.15     # BLK-L1's PROJECTED target
+
+# the 18 added dimensions
+n_components: 18
+radius: 2
+nbits: 2048
+pca_seed: 0
+
+output:
+  out_metric: metrics/by_metric/blk_l1_platinai_50d_r2.json
+
+honest_framing:
+  purpose: >-
+    Measure whether a real 50-d representation lifts platinai_4cell R² off the
+    +0.01 the 32-d path produced.
+  do_not_claim:
+    - That the 50-d arm contains a trained chemprop_v3 embedding — no trained
+      encoder checkpoint exists on disk; the 18-d component is PCA of Morgan.
+    - That platinai_4cell (Pt-only continuous regression) speaks to the
+      MetalCytoToxDB 5-metal classification task — BLK-C15 does not transfer.
+  gate_context: >-
+    If the 50-d arm still lands < 0.10 the reading is "representation ceiling
+    reached for this cohort"; metalcytotox_combined stays the load-bearing
+    cohort.

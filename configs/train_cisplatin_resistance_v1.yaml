@@ -1,0 +1,52 @@
+# Cisplatin-resistance 3-cell classifier (legacy entry) — §5.11 YAML-only launch.
+#
+# WHY THIS CONFIG EXISTS (BLK-PA13)
+# ---------------------------------
+# train_cisplatin_resistance.py calls ScaffoldSplitter (molmetal/data/splits.py)
+# and inherited the degenerate-splitter defect fixed 2026-10-12 (BLK-PA12).  The
+# script had no --config, so it could not be re-run under §5.11; it now accepts
+# --config + apply_yaml_overrides.
+#
+# This is the legacy (non-v2) entry: its output dest is --out (a metric JSON
+# path) and it has no GPU-env flags.  It trains on platinai_4cell.csv, whose
+# MCF7/A549/A2780 labels carry no structure term, so its headline is not a
+# load-bearing paper number — provided for reproducibility of the affected split.
+#
+# Output goes to a *_scaffoldfix path so the published
+# metrics/by_metric/platinai_3cell_resistance.json is not clobbered (AGENTS.md
+# §5.5 + §5.6).
+
+entry:
+  script: molmetal/scripts/train_cisplatin_resistance.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_cisplatin_resistance.py
+    --config {yaml_path}
+
+# Top-level scalar → --data dest.
+data: molmetal/data/platinai_4cell.csv
+
+# Sections required by scripts/_pre_flight_check.sh.
+model:
+  scaffold_split: true
+protocol:
+  scaffold_split: true
+directives:
+  user_ok_required: true
+
+# --- run hyperparameters (leaf names bind to the script's argparse dests) -----
+train:
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 100
+  batch: 64
+  lr: 5.0e-4
+  eval_every: 10
+
+# NOTE: this legacy entry declares no --device and no --out-dir dest (its only
+# output flag is --out), so neither appears here; start.sh reads output.base_dir
+# for its OUT_DIR env.  Adding them would be two dead keys.
+
+output:
+  base_dir: molmetal/reports/cisplatin_resistance_legacy_scaffoldfix
+  log_master: molmetal/reports/cisplatin_resistance_legacy_scaffoldfix/master.log
+  training_summary: molmetal/reports/cisplatin_resistance_legacy_scaffoldfix/training_summary.json
+
+out: molmetal/reports/cisplatin_resistance_legacy_scaffoldfix/platinai_3cell_resistance.json

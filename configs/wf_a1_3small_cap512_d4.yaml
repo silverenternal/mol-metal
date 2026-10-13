@@ -1,0 +1,70 @@
+# wf_a1_3small_cap512_d4.yaml — capacity-lever TREATMENT on the three "small"
+# MoleculeNet tasks (clintox, hiv, bbbp) at width/depth 512/4.
+#
+# Single-variable change vs the paired control
+#   configs/wf_a1_3small_cap300.yaml
+# -> model.hidden 300 -> 512 and model.depth 3 -> 4. Everything else is held at
+#    the control: tasks [clintox, hiv, bbbp], scaffold_split true, backbone
+#    dmpnn, epochs 50, batch_size 64, lr 0.001, seeds [0,1,2,3,4].
+#
+# `protocol.split_seed` is deliberately UNSET so the scaffold split is seeded by
+# the training seed (historical behaviour). Combined with the identical UNSET in
+# the control, seed s uses the SAME scaffold split in both arms, so cap300 vs
+# cap512 is a within-seed paired comparison.
+#
+# Historical baselines (MEASURED, 5 seeds, 50 ep):
+#   metrics/by_metric/moleculenet_auc_dmpnn_5seed.json
+#   clintox 0.8209 +/- 0.0122 | hiv 0.7900 +/- 0.0109 | bbbp 0.9065 +/- 0.0227
+#
+# AGENTS.md §5.11: every hyperparameter lives here; no CLI flag sets what to train.
+#
+# HONEST FRAMING (§5.2): this arm's numbers are PROJECTED until the run lands;
+# the baselines above are MEASURED. out_metric points at a FRESH report dir, NOT
+# the canonical metrics/by_metric/moleculenet_auc.json.
+data:
+  tasks:
+  - clintox
+  - hiv
+  - bbbp
+  scaffold_split: true
+model:
+  backbone: dmpnn
+  hidden: 512                # <-- TREATMENT: capacity (hidden)
+  depth: 4                   # <-- TREATMENT: capacity (message-passing rounds)
+protocol:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  # split_seed deliberately UNSET -> varying per-seed splits (historical).
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+compute:
+  # NOTE: train_moleculenet.py has NO --device dest (device is auto-selected via
+  # _cuda_default); start.sh reads compute.gpu for CUDA_VISIBLE_DEVICES, and
+  # `gpu` is a registered non-trainer key. `compute.device` would resolve to no
+  # dest and fail scripts/_config_binding_gate.py, so the pin is spelled as gpu.
+  gpu: cuda:0
+output:
+  base_dir: molmetal/reports/wf_a1_3small_cap512_d4
+  out_dir: molmetal/reports/wf_a1_3small_cap512_d4
+  log_master: molmetal/reports/wf_a1_3small_cap512_d4/master.log
+  training_summary: molmetal/reports/wf_a1_3small_cap512_d4/training_summary.json
+  out_metric: molmetal/reports/wf_a1_3small_cap512_d4/metrics.json
+  out_report: molmetal/reports/wf_a1_3small_cap512_d4/report.md
+  events_jsonl: true
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_moleculenet.py
+    --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: Capacity-lever treatment — 512/4 on clintox+hiv+bbbp, varying splits.
+  note: PROJECTED until the run lands; baselines clintox 0.8209 / hiv 0.7900 / bbbp 0.9065 are MEASURED (metrics/by_metric/moleculenet_auc_dmpnn_5seed.json).

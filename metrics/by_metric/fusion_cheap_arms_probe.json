@@ -1,0 +1,1580 @@
+{
+  "metric": "fusion_dmpnn_gbdt_within_metal",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "description": "BLK-F1: within-metal feature fusion of the D-MPNN graph representation with ECFP4, on the probe's deduplicated cohort and identical StratifiedKFold folds. Tests whether the two representations are complementary (a method contribution) or not (a theoretically-anchored negative).",
+  "unit": "ROC-AUC (0-1, higher better) and paired delta vs ECFP4-only XGBoost",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/fuse_dmpnn_gbdt_within_metal.py",
+  "data_source": "MetalCytoToxDB (Krasnov et al., J. Med. Chem. 2026, 69(8), 8838)",
+  "cohort": "identical to metal_activity_transfer_probe: CytotoxFilter(time_threshold=24.0, ic50_min=0.01, metal_whitelist=[m]) then collapse_duplicates(tie_rule=active)",
+  "fold_protocol": "StratifiedKFold(n_splits=5, shuffle=True, random_state=split_seed); identical to the probe's within_metal and to BLK-P1.",
+  "arms": {
+    "1_ecfp4_xgb": "ECFP4 -> XGB (anchor; reproduces BLK-P1's XGB column)",
+    "2_ecfp4_plus_tmqm_emb_xgb": "[ECFP4 ⊕ frozen tmQM encoder(256)] -> XGB (leak-free)",
+    "3_ecfp4_plus_dmpnn_mlp": "end-to-end [ECFP4 ⊕ supervised D-MPNN pooled(256)] -> MLP",
+    "4_ecfp4_mlp": "ECFP4 -> MLP (head-change control for arm 3)",
+    "5_ecfp4_plus_dmpnn_oof_emb_xgb": "[ECFP4 ⊕ supervised D-MPNN OOF embedding(256)] -> XGB (UPPER BOUND, fold-bleed)",
+    "6_ecfp4_plus_noise_xgb": "[ECFP4 ⊕ 256-d Gaussian noise] -> XGB (feature-count negative control)"
+  },
+  "arms_run": [
+    "1_ecfp4_xgb",
+    "2_ecfp4_plus_tmqm_emb_xgb",
+    "6_ecfp4_plus_noise_xgb"
+  ],
+  "split_seeds": [
+    42,
+    43,
+    44,
+    49,
+    123
+  ],
+  "device": "cpu",
+  "encoder": "models/tmqm_pretrained/tmqm_pretrained_encoder.pt",
+  "mlp_hidden": 128,
+  "noise_dim": 256,
+  "min_unique_for_gate": 200,
+  "per_metal": {
+    "Ru": {
+      "n_rows_raw": 3668,
+      "n_unique": 1255,
+      "pos_rate": 0.25737051792828686,
+      "resolvable": true,
+      "arms_run": [
+        "1_ecfp4_xgb",
+        "2_ecfp4_plus_tmqm_emb_xgb",
+        "6_ecfp4_plus_noise_xgb"
+      ],
+      "n_invalid_graphs": 0,
+      "arm2_encoder_tensors_loaded": 12,
+      "arm2_emb_dim": 256,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "per_arm_seed_auc": {
+        "1_ecfp4_xgb": [
+          0.836293,
+          0.829215,
+          0.834909,
+          0.812816,
+          0.822343
+        ],
+        "2_ecfp4_plus_tmqm_emb_xgb": [
+          0.824461,
+          0.824368,
+          0.828009,
+          0.801246,
+          0.821941
+        ],
+        "6_ecfp4_plus_noise_xgb": [
+          0.613426,
+          0.622538,
+          0.613139,
+          0.626801,
+          0.625627
+        ]
+      },
+      "per_arm_mean_auc": {
+        "1_ecfp4_xgb": 0.827115,
+        "2_ecfp4_plus_tmqm_emb_xgb": 0.820005,
+        "6_ecfp4_plus_noise_xgb": 0.620306
+      },
+      "deltas_vs_ecfp4_xgb": {
+        "2_ecfp4_plus_tmqm_emb_xgb": {
+          "mean": -0.00711,
+          "sd": 0.004805,
+          "se": 0.002149,
+          "ci95": [
+            -0.013076,
+            -0.001144
+          ],
+          "ci95_ttest": [
+            -0.013076,
+            -0.001144
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.010741,
+            -0.003479
+          ],
+          "t": -3.3088,
+          "n_seeds": 5,
+          "n_seeds_positive": 0,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.985156,
+          "p_one_sided_wilcoxon": 1.0,
+          "p_one_sided_bootstrap_reference_only": 1.0,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "6_ecfp4_plus_noise_xgb": {
+          "mean": -0.206809,
+          "sd": 0.015937,
+          "se": 0.007127,
+          "ci95": [
+            -0.226597,
+            -0.187021
+          ],
+          "ci95_ttest": [
+            -0.226597,
+            -0.187021
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.21919,
+            -0.194428
+          ],
+          "t": -29.0168,
+          "n_seeds": 5,
+          "n_seeds_positive": 0,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.999996,
+          "p_one_sided_wilcoxon": 1.0,
+          "p_one_sided_bootstrap_reference_only": 1.0,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        }
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.8362931423415294,
+              "per_fold": [
+                0.8011993382961126,
+                0.8070306038047974,
+                0.840281224152192,
+                0.8712399732620321,
+                0.8617145721925132
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.8244606571480386,
+              "per_fold": [
+                0.8155500413564929,
+                0.7829611248966087,
+                0.8053763440860215,
+                0.8782586898395722,
+                0.8401570855614973
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.6134264241451148,
+              "per_fold": [
+                0.6265508684863523,
+                0.6248966087675766,
+                0.6056244830438378,
+                0.6306818181818182,
+                0.5793783422459893
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 43,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.8292150324770107,
+              "per_fold": [
+                0.8220843672456577,
+                0.8025641025641026,
+                0.8775847808105872,
+                0.7993816844919786,
+                0.8444602272727272
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.8243684979631375,
+              "per_fold": [
+                0.8161290322580645,
+                0.8162117452440034,
+                0.8577336641852771,
+                0.821524064171123,
+                0.8102439839572193
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.6225382436981108,
+              "per_fold": [
+                0.5703060380479735,
+                0.6193548387096774,
+                0.6571546732837055,
+                0.6755514705882352,
+                0.5903241978609626
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 44,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.8349087309749075,
+              "per_fold": [
+                0.8657981803143093,
+                0.8055831265508685,
+                0.8209263854425145,
+                0.8465073529411765,
+                0.8357286096256685
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.8280089502527833,
+              "per_fold": [
+                0.8482216708023159,
+                0.7977667493796528,
+                0.8125723738626964,
+                0.8544451871657754,
+                0.8270387700534759
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.6131392314990511,
+              "per_fold": [
+                0.6167080231596361,
+                0.6215053763440861,
+                0.5875930521091811,
+                0.6631016042780749,
+                0.5767881016042781
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 49,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.8128159155044828,
+              "per_fold": [
+                0.8021505376344087,
+                0.7875103391232423,
+                0.7881720430107528,
+                0.8506851604278075,
+                0.8355614973262032
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.8012463840713366,
+              "per_fold": [
+                0.7622828784119107,
+                0.7944582299421009,
+                0.758147229114971,
+                0.8307152406417112,
+                0.8606283422459893
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.6268009370452443,
+              "per_fold": [
+                0.589660876757651,
+                0.7072787427626137,
+                0.6229942100909843,
+                0.6052807486631016,
+                0.6087901069518715
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 123,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.8223432130014199,
+              "per_fold": [
+                0.7583126550868488,
+                0.8460711331679074,
+                0.793010752688172,
+                0.8451704545454545,
+                0.8691510695187167
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.8219410045204638,
+              "per_fold": [
+                0.798014888337469,
+                0.8180314309346567,
+                0.8023986765922251,
+                0.8358957219251336,
+                0.8553643048128343
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.6256270374154626,
+              "per_fold": [
+                0.6201819685690654,
+                0.6547559966914807,
+                0.6142266335814723,
+                0.5910762032085563,
+                0.647894385026738
+              ]
+            }
+          }
+        }
+      ],
+      "wall_sec": 486.2,
+      "verdicts": {
+        "2_ecfp4_plus_tmqm_emb_xgb": "NEGATIVE",
+        "6_ecfp4_plus_noise_xgb": "NEGATIVE"
+      }
+    },
+    "Ir": {
+      "n_rows_raw": 1242,
+      "n_unique": 534,
+      "pos_rate": 0.45318352059925093,
+      "resolvable": true,
+      "arms_run": [
+        "1_ecfp4_xgb",
+        "2_ecfp4_plus_tmqm_emb_xgb",
+        "6_ecfp4_plus_noise_xgb"
+      ],
+      "n_invalid_graphs": 0,
+      "arm2_encoder_tensors_loaded": 12,
+      "arm2_emb_dim": 256,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "per_arm_seed_auc": {
+        "1_ecfp4_xgb": [
+          0.829478,
+          0.834112,
+          0.859696,
+          0.852113,
+          0.839725
+        ],
+        "2_ecfp4_plus_tmqm_emb_xgb": [
+          0.846347,
+          0.849837,
+          0.849247,
+          0.84791,
+          0.846331
+        ],
+        "6_ecfp4_plus_noise_xgb": [
+          0.541425,
+          0.55256,
+          0.59933,
+          0.556474,
+          0.562137
+        ]
+      },
+      "per_arm_mean_auc": {
+        "1_ecfp4_xgb": 0.843025,
+        "2_ecfp4_plus_tmqm_emb_xgb": 0.847934,
+        "6_ecfp4_plus_noise_xgb": 0.562385
+      },
+      "deltas_vs_ecfp4_xgb": {
+        "2_ecfp4_plus_tmqm_emb_xgb": {
+          "mean": 0.00491,
+          "sd": 0.01206,
+          "se": 0.005394,
+          "ci95": [
+            -0.010065,
+            0.019885
+          ],
+          "ci95_ttest": [
+            -0.010065,
+            0.019885
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.00454,
+            0.014359
+          ],
+          "t": 0.9103,
+          "n_seeds": 5,
+          "n_seeds_positive": 3,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.207084,
+          "p_one_sided_wilcoxon": 0.21875,
+          "p_one_sided_bootstrap_reference_only": 0.1605,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "6_ecfp4_plus_noise_xgb": {
+          "mean": -0.28064,
+          "sd": 0.013239,
+          "se": 0.005921,
+          "ci95": [
+            -0.297079,
+            -0.264201
+          ],
+          "ci95_ttest": [
+            -0.297079,
+            -0.264201
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.290004,
+            -0.269348
+          ],
+          "t": -47.3983,
+          "n_seeds": 5,
+          "n_seeds_positive": 0,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.999999,
+          "p_one_sided_wilcoxon": 1.0,
+          "p_one_sided_bootstrap_reference_only": 1.0,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        }
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.8294775551950762,
+              "per_fold": [
+                0.865819209039548,
+                0.8697033898305084,
+                0.8198451794510907,
+                0.7899366643209007,
+                0.8020833333333333
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.8463468672097711,
+              "per_fold": [
+                0.842867231638418,
+                0.899364406779661,
+                0.8286418015482055,
+                0.8131597466572836,
+                0.8477011494252874
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.5414246104637062,
+              "per_fold": [
+                0.5875706214689265,
+                0.5663841807909605,
+                0.5443349753694582,
+                0.5587614356087262,
+                0.4500718390804597
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 43,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.8341119586350028,
+              "per_fold": [
+                0.8594632768361581,
+                0.7969632768361582,
+                0.8553835327234341,
+                0.811048557353976,
+                0.8477011494252874
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.8498368152053339,
+              "per_fold": [
+                0.9088983050847459,
+                0.844632768361582,
+                0.8560872624912034,
+                0.8180858550316679,
+                0.8214798850574713
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.5525604134114196,
+              "per_fold": [
+                0.4548022598870056,
+                0.533545197740113,
+                0.587966220971147,
+                0.6175228712174525,
+                0.5689655172413793
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 44,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.8596959648850774,
+              "per_fold": [
+                0.8633474576271186,
+                0.8562853107344632,
+                0.8870513722730471,
+                0.8110485573539762,
+                0.8807471264367817
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.8492470439373878,
+              "per_fold": [
+                0.8368644067796609,
+                0.820268361581921,
+                0.872624912033779,
+                0.8159746657283603,
+                0.9005028735632183
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.5993304379028058,
+              "per_fold": [
+                0.5215395480225989,
+                0.6207627118644068,
+                0.5654468684025334,
+                0.6326530612244898,
+                0.65625
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 49,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.8521133263357944,
+              "per_fold": [
+                0.824505649717514,
+                0.899364406779661,
+                0.8916256157635468,
+                0.846938775510204,
+                0.798132183908046
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.8479096591880468,
+              "per_fold": [
+                0.8192090395480226,
+                0.8958333333333334,
+                0.8451794510907811,
+                0.8578465869106263,
+                0.8214798850574713
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.5564738168791771,
+              "per_fold": [
+                0.5211864406779662,
+                0.5406073446327684,
+                0.5214637579169599,
+                0.5805770584095707,
+                0.6185344827586207
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 123,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.8397246508188314,
+              "per_fold": [
+                0.8047316384180789,
+                0.8273305084745762,
+                0.860661505981703,
+                0.8581984517945109,
+                0.8477011494252874
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.8463314358472788,
+              "per_fold": [
+                0.8075564971751413,
+                0.8898305084745762,
+                0.8121041520056299,
+                0.8532723434201267,
+                0.8688936781609196
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.5621365553819423,
+              "per_fold": [
+                0.5328389830508474,
+                0.5215395480225988,
+                0.5175932441942295,
+                0.5935960591133005,
+                0.6451149425287356
+              ]
+            }
+          }
+        }
+      ],
+      "wall_sec": 259.1,
+      "verdicts": {
+        "2_ecfp4_plus_tmqm_emb_xgb": "NULL",
+        "6_ecfp4_plus_noise_xgb": "NEGATIVE"
+      }
+    },
+    "Rh": {
+      "n_rows_raw": 108,
+      "n_unique": 51,
+      "pos_rate": 0.3333333333333333,
+      "resolvable": false,
+      "arms_run": [
+        "1_ecfp4_xgb",
+        "2_ecfp4_plus_tmqm_emb_xgb",
+        "6_ecfp4_plus_noise_xgb"
+      ],
+      "n_invalid_graphs": 0,
+      "arm2_encoder_tensors_loaded": 12,
+      "arm2_emb_dim": 256,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "per_arm_seed_auc": {
+        "1_ecfp4_xgb": [
+          0.738095,
+          0.717857,
+          0.642857,
+          0.67381,
+          0.714286
+        ],
+        "2_ecfp4_plus_tmqm_emb_xgb": [
+          0.752381,
+          0.659524,
+          0.733333,
+          0.717857,
+          0.719048
+        ],
+        "6_ecfp4_plus_noise_xgb": [
+          0.520238,
+          0.544048,
+          0.445238,
+          0.560714,
+          0.565476
+        ]
+      },
+      "per_arm_mean_auc": {
+        "1_ecfp4_xgb": 0.697381,
+        "2_ecfp4_plus_tmqm_emb_xgb": 0.716429,
+        "6_ecfp4_plus_noise_xgb": 0.527143
+      },
+      "deltas_vs_ecfp4_xgb": {
+        "2_ecfp4_plus_tmqm_emb_xgb": {
+          "mean": 0.019048,
+          "sd": 0.054639,
+          "se": 0.024435,
+          "ci95": [
+            -0.048795,
+            0.086891
+          ],
+          "ci95_ttest": [
+            -0.048795,
+            0.086891
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.025238,
+            0.060714
+          ],
+          "t": 0.7795,
+          "n_seeds": 5,
+          "n_seeds_positive": 4,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.239611,
+          "p_one_sided_wilcoxon": 0.21875,
+          "p_one_sided_bootstrap_reference_only": 0.19645,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "6_ecfp4_plus_noise_xgb": {
+          "mean": -0.170238,
+          "sd": 0.041093,
+          "se": 0.018377,
+          "ci95": [
+            -0.221262,
+            -0.119214
+          ],
+          "ci95_ttest": [
+            -0.221262,
+            -0.119214
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.200952,
+            -0.137143
+          ],
+          "t": -9.2635,
+          "n_seeds": 5,
+          "n_seeds_positive": 0,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.999622,
+          "p_one_sided_wilcoxon": 1.0,
+          "p_one_sided_bootstrap_reference_only": 1.0,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        }
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.7380952380952381,
+              "per_fold": [
+                0.6785714285714286,
+                0.8095238095238095,
+                0.6666666666666666,
+                0.6190476190476191,
+                0.9166666666666667
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.7523809523809524,
+              "per_fold": [
+                0.4642857142857143,
+                1.0,
+                0.8571428571428572,
+                0.8571428571428572,
+                0.5833333333333333
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.5202380952380953,
+              "per_fold": [
+                0.5,
+                0.4285714285714286,
+                0.4285714285714286,
+                0.6190476190476191,
+                0.625
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 43,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.7178571428571427,
+              "per_fold": [
+                0.75,
+                0.5714285714285714,
+                0.6190476190476191,
+                0.8571428571428571,
+                0.7916666666666666
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.6595238095238095,
+              "per_fold": [
+                0.75,
+                0.7619047619047619,
+                0.2857142857142857,
+                0.6666666666666666,
+                0.8333333333333334
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.5440476190476191,
+              "per_fold": [
+                0.6071428571428572,
+                0.38095238095238093,
+                0.8095238095238095,
+                0.38095238095238093,
+                0.5416666666666667
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 44,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.6428571428571428,
+              "per_fold": [
+                0.6428571428571428,
+                0.6190476190476191,
+                0.2857142857142857,
+                0.6666666666666666,
+                1.0
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.7333333333333334,
+              "per_fold": [
+                0.75,
+                0.7619047619047619,
+                0.9523809523809524,
+                0.2857142857142857,
+                0.9166666666666667
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.44523809523809527,
+              "per_fold": [
+                0.4642857142857143,
+                0.380952380952381,
+                0.14285714285714285,
+                0.5714285714285714,
+                0.6666666666666666
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 49,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.6738095238095237,
+              "per_fold": [
+                0.9285714285714286,
+                0.7142857142857143,
+                0.47619047619047616,
+                0.6666666666666666,
+                0.5833333333333333
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.7178571428571429,
+              "per_fold": [
+                0.9642857142857143,
+                0.6666666666666667,
+                0.7142857142857143,
+                0.6190476190476191,
+                0.625
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.5607142857142857,
+              "per_fold": [
+                0.8214285714285714,
+                0.42857142857142855,
+                0.6190476190476191,
+                0.47619047619047616,
+                0.45833333333333337
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 123,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.7142857142857143,
+              "per_fold": [
+                0.6428571428571429,
+                0.9047619047619048,
+                0.5714285714285714,
+                0.9523809523809524,
+                0.5
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.7190476190476189,
+              "per_fold": [
+                0.7857142857142857,
+                0.7619047619047619,
+                0.38095238095238093,
+                1.0,
+                0.6666666666666666
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.5654761904761905,
+              "per_fold": [
+                0.4642857142857143,
+                0.8095238095238095,
+                0.7619047619047619,
+                0.6666666666666666,
+                0.12499999999999997
+              ]
+            }
+          }
+        }
+      ],
+      "wall_sec": 17.3,
+      "verdicts": {
+        "2_ecfp4_plus_tmqm_emb_xgb": "UNRESOLVABLE",
+        "6_ecfp4_plus_noise_xgb": "UNRESOLVABLE"
+      }
+    },
+    "Os": {
+      "n_rows_raw": 87,
+      "n_unique": 36,
+      "pos_rate": 0.3611111111111111,
+      "resolvable": false,
+      "arms_run": [
+        "1_ecfp4_xgb",
+        "2_ecfp4_plus_tmqm_emb_xgb",
+        "6_ecfp4_plus_noise_xgb"
+      ],
+      "n_invalid_graphs": 0,
+      "arm2_encoder_tensors_loaded": 12,
+      "arm2_emb_dim": 256,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "per_arm_seed_auc": {
+        "1_ecfp4_xgb": [
+          0.49,
+          0.586667,
+          0.313333,
+          0.55,
+          0.54
+        ],
+        "2_ecfp4_plus_tmqm_emb_xgb": [
+          0.536667,
+          0.303333,
+          0.446667,
+          0.446667,
+          0.303333
+        ],
+        "6_ecfp4_plus_noise_xgb": [
+          0.416667,
+          0.423333,
+          0.333333,
+          0.413333,
+          0.313333
+        ]
+      },
+      "per_arm_mean_auc": {
+        "1_ecfp4_xgb": 0.496,
+        "2_ecfp4_plus_tmqm_emb_xgb": 0.407333,
+        "6_ecfp4_plus_noise_xgb": 0.38
+      },
+      "deltas_vs_ecfp4_xgb": {
+        "2_ecfp4_plus_tmqm_emb_xgb": {
+          "mean": -0.088667,
+          "sd": 0.178615,
+          "se": 0.079879,
+          "ci95": [
+            -0.310447,
+            0.133113
+          ],
+          "ci95_ttest": [
+            -0.310447,
+            0.133113
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.228667,
+            0.051333
+          ],
+          "t": -1.11,
+          "n_seeds": 5,
+          "n_seeds_positive": 2,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.835387,
+          "p_one_sided_wilcoxon": 0.84375,
+          "p_one_sided_bootstrap_reference_only": 0.88845,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "6_ecfp4_plus_noise_xgb": {
+          "mean": -0.116,
+          "sd": 0.09385,
+          "se": 0.041971,
+          "ci95": [
+            -0.23253,
+            0.00053
+          ],
+          "ci95_ttest": [
+            -0.23253,
+            0.00053
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.183333,
+            -0.036
+          ],
+          "t": -2.7638,
+          "n_seeds": 5,
+          "n_seeds_positive": 1,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.974675,
+          "p_one_sided_wilcoxon": 0.96875,
+          "p_one_sided_bootstrap_reference_only": 0.99805,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        }
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.49000000000000005,
+              "per_fold": [
+                0.39999999999999997,
+                0.5,
+                0.75,
+                0.6,
+                0.19999999999999996
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.5366666666666666,
+              "per_fold": [
+                0.2666666666666666,
+                0.9166666666666666,
+                0.5,
+                0.4,
+                0.6
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.4166666666666667,
+              "per_fold": [
+                0.33333333333333326,
+                0.25,
+                0.5,
+                0.8,
+                0.2
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 43,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.5866666666666667,
+              "per_fold": [
+                0.6,
+                0.41666666666666663,
+                0.6666666666666666,
+                0.55,
+                0.7
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.30333333333333334,
+              "per_fold": [
+                0.4666666666666667,
+                0.0,
+                0.25,
+                0.39999999999999997,
+                0.4
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.42333333333333323,
+              "per_fold": [
+                0.4666666666666666,
+                0.3333333333333333,
+                0.41666666666666663,
+                0.7,
+                0.19999999999999996
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 44,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.31333333333333335,
+              "per_fold": [
+                0.13333333333333333,
+                0.08333333333333333,
+                0.5,
+                0.45,
+                0.4
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.44666666666666666,
+              "per_fold": [
+                0.06666666666666665,
+                0.41666666666666663,
+                0.75,
+                0.8,
+                0.2
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.3333333333333333,
+              "per_fold": [
+                0.2666666666666666,
+                0.25,
+                0.25,
+                0.2,
+                0.7
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 49,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.55,
+              "per_fold": [
+                0.8,
+                0.41666666666666663,
+                0.8333333333333334,
+                0.5,
+                0.2
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.4466666666666666,
+              "per_fold": [
+                0.6666666666666666,
+                0.6666666666666666,
+                0.5,
+                0.09999999999999998,
+                0.3
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.4133333333333333,
+              "per_fold": [
+                0.3333333333333333,
+                0.25,
+                0.5833333333333333,
+                0.7,
+                0.19999999999999996
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 123,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.54,
+              "per_fold": [
+                0.6,
+                0.75,
+                0.25,
+                0.6,
+                0.5
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.3033333333333333,
+              "per_fold": [
+                0.3333333333333333,
+                0.25,
+                0.3333333333333333,
+                0.2,
+                0.39999999999999997
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.31333333333333335,
+              "per_fold": [
+                0.06666666666666665,
+                0.3333333333333333,
+                0.16666666666666666,
+                0.5,
+                0.5
+              ]
+            }
+          }
+        }
+      ],
+      "wall_sec": 14.1,
+      "verdicts": {
+        "2_ecfp4_plus_tmqm_emb_xgb": "UNRESOLVABLE",
+        "6_ecfp4_plus_noise_xgb": "UNRESOLVABLE"
+      }
+    },
+    "Re": {
+      "n_rows_raw": 166,
+      "n_unique": 74,
+      "pos_rate": 0.1891891891891892,
+      "resolvable": false,
+      "arms_run": [
+        "1_ecfp4_xgb",
+        "2_ecfp4_plus_tmqm_emb_xgb",
+        "6_ecfp4_plus_noise_xgb"
+      ],
+      "n_invalid_graphs": 0,
+      "arm2_encoder_tensors_loaded": 12,
+      "arm2_emb_dim": 256,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "per_arm_seed_auc": {
+        "1_ecfp4_xgb": [
+          0.927778,
+          0.95,
+          0.972222,
+          0.981944,
+          0.908333
+        ],
+        "2_ecfp4_plus_tmqm_emb_xgb": [
+          0.944444,
+          0.916667,
+          0.933333,
+          0.930556,
+          0.936111
+        ],
+        "6_ecfp4_plus_noise_xgb": [
+          0.755556,
+          0.861111,
+          0.880556,
+          0.802778,
+          0.697222
+        ]
+      },
+      "per_arm_mean_auc": {
+        "1_ecfp4_xgb": 0.948056,
+        "2_ecfp4_plus_tmqm_emb_xgb": 0.932222,
+        "6_ecfp4_plus_noise_xgb": 0.799444
+      },
+      "deltas_vs_ecfp4_xgb": {
+        "2_ecfp4_plus_tmqm_emb_xgb": {
+          "mean": -0.015833,
+          "sd": 0.035567,
+          "se": 0.015906,
+          "ci95": [
+            -0.059996,
+            0.02833
+          ],
+          "ci95_ttest": [
+            -0.059996,
+            0.02833
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.042778,
+            0.012222
+          ],
+          "t": -0.9954,
+          "n_seeds": 5,
+          "n_seeds_positive": 2,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.812063,
+          "p_one_sided_wilcoxon": 0.90625,
+          "p_one_sided_bootstrap_reference_only": 0.8912,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "6_ecfp4_plus_noise_xgb": {
+          "mean": -0.148611,
+          "sd": 0.055242,
+          "se": 0.024705,
+          "ci95": [
+            -0.217203,
+            -0.080019
+          ],
+          "ci95_ttest": [
+            -0.217203,
+            -0.080019
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.190556,
+            -0.106667
+          ],
+          "t": -6.0154,
+          "n_seeds": 5,
+          "n_seeds_positive": 0,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.998077,
+          "p_one_sided_wilcoxon": 1.0,
+          "p_one_sided_bootstrap_reference_only": 1.0,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        }
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.9277777777777777,
+              "per_fold": [
+                1.0,
+                1.0,
+                0.8055555555555555,
+                0.8333333333333333,
+                1.0
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.9444444444444444,
+              "per_fold": [
+                1.0,
+                1.0,
+                0.9444444444444444,
+                0.7777777777777777,
+                1.0
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.7555555555555555,
+              "per_fold": [
+                0.9444444444444444,
+                0.8055555555555556,
+                0.3611111111111111,
+                0.6666666666666666,
+                1.0
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 43,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.95,
+              "per_fold": [
+                1.0,
+                0.9722222222222223,
+                1.0,
+                0.7777777777777778,
+                1.0
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.9166666666666666,
+              "per_fold": [
+                0.9722222222222222,
+                0.6666666666666666,
+                1.0,
+                0.9444444444444444,
+                1.0
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.861111111111111,
+              "per_fold": [
+                0.861111111111111,
+                0.8888888888888888,
+                0.888888888888889,
+                0.6666666666666666,
+                1.0
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 44,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.9722222222222221,
+              "per_fold": [
+                1.0,
+                1.0,
+                0.8611111111111112,
+                1.0,
+                1.0
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.9333333333333332,
+              "per_fold": [
+                0.9722222222222222,
+                0.8055555555555556,
+                0.8888888888888888,
+                1.0,
+                1.0
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.8805555555555555,
+              "per_fold": [
+                0.9722222222222222,
+                0.7777777777777777,
+                0.7222222222222222,
+                0.9722222222222222,
+                0.9583333333333333
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 49,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.9819444444444445,
+              "per_fold": [
+                0.9722222222222222,
+                1.0,
+                1.0,
+                1.0,
+                0.9375
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.9305555555555556,
+              "per_fold": [
+                0.7777777777777778,
+                1.0,
+                0.9722222222222222,
+                0.9444444444444444,
+                0.9583333333333333
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.8027777777777777,
+              "per_fold": [
+                0.6944444444444444,
+                1.0,
+                0.8611111111111112,
+                0.75,
+                0.7083333333333334
+              ]
+            }
+          }
+        },
+        {
+          "split_seed": 123,
+          "arms": {
+            "1_ecfp4_xgb": {
+              "mean_auc": 0.9083333333333334,
+              "per_fold": [
+                1.0,
+                0.9444444444444444,
+                1.0,
+                0.8055555555555556,
+                0.7916666666666666
+              ]
+            },
+            "2_ecfp4_plus_tmqm_emb_xgb": {
+              "mean_auc": 0.9361111111111111,
+              "per_fold": [
+                1.0,
+                0.75,
+                1.0,
+                0.9722222222222222,
+                0.9583333333333333
+              ]
+            },
+            "6_ecfp4_plus_noise_xgb": {
+              "mean_auc": 0.6972222222222222,
+              "per_fold": [
+                0.7777777777777777,
+                0.8333333333333334,
+                0.9166666666666666,
+                0.75,
+                0.20833333333333331
+              ]
+            }
+          }
+        }
+      ],
+      "wall_sec": 16.8,
+      "verdicts": {
+        "2_ecfp4_plus_tmqm_emb_xgb": "UNRESOLVABLE",
+        "6_ecfp4_plus_noise_xgb": "UNRESOLVABLE"
+      }
+    }
+  },
+  "family": {
+    "confirmatory_metals": [
+      "Ru",
+      "Ir"
+    ],
+    "per_arm": {
+      "2_ecfp4_plus_tmqm_emb_xgb": {
+        "category": "confirmatory",
+        "holm_confirmatory_ru_ir": {
+          "correction": "Holm-Bonferroni (family = 2 metals)",
+          "n_family": 2,
+          "p_one_sided_holm": {
+            "Ir": 0.414168,
+            "Ru": 0.985156
+          },
+          "significant_after_holm_0.05": []
+        },
+        "holm_exploratory_5metal": {
+          "correction": "Holm-Bonferroni (family = 5 metals)",
+          "n_family": 5,
+          "p_one_sided_holm": {
+            "Ir": 1.0,
+            "Rh": 1.0,
+            "Re": 1.0,
+            "Os": 1.0,
+            "Ru": 1.0
+          },
+          "significant_after_holm_0.05": []
+        }
+      },
+      "6_ecfp4_plus_noise_xgb": {
+        "category": "control",
+        "holm_confirmatory_ru_ir": {
+          "correction": "Holm-Bonferroni (family = 2 metals)",
+          "n_family": 2,
+          "p_one_sided_holm": {
+            "Ru": 1.0,
+            "Ir": 1.0
+          },
+          "significant_after_holm_0.05": []
+        },
+        "holm_exploratory_5metal": {
+          "correction": "Holm-Bonferroni (family = 5 metals)",
+          "n_family": 5,
+          "p_one_sided_holm": {
+            "Os": 1.0,
+            "Re": 1.0,
+            "Rh": 1.0,
+            "Ru": 1.0,
+            "Ir": 1.0
+          },
+          "significant_after_holm_0.05": []
+        }
+      }
+    },
+    "family_verdict": "NO_CONFIRMATORY_ARM_METAL_FUSION_WIN"
+  },
+  "cross_check_vs_blk_p1": {
+    "source": "metrics/by_metric/dmpnn_within_metal_auc.json",
+    "Ru": {
+      "arm1_auc": 0.827115,
+      "blk_p1_xgb_auc": 0.8271152068598702,
+      "abs_diff": 2.0685987012214468e-07
+    },
+    "Ir": {
+      "arm1_auc": 0.843025,
+      "blk_p1_xgb_auc": 0.8430246911739563,
+      "abs_diff": 3.0882604373783096e-07
+    },
+    "Rh": {
+      "arm1_auc": 0.697381,
+      "blk_p1_xgb_auc": 0.6973809523809524,
+      "abs_diff": 4.7619047593983055e-08
+    },
+    "Os": {
+      "arm1_auc": 0.496,
+      "blk_p1_xgb_auc": 0.49599999999999994,
+      "abs_diff": 5.551115123125783e-17
+    },
+    "Re": {
+      "arm1_auc": 0.948056,
+      "blk_p1_xgb_auc": 0.9480555555555555,
+      "abs_diff": 4.4444444446956055e-07
+    }
+  },
+  "honest_negative": {
+    "pooled_mean_reported": false,
+    "why": "Ru is 64% of the deduplicated cohort, so a pooled mean is a Ru mean wearing a 5-metal label. The per-metal table is the unit.",
+    "unresolvable_metals": [
+      "Rh",
+      "Os",
+      "Re"
+    ],
+    "arm5_is_upper_bound_only": "Arm 5's OOF embeddings carry a second-order differential fold-bleed (the encoder that produced a train row's embedding trained on the outer test rows' labels); its delta must not be read as a confirmatory gain. See nested_bleed when --nested-bleed was run.",
+    "fallback_if_no_fusion_wins": "If no confirmatory arm wins, the honest reading is that the two representations are not complementary at this scale: the D-MPNN's graph embedding adds no information beyond ECFP4, consistent with the D-MPNN being a strictly weaker scorer on every metal (BLK-P1). Reported with the ambiguity (Krogh & Vedelsby 1995) reading: the ensemble-gain term is ≈0. MEASURED, not PROJECTED."
+  }
+}

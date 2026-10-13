@@ -1,0 +1,109 @@
+{
+  "metric": "cfm_opt2_ring_dative_correction",
+  "tag": "MEASURED",
+  "date": "2026-10-13",
+  "question": "Is the round-8 finding 'generated rings are 89.8% three-membered vs 0.43% real' real, or an artefact of real tmQM encoding every metal-ligand bond as DATIVE, which RDKit ring perception does not traverse?",
+  "answer": "ARTEFACT, IN PART. The gap is real but far smaller than reported.",
+  "confound": "RDKit ring perception does not traverse DATIVE bonds. Real tmQM writes every metal-ligand bond as DATIVE (->), so the as-written real profile contains ZERO metal-containing rings: the chelate rings that dominate six-metal anticancer chemistry were never counted on the reference side.",
+  "like_for_like_arms": {
+    "note": "The generated molecules have no dative bonds (verified), so their ring profile is already fully visible and needs no rewrite. The real corpus does, so the like-for-like real arm is dative->single.",
+    "generated_as_written": {
+      "n_mols": 66,
+      "n_rings": 108,
+      "rings_per_mol": 1.6363636363636365,
+      "ring_size_counts": {
+        "3": 97,
+        "4": 9,
+        "5": 1,
+        "6": 1
+      },
+      "frac_3_membered": 0.8981481481481481,
+      "frac_5_or_6_membered": 0.018518518518518517,
+      "frac_rings_containing_a_metal": 0.32407407407407407
+    },
+    "real_same_subset_as_written_dative": {
+      "n_mols": 9183,
+      "n_rings": 40222,
+      "rings_per_mol": 4.380050092562343,
+      "ring_size_counts": {
+        "3": 363,
+        "4": 241,
+        "5": 6276,
+        "6": 31845,
+        "7": 283,
+        "8": 879,
+        "9": 65,
+        "10": 1,
+        "11": 7,
+        "12": 28,
+        "13": 3,
+        "14": 31,
+        "15": 9,
+        "16": 163,
+        "17": 4,
+        "18": 4,
+        "19": 3,
+        "20": 2,
+        "30": 15
+      },
+      "frac_3_membered": 0.009024911739843867,
+      "frac_5_or_6_membered": 0.9477649047784794,
+      "frac_rings_containing_a_metal": 0.0
+    },
+    "real_same_subset_dative_to_single": {
+      "n_mols": 9183,
+      "n_rings": 51870,
+      "rings_per_mol": 5.648480888598497,
+      "ring_size_counts": {
+        "3": 6421,
+        "4": 2101,
+        "5": 9310,
+        "6": 32447,
+        "7": 482,
+        "8": 573,
+        "9": 99,
+        "10": 253,
+        "11": 9,
+        "12": 26,
+        "13": 20,
+        "14": 26,
+        "15": 14,
+        "16": 60,
+        "17": 20,
+        "18": 4,
+        "19": 3,
+        "20": 1,
+        "32": 1
+      },
+      "frac_3_membered": 0.12379024484287642,
+      "frac_5_or_6_membered": 0.8050318102949682,
+      "frac_rings_containing_a_metal": 0.2666088297667245
+    }
+  },
+  "dative_presence": {
+    "generated_contains_dative_bonds": false,
+    "real_contains_dative_bonds": true
+  },
+  "corrected_comparison": {
+    "frac_3_membered_generated": 0.8981481481481481,
+    "frac_3_membered_real_like_for_like": 0.12379024484287642,
+    "ratio": 7.255403277440344,
+    "frac_5_or_6_generated": 0.018518518518518517,
+    "frac_5_or_6_real_like_for_like": 0.8050318102949682,
+    "what_round_8_reported": {
+      "frac_3_membered_real": 0.0043,
+      "ratio": 184.0,
+      "source": "metrics/by_metric/cfm_opt2_ring_content.json"
+    },
+    "how_much_of_the_finding_survives": "The 184x becomes roughly 7x on the like-for-like arm. The DIRECTION is unchanged -- generated still over-produces three-membered rings by a large factor and still under-produces 5/6-membered ones -- but the magnitude is a fraction of what was reported, and any PROJECTED SA lift quoted against the 184x figure must be restated."
+  },
+  "honest_limitation_survivorship": {
+    "survivors": 9183,
+    "corpus": 31150,
+    "fraction": 0.2947993579454254,
+    "why": "DATIVE->SINGLE followed by sanitisation fails for 70.5% of the corpus (valence / kekulisation). Both arms are computed on the SAME 9183-molecule subset, so the dative effect is not confounded with survivorship -- but the subset is selected (it is the set that tolerates the rewrite) and 70.5% of the corpus is unmeasured in the corrected arm.",
+    "not_a_silent_cap": "Reported explicitly rather than averaged away. A full-coverage arm would need per-molecule ring perception that tolerates dative bonds, which RDKit does not offer; that is a real gap, not a rounding error."
+  },
+  "what_does_NOT_change": "Fragmentation was still not the story, and ring SIZE was still the right axis to look at rather than ring count -- both hold on the corrected arm. What changes is the size of the gap, and therefore the size of any lift quoted against it.",
+  "supersedes": "The 0.43% real three-membered figure and the 184x ratio in metrics/by_metric/cfm_opt2_ring_content.json. That file's GENERATED numbers are unaffected (no dative bonds on that side); only its REAL denominator is confounded."
+}

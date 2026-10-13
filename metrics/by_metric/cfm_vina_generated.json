@@ -1,0 +1,326 @@
+{
+  "_metric": "cfm_vina_generated",
+  "_title": "CFM generated-set Vina 1.2.7 docking sweep + cisplatin positive control",
+  "_generated_utc": "2026-10-12T03:40:00+00:00",
+  "_engine": "vina 1.2.7 Python binding",
+  "_measurement_legend": "MEASURED = read from a file on disk. NOT_ON_DISK = the number does not exist because the run died; it is deliberately absent rather than estimated.",
+  "RUN_STATUS": {
+    "state": "INCOMPLETE_RUN_DIED",
+    "planned_pockets": 10,
+    "pockets_completed": 1,
+    "pockets_docked": [
+      "1fmc"
+    ],
+    "pockets_missing": [
+      "830c",
+      "1h36",
+      "3eml",
+      "3ny8",
+      "4aaw",
+      "4rlu",
+      "4rn0",
+      "1g9v",
+      "2hnx"
+    ],
+    "process_alive": false,
+    "evidence_process_dead": "No PID in /proc matches bench_cisplatin/vina (scanned all 552 PIDs); vina_gen2.txt last mtime 2026-10-12 11:32:11 CST, no write for >6 min at check time, and vina_gen2.json was never written.",
+    "cause_of_death": "NOT_ESTABLISHED. The log ends mid-pocket-2 with no traceback and no non-zero-exit marker, so this is recorded as unknown rather than attributed to OOM.",
+    "note": "The sweep was NOT relaunched. Per brief instruction 3, a running sweep must be allowed to finish; this one was already dead when the fix landed, and the remaining 9 pockets are therefore reported as NOT_ON_DISK."
+  },
+  "generated_cohort": {
+    "_status": "PARTIAL",
+    "_pocket_available": "1fmc",
+    "n_docked": 51,
+    "n_seeds_per_molecule": null,
+    "kcal_mol_mean": -6.407,
+    "kcal_mol_per_pocket": {
+      "1fmc": {
+        "kcal_mol_mean": -6.407,
+        "n_docked": 51
+      }
+    },
+    "overall_mean_kcal": null,
+    "overall_median_kcal": null,
+    "source_log_line": "/home/hugo/.claude/jobs/f12dd2b2/tmp/vina_gen2.txt:213 -> 'generated 1fmc: n=51 mean=-6.407'",
+    "caveats": [
+      "n=51 is the count of generated molecules that produced a dockable PDBQT in ONE pocket. It is not a 10-pocket median.",
+      "No per-seed spread is recoverable: the sweep writes its summary JSON only at the end, and it never got there."
+    ]
+  },
+  "cisplatin_positive_control": {
+    "_status": "MEASURED",
+    "_source": "molmetal/reports/wf121_cisplatin_real_vina/sweep_summary.json",
+    "_run_date": "2026-09-29T08:56:16.929392+00:00",
+    "_note": "This control is from the 2026-09-29 Wf-121 run, NOT from the dead 2026-10-12 sweep. It is the only complete cisplatin-vs-10-pockets record on disk and is reused here as the reference arm. It was produced by the PRE-FIX code, which for Pt yields the same Mg fallback the fixed code yields (verified: probe_status='Mg' in /tmp/dock_result.json replay), so the two arms are atype-comparable.",
+    "smiles": "[Pt](N)(N)(Cl)Cl",
+    "n_pockets": 10,
+    "n_seeds_per_pocket": 3,
+    "exhaustiveness": 8,
+    "n_poses": 5,
+    "kcal_mol_mean_of_pocket_means": -3.1552,
+    "kcal_mol_median_of_pocket_means": -3.0893,
+    "kcal_mol_per_pocket": {
+      "830c": {
+        "kcal_mol_mean": -3.043,
+        "kcal_mol_min": -3.067
+      },
+      "1h36": {
+        "kcal_mol_mean": -3.587,
+        "kcal_mol_min": -3.597
+      },
+      "3eml": {
+        "kcal_mol_mean": -2.827,
+        "kcal_mol_min": -2.827
+      },
+      "3ny8": {
+        "kcal_mol_mean": -3.724,
+        "kcal_mol_min": -3.734
+      },
+      "4aaw": {
+        "kcal_mol_mean": -3.282,
+        "kcal_mol_min": -3.287
+      },
+      "4rlu": {
+        "kcal_mol_mean": -2.983,
+        "kcal_mol_min": -2.995
+      },
+      "4rn0": {
+        "kcal_mol_mean": -2.548,
+        "kcal_mol_min": -2.549
+      },
+      "1fmc": {
+        "kcal_mol_mean": -3.133,
+        "kcal_mol_min": -3.138
+      },
+      "1g9v": {
+        "kcal_mol_mean": -3.045,
+        "kcal_mol_min": -3.057
+      },
+      "2hnx": {
+        "kcal_mol_mean": -3.38,
+        "kcal_mol_min": -3.387
+      }
+    },
+    "same_pocket_comparison_1fmc": {
+      "_note": "The ONLY pocket where both arms exist. Single-pocket, single-replicate each. Not a comparison.",
+      "generated_1fmc_kcal_mol": -6.407,
+      "cisplatin_1fmc_kcal_mol": -3.133,
+      "difference": -3.274,
+      "DO_NOT_READ_AS": "evidence that generated molecules bind cisplatin's target better. See honest_framing."
+    }
+  },
+  "element_atype_bug": {
+    "_title": "Third invalid-atom-type class (boron + 22 others) — FIXED",
+    "_root_cause": "_rewrite_metal_atype_for_vina matched only the 8 PT_GROUP_ELEMENTS plus literal 'M'. Every other element Vina 1.2.7 rejects passed through untouched and raised at set_ligand_from_file, aborting the entire sweep (not one molecule).",
+    "_observed_error": "PDBQT parsing error: Atom type B is not a valid AutoDock type (atom types are case-sensitive). > ATOM      2  B   UNL",
+    "_observed_error_source": "/home/hugo/.claude/jobs/f12dd2b2/tmp/vina_gen2.txt:133-135",
+    "_elements_measured": 44,
+    "_accepted": 21,
+    "_rejected": 23,
+    "rejected_list": [
+      "B",
+      "Ti",
+      "Zr",
+      "Pd",
+      "Mo",
+      "Ru",
+      "Pt",
+      "V",
+      "Ir",
+      "Au",
+      "Cr",
+      "Y",
+      "Rh",
+      "Re",
+      "Ta",
+      "Hf",
+      "Nb",
+      "Sc",
+      "Ag",
+      "La",
+      "As",
+      "Os",
+      "Tc"
+    ],
+    "accepted_list": [
+      "H",
+      "C",
+      "N",
+      "O",
+      "Cl",
+      "F",
+      "P",
+      "S",
+      "Si",
+      "Br",
+      "Ni",
+      "I",
+      "W",
+      "Zn",
+      "Fe",
+      "Cu",
+      "Co",
+      "Se",
+      "Mn",
+      "Cd",
+      "Hg"
+    ],
+    "tmqm_prevalence": {
+      "B": {
+        "n_complexes": 2175,
+        "pct_of_corpus": 6.22,
+        "note": "The single most common Vina-rejected element in tmQM. Not a corner case."
+      },
+      "As": {
+        "n_complexes": 202,
+        "pct_of_corpus": 0.58
+      }
+    },
+    "fix": {
+      "rule": "Rewrite exactly the 23 elements Vina 1.2.7 MEASURABLY rejects, and nothing else.",
+      "metal_path": "rejected metals -> Mg (unchanged generic-atom fallback; status MEASURED_GENERIC_ATOM)",
+      "nonmetal_path": "B -> C, As -> P (nearest Vina-accepted non-metal by covalent radius)",
+      "never_touched": [
+        "Ni",
+        "Cu",
+        "Co",
+        "Cd",
+        "Hg",
+        "W",
+        "Se",
+        "Fe",
+        "Mn",
+        "Zn",
+        "Si",
+        "Br",
+        "I",
+        "F",
+        "P",
+        "S",
+        "Cl",
+        "N",
+        "O",
+        "C",
+        "H"
+      ],
+      "why_not_a_broad_heuristic": "A 'rewrite everything that is not C/H/N/O' rule would clobber 10 elements Vina already types correctly (Ni, Cu, Co, Cd, Hg, W, Se, Fe, Mn, Zn) by turning them into Mg — a SILENT scoring change that no test would flag as an error.",
+      "how_measured": "molmetal/scripts/vina_element_atype_probe.py — substitutes each symbol into a REAL meeko cisplatin PDBQT atype field [77:79] and calls Vina.set_ligand_from_file. Not read off a table.",
+      "constants_drift_check": "PASS — the probe re-runs the measurement and compares to the committed constants; all three drift lists empty."
+    },
+    "cost_of_a_WRONG_rewrite": {
+      "mechanism": "The atype column drives BOTH the VDW term AND the hydrogen-bond donor/acceptor typing. Getting it wrong does not merely shift a score — it silently changes which molecule Vina believes it is scoring, and the result is still recorded as a real measurement.",
+      "B_to_Mg_would_be_wrong_because": "Mg is a divalent METAL ion. Boron is a covalent p-block atom. Mg carries a metal VDW radius and charge assumption that does not apply; the error is unbounded, not small.",
+      "B_to_C_is_bounded_because": "B Rcov 0.84 A vs C Rcov 0.76 A (|d|=0.08, RDKit periodic table, MEASURED). Cost when wrong: a borole ring is scored with carbon's hydrophobic/aromatic typing, i.e. as a carbocycle. A real but bounded error, and far smaller than B->Mg.",
+      "As_to_P_is_bounded_because": "As Rcov 1.19 A vs P Rcov 1.07 A (|d|=0.12). Same group 15; As in tmQM is an arsenate/arsinothiol auxiliary group, i.e. P-like.",
+      "the_honest_caveat": "These surrogates keep the run alive; they do NOT make the score correct. A boron-containing ligand's kcal/mol is the score of a molecule in which boron has been replaced by carbon. Every such number carries status MEASURED_GENERIC_ATOM and must not be reported as boron chemistry."
+    },
+    "verification": {
+      "guard_test": "molmetal/tests/test_vina_unsupported_elements.py",
+      "n_tests": 50,
+      "n_passed": 50,
+      "covers": "One COMPLETENESS test per rejected element (rewrite+probe, then asked of Vina itself) and one PRECISION test per accepted element.",
+      "red_check_1": "Removing VINA_NONMETAL_SURROGATES -> 3 failures (test_boron_specifically_survives, test_arsenic_maps_to_phosphorus, test_boron_does_not_become_magnesium). 3 failed / 47 passed.",
+      "red_check_2": "Reverting the rewrite branch to metal-only -> 2 failures. 2 failed / 48 passed.",
+      "red_check_3": "Full git stash to the true pre-fix code -> collection ERROR (constants absent). Confirms the table is genuinely new, not pre-existing.",
+      "restored_after_each": "50 passed / 50.",
+      "regression_diff_full_vina_suite": {
+        "method": "pytest -k vina --ignore=test_vina_unsupported_elements, before vs after, failure sets compared",
+        "before_failures": 36,
+        "after_failures": 33,
+        "regressions_introduced": 0,
+        "fixed": [
+          "test_vina_metal_atype_rewrite.py::test_rewrites_chemotype_atype",
+          "test_vina_metal_atype_rewrite.py::test_chemotype_mode_keeps_symbol",
+          "test_vina_metal_atype_rewrite.py::test_every_pt_group_element_is_covered"
+        ],
+        "note": "The 33 remaining failures are PRE-EXISTING and unrelated (missing launch_wf306a_drugood_vina_gpu.sh wrapper, absent wf333_v3_* entries, etc.). They are identical before and after and were not touched."
+      },
+      "end_to_end_replay": {
+        "method": "Replayed the EXACT ATOM line from the dead sweep's stderr (vina_gen2.txt:135) through the production path _ligand_to_pdbqt -> _rewrite_metal_atype_for_vina -> _probe_vina_accepts_chemotype_atype -> _dock_one_python_binding.",
+        "before_fix": "REJECTED: PDBQT parsing error: Atom type B is not a valid AutoDock type",
+        "after_fix": "ACCEPTED; docked in pocket 1fmc at -3.370 kcal/mol (exhaustiveness 8, n_poses 5, seed 0, 0.8 s)",
+        "measurement": "MEASURED",
+        "caveat": "The ligand is a cisplatin PDBQT with atom 1 substituted by B — a controlled replay of the parse failure, NOT a real generated CFM molecule. It proves the atype path is closed; it is NOT a generated-set docking result."
+      }
+    }
+  },
+  "honest_framing": {
+    "_title": "What these numbers DO and DO NOT support",
+    "DO_NOT": [
+      {
+        "claim": "'Generated molecules dock better to cisplatin's target than cisplatin does (-6.4 vs -3.1).'",
+        "why_wrong": "This is the wrong reading, and the control is what makes it obvious. Cisplatin's real target is DNA N7, and cisplatin is a 4-atom complex. Vina scores a rigid small ligand in a protein pocket; it does not score the covalent Pt-N7 adduct at all. A -3.4 vs -6.4 gap between a 4-atom drug and a 51-molecule generated cohort is dominated by ligand SIZE, not by affinity or by any quality of the generative model. Vina's score is systematically more negative for larger ligands. Comparing a 4-atom control to a ~40-atom generated molecule is not a like-for-like comparison and never was.",
+        "supportable_version": "Generated molecules produced dockable poses with mean -6.407 kcal/mol in pocket 1fmc (n=51). This is a statement about pose feasibility, not about binding quality."
+      },
+      {
+        "claim": "'We fixed the Vina harness and the sweep now works.'",
+        "why_wrong": "The sweep DID NOT work — it died during pocket 2 of 10 and its summary JSON was never written. 9 of 10 pockets are missing. The fix closes the atype bug; it does not retroactively produce the missing data."
+      }
+    ],
+    "LITERATURE_CONTEXT": {
+      "_note": "Both DOIs are cited from the brief. Neither was fetched or verified in this session; treat the quotes as the brief's claims, not as independently checked facts.",
+      "contested": {
+        "source": "10.1007/s44371-026-00848-6 (2026 review)",
+        "claim": "Vina 'systematically underestimates binding energies and generates wrong poses' for metal ligands, and accepts no custom metal parameters.",
+        "bears_directly_on_us": "YES. Our pipeline uses a Pt->Mg generic atype, which IS the admission of this limitation. We have no Pt VDW parameters and no evidence any exist in this codebase. Every cisplatin number in this file is MEASURED_GENERIC_ATOM, not a Pt-calibrated score."
+      },
+      "counterpoint": {
+        "source": "Cinaroglu et al., JCIM 2019, 10.1021/acs.jcim.9b00346",
+        "claim": "73% POSE success over 213 metal-protein complexes, with approximately zero scoring power.",
+        "bears_directly_on_us": "YES, and it is the more useful reading for our purposes: if Vina's value for metal complexes is POSE PLACEMENT rather than score ranking, then what it can support is 'did the generator produce a poseable geometry', not 'does this molecule bind better'."
+      },
+      "what_this_means_for_us": "The two sources are not actually in conflict — they are describing two different capabilities. Pose success and score accuracy are separate axes. Our use should be confined to the first, and the honest framing block below says so explicitly."
+    },
+    "WHAT_THE_NUMBERS_SUPPORT": [
+      "The CFM generator produces molecules whose 3D geometry can be converted to PDBQT and parsed by Vina 1.2.7 for a non-trivial fraction of the generated set (n=51 of the attempted set in pocket 1fmc).",
+      "The bond-perception work is strong on real geometry (existence F1 0.9962 +/- 0.0008 over 3 seeds, decoded connectivity 0.9697 vs real tmQM 0.8365) — this is a separate, better-supported claim that does NOT depend on Vina at all.",
+      "The harness now handles the full tmQM periodic table: 23 of 44 elements required intervention and all 23 are covered by a guard test."
+    ],
+    "WHAT_THE_NUMBERS_DO_NOT_SUPPORT": [
+      "Any ranking of generated molecules by predicted binding strength.",
+      "Any comparison of generated molecules to cisplatin as a positive control. The size mismatch makes the comparison meaningless as an affinity statement.",
+      "Any claim about boron chemistry. B->C is a survival mechanism, not a model of boron.",
+      "Any statement spanning the 10 pockets. 9 are NOT_ON_DISK.",
+      "Any statement that the generator outperforms real metallodrugs, or any drug-discovery conclusion whatsoever."
+    ],
+    "CORRECT_FRAMING_FOR_THE_PAPER": "Vina is used here as a POSE-FEASIBILITY FILTER, not as a binding-affinity predictor. The defensible claim is that CFM-generated organometallic geometries are dockable — i.e. chemically well-formed enough to be placed in a binding site — and nothing about their affinity. The metal-atom scores carry status MEASURED_GENERIC_ATOM (generic Pt->Mg VDW) and are explicitly not Pt-calibrated."
+  },
+  "PROPOSED_NEXT_STEPS": [
+    "Re-run the 10-pocket sweep now that the atype bug is closed, to obtain the 9 missing pockets. This is the single highest-value next action and unblocks every generated-vs-control statement.",
+    "Fix the size confound before any control comparison: score cisplatin-sized and generated-sized ligands separately, or report only pose success rather than kcal/mol.",
+    "Separate MetalPDBQTUnavailable from dock failures in the reporting, as the brief requested. The sweep log DOES count them by type (the two 'first ...' lines in vina_gen2.txt), but no run completed far enough to write a summary, so per-type counts are NOT_ON_DISK for this run."
+  ],
+  "corrections_2026_10_12": [
+    {
+      "date": "2026-10-12",
+      "raised_by": "adversarial review of the vina-sweep stream",
+      "what_was_wrong": [
+        "CITATION NOT ON DISK. The honest-framing block cites 'a 2026 Springer review' stating Vina underestimates metal-ligand binding energies. grep -rn Springer over molmetal/, docs/ and metrics/ finds nothing. Per the error class this must be dropped or fetched, not shipped.",
+        "EXAMPLE LINE MISATTRIBUTED. The launch note offered '830c: attempted=66 docked=53 failed=13 ... mean=-6.407' as how to read the log. That mean is the DEAD 1fmc figure from the 2026-09-29 run (n=51, cfm_vina_generated.json:25-26) wearing pocket 830c's name, and 53 does not match 51 either. A number from another cohort relabelled is exactly the error class of the day.",
+        "SURROGATE LABEL. The launch note said MEASURED_SURROGATE_ATOM 'rides on every record'. MEASURED on the re-run: the dominant label is MEASURED_GENERIC_ATOM and vina_accepted_atype is Mg-fallback on every docked record. The metals are being scored as Mg, not as covalent surrogates.",
+        "SIZE-CONFOUND FIGURES. 'the generated cohort is ~40 atoms' -- MEASURED mean n_atoms_ligand is 39.0 over the 52 docked records of pocket 830c and 36.3 over pocket 1h36. 'cisplatin is a 4-atom complex' describes 4 LIGANDS; n_atoms_ligand counts PDBQT ATOM lines (7 heavy atoms for [Pt](N)(N)(Cl)Cl once N-H are expanded).",
+        "RATE. '~8 s/molecule' is not supported. The sweep advances roughly one record per 31 s at n=66/pocket; the full 10 pockets plus the control arm is a multi-hour run, not ~1.5 hr.",
+        "CRASH-SAFETY. partial_summary.json is NOT written incrementally: it is written once a whole pocket returns. After 48/66 of pocket 1 it did not exist. per_record.jsonl is the only genuinely incremental artefact.",
+        "FAILURE MODE OVER-GENERALISED. 'failures are selected by RDKit embeddability' is a single-mechanism claim over 14 failures of which MEASURED 12 are MetalPDBQTUnavailable and 2 are DockError (2 fragments) -- a data-quality axis, not embeddability."
+      ],
+      "superseded_by": "molmetal/reports/cfm_vina_sweep_2026_10_12/per_record.jsonl (appended per record, crash-safe) and sweep.log",
+      "status": "the -6.407 figure in this file may be quoted only as the 2026-09-29 1fmc n=51 survivor-conditioned mean. Every new pocket mean must be written as 'mean over N docked of M attempted' with the failure types."
+    },
+    {
+      "date": "2026-10-12 (evening)",
+      "raised_by": "adversarial review of the vina-denominator work",
+      "what_is_new": [
+        "1h36 MEDIAN: partial_summary.json reports -6.561; the per_record.jsonl true median is -6.587 (mean of -6.613 and -6.561). 0.026 off. Use the per_record number for any new citation.",
+        "3eml IS PARTIAL, not absent. sweep.log line '2026-10-12 15:06:22 ... 3eml: 30/66 done' shows the third pocket is at 30/66 (23 docked so far). Recomputed pearsonr(n_atoms, kcal) on the 24 docked: r=-0.0393, INVERTED from 1h36. The 'Vina scores larger ligands more favourably' premise is weak in 830c (r=+0.075) and inverted in 3eml.",
+        "3eml FAILS ON A SUBSET OF THE 14 SMILES. MEASURED: 6 of 14 fail with MetalPDBQTUnavailable and 1 with DockError. The 7 partial failures are a strict subset of the 14 SMILES that fail in the complete pockets; the SMILES-constant conclusion survives but the '2 of 10' framing was wrong. State: '2 complete, 1 partial at 30/66, 7 not started.'",
+        "PER-ATOM BINDING AFFINITY: cisplatin -3.0/9 = -0.333 kcal/mol/atom (cisplatin 1fmc, n_atoms_ligand=9). Generated cohort: -5.8/38.96 = -0.149 kcal/mol/atom (1fmc n=52 docked). PER ATOM the generated cohort is LESS favourable than cisplatin by 2.24x. The headline -5.8 vs -3.0 comparison is dominated by Vina's gauss+repulsion size scaling, not by binding chemistry; a reader who divides both by atom count will reach the opposite sign.",
+        "REPORTING RULE REVISED: a Vina kcal/mol from this sweep is admissible only as 'kcal_mean(over N of M attempted, F failed = M-N; failure type breakdown)' with all three of {attempted, docked, failed} and the error-type breakdown on the same line. 'kcal_mean_over_docked' is NOT admissible as a comparison number to bare cisplatin -- it is conditioned on success, the failures are exactly the cases where the embedder or preparator refused the highly-coordinated metal complex, and those are the chemically interesting cases (octahedral Ru, six-coordinate Rh, multi-fragment Pt)."
+      ],
+      "supersedes": [
+        "The '2 of 10 pockets complete' framing in any earlier summary.",
+        "Any -5.8 vs -3.0 kcal/mol 'generated binds better' claim. The correct read: 'mean over docked is more negative by Vina's size scaling; per-atom the generated cohort is less favourable by 2.24x.'"
+      ],
+      "status": "apply the per-atom and 3eml corrections everywhere this file is cited; record the 1h36 median as -6.587, not -6.561; do not relaunch the sweep (still running under its own PID, do-not-relaunch per the standing brief instruction)."
+    }
+  ]
+}

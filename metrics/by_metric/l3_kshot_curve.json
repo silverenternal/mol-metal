@@ -1,0 +1,175 @@
+{
+ "metric": "l3_kshot_curve",
+ "status": "MEASURED",
+ "MEASURED_vs_PROJECTED": "MEASURED",
+ "unit": "ROC-AUC (0-1, higher better)",
+ "scope": "tier2_precious_metal_anticancer",
+ "source": "molmetal/scripts/l3_kshot_curve_analysis.py",
+ "description": "L3 shot-curve: the frozen zero-shot cross-metal model is fine-tuned on K labelled support ligands from the held-out metal and re-scored on the disjoint query set.  K in {5,10,20,40}, 10 seeds, 5 metals.",
+ "protocol": {
+  "cohort": "MetalCytotoxDataset + CytotoxFilter(24h, ic50>=0.01uM) + collapse_duplicates, per metal",
+  "split": "leave-one-metal-out, ligand-disjoint",
+  "backbone": "chemprop v2 AtomMessagePassing d_h=300 depth=3",
+  "ft_epochs": 20,
+  "seeds": [
+   42,
+   43,
+   44,
+   49,
+   123,
+   7,
+   8,
+   9,
+   10,
+   11
+  ],
+  "significance": "paired bootstrap over the (metal, seed) cells per K, 10000 resamples, seed 42; Holm-Bonferroni across the 4 K values"
+ },
+ "curve": {
+  "5": {
+   "k": 5,
+   "zero_shot_query_mean": 0.5727306519002555,
+   "kshot_query_mean": 0.5813113555698098,
+   "paired_delta": {
+    "n_cells": 50,
+    "mean_delta": 0.008580703669554317,
+    "delta_std": 0.10790948033201941,
+    "ci95": [
+     -0.02034958298475625,
+     0.038330832183468985
+    ],
+    "ci_excludes_zero": false,
+    "p_one_sided_greater": 0.2856
+   },
+   "per_metal_delta": {
+    "Ru": -0.049153325123152694,
+    "Ir": 0.060351787773933095,
+    "Rh": 0.08440860215053761,
+    "Os": -0.08409090909090908,
+    "Re": 0.03138736263736264
+   },
+   "per_metal_kshot": {
+    "Ru": 0.5044345014992504,
+    "Ir": 0.5439496828143022,
+    "Rh": 0.6116129032258065,
+    "Os": 0.48522727272727273,
+    "Re": 0.7613324175824177
+   },
+   "n_seeds": 10
+  },
+  "10": {
+   "k": 10,
+   "zero_shot_query_mean": 0.5755209433469356,
+   "kshot_query_mean": 0.6061068149277385,
+   "paired_delta": {
+    "n_cells": 50,
+    "mean_delta": 0.0305858715808029,
+    "delta_std": 0.12125963449196298,
+    "ci95": [
+     -0.003077237405367028,
+     0.06379963270585787
+    ],
+    "ci_excludes_zero": false,
+    "p_one_sided_greater": 0.0352
+   },
+   "per_metal_delta": {
+    "Ru": -0.01947263513513513,
+    "Ir": 0.06762228200943854,
+    "Rh": 0.14179894179894179,
+    "Os": -0.1,
+    "Re": 0.0629807692307693
+   },
+   "per_metal_kshot": {
+    "Ru": 0.5449515202702703,
+    "Ir": 0.563472706155633,
+    "Rh": 0.66005291005291,
+    "Os": 0.46862745098039216,
+    "Re": 0.7934294871794874
+   },
+   "n_seeds": 10
+  },
+  "20": {
+   "k": 20,
+   "zero_shot_query_mean": 0.5652697999282021,
+   "kshot_query_mean": 0.6232773312263129,
+   "paired_delta": {
+    "n_cells": 50,
+    "mean_delta": 0.05800753129811069,
+    "delta_std": 0.1240149840105047,
+    "ci95": [
+     0.023719465589780032,
+     0.0910399359545437
+    ],
+    "ci_excludes_zero": true,
+    "p_one_sided_greater": 0.0013
+   },
+   "per_metal_delta": {
+    "Ru": -0.01786845949671817,
+    "Ir": 0.09505979564095127,
+    "Rh": 0.08261904761904762,
+    "Os": -0.04000000000000001,
+    "Re": 0.1702272727272727
+   },
+   "per_metal_kshot": {
+    "Ru": 0.5424668902560305,
+    "Ir": 0.6022314541872222,
+    "Rh": 0.6138095238095238,
+    "Os": 0.47833333333333333,
+    "Re": 0.8795454545454546
+   },
+   "n_seeds": 10
+  },
+  "40": {
+   "k": 40,
+   "zero_shot_query_mean": 0.6083328916164246,
+   "kshot_query_mean": 0.6990461112564222,
+   "paired_delta": {
+    "n_cells": 40,
+    "mean_delta": 0.09071321963999776,
+    "delta_std": 0.16827260614413606,
+    "ci95": [
+     0.037865329180065826,
+     0.1425745022262925
+    ],
+    "ci_excludes_zero": true,
+    "p_one_sided_greater": 0.0009
+   },
+   "per_metal_delta": {
+    "Ru": 0.025428936761049237,
+    "Ir": 0.13801917989417986,
+    "Rh": 0.12857142857142856,
+    "Os": NaN,
+    "Re": 0.07083333333333333
+   },
+   "per_metal_kshot": {
+    "Ru": 0.5839407280944723,
+    "Ir": 0.6271246693121693,
+    "Rh": 0.7178571428571427,
+    "Os": NaN,
+    "Re": 0.8672619047619049
+   },
+   "n_seeds": 10
+  }
+ },
+ "holm": {
+  "correction": "Holm-Bonferroni (family = 4 K values vs their own paired zero-shot query baseline)",
+  "n_family": 4,
+  "p_one_sided_raw": {
+   "k5": 0.2856,
+   "k10": 0.0352,
+   "k20": 0.0013,
+   "k40": 0.0009
+  },
+  "p_one_sided_holm": {
+   "k40": 0.0036,
+   "k20": 0.0039,
+   "k10": 0.0704,
+   "k5": 0.2856
+  },
+  "significant_after_holm_0.05": [
+   "k40",
+   "k20"
+  ]
+ },
+ "honest_framing_note": "MEASURED only.  This is an ADAPTATION result: the support labels come from the held-out metal.  The zero-shot LOMO column stays the paper's Table-1 cross number; this curve quantifies how much a few known compounds recover."
+}

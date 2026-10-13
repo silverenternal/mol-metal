@@ -1,0 +1,51 @@
+{
+  "metal": "Ru",
+  "init": "random",
+  "encoder_path": "models/tmqm_pretrained/tmqm_pretrained_encoder.pt",
+  "n_rows": 19135,
+  "n_valid": 19135,
+  "epochs": 30,
+  "batch_size": 128,
+  "lr": 0.001,
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "per_seed": [
+    {
+      "seed": 0,
+      "test_auc": 0.7919886363636363,
+      "test_acc": 0.7627906976744186,
+      "n_test": 215
+    },
+    {
+      "seed": 1,
+      "test_auc": 0.7975,
+      "test_acc": 0.7767441860465116,
+      "n_test": 215
+    },
+    {
+      "seed": 2,
+      "test_auc": 0.7791477272727273,
+      "test_acc": 0.7209302325581395,
+      "n_test": 215
+    },
+    {
+      "seed": 3,
+      "test_auc": 0.7572727272727273,
+      "test_acc": 0.7395348837209302,
+      "n_test": 215
+    },
+    {
+      "seed": 4,
+      "test_auc": 0.8101136363636364,
+      "test_acc": 0.813953488372093,
+      "n_test": 215
+    }
+  ],
+  "auc_mean": 0.7872045454545454,
+  "auc_std": 0.0179696211161463
+}

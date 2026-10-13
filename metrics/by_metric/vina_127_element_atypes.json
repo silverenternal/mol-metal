@@ -1,0 +1,330 @@
+{
+  "vina_version": "1.2.7",
+  "template_pdbqt": "molmetal/reports/wf121_cisplatin_real_vina/830c/cisplatin.pdbqt",
+  "corpus": ".data/molmetal/tmQM/tmQM_X1.xyz.gz",
+  "n_symbols_probed": 44,
+  "n_accepted": 21,
+  "n_rejected": 23,
+  "accepted": [
+    "Br",
+    "C",
+    "Cd",
+    "Cl",
+    "Co",
+    "Cu",
+    "F",
+    "Fe",
+    "H",
+    "Hg",
+    "I",
+    "Mn",
+    "N",
+    "Ni",
+    "O",
+    "P",
+    "S",
+    "Se",
+    "Si",
+    "W",
+    "Zn"
+  ],
+  "rejected": [
+    "Ag",
+    "As",
+    "Au",
+    "B",
+    "Cr",
+    "Hf",
+    "Ir",
+    "La",
+    "Mo",
+    "Nb",
+    "Os",
+    "Pd",
+    "Pt",
+    "Re",
+    "Rh",
+    "Ru",
+    "Sc",
+    "Ta",
+    "Tc",
+    "Ti",
+    "V",
+    "Y",
+    "Zr"
+  ],
+  "verdict_per_symbol": {
+    "H": "ACCEPTED",
+    "C": "ACCEPTED",
+    "N": "ACCEPTED",
+    "O": "ACCEPTED",
+    "Cl": "ACCEPTED",
+    "F": "ACCEPTED",
+    "P": "ACCEPTED",
+    "S": "ACCEPTED",
+    "Si": "ACCEPTED",
+    "B": "REJECTED",
+    "Br": "ACCEPTED",
+    "Ti": "REJECTED",
+    "Zr": "REJECTED",
+    "Pd": "REJECTED",
+    "Ni": "ACCEPTED",
+    "Mo": "REJECTED",
+    "I": "ACCEPTED",
+    "Ru": "REJECTED",
+    "Pt": "REJECTED",
+    "W": "ACCEPTED",
+    "Zn": "ACCEPTED",
+    "V": "REJECTED",
+    "Ir": "REJECTED",
+    "Fe": "ACCEPTED",
+    "Au": "REJECTED",
+    "Cr": "REJECTED",
+    "Cu": "ACCEPTED",
+    "Y": "REJECTED",
+    "Rh": "REJECTED",
+    "Re": "REJECTED",
+    "Ta": "REJECTED",
+    "Co": "ACCEPTED",
+    "Hf": "REJECTED",
+    "Se": "ACCEPTED",
+    "Nb": "REJECTED",
+    "Mn": "ACCEPTED",
+    "Sc": "REJECTED",
+    "Ag": "REJECTED",
+    "La": "REJECTED",
+    "Cd": "ACCEPTED",
+    "As": "REJECTED",
+    "Os": "REJECTED",
+    "Hg": "ACCEPTED",
+    "Tc": "REJECTED"
+  },
+  "tmqm_inventory": [
+    {
+      "symbol": "H",
+      "n_atoms": 1143305,
+      "n_complexes": 34957
+    },
+    {
+      "symbol": "C",
+      "n_atoms": 985480,
+      "n_complexes": 34970
+    },
+    {
+      "symbol": "N",
+      "n_atoms": 88558,
+      "n_complexes": 27213
+    },
+    {
+      "symbol": "O",
+      "n_atoms": 72578,
+      "n_complexes": 20953
+    },
+    {
+      "symbol": "Cl",
+      "n_atoms": 19353,
+      "n_complexes": 10756
+    },
+    {
+      "symbol": "F",
+      "n_atoms": 17355,
+      "n_complexes": 2708
+    },
+    {
+      "symbol": "P",
+      "n_atoms": 16379,
+      "n_complexes": 9162
+    },
+    {
+      "symbol": "S",
+      "n_atoms": 11021,
+      "n_complexes": 5611
+    },
+    {
+      "symbol": "Si",
+      "n_atoms": 7525,
+      "n_complexes": 3681
+    },
+    {
+      "symbol": "B",
+      "n_atoms": 6625,
+      "n_complexes": 2175
+    },
+    {
+      "symbol": "Br",
+      "n_atoms": 3457,
+      "n_complexes": 2047
+    },
+    {
+      "symbol": "Ti",
+      "n_atoms": 3253,
+      "n_complexes": 3253
+    },
+    {
+      "symbol": "Zr",
+      "n_atoms": 2886,
+      "n_complexes": 2886
+    },
+    {
+      "symbol": "Pd",
+      "n_atoms": 2239,
+      "n_complexes": 2239
+    },
+    {
+      "symbol": "Ni",
+      "n_atoms": 2213,
+      "n_complexes": 2213
+    },
+    {
+      "symbol": "Mo",
+      "n_atoms": 2118,
+      "n_complexes": 2118
+    },
+    {
+      "symbol": "I",
+      "n_atoms": 1921,
+      "n_complexes": 1192
+    },
+    {
+      "symbol": "Ru",
+      "n_atoms": 1773,
+      "n_complexes": 1773
+    },
+    {
+      "symbol": "Pt",
+      "n_atoms": 1754,
+      "n_complexes": 1754
+    },
+    {
+      "symbol": "W",
+      "n_atoms": 1722,
+      "n_complexes": 1722
+    },
+    {
+      "symbol": "Zn",
+      "n_atoms": 1618,
+      "n_complexes": 1618
+    },
+    {
+      "symbol": "V",
+      "n_atoms": 1439,
+      "n_complexes": 1439
+    },
+    {
+      "symbol": "Ir",
+      "n_atoms": 1294,
+      "n_complexes": 1294
+    },
+    {
+      "symbol": "Fe",
+      "n_atoms": 1252,
+      "n_complexes": 1252
+    },
+    {
+      "symbol": "Au",
+      "n_atoms": 1180,
+      "n_complexes": 1180
+    },
+    {
+      "symbol": "Cr",
+      "n_atoms": 1071,
+      "n_complexes": 1071
+    },
+    {
+      "symbol": "Cu",
+      "n_atoms": 1010,
+      "n_complexes": 1010
+    },
+    {
+      "symbol": "Y",
+      "n_atoms": 893,
+      "n_complexes": 893
+    },
+    {
+      "symbol": "Rh",
+      "n_atoms": 890,
+      "n_complexes": 890
+    },
+    {
+      "symbol": "Re",
+      "n_atoms": 881,
+      "n_complexes": 881
+    },
+    {
+      "symbol": "Ta",
+      "n_atoms": 797,
+      "n_complexes": 797
+    },
+    {
+      "symbol": "Co",
+      "n_atoms": 703,
+      "n_complexes": 703
+    },
+    {
+      "symbol": "Hf",
+      "n_atoms": 631,
+      "n_complexes": 631
+    },
+    {
+      "symbol": "Se",
+      "n_atoms": 594,
+      "n_complexes": 349
+    },
+    {
+      "symbol": "Nb",
+      "n_atoms": 536,
+      "n_complexes": 536
+    },
+    {
+      "symbol": "Mn",
+      "n_atoms": 520,
+      "n_complexes": 520
+    },
+    {
+      "symbol": "Sc",
+      "n_atoms": 478,
+      "n_complexes": 478
+    },
+    {
+      "symbol": "Ag",
+      "n_atoms": 449,
+      "n_complexes": 449
+    },
+    {
+      "symbol": "La",
+      "n_atoms": 425,
+      "n_complexes": 425
+    },
+    {
+      "symbol": "Cd",
+      "n_atoms": 410,
+      "n_complexes": 410
+    },
+    {
+      "symbol": "As",
+      "n_atoms": 342,
+      "n_complexes": 202
+    },
+    {
+      "symbol": "Os",
+      "n_atoms": 280,
+      "n_complexes": 280
+    },
+    {
+      "symbol": "Hg",
+      "n_atoms": 190,
+      "n_complexes": 190
+    },
+    {
+      "symbol": "Tc",
+      "n_atoms": 65,
+      "n_complexes": 65
+    }
+  ],
+  "constant_drift": {
+    "missing_from_accepted_const": [],
+    "missing_from_rejected_const": [],
+    "surrogate_not_accepted": []
+  },
+  "measurement": "MEASURED"
+}

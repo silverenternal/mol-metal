@@ -1,0 +1,429 @@
+{
+ "metric": "l1_nci60_cap512_d4_probe",
+ "status": "MEASURED",
+ "MEASURED_vs_PROJECTED": "MEASURED",
+ "unit": "ROC-AUC (0-1, higher better), per cell line",
+ "scope": "tier1_precious_metal_anticancer",
+ "source": "molmetal/scripts/l1_nci60_capacity_probe_analysis.py",
+ "description": "L1 capacity lever: does hidden=512/depth=4 beat the shipped hidden=128/depth=3 on the NCI60 9-cell precious-metal panel?  3-seed probe (seeds 0,1,2) on the identical scaffold split, compared paired-by-(cell,seed) against the shipped 5-seed baseline.",
+ "protocol": {
+  "probe_configs": [
+   "configs/training/nci60_9cell_probe_seed0_cap512_d4.yaml",
+   "configs/training/nci60_9cell_probe_seed12_cap512_d4.yaml"
+  ],
+  "baseline_config": "configs/training/nci60_9cell_5seed_50ep_v1.yaml",
+  "probe": "hidden=512, depth=4, seeds 0,1,2",
+  "baseline": "hidden=128, depth=3, seeds 0..4",
+  "split": "identical scaffold split (n_train/n_val/n_test match per cell)",
+  "significance": "paired bootstrap over the (cell, seed) pairs with a shared seed (3 seeds x 9 cells = 27 cells), 10000 resamples, seed 42; also a cell-level mean-delta bootstrap",
+  "n_test_filter": 20
+ },
+ "probe_seeds": [
+  0,
+  1,
+  2
+ ],
+ "cells_present": [
+  "a2780",
+  "a2780cis",
+  "a549",
+  "du145",
+  "hct116",
+  "hl60",
+  "mcf7",
+  "pc3",
+  "skov3"
+ ],
+ "cells_missing": [],
+ "per_cell": {
+  "a2780": {
+   "metal": "A2780",
+   "probe_seed_auc": {
+    "0": 0.5259259259259259,
+    "1": 0.5277777777777778,
+    "2": 0.4425925925925926
+   },
+   "probe_mean": 0.4987654320987655,
+   "baseline_seed_auc": {
+    "0": 0.4111111111111111,
+    "1": 0.512962962962963,
+    "2": 0.6222222222222222,
+    "3": 0.46481481481481485,
+    "4": 0.5407407407407407
+   },
+   "baseline_5seed_mean_auc": 0.5103703703703704,
+   "baseline_5seed_std_auc": 0.0712286836690745,
+   "shared_seeds": [
+    0,
+    1,
+    2
+   ],
+   "delta_paired_by_seed": {
+    "0": 0.11481481481481481,
+    "1": 0.014814814814814836,
+    "2": -0.17962962962962964
+   },
+   "delta_probe_mean_vs_baseline_mean": -0.011604938271604859,
+   "n_train": 1031,
+   "n_val": 16,
+   "n_test": 48,
+   "probe_hidden": 512,
+   "probe_depth": 4
+  },
+  "a2780cis": {
+   "metal": "A2780cis",
+   "probe_seed_auc": {
+    "0": 0.29444444444444445,
+    "1": 0.28888888888888886,
+    "2": 0.31666666666666665
+   },
+   "probe_mean": 0.3,
+   "baseline_seed_auc": {
+    "0": 0.3333333333333333,
+    "1": 0.37777777777777777,
+    "2": 0.3111111111111111,
+    "3": 0.3055555555555556,
+    "4": 0.35
+   },
+   "baseline_5seed_mean_auc": 0.3355555555555555,
+   "baseline_5seed_std_auc": 0.026434171674156254,
+   "shared_seeds": [
+    0,
+    1,
+    2
+   ],
+   "delta_paired_by_seed": {
+    "0": -0.03888888888888886,
+    "1": -0.0888888888888889,
+    "2": 0.005555555555555536
+   },
+   "delta_probe_mean_vs_baseline_mean": -0.03555555555555551,
+   "n_train": 530,
+   "n_val": 6,
+   "n_test": 28,
+   "probe_hidden": 512,
+   "probe_depth": 4
+  },
+  "a549": {
+   "metal": "A549",
+   "probe_seed_auc": {
+    "0": 0.6912366912366913,
+    "1": 0.7362817362817363,
+    "2": 0.7104832104832105
+   },
+   "probe_mean": 0.7126672126672128,
+   "baseline_seed_auc": {
+    "0": 0.6981981981981983,
+    "1": 0.696969696969697,
+    "2": 0.6953316953316953,
+    "3": 0.6908271908271909,
+    "4": 0.6941031941031941
+   },
+   "baseline_5seed_mean_auc": 0.6950859950859951,
+   "baseline_5seed_std_auc": 0.0025454988153841202,
+   "shared_seeds": [
+    0,
+    1,
+    2
+   ],
+   "delta_paired_by_seed": {
+    "0": -0.006961506961506991,
+    "1": 0.039312039312039304,
+    "2": 0.015151515151515249
+   },
+   "delta_probe_mean_vs_baseline_mean": 0.017581217581217667,
+   "n_train": 2482,
+   "n_val": 58,
+   "n_test": 107,
+   "probe_hidden": 512,
+   "probe_depth": 4
+  },
+  "du145": {
+   "metal": "DU145",
+   "probe_seed_auc": {
+    "0": 1.0,
+    "1": 1.0,
+    "2": 1.0
+   },
+   "probe_mean": 1.0,
+   "baseline_seed_auc": {
+    "0": 1.0,
+    "1": 1.0,
+    "2": 1.0,
+    "3": 1.0,
+    "4": 1.0
+   },
+   "baseline_5seed_mean_auc": 1.0,
+   "baseline_5seed_std_auc": 0.0,
+   "shared_seeds": [
+    0,
+    1,
+    2
+   ],
+   "delta_paired_by_seed": {
+    "0": 0.0,
+    "1": 0.0,
+    "2": 0.0
+   },
+   "delta_probe_mean_vs_baseline_mean": 0.0,
+   "n_train": 150,
+   "n_val": 4,
+   "n_test": 7,
+   "probe_hidden": 512,
+   "probe_depth": 4
+  },
+  "hct116": {
+   "metal": "HCT116",
+   "probe_seed_auc": {
+    "0": 0.8333333333333334,
+    "1": 0.7875000000000001,
+    "2": 0.7208333333333333
+   },
+   "probe_mean": 0.7805555555555556,
+   "baseline_seed_auc": {
+    "0": 0.7124999999999999,
+    "1": 0.7416666666666666,
+    "2": 0.7458333333333333,
+    "3": 0.8166666666666667,
+    "4": 0.7416666666666667
+   },
+   "baseline_5seed_mean_auc": 0.7516666666666667,
+   "baseline_5seed_std_auc": 0.03462096346306833,
+   "shared_seeds": [
+    0,
+    1,
+    2
+   ],
+   "delta_paired_by_seed": {
+    "0": 0.12083333333333346,
+    "1": 0.045833333333333504,
+    "2": -0.025000000000000022
+   },
+   "delta_probe_mean_vs_baseline_mean": 0.028888888888888853,
+   "n_train": 658,
+   "n_val": 12,
+   "n_test": 31,
+   "probe_hidden": 512,
+   "probe_depth": 4
+  },
+  "hl60": {
+   "metal": "HL60",
+   "probe_seed_auc": {
+    "0": 0.6428571428571428,
+    "1": 0.75,
+    "2": 0.7857142857142857
+   },
+   "probe_mean": 0.7261904761904762,
+   "baseline_seed_auc": {
+    "0": 0.8928571428571428,
+    "1": 0.75,
+    "2": 0.7142857142857143,
+    "3": 0.8214285714285714,
+    "4": 0.8214285714285714
+   },
+   "baseline_5seed_mean_auc": 0.8,
+   "baseline_5seed_std_auc": 0.062269984907723876,
+   "shared_seeds": [
+    0,
+    1,
+    2
+   ],
+   "delta_paired_by_seed": {
+    "0": -0.25,
+    "1": 0.0,
+    "2": 0.0714285714285714
+   },
+   "delta_probe_mean_vs_baseline_mean": -0.07380952380952388,
+   "n_train": 202,
+   "n_val": 12,
+   "n_test": 11,
+   "probe_hidden": 512,
+   "probe_depth": 4
+  },
+  "mcf7": {
+   "metal": "MCF7",
+   "probe_seed_auc": {
+    "0": 0.7111362351611079,
+    "1": 0.7394007914075749,
+    "2": 0.7156585641605426
+   },
+   "probe_mean": 0.7220651969097419,
+   "baseline_seed_auc": {
+    "0": 0.6387789711701526,
+    "1": 0.676088185415489,
+    "2": 0.672696438665913,
+    "3": 0.6806105144149237,
+    "4": 0.6766534765404183
+   },
+   "baseline_5seed_mean_auc": 0.6689655172413793,
+   "baseline_5seed_std_auc": 0.015300917734961847,
+   "shared_seeds": [
+    0,
+    1,
+    2
+   ],
+   "delta_paired_by_seed": {
+    "0": 0.07235726399095532,
+    "1": 0.06331260599208588,
+    "2": 0.04296212549462963
+   },
+   "delta_probe_mean_vs_baseline_mean": 0.0530996796683626,
+   "n_train": 1829,
+   "n_val": 45,
+   "n_test": 90,
+   "probe_hidden": 512,
+   "probe_depth": 4
+  },
+  "pc3": {
+   "metal": "PC3",
+   "probe_seed_auc": {
+    "0": 0.5416666666666666,
+    "1": 0.8055555555555556,
+    "2": 0.9166666666666666
+   },
+   "probe_mean": 0.7546296296296297,
+   "baseline_seed_auc": {
+    "0": 0.5138888888888888,
+    "1": 0.9722222222222222,
+    "2": 0.8333333333333333,
+    "3": 0.9027777777777777,
+    "4": 0.7916666666666667
+   },
+   "baseline_5seed_mean_auc": 0.8027777777777778,
+   "baseline_5seed_std_auc": 0.1569874572327199,
+   "shared_seeds": [
+    0,
+    1,
+    2
+   ],
+   "delta_paired_by_seed": {
+    "0": 0.02777777777777779,
+    "1": -0.16666666666666663,
+    "2": 0.08333333333333337
+   },
+   "delta_probe_mean_vs_baseline_mean": -0.04814814814814816,
+   "n_train": 250,
+   "n_val": 7,
+   "n_test": 18,
+   "probe_hidden": 512,
+   "probe_depth": 4
+  },
+  "skov3": {
+   "metal": "SKOV3",
+   "probe_seed_auc": {
+    "0": 1.0,
+    "1": 1.0,
+    "2": 1.0
+   },
+   "probe_mean": 1.0,
+   "baseline_seed_auc": {
+    "0": 1.0,
+    "1": 1.0,
+    "2": 1.0,
+    "3": 1.0,
+    "4": 1.0
+   },
+   "baseline_5seed_mean_auc": 1.0,
+   "baseline_5seed_std_auc": 0.0,
+   "shared_seeds": [
+    0,
+    1,
+    2
+   ],
+   "delta_paired_by_seed": {
+    "0": 0.0,
+    "1": 0.0,
+    "2": 0.0
+   },
+   "delta_probe_mean_vs_baseline_mean": 0.0,
+   "n_train": 188,
+   "n_val": 0,
+   "n_test": 3,
+   "probe_hidden": 512,
+   "probe_depth": 4
+  }
+ },
+ "per_probe_seed_macro": {
+  "0": {
+   "all9_mean": 0.6934000488472569,
+   "n_cells": 9,
+   "funnel_mean": 0.6112153260203007
+  },
+  "1": {
+   "all9_mean": 0.7372671944346149,
+   "n_cells": 9,
+   "funnel_mean": 0.6159698388711956
+  },
+  "2": {
+   "all9_mean": 0.7342905910685887,
+   "n_cells": 9,
+   "funnel_mean": 0.5812468734472691
+  }
+ },
+ "overall_all_cells": {
+  "n_cells": 9,
+  "probe_3seed_macro_mean": 0.7216526114501536,
+  "baseline_seed0_macro_mean": 0.6889630717287586,
+  "baseline_5seed_macro_mean": 0.7293802091886383,
+  "paired_by_cell_seed": {
+   "n_cells": 27,
+   "mean_delta": -0.0014277221001044798,
+   "delta_std": 0.0851229112319212,
+   "ci95": [
+    -0.03556922213826485,
+    0.02798157831574782
+   ],
+   "ci_excludes_zero": false,
+   "p_one_sided_greater": 0.5155
+  },
+  "by_cell_mean_delta": {
+   "n_cells": 9,
+   "mean_delta": -0.00772759773848481,
+   "delta_std": 0.03967172054928034,
+   "ci95": [
+    -0.032341759749167164,
+    0.016742424954032272
+   ],
+   "ci_excludes_zero": false,
+   "p_one_sided_greater": 0.7308
+  }
+ },
+ "overall_n_test_ge_filter": {
+  "filter": "n_test >= 20",
+  "cells": [
+   "a2780",
+   "a2780cis",
+   "a549",
+   "hct116",
+   "mcf7"
+  ],
+  "n_cells": 5,
+  "probe_3seed_macro_mean": 0.6028106794462552,
+  "baseline_seed0_macro_mean": 0.5587843227625591,
+  "baseline_5seed_macro_mean": 0.5923288209839935,
+  "paired_by_cell_seed": {
+   "n_cells": 15,
+   "mean_delta": 0.01303856582827754,
+   "delta_std": 0.07690567785676032,
+   "ci95": [
+    -0.027647809922140984,
+    0.04845695646076041
+   ],
+   "ci_excludes_zero": false,
+   "p_one_sided_greater": 0.2418
+  },
+  "by_cell_mean_delta": {
+   "n_cells": 5,
+   "mean_delta": 0.01048185846226175,
+   "delta_std": 0.034687059664927335,
+   "ci95": [
+    -0.016430797897954378,
+    0.036311670939144114
+   ],
+   "ci_excludes_zero": false,
+   "p_one_sided_greater": 0.2392
+  }
+ },
+ "krasnov_2026_baseline_auc": 0.81,
+ "shipped_baseline_mean_auc": 0.7293802091886383
+}

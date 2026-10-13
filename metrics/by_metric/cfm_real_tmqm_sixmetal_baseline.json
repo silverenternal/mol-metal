@@ -1,0 +1,110 @@
+{
+ "metric": "cfm_real_tmqm_sixmetal_baseline",
+ "tag": "MEASURED",
+ "date": "2026-10-12",
+ "purpose": "A REAL reference band computed directly from the tmQM corpus on disk. The band currently used repo-wide as 'real_tmqm' for QED/SA is n=636 DECODER RECONSTRUCTION output (cfm_reference_band_audit.json, CIRCULAR). This file is the real one.",
+ "corpus_path": "/home/hugo/codes/mol-metal/.data/molmetal/tmQM/tmQM_y.csv",
+ "filter": "rows with a non-empty SMILES that RDKit parses AND that contain >=1 of {Pt78,Ir77,Ru44,Rh45,Os76,Re75}",
+ "n_rows": 31150,
+ "metal_counts": {
+  "Re": 4033,
+  "Ru": 9067,
+  "Os": 1224,
+  "Ir": 4695,
+  "Rh": 4278,
+  "Pt": 7853
+ },
+ "descriptors": {
+  "qed": {
+   "n": 31150,
+   "mean": 0.23478314129722005,
+   "median": 0.20917993811228752,
+   "sd": 0.13690015672225275,
+   "p10": 0.07884468750364093,
+   "p90": 0.4325782124696315
+  },
+  "sa": {
+   "n": 31150,
+   "mean": 4.978116124784496,
+   "median": 4.833902777177017,
+   "sd": 0.9057403276780747,
+   "p10": 3.9839418146871304,
+   "p90": 6.192594644881984
+  },
+  "heavy": {
+   "n": 31150,
+   "mean": 35.861412520064206,
+   "median": 34.0,
+   "sd": 13.809454758781273,
+   "p10": 20.0,
+   "p90": 55.0
+  },
+  "logp": {
+   "n": 31150,
+   "mean": 4.15303363210273,
+   "median": 4.205290000000004,
+   "sd": 4.884162281929674,
+   "p10": -1.9295449999999923,
+   "p90": 10.061971000000002
+  },
+  "tpsa": {
+   "n": 31150,
+   "mean": 40.46262247191011,
+   "median": 32.49000000000001,
+   "sd": 35.507960903486484,
+   "p10": 0.0,
+   "p90": 89.32000000000001
+  },
+  "rotb": {
+   "n": 31150,
+   "mean": 5.176147672552167,
+   "median": 5.0,
+   "sd": 3.681745490197909,
+   "p10": 1.0,
+   "p90": 10.0
+  },
+  "arom_ring_frac": {
+   "n": 31150,
+   "mean": 0.1100841939706607,
+   "median": 0.11764705882352941,
+   "sd": 0.04519402924800862,
+   "p10": 0.05,
+   "p90": 0.15625
+  },
+  "arom_bond_frac": {
+   "n": 31150,
+   "mean": 0.45459057213257276,
+   "median": 0.4918032786885246,
+   "sd": 0.22532405758218216,
+   "p10": 0.0,
+   "p90": 0.72
+  },
+  "mw": {
+   "n": 31150,
+   "mean": 670.0558847191012,
+   "median": 640.8215,
+   "sd": 188.09329786915762,
+   "p10": 455.58580000000023,
+   "p90": 927.1066000000001
+  },
+  "cn": {
+   "n": 31150,
+   "mean": 5.95239165329053,
+   "median": 6.0,
+   "sd": 1.6504400967075388,
+   "p10": 4.0,
+   "p90": 8.0
+  },
+  "hbd": {
+   "n": 31150,
+   "mean": 0.3068378812199037,
+   "median": 0.0,
+   "sd": 0.7112882410600995,
+   "p10": 0.0,
+   "p90": 1.0
+  }
+ },
+ "fraction_with_triple_bond": 0.2645264847512038,
+ "fraction_with_any_aromatic_bond": 0.8998715890850723,
+ "sa_norm_mean": 0.5021883875215505
+}

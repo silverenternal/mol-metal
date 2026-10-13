@@ -1,0 +1,124 @@
+{
+ "metric": "cfm_l3_guidance_ab",
+ "tag": "MEASURED",
+ "date": "2026-10-12",
+ "question": "Does injecting a repulsive-core sampling-time guidance force during ODE integration improve the sampled geometry, WITHOUT retraining?",
+ "design": {
+  "controlled_variable": "the guidance term and nothing else",
+  "held_fixed": [
+   "checkpoint",
+   "template cohort (tmQM val composition only)",
+   "initial noise (seed 1234)",
+   "ODE method midpoint",
+   "n_steps 20"
+  ],
+  "guidance_strength_unguided": 0.0,
+  "guidance_strength_guided": 0.05,
+  "mode": "eval() + torch.no_grad(), forward ODE integration only -- NO TRAINING"
+ },
+ "arms_on_disk": {
+  "unguided": "molmetal/reports/cfm_l3_guidance_seed0/arm_unguided_strength0.00.json",
+  "guided": "molmetal/reports/cfm_l3_guidance_seed0/arm_guided_strength0.05.json",
+  "script": "molmetal/scripts/wf_blkc_l3_guidance_probe.py",
+  "aggregator": "molmetal/scripts/wf_blkc_l3_guidance_ab.py",
+  "relocation_note": "2026-10-12: both arm files were cited as /tmp paths, which are volatile and shared across parallel jobs (same class as the m19 /tmp/m19_ctr_full incident). Copied byte-identical (md5 55dd1401403bc5140be288859ba28d1f / bb5cc9f77cdaebf98062084a1a5ba0c1) into molmetal/reports/cfm_l3_guidance_seed0/ and repointed here."
+ },
+ "cohort_caveat": "SMOKE SCALE: 24 clouds, 20 steps, one checkpoint, one seed, one guidance strength. Directionally informative; not a settled number.",
+ "comparison": [
+  {
+   "metric": "min_pair_distance",
+   "unguided": 0.5702152846818632,
+   "guided": 1.155077046545741,
+   "real_tmqm": 1.171822339266011,
+   "direction_wanted": "up_toward_real",
+   "delta_guided_minus_unguided": 0.5848617618638777,
+   "abs_err_unguided": 0.6016070545841478,
+   "abs_err_guided": 0.016745292720270033,
+   "moved_toward_real": true
+  },
+  {
+   "metric": "p01_pair_distance",
+   "unguided": 1.12874599556946,
+   "guided": 1.4835921880517524,
+   "real_tmqm": 1.3141257027732947,
+   "direction_wanted": "up_toward_real",
+   "delta_guided_minus_unguided": 0.3548461924822923,
+   "abs_err_unguided": 0.18537970720383457,
+   "abs_err_guided": 0.16946648527845776,
+   "moved_toward_real": true
+  },
+  {
+   "metric": "median_pair_distance",
+   "unguided": 4.713164323706886,
+   "guided": 4.844606479866257,
+   "real_tmqm": 4.996998171723995,
+   "direction_wanted": "up_toward_real",
+   "delta_guided_minus_unguided": 0.1314421561593706,
+   "abs_err_unguided": 0.28383384801710854,
+   "abs_err_guided": 0.15239169185773793,
+   "moved_toward_real": true
+  },
+  {
+   "metric": "frac_pairs_hard_clash",
+   "unguided": 0.014823162151520962,
+   "guided": 0.002338228853268514,
+   "real_tmqm": 0.0,
+   "direction_wanted": "down_toward_real",
+   "delta_guided_minus_unguided": -0.012484933298252447,
+   "abs_err_unguided": 0.014823162151520962,
+   "abs_err_guided": 0.002338228853268514,
+   "moved_toward_real": true
+  },
+  {
+   "metric": "radius_of_gyration",
+   "unguided": 3.571249149298168,
+   "guided": 3.650570115141572,
+   "real_tmqm": 3.809382070813017,
+   "direction_wanted": "toward_real",
+   "delta_guided_minus_unguided": 0.07932096584340398,
+   "abs_err_unguided": 0.2381329215148491,
+   "abs_err_guided": 0.15881195567144513,
+   "moved_toward_real": true
+  },
+  {
+   "metric": "metal_ligand_min",
+   "unguided": 1.234103269795047,
+   "guided": 1.6022267588260937,
+   "real_tmqm": 1.9529353577577475,
+   "direction_wanted": "up_toward_real",
+   "delta_guided_minus_unguided": 0.36812348903104675,
+   "abs_err_unguided": 0.7188320879627006,
+   "abs_err_guided": 0.35070859893165385,
+   "moved_toward_real": true
+  },
+  {
+   "metric": "metal_ligand_median",
+   "unguided": 1.7107095587390853,
+   "guided": 1.9695379647305515,
+   "real_tmqm": 2.025903499112363,
+   "direction_wanted": "up_toward_real",
+   "delta_guided_minus_unguided": 0.2588284059914663,
+   "abs_err_unguided": 0.31519394037327775,
+   "abs_err_guided": 0.056365534381811466,
+   "moved_toward_real": true
+  },
+  {
+   "metric": "n_clouds_with_any_hard_clash",
+   "unguided": 24,
+   "guided": 13,
+   "real_tmqm": 0,
+   "direction_wanted": "down_toward_real",
+   "delta_guided_minus_unguided": -11,
+   "moved_toward_real": true
+  },
+  {
+   "metric": "total_hard_clash_pairs",
+   "unguided": 143,
+   "guided": 17,
+   "real_tmqm": 0,
+   "direction_wanted": "down_toward_real",
+   "delta_guided_minus_unguided": -126,
+   "moved_toward_real": true
+  }
+ ]
+}

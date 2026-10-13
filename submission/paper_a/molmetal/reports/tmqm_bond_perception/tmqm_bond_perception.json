@@ -1,0 +1,44 @@
+{
+  "task": "tmQM bond perception (3D geometry -> molecular graph)",
+  "protocol": {
+    "ground_truth": "tmQM_X{1,2,3}.BO.gz Wiberg bond orders (same atom indexing as the .xyz.gz geometries)",
+    "bo_threshold": 0.3,
+    "bond_type": "nearest of single(1.0)/double(2.0)/triple(3.0) by BO",
+    "metrics": [
+      "success_rate",
+      "exact_type_rate_of_successes",
+      "f1_exist_of_successes",
+      "macro_f1_type_of_successes"
+    ],
+    "note": "each baseline is scored on the bond subset it can address; the subset is named per row. No published tmQM bond-perception number exists to compare against (2026-10-04 literature sweep)."
+  },
+  "metals": [
+    "Pt",
+    "Ru",
+    "Ir",
+    "Rh",
+    "Os",
+    "Re"
+  ],
+  "n_samples_per_metal": 60,
+  "results": {
+    "rdkit_stripped": {
+      "n_complexes": 360,
+      "n_success": 115,
+      "success_rate": 0.3194444444444444,
+      "exact_type_rate_of_successes": 0.034782608695652174,
+      "f1_exist_of_successes": 1.0,
+      "macro_f1_type_of_successes": 0.35795588627218555,
+      "scope": "non-metal bonds only"
+    },
+    "openbabel": {
+      "n_complexes": 360,
+      "n_success": 360,
+      "success_rate": 1.0,
+      "exact_type_rate_of_successes": 0.027777777777777776,
+      "f1_exist_of_successes": 0.9849611510520498,
+      "macro_f1_type_of_successes": 0.538980125244512,
+      "scope": "all bonds"
+    }
+  }
+}

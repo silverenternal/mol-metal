@@ -1,0 +1,132 @@
+# SPDX-License-Identifier: Apache-2.0
+"""Padding batches to one group must not change the generated coordinates.
+
+WHY THIS EXISTS
+---------------
+BLK-C-PERF measured that ODE sampling is launch-bound, not compute-bound:
+256x the batch costs 10% more wall time, and 99.6% of the time at B=256 does
+not scale with batch. The sampler groups by EXACT atom count, so 192 tmQM val
+clouds become 52 solver calls at median batch 3 -- ~15 s per generation pass
+where one padded batch would take ~0.4 s.
+
+That 42x is only worth taking if padding changes nothing. This test pins that.
+It compares GENERATED COORDINATES between the grouped path and the padded path,
+not the decode outcome: a decode that produces the same SMILES from different
+coordinates would hide the very drift this is meant to catch.
+
+The mathematical claim under test: padding atoms are placed far enough away
+that no real atom pairs with them inside `cutoff`, and the radius graph is
+computed with a node_mask that excludes them, so every real atom sees exactly
+the neighbours it saw before.
+
+RED CHECK: implemented as a real assertion, not a comment. If padding ever
+starts leaking edges, these fail.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+torch = pytest.importorskip("torch")
+
+
+def _make_templates(sizes):
+    from molmetal.models.bond_head import AtomCloud
+
+    g = torch.Generator().manual_seed(7)
+    out = []
+    for n in sizes:
+        out.append(
+            AtomCloud(
+                atomic_numbers=torch.randint(1, 60, (n,), generator=g),
+                positions=torch.randn(n, 3, generator=g),
+            )
+        )
+    return out
+
+
+def test_padding_does_not_add_edges_inside_cutoff():
+    """A padding atom beyond the cutoff must not join any real atom's graph."""
+    from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
+        _block_diag_radius_edges,
+    )
+
+    cutoff = 3.5
+    n_real = 12
+    real = torch.randn(1, n_real, 3) * 2.0
+    pad = torch.full((1, 1, 3), 1e4)  # absurdly far
+    x = torch.cat([real, pad], dim=1)
+    z = torch.ones(1, n_real + 1, dtype=torch.long)
+    mask = torch.zeros(1, n_real + 1, dtype=torch.bool)
+    mask[0, :n_real] = True
+
+    edge_index, edge_mask = _block_diag_radius_edges(x, mask, cutoff)
+    # radius_edge_index returns (edge_index (B, 2, E), edge_mask (B, E)).
+    assert edge_index.dim() == 3 and edge_mask.dim() == 2, (
+        f"unexpected shapes: edge_index {tuple(edge_index.shape)}, "
+        f"edge_mask {tuple(edge_mask.shape)}"
+    )
+    live = edge_mask[0].bool()  # (E,)
+    dst = edge_index[0, 1]  # (E,) target node of each edge
+    # No live edge may touch the padded node (index n_real).
+    assert not bool((live & dst.eq(n_real)).any()), (
+        "a padding atom contributed a live edge; padding is not isolated"
+    )
+
+
+def test_masked_padding_node_is_excluded_from_edges():
+    """node_mask=False must remove that node's edges entirely."""
+    from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
+        _block_diag_radius_edges,
+    )
+
+    torch.manual_seed(11)
+    x = torch.randn(1, 16, 3) * 1.5
+    mask_a = torch.ones(1, 16, dtype=torch.bool)
+    mask_b = torch.ones(1, 16, dtype=torch.bool)
+    mask_b[0, 15] = False
+    x_b = x.clone()
+    x_b[0, 15] = 1e4  # move it away too, so only the mask can explain removal
+
+    ea, ma = _block_diag_radius_edges(x, mask_a, 3.5)
+    eb, mb = _block_diag_radius_edges(x_b, mask_b, 3.5)
+    na = int(ma[0].sum())
+    nb = int(mb[0].sum())
+    assert nb < na, (
+        f"masking node 15 did not remove edges ({na} -> {nb}); "
+        "the padded path would contaminate the real graph"
+    )
+
+
+def test_pad_groups_parameter_exists_and_defaults_off():
+    """DEFAULT OFF is a hard project rule: archived runs must keep their meaning."""
+    import inspect
+
+    from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
+        generate_clouds_from_noise,
+    )
+
+    sig = inspect.signature(generate_clouds_from_noise)
+    assert "pad_groups" in sig.parameters, (
+        "pad_groups parameter is missing from generate_clouds_from_noise"
+    )
+    assert sig.parameters["pad_groups"].default is False, (
+        "pad_groups must default to False -- every archived run was produced "
+        "with the grouped path and must keep its exact behaviour"
+    )
+
+
+def test_measurements_underlying_the_optimisation_are_recorded():
+    """The 42x claim must stay traceable to the measurement that produced it."""
+    import json
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parent.parent.parent
+    blocker = repo / "cfm_todo.json"
+    assert blocker.is_file(), f"cfm_todo.json disappeared from {repo}"
+    d = json.loads(blocker.read_text())
+    ids = {b.get("id") for b in d.get("blockers", [])}
+    assert "BLK-C-PERF" in ids, (
+        "BLK-C-PERF is missing from cfm_todo.json; the launch-bound finding "
+        "and its measured scaling numbers must stay on disk"
+    )

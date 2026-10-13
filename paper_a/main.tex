@@ -1,0 +1,100 @@
+% =============================================================================
+%  Paper A — the predictive line of Mol-Metal
+%
+%  "Metal-specific activity does not transfer across metals"
+%
+%  Target journal: J. Chem. Inf. Model. (ACS)  [fallback: Digital Discovery]
+%  Plan + scope: docs/SUBMISSION_PLAN.md, docs/PAPER_SCOPE.md,
+%                docs/ALIGNED_COMPARISON.md
+%
+%  This is a NEW manuscript. It deliberately does NOT reuse paper/ (which holds
+%  the old single-paper lambda-calculus + CFM narrative, i.e. Paper B's
+%  material). Per AGENTS.md §5.3 / TODO-84 the paper/ tree is untouched.
+%
+%  Honest framing (AGENTS.md §5.2): every quantitative claim is tagged
+%  \textbf{MEASURED} or \textbf{PROJECTED} at the point of use, and every number
+%  cites an on-disk source under metrics/by_metric/.
+% =============================================================================
+
+\documentclass[11pt]{article}
+
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\graphicspath{{figures/}{./}}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\usepackage[round,numbers]{natbib}
+\bibliographystyle{unsrtnat}
+\usepackage{hyperref}
+\usepackage{xcolor}
+
+\newcommand{\MEASURED}{\textbf{MEASURED}}
+\newcommand{\PROJECTED}{\textbf{PROJECTED}}
+
+\title{Metal-specific anticancer activity does not transfer across metals:\\
+a cross-metal leave-one-metal-out benchmark on MetalCytoToxDB}
+\author{Hugo Lee\thanks{Correspondence: hugo@example.org} \and Mol-Metal contributors}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Ligand-based activity models are routinely assumed to transfer across chemical
+scaffolds. We ask whether the same assumption holds when the variable that
+changes is the \emph{metal}, not the scaffold. This cross-metal axis is not
+benchmarked in either the ligand-based or the transition-metal literature, so we
+make it the primary measurement. Using a deduplicated cohort drawn
+from MetalCytoToxDB (5{,}271 rows, five precious/platinum-group metals
+Ru/Ir/Os/Rh/Re), we measure within-metal 5-fold cross-validated ROC-AUC against
+cross-metal leave-one-metal-out (LOMO) ROC-AUC under a single shared scorer. We
+find a systematic \emph{collapse}: within-metal AUC is 0.70--0.95 for Ru, Ir,
+Rh and Re (Os's within-metal signal does not resolve), versus 0.44--0.62 when
+the same model predicts a held-out metal. \textbf{MEASURED}. A label-permutation
+null, Holm-corrected over the five-metal family, shows that no metal's
+cross-metal AUC is significantly \emph{below} chance under the fingerprint
+scorer --- only Ru is significantly above it there, and Rh/Os/Re are
+unresolvable at $n=36$--$74$. A message-passing backbone reproduces the collapse
+for Ru, Ir and Rh but recovers Re ($0.737$, Holm $p=0.010$); under the same
+correction the backbone leaves only Re and Ru significant, and Ir's uncorrected
+below-chance reading ($p=0.038$) does not survive. A same-metal Bemis--Murcko scaffold-split control costs
+$0.10$--$0.12$ on the two metals where it resolves, roughly half of the
+collapse, so the metal axis is the largest single shift but not the only one.
+\textbf{MEASURED}. We then ask what repairs the collapse: static metal
+conditioning --- a metal token, a descriptor embedding, or FiLM --- does
+\emph{not}, but few-shot adaptation, fine-tuning on $K$ labelled ligands from
+the held-out metal, recovers it monotonically, by $+0.058$ at $K{=}20$ and
+$+0.091$ at $K{=}40$ (Holm $p<0.004$). \textbf{MEASURED}. We also test whether tmQM pre-training of
+the graph encoder transfers to the activity head, on two metals, and report a
+second honest negative: on a genuine scaffold split no Holm-corrected effect is
+significant --- Ru's paired effect is $-0.0094$ (t-based 95\% CI
+$[-0.0406,+0.0218]$) and Ir's suggestive $+0.0486$ does not clear the paired
+$t$-test (one-sided $p=0.068$) --- reversing a $+0.0181$ that had been measured
+on a degenerate, molecule-level splitter.
+\textbf{MEASURED}. Against the published
+protocol on both of its axes: on its \emph{within-metal} axis our
+fingerprint-plus-XGBoost scorer exceeds the published $0.73$ under both tie rules
+and every seed ($0.8237$--$0.8597$, $+0.09$ to $+0.13$), while Ru is at parity
+and decided by the tie rule, and we report the first within-metal values for Rh,
+Os and Re, which the published work does not cover; on its \emph{DOI-split}
+replication our D-MPNN scores
+$0.7717 \pm 0.0380$ against the published LightGBM $0.810 \pm 0.024$ --- $0.0383$ below, on a cohort
+$25\times$ wider ($591$ vs $23$ cell lines). Running the published model class
+on our identical cohort and fold partition scores $0.7677 \pm 0.0368$, so the
+residual gap is cohort scope, not model class. \textbf{MEASURED}. We conclude that the metal identity
+is a first-class distribution shift that the ligand-based QSAR literature has no
+routine analogue for, that cross-metal transfer is a benchmark axis worth
+reporting explicitly, and that few-shot adaptation to the target metal --- not
+metal conditioning --- is the practical fix.
+\end{abstract}
+
+\input{sections/01_intro}
+\input{sections/02_related}
+\input{sections/03_method}
+\input{sections/04_results}
+\input{sections/05_ablation}
+\input{sections/06_limitations}
+
+\bibliography{refs}
+
+\end{document}

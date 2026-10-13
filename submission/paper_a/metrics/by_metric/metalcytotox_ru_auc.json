@@ -1,0 +1,179 @@
+{
+  "metric": "metalcytotox_ru_auc",
+  "description": "Test ROC-AUC on MetalCytoToxDB Ru subset with D-MPNN multi-task (scaffold split). Best measurement is from Wf-124 P3 (Ru seed=0, 30 epochs, GPU-1 RTX 5090).",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier1_precious_metal_anticancer",
+  "source": "molmetal/scripts/train_dmpnn_multitask_wasserstein.py",
+  "krasnov_2026_baseline": 0.81,
+  "gate_target": 0.86,
+  "value": 0.7613038529802696,
+  "value_std": 0.0,
+  "per_seed_values": [
+    0.7613038529802696
+  ],
+  "n_seeds": 1,
+  "n_train_avg": 2509.0,
+  "n_test_avg": 796.0,
+  "timestamp": "2026-09-27",
+  "data_source": "MetalCytoToxDB.csv",
+  "status": "MEASURED_PARTIAL_LIFT",
+  "split": "scaffold",
+  "model": "dmpnn_multitask_wasserstein",
+  "epochs": 30,
+  "seed": 0,
+  "lift_vs_baseline": 0.04902676107354806,
+  "baseline_value": 0.7122770919067215,
+  "gap_to_gate": -0.09869614701973041,
+  "hit_gate": false,
+  "additional_measurements": {
+    "wf131_p1_10epoch_3seed_mean": 0.7352,
+    "wf131_p1_10epoch_3seed_std": 0.0023,
+    "wf131_p1_10epoch_per_seed": [
+      0.7372913731763808,
+      0.7362606750873506,
+      0.7319866606177821
+    ],
+    "wf124_p3_30epoch_seed0": 0.7613038529802696,
+    "wf124_p3_30epoch_w2_start": 0.8989814245768186,
+    "wf124_p3_30epoch_w2_end": 0.3905910731708936,
+    "wf124_p3_30epoch_test_pearson": 0.3091418378808671,
+    "wf124_p3_30epoch_wall_seconds": 463.22863602638245
+  },
+  "engine_tags": {
+    "multitask": "dmpnn_multitask",
+    "wasserstein": "wasserstein_reg",
+    "l2_guard": "grad_norm_clip_5.0"
+  },
+  "follow_up": "Wf-120 P2 completion (Ru seed3/4 + Ir/Os/Rh/Re × seeds 2/3/4) + Wf-120 P4 (50-epoch retrain) + Wf-120 P5 (Hilbert-ASTR features) + Wf-120 P6 (Catherine closure oversampling) + Wf-120 P7 (warm-start A/B) for full gate hit at Krasnov ≥ 0.86",
+  "wf131_joint_close_out": {
+    "close_out_doc": "TODO/completed/131_m1_m19_joint_rescue.md",
+    "date_utc": "2026-09-27",
+    "verdict": "PARTIAL_SHIP — m1 Ru seed=0 30-epoch = 0.7613 (+0.049 lift vs 0.7123 baseline); Wf-131 P1 3-seed × 10-epoch mean = 0.7352 ± 0.0023; Krasnov ≥ 0.86 gate NOT YET HIT (gap -0.099). m19 LOMO Wf-131 P3 30-epoch × 3-seed full sweep DEFERRED (only fold=Ru seed=0 20-epoch partial log on disk; no test_auc surfaced).",
+    "p1_3_seed_x_10_epoch_mean": 0.7352,
+    "p1_3_seed_x_10_epoch_std": 0.0023,
+    "wf124_p3_30_epoch_seed0_anchor": 0.7613,
+    "wf131_p3_lomo_full_status": "DEFERRED"
+  },
+  "verdict": "MEASURED_PARTIAL_LIFT — Wf-124 P3 lifts Ru seed=0 test_auc from 0.7123 (single-task 5-epoch baseline) to 0.7613 (multi-task 30-epoch + Wasserstein + L2 guard) = +0.049 absolute lift. Wf-131 P1 3-seed × 10-epoch baseline gives mean = 0.7352 ± 0.0023. The Krasnov 2026 ≥ 0.86 gate is NOT YET HIT (gap remaining = -0.099). The mechanism is proven; full 5-seed × 50-epoch ship + deferred innovations (Hilbert-ASTR features, Catherine oversampling, warm-start) required to close the gate. Joint m1+m19 close-out at TODO/completed/131_m1_m19_joint_rescue.md.",
+  "honest_framing": "Data source: MetalCytoToxDB.csv Ru subset. Model: D-MPNN multi-task + Wasserstein pIC50 reg + L2 grad-norm guard (dmpnn_multitask_wasserstein). Protocol: scaffold split, 1 seed (seed=0) at 30 epochs + 3-seed × 10-epoch baseline. Krasnov 2026 baseline = 0.81 cite-only (paper-tier 0.86 gate NOT YET HIT); iMoLD cite-only. Single-seed 30-epoch lift is +0.049 vs single-task 5-epoch baseline; honest framing per party-twenty-spirit §3.5 (0 容忍 + 不掩盖). Cites TODO-140 (m5 SA 5-pocket), TODO-141 (exhaustiveness lift), TODO-131 (m1+m19 joint rescue), TODO-143 (clone+adapt), TODO-144 (Q2 paper roadmap).",
+  "cohort_filter": {
+    "exposure_time_threshold_default": 24.0,
+    "ic50_min_default": 0.01,
+    "ds_ru_rows_raw": 19135,
+    "ds_ru_rows_after_default_filter": 3668,
+    "v4_ru_rows_raw": 18987,
+    "v4_ru_model_cohort_rows": 3650,
+    "v4_ru_model_cohort_fraction": 0.1922,
+    "shipped_filter_spec": null,
+    "shipped_n_val_avg": null,
+    "measured_default_filter_rerun": {
+      "n_train": 2262,
+      "n_val": 394,
+      "n_test": 994,
+      "test_auc_10ep": 0.5727,
+      "test_auc_30ep": 0.5901
+    },
+    "measured_loose_filter_rerun": {
+      "n_train": 12471,
+      "n_val": 2166,
+      "n_test": 4350,
+      "test_auc_10ep": 0.7622
+    },
+    "evidence": "cohort recon; filter-impact reruns /tmp/wf_a2_dmpnn_A10.log + _B10.log + /tmp/wf_a2_dmpnn_A.log (30ep)"
+  },
+  "cohort_filter_note": "Shipped value records no row-level filter: pattern exposure|ic50|cutoff|filter|uM|24h matched 0 time(s) in this file pre-edit; n_train_avg=2509.0 / n_test_avg=796.0 match neither measured rerun, so the exact filter+split behind this value is NOT established (shipped_filter_spec=null, shipped_n_val_avg=null; not estimated). Counts above are for the code-default CytotoxFilter path (time_threshold=24.0, ic50_min=0.01; train_dmpnn_multitask_wasserstein.py:3449): ds Ru 3668/19135 kept; v4 Ru effective cohort 3650/18987 = 19.2%. Paper (Krasnov 2026, ChemRxiv v2 preprint): no exposure-time filter (24-144 h retained); 11,294-row deduped cancer-only set (from 18,895 raw); DOI-split 10-fold CV; class cut 10 uM. Measured reruns are 10-epoch (NOT the shipped 30-epoch values): default 2262/394/994 auc 0.5727 (extra 30ep measurement: 0.5901); loose 12471/2166/4350 auc 0.7622.",
+  "paper_protocol_measurement": {
+    "label": "m1_paper_protocol_doi_split_10cv",
+    "date_utc": "2026-10-04",
+    "status": "MEASURED",
+    "model": "dmpnn_multitask_wasserstein",
+    "protocol": "Krasnov-2026 criteria adopted (user decision 2026-10-04): drop+record filters; replicate the paper funnel; re-evaluate under DOI-split 10-fold CV (paper primary scheme)",
+    "cohort_spec": "IC50-present -> Ru -> measurement-level dedup (SMILES_Ligands, Cell_line, Time(h)) keep-first -> 76-name non-cancer cell-line exclusion (exact strip().upper() match); impl molmetal/data/cytotox.py::build_paper_cohort",
+    "cohort": {
+      "rows": 15799,
+      "complexes": 4793,
+      "cell_lines": 591,
+      "active_rate": 0.31229824672447626
+    },
+    "cohort_vs_paper": {
+      "ours": {
+        "rows": 15799,
+        "complexes": 4793,
+        "cell_lines": 591
+      },
+      "paper": {
+        "rows": 11294,
+        "complexes": 4399,
+        "cell_lines": 23
+      },
+      "delta_rows": 4505,
+      "delta_rows_pct": 39.9,
+      "cell_lines_ratio": 25.7
+    },
+    "split_scheme": "DOI-grouped 10-fold CV (all rows sharing a DOI in one fold; DOI-disjoint verified); fold indices written by molmetal/scripts/doi_split_cv.py",
+    "folds_run": 10,
+    "fold_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "per_fold_auc": [
+      0.8007282913165266,
+      0.7690851449275362,
+      0.8141491228070177,
+      0.7652349686247992,
+      0.7203378229638961,
+      0.742433362873455,
+      0.8174329418126586,
+      0.7042829021743849,
+      0.7723144734053825,
+      0.8114684331285619
+    ],
+    "mean_auc": 0.7717467464034218,
+    "std_auc": 0.037955584760391604,
+    "wall_per_fold_s": [
+      723.0,
+      661.3,
+      494.4,
+      643.9,
+      761.8,
+      526.2,
+      594.9,
+      719.7,
+      605.0,
+      665.8
+    ],
+    "model_config": {
+      "epochs": 10,
+      "seed": 0,
+      "batch_size": 64,
+      "hidden": 128,
+      "depth": 3,
+      "lr": 0.001,
+      "alpha": 0.5,
+      "w_w": 0.05,
+      "n_mc": 256,
+      "l2_guard": true,
+      "n_cv_folds": 10,
+      "device": "cuda:0",
+      "val": "none (fixed epochs, final-epoch weights -> no selection bias)"
+    },
+    "measured_on": {
+      "file": ".data/molmetal/MetalCytoToxDB.csv",
+      "md5": "f270dc907dbdfede953063a14f0825a7",
+      "release": "Zenodo v2 10.5281/zenodo.17106822 (byte-identical)",
+      "rows": 26801
+    },
+    "baseline_comparison": "paper Ru binary ROC-AUC 0.810 +/- 0.024 (LightGBM, DOI-split 10CV, 23 cell lines; ChemRxiv v2 preprint); ours 0.7717 +/- 0.0380 = 0.0383 below; 3/10 folds >= 0.81; model class differs (D-MPNN vs LightGBM); paper SMILES-split 0.894 not run",
+    "honest_negative": "cohort scope NOT replicated: rows +4505 (+39.9%), complexes +394 (+9.0%), cell lines 591 vs 23 (25.7x); 95% of the residual row gap (4282 of 4505) sits in the 568 cell lines outside the top-23-by-volume subset (11517 of 15799 rows, within 2% of paper 11294); unexplained, not tuned; numeric comparison is a cross-cohort estimate, not a reproduction",
+    "evidence": "/tmp/wf_m1_paper_cv/summary.json + folds/fold_*.json + run{,a,b,c,a2,b2,c2}.log; contaminated first pass excluded (15 resume-artifact fold-runs listed in summary.excluded_rows); all 10 accepted folds cold-start (cold=10/resumed=0)",
+    "shipped_record_untouched": "the shipped value 0.7613 (scaffold split; shipped_filter_spec=null; n_train_avg 2509 / n_test_avg 796 mismatch every measured rerun) remains above and untraceable, independent of this entry"
+  }
+}

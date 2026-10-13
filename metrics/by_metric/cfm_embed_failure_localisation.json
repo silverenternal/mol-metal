@@ -1,0 +1,49 @@
+{
+ "metric": "cfm_embed_failure_localisation",
+ "tag": "MEASURED",
+ "date": "2026-10-12",
+ "blocker": "BLK-C-L5 (and the premise of BLK-C-L3)",
+ "question": "Are the 18.8% of generated molecules that RDKit ETKDG cannot embed a VELOCITY-STAGE failure? A coordinate-space guidance term (the whole BLK-C-L3 family: EnFlow arXiv:2512.22597, PCFM ICLR 2026, FlowBack-Adjoint arXiv:2508.03619) can only help if the sampled COORDINATES are the defective object.",
+ "cohort": {
+  "path": "/home/hugo/codes/mol-metal/molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv",
+  "n": 66,
+  "provenance": "free generation via the ODE (cfm_free_generation_panel_seed0.json), checkpoint cfm_fullcorpus_2026_10_10 epoch 10"
+ },
+ "protocol": "ETKDGv3, useRandomCoords=True, maxAttempts=1, randomSeed=0xF00D -- the definition in molmetal/scripts/wf_blkc4_metric_validity_audit.py::embeddable, which reproduces the audit's recorded 54/66 = 0.8182 exactly.",
+ "THE_DECISIVE_TEST": {
+  "question": "Does EmbedMolecule read the model's coordinates, or only the molecular graph?",
+  "method": "Attach a deliberately absurd conformer (atom i placed at (999i, -999i, 0.5i)) to every molecule, then call EmbedMolecule with clearConfs=True. If ETKDG used the input coordinates, the garbage conformer would change the outcome.",
+  "result": "11/66 fail with the garbage conformer present; 11/66 fail without it. IDENTICAL.",
+  "conclusion": "MEASURED. RDKit's EmbedMolecule builds a conformer from the molecular graph and never reads the model's coordinates. The model's 3D output is DISCARDED by this metric.",
+  "why_this_is_the_load_bearing_fact": "It means the 18.8% embed-failure rate is a property of the decoded MOLECULAR GRAPH -- the bond head's output -- not of the velocity field's geometry. A force injected into the coordinate trajectory cannot change a number that never looks at the trajectory."
+ },
+ "localisation_of_the_failure": {
+  "method": "Delete every metal atom (Z in {Pt,Ru,Ir,Rh,Os,Re}) from each failing molecule and re-run the identical embed protocol.",
+  "result": "11 of the 12 failing molecules become embeddable once the metal is removed.",
+  "conclusion": "MEASURED. The failure is localised at the METAL COORDINATION CENTRE, not in the organic skeleton. Ring strain is not the driver: 3 of the 11 failures contain NO rings at all (minring=0), so ring geometry cannot be the common cause.",
+  "supporting_measurement": "metal_max_degree is NOT the discriminator: mean 4.87 in the 55 that embed vs 4.91 in the 11 that fail, and both cohorts are full of degree-6 centres (23 generated molecules have a degree-6 metal and 22 of them embed fine). So it is not simply 'too many bonds to the metal'.",
+  "why_this_matches_a_known_RDKit_limitation": "molmetal/scripts/check_3d_embed.py:156-160 already records it: 'RDKit has no ETKDG torsion parameters for transition metals (Pt, Ru, Ir), so the knowledge-term distance geometry fails.' The 12 failures are RDKit's metal-blindness, not malformed chemistry."
+ },
+ "denominator_reconciliation": {
+  "audit_json_records": "54/66 = 0.8182 (all parsed rows)",
+  "status_doc_records": "52/64 = 0.8125 (single-fragment rows only)",
+  "resolution": "MEASURED, both are correct over their own denominator: restricting the same 66 rows to n_fragments==1 gives exactly 52/64 = 0.8125. Same 54 successes, two denominators. This is NOT a discrepancy; the two documents simply never said which denominator they used.",
+  "recommended_citation": "state the denominator inline every time"
+ },
+ "the_second_unreproducible_number": {
+  "claim_in_the_audit_report": "'chemistry_validity_pass_rate 66/66 = 1.0000 generated, 635/636 = 0.9984 real, reproducing the recorded panel exactly.'",
+  "problem": "Neither string appears anywhere in metrics/by_metric/cfm_metric_validity_audit.json. The claim was TRUE but not ON DISK, which is this project's own rule (AGENTS.md 1).",
+  "resolution_2026_10_12": "Re-measured independently against molmetal/scripts/cfm_property_panel.py::_validate_molecule: generated 66/66, reconstructed 635/636. Both reproduce exactly. The numbers are now sourced to a named function."
+ },
+ "what_this_does_NOT_show": [
+  "It does NOT say the generated molecules are chemically fine. A graph that RDKit cannot embed is still a graph the downstream docking and property pipelines cannot use.",
+  "It does NOT clear the bond head. The 11/12 metal-removal result says the BOND HEAD is emitting metal coordination spheres that no conformer generator accepts -- which is a bond-head defect, and it is squarely on the macro-F1(TYPE) axis this line already loses."
+ ],
+ "verdict": {
+  "L5_is_a_velocity_stage_failure": false,
+  "L5_cause_localised_to": "the bond head's metal coordination output (graph-level), not the velocity field (coordinate-level)",
+  "L3_sampling_time_guidance_can_fix_L5": false,
+  "reasoning": "Every method in the cited guidance family acts on coordinates. The failure metric discards coordinates (MEASURED above). Injecting a force cannot change a graph, and the failure is in the graph.",
+  "what_L3_guidance_would_actually_act_on": "if a guidance term were built, its only path to the reported failures would be INDIRECT -- better coordinates feeding a better bond head. That is a real but unmeasured and indirect coupling, and it is not what the cited papers claim."
+ }
+}

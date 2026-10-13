@@ -1,0 +1,60 @@
+# Metric-18 protein-metal binding head — §5.11 YAML-only launch.
+#
+# WHY THIS CONFIG EXISTS (BLK-PA13)
+# ---------------------------------
+# train_protein_metal.py calls ScaffoldSplitter (molmetal/data/splits.py) for its
+# 70/10/20 Bemis-Murcko split.  Before 2026-10-12 that splitter was degenerate
+# (ScaffoldSplitter._scaffold_for swallowed a TypeError and returned "" for every
+# molecule, so the "scaffold" split was really molecule-level — see BLK-PA12), so
+# metrics/by_metric/metric18_protein_metal*.json describe a molecule-level split
+# while their protocol string says scaffold.  This config is the launch vehicle
+# for re-running that metric on the fixed splitter.
+#
+# The script had no --config support, so it could not be re-run under §5.11 at
+# all.  That gap is now closed (molmetal/scripts/train_protein_metal.py gained
+# --config + apply_yaml_overrides).
+#
+# Output paths deliberately do NOT clobber the published metric: the fixed-split
+# run writes to a *_scaffoldfix path, so the old number and the new one can be
+# compared side by side before anything is promoted (AGENTS.md §5.5 filesystem
+# truth + §5.6 atomic write).
+
+entry:
+  script: molmetal/scripts/train_protein_metal.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_protein_metal.py
+    --config {yaml_path}
+
+# Top-level scalar → --data dest.
+data: molmetal/data/protein_metal_binding.csv
+
+# Sections required by scripts/_pre_flight_check.sh (data/model/protocol/output/
+# directives). `model.scaffold_split` / `protocol.scaffold_split` are
+# _NON_TRAINER_PATHs (they do not shadow a dest); `directives.*` is a
+# _NON_TRAINER_SECTION.
+model:
+  scaffold_split: true
+protocol:
+  scaffold_split: true
+directives:
+  user_ok_required: true
+
+# --- run hyperparameters (leaf names bind to the script's argparse dests) -----
+train:
+  seeds: [0, 1, 2]
+  epochs: 50
+  batch_size: 32
+  lr: 1.0e-3
+  focal_gamma: 2.0
+  patience: 10
+
+device: cuda:0
+
+output:
+  base_dir: molmetal/reports/protein_metal_scaffoldfix
+  out_dir: molmetal/reports/protein_metal_scaffoldfix
+  log_master: molmetal/reports/protein_metal_scaffoldfix/master.log
+  training_summary: molmetal/reports/protein_metal_scaffoldfix/training_summary.json
+
+out_dir: molmetal/reports/protein_metal_scaffoldfix
+out_metric: molmetal/reports/protein_metal_scaffoldfix/metric18_protein_metal.json
+out_report: molmetal/reports/protein_metal_scaffoldfix/final.md

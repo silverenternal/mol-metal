@@ -1,0 +1,68 @@
+# PA15 (arm: desc) — FIXED physicochemical descriptor vector per metal, passed
+# through a shared learned linear projection and concatenated to the graph
+# readout.  AGENTS.md §5.11: launched from this YAML; the wrapper passes
+# --config (and --out-dir) and nothing else.
+#
+# WHY THIS IS THE ONLY ARM THAT CAN TRANSFER: the descriptor vector is a known
+# periodic-table constant, so the held-out metal enters the model as a real
+# input at test time (unlike a learnable token, whose held-out row is never
+# trained).  Descriptors come from molmetal/data/transition_metals_30.csv:
+# atomic_number, group, period, oxidation_state, d_count = group - oxidation,
+# and a coordination-geometry one-hot; standardised column-wise.  No labels.
+
+entry:
+  script: molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+    --config {yaml_path}
+
+data:
+  cohort_filter: "CytotoxFilter(time_threshold=24h, ic50_min=0.01uM, metal_whitelist=[m]) then collapse_duplicates (one row per unique ligand, majority label, ties -> ACTIVE)"
+  n_rows_expected: 9666
+  time_threshold: 24.0
+  ic50_min: 0.01
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 300
+  depth: 3
+  ffn_hidden: 300
+  ffn_layers: 1
+  dropout: 0.0
+  metal_mode: desc
+  metal_embed_dim: 16
+
+train:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  bf16: true
+
+protocol:
+  wave_decomposition: "LOMO 5 folds (Ru/Ir/Rh/Os/Re held out) x 5 seeds; ligand-disjoint train pool"
+  seeds: [42, 43, 44, 49, 123]
+
+mode: both
+n_splits: 5
+n_permutations: 0
+perm_seed: 42
+
+compute:
+  gpu: 0
+  device: cuda:0
+
+output:
+  base_dir: molmetal/reports/pa15_metalcond_lomo_desc
+  out_json: molmetal/reports/pa15_metalcond_lomo_desc/metrics.json
+  log_master: molmetal/reports/pa15_metalcond_lomo_desc/master.log
+
+metric_name: pa15_metalcond_lomo_desc
+
+directives:
+  user_ok_required: true
+
+honest_framing: >
+  MEASURED only.  Same cohort, same ligand-disjoint LOMO split, same seeds as
+  the none arm.  The descriptor vector is a public constant, so no label
+  information crosses the split boundary.  If the desc arm does not beat the
+  baseline, the cross-metal collapse is intrinsic to the metal axis and not
+  recoverable by conditioning — that is the finding.

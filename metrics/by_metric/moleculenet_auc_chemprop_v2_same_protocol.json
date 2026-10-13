@@ -1,0 +1,172 @@
+{
+  "metric": "moleculenet_auc_chemprop_v2_same_protocol",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "date": "2026-10-12",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_precious_metal_anticancer / MoleculeNet backbone control",
+  "source": "molmetal/scripts/train_chemprop_v2_moleculenet.py",
+  "model": "chemprop v2 AtomMessagePassing (d_h=300, depth=3) + BinaryClassificationFFN (1x300)",
+  "backbone": "chemprop_v2",
+  "featurization": "chemprop_v2 SimpleMoleculeMolGraphFeaturizer (atom+bond)",
+  "split": "scaffold (Bemis-Murcko, 70/10/20) via train_moleculenet._scaffold_split",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "epochs": 50,
+  "batch_size": 64,
+  "lr": 0.001,
+  "hidden": 300,
+  "depth": 3,
+  "class_weight": "off",
+  "tasks": {
+    "bbbp": {
+      "n_seeds_total": 5,
+      "n_seeds_valid": 5,
+      "test_auc_mean": 0.886110902094704,
+      "test_auc_std": 0.013472042481258844,
+      "per_seed_auc": [
+        0.8803262264800726,
+        0.8859360036054306,
+        0.8644105077928608,
+        0.8967360038756169,
+        0.9031457687195392
+      ],
+      "n_test": 390,
+      "n_train": 1415,
+      "chemprop_dmpnn_literature_baseline": 0.94,
+      "delta_vs_literature": -0.053889097905295946
+    },
+    "bace": {
+      "n_seeds_total": 5,
+      "n_seeds_valid": 5,
+      "test_auc_mean": 0.8458277317654259,
+      "test_auc_std": 0.01129951777340793,
+      "per_seed_auc": [
+        0.8348286933192594,
+        0.8329843885121296,
+        0.8451068376068376,
+        0.8631227641567053,
+        0.8530959752321982
+      ],
+      "n_test": 302,
+      "n_train": 1061,
+      "chemprop_dmpnn_literature_baseline": 0.876,
+      "delta_vs_literature": -0.030172268234574084
+    },
+    "hiv": {
+      "n_seeds_total": 5,
+      "n_seeds_valid": 5,
+      "test_auc_mean": 0.7806732168585615,
+      "test_auc_std": 0.022183121999737074,
+      "per_seed_auc": [
+        0.7724586950381248,
+        0.7641007475628566,
+        0.8019925998052579,
+        0.7536163874095781,
+        0.8111976544769898
+      ],
+      "n_test": 8296,
+      "n_train": 28753,
+      "chemprop_dmpnn_literature_baseline": 0.823,
+      "delta_vs_literature": -0.04232678314143845
+    },
+    "clintox": {
+      "n_seeds_total": 5,
+      "n_seeds_valid": 5,
+      "test_auc_mean": 0.8847160303228296,
+      "test_auc_std": 0.01934648795779461,
+      "per_seed_auc": [
+        0.8595141700404858,
+        0.9066393582522615,
+        0.8638383410918323,
+        0.9005376344086021,
+        0.8930506478209659
+      ],
+      "n_test": 298,
+      "n_train": 1038,
+      "chemprop_dmpnn_literature_baseline": 0.894,
+      "delta_vs_literature": -0.009283969677170378
+    }
+  },
+  "mean_auc": 0.8493319702603803,
+  "chemprop_dmpnn_literature_mean": 0.88325,
+  "comparison_baseline": "metrics/by_metric/moleculenet_auc_dmpnn_5seed.json",
+  "why": "BLK-PA17: the paper's chemprop column is the Wu-2018 best-of-search constant and the repo never reproduced it on its own split.  Measuring chemprop v2 on the same Bemis-Murcko scaffold split, seeds and epochs turns the comparison into a same-protocol one and separates 'we lose to chemprop' from 'the literature column is tuned'.",
+  "honest_framing_note": "MEASURED only.  The same-protocol chemprop value comes from the PA17 report on disk; the comparison block is arithmetic over on-disk metrics, no value is asserted.",
+  "config": {
+    "tasks": [
+      "bbbp",
+      "bace",
+      "hiv",
+      "clintox"
+    ],
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "device": "cuda:0",
+    "bf16_autocast": true
+  },
+  "comparison": {
+    "bbbp": {
+      "chemprop_v2_same_protocol_mean": 0.886110902094704,
+      "chemprop_v2_same_protocol_std": 0.013472042481258844,
+      "our_dmpnn_cap512_d4_mean": 0.8993874075867337,
+      "literature_chemprop_mean": 0.94,
+      "ours_minus_same_protocol": 0.013276505492029744,
+      "ours_minus_literature": -0.0406125924132662,
+      "same_protocol_minus_literature": -0.053889097905295946
+    },
+    "bace": {
+      "chemprop_v2_same_protocol_mean": 0.8458277317654259,
+      "chemprop_v2_same_protocol_std": 0.01129951777340793,
+      "our_dmpnn_cap512_d4_mean": 0.7932849346677089,
+      "literature_chemprop_mean": 0.876,
+      "ours_minus_same_protocol": -0.05254279709771703,
+      "ours_minus_literature": -0.08271506533229112,
+      "same_protocol_minus_literature": -0.030172268234574084
+    },
+    "hiv": {
+      "chemprop_v2_same_protocol_mean": 0.7806732168585615,
+      "chemprop_v2_same_protocol_std": 0.022183121999737074,
+      "our_dmpnn_cap512_d4_mean": 0.7888764152697952,
+      "literature_chemprop_mean": 0.823,
+      "ours_minus_same_protocol": 0.008203198411233736,
+      "ours_minus_literature": -0.034123584730204715,
+      "same_protocol_minus_literature": -0.04232678314143845
+    },
+    "clintox": {
+      "chemprop_v2_same_protocol_mean": 0.8847160303228296,
+      "chemprop_v2_same_protocol_std": 0.01934648795779461,
+      "our_dmpnn_cap512_d4_mean": 0.8303363501433222,
+      "literature_chemprop_mean": 0.894,
+      "ours_minus_same_protocol": -0.05437968017950745,
+      "ours_minus_literature": -0.06366364985667783,
+      "same_protocol_minus_literature": -0.009283969677170378
+    }
+  },
+  "mean_chemprop_v2_same_protocol": 0.8493319702603803,
+  "mean_our_dmpnn_cap512_d4": 0.82797127691689,
+  "mean_literature_chemprop": 0.88325,
+  "ours_minus_same_protocol_mean": -0.021360693343490333,
+  "ours_minus_literature_mean": -0.05527872308310999,
+  "same_protocol_minus_literature_mean": -0.03391802973961966,
+  "tasks_we_beat_same_protocol_chemprop": [
+    "bbbp",
+    "hiv"
+  ],
+  "verdict": "chemprop v2 same-protocol mean 0.8493 is -0.0339 BELOW the literature constant 0.8832 — the quoted reference was best-of-search.  Our D-MPNN (512/4) mean 0.8280 is -0.0214 against same-protocol chemprop (winning 2/4: ['bbbp', 'hiv']) but -0.0553 against the literature column.",
+  "caveats": [
+    "chemprop v2 here uses its own default unweighted BCE (class_weight=off) and fixed 50 epochs with no early stopping, matching this repo's fixed-epoch protocol; a tuned chemprop run could score higher.",
+    "Both arms use the historical varying-per-seed scaffold split (split_seed unset), so the 5-seed std mixes split and seed variance.",
+    "The literature constant is cited, not reproduced; its original split is unknown."
+  ]
+}

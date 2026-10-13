@@ -1,0 +1,84 @@
+# configs/cfm_aromatic_bias_sweep_2026_10_12.yaml — aromatic logit-offset sweep.
+#
+# Consumed by: molmetal/scripts/wf_blkc_l3_guidance_probe.py
+# Invoke with:  .venv/bin/python molmetal/scripts/wf_blkc_l3_guidance_probe.py \
+#                  --config configs/cfm_aromatic_bias_sweep_2026_10_12.yaml \
+#                  --out <per-arm json>
+#
+# WHY THIS EXISTS (BLK-C-M4, measured premise — no new training)
+# ------------------------------------------------------------
+# On real tmQM geometry, measured over 798 complexes / 15,851 truth-aromatic
+# bonds (Wiberg BO 1.3-1.7), the bond head:
+#
+#   * DOES emit the aromatic class       precision 0.8889
+#   * loses 70.7% of truth-aromatic bonds to BOND_SINGLE (11,209 / 15,851)
+#   * has single-bond recall 0.966
+#
+# So this is a class-4 vs class-1 RANKING defect, not a class the head never
+# emits, and not a sampler problem: per-complex aromatic fraction is
+# real_pred 0.0513 vs real_truth 0.1422 (a 9.1pp head gap), while GENERATED
+# geometry gives 0.0% (the sampler gap is larger and is the OTHER blocker).
+#
+# The offset attacks the RANKING half. It cannot close the generation gap —
+# generated clouds contain no aromatic arrangements for the head to rank —
+# and this file does not pretend otherwise. Read it as: does the head know
+# more about aromatics than its default operating point exposes?
+#
+# THE GRID, and why these four numbers
+# ------------------------------------
+# The grid is NOT invented. It is anchored on a number already measured:
+# aromatic recall is 0.293 at offset 0.0, so the head emits aromatic for
+# 29.3% of truth-aromatic bonds. The question is what recall we would trade
+# for, and precision is the cost side — currently 0.8889, which is the
+# budget being spent.
+#
+#   0.0   the control. MUST be present; without it every other arm is
+#         uninterpretable. Reproduces the existing decode exactly (the
+#         offset is None, so the path is byte-identical to pre-2026-10-12).
+#   0.5   a small nudge. If recall barely moves, the head is confidently
+#         wrong rather than marginally wrong, and NO offset will help —
+#         which is itself the answer, and it saves the retrain.
+#   1.5   the plausible operating point. Doubled from 0.5 only after 0.5 is
+#         read as under-shooting, not on a guess about the logit scale.
+#   3.0   the precision floor. Aromatic precision is 0.8889 and the whole
+#         cost of this lever is false-positive aromatic bonds, which then
+#         have to survive the valence cap and RDKit sanitisation. This arm
+#         exists to find where that starts failing.
+#
+# Each arm is one variable against the same control. The guidance strength is
+# 0.0 on every arm: guidance and the aromatic offset are SEPARATE levers
+# (sampling-time force vs decode-time decision rule), and running both at
+# once would make a result unattributable. The guidance sweep is
+# configs/cfm_l3_guidance_sweep_2026_10_12.yaml and it stays separate.
+#
+# NO HYPERPARAMETER IS GUESSED. The checkpoint, the cloud count, the solver,
+# the step count and the seed are all carried over unchanged from
+# configs/cfm_l3_guidance_sweep_2026_10_12.yaml so the two sweeps are
+# comparable and the only difference is the offset.
+
+model:
+  ckpt: molmetal/reports/cfm_patience10_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt
+
+eval:
+  n_clouds: 64
+  n_steps: 50
+  method: midpoint
+  seed: 1234
+  skip_decode: false
+  compare_real: true
+  # THE VARIABLE. One offset per arm; the launcher sets this per arm.
+  bond_aromatic_logit_bias: 0.0
+
+output:
+  out: molmetal/reports/cfm_aromatic_bias_sweep_seed0/arm_bias0.0.json
+
+sweep:
+  biases: [0.0, 0.5, 1.5, 3.0]
+  arm_prefix: bias
+
+entry:
+  script: molmetal/scripts/wf_blkc_l3_guidance_probe.py
+  command_template: >-
+    {python} {script} --config {yaml_path}
+  # Guidance stays 0.0 on every arm. This file sweeps the DECODE-TIME decision
+  # rule only; mixing it with the sampling-time force would confound the two.

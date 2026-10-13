@@ -1,0 +1,63 @@
+# PA17 — chemprop v2 (official D-MPNN) on MoleculeNet under this repo's split.
+#
+# AGENTS.md §5.11: launched from this YAML; the wrapper passes --config and
+# --out-dir and nothing else.  Every knob resolves to a dest of
+# train_chemprop_v2_moleculenet.py's own parser.
+#
+# WHY (BLK-PA17)
+# --------------
+# paper_a Table 4's "chemprop D-MPNN" column is the Wu-2018 literature
+# best-of-search constant (bbbp 0.940 / bace 0.876 / hiv 0.823 / clintox 0.894)
+# and the repo's own reports say the split match is unproven.  This run measures
+# chemprop v2 on the SAME Bemis-Murcko scaffold split, same seeds, same epochs
+# and batch size as the canonical D-MPNN MoleculeNet metric, so the comparison
+# becomes same-protocol and the only remaining difference is the model class.
+#
+# class_weight defaults to chemprop's own 'off' (unweighted BCE).
+
+entry:
+  script: molmetal/scripts/train_chemprop_v2_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_chemprop_v2_moleculenet.py
+    --config {yaml_path}
+
+data:
+  tasks: [bbbp, bace, hiv, clintox]
+
+model:
+  hidden: 300
+  depth: 3
+  ffn_hidden: 300
+  ffn_layers: 1
+  dropout: 0.0
+
+train:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  # QUOTED on purpose: a bare `off` is YAML boolean False, which the argparse
+  # choices=("on","off") dest would receive as a bool and reject/misread.
+  class_weight: "off"
+  bf16: true
+
+protocol:
+  wave_decomposition: "4 tasks x 5 seeds; Bemis-Murcko scaffold split via train_moleculenet._scaffold_split (split seeded by the training seed, matching the canonical metric)"
+  seeds: [0, 1, 2, 3, 4]
+
+compute:
+  device: cuda:0
+
+output:
+  base_dir: molmetal/reports/pa17_chemprop_v2_moleculenet
+  out_json: molmetal/reports/pa17_chemprop_v2_moleculenet/metrics.json
+  log_master: molmetal/reports/pa17_chemprop_v2_moleculenet/master.log
+
+metric_name: pa17_chemprop_v2_moleculenet
+
+directives:
+  user_ok_required: true
+
+honest_framing: >
+  MEASURED only.  Same split / seeds / epochs / batch as the canonical D-MPNN
+  MoleculeNet metric.  If the same-protocol chemprop value is close to the
+  literature constant, the gap stands; if it is lower, the literature column was
+  best-of-search and the earlier comparison was never like-for-like.

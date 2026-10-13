@@ -1,0 +1,135 @@
+{
+ "metric": "l3_metalcond_lomo",
+ "status": "MEASURED",
+ "MEASURED_vs_PROJECTED": "MEASURED",
+ "unit": "ROC-AUC (0-1, higher better)",
+ "scope": "tier2_precious_metal_anticancer",
+ "source": "molmetal/scripts/l3_metalcond_analysis.py",
+ "description": "L3 pull-up: does a stronger readout-level conditioning (FiLM) or a small labelled support set from the held-out metal (K-shot adaptation) recover Paper A's cross-metal collapse?",
+ "protocol": {
+  "cohort": "MetalCytotoxDataset + CytotoxFilter(24h, ic50>=0.01uM) + collapse_duplicates, per metal",
+  "split": "leave-one-metal-out, ligand-disjoint",
+  "seeds": [
+   42,
+   43,
+   44,
+   49,
+   123
+  ],
+  "metals": [
+   "Ru",
+   "Ir",
+   "Rh",
+   "Os",
+   "Re"
+  ],
+  "backbone": "chemprop v2 AtomMessagePassing d_h=300 depth=3",
+  "k_shot": 10,
+  "k_shot_ft_epochs": 20,
+  "significance": "paired bootstrap over 25 (metal, seed) cells, 10000 resamples, seed 42; Holm-Bonferroni over the 2 arms"
+ },
+ "arms": {
+  "none_baseline": {
+   "report": "molmetal/reports/pa15_metalcond_lomo_none/metrics.json",
+   "cross_mean_across_metals": 0.5693038349313381,
+   "per_metal_mean": {
+    "Ru": 0.5666013367172033,
+    "Ir": 0.49085390014717534,
+    "Rh": 0.5051903114186851,
+    "Os": 0.5692307692307692,
+    "Re": 0.714642857142857
+   }
+  },
+  "film": {
+   "report": "molmetal/reports/l3_metalcond_film/metrics.json",
+   "cross_mean_across_metals": 0.5275022006856573,
+   "per_metal_mean": {
+    "Ru": 0.5485563188455865,
+    "Ir": 0.5332729536963658,
+    "Rh": 0.5117647058823529,
+    "Os": 0.5036789297658864,
+    "Re": 0.5402380952380953
+   },
+   "paired_delta_vs_none": {
+    "n_cells": 25,
+    "n_boot": 10000,
+    "mean_delta": -0.04180163424568065,
+    "delta_std": 0.11555262322149723,
+    "ci95": [
+     -0.0911960969862881,
+     -0.0029828864625193576
+    ],
+    "ci_excludes_zero": true,
+    "p_one_sided_greater": 0.9838,
+    "p_one_sided_less": 0.016199999999999992
+   },
+   "per_metal_delta": {
+    "Ru": -0.018045017871616675,
+    "Ir": 0.042419053549190476,
+    "Rh": 0.006574394463667843,
+    "Os": -0.06555183946488294,
+    "Re": -0.1744047619047619
+   }
+  },
+  "kshot": {
+   "report": "molmetal/reports/l3_metalcond_kshot/metrics.json",
+   "k": 10,
+   "zero_shot_query_mean": 0.5729625210105589,
+   "kshot_query_mean": 0.6088334575836906,
+   "per_metal_zero_shot": {
+    "Ru": 0.5575486486486486,
+    "Ir": 0.4953027830459136,
+    "Rh": 0.49100529100529106,
+    "Os": 0.5980392156862745,
+    "Re": 0.7229166666666667
+   },
+   "per_metal_kshot": {
+    "Ru": 0.548895945945946,
+    "Ir": 0.5696349549390611,
+    "Rh": 0.6465608465608466,
+    "Os": 0.48692810457516345,
+    "Re": 0.792147435897436
+   },
+   "paired_delta_vs_zeroshot": {
+    "n_cells": 25,
+    "n_boot": 10000,
+    "mean_delta": 0.035870936573131715,
+    "delta_std": 0.11996693530819315,
+    "ci95": [
+     -0.010869921142967257,
+     0.08151816987899485
+    ],
+    "ci_excludes_zero": false,
+    "p_one_sided_greater": 0.0674,
+    "p_one_sided_less": 0.9326
+   },
+   "per_metal_delta": {
+    "Ru": -0.008652702702702686,
+    "Ir": 0.07433217189314753,
+    "Rh": 0.15555555555555556,
+    "Os": -0.11111111111111108,
+    "Re": 0.06923076923076925
+   }
+  }
+ },
+ "holm": {
+  "correction": "Holm-Bonferroni (family = 2 arms vs their paired baseline)",
+  "n_family": 2,
+  "p_one_sided_raw": {
+   "film_vs_none": 0.9838,
+   "kshot_vs_zeroshot": 0.0674
+  },
+  "p_one_sided_holm": {
+   "kshot_vs_zeroshot": 0.1348,
+   "film_vs_none": 0.9838
+  },
+  "significant_after_holm_0.05": []
+ },
+ "verdict": {
+  "film_recovers_collapse": false,
+  "kshot_recovers_collapse": false,
+  "contributes_method": false,
+  "summary": "film delta -0.0418 (95% CI -0.0912,-0.0030, Holm p=0.9838); k-shot delta +0.0359 (95% CI -0.0109,+0.0815, Holm p=0.1348)"
+ },
+ "honest_framing_note": "MEASURED only.  The k-shot arm is an ADAPTATION result (it uses held-out-metal labels); the zero-shot LOMO column remains the paper's Table-1 cross number.  Every value traces to the arm reports on disk."
+}

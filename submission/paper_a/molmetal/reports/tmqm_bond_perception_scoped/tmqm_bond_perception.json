@@ -1,0 +1,69 @@
+{
+  "task": "tmQM bond perception (3D geometry -> molecular graph)",
+  "protocol": {
+    "ground_truth": "tmQM_X{1,2,3}.BO.gz Wiberg bond orders (same atom indexing as the .xyz.gz geometries)",
+    "bo_threshold": 0.3,
+    "bond_type": "nearest of single(1.0)/double(2.0)/triple(3.0) by BO",
+    "metrics": [
+      "success_rate",
+      "exact_type_rate_of_successes",
+      "f1_exist_of_successes",
+      "macro_f1_type_of_successes"
+    ],
+    "note": "each baseline is scored on the bond subset it can address; the subset is named per row. No published tmQM bond-perception number exists to compare against (2026-10-04 literature sweep)."
+  },
+  "metals": [
+    "Pt",
+    "Ru",
+    "Ir",
+    "Rh",
+    "Os",
+    "Re"
+  ],
+  "n_samples_per_metal": 150,
+  "heavy_atom_scope": true,
+  "cfm": {
+    "path": "/tmp/cfm_probe/p0.5/ck/cfm_yuelbond_wasserstein_seed0.pt",
+    "epoch": 3,
+    "best_epoch": 0,
+    "n_train": 256,
+    "n_val": 192,
+    "epochs": 4,
+    "hidden_dim": 128,
+    "use_egnn_velocity": true,
+    "bond_class_weight_power": 0.5,
+    "bond_decision": "argmax",
+    "dataset": "tmqm",
+    "decision": "threshold",
+    "decision_threshold": 0.5
+  },
+  "results": {
+    "cfm": {
+      "n_complexes": 900,
+      "n_success": 900,
+      "success_rate": 1.0,
+      "exact_type_rate_of_successes": 0.0011111111111111111,
+      "f1_exist_of_successes": 0.6117749613862464,
+      "macro_f1_type_of_successes": 0.28005665560021303,
+      "scope": "non-hydrogen pairs"
+    },
+    "rdkit_stripped": {
+      "n_complexes": 900,
+      "n_success": 273,
+      "success_rate": 0.30333333333333334,
+      "exact_type_rate_of_successes": 0.02197802197802198,
+      "f1_exist_of_successes": 0.9997852237672075,
+      "macro_f1_type_of_successes": 0.2809488328407125,
+      "scope": "non-metal AND non-hydrogen pairs"
+    },
+    "openbabel": {
+      "n_complexes": 900,
+      "n_success": 900,
+      "success_rate": 1.0,
+      "exact_type_rate_of_successes": 0.03,
+      "f1_exist_of_successes": 0.9771082656114081,
+      "macro_f1_type_of_successes": 0.5050830737078369,
+      "scope": "non-hydrogen pairs"
+    }
+  }
+}

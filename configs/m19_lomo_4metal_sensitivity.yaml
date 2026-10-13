@@ -1,0 +1,135 @@
+# BLK-D2 Step 3 — m19 LOMO drop-Rh sensitivity analysis (2026-10-09)
+#
+# WHAT THIS RUN IS FOR
+#   BLK-D2's headline is 0.5575 +/- 0.0949 (5 metals x 5 seeds, real-only),
+#   and the recorded root cause blames the Rh fold: "Rh-fold has n_test=108,
+#   smallest fold, AUC resolution ~0.06 dominates overall std". This run tests
+#   that attribution by removing Rh from the cohort entirely.
+#
+#   It is NOT redundant with the existing 5-metal run, even though per-fold AUCs
+#   for all five folds are already on disk. LOMO trains on the remaining metals:
+#   the 5-metal run trains each fold on 4 metals, this one trains on 3. Different
+#   training pool = a different model, so the arms have to be run, not derived.
+#
+# WHAT THE ALREADY-COMPUTED NUMBERS SAY (offline, from the 5-metal run on disk)
+#   4-metal mean of the EXISTING fold means = 0.6016
+#   5-metal mean (reported headline)       = 0.5575
+#   Rh's contribution                      = -0.0441
+#
+#   BLK-D2's honest_negative_fallback says: "If drop-Rh-folds sensitivity
+#   analysis shows 4-metal mean >=0.65 but 5-metal stays <=0.60, frame as
+#   Rh-fold dominated." The offline number is 0.6016, i.e. BELOW 0.65, so that
+#   fallback is NOT satisfied by dropping Rh alone. Carried here so the verdict
+#   is read against the bar it was written to clear.
+#
+# A CONTRADICTION WORTH READING BEFORE THE RESULT
+#   The "small-n fold dominates the variance" story does not survive the fold
+#   table on disk (molmetal/reports/dmpnn_clean5_lomo/metrics.json):
+#
+#       fold   n_test   auc_resolution   mean_auc
+#       Ru     3668     0.0108           0.5972
+#       Ir     1242     0.0164           0.5975
+#       Os       87     0.0634           0.5831     <- SMALLER than Rh, and fine
+#       Rh      108     0.0613           0.3812
+#       Re      166     0.0607           0.6288
+#
+#   Os has FEWER test rows than Rh (87 vs 108) and worse AUC resolution
+#   (0.0634 vs 0.0613), yet scores 0.5831 while Rh scores 0.3812. Small-n cannot
+#   explain Rh. Whatever drives Rh is specific to the Rh fold.
+#
+#   Per memory f3-alpha-label-inverted, this repo has precedent for a label-side
+#   defect presenting exactly like a weak fold. Not yet established — this run
+#   does not test it. If Rh stays an outlier here, that is the next question, not
+#   "more seeds".
+#
+# PROTOCOL — replicated verbatim from scripts/launch_dmpnn_clean5_lomo.sh, which
+# produced the 0.5575 baseline. Only `metals` differs (Rh dropped), because the
+# point is to change exactly one variable.
+#
+# AGENTS.md §5.11: this config is the ONLY launch surface. The launcher passes
+# --config and nothing else.
+#
+# Honest framing (§5.2): this is a SENSITIVITY ANALYSIS, not a lift attempt.
+# Whatever it returns is a re-attribution of the existing 0.5575, not a new
+# headline number, and it must not be quoted as one.
+
+data:
+  # MUST be a YAML list, not a space-joined string. `--metals` is nargs="+",
+  # so the 5-metal launcher passed four separate tokens; the trainer then
+  # received a Python list. Writing `metals: Ru Ir Os Re` here delivers ONE
+  # string instead, the trainer looks for a metal literally named
+  # "Ru Ir Os Re", matches no rows, and every fold produces an EMPTY test set
+  # -> NaN for all 5 seeds. That is not hypothetical: the first launch of this
+  # config died exactly that way (molmetal/reports/m19_lomo_4metal_sensitivity/
+  # R/per_seed_metrics_seed{0..4}.json all carry test_auc=nan).
+  #
+  # This also slipped past BOTH §5.11 gates: scripts/_config_binding_gate.py
+  # checks that the key resolves to a dest (it does), and
+  # p3_wf343c4_hyperparams_config_complete checks the four core hyperparameters
+  # (this is not one of them). Neither checks that a LIST-valued dest receives
+  # a list. See the note in AGENTS.md §5.11 about nargs round-trips.
+  metals:
+    - Ru
+    - Ir
+    - Os
+    - Re                      # Rh dropped — the single variable under test
+  rh_oversample: 0           # real-only protocol; the 0.5575 headline arm
+
+model:
+  # Declared EXPLICITLY rather than left to argparse, because the point of this
+  # run is a one-variable comparison and the default is not what it looks like:
+  # train_metal_lomo_wasserstein.py:1735 sets `default=MT_HIDDEN`, and
+  # MT_HIDDEN = DMPNN_HIDDEN = 128 (molmetal/baselines/dmpnn_multitask.py:79,
+  # with the source comment "= 128 for backward compat"). The 5-metal launcher
+  # never passed --hidden, so it ran at 128 — not the 300 that reads as the
+  # project's D-MPNN protocol width. An earlier draft of this file said 300,
+  # which would have made this a two-variable change and invalidated the arm.
+  hidden: 128
+  depth: 3
+  alpha: 0.5
+
+train:
+  # Declared explicitly for the same reason as `lr` in the cfm_bond_head_* yamls:
+  # launch_dmpnn_clean5_lomo.sh never passed --batch-size or --lr, so the 0.5575
+  # arm ran at the parser defaults (batch_size=64, lr=0.001, read off
+  # train_metal_lomo_wasserstein.py with no argv). Stating them keeps the arm
+  # reproducible and satisfies the §5.1 hyperparam contract. Values verified
+  # against a namespace parse, not assumed.
+  batch_size: 64
+  lr: 0.001
+  epochs: 30
+  seeds: [0, 1, 2, 3, 4]
+  # DECLARED BUT INERT — kept verbatim to match the 0.5575 arm. The trainer
+  # warns: "--wasserstein-weight 0.05 is IGNORED unless --wasserstein-real is
+  # also passed. Wf-C3 (2026-10-05) measured the pre-Wf-E1 W2 term as detached,
+  # i.e. zero gradient for 2.4x wall-time; Wf-E1 now switches the term off by
+  # default." launch_dmpnn_clean5_lomo.sh never passed --wasserstein-real, so
+  # the headline 0.5575 was measured with W2 OFF. `wasserstein_real` is therefore
+  # deliberately NOT set here: turning it on would change a second variable and
+  # make this a W2 test rather than a drop-Rh test. (Consistent with memory
+  # m19-centering-run-has-w2-off and w2-wasserstein-is-not-load-bearing.)
+  wasserstein_weight: 0.05
+  model_select: last_epoch
+
+compute:
+  device: cuda:0
+
+output:
+  base_dir: molmetal/reports/m19_lomo_4metal_sensitivity
+  # NOT metrics/by_metric/metal_lomo_auc_wasserstein.json — the trainer exits 3
+  # on that path by design, and a sensitivity arm must not overwrite the
+  # 5-metal headline regardless.
+  out_dir: molmetal/reports/m19_lomo_4metal_sensitivity
+  out_metric: molmetal/reports/m19_lomo_4metal_sensitivity/metrics.json
+
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+
+honest_framing:
+  purpose: BLK-D2 Step 3 — attribute the m19 0.5575 std to the Rh fold or refute it
+  not_a_lift: This run re-attributes an EXISTING number. It is not a new headline.
+  bar_to_clear: BLK-D2 fallback needs 4-metal mean >= 0.65; offline estimate 0.6016
+  do_not_claim:
+  - That dropping Rh fixes the model (Os is smaller and scores 0.5831)
+  - Parity with the Krasnov 2026 0.86 baseline (per memory two-gate-conventions-lomo)

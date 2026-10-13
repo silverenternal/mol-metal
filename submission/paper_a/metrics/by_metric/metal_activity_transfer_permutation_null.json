@@ -1,0 +1,407 @@
+{
+  "metric": "metal_activity_transfer",
+  "description": "Anticancer cytotoxicity AUC for noble-metal complexes, measured BOTH within-metal (5-fold CV, the setting Krasnov et al. 2026 report) and cross-metal (leave-one-metal-out, which the comparison set does not publish), on the SAME deduplicated cohort with the SAME scorer. The difference is the transfer penalty and is the actual finding.",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/metal_activity_transfer_probe.py",
+  "model": "morgan_fp(radius=2, 2048bit) + xgboost",
+  "data_source": "MetalCytoToxDB (Krasnov et al., J. Med. Chem. 2026, 69(8), 8838)",
+  "seed": 42,
+  "dedup_rule": "one row per unique ligand; label = majority; ties -> ACTIVE (sum*2>=n; anti-conservative direction; see tie_sensitivity field)",
+  "leakage_rule": "a ligand appearing in ANY other metal is dropped from the LOMO train pool",
+  "krasnov_within_metal_auc": {
+    "Ru": 0.81,
+    "Ir": 0.73,
+    "Rh": null,
+    "Os": null,
+    "Re": null
+  },
+  "duplication": {
+    "Ru": {
+      "n_rows_raw": 3668,
+      "n_unique": 1255,
+      "duplication_rate": 0.6578516902944385,
+      "pos_rate_raw": 0.2628135223555071,
+      "pos_rate_dedup": 0.25737051792828686
+    },
+    "Ir": {
+      "n_rows_raw": 1242,
+      "n_unique": 534,
+      "duplication_rate": 0.5700483091787439,
+      "pos_rate_raw": 0.44847020933977455,
+      "pos_rate_dedup": 0.45318352059925093
+    },
+    "Rh": {
+      "n_rows_raw": 108,
+      "n_unique": 51,
+      "duplication_rate": 0.5277777777777778,
+      "pos_rate_raw": 0.32407407407407407,
+      "pos_rate_dedup": 0.3333333333333333
+    },
+    "Os": {
+      "n_rows_raw": 87,
+      "n_unique": 36,
+      "duplication_rate": 0.5862068965517242,
+      "pos_rate_raw": 0.4367816091954023,
+      "pos_rate_dedup": 0.3611111111111111
+    },
+    "Re": {
+      "n_rows_raw": 166,
+      "n_unique": 74,
+      "duplication_rate": 0.5542168674698795,
+      "pos_rate_raw": 0.16265060240963855,
+      "pos_rate_dedup": 0.1891891891891892
+    }
+  },
+  "within_metal_cv": {
+    "Ru": {
+      "status": "MEASURED",
+      "n_unique": 1255,
+      "n_splits": 5,
+      "roc_auc": 0.8362931423415294,
+      "roc_auc_fold_std": 0.028182640499339558,
+      "pr_auc": 0.6880036594343826,
+      "pos_rate": 0.25737051792828686,
+      "krasnov_reported_auc": 0.81
+    },
+    "Ir": {
+      "status": "MEASURED",
+      "n_unique": 534,
+      "n_splits": 5,
+      "roc_auc": 0.8294775551950762,
+      "roc_auc_fold_std": 0.0326972221489096,
+      "pr_auc": 0.8221400662671418,
+      "pos_rate": 0.45318352059925093,
+      "krasnov_reported_auc": 0.73
+    },
+    "Rh": {
+      "status": "MEASURED",
+      "n_unique": 51,
+      "n_splits": 5,
+      "roc_auc": 0.7380952380952381,
+      "roc_auc_fold_std": 0.10936841978910337,
+      "pr_auc": 0.6417063492063493,
+      "pos_rate": 0.3333333333333333,
+      "krasnov_reported_auc": null
+    },
+    "Os": {
+      "status": "MEASURED",
+      "n_unique": 36,
+      "n_splits": 5,
+      "roc_auc": 0.49000000000000005,
+      "roc_auc_fold_std": 0.1854723699099141,
+      "pr_auc": 0.516031746031746,
+      "pos_rate": 0.3611111111111111,
+      "krasnov_reported_auc": null
+    },
+    "Re": {
+      "status": "MEASURED",
+      "n_unique": 74,
+      "n_splits": 5,
+      "roc_auc": 0.9277777777777777,
+      "roc_auc_fold_std": 0.08888888888888893,
+      "pr_auc": 0.8774603174603175,
+      "pos_rate": 0.1891891891891892,
+      "krasnov_reported_auc": null
+    }
+  },
+  "cross_metal_lomo_dedup": {
+    "status": "MEASURED",
+    "per_fold": [
+      {
+        "metal": "Ru",
+        "status": "MEASURED",
+        "roc_auc": 0.6179377217342776,
+        "pr_auc": 0.3297850839546851,
+        "n_train_unique": 678,
+        "n_test_unique": 1255,
+        "n_train_rows_dropped_as_leaked": 17,
+        "pos_rate_test": 0.25737051792828686,
+        "resolvable": true
+      },
+      {
+        "metal": "Ir",
+        "status": "MEASURED",
+        "roc_auc": 0.5275953809577719,
+        "pr_auc": 0.49676155983167836,
+        "n_train_unique": 1391,
+        "n_test_unique": 534,
+        "n_train_rows_dropped_as_leaked": 25,
+        "pos_rate_test": 0.45318352059925093,
+        "resolvable": true
+      },
+      {
+        "metal": "Rh",
+        "status": "MEASURED",
+        "roc_auc": 0.5190311418685121,
+        "pr_auc": 0.5022274348875033,
+        "n_train_unique": 1874,
+        "n_test_unique": 51,
+        "n_train_rows_dropped_as_leaked": 25,
+        "pos_rate_test": 0.3333333333333333,
+        "resolvable": false
+      },
+      {
+        "metal": "Os",
+        "status": "MEASURED",
+        "roc_auc": 0.49498327759197325,
+        "pr_auc": 0.4467204665257806,
+        "n_train_unique": 1897,
+        "n_test_unique": 36,
+        "n_train_rows_dropped_as_leaked": 17,
+        "pos_rate_test": 0.3611111111111111,
+        "resolvable": false
+      },
+      {
+        "metal": "Re",
+        "status": "MEASURED",
+        "roc_auc": 0.44285714285714284,
+        "pr_auc": 0.18606661560400944,
+        "n_train_unique": 1876,
+        "n_test_unique": 74,
+        "n_train_rows_dropped_as_leaked": 0,
+        "pos_rate_test": 0.1891891891891892,
+        "resolvable": false
+      }
+    ],
+    "pooled": {
+      "n": 1950,
+      "base_rate": 0.3123076923076923,
+      "roc_auc": 0.5996070623471688,
+      "pr_auc": 0.3870587565616026,
+      "n_tied_scores": 40,
+      "enrichment": {
+        "top_1pct": {
+          "k": 20,
+          "n_hits": 9,
+          "hit_rate": 0.45,
+          "base_rate": 0.3123076923076923,
+          "lift": 1.4408866995073892,
+          "hit_rate_ci95": [
+            0.23196376447938752,
+            0.6680362355206125
+          ]
+        },
+        "top_5pct": {
+          "k": 98,
+          "n_hits": 46,
+          "hit_rate": 0.46938775510204084,
+          "base_rate": 0.3123076923076923,
+          "lift": 1.5029657183070275,
+          "hit_rate_ci95": [
+            0.3705785181546661,
+            0.5681969920494155
+          ]
+        },
+        "top_10pct": {
+          "k": 195,
+          "n_hits": 83,
+          "hit_rate": 0.4256410256410256,
+          "base_rate": 0.3123076923076923,
+          "lift": 1.3628899835796389,
+          "hit_rate_ci95": [
+            0.35624218555433756,
+            0.4950398657277137
+          ]
+        },
+        "top_25pct": {
+          "k": 488,
+          "n_hits": 203,
+          "hit_rate": 0.41598360655737704,
+          "base_rate": 0.3123076923076923,
+          "lift": 1.3319672131147542,
+          "hit_rate_ci95": [
+            0.3722518635465032,
+            0.4597153495682509
+          ]
+        },
+        "top_50pct": {
+          "k": 975,
+          "n_hits": 363,
+          "hit_rate": 0.3723076923076923,
+          "base_rate": 0.3123076923076923,
+          "lift": 1.1921182266009853,
+          "hit_rate_ci95": [
+            0.34196331908239647,
+            0.4026520655329881
+          ]
+        }
+      },
+      "peak_enrichment_k": "top_5pct"
+    }
+  },
+  "permutation_null": {
+    "Ru": {
+      "status": "MEASURED",
+      "n_perm": 1000,
+      "n_test": 1255,
+      "observed_auc": 0.6179377217342776,
+      "null_mean": 0.4998115690482201,
+      "null_sd": 0.018613270827734667,
+      "null_pct": {
+        "2.5": 0.4622511095018536,
+        "5": 0.4678085013088136,
+        "50": 0.5000323881529118,
+        "95": 0.5298881196933256,
+        "97.5": 0.5360226434712128
+      },
+      "p_below_chance": 1.0,
+      "p_above_chance": 0.0,
+      "p_two_sided": 0.0,
+      "below_chance_significant": false,
+      "above_chance_significant": true
+    },
+    "Ir": {
+      "status": "MEASURED",
+      "n_perm": 1000,
+      "n_test": 534,
+      "observed_auc": 0.5275953809577719,
+      "null_mean": 0.4999406062492924,
+      "null_sd": 0.024258129600837265,
+      "null_pct": {
+        "2.5": 0.45319699564134497,
+        "5": 0.46008222008377675,
+        "50": 0.49960022076304766,
+        "95": 0.5398657732367259,
+        "97.5": 0.5466818323332956
+      },
+      "p_below_chance": 0.872,
+      "p_above_chance": 0.128,
+      "p_two_sided": 0.256,
+      "below_chance_significant": false,
+      "above_chance_significant": false
+    },
+    "Rh": {
+      "status": "MEASURED",
+      "n_perm": 1000,
+      "n_test": 51,
+      "observed_auc": 0.5190311418685121,
+      "null_mean": 0.5040051903114187,
+      "null_sd": 0.08834164455477231,
+      "null_pct": {
+        "2.5": 0.3339100346020761,
+        "5": 0.3650519031141869,
+        "50": 0.5034602076124568,
+        "95": 0.6487889273356401,
+        "97.5": 0.6730103806228374
+      },
+      "p_below_chance": 0.565,
+      "p_above_chance": 0.441,
+      "p_two_sided": 0.882,
+      "below_chance_significant": false,
+      "above_chance_significant": false
+    },
+    "Os": {
+      "status": "MEASURED",
+      "n_perm": 1000,
+      "n_test": 36,
+      "observed_auc": 0.49498327759197325,
+      "null_mean": 0.4978327759197325,
+      "null_sd": 0.10120381973822457,
+      "null_pct": {
+        "2.5": 0.29431438127090304,
+        "5": 0.3277591973244147,
+        "50": 0.4983277591973244,
+        "95": 0.6588628762541806,
+        "97.5": 0.692391304347826
+      },
+      "p_below_chance": 0.494,
+      "p_above_chance": 0.513,
+      "p_two_sided": 0.988,
+      "below_chance_significant": false,
+      "above_chance_significant": false
+    },
+    "Re": {
+      "status": "MEASURED",
+      "n_perm": 1000,
+      "n_test": 74,
+      "observed_auc": 0.44285714285714284,
+      "null_mean": 0.5031988095238096,
+      "null_sd": 0.08609259299001142,
+      "null_pct": {
+        "2.5": 0.33449404761904766,
+        "5": 0.3605357142857143,
+        "50": 0.5023809523809524,
+        "95": 0.6428571428571428,
+        "97.5": 0.6738392857142858
+      },
+      "p_below_chance": 0.238,
+      "p_above_chance": 0.766,
+      "p_two_sided": 0.476,
+      "below_chance_significant": false,
+      "above_chance_significant": false
+    }
+  },
+  "permutation_null_holm": {
+    "correction": "Holm-Bonferroni (family = 5 held-out metals)",
+    "n_family": 5,
+    "p_two_sided_holm": {
+      "Ru": 0.0,
+      "Ir": 1.0,
+      "Re": 1.0,
+      "Rh": 1.0,
+      "Os": 1.0
+    },
+    "significant_after_holm_0.05": [
+      "Ru"
+    ]
+  },
+  "transfer_penalty": {
+    "Ru": {
+      "within_auc": 0.8362931423415294,
+      "cross_auc": 0.6179377217342776,
+      "transfer_penalty": 0.21835542060725177,
+      "cross_below_chance": false,
+      "resolvable": true,
+      "krasnov_reported_auc": 0.81
+    },
+    "Ir": {
+      "within_auc": 0.8294775551950762,
+      "cross_auc": 0.5275953809577719,
+      "transfer_penalty": 0.30188217423730423,
+      "cross_below_chance": false,
+      "resolvable": true,
+      "krasnov_reported_auc": 0.73
+    },
+    "Rh": {
+      "within_auc": 0.7380952380952381,
+      "cross_auc": 0.5190311418685121,
+      "transfer_penalty": 0.21906409622672607,
+      "cross_below_chance": false,
+      "resolvable": false,
+      "krasnov_reported_auc": null
+    },
+    "Os": {
+      "within_auc": 0.49000000000000005,
+      "cross_auc": 0.49498327759197325,
+      "transfer_penalty": -0.004983277591973201,
+      "cross_below_chance": true,
+      "resolvable": false,
+      "krasnov_reported_auc": null
+    },
+    "Re": {
+      "within_auc": 0.9277777777777777,
+      "cross_auc": 0.44285714285714284,
+      "transfer_penalty": 0.48492063492063486,
+      "cross_below_chance": true,
+      "resolvable": false,
+      "krasnov_reported_auc": null
+    }
+  },
+  "honest_negative": {
+    "below_chance_cross_metal": [
+      "Os",
+      "Re"
+    ],
+    "unresolvable_small_folds": [
+      "Rh",
+      "Os",
+      "Re"
+    ],
+    "note": "Ru is 64% of the deduplicated cohort, so the pooled cross-metal mean is dominated by Ru and must not be quoted without this per-metal table. below_chance_cross_metal is a point estimate only; quote below_chance_significant / above_chance_significant (label-permutation null) for any chance-level claim.",
+    "below_chance_significant": [],
+    "above_chance_significant": [
+      "Ru"
+    ]
+  }
+}

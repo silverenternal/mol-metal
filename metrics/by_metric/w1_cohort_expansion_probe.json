@@ -1,0 +1,497 @@
+{
+ "metric": "w1_cohort_expansion_probe",
+ "status": "MEASURED",
+ "MEASURED_vs_PROJECTED": "MEASURED",
+ "unit": "ROC-AUC (0-1, higher better)",
+ "scope": "tier2_precious_metal_anticancer",
+ "source": "molmetal/scripts/blk_w1_cohort_expansion_probe.py",
+ "description": "W1 cohort-expansion probe. Re-measures within-metal 5-fold CV and cross-metal LOMO on the same scorer under the probe's 24h cohort and under the Krasnov-style paper funnel, to test whether the below-chance Os AUC is a volume floor rather than a capability gap.",
+ "protocol": {
+  "scorer": "morgan_fp(radius=2, 2048bit) + xgboost",
+  "seeds": [
+   42,
+   43,
+   44,
+   49,
+   123
+  ],
+  "n_splits": 5,
+  "cohort_specs": {
+   "current": "CytotoxFilter(time_threshold=24.0, ic50_min=0.01)",
+   "paper_funnel": "build_paper_cohort (no time window; Krasnov-style)"
+  },
+  "min_unique_for_gate": 200
+ },
+ "cohorts": {
+  "current": {
+   "per_metal": {
+    "Ru": {
+     "n_unique": 1255,
+     "pos_rate": 0.25737051792828686,
+     "resolvable": true,
+     "n_seeds_ok": 5,
+     "within_metal_auc_mean": 0.8271152068598701,
+     "within_metal_auc_per_seed": [
+      0.8362931423415294,
+      0.8292150324770107,
+      0.8349087309749075,
+      0.8128159155044828,
+      0.8223432130014199
+     ]
+    },
+    "Ir": {
+     "n_unique": 534,
+     "pos_rate": 0.45318352059925093,
+     "resolvable": true,
+     "n_seeds_ok": 5,
+     "within_metal_auc_mean": 0.8430246911739564,
+     "within_metal_auc_per_seed": [
+      0.8294775551950762,
+      0.8341119586350028,
+      0.8596959648850774,
+      0.8521133263357944,
+      0.8397246508188314
+     ]
+    },
+    "Rh": {
+     "n_unique": 51,
+     "pos_rate": 0.3333333333333333,
+     "resolvable": false,
+     "n_seeds_ok": 5,
+     "within_metal_auc_mean": 0.6973809523809524,
+     "within_metal_auc_per_seed": [
+      0.7380952380952381,
+      0.7178571428571427,
+      0.6428571428571428,
+      0.6738095238095237,
+      0.7142857142857143
+     ]
+    },
+    "Os": {
+     "n_unique": 36,
+     "pos_rate": 0.3611111111111111,
+     "resolvable": false,
+     "n_seeds_ok": 5,
+     "within_metal_auc_mean": 0.4960000000000001,
+     "within_metal_auc_per_seed": [
+      0.49000000000000005,
+      0.5866666666666667,
+      0.31333333333333335,
+      0.55,
+      0.54
+     ]
+    },
+    "Re": {
+     "n_unique": 74,
+     "pos_rate": 0.1891891891891892,
+     "resolvable": false,
+     "n_seeds_ok": 5,
+     "within_metal_auc_mean": 0.9480555555555554,
+     "within_metal_auc_per_seed": [
+      0.9277777777777777,
+      0.95,
+      0.9722222222222221,
+      0.9819444444444445,
+      0.9083333333333334
+     ]
+    }
+   },
+   "cross_metal_lomo": {
+    "status": "MEASURED",
+    "per_fold": [
+     {
+      "metal": "Ru",
+      "status": "MEASURED",
+      "roc_auc": 0.6179377217342776,
+      "pr_auc": 0.3297850839546851,
+      "n_train_unique": 678,
+      "n_test_unique": 1255,
+      "n_train_rows_dropped_as_leaked": 17,
+      "pos_rate_test": 0.25737051792828686,
+      "resolvable": true
+     },
+     {
+      "metal": "Ir",
+      "status": "MEASURED",
+      "roc_auc": 0.5275953809577719,
+      "pr_auc": 0.49676155983167836,
+      "n_train_unique": 1391,
+      "n_test_unique": 534,
+      "n_train_rows_dropped_as_leaked": 25,
+      "pos_rate_test": 0.45318352059925093,
+      "resolvable": true
+     },
+     {
+      "metal": "Rh",
+      "status": "MEASURED",
+      "roc_auc": 0.5190311418685121,
+      "pr_auc": 0.5022274348875033,
+      "n_train_unique": 1874,
+      "n_test_unique": 51,
+      "n_train_rows_dropped_as_leaked": 25,
+      "pos_rate_test": 0.3333333333333333,
+      "resolvable": false
+     },
+     {
+      "metal": "Os",
+      "status": "MEASURED",
+      "roc_auc": 0.49498327759197325,
+      "pr_auc": 0.4467204665257806,
+      "n_train_unique": 1897,
+      "n_test_unique": 36,
+      "n_train_rows_dropped_as_leaked": 17,
+      "pos_rate_test": 0.3611111111111111,
+      "resolvable": false
+     },
+     {
+      "metal": "Re",
+      "status": "MEASURED",
+      "roc_auc": 0.44285714285714284,
+      "pr_auc": 0.18606661560400944,
+      "n_train_unique": 1876,
+      "n_test_unique": 74,
+      "n_train_rows_dropped_as_leaked": 0,
+      "pos_rate_test": 0.1891891891891892,
+      "resolvable": false
+     }
+    ],
+    "pooled": {
+     "n": 1950,
+     "base_rate": 0.3123076923076923,
+     "roc_auc": 0.5996070623471688,
+     "pr_auc": 0.3870587565616026,
+     "n_tied_scores": 40,
+     "enrichment": {
+      "top_1pct": {
+       "k": 20,
+       "n_hits": 9,
+       "hit_rate": 0.45,
+       "base_rate": 0.3123076923076923,
+       "lift": 1.4408866995073892,
+       "hit_rate_ci95": [
+        0.23196376447938752,
+        0.6680362355206125
+       ]
+      },
+      "top_5pct": {
+       "k": 98,
+       "n_hits": 46,
+       "hit_rate": 0.46938775510204084,
+       "base_rate": 0.3123076923076923,
+       "lift": 1.5029657183070275,
+       "hit_rate_ci95": [
+        0.3705785181546661,
+        0.5681969920494155
+       ]
+      },
+      "top_10pct": {
+       "k": 195,
+       "n_hits": 83,
+       "hit_rate": 0.4256410256410256,
+       "base_rate": 0.3123076923076923,
+       "lift": 1.3628899835796389,
+       "hit_rate_ci95": [
+        0.35624218555433756,
+        0.4950398657277137
+       ]
+      },
+      "top_25pct": {
+       "k": 488,
+       "n_hits": 203,
+       "hit_rate": 0.41598360655737704,
+       "base_rate": 0.3123076923076923,
+       "lift": 1.3319672131147542,
+       "hit_rate_ci95": [
+        0.3722518635465032,
+        0.4597153495682509
+       ]
+      },
+      "top_50pct": {
+       "k": 975,
+       "n_hits": 363,
+       "hit_rate": 0.3723076923076923,
+       "base_rate": 0.3123076923076923,
+       "lift": 1.1921182266009853,
+       "hit_rate_ci95": [
+        0.34196331908239647,
+        0.4026520655329881
+       ]
+      }
+     },
+     "peak_enrichment_k": "top_5pct"
+    }
+   }
+  },
+  "paper_funnel": {
+   "per_metal": {
+    "Ru": {
+     "n_unique": 4793,
+     "pos_rate": 0.3248487377425412,
+     "resolvable": true,
+     "n_seeds_ok": 5,
+     "within_metal_auc_mean": 0.8613918463910636,
+     "within_metal_auc_per_seed": [
+      0.863954221456549,
+      0.8640597011109525,
+      0.861839873175148,
+      0.8603893874151854,
+      0.8567160487974833
+     ]
+    },
+    "Ir": {
+     "n_unique": 1281,
+     "pos_rate": 0.5113192818110851,
+     "resolvable": true,
+     "n_seeds_ok": 5,
+     "within_metal_auc_mean": 0.8277000169635285,
+     "within_metal_auc_per_seed": [
+      0.8210321095359262,
+      0.8226400096934448,
+      0.8281432691142614,
+      0.832134060341694,
+      0.8345506361323155
+     ]
+    },
+    "Rh": {
+     "n_unique": 334,
+     "pos_rate": 0.5089820359281437,
+     "resolvable": true,
+     "n_seeds_ok": 5,
+     "within_metal_auc_mean": 0.808734959893048,
+     "within_metal_auc_per_seed": [
+      0.8116978609625669,
+      0.8154857397504456,
+      0.8036681149732618,
+      0.8077595811051694,
+      0.8050635026737968
+     ]
+    },
+    "Os": {
+     "n_unique": 333,
+     "pos_rate": 0.46546546546546547,
+     "resolvable": true,
+     "n_seeds_ok": 5,
+     "within_metal_auc_mean": 0.821251920122888,
+     "within_metal_auc_per_seed": [
+      0.8286507936507936,
+      0.8063364055299539,
+      0.8251203277009728,
+      0.8087890424987199,
+      0.8373630312339989
+     ]
+    },
+    "Re": {
+     "n_unique": 250,
+     "pos_rate": 0.3,
+     "resolvable": true,
+     "n_seeds_ok": 5,
+     "within_metal_auc_mean": 0.8426666666666666,
+     "within_metal_auc_per_seed": [
+      0.8438095238095238,
+      0.8480000000000001,
+      0.8552380952380952,
+      0.8506666666666668,
+      0.8156190476190476
+     ]
+    }
+   },
+   "cross_metal_lomo": {
+    "status": "MEASURED",
+    "per_fold": [
+     {
+      "metal": "Ru",
+      "status": "MEASURED",
+      "roc_auc": 0.6093978864937087,
+      "pr_auc": 0.4664139300960862,
+      "n_train_unique": 2029,
+      "n_test_unique": 4793,
+      "n_train_rows_dropped_as_leaked": 169,
+      "pos_rate_test": 0.3248487377425412,
+      "resolvable": true
+     },
+     {
+      "metal": "Ir",
+      "status": "MEASURED",
+      "roc_auc": 0.593694363827037,
+      "pr_auc": 0.5997692523120081,
+      "n_train_unique": 5614,
+      "n_test_unique": 1281,
+      "n_train_rows_dropped_as_leaked": 96,
+      "pos_rate_test": 0.5113192818110851,
+      "resolvable": true
+     },
+     {
+      "metal": "Rh",
+      "status": "MEASURED",
+      "roc_auc": 0.6666965566714491,
+      "pr_auc": 0.687329129168516,
+      "n_train_unique": 6548,
+      "n_test_unique": 334,
+      "n_train_rows_dropped_as_leaked": 109,
+      "pos_rate_test": 0.5089820359281437,
+      "resolvable": true
+     },
+     {
+      "metal": "Os",
+      "status": "MEASURED",
+      "roc_auc": 0.6873867343240305,
+      "pr_auc": 0.6608648426282439,
+      "n_train_unique": 6502,
+      "n_test_unique": 333,
+      "n_train_rows_dropped_as_leaked": 156,
+      "pos_rate_test": 0.46546546546546547,
+      "resolvable": true
+     },
+     {
+      "metal": "Re",
+      "status": "MEASURED",
+      "roc_auc": 0.6356571428571429,
+      "pr_auc": 0.4077482642191087,
+      "n_train_unique": 6741,
+      "n_test_unique": 250,
+      "n_train_rows_dropped_as_leaked": 0,
+      "pos_rate_test": 0.3,
+      "resolvable": true
+     }
+    ],
+    "pooled": {
+     "n": 6991,
+     "base_rate": 0.37362322986697183,
+     "roc_auc": 0.6377766361588635,
+     "pr_auc": 0.5236078349113816,
+     "n_tied_scores": 250,
+     "enrichment": {
+      "top_1pct": {
+       "k": 70,
+       "n_hits": 56,
+       "hit_rate": 0.8,
+       "base_rate": 0.37362322986697183,
+       "lift": 2.1411944869831547,
+       "hit_rate_ci95": [
+        0.7062940770281836,
+        0.8937059229718165
+       ]
+      },
+      "top_5pct": {
+       "k": 350,
+       "n_hits": 242,
+       "hit_rate": 0.6914285714285714,
+       "base_rate": 0.37362322986697183,
+       "lift": 1.8506038066068693,
+       "hit_rate_ci95": [
+        0.6430365720898377,
+        0.7398205707673051
+       ]
+      },
+      "top_10pct": {
+       "k": 699,
+       "n_hits": 434,
+       "hit_rate": 0.6208869814020028,
+       "base_rate": 0.37362322986697183,
+       "lift": 1.6617997270219762,
+       "hit_rate_ci95": [
+        0.5849196588656377,
+        0.656854303938368
+       ]
+      },
+      "top_25pct": {
+       "k": 1748,
+       "n_hits": 950,
+       "hit_rate": 0.5434782608695652,
+       "base_rate": 0.37362322986697183,
+       "lift": 1.4546158199613821,
+       "hit_rate_ci95": [
+        0.5201271698197942,
+        0.5668293519193361
+       ]
+      },
+      "top_50pct": {
+       "k": 3496,
+       "n_hits": 1642,
+       "hit_rate": 0.4696796338672769,
+       "base_rate": 0.37362322986697183,
+       "lift": 1.2570943033560997,
+       "hit_rate_ci95": [
+        0.45313563937966245,
+        0.48622362835489136
+       ]
+      }
+     },
+     "peak_enrichment_k": "top_1pct"
+    }
+   }
+  }
+ },
+ "cohort_spec_comparison": {
+  "Ru": {
+   "n_current": 1255,
+   "n_paper_funnel": 4793,
+   "auc_current": 0.8271152068598701,
+   "auc_paper_funnel": 0.8613918463910636,
+   "delta": 0.0342766395311936,
+   "delta_per_seed": [
+    0.027661079115019582,
+    0.03484466863394187,
+    0.02693114220024051,
+    0.0475734719107026,
+    0.03437283579606343
+   ]
+  },
+  "Ir": {
+   "n_current": 534,
+   "n_paper_funnel": 1281,
+   "auc_current": 0.8430246911739564,
+   "auc_paper_funnel": 0.8277000169635285,
+   "delta": -0.015324674210428046,
+   "delta_per_seed": [
+    -0.008445445659149953,
+    -0.011471948941558008,
+    -0.031552695770815986,
+    -0.01997926599410038,
+    -0.005174014686515904
+   ]
+  },
+  "Rh": {
+   "n_current": 51,
+   "n_paper_funnel": 334,
+   "auc_current": 0.6973809523809524,
+   "auc_paper_funnel": 0.808734959893048,
+   "delta": 0.11135400751209576,
+   "delta_per_seed": [
+    0.07360262286732877,
+    0.09762859689330283,
+    0.16081097211611906,
+    0.13395005729564569,
+    0.09077778838808248
+   ]
+  },
+  "Os": {
+   "n_current": 36,
+   "n_paper_funnel": 333,
+   "auc_current": 0.4960000000000001,
+   "auc_paper_funnel": 0.821251920122888,
+   "delta": 0.3252519201228877,
+   "delta_per_seed": [
+    0.3386507936507936,
+    0.21966973886328722,
+    0.5117869943676394,
+    0.2587890424987198,
+    0.2973630312339989
+   ]
+  },
+  "Re": {
+   "n_current": 74,
+   "n_paper_funnel": 250,
+   "auc_current": 0.9480555555555554,
+   "auc_paper_funnel": 0.8426666666666666,
+   "delta": -0.10538888888888884,
+   "delta_per_seed": [
+    -0.08396825396825391,
+    -0.10199999999999987,
+    -0.11698412698412686,
+    -0.13127777777777772,
+    -0.09271428571428586
+   ]
+  }
+ }
+}

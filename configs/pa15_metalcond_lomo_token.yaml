@@ -1,0 +1,65 @@
+# PA15 (arm: token) — learnable per-metal embedding concatenated to the graph
+# readout.  AGENTS.md §5.11: launched from this YAML; the wrapper passes
+# --config (and --out-dir) and nothing else.
+#
+# CRITICAL CAVEAT (why this arm is expected to be a near-negative): in LOMO the
+# held-out metal's embedding row is never trained — its rows are excluded from
+# the train pool — so at test time it is a random-initialised vector.  The arm
+# therefore measures whether an UNTRAINED token can help, which is the honest
+# question: a learned token cannot transfer to a metal the model never saw.
+# The desc arm is the one that can carry identity across the boundary.
+
+entry:
+  script: molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+    --config {yaml_path}
+
+data:
+  cohort_filter: "CytotoxFilter(time_threshold=24h, ic50_min=0.01uM, metal_whitelist=[m]) then collapse_duplicates (one row per unique ligand, majority label, ties -> ACTIVE)"
+  n_rows_expected: 9666
+  time_threshold: 24.0
+  ic50_min: 0.01
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 300
+  depth: 3
+  ffn_hidden: 300
+  ffn_layers: 1
+  dropout: 0.0
+  metal_mode: token
+  metal_embed_dim: 16
+
+train:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  bf16: true
+
+protocol:
+  wave_decomposition: "LOMO 5 folds (Ru/Ir/Rh/Os/Re held out) x 5 seeds; ligand-disjoint train pool"
+  seeds: [42, 43, 44, 49, 123]
+
+mode: both
+n_splits: 5
+n_permutations: 0
+perm_seed: 42
+
+compute:
+  gpu: 0
+  device: cuda:0
+
+output:
+  base_dir: molmetal/reports/pa15_metalcond_lomo_token
+  out_json: molmetal/reports/pa15_metalcond_lomo_token/metrics.json
+  log_master: molmetal/reports/pa15_metalcond_lomo_token/master.log
+
+metric_name: pa15_metalcond_lomo_token
+
+directives:
+  user_ok_required: true
+
+honest_framing: >
+  MEASURED only.  Same cohort, same ligand-disjoint LOMO split, same seeds as
+  the none arm.  If the token arm does not beat the baseline, that is the
+  finding — a learnable token cannot encode an unseen metal.

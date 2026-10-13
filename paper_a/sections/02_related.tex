@@ -1,0 +1,109 @@
+\section{Related work}
+\label{sec:related}
+
+Our study sits at the intersection of three literatures: ligand-based activity
+prediction and the transfer assumption behind its evaluation, machine learning
+for transition-metal complexes, and evaluation protocols for distribution
+shift. We take each in turn and close with the specific gap we address.
+
+\subsection{Ligand-based activity prediction and its transfer assumption}
+
+Modern ligand-based activity prediction is dominated by message-passing graph
+neural networks \citep{gilmer2017mpnn,hamilton2017graph}. The directed
+message-passing neural network (D-MPNN) of \citet{dmpnn2019} remains a standard
+backbone, and its reference implementation \citep{chemprop} is the de-facto
+baseline on MoleculeNet \citep{moleculenet2018}. The family has since been
+extended along three axes that matter here: attention over atom environments
+\citep{attentivefp}, contrastive self-supervision \citep{molclr}, and
+large-scale pretraining on chemical language \citep{molformer}. These sit inside
+a broader programme of machine learning for chemistry
+\citep{butler2018,mater2019} and molecular design
+\citep{sanchezlengeling2018,gomezbombarelli2018}, whose activity-prediction
+applications now extend to prospectively validated discoveries
+\citep{stokes2020}.
+
+What all of these share is an evaluation convention: a \emph{scaffold split},
+in which the Bemis--Murcko scaffold \citep{bemis1996murcko} of every test
+compound is absent from training, so that the reported AUC is a transfer
+estimate over organic chemical space. The convention encodes an assumption ---
+that scaffold novelty is the hard case. Our question is orthogonal. We hold the
+evaluation machinery fixed and vary a different axis: whether the \emph{metal
+centre} of a coordination compound was observed during training. A scaffold
+split of metal complexes does not control for this, because the same organic
+scaffold can appear on several metals.
+
+\subsection{Machine learning for transition-metal complexes}
+
+Transition-metal complexes break several assumptions that organic benchmarks
+rely on. Molecular graphs are ambiguous about bond order at the metal, valence
+is variable, and the electronic structure that drives activity is not fully
+captured by a 2D graph; the machine-learning approaches developed for this
+chemical space are surveyed by \citet{nandy2021computational}. Concretely,
+feature-selection studies for first-row transition-metal complexes
+\citep{janet2017} and active-learning searches over spin-crossover space
+\citep{janet2018} showed that quantum-chemical targets for coordination
+compounds are learnable from structure alone.
+
+Two strands of that work bear directly on our design. The first is pretraining
+on quantum-chemistry corpora. The tmQM corpus \citep{tmqm2020} supplies quantum
+geometries and properties for $\sim$86k transition-metal complexes, and
+pretraining on it is a natural analogue of the large-scale pretraining that
+lifted organic property prediction. It is one of a family of datasets that made
+such pretraining credible --- from QM9 \citep{qm9} and ANI-1 \citep{ani1} to the
+Open Catalyst Project \citep{opencatalyst2021} and crystal-graph models
+\citep{cgcnn2018} --- and the tmQMg extension adds excited-state properties for
+a further $74$k complexes \citep{tmqmg2025}. The second is metal-aware
+descriptors. \citet{electrum2025} build a universal metal fingerprint from
+electron configuration, which is exactly the kind of inductive bias a shared
+ligand-only head lacks.
+
+The metallodrug context that motivates the activity endpoint begins with
+cisplatin \citep{rosenberg1969} and its cellular pharmacology
+\citep{lippard2005}, and has since broadened to ruthenium \citep{alessio2007}
+and organometallic \citep{zhangsadler2017} anticancer complexes; the drug-design
+perspective is surveyed by \citet{ndagi2017} and the medicinal-inorganic framing
+by \citet{mjos2014metallodrugs}.
+
+On the activity side, \citet{krasnov2026metalcytotoxdb} assembled
+MetalCytoToxDB, a curated database of anticancer transition-metal complexes
+spanning Ru, Ir, Rh, Re and Os, and reported per-metal binary activity models
+(Ru 0.81, Ir 0.73 AUC) trained on Morgan fingerprints with gradient-boosted
+trees under a DOI-grouped 10-fold split. That work establishes both the data and
+the protocol we adopt, and it is the baseline against which we measure our
+honest negative in \S\ref{sec:results}.
+
+\subsection{Evaluation protocols and distribution shift}
+\label{sec:related:shift}
+
+Our finding is a statement about evaluation protocol, so it also belongs to the
+literature on how molecular models are benchmarked and where they fail. Domain
+shift in molecular machine learning is usually studied as a shift in scaffold,
+size, or assay, and is benchmarked explicitly by datasets such as DrugOOD
+\citep{drugood2023}; the general problem is studied as domain generalisation,
+for which comprehensive surveys exist \citep{zhoudg2023,wangdg2021}, and the
+closely related covariate-shift setting has its own estimators and validation
+schemes \citep{sugiyama2006}. The broader
+graph-learning-for-drug-discovery toolkit is surveyed by \citet{gnn2025review},
+and the question of when a deep QSAR model can be trusted outside its training
+distribution --- its applicability domain --- is examined by
+\citet{applicabilitydomain2019}.
+
+The shift we study is not of that kind. It is a change in the identity of a
+single atom whose chemistry reorganises the whole molecule, so the test
+distribution is not a novel point in the same chemical space but a different
+conditional relationship between the ligand features and the label. We are not
+aware of an organic benchmark that isolates this effect, which is precisely why
+we treat it as a finding rather than an implementation detail.
+
+\subsection{What is missing}
+\label{sec:related:gap}
+
+Across both the ligand-based and the transition-metal literature, transfer is
+reported \emph{within} a metal or across organic chemical space. A per-metal
+model answers ``how well can we predict activity for this metal''; it does not
+answer ``does what we learn about one metal help with another''. No study in
+either line publishes a cross-metal leave-one-metal-out measurement, and none
+uses a same-metal scaffold split as the control that separates the metal axis
+from ordinary novel-scaffold generalisation. We make cross-metal transfer the
+primary measurement, and we report it under two independent scorers so that the
+conclusion does not rest on one model class.

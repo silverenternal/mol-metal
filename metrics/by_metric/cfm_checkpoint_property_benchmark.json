@@ -1,0 +1,73 @@
+{
+  "metric": "cfm_checkpoint_property_benchmark",
+  "tag": "MEASURED",
+  "date": "2026-10-12",
+  "why": "User directive: the core properties (QED / SA / ADMET) must be benchmarked on an existing checkpoint BEFORE any loss or architecture work, so the work is driven by what is missing rather than guessed. Training was stopped at epoch 27 of 50 for this.",
+  "checkpoint": "molmetal/reports/cfm_fullcorpus_2026_10_10/checkpoints/cfm_yuelbond_wasserstein_seed0.pt (epoch 10)",
+  "generated_cohort": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv, last epoch, 66 molecules, produced by integrating the ODE from noise",
+  "reference_cohort": "636 real tmQM val complexes, bond-head decoded (the training distribution itself)",
+  "results": {
+    "generated": {
+      "n_parsed": 66,
+      "qed": 0.0944,
+      "sa": 6.4423,
+      "ames_mutagen": 0.0,
+      "cell_permeability_logPapp": -3.0387,
+      "aqueous_solubility_logS": -8.0099
+    },
+    "reference": {
+      "n_parsed": 636,
+      "qed": 0.2685,
+      "sa": 5.0269,
+      "ames_mutagen": 0.0173,
+      "cell_permeability_logPapp": -3.0794,
+      "aqueous_solubility_logS": -8.3385
+    }
+  },
+  "THE_CENTRAL_FINDING": {
+    "statement": "The REAL tmQM reference misses every target too. QED 0.2685 (target 0.50), SA 5.0269 (target 3.0), logS -8.34 (target -4.0).",
+    "what_it_means": "tmQM is a set of DFT-optimised structures, not a drug-like molecule library. It cannot serve as the yardstick for 'does this reach the literature average' -- it can only answer 'is the generator close to its own training distribution'.",
+    "therefore": "The gap measured here is RELATIVE (generated vs training distribution), not ABSOLUTE (vs published SOTA). The absolute comparison needs a literature baseline that is being researched separately; do not quote these as a competitiveness verdict.",
+    "generated_vs_reference": {
+      "qed": "0.0944 vs 0.2685 -- the generator is at 35% of its own training distribution",
+      "sa": "6.4423 vs 5.0269 -- 1.42 WORSE (higher SA = harder to synthesise)",
+      "ames_mutagen": "0.0000 vs 0.0173 -- both effectively zero",
+      "logpapp": "-3.0387 vs -3.0794 -- essentially identical",
+      "logs": "-8.0099 vs -8.3385 -- the generator is marginally BETTER"
+    }
+  },
+  "what_this_does_NOT_cover": [
+    "VINA / docking. Not runnable on this task as posed: CFM generates metal complexes with no protein pocket. Whether published metallodrug generators report docking at all is an open question being researched.",
+    "n=66 on one seed. Not a settled number.",
+    "The ADMET trio are RDKit/Crippen/Veber/Delaney HEURISTICS, not assay measurements."
+  ],
+  "targets_used": {
+    "qed": {
+      "target": 0.5,
+      "direction": "higher",
+      "source": "metrics/by_metric/qed.json"
+    },
+    "sa": {
+      "target": 3.0,
+      "direction": "lower",
+      "source": "Ertl 2009; SA <= 3 is the common synthesability threshold"
+    },
+    "ames_mutagen": {
+      "target": 0.3,
+      "direction": "lower",
+      "source": "Wf-297D band; Benegini-Bossa 2012 / Kazius 2005 via RDKit FilterCatalog"
+    },
+    "cell_permeability_logPapp": {
+      "target": -6.0,
+      "direction": "higher",
+      "source": "Wf-297D band; Veber 2002 / Hou 2007"
+    },
+    "aqueous_solubility_logS": {
+      "target": -4.0,
+      "direction": "higher",
+      "source": "Wf-297D band; Delaney 2004 ESOL"
+    }
+  },
+  "tool": "scripts/cfm_checkpoint_benchmark.py (new). Measures only; it writes to the caller-specified --out-json and touches nothing in metrics/by_metric/.",
+  "bug_found_while_writing_it": "the first version imported calculateScore from molmetal.molmetal_lam.reward.sa_score, which does not export it, and swallowed the ImportError -- leaving SA as NA for every cohort. Fixed to use the same RDKit-Contrib late import the panel uses (cfm_property_panel.py:117). A silent all-NA column is the same failure shape as today's other four."
+}

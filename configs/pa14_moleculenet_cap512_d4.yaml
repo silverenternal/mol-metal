@@ -1,0 +1,72 @@
+# PA14 — MoleculeNet 4-task re-run at hidden 512 / depth 4 (BLK-PA14).
+#
+# AGENTS.md §5.11: launched from this YAML; the wrapper passes --config and
+# --out-dir and nothing else.  Every knob below resolves to a dest of
+# train_moleculenet.py's own parser.
+#
+# WHY (BLK-PA14)
+# --------------
+# The paper's tab:moleculenet uses the hidden-300/depth-3 canonical
+# (metrics/by_metric/moleculenet_auc_dmpnn_5seed.json): bbbp 0.9065 /
+# bace 0.7421 / hiv 0.7900 / clintox 0.8209, mean 0.8149.  The capacity sweep
+# (molmetal/reports/wf_a1_bace_capacity/SUMMARY.md) already MEASURED that
+# hidden 512 / depth 4 lifts bace 0.7505 -> 0.7803 with the seed std halved,
+# confirmed on a pinned split (+0.1098); 768/depth 4 does not beat 512, and
+# dropout 0.1 does not help.  The 512/4 numbers were never folded back into the
+# canonical metric, and bace and the three small tasks were run separately.
+#
+# This config runs all four tasks in ONE run at 512/4, same protocol as the
+# canonical (scaffold split seeded by the training seed, split_seed unset), so
+# the paper can cite a same-run 4-task table.  Per BLK-PA14 Step 2 the bace
+# value is reported as measured in THIS run, not carried from the earlier one.
+
+data:
+  tasks:
+  - bbbp
+  - bace
+  - hiv
+  - clintox
+  scaffold_split: true
+
+model:
+  backbone: dmpnn
+  hidden: 512
+  depth: 4
+
+protocol:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+
+output:
+  base_dir: molmetal/reports/pa14_moleculenet_cap512_d4
+  out_dir: molmetal/reports/pa14_moleculenet_cap512_d4
+  log_master: molmetal/reports/pa14_moleculenet_cap512_d4/master.log
+  training_summary: molmetal/reports/pa14_moleculenet_cap512_d4/training_summary.json
+  out_metric: molmetal/reports/pa14_moleculenet_cap512_d4/metrics.json
+  out_report: molmetal/reports/pa14_moleculenet_cap512_d4/report.md
+  events_jsonl: true
+
+directives:
+  kill_then_adapt: true
+  time_budget: 4h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+
+entry:
+  script: molmetal/scripts/train_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_moleculenet.py
+    --config {yaml_path} --out-dir {out_dir}
+
+honest_framing:
+  purpose: PA14 — fold the already-measured 512/4 capacity win into a same-run 4-task table.
+  note: >
+    MEASURED once the run lands; nothing here is PROJECTED.  The comparison
+    baseline is the canonical 300/3 metric on disk.  bace is reported from THIS
+    run even if it comes in below the earlier separate-run 0.7803.

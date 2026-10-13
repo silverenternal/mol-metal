@@ -1,0 +1,56 @@
+# wf_a1_bace_dropout02.yaml — B2: BACE, dropout 0.2 (weak-metric re-experiment).
+#
+# Single-variable change vs the baseline config
+#   configs/wf_fix3lines_bace_50ep_2026_10_09.yaml
+#   (targets molmetal/scripts/train_moleculenet.py)
+# -> model.dropout: 0.2. Everything else is held at the baseline:
+#    tasks [bace], scaffold_split true, backbone dmpnn, hidden 300, depth 3,
+#    epochs 50, batch_size 64, lr 0.001, seeds [0,1,2,3,4].
+#
+# The trainer's --dropout default is 0.0 (no dropout); class_weight is left at
+# its default 'on' so this is a one-variable change against the weighted
+# baseline. --dropout is threaded into the D-MPNN backbone/readout.
+#
+# HONEST FRAMING (§5.2): the number this arm produces is PROJECTED until the
+# run lands. The baseline it is compared against is MEASURED:
+#   molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/metrics.json
+#   bace test_auc_mean = 0.7505 +/- 0.0456 (5 seeds, 50 epochs).
+data:
+  tasks:
+  - bace
+  scaffold_split: true
+model:
+  backbone: dmpnn
+  hidden: 300
+  depth: 3
+  dropout: 0.2               # <-- B2: the single variable under test
+protocol:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+output:
+  base_dir: molmetal/reports/wf_a1_bace_dropout02
+  out_dir: molmetal/reports/wf_a1_bace_dropout02
+  log_master: molmetal/reports/wf_a1_bace_dropout02/master.log
+  training_summary: molmetal/reports/wf_a1_bace_dropout02/training_summary.json
+  out_metric: molmetal/reports/wf_a1_bace_dropout02/metrics.json
+  out_report: molmetal/reports/wf_a1_bace_dropout02/report.md
+  events_jsonl: true
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_moleculenet.py
+    --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: B2 — does adding dropout 0.2 to the D-MPNN lift BACE AUC over the 0.7505 baseline?
+  note: PROJECTED until the run lands; baseline 0.7505 +/- 0.0456 is MEASURED (5 seeds, 50 ep).

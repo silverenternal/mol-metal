@@ -1,0 +1,45 @@
+{
+ "metric": "cfm_generated_geometry_defect",
+ "tag": "MEASURED",
+ "date": "2026-10-12",
+ "blocker": "BLK-C-L3 (premise test, arm A) / BLK-C-L1 (consequence)",
+ "question": "Are the model's SAMPLED COORDINATES chemically sane, measured directly against real tmQM geometry without RDKit?",
+ "why_this_was_measured": "Every quality number on disk for free generation is computed by RDKit FROM the decoded molecular graph -- QED, SA, single_fragment_ratio, and the 3D-embeddability rate. None of them reads the model's coordinates. So the geometry the velocity field actually produces has never been measured on its own terms.",
+ "cohort": {
+  "checkpoint": "molmetal/reports/cfm_patience10_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt (epoch 24)",
+  "templates": "24 tmQM val clouds, composition only (coordinates discarded, re-drawn from noise)",
+  "method": "midpoint, 20 steps, seed 1234, noise_sigma 2.485",
+  "mode": "eval() + torch.no_grad(), forward ODE integration only -- NO TRAINING",
+  "device": "cuda",
+  "n_clouds": 24,
+  "caveat": "SMOKE SCALE. 24 clouds, 20 steps, one checkpoint, one seed. Directionally unambiguous, not a settled number."
+ },
+ "headline": "THE SAMPLED GEOMETRY IS BADLY DEFECTIVE, AND NO EXISTING METRIC SEES IT. All 24 generated clouds contain at least one hard steric clash; zero of 24 real tmQM clouds do. The mean closest interatomic contact is 0.570 A in generated geometry against 1.172 A in real tmQM -- a bond-length-scale contact, not a non-bonded one.",
+ "generated_vs_real": {
+  "min_pair_distance": {"generated_mean": 0.5702152846818632, "real_mean": 1.171822339266011, "generated_median": 0.5598550415719006, "real_median": 1.1450256090299522},
+  "p01_pair_distance": {"generated_mean": 1.12874599556946, "real_mean": 1.3141257027732947},
+  "median_pair_distance": {"generated_mean": 4.713164323706886, "real_mean": 4.996998171723995},
+  "frac_pairs_hard_clash": {"generated_mean": 0.014823162151520962, "real_mean": 0.0},
+  "n_clouds_with_any_hard_clash": {"generated": 24, "real": 0},
+  "total_hard_clash_pairs": {"generated": 143, "real": 0},
+  "radius_of_gyration": {"generated_mean": 3.571249149298168, "real_mean": 3.809382070813017},
+  "metal_ligand_min": {"generated_mean": 1.234103269795047, "real_mean": 1.9529353577577475, "generated_median": 1.182889141725764, "real_median": 1.9479251375452345},
+  "metal_ligand_median": {"generated_mean": 1.7107095587390853, "real_mean": 2.025903499112363}
+ },
+ "definitions": {
+  "hard_clash_pair": "an atom pair closer than 0.7 * (rcov_i + rcov_j). Covalent radii from Cordero et al. 2008. Such a pair cannot be a bond and is not a plausible non-bonded contact in tmQM.",
+  "metal_ligand": "distance from each metal to its 4 nearest atoms.",
+  "note": "These are GEOMETRY metrics computed with plain torch -- no RDKit, no bond head, no graph. That is the point: they are independent of every metric the project already reports."
+ },
+ "reading": [
+  "Generated clouds are globally the right SIZE (radius of gyration 3.57 vs 3.81 A, median pair distance 4.71 vs 5.00 A) but locally collapsed: atoms sit almost on top of each other while the overall extent is about right.",
+  "The metal-ligand contacts are the worst: mean closest contact 1.234 A against 1.953 A in real tmQM. A real metal-ligand bond is 2.0-2.4 A. The generated geometry places first-shell ligands INSIDE the metal's own covalent radius.",
+  "Real tmQM scores exactly 0 hard clashes across all 24 clouds, so the clash measure is not an artifact of the threshold."
+ ],
+ "why_L1_did_not_see_this": "BLK-C-L1 measured the REGRESSION RESIDUAL on real tmQM geometries (does the velocity field predict the right velocity on well-formed input?). It never looked at what the sampler produces from NOISE. Those are different questions, and the first one came back healthy.",
+ "consequence_for_the_diagnosis": "The velocity field fits real geometry reasonably well (L1: loss tracks the target's own scale, no subset starved) AND still emits collapsed geometry from noise. Both are true. A model can score well on its training distribution and still be wrong at generation time -- which is precisely the well-known train/test mismatch of conditional generative models, and it is invisible to every metric currently on disk.",
+ "consequence_for_L5": "NONE for the embeddability number. RDKit's EmbedMolecule discards these coordinates entirely (see cfm_embed_failure_localisation.json), so improving them cannot move the 18.8% figure. The two findings are about different objects and do not compete.",
+ "consequence_for_L3_guidance": "This is the ONE finding that gives the sampling-time guidance family a real target. The repulsion core is the single force component every cited method shares, and there is now a measured, large, unambiguous coordinate-level defect for it to act on. See the guided arm in cfm_l3_guidance_ab.json.",
+ "script": "molmetal/scripts/wf_blkc_l3_guidance_probe.py",
+ "raw_output": "/tmp/l3_guided.json (arm A, guidance_strength 0.0)"
+}

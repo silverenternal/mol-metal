@@ -1,0 +1,45 @@
+# tmQM-pretrained init vs random init on MetalCytoToxDB — OFF arm.
+# §5.11 YAML-only launch. Byte-identical to ..._init_on.yaml except `init:`,
+# so the two arms differ by exactly one bool.
+
+entry:
+  script: molmetal/scripts/finetune_metalcytotox_from_tmqm.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/finetune_metalcytotox_from_tmqm.py
+    --config {yaml_path} --out-dir {out_dir}
+metal: Ru
+init: random
+encoder: models/tmqm_pretrained/tmqm_pretrained_encoder.pt
+
+# Sections required by scripts/_pre_flight_check.sh (data/model/protocol/
+# output/directives). `data.n_rows_expected` is a DECLARED_INERT_PATH and
+# `protocol.scaffold_split` a _NON_TRAINER_PATH, so neither shadows a dest.
+data:
+  n_rows_expected: 19135
+protocol:
+  scaffold_split: true
+directives:
+  user_ok_required: true
+
+model:
+  hidden: 128
+  depth: 3
+  dropout: 0.1
+
+train:
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 30
+  batch: 128
+  lr: 0.001
+  max_atoms: 120
+  max_edges: 240
+
+device: cuda:0
+
+output:
+  # base_dir drives start.sh's {out_dir} substitution; out_dir is the trainer
+  # dest; log_master / training_summary are required by start.sh (an empty
+  # log_master makes `: > "$LOG_FILE"` abort under `set -e`).
+  base_dir: molmetal/reports/tmqm_ab_metalcytotox_30ep_init_off
+  out_dir: molmetal/reports/tmqm_ab_metalcytotox_30ep_init_off
+  log_master: molmetal/reports/tmqm_ab_metalcytotox_30ep_init_off/master.log
+  training_summary: molmetal/reports/tmqm_ab_metalcytotox_30ep_init_off/training_summary.json

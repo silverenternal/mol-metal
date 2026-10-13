@@ -1,0 +1,290 @@
+{
+  "aromatic_hi": 1.7,
+  "aromatic_lo": 1.3,
+  "checkpoint": "molmetal/reports/cfm_patience10_seed0/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+  "cohort_protocol": "900 complexes, 150 per metal, balanced, seed 0",
+  "date": "2026-10-13",
+  "decision_rule": "bond_decision='threshold' (the DEPLOYED rule, NOT the 5-class argmax used by the band-sweep script). Pair is bonded iff 1 - softmax(logits)[BOND_NO_BOND] >= threshold; if bonded, type = argmax over classes 1..4.",
+  "deployed_threshold": 0.5,
+  "evidence_paths": {
+    "baseline_reference": "molmetal/reports/cfm_blkc_m4_band_sweep_1.30_2026_10_13/diagnostic.json",
+    "bond_decision_impl": "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:153-241",
+    "cfm_todo_finding": "cfm_todo.json::round9_finding_2026_10_13",
+    "master_diagnostic": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/diagnostic.json",
+    "per_pair_records_dir": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_*/per_pair_records.jsonl",
+    "per_threshold_diagnostics_dir": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_*/diagnostic.json",
+    "sweep_output_dir": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/",
+    "sweep_script": "molmetal/scripts/wf_blkc_m4_threshold_sweep_2026_10_13.py"
+  },
+  "head_hidden_dim": 128,
+  "head_n_layers": 3,
+  "headline": {
+    "argmax_baseline_count_ref": 5539,
+    "argmax_baseline_f1_ref": 0.43382645175535434,
+    "argmax_baseline_precision_ref": 0.8868026719624481,
+    "argmax_baseline_recall_ref": 0.2871507073541447,
+    "aromatic_count_spread": {
+      "interpretation": "Across the entire threshold grid [0.05..0.90], the head's aromatic prediction count stays at 5539-5540. T=0.05 picks up one extra argmax-aromatic pair whose p_bonded sits in [0.05, 0.10); T=0.10..0.90 all give 5539. The count is effectively invariant under threshold too.",
+      "max": 5540,
+      "min": 5539
+    },
+    "best_threshold_arom_count": 5539,
+    "calibrates_5539_count": false,
+    "f1_at_deployed_0.5": 0.43382645175535434,
+    "f1_lift_vs_deployed": 0.0,
+    "f1_spread": {
+      "interpretation": "F1 is essentially flat (4th-decimal differences only). The threshold sweep CANNOT close the F1 gap above the 0.4338 baseline.",
+      "max": 0.43382645175535434,
+      "min": 0.43380739380815536
+    },
+    "max_f1_in_sweep": 0.43382645175535434,
+    "n_truth_aromatic_pairs": 17106,
+    "threshold_at_max_f1": 0.1
+  },
+  "metric": "cfm_m4_threshold_sweep",
+  "per_threshold": {
+    "0.05": {
+      "arom_to_single_fraction": 0.7128492926458553,
+      "aromatic_f1_full": 0.43380729488651415,
+      "aromatic_precision_full": 0.8866425992779784,
+      "aromatic_recall": 0.2871507073541447,
+      "n_arom_to_single_collapse": 12194,
+      "n_predicted_aromatic_full": 5540,
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.05/diagnostic.json",
+      "pred_arom_truth_label_breakdown": {
+        "aromatic": 4912,
+        "double": 178,
+        "no_bo": 1,
+        "single": 423,
+        "triple": 26
+      },
+      "pred_class_counts": {
+        "AROMATIC": 5540,
+        "DOUBLE": 391,
+        "NO_BOND": 81719,
+        "SINGLE": 26831,
+        "TRIPLE": 47
+      }
+    },
+    "0.10": {
+      "arom_to_single_fraction": 0.7128492926458553,
+      "aromatic_f1_full": 0.43382645175535434,
+      "aromatic_precision_full": 0.8868026719624481,
+      "aromatic_recall": 0.2871507073541447,
+      "n_arom_to_single_collapse": 12194,
+      "n_predicted_aromatic_full": 5539,
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.10/diagnostic.json",
+      "pred_arom_truth_label_breakdown": {
+        "aromatic": 4912,
+        "double": 178,
+        "single": 423,
+        "triple": 26
+      },
+      "pred_class_counts": {
+        "AROMATIC": 5539,
+        "DOUBLE": 391,
+        "NO_BOND": 81762,
+        "SINGLE": 26790,
+        "TRIPLE": 46
+      }
+    },
+    "0.20": {
+      "arom_to_single_fraction": 0.7128492926458553,
+      "aromatic_f1_full": 0.43382645175535434,
+      "aromatic_precision_full": 0.8868026719624481,
+      "aromatic_recall": 0.2871507073541447,
+      "n_arom_to_single_collapse": 12194,
+      "n_predicted_aromatic_full": 5539,
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.20/diagnostic.json",
+      "pred_arom_truth_label_breakdown": {
+        "aromatic": 4912,
+        "double": 178,
+        "single": 423,
+        "triple": 26
+      },
+      "pred_class_counts": {
+        "AROMATIC": 5539,
+        "DOUBLE": 391,
+        "NO_BOND": 81786,
+        "SINGLE": 26766,
+        "TRIPLE": 46
+      }
+    },
+    "0.30": {
+      "arom_to_single_fraction": 0.7128492926458553,
+      "aromatic_f1_full": 0.43382645175535434,
+      "aromatic_precision_full": 0.8868026719624481,
+      "aromatic_recall": 0.2871507073541447,
+      "n_arom_to_single_collapse": 12194,
+      "n_predicted_aromatic_full": 5539,
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.30/diagnostic.json",
+      "pred_arom_truth_label_breakdown": {
+        "aromatic": 4912,
+        "double": 178,
+        "single": 423,
+        "triple": 26
+      },
+      "pred_class_counts": {
+        "AROMATIC": 5539,
+        "DOUBLE": 391,
+        "NO_BOND": 81790,
+        "SINGLE": 26762,
+        "TRIPLE": 46
+      }
+    },
+    "0.40": {
+      "arom_to_single_fraction": 0.7128492926458553,
+      "aromatic_f1_full": 0.43382645175535434,
+      "aromatic_precision_full": 0.8868026719624481,
+      "aromatic_recall": 0.2871507073541447,
+      "n_arom_to_single_collapse": 12194,
+      "n_predicted_aromatic_full": 5539,
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.40/diagnostic.json",
+      "pred_arom_truth_label_breakdown": {
+        "aromatic": 4912,
+        "double": 178,
+        "single": 423,
+        "triple": 26
+      },
+      "pred_class_counts": {
+        "AROMATIC": 5539,
+        "DOUBLE": 391,
+        "NO_BOND": 81797,
+        "SINGLE": 26755,
+        "TRIPLE": 46
+      }
+    },
+    "0.50": {
+      "arom_to_single_fraction": 0.7128492926458553,
+      "aromatic_f1_full": 0.43382645175535434,
+      "aromatic_precision_full": 0.8868026719624481,
+      "aromatic_recall": 0.2871507073541447,
+      "n_arom_to_single_collapse": 12194,
+      "n_predicted_aromatic_full": 5539,
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.50/diagnostic.json",
+      "pred_arom_truth_label_breakdown": {
+        "aromatic": 4912,
+        "double": 178,
+        "single": 423,
+        "triple": 26
+      },
+      "pred_class_counts": {
+        "AROMATIC": 5539,
+        "DOUBLE": 391,
+        "NO_BOND": 81803,
+        "SINGLE": 26749,
+        "TRIPLE": 46
+      }
+    },
+    "0.60": {
+      "arom_to_single_fraction": 0.7128492926458553,
+      "aromatic_f1_full": 0.43382645175535434,
+      "aromatic_precision_full": 0.8868026719624481,
+      "aromatic_recall": 0.2871507073541447,
+      "n_arom_to_single_collapse": 12194,
+      "n_predicted_aromatic_full": 5539,
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.60/diagnostic.json",
+      "pred_arom_truth_label_breakdown": {
+        "aromatic": 4912,
+        "double": 178,
+        "single": 423,
+        "triple": 26
+      },
+      "pred_class_counts": {
+        "AROMATIC": 5539,
+        "DOUBLE": 391,
+        "NO_BOND": 81811,
+        "SINGLE": 26741,
+        "TRIPLE": 46
+      }
+    },
+    "0.70": {
+      "arom_to_single_fraction": 0.7128492926458553,
+      "aromatic_f1_full": 0.43382645175535434,
+      "aromatic_precision_full": 0.8868026719624481,
+      "aromatic_recall": 0.2871507073541447,
+      "n_arom_to_single_collapse": 12194,
+      "n_predicted_aromatic_full": 5539,
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.70/diagnostic.json",
+      "pred_arom_truth_label_breakdown": {
+        "aromatic": 4912,
+        "double": 178,
+        "single": 423,
+        "triple": 26
+      },
+      "pred_class_counts": {
+        "AROMATIC": 5539,
+        "DOUBLE": 391,
+        "NO_BOND": 81820,
+        "SINGLE": 26732,
+        "TRIPLE": 46
+      }
+    },
+    "0.80": {
+      "arom_to_single_fraction": 0.7128492926458553,
+      "aromatic_f1_full": 0.43382645175535434,
+      "aromatic_precision_full": 0.8868026719624481,
+      "aromatic_recall": 0.2871507073541447,
+      "n_arom_to_single_collapse": 12194,
+      "n_predicted_aromatic_full": 5539,
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.80/diagnostic.json",
+      "pred_arom_truth_label_breakdown": {
+        "aromatic": 4912,
+        "double": 178,
+        "single": 423,
+        "triple": 26
+      },
+      "pred_class_counts": {
+        "AROMATIC": 5539,
+        "DOUBLE": 391,
+        "NO_BOND": 81846,
+        "SINGLE": 26706,
+        "TRIPLE": 46
+      }
+    },
+    "0.90": {
+      "arom_to_single_fraction": 0.7128492926458553,
+      "aromatic_f1_full": 0.43382645175535434,
+      "aromatic_precision_full": 0.8868026719624481,
+      "aromatic_recall": 0.2871507073541447,
+      "n_arom_to_single_collapse": 12194,
+      "n_predicted_aromatic_full": 5539,
+      "path": "molmetal/reports/cfm_blkc_m4_threshold_sweep_2026_10_13/threshold_0.90/diagnostic.json",
+      "pred_arom_truth_label_breakdown": {
+        "aromatic": 4912,
+        "double": 178,
+        "single": 423,
+        "triple": 26
+      },
+      "pred_class_counts": {
+        "AROMATIC": 5539,
+        "DOUBLE": 391,
+        "NO_BOND": 81935,
+        "SINGLE": 26617,
+        "TRIPLE": 46
+      }
+    }
+  },
+  "red_check_tests_unregressed": "molmetal/tests/test_wf_blkc_qed_lever_aromatic_head.py, molmetal/tests/test_a4_receptive_field.py, molmetal/tests/test_head_ring_size_behaviour.py, molmetal/tests/test_tmqm_min_per_metal.py",
+  "round9_finding_relationship": "Round-9 found n_predicted_aromatic_full = 5539 invariant under AROMATIC_LO change (the BAND axis). This sweep tests the bond_decision existence threshold (a DIFFERENT axis the band sweep did not vary). Result: the count is ALSO invariant under threshold (5539-5540 across [0.05..0.90]). Both axes leave the aromatic count pinned; the head retrain is the only lever.",
+  "smoke_check": {
+    "decode_ratio_gt_0_applicable": "N/A (this is a metric probe, not a generation trainer)",
+    "loss_monotone_applicable": "N/A (this is a metric probe, not a generation trainer)",
+    "parse_args_accepts_new_flags": true,
+    "script_imports_cleanly": true
+  },
+  "tag": "MEASURED",
+  "thresholds_swept": [
+    0.05,
+    0.1,
+    0.2,
+    0.3,
+    0.4,
+    0.5,
+    0.6,
+    0.7,
+    0.8,
+    0.9
+  ],
+  "verdict": "NO -- the threshold sweep does NOT raise F1 above the 0.43 baseline. F1 is flat at 0.4338 across the entire grid [0.05..0.90], and the aromatic prediction count is locked at 5539 (one pair at T=0.05). The head's 5539 aromatic predictions are not boundary cases the existence threshold can recalibrate; they come with overwhelming p_bonded confidence AND high logit_4 ranking. The head retrain slot IS the right call -- threshold alone cannot close the gap."
+}

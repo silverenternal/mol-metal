@@ -1,0 +1,59 @@
+# wf_a1_bace_cw_off.yaml — B1: BACE, class_weight OFF (weak-metric re-experiment).
+#
+# Single-variable change vs the baseline config
+#   configs/wf_fix3lines_bace_50ep_2026_10_09.yaml
+#   (targets molmetal/scripts/train_moleculenet.py)
+# -> model.class_weight: off. Everything else is held at the baseline:
+#    tasks [bace], scaffold_split true, backbone dmpnn, hidden 300, depth 3,
+#    epochs 50, batch_size 64, lr 0.001, seeds [0,1,2,3,4].
+#
+# The trainer's --class-weight default is 'on' (neg/pos weighting, legacy), so
+# the baseline ran weighted; this arm removes that weighting.
+#
+# HONEST FRAMING (§5.2): the number this arm produces is PROJECTED until the
+# run lands. The baseline it is compared against is MEASURED:
+#   molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/metrics.json
+#   bace test_auc_mean = 0.7505 +/- 0.0456 (5 seeds, 50 epochs).
+# Do NOT quote any figure here as measured before the JSON exists on disk.
+data:
+  tasks:
+  - bace
+  scaffold_split: true
+model:
+  backbone: dmpnn
+  hidden: 300
+  depth: 3
+  class_weight: "off"        # <-- B1: the single variable under test
+                             #     MUST be quoted: PyYAML reads bare `off` as boolean
+                             #     False (YAML 1.1), but the trainer compares the
+                             #     STRING "off" in _resolve_pos_weight().
+protocol:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+output:
+  base_dir: molmetal/reports/wf_a1_bace_cw_off
+  out_dir: molmetal/reports/wf_a1_bace_cw_off
+  log_master: molmetal/reports/wf_a1_bace_cw_off/master.log
+  training_summary: molmetal/reports/wf_a1_bace_cw_off/training_summary.json
+  out_metric: molmetal/reports/wf_a1_bace_cw_off/metrics.json
+  out_report: molmetal/reports/wf_a1_bace_cw_off/report.md
+  events_jsonl: true
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_moleculenet.py
+    --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: B1 — does removing positive-class weighting lift BACE AUC over the 0.7505 baseline?
+  note: PROJECTED until the run lands; baseline 0.7505 +/- 0.0456 is MEASURED (5 seeds, 50 ep).

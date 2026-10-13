@@ -1,0 +1,92 @@
+{
+  "metric": "cfm_valence_budget_variant_ab",
+  "tag": "MEASURED",
+  "run": "cfm_objective_terms_2026_10_11",
+  "checkpoint": "molmetal/reports/cfm_objective_terms_2026_10_11/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",
+  "checkpoint_epoch": 5,
+  "n_clouds": 64,
+  "split": "ODE-from-noise (midpoint/50 steps)",
+  "decode_path": "ode",
+  "variants": {
+    "as_shipped": {
+      "n": 64,
+      "single_fragment_ratio": 0.0781,
+      "single_fragment_ratio_of_decoded": 1.0,
+      "n_frags_mean": 1.0,
+      "decode_ratio": 0.0781,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
+    },
+    "aromatic_1.0": {
+      "n": 64,
+      "single_fragment_ratio": 0.0312,
+      "single_fragment_ratio_of_decoded": 1.0,
+      "n_frags_mean": 1.0,
+      "decode_ratio": 0.0312,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
+    },
+    "metals_8": {
+      "n": 64,
+      "single_fragment_ratio": 0.0625,
+      "single_fragment_ratio_of_decoded": 1.0,
+      "n_frags_mean": 1.0,
+      "decode_ratio": 0.0625,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
+    },
+    "both": {
+      "n": 64,
+      "single_fragment_ratio": 0.0469,
+      "single_fragment_ratio_of_decoded": 1.0,
+      "n_frags_mean": 1.0,
+      "decode_ratio": 0.0469,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
+    },
+    "reserve_0.5": {
+      "n": 64,
+      "single_fragment_ratio": 0.0781,
+      "single_fragment_ratio_of_decoded": 1.0,
+      "n_frags_mean": 1.0,
+      "decode_ratio": 0.0781,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
+    },
+    "reserve_1.0": {
+      "n": 64,
+      "single_fragment_ratio": 0.0312,
+      "single_fragment_ratio_of_decoded": 0.4,
+      "n_frags_mean": 2.4,
+      "decode_ratio": 0.0781,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
+    },
+    "reserve_2.0": {
+      "n": 64,
+      "single_fragment_ratio": 0.0,
+      "single_fragment_ratio_of_decoded": 0.0,
+      "n_frags_mean": 7.4,
+      "decode_ratio": 0.0781,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
+    },
+    "no_budget": {
+      "n": 64,
+      "single_fragment_ratio": 0.0156,
+      "single_fragment_ratio_of_decoded": 1.0,
+      "n_frags_mean": 1.0,
+      "decode_ratio": 0.0156,
+      "denominator_note": "single_fragment_ratio divides by every cloud attempted; single_fragment_ratio_of_decoded divides by the molecules that decoded, which is the trainer's convention and the one comparable with gen_single_fragment_ratio."
+    }
+  },
+  "note": "'no_budget' is the degenerate control, not a proposal. Metric-gaming direction: raising single_fragment_ratio by dropping or ignoring valence enforcement without reporting the decode_ratio cost.",
+  "ode_path_finding_2026_10_12": {
+    "why_this_table_exists": "The reconstruction table is measured on a near-solved task (bond EXISTENCE F1 0.9962), which compresses differences between variants. This is the same 8 variants on GENERATED geometry.",
+    "what_the_ode_path_generated": "64 clouds by integrating the CFM from the noise prior, midpoint/50. The integration is done ONCE and shared by all 8 variants, which is valid because the valence-budget tables are read only by the bond head at decode time (cfm_decoder_yuelbond.py:485, :601) -- the velocity field does not consult them.",
+    "THREE_FINDINGS_THAT_DIFFER_FROM_THE_RECONSTRUCTION_TABLE": [
+      "no_budget is the WORST variant here, not the best-connected one. On reconstruction it scored of_decoded 1.000 (looked perfect); under generation its decode_ratio is 0.0156 -- 1 molecule out of 64. The \"perfect connectivity\" of the budget-free decoder is an artefact of feeding it real molecules.",
+      "The budget is MORE load-bearing under generation: as_shipped decode_ratio 0.0781 vs no_budget 0.0156 is 5x. On reconstruction the same ratio was 1.6x.",
+      "The reserve penalty changes MECHANISM. On reconstruction, tightening the reserve collapsed decode_ratio (0.2031 -> 0.0781 -> 0.0625). Under generation, decode_ratio is FLAT at 0.0781 for as_shipped / reserve_1.0 / reserve_2.0, and only connectivity collapses (of_decoded 1.0 -> 0.4 -> 0.0, n_frags 1.0 -> 2.4 -> 7.4). Withholding budget now fragments the molecule instead of breaking sanitisation."
+    ],
+    "HARD_LIMITS_ON_THIS_TABLE": [
+      "ABSOLUTE VALUES ARE NOT USABLE. as_shipped decode_ratio here is 0.0781, while the same metric on cfm_fullcorpus_2026_10_10 (epoch 10) via wf_cfm_decode_dump_smiles.py is 0.344 -- a 4.4x gap. Two different checkpoints (cfm_objective_terms epoch 5 vs cfm_fullcorpus epoch 10) and n=64 is too small. Only the RELATIVE ordering across the 8 variants carries information.",
+      "n=64 clouds, one seed, one checkpoint.",
+      "decoded counts are 1 to 5 molecules per variant, so of_decoded is estimated on single digits for the tightest reserves."
+    ],
+    "what_it_does_not_establish": "It does not show that as_shipped is optimal under generation either -- the reserve variants tie it on decode_ratio here, and n is far too small to separate them. A decision needs the full-corpus checkpoint and several hundred clouds."
+  }
+}

@@ -63,15 +63,6 @@ from triton_kernels.config import triton_config
 # at ``models/_scatter.py:84-94``).
 from .amp import CFMAMPContext, recommended_amp_kwargs, ROCM_GFX1101_ENV_VARS  # noqa: E402
 
-# EGNN extension utilities (S6 + S7 surface).  The imports are at
-# module load time so eager yaml-driven paths can build the modules
-# without a lazy-import dance.  See ``egnn_extensions.py`` for the
-# bit-exact backward-compat contract on each helper.
-from molmetal.adapters.egnn_extensions import (  # noqa: E402
-    SinusoidalEmbedding,
-    PerLayerPocketInjector,
-)
-
 
 def maybe_enable_amp() -> "CFMAMPContext":
     """Decide whether to enable BF16 autocast for the CFM training loop.
@@ -1261,8 +1252,7 @@ class EGNNVelocityField(nn.Module):
         tmqm_init_path: Optional[str] = None,
         use_tmqm_init: bool = False,
         context_dropout: float = 0.1,
-        t_embedding_dim: int = 32,
-        pocket_per_layer: bool = True,
+        q_head_enabled: bool = False,
     ) -> None:
         """Construct the velocity field.
 
@@ -1334,47 +1324,6 @@ class EGNNVelocityField(nn.Module):
                 f"context_dropout must be in [0.0, 1.0), got {context_dropout!r}"
             )
         self.context_dropout = float(context_dropout)
-
-        # S6 / S-A9 — new per-layer t-embedding surface.  When
-        # ``t_embedding_dim > 0`` we add a :class:`SinusoidalEmbedding`
-        # so the velocity field can be conditioned on ``t`` at every
-        # EGNN layer (a standard transformer / Equivariant Transformer
-        # pattern).  The legacy scalar ``time_mlp`` stays — the
-        # SinusoidalEmbedding output is *additive* on top of it, never
-        # a replacement.  When ``t_embedding_dim=0`` the new path is
-        # fully disabled and the legacy single-add at input is bit-
-        # exact.
-        self.t_embedding_dim = int(t_embedding_dim)
-        if self.t_embedding_dim > 0:
-            self.time_embed = SinusoidalEmbedding(dim=self.t_embedding_dim)
-            # Project SinusoidalEmbedding dim -> hidden_dim for additive
-            # injection at every layer.  Zero-init so at init the
-            # per-layer addend is identically zero and the legacy
-            # single-add at input is recovered bit-exactly.
-            self.time_embed_proj = nn.Linear(self.t_embedding_dim, hidden_dim, bias=True)
-            with torch.no_grad():
-                self.time_embed_proj.weight.zero_()
-                if self.time_embed_proj.bias is not None:
-                    self.time_embed_proj.bias.zero_()
-        else:
-            self.time_embed = None
-            self.time_embed_proj = None
-
-        # S7 / S-A8 — per-layer pocket injection.  When ``True`` the
-        # pocket vector is projected to ``(B, N, hidden_dim)`` and
-        # added to ``h`` at every layer.  The projection is
-        # zero-initialised so at init the per-layer addition is
-        # identically zero and the pre-fix code path is recovered.
-        # When ``False`` only the initial input-projection add is
-        # applied — the pre-P1.3 bit-exact contract.
-        self.pocket_per_layer_enabled = bool(pocket_per_layer)
-        if self.pocket_per_layer_enabled:
-            self.pocket_per_layer_injector = PerLayerPocketInjector(
-                pocket_dim=hidden_dim,
-                hidden_dim=hidden_dim,
-            )
-        else:
-            self.pocket_per_layer_injector = None
 
         self.time_mlp = _MaybeFusedSiLUMLP(
             in_dim=1,
@@ -1494,6 +1443,36 @@ class EGNNVelocityField(nn.Module):
         # uninformative (all zeros) at init.
         self.cross_attn_norm = nn.LayerNorm(hidden_dim)
 
+        # Track-A (Wf-A15, 2026-10-13) — Layer 3a q-prediction head.
+        #
+        # When ``q_head_enabled=True``, attach a tiny zero-init
+        # ``Linear(hidden_dim, 1)`` that emits per-atom NBO natural
+        # charge from the final per-atom ``h`` (the same tensor used by
+        # ``atom_head``).  The head is ZERO-INIT so a fresh
+        # ``EGNNVelocityField`` produces ``q_pred = 0`` everywhere —
+        # ``NaturalChargeLoss.compute(pred=0, target=any)`` returns
+        # ``mse_loss(0, target) * weight``, which collapses to a zero
+        # tensor when ``weight=0`` (the YAML default).  When
+        # ``q_head_enabled=False`` (legacy), no q_head is registered on
+        # the module — bit-exact pre-Track-A: ``state_dict`` does not
+        # gain keys, every existing checkpoint resumes, and the forward
+        # dict never carries ``q_pred``.
+        #
+        # The head sits in the ``q_channel`` param group when the
+        # trainer enables ``--q-channel-lr-multiplier`` (Layer 7,
+        # :mod:`molmetal.optim.differential_lr`); it falls into the
+        # backbone bucket otherwise — same behaviour as the
+        # ``atom_head`` (zero-init, default LR).
+        self.q_head_enabled = bool(q_head_enabled)
+        if self.q_head_enabled:
+            self.q_head = nn.Linear(hidden_dim, 1, bias=True)
+            nn.init.zeros_(self.q_head.weight)
+            nn.init.zeros_(self.q_head.bias)
+        else:
+            # Register a None placeholder for stable introspection; this
+            # is never consulted on the bit-exact default path.
+            self.q_head = None
+
         # Optional: warm-start the encoder from a tmQM pre-trained checkpoint
         # (see F2 report).  Failures degrade gracefully to random init.
         if use_tmqm_init:
@@ -1593,13 +1572,7 @@ class EGNNVelocityField(nn.Module):
         dative_bond_edge_attr: Optional[torch.Tensor] = None,  # (B, E)  bool, T9 opt-in
         pocket_atom_embed: Optional[torch.Tensor] = None,  # (B, P, max_atomic_number)
         pocket_atom_mask: Optional[torch.Tensor] = None,  # (B, P) bool
-        # Wf-A15 (2026-10-13) — chemistry-signal pass-through (Layer E/D).
-        # Optional dict carrying per-pair / per-atom / per-cloud chemistry
-        # tensors.  When ``None`` (legacy callers) every EGNN layer in the
-        # stack sees ``batch_ctx=None`` and the legacy mlp_in path is
-        # preserved bit-exactly.  When a dict is supplied it is forwarded
-        # unchanged to each layer.
-        batch_ctx: Optional[dict] = None,
+        batch_ctx: Optional[dict] = None,  # Track-A L3b — chemistry context dict
     ) -> dict:
         """Predict per-atom velocity (B, N, 3) AND atom-type logits (B, N, max_z).
 
@@ -1655,22 +1628,6 @@ class EGNNVelocityField(nn.Module):
         elif t.dim() == 1:
             t = t.unsqueeze(-1)  # (B, 1)
         t_per_atom = self.time_mlp(t).unsqueeze(1).expand(b, n, -1)
-        # S6 / S-A9 — optional per-layer t-embedding via
-        # :class:`SinusoidalEmbedding`.  ``t_extra`` is a (B, n,
-        # t_embedding_dim) tensor (or ``None`` if disabled); we add it
-        # to ``h`` at every EGNN layer when present.  When disabled,
-        # ``t_extra`` is None and the per-layer loop body short-circuits
-        # the addition — recovering the legacy single-add at input.
-        if self.time_embed is not None:
-            t_emb = self.time_embed(t)  # (B, t_embedding_dim)
-            # Project to hidden_dim so it can be added to ``h`` (which is
-            # ``(B, N, hidden_dim)``).  The projection is zero-init so
-            # the per-layer addition is zero at init — bit-exact legacy.
-            t_extra = (
-                self.time_embed_proj(t_emb).unsqueeze(1).expand(b, n, -1)
-            )
-        else:
-            t_extra = None
         # Pocket conditioning (T5): additive bias to atom embeddings,
         # broadcast across all ligand atoms.  When None, use zero bias
         # so the unconditioned forward is unchanged.
@@ -1699,27 +1656,9 @@ class EGNNVelocityField(nn.Module):
                 pocket_bias = pocket_embed.unsqueeze(1).expand(b, n, -1) * keep
             else:
                 pocket_bias = pocket_embed.unsqueeze(1).expand(b, n, -1)
-        # S7 / S-A8 — per-layer pocket additive injection.  When
-        # ``pocket_per_layer_injector`` is set, we keep a *non-zero*
-        # ``pocket_extra`` tensor that is added to ``h`` at every EGNN
-        # layer.  When the caller passes ``pocket_embed=None`` the
-        # addend is identically zero (the projector is zero-initialised
-        # so ``pocket_extra`` collapses to zero on the no-pocket path).
-        if self.pocket_per_layer_injector is not None:
-            pocket_extra = self.pocket_per_layer_injector(pocket_embed, n)
-        else:
-            pocket_extra = None
         h = self.atom_embed(atom_types) + t_per_atom + pocket_bias
         last_v = torch.zeros_like(x_t)
         for layer in self.layers:
-            # Per-layer additive injection (S6 + S7).  Both branches are
-            # no-ops when the trainer opted out (t_extra is None or
-            # pocket_extra is None): the layer sees the legacy scalar t
-            # only and the pocket sees only its initial injection.
-            if t_extra is not None:
-                h = h + t_extra
-            if pocket_extra is not None:
-                h = h + pocket_extra
             # Pass t_per_atom as cond_per_node so the EGNNLayer's
             # update_mlp (which expects 3H+1 with cond) gets the
             # right shape.  Without this, update_mlp would receive
@@ -1731,13 +1670,6 @@ class EGNNVelocityField(nn.Module):
                 cond_per_node=t_per_atom,
                 edge_mask=edge_mask,
             )
-            # Wf-A15 (2026-10-13) — chemistry-signal stash (Layer E pass-through).
-            # ``EGNNLayer`` (models.velocity_net) does not accept batch_ctx
-            # directly; we expose it via ``self._last_batch_ctx`` so downstream
-            # consumers (e.g. metal-proximity-aware loss terms) can read it.
-            # No effect on the layer's forward output.
-            if batch_ctx is not None:
-                self._last_batch_ctx = batch_ctx
         # WF-CFM-Phase-2 (P1.3) — cross-attention pocket conditioning.
         # When ``pocket_atom_embed`` and ``pocket_atom_mask`` are
         # supplied, project per-pocket-atom one-hot atomic numbers
@@ -1786,18 +1718,26 @@ class EGNNVelocityField(nn.Module):
         relative_to_centroid = x_t - x_t.mean(dim=1, keepdim=True)
         vel = self.vel_head(h) * self.vel_scale * relative_to_centroid + last_v
         atom_logits = self.atom_head(h)  # (B, N, max_atomic_number)
-        # S-A1 — ``h_per_layer`` exposes the post-cross-attention ``h``
-        # (the final per-atom hidden state) for downstream consumers
-        # like :class:`molmetal.models.bond_head.BondOrderHead`.  Older
-        # callers destructuring the dict via ``d["vel"]`` /
-        # ``d["atom_logits"]`` keep working — ``h_per_layer`` is an
-        # additive key, the existing ``h`` key stays unchanged.
-        return {
+        # Track-A (Wf-A15, 2026-10-13) — Layer 3a q-prediction.
+        #
+        # When ``self.q_head_enabled=True`` and ``self.q_head`` is set,
+        # emit per-atom q predictions (``q_pred``) from the same final
+        # per-atom ``h`` that feeds ``atom_logits``.  The head is
+        # zero-init at construction so a fresh field returns
+        # ``q_pred == 0``; ``NaturalChargeLoss(weight=0)`` then returns
+        # a zero tensor — bit-exact pre-Track-A.  When
+        # ``q_head_enabled=False`` (the YAML default), the dict does NOT
+        # carry ``q_pred`` — existing callers that destructure the
+        # return dict via ``out["vel"]`` / ``out["atom_logits"]`` /
+        # ``out["h"]`` keep working unchanged.
+        out: Dict[str, torch.Tensor] = {
             "vel": vel,
             "atom_logits": atom_logits,
             "h": h,
-            "h_per_layer": h,
         }
+        if self.q_head is not None:
+            out["q_pred"] = self.q_head(h).squeeze(-1)  # (B, N)
+        return out
 
     # ------------------------------------------------------------------
     # T9: square-planar Pt(II) geometric prior (opt-in)

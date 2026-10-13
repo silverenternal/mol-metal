@@ -1,0 +1,74 @@
+{
+  "metric": "blk_l1_platinai_50d_r2",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "unit": "R^2 (held-out fold; higher better)",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/blk_l1_platinai_50d_r2.py",
+  "cohort": "platinai_4cell",
+  "target_name": "pIC50_mean_mcf7_a549_a2780_a2780cis",
+  "n": 4078,
+  "protocol": {
+    "cv": "5 seeds x 5 folds, Ridge (closed-form)",
+    "alpha": 0.1,
+    "alpha_tier": "n_gte_1000 (wf380a2 select_features)",
+    "fold_seed_offset": 0,
+    "note": "fold construction + Ridge solver identical to wf380a2_ridge_r2_cv, so the 32-d control here reproduces the on-disk +0.01025"
+  },
+  "on_disk_control": {
+    "r2_mean": 0.01025,
+    "n_features": 32,
+    "alpha": 0.1,
+    "source": "metrics/by_metric/m2_r2_per_cohort.json::wf_fix3lines_expand_2026_10_09"
+  },
+  "feature_composition": {
+    "control_32d": "PLATINAI_32D_COLUMNS (12-d Lipinski + 20-d shape/charge/ring)",
+    "added_18d": "PCA(18) of Morgan ECFP4 (radius=2, 2048-bit), fit inside each training fold",
+    "why_not_chemprop_v3": "no trained chemprop v3 encoder checkpoint exists on disk (chemprop_v3_encoder_forward builds an untrained ChempropV2Encoder; 'frozen' in blk_d2 reports means weights frozen, not pretrained) — an 18-d slice of a random encoder would be noise, so it is not used",
+    "why_not_hilbert": "no SMILES -> Hilbert-coordinate featurizer exists in the repo; the '50-d' tier label names a family, not a defined composition",
+    "morgan_rows_nonzero": 4078
+  },
+  "arms": {
+    "rdkit_32d_control": {
+      "r2_mean": 0.010248095662493722,
+      "r2_std": 0.0035890534854773827,
+      "n_folds": 25,
+      "per_seed": [
+        0.008488254439043174,
+        0.0042678977703803685,
+        0.012344832114802218,
+        0.014686376268646328,
+        0.011453117719596517
+      ],
+      "n_features": 32,
+      "reproduces_on_disk_control": true
+    },
+    "rdkit32_morganpca18_50d": {
+      "r2_mean": 0.003082350987113443,
+      "r2_std": 0.005105911097031766,
+      "n_folds": 25,
+      "per_seed": [
+        -0.0020919898265246316,
+        -0.0030449541539208313,
+        0.0036106151865274104,
+        0.010433988329698529,
+        0.0065040953997867355
+      ],
+      "n_features": 50,
+      "delta_vs_control": -0.007165744675380279
+    }
+  },
+  "verdict": {
+    "target_r2": 0.15,
+    "best_arm_r2": 0.010248095662493722,
+    "verdict": "CEILING_REACHED_HONEST_NEGATIVE",
+    "reading": "50-d (32-d RDKit + 18 PCA dims of a real Morgan fingerprint) does not move platinai_4cell R^2 off zero: the cohort is representation-limited, not feature-count-limited. metalcytotox_combined stays the load-bearing cohort."
+  },
+  "honest_negative": {
+    "blocker": "BLK-L1",
+    "symptom": "platinai_4cell R2 ~= 0 at n=4078",
+    "still_open_in_blocker": "the blocker's Step 2 (chemprop_v3 frozen encoder) is not achievable — no trained encoder exists on disk; Step 3 (Hilbert 18-d) has no defined featurizer. Both are recorded here rather than papered over with a random-encoder feature.",
+    "do_not_over_claim": "platinai_4cell is a Pt-only continuous-regression cohort; it is not the MetalCytoToxDB 5-metal classification task and BLK-C15 does not transfer."
+  },
+  "wall_sec": 36.6
+}

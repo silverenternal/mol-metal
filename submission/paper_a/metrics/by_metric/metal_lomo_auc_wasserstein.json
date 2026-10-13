@@ -1,0 +1,294 @@
+{
+  "metric": "metal_lomo_auc_wasserstein",
+  "description": "Mean test ROC-AUC across 5 folds (Ru/Ir/Os/Rh/Re) × 5 seeds of multi-metal leave-one-metal-out transfer with W₂ transfer regularisation. STALE-PROSE FIXED (2026-10-08): the historical text said '2 folds (Rh, Re)' × N seeds with 'Rh closure-oversample'; the live real-only headline (rh_oversample=0, n_synthetic_rh_appended=0) is the 25-run 5-fold panel below, NOT a 2-fold oversampled run. See real_only_pa_m19_re_measurement_2026_10_08 for the provenance of the retracted 7-run/2-fold oversampled wave.",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_sbdd_ood_lomo_wasserstein",
+  "source": "molmetal/scripts/train_metal_lomo_wasserstein.py",
+  "gate_target": 0.7,
+  "gate_target_provenance": "INTERNAL -- 0.7 is our own GATE_AUC constant (train_metal_lomo_wasserstein.py). It is NOT a literature value. Krasnov 2026 reports its own MetalCytoToxDB numbers on a different cohort + different split; the 0.7577 headline is NOT compared numerically against Krasnov here.",
+  "external_paper_baseline": null,
+  "value_is_half_synthetic": true,
+  "half_synthetic_note": "HONEST-NEGATIVE (MEASURED, resolved to source, 2026-10-07 per wf-R33 m19 cohort-conflict): the 0.7577 mean pools 2 folds fed by the SAME synthetic Rh cohort -- wf139_p7_rh_active_cohort/synthetic_rh_pos_neg_normalized.json -- via append_synthetic_rh_to_dataset() with n_synthetic_rh_appended=500, confirmed identically on all 7 runs in molmetal/reports/wf131_p3_deferred_runs/run.log (n=27132, n_synthetic_rh_appended=500). The prior note claiming 'Re is real-only' is CORRECTED and RETRACTED: Re was NOT real-only. The synthetic block is appended to the shared 5-metal pool BEFORE the LOMO split, so it contaminates the Rh train fold AND enters the Re train fold too -- only the held-out TEST fold of each metal is clean, which is why the headline number is still a held-out measurement but not a real-data-only measurement. is_synthetic on the resolved cohort: the wf139_p7 file carries NO is_synthetic key; it is synthetic by construction (Rh_act_label_generation output, 250 simulated active + 250 simulated inactive). The wf387a2 balanced cohort's is_synthetic:false describes REAL compounds and was never used here. rh_cohort_source in this file previously pointed at wf387a2; that was a retroactive overwrite and is restored to the value the trainer actually wrote. Open honest-negative (unchanged): the trainer docstring predicts n_synthetic_rh_appended=500 waves land Rh at 0.338-0.411, but this wave MEASURED Rh=0.8798. The divergence is unexplained and is a result to investigate, not to celebrate.",
+  "real_only_fold_value": 0.381174168297456,
+  "synthetic_affected_fold_value": 0.8798174728752262,
+  "value": 0.5575471269535148,
+  "value_std": 0.09493914640509747,
+  "per_fold_auc_mean": {
+    "Ru": 0.5971611904294237,
+    "Ir": 0.5975135305140941,
+    "Os": 0.5831364124597207,
+    "Rh": 0.381174168297456,
+    "Re": 0.6287503330668799
+  },
+  "per_fold_auc_std": {
+    "Ru": 0.012096591279412788,
+    "Ir": 0.018585301414857786,
+    "Os": 0.028496728462837045,
+    "Rh": 0.026963976693994193,
+    "Re": 0.0551147076728955
+  },
+  "per_run_auc": [
+    0.6141598661273294,
+    0.5906208951238675,
+    0.6075496728375359,
+    0.5806266726411157,
+    0.5928488454172702,
+    0.5796524656331494,
+    0.6276625299768048,
+    0.6040912605328336,
+    0.5762937530304421,
+    0.5998676433972402,
+    0.5698174006444684,
+    0.5738453276047261,
+    0.5700859291084855,
+    0.6396348012889366,
+    0.562298603651987,
+    0.3780821917808219,
+    0.4309197651663405,
+    0.35264187866927593,
+    0.38140900195694716,
+    0.3628180039138943,
+    0.5696775912603251,
+    0.6722621902478018,
+    0.6577404742872369,
+    0.6886490807354118,
+    0.5554223288036237
+  ],
+  "n_runs": 25,
+  "n_folds": 5,
+  "metals": [
+    "Ru",
+    "Ir",
+    "Os",
+    "Rh",
+    "Re"
+  ],
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "epochs": 30,
+  "wasserstein_weight": 0.05,
+  "rh_oversample": 0,
+  "n_synthetic_rh_appended": 0,
+  "model": "dmpnn_multitask_wasserstein",
+  "data_source": "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+  "rh_cohort_source": null,
+  "use_l2_guard": true,
+  "use_astr_scale_guard": false,
+  "l2_guard_max_norm": 5.0,
+  "astr_scale_clip_min": -10.0,
+  "astr_scale_clip_max": 10.0,
+  "status": "MEASURED_BELOW_TARGET_BASELINE",
+  "verdict": "BELOW_TARGET_BASELINE_REAL_ONLY",
+  "target_rh_auc": 0.5,
+  "target_overall_auc": 0.6,
+  "rh_target_hit": false,
+  "overall_target_hit": false,
+  "synthetic_augmented_baseline_preserved_for_diff": {
+    "value": 0.7576516768181095,
+    "value_std": 0.09239375069892813,
+    "n_synthetic_rh_appended_was": 500,
+    "rh_oversample_was": 500,
+    "rh_cohort_source_was": "/home/hugo/codes/mol-metal/molmetal/reports/wf139_p7_rh_active_cohort/synthetic_rh_pos_neg_normalized.json",
+    "n_runs_was": 7,
+    "n_folds_was": 2,
+    "metals_was": [
+      "Rh",
+      "Re"
+    ],
+    "epochs_was": 50,
+    "per_fold_auc_mean_was": {
+      "Rh": 0.8798174728752262,
+      "Re": 0.7087853584076347
+    },
+    "per_run_auc_was": [
+      0.8879284160262206,
+      0.8717065297242316,
+      0.7018040822886531,
+      0.7462632594021216,
+      0.7467454194792671,
+      0.6294901157184185,
+      0.7196239151398265
+    ],
+    "rationale": "This block preserves the contaminated (n_synthetic_rh_appended=500) wave's headline so the diff vs the real-only wave is auditable on a single read. Per Wf-R40 P-A + Wf-R43 m19 fail-loud guard remediation: the contaminated number was HELD-OUT but not REAL-DATA-ONLY; the real-only re-measurement (top-level `value` above) is the headline that downstream consumers should quote going forward."
+  },
+  "real_only_pa_m19_re_measurement_2026_10_08": {
+    "description": "Wf-R40 P-A + Wf-R43 m19 REAL-DATA-ONLY re-measurement via --rh-oversample 0 (Wf-R40 P-A parameterization). Launcher: scripts/launch_dmpnn_clean5_lomo.sh with default RH_OVERSAMPLE=0 (per Wf-R40 1-line fix, commit adf7f6e29e). 5 metals (Ru/Ir/Os/Rh/Re) x 5 seeds x 30 epochs = 25 runs on CPU.",
+    "source_metric_path": "molmetal/reports/dmpnn_clean5_lomo/metrics.json",
+    "source_per_seed_metrics_dir": "molmetal/reports/dmpnn_clean5_lomo/",
+    "rh_oversample_used": 0,
+    "n_synthetic_rh_appended_used": 0,
+    "rh_cohort_source_used": null,
+    "value": 0.5575471269535148,
+    "value_std": 0.09493914640509747,
+    "per_fold_auc_mean": {
+      "Ru": 0.5971611904294237,
+      "Ir": 0.5975135305140941,
+      "Os": 0.5831364124597207,
+      "Rh": 0.381174168297456,
+      "Re": 0.6287503330668799
+    },
+    "per_fold_auc_std": {
+      "Ru": 0.012096591279412788,
+      "Ir": 0.018585301414857786,
+      "Os": 0.028496728462837045,
+      "Rh": 0.026963976693994193,
+      "Re": 0.0551147076728955
+    },
+    "n_runs": 25,
+    "n_folds": 5,
+    "epochs": 30,
+    "rh_real_only_lift_vs_synthetic_baseline": {
+      "synthetic_baseline_Rh": 0.8798174728752262,
+      "real_only_Rh": 0.381174168297456,
+      "delta": -0.49864330457776973,
+      "interpretation": "The synthetic-Rh-augmented run REACHED Rh=0.88 because the appended 500 hard-coded active/inactive rows (IC50=0.1 vs IC50=10.0; pIC50=7.0 vs 5.0) supplied a clean active/inactive signal the Rh real-only pool lacks. Removing the synthetic rows (n_synthetic_rh_appended=0) drops Rh by -0.50, which is the size of the artificial lift. The 'synthetic_label_provenance_warning' field above is consistent with this drop."
+    },
+    "verdict": "MEASURED_REAL_ONLY_BELOW_TARGET_BASELINE",
+    "rh_target_hit_0_5": false,
+    "overall_target_hit_0_6": false,
+    "honest_framing": "Wf-R40 P-A 1-line fix (RH_OVERSAMPLE env var) made this re-measurement possible: with --rh-oversample hard-coded to 500, no real-only run was launchable. With default 0, the trainer's append_synthetic_rh_to_dataset() is a no-op (n=0), and the LOMO split sees only the real 5-metal pool. The honest takeaway: the 0.7577 pooled value was held-out BUT contaminated; the 0.5575 real-only pooled value is below the 0.7 GATE_AUC constant, below the 0.5 Rh random-baseline (Rh is genuinely hard), and below the 0.6 overall target. The headline is therefore BELOW 0.5 on Rh and BELOW 0.6 overall, NOT a reproduction of the 0.7577 number on the synthetic-augmented cohort. This is the right number to quote going forward; the synthetic-augmented number stays above for historical diff.",
+    "timestamp": "2026-10-08T06:51:17+00:00",
+    "wf_tag": "Wf-R40 + Wf-R43 m19 P-A real-only re-measurement"
+  },
+  "real_only_centering_reproduction_2026_10_08": {
+    "description": "F3 'TO CLOSE' item: reproduce the --per-metal-pic50-center lever end-to-end under the REAL-ONLY protocol (--rh-oversample 0), which every historical /tmp/f3_* run did NOT use (all 500-oversample, hence non-comparable to the 0.5575 headline). Runs executed on GPU cuda:0, same protocol as the headline (5 metals x 5 seeds x 30 epochs for the panel; Rh 1-metal x 5 seeds x 30 epochs for the fold + combination runs). No code changed; --per-metal-pic50-center and --alpha are pre-existing wired flags (train_metal_lomo_wasserstein.py:1045/1538 + :1737).",
+    "source_metric_path": "molmetal/reports/m19_per_metal_centering_2026_10_08/metrics.json",
+    "source_per_fold_dir": "molmetal/reports/m19_per_metal_centering_2026_10_08/",
+    "launch_command": ".venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --metals Ru Ir Os Rh Re --seeds 0 1 2 3 4 --epochs 30 --device cuda:0 --rh-oversample 0 --per-metal-pic50-center",
+    "value": 0.5844738262081143,
+    "value_std": 0.07644237694027237,
+    "baseline_value": 0.5575471269535148,
+    "baseline_value_std": 0.09493914640509747,
+    "aggregate_delta": 0.0269266992545995,
+    "per_fold_auc_mean": {
+      "Ru": 0.5617608153895258,
+      "Ir": 0.5513575069782071,
+      "Os": 0.6461868958109559,
+      "Rh": 0.5021526418786693,
+      "Re": 0.6609112709832135
+    },
+    "per_fold_delta": {
+      "Ru": -0.0354003750398979,
+      "Ir": -0.046156023535887,
+      "Os": 0.0630504833504852,
+      "Rh": 0.1209784735812133,
+      "Re": 0.0321609379163336
+    },
+    "n_runs": 25,
+    "n_folds": 5,
+    "verdict": "HONEST_NEGATIVE_AGGREGATE_INSIDE_NOISE_WORST_FOLD_POSITIVE",
+    "honest_framing": "The +0.027 aggregate lift is INSIDE the run-level noise (value_std 0.0764 on the centering run, 0.0949 on the baseline) and is NOT a resolvable headline improvement; centering is METAL-DEPENDENT, not a uniform lift (helps hard folds Os +0.063 / Rh +0.121 / Re +0.032, hurts strong folds Ru -0.035 / Ir -0.046). The Rh-fold move IS decisive across seeds: baseline [0.378,0.431,0.353,0.381,0.363] vs centering [0.459,0.518,0.466,0.616,0.452], ZERO seed overlap, fold std 0.0265 -> 0.0613. Do NOT flip --per-metal-pic50-center to a default off this aggregate; the only real signal is the worst-fold (Rh) improvement.",
+    "rh_fold_baseline": 0.381174168297456,
+    "rh_fold_centering": 0.5021526418786693,
+    "rh_fold_delta": 0.1209784735812133,
+    "rh_fold_baseline_per_seed": [
+      0.3780821917808219,
+      0.4309197651663405,
+      0.35264187866927593,
+      0.38140900195694716,
+      0.3628180039138943
+    ],
+    "rh_fold_centering_per_seed": [
+      0.4590998043052838,
+      0.5183953033268102,
+      0.46634050880626227,
+      0.6154598825831702,
+      0.45146771037181993
+    ],
+    "alpha_lever_reproduction_rh_only": {
+      "run": ".venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --metals Rh --seeds 0 1 2 3 4 --epochs 30 --device cuda:0 --rh-oversample 0 --alpha 1.0",
+      "note": "MEASURED in the planning session; per-seed values recorded in the F3 file's real-only block. Single-metal (Rh), NOT a 5-metal panel.",
+      "alpha_0_5_baseline_rh": 0.3782,
+      "alpha_1_0_rh": 0.4352,
+      "delta": 0.057
+    },
+    "centering_plus_alpha1_combination_rh_only": {
+      "run": ".venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --metals Rh --seeds 0 1 2 3 4 --epochs 30 --device cuda:0 --rh-oversample 0 --per-metal-pic50-center --alpha 1.0 --out-dir /tmp/m19_ctr_a1_rh",
+      "source_per_seed_metrics": "molmetal/reports/m19_centering_plus_alpha1_rh_2026_10_08/Rh/per_seed_metrics.json",
+      "value": 0.4185,
+      "value_std": 0.0236,
+      "per_seed": [
+        0.4159,
+        0.3959,
+        0.4112,
+        0.4638,
+        0.4057
+      ],
+      "verdict": "HONEST_NEGATIVE_LEVERS_DO_NOT_STACK",
+      "interpretation": "centering (alpha=0.5) on Rh = 0.5022; adding alpha=1.0 (drop regression) drops it to 0.4185 (-0.084), i.e. WORSE than either centering alone (0.5022) or alpha=1.0 alone (0.4352). The two levers interfere: the centered regression auxiliary is helping, so removing it (alpha=1.0) hurts. Recommendation: use --per-metal-pic50-center ALONE (alpha default 0.5); do not combine with alpha=1.0."
+    },
+    "default_change_recommendation": "NONE. Leave --alpha and --per-metal-pic50-center defaults unchanged. Recorded as a per-fold ablation only."
+  },
+  "timestamp": "2026-10-08T06:51:17+00:00",
+  "n_runs_target": 25,
+  "n_runs_completed": 25,
+  "rh_cohort_source_evidence": {
+    "authoritative_artifact": "/home/hugo/codes/mol-metal/molmetal/reports/wf131_p3_deferred_runs/metal_lomo_auc_wasserstein.json",
+    "authoritative_rh_cohort_source": "/home/hugo/codes/mol-metal/molmetal/reports/wf139_p7_rh_active_cohort/synthetic_rh_pos_neg_normalized.json",
+    "launcher_flag": "scripts/launch_wf131_p3_deferred_runs.sh:86 RH_COHORT_JSON=<wf139_p7 .../synthetic_rh_pos_neg_normalized.json>",
+    "launch_log_lines": "molmetal/reports/wf131_p3_deferred_runs/launch.log --rh-cohort-json points at wf139_p7 on EVERY invocation",
+    "plan_json": "molmetal/reports/wf131_p3_deferred_runs/plan.json:16 rh_cohort_json = wf139_p7 normalized",
+    "rejected_alternative": "wf387a2_balanced_rh_cohort/balanced_rh_cohort.json (is_synthetic: false)",
+    "rejection_reason": "CHRONOLOGICALLY IMPOSSIBLE + never passed on the CLI. balanced_rh_cohort.json mtime is 2026-09-30 10:03:39; the Rh folds ran 2026-09-30 00:52:09 (run.log:1) and 01:56 (run.log:59), i.e. ~9h BEFORE the file existed. The wf387a2 path in this metric JSON was a retroactive overwrite, not a record of what fed the run."
+  },
+  "cohort_resolution_verdict": "WF139P7_SYNTHETIC_LABELS",
+  "synthetic_label_provenance_warning": "The synthetic Rh rows carry FABRICATED potency labels, not measured IC50. molmetal/scripts/train_metal_lomo_wasserstein.py::append_synthetic_rh_to_dataset hard-codes them: active rows get IC50_Dark_value=0.1 / pIC50=7.0, inactive rows IC50_Dark_value=10.0 / pIC50=5.0 (function body ~L595-605). Because the multitask regression head trains on pIC50 as well as the classification label, these constants are direct supervision on a fabricated target. Any pIC50 output from a wave that appended the synthetic Rh cohort is not a measurement. Separately, rows are filtered to Catherine-6/6-PASS Rh compounds in load_rh_synthetic_smiles (~L510-518), so the appended set is doubly non-representative of the real Rh chemical space.",
+  "real_only_fold_value_note": "aligned to the live 25-run real-only measurement (real_only_pa_m19_re_measurement_2026_10_08); the prior 0.381 described the retracted 7-run synthetic wave, preserved under synthetic_augmented_baseline_preserved_for_diff",
+  "m1_w2_onoff_deconfound_2026_10_08": {
+    "description": "W1 clean real-only M1 ON/OFF ablation (de-confounds the W2 transfer term). Both arms are 25-run (5 metals x 5 seeds x 30 epochs), rh_oversample=0, real-only. OFF = the canonical headline run (dmpnn_clean5_lomo); ON = --wasserstein-real --wasserstein-weight 0.05 --wasserstein-cadence every-batch. Run on GPU cuda:0.",
+    "source_on_metric": "molmetal/reports/m1_realonly_w2on_every-batch_30ep/metrics.json",
+    "source_off_metric": "molmetal/reports/dmpnn_clean5_lomo/metrics.json",
+    "on_value": 0.5349410615267954,
+    "off_value": 0.5575471269535148,
+    "delta_on_minus_off": -0.0226060654267194,
+    "per_fold_on": {
+      "Ru": 0.5888439057551131,
+      "Ir": 0.5901083751588935,
+      "Os": 0.556015037593985,
+      "Rh": 0.379412915851272,
+      "Re": 0.5603250732747136
+    },
+    "per_fold_off": {
+      "Ru": 0.5971611904294237,
+      "Ir": 0.5975135305140941,
+      "Os": 0.5831364124597207,
+      "Rh": 0.381174168297456,
+      "Re": 0.6287503330668799
+    },
+    "per_fold_delta": {
+      "Ru": -0.0083172846743106,
+      "Ir": -0.0074051553552006,
+      "Os": -0.0271213748657357,
+      "Rh": -0.0017612524461842,
+      "Re": -0.0684252597921663
+    },
+    "verdict": "HONEST-NEGATIVE: turning the W2 transfer term ON (weight 0.05, every-batch) LOWERS the real-only LOMO aggregate by 0.023 (0.5575 -> 0.5349), driven by Re (-0.068). The W2 regulariser is not a lever for this metric. This also matches the G6 per-innovation ablation (no_wass vs no_multi_task on Ru/Rh: delta <= 0.008, inside seed std). De-confounds the earlier +0.049 claim, which was confounded by cadence.",
+    "caveat": "n=5 seeds; per-fold AUC resolution on the small OOD folds (Rh n_test=108, Os n_test=87) is ~0.06, so Re's -0.068 is ~1 resolution unit of a 3668-test fold and is the one fold worth re-checking; Ru/Ir/Os/Rh moves are all below their fold resolution."
+  },
+  "_disambiguation_2026_10_10": {
+    "issue": "本文件是 m19 LOMO 的 canonical，但它比另一个更新更晚的 run 旧。",
+    "this_file": {
+      "value": 0.5575471269535148,
+      "std": 0.09493914640509747,
+      "rh_fold": 0.381174168297456,
+      "timestamp": "2026-10-08T06:51:17+00:00",
+      "centered": false
+    },
+    "newer_run": {
+      "value": 0.5844738262081143,
+      "std": 0.07644237694027237,
+      "rh_fold": 0.5021526418786693,
+      "path": "molmetal/reports/m19_per_metal_centering_2026_10_08/metrics.json",
+      "centered": true,
+      "caveat": "该臂 wasserstein_weight=0.0（W2 关），且带 pos_weight auto + balanced_sampler 双重修正"
+    },
+    "which_to_cite": "引用 m19 时**必须写明是哪一臂**：0.5575（无 centering）或 0.5845（per-metal pIC50 centering）。两者不可混引，也不可取平均。两者 Rh 都远低于 gate，centering 只是把最差折从 0.3812 抬到 0.5022。",
+    "resolution_deferred": "ALIGNED_COMPARISON §2 的处置是 'refresh the canonical file after the next re-measure'。**尚未发生重测**，所以此处只加注记不覆盖。真正的解决需要一次匹配协议的重测。",
+    "self_contradiction_warning": "注意 molmetal/reports/dmpnn_clean5_lomo/aggregate.json（0.5575 那臂）的 description 写着 '+ Rh closure-oversample'，而同文件的 rh_oversample=0 / n_synthetic_rh_appended=0 / Rh n_test=108。**结构化字段是权威的**：0.5575 那臂未被 synthetic Rh 污染，过时的只有 description 字符串。"
+  }
+}

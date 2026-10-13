@@ -1,0 +1,45 @@
+{
+  "metric": "cfm_opt1_stereo_suppression",
+  "tag": "MEASURED",
+  "date": "2026-10-13",
+  "scorer": "RDKit bundled rdkit/Contrib/SA_Score/sascorer.py (canonical Ertl 2009). NOT molmetal/eval/scoring/sascorer.py, whose fragment term is a hardcoded constant -- see molmetal/tests/test_sascorer_fork_divergence.py.",
+  "cohort": {
+    "path": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv",
+    "n_smiles": 66,
+    "n_parsed": 66
+  },
+  "baseline": {
+    "n_survived": 66,
+    "sa_mean": 6.442334847962082,
+    "qed_mean": 0.09444319957733445,
+    "atoms_mean": 37.15151515151515,
+    "n_chiral_mean": 6.257575757575758
+  },
+  "arm_A_remove_stereocentre_atoms": {
+    "n_survived": 66,
+    "sa_mean": 4.827812403513583,
+    "qed_mean": 0.19709372317820445,
+    "atoms_mean": 30.893939393939394,
+    "n_chiral_mean": 0.12121212121212122
+  },
+  "arm_B_size_matched_control": {
+    "n_survived": 64,
+    "sa_mean": 6.102137555900343,
+    "qed_mean": 0.15897112151651085,
+    "atoms_mean": 31.015625,
+    "n_chiral_mean": 4.75
+  },
+  "deltas": {
+    "arm_A_d_sa": -1.6145224444484985,
+    "arm_B_d_sa": -0.3401972920617391,
+    "stereocentre_attributable_d_sa": -1.2743251523867594,
+    "arm_A_d_qed": 0.10265052360087,
+    "arm_B_d_qed": 0.0645279219391764,
+    "stereocentre_attributable_d_qed": 0.038122601661693595,
+    "arm_A_d_atoms": -6.257575757575754,
+    "arm_B_d_atoms": -6.135890151515149
+  },
+  "why_the_control_is_required": "SA contains a size penalty (nAtoms**1.005 - nAtoms), and the intervention deletes atoms, so an unguarded SA improvement would be indistinguishable from simply having fewer atoms. Arm B deletes the same count of non-stereocentre atoms; the difference between the arms is what is attributable to the stereocentres.",
+  "supersedes": "cfm_todo.json::OPT_1_MEASURED_2026_10_13, which reported SA 3.3039 -> 4.4189 (+1.115, worse) and closed OPT-1 as INFEASIBLE_AT_DECODE_TIME. Those numbers came from the broken in-tree fork; the sign reverses under the canonical scorer.",
+  "what_does_not_change": "set_tag and remove_annotation remain VACUOUS -- scorer-independent, because FindMolChiralCenters(includeUnassigned=True) counts assigned centres too. That half of round 8 stands."
+}

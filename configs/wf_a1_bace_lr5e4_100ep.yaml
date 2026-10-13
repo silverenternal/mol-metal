@@ -1,0 +1,59 @@
+# wf_a1_bace_lr5e4_100ep.yaml — B4: BACE, lower LR + longer schedule + light reg.
+#
+# Single-variable change vs the baseline config
+#   configs/wf_fix3lines_bace_50ep_2026_10_09.yaml
+#   (targets molmetal/scripts/train_moleculenet.py)
+# -> lr: 5.0e-4, epochs: 100, weight_decay: 1.0e-5, patience: 20 (an "optimise
+#    more gently / longer, with early-stop" arm). Everything else is held at the
+#    baseline: tasks [bace], scaffold_split true, backbone dmpnn, hidden 300,
+#    depth 3, batch_size 64, seeds [0,1,2,3,4]. class_weight stays 'on'.
+#
+# ⚠️ train_moleculenet.py has NO LR scheduler dest. Do NOT declare lr_scheduler
+#    here: it resolves to no argparse dest and fails scripts/_config_binding_gate.py.
+#    `patience` (>0) enables early stopping on val ROC-AUC; the best-val
+#    checkpoint is kept regardless.
+#
+# HONEST FRAMING (§5.2): the number this arm produces is PROJECTED until the
+# run lands. The baseline it is compared against is MEASURED:
+#   molmetal/reports/wf_fix3lines_bace_50ep_2026_10_09/metrics.json
+#   bace test_auc_mean = 0.7505 +/- 0.0456 (5 seeds, 50 epochs).
+data:
+  tasks:
+  - bace
+  scaffold_split: true
+model:
+  backbone: dmpnn
+  hidden: 300
+  depth: 3
+protocol:
+  epochs: 100                # <-- B4: longer schedule
+  batch_size: 64
+  lr: 5.0e-4                 # <-- B4: lower LR
+  weight_decay: 1.0e-5       # <-- B4: light L2
+  patience: 20               # <-- B4: early-stop patience on val ROC-AUC
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+output:
+  base_dir: molmetal/reports/wf_a1_bace_lr5e4_100ep
+  out_dir: molmetal/reports/wf_a1_bace_lr5e4_100ep
+  log_master: molmetal/reports/wf_a1_bace_lr5e4_100ep/master.log
+  training_summary: molmetal/reports/wf_a1_bace_lr5e4_100ep/training_summary.json
+  out_metric: molmetal/reports/wf_a1_bace_lr5e4_100ep/metrics.json
+  out_report: molmetal/reports/wf_a1_bace_lr5e4_100ep/report.md
+  events_jsonl: true
+directives:
+  kill_then_adapt: true
+  time_budget: 10h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_moleculenet.py
+    --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: B4 — do lower LR + 100 epochs + light weight decay + early-stop lift BACE AUC over 0.7505?
+  note: PROJECTED until the run lands; baseline 0.7505 +/- 0.0456 is MEASURED (5 seeds, 50 ep).

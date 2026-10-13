@@ -1,0 +1,156 @@
+{
+  "metric": "cfm_a4_receptive_field",
+  "tag": "MEASURED",
+  "date": "2026-10-13",
+  "question": "Is ring SIZE representable in YuelBondDecoderHead? Claim A4 said no, on the grounds that the head has no cycle operator. This measures the receptive field instead.",
+  "method": "For every ring in the real tmQM clouds, count how many of a ring member's radius-graph neighbours are also in the same ring. That is a 1-hop statistic -- the cheapest thing the head's first message-passing layer could compute.",
+  "setup": {
+    "loader": "molmetal.data.tmqm_clouds.load_tmqm_clouds",
+    "cutoff_angstrom": 3.5,
+    "cutoff_justification": "YuelBondDecoderHead.__init__ default cutoff is 3.5, and every shipped config sets n_layers=3. Changing either invalidates the comparison against the trained checkpoints.",
+    "n_clouds_requested": 120,
+    "n_clouds_containing_rings": 120,
+    "seed": 1234,
+    "n_rings_measured": 657,
+    "include_hydrogens": false
+  },
+  "per_ring_size": {
+    "3": {
+      "n_rings": 120,
+      "mean_within_ring_1hop_neighbours": 2.0,
+      "sd": 0.0,
+      "min": 2.0,
+      "max": 2.0
+    },
+    "4": {
+      "n_rings": 14,
+      "mean_within_ring_1hop_neighbours": 3.0,
+      "sd": 0.0,
+      "min": 3.0,
+      "max": 3.0
+    },
+    "5": {
+      "n_rings": 165,
+      "mean_within_ring_1hop_neighbours": 3.963636363636364,
+      "sd": 0.21716936808689594,
+      "min": 2.0,
+      "max": 4.0
+    },
+    "6": {
+      "n_rings": 335,
+      "mean_within_ring_1hop_neighbours": 4.970149253731344,
+      "sd": 0.1701754365819609,
+      "min": 4.0,
+      "max": 5.0
+    },
+    "7": {
+      "n_rings": 2,
+      "mean_within_ring_1hop_neighbours": 5.0,
+      "sd": 0.0,
+      "min": 5.0,
+      "max": 5.0
+    },
+    "8": {
+      "n_rings": 2,
+      "mean_within_ring_1hop_neighbours": 5.0,
+      "sd": 0.0,
+      "min": 5.0,
+      "max": 5.0
+    },
+    "9": {
+      "n_rings": 1,
+      "mean_within_ring_1hop_neighbours": 6.0,
+      "sd": 0.0,
+      "min": 6.0,
+      "max": 6.0
+    },
+    "10": {
+      "n_rings": 2,
+      "mean_within_ring_1hop_neighbours": 4.5,
+      "sd": 0.5,
+      "min": 4.0,
+      "max": 5.0
+    },
+    "11": {
+      "n_rings": 6,
+      "mean_within_ring_1hop_neighbours": 5.0,
+      "sd": 0.0,
+      "min": 5.0,
+      "max": 5.0
+    },
+    "12": {
+      "n_rings": 3,
+      "mean_within_ring_1hop_neighbours": 5.0,
+      "sd": 0.0,
+      "min": 5.0,
+      "max": 5.0
+    },
+    "13": {
+      "n_rings": 3,
+      "mean_within_ring_1hop_neighbours": 5.0,
+      "sd": 0.0,
+      "min": 5.0,
+      "max": 5.0
+    },
+    "18": {
+      "n_rings": 1,
+      "mean_within_ring_1hop_neighbours": 5.0,
+      "sd": 0.0,
+      "min": 5.0,
+      "max": 5.0
+    },
+    "19": {
+      "n_rings": 1,
+      "mean_within_ring_1hop_neighbours": 5.0,
+      "sd": 0.0,
+      "min": 5.0,
+      "max": 5.0
+    },
+    "20": {
+      "n_rings": 1,
+      "mean_within_ring_1hop_neighbours": 4.0,
+      "sd": 0.0,
+      "min": 4.0,
+      "max": 4.0
+    },
+    "23": {
+      "n_rings": 1,
+      "mean_within_ring_1hop_neighbours": 4.0,
+      "sd": 0.0,
+      "min": 4.0,
+      "max": 4.0
+    }
+  },
+  "capacity_recoverability_from_distance_pattern": {
+    "n_rings": 634,
+    "by_size": {
+      "3": 120,
+      "4": 14,
+      "5": 165,
+      "6": 335
+    },
+    "cv5_accuracy_mean": 1.0,
+    "cv5_accuracy_sd": 0.0,
+    "holdout_70_30_accuracy": 1.0,
+    "holdout_per_class_recall": {
+      "3": 1.0,
+      "4": 1.0,
+      "5": 1.0,
+      "6": 1.0
+    },
+    "model": "LogisticRegression on sorted pairwise ring distances (12 fixed bins), NO message passing, NO learned features",
+    "why_this_is_a_lower_bound": "A logistic regression on the raw distance pattern already solves the task. The head is a 3-layer MPNN over the same distances, so anything this classifier can extract, the head can in principle extract."
+  },
+  "n_rings_that_are_cliques": 619,
+  "clique_fraction": 0.9421613394216134,
+  "why_cliques_matter": "94.2 percent cliques means the within-ring 1-hop count is close to n-1 for most rings and is therefore a WEAK discriminator on its own. That is why capacity_recoverability_from_distance_pattern is the load-bearing measurement: it uses the distances the head actually receives rather than a derived proxy.",
+  "pairwise_overlap_exact_values": {
+    "3_vs_4": 0.0,
+    "4_vs_5": 1.0,
+    "5_vs_6": 0.9696969696969697
+  },
+  "verdict": "A4 IS OVERSTATED AND ITS LOAD-BEARING HALF IS WRONG. Ring size is separable by a 1-hop statistic the head can compute; 3-rings and 4-rings are PERFECTLY separated (0.0 percent overlap) and the head runs 3 layers. 5- and 6-rings overlap heavily, but they are nearly the same size and the measured defect is specifically THREE-membered rings, which separate cleanly.",
+  "correct_statement": "The head has no EXPLICIT cycle operator, so ring-size preference must be LEARNED from local geometry rather than read off a structural feature. The three-membered-ring defect is a question about whether that learning happened, NOT about whether it is possible.",
+  "consequence_for_the_plan": "This removes the STRUCTURAL argument against spending the single retrain slot on the bond head. A4 was used for exactly that in the ARCH plan, so the plan's justification for deprioritising a bond-head retrain must be withdrawn and re-derived from measured evidence.",
+  "what_it_does_NOT_settle": "Capability is not behaviour. This does not show the head DID learn ring size -- only that it COULD. Whether the learned per-edge probabilities reflect the distance pattern is a separate measurement, and it is the one that decides where the retrain slot goes."
+}

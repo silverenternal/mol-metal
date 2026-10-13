@@ -1,0 +1,130 @@
+{
+  "comparability_warning": "Two numbers may only be reported side by side if they share dataset AND same SA normalisation scale. The LigandDiff 0.68-0.80 band uses an UNSTATED scale.",
+  "date": "2026-10-12",
+  "gao_coley_parameters": {
+    "axis_convention": "0 = hard, 1 = easy (HIGHER = more synthetically accessible)",
+    "calibrated_against": "Population mean and standard deviation of Ertl SA across the Enamine REAL / ZINC15-clean-3 lead-like library (Gao & Coley 2020, J. Chem. Inf. Model. 60, 5714-5723, DOI 10.1021/acs.jcim.0c00174). NOT derived from tmQM or any organometallic corpus.",
+    "formula": "sa_norm = exp(-(sa_raw - mu) / sigma)",
+    "mu": 2.230044,
+    "sigma": 0.6526308
+  },
+  "gaps": {
+    "liganddiff_PPR_100_minus_gao_coley_generated": 0.6774860872767096,
+    "liganddiff_PPR_100_minus_gao_coley_real": 0.649747917201516,
+    "note": "All gaps are arithmetic. The 'sa_norm_gao_coley_generated_minus_real' value is informative only as a ratio (real / generated), because both numbers are themselves the exp of -delta/sigma and the underlying raw delta dominates. See 'how_to_read' for the recommended reporting form.",
+    "sa_norm_gao_coley_generated_minus_real": -0.027738170075193514,
+    "sa_norm_gao_coley_real_minus_generated": 0.027738170075193514,
+    "sa_norm_linear_generated_minus_real": -0.14642187231775866,
+    "sa_raw_generated_minus_real": 1.464218723177586
+  },
+  "generated": {
+    "cohort": "/home/hugo/codes/mol-metal/molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv",
+    "n_input": 66,
+    "n_parse_failures": 0,
+    "n_parsed": 66,
+    "sa_norm_gao_coley": {
+      "mean": 0.0025139127232905213,
+      "median": 0.001629333425214955,
+      "n": 66,
+      "p10": 0.0004553113444617514,
+      "p90": 0.004493794508011948,
+      "sd": 0.0032710059031642517
+    },
+    "sa_norm_linear_1_minus_SA_over_10": {
+      "mean": 0.3557665152037918,
+      "median": 0.35803235096164254,
+      "n": 66,
+      "p10": 0.2747230074687912,
+      "p90": 0.4242414987066177,
+      "sd": 0.06279433811086921
+    },
+    "sa_raw": {
+      "mean": 6.442334847962082,
+      "median": 6.419676490383575,
+      "n": 66,
+      "p10": 5.757585012933823,
+      "p90": 7.252769925312087,
+      "sd": 0.6279433811086921
+    }
+  },
+  "how_to_read": "On the linear hack, generated 0.36 vs real 0.50 (gap 0.14 open) -- this is what the repo has always quoted. On Gao-Coley, generated ~0.002 vs real ~0.015 (a ~7x ratio, not a comparable 0.14 -- the two scales are different functions and 0.14 on one is not the same physical claim as 0.14 on the other). The LigandDiff 0.68 band is from a paper whose SA normalisation is UNSTATED; do not cite it side-by-side with either scale until verified.",
+  "linear_hack_parameters": {
+    "axis_convention": "0 = hard, 1 = easy (clipped at sa_raw>=10)",
+    "formula": "sa_norm_linear = 1 - SA_raw / 10",
+    "what_is_wrong_with_it": "Linear rescaling of the Ertl range [1,10] ignores the calibrated Gaussian-shaped difficulty profile. A SA of 4 (moderate) and a SA of 6 (hard) get mapped to 0.6 and 0.4 respectively, but Ertl's own rating of these is not linearly proportional."
+  },
+  "literature_comparison": {
+    "citation": "Jin H, Merz KM Jr. J. Chem. Theory Comput. 2024, 20(10), 4377-4384. DOI 10.1021/acs.jctc.4c00232.",
+    "comparability_with_this_repo_verdict": "NOT VERIFIED. LigandDiff does not cite Gao & Coley, Brown (GuacaMol), or any other normalised-SA paper. Their SI does not quote a formula or its parameters. Until LigandDiff's implementation is read, LigandDiff's 0.68-0.80 band is incomparable to BOTH our scales: if their scale equals the Gao-Coley scale the gap is computed below; if their scale equals the linear hack the gap is the same shape at a different magnitude.",
+    "liganddiff_PPR_100": 0.68,
+    "liganddiff_table2_fix_lig_6": 0.8,
+    "liganddiff_table2_random_6_20": 0.69,
+    "venue_correction": "Cited in cfm_todo.json as 'JCIM 2024' -- it is JCTC 2024.",
+    "what_liganddiff_reports": "Table 2 SA scores for Pt/Pd/Ru complexes, axis 0=hard / 1=easy. LigandDiff does not state which normalisation it uses."
+  },
+  "metric": "cfm_sa_gao_coley_reference",
+  "out_of_scope": [
+    "Re-implementing SA from scratch (Ertl & Schuffenhauer 2009 / rdkit-Contrib sascorer.py is the only SA implementation in this venv -- verified: mordred 1613 descriptors include no SA; openbabel 3.1.0 has no SA).",
+    "Computing the LigandDiff scale for our cohort until the paper's normalisation is identified.",
+    "Replacing the Linear hack repo-wide -- that is a downstream decision; this script only computes both numbers."
+  ],
+  "purpose": "Score the SAME two cohorts (generated n=66 and real_tmQM six-metal n=31150) on TWO different SA normalisation scales. The two scales are NOT comparable to each other and NOT comparable to LigandDiff's 0.68-0.80 band unless LigandDiff's own normalisation is verified.",
+  "real_tmqm": {
+    "corpus": "/home/hugo/codes/mol-metal/.data/molmetal/tmQM/tmQM_y.csv",
+    "metal_filter": [
+      "Ir",
+      "Os",
+      "Pt",
+      "Re",
+      "Rh",
+      "Ru"
+    ],
+    "n_input": 31152,
+    "n_parse_failures": 2,
+    "n_parsed": 31150,
+    "sa_norm_gao_coley": {
+      "mean": 0.030252082798484035,
+      "median": 0.018503629602915107,
+      "n": 31150,
+      "p10": 0.0023073457789986617,
+      "p90": 0.06805580298578014,
+      "sd": 0.04312677024384499
+    },
+    "sa_norm_linear_1_minus_SA_over_10": {
+      "mean": 0.5021883875215505,
+      "median": 0.5166097222822983,
+      "n": 31150,
+      "p10": 0.38074053551180165,
+      "p90": 0.6016058185312869,
+      "sd": 0.09057403276780747
+    },
+    "sa_raw": {
+      "mean": 4.978116124784496,
+      "median": 4.833902777177017,
+      "n": 31150,
+      "p10": 3.9839418146871304,
+      "p90": 6.192594644881984,
+      "sd": 0.9057403276780747
+    }
+  },
+  "tag": "MEASURED",
+  "corrections_2026_10_12_evening": {
+    "summary": "The function name gao_coley_sa_norm and the docstring it carried for the entire Round-1/2 record misdescribed the formula shape as a 'half-Gaussian' / 'Gao-Coley normalisation' when it is in fact an asymmetric exponential decay. The numbers in this JSON are unchanged (the formula is what it has always been); only the prose naming was wrong. Corrected 2026-10-12 by adversarial review.",
+    "what_was_wrong": [
+      "Function name 'gao_coley_sa_norm' implied the canonical Gao-Coley form. The canonical form is exp(-0.5*((max(sa,mu)-mu)/sigma)^2) (MOMO-master/losses.py::normalize_sa, a symmetric Gaussian clamped at mu). The function in this repo computes exp(-(sa-mu)/sigma), an asymmetric exponential decay, NOT a Gaussian, NOT a half-Gaussian, NOT a clamped form.",
+      "Docstring called the formula 'asymmetric half-Gaussian' -- it is an asymmetric exponential, not a half-Gaussian. A half-Gaussian would still have a squared argument (exp(-0.5*((x-mu)/sigma)^2) for x>=mu and 1 for x<mu).",
+      "Module constants GAO_COLEY_MU=2.230044, GAO_COLEY_SIGMA=0.6526308 are corroborated against MOMO-master/losses.py but their provenance to the indexed Gao-Coley 2020 paper itself is UNVERIFIED."
+    ],
+    "what_was_landed_2026_10_12": [
+      "Renamed function (with backward-compat alias): the corrected, accurate name is molmetal.adapters.sa_gao_coley.asymmetric_exponential_sa. The legacy name gao_coley_sa_norm is kept as a forward (same callable, not a re-implementation) so existing callers and the smoke test in this JSON's n=66 integration check do not break.",
+      "Updated the module docstring to describe the formula accurately: 'asymmetric exponential decay, not a Gaussian, not a half-Gaussian', with an explicit note that the canonical MOMO form differs by a factor of 1.7e6 at sa_raw=6.44.",
+      "Added two new red-check tests in molmetal/tests/test_sa_gao_coley.py: (1) test_corrected_name_exposed_and_alias_works pins the rename and verifies the alias is the same callable; (2) test_module_docstring_does_not_call_formula_half_gaussian checks the docstring does not reintroduce the 'half-Gaussian' framing in a non-negation, non-quoted context. Both go red if reverted. Verified by revert+confirm-red+restore on 2026-10-12.",
+      "Renamed test_formula_is_asymmetric_half_gaussian_not_symmetric -> test_formula_is_asymmetric_exponential_not_symmetric_gaussian, with the formula-identity assertion unchanged (still pins the asymmetric-exp value, not the symmetric Gaussian value)."
+    ],
+    "what_is_NOT_changed": [
+      "All numeric values in this JSON (generated 0.00251 / 0.00163 mean+median; real 0.03025 / 0.01850; LigandDiff gap -0.6775; linear-hack 0.36 / 0.50; etc.) are unchanged. The function computed the same formula before and after the rename.",
+      "The LigandDiff comparability verdict (NOT VERIFIED) is unchanged. The renaming of the function does not help with the literature comparison: the unstated LigandDiff scale remains unstated."
+    ],
+    "downstream_decision_recorded_not_acted_on": "Rerunning the cohort through the canonical MOMO form (symmetric Gaussian clamped at mu) would change every reported value by a factor up to ~1e6 and is a downstream decision. The misnomer has been corrected and a test now pins the new prose; the published numbers stand as-is. Any paper that cites this JSON should add a one-line note: 'Gao-Coley parameters, asymmetric-exponential form; the canonical MOMO form differs by a factor up to ~1e6 at this cohort's SA range'."
+  }
+}

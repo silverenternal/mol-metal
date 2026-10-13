@@ -1,0 +1,152 @@
+{
+  "metric": "tmqm_pretrain_init_ab_multimetal",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "unit": "paired delta in test ROC-AUC (tmqm init minus random init)",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/synthesize_tmqm_pretrain_init_ab_multimetal.py",
+  "source_script": "molmetal/scripts/finetune_metalcytotox_from_tmqm.py",
+  "why": "BLK-PA4 fix step 1: the tmQM-pretrain A/B was Ru-only (5 seeds). Extend to a second metal and report per-metal paired deltas with a Holm-Bonferroni family correction.",
+  "protocol": "per metal: MetalCytoToxDB subset; FIXED Bemis-Murcko scaffold split (BLK-PA12); seeds vary model init only; the ONLY difference between arms is init: tmqm|random",
+  "metals": [
+    "Ru",
+    "Ir"
+  ],
+  "per_metal": {
+    "Ru": {
+      "n_rows": 19135,
+      "n_test": 215,
+      "epochs": 30,
+      "batch_size": 128,
+      "lr": 0.001,
+      "arms": {
+        "tmqm": {
+          "mean": 0.777773,
+          "std": 0.019359,
+          "per_seed": [
+            0.765625,
+            0.806989,
+            0.755909,
+            0.782216,
+            0.778125
+          ]
+        },
+        "random": {
+          "mean": 0.787205,
+          "std": 0.020091,
+          "per_seed": [
+            0.791989,
+            0.7975,
+            0.779148,
+            0.757273,
+            0.810114
+          ]
+        }
+      },
+      "paired_delta": {
+        "mean": -0.009432,
+        "sd": 0.025128,
+        "se": 0.011238,
+        "ci95": [
+          -0.040633,
+          0.021769
+        ],
+        "ci95_ttest": [
+          -0.040633,
+          0.021769
+        ],
+        "ci95_bootstrap_reference_only": [
+          -0.027989,
+          0.011591
+        ],
+        "t": -0.8393,
+        "n_seeds": 5,
+        "n_seeds_positive": 2,
+        "all_seeds_positive": false,
+        "p_one_sided_ttest": 0.775732,
+        "p_one_sided_wilcoxon": 0.84375,
+        "p_one_sided_bootstrap_reference_only": 0.80645,
+        "p_used_for_family_correction": "p_one_sided_ttest",
+        "ci_used_for_verdict": "ci95_ttest",
+        "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+      },
+      "verdict": "NULL"
+    },
+    "Ir": {
+      "n_rows": 4546,
+      "n_test": 56,
+      "epochs": 30,
+      "batch_size": 128,
+      "lr": 0.001,
+      "arms": {
+        "tmqm": {
+          "mean": 0.720513,
+          "std": 0.039926,
+          "per_seed": [
+            0.666667,
+            0.726998,
+            0.771493,
+            0.739065,
+            0.698341
+          ]
+        },
+        "random": {
+          "mean": 0.671946,
+          "std": 0.025785,
+          "per_seed": [
+            0.6727,
+            0.687029,
+            0.651584,
+            0.642534,
+            0.705882
+          ]
+        }
+      },
+      "paired_delta": {
+        "mean": 0.048567,
+        "sd": 0.058296,
+        "se": 0.026071,
+        "ci95": [
+          -0.023817,
+          0.120951
+        ],
+        "ci95_ttest": [
+          -0.023817,
+          0.120951
+        ],
+        "ci95_bootstrap_reference_only": [
+          0.002564,
+          0.09457
+        ],
+        "t": 1.8629,
+        "n_seeds": 5,
+        "n_seeds_positive": 3,
+        "all_seeds_positive": false,
+        "p_one_sided_ttest": 0.067971,
+        "p_one_sided_wilcoxon": 0.15625,
+        "p_one_sided_bootstrap_reference_only": 0.01195,
+        "p_used_for_family_correction": "p_one_sided_ttest",
+        "ci_used_for_verdict": "ci95_ttest",
+        "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+      },
+      "verdict": "NULL"
+    }
+  },
+  "holm": {
+    "correction": "Holm-Bonferroni (family = 2 metals)",
+    "n_family": 2,
+    "p_one_sided_holm": {
+      "Ir": 0.135942,
+      "Ru": 0.775732
+    },
+    "significant_after_holm_0.05": []
+  },
+  "family_verdict": "NO_METAL_SIGNIFICANT_POSITIVE_AFTER_HOLM_T",
+  "significance_note": "The family correction uses the paired one-sided t-test on the 5 per-seed deltas, not the percentile bootstrap. At n=5 the bootstrap is anti-conservative: on the Ir arm it returns p=0.0120 while the t-test returns 0.0680 and Wilcoxon 0.1562 on the identical deltas, because 5 points cannot generate enough distinct resamples. The bootstrap CI is kept in each arm as *_reference_only.",
+  "honest_negative": {
+    "claim_2_status": "Metal-specific, not general. On the fixed scaffold split the tmQM-init benefit is positive only where it is Holm-significant (see family_verdict) and null elsewhere; it must not be written as a blanket 'pretraining transfers'.",
+    "ir_is_suggestive_not_confirmed": "Ir's point estimate is +0.0486 but only 3/5 seeds are positive and the t-based 95% CI includes zero, so Ir is reported as a suggestive benefit, not a confirmed one.",
+    "ru_reference": "the Ru single-metal record (with its supersedes history) lives in metrics/by_metric/tmqm_pretrain_init_ab_ru.json; not duplicated here (AGENTS.md §5.5)",
+    "do_not_claim": "that a result on Ru+Ir generalises to all five metals — only the two tested are covered"
+  }
+}

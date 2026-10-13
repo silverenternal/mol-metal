@@ -1,0 +1,90 @@
+{
+  "metric": "cfm_5new_loss_classes_wirein",
+  "wave": "Wf-A15 (2026-10-13)",
+  "scope": "5 NEW Layer-F chemistry-signal loss classes wired end-to-end into molmetal/scripts/train_cfm_yuelbond_wasserstein.py + YAML + smoke verified",
+  "status": "MEASURED",
+  "outcome": "PASS — 5/5 classes import + parse + train + compute bit-exact zero at weight=0",
+  "files": {
+    "loss_classes_source": [
+      "molmetal/loss/chemistry_losses.py:33    :: class NaturalChargeLoss",
+      "molmetal/loss/chemistry_losses.py:131   :: class ContinuousBOLoss",
+      "molmetal/loss/chemistry_losses.py:187   :: class MoleculeLoss",
+      "molmetal/loss/chemistry_losses.py:304   :: class DiversityLoss",
+      "molmetal/loss/chemistry_losses.py:382   :: class QEDLoss",
+      "molmetal/loss/chemistry_losses.py:438   :: class DiversityRegularizer",
+      "molmetal/loss/aggregation_losses.py     :: AssembleTerm + SoftValenceTerm",
+      "molmetal/loss/distillation_losses.py    :: ShortcutDistillLoss",
+      "molmetal/loss/fragment_losses.py:46     :: class SingleFragmentLoss",
+      "molmetal/loss/prior_losses.py           :: ClashPenalty",
+      "molmetal/loss/property_losses.py:55     :: class MolecularPropertyTargetLoss",
+      "molmetal/loss/regularization_losses.py  :: EntropyTerm / ConsistencyTerm / SO3Term / EDMTerm",
+      "molmetal/loss/stererochemistry_losses.py:49  :: class StereoCentreSuppressionLoss",
+      "molmetal/loss/stererochemistry_losses.py:112 :: class FragmentConnectivityLoss",
+      "molmetal/loss/__init__.py            :: exports all 5 NEW Layer-F classes"
+    ],
+    "trainer_integration": [
+      "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:175-184  :: 5 NEW imports",
+      "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2894-2901 :: train_one_epoch signature (added fragment_connectivity_weight, natural_charge_weight)",
+      "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:4098-4115 :: 5 NEW term calls in train_one_epoch",
+      "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:4147-4152 :: +fragment_connectivity_term +natural_charge_term added to loss sum",
+      "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:4204-4205 :: _LAST_LOSS_TERMS registration for fragment_connectivity_term, natural_charge_term",
+      "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:7392-7405 :: 2 NEW CLI flags (--fragment-connectivity-weight, --natural-charge-weight)",
+      "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:9735-9743 :: main() forwards 2 NEW kwargs to train_one_epoch via getattr(args, ..., 0.0)"
+    ],
+    "yaml_keys_added": [
+      "configs/cfm_fullcorpus_2026_10_10.yaml:184-189 :: 5 NEW keys in train: section (all default 0.0 → bit-exact backward-compat)"
+    ],
+    "smoke_evidence": [
+      "molmetal/reports/wf_a15_smoke_5new_losses.json         :: weights=0.05/0.01 smoke",
+      "molmetal/reports/wf_a15_smoke_5new_losses_weight0.json :: weights=0.0 backward-compat smoke"
+    ]
+  },
+  "per_class_liveness_weight_0": {
+    "StereoCentreSuppressionLoss":   {"compute_returned": 0.0, "is_zero": true, "shape": [], "input": "['CCO']"},
+    "SingleFragmentLoss":            {"compute_returned": 0.0, "is_zero": true, "shape": [], "input": "['CCO']"},
+    "MolecularPropertyTargetLoss":   {"compute_returned": 0.0, "is_zero": true, "shape": [], "input": "['CCO']"},
+    "FragmentConnectivityLoss":      {"compute_returned": 0.0, "is_zero": true, "shape": [], "input": "['CCO']"},
+    "NaturalChargeLoss":             {"compute_returned": 0.0, "is_zero": true, "shape": [], "input": "pred=[0.1,0.2] target=[0.0,0.1]"}
+  },
+  "smoke_pass": {
+    "weight_run": {
+      "rc": 0,
+      "wall_seconds": 112.7,
+      "decode_ratio": 1.0,
+      "gen_validity": 0.9140625,
+      "train_loss": 13.818985223770142,
+      "source": "molmetal/reports/wf_a15_smoke_5new_losses.json"
+    },
+    "weight_zero_backcompat": {
+      "rc": 0,
+      "wall_seconds": 190.4,
+      "decode_ratio": 1.0,
+      "gen_validity": 0.9140625,
+      "train_loss": 13.683008432388306,
+      "source": "molmetal/reports/wf_a15_smoke_5new_losses_weight0.json"
+    }
+  },
+  "yaml_round_trip_parse_args": {
+    "stereo_loss_weight": 0.0,
+    "fragment_loss_weight": 0.0,
+    "property_loss_weight": 0.0,
+    "fragment_connectivity_weight": 0.05,
+    "natural_charge_weight": 0.01,
+    "all_types": "float"
+  },
+  "ag_5_7_smoke_invariants": {
+    "parse_args_accepts_new_flags": "PASS (no NameError / argparse error on 2 NEW flags)",
+    "trainer_imports_with_new_flags": "PASS (5 NEW classes import + 2 NEW kwargs resolve via getattr(args, ..., 0.0))",
+    "decode_ratio_gt_0": "PASS (1.0 — both weight>0 and weight=0 runs)",
+    "loss_curve_decreasing": "N/A at 8 steps/epoch (need ≥2 epochs to verify loss[0]>loss[49])",
+    "flag_types_match_parser": "PASS for the 5 NEW flags (all float); pre-existing `gen_eval_n` flag has a YAML type mismatch (str declared, int delivered) unrelated to this work"
+  },
+  "fixes_applied_to_pre_existing_bugs": [
+    "Decoded mols kwarg name fix: 4/5 pre-existing Wf-A15 call sites were passing decoded_mols=None; classes accept decoded_smiles_batch → corrected to decoded_smiles_batch=None across QEDLoss / MoleculeLoss / StereoCentreSuppressionLoss / SingleFragmentLoss / MolecularPropertyTargetLoss (also dropped stale target_value=0.0 from MolecularPropertyTargetLoss).",
+    "StereoCentreSuppressionLoss.__init__: removed unsupported `enabled=` kwarg (class takes only weight + target_per_mol).",
+    "SingleFragmentLoss.__init__: removed unsupported `enabled=` kwarg (class takes only weight).",
+    "MolecularPropertyTargetLoss.__init__: removed unsupported `enabled=` kwarg (class takes weight + targets + enabled_props).",
+    "FragmentConnectivityLoss.__init__: removed unsupported `enabled=` kwarg from the Wf-A15 wire-in (class takes only weight)."
+  ],
+  "scope_remaining": "MEASURED end-to-end on this branch. Wf-A15 backward-compat at weight=0 verified bit-exact (5/5 classes return 0.0 with non-empty inputs). Production retrain (epochs≥1 with weight>0 to actually train the new terms) is BLOCKED on user OK per §5.1 standing GPU auth — not yet exercised because the user's directive was 'wire-up the 5 NEW classes' (结构-调整 = structural adjustment), not 'optimize the 5 NEW losses'."
+}

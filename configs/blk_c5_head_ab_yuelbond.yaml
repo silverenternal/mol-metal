@@ -1,0 +1,92 @@
+# BLK-C5 head A/B — bond_predictor=yuelbond (trainer --bond-predictor).
+# BLK-G1 — bond-head data-scaling probe.
+#
+# WHAT: trains the CFM DMPNNBondHead ALONE on increasing prefixes of one tmQM
+# reservoir sample and scores every arm on one fixed held-out split.
+# WHY:  the CFM cohort is n_clouds=n_train with DEFAULT_TRAIN_CLOUDS=256, while
+#       tmQM holds 33429 labelled complexes across the six target metals. This
+#       measures whether that 0.77% is the binding constraint — without the
+#       velocity field confounding the comparison.
+#
+# Cost: head-only, no EGNN. Designed to finish in minutes, not hours, so that a
+# flat learning curve closes BLK-G1 cheaply instead of after a GPU retrain.
+
+entry:
+  script: molmetal/scripts/wf_blk_g1_bond_head_scaling.py
+  command_template: "/home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/wf_blk_g1_bond_head_scaling.py --config {yaml_path}"
+
+data:
+  tmqm_dir: .data/molmetal/tmQM
+  tmqm_metals: Pt,Ru,Ir,Rh,Os,Re
+  tmqm_val_frac: 0.2
+  # Same as the trainer's DEFAULT_VAL_CLOUDS, and held IDENTICAL across arms.
+  n_val: 192
+  # Nested prefixes of one sample. 33429 complexes are on disk; the production
+  # run uses 256. The largest arm is ~16x the current budget, not the whole
+  # corpus, so the probe stays inside a few minutes.
+  train_sizes: 256,1024
+
+model:
+  # Under `model:` because the §5.1 hyperparam contract gate looks for exactly
+  # these two paths there — it caught them sitting under `train:` on the first
+  # pre-flight run (p3_wf343c4_hyperparams_config_complete FAIL).
+  # Matches DMPNNBondHead's own defaults, so the 256 arm reproduces the
+  # production head rather than a stronger one.
+  hidden_dim: 64
+  n_layers: 3
+
+train:
+  edge_cutoff: 3.5
+  # BLK-C5 head A/B. yuelbond is what every shipped CFM run used;
+  # dmpnn is the bond-centred head the pinned design calls for and that no
+  # config ever selected. Everything else is identical between the two arms.
+  bond_head: yuelbond
+  lr: 0.001
+  grad_clip: 5.0
+  # Pair budget, not epoch count: clouds differ in pair count, so a fixed epoch
+  # count would give the big arms fewer gradient steps per complex.
+  pair_budget: 800000
+  seed: 0
+
+eval:
+  bond_decision: argmax
+
+flow:
+  # Production weighting, verbatim: sqrt-softened inverse frequency,
+  # renormalised on sum_c p_c w_c = 1.
+  class_weights: 1
+  class_weight_power: 0.5
+
+protocol:
+  device: cuda:0
+  # start.sh reads weight_decay from protocol.scheduler-adjacent `protocol`
+  # ONLY (scripts/start.sh:506) and injects it as `--weight-decay`. Declaring
+  # it under `train:` left the launcher appending `--weight-decay 0.0` and
+  # silently overrode this value — caught by reading the start.sh --dry-run
+  # output, not by the config-binding gate (the key DID resolve to a dest).
+  weight_decay: 0.00001
+
+output:
+  # `base_dir` has no dest on this script's parser — it is read by start.sh
+  # (scripts/start.sh:289,456,475) to derive the log path and events.jsonl,
+  # and without it the launcher falls back to the literal `results/auto`
+  # while the trainer writes to output.out_dir, splitting one run across two
+  # directories. Same reason configs/cfm.yaml carries it.
+  base_dir: molmetal/reports/wf_c5_head_ab_yuelbond
+  out_dir: molmetal/reports/wf_c5_head_ab_yuelbond
+  # start.sh:477 reads log_master and start.sh:708 does `: > "$LOG_FILE"`.
+  # Omitting it left LOG_FILE empty and the launcher died with
+  # "line 708: : No such file or directory" AFTER passing its own pre-flight —
+  # so this is invisible to pre_flight_check.py, which never launches.
+  log_master: molmetal/reports/wf_c5_head_ab_yuelbond/master.log
+  # Deliberately NO ckpt_dir. This script has no --ckpt-dir dest, and the
+  # probe's only deliverable is the learning curve in out_dir/head_scaling.json.
+  # Declaring the key anyway tripped p3_config_trainer_binding_check
+  # ("output.ckpt_dir resolves to no dest"); writing .pt files nothing reads
+  # would have been the worse outcome.
+
+directives:
+  kill_then_adapt: false
+  time_budget: 1h
+  user_ok_required: true
+  user_ok_granted: standing GPU grant 2026-09-29 + BLK-G1 probe (head-only, no CFM retrain)

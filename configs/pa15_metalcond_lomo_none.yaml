@@ -1,0 +1,63 @@
+# PA15 (arm: none) — the metal-agnostic baseline, re-run in the PA15 session so
+# the token/desc arms have a same-session paired reference.
+# AGENTS.md §5.11: training launches from this YAML; the wrapper passes --config
+# (and --out-dir) and nothing else.
+#
+# This arm is byte-for-byte the PA3 scorer (metal_mode: none).  Its purpose is
+# the paired significance test: every (metal, seed) AUC here pairs with the same
+# (metal, seed) AUC in the token/desc arms, on the same ligand-disjoint LOMO
+# split.  Reproduction of metrics/by_metric/pa3_chemprop_lomo_probe_cohort.json
+# is a sanity check, not the deliverable.
+
+entry:
+  script: molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+    --config {yaml_path}
+
+data:
+  cohort_filter: "CytotoxFilter(time_threshold=24h, ic50_min=0.01uM, metal_whitelist=[m]) then collapse_duplicates (one row per unique ligand, majority label, ties -> ACTIVE)"
+  n_rows_expected: 9666
+  time_threshold: 24.0
+  ic50_min: 0.01
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 300
+  depth: 3
+  ffn_hidden: 300
+  ffn_layers: 1
+  dropout: 0.0
+  metal_mode: none
+
+train:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  bf16: true
+
+protocol:
+  wave_decomposition: "LOMO 5 folds (Ru/Ir/Rh/Os/Re held out) x 5 seeds; ligand-disjoint train pool (a ligand in the held-out metal's test set is dropped from train)"
+  seeds: [42, 43, 44, 49, 123]
+
+mode: both
+n_splits: 5
+n_permutations: 0
+perm_seed: 42
+
+compute:
+  gpu: 0
+  device: cuda:0
+
+output:
+  base_dir: molmetal/reports/pa15_metalcond_lomo_none
+  out_json: molmetal/reports/pa15_metalcond_lomo_none/metrics.json
+  log_master: molmetal/reports/pa15_metalcond_lomo_none/master.log
+
+metric_name: pa15_metalcond_lomo_none
+
+directives:
+  user_ok_required: true
+
+honest_framing: >
+  MEASURED only.  Identical scorer to PA3; this run exists to make the PA15
+  comparison paired (same split, same seeds, same session).  No PROJECTED value.

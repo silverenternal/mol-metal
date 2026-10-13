@@ -1,0 +1,145 @@
+# =============================================================================
+# nci60_9cell_probe_seed0_cap512_d4.yaml — L1 "pull-up" probe (2026-10-12)
+#
+# PURPOSE
+# -------
+# The shipped nci60_9cell_5seed_50ep_v1.yaml run scores 0.7294 +/- 0.2137
+# (all 9 cells) on the fixed Bemis-Murcko scaffold split, with several cells
+# near or below chance (A2780cis 0.3356, A2780 0.5104, MCF7 0.6690).  Its
+# model is hidden=128 / depth=3, held at m21's architecture.
+#
+# MoleculeNet measured (2026-10-12) that hidden 512 / depth 4 lifts bace
+# 0.7421 -> 0.7933 and halves its seed spread.  This probe asks whether the
+# SAME capacity lever moves the NCI-60 panel before committing to the full
+# 5-seed rerun (which is an 8-15 hr GPU job at ~11 min / run).
+#
+# DESIGN — one declared variable
+# ------------------------------
+# Everything is byte-identical to nci60_9cell_5seed_50ep_v1.yaml EXCEPT:
+#   * model.hidden 128 -> 512
+#   * model.depth    3 -> 4
+#   * protocol.seeds [0,1,2,3,4] -> [0]   (probe: direction, not a headline)
+# Same cohort, same scaffold split (seed 0), same epochs, same lr/bs,
+# same Wasserstein machinery.  The comparison is against the SAME seed-0
+# per-cell values already on disk in results/nci60_9cell_5seed_50ep/.
+#
+# HONEST FRAMING
+# --------------
+# A 1-seed probe is a direction check, not a result.  If seed 0 does not
+# move, the full 5-seed rerun is not worth the 8-15 hr and the panel stays
+# an honest negative.  If it moves, this file is superseded by a 5-seed
+# variant.  Do NOT quote the probe's number as a headline.
+# =============================================================================
+
+data:
+  dataset: nci60_9cell
+  task_axis: cell_line
+  metals: [auto]
+  cohort_filter:
+    cells: [MCF7, A549, A2780, A2780cis, HCT116, PC3, HL60, SKOV3, DU145]
+  expected_columns_subset: [smiles, cell_line, pIC50, active]
+  split:
+    type: bemis_murcko_scaffold
+    implementation: molmetal.data.splits.ScaffoldSplitter
+    strategy: largest_first
+    seed: 0
+    train_frac: 0.7
+    val_frac: 0.1
+    test_frac: 0.2
+    grouped_on: unique_canonical_smiles
+  cpu_num_workers: 8
+  pin_memory: true
+
+model:
+  ablation_config: mtl_baseline
+  hidden: 512
+  depth: 4
+  task: multi_task
+  wasserstein_weight: 0.05
+  alpha: 0.5
+  n_mc: 256
+  w2_gradient_mode: sliced
+  use_l2_guard: true
+
+protocol:
+  n_seeds: 1
+  seeds: [0]
+  epochs: 50
+  batch_size: 32
+  lr: 1.0e-3
+  weight_decay: 1.0e-5
+  max_norm: 5.0
+  gradient_accumulation_steps: 1
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-6
+  n_runs_total: 9  # 9 cell lines x 1 seed
+
+eval:
+  per_pair_metrics: [test_auc, val_auc, wasserstein_final, best_epoch]
+  per_cell_line_metrics:
+    - MCF7_test_auc
+    - A549_test_auc
+    - A2780_test_auc
+    - A2780cis_test_auc
+    - HCT116_test_auc
+    - PC3_test_auc
+    - HL60_test_auc
+    - SKOV3_test_auc
+    - DU145_test_auc
+  baseline_per_cell_line_MEASURED:
+    MCF7: 0.7441
+    A549: 0.7758
+    A2780: 0.6931
+    A2780cis: 0.7278
+    HCT116: 0.7584
+    PC3: 0.8700
+    HL60: 0.9320
+    SKOV3: 0.9046
+    DU145: null
+  baseline_overall_MEASURED: 0.8007
+  krasnov_2026_baseline_auc: 0.81
+  gate_target: 0.7
+
+output:
+  base_dir: results/nci60_9cell_probe_seed0_cap512_d4
+  out_dir: results/nci60_9cell_probe_seed0_cap512_d4
+  per_metal_dir: results/nci60_9cell_probe_seed0_cap512_d4/{metal}/per_seed_metrics_seed{seed}.json
+  training_summary: results/nci60_9cell_probe_seed0_cap512_d4/training_summary.json
+  log_master: results/nci60_9cell_probe_seed0_cap512_d4/master.log
+  ckpt_dir: results/nci60_9cell_probe_seed0_cap512_d4/checkpoints
+  checkpoint_interval: 50
+  resume_from: auto
+  events_jsonl_path: results/nci60_9cell_probe_seed0_cap512_d4/events.jsonl
+  events_jsonl: true
+
+compute:
+  device: cuda:0
+  gpu: cuda:0
+  cpu_workers: 8
+  torch_compile: false
+  cudnn_benchmark: false
+  channels_last: false
+
+directives:
+  kill_then_adapt: true
+  time_budget: 3h
+  user_ok_required: true
+  per_wave_user_ok_required: false
+  pre_flight_gates_required:
+    - p3_protocol_alignment_user_ok_gate
+    - p3_protocol_alignment_baseline_paper_refs_bib
+    - p3_wf385_scaffold_loss_wire_in_verified
+    - p3_wf343c4_anchor_freshness_24h
+
+entry:
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_dmpnn_multitask_wasserstein.py --config {yaml_path} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  warm_start_checkpoint: "n/a"
+
+cross_references:
+  - configs/training/nci60_9cell_5seed_50ep_v1.yaml
+  - metrics/by_metric/nci60_precious_9cell_auc.json
+  - metrics/by_metric/moleculenet_auc_dmpnn_5seed_cap512_d4.json
+  - molmetal/data/nci60_precious_9cell.csv
+  - molmetal/scripts/train_dmpnn_multitask_wasserstein.py

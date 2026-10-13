@@ -1,0 +1,67 @@
+# L2 — MoleculeNet 4-task, hidden 512/depth 4, seed-ENSEMBLED inference.
+#
+# WHY (L2 "pull-up")
+# -----------------
+# The paper's MoleculeNet table uses the per-seed MEAN.  Seed-ensembling the
+# same 5 runs is a free inference-time lever: no new architecture, no new
+# hyperparameters, just average the 5 row-aligned score vectors.  The prior
+# attempt (molmetal/reports/wf_a1_bace_ensemble) is UNUSABLE — its metrics.json
+# carries `focal_gamma: 2.0`, i.e. the dir was reused by the (failed) focal run,
+# so its 0.6498 is a focal number, not an ensemble number.
+#
+# This config re-runs the PA14 arm (512/4, all four tasks, 5 seeds) with
+# `ensemble_seeds: true` and a PINNED `split_seed: 0`, so all 5 test sets are
+# identical and the ensemble is a row-aligned mean.  One run yields BOTH the
+# per-seed mean (`test_auc_mean`) and the ensemble (`ensemble_auc`), so the
+# comparison is same-run and same-split.
+#
+# AGENTS.md §5.11: launched from this YAML; the wrapper passes --config and
+# --out-dir and nothing else.
+data:
+  tasks:
+  - bbbp
+  - bace
+  - hiv
+  - clintox
+  scaffold_split: true
+model:
+  backbone: dmpnn
+  hidden: 512
+  depth: 4
+protocol:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  ensemble_seeds: true
+  split_seed: 0
+compute:
+  gpu: cuda:1
+output:
+  base_dir: molmetal/reports/l2_moleculenet_cap512_d4_ensemble
+  out_dir: molmetal/reports/l2_moleculenet_cap512_d4_ensemble
+  log_master: molmetal/reports/l2_moleculenet_cap512_d4_ensemble/master.log
+  training_summary: molmetal/reports/l2_moleculenet_cap512_d4_ensemble/training_summary.json
+  out_metric: molmetal/reports/l2_moleculenet_cap512_d4_ensemble/metrics.json
+  out_report: molmetal/reports/l2_moleculenet_cap512_d4_ensemble/report.md
+  events_jsonl: true
+directives:
+  kill_then_adapt: true
+  time_budget: 2h
+  user_ok_required: true          # AGENTS.md §5.1
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_moleculenet.py
+    --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  note: >
+    MEASURED once the run lands.  Ensemble vs per-seed mean is compared
+    WITHIN this run (same split, same seeds).  The same-protocol chemprop v2
+    reference is metrics/by_metric/moleculenet_auc_chemprop_v2_same_protocol.json.
+  residual: '`data.scaffold_split` declared True because the trainer --scaffold-split default is True.'

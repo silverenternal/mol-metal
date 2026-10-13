@@ -1,0 +1,60 @@
+# FSMA C3+C2 combined: activity_scaffold sampler + controls at K=40.
+#
+# AGENTS.md §5.11: launched from this YAML; the wrapper passes --config only.
+entry:
+  script: molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_chemprop_lomo_paper_cohort.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  cohort_filter: "build_paper_cohort (Krasnov-style: IC50-present -> metal -> measurement-level dedup -> 76-name non-cancer exclusion; NO time window) then collapse_duplicates"
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 300
+  depth: 3
+  ffn_hidden: 300
+  ffn_layers: 1
+  dropout: 0.0
+  metal_mode: none
+  metal_embed_dim: 16
+
+train:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  bf16: true
+
+k_shot: 40
+k_shot_ft_epochs: 20
+k_shot_ft_lr: 0.001
+k_shot_adapt_scope: full
+support_sampler: activity_scaffold
+kshot_control_arms: [from_scratch, concat_retrain]
+
+protocol:
+  wave_decomposition: "LOMO 5 folds x 10 seeds; K=40 activity_scaffold support from the held-out metal (paper_funnel cohort)"
+  seeds: [42, 43, 44, 49, 123, 7, 8, 9, 10, 11]
+
+mode: cross
+n_permutations: 0
+perm_seed: 42
+
+compute:
+  gpu: cuda:0
+
+output:
+  base_dir: molmetal/reports/fsma_c3_activity_scaffold_k40
+  out_json: molmetal/reports/fsma_c3_activity_scaffold_k40/metrics.json
+  log_master: molmetal/reports/fsma_c3_activity_scaffold_k40/master.log
+
+metric_name: fsma_c3_activity_scaffold_k40
+
+directives:
+  user_ok_required: true
+
+honest_framing: >
+  MEASURED only.  zero_shot_query and kshot_query are scored on identical query
+  rows (paired).  Support labels come from the held-out metal, so this is an
+  ADAPTATION result, not a zero-shot one.

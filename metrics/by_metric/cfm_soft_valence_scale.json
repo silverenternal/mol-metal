@@ -1,0 +1,109 @@
+{
+ "metric": "cfm_soft_valence_scale",
+ "tag": "MEASURED",
+ "date": "2026-10-12",
+ "question": "Is the CFM soft-valence loss term O(batch * n_atoms), and does the shipped per-atom reduction bound it?",
+ "headline": "THE FIX ALREADY SHIPPED. The stale premise in the BLK-C-L2 brief was one hour out of date, and the guard that should have caught that was missing. What this wave adds is the guard, not the fix.",
+ "premise_audit": {
+  "brief_claimed": "train_cfm_yuelbond_wasserstein.py:2377 sums valence_log_barrier() over every cloud with no division; factor 32537 between cohorts.",
+  "reduction_claim_verified": true,
+  "reduction_evidence": "molmetal/molmetal_lam/lam_chem/decoder_rework.py:483-545 -- valence_log_barrier returns sum_a max(0, valence_cap_a - sum_orders_a - eps)^2, a SUM over atoms. Its own docstring states the return as 'sum_a ...'. So the O(batch * n_atoms) claim is arithmetically correct.",
+  "but_the_division_already_existed": {
+   "in_source": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2796-2798 -- soft_valence_term = float(gen_validity_weight) * (soft_valence_term / float(_sv_n_atoms_total)), with _sv_n_atoms_total accumulated per cloud at :2766.",
+   "landed_in": "commit c3ee284b64 'BLK-C11/C12/M1: retract a false CFM finding, fix four silent bugs, redefine the blocker', authored 2026-10-10 04:57:26 +0800.",
+   "the_json_it_contradicts_was_64_minutes_OLDER": "metrics/by_metric/cfm_loss_term_liveness.json mtime 2026-10-10 03:53:26 +0800; that file was CREATED BY THE SAME COMMIT c3ee284b64. Its finding soft_valence_is_not_scale_invariant still reads \"still_true\": true while the fix ships alongside it. The flag is stale by construction and should be updated by whoever owns that file.",
+   "source_line_drift": "the brief cites :2377 for the summation; in the current file the equivalent loop is at :2730-2771. Line numbers in the brief do not match the working tree."
+  },
+  "per_atom_vs_per_cloud_decision": {
+   "chosen": "per-atom (already shipped, and defended in-code at :2772-2795)",
+   "why": "valence_log_barrier is a squared hinge SUMMED over atoms. Dividing by n_atoms makes the term a mean violation per atom -- the quantity a weight should mean, and the one comparable across configs and cohorts. Per-cloud would divide by n_clouds only, leaving the term still growing with molecule size (tmQM Pt clouds here span 15-53 atoms), so the cohort dependence would only partly come out.",
+   "not_re_decided": "This wave did not re-open the choice; it measured the shipped one. Re-deciding would have been churn on a line with a committed rationale."
+  },
+  "default_off_bit_for_bit": "CONFIRMED UNCHANGED by this wave. gen_validity_weight argparse default stays 0.0, the whole block is skipped when it is 0 (_use_soft_valence at :2576), and the wave's only source edit was adding a NEW test file -- the trainer was restored byte-identical (md5 91f364faec131cbc4aa956da4651daa6 verified after the red check). No archived run can be affected."
+ },
+ "controlled_measurement": {
+  "why_this_is_the_headline_number": "The naive before/after comparison is NOT a batch-size measurement, and reporting it as one would be wrong. See residual_defect below.",
+  "method": "Real valence_log_barrier on 64 REAL tmQM Pt clouds (.data/molmetal/tmQM, n_clouds=64, seed=0), ground-truth tmQM bonds as the edge list, fixed-seed (7) random 5-class logits as an untrained-head stand-in. The SAME 64 per-cloud values are then regrouped into prefixes of 1,2,4,8,16,32,64, so the only variable is how many clouds share a sum.",
+  "raw_sum_pre_fix_behaviour": {
+   "bs_1": 8.33,
+   "bs_2": 14.92,
+   "bs_4": 71.27,
+   "bs_8": 156.48,
+   "bs_16": 304.31,
+   "bs_32": 578.65,
+   "bs_64": 1063.47
+  },
+  "per_atom_shipped_behaviour": {
+   "bs_1": 0.36199,
+   "bs_2": 0.20719,
+   "bs_4": 0.46887,
+   "bs_8": 0.5817,
+   "bs_16": 0.5543,
+   "bs_32": 0.52225,
+   "bs_64": 0.4799
+  },
+  "batch_ratio_achieved": {
+   "multi_cloud_arms_bs_8_16_32_64": 1.21,
+   "full_range_bs_1_to_64": 2.81,
+   "bound_target": 100.0,
+   "verdict": "PASS -- two orders of magnitude inside the target bound."
+  },
+  "sensitivity_check": {
+   "raw_movement_bs_8_to_64": 6.8,
+   "per_atom_movement_bs_8_to_64": 1.21,
+   "ratio_of_movements": 5.6,
+   "note": "Raw movement is NOT compared against the 100x bound. On this 64-cloud prefix the raw sum moves only 6.8x, because the first 64 clouds are not all the same size (2216 atoms at bs=64 vs 269 at bs=8, an 8.2x atom growth against a 6.8x sum growth). The 32537x in the original finding was a SYNTHETIC-vs-tmQM COHORT difference, which is a different axis and is not reproduced by varying batch size alone."
+  }
+ },
+ "real_trainer_two_batch_sizes": {
+  "method": "Real trainer end-to-end, --dataset tmqm --tmqm-metals Pt --n-train 256 --gen-validity-weight 1.0 --resume-from none, read from the trainer's own _LAST_LOSS_TERMS side-channel.",
+  "batch_8": 0.13709445297718048,
+  "batch_64": 62.55996322631836,
+  "naive_ratio": 456.3,
+  "naive_ratio_bound": 100.0,
+  "verdict": "WOULD FAIL the bound -- and this is the trap the brief walks into. Read residual_defect before quoting 456.3."
+ },
+ "residual_defect": {
+  "what_it_really_is": "The 456.3x is NOT batch size. Three measured causes, all in how the number is READ rather than how the term is computed:",
+  "cause_1_last_batch_only": "_LAST_LOSS_TERMS records the FINAL batch of the epoch, not an epoch mean. The per-atom statistic is heavy-tailed (see cause_3), so a single 8-cloud reading is a weak estimator of a 64-cloud one.",
+  "cause_2_time_seeded_permutation": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2584 -- rng = np.random.default_rng(seed=int(time.time()) % (2**31 - 1)). The batch ORDER is seeded from the wall clock, so two runs with the same --seed draw DIFFERENT clouds. The two numbers above are therefore two different samples, not one quantity at two batch sizes.",
+  "cause_3_heavy_tail": {
+   "per_cloud_per_atom_over_64_tmqm_pt_clouds": {
+    "min": 0.0134,
+    "p25": 0.2623,
+    "median": 0.3981,
+    "p75": 0.6364,
+    "max": 2.383
+   },
+   "max_over_min": 177.8,
+   "contiguous_8_cloud_window_means": {
+    "min": 0.0928,
+    "max": 1.272,
+    "ratio": 13.7
+   }
+  },
+  "consequence": "Reading soft_valence_term out of _LAST_LOSS_TERMS is not a reproducible measurement of this term at all -- it is one draw from a heavy-tailed distribution with a time-varying sample. Any weight for this term MUST be tuned on an epoch-mean (or a fixed-seed deterministic order), never on a single _LAST_LOSS_TERMS print.",
+  "not_fixed_by_this_wave": "Correct, and deliberately so. Fixing the shuffle seeding would change bit-for-bit behaviour for every archived run, which AGENTS.md 5.11 forbids. Flagged for the owner of the trainer instead.",
+  "what_WOULD_be_needed": "either a time-independent permutation when a seed is supplied, or an epoch-mean accumulator for this term alongside _LAST_LOSS_TERMS. Both are behaviour changes and need their own authorisation."
+ },
+ "guard_added": {
+  "file": "molmetal/tests/test_cfm_soft_valence_scale.py",
+  "why_it_was_missing": "The 2026-10-10 fix shipped with NO guard. The sibling tests in molmetal/tests/test_wf_r41_soft_valence_loss.py are source-greps for the argparse flag and its default -- they pass whether or not the division exists. That is why a 64-minute-stale claim survived in the metrics tree for two days.",
+  "test_1": "test_soft_valence_per_atom_is_batch_size_invariant -- real barrier, real tmQM clouds, asserts per-atom ratio across bs 8/16/32/64 <= 100x AND asserts the raw sum moves >5x more than the per-atom value (so it cannot pass for an unrelated reason).",
+  "test_2": "test_trainer_divides_soft_valence_by_batch_atoms -- BEHAVIOURAL. Instruments the real valence_log_barrier, runs one real epoch of one batch, and asserts the EMITTED term equals weight * sum(returned values) / sum(n_atoms).",
+  "red_check": {
+   "performed": true,
+   "procedure": "divider reverted to a plain sum, tests re-run, trainer restored, tests re-run",
+   "reverted_failure_message": "trainer emitted 99.363335 but sum(calls)/sum(n_atoms) is 2.484083 (raw_sum=99.363332 over 8 clouds / 40 atoms). The per-atom division is NOT being applied",
+   "revert_magnitude": "40.0x on that one batch of 8 clouds / 40 atoms",
+   "restored": "2 passed; trainer md5 91f364faec131cbc4aa956da4651daa6 identical to pre-revert",
+   "honest_limitation": "Under the revert, test 1 stayed GREEN and only test 2 went red. Test 1 exercises the normalisation FORMULA in isolation and cannot see the wiring, so on its own it does NOT catch a revert. The suite catches it only because of test 2. Do not drop test 2."
+  },
+  "regression_check": "molmetal/tests/test_wf_r41_soft_valence_loss.py + molmetal/tests/test_cfm_loss_gradient_liveness.py => 12 passed, 1 failed. The failure (test_train_one_epoch_kwarg_signature_default_off, 'legacy 2-tuple model(cloud) call removed') is PRE-EXISTING and NOT caused by this wave: it originates in the uncommitted working-tree diff to train_cfm_yuelbond_wasserstein.py (the _need_edge_index plumbing at :2582 replacing the legacy 2-tuple call), which this wave did not author and did not alter. Reported, not fixed -- per the standing rule, a failing test that pins a deliberate decision is not to be weakened."
+ },
+ "open": [
+  "RESOLVED 2026-10-12: metrics/by_metric/cfm_loss_term_liveness.json findings.soft_valence_is_not_scale_invariant now reads still_true: false and carries a STATUS_2026_10_12 retraction; cfm_todo.json::BLK-C-L2::HARD_WARNING_soft_valence was repointed in the same pass. The claim is retracted at every live source. The 32537 figure survives in the liveness file only as the historical measurement it was, not as a live hazard.",
+  "The 456.3x naive ratio above must not be quoted as the batch-size effect. The controlled figure is 1.21x.",
+  "cfm_loss_term_liveness.json also reports soft_valence raw 4.13 (synthetic, bs 8) vs 134294.75 (tmQM, bs 64) at gen_validity_weight=1.0. Both are cohort-different measurements; neither is a batch-size measurement."
+ ]
+}

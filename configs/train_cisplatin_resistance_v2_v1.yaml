@@ -1,0 +1,59 @@
+# R18 SE(3) cisplatin-resistance 4-cell classifier (v2) — §5.11 YAML-only launch.
+#
+# WHY THIS CONFIG EXISTS (BLK-PA13)
+# ---------------------------------
+# train_cisplatin_resistance_v2.py calls ScaffoldSplitter (molmetal/data/splits.py)
+# and therefore inherited the degenerate-splitter defect fixed 2026-10-12
+# (BLK-PA12: _scaffold_for returned "" for every molecule, so a "scaffold" split
+# was molecule-level).  The script had no --config, so it could not be re-run
+# under §5.11.  It now accepts --config + apply_yaml_overrides.
+#
+# Impact is smaller than the other three: this script trains on
+# molmetal/data/platinai_4cell.csv, whose MCF7/A549/A2780 labels are per-cell-line
+# constants plus noise (no structure term), so its headline is not a load-bearing
+# paper number.  The config is still provided so the affected split can be
+# reproduced through the standard launcher.
+
+entry:
+  script: molmetal/scripts/train_cisplatin_resistance_v2.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_cisplatin_resistance_v2.py
+    --config {yaml_path}
+
+# Top-level scalar → --data dest.
+data: molmetal/data/platinai_4cell.csv
+
+# Sections required by scripts/_pre_flight_check.sh.
+model:
+  scaffold_split: true
+protocol:
+  scaffold_split: true
+directives:
+  user_ok_required: true
+
+# --- run hyperparameters (leaf names bind to the script's argparse dests) -----
+train:
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 50
+  batch: 128
+  lr: 1.0e-3
+  hidden: 300
+  depth: 3
+  dropout: 0.2
+  eval_every: 5
+  init: tmqm
+  cell_line: A2780cis
+
+# GPU env (add_gpu_args dests).
+cuda_visible_devices: "0"
+mixed_precision: bf16
+num_workers: 4
+
+output:
+  base_dir: molmetal/reports/cisplatin_resistance_v2_scaffoldfix
+  out_dir: molmetal/reports/cisplatin_resistance_v2_scaffoldfix
+  log_master: molmetal/reports/cisplatin_resistance_v2_scaffoldfix/master.log
+  training_summary: molmetal/reports/cisplatin_resistance_v2_scaffoldfix/training_summary.json
+
+out_dir: molmetal/reports/cisplatin_resistance_v2_scaffoldfix
+metrics_path: molmetal/reports/cisplatin_resistance_v2_scaffoldfix/metrics.json
+summary_path: molmetal/reports/cisplatin_resistance_v2_scaffoldfix/summary.json
