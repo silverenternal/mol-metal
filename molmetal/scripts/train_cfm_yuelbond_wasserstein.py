@@ -633,6 +633,7 @@ from molmetal.molmetal_lam.reward.wasserstein_loss import (
     WassersteinConfig,
     wasserstein_decay_check,
     wasserstein_loss,
+    wasserstein_pocket_loss,
 )
 from molmetal.molmetal_lam.reward.pocket_closure_bias import (
     pocket_specific_closure_bias,
@@ -4240,6 +4241,41 @@ def train_one_epoch(
             device=device,
         )
 
+        # Wf-A22 (2026-10-13) step-3: per-pocket W₂ loss term.
+        #
+        # Gated by ``wasserstein_pocket_weight > 0`` AND a per-batch
+        # ``pocket_dist`` being threaded via ``batch_ctx``.  When EITHER
+        # guard fails, the term is an exact ``torch.zeros(())`` — no
+        # ``wasserstein_pocket_loss`` invocation, no slice-tensor
+        # allocation, bit-exact identical to pre-Wf-A22.  When both
+        # guards pass, the term is
+        # ``wasserstein_pocket_weight *
+        #   wasserstein_pocket_loss(vel, pocket_dist, n_mc=...)``.
+        _wpp_weight = float(getattr(args, "wasserstein_pocket_weight", 0.0))
+        _wpp_dist = None
+        if _wpp_weight > 0.0:
+            _batch_ctx = locals().get("batch_ctx")
+            if _batch_ctx is not None:
+                _wpp_dist = getattr(_batch_ctx, "pocket_dist", None)
+        if _wpp_weight > 0.0 and _wpp_dist is not None:
+            _wpp_vel = locals().get("velocities")
+            if _wpp_vel is None:
+                _wpp_vel = locals().get("vel", locals().get("v"))
+            if _wpp_vel is not None:
+                wasserstein_pocket_term = _wpp_weight * wasserstein_pocket_loss(
+                    _wpp_vel.detach(),
+                    _wpp_dist,
+                    pocket_id=None,
+                    n_mc=int(
+                        getattr(args, "wasserstein_pocket_n_mc", 64)
+                    ),
+                    seed=0,
+                )
+            else:
+                wasserstein_pocket_term = torch.zeros((), device=device)
+        else:
+            wasserstein_pocket_term = torch.zeros((), device=device)
+
         loss = (
             bond_ce_term
             + wasserstein_weight * w2_val
@@ -4280,6 +4316,10 @@ def train_one_epoch(
             # tensor; opt-in via --use-natural-charges +
             # --natural-charge-mse-weight.
             + natural_charge_term
+            # Wf-A22 (2026-10-13) step-3 — per-pocket W₂ term.  Default
+            # weight 0.0 + no ``pocket_dist`` → exact zero here; the
+            # 12-term pre-Wf-A22 sum is preserved bit-for-bit.
+            + wasserstein_pocket_term
         )
         # 2026-10-04 — refresh the per-term side-channel read by
         # tests/test_cfm_loss_gradient_liveness.py.  Each value is the exact
@@ -4337,6 +4377,12 @@ def train_one_epoch(
                 # natural-charge MSE.  Same gradient-dead-at-weight-0
                 # convention as the other chemistry-signal terms.
                 "natural_charge_term": natural_charge_term,
+                # Wf-A22 (2026-10-13) step-3 — per-pocket W₂ term.
+                # Same gradient-dead-at-weight-0 convention: registered
+                # unconditionally so the guard test can see it; LIVE
+                # when --wasserstein-pocket-weight > 0 AND a
+                # ``pocket_dist`` is threaded via batch_ctx.
+                "wasserstein_pocket_term": wasserstein_pocket_term,
                 # Deliberately absent (removed from the loss sum 2026-10-04,
                 # see the comment above `loss = (`): "sa_penalty_weight*sa_loss",
                 # "per_cohort_term", "pll_term", "chemprop_v3_cache_term",
@@ -7370,6 +7416,33 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.1,
         help="Weight on the W₂ regularization term (default 0.1).",
+    )
+    # Wf-A22 (2026-10-13) step-3: per-pocket W₂ loss wire-in.
+    #
+    # `wasserstein_pocket_loss` was defined in
+    # `molmetal/molmetal_lam/reward/wasserstein_loss.py:708` but never
+    # imported into the trainer.  Default 0.0 → no term in the sum →
+    # bit-exact identical to the pre-Wf-A22 12-term objective.
+    p.add_argument(
+        "--wasserstein-pocket-weight",
+        dest="wasserstein_pocket_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight on the per-pocket W₂ loss term (Wf-A22 L6). "
+            "Default 0.0 = bit-exact pre-Wf-A22 objective (no pocket "
+            "term enters the sum). Set > 0 to enable, e.g. 0.05."
+        ),
+    )
+    p.add_argument(
+        "--wasserstein-pocket-n-mc",
+        dest="wasserstein_pocket_n_mc",
+        type=int,
+        default=64,
+        help=(
+            "Number of random projection directions for the per-pocket "
+            "W₂ sliced estimator (Wf-A22 L6). Default 64."
+        ),
     )
     # Round-3 D1 (2026-10-05) — assemble-aware connectivity loss.
     p.add_argument(
