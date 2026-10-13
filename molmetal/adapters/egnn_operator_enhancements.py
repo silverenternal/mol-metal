@@ -938,8 +938,35 @@ class EnhancedEquivariantGraphConv(nn.Module):
                 t_emb_per_atom = t_emb
             if t_emb_per_atom.size(0) != n_nodes:
                 t_emb_per_atom = t_emb_per_atom.expand(n_nodes, -1)
+            # Wf-A22 (2026-10-13) step-2: pocket_injector_helper wire-in.
+            #
+            # The PerLayerPocketInjector was instantiated in __init__ but
+            # never called — ``pocket_emb`` arrived at the conv layer but
+            # never reached the EnhancedFeatureUpdate's pocket slot.
+            # Project ``pocket_emb`` (shape ``(B, pocket_dim)``) to
+            # ``(B, N, hidden)`` once per forward and forward the
+            # per-atom slice to EnhancedFeatureUpdate.  When
+            # ``pocket_emb is None`` (the Wf-A15/A17 default), the
+            # injector returns a zero addend (zero-init projection) —
+            # bit-exact identical to the pre-Wf-A22 forward.
+            _per_atom_pocket: Optional[torch.Tensor] = None
+            if (
+                pocket_emb is not None
+                and hasattr(self, "pocket_injector_helper")
+            ):
+                _per_atom_pocket = self.pocket_injector_helper(
+                    pocket_emb, n_max=n_nodes
+                )
+                # Collapse the B=1 batch dim (legacy single-graph code
+                # path) so the EnhancedFeatureUpdate receives a (N, hidden)
+                # tensor as documented at line 664.
+                if _per_atom_pocket.size(0) == 1:
+                    _per_atom_pocket = _per_atom_pocket.squeeze(0)
             h_new = self.enhanced_feature_update(
-                h, agg_msg, t_emb=t_emb_per_atom, pocket_emb=pocket_emb
+                h,
+                agg_msg,
+                t_emb=t_emb_per_atom,
+                pocket_emb=_per_atom_pocket,
             )
         else:
             h_new = agg_msg
