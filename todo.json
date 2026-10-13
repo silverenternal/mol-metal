@@ -5281,5 +5281,203 @@
         "note": "Strongest external validation available offline; no second same-rule DB on host."
       }
     }
+  },
+  "weak_metric_audit_2026_10_14": {
+    "created": "2026-10-14",
+    "goal": "预测线(paper_a / FSMA)投稿前,定位全部弱指标并归因:是模型内部结构、数据集关键信息未喂、还是创新点未深度融合",
+    "scope": "FSMA 主线 (metrics/by_metric/fsma_paper_stats.json, metal_activity_transfer_*.json, pa15_metalcond_lomo.json) + 对齐列 (pa18_*, pa20_*)",
+    "headline": "低 K 的 FSMA 不显著 + 跨金属塌缩,归因以 (a) 模型结构 / (c) 创新未深融 为主; (b) 数据未喂 的简单版本已被 PA15 证伪,但更丰富的描述符与 cell-line 上下文仍未测",
+    "weak_metrics": [
+      {
+        "id": "WM1_fsma_lowK_ns",
+        "metric": "FSMA K-shot paired ROC-AUC delta (pooled)",
+        "measured": {
+          "head_k5": "+0.0097 (Holm p=0.27, ns)",
+          "head_k10": "+0.0015 (ns)",
+          "head_k20": "+0.0084 (ns)",
+          "head_k40": "+0.0379 (Holm p=1.3e-5)",
+          "head_k80": "+0.0685 (Holm p=1.9e-13)"
+        },
+        "blocker": "方法只在 K>=40 显著; K<=20 无显著性 -> 审稿人会问 'few-shot 方法为何在 few-shot 区间失效'",
+        "root_cause": [
+          "model_structure",
+          "fusion_shallow"
+        ],
+        "evidence": "适配是 head-only: encoder 冻结,只有 activity head 在 K 个支持配体上微调; K=5/10 移动不了冻结 encoder。05_ablation 的 scope 消融显示 head-only 恰是低 K 非负的原因,但也正是它把低 K 封顶",
+        "already_tested": "C4 适配深度消融 (full_k* vs head_k*): full 在 K>=40 更好 (k80 +0.0783 vs +0.0685) 但在 K=5 显著为负 (full_k5 -0.0171, Holm p=0.019) —— 即全解冻在低 K 过拟合。C2 预算匹配对照 (concat_retrain/from_scratch 显著为负) 已排除 '样本量/算力' 解释",
+        "action": "补 adapter/LoRA 或部分解冻的中间档,扫 K=5/10/20; 目标:低 K 转正且显著。用 C2 同款预算匹配对照",
+        "action_task": "A1"
+      },
+      {
+        "id": "WM2_ru_lowK_negative",
+        "metric": "FSMA per-metal delta, Ru",
+        "measured": {
+          "head_k5": "-0.0037",
+          "head_k10": "-0.0313 (Holm-significant NEGATIVE)",
+          "head_k20": "-0.0138",
+          "head_k40": "-0.0050",
+          "head_k80": "+0.0330 (all 10/10 positive)"
+        },
+        "blocker": "Ru 是队列最大金属 (占去重队列 64%), 低 K 上 Ru 为负 -> 直接拖累 pooled 与读者印象",
+        "root_cause": [
+          "data_distribution"
+        ],
+        "evidence": "metal_activity_transfer_baselines.honest_negative: 'Ru is 64% of the deduplicated cohort'。Ru 在 within-metal 很强 (0.836 vs Krasnov 0.81), 但作为 LOMO 留出金属时源池小且化学独特",
+        "already_tested": "head/full 两种 scope 在 Ru 低 K 均为负",
+        "action": "随 A1/A2 一起看 Ru 是否随适配变深转正; 若否, 单独审计 Ru 的源池构成",
+        "action_task": "A1"
+      },
+      {
+        "id": "WM3_os_data_starved",
+        "metric": "Os within-metal + cross-metal AUC",
+        "measured": {
+          "within_metal_auc": 0.49,
+          "within_metal_n_unique": 36,
+          "cross_metal_auc": 0.495,
+          "fsma_head_k80": "+0.0467 (only place Os is significant)"
+        },
+        "blocker": "Os 全轴都弱; within-metal 0.49 基本是噪声",
+        "root_cause": [
+          "data_volume"
+        ],
+        "evidence": "duplication 表: Os n_unique=36 (Rh 51, Re 74) -> within-metal 5-fold 每折约 7 个配体, 无法支撑 0.8+ AUC",
+        "already_tested": "P1B.1 [W1] Os 根因审计 + 修 K=40 NaN (已完成)",
+        "action": "Os 扩队列 (paper-funnel 已用全部 Os 行); 若无法扩, 在正文把 Os 明确标为 n<40 的低置信金属而非弱指标",
+        "action_task": "A5"
+      },
+      {
+        "id": "WM4_cross_metal_collapse",
+        "metric": "Cross-metal LOMO ROC-AUC + transfer penalty",
+        "measured": {
+          "cross_auc": {
+            "Ru": 0.618,
+            "Ir": 0.528,
+            "Rh": 0.519,
+            "Os": 0.495,
+            "Re": 0.443
+          },
+          "transfer_penalty": {
+            "Ru": 0.218,
+            "Ir": 0.302,
+            "Rh": 0.219,
+            "Os": -0.005,
+            "Re": 0.485
+          },
+          "below_chance": [
+            "Os",
+            "Re"
+          ]
+        },
+        "blocker": "跨金属接近随机 (0.44-0.62), Os/Re 低于随机。论文把它框成 finding, 但审稿人仍会问 '能不能修'",
+        "root_cause": [
+          "data_not_fed",
+          "model_structure"
+        ],
+        "evidence": "ligand-only Morgan FP + GBDT 无任何金属描述符; 金属特异效力不随配体特征迁移",
+        "already_tested": "PA15 metal-conditioning 三臂消融: token 臂 -0.0488 (CI 排除 0, 显著更差), desc 臂 (周期表描述符: 原子序数/族/周期/氧化态/d-count/配位几何) -0.0215 (CI [-0.057,+0.016], Holm p=1.0, ns)。verdict='CONDITIONING DOES NOT RECOVER THE COLLAPSE'。caveat: desc 只是周期表常量, 不含配体场/氧化还原电位; token 臂在 LOMO 下测试时是未训练的随机向量",
+        "action": "只有当 A1/A2 的深适配仍留大残差时, 才补更丰富金属描述符 (配体场分裂 Δ、氧化还原电位、HSAB 硬度); 优先 A1/A2",
+        "action_task": "A3"
+      },
+      {
+        "id": "WM5_pic50_regression_weak",
+        "metric": "pIC50 回归 (paper-funnel, DOI-10fold)",
+        "measured": {
+          "pooled_r2": 0.072,
+          "pooled_mae": 0.55,
+          "pooled_pearson": 0.443,
+          "Os_r2": -0.229,
+          "random_split_r2": 0.727
+        },
+        "blocker": "R²~0.07 在回归口径上是弱指标 (Os 为负)",
+        "root_cause": [
+          "data_not_fed",
+          "distribution_shift"
+        ],
+        "evidence": "特征为 morgan+rdkit+counterion, 无 cell-line/assay 上下文; 标签是跨 cell line 的 IC50, 本身含 assay 噪声; random 0.727 vs DOI 0.072 说明是 paper/assay 分布漂移",
+        "already_tested": "T1-strengthen (加 RDKit 2D + counterion) 已把 pooled R² 从 -0.083 提到 +0.072",
+        "action": "把 cell-line / assay 上下文作为条件特征喂入 (与 FSMA 的 metal 条件同构); 或明确声明回归轴为辅助口径",
+        "action_task": "A4"
+      },
+      {
+        "id": "WM6_external_temporal",
+        "metric": "时间外部验证 (pa20)",
+        "measured": {
+          "temporal_auc": {
+            "Ru": 0.739,
+            "Ir": 0.619,
+            "Rh": 0.626,
+            "Os": 0.566,
+            "Re": 0.773
+          },
+          "temporal_gap": {
+            "Ru": 0.176,
+            "Ir": 0.295,
+            "Rh": 0.247,
+            "Os": 0.361,
+            "Re": 0.078
+          }
+        },
+        "blocker": "外部泛化 AUC 明显低于内部 DOI-fold; gap 0.08-0.36",
+        "root_cause": [
+          "distribution_shift"
+        ],
+        "evidence": "前瞻时间留出 (train Year<=2021, test Year>2021); active_rate 漂移 (如 Re train 0.402 -> test 0.216)",
+        "already_tested": "T4 已建 (2026-10-14)",
+        "action": "作为诚实外部数字报告; 若 A1/A2 提升主干, 重跑 pa20 看是否同步提升",
+        "action_task": "A1"
+      }
+    ],
+    "hypothesis_verdict": {
+      "a_model_structure": "CONFIRMED 主因之一。head-only 冻结 encoder 在 K<=20 无容量吸收金属位移; 全解冻在低 K 过拟合。中间档 (adapter/LoRA/部分解冻) 未测 -> A1",
+      "b_data_not_fed": "简单版本已证伪 (PA15: 周期表金属描述符/token 均不改善跨金属, token 甚至显著更差)。但两处仍真空白: (i) 更丰富的金属描述符 (配体场/氧化还原/HSAB) 未测; (ii) cell-line/assay 上下文完全未喂 (标签是跨 cell-line 聚合) -> A3/A4",
+      "c_fusion_shallow": "CONFIRMED 主因之一。FSMA 自述为 'deliberately minimal protocol --- one frozen encoder, one trained head', 无元学习内循环; 论文自己写 'A learned inner-loop optimiser could plausibly recover more'。深化融合 (meta-init / 深适配) 是 W1 的主杠杆 -> A2"
+    },
+    "action_items": {
+      "A1": {
+        "title": "深适配档: adapter/LoRA 或部分解冻, 扫 K=5/10/20",
+        "targets": [
+          "WM1",
+          "WM2",
+          "WM6"
+        ],
+        "cat": "model_structure",
+        "status": "TODO"
+      },
+      "A2": {
+        "title": "元学习初始化 (Reptile/MAML) on LOMO 源池",
+        "targets": [
+          "WM1"
+        ],
+        "cat": "fusion_shallow",
+        "status": "TODO"
+      },
+      "A3": {
+        "title": "更丰富金属描述符 (配体场 Δ / 氧化还原电位 / HSAB) —— 仅当 A1/A2 后残差仍大",
+        "targets": [
+          "WM4"
+        ],
+        "cat": "data_not_fed",
+        "status": "BLOCKED_ON_A1_A2"
+      },
+      "A4": {
+        "title": "cell-line / assay 上下文作为条件特征 (回归轴 W5)",
+        "targets": [
+          "WM5"
+        ],
+        "cat": "data_not_fed",
+        "status": "TODO"
+      },
+      "A5": {
+        "title": "Os 队列扩增或正文标注 n<40 低置信",
+        "targets": [
+          "WM3"
+        ],
+        "cat": "data_volume",
+        "status": "TODO"
+      }
+    },
+    "not_a_blocker": {
+      "pa18_doi_fold_vs_krasnov": "pa18 DOI-fold Ru 0.731 vs Krasnov 0.81 是跨队列估计 (我们 591 cell lines vs 论文 23), 不是弱指标; 同口径 within-metal 是 0.836 vs 0.81 (我们赢)。见 06_limitations 与 P1B.2 [W2]"
+    }
   }
 }
