@@ -114,9 +114,49 @@ def _fit_predict(model: str, X_tr, y_tr, X_te, seed: int, n_jobs: int) -> np.nda
     raise ValueError(f"unknown model {model!r}")
 
 
+def _threshold_metrics(y_true, y_score, thr: float = 0.5) -> Dict[str, float]:
+    """Conventional binary-classification metrics at a fixed decision threshold.
+
+    The AUC axis (reported separately) is threshold-free; a classification paper
+    that "assigns a cytotoxicity class" also needs the threshold family.  These
+    are computed at ``thr`` on the held-out fold rows, with no threshold tuning.
+    """
+    from sklearn.metrics import (
+        accuracy_score,
+        balanced_accuracy_score,
+        brier_score_loss,
+        cohen_kappa_score,
+        confusion_matrix,
+        f1_score,
+        matthews_corrcoef,
+        precision_score,
+    )
+
+    y_true = np.asarray(y_true).astype(int)
+    y_score = np.asarray(y_score).astype(float)
+    y_pred = (y_score >= thr).astype(int)
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
+    sens = float(tp / (tp + fn)) if (tp + fn) else float("nan")
+    spec = float(tn / (tn + fp)) if (tn + fp) else float("nan")
+    return {
+        "threshold": float(thr),
+        "accuracy": float(accuracy_score(y_true, y_pred)),
+        "balanced_accuracy": float(balanced_accuracy_score(y_true, y_pred)),
+        "sensitivity": sens,
+        "specificity": spec,
+        "precision": float(precision_score(y_true, y_pred, zero_division=0)),
+        "f1": float(f1_score(y_true, y_pred, zero_division=0)),
+        "mcc": float(matthews_corrcoef(y_true, y_pred)),
+        "cohen_kappa": float(cohen_kappa_score(y_true, y_pred)),
+        "brier": float(brier_score_loss(y_true, y_score)),
+        "n_positive": int(tp + fn),
+        "n_negative": int(tn + fp),
+    }
+
+
 def run_metal(
     df: pd.DataFrame, metal: str, models: List[str], n_folds: int, seed: int,
-    radius: int, nbits: int, n_jobs: int,
+    radius: int, nbits: int, n_jobs: int, thr: float = 0.5,
 ) -> Dict[str, object]:
     from sklearn.metrics import roc_auc_score
     from molmetal.baselines.eval_utils import morgan_features
@@ -173,30 +213,48 @@ def run_metal(
     for model in models:
         aucs: List[float] = []
         per_fold: List[Dict[str, object]] = []
+        thr_acc: Dict[str, List[float]] = {}
         for f in folds:
             tr, te = np.asarray(f["train_idx"]), np.asarray(f["val_idx"])
             prob = _fit_predict(model, X[tr], y[tr], X[te], seed, n_jobs)
             auc = float(roc_auc_score(y[te], prob))
             aucs.append(auc)
-            per_fold.append(
-                {
-                    "fold": int(f["fold"]),
-                    "n_train": int(len(tr)),
-                    "n_test": int(len(te)),
-                    "roc_auc": auc,
-                }
+            tm = _threshold_metrics(y[te], prob, thr)
+            for k, v in tm.items():
+                if k in ("threshold", "n_positive", "n_negative"):
+                    continue
+                thr_acc.setdefault(k, []).append(float(v))
+            row = {
+                "fold": int(f["fold"]),
+                "n_train": int(len(tr)),
+                "n_test": int(len(te)),
+                "roc_auc": auc,
+            }
+            row.update({k: v for k, v in tm.items() if k not in ("n_positive", "n_negative")})
+            per_fold.append(row)
+            print(
+                f"[{metal}] {model} fold {f['fold']} auc={auc:.4f} "
+                f"acc={tm['accuracy']:.4f} f1={tm['f1']:.4f} mcc={tm['mcc']:.4f} "
+                f"sens={tm['sensitivity']:.3f} spec={tm['specificity']:.3f}",
+                flush=True,
             )
-            print(f"[{metal}] {model} fold {f['fold']} auc={auc:.4f}", flush=True)
+        thr_mean = {k: float(np.mean(v)) for k, v in thr_acc.items()}
+        thr_std = {k: float(np.std(v)) for k, v in thr_acc.items()}
         out["models"][model] = {
             "mean_auc": float(np.mean(aucs)),
             "std_auc": float(np.std(aucs)),
+            "threshold": float(thr),
+            "threshold_metrics_mean": thr_mean,
+            "threshold_metrics_std": thr_std,
             "per_fold": per_fold,
             "model_spec": (
                 f"morgan_fp(radius={radius}, {nbits}bit) + {model}"
             ),
         }
         print(
-            f"[{metal}] {model}: mean={np.mean(aucs):.4f} +/- {np.std(aucs):.4f}",
+            f"[{metal}] {model}: mean={np.mean(aucs):.4f} +/- {np.std(aucs):.4f} "
+            f"| acc={thr_mean['accuracy']:.4f} balacc={thr_mean['balanced_accuracy']:.4f} "
+            f"f1={thr_mean['f1']:.4f} mcc={thr_mean['mcc']:.4f}",
             flush=True,
         )
     return out
@@ -209,6 +267,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--models", nargs="+", default=list(DEFAULT_MODELS))
     ap.add_argument("--n-folds", type=int, default=10)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument(
+        "--threshold",
+        type=float,
+        default=0.5,
+        help=(
+            "decision threshold for the classification metrics (accuracy / "
+            "balanced-accuracy / sensitivity / specificity / precision / F1 / "
+            "MCC / kappa / Brier).  Fixed, not tuned — the AUC axis is reported "
+            "separately and is threshold-free."
+        ),
+    )
     ap.add_argument("--radius", type=int, default=2)
     ap.add_argument("--nbits", type=int, default=2048)
     ap.add_argument(
@@ -244,7 +313,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     for metal in args.metals:
         per_metal[metal] = run_metal(
             df, metal, list(args.models), args.n_folds, args.seed,
-            args.radius, args.nbits, args.n_jobs,
+            args.radius, args.nbits, args.n_jobs, thr=args.threshold,
         )
 
     dmpnn: Dict[str, object] = {"source": None, "per_metal": {}}
@@ -274,7 +343,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         "metric": "pa18_model_class_5metal",
         "status": "MEASURED",
         "MEASURED_vs_PROJECTED": "MEASURED",
-        "unit": "ROC-AUC (0-1, higher better)",
+        "unit": (
+            "ROC-AUC (threshold-free) + classification metrics at a fixed "
+            "decision threshold (accuracy / balanced_accuracy / sensitivity / "
+            "specificity / precision / f1 / mcc / cohen_kappa / brier)"
+        ),
+        "decision_threshold": float(args.threshold),
         "scope": "tier2_precious_metal_anticancer / paper-funnel cohort per metal",
         "source": "molmetal/scripts/pa18_model_class_5metal.py",
         "cohort_rule": (
@@ -326,7 +400,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         "honest_framing_note": (
             "MEASURED only.  The D-MPNN column is merged from --dmpnn-json when "
             "supplied and otherwise recorded as absent.  Krasnov published only "
-            "Ru and Ir; the other three metals have no external reference."
+            "Ru and Ir; the other three metals have no external reference.  "
+            "The classification metrics are computed at a FIXED threshold "
+            f"({args.threshold}); they are not threshold-tuned, and the AUC axis "
+            "remains the primary (threshold-free) metric."
         ),
     }
 
