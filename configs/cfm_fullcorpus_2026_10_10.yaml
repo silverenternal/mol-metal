@@ -190,8 +190,8 @@ train:
   stereo_loss_weight: 0.0
   fragment_loss_weight: 0.0
   property_loss_weight: 0.0
-  fragment_connectivity_weight: 0.0
-  natural_charge_weight: 0.0
+  fragment_connectivity_weight: 0.0   # Wf-A30 §6.53: FragmentConnectivityLoss class exists at molmetal/loss/stererochemistry_losses.py:112 but is NOT wired into the trainer; reserved for future Wf-A33+ wire-in; declared DECLARED_INERT in molmetal/scripts/wfA2_config_loader.py
+  natural_charge_mse_weight: 0.0      # Wf-A30 §6.53: YAML typo fix — was `natural_charge_weight` which does not match the trainer's `natural_charge_mse_weight` kwarg; renamed to align with the actual trainer dest
 
 flow:
   # 2026-10-07 (Wf-R31) — ROOT FIX for `bond_exact_type_rate` pinned at 0.

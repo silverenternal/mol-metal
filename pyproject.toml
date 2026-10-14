@@ -43,6 +43,35 @@ dependencies = [
     "pot>=0.9.7.post1",
 ]
 
+# =============================================================================
+# Optional dependency groups
+# =============================================================================
+# `pocketgen`: protein pocket encoder backbone (PocketGen + ESM-2).
+# NOT a default dep — pulls in torch_scatter, torch_geometric, esm
+# (~700 MB total install).  Wf-A32 wire-in target.  Install with:
+#   uv pip install "mol-metal[pocketgen]"
+#   # or, if editable:
+#   uv sync --extra pocketgen
+# PyTorch CUDA / scatter wheels are host-specific; on this host (CUDA 13.0,
+# Blackwell SM_120) the `cu130` index serves torch_scatter and torch_geometric
+# natively.  On ROCm hosts the user must re-pin to the `rocm` index per
+# AGENTS.md §5.9 single-venv rule.
+[project.optional-dependencies]
+pocketgen = [
+    "torch-scatter>=2.1.2",
+    "torch-geometric>=2.6.1",
+    # facebookresearch/esm  (ESM-2 protein language model)
+    "fair-esm>=2.0.0",
+    "omegaconf>=2.3.0",
+]
+
+# P2Rank: pocket detection (Java CLI).  Install only if doing PDB → pocket
+# extraction (Wf-A33).  Not a Python dep; we wrap the CLI in
+# molmetal/adapters/p2rank_wrapper.py.
+p2rank = [
+    # Java is a system dep; Python wrapper has no extra Python deps.
+]
+
 [tool.uv]
 managed = true
 

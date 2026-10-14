@@ -69,10 +69,12 @@ class MolecularPropertyTargetLoss:
     def __init__(
         self,
         weight: float = 0.0,
+        enabled: bool = True,
         targets: Optional[dict] = None,
         enabled_props: Optional[Sequence[str]] = None,
     ) -> None:
         self.weight = float(weight)
+        self.enabled = bool(enabled)
         self.targets = dict(targets) if targets is not None else dict(TARGETS)
         self.enabled_props = tuple(enabled_props) if enabled_props is not None else DEFAULT_PROPS
         mods = _try_import_rdkit()
@@ -85,7 +87,7 @@ class MolecularPropertyTargetLoss:
         decoded_smiles_batch: Optional[Sequence[str]],
         device: Optional[torch.device] = None,
     ) -> torch.Tensor:
-        if self.weight == 0.0 or not decoded_smiles_batch or self._Chem is None:
+        if not self.enabled or self.weight == 0.0 or not decoded_smiles_batch or self._Chem is None:
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
         mols = []
         for smi in decoded_smiles_batch:

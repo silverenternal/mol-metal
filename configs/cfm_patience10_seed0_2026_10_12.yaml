@@ -79,3 +79,20 @@ honest_framing:
   m7_intdiv1:
     status: "PRESERVED VERBATIM — ~0.017 BELOW training distribution (n=37-47)"
     note: "0.88 Vendi Score threshold does not apply at this n"
+
+# ---- AGENTS.md §5.1 standing GPU grant hyperparam contract (Wf-A30 §6.53) ----
+# This is a §5.11 binding example for ``bench_cfm_decode_real.py`` etc.; it does
+# not invoke the CFM trainer, but every active configs/*.yaml MUST carry the 4
+# canonical hyperparams so a reviewer can read the GPU-budget footprint at a
+# glance per AGENTS.md §5.1 ("hyperparameters via config files").  The values
+# here are the default peer-paper-aligned defaults (not binding to any trainer
+# argparse dest in this YAML's entry.script = bench_cfm_decode_real.py).
+train:
+  batch_size: 64         # 64 = chemprop/v2 peer-paper default
+  lr: 0.0003              # 3e-4 = Adam default for CFM/EGNN family
+  weight_decay: 0.0
+  max_norm: 5.0
+model:
+  hidden_dim: 128        # 128 = PocketGen paper-aligned default (Zhang 2024)
+  n_layers: 3             # 3 = Lipman CFM/EGNN family default
+  depth: 3                # §5.1 alias for n_layers

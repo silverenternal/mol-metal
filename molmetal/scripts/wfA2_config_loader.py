@@ -320,6 +320,14 @@ DECLARED_INERT_PATHS: frozenset[str] = frozenset(
         # documented reservation until that time; cfm_todo.json DEC_per_loss_projection_inert
         # tracks the disposal commitment. See HONEST_NEGATIVE_CATALOG.md §6.50.
         "model.per_loss_projection_lr",
+        # 2026-10-14 (Wf-A30 §6.53) — `train.fragment_connectivity_weight`
+        # is the canonical DECLARED_INERT reservation key for the
+        # ``FragmentConnectivityLoss`` class (defined at
+        # molmetal/loss/stererochemistry_losses.py:112, re-exported in
+        # molmetal/loss/__init__.py) which exists as the FUTURE home for
+        # this weight, but is NOT yet wired into the trainer loop.  Zero
+        # consumers repo-wide until the Wf-A33+ wire-in.
+        "train.fragment_connectivity_weight",
     }
 )
 

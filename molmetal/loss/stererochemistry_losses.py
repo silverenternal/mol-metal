@@ -66,8 +66,14 @@ class StereoCentreSuppressionLoss:
     with pre-Wf-A14 baselines.
     """
 
-    def __init__(self, weight: float = 0.0, target_per_mol: float = TARGET_POTENTIAL_STEREOCENTRES_PER_MOL) -> None:
+    def __init__(
+        self,
+        weight: float = 0.0,
+        enabled: bool = True,
+        target_per_mol: float = TARGET_POTENTIAL_STEREOCENTRES_PER_MOL,
+    ) -> None:
         self.weight = float(weight)
+        self.enabled = bool(enabled)
         self.target_per_mol = float(target_per_mol)
         self._Chem, self._rdMolDescriptors = _try_import_rdkit()
         if self._Chem is None and self.weight > 0:
@@ -78,7 +84,7 @@ class StereoCentreSuppressionLoss:
         decoded_smiles_batch: Optional[Sequence[str]],
         device: Optional[torch.device] = None,
     ) -> torch.Tensor:
-        if self.weight == 0.0 or not decoded_smiles_batch or self._Chem is None:
+        if not self.enabled or self.weight == 0.0 or not decoded_smiles_batch or self._Chem is None:
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
         mols: List = []
         for smi in decoded_smiles_batch:

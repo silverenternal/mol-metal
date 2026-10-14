@@ -57,8 +57,9 @@ class SingleFragmentLoss:
     graph connected.
     """
 
-    def __init__(self, weight: float = 0.0) -> None:
+    def __init__(self, weight: float = 0.0, enabled: bool = True) -> None:
         self.weight = float(weight)
+        self.enabled = bool(enabled)
         self._Chem = _try_import_rdkit()
         if self._Chem is None and self.weight > 0:
             LOG.warning("SingleFragmentLoss enabled but rdkit not importable; returning zero.")
@@ -68,7 +69,7 @@ class SingleFragmentLoss:
         decoded_smiles_batch: Optional[Sequence[str]],
         device: Optional[torch.device] = None,
     ) -> torch.Tensor:
-        if self.weight == 0.0 or not decoded_smiles_batch or self._Chem is None:
+        if not self.enabled or self.weight == 0.0 or not decoded_smiles_batch or self._Chem is None:
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
         penalties: List[float] = []
         for smi in decoded_smiles_batch:
