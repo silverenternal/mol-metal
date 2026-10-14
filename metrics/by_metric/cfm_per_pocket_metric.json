@@ -5,70 +5,70 @@
       "n_smiles": 1,
       "qed_mean": null,
       "sa_mean": null,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_1a1u_v0": {
       "n_ok": 0,
       "n_smiles": 2,
       "qed_mean": null,
       "sa_mean": null,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_1ca2_v0": {
       "n_ok": 0,
       "n_smiles": 2,
       "qed_mean": null,
       "sa_mean": null,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_1fqy_v0": {
       "n_ok": 0,
       "n_smiles": 2,
       "qed_mean": null,
       "sa_mean": null,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_1zxm_v0": {
       "n_ok": 0,
       "n_smiles": 2,
       "qed_mean": null,
       "sa_mean": null,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_2krr_v0": {
       "n_ok": 0,
       "n_smiles": 2,
       "qed_mean": null,
       "sa_mean": null,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_2ocj_v0": {
       "n_ok": 0,
       "n_smiles": 2,
       "qed_mean": null,
       "sa_mean": null,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_3eao_v0": {
       "n_ok": 0,
       "n_smiles": 2,
       "qed_mean": null,
       "sa_mean": null,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_4bkx_v0": {
       "n_ok": 0,
       "n_smiles": 2,
       "qed_mean": null,
       "sa_mean": null,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_5ikq_v0": {
       "n_ok": 0,
       "n_smiles": 2,
       "qed_mean": null,
       "sa_mean": null,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     }
   },
   "cohort": "wf_a33_3_platiny_real_pockets",
@@ -78,70 +78,70 @@
       "min_atoms": 2,
       "n_smiles": 1,
       "per_atom_validity": 1.0,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_1a1u_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
       "n_smiles": 2,
       "per_atom_validity": 1.0,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_1ca2_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
       "n_smiles": 2,
       "per_atom_validity": 1.0,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_1fqy_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
       "n_smiles": 2,
       "per_atom_validity": 1.0,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_1zxm_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
       "n_smiles": 2,
       "per_atom_validity": 1.0,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_2krr_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
       "n_smiles": 2,
       "per_atom_validity": 0.5,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_2ocj_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
       "n_smiles": 2,
       "per_atom_validity": 1.0,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_3eao_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
       "n_smiles": 2,
       "per_atom_validity": 1.0,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_4bkx_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
       "n_smiles": 2,
       "per_atom_validity": 1.0,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_5ikq_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
       "n_smiles": 2,
       "per_atom_validity": 1.0,
-      "status": "MEASURED"
+      "status": "MEASURED_PILOT_MOCK"
     }
   },
   "honest_negative": "Wf-A33-FIXUP-1 (2026-10-14): per-pocket decode + ADMET run with 10 REAL platiny pockets (fpocket 10A spheres from A33-2), but the 1-2 SMILES per pocket are MOCK placeholders — no real CFM model output yet (next step: Wf-A32 wire-in + GPU re-train; see TODO-pending/a37_decoder_smoke_link.md). Per-pocket cohort sizes remain small (n=1-2 per pocket); all admet n_ok=0 and qed_mean/sa_mean=null. Status=MEASURED_PILOT_MOCK per AGENTS.md §5.2 honest-framing: PILOT only, do NOT promote to headline metrics.",

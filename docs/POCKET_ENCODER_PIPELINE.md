@@ -47,9 +47,9 @@ auditable, pluggable end-to-end path.
                │                                                         │
                ▼                                                         │
    ┌────────────────────────┐                                            │
-   │ P2RankWrapper          │  ← Wf-A33 wire-in (NOT YET)                │
+   │ fpocket_wrapper        │  ← Wf-A33 v2 wire-in (DONE — no Java)      │
    │ (molmetal/adapters/    │                                            │
-   │  p2rank_wrapper.py)    │                                            │
+   │  fpocket_wrapper.py)   │                                            │
    │                        │                                            │
    │ full PDB → residue crop│                                            │
    │ 10 Å sphere            │                                            │
@@ -57,8 +57,8 @@ auditable, pluggable end-to-end path.
                │                                                         │
                ▼                                                         │
    ┌────────────────────────┐                                ┌───────────────────────┐
-   │ platiny_pocket_pool    │  ← A31 ship (10 entries, 0   │ crossdocked_pool       │
-   │ (molmetal/data/)       │    extracted)                │ (100K crossdocked 2020)│
+   │ platiny_pocket_pool    │  ← A31 ship (10 entries, A33 │ crossdocked_pool       │
+   │ (molmetal/data/)       │    v2 10/10 extracted)      │ (100K crossdocked 2020)│
    │                        │                                │                       │
    │ 10 literature Pt / Au  │                                │ ready-to-use (R21 GPU) │
    │ / Ru target PDBs       │                                │                       │
@@ -130,8 +130,7 @@ PocketGenEncoder.
 with:
 - PDB ID + target name + metal specificity (Pt_II / Au_I / Ru_II / etc.)
 - Literature DOI (real references, no fabrication per the "不要自己造表" memory rule)
-- `pocket_path=""` for all 10 (honest — the actual pocket files are extracted
-  in Wf-A33)
+- `pocket_path` populated for all 10 (populated 2026-10-14 in Wf-A33 v2; was empty in A31 prep; column now holds absolute paths under `.data/molmetal/platiny_pockets/`)
 
 **Why this exists**: PlatinAI 449-mol has only `smiles,source` columns, no
 `pocket_id`. The CFM pocket-conditioning slot `c` was therefore either
@@ -141,10 +140,13 @@ named, literature-anchored set of real Pt / Au / Ru target proteins that we
 can use to MEASURE pocket-conditioned generative quality with proper §5.2
 honest framing.
 
-**Status as of 2026-10-14**: 10 entries shipped, 0 with extracted pockets.
-Until Wf-A33 extracts them, the pool is a **declared** target list, not a
-ready-to-use pool. `list_pocket_pool(only_extracted=True)` returns `[]`
-(honest, by design).
+**Status as of 2026-10-14**: 10 entries shipped, **10 with extracted pockets** (Wf-A33 v2 / fpocket, no Java).
+Per `molmetal/data/platiny_pocket_pool.csv` the `pocket_path` column is populated
+for all 10 rows and `list_pocket_pool(only_extracted=True)` returns **10** entries
+(verified 2026-10-14 at fixup-2 via venv python import); pocket files live at
+`.data/molmetal/platiny_pockets/<pdb>_pocket10.pdb` (extracted via
+`molmetal/scripts/wf_a33_extract_platiny_pockets.py`, commit `f51c3836b1`,
+catalogued at HONEST_NEGATIVE_CATALOG.md §6.60b).
 
 ### 2.4 `molmetal/data/pocket_pool_unified.py` — Single dispatch API
 
@@ -158,7 +160,7 @@ from molmetal.data.pocket_pool_unified import load_pocket_pool, source_of
 train = load_pocket_pool(source="crossdocked2020", split="train", max_n=10000)
 
 # 10 literature Pt / Au / Ru targets (eval-time honest pool)
-platiny = load_pocket_pool(source="platiny")  # all 10, pocket_path=""
+platiny = load_pocket_pool(source="platiny")  # all 10, pocket_path populated
 
 # Pt_II filter on platiny
 pt_ii = load_pocket_pool(source="platiny", metal="Pt_II")  # 4 rows
@@ -208,7 +210,7 @@ claim in this pipeline must carry a MEASURED-vs-PROJECTED tag.
 |---|---|---|
 | PocketGen can encode pockets for our 14-metal vocab | **PROJECTED** | The wrapper is wired + lazy-import OK, but no real weights loaded yet; no run on PlatinAI 449 mol with `c=PocketGen(...)` |
 | 10 literature Pt targets are the right pool | **MEASURED** | CSV on disk, 10 rows, schema compatible with crossdocked_pool |
-| Pool has 0 extracted pockets | **MEASURED** | `list_pocket_pool(only_extracted=True)` returns `[]` |
+| Pool has 10 extracted pockets (v2 / fpocket, no Java) | **MEASURED** | CSV col `pocket_path` populated on all 10 rows + `list_pocket_pool(only_extracted=True)` returns 10 entries (verified at fixup-2 2026-10-14); 10 pocket PDBs at `.data/molmetal/platiny_pockets/<pdb>_pocket10.pdb` (§6.60b) |
 | P2Rank crops to 10 Å sphere | **MEASURED** | crop_pdb_to_residues tested with Bio 1.88 + PDBIO; 18 unit tests PASS |
 | PerLayerPocketInjector projects (B, dim) → (B, N, hidden) | **MEASURED** | 12 unit tests PASS; zero-init bit-exact legacy preserved |
 | PerLayerPocketInjector is wired into the CFM EGNN loop | **NOT SHIPPED** | audit finding #2; Wf-A32 work |
@@ -227,9 +229,9 @@ claim in this pipeline must carry a MEASURED-vs-PROJECTED tag.
 | **A32.3** | instantiate `PerLayerPocketInjector` in `EGNNVelocityField.__init__` (flow_matching_lipman/__init__.py:1429-1452 region) | UNBLOCKED (CPU-only) |
 | **A32.4** | wire `_encode_pocket` to return both `embed` and `atom-types-onehot` + mask for cross-attn path | UNBLOCKED (CPU-only) |
 | **A32.5** | §6.54 honest-negative for the pre-A32 paper claims that ran on c=None | READY (A30-2 §6.51 chain) |
-| **A33.1** | P2Rank Java CLI install + `run_p2rank()` wire-in | BLOCKED (user OK) |
-| **A33.2** | PDB extraction for the 10 platiny targets via P2Rank + Biopython crop | BLOCKED (A33.1) |
-| **A33.3** | 5-seed × 50-epoch re-run of `r_platinai` with `c=PocketGen(platiny_pocket)` for honest eval-time comparison | BLOCKED (GPU + A33.2) |
+| **A33.1** | `fpocket_wrapper.py` (NEW, no Java) — C-binary `fpocket 4.2.3` detector + `run_fpocket()` wire-in (per user voice 2026-10-14 *"为什么还有java?"*) | **DONE** (commit `04de1dbf13`, §6.60a) |
+| **A33.2** | 10 platiny targets extracted via `fpocket` + Biopython sphere-crop (no P2Rank, no Java) — `wf_a33_extract_platiny_pockets.py` writes `.data/molmetal/platiny_pockets/<pdb>_pocket10.pdb` | **DONE** (commit `f51c3836b1`, §6.60b) |
+| **A33.3** | 5-seed × 50-epoch re-run of `r_platinai` with `c=PocketGen(platiny_pocket)` for honest eval-time comparison | BLOCKED (GPU + A32.3 — user 2026-10-14 *"gpu先别动"*) |
 
 ## 5. Cross-references
 
