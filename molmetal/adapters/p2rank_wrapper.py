@@ -407,7 +407,13 @@ def crop_pdb_to_residues(
             if parent_residue is None:
                 continue
             new_residue = parent_residue.copy()
-            new_residue.detach_child("__all_atoms__")
+            # `__all_atoms__` was an internal child in older Biopython;
+            # newer versions don't ship it. Guard the detach so we work on
+            # both. (Fix per Wf-A33 v2: fpocket_wrapper reuses this.)
+            try:
+                new_residue.detach_child("__all_atoms__")
+            except KeyError:
+                pass
             for child in list(new_residue.get_atoms()):
                 if child not in atom_set:
                     new_residue.detach_child(child.get_id())
