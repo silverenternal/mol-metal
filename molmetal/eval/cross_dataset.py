@@ -1,5 +1,12 @@
 """Cross-dataset transfer-learning validation — F fix.
 
+Wf-A36-1 (2026-10-14) E1 + E2 — wire the PocketEncoder into the eval path
+and apply the EMA snapshot to the FULL CFM velocity field, not just the
+YuelBond bond head.  At default (``use_pocket_encoder=False`` and no EMA
+in the checkpoint) this module is bit-exact identical to the pre-Wf-A36-1
+path for every shipped CFM YAML; see :mod:`molmetal.eval._pocket_encoder`
+for the helper definitions and the §5.11 backward-compat contract.
+
 Targets the F weakness from ``docs/CFM_WEAKNESSES_2026_10_13.md``:
 
     F — 0/149 generated molecules contain Pt (real_tmqm Pt fraction 25.2%);
@@ -41,6 +48,16 @@ LOG = logging.getLogger("molmetal.eval.cross_dataset")
 # changing the public surface; both names resolve to the same code path.
 from molmetal.eval import ckpt_is_smoke_stub as _ckpt_is_smoke_stub
 
+# Wf-A36-1 (2026-10-14) E1 + E2 — the shared helpers for the eval-side
+# PocketEncoder instantiation (E1) and the full-model EMA round-trip
+# (E2).  See :mod:`molmetal.eval._pocket_encoder` for the §5.11
+# bit-exact default (``use_pocket_encoder=False`` ⇒ no import, no warn,
+# no behaviour change).
+from molmetal.eval._pocket_encoder import (
+    build_pocket_encoder as _build_pocket_encoder,
+    try_build_full_cfm_model as _try_build_full_cfm_model,
+)
+
 def _load_pretrained_checkpoint(ckpt_path: Path, device: str = "cpu") -> Dict:
     """Load a CFM checkpoint into a flat dict.
 
@@ -73,6 +90,7 @@ def _predict_smiles(
     device: str = "cpu",
     max_n: int = 64,
     ema_state: Optional[Dict] = None,
+    use_pocket_encoder: bool = False,
 ) -> List[str]:
     """Decode dataset SMILES through the loaded CFM YuelBond head.
 
@@ -85,6 +103,18 @@ def _predict_smiles(
     parameter tensors) is also accepted; on that path the bond-decision
     helper degrades to canonical defaults ``("argmax", 0.5, None)``
     because no ``"args"`` sub-dict is present.
+
+    Wf-A36-1 (2026-10-14) E1 + E2 — when ``use_pocket_encoder=True``,
+    instantiate the eval-side :class:`PocketGenEncoder` (a structural
+    wiring change; the cross-dataset path currently has no pocket data
+    to feed it, but the encoder is now in the eval module so a future
+    pocket-conditioned decode can attach it without touching this
+    function).  When ``ema_state`` is non-empty, the helper tries to
+    apply the snapshot to the FULL :class:`CFMJointModel` (not just
+    the YuelBond head) so the CFM trajectory / bond head see the
+    EMA-smoothed weights.  Both paths are bit-exact no-ops at the
+    §5.11 default (``use_pocket_encoder=False`` and a pre-Wf-A20
+    checkpoint with no ``ema_state_dict``).
     """
     # Wf-A35-FIXUP-1 (2026-10-14) — accept the full ckpt dict so
     # ``bond_decision_settings`` below can read the trainer's ``args``
@@ -191,24 +221,72 @@ def _predict_smiles(
     # metric was measured against the post-final-step live weights,
     # which on a 50-epoch run is dominated by the SGD noise of the
     # last few batches.
+    #
+    # Wf-A36-1 (2026-10-14) E2 — try the FULL :class:`CFMJointModel`
+    # first.  The head-only stub (the legacy code path) just sets a
+    # flag — the live weights were never actually swapped out, so the
+    # decode silently ran on noisy post-final-step weights.  Building
+    # the full model + applying ``model.ema_swap_in()`` swaps the EMA
+    # snapshot into every parameter (vel_probe, atom_embed, head, etc.)
+    # and the decoder then consumes the head from inside the model.
+    # Falls back to the head-only stub when CFMJointModel construction
+    # fails (e.g. the model was saved with a flag combination this
+    # checkpoint reader does not understand).
     _ema_applied = False
+    _full_model = None
     if isinstance(ema_state, dict) and ema_state:
-        try:
-            head.load_ema_state(ema_state)
-            _ema_applied = bool(head.ema_swap_in())
-            if _ema_applied:
-                LOG.info(
-                    "[cross-dataset] applied EMA snapshot to head "
-                    "(%d tensors)",
-                    len(ema_state),
-                )
-        except Exception as exc:
-            LOG.warning(
-                "[cross-dataset] EMA round-trip failed: %s; using live weights",
-                exc,
+        _full_built, _full_model = _try_build_full_cfm_model(
+            model_state, ema_state
+        )
+        if _full_built and _full_model is not None:
+            # Re-bind the decoder's head to the model-internal one so
+            # the EMA-smoothed weights are what the bond head sees.
+            head = _full_model.head
+            _ema_applied = True
+            LOG.info(
+                "[cross-dataset] applied full-model EMA (%d tensors); "
+                "decode uses model.head",
+                len(ema_state),
             )
+        else:
+            # Fallback: head-only stub (legacy pre-Wf-A36-1 behaviour).
+            try:
+                head.load_ema_state(ema_state)
+                _ema_applied = bool(head.ema_swap_in())
+                if _ema_applied:
+                    LOG.info(
+                        "[cross-dataset] applied EMA snapshot to head "
+                        "only (%d tensors) — full-model build failed",
+                        len(ema_state),
+                    )
+            except Exception as exc:
+                LOG.warning(
+                    "[cross-dataset] EMA round-trip failed: %s; "
+                    "using live weights",
+                    exc,
+                )
     else:
         LOG.info("[ckpt-load] no ema_state_dict; using live weights")
+
+    # Wf-A36-1 (2026-10-14) E1 — instantiate the eval-side
+    # :class:`PocketGenEncoder` when the caller opts in.  The
+    # cross-dataset path does not have pocket point-clouds to feed the
+    # encoder (the input is SMILES, not (ligand, pocket) pairs), so
+    # the encoder is currently a structural no-op on this decode path;
+    # the helper is wired in so a future pocket-conditioned decode
+    # variant can attach it without touching this function.  At the
+    # §5.11 default (``use_pocket_encoder=False``) the helper
+    # short-circuits before any import and emits no log / warning, so
+    # every shipped CFM YAML produces bit-exact identical eval output.
+    _pocket_req, _pocket_enc, _pocket_dim = _build_pocket_encoder(
+        bool(use_pocket_encoder), _ckpt_state, int(hidden_dim)
+    )
+    if _pocket_req and _pocket_enc is not None:
+        LOG.info(
+            "[cross-dataset] PocketGenEncoder wired in "
+            "(pocket_embed_dim=%d)",
+            _pocket_dim,
+        )
 
     # Wf-A35-1 (2026-10-14) C2 — same triplet the trainer's
     # :func:`evaluate_bond_accuracy` reads from live state.  At the
@@ -264,9 +342,17 @@ def _predict_smiles(
     # so the head's caller (e.g. linear_probe.py, which shares the
     # same checkpoint-loader code path) observes the same state we'd
     # see had no EMA existed.
+    #
+    # Wf-A36-1 (2026-10-14) E2 — when the full-model EMA path was used
+    # (``_full_model`` is not None), call ``ema_swap_out`` on the model
+    # instead of the head, so the vel_probe / atom_embed weights also
+    # get restored.  The head-only fallback keeps the legacy call.
     if _ema_applied:
         try:
-            head.ema_swap_out()
+            if _full_model is not None:
+                _full_model.ema_swap_out()
+            else:
+                head.ema_swap_out()
         except Exception:
             pass
     if n_fallback:
@@ -307,6 +393,7 @@ def run_cross_dataset_validation(
     do_linear_probe: bool = False,
     linear_probe_epochs: int = 20,
     linear_probe_max_n: int = 200,
+    use_pocket_encoder: bool = False,
 ) -> Dict:
     """Run transfer-learning validation against the 3 cross-datasets.
 
@@ -334,6 +421,12 @@ def run_cross_dataset_validation(
         Logistic-regression epochs for the probe head.  Default 20.
     linear_probe_max_n : int
         Cap on rows used by the probe (smoke-friendly).  Default 200.
+    use_pocket_encoder : bool
+        Wf-A36-1 (2026-10-14) E1 — when ``True``, instantiate the
+        eval-side :class:`PocketGenEncoder` so a future
+        pocket-conditioned decode variant can attach it.  Default
+        ``False`` keeps the §5.11 bit-exact path: every shipped CFM
+        YAML produces identical eval output regardless of this flag.
 
     Returns
     -------
@@ -403,6 +496,7 @@ def run_cross_dataset_validation(
                 smiles,
                 device=device,
                 ema_state=state.get("ema_state_dict", {}),
+                use_pocket_encoder=use_pocket_encoder,
             )
             for oracle in ("pocket2mol_score", "softmol_score", "targetdiff_score"):
                 scores = _score_oracle(decoded, oracle)
@@ -444,6 +538,7 @@ def run_cross_dataset_validation(
                     device=device,
                     n_epochs=int(linear_probe_epochs),
                     max_n=int(linear_probe_max_n),
+                    use_pocket_encoder=use_pocket_encoder,
                 )
                 # Attach the probe record to the per-oracle records so
                 # the JSON has a single entry per (dataset, oracle) +
@@ -524,6 +619,15 @@ def main() -> int:
         default=200,
         help="Max rows used by the linear probe (smoke-friendly)",
     )
+    parser.add_argument(
+        "--pocket-encoder",
+        action="store_true",
+        help=(
+            "Wf-A36-1 (2026-10-14) E1 — instantiate the eval-side "
+            "PocketGenEncoder so a future pocket-conditioned decode "
+            "variant can attach it.  Default off: §5.11 bit-exact."
+        ),
+    )
     args = parser.parse_args()
     run_cross_dataset_validation(
         ckpt_path=args.ckpt,
@@ -533,6 +637,7 @@ def main() -> int:
         do_linear_probe=args.do_linear_probe,
         linear_probe_epochs=args.linear_probe_epochs,
         linear_probe_max_n=args.linear_probe_max_n,
+        use_pocket_encoder=args.pocket_encoder,
     )
     return 0
 

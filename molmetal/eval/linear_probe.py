@@ -1,5 +1,12 @@
 """CFM linear probe — freeze encoder, train head on cross-dataset labels.
 
+Wf-A36-1 (2026-10-14) E1 — wire the eval-side PocketEncoder so the
+linear probe head's input dim accommodates the PocketGenEncoder's
+``pocket_embed_dim`` (wired through :func:`build_pocket_encoder`).
+At the §5.11 default (``use_pocket_encoder=False``) the X embedding
+shape is unchanged and the probe result is bit-exact identical to the
+pre-Wf-A36-1 path for every shipped CFM YAML.
+
 2026-10-13 (Wf-A14) — Closes Gap 4 of the 2026-10-13 4-gap plan.
 
 Background
@@ -38,6 +45,13 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 LOG = logging.getLogger("molmetal.eval.linear_probe")
+
+# Wf-A36-1 (2026-10-14) E1 — shared PocketEncoder helper (the
+# cross-dataset side imports the same module for E2).  At the
+# §5.11 default this short-circuits before any import / warning.
+from molmetal.eval._pocket_encoder import (
+    build_pocket_encoder as _build_pocket_encoder,
+)
 
 # Disable the noisy RDKit logger inside this module.
 try:
@@ -303,6 +317,7 @@ def run_cross_dataset_linear_probe(
     n_epochs: int = 20,
     max_n: int = 200,
     seed: int = 0,
+    use_pocket_encoder: bool = False,
 ) -> Dict:
     """Load a CFM ckpt + a cross-dataset, train a frozen-encoder linear head.
 
@@ -322,6 +337,13 @@ def run_cross_dataset_linear_probe(
         Cap on rows used (smoke-friendly).
     seed
         RNG seed for split.
+    use_pocket_encoder
+        Wf-A36-1 (2026-10-14) E1 — when ``True``, instantiate the
+        eval-side :class:`PocketGenEncoder` and extend the probe head's
+        input dim with ``pocket_embed_dim`` (zero-padded in the absence
+        of real pocket data; a no-op on the regression result but
+        structurally wires the slot in for future pocket-conditioned
+        probes).  Default ``False`` keeps the §5.11 bit-exact path.
 
     Returns
     -------
@@ -410,6 +432,27 @@ def run_cross_dataset_linear_probe(
 
     probe = YuelBondEncoderProbe(head, freeze=True)
     frozen = sum(int(p.numel()) for p in head.parameters())
+
+    # Wf-A36-1 (2026-10-14) E1 — instantiate the eval-side
+    # :class:`PocketGenEncoder` when the caller opts in.  The
+    # cross-dataset loader does not supply pocket data, so the actual
+    # pocket embedding is currently zero-padded in the X assembly below
+    # — that is structurally a no-op on the regression but wires the
+    # ``pocket_embed_dim`` slot in for a future pocket-conditioned
+    # probe.  At the §5.11 default (``use_pocket_encoder=False``) the
+    # helper short-circuits before any import / warning, so the X
+    # shape is unchanged and the probe result is bit-exact identical to
+    # the pre-Wf-A36-1 path.
+    _pocket_req, _pocket_enc, _pocket_dim = _build_pocket_encoder(
+        bool(use_pocket_encoder), state, int(hidden_dim)
+    )
+    if _pocket_req and _pocket_enc is not None:
+        LOG.info(
+            "[linear-probe] PocketGenEncoder wired in "
+            "(pocket_embed_dim=%d)",
+            _pocket_dim,
+        )
+
     LOG.info(
         "[linear-probe] ckpt=%s dataset=%s hidden_dim=%d n_layers=%d frozen_params=%d",
         ckpt_path, dataset_name, hidden_dim, n_layers, frozen,
@@ -446,6 +489,20 @@ def run_cross_dataset_linear_probe(
         for k, v in label_dict.items()
     }
     X = probe.encode_batch(valid_clouds)
+    # Wf-A36-1 (2026-10-14) E1 — when the pocket encoder is opted in,
+    # extend the X embedding with a zero-padded pocket slot of width
+    # ``pocket_embed_dim``.  Zero-padding is a structural no-op on the
+    # logistic regression (the L2 penalty keeps the W for the padded
+    # columns at zero, so the predictions are unchanged), but it does
+    # wire the ``pocket_embed_dim`` into the head's input dim so a
+    # future pocket-conditioned probe can drop in real embeddings
+    # without changing the call site.  At ``use_pocket_encoder=False``
+    # (the §5.11 default) the helper returns ``pocket_embed_dim=0``
+    # and the X shape is unchanged.
+    if _pocket_dim > 0:
+        import numpy as _np
+        _pad = _np.zeros((X.shape[0], int(_pocket_dim)), dtype=_np.float64)
+        X = _np.concatenate([X.astype(_np.float64, copy=False), _pad], axis=1)
     import numpy as np
 
     # Per-label logistic regression.
