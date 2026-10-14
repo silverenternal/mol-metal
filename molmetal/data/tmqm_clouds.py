@@ -1093,12 +1093,16 @@ def load_tmqm_clouds(
             flush=True,
         )
 
-    # Natural atomic charges (NBO summary file).  Optional source: a missing
-    # .q file is NOT fatal — the per-atom field simply stays None.  The
-    # parser is the new `parse_natural_charges` added in Wf-A11 (D1 root
-    # cause: previously, natural charges lived in a separate file the loader
-    # never opened, so the field was dropped between the metadata CSV and
-    # the cloud object).
+    # Natural atomic charges (NBO Loewdin q, per-atom).  tmQM ships the
+    # ``tmQM_X.q`` block file (95 MB; 108,541 complexes) alongside the
+    # geometry/BO shards; the loader opens it once at top and threads
+    # the per-cloud vector into :class:`AtomCloud.natural_charges` so the
+    # bond head supervision slot is non-None end-to-end.  When the file
+    # is genuinely absent (a trimmed tmQM release used for benchmarking),
+    # :func:`molmetal.data.tmqm.parse_natural_charges` raises
+    # FileNotFoundError — we let that propagate as a loud failure rather
+    # than silently degrading the bond head, which is exactly the bug the
+    # Wf-A11 (D1) SCOUT fix exists to prevent.
     natural_charges_map: Optional[Dict[str, List[float]]] = None
     try:
         from molmetal.data.tmqm import parse_natural_charges
@@ -1108,17 +1112,26 @@ def load_tmqm_clouds(
             if q_candidate.is_file():
                 natural_charges_map = parse_natural_charges(q_path=q_candidate)
                 break
-        if natural_charges_map is not None:
-            in_keep = sum(1 for c in natural_charges_map if c in keep_codes)
-            print(
-                f"[tmqm-clouds] natural charges: {in_keep}/{len(keep_codes)} "
-                f"requested complexes have a tmQM_X.q entry",
-                flush=True,
-            )
-    except FileNotFoundError:
-        # Expected when the .q file is not shipped (e.g. trimmed tmQM
-        # release for benchmark runs); the field simply stays None.
-        natural_charges_map = None
+    except FileNotFoundError as exc:
+        # The .q file is required by the bond head supervision slot —
+        # a silent None here would re-introduce the Wf-A11 D1 defect.
+        # Surface the failure so the operator either ships the file or
+        # explicitly disables natural-charge supervision (a separate
+        # opt-out knob, not a silent fallback).
+        raise FileNotFoundError(
+            f"[tmqm-clouds] tmQM natural-charge file missing under {root}: "
+            f"tried 'tmQM_X.q' and 'tmQM_X.q.gz'. The bond head supervision "
+            f"slot requires per-atom NBO Loewdin q; without it the field "
+            f"silently degrades to None. Original error: {exc}"
+        ) from exc
+    if natural_charges_map is not None:
+        in_keep = sum(1 for c in natural_charges_map if c in keep_codes)
+        print(
+            f"[tmqm-clouds] natural charges: {in_keep}/{len(keep_codes)} "
+            f"requested complexes have a tmQM_X.q entry "
+            f"(parser read {len(natural_charges_map)} total blocks)",
+            flush=True,
+        )
 
     # Reservoir sample: keeps the selection unbiased across files while still
     # stopping early once the pool is comfortably larger than the request.

@@ -18,7 +18,15 @@ On-disk layout (``/mnt/storage/data/molmetal/tmQM/``)::
 
                             <idx> <El> <total_BO>  <El> <idx> <BO> ...
 
-    tmQM_X.q            Natural atomic charges (not used here).
+    tmQM_X.q            Natural atomic charges (NBO Loewdin q, per-atom).
+                          Block format::
+
+                              CSD_code = XXXXXX | 2020-2024 CSD
+                              El   q_val
+                              El   q_val
+                              ...
+                              Total charge = <float>     <-- 4-token summary,
+                                                          skipped by parser
 
 Two supervision signals are extracted for D-MPNN pre-training:
 
@@ -330,19 +338,20 @@ def parse_natural_charges(
     Returns
     -------
     dict[str, list[float]]
-        Mapping ``csd_code -> [q_1, q_2, ...]`` (1-based indices become
-        0-based list positions; the list is exactly as long as the complex's
-        heavy-atom count in the matched geometry block).
+        Mapping ``csd_code -> [q_1, q_2, ...]``.  The list is exactly as long
+        as the complex's heavy-atom count in the matched geometry block.
 
     Format
     ------
     The file uses the same ``CSD_code = XXXXXX`` block-header format as
     :func:`parse_bo_metal` (and the XYZ shards).  Per-atom lines are read as
-    ``<index> <element> <charge>`` triples — the typical Gaussian NBO summary
-    layout tmQM ships.  Anything we cannot parse is logged and SKIPPED; the
-    function NEVER silently drops a complex (which would make a missing
-    per-atom field indistinguishable from a parse failure downstream — exactly
-    the failure mode the natural-charge field exists to fix per SCOUT D1).
+    ``<element> <charge>`` pairs — tmQM's actual NBO summary layout (one
+    line per atom, no 1-based index).  Each block is also terminated by a
+    ``Total charge = <float>`` 4-token summary line, which is skipped.
+    Anything else we cannot parse is logged and SKIPPED; the function NEVER
+    silently drops a complex (which would make a missing per-atom field
+    indistinguishable from a parse failure downstream — exactly the failure
+    mode the natural-charge field exists to fix per SCOUT D1).
 
     Raises
     ------
@@ -373,7 +382,8 @@ def parse_natural_charges(
     logger = logging.getLogger(__name__)
     out: Dict[str, List[float]] = {}
     # Stream the file.  The NBO summary file is line-oriented; each line is
-    # one atom.  Block headers (CSD_code = XXXXXX) reset the buffer.
+    # one atom.  Block headers (CSD_code = XXXXXX) reset the buffer; the
+    # 4-token "Total charge = N" trailer per block is skipped.
     # tmQM uses non-ASCII element labels (μ, Δ, em-dash); latin-1 covers all
     # bytes so a stray non-ASCII byte raises UnicodeDecodeError downstream
     # rather than the silent UnicodeDecodeError we'd get under UTF-8 default.
@@ -403,14 +413,23 @@ def parse_natural_charges(
                 n_skip += 1
                 continue
             parts = line.split()
-            if len(parts) < 3:
-                n_skip += 1
+            # Block trailer: "Total charge = <float>" — 4 tokens, never a
+            # per-atom record.  Skip without error.
+            if len(parts) == 4 and parts[0] == "Total" and parts[1] == "charge":
                 continue
+            # Per-atom line: tmQM actual format is "<element> <charge>"
+            # (2 tokens).  The 3-token "<idx> <element> <charge>" form was
+            # documented in an earlier draft but does not appear in the
+            # shipped tmQM_X.q; we accept it as a backwards-compat fallback.
             try:
-                # 1-based index in the file -> we just need the q value
-                # (the i-th atom's charge becomes the i-1 slot of the list).
-                _idx = int(parts[0])
-                q_val = float(parts[2])
+                if len(parts) == 2:
+                    q_val = float(parts[1])
+                elif len(parts) == 3:
+                    _idx = int(parts[0])  # noqa: F841 — index discarded
+                    q_val = float(parts[2])
+                else:
+                    n_skip += 1
+                    continue
             except ValueError:
                 n_skip += 1
                 continue

@@ -1,0 +1,25 @@
+{
+  "bond_head_degradation_risk": false,
+  "elapsed_s": 38.358,
+  "loader_smoke": {
+    "clouds_with_natural_charges": 5,
+    "first_cloud_n_atoms": 18,
+    "first_cloud_q_sum": -2.5313496589660645,
+    "metals": [
+      "Pt"
+    ],
+    "n_clouds_loaded": 5
+  },
+  "parser_status": "AVAILABLE",
+  "q_exists": true,
+  "q_n_blocks": 108541,
+  "q_path": "/home/hugo/codes/mol-metal/.data/molmetal/tmQM/tmQM_X.q",
+  "q_size_bytes": 99690681,
+  "sample_complex": "WELROW",
+  "sample_n_atoms": 88,
+  "sample_q_max": 0.98683,
+  "sample_q_mean": -1.1363636363805431e-07,
+  "sample_q_min": -0.69913,
+  "tag": "tmQM NBO natural-charge smoke",
+  "wf": "Wf-A37-6"
+}
