@@ -1584,6 +1584,19 @@ class CFMJointModel(nn.Module):
         # EGNN layer via ``cond_per_node``.
         t_embedding_dim: int = 0,
         pocket_per_layer: bool = False,
+        # Wf-A32 (2026-10-14) step-1 — opt-in per-layer pocket
+        # injection.  When ``pocket_inject_per_layer=True`` the
+        # velocity field materialises a zero-init
+        # ``PerLayerPocketInjector`` (molmetal/adapters/egnn_extensions.py:171)
+        # and adds its (B, N, H) projection to ``h`` at every EGNN
+        # layer via the ``cond_per_node`` slot.  Distinct from
+        # ``pocket_per_layer`` (which gates the *temporal* per-layer
+        # addend) so the two opt-in axes compose independently.
+        # Default ``False`` keeps the bit-exact legacy path (no
+        # injector, no per-layer call); the projection is zero-init
+        # so a fresh opt-in init contributes identically zero until
+        # trained.
+        pocket_inject_per_layer: bool = False,
         # 2026-10-09 NEW (BLK-C5 follow-up, user voice) — the bond-prediction
         # head now has two interchangeable implementations: 'yuelbond'
         # (default, atom-centered message passing — the historical head every
@@ -1805,6 +1818,14 @@ class CFMJointModel(nn.Module):
                 # t_embedding_dim == 0).
                 t_embedding_dim=int(t_embedding_dim),
                 pocket_per_layer=bool(pocket_per_layer),
+                # Wf-A32 (2026-10-14) step-1 — per-layer pocket
+                # injection opt-in.  Distinct from ``pocket_per_layer``
+                # (temporal addend gate); default ``False`` keeps the
+                # bit-exact legacy path (no injector, no per-layer
+                # call).  When ``True`` the velocity field instantiates
+                # a zero-init ``PerLayerPocketInjector`` whose fresh
+                # contribution is identically zero until trained.
+                pocket_inject_per_layer=bool(pocket_inject_per_layer),
             )
         # Wf-A16 (2026-10-13) c-flow pocket encoder.
         #
@@ -8294,6 +8315,28 @@ def parse_args() -> argparse.Namespace:
             "when --t-embedding-dim=0."
         ),
     )
+    # Wf-A32 (2026-10-14) step-1 — opt-in per-layer pocket injection.
+    # When set, the velocity field instantiates a zero-init
+    # ``PerLayerPocketInjector`` and broadcasts its (B, N, H)
+    # projection to ``cond_per_node`` at every EGNN layer.
+    # Default False ⇒ legacy bit-exact path (no injector, no per-layer
+    # call).  Distinct from ``--pocket-per-layer`` (which gates the
+    # *temporal* per-layer addend) so the two opt-in axes compose
+    # independently.  Fresh opt-in init contributes identically zero
+    # until trained.
+    p.add_argument(
+        "--pocket-inject-per-layer",
+        dest="pocket_inject_per_layer",
+        action="store_true",
+        default=False,
+        help=(
+            "Wf-A32 step-1: instantiate PerLayerPocketInjector and "
+            "broadcast its (B, N, H) projection to ``cond_per_node`` "
+            "at every EGNN layer.  Default False ⇒ legacy bit-exact "
+            "path.  The injector is zero-init so a fresh init "
+            "contributes zero until trained."
+        ),
+    )
     p.add_argument(
         "--natural-charge-mse-weight",
         dest="natural_charge_mse_weight",
@@ -9667,6 +9710,14 @@ def main() -> int:
         ),
         pocket_per_layer=bool(
             getattr(args, "pocket_per_layer", False)
+        ),
+        # Wf-A32 (2026-10-14) step-1 — per-layer pocket injection
+        # opt-in.  Defaults False preserves the bit-exact legacy path;
+        # the yaml key ``model.pocket_inject_per_layer`` (or
+        # ``flow.pocket_inject_per_layer``) maps here via the cfg
+        # loader's leaf fallback.
+        pocket_inject_per_layer=bool(
+            getattr(args, "pocket_inject_per_layer", False)
         ),
         # 2026-10-09 NEW (BLK-C5 follow-up) — bond-predictor dispatch.
         bond_predictor=str(getattr(args, "bond_predictor", "yuelbond")),

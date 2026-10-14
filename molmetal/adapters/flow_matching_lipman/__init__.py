@@ -1261,6 +1261,16 @@ class EGNNVelocityField(nn.Module):
         # or only at the input projection (legacy-equivalent).
         t_embedding_dim: int = 0,
         pocket_per_layer: bool = False,
+        # Wf-A32 (2026-10-14) step-1 — opt-in per-layer pocket
+        # injection.  When ``pocket_inject_per_layer=True`` the velocity
+        # field materialises a zero-init
+        # :class:`molmetal.adapters.egnn_extensions.PerLayerPocketInjector`
+        # and adds its output to ``h`` at every EGNN layer via the
+        # ``cond_per_node`` slot.  Default ``False`` keeps the bit-exact
+        # legacy path (no injector, no per-layer call).  Distinct from
+        # ``pocket_per_layer`` (which gates the *temporal* per-layer
+        # addend) so the two opt-in axes compose independently.
+        pocket_inject_per_layer: bool = False,
     ) -> None:
         """Construct the velocity field.
 
@@ -1501,6 +1511,26 @@ class EGNNVelocityField(nn.Module):
         # / per-layer additions are skipped.
         self.t_embedding_dim = int(t_embedding_dim)
         self.pocket_per_layer = bool(pocket_per_layer)
+        # Wf-A32 (2026-10-14) step-1 — opt-in per-layer pocket injector.
+        # Instantiated ONLY when ``pocket_inject_per_layer=True`` so the
+        # shipped-default path (``False``) adds zero parameters and keeps
+        # ``state_dict()`` bit-exact: every shipped CFM YAML at default
+        # resumes / round-trips through ``load_state_dict(strict=True)``
+        # unchanged.  At ``True`` the injector is zero-init (see
+        # :class:`PerLayerPocketInjector` in egnn_extensions.py:171) so a
+        # fresh ``forward`` call folds the contribution to zero — the
+        # optimiser must train it before any non-zero signal reaches the
+        # per-layer ``cond_per_node`` slot.  This mirrors the Wf-A27
+        # ``t_to_h`` zero-init convention at line 1519.
+        self.pocket_inject_per_layer = bool(pocket_inject_per_layer)
+        if self.pocket_inject_per_layer:
+            from molmetal.adapters.egnn_extensions import PerLayerPocketInjector
+            self.pocket_per_layer_injector = PerLayerPocketInjector(
+                pocket_dim=self.atom_embed.embedding_dim,
+                hidden_dim=self.atom_embed.embedding_dim,
+            )
+        else:
+            self.pocket_per_layer_injector = None  # type: ignore[assignment]
         if self.t_embedding_dim > 0:
             from molmetal.adapters.egnn_extensions import SinusoidalEmbedding
             self.t_emb_per_layer = SinusoidalEmbedding(dim=self.t_embedding_dim)
@@ -1677,6 +1707,24 @@ class EGNNVelocityField(nn.Module):
         if self.t_emb_per_layer is not None and self.t_to_h is not None:
             t_sin = self.t_emb_per_layer(t.squeeze(-1))  # (B, dim)
             t_per_layer_addend = self.t_to_h(t_sin).unsqueeze(1)  # (B, 1, H)
+        # Wf-A32 (2026-10-14) step-1 — pre-compute pocket per-layer
+        # addend.  When ``self.pocket_per_layer_injector is not None``
+        # (opt-in only) AND ``pocket_embed is not None`` (conditioning
+        # is supplied), project the per-sample (B, H) embedding to
+        # (B, N, H) and broadcast to every EGNN layer's
+        # ``cond_per_node``.  At fresh init the projector is zero-init so
+        # the contribution is identically zero — bit-exact legacy path
+        # until trained.  When the opt-in flag is False (default) the
+        # addend stays ``None`` and the per-layer gate below falls
+        # through to the legacy ``_layer_cond = t_per_atom`` branch.
+        _pocket_per_layer_addend: Optional[torch.Tensor] = None
+        if (
+            self.pocket_per_layer_injector is not None
+            and pocket_embed is not None
+        ):
+            _pocket_per_layer_addend = self.pocket_per_layer_injector(
+                pocket_embed, n_max=n
+            )  # (B, N, H)
         # Pocket conditioning (T5): additive bias to atom embeddings,
         # broadcast across all ligand atoms.  When None, use zero bias
         # so the unconditioned forward is unchanged.
@@ -1735,11 +1783,21 @@ class EGNNVelocityField(nn.Module):
             # zero-init ``t_to_h`` keeps a fresh field's contribution
             # identically zero, so pre-Wf-A27 checkpoints that opted in
             # load with no immediate change to the velocity field.
+            #
+            # Wf-A32 (2026-10-14) step-1 — three-way gate so the two
+            # opt-in axes (temporal ``t_per_layer_addend`` and pocket
+            # ``_pocket_per_layer_addend``) compose independently.  Both
+            # default to ``None`` so a fresh init / opt-out ships
+            # bit-exact.  ``elif`` (not two ``if`` branches) means the
+            # legacy ``else`` path keeps running when neither flag fires
+            # — same as the pre-Wf-A32 code path.
             if (
                 self.pocket_per_layer
                 and t_per_layer_addend is not None
             ):
                 _layer_cond = t_per_atom + t_per_layer_addend
+            elif _pocket_per_layer_addend is not None:
+                _layer_cond = t_per_atom + _pocket_per_layer_addend
             else:
                 _layer_cond = t_per_atom
             h, last_v = layer(
