@@ -68,7 +68,7 @@ def _load_pretrained_checkpoint(ckpt_path: Path, device: str = "cpu") -> Dict:
 
 
 def _predict_smiles(
-    model_state: Dict,
+    state: Dict,
     dataset_smiles: List[str],
     device: str = "cpu",
     max_n: int = 64,
@@ -76,33 +76,31 @@ def _predict_smiles(
 ) -> List[str]:
     """Decode dataset SMILES through the loaded CFM YuelBond head.
 
-    Wf-A14 (2026-10-13) — replaces the previous stub (which returned
-    the input SMILES unchanged).  The decode path is now:
-
-    1. Infer ``hidden_dim`` + ``n_layers`` from
-       ``model_state["head.atom_encoder.weight"].shape`` and the
-       number of ``msg_mlps.<i>.0.weight`` keys.
-    2. Construct :class:`YuelBondDecoderHead` and ``load_state_dict``
-       from the head-prefixed entries (bit-tolerant: unknown keys are
-       dropped, ``strict=False``).
-    3. **Wf-A30-1 (2026-10-14) A6** — if ``ema_state`` is non-empty
-       (the checkpoint was written with ``--use-ema``), call
-       ``head.load_ema_state(ema_state)`` and ``ema_swap_in()`` so the
-       decode runs against the EMA snapshot, not the live weights.
-       A ``log "[ckpt-load] no ema_state_dict; using live weights"``
-       is emitted when the ckpt carries no EMA.
-    4. For each input SMILES, build an :class:`AtomCloud` via
-       :func:`molmetal.eval.linear_probe.smiles_to_atom_cloud` (3-D
-       RDKit conformer + largest fragment + heavy-atom packing).
-    5. Run :class:`YuelBondBondDecoder` (wraps the head + valence-aware
-       selector) and return ``result.decoded.smiles``.
-
-    On any error (ckpt shape mismatch, RDKit parse failure, valence
-    rejection, etc.) the function falls back to the **input** SMILES —
-    the Wf-A14 contract is that the script must never crash on a
-    single bad SMILES.  The fallback path is logged so a reviewer can
-    tell the decoded ratio from the input ratio.
+    Accepts the FULL checkpoint ``state`` dict returned by
+    :func:`_load_pretrained_checkpoint` (which carries the
+    ``model_state_dict`` + ``ema_state_dict`` + the trainer's
+    ``args`` sub-dict written at save time per the trainer's
+    ``_ckpt_state_a30["args"] = vars(args)``).  Backward-compat
+    passthrough: a flat ``model_state_dict`` (a plain dict of
+    parameter tensors) is also accepted; on that path the bond-decision
+    helper degrades to canonical defaults ``("argmax", 0.5, None)``
+    because no ``"args"`` sub-dict is present.
     """
+    # Wf-A35-FIXUP-1 (2026-10-14) — accept the full ckpt dict so
+    # ``bond_decision_settings`` below can read the trainer's ``args``
+    # sub-dict.  Pre-fix the function took a FLAT ``model_state_dict``
+    # (parameter tensors only), so the helper only ever saw a flat
+    # dict-of-tensors and the saved yaml's ``flow.bond_decision`` /
+    # ``bond_decision_threshold`` / ``class_logit_bias`` were silently
+    # dropped at cross-dataset decode time.  Backward compat: a flat
+    # state_dict (no ``"args"`` key) is forwarded directly.
+    if isinstance(state, dict) and isinstance(state.get("model_state_dict"), dict):
+        model_state: Dict = state["model_state_dict"]  # type: ignore[assignment]
+        _ckpt_state: Dict = state
+    else:
+        model_state = state
+        _ckpt_state = state
+
     try:
         import torch
         from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
@@ -220,7 +218,19 @@ def _predict_smiles(
     # ``flow.bond_decision: threshold`` (or its bias counterpart),
     # the pre-fix decoder silently ignored it; the metrics and the
     # assembled molecules now share one rule.
-    _decision, _threshold, _bias = _bond_decision_settings(model_state)
+    #
+    # Wf-A35-FIXUP-1 (2026-10-14) — pass the FULL ckpt ``state``
+    # (with ``"args"`` sub-dict carrying the trainer's
+    # ``vars(args)`` saved at ``_ckpt_state_a30["args"]``) instead
+    # of the flat ``model_state_dict``.  Pre-fix the helper only ever
+    # saw a flat dict-of-tensors, so the saved yaml's
+    # ``flow.bond_decision`` was silently dropped on this decode path
+    # even though the trainer's metrics side read it.  At the
+    # canonical defaults the helper still returns
+    # ``("argmax", 0.5, None)``, so the post-fix decode is bit-exact
+    # identical to the pre-fix decode for every shipped CFM YAML
+    # whose ``flow.bond_decision`` is unset.
+    _decision, _threshold, _bias = _bond_decision_settings(_ckpt_state)
     decoder = YuelBondBondDecoder(
         head=head,
         decision=_decision,
@@ -370,8 +380,26 @@ def run_cross_dataset_validation(
             # decoder.  A pre-Wf-A20 ckpt or an EMA-disabled run leaves
             # this empty; the decoder logs "no ema_state_dict; using
             # live weights" and continues.
+            #
+            # Wf-A35-FIXUP-1 (2026-10-14) — forward the FULL ``state``
+            # (which carries the trainer's ``args`` sub-dict saved as
+            # ``_ckpt_state_a30["args"] = vars(args)``) to
+            # ``_predict_smiles`` so the bond-decision helper at the
+            # :class:`YuelBondBondDecoder` construction site reads the
+            # saved yaml's ``flow.bond_decision`` /
+            # ``bond_decision_threshold`` / ``class_logit_bias``
+            # instead of always defaulting to
+            # ``("argmax", 0.5, None)``.  Pre-fix this call passed
+            # ``state["model_state_dict"]`` (a flat parameter tensor
+            # dict), so the helper's ``isinstance(state, dict) and
+            # isinstance(state.get("args"), dict)`` branch never fired
+            # — only the flat-lookup fallback ran.  At canonical
+            # defaults (every shipped CFM YAML) the helper still
+            # returns ``("argmax", 0.5, None)``, so this is a
+            # bit-exact no-op for shipped runs and a real fix for any
+            # future ckpt with non-default bond-decision settings.
             decoded = _predict_smiles(
-                state["model_state_dict"],
+                state,
                 smiles,
                 device=device,
                 ema_state=state.get("ema_state_dict", {}),
