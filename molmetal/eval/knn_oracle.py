@@ -43,6 +43,7 @@ Honest framing
 from __future__ import annotations
 
 import csv
+import math
 import os
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -64,7 +65,16 @@ except Exception:  # pragma: no cover
 # Canonical paths
 # -----------------------------------------------------------------------------
 DEFAULT_POOL_PATH: str = "molmetal/data/metallo_drugs_500_train.csv"
-DEFAULT_LABEL_PATH: str = ".data/molmetal/platinai_4cell.csv"
+# Wf-A37-fixup-1 COMPLETE fix (REAL MB-Finder harvest): prefer the
+# real-label pool when present, fall back to the synthetic placeholder
+# only if neither real source is on disk.
+DEFAULT_LABEL_PATH: str = (
+    ".data/molmetal/platinai_4cell_real_label_pool.csv"
+    if os.path.isfile(".data/molmetal/platinai_4cell_real_label_pool.csv")
+    else ".data/molmetal/platinai_4cell.csv"
+)
+DEFAULT_REAL_POOL_CSV: str = ".data/molmetal/platinai_4cell_real_label_pool.csv"
+DEFAULT_FALLBACK_POOL_CSV: str = ".data/molmetal/platinai_4cell.csv"
 
 DEFAULT_K: int = 5
 DEFAULT_FP_RADIUS: int = 2
@@ -306,36 +316,79 @@ def _load_pool_smiles(path: str) -> List[str]:
 def _load_platinai_4cell(path: str) -> Dict[str, Dict[str, float]]:
     """Read PlatinAI 4-cell CSV → ``{canonical_smi: {cell_short: pIC50}}``.
 
-    Schema (per ``platinai_4cell.meta.json``):
-    ``SMILES_Ligands, pIC50_mcf7, pIC50_a549, pIC50_a2780, pIC50_a2780cis, metal``.
-    Rows that fail RDKit parse are skipped.  When multiple rows
-    canonicalise to the same SMILES, the per-cell values are averaged.
+    Auto-detects REAL vs SYNTHETIC schema.  The Wf-A37-fixup-1 REAL
+    pool (``platinai_4cell_real_label_pool.csv``) schema is
+    ``compound_code, canonical_smiles, cell_line_long, cell_line_short,
+    value_mean, value_sd, doi, method, incubationTime, label_source`` —
+    in REAL MB-Finder per-cell-line IC50, not synthetic pIC50.  The
+    older synthetic schema
+    (``SMILES_Ligands, pIC50_mcf7, pIC50_a549, pIC50_a2780,
+    pIC50_a2780cis, metal``) is read when ``SMILES_Ligands`` is the
+    header, preserving Wf-293B backward compatibility.
+
+    Returns ``{canonical_smiles: {cell_short: numeric_label}}``.  Rows
+    with empty canonical_smiles (REAL pool, SMILES not yet joined) are
+    SKIPPED from the Tanimoto pool — their compound_code + value_mean
+    still appear in the JSON provenance via the merged CSV.
     """
     out: Dict[str, Dict[str, float]] = {}
     if not os.path.isfile(path):
         return out
     with open(path, newline="") as f:
         r = csv.DictReader(f)
-        for row in r:
-            raw = row.get("SMILES_Ligands") or row.get("smiles") or ""
-            canon = _safe_canon(raw)
-            if canon is None:
-                continue
-            cell_dict: Dict[str, float] = {}
-            for short, long in zip(DEFAULT_LABEL_CELL_SHORT, DEFAULT_LABEL_CELLS):
+        headers = r.fieldnames or []
+        # Wf-A37-fixup-1: REAL pool schema (canonical_smiles + cell_line_short)
+        is_real_pool = (
+            "canonical_smiles" in headers and "cell_line_short" in headers
+        )
+        if is_real_pool:
+            for row in r:
+                smi = (row.get("canonical_smiles") or "").strip()
+                if not smi:
+                    continue  # SMILES join still in progress; skip from Tanimoto pool
+                canon = _safe_canon(smi) or smi
+                cl = (row.get("cell_line_short") or "").strip()
                 try:
-                    cell_dict[short] = float(row[long])
-                except (KeyError, ValueError, TypeError):
+                    val = float(row.get("value_mean"))
+                except (TypeError, ValueError):
                     continue
-            if canon in out:
-                prev = out[canon]
-                for c, v in cell_dict.items():
-                    if c in prev:
-                        prev[c] = 0.5 * (prev[c] + v)
+                if not cl or val <= 0:
+                    continue
+                # Wf-A37-fixup-1: convert MB-Finder raw IC50 (μM) to
+                # pIC50 so the cell-line axis shares the same units as
+                # the synthetic platinai_4cell.csv schema.
+                # pIC50 = -log10(IC50_M) = 6 - log10(IC50_uM).
+                pic50 = 6.0 - math.log10(val)
+                if canon in out:
+                    prev = out[canon]
+                    if cl in prev:
+                        prev[cl] = 0.5 * (prev[cl] + pic50)
                     else:
-                        prev[c] = v
-            else:
-                out[canon] = cell_dict
+                        prev[cl] = pic50
+                else:
+                    out[canon] = {cl: pic50}
+        else:
+            # Wf-293B / pre-A37 synthetic schema: SMILES_Ligands + pIC50_<cell>
+            for row in r:
+                raw = row.get("SMILES_Ligands") or row.get("smiles") or ""
+                canon = _safe_canon(raw)
+                if canon is None:
+                    continue
+                cell_dict: Dict[str, float] = {}
+                for short, long in zip(DEFAULT_LABEL_CELL_SHORT, DEFAULT_LABEL_CELLS):
+                    try:
+                        cell_dict[short] = float(row[long])
+                    except (KeyError, ValueError, TypeError):
+                        continue
+                if canon in out:
+                    prev = out[canon]
+                    for c, v in cell_dict.items():
+                        if c in prev:
+                            prev[c] = 0.5 * (prev[c] + v)
+                        else:
+                            prev[c] = v
+                else:
+                    out[canon] = cell_dict
     return out
 
 

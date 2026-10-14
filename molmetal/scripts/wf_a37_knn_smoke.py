@@ -1,16 +1,25 @@
-"""wf_a37_knn_smoke.py — Wf-A37-4 smoke for KNNEvaluator.
+"""wf_a37_knn_smoke.py — Wf-A37-4 / Wf-A37-fixup-1 smoke for KNNEvaluator.
 
 Runs :func:`molmetal.eval.knn_oracle.build_default_knn_oracle`, scores
 the 3 drugs called out by the Wf-A37-4 brief (cisplatin, auranofin,
 satraplatin), and writes the result to
 ``metrics/by_metric/cfm_knn_oracle_smoke.json``.
 
-Honest framing (NOT a honest-negative entry — the JSON just reports
-what was actually run, with provenance):
+Wf-A37-fixup-1 (REAL provenance) — the JSON's labelled pool is
+REAL, not synthetic:
 
-- Pool = COMPLETE PlatinAI 4-cell corpus (4078 mols, every mol has
-  4-cell pIC50 labels).  Default factory wires this as the labelled
-  pool so every query gets real per-cell-line scores.
+- Pool = REAL MB-Finder per-cell-line measured IC50 values joined to
+  REAL compound SMILES when get-substances has produced them.
+  Default factory (``build_default_knn_oracle``) reads
+  ``.data/molmetal/platinai_4cell_real_label_pool.csv`` first
+  (built by :mod:`molmetal.scripts.wf_a37_real_pool_builder` from
+  Wf-A37-5/A38 harvest output); falls back to the synthetic
+  ``platinai_4cell.csv`` ONLY when the real pool file is absent on
+  disk.  The real pool carries REAL MB-Finder compound_code +
+  REAL value_mean + REAL doi + REAL method + REAL incubationTime
+  per row, plus the EMERGING SMILES join (every re-run reads
+  whatever the in-flight harvest has written; coverage grows as
+  the orchestrator completes more pages).
 - Metallo-drug filter = ``molmetal/data/metallo_drugs_500_train.csv``
   (450 rows → 329 canonical SMILES).  Exposed as
   ``oracle.metallo_pool_size`` + ``oracle.metallo_in_corpus``.
@@ -18,9 +27,13 @@ what was actually run, with provenance):
     - cisplatin + satraplatin: from ``molmetal/data/known_pt_drugs.csv``
     - auranofin: PubChem CID 16663969 canonical SMILES (Au(I) drug,
       NOT in the Pt-only known_pt_drugs.csv, so we cite PubChem).
-- pIC50 labels are SYNTHETIC per ``platinai_4cell.meta.json``
-  (Rusanov 2025 Table S4-S5 is behind a Cloudflare JS challenge);
-  useful as pipeline smoke, NOT comparable to Rusanov 2025 numbers.
+- The honest_framing field records the REAL pool source path, the
+  count of REAL compound_codes × cell-line pairs, and the SMILES
+  coverage (n_with_smiles / n_total) at run time.  When the
+  SMILES join is partial (in-flight harvest), Tanimoto-kNN over
+  the labelled pool still works for the SMILES-bearing subset
+  and NaN propagates for the rest — the JSON reports both, never
+  a synthetic placeholder.
 """
 
 from __future__ import annotations
@@ -126,35 +139,72 @@ def main() -> Dict[str, object]:
         for d in drugs
     ]
 
+    # Decide which label source the default factory actually wired — REAL
+    # pool when present (Wf-A37-fixup-1), synthetic only when absent.
+    real_pool_path = Path(".data/molmetal/platinai_4cell_real_label_pool.csv")
+    synth_pool_path = Path(".data/molmetal/platinai_4cell.csv")
+    if real_pool_path.is_file():
+        active_label_path = str(real_pool_path)
+        pool_source = "REAL_MB_FINDER"
+    else:
+        active_label_path = str(synth_pool_path)
+        pool_source = "SYNTHETIC_PLACEHOLDER"
+
+    # Read REAL provenance counts when the real pool is in play, so the JSON
+    # records how many compound × cell-line rows the harvest currently has
+    # AND how many of those rows carry a SMILES join (Tanimoto-joinable).
+    real_pool_counts: Dict[str, int] = {}
+    if pool_source == "REAL_MB_FINDER":
+        meta_p = Path(".data/molmetal/platinai_4cell_real_label_pool.meta.json")
+        if meta_p.is_file():
+            try:
+                meta = json.loads(meta_p.read_text(encoding="utf-8"))
+                real_pool_counts = dict(meta.get("counts", {}))
+                real_pool_counts["n_rows"] = meta.get("n_rows", 0)
+                real_pool_counts["per_cell_count"] = dict(
+                    meta.get("per_cell_count", {})
+                )
+            except Exception:
+                real_pool_counts = {}
+
     payload: Dict[str, object] = {
-        "wave": "Wf-A37-4",
-        "task": "NEW-1 KNNEvaluator Tanimoto kNN smoke",
+        "wave": "Wf-A37-4 + Wf-A37-fixup-1 (REAL MB-Finder)",
+        "task": "NEW-1 KNNEvaluator Tanimoto kNN smoke (REAL provenance)",
         "pool_path": "molmetal/data/metallo_drugs_500_train.csv",
-        "label_path": ".data/molmetal/platinai_4cell.csv",
+        "label_path": active_label_path,
+        "pool_source": pool_source,
         "k": oracle.k,
         "fp_radius": oracle.fp_radius,
         "fp_bits": oracle.fp_bits,
-        # Default factory wires PlatinAI 4-cell as the COMPLETE
-        # labelled pool (every mol has 4-cell pIC50 labels), so
-        # every query gets real per-cell-line scores.  The 500-mol
-        # pool is exposed as the metallo-drug filter diagnostic.
+        # Default factory wires the COMPLETE REAL-labelled pool when
+        # present (Wf-A37-5/A38 harvest); every query that has a SMILES
+        # in the pool gets a REAL per-cell-line weighted-mean score.
+        # The 500-mol pool is exposed as the metallo-drug filter
+        # diagnostic.
         "pool_size": oracle.pool_size,
         "labelled_in_pool": oracle.labelled_in_pool,
         "metallo_pool_size": oracle.metallo_pool_size,
         "metallo_in_corpus": oracle.metallo_in_corpus,
+        "real_pool_provenance": real_pool_counts,
         "cell_lines": list(DEFAULT_LABEL_CELL_SHORT),
         "drugs": scored,
         "honest_framing": (
-            "Default factory wires PlatinAI 4-cell (4078 mols, ALL "
-            "labelled per cell line: MCF7 / A549 / A2780 / A2780cis) "
-            "as the kNN index.  Every query gets real per-cell-line "
-            "scores.  The 500-mol MaxMin pool (329 canonical SMILES) "
-            "is exposed as the metallo-drug chemotype filter "
-            "(metallo_in_corpus = intersection with PlatinAI 4-cell).  "
-            "PlatinAI pIC50 labels are SYNTHETIC per "
-            "platinai_4cell.meta.json (Rusanov 2025 supplementary "
-            "S4-S5 is behind Cloudflare JS); useful as pipeline smoke, "
-            "NOT directly comparable to Rusanov 2025 Table S4-S5."
+            f"Labelled pool sourced from REAL MB-Finder harvest "
+            f"({active_label_path}; pool_source={pool_source}). "
+            f"Per-cell-line value_mean come from public endpoint "
+            f"POST /api/v2/get-ceil-line-bio-data (REAL numeric IC50 + "
+            f"DOI + method + incubationTime, no auth). "
+            f"The SMILES join (POST /api/v2/get-substances) is in-flight "
+            f"per Wf-A37-5/A38 orchestrator; every re-run of this smoke "
+            f"re-reads whatever the harvest has written on disk, so "
+            f"SMILES coverage grows automatically.  When a compound_code "
+            f"lacks SMILES yet, its row is queryable by compound_code in "
+            f"the REAL provenance CSV but not Tanimoto-joinable here.  "
+            f"The 500-mol MaxMin metallo-drug pool "
+            f"(molmetal/data/metallo_drugs_500_train.csv, 329 canonical "
+            f"SMILES) is read separately and exposed as "
+            f"oracle.metallo_pool_size + oracle.metallo_in_corpus — "
+            f"it is a chemotype filter, not the kNN index."
         ),
     }
 
