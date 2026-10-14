@@ -33,12 +33,30 @@ reviewers can verify the transfer claim.
 
 from __future__ import annotations
 
+import csv
 import json
 import logging
 import os
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
+
+# Wf-A37-1 (NEW-4, 2026-10-15) — the NCI-60 9-cell SMILES loader used to
+# call ``list(NCI60_GI50_DEFAULT.smiles)[:64]`` on a ``pathlib.Path``,
+# which has no ``.smiles`` attribute.  AttributeError was silently caught
+# at the outer try/except and the branch returned ``[]``.  The fix points
+# at the project-shipped precious-metal cytotoxicity CSV
+# (``molmetal/data/nci60_precious_9cell.csv`` — a 7,824-row join of
+# MetalCytoToxDB compounds against the 9 precious-metal-active NCI-60
+# cell lines), which is the on-disk source of NCI-60 SMILES that
+# ``molmetal/data/four_domain_combined.py`` already uses as
+# ``DEFAULT_NCI60_CSV``.  The legacy ``NCI60_GI50_DEFAULT`` path in
+# ``platinai_dataset.py`` points at the raw GI50 measurement CSV, which
+# carries NSC identifiers + AVERAGE/ASTDDEV columns but no SMILES — so
+# there is nothing to read there.  We do NOT re-introduce the bare
+# ``NCI60_GI50_DEFAULT`` path here.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_NCI60_PRECIOUS_9CELL_CSV = _PROJECT_ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv"
 
 LOG = logging.getLogger("molmetal.eval.cross_dataset")
 
@@ -82,6 +100,57 @@ def _load_pretrained_checkpoint(ckpt_path: Path, device: str = "cpu") -> Dict:
         # Bare state_dict — wrap for the rest of the script.
         return {"model_state_dict": obj, "epoch": -1, "metrics": {}}
     raise ValueError(f"Unrecognised checkpoint layout at {ckpt_path}: {type(obj)}")
+
+
+def _load_nci60_smiles(limit: int = 64) -> List[str]:
+    """Read NCI-60 9-cell SMILES from the project-shipped precious-metal
+    cytotoxicity CSV (``molmetal/data/nci60_precious_9cell.csv``).
+
+    Wf-A37-1 (NEW-4, 2026-10-15) — replaces the legacy
+    ``list(NCI60_GI50_DEFAULT.smiles)[:64]`` call which silently
+    raised AttributeError (the constant is a ``pathlib.Path``, not a
+    dataset) and produced an empty ``nci60_9cell`` record for every
+    cross-dataset run.  The on-disk GI50 measurement CSV at
+    ``.data/molmetal/NCI60_GI50/GI50.csv`` carries NSC identifiers +
+    AVERAGE / STDDEV columns but no SMILES column, so there is nothing
+    to read there.  The precious-metal cytotoxicity CSV
+    (``molmetal/data/nci60_precious_9cell.csv``) is the actual on-shipment
+    source of NCI-60 SMILES — a 7,824-row join of MetalCytoToxDB
+    compounds against the 9 precious-metal-active NCI-60 cell lines
+    (A2780, A2780cis, A549, DU145, HCT116, HL60, MCF7, PC3, SKOV3);
+    ``molmetal/data/four_domain_combined.py`` already uses it as
+    ``DEFAULT_NCI60_CSV``.
+
+    Order-preserving dedup, then slice to ``limit``.  Raises
+    ``FileNotFoundError`` if the project CSV is missing and
+    ``ValueError`` if the CSV header has no ``smiles`` column.  The
+    caller (``_load_smiles`` in :func:`run_cross_dataset_validation`)
+    wraps this in a try/except that logs and returns ``[]`` — so a
+    missing CSV no longer silently produces an empty cross-dataset
+    record without any log evidence.
+    """
+    if not _NCI60_PRECIOUS_9CELL_CSV.exists():
+        raise FileNotFoundError(
+            f"NCI-60 9-cell precious CSV not found at {_NCI60_PRECIOUS_9CELL_CSV}"
+        )
+    seen: set = set()
+    out: List[str] = []
+    with _NCI60_PRECIOUS_9CELL_CSV.open("r", encoding="utf-8", errors="replace", newline="") as fh:
+        reader = csv.DictReader(fh)
+        if "smiles" not in (reader.fieldnames or []):
+            raise ValueError(
+                f"{_NCI60_PRECIOUS_9CELL_CSV} has no 'smiles' column; "
+                f"present columns: {reader.fieldnames}"
+            )
+        for row in reader:
+            s = (row.get("smiles") or "").strip()
+            if not s or s in seen:
+                continue
+            seen.add(s)
+            out.append(s)
+            if len(out) >= limit:
+                break
+    return out
 
 
 def _predict_smiles(
@@ -442,6 +511,13 @@ def run_cross_dataset_validation(
     state = _load_pretrained_checkpoint(Path(ckpt_path), device=device)
     LOG.info("[cross-dataset] loaded checkpoint at epoch %s", state.get("epoch", -1))
 
+    # Wf-A37-1 (NEW-4, 2026-10-15) — the NCI-60 9-cell SMILES loader
+    # now lives at module scope as ``_load_nci60_smiles`` (defined just
+    # above :func:`_load_pretrained_checkpoint`).  See that function's
+    # docstring for the full rationale (the legacy code called
+    # ``list(NCI60_GI50_DEFAULT.smiles)[:64]`` on a ``pathlib.Path``,
+    # raised AttributeError, and the branch returned ``[]`` silently).
+
     # Map dataset name → (SMILES loader, oracle to score on).
     def _load_smiles(name: str) -> List[str]:
         try:
@@ -464,19 +540,17 @@ def run_cross_dataset_validation(
                     )
                 return list(ds.smiles)[:64]
             if name == "nci60_9cell":
-                from molmetal.molmetal_lam.lam_chem.platinai_dataset import NCI60_GI50_DEFAULT
-                # NCI60 loader exposes per-cell-line SMILES, here we
-                # fall back to the bundled subset if the dataset class
-                # is not present.
-                # Wf-A36-2 F2 — same explicit-contract fix; see comment above.
-                if not hasattr(NCI60_GI50_DEFAULT, "smiles"):
-                    raise AttributeError(
-                        f"Dataset {NCI60_GI50_DEFAULT!r} has no .smiles "
-                        f"attribute; cross_dataset._load_smiles requires "
-                        f"a per-row SMILES list. Did you mean to use a "
-                        f"different loader?"
-                    )
-                return list(NCI60_GI50_DEFAULT.smiles)[:64]
+                # Wf-A37-1 (NEW-4, 2026-10-15) — was the buggy
+                # ``list(NCI60_GI50_DEFAULT.smiles)[:64]`` line, where
+                # ``NCI60_GI50_DEFAULT`` is a ``pathlib.Path`` (see
+                # :mod:`molmetal.molmetal_lam.lam_chem.platinai_dataset`).
+                # ``Path`` has no ``.smiles`` attribute so the call
+                # raised AttributeError that was silently swallowed at
+                # the outer try/except, and the nci60_9cell branch
+                # returned ``[]`` for every cross-dataset run.  We now
+                # read the project-shipped precious-metal cytotoxicity
+                # CSV directly via the helper below.
+                return _load_nci60_smiles(64)
             if name == "metalcytotoxdb":
                 from molmetal.molmetal_lam.lam_chem.platinai_dataset import MetalCytoToxDataset
                 ds = MetalCytoToxDataset()
