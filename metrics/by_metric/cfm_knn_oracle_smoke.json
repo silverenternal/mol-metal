@@ -1,0 +1,136 @@
+{
+  "wave": "Wf-A37-4",
+  "task": "NEW-1 KNNEvaluator Tanimoto kNN smoke",
+  "pool_path": "molmetal/data/metallo_drugs_500_train.csv",
+  "label_path": ".data/molmetal/platinai_4cell.csv",
+  "k": 5,
+  "fp_radius": 2,
+  "fp_bits": 2048,
+  "pool_size": 4078,
+  "labelled_in_pool": 4078,
+  "metallo_pool_size": 329,
+  "metallo_in_corpus": 2,
+  "cell_lines": [
+    "mcf7",
+    "a549",
+    "a2780",
+    "a2780cis"
+  ],
+  "drugs": [
+    {
+      "name": "cisplatin",
+      "smiles_input": "N.N.[Cl][Pt][Cl]",
+      "smiles_canonical": "N.N.[Cl][Pt][Cl]",
+      "source": "molmetal/data/known_pt_drugs.csv",
+      "in_platinai_corpus": false,
+      "in_metallo_pool": false,
+      "scores": {
+        "mcf7": 5.58042911792602,
+        "a549": 6.261671735693962,
+        "a2780": 5.927637875434715,
+        "a2780cis": 6.355102877015492
+      },
+      "top_tanimoto": 0.11764705882352941,
+      "n_neighbours": 5,
+      "neighbours": [
+        {
+          "smiles": "CC(C)=[N](O)->[Pt+2](<-[Br-])(<-[Br-])<-[N](O)=C(C)C",
+          "tanimoto": 0.11764705882352941
+        },
+        {
+          "smiles": "CN1CCN(C)[P]1(Cl)->[Pt+2](<-[I-])(<-[I-])<-[P]1(Cl)N(C)CCN1C",
+          "tanimoto": 0.09523809523809523
+        },
+        {
+          "smiles": "Clc1cc[n](->[Pt+2](<-[Cl-])(<-[Cl-])<-[n]2ccc(Cl)cc2)cc1",
+          "tanimoto": 0.09523809523809523
+        },
+        {
+          "smiles": "[NH3]->[Pt+2](<-[NH3])(<-[NH-]C(=O)C(Cl)(Cl)Cl)<-[NH-]C(=O)C(Cl)(Cl)Cl",
+          "tanimoto": 0.09523809523809523
+        },
+        {
+          "smiles": "Clc1ccc([P](c2ccc(Cl)cc2)(c2ccc(Cl)cc2)->[Pt+2](<-[Cl-])(<-[Cl-])<-[P](c2ccc(Cl)cc2)(c2ccc(Cl)cc2)c2ccc(Cl)cc2)cc1",
+          "tanimoto": 0.09090909090909091
+        }
+      ]
+    },
+    {
+      "name": "satraplatin",
+      "smiles_input": "CC1=C(C(=O)O[Pt]([NH3])([NH3])(OC(=O)c2ccccc2)C(C)(C)C)C(C)(C)C=C1",
+      "smiles_canonical": "CC1=C(C(=O)[O][Pt](<-[NH3])(<-[NH3])([O]C(=O)c2ccccc2)[C](C)(C)C)C(C)(C)C=C1",
+      "source": "molmetal/data/known_pt_drugs.csv",
+      "in_platinai_corpus": true,
+      "in_metallo_pool": false,
+      "scores": {
+        "mcf7": 5.81219945318969,
+        "a549": 5.523603310375665,
+        "a2780": 5.901996982076589,
+        "a2780cis": 6.9067971361436795
+      },
+      "top_tanimoto": 1.0,
+      "n_neighbours": 5,
+      "neighbours": [
+        {
+          "smiles": "CC1=C(C(=O)[O][Pt](<-[NH3])(<-[NH3])([O]C(=O)c2ccccc2)[C](C)(C)C)C(C)(C)C=C1",
+          "tanimoto": 1.0
+        },
+        {
+          "smiles": "CCOC(=O)C1(C[S-]->[Pt+2](<-[S-]C1)(<-[P](c1ccccc1)(c1ccccc1)c1ccccc1)<-[P](c1ccccc1)(c1ccccc1)c1ccccc1)C(=O)OCC",
+          "tanimoto": 0.2459016393442623
+        },
+        {
+          "smiles": "CC(C)(C)[P]1(C[P](C(C)(C)C)(C(C)(C)C)->[Pt]<-12<-[C](c1ccccc1)#[C]->2c1ccccc1)C(C)(C)C",
+          "tanimoto": 0.24528301886792453
+        },
+        {
+          "smiles": "CCOC(=O)c1cc[n](->[Pt+4]2(<-[CH3-])(<-[CH3-])(<-[CH3-])<-[n]3ccccc3-c3cccc[n]->23)cc1",
+          "tanimoto": 0.24193548387096775
+        },
+        {
+          "smiles": "[NH3]->[Pt+2](<-[NH3])(<-[NH-]C(=O)c1ccccc1)<-[NH-]C(=O)c1ccccc1",
+          "tanimoto": 0.24
+        }
+      ]
+    },
+    {
+      "name": "auranofin",
+      "smiles_input": "CC(=O)O[P]([O-])(OC(C)=O)[Au][S]c1ccccc1.CC(=O)OCC(C)C",
+      "smiles_canonical": "CC(=O)OCC(C)C.CC(=O)O[P]([O-])(OC(C)=O)[Au][S]c1ccccc1",
+      "source": "PubChem CID 16663969 (Au(I) drug, not in known_pt_drugs.csv)",
+      "in_platinai_corpus": false,
+      "in_metallo_pool": false,
+      "scores": {
+        "mcf7": 6.029108076244929,
+        "a549": 6.573231063805464,
+        "a2780": 5.924317349039756,
+        "a2780cis": 6.867048413882085
+      },
+      "top_tanimoto": 0.26785714285714285,
+      "n_neighbours": 5,
+      "neighbours": [
+        {
+          "smiles": "COC(=O)[CH]1=[CH2]->[Pt]<-1(<-[P](c1ccccc1)(c1ccccc1)c1ccccc1)<-[P](c1ccccc1)(c1ccccc1)c1ccccc1",
+          "tanimoto": 0.26785714285714285
+        },
+        {
+          "smiles": "COC(=O)C(C)N[P](c1ccccc1)(c1ccccc1)->[Pt+2](<-[Cl-])(<-[Cl-])<-[P](NC(C)C(=O)OC)(c1ccccc1)c1ccccc1",
+          "tanimoto": 0.25862068965517243
+        },
+        {
+          "smiles": "COC(=O)C(C)N1[P](c2ccccc2)(c2ccccc2)->[Pt+2](<-[Cl-])(<-[Cl-])<-[P]1(c1ccccc1)c1ccccc1",
+          "tanimoto": 0.2542372881355932
+        },
+        {
+          "smiles": "CC(=O)[CH2-]->[Pt+2]1(<-[Cl-])(<-[Cl-])<-[CH2]=[CH]->1c1ccccc1",
+          "tanimoto": 0.25
+        },
+        {
+          "smiles": "CCOC(=O)[CH-]([P+](c1ccccc1)(c1ccccc1)c1ccccc1)->[Pt+2]1(<-[CH3-])<-[P](CC[P]->1(c1ccccc1)c1ccccc1)(c1ccccc1)c1ccccc1",
+          "tanimoto": 0.24615384615384617
+        }
+      ]
+    }
+  ],
+  "honest_framing": "Default factory wires PlatinAI 4-cell (4078 mols, ALL labelled per cell line: MCF7 / A549 / A2780 / A2780cis) as the kNN index.  Every query gets real per-cell-line scores.  The 500-mol MaxMin pool (329 canonical SMILES) is exposed as the metallo-drug chemotype filter (metallo_in_corpus = intersection with PlatinAI 4-cell).  PlatinAI pIC50 labels are SYNTHETIC per platinai_4cell.meta.json (Rusanov 2025 supplementary S4-S5 is behind Cloudflare JS); useful as pipeline smoke, NOT directly comparable to Rusanov 2025 Table S4-S5."
+}
