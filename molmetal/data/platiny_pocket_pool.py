@@ -227,12 +227,15 @@ _LITERATURE_TARGETS: tuple = (
     #     Holo: 5IKQ, 5KIR. We pick 5IKQ.
     (
         "5IKQ", "Cyclooxygenase-2 (COX-2)", "Au_I,Pt_II",
-        "10.1021/acs.jmedchem.5b013مير",  # dummy DOI; verify at A33
+        "10.1074/jbc.M116.725713",  # Orlando & Malkowski, J Biol Chem 2016 (5IKQ primary citation, verified 2026-10-14)
         "mouse COX-2 holo; Au(I) auranofin / Pt-COX hybrid inhibitors",
     ),
 )
-# NOTE: the last DOI is a placeholder pending verification at A33 —
-# follow the "verify-premises-before-proposing" memory rule.
+# NOTE: 5IKQ's primary citation was verified 2026-10-14 at Wf-A33-FIXUP-1
+# (NEW-1) — Orlando & Malkowski, J Biol Chem 2016, 291(29):15069-15081,
+# DOI 10.1074/jbc.M116.725713, PMID 27226593. Previous placeholder DOI
+# carried 3 Arabic chars (U+0645/U+064A/U+0631) at positions 27-29 of the
+# suffix; those have been replaced.
 
 
 # ----------------------------------------------------------------------
