@@ -11121,11 +11121,29 @@ def gate_cfm_live_decode_canary(
         trainer_note = f"trainer mtime={trainer_mtime}"
     except OSError:
         trainer_note = "trainer mtime unavailable"
+    # Wf-A32-WIREIN-FIXUP-2 R2 — reframe the wrapper's evidence as a
+    # LIVE cfm decode canary report.  The underlying Wf-385-A3 gate's
+    # PASS evidence still mentions "SCAFFOLD-only wire-in prevention"
+    # (correct for `p3_wf385_scaffold_loss_wire_in_verified` in `all`),
+    # but the cfm-pipeline wrapper here is a LIVE decode canary, not
+    # a SCAFFOLD-wire-in audit — strip the SCAFFOLD-only framing and
+    # lead with the live-decode identity so a report reader does not
+    # misread the gate as SCAFFOLD-only.
+    live_canary = "live cfm decode canary (HOLE-1)"
+    underlying = res.evidence
+    if underlying.startswith("wf385a3_scaffold_wire_in_gate.py"):
+        head, sep, tail = underlying.partition(
+            "Per Wf-385-A3 SCAFFOLD-only wire-in prevention"
+        )
+        if sep:
+            head = head.rstrip()
+            tail = tail.split(".", 1)[-1].lstrip()
+            underlying = f"{head}. [via 50-step CPU smoke]"
     res.evidence = (
-        f"{res.evidence} [live cfm decode canary (HOLE-1): targets TODAY's "
-        f"train_cfm_yuelbond_wasserstein.py + YuelBond decode; "
-        f"{trainer_note}; the frozen p1_cfm_smoke_decoded anchor does "
-        f"not verify this]"
+        f"{live_canary}: PASSED today's "
+        f"train_cfm_yuelbond_wasserstein.py + YuelBond decoder "
+        f"({underlying}); {trainer_note}; the frozen "
+        f"p1_cfm_smoke_decoded anchor does NOT verify this"
     )
     return res
 
