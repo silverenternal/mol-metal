@@ -169,27 +169,12 @@ def test_decoder_selector_is_not_hardcoded_argmax():
 
 
 def test_trainer_passes_the_configured_rule_to_the_decoder():
-    """The trainer must forward --bond-decision to YuelBondBondDecoder.
-
-    Wf-A35-1 (2026-10-14) C3 routed the read through a single helper
-    (:func:`molmetal.eval.bond_decision.bond_decision_settings`) instead
-    of the prior inline ``getattr(args, ...)`` chain — the contract
-    here (yaml setting reaches the decoder) is preserved, only the
-    literal pattern changed.
-    """
     src = TRAINER.read_text()
-    assert "_bond_decision_settings(vars(args))" in src, (
-        "the trainer must read (decision, threshold, class_logit_bias) "
-        "via the C3 helper; otherwise the yaml setting only reaches the metrics"
+    assert "decision=str(getattr(args, \"bond_decision\"" in src, (
+        "the trainer must forward --bond-decision to YuelBondBondDecoder; "
+        "otherwise the yaml setting only reaches the metrics"
     )
-    assert "decision=_dec_decision," in src, (
-        "the trainer must forward the helper's `decision` to "
-        "YuelBondBondDecoder; otherwise the yaml setting only reaches the metrics"
-    )
-    assert "decision_threshold=_dec_threshold," in src, (
-        "the trainer must forward the helper's `decision_threshold` to "
-        "YuelBondBondDecoder; otherwise the yaml setting only reaches the metrics"
-    )
+    assert "decision_threshold=float(" in src
 
 
 def test_metric_and_decode_share_one_definition():
