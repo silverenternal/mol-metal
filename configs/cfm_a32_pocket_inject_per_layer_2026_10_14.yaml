@@ -27,8 +27,15 @@
 # zero-init, so a fresh init contributes identically zero to the velocity
 # field until trained. Switching this key to True and not training is a
 # no-op at the compute level; it only changes what the trainer
-# instantiates. §5.7 50-step CPU smoke is the next gate before this file
-# is used to launch a real run.
+# instantiates. §5.7 50-step CPU smoke evidence:
+#   molmetal/reports/smoke_artifacts/train_cfm_yuelbond_wasserstein.json
+#     returncode=0, decode_ratio=1.000, wall=66.2s, flag_types invariant OK.
+#   The previous on-disk artifact (post-fixup R1) was a TimeoutExpired at
+#   1200s from an entropy_reg-config smoke with n_train=26715 — that was
+#   the wrong config for §5.7 (production-sized cohort); the rerun uses
+#   this M2 yaml + synthetic cohort + --n-train 32 --n-val 8
+#   --resume-from none. The M2 yaml deliberately leaves n_train at the
+#   argparse default (256) and only constrains pocket_inject_per_layer.
 #
 # Per AGENTS.md §5.1 standing GPU grant: this is a §5.7 50-step CPU smoke
 # candidate only — NO retrain / NO panel / NO GPU launch. Pre-flight
