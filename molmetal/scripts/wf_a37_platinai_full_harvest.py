@@ -47,7 +47,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 # CRITICAL: set no_proxy BEFORE importing requests (and BEFORE sys.path
 # manipulation), so ``requests`` doesn't read the dead local proxy.
@@ -80,14 +80,32 @@ def _post_with_retry(
     *,
     max_retries: int = 4,
     timeout: int = 18,
-) -> Optional[dict]:
+) -> Tuple[str, Optional[dict]]:
     """POST with 4-retry exponential backoff + GET fallback on 405.
 
     Tuned for this host's flaky path to api.mb-finder.org:443
     (~50% direct-connect success): 4 retries with shorter backoff cap
     avoids spending 60s × 6 = 6 min per page when the link is dead.
-    Returns None on 404, on success=false (Wf-305A), or after all retries
-    exhausted.
+
+    Returns a ``(status, payload)`` tuple so the caller can distinguish
+    *server-confirmed empty* (404 / success=false / decode error) from
+    *transport failure* (all 4 retries hit ConnectTimeout/ReadTimeout).
+    GAP-A37-5-full-harvest (2026-10-15): conflating these two cases
+    caused the harvest to abort every cell line after 8 consecutive
+    transport-timeouts on this flaky host, producing only 25 / 0 / 370
+    rows out of the expected ~2590 / ~1820 / ~1275 for A549 / A2780 /
+    A2780cis. The transport-failure branch is now a sentinel that the
+    harvest loop re-tries on the same page (without incrementing the
+    "consecutive empty pages" abort counter).
+
+    Status values:
+      * ``"ok"``              — 200 + parseable JSON + success=true
+      * ``"false"``           — 200 + ``{"success": false}`` (Wf-305A)
+      * ``"not_found"``       — 404
+      * ``"decode_error"``    — 200 but body is not valid JSON
+      * ``"transport_dead"``  — all ``max_retries`` attempts hit a
+                                ``requests.exceptions.RequestException``
+                                (ConnectTimeout / ReadTimeout / etc.)
     """
     url = f"{MB_API_BASE}/{endpoint}"
     last_err: Optional[Exception] = None
@@ -104,18 +122,18 @@ def _post_with_retry(
                 try:
                     payload = r.json()
                 except ValueError:
-                    return None
+                    return ("decode_error", None)
                 if (
                     isinstance(payload, dict)
                     and payload.get("success") is False
                 ):
-                    return None
-                return payload
+                    return ("false", None)
+                return ("ok", payload)
             if r.status_code == 429:
                 time.sleep(min(60.0, 3.0 * (2 ** attempt)))
                 continue
             if r.status_code == 404:
-                return None
+                return ("not_found", None)
             r.raise_for_status()
         except requests.exceptions.RequestException as e:
             last_err = e
@@ -133,7 +151,12 @@ def _post_with_retry(
             f"{type(last_err).__name__}",
             flush=True,
         )
-    return None
+    # GAP-A37-5-full-harvest (2026-10-15): all retries exhausted on
+    # transport errors. Do NOT collapse to ``("ok", None)`` here — the
+    # caller MUST distinguish transport_dead from server-empty so the
+    # harvest loop re-tries the same page instead of aborting after 8
+    # consecutive transport-timeouts on this flaky host.
+    return ("transport_dead", None)
 
 
 def _flatten(row: dict, cell_line: str) -> dict:
@@ -217,9 +240,19 @@ def harvest_pt_substances_smiles(
             page += 1
             continue
         total_requests += 1
-        payload = _post_with_retry(
+        status, payload = _post_with_retry(
             "get-substances", {"per_page": per_page, "page": page}
         )
+        if status == "transport_dead":
+            # GAP-A37-5-full-harvest (2026-10-15): flaky network on this
+            # host exhausts all 4 retries on transport timeouts for many
+            # consecutive pages. Re-try the SAME page instead of
+            # advancing — when the link comes back the page succeeds and
+            # its _page marker is written to the jsonl (--resume picks
+            # it up next launch). Sleep 5s between page-level retries to
+            # let the path recover without burning CPU.
+            time.sleep(5.0)
+            continue
         if payload is None:
             page += 1
             time.sleep(2.0)
@@ -344,6 +377,7 @@ def harvest_cell_line(
     success_pages = 0
     empty_data_pages = 0
     consecutive_empty_pages = 0
+    consecutive_transport_dead = 0  # GAP-A37-5-full-harvest
     t_start = time.time()
 
     page = 1
@@ -355,14 +389,40 @@ def harvest_cell_line(
             continue
 
         total_requests += 1
-        payload = _post_with_retry(
+        status, payload = _post_with_retry(
             "get-ceil-line-bio-data",
             {"cell_line": cell_line, "per_page": per_page, "page": page},
         )
+        if status == "transport_dead":
+            # GAP-A37-5-full-harvest (2026-10-15): on this flaky host,
+            # ConnectTimeout/ReadTimeout on all 4 retries was being
+            # counted as "empty page" by the original code, which then
+            # aborted the cell line after 8 consecutive transport
+            # failures. The server may still have data — re-try the SAME
+            # page; do NOT advance ``page`` and do NOT increment
+            # ``consecutive_empty_pages``. Track a separate transport
+            # circuit breaker so a permanently dead cell line / page
+            # still gets bounded.
+            consecutive_transport_dead += 1
+            if consecutive_transport_dead >= 200:
+                # 200 × ~64s per page-level retry ≈ 3.5 hours of
+                # continuous transport failure on the same page — the
+                # link is genuinely down or the page is permanently
+                # unreachable; ABORT the cell line rather than spin
+                # forever.
+                print(
+                    f"[{cell_line}] consecutive_transport_dead="
+                    f"{consecutive_transport_dead} >= 200 -> ABORT "
+                    f"cell line (transport dead)",
+                    flush=True,
+                )
+                break
+            time.sleep(5.0)
+            continue
         if payload is None:
-            # Transient or terminal block; count consecutive failures and
-            # bail out after N=8 to avoid wasting 800 retry cycles on a
-            # dead cell line (e.g. MCF7 has only 1 page of empty data).
+            # Server-confirmed empty (404 / success=false / decode
+            # error). Only THIS branch feeds the consecutive_empty_pages
+            # abort counter; transport_dead is handled above.
             page += 1
             consecutive_empty_pages += 1
             if consecutive_empty_pages >= 8:
@@ -379,6 +439,7 @@ def harvest_cell_line(
         meta = payload.get("meta") or {}
         last_page_observed = meta.get("last_page") or last_page_observed
         consecutive_empty_pages = 0
+        consecutive_transport_dead = 0  # GAP-A37-5-full-harvest
         if data:
             success_pages += 1
             with jsonl_path.open("a", encoding="utf-8") as f:
