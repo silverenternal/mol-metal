@@ -59,6 +59,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import subprocess
 import sys
@@ -192,6 +193,17 @@ def run_smoke_50step(
             candidate = Path(out_dir) / "metrics.json"
             if candidate.exists():
                 metrics_path = str(candidate)
+            else:
+                # Wf-A32-WIREIN-FIXUP-3 R1 — the CFM trainer writes
+                # `per_epoch_metrics.json` (NOT `metrics.json`), so the legacy
+                # candidate above misses every CFM smoke. Fall back to the CFM
+                # filename and let the post-load block below extract
+                # `per_epoch_metrics[].train_loss` into `metrics["loss_curve"]`
+                # so `verify_loss_decrease` (which keys on `loss_curve`) can
+                # actually find the loss series.
+                candidate = Path(out_dir) / "per_epoch_metrics.json"
+                if candidate.exists():
+                    metrics_path = str(candidate)
 
     metrics: Dict[str, Any] = {}
     if metrics_path and Path(metrics_path).exists():
@@ -199,6 +211,27 @@ def run_smoke_50step(
             metrics = json.loads(Path(metrics_path).read_text())
         except (json.JSONDecodeError, OSError):
             metrics = {}
+        # Wf-A32-WIREIN-FIXUP-3 R1 — bridge the CFM trainer's per-epoch record
+        # into the `loss_curve` shape `verify_loss_decrease` expects. Skips
+        # `None` / non-finite entries so an `eval_only` smoke (whose
+        # `train_loss` is `float("nan")` and serialised as `NaN`) does not
+        # corrupt the curve with a single bad point.
+        if "loss_curve" not in metrics and isinstance(
+            metrics.get("per_epoch_metrics"), list
+        ):
+            losses = [
+                float(d["train_loss"])
+                for d in metrics["per_epoch_metrics"]
+                if isinstance(d, dict)
+                and "train_loss" in d
+                and d["train_loss"] is not None
+                and not (
+                    isinstance(d["train_loss"], float)
+                    and math.isnan(d["train_loss"])
+                )
+            ]
+            if losses:
+                metrics["loss_curve"] = losses
 
     return SmokeOutput(
         trainer_path=trainer_path,
