@@ -1,0 +1,23 @@
+{
+  "config": {
+    "ckpt_path": "/tmp/wf_a37_linear_probe_6h8o94ts.pt",
+    "datasets": [
+      "platinai_4cell"
+    ],
+    "device": "cpu",
+    "out_json": "metrics/by_metric/cfm_cross_dataset_linear_probe.json"
+  },
+  "results": [
+    {
+      "dataset": "platinai_4cell",
+      "n_input": 0,
+      "n_decoded": 0,
+      "n_valid_oracle": 0,
+      "oracle": "<linear-probe-only>",
+      "mean_score": NaN,
+      "linear_probe": null,
+      "linear_probe_reason": "ckpt_has_no_head_state_dict"
+    }
+  ],
+  "wall_time_s": 0.3563954830169678
+}
