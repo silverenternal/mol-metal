@@ -1,0 +1,49 @@
+# configs/cfm_a32_pocket_inject_per_layer_2026_10_14.yaml — Wf-A32 step-1 opt-in smoke.
+#
+# Consumed by: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+# Invoke with:  .venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py \
+#                  --config configs/cfm_a32_pocket_inject_per_layer_2026_10_14.yaml
+#
+# WHY THIS FILE EXISTS (Wf-A32-WIREIN-FIXUP-1, M2 from completeness-critic)
+# -------------------------------------------------------------------------
+# The Wf-A32 wire-in (commit ed6143f28a, 2026-10-14) introduced the
+# `pocket_inject_per_layer` dest on the CFM trainer — when True,
+# EGNNVelocityField lazy-instantiates a zero-init PerLayerPocketInjector
+# and threads a (B, N, H) addend to every EGNN layer's `cond_per_node`.
+# The wire-in is the ENABLEMENT only: 30+ yaml files existed and none
+# exercised the True path, so completeness-critic flagged M2
+# (no yaml puts pocket_inject_per_layer: true on disk).
+#
+# This config is the minimum opt-in smoke that closes M2. Single key:
+# `model.pocket_inject_per_layer: true` (per §5.11 round-trip, the leaf
+# `pocket_inject_per_layer` resolves to the dest via the
+# `_LEAF_FALLBACK_SECTIONS` 2-component rule; round-trip verified
+# `isinstance(args.pocket_inject_per_layer, bool) == True` and the value
+# equals True, not the argparse default False). All other hyperparameters
+# are left at argparse defaults — the next workflow (per-trainer opt-in
+# + eval-path consumption) is the gate that adds the real run knobs.
+#
+# OPT-IN SEMANTICS (zero-init honest-negative): PerLayerPocketInjector is
+# zero-init, so a fresh init contributes identically zero to the velocity
+# field until trained. Switching this key to True and not training is a
+# no-op at the compute level; it only changes what the trainer
+# instantiates. §5.7 50-step CPU smoke is the next gate before this file
+# is used to launch a real run.
+#
+# Per AGENTS.md §5.1 standing GPU grant: this is a §5.7 50-step CPU smoke
+# candidate only — NO retrain / NO panel / NO GPU launch. Pre-flight
+# §1.4 (TODO-207) still gates any real retrain launch that adopts this
+# opt-in path; the Wf-A32 wire-in closeout evidence already PASSed 7/7
+# cfm-pipeline gates manually before commit.
+
+model:
+  # The single key this config exists for.
+  pocket_inject_per_layer: true
+
+entry:
+  # §5.11 / scripts/_config_binding_gate.py — every config names its
+  # trainer. No other keys are added; the trainer runs at argparse
+  # defaults (50 epochs / batch_size 64 / lr 3e-4 / ...) so this file is
+  # purely an instantiation-path exercise, not a production sweep.
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path}
