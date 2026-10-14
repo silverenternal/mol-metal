@@ -112,6 +112,23 @@ def _predict_smiles(
             YuelBondBondDecoder,
         )
         from molmetal.eval.linear_probe import smiles_to_atom_cloud
+        # Wf-A35-1 (2026-10-14) C2 — read the (decision, threshold,
+        # class_logit_bias) triplet from the loaded ckpt so the
+        # ``YuelBondBondDecoder`` constructed below uses the SAME rule
+        # the trainer's :func:`evaluate_bond_accuracy` used when it
+        # reported bond F1. Until this fix the kwargs were dropped
+        # (``decision="argmax"``, ``decision_threshold=0.5``,
+        # ``class_logit_bias=None`` were always assumed) regardless of
+        # what the saved yaml carried.  Helper signature is
+        # ``bond_decision_settings(state) -> (decision, threshold,
+        # class_logit_bias)``; it accepts the full ckpt dict from
+        # ``_load_pretrained_checkpoint`` (which has the trainer's
+        # ``args`` sub-dict) or a flat ``args`` mapping.  Defaults are
+        # the historical triple, so every shipped CFM YAML produces
+        # bit-identical output here.
+        from molmetal.eval.bond_decision import (
+            bond_decision_settings as _bond_decision_settings,
+        )
     except Exception as exc:  # pragma: no cover - import path
         LOG.warning("[cross-dataset] decode import failed: %s; pass-through", exc)
         return list(dataset_smiles)
@@ -195,7 +212,21 @@ def _predict_smiles(
     else:
         LOG.info("[ckpt-load] no ema_state_dict; using live weights")
 
-    decoder = YuelBondBondDecoder(head=head)
+    # Wf-A35-1 (2026-10-14) C2 — same triplet the trainer's
+    # :func:`evaluate_bond_accuracy` reads from live state.  At the
+    # canonical defaults (``argmax``, ``0.5``, ``None``) this is a
+    # bit-exact no-op pass-through against the pre-Wf-A35-1
+    # constructor call.  When the saved yaml set
+    # ``flow.bond_decision: threshold`` (or its bias counterpart),
+    # the pre-fix decoder silently ignored it; the metrics and the
+    # assembled molecules now share one rule.
+    _decision, _threshold, _bias = _bond_decision_settings(model_state)
+    decoder = YuelBondBondDecoder(
+        head=head,
+        decision=_decision,
+        decision_threshold=_threshold,
+        class_logit_bias=_bias,
+    )
     out: List[str] = []
     n_fallback = 0
     for smi in dataset_smiles[: int(max_n)]:

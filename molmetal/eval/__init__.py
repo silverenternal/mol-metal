@@ -9,11 +9,21 @@ measurement but carries no trained signal — the helper exists so a
 single ``is True / is False`` call covers all eval modules
 (:mod:`cross_dataset`, :mod:`linear_probe`, future additions) with
 one definition.
+
+Wf-A35-1 (2026-10-14) C3 — also exposes :func:`bond_decision_settings`,
+the single read-site for the ``(bond_decision, bond_decision_threshold,
+class_logit_bias)`` triplet. The metrics side
+(:func:`molmetal.scripts.train_cfm_yuelbond_wasserstein.evaluate_bond_accuracy`)
+and the decoder side
+(:class:`molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond.YuelBondBondDecoder`)
+both read through this helper so a flag rename is one diff.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+
+from molmetal.eval.bond_decision import bond_decision_settings
 
 
 def ckpt_is_smoke_stub(path: "Path") -> bool:
@@ -45,4 +55,4 @@ def ckpt_is_smoke_stub(path: "Path") -> bool:
     return suffix == ".pt" and stem.endswith(".smoke_stub")
 
 
-__all__ = ["ckpt_is_smoke_stub"]
+__all__ = ["ckpt_is_smoke_stub", "bond_decision_settings"]

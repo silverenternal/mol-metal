@@ -149,6 +149,14 @@ from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
     z_to_onehot,
     _YUELBOND_Z_TABLE,
 )
+# Wf-A35-1 (2026-10-14) C3 — single read-site for the
+# (decision, threshold, class_logit_bias) triplet. Both the
+# :func:`evaluate_bond_accuracy` call site below and the
+# :class:`YuelBondBondDecoder` constructed above use this helper, so a
+# future flag rename is one diff.
+from molmetal.eval.bond_decision import (
+    bond_decision_settings as _bond_decision_settings,
+)
 
 # Round-3 D1 — the assemble-aware connectivity term.  Added 2026-10-05
 # because the Round-3 tmQM all6 retrain MEASURED `bond_ce` falling
@@ -9841,6 +9849,16 @@ def main() -> int:
             )
             # model is unchanged — eager path continues.
     # --- end Wf-431-B1 NEW wire-in ---
+    # Wf-A35-1 (2026-10-14) C3 — read the (decision, threshold,
+    # class_logit_bias) triplet through the helper.  At the canonical
+    # defaults (``"argmax"``, ``0.5``, ``None``) this is a one-for-one
+    # substitution of the prior ``getattr(args, ...)`` chain:
+    # ``_aromatic_bias_vector`` already returns ``None`` when the
+    # user did not set ``--bond-aromatic-logit-bias``, which the
+    # helper also reads as ``None``.
+    _dec_decision, _dec_threshold, _dec_bias = _bond_decision_settings(
+        vars(args)
+    )
     decoder = YuelBondBondDecoder(
         head=model.head,
         hidden_dim=args.hidden_dim,
@@ -9851,10 +9869,8 @@ def main() -> int:
         # and the molecules assembled into an RDKit Mol were produced by two
         # different rules.  Passing them here is what makes the yaml's setting
         # mean one thing end to end.
-        decision=str(getattr(args, "bond_decision", "argmax")),
-        decision_threshold=float(
-            getattr(args, "bond_decision_threshold", 0.5)
-        ),
+        decision=_dec_decision,
+        decision_threshold=_dec_threshold,
         # 2026-10-05 Round-3 D2 — the connectivity prior is postprocess in the
         # DECODER, so it is wired here (the construction site) and nowhere
         # else: no loss term, no gradient, no retrain required for it to take
@@ -9869,9 +9885,8 @@ def main() -> int:
         # 2026-10-12 (BLK-C-M4) — same construction-site rule as the
         # connectivity prior above: this is decode-time postprocess, so an
         # EXISTING checkpoint changes behaviour the moment it is set, with no
-        # retrain. `_aromatic_bias_vector` returns None when the flag is 0.0,
-        # which keeps the no-op path free of tensor arithmetic.
-        class_logit_bias=_aromatic_bias_vector(args),
+        # retrain. ``None`` keeps the no-op path free of tensor arithmetic.
+        class_logit_bias=_dec_bias,
     )
     print(
         f"[cfm-decoder] decision={decoder.decision} "
@@ -10871,19 +10886,24 @@ def main() -> int:
                 # as real bonds appear).  This one compares the predicted bond
                 # graph to the corpus's Wiberg truth.  Reported every epoch so
                 # a run can be judged without decoding anything.
+                _decision, _threshold, _bias = _bond_decision_settings(vars(args))
                 _bond_acc = evaluate_bond_accuracy(
                     model=model,
                     val_clouds=val_clouds_d,
-                    decision=str(getattr(args, "bond_decision", "argmax")),
-                    threshold=float(
-                        getattr(args, "bond_decision_threshold", 0.5)
-                    ),
-                    # 2026-10-12 (BLK-C-M4) — the SAME vector the decoder
-                    # gets, so the reported bond metrics and the assembled
-                    # molecules are produced by one rule. Passing it to the
-                    # metrics but not the decoder is the exact 2026-10-05
-                    # wiring gap this comment already describes.
-                    class_logit_bias=_aromatic_bias_vector(args),
+                    # Wf-A35-1 (2026-10-14) C3 — same helper the decoder
+                    # construction site uses. ``bond_decision_settings``
+                    # returns ``(decision, threshold, class_logit_bias)``;
+                    # at the canonical defaults
+                    # ``("argmax", 0.5, None)`` this produces the same
+                    # triple the prior inlined ``getattr`` chain produced,
+                    # so every shipped CFM YAML stays bit-exact.
+                    # ``_aromatic_bias_vector(args)`` is unchanged in
+                    # semantics here — it returns ``None`` when the user
+                    # did not set ``--bond-aromatic-logit-bias``, which is
+                    # what the helper reads as ``None`` too.
+                    decision=_decision,
+                    threshold=_threshold,
+                    class_logit_bias=_bias,
                 )
             finally:
                 if _ema_swapped:

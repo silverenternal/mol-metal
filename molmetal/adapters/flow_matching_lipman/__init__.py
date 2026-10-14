@@ -2619,17 +2619,26 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             # onto the 9-D pair features so the bond head has access
             # to graph context (otherwise it's purely distance-based).
             bond_inputs = torch.cat([bond_feats, e_h], dim=-1)
-            # The bond head's Linear in_dim is fixed at construction
-            # (default 9).  When we add graph context we project it
-            # through the bond head's existing FC1 by adapting the
-            # in_dim at construction time.  If the user passes a custom
-            # in_dim we honour it; otherwise we use the 9-D default and
-            # fall back to raw distance features for joint training
-            # (gradient still flows through the EGNN-> atom_logits ->
-            # atom_loss path, so joint training is preserved).
+            # Wf-A35-1 (2026-10-14) C1 — silent shape-mismatch fallback REMOVED.
+            # The previous branch silently dropped the EGNN-conditioned h
+            # (replacing ``bond_inputs`` with the 9-D geometric ``bond_feats``
+            # only) whenever ``bond_inputs.shape[-1] != self.bond_head.in_dim``.
+            # That hid a broken EGNN -> bond-head pathway: training kept running
+            # because the atom-loss gradient still flowed through the EGNN,
+            # but the bond head was decoupled from the EGNN context it was
+            # supposed to receive.  We now mirror bond_head.py:946-949, which
+            # raises the same ValueError when ``pair_features.shape[1] !=
+            # self.in_dim`` — fail fast and force a configuration fix
+            # (construct the bond head with the right ``in_dim``) instead of
+            # silently zeroing the gradient pathway.
             if bond_inputs.shape[-1] != self.bond_head.in_dim:
-                # Fallback: pure geometric features only.
-                bond_inputs = bond_feats
+                raise ValueError(
+                    f"bond_inputs last-dim {bond_inputs.shape[-1]} != "
+                    f"bond_head.in_dim {self.bond_head.in_dim}; "
+                    f"this is a hard shape mismatch — the EGNN ↔ "
+                    f"bond-head pathway is broken (reconstruct the bond "
+                    f"head with the matching in_dim)"
+                )
             bond_logits_e = self.bond_head(bond_inputs)
             # Apply the bond-pattern mask (synced with atom vocab) so
             # the head cannot predict forbidden patterns.
