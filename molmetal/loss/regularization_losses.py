@@ -15,6 +15,17 @@ Three NEW classes are added in this wave:
 All three default to 0.0 weight and short-circuit to ``torch.zeros(())`` on
 the default path.  Bit-exact identical to pre-Wf-A23 when no ``*_term_weight``
 flag is set.
+
+Wf-A34-1 B4 (2026-10-14) — every ``except Exception: return zeros`` swallow
+in this module now emits a once-per-process ``warnings.warn`` per
+``(class_name, exc_type_name)`` pair, gated by the module-level
+``_IMPORT_WARNED`` set.  Mirrors the
+``_metal_geometry_import_warned`` gate at
+``flow_matching_lipman/__init__.py:2097`` so a missing optional import is
+visible in the trainer stderr instead of silently collapsing the term to
+zero.  Default behaviour is unchanged: a class with weight<=0 still
+short-circuits BEFORE the try block, so the warn never fires on the
+shipped default path.
 """
 
 from __future__ import annotations
@@ -22,6 +33,36 @@ from __future__ import annotations
 from typing import Dict, Optional
 
 import torch
+
+# Wf-A34-1 B4 (2026-10-14) — module-level once-per-process gate for the
+# 6 silent exception swallows below.  Without this, a missing optional
+# import (e.g. CUDA-only ``_cr.consistency_loss_fn`` on CPU-only CI)
+# would collapse a term to zero every batch with no signal.  Keyed on
+# ``(class_name, exc_type_name)`` so each unique exception is surfaced
+# exactly once.  Mirrors ``_metal_geometry_import_warned`` at
+# ``flow_matching_lipman/__init__.py:2097``.
+_IMPORT_WARNED: set = set()
+
+
+def _maybe_warn_import(cls_name: str, exc: BaseException) -> None:
+    """Emit a once-per-process warning if the import swallow fired.
+
+    No-op when the ``(cls_name, exc_type_name)`` pair has already been
+    surfaced; adds the pair to ``_IMPORT_WARNED`` on first sight so
+    subsequent identical swallows stay quiet.
+    """
+    key = (cls_name, type(exc).__name__)
+    if key in _IMPORT_WARNED:
+        return
+    _IMPORT_WARNED.add(key)
+    # ``stacklevel=2`` so the warning points at the caller of
+    # ``compute`` rather than this helper module.
+    import warnings
+
+    warnings.warn(
+        f"[{cls_name}] {type(exc).__name__} — {exc}; returning 0",
+        stacklevel=2,
+    )
 
 
 class EntropyTerm:
@@ -104,7 +145,8 @@ class ConsistencyTerm:
                 x_t=x_t,
                 weight=float(self.weight),
             )
-        except Exception:
+        except Exception as exc:  # Wf-A34-1 B4 — surface instead of swallow
+            _maybe_warn_import(self.__class__.__name__, exc)
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
 
     def append(self, tensor: torch.Tensor, sink: Dict[str, torch.Tensor]) -> None:
@@ -156,7 +198,8 @@ class SO3Term:
                 target=target,
                 n_rotations=int(n_rotations),
             )
-        except Exception:
+        except Exception as exc:  # Wf-A34-1 B4 — surface instead of swallow
+            _maybe_warn_import(self.__class__.__name__, exc)
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
 
     def append(self, tensor: torch.Tensor, sink: Dict[str, torch.Tensor]) -> None:
@@ -209,7 +252,8 @@ class EDMTerm:
                 target_dx=target_dx,
                 sigma=sigma,
             )
-        except Exception:
+        except Exception as exc:  # Wf-A34-1 B4 — surface instead of swallow
+            _maybe_warn_import(self.__class__.__name__, exc)
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
 
     def append(self, tensor: torch.Tensor, sink: Dict[str, torch.Tensor]) -> None:
@@ -270,7 +314,8 @@ class FmOdeTerm:
                 del t_k  # noqa: F841 — kept in scope for clarity
             residual = (x - x1).pow(2).mean()
             return float(self.weight) * residual
-        except Exception:
+        except Exception as exc:  # Wf-A34-1 B4 — surface instead of swallow
+            _maybe_warn_import(self.__class__.__name__, exc)
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
 
     def append(self, tensor: torch.Tensor, sink: Dict[str, torch.Tensor]) -> None:
@@ -342,7 +387,8 @@ class EnergyConservation:
             e0 = ke0 + pe_t
             e1 = ke1 + pe1
             return float(self.weight) * (e1 - e0).pow(2)
-        except Exception:
+        except Exception as exc:  # Wf-A34-1 B4 — surface instead of swallow
+            _maybe_warn_import(self.__class__.__name__, exc)
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
 
     def append(self, tensor: torch.Tensor, sink: Dict[str, torch.Tensor]) -> None:
@@ -418,7 +464,8 @@ class SBOO3Term:
 
             mixed = float(self.alpha) * perm_var + (1.0 - float(self.alpha)) * o3_resid
             return float(self.weight) * mixed
-        except Exception:
+        except Exception as exc:  # Wf-A34-1 B4 — surface instead of swallow
+            _maybe_warn_import(self.__class__.__name__, exc)
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
 
     def append(self, tensor: torch.Tensor, sink: Dict[str, torch.Tensor]) -> None:

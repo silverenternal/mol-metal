@@ -4,6 +4,12 @@
 lands. Returns ``0`` when ``teacher_logits is None`` — the trainer's
 default call site has no teacher, so this is a no-op in the shipped
 config path.
+
+Wf-A34-1 B4 (2026-10-14) — the single ``except Exception: return zeros``
+swallow in ``ShortcutDistillLoss.compute`` now calls
+``_maybe_warn_import`` (defined in ``regularization_losses``) so a
+silent collapse is surfaced once per process.  Mirrors the same B4
+refactor over 6 sibling classes in :mod:`molmetal.loss.regularization_losses`.
 """
 
 from __future__ import annotations
@@ -11,6 +17,8 @@ from __future__ import annotations
 from typing import Dict, Optional
 
 import torch
+
+from molmetal.loss.regularization_losses import _maybe_warn_import
 
 
 class ShortcutDistillLoss:
@@ -63,7 +71,8 @@ class ShortcutDistillLoss:
         try:
             target = student_logits.detach()  # stop-grad
             return 0.5 * float(self.weight) * (student_logits - target).pow(2).mean()
-        except Exception:
+        except Exception as exc:  # Wf-A34-1 B4 — surface instead of swallow
+            _maybe_warn_import(self.__class__.__name__, exc)
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
 
     def append(self, tensor: torch.Tensor, sink: Dict[str, torch.Tensor]) -> None:

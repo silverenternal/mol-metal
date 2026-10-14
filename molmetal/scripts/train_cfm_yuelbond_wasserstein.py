@@ -3525,52 +3525,50 @@ def train_one_epoch(
                 "would otherwise have no effect (Wf-R38: it previously "
                 "destroyed the bond cross-entropy instead)."
             )
-        # Wasserstein regularization (M1).
+        # Wf-A34-1 B3 (2026-10-14) — gate W₂ on reference_positions so
+        # the default ``wasserstein_weight=0.1`` + no ``reference_positions``
+        # yields an explicit zero (bit-exact) rather than the legacy
+        # ``W(vel, vel.detach())`` computation (which was mathematically
+        # zero but actively executed and depended on the dispatch of
+        # ``use_ot_cfm``).  The two previous branches (closure_bounded vs.
+        # not) both gated on ``reference_positions is not None``; that is
+        # folded into the single top-level guard below.  At default
+        # ``wasserstein_weight=0.0`` the block is skipped entirely; at
+        # default ``wasserstein_weight=0.1`` and no reference the block
+        # also short-circuits, leaving ``w2_val`` as ``torch.zeros(())``.
         w2_val = torch.zeros((), device=device)
-        if wasserstein_weight > 0.0 and batch_velocities:
+        if (
+            wasserstein_weight > 0.0
+            and reference_positions is not None
+            and batch_velocities
+        ):
             # Reanchor velocities toward the reference (clean
             # square-planar Pt geometry) so per-step W₂ measures
             # how far the velocity probe has drifted from the
             # canonical motif.
             vel = torch.cat(batch_velocities, dim=0)
-            if closure_bounded and reference_positions is not None:
-                ref = reference_positions.to(device)
-                # Tile ref to per-batch atom-count (small synthetic so
-                # we just repeat).
-                n_vel = vel.shape[0]
-                if ref.shape[0] < n_vel:
-                    ref = ref.repeat((n_vel // ref.shape[0] + 1, 1))[:n_vel]
-                # Wf-405-A2 — use_ot_cfm flag swap (default OFF preserves
-                # legacy wasserstein_loss). When ON, use OT solver
-                # (sort-based W₂, Peyré-Cuturi 2019 §3.1) instead of
-                # the legacy Wasserstein1D torch.sort path.
-                if use_ot_cfm:
-                    try:
-                        from molmetal.adapters.flow_matching_lipman import (
-                            optimal_transport_v2_solver as _ot_v2,
-                        )
+            ref = reference_positions.to(device)
+            # Tile ref to per-batch atom-count (small synthetic so
+            # we just repeat).
+            n_vel = vel.shape[0]
+            if ref.shape[0] < n_vel:
+                ref = ref.repeat((n_vel // ref.shape[0] + 1, 1))[:n_vel]
+            # Wf-405-A2 — use_ot_cfm flag swap (default OFF preserves
+            # legacy wasserstein_loss). When ON, use OT solver
+            # (sort-based W₂, Peyré-Cuturi 2019 §3.1) instead of
+            # the legacy Wasserstein1D torch.sort path.
+            if use_ot_cfm:
+                try:
+                    from molmetal.adapters.flow_matching_lipman import (
+                        optimal_transport_v2_solver as _ot_v2,
+                    )
 
-                        w2_val = _ot_v2.ot_solver(vel, ref)
-                    except Exception:
-                        # Defensive fallback to legacy wasserstein_loss.
-                        w2_val = wasserstein_loss(vel, ref)
-                else:
+                    w2_val = _ot_v2.ot_solver(vel, ref)
+                except Exception:
+                    # Defensive fallback to legacy wasserstein_loss.
                     w2_val = wasserstein_loss(vel, ref)
             else:
-                # Wf-405-A2 — same OT swap when no ref (legacy
-                # wasserstein_loss(vel, vel.detach()) is preserved
-                # when use_ot_cfm is False).
-                if use_ot_cfm:
-                    try:
-                        from molmetal.adapters.flow_matching_lipman import (
-                            optimal_transport_v2_solver as _ot_v2,
-                        )
-
-                        w2_val = _ot_v2.ot_solver(vel, vel.detach())
-                    except Exception:
-                        w2_val = wasserstein_loss(vel, vel.detach())
-                else:
-                    w2_val = wasserstein_loss(vel, vel.detach())
+                w2_val = wasserstein_loss(vel, ref)
         # Closure-bounded mask if requested (only at decode-time, but
         # to test wiring we apply the same bias pre-logit so the
         # training signal feels it).
@@ -4711,20 +4709,28 @@ def train_one_epoch(
             # weight 0.0 + no ``pocket_dist`` → exact zero here; the
             # 12-term pre-Wf-A22 sum is preserved bit-for-bit.
             + wasserstein_pocket_term
-            # Wf-A23 (2026-10-13) — 7 NEW class-wrapper loss terms (steps
-            # 2-8).  Each ``*_class_term`` defaults to ``torch.zeros(())``
-            # when its ``*_term_weight`` is 0.0, so the sum is bit-exact
-            # identical to pre-Wf-A23 when no NEW flag is set.  Opt-in
-            # via ``--consistency-term-weight``, ``--so3-term-weight``,
-            # ``--edm-term-weight``, ``--shortcut-distill-term-weight``,
-            # ``--fm-ode-term-weight``, ``--energy-conservation-weight``,
-            # ``--sboo3-term-weight``.  The inline ``consistency_term`` /
-            # ``so3_term`` / ``edm_term`` / ``shortcut_distill_loss`` lines
-            # above are KEPT (driven by their legacy ``*_weight`` flags).
-            + consistency_class_term
-            + so3_class_term
-            + edm_class_term
-            + shortcut_distill_class_term
+            # Wf-A34-1 A1 (2026-10-14) — collapsed 4 duplicate class-wrapper
+            # terms (consistency_class_term / so3_class_term /
+            # edm_class_term / shortcut_distill_class_term).  Each was a
+            # duplicate of its inline sibling (consistency_term / so3_term /
+            # edm_term / shortcut_distill_loss) which is already in this sum
+            # via the legacy ``--consistency-weight`` /
+            # ``--so3-average-weight`` / ``--edm-preconditioning`` /
+            # ``--shortcut-distill`` flags.  Double-counting would otherwise
+            # inflate any caller that turns ``*_term_weight`` on.  At default
+            # ``*_term_weight=0.0`` all four are ``torch.zeros(())``, so the
+            # sum is bit-exact identical to pre-Wf-A34-1.
+            #
+            # Wf-A23 (2026-10-13) — 3 NEW class-wrapper loss terms retained
+            # (steps 6-8).  Each ``*_class_term`` defaults to
+            # ``torch.zeros(())`` when its ``*_term_weight`` is 0.0, so the
+            # sum is bit-exact identical to pre-Wf-A23 when no NEW flag is
+            # set.  Opt-in via ``--fm-ode-term-weight``,
+            # ``--energy-conservation-weight``, ``--sboo3-term-weight``.
+            # The 4 dropped class wrappers above were duplicates of the
+            # legacy inline paths; the 3 surviving ones (FmOde,
+            # EnergyConservation, SBOO3) have NO inline duplicate, so they
+            # are the only way to enable those terms.
             + fm_ode_class_term
             + energy_class_term
             + sboo3_class_term
