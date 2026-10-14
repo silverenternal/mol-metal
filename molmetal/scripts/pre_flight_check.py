@@ -11051,7 +11051,7 @@ def gate_cfm_smoke_decoded_historical(
         threshold=0.5,
         op=">=",
     )
-    delta_note = "checkpoint/artifact mtime delta unavailable"
+    delta_note = "checkpoint/artifact mtime delta unavailable (days vs artifact mtime unknown)"
     try:
         ckpt = MOLMETAL_ROOT / "checkpoints" / "cfm_yuelbond_wasserstein.pt"
         if ckpt.is_file() and json_path.is_file():
