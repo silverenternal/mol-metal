@@ -132,17 +132,39 @@ def per_pocket_admet(
             list(smiles_list),
             cohort_tag=f"per_pocket_{pocket_id}",
         )
-        agg = panel.get("aggregate", {})
+        # Wf-A33-FIXUP-4 (REGR-1): admet8.py:221 schema emits
+        # ``per_metric_mean`` / ``per_metric_median`` / ``per_metric_iqr`` /
+        # ``n_ok`` / ``missing`` — NO ``aggregate`` key.  Read directly
+        # from those keys (was: ``agg = panel.get("aggregate", {})`` which
+        # always returned ``{}`` and caused n_ok=0 / qed_mean=null /
+        # sa_mean=null for all 10 platiny pockets).
+        per_mean = panel.get("per_metric_mean", {}) or {}
+        per_median = panel.get("per_metric_median", {}) or {}
+        per_iqr = panel.get("per_metric_iqr", {}) or {}
+        missing = panel.get("missing", {}) or {}
+        sa_mean_v = per_mean.get("sa")
+        qed_mean_v = per_mean.get("qed")
+        sa_median_v = per_median.get("sa")
+        qed_median_v = per_median.get("qed")
+        sa_iqr_v = per_iqr.get("sa")
+        qed_iqr_v = per_iqr.get("qed")
         out[str(pocket_id)] = {
-            "sa_mean": float(agg.get("sa", {}).get("mean", 0.0))
-            if agg.get("sa")
-            else None,
-            "qed_mean": float(agg.get("qed", {}).get("mean", 0.0))
-            if agg.get("qed")
-            else None,
+            "sa_mean": float(sa_mean_v) if sa_mean_v is not None else None,
+            "qed_mean": float(qed_mean_v) if qed_mean_v is not None else None,
+            "sa_median": float(sa_median_v) if sa_median_v is not None else None,
+            "qed_median": float(qed_median_v) if qed_median_v is not None else None,
+            "sa_iqr": float(sa_iqr_v) if sa_iqr_v is not None else None,
+            "qed_iqr": float(qed_iqr_v) if qed_iqr_v is not None else None,
             "n_smiles": int(len(smiles_list)),
-            "n_ok": int(agg.get("n_ok", 0)),
-            "status": "MEASURED",
+            "n_ok": int(panel.get("n_ok", 0)),
+            "missing_sa": int(missing.get("sa", 0)),
+            "missing_qed": int(missing.get("qed", 0)),
+            # Honest framing per AGENTS.md §5.2: per-pocket SMILES are
+            # MOCK placeholders (Wf-A33-FIXUP-1) — the pocket metadata
+            # CSV's target_id column is being read as SMILES, RDKit
+            # cannot parse these strings, so n_ok=0 is honest (not a
+            # bug) once the schema fix is in place.
+            "status": "MEASURED_PILOT_MOCK",
         }
     return out
 

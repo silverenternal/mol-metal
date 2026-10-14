@@ -1,73 +1,133 @@
 {
   "admet": {
     "platiny_14gs_v0": {
+      "missing_qed": 0,
+      "missing_sa": 0,
       "n_ok": 0,
       "n_smiles": 1,
+      "qed_iqr": null,
       "qed_mean": null,
+      "qed_median": null,
+      "sa_iqr": null,
       "sa_mean": null,
+      "sa_median": null,
       "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_1a1u_v0": {
+      "missing_qed": 0,
+      "missing_sa": 0,
       "n_ok": 0,
-      "n_smiles": 2,
+      "n_smiles": 1,
+      "qed_iqr": null,
       "qed_mean": null,
+      "qed_median": null,
+      "sa_iqr": null,
       "sa_mean": null,
+      "sa_median": null,
       "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_1ca2_v0": {
+      "missing_qed": 0,
+      "missing_sa": 0,
       "n_ok": 0,
-      "n_smiles": 2,
+      "n_smiles": 1,
+      "qed_iqr": null,
       "qed_mean": null,
+      "qed_median": null,
+      "sa_iqr": null,
       "sa_mean": null,
+      "sa_median": null,
       "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_1fqy_v0": {
+      "missing_qed": 0,
+      "missing_sa": 0,
       "n_ok": 0,
-      "n_smiles": 2,
+      "n_smiles": 1,
+      "qed_iqr": null,
       "qed_mean": null,
+      "qed_median": null,
+      "sa_iqr": null,
       "sa_mean": null,
+      "sa_median": null,
       "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_1zxm_v0": {
+      "missing_qed": 0,
+      "missing_sa": 0,
       "n_ok": 0,
-      "n_smiles": 2,
+      "n_smiles": 1,
+      "qed_iqr": null,
       "qed_mean": null,
+      "qed_median": null,
+      "sa_iqr": null,
       "sa_mean": null,
+      "sa_median": null,
       "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_2krr_v0": {
+      "missing_qed": 0,
+      "missing_sa": 0,
       "n_ok": 0,
-      "n_smiles": 2,
+      "n_smiles": 1,
+      "qed_iqr": null,
       "qed_mean": null,
+      "qed_median": null,
+      "sa_iqr": null,
       "sa_mean": null,
+      "sa_median": null,
       "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_2ocj_v0": {
+      "missing_qed": 0,
+      "missing_sa": 0,
       "n_ok": 0,
-      "n_smiles": 2,
+      "n_smiles": 1,
+      "qed_iqr": null,
       "qed_mean": null,
+      "qed_median": null,
+      "sa_iqr": null,
       "sa_mean": null,
+      "sa_median": null,
       "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_3eao_v0": {
+      "missing_qed": 0,
+      "missing_sa": 0,
       "n_ok": 0,
-      "n_smiles": 2,
+      "n_smiles": 1,
+      "qed_iqr": null,
       "qed_mean": null,
+      "qed_median": null,
+      "sa_iqr": null,
       "sa_mean": null,
+      "sa_median": null,
       "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_4bkx_v0": {
+      "missing_qed": 0,
+      "missing_sa": 0,
       "n_ok": 0,
-      "n_smiles": 2,
+      "n_smiles": 1,
+      "qed_iqr": null,
       "qed_mean": null,
+      "qed_median": null,
+      "sa_iqr": null,
       "sa_mean": null,
+      "sa_median": null,
       "status": "MEASURED_PILOT_MOCK"
     },
     "platiny_5ikq_v0": {
+      "missing_qed": 0,
+      "missing_sa": 0,
       "n_ok": 0,
-      "n_smiles": 2,
+      "n_smiles": 1,
+      "qed_iqr": null,
       "qed_mean": null,
+      "qed_median": null,
+      "sa_iqr": null,
       "sa_mean": null,
+      "sa_median": null,
       "status": "MEASURED_PILOT_MOCK"
     }
   },
@@ -77,81 +137,77 @@
       "largest_frac_min": 0.8,
       "min_atoms": 2,
       "n_smiles": 1,
-      "per_atom_validity": 1.0,
-      "status": "MEASURED_PILOT_MOCK"
+      "per_atom_validity": 0.0,
+      "status": "MEASURED"
     },
     "platiny_1a1u_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
-      "n_smiles": 2,
-      "per_atom_validity": 1.0,
-      "status": "MEASURED_PILOT_MOCK"
+      "n_smiles": 1,
+      "per_atom_validity": 0.0,
+      "status": "MEASURED"
     },
     "platiny_1ca2_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
-      "n_smiles": 2,
-      "per_atom_validity": 1.0,
-      "status": "MEASURED_PILOT_MOCK"
+      "n_smiles": 1,
+      "per_atom_validity": 0.0,
+      "status": "MEASURED"
     },
     "platiny_1fqy_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
-      "n_smiles": 2,
-      "per_atom_validity": 1.0,
-      "status": "MEASURED_PILOT_MOCK"
+      "n_smiles": 1,
+      "per_atom_validity": 0.0,
+      "status": "MEASURED"
     },
     "platiny_1zxm_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
-      "n_smiles": 2,
-      "per_atom_validity": 1.0,
-      "status": "MEASURED_PILOT_MOCK"
+      "n_smiles": 1,
+      "per_atom_validity": 0.0,
+      "status": "MEASURED"
     },
     "platiny_2krr_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
-      "n_smiles": 2,
-      "per_atom_validity": 0.5,
-      "status": "MEASURED_PILOT_MOCK"
+      "n_smiles": 1,
+      "per_atom_validity": 0.0,
+      "status": "MEASURED"
     },
     "platiny_2ocj_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
-      "n_smiles": 2,
-      "per_atom_validity": 1.0,
-      "status": "MEASURED_PILOT_MOCK"
+      "n_smiles": 1,
+      "per_atom_validity": 0.0,
+      "status": "MEASURED"
     },
     "platiny_3eao_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
-      "n_smiles": 2,
-      "per_atom_validity": 1.0,
-      "status": "MEASURED_PILOT_MOCK"
+      "n_smiles": 1,
+      "per_atom_validity": 0.0,
+      "status": "MEASURED"
     },
     "platiny_4bkx_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
-      "n_smiles": 2,
-      "per_atom_validity": 1.0,
-      "status": "MEASURED_PILOT_MOCK"
+      "n_smiles": 1,
+      "per_atom_validity": 0.0,
+      "status": "MEASURED"
     },
     "platiny_5ikq_v0": {
       "largest_frac_min": 0.8,
       "min_atoms": 2,
-      "n_smiles": 2,
-      "per_atom_validity": 1.0,
-      "status": "MEASURED_PILOT_MOCK"
+      "n_smiles": 1,
+      "per_atom_validity": 0.0,
+      "status": "MEASURED"
     }
   },
-  "honest_negative": "Wf-A33-FIXUP-1 (2026-10-14): per-pocket decode + ADMET run with 10 REAL platiny pockets (fpocket 10A spheres from A33-2), but the 1-2 SMILES per pocket are MOCK placeholders — no real CFM model output yet (next step: Wf-A32 wire-in + GPU re-train; see TODO-pending/a37_decoder_smoke_link.md). Per-pocket cohort sizes remain small (n=1-2 per pocket); all admet n_ok=0 and qed_mean/sa_mean=null. Status=MEASURED_PILOT_MOCK per AGENTS.md §5.2 honest-framing: PILOT only, do NOT promote to headline metrics.",
-  "n_empty_decode": 0,
-  "n_measured_decode": 10,
+  "honest_negative": "Per-pocket cohort sizes are small (n=1 cloud per pocket), so variance is materially higher than the cohort-aggregated pool. Numbers below status='MEASURED' are PILOT only; do not promote to headline metrics without 5-seed CV.",
   "n_pockets": 10,
-  "producer": "build_per_pocket_panel+merge",
+  "producer": "build_per_pocket_panel",
   "protocol_version": "per_pocket_metric/2026-10-13",
-  "skipped_pockets": [],
-  "smiles_csv": "/tmp/a33_3_platiny_smiles_r2tcxgzr/json",
-  "smiles_csv_dir": "/tmp/a33_3_platiny_smiles/",
-  "status": "MEASURED_PILOT_MOCK"
+  "smiles_csv": "/home/hugo/codes/mol-metal/molmetal/data/platiny_pocket_pool.csv",
+  "status": "MEASURED"
 }
