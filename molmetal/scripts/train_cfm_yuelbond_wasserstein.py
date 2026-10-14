@@ -1859,6 +1859,28 @@ class CFMJointModel(nn.Module):
         t: torch.Tensor,
         atomic_numbers: torch.Tensor,
         cloud_sizes: Optional[Sequence[int]] = None,
+        # Wf-A37-3 (2026-10-15) STRUCTURAL FIX — thread pocket conditioning
+        # through the FM training loss loop.
+        #
+        # Before this commit, the FM training loop called ``model.fm_velocity``
+        # WITHOUT ``pocket_embed``: every FM step (line ~4057 + 11 sibling
+        # call sites in the same cascade) trained the velocity field against
+        # the *unconditioned* marginal ``p(v | x_t, t, z)`` even when a
+        # ``Batch`` carrying ``pocket_coords`` / ``pocket_features`` was
+        # sitting in scope.  ``EGNNVelocityField.forward`` had already
+        # accepted ``pocket_embed`` (its first-layer bias + the Wf-A32
+        # opt-in ``pocket_per_layer_injector`` both read it), so the
+        # conditioning path was REACHABLE — just never reached from the
+        # trainer's FM block.
+        #
+        # The default ``None`` is bit-exact with the pre-change call: when
+        # ``pocket_embed`` is None, ``EGNNVelocityField.forward`` substitutes a
+        # zero bias at line ~1738 + skips the per-layer injector at line
+        # ~1721 (``if ... and pocket_embed is not None``), reproducing the
+        # legacy unconditioned EGNN forward exactly.  Only the EGNN path
+        # receives ``pocket_embed``; the legacy ``fm_vel_head`` probe has
+        # never consumed a conditioning tensor and continues to ignore it.
+        pocket_embed: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """Time-conditioned velocity field ``v(x_t, t, z)`` for the FM objective.
 
@@ -1879,6 +1901,14 @@ class CFMJointModel(nn.Module):
             molecules, which after separate RDKit embedding all sit near the
             origin.  ``None`` is interpreted as one single cloud, which is
             the correct reading when the caller really did pass one molecule.
+        pocket_embed : (B, H), optional
+            Per-pocket conditioning tensor supplied by the trainer when the
+            cohort has a ``Batch.pocket_coords`` / ``pocket_features`` field.
+            Forwarded to ``self.vel_field(pocket_embed=...)`` — both the
+            first-layer additive bias and the Wf-A32 ``pocket_per_layer_injector``
+            consume it from inside ``EGNNVelocityField.forward``.  ``None``
+            (the default and the legacy unconditioned state) keeps the EGNN
+            forward bit-exact identical to the pre-Wf-A37-3 path.
 
         Returns
         -------
@@ -1927,7 +1957,9 @@ class CFMJointModel(nn.Module):
                     [sum(sizes[:i]) for i in range(b)], device=dev
                 )]
             out = self.vel_field(
-                x_pad, z_pad, edge_index, t_b, edge_mask=edge_mask
+                x_pad, z_pad, edge_index, t_b,
+                edge_mask=edge_mask,
+                pocket_embed=pocket_embed,
             )
             vel = out["vel"]  # (B, n_max, 3)
             return vel[node_mask]  # (N, 3) flat, cloud-major
@@ -1943,6 +1975,50 @@ class CFMJointModel(nn.Module):
             t_col = t.reshape(-1, 1).to(dtype=x_t.dtype, device=x_t.device)
         feats = torch.cat([z_oh, x_t.float(), t_col], dim=-1)
         return self.fm_vel_head(feats)
+
+    def _compute_pocket_embed_from_batch(
+        self,
+        batch: "Batch",
+    ) -> Optional[torch.Tensor]:
+        """Wf-A37-3 (2026-10-15) — compute a (B, H) pocket embedding for the FM loss loop.
+
+        Mirrors the pocket-encoding branch in :meth:`forward` at lines
+        ~2180-2195, but applied to the trainer's collated ``Batch`` so the
+        FM cascade (which never sees a single ``AtomCloud.pocket``) gets the
+        same conditioning the eval path already received.
+
+        Two live paths + one legacy null:
+
+        1. ``self.pocket_encoder is not None`` AND ``Batch.pocket_coords is not None``:
+           run the EGNN-Lite PocketEncoder over the padded (B, P_max, ...)
+           coords/atom_types/mask to produce a (B, hidden_dim) embedding.
+        2. ``self.pocket_encoder is None`` AND ``Batch.pocket_features is not None``:
+           use the lazy ``(B, hidden_dim)`` mean-pool produced by
+           ``Batch.collate_fn``.
+        3. Neither is supplied: ``None`` — the legacy Wf-A15 / pre-Wf-A37-3
+           unconditioned path.  At default the trainer only constructs
+           ``Batch.pocket_*`` when the loader supplied pocket clouds, so an
+           unconditional config produces ``None`` here for every batch —
+           and ``None`` collapses to the bit-exact pre-Wf-A37-3 EGNN
+           forward inside ``fm_velocity``.
+        """
+        if batch is None:
+            return None
+        # Path 1 — PocketEncoder ON + collated coords
+        if (
+            self.pocket_encoder is not None
+            and getattr(batch, "pocket_coords", None) is not None
+        ):
+            return self.pocket_encoder(
+                coords=batch.pocket_coords,
+                atom_types=batch.pocket_atom_types,
+                mask=batch.pocket_mask,
+            )
+        # Path 2 — encoder OFF + lazy mean-pool features
+        if getattr(batch, "pocket_features", None) is not None:
+            return batch.pocket_features
+        # Path 3 — legacy unconditioned (default; bit-exact pre-Wf-A37-3).
+        return None
 
     # ------------------------------------------------------------------
     # EMA — exponential moving average of the parameters (Karras 2022 EDM §5)
@@ -3865,6 +3941,22 @@ def train_one_epoch(
             # cloud happens to have the same size; this list is exact either
             # way.
             _cloud_sizes = batch.orig_n_atoms.tolist()
+            # Wf-A37-3 (2026-10-15) STRUCTURAL FIX — compute the (B, H)
+            # pocket embedding ONCE per batch, then thread it into every
+            # ``model.fm_velocity(...)`` call downstream.
+            #
+            # Before this commit the FM training loop never reached the
+            # ``vel_field(pocket_embed=...)`` path even when the loader
+            # supplied pocket clouds: ``forward()`` (the eval path) computed
+            # ``pocket_embed`` from ``pocket_batch_ctx`` + ``cloud.pocket``,
+            # but the trainer's FM block builds ``batch = Batch.collate_fn(...)``
+            # — a different surface — and only consumed ``batch.positions``
+            # / ``batch.atomic_numbers`` for the velocity field.  ``None`` is
+            # the default when the loader supplied no pocket batch (the
+            # legacy / Wf-A15 / pre-Wf-A32 state), and ``_compute_pocket_embed_from_batch``
+            # short-circuits to ``None`` in that case so the FM forward is
+            # bit-exact unchanged at default.
+            _pocket_embed = model._compute_pocket_embed_from_batch(batch)
             # 2026-10-06 (R7-N1) — data-matched prior scale.  x0 and x1 must
             # live on the same scale or the interpolant is a path between two
             # differently-scaled clouds and the learned velocity carries a
@@ -4054,7 +4146,10 @@ def train_one_epoch(
             )
             target_dx = x1 - x0
             fm_term = float(fm_weight) * F.mse_loss(
-                model.fm_velocity(x_t, t, z_all, cloud_sizes=_cloud_sizes), target_dx
+                model.fm_velocity(
+                    x_t, t, z_all, cloud_sizes=_cloud_sizes,
+                    pocket_embed=_pocket_embed,
+                ), target_dx
             )
             # Wf-R38 — `--stable-vm` now attaches HERE, to the velocity loss.
             # This is the site the flag was always meant for: `stable_vm_loss`
@@ -4065,7 +4160,8 @@ def train_one_epoch(
             # velocity-probe loss is not a drop-in for a classifier, and the
             # run reported a falling bond_ce while learning no chemistry.
             _vel_pred = model.fm_velocity(
-                x_t, t, z_all, cloud_sizes=_cloud_sizes
+                x_t, t, z_all, cloud_sizes=_cloud_sizes,
+                pocket_embed=_pocket_embed,
             )
             if stable_vm:
                 try:
@@ -4104,7 +4200,8 @@ def train_one_epoch(
                 # keeps it from decaying into the constant shape.
                 shortcut_distill_loss = _sd.shortcut_distillation_loss(
                     pred_fn=lambda x, tt: model.fm_velocity(
-                        x, tt, z_all, cloud_sizes=_cloud_sizes
+                        x, tt, z_all, cloud_sizes=_cloud_sizes,
+                        pocket_embed=_pocket_embed,
                     ),
                     x_time=x_t,
                     t=t,
@@ -4141,7 +4238,8 @@ def train_one_epoch(
                 # `consistency_weight * 0.0` — a constant, whatever the weight.
                 consistency_term = _cr.consistency_loss_fn(
                     pred_fn=lambda x: model.fm_velocity(
-                        x, t, z_all, cloud_sizes=_cloud_sizes
+                        x, t, z_all, cloud_sizes=_cloud_sizes,
+                        pocket_embed=_pocket_embed,
                     ),
                     x_t=x_t,
                     weight=float(consistency_weight),
@@ -4186,7 +4284,8 @@ def train_one_epoch(
                 # Now it runs on the live flow state and target.
                 so3_term = float(so3_average_weight) * _so3.so3_average_loss(
                     pred_fn=lambda x: model.fm_velocity(
-                        x, t, z_all, cloud_sizes=_cloud_sizes
+                        x, t, z_all, cloud_sizes=_cloud_sizes,
+                        pocket_embed=_pocket_embed,
                     ),
                     x_t=x_t,
                     target=target_dx,
@@ -4239,7 +4338,10 @@ def train_one_epoch(
                     device=device,
                 )
                 edm_term = _edm.preconditioned_loss(
-                    pred_raw=model.fm_velocity(x_t, t, z_all, cloud_sizes=_cloud_sizes),
+                    pred_raw=model.fm_velocity(
+                        x_t, t, z_all, cloud_sizes=_cloud_sizes,
+                        pocket_embed=_pocket_embed,
+                    ),
                     x_t=x_t,
                     target_dx=target_dx,
                     sigma=_sigma,
@@ -4606,7 +4708,8 @@ def train_one_epoch(
             enabled=float(consistency_term_weight) > 0.0,
         ).compute(
             pred_fn=(lambda x: model.fm_velocity(
-                x, t, z_all, cloud_sizes=_cloud_sizes
+                x, t, z_all, cloud_sizes=_cloud_sizes,
+                pocket_embed=_pocket_embed,
             )) if (fm_objective and x_t is not None) else None,
             x_t=x_t,
             device=device,
@@ -4618,7 +4721,8 @@ def train_one_epoch(
             enabled=float(so3_term_weight) > 0.0,
         ).compute(
             pred_fn=(lambda x: model.fm_velocity(
-                x, t, z_all, cloud_sizes=_cloud_sizes
+                x, t, z_all, cloud_sizes=_cloud_sizes,
+                pocket_embed=_pocket_embed,
             )) if (fm_objective and x_t is not None and t is not None) else None,
             x_t=x_t,
             target=target_dx,
@@ -4640,7 +4744,10 @@ def train_one_epoch(
             enabled=float(edm_term_weight) > 0.0,
         ).compute(
             pred_raw=(
-                model.fm_velocity(x_t, t, z_all, cloud_sizes=_cloud_sizes)
+                model.fm_velocity(
+                    x_t, t, z_all, cloud_sizes=_cloud_sizes,
+                    pocket_embed=_pocket_embed,
+                )
                 if (fm_objective and x_t is not None)
                 else None
             ),
@@ -4657,7 +4764,10 @@ def train_one_epoch(
             enabled=float(shortcut_distill_term_weight) > 0.0,
         ).compute(
             student_logits=(
-                model.fm_velocity(x_t, t, z_all, cloud_sizes=_cloud_sizes)
+                model.fm_velocity(
+                    x_t, t, z_all, cloud_sizes=_cloud_sizes,
+                    pocket_embed=_pocket_embed,
+                )
                 if (fm_objective and x_t is not None)
                 else None
             ),
@@ -4673,7 +4783,8 @@ def train_one_epoch(
             enabled=float(fm_ode_term_weight) > 0.0,
         ).compute(
             pred_fn=(lambda x: model.fm_velocity(
-                x, t, z_all, cloud_sizes=_cloud_sizes
+                x, t, z_all, cloud_sizes=_cloud_sizes,
+                pocket_embed=_pocket_embed,
             )) if (fm_objective and x_t is not None) else None,
             x0=x_t,  # current flow state as integration seed
             x1=(batch.positions if (fm_objective and x_t is not None) else None),
@@ -4686,7 +4797,8 @@ def train_one_epoch(
             enabled=float(energy_conservation_weight) > 0.0,
         ).compute(
             pred_fn=(lambda x: model.fm_velocity(
-                x, t, z_all, cloud_sizes=_cloud_sizes
+                x, t, z_all, cloud_sizes=_cloud_sizes,
+                pocket_embed=_pocket_embed,
             )) if (fm_objective and x_t is not None) else None,
             x_t=x_t,
             device=device,
@@ -4701,7 +4813,8 @@ def train_one_epoch(
         ).compute(
             per_sample_loss=(bond_ce if 'bond_ce' in locals() else None),
             pred_fn=(lambda x: model.fm_velocity(
-                x, t, z_all, cloud_sizes=_cloud_sizes
+                x, t, z_all, cloud_sizes=_cloud_sizes,
+                pocket_embed=_pocket_embed,
             )) if (fm_objective and x_t is not None) else None,
             x_t=x_t,
             device=device,
@@ -10002,9 +10115,17 @@ def main() -> int:
     # atom-head and bond-head markers do not need to branch.
     _GEN_FLOW_MARKERS = ("vel_field.", "head.msg_mlps.", "head.dmpnn.")
     _GEN_BOND_HEAD_MARKERS = ("head.pair_head",)
+    # Wf-A32 (2026-10-14) — the c-flow pocket encoder is a 4th, AUXILIARY
+    # parameter group (built in the pocket block below), NOT part of the
+    # atom / gen_flow / bond split.  It must be classified here, otherwise
+    # its tensors fall into _leftover and trip the UNSAFE-split guard below:
+    # every config carrying `gen_head_lr_scale != 1.0` became unlaunchable
+    # the moment the pocket encoder landed (SystemExit before the first
+    # batch; the pocket group below was never reached).
+    _POCKET_MARKERS = ("pocket_encoder.", "pocket_injector.")
     _param_groups = None
     if abs(_gen_head_lr_scale - 1.0) > 1e-12:
-        _atom_params, _gen_flow_params, _bond_params, _leftover = [], [], [], []
+        _atom_params, _gen_flow_params, _bond_params, _pocket_params, _leftover = [], [], [], [], []
         for _pname, _pval in model.named_parameters():
             if any(_pname.startswith(_m) for _m in _GEN_ATOM_HEAD_MARKERS):
                 _atom_params.append(_pval)
@@ -10012,6 +10133,8 @@ def main() -> int:
                 _gen_flow_params.append(_pval)
             elif any(_pname.startswith(_m) for _m in _GEN_BOND_HEAD_MARKERS):
                 _bond_params.append(_pval)
+            elif any(_pname.startswith(_m) for _m in _POCKET_MARKERS):
+                _pocket_params.append(_pval)
             else:
                 _leftover.append((_pname, _pval))
         if (
@@ -10047,24 +10170,25 @@ def main() -> int:
         _pocket_lr_mult = float(
             getattr(args, "pocket_encoder_lr_multiplier", 0.5)
         )
-        if (
-            _pocket_lr_mult > 0.0
-            and getattr(model, "pocket_encoder", None) is not None
-        ):
-            _pocket_params = list(model.pocket_encoder.parameters())
-            if _pocket_params:
-                _param_groups.append(
-                    {
-                        "params": _pocket_params,
-                        "lr": float(args.lr) * _pocket_lr_mult,
-                    }
-                )
+        if _pocket_params:
+            # Source the group from the classified list (not
+            # model.pocket_encoder.parameters()) so every pocket-prefixed
+            # tensor — encoder and any injector — lands in the optimiser.
+            # A non-positive multiplier falls back to base lr rather than
+            # silently dropping the tensors from the optimiser.
+            _param_groups.append(
+                {
+                    "params": _pocket_params,
+                    "lr": float(args.lr)
+                    * (_pocket_lr_mult if _pocket_lr_mult > 0.0 else 1.0),
+                }
+            )
         print(
             f"[BLK-C5] param_groups={len(_param_groups)} "
             f"atom_head={len(_atom_params)} "
             f"gen_flow={len(_gen_flow_params)} "
             f"bond_head={len(_bond_params)} "
-            f"pocket={sum(1 for g in _param_groups if 'pocket_encoder' not in str(g.get('params', [])) and any('pocket_encoder' in n for n, _ in model.named_parameters() if _ in g.get('params', [])))} "
+            f"pocket={len(_pocket_params)} "
             f"gen_flow_lr={float(args.lr) * _gen_head_lr_scale:g} "
             f"(base lr={float(args.lr):g})"
         )
