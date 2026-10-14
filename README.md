@@ -10,6 +10,21 @@ See [`QUICKSTART.md`](QUICKSTART.md) — install + console-script entry point + 
 
 Agent-facing entry point: [`AGENTS.md`](AGENTS.md) — project rules + skill catalog + standing directives. Project TOC + overview: [`TODO/README.md`](TODO/README.md). Single-source-of-truth per file status: [`TODO/INDEX.md`](TODO/INDEX.md).
 
+## Canonical trainers (Wf-A37-8)
+
+For **precious-metal anticancer drug design** (Pt/Ir/Ru/Au/Os/Re/Rh), the canonical
+config + trainer pair is:
+
+| Axis | Entry point | Default |
+|---|---|---|
+| CFM decoder | [`configs/cfm_5metal_default.yaml`](configs/cfm_5metal_default.yaml) | cohort pinned to `metalcytotox_5metal_multitask_v3.csv` (Ru/Ir/Os/Rh/Re), `wasserstein_weight: 0.0` (Wf-A37-7) |
+| Chemprop property | [`molmetal/scripts/train_chemprop_v2_v3.py`](molmetal/scripts/train_chemprop_v2_v3.py) | `--metals` default = `Ru Ir Os Rh Re Pt` (Wf-A37-8 extended; `METALS_5_PLUS_PT`) |
+| D-MPNN property | [`configs/dmpnn_within_metal_auc_cap512_d4_ens_gpu.yaml`](configs/dmpnn_within_metal_auc_cap512_d4_ens_gpu.yaml) | per-metal ensemble, cap 512, depth 4 |
+
+Use `cfm_5metal_default.yaml` as the CFM entry-point and chemprop `--metals=auto`
+(or `--metals=RU_IR_OS_RH_RE_PT`) for chemprop when the 7-metal cohort is not yet
+available on disk.
+
 ## Documentation map
 
 - [`docs/HONEST_NEGATIVE_CATALOG.md`](docs/HONEST_NEGATIVE_CATALOG.md) — MEASURED-vs-PROJECTED honesty ledger (111 entries, Wf-A30-4 close-out)

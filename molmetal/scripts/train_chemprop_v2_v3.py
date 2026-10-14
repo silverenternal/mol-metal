@@ -207,7 +207,16 @@ except Exception as _wf252_err:  # pragma: no cover — best-effort opt-in
 # ---------------------------------------------------------------------------
 # Defaults / constants
 # ---------------------------------------------------------------------------
+# Wf-A37-8 NEW: canonical chemprop --metals default extended to include Pt.
+# METALS_5 is kept as an alias for backward compatibility with configs and
+# callers (per AGENTS.md §5.11 disposition 1 — refactor preserves existing
+# identifier as an alias so no downstream code breaks).
+# 5-metal v3 cohort (Ru/Ir/Os/Rh/Re) is the on-disk MetalCytoToxDB multi-task
+# v3; Pt rows are absent from this version but the default is forward-ready —
+# args.metals is a list filter (df_all["metal"].isin(args.metals)), so an
+# absent-metal entry is a no-op rather than a hard error.
 METALS_5: Tuple[str, ...] = ("Ru", "Ir", "Os", "Rh", "Re")
+METALS_5_PLUS_PT: Tuple[str, ...] = ("Ru", "Ir", "Os", "Rh", "Re", "Pt")
 DEFAULT_SEEDS: Tuple[int, ...] = (0, 1, 2)
 DEFAULT_EPOCHS: int = 50
 DEFAULT_HIDDEN: int = 64
@@ -1354,8 +1363,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     p.add_argument(
         "--metals",
         nargs="+",
-        default=list(METALS_5),
-        help="Metals to train on (default: 5-metal Ru/Ir/Os/Rh/Re)",
+        default=list(METALS_5_PLUS_PT),
+        help=(
+            "Metals to train on "
+            "(default: 6-metal Ru/Ir/Os/Rh/Re/Pt — Wf-A37-8 extended default "
+            "for precious-metal anticancer drug; the on-disk MetalCytoToxDB "
+            "v3 cohort contains the 5-metal Ru/Ir/Os/Rh/Re and Pt is forward-ready.)"
+        ),
     )
     p.add_argument(
         "--seeds",

@@ -1,0 +1,137 @@
+# Wf-A37-8 NEW canonical CFM config for precious-metal anticancer drug training.
+#
+# SCOPE / WHY THIS CONFIG EXISTS
+# ------------------------------
+# This is the canonical CFM entry-point for precious-metal anti-cancer drug
+# (Pt/Ir/Ru/Au/Os/Re/Rh) design when a 7-metal cohort is not available,
+# the 5-metal cohort (Ru/Ir/Os/Rh/Re, MetalCytoToxDB multi-task v3) is the
+# default data source.  Pin the dataset to metalcytotox_5metal_multitask_v3.csv
+# and pair with chemprop_v2/v3 --metals default (now extended to include Pt per
+# Wf-A37-8).  wasserstein_weight is OFF (0.0) per Wf-A37-7, since W2 is NOT
+# load-bearing for the precious-metal anticancer drug axis (see AGENTS.md
+# memory note "W2/Wasserstein is not load-bearing").
+#
+# COMPANION SURFACES
+# ------------------
+# * Chemprop entry: molmetal/scripts/train_chemprop_v2_v3.py
+#   with --metals default = (Ru, Ir, Os, Rh, Re, Pt) [Wf-A37-8 extended default]
+# * Data:          .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+#                   (real 5-metal cohort, 5 rows / 4772774 bytes, MD5 checked at run)
+# * Pointer:       TODO/README.md (canonical trainers row) + this file
+#
+# HONEST-FRAMING NOTE
+# -------------------
+# Per AGENTS.md §5.2 honest framing: every number in any follow-on closeout
+# MUST trace to a JSON / report path on disk with MEASURED or PROJECTED tag.
+
+data:
+  # 2026-10-15 Wf-A37-8: canonical 5-metal anticancer drug cohort.
+  dataset: csv
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+  # MetalCytoToxDB multi-task v3 cohort filter — keep ALL 5 metals
+  # the corpus ships with (Ru/Ir/Os/Rh/Re).  This key is in the loader's
+  # DECLARED_INERT_PATHS (no trainer dest) and is printed-but-not-fatal
+  # per AGENTS.md §5.11 disposition 2 (prose for reproducibility).
+  cohort_filter:
+    metals:
+      - Ru
+      - Ir
+      - Os
+      - Rh
+      - Re
+model:
+  hidden_dim: 128
+  n_layers: 3
+  atom_vocab_size: 13
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  learnable_vel_scale: true
+  # Wf-A37-7: SE(3) EGNN velocity field is the production decoder.
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  # Wf-A37-7: TMQM init is OFF for the property-cohort CFM run
+  # (tmQM geometry pretrain does not transfer to ligand-only MetalCytoTox rows).
+  use_tmqm_init: false
+  pcgrad_multi_task: false
+  q_head_enabled: false
+flow:
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  n_steps: 100
+  method: rk4
+  optimizer: adam
+  warmup_steps: 200
+  ema_decay: 0.999
+  # 2026-10-15 Wf-A37-7: W2 OFF — Wasserstein term is NOT load-bearing for the
+  # precious-metal anticancer axis; ON lowered MoleculeNet clintox and bace by
+  # 1.6-3.4pp.  See AGENTS.md memory note + Wf-METRIC-RESCUE findings.
+  wasserstein_weight: 0.0
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 3.5
+protocol:
+  batch_size: 16
+  lr: 0.0001
+  gen_validity_samples: 16
+  gen_eval_n: 64
+  gen_eval_seeds: "0 1 2"
+  n_seeds: 5
+  epochs: 50
+  n_seeds_min: 3
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+output:
+  base_dir: results/cfm_5metal_default
+  log_master: results/cfm_5metal_default/master.log
+  ckpt_dir: results/cfm_5metal_default/checkpoints
+  events_jsonl: true
+  resume_from: auto
+  resume_from_path: null
+# Wf-A15 (2026-10-13) Track-A L6 — both OFF by default for the property axis.
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+q_channel_lr_multiplier: 1.0
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+compute:
+  gpu: cuda:0
+directives:
+  kill_then_adapt: true
+  time_budget: 48h
+  user_ok_required: true
+  user_ok_granted: 10h budget + PRO 6000 + project root results/ + GPU util ≥90% check (2026-09-28)
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir}
+  legacy_inline_command: ""
+honest_framing:
+  claims:
+  - CFM 5-metal anticancer drug training, pinned to MetalCytoToxDB multi-task v3 cohort (Ru/Ir/Os/Rh/Re, 4.5MB on disk)
+  - wasserstein_weight 0.0 (Wf-A37-7 measure: W2 not load-bearing on precious-metal anticancer axis)
+  - Companion chemprop --metals default extended to (Ru,Ir,Os,Rh,Re,Pt) for precious-metal anticancer
+  - 5 seeds × 50 epochs canonical protocol, 48h wall budget per AGENTS.md §5.1
+  do_not_claim:
+  - 7-metal cohort coverage (gold/Ag/Pd) — only the 5-metal cohort ships on disk
+  - decode_ratio on real Pt geometry — TMQM init is OFF for this property-axis config; cfm_full_retrain.yaml is the geometry-axis ship surface
+  - W2 ON improves the metric (MEASURED: it lowers clintox+bace)
+  - Best-seed selection before per-seed honest-neg gate (per Wf-245 n-seeds-min)
+  deferred:
+  - F5_RDKIT_2D 32-d integration into CFM training
+  - Per-lever ablation paper-grade (5-seed × 30-epoch GPU, requires explicit user OK)
+  - 7-metal cohort acquisition (Au/Pd/Ag rows absent from MetalCytoToxDB v3 on disk)
