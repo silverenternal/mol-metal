@@ -6,17 +6,27 @@ challenge) for a REAL per-cell-line MB-Finder (Pt + other d-block) pool.
 
 Inputs (read on disk; all REAL MB-Finder rows):
 
-  1. New harvest CSVs / JSONLs
+  1. New harvest CSVs / JSONLs — A37 orchestrator #1
        .data/molmetal/wf_a37_platinai_biodata/platinai_*.csv|.jsonl
        -> compound_code, cell_line, value_mean, value_sd, doi, method,
           incubationTime (REAL MB-Finder per-cell-line measured IC50
           via get-ceil-line-bio-data).
-  2. New harvest Pt substances JSONL (smiles join table, when present)
-       .data/molmetal/platinai_biodata_full/.../platinai_pt_substances_smiles.jsonl
+  2. FULL harvest JSONLs — A38 orchestrator (long-running, 4-child
+     parallel, throttling-tolerant backoff)
+       .data/molmetal/platinai_biodata_full/platinai_<cell>_biodata.jsonl
+       -> imageId (= compound_code), cell_line (long form), value
+          (= numeric_value string e.g. "37.7" or "1.7 ± 0.3"),
+          measurements[], doi, method, incubationTime.  Schema shim
+          converts these to the standard {compound_code,
+          cell_line_short, value_mean, value_sd, ...} row shape and
+          merges with input #1 (input #1 wins on conflict because
+          it's the deterministic CSV).
+  3. New harvest Pt substances JSONL (smiles join table, when present)
+       .data/molmetal/wf_a37_platinai_biodata/platinai_pt_substances_smiles.jsonl
        -> compound_code -> smiles (REAL MB-Finder substance registry
        via get-substances, populated by Wf-A37-5/A38 orchestrator after
        per-cell-line biodata pages complete).
-  3. Older structure index (REAL, Sep 29, 2026)
+  4. Older structure index (REAL, Sep 29, 2026)
        .data/molmetal/platinai_4cell_mbfinder.csv
        -> mb_id, imageId, smiles, has_<cell> coverage booleans
        (real MB-Finder Pt compounds with SMILES, no per-cell-line IC50).
@@ -32,6 +42,16 @@ value_sd, doi, method, incubationTime, label_source.
 This is the REAL labelled pool file that KNNEvaluator defaults to when
 present (cfm_knn_oracle_smoke.json source), replacing the synthetic
 platinai_4cell.csv that was the A37-4 honest-negative fallback.
+
+Wf-A38 addition (2026-10-15): per the user directive "要找完整的,不要搞
+什么honest negative", the COMPLETE harvest must be on disk, not a
+partial subset.  This builder now also reads `.data/molmetal/
+platinai_biodata_full/` (input #2 above) — the long-running 4-child
+parallel harvest with throttling-tolerant backoff.  Re-runs of this
+script pick up incremental rows as the harvest continues, so the pool
+grows monotonically toward the COMPLETE count as pages complete.  The
+CSV+meta path is unchanged so KNNEvaluator automatically picks up the
+COMPLETE pool — no consumer changes required.
 
 Per AGENTS.md §1 + §5.2 honest framing: every row's value_mean comes
 from REAL MB-Finder per-cell-line measured data (with DOI + method
@@ -63,6 +83,8 @@ NEW_BIODATA_DIR: str = ".data/molmetal/wf_a37_platinai_biodata"
 NEW_SUBSTANCES_JSONL: str = (
     ".data/molmetal/wf_a37_platinai_biodata/platinai_pt_substances_smiles.jsonl"
 )
+# Wf-A38: long-running FULL harvest (4-child parallel, throttling-tolerant)
+FULL_HARVEST_DIR: str = ".data/molmetal/platinai_biodata_full"
 # Older REAL structure index (Sep 29) — when get-substances join hasn't run
 OLDER_STRUCTURE_INDEX: str = ".data/molmetal/platinai_4cell_mbfinder.csv"
 
@@ -187,6 +209,111 @@ def _load_new_biodata() -> List[dict]:
     return out
 
 
+def _load_full_harvest_biodata() -> List[dict]:
+    """Wf-A38: read the long-running FULL harvest (4-child parallel,
+    throttling-tolerant backoff) and schema-shim into the standard
+    {compound_code, cell_line_long, cell_line_short, value_mean, ...}
+    row shape.
+
+    The full-harvest JSONL schema differs from input #1:
+        imageId           -> compound_code (MB-Pt-XXXXXX, identical
+                              namespace to input #1's compound_code)
+        cell_line         -> long form (e.g. "A2780"); we add the
+                              lowercase short form
+        value (str)       -> "37.7" or "1.7 ± 0.3"; parsed via the
+                              shared ``parse_measurement_value`` helper
+        measurements[]    -> optional alternate timings; we use the
+                              top-level ``value`` because the orchestrator
+                              normalises it (verified 2026-10-15)
+        doi, method, incubationTime: pass through unchanged.
+
+    Returns a flat list of dicts with the same schema as
+    ``_load_new_biodata()``.  Dedup happens in ``_merge_biodata()``.
+    """
+    out: List[dict] = []
+    biopath = Path(FULL_HARVEST_DIR)
+    if not biopath.is_dir():
+        return out
+    # Local import — soft dep, parser lives in the existing loader
+    from molmetal.scripts.platinai_real_label_loader import (  # noqa: E402
+        parse_measurement_value,
+    )
+
+    long_to_short = {long_: long_.lower() for long_ in TARGET_CELL_LONG}
+    short_to_long = {v: k for k, v in long_to_short.items()}
+
+    for jsonl_path in sorted(biopath.glob("platinai_*_biodata.jsonl")):
+        # Parse the cell from filename: platinai_a2780_biodata.jsonl -> "a2780"
+        stem = jsonl_path.stem  # "platinai_a2780_biodata"
+        cl_short = stem.replace("platinai_", "").replace("_biodata", "")
+        cell_long = short_to_long.get(cl_short, cl_short.upper())
+        with jsonl_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                code = (rec.get("imageId") or "").strip()
+                if not code or not _is_pt_only(code):
+                    continue
+                # Prefer top-level `value` (orchestrator-normalised);
+                # fall back to measurements[0].numeric_value if value
+                # is missing (defensive — observed values 37.7, "1.2 ± 0.3")
+                raw_value = rec.get("value") or ""
+                if not raw_value and rec.get("measurements"):
+                    raw_value = (
+                        rec["measurements"][0].get("numeric_value") or ""
+                    )
+                value_mean, value_sd = parse_measurement_value(raw_value)
+                out.append(
+                    {
+                        "compound_code": code,
+                        "cell_line_long": cell_long,
+                        "cell_line_short": cl_short,
+                        "value_mean": value_mean,
+                        "value_sd": value_sd,
+                        "doi": rec.get("doi", "") or "",
+                        "method": rec.get("method", "") or "",
+                        "incubationTime": rec.get("incubationTime", "") or "",
+                        "label_source": "mb-finder/get-ceil-line-bio-data",
+                    }
+                )
+    return out
+
+
+def _merge_biodata(
+    primary: List[dict], secondary: List[dict]
+) -> Tuple[List[dict], int, int]:
+    """Merge two biodata row lists, dedup by (compound_code, cell_line_short)
+    with ``primary`` winning on conflict (primary's deterministic CSV row
+    is preferred).
+
+    Returns (merged_rows, n_primary_kept, n_secondary_added).
+    """
+    seen: Set[Tuple[str, str]] = set()
+    merged: List[dict] = []
+    n_primary = 0
+    for rec in primary:
+        key = (rec["compound_code"], rec["cell_line_short"])
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(rec)
+        n_primary += 1
+    n_secondary = 0
+    for rec in secondary:
+        key = (rec["compound_code"], rec["cell_line_short"])
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(rec)
+        n_secondary += 1
+    return merged, n_primary, n_secondary
+
+
 def _load_substances_smiles() -> Dict[str, str]:
     """Read the Pt-substances SMILES join table if Wf-A37-5/A38 has emitted it.
 
@@ -246,8 +373,17 @@ def build_real_pool() -> Tuple[List[dict], Dict[str, int]]:
     write them to ``REAL_POOL_CSV``.  Counts surfaces the provenance:
     n_new_biodata_rows, n_with_substance_smiles, n_with_older_index_smiles,
     n_distinct_compound_codes, n_distinct_compound_codes_with_smiles.
+
+    Wf-A38: this now merges TWO biodata sources with ``primary``
+    (input #1 — A37 orchestrator CSV-deterministic) winning on conflict:
+        primary   = ``_load_new_biodata()``     (Wf-A37-5)
+        secondary = ``_load_full_harvest_biodata()`` (Wf-A38 long-running)
     """
-    biodata = _load_new_biodata()
+    primary = _load_new_biodata()
+    secondary = _load_full_harvest_biodata()
+    biodata, n_primary_kept, n_secondary_added = _merge_biodata(
+        primary, secondary
+    )
     substances = _load_substances_smiles()
     older = _load_older_structure_index()
 
@@ -278,7 +414,11 @@ def build_real_pool() -> Tuple[List[dict], Dict[str, int]]:
         rows.append(out_rec)
 
     counts = {
-        "n_new_biodata_rows": len(biodata),
+        "n_new_biodata_rows": len(primary),
+        "n_full_harvest_rows": len(secondary),
+        "n_primary_kept": n_primary_kept,
+        "n_secondary_added": n_secondary_added,
+        "n_merged_unique_rows": len(biodata),
         "n_with_substance_smiles": n_with_substance,
         "n_with_older_index_smiles": n_with_older,
         "n_with_no_smiles": n_no_smiles,
@@ -311,12 +451,23 @@ def write_real_pool(
     csv_path: str = REAL_POOL_CSV,
     meta_path: str = REAL_POOL_META,
 ) -> Dict[str, str]:
-    """Write the merged REAL pool CSV + meta JSON."""
+    """Write the merged REAL pool CSV + meta JSON.
+
+    Uses ``wf386a3_atomic_write.atomic_write_file`` for both writes per
+    AGENTS.md §5.6 (atomic_write protocol) so a re-run mid-stream
+    cannot leave a half-written file as evidence.
+    """
+    from molmetal.scripts.wf386a3_atomic_write import (  # noqa: E402
+        atomic_write_file,
+    )
+
     Path(csv_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(csv_path, "w", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=_FIELDNAMES, extrasaction="ignore")
-        writer.writeheader()
-        writer.writerows(rows)
+    import io as _io
+    buf = _io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=_FIELDNAMES, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(rows)
+    atomic_write_file(Path(csv_path), buf.getvalue())
     per_cell = defaultdict(int)
     for rec in rows:
         per_cell[rec["cell_line_short"]] += 1
@@ -327,6 +478,7 @@ def write_real_pool(
         "fields": list(_FIELDNAMES),
         "source_files": {
             "new_biodata_dir": NEW_BIODATA_DIR,
+            "full_harvest_dir": FULL_HARVEST_DIR,
             "new_substances_jsonl": NEW_SUBSTANCES_JSONL,
             "older_structure_index": OLDER_STRUCTURE_INDEX,
         },
@@ -347,12 +499,13 @@ def write_real_pool(
         ),
         "timestamp": json.dumps({"iso": None})[10:-2] or None,
     }
-    # Use a non-fancy ISO timestamp inline (no extra dep).
+    # Non-fancy ISO timestamp (no extra dep).
     import datetime as _dt
 
     meta["timestamp"] = _dt.datetime.now(_dt.timezone.utc).isoformat()
-    with open(meta_path, "w", encoding="utf-8") as f:
-        json.dump(meta, f, indent=2, ensure_ascii=False)
+    atomic_write_file(
+        Path(meta_path), json.dumps(meta, indent=2, ensure_ascii=False)
+    )
     return {"csv": csv_path, "meta": meta_path}
 
 
