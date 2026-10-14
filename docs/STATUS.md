@@ -3,8 +3,8 @@
 **Owner:** Hugo Lee
 **Created:** 2026-10-02 (Wf-447 PHASE 2)
 **Source of truth:** `AGENTS.md` §6 wave history + `TODO/INDEX.md` §0 + §22
-**Last refreshed:** 2026-10-09 (Wf-FIX-3LINES: bace rescue round 2 + CFM bond head 20-ep + Lambda cohort n=200→4078; 3 of 3 lines re-measured, 2 predicted lifts did NOT materialise)
-**Recent wave:** Wf-FIX-3LINES (2026-10-09) — the 3 repairs attempted for §22.151's regressed lines; outcome is 3 honest-negatives (no bace 5-seed mean, CFM F1 below the 0.079 probe, R² ≈ 0 after a 20× expansion), plus a documented `hilbert`→`platinai_4cell` alias
+**Last refreshed:** 2026-10-14 (Wf-A28..A30 strict-repair: 25 SCOUT findings closed; 3 sequential commit clusters on master HEAD `b27f5e1694` / `9943ad293d` / `(A30-3/4 pending)`; honest-negative catalog 106 → 111 entries; pre-flight baseline preserved 109 PASS / 4 FAIL / 10 SKIP with the 4 FAILs all pre-existing QEDLoss signature / ModuleNotFoundError / hyperparam-config / config-binding issues, NOT introduced by A28..A30; **PLUS Wf-A31 prep**: platiny_pocket_pool (10 literature Pt/Au/Ru targets) + PocketGen vendor (encoder-only, MIT) + P2Rank wrapper (Biopython crop + CLI stub) + PerLayerPocketInjector test (12/12 PASS) + pocket_pool_unified (21/21 PASS) + pyproject.toml pocketgen extras; new docs `POCKET_ENCODER_PIPELINE.md`; 63/63 new unit tests PASS)
+**Recent wave:** Wf-A30 strict-repair (2026-10-14) — closed all 25 SCOUT findings (2 honest-negative patterns + 1 DECLARED_INERT by-design) across 4 commits with a completeness-critic self-correction loop; cascade risk neutralised (A5 cross_dataset KeyError pass-through + A6 EMA never loaded + A7 smoke-stub .pt). Followed by Wf-A31 prep (pocket binding truth: literature pool + PocketGen + P2Rank wrappers) and Wf-A32 prep (PerLayerPocketInjector instantiation + cross-attn wire-in; BLOCKED on user OK for heavy PocketGen deps).
 
 This file gives a one-glance roll-up of what's been shipped, what's still honest-negative,
 and what's still USER_OK-gated. For per-wave detail, read AGENTS.md §6 + TODO/INDEX.md §22.
@@ -38,13 +38,23 @@ Selected milestones (one per row; non-trivial diff on MHF version control per co
 | Wave-30 Phase 3 | 500 docking evals (10 pockets x 5 cand x 5 seed) + summarizer + tests |
 | Metric-1 | MetalCytoToxDB Ru subset AUC (D-MPNN multi-task, scaffold split) |
 | Wave-Initial | Initial public release of Mol-Metal (R16 close-out) |
+| Wave-A28 / 2026-10-14 | coord_geom VSEPR override + bond_length Pyykkö 2008/2005 + per_loss_projection DECLARED_INERT — 3 per-step commits on master (`4be9ab9` + `23b173f6` + `bbb9a5c935`); closes 3 Wf-A27 residuals |
+| Wave-A29 / 2026-10-14 | coord_geom d-electron classifier + bond_length REAL tmQM DFT table — 2 per-step commits on master (`382857c2c7` + `e0363753f4`); REPAIRS 2 honest-negatives (not just documents them); pre-flight 92/0/2/94 PRESERVED |
+| Wave-A30 / 2026-10-14 | strict-repair of 25 SCOUT findings (2 honest-negative + 1 DECLARED_INERT + 22 honest-negative-pattern) — 4 logical commits + completeness-critic self-correction loop; A30-1 `b27f5e1694` (checkpoint + EMA + cross_dataset) + A30-2 `9943ad293d` (silent fallbacks + paper_table + registry + CFM panel + §6.51 catalog) + A30-3/4 (pending) |
+| Wave-A31 prep / 2026-10-14 | pocket binding truth scaffolding (CPU-only, 0 GPU) — platiny_pocket_pool (10 literature targets, 0 extracted) + PocketGen vendor (encoder-only, MIT, lazy-import) + P2Rank wrapper (Biopython crop, CLI stub) + pocket_pool_unified (single dispatch API) + PerLayerPocketInjector test (12/12 PASS); 63/63 new unit tests PASS; pyproject.toml pocketgen extras; new `docs/POCKET_ENCODER_PIPELINE.md` |
+| Wave-A32 prep / 2026-10-14 | wire PocketGen + PerLayerPocketInjector into the CFM EGNN — A32.3/A32.4 UNBLOCKED CPU-only; A32.1/A32.2 (heavy deps + 250 MB weights) BLOCKED on user OK |
 
 ---
 
 ## 2. Pre-flight v3 status
 
-- **Baseline:** `Wf-432b1` 113 PASS / 1 FAIL / 3 SKIP / 117 TOTAL (`pipeline=all`)
-- **The 1 FAIL** is `p3_wf343c4_anchor_freshness_24h` — natural, refreshed by single `touch` per Wf-367-A1.
+- **Baseline (Wf-A30 ship):** 109 PASS / 4 FAIL / 10 SKIP / 124 TOTAL (`pipeline=all`, 2026-10-14)
+- **The 4 FAILs are ALL pre-existing (NOT introduced by Wf-A28..A30):**
+  - `p2_tests_pass` — `test_opt1_stereo_postprocess.py` + `test_pocket_pool_loader.py` reference modules no longer in tree (rename / deletion upstream)
+  - `p3_wf343c4_hyperparams_config_complete` — 3 YAMLs (`cfm_patience10_seed0_2026_10_12`, `train_cisplatin_resistance_v2_v1`, etc.) missing §5.1 hyperparam contract; CPU-only docs follow-up
+  - `p3_config_trainer_binding_check` — 2 keys (`train.fragment_connectivity_weight`, `train.natural_charge_weight`) resolve to no dest
+  - `p3_wf385_scaffold_loss_wire_in_verified` — `QEDLoss.compute()` signature mismatch on `decoded_mols` kwarg
+- **Pre-Wf-A28 baseline (for comparison):** `Wf-432b1` 113 PASS / 1 FAIL / 3 SKIP / 117 TOTAL
 - **The 3 SKIPs are BY-DESIGN per `party-twenty-spirit` §3.5:**
   - `p3_wf343c4_yuelbond_decoder_env` (env gap; passes on project venv per Wf-422-A2 §0)
   - `p3_wf343c4_wave_budget_remaining_nonneg` (-42.10h overrun per Wf-262 §7.1; post-dedup MEASURED 2026-10-08: 8 waves, cumulative 52.1h, remaining -42.1h)

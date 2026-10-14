@@ -1,6 +1,6 @@
 # docs/ index
 
-Generated 2026-10-13 by scanning the directory. 38 files.
+Generated 2026-10-14 by scanning the directory. 40 files.
 
 **If a document contradicts what is on disk, the disk wins.** Several
 entries below are marked SUPERSEDED because a later decision replaced
@@ -33,6 +33,7 @@ be audited (AGENTS.md section 5.5).
 - `ARCHITECTURE.md` — Architecture as of 2026-10-02. Check against code before trusting.
 - `DESIGN_BOUNDARY.md` — Where the two lines meet.
 - `WORKFLOW_DEPENDENCY_GRAPH.md` — Wave dependency graph.
+- `POCKET_ENCODER_PIPELINE.md` — Pocket encoder architecture (Wf-A31/A32): PocketGen + P2Rank + platiny_pocket_pool + pocket_pool_unified + PerLayerPocketInjector + honest-framing table.
 
 ## What is the overall status?
 
