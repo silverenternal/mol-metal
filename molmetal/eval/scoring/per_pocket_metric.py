@@ -115,16 +115,39 @@ def per_pocket_admet(
     -------
     dict
         ``{pocket_id: {"sa_mean": float, "qed_mean": float,
-        "n_smiles": int, "n_ok": int, "status": ...}}``.
+        "sa_median": float, "qed_median": float,
+        "sa_iqr": float, "qed_iqr": float,
+        "n_smiles": int, "n_ok": int,
+        "missing_sa": int, "missing_qed": int, "status": str}}``.
+        All 11 keys are present in BOTH EMPTY_COHORT and MEASURED
+        branches (Wf-A33-FIXUP-fixup-1 schema-consistency);
+        ``None`` / ``0`` for unavailable values.
     """
     out: Dict[str, Dict[str, Any]] = {}
     for pocket_id, smiles_list in decoded_by_pocket.items():
         if not smiles_list:
+            # Wf-A33-FIXUP-fixup-1 (2026-10-14): schema-consistency.
+            # The MEASURED branch emits 11 keys (sa_mean / qed_mean /
+            # sa_median / qed_median / sa_iqr / qed_iqr / n_smiles /
+            # n_ok / missing_sa / missing_qed / status); the legacy
+            # EMPTY_COHORT branch emitted only 5, forcing downstream
+            # consumers (paper_table.py:438, build_paper_table) to
+            # guard against KeyError. Mirror the admet8 schema for
+            # ``n_input=0`` (per `_admet8.compute_admet8_panel` empty
+            # path: ``per_metric_mean[k] = None`` for k in keys +
+            # ``missing[k] = 0``) so both branches emit the same 11-key
+            # shape. 6-LOC addition; no behavioral change.
             out[str(pocket_id)] = {
                 "sa_mean": None,
                 "qed_mean": None,
+                "sa_median": None,
+                "qed_median": None,
+                "sa_iqr": None,
+                "qed_iqr": None,
                 "n_smiles": 0,
                 "n_ok": 0,
+                "missing_sa": 0,
+                "missing_qed": 0,
                 "status": "EMPTY_COHORT",
             }
             continue
@@ -407,6 +430,24 @@ def _smoke() -> int:
     assert res_empty["p1"]["status"] == "EMPTY_COHORT", res_empty
     res_empty2 = per_pocket_admet({"p1": []})
     assert res_empty2["p1"]["status"] == "EMPTY_COHORT", res_empty2
+    # Wf-A33-FIXUP-fixup-1 (2026-10-14): schema-consistency. Both
+    # branches MUST emit the same 11-key dict shape so downstream
+    # consumers (paper_table.py:438) don't need KeyError guards.
+    _EXPECTED_ADMET_KEYS = {
+        "sa_mean", "qed_mean",
+        "sa_median", "qed_median",
+        "sa_iqr", "qed_iqr",
+        "n_smiles", "n_ok",
+        "missing_sa", "missing_qed",
+        "status",
+    }
+    assert set(res_empty2["p1"].keys()) == _EXPECTED_ADMET_KEYS, (
+        f"EMPTY_COHORT schema drift: {set(res_empty2['p1'].keys()) ^ _EXPECTED_ADMET_KEYS}"
+    )
+    res_meas = per_pocket_admet({"p1": ["CCO", "c1ccccc1"]})
+    assert set(res_meas["p1"].keys()) == _EXPECTED_ADMET_KEYS, (
+        f"MEASURED schema drift: {set(res_meas['p1'].keys()) ^ _EXPECTED_ADMET_KEYS}"
+    )
     # Test 2: 3-mol cohort → MEASURED
     res_3 = per_pocket_decode_ratio({"p1": ["CCO", "c1ccccc1", "nonsense"]})
     assert res_3["p1"]["status"] == "MEASURED", res_3
