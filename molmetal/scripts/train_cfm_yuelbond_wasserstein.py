@@ -688,7 +688,15 @@ except Exception:  # pragma: no cover
 # ---------------------------------------------------------------------------
 DEFAULT_TRAIN_CLOUDS = 256
 DEFAULT_VAL_CLOUDS = 192
-DEFAULT_HIDDEN_DIM = 64
+# Wf-A35-2 (D3) — alignment with the adapter's default (``EGNNVelocityField``,
+# PocketGen, and every shipped CFM YAML per the BLK-C5 comment block at :9901).
+# The previous value of 64 silently under-sized the trainer's default
+# ``--hidden-dim`` constructor while every YAML in ``configs/cfm_*.yaml``
+# already declares ``model.hidden_dim: 128`` explicitly, so no shipped run
+# changes.  The change here moves the *unconfigured* default to the same
+# 128 used everywhere else, eliminating the latent "config 128 vs. default 64"
+# mismatch a caller would otherwise have to learn by reading trainer source.
+DEFAULT_HIDDEN_DIM = 128
 DEFAULT_N_LAYERS = 3
 # YuelBond bond-length cutoff (Å).  Mirrors ``YuelBondDecoderHead``'s own
 # default; that class filters ``d < cutoff`` and its docstring's worked

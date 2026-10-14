@@ -2849,8 +2849,33 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         x_0 = torch.randn(
             n_samples, n_atoms, 3, device=self.device, generator=generator
         )
-        # 2. Time grid (Lipman 2023 default = [0, 1])
-        t_grid = torch.linspace(0.0, 1.0, config.n_steps + 1, device=self.device)
+        # 2. Time grid (Lipman 2023 default = [0, 1]).
+        # Wf-A35-2 (D1): honour ``config.fm_t_dist`` ("uniform" | "log_normal").
+        # When "log_normal", draw ``n_steps+1`` flow times via the
+        # log-normal Karras 2022 schedule (arXiv:2206.00364 §3.4: t =
+        # sigmoid(N(mu, sigma))), with the mid-range concentration that
+        # makes the regression target hardest.  At the default
+        # ``fm_t_dist="uniform"`` we keep the legacy ``torch.linspace`` so
+        # every pre-A35-2 invocation is bit-exact identical.
+        _fm_t_dist = str(getattr(config, "fm_t_dist", "uniform") or "uniform")
+        if _fm_t_dist == "log_normal":
+            from molmetal.adapters.flow_matching_lipman.log_normal_t import (
+                log_normal_t_sampling as _ln_sample,
+            )
+
+            _mu = float(getattr(config, "fm_log_normal_mu", -0.5))
+            _sigma = float(getattr(config, "fm_log_normal_sigma", 1.0))
+            # n_steps+1 grid points; same RNG stream as ``torch.linspace``
+            # (no RNG consumed in the uniform branch) means the log-normal
+            # branch is the only place that differs from legacy.
+            t_grid = _ln_sample(
+                int(config.n_steps) + 1, _mu, _sigma,
+                generator=generator, device=self.device,
+            )
+        else:
+            t_grid = torch.linspace(
+                0.0, 1.0, config.n_steps + 1, device=self.device
+            )
         # 3. Wrap velocity field in the library's ModelWrapper.
         # The library's ModelWrapper stores ``self.model`` and forwards
         # ``(x, t, **extras)`` to it.  We use ``forward_velocity`` which
@@ -3066,9 +3091,64 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 raise FloatingPointError(
                     "Atom prediction produced non-finite probabilities"
                 )
-            sampled_atoms = torch.multinomial(
-                atom_probs.reshape(-1, atom_probs.shape[-1]), 1, generator=generator
-            ).reshape(n_samples, n_atoms)
+            # Wf-A35-2 (D2): honour ``config.top_p`` / ``config.top_k`` /
+            # ``config.temperature`` via ``diversity_sampling.nucleus_sample``
+            # (Holtzman 2020, arXiv:1904.09751).  At the default
+            # ``top_p=1.0, top_k=0, temperature=1.0`` no rows are masked
+            # and the softmax + multinomial path is bit-exact identical
+            # to the legacy ``F.softmax`` + ``torch.multinomial`` pair.
+            # The opt-in audit counter ``nucleus_sample_invocations`` is
+            # exposed via ``last_sampling_diagnostics`` so callers can
+            # verify the wire-in fired (--top-p / --top-k / --temperature
+            # were not no-ops).
+            from molmetal.adapters.flow_matching_lipman.diversity_sampling import (
+                nucleus_sample as _nucleus_sample,
+            )
+
+            _top_p = float(getattr(config, "top_p", 1.0) or 1.0)
+            _top_k = int(getattr(config, "top_k", 0) or 0)
+            _temperature = float(
+                getattr(config, "temperature", 1.0) or 1.0
+            )
+            _nucleus_active = (
+                _top_p < 1.0 or _top_k > 0 or _temperature != 1.0
+            )
+            if _nucleus_active:
+                sampled_atoms = _nucleus_sample(
+                    atom_logits,  # pre-softmax logits for temperature rescale
+                    p=_top_p,
+                    k=_top_k,
+                    temperature=_temperature,
+                    generator=generator,
+                ).reshape(n_samples, n_atoms)
+                self.last_sampling_diagnostics = {
+                    "nucleus_sample_invocations": int(
+                        getattr(self, "_nucleus_sample_invocation_count", 0)
+                    )
+                    + 1,
+                    "top_p": _top_p,
+                    "top_k": _top_k,
+                    "temperature": _temperature,
+                    "active": True,
+                }
+                self._nucleus_sample_invocation_count = int(
+                    getattr(self, "_nucleus_sample_invocation_count", 0)
+                ) + 1
+            else:
+                sampled_atoms = torch.multinomial(
+                    atom_probs.reshape(-1, atom_probs.shape[-1]),
+                    1,
+                    generator=generator,
+                ).reshape(n_samples, n_atoms)
+                self.last_sampling_diagnostics = {
+                    "nucleus_sample_invocations": int(
+                        getattr(self, "_nucleus_sample_invocation_count", 0)
+                    ),
+                    "top_p": _top_p,
+                    "top_k": _top_k,
+                    "temperature": _temperature,
+                    "active": False,
+                }
         if fixed_atoms is not None:
             sampled_atoms = fixed_atoms
         # 6. Build Molecule objects with REAL atom types and (when the

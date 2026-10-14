@@ -51,6 +51,24 @@ class GenerationConfig:
     # Existing callers passing ``method="euler"`` explicitly remain
     # unchanged; new callers get the better method by default.
     method: str = "midpoint"
+    # Wf-A35-2 (D2): nucleus-sampling hyperparameters for atom-type
+    # decoding.  Defaults preserve the pre-A35-2 bit-exact path
+    # (``top_p=1.0`` keeps all tokens, ``top_k=0`` disables top-k
+    # truncation, ``temperature=1.0`` does not rescale logits).  At
+    # any non-default value the adapter routes the atom-type
+    # multinomial through ``diversity_sampling.nucleus_sample``
+    # (Holtzman 2020); see ``last_sampling_diagnostics`` for the
+    # opt-in audit counter.
+    top_p: float = 1.0
+    top_k: int = 0
+    # Wf-A35-2 (D1): flow-time distribution flag for the ODE time
+    # grid.  ``"uniform"`` (default) keeps the legacy ``torch.linspace``
+    # grid; ``"log_normal"`` draws ``n_steps+1`` times via
+    # ``log_normal_t_sampling`` (Karras 2022 §3.4: t = sigmoid(N(mu, sigma)))
+    # concentrating t in the mid-range where FM regression is hardest.
+    fm_t_dist: str = "uniform"
+    fm_log_normal_mu: float = -0.5
+    fm_log_normal_sigma: float = 1.0
 
 
 @dataclass(frozen=True)
