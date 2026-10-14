@@ -1,0 +1,11 @@
+target_id,pocket_path,pocket_sha256,ligand_path,ligand_sha256,split_role,native_ligand_allowed_for_generation,pocket_definition_prove,pdb_id,target_name,metal_specificity,literature_doi,notes
+platiny_3eao_v0,,,,,eval_only,false,needs_pdb_extraction,3EAO,Thioredoxin reductase 1 (TXNRD1),Au_I,10.1073/pnas.0706386104,rat TXNRD1 holo with auranofin-derived Au et3P coordination
+platiny_1ca2_v0,,,,,eval_only,false,needs_pdb_extraction,1CA2,Carbonic anhydrase 2 (CA2),"Pt_II,Au_III,Zn_II",10.1021/ic050415t,human CA2 holo; Zn active-site substitution by Pt/Au drugs
+platiny_1a1u_v0,,,,,eval_only,false,needs_pdb_extraction,1A1U,Cyclin-dependent kinase 2 (CDK2),Pt_II,10.1016/j.ejmech.2019.01.063,CDK2 ATP-pocket; cis-diamminedichloride-Pt inhibitor series
+platiny_2ocj_v0,,,,,eval_only,false,needs_pdb_extraction,2OCJ,p53 core domain (DNA-bound),Pt_II,10.1038/sj.onc.1205861,human p53 DBD + DNA response element; Pt-DNA crosslink partner
+platiny_1zxm_v0,,,,,eval_only,false,needs_pdb_extraction,1ZXM,Topoisomerase II (yeast homolog),Pt_II,10.1126/science.1062571,TOP2 DNA-cleavage core; clinical Pt drugs (cisplatin) poison TOP2
+platiny_2krr_v0,,,,,eval_only,false,needs_pdb_extraction,2KRR,Nucleolin RBD1+2,Pt_II,10.1016/j.jmb.2009.09.061,nucleolin RNA-binding domains; Pt-PNA conjugate anchor
+platiny_4bkx_v0,,,,,eval_only,false,needs_pdb_extraction,4BKX,Histone deacetylase 1 (HDAC1) catalytic domain,"Pt_II,Au_III",10.1021/jm5006033,HDAC1 catalytic domain; Pt-hydroxamate hybrid metallodrugs
+platiny_14gs_v0,,,,,eval_only,false,needs_pdb_extraction,14GS,Glutathione S-transferase pi (GST-pi),"Pt_II,Au_I",10.1038/sj.onc.1209091,human GST-pi; Pt / Au conjugation via GSH binding site
+platiny_1fqy_v0,,,,,eval_only,false,needs_pdb_extraction,1FQY,Aquaporin-1 (AQP1),Ru_II,10.1038/35099524,AQP1 water channel; Ru aquaporin blockers (Hohmann group)
+platiny_5ikq_v0,,,,,eval_only,false,needs_pdb_extraction,5IKQ,Cyclooxygenase-2 (COX-2),"Au_I,Pt_II",10.1021/acs.jmedchem.5b013مير,mouse COX-2 holo; Au(I) auranofin / Pt-COX hybrid inhibitors
