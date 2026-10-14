@@ -448,17 +448,47 @@ def run_cross_dataset_validation(
             if name == "platinai_4cell":
                 from molmetal.molmetal_lam.lam_chem.platinai_dataset import PlatinAIDataset
                 ds = PlatinAIDataset()
-                return list(getattr(ds, "smiles", []))[:64]
+                # Wf-A36-2 F2 (2026-10-14) — explicit per-row SMILES contract
+                # (Wf-A14 dataset protocol).  Previously ``getattr(ds,
+                # "smiles", [])`` silently dropped dataset content when
+                # the attribute was missing; the benchmark then ran with
+                # an empty cohort and reported a meaningless score.
+                # Backward-compat: datasets that DO expose .smiles behave
+                # bit-exact identically (we slice [:64] the same way).
+                if not hasattr(ds, "smiles"):
+                    raise AttributeError(
+                        f"Dataset {ds!r} has no .smiles attribute; "
+                        f"cross_dataset._load_smiles requires a per-row "
+                        f"SMILES list. Did you mean to use a different "
+                        f"loader?"
+                    )
+                return list(ds.smiles)[:64]
             if name == "nci60_9cell":
                 from molmetal.molmetal_lam.lam_chem.platinai_dataset import NCI60_GI50_DEFAULT
                 # NCI60 loader exposes per-cell-line SMILES, here we
                 # fall back to the bundled subset if the dataset class
                 # is not present.
-                return list(getattr(NCI60_GI50_DEFAULT, "smiles", []))[:64]
+                # Wf-A36-2 F2 — same explicit-contract fix; see comment above.
+                if not hasattr(NCI60_GI50_DEFAULT, "smiles"):
+                    raise AttributeError(
+                        f"Dataset {NCI60_GI50_DEFAULT!r} has no .smiles "
+                        f"attribute; cross_dataset._load_smiles requires "
+                        f"a per-row SMILES list. Did you mean to use a "
+                        f"different loader?"
+                    )
+                return list(NCI60_GI50_DEFAULT.smiles)[:64]
             if name == "metalcytotoxdb":
                 from molmetal.molmetal_lam.lam_chem.platinai_dataset import MetalCytoToxDataset
                 ds = MetalCytoToxDataset()
-                return list(getattr(ds, "smiles", []))[:64]
+                # Wf-A36-2 F2 — same explicit-contract fix; see comment above.
+                if not hasattr(ds, "smiles"):
+                    raise AttributeError(
+                        f"Dataset {ds!r} has no .smiles attribute; "
+                        f"cross_dataset._load_smiles requires a per-row "
+                        f"SMILES list. Did you mean to use a different "
+                        f"loader?"
+                    )
+                return list(ds.smiles)[:64]
         except Exception as exc:
             LOG.warning("[cross-dataset] dataset %s loader failed: %s", name, exc)
         return []

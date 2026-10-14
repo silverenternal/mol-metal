@@ -698,12 +698,21 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--out-smiles-csv",
         type=Path,
-        default=None,
+        # Wf-A36-2 F1 (2026-10-14) — default to "gated_cohort.csv" so the
+        # trainer --save-generated-smiles → panel --smiles-csv X --out-smiles-csv
+        # Y chain is reliable end-to-end without the caller needing to plumb
+        # --out-smiles-csv through every launcher.  When the user does NOT
+        # override --out-smiles-csv AND --smiles-csv is set, main() resolves
+        # the default to live next to the input CSV (see main()), so the
+        # gated cohort sits beside its source rather than in cwd.
+        default="gated_cohort.csv",
         help=(
-            "Wf-A30-2 B6: write the gated cohort (per-row SMILES + "
-            "sa + qed + chemistry-validity flags when --decode-chemistry-validity "
-            "is set) to a CSV.  Default None (no CSV).  The 'gate' is "
-            "all_pass=True when --decode-chemistry-validity is set, "
+            "Wf-A30-2 B6 / Wf-A36-2 F1: write the gated cohort (per-row "
+            "SMILES + sa + qed + chemistry-validity flags when "
+            "--decode-chemistry-validity is set) to a CSV.  Default "
+            "'gated_cohort.csv' — resolved next to --smiles-csv when the "
+            "user does not pass --out-smiles-csv explicitly.  The 'gate' "
+            "is all_pass=True when --decode-chemistry-validity is set, "
             "else parsed_ratio (sa and qed are not None)."
         ),
     )
@@ -769,10 +778,22 @@ def main(argv: list[str] | None = None) -> int:
     args.out_json.parent.mkdir(parents=True, exist_ok=True)
     with args.out_json.open("w", encoding="utf-8") as fh:
         json.dump(panel, fh, indent=2)
+    # Wf-A36-2 F1 (2026-10-14) — resolve the default --out-smiles-csv
+    # sentinel.  When the caller did NOT pass --out-smiles-csv explicitly
+    # AND --smiles-csv is set, place the gated cohort next to the input
+    # file (so the trainer --save-generated-smiles → panel --smiles-csv
+    # X → --out-smiles-csv default chain is reliable without the launcher
+    # plumbing an output through to the panel).  When the caller DID pass
+    # --out-smiles-csv, honour that explicit choice verbatim.
+    _OUT_DEFAULT = Path("gated_cohort.csv")
+    if args.out_smiles_csv == _OUT_DEFAULT and args.smiles_csv is not None:
+        out_smiles_csv = args.smiles_csv.parent / _OUT_DEFAULT.name
+    else:
+        out_smiles_csv = args.out_smiles_csv
     # Wf-A30-2 B6 — persist gated cohort when --out-smiles-csv is set.
     # Uses atomic_write_file (§5.6) so a partial write cannot truncate
     # the downstream consumer's view.
-    if args.out_smiles_csv is not None:
+    if out_smiles_csv is not None:
         # Lazy import: atomic_write_file is in molmetal/scripts/wf386a3
         # Add repo root to sys.path so this script can be run as
         # ``python molmetal/scripts/cfm_property_panel.py`` (the
@@ -787,7 +808,7 @@ def main(argv: list[str] | None = None) -> int:
         header, rows = _build_gated_csv_rows(
             panel, include_validity=args.decode_chemistry_validity,
         )
-        args.out_smiles_csv.parent.mkdir(parents=True, exist_ok=True)
+        out_smiles_csv.parent.mkdir(parents=True, exist_ok=True)
         # Build with stdlib csv module then dump to a string + atomic write.
         import io as _io
         buf = _io.StringIO()
@@ -795,9 +816,12 @@ def main(argv: list[str] | None = None) -> int:
         writer.writeheader()
         for r in rows:
             writer.writerow(r)
-        atomic_write_file(args.out_smiles_csv, buf.getvalue())
+        atomic_write_file(out_smiles_csv, buf.getvalue())
+        # Wf-A36-2 F1 — 1-line honest-framing traceability stamp naming
+        # the cohort + its source CSV + the gate used.  See also
+        # §5.2 honest-negative framing.
         print(
-            f"[wf264-sa] gated cohort written: {args.out_smiles_csv} "
+            f"[cfm_property_panel] gated cohort written to {out_smiles_csv} "
             f"({len(rows)} of {panel['n_input']} rows; "
             f"gate={'all_pass' if args.decode_chemistry_validity else 'parsed'})"
         )
