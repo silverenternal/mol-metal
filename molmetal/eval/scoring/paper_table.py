@@ -424,9 +424,15 @@ def build_paper_table(
             ),
         }
     else:
+        # Wf-A33-FIXUP-1 (2026-10-14): honor the JSON's top-level
+        # ``status`` field when present (e.g. ``"MEASURED_PILOT_MOCK"``)
+        # so honest-framing per AGENTS.md §5.2 propagates downstream
+        # instead of being silently rewritten to ``"MEASURED"``.
+        # Default ``"MEASURED"`` preserved for backward-compat with
+        # synthetic JSONs that pre-date the on-disk status field.
         per_pocket_out = {
             "source": "metrics/by_metric/cfm_per_pocket_metric.json",
-            "status": "MEASURED",
+            "status": pp_raw.get("status", "MEASURED"),
             "n_pockets": int(pp_raw.get("n_pockets", 0)),
             "decode": dict(pp_raw.get("decode", {})),
             "admet": dict(pp_raw.get("admet", {})),
@@ -620,9 +626,16 @@ def _smoke() -> int:
     assert r1.m14_decode["cohort_empty"] is True
     assert r1.admet8["cohort_empty"] is True
     # Wf-A22 L9 — per-pocket column must always be present; default
-    # ``NOT_COMPUTED`` when the L8 JSON is absent.
+    # ``NOT_COMPUTED`` when the L8 JSON is absent. Wf-A33-FIXUP-1
+    # (2026-10-14) widened the accepted set to also include the
+    # honest PILOT variant (``MEASURED_PILOT_MOCK``) per AGENTS.md
+    # §5.2 — the JSON's top-level ``status`` propagates verbatim.
     assert "status" in r1.per_pocket_w2, r1.per_pocket_w2
-    assert r1.per_pocket_w2["status"] in ("NOT_COMPUTED", "MEASURED"), r1.per_pocket_w2
+    assert r1.per_pocket_w2["status"] in (
+        "NOT_COMPUTED",
+        "MEASURED",
+        "MEASURED_PILOT_MOCK",
+    ), r1.per_pocket_w2
     # Test 2
     cohort = ["CCO", "c1ccccc1", "C.C.C.C", "nonsense"]
     r2 = build_paper_table(

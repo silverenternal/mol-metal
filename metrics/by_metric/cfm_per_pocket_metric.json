@@ -144,7 +144,7 @@
       "status": "MEASURED"
     }
   },
-  "honest_negative": "Wf-A33-3 (2026-10-14): per-pocket decode + ADMET re-run with 10 REAL platiny pockets (fpocket 10A spheres from A33-2). The 1-2 SMILES per pocket are MOCK placeholders \u2014 no real CFM model output yet (Wf-A32 wire-in + GPU re-train is the next step, see TODO-pending/a37_decoder_smoke_link.md). Per-pocket cohort sizes remain small (n=1-2 cloud per pocket), so variance is materially higher than the cohort-aggregated pool; numbers below status='MEASURED' are PILOT only. paper_table.py:398 now reads MEASURED status (was NOT_COMPUTED before).",
+  "honest_negative": "Wf-A33-FIXUP-1 (2026-10-14): per-pocket decode + ADMET run with 10 REAL platiny pockets (fpocket 10A spheres from A33-2), but the 1-2 SMILES per pocket are MOCK placeholders — no real CFM model output yet (next step: Wf-A32 wire-in + GPU re-train; see TODO-pending/a37_decoder_smoke_link.md). Per-pocket cohort sizes remain small (n=1-2 per pocket); all admet n_ok=0 and qed_mean/sa_mean=null. Status=MEASURED_PILOT_MOCK per AGENTS.md §5.2 honest-framing: PILOT only, do NOT promote to headline metrics.",
   "n_empty_decode": 0,
   "n_measured_decode": 10,
   "n_pockets": 10,
@@ -153,5 +153,5 @@
   "skipped_pockets": [],
   "smiles_csv": "/tmp/a33_3_platiny_smiles_r2tcxgzr/json",
   "smiles_csv_dir": "/tmp/a33_3_platiny_smiles/",
-  "status": "MEASURED"
+  "status": "MEASURED_PILOT_MOCK"
 }
