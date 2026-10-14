@@ -85,7 +85,14 @@ def _try_import_encoder_class(qualname: str):
     packages are absent. Returns the class on success, raises ImportError
     with a clear remediation message on failure.
     """
-    mod = importlib.import_module("encoders")
+    # Wf-A32 PATCH (2026-10-14) — import via fully-qualified dotted path so
+    # cftfm.py's `from ..common import ...` relative imports resolve inside
+    # the molmetal.adapters.pocketgen.models package (previously used a bare
+    # "encoders" name which made encoders a top-level module, breaking
+    # the relative import with `attempted relative import beyond top-level
+    # package`).  The vendored PocketGen code pre-dates this fix; we keep
+    # the workaround in our adapter, not in upstream source, per §5.5.
+    mod = importlib.import_module("molmetal.adapters.pocketgen.models.encoders")
     try:
         return getattr(mod, qualname)
     except AttributeError as exc:
@@ -96,7 +103,7 @@ def _try_import_encoder_class(qualname: str):
 
 
 if TYPE_CHECKING:  # pragma: no cover — only for type-checkers / IDE
-    from encoders import BilevelEncoder, HierEncoder, GET  # noqa: F401
+    from molmetal.adapters.pocketgen.models.encoders import BilevelEncoder, HierEncoder, GET  # noqa: F401
 
 
 def __getattr__(name: str):
