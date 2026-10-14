@@ -400,6 +400,13 @@ _EXTRA_CANDIDATES = [
     ('--lr-scheduler', 'SCHEDULER'),
     ('--lr-warmup-epochs', 'LR_WARMUP_EPOCHS'),
     ('--lr-min-lr', 'LR_MIN_LR'),
+    # 2026-10-15 — was MISSING from this probe list, so the emission at
+    # `LR_PCT_START=` below and the `_add_flag --lr-pct-start` call were both
+    # dead: the flag was filtered out by the `EXTRA_SUPPORTED_FLAGS` gate and
+    # `protocol.scheduler.pct_start` never reached the trainer (every config
+    # silently ran at the trainer's 0.3 default).  Caught on the BLK-C11
+    # 2026-10-15 PCGrad A/B; both arms ran at 0.3.
+    ('--lr-pct-start', 'LR_PCT_START'),
     ('--weight-decay', 'WEIGHT_DECAY'),
     ('--max-norm', 'MAX_NORM'),
 ]
