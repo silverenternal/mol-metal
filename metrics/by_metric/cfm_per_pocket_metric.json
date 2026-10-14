@@ -209,5 +209,5 @@
   "producer": "build_per_pocket_panel",
   "protocol_version": "per_pocket_metric/2026-10-13",
   "smiles_csv": "/home/hugo/codes/mol-metal/molmetal/data/platiny_pocket_pool.csv",
-  "status": "MEASURED"
+  "status": "MEASURED_PILOT_MOCK"
 }
