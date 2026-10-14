@@ -8,8 +8,10 @@
       "run": "wf_sa_penalty_guidance (no --sa-weight, Lambda-only)",
       "value": "≥5.0",
       "n_samples": null,
-      "status": "MEASURED",
-      "date_utc": "2026-09-14"
+      "status": "PROJECTED",
+      "date_utc": "2026-09-14",
+      "_status_retag_wf": "Wf-A36-3",
+      "_status_retag_note": "n_samples=null is a projected lower bound from Lambda-MCTS unconstrained baseline (Krasnov 2026 cite). Re-tagged PROJECTED per AGENTS.md §5.2 (Wf-A36-3 G3). MEASURED entries below this one carry n_samples>0 and remain MEASURED."
     },
     {
       "run": "wf_sa_penalty_guidance (--sa-weight 0.3, 5x1 smoke)",

@@ -241,6 +241,124 @@ def build_per_pocket_panel(
     return panel
 
 
+def run_full_per_pocket_panel(
+    out_dir: Path,
+    *,
+    cohort_name: str = "default",
+    smiles_csv: Optional[Path] = None,
+    largest_frac_min: float = 0.80,
+    min_atoms: int = 2,
+    ckpt_path: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Wf-A36-3 G2 producer — write ``cfm_per_pocket_metric.json``.
+
+    Per AGENTS.md §5.5 (filesystem-truth) the JSON must exist on disk
+    before :func:`paper_table.build_paper_table` can read it.  This is
+    the *thin* producer the L8 paper-table column expects; it does NOT
+    run checkpoint inference (heavyweight / GPU).  It either:
+
+    * walks ``smiles_csv`` via :func:`build_per_pocket_panel` and emits
+      ``status: MEASURED`` for any pocket with >=1 valid SMILES, OR
+    * falls back to a ``status: NOT_COMPUTED`` stub that still carries
+      the cohort_name + protocol_version so the gate can record a real
+      ``sources_missing`` rather than a missing file.
+
+    The ``ckpt_path`` argument is recorded for traceability but is
+    intentionally unused here — running inference is delegated to a
+    separate Wf-A37 hook (out of scope for A36-3).  Recording the path
+    surfaces the consumer side (paper_table.py) and downstream callers
+    that an inference path exists for future wiring.
+
+    Parameters
+    ----------
+    out_dir : Path
+        Directory where ``cfm_per_pocket_metric.json`` is written.  Will
+        be created if it does not exist.
+    cohort_name : str
+        Cohort label — e.g. ``"wf140_p1_sa_5pocket"`` or ``"smoke"``.
+        Persisted into the JSON so cross-table consumers can attribute
+        the row.
+    smiles_csv : Path | None
+        Optional CSV with ``smiles`` (and ideally ``pocket_id``)
+        columns.  When the file is present and non-empty, the canonical
+        per-pocket decode + ADMET panel is computed.
+    ckpt_path : Path | None
+        Optional checkpoint path.  Recorded in the JSON
+        ``ckpt_path`` field for traceability, but inference is NOT
+        triggered from this function (Wf-A36-3 scope; see
+        TODO/pending/a37_decoder_smoke_link.md).
+    largest_frac_min, min_atoms
+        Forwarded to the per-pocket decode gate.
+
+    Returns
+    -------
+    dict
+        The panel dict that was written to disk.  Useful for callers
+        that want to read-and-verify in one step.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_json = out_dir / "cfm_per_pocket_metric.json"
+
+    # Honour the explicit producer path when the CSV is on disk.
+    if smiles_csv is not None and Path(smiles_csv).is_file() and Path(smiles_csv).stat().st_size > 0:
+        try:
+            panel = build_per_pocket_panel(
+                Path(smiles_csv),
+                out_json,
+                largest_frac_min=largest_frac_min,
+                min_atoms=min_atoms,
+            )
+        except Exception as e:
+            panel = None
+            stub_status = "BUILD_ERROR"
+            stub_note = f"build_per_pocket_panel raised {type(e).__name__}: {e}"
+        else:
+            panel["cohort"] = cohort_name
+            if ckpt_path is not None:
+                panel["ckpt_path"] = str(ckpt_path)
+            panel["status"] = "MEASURED"
+            panel["producer"] = "build_per_pocket_panel"
+            with out_json.open("w", encoding="utf-8") as f:
+                json.dump(panel, f, indent=2, sort_keys=True)
+            return panel
+    else:
+        panel = None
+        stub_status = "NOT_COMPUTED"
+        stub_note = (
+            f"No smiles_csv provided (smiles_csv={smiles_csv!r}); producer "
+            f"running in stub mode. paper_table.py will read this JSON and "
+            f"see status=NOT_COMPUTED. Run with --smiles-csv to switch "
+            f"the gate to MEASURED."
+        )
+
+    # Stub / error fallback: still write the canonical JSON so the L8
+    # gate sees a file on disk and emits status=NOT_COMPUTED rather than
+    # silently dropping the row.
+    panel = {
+        "protocol_version": PROTOCOL_VERSION,
+        "cohort": cohort_name,
+        "n_pockets": 0,
+        "decode": {},
+        "admet": {},
+        "smiles_csv": None if smiles_csv is None else str(smiles_csv),
+        "ckpt_path": None if ckpt_path is None else str(ckpt_path),
+        "status": stub_status,
+        "producer": "run_full_per_pocket_panel",
+        "honest_negative": (
+            "L8 stub emission (Wf-A36-3 G2): cfm_per_pocket_metric.json "
+            "was written so paper_table.py:398 reads a file instead of "
+            "raising. Per-pocket decode + ADMET only flip to MEASURED "
+            "once a smiles_csv is supplied to run_full_per_pocket_panel."
+        ),
+        "note": stub_note,
+    }
+    out_json.parent.mkdir(parents=True, exist_ok=True)
+    with out_json.open("w", encoding="utf-8") as f:
+        json.dump(panel, f, indent=2, sort_keys=True)
+    return panel
+
+
 AVAILABLE: bool = _decode_gate.AVAILABLE and _admet8.AVAILABLE
 
 
@@ -250,6 +368,7 @@ __all__ = [
     "per_pocket_decode_ratio",
     "per_pocket_admet",
     "build_per_pocket_panel",
+    "run_full_per_pocket_panel",
     "read_per_pocket_json",
 ]
 
@@ -286,10 +405,97 @@ def _smoke() -> int:
         assert out_path.exists(), out_path
         loaded = read_per_pocket_json(out_path)
         assert loaded == panel, "round-trip mismatch"
-    print(f"[per_pocket_metric] SMOKE PASS  3/3  n_pockets={panel['n_pockets']}")
+    # Test 4: Wf-A36-3 G2 — run_full_per_pocket_panel stub emission.
+    # No smiles_csv → status=NOT_COMPUTED, but JSON MUST exist on disk.
+    import tempfile as _tempfile
+    with _tempfile.TemporaryDirectory() as td:
+        out_dir = Path(td)
+        stub = run_full_per_pocket_panel(
+            out_dir,
+            cohort_name="smoke",
+        )
+        assert (out_dir / "cfm_per_pocket_metric.json").is_file(), (
+            "run_full_per_pocket_panel stub did not write the canonical JSON"
+        )
+        assert stub["status"] == "NOT_COMPUTED", stub["status"]
+        assert stub["cohort"] == "smoke", stub["cohort"]
+        assert stub["n_pockets"] == 0, stub["n_pockets"]
+        assert stub["protocol_version"] == PROTOCOL_VERSION
+    # Test 5: same function, smiles_csv provided → status=MEASURED.
+    with _tempfile.TemporaryDirectory() as td:
+        out_dir = Path(td)
+        csv_path = out_dir / "smi.csv"
+        csv_path.write_text("smiles,pocket_id\nCCO,p1\nc1ccccc1,p1\n")
+        measured = run_full_per_pocket_panel(
+            out_dir,
+            cohort_name="smoke_measured",
+            smiles_csv=csv_path,
+        )
+        assert measured["status"] == "MEASURED", measured["status"]
+        assert measured["cohort"] == "smoke_measured"
+        assert measured["n_pockets"] == 1, measured["n_pockets"]
+        assert "p1" in measured["decode"], measured["decode"]
+        assert (out_dir / "cfm_per_pocket_metric.json").is_file()
+    print(f"[per_pocket_metric] SMOKE PASS  5/5  n_pockets={panel['n_pockets']}")
+    return 0
+
+
+def _cli_main(argv: Optional[List[str]] = None) -> int:
+    """Wf-A36-3 G2 — ``python -m molmetal.eval.scoring.per_pocket_panel``.
+
+    Sub-commands:
+      * (no args, ``--smoke``, ``--help``) → run :func:`_smoke`
+      * ``--cohort NAME --out-dir DIR`` → run
+        :func:`run_full_per_pocket_panel` writing
+        ``cfm_per_pocket_metric.json`` into ``DIR``.
+
+    Returns ``0`` on PASS / successful write, ``1`` on smoke FAIL.
+    """
+    import argparse
+    parser = argparse.ArgumentParser(
+        prog="per_pocket_metric",
+        description=(
+            "Wf-A36-3 G2: thin producer for "
+            "cfm_per_pocket_metric.json. Either run --smoke (default, "
+            "3 unit tests + 2 run_full round-trips) or write the JSON "
+            "via run_full_per_pocket_panel. See molmetal.eval.scoring."
+            "per_pocket_metric.run_full_per_pocket_panel for the full "
+            "docstring."
+        ),
+    )
+    parser.add_argument("--cohort", help="cohort name persisted into JSON")
+    parser.add_argument("--out-dir", type=Path, help="output directory (writes cfm_per_pocket_metric.json here)")
+    parser.add_argument("--smiles-csv", type=Path, help="CSV with smiles+pocket_id columns; omit for NOT_COMPUTED stub")
+    parser.add_argument("--ckpt-path", type=Path, help="checkpoint path (recorded for traceability, not used)")
+    parser.add_argument("--largest-frac-min", type=float, default=0.80)
+    parser.add_argument("--min-atoms", type=int, default=2)
+    parser.add_argument("--smoke", action="store_true", help="run the unit smoke instead")
+    args = parser.parse_args(argv)
+
+    # Default to smoke when no producer args were given.
+    producer_args = [args.cohort, args.out_dir, args.smiles_csv, args.ckpt_path, args.smoke]
+    if not any(producer_args):
+        return _smoke()
+    if args.smoke:
+        return _smoke()
+    if not args.out_dir:
+        print("--out-dir is required when not running --smoke", file=sys.stderr)
+        return 2
+    panel = run_full_per_pocket_panel(
+        args.out_dir,
+        cohort_name=args.cohort or "default",
+        smiles_csv=args.smiles_csv,
+        ckpt_path=args.ckpt_path,
+        largest_frac_min=args.largest_frac_min,
+        min_atoms=args.min_atoms,
+    )
+    print(
+        f"[per_pocket_metric] wrote {args.out_dir / 'cfm_per_pocket_metric.json'} "
+        f"status={panel['status']!r} cohort={panel['cohort']!r}",
+    )
     return 0
 
 
 if __name__ == "__main__":  # pragma: no cover
     import sys
-    sys.exit(_smoke())
+    raise SystemExit(_cli_main())

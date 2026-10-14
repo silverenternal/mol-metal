@@ -325,8 +325,23 @@ def build_protocols(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
 def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
     """Harvest the metric layer from metrics/by_metric/*.json.
 
-    Only the metric ids the three paper lines depend on (LINE_METRICS) get a
-    registry row; the rest are reported as uncovered so the gap is explicit.
+    Two passes per Wf-A36-3 G1 (2026-10-14):
+
+    1. The three paper-line metrics (LINE_METRICS) get the full
+       ``target`` / ``direction`` / ``verdict`` wiring from
+       :data:`METRIC_TARGETS`.
+    2. **Every other JSON under ``metrics/by_metric/``** also gets a
+       registry row — without the targets wiring, but with the
+       sha256, value, status, scope, and verdict pulled verbatim from
+       the on-disk JSON.  The pre-A36-3 behaviour was to drop these
+       into an ``uncovered_metric_files`` list and leave them out of
+       the registry, which made 240+ JSONs invisible to the registry
+       check.
+
+    The ``metric_id`` for pass 2 is taken from the JSON's own
+    ``metric`` field, falling back to the file stem.  Pass-1 ids keep
+    precedence when a file is named under both ``LINE_METRICS`` and
+    the disk glob.
     """
     out: Dict[str, Any] = {}
     covered_files: set = set()
@@ -354,6 +369,38 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
             }
             rec.update(METRIC_TARGETS.get(metric_id, {}))
             out[metric_id] = rec
+    # Wf-A36-3 G1 (2026-10-14): walk every JSON under metrics/by_metric/
+    # and add a registry row for each one not already covered by
+    # LINE_METRICS.  No METRIC_TARGETS wiring for these — they live in
+    # the registry because they exist on disk, not because they map to
+    # a paper line.
+    for src_path in sorted(BY_METRIC_DIR.glob("*.json")):
+        stem = src_path.stem
+        if stem in covered_files:
+            continue
+        covered_files.add(stem)
+        payload = _load_json(src_path)
+        exists = src_path.is_file()
+        metric_id = payload.get("metric") if isinstance(payload, dict) else None
+        if not metric_id or not isinstance(metric_id, str):
+            metric_id = stem
+        # Avoid clobbering a LINE_METRICS entry when the JSON's
+        # ``metric`` field happens to equal a paper-line id.
+        if metric_id in out:
+            metric_id = f"{metric_id}__disk"
+        rec = {
+            "source_json": _rel(src_path),
+            "source_json_sha256": _sha256_file(src_path),
+            "source_json_missing": not exists,
+            "value": _extract_value(payload),
+            "status": payload.get("status") if isinstance(payload, dict) else None,
+            "verdict": payload.get("verdict") if isinstance(payload, dict) else None,
+            "scope": payload.get("scope") if isinstance(payload, dict) else None,
+            "metric_timestamp": payload.get("timestamp") if isinstance(payload, dict) else None,
+            "last_refreshed": _now_utc(),
+            "registry_origin": "wf_a36_3_g1_disk_walk",
+        }
+        out[metric_id] = rec
     return out, covered_files
 
 

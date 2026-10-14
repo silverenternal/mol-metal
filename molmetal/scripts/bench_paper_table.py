@@ -140,6 +140,23 @@ def main(argv: Optional[list] = None) -> int:
         # create it so the writer doesn't blow up.
         out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Wf-A36-3 G2 (2026-10-14): ensure ``cfm_per_pocket_metric.json``
+    # exists on disk before :func:`build_paper_table` reads it.  The
+    # L8 paper-table column emits ``status="NOT_COMPUTED"`` when the
+    # file is absent — that's the legacy default we are closing out.
+    # The producer ``run_full_per_pocket_panel`` writes either a
+    # MEASURED panel (when ``smiles_csv`` is on disk) or a
+    # NOT_COMPUTED stub (so the gate sees a real file rather than a
+    # missing-file MISSING branch).
+    from molmetal.eval.scoring.per_pocket_metric import run_full_per_pocket_panel
+    run_full_per_pocket_panel(
+        out_dir,
+        cohort_name=args.cohort,
+        smiles_csv=args.smiles_csv,
+        largest_frac_min=args.largest_frac_min,
+        min_atoms=args.min_atoms,
+    )
+
     row = build_paper_table(
         cohort_id=args.cohort,
         smiles_csv=args.smiles_csv,

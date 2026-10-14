@@ -1,5 +1,5 @@
 schema: molmetal-registry-metrics-v1
-generated_at: '2026-10-11T11:42:48+00:00'
+generated_at: '2026-10-14T08:09:12+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable metric facts. A metric is CURRENT iff source_json_sha256 still
   matches disk.
@@ -17,7 +17,7 @@ metrics:
     verdict: PASS
     scope: CFM (Conditional Flow Matching) generate path
     metric_timestamp: null
-    last_refreshed: '2026-10-11T11:42:48+00:00'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
     value_key: aggregate.best_measured_real
     target: 0.5
     direction: '>='
@@ -31,7 +31,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: CFM (EGNN velocity field + YuelBond bond head) on tmQM
     metric_timestamp: null
-    last_refreshed: '2026-10-11T11:42:48+00:00'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
     target: null
     direction: null
     remains: no scalar emitted on disk; one GPU probe to score it
@@ -45,7 +45,7 @@ metrics:
     scope: CFM generate path (true physical docking) + Wf-121 P3 cisplatin real Vina
       sweep
     metric_timestamp: null
-    last_refreshed: '2026-10-11T11:42:48+00:00'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
     value_key: v3_cohort_median_REAL
     target: -8.5
     direction: <=
@@ -59,7 +59,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: null
     metric_timestamp: null
-    last_refreshed: '2026-10-11T11:42:48+00:00'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
     value_key: aggregate.best_measured
     target: 0.65
     direction: '>='
@@ -74,7 +74,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: tier1_precious_metal_anticancer
     metric_timestamp: '2026-09-27'
-    last_refreshed: '2026-10-11T11:42:48+00:00'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
     target: 0.86
     direction: '>='
     remains: cohort honest-negative (591 vs 23 cell lines); no launch closes it
@@ -87,46 +87,46 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: tier2_sbdd_ood_lomo_wasserstein
     metric_timestamp: '2026-10-08T06:51:17+00:00'
-    last_refreshed: '2026-10-11T11:42:48+00:00'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
     target: 0.7
     direction: '>='
     remains: P-A drift ALREADY FIXED on disk (real-only 5-fold); doc retag only
   m2_r2_per_cell:
-    source_json: metrics/by_metric/m2_r2_per_cell.json
-    source_json_sha256: 9ff99cc92201e0d36fa9e7f02ab99532f3350f0345c452a75e5b5785c246ca8f
+    source_json: metrics/by_metric/platinai_4cell_auc.json
+    source_json_sha256: edb366ed14bdbe57c87fbaee9db89cc48e3d0091d316c71fe00bbdd09c9e14e8
     source_json_missing: false
-    value: null
-    status: REINDEX_PENDING
+    value: 0.7104930443183348
+    status: MEASURED_SYNTHETIC_LABELS
     verdict: HONEST_NEGATIVE
     scope: tier1_precious_metal_anticancer
-    metric_timestamp: '2026-09-25'
-    last_refreshed: '2026-10-14T00:00:00+00:00'
+    metric_timestamp: '2026-10-12'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
     target: 0.85
     direction: '>='
-    remains: REINDEX_PENDING — original source_json path was deleted; placeholder JSON created by Wf-A30-2 B5; re-run `.venv/bin/python molmetal/scripts/registry.py reindex m2_r2_per_cell` once the underlying PlatinAI 4-cell cohort JSON is restored (see HONEST_NEGATIVE_CATALOG.md §6.51e)
+    remains: closed structural (Wf-369-A2); synthetic labels; no GPU
   m21_nci60_9cell:
-    source_json: metrics/by_metric/m21_nci60_9cell.json
-    source_json_sha256: 9a3654ab8cb181f30667cad034975f41e84a3914193a5edcf0298917cf9de9df
+    source_json: metrics/by_metric/nci60_precious_9cell_auc.json
+    source_json_sha256: d870664fecc00b30547662bb090548dbb3f6a0f550aa002e70d1bd961af2dfb3
     source_json_missing: false
-    value: null
-    status: REINDEX_PENDING
-    verdict: HONEST_NEGATIVE
+    value: 0.7293802091886383
+    status: MEASURED_HONEST_NEGATIVE
+    verdict: PASS
     scope: tier1_precious_metal_anticancer
-    metric_timestamp: '2026-09-25'
-    last_refreshed: '2026-10-14T00:00:00+00:00'
+    metric_timestamp: '2026-10-12'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
     target: 0.7
     direction: '>='
-    remains: REINDEX_PENDING — original source_json path was deleted; placeholder JSON created by Wf-A30-2 B5; re-run `.venv/bin/python molmetal/scripts/registry.py reindex m21_nci60_9cell` once the underlying NCI-60 9-cell cohort JSON is restored (see HONEST_NEGATIVE_CATALOG.md §6.51e)
+    remains: nothing for gate; scaffold split enforced in code
   l5_hilbert_r2:
     source_json: metrics/by_metric/hilbert_4cell_r2.json
-    source_json_sha256: 14bef681b645f83bf9dfe7cf4050420542c7c868fc172a601c5e5bbeda3b8cd4
+    source_json_sha256: 45f5031fadac53f422c2a7b0681b3e9079918dc6b7a6475ae48375ceaeaf0b81
     source_json_missing: false
-    value: -5.662524090882017
+    value: -6.712634861296495
     status: MEASURED_BELOW_GATE
     verdict: HONEST_NEGATIVE
-    scope: tier1_precious_metal_anticancer / Wf-122 P3 post-fix combined anchor
-    metric_timestamp: '2026-09-27'
-    last_refreshed: '2026-10-11T11:42:48+00:00'
+    scope: tier1_precious_metal_anticancer / Wf-83 P1 combined anchor
+    metric_timestamp: '2026-10-14'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
     target: 0.85
     direction: '>='
     remains: architectural ceiling (~0.68); drop-from-S3 or metric redefinition; NO
@@ -140,7 +140,7 @@ metrics:
     verdict: HONEST_NEGATIVE
     scope: null
     metric_timestamp: null
-    last_refreshed: '2026-10-11T11:42:48+00:00'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
     value_key: aggregate.closure_reachability_rate
     target: 0.95
     direction: '>='
@@ -157,175 +157,2948 @@ metrics:
       a generation-quality metric. Do not read any value here as a claim about CFM-generated
       molecules. (Wf-R44 scope correction.)
     metric_timestamp: '2026-10-01'
-    last_refreshed: '2026-10-11T11:42:48+00:00'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
     target: 0.6
     direction: '>='
     remains: drop-from-S3 per Wf-389-A1; same family as L5
-uncovered_metric_files:
-- admet_full_coverage
-- affinity_pearson_r
-- affinity_pearson_r_summary
-- ames_mutagen
-- aqueous_solubility_logS
-- atom_vocab_coverage
-- baseline_random_smiles
-- baseline_random_smiles_seed0
-- baseline_random_smiles_seed1
-- baseline_random_smiles_seed2
-- baseline_random_smiles_summary
-- bbb
-- blk_c13_adaptive_head_replay
-- blk_c13_epsilon_constraint
-- blk_g1_bond_head_scaling
-- caco2_perm
-- cell_permeability_logPapp
-- cfm_assemble_hinge_tau
-- cfm_decode_chemistry_validity
-- cfm_decode_fragmentation
-- cfm_decode_real
-- cfm_generated_to_nci60_cross_application
-- cfm_generation_collapse_rootcause
-- cfm_internal_diversity_intdiv1
-- cfm_loss_term_liveness
-- cfm_qed_fragment_aware
-- cfm_run_census
-- cfm_sa_reference_scale
-- cfm_valence_budget_variant_ab
-- chemprop_v2_5metal_5seed_50epoch
-- chemprop_v2_lomo_v2
-- chemprop_v2_status_2026_09_27
-- chemprop_v2_status_2026_09_28
-- clearance
-- com_shift
-- com_shift_1h36
-- com_shift_3eml
-- com_shift_3ny8
-- com_shift_4aaw
-- com_shift_4rlu
-- cytotox_label_noise
-- diversity_subpocket
-- diversity_tanimoto
-- dmpnn_ckpt_status
-- docked_pose_rmsd
-- drugood_ood_auc
-- drugood_ood_auc_native_smoke
-- drugood_v3_scaffold
-- external_scorers_summary
-- f3_dmpnn_lomo_target_centering
-- gi50_proxy
-- gi50_proxy_summary
-- half_life
-- hepatotox_index
-- herg_cardio_risk
-- herg_cardio_risk_pool
-- ligand_vs_pocket_rmsd
-- logp7_4
-- m2_r2_per_cohort
-- m4_sa
-- m4_success_rate
-- metal_activity_transfer
-- metal_activity_transfer_seed_stability
-- metal_activity_transfer_tie_sensitivity
-- metal_compliance
-- metal_coord_compliance
-- metal_coord_compliance_phase3g
-- metal_lomo_auc
-- metal_lomo_auc_v2
-- metal_lomo_chemprop_v2
-- metalcytotox_combined_r2
-- metallodrug_vertical_coverage
-- metric18_protein_metal
-- metric18_protein_metal_per_residue
-- metric18_protein_metal_v2
-- moleculenet_auc
-- moleculenet_auc_dmpnn
-- moleculenet_auc_dmpnn_5seed
-- moleculenet_auc_dmpnn_5seed_rescue
-- multi_task_4domain_v2
-- n_distinct
-- n_train_scaleup
-- nci60_precious_9cell_auc_3seed_5epoch
-- ood_per_element_reachability
-- ood_per_metal_reachability
-- ood_reachability_summary
-- pb_pass_rate
-- pearson_r_pic50
-- per_metal_pic50_wasserstein
-- pharmacophore_pass_rate
-- pharmacophore_pass_rate_prod
-- plasma_protein_binding
-- platinai_3cell_resistance
-- platinai_a2780_pred
-- platinai_combined_r2
-- platinai_mcf7_pred
-- protein_metal_per_residue_summary
-- qed
-- qed_score
-- r13_100x3_partial
-- rdkit_validity
-- reference_tanimoto
-- rigid_fragment_rmsd
-- rigid_fragment_rmsd_1h36
-- rigid_fragment_rmsd_3eml
-- rigid_fragment_rmsd_3ny8
-- rigid_fragment_rmsd_4aaw
-- rigid_fragment_rmsd_4rlu
-- ring_size_distribution
-- sa_mean
-- sa_score
-- steric_clash_pb_dock
-- steric_clash_pb_dock_1h36
-- steric_clash_pb_dock_test_001
-- tier1_summary
-- tier2_summary
-- tmqm_bond_perception
-- tmqm_combined_r2
-- tmqm_pretrain_init_ab_ru
-- uff_energy_pt_pool
-- vdss
-- vina_high_affinity
-- vina_high_affinity_1h36
-- vina_high_affinity_3eml
-- vina_high_affinity_3ny8
-- vina_high_affinity_4aaw
-- vina_high_affinity_4rlu
-- vina_high_affinity_test_001
-- vina_min_score
-- vina_reference
-- vina_reference_1h36
-- vina_reference_3eml
-- vina_reference_3ny8
-- vina_reference_4aaw
-- vina_reference_4rlu
-- vina_reference_test_001
-- vina_relaxed_success
-- vina_relaxed_success_1h36
-- vina_relaxed_success_3eml
-- vina_relaxed_success_3ny8
-- vina_relaxed_success_4aaw
-- vina_relaxed_success_4rlu
-- vina_relaxed_success_test_001
-- vina_score
-- vina_score_1h36
-- vina_score_3eml
-- vina_score_3ny8
-- vina_score_4aaw
-- vina_score_4rlu
-- vina_score_test_001
-- vina_status
-- vina_triple_success
-- vina_triple_success_1h36
-- vina_triple_success_3eml
-- vina_triple_success_3ny8
-- vina_triple_success_4aaw
-- vina_triple_success_4rlu
-- vina_triple_success_test_001
-- wf181_g5_50epoch_cascade_delta_5metal
-- wf181_g5_50epoch_full_sweep
-- wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold
-- wf30_dock_verify
-- wf30_dock_verify_summary
-- wf32_pb_valid
-- wf32_pb_valid_summary
-- wf32_pb_valid_verify
-- wf32_pb_valid_verify_summary
+  admet_full_coverage:
+    source_json: metrics/by_metric/admet_full_coverage.json
+    source_json_sha256: fbec744a017a901b0538ab9ed2c4bed1f7f7aa05a72cce56702f195427dd85bf
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: ADMET pass-through full coverage (Wf-303C T1 / Wf-312C R01)
+    metric_timestamp: '2026-09-29'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  affinity_pearson_r:
+    source_json: metrics/by_metric/affinity_pearson_r.json
+    source_json_sha256: dc56aaf25cb93ee449fb426e67bc72004aa30e8244158b7beecd738438c66eb9
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  affinity_pearson_r_summary:
+    source_json: metrics/by_metric/affinity_pearson_r_summary.json
+    source_json_sha256: 302a2852601339949849809f3bb8b45ac6f2018ecb1c8763715d649ade4970f6
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  alt_encoder_ab:
+    source_json: metrics/by_metric/alt_encoder_ab.json
+    source_json_sha256: 87365117287e06c712f6d73df9533b8452183a5db9eac2a4fec90c7d33d458e7
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: 'AttentiveFP backbone does NOT beat the in-house D-MPNN on a paired test
+      — bace: attn 0.7410 vs dmpnn 0.7803 (d=-0.0393, p1=0.881); clintox: attn 0.8340
+      vs dmpnn 0.8366 (d=-0.0025, p1=0.541). Keep the in-house D-MPNN as the main
+      model; no protocol-changing swap.'
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ames_mutagen:
+    source_json: metrics/by_metric/ames_mutagen.json
+    source_json_sha256: 2272d9d748d5798d2a51539e27b70e2ef36d007df2e94dcc0adb42dc73990df8
+    source_json_missing: false
+    value: 0.0400890868596882
+    status: null
+    verdict: null
+    scope: drug-likeness panel (metrics_v2 Phase-3B)
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  aqueous_solubility_logS:
+    source_json: metrics/by_metric/aqueous_solubility_logS.json
+    source_json_sha256: 0e18ea421f7b8eb5f8f5227c734bfc0c6a867be6de041e45e4c2339710148fe8
+    source_json_missing: false
+    value: -7.612188409757133
+    status: null
+    verdict: null
+    scope: drug-likeness panel (metrics_v2 Phase-3B)
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  atom_vocab_coverage:
+    source_json: metrics/by_metric/atom_vocab_coverage.json
+    source_json_sha256: a4834a1c8f3be5c35607e24d0b62289d886d2a9f462002ea5bf054181fba1eba
+    source_json_missing: false
+    value: null
+    status: MEASURED via Phase 1 filter fix
+    verdict: MEASURED — atom vocab expansion 4→14 is shipped and tested. 51/500 mols
+      dropped due to RDKit parse failures on multi-component organometallics (acceptable,
+      documented as honest caveat).
+    scope: CFM training-data filter (r10_cfg_real_crossdocked.py)
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  baseline_random_smiles:
+    source_json: metrics/by_metric/baseline_random_smiles.json
+    source_json_sha256: 453a1b839eeb7ae3dbd76d71ecfd02a30d01631009f0a1fe8ed15adabe82ce62
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  baseline_random_smiles_seed0:
+    source_json: metrics/by_metric/baseline_random_smiles_seed0.json
+    source_json_sha256: 1370584337f461c972b30fa81181b07ed9092a21fe085b180e5728ba2c0a08f7
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  baseline_random_smiles_seed1:
+    source_json: metrics/by_metric/baseline_random_smiles_seed1.json
+    source_json_sha256: 097419ac064ed71efa95af9308a14a32269f60dbd656654b5a26862f84f41367
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  baseline_random_smiles_seed2:
+    source_json: metrics/by_metric/baseline_random_smiles_seed2.json
+    source_json_sha256: b5934b4c23f66635c24e76657be189c9a50ebcb1bbf70f3a063442afc26aeebc
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  baseline_random_smiles_summary:
+    source_json: metrics/by_metric/baseline_random_smiles_summary.json
+    source_json_sha256: de348404b98cf502e675dd568ca02a3ce63de17a557f1a67f6f3a51f0ac648bd
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  bbb:
+    source_json: metrics/by_metric/bbb.json
+    source_json_sha256: 6fb0fa535123e3453d445ca3ddb420b491db9274f67dd98671a31c6353dd67d5
+    source_json_missing: false
+    value: -0.15858744391982235
+    status: MEASURED
+    verdict: INFO
+    scope: ADMET pass-through panel (Wf-303C T1 / Wf-312C R01 5-NEW extension)
+    metric_timestamp: '2026-09-29'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  blk_c13_adaptive_head_replay:
+    source_json: metrics/by_metric/blk_c13_adaptive_head_replay.json
+    source_json_sha256: d1964159e0373a8254004468204fd0241629d57ce66999a377f3d5363fdbc0e9
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  blk_c13_epsilon_constraint:
+    source_json: metrics/by_metric/blk_c13_epsilon_constraint.json
+    source_json_sha256: 5ce6a916a51db5ac5efc269e4883aba7f2b35cda4e9c2291236a34b1da60e275
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope:
+      runs:
+      - control
+      - fm_ab
+      seeds: one seed per run (seed 0)
+      in_sample: true
+      not_established: No claim that any epsilon produces a better model. No claim
+        that the front is fundamental — BLK-C12 records 8 of 12 loss terms dead, so
+        this may be the front of a broken objective.
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  blk_g1_bond_head_scaling:
+    source_json: metrics/by_metric/blk_g1_bond_head_scaling.json
+    source_json_sha256: d6331555fb16292160bc148faa56636fa660f3d0156861faa00bd99d6ce45734
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: CFM DMPNNBondHead alone, tmQM six target metals, no CFM training
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  blk_l1_platinai_50d_r2:
+    source_json: metrics/by_metric/blk_l1_platinai_50d_r2.json
+    source_json_sha256: 1872790f0ebce2a3a564c0f4ef08cccb5e3aaed14a280b7150bc013e6958cbfc
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict:
+      target_r2: 0.15
+      best_arm_r2: 0.010248095662493722
+      verdict: CEILING_REACHED_HONEST_NEGATIVE
+      reading: '50-d (32-d RDKit + 18 PCA dims of a real Morgan fingerprint) does
+        not move platinai_4cell R^2 off zero: the cohort is representation-limited,
+        not feature-count-limited. metalcytotox_combined stays the load-bearing cohort.'
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  caco2_perm:
+    source_json: metrics/by_metric/caco2_perm.json
+    source_json_sha256: e375fdffe3906a933883043a2a1d9adaad2ec82d43d419d775646b411d3fed04
+    source_json_missing: false
+    value: -3.0347563140311804
+    status: MEASURED
+    verdict: PASS
+    scope: ADMET pass-through panel (Wf-303C T1 / Wf-312C R01 5-NEW extension)
+    metric_timestamp: '2026-09-29'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cell_permeability_logPapp:
+    source_json: metrics/by_metric/cell_permeability_logPapp.json
+    source_json_sha256: dff15d18a7d1bcf6ae2a04a4839f5054f90974b31fafe02eb8c8896ee27d411b
+    source_json_missing: false
+    value: -3.7784748866599998
+    status: null
+    verdict: null
+    scope: anticancer / drug-likeness (metrics_v2 Phase-3B)
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_5new_loss_classes_wirein:
+    source_json: metrics/by_metric/cfm_5new_loss_classes_wirein.json
+    source_json_sha256: 6e976bd2f2675451ee41b3c9cc6363200f00281fb7142f3ddfcc42421f769bf2
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: 5 NEW Layer-F chemistry-signal loss classes wired end-to-end into molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+      + YAML + smoke verified
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_a4_receptive_field:
+    source_json: metrics/by_metric/cfm_a4_receptive_field.json
+    source_json_sha256: ed0bad2961851fa105970a2fb457d6775627a0ca6673d98a84ae85085b00d9a1
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: A4 IS OVERSTATED AND ITS LOAD-BEARING HALF IS WRONG. Ring size is separable
+      by a 1-hop statistic the head can compute; 3-rings and 4-rings are PERFECTLY
+      separated (0.0 percent overlap) and the head runs 3 layers. 5- and 6-rings overlap
+      heavily, but they are nearly the same size and the measured defect is specifically
+      THREE-membered rings, which separate cleanly.
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_arch1_t_degradation:
+    source_json: metrics/by_metric/cfm_arch1_t_degradation.json
+    source_json_sha256: 25a077d2b9738798c36666cd63ae4ab19174e8c5060e953fb62e31b626c08bba
+    source_json_missing: false
+    value: null
+    status: null
+    verdict:
+      monotonic_nonincreasing: false
+      has_any_degradation: true
+      cliff_drop_macro_f1: 0.41726559148831316
+      curve_shape: 'CLIFF_THEN_PLATEAU -- a sharp drop from t=1 to t<1 (the head IS
+        hurt by noise) followed by a non-monotonic plateau around the post-cliff value.
+        ARCH-1''s ''monotonic decrease'' prediction is REFUTED on the load-bearing
+        half: the head''s quality stops depending on t once the geometry is sufficiently
+        off-clean. A pure ARCH-1 retrain (noising the input) might raise the post-cliff
+        floor but cannot recover the t=1 regime from noisy x_t.'
+      t1_macro_f1: 0.6108482787269279
+      t1_macro_f1_vs_baseline:
+        baseline_mean: 0.4784
+        baseline_std: 0.0055
+        abs_diff: 0.13244827872692794
+        consistent_within_4std: false
+        explanation: Protocol difference, NOT a finding about the curve. The baseline
+          (metrics/by_metric/tmqm_bond_perception_3seed.json) is macro_f1_type OVER
+          SUCCESSES -- a TYPE-only macro-F1 that EXCLUDES BOND_NO_BOND. The script's
+          macro_f1_all_classes averages over ALL 5 classes INCLUDING BOND_NO_BOND,
+          which is the easy class with the largest support (2614 of 3770 pairs at
+          t=1) and the head classifies it well (F1 0.95). Including the easy class
+          inflates the macro average relative to a type-only average. Additionally,
+          the baseline uses 900 complexes (150 per metal, 3 seeds); this run uses
+          32 mixed-metal clouds and 1 seed. A higher t=1 number is the direction the
+          protocol difference predicts; the gap is expected.
+      verdict_label: ARCH-1 PARTIALLY REFUTED. The head IS hurt by noise (sharp cliff
+        from t=1 to t=0.9) but the post-cliff floor does not depend on t, so the strict-monotonic
+        prediction fails. The retrain slot should NOT be spent on ARCH-1 alone --
+        the cliff-then-plateau shape suggests a capacity floor not bridged by noising
+        the input.
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_assemble_hinge_tau:
+    source_json: metrics/by_metric/cfm_assemble_hinge_tau.json
+    source_json_sha256: 55c520cb7712de1773bd76243506783d09a34216b212faa86d090c29cb75537f
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_blk_c_obj_decision:
+    source_json: metrics/by_metric/cfm_blk_c_obj_decision.json
+    source_json_sha256: 11e9f0a665d71929464a21d2e9a3cb032136410cc8d7ccd1bda70d4e04ae02cf
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_blkc_m3_noise_floor:
+    source_json: metrics/by_metric/cfm_blkc_m3_noise_floor.json
+    source_json_sha256: c80a365e92a273d59de6f0ac071467a8929b736248c2243c3e107687a2df6d4b
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_bond_type_f1_3seed:
+    source_json: metrics/by_metric/cfm_bond_type_f1_3seed.json
+    source_json_sha256: a2e2d34e9f6fa3deeb3e2289800ccbe3444b8345a9f2f092b540f575c7fa0479
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_checkpoint_property_benchmark:
+    source_json: metrics/by_metric/cfm_checkpoint_property_benchmark.json
+    source_json_sha256: 80e709965772f313c2a4e94af84cd2347f6f125d1905e1c20a70b42321a86833
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_cross_dataset_transfer:
+    source_json: metrics/by_metric/cfm_cross_dataset_transfer.json
+    source_json_sha256: 6240f0af3df6206113e2d2514aa687958aa913fbb06a210d059d292dd8b517b9
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_decode_chemistry_validity:
+    source_json: metrics/by_metric/cfm_decode_chemistry_validity.json
+    source_json_sha256: 2aca6035e5cca499f44b1dfacc6e0941e22c8919d617f3b3880cf2df0f18cd63
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_decode_fragmentation:
+    source_json: metrics/by_metric/cfm_decode_fragmentation.json
+    source_json_sha256: 2c27c14dd229a763d1af66c2e39275fc83bd1e849f5f98ebf1318a8aa305c13f
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_decode_real:
+    source_json: metrics/by_metric/cfm_decode_real.json
+    source_json_sha256: 0fa08ed07ea4b3c48d185713299b8fca3db26cd870068116ed665d9fa022c6dd
+    source_json_missing: false
+    value: 0.9938875305623472
+    status: MEASURED_PASS
+    verdict: null
+    scope: Real CFM (cfm_yuelbond_wasserstein.pt) on real ligands
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_embed_failure_localisation:
+    source_json: metrics/by_metric/cfm_embed_failure_localisation.json
+    source_json_sha256: a390e62fb93b9d69e0f3fecba0d01df59c3ec10eeafdfe2b668e0b2c3af3bbfd
+    source_json_missing: false
+    value: null
+    status: null
+    verdict:
+      L5_is_a_velocity_stage_failure: false
+      L5_cause_localised_to: the bond head's metal coordination output (graph-level),
+        not the velocity field (coordinate-level)
+      L3_sampling_time_guidance_can_fix_L5: false
+      reasoning: Every method in the cited guidance family acts on coordinates. The
+        failure metric discards coordinates (MEASURED above). Injecting a force cannot
+        change a graph, and the failure is in the graph.
+      what_L3_guidance_would_actually_act_on: if a guidance term were built, its only
+        path to the reported failures would be INDIRECT -- better coordinates feeding
+        a better bond head. That is a real but unmeasured and indirect coupling, and
+        it is not what the cited papers claim.
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_fm_term_percloud:
+    source_json: metrics/by_metric/cfm_fm_term_percloud.json
+    source_json_sha256: e8ffb6f5a40a4ab99e2c267d9267db23795814c157100ce96b684ad2817d0985
+    source_json_missing: false
+    value: null
+    status: null
+    verdict:
+      hypothesis: F.mse_loss averages over all elements, so a cloud with few atoms
+        and a tight metal centre dominates the gradient while the organic ligand branch
+        contributes almost nothing; the fix would be a per-cloud normalisation.
+      hypothesis_holds: false
+      why_not:
+      - 'The reduction barely matters: (a) element-mean 9.3250 vs (b) cloud-mean 8.9480,
+        a 4.2% gap. A per-cloud normalisation would move the objective by ~4%, not
+        the ~10x the hypothesis needs.'
+      - The sign is wrong. Pearson(loss, n_atoms) = +0.408 — LARGER clouds have HIGHER
+        per-element loss, so the element-mean reduction up-weights big organic complexes,
+        not small metal centres. Pearson(loss, ligand radius of gyration) = +0.696.
+      - Small clouds do NOT own the gradient. The 23 clouds with n_atoms <= 25 hold
+        6.6% of the atoms and 4.9% of the gradient under (a) — they are UNDER-represented,
+        not dominant.
+      - Metal atoms are almost free. 192 metal atoms (2.6% of atoms) carry 1.0% of
+        the squared error; their per-element MSE is 3.76 vs 9.47 for the 7250 ligand
+        atoms.
+      - 'Concentration is mild and top-HEAVY, not tail-heavy: the top 10% of clouds
+        hold 21.9% of the gradient under (a) and 16.3% under (b), against a uniform
+        10%.'
+      what_the_data_shows_instead: 'Loss rises with molecule size because the TARGET''s
+        own scale does: Pearson(loss, zero-predictor MSE on the same cloud) = +0.685,
+        and normalising by it collapses the size effect (Pearson(loss/zero, ligand
+        radius) falls 0.696 -> 0.197). Pearson(loss, t) = +0.076 and eta for metal
+        identity = 0.092, so neither the flow time nor which metal it is explains
+        the variance. The remaining live signal is the mid-interpolant band: t in
+        [0.4,0.6) scores 11.63 against 7.19 at t<0.2.'
+      why_fm_term_moves_slowly: 'MEASURED: the model removes only 24.6% of the trivial
+        v==0 predictor''s loss (9.325 vs 12.363 per element). Most of 12.46 is the
+        variance of the regression target itself, not a failure to fit. Both subsets
+        are equally far from the floor: 25.4% of zero-predictor loss removed below
+        median carbon, 24.1% at or above — no subset is being neglected.'
+      recommended_action: DO NOT change the reduction. It is worth ~4% and no subset
+        is starved. The measured lever is the mid-interpolant band (t in [0.4,0.8)
+        carries 43.9% of the gradient at the highest per-element loss), so if anything
+        moves, weight t — which is a sampling-distribution change (Karras sigma weighting),
+        not a reduction change, and would need its own A/B.
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_free_generation_panel_seed0:
+    source_json: metrics/by_metric/cfm_free_generation_panel_seed0.json
+    source_json_sha256: 9614b2f4a93afc1adf7fc86e1f9d1b1910560fc35b9cbd79c8752b335abe7d38
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_generated_geometry_defect:
+    source_json: metrics/by_metric/cfm_generated_geometry_defect.json
+    source_json_sha256: a2c69c4f32750a813ed5cdc11c6dd6b25b7176f892507b2ab7c05e8ee6ec6fdd
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  generated_to_activity_cross_application:
+    source_json: metrics/by_metric/cfm_generated_to_nci60_cross_application.json
+    source_json_sha256: a1fddf951bb4ad220bbbca5049b44cf05f34685dfb08d4cb5a447399e6d52d35
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_generation_collapse_rootcause:
+    source_json: metrics/by_metric/cfm_generation_collapse_rootcause.json
+    source_json_sha256: 028cbc8e2a067393e95601b79e1cde993b1b8a85a550cb70971a48430b4472cc
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_geom_classifier_dft:
+    source_json: metrics/by_metric/cfm_geom_classifier_dft_band.json
+    source_json_sha256: 091b29902ffe2502f6236646cf8ae18d8254ef762f2f75f396cbd3658c4d35aa
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_head_ring_size_behaviour:
+    source_json: metrics/by_metric/cfm_head_ring_size_behaviour.json
+    source_json_sha256: 5c02b502cedc895ea996c642b959380048540d731f4641c3c83b2a8d5a3fd223
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: 'THE HEAD IS NOT THE RING DEFECT. On clean geometry the trained head''s
+      ring-size distribution is CLOSER to the real corpus than the truth bonds are:
+      it UNDER-produces 3-rings and OVER-produces 5/6-rings relative to truth. The
+      89.81% three-membered rate in generated output therefore cannot be blamed on
+      a head that, fed clean geometry, gets ring size right.'
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_internal_diversity_intdiv1:
+    source_json: metrics/by_metric/cfm_internal_diversity_intdiv1.json
+    source_json_sha256: bf0581891287cafdbeb481cf12960cb7bc6ff27c43b49af814b843daf4340702
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_l3_guidance_ab:
+    source_json: metrics/by_metric/cfm_l3_guidance_ab.json
+    source_json_sha256: 3b1d4b6d9239d123cfb179963b2a0298752f265c2c44822fff03f8edc9c943c8
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_l3_guidance_sweep:
+    source_json: metrics/by_metric/cfm_l3_guidance_sweep.json
+    source_json_sha256: 41de7275373ca4cbb25abe540426fdc6a4a6b61c2ef08f2e1368862a455d8a82
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_l5_metal_deletion_control:
+    source_json: metrics/by_metric/cfm_l5_metal_deletion_control.json
+    source_json_sha256: c5f05d57f63e88ee71601ee7b6adc1de99532e67ba910dc81b30e61f9204dd71
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_loss_term_liveness:
+    source_json: metrics/by_metric/cfm_loss_term_liveness.json
+    source_json_sha256: 99961f18e840d75bcc927ab98274a2f8ea3c4cb1969e4f6f1978c5c6c425312d
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_m4_aromatic_lo_band_sweep:
+    source_json: metrics/by_metric/cfm_m4_aromatic_lo_band_sweep.json
+    source_json_sha256: 5c2c89e418d4e41cc2b5d11fe53109e33f4afa68eb8a9756ea4aa0099bafaad1
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: 'AT AROMATIC_LO=1.30 THE HEAD IS HIGH-PRECISION/LOW-RECALL (P=0.887,
+      R=0.287, F1=0.434). TIGHTENING THE BAND TO 1.45 TRADES PRECISION FOR RECALL
+      (P=0.258 -0.629, R=0.447 +0.160, F1=0.327 -0.107) AND TO 1.50 SHARPENS THE TRADE
+      (P=0.123 -0.764, R=0.731 +0.444, F1=0.211 -0.223). F1 IS MAXIMISED AT 1.30,
+      the current threshold. THE HEAD''S 5539 AROMATIC PREDICTIONS ARE CONCENTRATED
+      IN BO 1.30-1.50 (4912 of 5539 = 88.7% fall inside [1.30, 1.70)); tightening
+      the band relabels those ''correct'' predictions as ''false positive'' rather
+      than ''correct'' and F1 falls. THE COLLAPSE IS RELOCATED, NOT FIXED: the constant
+      edit would lower F1, not raise it. The binding axis is the head''s intrinsic
+      over-prediction of aromatic on lower-BO bonds, not the band boundary.'
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_m4_threshold_sweep:
+    source_json: metrics/by_metric/cfm_m4_threshold_sweep.json
+    source_json_sha256: 8f56ef82c5eee289d4da071d6956d4836d5859afe4208d1309735a883628d384
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: NO -- the threshold sweep does NOT raise F1 above the 0.43 baseline.
+      F1 is flat at 0.4338 across the entire grid [0.05..0.90], and the aromatic prediction
+      count is locked at 5539 (one pair at T=0.05). The head's 5539 aromatic predictions
+      are not boundary cases the existence threshold can recalibrate; they come with
+      overwhelming p_bonded confidence AND high logit_4 ranking. The head retrain
+      slot IS the right call -- threshold alone cannot close the gap.
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_metal_geometry:
+    source_json: metrics/by_metric/cfm_metal_geometry.json
+    source_json_sha256: c782506bc57ebf81776dd19e568c747d791620ca54b52f2a88af646e7fedf5d3
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_metal_geometry_pairing_control:
+    source_json: metrics/by_metric/cfm_metal_geometry_pairing_control.json
+    source_json_sha256: 9e5a57d4a24b8a8d5a187dc8659153719ff9f9b7114f321036cbb779e65b4873
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_metric_validity_audit:
+    source_json: metrics/by_metric/cfm_metric_validity_audit.json
+    source_json_sha256: f3018d3fa033996fde3bd062c584df1900bec0f3e89ab3c95569f741b0e91e88
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_objective_inventory:
+    source_json: metrics/by_metric/cfm_objective_inventory.json
+    source_json_sha256: b050bfa6e6c32274ac9267ef346024c11d982a9755b5df6acbac19e0a71a2728
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_opt1_stereo_suppression:
+    source_json: metrics/by_metric/cfm_opt1_stereo_suppression.json
+    source_json_sha256: 0c8a8bf4123992fbf5efdca14eeb326157e2a90d57ff789cf9ae19c16b6f91d1
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_opt2_ring_content:
+    source_json: metrics/by_metric/cfm_opt2_ring_content.json
+    source_json_sha256: 1fb39421cbca4c2e41e0dce2d41eccd04db498411e844009d753e521bc93cf7a
+    source_json_missing: false
+    value: null
+    status: null
+    verdict:
+      closing:
+        rings_per_mol_gen_vs_real:
+        - 1.6363636363636365
+        - 4.193
+        frac_zero_rings_gen_vs_real:
+        - 0.25757575757575757
+        - 0.06
+        fraction_of_rings_that_are_6_membered_gen_vs_real:
+        - 0.009259259259259259
+        - 0.8040782256141188
+        fraction_of_rings_that_are_3_membered_gen_vs_real:
+        - 0.8981481481481481
+        - 0.004889100882423086
+        fraction_of_rings_that_are_5_or_6_membered_gen_vs_real:
+        - 0.018518518518518517
+        - 0.9692344383496303
+      typing:
+        aromatic_rings_per_mol_gen_vs_real:
+        - 0.015151515151515152
+        - 3.5735
+        frac_molecules_with_arom_ring_gen_vs_real:
+        - 0.015151515151515152
+        - 0.883
+      fragmentation:
+        largest_frag_frac_gen_vs_real:
+        - 0.9984319384319384
+        - 0.9996317340658375
+        frac_below_0_95_gen_vs_real:
+        - 0.015151515151515152
+        - 0.0025
+      deciding_axis: RING SIZE (geometric ring template)
+      deciding_number: 'fraction of 5/6-membered rings: gen=0.019 vs real=0.969 (gen/real
+        share-ratio = 0.0191)'
+      rings_ratio_gen_over_real: 0.39026082431758563
+      arom_ratio_gen_over_real: 0.004239965062687884
+      five_six_share_ratio_gen_over_real: 0.019106335666375037
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_opt2_ring_dative_correction:
+    source_json: metrics/by_metric/cfm_opt2_ring_dative_correction.json
+    source_json_sha256: 57e740c95448ac49295a118d11b01968814aa918f253ab3b118a9d9d9096a5d4
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_opt3_min_per_metal:
+    source_json: metrics/by_metric/cfm_opt3_min_per_metal.json
+    source_json_sha256: 6e8bc97a18c9538006789fb4407555d947def17cebda8e0b2f3ccf1718634e54
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_pad_groups_mcnemar:
+    source_json: metrics/by_metric/cfm_pad_groups_mcnemar.json
+    source_json_sha256: d52514ab7d71ef65d804f70d605b1dd38934c7c6143acd3cd6e33de8708e39cc
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: NO CLEAR DIFFERENCE -- the discordant flips do not clear the exact test
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_panel_reference_band_real_tmqm:
+    source_json: metrics/by_metric/cfm_panel_reference_band_real_tmqm.json
+    source_json_sha256: 03cf27d08a9a85ebeddd47486e4d0b1085f8ef5b2f6bd4711312fb88385efecc
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_qed_fragment_aware:
+    source_json: metrics/by_metric/cfm_qed_fragment_aware.json
+    source_json_sha256: 672a02f0085af6843c0fd43ecf670bc67b4d0f4a052b53b7f53d72efae5787e3
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_real_tmqm_sixmetal_admet:
+    source_json: metrics/by_metric/cfm_real_tmqm_sixmetal_admet.json
+    source_json_sha256: 31d2f95f51c10e8b329397b4017cd18c3c55b7ada8205e31a204ceed3c3a15c8
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_real_tmqm_sixmetal_baseline:
+    source_json: metrics/by_metric/cfm_real_tmqm_sixmetal_baseline.json
+    source_json_sha256: 2fdeac261c1b52285c46bc5265c89f70290fea4f6af5799ff94dfac2f29735bf
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_reference_band_audit:
+    source_json: metrics/by_metric/cfm_reference_band_audit.json
+    source_json_sha256: 0d64bf3358a1f2add887c0fa9a0b1d20f431aa07c869245e33a4371e7c2dd153
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: Every comparison in metrics/by_metric/cfm_*.json that rests on a cohort
+      labelled real / reference / baseline / band / literature. For each, what that
+      cohort ACTUALLY is, read from the script that produced it. No new experiments;
+      every number below is recomputed from a file on disk or read from one.
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_run_census:
+    source_json: metrics/by_metric/cfm_run_census.json
+    source_json_sha256: 237ccb6aedf9aefc0610652f8f29e50245cc84d5f938232c094e419986ff3a16
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_sa_gao_coley_reference:
+    source_json: metrics/by_metric/cfm_sa_gao_coley_reference.json
+    source_json_sha256: 8a6848a843c880b51d4ed0f324c29e7e0e4a662e486d0694657d67f8827e51a8
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_sa_gap_decomposition:
+    source_json: metrics/by_metric/cfm_sa_gap_decomposition.json
+    source_json_sha256: ac1e5e7a71779f5b661a37a52780f60d3ea5f351e0c42c6bc4f14b5259c4ca4c
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_sa_reference_scale:
+    source_json: metrics/by_metric/cfm_sa_reference_scale.json
+    source_json_sha256: d6f132899fb9075329b953da93c965748ae224a5c5dd6f67a4515ebde73fee19
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_sa_stereocentre_control:
+    source_json: metrics/by_metric/cfm_sa_stereocentre_control.json
+    source_json_sha256: 223d036cf89b5f8fe8fabeec2a0e1a826e0091a42e60bfcd402c7d387e29f780
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_soft_valence_scale:
+    source_json: metrics/by_metric/cfm_soft_valence_scale.json
+    source_json_sha256: 297462ca89564662fa629cebaa770e6868c6bf4291475182eea79973a0469458
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_valence_budget_variant_ab:
+    source_json: metrics/by_metric/cfm_valence_budget_variant_ab.json
+    source_json_sha256: 7f247f6a6d7d5049d6d31472ec2e04453ddf8887f9f0812076b5a5b20d824e5a
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_valence_budget_variant_ab__disk:
+    source_json: metrics/by_metric/cfm_valence_budget_variant_ab_ode.json
+    source_json_sha256: 3ed42862eef1dd255de5fcc9083aee649694dfd8d24cffd3e18776573a8219e8
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cfm_vina_generated:
+    source_json: metrics/by_metric/cfm_vina_generated.json
+    source_json_sha256: 84ff9bde4c5d2adc75f2d41d3dd9656d62a32a912dfedaadf742029db5a21d55
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  chemprop_v2_5metal_5seed_50epoch:
+    source_json: metrics/by_metric/chemprop_v2_5metal_5seed_50epoch.json
+    source_json_sha256: eac6c2e4335b7299b10e9f16a469f8a918afddbb36d5790d1a9127d03a6176e7
+    source_json_missing: false
+    value: null
+    status: PARTIAL_BLOCK
+    verdict: PARTIAL_BLOCK
+    scope: tier1_precious_metal_anticancer / MetalCytoToxDB 5-metal / chemprop v2
+      LOMO
+    metric_timestamp: '2026-09-27T16:50:00+08:00'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  chemprop_v2_lomo_v2:
+    source_json: metrics/by_metric/chemprop_v2_lomo_v2.json
+    source_json_sha256: 4ef7738af763c60eb503bdacef3e35f55af50aee6c10f043daf1cda1e2d96196
+    source_json_missing: false
+    value: 0.9014689030296891
+    status: null
+    verdict: MEASURED
+    scope: 5 precious metals × 5 seeds × 50 epochs
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  chemprop_v2_status_2026_09_27:
+    source_json: metrics/by_metric/chemprop_v2_status_2026_09_27.json
+    source_json_sha256: ebcaf4e096e2bc7343dc5296e3f2eca2c5bf1d8b91dbbc1f7c3e5088a900d1ad
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: tier1_precious_metal_anticancer / MetalCytoToxDB 5-metal / chemprop v2
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  chemprop_v2_status_2026_09_28:
+    source_json: metrics/by_metric/chemprop_v2_status_2026_09_28.json
+    source_json_sha256: 20c3005ec0c8c78477df7a03bcc2545abe71f0e7363ddf55d20af8559cc6ff3a
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: tier1_precious_metal_anticancer / MetalCytoToxDB 5-metal / chemprop v2
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  clearance:
+    source_json: metrics/by_metric/clearance.json
+    source_json_sha256: f680dfc279c42d0a6535b623606d38ed0dc4b71b6f6b72eda9a2371859c99e2f
+    source_json_missing: false
+    value: 0.5087061247216036
+    status: MEASURED
+    verdict: INFO
+    scope: ADMET pass-through panel (Wf-303C T1 / Wf-312C R01 5-NEW extension)
+    metric_timestamp: '2026-09-29'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  com_shift:
+    source_json: metrics/by_metric/com_shift.json
+    source_json_sha256: f8a8dec5de4335b544542d58b09b6a822b3cf62c55b02989ecd822e52d88a87e
+    source_json_missing: false
+    value:
+      mean: 0.25119615349562496
+      std: 0.17535243466497366
+      n_measured: 10
+      n_total: 10
+    status: 'MEASURED (receptor audit: 830c staged, 1h36/test_001 NOT staged; pool-of-organic-drugs
+      used as reference instead of co-crystal ligand per Phase 1C audit).'
+    verdict: null
+    scope: 3D-conformer comparison metric (TargetDiff Table 1)
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  com_shift__disk:
+    source_json: metrics/by_metric/com_shift_4rlu.json
+    source_json_sha256: b1f827380f1e555a02aebb6078cf3ea390a5a8ca89ccd5b7dfc25210a9d5e3d6
+    source_json_missing: false
+    value:
+      mean_A: 38.654
+      std_A: 0.19
+      median_A: 38.676
+      min_A: 38.206
+      max_A: 38.926
+      n_parsed: 20
+      n_failed: 0
+      n_smiles: 20
+      note: CoM displacement of the embedded conformation from the Vina box center
+        (larger = the embedded geometry sits far from the box center before docking).
+    status: MEASURED
+    verdict: null
+    scope: 3D geometry diagnostic for pocket 4rlu
+    metric_timestamp: '2026-09-21'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  cytotox_label_noise:
+    source_json: metrics/by_metric/cytotox_label_noise.json
+    source_json_sha256: 3cef443d8972d0b1d8d8802784160b2d7a2a3606e84bd39da64774a564724c9f
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  diversity_subpocket:
+    source_json: metrics/by_metric/diversity_subpocket.json
+    source_json_sha256: e86c57ee56bc1395716fd32fae11c8d89a4d911df52f7c8013cea283d809f57b
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: 'DESIGN_ONLY — Phase-3D module + Phase-4 dispatch integration shipped;
+      full pilot smoke at Round-12 10x3 not yet executed (per workflow #666). Honest
+      framing: this metric is wired and unit-tested but production 100-pocket Round-13
+      sweep is BLOCKED pending F2(a) MetalLigandExchange SMARTS rule (TODO-29).'
+    scope: Lambda + CFM evaluations (uniform-weight default for Lambda-only path;
+      voxelization.py:208/255 or vina_adapter.py:961 for weighted pocket version)
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  diversity_tanimoto:
+    source_json: metrics/by_metric/diversity_tanimoto.json
+    source_json_sha256: 374e4f97277658d54d2f9a048404df51de89880e4235a9f19e71a08849fc19f0
+    source_json_missing: false
+    value: 0.13656567595469193
+    status: null
+    verdict: VERIFIED_LIFT — diversity_tanimoto 0.000 -> 0.1065 on 30 cells after
+      all 4 fixes ship + decoder_rework. Deterministic per-cell (std=0.0). Path B
+      alone did NOT lift (need all 4). Gap to TargetDiff 0.860 still large but lift
+      is real and reproducible. Wf-129 P2 replay learner (regularised, 5-seed × 30-epoch)
+      ran on the Wf-36 P4 synthetic replay buffer (n_entries=128) — NO diversity_tanimoto
+      effect measurable on the synthetic (final_policy_loss = 3.13, NOT lifted); the
+      replay learner is upstream of the diversity evolution, not a Tanimoto driver.
+      Real GPU retrain (TODO-92 P1.3) is the deferred workstream.
+    scope: Lambda-only MCTS path
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  dmpnn_ckpt_status:
+    source_json: metrics/by_metric/dmpnn_ckpt_status.json
+    source_json_sha256: ca2ad4d3594ccddb24475f933c31abf753d721e9205aeb3cc377791e503e0461
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: model_checkpoint_inventory
+    metric_timestamp: '2026-10-14'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  dmpnn_within_metal_auc:
+    source_json: metrics/by_metric/dmpnn_within_metal_auc.json
+    source_json_sha256: a5ec9597dc1b9bb98bfd6f535587e99d2db2376c882fc320d2383b1341c7e840
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  dmpnn_within_metal_auc__disk:
+    source_json: metrics/by_metric/dmpnn_within_metal_auc_cap512_d4_ens_split42.json
+    source_json_sha256: a05e29b981b0c30e668be8e143eb3040eccf6e5e440d8cf0faed2e1ea129af03
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  docked_pose_rmsd:
+    source_json: metrics/by_metric/docked_pose_rmsd.json
+    source_json_sha256: 56d51259ac028188d7d2d61ef9e0f0eadcc791d9f511bebee760ae1fae550193
+    source_json_missing: false
+    value: 0.6578
+    status: null
+    verdict: null
+    scope: pocket-bound redocking benchmark (m15 redesigned per TODO-134)
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  drugood_ood_auc:
+    source_json: metrics/by_metric/drugood_ood_auc.json
+    source_json_sha256: 059f53e29bdd8d21bb713d0750feafe39537addc4f6748b67fdfaf1831b90849
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  drugood_ood_auc_native_smoke:
+    source_json: metrics/by_metric/drugood_ood_auc_native_smoke.json
+    source_json_sha256: 279419933348a2e9a9d44e7eff97b5966f3945b34418bce51931edabfab21015
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  drugood_v3_scaffold:
+    source_json: metrics/by_metric/drugood_v3_scaffold.json
+    source_json_sha256: fdafd84564413a1af23c4e301134552ce8a000d9bd9a46ffb9af98531a473d83
+    source_json_missing: false
+    value: null
+    status: CHECKPOINT_AVAILABLE_DRUGOOD_MISSING
+    verdict: null
+    scope: 5 metals × 3 seeds = 15 (metal, seed) v3 checkpoints, DrugOOD scaffold
+      ood_test split
+    metric_timestamp: '2026-09-28'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ex1_a1_adapter:
+    source_json: metrics/by_metric/ex1_a1_adapter.json
+    source_json_sha256: d1cb5cf06c020424ba831cced0793a8c46243790df6ad3e5d475b8f998757ab8
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ex1_a1_head:
+    source_json: metrics/by_metric/ex1_a1_head.json
+    source_json_sha256: 43357aa4bce00cf2047d58385cb5dfc8c087ade587d58969fbe0e23b9467d95e
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ex1_a1_partial:
+    source_json: metrics/by_metric/ex1_a1_partial.json
+    source_json_sha256: 4e9c31c55990190be7629de62fb24443c6f02eb83b1218e87046fd6af7c5b493
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ex1_a2_meta_init:
+    source_json: metrics/by_metric/ex1_a2_meta_init.json
+    source_json_sha256: 9430e504b652cd2b95593131720eb4a683c3faa574309dc8972795b0b28f3f82
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  adapted_auc:
+    source_json: metrics/by_metric/ex1_followups_verdict.json
+    source_json_sha256: 4ab9c629843248d60c9c44aa856b650edbc81f236a69d799d652672c6c841c43
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ex1_i2_i4:
+    source_json: metrics/by_metric/ex1_i2_i4.json
+    source_json_sha256: 80a2db81a38992d5c36ab4705447bff95adcd743e305ed152d25e2467c0bbe02
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ex1_i2_rich:
+    source_json: metrics/by_metric/ex1_i2_rich.json
+    source_json_sha256: 1a413ba3b686751cc24fe7c79b71170fdde9a79d90cbc400fc384d862b7b8ec3
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ex1_i2i4_baseline:
+    source_json: metrics/by_metric/ex1_i2i4_baseline.json
+    source_json_sha256: 8d65d6c8221aff8b37ad12e15a44c91da25b363597e6b7c69b3a84128325dc40
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  adapted_auc__disk:
+    source_json: metrics/by_metric/ex1_i2i4_verdict.json
+    source_json_sha256: eb785e4503282a458533be8ada7f8c0a5b671d38bd8fad4adaa5054a6084067b
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: No non-baseline cell present on disk yet.
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ex1_i4_adapter:
+    source_json: metrics/by_metric/ex1_i4_adapter.json
+    source_json_sha256: 1635a2fafaaa06329b1a335a0895d322e7080fb0a803b7faa80ab400f28bd092
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ex1_metal_injection:
+    source_json: metrics/by_metric/ex1_metal_injection.json
+    source_json_sha256: ef2722280851e8917f71435a06f33f2a6de03155dd1fd20a9feb8f218ab06868
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ex1_w6_film:
+    source_json: metrics/by_metric/ex1_w6_film.json
+    source_json_sha256: e3edc746cc11dd64dd751ccfad515c488ba80ed371676c2c00f51192b9575346
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  external_scorers_summary:
+    source_json: metrics/by_metric/external_scorers_summary.json
+    source_json_sha256: f0830305b30acdc6cf7ff4e77cc96999bc5aad175e7f9a8402fbbb0513c5dccf
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  Rh LOMO test ROC-AUC (n_test=54, seeds 0-4):
+    source_json: metrics/by_metric/f3_dmpnn_lomo_target_centering.json
+    source_json_sha256: 500f0e45dd3d901b29b776efc9863318668ef7e20700bcbe391f3846a5474630
+    source_json_missing: false
+    value: 0.516
+    status: MEASURED
+    verdict: MEASURED_BUT_LABEL_CORRECTED_2026_10_08 — the recorded Rh LOMO lift (0.356
+      -> 0.516 @ 'alpha=0.0') came from an ablation whose alpha label does not match
+      the live loss semantics (alpha weights the classification term; dropping regression
+      is alpha=1.0, not 0.0). Lift is NOT confirmed reproducible on the current trainer
+      / real-only protocol. See label_correction_2026_10_08.
+    scope: D-MPNN LOMO Rh transfer (metal-stripped graph regression-auxiliary ablation)
+    metric_timestamp: '2026-10-06'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  fsma_kshot_curve_paperfunnel:
+    source_json: metrics/by_metric/fsma_kshot_curve_paperfunnel.json
+    source_json_sha256: 350f80f87cc75c557e1c337f47df5fc264839b99074500eac08a50bfe8f37e76
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  fsma_kshot_curve_paperfunnel__disk:
+    source_json: metrics/by_metric/fsma_paper_stats.json
+    source_json_sha256: c7d0d9ef30703c3b89b630640a3cc473e0a7bffd81286ba1a529f3061d2bf68f
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  fsma_xgb_warmstart_kshot:
+    source_json: metrics/by_metric/fsma_xgb_warmstart_kshot.json
+    source_json_sha256: 1c6135f7978b5faf11d8eb5a974f47d31693f79335b3ff0c3b93c524b70f2c63
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  fusion_dmpnn_gbdt_within_metal:
+    source_json: metrics/by_metric/fusion_cheap_arms_probe.json
+    source_json_sha256: f3ae1183b87643aad107aa5fb12620711985ba7026e41c32a6f35399bbc0bd25
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  g2_reconstruct_coverage:
+    source_json: metrics/by_metric/g2_reconstruct_coverage.json
+    source_json_sha256: 8cbc088789fdbc1b732e645fd5e3f954be1b80a4fe9ee4e4261691f203979018
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  gi50_proxy:
+    source_json: metrics/by_metric/gi50_proxy.json
+    source_json_sha256: d02145e14da308eb436e902ac01652338bfe42b485f4e9695b9cf371186b66e9
+    source_json_missing: false
+    value: 8.0
+    status: null
+    verdict: null
+    scope: cytotoxicity / anticancer (metrics_v2 Phase-3B)
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  gi50_proxy_summary:
+    source_json: metrics/by_metric/gi50_proxy_summary.json
+    source_json_sha256: 7cc5805884d8c7142136e1644d7d38c960fad164448e12e7dec6321b1ee84ddf
+    source_json_missing: false
+    value: 8.0
+    status: MEASURED
+    verdict: null
+    scope: metrics_v2 gi50_proxy aggregation verification (Wf-311D PART 3)
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  half_life:
+    source_json: metrics/by_metric/half_life.json
+    source_json_sha256: 81e858279f7908bfebf32d84272ad41ad8dc6d42fb87ee0e75ce370e498387f3
+    source_json_missing: false
+    value: 1.3091118021559578
+    status: MEASURED
+    verdict: INFO
+    scope: ADMET pass-through panel (Wf-303C T1 / Wf-312C R01 5-NEW extension)
+    metric_timestamp: '2026-09-29'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  hepatotox_index:
+    source_json: metrics/by_metric/hepatotox_index.json
+    source_json_sha256: 16eb34fcefe7a9d8d229d54cbf9d520dbfb6c5e4196625fd87810e6d24347599
+    source_json_missing: false
+    value: 0.5476614699331848
+    status: null
+    verdict: null
+    scope: drug-likeness panel (metrics_v2 Phase-3B)
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  herg_cardio_risk:
+    source_json: metrics/by_metric/herg_cardio_risk.json
+    source_json_sha256: dba375b93448bbce2025abfbf9244812fbcca452a3746db37e143ce1671a8439
+    source_json_missing: false
+    value: null
+    status: MEASURED via R12 EV-1 + ref drug sweep
+    verdict: MEASURED via EV-1 + reference drug sweep (17/17 tests pass)
+    scope: anticancer metric suite, real impl shipped 2026-09-17 via wjd0svg3v (TODO-15)
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  herg_cardio_risk__disk:
+    source_json: metrics/by_metric/herg_cardio_risk_pool.json
+    source_json_sha256: 6b671602bc70df4e2725a96dcc20f41d097a50e0041309d3fdb83dbcff8fddd0
+    source_json_missing: false
+    value: 0.598663697104677
+    status: null
+    verdict: null
+    scope: drug-likeness panel (metrics_v2 Phase-3B)
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  l1_nci60_cap512_d4_probe:
+    source_json: metrics/by_metric/l1_nci60_cap512_d4_probe.json
+    source_json_sha256: 06ae015b0c4aafc172bf32304cc398b7013b5fb9dc9d713f1de7d170b9007ef5
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier1_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  l2_moleculenet_ensemble:
+    source_json: metrics/by_metric/l2_moleculenet_ensemble.json
+    source_json_sha256: 74d993bbbe6b2b4ec2ad2fbc65eab22199d51d517c782765d30628a32718d0ce
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer / MoleculeNet backbone control
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  l3_kshot_curve:
+    source_json: metrics/by_metric/l3_kshot_curve.json
+    source_json_sha256: 1ebd9b44f60a94d1cb1b5c27089a95cca03e65008c84574ac9739d14d462cc4a
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  l3_metalcond_lomo:
+    source_json: metrics/by_metric/l3_metalcond_lomo.json
+    source_json_sha256: 9d0b2e13335d7dcfdbd814fe19be163361f36fa79e091f6465e3e95c0edf8727
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict:
+      film_recovers_collapse: false
+      kshot_recovers_collapse: false
+      contributes_method: false
+      summary: film delta -0.0418 (95% CI -0.0912,-0.0030, Holm p=0.9838); k-shot
+        delta +0.0359 (95% CI -0.0109,+0.0815, Holm p=0.1348)
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  l4_ru_within_metal_tie_robustness:
+    source_json: metrics/by_metric/l4_ru_within_metal_tie_robustness.json
+    source_json_sha256: 82c212befeed8da09c26157bd2ccd1c70469d11ecb77d518c9b2c09c2295bcbd
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict:
+      drop_is_robust_win: false
+      summary: active rule Ru 0.8128-0.8363; inactive 0.7880-0.8082; drop 0.7980-0.8295
+        (vs 0.81)
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ligand_vs_pocket_rmsd:
+    source_json: metrics/by_metric/ligand_vs_pocket_rmsd.json
+    source_json_sha256: 413e67789649ab2a05367a603d9dc896ceaa9ce09fbdd3ce287dd1f321deb22e
+    source_json_missing: false
+    value: 3.8333
+    status: null
+    verdict: null
+    scope: pocket-bound redocking benchmark (m15 redesigned per TODO-130 / TODO-134)
+    metric_timestamp: '2026-09-28'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  logp7_4:
+    source_json: metrics/by_metric/logp7_4.json
+    source_json_sha256: b20a9e5455b152451c8dc3260f4e3ba470323ffac261e1f3d0b8f333b233f7f5
+    source_json_missing: false
+    value: 6.4128448329621355
+    status: null
+    verdict: null
+    scope: drug-likeness panel (metrics_v2 Phase-3B)
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  low_confidence_metals:
+    source_json: metrics/by_metric/low_confidence_metals.json
+    source_json_sha256: 8439d2113ac696aa06e25e495cd5126eeb58b5e5974a325e50ff291e78dfb502
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  m19_condition_stack:
+    source_json: metrics/by_metric/m19_condition_stack.json
+    source_json_sha256: 90fa3a1f8a4c41c8f7eed50a25094d3a4697357cf908fa1488e5cd9da0093949
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: 'M1_center_time24: overall=0.5845 Rh=0.5022; M2_time96_center: overall=0.5785
+      Rh=0.4340 | vs M1_center_time24 d_ov=-0.0060 d_Rh=-0.0682; M3_pw_none: NOT_RUN
+      (parent negative); M4_cosine: NOT_RUN (parent negative)'
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  m19_leakctl_confirm:
+    source_json: metrics/by_metric/m19_leakctl_confirm.json
+    source_json_sha256: f410e1ba201ee3102ba85e51def65578d3ea1e91c501b72f6990c5760c3616da
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: 'leak-controlled headline 0.6605 vs cohort-repair 0.6855 (d=-0.0250,
+      still ≥0.60 target=True); Rh 0.6496 vs 0.6261 (d=+0.0235, ≥0.5 target=True).
+      The cohort-repair lift SURVIVES leak control: the headline drop is modest and
+      the focal Rh fold in fact improves — report as a confirmed honest-positive.'
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  m1_m2_m3_ablation:
+    source_json: metrics/by_metric/m1_m2_m3_ablation.json
+    source_json_sha256: 335cfff4b7f44e4caa07a4b8b4fc1d2c783752f2eca088e222ed88a66b6f7253
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: 'M3 (pool=mean) is the one clear win: bace +0.0701 (paired one-sided
+      p=0.004, n=5) with clintox flat (+0.0007). M1 (featurizer=2) trends positive
+      on bace (+0.0215, ns) and flat on clintox. M2 (update=residual) SIGNIFICANTLY
+      HURTS both tasks (bace -0.0543, clintox -0.0336) — the chemprop-v2 residual
+      operator does NOT transfer here. M3b (readout=incoming) is neutral on bace and
+      trends negative on clintox. Adopt pool=mean; reject residual update and incoming
+      readout.'
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  m21_nci60_9cell__disk:
+    source_json: metrics/by_metric/m21_nci60_9cell.json
+    source_json_sha256: 9a3654ab8cb181f30667cad034975f41e84a3914193a5edcf0298917cf9de9df
+    source_json_missing: false
+    value: null
+    status: REINDEX_PENDING
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  m2_r2_per_cell__disk:
+    source_json: metrics/by_metric/m2_r2_per_cell.json
+    source_json_sha256: 9ff99cc92201e0d36fa9e7f02ab99532f3350f0345c452a75e5b5785c246ca8f
+    source_json_missing: false
+    value: null
+    status: REINDEX_PENDING
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  m2_r2_per_cohort:
+    source_json: metrics/by_metric/m2_r2_per_cohort.json
+    source_json_sha256: 77bc8b615379a4467190a1a8f552b77c41e9abadfe04106a8782ddeec62789fd
+    source_json_missing: false
+    value: -0.029983019522041743
+    status: MEASURED_HONEST_NEGATIVE_R2_DEEP
+    verdict: MEASURED_PARTIAL_LIFT (1/3 cohorts WEAK_RECOVERY; 2/3 HONEST_NEGATIVE_R2_DEEP
+      preserved; aggregate mean R² = -0.0300 ± 0.1613). m2 R² gate PRESERVED HONEST_NEGATIVE_R2_DEEP
+      FINAL per Wf-369-A2 verdict.
+    scope: tier1_precious_metal_anticancer / m2 R² per-cohort REAL verification (Wf-388-A1)
+    metric_timestamp: '2026-09-30'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  m4_class_weight_ablation:
+    source_json: metrics/by_metric/m4_class_weight_ablation.json
+    source_json_sha256: 3a69abef9af37123638807b8dded96fe4c79c816732afe541955d0e14f8b80d6
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: 'class_weight=off is neutral-to-positive: bace +0.0180 (t=+1.78, n=5,
+      one-sided p~0.075, ns), clintox +0.0012 (t=+0.14, tie); balanced is neutral/slightly
+      negative on both. Removing the legacy neg/pos weighting does not hurt and trends
+      positive on the near-balanced bace task. Focal loss (the ''+ focal'' sub-arm)
+      is a MEASURED negative: bace 0.6935 +/- 0.0665 vs 0.7803 baseline — do not re-run.'
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  m4_sa:
+    source_json: metrics/by_metric/m4_sa.json
+    source_json_sha256: e754000f10fb7ed8b9555d18adc307057bfbcce27d2d9b85a2c2a5b7f06f29de
+    source_json_missing: false
+    value: null
+    status: WIRED
+    verdict: WIRED — SCAFFOLD-to-TRAINER-LOSS wire-in COMPLETE; bit-for-bit backward
+      compat preserved; 2/2 flags wired-in; --sa-penalty default 0.0 (OFF). PROJECTED
+      SA-mean lift 3.099 -> 2.5-2.7 band per WEAK_TO_STRONG_PLAN §3.6; MEASURED end-to-end
+      on Blackwell sm_120 BLOCKED per AGENTS.md §5.1.
+    scope: 'tier2_sa_penalty / m4 SA Wire-In.  WARNING (Wf-R44): ''value'' here is
+      a WIRED FLAG COUNT (n_flags_wired_in), NOT a measured SA score. No SA number
+      on CFM output exists in this file. The generated-cohort measurement needs the
+      decode->panel link (trainer --save-generated-smiles -> generated_smiles.csv
+      -> cfm_property_panel), added by Wf-R44; producing a real number also needs
+      a GPU retrain with --gen-validity-samples > 0 and --save-generated-smiles (PROJECTED/BLOCKED,
+      no GPU in this wave).'
+    metric_timestamp: '2026-09-30'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  m4_success_rate:
+    source_json: metrics/by_metric/m4_success_rate.json
+    source_json_sha256: ce619a30d55c4deafcab5181719565021c3a54d53b33ba7aee5442e904f9d0be
+    source_json_missing: false
+    value: 0.0022271714922048997
+    status: MEASURED
+    verdict: FAIL
+    scope: m4 Success Rate SA/QED sub-criterion smoke (WEAK_TO_STRONG §2.4 / Wf-323F
+      CPU-only)
+    metric_timestamp: '2026-09-29'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  m5_recipe_sweep:
+    source_json: metrics/by_metric/m5_recipe_sweep.json
+    source_json_sha256: de97f2490517074a01210c504d07e679b2b2735516d702d311424f47f32309ee
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: 'Best M5 arm = M5d_epochs100 (mean delta across tasks +0.0302). W5 target
+      (>= chemprop v2 same-protocol) — bace: 0.8332 vs chemprop_v2 0.8458 (SHORT);
+      clintox: 0.8441 vs chemprop_v2 0.8847 (SHORT). lr=3e-4 (M5b) is a clear regression
+      and must NOT be adopted. Focal loss was already a MEASURED negative (m4_class_weight_ablation.json).'
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metal_activity_transfer:
+    source_json: metrics/by_metric/metal_activity_transfer.json
+    source_json_sha256: 0e8056c0112bf667735425b0b7344e1788569f5824051905d042c8cde5383eca
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metal_activity_transfer__disk:
+    source_json: metrics/by_metric/metal_activity_transfer_significance.json
+    source_json_sha256: a07f600d3033839ad67d34d564f980808fe79093f349af450054fbb77bb95316
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metal_activity_transfer_scaffold_seed_stability:
+    source_json: metrics/by_metric/metal_activity_transfer_scaffold_seed_stability.json
+    source_json_sha256: 19c6f56e841db721a0b4fc28b17e1bf1b847d38981707ddaad27dd4fecb553cb
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metal_activity_transfer_seed_stability:
+    source_json: metrics/by_metric/metal_activity_transfer_seed_stability.json
+    source_json_sha256: 213a0572fe401ca0ba9a09748bb1eda1371d2fdaf366b84842bdcf08b16d65fe
+    source_json_missing: false
+    value: null
+    status: null
+    verdict:
+      headline_lockable: true
+      why: Ru spans 0.8128-0.8363 over 5 seeds; even the WORST seed (0.8128) exceeds
+        the Krasnov published 0.81. Ir spans 0.8295-0.8597, all five far above 0.73.
+        'match-or-exceed Krasnov within-metal' is seed-robust, not a lucky-seed artifact.
+      unresolvable_confirmed_quantitatively: 'Os swings 0.3133-0.5867 (spread 0.2734)
+        across seeds -- far larger than Ru/Ir. That swing IS the unresolvability:
+        at n=36 unique ligands the estimate moves more than any method would move
+        it.'
+      cross_metal_note: Cross-metal rows are captured only for seeds whose full fold
+        set completed (POOLED present). The probe was still running when this artifact
+        was written; re-run to extend if a 5-seed cross-metal CI is needed.
+      caveat: 'Same caveats as the seed-42 artifact: duplicates collapsed by majority
+        (ties -> inactive); Rh/Os/Re n=51/36/74 are below MIN_UNIQUE_FOR_GATE=200
+        and are reported, not gated.'
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metal_activity_transfer_seed_stability__disk:
+    source_json: metrics/by_metric/metal_activity_transfer_seed_stability_v2.json
+    source_json_sha256: 284c9c194bb35bd66ff281bff2524fea71c3614a329c20b9503b0afb702c4959
+    source_json_missing: false
+    value: null
+    status: null
+    verdict:
+      headline_lockable: true
+      why: Ru spans 0.8128-0.8363 over 5 seeds; even the worst seed exceeds the Krasnov
+        published 0.81. Ir spans 0.8295-0.8597, all far above 0.73. 'Match-or-exceed
+        Krasnov within-metal' is seed-robust, not a lucky-seed artifact.
+      unresolvable_confirmed_quantitatively: 'Os swings 0.3133-0.5867 (spread 0.2733)
+        across seeds -- far larger than Ru/Ir. That swing IS the unresolvability:
+        at n=36 unique ligands the estimate moves more than any method would move
+        it.'
+      tie_rule_caveat: 'Every number above is under the default tie rule (ties ->
+        ACTIVE, ``sum*2>=n``). Under the conservative rule Ru spans 0.7880-0.8082
+        and no longer clears Krasnov 0.81 on every seed -- see metal_activity_transfer_tie_sensitivity.json.
+        So ''Ru beats Krasnov'' is seed-robust but NOT tie-rule robust: state it as
+        parity. Ir is robust under either rule.'
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metal_activity_transfer_tie_sensitivity:
+    source_json: metrics/by_metric/metal_activity_transfer_tie_sensitivity.json
+    source_json_sha256: 8e0024e8191163ce6c37e7883f152b5a99071266ca18765352d730e0c835e851
+    source_json_missing: false
+    value: null
+    status: null
+    verdict:
+      Ir_claim_IS_robust: Ir exceeds Krasnov 0.73 under BOTH rules and every seed
+        (conservative min 0.8237; current min 0.8295). Safe to state.
+      Ru_claim_IS_NOT_robust: Under the conservative rule Ru spans 0.7880-0.8082,
+        i.e. entirely at or just BELOW Krasnov 0.81. Under the current rule it spans
+        0.8128-0.8363, entirely above. The direction of 'Ru beats Krasnov' is decided
+        by the tie rule, not by the chemistry.
+      correct_how_to_state_it: 'Ir: ''exceeds the published value under either tie
+        rule''. Ru: ''at parity with the published 0.81'', with the apparent margin
+        reported as rule-dependent. Do NOT write ''Ru exceeds Krasnov'' unqualified.'
+      recommendation: Keep the current rule (both the probe and the D-MPNN matched
+        switch use it, and switching would invalidate the committed seed-stability
+        artifact), but state the Ru claim as parity and report both rules. The honest
+        framing is stronger for not depending on an arbitrary tie-break.
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metal_compliance_rate:
+    source_json: metrics/by_metric/metal_compliance.json
+    source_json_sha256: a052e6da2c70512fbccd34f6836bc65ca5fd112a8718ad5651cdd4e7827ae5e6
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: 'EXPECTED_TRADE_OFF — metal_compliance 1.0 -> 0.0 is the cost of lifting
+      diversity. Not a regression; reflects honest metric design. Open: can we have
+      BOTH diversity AND compliance? (Requires F2(a) MetalLigandExchange SMARTS rule
+      — structural fix needed)'
+    scope: Lambda MCTS path
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metal_coord_compliance:
+    source_json: metrics/by_metric/metal_coord_compliance.json
+    source_json_sha256: f33e873b3aa4da567de366b9271ac4da847854c21a9f4f2164b5d799f295e250
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: 'DESIGN+1-PILOT — Phase-3G metal_coord_probe module + Phase-4 dispatch
+      integration shipped; single 5x1 cisplatin+all-5 pilot lifts 0.0->1.0 but is
+      a singleton collapse (n_distinct=1), NOT a true positive result. Honest framing:
+      measurement = 1.0 but with n_distinct=1 the metric trivially passes on the seed
+      itself. Full 10x3 rotation (3 metal seeds x 10 pockets x 3 random seeds) blocked
+      by GPU outage (per wf_gpu_diag_fix) and by F2(a) MetalLigandExchange SMARTS
+      rule TODO-29.'
+    scope: Lambda + CFM evaluations (metal-seeded runs); 0.0 on no-metal seeds or
+      no Pt/Ir present
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metal_coord_compliance_phase3g:
+    source_json: metrics/by_metric/metal_coord_compliance_phase3g.json
+    source_json_sha256: 5055b152cd8fe3210ecc982d1a3ceab31b3fdee46fa9d663947dbfb4aa1bceec
+    source_json_missing: false
+    value: null
+    status: DESIGN+1-PILOT (singleton collapse, honest-negative)
+    verdict: null
+    scope: Phase-3G metal_coord_probe + Phase-4 dispatch (Wf-311D PART 5)
+    metric_timestamp: '2026-09-29'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metal_lomo_auc:
+    source_json: metrics/by_metric/metal_lomo_auc.json
+    source_json_sha256: c13041d9a24de243c174647edd2a0a6627f9fe4f7725ad840bc5c41199713878
+    source_json_missing: false
+    value: 0.5346340730251975
+    status: MEASURED_BELOW_GATE
+    verdict: BELOW_GATE
+    scope: tier2_sbdd_ood_lomo
+    metric_timestamp: '2026-09-27T01:08:15.981545+00:00'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metal_lomo_auc_v2:
+    source_json: metrics/by_metric/metal_lomo_auc_v2.json
+    source_json_sha256: 3834af26244b12db9e1cdc66cef40123c270fd192c9ba97f07fb7ad5263bd31b
+    source_json_missing: false
+    value: null
+    status: DEFERRED_PARTIAL_RUN
+    verdict: DEFERRED_NO_MEASURED_VALUE
+    scope: tier2_sbdd_ood_lomo_v2
+    metric_timestamp: '2026-09-27T06:33:51'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metal_lomo_chemprop_v2:
+    source_json: metrics/by_metric/metal_lomo_chemprop_v2.json
+    source_json_sha256: 9bb780d6bbd9ca1f1d333165d8ff90ae38f7b8cbe672a09fc53f350fa738b71f
+    source_json_missing: false
+    value: 0.44580111975564496
+    status: PARTIAL_BLOCK
+    verdict: PARTIAL_BLOCK
+    scope: tier2_sbdd_ood_lomo_chemprop_v2
+    metric_timestamp: '2026-09-28'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metalcytotox_combined_r2:
+    source_json: metrics/by_metric/metalcytotox_combined_r2.json
+    source_json_sha256: 513d4610c7408442311a6131da1fbc7b23aedb1e79bfe7e3383660270c9398de
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier1_precious_metal_anticancer / MetalCytoToxDB 5-metal
+    metric_timestamp: '2026-10-14'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metalcytotox_ru_paper_lightgbm_cv:
+    source_json: metrics/by_metric/metalcytotox_ru_paper_lightgbm_cv.json
+    source_json_sha256: 2fb99e56daaad56c5180169f16b7d195fa8aef02af94db04b2854eff50959ee3
+    source_json_missing: false
+    value: 0.7676897950312582
+    status: null
+    verdict: 'Like-for-like model-class comparison on the SAME cohort and folds: LightGBM
+      0.7677 +/- 0.0368 vs D-MPNN 0.7717 +/- 0.0380 (delta -0.0041).'
+    scope: tier1_precious_metal_anticancer / paper-protocol Ru cohort
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metallodrug_vertical_coverage:
+    source_json: metrics/by_metric/metallodrug_vertical_coverage.json
+    source_json_sha256: f71e49ec3c3ec4460d56ffc34ff3975837d363be0eeba723b2eea2c25ff51932
+    source_json_missing: false
+    value: null
+    status: MEASURED via local dataset inventory
+    verdict: MEASURED via local dataset inventory — vertical coverage is dataset-derived
+      (Phase 1), not model-derived. PlatinAI corpus (228K × 2) provides ML activity
+      proxy; MetalCytoToxDB (26.8K) provides wet-lab IC50 across 8 cell lines; tmQM
+      (108K) provides 15-metal QM-annotated coordination chemistry. Click-reaction
+      coverage across all corpora is near-zero (<3.2% SPAAC max), confirming Lambda's
+      5-click typed reductions are de novo design not corpus replay.
+    scope: metallodrug vertical input inventory
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metric18_protein_metal_binding_auc:
+    source_json: metrics/by_metric/metric18_protein_metal.json
+    source_json_sha256: 6c570748dba0d1a2b0f334e8de421fa746613bdde124c97ecd9796387768d448
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: baseline
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metric18_protein_metal_binding_per_residue_auc:
+    source_json: metrics/by_metric/metric18_protein_metal_per_residue.json
+    source_json_sha256: bacad9b70d8ab28d90a0f8106911317837456ed0d2b0715e3cf113016191ce89
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: redesign_v1
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  metric18_protein_metal_binding_auc__disk:
+    source_json: metrics/by_metric/metric18_protein_metal_v2.json
+    source_json_sha256: f24abc38d33daa14a809fd0a74204dd6520d858915e49b32f070d474c3c2dfca
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: baseline
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  moleculenet_auc:
+    source_json: metrics/by_metric/moleculenet_auc.json
+    source_json_sha256: 634e7390e9718f52726055261314beaf590d820fe10ad4f89fc5057aa86700a9
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  moleculenet_auc_chemprop_v2_same_protocol:
+    source_json: metrics/by_metric/moleculenet_auc_chemprop_v2_same_protocol.json
+    source_json_sha256: a7e0d20fcb4f4abf6423b098e4937c7b4bc2986444736a1972d50eeb62ff2dc0
+    source_json_missing: false
+    value: 0.8493319702603803
+    status: MEASURED
+    verdict: 'chemprop v2 same-protocol mean 0.8493 is -0.0339 BELOW the literature
+      constant 0.8832 — the quoted reference was best-of-search.  Our D-MPNN (512/4)
+      mean 0.8280 is -0.0214 against same-protocol chemprop (winning 2/4: [''bbbp'',
+      ''hiv'']) but -0.0553 against the literature column.'
+    scope: tier2_precious_metal_anticancer / MoleculeNet backbone control
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  moleculenet_auc_dmpnn:
+    source_json: metrics/by_metric/moleculenet_auc_dmpnn.json
+    source_json_sha256: 5c2e47816e7f28807b0712bd4b1ad0297f7f9d92ddc5a51c9214340e9f0373f1
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  moleculenet_auc_dmpnn_5seed:
+    source_json: metrics/by_metric/moleculenet_auc_dmpnn_5seed.json
+    source_json_sha256: cdb4b934605d0ae7ce9c0a368be2007bc8a964bab31d7704c8a4de2aeb0ccfe7
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  moleculenet_auc_dmpnn_5seed_cap512_d4:
+    source_json: metrics/by_metric/moleculenet_auc_dmpnn_5seed_cap512_d4.json
+    source_json_sha256: 605772c760c9ad0e026ab42a09de8e4ab1b0cbe1ee1f9665a3cd6bd3d7bec8c1
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: MEAN 0.8280 at 512/4 vs 0.8149 at 300/3 (+0.0131).  bace 0.7933 vs 0.7421
+      (+0.0512), seed std 0.0446 -> 0.0250.
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  moleculenet_auc_dmpnn_5seed_rescue:
+    source_json: metrics/by_metric/moleculenet_auc_dmpnn_5seed_rescue.json
+    source_json_sha256: 60da9d7315be71aaa2a32ec92e6b2f42fc2c68fae50730484572d27bb618b7a1
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  multi_task_4domain_v2:
+    source_json: metrics/by_metric/multi_task_4domain_v2.json
+    source_json_sha256: e394cd742951e50775478aecf261d4829d91f839f79944f5ad02ee09622b2915
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: SPRINT_A_FLAGS_AND_COUNTS_FRESH — 6 mechanisms enumerated with status/schedule/verify_gate;
+      7/9 paper §4 lead claims have MEASURED data; 1/9 DEFERRED (m17 pexivory); 1/9
+      DEFERRED_GPU (m3 LOMO 5/5 sweep). Paper §4 + §6 rewrite needed per TODO-144
+      §1.
+    scope: tier1_precious_metal_anticancer + tier2_sbdd_ood_lomo + cfm_decode_real
+      + platinai_4cell
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  n_distinct:
+    source_json: metrics/by_metric/n_distinct.json
+    source_json_sha256: 4444bf8b12b4e746802d5f2e9892ce898a18082fe9dd8545669fb349230d85e1
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: ROOT_CAUSE_RESOLVED — 3-layer singleton attractor broken by 4-fix bundle.
+      n_distinct went from 1 (trivially stuck) to 20 (saturated n_top_k cap) on all
+      30 cells. Wall-clock cost ~98 s/cell (vs 50s pre-fix), within 90-min budget.
+    scope: Lambda MCTS path
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  n_train_scaleup:
+    source_json: metrics/by_metric/n_train_scaleup.json
+    source_json_sha256: 07204fe2f9d2120f669bc186750977dbf1ae8416fe47a960c75ee9187925bf31
+    source_json_missing: false
+    value: null
+    status: MEASURED via Phase 1 filter fix
+    verdict: MEASURED — 32→500 (15.6x) n_train scaleup is shipped and tested. Effective
+      pool is 449 mols after RDKit parse drops (90% retention). Per-corpus distribution
+      is unbalanced (metal_cytotox=21 vs tmqm=371); diversity sampler is Tanimoto-only,
+      not source-weighted.
+    scope: CFM training-data filter (r10_cfg_real_crossdocked.py)
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  nci60_precious_9cell_auc:
+    source_json: metrics/by_metric/nci60_precious_9cell_auc_3seed_5epoch.json
+    source_json_sha256: 777912a7429ab42056a5e7b123fca6a1e916fa27a266073fe31a2cbb956734e1
+    source_json_missing: false
+    value: 0.6883250000000001
+    status: null
+    verdict: null
+    scope: tier1_precious_metal_anticancer
+    metric_timestamp: '2026-09-29'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ood_per_element_reachability:
+    source_json: metrics/by_metric/ood_per_element_reachability.json
+    source_json_sha256: f5bc7a55455c83e8f61176b66f84cf2859b7095ffebb442efc12d13fb470e442
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_ood_per_element
+    metric_timestamp: '2026-10-14'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ood_per_metal_reachability:
+    source_json: metrics/by_metric/ood_per_metal_reachability.json
+    source_json_sha256: ee7989c7ee810cd0c388cf95bbced114dea20b3ef2ed33c7cf7f4d211503bf04
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_ood
+    metric_timestamp: '2026-10-14'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ood_reachability_summary:
+    source_json: metrics/by_metric/ood_reachability_summary.json
+    source_json_sha256: ad1bbf44b5e4478534ffb04f3e09de49b324d9bf6cac11e0a923f8f3b57d69be
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_ood_aggregation (Wf-311D PART 1)
+    metric_timestamp: '2026-10-08'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  pa15_metalcond_lomo:
+    source_json: metrics/by_metric/pa15_metalcond_lomo.json
+    source_json_sha256: e25b7deb5c0b8997614895cf0ba7ae35fef9662dc8b3d02368c22ed529010b87
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: 'CONDITIONING DOES NOT RECOVER THE COLLAPSE: the best arm (desc) moves
+      cross-metal AUC by -0.0215 (paired bootstrap 95% CI [-0.0565, +0.0157], Holm
+      p=1.0000); the cross-metal collapse is intrinsic to the metal axis, not an artefact
+      of an unconditioned scorer.'
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  pa18_model_class_5metal:
+    source_json: metrics/by_metric/pa18_model_class_5metal.json
+    source_json_sha256: 48e73a34ad4fa85e201b70a3915105b2663e687f6d72759af9be0d121cec68d2
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer / paper-funnel cohort per metal
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  pa18_pic50_regression_5metal:
+    source_json: metrics/by_metric/pa18_pic50_regression_5metal.json
+    source_json_sha256: 926e1013753651ca11e80fcdda58188700e781bb666511a83c299500498117ea
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer / paper-funnel cohort per metal
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  pa18_pic50_regression_5metal__disk:
+    source_json: metrics/by_metric/pa18_pic50_regression_a4_cellline.json
+    source_json_sha256: aaae9e824137fa3d3820486db57572b955d60ed36e292c7af36edf92bd59f7ff
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer / paper-funnel cohort per metal
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  pa20_external_temporal_5metal:
+    source_json: metrics/by_metric/pa20_external_temporal_5metal.json
+    source_json_sha256: 445fc8619ab26e8f805562d9ee570a861c22bdc643c59eec4f31d824164e47e9
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer / paper-funnel cohort per metal
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  pa3_chemprop_lomo_probe_cohort:
+    source_json: metrics/by_metric/pa3_chemprop_lomo_probe_cohort.json
+    source_json_sha256: 938a62c2d92763e61d72b01ec217e0c0b9b873cca839ea40f11c8faed9e54c62
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  pb_pass_rate:
+    source_json: metrics/by_metric/pb_pass_rate.json
+    source_json_sha256: f35cda31cc4b91a0f4133c7c89f531da556ecaea4469b7b45d12847999e61703
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: PRODUCTION_BLOCKED_AT_ALL_SCALES — PB adapter works (1.0 chemistry-only
+      smoke; 0.846 with all 26 checks on click_tile). BUT 60 cells (10x3 + 30x3) ALL
+      search-bound on test_000..test_019. n_distinct=1 collapse persists across both
+      tested pocket subsets. Production 100x3 sweep killed before completion. F2(a)
+      MetalLigandExchange SMARTS rule is structural fix but NOT shipped yet.
+    scope: PB validation outer-gate
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  pearson_r_pic50:
+    source_json: metrics/by_metric/pearson_r_pic50.json
+    source_json_sha256: bd08bf246a16112aceb7377fefbcc0e2880554c60250633107752b2922e4180f
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: 'MEASURED_HONEST_NEGATIVE + ROOT-CAUSE ISOLATED (2026-10-08) — D-MPNN
+      does not beat ridge on exact-row pearson, AND the bottleneck is the READOUT,
+      not the features or the multi-task alpha. Decisive probe (wf_pearson_ridge_gpu
+      + wf_pearson_diag, one split each): a Ridge probe on the D-MPNN encoder''s OWN
+      frozen embedding reaches test_pearson 0.34-0.41, while the neural pIC50 HEAD
+      on the SAME embedding reaches only 0.01-0.21 — the head extracts ~2-30x less
+      signal than a linear probe. Reg-weighting the loss (alpha 0.5 -> 0.2) makes
+      the head WORSE (0.2143 -> 0.1690), refuting the ''head is alpha-starved'' hypothesis.
+      Historical best neural 0.3091 (wf124_p3, older 2026-09 split) remains below
+      the ridge ceiling. Honest paper framing: the gap to the historical ridge 0.572
+      is a readout/architecture problem to be closed with a ridge-or-better readout
+      on the encoder embedding, not a feature problem.'
+    scope: pIC50 activity predictor
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  per_metal_pic50_wasserstein:
+    source_json: metrics/by_metric/per_metal_pic50_wasserstein.json
+    source_json_sha256: c0f6088fc46618297b28f2c290bd100cf2b66172907d25e4fa1d5daa0e376ad5
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: Wf-200 v3 per-seed JSONs across metals {Ru,Ir,Os,Rh,Re}
+    metric_timestamp: '2026-09-28'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  pharmacophore_pass_rate:
+    source_json: metrics/by_metric/pharmacophore_pass_rate.json
+    source_json_sha256: bb05682a675d92c3035616106a1def64a96fd0ab4c8240c263b4080dd52df624
+    source_json_missing: false
+    value: 0.7
+    status: null
+    verdict: 'MEASURED — pharmacophore_pass_rate=0.7 on 10 curated SMILES (7 strict
+      pass, 9 lenient pass). The 3 fails are n-hexadecane (acyclic), [OH-].[Cu+2]
+      (no rings + metal-only), and 1 borderline. Honest: this is on the curated smoke
+      set, not a real generated pool, so the rate is biased upward; production measurement
+      pending.'
+    scope: Lambda MCTS candidate pool (10 hand-picked curated SMILES spanning drug-like,
+      cisplatin, acyclic PAINS, ion pairs)
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  pharmacophore_pass_rate_prod:
+    source_json: metrics/by_metric/pharmacophore_pass_rate_prod.json
+    source_json_sha256: 770439d4ac67941a5b50a075f51cde895d0e619dc6c5ee5c7bb43a8cad6735fa
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: MEASURED — pharmacophore_pass_rate_prod strict_pass_rate=0.1737 (n=449
+      metallo-drug SMILES from Wf-303C ADMET cohort). Lenient_pass_rate=0.3786. Mean
+      violations per mol = 1.7238307349665924. Curated smoke (n=10) was 0.7 — biased
+      upward as expected; production is the honest cohort-level drug-likeness number.
+    scope: Lambda MCTS candidate pool — production (449 metallo-drug SMILES from Wf-303C
+      ADMET pass-through cohort)
+    metric_timestamp: '2026-09-29'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  plasma_protein_binding:
+    source_json: metrics/by_metric/plasma_protein_binding.json
+    source_json_sha256: e3f7bdd00a583056c92a53e94009c6ded711337698e601ad5cfc55e764803561
+    source_json_missing: false
+    value: 0.7899702612139372
+    status: null
+    verdict: null
+    scope: drug-likeness panel (metrics_v2 Phase-3B)
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  platinai_3cell_resistance:
+    source_json: metrics/by_metric/platinai_3cell_resistance.json
+    source_json_sha256: b2f359afc8449fa05213b37aefc0674a961657683b9bec226a9c3d18aa232265
+    source_json_missing: false
+    value: 0.545851474519129
+    status: null
+    verdict: null
+    scope: tier1_precious_metal_anticancer
+    metric_timestamp: '2026-09-26'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  platinai_a2780_pred:
+    source_json: metrics/by_metric/platinai_a2780_pred.json
+    source_json_sha256: a1bb26622707d6206ded7ee50415f36281ba20c4eedfb3505621387bb6110943
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: PENDING_GPU_RETRAIN — widzuipcl Phase 2+ not started; placeholder subsubsection
+      honest about zero measurements
+    scope: metallodrug vertical (paper §4.6.1)
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  platinai_combined_r2:
+    source_json: metrics/by_metric/platinai_combined_r2.json
+    source_json_sha256: d3c0ee82f78cdea8d266862f34a6bd62e61ee75caccf9e264bc1d8cb128e9fff
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier1_precious_metal_anticancer / PlatinAI 4-cell
+    metric_timestamp: '2026-10-14'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  platinai_mcf7_pred:
+    source_json: metrics/by_metric/platinai_mcf7_pred.json
+    source_json_sha256: be3308f5da2684107e4996c5505fdf2716a0128d3917cdd97fe4ea12dcd7de1a
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: PENDING_GPU_RETRAIN — widzuipcl Phase 2+ not started; placeholder subsubsection
+      honest about zero measurements
+    scope: metallodrug vertical (paper §4.6.1)
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  protein_metal_per_residue_summary:
+    source_json: metrics/by_metric/protein_metal_per_residue_summary.json
+    source_json_sha256: 68b55d66df033975e4717eaba73e7cd94c34917e3b24348e0dd1bfd2209ec3aa
+    source_json_missing: false
+    value: null
+    status: MEASURED (singleton collapse — see honest_framing_note)
+    verdict: null
+    scope: metric18 protein_metal aggregation (Wf-311D PART 2)
+    metric_timestamp: '2026-09-29'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  m5_qed_drug_likeness_bickerton:
+    source_json: metrics/by_metric/qed.json
+    source_json_sha256: 5cee814eba6031931787925ecdb4eb8b945dcc12eadc5ffb4cc3501f8bca6697
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: 'TBD — NO MEASURED VALUE ON CFM OUTPUT. Wf-R44: there is no QED number
+      for generated molecules in this file; the --qed-penalty reward-shaping SCAFFOLD
+      exists but is unwired, and no generated cohort was ever scored. The decode->panel
+      link (trainer --save-generated-smiles -> generated_smiles.csv -> cfm_property_panel)
+      is now on disk (Wf-R44); a real number still needs a GPU retrain with --gen-validity-samples
+      > 0 --save-generated-smiles (PROJECTED/BLOCKED, no GPU in this wave). MEASURED-on-real
+      PlatinAI 500-mol cohort pending GPU retrain USER_OK-gated per AGENTS.md §5.1'
+    scope: Tier-1 metric — paper §4 main-result; target >= 0.50
+    metric_timestamp: '2026-10-01T21:14:43.243963+00:00'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  qed_score:
+    source_json: metrics/by_metric/qed_score.json
+    source_json_sha256: 263ea16c56fc718569c78917badb51ac2ca9d6a12f114819e450cb62924e9180
+    source_json_missing: false
+    value: 0.22968273715508186
+    status: MEASURED
+    verdict: FAIL
+    scope: ADMET pass-through panel (Wf-303C T1 / Wf-312C R01 5-NEW extension)
+    metric_timestamp: '2026-09-29'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  r13_100x3_partial:
+    source_json: metrics/by_metric/r13_100x3_partial.json
+    source_json_sha256: f6cd89bcab42e6004fa4c65be1cd27af47ec8d3745657d943eb538c8db062dab
+    source_json_missing: false
+    value:
+      n_evaluations_total: 30
+      n_evaluations_spec: 300
+      n_evaluations_ratio: 0.1
+      lambda_path_evaluated: 0
+      lambda_path_status: missing (process killed before report.json produced)
+      pb_path_evaluated: 30
+      pb_path_n_no_candidates: 15
+      pb_path_n_seed_only: 15
+      pb_path_n_docked: 0
+      pb_path_pb_eligible_cells: 0
+      pb_path_pb_pass_rate_aggregate: null
+      pb_path_wall_seconds_mean: 7.75
+      cfm_path_status: BLOCKED (ModuleNotFoundError + GPU HSA userland outage)
+      lambda_diversity_tanimoto_mean: null
+      lambda_n_distinct_mean: null
+      cfm_vina_mean: null
+      paper_grade_data_ready: false
+    status: null
+    verdict: FAIL
+    scope: Round-13 paper-grade 100×3 sweep (300 evaluations); production target for
+      §4.5 paper-grade cells
+    metric_timestamp: '2026-09-15'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  r1_m1_paper_cv:
+    source_json: metrics/by_metric/r1_m1_paper_cv.json
+    source_json_sha256: 9cf0c84fd93978d4513773847dc101d2e0655adca820b19211c20802c8c1d8b0
+    source_json_missing: false
+    value: 0.7607372325166712
+    status: MEASURED
+    verdict: in-house m1 featurization 0.7607 +/- 0.0367 vs paper LightGBM 0.8100
+      (d=-0.0493). BELOW paper — honest negative.
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  rdkit_validity:
+    source_json: metrics/by_metric/rdkit_validity.json
+    source_json_sha256: ce1b607dcc1308bb0332fe1544542135de579f7d7b5784618b74c552ac096fcb
+    source_json_missing: false
+    value: 1.0
+    status: MEASURED
+    verdict: null
+    scope: Path B bond-bearing CFM/lambda generation (RDKit parseable)
+    metric_timestamp: '2026-09-26'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  reference_tanimoto:
+    source_json: metrics/by_metric/reference_tanimoto.json
+    source_json_sha256: 176509db0a16f585d0265c6420e9859bfc96f800dbaf2b1cc3e114c2a65c9eb1
+    source_json_missing: false
+    value: 0.22857142857142856
+    status: MEASURED via R12 EV-3 10x3 sweep
+    verdict: MEASURED — R12 Path A 0.151 → EV-3 0.229 = +51% lift
+    scope: Lambda MCTS path
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  rigid_fragment_rmsd:
+    source_json: metrics/by_metric/rigid_fragment_rmsd.json
+    source_json_sha256: a0e2437f452362bab7e6955529b24c5ad84e224b694367bd5684b0149c6d02a3
+    source_json_missing: false
+    value:
+      mean: 0.42813547905001414
+      std: 0.5474395796625067
+      n_overlay: 10
+      n_total: 10
+    status: HONEST_NEGATIVE_REDESIGNED
+    verdict: null
+    scope: 3D-conformer comparison metric (TargetDiff Table 1)
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  rigid_fragment_rmsd__disk:
+    source_json: metrics/by_metric/rigid_fragment_rmsd_4rlu.json
+    source_json_sha256: 22dc1e3c95eaef0a2f45958edeb12cb9b04893f3dc8d8a525381c8b72ff34108
+    source_json_missing: false
+    value:
+      mean_A: 1.241
+      std_A: 0.626
+      median_A: 1.429
+      min_A: 0.0
+      max_A: 2.246
+      n_parsed: 20
+      n_failed: 0
+      n_smiles: 20
+      note: Self-RMSD between two ETKDGv3 + UFF-optimised conformers with the same
+        random seed (a measure of how rigidly the molecule embeds).
+    status: MEASURED
+    verdict: null
+    scope: 3D geometry diagnostic for pocket 4rlu
+    metric_timestamp: '2026-09-21'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  ring_size_distribution:
+    source_json: metrics/by_metric/ring_size_distribution.json
+    source_json_sha256: 1f3349cfe73ee275131614bf0a6ab8160af63d122d7594e0a41319d184ea9706
+    source_json_missing: false
+    value:
+      '3': 0.0066815144766146995
+      '4': 0.022271714922048998
+      '5': 0.9710467706013363
+      '6': 4.536748329621381
+      '7': 0.015590200445434299
+      '8': 0.011135857461024499
+      '9': 0.0066815144766146995
+      other: 0.042316258351893093
+    status: null
+    verdict: null
+    scope: structural metric (TargetDiff Table 5)
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  sa_mean:
+    source_json: metrics/by_metric/sa_mean.json
+    source_json_sha256: a9ee04eaed63b16f6e8e985e67d17ab26316d911f12f302e89d5c7a67ba4983d
+    source_json_missing: false
+    value: 2.288402398854057
+    status: null
+    verdict: 'PARTIAL_LIFT_v5 — SA penalty + filtered pool lift sa_mean from ≥5.0
+      → 3.099 (unconstrained baseline). Wf-126 P3 + Wf-140 P1 closure-bounded cohort
+      lifts sa_mean → 5-pocket simple_mean = 2.449 (weighted 2.479, n=215) across
+      1h36 / 3eml / 3ny8 / 4aaw / 4rlu. 5/5 PASS target ≤3.0 AND stretch ≤2.8. 4aaw
+      additionally PASSES TargetDiff 2.65 ceiling (best = 2.288). Cohort re-definition;
+      SA score definition unchanged. Single surgical change: added 2 click-handle
+      sulfonamide seeds to _pocket_seed_smiles[''4aaw''] in molmetal/molmetal_lam/reward/pocket_closure_bias.py
+      — lifted 4aaw closure-BFS reachable space from 5 → 14 unique catherine-pass
+      candidates.'
+    scope: Lambda MCTS path
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  sa_score:
+    source_json: metrics/by_metric/sa_score.json
+    source_json_sha256: d8668eee4963bb94eaddec7e20745a08fcb8c49ffefbeeed2c5e3ca3ce59000a
+    source_json_missing: false
+    value: 4.714809429621615
+    status: MEASURED
+    verdict: FAIL (TRAINING-COHORT property — describes metallo_drugs_500_train.csv,
+      not CFM generations; Wf-R44)
+    scope: TRAINING-COHORT panel, NOT model output. Measures sa_score over metallo_drugs_500_train.csv
+      (n=449, the corpus the CFM trains on); it is a data-property descriptor, NOT
+      a generation-quality metric. Do not read any value here as a claim about CFM-generated
+      molecules. (Wf-R44 scope correction.)
+    metric_timestamp: '2026-09-29'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  steric_clash_pb_dock:
+    source_json: metrics/by_metric/steric_clash_pb_dock.json
+    source_json_sha256: 77677c8bff0af9a96d69826f4ee8adda56c063586063d2386aad0f0cedc6243c
+    source_json_missing: false
+    value:
+      rate: null
+      n_passed: null
+      n_total: 100
+      criteria: PoseBusters 'dock' mode — chemistry + protein-ligand clash checks
+        per docked pose
+    status: DEFERRED
+    verdict: null
+    scope: 'pocket-bound docking validity metric (TODO-22 metric #16)'
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  steric_clash_pb_dock__disk:
+    source_json: metrics/by_metric/steric_clash_pb_dock_test_001.json
+    source_json_sha256: 43d40d83ec64c9a3c33b7b127b6c729da8b4097ec32fb232fcc2ff1d73381d3a
+    source_json_missing: false
+    value:
+      rate: null
+      n_passed: null
+      n_total: 0
+      criteria: PoseBusters 'dock' mode — chemistry + protein-ligand clash checks
+        per docked pose
+    status: DEFERRED
+    verdict: null
+    scope: 'pocket-bound docking validity metric (TODO-22 metric #16)'
+    metric_timestamp: '2026-09-21'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  tier1_summary:
+    source_json: metrics/by_metric/tier1_summary.json
+    source_json_sha256: e8693183fa8c47d2f0959e16136cb27af54c7010dea9bdfc989bd45c7b4a6295
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: tier1_precious_metal_anticancer_plus_OOD
+    metric_timestamp: '2026-09-25'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  tier2_summary:
+    source_json: metrics/by_metric/tier2_summary.json
+    source_json_sha256: 985bd26bf9242a835378241e97d2932e9de8e88df773775977b59cb721f0ee91
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: tier2_sbdd_lomo + tier2_sbdd_molnet + tier2_sbdd_docking
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  tmqm_bond_perception:
+    source_json: metrics/by_metric/tmqm_bond_perception.json
+    source_json_sha256: 580e1e0b9111b79bdc36c4fda6f59ef330f708b35556ed65af90109ec2450fbf
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: tier2 / tmQM / six target metals (Pt,Ru,Ir,Rh,Os,Re)
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  tmqm_bond_perception_3seed:
+    source_json: metrics/by_metric/tmqm_bond_perception_3seed.json
+    source_json_sha256: a353b534061306d0fefad5974af3c1ee85c707de790a2e6417c0a6e010290cc9
+    source_json_missing: false
+    value: null
+    status: null
+    verdict:
+      bond_EXISTENCE: WIN. 0.9962 +/- 0.0008 vs 0.9771. Margin 0.0191 is 24x the between-seed
+        std.
+      exact_type_rate: WIN, 3.2x. 0.0956 +/- 0.0113 vs 0.0300.
+      macro_F1_over_TYPE: LOSS, consistent across all three seeds. 0.4784 +/- 0.0055
+        vs 0.5051, i.e. -0.0267 behind. This is the axis the bond head exists to win
+        and it is still lost. Reported, not buried.
+      seed_noise_floor_check: 'All three conclusions survive: existence margin 0.0191
+        vs std 0.0008; exact-type margin 0.0656 vs std 0.0113; type margin 0.0267
+        vs std 0.0055. No gap is within seed noise.'
+      closes_the_withdrawal_loop: The same checkpoints score 0.9398 +/- 0.0269 under
+        the trainer's POOLED gate (cfm_bond_type_f1_3seed.json) and 0.4784 +/- 0.0055
+        under per-complex aggregation -- nearly a factor of two apart. That is exactly
+        why 0.9194 must never be placed beside OpenBabel's 0.5051.
+      what_it_does_NOT_change: macro-F1(type) still loses. Scale helped enormously
+        (n_train 256 gave F1(exist) 0.6118 / type 0.2801 / exact 0.0011) but has not
+        closed the type gap.
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  tmqm_combined_r2:
+    source_json: metrics/by_metric/tmqm_combined_r2.json
+    source_json_sha256: 8eb7347eb2a2ce9feb9ff0760024dab03a11bd6e6d2f1ea6e9a9c6a2c90a2c80
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_cross_dataset / tmQM-dblock 29-element
+    metric_timestamp: '2026-10-14'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  tmqm_pretrain_init_ab_multimetal:
+    source_json: metrics/by_metric/tmqm_pretrain_init_ab_multimetal.json
+    source_json_sha256: d3653100b2bcaa737b5385290cd281ca791a35ef602a1beaac139ee22218de72
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  tmqm_pretrain_init_ab_metalcytotox_ru:
+    source_json: metrics/by_metric/tmqm_pretrain_init_ab_ru.json
+    source_json_sha256: 213a99937a9d020608d980509c739c1c19a8a20dfb409f8ae8067030c5697689
+    source_json_missing: false
+    value: -0.009432
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: '2026-10-12'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  uff_energy_pt_pool:
+    source_json: metrics/by_metric/uff_energy_pt_pool.json
+    source_json_sha256: 199320a1058c412a0970f8b24fbcfb7363ad46081427d152f7c69f0a83a82eb5
+    source_json_missing: false
+    value: null
+    status: MEASURED_SMOKE
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vdss:
+    source_json: metrics/by_metric/vdss.json
+    source_json_sha256: ff1dfad5f658f1c2696cd365917543a477c6f370ca8dfab4f2da2da571ce9ac5
+    source_json_missing: false
+    value: 0.26393246228179723
+    status: MEASURED
+    verdict: INFO
+    scope: ADMET pass-through panel (Wf-303C T1 / Wf-312C R01 5-NEW extension)
+    metric_timestamp: '2026-09-29'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vina_127_element_atypes:
+    source_json: metrics/by_metric/vina_127_element_atypes.json
+    source_json_sha256: d78902a7e41ad9660f6de493ff6188052a4912a9a334fb6d5fa31e633b3a2687
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vina_high_affinity:
+    source_json: metrics/by_metric/vina_high_affinity.json
+    source_json_sha256: fc0ba03e1b6ed425bf7331e794f0ff63145e431555b281188b5aa2e3b9349363
+    source_json_missing: false
+    value:
+      rate: 0.51
+      n_better_than_ref: 51
+      n_total: 100
+      reference_score_kcal_mol: -1.285
+      criteria: top_pose_kcal_mol < reference_score_kcal_mol
+    status: MEASURED
+    verdict: null
+    scope: 'pocket-bound docking metric (TODO-22 metric #3)'
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vina_high_affinity__disk:
+    source_json: metrics/by_metric/vina_high_affinity_test_001.json
+    source_json_sha256: 1d115899aa5592f20379dc2136dcc6ad8c9253a680d80adb3a421602acca2d60
+    source_json_missing: false
+    value:
+      rate: null
+      n_better_than_reference: 0
+      n_total: 0
+      criteria: top-pose kcal/mol < reference Vina
+      reference_kcal_mol: null
+    status: DEFERRED_receptors_missing
+    verdict: null
+    scope: 'pocket-bound docking metric (TODO-22 metric #3)'
+    metric_timestamp: '2026-09-21'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vina_min_score:
+    source_json: metrics/by_metric/vina_min_score.json
+    source_json_sha256: 7942c9666021cbac91b3c357d4f2766f40b3146671f8a0c3b95b3e706ab5093d
+    source_json_missing: false
+    value:
+      mean: -4.1579
+      std: 0.7622302728761755
+      n_docked: 10
+      n_total: 10
+    status: MEASURED
+    verdict: null
+    scope: 'binding-affinity / docking pool (TODO-22 metric #19)'
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vina_reference:
+    source_json: metrics/by_metric/vina_reference.json
+    source_json_sha256: 0b09fdbe0994f813140df2c3943484c6ae82e8db3f3ab749d6ed160da331665f
+    source_json_missing: false
+    value:
+      score_kcal_mol: -1.285
+      smiles: O=S(=O)(c1ccc(NO)cc1)C(c2ccc(OC)cc2)C(=O)NO
+      top_pose_canonical_smiles: COc1ccc(C(C(=O)NO)S(=O)(=O)c2ccc(NO)cc2)cc1
+      exhaustiveness: 8
+      n_poses: 5
+      box_padding_A: 8.0
+    status: MEASURED
+    verdict: null
+    scope: 'pocket-bound docking metric reference floor (TODO-22 metric #1)'
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vina_reference__disk:
+    source_json: metrics/by_metric/vina_reference_test_001.json
+    source_json_sha256: c1a3d21e8d17793dd29d91b3aa6139bdb18a3249b64b4c7a43853a6fad65b8c9
+    source_json_missing: false
+    value:
+      score_kcal_mol: null
+      smiles: null
+      top_pose_canonical_smiles: null
+      exhaustiveness: 8
+      n_poses: 5
+      box_padding_A: 8.0
+    status: DEFERRED_receptors_missing
+    verdict: null
+    scope: 'pocket-bound docking metric reference floor (TODO-22 metric #1)'
+    metric_timestamp: '2026-09-21'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vina_relaxed_success:
+    source_json: metrics/by_metric/vina_relaxed_success.json
+    source_json_sha256: 713cdfa4cb6c15180cf7741623b21fc506cc8608e1e102466ca3057d7eeedeab
+    source_json_missing: false
+    value:
+      rate: 0.0
+      n_below_threshold: 0
+      n_total: 100
+      threshold_kcal_mol: -8.0
+      criteria: top_pose_kcal_mol < -8.0
+      best_observed_kcal_mol: -1.82
+      gap_to_threshold_kcal_mol: -6.18
+    status: MEASURED
+    verdict: null
+    scope: 'pocket-bound docking metric (TODO-22 metric #5)'
+    metric_timestamp: '2026-09-26T22:19:41.168358+00:00'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vina_relaxed_success__disk:
+    source_json: metrics/by_metric/vina_relaxed_success_test_001.json
+    source_json_sha256: cadcfcd3ebe8b07f8111ce244e6db06ee1543c2bbde4e05f6120bc5053823522
+    source_json_missing: false
+    value:
+      rate: null
+      n_below_threshold: 0
+      n_total: 0
+      threshold_kcal_mol: -8.0
+      criteria: top_pose_kcal_mol < -8.0
+      best_observed_kcal_mol: null
+      gap_to_threshold_kcal_mol: null
+    status: DEFERRED_receptors_missing
+    verdict: null
+    scope: 'pocket-bound docking metric (TODO-22 metric #5)'
+    metric_timestamp: '2026-09-21'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vina_score:
+    source_json: metrics/by_metric/vina_score.json
+    source_json_sha256: 735b477b8dee95699a6a3e373df5782031712dad04e69a0265849d4576410e7d
+    source_json_missing: false
+    value:
+      mean: -1.3546
+      std: 0.1891
+      median: -1.2885
+      min: -1.82
+      max: -1.13
+      n_docked: 100
+      n_valid: 100
+      n_failed: 0
+    status: MEASURED
+    verdict: null
+    scope: 'pocket-bound docking metric (TODO-22 metric #1)'
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vina_score__disk:
+    source_json: metrics/by_metric/vina_score_test_001.json
+    source_json_sha256: 3b7449adde258e0b4584f1a11d8fe4648b157445c8e6a8e99556c813e52d70e2
+    source_json_missing: false
+    value:
+      mean: null
+      std: null
+      median: null
+      min: null
+      max: null
+      n_docked: 0
+      n_valid: 0
+      n_failed: 0
+    status: DEFERRED_receptors_missing
+    verdict: null
+    scope: 'pocket-bound docking metric (TODO-22 metric #1)'
+    metric_timestamp: '2026-09-21'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vina_status:
+    source_json: metrics/by_metric/vina_status.json
+    source_json_sha256: 812bfdb98ebd49e5564d4e272d505c5f3350395f7e1292a47e767c254a986e89
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: docking_engine_health
+    metric_timestamp: '2026-10-14'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vina_triple_success:
+    source_json: metrics/by_metric/vina_triple_success.json
+    source_json_sha256: 1af0b5bb18e1823920347d9e233acffa0d7d8a21603ad8f60f99f720e6c30948
+    source_json_missing: false
+    value:
+      rate_vina_only: 0.0
+      rate_full_triple: 0.0
+      n_below_vina_threshold: 0
+      n_total: 100
+      vina_threshold_kcal_mol: -8.0
+      sa_threshold: 4.0
+      qed_threshold: 0.5
+      criteria: top_pose_kcal_mol < -8.0 AND sa_score < 4.0 AND qed > 0.5
+    status: MEASURED
+    verdict: null
+    scope: 'pocket-bound docking metric (TODO-22 metric #4)'
+    metric_timestamp: '2026-09-18'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  vina_triple_success__disk:
+    source_json: metrics/by_metric/vina_triple_success_test_001.json
+    source_json_sha256: 1e8ddad3d682f8516bfeb24ae60aabe9e93d17e653ac91d2ffd32c896e7e188e
+    source_json_missing: false
+    value:
+      rate_vina_only: null
+      rate_full_triple: null
+      n_below_vina_threshold: 0
+      n_total: 0
+      vina_threshold_kcal_mol: -8.0
+      sa_threshold: 4.0
+      qed_threshold: 0.5
+      criteria: top_pose_kcal_mol < -8.0 AND sa_score < 4.0 AND qed > 0.5
+    status: DEFERRED_receptors_missing
+    verdict: null
+    scope: 'pocket-bound docking metric (TODO-22 metric #4)'
+    metric_timestamp: '2026-09-21'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  w1_cohort_expansion_probe:
+    source_json: metrics/by_metric/w1_cohort_expansion_probe.json
+    source_json_sha256: 8e662a8c381429ce750d4a023b586ec9e2146f81dcb5abd525750ae0afe00e24
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  w1_os_root_cause_audit:
+    source_json: metrics/by_metric/w1_os_root_cause_audit.json
+    source_json_sha256: 1c7c12217495b19ea707a677c77587e4752c9cc79bc865bc29677e7da9cef3f8
+    source_json_missing: false
+    value: null
+    status: MEASURED
+    verdict: null
+    scope: tier2_precious_metal_anticancer
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  wf181_g5_50epoch_cascade_delta_5metal:
+    source_json: metrics/by_metric/wf181_g5_50epoch_cascade_delta_5metal.json
+    source_json_sha256: db0493db90dcf71b65f5b83ea7cd6379c38ea03c675014a8e36f0e2e07d03c71
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: tier1_precious_metal_anticancer / MetalCytoToxDB 5-metal / cascade 30ep→50ep
+      / D-MPNN multi-task Wasserstein pIC50
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  wf181_g5_50epoch_full_sweep:
+    source_json: metrics/by_metric/wf181_g5_50epoch_full_sweep.json
+    source_json_sha256: 48b05e77022893cdaf8645428b5dda96d6af7d825909bd56ffe7270a86a777c6
+    source_json_missing: false
+    value: 0.7226719065323993
+    status: null
+    verdict: null
+    scope: tier1_precious_metal_anticancer / MetalCytoToxDB 5-metal / D-MPNN multi-task
+      Wasserstein pIC50
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold:
+    source_json: metrics/by_metric/wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold.json
+    source_json_sha256: 2f8dd2b1cff34e506684c1534615e9136b8ec3b10d20ede0a3841d01712bb8e0
+    source_json_missing: false
+    value: 0.7811842953830783
+    status: null
+    verdict: MEASURED (3-metal x 3-seed x 50-epoch, scaffold)
+    scope: tier1_precious_metal_anticancer / MetalCytoToxDB 3-metal / chemprop v2
+      scaffold
+    metric_timestamp: '2026-09-28'
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  wf30_dock_verify:
+    source_json: metrics/by_metric/wf30_dock_verify.json
+    source_json_sha256: 5e2f9c2838e638d34c1a76e8d6506ba8bf76f4ea5389d23481caf87632695ed2
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  wf30_dock_verify_summary:
+    source_json: metrics/by_metric/wf30_dock_verify_summary.json
+    source_json_sha256: 0500b23eab4ae0e2a9639e0df39174b0f1f620c0495d8e8adb7ccb0ca14deb74
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  wf32_pb_valid:
+    source_json: metrics/by_metric/wf32_pb_valid.json
+    source_json_sha256: 37af74e87d4939e2662273af140f57852aa644c28ddd40014d2fc5e77a251e81
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  wf32_pb_valid_summary:
+    source_json: metrics/by_metric/wf32_pb_valid_summary.json
+    source_json_sha256: 2789b0b5aa6d77b5086e1adf050d1eb46bd1526dfaa29a3694fc45bc2843fd92
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  wf32_pb_valid_verify:
+    source_json: metrics/by_metric/wf32_pb_valid_verify.json
+    source_json_sha256: 5732207b99b9d257cc200842dcdaf750841f9a52919313eb76cfc2633b92422e
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+  wf32_pb_valid_verify_summary:
+    source_json: metrics/by_metric/wf32_pb_valid_verify_summary.json
+    source_json_sha256: 58a84a294b30bea75eabdc945fca2c09dc21e52c411dc6fd085186c825034d1d
+    source_json_missing: false
+    value: null
+    status: null
+    verdict: null
+    scope: null
+    metric_timestamp: null
+    last_refreshed: '2026-10-14T08:09:12+00:00'
+    registry_origin: wf_a36_3_g1_disk_walk
+uncovered_metric_files: []
