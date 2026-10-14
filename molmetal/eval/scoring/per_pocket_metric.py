@@ -73,7 +73,7 @@ def per_pocket_decode_ratio(
     dict
         ``{pocket_id: {"per_atom_validity": float, "n_smiles": int,
         "largest_frac_min": float, "min_atoms": int,
-        "status": "MEASURED" | "EMPTY_COHORT"}}``.
+        "status": "MEASURED_PILOT_MOCK" | "EMPTY_COHORT"}}``.
     """
     out: Dict[str, Dict[str, Any]] = {}
     for pocket_id, smiles_list in decoded_by_pocket.items():
@@ -96,7 +96,11 @@ def per_pocket_decode_ratio(
             "n_smiles": int(len(smiles_list)),
             "largest_frac_min": float(largest_frac_min),
             "min_atoms": int(min_atoms),
-            "status": "MEASURED",
+            # Wf-A33-FIXUP-fixup-2: align decode-row status with the
+            # honest-framed MEASURED_PILOT_MOCK emitted by per_pocket_admet
+            # (since Wf-A33-FIXUP-4). Pre-fix, only the admet rows carried
+            # the pilot framing; decode rows falsely claimed "MEASURED".
+            "status": "MEASURED_PILOT_MOCK",
         }
     return out
 
@@ -448,9 +452,11 @@ def _smoke() -> int:
     assert set(res_meas["p1"].keys()) == _EXPECTED_ADMET_KEYS, (
         f"MEASURED schema drift: {set(res_meas['p1'].keys()) ^ _EXPECTED_ADMET_KEYS}"
     )
-    # Test 2: 3-mol cohort → MEASURED
+    # Test 2: 3-mol cohort → MEASURED_PILOT_MOCK
+    # (Wf-A33-FIXUP-fixup-2: aligned with per_pocket_admet's honest framing;
+    # both per-pocket row types now share the same status semantics.)
     res_3 = per_pocket_decode_ratio({"p1": ["CCO", "c1ccccc1", "nonsense"]})
-    assert res_3["p1"]["status"] == "MEASURED", res_3
+    assert res_3["p1"]["status"] == "MEASURED_PILOT_MOCK", res_3
     assert res_3["p1"]["n_smiles"] == 3, res_3
     # Test 3: build_per_pocket_panel round-trip
     with tempfile.TemporaryDirectory() as td:
