@@ -3005,6 +3005,17 @@ def train_one_epoch(
     # The standalone ``molmetal.loss.prior_losses.ClashPenalty`` class is
     # imported inside the loss block — see the wire-in comment there.
     clash_penalty_weight: float = 0.0,
+    # Wf-A34-2 (2026-10-14) — thread the Wf-A22 per-pocket W₂ kwargs through
+    # the trainer signature.  Wf-A30 (2026-11-14) pre-flight fix defaulted the
+    # weight to 0.0 + the dist to None via ``locals().get("batch_ctx")``
+    # (an unreachable path: ``args`` is main()-scoped), which collapsed the
+    # term to torch.zeros(()) regardless of CLI flag.  This signature fix
+    # makes the term wire-up reachable from main() callers without changing
+    # any default — weight=0.0, n_mc=64, pocket_dist=None produce an exact
+    # torch.zeros(()) term, bit-exact identical to pre-Wf-A34 / pre-Wf-A30.
+    wasserstein_pocket_weight: float = 0.0,  # 0.0 = no per-pocket W₂ (OFF; bit-exact pre-A34)
+    wasserstein_pocket_n_mc: int = 64,      # Monte-Carlo samples for the per-pocket W₂
+    pocket_dist: Optional[torch.Tensor] = None,  # per-pocket W₂ distribution; None = disable
     consistency_term_weight: float = 0.0,  # 0.0 = ConsistencyTerm off (bit-exact pre-Wf-A23)
     so3_term_weight: float = 0.0,  # 0.0 = SO3Term off (bit-exact pre-Wf-A23)
     edm_term_weight: float = 0.0,  # 0.0 = EDMTerm off (bit-exact pre-Wf-A23)
@@ -4506,29 +4517,23 @@ def train_one_epoch(
         # Wf-A22 (2026-10-13) step-3: per-pocket W₂ loss term.
         #
         # Gated by ``wasserstein_pocket_weight > 0`` AND a per-batch
-        # ``pocket_dist`` being threaded via ``batch_ctx``.  When EITHER
-        # guard fails, the term is an exact ``torch.zeros(())`` — no
+        # ``pocket_dist`` being threaded via the kwarg.  When EITHER guard
+        # fails, the term is an exact ``torch.zeros(())`` — no
         # ``wasserstein_pocket_loss`` invocation, no slice-tensor
-        # allocation, bit-exact identical to pre-Wf-A22.  When both
-        # guards pass, the term is
+        # allocation, bit-exact identical to pre-Wf-A22.  When both guards
+        # pass, the term is
         # ``wasserstein_pocket_weight *
         #   wasserstein_pocket_loss(vel, pocket_dist, n_mc=...)``.
         #
-        # Wf-A30 (2026-10-14) §6.53 — ``args`` was referenced here but is
-        # NOT in the local scope of train_one_epoch (the argparse Namespace
-        # lives in main()).  Default the two values to their inactive
-        # defaults (0.0 / 64) so the term collapses to torch.zeros(())
-        # regardless of the (unreachable) CLI flag.  If a future wave
-        # wants to actually wire this in, the right fix is to add
-        # ``wasserstein_pocket_weight`` + ``wasserstein_pocket_n_mc`` to
-        # the train_one_epoch signature and plumb them from main() — but
-        # that is out of scope for the pre-flight fix here.
-        _wpp_weight = 0.0
-        _wpp_dist = None
-        if _wpp_weight > 0.0:
-            _batch_ctx = locals().get("batch_ctx")
-            if _batch_ctx is not None:
-                _wpp_dist = getattr(_batch_ctx, "pocket_dist", None)
+        # Wf-A34-2 (2026-10-14) — thread the W₂ wire-up through the
+        # train_one_epoch signature (replacing the Wf-A30 pre-flight
+        # ``locals().get("batch_ctx")`` path that referenced an unreachable
+        # ``args`` namespace).  Default weight=0.0 / n_mc=64 / dist=None
+        # collapses the term to torch.zeros(()) and is bit-exact identical
+        # to pre-Wf-A34 / pre-Wf-A30.
+        _wpp_weight = float(wasserstein_pocket_weight)
+        _wpp_n_mc = int(wasserstein_pocket_n_mc)
+        _wpp_dist = pocket_dist  # was getattr(_batch_ctx, "pocket_dist", None)
         if _wpp_weight > 0.0 and _wpp_dist is not None:
             _wpp_vel = locals().get("velocities")
             if _wpp_vel is None:
@@ -4538,7 +4543,7 @@ def train_one_epoch(
                     _wpp_vel.detach(),
                     _wpp_dist,
                     pocket_id=None,
-                    n_mc=64,
+                    n_mc=_wpp_n_mc,
                     seed=0,
                 )
             else:
@@ -10778,6 +10783,20 @@ def main() -> int:
             # in-model stash stays empty, term contributes zero, and the
             # 19-term sum is bit-exact pre-Wf-A27 at the shipped default.
             clash_penalty_weight=float(getattr(args, "clash_penalty_weight", 0.0)),
+            # Wf-A34-2 (2026-10-14) — thread the Wf-A22 per-pocket W₂ kwargs
+            # through from main() to train_one_epoch.  getattr-with-default
+            # preserves backward compat for any args namespace built elsewhere
+            # (tests, other entry points).  When no flag is set, the three
+            # kwargs collapse to weight=0.0 / n_mc=64 / dist=None, and the
+            # per-pocket W₂ term is an exact torch.zeros(()) — bit-exact
+            # identical to pre-Wf-A34 / pre-Wf-A30.
+            wasserstein_pocket_weight=float(
+                getattr(args, "wasserstein_pocket_weight", 0.0)
+            ),
+            wasserstein_pocket_n_mc=int(
+                getattr(args, "wasserstein_pocket_n_mc", 64)
+            ),
+            pocket_dist=None,
             property_loss_weight=float(getattr(args, "property_loss_weight", 0.0)),
             # Wf-A15 (2026-10-13) Track-A Layer 6 — per-atom NBO
             # natural-charge MSE weight + opt-in switch.
