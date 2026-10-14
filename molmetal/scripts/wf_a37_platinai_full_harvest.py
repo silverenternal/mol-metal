@@ -78,13 +78,16 @@ def _post_with_retry(
     endpoint: str,
     body: dict,
     *,
-    max_retries: int = 6,
-    timeout: int = 30,
+    max_retries: int = 4,
+    timeout: int = 18,
 ) -> Optional[dict]:
-    """POST with 6-retry exponential backoff + GET fallback on 405.
+    """POST with 4-retry exponential backoff + GET fallback on 405.
 
+    Tuned for this host's flaky path to api.mb-finder.org:443
+    (~50% direct-connect success): 4 retries with shorter backoff cap
+    avoids spending 60s × 6 = 6 min per page when the link is dead.
     Returns None on 404, on success=false (Wf-305A), or after all retries
-    exhausted.  Network errors (ConnectTimeout, ReadTimeout) trigger retry.
+    exhausted.
     """
     url = f"{MB_API_BASE}/{endpoint}"
     last_err: Optional[Exception] = None
