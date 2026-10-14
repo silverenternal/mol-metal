@@ -10783,20 +10783,34 @@ def main() -> int:
             # in-model stash stays empty, term contributes zero, and the
             # 19-term sum is bit-exact pre-Wf-A27 at the shipped default.
             clash_penalty_weight=float(getattr(args, "clash_penalty_weight", 0.0)),
-            # Wf-A34-2 (2026-10-14) — thread the Wf-A22 per-pocket W₂ kwargs
-            # through from main() to train_one_epoch.  getattr-with-default
-            # preserves backward compat for any args namespace built elsewhere
-            # (tests, other entry points).  When no flag is set, the three
-            # kwargs collapse to weight=0.0 / n_mc=64 / dist=None, and the
-            # per-pocket W₂ term is an exact torch.zeros(()) — bit-exact
-            # identical to pre-Wf-A34 / pre-Wf-A30.
+            # Wf-A34-2 (2026-10-14) + Wf-A34-FIXUP-1 (2026-10-14) — thread
+            # the Wf-A22 per-pocket W₂ kwargs through from main() to
+            # train_one_epoch.  getattr-with-default preserves backward
+            # compat for any args namespace built elsewhere (tests, other
+            # entry points).  When no flag is set, the three kwargs collapse
+            # to weight=0.0 / n_mc=64 / dist=None, and the per-pocket W₂
+            # term is an exact torch.zeros(()) — bit-exact identical to
+            # pre-Wf-A34 / pre-Wf-A30.
+            #
+            # Wf-A34-FIXUP-1 — `pocket_dist` is also plumbed via
+            # ``getattr(args, "pocket_dist", None)`` for symmetry with the
+            # other two kwargs.  Post-Wf-A34-2 line 10799 hardcoded
+            # ``pocket_dist=None``, which left the W₂ family in the same
+            # "config-present but value-empty" state the catalog §6.54e
+            # just declared "FIXED".  No ``--pocket-dist`` CLI flag is
+            # added in this fixup (would require a ``build_pocket_dist``
+            # helper that does not yet exist on disk — explicitly out of
+            # scope per the no-scope-creep rule); a future Wf-XX retrain
+            # that supplies ``args.pocket_dist`` programmatically (e.g.
+            # from a YAML + a future ``build_pocket_dist`` helper) will
+            # now reach train_one_epoch without touching the trainer.
             wasserstein_pocket_weight=float(
                 getattr(args, "wasserstein_pocket_weight", 0.0)
             ),
             wasserstein_pocket_n_mc=int(
                 getattr(args, "wasserstein_pocket_n_mc", 64)
             ),
-            pocket_dist=None,
+            pocket_dist=getattr(args, "pocket_dist", None),
             property_loss_weight=float(getattr(args, "property_loss_weight", 0.0)),
             # Wf-A15 (2026-10-13) Track-A Layer 6 — per-atom NBO
             # natural-charge MSE weight + opt-in switch.
