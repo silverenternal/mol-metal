@@ -5839,5 +5839,34 @@
     },
     "link_to_strengthening_plan": "I1-I4 与 in_house_main_model_2026_10_14 的 M1-M6 是同一件事的两面: M1 特征扩展 -> 顺手加金属描述符(I2); M2/M3 更新/读出 -> 让金属进消息传递(I3); I1 金属节点与 I4 adapter 是新增的结构改动。",
     "open_check": "tmQM 预训练 ckpt (molmetal/checkpoints/dmpnn_tmqm_pretrained.pt) 当前不在盘上 —— 若复用 V3/V4 需重跑 tmQM 预训练"
+  },
+  "working_detail_2026_10_14": {
+    "cfm_line_repair_2026_10_15": {
+      "status": "RECONSTRUCTED_2026_10_15",
+      "provenance": "The original entry was never committed and was destroyed by a parallel CodeBuddy session's `git reset --hard` (HEAD d4bbafb5) on 2026-10-15. Reconstructed from docs/HONEST_NEGATIVE_CATALOG.md section 6.63c, which cites this exact key. Content is MEASURED (the defects were real and the fixes shipped); the reconstruction is a record, not a re-measurement.",
+      "what": "Three launch-blocking defects fixed while running the BLK-C11 PCGrad A/B (catalog 6.63).",
+      "defects": [
+        {
+          "id": "cfm_line_repair_pocket_guard",
+          "severity": "BLOCKER",
+          "symptom": "Every CFM config with gen_head_lr_scale != 1.0 (all 5 collapse configs) raised SystemExit at setup: the BLK-C5 leftover guard rejected pocket_encoder.* params.",
+          "fix": "Classify pocket_encoder./pocket_injector. into _pocket_params up front.",
+          "regressed_since": "commit ed6143f28a (pocket encoder landed)"
+        },
+        {
+          "id": "cfm_line_repair_help_percent",
+          "severity": "minor",
+          "symptom": "--help crashed with ValueError: unsupported format character 'm' (unescaped % in an argparse help string).",
+          "fix": "Escape to %%."
+        },
+        {
+          "id": "cfm_line_repair_pct_start",
+          "severity": "silent",
+          "symptom": "protocol.scheduler.pct_start was silently dropped: scripts/start.sh _EXTRA_CANDIDATES probe lacked --lr-pct-start, so both A/B arms ran at the trainer default 0.3.",
+          "fix": "Add the --lr-pct-start candidate.",
+          "impact_on_result": "A/B unaffected (identical 0.3 in both arms)."
+        }
+      ]
+    }
   }
 }
