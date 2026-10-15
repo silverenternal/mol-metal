@@ -236,6 +236,27 @@ class OTCouplingMode:
 
 
 # ---------------------------------------------------------------------------
+# OTError — narrow exception for OT-shape / OT-config mismatches.
+# Wf-A49 (2026-10-16) — defined so the W-Flow OT coupling catch in
+# ``WaveformRelaxationSolver.solve`` can narrow from bare
+# ``except Exception`` to ``except OTError``.  Subclass of ValueError so
+# pre-existing ``except ValueError`` call sites keep catching OT-shape
+# errors (no R17 backward-compat breakage) while the W-Flow caller can
+# specifically identify the OT-related ones.
+# ---------------------------------------------------------------------------
+class OTError(ValueError):
+    """Raised by OT samplers on shape / config mismatches.
+
+    Inherits from :class:`ValueError` so existing ``except ValueError``
+    call sites continue to catch these (no R17 backward-compat
+    breakage).  The W-Flow solver in
+    :mod:`molmetal.adapters.flow_matching_lipman.w_flow` narrows to
+    ``except OTError`` to identify OT-specific failures vs other
+    shape mismatches that may surface during waveform relaxation.
+    """
+
+
+# ---------------------------------------------------------------------------
 # LegacyOTSampler — pure-Euclidean OT (the Wf-234 baseline)
 # ---------------------------------------------------------------------------
 class LegacyOTSampler:
@@ -454,7 +475,7 @@ class SE3SBOTSampler:
             the trailing dim is neither 3 nor 6.
         """
         if x0.shape[0] != x1.shape[0]:
-            raise ValueError(
+            raise OTError(
                 f"SE3SBOTSampler requires matching batch sizes; got "
                 f"x0.shape[0]={x0.shape[0]} and x1.shape[0]={x1.shape[0]}"
             )
@@ -616,7 +637,7 @@ class BassMartingaleOTSampler:
             If ``x0`` and ``x1`` have different batch sizes.
         """
         if x0.shape[0] != x1.shape[0]:
-            raise ValueError(
+            raise OTError(
                 f"BassMartingaleOTSampler requires matching batch sizes; "
                 f"got x0.shape[0]={x0.shape[0]} and x1.shape[0]={x1.shape[0]}"
             )

@@ -203,6 +203,18 @@ class CaputoDerivative:
         h = float(t[1] - t[0])
         if h <= 0.0:
             raise ValueError(f"t_values must be strictly increasing; got dt={h}.")
+        # Wf-A49 (2026-10-16) arch_fix_4 — guard ``h`` below the FAB
+        # stability floor.  ``h_alpha = h**(-alpha)`` with h < 1e-3
+        # and alpha=0.5 amplifies numerical error by 10×+, and a
+        # negative exponent at h=0 is undefined (NaN propagates
+        # through the convolution).  Reject anything below 1e-3 so
+        # the caller chooses a coarser grid rather than getting
+        # silent garbage.
+        if h < 1e-3:
+            raise ValueError(
+                f"step h={h} below FAB floor h_min=1e-3; pick a coarser "
+                f"grid (n_steps must satisfy h >= 1e-3)."
+            )
         h_alpha = h ** (-self.alpha)
         # Caputo GL convolution: D_C^α f(t_i) = h^{-α} (w * (f - f(0)))[i]
         # We shift ``f`` by ``f[0]`` so the convolution collapses to the
@@ -318,6 +330,20 @@ class FractionalODESolver:
         """
         if dt <= 0.0:
             raise ValueError(f"dt must be > 0, got {dt}.")
+        # Wf-A49 (2026-10-16) arch_fix_3 — bound ``dt`` so a runaway
+        # step can't amplify ``(dt**alpha) * f_now``.  For alpha=0.1
+        # and dt=10 the factor becomes dt^alpha ≈ 1.26, which
+        # multiplies whatever the velocity field returned and can
+        # blow up the FAB correction.  Cap at 1.0 unconditionally
+        # for ad-hoc single steps; reject anything > 2.0 because
+        # that violates the FAB stability envelope (Diethelm et al.
+        # 2002 §3.2).
+        if dt > 2.0:
+            raise ValueError(
+                f"dt must be <= 2.0 for FAB stability (Diethelm-Ford-Freed 2002 §3.2); "
+                f"got dt={dt}."
+            )
+        dt = min(dt, 1.0)
         f_now = np.asarray(f(t, y), dtype=np.float64)
         return np.asarray(y, dtype=np.float64) + (dt**self.alpha) * f_now
 

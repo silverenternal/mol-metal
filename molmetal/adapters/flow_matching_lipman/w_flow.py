@@ -88,6 +88,7 @@ from ._reference.solver import ODESolver
 # full module docstring + math references.
 from .se3sb_bass_integration import (
     OTCouplingMode,
+    OTError,
     make_ot_sampler,
 )
 
@@ -184,6 +185,13 @@ def _integrate_one_window(
         # unchanged — the caller is expected to handle this case.
         return x_left.clone()
 
+    # Wf-A49 (2026-10-16) arch_fix_2 — hoist `t_left.item()` and `dt`
+    # OUT of the inner-loop so we pay one CPU-GPU sync per solve
+    # instead of one per substep.  At ``n_windows=4 * n_iters_per_window=10
+    # * n_substeps_per_window=10`` that drops the sync count from
+    # 4·10·10=400/solve to 4·10·1=40/solve (10× fewer), and per-step
+    # `dt` arithmetic no longer re-reads ``t_left.item()`` every loop.
+    t_left_val = float(t_left.item())
     dt = float((t_right - t_left).item()) / max(1, int(n_substeps))
     method_lc = method.lower()
     if method_lc in ("euler",):
@@ -201,7 +209,7 @@ def _integrate_one_window(
     device = x.device
     dtype = x.dtype
     for k in range(int(n_substeps)):
-        t_val = float(t_left.item()) + k * dt
+        t_val = t_left_val + k * dt
         t = torch.tensor(t_val, dtype=dtype, device=device)
         x = step_fn(velocity_fn, x, t, dt)
     return x
@@ -464,14 +472,47 @@ class WaveformRelaxationSolver:
                         # IC is the global anchor).
                         for w in range(1, n_w + 1):
                             window_endpoints[w] = window_endpoints[w][idx]
-                    except Exception:
-                        # Defensive: if the OT sampler fails on the
-                        # current batch (e.g. shape mismatch from a
-                        # non-conforming velocity field), fall back to
-                        # the legacy Picard sweep with no relabelling.
-                        # The legacy waveform-relaxation solver must
-                        # NEVER fail because of the new flag.
+                    except OTError as exc:
+                        # Wf-A49 (2026-10-16) — narrow catch surface.
+                        #
+                        # Previously this was ``except Exception`` which
+                        # silently swallowed EVERYTHING (SystemExit,
+                        # KeyboardInterrupt, torch OOM, KeyError, etc.)
+                        # and set ``last_ot_permutation = None``.  The
+                        # narrow ``OTError`` (subclass of ValueError)
+                        # catches only OT-shape / OT-config mismatches;
+                        # every other exception now propagates up so the
+                        # caller learns about real bugs instead of seeing
+                        # a silent "the OT sampler fell back" state.
+                        #
+                        # ``WARN_OT_LOGS`` env var:
+                        #   * "0" / unset (default) — log to stderr at
+                        #     WARNING level + fall back to legacy sweep
+                        #     (preserves R17 backward-compat: the
+                        #     legacy waveform-relaxation solver must
+                        #     NEVER fail because of the OT flag).
+                        #   * "1" — same as default; explicit
+                        #     "log + fallback" verbosity.
+                        #   * "2" — log + RAISE (the caller
+                        #     surfaces the OT failure rather than
+                        #     swallowing it).  Use this in tests to
+                        #     catch regressions.
+                        import os as _os
+                        warn_lvl = _os.environ.get("WARN_OT_LOGS", "1").strip()
+                        if warn_lvl not in ("0", "1", "2"):
+                            warn_lvl = "1"
+                        if warn_lvl in ("1", "2"):
+                            import sys as _sys
+                            print(
+                                f"[w_flow WARN] OT coupling failed on "
+                                f"outer_iter={outer_iter}: {type(exc).__name__}: "
+                                f"{exc}; falling back to legacy Picard sweep",
+                                file=_sys.stderr,
+                                flush=True,
+                            )
                         self.last_ot_permutation = None
+                        if warn_lvl == "2":
+                            raise
                 # Sweep windows left-to-right, chaining via the
                 # CURRENT iteration's endpoints so the wave
                 # propagates in a single pass (the standard

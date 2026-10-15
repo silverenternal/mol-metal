@@ -292,6 +292,17 @@ class YuelBondBondDecoder:
         class_logit_bias: Optional[Sequence[float]] = None,
         connectivity_prior: bool = True,
         connectivity_prior_min_logit: float = 0.0,
+        # Wf-A49 (2026-10-16) arch_fix_10 — let the caller pin the
+        # valence cap for atomic numbers NOT in the table.  The prior
+        # form silently fell back to 4 (carbon), which is the same
+        # silent-clamp surface as the Z>90 → Z=90 clamp: a cap that is
+        # too HIGH only costs a bond, while a cap that is too LOW
+        # produces a molecule RDKit refuses, and the decode is lost.
+        # Default ``None`` keeps the legacy behaviour for backward
+        # compat; set to e.g. ``unknown_z_default=3`` for stricter
+        # boron-like defaults, or set to ``"raise"`` to refuse unknown
+        # Z outright at decode time.
+        unknown_z_default: Optional[object] = None,
     ) -> None:
         self._decoder = YuelBondDecoder(
             head=head,
@@ -303,6 +314,12 @@ class YuelBondBondDecoder:
         else:
             self.distance_cutoff = float(distance_cutoff)
         self.valence_cap = covalent_valence_table(valence_cap)
+        # Wf-A49 (2026-10-16) arch_fix_10 — store the unknown-Z
+        # default.  ``None`` (default) preserves the legacy behaviour
+        # where unknown Z caps at 4 (carbon).  Callers wanting a
+        # stricter surface pass ``unknown_z_default="raise"`` or a
+        # numeric override.
+        self.unknown_z_default = unknown_z_default
         # 2026-10-05 — HOW PER-PAIR LOGITS BECOME A CLASS.
         #
         # This decoder hardcoded `argmax` in `_select_bonds`, so the decision
@@ -466,25 +483,61 @@ class YuelBondBondDecoder:
             self.decision_threshold,
             self.class_logit_bias,
         )
-        # Confidence score = max logit per pair (skip NO_BOND class for
-        # a stronger "is this pair bonded" signal).
-        # max_logit[i] = max(logits[i, 1:])  (excluding class 0)
+        # Build sorted pair list.  Wf-A49 (2026-10-16) arch_fix_6 —
+        # hoist ``max_logits`` inside this loop so the empty-edge
+        # branch above (``return [], [], 0, 0``) no longer pays for a
+        # max-over-4-classes op on a zero-row tensor.  The previous
+        # form ran the max unconditionally on line 472 even when the
+        # edge_index was empty (caught at line 459, but the list-comp
+        # below wasted the work).
+        #
+        # Wf-A49 arch_fix_9 — DEDUP edge_index pairs.  The YuelBond
+        # head may emit duplicate ``(i, j)`` rows; the prior form
+        # double-counted them in the selector and pushed the per-atom
+        # valence cap faster than it should be (the cap then rejected
+        # legitimately-bonded pairs further down the loop).  We dedup
+        # via ``seen`` so each unique (i, j) appears at most once.
+        edge_src = edge_index[0].tolist()
+        edge_dst = edge_index[1].tolist()
         max_logits = logits[:, 1:].max(dim=-1).values.tolist()
-        # Build sorted pair list.
         pairs: List[Tuple[float, int, int, int]] = []
-        for k, (src, dst, order) in enumerate(
-            zip(edge_index[0].tolist(), edge_index[1].tolist(), predicted),
-        ):
-            if int(src) == int(dst):
+        seen: set[Tuple[int, int]] = set()
+        for k in range(len(edge_src)):
+            src = int(edge_src[k])
+            dst = int(edge_dst[k])
+            if src == dst:
                 continue
-            if int(order) == BOND_NO_BOND:
+            order = int(predicted[k])
+            if order == BOND_NO_BOND:
                 continue
-            pairs.append((float(max_logits[k]), int(src), int(dst), int(order)))
+            # Normalise pair ordering so ``(i, j)`` and ``(j, i)`` are
+            # treated as the same bond.  The selector iterates
+            # undirected edges; the direction is irrelevant for the
+            # per-atom valence check.
+            pair_key = (src, dst) if src < dst else (dst, src)
+            if pair_key in seen:
+                continue
+            seen.add(pair_key)
+            pairs.append((float(max_logits[k]), src, dst, order))
         # Sort by descending confidence.
         pairs.sort(key=lambda t: t[0], reverse=True)
         # Per-atom remaining valence.
+        #
+        # Wf-A49 (2026-10-16) arch_fix_7 — type ``remaining`` as
+        # ``list[float]`` (not ``list[int]``) because ``_CLASS_VALENCE_COST``
+        # returns 1.5 for ``BOND_AROMATIC``.  The prior mixed int/float
+        # arithmetic via implicit conversion; with this typing every
+        # ``remaining[i] -= cost`` is an unambiguous float op.
         z_list = cloud.atomic_numbers.tolist()
-        remaining = [int(self.valence_cap.get(int(z), 4)) for z in z_list]
+        # Wf-A49 (2026-10-16) arch_fix_10 — honour ``unknown_z_default``.
+        # The constructor stores it on ``self``; here we resolve the
+        # effective cap for any Z not in the covalent-valence table.
+        # ``None`` preserves the legacy 4-default; a numeric value
+        # pins it explicitly; ``"raise"`` makes the decode refuse
+        # unknown Z outright instead of silently mapping to carbon.
+        remaining: List[float] = [
+            self._cap_for_z(int(z)) for z in z_list
+        ]
         bond_orders: List[Tuple[int, int, int]] = []
         dative_bonds: List[Tuple[int, int]] = []
         n_overvalent = 0
@@ -509,6 +562,12 @@ class YuelBondBondDecoder:
             cost = _CLASS_VALENCE_COST.get(int(order), 1.0)
             cap_i = remaining[i]
             cap_j = remaining[j]
+            # Wf-A49 arch_fix_7 — compare against the actual remaining
+            # budget, not a hard-coded 1.0.  The hard-coded 1.0 was an
+            # integer-overflow fallback that masked the cap mismatch for
+            # aromatic bonds (a cap of 1.5 sits between 1.0 and 2.0; the
+            # prior ``< 1.0`` check let every aromatic bond through
+            # regardless of remaining budget).
             if cost > cap_i or cost > cap_j:
                 n_overvalent += 1
                 continue
@@ -620,7 +679,14 @@ class YuelBondBondDecoder:
             return bond_orders, dative_bonds, 0
 
         # --- remaining valence budget from the selected bonds --------------
-        remaining = [int(self.valence_cap.get(z, 4)) for z in z_list]
+        #
+        # Wf-A49 (2026-10-16) arch_fix_7 — keep ``remaining`` typed
+        # ``list[float]`` to match the ``_select_bonds`` budget and
+        # avoid mixed int/float arithmetic.  See ``_select_bonds`` for
+        # the per-aromatic-bond rationale.
+        remaining: List[float] = [
+            self._cap_for_z(int(z)) for z in z_list
+        ]
         for i, j, order in bond_orders:
             cost = _CLASS_VALENCE_COST.get(int(order), 1.0)
             remaining[i] -= cost
@@ -702,7 +768,23 @@ class YuelBondBondDecoder:
         rw = Chem.RWMol()
         for z in cloud.atomic_numbers.tolist():
             try:
-                safe_z = int(max(1, min(90, int(z))))
+                # Wf-A49 (2026-10-16) arch_fix_5 — refuse silently-
+                # clamped transuranic / trans-actinide Z (Z > 92) instead
+                # of mapping U (92) / Np (93) / Pu (94) / ... / Cf (98)
+                # to thorium (Z=90) and emitting a wildly wrong atom.
+                # Below Z=1 we still floor to 1 (H) — RDKit rejects
+                # atomic number 0 outright.  Th (Z=90) through U (Z=92)
+                # remain clamped to keep the existing surface that
+                # callers may already be hitting.
+                z_int = int(z)
+                if z_int > 92:
+                    raise ValueError(
+                        f"transuranic / actinide Z={z_int} is not a "
+                        f"supported atom in the decoder; max supported "
+                        f"Z is 92 (U).  Project scope is precious-"
+                        f"metal anticancer (Pt/Ru/Ir/Rh/Os/Re)."
+                    )
+                safe_z = int(max(1, min(92, z_int)))
                 rw.AddAtom(Chem.Atom(safe_z))
             except Exception:
                 rw.AddAtom(Chem.Atom(6))
@@ -781,7 +863,16 @@ class YuelBondBondDecoder:
         rw = Chem.RWMol()
         for z in cloud.atomic_numbers.tolist():
             try:
-                safe_z = int(max(1, min(90, int(z))))
+                # Wf-A49 (2026-10-16) arch_fix_5 — same Z-cap as the
+                # main path.  See ``_assemble_mol`` for why Z > 92 is
+                # rejected (transuranic / trans-actinide guard).
+                z_int = int(z)
+                if z_int > 92:
+                    raise ValueError(
+                        f"transuranic / actinide Z={z_int} not supported; "
+                        f"max Z is 92."
+                    )
+                safe_z = int(max(1, min(92, z_int)))
                 rw.AddAtom(Chem.Atom(safe_z))
             except Exception:
                 rw.AddAtom(Chem.Atom(6))
@@ -805,6 +896,47 @@ class YuelBondBondDecoder:
     # ------------------------------------------------------------------
     # Dative detector — same convention as BondAwareDecoder.
     # ------------------------------------------------------------------
+    def _cap_for_z(self, z: int) -> float:
+        """Resolve the covalent-valence cap for an atomic number.
+
+        Wf-A49 (2026-10-16) arch_fix_10 — three dispositions for a
+        Z not in :data:`_COVALENT_VALENCE`:
+
+          1. ``unknown_z_default=None`` (default) — silently cap at 4
+             (carbon), matching the legacy behaviour.
+          2. ``unknown_z_default=<int>`` — pin the cap to the
+             supplied value (use for ``unknown_z_default=3`` to
+             mimic boron).
+          3. ``unknown_z_default="raise"`` — refuse the decode
+             instead of silently mapping the atom to a wildly wrong
+             cap.
+
+        Returns
+        -------
+        float
+            The covalent-valence cap for ``z``.
+
+        Raises
+        ------
+        ValueError
+            When ``z`` is not in :data:`_COVALENT_VALENCE` AND
+            ``unknown_z_default="raise"``.
+        """
+        if z in self.valence_cap:
+            return float(self.valence_cap[z])
+        if self.unknown_z_default is None:
+            return 4.0
+        if (
+            isinstance(self.unknown_z_default, str)
+            and self.unknown_z_default == "raise"
+        ):
+            raise ValueError(
+                f"atomic number Z={z} is not in the covalent-valence "
+                f"table; decoder constructed with unknown_z_default='raise' "
+                f"refuses unknown Z outright."
+            )
+        return float(self.unknown_z_default)
+
     @staticmethod
     def _is_metal(z: int) -> bool:
         """Whether Z is a metal for the purposes of the dative-bond detector.
