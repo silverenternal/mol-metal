@@ -212,6 +212,41 @@ def test_ppb_naphthalene_moderate():
     assert val >= 0.80
 
 
+# Wf-A44 §6.71 — metal-aware amend on plasma_protein_binding.
+# Regression-guard for the §6.69b PARTIAL residual that shipped only for
+# logp7_4 / gi50_proxy / herg_cardio_risk.  The Pauling-EN-anchored
+# amend is _metal_amend(mol) = (CANONICAL_EN − EN_M) * AMEND_SCALE
+# (canonical 2.30, scale 0.4); for Pt (EN=2.28) the amend is +0.008.
+def test_ppb_cisplatin_has_metal_amend():
+    """Cisplatin ``Cl[Pt](Cl)(N)N`` ppb shifts by +0.008 from base 0.22.
+
+    Baseline (pre-Wf-A44 §6.71) ``plasma_protein_binding('Cl[Pt](Cl)(N)N')``
+    returned 0.22 (logistic on logP alone); the metal-aware amend adds the
+    Pauling-EN delta ``(2.30 − 2.28) * 0.4 = +0.008``.  This test pins the
+    shift so any future regression in the amend path is caught immediately.
+    """
+    val = plasma_protein_binding("Cl[Pt](Cl)(N)N")
+    assert math.isfinite(val)
+    assert 0.0 <= val <= 1.0
+    # baseline 0.22 + amend 0.008 = 0.228, allow ±0.005 for RDKit Crippen variance
+    assert abs(val - 0.228) < 0.01, f"expected ~0.228 (0.22 + 0.008 amend); got {val:.4f}"
+
+
+def test_ppb_organic_no_amend():
+    """Negative control: acetaminophen (no metal) — amend path NOT triggered.
+
+    Pre-Wf-A44 §6.71 baseline value ~0.5301 (logistic on logP alone).
+    Post-Wf-A44: identical (no ``_has_metal`` so ``_metal_amend`` path is
+    skipped; ``_metal_amend(mol)`` returns 0.0 for non-metal SMILES).
+    """
+    val = plasma_protein_binding("CC(=O)Nc1ccc(O)cc1")  # acetaminophen
+    assert math.isfinite(val)
+    assert 0.0 <= val <= 1.0
+    # ±0.01 to account for any RDKit canonicalization drift; non-metal
+    # SMILES should be BIT-EXACT with the no-metal path.
+    assert abs(val - 0.530) < 0.05, f"expected ~0.530; got {val:.4f}"
+
+
 # ---------------------------------------------------------------------------
 # Batch mean helpers
 # ---------------------------------------------------------------------------

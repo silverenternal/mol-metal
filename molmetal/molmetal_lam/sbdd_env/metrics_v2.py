@@ -564,6 +564,13 @@ def plasma_protein_binding(smiles: str) -> float:
     else:
         ez = math.exp(logit_p)
         p = ez / (1.0 + ez)
+    # Wf-A44 §6.71 — metal-aware amend (Pauling-EN anchored); Pt-class
+    # metallodrugs (cisplatin/oxaliplatin/auranofin) bind > 90% plasma
+    # protein, so the amend is ADDED to p (clamped to [0,1]).  Same
+    # pattern as §6.69b logp7_4 / gi50_proxy / herg_cardio_risk, closes
+    # the residual §6.69b PARTIAL that shipped in Wf-A43.
+    if _has_metal(mol):
+        p = p + _metal_amend(mol)
     return _clip(p, 0.0, 1.0)
 
 
