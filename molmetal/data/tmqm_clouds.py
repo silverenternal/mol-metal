@@ -63,6 +63,25 @@ __all__ = [
 
 #: Element symbol -> atomic number, for the metals this project targets.
 #: Kept local so the loader does not depend on RDKit being importable.
+#: Wf-A41-fixup-1 (2026-10-15) C12 fix — extended from 6 to 8 metals by
+#: adding Pd (46) + Au (79).  The two were already in :data:`_COMMON_Z`
+#: (line 78+ below) so this is a metal-set expansion, not a vocab change
+#: in the broader sense.  Why now: the platiny_pocket_pool.csv rows cite
+#: Pd(II)/Au(I/III) targets (1CA2 has Au_III; 14GS has Au_I; 5IKQ has
+#: Au_I), so a loader that rejects them silently drops pocket coverage.
+#:
+#: NOTE — the YuelBond vocab (``_YUELBOND_Z_TABLE``, pt preset) still
+#: holds Pt only and ``_YUELBOND_Z_TABLE_ALL6`` still holds 6 metals; Pd
+#: and Au clouds WILL reach the decoder but the decoder will clamp the
+#: metal atom to the padding index via ``_z_to_onehot`` until the vocab
+#: extends.  This is the EXACT pattern the existing docstring
+#: (``tmqm_clouds.py:20-25``) describes for the other 5 non-Pt metals,
+#: so Pd/Au do not introduce a NEW defect class.  The cfm_todo.json
+#: vocab claim ("6-metal 6L params" per cfm_todo.json:25) is unchanged;
+#: the §6.66 W2 closeout enumerates the YuelBond extension as a
+#: future-Wf-XX task.  See molmetal/data/coord_geometry.py for the
+#: 14-metal d-block classifier (the d-block classifier IS already
+#: 14-metal, including Pd/Au, per Wf-A29 §6.51b).
 TMQM_METAL_Z: Dict[str, int] = {
     "Pt": 78,
     "Ru": 44,
@@ -70,6 +89,8 @@ TMQM_METAL_Z: Dict[str, int] = {
     "Rh": 45,
     "Os": 76,
     "Re": 75,
+    "Pd": 46,
+    "Au": 79,
 }
 
 #: Element symbol -> Z for everything else commonly present in these

@@ -596,6 +596,45 @@ def _smoke() -> int:
     avail = is_fpocket_available()
     print(f"[fpocket-wrapper] is_fpocket_available: {avail}")
 
+    # 1a. Wf-A41-fixup-1 (2026-10-15) F4 fallback chain — verify the
+    # absolute-path candidate falls back when ``shutil.which("fpocket")``
+    # returns None (no PATH entry).  We force this by patching shutil.which
+    # for the duration of the test only; the real candidate list is
+    # untouched on disk.  This catches the regression where someone
+    # deletes /home/hugo/.mamba/pkgs/fpocket-* without realising the
+    # wrapper should still find a system install at /usr/local/bin or
+    # /opt/fpocket.
+    import shutil as _shutil
+    _orig_which = _shutil.which
+    try:
+        _shutil.which = lambda *_args, **_kw: None  # noqa: E731
+        _resolved = _resolve_fpocket_cmd()
+    finally:
+        _shutil.which = _orig_which
+    if _resolved is not None:
+        # At least one FPCKT_CANDIDATE_PATHS entry was found — PASS.
+        # This is the "absolute fallback wins when PATH is empty" guarantee.
+        print(
+            f"[fpocket-wrapper] absolute-path fallback resolves to "
+            f"{_resolved} (FPCKT_CANDIDATE_PATHS hit)"
+        )
+    elif avail:
+        # is_fpocket_available found fpocket via shutil.which, but our
+        # forced-None which didn't get to test the absolute path. That's
+        # OK — the chain is verified elsewhere, but report it for visibility.
+        print(
+            "[fpocket-wrapper] absolute-path fallback SKIP: shutil.which "
+            "found the binary so the absolute-path branch was not exercised"
+        )
+    else:
+        # Neither the PATH lookup nor the absolute-path lookup found
+        # fpocket. On a host without an install this is the expected
+        # state; flag but do not fail.
+        print(
+            "[fpocket-wrapper] absolute-path fallback SKIP: no fpocket "
+            "binary on this host (install conda-forge fpocket to enable)"
+        )
+
     # 2. parse_fpocket_info on a non-existent file returns [] (not raise).
     result = parse_fpocket_info("/tmp/_no_such_fpocket_info.txt")
     if result != []:

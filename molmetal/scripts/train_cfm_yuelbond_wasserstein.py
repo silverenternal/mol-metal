@@ -6990,9 +6990,9 @@ def parse_args() -> argparse.Namespace:
             "Why: generation is launch-bound, not compute-bound. MEASURED on "
             "this checkpoint (704,393 params) at N=40 atoms, one vel_field "
             "forward costs 3.262 ms at B=1 and 3.599 ms at B=256 -- 256x the "
-            "work for 10% more time, so 99.6% of the wall clock does not "
+            "work for 10%% more time, so 99.6%% of the wall clock does not "
             "scale with batch. The sampler groups by exact atom count, so 192 "
-            "tmQM val clouds become 52 solver calls at median batch 3 (40% at "
+            "tmQM val clouds become 52 solver calls at median batch 3 (40%% at "
             "batch <= 2), each paying the full n_steps x 2 forwards. Measured "
             "~15 s per generation pass versus ~0.4 s as one padded batch.\n\n"
             "Equivalence, asserted by "
@@ -7680,6 +7680,30 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=4,
         help="Coordination number filter (4 = square-planar; 6 = octahedral). -1 = any.",
+    )
+    # Wf-A41-fixup-1 (2026-10-15) C11 fix — `--tmqm-min-per-metal` dest.
+    # The 2026-10-12 zero-Pt finding patched `load_tmqm_clouds(min_per_metal=...)`
+    # but no dest existed on this parser, so the loader flag was only
+    # reachable from callers that built the namespace by hand. The audit
+    # also flagged that the trainer called the loader WITHOUT the flag,
+    # so the only cohort that had a guaranteed-min-Pt sample was the
+    # PlatinAI/eval-only pocket-conditional retrain — not the CFM
+    # bond/SA headline runs. Default 0 = byte-exact legacy behaviour.
+    p.add_argument(
+        "--tmqm-min-per-metal",
+        dest="tmqm_min_per_metal",
+        type=int,
+        default=0,
+        help=(
+            "Minimum number of clouds per requested metal that the loader "
+            "must guarantee (forwarded to load_tmqm_clouds.min_per_metal). "
+            "Default 0 = byte-exact legacy reservoir behaviour.  >0 forces "
+            "the loader to scan the whole filtered pool and back-fill the "
+            "first missing candidates per metal (deterministic via file "
+            "iteration order + seed).  See metrics/by_metric/"
+            "cfm_opt3_min_per_metal.json for the 4/4 validation runs and "
+            "the §C13 audit rationale."
+        ),
     )
     p.add_argument(
         "--data-split",
@@ -9660,6 +9684,13 @@ def main() -> int:
         # uses for its OOD axes).  Default "random" preserves the
         # pre-Wf-A14 hash-split bit-exactly.
         _tmqm_split_kind = str(getattr(args, "tmqm_split_kind", "random"))
+        # Wf-A41-fixup-1 (2026-10-15) C11 fix — forward the new
+        # ``--tmqm-min-per-metal`` dest to the loader.  Default 0 keeps the
+        # byte-exact legacy reservoir behaviour; >0 forces per-metal
+        # back-fill so a val cohort with 0 Pt (the 2026-10-12 finding) is
+        # impossible.  See load_tmqm_clouds.min_per_metal docstring for the
+        # mechanism + §C11 audit rationale.
+        _tmqm_min_per_metal = int(getattr(args, "tmqm_min_per_metal", 0))
         train_clouds = _load_tmqm(
             _tmqm_root,
             metals=_tmqm_metals,
@@ -9668,6 +9699,7 @@ def main() -> int:
             seed=args.seed,
             split="train",
             val_frac=_tmqm_val_frac,
+            min_per_metal=_tmqm_min_per_metal,
             split_kind=_tmqm_split_kind,
         )
         val_clouds = _load_tmqm(
@@ -9678,6 +9710,7 @@ def main() -> int:
             seed=args.seed,
             split="val",
             val_frac=_tmqm_val_frac,
+            min_per_metal=_tmqm_min_per_metal,
             split_kind=_tmqm_split_kind,
         )
     elif _dataset == "csv":

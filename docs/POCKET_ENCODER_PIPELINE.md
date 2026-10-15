@@ -231,6 +231,34 @@ claim in this pipeline must carry a MEASURED-vs-PROJECTED tag.
 | **A32.5** | §6.54 honest-negative for the pre-A32 paper claims that ran on c=None | READY (A30-2 §6.51 chain) |
 | **A33.1** | `fpocket_wrapper.py` (NEW, no Java) — C-binary `fpocket 4.2.3` detector + `run_fpocket()` wire-in (per user voice 2026-10-14 *"为什么还有java?"*) | **DONE** (commit `04de1dbf13`, §6.60a) |
 | **A33.2** | 10 platiny targets extracted via `fpocket` + Biopython sphere-crop (no P2Rank, no Java) — `wf_a33_extract_platiny_pockets.py` writes `.data/molmetal/platiny_pockets/<pdb>_pocket10.pdb` | **DONE** (commit `f51c3836b1`, §6.60b) |
+
+## 4a. fpocket PATH resolution (Wf-A41-fixup-1 / 2026-10-15 F4 fix)
+
+`fpocket_wrapper._resolve_fpocket_cmd()` tries in this order:
+
+1. `MOLMETAL_FPOCKET_CMD` env var (explicit override).
+2. `shutil.which("fpocket")` (PATH lookup — may be empty on a fresh host).
+3. `FPCKT_CANDIDATE_PATHS` — the host's mamba/conda install:
+   `/home/hugo/.mamba/pkgs/fpocket-4.2.3-h8d0616a_1/bin/fpocket` plus
+   `/usr/local/bin/fpocket` and `/opt/fpocket/fpocket` fallbacks.
+
+If `which fpocket` is empty (no `PATH` entry) the absolute fallback is
+the safety net. To make the binary discoverable in a fresh shell:
+
+```bash
+export PATH="$HOME/.mamba/pkgs/fpocket-4.2.3-h8d0616a_1/bin:$PATH"
+```
+
+Verify with:
+
+```bash
+python -c "from molmetal.adapters.fpocket_wrapper import is_fpocket_available; print(is_fpocket_available())"
+# True
+```
+
+If `is_fpocket_available()` returns `False`, the candidate paths were
+exhausted — install fpocket (e.g. `conda install -c conda-forge fpocket`)
+or set `MOLMETAL_FPOCKET_CMD=/path/to/fpocket` explicitly.
 | **A33.3** | 5-seed × 50-epoch re-run of `r_platinai` with `c=PocketGen(platiny_pocket)` for honest eval-time comparison | BLOCKED (GPU + A32.3 — user 2026-10-14 *"gpu先别动"*) |
 
 ## 5. Cross-references

@@ -109,6 +109,15 @@ train:
   weight_decay: 0.0
   max_norm: 5.0
   ema_decay: 0.999
+  # Wf-A41-fixup-1 (2026-10-15) D5/H fix — bond_type_f1 lower-bound 0.9194
+  # was patience=3 (DEFAULT_EARLY_STOP_PATIENCE). 3-seed std 0.0269 is
+  # convergence-time spread, not noise floor — seed0/seed1 stopped at
+  # ep14/15 with the last 3 epochs still climbing (0.9031/0.8922/0.9144).
+  # Set patience to 10 so the chemistry early-stop criterion (combined
+  # gen_validity x bond_exact_type) gets the same plateau length that
+  # DEFAULT_PATIENCE=10 gives the legacy decode_ratio criterion.  See
+  # metrics/by_metric/cfm_bond_type_f1_3seed.json::root_cause_found_2026_10_12.
+  early_stop_patience: 10
   # EDM-style noise scale the flow is trained on: the std of the base
   # distribution x0, applied to BOTH the training draw
   # (x0 = randn_like(x1) * fm_noise_sigma) and the sampler's initial state.
@@ -413,8 +422,18 @@ data:
   # -1 = no coordination-number filter (4 = square-planar, 6 = octahedral).
   tmqm_coord_number: -1
   tmqm_val_frac: 0.2
-  # Wf-A14 (2026-10-13) Bemis-Murcko scaffold 80/10/10 split. Default random preserves Wf-A8c hash split bit-exactly.
-  tmqm_split_kind: random
+  # Wf-A41-fixup-1 (2026-10-15) C11 fix — enforce per-metal min so a
+  # val cohort with 0 Pt (the 2026-10-12 finding, n_clouds=192, seed=0)
+  # cannot reoccur. 20 is the safe lower bound for a 6-metal pool on
+  # n_clouds=192 (20 * 6 = 120 leaves room for the 8/2/3 split between
+  # train/val/test under scaffold; bump if the cohort shrinks).
+  tmqm_min_per_metal: 20
+  # Wf-A41-fixup-1 (2026-10-15) C13 fix — switch seed1 from the legacy
+  # random hash split to the Bemis-Murcko scaffold 80/10/10 split
+  # (Wf-A14, 2026-10-13). The OOD-by-construction property DrugOOD uses
+  # for its OOD axes (Ji 2023, iMoLD 2024): the same scaffold family
+  # never crosses train/val/test.
+  tmqm_split_kind: scaffold
 
 protocol:
   # Only keys absent from train:/eval: above, to avoid last-key-wins clashes.
