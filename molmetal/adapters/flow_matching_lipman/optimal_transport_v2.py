@@ -421,7 +421,7 @@ def mean_field_score_smoothed_ot_plan(
             f"kernel must be one of {W2GradientFlow._KERNELS}, " f"got {kernel!r}"
         )
 
-    b, d = x0.shape[0], int(torch.tensor(x0.shape[1:]).prod().item())
+    b = x0.shape[0]
 
     # Compute the smoothed score at x0 (band-limited estimate).
     flow = W2GradientFlow(kernel=kernel, sigma=sigma)

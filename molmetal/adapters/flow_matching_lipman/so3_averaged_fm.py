@@ -151,8 +151,6 @@ def _quats_to_rotmat(
     wx = q3 * q0
     wy = q3 * q1
     wz = q3 * q2
-    zero = torch.zeros_like(xx)
-    one = torch.ones_like(xx)
     row0 = torch.stack(
         [1.0 - 2.0 * (yy + zz), 2.0 * (xy - wz), 2.0 * (xz + wy)], dim=-1
     )

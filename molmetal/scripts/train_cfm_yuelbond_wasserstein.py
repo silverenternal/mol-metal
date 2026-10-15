@@ -644,7 +644,6 @@ except ImportError:
 # the two definitions cannot drift apart again.
 
 from molmetal.molmetal_lam.reward.wasserstein_loss import (
-    WassersteinConfig,
     wasserstein_decay_check,
     wasserstein_loss,
     wasserstein_pocket_loss,
@@ -10540,8 +10539,6 @@ def main() -> int:
         flush=True,
     )
     reference_positions = build_reference_positions().to(device)
-    # Wasserstein config.
-    wcfg = WassersteinConfig()
     # Wf-406-A2 — TODO-21 Lambda × CFM coupling scaffolding (CPU-only).
     # Builds LambdaRewardDataset if --lambda-cfm-coupling is set;
     # default OFF so the path collapses to zero contribution when
@@ -12066,8 +12063,6 @@ def main() -> int:
         # 2026-10-04 — seed-qualified.  The unqualified name was shared by
         # every seed in a sweep (the launcher passes no --ckpt-dir), so the
         # five seeds overwrote one another and only the last survived.
-        ckpt_path = ckpt_dir / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}.pt"
-
         def _save_cfm_checkpoint(
             _epoch: int, _decode_ratio: float, _tag: str = ""
         ) -> None:

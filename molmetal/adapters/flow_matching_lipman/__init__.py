@@ -298,7 +298,6 @@ def load_tmQM_pretrained(
 
     n_missing = len(list(missing))
     n_unexpected = len(list(unexpected))
-    n_src = len(src)
     n_own = len(encoder.state_dict())
     n_transferred = len(bridged)
     print(
@@ -848,7 +847,6 @@ def _pcgrad_resolve(task_grads: List[torch.Tensor]) -> List[torch.Tensor]:
     t = len(task_grads)
     # Stack into a (T, D) tensor for vectorised cosine / dot products.
     flat = torch.stack([g.detach().reshape(-1).float() for g in task_grads], dim=0)
-    d = flat.shape[1]
     # Pairwise cosine similarity matrix.  We tolerate zero-grad tasks
     # (numerator = 0 -> cos = 0, no projection needed).
     norms = flat.norm(dim=1).clamp(min=1e-12)
@@ -2944,8 +2942,6 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # ``v_uncond + cfg_scale * (v_cond − v_uncond)``.  When
         # ``cfg_scale == 1.0`` we keep the legacy ``forward_velocity``
         # path bit-exact.
-        from functools import partial
-
         cfg_scale = float(getattr(self, "_cfg_scale", 1.0) or 1.0)
         # The radius graph is a function of `x`, which the solver moves, so it
         # is rebuilt inside the callable rather than bound here.

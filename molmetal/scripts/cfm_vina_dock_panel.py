@@ -2255,7 +2255,6 @@ def build_panel(
         v3_cohort_median_lift = float(round(med_v3 - med_vina, 4))
 
     # Per-pocket aggregates: per-bond F2(a) median + V3 combined median.
-    aggregate_per_pocket_pb: Dict[str, Dict[str, Any]] = {}
     for pocket_id in pockets:
         cells = [
             m.per_pocket.get(pocket_id) for m in molecules if pocket_id in m.per_pocket

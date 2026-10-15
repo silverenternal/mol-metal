@@ -352,7 +352,7 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument("--strict", action="store_true")
-    args = parser.parse_args(argv)
+    parser.parse_args(argv)
 
     tmpdir = Path(tempfile.mkdtemp(prefix="track_b_smoke_"))
     failures: list[str] = []
