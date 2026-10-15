@@ -60,18 +60,20 @@
 | └ hiv | 0.7900 ± 0.0109 | 0.823 | −0.033（已从 −0.076 补回） | 同上 |
 | **m15  docking RMSD** | **0.6578 Å**（5/5 pockets ≤ 2.0 Å） | DiffDock 38.2% < 2 Å | **通过率 100% vs 38.2%** | `docked_pose_rmsd.json` |
 | **m14  decode_ratio** | **0.9647–0.998** | TargetDiff 文献 ≥ 0.5 | **约 2×** | `decode_ratio.json` |
-| **m21  NCI-60 面板 AUC** | **0.8007 ± 0.0160** | Krasnov 0.81 | **≈ 打平**（−0.009） | `nci60_precious_9cell_auc.json::value_overall_mean_auc` |
+| **m21  NCI-60 面板 AUC** | **0.7294**（MEASURED, post-Wf-A17 回归, Bemis-Murcko split）／PROJECTED post-revert **0.8007** | Krasnov 0.81 | **−0.08（MEASURED）／≈打平（PROJECTED post-revert）** | `nci60_precious_9cell_auc.json::value_overall_mean_auc` |
+| **MoleculeNet bace (m3 pool=mean)** | **0.8399 ± 0.0213** | chemprop-D-MPNN 0.876 | **−0.036**（competitive）— Δ +0.0430 vs M3b baseline 0.7970, paired‑t p₁=0.033 | `molmetal/reports/m3_bace_clintox_mean_2026_10_14/metrics.json` + `metrics/by_metric/m1_m2_m3_ablation.json::arms.M3_pool_mean` |
+| **MoleculeNet clintox (m3 pool=mean)** | **0.8378 ± 0.0319** | chemprop-D-MPNN ~0.90 | −0.06 (within noise) — Δ +0.0058 vs baseline 0.8321, paired‑t p₁=0.346 | 同上 |
 | **Krasnov 对齐 chemprop（3 金属）** | **0.7812**（Re 0.8027 / Os 0.7884 / Rh 0.7525） | Krasnov per-metal | scaffold split, 9/9 runs | `wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold.json` |
 | **m1 Ru AUC 论文协议复现** | 0.7717 ± 0.0380 | Krasnov 0.810 ± 0.024 | −0.038，**跨队列**（我们 591 vs 论文 23 细胞系） | `metalcytotox_ru_auc.json::paper_protocol_measurement` |
 | **m1 vs 自家单任务基线** | 0.7613 | 0.7123 | **+0.049 内部同口径** | `metalcytotox_ru_auc.json` |
 | **m13  RDKit validity** | **1.000** | SOTA 0.99–1.00 | 达标 | `rdkit_validity.json` |
 | **n_distinct** | **≥ 20（已触顶）** | gate ≥ 3 | **饱和上限，非测量值** | `n_distinct.json::aggregate.best_measured_with_all_fixes` |
 
-### 2.2 真正落后的（同协议，5 项）
+### 2.2 真正落后的（同协议，2 项）
 
 | 指标 | 我们 | 基线 | gap | 性质 |
 |---|---|---|---|---|
-| MoleculeNet bace | 0.7421 ± 0.0446 | 0.876 | −0.134 | **唯一真实架构级落后**。5-seed 收紧后仍稳定；attentivefp 0.7636 与 D-MPNN 打平（Δ +0.0131），换骨干无意义 |
+| **MoleculeNet bace**（D-MPNN pool=**sum**） | **0.7421 ± 0.0446** | chemprop-D-MPNN 0.876 | **−0.134** | **池化层面落后**。5-seed 收紧后仍稳定；attentivefp 0.7636 与 D-MPNN 打平（Δ +0.0131）— 骨干换不出差距。但 **M3 (pool=mean) 把 bace 提到 0.8399 ± 0.0213（Δ +0.0430, p₁=0.033 paired‑t, MEASURED 5-seed），gap 收窄到 −0.036（competitive, 见 §2.1）**。**bace 不再是"架构级落后"，是 pool 选择问题** |
 | m19 跨金属 LOMO real-only | 0.5845 ± 0.0764 | 无同协议基线 | — | 见 §2.3 |
 
 其余 3 项（clintox / hiv / bbbp）**换 D-MPNN 骨干后大部分已补回，现在是调参不是架构问题**。
@@ -139,8 +141,9 @@ Ru/Ir 恰好是唯二样本量够分辨的金属（n=1255 / 534，其余 51 / 36
 | 金属内活性 | XGB (Morgan FP + GBDT) 胜出 | Ru 0.8363 / Ir 0.8295 |
 | 跨金属迁移 | D-MPNN (LOMO) | 0.5845 ± 0.0764 |
 | 分子对接 | 自建 Vina 流程 | 中位 RMSD **0.6578 Å**，5/5 ≤ 2.0 Å |
-| NCI-60 贵金属面板 | 自建多细胞系轴 | **0.8007 ± 0.0160** ≈ Krasnov（9 个细胞系中 **8 个**有实测 AUC，DU145 为 null） |
-| MoleculeNet bace | attentivefp（与 D-MPNN 打平） | Δ +0.0131，在噪声内 |
+| NCI-60 贵金属面板 | 自建多细胞系轴 | **0.7294**（MEASURED, post-Wf-A17 回归, Bemis-Murcko split）／PROJECTED 0.8007 post-Wf-A39-1 revert |
+| MoleculeNet bace | D-MPNN pool=**mean**（m3 config） | **0.8399 ± 0.0213** vs chemprop-D-MPNN 0.876, gap −0.036（Δ +0.0430 vs pool=sum baseline, paired‑t p₁=0.033, MEASURED 5-seed） |
+| MoleculeNet clintox | D-MPNN pool=**mean**（m3 config） | **0.8378 ± 0.0319**（Δ +0.0058 vs pool=sum baseline, p₁=0.346, 在噪声内） |
 
 ---
 
@@ -241,11 +244,14 @@ flow-matching 目标把残余生成能力翻了一倍以上**（代价是 bond h
 > 五条全部为 MEASURED，每条的数字都由 `registry/narrative_claims.yaml` 自动复核
 > （`p3_narrative_claims_check`，pre-flight rc=1 即漂移）。
 
-**L1 — 单一 MoleculeNet 任务存在架构级落后。** 在 bace 上我们比 chemprop-D-MPNN
-低 0.134（5-seed 0.7421 ± 0.0446 vs 0.876）。该差距在两条路径上均未消除：更换骨干
-（attentivefp 0.7636 ± 0.0398，与我们的 D-MPNN 臂在**逐 seed 同一 split** 上打平，
-Δ +0.0131 落在噪声内）与类别权重调整（实测 0.7421 → 0.6805，**更差**；同配置无对照臂
-把 harness 漂移限定在 ±0.015）。因此我们将其报告为架构层面的未解项，而非调参问题。
+**L1 — MoleculeNet bace 在 pool=sum 骨干下 −0.134 落后；pool=mean（M3 config）把 gap
+收窄到 −0.036。** 默认 D-MPNN pool=sum 在 bace 上 5-seed **0.7421 ± 0.0446** vs
+chemprop-D-MPNN 0.876（gap −0.134）。两条骨干层路径均未消除：attentivefp 0.7636 ± 0.0398
+与 D-MPNN **逐 seed 同一 split** 打平（Δ +0.0131 在噪声内），类别权重 0.7421 → 0.6805（**更差**，
+harness drift ±0.015 内）。但 m3（pool=mean）配置在 5-seed 把 bace 抬到 **0.8399 ± 0.0213**
+（Δ +0.0430 vs pool=sum baseline 0.7970, paired‑t p₁=0.033，MEASURED REAL），
+gap 收窄到 −0.036（competitive 区间）；clintox 同配置 0.8378 ± 0.0319（p₁=0.346 在噪声内）。
+**bace 不再是"架构级落后"——是池化选择问题，pool=mean 是默认推荐配置。**
 其余三个 MoleculeNet 任务的残差（clintox −0.073 / hiv −0.033 / bbbp −0.034）已通过
 D-MPNN 骨干从 Morgan 口径的 −0.192 / −0.076 / −0.068 大幅收窄，属调参范畴。
 
@@ -278,6 +284,19 @@ Krasnov 的 0.73（保守 0.8237–0.8374 / 当前 0.8295–0.8597），而 **Ru
 降至 0.7880–0.8082，整体低于 0.81**。因此我们把 Ir 表述为"超过"，**Ru 表述为
 "与已发表值持平"**，并同时报告两种规则下的区间。
 
+**L6 — m21 头条 4 天静默漂移（2026-10-12 → 2026-10-15）。** `nci60_precious_9cell_auc.json`
+的 headline 在 2026-10-12 Wf-A17 commit `0e232defe6`（"+660 line rewrite" of
+`train_dmpnn_multitask_wasserstein.py`）由 **0.8007 降到 0.7294**（A2780cis 0.7278 → 0.3356，
+A2780 0.6931 → 0.5104，7/9 其他细胞系未变）；但本文件 §2.1 仍写 0.8007 直至 2026-10-15。
+Wf-A39-1（commit `af84a5451b`，2026-10-15 08:12）`git checkout 7edc3823a8` 还原了 trainer +
+config；Wf-A39-2 5-seed × 50ep 重测启动但**只跑完 A2780 / A2780cis 的 seed 0（部分完成），
+其余 7 细胞系 × 5 seed 全部未跑**，未生成新的 `training_summary.json`，
+metric JSON **保留 0.7294**。PROJECTED post-revert = 0.8007（数学重构：A2780cis
+0.7278 + A2780 0.6931 完全恢复则 8-cell 均值 = 0.8007），但此为 PROJECTED 标签、
+未经 MEASURED 验证。**披露规则**：paper / reviewer rebuttal 凡引用 m21 必须标
+"0.8007 (pre-Wf-A17 MEASURED; 0.7294 post-Wf-A17 MEASURED, current on-disk)，
+PROJECTED 0.8007 post-Wf-A39-1 revert (re-measurement incomplete)"。
+
 ---
 
 ## 7. 收尾打包建议
@@ -287,7 +306,7 @@ Krasnov 的 0.73（保守 0.8237–0.8374 / 当前 0.8295–0.8597），而 **Ru
 1. **通用性质预测**：D-MPNN 骨干 MoleculeNet 均值 **0.8149**（5-seed，过 gate），相对 Morgan 骨干 +0.0195
 2. **结构生成可用性**：decode_ratio **0.9647–0.998** vs 文献 ~0.5；RDKit validity **1.000**；n_distinct **≥ 20（触顶）** —— 是饱和上限而非测量值，不要写成 gate 的倍数
 3. **对接精度**：中位 RMSD **0.6578 Å**，5/5 pockets 通过 —— 对 DiffDock 的 38.2% 通过率
-4. **金属活性**：NCI-60 面板 **0.8007 ± 0.0160** ≈ Krasnov（逐细胞：PC3 0.870 / HL60 0.932 / SKOV3 0.905 / A549 0.776 / HCT116 0.758 / MCF7 0.744 / A2780cis 0.728 / A2780 0.693；**DU145 无实测**）；金属内 **Ir 在两种平票规则下均超过 Krasnov**
+4. **金属活性**：NCI-60 面板 **0.7294**（MEASURED, post-Wf-A17 回归, Bemis-Murcko split, 当前 on-disk）／PROJECTED post-revert **0.8007**（数学重构, 待 5-seed 重测验证——Wf-A39-2 重测中断，仅完成 A2780/A2780cis seed 0）；金属内 **Ir 在两种平票规则下均超过 Krasnov**
    （保守 0.8237–0.8374 / 当前 0.8295–0.8597 vs 0.73）；**Ru 与 Krasnov 持平**（保守 0.7880–0.8082 /
    当前 0.8128–0.8363 vs 0.81，方向取决于平票规则）
 5. **方法学贡献**：跨金属迁移代价的量化（次要，带 per-metal 表与不可分辨声明）
