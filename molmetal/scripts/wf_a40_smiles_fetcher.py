@@ -243,7 +243,6 @@ def main(argv: Optional[list] = None) -> int:
     pages_scanned = 0
     pages_with_pt = 0
     new_smiles = 0
-    last_last_page: Optional[int] = None
     t0 = time.time()
 
     for page in iter_pages(args.start_page, args.max_pages):
