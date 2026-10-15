@@ -96,9 +96,15 @@ def _cross_cells(ex1: Dict[str, object]) -> Dict[str, Dict[int, float]]:
     """``{metal: {seed: zero_shot_auc}}`` from the ex1 per_run rows (arm=none)."""
     out: Dict[str, Dict[int, float]] = {m: {} for m in METALS}
     for r in ex1["per_run"]:  # type: ignore[index]
-        if r["arm"] != "none":
+        m = str(r["metal"])
+        if r["arm"] != "none" or m not in out:
             continue
-        out[str(r["metal"])][int(r["seed"])] = float(r["zero_shot_auc"])
+        v = float(r["zero_shot_auc"])
+        # A NaN here (e.g. an empty held-out test set) must not propagate into a
+        # reported mean; drop the cell and let n_seeds show the shortfall.
+        if not np.isfinite(v):
+            continue
+        out[m][int(r["seed"])] = v
     return out
 
 
@@ -149,6 +155,17 @@ def main(argv: Optional[List[str]] = None) -> int:
         default="metrics/by_metric/pa3_inhouse_lomo_probe_cohort.json",
     )
     args = p.parse_args(argv)
+
+    missing = [
+        rel for rel in (args.cross, args.within_metric)
+        if not (PROJECT_ROOT / rel).exists()
+    ]
+    if missing:
+        raise SystemExit(
+            f"missing input artifact(s) {missing}; run "
+            f"configs/ex1_lomo_24h.yaml (cross) and the 24 h within run first "
+            f"(MISSING != dropped)"
+        )
 
     ex1 = _load(args.cross)
     within = _load(args.within_metric)

@@ -70,7 +70,14 @@ def _cross_cells(ex1: Dict[str, object]) -> Dict[str, Dict[int, float]]:
     """``{metal: {seed: zero_shot_auc}}`` for the single arm in this ex1 report."""
     out: Dict[str, Dict[int, float]] = {m: {} for m in METALS}
     for r in ex1["per_run"]:  # type: ignore[index]
-        out[str(r["metal"])][int(r["seed"])] = float(r["zero_shot_auc"])
+        m = str(r["metal"])
+        if m not in out:
+            continue
+        v = float(r["zero_shot_auc"])
+        # A NaN cell must not propagate into a reported mean (AGENTS.md §5.2).
+        if not np.isfinite(v):
+            continue
+        out[m][int(r["seed"])] = v
     return out
 
 
