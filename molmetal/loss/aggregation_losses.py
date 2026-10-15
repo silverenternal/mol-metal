@@ -20,7 +20,7 @@ two paths.
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional, Sequence
+from typing import Dict, Optional
 
 import torch
 

@@ -30,6 +30,7 @@ shipped default path.
 
 from __future__ import annotations
 
+import warnings
 from typing import Dict, Optional
 
 import torch
@@ -57,8 +58,6 @@ def _maybe_warn_import(cls_name: str, exc: BaseException) -> None:
     _IMPORT_WARNED.add(key)
     # ``stacklevel=2`` so the warning points at the caller of
     # ``compute`` rather than this helper module.
-    import warnings
-
     warnings.warn(
         f"[{cls_name}] {type(exc).__name__} — {exc}; returning 0",
         stacklevel=2,

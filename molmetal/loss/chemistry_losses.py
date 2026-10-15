@@ -21,8 +21,6 @@ preserved by NOT short-circuiting ``requires_grad`` in the disabled branch.
 from __future__ import annotations
 
 import logging
-import math
-import warnings
 from typing import Any, Dict, List, Optional, Sequence
 
 import torch

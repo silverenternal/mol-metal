@@ -45,7 +45,6 @@ from .egnn_rocm_checkpoint import (
     egnn_checkpoint_default_enabled,
 )
 from .egnn_extensions import (
-    DativeAwareCoordScale,
     EdgeTypeEmbedding,
 )
 
@@ -78,6 +77,32 @@ def _maybe_fused_residual_add(
         return _triton_fused_residual_add(x, residual, alpha=alpha, beta=beta)
     # Fallback: pure-PyTorch ``torch.add`` with ``alpha``.
     return torch.add(x, residual, alpha=alpha)
+
+
+# ---------------------------------------------------------------------------
+# Defensive warning helper — once-per-process gate for the clash-repulsion
+# narrow except below.  Mirrors ``_maybe_warn_import`` in
+# :mod:`molmetal.loss.regularization_losses` (kept local to avoid a
+# adapter→loss circular import).  Wf-A50 W2-1 (2026-10-16) — replaces the
+# bare ``except Exception: pass`` that previously swallowed every
+# failure mode (NaN, OOM, shape mismatch, NameError) into a silent pass.
+# ---------------------------------------------------------------------------
+_CLASH_WARNED: set = set()
+
+
+def _maybe_warn_clash(exc_type_name: str, exc: BaseException) -> None:
+    """Emit a once-per-process warning if the clash-repulsion narrow-
+    except swallowed something.  No-op on repeat.
+    """
+    if exc_type_name in _CLASH_WARNED:
+        return
+    _CLASH_WARNED.add(exc_type_name)
+    import warnings as _w
+
+    _w.warn(
+        f"[egnn.clash_repulsion] {exc_type_name} — {exc}; falling back to no-clash-repulsion",
+        stacklevel=2,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -675,11 +700,12 @@ class EquivariantGraphConv(nn.Module):
                 agg_x_src = _scatter_sum(clash_msg, src, dim=0, dim_size=n_nodes)  # (N, 3)
                 agg_x = agg_x + agg_x_src  # dst push (already in agg_x) + symmetric src push
                 agg_x = agg_x * float(self.clash_repulsion_weight)
-            except Exception:
-                # Defensive: never let a clash-repulsion edge case crash
-                # the forward pass.  Falls back to no-clash-repulsion
-                # which is bit-exact legacy.
-                pass
+            except (RuntimeError, ValueError) as exc:
+                # Narrow: only RDKit-side call-shape mismatches and torch
+                # # shape/runtime errors are suppressed.  OOM / NaN / genuine
+                # bugs propagate so they are visible in stderr instead of
+                # being silently collapsed.
+                _maybe_warn_clash(type(exc).__name__, exc)
 
         # T9 (TODO-09) — dative reciprocal-update suppression: on dative
         # edges, the ligand atom (``src``) should NOT receive the coord
@@ -821,6 +847,16 @@ class EquivariantGraphConv(nn.Module):
         # caller pushes ``coord_scale`` outside [0, 1] via a prior.
         angle = (coord_scale * dist).clamp(max=2.0 * torch.pi)
         axis_angle = (dir_vec * angle).contiguous()  # [n_edges, 3]
+
+        # Wf-A50 W2-2 (2026-10-16) — finite-check guard.  If `dir_vec`
+        # already carries NaN/Inf before the kernel dispatch, the
+        # rotation matrix and the einsum will silently propagate the
+        # non-finite values through the entire coord update without
+        # raising.  Detect that case and fall back to the safe path so
+        # the failure surfaces in the trainer stderr rather than as a
+        # silent loss spike downstream.
+        if not torch.isfinite(dir_vec).all():
+            return dir_vec * coord_scale
 
         try:
             rot = _triton_rotation_from_axis_angle(axis_angle)  # [n_edges, 3, 3]

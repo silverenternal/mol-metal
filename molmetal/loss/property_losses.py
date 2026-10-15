@@ -104,24 +104,27 @@ class MolecularPropertyTargetLoss:
         # Per-property batch means.
         per_mol: dict = {k: [] for k in self.enabled_props}
         for m in mols:
+            # Narrow excepts: only RDKit-side call-shape mismatches are
+            # suppressed; genuine bugs (NameError, TypeError on a mismatch
+            # with the molecules module contract) propagate.
             try:
                 rotb = int(self._Descriptors.NumRotatableBonds(m))
-            except Exception:
-                rotb = 0
+            except (RuntimeError, ValueError):
+                continue
             try:
                 n_arom = sum(1 for b in m.GetBonds() if b.GetIsAromatic())
                 n_bonds = m.GetNumBonds()
                 arom_frac = (n_arom / n_bonds) if n_bonds else 0.0
-            except Exception:
-                arom_frac = 0.0
+            except (RuntimeError, ValueError):
+                continue
             try:
                 logp = float(self._Crippen.MolLogP(m))
-            except Exception:
-                logp = 0.0
+            except (RuntimeError, ValueError):
+                continue
             try:
                 heavy = m.GetNumHeavyAtoms()
-            except Exception:
-                heavy = 0
+            except (RuntimeError, ValueError):
+                continue
             if "ROTB_per_mol" in per_mol:
                 per_mol["ROTB_per_mol"].append(rotb)
             if "aromatic_bond_fraction" in per_mol:

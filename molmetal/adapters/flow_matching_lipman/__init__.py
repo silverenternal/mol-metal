@@ -61,7 +61,7 @@ from triton_kernels.config import triton_config
 # CFM training loop.  See ``amp.py`` for the gfx1101 rationale and the
 # ``check_rocm_env_vars`` warning pattern (mirrors the RDNA3 fallback
 # at ``models/_scatter.py:84-94``).
-from .amp import CFMAMPContext, recommended_amp_kwargs, ROCM_GFX1101_ENV_VARS  # noqa: E402
+from .amp import CFMAMPContext  # noqa: E402
 
 
 def maybe_enable_amp() -> "CFMAMPContext":

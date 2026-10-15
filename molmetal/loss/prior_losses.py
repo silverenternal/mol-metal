@@ -7,7 +7,6 @@ separately from model-side.
 
 from __future__ import annotations
 
-import math
 from typing import Dict, Optional
 
 import torch
