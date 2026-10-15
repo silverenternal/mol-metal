@@ -1,0 +1,173 @@
+# Wf-A50 §6.55g prep — log-normal + nucleus-sample CFM config.
+#
+# SCOPE / WHY THIS CONFIG EXISTS
+# ------------------------------
+# Companion to `cfm_5metal_default.yaml` that EXERCISES the three
+# Wf-A35-1/2 wire-ins end-to-end (per §6.55g MEASURED rule: a wire-in
+# that no shipped YAML ever sets to non-default is DEFAULT-pass-through
+# only and therefore not measured).  Every key below is a NON-DEFAULT
+# value, so a single 50-step CPU smoke against this config proves
+# each wire-in actually reached the adapter.
+#
+# THREE WIRE-INS UNDER TEST
+# -------------------------
+# 1. flow.fm_t_dist: log_normal — ODE time grid via Karras 2022
+#    log-normal sigmoid schedule (mid-range concentration), wired at
+#    `molmetal/adapters/flow_matching_lipman/__init__.py:2915`.
+# 2. flow.top_p: 0.85 + flow.top_k: 30 + flow.temperature: 0.7 —
+#    Holtzman 2020 nucleus sampling with both top-p truncation and
+#    top-k truncation + logit rescale, wired at
+#    `molmetal/adapters/flow_matching_lipman/__init__.py:3168-3188`
+#    (only fires when `_top_p < 1.0 or _top_k > 0 or _temperature != 1.0`).
+# 3. flow.bond_decision: threshold + flow.bond_decision_threshold: 0.3 —
+#    bond-decision rule + lowered threshold, surfaced through
+#    `bond_decision_settings` helper at
+#    `molmetal/eval/bond_decision.py:97` and read by the decoder at
+#    `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:10088-10118`.
+#
+# All defaults are OFF in the canonical config (`bond_decision:
+# argmax`, `fm_t_dist: uniform`, `top_p=1.0`, `top_k=0`,
+# `temperature=1.0`).  This config flips every flag to a non-default
+# value so a single `--config configs/cfm_5metal_default_log_normal_2026_10_16.yaml`
+# launch exercises the full chain (YAML → wfA2_config_loader →
+# argparse dest → adapter → EGNN/YuelBond decoder).
+#
+# NOT FOR PRODUCTION
+# ------------------
+# This config is for the §6.55g MEASURED-rule close-out only.  No
+# checkpoint should be trained on it without an explicit per-launch
+# user OK per AGENTS.md §5.1 standing GPU grant.
+#
+# COMPANION SURFACES
+# ------------------
+# * Trainer:       molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+# * Tests:         molmetal/tests/test_wfA50_log_normal_grid.py
+#                  molmetal/tests/test_wfA50_bond_decision_yaml7.py
+# * Bond helper:   molmetal/eval/bond_decision.py
+#
+# HONEST-FRAMING NOTE
+# -------------------
+# Per AGENTS.md §5.2: every number in any follow-on closeout MUST
+# trace to a JSON / report path on disk with MEASURED or PROJECTED
+# tag.  This config alone produces no numbers — it is a wire-in test
+# surface, not a metric lift claim.
+
+data:
+  # Wf-A37-8 canonical 5-metal anticancer drug cohort.
+  dataset: csv
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+  # MetalCytoToxDB multi-task v3 cohort filter — keep ALL 5 metals
+  # the corpus ships with (Ru/Ir/Os/Rh/Re).  This key is in the loader's
+  # DECLARED_INERT_PATHS (no trainer dest) and is printed-but-not-fatal
+  # per AGENTS.md §5.11 disposition 2 (prose for reproducibility).
+  cohort_filter:
+    metals:
+      - Ru
+      - Ir
+      - Os
+      - Rh
+      - Re
+model:
+  hidden_dim: 128
+  n_layers: 3
+  atom_vocab_size: 13
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  learnable_vel_scale: true
+  # Wf-A37-7: SE(3) EGNN velocity field is the production decoder.
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  # Wf-A37-7: TMQM init is OFF for the property-cohort CFM run
+  # (tmQM geometry pretrain does not transfer to ligand-only MetalCytoTox rows).
+  use_tmqm_init: false
+  pcgrad_multi_task: false
+  q_head_enabled: false
+flow:
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  # Wf-A50 §6.55g wire-in #3: bond decision rule.
+  bond_decision: threshold
+  bond_decision_threshold: 0.3
+  n_steps: 100
+  method: rk4
+  optimizer: adam
+  warmup_steps: 200
+  ema_decay: 0.999
+  # Wf-A37-7: W2 OFF (NOT load-bearing on the precious-metal anticancer axis).
+  wasserstein_weight: 0.0
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 3.5
+  # Wf-A50 §6.55g wire-in #1: log-normal ODE time grid (Karras 2022 §3.4).
+  fm_t_dist: log_normal
+  fm_log_normal_mu: -0.5
+  fm_log_normal_sigma: 1.0
+  # Wf-A50 §6.55g wire-in #2: Holtzman 2020 nucleus sampling (top-p + top-k
+  # + temperature).  Each value is distinct from the OFF defaults
+  # (top_p=1.0, top_k=0, temperature=1.0) so the wire-in branch fires.
+  top_p: 0.85
+  top_k: 30
+  temperature: 0.7
+protocol:
+  batch_size: 16
+  lr: 0.0001
+  gen_validity_samples: 16
+  gen_eval_n: 64
+  gen_eval_seeds: "0 1 2"
+  n_seeds: 5
+  epochs: 50
+  n_seeds_min: 3
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+output:
+  base_dir: results/cfm_5metal_default_log_normal_2026_10_16
+  log_master: results/cfm_5metal_default_log_normal_2026_10_16/master.log
+  ckpt_dir: results/cfm_5metal_default_log_normal_2026_10_16/checkpoints
+  events_jsonl: true
+  resume_from: auto
+  resume_from_path: null
+# Wf-A15 (2026-10-13) Track-A L6 — both OFF by default for the property axis.
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+q_channel_lr_multiplier: 1.0
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+compute:
+  gpu: cuda:0
+directives:
+  kill_then_adapt: true
+  time_budget: 48h
+  user_ok_required: true
+  user_ok_granted: 10h budget + PRO 6000 + project root results/ + GPU util >=90% check (2026-09-28)
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir}
+  legacy_inline_command: ""
+honest_framing:
+  claims:
+  - Wf-A50 §6.55g wire-in test surface: every Wf-A35-1/2 flag set to non-default
+  - fm_t_dist=log_normal + top_p=0.85 + top_k=30 + temperature=0.7 (nucleus active)
+  - bond_decision=threshold + bond_decision_threshold=0.3 (bond rule non-default)
+  - Companion 50-step CPU smoke per AGENTS.md §5.7 to verify wire-in fires
+  do_not_claim:
+  - Production retrain surface (per-launch user OK required, AGENTS.md §5.1)
+  - Metric lift over cfm_5metal_default.yaml (this config is wire-in verification, not ablation)
+  - 7-metal cohort coverage (only the 5-metal cohort ships on disk)
+  deferred:
+  - W2 ON measurement (Wf-A37-7 established W2 not load-bearing)
+  - Per-lever ablation paper-grade (5-seed × 30-epoch GPU, requires explicit user OK)
+  - 7-metal cohort acquisition (Au/Pd/Ag rows absent from MetalCytoToxDB v3 on disk)
