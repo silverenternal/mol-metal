@@ -1908,9 +1908,7 @@ class EGNNVelocityField(nn.Module):
         """
         try:
             from molmetal.molmetal_lam.priors.metal_geometry import (
-                SquarePlanarPtII,
                 square_planar_penalty,
-                square_planar_penalty_batched,
                 MetalGeometryPrior,
             )
         except ImportError:

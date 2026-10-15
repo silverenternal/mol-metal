@@ -727,7 +727,6 @@ def _get_f2a_scorer(
     the per-bond flag so per-centre and per-bond scorers can coexist.
     """
     global _F2A_SCORER, _F2A_IMPORT_ERROR
-    cache_key = (modifier_kcal_mol, use_per_bond)
     if (
         _F2A_SCORER is not None
         and getattr(_F2A_SCORER, "use_per_bond", False) == use_per_bond
@@ -1949,7 +1948,6 @@ def build_panel(
                 n_docked += 1
         # Per-molecule derived flags (only if at least one pocket attempted
         # past PDBQT conversion).
-        statuses = [c.status for c in mol_rec.per_pocket.values()]
         # parse_ok / pdbqt_ok: best-effort re-check from the SMILES.
         pdbqt_string, st, _ = _smiles_to_pdbqt_string(
             smiles, seed=seed, pt_strip=pt_strip
@@ -2210,12 +2208,6 @@ def build_panel(
     # Wf-333-V3: V3 combined cohort aggregates (per-bond F2(a) +
     # distance sub-score).  The combined kcal/mol is the canonical
     # V1 + V2 + V3 lift axis for the m3 Vina Dock metric.
-    all_pb_scores: List[float] = [
-        cell.f2a_per_bond_kcal_mol
-        for m in molecules
-        for cell in m.per_pocket.values()
-        if cell.f2a_per_bond_kcal_mol is not None
-    ]
     all_v3_scores: List[float] = [
         cell.v3_combined_kcal_mol
         for m in molecules

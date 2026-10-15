@@ -87,10 +87,7 @@ from ._reference.solver import ODESolver
 # ``molmetal.adapters.flow_matching_lipman.se3sb_bass_integration`` for the
 # full module docstring + math references.
 from .se3sb_bass_integration import (
-    BassMartingaleOTSampler,
-    LegacyOTSampler,
     OTCouplingMode,
-    SE3SBOTSampler,
     make_ot_sampler,
 )
 
