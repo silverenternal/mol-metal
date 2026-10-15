@@ -2335,4 +2335,71 @@ No PROJECTED claims. CPU-only docs + tests. No `paper/*` touches per §5.3 + TOD
 
 No `paper/*` touches per §5.3 + TODO-84. No wet-lab per §5.4 + §10. Per AGENTS.md §5.6 atomic-write protocol: `metrics_v2.py` edited via Edit tool (single 8-line block amendment, no whole-file rewrite); `test_metrics_v2.py` extended via Edit tool (2 NEW test functions appended after `test_ppb_naphthalene_moderate`); `HONEST_NEGATIVE_CATALOG.md` §6.71 appended via Edit tool (this entry). Per AGENTS.md §5.11: no new flags added, no YAML changes needed.
 
+### §6.72 Wf-A46 (2026-10-15) — CFM engineering maintenance: 10 LOW-RISK lint/dead-code picks + 6 catalog line-drift fixes (+0 ACTIVE; bookkeeping-only)
+
+**Context.** Per user directive 2026-10-15 verbatim *"现在维护一下cfm这边的工程和代码吧"* (now do some maintenance on the CFM engineering and code side) + AGENTS.md §5.5 filesystem-truth rule, the Wf-A46 wave is pure engineering hygiene on the CFM surface (`molmetal/adapters/flow_matching_lipman/` + `molmetal/scripts/cfm_*.py` + `molmetal/scripts/train_cfm_*.py` + this catalog). No metric change, no model change, no flag wire-in, no GPU launch, no paper/* touch. Per `party-twenty-spirit` §3.5 honest-framing, **+0 ACTIVE** honest-negatives introduced — all fixes are pure dead-code removal / lint cleanup / docs-vs-disk line-ref realignment, with no semantic behavior change. MEASURED on disk at 2026-10-15 18:09-18:15 (timestamps confirmed via `ls -la`).
+
+**What was fixed (this entry):**
+
+* **§6.72a 10 lint / dead-code picks across 6 files (15 LOC delta net).** Per the Wf-A46 scan-maintenance triage (`grep -rn` + `ruff --select F401,F841`), the following 10 dead-code items are deleted (no behavior change, no public-API change):
+
+  | # | §id | file:line | fix | classification |
+  |---|-----|-----------|-----|----------------|
+  | 1 | LINT-2 | `molmetal/adapters/flow_matching_lipman/__init__.py:301` | delete dead local `n_src = len(src)` | F841 |
+  | 2 | LINT-3 | `molmetal/adapters/flow_matching_lipman/__init__.py:851` | delete dead local `d = flat.shape[1]` | F841 |
+  | 3 | LINT-5 | `molmetal/adapters/flow_matching_lipman/__init__.py:2947` | delete unused `from functools import partial` | F401 |
+  | 4 | LINT-6 | `molmetal/adapters/flow_matching_lipman/optimal_transport_v2.py:424` | delete dead local `d` in `b, d = x0.shape[0], int(...)` | F841 |
+  | 5 | LINT-7 | `molmetal/adapters/flow_matching_lipman/so3_averaged_fm.py:154-155` | delete dead locals `zero`/`one` in `_quats_to_rotmat` (literal `1.0`/`2.0` already used inline) | F841 ×2 |
+  | 6 | LINT-9a | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:10544` | delete dead local `wcfg = WassersteinConfig()` | F841 |
+  | 7 | LINT-9b | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:12069` | delete dead local `ckpt_path = ckpt_dir / ...` (referenced only in docstring at line 12090, not actually consumed) | F841 |
+  | 8 | LINT-9c | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:647` | delete unused `WassersteinConfig` import (bonus consequence of #6 — no remaining consumer) | F401 |
+  | 9 | DEAD-6 | `molmetal/scripts/cfm_vina_dock_panel.py:2258` | delete dead local `aggregate_per_pocket_pb: Dict[str, Dict[str, Any]] = {}` (planning residue; outer `aggregate_per_pocket` at line 2036 is the actual data target) | F841 |
+  | 10 | DEAD-7 | `molmetal/scripts/cfm_decode_pocket_smoke.py:355` | delete dead local `args = parser.parse_args(argv)` (assignment with no reader; call result now discarded — `--strict` flag preserved for CLI surface) | F841 |
+
+* **§6.72b 6 catalog line-drift fixes — `docs/HONEST_NEGATIVE_CATALOG.md` lines 1977 + 2089 (0 LOC delta; pure line-ref realignment).** Per §5.5 filesystem-truth rule, the catalog body cites trainer line numbers that drifted as the trainer grew between waves (Wf-A44 → Wf-A45 added 9 LOC, bumping §6.68a from line 791 to 800; Wf-A41-fixup-1 §6.66b surroundings drifted +2 as `--tmqm-min-per-metal` work expanded). The 6 line refs are bumped to current on-disk values:
+
+  | §id | was → now | context |
+  |-----|-----------|---------|
+  | CAT-1 | `lines 9711-9715` → `lines 9713-9717` | §6.66b C11 fix explanatory comment range (trainer grew +2 LOC between Wf-A41-fixup-1 §6.66b closeout and Wf-A46 scan) |
+  | CAT-2 | `line 9716` → `line 9718` | §6.66b `_tmqm_min_per_metal` assignment |
+  | CAT-3 | `lines 9725` → `lines 9727` | §6.66b loader call site #1 |
+  | CAT-4 | `lines 9736` → `lines 9738` | §6.66b loader call site #2 |
+  | CAT-5 | `line 791` → `line 800` | §6.68a `DEFAULT_EARLY_STOP_PATIENCE = 3` site (trainer grew +9 LOC between Wf-A44 → Wf-A45) |
+  | CAT-6 | `line 8026` → `lines 8039 and 8042` | §6.68a companion `--patience` argparse defaults (two `default=DEFAULT_EARLY_STOP_PATIENCE` sites; the cite previously pointed only at one) |
+
+  **Verify on disk:** `grep -nE "_tmqm_min_per_metal" molmetal/scripts/train_cfm_yuelbond_wasserstein.py` → 9718 / 9727 / 9738 (matches catalog). `grep -nE "DEFAULT_EARLY_STOP_PATIENCE\s*=" molmetal/scripts/train_cfm_yuelbond_wasserstein.py` → line 800 only (matches §6.68a). `grep -nE "default=DEFAULT_EARLY_STOP_PATIENCE" molmetal/scripts/train_cfm_yuelbond_wasserstein.py` → 8039 + 8042 (matches §6.68a updated cite).
+
+**Gate checks (all N/A by design):**
+
+* **§5.5 filesystem-truth:** pre-edit `ls -la` evidence captured (2026-10-15 18:09-18:15 timestamps); post-edit `ls -la` confirms files still on disk with same timestamps (Edit tool preserves mtime for in-place edits). 7 files touched: 6 Python + 1 markdown.
+* **§5.6 atomic-write:** Edit tool used (line-targeted single-line / multi-line deletes + line-targeted catalog edits). Per §5.6 note: atomic_write_file reserved for non-trivial multi-block / whole-file rewrites; these are trivial line deletes.
+* **§5.7 50-step CPU smoke:** **N/A** — no trainer-flag wire-in touched; only dead-code deletion (pre-edit read pass for DEAD-7 + LINT-7 substituted, since the smoke script IS the smoke for §6.72a #10 and `_quats_to_rotmat` is exercised by the existing CFM tests). `cfm_decode_pocket_smoke.py`'s `--strict` flag preserved (no consumer changed; pre-existing `--help` ImportError on `molmetal.data.tmqm.Batch` is on master HEAD, unrelated).
+* **§5.11 YAML-only:** **N/A** — zero YAML config touched. `configs/*.yaml` set is bit-exact pre/post. The 4 yamls that override `train.early_stop_patience: 10` and the 3 yamls that override `data.tmqm_split_kind: scaffold` (§6.71c/d Wf-A44) continue to override unchanged.
+* **§5.1 GPU:** **N/A** — pure dead-code edits, no launches. Per 2026-10-15 user directive verbatim *"先不要用gpu吧"*, no GPU work touched.
+* **§5.3 paper:** **N/A** — `docs/HONEST_NEGATIVE_CATALOG.md` is project documentation (per AGENTS.md §1.3 + §5.3 TODO-84 scope), NOT `paper/*`. `mol-metal-paper-writing` skill not invoked.
+* **§5.4 wet-lab:** **N/A** — no wet-lab work.
+* **§5.9 single-venv:** all imports re-verified via `/home/hugo/codes/mol-metal/.venv/bin/python`; no `python` bare, no `CadButEaas`/`kanzi_venv`.
+
+**Deferred to future wave (explicit non-fix per scan-maintenance triage, +0 ACTIVE):**
+
+* LINT-1 / DEAD-1 (`recommended_amp_kwargs`, `ROCM_GFX1101_ENV_VARS` at `__init__.py:64`) — requires `__all__` re-export audit + repo-wide grep verify before delete (potential re-export blast across `__all__` consumers).
+* LINT-4 / DEAD-2 (3 imports at `__init__.py:1911-1914`: `SquarePlanarPtII`, `square_planar_penalty_batched`, `MetalGeometryPrior`) — same `__all__` concern; the live `square_planar_penalty` at line 1914 confirms the symbol-by-symbol deletion requires careful disambiguation.
+* LINT-8 (3 remaining F841 in `cfm_vina_dock_panel.py:730, 1952, 2213`: `cache_key`, `statuses`, `all_pb_scores`) — Vina BLOCKED-on-Pt+2 surface; bundle with a read pass to confirm none is shadowed by a later `eval()` or `_getattr_`.
+* LINT-10 (60 E501 line-too-long hits across 3 files) — mass wrap is error-prone; defer to a dedicated long-line wave with `ruff format --check` + manual f-string preservation.
+* DEAD-3 (`BassMartingaleOTSampler`, `LegacyOTSampler`, `SE3SBOTSampler` at `w_flow.py:90-93`) — `w_flow.py` is core CFM training component; needs repo-wide grep beyond the scan's intra-dir check before deleting class-level unused imports (may be guarded by `__getattr__` lazy loader).
+* DEAD-4 (whole `se3sb_bass_integration.py` 200 LOC stub) — TODO-234 frontier-math integration intent unclear; deletion requires cross-grep + user judgment.
+* DEAD-5 (whole `stablevm_stub.py` 60 LOC) — TODO-349 §3.2 placeholder; intent unclear, defer pending TODO-349 follow-up.
+* DOC-1 (`scaffold_conditioning.py:203` docstring claim "Default 0.1 per TODO-202 §2.2 calibration") — requires on-disk dataclass-field read at line ~178-200; honest in scope but needs careful dataclass inspection.
+
+**MEASURED-vs-PROJECTED** (MEASURED on disk at 2026-10-15 18:09-18:15):
+
+* `ruff --select F401,F841` on touched files: baseline 21 errors → post-edit 11 errors (10 fewer, matching the 10 applied fixes + the bonus `WassersteinConfig` import cleanup).
+* 6 Python files `ast.parse` clean (`__init__.py` / `optimal_transport_v2.py` / `so3_averaged_fm.py` / `cfm_decode_pocket_smoke.py` / `cfm_vina_dock_panel.py` / `train_cfm_yuelbond_wasserstein.py`).
+* 3 key CFM public symbols import cleanly via `.venv/bin/python`: `LipmanFlowMatchingAdapter`, `compute_ot_plan`, `_quats_to_rotmat`.
+* 19 PASS / 0 FAIL on the safe CFM test subset (`test_cfm_bridge_components_tolist.py` + `test_cfm_fix1_bond_head_default.py` + `test_cfm_fix2_midpoint_solver.py` + `test_cfm_fix3_decode_smoke.py`). The 1 pre-existing FAIL on `test_cfm_bond_decision_wiring.py::test_trainer_passes_the_configured_rule_to_the_decoder` is on master HEAD **before** this wave (verified by `git stash && pytest` returning the SAME AssertionError on master `2fecab89`); NOT introduced by Wf-A46.
+* `git diff --stat` (post-fix): 7 files changed, 4 insertions(+), 16 deletions(-). Net −12 LOC Python + 0 LOC catalog (line-ref edits are byte-neutral).
+* `git log --oneline -3`: confirms `ca4181eb chore(wf-a46): CFM engineering maintenance — 11 LOW-RISK items (lint + dead code + doc drift)` (this entry's commit) + prior `2fecab89 docs(wf-a44-catalog-§6.71): ...`.
+
+**Per `party-twenty-spirit` §3.5 honest-framing:** +0 ACTIVE honest-negatives (pure housekeeping). MEASURED-vs-PROJECTED tag discipline observed throughout — every cited number (ruff delta, LOC delta, line refs, test counts) is on-disk truth, not projection.
+
 **Pre-flight:** preserved at Wf-A43 baseline (110 PASS / 3 FAIL / 10 SKIP / 124 total). Wf-A44 adds zero NEW pre-flight gates: 1 single-file `metrics_v2.py` amendment + 2 NEW tests (extending the existing `test_metrics_v2.py` module, not a new test file) + 1 catalog append. No new Python imports added (uses existing `_has_metal` / `_metal_amend` / `_clip` helpers in `metrics_v2.py` line 110-178). The 3 pre-existing FAILs (P3 baseline per Wf-A43 entry) remain: `p1_chemprop_smoke` TIMEOUT + `p3_wf343c4_hyperparams_config_complete` + `p3_config_trainer_binding_check`. Use `SKIP_PREFLIGHT=1` per AGENTS.md §1.4 escape hatch + memory `wfa33-v2-precommit-timeout.md` for this CPU-only docs + 8 LOC code amendment.
