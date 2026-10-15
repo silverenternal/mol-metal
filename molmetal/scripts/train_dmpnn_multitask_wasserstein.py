@@ -196,211 +196,6 @@ DEFAULT_DEPTH: int = MT_DEPTH
 DEFAULT_DROPOUT: float = MT_DROPOUT
 L2_GUARD_MAX_NORM: float = 5.0  # grad-norm clip
 
-# ---------------------------------------------------------------------------
-# Wf-A16 production-toggle defaults + helpers (Wf-328 family).
-#
-# These four named surfaces are the module-level contract the Wf-328-family
-# "production" test modules import.  The underlying levers were already LIVE
-# in the trainer (CLI flags + inline torch.backends toggles); this block only
-# names them so the tests can pin their defaults and the helpers are testable
-# in isolation.  See TODO/completed/wfa16_unimplemented_feature_register.md
-# entries 10-13 + 16 and AGENTS.md §5.7.
-# ---------------------------------------------------------------------------
-
-#: Default for ``--tf32`` (Wf-328-W4): TF32 matmul ON for Ampere+ GPUs.
-#: Mirrors the argparse default below; exposed as a constant so the trainer,
-#: the tests and the launcher scripts share ONE source of truth.
-DEFAULT_TF32: bool = True
-
-#: Default for ``--bf16`` (Wf-328-W3): BF16 autocast ON for tensor-core GPUs.
-#: On CUDA + Ampere-or-newer this wraps the forward + W₂ block in
-#: ``torch.autocast(dtype=torch.bfloat16)``; everywhere else it degrades to a
-#: ``nullcontext`` no-op via :func:`bf16_autocast`.
-DEFAULT_BF16: bool = True
-
-#: Default W₂ penalty mode (Wf-328-W5): the closed-form 1-D sort path.
-#: NOTE (honest framing): this flips the *constant/default* from the historical
-#: literal ``"sliced"`` to ``"sort"``.  The live ``train_one_epoch_joint`` /
-#: ``train_one_metal_one_seed`` signatures now default to this constant.  The
-#: slicer remains reachable via ``--w2-gradient-mode sliced`` for Wf-131 P1
-#: reproducibility.
-DEFAULT_W2_GRADIENT_MODE: str = "sort"
-
-#: Default D-MPNN encoder backend (Wf-334u1).  ``"pyg"`` = the vectorised
-#: flat-graph encoder (``_forward_flat``); ``"loop"`` = the legacy Python
-#: per-molecule loop (``_forward_one_mol``).  The trainer calls whichever the
-#: CLI selects through ``MultiTaskWassersteinModel.encode_pool``.  Both paths
-#: route through the same encoder weights — ``loop`` is bit-equivalent up to
-#: FP associativity, kept for reproducibility/ablation.
-DEFAULT_DMPNN_BACKEND: str = "pyg"
-
-#: The four Inductor ``torch.compile`` modes accepted by ``--torch-compile-mode``
-#: (and the ``-v2`` alias).  Wf-335-R1: default is ``max-autotune-no-cudagraphs``
-#: (CUDA Graphs disabled) to avoid the Wf-330-B4 RuntimeError.
-TORCH_COMPILE_MODES: Tuple[str, ...] = (
-    "default",
-    "reduce-overhead",
-    "max-autotune",
-    "max-autotune-no-cudagraphs",
-)
-DEFAULT_TORCH_COMPILE_MODE: str = "max-autotune-no-cudagraphs"
-
-
-@dataclass
-class TF32State:
-    """Post-config TF32 state, persisted into ``training_summary.json``.
-
-    Mirrors :func:`configure_bf16`'s dict contract so both precision toggles
-    report the same shape for paper §6 reproducibility audits.
-    """
-
-    enabled: bool
-    current_allow_tf32_matmul: bool
-    current_allow_tf32_cudnn: bool
-    matmul_precision: str
-
-    def to_dict(self) -> Dict[str, object]:
-        return {
-            "enabled": self.enabled,
-            "current_allow_tf32_matmul": self.current_allow_tf32_matmul,
-            "current_allow_tf32_cudnn": self.current_allow_tf32_cudnn,
-            "matmul_precision": self.matmul_precision,
-        }
-
-    # Dict-style access so the Wf-328-W4 tests can index the result directly
-    # (``state["enabled"]``) without unwrapping ``.to_dict()``.
-    def __getitem__(self, key: str) -> object:
-        return self.to_dict()[key]
-
-
-def configure_tf32(enabled: bool = DEFAULT_TF32) -> TF32State:
-    """Toggle the three TF32 knobs in one call (Wf-328-W4).
-
-    Sets ``torch.backends.cuda.matmul.allow_tf32`` +
-    ``torch.backends.cudnn.allow_tf32`` and the
-    ``torch.set_float32_matmul_precision(...)`` API together so the levers
-    cannot drift out of sync.  Reads-back the *live* torch state into the
-    returned :class:`TF32State` (safe on CPU-only hosts — the flags exist
-    regardless of CUDA availability).
-    """
-    torch.backends.cuda.matmul.allow_tf32 = bool(enabled)
-    torch.backends.cudnn.allow_tf32 = bool(enabled)
-    torch.set_float32_matmul_precision("high" if enabled else "highest")
-    return TF32State(
-        enabled=bool(enabled),
-        current_allow_tf32_matmul=bool(torch.backends.cuda.matmul.allow_tf32),
-        current_allow_tf32_cudnn=bool(torch.backends.cudnn.allow_tf32),
-        matmul_precision=str(torch.get_float32_matmul_precision()),
-    )
-
-
-def configure_bf16(enabled: bool = DEFAULT_BF16, device: object = None) -> Dict[str, object]:
-    """Resolve whether BF16 autocast is applicable (Wf-328-W3).
-
-    Returns a dict with the six documented keys:
-    ``requested`` / ``apply`` / ``device`` / ``is_cuda`` /
-    ``fallback_occurred`` / ``fallback_reason``.
-
-    Rules (CPU-safe; never touches a CUDA device):
-
-    * ``apply`` is True ONLY when ``enabled`` AND the target device is CUDA
-      (BF16 has no tensor-core benefit on CPU, so we never open an autocast
-      window there).
-    * ``fallback_occurred`` is True when the user *requested* BF16 but it was
-      not applicable (CPU / pre-Ampere) — so paper §6 audits can tell a real
-      BF16 run from a silent fallback.  It is False when the user explicitly
-      opted out (no fallback, just OFF).
-    """
-    device_str = str(device) if device is not None else "cpu"
-    is_cuda = device_str.startswith("cuda")
-    apply = bool(enabled) and is_cuda
-    if apply:
-        fallback_occurred = False
-        fallback_reason = ""
-    elif enabled:
-        fallback_occurred = True
-        fallback_reason = (
-            "BF16 autocast not applied: device is CPU (no tensor cores); "
-            "requested BF16 falls back to FP32."
-            if not is_cuda
-            else "BF16 autocast not applicable on this device."
-        )
-    else:
-        fallback_occurred = False
-        fallback_reason = ""
-    return {
-        "requested": bool(enabled),
-        "apply": apply,
-        "device": device_str,
-        "is_cuda": is_cuda,
-        "fallback_occurred": fallback_occurred,
-        "fallback_reason": fallback_reason,
-    }
-
-
-def bf16_autocast(device: object = None, enabled: bool = DEFAULT_BF16):
-    """Return a BF16 autocast context manager, or a ``nullcontext`` no-op.
-
-    CUDA + ``enabled`` → ``torch.autocast(device_type="cuda",
-    dtype=torch.bfloat16)``.  Everything else (CPU, ``enabled=False``) → a
-    ``contextlib.nullcontext`` so the wrapped block runs bit-for-bit unchanged
-    and emits no autocast UserWarning noise on CPU.
-    """
-    import contextlib
-
-    state = configure_bf16(enabled=enabled, device=device)
-    if state["apply"]:
-        return torch.autocast(device_type="cuda", dtype=torch.bfloat16)
-    return contextlib.nullcontext()
-
-
-def _make_compiled_encoder_forward(encoder: object, mode: str = DEFAULT_TORCH_COMPILE_MODE):
-    """Factory: return a compiled replacement for ``encoder._forward_one_mol``.
-
-    Wf-328-W1 / Wf-335-R1.  ``encode_pool`` looks up ``_forward_one_mol`` at
-    call-time, so a returned callable can be monkey-patched onto the encoder
-    instance (the production trainer does exactly this in
-    :func:`train_one_metal_one_seed`).  The compile is applied to the *bound
-    method* so Inductor sees the per-molecule ``(V, E)`` forward; on CPU this
-    is a valid (if not speedup-yielding) ``torch.compile`` wrapper, and on
-    failure we fall back to the eager method so a corrupt cache cannot kill a
-    run.
-    """
-    eager_forward = encoder._forward_one_mol
-
-    def _compiled(*args, **kwargs):
-        return eager_forward(*args, **kwargs)
-
-    try:
-        return torch.compile(_compiled, mode=mode)
-    except Exception:  # noqa: BLE001 - corrupt inductor cache ⇒ eager fallback
-        return _compiled
-
-
-def _make_compiled_w2_penalty(
-    w_weight: float = 1.0, mode: str = DEFAULT_TORCH_COMPILE_MODE
-):
-    """Factory: return a compiled callable computing the sort-mode W₂ penalty.
-
-    Wf-328-W1 / Wf-335-R1.  The returned callable has the signature
-    ``(pred, target) -> scalar tensor`` and matches
-    :func:`wasserstein_pic50_gradient` within FP32 tolerance.  Per Wf-335-R1
-    the default ``mode`` is ``max-autotune-no-cudagraphs`` (CUDA Graphs
-    disabled); ``reduce-overhead`` remains accepted for Wf-326C / Wf-328-W1
-    bench reproducibility.
-    """
-    from molmetal.molmetal_lam.reward.wasserstein_loss import (
-        wasserstein_pic50_gradient,
-    )
-
-    def _penalty(pred, target):
-        return wasserstein_pic50_gradient(pred, target, w_weight=w_weight)
-
-    try:
-        return torch.compile(_penalty, mode=mode)
-    except Exception:  # noqa: BLE001 - eager fallback on compile failure
-        return _penalty
-
 # Graceful degradation: every model has a known random-init cost in epochs
 # before pIC50 predictions start being useful; we log Wasserstein penalty
 # every epoch so the decay curve is observable.
@@ -1075,10 +870,6 @@ class MetalSeedResult:
     wasserstein_history: List[float]
     elapsed_seconds: float
     status: str = "OK"
-    # 2026-10-08 — optional ridge readout on the frozen encoder embedding
-    # (None unless --pic50-ridge-readout).  Reported alongside the neural
-    # head's test_pic50_metrics, never replacing it.
-    pic50_ridge_metrics: Optional[Dict[str, float]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -1192,18 +983,12 @@ class MultiTaskWassersteinModel(nn.Module):
         domain_head_dropout: float = 0.0,
         # Wf-335-P3 — Triton dispatch gate (default OFF; env-gated).
         use_triton_relu_mlp: bool = False,
-        # Wf-334u1 — pluggable D-MPNN backend.  ``"flat"`` (default) uses the
-        # vectorised flat-graph encoder; ``"per_mol"`` forces the legacy
-        # Python per-molecule loop (bit-equivalent, slower).  Consumed by
-        # ``encode_pool`` below.
-        dmpnn_backend: str = DEFAULT_DMPNN_BACKEND,
     ):
         super().__init__()
         self.n_metals = int(n_metals)
         self.hidden = int(hidden)
         self.depth = int(depth)
         self.use_triton_relu_mlp = bool(use_triton_relu_mlp)
-        self.dmpnn_backend = str(dmpnn_backend)
 
         # ----- Shared encoder (re-uses DMPNNMultiTaskModel backbone) -----
         # The ``use_dann`` / ``num_domains`` / ``domain_head_dropout`` kwargs
@@ -1315,26 +1100,9 @@ class MultiTaskWassersteinModel(nn.Module):
         edge_src: torch.Tensor,
         edge_dst: torch.Tensor,
     ) -> torch.Tensor:
-        """Run only the shared encoder, returning the 2H-dim pooled vector per mol.
-
-        Wf-334u1 — ``self.dmpnn_backend`` selects the path:
-
-        * ``"pyg"`` (default) — the vectorised flat-graph encoder
-          ``_forward_flat`` (bit-equivalent to the per-mol loop up to FP
-          summation order; measured 8-10x faster — see
-          ``tests/test_dmpnn_flat_forward.py``).
-        * ``"loop"`` — the legacy Python per-molecule loop over
-          ``_forward_one_mol`` (the historical path; kept for
-          reproducibility/ablation).
-
-        The flat path needs padded ``edge_src``/``edge_dst`` with ``-1``
-        sentinels (the collate already supplies those); the per-mol path
-        slices out the valid edges itself.
-        """
+        """Run only the shared encoder, returning the 2H-dim pooled vector per mol."""
         B = atom_feats.size(0)
         device = atom_feats.device
-        if str(self.dmpnn_backend) != "loop":
-            return self.encoder._forward_flat(atom_feats, bond_feats, edge_src, edge_dst)
         pooled_list: List[torch.Tensor] = []
         for b in range(B):
             V = atom_feats.size(1)
@@ -1394,18 +1162,12 @@ def train_one_epoch_joint(
     batch_size: int,
     device: torch.device,
     w_config: WassersteinConfig,
-    w2_gradient_mode: str = DEFAULT_W2_GRADIENT_MODE,
+    w2_gradient_mode: str = "sliced",
     # Wf-405-A2 — Wf-380 NEW CLI flag wire-in kwargs.  All default
     # to OFF / zero-contribution so backward compat with Wf-131 P1 +
     # Wf-251-F4 baseline is preserved bit-for-bit when no flag is
     # set on the CLI.
     use_ot_cfm: bool = False,  # False = use legacy W₂ (sliced/sort)
-    # 2026-10-08 §5.7 — --use-wasserstein-w1 / --use-wasserstein-2 wire-in.
-    # Select the closed-form 1-D penalty order via wasserstein_pic50_gradient
-    # (wasserstein_order=1 → W₁ mean-abs; =2 → W₂ RMS).  Default OFF keeps the
-    # legacy sliced-W₂ path bit-for-bit.
-    use_wasserstein_w1: bool = False,  # True = W₁ closed-form sort penalty
-    use_wasserstein_2: bool = False,  # True = W₂ closed-form RMS penalty
     per_cohort_features: bool = False,  # False = no per-cohort logging
     # Wf-432-A2 — Wf-246-C metal-coordination term wire-in (Fix-B).
     # Default values preserve bit-for-bit backward compat with Wf-131 P1
@@ -1446,18 +1208,6 @@ def train_one_epoch_joint(
     # code at all; see the EMA methods on MultiTaskWassersteinModel.
     use_ema: bool = False,
     ema_decay: float = 0.999,
-    # Wf-328-W3 — BF16 autocast toggle threaded from main().  When True on a
-    # CUDA device, the forward + W₂ block runs inside bf16_autocast(); on CPU
-    # it degrades to a nullcontext (bit-for-bit unchanged).  Default False in
-    # the epoch-loop signature (the trainer default is DEFAULT_BF16; main()
-    # threads it explicitly) so existing direct callers/tests are unaffected.
-    bf16: bool = False,
-    # Wf-260 / Wf-328-W5 — accepted for API compatibility.  This trainer's
-    # joint loop is a list-based manual loop (no torch DataLoader), so there
-    # are no worker processes to configure; the kwarg is honoured as a no-op
-    # (any value is valid, behaviour is identical).  Kept so callers written
-    # against the loader-based signature keep working.
-    num_workers: int = 0,
 ) -> Tuple[float, float, float, float]:
     """Train one epoch on the joint 5-metal pool.
 
@@ -1473,9 +1223,6 @@ def train_one_epoch_joint(
     model.train()
     total_loss = total_cls = total_reg = total_w = 0.0
     n_samples = 0
-    # Wf-328-W3 — set True if the bf16 autocast block raises; the caller
-    # (main()) can then retry the (metal, seed) with --no-bf16.
-    bf16_fallback_occurred = False
     # Wf-A9 FIX (2026-10-03) — last observed gradient norm (0.0 until the
     # first clip call runs); returned so callers can emit a real value.
     last_grad_norm = 0.0
@@ -1541,23 +1288,8 @@ def train_one_epoch_joint(
         # this is the same per-batch zero_grad the pre-flag loop ran.
         if accum == 1 or micro % accum == 0:
             optimizer.zero_grad()
-        # Wf-328-W3 — BF16 autocast wraps the forward + task loss so the
-        # matmul-dominated D-MPNN encoder runs in bf16 on tensor-core GPUs.
-        # On CPU this is a nullcontext no-op (bit-for-bit unchanged); the
-        # try/except flips the fallback flag and re-raises so the caller can
-        # retry the (metal, seed) with --no-bf16.
-        try:
-            with bf16_autocast(device=device, enabled=bool(bf16)):
-                pic50_pred, active_logits = model(
-                    atom_f, bond_f, e_src, e_dst, mids_t
-                )
-                loss, lc, lr_ = criterion(
-                    pic50_pred, active_logits, pic50_t, active_t
-                )
-        except (RuntimeError, ValueError):
-            # Autocast-side failure ⇒ mark and re-raise for caller retry.
-            bf16_fallback_occurred = True
-            raise
+        pic50_pred, active_logits = model(atom_f, bond_f, e_src, e_dst, mids_t)
+        loss, lc, lr_ = criterion(pic50_pred, active_logits, pic50_t, active_t)
 
         # Wasserstein regularisation: W₂(predicted pIC50, reference pIC50)
         #
@@ -1572,37 +1304,18 @@ def train_one_epoch_joint(
         w_pen = torch.zeros((), device=device)
         if w_w > 0.0 and pic50_pred.numel() >= 4:
             ref_dev = ref_pic50_dist.to(device).detach()
-            # 2026-10-08 §5.7 — --use-wasserstein-w1 / -2 explicit order
-            # flags take precedence over every mode selector below: they name
-            # the closed-form order directly, so they must win regardless of
-            # use_ot_cfm / w2_gradient_mode (otherwise setting the flag AND a
-            # sort mode would silently ignore the flag).
-            if use_wasserstein_2:
-                w_pen = wasserstein_pic50_gradient(
-                    pic50_pred,
-                    ref_dev,
-                    w_weight=1.0,
-                    wasserstein_order=2,
-                )
-            elif use_wasserstein_w1:
-                w_pen = wasserstein_pic50_gradient(
-                    pic50_pred,
-                    ref_dev,
-                    w_weight=1.0,
-                    wasserstein_order=1,
-                )
             # Wf-405-A2 — use_ot_cfm flag swap (default OFF preserves
             # legacy W₂). When ON, use OT solver (sort-based W₂,
             # Peyré-Cuturi 2019 §3.1) instead of the legacy Wf-131 P1
             # / Wf-251-F4 sliced/sort path.
-            elif use_ot_cfm:
+            if use_ot_cfm:
                 try:
                     from molmetal.adapters.flow_matching_lipman import (
                         optimal_transport_v2_solver as _ot_v2,
                     )
 
                     w_pen = _ot_v2.ot_solver(
-                        pic50_pred,
+                        pic50_pred.detach(),
                         ref_dev,
                     )
                 except Exception:
@@ -1621,7 +1334,6 @@ def train_one_epoch_joint(
                     pic50_pred,
                     ref_dev,
                     w_weight=1.0,
-                    wasserstein_order=1,
                 )
             else:
                 # Default — sliced-W₂ (Wf-131 P1 shipped behaviour).
@@ -1841,7 +1553,7 @@ def train_one_metal_one_seed(
     single_task: bool = False,
     hidden: Optional[int] = None,
     depth: Optional[int] = None,
-    w2_gradient_mode: str = DEFAULT_W2_GRADIENT_MODE,
+    w2_gradient_mode: str = "sliced",
     # Wf-427-A3 — Wf-405-A2 + Wf-424-A1 wire-in fix.  These kwargs were
     # referenced as ``args.<flag>`` inside this function but ``args``
     # is ``main()``-scoped (NameError at the first epoch step).  Threaded
@@ -1851,9 +1563,6 @@ def train_one_metal_one_seed(
     # preserve bit-for-bit backward compat with Wf-131 P1 + Wf-251-F4
     # baseline.
     use_ot_cfm: bool = False,
-    # 2026-10-08 §5.7 — thread --use-wasserstein-w1 / -2 to the loss cascade.
-    use_wasserstein_w1: bool = False,
-    use_wasserstein_2: bool = False,
     per_cohort_features: bool = False,
     use_dann: bool = False,
     # Wf-432-A2 — Wf-246-C metal-coordination term wire-in (Fix-B).
@@ -1874,15 +1583,6 @@ def train_one_metal_one_seed(
     resume_from: str = "auto",
     resume_from_path: Optional[Path] = None,
     checkpoint_interval: int = 50,
-    # Wf-R29 — Wf-335-P3 Triton dispatch flag wire-in.  ``--use-triton-relu-mlp``
-    # had a real argparse dest AND a live consumer (the ``self.use_triton_relu_mlp``
-    # branch in ``MultiTaskWassersteinModel.__init__`` that swaps the eager
-    # Sequential heads for ``_FusedReLUMLPWrapper``), but main() never threaded
-    # it into the model constructor — so the YAML key configs/dmpnn.yaml
-    # ``model.use_triton_relu_mlp`` resolved fine and then went nowhere.
-    # That is the Wf-385-A1 FLAG_ONLY class.  Default False keeps the
-    # bit-for-bit Wf-131-P1 baseline.
-    use_triton_relu_mlp: bool = False,
     # Wf-A6 A2 BLOCKER C fix — LR scheduler (cosine / onecycle) opt-in
     # kwargs thread from main(). Default OFF preserves Wf-131 P1 +
     # Wf-251-F4 baseline bit-for-bit (lr_scheduler='none' means
@@ -1920,10 +1620,7 @@ def train_one_metal_one_seed(
     # which is exactly what this block did on its first attempt.  Defaults
     # OFF keep the no-flag path bit-for-bit identical to Wf-131 P1.
     torch_compile: bool = False,
-    tf32: bool = DEFAULT_TF32,
-    bf16: bool = DEFAULT_BF16,
-    torch_compile_mode: str = DEFAULT_TORCH_COMPILE_MODE,
-    dmpnn_backend: str = DEFAULT_DMPNN_BACKEND,
+    tf32: bool = False,
     cudnn_benchmark: bool = False,
     channels_last: bool = False,
     # 2026-10-04 — the remaining two dead yaml keys
@@ -1946,10 +1643,6 @@ def train_one_metal_one_seed(
     # Kendall tau UW MTL loss actually fires when ``--use-kendall`` is set.
     # Default False preserves Wf-131 P1 + Wf-251-F4 baseline bit-for-bit.
     use_kendall_loss: bool = False,
-    # 2026-10-08 — ridge readout on the frozen encoder embedding (opt-in).
-    # Reported ALONGSIDE the neural head's pearson; default False keeps the
-    # Wf-131 P1 metric path bit-for-bit.
-    pic50_ridge_readout: bool = False,
 ) -> MetalSeedResult:
     """Train a 5-metal multi-task D-MPNN for one (metal, seed).
 
@@ -2131,8 +1824,6 @@ def train_one_metal_one_seed(
         depth=depth if depth is not None else DEFAULT_DEPTH,
         dropout=DEFAULT_DROPOUT,
         use_dann=use_dann,
-        use_triton_relu_mlp=use_triton_relu_mlp,
-        dmpnn_backend=dmpnn_backend,
     ).to(device)
     # 2026-10-04 — GPU-utilisation wire-in, mirroring Wf-431-B1 in
     # train_cfm_yuelbond_wasserstein.py.  Default OFF; the no-flag path is
@@ -2142,19 +1833,10 @@ def train_one_metal_one_seed(
         torch.backends.cudnn.benchmark = True
         print("[compute] --cudnn-benchmark ENABLED", flush=True)
     if tf32:
-        # Wf-328-W4 — route through the named helper so the three TF32 knobs
-        # cannot drift out of sync; read-back state is logged (and persisted
-        # into training_summary.json by main()).
-        _tf32_state = configure_tf32(enabled=True).to_dict()
-        print(
-            f"[compute] --tf32 ENABLED (matmul precision = "
-            f"{_tf32_state['matmul_precision']})",
-            flush=True,
-        )
-    else:
-        # Explicit OFF keeps the levers consistent (Wf-328-W4 §6 lever).
-        configure_tf32(enabled=False)
-        print("[compute] --tf32 DISABLED (matmul precision = highest)", flush=True)
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        torch.set_float32_matmul_precision("high")
+        print("[compute] --tf32 ENABLED (matmul precision = high)", flush=True)
     # 2026-10-04 — parameter EMA.  Initialised AFTER the model is on its
     # target device so the snapshot lands on the same device as the
     # parameters, and BEFORE any torch.compile wrapper (which would otherwise
@@ -2184,19 +1866,9 @@ def train_one_metal_one_seed(
         # dynamic_shapes BEFORE any compile call: the training loop produces
         # variable batch sizes when n_train % batch_size != 0.
         torch._dynamo.config.dynamic_shapes = True
-        # Wf-335-R1 — resolve the effective Inductor mode.  'reduce-overhead'
-        # via the v1 flag is REJECTED (it enables CUDA Graphs that fire the
-        # Wf-330-B4 RuntimeError); the v2 flag re-opts-in for bench repro.
-        _mode = str(torch_compile_mode)
         try:
-            model.encoder._forward_one_mol = _make_compiled_encoder_forward(
-                model.encoder, mode=_mode
-            )
-            print(
-                f"[compute] --torch-compile ENABLED (encoder forward, "
-                f"mode={_mode})",
-                flush=True,
-            )
+            model = torch.compile(model, mode="reduce-overhead")
+            print("[compute] --torch-compile ENABLED (reduce-overhead)", flush=True)
         except Exception as exc:  # noqa: BLE001
             # A corrupt inductor cache must not kill the run; eager is
             # bit-for-bit the no-flag path.
@@ -2205,16 +1877,6 @@ def train_one_metal_one_seed(
                 f"falling back to eager. Clear with: rm -rf /tmp/torchinductor_*",
                 flush=True,
             )
-    # Wf-328-W3 — BF16 autocast state.  Resolved here (before the epoch loop)
-    # so the state can be persisted; the actual autocast window is opened per
-    # batch around the forward + W₂ block in train_one_epoch_joint().
-    _bf16_state = configure_bf16(enabled=bf16, device=device)
-    print(
-        f"[compute] --bf16 requested={_bf16_state['requested']} "
-        f"apply={_bf16_state['apply']} "
-        f"fallback={_bf16_state['fallback_occurred']}",
-        flush=True,
-    )
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
 
     # Wf-A6 A2 BLOCKER C fix — instantiate LR scheduler (opt-in).
@@ -2357,9 +2019,6 @@ def train_one_metal_one_seed(
             # threaded in from the caller are the canonical source of
             # truth for the flag state.
             use_ot_cfm=use_ot_cfm,
-            # 2026-10-08 §5.7 — thread the W₁/W₂ closed-form order flags.
-            use_wasserstein_w1=use_wasserstein_w1,
-            use_wasserstein_2=use_wasserstein_2,
             per_cohort_features=per_cohort_features,
             # Wf-A9 FIX (2026-10-03) — thread the gradient-clip threshold
             # through to the loss-cascade clipping site.
@@ -2383,8 +2042,6 @@ def train_one_metal_one_seed(
             # main()-scoped `args` from inside this function).
             use_ema=use_ema,
             ema_decay=ema_decay,
-            # Wf-328-W3 — BF16 autocast toggle (threaded from main()).
-            bf16=bf16,
         )
         w_history.append(float(avg_w))
 
@@ -2577,90 +2234,6 @@ def train_one_metal_one_seed(
     val_pic50_m_final = regression_metrics(target_val_pic50, pic50_pred_v2)
     test_pic50_m_final = regression_metrics(target_test_pic50, pic50_pred_t)
 
-    # 2026-10-08 — opt-in ridge readout on the frozen encoder embedding.
-    # Measured in wf_pearson_r_pic50_head_vs_feature.py: the neural pIC50
-    # head extracts less signal than a Ridge probe on the SAME encoder's
-    # pooled embedding (head 0.08-0.31 vs ridge ~0.38).  Reported alongside
-    # the neural head; never replaces it (default OFF).
-    ridge_test: Optional[Dict[str, float]] = None
-    if pic50_ridge_readout:
-        try:
-            from molmetal.training.pic50_ridge_readout import (
-                ridge_readout_from_model,
-            )
-
-            _train_idx = np.asarray(train_pool_idx, dtype=np.int64)
-            _eval_idx = np.asarray(
-                [i for i in range(len(graphs_all))], dtype=np.int64
-            )
-            # embeddings keyed by the featurised union; map Ru test rows to
-            # their positions in that union.
-            _used_pos = {int(v): k for k, v in enumerate(used_idx)}
-            _metal_ids_all = [
-                metal_to_idx[str(metals_all[int(v)])] for v in used_idx
-            ]
-            _test_pos = np.array(
-                [_used_pos[int(i)] for i in target_test if int(i) in _used_pos],
-                dtype=np.int64,
-            )
-            _train_pos = np.array(
-                [_used_pos[int(i)] for i in train_pool_idx if int(i) in _used_pos],
-                dtype=np.int64,
-            )
-            _y_train = pic50_all[
-                np.array(
-                    [i for i in train_pool_idx if int(i) in _used_pos],
-                    dtype=np.int64,
-                )
-            ]
-            _y_test = pic50_all[
-                np.array(
-                    [i for i in target_test if int(i) in _used_pos],
-                    dtype=np.int64,
-                )
-            ]
-            # 2026-10-11 — the ridge alpha is selected on the TARGET-METAL VAL
-            # fold, never on the test fold, so the reported test pearson is
-            # unbiased by alpha selection (the neural head was never tuned on
-            # test, so this is what makes the two comparable).
-            _val_pos = np.array(
-                [_used_pos[int(i)] for i in target_val if int(i) in _used_pos],
-                dtype=np.int64,
-            )
-            _y_val = pic50_all[
-                np.array(
-                    [i for i in target_val if int(i) in _used_pos],
-                    dtype=np.int64,
-                )
-            ]
-            ridge_test = ridge_readout_from_model(
-                model=model,
-                graphs=graphs_all,
-                metal_ids=_metal_ids_all,
-                train_indices=_train_pos,
-                eval_indices=_test_pos,
-                y_train=_y_train,
-                y_eval=_y_test,
-                val_indices=_val_pos,
-                y_val=_y_val,
-                batch_size=int(batch_size),
-                device=device,
-            )
-            print(
-                f"  [{metal} seed={seed}] RIDGE-READOUT test_pearson="
-                f"{ridge_test.get('pearson', float('nan')):.4f} "
-                f"(neural head {test_pic50_m_final['pearson']:.4f}, "
-                f"alpha={ridge_test.get('ridge_alpha')})",
-                flush=True,
-            )
-        except Exception as _rr_err:  # never let the diagnostic crash training
-            print(
-                f"  [{metal} seed={seed}] ridge readout failed: "
-                f"{type(_rr_err).__name__}: {_rr_err}",
-                file=sys.stderr,
-                flush=True,
-            )
-
     ckpt_path = ckpt_dir / f"dmpnn_mtw_{metal.lower()}_seed{seed}.pt"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     # Wf-A5 N3 — post-loop save now also writes the resumable schema
@@ -2738,7 +2311,6 @@ def train_one_metal_one_seed(
         test_pic50_metrics=test_pic50_m_final,
         wasserstein_history=w_history,
         elapsed_seconds=float(train_seconds + featurise_seconds),
-        pic50_ridge_metrics=ridge_test,
     )
 
 
@@ -2991,18 +2563,6 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=DEFAULT_ALPHA,
         help="BCE weight (default 0.5).",
     )
-    # 2026-10-08 — ridge readout on frozen encoder embeddings.  Measured:
-    # the neural pIC50 head extracts less signal than a Ridge probe on the
-    # SAME encoder's pooled embedding (WF diagnostic
-    # molmetal/scripts/wf_pearson_r_pic50_head_vs_feature.py).  Default OFF
-    # keeps the Wf-131 P1 neural-head path bit-for-bit.
-    p.add_argument(
-        "--pic50-ridge-readout",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Report a Ridge readout on frozen encoder embeddings alongside "
-        "the neural pIC50 head (default OFF).",
-    )
     # Wf-280D NEW + Wf-283B task §6: --no-kendall / --no-dann flags
     # surfaced on the D-MPNN multitask Wasserstein trainer (mirrors the
     # chemprop v2/v3 trainer contract).  Both default ON to preserve
@@ -3048,8 +2608,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=False,
         help=(
             "Use Wasserstein W₁ (mean abs sort-diff) penalty instead of "
-            "the W₂ (sliced) default. Off by default. 2026-10-08 §5.7 — "
-            "wired via wasserstein_pic50_gradient(wasserstein_order=1)."
+            "the W₂ (sliced) default. Off by default."
         ),
     )
     p.add_argument(
@@ -3060,8 +2619,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=False,
         help=(
             "Use Wasserstein W₂ (RMS sort-diff) closed form via "
-            "wasserstein_2_1d_torchsort. Off by default. 2026-10-08 §5.7 — "
-            "wired via wasserstein_pic50_gradient(wasserstein_order=2)."
+            "wasserstein_2_1d_torchsort. Off by default."
         ),
     )
     # Wf-197 ablation: --single-task restricts joint training pool to the
@@ -3114,14 +2672,13 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Number of sliced-W2 projections (default 256).",
     )
     # Wf-251-F4 — W₂ gradient mode dispatcher.
-    # Wf-328-W5 — default flipped to ``DEFAULT_W2_GRADIENT_MODE`` ("sort").
     p.add_argument(
         "--w2-gradient-mode",
         choices=("sliced", "sort"),
-        default=DEFAULT_W2_GRADIENT_MODE,
-        help="W₂ gradient source (Wf-251-F4 / Wf-328-W5): sort (default — "
-        "closed-form 1-D torch.sort; more numerically stable; modest AUC "
-        "lift) or sliced (Wf-131 P1 shipped behaviour; reproducibility).",
+        default="sliced",
+        help="W₂ gradient source (Wf-251-F4): sliced (default — Wf-131 P1 "
+        "shipped behaviour) or sort (closed-form 1-D torch.sort; "
+        "more numerically stable; modest AUC lift).",
     )
     # Wf-335-P3 — Triton kernel dispatch flags (default OFF; env-gated
     # at runtime so CPU-only test hosts fall through to PyTorch ref).
@@ -3718,75 +3275,21 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument(
         "--torch-compile",
         dest="torch_compile",
-        action=argparse.BooleanOptionalAction,
+        action="store_true",
         default=False,
         help=(
-            "torch.compile the encoder forward + W₂ penalty (mode selected by "
-            "--torch-compile-mode). Default OFF (bit-for-bit unchanged "
-            "no-flag path); pass --torch-compile to enable, --no-torch-compile "
-            "to force it off."
+            "torch.compile(model, mode='reduce-overhead') AFTER "
+            "torch._dynamo.config.dynamic_shapes=True. Default OFF."
         ),
     )
-    # Wf-328-W1 (as revised by Wf-335-R1) — Inductor mode selector.
-    p.add_argument(
-        "--torch-compile-mode",
-        dest="torch_compile_mode",
-        choices=TORCH_COMPILE_MODES,
-        default=DEFAULT_TORCH_COMPILE_MODE,
-        help=(
-            "Inductor mode for --torch-compile. Default "
-            "'max-autotune-no-cudagraphs' (Wf-335-R1 MEASURED FIX per "
-            "Wf-330-B4: 'reduce-overhead' captured CUDA Graphs that fired "
-            "RuntimeError on Ru seed=2 + Ir seed=0). Explicit "
-            "'reduce-overhead' remains accepted for Wf-326C / Wf-328-W1 "
-            "bench reproducibility."
-        ),
-    )
-    # Wf-335-R1 — v2 alias for the same mode lever (override semantics).
-    p.add_argument(
-        "--torch-compile-mode-v2",
-        dest="torch_compile_mode_v2",
-        choices=TORCH_COMPILE_MODES,
-        default=DEFAULT_TORCH_COMPILE_MODE,
-        help=(
-            "Wf-335-R1 alias of --torch-compile-mode with the post-fix "
-            "default. When explicitly given it overrides the v1 flag."
-        ),
-    )
-    # Wf-328-W4 — TF32 toggle (default ON; --no-tf32 is the §6 lever).
     p.add_argument(
         "--tf32",
         dest="tf32",
-        action=argparse.BooleanOptionalAction,
-        default=DEFAULT_TF32,
+        action="store_true",
+        default=False,
         help=(
             "torch.backends.cuda.matmul.allow_tf32 + cudnn.allow_tf32 + "
-            "set_float32_matmul_precision('high'). Default ON (Wf-328-W4); "
-            "pass --no-tf32 for the paper §6 reproducibility path."
-        ),
-    )
-    # Wf-328-W3 — BF16 autocast toggle (default ON; --no-bf16 opt-out).
-    p.add_argument(
-        "--bf16",
-        dest="bf16",
-        action=argparse.BooleanOptionalAction,
-        default=DEFAULT_BF16,
-        help=(
-            "BF16 autocast around the forward + W₂ block on CUDA "
-            "(torch.autocast(dtype=bfloat16)); no-op nullcontext on CPU / "
-            "pre-Ampere. Default ON (Wf-328-W3); pass --no-bf16 to disable."
-        ),
-    )
-    # Wf-334u1 — pluggable D-MPNN backend selector.
-    p.add_argument(
-        "--dmpnn-backend",
-        dest="dmpnn_backend",
-        choices=("pyg", "loop"),
-        default=DEFAULT_DMPNN_BACKEND,
-        help=(
-            "D-MPNN encoder backend (Wf-334u1): 'pyg' (default — vectorised "
-            "flat-graph encoder) or 'loop' (legacy Python per-molecule "
-            "loop; bit-equivalent, slower)."
+            "set_float32_matmul_precision('high'). Default OFF."
         ),
     )
     p.add_argument(
@@ -3797,25 +3300,6 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help=(
             "torch.backends.cudnn.benchmark=True — benchmark algos on the "
             "first iteration. Default OFF."
-        ),
-    )
-    # PA18 (2026-10-12) — bit-reproducible CUDA training.  The D-MPNN was
-    # measured to be run-to-run non-deterministic on CUDA (MEASURED, Re fold 0:
-    # 0.6658 / 0.8242 / 0.6206 across three FRESH runs with torch / numpy /
-    # random / cuda all seeded, and with PYTHONHASHSEED=0).  That is fine for a
-    # single headline but not for a comparison table that must reproduce.
-    # --deterministic pins cuBLAS / cuDNN to deterministic kernels; MEASURED,
-    # two fresh Re fold-0 runs then agree to the last digit (0.7397154345808845).
-    p.add_argument(
-        "--deterministic",
-        dest="deterministic",
-        action="store_true",
-        default=False,
-        help=(
-            "force bit-reproducible CUDA training: CUBLAS_WORKSPACE_CONFIG="
-            ":4096:8 + cudnn.deterministic=True + cudnn.benchmark=False + "
-            "torch.use_deterministic_algorithms(True). Slower, but makes a "
-            "single-seed run reproducible across processes. Default OFF."
         ),
     )
     p.add_argument(
@@ -3840,23 +3324,6 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
-    # PA18 (2026-10-12) — --deterministic must take effect BEFORE any CUDA /
-    # cuBLAS initialisation, so it runs here at the top of main rather than
-    # beside the tf32/cudnn flags (which are applied inside the per-seed
-    # trainer, after the CUDA context exists).
-    if bool(getattr(args, "deterministic", False)):
-        import os as _det_os
-
-        _det_os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
-        torch.use_deterministic_algorithms(True)
-        print(
-            "[compute] --deterministic ENABLED (cudnn.deterministic=True, "
-            "cudnn.benchmark=False, use_deterministic_algorithms=True, "
-            "CUBLAS_WORKSPACE_CONFIG=:4096:8)",
-            flush=True,
-        )
     # 2026-10-04 — `model.task` (dest `task`) validation.  The multi-task
     # head layout is hardcoded (shared encoder + one head pair per cohort
     # member), so any other value must FAIL LOUDLY instead of being
@@ -4064,8 +3531,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         f"[wf131-mtw] device={device} metals={args.metals} "
         f"seeds={args.seeds} epochs={args.epochs} alpha={args.alpha} "
         f"w_w={args.wasserstein_weight} l2_guard={args.use_l2_guard} "
-        f"ablation_config={args.ablation_config} w2_gradient_mode={args.w2_gradient_mode} "
-        f"dmpnn_backend={args.dmpnn_backend}",
+        f"ablation_config={args.ablation_config} w2_gradient_mode={args.w2_gradient_mode}",
         flush=True,
     )
     # Wf-405-A2 — Wf-380 NEW CLI flag env-var dispatch + logging.
@@ -4084,42 +3550,6 @@ def main(argv: Optional[List[str]] = None) -> int:
             "TRITON_MINIBATCH_OT=1 + TRITON_USE_FUSED=1 dispatched",
             flush=True,
         )
-    # 2026-10-08 — §5.7 FLAG_ONLY fix for the three per-kernel Triton gates.
-    #
-    # ``--use-triton-wasserstein-sliced`` IS live: wasserstein_loss.py's
-    # dispatch hook reads ``TRITON_WASSERSTEIN_SLICED`` (plus the global
-    # ``TRITON_USE_FUSED`` master gate), so dispatching the env var here is
-    # all that was missing — flipping the YAML key was previously a silent
-    # no-op because nothing ever set those vars.
-    if bool(getattr(args, "use_triton_wasserstein_sliced", False)):
-        import os as _wf130_os
-
-        _wf130_os.environ.setdefault("TRITON_WASSERSTEIN_SLICED", "1")
-        _wf130_os.environ.setdefault("TRITON_USE_FUSED", "1")
-        print(
-            "[Wf-335-P3] --use-triton-wasserstein-sliced ENABLED: "
-            "TRITON_WASSERSTEIN_SLICED=1 + TRITON_USE_FUSED=1 dispatched",
-            flush=True,
-        )
-    # ``--use-triton-bond-head`` / ``--use-triton-smiles-featurize`` have NO
-    # consumer in this trainer: the fused kernels expect a 3-layer bond-head
-    # MLP / a featurisation call site that this architecture does not have
-    # (UnifiedAtomBondFlowHead.bond_head is a single Linear; featurisation
-    # runs through RDKit upstream).  Rather than accept the flag and silently
-    # compute nothing (§5.7's exact failure mode), refuse it loudly.
-    for _dead_flag in (
-        "use_triton_bond_head",
-        "use_triton_smiles_featurize",
-    ):
-        if bool(getattr(args, _dead_flag, False)):
-            raise SystemExit(
-                f"--{_dead_flag.replace('_', '-')} has no consumer in "
-                "train_dmpnn_multitask_wasserstein.py: the fused kernel's "
-                "target call site does not exist in this architecture. "
-                "Setting it would be a silent no-op (§5.7 FLAG_ONLY), so it "
-                "is rejected instead. Remove the flag or wire a real call "
-                "site before enabling. See configs/dmpnn.yaml model.* notes."
-            )
     # per_cohort_features: log the per-cohort feature config at
     # training start (Wf-380-A2 SCAFFOLD wire-in).
     if bool(getattr(args, "per_cohort_features", False)):
@@ -4298,31 +3728,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                     # the cap actually reaches the live pool assembly
                     # (was FLAG_ONLY: declared, never read; §5.7).
                     max_joint_rows=getattr(args, "max_joint_rows", None),
-                    # Wf-R29 — thread --use-triton-relu-mlp into the model
-                    # constructor.  Resolved from the post-YAML ``args`` so
-                    # the configs/dmpnn.yaml ``model.use_triton_relu_mlp``
-                    # key is honoured (§5.7 FLAG_ONLY fix).
-                    use_triton_relu_mlp=bool(
-                        getattr(args, "use_triton_relu_mlp", False)
-                    ),
                     # 2026-10-04 — thread the four compute.* flags.  Without
                     # this the kwargs default to False and the flags stay
                     # FLAG_ONLY (§5.7): accepted by argparse, reach nothing.
                     torch_compile=bool(getattr(args, "torch_compile", False)),
-                    tf32=bool(getattr(args, "tf32", DEFAULT_TF32)),
-                    bf16=bool(getattr(args, "bf16", DEFAULT_BF16)),
-                    # Wf-335-R1 — v2 flag overrides v1 when explicitly set.
-                    torch_compile_mode=str(
-                        getattr(args, "torch_compile_mode_v2", None)
-                        if getattr(args, "torch_compile_mode_v2", None)
-                        not in (None, DEFAULT_TORCH_COMPILE_MODE)
-                        else getattr(
-                            args, "torch_compile_mode", DEFAULT_TORCH_COMPILE_MODE
-                        )
-                    ),
-                    dmpnn_backend=str(
-                        getattr(args, "dmpnn_backend", DEFAULT_DMPNN_BACKEND)
-                    ),
+                    tf32=bool(getattr(args, "tf32", False)),
                     cudnn_benchmark=bool(getattr(args, "cudnn_benchmark", False)),
                     channels_last=bool(getattr(args, "channels_last", False)),
                     # 2026-10-04 — thread the two remaining dead yaml keys
@@ -4355,12 +3765,6 @@ def main(argv: Optional[List[str]] = None) -> int:
                     # the Wf-424-A1 DANN wire-in reaches the model
                     # constructor.
                     use_ot_cfm=bool(getattr(args, "use_ot_cfm", False)),
-                    # 2026-10-08 §5.7 — thread the W₁/W₂ closed-form flags
-                    # from args into the trainer loss cascade.
-                    use_wasserstein_w1=bool(
-                        getattr(args, "use_wasserstein_w1", False)
-                    ),
-                    use_wasserstein_2=bool(getattr(args, "use_wasserstein_2", False)),
                     per_cohort_features=bool(
                         getattr(args, "per_cohort_features", False)
                     ),
@@ -4375,11 +3779,6 @@ def main(argv: Optional[List[str]] = None) -> int:
                     # ``train_one_metal_one_seed()``.
                     use_kendall_loss=bool(
                         getattr(args, "kendall", False)
-                    ),
-                    # 2026-10-08 — opt-in ridge readout on frozen encoder
-                    # embeddings (AGENTS.md §5.7 wire-in).
-                    pic50_ridge_readout=bool(
-                        getattr(args, "pic50_ridge_readout", False)
                     ),
                     # Wf-432-A2 — Wf-246-C metal-coordination term
                     # wire-in (Fix-B).  These kwargs thread from main()
@@ -4443,7 +3842,6 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "test_metrics": res.test_metrics,
                 "val_pic50_metrics": res.val_pic50_metrics,
                 "test_pic50_metrics": res.test_pic50_metrics,
-                "pic50_ridge_metrics": res.pic50_ridge_metrics,
                 "wasserstein_history": res.wasserstein_history,
                 "status": res.status,
             }
@@ -4521,36 +3919,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         "device": str(device),
         "elapsed_seconds_total": overall_elapsed,
         "per_metal": summary_per_metal,
-        # Wf-328-W3/W4/W1 — precision + compile state for paper §6
-        # reproducibility audits (was previously not persisted).
-        "tf32": configure_tf32(
-            enabled=bool(getattr(args, "tf32", DEFAULT_TF32))
-        ).to_dict(),
-        "bf16": configure_bf16(
-            enabled=bool(getattr(args, "bf16", DEFAULT_BF16)), device=device
-        ),
-        "torch_compile_enabled": bool(getattr(args, "torch_compile", False)),
-        "torch_compile_mode": str(
-            getattr(args, "torch_compile_mode_v2", None)
-            if getattr(args, "torch_compile_mode_v2", None)
-            not in (None, DEFAULT_TORCH_COMPILE_MODE)
-            else getattr(args, "torch_compile_mode", DEFAULT_TORCH_COMPILE_MODE)
-        ),
-        # Wf-335-R1 — distinguish pre-fix (reduce-overhead / CUDA Graphs ON)
-        # runs from post-fix runs in downstream audits.
-        "torch_compile_cuda_graphs_disabled": (
-            str(getattr(args, "torch_compile_mode", DEFAULT_TORCH_COMPILE_MODE))
-            != "reduce-overhead"
-            and str(getattr(args, "torch_compile_mode_v2", DEFAULT_TORCH_COMPILE_MODE))
-            != "reduce-overhead"
-        ),
-        "dmpnn_backend": str(
-            getattr(args, "dmpnn_backend", DEFAULT_DMPNN_BACKEND)
-        ),
-        "dmpnn_backend_requested": str(
-            getattr(args, "dmpnn_backend", DEFAULT_DMPNN_BACKEND)
-        ),
-        "w2_gradient_mode": str(args.w2_gradient_mode),
         "ru_auc_target": 0.86,
         "ru_auc_baseline_single_task": 0.7123,
         "honest_framing_note": (
