@@ -49,8 +49,10 @@ def apply_stereocentre_suppression(
     * ``"remove_atom"`` — actually remove the atoms that participate as
       chiral centres via RWMol. This is the round-8 graph-modifying arm:
       under the canonical scorer it lowers SA by ~1.6 and lifts QED by
-      ~0.10 (the fork's score1 constant flipped the sign, which is why
-      the round-8 honest-negative was an artefact of the broken scorer).
+      ~0.10 (fork's documented formula divergence from RDKit-Contrib
+      canonical scorer per §I.1 of `CFM_WEAKNESSES_2026_10_13.md` — the
+      fork is the documented fallback path, not the primary, per §6.66e
+      JUDGEMENT-CALL).
 
     Returns ``None`` if no operation can be applied (e.g. remove_atom with
     no chiral centres or sanitization failure); callers skip None mols.

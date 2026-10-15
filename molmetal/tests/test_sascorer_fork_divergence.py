@@ -371,10 +371,11 @@ def test_opt1_direction_reverses_under_the_canonical_scorer():
     SA by 1.61 and lifts QED by 0.10. The round-8 honest-negative is an
     artefact of the broken scorer.
 
-    The part of round 8 that survives is scorer-independent: ``set_tag``
-    and ``remove_annotation`` remain vacuous, because
-    ``FindMolChiralCenters(includeUnassigned=True)`` counts assigned
-    centres too. Only the graph-modifying arms change sign.
+    The part of round 8 that survives is scorer-independent: ``noop``
+    (the canonical alias for the old ``baseline`` / ``set_tag`` /
+    ``remove_annotation`` controls — collapsed by Wf-A43 §6.69a)
+    remains vacuous, because ``FindMolChiralCenters(includeUnassigned=True)``
+    counts assigned centres too. Only the graph-modifying arms change sign.
     """
     from rdkit.Chem import QED
 
@@ -400,7 +401,7 @@ def test_opt1_direction_reverses_under_the_canonical_scorer():
             out.append(mm)
         return out
 
-    for vacuous in ("set_tag", "remove_annotation"):
+    for vacuous in ("noop",):
         got = survivors(vacuous)
         assert got, f"control: {vacuous} should leave the cohort intact"
         assert statistics.fmean(sa.calculateScore(m) for m in got) == pytest.approx(
