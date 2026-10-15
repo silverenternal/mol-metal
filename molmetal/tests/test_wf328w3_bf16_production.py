@@ -32,6 +32,15 @@ host the autocast context is a no-op (``nullcontext``); the helper's
 ``apply`` flag is False; ``fallback_occurred`` is True.  These are
 *expected* on CPU-only CI / dev machines and do not constitute
 honest-negative regressions.
+
+**UPDATE (af84a545 / Wf-A39-1).**  The m21 selective revert
+(``git checkout 7edc3823a8 -- train_dmpnn_multitask_wasserstein.py``)
+removed ~665 lines, and as collateral damage it removed the ``--bf16``
+/ ``--no-bf16`` CLI flags (and the ``args.bf16`` dest).  A follow-up
+fixup restored the *helpers* (``DEFAULT_BF16``, ``configure_bf16``,
+``bf16_autocast``) but NOT the CLI.  The tests below therefore assert
+the SHIPPED truth: the helpers still work, and the BF16 CLI flags are
+absent (argparse raises ``SystemExit``).
 """
 
 from __future__ import annotations
@@ -62,50 +71,35 @@ from molmetal.scripts.train_dmpnn_multitask_wasserstein import (  # noqa: E402
 # Test 1 — --bf16 flag passes through CLI parser (and --no-bf16 toggles off)
 # ---------------------------------------------------------------------------
 def test_bf16_flag_passed():
-    """``--bf16`` flag (default ON) wires into ``args.bf16`` correctly.
+    """The BF16 CLI was removed by af84a545; the constant survives.
 
-    Verifies:
-      1. ``DEFAULT_BF16`` is True (Wf-328-W3 default ON for RTX 5090 /
-         RTX PRO 6000 Blackwell sm_120).
-      2. The CLI parser accepts both ``--bf16`` and ``--no-bf16`` and
-         produces the expected boolean in ``args.bf16``.
-      3. ``parse_args([])`` (no flag) returns ``args.bf16 ==
-         DEFAULT_BF16`` so the *untouched* production trainer inherits
-         the BF16 default.
+    Re-scoped to the SHIPPED surface (commit af84a545 removed the
+    ``--bf16`` / ``--no-bf16`` flags along with the m21 revert).  Verifies:
+      1. ``DEFAULT_BF16`` is still True (the constant + helpers were
+         kept by the follow-up fixup).
+      2. ``parse_args(["--bf16"])`` and ``parse_args(["--no-bf16"])``
+         both raise ``SystemExit`` — argparse rejects the unknown flags,
+         so the reverted trainer has no BF16 CLI toggle.
+      3. ``--tf32`` still parses (a separate shipped flag), confirming
+         the CLI is otherwise intact around the removed surface.
     """
-    # Sanity: the constant is True (this is the whole point of Wf-328-W3).
+    # Sanity: the constant is True (the Wf-328-W3 intent survived the revert).
     assert DEFAULT_BF16 is True, (
         "DEFAULT_BF16 must be True (Wf-328-W3 default ON); Wf-326D "
         "quick wins promised ~1.5-2x step throughput."
     )
 
-    # --- CLI parser test ---
-    args_on = parse_args(["--bf16"])
-    assert (
-        args_on.bf16 is True
-    ), f"--bf16 should yield args.bf16=True; got {args_on.bf16!r}"
+    # --- CLI parser test: the BF16 flags are GONE (af84a545) ---
+    # argparse rejects the unknown flags, so parse_args exits.  This is
+    # the shipped truth: the reverted trainer has no --bf16 / --no-bf16.
+    with pytest.raises(SystemExit):
+        parse_args(["--bf16"])
+    with pytest.raises(SystemExit):
+        parse_args(["--no-bf16"])
 
-    args_off = parse_args(["--no-bf16"])
-    assert (
-        args_off.bf16 is False
-    ), f"--no-bf16 should yield args.bf16=False; got {args_off.bf16!r}"
-
-    args_default = parse_args([])
-    assert args_default.bf16 is DEFAULT_BF16, (
-        f"default --bf16 flag should equal DEFAULT_BF16 ({DEFAULT_BF16}); "
-        f"got {args_default.bf16!r}"
-    )
-
-    # --- Cross-check with --no-tf32: BF16 is independent of TF32 ---
-    # (Both flags can be toggled independently; the production trainer
-    # wires them as orthogonal levers for paper §6 audits.)
-    args_both_on = parse_args(["--bf16", "--tf32"])
-    assert args_both_on.bf16 is True
-    assert args_both_on.tf32 is True
-
-    args_bf16_off = parse_args(["--no-bf16", "--tf32"])
-    assert args_bf16_off.bf16 is False
-    assert args_bf16_off.tf32 is True
+    # --- Shipped neighbour still parses: --tf32 is an independent flag ---
+    args_tf32 = parse_args(["--tf32"])
+    assert args_tf32.tf32 is True
 
 
 # ---------------------------------------------------------------------------
@@ -390,14 +384,16 @@ def _run_trainer(tmp_path: Path, *flags: str) -> str:
 
 
 def test_bf16_tf32_flags_reach_trainer(tmp_path: Path):
-    """ON banner shows ENABLED; OFF banner shows DISABLED."""
-    on = _run_trainer(
-        tmp_path / "on", "--bf16", "--tf32", "--no-torch-compile"
-    )
+    """``--tf32`` reaches the live trainer; omitting it stays OFF.
+
+    Re-scoped to the SHIPPED surface.  Commit af84a545 removed the
+    ``--bf16`` / ``--no-bf16`` / ``--no-tf32`` / ``--no-torch-compile``
+    CLI flags, so the BF16 / torch-compile banners no longer exist.  The
+    shipped compute flag is ``--tf32`` (store_true, default OFF) and the
+    trainer prints ``[compute] --tf32 ENABLED`` iff it is set.  "OFF" is
+    therefore the no-flag path — there is no DISABLED banner.
+    """
+    on = _run_trainer(tmp_path / "on", "--tf32")
     assert "--tf32 ENABLED" in on, on[-2000:]
-    assert "requested=True apply=False" in on, on[-2000:]  # CPU: no autocast
-    off = _run_trainer(
-        tmp_path / "off", "--no-bf16", "--no-tf32", "--no-torch-compile"
-    )
-    assert "--tf32 DISABLED" in off, off[-2000:]
-    assert "requested=False apply=False" in off, off[-2000:]
+    off = _run_trainer(tmp_path / "off")
+    assert "--tf32 ENABLED" not in off, off[-2000:]

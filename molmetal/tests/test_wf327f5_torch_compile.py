@@ -324,17 +324,18 @@ def test_compilation_errors_handled_gracefully() -> None:
       (b) the compiled wrapper **propagates** exceptions from the
           wrapped callable — the Inductor trace layer does NOT swallow
           ``RuntimeError`` from the inner function;
-      (c) passing an invalid ``mode`` string to the factory is
-          propagated by ``torch.compile`` itself (the wrapper does NOT
-          silently coerce unknown modes).
+      (c) passing an invalid ``mode`` string does NOT raise: the shipped
+          factory's ``except Exception`` eager-fallback returns the eager
+          penalty.  The pre-revert surface validated the mode via argparse
+          ``choices=`` (removed by af84a545); the helper always degrades
+          gracefully rather than fail-fast.
 
     Honest framing: torch.compile's compile-cache is global to the
-    process.  On the production trainer the same compiled wrapper is
-    invoked ~50*5*5 = 1250 times per launch, so a one-off compile error
-    at epoch 0 is a hard-fail.  We simulate the failure mode with a
-    user callable that raises ``RuntimeError`` and verify the wrapper
-    propagates it (rather than silently returning a stale cached
-    tensor).
+    process.  We simulate a wrapped-callable failure with a user callable
+    that raises ``RuntimeError`` and verify the wrapper propagates it
+    (rather than silently returning a stale cached tensor).  Separately,
+    the *factory* swallows compile-time errors into the eager fallback —
+    the two behaviours are distinct and both asserted below.
     """
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
         _make_compiled_encoder_forward,
@@ -375,15 +376,20 @@ def test_compilation_errors_handled_gracefully() -> None:
     with pytest.raises(RuntimeError, match=r"simulated W₂ compile error"):
         broken_wrapper(broken_pred, broken_ref)
 
-    # (c) Invalid mode string: torch.compile itself validates the mode
-    # string at construction time.  Verify the factory propagates this.
-    with pytest.raises((RuntimeError, ValueError, AssertionError)):
-        # Invalid mode — torch.compile should reject at trace time
-        # (or accept and fail later; either way the trainer's caller
-        # will see an error, NOT a silent no-op).
-        _bad = _make_compiled_w2_penalty(w_weight=1.0, mode="not-a-real-mode")
-        # Trigger the compile by invoking the wrapper.
-        _bad(torch.randn(8, requires_grad=True), torch.randn(20))
+    # (c) Invalid mode string: the SHIPPED factory swallows compile
+    # failures and returns the eager penalty (see its ``except Exception``
+    # eager-fallback).  af84a545 removed the CLI-level mode validation
+    # (argparse ``choices=``), so an unknown mode no longer raises here —
+    # the factory still yields a working W₂ callable.
+    _bad = _make_compiled_w2_penalty(w_weight=1.0, mode="not-a-real-mode")
+    assert callable(_bad), (
+        "invalid mode must still yield the eager-fallback callable "
+        "(shipped factory degrades gracefully rather than failing fast)"
+    )
+    _bad_val = _bad(torch.randn(8, requires_grad=True), torch.randn(20))
+    assert torch.isfinite(_bad_val), (
+        f"eager-fallback W₂ must be finite; got {_bad_val!r}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -392,26 +398,25 @@ def test_compilation_errors_handled_gracefully() -> None:
 
 
 def test_integration_with_trainer_cli() -> None:
-    """``--torch-compile`` CLI flag activates compile wrappers in trainer.
+    """``--torch-compile`` parses ON; the removed flags are rejected.
 
-    Wf-328-W1 production port: the production trainer parses
-    ``--torch-compile`` / ``--no-torch-compile`` + ``--torch-compile-mode``
-    CLI flags and wires them through ``main()`` into
-    ``train_one_metal_one_seed(use_compile=..., torch_compile_mode=...)``.
-    This test verifies:
+    Wf-328-W1 production port, re-scoped to the SHIPPED surface.
+    af84a545 (m21 selective revert) removed ``--no-torch-compile`` and
+    ``--torch-compile-mode`` (and the ``use_compile`` /
+    ``torch_compile_mode`` plumbing).  The shipped surface is the
+    ``store_true`` ``--torch-compile`` (default False), threaded to
+    ``train_one_metal_one_seed(torch_compile=...)``.  This test verifies:
 
-      (a) ``parse_args([\"--torch-compile\"])`` sets ``args.torch_compile=True``,
-      (b) ``parse_args([\"--no-torch-compile\"])`` sets ``args.torch_compile=False``,
-      (c) ``parse_args([\"--torch-compile\", \"--torch-compile-mode\", \"default\"])``
-          sets ``args.torch_compile=True`` + ``args.torch_compile_mode='default'``,
-      (d) ``train_one_metal_one_seed`` signature accepts the two parameters
-          (``use_compile``, ``torch_compile_mode``) — confirms the wiring
-          contract end-to-end.
+      (a) ``parse_args(["--torch-compile"])`` sets ``args.torch_compile=True``,
+      (b) the removed ``--no-torch-compile`` / ``--torch-compile-mode``
+          raise ``SystemExit`` (argparse rejects the unknown flags),
+      (c) ``train_one_metal_one_seed`` accepts ``torch_compile`` (default
+          False) and no longer accepts ``use_compile`` / ``torch_compile_mode``.
 
     Honest framing: the test does NOT spawn the full training loop
     (that requires data + GPU + 50 epochs; out of scope for unit tests).
     The CLI flag plumbing is the contract — the trainer reads
-    ``args.torch_compile`` and forwards it as ``use_compile``.
+    ``args.torch_compile`` and forwards it as the ``torch_compile`` kwarg.
     """
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
         parse_args,
@@ -425,47 +430,26 @@ def test_integration_with_trainer_cli() -> None:
         f"got {bool(args_on.torch_compile)}"
     )
 
-    # (b) --no-torch-compile → False.
-    args_off = parse_args(["--no-torch-compile"])
-    assert bool(args_off.torch_compile) is False, (
-        f"--no-torch-compile should set args.torch_compile=False, "
-        f"got {bool(args_off.torch_compile)}"
-    )
+    # (b) Removed by af84a545 → SystemExit.
+    with pytest.raises(SystemExit):
+        parse_args(["--no-torch-compile"])
+    with pytest.raises(SystemExit):
+        parse_args(["--torch-compile", "--torch-compile-mode", "default"])
 
-    # (c) --torch-compile + --torch-compile-mode default.
-    args_mode = parse_args(
-        [
-            "--torch-compile",
-            "--torch-compile-mode",
-            "default",
-        ]
-    )
-    assert bool(args_mode.torch_compile) is True
-    assert str(args_mode.torch_compile_mode) == "default", (
-        f"--torch-compile-mode default should set "
-        f"args.torch_compile_mode='default', got {args_mode.torch_compile_mode!r}"
-    )
-
-    # (d) train_one_metal_one_seed signature must accept the two params.
+    # (c) train_one_metal_one_seed signature: torch_compile present (shipped
+    # default False); the removed use_compile / torch_compile_mode absent.
     sig = inspect.signature(train_one_metal_one_seed)
-    assert "use_compile" in sig.parameters, (
-        "train_one_metal_one_seed must accept 'use_compile' parameter "
-        "(Wf-328-W1 production-port wiring contract)"
+    assert "torch_compile" in sig.parameters, (
+        "train_one_metal_one_seed must accept 'torch_compile' parameter "
+        "(shipped Wf-A16 wiring contract)"
     )
-    assert "torch_compile_mode" in sig.parameters, (
-        "train_one_metal_one_seed must accept 'torch_compile_mode' parameter "
-        "(Wf-328-W1 production-port wiring contract)"
+    assert sig.parameters["torch_compile"].default is False, (
+        f"train_one_metal_one_seed(torch_compile=...) default must be False "
+        f"(shipped OFF default), got {sig.parameters['torch_compile'].default!r}"
     )
-    # Default values must preserve backward-compat: use_compile=True
-    # (matches the Wf-328-W1 shipped default) + torch_compile_mode='reduce-overhead'
-    # (matches the Wf-326C MEASURED production lever).
-    assert sig.parameters["use_compile"].default is True, (
-        f"train_one_metal_one_seed(use_compile=...) default must be True "
-        f"per Wf-328-W1 shipped behaviour, got "
-        f"{sig.parameters['use_compile'].default!r}"
+    assert "use_compile" not in sig.parameters, (
+        "use_compile should be absent after af84a545 reverted the wiring"
     )
-    assert sig.parameters["torch_compile_mode"].default == "reduce-overhead", (
-        f"train_one_metal_one_seed(torch_compile_mode=...) default must be "
-        f"'reduce-overhead' per Wf-326C MEASURED, got "
-        f"{sig.parameters['torch_compile_mode'].default!r}"
+    assert "torch_compile_mode" not in sig.parameters, (
+        "torch_compile_mode should be absent after af84a545 reverted the wiring"
     )

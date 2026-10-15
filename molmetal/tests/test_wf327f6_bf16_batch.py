@@ -299,47 +299,45 @@ def test_batch_size_sweep_2048(torch_device):
 # Test 3 — BF16 + batch CLI integration via parse_args
 # ---------------------------------------------------------------------------
 def test_bf16_batch_cli_integration():
-    """--bf16 + --batch-size 256 wire through parse_args into train_one_epoch.
+    """``--batch-size`` wires through; the BF16 CLI is gone (af84a545).
 
-    Per Wf-328-W3 the trainer exposes ``--bf16`` / ``--no-bf16`` and the
-    legacy ``--batch-size`` CLI flag.  This test confirms both flow through
-    :func:`parse_args` and can be consumed by :func:`train_one_epoch` as
-    kwargs (no silent shadowing by other flags).
-
-    Uses stub encoder + CPU for portability; we don't launch a real training
-    step — we just confirm the flags parse and the resulting Namespace has
-    the expected shape so the trainer can wire them through.
+    Re-scoped to the SHIPPED surface.  Commit af84a545 removed the
+    ``--bf16`` / ``--no-bf16`` flags and the ``use_bf16`` kwarg on
+    :func:`train_one_epoch_joint`; the shipped trainer keeps only
+    ``--batch-size`` (default ``DEFAULT_BATCH_SIZE``).  Verifies:
+      1. ``parse_args([])`` → ``batch_size == DEFAULT_BATCH_SIZE``.
+      2. ``--batch-size 256`` / ``1024`` parse to those values.
+      3. ``--bf16`` / ``--no-bf16`` raise ``SystemExit`` (flags removed).
+      4. ``train_one_epoch_joint`` still accepts ``batch_size`` and no
+         longer accepts ``use_bf16`` (the reverted wiring).
     """
 
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
         DEFAULT_BATCH_SIZE,
-        DEFAULT_BF16,
         parse_args,
     )
 
-    # 1. Default: BF16 ON, batch=DEFAULT_BATCH_SIZE (MT_BATCH_SIZE=64)
+    # 1. Default: batch=DEFAULT_BATCH_SIZE (MT_BATCH_SIZE=64).
     args = parse_args([])
-    assert (
-        args.bf16 is DEFAULT_BF16
-    ), f"default --bf16 should be {DEFAULT_BF16}, got {args.bf16}"
     assert (
         args.batch_size == DEFAULT_BATCH_SIZE
     ), f"default --batch-size should be {DEFAULT_BATCH_SIZE}, got {args.batch_size}"
-    assert args.bf16 is True, "DEFAULT_BF16 should be True (Wf-328-W3)"
 
-    # 2. Override: --no-bf16 + --batch-size 256
-    args = parse_args(["--no-bf16", "--batch-size", "256"])
-    assert args.bf16 is False, "--no-bf16 should set bf16=False"
+    # 2. Override: --batch-size 256 / 1024.
+    args = parse_args(["--batch-size", "256"])
     assert (
         args.batch_size == 256
     ), f"--batch-size 256 should set batch_size=256, got {args.batch_size}"
-
-    # 3. Re-enable: --bf16 + --batch-size 1024
-    args = parse_args(["--bf16", "--batch-size", "1024"])
-    assert args.bf16 is True, "--bf16 should set bf16=True"
+    args = parse_args(["--batch-size", "1024"])
     assert args.batch_size == 1024
 
-    # 4. Confirm ``use_bf16`` kwarg shape consumed by train_one_epoch_joint (signature probe)
+    # 3. The BF16 CLI was removed by af84a545 → argparse rejects it.
+    with pytest.raises(SystemExit):
+        parse_args(["--bf16"])
+    with pytest.raises(SystemExit):
+        parse_args(["--no-bf16"])
+
+    # 4. Signature probe: batch_size present, use_bf16 absent (reverted).
     import inspect
     from molmetal.scripts.train_dmpnn_multitask_wasserstein import train_one_epoch_joint
 
@@ -347,17 +345,14 @@ def test_bf16_batch_cli_integration():
     assert (
         "batch_size" in sig.parameters
     ), "train_one_epoch_joint missing batch_size kwarg"
-    assert (
-        "use_bf16" in sig.parameters
-    ), "train_one_epoch_joint missing use_bf16 kwarg (Wf-328-W3)"
-    # Default values must match CLI defaults.
+    assert "use_bf16" not in sig.parameters, (
+        "train_one_epoch_joint still exposes use_bf16 — af84a545 should have "
+        "reverted the BF16 wiring"
+    )
+    # Default value must match the CLI default.
     assert sig.parameters["batch_size"].default is inspect.Parameter.empty or (
         sig.parameters["batch_size"].default == DEFAULT_BATCH_SIZE
     ), f"train_one_epoch_joint default batch_size should be {DEFAULT_BATCH_SIZE}"
-    assert sig.parameters["use_bf16"].default is True, (
-        f"train_one_epoch_joint default use_bf16 should be True (Wf-328-W3), got "
-        f"{sig.parameters['use_bf16'].default}"
-    )
 
 
 # ---------------------------------------------------------------------------

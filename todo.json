@@ -7235,6 +7235,26 @@
       "result": "Paired on the same (metal,k,seed) cells: adapted absolute AUC differs by ~±0.001 at every K, none significant. The mismatch is real in the code but does not move the metric.",
       "verdict": "null",
       "finding": "The train/eval-mode mismatch is a genuine code smell but has no measurable effect (dropout 0.1 on a frozen encoder whose features the head can already fit). Recorded as a NULL so the hypothesis is not re-tried."
+    },
+    "dmpnn_stale_test_rescope_2026_10_15": {
+      "status": "DONE — 8 red tests re-scoped to the shipped surface (30 passed / 0 failed)",
+      "date": "2026-10-15",
+      "gate_blind_spot": "These 8 tests are NOT part of pre_flight_check.py, so they stayed RED from af84a545 (2026-10-15) onward without any gate noticing. This is the §5.7-adjacent blind spot: a trainer revert can break the CLI contract its own tests assert, silently.",
+      "root_cause": "af84a545 (m21 selective revert) ran `git checkout 7edc3823a8 -- train_dmpnn_multitask_wasserstein.py`, removing ~665 lines. As collateral damage it removed the --bf16/--no-bf16 CLI flags (and args.bf16), and reverted --tf32 / --torch-compile to store_true default OFF (dropping --no-tf32 / --no-torch-compile / --torch-compile-mode). The module still declares DEFAULT_BF16=True / DEFAULT_TF32=True with docstrings claiming they mirror the argparse default — so the file was self-inconsistent.",
+      "decision": "User chose: keep the reverted trainer as-is (zero numerics change, no m21 regression risk) and re-scope the tests to the shipped surface. The alternative (restore the Wf-A17 BooleanOptionalAction surface with bf16/tf32 default ON) was rejected because the m21 regression was attributed to the Wf-A17 rewrite.",
+      "shipped_surface": "--pic50-ridge-readout/--no-pic50-ridge-readout (BooleanOptional, default OFF); --torch-compile store_true default False (no --no- form, no --torch-compile-mode); --tf32 store_true default False (no --no- form); --cudnn-benchmark; --channels-last; NO --bf16/--no-bf16.",
+      "tests_rescoped": [
+        "test_wf328w3_bf16_production.py::test_bf16_flag_passed (bf16 CLI absent -> SystemExit)",
+        "test_wf328w3_bf16_production.py::test_bf16_tf32_flags_reach_trainer (subprocess argv -> shipped flags)",
+        "test_wf328w4_tf32_production.py::test_tf32_flag_override (--tf32->True, default False, --no-tf32 -> SystemExit)",
+        "test_wf328w1_torch_compile_production.py::test_torch_compile_flag_passed (--no-torch-compile/--torch-compile-mode -> SystemExit)",
+        "test_wf327f6_bf16_batch.py::test_bf16_batch_cli_integration (--batch-size kept; bf16 CLI absent; use_bf16 kwarg gone)",
+        "test_wf327f5_torch_compile.py::test_compilation_errors_handled_gracefully (invalid-mode now degrades to eager fallback, not raise)",
+        "test_wf327f5_torch_compile.py::test_integration_with_trainer_cli (--no-torch-compile -> SystemExit)",
+        "test_pic50_ridge_readout.py::test_pic50_ridge_readout_flag_reaches_eval_path (dropped --no-bf16/--no-tf32/--no-torch-compile from argv)"
+      ],
+      "not_done": "The inert helpers (bf16_autocast / configure_bf16 / configure_tf32 / _make_compiled_encoder_forward / _make_compiled_w2_penalty) + DEFAULT_BF16/DEFAULT_TF32 were NOT removed: other (passing) tests still exercise them, and cleanup is a separate scope. They are currently inert w.r.t. the trainer's live path.",
+      "verification": "6 files: 30 passed / 0 failed (was 22/8). pre_flight_check.py: 113 PASS / 0 FAIL."
     }
   },
   "decisions_2026_10_14": {

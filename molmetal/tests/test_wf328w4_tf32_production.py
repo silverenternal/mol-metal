@@ -13,8 +13,11 @@ Wf-328-W4 wires this into the production trainer
     ``torch.backends.cuda.matmul.allow_tf32``,
     ``torch.backends.cudnn.allow_tf32`` and
     ``torch.set_float32_matmul_precision(...)`` in one call.
-  * New ``--tf32`` (default ON) and ``--no-tf32`` CLI flags surface the
-    helper to the launcher scripts.
+  * New ``--tf32`` (store_true, default OFF) CLI flag surfaces the
+    helper to the launcher scripts.  **af84a545 removed the companion
+    ``--no-tf32`` flag** (and reverted the ``--tf32`` default to OFF);
+    only the helper + ``DEFAULT_TF32`` constant survived, so the tests
+    below assert the shipped ``--tf32``-only surface.
   * The ``main()`` entrypoint invokes ``configure_tf32`` after device
     resolution and logs the post-config state into the training_summary
     JSON for paper §6 reproducibility audits.
@@ -51,8 +54,9 @@ def test_tf32_enabled_by_default():
       * ``torch.backends.cudnn.allow_tf32`` is True
       * ``torch.set_float32_matmul_precision('high')`` was called
 
-    Also verifies ``DEFAULT_TF32=True`` so the *untouched* production
-    trainer (no ``--no-tf32`` flag) inherits TF32 by default.
+    Also verifies ``DEFAULT_TF32=True`` — the *helper constant* default
+    (the CLI no longer inherits it: af84a545 shipped ``--tf32`` as a
+    store_true default OFF; see ``test_tf32_flag_override``).
     """
     # Sanity: the constant is True (this is the whole point of Wf-328-W4).
     assert DEFAULT_TF32 is True, (
@@ -92,18 +96,22 @@ def test_tf32_enabled_by_default():
 
 
 def test_tf32_flag_override():
-    """``--no-tf32`` flips TF32 off; ``--tf32`` flips it back on.
+    """``--tf32`` parses ON; the removed ``--no-tf32`` is rejected.
 
-    Verifies:
-      1. The CLI parser accepts both ``--tf32`` and ``--no-tf32`` and
-         produces the expected boolean in ``args.tf32``.
-      2. ``configure_tf32(False)`` actually clears the TF32 flags
+    Re-scoped to the SHIPPED surface (af84a545 removed ``--no-tf32`` and
+    shipped ``--tf32`` as a store_true default OFF).  Verifies:
+      1. ``parse_args(["--tf32"]).tf32 is True``; ``parse_args([])`` is
+         False — the shipped CLI default, which is *independent* of the
+         ``DEFAULT_TF32`` helper constant (still True).  The removed
+         ``--no-tf32`` raises ``SystemExit``.
+      2. ``configure_tf32(False)`` clears the TF32 flags
          (``matmul.allow_tf32=False``, ``cudnn.allow_tf32=False``,
-         ``matmul_precision='highest'``).
-      3. ``configure_tf32(True)`` after ``False`` restores TF32.
+         ``matmul_precision='highest'``); ``configure_tf32(True)``
+         restores them.  The helper is unchanged by the revert.
 
-    This is the ``--no-tf32`` reproducibility lever that paper §6
-    honest-negative audits rely on.
+    Shipped-default-vs-constant mismatch: ``DEFAULT_TF32 is True`` (the
+    helper's default argument) but the CLI's ``--tf32`` default is False.
+    The pre-revert trainer bound the two together; af84a545 did not.
     """
     prior_matmul = bool(torch.backends.cuda.matmul.allow_tf32)
     prior_cudnn = bool(torch.backends.cudnn.allow_tf32)
@@ -114,16 +122,16 @@ def test_tf32_flag_override():
             args_on.tf32 is True
         ), f"--tf32 should yield args.tf32=True; got {args_on.tf32!r}"
 
-        args_off = parse_args(["--no-tf32"])
-        assert (
-            args_off.tf32 is False
-        ), f"--no-tf32 should yield args.tf32=False; got {args_off.tf32!r}"
-
+        # Shipped store_true default is OFF (NOT DEFAULT_TF32).
         args_default = parse_args([])
-        assert args_default.tf32 is DEFAULT_TF32, (
-            f"default --tf32 flag should equal DEFAULT_TF32 ({DEFAULT_TF32}); "
+        assert args_default.tf32 is False, (
+            f"shipped --tf32 default should be False (store_true); "
             f"got {args_default.tf32!r}"
         )
+
+        # --no-tf32 was removed by af84a545 → argparse rejects it.
+        with pytest.raises(SystemExit):
+            parse_args(["--no-tf32"])
 
         # --- Helper function: TF32 OFF ---
         off_state = configure_tf32(enabled=False)

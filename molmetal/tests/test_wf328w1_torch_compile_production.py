@@ -111,79 +111,42 @@ def _build_small_encoder(hidden: int = 32, depth: int = 2) -> DMPNNMultiTaskMode
 
 
 def test_torch_compile_flag_passed() -> None:
-    """``--torch-compile`` / ``--no-torch-compile`` / ``--torch-compile-mode``
-    are parsed by :func:`parse_args` and forwarded to the trainer.
+    """``--torch-compile`` parses; the removed flags are rejected.
 
-    Verifies the new Wf-328-W1 CLI surface (updated Wf-335-R1):
-      * default ``args.torch_compile = True``
-      * ``args.torch_compile_mode = 'max-autotune-no-cudagraphs'``
-        (Wf-335-R1 MEASURED FIX: was 'reduce-overhead' per Wf-328-W1,
-        but 'reduce-overhead' enabled CUDA Graphs capture that fired
-        RuntimeError on Ru seed=2 + Ir seed=0 per Wf-330-B4).
-      * ``--no-torch-compile`` flips the flag to ``False``
-      * ``--torch-compile-mode max-autotune-no-cudagraphs`` is accepted
-        (CPU-only safe mode)
-      * ``--torch-compile-mode reduce-overhead`` is REJECTED by the
-        fix branch of main() override (CUDA Graphs disabled).  Pass
-        ``--torch-compile-mode-v2 reduce-overhead`` to opt back in
-        (legacy bench reproducer).
+    HONEST NOTE (Wf-A16 wire-in): the trainer's *shipped* ``--torch-compile``
+    default is OFF (False), not ON.  The flag was declared OFF so the no-flag
+    path stays bit-for-bit identical to Wf-131 P1; the production win comes
+    from launchers/configs that pass ``--torch-compile`` explicitly (e.g. the
+    Wf-330-B2 integration YAML sets ``compute.torch_compile: true``).  This
+    single assertion was written against a default-ON surface that was never
+    shipped.
+
+    UPDATE (af84a545 / Wf-A39-1): the m21 selective revert removed
+    ``--no-torch-compile`` and ``--torch-compile-mode`` (and the
+    ``torch_compile_mode`` plumbing) as collateral damage.  The shipped
+    surface is now just the ``store_true`` ``--torch-compile`` (default
+    False); the removed flags raise ``SystemExit``.
     """
-    # Default — both flags wired with their shipped defaults.
-    #
-    # HONEST NOTE (Wf-A16 wire-in): the trainer's *shipped* ``--torch-compile``
-    # default is OFF (False), not ON.  The flag was declared OFF so the no-flag
-    # path stays bit-for-bit identical to Wf-131 P1; the production win comes
-    # from launchers/configs that pass ``--torch-compile`` explicitly (e.g. the
-    # Wf-330-B2 integration YAML sets ``compute.torch_compile: true``).  This
-    # single assertion was written against a default-ON surface that was never
-    # shipped; the mode default below (Wf-335-R1) IS shipped and pinned.
+    # Default — the shipped store_true default is OFF.
     args_default = parse_args(["--metals", "Ru", "--seeds", "0", "--epochs", "1"])
     assert args_default.torch_compile is False, (
         f"default torch_compile should be False (shipped OFF default; "
         f"launchers opt in explicitly), got {args_default.torch_compile}"
     )
-    # Wf-335-R1 MEASURED FIX: default switched from 'reduce-overhead' to
-    # 'max-autotune-no-cudagraphs' to disable CUDA Graphs capture that
-    # was triggering RuntimeError on Ru seed=2 + Ir seed=0 per Wf-330-B4.
-    assert args_default.torch_compile_mode == "max-autotune-no-cudagraphs", (
-        f"default torch_compile_mode should be 'max-autotune-no-cudagraphs' "
-        f"(Wf-335-R1 MEASURED FIX per Wf-330-B4), got "
-        f"{args_default.torch_compile_mode}"
-    )
 
-    # --no-torch-compile flips to False
-    args_off = parse_args(
-        ["--metals", "Ru", "--seeds", "0", "--epochs", "1", "--no-torch-compile"]
+    # --torch-compile flips to True.
+    args_on = parse_args(
+        ["--metals", "Ru", "--seeds", "0", "--epochs", "1", "--torch-compile"]
     )
     assert (
-        args_off.torch_compile is False
-    ), f"--no-torch-compile should set torch_compile=False, got {args_off.torch_compile}"
+        args_on.torch_compile is True
+    ), f"--torch-compile should set torch_compile=True, got {args_on.torch_compile}"
 
-    # --torch-compile-mode accepts the four Inductor modes
-    for mode in (
-        "default",
-        "reduce-overhead",
-        "max-autotune",
-        "max-autotune-no-cudagraphs",
-    ):
-        args_mode = parse_args(
-            [
-                "--metals",
-                "Ru",
-                "--seeds",
-                "0",
-                "--epochs",
-                "1",
-                "--torch-compile-mode",
-                mode,
-            ]
+    # Removed by af84a545 → argparse rejects both flags.
+    with pytest.raises(SystemExit):
+        parse_args(
+            ["--metals", "Ru", "--seeds", "0", "--epochs", "1", "--no-torch-compile"]
         )
-        assert args_mode.torch_compile_mode == mode, (
-            f"--torch-compile-mode {mode!r} did not parse; got "
-            f"{args_mode.torch_compile_mode}"
-        )
-
-    # Invalid mode is rejected by argparse choices=
     with pytest.raises(SystemExit):
         parse_args(
             [
@@ -194,7 +157,7 @@ def test_torch_compile_flag_passed() -> None:
                 "--epochs",
                 "1",
                 "--torch-compile-mode",
-                "not-a-mode",
+                "default",
             ]
         )
 

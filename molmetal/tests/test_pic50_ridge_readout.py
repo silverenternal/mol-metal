@@ -110,7 +110,8 @@ def _run_trainer(tmp_path: Path, ridge_flag: str) -> str:
             "--seeds", "0",
             "--epochs", "1",
             "--max-joint-rows", "128",
-            "--no-bf16", "--no-tf32", "--no-torch-compile",
+            # af84a545 removed --no-bf16 / --no-tf32 / --no-torch-compile
+            # (the shipped defaults are already OFF, so "OFF" = omit them).
             "--cpu-num-workers", "0",
             "--device", "cpu",
             ridge_flag,
