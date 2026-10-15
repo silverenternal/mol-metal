@@ -195,6 +195,210 @@ DEFAULT_HIDDEN: int = MT_HIDDEN
 DEFAULT_DEPTH: int = MT_DEPTH
 DEFAULT_DROPOUT: float = MT_DROPOUT
 L2_GUARD_MAX_NORM: float = 5.0  # grad-norm clip
+# ---------------------------------------------------------------------------
+# Wf-A16 production-toggle defaults + helpers (Wf-328 family).
+#
+# These four named surfaces are the module-level contract the Wf-328-family
+# "production" test modules import.  The underlying levers were already LIVE
+# in the trainer (CLI flags + inline torch.backends toggles); this block only
+# names them so the tests can pin their defaults and the helpers are testable
+# in isolation.  See TODO/completed/wfa16_unimplemented_feature_register.md
+# entries 10-13 + 16 and AGENTS.md §5.7.
+# ---------------------------------------------------------------------------
+
+#: Default for ``--tf32`` (Wf-328-W4): TF32 matmul ON for Ampere+ GPUs.
+#: Mirrors the argparse default below; exposed as a constant so the trainer,
+#: the tests and the launcher scripts share ONE source of truth.
+DEFAULT_TF32: bool = True
+
+#: Default for ``--bf16`` (Wf-328-W3): BF16 autocast ON for tensor-core GPUs.
+#: On CUDA + Ampere-or-newer this wraps the forward + W₂ block in
+#: ``torch.autocast(dtype=torch.bfloat16)``; everywhere else it degrades to a
+#: ``nullcontext`` no-op via :func:`bf16_autocast`.
+DEFAULT_BF16: bool = True
+
+#: Default W₂ penalty mode (Wf-328-W5): the closed-form 1-D sort path.
+#: NOTE (honest framing): this flips the *constant/default* from the historical
+#: literal ``"sliced"`` to ``"sort"``.  The live ``train_one_epoch_joint`` /
+#: ``train_one_metal_one_seed`` signatures now default to this constant.  The
+#: slicer remains reachable via ``--w2-gradient-mode sliced`` for Wf-131 P1
+#: reproducibility.
+DEFAULT_W2_GRADIENT_MODE: str = "sort"
+
+#: Default D-MPNN encoder backend (Wf-334u1).  ``"pyg"`` = the vectorised
+#: flat-graph encoder (``_forward_flat``); ``"loop"`` = the legacy Python
+#: per-molecule loop (``_forward_one_mol``).  The trainer calls whichever the
+#: CLI selects through ``MultiTaskWassersteinModel.encode_pool``.  Both paths
+#: route through the same encoder weights — ``loop`` is bit-equivalent up to
+#: FP associativity, kept for reproducibility/ablation.
+DEFAULT_DMPNN_BACKEND: str = "pyg"
+
+#: The four Inductor ``torch.compile`` modes accepted by ``--torch-compile-mode``
+#: (and the ``-v2`` alias).  Wf-335-R1: default is ``max-autotune-no-cudagraphs``
+#: (CUDA Graphs disabled) to avoid the Wf-330-B4 RuntimeError.
+TORCH_COMPILE_MODES: Tuple[str, ...] = (
+    "default",
+    "reduce-overhead",
+    "max-autotune",
+    "max-autotune-no-cudagraphs",
+)
+DEFAULT_TORCH_COMPILE_MODE: str = "max-autotune-no-cudagraphs"
+
+
+@dataclass
+class TF32State:
+    """Post-config TF32 state, persisted into ``training_summary.json``.
+
+    Mirrors :func:`configure_bf16`'s dict contract so both precision toggles
+    report the same shape for paper §6 reproducibility audits.
+    """
+
+    enabled: bool
+    current_allow_tf32_matmul: bool
+    current_allow_tf32_cudnn: bool
+    matmul_precision: str
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "enabled": self.enabled,
+            "current_allow_tf32_matmul": self.current_allow_tf32_matmul,
+            "current_allow_tf32_cudnn": self.current_allow_tf32_cudnn,
+            "matmul_precision": self.matmul_precision,
+        }
+
+    # Dict-style access so the Wf-328-W4 tests can index the result directly
+    # (``state["enabled"]``) without unwrapping ``.to_dict()``.
+    def __getitem__(self, key: str) -> object:
+        return self.to_dict()[key]
+
+
+def configure_tf32(enabled: bool = DEFAULT_TF32) -> TF32State:
+    """Toggle the three TF32 knobs in one call (Wf-328-W4).
+
+    Sets ``torch.backends.cuda.matmul.allow_tf32`` +
+    ``torch.backends.cudnn.allow_tf32`` and the
+    ``torch.set_float32_matmul_precision(...)`` API together so the levers
+    cannot drift out of sync.  Reads-back the *live* torch state into the
+    returned :class:`TF32State` (safe on CPU-only hosts — the flags exist
+    regardless of CUDA availability).
+    """
+    torch.backends.cuda.matmul.allow_tf32 = bool(enabled)
+    torch.backends.cudnn.allow_tf32 = bool(enabled)
+    torch.set_float32_matmul_precision("high" if enabled else "highest")
+    return TF32State(
+        enabled=bool(enabled),
+        current_allow_tf32_matmul=bool(torch.backends.cuda.matmul.allow_tf32),
+        current_allow_tf32_cudnn=bool(torch.backends.cudnn.allow_tf32),
+        matmul_precision=str(torch.get_float32_matmul_precision()),
+    )
+
+
+def configure_bf16(enabled: bool = DEFAULT_BF16, device: object = None) -> Dict[str, object]:
+    """Resolve whether BF16 autocast is applicable (Wf-328-W3).
+
+    Returns a dict with the six documented keys:
+    ``requested`` / ``apply`` / ``device`` / ``is_cuda`` /
+    ``fallback_occurred`` / ``fallback_reason``.
+
+    Rules (CPU-safe; never touches a CUDA device):
+
+    * ``apply`` is True ONLY when ``enabled`` AND the target device is CUDA
+      (BF16 has no tensor-core benefit on CPU, so we never open an autocast
+      window there).
+    * ``fallback_occurred`` is True when the user *requested* BF16 but it was
+      not applicable (CPU / pre-Ampere) — so paper §6 audits can tell a real
+      BF16 run from a silent fallback.  It is False when the user explicitly
+      opted out (no fallback, just OFF).
+    """
+    device_str = str(device) if device is not None else "cpu"
+    is_cuda = device_str.startswith("cuda")
+    apply = bool(enabled) and is_cuda
+    if apply:
+        fallback_occurred = False
+        fallback_reason = ""
+    elif enabled:
+        fallback_occurred = True
+        fallback_reason = (
+            "BF16 autocast not applied: device is CPU (no tensor cores); "
+            "requested BF16 falls back to FP32."
+            if not is_cuda
+            else "BF16 autocast not applicable on this device."
+        )
+    else:
+        fallback_occurred = False
+        fallback_reason = ""
+    return {
+        "requested": bool(enabled),
+        "apply": apply,
+        "device": device_str,
+        "is_cuda": is_cuda,
+        "fallback_occurred": fallback_occurred,
+        "fallback_reason": fallback_reason,
+    }
+
+
+def bf16_autocast(device: object = None, enabled: bool = DEFAULT_BF16):
+    """Return a BF16 autocast context manager, or a ``nullcontext`` no-op.
+
+    CUDA + ``enabled`` → ``torch.autocast(device_type="cuda",
+    dtype=torch.bfloat16)``.  Everything else (CPU, ``enabled=False``) → a
+    ``contextlib.nullcontext`` so the wrapped block runs bit-for-bit unchanged
+    and emits no autocast UserWarning noise on CPU.
+    """
+    import contextlib
+
+    state = configure_bf16(enabled=enabled, device=device)
+    if state["apply"]:
+        return torch.autocast(device_type="cuda", dtype=torch.bfloat16)
+    return contextlib.nullcontext()
+
+
+def _make_compiled_encoder_forward(encoder: object, mode: str = DEFAULT_TORCH_COMPILE_MODE):
+    """Factory: return a compiled replacement for ``encoder._forward_one_mol``.
+
+    Wf-328-W1 / Wf-335-R1.  ``encode_pool`` looks up ``_forward_one_mol`` at
+    call-time, so a returned callable can be monkey-patched onto the encoder
+    instance (the production trainer does exactly this in
+    :func:`train_one_metal_one_seed`).  The compile is applied to the *bound
+    method* so Inductor sees the per-molecule ``(V, E)`` forward; on CPU this
+    is a valid (if not speedup-yielding) ``torch.compile`` wrapper, and on
+    failure we fall back to the eager method so a corrupt cache cannot kill a
+    run.
+    """
+    eager_forward = encoder._forward_one_mol
+
+    def _compiled(*args, **kwargs):
+        return eager_forward(*args, **kwargs)
+
+    try:
+        return torch.compile(_compiled, mode=mode)
+    except Exception:  # noqa: BLE001 - corrupt inductor cache ⇒ eager fallback
+        return _compiled
+
+
+def _make_compiled_w2_penalty(
+    w_weight: float = 1.0, mode: str = DEFAULT_TORCH_COMPILE_MODE
+):
+    """Factory: return a compiled callable computing the sort-mode W₂ penalty.
+
+    Wf-328-W1 / Wf-335-R1.  The returned callable has the signature
+    ``(pred, target) -> scalar tensor`` and matches
+    :func:`wasserstein_pic50_gradient` within FP32 tolerance.  Per Wf-335-R1
+    the default ``mode`` is ``max-autotune-no-cudagraphs`` (CUDA Graphs
+    disabled); ``reduce-overhead`` remains accepted for Wf-326C / Wf-328-W1
+    bench reproducibility.
+    """
+    from molmetal.molmetal_lam.reward.wasserstein_loss import (
+        wasserstein_pic50_gradient,
+    )
+
+    def _penalty(pred, target):
+        return wasserstein_pic50_gradient(pred, target, w_weight=w_weight)
+
+    try:
+        return torch.compile(_penalty, mode=mode)
+    except Exception:  # noqa: BLE001 - eager fallback on compile failure
+        return _penalty
 
 # Graceful degradation: every model has a known random-init cost in epochs
 # before pIC50 predictions start being useful; we log Wasserstein penalty
