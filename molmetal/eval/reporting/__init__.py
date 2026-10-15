@@ -12,7 +12,13 @@ disk per AGENTS.md §1 rule 1 (MEASURED-vs-PROJECTED).
 """
 from __future__ import annotations
 
-from molmetal.eval.reporting.cite_helper import cite_liganddiff, cite_tmcinvdes, cite_platinai, cite_metalcytotox
+from molmetal.eval.reporting.cite_helper import (
+    cite_liganddiff,
+    cite_metalcytotox,
+    cite_platinai,
+    cite_rusanov_ece,
+    cite_tmcinvdes,
+)
 from molmetal.eval.reporting.metric_aggregator import MetricAggregator
 from molmetal.eval.reporting.paper_table import PaperTable
 
@@ -23,4 +29,5 @@ __all__ = [
     "cite_tmcinvdes",
     "cite_platinai",
     "cite_metalcytotox",
+    "cite_rusanov_ece",
 ]

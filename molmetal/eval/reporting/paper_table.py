@@ -24,6 +24,11 @@ import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+# Wf-A49 (2026-10-16) — thread the ECE cite into Table 1's footnote row.
+# The cite block names the on-disk JSON so the source is verifiable
+# per AGENTS.md §5.5 filesystem-truth.  No paper/* touch (§5.3).
+from molmetal.eval.reporting.cite_helper import cite_rusanov_ece
+
 
 @dataclass
 class TableCell:
@@ -82,6 +87,11 @@ class PaperTable:
             data = self._load(mid)
             cell = self._cell(data, f"metrics/by_metric/{mid}.json")
             rows.append((mid, cell))
+        # Wf-A49 (2026-10-16) — ECE footnote cite (cite-only row).
+        # No numeric cell value here; the on-disk
+        # ``s5_ece.json`` is the source of truth and the cite block
+        # names it per AGENTS.md §5.5 filesystem-truth.
+        ece_cite = cite_rusanov_ece()
         lines = [
             "| Metric | mol-metal CFM | ref LigandDiff (Jin & Merz 2024) |",
             "|---------|--------|--------|",
@@ -89,6 +99,7 @@ class PaperTable:
             f"| Vina Dock (kcal/mol) | {rows[1][1].render()} | -8.4 [M] |",
             f"| m7 Diversity | {rows[2][1].render()} | 0.86 [M] |",
             f"| QED | {rows[3][1].render()} | 0.78 [M] |",
+            f"| ECE footnote (Rusanov 2025 SI Table S5) | see .data/molmetal/rusanov_2025/parsed/s5_ece.json | {ece_cite[:160]}... |",
         ]
         return "\n".join(lines)
 

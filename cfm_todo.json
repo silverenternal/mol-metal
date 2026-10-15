@@ -131,7 +131,14 @@
         "what": "Generate paper Table 1/2: our CFM vs LigandDiff (PRIMARY_1) + PlatinAI cite-only (PRIMARY_2: numeric pIC50 blocked by Cloudflare; only qualitative coverage + PlatinAI compound cite available) + multi-LigandDiff + Balcells (broader context rows). For PlatinAI row: report as 'cite-only baseline, no head-to-head numeric pIC50 on this host; Cloudflare-blocked SI'.",
         "cost": "3-5 hr GPU (reuses existing ckpts)",
         "blocks": "paper submission",
-        "depends_on": "A2_wire_baseline_metric"
+        "depends_on": "A2_wire_baseline_metric",
+        "status_2026_10_16": "OPEN 2026-10-16 per Wf-A49 audit. The primary fullcorpus ckpt cfm_fullcorpus_2026_10_10_last.pt is NOT on disk per AGENTS.md §5.5 filesystem-truth (ckpt_manifest.json has 0 entries; cfm_todo.json _note_2026_10_16_Wf-A48_§6.74 documents this). 3 metric JSONs on disk still reference the missing ckpt path as if it were present: cfm_free_generation_panel_seed0.json, cfm_qed_fragment_aware.json, cfm_bond_type_f1_3seed.json. A3 cannot run to completion without a primary ckpt retrain; the retrain is queued for the next GPU slot per the §5.1 standing grant. Until then: (a) Table 1 rows that depend on this ckpt render as HONEST-NEGATIVE in molmetal/eval/reporting/paper_table.py, (b) any consumer of the 3 stale metric JSONs must read cfm_todo.json::_note_2026_10_16 first, (c) emit_paper_table is SHIPPED at molmetal/eval/scoring/paper_table.py:520 per Wf-A22 §6.43h residual closure (2026-10-13), so the ship surface is wired even though the metric inputs are stale. NO code change required for A3 itself; the close-out is to mark the entry OPEN with this honest-negative ledger + stale_refs flag for §5.5 filesystem-truth.",
+        "stale_refs": [
+          "metrics/by_metric/cfm_free_generation_panel_seed0.json",
+          "metrics/by_metric/cfm_qed_fragment_aware.json",
+          "metrics/by_metric/cfm_bond_type_f1_3seed.json"
+        ],
+        "stale_refs_note": "Wf-A49 §5.5 filesystem-truth audit (2026-10-16): these 3 JSONs reference cfm_fullcorpus_2026_10_10_last.pt which is NOT on disk. They MUST be re-authored after the next GPU retrain slot, or annotated with a stale_refs pointer to this entry."
       }
     ],
     "TIER_2_HONEST_NEGATIVE_ACCOUNTING_MEDIUM_ROI": [
