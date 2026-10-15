@@ -1019,6 +1019,24 @@ def parse_argv(argv: Optional[List[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="Verbose progress to stderr.",
     )
+    # Wf-413-A3 + Wf-426-A2 backward-compat shims: a few launch wrappers
+    # (Wf-355-A3 r20_p5 tmqm_plat launch.log reproduces this) pass
+    # `--skip-live --json` because they share a UF gate pattern with
+    # wf343c2_per_wave_check.py.  per_wave_checklist has no JSON / live-probe
+    # knob of its own, so both are accepted and treated as no-ops.  Keeping the
+    # flags accepted here (rather than dropping them from callers) preserves the
+    # canonical log evidence in Wf-A42 and lets the historic
+    # `unrecognized arguments: --skip-live --json` line stop hitting exit 2.
+    p.add_argument(
+        "--json",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    p.add_argument(
+        "--skip-live",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     return p.parse_args(argv)
 
 

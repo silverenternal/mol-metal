@@ -787,8 +787,17 @@ EARLY_STOP_METRICS: Tuple[str, ...] = (
 DEFAULT_EARLY_STOP_METRIC = "combined"
 #: Plateau length for the chemistry criteria.  ``--patience`` (default 10)
 #: still governs the legacy `decode_ratio` criterion, so every historical run
-#: keeps the patience it was launched with.
-DEFAULT_EARLY_STOP_PATIENCE = 3
+#: keeps the patience it was launched with.  Wf-A42 (CFM_WEAKNESSES D.5 /
+#: H honest-negative close): 3 was empirically too aggressive — full-corpus
+#: 5-seed cohorts early-stopped at patience 3 with stop-epochs at ep9..14,
+#: biasing `combined` DOWN by ~0.05 vs the patience=10 plateau baseline
+#: (cfm_fullcorpus_seed2.yaml §A/B/C context, MEASURED rationale kept in
+#: §6.66b).  Default flipped to 10 to align the new-argparse-default with
+#: the legacy `--patience` default and the inherited YAML overrides
+#: (cfm_fullcorpus_seed* / cfm_padgroups_seed* / cfm_patience10_seed0 all
+#: ship `early_stop_patience: 10`; `cfm_bond_head_*` and `cfm_frag_*` ship
+#: `999`, so no override is silently changed by this flip).
+DEFAULT_EARLY_STOP_PATIENCE = 10
 #: Generation-validity floor for the epsilon-constrained criterion. Read off
 #: metrics/by_metric/blk_c13_epsilon_constraint.json, not chosen by hand —
 #: see the argparse help on --early-stop-epsilon for the slice sensitivity.

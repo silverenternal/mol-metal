@@ -107,13 +107,25 @@ from molmetal_lam.lam_chem.cisplatin_resistance import (
 # ---------------------------------------------------------------------------
 CELL_LINES: Tuple[str, ...] = ("MCF-7", "A549", "A2780cis")
 N_CELLS: int = len(CELL_LINES)
-#: IC50 column names in ``platinai_4cell.csv`` we keep (drop A2780).
-IC50_COLS: Tuple[str, ...] = (
-    "ic50_mcf7_nm",
-    "ic50_a549_nm",
-    "ic50_a2780cis_nm",
+#: pIC50 column names in ``platinai_4cell.csv`` we keep (drop A2780, per the
+#: Phase A / Stage 2.4 spec).  Wf-A42 (§6.65c honest-negative close):
+#: the on-disk CSV ships ``pIC50_*`` (no ``_nm`` suffix, lowercase ``pic50``
+#: prefix on each column); the trainer previously read ``ic50_mcf7_nm`` etc.,
+#: which is the *raw* nM schema that was never committed to disk.  Re-tagged
+#: from nM to pIC50 to match the live file (verified by `head -2` on the
+#: shipped CSV, which shows ``pIC50_mcf7,pIC50_a549,pIC50_a2780,pIC50_a2780cis``).
+PIC50_COLS: Tuple[str, ...] = (
+    "pIC50_mcf7",
+    "pIC50_a549",
+    "pIC50_a2780cis",
 )
-ACTIVE_THRESHOLD_NM: float = 10_000.0
+#: pIC50 ≥ 5.0  ⇔  IC50 ≤ 10 µM — preserves the original ACTIVE_THRESHOLD_NM=10_000
+#: spec without the unit-conversion trap (a 10_000 nM raw value yields a
+#: pIC50 of 5.0, so threshold is mathematically identical; the nM→pIC50
+#: cutoff is the only sane way to read this CSV).
+ACTIVE_THRESHOLD_PIC50: float = 5.0
+#: SMILES column in the live CSV (capitalised SMILES_Ligands, not `smiles`).
+SMILES_COL: str = "SMILES_Ligands"
 
 # Encoder dimensions — **must** match tmQM pretrain checkpoint
 # (see ``models/tmqm_pretrained/tmqm_pretrained_encoder.pt`` config).
@@ -356,17 +368,17 @@ def load_dataset(csv_path: Path) -> Tuple[List[str], np.ndarray, np.ndarray]:
     with csv_path.open() as f:
         for row in _csv.DictReader(f):
             rows.append(row)
-    smiles = [r["smiles"] for r in rows]
+    smiles = [r[SMILES_COL] for r in rows]
     n = len(rows)
     active = np.full((n, N_CELLS), -1, dtype=np.int32)
-    for j, col in enumerate(IC50_COLS):
+    for j, col in enumerate(PIC50_COLS):
         for i, r in enumerate(rows):
             v = r.get(col, "")
             if v == "" or v is None:
                 continue
             try:
-                ic50 = float(v)
-                active[i, j] = 1 if ic50 <= ACTIVE_THRESHOLD_NM else 0
+                pic50 = float(v)
+                active[i, j] = 1 if pic50 >= ACTIVE_THRESHOLD_PIC50 else 0
             except ValueError:
                 continue
     # Resistance side-features.
