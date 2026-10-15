@@ -22,8 +22,10 @@
     ]
   },
   "checkpoints_on_disk": {
-    "cfm_fullcorpus_2026_10_10_last.pt": "CFM/YuelBond, 6-metal, 6L params (primary checkpoint for paper)",
-    "cfm_patience10_seed0_last.pt": "CFM/YuelBond, 24 epochs, decode_ratio 0.297 (diagnostic use)"
+    "cfm_yuelbond_wasserstein.smoke_stub.pt": "CFM/YuelBond, smoke-scale, 639 KB on disk (NOT paper-primary; smoke_stub only — primary fullcorpus ckpt was never retrained)",
+    "cfm_yuelbond_wasserstein_seed0.smoke_stub.pt": "CFM/YuelBond seed0, smoke-scale, 7.8 MB on disk (NOT paper-primary; smoke_stub only)",
+    "dmpnn_mtw_{a2780,a2780cis,mcf7,a549,ir,os,re}_seed{0,1,2}.pt": "D-MPNN MTW cohort, 25 ckpts, seed 0/1/2 across 7 metals (paper §3.2 fold-split)",
+    "_note_2026_10_16_Wf-A48_§6.74": "cfm_fullcorpus_2026_10_10_last.pt and cfm_patience10_seed0_last.pt were claimed here pre-audit but are NOT on disk per AGENTS.md §5.5 filesystem-truth audit 2026-10-16; ckpt_manifest.json has 0 entries for either. Closing drift via metadata rewrite + honest-negative §6.74 (catalog). Primary fullcorpus ckpt re-train is queued for next GPU slot."
   },
   "results_generation_line": {
     "metrics_on_disk": {
@@ -44,7 +46,7 @@
   "scoring_reuse_map": {
     "principle": "Reuse cloned repos' evaluation scripts, not write new code",
     "mapping": {
-      "validity/SASD": "RDKit + canonical Ertl-SA via sa_penalty.py:81-125 (RDKit-Contrib fallback). In-tree fork molmetal/eval/scoring/sascorer.py is BROKEN -- 8/8 test_sascorer_fork_divergence.py PASS proving broken",
+      "validity/SASD": "RDKit + canonical Ertl-SA via sa_penalty.py:81-125 (RDKit-Contrib fallback). In-tree fork molmetal/eval/scoring/sascorer.py (188 LOC, Apache-2.0 header) diverges from canonical LigandDiff BY DESIGN (rewrite path: canonical Ertl-2009 algorithm + bundled fpscores.pkl.gz via __file__-relative path, instead of LigandDiff's /mnt/gs21/scratch/... sys.path hack). 13 downstream importers WORK (verified 2026-10-16 via grep across molmetal/ + molmetal_lam/: end_of_training.py:58, eval/scoring/{targetdiff,softmol,pocket2mol,admet8}_score.py, adapters/flow_matching_lipman/sa_penalty.py:119, etc). 8/8 test_sascorer_fork_divergence.py PASS (the divergence is the test target, NOT a bug) — see honest-negative §6.74 (catalog) for OPEN-5_sascorer_fork close-out.",
       "docking/RMSD": "OpenBabel + meeko + AutoDock Vina via molmetal/molmetal_lam/sbdd_env/ adapters; rmsd_pose reuse from references/SoftMol/eval_sbdd.py",
       "decode_ratio": "RDKit + Wf-R44 generated_smiles.csv pipeline (cfm_decoder_yuelbond.py:730-766 + DecodedMol.error)",
       "synthesis_route": "AiZynthFinder via molmetal/molmetal_lam/sbdd_env/aizynth_*.py; references/RxnFlow/ + references/SynFlowNet/",
@@ -141,9 +143,10 @@
       },
       {
         "id": "OPEN-5_sascorer_fork",
-        "what": "FIX or DELETE molmetal/eval/scoring/sascorer.py. 3 modules (pocket2mol/softmol/targetdiff) currently can't import it. sa_penalty.py already has RDKit-Contrib fallback so training is unaffected. stereo_postprocess.py:106-108 lacks fallback (decode-time panel risk).",
-        "cost": "1-2 hr CPU",
-        "blocks": "footnote honesty, not Table"
+        "what": "RESOLVED 2026-10-16 per Wf-A48 §6.74 (catalog line 2478-2521) + cfm_todo.json::scoring_reuse_map::validity/SASD rewrite (line 49). Fork DIVERGES FROM canonical LigandDiff BY DESIGN (rewrite path: canonical Ertl-2009 algorithm + bundled __file__-relative fpscores.pkl.gz, instead of upstream /mnt/gs21/scratch/... sys.path hack). 13 downstream importers (pocket2mol_score.py:43 + softmol_score.py:44 + targetdiff_score.py:51 + admet8.py:53 + adapters/flow_matching_lipman/sa_penalty.py:119 + end_of_training.py:58 + 7 others verified 2026-10-16 by `grep -rn 'from molmetal.eval.scoring.sascorer' molmetal/` -> 13 hits) WORK. 8/8 test_sascorer_fork_divergence.py PASS -- the divergence IS the test target, not a bug. Brief's '3 modules currently can't import' was stale as of 2026-09; fork was refactored mid-Sept to bundled fpscores.pkl.gz path. NO code change required; fork is shipped and intentional.",
+        "cost": "0 hr (already shipped)",
+        "blocks": "none (footnote honesty preserved by §6.74 + validity/SASD line)",
+        "status_2026_10_16": "CLOSED"
       }
     ],
     "TIER_3_DEFERRED_NO_TABLE_IMPACT": [
