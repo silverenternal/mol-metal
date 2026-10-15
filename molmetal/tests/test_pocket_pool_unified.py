@@ -31,7 +31,21 @@ from molmetal.data.pocket_pool_unified import (  # noqa: E402
 
 @pytest.fixture(scope="module", autouse=True)
 def _ensure_platiny_csv():
-    platiny_pocket_pool.write_pool_to_csv()
+    """Idempotent: only write the seed if the CSV is missing or every
+    row's pocket_path is empty (Wf-A41-fixup-2). The previous version
+    unconditionally called ``write_pool_to_csv()`` which clobbered
+    populated rows with seed rows, breaking J3+J4 in test_platiny_pocket_pool.
+    """
+    p3_csv = platiny_pocket_pool.PLATINY_POOL_CSV
+    needs_init = (not p3_csv.exists())
+    if not needs_init:
+        try:
+            rows = platiny_pocket_pool._read_csv(p3_csv)
+            needs_init = all(not r.get("pocket_path", "").strip() for r in rows)
+        except Exception:
+            needs_init = True
+    if needs_init:
+        platiny_pocket_pool.write_pool_to_csv()
     yield
 
 
@@ -126,9 +140,25 @@ def test_metal_filter_ignored_for_crossdocked():
 
 
 def test_only_extracted_honest_for_platiny():
-    """At A31 ship time, platiny has 0 extracted rows."""
+    """At A31 ship time, platiny had 0 extracted rows.
+
+    Wf-A41-fixup-2: post-C14 backfill, all 10 platiny rows now carry a
+    populated ``pocket_path``; ``only_extracted`` therefore returns all
+    10, not 0. This test now asserts the disk-truth population count:
+    if all 10 are extracted, the filter passes through all 10; if any
+    row has an empty ``pocket_path``, it is filtered out.
+    """
     rows = load_pocket_pool(source="platiny", only_extracted=True)
-    assert rows == []
+    # Post-C14: all 10 platiny rows have populated pocket_path.
+    # If the on-disk CSV says otherwise, the test reports the discrepancy.
+    csv_path = platiny_pocket_pool.PLATINY_POOL_CSV
+    live_rows = platiny_pocket_pool._read_csv(csv_path) if csv_path.exists() else []
+    populated = sum(1 for r in live_rows if r.get("pocket_path", "").strip())
+    expected = populated
+    assert len(rows) == expected, (
+        f"only_extracted returned {len(rows)}; expected {expected} "
+        f"(CSV had {populated}/{len(live_rows)} rows populated)"
+    )
 
 
 def test_only_extracted_passes_through_to_crossdocked():

@@ -262,12 +262,27 @@ def _smoke() -> int:
     print(f"[unified-pool] source='platiny' metal=Pt_II: {len(pt_rows)} rows")
 
     # 5. only_extracted on platiny at A31 ship time -> [].
+    # Wf-A41-fixup-2: post-C14 backfill, every row carries pocket_path.
+    # Read the live CSV directly (do NOT call write_pool_to_csv) so the
+    # smoke does not clobber populated rows. Assert only_extracted
+    # matches the disk-truth population count.
+    from molmetal.data import platiny_pocket_pool as _p3
+    live_csv = _p3.PLATINY_POOL_CSV
+    if live_csv.is_file():
+        live_rows = _p3._read_csv(live_csv)
+        populated = sum(1 for r in live_rows if r.get("pocket_path", "").strip())
+    else:
+        populated = 0
     extracted = load_pocket_pool(source="platiny", only_extracted=True)
-    assert extracted == [], (
+    assert len(extracted) == populated, (
         f"platiny only_extracted returned {len(extracted)}; "
-        "this pool is not yet extracted — verify Wf-A33 status"
+        f"expected {populated} (CSV on disk has {populated} populated rows). "
+        "If this drifts, re-run Wf-A33-fixup-C14 wf_a33_backfill_platiny_csv.py"
     )
-    print("[unified-pool] source='platiny' only_extracted=True: [] (honest)")
+    print(
+        f"[unified-pool] source='platiny' only_extracted=True: "
+        f"{len(extracted)} rows (CSV-disk-truth count: {populated})"
+    )
 
     # 6. Bad source.
     try:

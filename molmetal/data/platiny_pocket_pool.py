@@ -397,14 +397,41 @@ def _build_seed_rows() -> list:
 # ----------------------------------------------------------------------
 
 def _smoke() -> int:
-    """Verify the pool round-trips through the CSV.
+    """Verify the pool round-trips through the CSV in a tmp dir (read-only on real CSV).
 
     Returns 0 on success, 1 on failure. Logs the discrepancy for
     honest-framing.
+
+    Wf-A41-fixup-2 J3-followup: the previous version of this smoke wrote
+    to ``PLATINY_POOL_CSV`` directly, which clobbered populated
+    ``pocket_path`` rows with the A31 seed state at every CLI invocation.
+    The fix is to write into ``tempfile.TemporaryDirectory()`` so a
+    smoke call never touches the on-disk CSV. The live CSV is only read
+    for diagnostic bookkeeping (row count + extracted-pocket count).
     """
+    import tempfile
+
     seed_rows = _build_seed_rows()
-    written_path = write_pool_to_csv(seed_rows)
-    re_read = _read_csv(written_path)
+    with tempfile.TemporaryDirectory() as td:
+        tmp_path = Path(td) / "platiny_pocket_pool.csv.tmp"
+        # Write into tmp_path directly via the module's atomic helper
+        # without going through ``PLATINY_POOL_CSV`` (so the real CSV
+        # is not clobbered).
+        from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
+        import csv as _csv
+        import io as _io
+
+        if not seed_rows:
+            print("[platiny-pool] FAIL: _build_seed_rows() returned 0 rows")
+            return 1
+        header = list(seed_rows[0].keys())
+        buf = _io.StringIO()
+        writer = _csv.DictWriter(buf, fieldnames=header, lineterminator="\n")
+        writer.writeheader()
+        for r in seed_rows:
+            writer.writerow({k: r.get(k, "") for k in header})
+        atomic_write_file(tmp_path, buf.getvalue().encode("utf-8"), binary=True)
+        re_read = _read_csv(tmp_path)
     if len(re_read) != len(seed_rows):
         print(
             f"[platiny-pool] FAIL: wrote {len(seed_rows)} rows, "
@@ -421,15 +448,21 @@ def _smoke() -> int:
         if r["split_role"] != "eval_only":
             print(f"[platiny-pool] FAIL: row {r['target_id']} split_role != eval_only")
             return 1
-    # Eval pool: all rows must have empty pocket_path (Status as of 2026-10-14)
-    extracted = [
-        r for r in re_read if r.get("pocket_path", "").strip()
-    ]
-    print(
-        f"[platiny-pool] PASS: {len(re_read)} rows; "
-        f"{len(extracted)} with extracted pockets; "
-        f"{len(re_read) - len(extracted)} awaiting PDB extraction (Wf-A33)"
-    )
+    # Diagnostic: read the live CSV (do NOT write to it) and report
+    # row counts + extracted count without modifying state.
+    if PLATINY_POOL_CSV.is_file():
+        live_read = _read_csv(PLATINY_POOL_CSV)
+        extracted = [
+            r for r in live_read if r.get("pocket_path", "").strip()
+        ]
+        live_status = (
+            f" {len(live_read)} rows on disk; "
+            f"{len(extracted)} with extracted pockets; "
+            f"{len(live_read) - len(extracted)} awaiting PDB extraction"
+        )
+    else:
+        live_status = " no live CSV on disk"
+    print(f"[platiny-pool] PASS: tmp-roundtrip {len(re_read)} rows;" + live_status)
     return 0
 
 

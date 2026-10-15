@@ -23,6 +23,7 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -37,8 +38,22 @@ CSV_PATH = p3.PLATINY_POOL_CSV
 
 @pytest.fixture(scope="module", autouse=True)
 def _ensure_pool_csv_on_disk():
-    """The CSV is regenerated for the test session (idempotent)."""
-    p3.write_pool_to_csv()
+    """The CSV is regenerated ONLY if missing or stripped (idempotent).
+
+    Wf-A41-fixup-2 J3: previously this fixture unconditionally called
+    `p3.write_pool_to_csv()` which stripped populated `pocket_path`/
+    `pocket_sha256` at every pytest session start. Now it only writes
+    if the CSV is missing OR every row has empty pocket_path.
+    """
+    needs_init = (not CSV_PATH.exists())
+    if not needs_init:
+        try:
+            rows = p3._read_csv(CSV_PATH)
+            needs_init = all(not r.get("pocket_path", "").strip() for r in rows)
+        except Exception:
+            needs_init = True
+    if needs_init:
+        p3.write_pool_to_csv()
     assert CSV_PATH.exists(), f"platiny_pocket_pool.csv missing at {CSV_PATH}"
     yield
 
@@ -74,15 +89,25 @@ def test_csv_roundtrip_split_role_eval_only():
 def test_csv_roundtrip_pocket_path_empty_at_seed():
     """At A31 seed time, no row has an extracted pocket.
 
-    The pool is the LITERATURE DECLARATION; the actual pocket files
-    are extracted in Wf-A33. Until then, pocket_path must be empty
-    so the ``only_extracted`` filter returns [] (honest).
+    Wf-A41-fixup-2 J4a: the rule now is: if on-disk .pdb files exist
+    (the A33 v2 case), this test asserts pocket_path IS populated
+    (the post-extraction truth). If no .pdb files exist, fall back
+    to the A31 seed assertion (empty).
     """
+    import os
+    pdb_dir = REPO_ROOT / ".data/molmetal/platiny_pockets"
+    pdb_files_exist = pdb_dir.exists() and any(pdb_dir.glob("*.pdb"))
     rows = p3._read_csv(CSV_PATH)
-    for r in rows:
-        assert r.get("pocket_path", "").strip() == "", (
-            f"row {r.get('target_id')!r} unexpectedly has a pocket_path"
-        )
+    if pdb_files_exist:
+        for r in rows:
+            assert r.get("pocket_path", "").strip() != "", (
+                f"row {r.get('target_id')!r} expected pocket_path populated when .pdb files exist"
+            )
+    else:
+        for r in rows:
+            assert r.get("pocket_path", "").strip() == "", (
+                f"row {r.get('target_id')!r} unexpectedly has a pocket_path"
+            )
 
 
 # ------------------------------------------------------------------
@@ -118,12 +143,23 @@ def test_list_pocket_pool_metal_unknown_returns_empty():
     assert rows == []
 
 
-def test_list_pocket_pool_only_extracted_returns_empty_at_seed():
-    """Honest framing: at A31 ship, no pocket file has been extracted yet."""
+def test_list_pocket_pool_only_extracted_populated_when_pdbs_exist():
+    """When .pdb files exist on disk, ``only_extracted`` must return the
+    full 10-row pool (Wf-A41-fixup-2 J4b). If no .pdb files exist (A31
+    seed state, pre-extraction), fall back to the empty assertion.
+    """
+    pdb_dir = REPO_ROOT / ".data/molmetal/platiny_pockets"
+    pdb_files_exist = pdb_dir.exists() and any(pdb_dir.glob("*.pdb"))
+    if not pdb_files_exist:
+        # A31 seed state: no extracted pockets yet
+        rows = p3.list_pocket_pool(only_extracted=True)
+        assert rows == [], (
+            f"only_extracted returned {len(rows)} rows; A31 seed expects empty"
+        )
+        return
     rows = p3.list_pocket_pool(only_extracted=True)
-    assert rows == [], (
-        f"only_extracted returned {len(rows)} rows; "
-        "this pool is not yet extracted — verify Wf-A33 status"
+    assert len(rows) == 10, (
+        f"only_extracted returned {len(rows)} rows; expected 10 when .pdb files exist"
     )
 
 
