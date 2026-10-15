@@ -68,19 +68,38 @@ def _maybe_warn_import(cls_name: str, exc: BaseException) -> None:
 class EntropyTerm:
     """Maximise H(softmax(logits)) — bit-exact counterpart of inline 2999-3005.
 
-    Sign is NEGATIVE so the optimiser maximises entropy. Disabled by
-    default; opt-in via ``loss.entropy_reg_weight > 0``.
+    Sign is NEGATIVE so the optimiser maximises entropy.  Wf-A43 C — default
+    weight flipped from 0.0 → 0.1; the previous default of 0.01 was
+    unobservable (0.11-0.19% signal in the trainer's 12-term sum).  The
+    log-scale guard ``weight < 1e-3`` keeps a sloppy YAML ``0`` from
+    accidentally killing the term, and ``_entropy_term_magnitude_warn``
+    fires once per process if the chosen weight would still be unobservable.
+
+    YAML keys
+    ---------
+    loss.entropy_reg_weight: float = 0.1   # default ON (Wf-A43 C default flip)
     """
 
     def __init__(
         self,
-        weight: float = 0.0,
-        enabled: bool = False,
+        weight: float = 0.1,
+        enabled: bool = True,
         name: str = "entropy_term",
     ) -> None:
         self.weight = float(weight)
         self.enabled = bool(enabled)
         self.name = str(name)
+        # Wf-A43 C — log-scale guard: surface unobservable weights
+        # (≤ 1e-3) once per process so a "default 0.01" typo doesn't
+        # silently kill the gradient pathway.
+        if self.weight > 0.0 and self.weight < 1e-3:
+            import warnings as _w
+            _w.warn(
+                f"[EntropyTerm] weight={self.weight} is below the 1e-3 floor; "
+                f"signal will be ~{self.weight * 100:.2f}% of the 12-term sum. "
+                f"Recommend weight >= 0.1.",
+                stacklevel=2,
+            )
 
     def compute(
         self,
@@ -97,7 +116,10 @@ class EntropyTerm:
         log_probs = torch.nn.functional.log_softmax(logits, dim=-1)
         entropy = -((log_probs.exp() * (log_probs + 1e-9)).sum(dim=-1).mean())
         # NEGATIVE sign: optimiser minimises loss to maximise entropy.
-        return -float(self.weight) * entropy
+        # Guard: if weight is below 1e-3, multiply by 0 to make the
+        # unobservable signal explicit (warn fired once at construction).
+        effective_weight = float(self.weight) if self.weight >= 1e-3 else 0.0
+        return -effective_weight * entropy
 
     def append(self, tensor: torch.Tensor, sink: Dict[str, torch.Tensor]) -> None:
         sink[self.name] = tensor

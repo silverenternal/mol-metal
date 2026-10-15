@@ -39,6 +39,7 @@ Usage
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import sys
 import time
@@ -66,6 +67,41 @@ from molmetal.models.metal_aware_dmpnn import MetalAwareDMPNN  # noqa: E402
 METALS: Tuple[str, ...] = ("Ru", "Ir", "Rh", "Os", "Re")
 DEFAULT_SEEDS = (42, 43, 44, 45, 46)
 DEFAULT_K = (5, 10, 20, 40, 80)
+
+# Source-model cache (--cache-source).  The source model is a function of
+# (held_out, arm, seed, epochs, lr, hidden, dropout, rich/chem/adapter, device)
+# and does NOT depend on K, the sampler, the adapt scope or the control arm.
+# The K-curve therefore retrains an identical source model once per K — a 5x
+# waste.  Memoising its state_dict makes the full-scope pillar reruns feasible.
+# Equivalence is exact: the model is seeded BEFORE construction (see run_one),
+# and adapt_head() re-seeds, so a cache hit reproduces a fresh run bit-for-bit.
+_SOURCE_CACHE: Dict[tuple, dict] = {}
+
+# Preprocessing cache (--cache-source).  The LOMO split and the metal-graph
+# featurization depend only on (held_out, rich_metal, chem_metal) — not on K,
+# seed, arm or scope — yet run_one rebuilds them on every call (~14 s per call,
+# which then dominates the K-curve once the source model itself is cached).
+_PREP_CACHE: Dict[tuple, tuple] = {}
+
+
+def _source_cache_path(cache_dir: Path, key: tuple) -> Path:
+    """Stable on-disk path for a source-model state_dict (shared across processes)."""
+    import hashlib
+
+    h = hashlib.sha1(repr(key).encode()).hexdigest()[:16]
+    return Path(cache_dir) / f"src_{h}.pt"
+
+
+def _prepare(cohort, held_out, rich_metal, chem_metal):
+    """LOMO split + featurization for one held-out metal (K-independent)."""
+    key = (held_out, bool(rich_metal), bool(chem_metal))
+    if key not in _PREP_CACHE:
+        tr, te, n_leaked = lomo_split(cohort, held_out)
+        use_node = True  # I1: metal node + coordination edges
+        tr_graphs = featurize(tr, None, use_node, rich_metal, chem_metal)
+        te_graphs = featurize(te, held_out, use_node, rich_metal, chem_metal)
+        _PREP_CACHE[key] = (tr, te, n_leaked, tr_graphs, te_graphs)
+    return _PREP_CACHE[key]
 
 
 # ---------------------------------------------------------------------------
@@ -288,7 +324,7 @@ def auc(y, p):
 # ---------------------------------------------------------------------------
 # One (metal, arm, seed, k) run
 # ---------------------------------------------------------------------------
-def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, rich_metal=False, chem_metal=False, adapter=False, adapt_scope="head", l2sp=0.0, hidden=DMPNN_HIDDEN, dropout=DMPNN_DROPOUT, sampler="stratified", control="kshot"):
+def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, rich_metal=False, chem_metal=False, adapter=False, adapt_scope="head", l2sp=0.0, hidden=DMPNN_HIDDEN, dropout=DMPNN_DROPOUT, sampler="stratified", control="kshot", cache_source=False, source_cache_dir=None):
     from molmetal.scripts.train_chemprop_lomo_paper_cohort import _draw_support
 
     # Determinism fix (2026-10-15): the model is constructed below, so the seed
@@ -298,11 +334,15 @@ def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, ric
     torch.manual_seed(int(seed))
     np.random.seed(int(seed))
 
-    tr, te, n_leaked = lomo_split(cohort, held_out)
-    use_node = True  # I1: metal node + coordination edges
-
-    tr_graphs = featurize(tr, None, use_node, rich_metal, chem_metal)
-    te_graphs = featurize(te, held_out, use_node, rich_metal, chem_metal)
+    if cache_source or source_cache_dir is not None:
+        tr, te, n_leaked, tr_graphs, te_graphs = _prepare(
+            cohort, held_out, rich_metal, chem_metal
+        )
+    else:
+        tr, te, n_leaked = lomo_split(cohort, held_out)
+        use_node = True  # I1: metal node + coordination edges
+        tr_graphs = featurize(tr, None, use_node, rich_metal, chem_metal)
+        te_graphs = featurize(te, held_out, use_node, rich_metal, chem_metal)
     te_y = te["y"]
 
     # support / query split on the held-out metal
@@ -336,7 +376,31 @@ def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, ric
     if control == "kshot":
         # FSMA: train encoder+head on the source metals, then FREEZE the encoder
         # and fine-tune the readout head on the K support ligands.
-        train_source(model, tr_graphs, tr["y"], epochs, lr, device, seed)
+        cache_key = None
+        if cache_source or source_cache_dir is not None:
+            cache_key = (
+                held_out, arm, int(seed), int(epochs), float(lr), int(hidden),
+                float(dropout), bool(rich_metal), bool(chem_metal), bool(adapter),
+                int(metal_dim), str(device),
+            )
+        cpath = (
+            _source_cache_path(source_cache_dir, cache_key)
+            if (cache_key is not None and source_cache_dir is not None) else None
+        )
+        if cache_key is not None and cache_key in _SOURCE_CACHE:
+            model.load_state_dict(_SOURCE_CACHE[cache_key])
+        elif cpath is not None and cpath.exists():
+            sd = torch.load(cpath, map_location="cpu")
+            model.load_state_dict(sd)
+            _SOURCE_CACHE[cache_key] = sd
+        else:
+            train_source(model, tr_graphs, tr["y"], epochs, lr, device, seed)
+            if cache_key is not None:
+                sd = copy.deepcopy(model.state_dict())
+                _SOURCE_CACHE[cache_key] = sd
+                if cpath is not None:
+                    cpath.parent.mkdir(parents=True, exist_ok=True)
+                    torch.save(sd, cpath)
         zero_shot = auc(qry_y, score(model, qry_graphs, device))
         adapt_head(model, sup_graphs, sup_y, adapt_steps, lr, device, seed, scope=adapt_scope, l2sp=l2sp)
         adapted = auc(qry_y, score(model, qry_graphs, device))
@@ -361,7 +425,8 @@ def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, ric
         "rich_metal": bool(rich_metal), "chem_metal": bool(chem_metal),
         "adapter": bool(adapter), "adapt_scope": adapt_scope, "l2sp": float(l2sp),
         "hidden": int(hidden), "dropout": float(dropout),
-        "sampler": sampler, "control": control,
+        "sampler": sampler, "control": control, "cache_source": bool(cache_source),
+        "adapt_steps": int(adapt_steps),
         "n_leaked": int(n_leaked), "n_support": int(sup_mask.sum()),
         "n_query": int(qry_mask.sum()),
         "zero_shot_auc": zero_shot, "adapted_auc": adapted,
@@ -377,6 +442,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS))
     ap.add_argument("--epochs", type=int, default=20)
     ap.add_argument("--adapt-steps", type=int, default=100)
+    ap.add_argument(
+        "--adapt-steps-by-k", default=None,
+        help=(
+            'Per-K adaptation steps, e.g. "5:20,10:20,20:40,40:60,80:100". '
+            "Overrides --adapt-steps for the listed K (the historical FSMA "
+            "schedule); unlisted K fall back to --adapt-steps."
+        ),
+    )
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument(
         "--hidden", type=int, default=DMPNN_HIDDEN,
@@ -425,7 +498,37 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     ap.add_argument("--out", type=Path, default=PROJECT_ROOT / "metrics" / "by_metric" / "ex1_metal_injection.json")
+    ap.add_argument(
+        "--cache-source", action="store_true",
+        help=(
+            "Memoise the two K-independent computations: the trained source "
+            "model and the per-metal LOMO-split + featurization.  Neither "
+            "depends on K / sampler / adapt-scope / control, so the K-curve "
+            "otherwise recomputes them once per K.  Provably exact for the "
+            "kshot arm: the model is seeded before construction and "
+            "adapt_head() re-seeds, so a cache hit == a fresh run.  ~5-15x "
+            "speedup on K-curves / scope / sampler sweeps.  No effect on "
+            "from_scratch / concat_retrain controls."
+        ),
+    )
+    ap.add_argument(
+        "--source-cache-dir", type=Path, default=None,
+        help=(
+            "Persistent source-model cache directory.  Implies --cache-source "
+            "and additionally stores each trained source state_dict on disk, so "
+            "SEPARATE processes (e.g. one per ablation slice) share the same "
+            "trained sources instead of each retraining them.  Exact, same "
+            "equivalence argument as --cache-source."
+        ),
+    )
     args = ap.parse_args(argv)
+
+    # per-K adaptation-step schedule (historical FSMA protocol)
+    steps_by_k: Dict[int, int] = {}
+    if args.adapt_steps_by_k:
+        for tok in args.adapt_steps_by_k.split(","):
+            kk, _, vv = tok.partition(":")
+            steps_by_k[int(kk)] = int(vv)
 
     device = torch.device(args.device)
     cohort = load_cohort(tuple(args.metals))
@@ -436,11 +539,13 @@ def main(argv: Optional[List[str]] = None) -> int:
                 for seed in args.seeds:
                     r = run_one(
                         cohort, metal, arm, k, seed, args.epochs,
-                        args.adapt_steps, args.lr, device,
+                        steps_by_k.get(k, args.adapt_steps), args.lr, device,
                         rich_metal=args.rich_metal, chem_metal=args.chem_metal,
                         adapter=args.adapter, adapt_scope=args.adapt_scope,
                         l2sp=args.l2sp, hidden=args.hidden, dropout=args.dropout,
                         sampler=args.sampler, control=args.control,
+                        cache_source=args.cache_source,
+                        source_cache_dir=args.source_cache_dir,
                     )
                     results.append(r)
                     print(json.dumps(r), flush=True)
@@ -459,6 +564,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "protocol": "paper_funnel LOMO + FSMA head-only K-shot; encoder frozen; identical query across arms",
         "arms": args.arms, "k": args.k, "seeds": args.seeds,
         "epochs": args.epochs, "adapt_steps": args.adapt_steps, "lr": args.lr,
+        "adapt_steps_by_k": {str(k): v for k, v in steps_by_k.items()},
+        "source_cache_dir": str(args.source_cache_dir) if args.source_cache_dir else None,
         "hidden": args.hidden, "dropout": args.dropout,
         "sampler": args.sampler, "control": args.control,
         "rich_metal": bool(args.rich_metal), "chem_metal": bool(args.chem_metal),

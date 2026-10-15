@@ -3138,7 +3138,7 @@ def train_one_epoch(
     wasserstein_pocket_weight: float = 0.0,  # 0.0 = no per-pocket W₂ (OFF; bit-exact pre-A34)
     wasserstein_pocket_n_mc: int = 64,      # Monte-Carlo samples for the per-pocket W₂
     pocket_dist: Optional[torch.Tensor] = None,  # per-pocket W₂ distribution; None = disable
-    consistency_term_weight: float = 0.0,  # 0.0 = ConsistencyTerm off (bit-exact pre-Wf-A23)
+    consistency_term_weight: float = 0.05,  # Wf-A43 C — default ON; 0.0 = ConsistencyTerm off (bit-exact pre-Wf-A23)
     so3_term_weight: float = 0.0,  # 0.0 = SO3Term off (bit-exact pre-Wf-A23)
     edm_term_weight: float = 0.0,  # 0.0 = EDMTerm off (bit-exact pre-Wf-A23)
     shortcut_distill_term_weight: float = 0.0,  # 0.0 = ShortcutDistillLoss class off
@@ -3222,14 +3222,17 @@ def train_one_epoch(
     # 0.0 disables clipping entirely.
     max_norm: float = 5.0,
     # BLK-C5 (2026-10-09) — entropy regularisation weight (用户建议三).
-    # 0.0 = OFF, an exact torch.zeros(()) in the loss sum, so the default
-    # objective is unchanged bit-for-bit.  The trainer's `--max-norm`
-    # default is deliberately NOT changed to 1.0: that is a run-level
-    # setting, and flipping a default would silently alter every wrapper
-    # that does not pass it (breaking the bit-exact Wf-124 P2 + Wf-148
-    # baseline documented on that flag).  BLK-C5's launch wrapper passes
-    # `--max-norm 1.0` explicitly, which is what the user asked for.
-    entropy_reg_weight: float = 0.0,
+    # Wf-A43 C — default ON; was 0.0 = OFF (term collapsed to torch.zeros(())
+    # in the loss sum).  Pre-Wf-A43 the BLK-C5 experiments had set this to
+    # 0.01 — measured at 0.11-0.19% of the 12-term sum (unobservable).  At
+    # 0.1 the entropy term is ~1.3-2.3% of the loss sum (matching the
+    # ENTROPY_REG_MEASURED_FLOOR = 0.12 documented above).  The trainer's
+    # `--max-norm` default is deliberately NOT changed to 1.0: that is a
+    # run-level setting, and flipping a default would silently alter every
+    # wrapper that does not pass it (breaking the bit-exact Wf-124 P2 +
+    # Wf-148 baseline documented on that flag).  BLK-C5's launch wrapper
+    # passes `--max-norm 1.0` explicitly, which is what the user asked for.
+    entropy_reg_weight: float = 0.1,
     # 2026-10-09 — 用户建议二 修改建议 B: bond-loss weight.
     #
     # The alternative to staged freezing (修改建议 A) is to leave the bond
@@ -3281,8 +3284,16 @@ def train_one_epoch(
     qed_loss_weight: float = 0.0,
     molecule_loss_weight: float = 0.0,
     stereo_loss_weight: float = 0.0,
-    fragment_loss_weight: float = 0.0,
-    property_loss_weight: float = 0.0,
+    # Wf-A43 A.6 — fragment_loss_weight default ON.  Pre-Wf-A43 was 0.0
+    # = exact torch.zeros(()) in the loss sum (single_fragment_rate
+    # never received a gradient).  At 0.05 the term is a soft pressure
+    # on decoded molecules to stay as a single fragment.
+    fragment_loss_weight: float = 0.05,
+    # Wf-A43 A.4 — property_loss_weight default ON.  Pre-Wf-A43 was 0.0
+    # = exact torch.zeros(()) (the 4-axis molecular-property target
+    # never received a gradient).  At 0.05 the term is a soft pressure
+    # on ROTB/AROM/LOGP/Heavy-axis targets.
+    property_loss_weight: float = 0.05,
     # Wf-A15 (2026-10-13) Track-A Layer 6 — per-atom NBO natural-charge
     # MSE loss weight.  Default 0.0 → INERT (NaturalChargeLoss returns
     # zero), bit-exact pre-Track-A.
@@ -7904,15 +7915,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--entropy-reg-weight",
         type=float,
-        default=0.0,
+        default=0.1,
         help=(
             "BLK-C5 (2026-10-09): entropy regularisation on the head's "
             "output distribution, added to the total loss as "
             "-weight * H(softmax(logits)) so the optimiser MAXIMISES "
             "entropy.  Implements the user's advice 三 — stop the head "
             "摆烂 by collapsing every sample onto one degenerate skeleton. "
-            "Default 0.0 → term is an exact torch.zeros(()) and the "
-            "objective is unchanged bit-for-bit."
+            "Default 0.1 (Wf-A43 C — default ON; was 0.01 = unobservable "
+            "0.11-0.19% of the loss sum; 0.0 → exact torch.zeros(()) so a "
+            "caller can still opt out).  At 0.1 the entropy term is ~1.3-2.3% "
+            "of the 12-term sum, matching the BLK-C5 floor."
         ),
     )
     p.add_argument(
@@ -8245,20 +8258,21 @@ def parse_args() -> argparse.Namespace:
         "--fragment-loss-weight",
         dest="fragment_loss_weight",
         type=float,
-        default=0.0,
+        default=0.05,
         help=(
-            "Weight on SingleFragmentLoss (Layer F / Wf-A15).  Default 0.0 "
-            "= bit-exact pre-Wf-A15."
+            "Weight on SingleFragmentLoss (Layer F / Wf-A15).  Default 0.05 "
+            "(Wf-A43 A.6 default flip; pre-Wf-A43 was 0.0 = bit-exact pre-Wf-A15)."
         ),
     )
     p.add_argument(
         "--property-loss-weight",
         dest="property_loss_weight",
         type=float,
-        default=0.0,
+        default=0.05,
         help=(
             "Weight on MolecularPropertyTargetLoss (Layer F / Wf-A15).  "
-            "Default 0.0 = bit-exact pre-Wf-A15."
+            "Default 0.05 (Wf-A43 A.4 default flip; pre-Wf-A43 was 0.0 "
+            "= bit-exact pre-Wf-A15)."
         ),
     )
     # Wf-A15 (2026-10-13) — Layer G.  Opt-in switch to

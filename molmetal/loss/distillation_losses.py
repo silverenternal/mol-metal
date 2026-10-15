@@ -26,13 +26,13 @@ class ShortcutDistillLoss:
 
     YAML keys
     ---------
-    loss.shortcut_distill_weight: float = 0.0   # default OFF
+    loss.shortcut_distill_weight: float = 0.05   # default ON (Wf-A43 C shortcut_distill default flip)
     """
 
     def __init__(
         self,
-        weight: float = 0.0,
-        enabled: bool = False,
+        weight: float = 0.05,
+        enabled: bool = True,
         name: str = "shortcut_distill_loss",
     ) -> None:
         self.weight = float(weight)
@@ -66,10 +66,20 @@ class ShortcutDistillLoss:
         # input dropout of ``x`` and ``sg`` is stop-gradient.  This is the
         # Frans 2024 self-distillation special case — same family as the
         # teacher KL but with the second view coming from the model itself.
+        #
+        # Wf-A43 (2026-10-15) — pre-Wf-A43 the inner block compared
+        # ``student_logits`` against ``student_logits.detach()`` which is
+        # always zero (same tensor).  The intent is to compare against the
+        # SECOND view's logits (which the trainer produces via a separate
+        # forward pass on a dropout-perturbed ``x'``); the argument is
+        # passed in as ``x_prime`` here (semantic: "logits on x'").  When
+        # ``x_prime`` is None we still short-circuit (the trainer's
+        # pre-Wf-A43 inline path keeps using `_sd.shortcut_distillation_loss`
+        # directly with no second-view input).
         if x_prime is None or student_logits.shape != x_prime.shape:
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
         try:
-            target = student_logits.detach()  # stop-grad
+            target = x_prime.detach()  # stop-grad on the second view
             return 0.5 * float(self.weight) * (student_logits - target).pow(2).mean()
         except Exception as exc:  # Wf-A34-1 B4 — surface instead of swallow
             _maybe_warn_import(self.__class__.__name__, exc)

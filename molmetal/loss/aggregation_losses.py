@@ -124,15 +124,15 @@ class SoftValenceTerm:
 
     YAML keys
     ---------
-    loss.soft_valence_weight: float = 0.0   # default OFF
+    loss.soft_valence_weight: float = 0.05   # default ON (Wf-A43 C soft_valence default flip)
     loss.soft_valence_max: int = 4          # Pt(II)=4; per-element override
-    loss.soft_valence_enabled: bool = False
+    loss.soft_valence_enabled: bool = True
     """
 
     def __init__(
         self,
-        weight: float = 0.0,
-        enabled: bool = False,
+        weight: float = 0.05,
+        enabled: bool = True,
         max_valence: int = 4,
         name: str = "soft_valence_term",
     ) -> None:

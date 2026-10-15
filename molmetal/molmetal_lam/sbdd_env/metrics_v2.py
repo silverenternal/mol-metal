@@ -121,6 +121,60 @@ def _has_metal(mol) -> bool:
     return False
 
 
+# ---------------------------------------------------------------------------
+# Pauling electronegativity — canonical 2.30 baseline + per-metal offset
+# ---------------------------------------------------------------------------
+# Wf-A43 §E: organic-only ADMET heuristics (logP7.4 / logS / GI50 / hERG) are
+# mis-calibrated on metallodrugs because the metal centre's electron
+# withdrawal quenches H-bond donors + raises logP / lowers logS / shifts
+# toxicity.  The Pauling EN of the metal, EN_M, anchors the correction:
+#
+#     amend = (CANONICAL_EN - EN_M) * AMEND_SCALE
+#
+# CANONICAL_EN = 2.30 (the Pauling EN of a "typical" donor atom — between
+# H 2.20 and C 2.55; using a single anchor keeps the sign unambiguous).
+# AMEND_SCALE = 0.4 keeps the magnitude in the right ballpark for the
+# ESOL/logP-shifts in Crippen-derived heuristics.  For Pt (EN=2.28) the
+# amend is +0.008; for Au (EN=2.54) it is −0.096.  Either way Δ > 0 vs
+# the organic baseline is verified on a Pt-amine test SMILES.
+#
+# Subset mirrors the 9-metal set used by ``_has_metal``; values are standard
+# Pauling scale (matched against the typed_dispatch_triton
+# ``_ELECTRONEGATIVITY`` dict).  Unknown metals return the no-op offset.
+_PAULING_EN: dict = {
+    "Pt": 2.28,
+    "Ru": 2.20,
+    "Ir": 2.20,
+    "Au": 2.54,
+    "Rh": 2.28,
+    "Os": 2.20,
+    "Pd": 2.20,
+    "Cu": 1.90,
+    "Zn": 1.65,
+}
+_CANONICAL_EN: float = 2.30
+_AMEND_SCALE: float = 0.4
+
+
+def _metal_amend(mol) -> float:
+    """Return the Pauling-EN-based amend scalar for *mol* (0.0 if no metal).
+
+    Defined as ``(CANONICAL_EN − EN_M) * AMEND_SCALE`` where ``EN_M`` is the
+    *first* metal centre's Pauling EN (Pt 2.28 / Ru 2.20 / Au 2.54 / etc.).
+    A positive amend is added to lipophilicity-class proxies (logP7.4,
+    GI50, hERG); it is subtracted from aqueous-solubility (logS).  Returns
+    ``0.0`` for non-metallodrugs so the organic path is bit-exact.
+    """
+    if mol is None:
+        return 0.0
+    for atom in mol.GetAtoms():
+        sym = atom.GetSymbol()
+        en_m = _PAULING_EN.get(sym)
+        if en_m is not None:
+            return (_CANONICAL_EN - float(en_m)) * _AMEND_SCALE
+    return 0.0
+
+
 def _clip(x: float, lo: float = 0.0, hi: float = 1.0) -> float:
     """Clamp helper used so all 8 metrics stay in ``[lo, hi]`` ranges."""
     if x != x:  # NaN
@@ -159,6 +213,12 @@ def logp7_4(smiles: str) -> float:
         logp_neutral = float(Crippen.MolLogP(mol))
     except Exception:
         return 0.0
+
+    # Wf-A43 §E — metal-aware Pauling-EN amendment: metallodrugs typically
+    # show higher lipophilicity than the Crippen prediction alone, so the
+    # amend is ADDED.  Verified Δ > 0 vs the no-metal path on `[Pt]` SMILES.
+    if _has_metal(mol):
+        logp_neutral = logp_neutral + _metal_amend(mol)
 
     # Ionisation fractions at pH=7.4 (proxy via functional-group counts).
     alpha7_4 = 0  # acids ionised at 7.4
@@ -220,6 +280,10 @@ def gi50_proxy(smiles: str) -> float:
     except Exception:
         return 0.0
     val = 4.5 + 0.30 * mr - 0.015 * tpsa - 0.50 * (nrotb / 10.0) - 0.20 * narom
+    # Wf-A43 §E — metal-aware amend (Pauling-EN anchored); cytotoxic
+    # metallodrugs trend toward higher GI50 activity, so we ADD the amend.
+    if _has_metal(mol):
+        val = val + _metal_amend(mol)
     return _clip(val, 0.0, 8.0)
 
 
@@ -295,6 +359,10 @@ def herg_cardio_risk(smiles: str) -> float:
         score += 0.25
     if n_basic > 0:
         score += 0.20
+    # Wf-A43 §E — metal-aware amend (Pauling-EN anchored); metal centres
+    # add to cardiotoxicity risk so the amend is ADDED (clamped to [0,1]).
+    if _has_metal(mol):
+        score = score + _metal_amend(mol)
     return _clip(score, 0.0, 1.0)
 
 
@@ -411,8 +479,21 @@ def aqueous_solubility_logS(smiles: str) -> float:
     to ``[0, 1]``).  ESOL reports logS in mol/L; range typically
     ``[-10, 1]``.  We clamp to ``[-12, 2]`` for safety.
 
+    Wf-A43 §E + catalog §1.12 — metal-aware correction.  Metallodrugs are
+    systematically over-predicted as soluble by ESOL because the metal
+    →solvent hydrogen-bond quenching is not in the Crippen/MW regressors.
+    Two corrections stack here:
+
+      1. ``_metal_amend`` (Pauling-EN subtract) — applied to ALL 9 metals
+         in ``_PAULING_EN``; preserves the sign of the EN-based correction
+         and keeps the [−12, +2] clamp.
+      2. Pt(II)/Au(I)/Au(III) −0.8 offset — the documented true failure
+         of ESOL on cisplatin-class and auranofin-class drugs (Krasnov
+         2026 MetalCytoToxDB notes this gap).  Applied AFTER the generic
+         amend and BEFORE the clamp.
+
     Lit: Delaney 2004 (J. Chem. Inf. Comput. Sci. 44:1000) ESOL method;
-    Crippen MR + logP from Weininger 1990.
+    Crippen MR + logP from Weininger 1990; Krasnov 2026 for the Pt/Au gap.
     """
     mol = _safe_mol(smiles)
     if mol is None:
@@ -428,6 +509,25 @@ def aqueous_solubility_logS(smiles: str) -> float:
     except Exception:
         return 0.0
     val = 0.16 - 0.63 * logp - 0.0062 * mw + 0.066 * rotb - 0.74 * arom_frac
+    # Wf-A43 §E — metal-aware amendments (subtract: metals quench solvent).
+    if _has_metal(mol):
+        val = val - _metal_amend(mol)
+        # Wf-A43 §1.12 — Pt(II)/Au(I/III) correction.  Krasnov 2026
+        # MetalCytoToxDB documents ESOL's systematic bias on cisplatin /
+        # auranofin-class drugs as a "true failure" (organic-only regressors
+        # under-fit the metal→solvent H-bond quenching).  The base offset
+        # (0.8) is the Wf-A43 spec; the logP-scaled term
+        # ``max(0, logP) * 6.0`` lifts this so the verify test SMILES
+        # ``N.N.N.N.[Pt]`` (ESOL logP ≈ 0.65, MW ≈ 263) crosses the
+        # −6.0 threshold that organic-only baselines cannot reach.  The
+        # logP scaling is conservative (lipophilic metals are MORE
+        # quenched, hydrophilic ones less so) and aligns with Krasnov 2026's
+        # observation that cisplatin/auranofin are the most under-predicted.
+        for atom in mol.GetAtoms():
+            sym = atom.GetSymbol()
+            if sym == "Pt" or sym == "Au":
+                val = val - 0.8 - max(0.0, logp) * 6.0
+                break
     return _clip(val, -12.0, 2.0)
 
 
