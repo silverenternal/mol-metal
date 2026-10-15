@@ -25,7 +25,12 @@ data:
     - Re
   tmqm_coord_number: -1
   tmqm_val_frac: 0.2
-  # Wf-A14 (2026-10-13) Bemis-Murcko scaffold 80/10/10 split. Default random preserves Wf-A8c hash split bit-exactly.
+  # Wf-A41-fixup-1 (2026-10-15) — LEGACY OVERRIDE for real decode lift P1.3.
+  # This yaml was designed around the pre-§6.66b random hash split for the
+  # real decode lift P1.3 ablation experiment. Flipping to scaffold would invalidate the
+  # historical comparison; do NOT re-flip without also re-running the
+  # matched control arm under scaffold (see cfm_fullcorpus_seed1/seed2.yaml
+  # for the OOD baseline).
   tmqm_split_kind: random
 model:
   # Wf-A11 (2026-10-03): see TODO/completed/config_dead_key_remediation.md: 'backbone' removed (no --backbone dest).

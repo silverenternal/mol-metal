@@ -542,8 +542,10 @@ data:
   # -1 = no coordination-number filter (4 = square-planar, 6 = octahedral).
   tmqm_coord_number: -1
   tmqm_val_frac: 0.2
-  # Wf-A14 (2026-10-13) Bemis-Murcko scaffold 80/10/10 split. Default random preserves Wf-A8c hash split bit-exactly.
-  tmqm_split_kind: random
+  # Wf-A41-fixup-1 (2026-10-15) C13 fix — flip to scaffold split for
+  # OOD-by-construction (Wf-A14, 2026-10-13 rationale: DrugOOD axes Ji 2023,
+  # iMoLD 2024 — same scaffold family never crosses train/val/test).
+  tmqm_split_kind: scaffold
 
 protocol:
   # Only keys absent from train:/eval: above, to avoid last-key-wins clashes.

@@ -142,8 +142,10 @@ data:
   # train and val separately with different seeds leaks -- measured, the val
   # candidate pool was a strict subset of the train one, 160/160.
   tmqm_val_frac: 0.2
-  # Wf-A14 (2026-10-13) Bemis-Murcko scaffold 80/10/10 split. Default random preserves Wf-A8c hash split bit-exactly.
-  tmqm_split_kind: random
+  # Wf-A41-fixup-1 (2026-10-15) C13 fix — flip to scaffold split for
+  # OOD-by-construction (Wf-A14, 2026-10-13 rationale: DrugOOD axes Ji 2023,
+  # iMoLD 2024 — same scaffold family never crosses train/val/test).
+  tmqm_split_kind: scaffold
 
 flow:
   # 2026-10-04 — inverse-frequency weighting on the bond-class cross-entropy.
