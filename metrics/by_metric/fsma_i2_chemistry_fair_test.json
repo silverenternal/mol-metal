@@ -1,0 +1,77 @@
+{
+  "metric": "fsma_i2_chemistry_fair_test",
+  "created": "2026-10-14",
+  "protocol": "EX1 FSMA head-only K=10, 5 metals x 3 arms x 5 seeds, epochs=20, adapt_steps=30, lr=3e-4",
+  "baseline": "ex1_metal_injection.json (no metal block)",
+  "new_data": "molmetal/data/metal_chemistry_5.csv (NIST IE1/IE2 + Pauling EN; citable)",
+  "cells": {
+    "rich_only": {
+      "label": "rich_only",
+      "n": 75,
+      "mean_delta": -0.0009744100721809742,
+      "std": 0.017970129114449226,
+      "t": -0.4695925504139129,
+      "p_one_sided_gt_base": 0.6799865211236021,
+      "per_arm": {
+        "none": {
+          "n": 25,
+          "delta": 0.0
+        },
+        "readout": {
+          "n": 25,
+          "delta": -0.0010408726328220651
+        },
+        "message": {
+          "n": 25,
+          "delta": -0.0018823575837208573
+        }
+      }
+    },
+    "chem_only": {
+      "label": "chem_only",
+      "n": 75,
+      "mean_delta": -0.0005672266593782764,
+      "std": 0.02729539416302696,
+      "t": -0.1799690796884591,
+      "p_one_sided_gt_base": 0.5711656194854562,
+      "per_arm": {
+        "none": {
+          "n": 25,
+          "delta": 0.0
+        },
+        "readout": {
+          "n": 25,
+          "delta": -0.0011340236637149847
+        },
+        "message": {
+          "n": 25,
+          "delta": -0.0005676563144198444
+        }
+      }
+    },
+    "rich_plus_chem": {
+      "label": "rich_plus_chem",
+      "n": 75,
+      "mean_delta": 0.002972300892082584,
+      "std": 0.022476075624110758,
+      "t": 1.1452569048456864,
+      "p_one_sided_gt_base": 0.12789660156447027,
+      "per_arm": {
+        "none": {
+          "n": 25,
+          "delta": 0.0
+        },
+        "readout": {
+          "n": 25,
+          "delta": 0.0018646829817261534
+        },
+        "message": {
+          "n": 25,
+          "delta": 0.0070522196945215975
+        }
+      }
+    }
+  },
+  "device": "cuda:1",
+  "deterministic": true
+}

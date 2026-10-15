@@ -461,6 +461,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     ap.add_argument("--device", default="cpu")
     ap.add_argument(
+        "--deterministic", action="store_true",
+        help=(
+            "Force bit-reproducible kernels (torch.use_deterministic_algorithms, "
+            "cudnn.deterministic, CUBLAS_WORKSPACE_CONFIG).  Required for CUDA runs "
+            "to be reproducible; harmless on CPU."
+        ),
+    )
+    ap.add_argument(
         "--rich-metal", action="store_true",
         help="I2: append the RDKit-verifiable periodic/size metal-descriptor block.",
     )
@@ -531,6 +539,16 @@ def main(argv: Optional[List[str]] = None) -> int:
             steps_by_k[int(kk)] = int(vv)
 
     device = torch.device(args.device)
+    if args.deterministic:
+        import os
+
+        # cuBLAS needs a fixed workspace for deterministic matmul on CUDA.
+        os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        # warn_only: the D-MPNN scatter/segment reductions have no deterministic
+        # CUDA kernel in some torch versions; warn rather than hard-fail.
+        torch.use_deterministic_algorithms(True, warn_only=True)
     cohort = load_cohort(tuple(args.metals))
     results = []
     for metal in args.metals:
@@ -566,6 +584,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "epochs": args.epochs, "adapt_steps": args.adapt_steps, "lr": args.lr,
         "adapt_steps_by_k": {str(k): v for k, v in steps_by_k.items()},
         "source_cache_dir": str(args.source_cache_dir) if args.source_cache_dir else None,
+        "device": str(args.device),
+        "deterministic": bool(args.deterministic),
         "hidden": args.hidden, "dropout": args.dropout,
         "sampler": args.sampler, "control": args.control,
         "rich_metal": bool(args.rich_metal), "chem_metal": bool(args.chem_metal),
