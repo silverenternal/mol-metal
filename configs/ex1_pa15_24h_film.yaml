@@ -1,0 +1,50 @@
+# PA15 (in-house migration) — static metal conditioning, cross-metal LOMO.
+# Arm: FiLM (per-layer feature-wise modulation of message passing).
+#
+# The in-house MetalAwareDMPNN "film" injection applies a per-message-passing-
+# layer scale/shift conditioned on the metal context.  No adaptation; full
+# held-out test set.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: 24h
+  metals: [Ru, Ir, Rh, Os, Re]
+  n_rows_expected: 1950
+
+model:
+  hidden: 128
+  dropout: 0.1
+
+train:
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [film]
+  k: [10]
+  seeds: [42, 43, 44, 49, 123]
+  no_adapt: true
+  sampler: stratified
+  control: kshot
+
+compute:
+  device: cpu
+
+output:
+  out: metrics/by_metric/ex1_pa15_24h_film.json
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  Cross-metal LOMO mean over five metals, paired against the
+  unconditioned `none` arm.  FiLM is zero-initialised (identity at init), so
+  the arm starts equal to `none` and only diverges as it trains — a FiLM result
+  equal to `none` therefore means the modulation did not learn, not that the
+  code is inert.

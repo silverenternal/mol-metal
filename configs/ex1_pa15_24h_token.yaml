@@ -1,0 +1,50 @@
+# PA15 (in-house migration) — static metal conditioning, cross-metal LOMO.
+# Arm: metal TOKEN (in-house analogue of chemprop's `token` arm).
+#
+# The in-house MetalAwareDMPNN "readout" injection concatenates the projected
+# metal VECTOR to the pooled readout — with the base 18-d metal features
+# (metal identity + oxidation state + charge) this is the token-style
+# conditioning.  No adaptation (no_adapt), full held-out test set.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: 24h
+  metals: [Ru, Ir, Rh, Os, Re]
+  n_rows_expected: 1950
+
+model:
+  hidden: 128
+  dropout: 0.1
+
+train:
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [readout]
+  k: [10]
+  seeds: [42, 43, 44, 49, 123]
+  no_adapt: true
+  sampler: stratified
+  control: kshot
+
+compute:
+  device: cpu
+
+output:
+  out: metrics/by_metric/ex1_pa15_24h_token.json
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  Cross-metal LOMO mean over five metals, paired against the
+  unconditioned `none` arm from configs/ex1_lomo_24h.yaml.  A reproduced
+  negative (conditioning does not repair the collapse) is the expected result
+  and is reported as such.

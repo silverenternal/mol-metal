@@ -1,0 +1,71 @@
+# EX1 — in-house D-MPNN cross-metal LOMO on the 24 h probe cohort (PA3 migration).
+#
+# AGENTS.md §5.11: the launch reads every hyperparameter from this YAML; a
+# wrapper passes only --config.  Every leaf below resolves to a dest of
+# ex1_metal_injection_contrast.py's own parser (verified by
+# scripts/_config_binding_gate.py), or is a declared-inert / non-trainer key.
+#
+# WHY (PA3 in-house migration)
+# ----------------------------
+# Paper A's SI "Representation-dependence" paragraph currently cites
+# metrics/by_metric/pa3_chemprop_lomo_probe_cohort.json — a chemprop v2 scorer.
+# The project red line requires the predictive line to be backed by the
+# self-developed D-MPNN.  This run re-measures the SAME cross-metal LOMO column
+# with the in-house MetalAwareDMPNN (arm=none = metal-blind baseline,
+# zero-shot, no adaptation) on the SAME 24 h probe cohort and the SAME
+# ligand-disjoint LOMO split.
+#
+# zero_shot_auc here is the cross-metal column: the model is trained on the 4
+# source metals and scored on the ENTIRE held-out metal cohort (no_adapt=true
+# skips the K-shot support draw, so the query is the full test set).
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  # 24 h probe cohort: MetalCytotoxDataset.from_csv(CytotoxFilter(...)) + dedup,
+  # per metal — identical to the chemprop PA3 run this migrates.
+  # Per-metal unique ligands: Ru 1255 / Ir 534 / Rh 51 / Os 36 / Re 74 (sum 1950).
+  cohort_spec: 24h
+  metals: [Ru, Ir, Rh, Os, Re]
+  n_rows_expected: 1950
+
+model:
+  # In-house D-MPNN width.  The chemprop PA3 reference used hidden=300; the
+  # 128-vs-300 capacity difference is disclosed in the synthesised artifact,
+  # not hidden (AGENTS.md §5.2).
+  hidden: 128
+  dropout: 0.1
+
+train:
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  # arm=none is the metal-blind baseline — the cross-metal collapse column.
+  arms: [none]
+  # K is ignored when no_adapt=true (no support draw); kept for interface parity.
+  k: [10]
+  seeds: [42, 43, 44, 49, 123]
+  no_adapt: true
+  sampler: stratified
+  control: kshot
+
+compute:
+  device: cpu
+
+output:
+  out: metrics/by_metric/ex1_lomo_24h_none.json
+  dump_test_scores: molmetal/reports/ex1_lomo_24h/none_scores.jsonl
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  Every AUC is sklearn roc_auc_score on the sigmoid of the
+  pooled head's logit over the held-out metal's deduplicated ligands, with the
+  model trained on the 4 source metals (ligand-disjoint).  A small cohort
+  (Rh n=51, Os n=36) makes the AUC coarse and the label-permutation null wide —
+  that is reported, not smoothed.  No number here is PROJECTED.

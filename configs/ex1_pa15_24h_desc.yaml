@@ -1,0 +1,53 @@
+# PA15 (in-house migration) — static metal conditioning, cross-metal LOMO.
+# Arm: metal DESCRIPTOR (in-house analogue of chemprop's `desc` arm).
+#
+# "readout" injection + the transferable metal-descriptor blocks
+# (--rich-metal: RDKit-verifiable periodic/size block; --chem-metal: citable
+# redox / electronegativity block).  No adaptation; full held-out test set.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: 24h
+  metals: [Ru, Ir, Rh, Os, Re]
+  n_rows_expected: 1950
+
+model:
+  hidden: 128
+  dropout: 0.1
+  # I2 descriptor blocks — the "descriptor" arm's only difference from token.
+  rich_metal: true
+  chem_metal: true
+
+train:
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [readout]
+  k: [10]
+  seeds: [42, 43, 44, 49, 123]
+  no_adapt: true
+  sampler: stratified
+  control: kshot
+
+compute:
+  device: cpu
+
+output:
+  out: metrics/by_metric/ex1_pa15_24h_desc.json
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  Cross-metal LOMO mean over five metals, paired against the
+  unconditioned `none` arm.  The chem-metal block requires
+  metal_chemistry_5.csv on disk; if that file is absent the block is all-zero
+  and the arm degenerates to token — verify the file exists before trusting
+  the number.

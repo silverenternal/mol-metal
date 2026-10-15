@@ -107,41 +107,80 @@ def _prepare(cohort, held_out, rich_metal, chem_metal):
 # ---------------------------------------------------------------------------
 # Cohort
 # ---------------------------------------------------------------------------
-def load_cohort(metals: Tuple[str, ...]) -> Dict[str, Dict[str, np.ndarray]]:
-    """Paper-funnel cohort per metal WITH metal metadata (OS / charge)."""
+def _align_after_dedup(smi, y_raw, os_arr, chg_arr, collapse_duplicates):
+    """Dedup on SMILES (first occurrence wins) and align the OS/charge metadata.
+
+    ``collapse_duplicates`` returns the unique SMILES and their (majority) label;
+    the metal metadata is not part of the dedup key, so it is re-aligned to the
+    FIRST row that carried each kept SMILES.
+    """
+    s_u, y_u, _n = collapse_duplicates(smi, y_raw)
+    first: Dict[str, int] = {}
+    for i, s in enumerate(smi):
+        if s not in first:
+            first[s] = i
+    keep = [first[s] for s in s_u]
+    return {
+        "smiles": np.asarray(s_u, dtype=object),
+        "y": np.asarray(y_u, dtype=np.int64),
+        "os": os_arr[keep],
+        "chg": chg_arr[keep],
+    }
+
+
+def load_cohort(
+    metals: Tuple[str, ...], cohort_spec: str = "paper_funnel"
+) -> Dict[str, Dict[str, np.ndarray]]:
+    """Per-metal cohort WITH metal metadata (OS / charge).
+
+    ``cohort_spec``:
+      * ``paper_funnel`` (default) — the Krasnov-style funnel
+        (``cytotox.build_paper_cohort``); the cohort behind the Table-1 /
+        PA3 / PA15 paper numbers.
+      * ``24h`` — the probe's exact 24 h cohort
+        (``CytotoxFilter(time_threshold=24, ic50_min=0.01)`` +
+        ``collapse_duplicates``); the cohort the chemprop baselines were built
+        on, and the one PA3/PA15 migrate from.
+    """
     import os
 
     import pandas as pd
 
-    from molmetal.data.cytotox import build_paper_cohort
     from molmetal.scripts.metal_activity_transfer_probe import collapse_duplicates
 
-    data_dir = Path(
-        os.environ.get("MOLMETAL_DATA_DIR", str(PROJECT_ROOT / ".data" / "molmetal"))
-    )
-    raw = pd.read_csv(data_dir / "MetalCytoToxDB.csv", low_memory=False)
     out: Dict[str, Dict[str, np.ndarray]] = {}
+
+    if cohort_spec == "paper_funnel":
+        from molmetal.data.cytotox import build_paper_cohort
+
+        data_dir = Path(
+            os.environ.get("MOLMETAL_DATA_DIR", str(PROJECT_ROOT / ".data" / "molmetal"))
+        )
+        raw = pd.read_csv(data_dir / "MetalCytoToxDB.csv", low_memory=False)
+        for m in metals:
+            sub = build_paper_cohort(raw, metal=m)
+            ic50 = sub["IC50_Dark_value"].astype(float)
+            y_raw = (ic50 < 10.0).to_numpy(dtype=int)
+            smi = sub["SMILES_Ligands"].astype(str).to_numpy()
+            os_arr = sub["Oxidation_state"].fillna(0).astype(int).to_numpy()
+            chg_arr = sub["Charge_complex"].fillna(0).astype(int).to_numpy()
+            out[m] = _align_after_dedup(smi, y_raw, os_arr, chg_arr, collapse_duplicates)
+        return out
+
+    if cohort_spec != "24h":
+        raise ValueError(f"unknown cohort_spec {cohort_spec!r} (expected paper_funnel|24h)")
+
+    from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
+
     for m in metals:
-        sub = build_paper_cohort(raw, metal=m)
-        ic50 = sub["IC50_Dark_value"].astype(float)
-        y_raw = (ic50 < 10.0).to_numpy(dtype=int)
-        smi = sub["SMILES_Ligands"].astype(str).to_numpy()
-        os_arr = sub["Oxidation_state"].fillna(0).astype(int).to_numpy()
-        chg_arr = sub["Charge_complex"].fillna(0).astype(int).to_numpy()
-        # dedup on (smiles) keeping first, aligning y/os/chg
-        s_u, y_u, _n = collapse_duplicates(smi, y_raw)
-        # rebuild metadata for the kept smiles
-        first = {}
-        for i, s in enumerate(smi):
-            if s not in first:
-                first[s] = i
-        keep = [first[s] for s in s_u]
-        out[m] = {
-            "smiles": np.asarray(s_u, dtype=object),
-            "y": np.asarray(y_u, dtype=np.int64),
-            "os": os_arr[keep],
-            "chg": chg_arr[keep],
-        }
+        ds = MetalCytotoxDataset.from_csv(
+            filters=CytotoxFilter(time_threshold=24.0, ic50_min=0.01, metal_whitelist=[m])
+        )
+        smi = ds.smiles
+        y_raw = ds.active.astype(int)
+        os_arr = ds.df["Oxidation_state"].fillna(0).astype(int).to_numpy()
+        chg_arr = ds.df["Charge_complex"].fillna(0).astype(int).to_numpy()
+        out[m] = _align_after_dedup(smi, y_raw, os_arr, chg_arr, collapse_duplicates)
     return out
 
 
@@ -352,7 +391,7 @@ def auc(y, p):
 # ---------------------------------------------------------------------------
 # One (metal, arm, seed, k) run
 # ---------------------------------------------------------------------------
-def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, rich_metal=False, chem_metal=False, adapter=False, adapt_scope="head", l2sp=0.0, hidden=DMPNN_HIDDEN, dropout=DMPNN_DROPOUT, sampler="stratified", control="kshot", cache_source=False, source_cache_dir=None, adapt_eval_encoder=False, adapt_lr=None):
+def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, rich_metal=False, chem_metal=False, adapter=False, adapt_scope="head", l2sp=0.0, hidden=DMPNN_HIDDEN, dropout=DMPNN_DROPOUT, sampler="stratified", control="kshot", cache_source=False, source_cache_dir=None, adapt_eval_encoder=False, adapt_lr=None, return_scores=False, no_adapt=False):
     from molmetal.scripts.train_chemprop_lomo_paper_cohort import _draw_support
 
     # Determinism fix (2026-10-15): the model is constructed below, so the seed
@@ -381,7 +420,13 @@ def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, ric
         )
 
         scaffolds = [murcko_scaffold_from_smiles(s) for s in te["smiles"]]
-    sup_idx = _draw_support(te_y, scaffolds, k, seed, sampler)
+    if no_adapt:
+        # Zero-shot-only arm (PA3 cross / PA15 static conditioning): the query
+        # is the ENTIRE held-out metal cohort, no support draw, so the reported
+        # zero_shot_auc is the full cross-metal LOMO number (K-independent).
+        sup_idx = np.zeros(0, dtype=int)
+    else:
+        sup_idx = _draw_support(te_y, scaffolds, k, seed, sampler)
     sup_mask = np.zeros(len(te_y), dtype=bool)
     sup_mask[sup_idx] = True
     qry_mask = ~sup_mask
@@ -429,10 +474,19 @@ def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, ric
                 if cpath is not None:
                     cpath.parent.mkdir(parents=True, exist_ok=True)
                     torch.save(sd, cpath)
-        zero_shot = auc(qry_y, score(model, qry_graphs, device))
-        _alr = lr if adapt_lr is None else float(adapt_lr)
-        adapt_head(model, sup_graphs, sup_y, adapt_steps, _alr, device, seed, scope=adapt_scope, l2sp=l2sp, eval_frozen_encoder=adapt_eval_encoder)
-        adapted = auc(qry_y, score(model, qry_graphs, device))
+        zero_p = score(model, qry_graphs, device)
+        zero_shot = auc(qry_y, zero_p)
+        if no_adapt:
+            # PA15 arm: zero-shot only.  No FSMA adaptation — the metal enters
+            # via ``arm`` (none/readout/message/film) + the descriptor block,
+            # and the contrast is purely the injection, not adaptation.
+            adapt_p = np.zeros(0)
+            adapted = float("nan")
+        else:
+            _alr = lr if adapt_lr is None else float(adapt_lr)
+            adapt_head(model, sup_graphs, sup_y, adapt_steps, _alr, device, seed, scope=adapt_scope, l2sp=l2sp, eval_frozen_encoder=adapt_eval_encoder)
+            adapt_p = score(model, qry_graphs, device)
+            adapted = auc(qry_y, adapt_p)
     else:
         # C2 budget-matched control: a FRESH model trained for exactly the
         # K-shot budget on either the K support rows only (from_scratch) or the
@@ -448,13 +502,16 @@ def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, ric
             raise ValueError(f"unknown control={control!r}")
         train_control(model, pool_graphs, pool_y, adapt_steps, lr, device, seed)
         zero_shot = float("nan")
-        adapted = auc(qry_y, score(model, qry_graphs, device))
-    return {
+        zero_p = np.zeros(0)
+        adapt_p = score(model, qry_graphs, device)
+        adapted = auc(qry_y, adapt_p)
+    result = {
         "metal": held_out, "arm": arm, "k": int(k), "seed": int(seed),
         "rich_metal": bool(rich_metal), "chem_metal": bool(chem_metal),
         "adapter": bool(adapter), "adapt_scope": adapt_scope, "l2sp": float(l2sp),
         "hidden": int(hidden), "dropout": float(dropout),
         "sampler": sampler, "control": control, "cache_source": bool(cache_source),
+        "no_adapt": bool(no_adapt),
         "adapt_eval_encoder": bool(adapt_eval_encoder),
         "adapt_lr": (None if adapt_lr is None else float(adapt_lr)),
         "adapt_steps": int(adapt_steps),
@@ -463,11 +520,29 @@ def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, ric
         "zero_shot_auc": zero_shot, "adapted_auc": adapted,
         "wall_s": round(time.time() - t0, 1),
     }
+    if return_scores:
+        # Raw held-out query scores, for a permutation null (PA3).  Not written
+        # into the main JSON — ``main`` pops this key before serialising.
+        result["_scores"] = {
+            "y": np.asarray(qry_y, dtype=int).tolist(),
+            "p_zero": np.asarray(zero_p, dtype=float).tolist(),
+            "p_adapt": np.asarray(adapt_p, dtype=float).tolist(),
+        }
+    return result
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def _build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--metals", nargs="+", default=list(METALS))
+    ap.add_argument(
+        "--cohort-spec", choices=["paper_funnel", "24h"], default="paper_funnel",
+        help=(
+            "Cohort definition.  'paper_funnel' (default) = Krasnov-style funnel "
+            "(the Table-1 / PA3 / PA15 paper numbers).  '24h' = the probe's exact "
+            "24 h cohort (CytotoxFilter time_threshold=24, ic50_min=0.01) — the "
+            "cohort the chemprop PA3/PA15 baselines were built on."
+        ),
+    )
     ap.add_argument("--arms", nargs="+", default=["none", "readout", "message"])
     ap.add_argument("--k", nargs="+", type=int, default=[10])
     ap.add_argument("--seeds", nargs="+", type=int, default=list(DEFAULT_SEEDS))
@@ -533,6 +608,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         ),
     )
     ap.add_argument(
+        "--no-adapt", action="store_true",
+        help=(
+            "Skip FSMA adaptation entirely and report the SOURCE-trained "
+            "zero-shot AUC only (adapted_auc = nan).  Used by the PA15 "
+            "static-metal-conditioning arms, where the contrast is the "
+            "injection (none/readout/message/film), not adaptation."
+        ),
+    )
+    ap.add_argument(
         "--adapt-eval-encoder", action="store_true",
         help=(
             "Fix a train/eval mismatch in FSMA adaptation: keep the FROZEN encoder "
@@ -557,6 +641,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     ap.add_argument("--out", type=Path, default=PROJECT_ROOT / "metrics" / "by_metric" / "ex1_metal_injection.json")
     ap.add_argument(
+        "--dump-test-scores", type=Path, default=None,
+        help=(
+            "If set, append one JSON line per run to this path with the raw "
+            "held-out query scores ({metal, arm, k, seed, y, p_zero, p_adapt}).  "
+            "Used to compute a permutation null (PA3) without re-running.  The "
+            "scores are NOT written into --out."
+        ),
+    )
+    ap.add_argument(
         "--cache-source", action="store_true",
         help=(
             "Memoise the two K-independent computations: the trained source "
@@ -579,7 +672,36 @@ def main(argv: Optional[List[str]] = None) -> int:
             "equivalence argument as --cache-source."
         ),
     )
-    args = ap.parse_args(argv)
+    ap.add_argument(
+        "--config", type=str, default=None,
+        help=(
+            "YAML config (AGENTS.md §5.11).  Keys resolve to the dests above; an "
+            "explicit CLI flag still wins.  Enables a config-driven launch "
+            "(configs/ex1_lomo_24h.yaml) for the PA3/PA15 migration runs."
+        ),
+    )
+    return ap
+
+
+def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+    """Module-level entry point for scripts/_config_binding_gate.py."""
+    p = _build_parser()
+    args = p.parse_args(argv)
+    if getattr(args, "config", None):
+        try:
+            from wfA2_config_loader import apply_yaml_overrides
+        except ImportError:
+            # Imported as ``molmetal.scripts.ex1_...`` (not as a script): the
+            # loader is a sibling module, so put molmetal/scripts on the path.
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from wfA2_config_loader import apply_yaml_overrides
+
+        args = apply_yaml_overrides(p, args, args.config, argv=list(argv or []))
+    return args
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    args = parse_args(argv)
 
     # per-K adaptation-step schedule (historical FSMA protocol)
     steps_by_k: Dict[int, int] = {}
@@ -599,7 +721,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         # warn_only: the D-MPNN scatter/segment reductions have no deterministic
         # CUDA kernel in some torch versions; warn rather than hard-fail.
         torch.use_deterministic_algorithms(True, warn_only=True)
-    cohort = load_cohort(tuple(args.metals))
+    cohort = load_cohort(tuple(args.metals), cohort_spec=args.cohort_spec)
+    if args.dump_test_scores is not None:
+        args.dump_test_scores.parent.mkdir(parents=True, exist_ok=True)
+        # Truncate: the loop below appends one line per run, so a stale file from
+        # a previous launch would silently accumulate duplicates.
+        args.dump_test_scores.write_text("")
     results = []
     for metal in args.metals:
         for arm in args.arms:
@@ -616,28 +743,50 @@ def main(argv: Optional[List[str]] = None) -> int:
                         source_cache_dir=args.source_cache_dir,
                         adapt_eval_encoder=args.adapt_eval_encoder,
                         adapt_lr=args.adapt_lr,
+                        return_scores=args.dump_test_scores is not None,
+                        no_adapt=args.no_adapt,
                     )
+                    if args.dump_test_scores is not None:
+                        scores = r.pop("_scores")
+                        rec = {
+                            "metal": r["metal"], "arm": r["arm"], "k": r["k"],
+                            "seed": r["seed"], "cohort_spec": args.cohort_spec,
+                            "control": r["control"],
+                            "y": scores["y"],
+                            "p_zero": scores["p_zero"],
+                            "p_adapt": scores["p_adapt"],
+                        }
+                        with args.dump_test_scores.open("a") as fh:
+                            fh.write(json.dumps(rec) + "\n")
                     results.append(r)
                     print(json.dumps(r), flush=True)
 
-    # aggregate: adapted_auc mean per (arm, k)
+    # aggregate: adapted_auc mean per (arm, k) — and zero_shot_auc when the run
+    # is zero-shot-only (--no-adapt) or whenever it is finite.
     agg: Dict[str, Dict[str, float]] = {}
     for arm in args.arms:
         for k in args.k:
             vals = [r["adapted_auc"] for r in results if r["arm"] == arm and r["k"] == k and np.isfinite(r["adapted_auc"])]
             if vals:
                 agg[f"{arm}@K{k}"] = {"mean": float(np.mean(vals)), "std": float(np.std(vals)), "n": len(vals)}
+            zvals = [r["zero_shot_auc"] for r in results if r["arm"] == arm and r["k"] == k and np.isfinite(r["zero_shot_auc"])]
+            if zvals:
+                agg[f"{arm}@K{k}:zero_shot"] = {
+                    "mean": float(np.mean(zvals)), "std": float(np.std(zvals)), "n": len(zvals),
+                }
 
     out = {
         "experiment": "EX1 — metal injection position single-variable contrast",
         "created": "2026-10-14",
-        "protocol": "paper_funnel LOMO + FSMA head-only K-shot; encoder frozen; identical query across arms",
+        "protocol": f"{args.cohort_spec} LOMO + FSMA head-only K-shot; encoder frozen; identical query across arms",
+        "cohort_spec": args.cohort_spec,
         "arms": args.arms, "k": args.k, "seeds": args.seeds,
         "epochs": args.epochs, "adapt_steps": args.adapt_steps, "lr": args.lr,
         "adapt_steps_by_k": {str(k): v for k, v in steps_by_k.items()},
         "source_cache_dir": str(args.source_cache_dir) if args.source_cache_dir else None,
         "device": str(args.device),
         "deterministic": bool(args.deterministic),
+        "no_adapt": bool(args.no_adapt),
         "adapt_eval_encoder": bool(args.adapt_eval_encoder),
         "adapt_lr": (None if args.adapt_lr is None else float(args.adapt_lr)),
         "hidden": args.hidden, "dropout": args.dropout,

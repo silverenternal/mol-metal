@@ -1,0 +1,98 @@
+# Table 1 (tab:transfer) — in-house D-MPNN WITHIN-metal ceiling on the
+# PAPER-FUNNEL cohort.  Migration of the chemprop-v2 column
+# (molmetal/reports/l3_within_pf_ceiling/metrics.json, Ru 0.8545 .. Re 0.8187)
+# onto the repo's self-developed D-MPNN, so Table 1 satisfies the project red
+# line ("the paper's main predictive model is our own D-MPNN").
+#
+# PAIRED PARTNER: the cross-metal zero-shot column is the in-house ex1 arm=none
+# run on the same cohort (metrics/by_metric/fsma_l1_ep50.json, per_run
+# zero_shot_auc).  Same D-MPNN family, same cohort, no adaptation.
+#
+# AGENTS.md §5.11: every key below resolves to a dest of
+# dmpnn_within_metal_auc.py's own parser (verified by
+# scripts/_config_binding_gate.py).  Analysis script invoked directly (like
+# metal_activity_transfer_probe.py), not a start.sh training launcher.
+
+entry:
+  script: molmetal/scripts/dmpnn_within_metal_auc.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/dmpnn_within_metal_auc.py
+    --config {yaml_path}
+
+data:
+  # nargs="+" — MUST be a YAML list (a space-joined string arrives as ONE token
+  # and matches no metal; see configs/m19_lomo_4metal_sensitivity.yaml:57-75).
+  metals: [Ru, Ir, Rh, Os, Re]
+
+# --- cohort -----------------------------------------------------------------
+# paper_funnel = Krasnov-style build_paper_cohort (no time window), the cohort
+# Table 1 is measured on.  Unique sizes Ru 4793 / Ir 1281 / Rh 334 / Os 333 /
+# Re 250.  (The committed metrics/by_metric/dmpnn_within_metal_auc.json is the
+# 24h cohort — a DIFFERENT cohort, not the Table-1 number.)
+cohort_spec: paper_funnel
+
+# --- folds ------------------------------------------------------------------
+# StratifiedKFold(n_splits=5, shuffle=True, random_state=s).  The 5 seeds match
+# the 24h within run / PA3's protocol; seed 42 is the probe's own fold seed.
+protocol:
+  split_seeds: [42, 43, 44, 49, 123]
+  n_splits: 5
+
+# --- model ------------------------------------------------------------------
+# MetalCytotoxModel = the repo's from-scratch D-MPNN backbone (atom_emb /
+# bond_emb / GRU edge update) + a 2-way head.  hidden=128 / depth=3 is the
+# in-house capacity (the ex1 FSMA harness and the 24h within run both use 128).
+# DOCUMENTED DIFFERENCE vs chemprop: chemprop used hidden=300 / depth=3.  The
+# capacity gap is stated in the artifact, not hidden.
+model:
+  hidden: 128
+  depth: 3
+  dropout: 0.1
+
+train:
+  lr: 0.001
+  # 50 matches the chemprop within ceiling's epoch budget (fair ceiling), and
+  # the ex1 cross partner's source-training budget (fsma_l1_ep50.json).
+  epochs: 50
+  batch_size: 64
+  max_atoms: 120
+  max_edges: 240
+  train_seeds: [0]
+  class_weight: true
+  # Mask the pooled readout over each molecule's TRUE atom count.  The reused
+  # MetalCytotoxModel pools over the padded width (max_atoms=120); the median Ru
+  # ligand is 35 atoms, so ~68% of pooled slots are zero-padding whose
+  # relu(atom_emb(0)) bias vectors are NOT zero.  Weights/arch are identical.
+  mask_padding: true
+
+# --- xgboost reference (same folds) -----------------------------------------
+# Top-level, not under an `xgb:` section: the loader only falls back to the bare
+# leaf name for two-component paths under a whitelisted section, so `xgb.radius`
+# would flatten to `xgb_radius` and resolve to nothing (config-binding gate).
+radius: 2
+nbits: 2048
+
+# --- run shape --------------------------------------------------------------
+# CPU deliberately: the D-MPNN forward loops over molecules in Python, so at
+# this size CPU is FASTER than GPU (measured 6.7 s vs 17.4 s for the same
+# 200-ligand smoke in the 24h config) and bit-reproducible.
+compute:
+  device: cpu
+
+# smoke only (0 = full cohort)
+max_fold_n: 0
+
+output:
+  out_metric: metrics/by_metric/dmpnn_within_metal_auc_paper_funnel.json
+
+honest_framing:
+  purpose: >-
+    Replace the chemprop-v2 within-metal column of Table 1 with the in-house
+    D-MPNN, so the paper's collapse table is measured entirely on our own model.
+  do_not_claim:
+    - A pooled 5-metal mean without noting Ru is 64% of the deduplicated cohort.
+    - That Rh/Os/Re (n=334/333/250) are as well-resolved as Ru — report the n.
+    - That the in-house column is capacity-matched to chemprop (300 vs 128 wide).
+  gate_context: >-
+    Krasnov 2026 within-metal AUC = 0.81 (Ru) / 0.73 (Ir).  If the in-house
+    column lands below these, the tab:krasnov within-metal "win" must be
+    restated honestly (AGENTS.md 5.2).
