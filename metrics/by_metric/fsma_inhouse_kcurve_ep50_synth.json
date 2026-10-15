@@ -1,0 +1,671 @@
+{
+  "metric": "fsma_inhouse_kcurve_ep50",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "unit": "paired ROC-AUC delta (adapted - zero-shot), higher better",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/synthesize_inhouse_kcurve.py",
+  "description": "FSMA head-only K-shot recovery curve re-measured on the in-house D-MPNN at the chemprop-matched source budget (epochs=50), with the epochs=20 curve and the chemprop v2 reference carried alongside.",
+  "model": "MetalAwareDMPNN(metal_injection='none'), hidden=128 depth=3 dropout=0.1, epochs=50; encoder frozen, head-only adaptation",
+  "protocol": {
+    "cohort": "paper funnel (build_paper_cohort, no time window)",
+    "split": "leave-one-metal-out, ligand-disjoint",
+    "adaptation": "stratified K support; head-only; adapt_steps = 20*ceil(K/16)",
+    "seeds": [
+      42,
+      43,
+      44,
+      49,
+      123,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "metals": [
+      "Ru",
+      "Ir",
+      "Rh",
+      "Os",
+      "Re"
+    ],
+    "k": [
+      5,
+      10,
+      20,
+      40,
+      80
+    ],
+    "epochs": 50,
+    "significance": "one-sided t-test (H1: mean paired delta > 0) on the 50 (metal, seed) cells per K; t-based 95% CI; Holm-Bonferroni across the 5 K values"
+  },
+  "per_k": {
+    "5": {
+      "inhouse_ep50": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.012903055566396664,
+        "std": 0.055739910265800385,
+        "t": 1.6368591276014137,
+        "p_one_sided_gt0": 0.054033707655004135,
+        "ci95_ttest": [
+          -0.0029380516567579593,
+          0.02874416278955129
+        ],
+        "n_positive": 29
+      },
+      "inhouse_ep20": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": -0.009703742519195663,
+        "std": 0.04118387816031568,
+        "t": -1.6660845079964395,
+        "p_one_sided_gt0": 0.9489611414830931,
+        "ci95_ttest": [
+          -0.021408071189476643,
+          0.0020005861510853165
+        ],
+        "n_positive": 17
+      },
+      "chemprop": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.009706672763353791,
+        "std": 0.03411806498794176,
+        "t": 2.0117360513124143,
+        "p_one_sided_gt0": 0.024881813973408932,
+        "ci95_ttest": [
+          1.0425978181785242e-05,
+          0.0194029195485258
+        ],
+        "n_positive": 28
+      },
+      "inhouse_ep50_per_metal": {
+        "Ru": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": -3.603315089664161e-05,
+          "std": 0.027950161615112958,
+          "t": -0.004076786019166117,
+          "p_one_sided_gt0": 0.5015819304225533,
+          "ci95_ttest": [
+            -0.020030374285263882,
+            0.0199583079834706
+          ],
+          "n_positive": 7
+        },
+        "Ir": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": -0.008213632609721588,
+          "std": 0.02999396454550912,
+          "t": -0.8659671138553119,
+          "p_one_sided_gt0": 0.795500434320752,
+          "ci95_ttest": [
+            -0.029670022284790806,
+            0.013242757065347631
+          ],
+          "n_positive": 5
+        },
+        "Rh": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.0014600428772084894,
+          "std": 0.03245627863935558,
+          "t": 0.14225478603963704,
+          "p_one_sided_gt0": 0.445006203526603,
+          "ci95_ttest": [
+            -0.021757780189562693,
+            0.02467786594397967
+          ],
+          "n_positive": 5
+        },
+        "Os": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": -0.009645191409897313,
+          "std": 0.03143949852814073,
+          "t": -0.9701418518576476,
+          "p_one_sided_gt0": 0.8213380579280272,
+          "ci95_ttest": [
+            -0.03213565380225733,
+            0.012845270982462702
+          ],
+          "n_positive": 4
+        },
+        "Re": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.08095009212529036,
+          "std": 0.08158474217223857,
+          "t": 3.137678211643407,
+          "p_one_sided_gt0": 0.005986353309022382,
+          "ci95_ttest": [
+            0.02258788339054337,
+            0.13931230086003735
+          ],
+          "n_positive": 8
+        }
+      }
+    },
+    "10": {
+      "inhouse_ep50": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.014120895322843099,
+        "std": 0.06989232896029805,
+        "t": 1.4286232820886067,
+        "p_one_sided_gt0": 0.07972818333793454,
+        "ci95_ttest": [
+          -0.005742284790946744,
+          0.03398407543663294
+        ],
+        "n_positive": 27
+      },
+      "inhouse_ep20": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": -0.006710295289374002,
+        "std": 0.047256923448160876,
+        "t": -1.0040635226890047,
+        "p_one_sided_gt0": 0.8398596247441417,
+        "ci95_ttest": [
+          -0.020140564333743748,
+          0.006719973754995742
+        ],
+        "n_positive": 22
+      },
+      "chemprop": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.001509504008068927,
+        "std": 0.04577271284589045,
+        "t": 0.23319144834773378,
+        "p_one_sided_gt0": 0.4082920789484102,
+        "ci95_ttest": [
+          -0.011498957050242137,
+          0.014517965066379993
+        ],
+        "n_positive": 27
+      },
+      "inhouse_ep50_per_metal": {
+        "Ru": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": -0.024251464666453837,
+          "std": 0.029156185039475126,
+          "t": -2.630312053420496,
+          "p_one_sided_gt0": 0.9863276704841591,
+          "ci95_ttest": [
+            -0.04510854298620094,
+            -0.0033943863467067285
+          ],
+          "n_positive": 2
+        },
+        "Ir": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": -0.006037160906726102,
+          "std": 0.03666906003509454,
+          "t": -0.5206345362523719,
+          "p_one_sided_gt0": 0.6924068878918764,
+          "ci95_ttest": [
+            -0.03226862623828388,
+            0.02019430442483168
+          ],
+          "n_positive": 5
+        },
+        "Rh": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.02521821993520106,
+          "std": 0.03785232278510692,
+          "t": 2.1067931282060144,
+          "p_one_sided_gt0": 0.03220211470606941,
+          "ci95_ttest": [
+            -0.001859700576155917,
+            0.05229614044655803
+          ],
+          "n_positive": 8
+        },
+        "Os": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": -0.021431599229287068,
+          "std": 0.046085772376629947,
+          "t": -1.4705767956017552,
+          "p_one_sided_gt0": 0.9122594180213501,
+          "ci95_ttest": [
+            -0.054399374765901384,
+            0.011536176307327253
+          ],
+          "n_positive": 4
+        },
+        "Re": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.09710648148148145,
+          "std": 0.09779463389603538,
+          "t": 3.1400256313950194,
+          "p_one_sided_gt0": 0.005963767162478822,
+          "ci95_ttest": [
+            0.0271484147570797,
+            0.16706454820588318
+          ],
+          "n_positive": 8
+        }
+      }
+    },
+    "20": {
+      "inhouse_ep50": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.038914387418485,
+        "std": 0.09365190169900728,
+        "t": 2.938181364193578,
+        "p_one_sided_gt0": 0.0025106138811468574,
+        "ci95_ttest": [
+          0.012298811444431929,
+          0.06552996339253807
+        ],
+        "n_positive": 37
+      },
+      "inhouse_ep20": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.01037084667524953,
+        "std": 0.05698869075162958,
+        "t": 1.2867984707132807,
+        "p_one_sided_gt0": 0.10210533889035621,
+        "ci95_ttest": [
+          -0.0058251600351821795,
+          0.02656685338568124
+        ],
+        "n_positive": 28
+      },
+      "chemprop": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.008426423336017196,
+        "std": 0.04507736926406262,
+        "t": 1.321812070962308,
+        "p_one_sided_gt0": 0.09618439544018714,
+        "ci95_ttest": [
+          -0.004384423262849262,
+          0.021237269934883653
+        ],
+        "n_positive": 28
+      },
+      "inhouse_ep50_per_metal": {
+        "Ru": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": -0.014736953112086847,
+          "std": 0.026565930849890153,
+          "t": -1.754214368343649,
+          "p_one_sided_gt0": 0.9433551082721197,
+          "ci95_ttest": [
+            -0.033741075209094896,
+            0.004267168984921202
+          ],
+          "n_positive": 4
+        },
+        "Ir": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.02059184033021242,
+          "std": 0.02800676788627875,
+          "t": 2.3250493210209946,
+          "p_one_sided_gt0": 0.022555666825968983,
+          "ci95_ttest": [
+            0.0005570055088454824,
+            0.04062667515157936
+          ],
+          "n_positive": 8
+        },
+        "Rh": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.0540645292207793,
+          "std": 0.02626755569812272,
+          "t": 6.508677660274631,
+          "p_one_sided_gt0": 5.5166113234953945e-05,
+          "ci95_ttest": [
+            0.03527385184915813,
+            0.07285520659240047
+          ],
+          "n_positive": 10
+        },
+        "Os": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": -0.032860306783692915,
+          "std": 0.06638848341053334,
+          "t": -1.5652325329646621,
+          "p_one_sided_gt0": 0.9240157042775226,
+          "ci95_ttest": [
+            -0.08035176686833684,
+            0.014631153300951015
+          ],
+          "n_positive": 5
+        },
+        "Re": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.16751282743721302,
+          "std": 0.11505874137759917,
+          "t": 4.603927225815034,
+          "p_one_sided_gt0": 0.000641666981020446,
+          "ci95_ttest": [
+            0.0852047622004548,
+            0.24982089267397123
+          ],
+          "n_positive": 10
+        }
+      }
+    },
+    "40": {
+      "inhouse_ep50": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.062353078880536386,
+        "std": 0.09726218640164139,
+        "t": 4.533137340982386,
+        "p_one_sided_gt0": 1.877393784583161e-05,
+        "ci95_ttest": [
+          0.034711471346550365,
+          0.0899946864145224
+        ],
+        "n_positive": 40
+      },
+      "inhouse_ep20": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.03666052373613217,
+        "std": 0.05752947706350535,
+        "t": 4.506021305747973,
+        "p_one_sided_gt0": 2.0547362040045212e-05,
+        "ci95_ttest": [
+          0.020310827256370234,
+          0.053010220215894105
+        ],
+        "n_positive": 40
+      },
+      "chemprop": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.03793457562714982,
+        "std": 0.04938721566184211,
+        "t": 5.431323735894744,
+        "p_one_sided_gt0": 8.680364768583456e-07,
+        "ci95_ttest": [
+          0.023898884234364835,
+          0.05197026701993481
+        ],
+        "n_positive": 40
+      },
+      "inhouse_ep50_per_metal": {
+        "Ru": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.006322466605418397,
+          "std": 0.03261878020309505,
+          "t": 0.61294121910721,
+          "p_one_sided_gt0": 0.2775427953581432,
+          "ci95_ttest": [
+            -0.017011603077204843,
+            0.02965653628804164
+          ],
+          "n_positive": 6
+        },
+        "Ir": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.022189392167563216,
+          "std": 0.02585832034278322,
+          "t": 2.713595400398224,
+          "p_one_sided_gt0": 0.01192832313202104,
+          "ci95_ttest": [
+            0.0036914641335515155,
+            0.040687320201574916
+          ],
+          "n_positive": 9
+        },
+        "Rh": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.08517361111111114,
+          "std": 0.024099655138031806,
+          "t": 11.176201738566993,
+          "p_one_sided_gt0": 7.039139435397765e-07,
+          "ci95_ttest": [
+            0.06793375637660867,
+            0.10241346584561362
+          ],
+          "n_positive": 10
+        },
+        "Os": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": -0.0010022480329711426,
+          "std": 0.06119158014035039,
+          "t": -0.05179448802176655,
+          "p_one_sided_gt0": 0.520088090262916,
+          "ci95_ttest": [
+            -0.04477606747362817,
+            0.04277157140768588
+          ],
+          "n_positive": 6
+        },
+        "Re": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.1990821725515603,
+          "std": 0.11981255925685506,
+          "t": 5.254483425631072,
+          "p_one_sided_gt0": 0.00026228148282556334,
+          "ci95_ttest": [
+            0.11337343086514955,
+            0.28479091423797104
+          ],
+          "n_positive": 9
+        }
+      }
+    },
+    "80": {
+      "inhouse_ep50": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.09955566985069435,
+        "std": 0.10080260396010156,
+        "t": 6.983598289272226,
+        "p_one_sided_gt0": 3.516674531440001e-09,
+        "ci95_ttest": [
+          0.07090788677945208,
+          0.1282034529219366
+        ],
+        "n_positive": 46
+      },
+      "inhouse_ep20": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.0629622269774477,
+        "std": 0.05356074037226259,
+        "t": 8.312248364179796,
+        "p_one_sided_gt0": 3.194552715449574e-11,
+        "ci95_ttest": [
+          0.04774043298562748,
+          0.07818402096926792
+        ],
+        "n_positive": 43
+      },
+      "chemprop": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.06851227180721284,
+        "std": 0.04537057529798952,
+        "t": 10.677733678973839,
+        "p_one_sided_gt0": 1.091276922166889e-14,
+        "ci95_ttest": [
+          0.05561809697549198,
+          0.08140644663893369
+        ],
+        "n_positive": 50
+      },
+      "inhouse_ep50_per_metal": {
+        "Ru": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.028328426021452312,
+          "std": 0.024867005219319352,
+          "t": 3.6024582761487536,
+          "p_one_sided_gt0": 0.0028631482944747313,
+          "ci95_ttest": [
+            0.01053964210700365,
+            0.046117209935900974
+          ],
+          "n_positive": 8
+        },
+        "Ir": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.038225477084940285,
+          "std": 0.023981794864734327,
+          "t": 5.040472279776716,
+          "p_one_sided_gt0": 0.00034966856972827755,
+          "ci95_ttest": [
+            0.021069934510880763,
+            0.0553810196589998
+          ],
+          "n_positive": 9
+        },
+        "Rh": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.11364341085271316,
+          "std": 0.03253060153643956,
+          "t": 11.04719871110642,
+          "p_one_sided_gt0": 7.764124434012818e-07,
+          "ci95_ttest": [
+            0.09037242038824121,
+            0.13691440131718513
+          ],
+          "n_positive": 10
+        },
+        "Os": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.05392969240426867,
+          "std": 0.03759223733501441,
+          "t": 4.536592488229612,
+          "p_one_sided_gt0": 0.0007063952005718608,
+          "ci95_ttest": [
+            0.027037825815777856,
+            0.08082155899275947
+          ],
+          "n_positive": 9
+        },
+        "Re": {
+          "status": "MEASURED",
+          "n_cells": 10,
+          "mean": 0.26365134289009723,
+          "std": 0.09689049744899701,
+          "t": 8.60495893452943,
+          "p_one_sided_gt0": 6.153705391753859e-06,
+          "ci95_ttest": [
+            0.19434005641702415,
+            0.33296262936317034
+          ],
+          "n_positive": 10
+        }
+      }
+    }
+  },
+  "holm": {
+    "inhouse_ep50": {
+      "correction": "Holm-Bonferroni (family = 5 K values)",
+      "n_family": 5,
+      "p_one_sided_raw": {
+        "5": 0.054033707655004135,
+        "10": 0.07972818333793454,
+        "20": 0.0025106138811468574,
+        "40": 1.877393784583161e-05,
+        "80": 3.516674531440001e-09
+      },
+      "p_one_sided_holm": {
+        "80": 1.7583372657200005e-08,
+        "40": 7.509575138332643e-05,
+        "20": 0.007531841643440573,
+        "5": 0.10806741531000827,
+        "10": 0.10806741531000827
+      },
+      "significant_after_holm_0.05": [
+        "20",
+        "40",
+        "80"
+      ]
+    },
+    "inhouse_ep20": {
+      "correction": "Holm-Bonferroni (family = 5 K values)",
+      "n_family": 5,
+      "p_one_sided_raw": {
+        "5": 0.9489611414830931,
+        "10": 0.8398596247441417,
+        "20": 0.10210533889035621,
+        "40": 2.0547362040045212e-05,
+        "80": 3.194552715449574e-11
+      },
+      "p_one_sided_holm": {
+        "80": 1.597276357724787e-10,
+        "40": 8.218944816018085e-05,
+        "20": 0.3063160166710686,
+        "10": 1.0,
+        "5": 1.0
+      },
+      "significant_after_holm_0.05": [
+        "40",
+        "80"
+      ]
+    },
+    "chemprop_reference": {
+      "correction": "Holm-Bonferroni (family = 5 K values)",
+      "n_family": 5,
+      "p_one_sided_raw": {
+        "5": 0.024881813973408932,
+        "10": 0.4082920789484102,
+        "20": 0.09618439544018714,
+        "40": 8.680364768583456e-07,
+        "80": 1.091276922166889e-14
+      },
+      "p_one_sided_holm": {
+        "80": 5.456384610834445e-14,
+        "40": 3.4721459074333822e-06,
+        "5": 0.07464544192022679,
+        "20": 0.19236879088037429,
+        "10": 0.4082920789484102
+      },
+      "significant_after_holm_0.05": [
+        "40",
+        "80"
+      ]
+    }
+  },
+  "positive_at_every_k": {
+    "inhouse_ep50": true,
+    "inhouse_ep20": false
+  },
+  "verdict": "REPRODUCED at the matched budget: the in-house head-only K-curve is positive at every K (K=5 +0.0129 .. K=80 +0.0996) and family-significant at K=20,40,80; the same model at epochs=20 was negative at K=5/K=10, so the sign is set by the source budget, not the model.",
+  "budget_note": "The chemprop reference this migrates trains its source model for config.epochs=50 (fsma_c4_head_k*.config.epochs).  The original in-house curve used epochs=20 and is NEGATIVE at K=5/K=10; at the matched epochs=50 budget the same model is positive at every K.  Both budgets are reported (inhouse_ep50 = primary, inhouse_ep20 = sensitivity) so the sign flip is visible rather than hidden.",
+  "caveats": [
+    "The adaptation step is NOT bit-reproducible on CUDA: two epochs=50 runs of the same config agree to ~1e-3 on the 50-cell mean but differ by up to 0.079 on an individual cell.  Only the aggregate is reported; per-cell values are noisy.",
+    "Capacity is NOT matched to the chemprop reference (hidden=128 vs d_h=300); the comparison is a scorer/representation result.",
+    "The epochs=20 column is carried as a sensitivity, not discarded: it is the budget at which the in-house low-K delta is negative.",
+    "chemprop v2 is a REFERENCE scorer here, not the paper's model (project red line: the method result is the in-house D-MPNN)."
+  ],
+  "source_artifacts": {
+    "inhouse_ep50": "metrics/by_metric/fsma_inhouse_kcurve_ep50.json",
+    "inhouse_ep20": "metrics/by_metric/fsma_l1_ep20.json",
+    "chemprop_reference": "metrics/by_metric/fsma_paper_stats.json"
+  }
+}

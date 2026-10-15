@@ -1,0 +1,52 @@
+# EX1 — in-house FSMA C3 support-sampler ablation, ACTIVITY-SCAFFOLD sampler, at
+# the CHEMPROP-MATCHED source budget (epochs=50) and the chemprop K/seed setting
+# (K=20, 5 seeds = 25 cells).
+#
+# WHY: paper_a's tab:sampler is chemprop v2 at configs/fsma_c3_activity_scaffold
+# _k20.yaml (epochs=50, k_shot=20, seeds 42/43/44/49/123).  The existing in-house
+# C3 artifact was run at epochs=20 AND at K=10 with 10 seeds.  This config
+# re-measures the activity-scaffold arm at the matched budget and setting.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 128
+  dropout: 0.1
+
+train:
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [none]
+  k: [20]
+  seeds: [42, 43, 44, 49, 123]
+  sampler: activity_scaffold
+  control: kshot
+  adapt_steps_by_k: "5:20,10:20,20:40,40:60,80:100"
+
+compute:
+  device: cuda:1
+  deterministic: true
+  cache_source: true
+
+output:
+  out: metrics/by_metric/fsma_inhouse_c3_activity_scaffold_ep50.json
+  source_cache_dir: /tmp/fsma_gpu_src_ep50
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  Paired query-AUC delta (adapted minus zero-shot), 5 seeds x
+  5 metals = 25 cells at K=20 (chemprop-matched setting).  Adaptation is NOT
+  bit-reproducible on CUDA; only the aggregate is reported.

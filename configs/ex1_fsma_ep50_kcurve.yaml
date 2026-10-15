@@ -1,0 +1,80 @@
+# EX1 — in-house FSMA head-only K-curve at the CHEMPROP-MATCHED source budget.
+#
+# WHY (the negative this config exists to fix)
+# --------------------------------------------
+# Paper A's tab:kshot / fig2_kshot_curve / recovery_to_ceiling currently cite
+# metrics/by_metric/fsma_paper_stats.json, whose source runs
+# (molmetal/reports/fsma_c4_head_k*/metrics.json) are chemprop v2 with
+# config.epochs = 50 (k_shot_ft_epochs = 20).  The existing in-house curve
+# (metrics/by_metric/fsma_inhouse_kcurve_headonly.json) was run at epochs = 20,
+# i.e. the in-house SOURCE model was trained at 2.5x less than the reference it
+# is compared against.  At that under-budget setting the in-house paired delta
+# is NEGATIVE at K=5 (-0.0104) and K=10 (-0.0075), so the paper's "positive at
+# every K" claim cannot be carried over to the in-house model.
+#
+# Two independent epochs=50 runs already on disk — metrics/by_metric/fsma_l1_ep50.json
+# and metrics/by_metric/fsma_ep50_lowk.json — both give a POSITIVE low-K delta at
+# the reference budget (K=5 +0.0129, K=10 +0.0141, both above their ep20
+# counterparts with paired diff p1 = 0.0022 / 0.0117).  The sign flip is therefore
+# a SOURCE-BUDGET artefact, not a property of the in-house model.  This config
+# re-measures the FULL curve at epochs=50 so the paper can cite one coherent,
+# budget-matched in-house artifact instead of splicing two runs.
+#
+# Only the source budget changes relative to the existing in-house curve; the
+# adaptation schedule (20*ceil(K/16) steps) and the LOMO/leakage protocol are
+# unchanged.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 128
+  dropout: 0.1
+
+train:
+  # 50 == the chemprop reference's source-training budget
+  # (fsma_c4_head_k*.config.epochs).  NOT a tuned value.
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [none]
+  k: [5, 10, 20, 40, 80]
+  seeds: [42, 43, 44, 49, 123, 7, 8, 9, 10, 11]
+  sampler: stratified
+  control: kshot
+  # Historical FSMA adaptation schedule: 20*ceil(K/16) optimizer steps.  Unchanged
+  # from the existing in-house curve, so the budget delta is the source epochs only.
+  adapt_steps_by_k: "5:20,10:20,20:40,40:60,80:100"
+
+compute:
+  device: cuda:1
+  deterministic: true
+  cache_source: true
+
+output:
+  out: metrics/by_metric/fsma_inhouse_kcurve_ep50.json
+  # Reuses the epochs=50 source cache built for fsma_l1_ep50 / fsma_ep50_lowk,
+  # so the source model is identical to those runs (zero_shot_auc is bit-identical
+  # across the two existing runs) and only the adaptation is re-measured.
+  source_cache_dir: /tmp/fsma_gpu_src_ep50
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  Every delta is the paired query-AUC difference (adapted minus
+  zero-shot) on the identical held-out query, aggregated over 10 seeds x 5 metals
+  = 50 cells per K.  The adaptation step is NOT bit-reproducible on CUDA (two
+  epochs=50 runs of the same config agree to 1e-4 on the 50-cell mean but differ
+  by up to 0.079 on an individual cell), so the per-cell values are noisy and only
+  the aggregate is reported.  The epochs=20 curve is reported alongside as a
+  sensitivity, not hidden: at that budget the in-house low-K delta is negative.

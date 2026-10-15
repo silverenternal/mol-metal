@@ -1,0 +1,602 @@
+{
+  "metric": "fsma_ablations_inhouse_ep50",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "unit": "paired ROC-AUC delta (adapted - zero-shot), higher better",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/synthesize_fsma_ablations_inhouse.py",
+  "description": "In-house D-MPNN FSMA ablation families (C1/C1b/C2/C3/C4) at the chemprop-matched source budget (epochs=50), replacing the chemprop v2 backing of paper_a's ablation tables.",
+  "model": "MetalAwareDMPNN(metal_injection='none'), hidden=128 depth=3 dropout=0.1, epochs=50",
+  "families": {
+    "C1_kshot_curve_headonly": {
+      "members": {
+        "head_k5": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.012903055566396664,
+          "std": 0.055739910265800385,
+          "t": 1.6368591276014137,
+          "p_one_sided_directional": 0.054033707655004135,
+          "ci95_ttest": [
+            -0.0029380516567579593,
+            0.02874416278955129
+          ],
+          "n_positive": 29
+        },
+        "head_k10": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.014120895322843099,
+          "std": 0.06989232896029805,
+          "t": 1.4286232820886067,
+          "p_one_sided_directional": 0.07972818333793454,
+          "ci95_ttest": [
+            -0.005742284790946744,
+            0.03398407543663294
+          ],
+          "n_positive": 27
+        },
+        "head_k20": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.038914387418485,
+          "std": 0.09365190169900728,
+          "t": 2.938181364193578,
+          "p_one_sided_directional": 0.0025106138811468574,
+          "ci95_ttest": [
+            0.012298811444431929,
+            0.06552996339253807
+          ],
+          "n_positive": 37
+        },
+        "head_k40": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.062353078880536386,
+          "std": 0.09726218640164139,
+          "t": 4.533137340982386,
+          "p_one_sided_directional": 1.877393784583161e-05,
+          "ci95_ttest": [
+            0.034711471346550365,
+            0.0899946864145224
+          ],
+          "n_positive": 40
+        },
+        "head_k80": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.09955566985069435,
+          "std": 0.10080260396010156,
+          "t": 6.983598289272226,
+          "p_one_sided_directional": 3.516674531440001e-09,
+          "ci95_ttest": [
+            0.07090788677945208,
+            0.1282034529219366
+          ],
+          "n_positive": 46
+        }
+      },
+      "p_one_sided_raw": {
+        "head_k5": 0.054033707655004135,
+        "head_k10": 0.07972818333793454,
+        "head_k20": 0.0025106138811468574,
+        "head_k40": 1.877393784583161e-05,
+        "head_k80": 3.516674531440001e-09
+      },
+      "p_one_sided_holm": {
+        "head_k80": 1.7583372657200005e-08,
+        "head_k40": 7.509575138332643e-05,
+        "head_k20": 0.007531841643440573,
+        "head_k5": 0.10806741531000827,
+        "head_k10": 0.10806741531000827
+      },
+      "correction": "Holm-Bonferroni (family = 5 arms)",
+      "note": "p is one-sided in the direction of each arm's observed effect (so a strongly negative control arm is also 'significant')",
+      "significant_after_holm_0.05": [
+        "head_k20",
+        "head_k40",
+        "head_k80"
+      ]
+    },
+    "C1b_kshot_curve_fullscope": {
+      "members": {
+        "full_k5": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": -0.002743856909032355,
+          "std": 0.09208033515458545,
+          "t": -0.21070729420403495,
+          "p_one_sided_directional": 0.4169947450313509,
+          "ci95_ttest": [
+            -0.02891279861295845,
+            0.02342508479489374
+          ],
+          "n_positive": 20
+        },
+        "full_k20": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.03474047022833329,
+          "std": 0.11281942973812942,
+          "t": 2.1773928601734074,
+          "p_one_sided_directional": 0.01714795581710498,
+          "ci95_ttest": [
+            0.0026775430579354803,
+            0.0668033973987311
+          ],
+          "n_positive": 30
+        },
+        "full_k40": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.06310250677067657,
+          "std": 0.1187291227352534,
+          "t": 3.7581521213553666,
+          "p_one_sided_directional": 0.00022803599811138762,
+          "ci95_ttest": [
+            0.02936006343355098,
+            0.09684495010780216
+          ],
+          "n_positive": 34
+        },
+        "full_k80": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.09561999698792296,
+          "std": 0.11666945769476907,
+          "t": 5.795308354315687,
+          "p_one_sided_directional": 2.415187085942849e-07,
+          "ci95_ttest": [
+            0.062462903978677514,
+            0.12877708999716841
+          ],
+          "n_positive": 44
+        }
+      },
+      "p_one_sided_raw": {
+        "full_k5": 0.4169947450313509,
+        "full_k20": 0.01714795581710498,
+        "full_k40": 0.00022803599811138762,
+        "full_k80": 2.415187085942849e-07
+      },
+      "p_one_sided_holm": {
+        "full_k80": 9.660748343771397e-07,
+        "full_k40": 0.0006841079943341628,
+        "full_k20": 0.03429591163420996,
+        "full_k5": 0.4169947450313509
+      },
+      "correction": "Holm-Bonferroni (family = 4 arms)",
+      "note": "p is one-sided in the direction of each arm's observed effect (so a strongly negative control arm is also 'significant')",
+      "significant_after_holm_0.05": [
+        "full_k20",
+        "full_k40",
+        "full_k80"
+      ]
+    },
+    "C2_controls_matched": {
+      "k20": {
+        "members": {
+          "kshot": {
+            "status": "MEASURED",
+            "n_cells": 50,
+            "mean": 0.038914387418485,
+            "std": 0.09365190169900728,
+            "t": 2.938181364193578,
+            "p_one_sided_directional": 0.0025106138811468574,
+            "ci95_ttest": [
+              0.012298811444431929,
+              0.06552996339253807
+            ],
+            "n_positive": 37
+          },
+          "from_scratch": {
+            "status": "MEASURED",
+            "n_cells": 50,
+            "mean": -0.06966211768868237,
+            "std": 0.13506626451332746,
+            "t": -3.6469917922859367,
+            "p_one_sided_directional": 0.0003209623436088993,
+            "ci95_ttest": [
+              -0.10804752534692452,
+              -0.031276710030440226
+            ],
+            "n_positive": 12
+          },
+          "concat_retrain": {
+            "status": "MEASURED",
+            "n_cells": 50,
+            "mean": -0.16815912138237665,
+            "std": 0.11920375922164433,
+            "t": -9.975059161243292,
+            "p_one_sided_directional": 1.0935696792557792e-13,
+            "ci95_ttest": [
+              -0.20203645491643807,
+              -0.13428178784831524
+            ],
+            "n_positive": 3
+          }
+        },
+        "p_one_sided_raw": {
+          "kshot": 0.0025106138811468574,
+          "from_scratch": 0.0003209623436088993,
+          "concat_retrain": 1.0935696792557792e-13
+        },
+        "p_one_sided_holm": {
+          "concat_retrain": 3.2807090377673376e-13,
+          "from_scratch": 0.0006419246872177986,
+          "kshot": 0.0025106138811468574
+        },
+        "correction": "Holm-Bonferroni (family = 3 arms)",
+        "note": "p is one-sided in the direction of each arm's observed effect (so a strongly negative control arm is also 'significant')",
+        "significant_after_holm_0.05": [
+          "concat_retrain",
+          "from_scratch",
+          "kshot"
+        ]
+      },
+      "k40": {
+        "members": {
+          "kshot": {
+            "status": "MEASURED",
+            "n_cells": 50,
+            "mean": 0.062353078880536386,
+            "std": 0.09726218640164139,
+            "t": 4.533137340982386,
+            "p_one_sided_directional": 1.877393784583161e-05,
+            "ci95_ttest": [
+              0.034711471346550365,
+              0.0899946864145224
+            ],
+            "n_positive": 40
+          },
+          "from_scratch": {
+            "status": "MEASURED",
+            "n_cells": 50,
+            "mean": -0.04442088899999305,
+            "std": 0.11989358861119073,
+            "t": -2.6198491680895604,
+            "p_one_sided_directional": 0.005839175884414516,
+            "ci95_ttest": [
+              -0.07849426987739211,
+              -0.010347508122593996
+            ],
+            "n_positive": 11
+          },
+          "concat_retrain": {
+            "status": "MEASURED",
+            "n_cells": 50,
+            "mean": -0.16667674623554807,
+            "std": 0.0997239622917058,
+            "t": -11.818449129058308,
+            "p_one_sided_directional": 3.3306690738754696e-16,
+            "ci95_ttest": [
+              -0.1950179827364256,
+              -0.13833550973467054
+            ],
+            "n_positive": 2
+          }
+        },
+        "p_one_sided_raw": {
+          "kshot": 1.877393784583161e-05,
+          "from_scratch": 0.005839175884414516,
+          "concat_retrain": 3.3306690738754696e-16
+        },
+        "p_one_sided_holm": {
+          "concat_retrain": 9.992007221626409e-16,
+          "kshot": 3.754787569166322e-05,
+          "from_scratch": 0.005839175884414516
+        },
+        "correction": "Holm-Bonferroni (family = 3 arms)",
+        "note": "p is one-sided in the direction of each arm's observed effect (so a strongly negative control arm is also 'significant')",
+        "significant_after_holm_0.05": [
+          "concat_retrain",
+          "from_scratch",
+          "kshot"
+        ]
+      }
+    },
+    "C3_support_sampler": {
+      "members": {
+        "random": {
+          "status": "MEASURED",
+          "n_cells": 25,
+          "mean": 0.03589071095303543,
+          "std": 0.058164006494483514,
+          "t": 3.08530250202412,
+          "p_one_sided_directional": 0.002531419410548627,
+          "ci95_ttest": [
+            0.011881789084537908,
+            0.05989963282153295
+          ],
+          "n_positive": 18
+        },
+        "stratified": {
+          "status": "MEASURED",
+          "n_cells": 25,
+          "mean": 0.011637362482933011,
+          "std": 0.06247336242818255,
+          "t": 0.9313859563994946,
+          "p_one_sided_directional": 0.18046457545413844,
+          "ci95_ttest": [
+            -0.014150374088185435,
+            0.03742509905405146
+          ],
+          "n_positive": 17
+        },
+        "scaffold_diverse": {
+          "status": "MEASURED",
+          "n_cells": 25,
+          "mean": 0.024866504267545806,
+          "std": 0.053412936239136496,
+          "t": 2.327760465762012,
+          "p_one_sided_directional": 0.01434038500592717,
+          "ci95_ttest": [
+            0.0028187278122891665,
+            0.046914280722802446
+          ],
+          "n_positive": 15
+        },
+        "activity_scaffold": {
+          "status": "MEASURED",
+          "n_cells": 25,
+          "mean": 0.0030699512901065295,
+          "std": 0.05991280011507513,
+          "t": 0.25620162003862634,
+          "p_one_sided_directional": 0.3999892317387673,
+          "ci95_ttest": [
+            -0.021660837106015653,
+            0.027800739686228714
+          ],
+          "n_positive": 11
+        }
+      },
+      "p_one_sided_raw": {
+        "random": 0.002531419410548627,
+        "stratified": 0.18046457545413844,
+        "scaffold_diverse": 0.01434038500592717,
+        "activity_scaffold": 0.3999892317387673
+      },
+      "p_one_sided_holm": {
+        "random": 0.010125677642194507,
+        "scaffold_diverse": 0.04302115501778151,
+        "stratified": 0.3609291509082769,
+        "activity_scaffold": 0.3999892317387673
+      },
+      "correction": "Holm-Bonferroni (family = 4 arms)",
+      "note": "p is one-sided in the direction of each arm's observed effect (so a strongly negative control arm is also 'significant')",
+      "significant_after_holm_0.05": [
+        "random",
+        "scaffold_diverse"
+      ]
+    },
+    "C4_adapt_scope": {
+      "members": {
+        "head_k5": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.012903055566396664,
+          "std": 0.055739910265800385,
+          "t": 1.6368591276014137,
+          "p_one_sided_directional": 0.054033707655004135,
+          "ci95_ttest": [
+            -0.0029380516567579593,
+            0.02874416278955129
+          ],
+          "n_positive": 29
+        },
+        "full_k5": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": -0.002743856909032355,
+          "std": 0.09208033515458545,
+          "t": -0.21070729420403495,
+          "p_one_sided_directional": 0.4169947450313509,
+          "ci95_ttest": [
+            -0.02891279861295845,
+            0.02342508479489374
+          ],
+          "n_positive": 20
+        },
+        "partial_k5": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.0003650719926703816,
+          "std": 0.08970270258555459,
+          "t": 0.028777826553475903,
+          "p_one_sided_directional": 0.4885793385395232,
+          "ci95_ttest": [
+            -0.02512815401161291,
+            0.02585829799695367
+          ],
+          "n_positive": 20
+        },
+        "head_k20": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.038914387418485,
+          "std": 0.09365190169900728,
+          "t": 2.938181364193578,
+          "p_one_sided_directional": 0.0025106138811468574,
+          "ci95_ttest": [
+            0.012298811444431929,
+            0.06552996339253807
+          ],
+          "n_positive": 37
+        },
+        "full_k20": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.03474047022833329,
+          "std": 0.11281942973812942,
+          "t": 2.1773928601734074,
+          "p_one_sided_directional": 0.01714795581710498,
+          "ci95_ttest": [
+            0.0026775430579354803,
+            0.0668033973987311
+          ],
+          "n_positive": 30
+        },
+        "partial_k20": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.03500383783996141,
+          "std": 0.10699553155334564,
+          "t": 2.313316336192082,
+          "p_one_sided_directional": 0.01247198273765604,
+          "ci95_ttest": [
+            0.004596044220406433,
+            0.06541163145951638
+          ],
+          "n_positive": 31
+        },
+        "head_k40": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.062353078880536386,
+          "std": 0.09726218640164139,
+          "t": 4.533137340982386,
+          "p_one_sided_directional": 1.877393784583161e-05,
+          "ci95_ttest": [
+            0.034711471346550365,
+            0.0899946864145224
+          ],
+          "n_positive": 40
+        },
+        "full_k40": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.06310250677067657,
+          "std": 0.1187291227352534,
+          "t": 3.7581521213553666,
+          "p_one_sided_directional": 0.00022803599811138762,
+          "ci95_ttest": [
+            0.02936006343355098,
+            0.09684495010780216
+          ],
+          "n_positive": 34
+        },
+        "partial_k40": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.06391428362551106,
+          "std": 0.11711379311886648,
+          "t": 3.8590009052485046,
+          "p_one_sided_directional": 0.0001665749330414911,
+          "ci95_ttest": [
+            0.03063091188595176,
+            0.09719765536507036
+          ],
+          "n_positive": 36
+        },
+        "head_k80": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.09955566985069435,
+          "std": 0.10080260396010156,
+          "t": 6.983598289272226,
+          "p_one_sided_directional": 3.516674531440001e-09,
+          "ci95_ttest": [
+            0.07090788677945208,
+            0.1282034529219366
+          ],
+          "n_positive": 46
+        },
+        "full_k80": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.09561999698792296,
+          "std": 0.11666945769476907,
+          "t": 5.795308354315687,
+          "p_one_sided_directional": 2.415187085942849e-07,
+          "ci95_ttest": [
+            0.062462903978677514,
+            0.12877708999716841
+          ],
+          "n_positive": 44
+        },
+        "partial_k80": {
+          "status": "MEASURED",
+          "n_cells": 50,
+          "mean": 0.10022167001340826,
+          "std": 0.11448061768906534,
+          "t": 6.190342428165495,
+          "p_one_sided_directional": 5.95133346067928e-08,
+          "ci95_ttest": [
+            0.06768663845096706,
+            0.13275670157584946
+          ],
+          "n_positive": 44
+        }
+      },
+      "p_one_sided_raw": {
+        "head_k5": 0.054033707655004135,
+        "full_k5": 0.4169947450313509,
+        "partial_k5": 0.4885793385395232,
+        "head_k20": 0.0025106138811468574,
+        "full_k20": 0.01714795581710498,
+        "partial_k20": 0.01247198273765604,
+        "head_k40": 1.877393784583161e-05,
+        "full_k40": 0.00022803599811138762,
+        "partial_k40": 0.0001665749330414911,
+        "head_k80": 3.516674531440001e-09,
+        "full_k80": 2.415187085942849e-07,
+        "partial_k80": 5.95133346067928e-08
+      },
+      "p_one_sided_holm": {
+        "head_k80": 4.2200094377280006e-08,
+        "partial_k80": 6.546466806747208e-07,
+        "full_k80": 2.415187085942849e-06,
+        "head_k40": 0.00016896544061248447,
+        "partial_k40": 0.0013325994643319289,
+        "full_k40": 0.0015962519867797134,
+        "head_k20": 0.015063683286881145,
+        "partial_k20": 0.0623599136882802,
+        "full_k20": 0.06859182326841992,
+        "head_k5": 0.1621011229650124,
+        "full_k5": 0.8339894900627018,
+        "partial_k5": 0.8339894900627018
+      },
+      "correction": "Holm-Bonferroni (family = 12 arms)",
+      "note": "p is one-sided in the direction of each arm's observed effect (so a strongly negative control arm is also 'significant')",
+      "significant_after_holm_0.05": [
+        "full_k40",
+        "full_k80",
+        "head_k20",
+        "head_k40",
+        "head_k80",
+        "partial_k40",
+        "partial_k80"
+      ]
+    }
+  },
+  "protocol": {
+    "cohort": "paper funnel (build_paper_cohort, no time window)",
+    "split": "leave-one-metal-out, ligand-disjoint",
+    "adaptation": "stratified K support; adapt_steps = 20*ceil(K/16)",
+    "c2_control_join": "control.adapted_auc - source.zero_shot_auc on the identical (metal, seed, K); zero_shot is bit-identical across the runs (shared source cache), asserted at runtime",
+    "c3_seeds": [
+      42,
+      43,
+      44,
+      49,
+      123
+    ],
+    "significance": "one-sided t-test (H1: mean paired delta > 0) per arm; t-based 95% CI; Holm-Bonferroni within each family"
+  },
+  "source_artifacts": {
+    "kcurve": "metrics/by_metric/fsma_inhouse_kcurve_ep50.json",
+    "c4_full": "metrics/by_metric/fsma_inhouse_c4_full_ep50.json",
+    "c4_partial": "metrics/by_metric/fsma_inhouse_c4_partial_ep50.json",
+    "c2_from_scratch": "metrics/by_metric/fsma_inhouse_c2_from_scratch_ep50.json",
+    "c2_concat": "metrics/by_metric/fsma_inhouse_c2_concat_retrain_ep50.json",
+    "c3_random": "metrics/by_metric/fsma_inhouse_c3_random_ep50.json",
+    "c3_scaffold": "metrics/by_metric/fsma_inhouse_c3_scaffold_diverse_ep50.json",
+    "c3_activity": "metrics/by_metric/fsma_inhouse_c3_activity_scaffold_ep50.json",
+    "chemprop_stats": "metrics/by_metric/fsma_paper_stats.json"
+  },
+  "caveats": [
+    "Adaptation is NOT bit-reproducible on CUDA (~1e-3 on the 50-cell mean); only the aggregate is reported.",
+    "Capacity is NOT matched to the chemprop reference (hidden=128 vs d_h=300); the comparison is a scorer/representation result.",
+    "chemprop v2 is a REFERENCE scorer here, not the paper's model (project red line: the method result is the in-house D-MPNN)."
+  ]
+}

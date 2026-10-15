@@ -1,0 +1,64 @@
+# EX1 — in-house FSMA C4 adaptation-scope ablation, FULL scope, at the
+# CHEMPROP-MATCHED source budget (epochs=50).
+#
+# WHY: paper_a's tab:scope (05_ablation.tex) is backed by chemprop v2 runs whose
+# source training is config.epochs=50 (configs/fsma_c4_head_k*.yaml).  The
+# existing in-house C4 artifact (metrics/by_metric/fsma_inhouse_kcurve_fullscope
+# .json) was run at epochs=20, i.e. the in-house SOURCE model was trained at 2.5x
+# less than the reference it is compared against, and at that under-budget
+# setting the full-scope low-K delta is NEGATIVE (-0.0435 at K=5).  This config
+# re-measures the full-scope arm at the matched budget so the C4 contrast
+# (full vs head-only) is budget-fair.
+#
+# The head-only partner is configs/ex1_fsma_ep50_kcurve.yaml (K=5 +0.0129 ..
+# K=80 +0.0996, positive at every K).
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 128
+  dropout: 0.1
+
+train:
+  # 50 == the chemprop reference's source-training budget
+  # (configs/fsma_c4_head_k*.yaml: epochs=50).  NOT a tuned value.
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [none]
+  k: [5, 20, 40, 80]
+  seeds: [42, 43, 44, 49, 123, 7, 8, 9, 10, 11]
+  sampler: stratified
+  control: kshot
+  adapt_scope: full
+  # Historical FSMA adaptation schedule: 20*ceil(K/16) optimizer steps.
+  adapt_steps_by_k: "5:20,10:20,20:40,40:60,80:100"
+
+compute:
+  device: cuda:1
+  deterministic: true
+  cache_source: true
+
+output:
+  out: metrics/by_metric/fsma_inhouse_c4_full_ep50.json
+  source_cache_dir: /tmp/fsma_gpu_src_ep50
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  Paired query-AUC delta (adapted minus zero-shot) on the
+  identical held-out query, 10 seeds x 5 metals = 50 cells per K.  Adaptation is
+  NOT bit-reproducible on CUDA (~1e-3 on the 50-cell mean); only the aggregate is
+  reported.  The epochs=20 full-scope curve is carried alongside as a sensitivity,
+  not hidden.

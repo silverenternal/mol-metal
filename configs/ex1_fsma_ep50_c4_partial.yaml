@@ -1,0 +1,57 @@
+# EX1 — in-house FSMA C4 adaptation-scope ablation, PARTIAL scope (head +
+# metal_proj + gru_update), at the CHEMPROP-MATCHED source budget (epochs=50).
+#
+# WHY: paper_a's tab:scope "Head + metal" column is chemprop v2 at
+# config.epochs=50.  The existing in-house C4 artifact
+# (metrics/by_metric/fsma_inhouse_c4_partial.json) was run at epochs=20, so the
+# in-house source model was trained at 2.5x less than the reference.  This config
+# re-measures the partial-scope arm at the matched budget.
+#
+# Partners: full scope = configs/ex1_fsma_ep50_c4_full.yaml; head only =
+# configs/ex1_fsma_ep50_kcurve.yaml.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 128
+  dropout: 0.1
+
+train:
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [none]
+  k: [5, 20, 40, 80]
+  seeds: [42, 43, 44, 49, 123, 7, 8, 9, 10, 11]
+  sampler: stratified
+  control: kshot
+  adapt_scope: partial
+  adapt_steps_by_k: "5:20,10:20,20:40,40:60,80:100"
+
+compute:
+  device: cuda:1
+  deterministic: true
+  cache_source: true
+
+output:
+  out: metrics/by_metric/fsma_inhouse_c4_partial_ep50.json
+  source_cache_dir: /tmp/fsma_gpu_src_ep50
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  Paired query-AUC delta (adapted minus zero-shot), 10 seeds x
+  5 metals = 50 cells per K.  Adaptation is NOT bit-reproducible on CUDA; only
+  the aggregate is reported.  The epochs=20 partial-scope curve is carried
+  alongside as a sensitivity, not hidden.

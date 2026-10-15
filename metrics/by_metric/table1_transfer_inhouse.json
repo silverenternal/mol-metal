@@ -1,0 +1,166 @@
+{
+  "metric": "table1_transfer_inhouse",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/synthesize_table1_inhouse.py",
+  "description": "Paper-A Table 1 (within-metal ceiling vs cross-metal LOMO transfer) rebuilt on the in-house D-MPNN, on the paper-funnel cohort.",
+  "model": "in-house D-MPNN (MetalCytotoxModel within / MetalAwareDMPNN(none) cross), hidden=128 depth=3",
+  "per_metal": {
+    "Ru": {
+      "within": 0.8173427886939503,
+      "within_std": 0.009924006164933915,
+      "within_n_folds": 25,
+      "cross": 0.6240871752794092,
+      "cross_std": 0.013043785963682197,
+      "cross_n": 30,
+      "cross_per_k": {
+        "5": {
+          "mean": 0.6240104707980303,
+          "n": 10
+        },
+        "10": {
+          "mean": 0.6241063631432167,
+          "n": 10
+        },
+        "20": {
+          "mean": 0.6241446918969801,
+          "n": 10
+        }
+      },
+      "loss": 0.19325561341454112,
+      "n_unique": 4793
+    },
+    "Ir": {
+      "within": 0.6649285932388223,
+      "within_std": 0.07348060871628166,
+      "within_n_folds": 25,
+      "cross": 0.6275991610643704,
+      "cross_std": 0.020488942191153322,
+      "cross_n": 30,
+      "cross_per_k": {
+        "5": {
+          "mean": 0.6278672870457763,
+          "n": 10
+        },
+        "10": {
+          "mean": 0.6276910689954167,
+          "n": 10
+        },
+        "20": {
+          "mean": 0.627239127151918,
+          "n": 10
+        }
+      },
+      "loss": 0.03732943217445184,
+      "n_unique": 1281
+    },
+    "Rh": {
+      "within": 0.777971256684492,
+      "within_std": 0.061212154567253436,
+      "within_n_folds": 25,
+      "cross": 0.6773407190760495,
+      "cross_std": 0.024189917968553114,
+      "cross_n": 30,
+      "cross_per_k": {
+        "5": {
+          "mean": 0.6768389147630665,
+          "n": 10
+        },
+        "10": {
+          "mean": 0.6769811320754717,
+          "n": 10
+        },
+        "20": {
+          "mean": 0.6782021103896103,
+          "n": 10
+        }
+      },
+      "loss": 0.10063053760844243,
+      "n_unique": 334
+    },
+    "Os": {
+      "within": 0.6832795698924731,
+      "within_std": 0.052338549115132485,
+      "within_n_folds": 25,
+      "cross": 0.6695201163648158,
+      "cross_std": 0.02813846960118825,
+      "cross_n": 30,
+      "cross_per_k": {
+        "5": {
+          "mean": 0.6682595704948646,
+          "n": 10
+        },
+        "10": {
+          "mean": 0.6692196531791907,
+          "n": 10
+        },
+        "20": {
+          "mean": 0.6710811254203921,
+          "n": 10
+        }
+      },
+      "loss": 0.013759453527657284,
+      "n_unique": 333
+    },
+    "Re": {
+      "within": 0.8031238095238096,
+      "within_std": 0.06389533391527995,
+      "within_n_folds": 25,
+      "cross": 0.48877318234113853,
+      "cross_std": 0.10263337342836798,
+      "cross_n": 30,
+      "cross_per_k": {
+        "5": {
+          "mean": 0.4908996234879435,
+          "n": 10
+        },
+        "10": {
+          "mean": 0.48840939153439156,
+          "n": 10
+        },
+        "20": {
+          "mean": 0.48701053200108024,
+          "n": 10
+        }
+      },
+      "loss": 0.31435062718267104,
+      "n_unique": 250
+    }
+  },
+  "mean": {
+    "within": 0.7493292036067094,
+    "cross": 0.6174640708251568,
+    "loss": 0.13186513278155274,
+    "n_metals": 5
+  },
+  "protocol_note": "within = StratifiedKFold(5) per metal on the paper funnel, 5 split seeds; cross = ligand-disjoint leave-one-metal-out, source-trained model scored zero-shot on the held-out metal, 10 seeds x K in {5,10,20}.  Two disclosed protocol differences from the chemprop reference this migrates (l3_kshot_pf_k40): (1) that reference used a single K=40 for the cross column, while the in-house fsma_l1_ep50 run sweeps K in {5,10,20} -- the cross column here is the mean over all (seed, K) cells, with the per-K breakdown kept under cross_per_k; the K choice moves each metal by <= 0.002.  (2) The chemprop backbone used d_h=300 and ten seeds; the in-house run uses hidden=128 and five within split seeds.  These budget/capacity differences are disclosed, not hidden.",
+  "source_artifacts": {
+    "within": "metrics/by_metric/dmpnn_within_metal_auc_paper_funnel.json",
+    "cross": "metrics/by_metric/fsma_l1_ep50.json"
+  },
+  "chemprop_reference": {
+    "checked": true,
+    "reference_artifact": "metrics/by_metric/fsma_paper_stats.json",
+    "reference_only": true,
+    "note": "chemprop v2 is a REFERENCE scorer here, not the paper's model (project red line: the predictive line is the in-house D-MPNN).",
+    "chemprop_keys": [
+      "MEASURED_vs_PROJECTED",
+      "cross_backbone_xgb",
+      "description",
+      "families",
+      "family_holm_across_runs",
+      "metric",
+      "per_run",
+      "recovery_to_ceiling",
+      "runs",
+      "scope",
+      "significance_policy",
+      "source",
+      "status",
+      "unit"
+    ]
+  },
+  "honest_framing_note": "Every number traces to a JSON on disk (AGENTS.md §5.2).  A metal whose within column is not MEASURED is carried as null, not dropped."
+}

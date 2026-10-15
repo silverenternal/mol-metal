@@ -1,0 +1,219 @@
+{
+  "metric": "pa15_inhouse_metalcond_lomo",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/synthesize_pa15_inhouse.py",
+  "description": "Metal-conditioning ablation on the 24 h probe cohort under the ligand-disjoint leave-one-metal-out protocol, with the in-house D-MPNN (migration of BLK-PA15 off the chemprop v2 reference).  Four arms (none / token / desc / film) share cohort, split and seeds; a paired bootstrap over the 5 metals x 5 seeds cells tests whether an explicit metal input recovers cross-metal transfer.",
+  "model": "MetalAwareDMPNN, hidden=128 depth=3 dropout=0.1, epochs=50, zero-shot (no adaptation)",
+  "protocol": {
+    "cohort": "MetalCytotoxDataset + CytotoxFilter(24h, ic50>=0.01uM) + collapse_duplicates, per metal",
+    "split": "leave-one-metal-out, ligand-disjoint (held-out metal's ligands dropped from the train pool)",
+    "query": "entire held-out metal cohort (no_adapt=true)",
+    "seeds": [
+      42,
+      43,
+      44,
+      49,
+      123
+    ],
+    "metals": [
+      "Ru",
+      "Ir",
+      "Rh",
+      "Os",
+      "Re"
+    ],
+    "epochs": 50,
+    "significance": "paired bootstrap over 25 (metal, seed) cells, 10000 resamples, seed 42; Holm-Bonferroni over the 3 conditioned arms"
+  },
+  "arms": {
+    "none": {
+      "inhouse_metal_injection": "none",
+      "artifact": "metrics/by_metric/ex1_lomo_24h_none.json"
+    },
+    "token": {
+      "inhouse_metal_injection": "readout",
+      "artifact": "metrics/by_metric/ex1_pa15_24h_token.json"
+    },
+    "desc": {
+      "inhouse_metal_injection": "readout + rich_metal + chem_metal",
+      "artifact": "metrics/by_metric/ex1_pa15_24h_desc.json"
+    },
+    "film": {
+      "inhouse_metal_injection": "film",
+      "artifact": "metrics/by_metric/ex1_pa15_24h_film.json"
+    }
+  },
+  "cross_metal": {
+    "none": {
+      "mean_across_metals": 0.562473459909197,
+      "per_metal_mean": {
+        "Ru": 0.5673726730357831,
+        "Ir": 0.5412232537076871,
+        "Rh": 0.43252595155709345,
+        "Os": 0.6307692307692306,
+        "Re": 0.6404761904761904
+      },
+      "per_metal_std": {
+        "Ru": 0.019018582629353024,
+        "Ir": 0.011670890813694197,
+        "Rh": 0.017404534726587262,
+        "Os": 0.05977553341203718,
+        "Re": 0.09769161066156497
+      }
+    },
+    "token": {
+      "mean_across_metals": 0.5693930593320436,
+      "per_metal_mean": {
+        "Ru": 0.5555707623008544,
+        "Ir": 0.5579786029661497,
+        "Rh": 0.45501730103806226,
+        "Os": 0.6481605351170568,
+        "Re": 0.6302380952380953
+      },
+      "per_metal_std": {
+        "Ru": 0.011603621521153025,
+        "Ir": 0.005466340403187484,
+        "Rh": 0.04950636945738249,
+        "Os": 0.03885360730824775,
+        "Re": 0.05238960967419074
+      }
+    },
+    "desc": {
+      "mean_across_metals": 0.5859851952029362,
+      "per_metal_mean": {
+        "Ru": 0.5652938518981119,
+        "Ir": 0.5614513755236047,
+        "Rh": 0.46193771626297575,
+        "Os": 0.6729096989966555,
+        "Re": 0.6683333333333333
+      },
+      "per_metal_std": {
+        "Ru": 0.011191837812290854,
+        "Ir": 0.01898253797401515,
+        "Rh": 0.04691102375109295,
+        "Os": 0.04388286144978388,
+        "Re": 0.039098399036996835
+      }
+    },
+    "film": {
+      "mean_across_metals": 0.49663113724173824,
+      "per_metal_mean": {
+        "Ru": 0.5963253564357751,
+        "Ir": 0.5088135401335899,
+        "Rh": 0.3366782006920415,
+        "Os": 0.5872909698996656,
+        "Re": 0.45404761904761914
+      },
+      "per_metal_std": {
+        "Ru": 0.04022849101452756,
+        "Ir": 0.0877201056282897,
+        "Rh": 0.020691925796160623,
+        "Os": 0.08210276606881116,
+        "Re": 0.03901130715789718
+      }
+    }
+  },
+  "paired_delta_vs_none": {
+    "token": {
+      "n_cells": 25,
+      "n_boot": 10000,
+      "mean_delta": 0.006919599422846729,
+      "delta_std": 0.0782228088993187,
+      "ci95_delta": [
+        -0.024981458533450338,
+        0.03634961183522241
+      ],
+      "ci_excludes_zero": false,
+      "p_one_sided_greater": 0.3284,
+      "p_one_sided_less": 0.6716
+    },
+    "desc": {
+      "n_cells": 25,
+      "n_boot": 10000,
+      "mean_delta": 0.023511735293739275,
+      "delta_std": 0.07264989355003577,
+      "ci95_delta": [
+        -0.0036247944719390132,
+        0.05214350700243186
+      ],
+      "ci_excludes_zero": false,
+      "p_one_sided_greater": 0.0454,
+      "p_one_sided_less": 0.9546
+    },
+    "film": {
+      "n_cells": 25,
+      "n_boot": 10000,
+      "mean_delta": -0.0658423226674587,
+      "delta_std": 0.10353354545091904,
+      "ci95_delta": [
+        -0.10564341744306859,
+        -0.026724658383104602
+      ],
+      "ci_excludes_zero": true,
+      "p_one_sided_greater": 0.9996,
+      "p_one_sided_less": 0.00039999999999995595
+    }
+  },
+  "paired_delta_per_metal": {
+    "token": {
+      "Ru": -0.01180191073492869,
+      "Ir": 0.016755349258462605,
+      "Rh": 0.022491349480968835,
+      "Os": 0.017391304347826143,
+      "Re": -0.010238095238095246
+    },
+    "desc": {
+      "Ru": -0.0020788211376712162,
+      "Ir": 0.02022812181591762,
+      "Rh": 0.02941176470588237,
+      "Os": 0.04214046822742477,
+      "Re": 0.027857142857142848
+    },
+    "film": {
+      "Ru": 0.02895268339999204,
+      "Ir": -0.03240971357409711,
+      "Rh": -0.0958477508650519,
+      "Os": -0.04347826086956517,
+      "Re": -0.18642857142857142
+    }
+  },
+  "holm": {
+    "correction": "Holm-Bonferroni (family = 3 conditioned arms vs the same baseline)",
+    "n_family": 3,
+    "p_one_sided_raw": {
+      "token": 0.3284,
+      "desc": 0.0454,
+      "film": 0.9996
+    },
+    "p_one_sided_holm": {
+      "desc": 0.13620000000000002,
+      "token": 0.6568,
+      "film": 0.9996
+    },
+    "significant_after_holm_0.05": []
+  },
+  "chemprop_reference": {
+    "checked": true,
+    "reference_artifact": "metrics/by_metric/pa15_metalcond_lomo.json",
+    "reference_only": true,
+    "chemprop_mean_across_metals": {
+      "none": 0.5693038349313381,
+      "token": 0.5205426486851314,
+      "desc": 0.5478203538438805
+    },
+    "note": "chemprop v2 is a REFERENCE scorer here, not the paper's model (project red line: the predictive line is the in-house D-MPNN)."
+  },
+  "contributes_method": false,
+  "verdict": "CONDITIONING DOES NOT RECOVER THE COLLAPSE: the best arm (desc) moves cross-metal AUC by +0.0235 (paired bootstrap 95% CI [-0.0036, +0.0521], Holm p=0.1362); the cross-metal collapse is intrinsic to the metal axis, not an artefact of an unconditioned scorer.",
+  "caveats": [
+    "The in-house `token` arm concatenates the projected metal VECTOR (18-d base metal features: identity + oxidation state + charge) at the readout — the closest in-house analogue of chemprop's learnable metal token.",
+    "The `desc` arm adds the transferable descriptor blocks (--rich-metal + --chem-metal).  The chem-metal block is all-zero if molmetal/data/metal_chemistry_5.csv is absent, in which case the arm degenerates to token.",
+    "Rh (n=51), Os (n=36) and Re (n=74) test folds are small; per-metal deltas on those cells carry large variance.",
+    "Capacity is NOT matched to the chemprop reference (128 vs 300); the comparison is reported as a scorer/representation result.",
+    "The in-house model is bit-reproducible on CPU (OMP_NUM_THREADS=1), so the 5-seed spread here reflects split/init variance, not run nondeterminism."
+  ],
+  "honest_framing_note": "Every number is MEASURED from the four ex1 arm reports on disk; the verdict and contributes_method flag are derived from the bootstrap CI and the Holm-adjusted p, not asserted."
+}

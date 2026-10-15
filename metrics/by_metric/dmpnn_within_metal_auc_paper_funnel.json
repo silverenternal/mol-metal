@@ -1,0 +1,2224 @@
+{
+  "metric": "dmpnn_within_metal_auc",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "description": "D-MPNN within-metal ROC-AUC on the probe's deduplicated cohort, measured on the SAME folds the probe's XGBoost within-metal column uses. Fills BLK-P1: the paper names the D-MPNN as a predictive-line model but had no within-metal number for it on this cohort.",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/dmpnn_within_metal_auc.py",
+  "data_source": "MetalCytoToxDB (Krasnov et al., J. Med. Chem. 2026, 69(8), 8838)",
+  "cohort": "paper funnel (build_paper_cohort, no time window) then collapse_duplicates(tie_rule=active)",
+  "cohort_spec": "paper_funnel",
+  "fold_protocol": "StratifiedKFold(n_splits=5, shuffle=True, random_state=split_seed); identical to the probe's within_metal. split_seed=42 reproduces the probe's published folds exactly (paired slice).",
+  "dmpnn_arch": {
+    "model": "MaskedMetalCytotoxModel (D-MPNN backbone + 2-way head, padding-masked pooled readout)",
+    "hidden": 128,
+    "depth": 3,
+    "dropout": 0.1,
+    "lr": 0.001,
+    "epochs": 50,
+    "batch_size": 64,
+    "class_weight": true,
+    "mask_padding": true,
+    "train_seeds": [
+      0
+    ]
+  },
+  "xgb_reference": {
+    "model": "morgan_fp(radius=2, 2048bit) + xgboost",
+    "note": "re-measured on the SAME folds; the delta is paired"
+  },
+  "split_seeds": [
+    42,
+    43,
+    44,
+    49,
+    123
+  ],
+  "device": "cpu",
+  "krasnov_within_metal_auc": {
+    "Ru": 0.81,
+    "Ir": 0.73,
+    "Rh": null,
+    "Os": null,
+    "Re": null
+  },
+  "min_unique_for_gate": 200,
+  "honest_negative": {
+    "pooled_mean_reported": false,
+    "why": "Ru is 64% of the deduplicated cohort, so a pooled mean is a Ru mean wearing a 5-metal label. The per-metal table is the unit.",
+    "unresolvable_metals": [],
+    "dmpnn_below_xgb": [
+      "Ir",
+      "Os",
+      "Re",
+      "Rh",
+      "Ru"
+    ],
+    "fallback_if_dmpnn_loses": "If the D-MPNN lands below the XGB within-metal column, the activity-prediction backbone should be named 'GBDT by protocol' and the D-MPNN restricted to its winning roles (bond head, search value). Written to disk either way."
+  },
+  "per_metal": {
+    "Ir": {
+      "n_rows_raw": 3674,
+      "n_unique": 1281,
+      "pos_rate": 0.5113192818110851,
+      "resolvable": true,
+      "krasnov_reported_auc": 0.73,
+      "n_invalid_graphs": 0,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "n_folds_measured": 25,
+      "dmpnn_auc": 0.6649285932388223,
+      "dmpnn_auc_across_folds_std": 0.07348060871628166,
+      "xgb_auc_same_folds": 0.8277000169635284,
+      "delta_dmpnn_minus_xgb": -0.1627714237247061,
+      "dmpnn_beats_xgb": false,
+      "dmpnn_beats_krasnov": false,
+      "paired_split_seed_42": {
+        "dmpnn_auc": 0.686924318429662,
+        "xgb_auc": 0.8210321095359262,
+        "delta_dmpnn_minus_xgb": -0.13410779110626425
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "dmpnn_auc": 0.686924318429662,
+          "dmpnn_auc_fold_std": 0.04244001883987022,
+          "xgb_auc": 0.8210321095359262,
+          "delta_dmpnn_minus_xgb": -0.13410779110626425,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 1024,
+              "n_test": 257,
+              "pos_rate_test": 0.5097276264591439,
+              "dmpnn_seed_aucs": [
+                0.7257360959651037
+              ],
+              "dmpnn_auc": 0.7257360959651037,
+              "dmpnn_acc": 0.6653696498054474,
+              "xgb_auc": 0.7785956621834484,
+              "delta_dmpnn_minus_xgb": -0.052859566218344756
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.6679083969465649
+              ],
+              "dmpnn_auc": 0.6679083969465649,
+              "dmpnn_acc": 0.63671875,
+              "xgb_auc": 0.8327938931297709,
+              "delta_dmpnn_minus_xgb": -0.16488549618320603
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.6751755725190839
+              ],
+              "dmpnn_auc": 0.6751755725190839,
+              "dmpnn_acc": 0.6328125,
+              "xgb_auc": 0.8114198473282442,
+              "delta_dmpnn_minus_xgb": -0.13624427480916035
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.7419236641221374
+              ],
+              "dmpnn_auc": 0.7419236641221374,
+              "dmpnn_acc": 0.66015625,
+              "xgb_auc": 0.843145038167939,
+              "delta_dmpnn_minus_xgb": -0.10122137404580156
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.62387786259542
+              ],
+              "dmpnn_auc": 0.62387786259542,
+              "dmpnn_acc": 0.6015625,
+              "xgb_auc": 0.839206106870229,
+              "delta_dmpnn_minus_xgb": -0.215328244274809
+            }
+          ]
+        },
+        {
+          "split_seed": 43,
+          "dmpnn_auc": 0.6424238458742275,
+          "dmpnn_auc_fold_std": 0.08238643972582475,
+          "xgb_auc": 0.8226400096934448,
+          "delta_dmpnn_minus_xgb": -0.18021616381921723,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 1024,
+              "n_test": 257,
+              "pos_rate_test": 0.5097276264591439,
+              "dmpnn_seed_aucs": [
+                0.6797528171573973
+              ],
+              "dmpnn_auc": 0.6797528171573973,
+              "dmpnn_acc": 0.622568093385214,
+              "xgb_auc": 0.7812916515206592,
+              "delta_dmpnn_minus_xgb": -0.10153883436326183
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.6023206106870228
+              ],
+              "dmpnn_auc": 0.6023206106870228,
+              "dmpnn_acc": 0.5859375,
+              "xgb_auc": 0.8341374045801526,
+              "delta_dmpnn_minus_xgb": -0.2318167938931298
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.7224427480916029
+              ],
+              "dmpnn_auc": 0.7224427480916029,
+              "dmpnn_acc": 0.66015625,
+              "xgb_auc": 0.8724274809160305,
+              "delta_dmpnn_minus_xgb": -0.1499847328244276
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.5
+              ],
+              "dmpnn_auc": 0.5,
+              "dmpnn_acc": 0.48828125,
+              "xgb_auc": 0.8042748091603054,
+              "delta_dmpnn_minus_xgb": -0.30427480916030536
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.7076030534351146
+              ],
+              "dmpnn_auc": 0.7076030534351146,
+              "dmpnn_acc": 0.65234375,
+              "xgb_auc": 0.8210687022900764,
+              "delta_dmpnn_minus_xgb": -0.1134656488549618
+            }
+          ]
+        },
+        {
+          "split_seed": 44,
+          "dmpnn_auc": 0.682107354901248,
+          "dmpnn_auc_fold_std": 0.040253738864118586,
+          "xgb_auc": 0.8281432691142614,
+          "delta_dmpnn_minus_xgb": -0.14603591421301343,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 1024,
+              "n_test": 257,
+              "pos_rate_test": 0.5097276264591439,
+              "dmpnn_seed_aucs": [
+                0.743971889010057
+              ],
+              "dmpnn_auc": 0.743971889010057,
+              "dmpnn_acc": 0.6303501945525292,
+              "xgb_auc": 0.8226705440445898,
+              "delta_dmpnn_minus_xgb": -0.07869865503453288
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.6366412213740457
+              ],
+              "dmpnn_auc": 0.6366412213740457,
+              "dmpnn_acc": 0.5859375,
+              "xgb_auc": 0.8183206106870229,
+              "delta_dmpnn_minus_xgb": -0.18167938931297722
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.6986870229007633
+              ],
+              "dmpnn_auc": 0.6986870229007633,
+              "dmpnn_acc": 0.57421875,
+              "xgb_auc": 0.828824427480916,
+              "delta_dmpnn_minus_xgb": -0.13013740458015266
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.639267175572519
+              ],
+              "dmpnn_auc": 0.639267175572519,
+              "dmpnn_acc": 0.56640625,
+              "xgb_auc": 0.8306564885496183,
+              "delta_dmpnn_minus_xgb": -0.19138931297709927
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.691969465648855
+              ],
+              "dmpnn_auc": 0.691969465648855,
+              "dmpnn_acc": 0.66796875,
+              "xgb_auc": 0.8402442748091602,
+              "delta_dmpnn_minus_xgb": -0.14827480916030522
+            }
+          ]
+        },
+        {
+          "split_seed": 49,
+          "dmpnn_auc": 0.6900961105052709,
+          "dmpnn_auc_fold_std": 0.048131145574536564,
+          "xgb_auc": 0.832134060341694,
+          "delta_dmpnn_minus_xgb": -0.14203794983642315,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 1024,
+              "n_test": 257,
+              "pos_rate_test": 0.5097276264591439,
+              "dmpnn_seed_aucs": [
+                0.7433660487095601
+              ],
+              "dmpnn_auc": 0.7433660487095601,
+              "dmpnn_acc": 0.669260700389105,
+              "xgb_auc": 0.8475099963649582,
+              "delta_dmpnn_minus_xgb": -0.10414394765539803
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.7462595419847328
+              ],
+              "dmpnn_auc": 0.7462595419847328,
+              "dmpnn_acc": 0.68359375,
+              "xgb_auc": 0.8354198473282443,
+              "delta_dmpnn_minus_xgb": -0.08916030534351149
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.6646106870229008
+              ],
+              "dmpnn_auc": 0.6646106870229008,
+              "dmpnn_acc": 0.63671875,
+              "xgb_auc": 0.8419541984732825,
+              "delta_dmpnn_minus_xgb": -0.17734351145038163
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.6747480916030535
+              ],
+              "dmpnn_auc": 0.6747480916030535,
+              "dmpnn_acc": 0.578125,
+              "xgb_auc": 0.804763358778626,
+              "delta_dmpnn_minus_xgb": -0.13001526717557255
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.6214961832061069
+              ],
+              "dmpnn_auc": 0.6214961832061069,
+              "dmpnn_acc": 0.60546875,
+              "xgb_auc": 0.8310229007633587,
+              "delta_dmpnn_minus_xgb": -0.20952671755725183
+            }
+          ]
+        },
+        {
+          "split_seed": 123,
+          "dmpnn_auc": 0.6230913364837029,
+          "dmpnn_auc_fold_std": 0.10393364498021176,
+          "xgb_auc": 0.8345506361323155,
+          "delta_dmpnn_minus_xgb": -0.21145929964861265,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 1024,
+              "n_test": 257,
+              "pos_rate_test": 0.5097276264591439,
+              "dmpnn_seed_aucs": [
+                0.7167696595177512
+              ],
+              "dmpnn_auc": 0.7167696595177512,
+              "dmpnn_acc": 0.6731517509727627,
+              "xgb_auc": 0.8256997455470737,
+              "delta_dmpnn_minus_xgb": -0.10893008602932253
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.5038167938931297
+              ],
+              "dmpnn_auc": 0.5038167938931297,
+              "dmpnn_acc": 0.51171875,
+              "xgb_auc": 0.8578320610687024,
+              "delta_dmpnn_minus_xgb": -0.35401526717557263
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.746442748091603
+              ],
+              "dmpnn_auc": 0.746442748091603,
+              "dmpnn_acc": 0.703125,
+              "xgb_auc": 0.8547786259541985,
+              "delta_dmpnn_minus_xgb": -0.10833587786259546
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.5
+              ],
+              "dmpnn_auc": 0.5,
+              "dmpnn_acc": 0.51171875,
+              "xgb_auc": 0.8357251908396947,
+              "delta_dmpnn_minus_xgb": -0.33572519083969465
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 1025,
+              "n_test": 256,
+              "pos_rate_test": 0.51171875,
+              "dmpnn_seed_aucs": [
+                0.6484274809160305
+              ],
+              "dmpnn_auc": 0.6484274809160305,
+              "dmpnn_acc": 0.62109375,
+              "xgb_auc": 0.7987175572519084,
+              "delta_dmpnn_minus_xgb": -0.15029007633587788
+            }
+          ]
+        }
+      ]
+    },
+    "Os": {
+      "n_rows_raw": 966,
+      "n_unique": 333,
+      "pos_rate": 0.46546546546546547,
+      "resolvable": true,
+      "krasnov_reported_auc": null,
+      "n_invalid_graphs": 0,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "n_folds_measured": 25,
+      "dmpnn_auc": 0.6832795698924731,
+      "dmpnn_auc_across_folds_std": 0.052338549115132485,
+      "xgb_auc_same_folds": 0.821251920122888,
+      "delta_dmpnn_minus_xgb": -0.13797235023041488,
+      "dmpnn_beats_xgb": false,
+      "dmpnn_beats_krasnov": null,
+      "paired_split_seed_42": {
+        "dmpnn_auc": 0.6973783922171017,
+        "xgb_auc": 0.8286507936507936,
+        "delta_dmpnn_minus_xgb": -0.1312724014336919
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "dmpnn_auc": 0.6973783922171017,
+          "dmpnn_auc_fold_std": 0.07300042529924448,
+          "xgb_auc": 0.8286507936507936,
+          "delta_dmpnn_minus_xgb": -0.1312724014336919,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.6120071684587813
+              ],
+              "dmpnn_auc": 0.6120071684587813,
+              "dmpnn_acc": 0.582089552238806,
+              "xgb_auc": 0.7732974910394266,
+              "delta_dmpnn_minus_xgb": -0.16129032258064524
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.8091397849462365
+              ],
+              "dmpnn_auc": 0.8091397849462365,
+              "dmpnn_acc": 0.7611940298507462,
+              "xgb_auc": 0.8938172043010753,
+              "delta_dmpnn_minus_xgb": -0.08467741935483875
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.6666666666666667
+              ],
+              "dmpnn_auc": 0.6666666666666667,
+              "dmpnn_acc": 0.6268656716417911,
+              "xgb_auc": 0.7222222222222222,
+              "delta_dmpnn_minus_xgb": -0.05555555555555547
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 66,
+              "pos_rate_test": 0.4696969696969697,
+              "dmpnn_seed_aucs": [
+                0.7539170506912442
+              ],
+              "dmpnn_auc": 0.7539170506912442,
+              "dmpnn_acc": 0.7424242424242424,
+              "xgb_auc": 0.9096774193548387,
+              "delta_dmpnn_minus_xgb": -0.15576036866359455
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 66,
+              "pos_rate_test": 0.4696969696969697,
+              "dmpnn_seed_aucs": [
+                0.6451612903225806
+              ],
+              "dmpnn_auc": 0.6451612903225806,
+              "dmpnn_acc": 0.6212121212121212,
+              "xgb_auc": 0.8442396313364054,
+              "delta_dmpnn_minus_xgb": -0.19907834101382482
+            }
+          ]
+        },
+        {
+          "split_seed": 43,
+          "dmpnn_auc": 0.6777009728622632,
+          "dmpnn_auc_fold_std": 0.050835741855293264,
+          "xgb_auc": 0.8063364055299539,
+          "delta_dmpnn_minus_xgb": -0.12863543266769073,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.6917562724014337
+              ],
+              "dmpnn_auc": 0.6917562724014337,
+              "dmpnn_acc": 0.7014925373134329,
+              "xgb_auc": 0.8315412186379927,
+              "delta_dmpnn_minus_xgb": -0.13978494623655902
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.5869175627240144
+              ],
+              "dmpnn_auc": 0.5869175627240144,
+              "dmpnn_acc": 0.5671641791044776,
+              "xgb_auc": 0.814516129032258,
+              "delta_dmpnn_minus_xgb": -0.2275985663082436
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.7043010752688172
+              ],
+              "dmpnn_auc": 0.7043010752688172,
+              "dmpnn_acc": 0.6716417910447762,
+              "xgb_auc": 0.7934587813620071,
+              "delta_dmpnn_minus_xgb": -0.08915770609318985
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 66,
+              "pos_rate_test": 0.4696969696969697,
+              "dmpnn_seed_aucs": [
+                0.7382488479262673
+              ],
+              "dmpnn_auc": 0.7382488479262673,
+              "dmpnn_acc": 0.6818181818181818,
+              "xgb_auc": 0.8059907834101383,
+              "delta_dmpnn_minus_xgb": -0.06774193548387097
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 66,
+              "pos_rate_test": 0.4696969696969697,
+              "dmpnn_seed_aucs": [
+                0.6672811059907834
+              ],
+              "dmpnn_auc": 0.6672811059907834,
+              "dmpnn_acc": 0.5757575757575758,
+              "xgb_auc": 0.7861751152073732,
+              "delta_dmpnn_minus_xgb": -0.11889400921658977
+            }
+          ]
+        },
+        {
+          "split_seed": 44,
+          "dmpnn_auc": 0.6681233998975934,
+          "dmpnn_auc_fold_std": 0.04589221808379888,
+          "xgb_auc": 0.8251203277009728,
+          "delta_dmpnn_minus_xgb": -0.15699692780337937,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.6281362007168458
+              ],
+              "dmpnn_auc": 0.6281362007168458,
+              "dmpnn_acc": 0.5671641791044776,
+              "xgb_auc": 0.8476702508960573,
+              "delta_dmpnn_minus_xgb": -0.21953405017921146
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.6084229390681003
+              ],
+              "dmpnn_auc": 0.6084229390681003,
+              "dmpnn_acc": 0.6417910447761194,
+              "xgb_auc": 0.7876344086021505,
+              "delta_dmpnn_minus_xgb": -0.1792114695340502
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.6966845878136201
+              ],
+              "dmpnn_auc": 0.6966845878136201,
+              "dmpnn_acc": 0.6417910447761194,
+              "xgb_auc": 0.8396057347670252,
+              "delta_dmpnn_minus_xgb": -0.14292114695340508
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 66,
+              "pos_rate_test": 0.4696969696969697,
+              "dmpnn_seed_aucs": [
+                0.671889400921659
+              ],
+              "dmpnn_auc": 0.671889400921659,
+              "dmpnn_acc": 0.6060606060606061,
+              "xgb_auc": 0.7714285714285714,
+              "delta_dmpnn_minus_xgb": -0.0995391705069123
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 66,
+              "pos_rate_test": 0.4696969696969697,
+              "dmpnn_seed_aucs": [
+                0.7354838709677419
+              ],
+              "dmpnn_auc": 0.7354838709677419,
+              "dmpnn_acc": 0.7121212121212122,
+              "xgb_auc": 0.8792626728110599,
+              "delta_dmpnn_minus_xgb": -0.14377880184331793
+            }
+          ]
+        },
+        {
+          "split_seed": 49,
+          "dmpnn_auc": 0.7038556067588326,
+          "dmpnn_auc_fold_std": 0.02223180956043728,
+          "xgb_auc": 0.8087890424987199,
+          "delta_dmpnn_minus_xgb": -0.10493343573988723,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.7132616487455197
+              ],
+              "dmpnn_auc": 0.7132616487455197,
+              "dmpnn_acc": 0.6268656716417911,
+              "xgb_auc": 0.8109318996415771,
+              "delta_dmpnn_minus_xgb": -0.09767025089605741
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.6971326164874552
+              ],
+              "dmpnn_auc": 0.6971326164874552,
+              "dmpnn_acc": 0.6417910447761194,
+              "xgb_auc": 0.7844982078853047,
+              "delta_dmpnn_minus_xgb": -0.0873655913978495
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.7374551971326165
+              ],
+              "dmpnn_auc": 0.7374551971326165,
+              "dmpnn_acc": 0.6567164179104478,
+              "xgb_auc": 0.850358422939068,
+              "delta_dmpnn_minus_xgb": -0.11290322580645151
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 66,
+              "pos_rate_test": 0.4696969696969697,
+              "dmpnn_seed_aucs": [
+                0.6691244239631335
+              ],
+              "dmpnn_auc": 0.6691244239631335,
+              "dmpnn_acc": 0.6060606060606061,
+              "xgb_auc": 0.7751152073732719,
+              "delta_dmpnn_minus_xgb": -0.10599078341013835
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 66,
+              "pos_rate_test": 0.4696969696969697,
+              "dmpnn_seed_aucs": [
+                0.7023041474654378
+              ],
+              "dmpnn_auc": 0.7023041474654378,
+              "dmpnn_acc": 0.6060606060606061,
+              "xgb_auc": 0.8230414746543779,
+              "delta_dmpnn_minus_xgb": -0.12073732718894015
+            }
+          ]
+        },
+        {
+          "split_seed": 123,
+          "dmpnn_auc": 0.6693394777265744,
+          "dmpnn_auc_fold_std": 0.04588712618103728,
+          "xgb_auc": 0.8373630312339989,
+          "delta_dmpnn_minus_xgb": -0.16802355350742448,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.6281362007168458
+              ],
+              "dmpnn_auc": 0.6281362007168458,
+              "dmpnn_acc": 0.5671641791044776,
+              "xgb_auc": 0.7831541218637993,
+              "delta_dmpnn_minus_xgb": -0.15501792114695345
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.7060931899641577
+              ],
+              "dmpnn_auc": 0.7060931899641577,
+              "dmpnn_acc": 0.5970149253731343,
+              "xgb_auc": 0.8127240143369177,
+              "delta_dmpnn_minus_xgb": -0.10663082437275995
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 266,
+              "n_test": 67,
+              "pos_rate_test": 0.4626865671641791,
+              "dmpnn_seed_aucs": [
+                0.7410394265232975
+              ],
+              "dmpnn_auc": 0.7410394265232975,
+              "dmpnn_acc": 0.6119402985074627,
+              "xgb_auc": 0.9139784946236559,
+              "delta_dmpnn_minus_xgb": -0.17293906810035842
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 66,
+              "pos_rate_test": 0.4696969696969697,
+              "dmpnn_seed_aucs": [
+                0.6419354838709678
+              ],
+              "dmpnn_auc": 0.6419354838709678,
+              "dmpnn_acc": 0.5454545454545454,
+              "xgb_auc": 0.8483870967741935,
+              "delta_dmpnn_minus_xgb": -0.20645161290322578
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 66,
+              "pos_rate_test": 0.4696969696969697,
+              "dmpnn_seed_aucs": [
+                0.6294930875576037
+              ],
+              "dmpnn_auc": 0.6294930875576037,
+              "dmpnn_acc": 0.5757575757575758,
+              "xgb_auc": 0.8285714285714286,
+              "delta_dmpnn_minus_xgb": -0.19907834101382493
+            }
+          ]
+        }
+      ]
+    },
+    "Re": {
+      "n_rows_raw": 666,
+      "n_unique": 250,
+      "pos_rate": 0.3,
+      "resolvable": true,
+      "krasnov_reported_auc": null,
+      "n_invalid_graphs": 0,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "n_folds_measured": 25,
+      "dmpnn_auc": 0.8031238095238096,
+      "dmpnn_auc_across_folds_std": 0.06389533391527995,
+      "xgb_auc_same_folds": 0.8426666666666667,
+      "delta_dmpnn_minus_xgb": -0.0395428571428571,
+      "dmpnn_beats_xgb": false,
+      "dmpnn_beats_krasnov": null,
+      "paired_split_seed_42": {
+        "dmpnn_auc": 0.7961904761904762,
+        "xgb_auc": 0.8438095238095238,
+        "delta_dmpnn_minus_xgb": -0.04761904761904756
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "dmpnn_auc": 0.7961904761904762,
+          "dmpnn_auc_fold_std": 0.0748452674452895,
+          "xgb_auc": 0.8438095238095238,
+          "delta_dmpnn_minus_xgb": -0.04761904761904756,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8514285714285714
+              ],
+              "dmpnn_auc": 0.8514285714285714,
+              "dmpnn_acc": 0.82,
+              "xgb_auc": 0.8933333333333333,
+              "delta_dmpnn_minus_xgb": -0.04190476190476189
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8476190476190476
+              ],
+              "dmpnn_auc": 0.8476190476190476,
+              "dmpnn_acc": 0.84,
+              "xgb_auc": 0.8647619047619047,
+              "delta_dmpnn_minus_xgb": -0.017142857142857126
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8438095238095238
+              ],
+              "dmpnn_auc": 0.8438095238095238,
+              "dmpnn_acc": 0.72,
+              "xgb_auc": 0.8495238095238095,
+              "delta_dmpnn_minus_xgb": -0.005714285714285672
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.7828571428571428
+              ],
+              "dmpnn_auc": 0.7828571428571428,
+              "dmpnn_acc": 0.62,
+              "xgb_auc": 0.8590476190476191,
+              "delta_dmpnn_minus_xgb": -0.07619047619047625
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.6552380952380953
+              ],
+              "dmpnn_auc": 0.6552380952380953,
+              "dmpnn_acc": 0.72,
+              "xgb_auc": 0.7523809523809524,
+              "delta_dmpnn_minus_xgb": -0.09714285714285709
+            }
+          ]
+        },
+        {
+          "split_seed": 43,
+          "dmpnn_auc": 0.8068571428571427,
+          "dmpnn_auc_fold_std": 0.019372468015376964,
+          "xgb_auc": 0.8480000000000001,
+          "delta_dmpnn_minus_xgb": -0.04114285714285737,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.7714285714285714
+              ],
+              "dmpnn_auc": 0.7714285714285714,
+              "dmpnn_acc": 0.66,
+              "xgb_auc": 0.8514285714285714,
+              "delta_dmpnn_minus_xgb": -0.08000000000000007
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8133333333333332
+              ],
+              "dmpnn_auc": 0.8133333333333332,
+              "dmpnn_acc": 0.82,
+              "xgb_auc": 0.8666666666666667,
+              "delta_dmpnn_minus_xgb": -0.053333333333333455
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8076190476190476
+              ],
+              "dmpnn_auc": 0.8076190476190476,
+              "dmpnn_acc": 0.84,
+              "xgb_auc": 0.8685714285714285,
+              "delta_dmpnn_minus_xgb": -0.06095238095238098
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8114285714285714
+              ],
+              "dmpnn_auc": 0.8114285714285714,
+              "dmpnn_acc": 0.82,
+              "xgb_auc": 0.8247619047619048,
+              "delta_dmpnn_minus_xgb": -0.01333333333333342
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8304761904761905
+              ],
+              "dmpnn_auc": 0.8304761904761905,
+              "dmpnn_acc": 0.84,
+              "xgb_auc": 0.8285714285714285,
+              "delta_dmpnn_minus_xgb": 0.0019047619047619646
+            }
+          ]
+        },
+        {
+          "split_seed": 44,
+          "dmpnn_auc": 0.8007619047619048,
+          "dmpnn_auc_fold_std": 0.08135451937740923,
+          "xgb_auc": 0.8552380952380952,
+          "delta_dmpnn_minus_xgb": -0.054476190476190456,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8647619047619047
+              ],
+              "dmpnn_auc": 0.8647619047619047,
+              "dmpnn_acc": 0.8,
+              "xgb_auc": 0.9504761904761905,
+              "delta_dmpnn_minus_xgb": -0.08571428571428574
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.9047619047619049
+              ],
+              "dmpnn_auc": 0.9047619047619049,
+              "dmpnn_acc": 0.78,
+              "xgb_auc": 0.8076190476190476,
+              "delta_dmpnn_minus_xgb": 0.09714285714285731
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.700952380952381
+              ],
+              "dmpnn_auc": 0.700952380952381,
+              "dmpnn_acc": 0.76,
+              "xgb_auc": 0.8057142857142856,
+              "delta_dmpnn_minus_xgb": -0.10476190476190461
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.7123809523809523
+              ],
+              "dmpnn_auc": 0.7123809523809523,
+              "dmpnn_acc": 0.74,
+              "xgb_auc": 0.8685714285714287,
+              "delta_dmpnn_minus_xgb": -0.15619047619047632
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8209523809523809
+              ],
+              "dmpnn_auc": 0.8209523809523809,
+              "dmpnn_acc": 0.8,
+              "xgb_auc": 0.8438095238095238,
+              "delta_dmpnn_minus_xgb": -0.02285714285714291
+            }
+          ]
+        },
+        {
+          "split_seed": 49,
+          "dmpnn_auc": 0.808,
+          "dmpnn_auc_fold_std": 0.047830388162192775,
+          "xgb_auc": 0.8506666666666668,
+          "delta_dmpnn_minus_xgb": -0.04266666666666674,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8533333333333333
+              ],
+              "dmpnn_auc": 0.8533333333333333,
+              "dmpnn_acc": 0.88,
+              "xgb_auc": 0.9047619047619048,
+              "delta_dmpnn_minus_xgb": -0.05142857142857149
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8380952380952381
+              ],
+              "dmpnn_auc": 0.8380952380952381,
+              "dmpnn_acc": 0.68,
+              "xgb_auc": 0.8857142857142858,
+              "delta_dmpnn_minus_xgb": -0.04761904761904767
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8457142857142858
+              ],
+              "dmpnn_auc": 0.8457142857142858,
+              "dmpnn_acc": 0.84,
+              "xgb_auc": 0.9085714285714285,
+              "delta_dmpnn_minus_xgb": -0.06285714285714272
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.7695238095238095
+              ],
+              "dmpnn_auc": 0.7695238095238095,
+              "dmpnn_acc": 0.76,
+              "xgb_auc": 0.8247619047619048,
+              "delta_dmpnn_minus_xgb": -0.05523809523809531
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.7333333333333334
+              ],
+              "dmpnn_auc": 0.7333333333333334,
+              "dmpnn_acc": 0.58,
+              "xgb_auc": 0.7295238095238097,
+              "delta_dmpnn_minus_xgb": 0.003809523809523707
+            }
+          ]
+        },
+        {
+          "split_seed": 123,
+          "dmpnn_auc": 0.8038095238095238,
+          "dmpnn_auc_fold_std": 0.07374159700773847,
+          "xgb_auc": 0.8156190476190476,
+          "delta_dmpnn_minus_xgb": -0.011809523809523825,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8895238095238096
+              ],
+              "dmpnn_auc": 0.8895238095238096,
+              "dmpnn_acc": 0.86,
+              "xgb_auc": 0.819047619047619,
+              "delta_dmpnn_minus_xgb": 0.07047619047619058
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.7523809523809524
+              ],
+              "dmpnn_auc": 0.7523809523809524,
+              "dmpnn_acc": 0.76,
+              "xgb_auc": 0.7466666666666666,
+              "delta_dmpnn_minus_xgb": 0.005714285714285783
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.8
+              ],
+              "dmpnn_auc": 0.8,
+              "dmpnn_acc": 0.74,
+              "xgb_auc": 0.8971428571428571,
+              "delta_dmpnn_minus_xgb": -0.09714285714285709
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.6971428571428572
+              ],
+              "dmpnn_auc": 0.6971428571428572,
+              "dmpnn_acc": 0.7,
+              "xgb_auc": 0.7638095238095238,
+              "delta_dmpnn_minus_xgb": -0.06666666666666665
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 200,
+              "n_test": 50,
+              "pos_rate_test": 0.3,
+              "dmpnn_seed_aucs": [
+                0.88
+              ],
+              "dmpnn_auc": 0.88,
+              "dmpnn_acc": 0.88,
+              "xgb_auc": 0.8514285714285715,
+              "delta_dmpnn_minus_xgb": 0.02857142857142847
+            }
+          ]
+        }
+      ]
+    },
+    "Rh": {
+      "n_rows_raw": 951,
+      "n_unique": 334,
+      "pos_rate": 0.5089820359281437,
+      "resolvable": true,
+      "krasnov_reported_auc": null,
+      "n_invalid_graphs": 0,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "n_folds_measured": 25,
+      "dmpnn_auc": 0.777971256684492,
+      "dmpnn_auc_across_folds_std": 0.061212154567253436,
+      "xgb_auc_same_folds": 0.8087349598930481,
+      "delta_dmpnn_minus_xgb": -0.030763703208556148,
+      "dmpnn_beats_xgb": false,
+      "dmpnn_beats_krasnov": null,
+      "paired_split_seed_42": {
+        "dmpnn_auc": 0.7770220588235295,
+        "xgb_auc": 0.8116978609625669,
+        "delta_dmpnn_minus_xgb": -0.034675802139037426
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "dmpnn_auc": 0.7770220588235295,
+          "dmpnn_auc_fold_std": 0.03597701974132849,
+          "xgb_auc": 0.8116978609625669,
+          "delta_dmpnn_minus_xgb": -0.034675802139037426,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.7201426024955437
+              ],
+              "dmpnn_auc": 0.7201426024955437,
+              "dmpnn_acc": 0.6716417910447762,
+              "xgb_auc": 0.7076648841354723,
+              "delta_dmpnn_minus_xgb": 0.012477718360071388
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.8021390374331551
+              ],
+              "dmpnn_auc": 0.8021390374331551,
+              "dmpnn_acc": 0.7164179104477612,
+              "xgb_auc": 0.8012477718360071,
+              "delta_dmpnn_minus_xgb": 0.0008912655971479166
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.7718360071301248
+              ],
+              "dmpnn_auc": 0.7718360071301248,
+              "dmpnn_acc": 0.7761194029850746,
+              "xgb_auc": 0.857397504456328,
+              "delta_dmpnn_minus_xgb": -0.08556149732620322
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.7647058823529411
+              ],
+              "dmpnn_auc": 0.7647058823529411,
+              "dmpnn_acc": 0.7014925373134329,
+              "xgb_auc": 0.820855614973262,
+              "delta_dmpnn_minus_xgb": -0.05614973262032086
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 268,
+              "n_test": 66,
+              "pos_rate_test": 0.5151515151515151,
+              "dmpnn_seed_aucs": [
+                0.8262867647058824
+              ],
+              "dmpnn_auc": 0.8262867647058824,
+              "dmpnn_acc": 0.6818181818181818,
+              "xgb_auc": 0.8713235294117647,
+              "delta_dmpnn_minus_xgb": -0.04503676470588236
+            }
+          ]
+        },
+        {
+          "split_seed": 43,
+          "dmpnn_auc": 0.771908422459893,
+          "dmpnn_auc_fold_std": 0.07324820047517124,
+          "xgb_auc": 0.8154857397504456,
+          "delta_dmpnn_minus_xgb": -0.043577317290552586,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.7745098039215685
+              ],
+              "dmpnn_auc": 0.7745098039215685,
+              "dmpnn_acc": 0.7164179104477612,
+              "xgb_auc": 0.7887700534759358,
+              "delta_dmpnn_minus_xgb": -0.014260249554367221
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.6639928698752228
+              ],
+              "dmpnn_auc": 0.6639928698752228,
+              "dmpnn_acc": 0.6567164179104478,
+              "xgb_auc": 0.7745098039215685,
+              "delta_dmpnn_minus_xgb": -0.11051693404634577
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.7584670231729055
+              ],
+              "dmpnn_auc": 0.7584670231729055,
+              "dmpnn_acc": 0.7164179104477612,
+              "xgb_auc": 0.8877005347593584,
+              "delta_dmpnn_minus_xgb": -0.1292335115864529
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.768270944741533
+              ],
+              "dmpnn_auc": 0.768270944741533,
+              "dmpnn_acc": 0.6567164179104478,
+              "xgb_auc": 0.8065953654188949,
+              "delta_dmpnn_minus_xgb": -0.03832442067736186
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 268,
+              "n_test": 66,
+              "pos_rate_test": 0.5151515151515151,
+              "dmpnn_seed_aucs": [
+                0.8943014705882353
+              ],
+              "dmpnn_auc": 0.8943014705882353,
+              "dmpnn_acc": 0.8181818181818182,
+              "xgb_auc": 0.8198529411764706,
+              "delta_dmpnn_minus_xgb": 0.07444852941176472
+            }
+          ]
+        },
+        {
+          "split_seed": 44,
+          "dmpnn_auc": 0.769741532976827,
+          "dmpnn_auc_fold_std": 0.057241806184294086,
+          "xgb_auc": 0.8036681149732618,
+          "delta_dmpnn_minus_xgb": -0.033926581996434835,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.7691622103386808
+              ],
+              "dmpnn_auc": 0.7691622103386808,
+              "dmpnn_acc": 0.6268656716417911,
+              "xgb_auc": 0.8609625668449197,
+              "delta_dmpnn_minus_xgb": -0.09180035650623886
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.7459893048128342
+              ],
+              "dmpnn_auc": 0.7459893048128342,
+              "dmpnn_acc": 0.6417910447761194,
+              "xgb_auc": 0.7941176470588234,
+              "delta_dmpnn_minus_xgb": -0.048128342245989164
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.8689839572192513
+              ],
+              "dmpnn_auc": 0.8689839572192513,
+              "dmpnn_acc": 0.7761194029850746,
+              "xgb_auc": 0.821301247771836,
+              "delta_dmpnn_minus_xgb": 0.04768270944741526
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.6925133689839572
+              ],
+              "dmpnn_auc": 0.6925133689839572,
+              "dmpnn_acc": 0.6417910447761194,
+              "xgb_auc": 0.7308377896613191,
+              "delta_dmpnn_minus_xgb": -0.03832442067736186
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 268,
+              "n_test": 66,
+              "pos_rate_test": 0.5151515151515151,
+              "dmpnn_seed_aucs": [
+                0.7720588235294117
+              ],
+              "dmpnn_auc": 0.7720588235294117,
+              "dmpnn_acc": 0.7424242424242424,
+              "xgb_auc": 0.8111213235294117,
+              "delta_dmpnn_minus_xgb": -0.0390625
+            }
+          ]
+        },
+        {
+          "split_seed": 49,
+          "dmpnn_auc": 0.7804979946524064,
+          "dmpnn_auc_fold_std": 0.08537144624600221,
+          "xgb_auc": 0.8077595811051694,
+          "delta_dmpnn_minus_xgb": -0.027261586452762998,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.8868092691622104
+              ],
+              "dmpnn_auc": 0.8868092691622104,
+              "dmpnn_acc": 0.7164179104477612,
+              "xgb_auc": 0.8770053475935828,
+              "delta_dmpnn_minus_xgb": 0.009803921568627527
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.7798573975044564
+              ],
+              "dmpnn_auc": 0.7798573975044564,
+              "dmpnn_acc": 0.746268656716418,
+              "xgb_auc": 0.7415329768270944,
+              "delta_dmpnn_minus_xgb": 0.03832442067736197
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.7593582887700535
+              ],
+              "dmpnn_auc": 0.7593582887700535,
+              "dmpnn_acc": 0.7164179104477612,
+              "xgb_auc": 0.8052584670231728,
+              "delta_dmpnn_minus_xgb": -0.04590017825311932
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.6354723707664884
+              ],
+              "dmpnn_auc": 0.6354723707664884,
+              "dmpnn_acc": 0.582089552238806,
+              "xgb_auc": 0.7611408199643493,
+              "delta_dmpnn_minus_xgb": -0.1256684491978609
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 268,
+              "n_test": 66,
+              "pos_rate_test": 0.5151515151515151,
+              "dmpnn_seed_aucs": [
+                0.8409926470588236
+              ],
+              "dmpnn_auc": 0.8409926470588236,
+              "dmpnn_acc": 0.6666666666666666,
+              "xgb_auc": 0.853860294117647,
+              "delta_dmpnn_minus_xgb": -0.012867647058823373
+            }
+          ]
+        },
+        {
+          "split_seed": 123,
+          "dmpnn_auc": 0.790686274509804,
+          "dmpnn_auc_fold_std": 0.03516593424549175,
+          "xgb_auc": 0.8050635026737968,
+          "delta_dmpnn_minus_xgb": -0.014377228163992783,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.7994652406417111
+              ],
+              "dmpnn_auc": 0.7994652406417111,
+              "dmpnn_acc": 0.746268656716418,
+              "xgb_auc": 0.8181818181818181,
+              "delta_dmpnn_minus_xgb": -0.018716577540107027
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.7887700534759359
+              ],
+              "dmpnn_auc": 0.7887700534759359,
+              "dmpnn_acc": 0.7014925373134329,
+              "xgb_auc": 0.7575757575757576,
+              "delta_dmpnn_minus_xgb": 0.031194295900178304
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.8360071301247772
+              ],
+              "dmpnn_auc": 0.8360071301247772,
+              "dmpnn_acc": 0.7611940298507462,
+              "xgb_auc": 0.8894830659536542,
+              "delta_dmpnn_minus_xgb": -0.053475935828877
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 267,
+              "n_test": 67,
+              "pos_rate_test": 0.5074626865671642,
+              "dmpnn_seed_aucs": [
+                0.8012477718360071
+              ],
+              "dmpnn_auc": 0.8012477718360071,
+              "dmpnn_acc": 0.6865671641791045,
+              "xgb_auc": 0.7834224598930482,
+              "delta_dmpnn_minus_xgb": 0.017825311942959
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 268,
+              "n_test": 66,
+              "pos_rate_test": 0.5151515151515151,
+              "dmpnn_seed_aucs": [
+                0.7279411764705883
+              ],
+              "dmpnn_auc": 0.7279411764705883,
+              "dmpnn_acc": 0.7121212121212122,
+              "xgb_auc": 0.776654411764706,
+              "delta_dmpnn_minus_xgb": -0.04871323529411764
+            }
+          ]
+        }
+      ]
+    },
+    "Ru": {
+      "n_rows_raw": 15799,
+      "n_unique": 4793,
+      "pos_rate": 0.3248487377425412,
+      "resolvable": true,
+      "krasnov_reported_auc": 0.81,
+      "n_invalid_graphs": 0,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "n_folds_measured": 25,
+      "dmpnn_auc": 0.8173427886939503,
+      "dmpnn_auc_across_folds_std": 0.009924006164933915,
+      "xgb_auc_same_folds": 0.8613918463910637,
+      "delta_dmpnn_minus_xgb": -0.044049057697113425,
+      "dmpnn_beats_xgb": false,
+      "dmpnn_beats_krasnov": true,
+      "paired_split_seed_42": {
+        "dmpnn_auc": 0.8149255950735407,
+        "xgb_auc": 0.863954221456549,
+        "delta_dmpnn_minus_xgb": -0.04902862638300831
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "dmpnn_auc": 0.8149255950735407,
+          "dmpnn_auc_fold_std": 0.011841206874478788,
+          "xgb_auc": 0.863954221456549,
+          "delta_dmpnn_minus_xgb": -0.04902862638300831,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32533889468196037,
+              "dmpnn_seed_aucs": [
+                0.8231878888756787
+              ],
+              "dmpnn_auc": 0.8231878888756787,
+              "dmpnn_acc": 0.7205422314911366,
+              "xgb_auc": 0.8687383584987913,
+              "delta_dmpnn_minus_xgb": -0.0455504696231126
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32533889468196037,
+              "dmpnn_seed_aucs": [
+                0.8198168073554473
+              ],
+              "dmpnn_auc": 0.8198168073554473,
+              "dmpnn_acc": 0.7497393117831074,
+              "xgb_auc": 0.85620269092062,
+              "delta_dmpnn_minus_xgb": -0.036385883565172694
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32429614181439,
+              "dmpnn_seed_aucs": [
+                0.824947401849867
+              ],
+              "dmpnn_auc": 0.824947401849867,
+              "dmpnn_acc": 0.7090719499478624,
+              "xgb_auc": 0.8603866460243738,
+              "delta_dmpnn_minus_xgb": -0.03543924417450672
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 3835,
+              "n_test": 958,
+              "pos_rate_test": 0.3246346555323591,
+              "dmpnn_seed_aucs": [
+                0.7923858322109962
+              ],
+              "dmpnn_auc": 0.7923858322109962,
+              "dmpnn_acc": 0.7181628392484343,
+              "xgb_auc": 0.8625488900043237,
+              "delta_dmpnn_minus_xgb": -0.07016305779332743
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 3835,
+              "n_test": 958,
+              "pos_rate_test": 0.3246346555323591,
+              "dmpnn_seed_aucs": [
+                0.8142900450757142
+              ],
+              "dmpnn_auc": 0.8142900450757142,
+              "dmpnn_acc": 0.7567849686847599,
+              "xgb_auc": 0.8718945218346363,
+              "delta_dmpnn_minus_xgb": -0.05760447675892211
+            }
+          ]
+        },
+        {
+          "split_seed": 43,
+          "dmpnn_auc": 0.8155315534719569,
+          "dmpnn_auc_fold_std": 0.010741750792951048,
+          "xgb_auc": 0.8640597011109525,
+          "delta_dmpnn_minus_xgb": -0.0485281476389956,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32533889468196037,
+              "dmpnn_seed_aucs": [
+                0.8264475092141242
+              ],
+              "dmpnn_auc": 0.8264475092141242,
+              "dmpnn_acc": 0.7601668404588112,
+              "xgb_auc": 0.8858191653786709,
+              "delta_dmpnn_minus_xgb": -0.05937165616454665
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32533889468196037,
+              "dmpnn_seed_aucs": [
+                0.8069368485713154
+              ],
+              "dmpnn_auc": 0.8069368485713154,
+              "dmpnn_acc": 0.7059436913451512,
+              "xgb_auc": 0.8483161930804898,
+              "delta_dmpnn_minus_xgb": -0.041379344509174354
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32429614181439,
+              "dmpnn_seed_aucs": [
+                0.8284159025048629
+              ],
+              "dmpnn_auc": 0.8284159025048629,
+              "dmpnn_acc": 0.7278415015641293,
+              "xgb_auc": 0.8794534754475805,
+              "delta_dmpnn_minus_xgb": -0.0510375729427176
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 3835,
+              "n_test": 958,
+              "pos_rate_test": 0.3246346555323591,
+              "dmpnn_seed_aucs": [
+                0.8007772703101627
+              ],
+              "dmpnn_auc": 0.8007772703101627,
+              "dmpnn_acc": 0.7494780793319415,
+              "xgb_auc": 0.8498784893920494,
+              "delta_dmpnn_minus_xgb": -0.04910121908188669
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 3835,
+              "n_test": 958,
+              "pos_rate_test": 0.3246346555323591,
+              "dmpnn_seed_aucs": [
+                0.8150802367593195
+              ],
+              "dmpnn_auc": 0.8150802367593195,
+              "dmpnn_acc": 0.7150313152400835,
+              "xgb_auc": 0.8568311822559723,
+              "delta_dmpnn_minus_xgb": -0.041750945496652814
+            }
+          ]
+        },
+        {
+          "split_seed": 44,
+          "dmpnn_auc": 0.8210917576754376,
+          "dmpnn_auc_fold_std": 0.0031795420555974555,
+          "xgb_auc": 0.861839873175148,
+          "delta_dmpnn_minus_xgb": -0.04074811549971036,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32533889468196037,
+              "dmpnn_seed_aucs": [
+                0.8215035865731384
+              ],
+              "dmpnn_auc": 0.8215035865731384,
+              "dmpnn_acc": 0.7330552659019812,
+              "xgb_auc": 0.8623008560218761,
+              "delta_dmpnn_minus_xgb": -0.04079726944873774
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32533889468196037,
+              "dmpnn_seed_aucs": [
+                0.8269082154321721
+              ],
+              "dmpnn_auc": 0.8269082154321721,
+              "dmpnn_acc": 0.7393117831074035,
+              "xgb_auc": 0.8506766932191971,
+              "delta_dmpnn_minus_xgb": -0.023768477787025066
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32429614181439,
+              "dmpnn_seed_aucs": [
+                0.8195387241475129
+              ],
+              "dmpnn_auc": 0.8195387241475129,
+              "dmpnn_acc": 0.7278415015641293,
+              "xgb_auc": 0.8795328688817434,
+              "delta_dmpnn_minus_xgb": -0.05999414473423048
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 3835,
+              "n_test": 958,
+              "pos_rate_test": 0.3246346555323591,
+              "dmpnn_seed_aucs": [
+                0.8174880850027583
+              ],
+              "dmpnn_auc": 0.8174880850027583,
+              "dmpnn_acc": 0.7609603340292276,
+              "xgb_auc": 0.8436290174289449,
+              "delta_dmpnn_minus_xgb": -0.026140932426186647
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 3835,
+              "n_test": 958,
+              "pos_rate_test": 0.3246346555323591,
+              "dmpnn_seed_aucs": [
+                0.8200201772216067
+              ],
+              "dmpnn_auc": 0.8200201772216067,
+              "dmpnn_acc": 0.7171189979123174,
+              "xgb_auc": 0.8730599303239786,
+              "delta_dmpnn_minus_xgb": -0.053039753102371856
+            }
+          ]
+        },
+        {
+          "split_seed": 49,
+          "dmpnn_auc": 0.8178101862111123,
+          "dmpnn_auc_fold_std": 0.01350249771218419,
+          "xgb_auc": 0.8603893874151854,
+          "delta_dmpnn_minus_xgb": -0.0425792012040731,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32533889468196037,
+              "dmpnn_seed_aucs": [
+                0.8392060991558674
+              ],
+              "dmpnn_auc": 0.8392060991558674,
+              "dmpnn_acc": 0.7455683003128258,
+              "xgb_auc": 0.8795723853683669,
+              "delta_dmpnn_minus_xgb": -0.04036628621249949
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32533889468196037,
+              "dmpnn_seed_aucs": [
+                0.8073901240439108
+              ],
+              "dmpnn_auc": 0.8073901240439108,
+              "dmpnn_acc": 0.7361835245046924,
+              "xgb_auc": 0.8792355249078588,
+              "delta_dmpnn_minus_xgb": -0.07184540086394808
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32429614181439,
+              "dmpnn_seed_aucs": [
+                0.8121898693978008
+              ],
+              "dmpnn_auc": 0.8121898693978008,
+              "dmpnn_acc": 0.7194994786235662,
+              "xgb_auc": 0.8430689531975704,
+              "delta_dmpnn_minus_xgb": -0.030879083799769558
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 3835,
+              "n_test": 958,
+              "pos_rate_test": 0.3246346555323591,
+              "dmpnn_seed_aucs": [
+                0.827365481047824
+              ],
+              "dmpnn_auc": 0.827365481047824,
+              "dmpnn_acc": 0.7849686847599165,
+              "xgb_auc": 0.8463847488035305,
+              "delta_dmpnn_minus_xgb": -0.019019267755706504
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 3835,
+              "n_test": 958,
+              "pos_rate_test": 0.3246346555323591,
+              "dmpnn_seed_aucs": [
+                0.8028993574101593
+              ],
+              "dmpnn_auc": 0.8028993574101593,
+              "dmpnn_acc": 0.6889352818371608,
+              "xgb_auc": 0.8536853247986005,
+              "delta_dmpnn_minus_xgb": -0.05078596738844121
+            }
+          ]
+        },
+        {
+          "split_seed": 123,
+          "dmpnn_auc": 0.8173548510377033,
+          "dmpnn_auc_fold_std": 0.004583273603444643,
+          "xgb_auc": 0.8567160487974833,
+          "delta_dmpnn_minus_xgb": -0.039361197759779976,
+          "per_fold": [
+            {
+              "fold": 0,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32533889468196037,
+              "dmpnn_seed_aucs": [
+                0.8113977727578964
+              ],
+              "dmpnn_auc": 0.8113977727578964,
+              "dmpnn_acc": 0.7153284671532847,
+              "xgb_auc": 0.8495620814013396,
+              "delta_dmpnn_minus_xgb": -0.03816430864344322
+            },
+            {
+              "fold": 1,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32533889468196037,
+              "dmpnn_seed_aucs": [
+                0.8134065509451908
+              ],
+              "dmpnn_auc": 0.8134065509451908,
+              "dmpnn_acc": 0.7643378519290928,
+              "xgb_auc": 0.8434738239606865,
+              "delta_dmpnn_minus_xgb": -0.03006727301549572
+            },
+            {
+              "fold": 2,
+              "status": "MEASURED",
+              "n_train": 3834,
+              "n_test": 959,
+              "pos_rate_test": 0.32429614181439,
+              "dmpnn_seed_aucs": [
+                0.8192806954864833
+              ],
+              "dmpnn_auc": 0.8192806954864833,
+              "dmpnn_acc": 0.748696558915537,
+              "xgb_auc": 0.85511194474217,
+              "delta_dmpnn_minus_xgb": -0.035831249255686703
+            },
+            {
+              "fold": 3,
+              "status": "MEASURED",
+              "n_train": 3835,
+              "n_test": 958,
+              "pos_rate_test": 0.3246346555323591,
+              "dmpnn_seed_aucs": [
+                0.81831058011997
+              ],
+              "dmpnn_auc": 0.81831058011997,
+              "dmpnn_acc": 0.7860125260960334,
+              "xgb_auc": 0.8604019541092452,
+              "delta_dmpnn_minus_xgb": -0.042091373989275205
+            },
+            {
+              "fold": 4,
+              "status": "MEASURED",
+              "n_train": 3835,
+              "n_test": 958,
+              "pos_rate_test": 0.3246346555323591,
+              "dmpnn_seed_aucs": [
+                0.8243786558789765
+              ],
+              "dmpnn_auc": 0.8243786558789765,
+              "dmpnn_acc": 0.7546972860125261,
+              "xgb_auc": 0.8750304397739754,
+              "delta_dmpnn_minus_xgb": -0.050651783894998914
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "merged_from_slices": {
+    "dir": "molmetal/reports/wm_pf_slices",
+    "n_slice_files": 25,
+    "slice_files": [
+      "Ir_s123.json",
+      "Ir_s42.json",
+      "Ir_s43.json",
+      "Ir_s44.json",
+      "Ir_s49.json",
+      "Os_s123.json",
+      "Os_s42.json",
+      "Os_s43.json",
+      "Os_s44.json",
+      "Os_s49.json",
+      "Re_s123.json",
+      "Re_s42.json",
+      "Re_s43.json",
+      "Re_s44.json",
+      "Re_s49.json",
+      "Rh_s123.json",
+      "Rh_s42.json",
+      "Rh_s43.json",
+      "Rh_s44.json",
+      "Rh_s49.json",
+      "Ru_s123.json",
+      "Ru_s42.json",
+      "Ru_s43.json",
+      "Ru_s44.json",
+      "Ru_s49.json"
+    ],
+    "note": "One slice per (metal, split_seed); unioned by merge_within_metal_slices.py.  Aggregates recomputed exactly as _run_metal does."
+  }
+}

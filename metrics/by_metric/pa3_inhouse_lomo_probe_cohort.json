@@ -1,0 +1,221 @@
+{
+  "metric": "pa3_inhouse_lomo_probe_cohort",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/synthesize_pa3_inhouse.py",
+  "description": "In-house D-MPNN cross-metal LOMO on the 24 h probe cohort — the migration of Paper A's PA3 'representation-dependence' column off the chemprop v2 reference onto the self-developed model.",
+  "model": "MetalAwareDMPNN(metal_injection='none'), hidden=128 depth=3 dropout=0.1, epochs=50",
+  "protocol": {
+    "cohort": "MetalCytotoxDataset + CytotoxFilter(24h, ic50>=0.01uM) + collapse_duplicates, per metal",
+    "split": "leave-one-metal-out, ligand-disjoint (held-out metal's ligands dropped from the train pool)",
+    "cross_query": "entire held-out metal cohort (no_adapt=true; no support draw)",
+    "within_query": "StratifiedKFold(5) per metal, 5 split seeds (carried from dmpnn_within_metal_auc.json)",
+    "seeds": [
+      42,
+      43,
+      44,
+      49,
+      123
+    ],
+    "metals": [
+      "Ru",
+      "Ir",
+      "Rh",
+      "Os",
+      "Re"
+    ],
+    "significance": "label-permutation null (1000 shuffles, seed 42) on the seed-42 ranking; Holm-Bonferroni over the 5-metal family"
+  },
+  "cross_metal": {
+    "Ru": {
+      "n_test": 1255,
+      "n_seeds": 5,
+      "inhouse_cross_mean_auc": 0.5673726730357831,
+      "inhouse_cross_std": 0.019018582629353024,
+      "inhouse_cross_per_seed": {
+        "42": 0.5527345566643193,
+        "43": 0.5449879748601496,
+        "44": 0.5784291579744616,
+        "49": 0.5625539802548531,
+        "123": 0.5981576954251319
+      },
+      "inhouse_within_mean_auc": 0.7041370517133089,
+      "inhouse_within_std": 0.03994566032272837,
+      "inhouse_penalty_within_minus_cross": 0.13676437867752578,
+      "permutation_null_verdict": "above (sig)",
+      "permutation_p_above_chance": 0.002,
+      "permutation_null_sd": 0.01811906425232045
+    },
+    "Ir": {
+      "n_test": 534,
+      "n_seeds": 5,
+      "inhouse_cross_mean_auc": 0.5412232537076871,
+      "inhouse_cross_std": 0.011670890813694197,
+      "inhouse_cross_per_seed": {
+        "42": 0.5188780708705989,
+        "43": 0.5493745046982905,
+        "44": 0.5405015283595607,
+        "49": 0.5500113211819314,
+        "123": 0.5473508434280538
+      },
+      "inhouse_within_mean_auc": 0.6911931201469482,
+      "inhouse_within_std": 0.050676503548108,
+      "inhouse_penalty_within_minus_cross": 0.14996986643926113,
+      "permutation_null_verdict": "in null",
+      "permutation_p_above_chance": 0.224,
+      "permutation_null_sd": 0.025536241660928164
+    },
+    "Rh": {
+      "n_test": 51,
+      "n_seeds": 5,
+      "inhouse_cross_mean_auc": 0.43252595155709345,
+      "inhouse_cross_std": 0.017404534726587262,
+      "inhouse_cross_per_seed": {
+        "42": 0.4342560553633218,
+        "43": 0.43079584775086505,
+        "44": 0.4013840830449827,
+        "49": 0.4532871972318339,
+        "123": 0.4429065743944637
+      },
+      "inhouse_within_mean_auc": 0.6426190476190476,
+      "inhouse_within_std": 0.15013674794633136,
+      "inhouse_penalty_within_minus_cross": 0.2100930960619542,
+      "permutation_null_verdict": "in null",
+      "permutation_p_above_chance": 0.769,
+      "permutation_null_sd": 0.08657084489485797
+    },
+    "Os": {
+      "n_test": 36,
+      "n_seeds": 5,
+      "inhouse_cross_mean_auc": 0.6307692307692306,
+      "inhouse_cross_std": 0.05977553341203718,
+      "inhouse_cross_per_seed": {
+        "42": 0.5719063545150501,
+        "43": 0.5719063545150501,
+        "44": 0.6822742474916388,
+        "49": 0.608695652173913,
+        "123": 0.7190635451505016
+      },
+      "inhouse_within_mean_auc": 0.42,
+      "inhouse_within_std": 0.19916492328386207,
+      "inhouse_penalty_within_minus_cross": -0.21076923076923065,
+      "permutation_null_verdict": "in null",
+      "permutation_p_above_chance": 0.238,
+      "permutation_null_sd": 0.10287307442755012
+    },
+    "Re": {
+      "n_test": 74,
+      "n_seeds": 5,
+      "inhouse_cross_mean_auc": 0.6404761904761904,
+      "inhouse_cross_std": 0.09769161066156497,
+      "inhouse_cross_per_seed": {
+        "42": 0.49523809523809526,
+        "43": 0.7107142857142857,
+        "44": 0.6595238095238095,
+        "49": 0.569047619047619,
+        "123": 0.7678571428571429
+      },
+      "inhouse_within_mean_auc": 0.8244444444444444,
+      "inhouse_within_std": 0.18180677573650467,
+      "inhouse_penalty_within_minus_cross": 0.183968253968254,
+      "permutation_null_verdict": "in null",
+      "permutation_p_above_chance": 0.51,
+      "permutation_null_sd": 0.08685232390558385
+    }
+  },
+  "cross_metal_bootstrap_ci": {
+    "Ru": {
+      "n_boot": 2000,
+      "observed_auc_seed42": 0.5527345566643193,
+      "ci95": [
+        0.5147277544774896,
+        0.5898272360763076
+      ],
+      "ci_excludes_chance": true
+    },
+    "Ir": {
+      "n_boot": 2000,
+      "observed_auc_seed42": 0.5188780708705989,
+      "ci95": [
+        0.4714456174571539,
+        0.5669780208843682
+      ],
+      "ci_excludes_chance": false
+    },
+    "Rh": {
+      "n_boot": 2000,
+      "observed_auc_seed42": 0.4342560553633218,
+      "ci95": [
+        0.25907097288676234,
+        0.6229374191744431
+      ],
+      "ci_excludes_chance": false
+    },
+    "Os": {
+      "n_boot": 2000,
+      "observed_auc_seed42": 0.5719063545150501,
+      "ci95": [
+        0.3497795414462081,
+        0.7864008059364096
+      ],
+      "ci_excludes_chance": false
+    },
+    "Re": {
+      "n_boot": 2000,
+      "observed_auc_seed42": 0.49523809523809526,
+      "ci95": [
+        0.3237896211116026,
+        0.6729034820937068
+      ],
+      "ci_excludes_chance": false
+    }
+  },
+  "permutation_null_holm": {
+    "correction": "Holm-Bonferroni (family = 5 held-out metals)",
+    "n_family": 5,
+    "p_two_sided_holm": {
+      "Ru": 0.02,
+      "Ir": 1.0,
+      "Rh": 1.0,
+      "Os": 1.0,
+      "Re": 1.0
+    },
+    "significant_after_holm_0.05": [
+      "Ru"
+    ]
+  },
+  "chemprop_reference": {
+    "checked": true,
+    "reference_artifact": "metrics/by_metric/pa3_chemprop_lomo_probe_cohort.json",
+    "reference_only": true,
+    "chemprop_cross_mean_auc": {
+      "Ru": 0.5621264566364156,
+      "Ir": 0.48411213630703037,
+      "Rh": 0.4915224913494809,
+      "Os": 0.5558528428093645,
+      "Re": 0.7367857142857143
+    },
+    "inhouse_minus_chemprop_cross": {
+      "Ru": 0.005246216399367509,
+      "Ir": 0.05711111740065672,
+      "Rh": -0.05899653979238745,
+      "Os": 0.0749163879598661,
+      "Re": -0.09630952380952384
+    },
+    "note": "chemprop v2 is a REFERENCE scorer here, not the paper's model (project red line: the predictive line is the in-house D-MPNN)."
+  },
+  "why": "PA3 in-house migration: Paper A's 'representation-dependence' paragraph cited a chemprop v2 scorer.  The project red line requires the predictive line to be backed by the self-developed D-MPNN.  This artifact re-measures the same cross-metal LOMO column with the in-house MetalAwareDMPNN (metal_injection='none', zero-shot) on the same 24 h probe cohort and the same ligand-disjoint LOMO split.",
+  "caveats": [
+    "Capacity is NOT matched: chemprop v2 used d_h=300 depth=3, the in-house D-MPNN uses hidden=128 depth=3.  Differences here are reported as a scorer/representation comparison, not a like-for-like capacity comparison.",
+    "Per-metal test folds are small for Rh (n=51), Os (n=36) and Re (n=74).  The label-permutation null on the fixed seed-42 ranking is the reference (1,000 shuffles); at those sizes the null sd is ~0.09-0.11, so a nominal 0.5 is not the right line.",
+    "Only the CROSS column is seed-42 for the permutation null and the bootstrap CI; the reported cross AUCs are 5-seed means.  The CI's observed_auc is the seed-42 ranking, so it sits inside the seed spread around the 5-seed mean.",
+    "The within-metal column is carried from the committed 24 h artifact (epochs=30, 5 split seeds); the cross column is epochs=50.  The two columns are not the same training budget — the same asymmetry exists in the chemprop reference, where within and cross are separate runs."
+  ],
+  "source_artifacts": {
+    "cross": "metrics/by_metric/ex1_lomo_24h_none.json",
+    "within": "metrics/by_metric/dmpnn_within_metal_auc.json",
+    "scores_dump": "molmetal/reports/ex1_lomo_24h/none_scores.jsonl"
+  }
+}

@@ -1,0 +1,60 @@
+# EX1 — in-house FSMA C2 budget-matched control, CONCAT-RETRAIN arm, at the
+# CHEMPROP-MATCHED source budget (epochs=50) and the chemprop K/seed setting
+# (K in {20,40}, 10 seeds = 50 cells per K).
+#
+# WHY: paper_a's tab:controls (05_ablation.tex) is chemprop v2 at
+# configs/fsma_c2_matched_k20.yaml / _k40.yaml (epochs=50, k_shot_ft_epochs=20,
+# 10 seeds).  The existing in-house C2 artifact
+# (metrics/by_metric/fsma_inhouse_c2_concat_retrain.json) was run at epochs=20 and
+# only at K in {5,10,20}.  This config re-measures the concat-retrain control at
+# the matched budget and the K the paper reports.
+#
+# The concat-retrain control trains a fresh model on source ++ K support, capped
+# at the SAME optimizer-step count as the FSMA fine-tune.  The paper's key point
+# is that an UN-matched concat-retrain (allowed ~400x more steps) flips sign to
+# positive; the matched one must not.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 128
+  dropout: 0.1
+
+train:
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [none]
+  k: [20, 40]
+  seeds: [42, 43, 44, 49, 123, 7, 8, 9, 10, 11]
+  sampler: stratified
+  control: concat_retrain
+  adapt_steps_by_k: "5:20,10:20,20:40,40:60,80:100"
+
+compute:
+  device: cuda:1
+  deterministic: true
+  cache_source: false
+
+output:
+  out: metrics/by_metric/fsma_inhouse_c2_concat_retrain_ep50.json
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  The control's adapted_auc is an ABSOLUTE query AUC (there is no
+  zero-shot for a concat-retrain model, so zero_shot_auc is NaN); the C2 verdict
+  compares it against the FSMA arm's absolute adapted query AUC at the same K.
+  Budget-matched: the control gets exactly the FSMA fine-tune's optimizer-step
+  count.  Training is NOT bit-reproducible on CUDA.
