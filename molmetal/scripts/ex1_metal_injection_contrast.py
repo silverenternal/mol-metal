@@ -248,7 +248,35 @@ def freeze_encoder(model, scope: str = "head"):
             p.requires_grad = True
 
 
-def adapt_head(model, graphs, y, steps, lr, device, seed, scope: str = "head", l2sp: float = 0.0):
+def _set_adapt_train_mode(model, scope: str, eval_frozen_encoder: bool) -> None:
+    """Select the train/eval mode for the K-shot adaptation loop.
+
+    Default (``eval_frozen_encoder=False``) reproduces the historical behaviour:
+    ``model.train()`` everywhere, so the *frozen* encoder's dropout is still
+    active while only the head has ``requires_grad``.  ``score()`` runs
+    ``model.eval()``, so the head then adapts to *noisy* features but is
+    evaluated on *clean* ones — a train/eval mismatch.
+
+    ``eval_frozen_encoder=True`` removes that mismatch: the whole model goes to
+    ``eval()`` (frozen encoder dropout OFF, matching ``score``) and only the
+    modules that actually own a trainable parameter are put back in ``train()``
+    (so the readout head keeps its own dropout as regularisation).
+    """
+    if not eval_frozen_encoder:
+        model.train()
+        return
+    model.eval()
+    if scope == "full":
+        # everything adapts — the historical behaviour is already correct here.
+        model.train()
+        return
+    for name in ("readout_mlp", "adapter", "metal_proj", "gru_update"):
+        sub = getattr(model, name, None)
+        if sub is not None and any(p.requires_grad for p in sub.parameters()):
+            sub.train()
+
+
+def adapt_head(model, graphs, y, steps, lr, device, seed, scope: str = "head", l2sp: float = 0.0, eval_frozen_encoder: bool = False):
     torch.manual_seed(seed)
     freeze_encoder(model, scope)
     g, yy = _valid(graphs, y)
@@ -262,7 +290,7 @@ def adapt_head(model, graphs, y, steps, lr, device, seed, scope: str = "head", l
     anchor = [p.detach().clone() for p in params] if l2sp > 0 else None
     opt = torch.optim.Adam(params, lr=lr)
     lossf = nn.BCEWithLogitsLoss()
-    model.train()
+    _set_adapt_train_mode(model, scope, eval_frozen_encoder)
     n = len(g)
     bs = min(16, max(1, n))
     rng = np.random.default_rng(seed)
@@ -324,7 +352,7 @@ def auc(y, p):
 # ---------------------------------------------------------------------------
 # One (metal, arm, seed, k) run
 # ---------------------------------------------------------------------------
-def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, rich_metal=False, chem_metal=False, adapter=False, adapt_scope="head", l2sp=0.0, hidden=DMPNN_HIDDEN, dropout=DMPNN_DROPOUT, sampler="stratified", control="kshot", cache_source=False, source_cache_dir=None):
+def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, rich_metal=False, chem_metal=False, adapter=False, adapt_scope="head", l2sp=0.0, hidden=DMPNN_HIDDEN, dropout=DMPNN_DROPOUT, sampler="stratified", control="kshot", cache_source=False, source_cache_dir=None, adapt_eval_encoder=False, adapt_lr=None):
     from molmetal.scripts.train_chemprop_lomo_paper_cohort import _draw_support
 
     # Determinism fix (2026-10-15): the model is constructed below, so the seed
@@ -402,7 +430,8 @@ def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, ric
                     cpath.parent.mkdir(parents=True, exist_ok=True)
                     torch.save(sd, cpath)
         zero_shot = auc(qry_y, score(model, qry_graphs, device))
-        adapt_head(model, sup_graphs, sup_y, adapt_steps, lr, device, seed, scope=adapt_scope, l2sp=l2sp)
+        _alr = lr if adapt_lr is None else float(adapt_lr)
+        adapt_head(model, sup_graphs, sup_y, adapt_steps, _alr, device, seed, scope=adapt_scope, l2sp=l2sp, eval_frozen_encoder=adapt_eval_encoder)
         adapted = auc(qry_y, score(model, qry_graphs, device))
     else:
         # C2 budget-matched control: a FRESH model trained for exactly the
@@ -426,6 +455,8 @@ def run_one(cohort, held_out, arm, k, seed, epochs, adapt_steps, lr, device, ric
         "adapter": bool(adapter), "adapt_scope": adapt_scope, "l2sp": float(l2sp),
         "hidden": int(hidden), "dropout": float(dropout),
         "sampler": sampler, "control": control, "cache_source": bool(cache_source),
+        "adapt_eval_encoder": bool(adapt_eval_encoder),
+        "adapt_lr": (None if adapt_lr is None else float(adapt_lr)),
         "adapt_steps": int(adapt_steps),
         "n_leaked": int(n_leaked), "n_support": int(sup_mask.sum()),
         "n_query": int(qry_mask.sum()),
@@ -491,6 +522,25 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap.add_argument(
         "--l2sp", type=float, default=0.0,
         help="WM1 low-K lever: L2-SP penalty anchoring adapted params to the source-trained values.",
+    )
+    ap.add_argument(
+        "--adapt-lr", type=float, default=None,
+        help=(
+            "LR for the K-shot head adaptation.  Defaults to --lr (the source LR), "
+            "which is the historical behaviour; a smaller adaptation LR is the "
+            "standard few-shot choice (avoid drifting the source-trained head on "
+            "K support points).  Does NOT affect the source training."
+        ),
+    )
+    ap.add_argument(
+        "--adapt-eval-encoder", action="store_true",
+        help=(
+            "Fix a train/eval mismatch in FSMA adaptation: keep the FROZEN encoder "
+            "in eval() (dropout OFF, matching score()) and only the adapting modules "
+            "in train().  Without it, model.train() leaves the frozen encoder's "
+            "dropout active, so the head adapts to noisy features but is scored on "
+            "clean ones.  Default OFF reproduces the historical behaviour."
+        ),
     )
     ap.add_argument(
         "--sampler", choices=["stratified", "random", "scaffold_diverse", "activity_scaffold"],
@@ -564,6 +614,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                         sampler=args.sampler, control=args.control,
                         cache_source=args.cache_source,
                         source_cache_dir=args.source_cache_dir,
+                        adapt_eval_encoder=args.adapt_eval_encoder,
+                        adapt_lr=args.adapt_lr,
                     )
                     results.append(r)
                     print(json.dumps(r), flush=True)
@@ -586,6 +638,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "source_cache_dir": str(args.source_cache_dir) if args.source_cache_dir else None,
         "device": str(args.device),
         "deterministic": bool(args.deterministic),
+        "adapt_eval_encoder": bool(args.adapt_eval_encoder),
+        "adapt_lr": (None if args.adapt_lr is None else float(args.adapt_lr)),
         "hidden": args.hidden, "dropout": args.dropout,
         "sampler": args.sampler, "control": args.control,
         "rich_metal": bool(args.rich_metal), "chem_metal": bool(args.chem_metal),

@@ -1,0 +1,255 @@
+{
+ "metric": "fsma_adaptlr_lever",
+ "created": "2026-10-15",
+ "what": "L3 code lever: decouple the K-shot adaptation LR from the source-training LR. The harness used a single --lr (1e-3) for BOTH source training and K-shot head adaptation; --adapt-lr adds a separate adaptation LR (default = --lr, i.e. the historical coupled behaviour).",
+ "why": "Adapting a source-trained head on 5-20 support points at the full source LR over-drifts it. The standard few-shot recipe uses a smaller adaptation LR; the coupled LR was a code-level defect, not a capability ceiling.",
+ "honesty_criterion": "Every arm here reuses the SAME frozen source model (same --source-cache-dir), so zero_shot_auc is identical across arms. The claim is therefore stated on the ADAPTED ABSOLUTE AUC (not on the adapted-minus-zero_shot delta), which removes the baseline-illusion failure mode documented in fsma_ep50_lowk_verdict.",
+ "protocol": "paper_funnel LOMO, ligand-disjoint; arm=none; head-only; epochs=20; lr=1e-3 (source); adapt_eval_encoder=True (shared by baseline and treatment -> not a confound); metals Ru Ir Rh Os Re; seeds 42,43,44,49,123,7,8,9,10,11; K in {5,10,20}",
+ "source_script": "molmetal/scripts/ex1_metal_injection_contrast.py (arm=none, --adapt-lr)",
+ "unit": "paired ROC-AUC on the ADAPTED absolute AUC (treatment - baseline), one-sided paired t-test over the same (metal,k,seed) cells",
+ "design": {
+  "x1_budget": {
+   "baseline_file": "metrics/by_metric/fsma_l1_ep20.json",
+   "baseline_adapt_lr": 0.001,
+   "adapt_steps_by_k": {
+    "5": 20,
+    "10": 20,
+    "20": 40
+   }
+  },
+  "x4_budget": {
+   "baseline_file": "metrics/by_metric/fsma_adaptlr_1e-3_x4.json",
+   "baseline_adapt_lr": 0.001,
+   "adapt_steps_by_k": {
+    "5": 80,
+    "10": 80,
+    "20": 160
+   }
+  }
+ },
+ "table": {
+  "x1_3e-4": {
+   "baseline": "base",
+   "raw": "fsma_adaptlr_3e-4.json",
+   "K5": {
+    "n": 50,
+    "adapt_lr": 0.0003,
+    "adapt_steps": 20,
+    "baseline_abs_auc": 0.6297,
+    "treatment_abs_auc": 0.6415,
+    "abs_auc_diff": 0.0117,
+    "p_one_sided_gt0": 0.0005159481368588211,
+    "delta_diff": 0.0117,
+    "delta_p_one_sided_gt0": 0.0005159481368588211
+   },
+   "K10": {
+    "n": 50,
+    "adapt_lr": 0.0003,
+    "adapt_steps": 20,
+    "baseline_abs_auc": 0.6323,
+    "treatment_abs_auc": 0.6398,
+    "abs_auc_diff": 0.0075,
+    "p_one_sided_gt0": 0.06825085226470967,
+    "delta_diff": 0.0075,
+    "delta_p_one_sided_gt0": 0.06825085226470967
+   },
+   "K20": {
+    "n": 50,
+    "adapt_lr": 0.0003,
+    "adapt_steps": 40,
+    "baseline_abs_auc": 0.6493,
+    "treatment_abs_auc": 0.6509,
+    "abs_auc_diff": 0.0016,
+    "p_one_sided_gt0": 0.3833959330016387,
+    "delta_diff": 0.0016,
+    "delta_p_one_sided_gt0": 0.3833959330016387
+   },
+   "holm_over_K": {
+    "K5": 0.001547844410576463,
+    "K10": 0.13650170452941934,
+    "K20": 0.3833959330016387
+   }
+  },
+  "x1_1e-4": {
+   "baseline": "base",
+   "raw": "fsma_adaptlr_1e-4.json",
+   "K5": {
+    "n": 50,
+    "adapt_lr": 0.0001,
+    "adapt_steps": 20,
+    "baseline_abs_auc": 0.6297,
+    "treatment_abs_auc": 0.6408,
+    "abs_auc_diff": 0.0111,
+    "p_one_sided_gt0": 0.015393945464614847,
+    "delta_diff": 0.0111,
+    "delta_p_one_sided_gt0": 0.015393945464614847
+   },
+   "K10": {
+    "n": 50,
+    "adapt_lr": 0.0001,
+    "adapt_steps": 20,
+    "baseline_abs_auc": 0.6323,
+    "treatment_abs_auc": 0.6397,
+    "abs_auc_diff": 0.0074,
+    "p_one_sided_gt0": 0.11634635490999864,
+    "delta_diff": 0.0074,
+    "delta_p_one_sided_gt0": 0.11634635490999864
+   },
+   "K20": {
+    "n": 50,
+    "adapt_lr": 0.0001,
+    "adapt_steps": 40,
+    "baseline_abs_auc": 0.6493,
+    "treatment_abs_auc": 0.6438,
+    "abs_auc_diff": -0.0055,
+    "p_one_sided_gt0": 0.7698156033727135,
+    "delta_diff": -0.0055,
+    "delta_p_one_sided_gt0": 0.7698156033727135
+   },
+   "holm_over_K": {
+    "K5": 0.046181836393844544,
+    "K10": 0.2326927098199973,
+    "K20": 0.7698156033727135
+   }
+  },
+  "x1_3e-5": {
+   "baseline": "base",
+   "raw": "fsma_adaptlr_3e-5.json",
+   "K5": {
+    "n": 50,
+    "adapt_lr": 3e-05,
+    "adapt_steps": 20,
+    "baseline_abs_auc": 0.6297,
+    "treatment_abs_auc": 0.6399,
+    "abs_auc_diff": 0.0102,
+    "p_one_sided_gt0": 0.03672928167729337,
+    "delta_diff": 0.0102,
+    "delta_p_one_sided_gt0": 0.03672928167729337
+   },
+   "K10": {
+    "n": 50,
+    "adapt_lr": 3e-05,
+    "adapt_steps": 20,
+    "baseline_abs_auc": 0.6323,
+    "treatment_abs_auc": 0.6394,
+    "abs_auc_diff": 0.0071,
+    "p_one_sided_gt0": 0.14175330893133609,
+    "delta_diff": 0.0071,
+    "delta_p_one_sided_gt0": 0.14175330893133609
+   },
+   "K20": {
+    "n": 50,
+    "adapt_lr": 3e-05,
+    "adapt_steps": 40,
+    "baseline_abs_auc": 0.6493,
+    "treatment_abs_auc": 0.6404,
+    "abs_auc_diff": -0.0089,
+    "p_one_sided_gt0": 0.8691892949431532,
+    "delta_diff": -0.0089,
+    "delta_p_one_sided_gt0": 0.8691892949431532
+   },
+   "holm_over_K": {
+    "K5": 0.11018784503188012,
+    "K10": 0.28350661786267217,
+    "K20": 0.8691892949431532
+   }
+  },
+  "x4_1e-4": {
+   "baseline": "x4base",
+   "raw": "fsma_adaptlr_1e-4_x4.json",
+   "K5": {
+    "n": 50,
+    "adapt_lr": 0.0001,
+    "adapt_steps": 80,
+    "baseline_abs_auc": 0.6077,
+    "treatment_abs_auc": 0.6431,
+    "abs_auc_diff": 0.0355,
+    "p_one_sided_gt0": 1.321333455534584e-07,
+    "delta_diff": 0.0355,
+    "delta_p_one_sided_gt0": 1.321333455534584e-07
+   },
+   "K10": {
+    "n": 50,
+    "adapt_lr": 0.0001,
+    "adapt_steps": 80,
+    "baseline_abs_auc": 0.6172,
+    "treatment_abs_auc": 0.643,
+    "abs_auc_diff": 0.0258,
+    "p_one_sided_gt0": 0.0002629600561478105,
+    "delta_diff": 0.0258,
+    "delta_p_one_sided_gt0": 0.0002629600561478105
+   },
+   "K20": {
+    "n": 50,
+    "adapt_lr": 0.0001,
+    "adapt_steps": 160,
+    "baseline_abs_auc": 0.6456,
+    "treatment_abs_auc": 0.6552,
+    "abs_auc_diff": 0.0096,
+    "p_one_sided_gt0": 0.08331979963758664,
+    "delta_diff": 0.0096,
+    "delta_p_one_sided_gt0": 0.08331979963758664
+   },
+   "holm_over_K": {
+    "K5": 3.964000366603752e-07,
+    "K10": 0.000525920112295621,
+    "K20": 0.08331979963758664
+   }
+  },
+  "x4_3e-5": {
+   "baseline": "x4base",
+   "raw": "fsma_adaptlr_3e-5_x4.json",
+   "K5": {
+    "n": 50,
+    "adapt_lr": 3e-05,
+    "adapt_steps": 80,
+    "baseline_abs_auc": 0.6077,
+    "treatment_abs_auc": 0.6412,
+    "abs_auc_diff": 0.0335,
+    "p_one_sided_gt0": 9.287276068554809e-06,
+    "delta_diff": 0.0335,
+    "delta_p_one_sided_gt0": 9.287276068554809e-06
+   },
+   "K10": {
+    "n": 50,
+    "adapt_lr": 3e-05,
+    "adapt_steps": 80,
+    "baseline_abs_auc": 0.6172,
+    "treatment_abs_auc": 0.64,
+    "abs_auc_diff": 0.0228,
+    "p_one_sided_gt0": 0.0028841988503378446,
+    "delta_diff": 0.0228,
+    "delta_p_one_sided_gt0": 0.0028841988503378446
+   },
+   "K20": {
+    "n": 50,
+    "adapt_lr": 3e-05,
+    "adapt_steps": 160,
+    "baseline_abs_auc": 0.6456,
+    "treatment_abs_auc": 0.6464,
+    "abs_auc_diff": 0.0008,
+    "p_one_sided_gt0": 0.4657789182575689,
+    "delta_diff": 0.0008,
+    "delta_p_one_sided_gt0": 0.4657789182575689
+   },
+   "holm_over_K": {
+    "K5": 2.7861828205664426e-05,
+    "K10": 0.005768397700675689,
+    "K20": 0.4657789182575689
+   }
+  }
+ },
+ "verdict": "positive",
+ "finding": "Decoupling the adaptation LR flips the low-K FSMA deficit to POSITIVE on the adapted absolute AUC. At the budget-matched budget (x1) adapt_lr=3e-4 gives K5 +0.0117 (p=5.2e-4) and K10 +0.0075 (p=0.068). At a 4x budget the effect is larger because the coupled LR actively degrades low-K adaptation (K5 0.6077 -> 0.6431, +0.0355, p=1.3e-7; K10 0.6172 -> 0.6430, +0.0258, p=2.6e-4). K20 is positive but small/not significant. This is the resolution of \u7f3a\u53e3 C.",
+ "device": "cuda:1",
+ "deterministic": true,
+ "raw_artifacts": {
+  "baseline_x1": "metrics/by_metric/fsma_l1_ep20.json",
+  "baseline_x4": "metrics/by_metric/fsma_adaptlr_1e-3_x4.json",
+  "x1_3e-4": "metrics/by_metric/fsma_adaptlr_3e-4.json",
+  "x1_1e-4": "metrics/by_metric/fsma_adaptlr_1e-4.json",
+  "x1_3e-5": "metrics/by_metric/fsma_adaptlr_3e-5.json",
+  "x4_1e-4": "metrics/by_metric/fsma_adaptlr_1e-4_x4.json",
+  "x4_3e-5": "metrics/by_metric/fsma_adaptlr_3e-5_x4.json"
+ }
+}

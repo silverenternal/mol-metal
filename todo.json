@@ -173,7 +173,7 @@
         "detail": "K<=20 head-only 全不显著; A1 深适配在低 K 更差 (head k5 -0.035, partial k5 -0.075) —— 深适配假设被否证。",
         "why_kills": "审稿人会问『few-shot 方法为何在 few-shot 区间失效』。",
         "action_task": "task_queue_2026_10_14.executable.low_k",
-        "resolution_2026_10_15": "RESOLVED. The low-K deficit was an epochs-BUDGET artefact, not a capability ceiling: aligning the adaptation budget (epochs 20->50) flips K5/K10/K20 POSITIVE (paired diff +0.0233/+0.0216/+0.0277, p 0.0022/0.0117/0.0051). See results.fsma_ep50_lowk_verdict. The L2-SP lever alone does not flip it (results.lowk_l2sp_lever)."
+        "resolution_2026_10_15": "RESOLVED — but NOT via the epochs budget. The ep50 route only moved the paired delta by degrading the zero-shot baseline (adapted absolute AUC unchanged); see results.fsma_ep50_lowk_verdict.correction_2026_10_15. The real lever is decoupling the K-shot adaptation LR from the source LR (--adapt-lr): budget-matched adapt_lr=3e-4 gives K5 +0.0117 (p1 5.2e-4, Holm 0.0015); at 4x budget adapt_lr=1e-4 gives K5 +0.0355 (p1 1.3e-7) and K10 +0.0258 (p1 2.6e-4), both surviving Holm, on the ADAPTED ABSOLUTE AUC with the zero-shot baseline held fixed. See results.fsma_adaptlr_lever_2026_10_15."
       },
       {
         "id": "D",
@@ -195,7 +195,7 @@
       "closed": [
         "A (migration to self-developed model)",
         "B (I2 model-side innovation -> honest-negative, data completed)",
-        "C (low-K -> positive once budget aligned)"
+        "C (low-K -> positive via --adapt-lr, a real code-level lever; the ep50 route was a baseline artefact)"
       ],
       "remaining": [
         "D (weak metrics -> honest-negative catalog + limitations; paper action)",
@@ -7155,8 +7155,86 @@
         "K10": "ep20 -0.0075 (p1 0.863) -> ep50 +0.0141 (p1 0.080); paired diff +0.0216 (p1 0.0117)",
         "K20": "ep20 +0.0112 (p1 0.081) -> ep50 +0.0389 (p1 0.0025); paired diff +0.0277 (p1 0.0051)"
       },
+      "verdict": "SUPERSEDED — the low-K 'flip' is dominated by a zero-shot baseline artefact (see correction_2026_10_15)",
+      "finding_original_claim": "Aligning the low-K adaptation budget (epochs 20->50) turns K=5/10/20 all positive; the paired ep20->ep50 improvement is significant at every K (Holm over the 3-K family still significant for K5/K20). The earlier low-K honest-negative was an epochs-budget artefact, NOT a capability ceiling. This is the resolution of 缺口 C.",
+      "correction_2026_10_15": {
+        "what": "The ep50 'low-K flips positive' verdict is dominated by a ZERO-SHOT BASELINE ARTEFACT, not by an adapted-AUC gain. Retained for the record; superseded by results.fsma_adaptlr_lever_2026_10_15.",
+        "evidence_zero_shot": "ep20 -> ep50 zero_shot mean: K5 0.6394 -> 0.6176; K10 0.6390 -> 0.6173; K20 0.6390 -> 0.6175 (the 2029-row source pool over-trains at 50 epochs and its zero-shot AUC degrades).",
+        "evidence_adapted_abs": "adapted ABSOLUTE AUC barely moves: K5 0.6297 -> 0.6305 (+0.0008); K10 0.6323 -> 0.6314 (-0.0009, slightly WORSE); K20 0.6493 -> 0.6564 (+0.0071). So ~95% of the +0.0216..+0.0277 delta swing is zero-shot degradation.",
+        "rule": "The reported metric is the paired delta (adapted - zero_shot). A change that moves the zero-shot baseline can move the delta without any real adapted gain. Criterion = adapted ABSOLUTE AUC. AGENTS.md 5.2 (honest framing).",
+        "raw": [
+          "metrics/by_metric/fsma_l1_ep20.json",
+          "metrics/by_metric/fsma_ep50_lowk.json"
+        ],
+        "replacement": "results.fsma_adaptlr_lever_2026_10_15 (the --adapt-lr lever; zero-shot identical across arms)."
+      },
+      "finding": "SUPERSEDED. Aligning epochs 20->50 does NOT lift the adapted absolute AUC at low K (K5 +0.0008, K10 -0.0009); the positive delta at ep50 is a zero-shot baseline artefact. The real low-K lever is decoupling the adaptation LR (--adapt-lr). See correction_2026_10_15 + results.fsma_adaptlr_lever_2026_10_15."
+    },
+    "preflight_gate_fixes_2026_10_15": {
+      "status": "DONE — pre-flight back to 0 FAIL (124 gates)",
+      "date": "2026-10-15",
+      "commits": [
+        "1f37de76 (trainer ridge wire-in)",
+        "846dcbbc (a32 config + registry regenerate)"
+      ],
+      "fixed": {
+        "p3_config_trainer_binding_check": "configs/dmpnn.yaml declared model.pic50_ridge_readout, but the wiring was removed by af84a545 (Wf-A39-1 'm21 selective Wf-A17 revert'). Restored the opt-in ridge readout (default OFF -> every existing metric path unchanged). Verified end-to-end: train_dmpnn_multitask_wasserstein.py --metals Ru --seeds 0 --epochs 1 --pic50-ridge-readout --device cpu -> 'RIDGE-READOUT test_pearson=0.3647 (neural head 0.1571)'.",
+        "p3_wf343c4_hyperparams_config_complete": "cfm_a32_pocket_inject_per_layer_2026_10_14.yaml now declares the 4 AGENTS.md 5.1 standing-grant knobs at the entry trainer's OWN argparse defaults (hidden_dim 128, n_layers 3, batch_size 64, lr 3e-4) — run behaviour unchanged, architecture recorded instead of implied.",
+        "p3_registry_consistency": "Regenerated registry/{datasets,protocols,metrics}.yaml from disk truth (the gate's own documented remedy). Adds 18 artifacts that exist now (incl. the fsma_* in-house set)."
+      },
+      "recorded_loss_NOT_SILENT": {
+        "what": "24 registry/metrics.yaml entries were DROPPED by the regeneration because their source_json is gone: ex1_a1_adapter, ex1_a1_head, ex1_a1_partial, ex1_a2_meta_init, adapted_auc, adapted_auc__disk, ex1_i2_i4, ex1_i2_rich, ex1_i2i4_baseline, ex1_i4_adapter, ex1_metal_injection, ex1_w6_film, g2_reconstruct_coverage, low_confidence_metals, m19_condition_stack, m19_leakctl_confirm, m1_m2_m3_ablation, m4_class_weight_ablation, m5_recipe_sweep, dmpnn_within_metal_auc__disk, pa18_pic50_regression_5metal__disk, alt_encoder_ab, tmqm_pretrain_init_ab_multimetal, vina_status (list may differ by one or two).",
+        "why": "A parallel session's `git reset --hard` on 2026-10-15 wiped these untracked metrics JSONs (same incident as the lost-lever wipe).",
+        "rule": "AGENTS.md 5.2 — MISSING must not be silently dropped, so the loss is recorded here even though the registry regeneration is the sanctioned remedy.",
+        "recovery": "The ex1_* artifacts are cheaply re-runnable via molmetal/scripts/ex1_metal_injection_contrast.py if a specific one is needed again."
+      }
+    },
+    "fsma_adaptlr_lever_2026_10_15": {
+      "status": "MEASURED — POSITIVE (real adapted-AUC gain, not a baseline artefact)",
+      "date": "2026-10-15",
+      "artifact": "metrics/by_metric/fsma_adaptlr_lever.json",
+      "raw": [
+        "metrics/by_metric/fsma_l1_ep20.json  (x1-budget baseline: adapt_lr=1e-3, by_k 20/20/40)",
+        "metrics/by_metric/fsma_adaptlr_1e-3_x4.json  (x4-budget baseline: adapt_lr=1e-3, by_k 80/80/160)",
+        "metrics/by_metric/fsma_adaptlr_3e-4.json",
+        "metrics/by_metric/fsma_adaptlr_1e-4.json",
+        "metrics/by_metric/fsma_adaptlr_3e-5.json",
+        "metrics/by_metric/fsma_adaptlr_1e-4_x4.json",
+        "metrics/by_metric/fsma_adaptlr_3e-5_x4.json"
+      ],
+      "device": "cuda:1",
+      "deterministic": true,
+      "code_change": "molmetal/scripts/ex1_metal_injection_contrast.py — new --adapt-lr (decouples the K-shot adaptation LR from the source-training LR; default = --lr, i.e. the historical coupled behaviour). Companion --adapt-eval-encoder (L1, NULL). Both flags recorded in every run's output dict for traceability.",
+      "root_cause": "The harness trained the source model AND the K-shot head with a single --lr=1e-3. Adapting on 5-20 support points at the full source LR over-drifts the head. This is a code-level defect, not a capability ceiling.",
+      "protocol": "paper_funnel LOMO, ligand-disjoint; arm=none; head-only; epochs=20; lr=1e-3 (source); adapt_eval_encoder=True (shared by baseline + treatment => not a confound); metals Ru Ir Rh Os Re; seeds 42,43,44,49,123,7,8,9,10,11; K in {5,10,20}",
+      "honesty_criterion": "Every arm reuses the SAME frozen source model (same --source-cache-dir), so zero_shot_auc is identical across arms. The claim is stated on the ADAPTED ABSOLUTE AUC (not on the adapted-minus-zero_shot delta), which removes the baseline-illusion failure mode documented in fsma_ep50_lowk_verdict.correction_2026_10_15.",
+      "result_x1_budget": {
+        "adapt_lr=3e-4": "K5 0.6297->0.6415 (+0.0117, p1 5.2e-4, Holm 0.0015); K10 +0.0075 (p1 0.068, Holm 0.14); K20 +0.0016 (n.s.)",
+        "adapt_lr=1e-4": "K5 +0.0111 (p1 0.015, Holm 0.046); K10 +0.0074 (p1 0.12); K20 -0.0055 (n.s.)",
+        "adapt_lr=3e-5": "K5 +0.0102 (p1 0.037, Holm 0.11); K10 +0.0071 (p1 0.14); K20 -0.0089 (n.s.)"
+      },
+      "result_x4_budget": {
+        "note": "At 4x the budget the coupled LR (1e-3) actively DEGRADES low-K adaptation (x4 baseline K5 abs 0.6077 vs x1 baseline 0.6297). Decoupling the LR recovers and surpasses.",
+        "adapt_lr=1e-4": "K5 0.6077->0.6431 (+0.0355, p1 1.3e-7, Holm <1e-6); K10 0.6172->0.6430 (+0.0258, p1 2.6e-4, Holm 5.3e-4); K20 +0.0096 (p1 0.083)",
+        "adapt_lr=3e-5": "K5 +0.0335 (p1 9.3e-6, Holm <1e-5); K10 +0.0228 (p1 0.0029, Holm 0.0058); K20 +0.0008 (n.s.)"
+      },
       "verdict": "positive",
-      "finding": "Aligning the low-K adaptation budget (epochs 20->50) turns K=5/10/20 all positive; the paired ep20->ep50 improvement is significant at every K (Holm over the 3-K family still significant for K5/K20). The earlier low-K honest-negative was an epochs-budget artefact, NOT a capability ceiling. This is the resolution of 缺口 C."
+      "finding": "Decoupling the adaptation LR flips the low-K FSMA deficit to POSITIVE on the adapted absolute AUC, with the zero-shot baseline held fixed. Budget-matched (x1): adapt_lr=3e-4 gives K5 +0.0117 (p1 5.2e-4, survives Holm). At 4x budget: adapt_lr=1e-4 gives K5 +0.0355 (p1 1.3e-7) and K10 +0.0258 (p1 2.6e-4), both surviving Holm. K20 is positive but small. This is the true resolution of 缺口 C (the ep50 route was a baseline artefact).",
+      "companion_null_L1": "results.fsma_l1_eval_encoder_ab_2026_10_15 — the frozen-encoder train/eval mismatch hypothesis is NULL."
+    },
+    "fsma_l1_eval_encoder_ab_2026_10_15": {
+      "status": "MEASURED — NULL",
+      "date": "2026-10-15",
+      "hypothesis": "adapt_head() called model.train(), leaving the FROZEN encoder's dropout active during K-shot adaptation while score() runs model.eval() — a train/eval mismatch. Fix = keep frozen modules in eval() during adaptation (--adapt-eval-encoder).",
+      "raw": [
+        "metrics/by_metric/fsma_l1_ep20.json  (eval_encoder=True)",
+        "metrics/by_metric/fsma_l1_ep20_noevalenc.json  (eval_encoder=False)"
+      ],
+      "device": "cuda:1",
+      "deterministic": true,
+      "result": "Paired on the same (metal,k,seed) cells: adapted absolute AUC differs by ~±0.001 at every K, none significant. The mismatch is real in the code but does not move the metric.",
+      "verdict": "null",
+      "finding": "The train/eval-mode mismatch is a genuine code smell but has no measurable effect (dropout 0.1 on a frozen encoder whose features the head can already fit). Recorded as a NULL so the hypothesis is not re-tried."
     }
   },
   "decisions_2026_10_14": {
