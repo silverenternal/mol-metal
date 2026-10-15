@@ -2736,7 +2736,9 @@
     }
   ],
   "next_actions": [
-    "ALL executable todo.json tasks are CLOSED (2026-10-15). BLK-C11 (the last one) = HONEST NEGATIVE via the PCGrad A/B. Remaining items are paper-scoped (#102/#110/#111, BLK-I3, BLK-PA14/15/16/17), blocked-on-user (BLK-C15, BLK-P2, p3_authorization, journal_partition), gated (#126), or the phase-2 migration re-run (#133)."
+    "ALL executable todo.json tasks are CLOSED (2026-10-15). The FSMA mainline is now on the self-developed D-MPNN (C1/C1b/C2/C3/C4, cuda:1 --deterministic); gaps A (migration) and C (low-K) are RESOLVED and gap B (I2 model-side) is CLOSED as honest-negative. See results.fsma_inhouse_gpu_rerun_2026_10_15 + results.fsma_ep50_lowk_verdict.",
+    "Remaining items are all non-executable: paper-scoped (#102/#110/#111, BLK-I3, BLK-PA14/15/16/17, the model_unification text_fixes U9/U10/U11 — all touch paper/*), blocked-on-user (BLK-C15, BLK-P2, p3_authorization, journal_partition), or gated (#126). None can be advanced without a user decision or a paper edit (§5.3).",
+    "Repo-hygiene note (NOT a todo.json task): the pre-flight gate currently FAILs on 3 pre-existing issues that are orthogonal to the FSMA work — (1) configs/dmpnn.yaml 'model.pic50_ridge_readout' resolves to no dest, (2) configs/cfm_a32_pocket_inject_per_layer_2026_10_14.yaml missing 3 hyperparams, (3) registry/metrics.yaml entry 'ex1_i2_rich' points at a file wiped by a parallel session on 2026-10-15. Fixable on request."
   ],
   "working_detail_2026_10_14": {
     "note": "2026-10-14 工作细节 (current_state 的依据)。model_unification_2026_10_14 已 SUPERSEDED (保留溯源)。",
@@ -3461,7 +3463,7 @@
     },
     "metal_aware_core_2026_10_14": {
       "created": "2026-10-14",
-      "status": "CODE_DONE (model+featurizer+tests); EX1 runner PENDING",
+      "status": "CODE_DONE + EX1 RUNNER DONE 2026-10-15 (molmetal/scripts/ex1_metal_injection_contrast.py; extended with --sampler/--control/--adapt-scope/--deterministic/--source-cache-dir; all FSMA pillars now run on MetalAwareDMPNN).",
       "serves": "贵金属抗癌药物设计 —— 金属感知主线的核心零件",
       "what_done": [
         "I1b featurizer: molmetal/data/metal_graph.py —— build_metal_graph() 给配体图追加【连通的】金属节点 + cap 条配位键 (给体选择复用 metal_smiles 的 donor 逻辑)。金属节点特征复用 39 维布局的【空闲尾部槽位】(30=is_metal, 31-35=5金属 one-hot, 36-38=OS/charge/cap), 不改 ATOM_FEATURE_DIM。",
@@ -3474,7 +3476,7 @@
         "发现: _atom_features 的 z_counts 含 Rh(45)/Pd(46)/Ir(77)/Pt(78) 但【不含 Ru(44)/Os(76)/Re(75)】—— 所以原 39 维特征无法区分 Ru/Os/Re; 这正是 I1/I3 需要独立 metal_feats 的原因。",
         "EX1 三臂已就绪: none(金属盲) / readout(C2) / message(I3), 同骨干同协议, 唯一变量=注入位置。"
       ],
-      "remaining_for_ex1": "需要一个 EX1 runner: 复用 train_chemprop_lomo_paper_cohort.py 的 lomo_split/_draw_support 做 LOMO+K-shot, 骨干换成 MetalAwareDMPNN, 三臂同预算 (H7) 同 seed (U7) 对照。",
+      "remaining_for_ex1": "DONE — the EX1 runner exists and the whole FSMA pillar set (C1/C1b/C2/C3/C4) has been re-run on MetalAwareDMPNN (cuda:1 --deterministic). See results.fsma_inhouse_gpu_rerun_2026_10_15.",
       "test_evidence": "10 passed (test_metal_aware_dmpnn.py 6 + test_m6_batched_forward.py 4)"
     },
     "m6_batched_forward_done_2026_10_14": {
@@ -3655,7 +3657,7 @@
             "WM6"
           ],
           "cat": "model_structure",
-          "status": "TODO"
+          "status": "DONE 2026-10-15 — deep-adaptation sweep (partial scope) run on the in-house model: PARTIAL is WORSE than head-only at every low K (results.fsma_inhouse_gpu_rerun_2026_10_15.C4). The deep-adaptation hypothesis is FALSIFIED (honest-negative)."
         },
         "A2": {
           "title": "元学习初始化 (Reptile/MAML) on LOMO 源池",
@@ -3663,7 +3665,7 @@
             "WM1"
           ],
           "cat": "fusion_shallow",
-          "status": "TODO"
+          "status": "DONE 2026-10-15 — meta-learned init (Reptile/MAML) on the LOMO source pool; recorded as a weak-metric lever (task #120). No positive headline."
         },
         "A3": {
           "title": "更丰富金属描述符 (配体场 Δ / 氧化还原电位 / HSAB) —— 仅当 A1/A2 后残差仍大",
@@ -3671,7 +3673,7 @@
             "WM4"
           ],
           "cat": "data_not_fed",
-          "status": "BLOCKED_ON_A1_A2"
+          "status": "DONE 2026-10-15 — richer metal descriptors (NIST IE1/IE2 + Pauling EN) added and tested fairly; NULL (results.i2_chemistry_block). Closes 缺口 B as honest-negative."
         },
         "A4": {
           "title": "cell-line / assay 上下文作为条件特征 (回归轴 W5)",
@@ -3679,7 +3681,7 @@
             "WM5"
           ],
           "cat": "data_not_fed",
-          "status": "TODO"
+          "status": "DONE 2026-10-15 — cell-line/assay context as a conditional feature on the regression axis (task #121)."
         },
         "A5": {
           "title": "Os 队列扩增或正文标注 n<40 低置信",
@@ -3687,7 +3689,7 @@
             "WM3"
           ],
           "cat": "data_volume",
-          "status": "TODO"
+          "status": "DONE 2026-10-15 — Os cohort: kept as n<40 low-confidence with explicit labelling (task #122); per-metal full table + limitations, per red line R1-R4."
         }
       },
       "not_a_blocker": {
@@ -4909,7 +4911,7 @@
           "current": "metrics/by_metric/metalcytotox_ru_auc.json (in-house dmpnn_multitask_wasserstein)",
           "need": "chemprop v2 在 paper-funnel 队列 + DOI-grouped 10-fold (同 fold 划分)",
           "why": "Table 'Krasnov' 的 D-MPNN 行必须与 Table 1 同模型",
-          "status": "TODO"
+          "status": "VOID 2026-10-14 — superseded by in_house_main_model_2026_10_14 (direction reversed: the main model is the self-developed D-MPNN, not chemprop v2, so 're-run on chemprop v2' no longer applies)."
         },
         {
           "id": "U2",
@@ -4917,7 +4919,7 @@
           "current": "metrics/by_metric/tmqm_pretrain_init_ab_ru.json (in-house, hidden 128)",
           "need": "chemprop v2 backbone 重跑 A/B",
           "why": "supplement 把 'our model' 的 tmQM A/B 当主张; 应同主模型",
-          "status": "TODO"
+          "status": "VOID 2026-10-14 — superseded by in_house_main_model_2026_10_14 (direction reversed: the main model is the self-developed D-MPNN, not chemprop v2, so 're-run on chemprop v2' no longer applies)."
         },
         {
           "id": "U3",
@@ -4925,7 +4927,7 @@
           "current": "metrics/by_metric/tmqm_bond_perception*.json",
           "need": "确认是否模型主张; 若是则 chemprop v2 重跑",
           "why": "supplement 引用",
-          "status": "CHECK_FIRST"
+          "status": "VOID 2026-10-14 — same reversal; re-check only if the paper claims it as a model contribution."
         }
       ],
       "reframe_only": [
