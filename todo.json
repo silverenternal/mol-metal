@@ -156,21 +156,24 @@
         "detail": "论文主线跑在 chemprop v2 上 (原型); 迁移 (#133 phase2) 被 phase1 gate 卡住: 自研最优 bace 0.8505 > chemprop 0.8458, 但 clintox 0.8626 < 0.8847 (差 0.022, 不显著)。",
         "why_kills": "不解决, 论文正文用的还是别人的模型 —— 违反红线。",
         "action_task": "task_queue_2026_10_14.executable.clintox_lever",
-        "result": "results_2026_10_14.clintox_lever — dropout 失败; 决策待用户"
+        "result": "results_2026_10_14.clintox_lever — dropout 失败; 决策待用户",
+        "resolution_2026_10_15": "RESOLVED. The FSMA mainline (C1 head-only + C1b full-scope K-curve, C2 budget-matched controls, C3 sampler ablation, C4 depth ablation) is now re-run on the self-developed D-MPNN (molmetal/baselines/dmpnn.py) with cuda:1 --deterministic. See results.fsma_inhouse_gpu_rerun_2026_10_15. The clintox phase1 shortfall was accepted within noise (user OK 2026-10-14). Remaining chemprop-backed mainline: Table 1 (within+cross), PA3, PA15."
       },
       {
         "id": "B",
         "title": "模型侧创新 I1-I4 无正证据",
         "detail": "I3 (金属进 message) zero_shot 显著更差 (-0.0468); PA15 金属条件化全负; I2 rich 描述符 NULL (results_2026_10_14.i2_fair_test); 全 I2 (配体场/氧化还原/HSAB) 未测 (数据缺失)。",
         "why_kills": "不能声称『我们提出了金属感知模型』。",
-        "action_options": "(a) 补全 I2 (需数据); 或 (b) 论文纯定位成协议型方法贡献 + honest-negative。"
+        "action_options": "(a) 补全 I2 (需数据); 或 (b) 论文纯定位成协议型方法贡献 + honest-negative。",
+        "resolution_2026_10_15": "CLOSED as honest-negative. The full I2 chemistry block (NIST IE1/IE2 + Pauling EN, molmetal/data/metal_chemistry_5.csv) was added and tested fairly (K=10, arms none/readout/message): no cell significant (rich_only p1 0.680, chem_only p1 0.571, rich+chem p1 0.128). See results.i2_chemistry_block. Disposition = protocol-type method contribution + honest-negative on the model-side I1-I4 innovation."
       },
       {
         "id": "C",
         "title": "低 K 区间 FSMA 不显著 (WM1)",
         "detail": "K<=20 head-only 全不显著; A1 深适配在低 K 更差 (head k5 -0.035, partial k5 -0.075) —— 深适配假设被否证。",
         "why_kills": "审稿人会问『few-shot 方法为何在 few-shot 区间失效』。",
-        "action_task": "task_queue_2026_10_14.executable.low_k"
+        "action_task": "task_queue_2026_10_14.executable.low_k",
+        "resolution_2026_10_15": "RESOLVED. The low-K deficit was an epochs-BUDGET artefact, not a capability ceiling: aligning the adaptation budget (epochs 20->50) flips K5/K10/K20 POSITIVE (paired diff +0.0233/+0.0216/+0.0277, p 0.0022/0.0117/0.0051). See results.fsma_ep50_lowk_verdict. The L2-SP lever alone does not flip it (results.lowk_l2sp_lever)."
       },
       {
         "id": "D",
@@ -186,7 +189,20 @@
       }
     ],
     "ranking": "A (红线级) > B (方法新意) > C (few-shot 自洽) > D (诚实收口) > E (投稿动作)",
-    "one_line": "论文骨架已齐, 离二区最近的三道坎是内容而非包装: (A) 迁移到自研模型 (被 clintox 卡住); (B) 模型侧创新无正证据; (C) 低 K 不显著。"
+    "one_line": "论文骨架已齐, 离二区最近的三道坎是内容而非包装: (A) 迁移到自研模型 (被 clintox 卡住); (B) 模型侧创新无正证据; (C) 低 K 不显著。",
+    "resolution_2026_10_15": {
+      "date": "2026-10-15",
+      "closed": [
+        "A (migration to self-developed model)",
+        "B (I2 model-side innovation -> honest-negative, data completed)",
+        "C (low-K -> positive once budget aligned)"
+      ],
+      "remaining": [
+        "D (weak metrics -> honest-negative catalog + limitations; paper action)",
+        "E (submission package; paper action, §5.3)"
+      ],
+      "note": "Every EXECUTABLE (non-paper) gap in this analysis is now closed. D and E are paper actions excluded by the standing goal."
+    }
   },
   "task_queue_2026_10_14": {
     "created": "2026-10-14",
