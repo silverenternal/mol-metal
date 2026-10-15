@@ -3140,11 +3140,11 @@ def train_one_epoch(
     pocket_dist: Optional[torch.Tensor] = None,  # per-pocket W₂ distribution; None = disable
     consistency_term_weight: float = 0.05,  # Wf-A43 C — default ON; 0.0 = ConsistencyTerm off (bit-exact pre-Wf-A23)
     so3_term_weight: float = 0.0,  # 0.0 = SO3Term off (bit-exact pre-Wf-A23)
-    edm_term_weight: float = 0.0,  # 0.0 = EDMTerm off (bit-exact pre-Wf-A23)
-    shortcut_distill_term_weight: float = 0.0,  # 0.0 = ShortcutDistillLoss class off
-    fm_ode_term_weight: float = 0.0,  # 0.0 = FmOdeTerm off (bit-exact pre-Wf-A23)
-    energy_conservation_weight: float = 0.0,  # 0.0 = EnergyConservation off
-    sboo3_term_weight: float = 0.0,  # 0.0 = SBOO3Term off (bit-exact pre-Wf-A23)
+    edm_term_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = EDMTerm off)
+    shortcut_distill_term_weight: float = 0.05,  # Wf-A44 B.1 — default ON; 0.0 = ShortcutDistillLoss class off (bit-exact pre-Wf-A23)
+    fm_ode_term_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = FmOdeTerm off)
+    energy_conservation_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = EnergyConservation off)
+    sboo3_term_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = SBOO3Term off)
     sboo3_alpha: float = 0.5,  # SBO × O(3) mixing weight
     sboo3_n_perm: int = 4,  # SBO permutations per batch
     sboo3_n_rot: int = 4,  # O(3) rotations per batch
@@ -3280,10 +3280,10 @@ def train_one_epoch(
     gen_validity_weight: float = 0.0,
     # Wf-A15 (2026-10-13) — 6 NEW chemistry-signal loss terms (Layer F).
     # Defaults preserve bit-for-bit backward compat with pre-Wf-A15.
-    chem_loss_weight: float = 0.0,
-    qed_loss_weight: float = 0.0,
-    molecule_loss_weight: float = 0.0,
-    stereo_loss_weight: float = 0.0,
+    chem_loss_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A15 = chem loss inert)
+    qed_loss_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A15 = QED loss inert)
+    molecule_loss_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A15 = molecule loss inert)
+    stereo_loss_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A15 = stereo loss inert)
     # Wf-A43 A.6 — fragment_loss_weight default ON.  Pre-Wf-A43 was 0.0
     # = exact torch.zeros(()) in the loss sum (single_fragment_rate
     # never received a gradient).  At 0.05 the term is a soft pressure
@@ -8181,10 +8181,11 @@ def parse_args() -> argparse.Namespace:
         "--chem-loss-weight",
         dest="chem_loss_weight",
         type=float,
-        default=0.0,
+        default=0.05,
         help=(
-            "Weight on ContinuousBOLoss (Layer F / Wf-A15).  Default 0.0 "
-            "= exact torch.zeros(()) in the sum → bit-for-bit pre-Wf-A15."
+            "Weight on ContinuousBOLoss (Layer F / Wf-A15).  Default 0.05 "
+            "(Wf-A44 B.2 — default ON; 0.0 = exact torch.zeros(()) in the sum "
+            "→ bit-exact pre-Wf-A15 when explicit OFF is needed)."
         ),
     )
     # Wf-A27 (2026-10-13) step-3 — alias for the chem-loss-weight dest
@@ -8228,30 +8229,31 @@ def parse_args() -> argparse.Namespace:
         "--qed-loss-weight",
         dest="qed_loss_weight",
         type=float,
-        default=0.0,
+        default=0.05,
         help=(
-            "Weight on QEDLoss (Layer F / Wf-A15).  Default 0.0 = bit-exact "
-            "pre-Wf-A15."
+            "Weight on QEDLoss (Layer F / Wf-A15).  Default 0.05 "
+            "(Wf-A44 B.2 — default ON; 0.0 = bit-exact pre-Wf-A15 when explicit OFF)."
         ),
     )
     p.add_argument(
         "--molecule-loss-weight",
         dest="molecule_loss_weight",
         type=float,
-        default=0.0,
+        default=0.05,
         help=(
-            "Weight on MoleculeLoss (Layer F / Wf-A15).  Default 0.0 = "
-            "bit-exact pre-Wf-A15."
+            "Weight on MoleculeLoss (Layer F / Wf-A15).  Default 0.05 "
+            "(Wf-A44 B.2 — default ON; 0.0 = bit-exact pre-Wf-A15 when explicit OFF)."
         ),
     )
     p.add_argument(
         "--stereo-loss-weight",
         dest="stereo_loss_weight",
         type=float,
-        default=0.0,
+        default=0.05,
         help=(
             "Weight on StereoCentreSuppressionLoss (Layer F / Wf-A15).  "
-            "Default 0.0 = bit-exact pre-Wf-A15."
+            "Default 0.05 (Wf-A44 B.2 — default ON; 0.0 = bit-exact pre-Wf-A15 "
+            "when explicit OFF)."
         ),
     )
     p.add_argument(
