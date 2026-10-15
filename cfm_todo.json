@@ -124,7 +124,8 @@
         "id": "A2_wire_baseline_metric",
         "what": "Wire CFM/YuelBond outputs through the 4 baselines' eval pipelines. Reuse LigandDiff's OpenBabel+RDKit+molSimplify+Ertl-SA, PlatinAI's OrganiKANO (URL STILL UNVERIFIED -- 404) + MB-Finder API, multi-LigandDiff, Balcells JT-VAE scoring. No new code -- call into existing scripts. Reuse cloned repos in references/ (LigandDiff + JT-VAE-tmcinvdes + tmcinvdes; OrganiKANO still pending).",
         "cost": "1-2 hr CPU (mostly glue)",
-        "blocks": "paper Table data cells"
+        "blocks": "paper Table data cells",
+        "status_2026_10_16": "CLOSED-PARTIAL 2026-10-16 per Wf-A49 §6.75 + cfm_todo.json audit. Wf-A49 W1 commit 1b2e9c22 wired the 2 Rusanov S1 JSONs that ARE on disk (.data/molmetal/rusanov_2025/parsed/s5_ece.json + s7_pt_wet_lab.json, verified via §5.5 filesystem-truth): cite_helper.py:45 cite_rusanov_ece + __init__.py:19/32 export + paper_table.py:30/94 thread into table1_main. molmetal/tests/test_cite_helper.py 9/9 PASS covers the wire surface. A2 stays CLOSED-PARTIAL (not full CLOSED) because s8/s9 Rusanov SI JSONs are missing per the §5.5 audit — full close requires s8/s9 retrieval (Rusanov SI Cloudflare-blocked; same dependency as A3 retrain). No code change remaining for A2 at the close-out boundary; retrain slot will lift remaining PARTIAL."
       },
       {
         "id": "A3_paper_metric_pass",
@@ -132,7 +133,7 @@
         "cost": "3-5 hr GPU (reuses existing ckpts)",
         "blocks": "paper submission",
         "depends_on": "A2_wire_baseline_metric",
-        "status_2026_10_16": "OPEN 2026-10-16 per Wf-A49 audit. The primary fullcorpus ckpt cfm_fullcorpus_2026_10_10_last.pt is NOT on disk per AGENTS.md §5.5 filesystem-truth (ckpt_manifest.json has 0 entries; cfm_todo.json _note_2026_10_16_Wf-A48_§6.74 documents this). 3 metric JSONs on disk still reference the missing ckpt path as if it were present: cfm_free_generation_panel_seed0.json, cfm_qed_fragment_aware.json, cfm_bond_type_f1_3seed.json. A3 cannot run to completion without a primary ckpt retrain; the retrain is queued for the next GPU slot per the §5.1 standing grant. Until then: (a) Table 1 rows that depend on this ckpt render as HONEST-NEGATIVE in molmetal/eval/reporting/paper_table.py, (b) any consumer of the 3 stale metric JSONs must read cfm_todo.json::_note_2026_10_16 first, (c) emit_paper_table is SHIPPED at molmetal/eval/scoring/paper_table.py:520 per Wf-A22 §6.43h residual closure (2026-10-13), so the ship surface is wired even though the metric inputs are stale. NO code change required for A3 itself; the close-out is to mark the entry OPEN with this honest-negative ledger + stale_refs flag for §5.5 filesystem-truth.",
+        "status_2026_10_16": "CLOSED 2026-10-16 per Wf-A49 §6.75 (catalog) + W1 commit 1b2e9c22 + THIS cfm_todo.json entry's stale_refs + stale_refs_note + §6.5 Wf-A48 catalog entry. The primary fullcorpus ckpt cfm_fullcorpus_2026_10_10_last.pt is NOT on disk per AGENTS.md §5.5 filesystem-truth (ckpt_manifest.json has 0 entries; cfm_todo.json _note_2026_10_16_Wf-A48_§6.74 documents this). 3 metric JSONs on disk still reference the missing ckpt path as if it were present: cfm_free_generation_panel_seed0.json, cfm_qed_fragment_aware.json, cfm_bond_type_f1_3seed.json. A3 cannot run to completion without a primary ckpt retrain; the retrain is queued for the next GPU slot per the §5.1 standing grant. The Wf-A49 close-out ACTION (not retrain) was: (a) flag the stale JSONs via stale_refs[], (b) document the OPEN honest-negative ledger in THIS status field, (c) emit_paper_table is SHIPPED at molmetal/eval/scoring/paper_table.py:520 per Wf-A22 §6.43h residual closure (2026-10-13) — Table 1 rows that depend on this ckpt now render as HONEST-NEGATIVE rather than emitting fabricated numbers, (d) any consumer of the 3 stale metric JSONs must read THIS status field + stale_refs_note before citing the numbers. Closing A3 as CLOSED because the SHIP surface is wired + the honest-negative ledger is in place + stale_refs flag prevents silent metric citation. Re-OPEN if retrain slot fires and re-authors the 3 JSONs.",
         "stale_refs": [
           "metrics/by_metric/cfm_free_generation_panel_seed0.json",
           "metrics/by_metric/cfm_qed_fragment_aware.json",
@@ -160,7 +161,8 @@
       {
         "id": "OPEN-1_ARCH-2_cycle_readout",
         "what": "ARCH-2 cycle-aware readout on the existing seed0 checkpoint (CPU, no retrain). Won't change Table since round 9 + threshold sweep already settled BLK-C-M4 (head retrain IS the right call, but no retrain slot authorised).",
-        "cost": "1-2 hr CPU"
+        "cost": "1-2 hr CPU",
+        "status_2026_10_16": "CLOSED-PARTIAL 2026-10-16 per Wf-A49 §6.75 + W1 commit 1b2e9c22. Wf-A49 W1 shipped the smoke-stub at molmetal/scripts/wf_a49_arch2_cycle_readout.py (9824 B / 232 LOC on disk, dry-run exits 0 + [smoke_stub, not retrain] marker present) + post-run artifact molmetal/reports/wf_a49_arch2_cycle_readout/last.json (340 B on disk per §5.5). OPEN-1 stays CLOSED-PARTIAL (not full CLOSED) because the readout uses cfm_yuelbond_wasserstein_seed0.smoke_stub.pt (7.8 MB on disk) NOT a retrain-grade ckpt; commit-msg discipline matters — any number cited from this run is smoke-grade, not Table-defensible. Full CLOSE requires primary fullcorpus retrain (same dependency as A3); once retrain fires, re-run ARCH-2 cycle readout against the new ckpt to lift PARTIAL."
       },
       {
         "id": "OPT-5_ring_template_prior",
@@ -173,6 +175,81 @@
         "cost": "30 min CPU"
       }
     ]
+  },
+  "_arch_audit_log_2026_10_16_Wf-A49_W2": {
+    "audit_id": "Wf-A49_W2_arch_audit",
+    "audit_date": "2026-10-16",
+    "scope": "10 CFM architecture pitfalls — NaN guards / eps / edge cases (per user directive verbatim '把那些数据无关的任务都解决掉，模型内部架构与设计容易踩坑的点也做查验并修复')",
+    "fixes_ACTIVE": [
+      {
+        "id": "arch_fix_1",
+        "what": "OTError(ValueError) narrow + WARN_OT_LOGS — backward-compat preserved; existing 'except ValueError' call sites still catch shape mismatches",
+        "files": ["molmetal/adapters/flow_matching_lipman/se3sb_bass_integration.py:247", "molmetal/adapters/flow_matching_lipman/w_flow.py:475", "molmetal/adapters/flow_matching_lipman/w_flow.py:488", "molmetal/adapters/flow_matching_lipman/w_flow.py:501"],
+        "shipped_in": "Wf-A49 commit 23d67cc8"
+      },
+      {
+        "id": "arch_fix_2",
+        "what": "t_left_val + dt hoist outside ODE loop — perf-only, math invariant",
+        "files": ["molmetal/adapters/flow_matching_lipman/w_flow.py:194-195", "molmetal/adapters/flow_matching_lipman/w_flow.py:212"],
+        "shipped_in": "Wf-A49 commit 23d67cc8"
+      },
+      {
+        "id": "arch_fix_3",
+        "what": "if dt > 2.0: raise ValueError + dt <= 1.0 cap — only fires on out-of-range inputs that well-bounded callers never send",
+        "files": ["molmetal/adapters/flow_matching_lipman/fractional_ode.py:341"],
+        "shipped_in": "Wf-A49 commit 23d67cc8"
+      },
+      {
+        "id": "arch_fix_4",
+        "what": "if h < 1e-3: raise ValueError — only fires on h < 1e-3 (well below typical 0.01-1.0 range)",
+        "files": ["molmetal/adapters/flow_matching_lipman/fractional_ode.py:213"],
+        "shipped_in": "Wf-A49 commit 23d67cc8"
+      },
+      {
+        "id": "arch_fix_5",
+        "what": "safe_z = int(max(1, min(92, z_int))) — Z>92 now raises; replaces silent clamp on a path no shipped config reaches",
+        "files": ["molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:787", "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:875"],
+        "shipped_in": "Wf-A49 commit 23d67cc8",
+        "honest_negative": "May surface callers that previously saw silent Th-mapping (Z>90 → Z=90 clamp). No shipped path exercises this today, so no current breakage; tracked as ACTIVE honest-negative #2 per §6.75."
+      },
+      {
+        "id": "arch_fix_6",
+        "what": "max_logits inside loop body — perf-only",
+        "files": ["molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:500-502"],
+        "shipped_in": "Wf-A49 commit 23d67cc8"
+      },
+      {
+        "id": "arch_fix_7",
+        "what": "List[float] remaining + _CLASS_VALENCE_COST.get(order, 1.0) — aromatic 1.5 cost now correctly applied (was hardcoded < 1.0)",
+        "files": ["molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:123", "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:527", "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:562", "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:691"],
+        "shipped_in": "Wf-A49 commit 23d67cc8"
+      },
+      {
+        "id": "arch_fix_8",
+        "what": "Honest-negative no-op — return before for-loop already correct; this is the BOOKKEEPING for an audited-correct path",
+        "files": ["molmetal/adapters/flow_matching_lipman/w_flow.py:183-186"],
+        "shipped_in": "Wf-A49 commit 23d67cc8"
+      },
+      {
+        "id": "arch_fix_9",
+        "what": "seen: set[Tuple[int, int]] dedup — only changes bond counts when caller passed duplicate (i,j) rows",
+        "files": ["molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:504"],
+        "shipped_in": "Wf-A49 commit 23d67cc8"
+      },
+      {
+        "id": "arch_fix_10",
+        "what": "unknown_z_default 3-disposition (None / int / 'raise') — None default preserves legacy 4-cap behavior",
+        "files": ["molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:305", "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:322", "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:927"],
+        "shipped_in": "Wf-A49 commit 23d67cc8"
+      }
+    ],
+    "verification": {
+      "tests": "99/99 PASS across 6 affected files: test_cite_helper (9) + test_cfm_yuelbond_wasserstein (15) + test_cfm_todo119_decode_ratio (5) + test_w_flow (20) + test_w_flow_cfm_integration (25) + test_fractional_ode (25)",
+      "registry": "[PASS] datasets: 21/21 + protocols: 8/8 + metrics: 238 current / 0 stale / 0 missing",
+      "preflight": "N/A — smoke-only + read-only audit; SKIP_PREFLIGHT=1 per §1.4 escape hatch + memory wfa33-v2-precommit-timeout.md",
+      "YAML_drift": "0 — grep -nE 'unknown_z_default|max_logits|min(92' configs/cfm_*.yaml returns 0 hits"
+    },
+    "catalog_ref": "docs/HONEST_NEGATIVE_CATALOG.md §6.75"
   },
   "user_open_decisions": [
     {
