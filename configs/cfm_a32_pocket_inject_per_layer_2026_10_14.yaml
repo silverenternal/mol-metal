@@ -14,14 +14,21 @@
 # exercised the True path, so completeness-critic flagged M2
 # (no yaml puts pocket_inject_per_layer: true on disk).
 #
-# This config is the minimum opt-in smoke that closes M2. Single key:
+# This config is the minimum opt-in smoke that closes M2. The exercised key:
 # `model.pocket_inject_per_layer: true` (per §5.11 round-trip, the leaf
 # `pocket_inject_per_layer` resolves to the dest via the
 # `_LEAF_FALLBACK_SECTIONS` 2-component rule; round-trip verified
 # `isinstance(args.pocket_inject_per_layer, bool) == True` and the value
-# equals True, not the argparse default False). All other hyperparameters
-# are left at argparse defaults — the next workflow (per-trainer opt-in
-# + eval-path consumption) is the gate that adds the real run knobs.
+# equals True, not the argparse default False).
+#
+# AGENTS.md §5.1 hyperparam contract: the 4 canonical standing-grant knobs
+# (train.batch_size / train.lr / model.hidden_dim / model.n_layers) are also
+# declared below. They carry the entry trainer's OWN argparse defaults
+# (DEFAULT_HIDDEN_DIM=128, DEFAULT_N_LAYERS=3, --batch-size default 64,
+# DEFAULT_LR=3.0e-4 in train_cfm_yuelbond_wasserstein.py), so the run
+# behaviour is unchanged — writing them out records the architecture instead
+# of implying it (the pre-2026-10-15 omission tripped
+# p3_wf343c4_hyperparams_config_complete).
 #
 # OPT-IN SEMANTICS (zero-init honest-negative): PerLayerPocketInjector is
 # zero-init, so a fresh init contributes identically zero to the velocity
@@ -46,6 +53,16 @@
 model:
   # The single key this config exists for.
   pocket_inject_per_layer: true
+  # AGENTS.md §5.1 — declared at the entry trainer's argparse defaults
+  # (DEFAULT_HIDDEN_DIM / DEFAULT_N_LAYERS in train_cfm_yuelbond_wasserstein.py).
+  hidden_dim: 128
+  n_layers: 3
+
+train:
+  # AGENTS.md §5.1 — the entry trainer's argparse defaults (--batch-size 64,
+  # DEFAULT_LR=3.0e-4); unchanged behaviour, now recorded explicitly.
+  batch_size: 64
+  lr: 3.0e-4
 
 entry:
   # §5.11 / scripts/_config_binding_gate.py — every config names its
