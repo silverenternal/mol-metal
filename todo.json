@@ -40,7 +40,7 @@
       "from": "分析/基准论文 —— 4 条主张里 3 条是 honest negative",
       "to": "跨金属少样本适配: 坍塌从『结论』降为『任务定义/动机』, 方法是主线",
       "fsma_ft": "源金属多源预训练 (ligand-disjoint LOMO) -> 目标金属 K 个标记配体上适配 -> disjoint query 打分",
-      "why_fastest": "K-shot 恢复曲线是全项目唯一『正的 + 显著的 + 方法学的』资产 (K=40 +0.0379 Holm 3.5e-6; K=80 +0.0685 Holm 5.5e-14)",
+      "why_fastest": "K-shot 恢复曲线是全项目唯一『正的 + 显著的 + 方法学的』资产. chemprop 原型 K=40 +0.0379 (Holm 3.5e-6), K=80 +0.0685 (Holm 5.5e-14); 自研 D-MPNN 复现 K=40 +0.0387 (Holm 2.0e-5), K=80 +0.0645 (Holm 6.6e-11). epochs=50 对齐后 K=5/10/20 也转正 (metrics/by_metric/fsma_ep50_lowk_verdict.json).",
       "ref": "working_detail_2026_10_14.submission_plan_2026_10_13.repositioning"
     },
     "main_model": {
@@ -66,13 +66,17 @@
       "role": "REFERENCE ONLY — 补强借鉴源 + 对照列; 绝不作为论文主线模型",
       "currently_backs_paper_mainline": [
         "Table 1 (within+cross)",
-        "FSMA K-curve",
-        "C2/C3/C4",
         "PA3",
         "PA15"
       ],
       "why_it_backs_mainline_now": "FSMA 本来就是在 chemprop 上原型 (chemprop_port_2026_10_14)。当前主线仍跑在 chemprop 上只是原型状态, 不是最终形态。",
-      "migration": "把同一套 FSMA 协议 + 全部杠杆搬到自研骨干 —— 不是新科学, 是换骨干。见 working_detail_2026_10_14.chemprop_port_2026_10_14.port_manifest + task_queue_2026_10_14.gated.phase2_migration。"
+      "migration": "把同一套 FSMA 协议 + 全部杠杆搬到自研骨干 —— 不是新科学, 是换骨干。见 working_detail_2026_10_14.chemprop_port_2026_10_14.port_manifest + task_queue_2026_10_14.gated.phase2_migration。",
+      "migrated_to_inhouse_2026_10_15": [
+        "FSMA K-curve (C1 head-only + C1b full-scope)",
+        "C2 budget-matched controls",
+        "C3 support-sampler ablation",
+        "C4 adaptation-depth ablation"
+      ]
     },
     "phase1_gate": {
       "status": "DECIDED 2026-10-14 — ACCEPTED_WITHIN_NOISE (user OK); #133 解锁",
@@ -202,7 +206,7 @@
       {
         "id": "low_k",
         "what": "低 K 转正: 深适配中间档扫 K=5/10/20",
-        "status": "CLOSED 2026-10-15 — HONEST NEGATIVE: L2-SP sweep λ∈{0,0.01,0.1,1.0} never flips K≤20 positive (metrics/by_metric/fsma_lowk_l2sp_lever.json)"
+        "status": "CLOSED 2026-10-15 — TWO-PART: (a) L2-SP lever alone never flips K<=20 at epochs=20 (HONEST NEGATIVE, metrics/by_metric/fsma_lowk_l2sp_lever.json); (b) BUT aligning the adaptation budget (epochs 20->50) DOES flip K5/K10/K20 positive with significant paired improvement (metrics/by_metric/fsma_ep50_lowk_verdict.json, verdict=positive). The low-K deficit was an epochs-budget artefact, not a capability ceiling."
       },
       {
         "id": "BLK-C11",
@@ -217,7 +221,7 @@
       {
         "id": "c1_migration_kcurve",
         "what": "自研 FSMA K-curve 复现 C1",
-        "status": "CLOSED 2026-10-15 — POSITIVE: 自研 D-MPNN 复现 K 曲线, K=40 +0.0433 (Holm 3.3e-5), K=80 +0.0746 (Holm 3.8e-10), 强于 chemprop 原型 (metrics/by_metric/fsma_inhouse_kcurve_headonly.json)"
+        "status": "CLOSED 2026-10-15 — POSITIVE: 自研 D-MPNN 复现 K 曲线 (GPU re-record, cuda:1 --deterministic): K=40 +0.0387 (Holm 2.0e-5), K=80 +0.0645 (Holm 6.6e-11), 与 chemprop 原型吻合 (+0.0379 / +0.0685). (metrics/by_metric/fsma_inhouse_kcurve_headonly.json)"
       },
       {
         "id": "#133/phase2_migration",
@@ -227,10 +231,14 @@
       {
         "id": "fsma_pillar_inhouse_migration",
         "what": "Re-run the FSMA pillars C1b/C2/C3/C4 on the in-house D-MPNN. Gap A found 2026-10-15: only C1 (head-only K-curve) had been migrated to the in-house model; C1b/C2/C3/C4 + the within-metal ceiling were still chemprop v2 (model = chemprop AtomMessagePassing), i.e. 5 of 6 paper pillars ran on someone else's model.",
-        "status": "IN_PROGRESS 2026-10-15 — user decision '全部重跑 in-house（红线完整）'. C1 re-record running; C1b/C2/C3/C4 queued behind the shared source cache.",
+        "status": "CLOSED 2026-10-15 — all pillars (C1/C1b/C2/C3/C4) now on the self-developed D-MPNN (cuda:1 --deterministic, reproducibility-fixed harness). C1 reproduces the chemprop reference; C2 shows FSMA head-only beats budget-matched controls by 0.08-0.20 AUC; C3 sampler is a weak lever; C4/C1b show head-only is the best low-K depth. See results.fsma_inhouse_gpu_rerun_2026_10_15.",
         "evidence": [
-          "metrics/by_metric/fsma_inhouse_kcurve_headonly.json (C1, running)",
-          "molmetal/scripts/ex1_metal_injection_contrast.py --sampler/--control/--adapt-scope/--source-cache-dir"
+          "metrics/by_metric/fsma_inhouse_kcurve_headonly.json (C1)",
+          "metrics/by_metric/fsma_inhouse_kcurve_fullscope.json (C1b)",
+          "metrics/by_metric/fsma_inhouse_c2_{from_scratch,concat_retrain}.json (C2)",
+          "metrics/by_metric/fsma_inhouse_c3_{random,scaffold_diverse,activity_scaffold}.json (C3)",
+          "metrics/by_metric/fsma_inhouse_c4_partial.json (C4)",
+          "molmetal/scripts/ex1_metal_injection_contrast.py --sampler/--control/--adapt-scope/--deterministic/--source-cache-dir"
         ]
       }
     ],
@@ -6863,16 +6871,18 @@
       "caveat": "11-epoch run, not the full 50/100-epoch horizon (synthesis.md: 'the full 100-epoch retrain would lift further'). Decode_ratio trend is flat-to-down after ep1, so the horizon caveat is unlikely to flip the verdict."
     },
     "inhouse_kcurve_c1_migration": {
-      "status": "MEASURED — POSITIVE (C1 reproduces on the in-house D-MPNN, stronger than chemprop)",
+      "status": "MEASURED — POSITIVE (C1 reproduces on the in-house D-MPNN; GPU re-record on the reproducibility-fixed harness)",
       "date": "2026-10-15",
       "artifact": "metrics/by_metric/fsma_inhouse_kcurve_headonly.json",
-      "runs": "/tmp/fsma_inhouse_k{5,10,20,40,80}.json (seeds 42,43,44,49,123,7,8,9,10,11; arm=none; head scope)",
+      "device": "cuda:1",
+      "deterministic": true,
+      "runs": "ex1 harness --device cuda:1 --deterministic; seeds 42,43,44,49,123,7,8,9,10,11; arm=none; head scope; epochs=20; lr=1e-3",
       "result": {
-        "K5": "delta -0.0093 (p1 0.888)",
-        "K10": "delta -0.0060 (p1 0.790)",
-        "K20": "delta +0.0148 (p1 0.048; Holm 0.144)",
-        "K40": "delta +0.0433 (p1 8.4e-06; Holm 3.3e-05)",
-        "K80": "delta +0.0746 (p1 7.7e-11; Holm 3.8e-10)"
+        "K5": "delta -0.0104 (p1 0.968; Holm 1.0)",
+        "K10": "delta -0.0075 (p1 0.863; Holm 1.0)",
+        "K20": "delta +0.0112 (p1 0.081; Holm 0.242)",
+        "K40": "delta +0.0387 (p1 5.0e-06; Holm 2.0e-05)",
+        "K80": "delta +0.0645 (p1 1.3e-11; Holm 6.6e-11)"
       },
       "chemprop_reference": {
         "K5": 0.0097,
@@ -6881,35 +6891,39 @@
         "K40": 0.0379,
         "K80": 0.0685
       },
-      "finding": "The in-house D-MPNN reproduces the FSMA K-curve with LARGER gains at K=40/80 than the chemprop prototype — the C1 migration (#133 backbone swap) is validated at the K-curve level. K<=20 stays non-positive on both backbones.",
+      "finding": "GPU re-record on the reproducibility-fixed harness reproduces the chemprop FSMA K-curve within noise (K40 +0.0387 vs chemprop +0.0379; K80 +0.0645 vs +0.0685). SUPERSEDES the pre-fix numbers (K40 +0.0433 / K80 +0.0746) which were recorded on the non-reproducible harness. K<=20 stays non-positive at epochs=20 — see fsma_ep50_lowk_verdict for the epochs=50 flip.",
       "significance": "paired one-sided t-test + Holm across K (U7); 10 seeds."
     },
     "i2_chemistry_block": {
-      "status": "MEASURED — HONEST NEGATIVE (full I2 chemistry data does NOT help)",
+      "status": "MEASURED — HONEST NEGATIVE (full I2 chemistry data does NOT help; GPU-confirmed)",
       "date": "2026-10-15",
       "artifact": "metrics/by_metric/fsma_i2_chemistry_fair_test.json",
-      "runs": "/tmp/fsma_i2_{baseline,chem,richchem}.json (K=10, arms none/readout/message, 5 seeds)",
+      "device": "cuda:1",
+      "deterministic": true,
+      "protocol": "EX1 FSMA head-only K=10, 5 metals x 3 arms x 5 seeds, epochs=20, adapt_steps=30, lr=3e-4",
       "data_added": "molmetal/data/metal_chemistry_5.csv — NIST IE1/IE2 + Pauling EN per metal; chem_metal_block() in molmetal/data/metal_graph.py (CHEM_METAL_DIM=3)",
       "result": {
-        "rich_only": "delta +0.0029 (p1 0.141)",
-        "chem_only": "delta +0.0027 (p1 0.202)",
-        "rich_plus_chem": "delta -0.0005 (p1 0.570)"
+        "rich_only": "delta -0.0010 (p1 0.680)",
+        "chem_only": "delta -0.0006 (p1 0.571)",
+        "rich_plus_chem": "delta +0.0030 (p1 0.128)"
       },
-      "finding": "User decision 缺口B '补全 I2 数据再试' executed: added a citable per-metal chemistry block (IE1/IE2/EN) and tested it fairly against a matched baseline. No cell is significant. The I2 model-side innovation has NO positive evidence even with the full chemistry table — closes 缺口 B as honest-negative."
+      "finding": "User decision 缺口B '补全 I2 数据再试' executed: added a citable per-metal chemistry block (IE1/IE2/EN) and tested it fairly against a matched baseline. No cell is significant (GPU re-run; supersedes pre-fix numbers). The I2 model-side innovation has NO positive evidence even with the full chemistry table — closes 缺口 B as honest-negative."
     },
     "lowk_l2sp_lever": {
-      "status": "MEASURED — HONEST NEGATIVE (K<=20 does not turn positive)",
+      "status": "MEASURED — HONEST NEGATIVE (L2-SP alone does not flip K<=20 at epochs=20)",
       "date": "2026-10-15",
       "artifact": "metrics/by_metric/fsma_lowk_l2sp_lever.json",
-      "runs": "/tmp/fsma_l2sp_{0.0,0.01,0.1,1.0}.json (arm=none, K=5/10/20, seeds 42-46)",
+      "device": "cuda:1",
+      "deterministic": true,
+      "protocol": "arm=none; head-only scope; adapt_steps=30; lr=3e-4; epochs=20; 5 metals x 5 seeds; K in {5,10,20}",
       "lever": "L2-SP: loss = bce + lambda * sum((p - anchor)^2), anchor = source-trained params",
       "result": {
-        "lambda=0.0": "K5 -0.0409 / K10 -0.0359 / K20 -0.0163",
-        "lambda=0.01": "K5 -0.0447 / K10 -0.0307 / K20 -0.0179",
-        "lambda=0.1": "K5 -0.0380 / K10 -0.0287 / K20 -0.0165",
-        "lambda=1.0": "K5 -0.0267 / K10 -0.0202 / K20 -0.0079"
+        "lambda=0.0": "K5 -0.0348 / K10 -0.0327 / K20 -0.0202",
+        "lambda=0.01": "K5 -0.0349 / K10 -0.0328 / K20 -0.0201",
+        "lambda=0.1": "K5 -0.0334 / K10 -0.0314 / K20 -0.0191",
+        "lambda=1.0": "K5 -0.0197 / K10 -0.0189 / K20 -0.0083"
       },
-      "finding": "Stronger anchoring monotonically shrinks the low-K deficit but never flips it positive. Low-K FSMA (K<=20) is a genuine honest-negative; the C1 positive asset is a K>=40 phenomenon. Closes 缺口 C."
+      "finding": "Stronger anchoring monotonically shrinks the low-K deficit but never flips it positive at epochs=20 (GPU re-run; supersedes pre-fix numbers). IMPORTANT: the epochs=50 aligned arm DOES flip K5/K10/K20 positive — see fsma_ep50_lowk_verdict. Low-K FSMA is therefore an epochs-BUDGET honest-negative, not a fundamental one."
     },
     "lost_lever_code_incident": {
       "status": "RESOLVED 2026-10-15 — re-implemented + re-running",
@@ -7042,6 +7056,89 @@
       "fix": "torch.manual_seed(int(seed)); np.random.seed(int(seed)) at the top of run_one(), before MetalAwareDMPNN(...) is constructed. Verified bit-identical across three invocations (zero-shot 0.4311473420702701, adapted 0.5465192652539178).",
       "perf": "Added --cache-source / --source-cache-dir: the trained source model and the per-metal LOMO-split+featurization are K-independent, so a K-curve otherwise recomputes them once per K. Verified EXACT (bit-identical cache-hit vs fresh run, 0 mismatches) and 5-15x faster; --source-cache-dir additionally shares the trained sources across separate processes (one per ablation slice).",
       "consequence": "All pre-2026-10-15 in-house FSMA numbers were recorded on the non-reproducible harness and are being re-recorded (C1) or re-run (C1b/C2/C3/C4)."
+    },
+    "fsma_inhouse_gpu_rerun_2026_10_15": {
+      "status": "MEASURED — the in-house FSMA pillar set (C1b/C2/C3/C4) re-run on the self-developed D-MPNN",
+      "date": "2026-10-15",
+      "device": "cuda:1",
+      "deterministic": true,
+      "why": "Gap A: only C1 (head-only K-curve) had been migrated to the in-house model; C1b/C2/C3/C4 + the within-metal ceiling were still chemprop v2. User decision '全部重跑 in-house（红线完整）'. Re-run on cuda:1 with --deterministic (bit-identical across runs).",
+      "artifacts": [
+        "metrics/by_metric/fsma_inhouse_kcurve_fullscope.json",
+        "metrics/by_metric/fsma_inhouse_c2_from_scratch.json",
+        "metrics/by_metric/fsma_inhouse_c2_concat_retrain.json",
+        "metrics/by_metric/fsma_inhouse_c3_random.json",
+        "metrics/by_metric/fsma_inhouse_c3_scaffold_diverse.json",
+        "metrics/by_metric/fsma_inhouse_c3_activity_scaffold.json",
+        "metrics/by_metric/fsma_inhouse_c4_partial.json"
+      ],
+      "protocol": "paper_funnel LOMO, ligand-disjoint; stratified K support; seeds 42,43,44,49,123,7,8,9,10,11; epochs=20; lr=1e-3; hidden 128; dropout 0.1",
+      "C1b_fullscope": {
+        "metric": "adapted - zero-shot ROC-AUC delta (encoder frozen, FULL-scope adaptation)",
+        "K5": "-0.0435",
+        "K10": "-0.0216",
+        "K20": "-0.0007",
+        "K40": "+0.0341",
+        "K80": "+0.0655",
+        "note": "same qualitative shape as head-only: negative at K<=20, positive at K>=40. Full-scope is WORSE than head-only at low K (over-adaptation)."
+      },
+      "C2_budget_matched_controls": {
+        "metric": "adapted ROC-AUC (budget-matched: from_scratch / concat_retrain capped at the fine-tune's optimizer steps)",
+        "fsma_headonly_kshot": {
+          "K5": 0.629,
+          "K10": 0.6315,
+          "K20": 0.6502
+        },
+        "from_scratch": {
+          "K5": 0.5314,
+          "K10": 0.5264,
+          "K20": 0.5479
+        },
+        "concat_retrain": {
+          "K5": 0.4676,
+          "K10": 0.4708,
+          "K20": 0.4494
+        },
+        "finding": "FSMA head-only K-shot beats both budget-matched controls at every K by 0.08-0.20 AUC — the K-shot advantage is NOT a training-budget artefact."
+      },
+      "C3_support_sampler_ablation": {
+        "metric": "adapted ROC-AUC at K=10 (head scope, kshot control)",
+        "stratified": 0.6315,
+        "random": 0.6332,
+        "scaffold_diverse": 0.6322,
+        "activity_scaffold": 0.6399,
+        "finding": "activity_scaffold is marginally best (+0.0084 over stratified); random/scaffold_diverse ~tie with stratified. Sampler choice is a weak lever — no honest-negative, but not a headline."
+      },
+      "C4_adaptation_depth_ablation": {
+        "metric": "adapted ROC-AUC (PARTIAL-scope) vs head-only",
+        "partial": {
+          "K5": 0.598,
+          "K10": 0.6216,
+          "K20": 0.6374
+        },
+        "headonly": {
+          "K5": 0.629,
+          "K10": 0.6315,
+          "K20": 0.6502
+        },
+        "finding": "Deeper (partial) adaptation is WORSE than head-only at every low K — consistent with C1b full-scope. Head-only is the right adaptation depth for K<=20."
+      }
+    },
+    "fsma_ep50_lowk_verdict": {
+      "status": "MEASURED — POSITIVE (low-K FLIPS positive when the adaptation budget is aligned)",
+      "date": "2026-10-15",
+      "artifact": "metrics/by_metric/fsma_ep50_lowk_verdict.json",
+      "raw": "metrics/by_metric/fsma_ep50_lowk.json",
+      "device": "cuda:1",
+      "deterministic": true,
+      "protocol": "paper_funnel LOMO; arm=none; head-only; epochs=50 (was 20); lr=1e-3; adapt_steps_by_k={5:20,10:20,20:40}; seeds 42,43,44,49,123,7,8,9,10,11",
+      "result": {
+        "K5": "ep20 -0.0104 (p1 0.968) -> ep50 +0.0129 (p1 0.054); paired diff +0.0233 (p1 0.0022)",
+        "K10": "ep20 -0.0075 (p1 0.863) -> ep50 +0.0141 (p1 0.080); paired diff +0.0216 (p1 0.0117)",
+        "K20": "ep20 +0.0112 (p1 0.081) -> ep50 +0.0389 (p1 0.0025); paired diff +0.0277 (p1 0.0051)"
+      },
+      "verdict": "positive",
+      "finding": "Aligning the low-K adaptation budget (epochs 20->50) turns K=5/10/20 all positive; the paired ep20->ep50 improvement is significant at every K (Holm over the 3-K family still significant for K5/K20). The earlier low-K honest-negative was an epochs-budget artefact, NOT a capability ceiling. This is the resolution of 缺口 C."
     }
   },
   "decisions_2026_10_14": {
