@@ -989,7 +989,7 @@ def _featurize_with_cache(
     pickle files bit-for-bit reusable.
     """
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_path = cache_dir / f"{cache_key}_v{featurizer_version[-1]}.pkl"
+    cache_path = cache_dir / f"{cache_key}_v{featurizer_version.lstrip('v')}.pkl"
     if cache_path.exists():
         try:
             with cache_path.open("rb") as f:

@@ -264,9 +264,8 @@ class CFMAMPContext:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> bool:
-        assert (
-            self._inner is not None
-        ), "CFMAMPContext.__exit__ called without matching __enter__"
+        if self._inner is None:
+            raise RuntimeError("CFMAMPContext.__exit__ called without matching __enter__")
         try:
             return self._inner.__exit__(exc_type, exc, tb)
         finally:

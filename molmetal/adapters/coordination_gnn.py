@@ -225,6 +225,8 @@ class CoordinationAwareGNNLayer(nn.Module):
             )
 
         n_nodes = x.size(0)
+        if edge_index.dim() != 2 or edge_index.size(0) != 2:
+            raise ValueError(f"edge_index must be (2, E); got shape {tuple(edge_index.shape)}")
         n_edges = edge_index.size(1) if edge_index.numel() > 0 else 0
 
         if n_edges > 0:

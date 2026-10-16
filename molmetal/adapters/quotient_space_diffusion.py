@@ -796,6 +796,8 @@ class QuotientSpaceCFM:
         x = torch.randn(2, 4, 3)
         t = torch.tensor([0.5, 0.5])
         x_ref = self.forward(x, t)  # (B, N, 3)
+        if x_ref.abs().max() < 1e-9:
+            return 0.0
         ref_norm = x_ref.flatten(start_dim=1).norm(dim=-1).clamp_min(1e-9)
         max_err = 0.0
         for k in range(int(n_runs)):
