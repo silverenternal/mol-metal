@@ -1,0 +1,121 @@
+{
+  "wf_tag": "Wf-131 Phase 1 \u2014 5-metal multi-task D-MPNN with Wasserstein pIC50 regularisation (Ru AUC rescue)",
+  "cohort": "no_multi_task",
+  "metals": [
+    "Rh",
+    "Ru"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "epochs": 50,
+  "alpha": 0.5,
+  "wasserstein_weight": 0.05,
+  "lr": 0.001,
+  "batch_size": 256,
+  "hidden": 300,
+  "depth": 3,
+  "device": "cuda:0",
+  "dmpnn_backend": "pyg",
+  "w2_gradient_mode": "sliced",
+  "honest_framing_note": "Wf-131 P1 stacks multi-task (shared encoder + 5 per-metal heads) + Wasserstein pIC50 regularisation + L2 gradient-norm guard.  Smaller metals (Rh/Os/Re < 1.2k rows) give noisier per-seed AUC; per-seed spread is reported unfiltered.  The Ru AUC \u2265 0.86 target is PROJECTED (party-twenty-spirit \u00a73.5), not measured \u2014 the recipe stack has not been validated end-to-end on this cohort, so we report mean \u00b1 std honestly and let the per-seed metrics speak for themselves.",
+  "per_metal": {
+    "Rh": {
+      "n_seeds": 3,
+      "per_seed": [
+        {
+          "seed": 0,
+          "n_train": 696,
+          "n_val": 199,
+          "n_test": 223,
+          "test_auc_mean": 0.6823326771653543,
+          "test_pearson_mean": -0.20618922390005393,
+          "test_rmse_mean": 4.5038098407664116,
+          "status": "OK"
+        },
+        {
+          "seed": 1,
+          "n_train": 696,
+          "n_val": 199,
+          "n_test": 223,
+          "test_auc_mean": 0.6400098425196851,
+          "test_pearson_mean": -0.050794313977378845,
+          "test_rmse_mean": 1.691148852921145,
+          "status": "OK"
+        },
+        {
+          "seed": 2,
+          "n_train": 696,
+          "n_val": 199,
+          "n_test": 223,
+          "test_auc_mean": 0.6714238845144358,
+          "test_pearson_mean": 0.0856875378747872,
+          "test_rmse_mean": 1.5433060771290246,
+          "status": "OK"
+        }
+      ],
+      "test_auc_mean": 0.664588801399825,
+      "test_auc_std": 0.017941466941118877,
+      "test_pearson_mean": -0.05709866666754852,
+      "test_pearson_std": 0.11924154662748879,
+      "test_rmse_mean": 2.5794215902721938,
+      "test_rmse_std": 1.362085894395951,
+      "status": "OK"
+    },
+    "Ru": {
+      "n_seeds": 3,
+      "per_seed": [
+        {
+          "seed": 0,
+          "n_train": 12471,
+          "n_val": 2166,
+          "n_test": 4350,
+          "test_auc_mean": 0.7688537839247517,
+          "test_pearson_mean": 0.5223258473661518,
+          "test_rmse_mean": 0.731192556593552,
+          "status": "OK"
+        },
+        {
+          "seed": 1,
+          "n_train": 12471,
+          "n_val": 2166,
+          "n_test": 4350,
+          "test_auc_mean": 0.7851497511470598,
+          "test_pearson_mean": 0.4623096362082883,
+          "test_rmse_mean": 0.9402072051463127,
+          "status": "OK"
+        },
+        {
+          "seed": 2,
+          "n_train": 12471,
+          "n_val": 2166,
+          "n_test": 4350,
+          "test_auc_mean": 0.7849333043836351,
+          "test_pearson_mean": 0.49443308649441964,
+          "test_rmse_mean": 0.7365032854539482,
+          "status": "OK"
+        }
+      ],
+      "test_auc_mean": 0.7796456131518155,
+      "test_auc_std": 0.00763148722290009,
+      "test_pearson_mean": 0.4930228566896199,
+      "test_pearson_std": 0.02452179930202343,
+      "test_rmse_mean": 0.8026343490646043,
+      "test_rmse_std": 0.09730285712871269,
+      "status": "OK"
+    }
+  },
+  "n_metal_seed_pairs": 6,
+  "source_artifacts": [
+    "results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Rh/seed0/training_summary.json",
+    "results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Rh/seed1/training_summary.json",
+    "results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Rh/seed2/training_summary.json",
+    "results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed0/training_summary.json",
+    "results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed1/training_summary.json",
+    "results/wf124_p3_per_innovation_ablation_g6/no_multi_task/Ru/seed2/training_summary.json"
+  ],
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "aggregation_note": "W12-C locate-or-create: aggregated from per-seed training_summary.json files; \u00a76.54f/g ACTIVE state UNCHANGED; metrics.json is a downstream artifact for the G6 ablation, NOT a re-run of the experiment."
+}
