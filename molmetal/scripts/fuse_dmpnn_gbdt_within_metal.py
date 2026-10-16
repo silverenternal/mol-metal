@@ -456,7 +456,7 @@ def _train_neural_head_fold(
 def _run_metal(metal: str, args: argparse.Namespace, device) -> Dict[str, object]:
     t0 = time.time()
     arms: Sequence[str] = tuple(args.arms)
-    smiles, y, n_raw = _load_dedup_cohort(metal)
+    smiles, y, n_raw = _load_dedup_cohort(metal, getattr(args, "cohort_spec", "24h"))
     if args.max_fold_n and len(y) > args.max_fold_n:
         rng = np.random.default_rng(args.split_seeds[0])
         keep = np.sort(rng.choice(len(y), size=args.max_fold_n, replace=False))
@@ -652,7 +652,7 @@ def _run_nested_bleed(metal: str, args: argparse.Namespace, device) -> Dict[str,
     from sklearn.model_selection import StratifiedKFold
     from molmetal.baselines.dmpnn import featurize_smiles_list
 
-    smiles, y, _ = _load_dedup_cohort(metal)
+    smiles, y, _ = _load_dedup_cohort(metal, getattr(args, "cohort_spec", "24h"))
     if args.max_fold_n and len(y) > args.max_fold_n:
         rng = np.random.default_rng(args.split_seeds[0])
         keep = np.sort(rng.choice(len(y), size=args.max_fold_n, replace=False))
@@ -809,6 +809,15 @@ def run(args: argparse.Namespace) -> Dict[str, object]:
     # other arm is selected, arm 1 must run too (else no delta is defined).
     args.arms = _with_anchor(args.arms)
 
+    if getattr(args, "deterministic", False):
+        # cuBLAS needs a fixed workspace for deterministic matmul on CUDA.
+        _os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+        _torch.backends.cudnn.deterministic = True
+        _torch.backends.cudnn.benchmark = False
+        # warn_only: the D-MPNN scatter/segment reductions have no deterministic
+        # CUDA kernel in some torch versions; warn rather than hard-fail.
+        _torch.use_deterministic_algorithms(True, warn_only=True)
+
     device = _resolve_device(args.device)
     report: Dict[str, object] = {
         "metric": "fusion_dmpnn_gbdt_within_metal",
@@ -829,7 +838,15 @@ def run(args: argparse.Namespace) -> Dict[str, object]:
             "identical to metal_activity_transfer_probe: CytotoxFilter("
             "time_threshold=24.0, ic50_min=0.01, metal_whitelist=[m]) then "
             "collapse_duplicates(tie_rule=active)"
+            if getattr(args, "cohort_spec", "24h") == "24h"
+            else (
+                "paper_funnel (Krasnov-style): build_paper_cohort(raw, metal=m) "
+                "then collapse_duplicates(tie_rule=active); the Table-1 / BLK-P1 "
+                "paper cohort"
+            )
         ),
+        "cohort_spec": getattr(args, "cohort_spec", "24h"),
+        "deterministic": bool(getattr(args, "deterministic", False)),
         "fold_protocol": (
             "StratifiedKFold(n_splits=5, shuffle=True, random_state=split_seed); "
             "identical to the probe's within_metal and to BLK-P1."
@@ -965,6 +982,25 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--nested-split-seeds", type=int, nargs="+", default=[42])
     p.add_argument("--nested-inner-splits", type=int, default=4)
     p.add_argument("--device", type=str, default="cpu")
+    p.add_argument(
+        "--cohort-spec", choices=["24h", "paper_funnel"], default="24h",
+        help=(
+            "Cohort definition.  '24h' (default) = the probe's exact 24 h cohort "
+            "(CytotoxFilter time_threshold=24, ic50_min=0.01) — the cohort the "
+            "original BLK-F1 probe ran on.  'paper_funnel' = the Krasnov-style "
+            "funnel (the Table-1 / BLK-P1 paper cohort); it makes Rh/Os/Re "
+            "resolvable (n=334/333/250 vs 51/36/74) and is the cohort the "
+            "G1 comparison (D-MPNN vs XGB, BLK-P1) is stated on."
+        ),
+    )
+    p.add_argument(
+        "--deterministic", action="store_true",
+        help=(
+            "Force bit-reproducible kernels (torch.use_deterministic_algorithms, "
+            "cudnn.deterministic, CUBLAS_WORKSPACE_CONFIG).  Required for CUDA runs "
+            "to be reproducible; harmless on CPU."
+        ),
+    )
     p.add_argument(
         "--max-fold-n", type=int, default=0,
         help="smoke only: truncate each metal to N ligands. 0 = full cohort.",

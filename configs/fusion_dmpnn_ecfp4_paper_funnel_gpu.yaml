@@ -1,0 +1,110 @@
+# FU1 — D-MPNN ⊕ ECFP4 feature fusion, PAPER-FUNNEL cohort, GPU.
+#
+# WHY
+# ---
+# G1 (todo.json gap_analysis_2026_10_16): the in-house D-MPNN loses to ECFP4->XGB
+# on ALL 5 metals on the same folds (Ru -0.0440, Ir -0.1628, Rh -0.0308,
+# Os -0.1380, Re -0.0395; metrics/by_metric/dmpnn_within_metal_auc_paper_funnel.json).
+# Per directive_2026_10_16 the answer is NOT to accept that as a negative but to
+# FUSE the stronger representation into one model.  The existing BLK-F1 probe
+# (metrics/by_metric/fusion_cheap_arms_probe.json) only ever ran the "cheap"
+# arms 1/2/6 — the D-MPNN fusion arms 3/4/5 were never run, so the fusion
+# question is OPEN.  This config runs them on the SAME cohort/folds as G1 so the
+# arm-1 anchor reproduces BLK-P1's XGB column exactly (built-in cross-check).
+#
+# DIFFERENCES vs configs/fusion_dmpnn_gbdt_within_metal.yaml (all declared):
+#   cohort_spec  24h -> paper_funnel   (the cohort G1 is stated on; Rh/Os/Re
+#                                       n=334/333/250 instead of 51/36/74)
+#   device       cpu -> cuda:1         (user request; see NOTE below)
+#   deterministic false -> true        (CUDA runs must be bit-reproducible)
+#   arms         dropped arm 2         (its tmQM ckpt is off-disk -> would SKIP)
+#   out_metric   new artifact path
+#
+# NOTE on device: the sibling config deliberately chose CPU because the D-MPNN
+# forward loops over molecules in Python (BLK-P1 measured 6.7 s CPU vs 17.4 s
+# GPU on the same 200-ligand smoke).  This run uses cuda:1 at the user's
+# request; the wall-time difference is recorded, not hidden.
+#
+# AGENTS.md §5.11: every key below resolves to a dest of
+# fuse_dmpnn_gbdt_within_metal.py's own parser (verified by
+# scripts/_config_binding_gate.py).
+
+entry:
+  script: molmetal/scripts/fuse_dmpnn_gbdt_within_metal.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/fuse_dmpnn_gbdt_within_metal.py
+    --config {yaml_path}
+
+data:
+  metals: [Ru, Ir, Rh, Os, Re]
+
+# paper_funnel = Krasnov-style build_paper_cohort; the Table-1 / BLK-P1 cohort.
+cohort_spec: paper_funnel
+
+# --- folds + arms -----------------------------------------------------------
+protocol:
+  split_seeds: [42, 43, 44, 49, 123]
+  n_splits: 5
+  train_seeds: [0]
+  # arm 1 is the anchor every delta is taken against and is auto-added.
+  #   1 = ECFP4 -> XGB                      (anchor; reproduces BLK-P1's XGB)
+  #   3 = end-to-end [ECFP4 ⊕ D-MPNN(256)] -> MLP   (confirmatory)
+  #   4 = ECFP4 -> MLP                      (head-change control for arm 3)
+  #   5 = [ECFP4 ⊕ D-MPNN OOF emb(256)] -> XGB      (UPPER BOUND, fold-bleed)
+  #   6 = [ECFP4 ⊕ 256-d noise] -> XGB      (feature-count negative control)
+  # arm 2 (frozen tmQM encoder) is omitted: models/tmqm_pretrained/
+  # tmqm_pretrained_encoder.pt is not on disk (only the two JSONs remain).
+  arms:
+    - "1_ecfp4_xgb"
+    - "3_ecfp4_plus_dmpnn_mlp"
+    - "4_ecfp4_mlp"
+    - "5_ecfp4_plus_dmpnn_oof_emb_xgb"
+    - "6_ecfp4_plus_noise_xgb"
+  nested_bleed: false
+  nested_bleed_metals: [Ru, Ir]
+  nested_split_seeds: [42]
+  nested_inner_splits: 4
+
+# --- model ------------------------------------------------------------------
+model:
+  hidden: 128
+  depth: 3
+  dropout: 0.1
+  mlp_hidden: 128
+  noise_dim: 256
+  noise_seed: 0
+  encoder: models/tmqm_pretrained/tmqm_pretrained_encoder.pt
+
+train:
+  lr: 0.001
+  epochs: 30
+  batch_size: 64
+  max_atoms: 120
+  max_edges: 240
+
+radius: 2
+nbits: 2048
+
+compute:
+  device: cuda:1
+  deterministic: true
+
+max_fold_n: 0
+
+output:
+  out_metric: metrics/by_metric/fusion_dmpnn_ecfp4_paper_funnel.json
+
+honest_framing:
+  purpose: >-
+    G1 closure by fusion (directive_2026_10_16): does adding the D-MPNN graph
+    representation to ECFP4 lift the merged scorer to >= the ECFP4->XGB anchor?
+    The judgement is the merged arm's ABSOLUTE AUC vs the arm-1 anchor on the
+    same folds — the arm-1 column is re-measured here, not assumed.
+  do_not_claim:
+    - A confirmatory fusion gain from arm 5 (its OOF embeddings carry a
+      second-order differential fold-bleed); arm 5 is an UPPER BOUND only.
+    - That a gain from arm 6 (noise) means anything — it is a negative control.
+    - A pooled 5-metal mean — Ru is ~64% of the deduplicated cohort.
+  statistics: >-
+    Paired one-sided t-test on the 5 per-seed deltas (df=4) + t-based 95% CI is
+    the gate; the percentile bootstrap is *_reference_only.  "Fusion wins"
+    requires mean delta > 0 AND Holm p < 0.05 over {Ru, Ir} AND t-CI lower > 0.
