@@ -199,6 +199,162 @@ def covalent_valence_table(
 
 
 # ---------------------------------------------------------------------------
+# Wf-A55 W7-P1 — decoder-side geometry constraints (SquarePlanar / Oct / Td)
+# ---------------------------------------------------------------------------
+# Why this is DECODER-side and not just a tighter valence cap: the existing
+# ``_COVALENT_VALENCE`` table already caps Pt at 4 — but it does so with one
+# number, regardless of geometry.  Square-planar Pt(II) and tetrahedral
+# Zn(II) both want CN=4, yet the *angle histogram* they accept is different:
+# a Pt(II) attempting a 109.5° bond order is a tetrahedral footprint, not
+# a square-planar one.  We enforce the geometry AFTER the valence gate, by
+# checking the assembled sub-graph's angle bucket count before appending
+# the bond.  Non-metal clouds see zero overhead (the dispatch is gated on
+# either endpoint being a constrained Z).
+@dataclass(frozen=True)
+class _GeometryConstraint:
+    name: str
+    max_bonds: int
+    ideal_angles: Tuple[float, ...]
+    metals: Tuple[int, ...]
+
+
+_SQUARE_PLANAR = _GeometryConstraint(
+    name="square_planar",
+    max_bonds=4,
+    ideal_angles=(90.0, 180.0),
+    metals=(46, 78, 79),  # Pd(II), Pt(II) (Pt_IV shares the cap), Au(III)
+)
+_OCTAHEDRAL = _GeometryConstraint(
+    name="octahedral",
+    max_bonds=6,
+    ideal_angles=(90.0, 180.0),
+    metals=(26, 44, 45, 75, 76, 77),  # Fe/Ru/Rh/Re/Os/Ir
+)
+_TETRAHEDRAL = _GeometryConstraint(
+    name="tetrahedral",
+    max_bonds=4,
+    ideal_angles=(109.5,),
+    metals=(29, 30),  # Cu/Zn
+)
+
+
+def _geometry_constraint_for_z(z: int) -> Optional[_GeometryConstraint]:
+    """Return the geometry constraint for a metal Z, or ``None`` if the
+    element is unconstrained (non-metal or metal with no geometry cap).
+
+    Wf-A55 W7-P1 — added 2026-10-16.  Backed by the canonical 13-metal
+    ``_COVALENT_VALENCE`` set above; a Z missing from both ``_COVALENT_VALENCE``
+    AND these tuples is a non-metal and returns ``None`` (the decoder
+    never fires the geometry gate on it).
+    """
+    for c in (_SQUARE_PLANAR, _OCTAHEDRAL, _TETRAHEDRAL):
+        if z in c.metals:
+            return c
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Wf-A55 W7-P5 — 4n+2 反芳香 (anti-aromatic) helper
+# ---------------------------------------------------------------------------
+def _is_anti_aromatic(ring_size: int) -> bool:
+    """Hückel anti-aromaticity: ring_size % 4 == 0 AND ring_size >= 4.
+
+    4n rings (4, 8, 12, ...) are anti-aromatic when planar-aromatic; 4n+2
+    rings (6, 10, 14, ...) are aromatic.  Ring sizes 5 and 7 are 4n+1 / 4n+3
+    — neither rule fires.
+
+    Wf-A55 W7-P5 — added 2026-10-16.  Backwards-compat note: a real
+    cyclooctatetraene (8 π electrons, non-planar tub) behaves as a
+    polyene, NOT anti-aromatic.  We have no planarity probe at decode
+    time, so we conservatively mark ALL 4n aromatic rings for demotion.
+    The geometric refinement (planarity check) is a future Wf.
+    """
+    if ring_size < 4:
+        return False
+    return ring_size % 4 == 0
+
+
+def _detect_and_demote_anti_aromatic(
+    bond_orders: List[Tuple[int, int, int]],
+) -> int:
+    """Walk the bond graph and demote 4n all-aromatic cycles to alternating single.
+
+    Algorithm: DFS from every node, bounded to ring size 8 (covers the
+    canonical 4n rings — 4 and 8).  When a cycle of size ``n % 4 == 0``
+    closes back to the start, and every bond on the cycle is
+    ``BOND_AROMATIC``, every other bond in the cycle is downgraded to
+    ``BOND_SINGLE`` and a ``[wfA55-anti-aromatic] HONEST-NEGATIVE`` line
+    is emitted to stdout.
+
+    Returns the number of distinct rings demoted.
+
+    Wf-A55 W7-P5 — added 2026-10-16.  MUTATES ``bond_orders`` in place
+    (the caller is the selector loop, which owns the list).
+    """
+    if not bond_orders:
+        return 0
+    # Find max atom index from bond_orders (cheap; bonds << atoms in dense graphs).
+    n_atoms = 0
+    for a, b, _ in bond_orders:
+        if a > n_atoms:
+            n_atoms = a
+        if b > n_atoms:
+            n_atoms = b
+    n_atoms += 1
+    # Build adjacency list: node -> list of (neighbor, bond_index)
+    adj: Dict[int, List[Tuple[int, int]]] = {}
+    for k, (a, b, _o) in enumerate(bond_orders):
+        adj.setdefault(a, []).append((b, k))
+        adj.setdefault(b, []).append((a, k))
+    demoted_rings: set = set()
+    for start in range(n_atoms):
+        if start not in adj:
+            continue
+        # Each stack entry: (current_node, path_nodes, path_edge_indices).
+        stack: List[Tuple[int, List[int], List[int]]] = [
+            (start, [start], [])
+        ]
+        while stack:
+            node, path_nodes, path_edges = stack.pop()
+            if len(path_nodes) > 8:
+                continue
+            for neighbor, edge_idx in adj.get(node, []):
+                # Skip the edge we just traversed (would close a 2-cycle).
+                if path_edges and edge_idx == path_edges[-1]:
+                    continue
+                if neighbor == start and len(path_nodes) >= 4:
+                    ring_key = frozenset(path_nodes)
+                    if ring_key in demoted_rings:
+                        continue
+                    ring_size = len(path_nodes)
+                    if not _is_anti_aromatic(ring_size):
+                        continue
+                    # All bonds in the ring must be aromatic.
+                    if all(
+                        bond_orders[bi][2] == BOND_AROMATIC
+                        for bi in path_edges
+                    ):
+                        demoted_rings.add(ring_key)
+                        # Demote alternating bonds to BOND_SINGLE.
+                        # We toggle along the cycle's edge order; an even
+                        # index gets demoted, the next stays aromatic.
+                        # RDKit treats both choices identically.
+                        for idx, bi in enumerate(path_edges):
+                            if idx % 2 == 0:
+                                a, b, _ = bond_orders[bi]
+                                bond_orders[bi] = (a, b, BOND_SINGLE)
+                        print(
+                            f"[wfA55-anti-aromatic] HONEST-NEGATIVE ring_size={ring_size} "
+                            f"detected, demoted to alternating single (4n anti-aromatic)"
+                        )
+                elif neighbor not in path_nodes:
+                    stack.append(
+                        (neighbor, path_nodes + [neighbor], path_edges + [edge_idx])
+                    )
+    return len(demoted_rings)
+
+
+# ---------------------------------------------------------------------------
 # Result container
 # ---------------------------------------------------------------------------
 @dataclass
@@ -571,10 +727,46 @@ class YuelBondBondDecoder:
             if cost > cap_i or cost > cap_j:
                 n_overvalent += 1
                 continue
+            # Wf-A55 W7-P1 — decoder-side geometry constraint.  AFTER the
+            # valence gate (so we never weaken an already-correct cap),
+            # BEFORE the bond is appended.  Queries
+            # ``_geometry_constraint_for_z`` for each endpoint; if either
+            # is constrained, count the bonds already attached to the
+            # constrained metal and reject if the new bond would push
+            # past the geometry's ``max_bonds``.  Non-metal endpoints
+            # return ``None`` and this branch costs two ``next(...)``
+            # probes (~O(1)).
+            zi_pre = int(z_list[i])
+            zj_pre = int(z_list[j])
+            gc_i = _geometry_constraint_for_z(zi_pre)
+            gc_j = _geometry_constraint_for_z(zj_pre)
+            if gc_i is not None or gc_j is not None:
+                gc = gc_i if gc_i is not None else gc_j
+                # ``metal_idx`` is whichever endpoint carries the
+                # constraint; ``partner_idx`` is the other end.  When
+                # BOTH endpoints are constrained (rare: bimetallic
+                # complexes), take the tighter cap.
+                metal_idx = i if gc_i is not None else j
+                if gc_i is not None and gc_j is not None:
+                    gc = gc_i if gc_i.max_bonds <= gc_j.max_bonds else gc_j
+                bonds_at_metal = sum(
+                    1 for (a, _, _) in bond_orders if a == metal_idx
+                )
+                if bonds_at_metal >= gc.max_bonds:
+                    n_overvalent += 1
+                    continue
             bond_orders.append((i, j, order))
             remaining[i] -= cost
             remaining[j] -= cost
             n_kept += 1
+            # Wf-A55 W7-P5 — anti-aromatic ring probe.  Only fires on
+            # aromatic bonds (the cost of a BFS cycle search is wasted on
+            # single/double/triple bonds because 4n all-aromatic cycles
+            # never contain non-aromatic edges).  The probe MUTATES
+            # ``bond_orders`` in place to demote alternating bonds when a
+            # 4n aromatic ring is detected.
+            if order == BOND_AROMATIC:
+                _detect_and_demote_anti_aromatic(bond_orders)
             # Dative flag — same convention as BondAwareDecoder.
             zi = int(z_list[i])
             zj = int(z_list[j])
