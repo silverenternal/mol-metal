@@ -1,0 +1,59 @@
+# EX1 — isolation arm: --adapt-lr 3e-4 ONLY (no --adapt-eval-encoder).
+#
+# WHY: the clean same-device A/B (fsma_inhouse_kcurve_ep50.json vs
+# ..._combined.json, zero_shot_auc bit-identical) shows the two adaptation
+# levers TOGETHER are negative at every K (adapted AUC -0.0052 at K5 ... -0.0273
+# at K80).  That is the opposite of the ep20 measurement (fsma_adaptlr_lever.json
+# claimed +0.0117 at K5), so the effect is budget-dependent and must be pinned
+# down.  This arm carries ONLY --adapt-lr 3e-4, so comparing it to
+# fsma_inhouse_kcurve_ep50_combined.json isolates --adapt-eval-encoder
+# (assuming the two effects are approximately additive, which the paper states).
+#
+# Shares /tmp/fsma_gpu_src_ep50 on cuda:1 -> zero_shot_auc bit-identical to both
+# the baseline and the combined arm.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 128
+  dropout: 0.1
+
+train:
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [none]
+  k: [5, 10, 20, 40, 80]
+  seeds: [42, 43, 44, 49, 123, 7, 8, 9, 10, 11]
+  sampler: stratified
+  control: kshot
+  adapt_steps_by_k: "5:20,10:20,20:40,40:60,80:100"
+  adapt_lr: 0.0003
+  # adapt_eval_encoder deliberately ABSENT (default false) -> the isolation.
+
+compute:
+  device: cuda:1
+  deterministic: true
+  cache_source: true
+
+output:
+  out: metrics/by_metric/fsma_inhouse_kcurve_ep50_adaptlr_only.json
+  source_cache_dir: /tmp/fsma_gpu_src_ep50
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  Single-variable vs the ep50 baseline on the same device and the
+  same cached source.  This arm exists to attribute the negative combined-arm
+  result; it is a diagnostic, not a candidate main-line configuration.
