@@ -255,7 +255,6 @@ class DirectedMPNN(nn.Module):
     ) -> torch.Tensor:
         """Per-atom forward (single molecule). Returns (N_atoms, hidden_dim)."""
         N = h_atom.size(0)
-        device = h_atom.device
 
         # Embed atom and edge features
         h_v = self.atom_embed(h_atom)  # (N, D)
@@ -338,7 +337,6 @@ class DirectedMPNN(nn.Module):
 
             # Remap edge indices to [0, n_atoms) for this molecule
             # Edges pointing to atoms >= n_atoms are padding — discard them
-            E = ei_mol.size(1)
             mask_edges = (ei_mol[0] < n_atoms) & (ei_mol[1] < n_atoms)
             ei_local = ei_mol[:, mask_edges]  # (2, E_valid)
             ea_local = ea_mol[: ea_mol.size(0)][mask_edges]  # (E_valid, edge_dim)

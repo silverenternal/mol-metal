@@ -262,7 +262,6 @@ class EquivariantDMPNN(nn.Module):
         up to numerical precision — see
         :mod:`molmetal.tests.test_wf358b2_equivariant_mp` test_rotation_equivariance_probe.
         """
-        N = h_atom.size(0)
         x = coords
         h_v = self.base.atom_embed(h_atom)  # (N, D) — same as DirectedMPNN
 

@@ -405,7 +405,6 @@ class ChempropV2MTModel(nn.Module):
         logits, so the chemprop path is the canonical training route.
         The (B, 2) shim exists for callers that want to reuse V4 loss.
         """
-        B = logits_1col.size(0)
         zeros = torch.zeros_like(logits_1col)
         return torch.cat([logits_1col, zeros], dim=-1)  # (B, 2)
 

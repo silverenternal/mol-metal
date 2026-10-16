@@ -263,7 +263,6 @@ def forward_batched_dmpnn(
     """
     device = bmg.V.device
     n_atoms_total = bmg.V.size(0)
-    n_edges_total = bmg.E.size(0)
 
     if n_atoms_total == 0 or bmg.size == 0:
         # Empty batch: all zero logits.

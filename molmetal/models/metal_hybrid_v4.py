@@ -158,7 +158,6 @@ def _maybe_batched_silu_mlp(
     # The fused kernel uses transposed weight convention
     # (``w1: (D, H1)``, ``w2: (H1, H2)``), so we transpose the
     # ``nn.Linear`` weights once and stack along dim 0.
-    D_in = linear_layers[0].in_features
     w1s = torch.stack(
         [la.weight.t().contiguous() for la in (linear_layers[0::2])], dim=0
     )  # (K, D_in, H)

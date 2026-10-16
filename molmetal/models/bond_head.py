@@ -300,9 +300,6 @@ def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tens
                 angle_dev = abs(torch.randn((), generator=rng).item()) * 0.05
             # Order-specific distance anchors that the head should learn.
             anchor_single = _bond_distance(z_i, z_j, BOND_SINGLE)
-            anchor_double = _bond_distance(z_i, z_j, BOND_DOUBLE)
-            anchor_triple = _bond_distance(z_i, z_j, BOND_TRIPLE)
-            anchor_aromatic = _bond_distance(z_i, z_j, BOND_AROMATIC)
             X_rows.append(
                 [
                     d,
@@ -1751,7 +1748,6 @@ class ConnectivityAwareDecoder:
         feats = self._inner._featurise(pair_features, cloud)
 
         # 3. DropEdge — pure tensor, eval() disables dropping.
-        was_training_drop = self.drop_edge
         de_training = self.connectivity.training if training is None else bool(training)
         dropped_feats, keep_mask = self.drop_edge(feats, training=de_training)
         if int(keep_mask.sum().item()) == 0:

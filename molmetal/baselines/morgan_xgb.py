@@ -204,7 +204,6 @@ class MorganXGBBaseline:
         smiles = smiles[keep]
         y_all = y_all[keep]
         cell_lines = cell_lines[keep]
-        idx_all = np.arange(len(y_all))
         if len(y_all) == 0:
             raise RuntimeError(
                 f"After dropping empty SMILES nothing remains for {self.metal}."
@@ -240,10 +239,8 @@ class MorganXGBBaseline:
         self._xgb_model = model
 
         # 6. Predict + evaluate
-        train_score = model.predict_proba(x_train)[:, 1]
         val_score = model.predict_proba(x_val)[:, 1]
         test_score = model.predict_proba(x_test)[:, 1]
-        train_metrics = compute_metrics(y_train, train_score)
         val_metrics = compute_metrics(y_val, val_score)
         test_metrics = compute_metrics(y_test, test_score)
         per_cl = per_cell_line_auc(cl_test, y_test, test_score)

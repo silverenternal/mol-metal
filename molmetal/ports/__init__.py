@@ -23,8 +23,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional, Protocol, Tuple, runtime_checkable
 
-import torch
-
 from molmetal.domain import Complex, Molecule, Pocket
 
 
@@ -34,6 +32,13 @@ from molmetal.domain import Complex, Molecule, Pocket
 @dataclass(frozen=True)
 class GenerationConfig:
     """Inputs to :meth:`MoleculeGenerator.generate`."""
+
+    #: Canonical ODE solver method vocabulary.  Wf-A52 W1 — exposed as
+    #: a module-level constant so callers (and the dispatch entry in
+    #: :mod:`molmetal.adapters.flow_matching_lipman`) can validate
+    #: ``config.method`` against the canonical set without duplicating
+    #: the literal list.  See :func:`validate_method`.
+    VALID_METHODS: frozenset = frozenset({"euler", "midpoint", "dopri5", "heun3"})
 
     n_samples: int = 100
     n_steps: int = 50  # number of ODE integration steps
@@ -70,6 +75,32 @@ class GenerationConfig:
     fm_log_normal_mu: float = -0.5
     fm_log_normal_sigma: float = 1.0
 
+    def __post_init__(self) -> None:
+        # Wf-A52 W1 — fail loud on unknown ODE method at config
+        # construction time.  Before this, a misspelled
+        # ``method="rk4"`` silently fell through to the default path in
+        # :class:`flow_matching_lipman.LipmanFlowMatchingAdapter` and
+        # produced numerically meaningless drift without any error trace.
+        if self.method not in self.VALID_METHODS:
+            raise ValueError(
+                f"GenerationConfig.method must be one of "
+                f"{sorted(self.VALID_METHODS)}; got {self.method!r}"
+            )
+
+
+def validate_method(method: str) -> None:
+    """Raise ``ValueError`` if ``method`` is not in VALID_METHODS.
+
+    Wf-A52 W1 — convenience export so adapters can call
+    ``validate_method(config.method)`` at dispatch entry without
+    duplicating the literal set.  See :class:`GenerationConfig`.
+    """
+    if method not in GenerationConfig.VALID_METHODS:
+        raise ValueError(
+            f"ODE method must be one of "
+            f"{sorted(GenerationConfig.VALID_METHODS)}; got {method!r}"
+        )
+
 
 @dataclass(frozen=True)
 class DockingConfig:
@@ -79,6 +110,21 @@ class DockingConfig:
     exhaustiveness: int = 8
     use_confidence: bool = True
     seed: int = 42
+
+    def __post_init__(self) -> None:
+        # Wf-A52 W2 — fail loud on zero/negative integer configs at
+        # construction time. Before this, ``n_poses=0`` or
+        # ``exhaustiveness=-1`` silently produced empty pose lists
+        # without any error trace, masking the config typo until
+        # downstream scoring reported zero candidates.
+        if self.n_poses < 1:
+            raise ValueError(
+                f"DockingConfig.n_poses must be >= 1; got {self.n_poses}"
+            )
+        if self.exhaustiveness < 1:
+            raise ValueError(
+                f"DockingConfig.exhaustiveness must be >= 1; got {self.exhaustiveness}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -208,6 +254,30 @@ class DesignLoopConfig:
     n_top_k: int = 100
     convergence_threshold: float = 0.01
     seed: int = 42
+
+    def __post_init__(self) -> None:
+        # Wf-A52 W2 — fail loud on zero/negative iteration counts at
+        # construction time. Before this, ``n_iterations=0`` short-
+        # circuited the loop to zero candidates, masking the config
+        # typo until downstream scoring reported zero rank rows.
+        if self.n_iterations < 1:
+            raise ValueError(
+                f"DesignLoopConfig.n_iterations must be >= 1; got {self.n_iterations}"
+            )
+        if self.n_samples_per_round < 1:
+            raise ValueError(
+                "DesignLoopConfig.n_samples_per_round must be >= 1; "
+                f"got {self.n_samples_per_round}"
+            )
+        if self.n_top_k < 1:
+            raise ValueError(
+                f"DesignLoopConfig.n_top_k must be >= 1; got {self.n_top_k}"
+            )
+        if self.convergence_threshold < 0.0:
+            raise ValueError(
+                f"DesignLoopConfig.convergence_threshold must be >= 0.0; "
+                f"got {self.convergence_threshold}"
+            )
 
 
 class DesignLoop(Protocol):

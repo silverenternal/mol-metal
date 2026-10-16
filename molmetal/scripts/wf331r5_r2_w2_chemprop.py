@@ -243,7 +243,11 @@ _CHEMPROP_V2_ATOM_VOCAB: Dict[str, List[Any]] = {
     "num_Hs": list(range(5)),  # 5
     # 11 + 11 + 11 + 4 + 8 + 2 + 9 + 5 + 2 + 4 + 5 = 72
 }
-_CHEMPROP_V2_ATOM_DIM: int = 72
+# Wf-A52 W1 — exported (was unstable before, single canonical "constant
+# name") so :mod:`molmetal.baselines.dmpnn`'s v2 featurizer can import
+# the schema-width value without duplicating the literal 72.
+CHEMPROP_V2_ATOM_DIM: int = 72
+_CHEMPROP_V2_ATOM_DIM: int = 72  # backward-compat alias for older imports
 
 _CHEMPROP_V2_BOND_VOCAB: Dict[str, List[Any]] = {
     # bond_type: 0..11 (12; 1:single, 2:double, 3:triple, 4:aromatic)

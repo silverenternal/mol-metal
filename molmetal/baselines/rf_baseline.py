@@ -121,7 +121,6 @@ class RFBaseline:
         cell_lines = ds.df["Cell_line"].astype(str).to_numpy()
         keep = np.array([bool(s) for s in smiles], dtype=bool)
         smiles, y_all, cell_lines = smiles[keep], y_all[keep], cell_lines[keep]
-        idx_all = np.arange(len(y_all))
 
         idx_train, idx_val, idx_test = self._split(ds, smiles, y_all)
 
@@ -135,7 +134,6 @@ class RFBaseline:
         model.fit(x_train, y_train)
         self._model = model
 
-        train_score = model.predict_proba(x_train)[:, 1]
         val_score = model.predict_proba(x_val)[:, 1]
         test_score = model.predict_proba(x_test)[:, 1]
 

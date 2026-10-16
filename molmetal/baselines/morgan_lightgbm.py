@@ -240,10 +240,8 @@ class MorganLightGBMBaseline:
         self._lgb_model = model
 
         # 6. Predict + evaluate
-        train_score = model.predict_proba(x_train)[:, 1]
         val_score = model.predict_proba(x_val)[:, 1]
         test_score = model.predict_proba(x_test)[:, 1]
-        train_metrics = compute_metrics(y_train, train_score)
         val_metrics = compute_metrics(y_val, val_score)
         test_metrics = compute_metrics(y_test, test_score)
         per_cl = per_cell_line_auc(cl_test, y_test, test_score)
