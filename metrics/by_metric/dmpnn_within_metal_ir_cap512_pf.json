@@ -481,5 +481,8 @@
       "Ir"
     ],
     "fallback_if_dmpnn_loses": "If the D-MPNN lands below the XGB within-metal column, the activity-prediction backbone should be named 'GBDT by protocol' and the D-MPNN restricted to its winning roles (bond head, search value). Written to disk either way."
-  }
+  },
+  "device_confounded": true,
+  "superseded_by": "metrics/by_metric/dmpnn_within_metal_cap512_pf.json",
+  "device_confound_note": "This Ir-only h512 probe ran on cuda:0 while the h128 baseline (dmpnn_within_metal_auc_paper_funnel.json) is device=cpu, and dmpnn_within_metal_auc.py has no --deterministic flag. The +0.0744 Ir gain reported here is therefore CONFOUNDED by device and is NOT citable; dmpnn_within_metal_cap512_pf.json (all 5 metals, device=cpu) supersedes it."
 }

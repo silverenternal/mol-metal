@@ -1,0 +1,72 @@
+# Table 1 (tab:transfer) — in-house D-MPNN WITHIN-metal, CAPACITY h512, on the
+# PAPER-FUNNEL cohort.  Same cohort / folds / schedule / device as
+# configs/dmpnn_within_metal_auc_paper_funnel.yaml (hidden 128); ONLY hidden
+# changes, so this is a clean single-variable capacity read for all 5 metals.
+#
+# WHY: the h128 within column loses to the published Krasnov value on the two
+# largest metals (Ir 0.6649 vs 0.73; and it is below XGB everywhere).  The
+# chemprop reference the column is compared against used d_h = 300, so the
+# in-house 128-wide column is under-capacity in exactly the way the epochs=20
+# FSMA curve was under-budget.  A first probe at h512 on Ir gave +0.0744
+# (0.6649 -> 0.7393, 5/5 split seeds above Krasnov 0.73) but ran on cuda:0 while
+# the h128 baseline is CPU, and this script has no --deterministic flag — so that
+# probe is device-confounded and is NOT used.  THIS run redoes it on CPU.
+#
+# device=cpu is deliberate (matches the baseline): the D-MPNN forward loops over
+# molecules in Python, so at this size CPU is both FASTER than GPU and
+# bit-reproducible.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/dmpnn_within_metal_auc.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/dmpnn_within_metal_auc.py
+    --config {yaml_path}
+
+data:
+  metals: [Ru, Ir, Rh, Os, Re]
+
+cohort_spec: paper_funnel
+
+protocol:
+  split_seeds: [42, 43, 44, 49, 123]
+  n_splits: 5
+
+model:
+  # ONLY change vs the h128 baseline.
+  hidden: 512
+  depth: 3
+  dropout: 0.1
+
+train:
+  lr: 0.001
+  epochs: 50
+  batch_size: 64
+  max_atoms: 120
+  max_edges: 240
+  train_seeds: [0]
+  class_weight: true
+  mask_padding: true
+
+radius: 2
+nbits: 2048
+
+compute:
+  # MUST match the h128 baseline (metrics/by_metric/dmpnn_within_metal_auc_paper_funnel.json
+  # has device="cpu"); the script has no --deterministic flag, so a GPU run is
+  # both device-shifted and irreproducible.
+  device: cpu
+
+max_fold_n: 0
+
+output:
+  out_metric: metrics/by_metric/dmpnn_within_metal_cap512_pf.json
+
+honest_framing:
+  purpose: >-
+    Is the h128 within-metal column's shortfall vs Krasnov / XGBoost a capacity
+    artefact?  Single variable: hidden 128 -> 512, everything else identical.
+  do_not_claim:
+    - A pooled 5-metal mean (Ru is ~64% of the deduplicated cohort).
+    - That Rh/Os/Re (n=334/333/250) are as well-resolved as Ru — report the n.
+    - Any use of the cuda:0 Ir-only probe (device-confounded, superseded here).
