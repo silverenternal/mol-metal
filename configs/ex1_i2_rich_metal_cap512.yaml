@@ -1,0 +1,74 @@
+# EX1 — metal-injection-position contrast (none / readout / message) at
+# CAPACITY h512.  Single-variable counterpart of ex1_i2_rich_metal.json (h128).
+#
+# WHY
+# ---
+# The h128 EX1 run (metrics/by_metric/ex1_i2_rich_metal.json, K=10) found the
+# ordering message (0.6240) > none (0.6204) > readout (0.6167): the injection
+# POSITION moves the cross-metal number, but the margin is small (~0.007 AUC)
+# and inside the 25-cell spread (std ~0.06-0.075).  Capacity is the one lever
+# that has repeatedly moved the absolute AUC in this project (h128 -> h512 on
+# the FSMA K-curve lifted every K).  This run asks the open question the h128
+# grid could not answer: does a wider encoder AMPLIFY the injection-position
+# difference, or wash it out?
+#
+# Single variable: hidden 128 -> 512.  Everything else is byte-identical to the
+# h128 EX1 run: same cohort, arms, K, seeds, epochs, lr, adapt schedule, dropout,
+# rich/chem metal blocks, sampler, control, device.  hidden is part of the
+# source-cache key, so this needs its own source cache directory.
+#
+# AGENTS.md §5.11: launched from this YAML only (--config).
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 512
+  dropout: 0.1
+  # I2 descriptor blocks — identical to the h128 EX1 run (held fixed).
+  rich_metal: true
+  chem_metal: false
+
+train:
+  epochs: 20
+  lr: 0.0003
+
+protocol:
+  arms: [none, readout, message]
+  k: [10]
+  seeds: [42, 43, 44, 45, 46]
+  adapt_steps: 30
+  sampler: stratified
+  control: kshot
+  adapt_scope: head
+  l2sp: 0.0
+
+compute:
+  # cuda:1 == the device of the h128 EX1 run.  The source-cache key includes
+  # str(device); a different device would retrain a materially different source
+  # and break the single-variable comparison.
+  device: cuda:1
+  deterministic: true
+  cache_source: true
+
+output:
+  out: metrics/by_metric/ex1_i2_rich_metal_cap512.json
+  # hidden=512 is a different model -> its own cache (cannot share the h128 one).
+  source_cache_dir: /tmp/fsma_gpu_src_i2_cap512
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  This is a CAPACITY probe, not a new method: the ONLY change
+  from ex1_i2_rich_metal.json is hidden 128 -> 512.  The judgement is on the
+  absolute per-arm AUC and on whether the message-minus-none / message-minus-
+  readout margins grow relative to their 25-cell spread — not on a paired delta
+  against a shared zero-shot.  A small cohort (Rh n=51, Os n=36) keeps the AUC
+  coarse; that is reported, not smoothed.  No number here is PROJECTED.
