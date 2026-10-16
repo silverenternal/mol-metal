@@ -1,0 +1,66 @@
+{
+  "wave": "Wf-A62",
+  "wave_date": "2026-10-17",
+  "scope": "CFM cross-YAML n_steps audit (per §6.55g round-4 strengthen)",
+  "metric": "n_steps",
+  "n_configs_total": 33,
+  "n_configs_declaring_method": 31,
+  "value_counts": {
+    "n_steps: 100": 17,
+    "n_steps:  50": 14
+  },
+  "value_counts_method_rk4": {
+    "n_steps: 100": 15,
+    "n_steps:  50": 0
+  },
+  "value_counts_method_midpoint": {
+    "n_steps: 100": 2,
+    "n_steps:  50": 14
+  },
+  "configs_without_explicit_method_n_steps": [
+    "configs/cfm_a32_pocket_inject_per_layer_2026_10_14.yaml (per_layer_inject opt-in smoke; n_steps+method default via argparse)",
+    "configs/cfm_patience10_seed0_2026_10_12.yaml (decode-panel config; bench_cfm_decode_real.py entry; not CFM training)"
+  ],
+  "explicit_n_steps_100_configs": [
+    "configs/cfm_5metal_default.yaml:64",
+    "configs/cfm_5metal_default_log_normal_2026_10_16.yaml:93",
+    "configs/cfm_blk_c5_repair_2026_10_09.yaml:111",
+    "configs/cfm_bond_head_100ep_2026_10_09.yaml:23",
+    "configs/cfm_bond_head_100ep_qed_2026_10_09.yaml:27",
+    "configs/cfm_bond_head_20ep_2026_10_09.yaml:23",
+    "configs/cfm_bond_head_30ep_onecycle.yaml:96",
+    "configs/cfm_fm_ab_2026_10_09.yaml:111",
+    "configs/cfm_fm_control_2026_10_09.yaml:111",
+    "configs/cfm_full_retrain.yaml:108",
+    "configs/cfm_gen_collapse_fm.yaml:152",
+    "configs/cfm_pcgrad_off_2026_10_15.yaml:125",
+    "configs/cfm_pcgrad_on_2026_10_14.yaml:125",
+    "configs/cfm_per_innovation_ablation_p1.4.yaml:94",
+    "configs/cfm_real_decode_lift_p1.3.yaml:94",
+    "configs/cfm_tmqm_all6.yaml:256",
+    "configs/cfm_fullcorpus_2026_10_10.yaml:347"
+  ],
+  "explicit_n_steps_50_configs": [
+    "configs/cfm_aromatic_bias_sweep_2026_10_12.yaml:64",
+    "configs/cfm_entropy_reg_012_2026_10_11.yaml:87",
+    "configs/cfm_fm_distort_2026_10_11.yaml:383",
+    "configs/cfm_frag_assemble.yaml:346",
+    "configs/cfm_frag_control.yaml:341",
+    "configs/cfm_fullcorpus_b64_2026_10_11.yaml:465",
+    "configs/cfm_fullcorpus_seed1.yaml:345",
+    "configs/cfm_fullcorpus_seed2.yaml:345",
+    "configs/cfm_fullcorpus_smiles_persist.yaml:336",
+    "configs/cfm_l3_decode_enabled_ab.yaml:37",
+    "configs/cfm_l3_guidance_sweep_2026_10_12.yaml:70",
+    "configs/cfm_objective_terms_2026_10_11.yaml:135",
+    "configs/cfm_ode_link_probe_2026_10_12.yaml:357",
+    "configs/cfm_padgroups_seed0_2026_10_12.yaml:365"
+  ],
+  "verifier_command": "grep -nE 'n_steps:' configs/cfm_*.yaml | sort -u  -> MEASURED on 2026-10-17 02:07 local",
+  "notes": [
+    "The Wf-A61 §6.88a audit listed 15 rk4 cohorts; round 4 confirms 15 rk4 + 16 midpoint = 31 declaring method",
+    "n_steps=100 strictly tied to method=rk4 cohort (15 configs); n_steps=50 mostly tied to method=midpoint cohort (14 of 16 midpoint configs); the remaining 2 midpoint configs use n_steps=100 (cfm_fullcorpus_2026_10_10.yaml:347 + cfm_tmqm_all6.yaml:256 — explained by their bond-head-extended training schedules)",
+    "Per §6.55g rk4 cohort: ALL 15 configs with `method: rk4` use `n_steps: 100` (zero exceptions; cross-cohort MEASURED)",
+    "§6.55g ACTIVE state unchanged: NUMERIC-DEFAULT-PASS-THROUGH half still OPEN until a real retrain flips `fm_t_dist: 'log_normal'` end-to-end (see fm_t_dist audit)"
+  ]
+}

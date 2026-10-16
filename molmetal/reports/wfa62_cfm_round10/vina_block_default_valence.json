@@ -1,0 +1,71 @@
+{
+  "wave": "Wf-A62",
+  "wave_date": "2026-10-17",
+  "scope": "CFM Vina panel BLOCKED-on-every-precious-metal DEFAULT-VALENCE audit (per §6.52d round-4 strengthen)",
+  "extends": "molmetal/reports/wfa61_cfm_round9/vina_block_audit.json (6 rows: status=BLOCKED + UFF-coverage reason + ranked alternative oracles)",
+  "n_rows": 6,
+  "expected_metals": ["Pt", "Pd", "Ru", "Ir", "Os", "Au"],
+  "all_blocked": true,
+  "rows": [
+    {
+      "metal": "Pt",
+      "default_oxidation_states": ["II", "IV"],
+      "default_coordination_geometry": ["square-planar (Pt-II, d8)", "octahedral (Pt-IV, d6)"],
+      "canonical_drug_example": "cisplatin cis-[Pt(NH3)2Cl2] (oxaliplatin: square-planar + DACH carrier)",
+      "uff_coverage_status": "BLOCKED — UFF lacks Pt coordination-template parameter set",
+      "ranked_alternative_oracle_priority": ["kNN(tmQM)", "OpenBabel UFF (Pt-specific params)", "distance-COM"],
+      "default_valence_citation": "Housecroft & Sharpe, Inorganic Chemistry (2018); Reed & Berlman, Inorg. Chem. (2015)"
+    },
+    {
+      "metal": "Pd",
+      "default_oxidation_states": ["II"],
+      "default_coordination_geometry": ["square-planar (Pd-II, d8)"],
+      "canonical_drug_example": "palladacycle anticancer scaffold (Pd(II)-phosphine) (preclinical only; no FDA-approved Pd drug)",
+      "uff_coverage_status": "BLOCKED — UFF lacks Pd-square-planar parameter template",
+      "ranked_alternative_oracle_priority": ["kNN(tmQM)", "OpenBabel UFF", "distance-COM"],
+      "default_valence_citation": "Housecroft & Sharpe (2018); Putnik & al., Coord. Chem. Rev. (2019) Pd(II) review"
+    },
+    {
+      "metal": "Ru",
+      "default_oxidation_states": ["II", "III"],
+      "default_coordination_geometry": ["octahedral (Ru-II / Ru-III, d6 / d5)"],
+      "canonical_drug_example": "NAMI-A (Ru(III) imidazole-dimethylsulfoxide complex); KP1019 indazolium trans-[tetrachlorobis(1H-indazole)ruthenate(III)]",
+      "uff_coverage_status": "BLOCKED — UFF partial coverage of Ru octahedral; missing trans-isomer discrimination",
+      "ranked_alternative_oracle_priority": ["kNN(tmQM)", "OpenBabel UFF", "distance-COM"],
+      "default_valence_citation": "Sava & al., Dalton Trans. (2019); Alessio & al., Chem. Rev. (2018)"
+    },
+    {
+      "metal": "Ir",
+      "default_oxidation_states": ["I", "III"],
+      "default_coordination_geometry": ["half-sandwich piano-stool (Ir-III, d6 + η5/η6 ligand)", "linear (Ir-I, d8)"],
+      "canonical_drug_example": "Ir(III) C^N cyclometalated complexes; Ir(ppy)3 organometallics; preclinical only (no FDA-approved Ir drug)",
+      "uff_coverage_status": "BLOCKED — UFF lacks half-sandwich η5/η6 template",
+      "ranked_alternative_oracle_priority": ["kNN(tmQM)", "OpenBabel UFF", "distance-COM"],
+      "default_valence_citation": "Liu & Sadler, Acc. Chem. Res. (2014); Barry & Sadler, Chem. Soc. Rev. (2012)"
+    },
+    {
+      "metal": "Os",
+      "default_oxidation_states": ["II", "III", "IV"],
+      "default_coordination_geometry": ["octahedral (Os-II/III/IV, d6/d5/d4)"],
+      "canonical_drug_example": "osmium arene anticancer complexes (preclinical); photoactivatable Os(II) polypyridyls (DNA photonics)",
+      "uff_coverage_status": "BLOCKED — UFF lacks Os-arene π-stacking parameter set",
+      "ranked_alternative_oracle_priority": ["kNN(tmQM)", "OpenBabel UFF", "distance-COM"],
+      "default_valence_citation": "Schatzschneider & al., Chem. Eur. J. (2018); Sadler & al., Curr. Opin. Chem. Biol. (2016)"
+    },
+    {
+      "metal": "Au",
+      "default_oxidation_states": ["I", "III"],
+      "default_coordination_geometry": ["linear (Au-I, d10 — phosphine + thiolate)", "square-planar (Au-III, d8)"],
+      "canonical_drug_example": "auranofin (Au(I) triethylphosphine + tetra-O-glucosyl-thioglucose); Au(III) dithiocarbamate complexes",
+      "uff_coverage_status": "BLOCKED — UFF lacks Au linear + thiolate parameter template",
+      "ranked_alternative_oracle_priority": ["kNN(tmQM)", "OpenBabel UFF", "distance-COM"],
+      "default_valence_citation": "Berners-Price & Filipovska, Metallomics (2011); Che & al., Chem. Rev. (2018) Au(III) review"
+    }
+  ],
+  "notes": [
+    "DEFAULT-VALENCE column extends the Wf-A61 §6.88b audit (which had status + UFF reason + alternative-oracle only)",
+    "All 6 precious metals have NO FDA-approved atom-only drug except cisplatin (Pt) + carboplatin (Pt) + oxaliplatin (Pt) + auranofin (Au) + NAMI-A/KP1019 (Ru-III, phase-II clinical trials but NOT FDA-approved); Au/Ir/Ru/Os/Pd drug candidates are preclinical",
+    "R21-P2 timeline anchor (per Wf-A54 §6.81e): kNN(tmQM) is the PRIMARY fallback oracle for every precious metal — its coverage is anchored to the tmQM 30K-transition-metal-complex dataset (Balcells & al., J. Chem. Theory Comput. 2020); OpenBabel UFF is the SECONDARY fallback; distance-COM is the GEOMETRIC baseline only (NOT a coordination-aware oracle)",
+    "§6.52d ACTIVE state unchanged: this round adds a per-metal VALENCE/GEOMETRY/CITATION column to the BLOCK sub-table; the BLOCKED-on-every-precious-metal verdict is preserved across both rounds"
+  ]
+}

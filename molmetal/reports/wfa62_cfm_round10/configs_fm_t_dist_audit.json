@@ -1,0 +1,58 @@
+{
+  "wave": "Wf-A62",
+  "wave_date": "2026-10-17",
+  "scope": "CFM cross-YAML fm_t_dist audit (per §6.55g round-4 strengthen)",
+  "metric": "fm_t_dist",
+  "n_configs_total": 33,
+  "n_configs_declaring_fm_t_dist": 1,
+  "value_counts": {
+    "fm_t_dist: log_normal": 1,
+    "fm_t_dist: uniform (default)": 32,
+    "fm_t_dist not declared (defaulted to uniform via argparse)": 32
+  },
+  "explicit_log_normal_configs": [
+    "configs/cfm_5metal_default_log_normal_2026_10_16.yaml:104"
+  ],
+  "explicit_uniform_configs": [],
+  "uniform_by_default_configs": [
+    "configs/cfm_5metal_default.yaml",
+    "configs/cfm_aromatic_bias_sweep_2026_10_12.yaml",
+    "configs/cfm_blk_c5_repair_2026_10_09.yaml",
+    "configs/cfm_bond_head_100ep_2026_10_09.yaml",
+    "configs/cfm_bond_head_100ep_qed_2026_10_09.yaml",
+    "configs/cfm_bond_head_20ep_2026_10_09.yaml",
+    "configs/cfm_bond_head_30ep_onecycle.yaml",
+    "configs/cfm_entropy_reg_012_2026_10_11.yaml",
+    "configs/cfm_fm_ab_2026_10_09.yaml",
+    "configs/cfm_fm_control_2026_10_09.yaml",
+    "configs/cfm_fm_distort_2026_10_11.yaml",
+    "configs/cfm_frag_assemble.yaml",
+    "configs/cfm_frag_control.yaml",
+    "configs/cfm_full_retrain.yaml",
+    "configs/cfm_fullcorpus_2026_10_10.yaml",
+    "configs/cfm_fullcorpus_b64_2026_10_11.yaml",
+    "configs/cfm_fullcorpus_seed1.yaml",
+    "configs/cfm_fullcorpus_seed2.yaml",
+    "configs/cfm_fullcorpus_smiles_persist.yaml",
+    "configs/cfm_gen_collapse_fm.yaml",
+    "configs/cfm_l3_decode_enabled_ab.yaml",
+    "configs/cfm_l3_guidance_sweep_2026_10_12.yaml",
+    "configs/cfm_objective_terms_2026_10_11.yaml",
+    "configs/cfm_ode_link_probe_2026_10_12.yaml",
+    "configs/cfm_padgroups_seed0_2026_10_12.yaml",
+    "configs/cfm_pcgrad_off_2026_10_15.yaml",
+    "configs/cfm_pcgrad_on_2026_10_14.yaml",
+    "configs/cfm_per_innovation_ablation_p1.4.yaml",
+    "configs/cfm_real_decode_lift_p1.3.yaml",
+    "configs/cfm_tmqm_all6.yaml",
+    "configs/cfm_a32_pocket_inject_per_layer_2026_10_14.yaml",
+    "configs/cfm_patience10_seed0_2026_10_12.yaml"
+  ],
+  "verifier_command": "grep -hE '^[[:space:]]*fm_t_dist:' configs/cfm_*.yaml | sort | uniq -c  -> MEASURED on 2026-10-17 (1 line: log_normal)",
+  "notes": [
+    "MEASURED 2026-10-17: only 1 of 33 cfm configs declares fm_t_dist explicitly (cfm_5metal_default_log_normal_2026_10_16.yaml)",
+    "The remaining 32 configs default to fm_t_dist=uniform via argparse — they DO NOT exercise the Lipman 2023 log-normal mid-point concentration",
+    "Wf-A54 §6.81b Fix 1B only added fm_log_normal_mu / fm_log_normal_sigma defaults to configs/cfm.yaml (the legacy single-config path); the 33-config matrix still has 32 of 33 silently defaulting to uniform",
+    "§6.55g ACTIVE state unchanged: fm_t_dist is CONFIG-PRESENT in 1/33 of the matrix; NUMERIC-DEFAULT-PASS-THROUGH half stays OPEN until a real retrain flips a config to log_normal end-to-end (cfm_5metal_default_log_normal_2026_10_16.yaml is the only candidate; future Wf-XX retrain that consumes it via §5.11 round-trip would lift the gap)"
+  ]
+}
