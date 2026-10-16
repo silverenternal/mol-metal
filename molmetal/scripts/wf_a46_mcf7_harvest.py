@@ -46,6 +46,7 @@ import os
 import sys
 import threading
 import time
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional
@@ -294,20 +295,34 @@ def write_cell_outputs(out_dir: Path, stem: str, records: list) -> None:
     os.replace(tmp_csv, csv_path)
 
 
-def harvest_one(cell_line: str, args, watchdog) -> dict:
+def harvest_one(cell_line: str, args, watchdog, prev: dict | None = None) -> dict:
     """Harvest one cell line; returns its summary dict (``pending`` count
-    is reported via ``pages_failed_unrecovered``)."""
+    is reported via ``pages_failed_unrecovered``).
+
+    With ``args.from_disk`` no network call is made: the API meta is carried
+    forward from ``prev`` (the previous summary) and only the on-disk records
+    are re-aggregated.  This exists so the summary can be regenerated after a
+    schema fix while another crawl is saturating the API's rate limit.
+    """
     out_dir = Path(args.out_dir)
     stem = cell_line.lower().replace("-", "")
     jsonl_path = out_dir / f"platinai_{stem}_biodata.jsonl"
 
     records, done_pages = load_existing(jsonl_path)
-    total, last_page = probe_last_page(cell_line, args.timeout)
-    if not last_page:
-        print(f"[{cell_line}] FATAL: meta.last_page unavailable", flush=True)
-        return {"cell_line": cell_line, "error": "no meta.last_page"}
-
-    pending = [p for p in range(1, int(last_page) + 1) if p not in done_pages]
+    if args.from_disk:
+        total = (prev or {}).get("api_meta_total")
+        last_page = (prev or {}).get("api_meta_last_page")
+        pending: list = []
+        if last_page:
+            pending = [
+                p for p in range(1, int(last_page) + 1) if p not in done_pages
+            ]
+    else:
+        total, last_page = probe_last_page(cell_line, args.timeout)
+        if not last_page:
+            print(f"[{cell_line}] FATAL: meta.last_page unavailable", flush=True)
+            return {"cell_line": cell_line, "error": "no meta.last_page"}
+        pending = [p for p in range(1, int(last_page) + 1) if p not in done_pages]
     print(
         f"[{cell_line}] resume={len(records)} rows / {len(done_pages)} pages; "
         f"meta.total={total} last_page={last_page} pending={len(pending)}",
@@ -326,7 +341,7 @@ def harvest_one(cell_line: str, args, watchdog) -> dict:
                 flat["_page"] = page
                 f.write(json.dumps(flat, ensure_ascii=False) + "\n")
 
-    for rnd in range(args.max_rounds):
+    for rnd in range(0 if args.from_disk else args.max_rounds):
         if not pending:
             break
         still_missing: list = []
@@ -383,6 +398,13 @@ def harvest_one(cell_line: str, args, watchdog) -> dict:
         "api_meta_total": total,
         "api_meta_last_page": int(last_page),
         "rows_total": len(deduped),
+        "rows_by_metal": dict(
+            Counter(r.get("metal") or "?" for r in deduped).most_common()
+        ),
+        "rows_pt": sum(1 for r in deduped if r.get("metal") == "Pt"),
+        "pt_unique_compounds": len(
+            {r.get("compound_code") for r in deduped if r.get("metal") == "Pt"}
+        ),
         "unique_compounds": len({r.get("compound_code") for r in deduped}),
         "rows_with_value_mean": sum(
             1 for r in deduped if r.get("value_mean") is not None
@@ -424,6 +446,14 @@ def main(argv: Optional[list] = None) -> int:
         "cannot freeze the run. Rows are appended per page, so a re-run "
         "resumes. 0 = no budget.",
     )
+    parser.add_argument(
+        "--from-disk",
+        action="store_true",
+        help="no network: re-aggregate the on-disk records and rewrite the "
+        "summary, carrying the API meta forward from the existing summary. "
+        "Use to regenerate the summary after a schema fix without competing "
+        "for the API's rate limit.",
+    )
     args = parser.parse_args(argv)
 
     out_dir = Path(args.out_dir)
@@ -462,11 +492,27 @@ def main(argv: Optional[list] = None) -> int:
 
         threading.Thread(target=_stall_monitor, daemon=True).start()
 
+    prev_by_cell: dict = {}
+    if args.from_disk:
+        prev_path = out_dir / "harvest_summary_2026-10-16.json"
+        if prev_path.exists():
+            try:
+                prev_doc = json.loads(prev_path.read_text(encoding="utf-8"))
+                prev_by_cell = {
+                    s["cell_line"]: s
+                    for s in prev_doc.get("by_cell_line", [])
+                    if s.get("cell_line")
+                }
+            except (json.JSONDecodeError, OSError):
+                prev_by_cell = {}
+
     summaries: list = []
     for cell in cells:
         print(f"\n=== [{cell}] ===", flush=True)
         try:
-            summaries.append(harvest_one(cell, args, watchdog))
+            summaries.append(
+                harvest_one(cell, args, watchdog, prev_by_cell.get(cell))
+            )
         except Exception as e:  # noqa: BLE001
             print(f"[{cell}] EXC {type(e).__name__}: {e}", flush=True)
             summaries.append({"cell_line": cell, "error": str(e)})
@@ -477,21 +523,32 @@ def main(argv: Optional[list] = None) -> int:
         for s in summaries
         if s.get("pages_failed_unrecovered", 0) or "error" in s
     ]
+    metals: Counter = Counter()
+    for s in summaries:
+        for m, c in (s.get("rows_by_metal") or {}).items():
+            metals[m] += c
+    rows_pt = sum(s.get("rows_pt", 0) for s in summaries)
     combined = {
         "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "endpoint": f"POST {_BIODATA_URL}",
         "n_cell_lines": len(summaries),
         "rows_total_all_cells": rows_total,
+        "rows_by_metal_all_cells": dict(metals.most_common()),
+        "rows_pt_all_cells": rows_pt,
         "incomplete_cells": incomplete,
         "wall_seconds": round(time.time() - t_start, 1),
         "by_cell_line": summaries,
         "notes": (
-            "Pt IC50 measurements harvested from MB-Finder. The Rusanov-2025 "
-            "'17,732 IC50' target is a cross-cell-line total (V2 SI: 4,078 "
-            "unique Pt complexes, IC50 from 592 cell lines); this run harvests "
-            "the largest cell lines until the cumulative count crosses it. "
-            "Rows deduped by biodata_id (unique measurement id), NOT "
-            "compound_code. Server enforces X-RateLimit-Limit: 30/min."
+            "IC50 measurements harvested from MB-Finder across the largest cell "
+            "lines. NOT all platinum: the API returns no metal field, so the "
+            "metal is derived from the MB-<Metal>- compound code. The "
+            "Rusanov-2025 '17,732 IC50' figure is a cross-cell-line Pt total "
+            "(V2 SI: 4,078 unique Pt complexes, IC50 from 592 cell lines), and "
+            "is NOT reachable from this API -- 21 of 832 cell lines already "
+            "cover 91% of MB-Finder's 3,614 Pt compounds. Rows deduped by "
+            "biodata_id (unique measurement id), NOT compound_code. Structures "
+            "are absent here; join get-substances on compound_code (wf_a49). "
+            "Server enforces X-RateLimit-Limit: 30/min."
         ),
     }
     atomic_write_file(
