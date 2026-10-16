@@ -1435,6 +1435,73 @@
     "user_directive_verbatim": "\u53ef\u4ee5\u7684\uff0c\u4f60\u4e0d\u7528\u7ba1dmpnn\u4e5f\u4e0d\u7528\u7ba1\u6570\u636e\uff0c\u518d\u770b\u770b\u6211\u4eec\u751f\u6210\u7ebf\u8fd9\u8fb9\u7684\u6a21\u578b\uff0c\u6211\u4eec\u8981\u505a\u7684\u662f\u8d35\u91d1\u5c5e\u6297\u764c\u836f\u751f\u6210\u6a21\u578b\uff0ccfm\u8fd9\u8fb9\u518d\u68c0\u67e5\u4e00\u4e0b\u8fd8\u6709\u6ca1\u6709\u4ec0\u4e48\u6f0f\u6d1e\uff0c\u76f8\u5173\u7684negative\u8fd8\u80fd\u4e0d\u80fd\u518d\u505a\u52a0\u5f3a\u548c\u89e3\u51b3\uff1f",
     "scope_per_user_directive": "CFM generative stack only; D-MPNN + data acquisition explicitly excluded"
   },
+  "_arch_audit_log_2026_10_17_Wf-A63_W2": {
+    "audit_id": "Wf-A63_W2_closeout_W12_forward_looking_plan",
+    "audit_date": "2026-10-17",
+    "scope": "Wf-A63 W2 closes the Wf-A62 \u00a76.89 forward-looking W12 plan verbatim (5 deferred items: W12-A pocket_per_layer_injector 4-cond regression test, W12-B A55 5-fix regression test, W12-C G6-ablation no_wass + no_multi_task empirical anchor downstream aggregation, W12-D \u00a76.81j round-4 18-path audit assertion, W12-E pre-flight 25/25 re-run artifact). Per user directive 2026-10-17 '\u53ef\u4ee5\u7684\uff0c\u4f60\u90fd\u505a\u4e00\u4e0b' - this wave ships the W12 deliverable on the CFM deep audit follow-on only (regression tests + downstream metrics aggregation + ledger path-count + pre-flight artifact), explicitly excluding any retrain / panel / GPU launch per \u00a75.1 standing grant.",
+    "fixes_SHIPPED": [
+      {
+        "id": "wf_a63_w2_w12_a_6_59g_pocket_per_layer_injector_regression",
+        "what": "molmetal/tests/test_pocket_per_layer_injector_threaded.py (NEW, 12239 bytes, +259 LOC test-only) - 10 pytests PASS in ~0.41s covering pocket_dim_mismatch + caller_n_max + hidden_dim + layer_matching + 4-cond opt-in gate + checkpoint warnings. Per Wf-A55 \u00a76.59h + Wf-A60 \u00a76.87 commit f7a730ca cross-link. Closes the Wf-A62 \u00a76.89.6 deferred-not-blocking cross-link.",
+        "files": [
+          "molmetal/tests/test_pocket_per_layer_injector_threaded.py (NEW)"
+        ],
+        "shipped_in": "Wf-A63 W1 group_W1 commit 50b79f44"
+      },
+      {
+        "id": "wf_a63_w2_w12_b_6_66h_a55_pocket_fixes_regression",
+        "what": "molmetal/tests/test_wf_a55_pocket_fixes.py (NEW, 9059 bytes, +216 LOC test-only) - 5 pytests PASS in ~0.39s covering PE3 ordering + cond_zero allocation + n_real clamp + radius-graph cutoff + per-layer zero-init. Per Wf-A55 \u00a76.66h + Wf-A60 \u00a76.87 \u00a76.59i + \u00a76.66i cross-link. Closes the Wf-A62 \u00a76.89.7 deferred-not-blocking cross-link.",
+        "files": [
+          "molmetal/tests/test_wf_a55_pocket_fixes.py (NEW)"
+        ],
+        "shipped_in": "Wf-A63 W1 group_W1 commit 50b79f44"
+      },
+      {
+        "id": "wf_a63_w2_w12_c_6_54f_g_g6_metrics_downstream_aggregation",
+        "what": "results/wf124_p3_per_innovation_ablation_g6/no_wass/metrics.json (NEW, 4283 bytes, +121 LOC JSON-only) + results/wf124_p3_per_innovation_ablation_g6/no_multi_task/metrics.json (NEW, 4325 bytes, +121 LOC JSON-only). Both files carry MEASURED_vs_PROJECTED=MEASURED + per_metal=['Rh','Ru'] x n_seeds=3 + honest_framing_note + aggregation_note. Honest MEASURED values: no_wass Rh=0.6645/Ru=0.7864; no_multi_task Rh=0.6646/Ru=0.7796. This is the downstream aggregation artifact per Wf-A62 \u00a76.89.5, NOT a G6 retrain; \u00a76.54f/g ACTIVE state UNCHANGED.",
+        "files": [
+          "results/wf124_p3_per_innovation_ablation_g6/no_wass/metrics.json (NEW)",
+          "results/wf124_p3_per_innovation_ablation_g6/no_multi_task/metrics.json (NEW)"
+        ],
+        "shipped_in": "Wf-A63 W1 group_W1 commit 50b79f44"
+      },
+      {
+        "id": "wf_a63_w2_w12_d_6_81j_round4_18_path_ledger_assertion",
+        "what": "molmetal/reports/wfa62_cfm_round10/HN_RESOLUTION_INDEX.md Round-4 18-path audit assertion (extended, +41 LOC MD-only) - Round-4 heading '## Round-4 18-path audit assertion (\u00a76.81j round-4 path-count verification)' present at line 54; grep -c '^| [0-9]+ |' returns 18 rows. The wfA54-decode grep in molmetal/scripts/cfm_property_panel.py remains 16 unchanged per Wf-A62 \u00a76.89.9 17-path premise (16 Wf-A54-decode + 1 Wf-A61 \u00a76.81o round-3 + 1 NEW round-4 \u00a76.81j consolidation = 18 paths). Closes the Wf-A62 \u00a76.89.9 deferred-to-Wf-A63 verification receipt.",
+        "files": [
+          "molmetal/reports/wfa62_cfm_round10/HN_RESOLUTION_INDEX.md (extended)"
+        ],
+        "shipped_in": "Wf-A63 W2 group_W2 commit 3a07bb26"
+      },
+      {
+        "id": "wf_a63_w2_w12_e_preflight_25_25_re_run_artifact",
+        "what": "molmetal/reports/wfa63_w12_closure/preflight_result.txt (NEW, 2446 bytes, +47 LOC artifact-only) - pre-flight v2 re-run post-Wf-A62: exit 0; 124 gates = 113 PASS + 10 SKIP + 1 WARN + 0 FAIL. SKIP_PREFLIGHT=1 escape hatch used per memory wfa33-v2-precommit-timeout.md + AGENTS.md \u00a71.4. 10 SKIP gates are pre-existing \u00a71.* P0 BLOCKER gates requiring live GPU / user OK; 1 WARN gate is the m14 decode_ratio CAVEAT (RDKit-PARSEABLE not chemistry; known-and-tracked per decode_ratio.json::blind_spot); 0 FAIL - Wf-A62 changes did NOT regress the v2 checklist.",
+        "files": [
+          "molmetal/reports/wfa63_w12_closure/preflight_result.txt (NEW)"
+        ],
+        "shipped_in": "Wf-A63 W2 group_W2 commit 3a07bb26"
+      }
+    ],
+    "fixes_ACTIVE": [],
+    "fixes_REFUSED_with_premise_error": [],
+    "hn_strengthen": [],
+    "files": [
+      "molmetal/tests/test_pocket_per_layer_injector_threaded.py (NEW; W12-A)",
+      "molmetal/tests/test_wf_a55_pocket_fixes.py (NEW; W12-B)",
+      "results/wf124_p3_per_innovation_ablation_g6/no_wass/metrics.json (NEW; W12-C)",
+      "results/wf124_p3_per_innovation_ablation_g6/no_multi_task/metrics.json (NEW; W12-C)",
+      "molmetal/reports/wfa62_cfm_round10/HN_RESOLUTION_INDEX.md (extended; W12-D)",
+      "molmetal/reports/wfa63_w12_closure/preflight_result.txt (NEW; W12-E)",
+      "docs/HONEST_NEGATIVE_CATALOG.md \u00a76.91 (NEW top-level closeout entry)",
+      "cfm_todo.json _arch_audit_log_2026_10_17_Wf-A63_W2 (this block)"
+    ],
+    "catalog_count_delta": 1,
+    "active_count_delta": 0,
+    "w1_status": "SHIPPED on disk (2 new test files + 2 new G6 metrics.json per `ls -la`; 15/15 pytest PASS in 0.67s per `pytest -q`; group_W1 commit 50b79f44 +717 insertions / 4 files modified; pre-flight artifact pinned by W12-E re-run)",
+    "w2_status": "SHIPPED on disk (1 MD extension + 1 new pre-flight artifact per `ls -la`; 18-path row count verified via `grep -c`; group_W2 commit 3a07bb26 +88 insertions / 2 files modified; \u00a76.91 catalog entry per `grep -nE '### \u00a76.91' docs/HONEST_NEGATIVE_CATALOG.md`; this audit-log block per `grep -n _arch_audit_log_2026_10_17_Wf-A63_W2 cfm_todo.json`; catalog commit pending)",
+    "user_directive_verbatim": "\u53ef\u4ee5\u7684\uff0c\u4f60\u90fd\u505a\u4e00\u4e0b",
+    "scope_per_user_directive": "W12 closure only (regression tests + downstream metrics aggregation + ledger path-count + pre-flight artifact); no retrain / panel / GPU launch per \u00a75.1 standing grant"
+  },
   "user_open_decisions": [
     {
       "id": "DEC_retrain_slot",
