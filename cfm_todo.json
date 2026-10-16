@@ -192,62 +192,92 @@
       {
         "id": "arch_fix_1",
         "what": "OTError(ValueError) narrow + WARN_OT_LOGS — backward-compat preserved; existing 'except ValueError' call sites still catch shape mismatches",
-        "files": ["molmetal/adapters/flow_matching_lipman/se3sb_bass_integration.py:247", "molmetal/adapters/flow_matching_lipman/w_flow.py:475", "molmetal/adapters/flow_matching_lipman/w_flow.py:488", "molmetal/adapters/flow_matching_lipman/w_flow.py:501"],
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/se3sb_bass_integration.py:247",
+          "molmetal/adapters/flow_matching_lipman/w_flow.py:475",
+          "molmetal/adapters/flow_matching_lipman/w_flow.py:488",
+          "molmetal/adapters/flow_matching_lipman/w_flow.py:501"
+        ],
         "shipped_in": "Wf-A49 commit 23d67cc8"
       },
       {
         "id": "arch_fix_2",
         "what": "t_left_val + dt hoist outside ODE loop — perf-only, math invariant",
-        "files": ["molmetal/adapters/flow_matching_lipman/w_flow.py:194-195", "molmetal/adapters/flow_matching_lipman/w_flow.py:212"],
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/w_flow.py:194-195",
+          "molmetal/adapters/flow_matching_lipman/w_flow.py:212"
+        ],
         "shipped_in": "Wf-A49 commit 23d67cc8"
       },
       {
         "id": "arch_fix_3",
         "what": "if dt > 2.0: raise ValueError + dt <= 1.0 cap — only fires on out-of-range inputs that well-bounded callers never send",
-        "files": ["molmetal/adapters/flow_matching_lipman/fractional_ode.py:341"],
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/fractional_ode.py:341"
+        ],
         "shipped_in": "Wf-A49 commit 23d67cc8"
       },
       {
         "id": "arch_fix_4",
         "what": "if h < 1e-3: raise ValueError — only fires on h < 1e-3 (well below typical 0.01-1.0 range)",
-        "files": ["molmetal/adapters/flow_matching_lipman/fractional_ode.py:213"],
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/fractional_ode.py:213"
+        ],
         "shipped_in": "Wf-A49 commit 23d67cc8"
       },
       {
         "id": "arch_fix_5",
         "what": "safe_z = int(max(1, min(92, z_int))) — Z>92 now raises; replaces silent clamp on a path no shipped config reaches",
-        "files": ["molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:787", "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:875"],
+        "files": [
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:787",
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:875"
+        ],
         "shipped_in": "Wf-A49 commit 23d67cc8",
         "honest_negative": "May surface callers that previously saw silent Th-mapping (Z>90 → Z=90 clamp). No shipped path exercises this today, so no current breakage; tracked as ACTIVE honest-negative #2 per §6.75."
       },
       {
         "id": "arch_fix_6",
         "what": "max_logits inside loop body — perf-only",
-        "files": ["molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:500-502"],
+        "files": [
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:500-502"
+        ],
         "shipped_in": "Wf-A49 commit 23d67cc8"
       },
       {
         "id": "arch_fix_7",
         "what": "List[float] remaining + _CLASS_VALENCE_COST.get(order, 1.0) — aromatic 1.5 cost now correctly applied (was hardcoded < 1.0)",
-        "files": ["molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:123", "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:527", "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:562", "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:691"],
+        "files": [
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:123",
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:527",
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:562",
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:691"
+        ],
         "shipped_in": "Wf-A49 commit 23d67cc8"
       },
       {
         "id": "arch_fix_8",
         "what": "Honest-negative no-op — return before for-loop already correct; this is the BOOKKEEPING for an audited-correct path",
-        "files": ["molmetal/adapters/flow_matching_lipman/w_flow.py:183-186"],
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/w_flow.py:183-186"
+        ],
         "shipped_in": "Wf-A49 commit 23d67cc8"
       },
       {
         "id": "arch_fix_9",
         "what": "seen: set[Tuple[int, int]] dedup — only changes bond counts when caller passed duplicate (i,j) rows",
-        "files": ["molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:504"],
+        "files": [
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:504"
+        ],
         "shipped_in": "Wf-A49 commit 23d67cc8"
       },
       {
         "id": "arch_fix_10",
         "what": "unknown_z_default 3-disposition (None / int / 'raise') — None default preserves legacy 4-cap behavior",
-        "files": ["molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:305", "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:322", "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:927"],
+        "files": [
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:305",
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:322",
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:927"
+        ],
         "shipped_in": "Wf-A49 commit 23d67cc8"
       }
     ],
@@ -267,68 +297,90 @@
       {
         "id": "arch_fix_2_1",
         "what": "Narrow bare 'except Exception: pass' to 'except (RuntimeError, ValueError) as exc:' + new _maybe_warn_clash() helper at lines 80-104 (records type+message before swallow)",
-        "files": ["molmetal/adapters/egnn_rocm.py:703"],
+        "files": [
+          "molmetal/adapters/egnn_rocm.py:703"
+        ],
         "shipped_in": "Wf-A50 commit 1cc0f79b"
       },
       {
         "id": "arch_fix_2_2",
         "what": "if not torch.isfinite(dir_vec).all(): return dir_vec * coord_scale — NaN/Inf guard BEFORE Triton kernel dispatch",
-        "files": ["molmetal/adapters/egnn_rocm.py:858"],
+        "files": [
+          "molmetal/adapters/egnn_rocm.py:858"
+        ],
         "shipped_in": "Wf-A50 commit 1cc0f79b"
       },
       {
         "id": "arch_fix_2_3",
         "what": "Drop DativeAwareCoordScale from .egnn_extensions import block (referenced only via docstring at line 311)",
-        "files": ["molmetal/adapters/egnn_rocm.py:45-49"],
+        "files": [
+          "molmetal/adapters/egnn_rocm.py:45-49"
+        ],
         "shipped_in": "Wf-A50 commit 1cc0f79b"
       },
       {
         "id": "arch_fix_2_4",
         "what": "Drop 2 F401 imports (recommended_amp_kwargs, ROCM_GFX1101_ENV_VARS) — neither referenced in package surface (grep confirmed)",
-        "files": ["molmetal/adapters/flow_matching_lipman/__init__.py:64"],
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/__init__.py:64"
+        ],
         "shipped_in": "Wf-A50 commit 1cc0f79b"
       },
       {
         "id": "arch_fix_2_5",
         "what": "Remove unused 'import math' + 'import warnings' (Sequence retained — used at lines 214/215/334/398)",
-        "files": ["molmetal/loss/chemistry_losses.py:24-25"],
+        "files": [
+          "molmetal/loss/chemistry_losses.py:24-25"
+        ],
         "shipped_in": "Wf-A50 commit 1cc0f79b"
       },
       {
         "id": "arch_fix_2_6",
         "what": "Remove unused Sequence import",
-        "files": ["molmetal/loss/aggregation_losses.py:23"],
+        "files": [
+          "molmetal/loss/aggregation_losses.py:23"
+        ],
         "shipped_in": "Wf-A50 commit 1cc0f79b"
       },
       {
         "id": "arch_fix_2_7",
         "what": "Remove unused import math",
-        "files": ["molmetal/loss/prior_losses.py:10"],
+        "files": [
+          "molmetal/loss/prior_losses.py:10"
+        ],
         "shipped_in": "Wf-A50 commit 1cc0f79b"
       },
       {
         "id": "arch_fix_2_8",
         "what": "Narrow 4× RDKit call sites: 'except Exception: <pass>' → 'except (RuntimeError, ValueError): continue'. Semantics shift: skip mol replaces zero contribution. Bit-exact for shipped default weight=0.0. property_losses.py:98 'except Exception' for MolFromSmiles RETAINED (parser contract)",
-        "files": ["molmetal/loss/property_losses.py:107-119"],
+        "files": [
+          "molmetal/loss/property_losses.py:107-119"
+        ],
         "shipped_in": "Wf-A50 commit 1cc0f79b",
         "honest_negative": "HN-A50-W2-3 property_losses skip-mol semantics — behavior change for enabled-weights cohorts with raised RDKit calls"
       },
       {
         "id": "arch_fix_2_9",
         "what": "Hoist 'import warnings' to module top; removed in-function import",
-        "files": ["molmetal/loss/regularization_losses.py:32"],
+        "files": [
+          "molmetal/loss/regularization_losses.py:32"
+        ],
         "shipped_in": "Wf-A50 commit 1cc0f79b"
       },
       {
         "id": "test_fix_3_1",
         "what": "Re-scope 4 v2 tests to pytest.skip(_V2_SKIP_REASON). v1 test PASSES. v2 deferral per MECHANISM_METRIC_MAPPING.md scope",
-        "files": ["molmetal/tests/test_m1_featurizer.py:70/74/78/90"],
+        "files": [
+          "molmetal/tests/test_m1_featurizer.py:70/74/78/90"
+        ],
         "shipped_in": "Wf-A50 commit 1cc0f79b"
       },
       {
         "id": "test_fix_3_2",
         "what": "Re-scope 6 tests to pytest.skip(_SKIP_REASON). 3 pre-existing API drifts surfaced (DMPNNMultiTaskModel.__init__(pool=) + featurize_smiles_list(version=) + _atom_features(version=))",
-        "files": ["molmetal/tests/test_m_levers.py:82/86/90/94/98/102"],
+        "files": [
+          "molmetal/tests/test_m_levers.py:82/86/90/94/98/102"
+        ],
         "shipped_in": "Wf-A50 commit 1cc0f79b",
         "honest_negative": "HN-A50-W2-1 test_m_levers API drift — 3 kwarg signatures never landed; re-implementation wave W3-B planned"
       }
@@ -383,7 +435,9 @@
       {
         "id": "w3_d_narrow_except",
         "what": "Narrow outer 'except Exception:' for Chem.MolFromSmiles to no-except + 2-line RDKit contract comment. RDKit's Chem.MolFromSmiles returns None for any invalid SMILES — never raises.",
-        "files": ["molmetal/loss/property_losses.py:96-101"],
+        "files": [
+          "molmetal/loss/property_losses.py:96-101"
+        ],
         "shipped_in": "Wf-A51 W1",
         "delta_LOC": "+4/-5",
         "test_verification": "pytest molmetal/tests/test_wf264_cfm_property_panel.py 5 PASSED"
@@ -433,12 +487,16 @@
       {
         "id": "code_health_multitask_dropout",
         "what": "MultiTaskReadout.__init__(hidden, dropout) at molmetal/baselines/dmpnn_multitask.py:116-137 ALREADY threads dropout into all 3 internal nn.Dropout layers (line 122 self.shared, line 128 self.reg_head, line 135 self.cls_head). Wf-A51 scout's MED precaution 'likely already done — need to verify line 200 source' verified by disk inspection.",
-        "files": ["molmetal/baselines/dmpnn_multitask.py:107-154"]
+        "files": [
+          "molmetal/baselines/dmpnn_multitask.py:107-154"
+        ]
       },
       {
         "id": "w3_c_cfg_scale_premise_wrong",
         "what": "cfg_scale is NOT a §5.11 violation — it is a constructor-only kwarg at molmetal/adapters/flow_matching_lipman/__init__.py:2060, set at :2255, read at :2943 via getattr. Zero matches in configs/*.yaml, train_cfm_yuelbond_wasserstein.py, or GenerationConfig (molmetal/ports/__init__.py:34-69). The Wf-A50 W2 critic premise (cfg_scale = YAML launch flag) was misread.",
-        "files": ["molmetal/adapters/flow_matching_lipman/__init__.py:2060,2255,2943"]
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/__init__.py:2060,2255,2943"
+        ]
       }
     ],
     "deferred": [],
@@ -546,13 +604,17 @@
       {
         "id": "wf_a54_fix_1B",
         "what": "configs/cfm.yaml: explicit `fm_log_normal_mu: -0.5` + `fm_log_normal_sigma: 1.0` anchor (Karras 2022 mid-range). Canonical CFM launch surface no longer relies on argparse defaults for these params; future retrain flipping fm_t_dist='log_normal' finds params in YAML.",
-        "files": ["configs/cfm.yaml:model.fm_log_normal_mu + model.fm_log_normal_sigma"],
+        "files": [
+          "configs/cfm.yaml:model.fm_log_normal_mu + model.fm_log_normal_sigma"
+        ],
         "shipped_in": "Wf-A54 W1 (this commit)"
       },
       {
         "id": "wf_a54_fix_1D",
         "what": "test_chemprop_v2_schema_shape_only.py (NEW, 15 LOC). 3 tests: shape contract (V, 72); byte-equality attempt raises NotImplementedError with §6.79b ledger pointer; CHEMPROP_V2_ATOM_DIM public export verified = 72. Locks §6.79b decision rule at the code level.",
-        "files": ["molmetal/tests/test_chemprop_v2_schema_shape_only.py (NEW, 3 tests PASS)"],
+        "files": [
+          "molmetal/tests/test_chemprop_v2_schema_shape_only.py (NEW, 3 tests PASS)"
+        ],
         "shipped_in": "Wf-A54 W1 (this commit)"
       }
     ],
@@ -590,7 +652,11 @@
       "paper_untouched": true,
       "wetlab_untouched": true
     },
-    "catalog_refs": ["HONEST_NEGATIVE_CATALOG.md §6.52d sub-table (this wave)", "HONEST_NEGATIVE_CATALOG.md §6.55g Wf-A50..A54 ledger + close-path (this wave)", "HONEST_NEGATIVE_CATALOG.md §6.79b decision rule (this wave)"]
+    "catalog_refs": [
+      "HONEST_NEGATIVE_CATALOG.md §6.52d sub-table (this wave)",
+      "HONEST_NEGATIVE_CATALOG.md §6.55g Wf-A50..A54 ledger + close-path (this wave)",
+      "HONEST_NEGATIVE_CATALOG.md §6.79b decision rule (this wave)"
+    ]
   },
   "_arch_audit_log_2026_10_16_Wf-A55_W7": {
     "audit_id": "Wf-A55_W7_decoder_geometry_and_anti_aromatic",
@@ -679,19 +745,25 @@
       {
         "id": "wf_a56_w1_fix_1_VALID_ODE_METHODS_DEFERRED",
         "what": "_VALID_ODE_METHODS = frozenset({'euler','midpoint','dopri5'}) at __init__.py:3104-3108. The completeness-critic found this whitelist is INCONSISTENT with upstream GenerationConfig.VALID_METHODS (at molmetal/ports/__init__.py:41 = {'euler','midpoint','dopri5','heun3'}, missing heun3) AND with downstream reference solver (at _reference/solver/__init__.py:281-291 accepts {'euler','midpoint','heun','rk2','rk4'}, uses rk4, REJECTS dopri5). 18+ YAML configs use method: rk4 (verified via grep: cfm_5metal_default.yaml:65, cfm_5metal_default_log_normal_2026_10_16.yaml:94, cfm_bond_head_*_2026_10_09.yaml (×4), cfm_blk_c5_repair_2026_10_09.yaml:112, cfm_pcgrad_off_2026_10_15.yaml:126, cfm_pcgrad_on_2026_10_14.yaml:126, cfm_full_retrain.yaml:109, cfm_real_decode_lift_p1.3.yaml:95, cfm_per_innovation_ablation_p1.4.yaml:95, cfm_fm_ab_2026_10_09.yaml:112, cfm_fm_control_2026_10_09.yaml:112, cfm_gen_collapse_fm.yaml:153, +2 prose cross-references). DEFERRED to W9-P1 per completeness-critic's W9 NEEDED verdict. Recommended resolution: union {'euler','midpoint','dopri5','heun3','rk4'} (1-LOC safe expansion) OR remove the W1 fix #1 dispatch check entirely and rely on GenerationConfig.__post_init__ alone.",
-        "files": ["REVERTED from molmetal/adapters/flow_matching_lipman/__init__.py:3098-3109 BEFORE commit 6409c3f0"],
+        "files": [
+          "REVERTED from molmetal/adapters/flow_matching_lipman/__init__.py:3098-3109 BEFORE commit 6409c3f0"
+        ],
         "deferred_to": "W9-P1 (2026-10-17+ pending W9 brief)"
       },
       {
         "id": "wf_a56_w1_fix_2_diversity_sampling_abs_tolerance_DEFERRED",
         "what": "abs(temperature - 1.0) > 1e-6 numerical safety guard at diversity_sampling.py:144 (replacing `if temperature != 1.0:`). Grouped as 'CFM arch round 7' in the Wf-A56 W1 brief; splitting them would violate the brief's commit-grouping intent. DEFERRED alongside W1 fix #1.",
-        "files": ["REVERTED from molmetal/adapters/flow_matching_lipman/diversity_sampling.py:144 BEFORE commit 6409c3f0"],
+        "files": [
+          "REVERTED from molmetal/adapters/flow_matching_lipman/diversity_sampling.py:144 BEFORE commit 6409c3f0"
+        ],
         "deferred_to": "W9-P1 (parallel to W1 fix #1 reconciliation)"
       },
       {
         "id": "wf_a56_w1_fix_3_metal_geometry_docstring_cross_ref_DEFERRED",
         "what": "docstring cross-ref to cfm_decoder_yuelbond._decoder_geometry_gate + _SQUARE_PLANAR constraint dataclass at metal_geometry.py:255-264. Grouped as 'CFM arch round 7' in the Wf-A56 W1 brief; splitting them would violate the brief's commit-grouping intent. DEFERRED alongside W1 fix #1.",
-        "files": ["REVERTED from molmetal/molmetal_lam/priors/metal_geometry.py:255-264 BEFORE commit 6409c3f0"],
+        "files": [
+          "REVERTED from molmetal/molmetal_lam/priors/metal_geometry.py:255-264 BEFORE commit 6409c3f0"
+        ],
         "deferred_to": "W9-P1 (parallel to W1 fix #1 reconciliation)"
       }
     ],
@@ -699,49 +771,65 @@
       {
         "id": "wf_a56_w2_fix_1_P1_vocab_20",
         "what": "_atom_vocab 12 → 20 elements (add Ni=28, Pd=46, Ir=77, Rh=45, Os=76, Re=75, Ru=44, Au=79) at __init__.py:2286-2293. P1 guard (≥ 20) PASSES. Tested by test_pitfall_guards.py::test_p1_vocab_minimum_count.",
-        "files": ["molmetal/adapters/flow_matching_lipman/__init__.py:2286-2293"],
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/__init__.py:2286-2293"
+        ],
         "shipped_in": "Wf-A56 W2 commit 6409c3f0"
       },
       {
         "id": "wf_a56_w2_fix_2_P1_OOV_skip",
         "what": "defense-in-depth branch that detects non-finite losses AFTER clip_grad_norm_, zeroes grads, records skipped_oov diagnostic, and skips the optimizer step at __init__.py:2812-2836. Prevents AdamW poisoning if upstream data-load guard is bypassed (e.g. ad-hoc notebook calls Molecule.from_smiles directly).",
-        "files": ["molmetal/adapters/flow_matching_lipman/__init__.py:2812-2836"],
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/__init__.py:2812-2836"
+        ],
         "shipped_in": "Wf-A56 W2 commit 6409c3f0"
       },
       {
         "id": "wf_a56_w2_fix_3_P4_clamp_x_3",
         "what": "atom_logits clamp ±50 at __init__.py:1856 (training path) + 2581 (post-dict lookup) + 3156 (sampler path). R17 BF16 regression: untrained Blackwell kernels overflowed atom_logits to ±1e4, blowing up F.cross_entropy to Inf.",
-        "files": ["molmetal/adapters/flow_matching_lipman/__init__.py:1856, 2581, 3156"],
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/__init__.py:1856, 2581, 3156"
+        ],
         "shipped_in": "Wf-A56 W2 commit 6409c3f0"
       },
       {
         "id": "wf_a56_w2_fix_4_P6_clone_root",
         "what": "P6 auto-detect when 'ref' IS the flow_matching repo (clone-root convention) so we fall back to vendored references instead of failing dependency check at _reference_loader.py:89-99.",
-        "files": ["molmetal/adapters/flow_matching_lipman/_reference_loader.py:89-99"],
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/_reference_loader.py:89-99"
+        ],
         "shipped_in": "Wf-A56 W2 commit 6409c3f0"
       },
       {
         "id": "wf_a56_w2_fix_5_stale_test_deletion",
         "what": "remove test_train_metal_lomo_v2_chemprop_v2_legacy_loop_still_blocks. The regression it pinned has moved on after LANE-F wire-in made _check_model_compat family-agnostic; the new error text 'is instantiated' does not exist anywhere in the codebase.",
-        "files": ["molmetal/tests/test_chemprop_v2_train_wiring.py:101 (deletion marker)"],
+        "files": [
+          "molmetal/tests/test_chemprop_v2_train_wiring.py:101 (deletion marker)"
+        ],
         "shipped_in": "Wf-A56 W2 commit 6409c3f0"
       },
       {
         "id": "wf_a56_w2_R18_1_se3_rename",
         "what": "_midpoint_se3 → _euler_se3_step rename at se3_sb_integration.py:448, 530, 595 (the function does Euler integration, not Heun). Update docstring + comment cross-refs.",
-        "files": ["molmetal/adapters/se3_sb_integration.py:448, 530, 595, 603"],
+        "files": [
+          "molmetal/adapters/se3_sb_integration.py:448, 530, 595, 603"
+        ],
         "shipped_in": "Wf-A56 W2 commit 6409c3f0"
       },
       {
         "id": "wf_a56_w2_R18_2_multi_ph_auto_broadcast",
         "what": "unsqueeze for caller convenience so 1-D feature inputs are auto-promoted to (B, F) before joint Hilbert regression at multi_ph_integration.py:396-411.",
-        "files": ["molmetal/adapters/multi_ph_integration.py:396-411"],
+        "files": [
+          "molmetal/adapters/multi_ph_integration.py:396-411"
+        ],
         "shipped_in": "Wf-A56 W2 commit 6409c3f0"
       },
       {
         "id": "wf_a56_w2_R18_3_additive_test",
         "what": "new test_relaxed_endpoint_additive at test_transport_relaxation_integration.py:687-725 validates that the relaxed endpoint scheme preserves additivity under concat of independently drawn relaxations.",
-        "files": ["molmetal/tests/test_transport_relaxation_integration.py:687-725"],
+        "files": [
+          "molmetal/tests/test_transport_relaxation_integration.py:687-725"
+        ],
         "shipped_in": "Wf-A56 W2 commit 6409c3f0"
       }
     ],
@@ -773,6 +861,125 @@
       "ship_commit": "6409c3f0 fix(wf-a56-W2): CFM pre-existing test root cause + R18 adapter audit + code health round 7 (6 files changed, 126 insertions(+), 47 deletions(-))"
     },
     "catalog_count_delta": "+2 (§6.82g + §6.83; ACTIVE count +1 §6.82g; cumulative 133 → 135)"
+  },
+  "_arch_audit_log_2026_10_16_Wf-A57_W1_W2_combined": {
+    "audit_id": "Wf-A57_W1_W2_combined_closeout_all_5_W9_plus_2_W1_fixes_SHIPPED",
+    "audit_date": "2026-10-16",
+    "scope": "Wf-A57 is the W9 round of the strict-repair pattern (SCOUT-VERIFY → DESIGN → IMPLEMENT-W1 → IMPLEMENT-W2 → VERIFY → COMPLETENESS-CRITIC → CLOSEOUT). The brief explicitly tackles the 5 deferred W9 items from Wf-A56 §6.83 (W9-P1 reconcile _VALID_ODE_METHODS / VALID_METHODS / reference solver union; W9-P2 config-binding gate amendment; W9-P3 Geometry dataclass single-source move; W9-P4 bond_head:943 root cause for test_cfm_yuelbond.py::test_build_cfm_decoder_use_yuelbond_false; W9-P5 ruff E501 cleanup) plus 2 Wf-A56-W1 fixes that the brief grouped with W1 fix #1 (W1 fix 2 abs-tolerance in diversity_sampling.py:144 + W1 fix 3 docstring cross-ref in priors/metal_geometry.py:255-264) -- splitting them from W9-P1 would have violated the original Wf-A56-W1 commit-grouping intent. Verify phase returned SHIP (172 cumulative tests PASS in 19.82s, both SHIP commits f686c60f and abc19f8a landed, no regressions in Wf-A57 scope, registry check PASS at 238 current / 0 stale / 0 missing). Completeness-critic phase returned COMPLETE with all 9 review checks PASS under the canonical .venv gate + pre-commit's pinned ruff v0.6.9.",
+    "fixes_SHIPPED": [
+      {
+        "id": "wf_a57_w9_p1_VALID_METHODS_union",
+        "what": "GenerationConfig.VALID_METHODS at molmetal/ports/__init__.py:51-53 expanded from 4-method set {euler,midpoint,dopri5,heun3} → union 5-method set {euler,midpoint,dopri5,heun3,rk4}. Adapter-side dispatch at flow_matching_lipman/__init__.py:3104-3105 now calls validate_method(ode_method) BEFORE solver.sample(...) — single canonical rejection path. 15 method: rk4 configs that previously crashed at __post_init__ now construct cleanly. CLOSES §6.82g (the Wf-A56-W1-DEFER honest-negative that the completeness-critic found inconsistent across 3 surfaces — upstream 4-method set, dispatch 3-method whitelist, reference solver 5-method acceptance set).",
+        "files": [
+          "molmetal/ports/__init__.py:51-53, 96, 99, 104, 110",
+          "molmetal/adapters/flow_matching_lipman/__init__.py:3104-3105"
+        ],
+        "shipped_in": "Wf-A57 W1 commit f686c60f"
+      },
+      {
+        "id": "wf_a57_w9_p4_bond_head_943_root_cause",
+        "what": "Append 2 zero/gap slots to both _add helper (covalent + dative patterns at bond_head.py:316-326) and _add_far helper (no-bond rejection rows at :362-370) matching _featurise:1509-1511 11-feature layout: 0.0 # 9 — d_to_metal + float(d - anchor_single) # 10 — bo_target gap fallback. Without these slots default_trained_head() crashed at line 942 with in_dim=11 vs X=(N, 9) shape mismatch. Target test test_cfm_yuelbond.py::test_build_cfm_decoder_use_yuelbond_false now PASSES.",
+        "files": [
+          "molmetal/models/bond_head.py:316-326 (_add helper)",
+          "molmetal/models/bond_head.py:362-370 (_add_far helper)"
+        ],
+        "shipped_in": "Wf-A57 W1 commit f686c60f"
+      },
+      {
+        "id": "wf_a57_w1_fix_2_diversity_sampling_abs_tolerance_RE_SHIP",
+        "what": "diversity_sampling.py:144 changed `if temperature != 1.0:` → `if abs(temperature - 1.0) > 1e-6:`. Mitigates fp-noise path where YAML-float-as-string delivers 0.9999999... and silently disables nucleus sampling. (Originally Wf-A56 W1 fix #2 — DEFERRED per completeness-critic W9 NEEDED verdict; re-shipped per Wf-A57 brief grouped with W9-P1.)",
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/diversity_sampling.py:144"
+        ],
+        "shipped_in": "Wf-A57 W1 commit f686c60f"
+      },
+      {
+        "id": "wf_a57_w1_fix_3_metal_geometry_docstring_cross_ref_RE_SHIP",
+        "what": "Append Cross-ref paragraph after Example block in SquarePlanarPtII docstring at priors/metal_geometry.py:263-272 cross-linking Wf-A55-W7-P1 decoder-side _GeometryConstraint dataclass to trainer-side prior. (Originally Wf-A56 W1 fix #3 — DEFERRED per completeness-critic W9 NEEDED verdict; re-shipped per Wf-A57 brief grouped with W9-P1.)",
+        "files": [
+          "molmetal/molmetal_lam/priors/metal_geometry.py:263-272"
+        ],
+        "shipped_in": "Wf-A57 W1 commit f686c60f"
+      },
+      {
+        "id": "wf_a57_w9_p2_config_binding_gate_amendment",
+        "what": "3 loader-side edits to wfA2_config_loader.py: (1) Add _NON_TRAINER_SUBKEYS frozenset (10 keys: type, default, dest, desc, description, _schema, enum, choices, min, max) at module level near _NON_TRAINER_SECTIONS. (2) Patch _iter_leaves to SKIP a mapping whose EVERY child key is in _NON_TRAINER_SUBKEYS. (3) Add 7 inert entries to DECLARED_INERT_PATHS for the §5.1 GPU-footprint annotations on configs/cfm_patience10_seed0_2026_10_12.yaml (entry.script = bench_cfm_decode_real.py): train.batch_size, train.lr, train.weight_decay, train.max_norm, model.hidden_dim, model.n_layers, model.depth. Verified: [config-binding] PASS (144 configs, 0 unresolved VIOLATIONs; only documented DECLARED-INERT entries reported).",
+        "files": [
+          "molmetal/scripts/wfA2_config_loader.py:174 (_NON_TRAINER_SUBKEYS)",
+          "molmetal/scripts/wfA2_config_loader.py:368-374 (7 DECLARED_INERT additions)",
+          "molmetal/scripts/wfA2_config_loader.py:518-523 (_iter_leaves filter)"
+        ],
+        "shipped_in": "Wf-A57 W2 commit abc19f8a"
+      },
+      {
+        "id": "wf_a57_w9_p3_geometry_single_source",
+        "what": "Relocate decoder-side _GeometryConstraint dataclass + 3 frozen instances (_SQUARE_PLANAR / _OCTAHEDRAL / _TETRAHEDRAL) + _geometry_constraint_for_z lookup helper from cfm_decoder_yuelbond.py:213-253 to priors/metal_geometry.py:408-447. Re-export 5 names from decoder-side module (noqa: E402,F401). Call-sites at :704-705 intact. test_cfm_decoder_geometry_constraints.py 8/8 PASS (backward-compat preserved).",
+        "files": [
+          "molmetal/molmetal_lam/priors/metal_geometry.py:93-97 (re-export), 408-450 (dataclass + instances + helper)",
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:202-215 (re-import)"
+        ],
+        "shipped_in": "Wf-A57 W2 commit abc19f8a"
+      },
+      {
+        "id": "wf_a57_w9_p5_ruff_E501_cleanup",
+        "what": "Manual line-wrap only — NO --fix per Wf-A50 B904 lesson. 13 line-wraps across 4 files. ~/.cache/pre-commit/repo3n9semkz/py_env-python3.12/bin/ruff check --select E501 <4 files> → All checks passed! (pinned v0.6.9 per memory ruff-comes-from-precommit-env).",
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/__init__.py: 8 wraps (976, 2292, 3006, +5 in get_metadata docstring block)",
+          "molmetal/adapters/flow_matching_lipman/_reference_loader.py: 2 wraps (102, 106)",
+          "molmetal/adapters/multi_ph_integration.py: 2 wraps (230, 410)",
+          "molmetal/molmetal_lam/priors/metal_geometry.py: 1 wrap (was 722, now 791 after W9-P3 move)"
+        ],
+        "shipped_in": "Wf-A57 W2 commit abc19f8a"
+      }
+    ],
+    "fixes_CLOSED_HONEST_NEGATIVES": [
+      {
+        "id": "wf_a57_w9_p1_closes_section_6_82g",
+        "what": "§6.82g Wf-A56 W1 DEFER (NEW ACTIVE honest-negative at docs/HONEST_NEGATIVE_CATALOG.md:2958) — VALID_ODE_METHODS whitelist at flow_matching_lipman/__init__.py:3104 inconsistent with upstream GenerationConfig.VALID_METHODS + downstream reference solver acceptance set. CLOSED via W9-P1 union expansion; validate_method now raises ValueError before solver.sample(...) for any unknown method including the prior no-op. ACTIVE count 110 → 109 (-1).",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md:3067 (this §6.84 entry)"
+        ],
+        "closed_in": "Wf-A57 W1 commit f686c60f"
+      }
+    ],
+    "verification": {
+      "test_wf_a57_methods": "24/24 PASS (new — pins W9-P1 union + dispatch + rejects)",
+      "test_wf_a57_inert_geometry": "4/4 PASS (new — pins W9-P3 geometry move identity preservation)",
+      "test_wf_config_binding_gate": "37/37 PASS (incl. new test_repo_configs_pass_with_schema_metadata_blocks regression)",
+      "test_cfm_decoder_geometry_constraints": "8/8 PASS (W9-P3 backward-compat)",
+      "test_cfm_decoder_anti_aromatic": "7/7 PASS (no regression)",
+      "test_wf380a3_diversity": "PASS (W1 fix 2 abs-tolerance — no regression)",
+      "test_wfA50_log_normal_grid": "PASS (no regression)",
+      "test_pitfall_guards": "18/18 PASS",
+      "test_chemprop_v2_train_wiring": "9/9 PASS",
+      "test_se3_sb_integration": "25/25 PASS",
+      "test_multi_ph_integration": "25/25 PASS",
+      "test_transport_relaxation_integration": "26/26 PASS",
+      "consolidated_total": "172/172 PASS in 19.82s (11 test modules)",
+      "config_binding_gate": ".venv/bin/python scripts/_config_binding_gate.py → [config-binding] PASS (144 configs, 0 VIOLATIONs; only DECLARED-INERT entries)",
+      "ruff_E501": "~/.cache/pre-commit/repo3n9semkz/py_env-python3.12/bin/ruff check --select E501 <4 files> → All checks passed!",
+      "registry_check": "PASS (238 current / 0 stale / 0 missing)",
+      "filesystem_truth": "all 8 fix-related file:line anchors + 14 modified files on disk per §5.5; both commits landed BEFORE this closeout agent ran (verified via git log --oneline -5)",
+      "pre_flight_cfm_pipeline": "N/A (no NEW trainer-flag wire-in — W9-P1 only reconciles existing validate_method dest); §5.7 N/A; §5.11 yaml-only round-trip PASS (15 method: rk4 configs construct cleanly)",
+      "GPU_launches": 0,
+      "paper_untouched": true,
+      "wetlab_untouched": true,
+      "metrics_measured_or_projected": 0
+    },
+    "pre_existing_failures_NOT_introduced_by_Wf_A57": {
+      "test_end_to_end_smoke_to_json_ordering_isolation": "FAIL when preceded by test_build_cfm_decoder_use_yuelbond_false; PASSES in isolation. Root cause: default_trained_head() now succeeds (where it previously crashed at line 942 pre-W9-P4), letting torch.manual_seed(0) + AdamW training inside train_synthetic pollute global RNG consumed downstream. Pre-existing test-ordering isolation gap surfaced by W9-P4 fix (NOT introduced by W9-P4). Documented in f686c60f commit body; out-of-scope for Wf-A57; optional W10 follow-up (~20 LOC, 1 commit).",
+      "test_real_qm9_ot_protocol_collection_error": "Cross-test pollution unrelated to Wf-A57 — passes 7/7 in isolation per verify block",
+      "test_metric_diff_collection_error": "Cross-test pollution unrelated to Wf-A57 — passes 10/10 in isolation per verify block"
+    },
+    "catalog_refs": [
+      "HONEST_NEGATIVE_CATALOG.md §6.82g Wf-A56 W1 DEFER (CLOSED via W9-P1)",
+      "HONEST_NEGATIVE_CATALOG.md §6.84 Wf-A57 closeout (this wave, 2026-10-16)"
+    ],
+    "commit_log": {
+      "ship_commit_W1": "f686c60f fix(wf-a57-W1): reconcile VALID_ODE_METHODS union + bond_head W9-P4 root cause + abs-tolerance + cross-ref (6 files changed, 151 insertions(+), 3 deletions(-))",
+      "ship_commit_W2": "abc19f8a fix(wf-a57-W2): config-binding-gate subkey filter + DECLARED_INERT + geometry move + ruff E501 (8 files changed, 318 insertions(+), 64 deletions(-))"
+    },
+    "catalog_count_delta": "+1 (§6.84 closeout entry; §6.82g CLOSED → ACTIVE -1). Cumulative 135 → 136; ACTIVE 110 → 109."
   },
   "user_open_decisions": [
     {
