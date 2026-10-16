@@ -1,0 +1,71 @@
+# WP4 — metal-as-domain-token: does metal conditioning improve CROSS-metal transfer?
+#
+# todo.json :: thesis_v2_2026_10_17.work_packages[WP4].
+#
+# WHY THIS IS A CROSS-METAL QUESTION, NOT A WITHIN-METAL ONE
+# ----------------------------------------------------------
+# WP4's todo acceptance reads "within-metal >= XGB (补 G1) 且跨金属可迁移性提升".
+# The within-metal half is a category error for a metal TOKEN: within a single
+# metal every training and test ligand carries the SAME metal id, so the token is
+# a constant and cannot change the within-metal ranking. Measured in EX1 h512
+# (metrics/by_metric/ex1_i2_rich_metal_cap512.json), the metal-aware arms land at
+# adapted AUC 0.60-0.63 -- far below XGB's 0.86 -- but that is the LOMO setting,
+# not within-metal. The within-metal gap is being attacked by the fusion/stacking
+# line (FU1/FU2); WP4 attacks the half a token CAN move: cross-metal transfer.
+#
+# WHAT THIS ADDS OVER EX1 h512 (#185)
+# -----------------------------------
+# EX1 h512 ran arms [none, readout, message] at a SINGLE K=10. WP4 adds the FiLM
+# arm (a stronger conditioning form) and sweeps K in {5,10,20} so the question is
+# "does metal conditioning help transfer, and does it help more when support is
+# scarce?" rather than a single-cell contrast.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 512
+  dropout: 0.1
+  rich_metal: true
+  chem_metal: false
+
+train:
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [none, readout, message, film]
+  k: [5, 10, 20]
+  seeds: [42, 43, 44, 49, 123]
+  sampler: stratified
+  control: kshot
+  adapt_steps_by_k: "5:20,10:20,20:40"
+
+compute:
+  # AGENTS.md / user directive 2026-10-16: all GPU work on cuda:0 only.
+  device: cuda:0
+  deterministic: true
+  cache_source: true
+
+output:
+  out: metrics/by_metric/wp4_metal_token_fsma.json
+  source_cache_dir: /tmp/fsma_gpu_src_wp4_cap512_cuda0
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only. The judgement is on the absolute per-arm cross-metal AUC and on
+  whether a conditioning arm beats `none` by more than its cell spread -- not on a
+  paired delta against a shared zero-shot. The within-metal half of the todo's
+  acceptance is NOT tested here by construction (the token is constant within a
+  metal) and is delegated to the fusion/stacking line. Small cohorts (Rh n=51,
+  Os n=36) keep the AUC coarse; reported, not smoothed. No number is PROJECTED.

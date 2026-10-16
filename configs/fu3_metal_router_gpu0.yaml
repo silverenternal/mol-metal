@@ -1,0 +1,93 @@
+# FU3 — metal-conditioned router: is metal's role to ROUTE, not to SCORE?
+#
+# todo.json :: task_queue_2026_10_17.tasks[FU3] + gap_analysis_2026_10_16.gaps[G3].
+#
+# G3's remedy is verbatim: "把金属描述符从『特征注入』改成『路由条件』：
+# metal-conditioned router/gate 决定走哪条专家分支 (metal-aware expert vs
+# metal-blind expert)。金属感知的作用定义为【分流】而非【涨分】。"
+#
+# WHAT THIS RUN IS FOR
+# --------------------
+# It is NOT a result-producing run by itself.  It is the *data generator* for
+# molmetal/scripts/fu3_metal_router_ablation.py: it dumps the raw held-out query
+# scores of all four injection arms (none / readout / message / film) so the
+# router can be fitted post-hoc on CPU.  The deliverable is
+# metrics/by_metric/metal_router_ablation.json, not the --out aggregate here.
+#
+# WHY THE DUMP IS NEEDED
+# ----------------------
+# The four arms are a *paired* contrast (identical query set per (metal, k,
+# seed)), but the existing artifacts only store per-(arm, k) mean AUC.  A router
+# needs row-level scores to decide which expert to trust per ligand.  Without the
+# dump the router is not computable from anything on disk.
+#
+# WHY K IS FIXED AT 10
+# --------------------
+# The router question is "which expert to trust", not "how does the K-curve
+# look" (that is FU4).  K=10 is the canonical few-shot point used by the FSMA
+# K-curve headline.  Fixing K keeps the dump at ~50 MB instead of ~150 MB.
+#
+# WHY THIS IS CHEAP
+# -----------------
+# data/model/train below are byte-identical to configs/wp4_metal_token_fsma_gpu0.yaml,
+# and the source cache key is
+#   (held_out, arm, seed, epochs, lr, hidden, dropout, rich, chem, adapter, metal_dim, device)
+# so pointing source_cache_dir at WP4's directory makes every one of the 100
+# source models a cache hit: this run is pure scoring + adaptation (~2 s/run).
+# It is launched only AFTER WP4 finishes, so it never contends for the GPU.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 512
+  dropout: 0.1
+  rich_metal: true
+  chem_metal: false
+
+train:
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [none, readout, message, film]
+  k: [10]
+  seeds: [42, 43, 44, 49, 123]
+  sampler: stratified
+  control: kshot
+  adapt_steps_by_k: "10:20"
+
+compute:
+  # AGENTS.md / user directive 2026-10-16: all GPU work on cuda:0 only.
+  device: cuda:0
+  deterministic: true
+  cache_source: true
+
+output:
+  out: metrics/by_metric/fu3_router_ex1_source.json
+  # Shared with WP4 by construction — same hyperparameters, same cache key.
+  source_cache_dir: /tmp/fsma_gpu_src_wp4_cap512_cuda0
+  # Row-level intermediate (~50 MB).  Kept in /tmp: the deliverable is the
+  # router analysis JSON, not this dump.
+  dump_test_scores: /tmp/fu3_router_test_scores.jsonl
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  This run produces no claim on its own. The claim comes from
+  fu3_metal_router_ablation.py, and it is judged on whether ANY router (oracle
+  included) beats the best single arm by more than the seed spread — and, if it
+  does, whether the metal descriptor contributes anything to the gate over the
+  expert scores alone. Given WP3 (metal descriptors add +0.003 AUC over ligand
+  chemistry), the pre-registered expectation is that metal conditions ROUTING no
+  better than it conditions SCORING, i.e. another honest negative that closes G3.
+  A negative here is the result; it is not smoothed or re-scoped.
