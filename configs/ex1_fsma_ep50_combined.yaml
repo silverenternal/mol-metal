@@ -52,9 +52,13 @@ protocol:
   adapt_eval_encoder: true
 
 compute:
-  # GPU0 is fully idle; GPU1 is held by a parallel session.  The harness reads
-  # compute.device -> args.device -> torch.device(), so this is the only knob.
-  device: cuda:0
+  # MUST be cuda:1: the source-model cache key includes str(device), so a cuda:0
+  # run is a cache MISS and RETRAINS a materially different source (measured
+  # max|Δweight| 1.49 / mean 0.89 on the 50 pairs), which shifts zero_shot_auc
+  # (0.6176 -> 0.6287) and confounds the paired delta.  cuda:1 reuses the
+  # baseline's /tmp/fsma_gpu_src_ep50 entries, so zero_shot_auc is bit-identical
+  # to fsma_inhouse_kcurve_ep50.json and the A/B isolates the adaptation levers.
+  device: cuda:1
   deterministic: true
   cache_source: true
 

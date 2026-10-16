@@ -1,0 +1,71 @@
+# EX1 — in-house FSMA head-only K-curve, CAPACITY-only lever, at the
+# chemprop-matched source budget (epochs=50).
+#
+# WHY: the "all-levers" arm (ex1_fsma_ep50_alllevers_cap512.yaml) mixed three
+# changes (hidden, adapt lr, encoder eval-mode).  A within-device read of the
+# two cuda:0 arms (combined h128 vs alllevers h512, identical seeds/cohort)
+# isolates capacity alone and shows it is the real lever:
+#     zero_shot  K5 0.6287 -> 0.6467  (+0.0180)
+#     adapted    K5 0.6328 -> 0.6471  (+0.0143)
+#     adapted   K80 0.6865 -> 0.7033  (+0.0168)
+# while the two adaptation levers only helped at K<=10 and HURT K>=20.  So this
+# config keeps capacity and DROPS both adaptation levers, giving a clean
+# single-variable comparison against the h128 baseline on the SAME device.
+#
+# Compare against (all epochs=50, head-only, cuda:1, same cohort/seeds):
+#   fsma_inhouse_kcurve_ep50.json   hidden 128, src lr, dropout-on encoder (baseline)
+#   THIS arm                        hidden 512 only  <- the capacity effect
+# (The h128-with-adaptation-levers arm, fsma_inhouse_kcurve_ep50_combined.json,
+#  is reported separately as the adaptation-lr ablation.)
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 512
+  dropout: 0.1
+
+train:
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [none]
+  k: [5, 10, 20, 40, 80]
+  seeds: [42, 43, 44, 49, 123, 7, 8, 9, 10, 11]
+  sampler: stratified
+  control: kshot
+  adapt_steps_by_k: "5:20,10:20,20:40,40:60,80:100"
+  # NO adapt_lr / adapt_eval_encoder: this arm isolates capacity.
+
+compute:
+  # cuda:1 == the device of the h128 baseline.  The source cache key includes
+  # str(device), so a cuda:0 run would retrain a materially different source and
+  # break the single-variable comparison.
+  device: cuda:1
+  deterministic: true
+  cache_source: true
+
+output:
+  out: metrics/by_metric/fsma_inhouse_kcurve_ep50_cap512.json
+  # hidden=512 is a different model -> its own cache (cannot share the h128 one).
+  source_cache_dir: /tmp/fsma_gpu_src_ep50_cap512_cuda1
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  Single-variable vs the h128 baseline: hidden 128 -> 512, all
+  else identical (epochs, lr, adaptation schedule, seeds, cohort, device).  The
+  adaptation step is NOT bit-reproducible on CUDA; only the 50-cell aggregate is
+  reported.  This arm deliberately carries NO adaptation-lr change, so its
+  high-K cells are not depressed by the small adaptation lr used in the
+  all-levers arm.
