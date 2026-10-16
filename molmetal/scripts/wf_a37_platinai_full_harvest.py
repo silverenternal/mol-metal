@@ -364,8 +364,12 @@ def harvest_cell_line(
     smoke_page_cap: Optional[int] = None,
 ) -> dict:
     """Harvest one cell line, returns a summary dict."""
-    jsonl_path = out_dir / f"platinai_{cell_line.lower()}_biodata.jsonl"
-    csv_path = out_dir / f"platinai_{cell_line.lower()}_biodata.csv"
+    # Output stem drops hyphens so the API name "MCF-7" maps to the
+    # established file name ``platinai_mcf7_biodata.{jsonl,csv}``
+    # (matches the existing 3 cells' files + platinai_mcf7_biodata.csv).
+    stem = cell_line.lower().replace("-", "")
+    jsonl_path = out_dir / f"platinai_{stem}_biodata.jsonl"
+    csv_path = out_dir / f"platinai_{stem}_biodata.csv"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     done_pages: set[int] = (
@@ -622,7 +626,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     # 3) Merge SMILES into each per-cell-line CSV (writes *.with_smiles.csv).
     merge_summary: list[dict] = []
     for cell in cell_lines:
-        csv_path = out_dir / f"platinai_{cell.lower()}_biodata.csv"
+        csv_path = out_dir / (
+            f"platinai_{cell.lower().replace('-', '')}_biodata.csv"
+        )
         if csv_path.exists():
             n = merge_smiles_into_csv(csv_path, sub_jsonl)
             merge_summary.append(
