@@ -1918,64 +1918,65 @@ def train_synthetic(
     data (MEASURED on CPU).  Real tmQM-21k numbers are PROJECTED and
     not validated here.
     """
-    torch.manual_seed(seed)
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(seed)
 
-    if head is None:
-        head = BondOrderHead()
-    head.to(device)
+        if head is None:
+            head = BondOrderHead()
+        head.to(device)
 
-    X, y = make_synthetic_training_set(seed=seed)
-    X = X.to(device)
-    y = y.to(device)
+        X, y = make_synthetic_training_set(seed=seed)
+        X = X.to(device)
+        y = y.to(device)
 
-    # 80/20 split
-    n = X.shape[0]
-    perm = torch.randperm(n, generator=torch.Generator().manual_seed(seed))
-    n_train = int(0.8 * n)
-    train_idx = perm[:n_train]
-    val_idx = perm[n_train:]
-    X_train, y_train = X[train_idx], y[train_idx]
-    X_val, y_val = X[val_idx], y[val_idx]
+        # 80/20 split
+        n = X.shape[0]
+        perm = torch.randperm(n, generator=torch.Generator().manual_seed(seed))
+        n_train = int(0.8 * n)
+        train_idx = perm[:n_train]
+        val_idx = perm[n_train:]
+        X_train, y_train = X[train_idx], y[train_idx]
+        X_val, y_val = X[val_idx], y[val_idx]
 
-    # Class weights — boost the rare triple / aromatic / no-bond classes
-    # so the head doesn't collapse to "everything is single".
-    class_counts = torch.bincount(y_train, minlength=NUM_BOND_CLASSES).to(torch.float32)
-    class_counts = torch.clamp(class_counts, min=1.0)
-    inv = (class_counts.sum() / class_counts) ** 0.5
-    inv = inv / inv.mean()
-    opt = torch.optim.Adam(head.parameters(), lr=lr, weight_decay=1e-4)
-    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=int(n_epochs))
-    head.train()
-    loss_final = 0.0
-    for epoch in range(n_epochs):
-        opt.zero_grad()
-        logits = head(X_train)
-        loss = F.cross_entropy(logits, y_train, weight=inv)
-        loss.backward()
-        opt.step()
-        sched.step()
-        loss_final = float(loss.item())
-        if verbose and (epoch + 1) % 100 == 0:
-            with torch.no_grad():
-                pred = torch.argmax(head(X_val), dim=-1)
-                acc = float((pred == y_val).float().mean().item())
-            print(f"epoch {epoch + 1:3d}: loss={loss_final:.4f} val_acc={acc:.3f}")
+        # Class weights — boost the rare triple / aromatic / no-bond classes
+        # so the head doesn't collapse to "everything is single".
+        class_counts = torch.bincount(y_train, minlength=NUM_BOND_CLASSES).to(torch.float32)
+        class_counts = torch.clamp(class_counts, min=1.0)
+        inv = (class_counts.sum() / class_counts) ** 0.5
+        inv = inv / inv.mean()
+        opt = torch.optim.Adam(head.parameters(), lr=lr, weight_decay=1e-4)
+        sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=int(n_epochs))
+        head.train()
+        loss_final = 0.0
+        for epoch in range(n_epochs):
+            opt.zero_grad()
+            logits = head(X_train)
+            loss = F.cross_entropy(logits, y_train, weight=inv)
+            loss.backward()
+            opt.step()
+            sched.step()
+            loss_final = float(loss.item())
+            if verbose and (epoch + 1) % 100 == 0:
+                with torch.no_grad():
+                    pred = torch.argmax(head(X_val), dim=-1)
+                    acc = float((pred == y_val).float().mean().item())
+                print(f"epoch {epoch + 1:3d}: loss={loss_final:.4f} val_acc={acc:.3f}")
 
-    head.eval()
-    with torch.no_grad():
-        train_pred = torch.argmax(head(X_train), dim=-1)
-        val_pred = torch.argmax(head(X_val), dim=-1)
-    train_acc = float((train_pred == y_train).float().mean().item())
-    val_acc = float((val_pred == y_val).float().mean().item())
+        head.eval()
+        with torch.no_grad():
+            train_pred = torch.argmax(head(X_train), dim=-1)
+            val_pred = torch.argmax(head(X_val), dim=-1)
+        train_acc = float((train_pred == y_train).float().mean().item())
+        val_acc = float((val_pred == y_val).float().mean().item())
 
-    metrics = {
-        "train_acc": train_acc,
-        "val_acc": val_acc,
-        "n_train": int(n_train),
-        "n_val": int(n - n_train),
-        "loss_final": loss_final,
-        "n_epochs": int(n_epochs),
-    }
+        metrics = {
+            "train_acc": train_acc,
+            "val_acc": val_acc,
+            "n_train": int(n_train),
+            "n_val": int(n - n_train),
+            "loss_final": loss_final,
+            "n_epochs": int(n_epochs),
+        }
     return head, metrics
 
 
