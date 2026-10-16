@@ -216,6 +216,26 @@ def compound_code_from_image_url(image_url: str) -> str:
     return base
 
 
+def metal_from_compound_code(compound_code: str) -> Optional[str]:
+    """Derive the metal from an MB-Finder compound code.
+
+    The codes are ``MB-<Metal>-<digits>`` (``MB-Pt-000017``, ``MB-Cu-000409``,
+    ``MB-Re-000137``), so the metal is the second dash-delimited field.
+
+    This exists because the API's own ``compounds.metal`` field is almost
+    always null -- ``get-ceil-line-bio-data`` does not return it.  Any code
+    that writes ``comp.get("metal") or "Pt"`` therefore labels *every* row
+    "Pt" regardless of the real metal, which silently poisons Pt-only
+    filtering.  Derive the metal from the code instead.
+    """
+    if not compound_code:
+        return None
+    parts = str(compound_code).split("-")
+    if len(parts) >= 3 and parts[0] == "MB" and parts[1]:
+        return parts[1]
+    return None
+
+
 def parse_measurement_value(value) -> tuple:
     """Parse MB-Finder value strings -> (mean: float|None, sd: float|None).
 

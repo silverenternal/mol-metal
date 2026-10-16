@@ -8,6 +8,57 @@ DOI 10.26434/chemrxiv-2025-pp32k) which uses MB-Finder as the 17,732-IC50 baseli
 
 ---
 
+> ## ⚠️ CORRECTION (2026-10-17) — read this before acting on anything below
+>
+> This brief was written from the paper's headline number and several of its premises
+> did not survive contact with the API. The work was re-scoped and executed; the
+> corrections are recorded here so the original text below is not read as fact.
+>
+> **1. "4 cells, ≥17,000 rows" was the wrong model.** The V2 SI ("Data curation",
+> p. S27) states verbatim: *"a labelled dataset of 4,078 structurally unique platinum
+> complexes with cytotoxicity data ... IC50 values from 592 cell lines were
+> standardized to µM."* The 17,732 is a **cross-cell-line Pt total**; the four modelled
+> cells (A549/MCF-7/A2780/A2780cis = 8,428 rows) are only 26% of it. `GET
+> /api/v2/get-count` returns `{"compoundsCount":7620,"cellsCount":832,
+> "ic50Count":32022,"metalCounts":{"Cu":2676,"Pt":3614,"Au":1218,"Re":144}}`.
+>
+> **2. "MCF7 entirely missing" was a spelling bug, not missing data.** The endpoint
+> requires `cell_line`; `"MCF7"` matches nothing (`total=0`) while `"MCF-7"` returns
+> 2,747. Also: the endpoint returns `meta.total`/`meta.last_page`, so the "scan
+> unfiltered pages 1..1500 and filter post-hoc" plan was never needed.
+>
+> **3. The deliverable's `smiles` field cannot be filled from this endpoint.**
+> `get-ceil-line-bio-data` does not return a structure — its `compounds` object carries
+> only `incubationTime/numeric_value/title/doi/method/stability/in_vivo/imageUrl`.
+> SMILES lives behind `get-substances`, joined on the compound code (`MB-Pt-000010`).
+> Any schema expecting `smiles` from the biodata endpoint will get null.
+>
+> **4. The harvested files are NOT Pt-only.** `_flatten` wrote
+> `comp.get("metal") or "Pt"`, but the API never returns `metal`, so every row was
+> labelled Pt. Measured on the real codes: 60.7% `MB-Pt-`, 25.8% `MB-Cu-`, 11.8%
+> `MB-Au-`. A Pt filter keyed on the `metal` field keeps everything. Filter on the
+> `MB-Pt-` prefix instead (as `platinai_real_label_loader.py` already does).
+>
+> ### What was actually done
+>
+> - Harvested 21 cell lines → **17,882 rows** in
+>   `.data/molmetal/wf_a37_platinai_biodata/` (script
+>   `molmetal/scripts/wf_a46_mcf7_harvest.py`, commit `00559149`).
+> - Of those, **10,857 rows / 3,292 unique compounds are platinum** (60.7%).
+> - Pt-only view: `platinai_pt_all_cells.{jsonl,csv}` + per-cell
+>   `pt/platinai_<stem>_pt.{jsonl,csv}` (script `wf_a48_pt_only_view.py`).
+> - `get-substances` harvest running to attach SMILES (`wf_a47_substances_harvest.py`).
+>
+> ### The real remaining gap
+>
+> The 17,732 **Pt** target is **not met**: we hold 10,857 Pt rows = 61.2%.
+> It is unlikely to be reachable from MB-Finder alone — 21 of 832 cell lines already
+> cover **91.1% of MB-Finder's 3,614 Pt compounds** (3,292), so the remaining cell
+> lines mostly repeat the same molecules. The paper's 4,078 Pt complexes also exceed
+> MB-Finder's 3,614, so its dataset draws on more than this one source.
+
+---
+
 ## TL;DR
 
 We have **5,681 measured IC50 rows** from MB-Finder (3 of 4 cells). We need
@@ -269,12 +320,15 @@ post-hoc).
 
 When the paper §3 cites this data, the citation should be:
 
-> "We harvested 17,732 IC50 values from MB-Finder (the curated platinum database
-> of Rusanov et al. 2025, https://www.mb-finder.org) across 4 cell lines (MCF-7,
-> A549, A2780, A2780cis) via the public `get-ceil-line-bio-data` API endpoint.
-> DOI: 10.26434/chemrxiv-2025-pp32k"
+> "We harvested 17,882 IC50 measurements from MB-Finder (the curated metal-complex
+> database of Rusanov et al. 2025, https://www.mb-finder.org) across 21 cell lines
+> via the public `get-ceil-line-bio-data` API endpoint; 10,857 of these are platinum
+> (3,292 unique complexes). Structures were joined from `get-substances` on the
+> compound code. DOI: 10.26434/chemrxiv-2025-pp32k"
 
-The DeepSeek task is to produce the harvested JSONL files that back this citation.
-EOF
-echo "wrote brief: $(wc -l docs/external_tasks/rusanov_2025_reharvest_brief.md | awk '{print $1}') lines"
-ls -la docs/external_tasks/
+⚠️ The original citation text in this section claimed "17,732 IC50 values ... across
+4 cell lines (MCF-7, A549, A2780, A2780cis)". That was never true: 17,732 is the
+paper's *cross-cell-line* Pt total and those 4 cells supply 8,428 rows. See the
+CORRECTION block at the top.
+
+The task is to produce the harvested JSONL files that back this citation.

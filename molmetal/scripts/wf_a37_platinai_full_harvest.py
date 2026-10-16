@@ -67,6 +67,7 @@ from molmetal.scripts.platinai_real_label_loader import (  # noqa: E402
     MB_API_BASE,
     TARGET_CELL_LINES as _DEFAULT_CELL_LINES,
     compound_code_from_image_url,
+    metal_from_compound_code,
     parse_measurement_value,
 )
 
@@ -165,10 +166,9 @@ def _flatten(row: dict, cell_line: str) -> dict:
     if value_raw is None:
         value_raw = comp.get("numeric_value")
     mean, sd = parse_measurement_value(value_raw)
+    code = compound_code_from_image_url(comp.get("imageUrl", ""))
     return {
-        "compound_code": compound_code_from_image_url(
-            comp.get("imageUrl", "")
-        ),
+        "compound_code": code,
         "cell_line": cell_line,
         "biodata_id": row.get("id"),
         "numeric_value_raw": value_raw,
@@ -184,7 +184,11 @@ def _flatten(row: dict, cell_line: str) -> dict:
         "imageUrl": comp.get("imageUrl"),
         "smiles": comp.get("canonical_smiles")
         or comp.get("smiles"),
-        "metal": comp.get("metal") or "Pt",
+        # The API's ``compounds.metal`` is almost always null, so
+        # ``comp.get("metal") or "Pt"`` labelled every Cu/Au/Re row "Pt" and
+        # made Pt-only filtering a no-op.  Derive it from the code instead;
+        # fall back to the API field only if the code is unparseable.
+        "metal": metal_from_compound_code(code) or comp.get("metal"),
     }
 
 
