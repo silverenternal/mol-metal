@@ -7524,8 +7524,16 @@
         "acceptance": "报告 (a) 检出功效; (b) metal-robust 子集 LOMO AUC 恢复比例。若 robust 子集恢复到 within-metal 的 >=90%, 则『迁移惩罚 = 金属敏感配体』成立, 可归因。",
         "why_non_obvious": "把 aggregate 的『崩塌』分解成可定位的个体机制。",
         "wall": "0.5-1 天",
-        "status": "OPEN",
-        "gpu": "none"
+        "status": "DONE",
+        "gpu": "none",
+        "result": {
+          "artifact": "metrics/by_metric/metal_sensitivity_decomposition.json",
+          "script": "molmetal/scripts/wp0_metal_sensitivity_decomposition.py",
+          "matched_pair_evidence_full": "668 pairs, flip 0.1781 vs noise 0.0957 (reproduces the cited 18.2%/9.6%)",
+          "power_full": "ligand-level 51 sensitive / 6731 robust -> power 0.946 to detect AUC 0.65 (>80%)",
+          "power_time_le_24": "6 sensitive / 1902 robust -> underpowered",
+          "note": "FULL cohort (no time filter) reproduces the cited 268-ligand/668-pair evidence; Time(h)<=24 is the published transfer-penalty cohort. Both reported."
+        }
       },
       {
         "id": "WP1",
@@ -7536,8 +7544,31 @@
         "acceptance": "robust 子集 LOMO 恢复到 within-metal 的 >=90% (与 WP0 合并判定)。",
         "why_non_obvious": "aggregate 现象被分解成个体级机制。",
         "wall": "1 天 (含在 WP0)",
-        "status": "OPEN",
-        "gpu": "none"
+        "status": "DONE_STRONG_FORM_REFUTED",
+        "gpu": "none",
+        "result": {
+          "artifact": "metrics/by_metric/metal_sensitivity_decomposition.json",
+          "stratified_attribution_full": {
+            "sensitive_n": 102,
+            "sensitive_lomo_auc": 0.3906,
+            "robust_n": 6948,
+            "robust_lomo_auc": 0.637,
+            "within_metal_auc_mean": 0.8439,
+            "robust_recovery_ratio": 0.7548,
+            "acceptance_ge_90pct": false
+          },
+          "stratified_attribution_time_le_24": {
+            "sensitive_n": 12,
+            "sensitive_lomo_auc": 0.3889,
+            "robust_n": 1938,
+            "robust_lomo_auc": 0.6016,
+            "within_metal_auc_mean": 0.7643,
+            "robust_recovery_ratio": 0.7872,
+            "acceptance_ge_90pct": false
+          },
+          "honest_negative": "HYPOTHESIS REFUTED (strong form): the transfer penalty is NOT solely attributable to the metal-sensitive subset. The robust subset still recovers only 75-79% of within-metal AUC, so a general cross-metal ligand-distribution shift coexists with the label-flip (concept-shift) effect. The sensitive subset is predicted BELOW chance (0.39) by the ligand-only model, which is itself the concept-shift signature.",
+          "positive_signal": "CATE is predictable from ligand chemistry alone: the ECFP4 model predicts WHICH matched pairs flip at CV AUC 0.6706 (full cohort, n=668 pairs, 119 pos, 253 ligand groups). This is the WP2 hook and upgrades WP2 from speculative to supported."
+        }
       },
       {
         "id": "WP2",
@@ -7672,5 +7703,17 @@
         "note": "§5.3: 需用户先看 hunk 再落笔"
       }
     ]
+  },
+  "wp0_wp1_result_2026_10_17": {
+    "artifact": "metrics/by_metric/metal_sensitivity_decomposition.json",
+    "script": "molmetal/scripts/wp0_metal_sensitivity_decomposition.py",
+    "status": "WP0 DONE; WP1 DONE with strong-form hypothesis REFUTED",
+    "key_numbers": {
+      "matched_pairs_full": "668 pairs; flip 0.1781 vs noise 0.0957",
+      "robust_recovery_full": "0.755 (< 0.90 acceptance) -> not attributable",
+      "cate_ligand_predictability_full": "CV AUC 0.6706 (n=668, 119 pos)",
+      "power_detect_auc_0.65_full": "0.946"
+    },
+    "implication": "The v2 foundation is REFINED, not destroyed. The transfer penalty has two components: a label-flip (concept-shift) part the ligand-only model cannot see (sensitive subset AUC 0.39, below chance) AND a general cross-metal distribution shift (robust subset still 0.637 vs within 0.844). The actionable, non-obvious result is that the flip itself is chemistry-predictable at AUC 0.67 -- which is what WP2/WP3 build on."
   }
 }

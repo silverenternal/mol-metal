@@ -1,0 +1,584 @@
+{
+  "metric": "metal_sensitivity_decomposition",
+  "description": "WP0+WP1 (thesis_v2 prerequisite): matched-pair evidence + power analysis, LOMO stratified attribution, and matched-pair ATE/CATE. Both the FULL cohort and the Time(h)<=24 transfer-penalty cohort are reported so neither is conflated.",
+  "unit": "ROC-AUC (0-1, higher better); rates are fractions; pIC50 in log units",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/wp0_metal_sensitivity_decomposition.py",
+  "model": "morgan_fp(radius=2, 2048bit) + xgboost",
+  "data_source": "MetalCytoToxDB (Krasnov et al., J. Med. Chem. 2026, 69(8), 8838)",
+  "seed": 42,
+  "cohorts": {
+    "full": {
+      "cohort": {
+        "time_threshold": null,
+        "label": "full",
+        "n_ligands_total": 6782
+      },
+      "matched_pair_evidence": {
+        "cross_metal_pairs": {
+          "definition": "(ligand, cell-line) observed under >= 2 distinct metals",
+          "n_pairs": 668,
+          "n_label_flips": 119,
+          "flip_rate": 0.1781437125748503
+        },
+        "repeated_measurement_noise_floor": {
+          "definition": "(ligand, cell-line, metal) observed more than once",
+          "n_repeated": 1599,
+          "n_contradictory": 153,
+          "contradiction_rate": 0.09568480300187618
+        },
+        "flip_vs_noise": {
+          "observed_flip_rate": 0.1781437125748503,
+          "noise_floor_rate": 0.09568480300187618,
+          "two_proportion_ztest_p_one_sided": 1.8112746845377944e-08,
+          "interpretation": "Same x (ligand, cell-line), same assay, metal changed -> y changes above the measurement's own noise floor: p(y|x,m) != p(y|x)."
+        }
+      },
+      "ligand_strata": {
+        "n_total": 6782,
+        "n_sensitive": 51,
+        "n_robust_multi": 217,
+        "n_singleton": 6514
+      },
+      "within_metal_auc": {
+        "Ru": 0.8666862581544805,
+        "Ir": 0.8232000000000002,
+        "Rh": 0.8218871753246754,
+        "Os": 0.8262437437437438,
+        "Re": 0.8817344817344818
+      },
+      "lomo_per_fold": [
+        {
+          "metal": "Ru",
+          "status": "MEASURED",
+          "roc_auc": 0.6089318493872939,
+          "n_test_unique": 4833,
+          "n_train_unique": 2045
+        },
+        {
+          "metal": "Ir",
+          "status": "MEASURED",
+          "roc_auc": 0.5737516417910448,
+          "n_test_unique": 1295,
+          "n_train_unique": 5659
+        },
+        {
+          "metal": "Rh",
+          "status": "MEASURED",
+          "roc_auc": 0.6638460464791681,
+          "n_test_unique": 339,
+          "n_train_unique": 6599
+        },
+        {
+          "metal": "Os",
+          "status": "MEASURED",
+          "roc_auc": 0.707559198542805,
+          "n_test_unique": 333,
+          "n_train_unique": 6561
+        },
+        {
+          "metal": "Re",
+          "status": "MEASURED",
+          "roc_auc": 0.650436342875785,
+          "n_test_unique": 250,
+          "n_train_unique": 6800
+        }
+      ],
+      "stratified_attribution": {
+        "sensitive": {
+          "n": 102,
+          "base_rate": 0.5,
+          "lomo_auc": 0.39061899269511724
+        },
+        "robust": {
+          "n": 6948,
+          "base_rate": 0.35276338514680483,
+          "lomo_auc": 0.6370008946532831
+        },
+        "recovery": {
+          "within_metal_auc_mean": 0.8439503317914763,
+          "robust_lomo_auc": 0.6370008946532831,
+          "sensitive_lomo_auc": 0.39061899269511724,
+          "robust_recovery_ratio": 0.7547848145294334,
+          "acceptance_ge_90pct": false
+        },
+        "per_metal": {
+          "Ru": {
+            "sensitive": {
+              "n": 29,
+              "auc": 0.4656862745098039
+            },
+            "robust": {
+              "n": 4804,
+              "auc": 0.6099009220499885
+            }
+          },
+          "Ir": {
+            "sensitive": {
+              "n": 22,
+              "auc": 0.22499999999999998
+            },
+            "robust": {
+              "n": 1273,
+              "auc": 0.5777510069933526
+            }
+          },
+          "Rh": {
+            "sensitive": {
+              "n": 30,
+              "auc": 0.3438914027149321
+            },
+            "robust": {
+              "n": 309,
+              "auc": 0.6909301346801346
+            }
+          },
+          "Os": {
+            "sensitive": {
+              "n": 21,
+              "auc": 0.4907407407407408
+            },
+            "robust": {
+              "n": 312,
+              "auc": 0.7191404297851073
+            }
+          },
+          "Re": {
+            "sensitive": {
+              "n": 0,
+              "auc": null
+            },
+            "robust": {
+              "n": 250,
+              "auc": 0.650436342875785
+            }
+          }
+        }
+      },
+      "matched_ate_cate": {
+        "ate_by_metal_pair": {
+          "Ru-Ir": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          },
+          "Ru-Rh": {
+            "n_shared_pairs": 24,
+            "label_flip_rate": 0.5,
+            "n_with_pic50": 24,
+            "mean_delta_pic50": 0.6660524706045786,
+            "median_delta_pic50": 0.16501617431640625
+          },
+          "Ru-Os": {
+            "n_shared_pairs": 440,
+            "label_flip_rate": 0.14545454545454545,
+            "n_with_pic50": 440,
+            "mean_delta_pic50": 0.12581940130753952,
+            "median_delta_pic50": 0.015027523040771484
+          },
+          "Ru-Re": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          },
+          "Ir-Rh": {
+            "n_shared_pairs": 204,
+            "label_flip_rate": 0.2107843137254902,
+            "n_with_pic50": 204,
+            "mean_delta_pic50": -0.04250436203152526,
+            "median_delta_pic50": -0.036438703536987305
+          },
+          "Ir-Os": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          },
+          "Ir-Re": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          },
+          "Rh-Os": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          },
+          "Rh-Re": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          },
+          "Os-Re": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          }
+        },
+        "cate_ligand_predictability": {
+          "definition": "predict whether a matched pair flips label, from ligand ECFP4 alone",
+          "n_pairs": 668,
+          "n_flip": 119,
+          "n_pos": 119,
+          "n_neg": 549,
+          "cv_auc": 0.6705851739602946,
+          "n_scored": 668,
+          "n_groups": 253,
+          "verdict": "HETEROGENEOUS_IN_LIGAND_CHEMISTRY_IF_AUC_GT_0.5"
+        }
+      },
+      "power_analysis": {
+        "method": "Hanley & McNeil (1982) AUC variance; two-sided alpha=0.05",
+        "observed_ligand_class_balance": {
+          "n_sensitive": 51,
+          "n_robust": 6731
+        },
+        "power_at_observed_n": [
+          {
+            "auc": 0.6,
+            "n_pos": 51,
+            "n_neg": 6731,
+            "se": 0.04213229752726105,
+            "power": 0.6603842655091016
+          },
+          {
+            "auc": 0.65,
+            "n_pos": 51,
+            "n_neg": 6731,
+            "se": 0.04202702897641935,
+            "power": 0.9462101595639493
+          },
+          {
+            "auc": 0.7,
+            "n_pos": 51,
+            "n_neg": 6731,
+            "se": 0.04126645321418738,
+            "power": 0.9980527792748479
+          }
+        ],
+        "n_needed_for_80pct_power": {
+          "auc_0.6": {
+            "scale_multiplier_for_80pct_power": 1.4019607843137254,
+            "n_pos_needed": 72,
+            "n_neg_needed": 9437
+          },
+          "auc_0.65": {
+            "scale_multiplier_for_80pct_power": 0.6176470588235294,
+            "n_pos_needed": 32,
+            "n_neg_needed": 4157
+          },
+          "auc_0.7": {
+            "scale_multiplier_for_80pct_power": 0.3431372549019608,
+            "n_pos_needed": 18,
+            "n_neg_needed": 2310
+          }
+        }
+      },
+      "acceptance": {
+        "robust_recovery_ge_90pct": false,
+        "verdict": "NOT_ATTRIBUTABLE_OR_PARTIAL"
+      }
+    },
+    "time_le_24": {
+      "cohort": {
+        "time_threshold": 24.0,
+        "label": "time_le_24.0",
+        "n_ligands_total": 1908
+      },
+      "matched_pair_evidence": {
+        "cross_metal_pairs": {
+          "definition": "(ligand, cell-line) observed under >= 2 distinct metals",
+          "n_pairs": 77,
+          "n_label_flips": 13,
+          "flip_rate": 0.16883116883116883
+        },
+        "repeated_measurement_noise_floor": {
+          "definition": "(ligand, cell-line, metal) observed more than once",
+          "n_repeated": 130,
+          "n_contradictory": 12,
+          "contradiction_rate": 0.09230769230769231
+        },
+        "flip_vs_noise": {
+          "observed_flip_rate": 0.16883116883116883,
+          "noise_floor_rate": 0.09230769230769231,
+          "two_proportion_ztest_p_one_sided": 0.051232513174715236,
+          "interpretation": "Same x (ligand, cell-line), same assay, metal changed -> y changes above the measurement's own noise floor: p(y|x,m) != p(y|x)."
+        }
+      },
+      "ligand_strata": {
+        "n_total": 1908,
+        "n_sensitive": 6,
+        "n_robust_multi": 36,
+        "n_singleton": 1866
+      },
+      "within_metal_auc": {
+        "Ru": 0.8362931423415294,
+        "Ir": 0.8294775551950762,
+        "Rh": 0.7380952380952381,
+        "Os": 0.49000000000000005,
+        "Re": 0.9277777777777777
+      },
+      "lomo_per_fold": [
+        {
+          "metal": "Ru",
+          "status": "MEASURED",
+          "roc_auc": 0.6179377217342776,
+          "n_test_unique": 1255,
+          "n_train_unique": 678
+        },
+        {
+          "metal": "Ir",
+          "status": "MEASURED",
+          "roc_auc": 0.5275953809577719,
+          "n_test_unique": 534,
+          "n_train_unique": 1391
+        },
+        {
+          "metal": "Rh",
+          "status": "MEASURED",
+          "roc_auc": 0.5190311418685121,
+          "n_test_unique": 51,
+          "n_train_unique": 1874
+        },
+        {
+          "metal": "Os",
+          "status": "MEASURED",
+          "roc_auc": 0.49498327759197325,
+          "n_test_unique": 36,
+          "n_train_unique": 1897
+        },
+        {
+          "metal": "Re",
+          "status": "MEASURED",
+          "roc_auc": 0.44285714285714284,
+          "n_test_unique": 74,
+          "n_train_unique": 1876
+        }
+      ],
+      "stratified_attribution": {
+        "sensitive": {
+          "n": 12,
+          "base_rate": 0.5,
+          "lomo_auc": 0.38888888888888884
+        },
+        "robust": {
+          "n": 1938,
+          "base_rate": 0.3111455108359133,
+          "lomo_auc": 0.6016490580803846
+        },
+        "recovery": {
+          "within_metal_auc_mean": 0.7643287426819243,
+          "robust_lomo_auc": 0.6016490580803846,
+          "sensitive_lomo_auc": 0.38888888888888884,
+          "robust_recovery_ratio": 0.7871600588632595,
+          "acceptance_ge_90pct": false
+        },
+        "per_metal": {
+          "Ru": {
+            "sensitive": {
+              "n": 2,
+              "auc": null
+            },
+            "robust": {
+              "n": 1253,
+              "auc": 0.6187093043466635
+            }
+          },
+          "Ir": {
+            "sensitive": {
+              "n": 4,
+              "auc": 0.0
+            },
+            "robust": {
+              "n": 530,
+              "auc": 0.5343283152885016
+            }
+          },
+          "Rh": {
+            "sensitive": {
+              "n": 4,
+              "auc": 1.0
+            },
+            "robust": {
+              "n": 47,
+              "auc": 0.467741935483871
+            }
+          },
+          "Os": {
+            "sensitive": {
+              "n": 2,
+              "auc": null
+            },
+            "robust": {
+              "n": 34,
+              "auc": 0.5091575091575092
+            }
+          },
+          "Re": {
+            "sensitive": {
+              "n": 0,
+              "auc": null
+            },
+            "robust": {
+              "n": 74,
+              "auc": 0.44285714285714284
+            }
+          }
+        }
+      },
+      "matched_ate_cate": {
+        "ate_by_metal_pair": {
+          "Ru-Ir": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          },
+          "Ru-Rh": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          },
+          "Ru-Os": {
+            "n_shared_pairs": 36,
+            "label_flip_rate": 0.16666666666666666,
+            "n_with_pic50": 36,
+            "mean_delta_pic50": -0.16846852832370335,
+            "median_delta_pic50": -0.1766200065612793
+          },
+          "Ru-Re": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          },
+          "Ir-Rh": {
+            "n_shared_pairs": 41,
+            "label_flip_rate": 0.17073170731707318,
+            "n_with_pic50": 41,
+            "mean_delta_pic50": -0.08173769276316573,
+            "median_delta_pic50": -0.010724067687988281
+          },
+          "Ir-Os": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          },
+          "Ir-Re": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          },
+          "Rh-Os": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          },
+          "Rh-Re": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          },
+          "Os-Re": {
+            "n_shared_pairs": 0,
+            "label_flip_rate": null,
+            "n_with_pic50": 0,
+            "mean_delta_pic50": null,
+            "median_delta_pic50": null
+          }
+        },
+        "cate_ligand_predictability": {
+          "definition": "predict whether a matched pair flips label, from ligand ECFP4 alone",
+          "n_pairs": 77,
+          "n_flip": 13,
+          "n_pos": 13,
+          "n_neg": 64,
+          "cv_auc": 0.6183894230769231,
+          "n_scored": 77,
+          "n_groups": 39,
+          "verdict": "HETEROGENEOUS_IN_LIGAND_CHEMISTRY_IF_AUC_GT_0.5"
+        }
+      },
+      "power_analysis": {
+        "method": "Hanley & McNeil (1982) AUC variance; two-sided alpha=0.05",
+        "observed_ligand_class_balance": {
+          "n_sensitive": 6,
+          "n_robust": 1902
+        },
+        "power_at_observed_n": [
+          {
+            "auc": 0.6,
+            "n_pos": 6,
+            "n_neg": 1902,
+            "se": 0.12265067314145475,
+            "power": 0.1261790976683782
+          },
+          {
+            "auc": 0.65,
+            "n_pos": 6,
+            "n_neg": 1902,
+            "se": 0.12237153455129797,
+            "power": 0.2314168633137932
+          },
+          {
+            "auc": 0.7,
+            "n_pos": 6,
+            "n_neg": 1902,
+            "se": 0.12018245269369233,
+            "power": 0.38368089649026677
+          }
+        ],
+        "n_needed_for_80pct_power": {
+          "auc_0.6": {
+            "scale_multiplier_for_80pct_power": 11.75,
+            "n_pos_needed": 70,
+            "n_neg_needed": 22348
+          },
+          "auc_0.65": {
+            "scale_multiplier_for_80pct_power": 5.25,
+            "n_pos_needed": 32,
+            "n_neg_needed": 9986
+          },
+          "auc_0.7": {
+            "scale_multiplier_for_80pct_power": 2.84726603575184,
+            "n_pos_needed": 17,
+            "n_neg_needed": 5416
+          }
+        }
+      },
+      "acceptance": {
+        "robust_recovery_ge_90pct": false,
+        "verdict": "NOT_ATTRIBUTABLE_OR_PARTIAL"
+      }
+    }
+  },
+  "honest_framing": {
+    "MEASURED_vs_PROJECTED": "MEASURED",
+    "caveat": "The flip-vs-noise gap quantifies that the metal matters; it is the v2 foundation, not the headline. The headline is whether the intervention effect is predictable (WP1-WP4)."
+  }
+}
