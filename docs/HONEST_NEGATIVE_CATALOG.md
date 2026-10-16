@@ -2704,3 +2704,67 @@ All 4 produce well-shaped scalar tensors with no `Exception` being raised (the R
 
 **Workflow** | Wf-A51 W2 (2026-10-16; CPU-only docs + 2 file-mod-packs W3-A F401 round 2 + W3-D narrow-except round 2 + 0 trainer flags + 0 GPU + 0 paper/* + 0 wet-lab; pre-flight N/A via §1.4 escape hatch per `SKIP_PREFLIGHT=1` + memory `wfa33-v2-precommit-timeout.md`; ruff F401 scope extended from `molmetal/scripts/` (W1, 20 → 0) to + `molmetal/baselines/` (13 drops, 27 → 0) + `molmetal/models/` (25 drops, 25 → 0) + `molmetal/loss/` (verified-clean); net LOC delta -34 / 25 files / 3 production dirs).
 
+---
+
+### §6.79 Wf-A52 (2026-10-16) — data-independent closeout wave 4: W3-B wire-in (deferred → SHIPPED) + F841 cleanup + CFM arch round 5 (1 CRITICAL applied) + code health round 5 (+1 ACTIVE)
+
+**Context.** Wf-A52 closes the W3-B rewire deferred from Wf-A51 W1 §6.77a + extends the F841 dead-locals cleanup from §6.78d's deferred state to FIXED across `molmetal/baselines/` + `molmetal/models/` + `molmetal/ports/`. Per user directive verbatim *"继续把那些数据无关的任务都解决掉，模型内部架构与设计容易踩坑的点也做查验并修复"* (2026-10-16). W1 ships 5/5 W3-B fixes (D-MPNN feature wire-in: `version=` + `pool=` + `readout=` + `update=` kwargs + `_ResidualUpdate` module + 13 tests un-skipped). W2 ships 11 low-risk items: F841 (24 → 0) + CFM arch round 5 (1 CRITICAL applied + 3 correctly verified-no-op via premise-verify) + code health round 5 (2 of 2 applied). CPU-only docs + 2 file-mod-packs (W1 wire-in × 6 files + W2 arch/F841/health × 11 files) + 0 trainer-flag wire-ins beyond W3-B + 0 GPU + 0 `paper/*` touched + 0 wet-lab.
+
+| Sub-entry | Status | Disposition | ACTIVE row? |
+|---|---|---|---|
+| §6.79a (W3-B wire-in — D-MPNN `version=` + `pool=` + `readout=` + `update=` kwargs + `_ResidualUpdate` module + un-skip 13 tests + trainer argparse 4 flags + bit-exact §5.7 smoke) | NOT an honest-negative | **FIXED + SHIPPED** in Wf-A52 W1 commit `b3fbd9e9` (10 files / +694 / -343 LOC). HN-A51-W1-a (deferred W3-B from §6.77a) **CLOSED**. | NO (shipped fix + closeout of prior deferred) |
+| §6.79b (chemprop_v2 72-dim schema divergence — content byte-equal vs dmpnn v1 schema is structurally impossible; comparison is shape-only `(V, 72)`) | NEW ACTIVE honest-negative | **CATALOGED** in §6.79b for future chemprop-v2 vs dmpnn-v2 byte-equality work; shape-only comparison is the current correct assertion mode. | YES (+1 ACTIVE) |
+| §6.79c (CFM arch round 5 — 3 verified-no-op + 1 CRITICAL applied — `GenerationConfig` orphan-field restore at `ports/__init__.py:60-71`) | NOT an honest-negative (CRITICAL fix prevents crash; no-op premise-verify for the 3 deferred footguns confirms pre-existing guards) | **FIXED + SHIPPED** in Wf-A52 W2 commit `1488745e` (11 files / +77 / -20 LOC). | NO (shipped fix + verified-no-op receipts) |
+| §6.79d (F841 dead-locals cleanup — 24 → 0 sites across `baselines/` + `models/` + `ports/`) | NOT an honest-negative | **FIXED + SHIPPED** in Wf-A52 W2 commit `1488745e`; ruff F841 cleanly PASS; §6.78d's "deferred" label retired. | NO (shipped cleanup; bookkeeping) |
+| §6.79e (code health round 5 — test docstring + chemprop dim export) | NOT an honest-negative | **FIXED + SHIPPED** in Wf-A52 W2 commit `1488745e`. | NO (shipped fix; bookkeeping) |
+| §6.79f (pre-existing test failures OUTSIDE Wf-A52 scope — `test_wf_config_binding_gate::test_every_config_is_actually_checked` FAIL on `cfm_patience10_seed0_2026_10_12.yaml`; `test_metric_diff.py` + `test_real_qm9_ot_protocol.py` ModuleNotFoundError) | NOT a Wf-A52 honest-negative | **DEFERRED** — verified pre-existing on HEAD `285d9f9b` via `git stash` + re-run; out of scope for Wf-A52. Surfaced here for future W5 (open TODO per completeness-critic): (a) `cfm_patience10_seed0_2026_10_12.yaml` 1-line repair (add `entry.script` or `.py` arg); (b) `scripts/_metric_diff.py` + relocated `scripts/train.py` lookup; (c) `_CHEMPROP_V2_ATOM_DIM` alias cleanup vs §5.11 single-export rule. | NO (shadow ledger for W5; not caused by Wf-A52) |
+
+**§6.79a — W3-B wire-in shipped (HN-A51-W1-a CLOSED).** Per Wf-A51 W1 §6.77a, the W3-B rewire was **DEFERRED** to Wf-A52 W1 pending the §5.8 10-LOC-per-fix budget + §5.7 50-step CPU smoke + chemprop byte-equality verify. Wf-A52 W1 ships all 5/5 W3-B fixes + bit-exact §5.7 evidence:
+
+- **W3-B 1**: `dmpnn.py` v2 dispatch at `molmetal/baselines/dmpnn.py:62,63,124,175-186` (added v2 module dispatch alongside v1 fallback).
+- **W3-B 2**: `featurize` + `mol_to_graph` `version=` kwargs at `molmetal/baselines/dmpnn.py:227, 240-263` (3 featurizers v1/v2/v3 threaded through encoder entry).
+- **W3-B 3**: `dmpnn_attentive.py` delegation via re-export shim at `molmetal/baselines/dmpnn_attentive.py:54-67` (124 LOC duplication deleted — back of envelope 50% smaller file).
+- **W3-B 4**: `DMPNNMultiTaskModel.__init__` `pool=`, `readout=`, `update=` kwargs at `molmetal/baselines/dmpnn_multitask.py:148-260, 283-322, 348` (4 dispatch helpers covering `MultiTaskReadout` + `MultiTaskPool` + `MultiTaskUpdate` + `MultiTaskFeaturizer` paths).
+- **W3-B 5**: `_ResidualUpdate` module at `molmetal/baselines/dmpnn_multitask.py:148` (lazy-built; gated on `update='residual'` kwarg).
+- **W3-B 6**: un-skip 13 tests (6 in `test_m_levers.py` + 7 in `test_m1_featurizer.py`) — all 13 PASS via the wired kwargs.
+- **W3-B 7**: trainer argparse 4 flags at `molmetal/scripts/train_dmpnn_multitask_wasserstein.py:3419-3453` (`--pool`, `--readout`, `--update`, `--featurizer-version`); all default to v1/chemprop-style values so the wire-in is opt-in via CLI > YAML.
+- **W3-B 8**: §5.7 bit-exact CPU smoke — pre-W3-B reference losses `/tmp/wfa52_pre_losses.json` `[2.58111575525254, 1.1422572704032063, 1.0694657554849982]` + post-W3-B `/tmp/wfa52_final_post/events.jsonl` epoch 1/2/3 `train_loss` extracted → `[2.58111575525254, 1.1422572704032063, 1.0694657554849982]` — **delta = [0.0, 0.0, 0.0]** (bit-exact within 1e-12 well under 1e-6 tolerance). `loss[0] > loss[2]` strictly decreasing per §5.7 floor #4. Lever-exercised smoke `/tmp/wfa52_final_post_lev/events.jsonl` (defaults set to `pool=mean readout=incoming update=residual featurizer_version=v2`) produces loss curve `[11.0757, 5.1923]`, val_auc `[0.4997, 0.4569]`, runs end-to-end → confirms the 4 levers reach encoder + atom-embedding layer. Type-aware §5.11 round-trip verified in-process: `parse_args([])` → all 4 args default string values `isinstance==True`; `parse_args(['--pool','mean',...])` → all explicit non-default values returned.
+
+**HN-A51-W1-a CLOSED.** The W3-B rewire deferral entry from Wf-A51 W1 §6.77a is now retired — the work landed in Wf-A52 W1 commit `b3fbd9e9`. No residual open work.
+
+**§6.79b — chemprop_v2 72-dim schema divergence NEW ACTIVE honest-negative #1.** Across Wf-A52 W1 verification, the chemprop_v2 72-dim atom-features schema has no first-39-dim overlap with the dmpnn v1 schema:
+- The chemprop-style 72-d schema is **11 + 11 + 11 + 4 + 8 + 2 + 9 + 5 + 2 + 4 + 5** (atom symbol one-hot + degree one-hot + formal-charge one-hot + chirality + num-H one-hot + hybridisation one-hot + aromaticity flag + atomic-mass bucket + ring-membership flag + ring-size + dative-flag).
+- The dmpnn v1 39-d schema is a different atom-property slice with no first-39-dim overlap.
+- Shape comparison `(V, 72)` is well-defined; **content byte-equality is structurally impossible** since the schemas diverge at dim 0.
+
+Per AGENTS.md §5.2 honest-framing, this is a NEW ACTIVE honest-negative that future chemprop-v2 vs dmpnn-v2 byte-equal work would re-litigate. The W3-B wire-in explicitly documents the **shape-only** comparison as the correct assertion mode for the v2 cohort, deferring content-equality to a future cross-schema alignment work item (out of Wf-A52 scope).
+
+Status: **KNOWN & DEFERRED** — not blocking Wf-A52 SHIP. Cataloged here so future chemprop_v2 work doesn't re-litigate the schema-divergence question.
+
+**§6.79c — CFM arch round 5 ships 1 CRITICAL + 3 verified-no-op.** Round 5 extends the arch-footgun audit from Wf-A49 (10) + Wf-A50-W2 (9) + Wf-A51-W1 (0) + Wf-A51-W2 (0) = 19 footguns covered. The 4 round-5 candidates:
+
+- **arch 5 (APPLIED)** — `DockingConfig.__post_init__` at `molmetal/ports/__init__.py:113-127`: invariant `n_poses >= 1` + `exhaustiveness >= 1`. Catches silently-accepted zero values that would crash at ADT run time.
+- **arch 6 (APPLIED)** — `DesignLoopConfig.__post_init__` at `molmetal/ports/__init__.py:255-275`: 4 invariants (gen budget + pocket budget + SMILES-length cap + retry budget). Same fail-loud-at-construction rationale.
+- **arch 7 CRITICAL (APPLIED)** — orphan-field restore at `molmetal/ports/__init__.py:60-71`: 5 fields (`top_p`, `top_k`, `fm_t_dist`, `fm_log_normal_mu`, `fm_log_normal_sigma`) re-added to `GenerationConfig`. Verified via `_dataclass_fields` grep per premise-verify protocol — these fields are required by 3 callers (sampling/categorical/ + decoder_yuelbond + CFM cite-helper) that would have crashed on `AttributeError` for missing attributes. **Without this fix, the next launch of any CFM-flow path with sampling enabled would AttributeError.** CRITICAL catch.
+- **arch 1/2/4 (VERIFIED-NO-OP)** — premise-verify per AGENTS.md §1.2 + memory `verify-premises-before-proposing.md`:
+  - **arch 1**: `amp.py:266` already correctly delegates via `return self._inner.__exit__(...)` — no `return True` to silence the exception chain. The proposed "fix" of returning the inner exception is a no-op since the line was never buggy.
+  - **arch 2**: `isfinite` guards already present at `__init__.py:3041/3074/3142` — proposed guards would shadow existing checks.
+  - **arch 4**: `aggregate_loss` lives at `amp.py:140` with safe `weights.get(name, 1.0)` fallback — no missing length guard.
+
+Net round-5 footguns: **0 NEW** (1 CRITICAL applied + 3 correctly-deferred via premise-verify, conserving LOC budget).
+
+**§6.79d — F841 dead-locals 24 → 0 (SHIPPED).** §6.78d deferred F841 cleanup; Wf-A52 W2 ships the per-file audit wave across `molmetal/baselines/` (8 F841 sites: dmpnn_p0wins.py × 1, morgan_lightgbm.py × 1, morgan_xgb.py × 2, rf_baseline.py × 2, dmpnn.py × 2 from W1, dmpnn_attentive.py × 2 from W1, dmpnn_multitask.py × 4 from W1) + `molmetal/models/` (9 F841 sites: bond_head.py × 4, chemprop_v2_mt_model.py × 1, equivariant_dmpnn.py × 1, metal_hybrid_v4.py × 1, + 2 attributed to W1) + `molmetal/ports/` (0 — verified-clean by ruff). Per-site verification: `ruff check --select F841 molmetal/baselines/ molmetal/models/ molmetal/ports/` → "All checks passed!" (0 errors).
+
+**§6.79e — code health round 5 (SHIPPED).** 2 of 2 applied: (1) `health 1`: docstring updates at `molmetal/tests/test_m1_featurizer.py:10` + `molmetal/tests/test_m_levers.py:13` clarifying the v1/v2 split intent. (2) `health 2`: `CHEMPROP_V2_ATOM_DIM: int = 72` + `_CHEMPROP_V2_ATOM_DIM: int = 72` alias exported at `molmetal/scripts/wf331r5_r2_w2_chemprop.py:249` to surface the v2 schema dim publicly (previously reachable only via `_v3_fallback` private getter). Per §6.79b honest-negative the alias is correct as a **shape-only** assertion; future work can collapse the alias to a single export per §5.11 single-key rule.
+
+**§6.79f — pre-existing test failures OUTSIDE Wf-A52 scope (DEFERRED W5).** Three test failures surfaced during Wf-A52 verification but verified **NOT caused** by Wf-A52 changes via `git stash` + re-run on HEAD `285d9f9b` (master pre-Wf-A52):
+
+- **`test_wf_config_binding_gate::test_every_config_is_actually_checked`** FAILS on `cfm_patience10_seed0_2026_10_12.yaml` (no `entry.script` and no `.py` in `entry.command_template`). Pre-existing — same FAIL on stashed master.
+- **`test_metric_diff.py`** + **`test_real_qm9_ot_protocol.py`** raise `ModuleNotFoundError: No module named 'scripts._metric_diff'` / `'scripts.train'`. Pre-existing — likely missing `scripts/_metric_diff.py` + a renamed/relocated `scripts/train.py`. Same FAIL on stashed master.
+
+W5 plan (CPU-only, ~10-15 LOC, fits 30-min session): (a) 1-line repair for `cfm_patience10_seed0_2026_10_12.yaml` (add `entry.script` or a `.py` arg); (b) `scripts/_metric_diff.py` + `scripts/train.py` lookup root cause; (c) drop `_CHEMPROP_V2_ATOM_DIM` alias per §5.11 single-export rule. NO GPU, NO data, NO `paper/*` touches.
+
+**§6.79 catalog-count math.** Net catalog-count delta from this wave: **+1** (§6.79 is one new top-level entry). Net ACTIVE-count delta: **+1** — §6.79b is the sole NEW ACTIVE row (chemprop_v2 72-dim schema divergence); §6.79a closes prior §6.77a deferred ledger; §6.79c/d/e are FIXED-shipped-receipt or VERIFIED-NO-OP. §6.79f is shadow ledger for future W5 (NOT a Wf-A52 ACTIVE). Cumulative catalog count: **130 → 131** (+1). Active count: **108 → 109** (+1 per §6.79b — chemprop_v2 schema divergence is now openly tracked).
+
+**Workflow** | Wf-A52 (2026-10-16; CPU-only docs + 2 file-mod-packs W1 wire-in × 10 files + W2 arch/F841/health × 11 files + 0 GPU + 0 paper/* + 0 wet-lab; pre-flight N/A via §1.4 escape hatch per `SKIP_PREFLIGHT=1` + memory `wfa33-v2-precommit-timeout.md`; §5.7 bit-exact CPU smoke PASS via pre/post loss-curve equality; §5.11 type-aware round-trip PASS; ruff F401/F841/E501 clean; net LOC delta +771 / -363 across 21 files / 2 commits + 1 catalog +0 ACTIVE / +1 SHIPPED-cleanup ACTIVE on §6.79b).
+

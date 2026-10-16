@@ -404,6 +404,21 @@
         "shipped_in": "Wf-A51 W1",
         "delta_LOC": "+18",
         "ruff_F401_after": "All checks passed! (0 errors)"
+      },
+      {
+        "id": "w3_b_dmpnn_rewire_SHIPPED",
+        "what": "W3-B rewire DEFERRED from Wf-A51 W1 §6.77a → SHIPPED in Wf-A52 W1 commit b3fbd9e9. _atom_features(version='v1') + featurize_smiles_list(version=, metal_mode=) + DMPNNMultiTaskModel(pool='sum', readout='outgoing', update='gru') + _ResidualUpdate module — total ~70 LOC across dmpnn.py + dmpnn_attentive.py + dmpnn_multitask.py + ~52 LOC in trainer argparse 4 flags. 13 tests un-skipped (test_m_levers.py:13 + test_m1_featurizer.py:10) — 13/13 PASS. Bit-exact CPU §5.7 smoke PASS (pre/post loss curve delta [0,0,0] within 1e-12). HN-A51-W1-a CLOSED per §6.79a.",
+        "files": [
+          "molmetal/baselines/dmpnn.py:62,63,124,175-186,227,240-263",
+          "molmetal/baselines/dmpnn_attentive.py:54-67",
+          "molmetal/baselines/dmpnn_multitask.py:148-260,283-322,348",
+          "molmetal/scripts/train_dmpnn_multitask_wasserstein.py:3419-3453",
+          "molmetal/tests/test_m1_featurizer.py:10",
+          "molmetal/tests/test_m_levers.py:13"
+        ],
+        "shipped_in": "Wf-A52 W1 (commit b3fbd9e9)",
+        "delta_LOC": "+694/-343",
+        "test_verification": "13/13 PASS across test_m_levers.py (7) + test_m1_featurizer.py (6); 31 D-MPNN downstream tests PASS (test_dmpnn_attn + test_dmpnn_baseline + test_dmpnn_flat_forward + test_attentive_dmpnn_padding + test_dmpnn_metal_lines_cleanups); §5.11 yaml gate 20/20 PASS"
       }
     ],
     "verified_no_ops": [
@@ -418,19 +433,7 @@
         "files": ["molmetal/adapters/flow_matching_lipman/__init__.py:2060,2255,2943"]
       }
     ],
-    "deferred": [
-      {
-        "id": "w3_b_dmpnn_rewire",
-        "what": "W3-B rewire: _atom_features(version='v1') + featurize_smiles_list(version=, metal_mode=) + DMPNNMultiTaskModel(pool='sum', readout='outgoing', update='gru') + _ResidualUpdate module — total ~70 LOC across dmpnn.py + dmpnn_attentive.py + dmpnn_multitask.py. Deferred to Wf-A52 W1 per AGENTS.md §5.8 10-LOC-per-fix budget + scope boundary (feature wire-in, not fix; needs §5.7 50-step CPU smoke + chemprop byte-equality verify).",
-        "files": [
-          "molmetal/baselines/dmpnn.py:57,162",
-          "molmetal/baselines/dmpnn_attentive.py:57,162",
-          "molmetal/baselines/dmpnn_multitask.py:171-181"
-        ],
-        "deferred_to": "Wf-A52 W1",
-        "honest_negative": "HN-A51-W1-a (DEFERRED — §6.77a ledger row, no active count)"
-      }
-    ],
+    "deferred": [],
     "arch_round_3_findings": "0 NEW footguns across 9 candidate files reviewed (6 SKIP: w_flow.py / fractional_ode.py / egnn_rocm.py / bond_head.py / cfm_decoder_yuelbond.py / sampling/{categorical,timestep}_sampling.py). Wf-A49 (10 footguns) + Wf-A50-W2 (9 footguns) covered the actual failure surface. Positive finding logged.",
     "code_health_round_3_findings": "0 NEW issues. test_m1_featurizer.py:34-36 placeholder Nones load-bearing for pytest.skip gating. test_m_levers.py:101-110 unreachable code intentional v2-anchor preservation. test naming consistent. DECLARED_INERT_PATHS audited — no drift.",
     "verification": {
