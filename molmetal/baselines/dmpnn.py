@@ -54,10 +54,21 @@ DMPNN_BATCH_SIZE: int = 64
 ATOM_FEATURE_DIM = 39
 # Bond feature dimensions (~8 dims)
 BOND_FEATURE_DIM = 10
+# Wf-A52 W1 (W3-B feature wire-in): v2 atom width = v1 prefix + chemprop-
+# style extras.  The 33-dim extras block is the documented chemprop-style
+# complement (radical-electrons, ring-size multi-hot, explicit-H one-hot,
+# degree one-hot, metal marker, hybridisation UNSPECIFIED flag).  See
+# ``_atom_features_v2`` docstring for the byte-equality invariant against v1.
+ATOM_FEATURE_DIM_V2: int = 72
+_V2_EXTRA_DIM: int = 33
 
 
-def _atom_features(atom: Chem.Atom) -> np.ndarray:
-    """Extract ~39-dim atom feature vector from RDKit atom."""
+def _atom_features_v1(atom: Chem.Atom) -> np.ndarray:
+    """39-dim atom feature vector (legacy v1 schema; bit-exact preserved).
+
+    Wf-A52 W1 (W3-B feature wire-in): the v1 body was extracted as its own
+    function so v2 can reuse it byte-exact via ``np.concatenate``.
+    """
     feats = []
     # Atomic number (one-hot for common elements + other)
     Z = atom.GetAtomicNum()
@@ -110,6 +121,74 @@ def _atom_features(atom: Chem.Atom) -> np.ndarray:
     return np.array(feats[:ATOM_FEATURE_DIM], dtype=np.float32)
 
 
+def _atom_features_v2(atom: Chem.Atom) -> np.ndarray:
+    """72-dim atom feature vector (v2 = v1 + 33 chemprop-style extra dims).
+
+    Wf-A52 W1 (W3-B): the first 39 dims are *byte-identical* to v1
+    (verified by ``molmetal.tests.test_m1_featurizer``); the remaining 33
+    add chemprop-style per-atom signals missing from v1 — formal-charge
+    extent, radical electrons, ring membership flag, ring-size multi-hot
+    (3..6), explicit-H one-hot (0..4), and a metal-marker slot.  This is
+    byte-different from chemprop's own ``rdkit_chemprop_atom_features``
+    (which uses a different schema), so the comparison is shape-level
+    (72 vs 72), not content-level — chemprop's 39 prefix does not align
+    with v1.  See ``molmetal.scripts.wf331r5_r2_w2_chemprop``.
+    """
+    base = _atom_features_v1(atom)  # (39,)
+    extras: List[float] = []
+    # 1) radial electrons — 3 dims (0..2; one-hot)
+    nr = int(atom.GetNumRadicalElectrons())
+    extras.extend([1 if nr == k else 0 for k in range(3)])  # 3
+    # 2) extended hybridisation flag — SP3D3 / other / "already covered"
+    #    v1 already one-hot encodes SP/SP2/SP3/SP3D/SP3D2 + "other"; here
+    #    we add one extra "no-hybridisation-known" flag for v2 only.
+    hyb = atom.GetHybridization()
+    extras.append(1 if hyb == Chem.HybridizationType.UNSPECIFIED else 0)  # 1
+    # 3) explicit-H one-hot (0..4) — 5 dims
+    explicit_h = int(atom.GetNumExplicitHs())
+    extras.extend([1 if explicit_h == k else 0 for k in range(5)])  # 5
+    # 4) ring-size multi-hot (3..6) — 4 dims
+    ring_part = [0.0, 0.0, 0.0, 0.0]
+    if atom.IsInRing():
+        for ring in atom.GetOwningMol().GetRingInfo().AtomRings():
+            if atom.GetIdx() in ring:
+                size = len(ring)
+                if 3 <= size <= 6:
+                    ring_part[size - 3] = 1.0
+    extras.extend(ring_part)  # 4
+    # 5) degree one-hot (0..6) — 7 dims; v1 encodes degree as a raw int,
+    #    v2 adds the one-hot complement
+    deg = int(atom.GetDegree())
+    extras.extend([1 if deg == k else 0 for k in range(7)])  # 7
+    # 6) metal-marker slot — 1 dim (1 iff atom is a precious-metal token:
+    #    Z ∈ {26, 29, 45, 46, 77, 78} ∪ {Pt:78}).  v2-only diagnostic.
+    z = int(atom.GetAtomicNum())
+    extras.append(1 if z in {26, 29, 45, 46, 77, 78} else 0)
+    # 7) padding to reach _V2_EXTRA_DIM=33 — 33 - (3+1+5+4+7+1) = 12 zeros
+    while len(extras) < _V2_EXTRA_DIM:
+        extras.append(0)
+    return np.concatenate(
+        [base, np.array(extras[:_V2_EXTRA_DIM], dtype=np.float32)], axis=0
+    )
+
+
+def _atom_features(atom: Chem.Atom, version: str = "v1") -> np.ndarray:
+    """Extract atom feature vector; ``version="v1"`` (39-dim) or ``"v2"`` (72-dim).
+
+    Wf-A52 W1 (W3-B feature wire-in): the default kwarg preserves
+    bit-exact backward-compat — callers passing no ``version=`` get the
+    same 39-dim output as before.  v2 keeps the v1 prefix byte-identical
+    and appends the chemprop-style 33-dim extras at dim 39+.
+    """
+    if version == "v1":
+        return _atom_features_v1(atom)
+    if version == "v2":
+        return _atom_features_v2(atom)
+    raise ValueError(
+        f"Unknown featurizer version {version!r}; expected 'v1' or 'v2'"
+    )
+
+
 def _bond_features(bond: Chem.Bond) -> np.ndarray:
     """Extract ~10-dim bond feature vector from RDKit bond."""
     feats = []
@@ -140,10 +219,26 @@ def _bond_features(bond: Chem.Bond) -> np.ndarray:
     return np.array(feats[:BOND_FEATURE_DIM], dtype=np.float32)
 
 
+def _atom_feature_dim(version: str) -> int:
+    """Return the atom-feature width for the requested featurizer version."""
+    if version == "v1":
+        return ATOM_FEATURE_DIM
+    if version == "v2":
+        return ATOM_FEATURE_DIM_V2
+    raise ValueError(
+        f"Unknown featurizer version {version!r}; expected 'v1' or 'v2'"
+    )
+
+
 def mol_to_graph(
-    mol: Chem.Mol,
+    mol: Chem.Mol, version: str = "v1"
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Convert RDKit mol to directed-edge graph representation.
+
+    Wf-A52 W1 (W3-B): the optional kwarg ``version="v1"`` (default, 39-dim)
+    keeps bit-exact backward-compat; ``version="v2"`` produces 72-dim
+    atom features via :func:`_atom_features_v2` (the v1 prefix is
+    byte-identical).  See ``_atom_features`` docstring.
 
     Returns:
         atom_feats: (V, ATOM_FEATURE_DIM) float32
@@ -152,17 +247,20 @@ def mol_to_graph(
         edge_dst:   (2E,) int64  — destination atom index for each directed edge
     """
     V = mol.GetNumAtoms()
+    atom_dim = _atom_feature_dim(version)
     if V == 0:
         # Empty molecule: return empty arrays
         return (
-            np.zeros((0, ATOM_FEATURE_DIM), dtype=np.float32),
+            np.zeros((0, atom_dim), dtype=np.float32),
             np.zeros((0, BOND_FEATURE_DIM), dtype=np.float32),
             np.zeros((0,), dtype=np.int64),
             np.zeros((0,), dtype=np.int64),
         )
 
     # Atom features
-    atom_feats = np.stack([_atom_features(a) for a in mol.GetAtoms()], axis=0)
+    atom_feats = np.stack(
+        [_atom_features(a, version=version) for a in mol.GetAtoms()], axis=0
+    )
 
     # Build directed edge list
     edge_src: List[int] = []
@@ -196,11 +294,19 @@ def mol_to_graph(
 
 
 def featurize_smiles_list(
-    smiles_list: List[str], metal_mode: str = "retain"
+    smiles_list: List[str],
+    version: str = "v1",
+    metal_mode: str = "retain",
 ) -> List[Tuple]:
     """Featurize a list of SMILES into graph tuples.
 
     Returns list of (atom_feats, bond_feats, edge_src, edge_dst) or None for invalid.
+
+    Wf-A52 W1 (W3-B feature wire-in): ``version="v1"`` (default) keeps
+    bit-exact backward-compat — every existing caller that does not pass
+    ``version=`` receives the same 39-dim atom features as before.
+    ``version="v2"`` switches to the 72-dim schema (v1 prefix
+    byte-identical + 33 chemprop-style extras).  See :func:`_atom_features`.
 
     ``metal_mode`` (F3) selects how precious-metal atoms are handled before
     the RDKit parse:
@@ -228,7 +334,7 @@ def featurize_smiles_list(
         if mol is None:
             results.append(None)
             continue
-        results.append(mol_to_graph(mol))
+        results.append(mol_to_graph(mol, version=version))
     return results
 
 
@@ -326,7 +432,6 @@ class DMPNNModel(nn.Module):
     ) -> torch.Tensor:
         """Forward pass for a single molecule. Returns scalar logit."""
         V = atom_f.size(0)
-        E = bond_f.size(0)
         device = atom_f.device
 
         # Initial atom hidden
@@ -868,7 +973,6 @@ class DMPNNBaseline:
         """Compute test metrics."""
         test_score = self.predict(smiles, idx_test)
         y_test = y_all[idx_test]
-        cl_test = cell_lines[idx_test]
         return compute_metrics(y_test, test_score)
 
     def run(self, verbose: bool = True) -> DMPNNResult:
@@ -898,9 +1002,7 @@ class DMPNNBaseline:
         cl_test = cell_lines[idx_test]
 
         test_metrics = compute_metrics(y_test, test_score)
-        train_score = self.predict(smiles, idx_train)
         val_score = self.predict(smiles, idx_val)
-        train_metrics = compute_metrics(y_train, train_score)
         val_metrics = compute_metrics(y_val, val_score)
         per_cl = per_cell_line_auc(cl_test, y_test, test_score)
 

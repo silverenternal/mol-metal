@@ -145,6 +145,39 @@ class MultiTaskReadout(nn.Module):
         return pic50, cls
 
 
+class _ResidualUpdate(nn.Module):
+    """Residual edge update — Wf-A52 W1 (W3-B feature wire-in).
+
+    Replaces :class:`molmetal.baselines.dmpnn._GRUUpdate` on the
+    ``update="residual"`` axis.  Same shape contract as ``_GRUUpdate``:
+
+        h_e', h_v_src, neighbor_sum -> (E, H)
+
+    Formula (deliberately simpler than the GRU):
+
+        h_e' = h_e + W [ neighbor_sum ; h_v_src ]
+
+    i.e. one Linear over the 2H concat (no sigmoid / tanh), 50 layers of
+    bit-exact identity-with-affine projection.  This is the wire-in
+    target for the M-lever comparison grid; the GRU is the default and
+    is preserved bit-for-bit.
+    """
+
+    def __init__(self, hidden_dim: int):
+        super().__init__()
+        self.hidden_dim = hidden_dim
+        self.proj = nn.Linear(hidden_dim + hidden_dim, hidden_dim, bias=True)
+
+    def forward(
+        self,
+        h_e: torch.Tensor,  # (E, H)
+        h_v_src: torch.Tensor,  # (E, H)
+        neighbor_h_e_sum: torch.Tensor,  # (E, H)
+    ) -> torch.Tensor:
+        combined = torch.cat([neighbor_h_e_sum, h_v_src], dim=-1)  # (E, 2H)
+        return h_e + self.proj(combined)
+
+
 class DMPNNMultiTaskModel(nn.Module):
     """D-MPNN backbone + dual regression/classification heads.
 
@@ -169,16 +202,39 @@ class DMPNNMultiTaskModel(nn.Module):
         use_dann: bool = False,
         num_domains: int = 4,
         domain_head_dropout: float = 0.0,
+        pool: str = "sum",
+        readout: str = "outgoing",
+        update: str = "gru",
     ):
         super().__init__()
         self.hidden = hidden
         self.depth = depth
         self.dropout_layer = nn.Dropout(dropout)
+        # Wf-A52 W1 (W3-B): four backbone levers that the closed-loop
+        # ablation grid threads.  Defaults preserve shipped behavior
+        # bit-for-bit (sum-pool + outgoing-readout + gru-update).
+        if pool not in {"sum", "mean"}:
+            raise ValueError(f"pool must be 'sum' or 'mean', got {pool!r}")
+        if readout not in {"outgoing", "incoming"}:
+            raise ValueError(
+                f"readout must be 'outgoing' or 'incoming', got {readout!r}"
+            )
+        if update not in {"gru", "residual"}:
+            raise ValueError(
+                f"update must be 'gru' or 'residual', got {update!r}"
+            )
+        self.pool = pool
+        # Wf-A52 W1 (W3-B): the per-atom edge-aggregate direction is a
+        # lever, stored as ``readout_dir`` (not ``readout``) to preserve
+        # the historical ``self.readout`` = MultiTaskReadout module alias
+        # used by callers that invoke ``model.readout(pooled)``.
+        self.readout_dir = readout
+        self.update = update
 
         # Shared D-MPNN backbone
         self.atom_emb = nn.Linear(atom_dim, hidden)
         self.bond_emb = nn.Linear(bond_dim, hidden)
-        # Reuse the GRU update from the vanilla DMPNN
+        # Reuse the GRU update from the vanilla DMPNN (default)
         from molmetal.baselines.dmpnn import _GRUUpdate
 
         self.gru_update = _GRUUpdate(hidden, hidden)
@@ -187,7 +243,11 @@ class DMPNNMultiTaskModel(nn.Module):
             nn.Linear(hidden * 2, hidden),
             nn.ReLU(),
         )
-        # Two-head readout
+        # Two-head readout (preserved as ``self.readout`` for callers
+        # that invoke ``model.readout(pooled)`` — the historical
+        # MultiTaskReadout module alias.  Wf-A52 W1 (W3-B) keeps the
+        # new ``self.readout_dir`` string lever separate so the two
+        # surfaces do not collide.)
         self.readout = MultiTaskReadout(hidden, dropout)
 
         # ------------------------------------------------------------------
@@ -209,6 +269,89 @@ class DMPNNMultiTaskModel(nn.Module):
                 num_domains=self.num_domains,
                 dropout=domain_head_dropout,
             )
+        # Wf-A52 W1 (W3-B): residual-update alternative.  LAZILY built so the
+        # existing ``gru_update`` / ``edge_init`` / ``readout_mt`` /
+        # optional ``domain_head`` RNG sequence is preserved bit-for-bit
+        # when ``update="gru"`` (the shipped default) — the new module
+        # only consumes a fresh RNG slice when :meth:`_select_update`
+        # first dispatches to it.  ``nn.Parameter`` / ``nn.Linear``
+        # default init is RNG-driven, so instantiating the module
+        # eagerly would shift the per-metal head RNG slice consumed
+        # by the outer :class:`MultiTaskWassersteinModel` wrapper.
+        self._residual_update: Optional[_ResidualUpdate] = None
+
+    def _select_update(self) -> nn.Module:
+        """Return the active edge-update module per the ``update`` lever.
+
+        Wf-A52 W1 (W3-B): keeps the same GRU as the shipped default; the
+        residual branch is a drop-in alternative with identical
+        ``(h_e, h_v_src, neighbor_sum) -> (E, H)`` contract.  Lazy-builds
+        ``_ResidualUpdate`` on first use so the default ``update="gru"``
+        path keeps the historical RNG sequence bit-exact.
+        """
+        if self.update == "gru":
+            return self.gru_update
+        if self.update == "residual":
+            if self._residual_update is None:
+                self._residual_update = _ResidualUpdate(self.hidden)
+            return self._residual_update
+        raise ValueError(f"Unknown update {self.update!r}")
+
+    def _select_readout(self, h_v: torch.Tensor, h_e: torch.Tensor, V: int, e_src: torch.Tensor, device: torch.device, dtype: torch.dtype, e_dst: Optional[torch.Tensor] = None) -> torch.Tensor:
+        """Return per-atom (V, H) edge-aggregate per the ``readout`` lever.
+
+        ``outgoing`` (D-MPNN default) sums h_e over edges whose source is
+        the atom.  ``incoming`` sums h_e over edges whose destination is
+        the atom — by construction this is the transpose and the
+        per-atom pooled vector differs in distribution while the
+        per-molecule sum-pool is invariant (NULL lever under sum-pool,
+        a real lever under mean-pool).  ``e_dst`` is required when
+        ``readout="incoming"``.
+        """
+        agg = torch.zeros(V, self.hidden, device=device, dtype=dtype)
+        if self.readout_dir == "outgoing":
+            agg.index_add_(0, e_src, h_e)
+            return agg
+        if self.readout_dir == "incoming":
+            if e_dst is None:
+                raise ValueError(
+                    "_select_readout: e_dst is required when readout='incoming'"
+                )
+            agg.index_add_(0, e_dst, h_e)
+            return agg
+        raise ValueError(f"Unknown readout_dir {self.readout_dir!r}")
+
+    def _select_readout_flat(
+        self,
+        h_e: torch.Tensor,
+        B: int,
+        max_V: int,
+        e_src_g: torch.Tensor,
+        e_dst_g: torch.Tensor,
+        device: torch.device,
+        dtype: torch.dtype,
+    ) -> torch.Tensor:
+        """Flat-graph counterpart of :meth:`_select_readout`.
+
+        Returns ``(B, max_V, H)`` per-atom edge-sum.  ``incoming`` uses
+        ``index_add_`` on ``e_dst_g``; ``outgoing`` uses ``e_src_g``.
+        """
+        agg = torch.zeros(B * max_V, self.hidden, device=device, dtype=dtype)
+        if self.readout_dir == "outgoing":
+            agg.index_add_(0, e_src_g, h_e)
+        elif self.readout_dir == "incoming":
+            agg.index_add_(0, e_dst_g, h_e)
+        else:
+            raise ValueError(f"Unknown readout_dir {self.readout_dir!r}")
+        return agg.view(B, max_V, self.hidden)
+
+    def _pool(self, h_comb: torch.Tensor, dims_to_reduce: int) -> torch.Tensor:
+        """Pool a (..., V, 2H) tensor over the per-atom axis per the ``pool`` lever."""
+        if self.pool == "sum":
+            return h_comb.sum(dim=dims_to_reduce)
+        if self.pool == "mean":
+            return h_comb.mean(dim=dims_to_reduce)
+        raise ValueError(f"Unknown pool {self.pool!r}")
 
     def _forward_one_mol(
         self,
@@ -220,11 +363,12 @@ class DMPNNMultiTaskModel(nn.Module):
         """Forward pass for a single molecule. Returns 2H-dim pooled vector.
 
         Retained as the per-mol oracle for ``forward`` (which now uses
-        the vectorised flat-graph :meth:`_forward_flat`).  Not called
-        in the default training path.
+        the vectorised flat-graph :meth:`_forward_flat`).  Supports the
+        full lever space (``pool``/``readout``/``update``); the flat-graph
+        path is faster end-to-end but this oracle is the regression
+        oracle for the M-lever comparison grid.
         """
         V = atom_f.size(0)
-        E = bond_f.size(0)
         device = atom_f.device
 
         # Initial atom hidden
@@ -233,19 +377,28 @@ class DMPNNMultiTaskModel(nn.Module):
         h_e = self.dropout_layer(torch.relu(self.bond_emb(bond_f)))  # (E, H)
 
         # D rounds of message passing
+        update = self._select_update()
         for _ in range(self.depth):
             # dtype=h_e.dtype: under bf16 autocast h_e is bf16; a default
             # float32 accumulator makes index_add_ raise the mixed-dtype error.
             atom_incoming = torch.zeros(V, self.hidden, device=device, dtype=h_e.dtype)
             atom_incoming.index_add_(0, e_dst, h_e)
             neighbor_sum = atom_incoming[e_src]
-            h_e = self.gru_update(h_e, h_v[e_src], neighbor_sum)
+            h_e = update(h_e, h_v[e_src], neighbor_sum)
 
-        # Atom hidden = initial atom emb + sum of outgoing edge hidden
-        outgoing = torch.zeros(V, self.hidden, device=device, dtype=h_e.dtype)
-        outgoing.index_add_(0, e_src, h_e)
-        h_comb = torch.cat([h_v, outgoing], dim=-1)  # (V, 2H)
-        pooled = h_comb.sum(dim=0)  # (2H,)
+        # Atom hidden = initial atom emb + per-atom edge-aggregate (per ``readout``)
+        atom_edge_agg = self._select_readout(
+            h_v=h_v,
+            h_e=h_e,
+            V=V,
+            e_src=e_src,
+            device=device,
+            dtype=h_e.dtype,
+            e_dst=e_dst,
+        )
+        h_comb = torch.cat([h_v, atom_edge_agg], dim=-1)  # (V, 2H)
+        # Both sum and mean pool collapse V → (2H,) per-mol.
+        pooled = self._pool(h_comb, dims_to_reduce=0)
         return pooled
 
     def _forward_flat(
@@ -270,7 +423,6 @@ class DMPNNMultiTaskModel(nn.Module):
         are short-circuited to a zero vector.
         """
         B, max_V, _A_dim = atom_feats.shape
-        max_E = edge_src.size(1)
         device = atom_feats.device
         H = self.hidden
 
@@ -301,23 +453,30 @@ class DMPNNMultiTaskModel(nn.Module):
         h_v_flat = h_v.view(B * max_V, H)
 
         # 4) ``depth`` rounds of message passing on the flat graph.
+        update = self._select_update()
         for _ in range(self.depth):
             # dtype=h_e.dtype: under bf16 autocast h_e is bf16; a default
             # float32 accumulator makes index_add_ raise the mixed-dtype error.
             atom_incoming = torch.zeros(B * max_V, H, device=device, dtype=h_e.dtype)
             atom_incoming.index_add_(0, e_dst_g, h_e)
             neighbor_sum = atom_incoming[e_src_g]
-            h_e = self.gru_update(h_e, h_v_flat[e_src_g], neighbor_sum)
+            h_e = update(h_e, h_v_flat[e_src_g], neighbor_sum)
 
-        # 5) Per-atom outgoing-edge sum and pool.  Note: index_add_ on
-        #    a flat buffer then view is identical to per-mol index_add_
-        #    + stack (the padding slots in atom_incoming / outgoing are
-        #    zero by construction because no edge references them).
-        outgoing = torch.zeros(B * max_V, H, device=device, dtype=h_e.dtype)
-        outgoing.index_add_(0, e_src_g, h_e)
-        outgoing = outgoing.view(B, max_V, H)
-        h_comb = torch.cat([h_v, outgoing], dim=-1)  # (B, max_V, 2H)
-        pooled = h_comb.sum(dim=1)                   # (B, 2H)
+        # 5) Per-atom edge-aggregate (per ``readout``) and pool.
+        #    Wf-A52 W1 (W3-B): ``outgoing`` keeps the shipped behaviour;
+        #    ``incoming`` sums h_e over edges whose destination is the
+        #    atom (transposed view of the same index_add_ pattern).
+        atom_edge_agg = self._select_readout_flat(
+            h_e=h_e,
+            B=B,
+            max_V=max_V,
+            e_src_g=e_src_g,
+            e_dst_g=e_dst_g,
+            device=device,
+            dtype=h_e.dtype,
+        )
+        h_comb = torch.cat([h_v, atom_edge_agg], dim=-1)  # (B, max_V, 2H)
+        pooled = self._pool(h_comb, dims_to_reduce=1)  # (B, 2H)
 
         # 6) Zero-out rows for empty molecules (matches the V==0 or E==0
         #    short-circuit in :meth:`_forward_one_mol`).
@@ -794,7 +953,6 @@ def predict_mt(
             continue
 
         g_list = [v[0] for v in valid]
-        y_pic50 = np.array([v[1] for v in valid], dtype=np.float32)
         y_active = np.array([v[2] for v in valid], dtype=np.int64)
 
         batch_data = collate_graphs(g_list)
@@ -1425,7 +1583,6 @@ class DMPNNMultiTaskBaseline:
         # Train-set eval
         train_score, train_pic50_pred = self.predict(smiles, idx_train)
         y_train = active_all[idx_train]
-        train_metrics = compute_metrics(y_train, train_score)
 
         per_cl = per_cell_line_auc(cl_test, y_test, test_score)
 

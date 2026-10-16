@@ -976,14 +976,20 @@ def _featurize_with_cache(
     smiles: List[str],
     cache_key: str,
     cache_dir: Path,
+    featurizer_version: str = "v1",
 ) -> List:
     """Featurise SMILES with on-disk pickle cache (reuse from Wf-84 P3).
 
     The first call writes ``{cache_dir}/{cache_key}.pkl``; subsequent
     calls reuse it.  Critical for multi-seed runs.
+
+    Wf-A52 W1 (W3-B feature wire-in): ``featurizer_version`` selects the
+    atom featurizer; the cache path is namespaced per version so v1 and v2
+    graphs never collide on disk.  Default ``"v1"`` keeps the existing
+    pickle files bit-for-bit reusable.
     """
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_path = cache_dir / f"{cache_key}.pkl"
+    cache_path = cache_dir / f"{cache_key}_v{featurizer_version[-1]}.pkl"
     if cache_path.exists():
         try:
             with cache_path.open("rb") as f:
@@ -1004,7 +1010,9 @@ def _featurize_with_cache(
             )
 
     t0 = time.time()
-    graphs = featurize_smiles_list([str(s) for s in smiles])
+    graphs = featurize_smiles_list(
+        [str(s) for s in smiles], version=featurizer_version
+    )
     elapsed = time.time() - t0
     try:
         with cache_path.open("wb") as f:
@@ -1191,12 +1199,17 @@ class MultiTaskWassersteinModel(nn.Module):
         domain_head_dropout: float = 0.0,
         # Wf-335-P3 — Triton dispatch gate (default OFF; env-gated).
         use_triton_relu_mlp: bool = False,
+        # Wf-A52 W1 (W3-B feature wire-in) — selects the atom-feature
+        # width used by the encoder (39 for v1, 72 for v2).  Default
+        # "v1" preserves Wf-131 P1 bit-for-bit.
+        featurizer_version: str = "v1",
     ):
         super().__init__()
         self.n_metals = int(n_metals)
         self.hidden = int(hidden)
         self.depth = int(depth)
         self.use_triton_relu_mlp = bool(use_triton_relu_mlp)
+        self._featurizer_version = featurizer_version
 
         # ----- Shared encoder (re-uses DMPNNMultiTaskModel backbone) -----
         # The ``use_dann`` / ``num_domains`` / ``domain_head_dropout`` kwargs
@@ -1214,6 +1227,24 @@ class MultiTaskWassersteinModel(nn.Module):
             num_domains=num_domains,
             domain_head_dropout=domain_head_dropout,
         )
+        # Wf-A52 W1 (W3-B feature wire-in) — the encoder's atom
+        # embedding is created at the historical 39-dim width by
+        # default; when the caller passes ``featurizer_version="v2"``
+        # we replace the encoder with a 72-dim-width instance so the
+        # v2 graph tensors shape-match the encoder's atom_emb Linear.
+        # Default ``featurizer_version="v1"`` leaves ``self.encoder``
+        # untouched bit-for-bit.
+        if getattr(self, "_featurizer_version", "v1") == "v2":
+            self.encoder = DMPNNMultiTaskModel(
+                atom_dim=72,
+                bond_dim=bond_dim,
+                hidden=hidden,
+                depth=depth,
+                dropout=dropout,
+                use_dann=use_dann,
+                num_domains=num_domains,
+                domain_head_dropout=domain_head_dropout,
+            )
         # DANN surface mirrors :class:`DMPNNMultiTaskModel` so
         # ``test_dann_on_off`` can introspect ``model.use_dann`` /
         # ``model.domain_head`` / ``model.num_domains`` directly without
@@ -1855,6 +1886,15 @@ def train_one_metal_one_seed(
     # Reported ALONGSIDE the neural head's pearson; default False keeps the
     # Wf-131 P1 metric path bit-for-bit.
     pic50_ridge_readout: bool = False,
+    # Wf-A52 W1 (W3-B feature wire-in) — 4 NEW D-MPNN/featurizer levers
+    # threaded from main() for the same reason as the kwargs above: this
+    # function has NO access to the main()-scoped ``args``.  Defaults
+    # ("sum" / "outgoing" / "gru" / "v1") preserve Wf-131 P1 + Wf-251-F4
+    # bit-for-bit (verified by §5.7 50-step CPU smoke pre vs post W3-B).
+    pool: str = "sum",
+    readout: str = "outgoing",
+    update: str = "gru",
+    featurizer_version: str = "v1",
 ) -> MetalSeedResult:
     """Train a 5-metal multi-task D-MPNN for one (metal, seed).
 
@@ -1992,6 +2032,7 @@ def train_one_metal_one_seed(
         [str(s) for s in used_smiles],
         cache_key=cache_key,
         cache_dir=Path("/tmp/wf131_mtw_fe_cache"),
+        featurizer_version=featurizer_version,
     )
     featurise_seconds = time.time() - t_fe
 
@@ -2036,7 +2077,20 @@ def train_one_metal_one_seed(
         depth=depth if depth is not None else DEFAULT_DEPTH,
         dropout=DEFAULT_DROPOUT,
         use_dann=use_dann,
+        # Wf-A52 W1 (W3-B) — pass featurizer version through so the
+        # encoder's atom_emb Linear matches the graph tensor width
+        # (v1=39 / v2=72).  Default "v1" keeps Wf-131 P1 bit-for-bit.
+        featurizer_version=featurizer_version,
     ).to(device)
+    # Wf-A52 W1 (W3-B feature wire-in) — apply the new pool/readout/
+    # update levers to the encoder (DMPNNMultiTaskModel).  Defaults
+    # match the historical behaviour bit-for-bit.  ``readout_dir`` is
+    # the string lever attribute name on the encoder (the historical
+    # ``readout`` attribute is the MultiTaskReadout module and is left
+    # untouched to preserve callers that invoke ``model.readout(...)``).
+    model.encoder.pool = pool
+    model.encoder.readout_dir = readout
+    model.encoder.update = update
     # 2026-10-04 — GPU-utilisation wire-in, mirroring Wf-431-B1 in
     # train_cfm_yuelbond_wasserstein.py.  Default OFF; the no-flag path is
     # bit-for-bit unchanged.  Order matters: torch.backends.* BEFORE
@@ -3348,6 +3402,60 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             "when featurising on CPU).  Use 0 unless batching is large."
         ),
     )
+    # ------------------------------------------------------------------
+    # Wf-A52 W1 (W3-B feature wire-in) — 4 NEW D-MPNN/featurizer levers
+    # wired into the multi-task Wasserstein trainer.  Defaults match
+    # shipped behaviour bit-for-bit:
+    #   --pool sum          (alternative: mean)
+    #   --readout outgoing  (alternative: incoming)
+    #   --update gru        (alternative: residual)
+    #   --featurizer-version v1 (alternative: v2)
+    # Per AGENTS.md §5.7 wire-in contract: each new flag is consumed by
+    # :class:`DMPNNMultiTaskModel` and :func:`featurize_smiles_list`; the
+    # 50-step CPU smoke (Wf-A52 §5.7 protocol) verifies end-to-end
+    # parse_args + init + 50-step loss curve for the 4-way combination.
+    # ------------------------------------------------------------------
+    p.add_argument(
+        "--pool",
+        choices=["sum", "mean"],
+        default="sum",
+        help=(
+            "Wf-A52 W1 NEW (W3-B): DMPNN backbone pooling. "
+            "'sum' (default) is bit-for-bit the shipped behaviour; "
+            "'mean' replaces sum with per-atom mean-pool."
+        ),
+    )
+    p.add_argument(
+        "--readout",
+        choices=["outgoing", "incoming"],
+        default="outgoing",
+        help=(
+            "Wf-A52 W1 NEW (W3-B): DMPNN per-atom edge aggregate direction. "
+            "'outgoing' (default) is bit-for-bit the shipped behaviour; "
+            "'incoming' sums h_e over edges whose destination is the atom."
+        ),
+    )
+    p.add_argument(
+        "--update",
+        choices=["gru", "residual"],
+        default="gru",
+        help=(
+            "Wf-A52 W1 NEW (W3-B): DMPNN edge update module. "
+            "'gru' (default) is bit-for-bit the shipped behaviour; "
+            "'residual' swaps in the W3-B residual update (1 Linear)."
+        ),
+    )
+    p.add_argument(
+        "--featurizer-version",
+        choices=["v1", "v2"],
+        default="v1",
+        help=(
+            "Wf-A52 W1 NEW (W3-B): atom-featurizer version. 'v1' (default) "
+            "is bit-for-bit the shipped behaviour (39-dim); 'v2' switches "
+            "to the 72-dim v2 schema (v1 prefix byte-identical + 33 "
+            "chemprop-style extras at dim 39+)."
+        ),
+    )
     # 2026-10-04 — `data.pin_memory` was declared in 2 configs and resolved
     # to no argparse dest (pre-flight RESIDUAL), so the declared value
     # reached nothing. The schema leaf `data.pin_memory` maps to this dest
@@ -4088,6 +4196,15 @@ def main(argv: Optional[List[str]] = None) -> int:
                     pic50_ridge_readout=bool(
                         getattr(args, "pic50_ridge_readout", False)
                     ),
+                    # Wf-A52 W1 (W3-B feature wire-in) — thread the 4 NEW
+                    # pool/readout/update/featurizer-version CLI flags from
+                    # ``args`` into the trainer.  Defaults ('sum' / 'outgoing'
+                    # / 'gru' / 'v1') match the historical behaviour so the
+                    # no-flag path is bit-for-bit unchanged.
+                    pool=getattr(args, "pool", "sum"),
+                    readout=getattr(args, "readout", "outgoing"),
+                    update=getattr(args, "update", "gru"),
+                    featurizer_version=getattr(args, "featurizer_version", "v1"),
                     # Wf-432-A2 — Wf-246-C metal-coordination term
                     # wire-in (Fix-B).  These kwargs thread from main()
                     # into ``train_one_metal_one_seed()`` →

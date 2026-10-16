@@ -23,7 +23,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import torch
 import torch.nn as nn
-from rdkit import Chem, RDLogger
+from rdkit import RDLogger
 
 from molmetal.baselines.eval_utils import compute_metrics, per_cell_line_auc
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
@@ -48,130 +48,24 @@ DMPNN_EPOCHS: int = 30
 DMPNN_BATCH_SIZE: int = 64
 
 # ---------------------------------------------------------------------------
-# RDKit featurisation (same as vanilla D-MPNN)
+# RDKit featurisation — Wf-A52 W1 (W3-B feature wire-in) delegates to
+# :mod:`molmetal.baselines.dmpnn` so the in-house and attentive D-MPNN
+# featurizers share ONE source of truth (U6 single-source invariant).
+# The exported names (``ATOM_FEATURE_DIM``, ``_atom_features``,
+# ``mol_to_graph``, ``featurize_smiles_list``) are forwarded to the
+# canonical implementations in ``dmpnn``; new kwargs (``version=``) are
+# inherited automatically.
 # ---------------------------------------------------------------------------
-ATOM_FEATURE_DIM = 39
-BOND_FEATURE_DIM = 10
-
-
-def _atom_features(atom: Chem.Atom) -> np.ndarray:
-    """Extract ~39-dim atom feature vector from RDKit atom."""
-    feats = []
-    Z = atom.GetAtomicNum()
-    z_counts = [6, 7, 8, 9, 15, 16, 17, 26, 29, 45, 46, 77, 78]
-    z_onehot = [1 if Z == z else 0 for z in z_counts]
-    z_other = 1 if Z not in z_counts else 0
-    feats.extend(z_onehot + [z_other])
-
-    fc = atom.GetFormalCharge()
-    feats.extend([fc == -2, fc == -1, fc == 0, fc == 1, fc == 2])
-
-    hybrid_types = [
-        Chem.HybridizationType.SP,
-        Chem.HybridizationType.SP2,
-        Chem.HybridizationType.SP3,
-        Chem.HybridizationType.SP3D,
-        Chem.HybridizationType.SP3D2,
-    ]
-    hybrid = atom.GetHybridization()
-    for ht in hybrid_types:
-        feats.append(1 if hybrid == ht else 0)
-    feats.append(1 if hybrid not in hybrid_types else 0)
-
-    feats.append(1 if atom.IsInRing() else 0)
-    feats.append(1 if atom.GetIsAromatic() else 0)
-    feats.append(atom.GetDegree())
-    feats.append(atom.GetTotalNumHs())
-    feats.append(atom.GetChiralTag())
-
-    while len(feats) < ATOM_FEATURE_DIM:
-        feats.append(0)
-    return np.array(feats[:ATOM_FEATURE_DIM], dtype=np.float32)
-
-
-def _bond_features(bond: Chem.Bond) -> np.ndarray:
-    """Extract ~10-dim bond feature vector from RDKit bond."""
-    feats = []
-    bt = bond.GetBondType()
-    feats.append(1 if bt == Chem.BondType.SINGLE else 0)
-    feats.append(1 if bt == Chem.BondType.DOUBLE else 0)
-    feats.append(1 if bt == Chem.BondType.TRIPLE else 0)
-    feats.append(1 if bt == Chem.BondType.AROMATIC else 0)
-    feats.append(1 if bond.GetIsConjugated() else 0)
-    feats.append(1 if bond.IsInRing() else 0)
-    stereo = bond.GetStereo()
-    feats.append(1 if stereo == Chem.BondStereo.STEREOANY else 0)
-    feats.append(1 if bond.GetBondDir() == Chem.BondDir.ENDUPRIGHT else 0)
-    feats.append(1 if bond.GetBondDir() == Chem.BondDir.ENDDOWNRIGHT else 0)
-
-    while len(feats) < BOND_FEATURE_DIM:
-        feats.append(0)
-    return np.array(feats[:BOND_FEATURE_DIM], dtype=np.float32)
-
-
-def mol_to_graph(
-    mol: Chem.Mol,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Convert RDKit mol to directed-edge graph representation.
-
-    Returns:
-        atom_feats: (V, ATOM_FEATURE_DIM) float32
-        bond_feats: (2E, BOND_FEATURE_DIM) float32
-        edge_src:   (2E,) int64
-        edge_dst:   (2E,) int64
-    """
-    V = mol.GetNumAtoms()
-    if V == 0:
-        return (
-            np.zeros((0, ATOM_FEATURE_DIM), dtype=np.float32),
-            np.zeros((0, BOND_FEATURE_DIM), dtype=np.float32),
-            np.zeros((0,), dtype=np.int64),
-            np.zeros((0,), dtype=np.int64),
-        )
-
-    atom_feats = np.stack([_atom_features(a) for a in mol.GetAtoms()], axis=0)
-
-    edge_src: List[int] = []
-    edge_dst: List[int] = []
-    bond_feats_list: List[np.ndarray] = []
-
-    for bond in mol.GetBonds():
-        u = bond.GetBeginAtomIdx()
-        v = bond.GetEndAtomIdx()
-        bf = _bond_features(bond)
-        edge_src.append(u)
-        edge_dst.append(v)
-        bond_feats_list.append(bf)
-        edge_src.append(v)
-        edge_dst.append(u)
-        bond_feats_list.append(bf)
-
-    if not edge_src:
-        bond_feats = np.zeros((0, BOND_FEATURE_DIM), dtype=np.float32)
-    else:
-        bond_feats = np.stack(bond_feats_list, axis=0)
-
-    return (
-        atom_feats,
-        bond_feats,
-        np.array(edge_src, dtype=np.int64),
-        np.array(edge_dst, dtype=np.int64),
-    )
-
-
-def featurize_smiles_list(smiles_list: List[str]) -> List[Optional[Tuple]]:
-    """Featurize a list of SMILES into graph tuples."""
-    results = []
-    for smi in smiles_list:
-        if not smi:
-            results.append(None)
-            continue
-        mol = Chem.MolFromSmiles(smi)
-        if mol is None:
-            results.append(None)
-            continue
-        results.append(mol_to_graph(mol))
-    return results
+from molmetal.baselines.dmpnn import (  # noqa: F401  — re-export
+    ATOM_FEATURE_DIM,
+    ATOM_FEATURE_DIM_V2,  # noqa: F401
+    _V2_EXTRA_DIM,  # noqa: F401
+    BOND_FEATURE_DIM,
+    _atom_features,  # noqa: F401  — v1 / v2 dispatcher
+    _bond_features,  # noqa: F401  — kept here for backward-compat callers
+    mol_to_graph,  # noqa: F401
+    featurize_smiles_list,  # noqa: F401
+)
 
 
 # ---------------------------------------------------------------------------
@@ -269,7 +163,6 @@ class AttentiveDMPNNModel(nn.Module):
     ) -> torch.Tensor:
         """Forward pass for a single molecule. Returns scalar logit."""
         V = atom_f.size(0)
-        E = bond_f.size(0)
         device = atom_f.device
 
         h_v = self.dropout(torch.relu(self.atom_emb(atom_f)))
@@ -742,9 +635,7 @@ class AttentiveDMPNNBaseline:
         cl_test = cell_lines[idx_test]
 
         test_metrics = compute_metrics(y_test, test_score)
-        train_score = self.predict(smiles, idx_train)
         val_score = self.predict(smiles, idx_val)
-        train_metrics = compute_metrics(y_train, train_score)
         val_metrics = compute_metrics(y_val, val_score)
         per_cl = per_cell_line_auc(cl_test, y_test, test_score)
 

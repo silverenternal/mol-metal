@@ -1,6 +1,6 @@
 # Wf-58 Phase 2 — D-MPNN pIC50 prediction on top-20 wet-lab candidates
 
-**Date**: 2026-10-11
+**Date**: 2026-10-16
 **Model**: 4-cell-line multi-task D-MPNN (hidden=32, depth=2, dropout=0.1)
 **Split**: scaffold (Bemis-Murcko) 70/10/20 (per-seed)
 **Seeds**: [0]  
@@ -18,10 +18,10 @@
 
 | Cell line | Mean | Median | Std | Min | Max | n |
 |---|---|---|---|---|---|---|
-| MCF7 | 0.615 | 0.643 | 0.103 | 0.482 | 0.774 | 5 |
-| A549 | 0.412 | 0.430 | 0.044 | 0.361 | 0.476 | 5 |
-| A2780 | 0.356 | 0.360 | 0.031 | 0.308 | 0.402 | 5 |
-| A2780cis | -0.160 | -0.130 | 0.040 | -0.227 | -0.128 | 5 |
+| MCF7 | 0.605 | 0.624 | 0.113 | 0.468 | 0.793 | 5 |
+| A549 | 0.406 | 0.430 | 0.037 | 0.361 | 0.448 | 5 |
+| A2780 | 0.362 | 0.363 | 0.037 | 0.309 | 0.425 | 5 |
+| A2780cis | -0.167 | -0.138 | 0.043 | -0.241 | -0.130 | 5 |
 
 ## 3-seed reproducibility gate (per-compound pIC50 std ≤ 0.15 log units)
 
@@ -33,11 +33,11 @@
 
 | Rank | ID | Metal | Pooled std (log) | Gate | Mean pIC50 (across cells) |
 |---:|---|---|---:|:-:|---|
-| 1 | test_001 | Pt | 0.0000 | PASS | 0.256 |
-| 2 | test_002 | Pd | 0.0000 | PASS | 0.262 |
+| 1 | test_001 | Pt | 0.0000 | PASS | 0.252 |
+| 2 | test_002 | Pd | 0.0000 | PASS | 0.257 |
 | 3 | test_003 | Ir | 0.0000 | PASS | 0.356 |
-| 4 | test_004 | Ru | 0.0000 | PASS | 0.326 |
-| 5 | test_005 | Au | 0.0000 | PASS | 0.330 |
+| 4 | test_004 | Ru | 0.0000 | PASS | 0.320 |
+| 5 | test_005 | Au | 0.0000 | PASS | 0.323 |
 
 ## Honest framing
 
