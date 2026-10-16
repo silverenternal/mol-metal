@@ -359,7 +359,6 @@ def collapse_ligand_duplicates(
     line, DOI ...) is left as-is because the splitter only reads the label and
     the metal.
     """
-    import pandas as pd  # local import: keeps module import cheap
 
     if smiles_col not in df.columns:
         raise KeyError(

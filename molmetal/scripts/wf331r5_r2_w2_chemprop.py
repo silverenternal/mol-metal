@@ -293,10 +293,6 @@ def rdkit_chemprop_atom_features(mol) -> np.ndarray:
     failures yield an empty matrix.  This is the RDKit-native fallback
     for chemprop v2's ``SimpleMoleculeMolGraphFeaturizer``.
     """
-    try:
-        from rdkit import Chem
-    except ImportError:
-        return np.zeros((0, _CHEMPROP_V2_ATOM_DIM), dtype=np.float64)
     if mol is None:
         return np.zeros((0, _CHEMPROP_V2_ATOM_DIM), dtype=np.float64)
     feats: List[np.ndarray] = []
@@ -341,10 +337,6 @@ def rdkit_chemprop_bond_features(mol) -> np.ndarray:
     failures yield an empty matrix.  This is the RDKit-native fallback
     for chemprop v2's ``SimpleMoleculeMolGraphFeaturizer``.
     """
-    try:
-        from rdkit import Chem
-    except ImportError:
-        return np.zeros((0, _CHEMPROP_V2_BOND_DIM), dtype=np.float64)
     if mol is None:
         return np.zeros((0, _CHEMPROP_V2_BOND_DIM), dtype=np.float64)
     feats: List[np.ndarray] = []

@@ -140,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
     # lazy so the script stays import-safe in CI smoke runs that mock
     # the dataset.
     try:
-        from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
+        from molmetal.data.cytotox import MetalCytotoxDataset
     except ImportError as e:
         print(
             f"[tmqm_finetune_metacytotox] WARNING: could not import "

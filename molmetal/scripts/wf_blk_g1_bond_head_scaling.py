@@ -70,7 +70,6 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (  # noqa: E402
     NUM_BOND_CLASSES,
-    BOND_NO_BOND,
 )
 
 

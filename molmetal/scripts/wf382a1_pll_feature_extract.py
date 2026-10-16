@@ -50,7 +50,7 @@ if str(REPO_ROOT) not in sys.path:
 # the canonical PLL module is unavailable (we surface a clear error).
 try:
     from molmetal.adapters.flow_matching_lipman.pll_features import (
-        PLLFeatureAdapter,
+        PLLFeatureAdapter,  # noqa: F401
         PLLFeatureError,
         persistent_laplacian,
         pll_eigenvalues,

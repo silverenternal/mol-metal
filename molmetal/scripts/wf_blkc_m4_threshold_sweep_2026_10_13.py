@@ -51,7 +51,6 @@ import argparse
 import json
 import logging
 import random
-import statistics
 import sys
 import time
 from collections import Counter

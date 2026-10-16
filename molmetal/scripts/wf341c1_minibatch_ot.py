@@ -233,7 +233,7 @@ def minibatch_ot_couple(
     # Falls back to identity if scipy is unavailable.
     if mode == "hungarian":
         try:
-            from scipy.optimize import linear_sum_assignment
+            from scipy.optimize import linear_sum_assignment  # noqa: F401
         except ImportError:
             diag["fallback_used"] = True
             diag["fallback_reason"] = "scipy not installed"

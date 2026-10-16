@@ -93,10 +93,11 @@ class MolecularPropertyTargetLoss:
         for smi in decoded_smiles_batch:
             if not isinstance(smi, str) or not smi:
                 continue
-            try:
-                m = self._Chem.MolFromSmiles(smi)
-            except Exception:
-                m = None
+            # RDKit contract: Chem.MolFromSmiles returns None for any invalid
+            # SMILES — it never raises.  Trust the None return; a bare except
+            # would silently swallow real bugs (NameError on _Chem rebound,
+            # TypeError on a shadowed wrapper).
+            m = self._Chem.MolFromSmiles(smi)
             if m is not None:
                 mols.append(m)
         if not mols:

@@ -37,7 +37,6 @@ import csv
 import importlib.util
 import json
 import statistics
-import sys
 from pathlib import Path
 from typing import Optional, Sequence
 

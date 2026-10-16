@@ -312,7 +312,6 @@ def run_smoke(n_samples: int = 8, hidden_dim: int = DEFAULT_HIDDEN_DIM) -> Dict[
 
     Returns a result dict; raises AssertionError on any failed check.
     """
-    import torch
 
     smiles = ["CCO", "c1ccccc1", "CC(=O)O", "CC(C)C", "c1ccncc1",
               "CCN(CC)CC", "O=C(O)c1ccccc1O", "C1CCCCC1"][:n_samples]

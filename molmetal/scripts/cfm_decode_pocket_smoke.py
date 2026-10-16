@@ -33,7 +33,6 @@ The script exits with code 0 on PASS, 1 on FAIL.
 from __future__ import annotations
 
 import argparse
-import os
 import shutil
 import sys
 import tempfile

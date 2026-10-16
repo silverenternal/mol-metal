@@ -708,7 +708,6 @@ def run(
     comparability_note: bool = False,
 ) -> Dict[str, object]:
     _load_env_default()
-    import pandas as pd
 
     from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 

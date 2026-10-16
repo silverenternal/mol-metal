@@ -49,12 +49,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import os
 import statistics
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import torch
 
@@ -282,7 +281,6 @@ def integrate(
     term.
     """
     from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
-        AtomCloud,
         _block_diag_radius_edges,
     )
     from molmetal.adapters.flow_matching_lipman._reference.solver import ODESolver
@@ -498,7 +496,6 @@ def _merge_config(ns):
     bools, not as strings, because a store_true flag handed the string
     "false" is truthy.
     """
-    import argparse as _argparse
 
     # ckpt and out are here so that entry.command_template can be reduced to
     # `--config {yaml_path}` alone, which is the only shape AGENTS.md 5.11
@@ -516,7 +513,6 @@ def _merge_config(ns):
         # decode is byte-identical to the pre-2026-10-12 path.
         "bond_aromatic_logit_bias": 0.0,
     }
-    from dataclasses import replace
 
     out = ns
     if ns.config is None:

@@ -14,7 +14,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 from molmetal.eval.scoring.per_pocket_metric import build_per_pocket_panel

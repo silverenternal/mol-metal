@@ -30,7 +30,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import math
 import statistics as st
 import sys
 from collections import Counter

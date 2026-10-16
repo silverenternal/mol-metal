@@ -77,7 +77,7 @@ from molmetal.molmetal_lam.sbdd_env.protein_metal_binding import (
 )
 
 try:
-    from sklearn.metrics import average_precision_score, roc_auc_score
+    from sklearn.metrics import average_precision_score
 except ImportError as exc:  # pragma: no cover
     raise SystemExit(
         "train_protein_metal.py needs scikit-learn: uv pip install scikit-learn"

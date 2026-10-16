@@ -53,7 +53,6 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from molmetal.models.bond_head import BOND_NO_BOND  # noqa: E402
 from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (  # noqa: E402
     YuelBondBondDecoder,
 )

@@ -55,7 +55,6 @@ if str(_PROJECT_ROOT) not in sys.path:
 from molmetal.eval.scoring.paper_table import (
     COHORT_KEYS,
     PROTOCOL_VERSION,
-    PaperTableRow,
     build_paper_table,
     write_paper_table_json,
 )

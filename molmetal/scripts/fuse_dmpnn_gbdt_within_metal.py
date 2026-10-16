@@ -123,7 +123,6 @@ from molmetal.scripts.metal_activity_transfer_probe import (  # noqa: E402
     METALS,
     MIN_UNIQUE_FOR_GATE,
     _featurise,
-    _load_env_default,
     _make_model,
 )
 from molmetal.scripts.dmpnn_within_metal_auc import (  # noqa: E402

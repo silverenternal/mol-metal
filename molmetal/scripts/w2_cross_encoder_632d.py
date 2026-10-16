@@ -238,7 +238,6 @@ def run_smoke(n_samples: int = 6) -> Dict[str, Any]:
 
     Returns a result dict; raises AssertionError on any failed check.
     """
-    import torch
 
     smiles = ["CCO", "c1ccccc1", "CC(=O)O", "CC(C)C", "c1ccncc1", "CCN(CC)CC"][
         :n_samples

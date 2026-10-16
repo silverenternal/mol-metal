@@ -42,7 +42,7 @@ import csv
 import json
 import sys
 from pathlib import Path
-from typing import Callable, Dict, List, Sequence
+from typing import Callable, Dict
 
 import numpy as np
 

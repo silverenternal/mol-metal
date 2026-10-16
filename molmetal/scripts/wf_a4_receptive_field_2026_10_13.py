@@ -78,7 +78,6 @@ import json
 import logging
 import sys
 import warnings
-from collections import Counter
 from pathlib import Path
 from typing import Optional, Sequence
 

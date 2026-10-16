@@ -127,7 +127,7 @@ def hilbert_astsr_spectral_features(smiles_list: List[str]) -> np.ndarray:
     out = np.zeros((n, 8), dtype=np.float64)
     try:
         from rdkit import Chem, RDLogger
-        from rdkit.Chem import AllChem, Descriptors
+        from rdkit.Chem import AllChem, Descriptors  # noqa: F401
 
         RDLogger.DisableLog("rdApp.*")
         feats: List[List[float]] = []

@@ -61,7 +61,6 @@ import argparse
 import csv
 import hashlib
 import io
-import os
 import shutil
 import sys
 import urllib.error

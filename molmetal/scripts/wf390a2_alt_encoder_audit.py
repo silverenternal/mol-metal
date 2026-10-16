@@ -90,8 +90,8 @@ def audit_alt_encoders() -> AltEncoderInventory:
     # Module 1: ChempropV2MTModelV3 (chemprop v3 multi-task model with EnhancedMetalHead)
     try:
         from molmetal.models.chemprop_v2_mt_model_v3 import (
-            ChempropV2MTModelV3,
-            quick_smoke_chemprop_v2_mt_v3,
+            ChempropV2MTModelV3,  # noqa: F401
+            quick_smoke_chemprop_v2_mt_v3,  # noqa: F401
         )
 
         inv.chemprop_v3_mt_model = "PRESENT"
@@ -108,7 +108,7 @@ def audit_alt_encoders() -> AltEncoderInventory:
     # `molmetal/models/dmpnn_pyg.py`). Note: the legacy class is named
     # `DirectedMPNN`, NOT `DMPNN` — preserved honest naming.
     try:
-        from molmetal.models.dmpnn import DirectedMPNN
+        from molmetal.models.dmpnn import DirectedMPNN  # noqa: F401
 
         inv.dmpnn_module = "PRESENT"
         inv.dmpnn_legacy_class = "DirectedMPNN"
@@ -120,7 +120,7 @@ def audit_alt_encoders() -> AltEncoderInventory:
         inv.notes.append(f"dmpnn IMPORT FAIL: {exc}")
 
     try:
-        from molmetal.models.dmpnn_pyg import DirectedMPNNPyG
+        from molmetal.models.dmpnn_pyg import DirectedMPNNPyG  # noqa: F401
 
         inv.dmpnn_pyg_class = "DirectedMPNNPyG"
         inv.notes.append(
@@ -133,10 +133,10 @@ def audit_alt_encoders() -> AltEncoderInventory:
     # Module 3: RDKit 2D extended (F5_RDKIT_2D 32-d) — already SHIPPED per Wf-252
     try:
         from molmetal.data.rdkit_2d_extended import (
-            RDKIT_2D_EXTENDED_FEATURE_COLUMNS,
-            RDKIT_2D_FEATURE_COLUMNS,
-            RDKIT_2D_DIM,
-            RDKIT_2D_BASE_DIM,
+            RDKIT_2D_EXTENDED_FEATURE_COLUMNS,  # noqa: F401
+            RDKIT_2D_FEATURE_COLUMNS,  # noqa: F401
+            RDKIT_2D_DIM,  # noqa: F401
+            RDKIT_2D_BASE_DIM,  # noqa: F401
         )
 
         inv.rdkit_2d_extended = "PRESENT"
@@ -151,8 +151,8 @@ def audit_alt_encoders() -> AltEncoderInventory:
     # Module 4: Wasserstein loss (the W₂ alignment mechanism for §3.1)
     try:
         from molmetal.molmetal_lam.reward.wasserstein_loss import (
-            wasserstein_pic50_loss,
-            wasserstein_1d_torchsort,
+            wasserstein_pic50_loss,  # noqa: F401
+            wasserstein_1d_torchsort,  # noqa: F401
         )
 
         inv.wasserstein_pic50_loss = "PRESENT"
@@ -167,8 +167,8 @@ def audit_alt_encoders() -> AltEncoderInventory:
     # Trainer constraint discovery
     try:
         from molmetal.scripts.train_hilbert_astsr_end_to_end import (
-            _featurize_smiles,
-            load_f5_32d_csv,
+            _featurize_smiles,  # noqa: F401
+            load_f5_32d_csv,  # noqa: F401
         )
 
         inv.trainer_metals_constraint = "12-d default / 32-d optional"
@@ -236,7 +236,7 @@ def smoke_alt_encoder(
 
     # Verify chemprop v3 module is present + report its hidden_dim
     try:
-        from molmetal.models.chemprop_v2_mt_model_v3 import ChempropV2MTModelV3
+        from molmetal.models.chemprop_v2_mt_model_v3 import ChempropV2MTModelV3  # noqa: F401
 
         # Default hidden_dim per the v3 class definition
         result["n_features_in_chemprop_v3"] = 300
@@ -249,7 +249,7 @@ def smoke_alt_encoder(
 
     # Verify D-MPNN module is present + report its hidden_dim
     try:
-        from molmetal.models.dmpnn import DirectedMPNN
+        from molmetal.models.dmpnn import DirectedMPNN  # noqa: F401
 
         result["n_features_in_dmpnn"] = 300
         result["notes"].append(
@@ -260,7 +260,7 @@ def smoke_alt_encoder(
         result["notes"].append(f"DirectedMPNN IMPORT FAIL: {exc}")
 
     try:
-        from molmetal.models.dmpnn_pyg import DirectedMPNNPyG
+        from molmetal.models.dmpnn_pyg import DirectedMPNNPyG  # noqa: F401
 
         result["n_features_in_dmpnn_pyg"] = 300
         result["notes"].append(

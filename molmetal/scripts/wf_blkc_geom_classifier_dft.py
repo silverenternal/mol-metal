@@ -28,7 +28,6 @@ import gzip
 import json
 import random
 import sys
-from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 

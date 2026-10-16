@@ -37,8 +37,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
-import os
 import sys
 import time
 from collections import Counter
@@ -56,12 +54,8 @@ if str(REPO_ROOT) not in sys.path:
 from molmetal.data.tmqm_clouds import load_tmqm_clouds  # noqa: E402
 from molmetal.models.bond_head import (  # noqa: E402
     AtomCloud,
-    BOND_AROMATIC,
-    BOND_DOUBLE,
     BOND_LABELS,
     BOND_NO_BOND,
-    BOND_SINGLE,
-    BOND_TRIPLE,
     NUM_BOND_CLASSES,
 )
 
