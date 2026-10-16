@@ -1,0 +1,61 @@
+# Within-metal D-MPNN on the PAPER-FUNNEL cohort — CAPACITY de-risk, Ir only.
+#
+# WHY: Table 1's within column at hidden=128/depth=3 gives Ir 0.6649, below the
+# published Krasnov value 0.73 and far below the same-folds XGBoost (0.8277).
+# The chemprop reference used d_h=300.  Before committing to a full 512-wide
+# re-run of all five metals (expensive on CPU: the 128-wide run is ~1 h per
+# (metal, split_seed) slice), measure ONE metal at hidden=512 to see whether
+# capacity actually closes the gap.
+#
+# Same cohort, same folds, same schedule as
+# configs/dmpnn_within_metal_auc_paper_funnel.yaml — only hidden changes.
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/dmpnn_within_metal_auc.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/dmpnn_within_metal_auc.py
+    --config {yaml_path}
+
+data:
+  metals: [Ir]
+
+cohort_spec: paper_funnel
+
+protocol:
+  split_seeds: [42, 43, 44, 49, 123]
+  n_splits: 5
+
+model:
+  hidden: 512
+  depth: 3
+  dropout: 0.1
+
+train:
+  lr: 0.001
+  epochs: 50
+  batch_size: 64
+  max_atoms: 120
+  max_edges: 240
+  train_seeds: [0]
+  class_weight: true
+  mask_padding: true
+
+radius: 2
+nbits: 2048
+
+compute:
+  # GPU0 is fully idle; GPU1 is held by a parallel session.
+  device: cuda:0
+
+max_fold_n: 0
+
+output:
+  out_metric: metrics/by_metric/dmpnn_within_metal_ir_cap512_pf.json
+
+honest_framing:
+  purpose: >-
+    Capacity de-risk: does hidden=512 close the D-MPNN's within-metal gap to the
+    XGB column and the published Krasnov value on the hardest small metal (Ir)?
+  do_not_claim:
+    - A pooled 5-metal mean (Ru is ~64% of the deduplicated cohort).
+    - That this single-metal probe generalises to the other four metals.

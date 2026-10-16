@@ -1,0 +1,73 @@
+# EX1 — in-house FSMA head-only K-curve with ALL code-level levers ON, at the
+# chemprop-matched source budget (epochs=50).
+#
+# WHY (the second under-specification, after the epochs=20 one):
+#   Paper A's chemprop reference (metrics/by_metric/fsma_paper_stats.json) was
+#   trained at d_h = 300 (see paper_a/sections/03_method.tex).  The in-house
+#   K-curve (fsma_inhouse_kcurve_ep50.json) runs at the D-MPNN default
+#   hidden = 128.  So at K=5/K=10 the in-house curve is compared against a
+#   reference with 2.3x the width, and it trails by 0.013/0.021 AUC; at K=40/K=80
+#   it already LEADS (+0.005 both).  Capacity is the obvious low-K lever.
+#
+# This arm is the "everything at once" run the user asked for:
+#   * epochs 50            (source budget == the reference)
+#   * hidden 512           (>= the reference's d_h = 300)
+#   * --adapt-lr 3e-4      (few-shot adaptation lr, NOT the source lr)
+#   * --adapt-eval-encoder (frozen encoder stays in eval(); train/eval match)
+#
+# Decomposition (all at epochs=50, head-only, same cohort/seeds):
+#   fsma_inhouse_kcurve_ep50.json            baseline (h128, src lr, dropout-on encoder)
+#   fsma_inhouse_kcurve_ep50_combined.json   + adapt_lr + adapt_eval_encoder (h128)
+#   THIS arm                                 + capacity h512 on top of both
+# A separate --source-cache-dir is REQUIRED: hidden=512 is a different model, so
+# it cannot reuse the h128 source cache.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 512
+  dropout: 0.1
+
+train:
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [none]
+  k: [5, 10, 20, 40, 80]
+  seeds: [42, 43, 44, 49, 123, 7, 8, 9, 10, 11]
+  sampler: stratified
+  control: kshot
+  adapt_steps_by_k: "5:20,10:20,20:40,40:60,80:100"
+  # --- the two adaptation levers (do NOT affect the source model) ---
+  adapt_lr: 0.0003
+  adapt_eval_encoder: true
+
+compute:
+  device: cuda:0
+  deterministic: true
+  cache_source: true
+
+output:
+  out: metrics/by_metric/fsma_inhouse_kcurve_ep50_alllevers_cap512.json
+  # hidden=512 is a DIFFERENT source model -> its own cache (cannot share the h128 one).
+  source_cache_dir: /tmp/fsma_gpu_src_ep50_cap512
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  This arm changes THREE things at once relative to the ep50
+  baseline (hidden, adapt lr, encoder eval-mode), so it reports the ACHIEVED
+  absolute AUC, not an isolated per-lever effect; the per-lever attribution comes
+  from the combined (h128) arm and the Ir within-metal capacity probe.  Adaptation
+  is NOT bit-reproducible on CUDA; only the 50-cell aggregate is reported.

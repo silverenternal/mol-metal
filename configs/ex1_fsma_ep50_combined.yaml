@@ -1,0 +1,73 @@
+# EX1 — in-house FSMA head-only K-curve with the ADAPTATION LEVERS switched ON,
+# at the chemprop-matched source budget (epochs=50).
+#
+# WHY: the plain ep50 curve (configs/ex1_fsma_ep50_kcurve.yaml) is positive at
+# every K but the low-K cells are small (K5 +0.0129, K10 +0.0141).  Two code-level
+# adaptation defects are still switched off there and are the obvious lift:
+#
+#   * --adapt-lr 3e-4 : the harness used ONE lr (1e-3) for both source training
+#     and K-shot head adaptation.  Adapting a source-trained head on 5-20 support
+#     points at the full source lr over-drifts it; the standard few-shot recipe
+#     uses a smaller adaptation lr.  Measured on the ADAPTED ABSOLUTE AUC at
+#     epochs=20 (metrics/by_metric/fsma_adaptlr_lever.json): +0.0117 at K=5
+#     (Holm p=1.5e-3), +0.0075 at K=10.
+#   * --adapt-eval-encoder : keeps the FROZEN encoder in eval() (dropout OFF,
+#     matching score()) during adaptation; without it model.train() leaves the
+#     frozen encoder's dropout active, so the head adapts to noisy features but
+#     is scored on clean ones.
+#
+# The source model is UNCHANGED (same --source-cache-dir), so zero_shot_auc is
+# bit-identical to the plain ep50 curve and every comparison is on the adapted
+# absolute AUC / the paired delta against the same baseline.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/ex1_metal_injection_contrast.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/ex1_metal_injection_contrast.py
+    --config {yaml_path}
+
+data:
+  cohort_spec: paper_funnel
+  metals: [Ru, Ir, Rh, Os, Re]
+
+model:
+  hidden: 128
+  dropout: 0.1
+
+train:
+  # 50 == the chemprop reference's source-training budget.
+  epochs: 50
+  lr: 0.001
+
+protocol:
+  arms: [none]
+  k: [5, 10, 20, 40, 80]
+  seeds: [42, 43, 44, 49, 123, 7, 8, 9, 10, 11]
+  sampler: stratified
+  control: kshot
+  adapt_steps_by_k: "5:20,10:20,20:40,40:60,80:100"
+  # --- the two adaptation levers (do NOT affect the source model) ---
+  adapt_lr: 0.0003
+  adapt_eval_encoder: true
+
+compute:
+  # GPU0 is fully idle; GPU1 is held by a parallel session.  The harness reads
+  # compute.device -> args.device -> torch.device(), so this is the only knob.
+  device: cuda:0
+  deterministic: true
+  cache_source: true
+
+output:
+  out: metrics/by_metric/fsma_inhouse_kcurve_ep50_combined.json
+  source_cache_dir: /tmp/fsma_gpu_src_ep50
+
+directives:
+  user_ok_required: false
+
+honest_framing: >
+  MEASURED only.  The source model and zero_shot_auc are IDENTICAL to
+  fsma_inhouse_kcurve_ep50.json (shared source cache); only the adaptation step
+  changes, so the claim is stated on the adapted ABSOLUTE AUC as well as the
+  paired delta.  Adaptation is NOT bit-reproducible on CUDA (~1e-3 on the 50-cell
+  mean); only the aggregate is reported.
