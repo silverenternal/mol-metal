@@ -592,6 +592,85 @@
     },
     "catalog_refs": ["HONEST_NEGATIVE_CATALOG.md §6.52d sub-table (this wave)", "HONEST_NEGATIVE_CATALOG.md §6.55g Wf-A50..A54 ledger + close-path (this wave)", "HONEST_NEGATIVE_CATALOG.md §6.79b decision rule (this wave)"]
   },
+  "_arch_audit_log_2026_10_16_Wf-A55_W7": {
+    "audit_id": "Wf-A55_W7_decoder_geometry_and_anti_aromatic",
+    "audit_date": "2026-10-16",
+    "scope": "CFM decoder-side geometry guardrail + 4n+2 反芳香 detection per user directive 2026-10-16 verbatim '直接B吧' (B = W7 ship as 2 commits + catalog-meta audit trail per Wf-A55 W7 DESIGN plan). 2 SHIP commits: W1 (W7-P1 decoder geometry + W7-P5 4n+2 反芳香 detection + 15 NEW tests) + W2 (W7-P2 paper claim rules §6.54h/§6.59h/§6.66h + W7-P3 §6.81j 16-path failure-mode catalog + W7-P4 memory retire cfm-property-panel-measures-no-model). 1 closeout catalog entry §6.82 (W3 commit).",
+    "fixes_ACTIVE": [
+      {
+        "id": "wf_a55_w7_p1_decoder_geometry",
+        "what": "_GeometryConstraint dataclass + 3 frozen instances (SquarePlanar Pt/Pd/Au, Octahedral Fe/Ru/Rh/Re/Os/Ir, Tetrahedral Cu/Zn) at cfm_decoder_yuelbond.py:202-254. Dispatch in _select_bonds at line 730-755 (after valence gate, before bond_orders.append). Verified on disk: _geometry_constraint_for_z(78).name=='square_planar'; (44)=='octahedral'; (30)=='tetrahedral'; (6)==None.",
+        "files": [
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:202-254 (definition) + :730-755 (dispatch)",
+          "molmetal/tests/test_cfm_decoder_geometry_constraints.py (NEW, 256 LOC, 8/8 tests PASS)"
+        ],
+        "shipped_in": "Wf-A55 W7 commit 4ce85f45 (W1)"
+      },
+      {
+        "id": "wf_a55_w7_p5_anti_aromatic",
+        "what": "_is_anti_aromatic(ring_size) helper at cfm_decoder_yuelbond.py:259-275 + _detect_and_demote_anti_aromatic DFS cycle-finder at line 277-355; emits [wfA55-anti-aromatic] HONEST-NEGATIVE ring_size=N. Dispatch at line 762-769 gated on order==BOND_AROMATIC. Premises corrected by W1 implementer: helper lives in cfm_decoder_yuelbond.py (NOT bond_head.py as scout premise stated; verified via grep _CLASS_VALENCE_COST).",
+        "files": [
+          "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:259-275 (helper) + :277-355 (DFS) + :762-769 (dispatch)",
+          "molmetal/tests/test_cfm_decoder_anti_aromatic.py (NEW, 282 LOC, 7/7 tests PASS)"
+        ],
+        "shipped_in": "Wf-A55 W7 commit 4ce85f45 (W1)"
+      }
+    ],
+    "fixes_REFUSED_with_premise_error": [],
+    "hn_strengthen": [
+      {
+        "id": "wf_a55_w7_p2_paper_claim_rule_6_54h",
+        "what": "HONEST_NEGATIVE_CATALOG.md §6.54h paper §3 W₂ lift claim rule mapping (2-bucket rule + cross-ref to m19-centering-run-has-w2-off.md + w2-wasserstein-is-not-load-bearing.md). Catalog-meta audit trail; NOT a NEW ACTIVE honest-negative.",
+        "shipped_in": "Wf-A55 W7 commit aae74085 (W2)"
+      },
+      {
+        "id": "wf_a55_w7_p2_paper_claim_rule_6_59h",
+        "what": "HONEST_NEGATIVE_CATALOG.md §6.59h paper §3 + §4 pocket-conditional CFM claim rule (4-condition opt-in rule + §3/§4 paper pointer). Catalog-meta audit trail; NOT a NEW ACTIVE honest-negative.",
+        "shipped_in": "Wf-A55 W7 commit aae74085 (W2)"
+      },
+      {
+        "id": "wf_a55_w7_p2_paper_claim_rule_6_66h",
+        "what": "HONEST_NEGATIVE_CATALOG.md §6.66h paper §3 + §4 c-flow claim rule (5-fix list C14/C11/C12/F4/I.1 + paper-claim rule). Catalog-meta audit trail; NOT a NEW ACTIVE honest-negative.",
+        "shipped_in": "Wf-A55 W7 commit aae74085 (W2)"
+      },
+      {
+        "id": "wf_a55_w7_p3_16_path_failure_mode_catalog",
+        "what": "HONEST_NEGATIVE_CATALOG.md §6.81j sub-entry consolidating 16 distinct [wfA54-decode] HONEST-NEGATIVE print paths in molmetal/scripts/cfm_property_panel.py (line refs 868/876/894/905/914/926/971/987/995/1007/1027/1056/1068/1090/1097/1118 + 1125 summary) + z_table 13-entry canonical-only constraint. MEASURED: grep -c 16 matches on disk.",
+        "shipped_in": "Wf-A55 W7 commit aae74085 (W2)"
+      },
+      {
+        "id": "wf_a55_w7_p4_memory_retire_cfm_property_panel",
+        "what": "Memory entry cfm-property-panel-measures-no-model.md RESOLVED at memory file lines 44-65 (21 LOC appended, body lines 1-42 preserved verbatim); MEMORY.md index line 18 description updated with '(resolved 2026-10-16 Wf-A54 §6.81a, decode→panel link SHIPPED via --ckpt-path)'.",
+        "shipped_in": "Wf-A55 W7 commit aae74085 (W2)"
+      }
+    ],
+    "verification": {
+      "test_cfm_decoder_geometry_constraints": "8/8 PASS in ~3s: cisplatin SqP, [Ru(NH3)6]2+ Oct, [Zn(NH3)4]2+ Td, Pd overflow, non-metal inert, geometry gate doesn't trigger anti-aromatic probe",
+      "test_cfm_decoder_anti_aromatic": "7/7 PASS in ~3s: benzene C6 kept, cyclobutadiene C4 demoted, naphthalene C10 kept, COT C8 demoted, mixed 4-ring not demoted, empty bond_orders no crash",
+      "regression_sweep_4_existing_files": "26/27 PASS. 1 FAIL (test_build_cfm_decoder_use_yuelbond_false at ValueError expected (E, 11) pair_features got (832, 9) bond_head.py:943) — PRE-EXISTING master-failure isolated via git stash baseline replay on master HEAD aae74085^ = 5ab8212f. Verifier corrects earlier 'W7-P1 26/26 PASS' over-confident claim.",
+      "filesystem_truth_5_files": "all 5 modified/created files on disk per §5.5: cfm_decoder_yuelbond.py (1303 LOC, +192 vs pre-W7) + test_cfm_decoder_geometry_constraints.py (NEW, 256 LOC) + test_cfm_decoder_anti_aromatic.py (NEW, 282 LOC) + HONEST_NEGATIVE_CATALOG.md (2957 LOC, +54 vs pre-W7) + cfm_todo.json (THIS audit block)",
+      "pre_flight_cfm_pipeline": "N/A via §1.4 escape hatch per SKIP_PREFLIGHT=1 + memory wfa33-v2-precommit-timeout.md",
+      "trainer_flag_smoke_5_7": "N/A — W7 ships decoder-side code, NOT a trainer-flag wire-in (per AGENTS.md §5.7 first sentence)",
+      "yaml_only_gate_5_11": "N/A — no W7 CLI flag introduced",
+      "paper_touched_5_3": false,
+      "wetlab_touched_5_4": false,
+      "gpu_launched_5_1": 0,
+      "wetlab_untouched_5_4": true
+    },
+    "catalog_refs": [
+      "HONEST_NEGATIVE_CATALOG.md §6.82 Wf-A55 W7 closeout entry (this wave, added in commit 8d3032bc W3)",
+      "HONEST_NEGATIVE_CATALOG.md §6.82a W7-P1 decoder geometry (this wave)",
+      "HONEST_NEGATIVE_CATALOG.md §6.82b W7-P5 4n+2 反芳香 detection (this wave)",
+      "HONEST_NEGATIVE_CATALOG.md §6.82c W7-P2 paper claim rules (this wave; sub-entries §6.54h + §6.59h + §6.66h)",
+      "HONEST_NEGATIVE_CATALOG.md §6.82d W7-P3 §6.81j (this wave)",
+      "HONEST_NEGATIVE_CATALOG.md §6.82e W7-P4 memory retire (this wave)"
+    ],
+    "commit_hashes": {
+      "w1_code_plus_tests": "4ce85f45 feat(wf-a55-W1): W7-P1 decoder geometry constraints + W7-P5 4n+2 反芳香 detection (3 files, +730 LOC)",
+      "w2_docs_plus_memory": "aae74085 docs(wf-a55-W2): W7-P2 paper claim rules + W7-P3 §6.81j catalog-meta + W7-P4 memory retire (1 file, +9 LOC markdown-paragraph)",
+      "w3_catalog_closeout": "8d3032bc docs(wf-a55-W3): §6.82 closeout catalog entry — 7 fixes + 0 NEW ACTIVE honest-negatives + W8 forward-looking plan (1 file, +54 LOC)"
+    }
+  },
   "user_open_decisions": [
     {
       "id": "DEC_retrain_slot",
