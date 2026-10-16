@@ -173,7 +173,8 @@
       {
         "id": "round6_code_health_3_items_still_owed",
         "what": "Housekeeping: stale comment at wf_blkc_l3_guidance_probe.py:379, docstring overclaim at test_wf_blkc_l3_sanitize_error_propagation.py:201-205, per_cloud_out plumbing at train_cfm_yuelbond_wasserstein.py:9359-9392. Not Table-blocking.",
-        "cost": "30 min CPU"
+        "cost": "30 min CPU",
+        "status_2026_10_16": "PARTIAL-CLOSED 2026-10-16 per Wf-A59 W1: (W11-P1) RESOLVED-NO-FIX — cat -n wf_blkc_l3_guidance_probe.py:379 = '    for c in clouds:' (the decode-loop start), no stale comment ever present at the cited line (line range drifted past the actual decode-loop after Wf-431-B1 / Wf-A2 / Wf-TUI flag additions); (W11-P2) FIXED via docstring rewrite at molmetal/tests/test_wf_blkc_l3_sanitize_error_propagation.py:201-205 — overclaim 'ONLY site constructs DecodedMol without setting error' replaced with pre/post-fix historical framing, all three DecodedMol construction sites (L963 post-RWMol.GetMol, L994 SanitizeMol, L1036 _empty_decoded) already populate error post-Wf-A34 / Wf-431-B1; (W11-P3) RESOLVED-NO-FIX — cat -n train_cfm_yuelbond_wasserstein.py:9359-9392 contains --channels-last (9361) + --config (9377) + --emit-json-events (9393), NO per_cloud_out code; real plumbing at L5881-6061 per Wf-A34-FIXUP-1 b703833a + Wf-A30-4 66869a49 + Wf-A46 ca4181eb, test at molmetal/tests/test_per_cloud_out_alignment.py (181 LOC), consumer at scripts/cfm_pad_groups_mcnemar.py:248; entry stays in TIER_3_DEFERRED as bookkeeping-only because the 3 (now-closed) items never admitted to active count per AGENTS.md §5.5 filesystem-truth rule."
       },
       {
         "id": "W3-B_DMPNN_feat_wirein",

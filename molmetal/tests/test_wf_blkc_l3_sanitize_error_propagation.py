@@ -198,9 +198,12 @@ def test_decoded_mol_error_field_is_optional_str():
     """``DecodedMol.error`` is typed ``Optional[str]`` and defaults to
     ``None`` for the dataclass construction sites that omit it.
 
-    The SanitizeMol branch is the ONLY site in
-    ``cfm_decoder_yuelbond.py`` that constructs ``DecodedMol`` without
-    setting ``error``; after the fix it sets ``error`` to either
+    Pre-fix the SanitizeMol branch was the only site in
+    ``cfm_decoder_yuelbond.py`` whose ``DecodedMol(...)`` construction
+    did not set ``error`` (the post-RWMol.GetMol path at line 963 and
+    ``_empty_decoded`` at line 1036 already populated ``error``; only
+    the SanitizeMol branch swallowed the exception as ``smiles=''``).
+    Post-fix all three construction sites set ``error`` to either
     ``None`` (success) or the exception text (failure).
     """
     from molmetal.models.bond_head import DecodedMol
