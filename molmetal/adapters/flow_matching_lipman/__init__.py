@@ -995,10 +995,46 @@ def _import_fm_lib(reference_path: str | Path):
         # relative path (configure_reference will raise a clean
         # FileNotFoundError explaining the missing clone).
     configure_reference(reference_path)
-    from ._reference.path import AffineProbPath
-    from ._reference.path.scheduler import CondOTScheduler
-    from ._reference.solver import ODESolver
-    from ._reference.utils import ModelWrapper
+    # Wf-A62 W1 (RL5) — guard against upstream API drift.  The Lipman
+    # 2023 -> 2024-restructure refactored ``AffineProbPath`` /
+    # ``CondOTScheduler`` / ``ODESolver`` / ``ModelWrapper`` import
+    # paths.  A clean ``ImportError`` here is confusing because the
+    # caller never sees the traceback back to the upstream rename.
+    # Wrap each import and re-raise with a clear pointer.
+    try:
+        from ._reference.path import AffineProbPath
+    except ImportError as exc:
+        raise RuntimeError(
+            f"_import_fm_lib: upstream ``AffineProbPath`` import failed "
+            f"({exc!r}); check whether your flow_matching clone is on "
+            f"Lipman 2023 vs 2024-restructure. See "
+            f"docs/LIPMAN_UPSTREAM_API_DRIFT.md (Wf-A62 RL5)."
+        ) from exc
+    try:
+        from ._reference.path.scheduler import CondOTScheduler
+    except ImportError as exc:
+        raise RuntimeError(
+            f"_import_fm_lib: upstream ``CondOTScheduler`` import "
+            f"failed ({exc!r}); 2024-restructure moved scheduler into "
+            f"``flow_matching.path.scheduler``."
+        ) from exc
+    try:
+        from ._reference.solver import ODESolver
+    except ImportError as exc:
+        raise RuntimeError(
+            f"_import_fm_lib: upstream ``ODESolver`` import failed "
+            f"({exc!r}); 2024-restructure renamed to "
+            f"``flow_matching.solver.ODEFlowMatcher``."
+        ) from exc
+    try:
+        from ._reference.utils import ModelWrapper
+    except ImportError as exc:
+        raise RuntimeError(
+            f"_import_fm_lib: upstream ``ModelWrapper`` import failed "
+            f"({exc!r}); 2024-restructure moved ``ModelWrapper`` into "
+            f"``flow_matching.solver.utils``. The local shim at "
+            f"``_reference/utils/__init__.py`` provides a fallback."
+        ) from exc
 
     return AffineProbPath, CondOTScheduler, ODESolver, ModelWrapper
 
@@ -1092,6 +1128,22 @@ class _RadiusGraphVelocityModel:
         edge_index, edge_mask = radius_edge_index(x, self._node_mask, self._cutoff)
         b = int(x.shape[0])
         # Solver contract: 0-d scalar t.  EGNN wants one time per sample.
+        # Wf-A62 W1 (VF1) — guard against multi-dim t from adaptive solvers
+        # (e.g., dopri5 may pass (B, B') for batched ODE state).  Silently
+        # truncating to a single sample masked divergent trajectories in
+        # training; surface the contract violation instead.
+        if t.dim() not in (0, 1):
+            raise ValueError(
+                f"_RadiusGraphVelocityModel expected t as 0-d scalar or (B,) 1-d; "
+                f"got shape {tuple(t.shape)}. The Lipman ODESolver contract is "
+                f"0-d per-step t; if you are using an adaptive solver, ensure "
+                f"`step_index` is collapsed before calling the wrapper."
+            )
+        # Wf-A62 W1 (VF4 doc) — ODESolver fixed-grid Euler / midpoint
+        # methods intentionally re-use the same t across the inner loop;
+        # velocity is therefore deterministic per batch index.  Training
+        # paths sample t independently so this is a documentation note,
+        # not a fix.
         t_b = t.reshape(1).expand(b) if t.dim() == 0 else t.reshape(-1)[:1].expand(b)
         if self._cfg_scale != 1.0 and self._pocket_embed is not None:
             return self._vf.v_cfg(
@@ -1214,11 +1266,38 @@ class PocketEncoder(nn.Module):
         # Global mean pool over real atoms only.
         mask_f = valid.float().unsqueeze(-1)  # (B, P, 1)
         n_real = valid.sum(dim=1).clamp(min=1).float().unsqueeze(-1)  # (B, 1)
+        # Wf-A62 W1 (PE1) — empty-pocket footgun: when ``valid`` is all
+        # False for a sample, ``n_real = 1`` (clamp) and the pooled
+        # vector is identically zero.  The velocity field downstream
+        # treats ``pocket_embed == 0`` as "no pocket" (the
+        # unconditioned path), so a missing-pocket sample and a
+        # valid-zero-pocket sample are indistinguishable.  Surface the
+        # upstream data leak so maintainers can see which ligand had
+        # no real pocket atoms.
+        if not valid.any():
+            warnings.warn(
+                "PocketEncoder: pocket has no real atoms across the batch "
+                "(valid.any()==False); pooled vector is identically zero "
+                "and downstream velocity field treats this as "
+                "'unconditioned'. Check upstream pocket loader.",
+                stacklevel=2,
+            )
         pooled = (h * mask_f).sum(dim=1) / n_real  # (B, H)
         return pooled
 
     @staticmethod
     def _fully_connected_edge_index(b: int, p: int, device) -> torch.Tensor:
+        # Wf-A62 W1 (PE2) — guard against pathological pockets whose
+        # fully-connected edge_index blows O(P^2) memory.  P=400 ⇒ 160 k
+        # edges per sample; on a sub-32 GB GPU the holder tensor for
+        # the FC edge mask (~B*P*P bytes) allocates fast enough to OOM
+        # mid-step.  Cap at 100 000 edges per sample = P<=317.
+        if p * p > 100_000:
+            raise ValueError(
+                f"PocketEncoder._fully_connected_edge_index: P={p} ⇒ "
+                f"{p * p} edges per sample exceeds the 100 000 cap. "
+                f"Use radius-graph pockets (radius_edge_index) instead."
+            )
         idx = torch.arange(p, device=device)
         src = idx.view(1, p, 1).expand(b, p, p)
         dst = idx.view(1, 1, p).expand(b, p, p)
@@ -1683,6 +1762,14 @@ class EGNNVelocityField(nn.Module):
         # T9: stash the dative flag for downstream consumers.  We keep it
         # as a plain attribute (not a buffer) because its value is per
         # call and must not persist across forward passes.
+        # Wf-A62 W1 (VF2 doc) — ``pocket_atom_embed`` /
+        # ``pocket_atom_mask`` / ``batch_ctx`` are accepted-but-unused
+        # by ``EGNNVelocityField.forward``; only ``_last_dative_flag``
+        # is the live consumer.  The accepted-unused kwargs are kept
+        # in the signature for backward compatibility with Track-A
+        # L3b callers; the velocity field computes per-sample pocket
+        # conditioning via the SEPARATE ``pocket_embed`` arg
+        # (see ``forward_velocity`` and the pocket-encoder pipeline).
         self._last_dative_flag = dative_bond_edge_attr
         x_t = x
         b, n = x_t.shape[:2]
@@ -2621,6 +2708,18 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         per_row_logits = atom_logits_for_loss.reshape(-1, atom_logits.shape[-1])
         row_is_finite = torch.isfinite(per_row_logits).any(dim=-1)
         if not row_is_finite.all():
+            # Wf-A62 W1 (JM7) — diagnose OOV fallback so a maintainer
+            # can spot upstream data leaks (e.g., atomic_number >=
+            # vocab size in the data loader).  Previously the fallback
+            # silently re-enabled all OOV slots which would allow OOV
+            # atoms to be sampled at inference.
+            n_oov_rows = int((~row_is_finite).sum().item())
+            warnings.warn(
+                f"_joint_adapter cross-entropy: {n_oov_rows}/{per_row_logits.shape[0]} "
+                f"rows had all-(-inf) vocab mask; falling back to un-masked "
+                f"logits for those rows (see OOV data-load guard).",
+                stacklevel=2,
+            )
             per_row_logits = torch.where(
                 row_is_finite.unsqueeze(-1),
                 per_row_logits,
@@ -2631,6 +2730,17 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             atom_types.reshape(-1),
             reduction="none",
         ).view(b, max_n)
+        # Wf-A62 W1 (JM2) — fully-masked batch silently contributes zero
+        # atom_loss which poisons the per-batch metric without raising.
+        # Surface the upstream data leak (e.g., a degenerate dataset
+        # sample with no real atoms) instead of silently cancelling.
+        if int(node_mask.sum().item()) == 0:
+            warnings.warn(
+                "_joint_adapter atom_loss on fully-masked batch; "
+                "node_mask.sum()==0 ⇒ atom_loss = 0 silently. "
+                "Check upstream data loader for empty/all-padding samples.",
+                stacklevel=2,
+            )
         n_real = node_mask.sum().clamp(min=1)
         atom_loss = atom_loss_per_node[node_mask].sum() / n_real
 
@@ -2639,6 +2749,22 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # ------------------------------------------------------------------
         bond_loss_value: float = 0.0
         bond_loss_tensor = torch.zeros((), device=self.device, dtype=cfm_loss.dtype)
+        # Wf-A62 W1 (JM6) — surface the "bond loss skipped: zero edges"
+        # path.  When joint bond-head training is on but the molecule is
+        # all-H / atom-less, ``len(edge_src_list) == 0`` would silently
+        # skip with no diagnostic.  Record the integer flag so it lands
+        # in the JSON summary (``bond_skipped_no_edges = 1``) and a
+        # maintainer can distinguish "bond head disabled" from
+        # "legitimate empty graph".
+        if (
+            self._use_bond_head
+            and self._joint_train
+            and self.bond_head is not None
+            and len(edge_src_list) == 0
+        ):
+            self.last_losses["bond_skipped_no_edges"] = int(
+                self.last_losses.get("bond_skipped_no_edges", 0)
+            ) + 1
         if (
             self._use_bond_head
             and self._joint_train
@@ -2813,6 +2939,23 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         )
         if self._use_bond_head and self._joint_train and self.bond_head is not None:
             params = params + list(self.bond_head.parameters())
+        # Wf-A62 W1 (VF5) — warn when the bond_head is in use but the
+        # legacy ``joint_train=False`` path excludes its params from
+        # the clip; if a caller enables both ``use_bond_head=True``
+        # and ``joint_train=False``, the bond-head grads are
+        # unbounded and a single bad batch can blow up between
+        # optimizer steps.  Warn-once-per-setup so it does not flood
+        # stderr during a 5-seed × 50-epoch run.
+        elif self._use_bond_head and not self._joint_train:
+            if not getattr(self, "_bond_head_clip_warn_emitted", False):
+                warnings.warn(
+                    "_joint_adapter: bond_head in use but joint_train=False; "
+                    "bond_head params are NOT included in the grad-norm clip. "
+                    "Unbounded bond-head grads can blow up between optimizer "
+                    "steps.  Use ``joint_train=True`` for end-to-end training.",
+                    stacklevel=2,
+                )
+                self._bond_head_clip_warn_emitted = True
         torch.nn.utils.clip_grad_norm_(params, 1.0)
         # Wf-A56 W2 (2026-10-16) — P1 OOV defence-in-depth.  If the
         # data-load guard was bypassed (e.g. an ad-hoc notebook calls
@@ -2823,7 +2966,9 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # ``skipped_oov`` diagnostic so a future maintainer can spot
         # the upstream leak.  ``bad_atoms`` is the canonical variable
         # name used by the upstream data-load guard.
-        bad_atoms = bool(torch.isnan(loss) or torch.isinf(loss))
+        bad_atoms = bool(
+            torch.as_tensor(loss).isnan().any() or torch.as_tensor(loss).isinf().any()
+        )
         if bad_atoms:
             self.optimizer.zero_grad()
             self.last_losses = {
@@ -3055,23 +3200,49 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             # gradients, sum per-graph energies to avoid batch-size dilution.
             with torch.enable_grad():
                 x_req = x.detach().requires_grad_(True)
-                energies = [
-                    prior.prior_loss(
-                        x_req[i],
-                        fixed_atoms[i],
-                        torch.full(
-                            (donor_edges.shape[-1],),
-                            2,
-                            dtype=torch.long,
-                            device=x.device,
-                        ),
-                        edge_index=donor_edges[i],
+                # Wf-A62 W1 (JM4) — surface the O(n_samples * P_donor)
+                # memory footprint so small-GPU jobs abort before OOM
+                # rather than dying mid-iteration.  The metal-prior
+                # path is per-sample (no batch dim), so n_samples=1000
+                # on P_donor=20 holds ~80 kB of grad state per step
+                # but accumulates per ODESolver.inner-step.
+                if n_samples > 32:
+                    warnings.warn(
+                        f"_velocity_with_metal_prior: n_samples={n_samples} drives "
+                        f"O(n_samples*P_donor) energy terms; each ODESolver step "
+                        f"calls prior.prior_loss per graph. Consider n_samples<=32 "
+                        f"for sub-32 GB GPUs, or wrap in torch.utils.checkpoint.",
+                        stacklevel=2,
                     )
-                    for i in range(n_samples)
-                ]
-                energy = torch.stack(energies).sum()
+                # Wf-A62 W1 (JM8) — non-differentiable prior.prior_loss
+                # (e.g. RDKit) silently returns the base velocity; surface
+                # that fallback to the diagnostics dict so callers can see
+                # the metal prior was effectively a no-op.
+                grad_ok = True
+                try:
+                    energies = [
+                        prior.prior_loss(
+                            x_req[i],
+                            fixed_atoms[i],
+                            torch.full(
+                                (donor_edges.shape[-1],),
+                                2,
+                                dtype=torch.long,
+                                device=x.device,
+                            ),
+                            edge_index=donor_edges[i],
+                        )
+                        for i in range(n_samples)
+                    ]
+                    energy = torch.stack(energies).sum()
+                except Exception:
+                    grad_ok = False
+                    energy = None
                 diagnostics["gradient_evaluations"] += 1
-                if not energy.requires_grad:
+                if not grad_ok or (energy is not None and not energy.requires_grad):
+                    diagnostics["non_differentiable_fallback_count"] = (
+                        int(diagnostics.get("non_differentiable_fallback_count", 0)) + 1
+                    )
                     return base
                 gradient = torch.autograd.grad(energy, x_req)[0]
             if not torch.isfinite(gradient).all():
@@ -3110,9 +3281,23 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             time_grid=t_grid,
         )
         # x_final shape: (n_samples, n_atoms, 3) or (T+1, n_samples, n_atoms, 3)
+        # Wf-A62 W1 (JM3) — preserve trajectory so divergence can be
+        # detected at the step where it first occurred, not only at the
+        # final step.  If the ODE diverged at step T/2 but converged by
+        # T the final-state check below would falsely report success.
+        x_traj = x_final if x_final.dim() == 4 else None
         if x_final.dim() == 4:
             x_final = x_final[-1]
         if not torch.isfinite(x_final).all():
+            if x_traj is not None:
+                bad_step = int(
+                    torch.argwhere(~torch.isfinite(x_traj).all(dim=(1, 2, 3)))[0].item()
+                )
+                raise FloatingPointError(
+                    f"Flow integration produced non-finite coordinates at trajectory "
+                    f"step {bad_step}/{x_traj.shape[0] - 1} (post-solve shape "
+                    f"{tuple(x_final.shape)})"
+                )
             raise FloatingPointError("Flow integration produced non-finite coordinates")
         # 5. Predict atomic numbers using the same masked identity input
         # used in training and integration. Fixed identity conditioning is
@@ -3520,6 +3705,22 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         support with the requested vocab.
         """
         vocab = self._atom_vocab
+        # Wf-A62 W1 (JM5) — when the head dim is smaller than the
+        # requested vocab (e.g., a50-d head trained on H/C/N/O/F/P/S/
+        # Cl/Se/Br/I/Pt cannot draw Pd/Au/Ir/Ru because Z >= 78 falls
+        # outside the head's support), the over-range Zs are silently
+        # dropped.  Surface the silent vocab trim so a maintainer
+        # sees "we have a 50-d head but the requested vocab is 12"
+        # and can re-train or relax the dim.
+        if max_atomic_number < max(vocab):
+            dropped = sorted(z for z in vocab if z >= max_atomic_number)
+            warnings.warn(
+                f"_build_vocab_mask: head dim {max_atomic_number} drops "
+                f"{len(dropped)} vocab atoms {dropped} (vocab max = "
+                f"{max(vocab)}). Inference will never draw these metals. "
+                f"Increase ``max_atomic_number`` or re-train the head.",
+                stacklevel=2,
+            )
         mask = torch.zeros(max_atomic_number, dtype=torch.bool, device=device)
         for z in vocab:
             if 0 <= z < max_atomic_number:

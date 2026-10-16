@@ -43,6 +43,18 @@ class ModelWrapper:
             self._param_count = 2
 
     def __call__(self, x, t, **extras):
+        # Wf-A62 W1 (RL3) — refuse the silent kwarg override footgun:
+        # if a caller passes both ``t=0.5`` (positional/keyword) AND
+        # ``extras={"t": 0.7}``, Python's kwarg resolution makes
+        # ``extras["t"]`` win via ``**extras``.  Surface the ambiguity
+        # so the Lipman ODESolver integrator can never be lied to
+        # about the actual flow-time.
+        if "t" in extras:
+            raise TypeError(
+                "ModelWrapper.__call__: 't' is in **extras; rename to "
+                "avoid the silent kwarg override (the keyword argument "
+                "would clobber the explicit ``t`` positional)."
+            )
         if self._sig is None:
             return self.model(x, t)
         # 1. try 2-arg positional ``(x, t)``
@@ -61,7 +73,20 @@ class ModelWrapper:
         except TypeError:
             pass
         # 4. last resort: positional with extras merged
-        return self.model(x, t, **extras)
+        try:
+            return self.model(x, t, **extras)
+        except TypeError as exc:
+            # Wf-A62 W1 (RL4) — the inspect.signature probe failed
+            # (builtins / C-extension) so we assumed 2-arg positional;
+            # if the underlying model really takes 3+ args (e.g.,
+            # ``model(x, t, z)``) propagate the original TypeError so
+            # the caller sees the arity mismatch.
+            raise TypeError(
+                f"ModelWrapper: model {self.model!r} rejected every "
+                f"signature variant (positional/keyword/extras). Last "
+                f"TypeError: {exc!r}. Verify the model accepts "
+                f"(x, t[, **extras])."
+            ) from exc
 
 
 __all__ = ["ModelWrapper"]

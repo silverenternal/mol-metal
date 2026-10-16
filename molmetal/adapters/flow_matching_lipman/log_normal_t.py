@@ -52,7 +52,25 @@ def log_normal_t_sampling(
     -------
     t : (batch_size,) — flow times in (0, 1).
     """
+    # Wf-A62 W1 (FL6) — coerce ``generator`` device to ``device`` so a
+    # CPU generator against ``device="cuda:0"`` raises a clean
+    # RuntimeError instead of the unhelpful "generator and device
+    # dispatch" mismatch.  Cuda RNG state must live on the GPU.
+    if generator is not None and getattr(generator, "device", None) is not None:
+        if str(generator.device) != str(device):
+            generator = torch.Generator(device=device).manual_seed(
+                generator.initial_seed()
+            )
     normal = torch.randn(batch_size, generator=generator, device=device)
+    # Wf-A62 W1 (FL5) — guard ``sigma <= 0`` to surface the upstream
+    # config bug instead of producing a degenerate distribution
+    # (``sigma == 0`` gives a constant sigmoid(mu); ``sigma < 0``
+    # reverses the high-density tail).
+    if not (sigma > 0):
+        raise ValueError(
+            f"log_normal_t_sampling: sigma must be > 0; got {sigma!r}. "
+            f"Karras 2022 defaults ``sigma = 1.0``; tune from there."
+        )
     log_t = mu + sigma * normal
     return torch.sigmoid(log_t)
 

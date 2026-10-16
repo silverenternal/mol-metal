@@ -262,11 +262,31 @@ class ConditionalFlowMatchingLoss(nn.Module):
             ot_idx = mini_batch_ot_coupling(
                 x1, x0, batch_idx, diagnostics=ot_diagnostics
             )
+            # Wf-A62 W1 (FL3) — assert OT plan uniqueness: duplicates
+            # in ``ot_idx`` mean two "x1" rows are folded into one
+            # gradient slot.  This silently produces a wrong mixing
+            # but does not raise; surface the degenerate coupling
+            # instead of letting it corrupt the loss.
+            ot_idx_list = ot_idx.tolist()
+            if len(set(ot_idx_list)) != len(ot_idx_list):
+                raise RuntimeError(
+                    f"mini_batch_ot_coupling returned duplicate plan "
+                    f"indices: {len(set(ot_idx_list))} unique vs "
+                    f"{len(ot_idx_list)} total.  This usually means "
+                    f"two atoms sit at the same coordinates; widen "
+                    f"the initial-noise stddev or drop the sample."
+                )
             x1 = x1.index_select(0, ot_idx.to(device=x1.device))
 
         # 1. Sample t, build interpolated state and target velocity.
         t = self._sample_t(b, x0.device)
         x_t = interpolate(x0, x1, t)
+        # Wf-A62 W1 (FL1 doc) — autograd-correctness chain.
+        # ``target_v`` is detached BEFORE fp32 cast, so
+        # ``target_v_f32`` does NOT participate in the autograd graph.
+        # ``pred_v`` is cast to fp32 AFTER the EGNN's bf16 AMP path
+        # (a new tensor -> autograd graph), so backprop flows only
+        # through ``pred_v_f32``.  Loss is correct.
         with torch.no_grad():
             target_v = target_velocity(x0, x1).detach()
 

@@ -24,6 +24,30 @@ _reference_root: Path | None = None
 _lock = RLock()
 
 
+# Wf-A62 W1 (RL1) — surface a missing reference clone at import time
+# rather than at first adapter-init time.  Previously
+# ``DEFAULT_REFERENCE`` was silently consumed by ``configure_reference``
+# when the caller passed ``reference_path=None``, and the failure
+# surfaced as a confusing "Could not find cloned flow_matching"
+# FileNotFoundError long after the import.  Importing this module is
+# cheap; the warn is no-op when the clone is present.
+try:
+    _DEFAULT_REFERENCE_OK = DEFAULT_REFERENCE.is_dir()
+except OSError:
+    _DEFAULT_REFERENCE_OK = False
+if not _DEFAULT_REFERENCE_OK:
+    import warnings as _rl_warnings  # local alias avoids polluting top-of-file import order
+
+    _rl_warnings.warn(
+        f"_reference_loader.DEFAULT_REFERENCE ({DEFAULT_REFERENCE}) is not a "
+        f"directory on disk; the upstream flow_matching clone must be "
+        f"present at molmetal/references/flow_matching (or "
+        f"``configure_reference(Path)`` must be called before any "
+        f"``_import_fm_lib`` consumer).",
+        stacklevel=2,
+    )
+
+
 def _reference_import(name, globals=None, locals=None, fromlist=(), level=0):
     if level == 0 and (name == "flow_matching" or name.startswith("flow_matching.")):
         relocated = NAMESPACE + name[len("flow_matching") :]
