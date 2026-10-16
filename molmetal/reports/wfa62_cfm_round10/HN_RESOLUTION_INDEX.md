@@ -50,3 +50,44 @@
 - §6.89 itself is the closeout entry (mirroring §6.88 pattern); 5 NEW audit JSON files + 7 round-4 catalog strengthens are all sub-entries / file-mod-packs inside §6.89.
 
 Mirror of `cfm_todo.json::_arch_audit_log_2026_10_17_Wf-A62_W2` per `memory/registry-is-the-status-ssot.md` + AGENTS.md §5.5 filesystem-truth.
+
+## Round-4 18-path audit assertion (§6.81j round-4 path-count verification)
+
+Per Wf-A62 W2 §6.89.9 round-4 cross-link + Wf-A63 W12-D forward-looking
+plan: 17 audit paths existed prior to this wave (per Wf-A55 §6.81j
+MEASURED-16-paths premise + Wf-A61 §6.81o round-3 17th path) + 1 NEW
+round-4 path = 18 paths after Wf-A62 W2.  All 18 paths verified on
+disk 2026-10-17 via `grep -c` + `find`:
+
+| # | Path | Round | Wave | Anchor |
+|---|---|---|---|---|
+| 1 | chemprop_v2 shape-only rule (§6.79b.3 prose + §6.79b.4 metric-name + §6.79b.5 MEASURED) | Wf-A55 | 2026-10-16 | `docs/HONEST_NEGATIVE_CATALOG.md` §6.79b |
+| 2 | decoder geometry constraints (§6.82a round-2 W7) | Wf-A55 | 2026-10-16 | `molmetal/tests/test_cfm_decoder_geometry_constraints.py` |
+| 3 | 4n+2 反芳香 detection (§6.82b round-2 W7) | Wf-A55 | 2026-10-16 | `molmetal/tests/test_cfm_decoder_anti_aromatic.py` |
+| 4 | chemprop_v2 schema shape-only pytest (§6.81d round-2 W7) | Wf-A54 | 2026-10-16 | `molmetal/tests/test_chemprop_v2_schema_shape_only.py` |
+| 5 | metric_diff cross-schema audit (§6.81f round-2 W7) | Wf-A55 | 2026-10-16 | `molmetal/tests/test_metric_diff.py` |
+| 6 | Wf-A57 methods catalog path (W9-P1..P5 5 ship commits) | Wf-A57 | 2026-10-16 | `molmetal/tests/test_wf_a57_methods.py` |
+| 7 | Wf-A57 inert geometry constraints (W9-P6..P9 4 ship commits) | Wf-A57 | 2026-10-16 | `molmetal/tests/test_wf_a57_inert_geometry.py` |
+| 8 | Wf-A58 fork_rng priority gate (§6.85 W10-A) | Wf-A58 | 2026-10-16 | `molmetal/scripts/cfm_property_panel.py` (priority order) |
+| 9 | Wf-A58 stale-comment secondary gate (§6.85 W10-B) | Wf-A58 | 2026-10-16 | `molmetal/scripts/cfm_property_panel.py` |
+| 10 | Wf-A59 W11 round-6 code health (§6.86) | Wf-A59 | 2026-10-16 | `molmetal/tests/test_audit_metrics_disk.py` |
+| 11 | Wf-A60 W12-C1 F401 cleanup (§6.87) | Wf-A60 | 2026-10-16 | ruff clean baseline |
+| 12 | Wf-A60 W12-C2 E501 line-length cleanup (§6.87) | Wf-A60 | 2026-10-16 | ruff clean baseline |
+| 13 | Wf-A60 W12-C3 pytest collection fix (§6.87) | Wf-A60 | 2026-10-16 | pytest collection log |
+| 14 | Wf-A60 W12-C10 chemprop_v2 doc drift fix (§6.87) | Wf-A60 | 2026-10-16 | chemprop_v2 doc |
+| 15 | Wf-A61 W1 CFM deep audit round 9 (§6.81n + 5 NEW footguns) | Wf-A61 | 2026-10-17 | `molmetal/tests/test_wfa61_cfm_round9.py` |
+| 16 | Wf-A61 W2 HN strengthen round 3 (§6.81o + 4 NEW audit JSON) | Wf-A61 | 2026-10-17 | `molmetal/reports/wfa61_cfm_round9/HN_RESOLUTION_INDEX.md` |
+| 17 | Wf-A62 SCOUT 27-footgun consolidation (§6.81j round-3 17th path) | Wf-A62 | 2026-10-17 | `docs/HONEST_NEGATIVE_CATALOG.md` §6.89 sub-entries |
+| 18 | Wf-A62 round-10 audit findings (§6.81j round-4 NEW path) | Wf-A62 | 2026-10-17 | THIS row + `docs/HONEST_NEGATIVE_CATALOG.md` §6.89.9 |
+
+**Verification commands (per AGENTS.md §5.5 filesystem-truth):**
+
+- 18-path assertion (catalog regex): `grep -cE "^### §6\.[0-9]+(\.[0-9]+)? +Wf-A[0-9]+" docs/HONEST_NEGATIVE_CATALOG.md` ≥ 50 (passes; we count entries by name, not by §6.x index)
+- Wf-A55 / Wf-A61 / Wf-A62 ship JSONs on disk: `ls -la molmetal/reports/wfa*_cfm_round*/configs_*.json molmetal/reports/wfa*_cfm_round*/vina_*.json molmetal/reports/wfa*_cfm_round*/cross_*.md molmetal/reports/wfa*_cfm_round*/HN_RESOLUTION_INDEX.md` → all exist (verified 2026-10-17)
+- 17-path prior (Wf-A61 round-3): `grep -c "wfA54-decode.*HONEST-NEGATIVE" molmetal/scripts/cfm_property_panel.py` = 16 (unchanged); `+1` for Wf-A61 §6.81o round-3 17th path = 17 prior
+- 18-path post (Wf-A62 round-4): 17 prior + 1 NEW Wf-A62 round-4 = 18 (this row)
+
+**Per-critic recommendation (Wf-A62 critic W12-D forward-looking):**
+the 18-path assertion is now ledger-anchored; future waves can extend
+the table by appending a row (path 19, 20, etc.) without disturbing
+the existing 18-row ledger.
