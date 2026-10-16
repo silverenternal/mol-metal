@@ -101,37 +101,15 @@ def test_train_metal_lomo_v2_chemprop_v2_instantiates() -> None:
     assert out["coord"].shape == (B, model.n_coord_classes)
 
 
-def test_train_metal_lomo_v2_chemprop_v2_legacy_loop_still_blocks() -> None:
-    """``--model chemprop_v2`` no longer raises "class does not exist"
-    but the legacy LOMO loop still raises NotImplementedError because
-    it calls DMPNN-only APIs (TODO-148 §4 loop migration).  Verify the
-    error message distinguishes "loop not wired" from the old
-    "class not implemented".
-    """
-    pytest.importorskip("torch")
-    from molmetal.models.chemprop_v2_mt_model import ChempropV2MTModel
-
-    mod = _import("train_metal_lomo_v2")
-    # Construct a stub dataset-free runner just to call _check_model_compat.
-    runner = mod.BalancedLOMORunner(
-        ds=None,
-        held_out_metal="Rh",
-        balanced_smiles=[],
-        balanced_labels=[],
-        model_cls=ChempropV2MTModel,
-        model_alias="chemprop_v2",
-    )
-    with pytest.raises(NotImplementedError) as exc_info:
-        runner._check_model_compat()
-    msg = str(exc_info.value)
-    # The error must NOT say "class does not exist" — that stub was removed.
-    assert (
-        "does not exist" not in msg.lower()
-    ), f"The old 'class does not exist' stub is still in the message: {msg}"
-    # It SHOULD say "IS instantiated" — the new honest framing.
-    assert (
-        "is instantiated" in msg.lower()
-    ), f"Expected new honest framing 'IS instantiated' in: {msg}"
+# ---------------------------------------------------------------------------
+# Wf-A56 W2 (2026-10-16) — ``test_train_metal_lomo_v2_chemprop_v2_legacy_loop_still_blocks``
+# was DELETED.  The LANE-F wire-in made ``train_metal_lomo_v2._check_model_compat``
+# family-agnostic: ``ChempropV2MTModel`` is in ``_DICT_FWD_MODELS`` at L315 of
+# ``molmetal/scripts/train_metal_lomo_v2.py`` so the function returns
+# silently rather than raising ``NotImplementedError``.  The error text
+# "is instantiated" does not exist anywhere in the codebase.  The
+# regression this test pinned has moved on.
+# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------

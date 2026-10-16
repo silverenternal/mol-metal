@@ -393,9 +393,21 @@ class MultiPHMetalCoordHead(nn.Module):
         ``(B, n_metals)`` logits tensor — ``logits[b, m]`` is the
         logit score of metal ``m`` for pocket ``b``.
         """
+        # Wf-A56 W2 (2026-10-16) — auto-broadcast for caller convenience.
+        # Accept the flattened ``(B, n_bins * n_bins)`` shape and view
+        # it back to ``(B, n_bins, n_bins)``.  This lets the caller
+        # feed the head from a flattened feature pipeline without
+        # reshaping manually.
+        if (
+            pocket_features.dim() == 2
+            and pocket_features.shape[1] == self.n_bins * self.n_bins
+        ):
+            pocket_features = pocket_features.view(
+                pocket_features.shape[0], self.n_bins, self.n_bins
+            )
         if pocket_features.dim() != 3:
             raise ValueError(
-                f"pocket_features must be (B, n_bins, n_bins); got {tuple(pocket_features.shape)}"
+                f"pocket_features must be (B, n_bins, n_bins) or (B, n_bins*n_bins); got {tuple(pocket_features.shape)}"
             )
         if pocket_features.shape[1:] != (self.n_bins, self.n_bins):
             raise ValueError(

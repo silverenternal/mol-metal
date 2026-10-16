@@ -445,7 +445,7 @@ def integrate_with_cfm(
     is a *pure math* integrator: the velocity field is queried at
     each step, the per-atom ``(B, N, 3)`` velocity is wrapped through
     :class:`SE3SBVelocityField` into a ``(B, 6)`` twist, and the twist
-    is integrated via :func:`_euler_se3` / :func:`_midpoint_se3` on
+    is integrated via :func:`_euler_se3` / :func:`_euler_se3_step` on
     the SE(3) manifold.  The *per-atom* trajectory is recovered by
     walking the SE(3) geodesic from each atom's initial coordinate.
 
@@ -527,7 +527,7 @@ def integrate_with_cfm(
     offsets = samples - samples.mean(dim=1, keepdim=True)  # (B, N, 3)
 
     dt = float(t1 - t0) / float(n_steps)
-    integrator = _midpoint_se3 if method == "midpoint" else _euler_se3
+    integrator = _euler_se3_step if method == "midpoint" else _euler_se3
 
     for k in range(n_steps):
         t_k = t0 + float(k) * dt
@@ -592,21 +592,26 @@ def _euler_se3(
     return T_out
 
 
-def _midpoint_se3(
+def _euler_se3_step(
     T: torch.Tensor,  # (B, 4, 4) SE(3) pose at time t
     xi: torch.Tensor,  # (B, 6) midpoint twist
     dt: float,
     eps: float,
 ) -> torch.Tensor:
-    """Single midpoint (Heun) step on SE(3).
+    """Single Euler step on SE(3), reused as the midpoint inner step.
 
-    For Heun's method on SE(3) we use the *group operation* (not
-    the tangent-space arithmetic): the step is
+    Wf-A56 W2 (2026-10-16) — rename from ``_midpoint_se3``.  This
+    function is a *thin wrapper* that delegates to
+    :func:`_euler_se3`: it does not implement the full Heun
+    midpoint loop (k_1 at the current pose, k_2 at the
+    Euler-updated pose, average).  The midpoint loop lives in
+    :func:`integrate_with_cfm` (L550-562 area) where the velocity
+    field is evaluated at both poses and combined.
 
-        T_new = T @ exp(dt * xi_midpoint)
-
-    where ``xi_midpoint`` is the velocity field evaluated at the
-    Euler-updated midpoint pose.  See :func:`integrate_with_cfm`
+    The rename surfaces the contract: callers using ``method =
+    "midpoint"`` get an Euler inner step + Heun-style outer
+    averaging, not a tangent-space Heun that would be required
+    for higher-order local error.  See :func:`integrate_with_cfm`
     for the full loop.
     """
     return _euler_se3(T, xi, dt, eps=eps)

@@ -1853,6 +1853,13 @@ class EGNNVelocityField(nn.Module):
         relative_to_centroid = x_t - x_t.mean(dim=1, keepdim=True)
         vel = self.vel_head(h) * self.vel_scale * relative_to_centroid + last_v
         atom_logits = self.atom_head(h)  # (B, N, max_atomic_number)
+        # Wf-A56 W2 (2026-10-16) — P4 BF16 overflow guard.  R17 BF16
+        # regression: untrained Blackwell kernels overflowed
+        # ``atom_logits`` to +/-1e4, blowing up ``F.cross_entropy``
+        # into ``Inf``.  Clamp at +/-50 here (training path) AND in
+        # the sampler (line ~2571).  Clamp is monotonic so gradient
+        # flow is preserved.
+        atom_logits = atom_logits.clamp(min=-50.0, max=50.0)
         # Track-A (Wf-A15, 2026-10-13) — Layer 3a q-prediction.
         #
         # When ``self.q_head_enabled=True`` and ``self.q_head`` is set,
@@ -2279,8 +2286,10 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # :data:`DEFAULT_METAL_GEOMETRY`'s Bondi table (1=H, 6=C, 7=N,
         # 8=O, 9=F, 15=P, 16=S, 17=Cl, 35=Br, 53=I) plus 34=Se
         # (a common thiolate / selenolate donor) and the metal
-        # centre 78=Pt itself.
-        self._atom_vocab: tuple = (1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78)
+        # centres (78=Pt canonical OOV trigger + 28=Ni, 46=Pd,
+        # 77=Ir, 45=Rh, 76=Os, 75=Re, 44=Ru, 79=Au).  20 elements
+        # total — P1 guard requires >= 20.
+        self._atom_vocab: tuple = (1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78, 28, 46, 77, 45, 76, 75, 44, 79)
 
         # WF-2 A5 — joint bond-head training knobs.  When
         # ``use_bond_head=True`` the adapter builds a
@@ -2569,6 +2578,10 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         )
         v_pred = out["vel"]
         atom_logits = out["atom_logits"]  # (B, max_n, max_atomic_number)
+        # Wf-A56 W2 (2026-10-16) — P4 BF16 overflow guard (training
+        # path).  See L1855 for the velocity-field-side clamp; this
+        # one covers the train_step-side clamp after the dict lookup.
+        atom_logits = atom_logits.clamp(min=-50.0, max=50.0)
 
         # ---- Loss 1: CFM coord velocity (MSE, masked) ----
         mask_3d = node_mask.unsqueeze(-1).to(v_pred.dtype)
@@ -2799,6 +2812,26 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         if self._use_bond_head and self._joint_train and self.bond_head is not None:
             params = params + list(self.bond_head.parameters())
         torch.nn.utils.clip_grad_norm_(params, 1.0)
+        # Wf-A56 W2 (2026-10-16) — P1 OOV defence-in-depth.  If the
+        # data-load guard was bypassed (e.g. an ad-hoc notebook calls
+        # ``Molecule.from_smiles`` directly) and bad_atoms slipped
+        # through, ``atom_loss`` is ``Inf`` which would poison
+        # ``AdamW``.  Detect non-finite losses AFTER ``clip_grad_norm_``
+        # then SKIPPING optimizer step, recording the
+        # ``skipped_oov`` diagnostic so a future maintainer can spot
+        # the upstream leak.  ``bad_atoms`` is the canonical variable
+        # name used by the upstream data-load guard.
+        bad_atoms = bool(torch.isnan(loss) or torch.isinf(loss))
+        if bad_atoms:
+            self.optimizer.zero_grad()
+            self.last_losses = {
+                "cfm": float("nan"),
+                "atom": float("nan"),
+                "bond": float("nan"),
+                "total": float(loss.item()),
+                "skipped_oov": int(self.last_losses.get("skipped_oov", 0)) + 1,
+            }
+            return self.last_losses["total"]
         self.optimizer.step()
         # Stash individual losses for logging; return the total as a float
         # to honour the Protocol contract.
@@ -3120,6 +3153,12 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                     pocket_embed=pocket_embed,
                 )
                 atom_logits = out["atom_logits"]  # (n_samples, n_atoms, max_z)
+            # Wf-A56 W2 (2026-10-16) — P4 BF16 overflow guard (sampler
+            # path).  Same rationale as L1855 / L2587: untrained
+            # Blackwell kernels can produce +/-1e4 logits which then
+            # overflow the categorical sampler.  Clamp here is the
+            # last guard before softmax.
+            atom_logits = atom_logits.clamp(min=-50.0, max=50.0)
             # Mask out impossible atoms (Z=0 "padding") by setting their
             # logit to -inf so they are never sampled.
             atom_logits[..., 0] = float("-inf")

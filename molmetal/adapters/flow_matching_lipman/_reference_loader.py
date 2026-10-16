@@ -86,7 +86,17 @@ def configure_reference(reference_path: str | Path | None = None) -> Path:
                 else DEFAULT_REFERENCE
             )
         )
-        root = ref / "flow_matching"
+        # Wf-A56 W2 (2026-10-16) — P6 auto-detect.  Accept the
+        # clone-root convention where ``ref`` IS the ``flow_matching``
+        # package (has ``__init__.py`` directly) in addition to the
+        # parent-dir convention (``ref/flow_matching/__init__.py``).
+        # R12-R17 regression: callers using the legacy convention
+        # silently failed the auto-detect, leaving the upstream
+        # adapter un-imported.
+        if (ref / "__init__.py").is_file() and ref.name == "flow_matching":
+            root = ref
+        else:
+            root = ref / "flow_matching"
         if not (root / "__init__.py").is_file():
             raise FileNotFoundError(
                 f"Could not find cloned flow_matching at {ref}; clone https://github.com/facebookresearch/flow_matching.git there"

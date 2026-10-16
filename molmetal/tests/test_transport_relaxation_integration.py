@@ -682,3 +682,38 @@ def test_relaxed_endpoint_kl_grows_as_eps_shrinks():
     assert (
         kl_small > kl_large
     ), f"KL must grow as ε shrinks; got large={kl_large}, small={kl_small}"
+
+
+# Wf-A56 W2 (2026-10-16) — additive contract: ``augment_learned_shaping``
+# is *additive* in the sense that
+#   augment(base) - base == λ_relax * KL(p_T ‖ q_T(ε))
+# holds bit-exactly (modulo dtype coercion).  This pins the
+# contract so a future refactor cannot silently turn the
+# augmentation into multiplicative or max-blend (which would
+# invalidate downstream callers that assume a strictly additive
+# penalty layer).
+def test_relaxed_endpoint_additive():
+    """``augment_learned_shaping`` is strictly additive: base + penalty."""
+    from molmetal.adapters.transport_relaxation_integration import (
+        RelaxedEndpointTerm,
+        augment_learned_shaping,
+    )
+
+    trajectory = _toy_trajectory(b=8, t=3, d=3, seed=42)
+    energies = torch.tensor([0.0, 5.0, -3.0, 1.0, 2.0, -1.0, 4.0, -2.0])
+    lam = 1e-2
+    eps = 0.1
+    base_scalar = torch.tensor(1.7)
+    augmented = augment_learned_shaping(
+        base_scalar, trajectory, energies, lambda_relax=lam, eps=eps
+    )
+    expected_penalty = (
+        RelaxedEndpointTerm(lambda_relax=lam, eps=eps)
+        .forward(trajectory, energies)
+        .to(dtype=base_scalar.dtype)
+    )
+    expected = base_scalar + expected_penalty
+    diff = (augmented - expected).abs().max().item()
+    assert (
+        diff < 1e-5
+    ), f"augment_learned_shaping must be additive; got diff={diff:.3e}"
