@@ -539,7 +539,10 @@ class AtomCloud:
         # ---- Wf-A11 shape contracts (only enforced when field is set) ----
         n_atoms = int(self.positions.shape[0])
         if self.natural_charges is not None:
-            if self.natural_charges.dim() != 1 or int(self.natural_charges.shape[0]) != n_atoms:
+            if (
+                self.natural_charges.dim() != 1
+                or int(self.natural_charges.shape[0]) != n_atoms
+            ):
                 raise ValueError(
                     f"natural_charges must be (N,) with N={n_atoms}; got "
                     f"shape {tuple(self.natural_charges.shape)}"
@@ -957,9 +960,12 @@ class BondOrderHead(nn.Module):
             When :attr:`continuous_bo` is True, returns
             ``(logits, cont_bo)`` where ``cont_bo`` is a (E,) tensor.
         """
-        if pair_features.dim() != 2 or pair_features.shape[1] != self.in_dim:
+        if (
+            pair_features.dim() != 2 or pair_features.shape[1] != self.in_dim
+        ):
             raise ValueError(
-                f"expected (E, {self.in_dim}) pair_features, got {tuple(pair_features.shape)}"
+                f"expected (E, {self.in_dim}) pair_features, "
+                f"got {tuple(pair_features.shape)}"
             )
         if cloud_ctx is not None and self.cloud_ctx_proj is not None:
             if cloud_ctx.shape[-1] != self.cloud_ctx_dim:
@@ -1452,7 +1458,8 @@ class BondAwareDecoder:
         )
 
     def _featurise(self, pf: PairFeature, cloud: AtomCloud) -> torch.Tensor:
-        """Project :class:`PairFeature` into the ``in_dim``-D vector the head expects."""
+        """Project :class:`PairFeature` into the ``in_dim``-D vector the
+        head expects."""
 
         def _bucket(z: int) -> int:
             if z == 6:
@@ -1940,7 +1947,9 @@ def train_synthetic(
 
         # Class weights — boost the rare triple / aromatic / no-bond classes
         # so the head doesn't collapse to "everything is single".
-        class_counts = torch.bincount(y_train, minlength=NUM_BOND_CLASSES).to(torch.float32)
+        class_counts = torch.bincount(y_train, minlength=NUM_BOND_CLASSES).to(
+            torch.float32
+        )
         class_counts = torch.clamp(class_counts, min=1.0)
         inv = (class_counts.sum() / class_counts) ** 0.5
         inv = inv / inv.mean()
