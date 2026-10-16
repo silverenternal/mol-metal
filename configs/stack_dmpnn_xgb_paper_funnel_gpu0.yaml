@@ -1,0 +1,90 @@
+# FU2 — stack ECFP4→XGB and the in-house D-MPNN into ONE merged scorer, GPU0.
+#
+# WHY
+# ---
+# G1 (todo.json gap_analysis_2026_10_16): the in-house D-MPNN loses to ECFP4->XGB
+# on ALL 5 metals on the same folds (Ru -0.0440, Ir -0.1628, Rh -0.0308,
+# Os -0.1380, Re -0.0395; metrics/by_metric/dmpnn_within_metal_auc_paper_funnel.json).
+# FU1 tests FEATURE-level fusion (concatenating the D-MPNN representation onto
+# ECFP4).  FU2 is the other half of directive_2026_10_16: if feature fusion is
+# dragged down by the weaker member (as arm 2 was, Ru -0.0071 in
+# fusion_cheap_arms_probe.json), a STACKING / ROUTING merger can down-weight a
+# weak base learner instead of adding its columns to a tree model, reaching
+#   merged >= max(component_A, component_B)
+# without discarding the stronger component.  FU2 runs even if FU1 already wins:
+# the directive's acceptance rule wants the three-column A / B / merged report,
+# and the two merger families are independent evidence.
+#
+# DEVICE: cuda:0 (the 98 GB RTX PRO 6000 Blackwell).  Per the 2026-10-16 user
+# directive, ALL new GPU work goes on GPU0.  FU1 (already running) stays on
+# cuda:1 and does not contend.
+#
+# AGENTS.md §5.11: every key below resolves to a dest of
+# stack_dmpnn_xgb_within_metal.py's own parser (verified by
+# scripts/_config_binding_gate.py).
+
+entry:
+  script: molmetal/scripts/stack_dmpnn_xgb_within_metal.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/stack_dmpnn_xgb_within_metal.py
+    --config {yaml_path}
+
+data:
+  metals: [Ru, Ir, Rh, Os, Re]
+
+# paper_funnel = Krasnov-style build_paper_cohort; the Table-1 / BLK-P1 cohort.
+cohort_spec: "paper_funnel"
+
+# --- folds + merger ---------------------------------------------------------
+protocol:
+  split_seeds: [42, 43, 44, 49, 123]
+  n_splits: 5
+  train_seeds: [0]
+  # inner K-fold that builds leak-free meta-features for the meta-train rows.
+  inner_splits: 3
+  # the merger g([A, B]); logreg is the low-variance default at n~hundreds.
+  meta_learner: "logreg"
+  meta_space: "logit"
+
+# --- base learners (component A = XGB head; component B = D-MPNN scorer) -----
+model:
+  hidden: 128
+  depth: 3
+  dropout: 0.1
+
+train:
+  lr: 0.001
+  epochs: 30
+  batch_size: 64
+  max_atoms: 120
+  max_edges: 240
+
+radius: 2
+nbits: 2048
+
+compute:
+  device: cuda:0
+  deterministic: true
+
+max_fold_n: 0
+
+output:
+  out_metric: metrics/by_metric/stacked_dmpnn_xgb_within_metal.json
+
+honest_framing:
+  purpose: >-
+    G1 closure by stacking (directive_2026_10_16): does a meta-learner g([A, B])
+    lift the merged scorer to >= max(ECFP4->XGB, D-MPNN) on the same folds?  The
+    judgement is the merged arm's ABSOLUTE AUC vs the best component, per metal;
+    the A and B columns are re-measured here, not assumed.
+  do_not_claim:
+    - A pooled 5-metal mean — Ru is ~64% of the deduplicated cohort.
+    - That the component-level numbers changed — they are the same base learners
+      as FU1 arm-1 / BLK-P1; only the FINAL model's definition changes.
+    - A stacking win without the Holm-corrected paired test (df=4).
+  statistics: >-
+    Paired one-sided t-test on the 5 per-seed deltas (df=4) + t-based 95% CI is
+    the gate; the percentile bootstrap is *_reference_only.  "Merged wins"
+    requires mean delta > 0 AND Holm p < 0.05 over {Ru, Ir} AND t-CI lower > 0.
+  acceptance: >-
+    merged >= max(A, B) on >=4/5 metals with Holm significance
+    (directive_2026_10_16 acceptance_rule).
