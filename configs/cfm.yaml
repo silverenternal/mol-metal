@@ -71,6 +71,18 @@ model:
   # Lipschitz scaling. Per-cloud (1 t per cloud) restored 23% FM MSE in
   # smoke (Wf-R7 §1.4).
   fm_t_per_cloud: 1
+  # Wf-A54 (2026-10-16) — fm-log-normal-mu/sigma explicit anchor (§6.55g
+  # close path). These two args are argparse dests (parse_args at
+  # train_cfm_yuelbond_wasserstein.py:7277-7278) and exercise the
+  # log_normal_t_sampling path at flow_matching_lipman/__init__.py:2860
+  # when `fm_t_dist: "log_normal"`. The canonical CFM launch surface
+  # explicitly carries the Karras 2022 mid-range concentration
+  # (`mu=-0.5, sigma=1.0` per arXiv:2206.00364 §3.4) so a future retrain
+  # can flip `fm_t_dist: "log_normal"` from a single YAML key without
+  # also having to specify the parameters — the Wf-A35-2 fix wired the
+  # path, but until Wf-A54 the params lived only in argparse defaults.
+  fm_log_normal_mu: -0.5
+  fm_log_normal_sigma: 1.0
   # Round-3 D2 (Wf-R3): connectivity prior gate. Earlier models went off-dist
   # because the velocity field's softmax allowed any bond topology. ON keeps
   # sampled fragments chemically plausible. With min_logit=0.0 the prior is

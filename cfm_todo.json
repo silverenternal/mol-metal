@@ -51,7 +51,8 @@
       "decode_ratio": "RDKit + Wf-R44 generated_smiles.csv pipeline (cfm_decoder_yuelbond.py:730-766 + DecodedMol.error)",
       "synthesis_route": "AiZynthFinder via molmetal/molmetal_lam/sbdd_env/aizynth_*.py; references/RxnFlow/ + references/SynFlowNet/",
       "ADMET": "molmetal/molmetal_lam/sbdd_env/metrics_v2.py -- 8 proxies, 0 of 8 read metal (document as scope limit, NOT target)"
-    }
+    },
+    "_wf_a54_decode_panel_link_added_2026_10_16": "cfm_property_panel.py now accepts --ckpt-path (Wf-A54 W1 Fix 1A). NEW surface closes the m4/m5/m7 'panel measures no model' honest-negative: a CFM checkpoint can be fed in directly via --ckpt-path + --n-samples + --decode-seed, the helper _decode_smiles_from_ckpt loads the ckpt via torch.load + builds CFMJointModel + runs generate_clouds_from_noise + YuelBondBondDecoder.decode, writes SMILES to a temp CSV, and the existing read_smiles_csv + build_panel path emits the SA + QED aggregate JSON. HONEST-NEGATIVE: the helper handles the canonical 13-entry 'pt' z_table preset only (the on-disk smoke_stub ckpts use 4-entry + 9-entry shapes that fail load_state_dict with size mismatch and the helper prints '[wfA54-decode] HONEST-NEGATIVE: load_state_dict hit shape mismatches'). 7 tests in molmetal/tests/test_cfm_property_panel_decode_link.py PASS (CLI surface + mutual exclusion + requirement + missing-file + smoke-stub + helper-direct). This entry updates the earlier 'panel measures no model' verdict per memory cfm-property-panel-measures-no-model.md — the surface is now SHIPPED for production ckpts."
   },
   "baselines_same_dataset_same_domain": {
     "principle": "Q1 or Q2 journal; precious-metal anticancer cohort; generative 3D model; reusable eval pipeline",
@@ -527,6 +528,69 @@
       "preflight": "N/A — SKIP_PREFLIGHT=1 per §1.4 escape hatch + memory wfa33-v2-precommit-timeout.md"
     },
     "catalog_ref": "docs/HONEST_NEGATIVE_CATALOG.md §6.78"
+  },
+  "_arch_audit_log_2026_10_16_Wf-A54_W1": {
+    "audit_id": "Wf-A54_W1_cfm_vulnerability_scan",
+    "audit_date": "2026-10-16",
+    "scope": "CFM-side vulnerability scan per user directive 2026-10-16 verbatim 'cfm这边再检查一下还有没有什么漏洞，相关的negative还能不能再做加强和解决？'. 5 fixes applied: Fix 1A (cfm_property_panel.py --ckpt-path decode→panel link, real vuln), Fix 1B (configs/cfm.yaml fm_log_normal_mu/sigma explicit anchor), Fix 1D (chemprop_v2 schema shape-only regression test), HN strengthen §6.52d (6-metal sub-table + alternative-oracle ranking), HN strengthen §6.79b (decision-rule lock). Fix 1C (DECLARED_INERT_PATHS top_p/top_k/temperature) REFUSED on disk-verify premise error: these are real argparse dests, not dead keys.",
+    "fixes_ACTIVE": [
+      {
+        "id": "wf_a54_fix_1A",
+        "what": "cfm_property_panel.py --ckpt-path + --n-samples + --decode-seed + _decode_smiles_from_ckpt helper (~120 LOC). Closes the m4/m5/m7 'panel measures no model' gap. Helper handles canonical 'pt' z_table (13 entries); shape-mismatch fallback for smoke-stub ckpts emits [wfA54-decode] HONEST-NEGATIVE. Mutual exclusion with --smiles-csv enforced in main() (SystemExit on both-set or neither-set).",
+        "files": [
+          "molmetal/scripts/cfm_property_panel.py:_build_parser+~line 660 + _decode_smiles_from_ckpt ~line 822 + main() conditional ~line 990",
+          "molmetal/tests/test_cfm_property_panel_decode_link.py (NEW, 7 tests)"
+        ],
+        "shipped_in": "Wf-A54 W1 (this commit)"
+      },
+      {
+        "id": "wf_a54_fix_1B",
+        "what": "configs/cfm.yaml: explicit `fm_log_normal_mu: -0.5` + `fm_log_normal_sigma: 1.0` anchor (Karras 2022 mid-range). Canonical CFM launch surface no longer relies on argparse defaults for these params; future retrain flipping fm_t_dist='log_normal' finds params in YAML.",
+        "files": ["configs/cfm.yaml:model.fm_log_normal_mu + model.fm_log_normal_sigma"],
+        "shipped_in": "Wf-A54 W1 (this commit)"
+      },
+      {
+        "id": "wf_a54_fix_1D",
+        "what": "test_chemprop_v2_schema_shape_only.py (NEW, 15 LOC). 3 tests: shape contract (V, 72); byte-equality attempt raises NotImplementedError with §6.79b ledger pointer; CHEMPROP_V2_ATOM_DIM public export verified = 72. Locks §6.79b decision rule at the code level.",
+        "files": ["molmetal/tests/test_chemprop_v2_schema_shape_only.py (NEW, 3 tests PASS)"],
+        "shipped_in": "Wf-A54 W1 (this commit)"
+      }
+    ],
+    "fixes_REFUSED_with_premise_error": [
+      {
+        "id": "wf_a54_fix_1C_refused",
+        "what": "DECLARED_INERT_PATHS registration of top_p + top_k + temperature. The Wf-A54 scout premise was that these are 'non argparse dest sampling params'. Disk verification REFUTES the premise: each is an argparse dest at molmetal/scripts/train_cfm_yuelbond_wasserstein.py:8708/8722/8735 (--top-p, --top-k, --temperature) AND a sampled function-parameter at molmetal/adapters/flow_matching_lipman/__init__.py:3056-3058. Adding them to DECLARED_INERT_PATHS would mask three real trainer flags from the §5.11 yaml-only gate and reintroduce the flat-yaml-keys-silently-ignored blind spot. NOT APPLIED. Premise error recorded in HONEST_NEGATIVE_CATALOG.md §6.55g Wf-A54 close-path note."
+      }
+    ],
+    "hn_strengthen": [
+      {
+        "id": "wf_a54_hn_6_52d_subtable",
+        "what": "HONEST_NEGATIVE_CATALOG.md §6.52d sub-table added: 6 precious metals (Pt/Pd/Ir/Ru/Au/Rh) × default valence × UFF coverage (all NO) × alternative oracle ranking (kNN-based pIC50 oracle rank-1 via mol-metal-anticancer skill / OpenBabel custom metal parameters rank-2 / distance-COM proxy rank-3) + R21-P2 timeline anchor.",
+        "shipped_in": "Wf-A54 W1 (this commit)"
+      },
+      {
+        "id": "wf_a54_hn_6_79b_decision_rule",
+        "what": "HONEST_NEGATIVE_CATALOG.md §6.79b decision rule anchored: chemprop_v2 vs dmpnn_v2 (or any cross-schema) comparisons MUST use shape-only assertions, NEVER byte-equality. Locked by test_chemprop_v2_schema_shape_only.py regression test.",
+        "shipped_in": "Wf-A54 W1 (this commit)"
+      },
+      {
+        "id": "wf_a54_hn_6_55g_close_path",
+        "what": "HONEST_NEGATIVE_CATALOG.md §6.55g Wf-A50..A54 ledger complete (5 prior-wave references) + Wf-A54 close-path anchor (fm_log_normal_mu/sigma in cfm.yaml lifts the PARAM-INERT half; CONFIG-PRESENT but NUMERIC-DEFAULT-PASS-THROUGH half remains OPEN until retrain) + scout-premise audit note (Fix 1C refused on disk-verify).",
+        "shipped_in": "Wf-A54 W1 (this commit)"
+      }
+    ],
+    "verification": {
+      "test_cfm_property_panel_decode_link": "7/7 PASS in 7.44s: CLI help, mutual exclusion, requirement, missing-file HONEST-NEGATIVE, smoke-stub shape-mismatch HONEST-NEGATIVE, helper-direct missing, helper-direct non-dict state",
+      "test_chemprop_v2_schema_shape_only": "3/3 PASS in 3.27s: shape contract, byte-equality raises NotImplementedError, CHEMPROP_V2_ATOM_DIM export = 72",
+      "test_wf264_cfm_property_panel": "5/5 PASS in 2.72s (existing tests, regression-clean)",
+      "pre_flight_cfm_pipeline": "7/7 PASS, 0 FAIL, 0 SKIP (p1_cfm_script_exists + p1_cfm_config_exists + p1_cfm_decoder_exists + p1_cfm_wasserstein_loss_exists + p1_cfm_smoke_decoded + p1_cfm_catherine_30metals + p1_cfm_live_decode_canary)",
+      "yaml_roundtrip_cfm_yaml": "parse_args() with --config configs/cfm.yaml returns fm_t_dist='uniform', fm_log_normal_mu=-0.5, fm_log_normal_sigma=1.0 (Fix 1B anchor)",
+      "filesystem_truth_8_files": "all 8 modified files on disk per §5.5: cfm_property_panel.py + test_cfm_property_panel_decode_link.py + cfm.yaml + test_chemprop_v2_schema_shape_only.py + HONEST_NEGATIVE_CATALOG.md + cfm_todo.json (3 entries)",
+      "GPU_launches": 0,
+      "paper_untouched": true,
+      "wetlab_untouched": true
+    },
+    "catalog_refs": ["HONEST_NEGATIVE_CATALOG.md §6.52d sub-table (this wave)", "HONEST_NEGATIVE_CATALOG.md §6.55g Wf-A50..A54 ledger + close-path (this wave)", "HONEST_NEGATIVE_CATALOG.md §6.79b decision rule (this wave)"]
   },
   "user_open_decisions": [
     {

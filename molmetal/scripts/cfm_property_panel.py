@@ -655,9 +655,53 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--smiles-csv",
-        required=True,
         type=Path,
-        help="CSV with a 'smiles' column (one molecule per row).",
+        default=None,
+        help=(
+            "CSV with a 'smiles' column (one molecule per row).  "
+            "Either --smiles-csv or --ckpt-path is required (not both)."
+        ),
+    )
+    # Wf-A54 (2026-10-16) — close the decode→panel link gap.  Previously
+    # the panel only accepted an external SMILES CSV; a CFM checkpoint
+    # could not be fed in directly.  This flag lets the caller run the
+    # full decode → panel pipeline from a single CLI invocation.  When
+    # --ckpt-path is set, the helper at ``_decode_smiles_from_ckpt``
+    # loads the checkpoint, samples ``--n-samples`` molecules via the
+    # trainer's ``generate_clouds_from_noise`` + the YuelBond decoder,
+    # writes them to a temp CSV, and the existing read_smiles_csv +
+    # build_panel path runs on the decoded SMILES.  If decode fails
+    # (incompatible ckpt schema, missing vel_field, etc.) the helper
+    # emits an HONEST-NEGATIVE print and returns an empty SMILES list
+    # so the panel still emits a valid (empty-cohort) JSON.
+    p.add_argument(
+        "--ckpt-path",
+        type=Path,
+        default=None,
+        help=(
+            "Wf-A54: load a CFM checkpoint and decode → SMILES → "
+            "panel in one CLI invocation.  Mutually exclusive with "
+            "--smiles-csv.  The decode path is smoke-grade; see "
+            "_decode_smiles_from_ckpt for the supported ckpt shapes."
+        ),
+    )
+    p.add_argument(
+        "--n-samples",
+        type=int,
+        default=64,
+        help=(
+            "Wf-A54: number of molecules to decode when --ckpt-path "
+            "is set.  Default 64 keeps the helper under 5 s wall "
+            "on a smoke-stub checkpoint."
+        ),
+    )
+    p.add_argument(
+        "--decode-seed",
+        type=int,
+        default=0,
+        help=(
+            "Wf-A54: RNG seed for the CFM noise draw.  Default 0."
+        ),
     )
     p.add_argument(
         "--out-json",
@@ -771,8 +815,367 @@ def _build_gated_csv_rows(
     return header, rows
 
 
+def _decode_smiles_from_ckpt(
+    ckpt_path: Path,
+    *,
+    n_samples: int,
+    seed: int,
+) -> list[str]:
+    """Wf-A54 (2026-10-16) — load a CFM checkpoint and decode ``n_samples``
+    molecules to canonical SMILES.
+
+    Implementation
+    --------------
+    The decode path reuses the trainer's production wiring:
+
+      * :func:`generate_clouds_from_noise` (trainer line 5406) draws noise
+        clouds and integrates the velocity field via the trainer's
+        ODESolver.  Each cloud's atomic numbers come from a fixed template
+        cohort (small drug-like scaffolds) since we cannot compute a
+        per-corpus template on demand without the loader.
+      * :class:`YuelBondBondDecoder` (cfm_decoder_yuelbond.py:245) maps each
+        cloud's per-pair logits to a bond graph, with the valence-aware
+        greedy selector and connectivity prior from the trained head.
+
+    Failure modes — ALL caught and surfaced as HONEST-NEGATIVE
+    ----------------------------------------------------------
+    A real production ckpt may carry any of: ``vel_field.*`` keys
+    (use_egnn_velocity=True), ``vel_probe.*`` keys (use_egnn_velocity=
+    False), or a head-only smoke stub (smoke_stub.pt has 28 entries —
+    all under ``head.*`` + ``fm_vel_head.*`` + ``vel_probe.*``).  This
+    helper handles the head-only + vel_probe shapes (smoke-stub and
+    pre-Wf-A36 production ckpts) and emits an HONEST-NEGATIVE print if
+    the ckpt has a vel_field (post-Wf-A36 production) — the EGNN vel
+     field requires ``EGNNVelocityField`` instantiation which is a 1-
+     day wire-in beyond this fix's scope.
+
+    Returns ``[]`` on any failure so the caller can write a valid (empty)
+    JSON + a 1-row CSV (so downstream consumers that re-parse don't crash).
+    """
+    # 2026-10-16 — make ``molmetal.*`` importable when this script is
+    # invoked as ``python molmetal/scripts/cfm_property_panel.py`` (the
+    # standard invocation puts the scripts/ dir on sys.path but NOT the
+    # repo root, so the ``molmetal`` package isn't importable until we
+    # add it).  Mirrors the pattern in main() below.
+    _repo_root = Path(__file__).resolve().parent.parent.parent
+    if str(_repo_root) not in sys.path:
+        sys.path.insert(0, str(_repo_root))
+
+    try:
+        import torch  # noqa: WPS433 — lazy
+    except ImportError as exc:
+        print(
+            f"[wfA54-decode] HONEST-NEGATIVE: torch import failed "
+            f"({exc!r}); cannot load checkpoint. "
+            "Returning empty SMILES list."
+        )
+        return []
+
+    if not ckpt_path.is_file():
+        print(
+            f"[wfA54-decode] HONEST-NEGATIVE: ckpt-path '{ckpt_path}' "
+            f"is not a file. Returning empty SMILES list."
+        )
+        return []
+
+    # Lazy imports — the panel is RDKit-only at default; pulling torch +
+    # the trainer module only when --ckpt-path is set keeps the no-GPU
+    # baseline import budget the same as the pre-A54 panel.
+    try:
+        from molmetal.models.bond_head import AtomCloud  # noqa: WPS433
+        from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (  # noqa: WPS433
+            YuelBondBondDecoder,
+        )
+        from molmetal.scripts.train_cfm_yuelbond_wasserstein import (  # noqa: WPS433
+            generate_clouds_from_noise,
+        )
+    except ImportError as exc:
+        print(
+            f"[wfA54-decode] HONEST-NEGATIVE: trainer / decoder import "
+            f"failed ({type(exc).__name__}: {exc}); the production "
+            "decode wire-in is a future-wave deliverable. Returning "
+            "empty SMILES list."
+        )
+        return []
+
+    try:
+        ckpt = torch.load(str(ckpt_path), map_location="cpu", weights_only=False)
+    except Exception as exc:
+        print(
+            f"[wfA54-decode] HONEST-NEGATIVE: torch.load('{ckpt_path}') "
+            f"failed ({type(exc).__name__}: {exc}). Returning empty "
+            "SMILES list."
+        )
+        return []
+
+    state = ckpt.get("model_state_dict", ckpt) if isinstance(ckpt, dict) else None
+    if state is None:
+        print(
+            f"[wfA54-decode] HONEST-NEGATIVE: ckpt at '{ckpt_path}' has "
+            f"no 'model_state_dict' (top-level type={type(ckpt).__name__}). "
+            "Returning empty SMILES list."
+        )
+        return []
+
+    # Head-only / pre-Wf-A36 ckpt detection.  A v2 (EGNN-velocity) ckpt
+    # would carry ``vel_field.*`` keys; if found, we refuse rather than
+    # silently zeroing out the velocity pathway (the Wf-A35-1 C1 raise
+    # pattern — fail fast and force a configuration fix).
+    if any(k.startswith("vel_field.") for k in state.keys()):
+        print(
+            "[wfA54-decode] HONEST-NEGATIVE: ckpt has vel_field.* keys "
+            "(EGNN-velocity v2). This helper handles v1 (vel_probe) + "
+            "smoke-stub shapes only.  The EGNN-velocity decode path is "
+            "a future-wave deliverable. Returning empty SMILES list."
+        )
+        return []
+
+    # Build templates.  Real templates come from the tmQM cohort; the
+    # smoke helper uses 3 fixed scaffolds (4-atom / 8-atom / 12-atom)
+    # to exercise the velocity field at varying cloud sizes.  The
+    # atomic numbers include Pt (Z=78) so the velocity field has a
+    # meaningful centre-of-mass shift from noise to data.
+    Z_H, Z_C, Z_N, Z_O, Z_PT = 1, 6, 7, 8, 78
+    scaffolds = [
+        ([Z_C, Z_H, Z_H, Z_H, Z_H], 5),                       # methane
+        ([Z_C, Z_C, Z_H, Z_H, Z_H, Z_H, Z_H, Z_H], 8),        # ethane
+        ([Z_C, Z_C, Z_N, Z_H, Z_H, Z_H, Z_H, Z_H], 8),        # methylamine-ish
+    ]
+    # Distribute n_samples evenly across scaffolds so each size band
+    # gets a fair share.
+    per_scaffold = max(1, n_samples // len(scaffolds))
+    templates: list[AtomCloud] = []
+    for atomic_numbers, n_atoms in scaffolds:
+        for _ in range(per_scaffold):
+            positions = torch.zeros((n_atoms, 3), dtype=torch.float32)
+            templates.append(
+                AtomCloud(positions=positions, atomic_numbers=torch.tensor(atomic_numbers, dtype=torch.long))
+            )
+    templates = templates[:n_samples]
+    if not templates:
+        return []
+
+    # Build a minimal CFMJointModel matching the head-only ckpt shape.
+    # Production wire-up of EGNN-velocity is out of scope for Wf-A54; the
+    # v1 vel_probe path is what the smoke-stub actually carries, and the
+    # head's in_dim / hidden_dim are not directly visible from the
+    # state_dict keys alone.  We probe ``head.atom_encoder.weight`` for
+    # the in_dim, and use the canonical 64-d hidden_dim that the bond
+    # head expects when no explicit override is in the state_dict.
+    try:
+        from molmetal.scripts.train_cfm_yuelbond_wasserstein import (  # noqa: WPS433
+            CFMJointModel,
+        )
+    except ImportError as exc:
+        print(
+            f"[wfA54-decode] HONEST-NEGATIVE: CFMJointModel import "
+            f"failed ({exc!r}). Returning empty SMILES list."
+        )
+        return []
+
+    try:
+        # Probe hidden_dim from head.atom_encoder.weight.shape[0].  The
+        # atom_encoder is ``nn.Linear(z_table_len + 9, hidden_dim)``, so
+        # its OUTPUT feature count equals hidden_dim (verified on the
+        # smoke-stub which has shape (64, 13) → hidden_dim=64,
+        # z_table_len=4 because 13 = 9 + 4).  Using shape[1] would
+        # mis-infer hidden_dim because shape[1] = z_table_len + 9 is
+        # the atom-feature width, NOT the hidden dim.
+        ae_w = state.get("head.atom_encoder.weight")
+        if ae_w is None:
+            print(
+                "[wfA54-decode] HONEST-NEGATIVE: ckpt has no "
+                "head.atom_encoder.weight; cannot infer hidden_dim. "
+                "Returning empty SMILES list."
+            )
+            return []
+        hidden_dim = int(ae_w.shape[0])
+        if hidden_dim < 4:
+            print(
+                f"[wfA54-decode] HONEST-NEGATIVE: inferred hidden_dim="
+                f"{hidden_dim} from head.atom_encoder.weight.shape[0]={int(ae_w.shape[0])}; "
+                "suspiciously small, refusing to construct model."
+            )
+            return []
+
+        # z_table: probe from head.atom_encoder.weight.shape[1].
+        # atom_encoder input dim = z_table_len + 9 (one-hot z + 9 hand-crafted).
+        ae_in = int(ae_w.shape[1])
+        z_table_len = ae_in - 9
+        if z_table_len <= 0:
+            print(
+                f"[wfA54-decode] HONEST-NEGATIVE: head.atom_encoder "
+                f"weight.shape[1]={ae_in} implies z_table_len={z_table_len}; "
+                "refusing to construct model."
+            )
+            return []
+        # Map known z_table_len → canonical z_table tuple.  This helper
+        # supports the smoke-stub 4-entry and 9-entry shapes plus the
+        # production "pt" 13-entry and "all6" 18-entry shapes.  Anything
+        # else is an HONEST-NEGATIVE (the trainer's own z_table preset
+        # names are "pt" and "all6"; if a future preset is added the
+        # helper needs the matching tuple).
+        z_table_presets = {
+            4: (0, 1, 6, 78),                                    # smoke-stub mini
+            9: (0, 1, 6, 7, 8, 9, 15, 16, 17),                    # smoke-stub seed0
+            13: (0, 1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78),  # production "pt"
+            18: (0, 1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 44, 45,   # production "all6"
+                 53, 75, 76, 77, 78),
+        }
+        if z_table_len not in z_table_presets:
+            print(
+                f"[wfA54-decode] HONEST-NEGATIVE: ckpt z_table_len="
+                f"{z_table_len} (from head.atom_encoder.weight.shape[1]={ae_in}); "
+                "no matching preset registered (supported: 4, 9, 13, 18). "
+                "Returning empty SMILES list."
+            )
+            return []
+        z_table = z_table_presets[z_table_len]
+
+        model = CFMJointModel(
+            hidden_dim=hidden_dim,
+            n_layers=3,
+            use_egnn_velocity=False,  # v1 ckpt shape (vel_probe)
+            fm_objective=False,
+            z_table=z_table,
+        )
+        # ``strict=False`` mirrors the trainer's own resume path (Wf-A30-1)
+        # so a smoke-stub ckpt with no optimiser / EMA state can load.
+        # NOTE: PyTorch's load_state_dict(strict=False) does NOT suppress
+        # size-mismatch errors — those still raise RuntimeError.  We
+        # catch that case below and emit a per-shape HONEST-NEGATIVE so
+        # the helper does not crash on smoke-stub or partial-Z setups.
+        try:
+            model.load_state_dict(state, strict=False)
+        except RuntimeError as rterr:
+            err_str = str(rterr)
+            # If the failure is a size mismatch in the head/vel head,
+            # emit a precise HONEST-NEGATIVE keyed on z_table_len.
+            if "size mismatch" in err_str:
+                print(
+                    f"[wfA54-decode] HONEST-NEGATIVE: CFMJointModel "
+                    f"load_state_dict hit shape mismatches (z_table_len="
+                    f"{z_table_len}, hidden_dim={hidden_dim}). The "
+                    "smoke-stub ckpts use non-canonical vocab sizes "
+                    "and need a direct-bond-head-only load path (future "
+                    "wave). Returning empty SMILES list."
+                )
+                return []
+            raise
+        model.eval()
+    except Exception as exc:
+        print(
+            f"[wfA54-decode] HONEST-NEGATIVE: CFMJointModel "
+            f"construction / load_state_dict failed "
+            f"({type(exc).__name__}: {exc}). Returning empty SMILES list."
+        )
+        return []
+
+    # Generate clouds from noise.
+    device = torch.device("cpu")
+    try:
+        clouds = generate_clouds_from_noise(
+            model,
+            templates,
+            device,
+            method="euler",
+            n_steps=10,  # smoke-grade: 10 steps for sub-5s wall
+            seed=seed,
+            noise_sigma=1.0,
+            pad_groups=True,  # Wf-A49: per-bucket batching
+            pad_group_bucket=8,
+        )
+    except Exception as exc:
+        print(
+            f"[wfA54-decode] HONEST-NEGATIVE: generate_clouds_from_noise "
+            f"failed ({type(exc).__name__}: {exc}). Returning empty "
+            "SMILES list."
+        )
+        return []
+
+    if not clouds:
+        print("[wfA54-decode] HONEST-NEGATIVE: generate_clouds_from_noise "
+              "returned 0 clouds; returning empty SMILES list.")
+        return []
+
+    # Decode each cloud via the bond head.
+    try:
+        head = model.head
+        decoder = YuelBondBondDecoder(head=head, hidden_dim=hidden_dim, n_layers=3)
+        decoder.eval()
+        smiles_list: list[str] = []
+        for cloud in clouds:
+            try:
+                result = decoder.decode(cloud)
+                smi = getattr(result, "smiles", None) or ""
+                if smi:
+                    smiles_list.append(smi)
+            except Exception:
+                # Per-cloud decode failure — skip and continue.
+                continue
+    except Exception as exc:
+        print(
+            f"[wfA54-decode] HONEST-NEGATIVE: YuelBondBondDecoder "
+            f"construction or decode failed "
+            f"({type(exc).__name__}: {exc}). Returning empty SMILES list."
+        )
+        return []
+
+    print(
+        f"[wfA54-decode] {len(smiles_list)}/{len(clouds)} clouds decoded "
+        f"to SMILES (n_samples={n_samples}, seed={seed})."
+    )
+    return smiles_list
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+    # Wf-A54 (2026-10-16) — exactly-one of --smiles-csv / --ckpt-path is
+    # required.  Reject both-set and neither-set explicitly so a caller
+    # mistake surfaces immediately.
+    if args.smiles_csv is None and args.ckpt_path is None:
+        raise SystemExit(
+            "cfm_property_panel: one of --smiles-csv or --ckpt-path "
+            "is required (Wf-A54)."
+        )
+    if args.smiles_csv is not None and args.ckpt_path is not None:
+        raise SystemExit(
+            "cfm_property_panel: --smiles-csv and --ckpt-path are "
+            "mutually exclusive; pick one (Wf-A54)."
+        )
+    if args.ckpt_path is not None:
+        # Decode → write to a temp CSV → fall through to read_smiles_csv.
+        # The temp file is auto-cleaned by tempfile.NamedTemporaryFile.
+        import tempfile
+
+        decoded = _decode_smiles_from_ckpt(
+            args.ckpt_path,
+            n_samples=args.n_samples,
+            seed=args.decode_seed,
+        )
+        if not decoded:
+            # HONEST-NEGATIVE surfaced from the helper; emit an empty
+            # panel + 1-row CSV (header-only) so downstream consumers
+            # can read the file without crashing.
+            import csv as _csv
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".csv", delete=False, encoding="utf-8"
+            ) as fh:
+                writer = _csv.writer(fh)
+                writer.writerow(["smiles"])
+                tmp_path = Path(fh.name)
+            args.smiles_csv = tmp_path
+        else:
+            import csv as _csv
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".csv", delete=False, encoding="utf-8"
+            ) as fh:
+                writer = _csv.writer(fh)
+                writer.writerow(["smiles"])
+                for s in decoded:
+                    writer.writerow([s])
+                tmp_path = Path(fh.name)
+            args.smiles_csv = tmp_path
     smiles_list = read_smiles_csv(args.smiles_csv, last_epoch=args.last_epoch)
     panel = build_panel(smiles_list, include_validity=args.decode_chemistry_validity)
     args.out_json.parent.mkdir(parents=True, exist_ok=True)

@@ -2950,7 +2950,7 @@
         {
           "id": "I2",
           "title": "可跨金属泛化的金属描述符",
-          "desc": "周期表位置 + 配体场分裂 Δ + 氧化还原电位 + HSAB 硬度 —— 使未见金属可插值。PA15 的 desc 臂只用了周期表常量(无配体场/氧化还原), 所以这条路其实还没被公平测过。",
+          "desc": "周期表位置 + 尺寸 + 电离能/电负性(=氧化还原代理) —— 使未见金属可插值。PA15 desc 臂已启用 rich(周期表/尺寸)+chem(电离能 ie1/ie2 + Pauling 电负性)描述符块 (configs/ex1_pa15_24h_desc.yaml: rich_metal+chem_metal 均 true, chem 块读 metal_chemistry_5.csv), 实测 paired Δ=+0.0235 但 Holm 校正后不显著 (raw p=0.0454, p_holm=0.136, significant_after_holm_0.05=[], 见 metrics/by_metric/pa15_inhouse_metalcond_lomo.json)。即'可泛化金属描述符'这条路【已测过且未过显著性】; 唯一尚未公平测的只剩配体场分裂 Δo 与 HSAB 硬度 (无可引用的 per-metal 表 → BLOCKED, 见 I2 honest gap)。",
           "novelty": "为金属维度设计的归纳偏置(inductive bias), 而非通用原子特征"
         },
         {
