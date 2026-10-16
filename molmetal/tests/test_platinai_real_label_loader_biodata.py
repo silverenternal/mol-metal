@@ -162,3 +162,56 @@ def test_biodata_mode_writes_outputs_offline(fake_post, tmp_path):
     assert "corrects the earlier false honest-negative" in meta["framing"]
     header = Path(paths["csv"]).read_text().splitlines()[0]
     assert "value_mean" in header and "smiles" in header
+
+
+# ---------------------------------------------------------------------------
+# metal attribution (added 2026-10-17)
+#
+# The API never returns a `metal` field, so `comp.get("metal") or "Pt"` labelled
+# every row "Pt" -- including Cu/Au/Re rows -- and a Pt-only filter keyed on
+# `metal` was a no-op.  Measured on the 21-cell harvest: 60.7% Pt, 25.8% Cu,
+# 11.8% Au.  The metal is the second field of the compound code.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "code,expected",
+    [
+        ("MB-Pt-000017", "Pt"),
+        ("MB-Cu-000409", "Cu"),
+        ("MB-Au-000123", "Au"),
+        ("MB-Re-000137", "Re"),
+        ("MB-Fe-000001", "Fe"),
+        ("MB-Ru-000004", "Ru"),
+    ],
+)
+def test_metal_from_compound_code(code, expected):
+    assert loader.metal_from_compound_code(code) == expected
+
+
+@pytest.mark.parametrize(
+    "code", ["", None, "MB-Pt", "MB", "nonsense", "MB--000001", "Pt-000001"]
+)
+def test_metal_from_compound_code_rejects_malformed(code):
+    assert loader.metal_from_compound_code(code) is None
+
+
+def test_flatten_does_not_default_every_row_to_platinum():
+    """A Cu row must not come back as Pt.
+
+    This is the regression that made Pt-only filtering a silent no-op: the
+    fallback `comp.get("metal") or "Pt"` fired on every row because the API
+    omits the field.
+    """
+    from molmetal.scripts.wf_a37_platinai_full_harvest import _flatten
+
+    row = {
+        "id": 1,
+        "value": "1.2",
+        "compounds": {
+            "imageUrl": "https://api.mb-finder.org/storage/images/MB-Cu-000409.svg?v=1",
+            "doi": "10.1/x",
+        },
+    }
+    flat = _flatten(row, "HeLa")
+    assert flat["compound_code"] == "MB-Cu-000409"
+    assert flat["metal"] == "Cu"
