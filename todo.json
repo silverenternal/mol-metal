@@ -1,7 +1,7 @@
 {
   "schema": "molmetal.paper_blockers.v2",
   "created": "2026-10-09",
-  "updated": "2026-10-15",
+  "updated": "2026-10-16",
   "rewritten": "2026-10-14 — 完全重建 v2 (第二次; 第一次被并行 session 的 git reset 丢弃)。反映现状: 主模型=自研 D-MPNN (无二选一); phase1 gate PARTIAL; FSMA 定位。历史段全部移入 archive (一字不删, §5.5)。",
   "supersedes": "todo.json schema molmetal.paper_blockers.v1 (2026-10-14 重建; 旧内容保留在 archive/working_detail_2026_10_14)",
   "source": "Wf-FIX-3LINES (commit 6d1c796d89) + Wf-METRIC-RESCUE (commit 37aa4960dc) + memory/*.md catalog + AGENTS.md section 5 honest-framing mandate",
@@ -203,6 +203,226 @@
       ],
       "note": "Every EXECUTABLE (non-paper) gap in this analysis is now closed. D and E are paper actions excluded by the standing goal."
     }
+  },
+  "directive_2026_10_16": {
+    "created": "2026-10-16",
+    "verbatim": "我不会接受任何负结果，有东西更强就把他融合到我们的模型里面来或者是做路由给他们合并成一个模型",
+    "interpretation": "任何分量（XGBoost/LightGBM、chemprop、EGNN、其他骨干）在本项目的评测口径下更强时，不得以『诚实负结果』收尾；必须通过 (a) 特征级融合，或 (b) 路由 / stacking 合并，使【最终论文模型】的指标 ≥ 最强分量。论文报告的模型 = 融合/路由后的模型，不再是单一 D-MPNN。",
+    "honesty_boundary": "AGENTS.md §5.2 红线不变：分量级数字（例如 D-MPNN 单独 Ru 0.8173 / Ir 0.6649 vs XGB 同折 0.8614 / 0.8277）仍如实报告、不删除、不隐藏。改变的是【最终模型的定义】(D-MPNN 单模型 → 融合/路由模型)，不是事实。禁止伪造、禁止选择性删除分量指标、禁止把分量数字改写成 PROJECTED。",
+    "applies_to": [
+      "within-metal activity scorer (Table 1)",
+      "FSMA K-shot 主线 (C1/C2)",
+      "金属感知模块 I1–I4（由『特征注入』改为『路由条件』）"
+    ],
+    "acceptance_rule": "每个融合/路由任务都必须报告三列：component_A、component_B、merged；merged 必须在 ≥4/5 金属上 ≥ max(component_A, component_B) 且 Holm 校正后显著，否则该任务视为未达成（继续换融合/路由结构，而不是降级为负结果）。"
+  },
+  "gap_analysis_2026_10_16": {
+    "created": "2026-10-16",
+    "question": "以 2026-10-16 的实测为准，硬结果够不够中科院二区？不够的部分如何用『融合/路由』补？",
+    "supersedes": "gap_analysis_2026_10_14 的 A/C 已于 2026-10-15 解决、B 已诚实负结果收口；但 2026-10-16 的 within-metal 同折对照 + C5 跨骨干对照暴露了更硬的 G1/G2。",
+    "already_have_hard": [
+      "FSMA 剂量响应 (metrics/by_metric/fsma_inhouse_kcurve_ep50_synth.json): K20 +0.0389 (Holm 0.0075)、K40 +0.0624 (Holm 7.5e-5)、K80 +0.0996 (Holm 1.8e-8)，50 cells/K，配对单侧 t + Holm。",
+      "C2 预算匹配对照 (metrics/by_metric/fsma_ablations_inhouse_ep50.json): K20 kshot +0.0389 vs from_scratch -0.0697 vs concat_retrain -0.1682；K40 +0.0624 / -0.0444 / -0.1667；Holm 全显著（仅限 D-MPNN 骨干，见 G2）。",
+      "ceiling recovery (metrics/by_metric/fsma_paper_stats.json): K80 恢复到 within-metal 上限的 Ru 74.9% / Ir 88.2% / Rh 98.5% / Os 96.8% / Re 92.0%。",
+      "严谨度: CUDA --deterministic、CPU bit-repro、paired one-sided t + Holm、预注册方向、负结果全公开。"
+    ],
+    "gaps": [
+      {
+        "id": "G1",
+        "severity": "P0 (致命)",
+        "title": "自研 D-MPNN 在 within-metal 同折对照下输给 XGBoost 全部 5 个金属",
+        "evidence": {
+          "artifact": "metrics/by_metric/dmpnn_within_metal_auc_paper_funnel.json",
+          "dmpnn_vs_xgb_same_folds": {
+            "Ru": -0.044,
+            "Ir": -0.1628,
+            "Rh": -0.0308,
+            "Os": -0.138,
+            "Re": -0.0395
+          },
+          "absolute_auc": {
+            "Ru": {
+              "dmpnn": 0.8173,
+              "xgb": 0.8614
+            },
+            "Ir": {
+              "dmpnn": 0.6649,
+              "xgb": 0.8277
+            },
+            "Rh": {
+              "dmpnn": 0.778,
+              "xgb": 0.8087
+            },
+            "Os": {
+              "dmpnn": 0.6833,
+              "xgb": 0.8213
+            },
+            "Re": {
+              "dmpnn": 0.8031,
+              "xgb": 0.8427
+            }
+          },
+          "krasnov_reported": {
+            "Ru": 0.81,
+            "Ir": 0.73
+          }
+        },
+        "why_it_kills": "审稿人第一问: 为什么不直接用 XGBoost？h512 容量也补不上（Ir cuda:0 探针 0.7393 仍 < XGB 0.8277，见 configs/dmpnn_within_metal_cap512_pf.yaml 的说明）。",
+        "remedy_fused_or_routed": "按 directive_2026_10_16：把 D-MPNN 图表示与 ECFP4 融合 / 路由成一个 scorer，最终模型 ≥ max(分量)。现有 molmetal/scripts/fuse_dmpnn_gbdt_within_metal.py 的 arms 3/4/5 (D-MPNN⊕ECFP4) 【从未运行】—— metrics/by_metric/fusion_cheap_arms_probe.json 的 arms_run 只有 [1_ecfp4_xgb, 2_ecfp4_plus_tmqm_emb_xgb, 6_ecfp4_plus_noise_xgb]，且 arm2 融合实测为负 (Ru -0.0071)。这是最直接的起点。",
+        "status": "OPEN"
+      },
+      {
+        "id": "G2",
+        "severity": "P0",
+        "title": "C2『微调≫重训』在 XGB 骨干上不复现",
+        "evidence": {
+          "artifact": "metrics/by_metric/fsma_paper_stats.json → cross_backbone_xgb",
+          "warm_start_vs_concat_retrain": {
+            "Ru": [
+              -0.0016,
+              -0.0027,
+              0.0035,
+              0.0108,
+              0.0171
+            ],
+            "Ir": [
+              -0.0062,
+              -0.0108,
+              -0.0137,
+              -0.0213,
+              -0.0214
+            ],
+            "Os": [
+              -0.0042,
+              -0.0034,
+              -0.0229,
+              -0.0234,
+              -0.0021
+            ]
+          }
+        },
+        "why_it_kills": "最强的方法贡献只在 D-MPNN 上成立 → 『协议普适』主张被否，审稿人会指为 backbone-specific / strawman control。",
+        "remedy_fused_or_routed": "把 FSMA 建在【融合/路由后的 scorer】上重跑 K-curve，使『微调≫重训』在最终模型上成立。",
+        "status": "OPEN"
+      },
+      {
+        "id": "G3",
+        "severity": "P1",
+        "title": "金属感知 I1–I4 是负结果",
+        "evidence": {
+          "pa15": "metrics/by_metric/pa15_inhouse_metalcond_lomo.json — token/desc/film 全部 Holm 不显著 (significant_after_holm_0.05 = [])",
+          "ex1_h512": "metrics/by_metric/ex1_i2_rich_metal_cap512.json — message−readout +0.0274, Holm 0.0491 (贴边)"
+        },
+        "remedy_fused_or_routed": "把金属描述符从『特征注入』改成『路由条件』：metal-conditioned router/gate 决定走哪条专家分支（metal-aware expert vs metal-blind expert）。金属感知的作用定义为【分流】而非【涨分】。",
+        "status": "OPEN"
+      },
+      {
+        "id": "G4",
+        "severity": "P1",
+        "title": "低 K (K5/K10) 不显著，而 few-shot 卖点在低 K",
+        "evidence": {
+          "artifact": "metrics/by_metric/fsma_inhouse_kcurve_ep50_synth.json",
+          "K5": "+0.0129 (Holm 0.108)",
+          "K10": "+0.0141 (Holm 0.108)",
+          "K5_per_metal": {
+            "Ru": -0.0037,
+            "Ir": -0.0125,
+            "Rh": 0.0108,
+            "Os": 0.0173,
+            "Re": 0.0367
+          }
+        },
+        "remedy_fused_or_routed": "更强 base (融合 scorer) 上重测低 K；若仍不显著，把 K 定义上移到 ≥20 并在论文中明说。",
+        "status": "OPEN"
+      },
+      {
+        "id": "G5",
+        "severity": "P2",
+        "title": "Krasnov 基线口径敏感",
+        "evidence": {
+          "artifact": "metrics/by_metric/pa18_model_class_5metal.json",
+          "ours_lightgbm_Ru": 0.7308,
+          "krasnov_published_Ru": 0.81
+        },
+        "remedy_fused_or_routed": "同口径重算，明确区分『我们复现的 GBDT 列』与『文献报告值』；融合模型同时对齐两者。",
+        "status": "OPEN"
+      },
+      {
+        "id": "G6",
+        "severity": "P2",
+        "title": "单一数据集族 + 小队列不稳",
+        "evidence": {
+          "single_family": "MetalCytoTox 贵金属抗癌",
+          "cohort_24h": {
+            "Rh": 51,
+            "Os": 36
+          },
+          "os_arm1_xgb_24h": 0.496
+        },
+        "remedy_fused_or_routed": "在第二个独立数据集上验证融合/路由模型；小组列单独报告并限制 claim 到 n≥300。",
+        "status": "OPEN"
+      },
+      {
+        "id": "G7",
+        "severity": "P2 (红线)",
+        "title": "paper_a 方法描述与自研模型矛盾",
+        "evidence": {
+          "file": "paper_a/sections/03_method.tex:60-62",
+          "text": "'The backbone is the official chemprop~v2 atom message-passing encoder ... d_h=300, depth 3'"
+        },
+        "remedy_fused_or_routed": "改成自研 D-MPNN (+ 融合/路由模型)；需用户 OK 才能动 paper_a (§5.3)。",
+        "status": "OPEN"
+      }
+    ],
+    "ranking": "G1 (融合/路由) > G2 (在融合 scorer 上重跑 FSMA) > G3 (金属→路由条件) > G4 > G5/G6 > G7",
+    "one_line": "今天最硬的两条缺口都是『我们的模型/协议不是最强』；按 directive_2026_10_16 的唯一出路是把最强分量融合/路由进最终模型。G1 的 D-MPNN⊕ECFP4 融合 arms 3/4/5 从未跑过，是最直接的起点。"
+  },
+  "task_queue_2026_10_16": {
+    "created": "2026-10-16",
+    "directive": "directive_2026_10_16",
+    "note": "按 directive_2026_10_16 组织的『把更强分量并进最终模型』任务队列。每项都含 §5.7 smoke + §5.11 门禁 + §5.5 ls -la 证据要求。",
+    "tasks": [
+      {
+        "id": "FU1",
+        "title": "跑通 D-MPNN ⊕ ECFP4 融合 arms 3/4/5 (+ nested-bleed)",
+        "gap": "G1",
+        "why": "现有 fusion_cheap_arms_probe.json 只跑了 arms 1/2/6；arms 3/4/5 从未运行，D-MPNN 融合问题仍然开放。",
+        "how": "configs/fusion_dmpnn_gbdt_within_metal.yaml 已定义 arms 3/4/5；先 §5.11 两门禁 + §5.7 smoke，再全 5 金属 × 5 split_seeds。",
+        "deliverable": "metrics/by_metric/fusion_dmpnn_ecfp4_within_metal.json",
+        "acceptance": "融合 arm 在 ≥4/5 金属上 ≥ arm1 (ECFP4→XGB) 且 Holm 显著；否则进入 FU2 路由/stacking 路线。",
+        "status": "OPEN"
+      },
+      {
+        "id": "FU2",
+        "title": "Stacking / 路由合并器 (meta-learner)",
+        "gap": "G1",
+        "why": "特征级融合可能像 arm2 一样被噪声拖累 (Ru −0.0071)；stacking 在正确嵌套 CV 下更稳地 ≥ max(分量)。",
+        "how": "D-MPNN OOF 预测 + XGB OOF 预测 → 逻辑回归 / 浅层 GBDT meta-learner，严格 nested CV 防 fold-bleed（复用 fuse runner 的 nested_bleed 机制）。",
+        "deliverable": "metrics/by_metric/stacked_dmpnn_xgb_within_metal.json",
+        "acceptance": "stacked ≥ max(D-MPNN, XGB) 在 ≥4/5 金属；三列 (A / B / merged) 全报告。",
+        "status": "OPEN"
+      },
+      {
+        "id": "FU3",
+        "title": "金属感知 → metal-conditioned router",
+        "gap": "G3",
+        "why": "金属描述符单独注入不涨分 (PA15 全 Holm ns)；改用作路由条件。",
+        "how": "router 输入 = 金属描述符块 (rich+chem)，输出 = 专家分支权重（含 metal-blind 分支）。",
+        "deliverable": "metrics/by_metric/metal_router_ablation.json",
+        "acceptance": "router ≥ 最好单专家且 Holm 显著；否则回到 FU2 融合路线并如实报告三列。",
+        "status": "OPEN"
+      },
+      {
+        "id": "FU4",
+        "title": "在融合/路由 scorer 上重跑 FSMA K-curve",
+        "gap": "G2 + G4",
+        "why": "让『微调≫重训』(G2) 与低 K 显著 (G4) 在最终模型上成立。",
+        "how": "复用 ex1_metal_injection_contrast.py 的 K-shot 协议，把 backbone 换成 FU1/FU2 产出的融合 scorer。",
+        "deliverable": "metrics/by_metric/fsma_fused_kcurve.json",
+        "acceptance": "K5/K10 在融合 scorer 上 Holm 显著；否则把 K 定义上移到 ≥20 并明说。",
+        "status": "OPEN"
+      }
+    ]
   },
   "task_queue_2026_10_14": {
     "created": "2026-10-14",
