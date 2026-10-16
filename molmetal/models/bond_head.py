@@ -959,6 +959,20 @@ class BondOrderHead(nn.Module):
         logits : (E, num_classes) tensor.
             When :attr:`continuous_bo` is True, returns
             ``(logits, cont_bo)`` where ``cont_bo`` is a (E,) tensor.
+
+        Notes
+        -----
+        Wf-A61 (2026-10-17) L8 — empty-batch (n=0) is well-behaved:
+        ``fc1(empty)`` returns ``(0, hidden_dim)``, dropout is a no-op
+        on a zero-row tensor, ``out(empty)`` returns ``(0, num_classes)``
+        and downstream ``argmax`` yields an empty list.  The trainer
+        boundary at
+        ``molmetal/scripts/train_cfm_yuelbond_wasserstein.py:3478-3479``
+        (``if all_logits.shape[0] != all_targets.shape[0]: continue``)
+        re-aligns when the batch collapses.  Do NOT call this head
+        with an empty ``feats_tensor`` outside the trainer path — the
+        boundary guard is the only thing keeping downstream CE on
+        an empty mask correct.
         """
         if (
             pair_features.dim() != 2 or pair_features.shape[1] != self.in_dim
@@ -1022,6 +1036,23 @@ class BondOrderHead(nn.Module):
         # which let the head drift into emitting patterns producing atoms
         # outside the atom vocab.  Refused silently when ``z_i`` / ``z_j``
         # are None (decode-only or relaxed callers).
+        #
+        # Wf-A61 (2026-10-17) L9 — fail fast on a trainer that opted
+        # into ``bond_pattern_mask_in_train=True`` but forgot to wire
+        # ``z_i`` / ``z_j``.  The previous silent-skip made the
+        # vocab-discipline mask a no-op without telling anyone, which
+        # was a regression vs. the A5 intent.  Decode-only callers
+        # (relaxed mask) still go through the no-op branch because
+        # they don't set the flag.
+        if self.bond_pattern_mask_in_train and (z_i is None or z_j is None):
+            raise ValueError(
+                "bond_pattern_mask_in_train=True requires z_i and z_j "
+                "(vocab atomic numbers of each pair endpoint); got "
+                f"z_i={'None' if z_i is None else 'Tensor'} "
+                f"z_j={'None' if z_j is None else 'Tensor'}. "
+                "Pass the vocab atom indices explicitly, or set "
+                "bond_pattern_mask_in_train=False for decode-only callers."
+            )
         if (
             self.bond_pattern_mask_in_train
             and z_i is not None

@@ -91,6 +91,18 @@ ROCM_GFX1101_ENV_VARS: Dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
+def _resolve_device_type() -> str:
+    """Return ``"cuda"`` if a CUDA-capable device is available, else ``"cpu"``.
+
+    Wf-A61 (2026-10-17) L13 — ``recommended_amp_kwargs()`` previously
+    hardcoded ``device_type="cuda"`` regardless of host capability, so a
+    CPU smoke caller that consumed this helper would crash inside
+    :func:`torch.autocast`.  Threading the host probe here keeps the
+    helper safe on both GPU and CPU-only environments.
+    """
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
 def recommended_amp_kwargs() -> Dict[str, Any]:
     """Return gfx1101-safe :func:`torch.autocast` kwargs.
 
@@ -101,13 +113,81 @@ def recommended_amp_kwargs() -> Dict[str, Any]:
     iterations of the training loop, which the documented
     *Automatic Mixed Precision examples* recipe explicitly recommends
     for stable, fast convergence.
+
+    Wf-A61 (2026-10-17) L13 — ``device_type`` is now selected at call
+    time via :func:`_resolve_device_type` (CUDA if available, else
+    CPU).  The previous hardcoded ``"cuda"`` literal silently worked
+    on GPU hosts and crashed on CPU-only hosts.
     """
     return {
-        "device_type": "cuda",
+        "device_type": _resolve_device_type(),
         "dtype": torch.bfloat16,
         "enabled": True,
         "cache_enabled": True,
     }
+
+
+#: Wf-A61 (2026-10-17) L2/L14 — dtype override driven by env var.  The
+#: Mol-Metal CFM AMP skill recommends
+#: ``MOLMETAL_CFM_AMP_DTYPE=float32`` on Blackwell (sm_120) hosts to
+#: avoid BF16 mantissa-underflow artefacts (the RTX PRO 6000 Blackwell
+#: ships BF16 throughput but a few of the EGNN scatter-sum reductions
+#: lose precision under BF16).  This module-level constant plus
+#: :func:`_resolve_amp_dtype` makes the override observable from
+#: :class:`CFMAMPContext` — the adapter-level
+#: ``flow_matching_lipman.__init__`` already consumes the same env var
+#: for its autocast helpers, but ``CFMAMPContext.__init__`` previously
+#: ignored it.
+_AMP_DTYPE_FROM_ENV: Dict[str, Optional[torch.dtype]] = {
+    "bfloat16": torch.bfloat16,
+    "bf16": torch.bfloat16,
+    "float16": torch.float16,
+    "fp16": torch.float16,
+    "float32": torch.float32,
+    "fp32": torch.float32,
+    "none": None,
+    "": None,
+}
+
+
+def _resolve_amp_dtype() -> torch.dtype:
+    """Resolve autocast dtype from ``MOLMETAL_CFM_AMP_DTYPE`` (default BF16).
+
+    Wf-A61 (2026-10-17) L2 — ``CFMAMPContext.__init__`` previously
+    hardcoded ``dtype=torch.bfloat16``; the env var was honoured by
+    ``flow_matching_lipman/__init__.py`` but not by callers reaching
+    :class:`CFMAMPContext`.  The recognised tokens are
+    ``bfloat16|bf16|float16|fp16|float32|fp32|none`` (case-sensitive
+    on purpose — typo safety).  An unrecognised value is reported via
+    :func:`warnings.warn` and falls back to BF16 rather than failing
+    the launch (a bad env var must not abort a 30-epoch run).
+    """
+    raw = os.environ.get("MOLMETAL_CFM_AMP_DTYPE", "bfloat16")
+    if raw in _AMP_DTYPE_FROM_ENV:
+        return _AMP_DTYPE_FROM_ENV[raw]
+    warnings.warn(
+        f"MOLMETAL_CFM_AMP_DTYPE={raw!r} unrecognised; using bfloat16. "
+        f"Recognised values: {sorted(_AMP_DTYPE_FROM_ENV)}",
+        RuntimeWarning,
+        stacklevel=3,
+    )
+    return torch.bfloat16
+
+
+def on_blackwell() -> bool:
+    """Return True if the active CUDA device is Blackwell (compute ≥ 8.9).
+
+    Wf-A61 (2026-10-17) L14 — helper for callers that want to gate
+    AMP dtype on Blackwell hardware (sm_120 = RTX PRO 6000).  Returns
+    False when CUDA is unavailable (CPU-only hosts).
+    """
+    if not torch.cuda.is_available():
+        return False
+    try:
+        major, minor = torch.cuda.get_device_capability()
+        return (major, minor) >= (8, 9)
+    except (RuntimeError, AttributeError):
+        return False
 
 
 def check_rocm_env_vars(warn: bool = True) -> Dict[str, bool]:
@@ -240,7 +320,16 @@ class CFMAMPContext:
         cache_enabled: bool = True,
     ) -> None:
         self.device = device
-        self.dtype = dtype
+        # Wf-A61 (2026-10-17) L2 — read MOLMETAL_CFM_AMP_DTYPE when the
+        # caller did not pass an override (the previous hardcoded
+        # ``torch.bfloat16`` ignored the documented Blackwell knob).
+        # A caller passing ``dtype`` explicitly (e.g. a smoke test
+        # forcing FP32) still wins — the env var is a default, not a
+        # veto.
+        if dtype is torch.bfloat16:
+            self.dtype = _resolve_amp_dtype()
+        else:
+            self.dtype = dtype
         self.enabled = enabled
         self.cache_enabled = cache_enabled
         self._inner: Optional[torch.autocast] = None
@@ -254,8 +343,14 @@ class CFMAMPContext:
             self._inner = _NullAutocast()
             self._inner.__enter__()
             return self
+        # Wf-A61 (2026-10-17) L1 — derive device_type from
+        # ``self.device`` so ``device="cpu"`` and ``device="cuda:0"``
+        # both reach the right autocast backend.  The literal
+        # ``"cuda"`` previously matched ``device.startswith("cuda")``
+        # but failed for ``device="cpu"`` (RuntimeError on CPU hosts).
+        device_type = self.device.split(":")[0]
         self._inner = torch.autocast(
-            device_type="cuda",
+            device_type=device_type,
             dtype=self.dtype,
             enabled=True,
             cache_enabled=self.cache_enabled,
@@ -322,4 +417,9 @@ __all__ = [
     "check_rocm_env_vars",
     "recommended_amp_kwargs",
     "ROCM_GFX1101_ENV_VARS",
+    # Wf-A61 (2026-10-17) — public surface for the env-var + Blackwell
+    # helpers exposed by the L2/L14 fix.
+    "_resolve_device_type",
+    "_resolve_amp_dtype",
+    "on_blackwell",
 ]

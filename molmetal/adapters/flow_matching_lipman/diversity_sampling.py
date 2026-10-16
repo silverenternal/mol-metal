@@ -141,6 +141,19 @@ def nucleus_sample(
     if p <= 0.0:
         # Edge case: degenerate to argmax (greedy).
         return logits.argmax(dim=-1)
+    # Wf-A61 (2026-10-17) L20+L21 — temperature must be strictly
+    # positive.  ``temperature <= 0`` would invert the distribution
+    # (most-likely token becomes least-likely) without raising; the
+    # ``temperature = 0`` case was silent-argmax-equivalent at best
+    # and a hidden semantic inversion at worst.  Surface both as a
+    # `ValueError` so a misconfigured caller fails fast instead of
+    # producing chemically-implausible samples.
+    if temperature <= 0:
+        raise ValueError(
+            f"nucleus_sample: temperature must be > 0 (got {temperature!r}). "
+            "Use top_k=1 / top_p=0 for argmax (greedy); pass a small "
+            "positive value (e.g. 1e-3) for near-greedy stochastic decoding."
+        )
     if abs(temperature - 1.0) > 1e-6:
         # Numerical safety: clamp temperature into a sane range so
         # the softmax doesn't overflow for very small τ.
@@ -439,6 +452,19 @@ class DiversitySamplingConfig:
     use_repulsion
         Whether to compute and return the repulsion term.  Default
         True.
+
+    Notes
+    -----
+    Wf-A61 (2026-10-17) L23 — dataclass defaults flipped to
+    ``use_mmd=False, use_repulsion=False`` so a direct caller that
+    constructs :class:`DiversitySamplingConfig()` without overrides
+    does not silently activate both diversity terms.  The trainer's
+    call site (``molmetal/scripts/train_cfm_yuelbond_wasserstein.py``)
+    already passes ``mmd_weight=0.0`` and ``repulsion_weight=0.0``
+    which short-circuits the contribution regardless of the
+    ``use_*`` flags, so this flip is **API-compatible at the
+    trainer boundary**.  Future direct callers (custom eval loops,
+    downstream tooling) must opt in explicitly.
     """
 
     top_p: float = 0.9
@@ -448,8 +474,8 @@ class DiversitySamplingConfig:
     repulsion_weight: float = 0.05
     mmd_sigma: float = 1.0
     repulsion_margin: float = 0.95
-    use_mmd: bool = True
-    use_repulsion: bool = True
+    use_mmd: bool = False
+    use_repulsion: bool = False
 
 
 @dataclass

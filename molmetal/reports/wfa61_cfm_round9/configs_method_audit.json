@@ -1,0 +1,30 @@
+{
+  "wave": "Wf-A61",
+  "wave_date": "2026-10-17",
+  "scope": "CFM cross-YAML config audit (per §6.55g)",
+  "method": "rk4",
+  "n_steps_default": 100,
+  "n_configs_total": 15,
+  "configs": [
+    "configs/cfm_5metal_default.yaml",
+    "configs/cfm_5metal_default_log_normal_2026_10_16.yaml",
+    "configs/cfm_blk_c5_repair_2026_10_09.yaml",
+    "configs/cfm_bond_head_100ep_2026_10_09.yaml",
+    "configs/cfm_bond_head_100ep_qed_2026_10_09.yaml",
+    "configs/cfm_bond_head_20ep_2026_10_09.yaml",
+    "configs/cfm_bond_head_30ep_onecycle.yaml",
+    "configs/cfm_fm_ab_2026_10_09.yaml",
+    "configs/cfm_fm_control_2026_10_09.yaml",
+    "configs/cfm_full_retrain.yaml",
+    "configs/cfm_gen_collapse_fm.yaml",
+    "configs/cfm_pcgrad_off_2026_10_15.yaml",
+    "configs/cfm_pcgrad_on_2026_10_14.yaml",
+    "configs/cfm_per_innovation_ablation_p1.4.yaml",
+    "configs/cfm_real_decode_lift_p1.3.yaml"
+  ],
+  "notes": [
+    "MEASURED via `grep -l 'method: rk4' configs/cfm_*.yaml` on 2026-10-17",
+    "Wf-A54 §6.55g already noted the PARAM-INERT half of the gap (use_fm_objective missing from 5 of 7 CFM configs); this audit anchors the cross-YAML rk4 baseline (15 cohorts MEASURED)",
+    "Verify when running `python molmetal/scripts/wfa61_cfm_round9.py configs_method_audit`: `len(configs) == 15` and every entry contains `configs/cfm_*.yaml`"
+  ]
+}

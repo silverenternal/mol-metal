@@ -293,9 +293,42 @@ class MoleculeLoss:
             admet_ames_safe = []
         if not qed_scores and not sa_norm and not admet_ames_safe:
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
-        mean_qed = sum(qed_scores) / max(len(qed_scores), 1) if qed_scores else 0.5
-        mean_sa = sum(sa_norm) / max(len(sa_norm), 1) if sa_norm else 0.5
-        mean_admet = sum(admet_ames_safe) / max(len(admet_ames_safe), 1) if admet_ames_safe else 0.5
+        # Wf-A61 (2026-10-17) L18 — non-empty count guard.  The
+        # previous per-component ``0.5`` fallback masked real defects:
+        # a cohort with ONE empty component produced a misleading
+        # ``0.5`` "average molecule" signal that looked like real
+        # chemistry but wasn't.  The fix:
+        #   * If 2+ of 3 components are empty, return zeros (current
+        #     all-empty path covers that case already).
+        #   * If exactly 1 of 3 is empty, weight the remaining
+        #     component × ``3/non_empty`` so the scale matches the
+        #     three-component baseline.  This keeps the
+        #     ``W2 AB-blocks stay honest`` invariant for cohorts with
+        #     a known RDKit Contrib gap (e.g. an RDKit build missing
+        #     SA_Score).
+        non_empty = sum(
+            1
+            for x in (qed_scores, sa_norm, admet_ames_safe)
+            if x
+        )
+        if non_empty <= 1:
+            return torch.zeros((), device=device) if device is not None else torch.zeros(())
+        scale = 3.0 / float(non_empty)
+        mean_qed = (
+            (sum(qed_scores) / max(len(qed_scores), 1)) * scale
+            if qed_scores
+            else 0.0
+        )
+        mean_sa = (
+            (sum(sa_norm) / max(len(sa_norm), 1)) * scale
+            if sa_norm
+            else 0.0
+        )
+        mean_admet = (
+            (sum(admet_ames_safe) / max(len(admet_ames_safe), 1)) * scale
+            if admet_ames_safe
+            else 0.0
+        )
         aggregate = mean_qed + mean_sa + mean_admet
         loss = -float(self.weight) * float(aggregate)
         return torch.tensor(loss, device=device) if device is not None else torch.tensor(loss)

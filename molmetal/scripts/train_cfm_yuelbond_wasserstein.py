@@ -1972,7 +1972,18 @@ class CFMJointModel(nn.Module):
             vel = out["vel"]  # (B, n_max, 3)
             return vel[node_mask]  # (N, 3) flat, cloud-major
         idx = torch.tensor(
-            [self.z_to_idx.get(int(zi), 0) for zi in atomic_numbers.tolist()],
+            # Wf-A61 (2026-10-17) L11 — explicit clamp on ``int(zi)``
+            # before the dict lookup.  The ``.get(..., 0)`` fallback
+            # already covered OOV, but ``int(zi)`` could be unbounded
+            # (Z>118) and downstream ``F.one_hot(num_classes=self.z_dim)``
+            # silently collapsed to idx 0 without documenting the
+            # clamp.  This makes the bound observable + greppable.
+            [
+                self.z_to_idx.get(
+                    max(0, min(int(zi), int(self.z_dim) - 1)), 0
+                )
+                for zi in atomic_numbers.tolist()
+            ],
             dtype=torch.long,
             device=x_t.device,
         )
@@ -2026,6 +2037,33 @@ class CFMJointModel(nn.Module):
         if getattr(batch, "pocket_features", None) is not None:
             return batch.pocket_features
         # Path 3 — legacy unconditioned (default; bit-exact pre-Wf-A37-3).
+        #
+        # Wf-A61 (2026-10-17) L3 — surface the silent-unconditioned
+        # path.  ``self.pocket_encoder`` is constructed whenever
+        # ``use_pocket_encoder=True`` (default), but the trainer only
+        # produces ``Batch.pocket_*`` when the loader supplied pocket
+        # clouds.  An opt-in trainer that forgot to wire pocket data
+        # therefore silently trained an unconditioned CFM — the
+        # pocket encoder was built but never ran.  Emit a one-shot
+        # warning so the gap is visible at startup instead of being
+        # discovered later as a "why does the model ignore pockets?"
+        # debugging session.
+        if (
+            getattr(self, "use_pocket_encoder", False)
+            and getattr(self, "pocket_encoder", None) is not None
+            and not getattr(self, "_pocket_unconditioned_warned", False)
+        ):
+            import warnings as _w
+            _w.warn(
+                "pocket_encoder is enabled but no pocket data is "
+                "present in the loader output (Batch.pocket_coords / "
+                "Batch.pocket_features are both None). Training is "
+                "proceeding UNCONDITIONED. To fix: pass a loader that "
+                "supplies pocket clouds, or set use_pocket_encoder=False.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            self._pocket_unconditioned_warned = True
         return None
 
     # ------------------------------------------------------------------

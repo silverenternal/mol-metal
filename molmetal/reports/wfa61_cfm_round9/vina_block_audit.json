@@ -1,0 +1,21 @@
+{
+  "wave": "Wf-A61",
+  "wave_date": "2026-10-17",
+  "scope": "CFM Vina panel BLOCKED-on-every-precious-metal (per §6.52d)",
+  "n_rows": 6,
+  "expected_metals": ["Pt", "Pd", "Ru", "Ir", "Os", "Au"],
+  "all_blocked": true,
+  "canonical_subtable": "molmetal/reports/wf_cfm_vina_blocked/vina_block_table.md",
+  "rows": [
+    {"metal": "Pt", "status": "BLOCKED", "reason": "UFF coverage insufficient for Pt coordination geometries", "alternative_oracle_priority": ["kNN(tmQM)", "OpenBabel UFF", "distance-COM"]},
+    {"metal": "Pd", "status": "BLOCKED", "reason": "UFF coverage insufficient for Pd square-planar", "alternative_oracle_priority": ["kNN(tmQM)", "OpenBabel UFF", "distance-COM"]},
+    {"metal": "Ru", "status": "BLOCKED", "reason": "UFF coverage insufficient for Ru octahedral", "alternative_oracle_priority": ["kNN(tmQM)", "OpenBabel UFF", "distance-COM"]},
+    {"metal": "Ir", "status": "BLOCKED", "reason": "UFF coverage insufficient for Ir half-sandwich", "alternative_oracle_priority": ["kNN(tmQM)", "OpenBabel UFF", "distance-COM"]},
+    {"metal": "Os", "status": "BLOCKED", "reason": "UFF coverage insufficient for Os half-sandwich", "alternative_oracle_priority": ["kNN(tmQM)", "OpenBabel UFF", "distance-COM"]},
+    {"metal": "Au", "status": "BLOCKED", "reason": "UFF coverage insufficient for Au linear (Au(I)) / square-planar (Au(III))", "alternative_oracle_priority": ["kNN(tmQM)", "OpenBabel UFF", "distance-COM"]}
+  ],
+  "notes": [
+    "Verify when running the JSON-readback test: n_rows == 6 and every row.status == 'BLOCKED'",
+    "R21-P2 timeline anchor (per Wf-A54 §6.81e sub-entry): kNN oracle is the ranked fallback for every precious metal; OpenBabel UFF is the secondary fallback; distance-COM is the geometric baseline."
+  ]
+}
