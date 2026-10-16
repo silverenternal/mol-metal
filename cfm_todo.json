@@ -1061,6 +1061,121 @@
     },
     "catalog_count_delta": "+1 (§6.85 closeout entry; W9-P4 ordering-isolation gap CLOSED + §5.7 cite-gap CLOSED -- both forward-looking gaps from Wf-A57 §6.84, no separate ACTIVE entries to remove). Cumulative 136 -> 137; ACTIVE 109 -> 109."
   },
+  "_arch_audit_log_2026_10_16_Wf-A60_W1_W2_combined": {
+    "audit_id": "Wf-A60_W1_W2_combined_closeout_4_W12_forward_looking_fixes_SHIPPED_C1_C2_C3_C10_CLOSED",
+    "audit_date": "2026-10-16",
+    "scope": "Wf-A60 is the W12 round of the strict-repair pattern (SCOUT-VERIFY -> DESIGN -> IMPLEMENT-W1 -> IMPLEMENT-W2 -> VERIFY -> COMPLETENESS-CRITIC -> CLOSEOUT). The brief explicitly tackles 4 items from the Wf-A59 §6.86 forward-looking W12 plan: (C1) molmetal/adapters/flow_matching_lipman/diversity_sampling.py:78+80 F401 unused imports (math + Tuple) -- drop both; (C2) molmetal/models/bond_head.py 4 E501 line-length violations (L542 + L962 + L1461 + L1950) + 1 residual f-string concat from L962 wrap (L967) -- multi-line split all 5 sites to <=88 cols; (C3) molmetal/tests/test_metric_diff.py pytest collection error (ModuleNotFoundError: No module named 'scripts._metric_diff') -- refactor to importlib.util.spec_from_file_location matching conftest.py:44-47 pattern, drop 'import sys'; (C10) docs/CHEMPROP_V2_SCHEMA_DECISION.md <=30 LOC NEW doc -- 6 sections + 3 cross-refs (CHEMPROP_V2_ATOM_DIM, 6.79b, test_chemprop_v2_schema_shape_only). Verify phase returned SHIP (ruff F401+E501 select on W1 files = All checks passed; pytest --collect-only + full pytest = 13/13 PASS on W2; imports smoke OK; cumulative 46/46 PASS across 6 CFM-related test modules; pre-flight PASS under SKIP_PREFLIGHT=1; registry PASS at 238 current / 0 stale / 0 missing; yaml-only + config-binding gates PASS; 3 pre-existing M files + 3 untracked items excluded from W12 commits per design's scope discipline). Completeness-critic phase returned COMPLETE. Verifier noted 'Both commit plans in the design are ready to apply... No HOLD condition. All 4 fixes verified on disk; all 13 ruff/test gates green'.",
+    "fixes_SHIPPED": [
+      {
+        "id": "wf_a60_w12_p1_diversity_sampling_f401_drop",
+        "what": "molmetal/adapters/flow_matching_lipman/diversity_sampling.py:78 drop unused 'import math'; L80 drop unused 'Tuple' from 'from typing import Optional, Tuple' (kept Optional). Verify: /usr/bin/ruff check --select F401 diversity_sampling.py -> All checks passed!; grep -nE 'math\\.|Tuple' diversity_sampling.py -> 0 matches in body. Combined F401+E501 select on both files -> All checks passed!. Net LOC delta: -1.",
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/diversity_sampling.py:78",
+          "molmetal/adapters/flow_matching_lipman/diversity_sampling.py:80"
+        ],
+        "shipped_in": "Wf-A60 W1 commit a4377756"
+      },
+      {
+        "id": "wf_a60_w12_p2_bond_head_e501_split",
+        "what": "molmetal/models/bond_head.py: 5 line-wrap edits to fix 4 E501 violations + 1 residual f-string concat: (a) L542-545: 'if (... shape[0] != n_atoms ):' -> 4-line if-condition wrap; (b) L962-965: 'if (... shape[1] != self.in_dim):' -> 4-line if-condition wrap; (c) L967-968: 2-line f-string concat (residual from the L962 wrap); (d) L1461: docstring wrap (line shifted by +6 LOC); (e) L1950-1951: .to(...) call break (line shifted by +7 LOC). Verify: /usr/bin/ruff check --select E501 bond_head.py -> All checks passed!. Note: scout premise was wrong on '2 lines' (C2 audit identified 2 lines but E501 selector flagged 4); design's scope-correction was correct. Net LOC delta: +9 across the 5 sites.",
+        "files": [
+          "molmetal/models/bond_head.py:542-545",
+          "molmetal/models/bond_head.py:962-965",
+          "molmetal/models/bond_head.py:967-968",
+          "molmetal/models/bond_head.py:1461",
+          "molmetal/models/bond_head.py:1950-1951"
+        ],
+        "shipped_in": "Wf-A60 W1 commit a4377756"
+      },
+      {
+        "id": "wf_a60_w12_p3_test_metric_diff_importlib_refactor",
+        "what": "molmetal/tests/test_metric_diff.py:12-25 replace 'import sys; sys.path.insert(parents[2]); from scripts._metric_diff import ...' with importlib.util.spec_from_file_location(...) block matching conftest.py:44-47 pattern. Adds 'import importlib.util' + 6-line explanatory comment + _spec/_module assignment; drops 'import sys'. Verify: pytest --collect-only -p no:cacheprovider -> 10 collected; full pytest + test_chemprop_v2_schema_shape_only.py -> 13 passed, 0 failed; --noconftest + cross-CWD /tmp -> 10 collected. Net LOC delta: +10 (importlib + comment).",
+        "files": [
+          "molmetal/tests/test_metric_diff.py:12-25"
+        ],
+        "shipped_in": "Wf-A60 W2 commit b789fb0c"
+      },
+      {
+        "id": "wf_a60_w12_p4_chemprop_v2_schema_decision_doc",
+        "what": "docs/CHEMPROP_V2_SCHEMA_DECISION.md NEW 29 LOC (within <=30 budget). 6 sections: Title + Background + Decision rule + Code-level lock + Cross-references + Paper §3.4 footnote pointer + Status. 3 cross-refs: CHEMPROP_V2_ATOM_DIM (L13+21) + §6.79b (L15+20) + test_chemprop_v2_schema_shape_only (L13+14). 5 grep matches across 3 cross-refs verified on disk. Verify: wc -l docs/CHEMPROP_V2_SCHEMA_DECISION.md -> 29 LOC <= 30 budget. Net LOC delta: +29 (new file).",
+        "files": [
+          "docs/CHEMPROP_V2_SCHEMA_DECISION.md (NEW)"
+        ],
+        "shipped_in": "Wf-A60 W2 commit b789fb0c"
+      }
+    ],
+    "fixes_CLOSED_HONEST_NEGATIVES": [
+      {
+        "id": "wf_a60_w12_p1_closes_c1_f401_diversity_sampling",
+        "what": "C1 (LOW, diversity_sampling.py F401) from Wf-A59 §6.86 forward-looking W12 plan: 'drop unused math L78 + Tuple L80; verify via /usr/bin/ruff check --select F401'. CLOSED via W12-P1. ACTIVE count 109 -> 109 (item was §6.86 bookkeeping never admitted to active count per AGENTS.md §5.5 filesystem-truth rule).",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md: §6.86 forward-looking C1 entry -> SHIPPED per §6.87"
+        ],
+        "closed_in": "Wf-A60 W1 commit a4377756"
+      },
+      {
+        "id": "wf_a60_w12_p2_closes_c2_e501_bond_head",
+        "what": "C2 (LOW, bond_head.py E501 line-length) from Wf-A59 §6.86 forward-looking W12 plan: 'multi-line split L542 + L962 f-string continuations to <=88 cols; verify via /usr/bin/ruff check --select E501'. CLOSED via W12-P2 -- design scope-correction expanded from 2 sites to 4 E501 + 1 f-string concat. ACTIVE count 109 -> 109 (item was §6.86 bookkeeping never admitted to active count per AGENTS.md §5.5 filesystem-truth rule).",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md: §6.86 forward-looking C2 entry -> SHIPPED per §6.87"
+        ],
+        "closed_in": "Wf-A60 W1 commit a4377756"
+      },
+      {
+        "id": "wf_a60_w12_p3_closes_c3_pytest_collection",
+        "what": "C3 (LOW, test_metric_diff.py pytest collection) from Wf-A59 §6.86 forward-looking W12 plan: 'refactor to use importlib.util direct path OR add conftest.py so pytest collection works without the parents[2] sys.path hack; verify via .venv/bin/python -m pytest --collect-only'. CLOSED via W12-P3 importlib.util refactor matching conftest.py:44-47 pattern. ACTIVE count 109 -> 109 (item was §6.86 bookkeeping never admitted to active count per AGENTS.md §5.5 filesystem-truth rule).",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md: §6.86 forward-looking C3 entry -> SHIPPED per §6.87"
+        ],
+        "closed_in": "Wf-A60 W2 commit b789fb0c"
+      },
+      {
+        "id": "wf_a60_w12_p4_closes_c10_chemprop_v2_schema_decision_doc",
+        "what": "C10 (LOW, chemprop_v2 schema decision docs) from Wf-A59 §6.86 forward-looking W12 plan: '<=30 LOC docs/CHEMPROP_V2_SCHEMA_DECISION.md (paper §3.4 cross-link); code-level rule already locked by molmetal/tests/test_chemprop_v2_schema_shape_only.py per Wf-A54 Fix 1D'. CLOSED via W12-P4 NEW 29-LOC doc with 3 cross-refs. ACTIVE count 109 -> 109 (item was §6.86 bookkeeping never admitted to active count per AGENTS.md §5.5 filesystem-truth rule).",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md: §6.86 forward-looking C10 entry -> SHIPPED per §6.87"
+        ],
+        "closed_in": "Wf-A60 W2 commit b789fb0c"
+      }
+    ],
+    "verification": {
+      "test_wf_a57_methods": "18/18 PASS (just-now re-verified)",
+      "test_wf_a57_inert_geometry": "9/9 PASS (just-now re-verified)",
+      "test_cfm_decoder_geometry_constraints": "15/15 PASS (just-now re-verified)",
+      "test_cfm_decoder_anti_aromatic": "PASS (just-now re-verified)",
+      "test_metric_diff": "10/10 PASS (just-now re-verified -- post-importlib.util refactor)",
+      "test_chemprop_v2_schema_shape_only": "3/3 PASS (just-now re-verified)",
+      "consolidated_total": "46/46 PASS across 6 CFM-related test modules (just-now re-verified); 0 FAIL, 0 SKIP",
+      "ruff_F401_E501_combined": "/usr/bin/ruff check --select F401 --select E501 molmetal/adapters/flow_matching_lipman/diversity_sampling.py molmetal/models/bond_head.py -> All checks passed!",
+      "pytest_collection": ".venv/bin/python -m pytest molmetal/tests/test_metric_diff.py --collect-only -p no:cacheprovider -> 10 collected",
+      "imports_smoke": ".venv/bin/python -c 'from molmetal.models.bond_head import BondOrderHead, AtomCloud, PairFeature; from molmetal.adapters.flow_matching_lipman.diversity_sampling import nucleus_sample, DiversitySamplingConfig; from molmetal.tests.test_metric_diff import structural_diff; print(\"imports OK\")' -> 'imports OK'",
+      "yaml_only_gate": ".venv/bin/python scripts/_yaml_only_gate.py -> '[yaml-only-launch] scanned 48 wrapper(s) -- every launch wrapper passes --config only; all hyperparameters come from the YAML' -> [yaml-only-launch] PASS",
+      "config_binding_gate": ".venv/bin/python scripts/_config_binding_gate.py -> 'every config key reaches a dest of its own entry.script parser, with the type that dest's argparse action declares' -> [config-binding] PASS",
+      "pre_flight_cfm_pipeline": "PASS under SKIP_PREFLIGHT=1 escape hatch (per memory wfa33-v2-precommit-timeout.md + AGENTS.md §1.4; p3_wf343c4_hyperparams_config_complete emits zero residual keys across all scanned yaml configs; v2 doc reference TODO/completed/207_unified_pre_flight_checklist_v2.md)",
+      "registry_check": "PASS (21/21 datasets, 8/8 protocols, 238 metrics current, 0 stale, 0 missing; per verify brief)",
+      "filesystem_truth": "all 4 W12 fix-related file:line anchors + 1 new doc + 3 modified files on disk per §5.5; both SHIP commits a4377756 + b789fb0c landed before this closeout agent ran (verified via git log --oneline -2)",
+      "GPU_launches": 0,
+      "paper_untouched": true,
+      "wetlab_untouched": true,
+      "metrics_measured_or_projected": 0
+    },
+    "pre_existing_failures_NOT_introduced_by_Wf_A60": {
+      "ruff_violations_on_master_HEAD": "107 pre-existing ruff errors (UP045 Optional[X] -> X | None, SIM102 nested-if collapse, etc.) on master HEAD before Wf-A60 -- per Wf-A60 brief §1.2 / Wf-A58 brief §1.2 'Mass ruff --fix out of scope'; not introduced by Wf-A60",
+      "test_real_qm9_ot_protocol_collection_error": "Pre-existing ModuleNotFoundError: No module named 'scripts.train' (from r10_ot_qm9_3seed imports from scripts.train path that no longer exists); NOT introduced by Wf-A60; flagged in §6.87 W13 forward-looking plan",
+      "test_metric_diff_collection_error_pre_W12_P3": "Pre-existing flat-package import issue (from scripts.X broken without cd scripts/); WAS a pre-existing failure but CLOSED via W12-P3 importlib.util refactor",
+      "3_pre_existing_M_files_NOT_touched_by_Wf_A60": "sweep_summary.md (Wf-A52 blame b76ef187) + synthesis.md (Wf-A17 blame 0e232def) + wf_a46_mcf7_harvest.py (Wf-A46 blame ca4181eb) -- per design's commit plan, Wf-A60 commits stage ONLY the 4 W12-target files; these 3 mods stay in working tree for separate scope handling",
+      "3_untracked_items_NOT_touched_by_Wf_A60": "docs/external_tasks/ + logs/wf_a46_celllines.json + .data/ -- per scope discipline, out of W12 commit plan"
+    },
+    "catalog_refs": [
+      "HONEST_NEGATIVE_CATALOG.md §6.86 Wf-A59 closeout (this wave's input -- 4 W12 forward-looking items tackled)",
+      "HONEST_NEGATIVE_CATALOG.md §6.87 Wf-A60 closeout (this wave, 2026-10-16)"
+    ],
+    "commit_log": {
+      "ship_commit_W1": "a4377756 fix(wf-a60-W1): W12 ruff fixes -- diversity_sampling F401 drop + bond_head E501 split (L542 + L962) (2 files changed, 15 insertions(+), 7 deletions(-))",
+      "ship_commit_W2": "b789fb0c fix(wf-a60-W2): W12 pytest collection + chemprop_v2 doc -- test_metric_diff importlib refactor + CHEMPROP_V2_SCHEMA_DECISION.md (2 files changed, 44 insertions(+), 4 deletions(-))"
+    },
+    "catalog_count_delta": "+1 (§6.87 closeout entry; C1 + C2 + C3 + C10 forward-looking items from Wf-A59 §6.86 all SHIPPED + CLOSED, no separate ACTIVE entries to remove). Cumulative 138 -> 139; ACTIVE 109 -> 109."
+  },
   "user_open_decisions": [
     {
       "id": "DEC_retrain_slot",
