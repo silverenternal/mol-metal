@@ -199,58 +199,21 @@ def covalent_valence_table(
 
 
 # ---------------------------------------------------------------------------
-# Wf-A55 W7-P1 — decoder-side geometry constraints (SquarePlanar / Oct / Td)
+# Wf-A57 W9-P3 (2026-10-16) — decoder-side ``_GeometryConstraint`` dataclass
+# + 3 frozen instances + ``_geometry_constraint_for_z`` lookup helper MOVED
+# to :mod:`molmetal.molmetal_lam.priors.metal_geometry` so trainer-side and
+# decoder-side share ONE canonical definition.  The dataclass identity,
+# fields, and lookup helper are preserved exactly so
+# :class:`test_cfm_decoder_geometry_constraints` remains PASS without
+# changes (it imports these names from THIS module via the re-export below).
 # ---------------------------------------------------------------------------
-# Why this is DECODER-side and not just a tighter valence cap: the existing
-# ``_COVALENT_VALENCE`` table already caps Pt at 4 — but it does so with one
-# number, regardless of geometry.  Square-planar Pt(II) and tetrahedral
-# Zn(II) both want CN=4, yet the *angle histogram* they accept is different:
-# a Pt(II) attempting a 109.5° bond order is a tetrahedral footprint, not
-# a square-planar one.  We enforce the geometry AFTER the valence gate, by
-# checking the assembled sub-graph's angle bucket count before appending
-# the bond.  Non-metal clouds see zero overhead (the dispatch is gated on
-# either endpoint being a constrained Z).
-@dataclass(frozen=True)
-class _GeometryConstraint:
-    name: str
-    max_bonds: int
-    ideal_angles: Tuple[float, ...]
-    metals: Tuple[int, ...]
-
-
-_SQUARE_PLANAR = _GeometryConstraint(
-    name="square_planar",
-    max_bonds=4,
-    ideal_angles=(90.0, 180.0),
-    metals=(46, 78, 79),  # Pd(II), Pt(II) (Pt_IV shares the cap), Au(III)
+from molmetal.molmetal_lam.priors.metal_geometry import (  # noqa: E402,F401
+    _GeometryConstraint,
+    _SQUARE_PLANAR,
+    _OCTAHEDRAL,
+    _TETRAHEDRAL,
+    _geometry_constraint_for_z,
 )
-_OCTAHEDRAL = _GeometryConstraint(
-    name="octahedral",
-    max_bonds=6,
-    ideal_angles=(90.0, 180.0),
-    metals=(26, 44, 45, 75, 76, 77),  # Fe/Ru/Rh/Re/Os/Ir
-)
-_TETRAHEDRAL = _GeometryConstraint(
-    name="tetrahedral",
-    max_bonds=4,
-    ideal_angles=(109.5,),
-    metals=(29, 30),  # Cu/Zn
-)
-
-
-def _geometry_constraint_for_z(z: int) -> Optional[_GeometryConstraint]:
-    """Return the geometry constraint for a metal Z, or ``None`` if the
-    element is unconstrained (non-metal or metal with no geometry cap).
-
-    Wf-A55 W7-P1 — added 2026-10-16.  Backed by the canonical 13-metal
-    ``_COVALENT_VALENCE`` set above; a Z missing from both ``_COVALENT_VALENCE``
-    AND these tuples is a non-metal and returns ``None`` (the decoder
-    never fires the geometry gate on it).
-    """
-    for c in (_SQUARE_PLANAR, _OCTAHEDRAL, _TETRAHEDRAL):
-        if z in c.metals:
-            return c
-    return None
 
 
 # ---------------------------------------------------------------------------

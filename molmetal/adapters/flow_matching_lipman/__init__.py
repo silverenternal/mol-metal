@@ -973,7 +973,7 @@ def _import_fm_lib(reference_path: str | Path):
 
     if isinstance(reference_path, str) and not os.path.isabs(reference_path):
         cand = Path(reference_path)
-        # Path traversal: `<this file>` = .../molmetal/adapters/flow_matching_lipman/__init__.py
+        # Path traversal: `<this file>` = .../molmetal/adapters/flow_matching_lipman/
         # so 4 .parent hops gives the repo root (where ``molmetal/`` lives).
         repo_root = Path(__file__).resolve().parent.parent.parent.parent
         molmetal_dir = repo_root / "molmetal"
@@ -2289,7 +2289,9 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # centres (78=Pt canonical OOV trigger + 28=Ni, 46=Pd,
         # 77=Ir, 45=Rh, 76=Os, 75=Re, 44=Ru, 79=Au).  20 elements
         # total — P1 guard requires >= 20.
-        self._atom_vocab: tuple = (1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78, 28, 46, 77, 45, 76, 75, 44, 79)
+        self._atom_vocab: tuple = (
+            1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78, 28, 46, 77, 45, 76, 75, 44, 79
+        )
 
         # WF-2 A5 — joint bond-head training knobs.  When
         # ``use_bond_head=True`` the adapter builds a
@@ -3003,7 +3005,8 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         if donor_edges is not None:
             if fixed_atoms is None:
                 raise ValueError(
-                    "dative_edge_index requires fixed_atom_types; sampled identities cannot define prior donors in advance"
+                    "dative_edge_index requires fixed_atom_types; "
+                    "sampled identities cannot define prior donors in advance"
                 )
             donor_edges = torch.as_tensor(
                 donor_edges, dtype=torch.long, device=self.device
@@ -3529,14 +3532,25 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             "metal_prior_last_generation": dict(
                 getattr(self, "last_metal_prior_diagnostics", {"status": "not_run"})
             ),
-            "metal_prior_contract": "requires conditioning.fixed_atom_types and conditioning.dative_edge_index; unconstrained sampling is inactive",
-            "atom_training_contract": "masked Z=0 inputs; true atomic numbers only as cross-entropy targets; old teacher-forced checkpoints require retraining",
+            "metal_prior_contract": (
+                "requires conditioning.fixed_atom_types and "
+                "conditioning.dative_edge_index; unconstrained sampling is inactive"
+            ),
+            "atom_training_contract": (
+                "masked Z=0 inputs; true atomic numbers only as cross-entropy "
+                "targets; old teacher-forced checkpoints require retraining"
+            ),
             "pocket_embed_scale": self._pocket_embed_scale,
             "sampling_seed": "GenerationConfig.seed via device-local torch.Generator",
             "sampling_mode": "eval with caller module modes restored",
             "model": "LipmanFlowMatching_v2_equivariant",
-            "coordinate_readout": "tanh(scalar_head(h))*(x-centroid) + mean_edges(tanh(phi)*relative_position)",
-            "checkpoint_compatibility": "v1 H-to-3 vel_head is incompatible; v2 requires retraining",
+            "coordinate_readout": (
+                "tanh(scalar_head(h))*(x-centroid) + "
+                "mean_edges(tanh(phi)*relative_position)"
+            ),
+            "checkpoint_compatibility": (
+                "v1 H-to-3 vel_head is incompatible; v2 requires retraining"
+            ),
             "atom_vocab": list(self._atom_vocab),
             "vocab_mask_enabled": self._vocab_mask,
             "paper": "Lipman et al. 2023, ICLR 2023",
@@ -3552,7 +3566,10 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 "bias on atom embeddings.  AffineProbPath x_1 sampling is "
                 "unchanged (TargetDiff / DiffSBDD style)."
             ),
-            "scm": "git clone https://github.com/facebookresearch/flow_matching.git molmetal/references/flow_matching",
+            "scm": (
+                "git clone https://github.com/facebookresearch/flow_matching.git "
+                "molmetal/references/flow_matching"
+            ),
         }
 
 

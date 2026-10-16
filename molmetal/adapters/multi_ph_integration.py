@@ -227,7 +227,8 @@ class MultiPHPocketFeatures(nn.Module):
         """
         if pocket_atom_types.shape != pocket_clouds.shape[:2]:
             raise ValueError(
-                f"pocket_atom_types must be (B, P); got {tuple(pocket_atom_types.shape)}"
+                f"pocket_atom_types must be (B, P); "
+                f"got {tuple(pocket_atom_types.shape)}"
             )
         out = two_param_filtration(
             pocket_clouds,
@@ -407,7 +408,8 @@ class MultiPHMetalCoordHead(nn.Module):
             )
         if pocket_features.dim() != 3:
             raise ValueError(
-                f"pocket_features must be (B, n_bins, n_bins) or (B, n_bins*n_bins); got {tuple(pocket_features.shape)}"
+                f"pocket_features must be (B, n_bins, n_bins) or (B, n_bins*n_bins); "
+                f"got {tuple(pocket_features.shape)}"
             )
         if pocket_features.shape[1:] != (self.n_bins, self.n_bins):
             raise ValueError(

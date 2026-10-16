@@ -317,6 +317,56 @@ class TestEndToEnd:
         report = gate.audit()
         assert report["verdict"] == "PASS", report["violations"]
 
+    def test_repo_configs_pass_with_schema_metadata_blocks(self):
+        """Wf-A57 W9-P2 (2026-10-16) — schema-metadata-only annotation
+        mappings (siblings whose every child is one of
+        :data:`_NON_TRAINER_SUBKEYS`) must not register as leaves.
+
+        This guards against a regression where the §5.11 gate would
+        recurse into a YAML block like
+
+            strict_large_frag:
+              type: bool
+              default: false
+              dest: bench_cfm_decode_real.py::strict_large_frag
+              desc: > ...
+
+        and emit 4 "resolves to no dest" violations for the children.
+        The subkey filter at ``_iter_leaves`` makes the whole block
+        an inert leaf instead.
+
+        Asserted by reading the audit JSON (it carries violation list
+        + per-config counts) and looking at the PoC YAML
+        ``configs/cfm_patience10_seed0_2026_10_12.yaml`` specifically.
+        """
+        import json
+        from pathlib import Path
+
+        report = gate.audit()
+        # The PoC config has 5 schema-metadata blocks
+        # (`strict_large_frag`, `largest_frag_min_frac`,
+        # `min_atoms_per_mol`, `emit_admet8`, `paper_table_cohort`).
+        # Before the W9-P2 fix each emitted 4 violations (one per
+        # sub-key child); the regression test pins the post-fix count
+        # to zero schema-metadata violations from this config.
+        violations = report.get("violations", [])
+        poc_violations = [
+            v
+            for v in violations
+            if isinstance(v, dict)
+            and v.get("config", "")
+            == "cfm_patience10_seed0_2026_10_12.yaml"
+        ]
+        keys = {str(v.get("key", "")) for v in poc_violations}
+        # None of the schema-metadata sub-keys should appear.
+        for subkey in ("type", "default", "dest", "desc"):
+            assert not any(
+                k.endswith(f".{subkey}") for k in keys
+            ), (
+                f"W9-P2 regression: subkey '{subkey}' recursed as a "
+                f"violation; the schema-metadata filter is gone"
+            )
+
     def test_every_config_is_actually_checked(self):
         """A gate that quietly skips configs is a gate that misses regressions."""
         report = gate.audit()

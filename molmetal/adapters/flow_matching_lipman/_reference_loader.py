@@ -99,11 +99,13 @@ def configure_reference(reference_path: str | Path | None = None) -> Path:
             root = ref / "flow_matching"
         if not (root / "__init__.py").is_file():
             raise FileNotFoundError(
-                f"Could not find cloned flow_matching at {ref}; clone https://github.com/facebookresearch/flow_matching.git there"
+                f"Could not find cloned flow_matching at {ref}; "
+                f"clone https://github.com/facebookresearch/flow_matching.git there"
             )
         if _reference_root is not None and _reference_root != root:
             raise RuntimeError(
-                f"Upstream flow_matching already loaded from {_reference_root.parent}; cannot switch to {ref} in the same process"
+                f"Upstream flow_matching already loaded from {_reference_root.parent}; "
+                f"cannot switch to {ref} in the same process"
             )
         _reference_root = root
         if _finder not in sys.meta_path:

@@ -161,6 +161,31 @@ _NON_TRAINER_SECTIONS = frozenset(
     }
 )
 
+#: Leaf keys (any section) whose ONLY values describe the schema of a
+#: sibling trainer key, never the trainer value itself.  These are
+#: typical argparse-yaml schema-metadata vocabulary (e.g.
+#: ``type: bool``, ``default: 0.5``, ``dest: foo.py::bar``,
+#: ``desc: >`` block-text).  A mapping whose every child key belongs to
+#: this set is treated by ``_iter_leaves`` as a leaf (not recursed into)
+#: because no consumer reads such a leaf — the schema-metadata is
+#: consumed by humans + the gate, not by any trainer dest.
+#:
+#: Wf-A57 W9-P2 (2026-10-16) — added per the §5.11 gate amendment.
+_NON_TRAINER_SUBKEYS: frozenset[str] = frozenset(
+    {
+        "type",
+        "default",
+        "dest",
+        "desc",
+        "description",
+        "_schema",
+        "enum",
+        "choices",
+        "min",
+        "max",
+    }
+)
+
 #: Leaf keys (any section) whose consumer is NOT the trainer, with the
 #: verified consumer named.  Skips of these are by design.
 _NON_TRAINER_KEYS: dict[str, str] = {
@@ -328,6 +353,25 @@ DECLARED_INERT_PATHS: frozenset[str] = frozenset(
         # this weight, but is NOT yet wired into the trainer loop.  Zero
         # consumers repo-wide until the Wf-A33+ wire-in.
         "train.fragment_connectivity_weight",
+        # 2026-10-16 (Wf-A57 W9-P2) — `train.{batch_size,lr,weight_decay,
+        # max_norm}` and `model.{hidden_dim,n_layers,depth}` are the
+        # §5.1 GPU-footprint annotations on the PoC YAML
+        # ``configs/cfm_patience10_seed0_2026_10_12.yaml`` whose
+        # ``entry.script`` is ``bench_cfm_decode_real.py`` (the
+        # benchmark eval harness, NOT the CFM trainer).  Each value
+        # carries the peer-paper-aligned default a reviewer reads for
+        # GPU-budget grounding (AGENTS.md §5.1: "hyperparameters via
+        # config files"); the value is consumed by humans + report
+        # writers, never by ``bench_cfm_decode_real.py``.  Removing the
+        # entry would revert §5.11's contract that no hyperparameter
+        # lives only in a shell script.
+        "train.batch_size",
+        "train.lr",
+        "train.weight_decay",
+        "train.max_norm",
+        "model.hidden_dim",
+        "model.n_layers",
+        "model.depth",
     }
 )
 
@@ -456,11 +500,26 @@ def _iter_leaves(mapping: Mapping[str, Any], prefix: Optional[list[str]] = None)
     ``{'protocol': {'epochs': 3}}`` → ``(['protocol', 'epochs'], 3)``.
     Non-empty nested mappings recurse; everything else (scalars, lists,
     empty mappings) is a leaf.
+
+    Wf-A57 W9-P2 (2026-10-16) — skip a mapping whose EVERY child is a
+    schema-metadata key (see :data:`_NON_TRAINER_SUBKEYS`). Such a
+    mapping is a sibling-side annotation block; recursing would emit
+    bare strings like ``(['strict_large_frag', 'type'], 'bool')`` which
+    the §5.11 binding gate then flags as dead keys, even though no
+    trainer dest consumes them (the schema-metadata is human-/gate-side
+    documentation only).  When ALL children of a mapping are in the
+    schema-metadata vocabulary, the WHOLE mapping is skipped — neither
+    the parent nor its children are yielded — so the §5.11 binding
+    gate sees neither as a leaf.
     """
     prefix = list(prefix or [])
     for k, v in mapping.items():
         path = prefix + [str(k)]
         if isinstance(v, Mapping) and v:
+            child_keys = [str(c) for c in v.keys()]
+            if all(ck in _NON_TRAINER_SUBKEYS for ck in child_keys):
+                # Schema-metadata annotation block: skip parent + children.
+                continue
             yield from _iter_leaves(v, path)
         else:
             yield path, v
