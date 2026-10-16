@@ -17,17 +17,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
-from rdkit import Chem, RDLogger
-from sklearn.metrics import average_precision_score, roc_auc_score
+from rdkit import RDLogger
 from sklearn.model_selection import train_test_split
 
 from molmetal.baselines.eval_utils import (
     compute_metrics,
-    metric_summary,
     morgan_features,
     per_cell_line_auc,
 )

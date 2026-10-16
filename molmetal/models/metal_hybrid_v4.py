@@ -43,7 +43,6 @@ Forward signature is V3-compatible:
 
 from __future__ import annotations
 
-import copy
 import math
 from dataclasses import dataclass
 from pathlib import Path

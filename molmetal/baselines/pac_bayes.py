@@ -76,7 +76,7 @@ References
 from __future__ import annotations
 
 import math
-from typing import Iterable, List, Sequence, Tuple
+from typing import Iterable, Sequence
 
 import torch
 

@@ -66,7 +66,6 @@ Land as a Wf-327/331 code wave — 5 separate audit guards in the existing
 
 from __future__ import annotations
 
-import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -89,7 +88,6 @@ from molmetal.baselines.dmpnn import (  # noqa: E402
     ATOM_FEATURE_DIM,
     BOND_FEATURE_DIM,
     DMPNNModel,
-    _GRUUpdate,
 )
 
 

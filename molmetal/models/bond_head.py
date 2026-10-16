@@ -68,9 +68,8 @@ report as PROJECTED.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
-from typing import ClassVar, Iterable, List, Optional, Sequence, Tuple
+from typing import ClassVar, List, Optional, Sequence, Tuple
 
 import torch
 import torch.nn as nn
@@ -1540,7 +1539,6 @@ class BondAwareDecoder:
         # Late import keeps the module importable without rdkit installed.
         from rdkit import Chem
         from rdkit.Chem import rdChemReactions  # noqa: F401  (kept for future use)
-        from rdkit.Chem import rdmolops
 
         rw = Chem.RWMol()
         for z in cloud.atomic_numbers.tolist():

@@ -236,15 +236,16 @@ class MoleculeLoss:
         for smi in decoded_smiles_batch:
             if not isinstance(smi, str) or not smi:
                 continue
-            try:
-                mol = Chem.MolFromSmiles(smi)
-            except Exception:
-                mol = None
+            # RDKit contract: Chem.MolFromSmiles returns None for any
+            # invalid SMILES — it never raises.  Trust the None return;
+            # a bare except would silently swallow real bugs (NameError
+            # on _Chem rebound, TypeError on a shadowed wrapper).
+            mol = Chem.MolFromSmiles(smi)
             if mol is None:
                 continue
             try:
                 qed_scores.append(float(_QED.qed(mol)))
-            except Exception:
+            except (RuntimeError, ValueError):
                 pass
             # SA score via ``rdkit.Chem.Contrib.SA_Score.sascorer`` (legacy
             # opt-in). Fall back to 0.5 (midpoint of [1, 10] SA range) when
@@ -260,7 +261,11 @@ class MoleculeLoss:
                         _mod = _ilu.module_from_spec(_spec)
                         _spec.loader.exec_module(_mod)
                         sa_scores.append(float(_mod.calculateScore(mol)))
-            except Exception:
+            except (ImportError, OSError, AttributeError, RuntimeError, ValueError):
+                # sascorer is an RDKit Contrib addon: not shipped in
+                # every distribution (ImportError), the path may not
+                # resolve (OSError / AttributeError on RDConfig), and
+                # calculateScore can raise on rare molecules.
                 pass
         # Normalise SA to [0, 1] via (10 - sa) / 9 so higher = better.
         sa_norm = [max(0.0, min(1.0, (10.0 - s) / 9.0)) for s in sa_scores]
@@ -274,17 +279,17 @@ class MoleculeLoss:
             for _smi in decoded_smiles_batch:
                 if not isinstance(_smi, str) or not _smi:
                     continue
-                try:
-                    _mol = Chem.MolFromSmiles(_smi)
-                except Exception:
-                    _mol = None
+                # RDKit contract: Chem.MolFromSmiles returns None for
+                # any invalid SMILES — it never raises.
+                _mol = Chem.MolFromSmiles(_smi)
                 if _mol is None:
                     continue
                 try:
                     admet_ames_safe.append(0.0 if catalog.HasMatch(_mol) else 1.0)
-                except Exception:
+                except (RuntimeError, ValueError):
                     admet_ames_safe.append(0.5)
-        except Exception:
+        except ImportError:
+            # FilterCatalog not available in this RDKit build.
             admet_ames_safe = []
         if not qed_scores and not sa_norm and not admet_ames_safe:
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
@@ -348,15 +353,15 @@ class DiversityLoss:
         for smi in decoded_smiles_batch:
             if not isinstance(smi, str) or not smi:
                 continue
-            try:
-                mol = Chem.MolFromSmiles(smi)
-            except Exception:
-                mol = None
+            # RDKit contract: Chem.MolFromSmiles returns None for any
+            # invalid SMILES — it never raises.  See property_losses.py
+            # Wf-A51 W3-D rationale for the narrow-no-except pattern.
+            mol = Chem.MolFromSmiles(smi)
             if mol is None:
                 continue
             try:
                 fp = AllChem.GetMorganFingerprintAsBitVect(mol, self.fp_radius, nBits=self.fp_bits)
-            except Exception:
+            except (RuntimeError, ValueError):
                 continue
             fps.append(fp)
         n = len(fps)
@@ -414,15 +419,15 @@ class QEDLoss:
         for smi in decoded_smiles_batch:
             if not isinstance(smi, str) or not smi:
                 continue
-            try:
-                mol = Chem.MolFromSmiles(smi)
-            except Exception:
-                mol = None
+            # RDKit contract: Chem.MolFromSmiles returns None for any
+            # invalid SMILES — it never raises.  See property_losses.py
+            # Wf-A51 W3-D rationale for the narrow-no-except pattern.
+            mol = Chem.MolFromSmiles(smi)
             if mol is None:
                 continue
             try:
                 scores.append(float(QED.qed(mol)))
-            except Exception:
+            except (RuntimeError, ValueError):
                 continue
         if not scores:
             return torch.zeros((), device=device) if device is not None else torch.zeros(())
@@ -532,7 +537,8 @@ class DiversityRegularizer:
             from molmetal.adapters.flow_matching_lipman import (
                 scaffold_conditioning as _sc,
             )
-        except Exception:
+        except ImportError:
+            # Optional sampling/conditioning modules not available.
             _ds = None  # type: ignore
             _sc = None  # type: ignore
         if _ds is None or _sc is None:

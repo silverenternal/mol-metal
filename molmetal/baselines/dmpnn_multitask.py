@@ -41,13 +41,11 @@ import torch.nn as nn
 from molmetal.baselines.dmpnn import (
     ATOM_FEATURE_DIM,
     BOND_FEATURE_DIM,
-    DMPNNModel,
     DMPNN_BATCH_SIZE,
     DMPNN_DEPTH,
     DMPNN_DROPOUT,
     DMPNN_HIDDEN,
     DMPNN_LR,
-    SPLITTER_FACTORIES,
     collate_graphs,
     featurize_smiles_list,
 )
@@ -55,13 +53,6 @@ from molmetal.baselines.eval_utils import compute_metrics, per_cell_line_auc
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 from molmetal.models.dmpnn import DomainAdversarialHead
 from molmetal.molmetal_lam.sbdd_env.gradient_reversal import ReverseLayerF
-from molmetal.data.splits import (
-    ChemicalSplitter,
-    LigandDeduplicatedSplitter,
-    RandomSplitter,
-    ScaffoldSplitter,
-    TemporalSplitter,
-)
 
 RDLogger = None  # silence linter
 try:

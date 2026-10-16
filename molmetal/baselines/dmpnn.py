@@ -14,7 +14,6 @@ Key design:
 from __future__ import annotations
 
 import json
-import math
 import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
@@ -23,14 +22,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 from rdkit import Chem, RDLogger
-from rdkit.Chem import rdMolDescriptors
 
 from molmetal.baselines.eval_utils import compute_metrics, per_cell_line_auc
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 from molmetal.data.splits import (
     AssayGroupSplitter,
     ChemicalSplitter,
-    GroupIdSplitter,
     LigandDeduplicatedSplitter,
     RandomSplitter,
     ScaffoldSplitter,

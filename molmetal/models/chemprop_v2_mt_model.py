@@ -70,13 +70,11 @@ Honest framing per party-twenty-spirit §3.5
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from chemprop.data import BatchMolGraph
 from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer

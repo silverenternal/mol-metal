@@ -90,10 +90,10 @@ class StereoCentreSuppressionLoss:
         for smi in decoded_smiles_batch:
             if not isinstance(smi, str) or not smi:
                 continue
-            try:
-                m = self._Chem.MolFromSmiles(smi)
-            except Exception:
-                m = None
+            # RDKit contract: Chem.MolFromSmiles returns None for any
+            # invalid SMILES — it never raises.  See property_losses.py
+            # Wf-A51 W3-D rationale for the narrow-no-except pattern.
+            m = self._Chem.MolFromSmiles(smi)
             if m is not None:
                 mols.append(m)
         if not mols:
@@ -105,7 +105,7 @@ class StereoCentreSuppressionLoss:
                 # `cfm_sa_stereocentre_control.json` so the count
                 # matches the eval metric.
                 n = len(self._Chem.FindMolChiralCenters(m, includeUnassigned=True))
-            except Exception:
+            except (RuntimeError, ValueError):
                 n = 0
             counts.append(max(0, n - self.target_per_mol))
         per_mol = torch.tensor(counts, dtype=torch.float32)
@@ -148,15 +148,15 @@ class FragmentConnectivityLoss:
         for smi in decoded_smiles_batch:
             if not isinstance(smi, str) or not smi:
                 continue
-            try:
-                m = self._Chem.MolFromSmiles(smi)
-            except Exception:
-                m = None
+            # RDKit contract: Chem.MolFromSmiles returns None for any
+            # invalid SMILES — it never raises.  See property_losses.py
+            # Wf-A51 W3-D rationale for the narrow-no-except pattern.
+            m = self._Chem.MolFromSmiles(smi)
             if m is None:
                 continue
             try:
                 n_frags = len(self._Chem.GetMolFrags(m))
-            except Exception:
+            except (RuntimeError, ValueError):
                 n_frags = 1
             penalties.append(max(0, n_frags - 1))
         if not penalties:

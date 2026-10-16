@@ -15,7 +15,7 @@ from molmetal.baselines.eval_utils import (
     morgan_features,
     per_cell_line_auc,
 )
-from molmetal.baselines.morgan_xgb import MorganXGBBaseline, MORGAN_RADIUS, MORGAN_NBITS
+from molmetal.baselines.morgan_xgb import MORGAN_RADIUS, MORGAN_NBITS
 from molmetal.data.cytotox import CytotoxFilter, MetalCytotoxDataset
 
 

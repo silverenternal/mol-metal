@@ -37,13 +37,11 @@ Note on the encoder wrapper:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from molmetal.data.featurize import GraphFeaturizer
 from molmetal.models.dmpnn import DirectedMPNN, MPNNConfig

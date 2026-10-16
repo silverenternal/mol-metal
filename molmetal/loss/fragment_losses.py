@@ -75,10 +75,10 @@ class SingleFragmentLoss:
         for smi in decoded_smiles_batch:
             if not isinstance(smi, str) or not smi:
                 continue
-            try:
-                m = self._Chem.MolFromSmiles(smi)
-            except Exception:
-                m = None
+            # RDKit contract: Chem.MolFromSmiles returns None for any
+            # invalid SMILES — it never raises.  See property_losses.py
+            # Wf-A51 W3-D rationale for the narrow-no-except pattern.
+            m = self._Chem.MolFromSmiles(smi)
             if m is None:
                 # Unparseable SMILES — count as a fragment (penalty=1).
                 # This matches the eval-time treatment of decode failures
@@ -87,7 +87,7 @@ class SingleFragmentLoss:
                 continue
             try:
                 n_frags = len(self._Chem.GetMolFrags(m))
-            except Exception:
+            except (RuntimeError, ValueError):
                 n_frags = 1
             penalties.append(0.0 if n_frags == 1 else 1.0)
         if not penalties:

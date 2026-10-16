@@ -67,7 +67,6 @@ import torch.nn as nn
 
 from molmetal.models.dmpnn import (
     DirectedMPNN,
-    GRUMessageUpdate,
     MPNNConfig,
 )
 

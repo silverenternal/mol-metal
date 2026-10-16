@@ -19,7 +19,7 @@ so the fusion output can drop into the existing dual-head pipeline unchanged.
 from __future__ import annotations
 
 import math
-from typing import Optional, Tuple
+from typing import Optional
 
 import torch
 import torch.nn as nn

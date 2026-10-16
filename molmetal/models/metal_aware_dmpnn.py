@@ -32,7 +32,7 @@ two share the exact parameter names where possible.
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, Tuple
+from typing import Optional, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -43,7 +43,6 @@ from molmetal.baselines.dmpnn import (
     DMPNN_DROPOUT,
     DMPNN_HIDDEN,
     DMPNNModel,
-    _GRUUpdate,
 )
 from molmetal.data.metal_graph import METAL_FEAT_DIM
 

@@ -23,7 +23,6 @@ import torch.nn as nn
 
 from molmetal.models._scatter import (
     scatter_sum_legacy as _scatter_sum,
-    scatter_sum_direct as _scatter_sum_direct,
 )
 
 # ---------------------------------------------------------------------------
