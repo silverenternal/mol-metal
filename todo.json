@@ -387,10 +387,11 @@
         "title": "跑通 D-MPNN ⊕ ECFP4 融合 arms 3/4/5 (+ nested-bleed)",
         "gap": "G1",
         "why": "现有 fusion_cheap_arms_probe.json 只跑了 arms 1/2/6；arms 3/4/5 从未运行，D-MPNN 融合问题仍然开放。",
-        "how": "configs/fusion_dmpnn_gbdt_within_metal.yaml 已定义 arms 3/4/5；先 §5.11 两门禁 + §5.7 smoke，再全 5 金属 × 5 split_seeds。",
+        "how": "configs/fusion_dmpnn_gbdt_within_metal.yaml 已定义 arms 3/4/5；先 §5.11 两门禁 + §5.7 smoke，再全 5 金属 × 5 split_seeds。注意: arm2 依赖 models/tmqm_pretrained/tmqm_pretrained_encoder.pt，该 ckpt 当前【不在盘上】(目录下只有 featurise_stats.json / pretrain_metrics.json)，runner 会优雅 SKIP 并写 arm2_status='SKIPPED: encoder not found'；arms 3/4/5 用的是 within-run 监督式 D-MPNN 嵌入，不依赖 tmQM ckpt，故不受影响。",
         "deliverable": "metrics/by_metric/fusion_dmpnn_ecfp4_within_metal.json",
         "acceptance": "融合 arm 在 ≥4/5 金属上 ≥ arm1 (ECFP4→XGB) 且 Holm 显著；否则进入 FU2 路由/stacking 路线。",
-        "status": "OPEN"
+        "status": "OPEN",
+        "note_arm2": "fusion_cheap_arms_probe.json 里 arm2 (Ru 0.820005) 是 ckpt 还在时(2026-10-13)测的，现在无法复现。"
       },
       {
         "id": "FU2",
