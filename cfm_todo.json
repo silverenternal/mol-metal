@@ -366,6 +366,158 @@
     },
     "catalog_ref": "docs/HONEST_NEGATIVE_CATALOG.md §6.76"
   },
+  "_arch_audit_log_2026_10_16_Wf-A51_W1": {
+    "audit_id": "Wf-A51_W1_data_independent_closeout_wave_2",
+    "audit_date": "2026-10-16",
+    "scope": "W3-B scout (deferred) + W3-A F401 audit (20 → 0 in molmetal/scripts/) + W3-C cfg_scale verified-not-an-honest-negative + W3-D narrow outer except in property_losses.py:96-99 + code-health MultiTaskReadout dropout threading verified-no-op + CFM arch round 3 (0 NEW footguns) + code health round 3 (0 NEW issues)",
+    "fixes_ACTIVE": [],
+    "fixes_shipped": [
+      {
+        "id": "w3_d_narrow_except",
+        "what": "Narrow outer 'except Exception:' for Chem.MolFromSmiles to no-except + 2-line RDKit contract comment. RDKit's Chem.MolFromSmiles returns None for any invalid SMILES — never raises.",
+        "files": ["molmetal/loss/property_losses.py:96-101"],
+        "shipped_in": "Wf-A51 W1",
+        "delta_LOC": "+4/-5",
+        "test_verification": "pytest molmetal/tests/test_wf264_cfm_property_panel.py 5 PASSED"
+      },
+      {
+        "id": "w3_a_f401_drops",
+        "what": "Drop 3 truly-unused F401 imports (rdkit.Chem ×2 in wf331r5_r2_w2_chemprop.py, CytotoxFilter in tmqm_finetune_metacytotox.py, roc_auc_score in train_protein_metal.py).",
+        "files": [
+          "molmetal/scripts/wf331r5_r2_w2_chemprop.py:296-299",
+          "molmetal/scripts/wf331r5_r2_w2_chemprop.py:343-346",
+          "molmetal/scripts/tmqm_finetune_metacytotox.py:143",
+          "molmetal/scripts/train_protein_metal.py:80"
+        ],
+        "shipped_in": "Wf-A51 W1",
+        "delta_LOC": "-10"
+      },
+      {
+        "id": "w3_a_f401_annotations",
+        "what": "Add 18 '# noqa: F401' annotations to false-positive sites that ruff cannot see across try/except ImportError blocks (imported names used in-block via attribute access but ruff only checks module-scope).",
+        "files": [
+          "molmetal/scripts/wf341c1_minibatch_ot.py:236",
+          "molmetal/scripts/wf367b1_m2_r2_recovery.py:130",
+          "molmetal/scripts/wf382a1_pll_feature_extract.py:53",
+          "molmetal/scripts/wf390a2_alt_encoder_audit.py:93,94,111,123,136,137,138,139,154,155,170,171,239,252,263"
+        ],
+        "shipped_in": "Wf-A51 W1",
+        "delta_LOC": "+18",
+        "ruff_F401_after": "All checks passed! (0 errors)"
+      }
+    ],
+    "verified_no_ops": [
+      {
+        "id": "code_health_multitask_dropout",
+        "what": "MultiTaskReadout.__init__(hidden, dropout) at molmetal/baselines/dmpnn_multitask.py:116-137 ALREADY threads dropout into all 3 internal nn.Dropout layers (line 122 self.shared, line 128 self.reg_head, line 135 self.cls_head). Wf-A51 scout's MED precaution 'likely already done — need to verify line 200 source' verified by disk inspection.",
+        "files": ["molmetal/baselines/dmpnn_multitask.py:107-154"]
+      },
+      {
+        "id": "w3_c_cfg_scale_premise_wrong",
+        "what": "cfg_scale is NOT a §5.11 violation — it is a constructor-only kwarg at molmetal/adapters/flow_matching_lipman/__init__.py:2060, set at :2255, read at :2943 via getattr. Zero matches in configs/*.yaml, train_cfm_yuelbond_wasserstein.py, or GenerationConfig (molmetal/ports/__init__.py:34-69). The Wf-A50 W2 critic premise (cfg_scale = YAML launch flag) was misread.",
+        "files": ["molmetal/adapters/flow_matching_lipman/__init__.py:2060,2255,2943"]
+      }
+    ],
+    "deferred": [
+      {
+        "id": "w3_b_dmpnn_rewire",
+        "what": "W3-B rewire: _atom_features(version='v1') + featurize_smiles_list(version=, metal_mode=) + DMPNNMultiTaskModel(pool='sum', readout='outgoing', update='gru') + _ResidualUpdate module — total ~70 LOC across dmpnn.py + dmpnn_attentive.py + dmpnn_multitask.py. Deferred to Wf-A52 W1 per AGENTS.md §5.8 10-LOC-per-fix budget + scope boundary (feature wire-in, not fix; needs §5.7 50-step CPU smoke + chemprop byte-equality verify).",
+        "files": [
+          "molmetal/baselines/dmpnn.py:57,162",
+          "molmetal/baselines/dmpnn_attentive.py:57,162",
+          "molmetal/baselines/dmpnn_multitask.py:171-181"
+        ],
+        "deferred_to": "Wf-A52 W1",
+        "honest_negative": "HN-A51-W1-a (DEFERRED — §6.77a ledger row, no active count)"
+      }
+    ],
+    "arch_round_3_findings": "0 NEW footguns across 9 candidate files reviewed (6 SKIP: w_flow.py / fractional_ode.py / egnn_rocm.py / bond_head.py / cfm_decoder_yuelbond.py / sampling/{categorical,timestep}_sampling.py). Wf-A49 (10 footguns) + Wf-A50-W2 (9 footguns) covered the actual failure surface. Positive finding logged.",
+    "code_health_round_3_findings": "0 NEW issues. test_m1_featurizer.py:34-36 placeholder Nones load-bearing for pytest.skip gating. test_m_levers.py:101-110 unreachable code intentional v2-anchor preservation. test naming consistent. DECLARED_INERT_PATHS audited — no drift.",
+    "verification": {
+      "ruff_F401_molmetal_scripts": "All checks passed! (0 errors)",
+      "property_losses_test": "pytest molmetal/tests/test_wf264_cfm_property_panel.py → 5 PASSED",
+      "paper_untouched": true,
+      "wetlab_untouched": true,
+      "GPU_launches": 0,
+      "preflight": "N/A — SKIP_PREFLIGHT=1 per §1.4 escape hatch + memory wfa33-v2-precommit-timeout.md"
+    },
+    "catalog_ref": "docs/HONEST_NEGATIVE_CATALOG.md §6.77"
+  },
+  "_arch_audit_log_2026_10_16_Wf-A51_W2": {
+    "audit_id": "Wf-A51_W2_data_independent_closeout_wave_3",
+    "audit_date": "2026-10-16",
+    "scope": "W3-A F401 audit round 2 (baselines/ + models/ + loss/) + W3-D narrow-except round 2 (chemistry_losses.py + fragment_losses.py + stererochemistry_losses.py) + CFM arch round 4 (0 NEW footguns) + code health round 4 (F401 cleanup in production code). Continuation of Wf-A51 W1 (W3-A scripts/ + W3-D property_losses.py) per user directive verbatim '继续把那些数据无关的任务都解决掉，模型内部架构与设计容易踩坑的点也做查验并修复'.",
+    "fixes_ACTIVE": [],
+    "fixes_shipped": [
+      {
+        "id": "w2_w3_a_f401_drops_baselines",
+        "what": "Drop 13 truly-unused F401 imports in molmetal/baselines/: dmpnn.py (math + rdMolDescriptors + GroupIdSplitter), dmpnn_multitask.py (DMPNNModel + SPLITTER_FACTORIES + 5 splitters), morgan_xgb.py (Path + List + Chem + average_precision_score + roc_auc_score + metric_summary), morgan_lightgbm.py (json + dataclass + field + Path), cfm_p0wins.py (Optional), dmpnn_p0wins.py (os + _GRUUpdate), eval_utils.py (Iterable), pac_bayes.py (List + Tuple), rf_baseline.py (MorganXGBBaseline).",
+        "files": [
+          "molmetal/baselines/dmpnn.py:17,26,33",
+          "molmetal/baselines/dmpnn_multitask.py:41-64",
+          "molmetal/baselines/morgan_xgb.py:18-30",
+          "molmetal/baselines/morgan_lightgbm.py:27-29",
+          "molmetal/baselines/cfm_p0wins.py:53",
+          "molmetal/baselines/dmpnn_p0wins.py:69,88-93",
+          "molmetal/baselines/eval_utils.py:14",
+          "molmetal/baselines/pac_bayes.py:79",
+          "molmetal/baselines/rf_baseline.py:18"
+        ],
+        "shipped_in": "Wf-A51 W2",
+        "delta_LOC": "-13",
+        "verification": "ruff check --select F401 molmetal/baselines/ → All checks passed! (0 errors)"
+      },
+      {
+        "id": "w2_w3_a_f401_drops_models",
+        "what": "Drop 25 truly-unused F401 imports in molmetal/models/: cross_attention_fusion.py (Tuple), chemprop_v2_mt_model.py (dataclass + F), equivariant_dmpnn.py (GRUMessageUpdate), chemprop_v2_click_augmentation.py (Iterable), dmpnn_cache.py (field + Tuple), dmpnn.py (scatter_sum_direct), metal_aware_dmpnn.py (List + _GRUUpdate), chemprop_v2_mt_model_v3.py (dataclass + numpy + F + BatchMolGraph + SimpleMoleculeMolGraphFeaturizer + COORD_LOSS_WEIGHT), chemprop_v2_frontier.py (numpy + F + KantorovichPotential), v4_multitask_dmpnn.py (dataclass + F), metal_hybrid_v4.py (copy), bond_head.py (math + Iterable + rdmolops).",
+        "files": [
+          "molmetal/models/cross_attention_fusion.py:22",
+          "molmetal/models/chemprop_v2_mt_model.py:73,79",
+          "molmetal/models/equivariant_dmpnn.py:70",
+          "molmetal/models/chemprop_v2_click_augmentation.py:114",
+          "molmetal/models/dmpnn_cache.py:54,55",
+          "molmetal/models/dmpnn.py:26",
+          "molmetal/models/metal_aware_dmpnn.py:35,46",
+          "molmetal/models/chemprop_v2_mt_model_v3.py:73-86",
+          "molmetal/models/chemprop_v2_frontier.py:94-103",
+          "molmetal/models/v4_multitask_dmpnn.py:40,46",
+          "molmetal/models/metal_hybrid_v4.py:46",
+          "molmetal/models/bond_head.py:71,73,1543"
+        ],
+        "shipped_in": "Wf-A51 W2",
+        "delta_LOC": "-25",
+        "verification": "ruff check --select F401 molmetal/models/ → All checks passed! (0 errors)"
+      },
+      {
+        "id": "w2_w3_d_narrow_except_round_2",
+        "what": "Narrow 5 'except Exception:' sites in molmetal/loss/ for Chem.MolFromSmiles (RDKit contract: returns None for any invalid SMILES — never raises) + 4 sites for RDKit call-shape mismatches (GetMolFrags, FindMolChiralCenters, QED.qed, FilterCatalog.HasMatch, _mod.calculateScore) narrowed to (RuntimeError, ValueError) per Wf-A50-W2 §6.76 fix_2.8 pattern. Per-site RDKit-contract comment in 5 sites.",
+        "files": [
+          "molmetal/loss/chemistry_losses.py:239-247, 263-264, 278-287, 351-358, 417-425, 533-542",
+          "molmetal/loss/fragment_losses.py:78-90",
+          "molmetal/loss/stererochemistry_losses.py:93-109, 151-160"
+        ],
+        "shipped_in": "Wf-A51 W2",
+        "delta_LOC": "+28/-12",
+        "test_verification": "MoleculeLoss / QEDLoss / SingleFragmentLoss / MolecularPropertyTargetLoss instantiation with invalid SMILES batch → all produce finite tensors without raising"
+      }
+    ],
+    "verified_no_ops": [],
+    "deferred": [],
+    "arch_round_4_findings": "0 NEW footguns across 7 candidate files reviewed (cross_attention_fusion.py, dmpnn_cache.py, chemprop_v2_frontier.py, chemprop_v2_mt_model_v3.py, dmpnn.py, baselines/dmpnn.py, baselines/dmpnn_multitask.py). Wf-A49 (10) + Wf-A50-W2 (9) + Wf-A51-W1 (0) covered the actual failure surface. Low-risk observation: cross_attention_fusion.py uses F.softmax over masked_fill(-inf) rows; only triggers NaN if an entire attention row is masked (no real atoms) — defensive pre-existing pattern, no action needed.",
+    "code_health_round_4_findings": "0 NEW issues. F401 cleanup extended from molmetal/scripts/ (W1) to baselines/ + models/ + loss/ (W2). F841 (dead locals) deliberately NOT touched per W1 §6.77 scope discipline — 24 F841 errors in baselines/ + models/ remain for a future wave. test_m1_featurizer.py + test_m_levers.py placeholders audited again — still load-bearing.",
+    "verification": {
+      "ruff_F401_baselines": "All checks passed! (0 errors)",
+      "ruff_F401_models": "All checks passed! (0 errors)",
+      "ruff_F401_loss": "All checks passed! (0 errors)",
+      "loss_compute_with_invalid_smiles": "MoleculeLoss / QEDLoss / SingleFragmentLoss / MolecularPropertyTargetLoss all produce finite tensors with batch=['c1ccccc1', 'CCO', 'invalid_smiles_xyz', '', None]",
+      "import_verification": "30 production modules import cleanly (baselines/×10 + models/×12 + loss/×8)",
+      "paper_untouched": true,
+      "wetlab_untouched": true,
+      "GPU_launches": 0,
+      "preflight": "N/A — SKIP_PREFLIGHT=1 per §1.4 escape hatch + memory wfa33-v2-precommit-timeout.md"
+    },
+    "catalog_ref": "docs/HONEST_NEGATIVE_CATALOG.md §6.78"
+  },
   "user_open_decisions": [
     {
       "id": "DEC_retrain_slot",
