@@ -2955,3 +2955,112 @@ The `DECLARED_INERT_PATHS` registration was therefore **NOT APPLIED** in Wf-A54 
 
 **Workflow** | Wf-A55 W7 (2026-10-16; CPU-only docs + 2 file-mod-packs: W1 code pack × 3 files (cfm_decoder_yuelbond.py +192 / test_cfm_decoder_geometry_constraints.py NEW +256 / test_cfm_decoder_anti_aromatic.py NEW +282 = +730 LOC) + W2 docs pack × 3 docs surfaces (this §6.82 catalog entry + memory file Resolution section + MEMORY.md index) + 0 GPU + 0 paper/* + 0 wet-lab; pre-flight N/A via §1.4 escape hatch per `SKIP_PREFLIGHT=1` + memory `wfa33-v2-precommit-timeout.md` (no W7 trainer-flag wire-in — §5.7 N/A; decoder-side only); §5.7 50-step CPU smoke NOT required (W7 ships decoder-side code, not a trainer-flag wire-in — the §5.7 gate only triggers for trainer flags per AGENTS.md §5.7 first sentence); §5.11 yaml-only gate round-trip NOT applicable (no W7 trainer-flag wire-in, no new CLI flag introduced); §5.6 atomic-write N/A (text-content edits via Edit tool, within `<Edit>-threshold` for the 41-LOC inserts across 3 docs slots); ruff clean; 15/15 NEW tests PASS (8 geometry + 7 anti-aromatic); 26/27 regression PASS (1 PRE-EXISTING master-failure in `test_build_cfm_decoder_use_yuelbond_false` isolated via `git stash` baseline replay on master HEAD `aae74085^` = `5ab8212f` — confirmed NOT introduced by W7); 2 commits per Wf-A55 W7 DESIGN plan, commit hashes `4ce85f45` (W1) + `aae74085` (W2); §6.82 closeout entry added in this 3rd commit on top of the 2 SHIP commits).
 
+### §6.82g Wf-A56 W1 DEFER (2026-10-16) — VALID_ODE_METHODS whitelist at flow_matching_lipman/__init__.py:3104 inconsistent with upstream GenerationConfig.VALID_METHODS + downstream reference solver acceptance set [NEW ACTIVE]
+
+**Context.** Wf-A56 W1 fix #1 (HIGH) proposed adding `_VALID_ODE_METHODS = frozenset({"euler", "midpoint", "dopri5"})` at `molmetal/adapters/flow_matching_lipman/__init__.py:3104-3108` to catch typos at the adapter boundary before they reach the solver. The verify phase said PASS (W1 fix 1 verbatim: *"PASS"*). The completeness-critic phase (which runs AFTER verify in the Wf-A56 pipeline) found the whitelist is internally inconsistent with **two adjacent surfaces** that the verify phase did not cross-reference:
+
+1. **Upstream `GenerationConfig.VALID_METHODS`** at `molmetal/ports/__init__.py:41` = `{"euler", "midpoint", "dopri5", "heun3"}` — adds `heun3` (NOT in W1 fix #1).
+2. **Downstream reference solver** at `molmetal/adapters/flow_matching_lipman/_reference/solver/__init__.py:281-291` accepts `{"euler", "midpoint", "heun", "rk2", "rk4"}` — uses `rk4`, REJECTS `dopri5`.
+3. **18+ YAML configs use `method: rk4`** (verified via `grep -rn "method: rk4" configs/`):
+   - `cfm_5metal_default.yaml:65`
+   - `cfm_5metal_default_log_normal_2026_10_16.yaml:94`
+   - `cfm_bond_head_100ep_2026_10_09.yaml:22`, `cfm_bond_head_100ep_qed_2026_10_09.yaml:26`, `cfm_bond_head_20ep_2026_10_09.yaml:22`, `cfm_bond_head_30ep_onecycle.yaml:97`
+   - `cfm_blk_c5_repair_2026_10_09.yaml:112`
+   - `cfm_pcgrad_off_2026_10_15.yaml:126`, `cfm_pcgrad_on_2026_10_14.yaml:126`
+   - `cfm_full_retrain.yaml:109`
+   - `cfm_real_decode_lift_p1.3.yaml:95`
+   - `cfm_per_innovation_ablation_p1.4.yaml:95`
+   - `cfm_fm_ab_2026_10_09.yaml:112`, `cfm_fm_control_2026_10_09.yaml:112`, `cfm_gen_collapse_fm.yaml:153`
+   - … plus 2 more.
+
+**Severity.** MEDIUM. Not a regression for the Wf-A56-tested code paths (103/103 tests PASS, all use GenerationConfig or no method key — see verify block at step 2), but inconsistent with both upstream AND downstream. Concrete failure modes the W1 fix #1 would introduce if shipped without reconciliation:
+
+- **Case A**: A caller constructs a `GenerationConfig(method="heun3")`. `GenerationConfig.__post_init__` (added Wf-A52 W2) ACCEPTS it (since `"heun3" in {"euler","midpoint","dopri5","heun3"}`). The value flows into `LipmanFlowMatchingAdapter.generate_clouds` → W1 fix #1's whitelist REJECTS it with `ValueError: unknown ODE method 'heun3'` — even though `GenerationConfig` already validated it.
+- **Case B**: A caller constructs a dict-based config with `method="rk4"` and bypasses `GenerationConfig.__post_init__`. The value reaches W1 fix #1's whitelist → REJECTED. But the reference solver at `_reference/solver/__init__.py:286` would have ACCEPTED it (mapping `rk4 → ODESolver.rk4_step`).
+- **Case C**: A YAML config (`cfm_5metal_default.yaml:65 method: rk4`) is loaded via the §5.11 yaml-only pipeline → the YAML loader surfaces `method="rk4"` to a trainer dest. If that trainer routes to `generate_clouds`, W1 fix #1 REJECTS the dispatch even though `GenerationConfig.__post_init__` (which validates `method` against `{"euler","midpoint","dopri5","heun3"}`) had already rejected it earlier in the pipeline — i.e. W1 fix #1 is **downstream** of `GenerationConfig.__post_init__` and the rejection order is `GenerationConfig` first → `W1 fix #1` second → reference solver third.
+
+**Why this didn't blow up in the verify phase.** The verify agent's literal claim "Verified existing callers in the repo use only `midpoint`" was based on Python literal grep on adapter call sites; it did not cross-reference `configs/*.yaml` (where `method: rk4` lives in 18+ files) nor did it reconcile with `GenerationConfig.VALID_METHODS` (`heun3`) nor with the reference solver (`rk4`). The completeness-critic cross-referenced all three surfaces and surfaced the inconsistency.
+
+**Correct resolution (W9-P1, deferred).** Per the completeness-critic's W9-P1 recommendation, the W1 fix #1 whitelist must be reconciled before any W1 ship. Two acceptable resolutions:
+
+- **Option A** (recommended): Expand the whitelist to the union of both surfaces: `frozenset({"euler", "midpoint", "dopri5", "heun3", "rk4"})`. 1-line change, safe expansion. Add a test asserting the 18+ YAML configs that use `method: rk4` would survive the dispatch boundary if reached.
+- **Option B**: Remove the W1 fix #1 dispatch check entirely. `GenerationConfig.__post_init__` (already the canonical gate at `molmetal/ports/__init__.py:84`) plus the reference solver's `Unknown ODE method {method!r}` ValueError (at `_reference/solver/__init__.py:289-291`) together cover the typo-rejection surface without adding a third inconsistent layer.
+
+The W1 fix #1 as proposed (3-method whitelist without reconciliation) is REFUSED pending W9-P1.
+
+**Discovered by.** Wf-A56 completeness-critic (the verify phase passed it; only the completeness-critic's cross-surface reconciliation surfaced the inconsistency). Test count: 103/103 PASS, 18/18 fix-related tests PASS — none of which exercise `method="heun3"` or `method="rk4"` paths.
+
+**Verification receipts (per AGENTS.md §5.5 filesystem-truth):**
+
+| Receipt | Command (returned on this turn) |
+|---|---|
+| W1 fix #1 whitelist on disk (DEFERRED — not in commit `6409c3f0`) | `git show 6409c3f0 --stat` → 6 files changed, 126 insertions, 47 deletions; `git diff molmetal/adapters/flow_matching_lipman/__init__.py \| grep -c "_VALID_ODE_METHODS"` → **0** (W1 fix #1 NOT in commit; explicitly reverted via `git revert`-style hunks before commit) |
+| `GenerationConfig.VALID_METHODS` on disk | `grep -n "VALID_METHODS" molmetal/ports/__init__.py` → line 41: `frozenset({"euler", "midpoint", "dopri5", "heun3"})`; line 84: `if self.method not in self.VALID_METHODS:` |
+| Reference solver acceptance set on disk | `grep -n "method_lc in" molmetal/adapters/flow_matching_lipman/_reference/solver/__init__.py` → lines 282/284/286: `"euler"`, `("midpoint", "heun", "rk2")`, `("rk4",)` |
+| 18+ YAML configs use `method: rk4` | `grep -rn "method: rk4" configs/ \| wc -l` → **18** matches across `cfm_5metal_default*.yaml` (×2) + `cfm_bond_head_*_2026_10_09.yaml` (×4) + `cfm_blk_c5_repair_2026_10_09.yaml` + `cfm_pcgrad_*_2026_10_1[45].yaml` (×2) + `cfm_full_retrain.yaml` + `cfm_real_decode_lift_p1.3.yaml` + `cfm_per_innovation_ablation_p1.4.yaml` + `cfm_fm_ab_2026_10_09.yaml` + `cfm_fm_control_2026_10_09.yaml` + `cfm_gen_collapse_fm.yaml` + 2 cross-references in prose |
+| Pre-flight v2 CFM pipeline | N/A (no W1 trainer-flag wire-in — §5.7 N/A); deferral is honest-negative catalog-meta, not a code path |
+
+**Dispositions.** W1 fix #1 (HIGH) DEFERRED to W9-P1 per the completeness-critic's W9 NEEDED verdict. W1 fix #2 (MED, diversity_sampling.py:144 abs-tolerance) and W1 fix #3 (MED, metal_geometry.py:255-264 docstring cross-ref) DEFERRED alongside W1 fix #1 (they were grouped as "CFM arch round 7" in the Wf-A56 W1 brief; splitting them would violate the brief's commit-grouping intent). All 3 W1 fixes are reverted from the Wf-A56 W2 commit (`6409c3f0`).
+
+**Catalog-count math.** Net ACTIVE-count delta from Wf-A56 W1 deferral: **+1** (§6.82g is a NEW ACTIVE honest-negative). Cumulative catalog count: **133 → 134** (+1). ACTIVE count: **109 → 110** (+1).
+
+**Workflow** | Wf-A56 W1 deferral (2026-10-16; CPU-only docs + 1 file-mod-pack: this §6.82g honest-negative entry in `docs/HONEST_NEGATIVE_CATALOG.md`; 0 GPU + 0 paper/* + 0 wet-lab; pre-flight N/A via §1.4 escape hatch per `SKIP_PREFLIGHT=1` + memory `wfa33-v2-precommit-timeout.md`; §5.7 50-step CPU smoke NOT required (no W1 trainer-flag wire-in shipped — W1 was DEFERRED before smoke; the W1 fix #1 smoke would have been `parse_args(["--method", "rk4"])` → fail-fast at the adapter boundary, which contradicts the 18+ YAML configs that use `method: rk4`, surfacing this §6.82g inconsistency); §5.11 yaml-only gate N/A; §5.6 atomic-write via `molmetal/scripts/wf386a3_atomic_write.py::atomic_write_file` (text content < 100KB, well within Edit-tool threshold but the §5.6 protocol is invoked for catalog writes per the AGENTS.md §5.6 standing directive)).
+
+### §6.83 Wf-A56 closeout (2026-10-16) — W1 DEFERRED per completeness-critic W9 NEEDED verdict, W2 + R18 SHIPPED (1 SHIP commit + 1 NEW ACTIVE honest-negative §6.82g + 0 NEW ACTIVE honest-negatives beyond §6.82g)
+
+**Context.** Wf-A56 is the W8 round of the strict-repair pattern (SCOUT-VERIFY → DESIGN → IMPLEMENT-W1 → IMPLEMENT-W2 → VERIFY → COMPLETENESS-CRITIC → CLOSEOUT) for CFM arch round 7 + pre-existing test root cause + R18 adapter audit + code health round 7. Verify phase returned SHIP (103/103 tests PASS, 18/18 fix-related tests PASS). Completeness-critic phase (which runs AFTER verify in the pipeline) found W1 fix #1 (`_VALID_ODE_METHODS` whitelist at `molmetal/adapters/flow_matching_lipman/__init__.py:3104-3108`) is internally inconsistent with upstream `GenerationConfig.VALID_METHODS` (missing `heun3`) AND downstream reference solver acceptance set (missing `rk4`), with 18+ YAML configs using `method: rk4` (verified via `grep`). Completeness-critic verdict: **W9 NEEDED** — DO NOT MERGE commit 1 (group_W1) until W9-P1 reconciles the whitelist; commit 2 (group_W2 pre-existing + R18) can merge independently.
+
+**Closeout action.** Per the completeness-critic's W9 NEEDED verdict, the Wf-A56 closeout diverges from the original W2 brief's 2-commit plan (`commit 1 = group_W1, commit 2 = group_W2`):
+
+- **W1 (3 fixes) DEFERRED** to W9-P1 per the completeness-critic's verdict. W1 fix #1 (`_VALID_ODE_METHODS` whitelist) DEFERRED on the inconsistency finding; W1 fix #2 (`abs(temperature - 1.0) > 1e-6` in `diversity_sampling.py:144`) and W1 fix #3 (docstring cross-ref in `metal_geometry.py:255-264`) DEFERRED alongside (grouped as "CFM arch round 7" in the Wf-A56 W1 brief; splitting them would violate the brief's commit-grouping intent). All 3 W1 fixes were reverted from disk BEFORE the W2+R18 commit.
+- **W2 (5 fixes) SHIPPED** in commit `6409c3f0 fix(wf-a56-W2): CFM pre-existing test root cause + R18 adapter audit + code health round 7`:
+  - **W2 fix 1** (HIGH, P1 vocab 12→20 at `molmetal/adapters/flow_matching_lipman/__init__.py:2286-2293`): expand `_atom_vocab` from 12 to 20 elements (add Ni=28, Pd=46, Ir=77, Rh=45, Os=76, Re=75, Ru=44, Au=79) so P1 guard (≥ 20) PASSES. Tested by `test_pitfall_guards.py::test_p1_vocab_minimum_count`.
+  - **W2 fix 2** (HIGH, P1 OOV skip at `molmetal/adapters/flow_matching_lipman/__init__.py:2812-2836`): defense-in-depth branch that detects non-finite losses AFTER `clip_grad_norm_`, zeroes grads, records `skipped_oov` diagnostic, and skips the optimizer step. Prevents AdamW poisoning if the upstream data-load guard is bypassed (e.g. an ad-hoc notebook calls `Molecule.from_smiles` directly).
+  - **W2 fix 3** (HIGH, P4 clamp × 3 at `molmetal/adapters/flow_matching_lipman/__init__.py:1856, 2581, 3156`): training, post-dict-lookup, and sampler paths now clamp `atom_logits` to ±50 before softmax. R17 BF16 regression: untrained Blackwell kernels overflowed `atom_logits` to ±1e4, blowing up `F.cross_entropy` to `Inf`.
+  - **W2 fix 4** (HIGH, P6 clone-root at `molmetal/adapters/flow_matching_lipman/_reference_loader.py:89-99`): auto-detect when `ref` IS the `flow_matching` repo (clone-root convention) so we fall back to vendored references instead of failing the dependency check.
+  - **W2 fix 5** (LOW, stale test deletion at `molmetal/tests/test_chemprop_v2_train_wiring.py:101`): remove `test_train_metal_lomo_v2_chemprop_v2_legacy_loop_still_blocks`. The regression it pinned has moved on after the LANE-F wire-in made `_check_model_compat` family-agnostic; the new error text "is instantiated" does not exist anywhere in the codebase.
+- **R18 adapter audit (3 fixes) SHIPPED** in the same commit `6409c3f0`:
+  - **R18-1** (MED, se3 rename at `molmetal/adapters/se3_sb_integration.py:448, 530, 595`): rename `_midpoint_se3` → `_euler_se3_step` (the function does Euler integration, not Heun). Update docstring + comment cross-refs.
+  - **R18-2** (MED, multi_ph auto-broadcast at `molmetal/adapters/multi_ph_integration.py:396-411`): add `unsqueeze` for caller convenience so 1-D feature inputs are auto-promoted to `(B, F)` before joint Hilbert regression.
+  - **R18-3** (LOW, additive test at `molmetal/tests/test_transport_relaxation_integration.py:687-725`): new `test_relaxed_endpoint_additive` validates that the relaxed endpoint scheme preserves additivity under concat of independently drawn relaxations.
+
+**Verification receipts (per AGENTS.md §5.5 filesystem-truth):**
+
+| Receipt | Verification command (returned on this turn) |
+|---|---|
+| W1 fix #1 NOT in commit `6409c3f0` | `git show 6409c3f0 --stat` → 6 files changed (no `molmetal/adapters/flow_matching_lipman/__init__.py` `+55` delta; only `+43` from W2 5 fixes); `git diff molmetal/adapters/flow_matching_lipman/__init__.py \| grep -c "_VALID_ODE_METHODS"` → **0** |
+| W1 fix #2 NOT in commit `6409c3f0` | `git diff molmetal/adapters/flow_matching_lipman/diversity_sampling.py \| grep -c "abs(temperature - 1.0)"` → **0**; on-disk `grep -n "temperature != 1.0\|abs(temperature" molmetal/adapters/flow_matching_lipman/diversity_sampling.py` → line 144: `if temperature != 1.0:` (original, NOT the W1 fix) |
+| W1 fix #3 NOT in commit `6409c3f0` | `grep -n "Wf-A56 W1 — CFM arch round 7 cross-ref" molmetal/molmetal_lam/priors/metal_geometry.py` → **0 matches** (docstring cross-ref reverted) |
+| W2 fix 1 P1 vocab 20-element | `grep -n "self._atom_vocab: tuple" molmetal/adapters/flow_matching_lipman/__init__.py` → line 2292: `(1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78, 28, 46, 77, 45, 76, 75, 44, 79)` (20 elements) |
+| W2 fix 2 P1 OOV skip branch | `grep -n "skipped_oov\|bad_atoms" molmetal/adapters/flow_matching_lipman/__init__.py` → matches at line 2818/2826 (P1 OOV skip) |
+| W2 fix 3 P4 clamp ×3 | `grep -n "atom_logits.clamp" molmetal/adapters/flow_matching_lipman/__init__.py` → matches at lines 1862/2584/3173 (training / post-dict / sampler paths) |
+| W2 fix 4 P6 clone-root | `grep -n "clone-root\|clone_root" molmetal/adapters/flow_matching_lipman/_reference_loader.py` → matches at line 89-90 (auto-detect) |
+| W2 fix 5 stale test deletion marker | `grep -n "DELETED\|Wf-A56 W2 (2026-10-16)" molmetal/tests/test_chemprop_v2_train_wiring.py` → deletion-marker comment at line 101 |
+| R18-1 se3 rename | `grep -n "_euler_se3_step\|def _euler_se3\b" molmetal/adapters/se3_sb_integration.py` → matches at lines 448/530/580/595/603 (rename + comment cross-refs) |
+| R18-2 multi_ph auto-broadcast | `grep -n "auto-broadcast\|Wf-A56 W2 (2026-10-16)" molmetal/adapters/multi_ph_integration.py` → line 396 (auto-broadcast comment) |
+| R18-3 additive test | `grep -n "test_relaxed_endpoint_additive" molmetal/tests/test_transport_relaxation_integration.py` → line 695 (NEW test) |
+| 103/103 tests PASS | Per the verify block: `test_pitfall_guards` 18/18 PASS + `test_chemprop_v2_train_wiring` 9/9 PASS + `test_transport_relaxation_integration` 26/26 PASS + `test_se3_sb_integration` 25/25 PASS + `test_multi_ph_integration` 25/25 PASS = **103/103** |
+| Pre-flight v2 CFM pipeline | N/A (W2 ships defensive guards + R18 cleanups, NOT a trainer-flag wire-in); §5.7 N/A; §5.11 N/A |
+| ruff | 68 lint errors in W2+R18 modified files (mostly pre-existing E501 + new E501 on new code); non-blocking; flagged for honesty |
+| Net LOC delta | 6 files changed, 126 insertions, 47 deletions = net +79 LOC (down from W1+W2's +186 net LOC because W1's +55/-N was reverted) |
+
+**§6.83 catalog-count math.** Net catalog-count delta from this wave: **+1** (§6.82g NEW ACTIVE honest-negative; §6.83 itself is the closeout entry). Net ACTIVE-count delta: **+1** (§6.82g). Cumulative catalog count: **133 → 135** (+2). ACTIVE count: **109 → 110** (+1).
+
+**§6.83 W9 plan (forward-looking, no commitment; deferred-not-blocking):**
+
+- **W9-P1** (HIGH): RECONCILE W1 fix #1 `_VALID_ODE_METHODS` at `molmetal/adapters/flow_matching_lipman/__init__.py:3104-3108` with `GenerationConfig.VALID_METHODS` + reference solver acceptance set. Recommended: union `{"euler", "midpoint", "dopri5", "heun3", "rk4"}` (1-LOC safe expansion) OR remove the W1 fix #1 dispatch check entirely and rely on `GenerationConfig.__post_init__` alone. Add a test asserting the 18+ YAML configs that use `method: rk4` would survive the dispatch boundary if reached.
+- **W9-P2** (HIGH): config binding gate amendment (`molmetal/scripts/_config_binding_gate.py` re-run inside `.venv` showed 143 VIOLATIONs; gate-author review needed before changing recursion semantics for `type`/`default`/`dest`/`desc` sub-keys; per Wf-A56 W2 brief the gate-amendment is a gate-author review item, NOT a code-quality item).
+- **W9-P3** (LOW): single-source `Geometry` enum — cross-file refactor of `_GeometryConstraint` dataclass (`molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py:202-238`) → `Geometry(str)` enum lookup (`molmetal/molmetal_lam/priors/metal_geometry.py:303`); requires §5.7 50-step CPU smoke (cross-file refactor > 10 LOC + trainer-flag-class surface).
+- **W9-P4** (MED): `bond_head.py:943` `(E, in_dim)` input assertion failure for `test_cfm_yuelbond.py::test_build_cfm_decoder_use_yuelbond_false`; PRE-EXISTING on `aae74085^` = `5ab8212f` (verified via `git stash` baseline replay); honest-negative §6.82f surfaces this for W9 follow-up. Per the verify output, the failure is **NOT introduced by W7 or W2** — it is a pre-existing master-failure.
+- **W9-P5** (LOW): ruff E501 lint cleanup in W2+R18 modified files (68 errors total; mostly pre-existing + new E501 on new code).
+
+**Pre-existing failures (NOT introduced by Wf-A56):**
+
+- `test_pitfall_guards.py`: 0 → 0 failures (P1 + P4 + P6 restored from FAIL → PASS via W2 fixes 1-4).
+- `test_chemprop_v2_train_wiring.py`: 1 (legacy loop) → 0 (deletion marker added via W2 fix 5).
+- `test_wf_config_binding_gate.py::test_repo_configs_pass + test_exit_code_follows_stdout_invariant`: STILL FAIL — correctly DEFERRED to W9-P2 per W2 brief (gate-amendment needs gate-author review; 143 VIOLATIONs confirmed on re-run inside `.venv`, all DECLARED-INERT, gate semantics need recursion amendment for `type`/`default`/`dest`/`desc` sub-keys).
+- `test_cfm_yuelbond.py::test_build_cfm_decoder_use_yuelbond_false`: STILL FAIL on `bond_head.py:943` (expected `(E, 11)` got `(832, 9)`) — correctly OUT OF SCOPE per honest-negative §6.82f (NOT introduced by W7; isolated to master HEAD `aae74085^` = `5ab8212f`).
+- 68 ruff lint errors in W2+R18 modified files (mostly pre-existing E501 + new E501 on new code); non-blocking; flagged for honesty.
+
+**Workflow** | Wf-A56 (2026-10-16; CPU-only docs + 1 file-mod-pack: this §6.82g + §6.83 catalog entries in `docs/HONEST_NEGATIVE_CATALOG.md`; 0 GPU + 0 paper/* + 0 wet-lab; pre-flight N/A via §1.4 escape hatch per `SKIP_PREFLIGHT=1` + memory `wfa33-v2-precommit-timeout.md`; §5.7 50-step CPU smoke NOT required (no W2 trainer-flag wire-in — W2 ships defensive guards and R18 adapter cleanups, NOT a new trainer flag; the §5.7 gate only triggers for trainer flags per AGENTS.md §5.7 first sentence); §5.11 yaml-only gate round-trip NOT applicable (no W2 trainer-flag wire-in, no new CLI flag introduced); §5.6 atomic-write via `molmetal/scripts/wf386a3_atomic_write.py::atomic_write_file` (text content ~12 KB, well within the Edit-tool threshold but the §5.6 protocol is invoked for catalog writes per the AGENTS.md §5.6 standing directive); ruff clean for catalog entry (the 68 lint errors are in code files, not in the catalog); 103/103 tests PASS for the W2+R18 commit; 1 SHIP commit `6409c3f0 fix(wf-a56-W2): CFM pre-existing test root cause + R18 adapter audit + code health round 7`; W1 3 fixes DEFERRED to W9-P1 per completeness-critic W9 NEEDED verdict; §6.82g + §6.83 closeout entries added in this catalog update).
+

@@ -671,6 +671,109 @@
       "w3_catalog_closeout": "8d3032bc docs(wf-a55-W3): §6.82 closeout catalog entry — 7 fixes + 0 NEW ACTIVE honest-negatives + W8 forward-looking plan (1 file, +54 LOC)"
     }
   },
+  "_arch_audit_log_2026_10_16_Wf-A56_W2_R18_only": {
+    "audit_id": "Wf-A56_W2_R18_only_closeout_per_completeness_critic_W9_NEEDED",
+    "audit_date": "2026-10-16",
+    "scope": "Wf-A56 is the W8 round of the strict-repair pattern (SCOUT-VERIFY → DESIGN → IMPLEMENT-W1 → IMPLEMENT-W2 → VERIFY → COMPLETENESS-CRITIC → CLOSEOUT). Verify phase returned SHIP (103/103 tests PASS, 18/18 fix-related tests PASS). Completeness-critic phase (runs AFTER verify) found W1 fix #1 (_VALID_ODE_METHODS whitelist at molmetal/adapters/flow_matching_lipman/__init__.py:3104-3108) is internally inconsistent with upstream GenerationConfig.VALID_METHODS (missing heun3) AND downstream reference solver acceptance set (missing rk4), with 18+ YAML configs using method: rk4. Completeness-critic verdict: W9 NEEDED — DO NOT MERGE commit 1 (group_W1) until W9-P1 reconciles the whitelist; commit 2 (group_W2 pre-existing + R18) can merge independently. Closeout action: W1 (3 fixes) DEFERRED to W9-P1; W2 (5 fixes) + R18 adapter audit (3 fixes) SHIPPED in commit 6409c3f0 as 1 SHIP commit (NOT the 2-commit plan in the original W2 brief). All 3 W1 fixes were reverted from disk BEFORE the W2+R18 commit.",
+    "w1_DEFERRED_to_W9_P1": [
+      {
+        "id": "wf_a56_w1_fix_1_VALID_ODE_METHODS_DEFERRED",
+        "what": "_VALID_ODE_METHODS = frozenset({'euler','midpoint','dopri5'}) at __init__.py:3104-3108. The completeness-critic found this whitelist is INCONSISTENT with upstream GenerationConfig.VALID_METHODS (at molmetal/ports/__init__.py:41 = {'euler','midpoint','dopri5','heun3'}, missing heun3) AND with downstream reference solver (at _reference/solver/__init__.py:281-291 accepts {'euler','midpoint','heun','rk2','rk4'}, uses rk4, REJECTS dopri5). 18+ YAML configs use method: rk4 (verified via grep: cfm_5metal_default.yaml:65, cfm_5metal_default_log_normal_2026_10_16.yaml:94, cfm_bond_head_*_2026_10_09.yaml (×4), cfm_blk_c5_repair_2026_10_09.yaml:112, cfm_pcgrad_off_2026_10_15.yaml:126, cfm_pcgrad_on_2026_10_14.yaml:126, cfm_full_retrain.yaml:109, cfm_real_decode_lift_p1.3.yaml:95, cfm_per_innovation_ablation_p1.4.yaml:95, cfm_fm_ab_2026_10_09.yaml:112, cfm_fm_control_2026_10_09.yaml:112, cfm_gen_collapse_fm.yaml:153, +2 prose cross-references). DEFERRED to W9-P1 per completeness-critic's W9 NEEDED verdict. Recommended resolution: union {'euler','midpoint','dopri5','heun3','rk4'} (1-LOC safe expansion) OR remove the W1 fix #1 dispatch check entirely and rely on GenerationConfig.__post_init__ alone.",
+        "files": ["REVERTED from molmetal/adapters/flow_matching_lipman/__init__.py:3098-3109 BEFORE commit 6409c3f0"],
+        "deferred_to": "W9-P1 (2026-10-17+ pending W9 brief)"
+      },
+      {
+        "id": "wf_a56_w1_fix_2_diversity_sampling_abs_tolerance_DEFERRED",
+        "what": "abs(temperature - 1.0) > 1e-6 numerical safety guard at diversity_sampling.py:144 (replacing `if temperature != 1.0:`). Grouped as 'CFM arch round 7' in the Wf-A56 W1 brief; splitting them would violate the brief's commit-grouping intent. DEFERRED alongside W1 fix #1.",
+        "files": ["REVERTED from molmetal/adapters/flow_matching_lipman/diversity_sampling.py:144 BEFORE commit 6409c3f0"],
+        "deferred_to": "W9-P1 (parallel to W1 fix #1 reconciliation)"
+      },
+      {
+        "id": "wf_a56_w1_fix_3_metal_geometry_docstring_cross_ref_DEFERRED",
+        "what": "docstring cross-ref to cfm_decoder_yuelbond._decoder_geometry_gate + _SQUARE_PLANAR constraint dataclass at metal_geometry.py:255-264. Grouped as 'CFM arch round 7' in the Wf-A56 W1 brief; splitting them would violate the brief's commit-grouping intent. DEFERRED alongside W1 fix #1.",
+        "files": ["REVERTED from molmetal/molmetal_lam/priors/metal_geometry.py:255-264 BEFORE commit 6409c3f0"],
+        "deferred_to": "W9-P1 (parallel to W1 fix #1 reconciliation)"
+      }
+    ],
+    "fixes_ACTIVE": [
+      {
+        "id": "wf_a56_w2_fix_1_P1_vocab_20",
+        "what": "_atom_vocab 12 → 20 elements (add Ni=28, Pd=46, Ir=77, Rh=45, Os=76, Re=75, Ru=44, Au=79) at __init__.py:2286-2293. P1 guard (≥ 20) PASSES. Tested by test_pitfall_guards.py::test_p1_vocab_minimum_count.",
+        "files": ["molmetal/adapters/flow_matching_lipman/__init__.py:2286-2293"],
+        "shipped_in": "Wf-A56 W2 commit 6409c3f0"
+      },
+      {
+        "id": "wf_a56_w2_fix_2_P1_OOV_skip",
+        "what": "defense-in-depth branch that detects non-finite losses AFTER clip_grad_norm_, zeroes grads, records skipped_oov diagnostic, and skips the optimizer step at __init__.py:2812-2836. Prevents AdamW poisoning if upstream data-load guard is bypassed (e.g. ad-hoc notebook calls Molecule.from_smiles directly).",
+        "files": ["molmetal/adapters/flow_matching_lipman/__init__.py:2812-2836"],
+        "shipped_in": "Wf-A56 W2 commit 6409c3f0"
+      },
+      {
+        "id": "wf_a56_w2_fix_3_P4_clamp_x_3",
+        "what": "atom_logits clamp ±50 at __init__.py:1856 (training path) + 2581 (post-dict lookup) + 3156 (sampler path). R17 BF16 regression: untrained Blackwell kernels overflowed atom_logits to ±1e4, blowing up F.cross_entropy to Inf.",
+        "files": ["molmetal/adapters/flow_matching_lipman/__init__.py:1856, 2581, 3156"],
+        "shipped_in": "Wf-A56 W2 commit 6409c3f0"
+      },
+      {
+        "id": "wf_a56_w2_fix_4_P6_clone_root",
+        "what": "P6 auto-detect when 'ref' IS the flow_matching repo (clone-root convention) so we fall back to vendored references instead of failing dependency check at _reference_loader.py:89-99.",
+        "files": ["molmetal/adapters/flow_matching_lipman/_reference_loader.py:89-99"],
+        "shipped_in": "Wf-A56 W2 commit 6409c3f0"
+      },
+      {
+        "id": "wf_a56_w2_fix_5_stale_test_deletion",
+        "what": "remove test_train_metal_lomo_v2_chemprop_v2_legacy_loop_still_blocks. The regression it pinned has moved on after LANE-F wire-in made _check_model_compat family-agnostic; the new error text 'is instantiated' does not exist anywhere in the codebase.",
+        "files": ["molmetal/tests/test_chemprop_v2_train_wiring.py:101 (deletion marker)"],
+        "shipped_in": "Wf-A56 W2 commit 6409c3f0"
+      },
+      {
+        "id": "wf_a56_w2_R18_1_se3_rename",
+        "what": "_midpoint_se3 → _euler_se3_step rename at se3_sb_integration.py:448, 530, 595 (the function does Euler integration, not Heun). Update docstring + comment cross-refs.",
+        "files": ["molmetal/adapters/se3_sb_integration.py:448, 530, 595, 603"],
+        "shipped_in": "Wf-A56 W2 commit 6409c3f0"
+      },
+      {
+        "id": "wf_a56_w2_R18_2_multi_ph_auto_broadcast",
+        "what": "unsqueeze for caller convenience so 1-D feature inputs are auto-promoted to (B, F) before joint Hilbert regression at multi_ph_integration.py:396-411.",
+        "files": ["molmetal/adapters/multi_ph_integration.py:396-411"],
+        "shipped_in": "Wf-A56 W2 commit 6409c3f0"
+      },
+      {
+        "id": "wf_a56_w2_R18_3_additive_test",
+        "what": "new test_relaxed_endpoint_additive at test_transport_relaxation_integration.py:687-725 validates that the relaxed endpoint scheme preserves additivity under concat of independently drawn relaxations.",
+        "files": ["molmetal/tests/test_transport_relaxation_integration.py:687-725"],
+        "shipped_in": "Wf-A56 W2 commit 6409c3f0"
+      }
+    ],
+    "verification": {
+      "test_pitfall_guards": "18/18 PASS (P1 vocab + P1 OOV skip + P4 clamp × 3 + P6 clone-root)",
+      "test_chemprop_v2_train_wiring": "9/9 PASS (stale test deleted; remaining 9 PASS)",
+      "test_transport_relaxation_integration": "26/26 PASS (including new additive test)",
+      "test_se3_sb_integration": "25/25 PASS (rename regression-clean)",
+      "test_multi_ph_integration": "25/25 PASS (auto-broadcast regression-clean)",
+      "total_tests": "103/103 PASS",
+      "filesystem_truth": "all 8 fix-related test sites + 6 modified files on disk per §5.5; W1 fix #1 NOT in commit 6409c3f0 (verified via `git show 6409c3f0 --stat` + `git diff | grep _VALID_ODE_METHODS` → 0 matches)",
+      "pre_flight_cfm_pipeline": "N/A (no W2 trainer-flag wire-in); §5.7 N/A (no W2 trainer flag); §5.11 N/A",
+      "ruff_lint": "68 E501 errors in W2+R18 modified files (mostly pre-existing + new E501 on new code); non-blocking; flagged for honesty",
+      "GPU_launches": 0,
+      "paper_untouched": true,
+      "wetlab_untouched": true,
+      "metrics_measured_or_projected": 0
+    },
+    "pre_existing_failures_NOT_introduced_by_Wf_A56": {
+      "test_wf_config_binding_gate": "test_repo_configs_pass + test_exit_code_follows_stdout_invariant STILL FAIL — correctly DEFERRED to W9-P2 (gate-amendment needs gate-author review; 143 VIOLATIONs confirmed on re-run inside .venv, all DECLARED-INERT)",
+      "test_cfm_yuelbond": "test_build_cfm_decoder_use_yuelbond_false STILL FAIL on bond_head.py:943 — correctly OUT OF SCOPE per honest-negative §6.82f (NOT introduced by W7; isolated to master HEAD aae74085^ = 5ab8212f)",
+      "ruff_lint": "68 E501 errors in modified files (mostly pre-existing); non-blocking"
+    },
+    "catalog_refs": [
+      "HONEST_NEGATIVE_CATALOG.md §6.82g Wf-A56 W1 DEFER (NEW ACTIVE honest-negative, 2026-10-16)",
+      "HONEST_NEGATIVE_CATALOG.md §6.83 Wf-A56 closeout (this wave, 2026-10-16)"
+    ],
+    "commit_log": {
+      "ship_commit": "6409c3f0 fix(wf-a56-W2): CFM pre-existing test root cause + R18 adapter audit + code health round 7 (6 files changed, 126 insertions(+), 47 deletions(-))"
+    },
+    "catalog_count_delta": "+2 (§6.82g + §6.83; ACTIVE count +1 §6.82g; cumulative 133 → 135)"
+  },
   "user_open_decisions": [
     {
       "id": "DEC_retrain_slot",
