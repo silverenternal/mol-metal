@@ -1,0 +1,52 @@
+{
+  "metric": "metal_sensitivity_predictor",
+  "description": "WP2 (thesis_v2): can a ligand's metal-sensitivity be predicted from ligand chemistry alone? ECFP4 -> flip/no-flip, stratified 5-fold CV, retrain-under-shuffled-labels permutation null, Holm across sample sets.",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/wp2_metal_sensitivity_predictor.py",
+  "model": "morgan_fp(radius=2, 2048bit) + xgboost",
+  "data_source": "MetalCytoToxDB (Krasnov et al., J. Med. Chem. 2026, 69(8), 8838)",
+  "seed": 42,
+  "cohort": {
+    "time_threshold": null,
+    "label": "full"
+  },
+  "sample_sets": {
+    "multi_metal": {
+      "n_pos": 51,
+      "n_neg": 217,
+      "cv_auc": 0.670371374356194,
+      "permutation_null": {
+        "status": "MEASURED",
+        "n_perm": 50,
+        "observed_auc": 0.670371374356194,
+        "null_mean": 0.505790187042559,
+        "null_sd": 0.05802540119362,
+        "null_pct95": 0.5759736152525526,
+        "p_above_null": 0.04,
+        "significant_above_null_05": true,
+        "p_holm": 0.04,
+        "significant_holm_05": true
+      }
+    },
+    "all_ligands": {
+      "n_pos": 51,
+      "n_neg": 6731,
+      "cv_auc": 0.8435873235046507,
+      "permutation_null": {
+        "status": "SKIPPED_COST",
+        "reason": "n=6782 > 1000; refit null is cost-prohibitive, CV AUC reported only"
+      }
+    }
+  },
+  "acceptance": {
+    "primary_sample_set": "multi_metal",
+    "primary_auc": 0.670371374356194,
+    "primary_significant_holm": true,
+    "verdict": "METAL_SENSITIVITY_IS_LIGAND_CHEMISTRY_PREDICTABLE"
+  },
+  "honest_framing": {
+    "MEASURED_vs_PROJECTED": "MEASURED",
+    "caveat": "Features are ECFP4 only -- no metal input -- so a positive result is the ligand-chemistry-alone claim. The 'all_ligands' set is a secondary check whose negatives are contaminated by never-re-tested ligands; the 'multi_metal' set is the headline."
+  }
+}

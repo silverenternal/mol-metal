@@ -1,0 +1,80 @@
+{
+  "metric": "metal_transfer_chemistry",
+  "description": "WP3 (thesis_v2): does metal chemistry drive cross-metal transfer? Descriptor-distance matrix, distance-vs-measured-transfer correlation, and a CATE model that adds metal descriptors to ligand ECFP4.",
+  "unit": "ROC-AUC (0-1); distances are z-normalised Euclidean; rho is Spearman",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/wp3_metal_transfer_chemistry.py",
+  "data_source": "MetalCytoToxDB (Krasnov et al., J. Med. Chem. 2026, 69(8), 8838)",
+  "seed": 42,
+  "cohort": {
+    "time_threshold": null,
+    "label": "full"
+  },
+  "metal_distance_matrix": {
+    "normalisation": "per-column z-score across the 5 metals, then Euclidean",
+    "n_features": 10,
+    "pairwise_distance": {
+      "Ru-Ir": 4.982547760009766,
+      "Ru-Rh": 3.1560261249542236,
+      "Ru-Os": 4.0894551277160645,
+      "Ru-Re": 4.941443920135498,
+      "Ir-Rh": 3.9258720874786377,
+      "Ir-Os": 2.155427932739258,
+      "Ir-Re": 6.269047260284424,
+      "Rh-Os": 4.066565036773682,
+      "Rh-Re": 7.1020636558532715,
+      "Os-Re": 4.768296718597412
+    }
+  },
+  "measured_transfer_by_metal_pair": {
+    "Ru-Rh": {
+      "n_shared_pairs": 24,
+      "label_flip_rate": 0.5,
+      "mean_abs_delta_pic50": 0.7732445100943247
+    },
+    "Ru-Os": {
+      "n_shared_pairs": 440,
+      "label_flip_rate": 0.14545454545454545,
+      "mean_abs_delta_pic50": 0.3439654783769087
+    },
+    "Ir-Rh": {
+      "n_shared_pairs": 204,
+      "label_flip_rate": 0.2107843137254902,
+      "mean_abs_delta_pic50": 0.3113655085657157
+    }
+  },
+  "distance_vs_transfer": {
+    "n_metal_pairs_with_data": 3,
+    "metal_pairs": [
+      "Ir-Rh",
+      "Ru-Os",
+      "Ru-Rh"
+    ],
+    "spearman_rho": -1.0,
+    "spearman_p": 0.0,
+    "caveat": "n=3 metal pairs share matched ligands -- this correlation is data-limited and reported as an observation, not a finding."
+  },
+  "cate_with_metal": {
+    "status": "MEASURED",
+    "n_pairs": 668,
+    "n_pos": 119,
+    "n_groups": 253,
+    "cv_auc_ligand_only": 0.6705851739602946,
+    "cv_auc_metal_only": 0.5528080084492812,
+    "cv_auc_ligand_plus_metal": 0.6736771211216728,
+    "delta_from_metal": 0.0030919471613781724,
+    "verdict": "LIGAND_INTRINSIC_NOT_METAL_DRIVEN",
+    "verdict_note": "delta=0.0031 < 0.02 -> metal descriptors add no meaningful signal; relabelled under the corrected rule (numbers unchanged)"
+  },
+  "acceptance": {
+    "distance_vs_transfer_significant": false,
+    "distance_vs_transfer_note": "n=3 metal pairs -- below the n>=5 bar, so the correlation is reported but not accepted as evidence.",
+    "cate_auc_gt_0.5": true,
+    "metal_adds_signal_delta_gt_0.02": false,
+    "verdict": "LIGAND_INTRINSIC_NOT_METAL_DRIVEN"
+  },
+  "honest_framing": {
+    "MEASURED_vs_PROJECTED": "MEASURED",
+    "caveat": "The distance-vs-transfer correlation is n=3 (only 3 metal pairs share matched ligands); the CATE-with-metal model is the load-bearing result."
+  }
+}

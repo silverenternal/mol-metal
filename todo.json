@@ -7579,9 +7579,16 @@
         "acceptance": "AUC 显著 > 0.5 (permutation null, Holm)。",
         "why_non_obvious": "『哪些分子不能用 ligand-only 模型预测』—— 一个可部署的可靠性过滤器。",
         "wall": "1-2 天",
-        "status": "OPEN",
+        "status": "DONE",
         "gpu": "small",
-        "risk": "n=268 配体可能功效不足 (WP0 先判)。"
+        "risk": "n=268 配体可能功效不足 (WP0 先判)。",
+        "result": {
+          "artifact": "metrics/by_metric/metal_sensitivity_predictor.json",
+          "script": "molmetal/scripts/wp2_metal_sensitivity_predictor.py",
+          "primary_multi_metal": "AUC 0.6704 (51 pos / 217 neg, 268 ligands), permutation p_holm=0.04 -> SIGNIFICANT",
+          "secondary_all_ligands": "AUC 0.8436 (51 pos / 6731 neg; null skipped for cost; negatives contaminated by never-retested ligands)",
+          "capability": "zero-experiment reliability filter: given a ligand, predict whether it is metal-sensitive from ECFP4 alone (no metal input)"
+        }
       },
       {
         "id": "WP3",
@@ -7592,9 +7599,17 @@
         "acceptance": "描述符距离 vs 实测迁移显著相关; CATE 预测 AUC 显著 > 0.5。",
         "why_non_obvious": "『不用合成就能说: 这个金属换过去大概率行/不行, 以及换成哪个』—— 最眼前一亮的一条。",
         "wall": "2-3 天",
-        "status": "OPEN",
+        "status": "DONE_HYPOTHESIS_REFUTED",
         "gpu": "small",
-        "risk": "5 金属 -> 仅 10 个有序对, 距离-迁移相关可能欠功效。"
+        "risk": "5 金属 -> 仅 10 个有序对, 距离-迁移相关可能欠功效。",
+        "result": {
+          "artifact": "metrics/by_metric/metal_transfer_chemistry.json",
+          "script": "molmetal/scripts/wp3_metal_transfer_chemistry.py",
+          "cate": "ligand_only 0.6706 | metal_only 0.5528 | ligand+metal 0.6737 -> delta +0.0031 (negligible)",
+          "distance_vs_transfer": "n=3 metal pairs (Ru-Rh, Ru-Os, Ir-Rh) -> rho reported but NOT accepted (n<5)",
+          "honest_negative": "HYPOTHESIS REFUTED: metal descriptors add ~0.003 AUC over ligand chemistry alone, and metal-only AUC is 0.55 (near chance). The metal-swap effect is NOT driven by metal chemistry -- it is a LIGAND-INTRINSIC property.",
+          "reframe": "The refutation is the result: which ligands are metal-fragile is a property of the ligand, not of the metal pair. So the deployable capability is a ligand-intrinsic reliability filter (WP2), not a metal recommendation."
+        }
       },
       {
         "id": "WP4",
@@ -7715,5 +7730,20 @@
       "power_detect_auc_0.65_full": "0.946"
     },
     "implication": "The v2 foundation is REFINED, not destroyed. The transfer penalty has two components: a label-flip (concept-shift) part the ligand-only model cannot see (sensitive subset AUC 0.39, below chance) AND a general cross-metal distribution shift (robust subset still 0.637 vs within 0.844). The actionable, non-obvious result is that the flip itself is chemistry-predictable at AUC 0.67 -- which is what WP2/WP3 build on."
+  },
+  "wp2_wp3_result_2026_10_17": {
+    "artifacts": [
+      "metrics/by_metric/metal_sensitivity_predictor.json",
+      "metrics/by_metric/metal_transfer_chemistry.json"
+    ],
+    "status": "WP2 DONE (positive); WP3 DONE with metal-driven hypothesis REFUTED",
+    "key_numbers": {
+      "wp2_multi_metal_auc": "0.6704 (p_holm 0.04, significant)",
+      "wp3_ligand_only_auc": "0.6706",
+      "wp3_ligand_plus_metal_auc": "0.6737",
+      "wp3_metal_delta": "+0.0031 (negligible)",
+      "wp3_metal_only_auc": "0.5528 (near chance)"
+    },
+    "combined_story": "Metal-sensitivity is a LIGAND-INTRINSIC property. WP2: it is predictable from ligand chemistry alone (AUC 0.67, significant). WP3: adding metal descriptors buys +0.003 -- the effect is not metal-driven. WP1: the sensitive subset is predicted below chance (0.39) by a ligand-only model, and the transfer penalty is not solely theirs (robust recovers 0.755). Together: (a) a deployable zero-experiment reliability filter for ligand-only models, and (b) a precise, non-obvious mechanistic claim -- fragility lives in the ligand, not the metal."
   }
 }
