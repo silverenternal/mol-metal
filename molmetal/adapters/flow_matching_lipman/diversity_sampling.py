@@ -49,8 +49,9 @@ Wf-380-A3 SCAFFOLD scope:
   kernel paths, no FSDP, no autograd-through-sampling for the MMD
   term (we use a closed-form mean over fixed embeddings; backprop
   through the sampling op itself is a separate workflow).
-* Trainer integration is deferred to **Wf-380-B1** (the next ultracode
-  sub-flow).  This file ships the methods + tests + dispatch only.
+* Trainer integration is **Wf-380-B1 SHIPPED 2026-09-30** (per
+  ``docs/WF_HISTORY.md:84`` + ``TODO/INDEX.md:280``); this file ships
+  the methods + tests + dispatch only.
 * No ``paper/*`` touches (per AGENTS.md §5.3 + TODO-84).
 
 Why four methods instead of one:
