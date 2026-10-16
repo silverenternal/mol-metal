@@ -1,12 +1,12 @@
 {
   "schema": "molmetal.paper_blockers.v2",
   "created": "2026-10-09",
-  "updated": "2026-10-16",
+  "updated": "2026-10-17",
   "rewritten": "2026-10-14 — 完全重建 v2 (第二次; 第一次被并行 session 的 git reset 丢弃)。反映现状: 主模型=自研 D-MPNN (无二选一); phase1 gate PARTIAL; FSMA 定位。历史段全部移入 archive (一字不删, §5.5)。",
   "supersedes": "todo.json schema molmetal.paper_blockers.v1 (2026-10-14 重建; 旧内容保留在 archive/working_detail_2026_10_14)",
   "source": "Wf-FIX-3LINES (commit 6d1c796d89) + Wf-METRIC-RESCUE (commit 37aa4960dc) + memory/*.md catalog + AGENTS.md section 5 honest-framing mandate",
-  "purpose": "Inventory + planned fixes for every metric blocking Tier-2 submission. 2026-10-14 重建为『预测线(FSMA)投稿 + 生成线收尾』的可执行清单。",
-  "tier2_paper_target": "PRIMARY (decided 2026-10-11, docs/SUBMISSION_PLAN.md): J. Chem. Inf. Model. (ACS, IF~5.6, zhongkeyuan erqu); fallbacks: Digital Discovery (RSC), J. Med. Chem. (higher bar). Older target list (J. Comput. Aided Mol. Des. / J. Mol. Graph. Model. / Comput. Chem. WIREs / Mol. Divers. / Comput. Biol. Chem.) is superseded. AGENTS.md section 5.4 no wet-lab",
+  "purpose": "Inventory + planned fixes for the prediction line. 2026-10-14 重建为『预测线(FSMA)投稿 + 生成线收尾』; 2026-10-17 按 thesis_v2 拔高: 从『benchmark 描述』升级为『金属替换 = 因果干预, 干预效应可被化学预测』, 目标从稳过二区 (JCIM) 抬到冲一区。",
+  "tier2_paper_target": "BASELINE (decided 2026-10-11, docs/SUBMISSION_PLAN.md): J. Chem. Inf. Model. (ACS, zhongkeyuan erqu); fallbacks Digital Discovery (RSC), J. Med. Chem.  STRETCH (decided 2026-10-17, thesis_v2_2026_10_17): 冲一区 —— 需要 WP0-WP4 全部成立 (因果干预框 + 金属敏感性可预测 + 金属化学驱动迁移 + metal-as-domain-token 方法)。二区是地板, 一区是目标。 AGENTS.md section 5.4 no wet-lab",
   "how_to_read": [
     "读法: 先读 current_state_2026_10_14 (定位/主模型/门禁/主张/红线) -> gap_analysis_2026_10_14 (还差什么) -> task_queue_2026_10_14 (能做什么) -> results_2026_10_14 (已跑出的结果) -> blockers (逐条状态)。",
     "working_detail_2026_10_14 是 2026-10-14 的工作细节, 是 current_state 的依据。",
@@ -2957,9 +2957,10 @@
     }
   ],
   "next_actions": [
-    "ALL executable todo.json tasks are CLOSED (2026-10-15). The FSMA mainline is now on the self-developed D-MPNN (C1/C1b/C2/C3/C4, cuda:1 --deterministic); gaps A (migration) and C (low-K) are RESOLVED and gap B (I2 model-side) is CLOSED as honest-negative. See results.fsma_inhouse_gpu_rerun_2026_10_15 + results.fsma_ep50_lowk_verdict.",
-    "Remaining items are all non-executable: paper-scoped (#102/#110/#111, BLK-I3, BLK-PA14/15/16/17, the model_unification text_fixes U9/U10/U11 — all touch paper/*), blocked-on-user (BLK-C15, BLK-P2, p3_authorization, journal_partition), or gated (#126). None can be advanced without a user decision or a paper edit (§5.3).",
-    "Repo-hygiene note (NOT a todo.json task): the pre-flight gate currently FAILs on 3 pre-existing issues that are orthogonal to the FSMA work — (1) configs/dmpnn.yaml 'model.pic50_ridge_readout' resolves to no dest, (2) configs/cfm_a32_pocket_inject_per_layer_2026_10_14.yaml missing 3 hyperparams, (3) registry/metrics.yaml entry 'ex1_i2_rich' points at a file wiped by a parallel session on 2026-10-15. Fixable on request."
+    "2026-10-17 优先序 (thesis_v2): WP0 (功效分析 + LOMO 分层归因) 是唯一先决条件 —— 它决定 WP2/WP3 是否可行, 且只用 CPU/现有数据, 不占 GPU。P0 建议立即启动。",
+    "在跑: FU1 (GPU0, Ru 已完成且特征融合为负) + FU2 (GPU0, 全量档, ETA ~16-17h)。FU1/FU2 是 G1 的补救, 现在降级为 WP4 的输入之一, 不再是主线叙事。",
+    "paper_a 侧待决: abstract 的 K-curve 数字**过期** (写着 K20 +0.0084 / K80 +0.0685, 真产物是 +0.0389 / +0.0996) 且 XGB 骨干那句 'reproduces the curve' 需改如实版。动 paper_a 需用户先审 hunk (§5.3)。",
+    "repo-hygiene: pre-flight 仍有 3 个与本研究正交的 pre-existing FAIL (configs/dmpnn.yaml pic50_ridge_readout, cfm_a32_* 缺 3 超参, registry/metrics.yaml 'ex1_i2_rich' 指向被并行 session 抹掉的文件)。"
   ],
   "working_detail_2026_10_14": {
     "note": "2026-10-14 工作细节 (current_state 的依据)。model_unification_2026_10_14 已 SUPERSEDED (保留溯源)。",
@@ -7493,5 +7494,183 @@
       "consequence": "不开纯协议论文; 先去找/整理可外部引用的逐金属配体场/氧化还原/HSAB 表, 补测全 I2。I2 数据获取成为新可执行任务。",
       "blocked_on": "externally-citable per-metal table (metal_graph.py _RICH_SCALES NOTE)"
     }
+  },
+  "thesis_v2_2026_10_17": {
+    "created": "2026-10-17",
+    "supersedes_framing": "gap_analysis_2026_10_16 把预测线框成『metal transfer collapse + few-shot fix』。用户 2026-10-17 指出该框架太浅: 『换金属改变药效』是常识, 不是结论。v2 把论点拔到因果干预层, 并明确『不接受弱指标 = 去把它做强 / 降级为 scope』, 不是隐藏 (AGENTS.md 5.2 红线不变)。",
+    "user_directive_verbatim": "你提到的这个机制不是显而易见的吗…要利用好我们这个项目的优势，给出让人眼前一亮的结论和确实达到一区水平的硬功能",
+    "what_counts_as_non_shallow": [
+      "可归因: 把宏观崩塌定位到个体机制 (哪些分子、为什么)",
+      "可预测: 在不做实验的前提下预测干预效果",
+      "可执行: 给出可部署能力 (推荐/过滤/设计), 而非一个描述"
+    ],
+    "thesis_v2": "金属替换 = 对分子活性的因果干预 do(m)。核心问题从『能不能迁移』升级为『干预效应能否被化学预测』。目标: 估计并预测异质干预效应 CATE(x) = y(m2|x) - y(m1|x), 使 metal-swap 在零实验条件下可预测/可推荐。",
+    "supporting_evidence_2026_10_17": {
+      "matched_ligand_same_cell": "670 个 (配体,细胞系) 对出现在 >=2 金属; 标签跨金属不一致 122/670 = 18.2%",
+      "noise_floor": "同 (配体,细胞系,金属) 重复测量矛盾 153/1599 = 9.6%",
+      "binomial_test": "观测 18.2% vs 噪声地板 9.6%, p=4.8e-12",
+      "interpretation": "同一 x、同一 assay, 换金属后 y 变 -> concept shift (p(y|x,m) != p(y|x)) -> ligand-only 模型跨金属不可辨识。这解释了 LOMO 对 K 完全平坦 (源域数据修不了被改掉的标签函数), 并把 FSMA 从经验技巧升级为可证必要的补救。",
+      "honest_caveat": "这本身仍是『金属重要』的量化, 不是反直觉结论。它作为 v2 的**地基**, 不作为卖点。卖点是 WP1-WP4。",
+      "data_available": "molmetal/data/metal_chemistry_5.csv (chem 3-d) + rich metal descriptor block (25-d) 在盘上; metal_lomo_auc*.json / metal_activity_transfer*.json (含 permutation null / scaffold 对照) 已有; 匹配配体对可由 MetalCytoToxDB.csv 直接重算 (已验证)。"
+    },
+    "work_packages": [
+      {
+        "id": "WP0",
+        "title": "功效分析 + WP1 归因 (先决条件, CPU, 零 GPU)",
+        "hypothesis": "现有 18.2% vs 9.6% 的效应量 + 268 配体 / 670 对, 足以支撑 WP2/WP3 的交叉验证。若不足, 整个 v2 计划需要先扩数据或换角度。",
+        "method": "用 matched 对做功效分析 (目标 AUC 0.65 的检出功效); 同时把 LOMO 惩罚分层归因到 metal-sensitive vs metal-robust 配体子集。",
+        "prereq": "LOMO 的逐配体预测分数**没有落盘** (现有产物只存 AUC)。WP0 需要一个带 dump 的 LOMO 重跑 (~5 金属, 便宜)。",
+        "deliverable": "metrics/by_metric/metal_sensitivity_decomposition.json (+ power 分析段)",
+        "acceptance": "报告 (a) 检出功效; (b) metal-robust 子集 LOMO AUC 恢复比例。若 robust 子集恢复到 within-metal 的 >=90%, 则『迁移惩罚 = 金属敏感配体』成立, 可归因。",
+        "why_non_obvious": "把 aggregate 的『崩塌』分解成可定位的个体机制。",
+        "wall": "0.5-1 天",
+        "status": "OPEN",
+        "gpu": "none"
+      },
+      {
+        "id": "WP1",
+        "title": "干预效应的因果分解",
+        "hypothesis": "LOMO 的全部惩罚来自 metal-sensitive 配体子集; 在 robust 子集上 LOMO ~= within-metal。",
+        "method": "LOMO 分层评测 + ATE/CATE 估计 (匹配对)。",
+        "deliverable": "metrics/by_metric/metal_sensitivity_decomposition.json",
+        "acceptance": "robust 子集 LOMO 恢复到 within-metal 的 >=90% (与 WP0 合并判定)。",
+        "why_non_obvious": "aggregate 现象被分解成个体级机制。",
+        "wall": "1 天 (含在 WP0)",
+        "status": "OPEN",
+        "gpu": "none"
+      },
+      {
+        "id": "WP2",
+        "title": "金属敏感性可预测 (能力: 零实验可靠性过滤)",
+        "hypothesis": "一个配体是否 metal-sensitive 可由**配体化学单独**预测 (不需要金属标签)。",
+        "method": "分类器 (输入=配体图/ECFP4; 标签=该配体在 >=2 金属间是否翻转), leave-one-ligand-out CV + permutation null。",
+        "deliverable": "metrics/by_metric/metal_sensitivity_predictor.json",
+        "acceptance": "AUC 显著 > 0.5 (permutation null, Holm)。",
+        "why_non_obvious": "『哪些分子不能用 ligand-only 模型预测』—— 一个可部署的可靠性过滤器。",
+        "wall": "1-2 天",
+        "status": "OPEN",
+        "gpu": "small",
+        "risk": "n=268 配体可能功效不足 (WP0 先判)。"
+      },
+      {
+        "id": "WP3",
+        "title": "金属化学驱动迁移 (能力: 零样本 metal-swap 预测 + 金属推荐)",
+        "hypothesis": "金属对之间的迁移性由金属描述符决定 (存在一个可计算的『金属距离』), 可据此做零样本替换预测。",
+        "method": "(a) rich+chem 描述符 -> metal-metal 距离矩阵; (b) 与实测 transfer matrix 相关 (permutation null); (c) 描述符 + 配体 -> 预测 CATE (同配体跨金属 Delta activity)。",
+        "deliverable": "metrics/by_metric/metal_transfer_chemistry.json",
+        "acceptance": "描述符距离 vs 实测迁移显著相关; CATE 预测 AUC 显著 > 0.5。",
+        "why_non_obvious": "『不用合成就能说: 这个金属换过去大概率行/不行, 以及换成哪个』—— 最眼前一亮的一条。",
+        "wall": "2-3 天",
+        "status": "OPEN",
+        "gpu": "small",
+        "risk": "5 金属 -> 仅 10 个有序对, 距离-迁移相关可能欠功效。"
+      },
+      {
+        "id": "WP4",
+        "title": "metal-as-domain-token 架构 (方法, 顺带补 G1)",
+        "hypothesis": "金属是可观测的域指示量 (部署时已知); 把它作为 domain token 注入 message passing (而非标量特征) 可提高 within-metal 绝对 AUC 与跨金属可迁移性。",
+        "method": "基于 EX1 结论 (h512 下 message > readout, Holm 显著) 构建 metal-conditioned D-MPNN, 与 FSMA 组合。",
+        "deliverable": "融合/路由 scorer + FSMA K-curve 重跑 (FU4 复用)。",
+        "acceptance": "within-metal >= XGB (补 G1) 且跨金属可迁移性提升。",
+        "why_non_obvious": "把『金属感知负结果 (I1-I4)』翻成『正确用法是 domain token 而非特征』。",
+        "wall": "3-5 天",
+        "status": "OPEN",
+        "gpu": "heavy"
+      }
+    ],
+    "workload_delta": "相对现有工作的**增量**评估: WP0/WP1 = 纯分析 + 一次带 dump 的 LOMO 重跑 (小); WP2 = 一个小分类器 (小); WP3 = 描述符距离 + CATE 预测 (中); WP4 = 架构 (大, GPU, 与 FU1/FU2 并行)。总计**中等**: 大部分是『在已有数据上做新分析』, 只有 WP4 是新训练。真正的不确定项是 WP0 的功效判定。",
+    "tier_mapping": {
+      "erqu": "WP1 + WP2 (机制分解 + 预测器)",
+      "yiqu": "WP0 功效成立 + WP3 (化学驱动零样本能力) + WP4 (真方法)"
+    },
+    "honesty_boundary": "WP3 若相关性不显著, 就是『金属化学不足以预测迁移』—— 那是可发表的**负结论**, 但不能当卖点。AGENTS.md 5.2: 分量级数字如实报告, 不删不藏; 『不接受弱指标』= 去把它做强或降级为 scope/limitation, 不是隐藏。",
+    "kill_criterion": "WP0 若显示功效不足 (matched 子集撑不起 WP2/WP3 的 CV), 则 v2 的 WP2/WP3 不可行 —— 此时先扩数据或改角度, 不硬上。"
+  },
+  "task_queue_2026_10_17": {
+    "created": "2026-10-17",
+    "thesis": "thesis_v2_2026_10_17",
+    "note": "按 thesis_v2 组织的可执行队列。每项含 §5.7 smoke + §5.11 门禁 + §5.5 ls -la 证据要求。GPU 一律 cuda:0 (用户 2026-10-16 指令: 所有操作上 GPU0, 不用 GPU1)。",
+    "tasks": [
+      {
+        "id": "WP0",
+        "title": "功效分析 + LOMO 分层归因",
+        "priority": "P0 (先决条件)",
+        "deliverable": "metrics/by_metric/metal_sensitivity_decomposition.json",
+        "status": "OPEN",
+        "blocked_by": []
+      },
+      {
+        "id": "WP1",
+        "title": "干预效应因果分解 (ATE/CATE)",
+        "deliverable": "metrics/by_metric/metal_sensitivity_decomposition.json",
+        "status": "OPEN",
+        "blocked_by": [
+          "WP0"
+        ]
+      },
+      {
+        "id": "WP2",
+        "title": "金属敏感性预测器",
+        "deliverable": "metrics/by_metric/metal_sensitivity_predictor.json",
+        "status": "OPEN",
+        "blocked_by": [
+          "WP0"
+        ]
+      },
+      {
+        "id": "WP3",
+        "title": "金属化学驱动迁移 + 零样本 metal-swap 预测",
+        "deliverable": "metrics/by_metric/metal_transfer_chemistry.json",
+        "status": "OPEN",
+        "blocked_by": [
+          "WP0"
+        ]
+      },
+      {
+        "id": "WP4",
+        "title": "metal-as-domain-token 架构",
+        "deliverable": "fusion/routed scorer + FSMA K-curve",
+        "status": "OPEN",
+        "blocked_by": [
+          "WP3"
+        ]
+      },
+      {
+        "id": "FU1",
+        "title": "D-MPNN x ECFP4 特征融合 arms 3/4/5",
+        "deliverable": "metrics/by_metric/fusion_dmpnn_ecfp4_paper_funnel.json",
+        "status": "RUNNING (GPU0)",
+        "note": "初步: Ru 5/5 seed 完成, arm3-arm1 = -0.0140 -> 特征融合在 Ru 上失败"
+      },
+      {
+        "id": "FU2",
+        "title": "Stacking 合并器 (D-MPNN x ECFP4-XGB)",
+        "deliverable": "metrics/by_metric/stacked_dmpnn_xgb_within_metal.json",
+        "status": "RUNNING (GPU0)",
+        "note": "全量档 inner_splits=3, ETA ~16-17h"
+      },
+      {
+        "id": "FU3",
+        "title": "metal-conditioned router",
+        "deliverable": "metrics/by_metric/metal_router_ablation.json",
+        "status": "OPEN",
+        "note": "与 WP4 合并可能"
+      },
+      {
+        "id": "FU4",
+        "title": "融合 scorer 上的 FSMA K-curve",
+        "deliverable": "metrics/by_metric/fsma_fused_kcurve.json",
+        "status": "OPEN",
+        "blocked_by": [
+          "FU2"
+        ]
+      },
+      {
+        "id": "PAPER-SYNC",
+        "title": "paper_a abstract 数字修正 (K20 +0.0084 -> +0.0389 等) + G2 措辞改如实版",
+        "status": "BLOCKED-ON-USER",
+        "note": "§5.3: 需用户先看 hunk 再落笔"
+      }
+    ]
   }
 }
