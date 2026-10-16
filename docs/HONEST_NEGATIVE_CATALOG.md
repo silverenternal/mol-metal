@@ -3545,6 +3545,8 @@ lines:
 | Unique Pt compounds held | **3,292** | `pt/pt_only_summary.json` → `pt_unique_compounds` |
 | MB-Finder's total Pt compounds | 3,614 | `GET /api/v2/get-count` → `metalCounts.Pt` |
 | Pt compound-space coverage from 21/832 cells | **91.1%** | 3,292 / 3,614 |
+| Pt rows carrying a SMILES structure | **10,857 / 10,857 (100%)** | `pt/smiles_join_summary.json` → `pt_rows_with_smiles` |
+| Pt rows training-ready (value_mean **and** SMILES) | **9,744** | `pt/smiles_join_summary.json` → `pt_rows_with_value_and_smiles` |
 
 **Why it is unreachable.** 21 of MB-Finder's 832 cell lines already supply 91.1% of
 its platinum *compound* space; the remaining 811 cell lines mostly repeat the same
@@ -3564,7 +3566,14 @@ measurement.
    `get-substances` (which returns `smiles`/`mw`/`cLogP`), joined on the compound code
    (`MB-Pt-000010` == `imageId`). That endpoint ignores every filter (`imageId`, `id`,
    `search`, `metal` all return the unfiltered first page) and hard-caps `per_page` at
-   5, so all 7,711 substances = 1,543 pages must be walked.
+   5, so all 7,711 substances = 1,543 pages must be walked. **RESOLVED (Wf-A47/A49):**
+   the full 1,543-page walk completed 2026-10-17 07:18 → 7,703 substances, 7,703 with
+   SMILES (0 pages unrecovered); the join on `compound_code` covers **3,292/3,292 Pt
+   compounds and 10,857/10,857 Pt rows (100%)**, of which 9,744 rows also carry a
+   `value_mean`. Rate-limit reality: `X-RateLimit-Limit: 30`/min, but any burst trips an
+   **IP-level** hard ban (all endpoints 429, `Remaining` header keeps decrementing — not
+   a usable signal); stable throughput was ~12 req/min with a 15-consecutive-429
+   `os._exit(3)` guard so an outer loop resumes from the `_page` marker.
 2. **The `metal` field was silently defaulted.** `_flatten` wrote
    `comp.get("metal") or "Pt"`; the API never returns `metal`, so **every** row was
    labelled Pt. Real composition from the codes: 60.7% `MB-Pt-`, 25.8% `MB-Cu-`, 11.8%
@@ -3583,6 +3592,8 @@ preference.
 | Pt-only summary on disk | `ls -la .data/molmetal/wf_a37_platinai_biodata/pt/pt_only_summary.json` → exists |
 | Pt row count | `python -c "import json;d=json.load(open('.data/molmetal/wf_a37_platinai_biodata/pt/pt_only_summary.json'));assert d['pt_rows']==10857 and d['pt_unique_compounds']==3292"` → no AssertionError |
 | Combined Pt file | `wc -l .data/molmetal/wf_a37_platinai_biodata/pt/platinai_pt_all_cells.jsonl` → 10857 |
+| SMILES join full | `python -c "import json;d=json.load(open('.data/molmetal/wf_a37_platinai_biodata/pt/smiles_join_summary.json'));assert d['pt_compounds_missing_smiles']==0 and d['pt_rows_with_smiles']==10857"` → no AssertionError |
+| Substances walk complete | `python -c "import json;d=json.load(open('.data/molmetal/wf_a37_platinai_biodata/substances_harvest_summary.json'));assert d['pages_failed_unrecovered']==0 and d['with_smiles']==7703"` → no AssertionError |
 | MB-Finder totals | `curl -sS --noproxy '*' https://api.mb-finder.org/api/v2/get-count` → `metalCounts.Pt == 3614` |
 | `metal` backfill clean | `python -c "import json,glob;[json.loads(l) for p in glob.glob('.data/molmetal/wf_a37_platinai_biodata/platinai_*_biodata.jsonl') for l in open(p) if l.strip()]"` → no error; 0 mismatches vs code prefix |
 | Brief corrected | `grep -n "CORRECTION (2026-10-17)" docs/external_tasks/rusanov_2025_reharvest_brief.md` → matches |
@@ -3594,7 +3605,7 @@ preference.
 count: **109 → 110** (+1) — this is a NEW top-level ACTIVE honest-negative (an
 unreachable target), not a ledger-internal strengthen.
 
-**Workflow** | Wf-A46 (2026-10-17; multi-cell biodata harvest 17,882 rows / 21 cell lines; commit `00559149`) + Wf-A47 (get-substances enumeration for SMILES) + Wf-A48 (metal-attribution fix + Pt-only view). 0 GPU + 0 `paper/*` + 0 wet-lab.
+**Workflow** | Wf-A46 (2026-10-17; multi-cell biodata harvest 17,882 rows / 21 cell lines; commit `00559149`) + Wf-A47 (get-substances enumeration for SMILES — 1,543/1,543 pages, 7,703 substances with SMILES) + Wf-A48 (metal-attribution fix + Pt-only view) + Wf-A49 (SMILES join → 100% Pt-row structure coverage). 0 GPU + 0 `paper/*` + 0 wet-lab.
 
 ---
 

@@ -528,6 +528,31 @@ def main(argv: Optional[list] = None) -> int:
         for m, c in (s.get("rows_by_metal") or {}).items():
             metals[m] += c
     rows_pt = sum(s.get("rows_pt", 0) for s in summaries)
+
+    # The label harvest carries no structures; wf_a47 fetches them and wf_a49
+    # joins them.  Fold that coverage in when the artefacts are present so this
+    # single summary answers "how many rows are training-ready".
+    structures = None
+    substances_path = out_dir / "substances_harvest_summary.json"
+    join_path = out_dir / "pt" / "smiles_join_summary.json"
+    if substances_path.exists() and join_path.exists():
+        try:
+            substances = json.loads(substances_path.read_text(encoding="utf-8"))
+            join = json.loads(join_path.read_text(encoding="utf-8"))
+            structures = {
+                "substances_with_smiles": substances.get("with_smiles"),
+                "pt_compounds": join.get("pt_compounds"),
+                "pt_compounds_with_smiles": join.get("pt_compounds_with_smiles"),
+                "pt_rows": join.get("pt_rows"),
+                "pt_rows_with_smiles": join.get("pt_rows_with_smiles"),
+                "pt_rows_with_value_and_smiles": join.get(
+                    "pt_rows_with_value_and_smiles"
+                ),
+                "source": "wf_a47 get-substances + wf_a49 join",
+            }
+        except (json.JSONDecodeError, OSError):
+            structures = None
+
     combined = {
         "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "endpoint": f"POST {_BIODATA_URL}",
@@ -538,6 +563,7 @@ def main(argv: Optional[list] = None) -> int:
         "incomplete_cells": incomplete,
         "wall_seconds": round(time.time() - t_start, 1),
         "by_cell_line": summaries,
+        "structures": structures,
         "notes": (
             "IC50 measurements harvested from MB-Finder across the largest cell "
             "lines. NOT all platinum: the API returns no metal field, so the "
