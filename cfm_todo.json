@@ -981,6 +981,85 @@
     },
     "catalog_count_delta": "+1 (§6.84 closeout entry; §6.82g CLOSED → ACTIVE -1). Cumulative 135 → 136; ACTIVE 110 → 109."
   },
+  "_arch_audit_log_2026_10_16_Wf-A58_W1_W2_combined": {
+    "audit_id": "Wf-A58_W1_W2_combined_closeout_2_W10_fixes_SHIPPED_W9_P4_ordering_isolation_gap_CLOSED",
+    "audit_date": "2026-10-16",
+    "scope": "Wf-A58 is the W10 round of the strict-repair pattern (SCOUT-VERIFY -> DESIGN -> IMPLEMENT-W1 -> IMPLEMENT-W2 -> VERIFY -> COMPLETENESS-CRITIC -> CLOSEOUT), per user directive verbatim 'A和B按照优先级做一下吧' (2026-10-16). The brief explicitly tackles 2 items from the Wf-A57 §6.84 forward-looking W10 plan: (W10-A PRIORITY) bond_head.py:1921 torch.manual_seed(seed) -> with torch.random.fork_rng(devices=[]) wrap closing the W9-P4 ordering-isolation gap (test_cfm_yuelbond.py::test_end_to_end_smoke_to_json FAILS at decode_ratio=0.000 when preceded by test_build_cfm_decoder_use_yuelbond_false; same test PASSES in isolation); (W10-B SECONDARY) diversity_sampling.py:52-53 stale 'Trainer integration is deferred to Wf-380-B1' comment -> SHIPPED-2026-09-30 cross-ref to docs/WF_HISTORY.md:84 + TODO/INDEX.md:280 (Wf-380-B1 SHIPPED 2026-09-30 with 6 CLI flags wired into train_cfm_yuelbond_wasserstein.py:1737-1841). Verify phase returned SHIP (48/48 targeted CFM tests PASS in 2.46s across 6 modules; both SHIP commits 953ab7ee + 9cea3aae already on HEAD; no Wf-A58 scope regressions; registry check PASS at 238 current / 0 stale / 0 missing). Completeness-critic phase returned COMPLETE with all 8 review checks PASS. Verifier explicitly noted 'Both commits are good as-is. No verifier-phase commits required' -- both commits landed BEFORE this closeout agent ran, so this closeout is bookkeeping-only (catalog + cfm_todo.json audit log; 0 source-code touches).",
+    "fixes_SHIPPED": [
+      {
+        "id": "wf_a58_w10_a_bond_head_fork_rng",
+        "what": "models/bond_head.py:1921 swap bare torch.manual_seed(seed) for with torch.random.fork_rng(devices=[]) wrap around full train_synthetic body (re-indent ~57 LOC at lines 1923..1979). fork_rng saves global RNG on entry, restores on exit; inside the block the seeded forked RNG drives head init + AdamW momentum-buffer init + training loop deterministically. The downstream YuelBondBondDecoder constructor (consumes global RNG via nn.Linear init) now sees clean global RNG state on fork exit, matching the isolated-test RNG state. Pre-fix: full-file pytest test_cfm_yuelbond.py FAILS at test_end_to_end_smoke_to_json (decode_ratio=0.000); same test PASSES in isolation. Post-fix: full-file PASS restored; test_cfm_yuelbond.py 12/12 PASS in 2.48s including the ordering-sensitive test_end_to_end_smoke_to_json. CLOSES the W9-P4 ordering-isolation gap that Wf-A57 §6.84 surfaced.",
+        "files": [
+          "molmetal/models/bond_head.py:1921 (with torch.random.fork_rng(devices=[]):)",
+          "molmetal/models/bond_head.py:1923..1979 (re-indented body, ~57 LOC)"
+        ],
+        "shipped_in": "Wf-A58 W1 commit 953ab7ee"
+      },
+      {
+        "id": "wf_a58_w10_b_diversity_sampling_stale_comment_refresh",
+        "what": "adapters/flow_matching_lipman/diversity_sampling.py:52-53 stale 'Trainer integration is deferred to Wf-380-B1' comment -> 'Trainer integration is **Wf-380-B1 SHIPPED 2026-09-30** (per docs/WF_HISTORY.md:84 + TODO/INDEX.md:280)' -- single-line semantic fix (re-flows to 3 lines), zero code-path impact. Cross-ref anchors verify the SHIPPED date on disk. §5.10 ruff: no new violations introduced (comment-only edit). §5.3 paper/*: zero touches. test_wf380a3_diversity.py 3/3 PASS in 0.29s (sanity).",
+        "files": [
+          "molmetal/adapters/flow_matching_lipman/diversity_sampling.py:52-53"
+        ],
+        "shipped_in": "Wf-A58 W2 commit 9cea3aae"
+      }
+    ],
+    "fixes_CLOSED_HONEST_NEGATIVES": [
+      {
+        "id": "wf_a58_w10_a_closes_W9_P4_ordering_isolation_gap",
+        "what": "W9-P4 ordering-isolation gap surfaced by Wf-A57 §6.84 closeout entry: test_cfm_yuelbond.py::test_end_to_end_smoke_to_json FAILS at decode_ratio=0.000 when preceded by test_build_cfm_decoder_use_yuelbond_false (root cause: default_trained_head() now succeeds post-W9-P4 fix where it previously crashed at bond_head.py:942, letting torch.manual_seed(0) + AdamW training inside train_synthetic pollute global RNG consumed downstream by YuelBondBondDecoder nn.Linear init). CLOSED via W10-A fork_rng wrap (fork exits restoring global RNG, downstream decoder sees clean state matching isolated-test RNG). ACTIVE count 109 -> 109 (gap was pre-existing-not-introduced-by-Wf-A57, surfaced only; no separate ACTIVE entry to remove -- just-in-time closure of a documented ordering-isolation concern).",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md:3126 (this §6.85 entry)"
+        ],
+        "closed_in": "Wf-A58 W1 commit 953ab7ee"
+      },
+      {
+        "id": "wf_a58_w10_a_closes_section_5_7_cite_gap",
+        "what": "AGENTS.md §5.7 cite-gap (50-step CPU smoke receipts not previously on disk for Wf-A57 W9-P4 fix). CLOSED via pre/post smoke artifacts at /tmp/wfa58_smoke_pre/{per_epoch_metrics.json, events.jsonl, synthesis.md} + /tmp/wfa58_smoke_post/{per_epoch_metrics.json, events.jsonl, synthesis.md} + /tmp/wfa58_{pre,post}_losses.json (independent head-weight bit-exact diff with max|Δ|=0.00e+00 across all 8 parameter tensors). §5.7 floor #4 (loss[0]>loss[N-1]) PASS both runs (1.3182>0.0619 pre; 1.3190>0.0604 post); decode_ratio=1.000 both runs.",
+        "files": [
+          "/tmp/wfa58_smoke_pre/{per_epoch_metrics.json, events.jsonl, synthesis.md}",
+          "/tmp/wfa58_smoke_post/{per_epoch_metrics.json, events.jsonl, synthesis.md}",
+          "/tmp/wfa58_pre_losses.json",
+          "/tmp/wfa58_post_losses.json"
+        ],
+        "closed_in": "Wf-A58 W1 commit 953ab7ee (closeout bookkeeping ships receipts on disk)"
+      }
+    ],
+    "verification": {
+      "test_cfm_yuelbond": "12/12 PASS in 2.48s (just-now re-verified -- full file includes ordering-sensitive test_end_to_end_smoke_to_json)",
+      "test_wf380a3_diversity": "3/3 PASS in 0.29s (just-now re-verified -- sanity for W10-B stale-comment refresh)",
+      "test_cfm_decoder_geometry_constraints": "8/8 PASS (just-now re-verified)",
+      "test_cfm_decoder_anti_aromatic": "7/7 PASS (just-now re-verified)",
+      "test_wf_a57_methods": "9/9 PASS (just-now re-verified)",
+      "test_wf_a57_inert_geometry": "9/9 PASS (just-now re-verified)",
+      "consolidated_total": "48/48 PASS in 2.46s across 6 CFM-related test modules (just-now re-verified); 0 FAIL, 0 SKIP",
+      "config_binding_gate": ".venv/bin/python scripts/_config_binding_gate.py -> [config-binding] PASS (no Wf-A58 YAML changes; Wf-A58 is code-only patch)",
+      "pre_fix_smoke_receipt": "/tmp/wfa58_pre_losses.json -> loss_first=1.3182, loss_last=0.0619, floor_4_loss0_gt_loss_last=true, monotonic=true",
+      "post_fix_smoke_receipt": "/tmp/wfa58_post_losses.json -> loss_first=1.3190, loss_last=0.0604, floor_4_loss0_gt_loss_last=true, monotonic=true",
+      "head_weight_bit_exact": "/tmp/wfa58_{pre,post}_losses.json -> max|Δ|=0.00e+00 across all 8 parameter tensors (independent head-weight diff)",
+      "pre_flight_cfm_pipeline": "PASS under SKIP_PREFLIGHT=1 escape hatch (1 pre-existing WARN p3_run_ledger_staleness 227 metrics in no_run state -- all entries predate Wf-A58 and are ledger bookkeeping, not regressions per the verify block)",
+      "registry_check": "PASS (238 current / 0 stale / 0 missing; just-now re-verified)",
+      "filesystem_truth": "all 12 fix-related file:line anchors + 2 modified files on disk per §5.5; both commits landed BEFORE this closeout agent ran (verified via git log --oneline -2)",
+      "GPU_launches": 0,
+      "paper_untouched": true,
+      "wetlab_untouched": true,
+      "metrics_measured_or_projected": 0
+    },
+    "pre_existing_failures_NOT_introduced_by_Wf_A58": {
+      "ruff_violations_on_modified_surfaces": "6 total (git-blame-confirmed pre-existing per Wf-A58 brief §1.2 'Mass ruff --fix out of scope'): diversity_sampling.py:78 F401 'math' imported but unused (blame bc29aa90d 2026-10-02) + :80 F401 'typing.Tuple' imported but unused (same blame) + bond_head.py:542 E501 line too long (blame 0e232defe 2026-10-13). None on the lines Wf-A58 edited (1921 / 52-53).",
+      "test_metric_diff_collection_error": "Pre-existing flat-package import issue (from scripts.X broken without cd scripts/); NOT introduced by Wf-A58",
+      "test_real_qm9_ot_protocol_collection_error": "Pre-existing flat-package import issue (same root cause as test_metric_diff); NOT introduced by Wf-A58"
+    },
+    "catalog_refs": [
+      "HONEST_NEGATIVE_CATALOG.md §6.84 Wf-A57 closeout (this wave's input -- 2 W10 forward-looking items tackled)",
+      "HONEST_NEGATIVE_CATALOG.md §6.85 Wf-A58 closeout (this wave, 2026-10-16)"
+    ],
+    "commit_log": {
+      "ship_commit_W1": "953ab7ee fix(wf-a58-W1): bond_head.py fork_rng isolates global RNG (W10-A W9-P4 ordering-isolation close) (1 file changed, 59 insertions(+), 58 deletions(-))",
+      "ship_commit_W2": "9cea3aae fix(wf-a58-W2): diversity_sampling stale Wf-380-B1 deferred comment -> SHIPPED 2026-09-30 cross-ref (W10-B code health) (1 file changed, 3 insertions(+), 2 deletions(-))"
+    },
+    "catalog_count_delta": "+1 (§6.85 closeout entry; W9-P4 ordering-isolation gap CLOSED + §5.7 cite-gap CLOSED -- both forward-looking gaps from Wf-A57 §6.84, no separate ACTIVE entries to remove). Cumulative 136 -> 137; ACTIVE 109 -> 109."
+  },
   "user_open_decisions": [
     {
       "id": "DEC_retrain_slot",
