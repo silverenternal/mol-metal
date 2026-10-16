@@ -1,49 +1,41 @@
-"""Wf-A46: rate-limited concurrent MCF-7 biodata harvest (MB-Finder public API).
+"""Wf-A46: rate-limited multi-cell-line biodata harvest (MB-Finder public API).
 
 Why this exists
 ---------------
-``wf_a37_platinai_full_harvest.py::harvest_cell_line`` is strictly sequential
-and assumes a healthy link.  On 2026-10-16 the MB-Finder API:
+The Rusanov-2025 "17,732 IC50 values" figure is a *cross-cell-line* total, not
+a 4-cell total: their V2 SI ("Data curation", p. S27) states "a labelled
+dataset of 4,078 structurally unique platinum complexes with cytotoxicity data
+... IC50 values from 592 cell lines".  ``GET /api/v2/get-count`` agrees:
+``{"compoundsCount":7620,"cellsCount":832,"ic50Count":32022,
+"metalCounts":{"Cu":2676,"Pt":3614,"Au":1218,"Re":144}}``.
 
-  * answers only ~33% of requests (the rest ConnectTimeout / ReadTimeout);
-  * enforces ``X-RateLimit-Limit: 30`` requests/minute and returns
-    ``{"success": false, "message": "You've made too many requests..."}``
-    with HTTP 429 once the burst exceeds it.
+The 4 modelled cells (A549/MCF-7/A2780/A2780cis) are only 8,428 of the 32,022
+rows.  This script harvests the largest remaining cell lines until the
+cumulative Pt IC50 count crosses 17,732.
 
-A sequential pass over MCF-7's 550 pages measured ~1 page / 40 s (~6 h).  A
-6-worker unthrottled burst measured 15 ok-pages/min but tripped the 30/min
-limit and wedged (39 threads in ``futex_wait``, 24 half-open sockets).
+Server behaviour (measured 2026-10-16)
+--------------------------------------
+* ``per_page`` is hard-capped at 5 (requesting 500 still returns 5 rows).
+* ``X-RateLimit-Limit: 30`` requests/minute; a 6-worker burst trips a
+  cooldown that then 429s even 25 s-spaced requests.  Request *starts* are
+  therefore paced through a token bucket under that limit.
+* The link is flaky: ConnectTimeout / ReadTimeout are common, and a wedged
+  SSL call can sit in ``futex_wait`` forever.  Every page is appended to the
+  JSONL as it arrives, and a hard wall-clock watchdog calls ``os._exit(3)``
+  so a re-run resumes from the ``_page`` markers.
 
-This script therefore *paces* request starts through a token bucket under the
-documented 30/min limit, keeps a small worker pool to hide per-request latency,
-and wraps the whole fetch in a hard wall-clock watchdog so a wedged SSL call in
-one worker cannot freeze the run.
-
-Scope
------
-MCF-7 ONLY.  The other three cells (A549 2,590 / A2780 1,818 / A2780cis 1,273)
-are already complete — their existing JSONLs match the API ``meta.total``
-exactly.  Row schema comes from ``wf_a37_platinai_full_harvest._flatten`` so all
-four files are field-identical.
-
-Dedup key
----------
-``biodata_id`` (the unique measurement-row id), NOT ``(compound_code,
-cell_line)``.  ``meta.total`` counts *measurements*; one compound legitimately
-has many (MB-Pt-003232 alone: 205 A549 / 243 A2780 / 183 A2780cis rows, each a
-distinct study with its own value).  Deduping on compound_code would drop ~25%
-of the real data.
+Dedup key is ``biodata_id`` (unique measurement id), NOT ``compound_code``:
+``meta.total`` counts measurements and one compound legitimately has many
+(MB-Pt-003232 alone: 205 A549 rows).
 
 CLI
 ---
-  --cell-line   API name (default "MCF-7"; "MCF7" returns meta.total=0)
+  --cell-lines  comma-separated API names (default: the 17-cell list that
+                crosses 17,732).  Hyphens matter: "MCF7" -> total=0.
   --out-dir     default .data/molmetal/wf_a37_platinai_biodata
   --workers     concurrent fetchers (default 4)
-  --rate-per-min request starts per minute (default 28, under the 30 limit)
-  --timeout     per-request seconds (default 15)
-  --max-seconds hard wall-clock budget -> os._exit(3) so a re-run resumes
-  --max-rounds  retry passes over still-missing pages (default 6)
-  --limit-pages optional cap for a smoke run
+  --rate-per-min request starts per minute (default 24, under the 30 limit)
+  --max-seconds hard wall-clock budget -> os._exit(3); re-run resumes
 """
 from __future__ import annotations
 
@@ -78,9 +70,34 @@ from molmetal.scripts.wf_a37_platinai_full_harvest import _flatten  # noqa: E402
 _PROXIES = {"http": None, "https": None}
 _BIODATA_URL = f"{MB_API_BASE}/get-ceil-line-bio-data"
 
-# One shared Session with a pool sized above the worker count.  Creating a fresh
-# module-level ``requests.post`` per call churns Sessions/connections and was
-# implicated in the 2026-10-16 wedge.
+# Largest remaining cell lines by ``meta.total`` (measured 2026-10-16).  The
+# first four are already complete on disk; the rest take the cumulative count
+# from 8,428 past 17,732.
+DEFAULT_CELL_LINES = [
+    "MCF-7",
+    "A549",
+    "A2780",
+    "A2780cis",
+    "HeLa",
+    "HCT-116",
+    "Hep-G2",
+    "MDA-MB-231",
+    "HT-29",
+    "SW480",
+    "SK-OV-3",
+    "CH1",
+    "HL-60",
+    "MRC-5",
+    "NCI-H460",
+    "HCT-15",
+    "PC-3",
+    "HEK-293",
+    "A375",
+    "L1210",
+    "HL-7702",
+]
+
+# One shared Session with a pool sized above the worker count.
 _SESSION = requests.Session()
 _SESSION.proxies = _PROXIES
 _SESSION.mount(
@@ -108,28 +125,47 @@ _CSV_FIELDS = [
 
 
 class RateLimiter:
-    """Token bucket: enforce a minimum interval between request *starts*.
+    """Bounded token bucket pacing request *starts* under the server limit.
 
-    Serialises start times to ``60 / per_minute`` seconds so a small worker
-    pool can overlap in-flight requests without the instantaneous burst
-    exceeding the server's 30/min limit.
+    A naive "next allowed time += interval" limiter accumulates unbounded debt
+    when callers arrive faster than the rate: on 2026-10-16 fast-failing
+    transport retries pushed the schedule ~20 min into the future and every
+    worker sat in ``time.sleep()`` with zero progress.  This bucket caps the
+    burst at ``capacity`` tokens and never drifts past the refill rate.
     """
 
-    def __init__(self, per_minute: float):
-        self.interval = 60.0 / max(1.0, per_minute)
+    def __init__(self, per_minute: float, capacity: int = 2):
+        self.rate = max(1.0, per_minute) / 60.0
+        self.capacity = float(max(1, capacity))
+        self._tokens = float(max(1, capacity))
+        self._last = time.time()
         self._lock = threading.Lock()
-        self._next_t = 0.0
 
     def wait(self) -> None:
-        with self._lock:
-            now = time.time()
-            sleep_for = max(0.0, self._next_t - now)
-            self._next_t = max(now, self._next_t) + self.interval
-        if sleep_for > 0:
-            time.sleep(sleep_for)
+        while True:
+            with self._lock:
+                now = time.time()
+                self._tokens = min(
+                    self.capacity,
+                    self._tokens + (now - self._last) * self.rate,
+                )
+                self._last = now
+                if self._tokens >= 1.0:
+                    self._tokens -= 1.0
+                    return
+                need = (1.0 - self._tokens) / self.rate
+            time.sleep(min(max(need, 0.01), 1.0))
 
 
 _LIMITER: Optional[RateLimiter] = None
+# Updated on every completed page (ok or fail); a monitor thread aborts the
+# process if it goes stale, so a wedged worker cannot burn a whole budget.
+_PROGRESS = {"t": time.time()}
+# Consecutive 429s.  MB-Finder imposes a cooldown that 429s even 25 s-spaced
+# requests for minutes at a time; once we are clearly inside one, bail out so
+# the caller can back off instead of burning ~90 s per page.
+_RATE_LIMITED = {"consecutive": 0}
+_RATE_LIMITED_ABORT = 15
 
 
 def _post_biodata(cell_line: str, page: int, per_page: int, timeout: int):
@@ -146,17 +182,39 @@ def _post_biodata(cell_line: str, page: int, per_page: int, timeout: int):
             timeout=timeout,
         )
     except (requests.exceptions.RequestException, ValueError):
+        _PROGRESS["t"] = time.time()
         return ("transport_dead", None)
+    _PROGRESS["t"] = time.time()
     if r.status_code == 200:
         try:
             payload = r.json()
         except ValueError:
             return ("transport_dead", None)
         if payload.get("success") is False:
+            _RATE_LIMITED["consecutive"] += 1
+            if _RATE_LIMITED["consecutive"] >= _RATE_LIMITED_ABORT:
+                print(
+                    f"[wf-a46] RATE-LIMIT cooldown: "
+                    f"{_RATE_LIMITED['consecutive']} consecutive 429 -> "
+                    f"os._exit(3); re-run resumes",
+                    flush=True,
+                )
+                os._exit(3)
             return ("rate_limited", payload)
+        _RATE_LIMITED["consecutive"] = 0
         return ("ok", payload)
     if r.status_code == 429:
+        _RATE_LIMITED["consecutive"] += 1
+        if _RATE_LIMITED["consecutive"] >= _RATE_LIMITED_ABORT:
+            print(
+                f"[wf-a46] RATE-LIMIT cooldown: "
+                f"{_RATE_LIMITED['consecutive']} consecutive 429 -> "
+                f"os._exit(3); re-run resumes",
+                flush=True,
+            )
+            os._exit(3)
         return ("rate_limited", None)
+    _RATE_LIMITED["consecutive"] = 0
     if r.status_code == 404:
         return ("empty", None)
     return (f"http_{r.status_code}", None)
@@ -165,8 +223,7 @@ def _post_biodata(cell_line: str, page: int, per_page: int, timeout: int):
 def fetch_page(
     cell_line: str, page: int, per_page: int, timeout: int, retries: int = 4
 ) -> Optional[list]:
-    """Fetch one page. ``None`` => retry this page; a list (possibly empty)
-    is a definitive answer."""
+    """Fetch one page. ``None`` => retry this page; a list is definitive."""
     for attempt in range(retries):
         status, payload = _post_biodata(cell_line, page, per_page, timeout)
         if status == "ok":
@@ -174,20 +231,14 @@ def fetch_page(
         if status == "empty":
             return []
         if status == "rate_limited":
-            # Back off hard — the limiter already paces, so a 429 means the
-            # window is genuinely saturated.
             time.sleep(15.0 + 5.0 * attempt)
             continue
-        # transport_dead / http_5xx
         time.sleep(1.5 * (attempt + 1))
     return None
 
 
 def probe_last_page(cell_line: str, timeout: int) -> tuple:
-    """Return ``(total, last_page)``; retries until the API answers.
-
-    Bounded by the caller's watchdog, so an outage does not abort the run.
-    """
+    """Return ``(total, last_page)``; retries until the API answers."""
     while True:
         status, payload = _post_biodata(cell_line, 1, 5, timeout)
         if status == "ok":
@@ -220,8 +271,8 @@ def load_existing(jsonl_path: Path) -> tuple:
     return records, done
 
 
-def write_outputs(out_dir: Path, stem: str, records: list, summary: dict) -> None:
-    """Atomic-write the JSONL, a deterministic CSV, and the summary JSON."""
+def write_cell_outputs(out_dir: Path, stem: str, records: list) -> None:
+    """Atomic-write one cell line's JSONL + deterministic CSV."""
     jsonl = "".join(
         json.dumps(r, ensure_ascii=False) + "\n"
         for r in sorted(records, key=lambda r: r.get("_page", 0))
@@ -242,25 +293,129 @@ def write_outputs(out_dir: Path, stem: str, records: list, summary: dict) -> Non
             writer.writerow(rec)
     os.replace(tmp_csv, csv_path)
 
-    atomic_write_file(
-        out_dir / "harvest_summary_2026-10-16.json",
-        json.dumps(summary, indent=2, ensure_ascii=False),
+
+def harvest_one(cell_line: str, args, watchdog) -> dict:
+    """Harvest one cell line; returns its summary dict (``pending`` count
+    is reported via ``pages_failed_unrecovered``)."""
+    out_dir = Path(args.out_dir)
+    stem = cell_line.lower().replace("-", "")
+    jsonl_path = out_dir / f"platinai_{stem}_biodata.jsonl"
+
+    records, done_pages = load_existing(jsonl_path)
+    total, last_page = probe_last_page(cell_line, args.timeout)
+    if not last_page:
+        print(f"[{cell_line}] FATAL: meta.last_page unavailable", flush=True)
+        return {"cell_line": cell_line, "error": "no meta.last_page"}
+
+    pending = [p for p in range(1, int(last_page) + 1) if p not in done_pages]
+    print(
+        f"[{cell_line}] resume={len(records)} rows / {len(done_pages)} pages; "
+        f"meta.total={total} last_page={last_page} pending={len(pending)}",
+        flush=True,
     )
+
+    lock = threading.Lock()
+    counters = {"ok": 0, "fail": 0}
+    t0 = time.time()
+    _PROGRESS["t"] = time.time()
+
+    def persist_page(page: int, data: list) -> None:
+        with jsonl_path.open("a", encoding="utf-8") as f:
+            for row in data:
+                flat = _flatten(row, cell_line)
+                flat["_page"] = page
+                f.write(json.dumps(flat, ensure_ascii=False) + "\n")
+
+    for rnd in range(args.max_rounds):
+        if not pending:
+            break
+        still_missing: list = []
+
+        def task(page: int) -> None:
+            data = fetch_page(cell_line, page, args.per_page, args.timeout)
+            with lock:
+                _PROGRESS["t"] = time.time()
+                if data is None:
+                    counters["fail"] += 1
+                    still_missing.append(page)
+                    return
+                counters["ok"] += 1
+                persist_page(page, data)
+                if counters["ok"] % 50 == 0:
+                    print(
+                        f"  [{cell_line}] ok={counters['ok']} "
+                        f"fail={counters['fail']}",
+                        flush=True,
+                    )
+
+        with ThreadPoolExecutor(max_workers=args.workers) as ex:
+            list(ex.map(task, pending))
+
+        pending = still_missing
+        if pending:
+            print(
+                f"  [{cell_line}] round {rnd + 1}: {len(pending)} pages "
+                f"still failing; sleep 20s",
+                flush=True,
+            )
+            time.sleep(20.0)
+
+    records, _ = load_existing(jsonl_path)
+    records.sort(key=lambda r: (r.get("_page", 0),))
+    seen: set = set()
+    deduped: list = []
+    for rec in records:
+        key = rec.get("biodata_id")
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(rec)
+
+    write_cell_outputs(out_dir, stem, deduped)
+    print(
+        f"[{cell_line}] DONE rows={len(deduped)} "
+        f"(meta.total={total}) pages_missing={len(pending)} "
+        f"elapsed={round(time.time() - t0, 1)}s",
+        flush=True,
+    )
+    return {
+        "cell_line": cell_line,
+        "api_meta_total": total,
+        "api_meta_last_page": int(last_page),
+        "rows_total": len(deduped),
+        "unique_compounds": len({r.get("compound_code") for r in deduped}),
+        "rows_with_value_mean": sum(
+            1 for r in deduped if r.get("value_mean") is not None
+        ),
+        "rows_with_doi": sum(1 for r in deduped if r.get("doi")),
+        "pages_fetched_this_run": counters["ok"],
+        "pages_failed_unrecovered": len(pending),
+        "elapsed_seconds": round(time.time() - t0, 1),
+    }
 
 
 def main(argv: Optional[list] = None) -> int:
     global _LIMITER
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--cell-line", default="MCF-7")
+    parser.add_argument(
+        "--cell-lines", default=",".join(DEFAULT_CELL_LINES)
+    )
     parser.add_argument(
         "--out-dir", default=".data/molmetal/wf_a37_platinai_biodata"
     )
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--rate-per-min", type=float, default=28.0)
+    parser.add_argument("--rate-per-min", type=float, default=24.0)
     parser.add_argument("--timeout", type=int, default=15)
     parser.add_argument("--per-page", type=int, default=5)
     parser.add_argument("--max-rounds", type=int, default=6)
-    parser.add_argument("--limit-pages", type=int, default=0)
+    parser.add_argument(
+        "--stall-seconds",
+        type=int,
+        default=300,
+        help="abort (os._exit 3) if no page completes within this many "
+        "seconds; catches a wedged worker that the wall-clock budget would "
+        "otherwise only catch much later.",
+    )
     parser.add_argument(
         "--max-seconds",
         type=int,
@@ -273,31 +428,16 @@ def main(argv: Optional[list] = None) -> int:
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    stem = args.cell_line.lower().replace("-", "")
-    jsonl_path = out_dir / f"platinai_{stem}_biodata.jsonl"
-
+    cells = [c.strip() for c in args.cell_lines.split(",") if c.strip()]
     _LIMITER = RateLimiter(args.rate_per_min)
 
-    records, done_pages = load_existing(jsonl_path)
-    print(
-        f"[wf-a46] resume: {len(records)} rows, {len(done_pages)} pages done",
-        flush=True,
-    )
+    t_start = time.time()
 
-    t0 = time.time()
-    counters = {"ok": 0, "fail": 0}
-
-    # Hard watchdog started before any network call, so a total outage (or a
-    # wedged worker) cannot hang the process forever.  Cancelled once the work
-    # is done — otherwise a fast no-op re-run still sits until the timer fires
-    # and reports a spurious rc=3.
-    watchdog = None
     if args.max_seconds:
         def _bail() -> None:
             print(
-                f"[wf-a46] WATCHDOG: {args.max_seconds}s budget hit "
-                f"ok={counters['ok']} fail={counters['fail']} -> os._exit(3), "
-                f"re-run resumes",
+                f"[wf-a46] WATCHDOG: {args.max_seconds}s budget hit -> "
+                f"os._exit(3); re-run resumes",
                 flush=True,
             )
             os._exit(3)
@@ -305,122 +445,67 @@ def main(argv: Optional[list] = None) -> int:
         watchdog = threading.Timer(args.max_seconds, _bail)
         watchdog.daemon = True
         watchdog.start()
+    else:
+        watchdog = None
 
-    total, last_page = probe_last_page(args.cell_line, args.timeout)
-    if not last_page:
-        print("[wf-a46] FATAL: meta.last_page unavailable", flush=True)
-        return 2
-    if args.limit_pages:
-        last_page = min(int(last_page), args.limit_pages)
-    print(
-        f"[wf-a46] cell={args.cell_line} meta.total={total} "
-        f"last_page={last_page} workers={args.workers} "
-        f"rate={args.rate_per_min}/min",
-        flush=True,
-    )
-
-    pending = [p for p in range(1, int(last_page) + 1) if p not in done_pages]
-    print(f"[wf-a46] pending pages: {len(pending)}", flush=True)
-
-    lock = threading.Lock()
-
-    def persist_page(page: int, data: list) -> None:
-        """Append one page's rows (resume-safe). Called under ``lock``."""
-        with jsonl_path.open("a", encoding="utf-8") as f:
-            for row in data:
-                flat = _flatten(row, args.cell_line)
-                flat["_page"] = page
-                f.write(json.dumps(flat, ensure_ascii=False) + "\n")
-
-    for rnd in range(args.max_rounds):
-        if not pending:
-            break
-        print(
-            f"[wf-a46] round {rnd + 1}: {len(pending)} pages, "
-            f"{args.workers} workers",
-            flush=True,
-        )
-        still_missing: list = []
-
-        def task(page: int) -> None:
-            data = fetch_page(
-                args.cell_line, page, args.per_page, args.timeout
-            )
-            with lock:
-                if data is None:
-                    counters["fail"] += 1
-                    still_missing.append(page)
-                    return
-                counters["ok"] += 1
-                persist_page(page, data)
-                if counters["ok"] % 25 == 0:
-                    rate = counters["ok"] / max(
-                        1e-9, (time.time() - t0) / 60.0
-                    )
+    if args.stall_seconds:
+        def _stall_monitor() -> None:
+            while True:
+                time.sleep(30.0)
+                if time.time() - _PROGRESS["t"] > args.stall_seconds:
                     print(
-                        f"[wf-a46] ok={counters['ok']} "
-                        f"fail={counters['fail']} rate={rate:.1f} pages/min",
+                        f"[wf-a46] STALL: no page completed in "
+                        f"{args.stall_seconds}s -> os._exit(3); re-run resumes",
                         flush=True,
                     )
+                    os._exit(3)
 
-        with ThreadPoolExecutor(max_workers=args.workers) as ex:
-            list(ex.map(task, pending))
+        threading.Thread(target=_stall_monitor, daemon=True).start()
 
-        pending = still_missing
-        if pending:
-            print(
-                f"[wf-a46] round {rnd + 1} done: {len(pending)} pages still "
-                f"failing; sleeping 20s before retry",
-                flush=True,
-            )
-            time.sleep(20.0)
+    summaries: list = []
+    for cell in cells:
+        print(f"\n=== [{cell}] ===", flush=True)
+        try:
+            summaries.append(harvest_one(cell, args, watchdog))
+        except Exception as e:  # noqa: BLE001
+            print(f"[{cell}] EXC {type(e).__name__}: {e}", flush=True)
+            summaries.append({"cell_line": cell, "error": str(e)})
 
-    # Re-read from disk (resumed + appended), dedup by biodata_id, keep page
-    # order.  See module docstring for why the key is not compound_code.
-    records, _ = load_existing(jsonl_path)
-    records.sort(key=lambda r: (r.get("_page", 0),))
-    seen: set = set()
-    deduped: list = []
-    for rec in records:
-        key = rec.get("biodata_id")
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append(rec)
-
-    elapsed = round(time.time() - t0, 1)
-    summary = {
+    rows_total = sum(s.get("rows_total", 0) for s in summaries)
+    incomplete = [
+        s["cell_line"]
+        for s in summaries
+        if s.get("pages_failed_unrecovered", 0) or "error" in s
+    ]
+    combined = {
         "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "endpoint": f"POST {_BIODATA_URL}",
-        "cell_line": args.cell_line,
-        "per_page": args.per_page,
-        "api_meta_total": total,
-        "api_meta_last_page": int(last_page),
-        "pages_fetched_this_run": counters["ok"],
-        "pages_on_disk": len({r.get("_page") for r in deduped}),
-        "pages_failed_unrecovered": len(pending),
-        "rows_total": len(deduped),
-        "unique_compounds": len({r.get("compound_code") for r in deduped}),
-        "rows_with_value_mean": sum(
-            1 for r in deduped if r.get("value_mean") is not None
-        ),
-        "rows_with_smiles": sum(1 for r in deduped if r.get("smiles")),
-        "rows_with_doi": sum(1 for r in deduped if r.get("doi")),
-        "wall_seconds": elapsed,
+        "n_cell_lines": len(summaries),
+        "rows_total_all_cells": rows_total,
+        "incomplete_cells": incomplete,
+        "wall_seconds": round(time.time() - t_start, 1),
+        "by_cell_line": summaries,
         "notes": (
-            "MCF-7 only. Cell-line spelling 'MCF-7' (hyphen) is required; "
-            "'MCF7' returns meta.total=0. Other 3 cells were already complete "
-            "and are untouched. Rows deduped by biodata_id (unique measurement "
-            "id), NOT compound_code. Server enforces X-RateLimit-Limit: 30/min."
+            "Pt IC50 measurements harvested from MB-Finder. The Rusanov-2025 "
+            "'17,732 IC50' target is a cross-cell-line total (V2 SI: 4,078 "
+            "unique Pt complexes, IC50 from 592 cell lines); this run harvests "
+            "the largest cell lines until the cumulative count crosses it. "
+            "Rows deduped by biodata_id (unique measurement id), NOT "
+            "compound_code. Server enforces X-RateLimit-Limit: 30/min."
         ),
     }
-    write_outputs(out_dir, stem, deduped, summary)
+    atomic_write_file(
+        out_dir / "harvest_summary_2026-10-16.json",
+        json.dumps(combined, indent=2, ensure_ascii=False),
+    )
     if watchdog is not None:
         watchdog.cancel()
-    print(json.dumps(summary, indent=2, ensure_ascii=False), flush=True)
-    # 0 = every page fetched; 3 = pages still missing (caller should re-run
-    # after a cooldown; the JSONL resumes).
-    return 0 if not pending else 3
+    print(
+        f"\n[wf-a46] ALL DONE rows_total={rows_total} "
+        f"incomplete={incomplete}",
+        flush=True,
+    )
+    return 0 if not incomplete else 3
 
 
 if __name__ == "__main__":
