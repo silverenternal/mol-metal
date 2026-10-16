@@ -9,14 +9,24 @@ loose) or permanently red (too strict). These tests pin both edges. CPU-only.
 
 from __future__ import annotations
 
-import sys
+import importlib.util
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-from scripts._metric_diff import structural_diff
+# Load ``scripts._metric_diff`` directly from its on-disk path via
+# :mod:`importlib.util` rather than mutating ``sys.path``. This avoids the
+# global ``sys.path.insert(0, parents[2])`` side-effect (which couples the
+# test to a fixed directory depth and pollutes import resolution for the
+# whole interpreter) and matches the existing pattern at
+# ``molmetal/tests/conftest.py:44-47``.
+_spec = importlib.util.spec_from_file_location(
+    "_metric_diff",
+    Path(__file__).resolve().parents[2] / "scripts" / "_metric_diff.py",
+)
+_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_mod)
+structural_diff = _mod.structural_diff
 
 
 def test_identical_objects_match():
