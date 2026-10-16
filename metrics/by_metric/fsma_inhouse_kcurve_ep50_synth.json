@@ -6,7 +6,7 @@
   "scope": "tier2_precious_metal_anticancer",
   "source": "molmetal/scripts/synthesize_inhouse_kcurve.py",
   "description": "FSMA head-only K-shot recovery curve re-measured on the in-house D-MPNN at the chemprop-matched source budget (epochs=50), with the epochs=20 curve and the chemprop v2 reference carried alongside.",
-  "model": "MetalAwareDMPNN(metal_injection='none'), hidden=128 depth=3 dropout=0.1, epochs=50; encoder frozen, head-only adaptation",
+  "model": "MetalAwareDMPNN(metal_injection='none'), hidden=128 depth=3 dropout=0.1, epochs=50; encoder frozen, head-only adaptation (capacity ablation: hidden=512, no adaptation levers)",
   "protocol": {
     "cohort": "paper funnel (build_paper_cohort, no time window)",
     "split": "leave-one-metal-out, ligand-disjoint",
@@ -67,6 +67,23 @@
           0.0020005861510853165
         ],
         "n_positive": 17
+      },
+      "inhouse_ep50_cap512": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": -0.003294496612534088,
+        "std": 0.038212512654109826,
+        "t": -0.6096330059228426,
+        "p_one_sided_gt0": 0.7275391694853712,
+        "ci95_ttest": [
+          -0.014154372549422888,
+          0.00756537932435471
+        ],
+        "n_positive": 25
+      },
+      "adapted_abs_auc": {
+        "inhouse_ep50_h128": 0.6304782288843329,
+        "inhouse_ep50_cap512": 0.6433199410144436
       },
       "chemprop": {
         "status": "MEASURED",
@@ -176,6 +193,23 @@
         ],
         "n_positive": 22
       },
+      "inhouse_ep50_cap512": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 5.354284054556513e-05,
+        "std": 0.05475544355612558,
+        "t": 0.006914473370113648,
+        "p_one_sided_gt0": 0.4972555835834456,
+        "ci95_ttest": [
+          -0.015507782039379248,
+          0.015614867720470379
+        ],
+        "n_positive": 30
+      },
+      "adapted_abs_auc": {
+        "inhouse_ep50_h128": 0.6314024171083806,
+        "inhouse_ep50_cap512": 0.6461142801016427
+      },
       "chemprop": {
         "status": "MEASURED",
         "n_cells": 50,
@@ -283,6 +317,23 @@
           0.02656685338568124
         ],
         "n_positive": 28
+      },
+      "inhouse_ep50_cap512": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.015076409088602487,
+        "std": 0.0652682152891176,
+        "t": 1.6333572253002604,
+        "p_one_sided_gt0": 0.05440199543542766,
+        "ci95_ttest": [
+          -0.0034726124603830528,
+          0.03362543063758803
+        ],
+        "n_positive": 32
+      },
+      "adapted_abs_auc": {
+        "inhouse_ep50_h128": 0.656449904790481,
+        "inhouse_ep50_cap512": 0.6613638861211829
       },
       "chemprop": {
         "status": "MEASURED",
@@ -392,6 +443,23 @@
         ],
         "n_positive": 40
       },
+      "inhouse_ep50_cap512": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.04301799433383446,
+        "std": 0.07218672876932364,
+        "t": 4.213837643717324,
+        "p_one_sided_gt0": 5.368599328071667e-05,
+        "ci95_ttest": [
+          0.02250275300906954,
+          0.06353323565859938
+        ],
+        "n_positive": 39
+      },
+      "adapted_abs_auc": {
+        "inhouse_ep50_h128": 0.6808314497387115,
+        "inhouse_ep50_cap512": 0.6887596919673104
+      },
       "chemprop": {
         "status": "MEASURED",
         "n_cells": 50,
@@ -499,6 +567,23 @@
           0.07818402096926792
         ],
         "n_positive": 43
+      },
+      "inhouse_ep50_cap512": {
+        "status": "MEASURED",
+        "n_cells": 50,
+        "mean": 0.06628728618176523,
+        "std": 0.07404102482094829,
+        "t": 6.330570069624166,
+        "p_one_sided_gt0": 3.612554124160242e-08,
+        "ci95_ttest": [
+          0.04524505974997044,
+          0.08732951261356002
+        ],
+        "n_positive": 44
+      },
+      "adapted_abs_auc": {
+        "inhouse_ep50_h128": 0.7135807784611455,
+        "inhouse_ep50_cap512": 0.7096143563177917
       },
       "chemprop": {
         "status": "MEASURED",
@@ -628,6 +713,28 @@
         "80"
       ]
     },
+    "inhouse_ep50_cap512": {
+      "correction": "Holm-Bonferroni (family = 5 K values)",
+      "n_family": 5,
+      "p_one_sided_raw": {
+        "5": 0.7275391694853712,
+        "10": 0.4972555835834456,
+        "20": 0.05440199543542766,
+        "40": 5.368599328071667e-05,
+        "80": 3.612554124160242e-08
+      },
+      "p_one_sided_holm": {
+        "80": 1.8062770620801211e-07,
+        "40": 0.00021474397312286667,
+        "20": 0.16320598630628297,
+        "10": 0.9945111671668913,
+        "5": 0.9945111671668913
+      },
+      "significant_after_holm_0.05": [
+        "40",
+        "80"
+      ]
+    },
     "chemprop_reference": {
       "correction": "Holm-Bonferroni (family = 5 K values)",
       "n_family": 5,
@@ -653,19 +760,21 @@
   },
   "positive_at_every_k": {
     "inhouse_ep50": true,
-    "inhouse_ep20": false
+    "inhouse_ep20": false,
+    "inhouse_ep50_cap512": false
   },
   "verdict": "REPRODUCED at the matched budget: the in-house head-only K-curve is positive at every K (K=5 +0.0129 .. K=80 +0.0996) and family-significant at K=20,40,80; the same model at epochs=20 was negative at K=5/K=10, so the sign is set by the source budget, not the model.",
   "budget_note": "The chemprop reference this migrates trains its source model for config.epochs=50 (fsma_c4_head_k*.config.epochs).  The original in-house curve used epochs=20 and is NEGATIVE at K=5/K=10; at the matched epochs=50 budget the same model is positive at every K.  Both budgets are reported (inhouse_ep50 = primary, inhouse_ep20 = sensitivity) so the sign flip is visible rather than hidden.",
   "caveats": [
     "The adaptation step is NOT bit-reproducible on CUDA: two epochs=50 runs of the same config agree to ~1e-3 on the 50-cell mean but differ by up to 0.079 on an individual cell.  Only the aggregate is reported; per-cell values are noisy.",
-    "Capacity is NOT matched to the chemprop reference (hidden=128 vs d_h=300); the comparison is a scorer/representation result.",
+    "Capacity is NOT matched to the chemprop reference (hidden=128 vs d_h=300) in the PRIMARY column; the hidden=512 capacity ablation is carried alongside.  For the ablation the criterion is the ADAPTED ABSOLUTE AUC (adapted_abs_auc per K), NOT the paired delta: a stronger source raises zero_shot_auc more than adapted_auc, so the delta shrinks at low K (K5 +0.0129 -> -0.0033) even though the absolute AUC rises.  The 'delta positive at every K' claim is made for the h128 primary only.",
     "The epochs=20 column is carried as a sensitivity, not discarded: it is the budget at which the in-house low-K delta is negative.",
     "chemprop v2 is a REFERENCE scorer here, not the paper's model (project red line: the method result is the in-house D-MPNN)."
   ],
   "source_artifacts": {
     "inhouse_ep50": "metrics/by_metric/fsma_inhouse_kcurve_ep50.json",
     "inhouse_ep20": "metrics/by_metric/fsma_l1_ep20.json",
+    "inhouse_ep50_cap512": "metrics/by_metric/fsma_inhouse_kcurve_ep50_cap512.json",
     "chemprop_reference": "metrics/by_metric/fsma_paper_stats.json"
   }
 }

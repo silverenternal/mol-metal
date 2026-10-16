@@ -50,6 +50,8 @@ if str(PROJECT_ROOT) not in sys.path:
 EP50_METRIC = "metrics/by_metric/fsma_inhouse_kcurve_ep50.json"
 EP20_METRIC = "metrics/by_metric/fsma_l1_ep20.json"
 CHEMPROP_STATS = "metrics/by_metric/fsma_paper_stats.json"
+#: capacity ablation (hidden 512, no adaptation levers) vs the h128 primary.
+CAP512_METRIC = "metrics/by_metric/fsma_inhouse_kcurve_ep50_cap512.json"
 
 METALS = ("Ru", "Ir", "Rh", "Os", "Re")
 KS = (5, 10, 20, 40, 80)
@@ -96,6 +98,23 @@ def _per_metal_deltas(metric: Dict[str, object]) -> Dict[int, Dict[str, List[flo
     return out
 
 
+def _abs_means(metric: Dict[str, object]) -> Dict[int, float]:
+    """``{K: mean adapted absolute AUC}``.
+
+    The capacity ablation is judged on the ABSOLUTE AUC, not the paired delta:
+    a stronger source raises ``zero_shot_auc`` more than ``adapted_auc``, so the
+    delta shrinks even when the treatment is better (see
+    metrics/by_metric/... docstring / the paired-delta baseline illusion).
+    """
+    acc: Dict[int, List[float]] = {}
+    for r in metric["per_run"]:  # type: ignore[index]
+        a = r.get("adapted_auc")
+        if a is None or not np.isfinite(a):
+            continue
+        acc.setdefault(int(r["k"]), []).append(float(a))
+    return {k: float(np.mean(v)) for k, v in acc.items()}
+
+
 def _stats(deltas: List[float]) -> Dict[str, object]:
     from scipy import stats as st
 
@@ -140,6 +159,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--ep50-metric", default=EP50_METRIC)
     p.add_argument("--ep20-metric", default=EP20_METRIC)
+    p.add_argument("--cap512-metric", default=CAP512_METRIC)
     p.add_argument("--chemprop-stats", default=CHEMPROP_STATS)
     p.add_argument(
         "--out-metric",
@@ -148,7 +168,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = p.parse_args(argv)
 
     missing = [
-        rel for rel in (args.ep50_metric, args.ep20_metric, args.chemprop_stats)
+        rel for rel in (args.ep50_metric, args.ep20_metric, args.cap512_metric,
+                        args.chemprop_stats)
         if not (PROJECT_ROOT / rel).exists()
     ]
     if missing:
@@ -159,17 +180,25 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     ep50 = _load(args.ep50_metric)
     ep20 = _load(args.ep20_metric)
+    cap512 = _load(args.cap512_metric)
     chem = _load(args.chemprop_stats)
 
     d50 = _deltas(ep50)
     d20 = _deltas(ep20)
+    dcap = _deltas(cap512)
     pm50 = _per_metal_deltas(ep50)
+    abs50, abscap = _abs_means(ep50), _abs_means(cap512)
 
     per_k: Dict[str, Dict[str, object]] = {}
     for k in KS:
         entry: Dict[str, object] = {}
         entry["inhouse_ep50"] = _stats(d50.get(k, []))
         entry["inhouse_ep20"] = _stats(d20.get(k, []))
+        entry["inhouse_ep50_cap512"] = _stats(dcap.get(k, []))
+        entry["adapted_abs_auc"] = {
+            "inhouse_ep50_h128": abs50.get(k),
+            "inhouse_ep50_cap512": abscap.get(k),
+        }
         run = CHEMPROP_RUNS.get(str(k))
         if run is not None:
             try:
@@ -201,6 +230,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         }
 
     holm50, holm20, holmcp = _holm_for("inhouse_ep50"), _holm_for("inhouse_ep20"), _holm_for("chemprop")
+    holmcap = _holm_for("inhouse_ep50_cap512")
 
     ep50_means = {
         int(k): float(per_k[str(k)]["inhouse_ep50"]["mean"])
@@ -240,7 +270,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             "epochs=20 curve and the chemprop v2 reference carried alongside."
         ),
         "model": "MetalAwareDMPNN(metal_injection='none'), hidden=128 depth=3 "
-        "dropout=0.1, epochs=50; encoder frozen, head-only adaptation",
+        "dropout=0.1, epochs=50; encoder frozen, head-only adaptation "
+        "(capacity ablation: hidden=512, no adaptation levers)",
         "protocol": {
             "cohort": "paper funnel (build_paper_cohort, no time window)",
             "split": "leave-one-metal-out, ligand-disjoint",
@@ -257,6 +288,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "holm": {
             "inhouse_ep50": holm50,
             "inhouse_ep20": holm20,
+            "inhouse_ep50_cap512": holmcap,
             "chemprop_reference": holmcp,
         },
         "positive_at_every_k": {
@@ -264,6 +296,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             "inhouse_ep20": all(
                 float(per_k[str(k)]["inhouse_ep20"]["mean"]) > 0
                 for k in KS if per_k[str(k)]["inhouse_ep20"].get("status") == "MEASURED"
+            ),
+            "inhouse_ep50_cap512": all(
+                float(per_k[str(k)]["inhouse_ep50_cap512"]["mean"]) > 0
+                for k in KS if per_k[str(k)]["inhouse_ep50_cap512"].get("status") == "MEASURED"
             ),
         },
         "verdict": verdict,
@@ -274,7 +310,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             "by up to 0.079 on an individual cell.  Only the aggregate is reported; "
             "per-cell values are noisy.",
             "Capacity is NOT matched to the chemprop reference (hidden=128 vs "
-            "d_h=300); the comparison is a scorer/representation result.",
+            "d_h=300) in the PRIMARY column; the hidden=512 capacity ablation is "
+            "carried alongside.  For the ablation the criterion is the ADAPTED "
+            "ABSOLUTE AUC (adapted_abs_auc per K), NOT the paired delta: a "
+            "stronger source raises zero_shot_auc more than adapted_auc, so the "
+            "delta shrinks at low K (K5 +0.0129 -> -0.0033) even though the "
+            "absolute AUC rises.  The 'delta positive at every K' claim is made "
+            "for the h128 primary only.",
             "The epochs=20 column is carried as a sensitivity, not discarded: it is "
             "the budget at which the in-house low-K delta is negative.",
             "chemprop v2 is a REFERENCE scorer here, not the paper's model "
@@ -283,6 +325,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "source_artifacts": {
             "inhouse_ep50": args.ep50_metric,
             "inhouse_ep20": args.ep20_metric,
+            "inhouse_ep50_cap512": args.cap512_metric,
             "chemprop_reference": args.chemprop_stats,
         },
     }
@@ -292,14 +335,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     dest = Path(args.out_metric)
     atomic_write_file(dest, json.dumps(out, indent=2, default=float, ensure_ascii=False))
 
-    print(f"{'K':>4} {'ep50(in-house)':>15} {'ep20(in-house)':>15} {'chemprop':>10}  {'holm50':>9}")
+    print(f"{'K':>4} {'ep50(in-house)':>15} {'ep20(in-house)':>15} {'chemprop':>10}  "
+          f"{'cap512 delta':>13} {'cap512 abs':>11} {'h128 abs':>9}  {'holm50':>9}")
     for k in KS:
         e = per_k[str(k)]
         s50, s20, scp = e["inhouse_ep50"], e["inhouse_ep20"], e.get("chemprop", {})
+        sc = e["inhouse_ep50_cap512"]
         f = lambda s: (f"{s['mean']:+.4f}" if s.get("status") == "MEASURED" else "  n/a  ")
         q = holm50["p_one_sided_holm"].get(str(k), float("nan"))
-        print(f"{k:>4} {f(s50):>15} {f(s20):>15} {f(scp):>10}  {q:9.2e}")
+        ab = e["adapted_abs_auc"]
+        print(f"{k:>4} {f(s50):>15} {f(s20):>15} {f(scp):>10}  "
+              f"{f(sc):>13} {ab['inhouse_ep50_cap512']:>11.4f} "
+              f"{ab['inhouse_ep50_h128']:>9.4f}  {q:9.2e}")
     print(f"ep50 significant K: {sig}")
+    print(f"cap512 significant K: {holmcap['significant_after_holm_0.05']}")
     print(f"verdict: {verdict}")
     print(f"wrote {dest}")
     return 0
