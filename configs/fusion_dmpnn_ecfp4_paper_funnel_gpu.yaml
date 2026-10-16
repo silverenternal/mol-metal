@@ -15,15 +15,17 @@
 # DIFFERENCES vs configs/fusion_dmpnn_gbdt_within_metal.yaml (all declared):
 #   cohort_spec  24h -> paper_funnel   (the cohort G1 is stated on; Rh/Os/Re
 #                                       n=334/333/250 instead of 51/36/74)
-#   device       cpu -> cuda:1         (user request; see NOTE below)
+#   device       cpu -> cuda:0         (user directive 2026-10-16: ALL ops on GPU0)
 #   deterministic false -> true        (CUDA runs must be bit-reproducible)
 #   arms         dropped arm 2         (its tmQM ckpt is off-disk -> would SKIP)
 #   out_metric   new artifact path
 #
 # NOTE on device: the sibling config deliberately chose CPU because the D-MPNN
 # forward loops over molecules in Python (BLK-P1 measured 6.7 s CPU vs 17.4 s
-# GPU on the same 200-ligand smoke).  This run uses cuda:1 at the user's
-# request; the wall-time difference is recorded, not hidden.
+# GPU on the same 200-ligand smoke).  Per the 2026-10-16 user directive ("all
+# ops on GPU0; never GPU1") this run uses cuda:0 — the 98 GB RTX PRO 6000
+# Blackwell.  An earlier start on cuda:1 was stopped and restarted here; the
+# wall-time difference vs CPU is recorded, not hidden.
 #
 # AGENTS.md §5.11: every key below resolves to a dest of
 # fuse_dmpnn_gbdt_within_metal.py's own parser (verified by
@@ -85,7 +87,7 @@ radius: 2
 nbits: 2048
 
 compute:
-  device: cuda:1
+  device: cuda:0
   deterministic: true
 
 max_fold_n: 0
