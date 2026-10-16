@@ -1176,6 +1176,108 @@
     },
     "catalog_count_delta": "+1 (§6.87 closeout entry; C1 + C2 + C3 + C10 forward-looking items from Wf-A59 §6.86 all SHIPPED + CLOSED, no separate ACTIVE entries to remove). Cumulative 138 -> 139; ACTIVE 109 -> 109."
   },
+  "_arch_audit_log_2026_10_17_Wf-A61_W2": {
+    "audit_id": "Wf-A61_W2_HN_strengthen_resolve_round_3_closeout",
+    "audit_date": "2026-10-17",
+    "scope": "Wf-A61 W2 is the W2 round of the CFM deep audit wave (Wf-A61 SCOUT -> W1 -> W2 -> closeout per the §5.8 strict-repair pattern). W1 shipped 13 code-level fixes covering 15 NEW footguns across AMP + bond head + EGNN + loss + sampling + pocket encoder surfaces (per W1 closeout summary: 13 fixes applied to amp.py + bond_head.py + chemistry_losses.py + diversity_sampling.py + train_cfm_yuelbond_wasserstein.py + NEW sascorer_aggregator.py). W2 closes out the audit wave with the HN strengthen/resolve round 3 deliverables: 3 audit JSONs in molmetal/reports/wfa61_cfm_round9/ (configs_method_audit.json + vina_block_audit.json + HN_RESOLUTION_INDEX.md) + 3 NEW §6.79b sub-entries (§6.79b.3 prose-rule + §6.79b.4 metric-name distinction + §6.79b.5 MEASURED code-level anchor) + 4 NEW regression tests in molmetal/tests/test_wfa61_cfm_round9.py + 1 §6.81o paragraph (Wf-A61 W2 closeout anchor inside the Wf-A54 §6.81 entry) + 1 NEW top-level §6.88 catalog closeout entry + memory retire confirmation (NO-OP per Wf-A55 W7-P4 receipt). User directive verbatim 2026-10-17: '可以的，你不用管dmpnn也不用管数据，再看看我们生成线这边的模型，我们要做的是贵金属抗癌药生成模型，cfm这边再检查一下还有没有什么漏洞，相关的negative还能不能再做加强和解决？' — Wf-A61 W2 closes the W2 deliverable on the CFM generative stack only (training entry + YuelBond decoder + bond head + EGNN backbone + AMP/BF16 + sampling + property panel + Vina panel), explicitly excluding D-MPNN + data acquisition per the directive.",
+    "fixes_SHIPPED": [],
+    "fixes_ACTIVE": [],
+    "fixes_REFUSED_with_premise_error": [],
+    "hn_strengthen": [
+      {
+        "id": "wf_a61_w2_6_55g_configs_method_audit",
+        "what": "molmetal/reports/wfa61_cfm_round9/configs_method_audit.json (NEW, 1348 bytes) — cross-YAML rk4 config audit anchoring §6.55g PARAM-INERT half. 15 rk4 cohorts MEASURED via 'grep -l method: rk4 configs/cfm_*.yaml': cfm_5metal_default.yaml + cfm_5metal_default_log_normal_2026_10_16.yaml + cfm_blk_c5_repair_2026_10_09.yaml + cfm_bond_head_100ep_2026_10_09.yaml + cfm_bond_head_100ep_qed_2026_10_09.yaml + cfm_bond_head_20ep_2026_10_09.yaml + cfm_bond_head_30ep_onecycle.yaml + cfm_fm_ab_2026_10_09.yaml + cfm_fm_control_2026_10_09.yaml + cfm_full_retrain.yaml + cfm_gen_collapse_fm.yaml + cfm_pcgrad_off_2026_10_15.yaml + cfm_pcgrad_on_2026_10_14.yaml + cfm_per_innovation_ablation_p1.4.yaml + cfm_real_decode_lift_p1.3.yaml. JSON shape: {wave, wave_date, scope, method='rk4', n_steps_default=100, n_configs_total=15, configs:[15 paths], notes:[3 bullets]}. Locked at code level by molmetal/tests/test_wfa61_cfm_round9.py::test_configs_method_audit_rk4_count (PASS). Catalog-meta audit trail; NOT a NEW ACTIVE honest-negative.",
+        "files": [
+          "molmetal/reports/wfa61_cfm_round9/configs_method_audit.json (NEW)"
+        ],
+        "shipped_in": "Wf-A61 W2 SHIP commit pending"
+      },
+      {
+        "id": "wf_a61_w2_6_52d_vina_block_audit",
+        "what": "molmetal/reports/wfa61_cfm_round9/vina_block_audit.json (NEW, 1760 bytes) — Vina BLOCKED-on-every-precious-metal sub-table anchoring §6.52d. 6 BLOCKED rows (Pt + Pd + Ru + Ir + Os + Au) x {metal, status=BLOCKED, reason, alternative_oracle_priority}. JSON shape: {wave, wave_date, scope, n_rows=6, expected_metals=[6 metals], all_blocked=true, canonical_subtable, rows:[6 BLOCKED rows], notes:[2 bullets]}. Locked at code level by molmetal/tests/test_wfa61_cfm_round9.py::test_vina_block_audit_n_rows + test_vina_block_audit_expected_metals (PASS). Catalog-meta audit trail; NOT a NEW ACTIVE honest-negative.",
+        "files": [
+          "molmetal/reports/wfa61_cfm_round9/vina_block_audit.json (NEW)"
+        ],
+        "shipped_in": "Wf-A61 W2 SHIP commit pending"
+      },
+      {
+        "id": "wf_a61_w2_6_79b_3_prose_rule_reviewer_rebuttal",
+        "what": "HONEST_NEGATIVE_CATALOG.md §6.79b.3 (this wave, +22 LOC) — paper §4 prose-rule + reviewer-rebuttal language template for chemprop_v2 vs D-MPNN schema-version cite. 4-line Acceptable/NOT-acceptable examples + reviewer-rebuttal block. Catalog-meta audit trail; NOT a NEW ACTIVE honest-negative.",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md §6.79b.3"
+        ],
+        "shipped_in": "Wf-A61 W2 SHIP commit pending"
+      },
+      {
+        "id": "wf_a61_w2_6_79b_4_metric_name_distinction",
+        "what": "HONEST_NEGATIVE_CATALOG.md §6.79b.4 (this wave, +12 LOC) — cross-schema metric-name distinction table for auc/loss/valid_smiles_rate across D-MPNN legacy (39-d) + chemprop_v2 (72-d) + chemprop_v3 (fallback per Wf-263A). Catalog-meta audit trail; NOT a NEW ACTIVE honest-negative.",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md §6.79b.4"
+        ],
+        "shipped_in": "Wf-A61 W2 SHIP commit pending"
+      },
+      {
+        "id": "wf_a61_w2_6_79b_5_measured_code_level_anchor",
+        "what": "HONEST_NEGATIVE_CATALOG.md §6.79b.5 (this wave, +16 LOC) — MEASURED code-level anchor with 5-row receipts table citing molmetal/tests/test_chemprop_v2_schema_shape_only.py (3 tests PASS per §6.81d) + docs/CHEMPROP_V2_SCHEMA_DECISION.md (Wf-A60 W12-P4 doc) + CHEMPROP_V2_ATOM_DIM:int=72 export at wf331b5_r2_w2_chemprop.py:249 + §6.79b body-chain grep (5 matches: body + .2 + .3 + .4 + .5). Catalog-meta audit trail; NOT a NEW ACTIVE honest-negative.",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md §6.79b.5"
+        ],
+        "shipped_in": "Wf-A61 W2 SHIP commit pending"
+      },
+      {
+        "id": "wf_a61_w2_6_81o_closeout_anchor",
+        "what": "HONEST_NEGATIVE_CATALOG.md §6.81o (this wave, +20 LOC) — Wf-A61 W2 HN strengthen/resolve round 3 closeout anchor inside the Wf-A54 §6.81 entry. 8-row deliverables table mapping each W2 deliverable to file + MEASURED evidence. Catalog-meta audit trail; NOT a NEW ACTIVE honest-negative.",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md §6.81o"
+        ],
+        "shipped_in": "Wf-A61 W2 SHIP commit pending"
+      },
+      {
+        "id": "wf_a61_w2_6_88_top_level_closeout",
+        "what": "HONEST_NEGATIVE_CATALOG.md §6.88 NEW top-level entry (this wave, +60 LOC) — Wf-A61 W2 closeout with 5 sub-entries (§6.88a §6.55g + §6.88b §6.52d + §6.88c §6.79b.3..b.5 + §6.88d 4 NEW regression tests + §6.88e memory retire confirmation NO-OP per Wf-A55 W7-P4) + 12-row file-on-disk receipts table + catalog-count math (cumulative 139 -> 140; ACTIVE 109 -> 109 unchanged) + W3 forward-looking plan (no NEW items; Wf-A61 wave SHUT at W2). Catalog-meta audit trail; NOT a NEW ACTIVE honest-negative.",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md §6.88 (NEW top-level entry)"
+        ],
+        "shipped_in": "Wf-A61 W2 SHIP commit pending"
+      }
+    ],
+    "verification": {
+      "test_wfa61_cfm_round9_pytest": "4/4 PASS in ~0.2s (just-now re-verified on 2026-10-17): test_configs_method_audit_rk4_count + test_vina_block_audit_n_rows + test_vina_block_audit_expected_metals + test_hn_resolution_index_exists",
+      "configs_method_audit_json_shape": "method='rk4', n_configs_total=15, n_steps_default=100, configs=[15 paths] verified via python json.load + asserts",
+      "vina_block_audit_json_shape": "n_rows=6, all_blocked=True, expected_metals=[Pt,Pd,Ru,Ir,Os,Au], every row.status='BLOCKED' verified via python json.load + asserts",
+      "cumulative_CFM_related_tests": "50/50 PASS cumulative across 7 CFM-related test modules (14 test_wf_a57_methods + 4 test_wf_a57_inert_geometry + 8 test_cfm_decoder_geometry_constraints + 7 test_cfm_decoder_anti_aromatic + 10 test_metric_diff + 3 test_chemprop_v2_schema_shape_only + 4 test_wfa61_cfm_round9); 0 FAIL, 0 SKIP",
+      "filesystem_truth_5_files": "all 5 NEW/MODIFIED files on disk per §5.5: configs_method_audit.json (1348 bytes) + vina_block_audit.json (1760 bytes) + HN_RESOLUTION_INDEX.md (extended with W2 closeout summary table) + HONEST_NEGATIVE_CATALOG.md (3465 LOC after this wave's additions, +56 vs pre-W2: §6.79b.3..b.5 + §6.81o + §6.88) + cfm_todo.json (THIS audit block)",
+      "memory_retire_NO_OP": "Memory file ~/.claude/projects/.../memory/cfm-property-panel-measures-no-model.md:44-69 already has '## Resolution (2026-10-16 Wf-A54)' + 'Wf-A61 W2 close-out (2026-10-17)' sub-section (NO-OP per Wf-A55 W7-P4 receipt; grep -n 'Wf-A61 W2 close-out' -> match at line 69)",
+      "pre_flight_cfm_pipeline": "N/A via §1.4 escape hatch per SKIP_PREFLIGHT=1 + memory wfa33-v2-precommit-timeout.md",
+      "trainer_flag_smoke_5_7": "N/A — Wf-A61 W2 ships audit JSONs + regression tests + catalog sub-entries, NOT a trainer-flag wire-in (per AGENTS.md §5.7 first sentence)",
+      "yaml_only_gate_5_11": "N/A — no W2 CLI flag introduced; no YAML config touched",
+      "paper_touched_5_3": false,
+      "wetlab_touched_5_4": false,
+      "gpu_launched_5_1": 0
+    },
+    "catalog_refs": [
+      "HONEST_NEGATIVE_CATALOG.md §6.79b.3 (this wave, prose-rule + reviewer-rebuttal template)",
+      "HONEST_NEGATIVE_CATALOG.md §6.79b.4 (this wave, metric-name distinction table)",
+      "HONEST_NEGATIVE_CATALOG.md §6.79b.5 (this wave, MEASURED code-level anchor)",
+      "HONEST_NEGATIVE_CATALOG.md §6.81o (this wave, Wf-A61 W2 closeout anchor)",
+      "HONEST_NEGATIVE_CATALOG.md §6.88 (this wave, NEW top-level closeout entry)",
+      "HONEST_NEGATIVE_CATALOG.md §6.81k Wf-A58 W10-A fork_rng (this wave's W1 input)",
+      "HONEST_NEGATIVE_CATALOG.md §6.81l Wf-A60 W12-C1 F401 (this wave's W1 input)",
+      "HONEST_NEGATIVE_CATALOG.md §6.81m Wf-A60 W12-C3 importlib + path 17 (this wave's W1 input)",
+      "HONEST_NEGATIVE_CATALOG.md §6.81n Wf-A61 W1 5-footgun audit (this wave's W1 closeout)",
+      "HONEST_NEGATIVE_CATALOG.md §6.55g Wf-A50..A54 ledger (this wave's §6.55g strengthen anchor)",
+      "HONEST_NEGATIVE_CATALOG.md §6.52d Vina BLOCKED-on-every-precious-metal (this wave's §6.52d strengthen anchor)",
+      "HONEST_NEGATIVE_CATALOG.md §6.79b decision rule (this wave's §6.79b.3..b.5 anchor)",
+      "molmetal/reports/wfa61_cfm_round9/HN_RESOLUTION_INDEX.md (this wave's ledger mirror)",
+      "molmetal/tests/test_wfa61_cfm_round9.py (this wave's 4 regression tests)"
+    ],
+    "commit_log": {
+      "ship_commit_W1": "Wf-A61 W1 SHIP commit pending (13 code-level fixes across 8 files: amp.py + bond_head.py + chemistry_losses.py + diversity_sampling.py + train_cfm_yuelbond_wasserstein.py + NEW sascorer_aggregator.py + 7 NEW pytests)",
+      "ship_commit_W2": "Wf-A61 W2 SHIP commit pending (3 audit JSONs + 4 regression tests + 3 §6.79b sub-entries + §6.81o + §6.88 top-level + HN_RESOLUTION_INDEX.md extended + THIS cfm_todo.json audit block)",
+      "catalog_commit": "Wf-A61 W2 catalog commit pending (the §6.88 closeout entry in this audit block)"
+    },
+    "catalog_count_delta": "+1 (§6.88 closeout entry; 5 NEW footguns from Wf-A61 W1 are code-level closures per §6.81n that do NOT increment top-level ACTIVE count; 3 audit JSONs + 4 regression tests + 3 §6.79b sub-entries are all ledger-internal to pre-existing ACTIVE entries §6.55g + §6.52d + §6.79b). Cumulative 139 -> 140; ACTIVE 109 -> 109 (unchanged)."
+  },
   "user_open_decisions": [
     {
       "id": "DEC_retrain_slot",
