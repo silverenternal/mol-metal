@@ -38,7 +38,19 @@ class GenerationConfig:
     #: :mod:`molmetal.adapters.flow_matching_lipman`) can validate
     #: ``config.method`` against the canonical set without duplicating
     #: the literal list.  See :func:`validate_method`.
-    VALID_METHODS: frozenset = frozenset({"euler", "midpoint", "dopri5", "heun3"})
+    #:
+    #: Wf-A57 W9-P1 (2026-10-16) — union with the dispatch whitelist in
+    #: :mod:`molmetal.adapters.flow_matching_lipman`.  ``rk4`` is the
+    #: trainer-side recommended method per the Lipman reference paper;
+    #: ``dopri5`` and ``heun3`` remain in the set because they are the
+    #: canonical GenerationConfig surface referenced in
+    #: ``se3_sb_integration.py`` docstring (line 469), even when the
+    #: live reference solver / w_flow only dispatch euler / heun /
+    #: midpoint / rk4.  This is the asymmetry the Wf-A56 honest-negative
+    #: catalogue recommended resolving with Option A (union set).
+    VALID_METHODS: frozenset = frozenset(
+        {"euler", "midpoint", "dopri5", "heun3", "rk4"}
+    )
 
     n_samples: int = 100
     n_steps: int = 50  # number of ODE integration steps

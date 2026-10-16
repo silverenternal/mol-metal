@@ -141,7 +141,7 @@ def nucleus_sample(
     if p <= 0.0:
         # Edge case: degenerate to argmax (greedy).
         return logits.argmax(dim=-1)
-    if temperature != 1.0:
+    if abs(temperature - 1.0) > 1e-6:
         # Numerical safety: clamp temperature into a sane range so
         # the softmax doesn't overflow for very small τ.
         temperature = max(float(temperature), 1e-5)

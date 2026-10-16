@@ -41,7 +41,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from molmetal.domain import Molecule
-from molmetal.ports import GenerationConfig, MoleculeGenerator
+from molmetal.ports import GenerationConfig, MoleculeGenerator, validate_method
 from molmetal.utils.device import (
     DEFAULT_DEVICE,
     ROCM_AVAILABLE,
@@ -3094,7 +3094,12 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # honour an explicit ``config.method`` if set (so callers can
         # still request euler/dopri5) and fall back to the default
         # defined on :class:`GenerationConfig` (now "midpoint").
+        # Wf-A57 W9-P1 (2026-10-16): validate_method() gates the
+        # expanded union set {"euler", "midpoint", "dopri5", "heun3",
+        # "rk4"}; any caller passing a misspelled method raises here
+        # before solver.sample() produces numerically meaningless drift.
         ode_method = getattr(config, "method", "midpoint")
+        validate_method(ode_method)
         x_final = solver.sample(
             x_init=x_0,
             step_size=1.0 / config.n_steps,

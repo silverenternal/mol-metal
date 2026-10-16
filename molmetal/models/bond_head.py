@@ -314,6 +314,17 @@ def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tens
                     # learn: gap~0 -> single; gap<0 -> double/triple/aromatic;
                     # gap>0.4 -> no bond).
                     float(d - anchor_single),
+                    # Wf-A57 W9-P4 (2026-10-16): synthetic rows had a
+                    # 9-feature layout (pre-Wf-A11). BondAwareDecoder
+                    # ._featurise was extended on 2026-10-13 to stack
+                    # 11 features (added `d_to_metal` and `bo_target`),
+                    # and BondOrderHead.in_dim defaults to 11 to match
+                    # live inference. Without these trailing slots
+                    # default_trained_head() crashed at line 942 with
+                    # ``in_dim=11 vs X=(N, 9)`` shape mismatch.
+                    0.0,  # 9 — d_to_metal (synthetic: no real metal position)
+                    # 10 — bo_target gap fallback (mirrors _featurise 1509-11)
+                    float(d - anchor_single),
                 ]
             )
             y_rows.append(order)
@@ -350,6 +361,13 @@ def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tens
                     float(min(z_j, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
                     float(_bucket(z_i) * 6 + _bucket(z_j)),
                     float(d - anchor_single),
+                    # Wf-A57 W9-P4 (2026-10-16): match the live 11-feature
+                    # layout (see _add above); no-bond rejection rows also
+                    # need the trailing ``d_to_metal=0`` and ``bo_target``
+                    # gap fallback or torch.tensor() at line 380 raises
+                    # ``expected sequence of length 11 at dim 1 (got 9)``.
+                    0.0,  # 9 — d_to_metal (no metal partner for no-bond rows)
+                    float(d - anchor_single),  # 10 — bo_target gap fallback
                 ]
             )
             y_rows.append(BOND_NO_BOND)

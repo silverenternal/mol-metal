@@ -250,6 +250,15 @@ class SquarePlanarPtII(nn.Module):
     -------
     >>> prior = SquarePlanarPtII(weight=1.0)
     >>> loss = cfm_loss + atom_loss_weight * atom_loss + prior(positions, ...)
+
+    Cross-ref
+    ---------
+    Decoder-side Wf-A55 W7-P1 (2026-10-16): the ``_GeometryConstraint``
+    dataclass and 3 frozen instances (``_SQUARE_PLANAR`` /
+    ``_OCTAHEDRAL`` / ``_TETRAHEDRAL``) in
+    :mod:`molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond` are the
+    decoder-side counterpart of this prior — they dispatch the same
+    geometry rule by metal Z in the YuelBond bond head.
     """
 
     def __init__(
