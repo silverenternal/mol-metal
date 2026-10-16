@@ -1,8 +1,19 @@
+# mol-metal dataset registry
+#
+# Each entry: {path, md5, sha256, why, source, locked_for}
+# - path: relative to repo root
+# - md5/sha256: file content hash (MEASURED at registration)
+# - why: one-paragraph intent + caveats + join keys
+# - source: yaml or pdf or zip or 'cistern' or 'manual'
+# - locked_for: list of metric/protocol IDs that depend on this dataset
+#
+# Regenerate via: .venv/bin/python molmetal/scripts/registry.py check
+# Update via: .venv/bin/python molmetal/scripts/registry.py generate
+#
 schema: molmetal-registry-datasets-v1
 generated_at: '2026-10-08T09:36:32+00:00'
 generator: python -m molmetal.scripts.registry generate
-note: Machine-readable dataset facts. A dataset is READY iff sha256(path) == sha256
-  here.
+note: Machine-readable dataset facts. A dataset is READY iff sha256(path) == sha256 here.
 datasets:
   metalcytotox_5metal_multitask.csv:
     path: .data/molmetal/metalcytotox_5metal_multitask.csv
@@ -44,8 +55,7 @@ datasets:
     path: .data/molmetal/MetalCytoToxDB.csv
     md5: f270dc907dbdfede953063a14f0825a7
     sha256: cc2a142764ed022299da30203a7f897fb4e0c6ae8cb9b5217525961138fa0198
-    why: Krasnov 2026 MetalCytoToxDB v2 release — the canonical m1 cohort (MEASURED
-      26,801 rows x 24 cols, 2026-10-07).
+    why: Krasnov 2026 MetalCytoToxDB v2 release — the canonical m1 cohort (MEASURED 26,801 rows x 24 cols, 2026-10-07).
     source: configs/locks/protocol_lock.yaml
     locked_for:
     - m1_ru_auc
@@ -54,11 +64,8 @@ datasets:
     path: .data/molmetal/platinai_4cell.csv
     md5: 5a5d8da8d1b05a9647546a5c2101f6f2
     sha256: 5f939af7eae2a932c467339194d276f366b4fe5b8e7dd54d03f16f60f803f27b
-    why: Pt-only PlatinAI 4-cell-line cohort in the schema the trainer's loader accepts
-      (SMILES_Ligands + pIC50_{mcf7,a549,a2780,a2780cis} + metal). This is the file
-      `--dataset platinai_4cell` resolves to and the file configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml
-      names under `data.csv` (added 2026-10-07; resolves to the live --csv dest, so
-      it is NOT a wfA2_config_loader dead key).
+    why: Pt-only PlatinAI 4-cell-line cohort in the schema the trainer's loader accepts (SMILES_Ligands + pIC50_{mcf7,a549,a2780,a2780cis} + metal). This is the file `--dataset platinai_4cell` resolves
+      to and the file configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml names under `data.csv` (added 2026-10-07; resolves to the live --csv dest, so it is NOT a wfA2_config_loader dead key).
     source: configs/locks/protocol_lock.yaml
     locked_for:
     - m2_r2_per_cell
@@ -91,9 +98,91 @@ datasets:
     path: molmetal/data/tmqm_dblock_subset.csv
     md5: 78cf4a1e7dadb100a4c4cf54a79db698
     sha256: 03fe66fbb29908de1d455ec3b55ebbda4cab3e8ee2871f44c09989bd65e52e78
-    why: reachability_overall.json records csv_path == this file (MEASURED 5001 lines,
-      tmQM d-block subset with csd_code + smiles + metal_center). It is the closure-theorem
-      R20 benchmark input (CPU-only).
+    why: reachability_overall.json records csv_path == this file (MEASURED 5001 lines, tmQM d-block subset with csd_code + smiles + metal_center). It is the closure-theorem R20 benchmark input (CPU-only).
     source: configs/locks/protocol_lock.yaml
     locked_for:
     - l6_closure
+  rusanov_2025_s5_ece.json:
+    path: .data/molmetal/rusanov_2025/parsed/s5_ece.json
+    md5: 301b6062c468f37c74fb679598a41c47
+    sha256: 7067aad0c0c58cdede06edb1dfca136b8f8225b2e697f89cc33589f37f58018b
+    why: Rusanov 2025 V2 SI Table S5 — Expected Calibration Error (ECE) for KANO vs MKANO on 4 cell lines (A2780/A2780cis/MCF-7/A549) x 3 split types (scaffold-based/random/cluster-based) = 24 ECE values.
+      Extracted from supplementary_information_v2.pdf text (xlsx not in V2 zip, V1 link 404). MKANO avg ECE = 20.13, KANO avg ECE = 19.03 (KANO slightly better calibrated, counter-intuitive). Used for CFM
+      calibration comparison vs Rusanov published numbers (counterpart to m1_ru_auc property prediction sub-paper).
+    source: Rusanov 2025 SI PDF (text extraction 2026-10-16)
+    locked_for: []
+  rusanov_2025_s7_pt_wet_lab.json:
+    path: .data/molmetal/rusanov_2025/parsed/s7_pt_wet_lab.json
+    md5: 24233db146269caaec645fde6b89d468
+    sha256: 513ef5cabbb59bba69a5e406315c924be2e5fdecd57123fd93a2f10b76c880c6
+    why: 'Rusanov 2025 V2 SI Table S7 — Predicted vs experimentally determined anticancer activity for 19 synthesized Pt complexes (Pt-1 through Pt-19) + Cisplatin baseline, across 4 cell lines (A2780/A2780cis/MCF-7/A549).
+      Activity = 1 if IC50 < 5 uM else 0. Extracted from supplementary_information_v2.pdf text. Per-cell accuracy (Rusanov own MKANO model): A2780 80.0%, A2780cis 62.5%, MCF-7 41.2% (Rusanov model fails
+      on MCF-7), A549 70.6%. Cisplatin reference: A2780 1.1+/-0.3 (correct), A2780cis 24+/-4 (correct), MCF-7 9.6+/-2.1 (Pred=1 wrong), A549 22+/-2 (Pred=1 wrong). This is Rusanov own wet-lab validation
+      data, critical for our paper compare to Rusanov KANO/MKANO on the same test set.'
+    source: Rusanov 2025 SI PDF (text extraction 2026-10-16)
+    locked_for: []
+  rusanov_2025_table_s2_journals.xlsx:
+    path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s2. supplementary_table_top_journals.xlsx
+    md5: 3fe701fdb332fdac67faade5ed7f78eb
+    sha256: 7bfc13435845ec3ae436a4d6f52bf96c789cae6df1c64c09e18c28f720c87b3f
+    why: Rusanov 2025 V2 SI Table S2 — Detailed journal/publisher statistics (1,134 manuscripts, 3,725 distinct structures). Narrative cite only, not used for metric computation.
+    source: ChemRxiv V2 zip (2026-10-16)
+    locked_for: []
+  rusanov_2025_table_s3_resistance.xlsx:
+    path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s3. supplementary_table_resistance.xlsx
+    md5: d20f599f10ee4d74b9d3cbf92c0aff4e
+    sha256: 5c293bceb67faa4403a07545ae852bef597f570ae0ca97bf8ee746c6e712f86e
+    why: Rusanov 2025 V2 SI Table S3 — Resistance Factor (RF) for Cisplatin/Oxaliplatin/Carboplatin across matched cell line pairs (sensitive parent vs resistant subline). Narrative cite only, not used
+      for metric computation.
+    source: ChemRxiv V2 zip (2026-10-16)
+    locked_for: []
+  rusanov_2025_table_s4_5ref_complexes.xlsx:
+    path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s4. supplementary_table_statistics.xlsx
+    md5: e47f6ee6da48187003f7646f3e10325b
+    sha256: 00b268f193e16bb10c96ce7a7650be0f8a889bb06c0944d60068ff13072a8de1
+    why: Rusanov 2025 V2 SI Table S4 — Comparative statistical analysis of IC50 for 5 reference Pt complexes (Cisplatin, Oxaliplatin, Carboplatin, Satraplatin, Transplatin) across all cell lines and time
+      points. 849 rows. Includes mean, median, SD, 95% CI, CV%. Used for reference baseline + Cisplatin/Oxaliplatin/Carboplatin per-cell comparison.
+    source: ChemRxiv V2 zip (2026-10-16)
+    locked_for: []
+  rusanov_2025_table_s6_214k_predicted.xlsx:
+    path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s6. predicted cytotoxicity of the 214,373 unlabeled platinum complexes (mkano).xlsx
+    md5: a2fe34093e4863812dae148f3e12a0e1
+    sha256: 2fc8cc5c6c2f3400e3744a5b702489845ef1f5d1ccd44a456a4092b7351dbfdd
+    why: 'Rusanov 2025 V2 SI Table S6 — 211,859 rows x 25 cols. Pt SMILES + 4 cells (A2780/A2780cis/A549/MCF-7) x 3 split types (cluster/random/scaffold) x proba+binary = 24 columns of MKANO predicted activity.
+      This is the 214,373 screening library used to predict activity. Note: column 0 is SMILES, not MB-Pt- imageId; this is a different ID system than our 1449 imageId pool, so direct join is NOT possible.
+      Used as Pt structure distribution for CFM pretrain (massive 211K real Pt complexes, no measured IC50 attached — predicted only).'
+    source: ChemRxiv V2 zip (2026-10-16)
+    locked_for: []
+  rusanov_2025_table_s8_roc_auc.xlsx:
+    path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s8. summary of obtained mean roc-auc, precision, recall, and f1 score values.xlsx
+    md5: 451981b720d3f779e88cd72387e60584
+    sha256: e781b1a413b73fe0cc09d130f8bd849f9dfc32788ece00f1c5b8f671b2f2bfd1
+    why: Rusanov 2025 V2 SI Table S8 — KANO vs MKANO ROC-AUC, Precision, Recall, F1 across 4 cell lines x 3 split types x 2 eval types (finetune / in-house test). 12 rows each metric. Used as baseline citation
+      for our CFM property prediction numbers (KANO/MKANO published numbers vs our model).
+    source: ChemRxiv V2 zip (2026-10-16)
+    locked_for: []
+  rusanov_2025_table_s9_427_de_novo.xlsx:
+    path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s9. predicted de novo structures_a549_a2780_a2780cis_mcf-7_72 h_427 complexes.xlsx
+    md5: 16b5919b7b7dee1b3f9ca50c51c4407a
+    sha256: 9ebb214fc5ff653baa872b1a935b7ecd77eb7d1fe8d69470ca37e03e6d0a0226
+    why: Rusanov 2025 V2 SI Table S9 — 427 PlatinAI de novo structures with SMILES + predicted activity (4 cells) + ADME properties (logP/MR/QED/SA/HBA/HBD/rotatable bonds/MW). 429 rows (header + 428 data).
+      Critical for our paper — this is Rusanov own de novo design output, we can directly compare our CFM de novo output against these 427 structures on (a) similarity, (b) predicted activity, (c) ADME
+      property distribution, (d) diversity/novelty.
+    source: ChemRxiv V2 zip (2026-10-16)
+    locked_for: []
+  rusanov_2025_table_s10_signaling.xlsx:
+    path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/table s10. correlated deg-deps in a2780cis cells treated with platinai.xlsx
+    md5: 02bd54c348d06a042486c7dca9d00389
+    sha256: f9e371eb6b3008e7fee23bd5686fc2e242ad0d701386a8ad2aa905a17e38d319
+    why: Rusanov 2025 V2 SI Table S10 — Proteome-transcriptome correlation of DEPs/DEGs in A2780cis cells treated with PlatinAI (22.5 uM, 16h). 1000 rows. Used for mechanism narrative (paper section 5 discussion),
+      not metric.
+    source: ChemRxiv V2 zip (2026-10-16)
+    locked_for: []
+  rusanov_2025_supplementary_information_v2.pdf:
+    path: .data/molmetal/rusanov_2025/chemrxiv-2025-pp32k/supplementary_information_v2.pdf
+    md5: bba8edc36ae8809d15ff55ef2894dce2
+    sha256: 1e1663d509a12d3f773b9adde9d656a82c923aacd02425ce9454518fd406ff1f
+    why: 'Rusanov 2025 V2 SI PDF (17 MB, 70 pages) — full paper methods/results supplement. Source of S5 ECE + S7 Pt-1-19 wet-lab tables (extracted as JSON in parsed/). IMPORTANT: this is the canonical
+      source for paper claims — ALL numbers in our paper that cite Rusanov should verify against this PDF (V1 supplementary_dataset_1.xlsx is 404, no figshare/Zenodo/ResearchGate mirror).'
+    source: ChemRxiv V2 zip (2026-10-16)
+    locked_for: []
