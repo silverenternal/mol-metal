@@ -173,6 +173,13 @@
         "id": "round6_code_health_3_items_still_owed",
         "what": "Housekeeping: stale comment at wf_blkc_l3_guidance_probe.py:379, docstring overclaim at test_wf_blkc_l3_sanitize_error_propagation.py:201-205, per_cloud_out plumbing at train_cfm_yuelbond_wasserstein.py:9359-9392. Not Table-blocking.",
         "cost": "30 min CPU"
+      },
+      {
+        "id": "W3-B_DMPNN_feat_wirein",
+        "what": "Wf-A52 W1 D-MPNN feature wire-in: --pool/--readout/--update/--featurizer-version kwargs + _ResidualUpdate shipped. CHEMPROP_V2_ATOM_DIM exported (alias _CHEMPROP_V2_ATOM_DIM being dropped per Wf-A53-W1-c). 5/5 W3-B fixes + 13 tests un-skipped. Per Wf-A53 W1 §6.80g annotation.",
+        "cost": "0 hr (already shipped)",
+        "blocks": "none (Table-defensible per Wf-A52 §6.79a)",
+        "status_2026_10_16": "SHIPPED per Wf-A52 W1 commit b3fbd9e9; annotated Wf-A53 W1"
       }
     ]
   },

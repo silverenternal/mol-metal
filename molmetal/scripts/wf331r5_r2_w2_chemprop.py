@@ -247,7 +247,6 @@ _CHEMPROP_V2_ATOM_VOCAB: Dict[str, List[Any]] = {
 # name") so :mod:`molmetal.baselines.dmpnn`'s v2 featurizer can import
 # the schema-width value without duplicating the literal 72.
 CHEMPROP_V2_ATOM_DIM: int = 72
-_CHEMPROP_V2_ATOM_DIM: int = 72  # backward-compat alias for older imports
 
 _CHEMPROP_V2_BOND_VOCAB: Dict[str, List[Any]] = {
     # bond_type: 0..11 (12; 1:single, 2:double, 3:triple, 4:aromatic)
@@ -298,7 +297,7 @@ def rdkit_chemprop_atom_features(mol) -> np.ndarray:
     for chemprop v2's ``SimpleMoleculeMolGraphFeaturizer``.
     """
     if mol is None:
-        return np.zeros((0, _CHEMPROP_V2_ATOM_DIM), dtype=np.float64)
+        return np.zeros((0, CHEMPROP_V2_ATOM_DIM), dtype=np.float64)
     feats: List[np.ndarray] = []
     atom_vocab = _CHEMPROP_V2_ATOM_VOCAB
     for atom in mol.GetAtoms():
@@ -330,7 +329,7 @@ def rdkit_chemprop_atom_features(mol) -> np.ndarray:
         parts.append(_one_hot(atom.GetTotalNumHs(), atom_vocab["num_Hs"], 5))
         feats.append(np.concatenate(parts, axis=0))
     if not feats:
-        return np.zeros((0, _CHEMPROP_V2_ATOM_DIM), dtype=np.float64)
+        return np.zeros((0, CHEMPROP_V2_ATOM_DIM), dtype=np.float64)
     return np.stack(feats, axis=0)
 
 
@@ -380,13 +379,13 @@ def _probe_chemprop_dims() -> Tuple[int, int]:
         ftr = SimpleMoleculeMolGraphFeaturizer()
         mol = Chem.MolFromSmiles("c1ccccc1")
         if mol is None:
-            return (_CHEMPROP_V2_ATOM_DIM, _CHEMPROP_V2_BOND_DIM)
+            return (CHEMPROP_V2_ATOM_DIM, _CHEMPROP_V2_BOND_DIM)
         mg = ftr(mol)
         atom_dim = int(mg.V.shape[1])
         bond_dim = int(mg.E.shape[1])
         return (atom_dim, bond_dim)
     except Exception:
-        return (_CHEMPROP_V2_ATOM_DIM, _CHEMPROP_V2_BOND_DIM)
+        return (CHEMPROP_V2_ATOM_DIM, _CHEMPROP_V2_BOND_DIM)
 
 
 _GRAPH_FEATURE_DIM: Optional[int] = None

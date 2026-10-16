@@ -6,10 +6,10 @@
 # to current behaviour, and the corresponding produce/consume path is
 # bit-exact on every existing CFM config (cfm_patience10_seed0 etc.).
 #
-# Boilerplate (entry.command_template / entry.script) is omitted here
-# because this YAML's purpose is hyperparameter binding, not launch
-# dispatch — see launcher-side §5.11 configs/cfm_patience10_seed0_*_full.yaml
-# for the corresponding launcher-side bindings.
+entry:
+  script: molmetal/scripts/bench_cfm_decode_real.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/bench_cfm_decode_real.py --config {yaml_path} --out-dir {out_dir}
+  legacy_inline_command: ""
 
 # ---- m14 per-atom decode ratio gate (Track E EV1) ----------------------
 strict_large_frag:
