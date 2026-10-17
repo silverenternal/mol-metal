@@ -2964,7 +2964,7 @@
     "2026-10-17 (v2 主线): WP0-WP4 全部完成。三个独立负结果收口到同一句话: 金属对活性的影响是真的 (concept shift 18.2% vs 9.6%), 但**不可从金属化学或金属条件化中利用** —— 它是配体固有属性。因此可部署能力 = 配体侧可靠性过滤器 (WP2, AUC 0.6704, Holm 0.04)。",
     "FU4 完成 (fsma_fused_kcurve.json): 在 FSMA 线上, **简单分数级平均** 达到 directive 验收 —— K=80 merged_avg 在 4/5 金属 >= max(A,B), Ru +0.0240 Holm 0.0007; K=20/K=80 merged_logit_avg 同样达标。但证据集中在 Ru (占队列 64%), Rh 边缘 (Holm 0.056), Os 为负。学习型 merged_stack 全面输给平均 (Re K=20: 0.4944 vs 0.7529) —— 与 FU3 的 uniform_avg 结论一致: 可学习合并器数据不足, 等权平均更稳。",
     "FU2 完成 (stacked_dmpnn_xgb_within_metal.json): 组内 stacking 只在 Ru 达标 (merged 0.8659 > A 0.8614, +0.0045, 5/5 seed, Holm 0.0029); Ir/Rh 微正不显著, Os/Re 微负 → 3/5, 未达 directive 验收。但 merged_minus_B 在 5 金属全部 Holm 显著 (5e-06..0.0011): 合并器确实吸收了强分量, 只是停在 A+epsilon。directive 要求继续换结构 (未启动, 每个都是 >1h GPU0, 需 USER_OK)。",
-    "在跑: #184 (GPU0, device-matched capacity pair) —— 原 CPU h512 跑了 7h32m 零 cell, 已 kill。cuda:0 + --deterministic, 顺序跑 h128 -> h512; 两档仅 model.hidden 不同。**h128 已完成 4/5 金属** (Ru 4h20m, Ir 1h48m, Rh 27.6m, Os 27.0m; Re 在跑):\n  metal  n      GPU h128        CPU h128   device_d  GPU delta  CPU delta\n  Ru    4793  0.8192±0.0115   0.8173      +0.0019   -0.0421    -0.0440\n  Ir    1281  0.6543±0.0768   0.6649      -0.0106   -0.1734    -0.1633\n  Rh     334  0.7775±0.0617   0.7780      -0.0005   -0.0312    -0.0308\n  Os     333  0.6908±0.0528   0.6833      +0.0075   -0.1305    -0.1380\n全部 20 格 (4 金属 × 5 seed) 的 xgb 与已发表 CPU 列同 seed 值逐位相同 -> 同 cohort 同折, 无一例外。设备差按金属各不相同 (Ru +0.002 / Ir -0.011 / Rh -0.001 / Os +0.008), 无一超过 0.011, 都远小于对应 G1 差距。结论: 换设备**复现**了 G1 (Ru -0.042 / Ir -0.173 / Rh -0.031 / Os -0.131), 设备不是解释, hidden 是唯一未测变量。**容量预览 (Ir)**: 早先 cuda:0 同折 h512 探针 0.7393 vs h128 GPU 0.6543 -> +0.0850 (正式 h512 腿会取代它)。Re (n=250) 约 20-25 min, h128 约 00:00 完成; h512 约 1.5x -> 10h, 明早完成。",
+    "在跑: #184 (GPU0, device-matched capacity pair) —— **h128 整腿完成** (7h24m56s, 5 金属全部 MEASURED), **h512 已于 23:48 启动**, 预计 10-11h。完整结果见 capacity_pair_2026_10_17。\n  metal  n      GPU h128        CPU h128   device_d  GPU delta  CPU delta\n  Ru    4793  0.8192±0.0115   0.8173      +0.0019   -0.0421    -0.0440\n  Ir    1281  0.6543±0.0768   0.6649      -0.0106   -0.1734    -0.1633\n  Rh     334  0.7775±0.0617   0.7780      -0.0005   -0.0312    -0.0308\n  Os     333  0.6908±0.0528   0.6833      +0.0075   -0.1305    -0.1380\n  Re     250  0.8056±0.0554   0.8031      +0.0025   -0.0371    -0.0395\n25/25 格 xgb 逐位一致。结论: G1 在 GPU0 上**完整复现** (5/5 金属都输), 设备不是解释, hidden 是唯一未测变量。容量预览 (Ir, device-matched): h512 探针 0.7393 vs 0.6543 = +0.0850, 所以 h512 腿不是注定的负结果。",
     "FU1 已完成 (NO_CONFIRMATORY_ARM_METAL_FUSION_WIN): 特征级融合 5 金属全负, 而 FU2 在 Ru 上分数级 stacking 为正 (0.8694 > 0.8640) —— 融合的正确层级是分数而非特征。",
     "PAPER-SYNC 提案已更新 (TODO/pending/paper_a_abstract_sync_proposal.md): 缺陷 4 已由 fsma_c3_sampler_pairwise.json 解决 (该句被支持)。用户 2026-10-17 决定: 暂不动 paper_a; LOMO 区间改用 EX1 的 0.62-0.66。落 hunk 仍需明确 OK (§5.3)。",
     "repo-hygiene: pre-flight 现唯一 FAIL 来自并行 session 的未跟踪文件 configs/cfm_5metal_smoke_2026_10_17.yaml (command_template 带 --device)。不是本研究引入; 待该 session 自行收口。",
@@ -7970,5 +7970,105 @@
     "result": "Friedman p=0.128 (on delta-vs-zero-shot 0.246). All 6 pairwise Holm >= 0.140 on the absolute AUC and >= 0.073 on the delta view. Max pairwise |delta| = random vs activity_scaffold +0.0304 (raw p2=0.0233, Holm 0.140).",
     "verdict": "SAMPLERS_INDISTINGUISHABLE -- the abstract's sentence is CORRECT and should be kept, now with a citation. Only its 'the only significant negative' half is stale (C4's full_k5 = -0.0027 is not Holm-significant).",
     "caveat": "The C3 arms do NOT share a query set: the sampler draws the K support rows and the query is held-out-minus-support, so n_query is identical but the zero-shot AUC is not. The contrast is therefore reported on both the absolute AUC and the delta-vs-zero-shot, and the verdict requires both to agree. They do."
+  },
+  "capacity_pair_2026_10_17": {
+    "date": "2026-10-17",
+    "task": "#184 device-matched within-metal capacity ablation (G1)",
+    "status": "H128_DONE_H512_RUNNING",
+    "artifacts": {
+      "h128": "metrics/by_metric/dmpnn_within_metal_cap128_pf_gpu0.json",
+      "h512": "metrics/by_metric/dmpnn_within_metal_cap512_pf_gpu0.json (pending)"
+    },
+    "configs": {
+      "h128": "configs/dmpnn_within_metal_cap128_pf_gpu0.yaml",
+      "h512": "configs/dmpnn_within_metal_cap512_pf_gpu0.yaml"
+    },
+    "design": "cuda:0 + --deterministic, paper_funnel, 5 split seeds, 50 epochs. h128 and h512 differ ONLY in model.hidden. Each differs from the published CPU column (dmpnn_within_metal_auc_paper_funnel.json) only in device + deterministic.",
+    "h128_gpu0": {
+      "device": "cuda:0",
+      "deterministic": true,
+      "total_wall_sec": 26693.2,
+      "per_metal": {
+        "Ru": {
+          "n": 4793,
+          "h128_gpu0": 0.8192,
+          "h128_gpu0_std": 0.0115,
+          "xgb_same_folds": 0.8614,
+          "delta_gpu0": -0.0421,
+          "h128_cpu_published": 0.8173,
+          "delta_cpu_published": -0.044,
+          "device_delta": 0.0019,
+          "beats_krasnov_gpu0": true,
+          "wall_sec_gpu0": 15623.4
+        },
+        "Ir": {
+          "n": 1281,
+          "h128_gpu0": 0.6543,
+          "h128_gpu0_std": 0.0768,
+          "xgb_same_folds": 0.8277,
+          "delta_gpu0": -0.1734,
+          "h128_cpu_published": 0.6649,
+          "delta_cpu_published": -0.1628,
+          "device_delta": -0.0107,
+          "beats_krasnov_gpu0": false,
+          "wall_sec_gpu0": 6483.9
+        },
+        "Rh": {
+          "n": 334,
+          "h128_gpu0": 0.7775,
+          "h128_gpu0_std": 0.0617,
+          "xgb_same_folds": 0.8087,
+          "delta_gpu0": -0.0312,
+          "h128_cpu_published": 0.778,
+          "delta_cpu_published": -0.0308,
+          "device_delta": -0.0004,
+          "beats_krasnov_gpu0": null,
+          "wall_sec_gpu0": 1658.3
+        },
+        "Os": {
+          "n": 333,
+          "h128_gpu0": 0.6908,
+          "h128_gpu0_std": 0.0528,
+          "xgb_same_folds": 0.8213,
+          "delta_gpu0": -0.1305,
+          "h128_cpu_published": 0.6833,
+          "delta_cpu_published": -0.138,
+          "device_delta": 0.0075,
+          "beats_krasnov_gpu0": null,
+          "wall_sec_gpu0": 1619.0
+        },
+        "Re": {
+          "n": 250,
+          "h128_gpu0": 0.8056,
+          "h128_gpu0_std": 0.0554,
+          "xgb_same_folds": 0.8427,
+          "delta_gpu0": -0.0371,
+          "h128_cpu_published": 0.8031,
+          "delta_cpu_published": -0.0395,
+          "device_delta": 0.0024,
+          "beats_krasnov_gpu0": null,
+          "wall_sec_gpu0": 1308.6
+        }
+      }
+    },
+    "fold_identity_check": "All 25 per-seed XGB AUCs (5 metals x 5 seeds) reproduce the published CPU run bit-for-bit. The folds are identical; the only difference in the D-MPNN column is device numerics.",
+    "device_delta_summary": {
+      "Ru": 0.0019,
+      "Ir": -0.0106,
+      "Rh": -0.0005,
+      "Os": 0.0075,
+      "Re": 0.0025,
+      "reading": "Metal-specific, changes sign, |delta| <= 0.011. Small relative to every G1 gap (0.031-0.173), but NOT zero: on Ir it is -0.011, so a GPU h512 compared against the CPU h128 column would overstate the capacity effect by ~15%. This is why the pair had to be device-matched."
+    },
+    "verdict_h128": "G1 REPRODUCES on GPU0. D-MPNN loses to same-fold XGB on 5/5 metals: Ru -0.0421, Ir -0.1734, Rh -0.0312, Os -0.1305, Re -0.0371. The published CPU column gave -0.0440 / -0.1633 / -0.0308 / -0.1380 / -0.0395. Device is not the explanation; hidden is the only untested variable.",
+    "capacity_preview_ir": "The earlier cuda:0 same-fold Ir h512 probe (dmpnn_within_metal_ir_cap512_pf.json) gives 0.7393 vs h128 GPU0 0.6543 = +0.0850, 5/5 seeds positive. So the h512 leg is not a foregone negative. It is not --deterministic and will be superseded by the running leg.",
+    "honest_framing": {
+      "do_not_claim": [
+        "That this replaces the published Table-1 column — that one is the CPU h128 run and stays as-is.",
+        "A pooled 5-metal mean (Ru is 64% of the deduplicated cohort).",
+        "That Rh/Os/Re (n=334/333/250) are as well-resolved as Ru — their across-fold std is 0.053-0.062 vs Ru 0.012."
+      ]
+    },
+    "next": "h512 leg started 2026-10-17 23:48 on GPU0; expected ~10-11h."
   }
 }
