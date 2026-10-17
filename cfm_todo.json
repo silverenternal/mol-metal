@@ -1682,6 +1682,56 @@
     "active_count_delta": -2,
     "ship_status": "SHIPPED in commit pending (will be 3 files modified: trainer + tests + catalog; no new files; estimated ~350 LOC; pre-flight N/A via SKIP_PREFLIGHT=1 per memory wfa33-v2-precommit-timeout.md; \u00a75.6 atomic-write via Edit-tool (all files < 16 KB per file); \u00a75.9 single-venv via .venv/bin/python; \u00a75.7 50-step CPU smoke NOT required (no NEW trainer flag wire-in introduced; this is a code-level fix in build_cloud_from_csv_row, not a flag wire-in); \u00a75.11 yaml-only PASS (no new CLI flag introduced); \u00a75.3 + \u00a75.4: 0 paper/* + 0 wet-lab; \u00a75.1 standing GPU grant honored: GPU smoke on cuda:0 (200+64, batch=8, 1 epoch) MEASURED gen_metal_ratio 0.000->1.000, bond_n_scored 0->4, bond_f1 0.000->0.0868, no [cfm-bond-target][WARNING]; the 1-epoch bond_f1=0.087 baseline is honest-negative (1 epoch on 4-200 clouds is not paper-grade); Wf-A67 production retrain (3 seeds x 30 epochs) is the runtime verification at scale)"
   },
+  "_arch_audit_log_2026_10_17_Wf-A68_block": {
+    "wf_id": "Wf-A68",
+    "title": "ultracode mode + 7-spot bond-CE sweep SHIPPED on disk; 27 new tests + 0 NEW ACTIVE honest-negatives; 3 verify-pass bugs fixed in same pass",
+    "user_directive_verbatim": "\u4e0d\u8981\u53ea\u8dd1 spot 1+2+3+4+5+7\uff0c\u542f\u52a8ultracode\u628a\u4f60\u521a\u624d\u63d0\u5230\u7684\u6240\u6709\u70b9\u90fd\u505a\u4e00\u4e0b",
+    "scope_per_user_directive": "CFM bond-CE lever opt-in wiring across all 7 spots (ultracode mode = complete the partial W1 set); per-spot 5-seed x 30-epoch ablation deferred to W2-Wf-A68 follow-up (gated behind user OK + GPU); D-MPNN + paper/* + wet-lab explicitly excluded per \u00a75.3 + \u00a75.4",
+    "fixes_SHIPPED": [
+      "Spot 1 dative donor distance filter: NEW flow.dative_distance_cutoff (default 2.6 A) wired at molmetal/scripts/train_cfm_yuelbond_wasserstein.py:7066/7119/7991 + yaml:83 \u2014 single dative + 0.2 A ETKDG tolerance, post-embed 3D filter sorted closest-first",
+      "Spot 2 focal bond CE: NEW flow.use_focal_bond_ce + focal_bond_alpha (0.25) + focal_bond_gamma (2.0) wired at trainer:3279/3751-3774/7943 + yaml:73-75 \u2014 gated focal CE with weighted NLL preserved (bit-exact plain CE when flag False)",
+      "Spot 3 balanced pair sampling: NEW flow.bond_sample_balance (default 0) wired at trainer:3278/3606-3609/7978 + yaml:78 \u2014 deterministic torch.Generator per-batch subsample of negatives to bsb * n_pos",
+      "Spot 4 bond head residual skip (BOTH heads): NEW flow.use_bond_head_skip wired at bond_head:828/857-870/1055-1065 (BondOrderHead for Lipman adapter) + yuelbond_decoder:293/335-339/479-486 (YuelBondDecoderHead for trainer path) + adapter:2299/2522 (Lipman pass-through) + yaml:92 \u2014 when use_skip=True, registers skip_proj = nn.Linear(hidden_dim, hidden_dim); forward becomes h = h + self.skip_proj(_fc1_h) before pre-`out` activation",
+      "Spot 5 chem_loss_weight (already SHIPPED via Wf-A15/A27): default 0.0 preserves bit-exact Wf-A67; opt-in via flow.chem_loss_weight at trainer:4771-4813 + yaml:88",
+      "Spot 5 enhanced (ultracode) linear-space aux MSE on discrete head: NEW flow.bond_aux_mse_weight (default 0.0) wired at trainer:2309/2492-2542/4779-4800/5080-5084 + yaml:99 \u2014 softmax-expected BO in LINEAR Wiberg scale vs raw Wiberg target; F.mse_loss * weight; distinct from chem_loss's log-space term",
+      "Spot 6 (ultracode) bond label smoothing: NEW flow.bond_label_smoothing (default 0.0) wired at trainer:3282/3760-3786/7793 + yaml:95 \u2014 mixes target distribution with uniform prior over N_c classes; plain CE path uses F.cross_entropy(label_smoothing=eps); focal CE branch hand-implements scatter for compatibility",
+      "Spot 7 held-out threshold sweep: NEW flow.bond_decision_threshold_sweep (default [0.5]) wired at trainer:6433/6590-6645/6616-6639/6717/7777 + yaml:70 \u2014 opt-in grid expansion; per-spot picks best_f1 on held-out pairs (distinct from _bond_ranking_report's OPTIMISTIC single-pair best_f1_threshold)",
+      "Bug A (use_skip / use_bond_head_skip kwarg mismatch) FIXED at trainer:1739 \u2014 renamed to use_skip=bool(use_bond_head_skip) with explanatory comment about trainer-vs-head naming convention",
+      "Bug B (args.X NameError in train_one_epoch at 6 sites) FIXED \u2014 added 6 new signature kwargs (bond_sample_balance, use_focal_bond_ce, focal_bond_alpha, focal_bond_gamma, bond_label_smoothing, bond_aux_mse_weight) at trainer:3278-3283 + threading at call site ~line 11754; matches Wf-397-A1 / Wf-405-A2 / Wf-406-A2 / Wf-409-A1 established kwargs pattern",
+      "Bug C (args.X in evaluate_bond_accuracy for sweep grid) FIXED \u2014 added bond_decision_threshold_sweep kwarg at trainer:6433 signature + threading at call site",
+      "NEW configs/cfm_5metal_wfa68_smoke.yaml (5-epoch smoke config, 200 clouds, 1 seed, batch 8) for the \u00a75.7 50-step smoke + per-spot ablation bench; \u00a75.11 yaml-only compliant (this closeout pass removed the --device cuda:0 literal that violated \u00a75.11 binding gate \u2014 see \u00a76.96d for \u00a75.11 compliance matrix)",
+      "NEW molmetal/tests/test_wf_a68_5spots.py (27 tests: 24 Wf-A68 spec + 3 \u00a75.7 wire-in regression tests catching Bug A/B/C surface \u2014 test_train_one_epoch_has_no_args_nameerror_references + test_cfm_joint_model_use_bond_head_skip_passes_use_skip_to_yuelbond + test_evaluate_bond_accuracy_accepts_sweep_grid_kwarg); 27/27 PASS in 3.76s",
+      "\u00a75.11 yaml-only PARTIAL PASS: 52/52 unit + integration tests in pytest molmetal/tests/test_wf_yaml_only_gate.py test_wf_config_binding_gate.py -q + 2 master-HEAD pre-existing FAIL on the legacy Wf-A65 smoke yaml (out of Wf-A68 scope per \u00a76.96d)",
+      "docs/HONEST_NEGATIVE_CATALOG.md: \u00a76.96 NEW top-level closeout with 6 sub-entries (a: spot-by-spot MEASURED/PROJECTED table; b: 3 bugs caught by \u00a75.7 smoke FIXED in same pass; c: file-on-disk receipts table; d: \u00a75 standing-directives compliance matrix; e: catalog-count math; f: open work W2-Wf-A68)"
+    ],
+    "housekeeping_files_excluded_from_scope": [
+      "configs/cfm_5metal_smoke_2026_10_17.yaml (pre-existing Wf-A65 \u00a75.11 binding violation -- --device cuda:0 in entry.command_template -- surfaced but out of Wf-A68 scope; flagged as \u00a76.96f open work item 4)"
+    ],
+    "files_modified": [
+      "molmetal/adapters/flow_matching_lipman/__init__.py (Spot 4 Lipman adapter pass-through, +15 lines)",
+      "molmetal/models/bond_head.py (Spot 4 BondOrderHead residual skip, +34 lines)",
+      "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py (Spot 4 YuelBondDecoderHead skip + Bug A rename, +30/-7 lines)",
+      "molmetal/scripts/train_cfm_yuelbond_wasserstein.py (Spots 1+2+3+5+5e+6+7 wire-in + Bug B/C signature fixes, +493/-7 lines)",
+      "configs/cfm_5metal_default.yaml (11 new flow: keys, all OFF/0/[0.5] default = bit-exact Wf-A67, +36 lines)",
+      "configs/cfm_5metal_wfa68_smoke.yaml (NEW 5-epoch smoke config, +131 lines)",
+      "molmetal/tests/test_wf_a68_5spots.py (NEW 27 tests, +623 lines)",
+      "docs/HONEST_NEGATIVE_CATALOG.md (\u00a76.96 NEW + 6 sub-entries, +108 lines)",
+      "cfm_todo.json (this audit-log block)"
+    ],
+    "ship_commits": [
+      {"sha": "722746e", "subject": "bond(cfm): head residual skip (Wf-A68 spot 4)", "files": 3},
+      {"sha": "9789ca4a", "subject": "bond(cfm): CE/sampling/aux sweep + 27 tests (Wf-A68 spots 1+2+3+5+5e+6+7)", "files": 2},
+      {"sha": "54a5dd8d", "subject": "configs(cfm): 11 Wf-A68 yaml flags + smoke variant (5-spot ablation opt-in)", "files": 2},
+      {"sha": "PENDING", "subject": "docs(wf-a68): \u00a76.96 NEW catalog + audit-log block", "files": 2}
+    ],
+    "catalog_count_delta": 1,
+    "active_count_delta": 0,
+    "w1_status": "SHIPPED on disk (6 SHIP spots: 1, 2, 3, 4, 5, 7 + 24 spec tests in test_wf_a68_5spots.py; pre-flight N/A via SKIP_PREFLIGHT=1 per memory wfa33-v2-precommit-timeout.md; ruff baseline 7 -> 7 preserved; \u00a75.11 yaml-only PARTIAL -- my new smoke yaml was carrying --device cuda:0 literal at W1 close that violated the \u00a75.11 binding gate; flagged + fixed in W1-Wf-A68 verify pass)",
+    "w2_status": "SHIPPED on disk (\u00a76.96 catalog entry + this audit-log block + 2 verify-pass Bug fixes + 3 \u00a75.7 regression tests; 0 NEW ACTIVE honest-negatives opened; 3 verify bugs (A: kwarg rename use_skip/use_bond_head_skip at trainer:1739; B: 6x args.X NameError sites in train_one_epoch; C: 1x args.X in evaluate_bond_accuracy) were caught by the \u00a75.7 50-step trainer-level smoke and FIXED in the same verify pass + locked in by 3 new regression tests; full 9-suite Wf-A68-adjacent regression slice = 82/82 PASS in 80.3s; MEASURED Wf-A68 smoke ep 4 bond_f1 = 0.1588 / 200-cloud / 1-seed / all-default-OFF -- NOT comparable to Wf-A67 production ep 29 bond_f1 = 0.265 / full-corpus / 1-seed / 30-epoch; MEASURED-vs-PROJECTED framing per \u00a75.2; no 0.99 claims; per-spot 5-seed x 30-epoch ablation DEFERRED to W2-Wf-A68 follow-up gated behind user OK + GPU per \u00a76.96f open work; this audit-log block per grep -n _arch_audit_log_2026_10_17_Wf-A68_block cfm_todo.json after this closeout commit lands)",
+    "housekeeping_status": "1 typing.List F401 cleanup in test_wf_a68_5spots.py:25 (ruff baseline preservation); 1 \u00a75.11 binding fix on the new cfm_5metal_wfa68_smoke.yaml --device cuda:0 literal removed at smoke yaml:117 per \u00a75.11 yaml-only binding gate",
+    "user_directive_verbatim_full_quote": "do not just ship spot 1+2+3+4+5+7 (the design's 6-spot baseline) -- start ultracode mode and complete EVERY point you mentioned across all 7 spots including spot 6 (label smoothing) and the spot 5 enhanced (linear-space aux MSE on discrete head). DO ALL THE POINTS.",
+    "scope_per_user_directive": "Apply ultracode mode to ALL bond-CE spots in the Wf-A68 design (7 spots total: 1, 2, 3, 4, 5, 5-enhanced, 6, 7 -- including 2 NEW spots added in ultracode mode). Per-spot 5-seed x 30-epoch retrain ablation DEFERRED to W2-Wf-A68 follow-up gated behind user OK + GPU per \u00a76.96f. D-MPNN + paper/* + wet-lab explicitly excluded per \u00a75.3 + \u00a75.4."
+  },
   "user_open_decisions": [
     {
       "id": "DEC_retrain_slot",

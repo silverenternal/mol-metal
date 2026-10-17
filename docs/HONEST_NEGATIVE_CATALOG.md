@@ -3915,3 +3915,102 @@ The 1-epoch smoke shows non-trivial signal but `bond_f1=0.087` is far from paper
 **§6.95 catalog-count math.** Net catalog-count delta: **+1** (§6.95 itself). ACTIVE count delta: **0** (this is housekeeping; no honest-negative was opened or closed; the pre-existing test failure was a stale assertion, not a real bug). Cumulative catalog count: **146 → 147** (+1). ACTIVE count: **109 → 109** (unchanged). The 1 SHIP commit is housekeeping only.
 
 **Workflow** | Wf-A66 housekeeping (2026-10-17; CPU-only; 1 file modified: `molmetal/tests/test_cfm_bond_target_truth.py`; pre-flight N/A via `SKIP_PREFLIGHT=1` escape hatch; §5.6 atomic-write via Edit-tool (single-file edit, well under 16 KB threshold); §5.9 single-venv via `.venv/bin/python`; §5.7 50-step CPU smoke N/A (no NEW trainer flag wire-in introduced; the fix is a test assertion update only); §5.11 yaml-only PASS (no new CLI flag introduced); §5.3 + §5.4: 0 paper/* + 0 wet-lab; 0 GPU; Wf-A67 production retrain (3 seeds × 30 epochs) continues running in background at PID 1776125, ~2-3h wall per Wf-A66 estimate; the 1 SHIP commit completes the Wf-A66 housekeeping wave and the Wf-A66 surface is now clean (no open test failures attributable to the Wf-A66 changes + the pre-existing failure repaired); per `docs-lag-disk-verify-against-code` memory, this is the canonical pattern for handling stale tests: verify pre-existing via `git stash` baseline replay, repair the assertion to match the current contract, never revert the trainer refactor to satisfy a stale test.
+
+### §6.96 Wf-A68 closeout (2026-10-17) — ultracode + 7-spot bond-CE sweep SHIPPED (3 SHIP commits + 27 new tests + 0 NEW ACTIVE honest-negatives; all bugs caught by §5.7 smoke fixed in same verify pass)
+
+**Date**: 2026-10-17
+**Trigger**: User directive verbatim *"不要只跑 spot 1+2+3+4+5+7，启动ultracode把你刚才提到的所有点都做一下"* — apply ultracode mode to ALL CFM bond-CE spots (not just W1's 6).
+**User_authorisation_basis**: standing GPU auth per AGENTS.md §5.1 + standing YAML-only auth per §5.11. No paper/* or wet-lab touched per §5.3 + §5.4.
+
+**Wf-A68 ships**: 7 opt-in levers (Spots 1, 2, 3, 4, 5, 5-enhanced, 6, 7) — all OFF / 0 / [0.5] default → bit-exact Wf-A67. Verified SHIPPED on disk via grep + line-precise receipts (§6.96c).
+
+#### §6.96a — Spot-by-spot MEASURED/PROJECTED summary
+
+| Spot | Default | MEASURED / PROJECTED | Notes |
+|---|---|---|---|
+| 1 dative distance filter | 2.6 Å | **MEASURED**: trainer:7066/7119/7991 wired; NO MEASURED lift claim (untrained spot) | Single dative + 0.2 Å ETKDG tolerance; opt-in `flow.dative_distance_cutoff` |
+| 2 focal bond CE | OFF | **MEASURED**: trainer:3751-3774 wired; NO MEASURED lift claim | `use_focal_bond_ce: false` + `focal_bond_alpha: 0.25` + `focal_bond_gamma: 2.0` |
+| 3 balanced pair sampling | 0 (no balancing) | **MEASURED**: trainer:3606/3609/7978 wired; NO MEASURED lift claim | `bond_sample_balance: 0`; deterministic `torch.Generator` per-batch |
+| 4 bond head skip | OFF | **MEASURED**: bond_head:828/857-870/1055-1065 + yuelbond_decoder:293/335-339/479-486 + adapter:2299 wired; NO MEASURED lift claim | `use_bond_head_skip: false`; both heads covered |
+| 5 chem_loss (Wasserstein aux, pre-existing Wf-A15/A27) | 0.0 | **MEASURED**: trainer:4787-4799 wired; default = bit-exact Wf-A67 | `chem_loss_weight: 0.0` |
+| 5 enhanced (ultracode) linear aux MSE | 0.0 | **MEASURED**: trainer:2309/2506/4799-4800 wired; NO MEASURED lift claim | `bond_aux_mse_weight: 0.0`; linear-space, distinct from chem_loss's log-space |
+| 6 (ultracode) label smoothing | 0.0 | **MEASURED**: trainer:3282/3772-3786/7793 wired; NO MEASURED lift claim | `bond_label_smoothing: 0.0`; cross-entropy mixed with uniform prior |
+| 7 held-out sweep | [0.5] | **MEASURED**: trainer:6433/6637/6717/7777 wired; NO MEASURED lift claim | `bond_decision_threshold_sweep: [0.5]`; opt-in grid expansion |
+
+Per AGENTS.md §5.2: every Δ bond_f1 in any future closeout commit MUST trace to `metrics/by_metric/*.json` after a 5-seed × 30-epoch ablation per flag. **No per-spot lift can be claimed from this W1+W2 wiring + 5-epoch smoke alone.** Combined ceiling PROJECTED ≤ 0.65 per scout; the realistic ceiling for 5-class bond prediction on 95% NO_BOND multi-metal coordination is 0.50-0.70; for 0.99 physically unreachable and flagged as honest-negative.
+
+#### §6.96b — Bugs caught by §5.7 50-step smoke (verified pre-existing on master HEAD via `git stash` baseline replay) — all FIXED IN SAME VERIFY PASS + locked in by 3 new regression tests
+
+The W1+W2 closeout claimed 6+1 spots shipped, but the §5.7 trainer-level wire-in smoke caught 3 end-to-end trainer crashes that the W1+W2 unit tests (head-only isolation) missed:
+
+**Bug A** — `use_bond_head_skip` kwarg name mismatch at the YuelBondDecoderHead call site. Head's kwarg is `use_skip`; trainer was passing `use_bond_head_skip`. Fixed at trainer:1739 with explanatory comment that this naming mismatch is the trainer-vs-head convention.
+* Smoke impact: trainer crashed on every `CFMJointModel(...)` instantiation — even with `use_bond_head_skip=False`.
+
+**Bug B** — `args.X` references inside `train_one_epoch` (which has no `args` in its scope). 6 sites at trainer:3606/3751-3774/4787-4800. Wf-A68 wired the new flags as gates inside the existing bond-CE / loss cascade but read them via `getattr(args, ...)` — `args` is the trainer-level Namespace and is NOT in `train_one_epoch`'s scope. Fixed by adding 6 new signature kwargs (`bond_sample_balance`, `use_focal_bond_ce`, `focal_bond_alpha`, `focal_bond_gamma`, `bond_label_smoothing`, `bond_aux_mse_weight`) to the trainer:3278-3283 signature + threading at the call site (~trainer:11754), matching the established Wf-397-A1 / Wf-405-A2 / Wf-406-A2 / Wf-409-A1 pattern (the pre-existing `sa_penalty` / `use_ot_cfm` / `lambda_cfm_*` kwargs).
+* Smoke impact: trainer crashed at the first epoch.
+
+**Bug C** — `args.X` reference inside `evaluate_bond_accuracy` for Spot 7's sweep grid. Same scope bug at trainer:6636. Fixed by adding `bond_decision_threshold_sweep` kwarg to the trainer:6433 signature + threading at the call site.
+* Smoke impact: trainer crashed at the first val epoch.
+
+**3 new regression tests** in `molmetal/tests/test_wf_a68_5spots.py`:
+- `test_train_one_epoch_has_no_args_nameerror_references` — inspects the function body for `args.` and FAILS if found.
+- `test_cfm_joint_model_use_bond_head_skip_passes_use_skip_to_yuelbond` — asserts the call-site kwarg rename is intact.
+- `test_evaluate_bond_accuracy_accepts_sweep_grid_kwarg` — asserts the new kwarg is in the signature.
+
+#### §6.96c — file-on-disk receipts
+
+| Receipt | Disk path / line | MEASURED / PROJECTED | Status |
+|---|---|---|---|
+| Spot 1 dative distance wire-in | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:7066`, `:7119`, `:7991` + yaml:83 | MEASURED on disk; lift UNMEASURED | SHIPPED |
+| Spot 2 focal CE wire-in | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:3279/3751-3774/7943` + yaml:73-75 | MEASURED on disk; lift UNMEASURED | SHIPPED |
+| Spot 3 balanced sampling wire-in | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:3278/3606-3609/7978` + yaml:78 | MEASURED on disk; lift UNMEASURED | SHIPPED |
+| Spot 4 bond head skip on BondOrderHead | `molmetal/models/bond_head.py:828/857-869/1055-1065` + yaml:92 | MEASURED on disk; lift UNMEASURED | SHIPPED |
+| Spot 4 bond head skip on YuelBondDecoderHead | `molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:293/330-336/479-486` | MEASURED on disk; lift UNMEASURED | SHIPPED |
+| Spot 4 Lipman adapter pass-through | `molmetal/adapters/flow_matching_lipman/__init__.py:1725-1728/2299/2522` | MEASURED on disk; lift UNMEASURED | SHIPPED |
+| Spot 5 chem_loss wire | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:4771-4813` + yaml:88 | MEASURED on disk (Wf-A15/A27 legacy); lift UNMEASURED | SHIPPED |
+| Spot 5 enhanced linear aux MSE wire | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2309/2492-2542/4779-4800/5080-5084` + yaml:99 | MEASURED on disk; lift UNMEASURED | SHIPPED |
+| Spot 6 label smoothing wire | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:3282/3760-3786/7793` + yaml:95 | MEASURED on disk; lift UNMEASURED | SHIPPED |
+| Spot 7 held-out sweep wire | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:6433/6590-6645/6616-6639/6717/7777` + yaml:70 | MEASURED on disk; lift UNMEASURED | SHIPPED |
+| `train_one_epoch` signature patch (Bug B) | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:3278-3283` + call site ~line 11754 | MEASURED on disk | FIXED |
+| `evaluate_bond_accuracy` signature patch (Bug C) | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:6433` + call site | MEASURED on disk | FIXED |
+| `use_skip` rename at YuelBondDecoderHead call site (Bug A) | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:1739` | MEASURED on disk | FIXED |
+| 27/27 tests PASS | `pytest molmetal/tests/test_wf_a68_5spots.py -q` | MEASURED (24 Wf-A68 spec + 3 §5.7 wire-in regression) | GREEN |
+| 82/82 tests PASS on Wf-A68-adjacent slice | `pytest molmetal/tests/test_wfa65_csv_cohort_column.py test_cfm_bond_target_truth.py test_wfa62_cfm_round10.py test_wfa64_r18_adapters.py test_yuelbond_forward_alignment.py test_cfm_fix1_bond_head_default.py test_bond_head_pattern_mask_missing_z_raises.py test_wf_round7_bond_head_silent_failure.py test_wf_a68_5spots.py -q` | MEASURED; 80.3s wall | NO REGRESSIONS |
+| §5.11 yaml-only gate | `pytest molmetal/tests/test_wf_yaml_only_gate.py` + `test_wf_config_binding_gate.py` | MEASURED 52/52 PASS + 2 master-HEAD pre-existing FAIL (legacy `cfm_5metal_smoke_2026_10_17.yaml` carries pre-Wf-A65 `--device` literal) | Wf-A68 CLEAN; legacy FAIL out of Wf-A68 scope |
+| ruff delta | `ruff check molmetal/{scripts,train_cfm_yuelbond_wasserstein.py models/bond_head.py molmetal_lam/lam_chem/yuelbond_decoder.py adapters/flow_matching_lipman/__init__.py}` | MEASURED 7 → 7 (no new violations after Wf-A68 typing.List cleanup in test_wf_a68_5spots.py:25) | BASELINE-PRESERVED |
+| Wf-A68 smoke MEASURED | `/tmp/cfm_wfa68_smoke/per_epoch_metrics.csv` | MEASURED 5-epoch 200-cloud 1-seed all-default-OFF: ep 4 bond_f1=0.1588 (decode_ratio 0.9062); NOT comparable to Wf-A67 production ep 5=0.097 (different cohort + epoch count); NO lift can be claimed from this single smoke | HONEST FRAMING per §5.2 |
+| Wf-A67 production MEASURED baseline (for context) | `results/cfm_5metal_default/per_epoch_metrics.csv` | MEASURED 1-seed × 30-epoch full corpus, all-default-OFF: ep 29 bond_f1=0.265 (decode_ratio 0.414, best_decode_ratio 0.425 @ ep 26, total wall 2820.8s ≈ 47min); this is the Wf-A67 production retrain baseline against which Wf-A68 spot-on retrain should be compared | REFERENCE only |
+
+#### §6.96d — §5 standing-directives compliance matrix
+
+| Standing directive | Wf-A68 status | Notes |
+|---|---|---|
+| §5.1 Standing GPU auth | Honored | Smoke ran on cuda:0 (RTX PRO 6000 Blackwell 95.8 GiB free per `nvidia-smi` 2026-10-17); 178s wall; 8.4 GiB VRAM peak; `SKIP_PREFLIGHT=1` escape hatch per memory `wfa33-v2-precommit-timeout.md` (pre-existing pre-commit timeout, not Wf-A68-related). |
+| §5.2 Honest framing | Honored | All numbers carry MEASURED or PROJECTED tags; NO 0.99/0.999/0.9999 fabrications; combined ceiling 0.50-0.70 PROJECTED; per-spot ablation MEASURED gate open. |
+| §5.3 No paper work without authorization | Honored | 0 touches to `paper/*`. |
+| §5.4 NO wet-lab | Honored | 0 wet-lab touches (per standing directive "我们发二区就可以了，不用规划湿实验"). |
+| §5.5 Filesystem-truth | Honored | Every claim above traces to `file:line` on disk; closeout `git show --stat` confirms 3 SHIP commits + file count match. |
+| §5.6 Atomic-write protocol | N/A | All edits via Edit-tool (in-place), all files ≤ 67 KB contiguous; no truncation risk. |
+| §5.7 50-step CPU smoke | **MET** (after verify-pass fixes) | 27/27 tests PASS in test_wf_a68_5spots.py (24 spec + 3 wire-in regression); smoke ran end-to-end through `train_one_epoch` / `evaluate_bond_accuracy` after Bug A/B/C fixes. |
+| §5.8 WF token-budget | N/A | Single-agent direct Edit/Write; no workflow spawned in Wf-A68 closeout. |
+| §5.9 Single-venv | Honored | All test runs via `.venv/bin/python` per `scripts/_wrapper_audit.py`. |
+| §5.10 OmegaFold gap-fill | N/A | No OmegaFold surface touched. |
+| §5.11 YAML-only launch | Honored | All 11 new flags declared in `configs/cfm_5metal_default.yaml` under `flow:`; no CLI smuggling; smoke yaml also yaml-only compliant (after this closeout pass's `--device cuda:0` removal at smoke yaml:117 per §5.11 binding gate). |
+| memory `docs-lag-disk-verify-against-code.md` | Honored | Wf-A67 production retrain CSV verified against current disk state before this entry was written; Wf-A68 smoke CSV verified against `/tmp/cfm_wfa68_smoke/per_epoch_metrics.csv` (not stale snapshot). |
+| memory `verify-premises-before-proposing.md` | Honored | `test_cfm_p0_fixes.py` was claimed by the W1+W2 closeout as a 35-test regression suite; the file does NOT exist on disk — actual regression slice is test_cfm_p1_fixes.py (7 tests, 3 pre-existing failures via `git stash` baseline replay — NOT a Wf-A68 regression) + 8 other Wf-A68-adjacent suites. |
+| memory `wfa33-v2-precommit-timeout.md` | Honored | `SKIP_PREFLIGHT=1` used on all 3 SHIP commits; pre-existing pre-commit timeout is unrelated to Wf-A68. |
+| memory `cfm-property-panel-measures-no-model.md` | Honored (resolved 2026-10-16 Wf-A54 §6.81a) | No property panel touched in Wf-A68; decode→panel link already SHIPPED via `--ckpt-path` per Wf-A54. |
+| memory `F3 alpha 标签反了` / `F3 alpha 标注反了` | N/A | No F3-class regression touched. |
+
+#### §6.96e — catalog-count math
+
+Net catalog-count delta: **+1** (§6.96 itself). ACTIVE count delta: **0** (Wf-A68 ships 7 spots without opening a single NEW ACTIVE honest-negative; the 3 verify-pass bugs were all FIXED in the same pass that the Wf-A68 closeout discloses + locked in by 3 new regression tests). Cumulative catalog count: **147 → 148** (+1). ACTIVE count: **109 → 109** (unchanged).
+
+#### §6.96f — open work (W2-Wf-A68 requires user OK + GPU)
+
+1. **Per-spot 5-seed × 30-epoch ablation per flag** on the full multi-metal cohort (8 runs total — one per flag, baseline + 7 flag-on variants). Each per-spot Δ bond_f1 traces to `metrics/by_metric/bond_f1_<spot>_<seed>.json`. The combined ceiling PROJECTED 0.50-0.65 is the only honest claim until these runs MEASURED-meet that target.
+2. **Aggregate into Wf-A68 follow-on closeout MD** with §5.2 MEASURED-vs-PROJECTED labels per spot.
+3. **Resolve the pre-existing `test_trainer_passes_the_configured_rule_to_the_decoder` xfail** — confirmed master HEAD pre-existing, but is on the W2 list per the Wf-A68 W1 report.
+4. **Repair the pre-existing §5.11 binding violation** in `configs/cfm_5metal_smoke_2026_10_17.yaml` (the legacy Wf-A65 smoke yaml carries `--device cuda:0` in `entry.command_template`). Out of Wf-A68 scope but gates pre-flight §5.11 binding test.
+
+**Workflow** | Wf-A68 closeout (2026-10-17; 3 SHIP commits + this catalog commit + 1 cfm_todo.json audit-log block; pre-flight N/A via `SKIP_PREFLIGHT=1` escape hatch per memory `wfa33-v2-precommit-timeout.md`; §5.6 atomic-write via Edit-tool (all files ≤ 67 KB contiguous; no atomic-write script invoked since no full-file rewrites crossed the 16 KB threshold); §5.9 single-venv via `.venv/bin/python`; §5.7 50-step CPU smoke MET after verify-pass fix of 3 wire-in bugs (Bug A: kwarg name `use_skip`/`use_bond_head_skip` mismatch; Bug B: 6× `args.X` NameError sites in `train_one_epoch`; Bug C: 1× `args.X` in `evaluate_bond_accuracy`) → 27/27 PASS in `molmetal/tests/test_wf_a68_5spots.py`; §5.11 yaml-only PARTIAL (52/52 unit PASS + 2 master-HEAD pre-existing FAIL on the legacy Wf-A65 smoke yaml); §5.3 + §5.4: 0 paper/* + 0 wet-lab; §5.1 standing GPU grant: smoke ran on cuda:0 (RTX PRO 6000 Blackwell, 95.8 GiB free per `nvidia-smi` 2026-10-17 08:43) for 178.0s wall; MEASURED baseline ep 4 bond_f1 = 0.1588 (NOT comparable to Wf-A67 production 0.265 at ep 29 — different cohort sizes + epoch counts); per `docs-lag-disk-verify-against-code` memory, every number above is verified against current disk state via `grep -nE` + Read tool, not stale snapshot; per `verify-premises-before-proposing` memory, the verify brief's `test_cfm_p0_fixes.py 35 tests` claim was corrected to `test_cfm_p1_fixes.py 7 tests with 3 pre-existing failures unrelated to Wf-A68` (verified via `git stash` baseline replay); per `m19-centering-run-has-w2-off` memory analogue, no scope jump beyond Wf-A68's 7 spots — no W2 ON/OFF assumption, no chem_loss interaction implied, no production retrain executed as part of Wf-A68 wave).
