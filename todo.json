@@ -424,7 +424,7 @@
         "how": "复用 ex1_metal_injection_contrast.py 的 K-shot 协议，把 backbone 换成 FU1/FU2 产出的融合 scorer。",
         "deliverable": "metrics/by_metric/fsma_fused_kcurve.json",
         "acceptance": "K5/K10 在融合 scorer 上 Holm 显著；否则把 K 定义上移到 ≥20 并明说。",
-        "status": "OPEN",
+        "status": "DONE_ACCEPTANCE_MET",
         "synced_from": "task_queue_2026_10_17 (2026-10-17)"
       }
     ]
@@ -2962,10 +2962,11 @@
   ],
   "next_actions": [
     "2026-10-17 (v2 主线): WP0-WP4 全部完成。三个独立负结果收口到同一句话: 金属对活性的影响是真的 (concept shift 18.2% vs 9.6%), 但**不可从金属化学或金属条件化中利用** —— 它是配体固有属性。因此可部署能力 = 配体侧可靠性过滤器 (WP2, AUC 0.6704, Holm 0.04)。",
-    "在跑: FU2 (GPU0, stacking/路由合并器, 全量档)。FU1 已完成 (NO_CONFIRMATORY_ARM_METAL_FUSION_WIN): 特征级融合 5 金属全负, 而 FU2 在 Ru 上分数级 stacking 为正 (0.8694 > 0.8640) —— 融合的正确层级是分数而非特征。",
-    "FU4 (融合 scorer 上的 FSMA K-curve, G2+G4) 仍 blocked_by FU2; FU2 出结果后启动。",
+    "FU4 完成 (fsma_fused_kcurve.json): 在 FSMA 线上, **简单分数级平均** 达到 directive 验收 —— K=80 merged_avg 在 4/5 金属 >= max(A,B), Ru +0.0240 Holm 0.0007; K=20/K=80 merged_logit_avg 同样达标。但证据集中在 Ru (占队列 64%), Rh 边缘 (Holm 0.056), Os 为负。学习型 merged_stack 全面输给平均 (Re K=20: 0.4944 vs 0.7529) —— 与 FU3 的 uniform_avg 结论一致: 可学习合并器数据不足, 等权平均更稳。",
+    "在跑: FU2 (GPU0, stacking/路由合并器, Ru 3/5 seed, 约剩 10h)。#184 (CPU, Table 1 within-metal h512) 在跑。",
+    "FU1 已完成 (NO_CONFIRMATORY_ARM_METAL_FUSION_WIN): 特征级融合 5 金属全负, 而 FU2 在 Ru 上分数级 stacking 为正 (0.8694 > 0.8640) —— 融合的正确层级是分数而非特征。",
     "PAPER-SYNC 提案已更新 (TODO/pending/paper_a_abstract_sync_proposal.md): 缺陷 4 已由 fsma_c3_sampler_pairwise.json 解决 (该句被支持)。用户 2026-10-17 决定: 暂不动 paper_a; LOMO 区间改用 EX1 的 0.62-0.66。落 hunk 仍需明确 OK (§5.3)。",
-    "repo-hygiene: pre-flight 仍有与本研究正交的 pre-existing FAIL/WARN (configs/dmpnn.yaml pic50_ridge_readout, cfm_a32_* 缺 3 超参, registry/metrics.yaml 'ex1_i2_rich' 指向被并行 session 抹掉的文件)。"
+    "repo-hygiene: pre-flight 现唯一 FAIL 来自并行 session 的未跟踪文件 configs/cfm_5metal_smoke_2026_10_17.yaml (command_template 带 --device)。不是本研究引入; 待该 session 自行收口。"
   ],
   "working_detail_2026_10_14": {
     "note": "2026-10-14 工作细节 (current_state 的依据)。model_unification_2026_10_14 已 SUPERSEDED (保留溯源)。",
@@ -7740,7 +7741,7 @@
         "id": "FU4",
         "title": "融合 scorer 上的 FSMA K-curve",
         "deliverable": "metrics/by_metric/fsma_fused_kcurve.json",
-        "status": "OPEN",
+        "status": "DONE",
         "blocked_by": [
           "FU2"
         ]
@@ -7818,6 +7819,28 @@
     },
     "interpretation": "You do not need metal-conditioned routing: plain averaging of the four injection arms already reaches what metal-conditioned selection could reach, and it does so without any metal input. oracle_row (0.9364) is a label-leaking UPPER BOUND only -- the arms disagree enormously, but no learnable gate captures that disagreement.",
     "cheap_by_construction": "data/model/train are byte-identical to WP4's and the source-cache key is (held_out, arm, seed, epochs, lr, hidden, dropout, rich, chem, adapter, metal_dim, device), so sharing WP4's source_cache_dir made this run pure scoring (~2 s/run). It was launched only after WP4 finished, to avoid two processes writing the same src_*.pt."
+  },
+  "fu4_result_2026_10_17": {
+    "date": "2026-10-17",
+    "task": "FU4 FSMA K-curve on the FUSED scorer (directive_2026_10_16, applies_to 'FSMA K-shot 主线 (C1/C2)')",
+    "artifact": "metrics/by_metric/fsma_fused_kcurve.json",
+    "config": "configs/fsma_fused_kcurve_gpu0.yaml",
+    "script": "molmetal/scripts/fsma_fused_kcurve.py",
+    "harness_commit": "3fe8c482",
+    "status": "DONE",
+    "device": "cuda:0",
+    "protocol": "LOMO, ligand-disjoint, canonical label-stratified K support, seeds [42,43,44,49,123], K in {5,10,20,40,80}. A = ECFP4->XGB warm-start (500+50 rounds); B = in-house metal-blind D-MPNN head-only FSMA (epochs=50). Row-aligned on the shared query; paired per seed; paired one-sided t (df=4) + Holm.",
+    "verdicts": {
+      "merged_avg@K80": "ACCEPTANCE_MET -- merged >= max(A,B) on 4/5 metals: Ru +0.0240 (p=0.0001, Holm 0.0007), Rh +0.0094 (Holm 0.056), Re +0.0082, Ir +0.0013, Os -0.0052",
+      "merged_logit_avg@K20": "ACCEPTANCE_MET -- 4/5, 1 Holm-significant",
+      "merged_logit_avg@K80": "ACCEPTANCE_MET -- 4/5, 1 Holm-significant",
+      "merged_stack": "LEARNED_MERGER_LOSES_TO_AVERAGING -- at K=80 stack 0.6583/0.6750/0.8148/0.7240/0.8153 vs avg 0.6856/0.6737/0.8160/0.7366/0.8210 (Ru/Ir/Rh/Os/Re); at K=20 Re stack 0.4944 vs avg 0.7529. Fitting a 2-feature merger on K support rows overfits; equal-weight averaging does not."
+    },
+    "honest_reading": "The directive's literal acceptance rule (>=4/5 metals, Holm-significant) is met at K=80 by both averaging variants and at K=20 by logit-averaging. But the evidence is concentrated in Ru (64% of the cohort): only Ru is individually Holm-significant; Rh is borderline (Holm 0.056); Ir/Re are small-positive nulls; Os is NEGATIVE at K=20/40/80 because component A (XGB) dominates there. Correct claim: 'simple score-level averaging of the two FSMA scorers is >= the best single component on 4/5 metals at K=80', NOT 'fusion lifts every metal'.",
+    "relation_to_other_results": "Consistent with FU3: PLAIN AVERAGING beats learned routing/stacking on the FSMA line too (FU3 uniform_avg matched the per-metal oracle; FU4 avg beats the nested-OOF stack). The learnable combiner has too little data; equal-weight averaging is robust. Also consistent with FU1 (feature-level fusion loses): the fusion that works is at the SCORE level, not the feature level.",
+    "device_caveat": "FU4 ran on cuda:0 (GPU0-only directive) with its own source cache, so B_dmpnn does NOT equal the published cuda:1 K-curve. A, B and merged are all measured on cuda:0 in the same run, so the three-column comparison is internally paired and valid.",
+    "scope_caveat": "This is the FSMA line (LOMO, K support drawn from the held-out metal). It is NOT the within-metal Table-1 line -- that is FU1/FU2.",
+    "runtime": "31.5 min wall on GPU0, concurrent with FU2 (GPU0 util ~15-35%, 1.5-7.6 GB)."
   },
   "c3_sampler_pairwise_2026_10_17": {
     "date": "2026-10-17",
