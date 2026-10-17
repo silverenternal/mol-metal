@@ -44,11 +44,21 @@ ft_rounds: 50
 
 # --- component B: in-house metal-blind D-MPNN + head-only adaptation --------
 # epochs=50 == the chemprop-matched source budget (fsma_inhouse_kcurve_ep50.json).
-hidden: 128
-dropout: 0.1
-lr: 0.001
-adapt_lr: 0.001
-epochs: 50
+#
+# NESTED model:/train: blocks, not flat `hidden:`/`lr:`.  The pre-flight §5.1
+# hyperparam contract (p3_wf343c4_hyperparams_config_complete) looks for
+# train.lr / model.hidden_dim and accepts model.hidden / model.depth as
+# documented aliases — flat keys match neither.  The loader flattens leaves to
+# argparse dests, so `model.hidden` still arrives as args.hidden (verified by
+# round-trip: every dest below is unchanged from the flat form).
+model:
+  hidden: 128
+  dropout: 0.1
+
+train:
+  lr: 0.001
+  adapt_lr: 0.001
+  epochs: 50
 
 # --- merged arms ------------------------------------------------------------
 inner_splits: 3

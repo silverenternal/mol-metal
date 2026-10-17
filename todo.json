@@ -7915,7 +7915,47 @@
     "honest_reading": "Score-level stacking of ECFP4->XGB and the in-house D-MPNN does NOT rescue the within-metal column. It wins only on Ru (+0.0045, 5/5 seeds, Holm 0.0029); Ir/Rh are +0.0004/+0.0008 nulls; Os/Re are slightly negative. The base-learner gap is the cause: B (D-MPNN) is 0.06-0.20 below A on every metal, and a 2-feature logreg merger cannot manufacture information B does not carry.",
     "what_the_merger_DOES_achieve": "merged_minus_B is Holm-significant on ALL 5 metals (Holm 5e-06 .. 0.0011). So the merger does successfully absorb the stronger component and is never dragged down to B. It simply lands at A + epsilon, not above A. The one exception is Ru, where the two components are close enough (0.8614 vs 0.7902) for the merger to add +0.0045.",
     "contrast_with_fu4": "On the FSMA line the SAME merger family MET the acceptance at K=80 (FU4 merged_avg: 4/5, Ru Holm 0.0007). The asymmetry is the point: score-level fusion pays when the two components are comparably strong and complementary (FSMA: XGB strong on Rh/Re, D-MPNN strong on Ru/Ir/Os), and does not pay when one component is uniformly much weaker (within-metal: XGB > D-MPNN on all 5).",
-    "directive_status": "Per directive_2026_10_16 this task is '未达成', and the directive says to keep changing the fusion/routing structure rather than downgrade to a negative. Candidate next structures (NOT launched; each is a fresh >1hr GPU0 job needing USER_OK): meta-learner=gbdt, meta-space=prob, LightGBM as component A, or a feature-level fusion that does not concatenate a much weaker representation (FU1 already showed concat loses)."
+    "directive_status": "Per directive_2026_10_16 this task is '未达成', and the directive says to keep changing the fusion/routing structure rather than downgrade to a negative. Candidate next structures (NOT launched; each is a fresh >1hr GPU0 job needing USER_OK): meta-learner=gbdt, meta-space=prob, LightGBM as component A, or a feature-level fusion that does not concatenate a much weaker representation (FU1 already showed concat loses).",
+    "component_b_budget_mismatch": {
+      "found": "2026-10-17, post-hoc while #184 GPU0 pair was running",
+      "what": "FU2's component B was trained for 30 epochs (configs/stack_dmpnn_xgb_paper_funnel_gpu0.yaml train.epochs=30, same as FU1), but the published Table-1 within-metal column it is compared against was trained for 50 epochs (configs/dmpnn_within_metal_auc_paper_funnel.yaml train.epochs=50).",
+      "is_it_the_same_model": "Yes apart from the budget. stack_dmpnn_xgb_within_metal.py::_fit_dmpnn builds the same MaskedMetalCytotoxModel (hidden=128, depth=3, dropout=0.1), same class-weighted criterion, same train_seeds=[0], same paper_funnel cohort, same 5 split seeds. Only `epochs` (30 vs 50) and device/deterministic differ.",
+      "measured_B_ep30_vs_ep50": {
+        "Ru": {
+          "ep30": 0.790171,
+          "ep50": 0.817343,
+          "delta": -0.027172
+        },
+        "Ir": {
+          "ep30": 0.631945,
+          "ep50": 0.664929,
+          "delta": -0.032984
+        },
+        "Rh": {
+          "ep30": 0.765012,
+          "ep50": 0.777971,
+          "delta": -0.012959
+        },
+        "Os": {
+          "ep30": 0.683541,
+          "ep50": 0.68328,
+          "delta": 0.000261
+        },
+        "Re": {
+          "ep30": 0.764952,
+          "ep50": 0.803124,
+          "delta": -0.038172
+        }
+      },
+      "sources": {
+        "ep30": "metrics/by_metric/stacked_dmpnn_xgb_within_metal.json per_metal.*.three_column.B_dmpnn",
+        "ep50": "metrics/by_metric/dmpnn_within_metal_auc_paper_funnel.json per_metal.*.dmpnn_auc (device=cpu)"
+      },
+      "why_it_matters": "The A-minus-B gap FU2 reports is inflated by 0.013-0.038 AUC on 4/5 metals. That gap is the mechanism FU2's honest_reading blames for the null, so part of the null is a training-budget artefact, not a property of score-level stacking. Per project rule (ablation controls must be budget-matched), the ep50 B is the correct component for a Table-1-consistent stacking claim.",
+      "what_it_does_NOT_change": "The A column (ECFP4->XGB) has no epoch budget and is identical in both runs (Ru 0.861392 vs published 0.861392). The acceptance verdict is a function of merged vs A; a stronger B can only help merged, but Ir/Os B sit 0.14-0.16 below A at ep50 too, so a flip on those two metals is not implied.",
+      "next_step_if_pursued": "Re-run FU2 with train.epochs=50 (config-only change, one line) AFTER #184 frees GPU0. Cost scales ~1.67x FU2's 14h56m (~25h) because the inner-3-fold meta-feature construction retrains B 4x per outer fold. Needs USER_OK (>1hr GPU). Not launched.",
+      "status": "RECORDED_NOT_ACTED_ON"
+    }
   },
   "c3_sampler_pairwise_2026_10_17": {
     "date": "2026-10-17",

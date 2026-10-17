@@ -1,0 +1,605 @@
+{
+  "metric": "fusion_decision_table",
+  "status": "MEASURED_DERIVED",
+  "MEASURED_vs_PROJECTED": "MEASURED — every AUC below is read from one of the four source artifacts. Nothing was retrained and nothing is projected.",
+  "unit": "ROC-AUC",
+  "scope": "directive_2026_10_16 compliance report: for every task axis on which a merger was tested, report component_A / component_B / merged on the same per-metal footing.",
+  "description": "One consolidated three-column view over the four fusion families run on 2026-10-17 (FU1 feature-level, FU2 score-level stacking on Table 1, FU3 metal-injection arm routing, FU4 score-level averaging on the FSMA K-curve). The point of the table is that the SAME directive is met on one axis and missed on three, and the reason is measurable: score-level merging helps when the two components are comparable in strength and does nothing when one is far weaker.",
+  "directive": {
+    "id": "directive_2026_10_16",
+    "verbatim": "我不会接受任何负结果，有东西更强就把他融合到我们的模型里面来或者是做路由给他们合并成一个模型",
+    "acceptance_rule": "per task, report component_A / component_B / merged; merged >= max(A,B) on >=4/5 metals with Holm-corrected paired one-sided significance"
+  },
+  "axes": {
+    "table1_within_metal_score_stacking": {
+      "task": "FU2 — within-metal Table-1 line (G1), meta-learner g([A,B]) on logits",
+      "components": "A = ECFP4 -> XGB; B = in-house masked D-MPNN (hidden 128, 30 epochs)",
+      "merged_definition": "nested-OOF logreg on [logit(p_A), logit(p_B)], inner_splits=3",
+      "per_metal": {
+        "Ru": {
+          "component_A_ecfp4_xgb": 0.861392,
+          "component_B_dmpnn": 0.790171,
+          "merged_stack": 0.865895,
+          "max_AB": 0.861392,
+          "merged_minus_max": 0.004503,
+          "holm_5metal": 0.002945,
+          "holm_2metal_confirmatory": 0.001178,
+          "merged_ge_max": true
+        },
+        "Ir": {
+          "component_A_ecfp4_xgb": 0.8277,
+          "component_B_dmpnn": 0.631945,
+          "merged_stack": 0.828107,
+          "max_AB": 0.8277,
+          "merged_minus_max": 0.000407,
+          "holm_5metal": 0.125788,
+          "holm_2metal_confirmatory": 0.031447,
+          "merged_ge_max": true
+        },
+        "Rh": {
+          "component_A_ecfp4_xgb": 0.808735,
+          "component_B_dmpnn": 0.765012,
+          "merged_stack": 0.809513,
+          "max_AB": 0.808735,
+          "merged_minus_max": 0.000778,
+          "holm_5metal": 1.0,
+          "holm_2metal_confirmatory": null,
+          "merged_ge_max": true
+        },
+        "Os": {
+          "component_A_ecfp4_xgb": 0.821252,
+          "component_B_dmpnn": 0.683541,
+          "merged_stack": 0.820214,
+          "max_AB": 0.821252,
+          "merged_minus_max": -0.001038,
+          "holm_5metal": 1.0,
+          "holm_2metal_confirmatory": null,
+          "merged_ge_max": false
+        },
+        "Re": {
+          "component_A_ecfp4_xgb": 0.842667,
+          "component_B_dmpnn": 0.764952,
+          "merged_stack": 0.840686,
+          "max_AB": 0.842667,
+          "merged_minus_max": -0.001981,
+          "holm_5metal": 1.0,
+          "holm_2metal_confirmatory": null,
+          "merged_ge_max": false
+        }
+      },
+      "merged_ge_max_count": 3,
+      "n_metals": 5,
+      "holm_significant_metals": [
+        "Ru"
+      ],
+      "acceptance_met": false,
+      "verdict": "NOT_MET — merged >= max(A,B) on 3/5 (Ru, Ir, Rh), only Ru Holm-significant (0.0029).",
+      "why": "B is 0.06-0.20 AUC below A on every metal; a 2-feature linear merger cannot manufacture signal B does not carry. It does fully absorb B: merged - B is Holm-significant on 5/5 metals."
+    },
+    "fsma_kcurve_score_averaging": {
+      "task": "FU4 — FSMA K-shot K-curve (G2+G4), simple score averaging",
+      "components": "A = ECFP4 -> XGB warm-start FSMA head; B = in-house D-MPNN head-only FSMA",
+      "merged_definition": "mean of the two per-row probabilities (merged_avg) / mean of logits (merged_logit_avg)",
+      "per_metal_by_k": {
+        "Ru": {
+          "5": {
+            "component_A_ecfp4_xgb": 0.612345,
+            "component_B_dmpnn": 0.617073,
+            "merged_avg": 0.643346,
+            "merged_logit_avg": 0.646771,
+            "merged_stack": NaN,
+            "max_AB": 0.617073,
+            "merged_avg_minus_max": 0.026273,
+            "holm_5metal": 0.388145
+          },
+          "10": {
+            "component_A_ecfp4_xgb": 0.611916,
+            "component_B_dmpnn": 0.596273,
+            "merged_avg": 0.63851,
+            "merged_logit_avg": 0.63444,
+            "merged_stack": NaN,
+            "max_AB": 0.611916,
+            "merged_avg_minus_max": 0.026594,
+            "holm_5metal": 0.16093
+          },
+          "20": {
+            "component_A_ecfp4_xgb": 0.619106,
+            "component_B_dmpnn": 0.616451,
+            "merged_avg": 0.646285,
+            "merged_logit_avg": 0.642699,
+            "merged_stack": 0.612317,
+            "max_AB": 0.619106,
+            "merged_avg_minus_max": 0.027179,
+            "holm_5metal": 0.05857
+          },
+          "40": {
+            "component_A_ecfp4_xgb": 0.627887,
+            "component_B_dmpnn": 0.633871,
+            "merged_avg": 0.659644,
+            "merged_logit_avg": 0.656233,
+            "merged_stack": 0.628749,
+            "max_AB": 0.633871,
+            "merged_avg_minus_max": 0.025773,
+            "holm_5metal": 0.045276
+          },
+          "80": {
+            "component_A_ecfp4_xgb": 0.648629,
+            "component_B_dmpnn": 0.661654,
+            "merged_avg": 0.685615,
+            "merged_logit_avg": 0.682032,
+            "merged_stack": 0.658252,
+            "max_AB": 0.661654,
+            "merged_avg_minus_max": 0.023961,
+            "holm_5metal": 0.00072
+          }
+        },
+        "Ir": {
+          "5": {
+            "component_A_ecfp4_xgb": 0.584664,
+            "component_B_dmpnn": 0.6119,
+            "merged_avg": 0.616269,
+            "merged_logit_avg": 0.622227,
+            "merged_stack": NaN,
+            "max_AB": 0.6119,
+            "merged_avg_minus_max": 0.004369,
+            "holm_5metal": 0.70878
+          },
+          "10": {
+            "component_A_ecfp4_xgb": 0.584133,
+            "component_B_dmpnn": 0.627856,
+            "merged_avg": 0.622367,
+            "merged_logit_avg": 0.628508,
+            "merged_stack": NaN,
+            "max_AB": 0.627856,
+            "merged_avg_minus_max": -0.005488,
+            "holm_5metal": 1.0
+          },
+          "20": {
+            "component_A_ecfp4_xgb": 0.585402,
+            "component_B_dmpnn": 0.635725,
+            "merged_avg": 0.633368,
+            "merged_logit_avg": 0.635828,
+            "merged_stack": 0.529812,
+            "max_AB": 0.635725,
+            "merged_avg_minus_max": -0.002357,
+            "holm_5metal": 1.0
+          },
+          "40": {
+            "component_A_ecfp4_xgb": 0.594902,
+            "component_B_dmpnn": 0.652097,
+            "merged_avg": 0.648179,
+            "merged_logit_avg": 0.655238,
+            "merged_stack": 0.604585,
+            "max_AB": 0.652097,
+            "merged_avg_minus_max": -0.003918,
+            "holm_5metal": 1.0
+          },
+          "80": {
+            "component_A_ecfp4_xgb": 0.620742,
+            "component_B_dmpnn": 0.672383,
+            "merged_avg": 0.673694,
+            "merged_logit_avg": 0.680014,
+            "merged_stack": 0.674971,
+            "max_AB": 0.672383,
+            "merged_avg_minus_max": 0.001312,
+            "holm_5metal": 0.89964
+          }
+        },
+        "Rh": {
+          "5": {
+            "component_A_ecfp4_xgb": 0.668977,
+            "component_B_dmpnn": 0.679419,
+            "merged_avg": 0.686272,
+            "merged_logit_avg": 0.692071,
+            "merged_stack": NaN,
+            "max_AB": 0.679419,
+            "merged_avg_minus_max": 0.006853,
+            "holm_5metal": 0.70878
+          },
+          "10": {
+            "component_A_ecfp4_xgb": 0.668043,
+            "component_B_dmpnn": 0.702276,
+            "merged_avg": 0.699653,
+            "merged_logit_avg": 0.71129,
+            "merged_stack": NaN,
+            "max_AB": 0.702276,
+            "merged_avg_minus_max": -0.002622,
+            "holm_5metal": 1.0
+          },
+          "20": {
+            "component_A_ecfp4_xgb": 0.721368,
+            "component_B_dmpnn": 0.716916,
+            "merged_avg": 0.738681,
+            "merged_logit_avg": 0.74011,
+            "merged_stack": 0.71347,
+            "max_AB": 0.721368,
+            "merged_avg_minus_max": 0.017313,
+            "holm_5metal": 1.0
+          },
+          "40": {
+            "component_A_ecfp4_xgb": 0.78331,
+            "component_B_dmpnn": 0.757185,
+            "merged_avg": 0.794042,
+            "merged_logit_avg": 0.787764,
+            "merged_stack": 0.770884,
+            "max_AB": 0.78331,
+            "merged_avg_minus_max": 0.010731,
+            "holm_5metal": 0.485475
+          },
+          "80": {
+            "component_A_ecfp4_xgb": 0.800825,
+            "component_B_dmpnn": 0.792254,
+            "merged_avg": 0.816,
+            "merged_logit_avg": 0.815256,
+            "merged_stack": 0.814772,
+            "max_AB": 0.800825,
+            "merged_avg_minus_max": 0.015175,
+            "holm_5metal": 0.055712
+          }
+        },
+        "Os": {
+          "5": {
+            "component_A_ecfp4_xgb": 0.696519,
+            "component_B_dmpnn": 0.679152,
+            "merged_avg": 0.707451,
+            "merged_logit_avg": 0.704172,
+            "merged_stack": NaN,
+            "max_AB": 0.696519,
+            "merged_avg_minus_max": 0.010932,
+            "holm_5metal": 0.480404
+          },
+          "10": {
+            "component_A_ecfp4_xgb": 0.698243,
+            "component_B_dmpnn": 0.662686,
+            "merged_avg": 0.702659,
+            "merged_logit_avg": 0.698466,
+            "merged_stack": NaN,
+            "max_AB": 0.698243,
+            "merged_avg_minus_max": 0.004416,
+            "holm_5metal": 0.69684
+          },
+          "20": {
+            "component_A_ecfp4_xgb": 0.688598,
+            "component_B_dmpnn": 0.622664,
+            "merged_avg": 0.672521,
+            "merged_logit_avg": 0.665114,
+            "merged_stack": 0.657665,
+            "max_AB": 0.688598,
+            "merged_avg_minus_max": -0.016077,
+            "holm_5metal": 1.0
+          },
+          "40": {
+            "component_A_ecfp4_xgb": 0.705775,
+            "component_B_dmpnn": 0.652604,
+            "merged_avg": 0.695616,
+            "merged_logit_avg": 0.687889,
+            "merged_stack": 0.699101,
+            "max_AB": 0.705775,
+            "merged_avg_minus_max": -0.010158,
+            "holm_5metal": 1.0
+          },
+          "80": {
+            "component_A_ecfp4_xgb": 0.741802,
+            "component_B_dmpnn": 0.695166,
+            "merged_avg": 0.736635,
+            "merged_logit_avg": 0.728475,
+            "merged_stack": 0.72398,
+            "max_AB": 0.741802,
+            "merged_avg_minus_max": -0.005166,
+            "holm_5metal": 0.89964
+          }
+        },
+        "Re": {
+          "5": {
+            "component_A_ecfp4_xgb": 0.635801,
+            "component_B_dmpnn": 0.615237,
+            "merged_avg": 0.657775,
+            "merged_logit_avg": 0.649956,
+            "merged_stack": NaN,
+            "max_AB": 0.635801,
+            "merged_avg_minus_max": 0.021974,
+            "holm_5metal": 0.70878
+          },
+          "10": {
+            "component_A_ecfp4_xgb": 0.648537,
+            "component_B_dmpnn": 0.613674,
+            "merged_avg": 0.673958,
+            "merged_logit_avg": 0.653472,
+            "merged_stack": NaN,
+            "max_AB": 0.648537,
+            "merged_avg_minus_max": 0.025422,
+            "holm_5metal": 0.583016
+          },
+          "20": {
+            "component_A_ecfp4_xgb": 0.691781,
+            "component_B_dmpnn": 0.710109,
+            "merged_avg": 0.752867,
+            "merged_logit_avg": 0.739202,
+            "merged_stack": 0.494356,
+            "max_AB": 0.710109,
+            "merged_avg_minus_max": 0.042758,
+            "holm_5metal": 0.090888
+          },
+          "40": {
+            "component_A_ecfp4_xgb": 0.713379,
+            "component_B_dmpnn": 0.722773,
+            "merged_avg": 0.765533,
+            "merged_logit_avg": 0.755664,
+            "merged_stack": 0.626239,
+            "max_AB": 0.722773,
+            "merged_avg_minus_max": 0.04276,
+            "holm_5metal": 0.015225
+          },
+          "80": {
+            "component_A_ecfp4_xgb": 0.784907,
+            "component_B_dmpnn": 0.779272,
+            "merged_avg": 0.821025,
+            "merged_logit_avg": 0.821256,
+            "merged_stack": 0.815258,
+            "max_AB": 0.784907,
+            "merged_avg_minus_max": 0.036118,
+            "holm_5metal": 0.89964
+          }
+        }
+      },
+      "acceptance_by_variant_and_k": {
+        "merged_avg": {
+          "5": {
+            "merged_ge_max_count": 4,
+            "n_resolvable": 5,
+            "holm_significant_count": 0,
+            "acceptance_met": false
+          },
+          "10": {
+            "merged_ge_max_count": 3,
+            "n_resolvable": 5,
+            "holm_significant_count": 0,
+            "acceptance_met": false
+          },
+          "20": {
+            "merged_ge_max_count": 3,
+            "n_resolvable": 5,
+            "holm_significant_count": 0,
+            "acceptance_met": false
+          },
+          "40": {
+            "merged_ge_max_count": 3,
+            "n_resolvable": 5,
+            "holm_significant_count": 2,
+            "acceptance_met": false
+          },
+          "80": {
+            "merged_ge_max_count": 4,
+            "n_resolvable": 5,
+            "holm_significant_count": 1,
+            "acceptance_met": true
+          }
+        },
+        "merged_logit_avg": {
+          "5": {
+            "merged_ge_max_count": 5,
+            "n_resolvable": 5,
+            "holm_significant_count": 0,
+            "acceptance_met": false
+          },
+          "10": {
+            "merged_ge_max_count": 3,
+            "n_resolvable": 5,
+            "holm_significant_count": 0,
+            "acceptance_met": false
+          },
+          "20": {
+            "merged_ge_max_count": 4,
+            "n_resolvable": 5,
+            "holm_significant_count": 1,
+            "acceptance_met": true
+          },
+          "40": {
+            "merged_ge_max_count": 4,
+            "n_resolvable": 5,
+            "holm_significant_count": 0,
+            "acceptance_met": false
+          },
+          "80": {
+            "merged_ge_max_count": 4,
+            "n_resolvable": 5,
+            "holm_significant_count": 1,
+            "acceptance_met": true
+          }
+        },
+        "merged_stack": {
+          "5": {
+            "merged_ge_max_count": 0,
+            "n_resolvable": 0,
+            "holm_significant_count": 0,
+            "acceptance_met": false
+          },
+          "10": {
+            "merged_ge_max_count": 0,
+            "n_resolvable": 0,
+            "holm_significant_count": 0,
+            "acceptance_met": false
+          },
+          "20": {
+            "merged_ge_max_count": 0,
+            "n_resolvable": 5,
+            "holm_significant_count": 0,
+            "acceptance_met": false
+          },
+          "40": {
+            "merged_ge_max_count": 0,
+            "n_resolvable": 5,
+            "holm_significant_count": 0,
+            "acceptance_met": false
+          },
+          "80": {
+            "merged_ge_max_count": 3,
+            "n_resolvable": 5,
+            "holm_significant_count": 0,
+            "acceptance_met": false
+          }
+        }
+      },
+      "acceptance_met": true,
+      "acceptance_met_at": {
+        "merged_avg": [
+          "80"
+        ],
+        "merged_logit_avg": [
+          "20",
+          "80"
+        ]
+      },
+      "verdict": "MET at K=80 (and at K=20 for logit-averaging) — merged >= max(A,B) on 4/5 metals with Ru Holm-significant (0.0007).",
+      "why": "Here the two components are comparable (Ru K=80: A 0.6486 vs B 0.6617), so averaging removes independent variance instead of diluting a strong signal with a weak one."
+    },
+    "metal_injection_arm_routing": {
+      "task": "FU3 — metal-injection architecture routing (G3), uniform average of 4 injection arms",
+      "components": "the four metal-injection arms (none / readout / message / film) of the same D-MPNN",
+      "merged_definition": "uniform average of the 4 arm scores (no learned router)",
+      "per_metal": {
+        "Ru": {
+          "best_single_arm_lomo": 0.601938,
+          "uniform_avg_of_4_arms": 0.625168,
+          "uniform_minus_best_single": 0.023231,
+          "oracle_row_upper_bound": 0.91894,
+          "arm_none": 0.601938,
+          "arm_readout": 0.587464,
+          "arm_message": 0.599827,
+          "arm_film": 0.630534
+        },
+        "Ir": {
+          "best_single_arm_lomo": 0.60476,
+          "uniform_avg_of_4_arms": 0.636179,
+          "uniform_minus_best_single": 0.03142,
+          "oracle_row_upper_bound": 0.945899,
+          "arm_none": 0.633373,
+          "arm_readout": 0.613309,
+          "arm_message": 0.60476,
+          "arm_film": 0.576447
+        },
+        "Rh": {
+          "best_single_arm_lomo": 0.705847,
+          "uniform_avg_of_4_arms": 0.723983,
+          "uniform_minus_best_single": 0.018136,
+          "oracle_row_upper_bound": 0.926701,
+          "arm_none": 0.705847,
+          "arm_readout": 0.725287,
+          "arm_message": 0.687909,
+          "arm_film": 0.624124
+        },
+        "Os": {
+          "best_single_arm_lomo": 0.646936,
+          "uniform_avg_of_4_arms": 0.677183,
+          "uniform_minus_best_single": 0.030247,
+          "oracle_row_upper_bound": 0.931938,
+          "arm_none": 0.646936,
+          "arm_readout": 0.654632,
+          "arm_message": 0.67573,
+          "arm_film": 0.61225
+        },
+        "Re": {
+          "best_single_arm_lomo": 0.632854,
+          "uniform_avg_of_4_arms": 0.668122,
+          "uniform_minus_best_single": 0.035268,
+          "oracle_row_upper_bound": 0.958548,
+          "arm_none": 0.632854,
+          "arm_readout": 0.606779,
+          "arm_message": 0.625364,
+          "arm_film": 0.673214
+        }
+      },
+      "pooled_best_dispatch_auc": 0.6444043770412726,
+      "pooled_best_dispatch_delta": 0.005937471326788591,
+      "pooled_best_dispatch_holm_p": 0.659501142705398,
+      "pooled_uniform_avg_auc": 0.6661271475005355,
+      "pooled_uniform_avg_delta_vs_best_single_lomo": 0.02766024178605151,
+      "pooled_uniform_avg_holm_p": 0.002112109177419696,
+      "learned_router_verdict": "ROUTING_DOES_NOT_BEAT_BEST_SINGLE",
+      "acceptance_met": false,
+      "acceptance_note": "The directive's literal rule is stated per-metal on a 5-metal family; FU3 reports a pooled AUC over the metal arms instead, so it is recorded here as supporting evidence, NOT as a rule-satisfying cell. Uniform averaging beats the best single arm by +0.0277 pooled (Holm 0.0021) and matches the oracle-selection ceiling (-0.0015, Holm 1.0); the LEARNED router does not beat best-single (delta +0.0059, Holm 0.66).",
+      "verdict": "ROUTING_DOES_NOT_BEAT_BEST_SINGLE; PLAIN_AVERAGING_MATCHES_ORACLE_SELECTION."
+    },
+    "feature_level_concat": {
+      "task": "FU1 — feature-level fusion (G1), concatenate the D-MPNN representation onto ECFP4",
+      "components": "A = ECFP4 -> XGB; fused = [ECFP4 ⊕ D-MPNN pooled(256)] -> MLP (end-to-end)",
+      "merged_definition": "single model on the concatenated feature vector (no separate A/B scores to merge)",
+      "per_metal": {
+        "Ru": {
+          "component_A_ecfp4_xgb": 0.861392,
+          "fused_arm3_concat_mlp": 0.847384,
+          "control_arm4_ecfp4_mlp": 0.833266,
+          "upper_bound_arm5_oof_emb_xgb": 0.801631,
+          "negative_control_arm6_noise": 0.753498,
+          "fused_minus_A": -0.014008,
+          "verdict": "NEGATIVE"
+        },
+        "Ir": {
+          "component_A_ecfp4_xgb": 0.8277,
+          "fused_arm3_concat_mlp": 0.811378,
+          "control_arm4_ecfp4_mlp": 0.814983,
+          "upper_bound_arm5_oof_emb_xgb": 0.705274,
+          "negative_control_arm6_noise": 0.655894,
+          "fused_minus_A": -0.016322,
+          "verdict": "NEGATIVE"
+        },
+        "Rh": {
+          "component_A_ecfp4_xgb": 0.808735,
+          "fused_arm3_concat_mlp": 0.805677,
+          "control_arm4_ecfp4_mlp": 0.808898,
+          "upper_bound_arm5_oof_emb_xgb": 0.776705,
+          "negative_control_arm6_noise": 0.763553,
+          "fused_minus_A": -0.003058,
+          "verdict": "NULL"
+        },
+        "Os": {
+          "component_A_ecfp4_xgb": 0.821252,
+          "fused_arm3_concat_mlp": 0.809427,
+          "control_arm4_ecfp4_mlp": 0.803818,
+          "upper_bound_arm5_oof_emb_xgb": 0.724926,
+          "negative_control_arm6_noise": 0.56374,
+          "fused_minus_A": -0.011825,
+          "verdict": "NULL"
+        },
+        "Re": {
+          "component_A_ecfp4_xgb": 0.842667,
+          "fused_arm3_concat_mlp": 0.82499,
+          "control_arm4_ecfp4_mlp": 0.829486,
+          "upper_bound_arm5_oof_emb_xgb": 0.795962,
+          "negative_control_arm6_noise": 0.638629,
+          "fused_minus_A": -0.017677,
+          "verdict": "NULL"
+        }
+      },
+      "acceptance_met": false,
+      "verdict": "NO_FUSION_WIN — the fused arm is below A on all 5 metals and below its own ECFP4-only MLP control on 4/5. Arm 5 (fold-bleeding OOF-embedding upper bound) is ALSO below A, so the loss is not a leak or a tuning artefact."
+    }
+  },
+  "verdict_summary": {
+    "families_tested": 4,
+    "acceptance_met": [
+      "fsma_kcurve_score_averaging (K=80, K=20 logit-avg)"
+    ],
+    "acceptance_not_met": [
+      "table1_within_metal_score_stacking",
+      "metal_injection_arm_routing (pooled metric, see note)",
+      "feature_level_concat"
+    ],
+    "pattern": "Merging works exactly when the components are comparable in strength. FU4 (A 0.6486 / B 0.6617 on Ru at K=80) gains +0.0240 on Ru with Holm 0.0007. FU2 (A 0.8614 / B 0.7902 on Ru; B 0.14-0.20 lower on Ir/Os) gains +0.0045 on Ru and nothing elsewhere. FU3 averaging works because the four arms are near-equal by construction. FU1 fails because concatenation gives the tree/MLP no way to ignore the weaker member.",
+    "implication_for_the_directive": "The directive is satisfiable on the FSMA K-curve axis with a plain average — no new architecture needed. It is NOT satisfiable on the within-metal Table-1 axis by score merging alone while component B stays 0.06-0.20 behind A; closing G1 there requires raising B (the #184 capacity pair tests whether hidden=512 does it), not a cleverer merger."
+  },
+  "what_this_does_not_say": [
+    "No pooled 5-metal mean is quoted anywhere in this artifact — Ru is ~64% of the deduplicated paper_funnel cohort.",
+    "FU4 numbers are on the FSMA support-set protocol (K=80, or K=20 for the logit variant); they are not comparable to the full-cohort Table-1 numbers in axis 1.",
+    "FU3 is a pooled-metric axis; it is included as supporting evidence for the averaging>routing conclusion, not as a per-metal acceptance cell.",
+    "FU2 component B was trained for 30 epochs while the published Table-1 column uses 50; see todo.json fu2_result_2026_10_17.component_b_budget_mismatch. This artifact quotes FU2 as-measured.",
+    "Only Ru is individually Holm-significant on every axis where anything is significant. The 4/5 counts are counts of non-negative point estimates, not of significant metals."
+  ],
+  "sources": {
+    "fu1": "metrics/by_metric/fusion_dmpnn_ecfp4_paper_funnel.json",
+    "fu2": "metrics/by_metric/stacked_dmpnn_xgb_within_metal.json",
+    "fu3": "metrics/by_metric/metal_router_ablation.json",
+    "fu4": "metrics/by_metric/fsma_fused_kcurve.json"
+  },
+  "how_generated": "Derived read-only from the four source artifacts; no training, no resampling, no re-scoring. Regenerate by re-reading the same four paths."
+}
