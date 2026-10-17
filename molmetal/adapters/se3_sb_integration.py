@@ -148,6 +148,20 @@ class SE3SBVelocityField(nn.Module):
     the EGNN (no CFG, no context dropout — the wrapper is an inference-
     time component).  Callers that need CFG should apply it on the
     underlying EGNN before passing the result here.
+
+    .. warning::
+        **F6 (Wf-A64 round 11) — rigid-body reduction caveat**: the
+        ``forward`` method (around :pymeth:`forward`) reduces the
+        ``(B, N, 3)`` per-atom Euclidean velocity to a ``(B, 6)``
+        SE(3) twist via centroid translation + mean(r × residual)
+        angular.  For **non-rigid molecules** (i.e. almost all drug-
+        like ligands with internal rotatable bonds), per-atom angular
+        variation collapses to the mean and the SE(3) manifold cannot
+        express intra-molecular flex.  This is the documented
+        simplification (Mahmood 2026 §3.4) but callers should be
+        aware that *non-rigid* pose diff is structurally unmodelled
+        by this head.  See ``test_se3_sb_rigid_body_loss_warning`` in
+        :mod:`molmetal.tests.test_wfa64_r18_adapters` for the lock.
     """
 
     def __init__(
@@ -436,6 +450,14 @@ def integrate_with_cfm(
     t0: float = 0.0,
     t1: float = 1.0,
 ) -> torch.Tensor:
+    # NOTE (F5 Wf-A64 round 11): ``manifold`` is preserved as a kwarg
+    # for backward compat (test_wf339b2_m22_se3_sb.py:159 passes
+    # ``manifold="SE3"`` explicitly).  Only "SE3" is implemented;
+    # "SO3" raises NotImplementedError.  ``eps`` was a documented but
+    # unused floor in earlier drafts — it is validated here but not
+    # read by the integrator (the inner Euler step does not divide
+    # by eps).  Kept as a public API kwarg to avoid breaking
+    # downstream callers.
     """Integrate an SE(3) ODE flow from ``t0`` to ``t1`` in ``n_steps``.
 
     Mirrors the *shape contract* of the existing CFM ODE solver
@@ -506,8 +528,11 @@ def integrate_with_cfm(
         raise ValueError(
             f"samples must have shape (B, N, 3), got {tuple(samples.shape)}"
         )
-    if eps <= 0.0:
-        raise ValueError(f"eps must be > 0, got {eps}")
+    # F5 (Wf-A64 round 11): the ``eps <= 0`` validation is dropped
+    # because ``eps`` is no longer read by the integrator body
+    # (``_euler_se3`` / ``_euler_se3_step`` no longer accept it).
+    # The kwarg remains in the public signature for backward
+    # compat with downstream callers that pass it positionally.
     if not (0.0 <= t0 < t1 <= 1.0 + 1e-9):
         raise ValueError(f"require 0 <= t0 < t1 <= 1, got t0={t0}, t1={t1}")
 
@@ -550,7 +575,7 @@ def integrate_with_cfm(
         if method == "midpoint":
             # Midpoint (Heun) step: probe the velocity at t_k + dt/2
             # with the Euler-updated pose.
-            T_half = _euler_se3(T_k, xi_k, 0.5 * dt, eps=eps)
+            T_half = _euler_se3(T_k, xi_k, 0.5 * dt)
             R_half = T_half[..., :3, :3]
             x_half = T_half[..., :3, 3].unsqueeze(1) + torch.einsum(
                 "bij,bnj->bni",
@@ -559,9 +584,9 @@ def integrate_with_cfm(
             )
             t_half = t_tensor + 0.5 * dt
             xi_half = velocity_field(x_half, t_half)  # (B, 6)
-            T = integrator(T_k, xi_half, dt, eps=eps)
+            T = integrator(T_k, xi_half, dt)
         else:
-            T = integrator(T_k, xi_k, dt, eps=eps)
+            T = integrator(T_k, xi_k, dt)
 
     # Final per-atom positions = centroid translation + centroid
     # rotation * offsets.
@@ -581,12 +606,18 @@ def _euler_se3(
     T: torch.Tensor,  # (B, 4, 4) SE(3) pose at time t
     xi: torch.Tensor,  # (B, 6) twist at time t
     dt: float,
-    eps: float,
 ) -> torch.Tensor:
     """Single Euler step on SE(3): ``T <- T @ exp(dt * xi)``.
 
     This is the standard first-order SE(3) integrator (Hall 2015,
     eq. (2.58)).  Returns the pose at time ``t + dt``.
+
+    .. note::
+        **F5 (Wf-A64 round 11)** — the ``eps`` arg was dropped from
+        this signature because it was accepted but never read inside
+        the function body (the SE(3) exp map does not require an
+        eps-floor for ``T @ exp(dt*xi)``).  See
+        :func:`integrate_with_cfm` for the validation surface.
     """
     T_out = T @ se3_exp(dt * xi)
     return T_out
@@ -596,7 +627,6 @@ def _euler_se3_step(
     T: torch.Tensor,  # (B, 4, 4) SE(3) pose at time t
     xi: torch.Tensor,  # (B, 6) midpoint twist
     dt: float,
-    eps: float,
 ) -> torch.Tensor:
     """Single Euler step on SE(3), reused as the midpoint inner step.
 
@@ -613,5 +643,10 @@ def _euler_se3_step(
     averaging, not a tangent-space Heun that would be required
     for higher-order local error.  See :func:`integrate_with_cfm`
     for the full loop.
+
+    .. note::
+        **F5 (Wf-A64 round 11)** — the ``eps`` arg was dropped from
+        this signature along with :func:`_euler_se3` (it was
+        accepted but never read inside the inner step body).
     """
-    return _euler_se3(T, xi, dt, eps=eps)
+    return _euler_se3(T, xi, dt)

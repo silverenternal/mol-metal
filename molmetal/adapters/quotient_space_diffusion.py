@@ -393,6 +393,16 @@ class QuotientSpace:
         lost under the quotient, so the lift is only defined up to a
         global translation — the representative is one valid choice).
 
+        .. warning::
+            **F3 (Wf-A64 round 11)** — for ``manifold="translation"``
+            the lift **discards the absolute centroid** ``c`` that was
+            captured at :meth:`project`.  ``lift(rep)`` returns the
+            representative as-is (centred at the origin).  Callers that
+            need the absolute pose must store ``c`` themselves; the
+            ``project()`` API exposes ``c`` as the third return value
+            for exactly this reason.  This is a documented loss of
+            information, not a bug.
+
         Parameters
         ----------
         rep : Tensor
@@ -800,30 +810,60 @@ class QuotientSpaceCFM:
             return 0.0
         ref_norm = x_ref.flatten(start_dim=1).norm(dim=-1).clamp_min(1e-9)
         max_err = 0.0
+        # F4 (Wf-A64 round 11): branch on the manifold so the test
+        # probes the correct invariance only.  Previously only SE3
+        # was exercised; ``translation`` was over-tested (rotation
+        # shouldn't enter the error budget for a translation-
+        # invariant operator) and ``rotation`` was under-tested
+        # (no translation needed).
+        if self.quotient.manifold == "translation":
+            use_rotation = False
+            use_translation = True
+        elif self.quotient.manifold == "rotation":
+            use_rotation = True
+            use_translation = False
+        else:  # "SE3" — full SE(3) test
+            use_rotation = True
+            use_translation = True
         for k in range(int(n_runs)):
-            R = _random_rotation(
-                batch=x.shape[0],
-                dtype=x.dtype,
-                device=x.device,
-                seed=int(seed) + 1000 + k,
-            )
-            t_b = torch.randn(
-                x.shape[0],
-                3,
-                generator=torch.Generator().manual_seed(
-                    int(seed) + 2000 + k,
-                ),
-            )
-            # Apply (R, t_b) to x.
-            x_trans = torch.einsum("bij,bnj->bni", R, x) + t_b.unsqueeze(1)
+            if use_rotation:
+                R = _random_rotation(
+                    batch=x.shape[0],
+                    dtype=x.dtype,
+                    device=x.device,
+                    seed=int(seed) + 1000 + k,
+                )
+            else:
+                R = None
+            if use_translation:
+                t_b = torch.randn(
+                    x.shape[0],
+                    3,
+                    generator=torch.Generator().manual_seed(
+                        int(seed) + 2000 + k,
+                    ),
+                )
+            else:
+                t_b = None
+            # Apply the symmetry transformation (rotation, translation,
+            # or both) to x.
+            x_trans = x
+            if R is not None:
+                x_trans = torch.einsum("bij,bnj->bni", R, x_trans)
+            if t_b is not None:
+                x_trans = x_trans + t_b.unsqueeze(1)
             # Wrapper output on the transformed conformer.
             out_trans = self.forward(x_trans, t)
-            # Apply (R, t_b) to the reference output.
-            out_ref_trans = torch.einsum(
-                "bij,bnj->bni",
-                R,
-                x_ref,
-            ) + t_b.unsqueeze(1)
+            # Apply the same transformation to the reference output.
+            out_ref_trans = x_ref
+            if R is not None:
+                out_ref_trans = torch.einsum(
+                    "bij,bnj->bni",
+                    R,
+                    out_ref_trans,
+                )
+            if t_b is not None:
+                out_ref_trans = out_ref_trans + t_b.unsqueeze(1)
             err = (
                 (out_trans - out_ref_trans)
                 .flatten(

@@ -253,6 +253,21 @@ class CoordinationAwareGNNLayer(nn.Module):
         h_i = x[src]
         h_j = x[dst]
         coord_class_dst = coordination[dst]
+        # F2 (Wf-A64 round 11): if coord-class vector is all-zero,
+        # add a tiny uniform offset so the message MLP receives a
+        # distinguishable input instead of the degenerate zero
+        # vector (which collapses every coord-class-0 node to
+        # identical messages).  For real one-hot rows the offset is
+        # invisible (sum was 1, now 1 + n_classes * eps).
+        if coord_class_dst.size(0) > 0:
+            zero_mask = (coord_class_dst.sum(dim=-1) == 0).unsqueeze(-1)
+            if zero_mask.any():
+                n_classes = coord_class_dst.size(-1)
+                coord_class_dst = coord_class_dst + zero_mask.float() * (
+                    self._coord_eps_uniform
+                    if hasattr(self, "_coord_eps_uniform")
+                    else 1.0 / (n_classes * 1000.0)
+                )
         msg_in = torch.cat([h_i, h_j, dist, coord_class_dst], dim=-1)
         msg = self.msg_mlp(msg_in)  # (n_edges, hidden_dim)
 
@@ -453,15 +468,35 @@ class CoordinationAwareGNNComposite(nn.Module):
             features = x
 
         # Pool to graph-level features via batched mean.
+        # F1 (Wf-A64 round 11): short-circuit on truly-empty input so
+        # downstream heads receive a zero-row tensor (shape (0, H))
+        # rather than crashing on batch.max() / n_graphs == 0.
+        if features.size(0) == 0:
+            n_metals = getattr(self.num_head, "n_metals", 3)
+            max_coord = getattr(self.num_head, "max_coordination", 12)
+            n_geoms = getattr(self.geom_head, "n_geometries", 8)
+            return (
+                features,
+                features.new_zeros((0, n_metals, max_coord)),
+                features.new_zeros((0, n_geoms)),
+            )
         if batch is None:
             pooled = features.mean(dim=0, keepdim=True)  # (1, hidden_dim)
         else:
-            n_graphs = int(batch.max().item()) + 1
-            pooled = features.new_zeros((n_graphs, features.size(-1)))
-            counts = features.new_zeros((n_graphs,))
-            pooled.index_add_(0, batch, features)
-            counts.index_add_(0, batch, features.new_ones(features.size(0)))
-            pooled = pooled / counts.clamp(min=1).unsqueeze(-1)
+            # F1: also short-circuit on empty batch index.
+            if batch.numel() == 0:
+                pooled = features.new_zeros((0, features.size(-1)))
+            else:
+                n_graphs = int(batch.max().item()) + 1
+                pooled = features.new_zeros((n_graphs, features.size(-1)))
+                counts = features.new_zeros((n_graphs,))
+                pooled.index_add_(0, batch, features)
+                counts.index_add_(0, batch, features.new_ones(features.size(0)))
+                # F7 (Wf-A64 round 11): mask empty-graph rows so
+                # 0/N degenerate cohorts stay 0.0 rather than NaN.
+                mask = (counts > 0).unsqueeze(-1)
+                pooled = pooled / counts.clamp(min=1).unsqueeze(-1)
+                pooled = pooled * mask
 
         # Heads.
         num_logits = self.num_head(pooled)
