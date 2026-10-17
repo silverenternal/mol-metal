@@ -1,12 +1,12 @@
 # Wf-87 Phase 1 — Per-Metric Disk Audit
 
-**Date**: 2026-10-16  
+**Date**: 2026-10-17  
 **Workflow**: Wf-87 Phase 1 — per-metric disk audit  
 **Constraint**: CPU-only; no GPU retrain; paper-gate (TODO-84) honored; party-twenty-spirit §3.5 honest framing  
 
 ## 1. Aggregate
 
-- `metrics/by_metric/` files scanned: **292** JSON files.
+- `metrics/by_metric/` files scanned: **299** JSON files.
 - Conceptual metrics audited (per `TODO/INDEX.md` §17.1): **26**.
 - Conceptual category distribution:
   - **DEFERRED**: 3
