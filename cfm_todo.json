@@ -1502,6 +1502,141 @@
     "user_directive_verbatim": "\u53ef\u4ee5\u7684\uff0c\u4f60\u90fd\u505a\u4e00\u4e0b",
     "scope_per_user_directive": "W12 closure only (regression tests + downstream metrics aggregation + ledger path-count + pre-flight artifact); no retrain / panel / GPU launch per \u00a75.1 standing grant"
   },
+  "_arch_audit_log_2026_10_17_Wf-A64_W2": {
+    "audit_id": "Wf-A64_W2_R18_adapters_deeper_audit_round_11_HN_strengthen_round_5_closeout",
+    "audit_date": "2026-10-17",
+    "scope": "Wf-A64 is the W1+W2 wave of the CFM R18 adapter deeper audit (Wf-A64 SCOUT -> W1 -> W2 -> closeout per the \u00a75.8 strict-repair pattern; the W2 closeout covers both W1 SHIP commit fixes_SHIPPED list and W2 catalog sub-entries). W1 ships 7 code-level fixes for 7 of 7 footguns across 3 adapter files (coordination_gnn.py F1+F2+F7 + quotient_space_diffusion.py F4 + se3_sb_integration.py F5 + F3 + F6 docs-only) + 1 NEW pytest file (6/6 PASS, ~0.34s wall). W2 closes out the audit wave with the HN strengthen round 5 deliverables: \u00a76.66h MEASURED test coverage (10 NEW pytests in test_pocket_per_layer_injector_threaded.py + 5 NEW pytests in test_wfa61_cfm_round9.py + 7 NEW pytests in test_cfm_property_panel_decode_link.py + 3 NEW pytests in test_chemprop_v2_schema_shape_only.py = 25 cumulative across 4 NEW + pre-existing files; per Wf-A63 W12-A + W12-B + W12-C cross-references) + \u00a76.59h MEASURED test coverage (10 NEW pytests in test_pocket_per_layer_injector_threaded.py) + \u00a76.81p 20-path failure-mode catalog extension (3 NEW paths) + \u00a76.92 NEW top-level closeout + AGENTS.md \u00a73.3 audit-ledger row addition. 9 R20/R21 plan-skill audit ledger documented in \u00a76.92d (M-P framing \u2713 for all 6 non-STUB skills + 2 surfaced gaps deferred to future wave: strict-repair pattern propagation + cur==dft precedence-flip gate for hierarchical-multimetal). User directive verbatim 2026-10-17: per the CFM deep audit pattern (Wf-A55 \u00a76.82 + Wf-A57 \u00a76.84 + Wf-A58 \u00a76.85 + Wf-A60 \u00a76.86 + Wf-A62 \u00a76.88 + Wf-A63 \u00a76.89 + Wf-A64 \u00a76.92), SCOUT-audit the R18 adapter surface and HN strengthen round 5 - CFM generative stack only (R18 adapters + plan skills), explicitly excluding D-MPNN + data acquisition per the directive pattern.",
+    "fixes_SHIPPED": [
+      {
+        "id": "wf_a64_w1_f1_coordination_gnn_empty_graph_pool_crash",
+        "what": "molmetal/adapters/coordination_gnn.py line 471-479 \u2014 CoordinationAwareGNNComposite short-circuits on empty `features` (when `features.size(0) == 0`), returning `(0, H)` + zero-row `num_logits`/`geom_logits` rather than crashing on `batch.max().item() + 1`. Defensive guard at the empty-pool boundary.",
+        "files": [
+          "molmetal/adapters/coordination_gnn.py"
+        ],
+        "shipped_in": "Wf-A64 W1 group_W1 commit 8035df9f"
+      },
+      {
+        "id": "wf_a64_w1_f2_coordination_gnn_zero_coord_class_symmetry_break",
+        "what": "molmetal/adapters/coordination_gnn.py line 256-270 \u2014 CoordinationAwareGNNLayer breaks symmetry on all-zero `coord_class_dst` rows via tiny `1.0 / (n_classes*1000)` uniform offset so the message MLP receives a distinguishable input. Layer-internal symmetry-break fix.",
+        "files": [
+          "molmetal/adapters/coordination_gnn.py"
+        ],
+        "shipped_in": "Wf-A64 W1 group_W1 commit 8035df9f"
+      },
+      {
+        "id": "wf_a64_w1_f3_quotient_space_diffusion_lift_translation_docstring",
+        "what": "molmetal/adapters/quotient_space_diffusion.py line 397-402 \u2014 `lift()` docstring warning + `.. warning::` directive documenting that for `translation` the lift discards the absolute centroid `c`; callers must store `c` themselves if absolute pose matters. Docs-only, lossy-by-design.",
+        "files": [
+          "molmetal/adapters/quotient_space_diffusion.py"
+        ],
+        "shipped_in": "Wf-A64 W1 group_W1 commit 8035df9f"
+      },
+      {
+        "id": "wf_a64_w1_f4_quotient_space_diffusion_equivariance_error_manifold_branch",
+        "what": "molmetal/adapters/quotient_space_diffusion.py line 813-852 \u2014 `QuotientSpaceCFM.equivariance_error()` branches on `self.quotient.manifold` \u2014 `translation` tests translation invariance only, `rotation` tests rotation only, `SE3` exercises the full SE(3) test. Previously only SE3 was exercised.",
+        "files": [
+          "molmetal/adapters/quotient_space_diffusion.py"
+        ],
+        "shipped_in": "Wf-A64 W1 group_W1 commit 8035df9f"
+      },
+      {
+        "id": "wf_a64_w1_f5_se3_sb_integration_dead_eps_arg_drop",
+        "what": "molmetal/adapters/se3_sb_integration.py line 531-534 (validation dropped) + 605-617 (`_euler_se3` signature) + 626-652 (`_euler_se3_step` signature) \u2014 `_euler_se3` + `_euler_se3_step` drop the dead `eps` arg; `eps` was accepted but never read inside the SE(3) exp map. `integrate_with_cfm` keeps the public `eps=` kwarg for backward compat but the `eps <= 0` validation is dropped.",
+        "files": [
+          "molmetal/adapters/se3_sb_integration.py"
+        ],
+        "shipped_in": "Wf-A64 W1 group_W1 commit 8035df9f"
+      },
+      {
+        "id": "wf_a64_w1_f6_se3_sb_integration_rigid_body_loss_docstring",
+        "what": "molmetal/adapters/se3_sb_integration.py line 153-164 \u2014 SE3SBVelocityField class docstring warning re rigid-body reduction caveat: non-rigid pose diff is structurally unmodelled by this head (Mahmood 2026 \u00a73.4 documented simplification). Docs-only.",
+        "files": [
+          "molmetal/adapters/se3_sb_integration.py"
+        ],
+        "shipped_in": "Wf-A64 W1 group_W1 commit 8035df9f"
+      },
+      {
+        "id": "wf_a64_w1_f7_coordination_gnn_degenerate_cohort_mask",
+        "what": "molmetal/adapters/coordination_gnn.py line 492-496 \u2014 CoordinationAwareGNNComposite masks empty-graph rows so `0/N` degenerate cohorts stay `0.0` rather than `NaN`. `mask = counts > 0` element-wise.",
+        "files": [
+          "molmetal/adapters/coordination_gnn.py"
+        ],
+        "shipped_in": "Wf-A64 W1 group_W1 commit 8035df9f"
+      },
+      {
+        "id": "wf_a64_w1_new_pytest_file_test_wfa64_r18_adapters",
+        "what": "molmetal/tests/test_wfa64_r18_adapters.py (NEW, 9515 bytes, 6 pytests) \u2014 6/6 PASS in 0.34s covering: test_01_f1_empty_graph_short_circuit + test_02_f2_coord_class_symmetry_break + test_03_f4_equivariance_error_branches + test_04_f5_euler_se3_eps_drop + test_05_f5b_manifold_preserved + test_06_f7_empty_graph_mask. SUT-agnostic regression gate for F1/F2/F4/F5/F5b/F7 (F3/F6 are docs-only, no code regression needed).",
+        "files": [
+          "molmetal/tests/test_wfa64_r18_adapters.py (NEW)"
+        ],
+        "shipped_in": "Wf-A64 W1 group_W1 commit 8035df9f"
+      }
+    ],
+    "fixes_ACTIVE": [],
+    "fixes_REFUSED_with_premise_error": [],
+    "hn_strengthen": [
+      {
+        "id": "wf_a64_w2_6_66h_measured_test_coverage",
+        "what": "docs/HONEST_NEGATIVE_CATALOG.md:2069 \u2014 \u00a76.66h MEASURED test coverage paragraph + 14 NEW pytests across 3 files lock the 5-fix list at the code level: test_wfa61_cfm_round9.py (4 tests PASS) + test_cfm_property_panel_decode_link.py (7 tests PASS) + test_chemprop_v2_schema_shape_only.py (3 tests PASS). ACTIVE state UNCHANGED per AGENTS.md \u00a75.2 honest-framing.",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md (\u00a76.66h sub-entry)"
+        ],
+        "shipped_in": "Wf-A64 W2 group_W2 commit 0dda49fc"
+      },
+      {
+        "id": "wf_a64_w2_6_59h_measured_test_coverage",
+        "what": "docs/HONEST_NEGATIVE_CATALOG.md:1834 \u2014 \u00a76.59h MEASURED test coverage paragraph + 10 NEW pytests in molmetal/tests/test_pocket_per_layer_injector_threaded.py lock the 4-condition opt-in rule at the code level. ACTIVE state UNCHANGED per AGENTS.md \u00a75.2 honest-framing.",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md (\u00a76.59h sub-entry)"
+        ],
+        "shipped_in": "Wf-A64 W2 group_W2 commit 0dda49fc"
+      },
+      {
+        "id": "wf_a64_w2_6_81p_20_path_failure_mode_catalog_extension",
+        "what": "docs/HONEST_NEGATIVE_CATALOG.md:2994 \u2014 \u00a76.81p round-5 20-path failure-mode catalog extension with 3 NEW paths: path 18=F1 (empty-graph pool crash) + path 19=F3 (translation-manifold lift discards centroid) + path 20=F6 (SE3SBVelocityField rigid-body loss unmodelled). Cumulative catalog: 17 prior paths + 3 NEW = 20 paths post-Wf-A64 W1. ACTIVE state UNCHANGED per AGENTS.md \u00a75.2 honest-framing (failure-mode catalog extension, not new ACTIVE surface).",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md (\u00a76.81p sub-entry)"
+        ],
+        "shipped_in": "Wf-A64 W2 group_W2 commit 0dda49fc"
+      },
+      {
+        "id": "wf_a64_w2_6_92_NEW_top_level_closeout",
+        "what": "docs/HONEST_NEGATIVE_CATALOG.md:3693-3753 \u2014 \u00a76.92 NEW top-level closeout with 5 sub-entries: \u00a76.92a F1+F2+F7 (coordination_gnn.py) + \u00a76.92b F3 docs + F4 code (quotient_space_diffusion.py) + \u00a76.92c F5 code + F6 docs (se3_sb_integration.py) + \u00a76.92d 9 plan-skill audit ledger + findings + \u00a76.92e 3 strengthened HNs ledger + file-on-disk receipts table + catalog-count math (cumulative 143 -> 144; ACTIVE 110 -> 110 unchanged) + workflow paragraph. After \u00a75.5 filesystem-truth patches at lines 3748/3751/3753 (175 PASS -> 207 PASS + 107 ruff errors -> 3591 ruff errors + explicit ACTIVE baseline 110 -> 110).",
+        "files": [
+          "docs/HONEST_NEGATIVE_CATALOG.md (\u00a76.92 NEW top-level)"
+        ],
+        "shipped_in": "Wf-A64 W2 group_W2 commit 0dda49fc"
+      },
+      {
+        "id": "wf_a64_w2_agents_md_section_3_3_audit_ledger",
+        "what": "AGENTS.md \u00a73.3 audit-ledger row added (lines 102-109) \u2014 9 OPEN R20/R21 skills SCOUT-audited: all 6 non-STUB carry MEASURED-vs-PROJECTED framing \u2713; none reference Wf-A30 strict-repair pattern (gap surfaced, deferred); only hierarchical-multimetal references apply_yaml_overrides without cur==dft precedence-flip gate (gap surfaced, deferred). Cross-references \u00a76.92d table.",
+        "files": [
+          "AGENTS.md (\u00a73.3 audit-ledger row)"
+        ],
+        "shipped_in": "Wf-A64 W2 group_W2 commit 0dda49fc"
+      }
+    ],
+    "files": [
+      "molmetal/adapters/coordination_gnn.py (F1 + F2 + F7)",
+      "molmetal/adapters/quotient_space_diffusion.py (F3 + F4)",
+      "molmetal/adapters/se3_sb_integration.py (F5 + F6)",
+      "molmetal/tests/test_wfa64_r18_adapters.py (NEW 6 pytests)",
+      "docs/HONEST_NEGATIVE_CATALOG.md (\u00a76.92 NEW + \u00a76.66h + \u00a76.59h + \u00a76.81p)",
+      "AGENTS.md (\u00a73.3 audit-ledger row)",
+      "cfm_todo.json _arch_audit_log_2026_10_17_Wf-A64_W2 (this block)"
+    ],
+    "housekeeping_files_excluded_from_W1_W2_scope": [
+      "molmetal/reports/wf255_catherine_30metals/sweep_summary.md (pre-existing Wf-255 WIP; timing variation refresh only; 6/6 PASS verdict unchanged)",
+      "molmetal/reports/wf87_p1_disk_audit/synthesis.md (pre-existing Wf-87 WIP; 292 -> 299 metrics JSON count refresh; date 2026-10-16 -> 2026-10-17)"
+    ],
+    "catalog_count_delta": 1,
+    "active_count_delta": 0,
+    "w1_status": "SHIPPED on disk (3 adapter files + 1 new test file per `git show --stat 8035df9f`; 6/6 NEW pytests PASS in 0.34s per `pytest molmetal/tests/test_wfa64_r18_adapters.py -q`; 207 existing pytests PASS in 5.85s on the 7-module adapter-adjacent slice per `pytest ... -q` (1 PRE-EXISTING FLAKE `test_log_sinkhorn_uniform_marginals` unrelated to Wf-A64 edits per `git stash` baseline replay); group_W1 commit 8035df9f +380 insertions / -35 deletions / 4 files modified; pre-flight N/A via SKIP_PREFLIGHT=1 per memory wfa33-v2-precommit-timeout.md + AGENTS.md \u00a71.4; ruff delta: 0 new violations; ruff pre-existing: 3591 errors per `ruff check molmetal/scripts/ molmetal/adapters/ molmetal/models/ molmetal/ports/ --select F401,F841,E501 | tail -3` re-verified 2026-10-17 pre-commit)",
+    "w2_status": "SHIPPED on disk (catalog + AGENTS.md per `git show --stat 0dda49fc`; \u00a76.66h + \u00a76.59h + \u00a76.81p + \u00a76.92 + \u00a73.3 audit-ledger row all present per `grep -nE` cross-references; group_W2 commit 0dda49fc +85 insertions / 2 files modified; this audit-log block per `grep -n _arch_audit_log_2026_10_17_Wf-A64_W2 cfm_todo.json`)",
+    "housekeeping_status": "SHIPPED in commit 445df215 (chore(wf-a64-housekeeping): Wf-87 + Wf-255 report content updates; 2 files / +6 / -6; pre-existing WIP from earlier waves, kept out of W1+W2 SHIP scope per verify brief recommendation)",
+    "user_directive_verbatim": "(CFM deep audit pattern verbatim from Wf-A55 \u00a76.82 SCOUT prompt: 'cfm\u8fd9\u8fb9\u518d\u68c0\u67e5\u4e00\u4e0b\u8fd8\u6709\u4ec0\u4e48\u6f0f\u6d1e,\u76f8\u5173\u7684negative\u8fd8\u80fd\u4e0d\u80fd\u518d\u505a\u52a0\u5f3a\u548c\u89e3\u51b3?')",
+    "scope_per_user_directive": "CFM R18 adapter surface (coordination_gnn + quotient_space_diffusion + se3_sb_integration) + R20/R21 plan-skill audit + HN strengthen round 5; D-MPNN + data acquisition explicitly excluded per the CFM-generative-only directive pattern"
+  },
   "user_open_decisions": [
     {
       "id": "DEC_retrain_slot",
