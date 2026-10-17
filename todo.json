@@ -7974,7 +7974,7 @@
   "capacity_pair_2026_10_17": {
     "date": "2026-10-17",
     "task": "#184 device-matched within-metal capacity ablation (G1)",
-    "status": "H128_DONE_H512_RUNNING_1_OF_5",
+    "status": "H128_DONE_H512_RUNNING_2_OF_5",
     "artifacts": {
       "h128": "metrics/by_metric/dmpnn_within_metal_cap128_pf_gpu0.json",
       "h512": "metrics/by_metric/dmpnn_within_metal_cap512_pf_gpu0.json (pending)"
@@ -8069,7 +8069,7 @@
         "That Rh/Os/Re (n=334/333/250) are as well-resolved as Ru — their across-fold std is 0.053-0.062 vs Ru 0.012."
       ]
     },
-    "next": "Ir/Rh/Os/Re h512 running; artifact written when all 5 finish (~10:20).",
+    "next": "Rh/Os/Re h512 running; artifact written when all 5 finish (~10:00).",
     "h512_gpu0_partial": {
       "Ru": {
         "n": 4793,
@@ -8090,8 +8090,29 @@
         "capacity_effect_min": 0.0095,
         "wall_sec": 23128.8
       },
-      "reading": "Capacity DOES help Ru, by +0.0183 on 5/5 seeds (min +0.0095). The G1 gap closes 43% (-0.0421 -> -0.0239). It does NOT close: the D-MPNN is still 0.0239 below the same-fold XGB at hidden=512. Also note the h512 across-fold std (0.0139) is larger than h128 (0.0115): capacity raises the mean and widens the seed spread."
+      "reading": "Capacity DOES help Ru, by +0.0183 on 5/5 seeds (min +0.0095). The G1 gap closes 43% (-0.0421 -> -0.0239). It does NOT close: the D-MPNN is still 0.0239 below the same-fold XGB at hidden=512. Also note the h512 across-fold std (0.0139) is larger than h128 (0.0115): capacity raises the mean and widens the seed spread.",
+      "Ir": {
+        "n": 1281,
+        "h512_gpu0": 0.7371,
+        "h512_gpu0_std": 0.0339,
+        "xgb_same_folds": 0.8277,
+        "delta_gpu0": -0.0906,
+        "h128_gpu0_same_folds": 0.6543,
+        "h128_gpu0_std": 0.0768,
+        "capacity_effect": 0.0828,
+        "per_seed_capacity_effect": {
+          "42": 0.1033,
+          "43": 0.0847,
+          "44": 0.0533,
+          "49": 0.0762,
+          "123": 0.0963
+        },
+        "capacity_effect_all_seeds_positive": true,
+        "capacity_effect_min": 0.0533,
+        "wall_sec": 5680.1,
+        "variance_note": "Ir is the OPPOSITE of Ru on variance: h128 std 0.0768 -> h512 std 0.0339, i.e. capacity more than halves the seed spread here. Ru went 0.0115 -> 0.0139 (slightly wider). So \"capacity widens variance\" is not a general rule."
+      }
     },
-    "verdict_so_far": "Capacity is a real but partial lever. Ru +0.0183 (43% of the gap closed), Ir +0.0861 in the same-device probe (53% closed). Neither closes G1. The honest claim is \"hidden=512 recovers about half the within-metal shortfall on the two metals tested so far, and none of the metals reaches the XGB column\"."
+    "verdict_so_far": "Capacity is a real but partial lever, and its size scales with the headroom of the metal. Ru (h128 already 0.819): +0.0183, 43% of the gap closed, still -0.0239 behind XGB. Ir (h128 only 0.654): +0.0828, 47% closed, still -0.0906 behind. Neither reaches the XGB column. The earlier Ir-only probe (0.7393) was within 0.002 of the formal deterministic value (0.7371), so it was a valid preview."
   }
 }
