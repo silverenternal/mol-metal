@@ -184,6 +184,30 @@ def main(argv: list | None = None) -> int:
         json.dumps(summary, indent=2, ensure_ascii=False),
     )
 
+    # wf_a48 wrote pt_only_summary.json before structures existed, so its
+    # pt_rows_with_smiles fields are 0.  Leaving them stale next to a 10,857-row
+    # Pt view reads as "structures are missing".  Refresh the counts in place.
+    pt_only_path = pt_dir / "pt_only_summary.json"
+    if pt_only_path.exists():
+        try:
+            pt_only = json.loads(pt_only_path.read_text(encoding="utf-8"))
+            per_cell_join = {
+                s["cell_line"]: s["pt_rows_with_smiles"]
+                for s in per_cell
+                if s.get("cell_line")
+            }
+            pt_only["pt_rows_with_smiles"] = summary["pt_rows_with_smiles"]
+            pt_only["smiles_join_summary"] = "smiles_join_summary.json"
+            for s in pt_only.get("per_cell_line", []):
+                joined = per_cell_join.get(s.get("cell_line"))
+                if joined is not None:
+                    s["pt_rows_with_smiles"] = joined
+            atomic_write_file(
+                pt_only_path, json.dumps(pt_only, indent=2, ensure_ascii=False)
+            )
+        except (json.JSONDecodeError, OSError, KeyError):
+            pass
+
     print(
         f"[wf-a49] Pt compounds with SMILES: "
         f"{summary['pt_compounds_with_smiles']}/{summary['pt_compounds']}\n"
