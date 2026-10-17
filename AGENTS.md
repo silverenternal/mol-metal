@@ -99,6 +99,15 @@ audit: `catherine-dblock-bench` (108 LOC), `closure-catherine` (227 LOC), `hilbe
 `multi-ph-pll-feature`, `neural-ode-kinetics`, `pareto-multiobj`. Meta-packs: `r20-skill-pack`,
 `r21-skill-pack`.
 
+**§3.3 audit-ledger (Wf-A64 W2, 2026-10-17).** Per `docs/HONEST_NEGATIVE_CATALOG.md:§6.92d`, the 9
+OPEN R20/R21 skills were SCOUT-audited for: (a) MEASURED-vs-PROJECTED framing per `party-twenty-spirit`
+§3.5; (b) Wf-A30 strict-repair pattern reference (SCOUT-VERIFY → DESIGN → IMPLEMENT-W1 → IMPLEMENT-W2
+→ VERIFY → COMPLETENESS-CRITIC → CLOSEOUT); (c) bit-exact-default-pass-through audit (the §6.55g
+silent-default pattern). **Findings**: all 6 non-STUB skills carry MEASURED-vs-PROJECTED framing ✓;
+**none** reference the Wf-A30 strict-repair pattern (gap surfaced, deferred); `hierarchical-multimetal`
+references `apply_yaml_overrides` but doesn't gate on the `cur == dft` precedence flip from §5.11 (gap
+surfaced, deferred). Full audit ledger table + file:LOC at `docs/HONEST_NEGATIVE_CATALOG.md:§6.92d`.
+
 ### §3.4 How skills compose with workflows
 
 A workflow (`/tmp/wfNNN_*.js`) is the orchestration layer for parallel + multi-stage work.
