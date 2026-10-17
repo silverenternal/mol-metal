@@ -473,6 +473,13 @@ def _run_metal(
 def run(args: argparse.Namespace) -> Dict[str, object]:
     from molmetal.baselines.dmpnn import featurize_smiles_list
 
+    if getattr(args, "deterministic", False):
+        # cuBLAS needs a fixed workspace for deterministic matmul on CUDA.
+        _os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
+        _torch.backends.cudnn.deterministic = True
+        _torch.backends.cudnn.benchmark = False
+        _torch.use_deterministic_algorithms(True, warn_only=True)
+
     device = _resolve_device(args.device)
 
     report: Dict[str, object] = {
@@ -526,6 +533,7 @@ def run(args: argparse.Namespace) -> Dict[str, object]:
         },
         "split_seeds": list(args.split_seeds),
         "device": str(device),
+        "deterministic": bool(getattr(args, "deterministic", False)),
         "krasnov_within_metal_auc": KRASNOV_WITHIN_METAL_AUC,
         "min_unique_for_gate": MIN_UNIQUE_FOR_GATE,
         "per_metal": {},
@@ -620,6 +628,14 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--device", type=str, default="cpu")
     p.add_argument(
+        "--deterministic",
+        action="store_true",
+        help=(
+            "Force bit-reproducible kernels (torch.use_deterministic_algorithms, "
+            "cudnn.deterministic, CUBLAS_WORKSPACE_CONFIG). Required for CUDA runs."
+        ),
+    )
+    p.add_argument(
         "--max-fold-n",
         type=int,
         default=0,
@@ -644,6 +660,9 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = _build_parser()
     args = p.parse_args(argv)
     if getattr(args, "config", None):
+        _scripts_dir = str(Path(__file__).resolve().parent)
+        if _scripts_dir not in sys.path:
+            sys.path.insert(0, _scripts_dir)
         from wfA2_config_loader import apply_yaml_overrides
 
         args = apply_yaml_overrides(p, args, args.config, argv=list(argv or []))

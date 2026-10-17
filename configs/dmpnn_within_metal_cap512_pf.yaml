@@ -1,3 +1,11 @@
+# SUPERSEDED 2026-10-17 — DO NOT LAUNCH.
+# This CPU config was killed after 7h32m without completing a single
+# (metal, split_seed) cell (>=50 h extrapolated).  Use the device-matched pair
+# configs/dmpnn_within_metal_cap128_pf_gpu0.yaml +
+# configs/dmpnn_within_metal_cap512_pf_gpu0.yaml (cuda:0, --deterministic)
+# instead; they differ in `model.hidden` and nothing else.
+# Kept on disk per §5.5 (supersede, do not delete).
+#
 # Table 1 (tab:transfer) — in-house D-MPNN WITHIN-metal, CAPACITY h512, on the
 # PAPER-FUNNEL cohort.  Same cohort / folds / schedule / device as
 # configs/dmpnn_within_metal_auc_paper_funnel.yaml (hidden 128); ONLY hidden

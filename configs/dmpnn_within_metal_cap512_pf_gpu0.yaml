@@ -1,0 +1,72 @@
+# #184b — Table 1 within-metal capacity ablation, h512 arm, GPU0.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# See configs/dmpnn_within_metal_cap128_pf_gpu0.yaml.  The original h512 config
+# (configs/dmpnn_within_metal_cap512_pf.yaml, device: cpu) was killed on
+# 2026-10-17 after 7h32m without completing a single (metal, split_seed) cell;
+# CPU extrapolates to >=50 h.  This config moves the h512 arm to cuda:0 with
+# --deterministic so it is device-matched to the h128 reference.
+#
+# The pair (h128, h512) differs in `model.hidden` and nothing else.  Everything
+# else (cohort, folds, seeds, epochs, batch, lr, featurisation) is identical to
+# the published CPU config.
+#
+# This does NOT replace the published Table-1 column (device=cpu).
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/dmpnn_within_metal_auc.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/dmpnn_within_metal_auc.py
+    --config {yaml_path}
+
+data:
+  metals: [Ru, Ir, Rh, Os, Re]
+
+cohort_spec: paper_funnel
+
+protocol:
+  split_seeds: [42, 43, 44, 49, 123]
+  n_splits: 5
+
+model:
+  hidden: 512
+  depth: 3
+  dropout: 0.1
+
+train:
+  lr: 0.001
+  epochs: 50
+  batch_size: 64
+  max_atoms: 120
+  max_edges: 240
+  train_seeds: [0]
+  class_weight: true
+  mask_padding: true
+
+radius: 2
+nbits: 2048
+
+compute:
+  device: cuda:0
+  deterministic: true
+
+max_fold_n: 0
+
+output:
+  out_metric: metrics/by_metric/dmpnn_within_metal_cap512_pf_gpu0.json
+
+honest_framing:
+  purpose: >-
+    h512 arm of the device-matched capacity ablation.  Compared against the
+    h128 GPU0 reference measured by dmpnn_within_metal_cap128_pf_gpu0.yaml;
+    `hidden` is the only changed variable.
+  do_not_claim:
+    - That this replaces the published Table-1 column — that one is the CPU
+      h128 run (dmpnn_within_metal_auc_paper_funnel.json).
+    - Any use of the earlier Ir-only cuda:0 h512 probe
+      (dmpnn_within_metal_ir_cap512_pf.json) — it is superseded by this
+      device-matched pair.
+    - A pooled 5-metal mean (Ru is ~64% of the deduplicated cohort).
+    - That Rh/Os/Re (n=334/333/250) are as well-resolved as Ru — report the n.

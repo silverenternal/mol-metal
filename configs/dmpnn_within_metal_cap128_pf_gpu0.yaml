@@ -1,0 +1,72 @@
+# #184a — Table 1 within-metal capacity ablation, h128 reference, GPU0.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# #184 originally ran h512 on CPU (configs/dmpnn_within_metal_cap512_pf.yaml,
+# device: cpu) to match the published CPU h128 baseline.  MEASURED 2026-10-17:
+# that CPU run spent 7h32m without completing a single (metal, split_seed) cell;
+# the h512 GPU probe took 4826 s for Ir (n=1281) on cuda:0, so the CPU path
+# extrapolates to >=50 h.  It was killed.
+#
+# The capacity claim ("is the h128 within-metal shortfall a capacity artefact?")
+# is only single-variable if h128 and h512 are measured on the SAME device.
+# This config therefore re-measures h128 on cuda:0 with --deterministic, so the
+# pair (h128, h512) differs in `model.hidden` and nothing else.
+#
+# This is a SEPARATE, device-matched ablation artifact.  It does NOT replace the
+# published Table-1 column (dmpnn_within_metal_auc_paper_funnel.json, device=cpu);
+# that artifact stays as-is.
+#
+# AGENTS.md §5.11: launched from this YAML only.
+
+entry:
+  script: molmetal/scripts/dmpnn_within_metal_auc.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/dmpnn_within_metal_auc.py
+    --config {yaml_path}
+
+data:
+  metals: [Ru, Ir, Rh, Os, Re]
+
+cohort_spec: paper_funnel
+
+protocol:
+  split_seeds: [42, 43, 44, 49, 123]
+  n_splits: 5
+
+model:
+  hidden: 128
+  depth: 3
+  dropout: 0.1
+
+train:
+  lr: 0.001
+  epochs: 50
+  batch_size: 64
+  max_atoms: 120
+  max_edges: 240
+  train_seeds: [0]
+  class_weight: true
+  mask_padding: true
+
+radius: 2
+nbits: 2048
+
+compute:
+  device: cuda:0
+  deterministic: true
+
+max_fold_n: 0
+
+output:
+  out_metric: metrics/by_metric/dmpnn_within_metal_cap128_pf_gpu0.json
+
+honest_framing:
+  purpose: >-
+    Device-matched h128 reference for the h512 capacity ablation.  h128 and
+    h512 are both measured on cuda:0 with --deterministic, so `hidden` is the
+    only changed variable.
+  do_not_claim:
+    - That this replaces the published Table-1 column — that one is the CPU
+      h128 run (dmpnn_within_metal_auc_paper_funnel.json).
+    - A pooled 5-metal mean (Ru is ~64% of the deduplicated cohort).
+    - That Rh/Os/Re (n=334/333/250) are as well-resolved as Ru — report the n.
