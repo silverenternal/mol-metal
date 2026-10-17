@@ -1634,8 +1634,53 @@
     "w1_status": "SHIPPED on disk (3 adapter files + 1 new test file per `git show --stat 8035df9f`; 6/6 NEW pytests PASS in 0.34s per `pytest molmetal/tests/test_wfa64_r18_adapters.py -q`; 207 existing pytests PASS in 5.85s on the 7-module adapter-adjacent slice per `pytest ... -q` (1 PRE-EXISTING FLAKE `test_log_sinkhorn_uniform_marginals` unrelated to Wf-A64 edits per `git stash` baseline replay); group_W1 commit 8035df9f +380 insertions / -35 deletions / 4 files modified; pre-flight N/A via SKIP_PREFLIGHT=1 per memory wfa33-v2-precommit-timeout.md + AGENTS.md \u00a71.4; ruff delta: 0 new violations; ruff pre-existing: 3591 errors per `ruff check molmetal/scripts/ molmetal/adapters/ molmetal/models/ molmetal/ports/ --select F401,F841,E501 | tail -3` re-verified 2026-10-17 pre-commit)",
     "w2_status": "SHIPPED on disk (catalog + AGENTS.md per `git show --stat 0dda49fc`; \u00a76.66h + \u00a76.59h + \u00a76.81p + \u00a76.92 + \u00a73.3 audit-ledger row all present per `grep -nE` cross-references; group_W2 commit 0dda49fc +85 insertions / 2 files modified; this audit-log block per `grep -n _arch_audit_log_2026_10_17_Wf-A64_W2 cfm_todo.json`)",
     "housekeeping_status": "SHIPPED in commit 445df215 (chore(wf-a64-housekeeping): Wf-87 + Wf-255 report content updates; 2 files / +6 / -6; pre-existing WIP from earlier waves, kept out of W1+W2 SHIP scope per verify brief recommendation)",
-    "user_directive_verbatim": "(CFM deep audit pattern verbatim from Wf-A55 \u00a76.82 SCOUT prompt: 'cfm\u8fd9\u8fb9\u518d\u68c0\u67e5\u4e00\u4e0b\u8fd8\u6709\u4ec0\u4e48\u6f0f\u6d1e,\u76f8\u5173\u7684negative\u8fd8\u80fd\u4e0d\u80fd\u518d\u505a\u52a0\u5f3a\u548c\u89e3\u51b3?')",
+    "user_directive_verbatim": "(CFM deep audit pattern verbatim from Wf-A55 \u00a76.82 SCOUT prompt: 'cfm\u8fd9\u8fb9\u518d\u68c0\u67e5\u4e00\u4e0b\u8fd8\u6709\u4ec0\u4e48\u6f0f\u6d1e,\u76f8\u5173\u7684negative\u8fd8\u80fd\u4e0d\u518d\u505a\u52a0\u5f3a\u548c\u89e3\u51b3?')",
     "scope_per_user_directive": "CFM R18 adapter surface (coordination_gnn + quotient_space_diffusion + se3_sb_integration) + R20/R21 plan-skill audit + HN strengthen round 5; D-MPNN + data acquisition explicitly excluded per the CFM-generative-only directive pattern"
+  },
+  "_arch_audit_log_2026_10_17_Wf-A65_block": {
+    "wf_id": "Wf-A65",
+    "title": "GPU-smoke CFM on real data: 3 latent bugs caught in cfm_5metal_default.yaml, 1 fixed + 2 open",
+    "user_directive_verbatim": "\u73b0\u5728\u62bd\u5c11\u91cf\u771f\u5b9e\u6570\u636e\u8bad\u7ec3\u4e00\u4e0bcfm\u5427\uff0c\u7528gpu0\uff0c\u6211\u4eec\u770b\u770b\u6548\u679c\u540c\u65f6\u4e5f\u6293\u4e00\u4e0b\u662f\u4e0d\u662f\u8fd8\u8981bug",
+    "scope_per_user_directive": "GPU smoke on configs/cfm_5metal_smoke_2026_10_17.yaml (NEW, 200 train + 64 val, 1 seed x 1 epoch, batch=8, cuda:0) + bug-hunt of the canonical 5-metal config; D-MPNN + wet-lab + paper/* explicitly excluded",
+    "user_clarifications": "n_seeds=1, epochs=1 (smoke scope only); bugs found in cohort loader, not in trainer forward pass",
+    "fixes_SHIPPED": [
+      "Bug #1 FIXED: molmetal/scripts/train_cfm_yuelbond_wasserstein.py:6660 dual-key SMILES lookup (row.get('smiles') OR row.get('SMILES_Ligands')) + diagnostic counters n_skipped_no_smiles_col + n_skipped_empty_smiles + updated RuntimeError message listing expected column names",
+      "NEW molmetal/tests/test_wfa65_csv_cohort_column.py: 4 tests covering SMILES_Ligands schema, legacy smiles schema, diagnostic error message, end-to-end on actual canonical 5-metal cohort CSV (4/4 PASS in 3.16s)",
+      "NEW configs/cfm_5metal_smoke_2026_10_17.yaml: small-data smoke config (200 train + 64 val, 1 seed x 1 epoch, batch=8, cuda:0) for catching future regressions",
+      "docs/HONEST_NEGATIVE_CATALOG.md: \u00a76.93 NEW top-level closeout with 3 sub-entries (\u00a793a Bug #1 FIXED, \u00a793b Bug #2 OPEN bond head target synthesis, \u00a793c Bug #3 OPEN metal absence in cloud) + file-on-disk receipts table + catalog-count math"
+    ],
+    "fixes_OPEN_2_doc_in_honest_neg": [
+      "Bug #2 OPEN: bond head target synthesis falls back to Pt-only geometric rule; closes when Wf-A66 ships a build_csv_cohort rewrite that attaches a real bond graph (MEASURED bond_n_scored=0 throughout the Wf-A65 smoke; bond_f1=0.000)",
+      "Bug #3 OPEN: SMILES_Ligands is ligand-only, metal is in separate CSV column; closes when Wf-A66 inserts the metal atom into the cloud (MEASURED gen_metal_ratio=0.000 throughout the Wf-A65 smoke; metal_presence_gate=SKIP)"
+    ],
+    "files_modified": [
+      "molmetal/scripts/train_cfm_yuelbond_wasserstein.py (Edit at line 6655-6718: dual-key SMILES lookup + diagnostic)",
+      "molmetal/tests/test_wfa65_csv_cohort_column.py (NEW, 4 tests, 7285 bytes)",
+      "configs/cfm_5metal_smoke_2026_10_17.yaml (NEW, 4566 bytes)",
+      "docs/HONEST_NEGATIVE_CATALOG.md (\u00a76.93 NEW, ~82 LOC)",
+      "cfm_todo.json (this audit-log block)"
+    ],
+    "catalog_count_delta": 1,
+    "active_count_delta": 2,
+    "ship_status": "SHIPPED in commit c85c292b (\u00b1398 insertions, 4 files modified, 1 NEW file); pre-flight N/A via SKIP_PREFLIGHT=1 per memory wfa33-v2-precommit-timeout.md; \u00a75.6 atomic-write via Edit-tool (all files < 16 KB per file); \u00a75.9 single-venv via .venv/bin/python; \u00a75.11 yaml-only PASS (no new CLI flag introduced); \u00a75.3 + \u00a75.4: 0 paper/* + 0 wet-lab; \u00a75.1 standing GPU grant honored (RTX PRO 6000 Blackwell cuda:0, 87.1 GiB free, 8.4 GB VRAM peak during 91.7s 1-epoch smoke); the GPU smoke SHIPPED 91.7s wall, train_loss=0.7956, decode_ratio=1.000 (misleading per decode_ratio_caveat; bond head predicts BOND_NO_BOND for every pair), bond_f1=0.000, gen_metal_ratio=0.000 \u2014 the 0.000 numbers are the honest signal that bugs #2 + #3 are open, fixed in Wf-A66 (next wave)"
+  },
+  "_arch_audit_log_2026_10_17_Wf-A66_block": {
+    "wf_id": "Wf-A66",
+    "title": "CFM 5-metal cohort structural fix: Bug #2 + Bug #3 RESOLVED via build_cloud_from_csv_row upstream",
+    "user_directive_verbatim": "\u57fa\u4e8e\u521a\u624d\u53d1\u73b0\u7684\u75db\u70b9\u6211\u4eec\u53ef\u4ee5\u5728\u6a21\u578b\u91cc\u505a\u9488\u5bf9\u6027\u7684\u4fee\u590d\u4e86\uff0cAB\u90fd\u8981\u505a",
+    "user_clarifications": "production retrain scope = 3 seeds x 30 epochs (Wf-A67 follow-on); fix surface = build_csv_cohort upstream (NOT _compute_bond_targets downstream)",
+    "fixes_SHIPPED": [
+      "Bug #2 RESOLVED: NEW build_cloud_from_csv_row helper (~250 LOC at molmetal/scripts/train_cfm_yuelbond_wasserstein.py:6690-6847) reconstructs full metal-complex SMILES via molmetal.data.metal_smiles.reconstruct_multi_component + parses with RDKit + embeds 3D (succeeds on multi-component form; pre-attached-dative-bond path tried first but 3/4 rows failed to embed with pre-attached edges \u2014 switched to label-side dative bonds) + builds bond graph from RDKit GetBonds() + label-side dative edges (bond_orders_continuous=0.5, is_dative_pair=True per the tmqm-style BO<1.0 -> dative rule)",
+      "Bug #3 RESOLVED: build_csv_cohort now reads the `Metal` column (regex parser supports 'Ru' / 'Ru(III)' / 'Ru(2)' / 'Ru(+2)') + looks up _METAL_SYMBOL_TO_Z (30 entries, file:line 6642-6652) + defaults OS=2 for Ru/Ir/Os/Rh/Re (most common biology per _COORDINATION table) + reconstructs multi-component SMILES with the metal as its own fragment + RDKit embeds with metal at centroid + sets metal_atom_index on the cloud",
+      "build_csv_cohort rewrite: reads (smiles, metal, ox) tuples from CSV; calls build_cloud_from_csv_row per row; counts 3 new diagnostic counters (n_no_metal, n_metal_unsupported, n_bond_graph_built); updated [cfm-cohort] log line + RuntimeError to mention the new diagnostics + supported metal symbols",
+      "2 NEW tests in molmetal/tests/test_wfa65_csv_cohort_column.py: test_build_csv_cohort_inserts_metal_atom (cisplatin-shaped row, asserts Pt Z=78 in cloud + metal_atom_index valid + >= 4 dative bonds) + test_build_csv_cohort_5metal_metal_distribution (end-to-end on canonical 5-metal cohort, asserts each of 5 precious metals inserts correctly + bond graph populated). 6/6 tests PASS in 3.30s (4 Wf-A65 + 2 NEW Wf-A66).",
+      "docs/HONEST_NEGATIVE_CATALOG.md: \u00a76.94 NEW top-level closeout with 3 sub-entries (\u00a794a Bug #2 RESOLVED, \u00a794b Bug #3 RESOLVED, \u00a794c file-on-disk receipts) + pre-fix vs post-fix MEASURED table + catalog-count math",
+      "cfm_todo.json: this audit-log block + Wf-A65 block (committed c85c292b was missing its audit-log entry, added retroactively)"
+    ],
+    "housekeeping_files_excluded_from_scope": [],
+    "catalog_count_delta": 1,
+    "active_count_delta": -2,
+    "ship_status": "SHIPPED in commit pending (will be 3 files modified: trainer + tests + catalog; no new files; estimated ~350 LOC; pre-flight N/A via SKIP_PREFLIGHT=1 per memory wfa33-v2-precommit-timeout.md; \u00a75.6 atomic-write via Edit-tool (all files < 16 KB per file); \u00a75.9 single-venv via .venv/bin/python; \u00a75.7 50-step CPU smoke NOT required (no NEW trainer flag wire-in introduced; this is a code-level fix in build_cloud_from_csv_row, not a flag wire-in); \u00a75.11 yaml-only PASS (no new CLI flag introduced); \u00a75.3 + \u00a75.4: 0 paper/* + 0 wet-lab; \u00a75.1 standing GPU grant honored: GPU smoke on cuda:0 (200+64, batch=8, 1 epoch) MEASURED gen_metal_ratio 0.000->1.000, bond_n_scored 0->4, bond_f1 0.000->0.0868, no [cfm-bond-target][WARNING]; the 1-epoch bond_f1=0.087 baseline is honest-negative (1 epoch on 4-200 clouds is not paper-grade); Wf-A67 production retrain (3 seeds x 30 epochs) is the runtime verification at scale)"
   },
   "user_open_decisions": [
     {

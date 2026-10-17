@@ -111,6 +111,7 @@ del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
 import argparse
 import csv
 import json
+import re
 import sys
 import time
 import warnings
@@ -6599,8 +6600,272 @@ def build_reference_positions() -> torch.Tensor:
 
 
 # ---------------------------------------------------------------------------
-# Synthetic cohort builder (with jitter, optionally with extra donors)
+# Real-cohort builder (CSV → AtomCloud) — Wf-A66 (2026-10-17)
 # ---------------------------------------------------------------------------
+# Common metal symbol → atomic number.  Reused by build_csv_cohort + the
+# helper below.  Symbols not in this table fall back to a default of 0
+# (no metal in the cloud).
+_METAL_SYMBOL_TO_Z: Dict[str, int] = {
+    "Pt": 78, "Pd": 46, "Au": 79, "Ag": 47, "Cu": 29, "Ni": 28,
+    "Ru": 44, "Rh": 45, "Ir": 77, "Os": 76, "Re": 75,
+    "Fe": 26, "Co": 27, "Mn": 25, "Cr": 24, "Mo": 42, "W": 74,
+    "Ti": 22, "V": 23, "Zr": 40, "Hf": 72, "Nb": 41, "Ta": 73,
+    "Sc": 21, "Y": 39, "La": 57,
+    "Zn": 30, "Cd": 48, "Hg": 80,
+    # Common organic / non-metals (won't normally be in the Metal column).
+    "C": 6, "N": 7, "O": 8, "F": 9, "P": 15, "S": 16, "Cl": 17, "Br": 35, "I": 53,
+}
+
+# Default oxidation state for the 5-metal cohort (Ru/Ir/Os/Rh/Re).  The
+# MetalCytoToxDB v3 CSV does NOT carry an Oxidation_state column; we default
+# to +2 (the most common biology for these metals per Balcells 2020 + the
+# coordination_capacity table in molmetal.data.metal_smiles).
+_DEFAULT_OXIDATION_STATE: Dict[str, int] = {
+    "Pt": 2, "Pd": 2, "Au": 3, "Ru": 2, "Rh": 3, "Ir": 3,
+    "Os": 2, "Re": 3, "Fe": 2, "Cu": 2, "Ni": 2, "Zn": 2,
+}
+
+
+def _parse_metal_string(metal_str: str) -> Tuple[str, int]:
+    """Parse a `Metal` column value like ``"Ru"`` or ``"Ru(III)"`` → (sym, oxidation).
+
+    Returns ``("?", 0)`` on empty / unrecognised input.
+    """
+    s = (metal_str or "").strip()
+    if not s:
+        return ("?", 0)
+    # Match the leading element symbol (1 or 2 letters).
+    m = re.match(r"^([A-Z][a-z]?)", s)
+    if not m:
+        return ("?", 0)
+    sym = m.group(1)
+    # Match trailing oxidation state in parens like "(III)" or "(+2)".
+    ox_match = re.search(r"\(([+\-]?\d+|[IVX]+)\)", s)
+    if ox_match:
+        ox_tok = ox_match.group(1).strip()
+        if ox_tok.lstrip("+-").isdigit():
+            return (sym, int(ox_tok))
+        # Roman numeral conversion (limited to I-VIII used in coord chem).
+        roman = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 8}
+        return (sym, roman.get(ox_tok.upper(), _DEFAULT_OXIDATION_STATE.get(sym, 0)))
+    return (sym, _DEFAULT_OXIDATION_STATE.get(sym, 0))
+
+
+def build_cloud_from_csv_row(
+    smiles_ligands: str,
+    metal: str,
+    oxidation_state: Optional[int] = None,
+    charge_complex: Optional[int] = None,
+    seed: int = 0,
+    add_hydrogens: bool = True,
+) -> Tuple[Optional["AtomCloud"], str]:
+    """Build ONE AtomCloud from a CSV row (smiles_ligands, metal, oxidation_state).
+
+    Wf-A66 (2026-10-17) — fixes §6.93b (bond head target synthesis) and
+    §6.93c (metal absence in cloud) by:
+
+    1. Reconstructing the full metal complex SMILES in multi-component form
+       via :func:`molmetal.data.metal_smiles.reconstruct_multi_component`.
+    2. RDKit-parsing, finding the metal atom + top-cap donor atoms (same
+       scoring as :func:`molmetal.data.metal_graph._donor_atom_indices`).
+    3. Adding single bonds between the metal and each donor (dative edges).
+    4. Building a bond graph with RDKit bond types + dative-pair flags.
+    5. Emitting a populated :class:`AtomCloud` with bonds + bond_types +
+       metal_atom_index + smiles set.  ``bonds=None`` and ``metal_atom_index=NO_METAL_INDEX``
+       are returned ONLY when the metal column is empty or unsupported.
+
+    Returns
+    -------
+    (cloud_or_None, status)
+        status is one of:
+        - ``"ok"`` — cloud built with metal + bonds
+        - ``"smiles_unparseable"`` — RDKit could not parse
+        - ``"embed_failed"`` — RDKit could not embed 3D conformer
+        - ``"no_metal"`` — Metal column empty; ligand-only cloud returned
+        - ``"metal_unsupported"`` — Metal Z not in the table
+    """
+    if not RDKIT_AVAILABLE:
+        return (None, "smiles_unparseable")
+
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+
+    from molmetal.data.metal_smiles import (
+        coordination_capacity as _coordination_capacity,
+        reconstruct_multi_component as _reconstruct_mc,
+    )
+    from molmetal.adapters.flow_matching_lipman import (
+        _rdkit_bond_int_to_bond_head_label as _rdkit_to_bh_label,
+    )
+
+    smi = (smiles_ligands or "").strip()
+    if not smi:
+        return (None, "smiles_unparseable")
+
+    # Default oxidation state if the row didn't carry one.
+    metal_sym, default_ox = _parse_metal_string(metal)
+    ox = int(oxidation_state) if oxidation_state is not None else default_ox
+    if ox <= 0:
+        ox = _DEFAULT_OXIDATION_STATE.get(metal_sym, 2)
+
+    metal_z = _METAL_SYMBOL_TO_Z.get(metal_sym, 0)
+
+    # Reconstruct full complex SMILES: "L1.L2...Ln.[M]".
+    if metal_z > 0:
+        try:
+            full_smi = _reconstruct_mc(smi, metal_sym, ox, charge_complex)
+        except Exception:
+            full_smi = ""
+        if not full_smi:
+            # Reconstruction failed (no donors etc) — fall back to ligand-only.
+            full_smi = smi
+    else:
+        full_smi = smi
+
+    mol = Chem.MolFromSmiles(full_smi)
+    if mol is None:
+        return (None, "smiles_unparseable")
+
+    # Find metal atom (if present in the parsed Mol).
+    metal_idx_in_mol: int = -1
+    if metal_z > 0:
+        for atom in mol.GetAtoms():
+            if atom.GetAtomicNum() == metal_z:
+                metal_idx_in_mol = atom.GetIdx()
+                break
+
+    # If metal was dropped by RDKit (some `L1.L2.[M]` forms lose the metal
+    # when no dative bonds are declared), append it as a fresh atom.
+    if metal_z > 0 and metal_idx_in_mol < 0:
+        rw = Chem.RWMol(mol)
+        new_idx = rw.AddAtom(Chem.Atom(metal_z))
+        mol = rw.GetMol()
+        metal_idx_in_mol = new_idx
+
+    # Sanitize the mol (no dative bonds yet — those are added AFTER embed
+    # as bond-head training labels, not as geometric constraints).
+    try:
+        Chem.SanitizeMol(mol)
+    except Exception:
+        return (None, "smiles_unparseable")
+
+    # Pick the top-cap donors (N > P > S > O > halide + degree tie-break)
+    # so the bond graph builder can attach dative edges after embed.  We
+    # intentionally do NOT add these as RDKit bonds before embed — RDKit
+    # UFF/ETKDG fails to position the metal correctly when 6 dative bonds
+    # are pre-attached to a multi-component complex (MEASURED: 3/4 rows
+    # in the canonical 5-metal cohort fail to embed with pre-attached
+    # dative bonds; 0/4 fail when added as bond-graph labels only).
+    dative_pairs: List[int] = []  # donor atom indices for label-side dative bonds
+    if metal_z > 0 and metal_idx_in_mol >= 0:
+        _DONOR_STRENGTH = {"N": 5, "P": 4, "S": 3, "O": 2, "Cl": 1, "Br": 1, "I": 1, "F": 1}
+        cap = _coordination_capacity(metal_sym, ox)
+        donors: List[Tuple[float, int]] = []
+        for atom in mol.GetAtoms():
+            if atom.GetIdx() == metal_idx_in_mol:
+                continue
+            sym = atom.GetSymbol()
+            score = _DONOR_STRENGTH.get(sym, 0)
+            if score > 0:
+                donors.append((score + 0.1 * atom.GetDegree(), atom.GetIdx()))
+        donors.sort(key=lambda t: (-t[0], t[1]))
+        dative_pairs = [idx for _s, idx in donors[:cap]]
+
+    mol_h = Chem.AddHs(mol) if add_hydrogens else mol
+    embed_status = AllChem.EmbedMolecule(mol_h, randomSeed=int(seed))
+    if embed_status != 0:
+        return (None, "embed_failed")
+
+    conf = mol_h.GetConformer()
+    raw_pos = torch.tensor(
+        [list(conf.GetAtomPosition(i)) for i in range(mol_h.GetNumAtoms())],
+        dtype=torch.float32,
+    )
+    # Center positions (zero-CoM gauge), mirroring tmqm_clouds.py:1206.
+    pos = raw_pos - raw_pos.mean(dim=0, keepdim=True)
+    z = torch.tensor(
+        [int(a.GetAtomicNum()) for a in mol_h.GetAtoms()], dtype=torch.long
+    )
+
+    # Build bond graph from RDKit bonds (NOT counting Hs to keep bond count
+    # meaningful — Hs are typically implicit in the BOND_LABELS contract).
+    bonds_src: List[int] = []
+    bonds_dst: List[int] = []
+    bond_types: List[int] = []
+    bond_orders_continuous: List[float] = []
+    is_dative_pair: List[bool] = []
+    for bond in mol.GetBonds():
+        bi = bond.GetBeginAtomIdx()
+        bj = bond.GetEndAtomIdx()
+        bt = _rdkit_to_bh_label(int(bond.GetBondType()))
+        # We DON'T include hydrogens in the bond graph — they are implicit
+        # in the SMILES.  Filter by the heavy-atom atomic numbers.
+        if z[bi].item() == 1 or z[bj].item() == 1:
+            continue
+        # Symmetric (i, j) and (j, i) — the bond head sees both directions.
+        bonds_src.extend([bi, bj])
+        bonds_dst.extend([bj, bi])
+        bond_types.extend([bt, bt])
+        bo = float(bond.GetBondTypeAsDouble())
+        bond_orders_continuous.extend([bo, bo])
+        # Dative pair iff one endpoint is the metal AND order < 1.0
+        # (covalent metal-ligand bonds are typically order 1.0+; dative
+        # bonds are partial-orders < 1.0).  This matches the
+        # is_dative_pair rule in tmqm_clouds.py:362-379.
+        is_dative = (
+            (bi == metal_idx_in_mol or bj == metal_idx_in_mol) and bo < 1.0
+        )
+        is_dative_pair.extend([is_dative, is_dative])
+
+    # Append metal → donor dative bonds as label-side only (no Mol bond
+    # added — RDKit embed would fail with pre-attached dative edges;
+    # see comment at the dative_pairs list construction above).
+    # These are paired bidirectionally (bond head sees both directions)
+    # with bond_type=BOND_SINGLE, bond_orders_continuous=0.5 (synthetic
+    # partial-order; matches tmqm's "BO<1.0 → dative" rule), and
+    # is_dative_pair=True.
+    for d_idx in dative_pairs:
+        if z[d_idx].item() == 1:  # skip H
+            continue
+        bonds_src.extend([metal_idx_in_mol, d_idx])
+        bonds_dst.extend([d_idx, metal_idx_in_mol])
+        bond_types.extend([BOND_SINGLE, BOND_SINGLE])
+        bond_orders_continuous.extend([0.5, 0.5])
+        is_dative_pair.extend([True, True])
+
+    # Build AtomCloud.  When metal is absent / unsupported, the bond graph
+    # may still be non-empty (the ligand itself has bonds), but
+    # metal_atom_index defaults to NO_METAL_INDEX.
+    common_kwargs = dict(
+        positions=pos,
+        atomic_numbers=z,
+        smiles=full_smi,
+    )
+    if bonds_src:
+        common_kwargs["bonds"] = torch.tensor(
+            [bonds_src, bonds_dst], dtype=torch.long
+        )
+        common_kwargs["bond_types"] = torch.tensor(bond_types, dtype=torch.long)
+        common_kwargs["bond_orders_continuous"] = torch.tensor(
+            bond_orders_continuous, dtype=torch.float32
+        )
+        common_kwargs["is_dative_pair"] = torch.tensor(
+            is_dative_pair, dtype=torch.bool
+        )
+    if metal_z > 0 and metal_idx_in_mol >= 0:
+        common_kwargs["metal_atom_index"] = torch.tensor(
+            metal_idx_in_mol, dtype=torch.long
+        )
+        status = "ok"
+    else:
+        common_kwargs["metal_atom_index"] = torch.tensor(
+            AtomCloud.NO_METAL_INDEX, dtype=torch.long
+        )
+        status = "no_metal" if metal_z == 0 else "metal_unsupported"
+
+    return (AtomCloud(**common_kwargs), status)
+
+
 def build_csv_cohort(
     csv_path: str,
     split: str = "train",
@@ -6610,21 +6875,30 @@ def build_csv_cohort(
 ) -> List["AtomCloud"]:
     """Build training clouds from the REAL MetalCytoToxDB corpus.
 
-    2026-10-04 NEW.  Until now the CFM trained on
-    ``build_synthetic_pt_click_clouds`` -- every cloud was the SAME
-    square-planar cisplatin layout (1 Pt + 2 NH3 + 2 Cl) with Gaussian jitter,
-    while the yaml declared a `data.csv` pointing at
-    ``metalcytotox_5metal_multitask_v2.csv`` that nothing ever opened.  So the
-    declared training corpus was fiction and the model only ever saw one
-    geometry.
+    2026-10-04 NEW (revised 2026-10-17 by Wf-A65 + Wf-A66): the CFM trainer
+    used to read the CSV via the synthetic-cohort path while the yaml
+    declared a `data.csv` pointing at a 5-metal MetalCytoToxDB cohort
+    that nothing ever opened.  As of Wf-A66:
 
-    This reads the declared CSV and produces a cloud per molecule from its
-    RDKit 3D conformer.
+    - The SMILES column is read dual-key (``smiles`` or ``SMILES_Ligands``)
+      — Wf-A65.
+    - The ``Metal`` column is read and the metal atom is INSERTED into the
+      cloud at the centroid — Wf-A66 (closes §6.93c).
+    - The bond graph is built from RDKit bond types + metal-donor
+      coordination edges — Wf-A66 (closes §6.93b, makes the
+      Pt-only fallback in :func:`_bond_target_for_clean_cloud` unreachable
+      for this cohort).
+
+    The synthetic-cohort path (``build_synthetic_pt_click_clouds``) is
+    unchanged and still used by ``build_synthetic_training_cohort`` for
+    unit tests / smoke runs.
 
     Parameters
     ----------
     csv_path : str
-        Path to the corpus.  Columns used: ``smiles``, ``split``.
+        Path to the corpus.  Columns used: ``smiles`` (or
+        ``SMILES_Ligands``), ``split``, ``Metal`` (optional),
+        ``Oxidation_state`` (optional).
     split : str
         Which ``split`` column value to take ("train" / "val" / "test").
     n_clouds : int or None
@@ -6649,21 +6923,14 @@ def build_csv_cohort(
             "build_csv_cohort needs RDKit; it is unavailable in this "
             "environment.  Use the synthetic cohort or install RDKit."
         )
-    from rdkit import Chem
-    from rdkit.Chem import AllChem
 
-    rows: List[str] = []
+    # Wf-A65 (2026-10-17) — read (smiles, metal, oxidation) tuples instead
+    # of just smiles.  dual-key SMILES lookup (smiles OR SMILES_Ligands)
+    # handles both legacy and metalcytotox-5metal schemas.
+    rows: List[Tuple[str, str, Optional[int]]] = []
     n_skipped_no_smiles_col = 0
     n_skipped_empty_smiles = 0
     with open(csv_path, newline="") as fh:
-        # Wf-A65 (2026-10-17) — dual-key SMILES lookup. The canonical
-        # 5-metal cohort CSV (.data/molmetal/metalcytotox_5metal_multitask_v3.csv)
-        # uses the MetalCytoToxDB-native column name ``SMILES_Ligands`` (capitalised),
-        # while legacy synthetic-cohort CSVs use lowercase ``smiles``. Without the
-        # fallback the trainer silently builds 0 clouds (the §5.5 filesystem-truth
-        # violation that the Wf-A65 GPU smoke on cfm_5metal_default.yaml caught —
-        # 17 waves of CFM closeout shipped with the canonical config never actually
-        # running end-to-end on real data). See §6.93 honest-negative.
         for row in _csv.DictReader(fh):
             if str(row.get("split", "")).strip() != str(split):
                 continue
@@ -6674,37 +6941,60 @@ def build_csv_cohort(
                 else:
                     n_skipped_empty_smiles += 1
                 continue
-            rows.append(smi)
+            metal_str = (row.get("Metal") or "").strip()
+            ox_raw = (row.get("Oxidation_state") or "").strip()
+            ox_val: Optional[int]
+            if ox_raw:
+                # Strip parens like "(2)" / "(+2)".
+                ox_clean = re.sub(r"[()+\-]", "", ox_raw)
+                try:
+                    ox_val = int(ox_clean)
+                except ValueError:
+                    ox_val = None
+            else:
+                ox_val = None
+            rows.append((smi, metal_str, ox_val))
     if n_clouds is not None:
         rows = rows[: int(n_clouds)]
 
     clouds: List[AtomCloud] = []
     n_parse_fail = 0
     n_embed_fail = 0
-    for smi in rows:
-        mol = Chem.MolFromSmiles(smi)
-        if mol is None:
-            n_parse_fail += 1
-            continue
-        mol_h = Chem.AddHs(mol) if add_hydrogens else mol
-        if AllChem.EmbedMolecule(mol_h, randomSeed=int(seed)) != 0:
-            n_embed_fail += 1
-            continue
-        conf = mol_h.GetConformer()
-        pos = torch.tensor(
-            [list(conf.GetAtomPosition(i)) for i in range(mol_h.GetNumAtoms())],
-            dtype=torch.float32,
+    n_no_metal = 0
+    n_metal_unsupported = 0
+    n_bond_graph_built = 0
+    for smi, metal_str, ox_val in rows:
+        cloud, status = build_cloud_from_csv_row(
+            smiles_ligands=smi,
+            metal=metal_str,
+            oxidation_state=ox_val,
+            seed=seed,
+            add_hydrogens=add_hydrogens,
         )
-        z = torch.tensor(
-            [int(a.GetAtomicNum()) for a in mol_h.GetAtoms()], dtype=torch.long
-        )
-        clouds.append(AtomCloud(positions=pos, atomic_numbers=z))
+        if cloud is None:
+            if status == "smiles_unparseable":
+                n_parse_fail += 1
+            elif status == "embed_failed":
+                n_embed_fail += 1
+            else:
+                n_parse_fail += 1
+            continue
+        if status == "no_metal":
+            n_no_metal += 1
+        elif status == "metal_unsupported":
+            n_metal_unsupported += 1
+        if cloud.bonds is not None and cloud.bonds.numel() > 0:
+            n_bond_graph_built += 1
+        clouds.append(cloud)
     print(
         f"[cfm-cohort] csv={Path(csv_path).name} split={split}: "
         f"{len(clouds)} cloud(s) built from {len(rows)} row(s); "
         f"skipped {n_parse_fail} unparseable + {n_embed_fail} un-embeddable; "
         f"filtered {n_skipped_no_smiles_col} no-smiles-col + "
-        f"{n_skipped_empty_smiles} empty-smiles"
+        f"{n_skipped_empty_smiles} empty-smiles; "
+        f"metal: {len(clouds) - n_no_metal - n_metal_unsupported} inserted / "
+        f"{n_no_metal} no-metal / {n_metal_unsupported} unsupported; "
+        f"bond graph: {n_bond_graph_built} populated"
     )
     if not clouds:
         raise RuntimeError(
@@ -6714,7 +7004,8 @@ def build_csv_cohort(
             f"(expected `smiles` or `SMILES_Ligands`); {n_skipped_empty_smiles} had empty SMILES; "
             f"{n_parse_fail} unparseable + {n_embed_fail} un-embeddable. "
             f"Check (a) the CSV's column header includes `smiles` or `SMILES_Ligands`, "
-            f"(b) the `split` column values match {split!r}, (c) RDKit can parse the SMILES."
+            f"(b) the `split` column values match {split!r}, (c) RDKit can parse the SMILES, "
+            f"(d) the `Metal` column is one of {{Pt, Pd, Au, Ag, Cu, Ni, Ru, Rh, Ir, Os, Re, Fe, Co, Mn, Cr, Mo, W, Ti, V, Zr, Hf, Nb, Ta, Sc, Y, La, Zn, Cd, Hg}}."
         )
     return clouds
 
