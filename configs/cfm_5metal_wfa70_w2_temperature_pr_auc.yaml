@@ -1,0 +1,206 @@
+# Wf-A70 W2 (2026-10-17) — Fix 8 (aux MSE temperature) + Fix 9
+# (per-class PR-AUC reporting).  Derived from
+# cfm_5metal_wfa70_w1_edge_mpnn.yaml (which already carries Fix 6
+# Edge-MPNN head + Fix 7 per-class threshold) with two surgical changes:
+#
+#   1. ``flow.bond_aux_mse_weight: 0.1`` — turn ON the linear-space aux
+#      MSE (was 0.0 in W1).  Default was OFF to keep the Wf-A68 path
+#      bit-exact; W2 opts in to test the Fix 8 mechanism.
+#
+#   2. ``flow.bond_aux_temperature: 0.5`` — sharpen the softmax inside
+#      ``_maybe_stash_bond_aux_bo_linear`` so minority-class logits
+#      (TRIPLE 0.08%, AROMATIC 0.7%) get more concentrated mass in
+#      the softmax-weighted class-centre expectation.  The resulting
+#      pred_bo_lin moves closer to the argmax centre, and the linear-
+#      space MSE then rewards the head when it predicts close to (3.0)
+#      for true triples vs (1.0) for true singles.  Default 1.0 (W1
+#      config) = bit-exact Wf-A68 path; 0.5 = the W2 sharpen axis.
+#
+# Fix 9 (per-class PR-AUC reporting) is NOT a config knob — it's a
+# reporting change in :func:`evaluate_bond_accuracy` that emits
+# ``bond_class_{c}_pr_auc`` + ``bond_class_{c}_pos_rate`` +
+# ``bond_class_{c}_n_pos`` fields per bond class (5 classes × 3 fields
+# = 15 new keys, plus the macro aggregate
+# ``bond_per_class_macro_pr_auc``).  The legacy ``bond_pr_auc`` /
+# ``bond_positive_rate`` / ``bond_best_f1_*`` field names are
+# preserved (NO_BOND one-vs-rest AP == legacy existence AP ranking,
+# same number up to float64 precision).
+#
+# WHY-PASS GATE
+# ------------
+# Pass when, against the LEGACY cfm_5metal_default per-epoch baseline
+# (MEASURED best_bond_f1=0.2743 at epoch 26, bond_pr_auc=0.2174):
+#
+#   * ``bond_f1``  PROJECTED +0.05-0.15 (Fix 7 dominant axis; per-class
+#                  threshold recovers minority-class recall)
+#   * ``bond_pr_auc``  PROJECTED +0.03-0.06 (Fix 6 capacity axis)
+#   * ``bond_class_3_pr_auc`` (TRIPLE) REPORTED (was hidden inside the
+#     existence PR-AUC).  Expected TRIPLE PR-AUC ≤ 0.05 (0.08% positive
+#     rate, only ~9 pairs / cloud) — this is the BLK-C-M4 honest
+#     under-ranking finding, now visible.
+#   * ``bond_class_4_pr_auc`` (AROMATIC) REPORTED.  Expected
+#     AROMATIC PR-AUC 0.15-0.30 on the legacy head; the sharpen-τ=0.5
+#     axis should lift it by 0.02-0.05 (PROJECTED).
+#
+# No 0.99 claim.  No >0.50 combined bond_f1 ceiling.  cfm_5metal_default
+# per_epoch_metrics.json is the comparison baseline.  See AGENTS.md §5.2
+# honest framing + the design doc for the per-axis ceiling.
+#
+# COMPANION SURFACES
+# ------------------
+# * Trainer entry:  molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+#                   with --bond-aux-mse-weight=0.1 --bond-aux-temperature=0.5
+#                   --bond-predictor=yuelbond_edge_mpnn --n-edge-layers=4
+# * W1 Edge MPNN:   molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py::
+#                   YuelBondEdgeMPNNHead (Fix 6 from W1)
+# * Reporting:      evaluate_bond_accuracy + _bond_ranking_report_per_class
+# * Tests:          molmetal/tests/test_wf_a70_yuelbond_edge_mpnn.py (W1, 12)
+#                 + molmetal/tests/test_wf_a70_w2_temperature_pr_auc.py (W2, 17)
+# * Baseline:       /home/hugo/codes/mol-metal/results/cfm_5metal_default/
+#                   per_epoch_metrics.json (MEASURED ep26 f1=0.2743,
+#                   pr_auc=0.2174)
+# * W1 config:      configs/cfm_5metal_wfa70_w1_edge_mpnn.yaml
+# * Pointer:        TODO/README.md (canonical trainers row) + this file
+#
+# HONEST-FRAMING NOTE
+# -------------------
+# Per AGENTS.md §5.2 honest framing: every number in any follow-on closeout
+# MUST trace to a JSON / report path on disk with MEASURED or PROJECTED tag.
+# Per AGENTS.md §5.6: closeout must include ls -la evidence of every file
+# path on disk.
+
+data:
+  # 2026-10-15 Wf-A37-8: canonical 5-metal anticancer drug cohort.
+  dataset: csv
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+  cohort_filter:
+    metals:
+      - Ru
+      - Ir
+      - Os
+      - Rh
+      - Re
+model:
+  hidden_dim: 128
+  n_layers: 3
+  atom_vocab_size: 13
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  learnable_vel_scale: true
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  use_tmqm_init: false
+  pcgrad_multi_task: false
+  q_head_enabled: false
+flow:
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  bond_head_kind: single
+  # Wf-A70 W1 (2026-10-17) Fix 6 — Edge-MPNN bond head (carried over from W1).
+  bond_predictor: yuelbond_edge_mpnn
+  n_edge_layers: 4
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  bond_decision_threshold_sweep: [0.5]
+  use_focal_bond_ce: false
+  focal_bond_alpha: 0.25
+  focal_bond_gamma: 2.0
+  bond_sample_balance: 0
+  dative_distance_cutoff: 2.6
+  chem_loss_weight: 0.0
+  use_bond_head_skip: false
+  bond_label_smoothing: 0.0
+  # Wf-A70 W2 (2026-10-17) Fix 8 — turn ON the linear-space aux MSE
+  # with τ=0.5 sharpening.  W1 left this OFF (0.0) for bit-exact Wf-A68
+  # compat; W2 opts in to test Fix 8 alongside Fix 6 + Fix 7.
+  # EXPECTED PROJECTED lift on bond_f1: +0.02-0.05 (bounded by main
+  # bond_ce loss weight); TRIPLE / AROMATIC per-class PR-AUC should
+  # lift 0.02-0.05 from the τ<1 sharpening.
+  bond_aux_mse_weight: 0.1
+  # Wf-A70 W2 (2026-10-17) Fix 8 — softmax temperature τ on the aux
+  # MSE path.  τ<1 sharpens (pred_bo_lin closer to argmax centre);
+  # τ>1 smooths.  Default 1.0 = bit-exact Wf-A68 path.
+  bond_aux_temperature: 0.5
+  bond_candidate_source: truth_only
+  bond_candidate_cutoff: 2.4
+  subsample_neg_ratio: 0
+  subsample_neg_seed: epoch
+  head_class: YuelBondDecoderHead
+  bond_z_table: pt
+  bond_z_metal_set: all7
+  n_steps: 100
+  method: rk4
+  optimizer: adam
+  warmup_steps: 200
+  ema_decay: 0.999
+  wasserstein_weight: 0.0
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 3.5
+protocol:
+  batch_size: 16
+  lr: 0.0001
+  gen_validity_samples: 16
+  gen_eval_n: 64
+  gen_eval_seeds: "0 1 2"
+  n_seeds: 3
+  epochs: 30
+  n_seeds_min: 3
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+output:
+  base_dir: results/cfm_5metal_default
+  log_master: results/cfm_5metal_default/master.log
+  ckpt_dir: results/cfm_5metal_default/checkpoints
+  events_jsonl: true
+  resume_from: auto
+  resume_from_path: null
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+q_channel_lr_multiplier: 1.0
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+compute:
+  gpu: cuda:0
+directives:
+  kill_then_adapt: true
+  time_budget: 12h
+  user_ok_required: true
+  user_ok_granted: "3 seeds x 30 epochs + PRO 6000 + cuda:0 + results/cfm_5metal_default/ + GPU util >=90% check (2026-10-17)"
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir}
+  legacy_inline_command: ""
+honest_framing:
+  claims:
+  - CFM 5-metal anticancer drug training, pinned to MetalCytoToxDB multi-task v3 cohort (Ru/Ir/Os/Rh/Re, 4.5MB on disk)
+  - wasserstein_weight 0.0 (Wf-A37-7 measure: W2 not load-bearing on precious-metal anticancer axis)
+  - Companion chemprop --metals default extended to (Ru,Ir,Os,Rh,Re,Pt) for precious-metal anticancer
+  - 5 seeds × 50 epochs canonical protocol, 48h wall budget per AGENTS.md §5.1
+  - Wf-A70 W2 enables Fix 8 aux MSE + temperature scaling (opt-in via flow.bond_aux_mse_weight + flow.bond_aux_temperature)
+  - Wf-A70 W2 enables Fix 9 per-class PR-AUC reporting (no retrain delta; reporting change only)
+  do_not_claim:
+  - 7-metal cohort coverage (gold/Ag/Pd) — only the 5-metal cohort ships on disk
+  - decode_ratio on real Pt geometry — TMQM init is OFF for this property-axis config; cfm_full_retrain.yaml is the geometry-axis ship surface
+  - W2 ON improves the metric (MEASURED: it lowers clintox+bace)
+  - Best-seed selection before per-seed honest-neg gate (per Wf-245 n-seeds-min)
+  - Combined bond_f1 > 0.50 at 30 epochs (PROJECTED 0.35-0.50 ceiling; the per-class ranking is bounded by encoder capacity, not calibration)
+  - TRIPLE per-class PR-AUC > 0.10 (0.08% positive rate, ~9 pairs / cloud — variance dominates)
+  deferred:
+  - F5_RDKIT_2D 32-d integration into CFM training
+  - Per-lever ablation paper-grade (5-seed × 30-epoch GPU, requires explicit user OK)
+  - 7-metal cohort acquisition (Au/Pd/Ag rows absent from MetalCytoToxDB v3 on disk)

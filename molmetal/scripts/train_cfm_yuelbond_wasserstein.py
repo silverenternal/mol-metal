@@ -146,6 +146,7 @@ from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
 )
 from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
     YuelBondDecoderHead,
+    YuelBondEdgeMPNNHead,
     bond_decision as _bond_decision,
     z_to_onehot,
     _YUELBOND_Z_TABLE,
@@ -1178,6 +1179,73 @@ class EpochMetrics:
     # keeping. Existence is nearly solved by classical toolkits; TYPE is not.
     bond_type_macro_f1_pooled: float = 0.0
     bond_exact_type_rate: float = 0.0
+    # Wf-A70 W2 (2026-10-17) Fix 9 — per-class threshold-free ranking.
+    # Without these fields the per-class PR-AUC computed in
+    # `_bond_ranking_report_per_class` (line 6782) is silently dropped
+    # at the EpochMetrics boundary, so a 30-epoch retrain cannot
+    # MEASURE whether the Edge MPNN ranking lift actually separates
+    # the 5 bond classes (legacy `bond_pr_auc` collapses to existence —
+    # a 95% NO_BOND prior hides the head's TRIPLE / AROMATIC ranking).
+    # `n_pos` is int (count); the source dict emits as float — converted
+    # at the metric construction site below.
+    bond_class_0_pr_auc: float = 0.0
+    bond_class_0_pos_rate: float = 0.0
+    bond_class_0_n_pos: int = 0
+    bond_class_1_pr_auc: float = 0.0
+    bond_class_1_pos_rate: float = 0.0
+    bond_class_1_n_pos: int = 0
+    bond_class_2_pr_auc: float = 0.0
+    bond_class_2_pos_rate: float = 0.0
+    bond_class_2_n_pos: int = 0
+    bond_class_3_pr_auc: float = 0.0
+    bond_class_3_pos_rate: float = 0.0
+    bond_class_3_n_pos: int = 0
+    bond_class_4_pr_auc: float = 0.0
+    bond_class_4_pos_rate: float = 0.0
+    bond_class_4_n_pos: int = 0
+    bond_per_class_macro_pr_auc: float = 0.0
+    bond_per_class_n_classes_with_pos: int = 0
+    bond_per_class_n_pairs: int = 0
+    # Wf-A70 W1 (2026-10-17) Fix 7 — per-class held-out threshold
+    # calibration.  Operates on the same pair_probs / pair_truth_class
+    # accumulators as Fix 9 (no double-iteration over val_clouds).
+    # Eval-only: does NOT modify `bond_decision` (production decoding
+    # keeps single-threshold rule).  `test_*` fields are on the HELD-OUT
+    # half (50/50 split, seed=0) — the honest numbers; `best_threshold`
+    # is selected on the calibration half and may not generalise, hence
+    # both halves are surfaced.  `grid_size` + `seed` + `calibration_frac`
+    # carry the protocol so a reader can reproduce.
+    bond_class_0_best_threshold: float = 0.0
+    bond_class_0_test_f1: float = 0.0
+    bond_class_0_test_precision: float = 0.0
+    bond_class_0_test_recall: float = 0.0
+    bond_class_1_best_threshold: float = 0.0
+    bond_class_1_test_f1: float = 0.0
+    bond_class_1_test_precision: float = 0.0
+    bond_class_1_test_recall: float = 0.0
+    bond_class_2_best_threshold: float = 0.0
+    bond_class_2_test_f1: float = 0.0
+    bond_class_2_test_precision: float = 0.0
+    bond_class_2_test_recall: float = 0.0
+    bond_class_3_best_threshold: float = 0.0
+    bond_class_3_test_f1: float = 0.0
+    bond_class_3_test_precision: float = 0.0
+    bond_class_3_test_recall: float = 0.0
+    bond_class_4_best_threshold: float = 0.0
+    bond_class_4_test_f1: float = 0.0
+    bond_class_4_test_precision: float = 0.0
+    bond_class_4_test_recall: float = 0.0
+    bond_per_class_calibration_frac: float = 0.0
+    bond_per_class_seed: int = 0
+    bond_per_class_threshold_grid_size: int = 0
+    bond_per_class_test_macro_f1: float = 0.0
+    bond_per_class_n_classes_with_test_pos: int = 0
+    # Wf-A70 W2 (2026-10-17) Fix 8 — aux-MSE loss term (τ-scaled linear
+    # BO MSE on the discrete-head's per-pair prediction vs Wiberg
+    # target).  Tracked so a 30-epoch retrain can MEASURE whether τ<1
+    # (sharpening) actually moves this term, not just whether the total
+    # loss moves.  Default 0.0 = aux MSE off (Wf-A68 bit-exact path).
+    bond_aux_mse_term: float = 0.0
     gen_validity: float = 0.0
     gen_validity_val: int = 0
     gen_validity_n: int = 0
@@ -1618,6 +1686,31 @@ class CFMJointModel(nn.Module):
         # TODO/04_architecture/model_design.md (D-MPNN + EGNN hybrid fusion
         # target) and TODO/AUDIT_RESEARCH_GRADE.md §2.5.
         bond_predictor: str = "yuelbond",
+        # Wf-A70 W1 (2026-10-17) — Edge-MPNN bond head (Fix 6).
+        # ``n_edge_layers`` is the line-graph message-passing iteration
+        # count for :class:`YuelBondEdgeMPNNHead`.  Default 4 matches
+        # YuelBond B.1's recommended K for drug-like ligands.  At
+        # hidden_dim=64 / n_edge_layers=4 the head holds ~64.8K params
+        # (PROJECTED, MEASURED in
+        # ``molmetal/tests/test_yuelbond_edge_mpnn.py``); the legacy
+        # :class:`YuelBondDecoderHead` holds ~47.7K, so this is a
+        # ~1.36× widening.  Only consumed when ``bond_predictor=
+        # "yuelbond_edge_mpnn"``; for the legacy ``yuelbond`` path the
+        # parameter is bit-exact-ignored.
+        n_edge_layers: int = 4,
+        # Wf-A70 W2 (2026-10-17) — Fix 8: temperature τ on the
+        # softmax that converts the bond head's per-pair (E, 5) logits
+        # into the softmax-weighted class-centre expectation consumed
+        # by ``bond_aux_mse_term``.  Default 1.0 = bit-exact Wf-A68
+        # path (no sharpening, no smoothing).  τ<1 sharpens the
+        # softmax toward the argmax — minority classes (TRIPLE
+        # 0.08%, AROMATIC 0.7%) get sharper predictions and the
+        # linear-space MSE then rewards the head when it predicts
+        # close to (3.0) for true triples vs (1.0) for true singles.
+        # Only consumed when ``bond_aux_mse_weight > 0``; for the
+        # legacy 0-weight path the parameter is bit-exact-ignored
+        # (the stash lists stay empty).
+        bond_aux_temperature: float = 1.0,
         # Wf-A68 (2026-10-17) — bond-head residual skip (Spot 4).
         # Default OFF preserves Wf-A67 bit-exact compat.  When ON, the
         # BondOrderHead registers an extra Linear(hidden_dim, hidden_dim)
@@ -1725,6 +1818,25 @@ class CFMJointModel(nn.Module):
         # ContinuousBOLoss) so the two losses can run in parallel with
         # independent weights.
         self.last_bond_logits_bo_linear: List[torch.Tensor] = []
+        # Wf-A70 W2 (2026-10-17) — Fix 8: temperature τ on the aux-MSE
+        # softmax.  ``bond_aux_temperature=1.0`` is the Wf-A68 default
+        # (bit-exact no-temperature path).  At τ<1 the softmax is
+        # sharpened (minority-class logits get sharper predictions);
+        # at τ>1 it is smoothed.  Stored on the model so
+        # :meth:`_maybe_stash_bond_aux_bo_linear` reads the SAME
+        # value the trainer wrote — there is no separate flag path,
+        # because the head and the loss both consume this single
+        # attribute at the same call site.  Default 1.0 ⇒ the softmax
+        # input equals the head's raw logits, identical to the
+        # pre-Wf-A70-W2 path.
+        self.bond_aux_temperature: float = float(bond_aux_temperature)
+        # Wf-A70 W2 (2026-10-17) Fix 8 — aux-MSE loss term stash.
+        # Set by train_one_epoch after the per-batch loop (line ~4915)
+        # so the metric construction site can read the SCALAR term
+        # value (a 0-dim tensor) into EpochMetrics.bond_aux_mse_term.
+        # `None` means the term is OFF (Wf-A68 bit-exact path, the
+        # default when `bond_aux_mse_weight=0.0`).
+        self.last_bond_aux_mse_term: Optional[torch.Tensor] = None
         # 2026-10-09 — bond-predictor dispatch.  Both branches attach the
         # head to `self.head` and both expose (logits, (i_idx, j_idx)) from
         # forward(cloud), so the trainer's downstream code (assemble-aware
@@ -1767,10 +1879,28 @@ class CFMJointModel(nn.Module):
                 # checkpoints.
                 metal_set=str(bond_z_metal_set),
             )
+        elif str(bond_predictor).lower() == "yuelbond_edge_mpnn":
+            # Wf-A70 W1 (2026-10-17) — Fix 6: YuelBond B.1 edge-state
+            # message passing.  Drop-in sibling to YuelBondDecoderHead
+            # (same (logits, (i, j)) forward contract, same edge list,
+            # same param schema).  Param count ~64.8K at default
+            # (H=64, n_edge_layers=4, vocab=13) vs ~47.7K for the
+            # legacy atom-MPNN — the honest cost of the architecture
+            # swap.  Pass-through of (cutoff, z_table, metal_set) keeps
+            # the edge list identical to the legacy head so the rest
+            # of the trainer (assemble-aware loss, soft-valence,
+            # connectivity-prior) does not branch.
+            self.head = YuelBondEdgeMPNNHead(
+                hidden_dim=hidden_dim,
+                n_edge_layers=int(n_edge_layers),
+                cutoff=cutoff,
+                z_table=z_table,
+                metal_set=str(bond_z_metal_set),
+            )
         else:
             raise ValueError(
                 f"unknown bond_predictor {bond_predictor!r}; expected "
-                "'yuelbond' or 'dmpnn'"
+                "'yuelbond', 'yuelbond_edge_mpnn', or 'dmpnn'"
             )
         self.bond_predictor = str(bond_predictor).lower()
         self.z_dim = len(z_table)
@@ -2554,7 +2684,16 @@ class CFMJointModel(nn.Module):
         try:
             import torch.nn.functional as F  # noqa: N818 — deferred import
             centres = head_logits.new_tensor(BOND_CENTRES, dtype=head_logits.dtype)
-            probs = F.softmax(head_logits.detach(), dim=-1)
+            # Wf-A70 W2 (2026-10-17) — Fix 8: temperature τ on the
+            # softmax.  Default τ=1.0 keeps the Wf-A68 path
+            # bit-exact.  τ<1 sharpens (minority-class logits get
+            # more concentrated mass), τ>1 smooths.  Clamp the
+            # temperature to a positive range so a user typo
+            # (τ=0.0 / τ=-1.0) does not silently zero the gradient.
+            _tau = float(getattr(self, "bond_aux_temperature", 1.0))
+            if _tau <= 0.0 or not (_tau == _tau):  # NaN guard
+                _tau = 1.0
+            probs = F.softmax(head_logits.detach() / _tau, dim=-1)
             pred_bo_lin = (probs * centres).sum(dim=-1)  # (E,) Wiberg scale
             pred_bo = pred_bo_lin.unsqueeze(-1)  # (E, 1) linear-space
         except Exception:
@@ -3310,6 +3449,14 @@ def train_one_epoch(
     focal_bond_gamma: float = 2.0,
     bond_label_smoothing: float = 0.0,  # 0.0 = no smoothing (OFF)
     bond_aux_mse_weight: float = 0.0,  # 0.0 = no aux MSE (OFF)
+    # Wf-A70 W2 (2026-10-17) — Fix 8: temperature τ on the aux-MSE
+    # softmax inside `_maybe_stash_bond_aux_bo_linear`.  Default 1.0
+    # = bit-exact Wf-A68 (no temperature applied).  τ<1 sharpens,
+    # τ>1 smooths.  Stored on `model.bond_aux_temperature` so the
+    # stash method and the model attribute stay in lockstep.  Only
+    # consumed when `bond_aux_mse_weight > 0`; for the legacy
+    # 0-weight path this is bit-exact-ignored.
+    bond_aux_temperature: float = 1.0,  # 1.0 = no temperature (legacy)
     # 2026-10-04 NEW — flow-matching objective kwargs.  Default OFF so every
     # existing config and checkpoint is untouched until a caller opts in via
     # --use-fm-objective.  See the FM block in the loss cascade for why this
@@ -3521,6 +3668,11 @@ def train_one_epoch(
         # Wf-A27 (2026-10-13) step-4 — per-cloud clash-penalty stash.
         # Reset on every batch (parallel to ``last_q_preds``).
         model.last_clash_penalty_per_cloud = []
+        # Wf-A70 W2 (2026-10-17) Fix 8 — aux-MSE term stash reset.
+        # The actual value is set once at the end of the per-batch loop
+        # (line ~4915) after `bond_aux_mse_term` is computed from the
+        # concatenated `last_bond_logits_bo_linear` tensors.
+        model.last_bond_aux_mse_term = None
         for idx in batch_indices:
             cloud = train_clouds[int(idx)]
             # Move cloud to device by re-creating (AtomCloud has no
@@ -4840,6 +4992,13 @@ def train_one_epoch(
                 bond_aux_mse_term = torch.zeros((), device=device)
         else:
             bond_aux_mse_term = torch.zeros((), device=device)
+        # Wf-A70 W2 (2026-10-17) Fix 8 — stash the term on the model so
+        # EpochMetrics.bond_aux_mse_term can read it at metric construction.
+        # ``detach`` is required since the term was already added to the loss
+        # sum at line ~5219 and we don't want to keep the autograd graph.
+        # Always stash (even when 0.0) so a reader sees the "did the term
+        # run this epoch?" signal, not a missing field.
+        model.last_bond_aux_mse_term = bond_aux_mse_term.detach()
         qed_term = QEDLoss(
             weight=float(qed_loss_weight),
             enabled=float(qed_loss_weight) > 0.0,
@@ -6518,6 +6677,16 @@ def evaluate_bond_accuracy(
     # and answers exactly that.
     pair_scores: list[float] = []
     pair_is_true: list[int] = []
+    # Wf-A70 W1 (2026-10-17) Fix 7 — per-class held-out threshold
+    # calibration.  ``pair_probs`` is the per-pair softmax distribution
+    # over NUM_BOND_CLASSES, ``pair_truth_class`` is the per-pair
+    # ground-truth class (BOND_NO_BOND for pairs the corpus does NOT
+    # carry as truth-bonded).  Both have one entry per scored pair —
+    # parallel to ``pair_scores`` / ``pair_is_true`` above.  Accumulated
+    # as Python lists of tensors to keep the per-cloud defer-alloc
+    # behaviour and the per-pair lookup cheap.
+    pair_probs: List[torch.Tensor] = []
+    pair_truth_class: List[int] = []
     from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
         YuelBondDecoder,
     )
@@ -6581,6 +6750,15 @@ def evaluate_bond_accuracy(
             # P(bonded) = 1 - P(class 0), the threshold-free ranking score.
             prob = torch.softmax(yres.logits.float(), dim=-1)
             p_bonded = (1.0 - prob[:, BOND_NO_BOND]).tolist()
+            # Wf-A70 W1 (2026-10-17) Fix 7 — per-class held-out
+            # threshold calibration needs the FULL softmax distribution
+            # + the per-pair ground-truth class.  Stash the (E, 5) probs
+            # once per cloud; the (E,) truth-class array is built via
+            # the SAME (min, max) canonicalisation that pairs the head's
+            # edge list against the corpus's truth bonds.  The lookup
+            # default is BOND_NO_BOND (the corpus omits NO_BOND pairs
+            # entirely, so the absence of a key reads as NO_BOND).
+            pair_probs.append(prob.detach().cpu())
             for k, (s, d) in enumerate(
                 zip(edge_index[0].tolist(), edge_index[1].tolist())
             ):
@@ -6590,6 +6768,12 @@ def evaluate_bond_accuracy(
                 # class for it.  Note the truth dict is keyed by the SAME
                 # (min,max) canonicalisation, so this is a like-for-like test.
                 pair_is_true.append(1 if truth.get(key, 0) != 0 else 0)
+                # Wf-A70 W1 Fix 7 — the per-pair truth CLASS.  Reads 0
+                # (BOND_NO_BOND) for pairs the corpus omits; otherwise
+                # carries the Wiberg-typed class (1..4).  Kept as a
+                # flat list parallel to ``pair_scores`` so the per-class
+                # sweep does not re-iterate val_clouds.
+                pair_truth_class.append(int(truth.get(key, BOND_NO_BOND)))
 
             pred_set = {}
             pred_set_alt = {}
@@ -6669,7 +6853,29 @@ def evaluate_bond_accuracy(
     out["bond_type_macro_f1_pooled"] = float(sum(f1s) / len(f1s)) if f1s else 0.0
     out["bond_exact_type_rate"] = float(exact_type / n_scored) if n_scored else 0.0
     out["bond_type_n_classes"] = float(len(classes))
-    out.update(_bond_ranking_report(pair_scores, pair_is_true))
+    # Wf-A70 W2 (2026-10-17) Fix 9 — per-class threshold-free ranking
+    # report.  Replaces the legacy ``_bond_ranking_report(pair_scores,
+    # pair_is_true)`` call with the per-class version that consumes the
+    # same ``pair_probs`` / ``pair_truth_class`` accumulators the W1
+    # Fix 7 sweep already uses.  The legacy ``bond_pr_auc``,
+    # ``bond_positive_rate``, ``bond_best_f1_*`` field names are
+    # preserved by the new function (NO_BOND one-vs-rest AP ==
+    # existence AP ranking, same number) so every CSV / JSON consumer
+    # that reads those keys keeps working.  ``pair_scores`` /
+    # ``pair_is_true`` accumulators stay populated above; they are
+    # unused by the new function but kept so any future inline
+    # debug consumer has the legacy scalar view available.
+    out.update(_bond_ranking_report_per_class(pair_probs, pair_truth_class))
+    # Wf-A70 W1 (2026-10-17) Fix 7 — per-class held-out threshold
+    # calibration.  Operates on the (pair_probs, pair_truth_class)
+    # accumulators built above; reports best-threshold + test F1 per
+    # class.  Eval-only — does NOT modify :func:`bond_decision` (the
+    # production decoding rule keeps its single-threshold rule, see
+    # :class:`YuelBondBondDecoder._select_bonds`).  Distinct from
+    # ``_bond_held_out_threshold_sweep`` (existence-only) and from
+    # ``_bond_ranking_report`` (threshold-free); both of those stay in
+    # the report for backward compatibility.
+    out.update(_bond_per_class_threshold_sweep(pair_probs, pair_truth_class))
     # Wf-A68 (2026-10-17) Spot 7 — held-out threshold sweep.  When the
     # caller passed a threshold_grid via YAML
     # `flow.bond_decision_threshold_sweep`, sweep that grid on these pair
@@ -6700,6 +6906,11 @@ def _bond_ranking_report(
     is chosen on the same pairs it is scored on.  It is a ceiling on what
     threshold calibration could buy, not a reportable result.  Picking a
     production threshold requires a held-out split.
+
+    Backward-compat wrapper for the original signature — :func:`_bond_ranking_report_per_class`
+    is the production entry point used by ``evaluate_bond_accuracy`` (it
+    emits per-class PR-AUC fields while preserving every legacy field name
+    this function returns).
     """
     n = len(scores)
     if n == 0 or sum(is_true) == 0:
@@ -6709,33 +6920,7 @@ def _bond_ranking_report(
             "bond_best_f1_at_threshold": 0.0,
             "bond_pr_auc_note": "no scored pairs or no positives",
         }
-    total_pos = sum(is_true)
-    # Average precision as the area under the precision-recall curve, stepped
-    # at each UNIQUE score.  The "mean of precision@k at the positive ranks"
-    # formulation is the same number when scores are distinct — softmax
-    # probabilities essentially always are — but it is order-dependent under
-    # ties, and a run of equal scores would then be scored by whatever order
-    # the pairs happened to arrive in.  Constant scores must yield the base
-    # rate, which is what a block formulation gives and the rank-average does
-    # not (MEASURED: it returned 1.0 for all-equal scores).
-    pairs = sorted(zip(scores, is_true), key=lambda x: -x[0])
-    ap = 0.0
-    tp = fp = 0
-    prev_recall = 0.0
-    i = 0
-    while i < len(pairs):
-        j = i
-        while j < len(pairs) and pairs[j][0] == pairs[i][0]:
-            if pairs[j][1]:
-                tp += 1
-            else:
-                fp += 1
-            j += 1
-        prec_t = tp / max(tp + fp, 1)
-        rec_t = tp / total_pos
-        ap += (rec_t - prev_recall) * prec_t
-        prev_recall = rec_t
-        i = j
+    ap = _bond_average_precision_block(list(scores), list(is_true))
 
     best_f1 = 0.0
     best_t = 0.0
@@ -6754,6 +6939,7 @@ def _bond_ranking_report(
         f1_t = 2 * p_t * r_t / max(p_t + r_t, 1e-9)
         if f1_t > best_f1:
             best_f1, best_t = f1_t, t
+    total_pos = sum(is_true)
     # Wf-A68 (2026-10-17) — Spot 7: explicit held-out threshold sweep.
     # The ``bond_best_f1_*`` fields above are OPTIMISTIC (selected on the
     # same pairs they score on) — a ceiling, not a result.  When the
@@ -6780,6 +6966,214 @@ def _bond_ranking_report(
             "passed a held-out split."
         ),
     }
+
+
+def _bond_average_precision_block(
+    scores: Sequence[float], is_true: Sequence[int]
+) -> float:
+    """Average precision under the same block-stepped formulation used by
+    :func:`_bond_ranking_report`.
+
+    Computed as the area under the precision-recall curve, stepped at each
+    UNIQUE score.  The "mean of precision@k at the positive ranks"
+    formulation is the same number when scores are distinct — softmax
+    probabilities essentially always are — but it is order-dependent under
+    ties, and a run of equal scores would then be scored by whatever order
+    the pairs happened to arrive in.  Constant scores must yield the base
+    rate, which is what a block formulation gives and the rank-average does
+    not (MEASURED: it returned 1.0 for all-equal scores).
+
+    Returns 0.0 for an empty input or zero-positives input.
+
+    Wf-A70 W2 (2026-10-17) — Fix 9: lifted out of
+    :func:`_bond_ranking_report` so the new per-class entry point
+    :func:`_bond_ranking_report_per_class` can reuse the SAME block
+    (5 bond classes × 1 AP call each).  Identical formulation — only
+    the call site moved.
+    """
+    n = len(scores)
+    if n == 0 or sum(is_true) == 0:
+        return 0.0
+    total_pos = sum(is_true)
+    pairs = sorted(zip(scores, is_true), key=lambda x: -x[0])
+    ap = 0.0
+    tp = fp = 0
+    prev_recall = 0.0
+    i = 0
+    while i < len(pairs):
+        j = i
+        while j < len(pairs) and pairs[j][0] == pairs[i][0]:
+            if pairs[j][1]:
+                tp += 1
+            else:
+                fp += 1
+            j += 1
+        prec_t = tp / max(tp + fp, 1)
+        rec_t = tp / total_pos
+        ap += (rec_t - prev_recall) * prec_t
+        prev_recall = rec_t
+        i = j
+    return float(ap)
+
+
+def _bond_ranking_report_per_class(
+    pair_probs: Sequence[torch.Tensor],
+    pair_truth_class: Sequence[int],
+) -> Dict[str, float]:
+    """Wf-A70 W2 (2026-10-17) Fix 9 — per-class threshold-free ranking.
+
+    For each bond class c in {BOND_NO_BOND, BOND_SINGLE, BOND_DOUBLE,
+    BOND_TRIPLE, BOND_AROMATIC} (= {0, 1, 2, 3, 4}), compute average
+    precision (PR-AUC) using the per-pair softmax probability
+    ``prob[:, c]`` as the score and ``(truth == c)`` as the one-vs-rest
+    binary label.  Reuses :func:`_bond_average_precision_block` — the
+    SAME block :func:`_bond_ranking_report` uses for the existence
+    PR-AUC, just invoked once per class.
+
+    Emits the legacy fields for backward compat (every existing
+    CSV/JSON consumer that reads ``bond_pr_auc`` / ``bond_positive_rate``
+    / ``bond_n_pairs_scored`` keeps working) AND the new per-class
+    fields:
+
+      * ``bond_class_{c}_pr_auc`` — per-class AP (one-vs-rest)
+      * ``bond_class_{c}_pos_rate`` — fraction of pairs with truth=c
+      * ``bond_class_{c}_n_pos`` — count of class-c pairs (so a
+        reader sees the support; TRIPLE has ~9 pairs / cloud so the
+        variance is high)
+
+    Backward-compat invariant: ``bond_pr_auc`` ==
+    ``bond_class_0_pr_auc`` (NO_BOND one-vs-rest AP), the same number
+    the legacy existence AP reported, just exposed under a class-keyed
+    field name.  ``bond_positive_rate`` keeps the legacy semantic
+    (fraction of pairs that are NOT NO_BOND) — distinct from the new
+    per-class ``pos_rate`` (fraction of pairs that ARE class c).
+
+    Why per-class matters.  The legacy ``bond_pr_auc`` collapses to
+    existence — a high number can hide that the head never ranks
+    TRIPLE / AROMATIC above SINGLE.  With TRIPLE=0.08% / AROMATIC=0.7%
+    priors, the head's minority-class ranking is invisible inside a
+    single PR-AUC number that says "bonds vs not-bonds".  Per-class
+    AP separates the five classes; TRIPLE's per-class AP tells the
+    reader whether the head can rank triples at all (a 95% NO_BOND
+    prior means even a constant ranker hits 0.08% — TRIPLE AP > 0.10
+    is real signal).
+    """
+    # Class ids — match :data:`molmetal.models.bond_head` constants.
+    # BOND_DOUBLE / BOND_TRIPLE are inlined as the numeric literal
+    # because the trainer's molmetal.models import set does not
+    # include them (only BOND_NO_BOND / BOND_SINGLE / BOND_AROMATIC
+    # are imported at line 659-665 above).  Mirrors the pattern used
+    # by :func:`_bond_per_class_threshold_sweep` (the W1 Fix 7 sister).
+    class_ids = (
+        BOND_NO_BOND,  # 0
+        BOND_SINGLE,  # 1
+        2,  # BOND_DOUBLE
+        3,  # BOND_TRIPLE
+        BOND_AROMATIC,  # 4
+    )
+    if len(pair_probs) == 0:
+        out: Dict[str, float] = {
+            "bond_pr_auc": 0.0,
+            "bond_best_f1_threshold": 0.0,
+            "bond_best_f1_at_threshold": 0.0,
+            "bond_n_pairs_scored": 0.0,
+            "bond_positive_rate": 0.0,
+            "bond_pr_auc_note": "no scored pairs",
+            "bond_per_class_macro_pr_auc": 0.0,
+            "bond_per_class_n_classes_with_pos": 0.0,
+            "bond_per_class_n_pairs": 0.0,
+        }
+        for c in class_ids:
+            out[f"bond_class_{int(c)}_pr_auc"] = 0.0
+            out[f"bond_class_{int(c)}_pos_rate"] = 0.0
+            out[f"bond_class_{int(c)}_n_pos"] = 0.0
+        return out
+    probs = torch.cat(pair_probs, dim=0)  # (E_total, 5)
+    truth = torch.as_tensor(pair_truth_class, dtype=torch.long)  # (E_total,)
+    n = int(probs.shape[0])
+    if probs.shape[0] != truth.shape[0]:
+        raise RuntimeError(
+            f"_bond_ranking_report_per_class: pair_probs ({probs.shape[0]} "
+            f"pairs) and pair_truth_class ({truth.shape[0]} pairs) disagree "
+            f"on length.  Wf-A68-style mismatch assert."
+        )
+    if probs.shape[1] != len(class_ids):
+        raise RuntimeError(
+            f"_bond_ranking_report_per_class: pair_probs has {probs.shape[1]} "
+            f"classes but expected {len(class_ids)}; the head's NUM_BOND_CLASSES "
+            f"drifted from the trainer's class-id tuple."
+        )
+    out = {"bond_n_pairs_scored": float(n)}
+    for c in class_ids:
+        scores_c = probs[:, int(c)].tolist()
+        is_true_c = (truth == int(c)).long().tolist()
+        n_pos = int(sum(is_true_c))
+        ap = _bond_average_precision_block(scores_c, is_true_c)
+        out[f"bond_class_{int(c)}_pr_auc"] = float(ap)
+        out[f"bond_class_{int(c)}_pos_rate"] = float(n_pos / max(n, 1))
+        out[f"bond_class_{int(c)}_n_pos"] = float(n_pos)
+    # Backward-compat: NO_BOND one-vs-rest PR-AUC == legacy existence AP
+    # ranking (a positive has prob[:,0] < threshold, a negative has prob[:,0]
+    # > threshold; reversing the score is monotone so the ranking is
+    # identical, and the resulting AP is the same number).  ``bond_pr_auc``
+    # preserves the legacy field name.
+    out["bond_pr_auc"] = out[f"bond_class_{int(BOND_NO_BOND)}_pr_auc"]
+    # Legacy ``bond_positive_rate`` = fraction of pairs that are NOT
+    # NO_BOND (existence), distinct from the new per-class pos_rate
+    # (fraction that ARE class c).  Computed from the same probs/truth.
+    n_not_no_bond = int((truth != int(BOND_NO_BOND)).sum().item())
+    out["bond_positive_rate"] = float(n_not_no_bond / max(n, 1))
+    # Optimistic best-F1 (legacy field, kept for backward compat — same
+    # OPTIMISTIC note as the original _bond_ranking_report): sweep a
+    # single threshold over the existence score (1 - prob[:, NO_BOND])
+    # on the SAME pairs it scores on.  This is the SAME block the
+    # original function ran, just on the existence view rather than
+    # per-class.  The ``bond_best_f1_*`` fields remain a CEILING — see
+    # ``bond_pr_auc_note``.
+    existence_scores = (1.0 - probs[:, int(BOND_NO_BOND)]).tolist()
+    existence_is_true = (truth != int(BOND_NO_BOND)).long().tolist()
+    best_f1 = 0.0
+    best_t = 0.0
+    for t_tenth in range(5, 100, 5):
+        t = t_tenth / 100.0
+        tp_t = fp_t = fn_t = 0
+        for s, lab in zip(existence_scores, existence_is_true):
+            if s >= t:
+                if lab:
+                    tp_t += 1
+                else:
+                    fp_t += 1
+            elif lab:
+                fn_t += 1
+        p_t = tp_t / max(tp_t + fp_t, 1)
+        r_t = tp_t / max(tp_t + fn_t, 1)
+        f1_t = 2 * p_t * r_t / max(p_t + r_t, 1e-9)
+        if f1_t > best_f1:
+            best_f1, best_t = f1_t, t
+    out["bond_best_f1_threshold"] = float(best_t)
+    out["bond_best_f1_at_threshold"] = float(best_f1)
+    # Macro AP across classes with at least one positive (otherwise the
+    # class is too rare to be informative; TRIPLE on cfm_5metal_default
+    # has only ~9 pairs / cloud).
+    aps_with_pos: List[float] = []
+    for c in class_ids:
+        if out[f"bond_class_{int(c)}_n_pos"] > 0:
+            aps_with_pos.append(out[f"bond_class_{int(c)}_pr_auc"])
+    out["bond_per_class_macro_pr_auc"] = (
+        float(sum(aps_with_pos) / len(aps_with_pos)) if aps_with_pos else 0.0
+    )
+    out["bond_per_class_n_classes_with_pos"] = float(len(aps_with_pos))
+    out["bond_per_class_n_pairs"] = float(n)
+    out["bond_pr_auc_note"] = (
+        "bond_pr_auc is threshold-free (honest). "
+        "bond_best_f1_* are selected on the same pairs (OPTIMISTIC — a "
+        "ceiling, not a result).  bond_class_{c}_pr_auc are per-class "
+        "one-vs-rest AP (Fix 9); bond_per_class_macro_pr_auc averages "
+        "them over classes with at least one positive.  bond_positive_rate "
+        "is the legacy existence fraction; bond_class_{c}_pos_rate is the "
+        "per-class fraction (different concept)."
+    )
+    return out
 
 
 def _bond_held_out_threshold_sweep(
@@ -6838,6 +7232,165 @@ def _bond_held_out_threshold_sweep(
         "bond_held_out_threshold_grid_size": float(len(out_grid)),
         "bond_held_out_threshold_grid": [float(t) for t in out_grid],
     }
+
+
+# ---------------------------------------------------------------------------
+# Wf-A70 W1 (2026-10-17) Fix 7 — per-class held-out threshold calibration
+# ---------------------------------------------------------------------------
+def _bond_per_class_threshold_sweep(
+    pair_probs: Sequence[torch.Tensor],
+    pair_truth_class: Sequence[int],
+    *,
+    threshold_grid: Sequence[float] = (
+        0.05,
+        0.10,
+        0.15,
+        0.20,
+        0.25,
+        0.30,
+        0.40,
+        0.50,
+    ),
+    calibration_frac: float = 0.5,
+    seed: int = 0,
+) -> Dict[str, float]:
+    """Per-class held-out threshold calibration.
+
+    Split the scored pairs into a calibration half and a held-out test
+    half (50/50 by default, deterministic under ``seed``).  For each
+    bond class c (BOND_NO_BOND, SINGLE, DOUBLE, TRIPLE, AROMATIC):
+
+      1. Sweep ``threshold_grid`` over ``probs[:, c]`` on the
+         calibration half; pick the threshold that maximises F1 for
+         the binary "is class c" task (one-vs-rest).
+      2. Evaluate the picked threshold on the held-out test half;
+         report test precision, recall, F1, and the picked
+         threshold itself.
+
+    Honest framing per AGENTS.md §5.2: the calibration half is in-sample
+    (the picked threshold is optimistic by construction) but the test
+    half is held out from the threshold selection, so the reported test
+    F1 is the honest production number for that class.  This is the same
+    cal/test split that any standard isotonic / Platt calibrator uses,
+    applied per-class instead of on existence.
+
+    Why per-class matters.  ``_bond_held_out_threshold_sweep`` sweeps a
+    scalar ``P(bonded) >= t`` over a 95% NO_BOND prior — a single global
+    threshold that trades SINGLE precision for SINGLE recall in one
+    direction.  With NO_BOND=95%, SINGLE=3.5%, DOUBLE=0.7%, TRIPLE=0.08%,
+    AROMATIC=0.7%, the operating point should be per-class: lower
+    threshold for minority classes, higher for SINGLE to recover
+    precision.  Per-class calibration recovers this depth without
+    changing the head.
+
+    Pre-Wf-A70 W1 the only per-class signal in the report was
+    ``bond_type_macro_f1_pooled`` (the existing-class-only F1), which
+    could move between epochs for two reasons — better calibration OR
+    better ranking.  The per-class held-out sweep separates the two.
+
+    Parameters
+    ----------
+    pair_probs : sequence of ``(E_k, NUM_BOND_CLASSES)`` tensors
+        Per-pair softmax distribution, accumulated across the val set
+        by :func:`evaluate_bond_accuracy`.  Concatenated internally.
+    pair_truth_class : sequence of int
+        Per-pair ground-truth class (BOND_NO_BOND for pairs the corpus
+        omits).  Parallel to ``pair_probs``.
+    threshold_grid : sequence of float
+        Per-class threshold candidates.  Default biased toward the
+        95% NO_BOND prior (0.05..0.50).
+    calibration_frac : float
+        Fraction of pairs assigned to the calibration half.  Default 0.5
+        gives the test half enough mass for minority classes (TRIPLE has
+        ~9 pairs / cloud on average; without a fixed test half the test
+        half of TRIPLE could be zero).
+    """
+    if len(pair_probs) == 0 or len(pair_truth_class) == 0:
+        return {"bond_per_class_n_pairs": 0.0}
+    probs = torch.cat(pair_probs, dim=0)  # (E_total, 5)
+    truth = torch.as_tensor(pair_truth_class, dtype=torch.long)  # (E_total,)
+    n = int(probs.shape[0])
+    if n == 0:
+        return {"bond_per_class_n_pairs": 0.0}
+    if probs.shape[0] != truth.shape[0]:
+        raise RuntimeError(
+            f"_bond_per_class_threshold_sweep: pair_probs ({probs.shape[0]} "
+            f"pairs) and pair_truth_class ({truth.shape[0]} pairs) disagree "
+            f"on length.  This is the Wf-A68-style mismatch assert — the "
+            f"per-class sweep cannot run on misaligned accumulators."
+        )
+    perm = torch.randperm(n, generator=torch.Generator().manual_seed(int(seed)))
+    cut = int(float(calibration_frac) * n)
+    cut = max(1, min(n - 1, cut))
+    cal_idx = perm[:cut]
+    test_idx = perm[cut:]
+    grid = sorted({float(t) for t in threshold_grid})
+    out: Dict[str, float] = {
+        "bond_per_class_n_pairs": float(n),
+        "bond_per_class_n_calibration": float(cut),
+        "bond_per_class_n_test": float(n - cut),
+        "bond_per_class_calibration_frac": float(calibration_frac),
+        "bond_per_class_seed": float(seed),
+        "bond_per_class_threshold_grid_size": float(len(grid)),
+        "bond_per_class_threshold_grid": [float(t) for t in grid],
+    }
+    class_names = (
+        BOND_NO_BOND,
+        BOND_SINGLE,
+        2,  # BOND_DOUBLE — keep the numeric literal because
+            # BOND_DOUBLE is not in the trainer's molmetal.models
+            # import set; the value matches molmetal.models.bond_head.
+        3,  # BOND_TRIPLE
+        BOND_AROMATIC,
+    )
+    for c in class_names:
+        scores_c = probs[:, int(c)]
+        # Calibration: sweep thresholds, pick max-F1.
+        cal_scores = scores_c[cal_idx]
+        cal_truth_one_vs_rest = (truth[cal_idx] == int(c))
+        best_f1 = -1.0
+        best_t = 0.5
+        for t in grid:
+            pred_pos = cal_scores >= t
+            tp = int((pred_pos & cal_truth_one_vs_rest).sum().item())
+            fp = int((pred_pos & ~cal_truth_one_vs_rest).sum().item())
+            fn = int((~pred_pos & cal_truth_one_vs_rest).sum().item())
+            p_t = tp / max(tp + fp, 1)
+            r_t = tp / max(tp + fn, 1)
+            f1_t = 2 * p_t * r_t / max(p_t + r_t, 1e-9)
+            if f1_t > best_f1:
+                best_f1, best_t = f1_t, float(t)
+        # Test evaluation on the held-out half.
+        test_scores = scores_c[test_idx]
+        test_truth_one_vs_rest = (truth[test_idx] == int(c))
+        pred_pos = test_scores >= best_t
+        tp_t = int((pred_pos & test_truth_one_vs_rest).sum().item())
+        fp_t = int((pred_pos & ~test_truth_one_vs_rest).sum().item())
+        fn_t = int((~pred_pos & test_truth_one_vs_rest).sum().item())
+        p_test = tp_t / max(tp_t + fp_t, 1)
+        r_test = tp_t / max(tp_t + fn_t, 1)
+        f1_test = 2 * p_test * r_test / max(p_test + r_test, 1e-9)
+        out[f"bond_class_{int(c)}_best_threshold"] = float(best_t)
+        out[f"bond_class_{int(c)}_cal_f1"] = float(max(best_f1, 0.0))
+        out[f"bond_class_{int(c)}_test_f1"] = float(f1_test)
+        out[f"bond_class_{int(c)}_test_precision"] = float(p_test)
+        out[f"bond_class_{int(c)}_test_recall"] = float(r_test)
+        out[f"bond_class_{int(c)}_test_n_pos"] = float(int(test_truth_one_vs_rest.sum().item()))
+        out[f"bond_class_{int(c)}_test_n_pred_pos"] = float(int(pred_pos.sum().item()))
+    # Aggregate test macro-F1 across classes with at least one positive in
+    # the test half (otherwise the class is too rare to be informative;
+    # e.g. TRIPLE on cfm_5metal_default has only ~9 pairs / cloud).
+    f1s_test: List[float] = []
+    for c in class_names:
+        f1_c = out[f"bond_class_{int(c)}_test_f1"]
+        n_pos = out[f"bond_class_{int(c)}_test_n_pos"]
+        if n_pos > 0:
+            f1s_test.append(f1_c)
+    out["bond_per_class_test_macro_f1"] = (
+        float(sum(f1s_test) / len(f1s_test)) if f1s_test else 0.0
+    )
+    out["bond_per_class_n_classes_with_test_pos"] = float(len(f1s_test))
+    return out
 
 
 def evaluate_decode_ratio(
@@ -7865,6 +8418,23 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--bond-aux-temperature",
+        dest="bond_aux_temperature",
+        type=float,
+        default=1.0,
+        help=(
+            "2026-10-17 NEW (Wf-A70 W2 Fix 8): temperature τ on the softmax "
+            "inside `_maybe_stash_bond_aux_bo_linear`.  Sharpen (τ<1) the "
+            "softmax-weighted class-centre expectation vs the raw Wiberg "
+            "target so minority classes (TRIPLE 0.08%%, AROMATIC 0.7%%) get "
+            "sharper predictions; smooth (τ>1) the other way.  Default τ=1.0 "
+            "preserves Wf-A68 bit-exact behavior (no temperature).  Only "
+            "consumed when `--bond-aux-mse-weight > 0`; the legacy 0-weight "
+            "path is bit-exact-ignored.  Try 0.5 to sharpen, 2.0 to smooth.  "
+            "Negative or zero values are clamped to 1.0 with a stderr warning."
+        ),
+    )
+    p.add_argument(
         "--bond-aromatic-logit-bias",
         dest="bond_aromatic_logit_bias",
         type=float,
@@ -7926,7 +8496,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--bond-predictor",
         dest="bond_predictor",
-        choices=("yuelbond", "dmpnn"),
+        choices=("yuelbond", "dmpnn", "yuelbond_edge_mpnn"),
         default="yuelbond",
         help=(
             "2026-10-09 NEW (BLK-C5 follow-up, user voice 'dmpnn按理来说不是"
@@ -7940,14 +8510,38 @@ def parse_args() -> argparse.Namespace:
             "is replaced by per-edge message-passing, which the user "
             "expects to handle the 5-way bond-type classification more "
             "faithfully than the atom-centered message-passing YuelBond "
-            "uses. Reference: TODO/04_architecture/model_design.md (D-MPNN "
+            "uses. 'yuelbond_edge_mpnn' (Wf-A70 W1 2026-10-17 Fix 6) "
+            "is the YuelBond B.1 line-graph edge-state MPNN — same "
+            "atom-MPNN contract as 'yuelbond' but the message-passing "
+            "loop runs on edge hidden states with neighbour-max over "
+            "edges sharing a vertex.  Param count ~64.8K at default "
+            "(H=64, n_edge_layers=4) vs ~47.7K for 'yuelbond'. "
+            "Reference: TODO/04_architecture/model_design.md (D-MPNN "
             "+ EGNN hybrid fusion, 2D bond graph + 3D coords) and "
             "TODO/AUDIT_RESEARCH_GRADE.md §2.5 (research-grade target). "
             "Default-off so every existing wrapper and checkpoint loads "
             "bit-exactly through the yuelbond path; --bond-predictor=dmpnn "
-            "is the opt-in D-MPNN path. Initialisation is from random "
-            "weights either way; pass --resume-from to load an existing "
-            "checkpoint. §5.7 50-step CPU smoke covers both paths."
+            "or --bond-predictor=yuelbond_edge_mpnn are opt-in. "
+            "Initialisation is from random weights either way; pass "
+            "--resume-from to load an existing checkpoint. §5.7 50-step "
+            "CPU smoke covers all three paths."
+        ),
+    )
+    p.add_argument(
+        "--n-edge-layers",
+        dest="n_edge_layers",
+        type=int,
+        default=4,
+        help=(
+            "Wf-A70 W1 (2026-10-17) Fix 6: line-graph message-passing "
+            "iteration count for :class:`YuelBondEdgeMPNNHead`.  Default 4 "
+            "matches YuelBond B.1's K=4 recommendation for drug-like "
+            "ligands.  Only consumed when ``--bond-predictor="
+            "yuelbond_edge_mpnn`` is selected; the legacy "
+            ":class:`YuelBondDecoderHead` uses ``--n-layers`` instead.  "
+            "Param count at hidden_dim=64: K=3 ~50.4K, K=4 ~64.8K, K=5 "
+            "~79.2K (atom_encoder 896 + pair_head 4,677 + edge_init "
+            "8,512 + K*12,672).  Bit-exact-ignored on the legacy path."
         ),
     )
     p.add_argument(
@@ -10882,6 +11476,10 @@ def main() -> int:
         ),
         # 2026-10-09 NEW (BLK-C5 follow-up) — bond-predictor dispatch.
         bond_predictor=str(getattr(args, "bond_predictor", "yuelbond")),
+        # Wf-A70 W1 (2026-10-17) Fix 6 — Edge-MPNN head line-graph K.
+        # Default 4 keeps the Wf-A70 expected param count.  Bit-exact
+        # ignored on the legacy ``yuelbond`` / ``dmpnn`` paths.
+        n_edge_layers=int(getattr(args, "n_edge_layers", 4)),
         # Wf-A68 (2026-10-17) — bond-head residual skip (Spot 4).
         # Default OFF preserves Wf-A67 bit-exact compat.  YAML
         # `flow.use_bond_head_skip` maps here via apply_yaml_overrides.
@@ -11924,6 +12522,10 @@ def main() -> int:
             focal_bond_gamma=float(getattr(args, "focal_bond_gamma", 2.0)),
             bond_label_smoothing=float(getattr(args, "bond_label_smoothing", 0.0)),
             bond_aux_mse_weight=float(getattr(args, "bond_aux_mse_weight", 0.0)),
+            # Wf-A70 W2 (2026-10-17) — Fix 8: temperature τ on the
+            # aux-MSE softmax inside the per-cloud stash.
+            # Default 1.0 = bit-exact Wf-A68 (no temperature applied).
+            bond_aux_temperature=float(getattr(args, "bond_aux_temperature", 1.0)),
             # Wf-406-A2 — pass Lambda × CFM coupling kwargs through;
             # defaults preserve Wf-388-A3 / Wf-397-A2 OFF semantics
             # (1 + 0 * 0 = 1 → bit-for-bit backward compat).
@@ -12918,6 +13520,131 @@ def main() -> int:
             bond_exact_type_rate=float(
                 _bond_acc.get("bond_exact_type_rate", 0.0)
             ),
+            # Wf-A70 W2 (2026-10-17) Fix 9 — per-class PR-AUC plumbing.
+            # Source dict emits `n_pos` as float; we coerce to int here
+            # since these are COUNTS (one-vs-rest positives for class c).
+            # Coercion happens via `int(float(...))` so a non-integer
+            # emission (which would be a bug) gets caught at the cast.
+            bond_class_0_pr_auc=float(_bond_acc.get("bond_class_0_pr_auc", 0.0)),
+            bond_class_0_pos_rate=float(_bond_acc.get("bond_class_0_pos_rate", 0.0)),
+            bond_class_0_n_pos=int(float(_bond_acc.get("bond_class_0_n_pos", 0.0))),
+            bond_class_1_pr_auc=float(_bond_acc.get("bond_class_1_pr_auc", 0.0)),
+            bond_class_1_pos_rate=float(_bond_acc.get("bond_class_1_pos_rate", 0.0)),
+            bond_class_1_n_pos=int(float(_bond_acc.get("bond_class_1_n_pos", 0.0))),
+            bond_class_2_pr_auc=float(_bond_acc.get("bond_class_2_pr_auc", 0.0)),
+            bond_class_2_pos_rate=float(_bond_acc.get("bond_class_2_pos_rate", 0.0)),
+            bond_class_2_n_pos=int(float(_bond_acc.get("bond_class_2_n_pos", 0.0))),
+            bond_class_3_pr_auc=float(_bond_acc.get("bond_class_3_pr_auc", 0.0)),
+            bond_class_3_pos_rate=float(_bond_acc.get("bond_class_3_pos_rate", 0.0)),
+            bond_class_3_n_pos=int(float(_bond_acc.get("bond_class_3_n_pos", 0.0))),
+            bond_class_4_pr_auc=float(_bond_acc.get("bond_class_4_pr_auc", 0.0)),
+            bond_class_4_pos_rate=float(_bond_acc.get("bond_class_4_pos_rate", 0.0)),
+            bond_class_4_n_pos=int(float(_bond_acc.get("bond_class_4_n_pos", 0.0))),
+            bond_per_class_macro_pr_auc=float(
+                _bond_acc.get("bond_per_class_macro_pr_auc", 0.0)
+            ),
+            bond_per_class_n_classes_with_pos=int(
+                float(_bond_acc.get("bond_per_class_n_classes_with_pos", 0.0))
+            ),
+            bond_per_class_n_pairs=int(
+                float(_bond_acc.get("bond_per_class_n_pairs", 0.0))
+            ),
+            # Wf-A70 W1 (2026-10-17) Fix 7 — per-class held-out threshold
+            # calibration plumbing.  `best_threshold` is float (the chosen
+            # decision boundary on the cal half); `test_f1/precision/recall`
+            # are the honest numbers on the held-out half.
+            bond_class_0_best_threshold=float(
+                _bond_acc.get("bond_class_0_best_threshold", 0.0)
+            ),
+            bond_class_0_test_f1=float(
+                _bond_acc.get("bond_class_0_test_f1", 0.0)
+            ),
+            bond_class_0_test_precision=float(
+                _bond_acc.get("bond_class_0_test_precision", 0.0)
+            ),
+            bond_class_0_test_recall=float(
+                _bond_acc.get("bond_class_0_test_recall", 0.0)
+            ),
+            bond_class_1_best_threshold=float(
+                _bond_acc.get("bond_class_1_best_threshold", 0.0)
+            ),
+            bond_class_1_test_f1=float(
+                _bond_acc.get("bond_class_1_test_f1", 0.0)
+            ),
+            bond_class_1_test_precision=float(
+                _bond_acc.get("bond_class_1_test_precision", 0.0)
+            ),
+            bond_class_1_test_recall=float(
+                _bond_acc.get("bond_class_1_test_recall", 0.0)
+            ),
+            bond_class_2_best_threshold=float(
+                _bond_acc.get("bond_class_2_best_threshold", 0.0)
+            ),
+            bond_class_2_test_f1=float(
+                _bond_acc.get("bond_class_2_test_f1", 0.0)
+            ),
+            bond_class_2_test_precision=float(
+                _bond_acc.get("bond_class_2_test_precision", 0.0)
+            ),
+            bond_class_2_test_recall=float(
+                _bond_acc.get("bond_class_2_test_recall", 0.0)
+            ),
+            bond_class_3_best_threshold=float(
+                _bond_acc.get("bond_class_3_best_threshold", 0.0)
+            ),
+            bond_class_3_test_f1=float(
+                _bond_acc.get("bond_class_3_test_f1", 0.0)
+            ),
+            bond_class_3_test_precision=float(
+                _bond_acc.get("bond_class_3_test_precision", 0.0)
+            ),
+            bond_class_3_test_recall=float(
+                _bond_acc.get("bond_class_3_test_recall", 0.0)
+            ),
+            bond_class_4_best_threshold=float(
+                _bond_acc.get("bond_class_4_best_threshold", 0.0)
+            ),
+            bond_class_4_test_f1=float(
+                _bond_acc.get("bond_class_4_test_f1", 0.0)
+            ),
+            bond_class_4_test_precision=float(
+                _bond_acc.get("bond_class_4_test_precision", 0.0)
+            ),
+            bond_class_4_test_recall=float(
+                _bond_acc.get("bond_class_4_test_recall", 0.0)
+            ),
+            bond_per_class_calibration_frac=float(
+                _bond_acc.get("bond_per_class_calibration_frac", 0.5)
+            ),
+            bond_per_class_seed=int(
+                float(_bond_acc.get("bond_per_class_seed", 0.0))
+            ),
+            bond_per_class_threshold_grid_size=int(
+                float(_bond_acc.get("bond_per_class_threshold_grid_size", 0.0))
+            ),
+            bond_per_class_test_macro_f1=float(
+                _bond_acc.get("bond_per_class_test_macro_f1", 0.0)
+            ),
+            bond_per_class_n_classes_with_test_pos=int(
+                float(
+                    _bond_acc.get(
+                        "bond_per_class_n_classes_with_test_pos", 0.0
+                    )
+                )
+            ),
+            # Wf-A70 W2 (2026-10-17) Fix 8 — aux-MSE loss term tracking.
+            # Read from `model.last_bond_aux_mse_term` which is set by
+            # train_one_epoch after the per-batch loop (see line 4915).
+            # Default 0.0 when the term is OFF (Wf-A68 bit-exact path) OR
+            # when the field is missing (eval-only epoch, etc.).
+            bond_aux_mse_term=float(
+                (
+                    model.last_bond_aux_mse_term.item()
+                    if getattr(model, "last_bond_aux_mse_term", None)
+                    is not None
+                    else 0.0
+                )
+            ),
             gen_validity=_gen_ok / max(_gen_tot, 1),
             gen_validity_val=_gen_ok,
             gen_validity_n=_gen_tot,
@@ -12984,6 +13711,25 @@ def main() -> int:
                 bond_recall=float(_bond_acc.get("bond_recall", 0.0)),
                 bond_exact_type_rate=float(
                     _bond_acc.get("bond_exact_type_rate", 0.0)
+                ),
+                # Wf-A70 W3 (2026-10-18) — per-class PR-AUC + macro F1
+                # in events.jsonl so the TUI dashboard can chart the
+                # Fix 9 (per-class ranking) and Fix 7 (per-class
+                # calibration) axes during a 30-epoch retrain.  Without
+                # these the live view had only the legacy existence
+                # PR-AUC and the SINGLE-threshold F1 — the per-class
+                # axes were visible only in per_epoch_metrics.json
+                # (post-hoc).
+                bond_class_0_pr_auc=float(_bond_acc.get("bond_class_0_pr_auc", 0.0)),
+                bond_class_1_pr_auc=float(_bond_acc.get("bond_class_1_pr_auc", 0.0)),
+                bond_class_2_pr_auc=float(_bond_acc.get("bond_class_2_pr_auc", 0.0)),
+                bond_class_3_pr_auc=float(_bond_acc.get("bond_class_3_pr_auc", 0.0)),
+                bond_class_4_pr_auc=float(_bond_acc.get("bond_class_4_pr_auc", 0.0)),
+                bond_per_class_macro_pr_auc=float(
+                    _bond_acc.get("bond_per_class_macro_pr_auc", 0.0)
+                ),
+                bond_per_class_test_macro_f1=float(
+                    _bond_acc.get("bond_per_class_test_macro_f1", 0.0)
                 ),
                 bond_n_scored=int(_bond_acc.get("n_scored", 0.0)),
                 # 2026-10-04 — generation validity: the metric that actually

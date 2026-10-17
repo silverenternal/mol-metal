@@ -763,9 +763,319 @@ __all__ = [
     "YuelBondDecoderHead",
     "YuelBondDecoder",
     "YuelBondResult",
+    "YuelBondEdgeMPNNHead",
     "SplitBondHead",
     "split_bond_loss",
 ]
+
+
+# ---------------------------------------------------------------------------
+# YuelBondEdgeMPNNHead — YuelBond B.1 edge-state message passing (Wf-A70 W1)
+# ---------------------------------------------------------------------------
+class YuelBondEdgeMPNNHead(nn.Module):
+    """YuelBond B.1 — edge-state message-passing GNN.
+
+    Drop-in sibling to :class:`YuelBondDecoderHead`.  The historical
+    YuelBondDecoderHead runs K message-passing iterations on the ATOM
+    hidden state (h_i <- h_i + sum_j ReLU(MLP(...))).  This class instead
+    runs the MP loop on the EDGE hidden state (h_e <- h_e + aggregate
+    over neighbours on the line graph L(G)), where neighbours are edges
+    sharing a vertex with e (YuelBond B.1's "edges-of-edges").
+
+    The motivation per Wf-A70 §Fix 6 is that on the 5-metal cohort the
+    atom-level MP fails to differentiate minority classes (TRIPLE 0.08%,
+    AROMATIC 0.7%) because the per-atom pooled embedding conflates
+    opposite-endpoint geometry.  Edge-state MP keeps the directional
+    (i, j) signal through every layer.
+
+    Parameters
+    ----------
+    hidden_dim : int, default 64
+        Width of the edge hidden state.  Same role as the atom-MPNN
+        hidden_dim in :class:`YuelBondDecoderHead`.
+    n_edge_layers : int, default 4
+        Number of line-graph message-passing iterations.  YuelBond B.1
+        recommends K >= 3 for drug-like ligands.  At H=64 / n_edge_layers=4
+        the param count is ~81k — significantly wider than the atom-MPNN's
+        ~48k.  This is the honest cost of the architecture swap.
+    cutoff : float, default 3.5 Å
+        Same edge-list cutoff as :class:`YuelBondDecoderHead`.
+    min_distance : float, default 1.0 Å
+        Same distance clamp.
+    z_table : tuple, default ``_YUELBOND_Z_TABLE``
+        Same vocab as :class:`YuelBondDecoderHead`.  Note the head's
+        ``atom_encoder`` projects from ``len(z_table)``, so widening
+        the vocab reshapes that Linear.
+    metal_set : str, default ``"all7"``
+        Same dative-bond rule preset as :class:`YuelBondDecoderHead`.
+
+    Forward contract
+    ----------------
+    ``forward(cloud) -> (logits, (i_idx, j_idx))`` — identical shape to
+    :class:`YuelBondDecoderHead.forward`.  The trainer's downstream code
+    (assemble-aware loss, soft-valence, connectivity-prior, etc.) does not
+    branch on which head is plugged in; only the ``state_dict`` keys
+    differ (``head.edge_init.*``, ``head.edge_mp.*`` for this class vs
+    ``head.msg_mlps.*`` for the atom-MPNN).  A ``--resume-from`` across
+    the two is refused by the standard ``load_state_dict(strict=...)``
+    path, same as for the EGNN field.
+
+    Param count (PROJECTED at H=64, n_edge_layers=4, vocab=13):
+        atom_encoder  = H * (len(z_table) + 1) = 64 * 14 = 896
+        edge_init     = (2H+4) * H + H = 132 * 64 + 64 = 8,512
+        edge_mp × 4   = 4 * ((2H+4) * H + H + H*H + H) = 4 * 12,672 = 50,688
+        pair_head     = (H+3) * H + H + H * NUM_BOND_CLASSES + NUM_BOND_CLASSES
+                      = 67 * 64 + 64 + 64*5 + 5 = 4,677
+        TOTAL         ≈ 64,773
+    """
+
+    def __init__(
+        self,
+        hidden_dim: int = 64,
+        n_edge_layers: int = 4,
+        cutoff: float = 3.5,
+        min_distance: float = 1.0,
+        z_table: Tuple[int, ...] = _YUELBOND_Z_TABLE,
+        metal_set: str = "all7",
+    ) -> None:
+        super().__init__()
+        self.hidden_dim = int(hidden_dim)
+        self.n_edge_layers = int(n_edge_layers)
+        self.cutoff = float(cutoff)
+        self.min_distance = float(min_distance)
+        self.z_table = tuple(z_table)
+        # Dative-rule preset — same opt-in pattern as
+        # :class:`YuelBondDecoderHead`.  ``pt_only`` preserves the
+        # pre-Wf-A69 W2 behaviour bit-exactly for older checkpoints;
+        # ``all7`` (default) lights up the 5-metal cohort.
+        key = str(metal_set).strip().lower()
+        if key not in _METAL_SET_PRESETS:
+            raise ValueError(
+                f"unknown metal_set preset {metal_set!r}; available: "
+                f"{sorted(_METAL_SET_PRESETS)}"
+            )
+        self.metal_set = _METAL_SET_PRESETS[key]
+        self.metal_set_key = key
+        # Atom encoder: Z one-hot -> hidden_dim.  Same as the atom-MPNN
+        # head — the per-atom h is only used to SEED the edge hidden
+        # state, not propagated through layers.
+        self.atom_encoder = nn.Linear(len(self.z_table), hidden_dim)
+        # Edge init: [h_i, h_j, d, is_short, is_long, is_dative] -> H
+        # (2*H + 4 = 132 inputs at H=64; same flag set as the
+        # atom-MPNN head's msg_in so the two heads share a feature
+        # schema at the input layer)
+        self.edge_init = nn.Linear(hidden_dim * 2 + 4, hidden_dim)
+        # Edge MP.  Input is [h_e, h_nbr_e_max, d, is_short, is_long,
+        # is_dative] (2*H + 4 = 132 at H=64 — h_e and h_nbr_e_max
+        # plus 4 flag scalars).  Output is a residual on h_e via ReLU.
+        # ReLU is applied AFTER the MLP, matching the atom-MPNN head's
+        # convention so the two heads' signals are on the same scale.
+        self.edge_mp = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(hidden_dim * 2 + 4, hidden_dim),
+                    nn.ReLU(),
+                    nn.Linear(hidden_dim, hidden_dim),
+                )
+                for _ in range(n_edge_layers)
+            ]
+        )
+        # Pair head: [h_edge_final, d, is_short, is_dative] -> NUM_BOND_CLASSES
+        # (H + 3 = 67 inputs at H=64).  Reads the final edge embedding,
+        # NOT both endpoints, because the edge embedding already encodes
+        # both endpoints via the edge_init seed and the line-graph passes.
+        self.pair_head = nn.Sequential(
+            nn.Linear(hidden_dim + 3, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, NUM_BOND_CLASSES),
+        )
+        # Bias the "no bond" class slightly negative so the head does
+        # not default to bonding every pair.  Same default as the
+        # atom-MPNN head; matches the BOND_NO_BOND prior of the
+        # 5-metal cohort.
+        with torch.no_grad():
+            self.pair_head[-1].bias.zero_()
+            self.pair_head[-1].bias[BOND_NO_BOND] = -0.5
+
+    def forward(self, cloud: AtomCloud) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        """Return ``(E, NUM_BOND_CLASSES)`` logits over candidate edges.
+
+        Edges are the upper-triangular pair list ``[(i, j) for i<j in N]``
+        with all pairs closer than :attr:`cutoff`.  Pairs at distance
+        ``> cutoff`` are NOT returned (caller should treat them as
+        ``NO_BOND``); pairs at ``< min_distance`` are clamped.
+
+        The edge-state message-passing update is::
+
+            h_e <- h_e + ReLU(MLP([h_e, max_{e' ~ e} h_{e'}, d_e, flags]))
+
+        where the neighbour max is over edges sharing a vertex with e
+        (the line graph L(G)).  Self-loops are excluded.
+
+        Device: the head runs where its WEIGHTS are; the cloud is moved
+        onto them.  Same fix as :class:`YuelBondDecoderHead.forward`
+        (Round-3 D1, 2026-10-05).
+        """
+        _dev = self.pair_head[-1].weight.device
+        cloud = cloud.to(_dev)
+        positions = cloud.positions.float()
+        atomic_numbers = cloud.atomic_numbers.long()
+        n = int(atomic_numbers.shape[0])
+        if n < 2:
+            return (
+                torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
+                (
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                ),
+            )
+        # Encode atoms — only used to seed the edge state.
+        z_onehot = z_to_onehot(atomic_numbers, self.z_table)
+        h_atom = self.atom_encoder(z_onehot)  # (N, H)
+        # Build edge list: upper triangle, filtered by cutoff.
+        i_idx, j_idx = torch.triu_indices(n, n, offset=1, device=_dev)
+        if i_idx.numel() == 0:
+            return (
+                torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
+                (
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                ),
+            )
+        d_vec = positions[j_idx] - positions[i_idx]
+        d = d_vec.norm(dim=-1).clamp(min=self.min_distance)
+        mask = d < self.cutoff
+        i_idx = i_idx[mask]
+        j_idx = j_idx[mask]
+        d = d[mask]
+        if i_idx.numel() == 0:
+            return (
+                torch.zeros(0, NUM_BOND_CLASSES, device=_dev),
+                (
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                    torch.zeros(0, dtype=torch.long, device=_dev),
+                ),
+            )
+        E = int(i_idx.numel())
+        H = self.hidden_dim
+        # Per-edge features (now all shape (E,))
+        is_short = (d < 1.7).float().unsqueeze(-1)
+        is_long = (d > 3.0).float().unsqueeze(-1)
+        # Dative-bond flag — same opt-in rule as the atom-MPNN head.
+        donor_mask = (
+            (atomic_numbers[i_idx] == 7)
+            | (atomic_numbers[i_idx] == 8)
+            | (atomic_numbers[i_idx] == 15)
+            | (atomic_numbers[i_idx] == 16)
+        )
+        metal_t = torch.as_tensor(
+            sorted(self.metal_set), device=atomic_numbers.device, dtype=atomic_numbers.dtype
+        )
+        is_dative = donor_mask & torch.isin(
+            atomic_numbers[j_idx], metal_t
+        )
+        is_dative_f = is_dative.float().unsqueeze(-1)
+        # 5-d edge feature vector (d, is_short, is_long, is_dative,
+        # dative_onehot-dummy) — same layout as the atom-MPNN head's
+        # msg_in tail so the two are drop-in comparable.
+        edge_flags = torch.cat(
+            [
+                d.unsqueeze(-1),
+                is_short,
+                is_long,
+                is_dative_f,
+            ],
+            dim=-1,
+        )  # (E, 4)
+        # Initial edge state: project [h_i, h_j, d, is_short, is_long,
+        # is_dative] to hidden_dim.
+        edge_init_in = torch.cat(
+            [
+                h_atom[i_idx],
+                h_atom[j_idx],
+                edge_flags,
+            ],
+            dim=-1,
+        )
+        h_e = self.edge_init(edge_init_in)  # (E, H)
+        # Pre-build the line-graph neighbour map.  This is O(E^2) which
+        # for our 5-metal training (E ≈ 170 pairs / cloud at N=19
+        # atoms) is ~30k entries — trivial.  The map is rebuilt on
+        # every call because the edge list is cloud-dependent.
+        # Build an E×E indicator of "e1 and e2 share a vertex".  We
+        # exclude self-pairs and the diagonal.  The full matrix keeps
+        # the implementation simple; for the larger cohorts that the
+        # architect plans (TODO R21+), this is the O(E^2) axis to
+        # revisit.
+        share_v = (
+            (i_idx[:, None] == i_idx[None, :])
+            | (i_idx[:, None] == j_idx[None, :])
+            | (j_idx[:, None] == i_idx[None, :])
+            | (j_idx[:, None] == j_idx[None, :])
+        )
+        share_v.fill_diagonal_(False)
+        # For each edge e1, aggregate max h_e over its neighbours e2.
+        # Pairs (e1, e2) with share_v[e1, e2] = True form the line-graph
+        # edges.  We scatter-max edge_h[e2] into e1's slot.
+        nbr_e1, nbr_e2 = torch.nonzero(share_v, as_tuple=True)  # (P,) each
+        for k in range(self.n_edge_layers):
+            if nbr_e1.numel() == 0:
+                # No neighbours — pass-through residual only.
+                msg_in = torch.cat(
+                    [h_e, torch.zeros_like(h_e), edge_flags],
+                    dim=-1,
+                )
+                h_e = h_e + torch.relu(self.edge_mp[k](msg_in))
+                continue
+            h_nbr = h_e[nbr_e2]
+            # Scatter-max into a fresh (-inf)-filled buffer; replace
+            # -inf with 0 for edges with no neighbours.
+            h_nbr_max = torch.full(
+                (E, H), float("-inf"), dtype=h_e.dtype, device=_dev
+            )
+            h_nbr_max = h_nbr_max.scatter_reduce(
+                0,
+                nbr_e1.unsqueeze(-1).expand(-1, H),
+                h_nbr,
+                reduce="amax",
+                include_self=False,
+            )
+            h_nbr_max = torch.where(
+                torch.isinf(h_nbr_max), torch.zeros_like(h_nbr_max), h_nbr_max
+            )
+            msg_in = torch.cat(
+                [h_e, h_nbr_max, edge_flags],
+                dim=-1,
+            )
+            h_e = h_e + torch.relu(self.edge_mp[k](msg_in))
+        # Pair head: read edge state + d/is_short/is_dative (3-d) →
+        # NUM_BOND_CLASSES logits.  Reading is_dative (not is_long)
+        # because the bond TYPE for the dative bond is the relevant
+        # chemistry — dative bonds are SINGLE on the Wiberg scale, but
+        # the is_dative flag lets the head weight its TRIPLE/AROMATIC
+        # output away from the donor-atom direction.
+        pair_in = torch.cat(
+            [h_e, d.unsqueeze(-1), is_short, is_dative_f],
+            dim=-1,
+        )
+        logits = self.pair_head(pair_in)
+        return logits, (i_idx, j_idx)
+
+    # ------------------------------------------------------------------
+    # EMA stubs (mirror :class:`YuelBondDecoderHead.load_ema_state`)
+    # ------------------------------------------------------------------
+    def load_ema_state(self, sd):  # type: ignore[no-untyped-def]
+        """No-op EMA loader; mirrors :class:`YuelBondDecoderHead`."""
+        self._ema_sd = sd if isinstance(sd, dict) else {}
+        return bool(self._ema_sd)
+
+    def ema_swap_in(self):  # type: ignore[no-untyped-def]
+        """Mirror :meth:`YuelBondDecoderHead.ema_swap_in`."""
+        return bool(getattr(self, "_ema_sd", None))
+
+    def ema_swap_out(self) -> None:
+        """Mirror :meth:`YuelBondDecoderHead.ema_swap_out`."""
+        self._ema_sd = {}
 
 
 # ---------------------------------------------------------------------------

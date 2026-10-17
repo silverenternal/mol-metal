@@ -1,0 +1,261 @@
+# Wf-A70 W1 (2026-10-17) — Edge MPNN bond head + per-class held-out
+# threshold calibration.  Derived from cfm_5metal_default.yaml with
+# two surgical changes:
+#
+#   1. ``model.bond_predictor: yuelbond_edge_mpnn`` selects the new
+#      :class:`YuelBondEdgeMPNNHead` (YuelBond B.1 line-graph edge-state
+#      MP).  Param count ~252.4K vs the legacy atom-MPNN's ~185.5K at
+#      H=128 (a 1.36× widening; MEASURED in
+#      molmetal/tests/test_wf_a70_yuelbond_edge_mpnn.py).
+#
+#   2. ``model.n_edge_layers: 4`` sets the line-graph MP depth.  K=4
+#      matches YuelBond B.1's recommended depth for drug-like ligands.
+#
+# Otherwise IDENTICAL to cfm_5metal_default — same dataset, same loss
+# weights, same chemprop cache.  The retrain launched from this config
+# tests ONLY the bond-head swap + the new per-class metric field
+# (``bond_per_class_test_macro_f1``, ``bond_class_{c}_test_f1``).  No
+# other change touches the architecture or the optimiser.
+#
+# WHY-PASS GATE
+# ------------
+# Pass when, against the LEGACY cfm_5metal_default per-epoch baseline
+# (MEASURED best_bond_f1=0.2743 at epoch 26, bond_pr_auc=0.2174):
+#
+#   * ``bond_f1``  PROJECTED +0.05-0.15  (Fix 7 dominant axis; per-class
+#                  threshold recovers minority-class recall)
+#   * ``bond_pr_auc``  PROJECTED +0.03-0.06  (Fix 6 capacity axis;
+#                  modest on this corpus — calibration is the bottleneck)
+#   * ``bond_class_{c}_test_f1`` is now REPORTED for each of 5 classes
+#     (Fix 7 evaluation, NOT a retrain delta)
+#
+# No 0.99 claim.  No >0.50 combined.  cfm_5metal_default per_epoch_metrics.json
+# is the comparison baseline.  See AGENTS.md §5.2 honest framing + the
+# design doc for the per-axis ceiling.
+#
+# COMPANION SURFACES
+# ------------------
+# * Trainer entry:  molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+#                   with --bond-predictor=yuelbond_edge_mpnn --n-edge-layers=4
+# * Head class:     molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py::
+#                   YuelBondEdgeMPNNHead (drop-in sibling to
+#                   YuelBondDecoderHead, same (logits, (i, j)) contract)
+# * Tests:          molmetal/tests/test_wf_a70_yuelbond_edge_mpnn.py
+#                   (12 tests, MEASURED param counts + bit-compat shapes)
+# * Baseline:       /home/hugo/codes/mol-metal/results/cfm_5metal_default/
+#                   per_epoch_metrics.json (MEASURED ep26 f1=0.2743,
+#                   pr_auc=0.2174)
+# * Pointer:        TODO/README.md (canonical trainers row) + this file
+#
+# HONEST-FRAMING NOTE
+# -------------------
+# Per AGENTS.md §5.2 honest framing: every number in any follow-on closeout
+# MUST trace to a JSON / report path on disk with MEASURED or PROJECTED tag.
+
+data:
+  # 2026-10-15 Wf-A37-8: canonical 5-metal anticancer drug cohort.
+  dataset: csv
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+  # MetalCytoToxDB multi-task v3 cohort filter — keep ALL 5 metals
+  # the corpus ships with (Ru/Ir/Os/Rh/Re).  This key is in the loader's
+  # DECLARED_INERT_PATHS (no trainer dest) and is printed-but-not-fatal
+  # per AGENTS.md §5.11 disposition 2 (prose for reproducibility).
+  cohort_filter:
+    metals:
+      - Ru
+      - Ir
+      - Os
+      - Rh
+      - Re
+model:
+  hidden_dim: 128
+  n_layers: 3
+  atom_vocab_size: 13
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  learnable_vel_scale: true
+  # Wf-A37-7: SE(3) EGNN velocity field is the production decoder.
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  # Wf-A37-7: TMQM init is OFF for the property-cohort CFM run
+  # (tmQM geometry pretrain does not transfer to ligand-only MetalCytoTox rows).
+  use_tmqm_init: false
+  pcgrad_multi_task: false
+  q_head_enabled: false
+flow:
+  # Wf-A69 W2 (2026-10-17) — bond-class-weights kill-switch (Fix 4).
+  # When `false`, the trainer's inverse-frequency class-weight
+  # computation (train_cfm_yuelbond_wasserstein.py:10811-10863) is
+  # skipped entirely; the loss sees ``weight=None`` and is plain CE.
+  # Anchored to GraViti B.3 (arXiv 2605.16668) critical negative finding:
+  # inverse-frequency weights DEGRADED vs focal alone on a 95:5
+  # imbalanced edge-prediction task.  Default ``true`` preserves the
+  # Wf-A68 ship and is the bit-exact baseline; switch to ``false`` at
+  # retrain to test the finding on the 5-metal cohort.
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  # Wf-A69 W2 (2026-10-17) — split-head design (Fix 3).  When
+  # ``"single"`` (default, bit-exact Wf-A67/68/W1) the head emits the
+  # 5-class softmax CE; when ``"split"`` the head emits a binary
+  # existence logit (focal γ=2.0 BCE) plus a 4-way type softmax CE on
+  # existence-positive pairs only.  Anchored to PepForge B.3 (bioRxiv
+  # 2026) + GraViti B.3 — single class-balanced focal + per-edge-type
+  # CE on positives is the highest-leverage structural fix on a ~95%
+  # NO_BOND distribution.
+  bond_head_kind: single
+  # Wf-A70 W1 (2026-10-17) Fix 6 — Edge-MPNN bond head.  Swaps the
+  # legacy atom-centered MPNN for :class:`YuelBondEdgeMPNNHead`
+  # (YuelBond B.1 line-graph edge-state MP).  Same forward contract;
+  # param count +27% at default H=128.  See head class docstring.
+  bond_predictor: yuelbond_edge_mpnn
+  n_edge_layers: 4
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  # Wf-A68 (2026-10-17) — threshold sweep list applied at POST-retrain
+  # evaluation.  Default `{0.5}` matches the legacy single-threshold
+  # evaluation (bit-exact Wf-A67 report).  The post-retrain sweep picks
+  # the threshold by held-out F1, NOT by the in-corpus optimistic ceiling
+  # (see spot 7 — _bond_ranking_report's `bond_best_f1_threshold` was
+  # OPTIMISTIC by construction; the swept pick is held-out honest).
+  bond_decision_threshold_sweep: [0.5]
+  # Wf-A68 — focal bond CE (Spot 2).  Default OFF preserves Wf-A67
+  # bit-exact compat.  Opt-in per-spot for the ablation matrix.
+  use_focal_bond_ce: false
+  focal_bond_alpha: 0.25
+  focal_bond_gamma: 2.0
+  # Wf-A68 — balanced pair sampling (Spot 3).  Default 0 = no balancing.
+  # 4 = keep 4 negatives per positive (typical subsample for 95:5 imbalance).
+  bond_sample_balance: 0
+  # Wf-A68 — dative donor distance cutoff (Spot 1).  2.6 Å = M-N/O single
+  # dative bond + 0.2 Å tolerance for ETKDG noise.  Set to a large
+  # value (e.g. 100.0) to disable the post-embed 3D filter and recover
+  # pre-Wf-A68 donor-by-score-only behaviour.
+  dative_distance_cutoff: 2.6
+  # Wf-A68 — chem_loss_weight (Spot 5).  Wf-A15/A27 scaffolding is
+  # SHIPPED (ContinuousBO + per-cloud stash); default 0.0 keeps the
+  # 5-metal cohort bit-exact Wf-A67.  Bump to 0.1-0.3 at retrain to
+  # enable the Wiberg BO regression aux term.
+  chem_loss_weight: 0.0
+  # Wf-A68 — bond head residual skip (Spot 4).  Default OFF preserves
+  # Wf-A67 bit-exact compat.  ON adds an extra Linear(hidden_dim,
+  # hidden_dim) projection from fc1 to the pre-`out` activation.
+  use_bond_head_skip: false
+  # Wf-A68 ultracode (2026-10-17) Spot 6 — bond label smoothing.  0.0 =
+  # off (bit-exact Wf-A67); 0.05-0.10 typical on heavy imbalanced cohorts.
+  bond_label_smoothing: 0.0
+  # Wf-A68 ultracode (2026-10-17) Spot 5 enhanced — linear-space aux MSE on
+  # the discrete-head's softmax-expected bond order vs raw Wiberg target.
+  # 0.0 = off (bit-exact Wf-A67); 0.1-0.3 typical alongside chem_loss_weight.
+  bond_aux_mse_weight: 0.0
+  # Wf-A69 W1 (2026-10-17) — bond candidate source (DISASTER-AREA FIX).
+  # "truth_only" (default) reads candidates from m.bonds (100% positive
+  # by construction; bit-exact Wf-A67).  "radius_graph" builds
+  # candidates from a distance-cutoff triu_indices (matching
+  # YuelBondDecoderHead's eval cutoff, default 2.4 Å) and labels them
+  # with truth. Pairs not in m.bonds get BOND_NO_BOND so the head sees
+  # the negative class — the structural fix for the 0.265 baseline.
+  bond_candidate_source: truth_only
+  bond_candidate_cutoff: 2.4
+  # Wf-A69 W1 — subsample negatives to neg:pos = N (4:1 canonical for
+  # ~95% NO_BOND prior; PepForge bioRxiv 2026 + GraViti arXiv 2605.16668).
+  # 0 = no subsampling (bit-exact Wf-A67). >0 requires
+  # bond_candidate_source="radius_graph".
+  subsample_neg_ratio: 0
+  subsample_neg_seed: epoch
+  # Wf-A69 W2 (2026-10-17) — bond head class (Fix 2 documentation).
+  # The trainer's :class:`CFMJointModel` always builds a
+  # :class:`YuelBondDecoderHead`; ``YuelBondDecoder(head=model.head)`
+  # then stashes it (no wrapper-mediated re-instantiation).  This key
+  # is documentation only — the wiring has been verified (Wf-A69 W1
+  # audit §A1.6 #1 has the audit-log commit).  Default ``YuelBondDecoderHead``
+  # preserves the bit-exact path; alternative values are REFUSED (the
+  # adapter raises) so a future regression to a fresh head is loud.
+  head_class: YuelBondDecoderHead
+  # Wf-A69 W2 (2026-10-17) Fix 5 — atomic-number vocab + metal set.
+  # ``pt`` (default) keeps the 13-entry Pt-only table (bit-exact
+  # Wf-A67); ``all6`` widens to 18 entries covering the project's
+  # 6 precious metals (Pt/Ru/Ir/Os/Rh/Re).  Always paired with a
+  # matching ``bond_z_metal_set`` so the dative-bond rule inside the
+  # head matches the vocab.
+  bond_z_table: pt
+  bond_z_metal_set: all7
+  n_steps: 100
+  method: rk4
+  optimizer: adam
+  warmup_steps: 200
+  ema_decay: 0.999
+  # 2026-10-15 Wf-A37-7: W2 OFF — Wasserstein term is NOT load-bearing for the
+  # precious-metal anticancer axis; ON lowered MoleculeNet clintox and bace by
+  # 1.6-3.4pp.  See AGENTS.md memory note + Wf-METRIC-RESCUE findings.
+  wasserstein_weight: 0.0
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 3.5
+protocol:
+  batch_size: 16
+  lr: 0.0001
+  gen_validity_samples: 16
+  gen_eval_n: 64
+  gen_eval_seeds: "0 1 2"
+  # Wf-A67 (2026-10-17) — trimmed from canonical 5x50 (48h budget) to
+  # 3x30 (~4-7h wall per Wf-A66 estimate) per user clarification.  The
+  # n_seeds_min=3 satisfies the per-seed honest-neg gate (Wf-245).
+  n_seeds: 3
+  epochs: 30
+  n_seeds_min: 3
+  scheduler:
+    type: cosine
+    warmup_epochs: 5
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+output:
+  base_dir: results/cfm_5metal_default
+  log_master: results/cfm_5metal_default/master.log
+  ckpt_dir: results/cfm_5metal_default/checkpoints
+  events_jsonl: true
+  resume_from: auto
+  resume_from_path: null
+# Wf-A15 (2026-10-13) Track-A L6 — both OFF by default for the property axis.
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+q_channel_lr_multiplier: 1.0
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+compute:
+  gpu: cuda:0
+directives:
+  kill_then_adapt: true
+  # Wf-A67 (2026-10-17) — 3x30 = 4-7h estimate; 12h envelope (was 48h).
+  time_budget: 12h
+  user_ok_required: true
+  user_ok_granted: "3 seeds x 30 epochs + PRO 6000 + cuda:0 + results/cfm_5metal_default/ + GPU util >=90% check (2026-10-17)"
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+  - p3_wf343c4_anchor_freshness_24h
+  - p3_wf343c2_per_wave_runtime_check
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir}
+  legacy_inline_command: ""
+honest_framing:
+  claims:
+  - CFM 5-metal anticancer drug training, pinned to MetalCytoToxDB multi-task v3 cohort (Ru/Ir/Os/Rh/Re, 4.5MB on disk)
+  - wasserstein_weight 0.0 (Wf-A37-7 measure: W2 not load-bearing on precious-metal anticancer axis)
+  - Companion chemprop --metals default extended to (Ru,Ir,Os,Rh,Re,Pt) for precious-metal anticancer
+  - 5 seeds × 50 epochs canonical protocol, 48h wall budget per AGENTS.md §5.1
+  do_not_claim:
+  - 7-metal cohort coverage (gold/Ag/Pd) — only the 5-metal cohort ships on disk
+  - decode_ratio on real Pt geometry — TMQM init is OFF for this property-axis config; cfm_full_retrain.yaml is the geometry-axis ship surface
+  - W2 ON improves the metric (MEASURED: it lowers clintox+bace)
+  - Best-seed selection before per-seed honest-neg gate (per Wf-245 n-seeds-min)
+  deferred:
+  - F5_RDKIT_2D 32-d integration into CFM training
+  - Per-lever ablation paper-grade (5-seed × 30-epoch GPU, requires explicit user OK)
+  - 7-metal cohort acquisition (Au/Pd/Ag rows absent from MetalCytoToxDB v3 on disk)

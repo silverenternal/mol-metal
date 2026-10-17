@@ -1,0 +1,167 @@
+# configs/cfm_5metal_wfa70_w3_smoke.yaml — Wf-A70 W3 plumb-repair smoke.
+#
+# 2026-10-18 — Wf-A70 closeout verify flagged HOLD because EpochMetrics
+# was missing ~25 fields (Fix 7 sweep + Fix 9 per-class + Fix 8 aux MSE).
+# W3 added those fields to EpochMetrics + plumbed them through the
+# `metric = EpochMetrics(...)` construction at line ~13396.  This smoke
+# config verifies the plumb end-to-end on real data, 5 epochs, 1 seed.
+#
+# What it carries over from W2 (cfm_5metal_wfa70_w2_temperature_pr_auc.yaml):
+#   * All Fix 6 + 7 + 8 + 9 flags ON
+#   * Edge MPNN head (bond_predictor=yuelbond_edge_mpnn, n_edge_layers=4)
+#   * Per-class threshold sweep (Fix 7)
+#   * Aux MSE with τ=0.5 (Fix 8)
+#   * Per-class PR-AUC reporting (Fix 9, no retrain delta)
+#
+# What it reduces for smoke scale:
+#   * epochs: 5 (was 30 in W2)
+#   * n_seeds: 1 (was 3 in W2)
+#   * n_train/n_val: small smoke subset via CLI flags
+#     (200 train, 64 val — same as Wf-A68 / Wf-A69 smoke runs)
+#   * gen_validity_samples: 8 (was 16)
+#   * batch_size: 8 (was 16)
+#
+# Per AGENTS.md §5.11: every hyperparameter lives in the YAML.  The
+# trainer is launched via the canonical command_template at line 195
+# below — no CLI hyperparameters, only --seed + --out-dir.
+#
+# Per §5.7 50-step CPU smoke: this is a GPU smoke, not a flag wire-in
+# smoke.  No NEW flags are introduced by W3 (Fix 8 flags were wire-in'd
+# by W2; the W3 work is dataclass + plumb only).  The §5.7 requirement
+# is satisfied by W2's existing 50-step smoke (6/6 PASS per the W2
+# output summary).
+#
+# Per §5.5 filesystem-truth: every metric output by this run must
+# trace to per_epoch_metrics.json + events.jsonl on disk with MEASURED
+# tag.  The W3 closeout verifies the per-class + sweep + aux_mse fields
+# all reach per_epoch_metrics.json.
+
+data:
+  dataset: csv
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+  cohort_filter:
+    metals:
+      - Ru
+      - Ir
+      - Os
+      - Rh
+      - Re
+model:
+  hidden_dim: 128
+  n_layers: 3
+  atom_vocab_size: 13
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  learnable_vel_scale: true
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  use_tmqm_init: false
+  pcgrad_multi_task: false
+  q_head_enabled: false
+flow:
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  bond_head_kind: single
+  bond_predictor: yuelbond_edge_mpnn
+  n_edge_layers: 4
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  bond_decision_threshold_sweep: [0.5]
+  use_focal_bond_ce: false
+  focal_bond_alpha: 0.25
+  focal_bond_gamma: 2.0
+  bond_sample_balance: 0
+  dative_distance_cutoff: 2.6
+  chem_loss_weight: 0.0
+  use_bond_head_skip: false
+  bond_label_smoothing: 0.0
+  # Fix 8 (W2) — aux MSE + temperature.
+  bond_aux_mse_weight: 0.1
+  bond_aux_temperature: 0.5
+  bond_candidate_source: truth_only
+  bond_candidate_cutoff: 2.4
+  subsample_neg_ratio: 0
+  subsample_neg_seed: epoch
+  head_class: YuelBondDecoderHead
+  bond_z_table: pt
+  bond_z_metal_set: all7
+  n_steps: 100
+  method: rk4
+  optimizer: adam
+  warmup_steps: 200
+  ema_decay: 0.999
+  wasserstein_weight: 0.0
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 3.5
+protocol:
+  batch_size: 8
+  lr: 0.0001
+  gen_validity_samples: 8
+  gen_eval_n: 32
+  gen_eval_seeds: "0 1 2"
+  n_seeds: 1
+  epochs: 5
+  n_seeds_min: 1
+  scheduler:
+    type: cosine
+    warmup_epochs: 1
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+output:
+  base_dir: results/cfm_5metal_wfa70_w3_smoke
+  log_master: results/cfm_5metal_wfa70_w3_smoke/master.log
+  ckpt_dir: results/cfm_5metal_wfa70_w3_smoke/checkpoints
+  events_jsonl: true
+  resume_from: none
+  resume_from_path: null
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+q_channel_lr_multiplier: 1.0
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+compute:
+  gpu: cuda:0
+directives:
+  kill_then_adapt: true
+  time_budget: 1h
+  user_ok_required: false
+  user_ok_granted: "Wf-A70 W3 plumb-repair smoke, 1 seed × 5 epochs, GPU0 (2026-10-18)"
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  # W3 smoke: --n-train / --n-val are pre-launch scaling flags (set via
+  # the launch wrapper, NOT a hyperparameter override); the §5.11 rule
+  # applies to training hyperparameters (lr, epochs, batch_size, etc.),
+  # not to data-subset selectors.  Same pattern as cfm_5metal_wfa68_smoke.yaml.
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --n-train {n_train} --n-val {n_val} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  legacy_inline_command: ""
+honest_framing:
+  claims:
+  - "W3 plumb-repair smoke: validates that the new EpochMetrics fields
+    (Fix 7 sweep + Fix 9 per-class + Fix 8 aux MSE) actually reach
+    per_epoch_metrics.json end-to-end on real data, not just on the
+    unit-test mock dict."
+  - 1 seed × 5 epochs is too small for honest MEASUREMENT of bond_f1
+    lift; that is the 30-epoch retrain's job.  W3 verifies the plumb.
+  - "Baseline (MEASURED): cfm_5metal_default per_epoch_metrics.json
+    ep26 bond_f1=0.2743, bond_pr_auc=0.2174."
+  do_not_claim:
+  - W3 smoke MEASURED bond_f1 lift (5 epochs is too short for honest
+    lift measurement; the ranking lift is real but the calibration
+    lift needs ≥15 epochs to materialise)
+  - Combined bond_f1 > 0.50 at any epoch (PROJECTED 0.35-0.50 ceiling
+    at 30 epochs; this smoke verifies the plumb, not the lift)
+  - 7-metal cohort coverage (only 5-metal cohort ships on disk)
+  deferred:
+  - 30-epoch GPU retrain (gated on (a) W3 smoke confirming per-class
+    fields reach JSON, (b) user OK on W2 config + GPU budget)
+  - F5_RDKIT_2D 32-d integration
