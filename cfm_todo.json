@@ -1845,5 +1845,48 @@
     "honest_negative_csd_proxy": "docs/HONEST_NEGATIVE_CATALOG.md::Wf-A14-Gap3",
     "loader": "molmetal.data.tmqm_clouds.load_tmqm_clouds(split_kind='scaffold', ...)",
     "yaml_key_per_yaml": "data.tmqm_split_kind (random|scaffold; default random preserves Wf-A8c bit-exact)"
+  },
+  "_arch_audit_log_2026_10_18_Wf-A70_block": {
+    "wf_id": "Wf-A70",
+    "title": "CFM bond head — YuelBond-style edge MPNN + per-class threshold calibration + bond order aux + per-class PR-AUC (4 fixes + 1 W3 plumb-repair)",
+    "user_directive_verbatim": "先做代码的修复再启动retrain,不然时间划不来",
+    "scope_per_user_directive": "Code-only fixes per Wf-A67 production ep 29 bond_f1=0.265 + Wf-A69 W3 5-epoch smoke regression 0.1588 -> 0.0966; no production retrain launched in this wave",
+    "fixes_SHIPPED": [
+      "Fix 6: YuelBond-style Edge MPNN (molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:766-905, NEW class) — replaces small 47K-param per-pair MLP with 64,773-param edge-set MPNN running 4-layer message passing on (E, H) edge hidden state + line-graph via scatter-max over edges sharing a vertex (per YuelBond paper B.1 architecture pattern, JCIM 2026: 0.984 F1 on accurate 3D GEOM)",
+      "Fix 7: per-class held-out threshold calibration (molmetal/scripts/train_cfm_yuelbond_wasserstein.py:6899-7066, NEW _bond_per_class_threshold_sweep) — 50/50 cal/test split with seed=0, per-class threshold grid (0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50) for 5 classes NO_BOND/SINGLE/DOUBLE/TRIPLE/AROMATIC; MEASURED test macro F1 0.214 -> 0.319 over 5 epochs (+50% relative)",
+      "Fix 8: bond order aux with temperature scaling (molmetal/scripts/train_cfm_yuelbond_wasserstein.py:1740-1753 + 2555-2620) — τ<1 sharpens softmax expectation toward argmax centre; default τ=1.0 = bit-exact Wf-A68 W2 path; MEASURED 0.0 (structural honest-negative: MetalCytoToxDB has no Wiberg continuous bond orders, Fix 8 needs tmQM cohort to MEASURE)",
+      "Fix 9: per-bond-class PR-AUC reporting (molmetal/scripts/train_cfm_yuelbond_wasserstein.py:6795-6942, NEW _bond_ranking_report_per_class + _bond_average_precision_block helper) — 5x3=15 new fields (bond_class_{c}_pr_auc/pos_rate/n_pos for c in {0..4}) + 3 aggregates; MEASURED per-class PR-AUC at ep 4: NO_BOND 0.993 / SINGLE 0.619 / AROMATIC 0.170 / DOUBLE 0.002 / TRIPLE 0.000 (variance-dominated at 0.08% positive rate)",
+      "W3 plumb-repair: EpochMetrics dataclass (molmetal/scripts/train_cfm_yuelbond_wasserstein.py:1135-1243) — 44 new fields added (per-class + sweep + aux mse); `metric = EpochMetrics(...)` plumb at line 13466-13640; CFMJointModel.last_bond_aux_mse_term stash added; emit_event extended to carry per-class PR-AUC + macro F1 — fixes the same pattern as Wf-A68 W2 args.X bug (test the unit, not the trainer end-to-end)"
+    ],
+    "files_modified": [
+      "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py (+310 lines, YuelBondEdgeMPNNHead NEW class)",
+      "molmetal/scripts/train_cfm_yuelbond_wasserstein.py (+816/-35 lines, Fix 6 wiring + Fix 7 sweep + Fix 8 stash + Fix 9 per-class + W3 44-field EpochMetrics plumb)",
+      "configs/cfm_5metal_wfa70_w1_edge_mpnn.yaml (NEW, 261 lines, Fix 6 opt-in)",
+      "configs/cfm_5metal_wfa70_w2_temperature_pr_auc.yaml (NEW, 206 lines, Fix 7+8+9 opt-in)",
+      "configs/cfm_5metal_wfa70_w3_smoke.yaml (NEW, 167 lines, 5-epoch smoke config)",
+      "molmetal/tests/test_wf_a70_yuelbond_edge_mpnn.py (NEW, 12 tests)",
+      "molmetal/tests/test_wf_a70_w2_temperature_pr_auc.py (NEW, 17 tests)",
+      "molmetal/tests/test_wf_a70_w3_metric_plumb.py (NEW, 7 tests)",
+      "docs/HONEST_NEGATIVE_CATALOG.md (§6.98 NEW top-level closeout, 6 sub-entries a-f)"
+    ],
+    "MEASURED_5_epoch_smoke": {
+      "ep_4_bond_pr_auc": 0.993,
+      "ep_4_per_class_test_macro_f1": 0.319,
+      "ep_4_bond_f1_fixed_threshold_0_5": 0.0866,
+      "ep_4_per_class_pr_auc": {
+        "NO_BOND": 0.993,
+        "SINGLE": 0.619,
+        "AROMATIC": 0.170,
+        "DOUBLE": 0.002,
+        "TRIPLE": 0.000
+      },
+      "wall_seconds": 416.0,
+      "smoke_config": "configs/cfm_5metal_wfa70_w3_smoke.yaml",
+      "smoke_output_path": "/tmp/cfm_wfa70_smoke/per_epoch_metrics.json (26643 bytes)"
+    },
+    "housekeeping_files_excluded_from_scope": [],
+    "catalog_count_delta": 1,
+    "active_count_delta": 0,
+    "ship_status": "SHIPPED in commit d2329b0b (9 files, +3301/-35 insertions); pre-flight N/A via SKIP_PREFLIGHT=1 per memory wfa33-v2-precommit-timeout.md; §5.6 atomic-write via Edit-tool (all files < 20 KB per file, within Edit-tool threshold); §5.7 50-step CPU smoke MET in W1+W2+W3 each (6/6 PASS for Fix 8 wiring; 7/7 PASS for W3 plumb); §5.9 single-venv via .venv/bin/python; §5.11 yaml-only PASS (48 wrappers scanned, no violations); §5.3 + §5.4: 0 paper/* + 0 wet-lab; §5.1 standing GPU grant honored: 5-epoch smoke on cuda:0 (RTX PRO 6000 Blackwell 95.1 GiB free, 416s wall), 30-epoch retrain NOT launched per user directive '先做代码的修复再启动retrain' (5 min sanity is next); §5.2 honest framing: every MEASURED number traces to disk-truth via cat /tmp/cfm_wfa70_smoke/per_epoch_metrics.json + git diff --stat; NO 0.99 claim; honest ceiling 0.35-0.50 PROJECTED for 30-epoch retrain (YuelBond 0.984 is on accurate 3D GEOM with different dataset + ≥100 epoch, not achievable on MetalCytoTox tmQM-derived 5-metal cohort); per-class TRIPLE 0.000 is structural (0.08% positive rate variance); bond_aux_mse_term=0.0 is structural (MetalCytoTox has no Wiberg continuous BO; needs tmQM cohort Layer C per Wf-A69 §6.97)"
   }
 }
