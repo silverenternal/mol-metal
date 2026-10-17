@@ -3544,12 +3544,13 @@ Verify phase returned **SHIP** (48/48 targeted CFM tests PASS in 2.46s across 6 
 
 ---
 
-## §6.90 Wf-A46/A47/A48 (2026-10-17) MB-Finder Pt IC50 harvest — the Rusanov 17,732 baseline is NOT reachable from the public endpoint — +1 ACTIVE
+## §6.90 Wf-A46/A47/A48/A49 (2026-10-17) MB-Finder Pt IC50 harvest — the Rusanov 17,732 *compound* target is unreachable, but its *row* target is not — +1 ACTIVE
 
-**Status: ACTIVE (honest-negative).** The paper §3 protocol is described as matching
-Rusanov 2025's "17,732 IC50" MB-Finder baseline. That number is not obtainable from
-MB-Finder's public API. Measured after an exhaustive harvest of the 21 largest cell
-lines:
+**Status: ACTIVE (honest-negative) for the compound-space claim; the row-space
+gap is being closed (see "Gap-fill" below).** The paper §3 protocol is described
+as matching Rusanov 2025's "17,732 IC50" MB-Finder baseline. That number is not
+obtainable *as 17,732 distinct platinum complexes* from MB-Finder's public API.
+Measured after an exhaustive harvest of the 21 largest cell lines:
 
 | Quantity | MEASURED | Source |
 |---|---|---|
@@ -3562,15 +3563,49 @@ lines:
 | Pt rows carrying a SMILES structure | **10,857 / 10,857 (100%)** | `pt/smiles_join_summary.json` → `pt_rows_with_smiles` |
 | Pt rows training-ready (value_mean **and** SMILES) | **9,744** | `pt/smiles_join_summary.json` → `pt_rows_with_value_and_smiles` |
 
-**Why it is unreachable.** 21 of MB-Finder's 832 cell lines already supply 91.1% of
-its platinum *compound* space; the remaining 811 cell lines mostly repeat the same
-molecules, so the marginal Pt-row yield collapses. Independently, Rusanov's own V2 SI
+**Why the *compound* target is unreachable.** 21 of MB-Finder's 832 cell lines
+already supply 91.1% of its platinum *compound* space; the remaining 811 cell
+lines mostly repeat the same molecules. Independently, Rusanov's own V2 SI
 ("Data curation", p. S27) describes **4,078** unique Pt complexes — *more* than
 MB-Finder holds (3,614) — so its dataset draws on sources beyond this one. The
 17,732 is also a **cross-cell-line** total (*"IC50 values from 592 cell lines"*), not
 a 4-cell total: the four modelled cells (MCF-7/A549/A2780/A2780cis) supply 8,428 rows,
 26% of it. The original brief's "17,732 ÷ 4 ≈ 4,433 per cell" was arithmetic, not a
 measurement.
+
+**CORRECTION (2026-10-17, same day).** The first version of this entry concluded
+the **row** target was unreachable too, inferring it from compound-space
+saturation. That was a category error: 17,732 counts *measurements*, and the same
+3,292 compounds measured across more cell lines produce more rows. Measured
+capacity from `logs/wf_a46_celllines.json`: the 811 unharvested cells carry
+**13,618 `bioDataCount` rows** (total across all 832 cells = 32,278, vs
+`get-count.ic50Count` = 32,022). The gap-fill is therefore a measurement, not a
+proof of impossibility — see below.
+
+**Dedup: `biodata_id` is the correct key; do NOT dedup on `(compound_code, cell_line)`.**
+Measured on the 10,857 Pt rows:
+
+| Key | Pt count | Verdict |
+|---|---|---|
+| `biodata_id` | **10,857** | unique measurement id — correct key |
+| `(compound_code, cell_line)` | 8,251 | drops 24% of real measurements |
+| `(compound_code, cell_line, value_mean)` | 10,061 | drops 796 rows that are the same value from a *different DOI* |
+| `(compound_code, cell_line, value, method, doi, time)` | **10,857** | no collapse — every row is a distinct measurement |
+| exact full-row duplicates | **0** | — |
+
+One compound legitimately has many rows per cell (MB-Pt-003232 alone: 205 A549
+rows) because different papers report different assays/values. The only
+near-duplicates are 481 groups (1,277 rows) sharing `(compound, cell, value)`
+across different DOIs — same value, different publication. Keeping them is the
+honest choice for a row-count target; dropping them would understate the data.
+
+**Gap-fill (in progress).** `wf_a46 --all-cells --pt-target 17732` harvests the
+811 remaining cell lines in descending `bioDataCount` order and stops when the
+cumulative Pt row count reaches the target. A 208-row smoke (A431) yielded 103 Pt
+(49.5%), so ~250-300 cells are expected to close the 6,772-row gap. The run is
+CPU-only and resumable; status is appended to `logs/wf_a46_gapfill.log` and the
+summary is rebuilt from disk (`--from-disk`) after every iteration. Until it
+finishes, the measured state is 10,960 Pt rows / 22 cells (18,090 rows total).
 
 **Two subsidiary honest-negatives found in the same wave:**
 
@@ -3595,11 +3630,13 @@ measurement.
    a no-op. Fixed in `wf_a37_platinai_full_harvest.py::_flatten` via the new
    `platinai_real_label_loader.metal_from_compound_code`; 7,025 rows corrected in place.
 
-**Resolution path.** None available in-silico from this source. Options: (a) accept
-10,857 Pt rows and re-state the §3 baseline claim accordingly; (b) obtain the Rusanov
-curation itself (the SI-cited `github.com/thebabaklab/MetalKANO` returns 404); (c) add
-a second Pt source. Decision is the user's — this entry records the measurement, not a
-preference.
+**Resolution path.** For the *compound* target: none available in-silico from
+this source. Options: (a) accept 3,292 Pt compounds and re-state the §3 baseline
+claim accordingly; (b) obtain the Rusanov curation itself (the SI-cited
+`github.com/thebabaklab/MetalKANO` returns 404); (c) add a second Pt source. For
+the *row* target: harvest the remaining 811 cell lines (`--all-cells`), which
+carry 13,618 API-reported rows — in progress, see "Gap-fill". Decision on how to
+phrase the §3 baseline remains the user's.
 
 | Verification | Command |
 |---|---|

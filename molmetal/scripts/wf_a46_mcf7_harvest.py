@@ -295,9 +295,19 @@ def write_cell_outputs(out_dir: Path, stem: str, records: list) -> None:
     os.replace(tmp_csv, csv_path)
 
 
-def harvest_one(cell_line: str, args, watchdog, prev: dict | None = None) -> dict:
+def harvest_one(
+    cell_line: str,
+    args,
+    watchdog,
+    prev: dict | None = None,
+    stem: str | None = None,
+) -> dict:
     """Harvest one cell line; returns its summary dict (``pending`` count
     is reported via ``pages_failed_unrecovered``).
+
+    ``stem`` overrides the output filename slug.  The default rule
+    (``lower().replace("-", "")``) maps ``K-562`` and ``K562`` to the same
+    file, so ``--all-cells`` passes a collision-free stem.
 
     With ``args.from_disk`` no network call is made: the API meta is carried
     forward from ``prev`` (the previous summary) and only the on-disk records
@@ -305,12 +315,16 @@ def harvest_one(cell_line: str, args, watchdog, prev: dict | None = None) -> dic
     schema fix while another crawl is saturating the API's rate limit.
     """
     out_dir = Path(args.out_dir)
-    stem = cell_line.lower().replace("-", "")
+    if stem is None:
+        stem = cell_line.lower().replace("-", "")
     jsonl_path = out_dir / f"platinai_{stem}_biodata.jsonl"
 
     records, done_pages = load_existing(jsonl_path)
     if args.from_disk:
-        total = (prev or {}).get("api_meta_total")
+        if not jsonl_path.exists():
+            print(f"[{cell_line}] SKIP (no file on disk)", flush=True)
+            return {"cell_line": cell_line, "error": "no file on disk"}
+        total = (prev or {}).get("api_meta_total") or len(records)
         last_page = (prev or {}).get("api_meta_last_page")
         pending: list = []
         if last_page:
@@ -416,11 +430,81 @@ def harvest_one(cell_line: str, args, watchdog, prev: dict | None = None) -> dic
     }
 
 
+def on_disk_cells(out_dir: Path) -> tuple[list, dict]:
+    """Cell lines already on disk, with the stem each file uses.
+
+    Scanning the JSONL rather than trusting the summary keeps the rebuild
+    honest after a killed run: ``harvest_one`` writes a cell's file when the
+    cell finishes, but the summary is only written at the end of ``main``, so
+    an ``os._exit(3)`` leaves completed cells absent from the summary.
+    """
+    harvested: dict = {}
+    for p in sorted(out_dir.glob("platinai_*_biodata.jsonl")):
+        try:
+            with p.open("r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line:
+                        harvested[json.loads(line)["cell_line"]] = p.name
+                        break
+        except (json.JSONDecodeError, OSError, KeyError):
+            continue
+    stem_by_cell = {
+        cell: name[len("platinai_") : -len("_biodata.jsonl")]
+        for cell, name in harvested.items()
+    }
+    return sorted(harvested), stem_by_cell
+
+
+def resolve_all_cells(out_dir: Path) -> tuple[list, dict]:
+    """All API cell lines not yet on disk, largest ``bioDataCount`` first.
+
+    Returns ``(ordered_cell_lines, stem_by_cell)``.  Stems must be made
+    collision-proof: the default ``lower().replace("-", "")`` slug maps
+    ``K-562``/``K562``, ``PC-3``/``PC3`` and ``SK-OV-3``/``SKOV3`` to the same
+    filename, so harvesting both would let the second overwrite the first.
+    Cells already on disk keep their existing stem (so a re-run resumes); a
+    later collision gets ``_<api id>`` appended.
+    """
+    registry = Path("logs/wf_a46_celllines.json")
+    if not registry.exists():
+        raise SystemExit(f"[wf-a46] missing {registry}; cannot enumerate cells")
+    cells = json.loads(registry.read_text(encoding="utf-8"))
+
+    harvested_cells, stem_by_cell = on_disk_cells(out_dir)
+    harvested = set(harvested_cells)
+    used: set = set(stem_by_cell.values())
+
+    remaining = [c for c in cells if c.get("cellLine") not in harvested]
+    remaining.sort(key=lambda c: (-(c.get("bioDataCount") or 0), c.get("id") or 0))
+    for c in remaining:
+        cell = c["cellLine"]
+        base = cell.lower().replace("-", "")
+        stem = base if base not in used else f"{base}_{c.get('id')}"
+        stem_by_cell[cell] = stem
+        used.add(stem)
+
+    return [c["cellLine"] for c in remaining], stem_by_cell
+
+
 def main(argv: Optional[list] = None) -> int:
     global _LIMITER
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--cell-lines", default=",".join(DEFAULT_CELL_LINES)
+    )
+    parser.add_argument(
+        "--all-cells",
+        action="store_true",
+        help="harvest every API cell line not yet on disk, largest "
+        "bioDataCount first (reads logs/wf_a46_celllines.json)",
+    )
+    parser.add_argument(
+        "--pt-target",
+        type=int,
+        default=0,
+        help="stop once cumulative Pt rows (on-disk + this run) reach N; "
+        "0 = no stop",
     )
     parser.add_argument(
         "--out-dir", default=".data/molmetal/wf_a37_platinai_biodata"
@@ -458,7 +542,21 @@ def main(argv: Optional[list] = None) -> int:
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    cells = [c.strip() for c in args.cell_lines.split(",") if c.strip()]
+    if args.from_disk:
+        cells, stem_by_cell = on_disk_cells(out_dir)
+        print(
+            f"[wf-a46] --from-disk: {len(cells)} cell line(s) on disk",
+            flush=True,
+        )
+    elif args.all_cells:
+        cells, stem_by_cell = resolve_all_cells(out_dir)
+        print(
+            f"[wf-a46] --all-cells: {len(cells)} cell line(s) not yet on disk",
+            flush=True,
+        )
+    else:
+        cells = [c.strip() for c in args.cell_lines.split(",") if c.strip()]
+        stem_by_cell = {}
     _LIMITER = RateLimiter(args.rate_per_min)
 
     t_start = time.time()
@@ -493,29 +591,71 @@ def main(argv: Optional[list] = None) -> int:
         threading.Thread(target=_stall_monitor, daemon=True).start()
 
     prev_by_cell: dict = {}
-    if args.from_disk:
-        prev_path = out_dir / "harvest_summary_2026-10-16.json"
-        if prev_path.exists():
-            try:
-                prev_doc = json.loads(prev_path.read_text(encoding="utf-8"))
-                prev_by_cell = {
-                    s["cell_line"]: s
-                    for s in prev_doc.get("by_cell_line", [])
-                    if s.get("cell_line")
-                }
-            except (json.JSONDecodeError, OSError):
-                prev_by_cell = {}
+    prev_path = out_dir / "harvest_summary_2026-10-16.json"
+    if prev_path.exists():
+        try:
+            prev_doc = json.loads(prev_path.read_text(encoding="utf-8"))
+            prev_by_cell = {
+                s["cell_line"]: s
+                for s in prev_doc.get("by_cell_line", [])
+                if s.get("cell_line")
+            }
+        except (json.JSONDecodeError, OSError):
+            prev_by_cell = {}
 
     summaries: list = []
+    processed: set = set()
+
+    def _pt_total() -> int:
+        cur = sum(s.get("rows_pt", 0) for s in summaries)
+        prev = sum(
+            s.get("rows_pt", 0)
+            for c, s in prev_by_cell.items()
+            if c not in processed
+        )
+        return cur + prev
+
     for cell in cells:
+        if args.pt_target and _pt_total() >= args.pt_target:
+            print(
+                f"[wf-a46] PT TARGET reached ({_pt_total()} >= "
+                f"{args.pt_target}); stopping before [{cell}]",
+                flush=True,
+            )
+            break
         print(f"\n=== [{cell}] ===", flush=True)
         try:
             summaries.append(
-                harvest_one(cell, args, watchdog, prev_by_cell.get(cell))
+                harvest_one(
+                    cell,
+                    args,
+                    watchdog,
+                    prev_by_cell.get(cell),
+                    stem=stem_by_cell.get(cell),
+                )
             )
         except Exception as e:  # noqa: BLE001
             print(f"[{cell}] EXC {type(e).__name__}: {e}", flush=True)
             summaries.append({"cell_line": cell, "error": str(e)})
+        processed.add(cell)
+
+    # Merge the previous summary's entries for cells not touched this run (and
+    # for cells that errored, whose on-disk rows are still valid), so the
+    # rewritten summary always covers everything on disk.
+    merged: dict = {}
+    for s in summaries:
+        cell = s.get("cell_line")
+        if cell and "error" not in s:
+            merged[cell] = s
+        elif cell and cell in prev_by_cell and "error" not in prev_by_cell[cell]:
+            merged[cell] = prev_by_cell[cell]
+        elif cell:
+            merged[cell] = s
+    for cell, s in prev_by_cell.items():
+        merged.setdefault(cell, s)
+    summaries = sorted(
+        merged.values(), key=lambda s: -(s.get("rows_total") or 0)
+    )
 
     rows_total = sum(s.get("rows_total", 0) for s in summaries)
     incomplete = [
