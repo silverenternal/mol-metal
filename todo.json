@@ -2964,10 +2964,12 @@
     "2026-10-17 (v2 主线): WP0-WP4 全部完成。三个独立负结果收口到同一句话: 金属对活性的影响是真的 (concept shift 18.2% vs 9.6%), 但**不可从金属化学或金属条件化中利用** —— 它是配体固有属性。因此可部署能力 = 配体侧可靠性过滤器 (WP2, AUC 0.6704, Holm 0.04)。",
     "FU4 完成 (fsma_fused_kcurve.json): 在 FSMA 线上, **简单分数级平均** 达到 directive 验收 —— K=80 merged_avg 在 4/5 金属 >= max(A,B), Ru +0.0240 Holm 0.0007; K=20/K=80 merged_logit_avg 同样达标。但证据集中在 Ru (占队列 64%), Rh 边缘 (Holm 0.056), Os 为负。学习型 merged_stack 全面输给平均 (Re K=20: 0.4944 vs 0.7529) —— 与 FU3 的 uniform_avg 结论一致: 可学习合并器数据不足, 等权平均更稳。",
     "FU2 完成 (stacked_dmpnn_xgb_within_metal.json): 组内 stacking 只在 Ru 达标 (merged 0.8659 > A 0.8614, +0.0045, 5/5 seed, Holm 0.0029); Ir/Rh 微正不显著, Os/Re 微负 → 3/5, 未达 directive 验收。但 merged_minus_B 在 5 金属全部 Holm 显著 (5e-06..0.0011): 合并器确实吸收了强分量, 只是停在 A+epsilon。directive 要求继续换结构 (未启动, 每个都是 >1h GPU0, 需 USER_OK)。",
-    "在跑: #184 (CPU, Table 1 within-metal h512) —— 唯一未落盘的预测线任务。FU2 已完成 (DONE_ACCEPTANCE_NOT_MET)。",
+    "在跑: #184 (GPU0, device-matched capacity pair) —— 原 CPU h512 跑了 7h32m 零 cell, 已 kill。现按 cuda:0 + --deterministic 顺序跑 h128 -> h512 (configs/dmpnn_within_metal_cap128_pf_gpu0.yaml -> ..._cap512_pf_gpu0.yaml), 两档仅 model.hidden 不同, 与已发表 CPU 列仅 device/deterministic 不同。首个 cell: Ru split_seed=42 dmpnn=0.8204 xgb=0.8640 (xgb 与 CPU 列同 seed 的 0.8640 完全一致 -> 同折验证通过; D-MPNN 的设备效应 +0.0055: CPU 0.8149 -> GPU0 0.8204)。实测 58.7 min/cell (Ru), 外推 h128 约 7.5h, h512 约 18h, 合计约 25h —— 远高于启动时给的 1.8h/7.3h 估计。",
     "FU1 已完成 (NO_CONFIRMATORY_ARM_METAL_FUSION_WIN): 特征级融合 5 金属全负, 而 FU2 在 Ru 上分数级 stacking 为正 (0.8694 > 0.8640) —— 融合的正确层级是分数而非特征。",
     "PAPER-SYNC 提案已更新 (TODO/pending/paper_a_abstract_sync_proposal.md): 缺陷 4 已由 fsma_c3_sampler_pairwise.json 解决 (该句被支持)。用户 2026-10-17 决定: 暂不动 paper_a; LOMO 区间改用 EX1 的 0.62-0.66。落 hunk 仍需明确 OK (§5.3)。",
-    "repo-hygiene: pre-flight 现唯一 FAIL 来自并行 session 的未跟踪文件 configs/cfm_5metal_smoke_2026_10_17.yaml (command_template 带 --device)。不是本研究引入; 待该 session 自行收口。"
+    "repo-hygiene: pre-flight 现唯一 FAIL 来自并行 session 的未跟踪文件 configs/cfm_5metal_smoke_2026_10_17.yaml (command_template 带 --device)。不是本研究引入; 待该 session 自行收口。",
+    "方法教训 (2026-10-17, 由 FU3+FU4 共同支撑): 任何合并器实验都必须**同时输出等权平均臂**。FU4 里 merged_avg 赢过学习型 merged_stack (Re K=20: 0.7529 vs 0.4944), FU3 里 uniform_avg 赢过学习型 router (pooled +0.0277 Holm 0.0021 vs +0.0059 Holm 0.66)。平均臂的边际成本是零 (分数已经算出来了), 而 FU2 当时没跑它, 导致现在无法事后回答『组内 stacking 输给平均了吗』—— 只能重跑 25h。",
+    "FU2 的 B 分量预算错配已记录 (todo.json fu2_result_2026_10_17.component_b_budget_mismatch): FU2 用 30 epoch, 已发表 Table-1 列用 50 epoch, B_ep30 在 4/5 金属低 0.013-0.038。ep50 重跑约 25h GPU0, 排在 #184 之后, 需 USER_OK。"
   ],
   "working_detail_2026_10_14": {
     "note": "2026-10-14 工作细节 (current_state 的依据)。model_unification_2026_10_14 已 SUPERSEDED (保留溯源)。",
