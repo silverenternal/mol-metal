@@ -33,7 +33,7 @@ Pocket conditioning (T5):
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 import warnings
 
 import torch
@@ -2317,6 +2317,31 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         accept_only_connected: bool = True,
         keep_empty_connected: bool = True,
         cutoff: float = 5.0,
+        # Wf-A69 (2026-10-17) W1 — bond-candidate source switch.
+        # ``truth_only`` (default) reproduces the pre-A69 candidate
+        # construction at :meth:`train_step` line ~2599-2641: every
+        # candidate edge is read from ``m.bonds`` so the per-pair
+        # CE is 100% positive by construction. ``radius_graph``
+        # builds candidates from a distance-cutoff ``triu_indices``
+        # (matching :class:`YuelBondDecoderHead`'s eval cutoff) and
+        # labels them with truth via the same ``m.bonds`` lookup.
+        # 2026-10-17 measured: Wf-A67 bond_f1=0.265 was reported by
+        # an evaluation whose candidate set (~90-95% NO_BOND,
+        # distance cutoff) the trainer never saw during training
+        # (truth-only, 100% positive). ``radius_graph`` aligns train
+        # and eval so the head sees the negative class.
+        # Default ``truth_only`` preserves Wf-A67 bit-exact backward
+        # compat.  Opt-in via YAML ``flow.bond_candidate_source``.
+        bond_candidate_source: str = "truth_only",
+        bond_candidate_cutoff: float = 2.4,
+        # Wf-A69 W1 — subsample negatives to neg:pos = N (4:1 typical).
+        # ``0`` (default) = no subsampling, full candidate set used;
+        # ``>0`` activates a deterministic per-epoch seed so the run
+        # is reproducible.  Per PepForge (bioRxiv 2026) + GraViti
+        # (arXiv 2605.16668) negative-resampling recipe for ~95%
+        # NO_BOND prior.
+        subsample_neg_ratio: int = 0,
+        subsample_neg_seed: str = "epoch",
     ) -> None:
         # 2026-10-04 — radius-graph cutoff (Å) for the EGNN's message passing.
         #
@@ -2416,6 +2441,17 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             "n_conflicts": 0,
             "mean_cos_sim": 0.0,
         }
+        # Wf-A69 W1 (2026-10-17) — bond candidate-list diagnostic
+        # counters.  ``train_step`` writes these on every step so a
+        # maintainer can verify the candidate-list source is doing
+        # what the YAML asked: ``truth_only`` should have
+        # ``last_bond_n_neg == 0``; ``radius_graph`` should have a
+        # positive ``last_bond_n_neg`` so the head sees the negative
+        # class.  Pre-Wf-A69 callers that never set these leave them
+        # at 0 (the legacy path didn't record this metric).
+        self.last_bond_n_candidates: int = 0
+        self.last_bond_n_pos: int = 0
+        self.last_bond_n_neg: int = 0
 
         # WF-CFM-Phase-2 (P1.4) — ConnectivityAwareDecoder wiring.
         # Stash the flags so :meth:`_generate_impl` can construct the
@@ -2424,6 +2460,22 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # compatible escape hatch.
         self._accept_only_connected = bool(accept_only_connected)
         self._keep_empty_connected = bool(keep_empty_connected)
+
+        # Wf-A69 (2026-10-17) W1 — bond-candidate source / subsample knobs.
+        # All defaults preserve bit-exact pre-Wf-A69 behaviour.
+        if str(bond_candidate_source) not in ("truth_only", "radius_graph"):
+            raise ValueError(
+                f"bond_candidate_source must be 'truth_only' or 'radius_graph', "
+                f"got {bond_candidate_source!r}"
+            )
+        if bond_candidate_cutoff <= 0.0:
+            raise ValueError(
+                f"bond_candidate_cutoff must be > 0 Å, got {bond_candidate_cutoff}"
+            )
+        self._bond_candidate_source = str(bond_candidate_source)
+        self._bond_candidate_cutoff = float(bond_candidate_cutoff)
+        self._subsample_neg_ratio = int(subsample_neg_ratio)
+        self._subsample_neg_seed = str(subsample_neg_seed)
 
         # Will be set in setup()
         self.velocity_field: Optional[EGNNVelocityField] = None
@@ -2625,20 +2677,79 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 bt_np = m.bond_types.cpu().tolist()
                 bs_np = m.bonds[0].cpu().tolist()
                 bd_np = m.bonds[1].cpu().tolist()
+                # Wf-A69 W1 (2026-10-17) — bond-candidate source switch.
+                # ``truth_only`` (default) reproduces the pre-A69
+                # candidate construction: every candidate edge is read
+                # from ``m.bonds`` so the per-pair CE is 100% positive.
+                # ``radius_graph`` builds candidates from a
+                # distance-cutoff ``triu_indices`` (matching
+                # ``YuelBondDecoderHead``'s eval cutoff, default 2.4 Å
+                # matching ``BondOrderHead.bond_cutoff``) and labels
+                # them with truth via the same ``m.bonds`` lookup.
+                # Pairs NOT in ``m.bonds`` get ``BOND_NO_BOND=0`` so the
+                # head sees the negative class at training.
+                # Truth bonds are NEVER dropped (kept on top of the
+                # distance filter so the positive rate is preserved).
+                _candidate_source = str(self._bond_candidate_source)
+                _cutoff = float(self._bond_candidate_cutoff)
+                # Build truth lookup on canonical (min, max) keys so a
+                # candidate direction never matters for the label.
+                _truth_lookup: Dict[Tuple[int, int], int] = {}
                 for k in range(len(bs_np)):
                     s_idx = int(bs_np[k])
                     d_idx = int(bd_np[k])
-                    bt = int(bt_np[k])
-                    label = _rdkit_bond_int_to_bond_head_label(bt)
                     if s_idx < 0 or d_idx < 0:
                         continue
                     if s_idx >= len(zi_np) or d_idx >= len(zi_np):
                         continue
-                    edge_src_list.append(s_idx)
-                    edge_dst_list.append(d_idx)
-                    edge_z_i_list.append(int(zi_np[s_idx]))
-                    edge_z_j_list.append(int(zi_np[d_idx]))
-                    edge_label_list.append(label)
+                    bt = int(bt_np[k])
+                    label = _rdkit_bond_int_to_bond_head_label(bt)
+                    _key = (min(s_idx, d_idx), max(s_idx, d_idx))
+                    # If a pair has multiple labels (shouldn't, but
+                    # defensive), keep the first one — bond_type is
+                    # the truth per tmQM .BO shards, not a consensus.
+                    if _key not in _truth_lookup:
+                        _truth_lookup[_key] = label
+                if _candidate_source == "radius_graph" and n >= 2:
+                    # Build (n*(n-1)/2,) upper-triangular pair list
+                    # masked by ``d_ij < cutoff``.
+                    _triu = torch.triu_indices(n, n, offset=1)
+                    _src_all = _triu[0].tolist()
+                    _dst_all = _triu[1].tolist()
+                    _coords_np = m.coords.detach().cpu().tolist()
+                    for k in range(len(_src_all)):
+                        s_idx = int(_src_all[k])
+                        d_idx = int(_dst_all[k])
+                        # Distance gate (Angstrom).
+                        _dx = _coords_np[s_idx][0] - _coords_np[d_idx][0]
+                        _dy = _coords_np[s_idx][1] - _coords_np[d_idx][1]
+                        _dz = _coords_np[s_idx][2] - _coords_np[d_idx][2]
+                        _d = (_dx * _dx + _dy * _dy + _dz * _dz) ** 0.5
+                        if _d >= _cutoff:
+                            continue
+                        _key = (min(s_idx, d_idx), max(s_idx, d_idx))
+                        label = _truth_lookup.get(_key, 0)  # 0 = BOND_NO_BOND
+                        edge_src_list.append(s_idx)
+                        edge_dst_list.append(d_idx)
+                        edge_z_i_list.append(int(zi_np[s_idx]))
+                        edge_z_j_list.append(int(zi_np[d_idx]))
+                        edge_label_list.append(int(label))
+                else:
+                    # ``truth_only`` path (default, bit-exact pre-A69).
+                    for k in range(len(bs_np)):
+                        s_idx = int(bs_np[k])
+                        d_idx = int(bd_np[k])
+                        if s_idx < 0 or d_idx < 0:
+                            continue
+                        if s_idx >= len(zi_np) or d_idx >= len(zi_np):
+                            continue
+                        bt = int(bt_np[k])
+                        label = _rdkit_bond_int_to_bond_head_label(bt)
+                        edge_src_list.append(s_idx)
+                        edge_dst_list.append(d_idx)
+                        edge_z_i_list.append(int(zi_np[s_idx]))
+                        edge_z_j_list.append(int(zi_np[d_idx]))
+                        edge_label_list.append(int(label))
 
         # T5: pocket conditioning — encode pocket(s) into a (B, H) bias.
         # Returns None when pocket=None so the velocity field takes its
@@ -2798,6 +2909,49 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 dtype=torch.long,
                 device=self.device,
             )
+            # Wf-A69 W1 (2026-10-17) — optional negative subsampling.
+            # When ``bond_candidate_source=radius_graph`` plus
+            # ``subsample_neg_ratio > 0``, keep all positive pairs and
+            # ``subsample_neg_ratio * n_pos`` random negatives
+            # (deterministic per-epoch seed via Python's `hash` so the
+            # run is reproducible across CUDA devices).
+            # 0 (default) keeps every pair, bit-exact pre-A69.
+            if (
+                str(self._bond_candidate_source) == "radius_graph"
+                and int(self._subsample_neg_ratio) > 0
+            ):
+                _pos_mask = edge_labels > 0
+                _neg_mask = ~_pos_mask
+                _n_pos = int(_pos_mask.sum().item())
+                _n_neg = int(_neg_mask.sum().item())
+                _keep_neg = int(self._subsample_neg_ratio) * _n_pos
+                if _n_pos > 0 and _n_neg > _keep_neg:
+                    # Deterministic per-batch seed derived from the
+                    # candidate counts + the seed policy.  `_g.manual_seed`
+                    # is the standard way to get a reproducible randperm
+                    # without touching the global torch RNG.
+                    _g = torch.Generator(device=self.device)
+                    if str(self._subsample_neg_seed) == "epoch":
+                        _g.manual_seed(int(_n_pos) * 7919 + int(_n_neg))
+                    else:
+                        # "global" → use a fixed seed so the run is
+                        # reproducible regardless of epoch index.
+                        _g.manual_seed(0)
+                    _neg_idx = torch.nonzero(_neg_mask, as_tuple=False).flatten()
+                    _perm = torch.randperm(
+                        int(_neg_idx.numel()), generator=_g,
+                        device=self.device,
+                    )[:_keep_neg]
+                    _sel_neg = _neg_idx[_perm]
+                    _sel_pos = torch.nonzero(_pos_mask, as_tuple=False).flatten()
+                    _sel = torch.cat([_sel_pos, _sel_neg], dim=0)
+                    edge_index_e = edge_index_e[:, _sel]
+                    edge_z_i = edge_z_i[_sel]
+                    edge_z_j = edge_z_j[_sel]
+                    edge_labels = edge_labels[_sel]
+                    self.last_losses["bond_subsampled_negatives"] = int(
+                        self.last_losses.get("bond_subsampled_negatives", 0)
+                    ) + 1
             # Build per-pair features (distance + bucket + dative flag)
             # using the existing _PairFeaturiser pattern from
             # ``molmetal.models.bond_head.BondAwareDecoder._featurise``.
@@ -3003,6 +3157,24 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             "bond": float(bond_loss_value),
             "total": float(loss.item()),
         }
+        # Wf-A69 W1 (2026-10-17) — diagnostic counters for the bond
+        # candidate list.  ``last_bond_n_candidates`` is the raw size
+        # of the candidate list before any subsampling; ``last_bond_n_pos``
+        # and ``last_bond_n_neg`` are the truth-vs-no_bond split.  These
+        # three counters let a maintainer verify the candidate-list
+        # source is doing what the YAML asked: ``truth_only`` should
+        # have ``n_neg == 0``; ``radius_graph`` should have a positive
+        # ``n_neg`` so the head sees the negative class.  Bit-exact
+        # pre-Wf-A69 callers leave them at 0 (the legacy path never
+        # recorded this metric).
+        try:
+            self.last_bond_n_candidates = int(edge_index_e.shape[1])
+            self.last_bond_n_pos = int((edge_labels > 0).sum().item())
+            self.last_bond_n_neg = int((edge_labels == 0).sum().item())
+        except Exception:
+            self.last_bond_n_candidates = 0
+            self.last_bond_n_pos = 0
+            self.last_bond_n_neg = 0
         return self.last_losses["total"]
 
     # ------------------------------------------------------------------
