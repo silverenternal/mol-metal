@@ -2957,10 +2957,11 @@
     }
   ],
   "next_actions": [
-    "2026-10-17 优先序 (thesis_v2): WP0 (功效分析 + LOMO 分层归因) 是唯一先决条件 —— 它决定 WP2/WP3 是否可行, 且只用 CPU/现有数据, 不占 GPU。P0 建议立即启动。",
-    "在跑: FU1 (GPU0, Ru 已完成且特征融合为负) + FU2 (GPU0, 全量档, ETA ~16-17h)。FU1/FU2 是 G1 的补救, 现在降级为 WP4 的输入之一, 不再是主线叙事。",
-    "paper_a 侧待决: abstract 的 K-curve 数字**过期** (写着 K20 +0.0084 / K80 +0.0685, 真产物是 +0.0389 / +0.0996) 且 XGB 骨干那句 'reproduces the curve' 需改如实版。动 paper_a 需用户先审 hunk (§5.3)。",
-    "repo-hygiene: pre-flight 仍有 3 个与本研究正交的 pre-existing FAIL (configs/dmpnn.yaml pic50_ridge_readout, cfm_a32_* 缺 3 超参, registry/metrics.yaml 'ex1_i2_rich' 指向被并行 session 抹掉的文件)。"
+    "2026-10-17 (v2 主线): WP0-WP4 全部完成。三个独立负结果收口到同一句话: 金属对活性的影响是真的 (concept shift 18.2% vs 9.6%), 但**不可从金属化学或金属条件化中利用** —— 它是配体固有属性。因此可部署能力 = 配体侧可靠性过滤器 (WP2, AUC 0.6704, Holm 0.04)。",
+    "在跑: FU2 (GPU0, stacking/路由合并器, 全量档)。FU1 已完成 (NO_CONFIRMATORY_ARM_METAL_FUSION_WIN): 特征级融合 5 金属全负, 而 FU2 在 Ru 上分数级 stacking 为正 (0.8694 > 0.8640) —— 融合的正确层级是分数而非特征。",
+    "FU4 (融合 scorer 上的 FSMA K-curve, G2+G4) 仍 blocked_by FU2; FU2 出结果后启动。",
+    "PAPER-SYNC 提案已更新 (TODO/pending/paper_a_abstract_sync_proposal.md): 缺陷 4 已由 fsma_c3_sampler_pairwise.json 解决 (该句被支持)。用户 2026-10-17 决定: 暂不动 paper_a; LOMO 区间改用 EX1 的 0.62-0.66。落 hunk 仍需明确 OK (§5.3)。",
+    "repo-hygiene: pre-flight 仍有与本研究正交的 pre-existing FAIL/WARN (configs/dmpnn.yaml pic50_ridge_readout, cfm_a32_* 缺 3 超参, registry/metrics.yaml 'ex1_i2_rich' 指向被并行 session 抹掉的文件)。"
   ],
   "working_detail_2026_10_14": {
     "note": "2026-10-14 工作细节 (current_state 的依据)。model_unification_2026_10_14 已 SUPERSEDED (保留溯源)。",
@@ -7620,8 +7621,32 @@
         "acceptance": "within-metal >= XGB (补 G1) 且跨金属可迁移性提升。",
         "why_non_obvious": "把『金属感知负结果 (I1-I4)』翻成『正确用法是 domain token 而非特征』。",
         "wall": "3-5 天",
-        "status": "OPEN",
-        "gpu": "heavy"
+        "status": "DONE_HYPOTHESIS_REFUTED",
+        "gpu": "heavy",
+        "result": {
+          "artifact": "metrics/by_metric/wp4_metal_token_fsma.json",
+          "config": "configs/wp4_metal_token_fsma_gpu0.yaml",
+          "scope_note": "WP4's todo acceptance has two halves: 'within-metal >= XGB' and 'cross-metal transferability up'. The within-metal half is a CATEGORY ERROR for a metal TOKEN -- within one metal every row carries the same metal id, so the token is a constant and cannot change the within-metal ranking. Only the cross-metal half is tested here; the within-metal half is delegated to the fusion/stacking line (FU1/FU2).",
+          "measured_adapted_auc_mean_over_25_cells": {
+            "none_at_K5": 0.6471,
+            "readout_at_K5": 0.6394,
+            "message_at_K5": 0.6401,
+            "film_at_K5": 0.6188,
+            "none_at_K10": 0.6442,
+            "readout_at_K10": 0.6375,
+            "message_at_K10": 0.6387,
+            "film_at_K10": 0.6233,
+            "none_at_K20": 0.6531,
+            "readout_at_K20": 0.6466,
+            "message_at_K20": 0.6631,
+            "film_at_K20": 0.6445
+          },
+          "paired_vs_metal_blind_none": "8 of 9 arm-vs-none tests are NEGATIVE; the only positive is message@K20 +0.0100 with raw p=0.117 and Holm=1.0",
+          "preregistered_message_gt_readout": "holds in sign at every K but never significant: K5 +0.0006 (p=0.476), K10 +0.0012 (p=0.447), K20 +0.0165 (p=0.074)",
+          "honest_negative": "HYPOTHESIS REFUTED: metal-as-domain-token does not improve cross-metal transfer. The metal-blind arm matches or beats all three metal-aware arms at K=5 and K=10, and the one K=20 win is inside noise.",
+          "why_this_tightens_the_thesis": "This is the third independent negative on metal conditioning (after WP3's metal descriptors adding +0.003 and the I1-I4 feature-injection line). Together they say: the metal's effect on activity is REAL (concept shift, 18.2% vs 9.6%) but is NOT exploitable from metal chemistry or metal conditioning -- it is a LIGAND-INTRINSIC property. So the deployable capability is a ligand-side reliability filter (WP2), not metal conditioning.",
+          "side_observation": "For the metal-blind arm, FSMA adaptation adds ~0 at hidden=512 (none@K20 - none@K20:zero_shot = +0.0009), whereas the same arm at hidden=128 gives +0.0389. Capacity up -> FSMA lift down, consistent with fsma_inhouse_kcurve_ep50_synth.json's ep50_cap512 column (K20 +0.0151, Holm 0.054)."
+        }
       }
     ],
     "workload_delta": "相对现有工作的**增量**评估: WP0/WP1 = 纯分析 + 一次带 dump 的 LOMO 重跑 (小); WP2 = 一个小分类器 (小); WP3 = 描述符距离 + CATE 预测 (中); WP4 = 架构 (大, GPU, 与 FU1/FU2 并行)。总计**中等**: 大部分是『在已有数据上做新分析』, 只有 WP4 是新训练。真正的不确定项是 WP0 的功效判定。",
@@ -7642,51 +7667,56 @@
         "title": "功效分析 + LOMO 分层归因",
         "priority": "P0 (先决条件)",
         "deliverable": "metrics/by_metric/metal_sensitivity_decomposition.json",
-        "status": "OPEN",
-        "blocked_by": []
+        "status": "DONE",
+        "blocked_by": [],
+        "note": "metrics/by_metric/metal_sensitivity_decomposition.json -- FULL cohort 668 pairs, flip 0.1781 vs noise 0.0957; power 0.946 to detect AUC 0.65. Commit 0c842a3b."
       },
       {
         "id": "WP1",
         "title": "干预效应因果分解 (ATE/CATE)",
         "deliverable": "metrics/by_metric/metal_sensitivity_decomposition.json",
-        "status": "OPEN",
+        "status": "DONE_STRONG_FORM_REFUTED",
         "blocked_by": [
           "WP0"
-        ]
+        ],
+        "note": "robust subset recovers only 75-79% of within-metal AUC (acceptance was >=90%), so the penalty is NOT solely the metal-sensitive subset. Positive signal: CATE is predictable from ligand chemistry (AUC 0.6706). Commit 0c842a3b."
       },
       {
         "id": "WP2",
         "title": "金属敏感性预测器",
         "deliverable": "metrics/by_metric/metal_sensitivity_predictor.json",
-        "status": "OPEN",
+        "status": "DONE",
         "blocked_by": [
           "WP0"
-        ]
+        ],
+        "note": "metrics/by_metric/metal_sensitivity_predictor.json -- multi_metal AUC 0.6704, permutation p_holm 0.04 (51 pos / 217 neg, 268 ligands). Commit 019a572a."
       },
       {
         "id": "WP3",
         "title": "金属化学驱动迁移 + 零样本 metal-swap 预测",
         "deliverable": "metrics/by_metric/metal_transfer_chemistry.json",
-        "status": "OPEN",
+        "status": "DONE_HYPOTHESIS_REFUTED",
         "blocked_by": [
           "WP0"
-        ]
+        ],
+        "note": "metrics/by_metric/metal_transfer_chemistry.json -- ligand_only 0.6706 / metal_only 0.5528 / ligand+metal 0.6737, delta +0.0031 (negligible). Metal descriptors add nothing; the effect is ligand-intrinsic. Commit 019a572a."
       },
       {
         "id": "WP4",
         "title": "metal-as-domain-token 架构",
         "deliverable": "fusion/routed scorer + FSMA K-curve",
-        "status": "OPEN",
+        "status": "DONE_HYPOTHESIS_REFUTED",
         "blocked_by": [
           "WP3"
-        ]
+        ],
+        "note": "metal-as-domain-token REFUTED on cross-metal transfer; 8/9 arm-vs-none deltas negative, the one positive inside noise. Artifact metrics/by_metric/wp4_metal_token_fsma.json (commit 53e4158c)."
       },
       {
         "id": "FU1",
         "title": "D-MPNN x ECFP4 特征融合 arms 3/4/5",
         "deliverable": "metrics/by_metric/fusion_dmpnn_ecfp4_paper_funnel.json",
-        "status": "RUNNING (GPU0)",
-        "note": "初步: Ru 5/5 seed 完成, arm3-arm1 = -0.0140 -> 特征融合在 Ru 上失败"
+        "status": "DONE_NO_FUSION_WIN",
+        "note": "NO_CONFIRMATORY_ARM_METAL_FUSION_WIN: feature-level concatenation negative/null on all 5 metals (arm3-arm1 Ru -0.0140 / Ir -0.0163 / Rh -0.0031 / Os -0.0118 / Re -0.0177). Artifact metrics/by_metric/fusion_dmpnn_ecfp4_paper_funnel.json (commit 53e4158c)."
       },
       {
         "id": "FU2",
@@ -7699,8 +7729,8 @@
         "id": "FU3",
         "title": "metal-conditioned router",
         "deliverable": "metrics/by_metric/metal_router_ablation.json",
-        "status": "OPEN",
-        "note": "与 WP4 合并可能"
+        "status": "DONE",
+        "note": "ROUTING_DOES_NOT_BEAT_BEST_SINGLE + METAL_DOES_NOT_CONDITION_ROUTING + PLAIN_AVERAGING_MATCHES_ORACLE_SELECTION. Artifact metrics/by_metric/metal_router_ablation.json (commit 53e4158c)."
       },
       {
         "id": "FU4",
@@ -7745,5 +7775,56 @@
       "wp3_metal_only_auc": "0.5528 (near chance)"
     },
     "combined_story": "Metal-sensitivity is a LIGAND-INTRINSIC property. WP2: it is predictable from ligand chemistry alone (AUC 0.67, significant). WP3: adding metal descriptors buys +0.003 -- the effect is not metal-driven. WP1: the sensitive subset is predicted below chance (0.39) by a ligand-only model, and the transfer penalty is not solely theirs (robust recovers 0.755). Together: (a) a deployable zero-experiment reliability filter for ligand-only models, and (b) a precise, non-obvious mechanistic claim -- fragility lives in the ligand, not the metal."
+  },
+  "wp4_result_2026_10_17": {
+    "date": "2026-10-17",
+    "task": "WP4 metal-as-domain-token architecture (thesis_v2_2026_10_17.work_packages[WP4])",
+    "artifact": "metrics/by_metric/wp4_metal_token_fsma.json",
+    "config": "configs/wp4_metal_token_fsma_gpu0.yaml",
+    "commit": "53e4158c",
+    "protocol": "EX1 injection contrast on paper_funnel, LOMO + FSMA head-only K-shot, encoder frozen, identical query across arms; arms none/readout/message/film; K 5/10/20; hidden 512; 5 metals x 5 seeds = 300 runs; device cuda:0; deterministic",
+    "status": "DONE_HYPOTHESIS_REFUTED",
+    "headline": "No metal-aware arm beats the metal-blind `none` arm on cross-metal transfer: 8 of 9 paired arm-vs-none tests are negative, and the single positive (message@K20 +0.0100) has raw p=0.117 / Holm 1.0.",
+    "detail": "adapted AUC (mean over 25 cells) none 0.6471/0.6442/0.6531, readout 0.6394/0.6375/0.6466, message 0.6401/0.6387/0.6631, film 0.6188/0.6233/0.6445 at K=5/10/20. Pre-registered `message > readout` holds in sign everywhere but is never significant (best p=0.074 at K=20).",
+    "caveat": "The within-metal half of the todo acceptance is NOT tested by construction -- the token is constant within a metal. Delegated to FU1/FU2."
+  },
+  "fu1_result_2026_10_17": {
+    "date": "2026-10-17",
+    "task": "FU1 D-MPNN x ECFP4 feature fusion (gap G1)",
+    "artifact": "metrics/by_metric/fusion_dmpnn_ecfp4_paper_funnel.json",
+    "commit": "53e4158c",
+    "status": "DONE_NO_FUSION_WIN",
+    "verdict": "NO_CONFIRMATORY_ARM_METAL_FUSION_WIN",
+    "detail": "arm3 (ECFP4 + supervised D-MPNN pooled -> MLP) minus arm1 (ECFP4 -> XGB) is negative on every metal: Ru -0.0140, Ir -0.0163, Rh -0.0031, Os -0.0118, Re -0.0177. arm1 reproduces BLK-P1's XGB column exactly (Ru 0.8614, Ir 0.8277), so the anchor is intact.",
+    "contrast_with_fu2": "FU1 fails at the FEATURE level while FU2 is positive at the SCORE level on Ru (merged 0.8694 > max 0.8640). The right level to combine these two representations is the score, not the feature."
+  },
+  "fu3_result_2026_10_17": {
+    "date": "2026-10-17",
+    "task": "FU3 metal-conditioned router (gap G3)",
+    "artifact": "metrics/by_metric/metal_router_ablation.json",
+    "config": "configs/fu3_metal_router_gpu0.yaml",
+    "script": "molmetal/scripts/fu3_metal_router_ablation.py",
+    "commit": "53e4158c",
+    "status": "DONE",
+    "method": "The config dumps row-level paired held-out scores for the four injection arms (100 cells, K=10); the analysis fits routers on CPU, leave-one-metal-out, so every learned router is cross-metal. DISPATCH (gate_scores / gate_scores_metal / policy_metal_desc) and COMBINATION (uniform_avg) are judged separately -- crediting averaging to G3 would conflate routing with the ensembling line (FU2).",
+    "verdicts": {
+      "routing": "ROUTING_DOES_NOT_BEAT_BEST_SINGLE -- best dispatch router (gate_scores_metal) 0.6444 vs best_single_lomo 0.6385, delta +0.0059, Holm 0.66",
+      "combination": "PLAIN_AVERAGING_MATCHES_ORACLE_SELECTION -- uniform_avg 0.6661, +0.0277 over best_single_lomo (Holm 0.0021) and -0.0015 vs the per-metal ORACLE selection (Holm 1.0)",
+      "metal": "METAL_DOES_NOT_CONDITION_ROUTING -- adding the rich metal descriptor to the gate is +0.0103, Holm 0.152"
+    },
+    "interpretation": "You do not need metal-conditioned routing: plain averaging of the four injection arms already reaches what metal-conditioned selection could reach, and it does so without any metal input. oracle_row (0.9364) is a label-leaking UPPER BOUND only -- the arms disagree enormously, but no learnable gate captures that disagreement.",
+    "cheap_by_construction": "data/model/train are byte-identical to WP4's and the source-cache key is (held_out, arm, seed, epochs, lr, hidden, dropout, rich, chem, adapter, metal_dim, device), so sharing WP4's source_cache_dir made this run pure scoring (~2 s/run). It was launched only after WP4 finished, to avoid two processes writing the same src_*.pt."
+  },
+  "c3_sampler_pairwise_2026_10_17": {
+    "date": "2026-10-17",
+    "task": "The C3 support-sampler PAIRWISE contrast that paper_a's abstract assumed but which had never been computed (user directive: 补跑 sampler 间对照检验)",
+    "artifact": "metrics/by_metric/fsma_c3_sampler_pairwise.json",
+    "script": "molmetal/scripts/fsma_c3_sampler_pairwise.py",
+    "commit": "53e4158c",
+    "why": "fsma_ablations_inhouse_ep50.json's C3 family is four ONE-SAMPLE tests against zero, which carry no information about whether the arms differ from each other. The abstract's sentence 'four samplers are statistically indistinguishable' therefore had no backing artifact.",
+    "method": "Pure re-analysis, no GPU. 25 paired (metal, seed) cells at K=20; the stratified arm is the 5-seed subset of the 10-seed K-curve. Two-sided paired t (H0 = no difference), Holm within the 6-pair family, plus Friedman.",
+    "result": "Friedman p=0.128 (on delta-vs-zero-shot 0.246). All 6 pairwise Holm >= 0.140 on the absolute AUC and >= 0.073 on the delta view. Max pairwise |delta| = random vs activity_scaffold +0.0304 (raw p2=0.0233, Holm 0.140).",
+    "verdict": "SAMPLERS_INDISTINGUISHABLE -- the abstract's sentence is CORRECT and should be kept, now with a citation. Only its 'the only significant negative' half is stale (C4's full_k5 = -0.0027 is not Holm-significant).",
+    "caveat": "The C3 arms do NOT share a query set: the sampler draws the K support rows and the query is held-out-minus-support, so n_query is identical but the zero-shot AUC is not. The contrast is therefore reported on both the absolute AUC and the delta-vs-zero-shot, and the verdict requires both to agree. They do."
   }
 }
