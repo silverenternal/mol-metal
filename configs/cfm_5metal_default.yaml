@@ -79,8 +79,11 @@ protocol:
   gen_validity_samples: 16
   gen_eval_n: 64
   gen_eval_seeds: "0 1 2"
-  n_seeds: 5
-  epochs: 50
+  # Wf-A67 (2026-10-17) — trimmed from canonical 5x50 (48h budget) to
+  # 3x30 (~4-7h wall per Wf-A66 estimate) per user clarification.  The
+  # n_seeds_min=3 satisfies the per-seed honest-neg gate (Wf-245).
+  n_seeds: 3
+  epochs: 30
   n_seeds_min: 3
   scheduler:
     type: cosine
@@ -108,9 +111,10 @@ compute:
   gpu: cuda:0
 directives:
   kill_then_adapt: true
-  time_budget: 48h
+  # Wf-A67 (2026-10-17) — 3x30 = 4-7h estimate; 12h envelope (was 48h).
+  time_budget: 12h
   user_ok_required: true
-  user_ok_granted: 10h budget + PRO 6000 + project root results/ + GPU util ≥90% check (2026-09-28)
+  user_ok_granted: "3 seeds x 30 epochs + PRO 6000 + cuda:0 + results/cfm_5metal_default/ + GPU util >=90% check (2026-10-17)"
   pre_flight_gates_required:
   - p1_pytorch_cuda_available
   - p2_tests_pass
