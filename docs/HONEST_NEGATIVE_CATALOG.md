@@ -3751,3 +3751,85 @@ unreachable target), not a ledger-internal strengthen.
 **§6.92 catalog-count math.** Net catalog-count delta from this wave: **+1** (§6.92 itself — closeout entry; §6.66h MEASURED coverage + §6.59h MEASURED coverage + §6.81p 20-path extension are ledger-internal to pre-existing ACTIVE entries; 1 NEW pytest file is file-mod-pack; no NEW top-level ACTIVE honest-negative). Net ACTIVE-count delta: **+0** per AGENTS.md §5.2 honest-framing — the 3 strengthens + 3 new paths are sub-entries / failure-mode catalog extensions, not new ACTIVE surfaces. Cumulative catalog count: **143 → 144** (+1). ACTIVE count: **110 → 110** (unchanged). The §6.92 catalog-count math agrees with §6.91 baseline (`142 → 143`, ACTIVE 110 → 110); the +1 delta is the §6.92 top-level entry itself, mirroring the §6.91 / §6.90 / §6.89 closeout-entry pattern.
 
 **Workflow** | Wf-A64 (2026-10-17; CPU-only docs + 3 adapter file-mod-packs + 1 new test file across 2 SHIP commits: W1 group_W1 (coordination_gnn.py F1+F2+F7 + quotient_space_diffusion.py F3+F4 + se3_sb_integration.py F5+F6 + test_wfa64_r18_adapters.py NEW 6 tests) + W2 group_W2 (this catalog commit + AGENTS.md §3.3 audit-ledger row addition); 0 GPU + 0 paper/* + 0 wet-lab; pre-flight N/A via §1.4 escape hatch per `SKIP_PREFLIGHT=1` + memory `wfa33-v2-precommit-timeout.md`; registry.py check **PASS** (21/21 datasets, 8/8 protocols, 238 metrics current, 0 stale, 0 missing; per verify brief); §5.7 50-step CPU smoke NOT required per standing rule (no NEW trainer flag wire-in introduced — F1/F4/F5/F7 are code-level fixes + F2 is layer-internal symmetry-break + F3/F6 are docs-only; no new CLI flags); §5.11 yaml-only gate round-trip NOT applicable (no new CLI flag introduced); §5.9 single-venv via `.venv/bin/python` (canonical venv per AGENTS.md §5.9); §5.6 atomic-write via Edit-tool (catalog + test file text content <16 KB total per file, within Edit-tool threshold; §5.6 protocol invoked for catalog + test-file writes per AGENTS.md §5.6 standing directive); ruff: Wf-A64 W1 + W2 commits combined add **0 new violations** — F1/F2/F4/F5/F7 ship defensive guards / docstring warnings (no ruff-impacting code outside what ruff accepts); F3/F6 are docstring additions (not ruff-scanned); new test file ships pytest-style test classes (no ruff-impacting code outside what ruff accepts); the 3591 pre-existing ruff errors on master HEAD (per `ruff check molmetal/scripts/ molmetal/adapters/ molmetal/models/ molmetal/ports/ --select F401,F841,E501 | tail -3` → "Found 3591 errors", re-verified 2026-10-17 pre-commit) remain pre-existing and out of scope per Wf-A60 brief §1.2 / Wf-A58 brief §1.2 'Mass ruff --fix out of scope'; 6/6 NEW pytests PASS + 207 existing tests PASS (1 PRE-EXISTING flake unrelated to Wf-A64 per `git stash` baseline replay); 2 SHIP commits (W1 + W2) + 0 NEW ACTIVE honest-negatives; Wf-A64 round-11 deeper audit + HN strengthen round-5 SHIPPED + CLOSED).
+
+### §6.93 Wf-A65 (2026-10-17) — GPU-smoke CFM on real data: 3 latent bugs in `cfm_5metal_default.yaml`, 1 fixed, 2 open (canonical 5-metal cohort never actually ran end-to-end for 17 waves)
+
+**Date**: 2026-10-17
+**Trigger**: user directive 2026-10-17 verbatim *"现在抽少量真实数据训练一下cfm吧，用gpu0，我们看看效果同时也抓一下是不是还要bug"*
+**Run surface**: `configs/cfm_5metal_smoke_2026_10_17.yaml` (NEW, 200 train + 64 val, 1 seed × 1 epoch, batch=8, RTX PRO 6000 Blackwell cuda:0)
+**Wall time**: 91.7s (1 epoch, 25 steps on 200 clouds, 8 GB VRAM peak)
+**Honest framing**: training infrastructure works (data loads, loss decreases shape, ckpt writes), but the chemistry signal is *not* meaningful — see bug #2 + bug #3 below.
+
+#### §6.93a — Bug #1: `build_csv_cohort` column-name mismatch (FIXED in Wf-A65)
+
+**Symptom**: `RuntimeError: build_csv_cohort produced 0 clouds from .data/molmetal/metalcytotox_5metal_multitask_v3.csv split='train'. Check the path, the `split` column values, and whether RDKit can parse the SMILES.`
+
+**Root cause**: `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:6660` read `row.get("smiles", "")` but the canonical 5-metal CSV uses the MetalCytoToxDB-native column name `SMILES_Ligands` (capitalised). 0 rows passed the `if smi:` filter; the error message gave a misleading diagnostic trail.
+
+**MEASURED impact**: `cfm_5metal_default.yaml` had been "SHIPPED" per docs for 17 waves of CFM closeout (Wf-A48..Wf-A64) but **had never been run end-to-end on real data** — `results/cfm_5metal_default/` does not exist on disk. This is a §5.5 filesystem-truth violation that the Wf-A65 GPU smoke caught.
+
+**Fix** (`molmetal/scripts/train_cfm_yuelbond_wasserstein.py:6660`):
+- Dual-key SMILES lookup: `row.get("smiles") or row.get("SMILES_Ligands") or ""`
+- Diagnostic counters: `n_skipped_no_smiles_col` + `n_skipped_empty_smiles`
+- Updated RuntimeError message lists expected column names + filter-breakdown counts
+
+**Post-fix MEASURED** (`/tmp/cfm_5metal_smoke_gpu/per_epoch_metrics.json`):
+- `cohort built: train=200 val=64` (was 0 before)
+- `200 cloud(s) built from 200 row(s); skipped 0 unparseable + 0 un-embeddable; filtered 0 no-smiles-col + 0 empty-smiles`
+
+**Regression test** (NEW): `molmetal/tests/test_wfa65_csv_cohort_column.py` — 4 tests, 4/4 PASS:
+- `test_build_csv_cohort_handles_SMILES_Ligands_column` — verifies metalcytotox schema parses
+- `test_build_csv_cohort_handles_legacy_smiles_column` — verifies synthetic-cohort schema parses (backward-compat)
+- `test_build_csv_cohort_diagnostic_lists_column_names` — verifies RuntimeError mentions both column names
+- `test_build_csv_cohort_actual_metalcytotox_5metal_train` — verifies end-to-end on the actual 5-metal cohort CSV (50+ train rows)
+
+**Other CSV loaders audited, no latent bug found**: `molmetal/eval/knn_oracle.py:310,373` already used `row.get("smiles") or row.get("SMILES_Ligands") or ""` (defensive). `molmetal/data/four_domain_combined.py:163,222,362` uses `row.get("smiles")` but reads CSVs that use lowercase `smiles` (DrugOOD train.csv, NCI60 canonical_smiles, BindingDB canonical_smiles — none of which use `SMILES_Ligands`); no fix needed.
+
+#### §6.93b — Bug #2: bond head target synthesis (OPEN — surface is bigger than a one-liner)
+
+**Symptom**: `[cfm-bond-target][WARNING] the cloud carries no true bond graph, so targets are SYNTHESISED by the Pt-only geometric rule. On any non-Pt metal that rule labels every pair BOND_NO_BOND (MEASURED: 1331/1331 on Ru), the head learns 'no bond' everywhere, and a perfect decode_ratio then means nothing.`
+
+**MEASURED impact** (`/tmp/cfm_5metal_smoke_gpu/per_epoch_metrics.json`):
+- `bond_n_scored=0` throughout the run — bond head is **not learning anything meaningful** (no positive examples)
+- `bond_precision/recall/f1=0.000` — the head's output is structurally uninformative
+- `decode_ratio=1.000` and `gen_validity=1.000` — both **saturated** because the head predicts "no bond" for every pair, which is trivially RDKit-parseable (per `decode_ratio_caveat`: "a head predicting BOND_NO_BOND for every pair scores 0.977 here")
+
+**Why**: `build_csv_cohort` (the function that loads the metalcytotox_5metal cohort) only reads the SMILES column. The resulting `AtomCloud` carries positions + atomic_numbers but **no bond graph** (the `bonds` + `bond_types` dataclass fields are optional and never populated from this code path). The bond head then falls back to a **Pt-only geometric rule** that labels a pair as bonded iff one endpoint is Pt (Z=78). On Ru/Ir/Os/Rh/Re (5-metal cohort) this labels 0 bonds → head learns "no bond" everywhere.
+
+**Required fix** (not a one-liner — needs design):
+- Route the canonical 5-metal cohort through `molmetal.data.tmqm_clouds` instead of `build_csv_cohort`, so each `AtomCloud` carries the Wiberg BO block as a `bonds` tensor.
+- OR: build a MetalCytoToxDB-aware SMILES→bonds loader that uses RDKit to compute the bond graph from the LIGAND SMILES + the `Metal` column (inserts the metal atom + ligand bonds).
+- The warning message itself (`molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2845`) already names the fix: *"Load the corpus through molmetal.data.tmqm_clouds so the Wiberg BO blocks are attached."*
+
+**Status**: OPEN. Fix is structural, not a 1-line edit. Defer to a future wave that explicitly scopes "real bond truth in the 5-metal cohort".
+
+#### §6.93c — Bug #3: metal absence in cloud (OPEN — related to #2 but distinct)
+
+**Symptom**: `gen_metal_ratio=0.000` + `[cfm-gen][metal_presence] epoch=0 n_metal_missing=0/0 metal_missing_rate=0.000 verdict=SKIP`
+
+**MEASURED**: The YuelBond decoder, on the 1-epoch smoke, produces **0% metal-containing structures** across 16 generated samples.
+
+**Why**: The `SMILES_Ligands` column in `.data/molmetal/metalcytotox_5metal_multitask_v3.csv` is the LIGAND SMILES (organic scaffold only, no metal). The `Metal` column is in a separate CSV column. `build_csv_cohort` only reads `SMILES_Ligands`, so the cloud has C/N/O/H/halogen atoms but no metal. The model is trained on ligand-only clouds and learns to generate ligand-only structures; the metal is supposed to be added at decode time by the YuelBond decoder, but in the 1-epoch smoke it doesn't (likely because the metal injection is gated on something that didn't fire in 1 epoch).
+
+**Required fix**:
+- Insert the metal atom into the `AtomCloud` at training time (so the model learns to handle it). This is what `molmetal.data.tmqm_clouds` does for tmQM (`coord_number` + `metal_bo_total` etc are kept in the same cloud).
+- OR: pre-train on tmQM (which has the metal in the cloud) then fine-tune on metalcytotox_5metal (with metal injection), which is the `cfm_full_retrain.yaml` pattern (per `cfm_5metal_default.yaml` honest_framing: *"decode_ratio on real Pt geometry — TMQM init is OFF for this property-axis config; cfm_full_retrain.yaml is the geometry-axis ship surface"*).
+
+**Status**: OPEN. Same fix path as #2.
+
+#### §6.93d — §6.93 file-on-disk receipts
+
+| Receipt | Disk path / line | Status |
+|---|---|---|
+| Bug #1 fix on disk | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:6660` | 1 match for `WF-A65.*dual-key` |
+| Bug #1 diagnostic update | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:6702-6714` | 1 match for `n_skipped_no_smiles_col` |
+| New test file on disk | `ls molmetal/tests/test_wfa65_csv_cohort_column.py` | 4 tests, 4/4 PASS |
+| GPU smoke output (MEASURED) | `/tmp/cfm_5metal_smoke_gpu/per_epoch_metrics.json` | train_loss=0.7956, bond_f1=0.000, gen_metal_ratio=0.000 |
+| Bug #2 warning on disk | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:2845` | `[cfm-bond-target][WARNING]` text |
+| Bug #3 evidence on disk | `/tmp/cfm_5metal_smoke_gpu/per_epoch_metrics.json` | `gen_metal_ratio: 0.0` + `metal_presence_gate: "SKIP"` |
+| New smoke YAML on disk | `configs/cfm_5metal_smoke_2026_10_17.yaml` | 1 match for `2026-10-17 user request` |
+| 4/4 tests PASS | `pytest molmetal/tests/test_wfa65_csv_cohort_column.py -v` | `4 passed, 1 warning in 4.53s` |
+
+**§6.93 catalog-count math.** Net catalog-count delta: **+1** (§6.93 itself). ACTIVE count delta: **+1** (bug #1 RESOLVED-NO-FIX retroactively downgrades the latent silent-failure; bug #2 + bug #3 are NEW ACTIVE honest-negatives — the canonical 5-metal cohort has 2 structural issues that prevent meaningful chemistry results). Cumulative catalog count: **144 → 145** (+1). ACTIVE count: **110 → 111** (+1, both §6.93b + §6.93c are NEW ACTIVE).
+
+**Workflow** | Wf-A65 (2026-10-17; CPU + GPU; 1 code-edit (`build_csv_cohort` dual-key + diagnostic) + 1 new test file (4 tests) + 1 new smoke YAML + 1 catalog commit + 1 GPU smoke run on cuda:0; pre-flight N/A via §1.4 escape hatch `SKIP_PREFLIGHT=1` per memory `wfa33-v2-precommit-timeout.md`; §5.7 50-step CPU smoke PASS (trainer initialises, no regression on the cohort-build path; bond-target warning still fires as expected — not a regression, a pre-existing structural issue); §5.6 atomic-write via Edit-tool (text content <16 KB per file, within Edit-tool threshold); §5.9 single-venv via `.venv/bin/python`; §5.11 yaml-only gate round-trip PASS (new smoke YAML round-trips; no new CLI flag introduced); §5.3 + §5.4 + §5.5 standing-directive compliance verified; 0 paper/* + 0 wet-lab; user explicit GPU authorization per `§5.1 standing GPU grant` + directive 2026-10-17 *"用gpu0"*; 1 GPU smoke SHIP — 91.7s on cuda:0, train_loss 0.7956, but `decode_ratio=1.000` is misleading per `decode_ratio_caveat`; the **honest signal** is `bond_f1=0.000` + `gen_metal_ratio=0.000` showing the chemistry head is structurally uninformative; 17 waves of CFM closeout shipped a canonical 5-metal config that had never actually been run end-to-end — bug #1 (column name) was the gating latent bug; bugs #2 (bond synthesis) + #3 (metal absence) are downstream structural issues exposed by the first successful run; SHIP commit pending).

@@ -6653,13 +6653,28 @@ def build_csv_cohort(
     from rdkit.Chem import AllChem
 
     rows: List[str] = []
+    n_skipped_no_smiles_col = 0
+    n_skipped_empty_smiles = 0
     with open(csv_path, newline="") as fh:
+        # Wf-A65 (2026-10-17) — dual-key SMILES lookup. The canonical
+        # 5-metal cohort CSV (.data/molmetal/metalcytotox_5metal_multitask_v3.csv)
+        # uses the MetalCytoToxDB-native column name ``SMILES_Ligands`` (capitalised),
+        # while legacy synthetic-cohort CSVs use lowercase ``smiles``. Without the
+        # fallback the trainer silently builds 0 clouds (the §5.5 filesystem-truth
+        # violation that the Wf-A65 GPU smoke on cfm_5metal_default.yaml caught —
+        # 17 waves of CFM closeout shipped with the canonical config never actually
+        # running end-to-end on real data). See §6.93 honest-negative.
         for row in _csv.DictReader(fh):
             if str(row.get("split", "")).strip() != str(split):
                 continue
-            smi = str(row.get("smiles", "")).strip()
-            if smi:
-                rows.append(smi)
+            smi = (row.get("smiles") or row.get("SMILES_Ligands") or "").strip()
+            if not smi:
+                if "smiles" not in row and "SMILES_Ligands" not in row:
+                    n_skipped_no_smiles_col += 1
+                else:
+                    n_skipped_empty_smiles += 1
+                continue
+            rows.append(smi)
     if n_clouds is not None:
         rows = rows[: int(n_clouds)]
 
@@ -6687,13 +6702,19 @@ def build_csv_cohort(
     print(
         f"[cfm-cohort] csv={Path(csv_path).name} split={split}: "
         f"{len(clouds)} cloud(s) built from {len(rows)} row(s); "
-        f"skipped {n_parse_fail} unparseable + {n_embed_fail} un-embeddable"
+        f"skipped {n_parse_fail} unparseable + {n_embed_fail} un-embeddable; "
+        f"filtered {n_skipped_no_smiles_col} no-smiles-col + "
+        f"{n_skipped_empty_smiles} empty-smiles"
     )
     if not clouds:
         raise RuntimeError(
             f"build_csv_cohort produced 0 clouds from {csv_path} split="
-            f"{split!r}.  Check the path, the `split` column values, and "
-            "whether RDKit can parse the SMILES."
+            f"{split!r}.  Diagnostics: read {len(rows) + n_skipped_no_smiles_col + n_skipped_empty_smiles} row(s) "
+            f"with split={split!r}; {n_skipped_no_smiles_col} had no SMILES column "
+            f"(expected `smiles` or `SMILES_Ligands`); {n_skipped_empty_smiles} had empty SMILES; "
+            f"{n_parse_fail} unparseable + {n_embed_fail} un-embeddable. "
+            f"Check (a) the CSV's column header includes `smiles` or `SMILES_Ligands`, "
+            f"(b) the `split` column values match {split!r}, (c) RDKit can parse the SMILES."
         )
     return clouds
 
