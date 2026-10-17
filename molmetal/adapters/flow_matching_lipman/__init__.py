@@ -2291,6 +2291,12 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         joint_train: bool = True,
         bond_loss_weight: float = 1.0,
         bond_pattern_mask: bool = True,
+        # Wf-A68 (2026-10-17) — optional residual skip in the bond head.
+        # When True, the head registers an extra Linear(hidden_dim,
+        # hidden_dim) projection from fc1's output to the pre-`out`
+        # activation (ResNet-style).  Default False preserves Wf-A67
+        # bit-exact compat.
+        use_bond_head_skip: bool = False,
         # WF-Vina-Lift-Phase23 (Phase 2.3) — PCGrad multi-task loss
         # (Yu et al. 2020, "Gradient Surgery for Multi-Task Learning",
         # arXiv:2001.06782, Thm 1 + Thm 2).  When True, the cfm + atom
@@ -2391,6 +2397,7 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # inference time so the head never proposes chemistry outside
         # the atom-vocab support.
         self._use_bond_head = bool(use_bond_head)
+        self._use_bond_head_skip = bool(use_bond_head_skip)
         self._joint_train = bool(joint_train)
         if bond_loss_weight < 0.0:
             raise ValueError(f"bond_loss_weight must be >= 0, got {bond_loss_weight!r}")
@@ -2512,6 +2519,11 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             # back to the raw 9-D features (see fallback at line ~1734)
             # and the graph context never reaches the bond head.
             bond_head_in_dim = 9 + 2 * self._hidden_dim
+            # Wf-A68 (2026-10-17) — wire use_skip / use_focal_bond_ce /
+            # bond_sample_balance / dative_distance_cutoff flags through.
+            # Default OFF (use_skip=False) keeps Wf-A67 checkpoints
+            # bit-exact-compatible — the projection shape is identical
+            # and forward() no-ops the skip branch.
             self.bond_head = BondOrderHead(
                 in_dim=bond_head_in_dim,
                 hidden_dim=64,
@@ -2519,6 +2531,9 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 num_classes=5,
                 atom_vocab=self._atom_vocab,
                 training_mode=mode,
+                use_skip=bool(
+                    getattr(self, "_use_bond_head_skip", False)
+                ),
             ).to(self.device)
         else:
             self.bond_head = None

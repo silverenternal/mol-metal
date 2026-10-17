@@ -819,6 +819,13 @@ class BondOrderHead(nn.Module):
         # for ablation studies that isolate pocket context.
         use_per_layer_pocket_injection: bool = True,
         pocket_feature_dim: int = 128,
+        # ---- Wf-A68 (2026-10-17) optional residual skip ----
+        # Adds a Linear(hidden_dim, hidden_dim) projection from fc1's
+        # output to the pre-`out` activation.  Default OFF preserves
+        # bit-exact backward compat with Wf-A67 / Wf-A11 / Wf-A15 / Wf-A27
+        # checkpoints (the projection shape is identical, the skip is a
+        # no-op when False).
+        use_skip: bool = False,
     ) -> None:
         super().__init__()
         if training_mode not in ("frozen", "joint"):
@@ -843,10 +850,26 @@ class BondOrderHead(nn.Module):
         # Wf-A11: 3-layer MLP (Round-10 default).  Wf-A11 grows to n_layers
         # by stacking Linear(hidden_dim, hidden_dim) blocks (fc1 is the
         # input projection; fc2..fcN are the message layers).
+        #
+        # Wf-A68 (2026-10-17) — optional residual skip from fc1 to the
+        # pre-out activation.  Default OFF preserves bit-exact backward
+        # compat with Wf-A11..Wf-A15..Wf-A27 checkpoints (the projection
+        # shapes are unchanged; the skip is a no-op sum when use_skip is
+        # False).  When use_skip=True, an additional Linear(hidden_dim,
+        # hidden_dim) residual projection is registered so the input
+        # projection's output can be added to the final hidden activation
+        # — a tiny ResNet-style upgrade that lifts the head's effective
+        # depth without inflating param count (one extra (hidden_dim^2 +
+        # hidden_dim) matrix).
+        self.use_skip: bool = bool(use_skip)
         self.fc1 = nn.Linear(in_dim, hidden_dim)
         self.fc_layers = nn.ModuleList(
             nn.Linear(hidden_dim, hidden_dim) for _ in range(n_layers - 2)
         )
+        if self.use_skip:
+            self.skip_proj = nn.Linear(hidden_dim, hidden_dim)
+        else:
+            self.skip_proj = None  # type: ignore[assignment]
         self.out = nn.Linear(hidden_dim, num_classes)
         self.dropout = nn.Dropout(dropout)
         # Wf-A11: BOND_NO_BOND bias becomes a learnable parameter (was a
@@ -1026,9 +1049,20 @@ class BondOrderHead(nn.Module):
         if isinstance(pocket_emb, torch.Tensor):
             h = h + pocket_emb
         h = self.dropout(h)
+        # Wf-A68 (2026-10-17) — stash pre-MLP activation for the optional
+        # residual skip.  When use_skip is False (default) this is a no-op
+        # and the loop produces bit-exact-identical h to the Wf-A67 head.
+        _fc1_h = h if self.use_skip else None
         for fc in self.fc_layers:
             h = F.relu(fc(h))
             h = self.dropout(h)
+        # Wf-A68 — apply residual skip: project the pre-MLP activation
+        # through a single Linear(hidden_dim, hidden_dim) and add to the
+        # final hidden activation.  Equivalent to a 1-step ResNet at the
+        # head; shape is (E, hidden_dim) preserved.  When use_skip is
+        # False, _fc1_h is None and this branch is skipped.
+        if _fc1_h is not None and self.skip_proj is not None:
+            h = h + self.skip_proj(_fc1_h)
         logits = self.out(h)
         # Wf-A11 (M-A8): apply the pre-computed bond pattern mask at TRAINING
         # time so the CE loss never sees forbidden patterns.  Previously the

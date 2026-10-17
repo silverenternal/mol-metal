@@ -284,6 +284,13 @@ class YuelBondDecoderHead(nn.Module):
         cutoff: float = 3.5,
         min_distance: float = 1.0,
         z_table: Tuple[int, ...] = _YUELBOND_Z_TABLE,
+        # Wf-A68 (2026-10-17) — bond-head residual skip (Spot 4).
+        # Default False preserves Wf-A67 bit-exact compat.  When True,
+        # the message-passing output adds a Linear(hidden_dim,
+        # hidden_dim) projection from the post-encoder atom embedding
+        # (a residual around the n message-passing layers — ResNet-
+        # style).  One extra (hidden_dim^2 + hidden_dim) parameters.
+        use_skip: bool = False,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -319,6 +326,17 @@ class YuelBondDecoderHead(nn.Module):
         with torch.no_grad():
             self.pair_head[-1].bias.zero_()
             self.pair_head[-1].bias[BOND_NO_BOND] = -0.5
+        # Wf-A68 (2026-10-17) — optional residual skip from atom_encoder
+        # output to the message-passing output.  When use_skip is True, an
+        # extra Linear(hidden_dim, hidden_dim) projection is registered
+        # and added to the post-MP per-atom h.  When False (default) the
+        # skip is a no-op and the forward is bit-exact-identical to the
+        # pre-Wf-A67 path.
+        self.use_skip = bool(use_skip)
+        if self.use_skip:
+            self.skip_proj = nn.Linear(hidden_dim, hidden_dim)
+        else:
+            self.skip_proj = None  # type: ignore[assignment]
 
     # ------------------------------------------------------------------
     # Public API
@@ -380,7 +398,8 @@ class YuelBondDecoderHead(nn.Module):
             )
         # Encode atoms
         z_onehot = z_to_onehot(atomic_numbers, self.z_table)
-        h = self.atom_encoder(z_onehot)  # (N, H)
+        h_atom = self.atom_encoder(z_onehot)  # (N, H) — Wf-A68 stash for skip
+        h = h_atom
         # Build pair list: upper triangle.
         # 2026-10-05 — `torch.triu_indices` allocates on CPU unless told
         # otherwise, which silently dragged the whole forward back to CPU and
@@ -456,6 +475,15 @@ class YuelBondDecoderHead(nn.Module):
                 i_idx,
                 torch.relu(msg),
             ).index_add_(0, j_idx, torch.relu(msg))
+        # Wf-A68 (2026-10-17) — optional residual skip from atom_encoder
+        # output to the post-MP per-atom embedding.  When use_skip is
+        # False (default) the branch is skipped and the forward is
+        # bit-exact-identical to the pre-Wf-A67 path.  When True, an
+        # extra Linear(hidden_dim, hidden_dim) projection of the
+        # post-encoder h is added to the post-MP h — ResNet-style skip
+        # around the n message-passing layers.
+        if self.use_skip and self.skip_proj is not None:
+            h = h + self.skip_proj(h_atom)
         # Pair head
         pair_in = torch.cat(
             [
