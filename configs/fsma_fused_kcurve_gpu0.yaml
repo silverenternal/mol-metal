@@ -1,0 +1,84 @@
+# FU4 — FSMA K-curve on the FUSED scorer (D-MPNN-FSMA ⊕ ECFP4→XGB-FSMA), GPU0.
+#
+# WHY
+# ---
+# todo.json → directive_2026_10_16 forbids closing a "something else is stronger"
+# gap with an honest negative; applies_to names "FSMA K-shot 主线 (C1/C2)".  On
+# the FSMA line the two measured scorers are complementary per metal:
+#   A = Morgan(2,2048) → XGB warm-start  (strong on Rh +0.132, Re +0.151 at K=80)
+#   B = in-house metal-blind D-MPNN, head-only FSMA (stronger on Ru/Ir/Os)
+# FU1/FU2 fuse the within-metal Table-1 line; FU4 is the FSMA-line analogue and
+# checks the directive acceptance rule:
+#   merged >= max(A, B) on >= 4/5 metals, Holm-significant.
+#
+# DEVICE: cuda:0 (the 98 GB RTX PRO 6000 Blackwell).  Per the 2026-10-16 user
+# directive ALL new GPU work is on GPU0.  The ex1 source-cache key contains
+# str(device), so this run owns a fresh source cache and retrains its sources
+# on cuda:0 — FU4's B_dmpnn column is NOT expected to match the published
+# cuda:1 K-curve (fsma_inhouse_kcurve_ep50.json) bit-for-bit; the artifact
+# records the device.  A, B and merged are all measured on this one device.
+#
+# AGENTS.md §5.11: every key below resolves to a dest of
+# fsma_fused_kcurve.py's own parser (verified by scripts/_config_binding_gate.py).
+
+entry:
+  script: molmetal/scripts/fsma_fused_kcurve.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/fsma_fused_kcurve.py
+    --config {yaml_path}
+
+data:
+  metals: [Ru, Ir, Rh, Os, Re]
+
+cohort_spec: "paper_funnel"
+
+# --- FSMA protocol (matches the in-house K-curve, ex1_fsma_ep50_kcurve.yaml) ---
+seeds: [42, 43, 44, 49, 123]
+k: [5, 10, 20, 40, 80]
+sampler: "stratified"
+
+# --- component A: ECFP4 → XGB (fsma_xgb_warmstart_kshot.py defaults) --------
+radius: 2
+nbits: 2048
+base_rounds: 500
+ft_rounds: 50
+
+# --- component B: in-house metal-blind D-MPNN + head-only adaptation --------
+# epochs=50 == the chemprop-matched source budget (fsma_inhouse_kcurve_ep50.json).
+hidden: 128
+dropout: 0.1
+lr: 0.001
+adapt_lr: 0.001
+epochs: 50
+
+# --- merged arms ------------------------------------------------------------
+inner_splits: 3
+meta_learner: "logreg"
+
+compute:
+  device: cuda:0
+  deterministic: true
+
+source_cache_dir: /tmp/fsma_fu4_src_ep50_cuda0
+
+output:
+  out_metric: metrics/by_metric/fsma_fused_kcurve.json
+
+honest_framing:
+  purpose: >-
+    directive_2026_10_16 acceptance on the FSMA line: does the FUSED adapted
+    scorer reach >= max(A,B) on >=4/5 metals with Holm significance?  The
+    per-metal table is the unit (Ru is ~64% of the deduplicated cohort, so a
+    pooled mean is a Ru mean wearing a 5-metal label).
+  do_not_claim:
+    - A pooled 5-metal mean.
+    - That the component numbers changed — A and B are re-measured here and
+      reported alongside merged; the directive changes the final model's
+      definition, not the facts (§5.2).
+    - That FU4's B_dmpnn column equals the cuda:1 K-curve — the device differs
+      by design (GPU0-only directive) and the source cache is device-keyed.
+    - A merged win without the Holm-corrected paired test (df=4).
+  statistics: >-
+    Paired one-sided t-test on the 5 per-seed deltas (df=4) + t-based 95% CI;
+    the percentile bootstrap is *_reference_only.  "Merged wins" requires
+    mean delta > 0 AND Holm p < 0.05.  merged_stack is SKIPPED at K<20 (the
+    inner folds are too small for a 2-feature merger) and is never imputed.

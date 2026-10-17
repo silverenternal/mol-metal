@@ -380,7 +380,7 @@
   "task_queue_2026_10_16": {
     "created": "2026-10-16",
     "directive": "directive_2026_10_16",
-    "note": "按 directive_2026_10_16 组织的『把更强分量并进最终模型』任务队列。每项都含 §5.7 smoke + §5.11 门禁 + §5.5 ls -la 证据要求。",
+    "note": "SUPERSEDED by task_queue_2026_10_17; statuses synced 2026-10-17.",
     "tasks": [
       {
         "id": "FU1",
@@ -390,8 +390,9 @@
         "how": "configs/fusion_dmpnn_gbdt_within_metal.yaml 已定义 arms 3/4/5；先 §5.11 两门禁 + §5.7 smoke，再全 5 金属 × 5 split_seeds。注意: arm2 依赖 models/tmqm_pretrained/tmqm_pretrained_encoder.pt，该 ckpt 当前【不在盘上】(目录下只有 featurise_stats.json / pretrain_metrics.json)，runner 会优雅 SKIP 并写 arm2_status='SKIPPED: encoder not found'；arms 3/4/5 用的是 within-run 监督式 D-MPNN 嵌入，不依赖 tmQM ckpt，故不受影响。",
         "deliverable": "metrics/by_metric/fusion_dmpnn_ecfp4_within_metal.json",
         "acceptance": "融合 arm 在 ≥4/5 金属上 ≥ arm1 (ECFP4→XGB) 且 Holm 显著；否则进入 FU2 路由/stacking 路线。",
-        "status": "OPEN",
-        "note_arm2": "fusion_cheap_arms_probe.json 里 arm2 (Ru 0.820005) 是 ckpt 还在时(2026-10-13)测的，现在无法复现。"
+        "status": "DONE_NO_FUSION_WIN",
+        "note_arm2": "fusion_cheap_arms_probe.json 里 arm2 (Ru 0.820005) 是 ckpt 还在时(2026-10-13)测的，现在无法复现。",
+        "synced_from": "task_queue_2026_10_17 (2026-10-17)"
       },
       {
         "id": "FU2",
@@ -401,7 +402,8 @@
         "how": "D-MPNN OOF 预测 + XGB OOF 预测 → 逻辑回归 / 浅层 GBDT meta-learner，严格 nested CV 防 fold-bleed（复用 fuse runner 的 nested_bleed 机制）。",
         "deliverable": "metrics/by_metric/stacked_dmpnn_xgb_within_metal.json",
         "acceptance": "stacked ≥ max(D-MPNN, XGB) 在 ≥4/5 金属；三列 (A / B / merged) 全报告。",
-        "status": "OPEN"
+        "status": "RUNNING (GPU0)",
+        "synced_from": "task_queue_2026_10_17 (2026-10-17)"
       },
       {
         "id": "FU3",
@@ -411,7 +413,8 @@
         "how": "router 输入 = 金属描述符块 (rich+chem)，输出 = 专家分支权重（含 metal-blind 分支）。",
         "deliverable": "metrics/by_metric/metal_router_ablation.json",
         "acceptance": "router ≥ 最好单专家且 Holm 显著；否则回到 FU2 融合路线并如实报告三列。",
-        "status": "OPEN"
+        "status": "DONE",
+        "synced_from": "task_queue_2026_10_17 (2026-10-17)"
       },
       {
         "id": "FU4",
@@ -421,7 +424,8 @@
         "how": "复用 ex1_metal_injection_contrast.py 的 K-shot 协议，把 backbone 换成 FU1/FU2 产出的融合 scorer。",
         "deliverable": "metrics/by_metric/fsma_fused_kcurve.json",
         "acceptance": "K5/K10 在融合 scorer 上 Holm 显著；否则把 K 定义上移到 ≥20 并明说。",
-        "status": "OPEN"
+        "status": "OPEN",
+        "synced_from": "task_queue_2026_10_17 (2026-10-17)"
       }
     ]
   },
