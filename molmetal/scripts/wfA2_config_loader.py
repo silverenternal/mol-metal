@@ -372,6 +372,23 @@ DECLARED_INERT_PATHS: frozenset[str] = frozenset(
         "model.hidden_dim",
         "model.n_layers",
         "model.depth",
+        # 2026-10-17 (Wf-A69 W2 Fix 2 — documentation-only head class
+        # reservation).  The trainer's :class:`CFMJointModel` always builds
+        # a :class:`YuelBondDecoderHead` (verified Wf-A69 W1 audit §A1.6 #1);
+        # ``flow.head_class: YuelBondDecoderHead`` documents this invariant
+        # in the YAML so a future regression to a fresh head is loud at
+        # config-review time, but the value has zero trainer dest (the
+        # head wiring is fixed in code at CFMJointModel.__init__ line 1723).
+        # W2 design: "This key is documentation only — the wiring has
+        # been verified (Wf-A69 W1 audit §A1.6 #1 has the audit-log
+        # commit). Default YuelBondDecoderHead preserves the bit-exact
+        # path; alternative values are REFUSED (the adapter raises) so a
+        # future regression to a fresh head is loud."  Removing would
+        # destroy the invariant documentation; declared inert so the
+        # config-binding gate (AGENTS.md §5.11) does not refuse the
+        # launch.  cfm_todo.json DEC_wfa69_head_class_inert tracks the
+        # disposal commitment.
+        "flow.head_class",
     }
 )
 

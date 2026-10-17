@@ -1,0 +1,170 @@
+# configs/cfm_5metal_wfa69_smoke.yaml — small real-data CFM smoke run on gpu0
+# with ALL Wf-A69 W1+W2 fixes ON for honest MEASURED bond_f1 verification.
+#
+# 2026-10-17 Wf-A69 W3 — verifies that the 4 bond-head structural fixes
+# (W1 Fix 1 + W2 Fix 2/3/4/5) lift bond_f1 above the Wf-A68 smoke
+# baseline (0.1588 at ep 4) without regressing other metrics.
+#
+# Differs from `cfm_5metal_wfa68_smoke.yaml` ONLY by switching the
+# Wf-A69 YAML keys to non-default values:
+#   flow.bond_candidate_source: radius_graph   (W1 Fix 1: disaster area)
+#   flow.subsample_neg_ratio: 4                (W1: PepForge/GraViti 4:1)
+#   flow.bond_head_kind: split                 (W2 Fix 3: calibrated marginal)
+#   flow.bond_class_weights: false             (W2 Fix 4: drop inverse-freq)
+#   flow.bond_z_metal_set: all7                (W2 Fix 5: metal-aware)
+#   flow.bond_z_table: all6                    (W2 Fix 5: widened vocab)
+#
+# Per AGENTS.md §5.5: every fix ON lives in the YAML; this file is
+# the *only* place those keys are flipped for this smoke.
+#
+# Per AGENTS.md §5.11: `--n-train`, `--n-val` are NOT in the YAML
+# (they select WHICH run, not WHAT to train); the launch wrapper below
+# passes those via the wrapper that fills {n_train}/{n_val} placeholders
+# from the same YAML.
+#
+# Per AGENTS.md §5.2 honest framing: bond_f1 MEASURED here is per-fix
+# evidence; the 0.265 Wf-A67 production number is the bit-exact
+# baseline this smoke compares against.  Per AGENTS.md §5.2 NEVER
+# claim >0.70 without a measured 50-epoch retrain.
+
+data:
+  dataset: csv
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+  cohort_filter:
+    metals:
+      - Ru
+      - Ir
+      - Os
+      - Rh
+      - Re
+model:
+  hidden_dim: 128
+  n_layers: 3
+  # Wf-A69 W2 Fix 5 widened vocab to all6 (18 entries); the model's
+  # embedding-layer width must match the Z-table width or the build
+  # asserts.  Pre-W2 (Wf-A67/68) had vocab=pt (13 entries).
+  atom_vocab_size: 18
+  # === Wf-A69 W2 Fix 5 — widen vocab to all6 (Pt/Ru/Ir/Os/Rh/Re) ===
+  # The W2-introduced `flow.bond_z_table` is a documentation alias
+  # (DECLARED_INERT_PATHS); the ACTUAL vocab control is the existing
+  # `yuelbond_vocab` flag.  Verified: get_z_table() reads
+  # args.yuelbond_vocab (trainer:10823), not args.bond_z_table.
+  yuelbond_vocab: all6
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  learnable_vel_scale: true
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  use_tmqm_init: false
+  pcgrad_multi_task: false
+  q_head_enabled: false
+flow:
+  # === Wf-A69 W2 Fix 4 (drop inverse-freq class weights) ===
+  # GraViti B.3 (arXiv 2605.16668) critical negative finding:
+  # inverse-frequency weights DEGRADED vs focal alone.
+  bond_class_weights: false
+  bond_class_weight_power: 0.5
+  # === Wf-A69 W2 Fix 3 (split head: binary existence + 4-way type) ===
+  bond_head_kind: split
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  bond_decision_threshold_sweep: [0.5]
+  # === Wf-A68 (carried over) — focal bond CE / balanced sampling / aux ===
+  use_focal_bond_ce: false
+  focal_bond_alpha: 0.25
+  focal_bond_gamma: 2.0
+  bond_sample_balance: 0
+  dative_distance_cutoff: 2.6
+  chem_loss_weight: 0.0
+  use_bond_head_skip: false
+  bond_label_smoothing: 0.0
+  bond_aux_mse_weight: 0.0
+  # === Wf-A69 W1 Fix 1 (DISASTER AREA — candidate source) ===
+  # Distance-cutoff candidates + truth labelling; NO_BOND pairs get
+  # label 0 so the head sees the negative class.
+  bond_candidate_source: radius_graph
+  bond_candidate_cutoff: 2.4
+  # === Wf-A69 W1 — subsample negatives to 4:1 ===
+  # PepForge bioRxiv 2026 + GraViti arXiv 2605.16668 4:1 recipe.
+  subsample_neg_ratio: 4
+  subsample_neg_seed: epoch
+  # === Wf-A69 W2 Fix 2 (documentation only) ===
+  head_class: YuelBondDecoderHead
+  # === Wf-A69 W2 Fix 5 (metal-aware per-pair features) ===
+  bond_z_table: all6
+  bond_z_metal_set: all7
+  # === ODE + optim (bit-exact Wf-A68 smoke) ===
+  n_steps: 100
+  method: rk4
+  optimizer: adam
+  warmup_steps: 50
+  ema_decay: 0.999
+  wasserstein_weight: 0.0
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 3.5
+protocol:
+  batch_size: 8
+  lr: 0.0001
+  gen_validity_samples: 8
+  gen_eval_n: 16
+  gen_eval_seeds: "0"
+  n_seeds: 1
+  epochs: 5
+  n_seeds_min: 1
+  scheduler:
+    type: cosine
+    warmup_epochs: 1
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+output:
+  base_dir: results/cfm_5metal_wfa69_smoke
+  log_master: results/cfm_5metal_wfa69_smoke/master.log
+  ckpt_dir: results/cfm_5metal_wfa69_smoke/checkpoints
+  events_jsonl: true
+  resume_from: none
+  resume_from_path: null
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+q_channel_lr_multiplier: 1.0
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+compute:
+  gpu: cuda:0
+directives:
+  kill_then_adapt: true
+  time_budget: 30m
+  user_ok_required: false
+  user_ok_granted: user_2026_10_17 "抽少量真实数据训练一下cfm吧，用gpu0"
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --n-train {n_train} --n-val {n_val} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  legacy_inline_command: ""
+honest_framing:
+  claims:
+  - CFM 5-metal anticancer drug smoke run, 200 train + 64 val, 1 seed × 5 epochs
+  - wasserstein_weight 0.0 (W2 not load-bearing on precious-metal anticancer axis)
+  - ALL Wf-A69 W1+W2 fixes ON (4 highest-leverage structural fixes)
+  - Output: results/cfm_5metal_wfa69_smoke/
+  - GPU: cuda:0 (RTX PRO 6000 Blackwell, 59.2 GB free per nvidia-smi 2026-10-17 22:51)
+  do_not_claim:
+  - Production-scale results (5 seeds × 50 epochs is the production surface)
+  - decode_ratio is paper-grade (smoke; 5 epochs on 200 clouds)
+  - 0.99 F1 (PROJECTED ceiling is 0.85-0.95 per W2 §B.6; 0.99 requires
+    measured 5-seed × 50-epoch retrain + cross-dataset validation per
+    AGENTS.md §5.2)
+  - That the W1+W2 fixes lifted bond_f1 to the Wf-A67 production
+    number — the smoke is 1 seed × 5 epochs on 200 clouds, not
+    the 5 seed × 50 epoch × 928 clouds production surface
+  deferred:
+  - Multi-seed stability (3 seeds × 50 epochs canonical)
+  - Pt training (Au/Pd/Ag cell-line data absent; platinai_4cell 4078 separate pipeline)
+  - Per-bond-class PR-AUC reporting (added in W4)

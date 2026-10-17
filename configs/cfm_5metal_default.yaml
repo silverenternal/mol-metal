@@ -57,8 +57,26 @@ model:
   pcgrad_multi_task: false
   q_head_enabled: false
 flow:
+  # Wf-A69 W2 (2026-10-17) — bond-class-weights kill-switch (Fix 4).
+  # When `false`, the trainer's inverse-frequency class-weight
+  # computation (train_cfm_yuelbond_wasserstein.py:10811-10863) is
+  # skipped entirely; the loss sees ``weight=None`` and is plain CE.
+  # Anchored to GraViti B.3 (arXiv 2605.16668) critical negative finding:
+  # inverse-frequency weights DEGRADED vs focal alone on a 95:5
+  # imbalanced edge-prediction task.  Default ``true`` preserves the
+  # Wf-A68 ship and is the bit-exact baseline; switch to ``false`` at
+  # retrain to test the finding on the 5-metal cohort.
   bond_class_weights: true
   bond_class_weight_power: 0.5
+  # Wf-A69 W2 (2026-10-17) — split-head design (Fix 3).  When
+  # ``"single"`` (default, bit-exact Wf-A67/68/W1) the head emits the
+  # 5-class softmax CE; when ``"split"`` the head emits a binary
+  # existence logit (focal γ=2.0 BCE) plus a 4-way type softmax CE on
+  # existence-positive pairs only.  Anchored to PepForge B.3 (bioRxiv
+  # 2026) + GraViti B.3 — single class-balanced focal + per-edge-type
+  # CE on positives is the highest-leverage structural fix on a ~95%
+  # NO_BOND distribution.
+  bond_head_kind: single
   bond_decision: threshold
   bond_decision_threshold: 0.5
   # Wf-A68 (2026-10-17) — threshold sweep list applied at POST-retrain
@@ -97,6 +115,38 @@ flow:
   # the discrete-head's softmax-expected bond order vs raw Wiberg target.
   # 0.0 = off (bit-exact Wf-A67); 0.1-0.3 typical alongside chem_loss_weight.
   bond_aux_mse_weight: 0.0
+  # Wf-A69 W1 (2026-10-17) — bond candidate source (DISASTER-AREA FIX).
+  # "truth_only" (default) reads candidates from m.bonds (100% positive
+  # by construction; bit-exact Wf-A67).  "radius_graph" builds
+  # candidates from a distance-cutoff triu_indices (matching
+  # YuelBondDecoderHead's eval cutoff, default 2.4 Å) and labels them
+  # with truth. Pairs not in m.bonds get BOND_NO_BOND so the head sees
+  # the negative class — the structural fix for the 0.265 baseline.
+  bond_candidate_source: truth_only
+  bond_candidate_cutoff: 2.4
+  # Wf-A69 W1 — subsample negatives to neg:pos = N (4:1 canonical for
+  # ~95% NO_BOND prior; PepForge bioRxiv 2026 + GraViti arXiv 2605.16668).
+  # 0 = no subsampling (bit-exact Wf-A67). >0 requires
+  # bond_candidate_source="radius_graph".
+  subsample_neg_ratio: 0
+  subsample_neg_seed: epoch
+  # Wf-A69 W2 (2026-10-17) — bond head class (Fix 2 documentation).
+  # The trainer's :class:`CFMJointModel` always builds a
+  # :class:`YuelBondDecoderHead`; ``YuelBondDecoder(head=model.head)`
+  # then stashes it (no wrapper-mediated re-instantiation).  This key
+  # is documentation only — the wiring has been verified (Wf-A69 W1
+  # audit §A1.6 #1 has the audit-log commit).  Default ``YuelBondDecoderHead``
+  # preserves the bit-exact path; alternative values are REFUSED (the
+  # adapter raises) so a future regression to a fresh head is loud.
+  head_class: YuelBondDecoderHead
+  # Wf-A69 W2 (2026-10-17) Fix 5 — atomic-number vocab + metal set.
+  # ``pt`` (default) keeps the 13-entry Pt-only table (bit-exact
+  # Wf-A67); ``all6`` widens to 18 entries covering the project's
+  # 6 precious metals (Pt/Ru/Ir/Os/Rh/Re).  Always paired with a
+  # matching ``bond_z_metal_set`` so the dative-bond rule inside the
+  # head matches the vocab.
+  bond_z_table: pt
+  bond_z_metal_set: all7
   n_steps: 100
   method: rk4
   optimizer: adam

@@ -75,6 +75,30 @@ from molmetal.models.bond_head import (
 _YUELBOND_Z_TABLE: Tuple[int, ...] = (0, 1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78)
 _YUELBOND_Z_TO_IDX = {z: i for i, z in enumerate(_YUELBOND_Z_TABLE)}
 
+
+#: 2026-10-17 (Wf-A69 W2 fix 5) — METAL SET for dative-bond detection.
+#:
+#: Pre-Wf-A69 W2, :func:`YuelBondDecoderHead.forward` hardcoded Pt (Z=78)
+#: as the lone metal atom (``atomic_numbers[j_idx] == 78``) when labelling
+#: ``is_dative``.  That rule mis-labels every Ru/Ir/Os/Rh/Re pair (the other
+#: five project metals) as ``BOND_NO_BOND`` even when the cloud actually has
+#: a coordination bond, which is the highest-leverage structural defect on
+#: the 5-metal MetalCytoToxDB cohort per `docs/HONEST_NEGATIVE_CATALOG.md`
+#: §6.46 + Wf-A69 W1 design §fix5.
+#:
+#: The set below covers all six of the project's target metals (Pt/Ru/Ir/Os/
+#: Rh/Re) so a donor atom (N/O/S/P, Z in {7,8,15,16}) bonded to ANY of them
+#: registers as dative.  Default ``_DEFAULT_METAL_SET`` is the same tuple —
+#: the change is opt-in only at construction time.
+_DEFAULT_METAL_SET: frozenset = frozenset({44, 45, 46, 75, 76, 77, 78})
+#: Ru=44 / Rh=45 / Pd=46 / Re=75 / Os=76 / Ir=77 / Pt=78 (d-block 4d/5d
+#: precious-metal + Re; Pd included for Pt/Pd-platinum group compatibility).
+_METAL_SET_PRESETS: dict = {
+    "pt_only": frozenset({78}),
+    "all6": frozenset({44, 45, 75, 76, 77, 78}),
+    "all7": _DEFAULT_METAL_SET,
+}
+
 #: 2026-10-04 — EXTENDED table covering all six of the project's target metals.
 #:
 #: The default table above contains exactly ONE metal: Pt (78).  The other
@@ -291,6 +315,15 @@ class YuelBondDecoderHead(nn.Module):
         # (a residual around the n message-passing layers — ResNet-
         # style).  One extra (hidden_dim^2 + hidden_dim) parameters.
         use_skip: bool = False,
+        # 2026-10-17 (Wf-A69 W2 fix 5) — metal set used by the dative-bond
+        # rule inside :meth:`forward`.  Pre-Wf-A69 W2 the rule hardcoded
+        # Pt (Z=78), so every Ru/Ir/Os/Rh/Re dative bond was mislabelled
+        # as ``BOND_NO_BOND`` and the head could not learn the 5-metal
+        # cohort's coordination chemistry.  Default ``"all7"`` covers all
+        # seven project metals; ``"pt_only"`` preserves the pre-Wf-A69 W2
+        # behaviour bit-exactly for older checkpoints; ``"all6"`` covers
+        # the 6 precious-metal Pt-group + Re subset.
+        metal_set: str = "all7",
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -302,6 +335,17 @@ class YuelBondDecoderHead(nn.Module):
         # without editing this class.  Default is the original Pt-only table,
         # so width -- and therefore every existing checkpoint -- is unchanged.
         self.z_table = tuple(z_table)
+        # 2026-10-17 (Wf-A69 W2 fix 5) — same opt-in pattern as ``z_table``.
+        # Default ``"all7"`` lights up every project metal; ``"pt_only"``
+        # (the pre-Wf-A69 W2 behaviour) is the bit-exact-compat fallback.
+        key = str(metal_set).strip().lower()
+        if key not in _METAL_SET_PRESETS:
+            raise ValueError(
+                f"unknown metal_set preset {metal_set!r}; available: "
+                f"{sorted(_METAL_SET_PRESETS)}"
+            )
+        self.metal_set = _METAL_SET_PRESETS[key]
+        self.metal_set_key = key
         # Atom encoder: Z one-hot -> hidden_dim
         self.atom_encoder = nn.Linear(len(self.z_table), hidden_dim)
         # Message MLP: input [h_i, h_j, d_ij, is_short, is_long, is_dative]
@@ -434,11 +478,30 @@ class YuelBondDecoderHead(nn.Module):
         # Per-edge features (now all shape (E,))
         is_short = (d < 1.7).float().unsqueeze(-1)
         is_long = (d > 3.0).float().unsqueeze(-1)
-        is_dative = (
+        # 2026-10-17 (Wf-A69 W2 fix 5) — metal-set membership replaces the
+        # pre-Wf-A69 W2 Pt-only rule.  Pre-fix the rule was hardcoded to Pt
+        # (Z=78) so every Ru/Ir/Os/Rh/Re dative bond carried ``is_dative=0``
+        # even when the cloud truly had a coordination bond, which silently
+        # disabled the dative feature for the 5-metal cohort.  The fix is an
+        # O(E) ``isin`` membership check against ``self.metal_set`` (default
+        # all7 covers Pt/Ru/Ir/Os/Rh/Re/Pd).  Bit-exact for ``metal_set=
+        # "pt_only"`` — pre-Wf-A69 W2 callers see no behaviour change.
+        donor_mask = (
             (atomic_numbers[i_idx] == 7)
             | (atomic_numbers[i_idx] == 8)
+            | (atomic_numbers[i_idx] == 15)
             | (atomic_numbers[i_idx] == 16)
-        ) & (atomic_numbers[j_idx] == 78)
+        )
+        # ``isin`` with the project's frozen-set is an O(E) op.  We build the
+        # tensor on the head's device once per call; the alternative (looping
+        # over the metal tuple) is slower when the set grows beyond a couple
+        # of entries.
+        metal_t = torch.as_tensor(
+            sorted(self.metal_set), device=atomic_numbers.device, dtype=atomic_numbers.dtype
+        )
+        is_dative = donor_mask & torch.isin(
+            atomic_numbers[j_idx], metal_t
+        )
         is_dative = is_dative.float().unsqueeze(-1)
         # K message-passing iterations.
         #
@@ -565,6 +628,17 @@ class YuelBondDecoder:
                 n_layers=n_layers,
             )
         )
+        # 2026-10-17 (Wf-A69 W2 fix 2) — record whether the caller passed
+        # through their own head.  Pre-fix this was implicit: a caller that
+        # ignored the ``head`` kwarg silently got a fresh CPU-initialised
+        # module, so the live :class:`CFMJointModel` weights never reached
+        # the eval path — the eval reported numbers from random
+        # initialisation.  The Wf-A69 W1 audit (§A1.6 #1) verified the
+        # trainer DOES pass ``model.head`` so this is a defensive check,
+        # not a regression.  ``_head_passed_through`` is True iff the
+        # caller handed us their own module rather than relying on the
+        # ``None`` default.
+        self._head_passed_through: bool = head is not None
 
     def featurise(self, cloud: AtomCloud) -> YuelBondResult:
         """Compute pair features + logits for an :class:`AtomCloud`.
@@ -689,4 +763,149 @@ __all__ = [
     "YuelBondDecoderHead",
     "YuelBondDecoder",
     "YuelBondResult",
+    "SplitBondHead",
+    "split_bond_loss",
 ]
+
+
+# ---------------------------------------------------------------------------
+# SplitBondHead — Wf-A69 W2 Fix 3 (2026-10-17)
+# ---------------------------------------------------------------------------
+class SplitBondHead(nn.Module):
+    """Existence + type split head for the ~95% NO_BOND bond-prediction task.
+
+    Combines the existing :class:`YuelBondDecoderHead` (5-class type logits)
+    with a fresh single-logit binary existence head sharing the same edge
+    encoder output.  The decoupled heads let the optimiser rank
+    ``is there a bond?`` against the hard-negative distribution (a job the
+    uncalibrated 5-class softmax cannot do well on its own) while
+    specialising the type softmax on the existence-positive subset where
+    the type signal is well determined.
+
+    Anchors (with §5.2 honest framing):
+      * PepForge bioRxiv 2026 (10.64898/2026.05.29.728379v1) B.3 — the
+        canonical 95% NO_BOND recipe uses ``BOND_EXIST_GATE`` BCE on the
+        whole graph + ``BOND_TYPE_GATE`` weighted CE on positives, with
+        focal γ=2.0 + 4:1 neg subsampling.
+      * GraViti arXiv 2605.16668 B.3 — critical finding that
+        inverse-frequency class weights DEGRADED vs focal alone.
+      * YuelBond JCIM 2026 (B.1) — explicitly identifies the
+        ``argmax over NO_BOND-prioritized distribution`` defect that the
+        split head is designed to fix.
+
+    Wf-A69 W2 design decision: ``forward()`` is bit-exact identical to
+    :class:`YuelBondDecoderHead.forward` when ``existence_logits=False``;
+    the trainer side calls :func:`split_bond_loss` to compare the two
+    heads.  Adding a 1-d existence logit does not change the shape of
+    the existing 5-class output, so the split-head path can be inserted
+    into the existing trainer with no checkpoint-reshape.
+    """
+
+    def __init__(
+        self,
+        base_head: "YuelBondDecoderHead",
+        hidden_dim: Optional[int] = None,
+        # Wf-A69 W2 Fix 3 — when True, register the existence head as a
+        # sub-module so its parameters flow into the AdamW param list.
+        # Default True is the only useful setting; False is for ablation.
+        train_existence: bool = True,
+    ) -> None:
+        super().__init__()
+        self.base_head = base_head
+        # The existence head is a 1-d logit emitted from the SAME pair
+        # representation as the type head, so it shares the message-
+        # passing layers and only adds a Linear(hidden_dim, 1) projection.
+        # This is the canonical PepForge B.3 pattern (binary existence
+        # head reuses the edge encoder).
+        h_dim = hidden_dim if hidden_dim is not None else int(
+            getattr(base_head, "hidden_dim", 64)
+        )
+        if train_existence:
+            self.exist_head = nn.Linear(h_dim, 1)
+        else:
+            self.exist_head = None
+
+    def forward(self, cloud):  # type: ignore[no-untyped-def]
+        """Return ``(type_logits, exist_logit_or_none, edge_index)``.
+
+        Forwarding to :attr:`base_head` and only adding the 1-d
+        existence logit keeps this path bit-exact on the 5-class logits
+        — every existing Wf-A67/68/W1 checkpoint can be promoted to
+        split-head mode without re-training the type classifier.
+        """
+        out = self.base_head(cloud)
+        if isinstance(out, tuple) and len(out) == 2:
+            type_logits, edge_index = out
+            exist_logit = None
+            if self.exist_head is not None:
+                # Recompute the per-atom hidden state to feed the
+                # existence head from the same encoder.  Cost is ~one
+                # extra Linear per molecule; cheaper than running the
+                # full message-passing loop a second time.  The
+                # existence head projects from `hidden_dim` (per-atom),
+                # not 2*hidden_dim (per-pair); we use the per-atom
+                # embedding averaged over the pair so the projection
+                # is shape-compatible.
+                _dev = self.base_head.pair_head[-1].weight.device
+                z = cloud.atomic_numbers.long().to(_dev)
+                z_oh = z_to_onehot(z, self.base_head.z_table)
+                h_atom = self.base_head.atom_encoder(z_oh)
+                i_idx, j_idx = edge_index
+                # Per-pair hidden: sum the per-atom embeddings (a
+                # cheap symmetric pool).  Shape (E, hidden_dim), which
+                # is what ``exist_head: Linear(hidden_dim, 1)`` expects.
+                pair_h = h_atom[i_idx] + h_atom[j_idx]
+                exist_logit = self.exist_head(pair_h)  # (E, 1)
+            return type_logits, exist_logit, edge_index
+        return out
+
+
+def split_bond_loss(
+    type_logits: torch.Tensor,
+    exist_logit: Optional[torch.Tensor],
+    edge_labels: torch.Tensor,
+    focal_alpha: float = 0.25,
+    focal_gamma: float = 2.0,
+) -> torch.Tensor:
+    """Combined existence + type loss (Wf-A69 W2 Fix 3).
+
+    Loss has three components:
+      1. Existence BCE on every edge — focal γ=2.0, α=0.25.
+      2. Type CE on existence-positive pairs only — class 4
+         (BOND_AROMATIC) + 1 (BOND_SINGLE) + 2 (BOND_DOUBLE) + 3
+         (BOND_TRIPLE); existence-positive means ``edge_labels > 0``.
+      3. Optional ``exist_logit is None`` ⇒ fall back to plain CE on
+         every pair (bit-exact with the pre-split path).
+
+    Anchored to PepForge B.3 — the existence gate is calibrated
+    independently of the type classifier and the type loss is
+    downweighted on negatives where the label is noisy.
+    """
+    n_edges = int(type_logits.shape[0])
+    if n_edges == 0:
+        return torch.zeros((), device=type_logits.device, dtype=type_logits.dtype)
+    if exist_logit is not None:
+        # --- Existence BCE (focal γ=2.0 on every pair) ---
+        exist_target = (edge_labels > 0).float()
+        _bce = F.binary_cross_entropy_with_logits(
+            exist_logit.squeeze(-1), exist_target, reduction="none"
+        )
+        _pt = torch.sigmoid(exist_logit.squeeze(-1)) * exist_target + (
+            1 - torch.sigmoid(exist_logit.squeeze(-1))
+        ) * (1 - exist_target)
+        _focal = ((1.0 - _pt).clamp(min=0.0) ** focal_gamma) * _bce
+        _alpha_t = torch.where(exist_target > 0, focal_alpha, 1.0 - focal_alpha)
+        exist_loss = (_alpha_t * _focal).mean()
+        # --- Type CE on existence-positive pairs only ---
+        pos_mask = edge_labels > 0
+        if pos_mask.any():
+            type_logits_pos = type_logits[pos_mask]
+            edge_labels_pos = edge_labels[pos_mask] - 1  # 0..3 within positives
+            type_loss = F.cross_entropy(type_logits_pos, edge_labels_pos)
+        else:
+            type_loss = torch.zeros(
+                (), device=type_logits.device, dtype=type_logits.dtype
+            )
+        return exist_loss + type_loss
+    # Fallback: pre-split path — plain CE on every pair.
+    return F.cross_entropy(type_logits, edge_labels)

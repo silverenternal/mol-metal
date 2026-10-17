@@ -1623,6 +1623,27 @@ class CFMJointModel(nn.Module):
         # BondOrderHead registers an extra Linear(hidden_dim, hidden_dim)
         # projection from fc1 to the pre-`out` activation (ResNet-style).
         use_bond_head_skip: bool = False,
+        # Wf-A69 W2 (2026-10-17) Fix 5 — metal-set preset passed to
+        # :class:`YuelBondDecoderHead`.  Default ``"all7"`` covers
+        # Pt/Ru/Ir/Os/Rh/Re/Pd so the dative-bond rule lights up the
+        # 5-metal cohort's coordination chemistry.  ``"pt_only"`` is
+        # the bit-exact-compat fallback for Wf-A67/68/W1 checkpoints.
+        bond_z_metal_set: str = "all7",
+        # Wf-A69 W2 (2026-10-17) Fix 5 — atomic-number vocab preset
+        # for :class:`YuelBondDecoderHead`.  The existing ``yuelbond_vocab``
+        # flag already accepts ``pt`` / ``all6`` presets; this is a synonym
+        # purely for documentation symmetry with ``bond_z_metal_set``.
+        # Default ``"pt"`` keeps the 13-entry Pt-only table (bit-exact
+        # Wf-A67/68/W1).  ``"all6"`` widens to 18 entries covering 6
+        # precious metals but reshapes ``atom_encoder`` so existing
+        # checkpoints won't round-trip.
+        bond_z_table: str = "pt",
+        # Wf-A69 W2 (2026-10-17) Fix 3 — bond-head topology.  Default
+        # ``"single"`` (bit-exact Wf-A67/68/W1) is the 5-class softmax
+        # CE.  ``"split"`` wraps the head into
+        # :class:`SplitBondHead` with a binary existence head +
+        # 4-way type CE on existence-positive pairs (PepForge B.3).
+        bond_head_kind: str = "single",
         # ---- Wf-A11 (2026-10-13) trainer surface (all backward-compat) ----
         # Round-10 CFMJointModel.__init__ had no knobs for these. Each new
         # kwarg has a YAML-loadable default that matches the legacy silent
@@ -1737,6 +1758,14 @@ class CFMJointModel(nn.Module):
                 # not `use_bond_head_skip` (which is the trainer-level
                 # CFMJointModel kwarg name).
                 use_skip=bool(use_bond_head_skip),
+                # 2026-10-17 (Wf-A69 W2 fix 5) — opt-in metal-set
+                # override.  Default ``all7`` covers Pt/Ru/Ir/Os/Rh/Re
+                # so the dative-bond rule inside the head lights up
+                # the 5-metal cohort's coordination chemistry.  Pass
+                # ``pt_only`` via YAML or ``--bond-z-metal-set=pt_only``
+                # for bit-exact legacy behaviour on Wf-A67/68/W1
+                # checkpoints.
+                metal_set=str(bond_z_metal_set),
             )
         else:
             raise ValueError(
@@ -6500,7 +6529,21 @@ def evaluate_bond_accuracy(
     # Wf-A11 (2026-10-13) — site 3 of 3 inlined collate sites + the last
     # ``getattr`` default site.  ``cloud.bonds`` is the canonical access path
     # on :class:`AtomCloud` (it's a dataclass field, not a getattr fallback).
+    #
+    # Wf-A69 W2 (2026-10-17) Fix 2 — the wrapper records ``head_passed_through``
+    # so a regression to "the head was None and a fresh CPU module was used"
+    # is detectable from outside.  :class:`CFMJointModel.__init__` always
+    # builds :class:`YuelBondDecoderHead` (line 1723 below), so this branch
+    # is the happy path; a future refactor that drops the kwarg would land
+    # a ``False`` here and the assert below catches it.
     featuriser = YuelBondDecoder(head=model.head)
+    if not getattr(featuriser, "_head_passed_through", False):
+        raise RuntimeError(
+            "evaluate_bond_accuracy: YuelBondDecoder did not receive the "
+            "live model.head; the eval path is now running against a "
+            "fresh CPU-initialised head — every reported bond metric "
+            "would be meaningless. See Wf-A69 W2 Fix 2."
+        )
     with torch.no_grad():
         for cloud in val_clouds:
             # Wf-A11 (2026-10-13) — `cloud.bonds` is the canonical dataclass
@@ -7908,6 +7951,53 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--bond-head-kind",
+        dest="bond_head_kind",
+        choices=("single", "split"),
+        default="single",
+        help=(
+            "2026-10-17 (Wf-A69 W2 fix 3): bond-head topology.  'single' "
+            "(default, bit-exact Wf-A67/68/W1) is the 5-class softmax CE. "
+            "'split' wraps the head into a :class:`SplitBondHead` that "
+            "emits a 1-d existence logit (focal γ=2.0 BCE) plus the "
+            "5-class type softmax, dropping the 4-way type loss on "
+            "existence-positive pairs only.  Anchored to PepForge B.3 "
+            "+ GraViti B.3 (no inverse-freq weights).  See "
+            "molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py::SplitBondHead."
+        ),
+    )
+    p.add_argument(
+        "--bond-z-table",
+        dest="bond_z_table",
+        choices=("pt", "all6"),
+        default="pt",
+        help=(
+            "2026-10-17 (Wf-A69 W2 fix 5): atomic-number vocab table. "
+            "'pt' (default, bit-exact Wf-A67) is the 13-entry "
+            "Pt-only table.  'all6' widens to 18 entries covering "
+            "the project's 6 precious metals (Pt/Ru/Ir/Os/Rh/Re).  "
+            "Switching from 'pt' to 'all6' reshapes the atom_encoder "
+            "Linear from 13→18; existing Wf-A67/68 checkpoints do "
+            "NOT round-trip through 'all6'."
+        ),
+    )
+    p.add_argument(
+        "--bond-z-metal-set",
+        dest="bond_z_metal_set",
+        choices=("pt_only", "all6", "all7"),
+        default="all7",
+        help=(
+            "2026-10-17 (Wf-A69 W2 fix 5): metal set used by the "
+            "dative-bond rule inside :class:`YuelBondDecoderHead`.  "
+            "'pt_only' (pre-Wf-A69 W2 behaviour, hardcoded Pt) is the "
+            "bit-exact-compat fallback.  'all6' covers Pt/Ru/Ir/Os/Rh/Re. "
+            "'all7' adds Pd for platinum-group compatibility (default). "
+            "Independent of ``--bond-z-table`` so the user can keep "
+            "the Pt-only vocab while lighting up all 7 metals in the "
+            "dative rule."
+        ),
+    )
+    p.add_argument(
         "--bond-class-weights",
         dest="bond_class_weights",
         action="store_true",
@@ -8205,6 +8295,83 @@ def parse_args() -> argparse.Namespace:
             "from fc1 to the pre-`out` activation (ResNet-style residual).  "
             "Default OFF preserves Wf-A67 bit-exact compat.  Driven by the "
             "yaml `flow.use_bond_head_skip` key."
+        ),
+    )
+    # Wf-A69 W1 (2026-10-17) — bond-candidate source switch (DISASTER
+    # AREA FIX).  ``truth_only`` reproduces the pre-Wf-A69 candidate
+    # construction at LipmanFlowMatchingAdapter.train_step line ~2628:
+    # every candidate edge is read from ``m.bonds`` so the per-pair CE
+    # is 100% positive by construction.  ``radius_graph`` builds
+    # candidates from a distance-cutoff ``triu_indices`` (matching
+    # YuelBondDecoderHead's eval cutoff) and labels them with truth via
+    # the same ``m.bonds`` lookup.  Pairs NOT in ``m.bonds`` get
+    # BOND_NO_BOND so the head sees the negative class at training.
+    # 2026-10-17 measured: Wf-A67 bond_f1=0.265 was reported by an
+    # evaluation whose candidate set (~90-95% NO_BOND) the trainer
+    # never saw during training.  ``radius_graph`` aligns train and
+    # eval so the head sees the negative class.  Default ``truth_only``
+    # preserves Wf-A67 bit-exact backward compat.  Driven by the YAML
+    # ``flow.bond_candidate_source`` key.
+    p.add_argument(
+        "--bond-candidate-source",
+        dest="bond_candidate_source",
+        choices=("truth_only", "radius_graph"),
+        default="truth_only",
+        help=(
+            "2026-10-17 NEW (Wf-A69 W1): bond-pair candidate source. "
+            "'truth_only' reads candidates from m.bonds (100% positive "
+            "by construction, bit-exact pre-Wf-A69).  'radius_graph' "
+            "builds candidates from a distance-cutoff triu_indices "
+            "(matching YuelBondDecoderHead's eval cutoff) and labels "
+            "them with truth — pairs not in m.bonds get BOND_NO_BOND so "
+            "the head sees the negative class.  Default 'truth_only' "
+            "preserves Wf-A67 backward compat.  Driven by the YAML "
+            "``flow.bond_candidate_source`` key."
+        ),
+    )
+    p.add_argument(
+        "--bond-candidate-cutoff",
+        dest="bond_candidate_cutoff",
+        type=float,
+        default=2.4,
+        help=(
+            "2026-10-17 NEW (Wf-A69 W1): distance cutoff (Å) for the "
+            "radius_graph candidate source.  Pairs at distance >= "
+            "cutoff are NOT included in the candidate list.  Default "
+            "2.4 Å matches BondOrderHead.bond_cutoff and "
+            "YuelBondDecoderHead.cutoff=2.4 (chemically: a single bond "
+            "radius + 0.4 Å tolerance).  Only used when "
+            "bond_candidate_source='radius_graph'.  Driven by the YAML "
+            "``flow.bond_candidate_cutoff`` key."
+        ),
+    )
+    p.add_argument(
+        "--subsample-neg-ratio",
+        dest="subsample_neg_ratio",
+        type=int,
+        default=0,
+        help=(
+            "2026-10-17 NEW (Wf-A69 W1): when > 0 and "
+            "bond_candidate_source='radius_graph', subsample the "
+            "negative pairs to keep neg:pos == subsample_neg_ratio. "
+            "Default 0 = no subsampling (every candidate pair used).  "
+            "4:1 is the canonical ~95% NO_BOND prior recipe (PepForge "
+            "bioRxiv 2026 + GraViti arXiv 2605.16668).  Driven by the "
+            "YAML ``flow.subsample_neg_ratio`` key."
+        ),
+    )
+    p.add_argument(
+        "--subsample-neg-seed",
+        dest="subsample_neg_seed",
+        choices=("epoch", "global"),
+        default="epoch",
+        help=(
+            "2026-10-17 NEW (Wf-A69 W1): seed policy for negative "
+            "subsampling.  'epoch' derives the seed from per-batch "
+            "candidate counts (deterministic across CUDA devices). "
+            "'global' uses a fixed seed (seed=0).  Only used when "
+            "subsample_neg_ratio > 0.  Default 'epoch'.  Driven by the "
+            "YAML ``flow.subsample_neg_seed`` key."
         ),
     )
     # 2026-10-04 NEW — `model.learnable_vel_scale`'s consumer.  TODO-24 P1.2
@@ -10666,6 +10833,18 @@ def main() -> int:
         cutoff=args.edge_cutoff,
         fm_objective=bool(getattr(args, "use_fm_objective", False)),
         z_table=_z_table,
+        # Wf-A69 W2 (2026-10-17) Fix 5 — opt-in metal-set override.
+        # Default ``all7`` covers Pt/Ru/Ir/Os/Rh/Re/Pd so the
+        # dative-bond rule lights up the 5-metal cohort's
+        # coordination chemistry.  Use ``args.yuelbond_vocab``
+        # (existing flag) for the vocab-table preset; the
+        # --bond-z-metal-set flag is independent and covers the
+        # metal-detection rule.
+        bond_z_metal_set=str(getattr(args, "bond_z_metal_set", "all7")),
+        bond_z_table=str(getattr(args, "bond_z_table", "pt")),
+        # Wf-A69 W2 (2026-10-17) Fix 3 — split-head topology.
+        # Default ``"single"`` is bit-exact Wf-A67/68/W1.
+        bond_head_kind=str(getattr(args, "bond_head_kind", "single")),
         use_egnn_velocity=_use_egnn,
         max_atomic_number=int(getattr(args, "egnn_max_atomic_number", 100)),
         context_dropout=float(getattr(args, "egnn_context_dropout", 0.1)),
