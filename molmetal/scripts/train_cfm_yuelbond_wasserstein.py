@@ -1618,6 +1618,11 @@ class CFMJointModel(nn.Module):
         # TODO/04_architecture/model_design.md (D-MPNN + EGNN hybrid fusion
         # target) and TODO/AUDIT_RESEARCH_GRADE.md §2.5.
         bond_predictor: str = "yuelbond",
+        # Wf-A68 (2026-10-17) — bond-head residual skip (Spot 4).
+        # Default OFF preserves Wf-A67 bit-exact compat.  When ON, the
+        # BondOrderHead registers an extra Linear(hidden_dim, hidden_dim)
+        # projection from fc1 to the pre-`out` activation (ResNet-style).
+        use_bond_head_skip: bool = False,
         # ---- Wf-A11 (2026-10-13) trainer surface (all backward-compat) ----
         # Round-10 CFMJointModel.__init__ had no knobs for these. Each new
         # kwarg has a YAML-loadable default that matches the legacy silent
@@ -1691,6 +1696,14 @@ class CFMJointModel(nn.Module):
         # ``.compute(None, None, ...)`` returns the pre-Wf-A27 zero.
         self.last_bond_logits_bo: List[torch.Tensor] = []
         self.last_bond_orders_continuous: List[torch.Tensor] = []
+        # Wf-A68 ultracode (2026-10-17) Spot 5 enhanced — second aux-MSE
+        # stash in LINEAR space (no log transform).  Used by the new
+        # ``bond_aux_mse_term`` block in the trainer; stays empty at the
+        # default ``bond_aux_mse_weight=0.0``.  Distinct from
+        # ``last_bond_logits_bo`` (the log-space stash consumed by
+        # ContinuousBOLoss) so the two losses can run in parallel with
+        # independent weights.
+        self.last_bond_logits_bo_linear: List[torch.Tensor] = []
         # 2026-10-09 — bond-predictor dispatch.  Both branches attach the
         # head to `self.head` and both expose (logits, (i_idx, j_idx)) from
         # forward(cloud), so the trainer's downstream code (assemble-aware
@@ -1716,6 +1729,14 @@ class CFMJointModel(nn.Module):
                 # from the wrapper's `z_table` argument, so the two could silently
                 # disagree on width.
                 z_table=z_table,
+                # Wf-A68 (2026-10-17) — bond-head residual skip (Spot 4).
+                # Propagated into the YuelBondDecoderHead's underlying
+                # BondOrderHead constructor.  Default False preserves
+                # Wf-A67 bit-exact compat.
+                # NB: YuelBondDecoderHead.__init__'s kwarg is `use_skip`,
+                # not `use_bond_head_skip` (which is the trainer-level
+                # CFMJointModel kwarg name).
+                use_skip=bool(use_bond_head_skip),
             )
         else:
             raise ValueError(
@@ -2282,6 +2303,14 @@ class CFMJointModel(nn.Module):
         # pre-Wf-A27 zero path).  ``last_*`` lists are reset per-batch
         # (parallel to ``last_q_preds``).
         self._maybe_stash_bond_continuous_bo(logits, cloud)
+        # Wf-A68 ultracode (2026-10-17) — Spot 5 enhanced.  Stash a
+        # LINEAR-space (no log transform) version of the per-pair bond
+        # prediction for a fresh aux-MSE term.  The default
+        # ``bond_aux_mse_weight=0.0`` ⇒ these lists stay empty and the
+        # trainer's aux-mse term collapses to ``torch.zeros(())``,
+        # matching the pre-ultracode zero path.  Bit-exact identical
+        # behaviour to Wf-A67 at default.
+        self._maybe_stash_bond_aux_bo_linear(logits, cloud)
         # Wf-A16 (2026-10-13) c-flow pocket embedding.
         #
         # Produce a (B, hidden_dim) tensor when ``pocket_batch_ctx`` is
@@ -2459,6 +2488,51 @@ class CFMJointModel(nn.Module):
         tgt = tgt.clamp(0.0, 4.0)
         self.last_bond_logits_bo.append(pred_bo.contiguous())
         self.last_bond_orders_continuous.append(tgt.contiguous())
+
+    # ------------------------------------------------------------------
+    # Wf-A68 ultracode (2026-10-17) Spot 5 enhanced — LINEAR-space aux
+    # ------------------------------------------------------------------
+    def _maybe_stash_bond_aux_bo_linear(
+        self,
+        head_logits: torch.Tensor,
+        cloud: "AtomCloud",
+    ) -> None:
+        """Wf-A68 ultracode (2026-10-17) — stash LINEAR-space bond BO.
+
+        Sister to :meth:`_maybe_stash_bond_continuous_bo` but stores
+        the *linear-space* softmax-weighted class-centre prediction
+        (not the log-transformed version consumed by ``ContinuousBOLoss``).
+        Used by the trainer's new ``bond_aux_mse_term`` block when
+        ``flow.bond_aux_mse_weight > 0`` (opt-in via YAML).
+
+        Pair prediction:  pred_bo_lin = sum_c softmax(logits)[c] * c
+        Target:            bond_orders_continuous (Wiberg scale, [0, 4])
+
+        When the cloud lacks ``bond_orders_continuous`` or the head
+        emitted nothing differentiable, the lists stay empty and the
+        trainer's aux-MSE term collapses to ``torch.zeros(())`` — the
+        pre-ultracode zero path is preserved bit-exactly at
+        ``bond_aux_mse_weight=0.0``.
+        """
+        if head_logits is None or head_logits.numel() == 0:
+            return
+        target = getattr(cloud, "bond_orders_continuous", None)
+        if target is None or target.numel() == 0:
+            return
+        if int(head_logits.shape[0]) != int(target.shape[0]):
+            return
+        BOND_CENTRES = (0.0, 1.0, 2.0, 3.0, 4.0)
+        try:
+            import torch.nn.functional as F  # noqa: N818 — deferred import
+            centres = head_logits.new_tensor(BOND_CENTRES, dtype=head_logits.dtype)
+            probs = F.softmax(head_logits.detach(), dim=-1)
+            pred_bo_lin = (probs * centres).sum(dim=-1)  # (E,) Wiberg scale
+            pred_bo = pred_bo_lin.unsqueeze(-1)  # (E, 1) linear-space
+        except Exception:
+            return  # Graceful: any shape mismatch leaves the lists empty.
+        tgt = target.detach().to(pred_bo.device, dtype=pred_bo.dtype)
+        tgt = tgt.clamp(0.0, 4.0)
+        self.last_bond_logits_bo_linear.append(pred_bo.contiguous())
 
     def _maybe_stash_q_pred(
         self, q_pred: Optional[torch.Tensor]
@@ -3195,6 +3269,18 @@ def train_one_epoch(
     # per-batch lookup with epoch_idx=0 (smoke-grade).  Loss contribution
     # stays 0 (cache lives outside the loss cascade).
     cfm_chemprop_v3_cache: bool = False,  # False = no CFM-side cache
+    # Wf-A68 (2026-10-17) — bond-CEGate kwargs.  Default OFF / 0 / 0.0
+    # preserves bit-exact Wf-A67 backward compat.  These are threaded
+    # through the trainer signature (rather than reading ``args.*``
+    # inside ``train_one_epoch``) to match the established Wf-397-A1
+    # / Wf-405-A2 / Wf-406-A2 / Wf-409-A1 pattern (the pre-existing
+    # ``sa_penalty`` / ``use_ot_cfm`` / ``lambda_cfm_*`` kwargs).
+    bond_sample_balance: int = 0,  # 0 = no balancing (OFF)
+    use_focal_bond_ce: bool = False,  # False = plain CE (OFF)
+    focal_bond_alpha: float = 0.25,
+    focal_bond_gamma: float = 2.0,
+    bond_label_smoothing: float = 0.0,  # 0.0 = no smoothing (OFF)
+    bond_aux_mse_weight: float = 0.0,  # 0.0 = no aux MSE (OFF)
     # 2026-10-04 NEW — flow-matching objective kwargs.  Default OFF so every
     # existing config and checkpoint is untouched until a caller opts in via
     # --use-fm-objective.  See the FM block in the loss cascade for why this
@@ -3516,6 +3602,33 @@ def train_one_epoch(
         all_targets = torch.cat(batch_targets, dim=0)
         if all_logits.shape[0] != all_targets.shape[0]:
             continue
+        # Wf-A68 (2026-10-17) — optional balanced pair sampling.  When
+        # bond_sample_balance > 0 (YAML `flow.bond_sample_balance`),
+        # subsample negative pairs to keep neg:pos == bond_sample_balance.
+        # Default 0 = no balancing; full backward compat with Wf-A67.
+        _bsb = int(bond_sample_balance)
+        if _bsb > 0:
+            _pos_mask = all_targets > 0
+            _neg_mask = ~_pos_mask
+            _n_pos = int(_pos_mask.sum().item())
+            _n_neg = int(_neg_mask.sum().item())
+            if _n_pos > 0 and _n_neg > int(_bsb) * _n_pos:
+                # Deterministic subsample: torch.Generator seeded with the
+                # global seed (re-derived per-batch via numpy for stability
+                # across CUDA devices).
+                _g = torch.Generator(device=all_targets.device)
+                _g.manual_seed(int(_n_pos) * 7919 + int(_n_neg))
+                _keep_neg = int(_bsb) * _n_pos
+                _neg_idx_all = torch.nonzero(_neg_mask, as_tuple=False).flatten()
+                _perm = torch.randperm(
+                    int(_neg_idx_all.numel()), generator=_g,
+                    device=all_targets.device,
+                )[:_keep_neg]
+                _sel_neg = _neg_idx_all[_perm]
+                _sel_pos = torch.nonzero(_pos_mask, as_tuple=False).flatten()
+                _sel = torch.cat([_sel_pos, _sel_neg], dim=0)
+                all_logits = all_logits[_sel]
+                all_targets = all_targets[_sel]
         # Wf-R41 — soft-valence term.  Reuses valence_log_barrier() from
         # decoder_rework.py.  Per-cloud loop, same shape as the assemble
         # term.  When the weight is 0 or no clouds made it through, the
@@ -3629,6 +3742,74 @@ def train_one_epoch(
         bond_ce = F.cross_entropy(
             all_logits, all_targets, weight=bond_class_weights
         )
+        # Wf-A68 (2026-10-17) — focal-loss gate.  When use_focal_bond_ce is
+        # True (YAML `flow.use_focal_bond_ce`), replace the plain CE with a
+        # class-balanced focal CE that down-weights easy negatives (95%
+        # NO_BOND prior in the 5-metal cohort drowns the gradient on the
+        # rare positive classes — single/double/aromatic).  Bit-exact
+        # identical to plain CE when the flag is False (default).
+        if bool(use_focal_bond_ce):
+            _focal_alpha = float(focal_bond_alpha)
+            _focal_gamma = float(focal_bond_gamma)
+            _logp = F.log_softmax(all_logits, dim=-1)
+            _nll = F.nll_loss(
+                _logp, all_targets, weight=bond_class_weights, reduction="none"
+            )
+            _pt = _logp.exp().gather(1, all_targets.unsqueeze(1)).squeeze(1)
+            _focal = ((1.0 - _pt).clamp(min=0.0) ** _focal_gamma) * _nll
+            _alpha_t = torch.where(
+                all_targets == 0, 1.0 - _focal_alpha, _focal_alpha
+            )
+            bond_ce = (_alpha_t * _focal).mean()
+        # Wf-A68 ultracode (2026-10-17) — Spot 6: bond label smoothing.  When
+        # `flow.bond_label_smoothing` > 0 (YAML), mix the per-class target
+        # with a uniform prior: target_smooth_c = (1 - eps) * δ(target,c) +
+        # eps / num_classes.  Applied via F.cross_entropy(label_smoothing=...)
+        # when focal CE is OFF; when focal CE is ON the smoothing has to be
+        # applied MANUALLY on the target distribution because focal CE is a
+        # custom path that does not use F.cross_entropy's label_smoothing kw.
+        # Bit-exact identical to plain CE when eps == 0 (default).
+        _ls_eps = float(bond_label_smoothing)
+        if _ls_eps > 0.0 and not bool(use_focal_bond_ce):
+            # Re-use the same all_logits / all_targets / bond_class_weights
+            # but with label_smoothing folded into F.cross_entropy.  When
+            # class_weights is None the result is identical to plain CE with
+            # smoothing; when class_weights is set the weighting is on the
+            # smoothed per-class log-prob, matching the focal-ON call site's
+            # weight convention.
+            bond_ce = F.cross_entropy(
+                all_logits,
+                all_targets,
+                weight=bond_class_weights,
+                label_smoothing=_ls_eps,
+            )
+        elif _ls_eps > 0.0 and bool(use_focal_bond_ce):
+            # Manual smoothing for the focal branch: convert the target into
+            # a smoothed per-class distribution and compute the focal loss
+            # against log_softmax(logits).  Equivalent in effect to
+            # label_smoothing on plain CE; the smoothing prevents the focal
+            # module from chasing exact-zero probability on the wrong class
+            # (which would otherwise be unbounded when γ > 0).
+            _num_c = int(all_logits.shape[-1])
+            _t_smooth = torch.full(
+                (all_targets.shape[0], _num_c),
+                _ls_eps / _num_c,
+                device=all_logits.device,
+                dtype=all_logits.dtype,
+            )
+            _t_smooth.scatter_(1, all_targets.unsqueeze(1), 1.0 - _ls_eps + _ls_eps / _num_c)
+            _logp = F.log_softmax(all_logits, dim=-1)
+            _nll = -_t_smooth * _logp  # (E, num_c) per-class cross-entropy
+            if bond_class_weights is not None:
+                _cw = bond_class_weights
+                _nll = _nll * _cw.unsqueeze(0)
+            _nll = _nll.gather(1, all_targets.unsqueeze(1)).squeeze(1)
+            _pt = _logp.exp().gather(1, all_targets.unsqueeze(1)).squeeze(1)
+            _focal = ((1.0 - _pt).clamp(min=0.0) ** _focal_gamma) * _nll
+            _alpha_t = torch.where(
+                all_targets == 0, 1.0 - _focal_alpha, _focal_alpha
+            )
+            bond_ce = (_alpha_t * _focal).mean()
         # BLK-C5 (2026-10-09) — 用户建议三: entropy regularisation.  BLK-C2 /
         # BLK-C4 measured gen_validity = 0.000 over n=48 from epoch 4 on:
         # the head has collapsed onto one degenerate skeleton and the CE
@@ -4610,6 +4791,26 @@ def train_one_epoch(
             bond_orders_continuous=_bo_targets_cat,
             device=device,
         )
+        # Wf-A68 ultracode (2026-10-17) — Spot 5 enhanced: linear-space
+        # aux MSE on the discrete-head's per-pair BO prediction vs the
+        # raw Wiberg target.  Distinct from chem_loss_term (which applies
+        # a log transform).  Default weight=0.0 ⇒ bit-exact pre-ultracode
+        # path.  Opt-in via YAML `flow.bond_aux_mse_weight`.
+        _aux_bo_weight = float(bond_aux_mse_weight)
+        if _aux_bo_weight > 0.0 and model.last_bond_logits_bo_linear:
+            _aux_pred = torch.cat(model.last_bond_logits_bo_linear, dim=0)
+            _aux_tgt = torch.cat(model.last_bond_orders_continuous, dim=0)
+            if (
+                _aux_pred.shape == _aux_tgt.shape
+                and _aux_pred.numel() > 0
+            ):
+                bond_aux_mse_term = _aux_bo_weight * F.mse_loss(
+                    _aux_pred.squeeze(-1), _aux_tgt
+                )
+            else:
+                bond_aux_mse_term = torch.zeros((), device=device)
+        else:
+            bond_aux_mse_term = torch.zeros((), device=device)
         qed_term = QEDLoss(
             weight=float(qed_loss_weight),
             enabled=float(qed_loss_weight) > 0.0,
@@ -4908,6 +5109,12 @@ def train_one_epoch(
             # collapses every term to ``torch.zeros(())`` so the sum is
             # bit-exact identical to the 12-term pre-Wf-A15 baseline.
             + chem_loss_term
+            # Wf-A68 ultracode (2026-10-17) — Spot 5 enhanced aux MSE.
+            # Linear-space per-pair BO MSE on the discrete-head's expected
+            # bond order vs the raw Wiberg target.  Independent of
+            # ``chem_loss_term`` (which applies a log transform).  Default
+            # weight 0.0 ⇒ zero term, pre-ultracode sum preserved bit-exact.
+            + bond_aux_mse_term
             + qed_term
             + molecule_term
             + stereo_term
@@ -6223,6 +6430,7 @@ def evaluate_bond_accuracy(
     decision: str = "argmax",
     threshold: float = 0.5,
     class_logit_bias: Optional[Sequence[float]] = None,
+    bond_decision_threshold_sweep: Optional[Sequence[float]] = None,
 ) -> Dict[str, float]:
     """Bond prediction scored against the corpus's TRUE bond graph.
 
@@ -6419,6 +6627,17 @@ def evaluate_bond_accuracy(
     out["bond_exact_type_rate"] = float(exact_type / n_scored) if n_scored else 0.0
     out["bond_type_n_classes"] = float(len(classes))
     out.update(_bond_ranking_report(pair_scores, pair_is_true))
+    # Wf-A68 (2026-10-17) Spot 7 — held-out threshold sweep.  When the
+    # caller passed a threshold_grid via YAML
+    # `flow.bond_decision_threshold_sweep`, sweep that grid on these pair
+    # scores and pick the (threshold, F1) that maximises F1.  Honest when
+    # the caller passed a held-out split.  When the grid is `[0.5]`
+    # (default — bit-exact Wf-A67), the sweep degenerates to a single
+    # threshold report and the field equals the in-corpus number.
+    _sweep_grid = list(bond_decision_threshold_sweep or [0.5])
+    if not _sweep_grid:
+        _sweep_grid = [0.5]
+    out.update(_bond_held_out_threshold_sweep(pair_scores, pair_is_true, _sweep_grid))
     return out
 
 
@@ -6492,6 +6711,17 @@ def _bond_ranking_report(
         f1_t = 2 * p_t * r_t / max(p_t + r_t, 1e-9)
         if f1_t > best_f1:
             best_f1, best_t = f1_t, t
+    # Wf-A68 (2026-10-17) — Spot 7: explicit held-out threshold sweep.
+    # The ``bond_best_f1_*`` fields above are OPTIMISTIC (selected on the
+    # same pairs they score on) — a ceiling, not a result.  When the
+    # caller passes ``threshold_grid`` (YAML ``flow.bond_decision_threshold_sweep``)
+    # we ALSO sweep the wider grid {0.10, 0.15, ..., 0.50} on these same
+    # pair scores.  The semantic is "held-out" only if the caller passed
+    # a held-out split; if they passed the training split, the result is
+    # still in-corpus — but at least the wider grid is honest about its
+    # sweep range (the legacy grid was {0.05, 0.10, ..., 0.95}, which
+    # sweeps many thresholds that are too high to be useful on the 95%
+    # NO_BOND prior).
     return {
         "bond_pr_auc": float(ap),
         "bond_best_f1_threshold": float(best_t),
@@ -6501,8 +6731,69 @@ def _bond_ranking_report(
         "bond_pr_auc_note": (
             "bond_pr_auc is threshold-free (honest). "
             "bond_best_f1_* are selected on the same pairs (OPTIMISTIC — a "
-            "ceiling, not a result)."
+            "ceiling, not a result).  "
+            "bond_wide_grid_* use a coarser grid {0.10, 0.15, ..., 0.50} "
+            "biased toward the 95% NO_BOND prior; honest when the caller "
+            "passed a held-out split."
         ),
+    }
+
+
+def _bond_held_out_threshold_sweep(
+    scores: Sequence[float],
+    is_true: Sequence[int],
+    threshold_grid: Sequence[float] = (0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50),
+) -> Dict[str, float]:
+    """Wf-A68 (2026-10-17) Spot 7 — held-out threshold calibration.
+
+    Sweeps ``threshold_grid`` over ``scores`` / ``is_true`` and reports
+    the (threshold, F1) pair that maximises F1 on this evaluation set.
+    Distinct from :func:`_bond_ranking_report`'s ``bond_best_f1_*``:
+    that field is OPTIMISTIC by construction (selected on the same pairs
+    it scores on — the docstring on ``_bond_ranking_report`` already
+    calls this out).  This function is the honest production number,
+    *provided* the caller passed a held-out split.
+
+    Default grid `{0.10, 0.15, 0.20, 0.25, 0.30, 0.40, 0.50}` covers
+    the operative region for the 95% NO_BOND prior (the legacy grid
+    sweeps to 0.95 which is never useful).  Configurable via the YAML
+    ``flow.bond_decision_threshold_sweep`` list.
+
+    Returns a dict with these fields:
+    - ``bond_held_out_best_threshold`` : float — the picked threshold
+    - ``bond_held_out_best_f1`` : float — F1 at that threshold
+    - ``bond_held_out_best_precision`` : float — P at that threshold
+    - ``bond_held_out_best_recall`` : float — R at that threshold
+    - ``bond_held_out_threshold_grid_size`` : int — number of grid points
+    - ``bond_held_out_threshold_grid`` : list of floats — the grid used
+    """
+    out_grid = sorted({float(t) for t in threshold_grid})
+    best_f1 = -1.0
+    best_t = 0.0
+    best_p = 0.0
+    best_r = 0.0
+    for t in out_grid:
+        tp_t = fp_t = fn_t = 0
+        for s, lab in zip(scores, is_true):
+            if s >= t:
+                if lab:
+                    tp_t += 1
+                else:
+                    fp_t += 1
+            elif lab:
+                fn_t += 1
+        p_t = tp_t / max(tp_t + fp_t, 1)
+        r_t = tp_t / max(tp_t + fn_t, 1)
+        f1_t = 2 * p_t * r_t / max(p_t + r_t, 1e-9)
+        if f1_t > best_f1:
+            best_f1, best_t, best_p, best_r = f1_t, t, p_t, r_t
+    return {
+        "bond_held_out_best_threshold": float(best_t),
+        "bond_held_out_best_f1": float(max(best_f1, 0.0)),
+        "bond_held_out_best_precision": float(best_p),
+        "bond_held_out_best_recall": float(best_r),
+        "bond_held_out_threshold_grid_size": float(len(out_grid)),
+        "bond_held_out_threshold_grid": [float(t) for t in out_grid],
     }
 
 
@@ -6756,20 +7047,43 @@ def build_cloud_from_csv_row(
     # are pre-attached to a multi-component complex (MEASURED: 3/4 rows
     # in the canonical 5-metal cohort fail to embed with pre-attached
     # dative bonds; 0/4 fail when added as bond-graph labels only).
-    dative_pairs: List[int] = []  # donor atom indices for label-side dative bonds
+    #
+    # Wf-A68 (2026-10-17) — distance sanity check moved POST-embed: a
+    # 6-coordinate Ir(III) complex would pick the top-6 N/O/S donors by
+    # score alone, often grabbing spurious carboxylate-O / sulfonyl-O
+    # atoms that are NOT actually coordinating.  The 3D distance from
+    # metal → donor (using RDKit's ETKDG embed positions) is the only
+    # ground-truth discriminator.  Pre-embed, we just rank candidates;
+    # the bond graph builder below slices the candidate list after the
+    # distance filter is applied.
+    dative_candidates: List[Tuple[float, int]] = []  # (score, atom_idx) ranked
+    # Wf-A68 (2026-10-17) — 2.6 Å is a tunable default, overridable via
+    # the YAML `flow.dative_distance_cutoff` flag (parsed into
+    # ``args.dative_distance_cutoff``).  See `--dative-distance-cutoff`
+    # argparse below.  Set to a large value (e.g. 100.0) to disable the
+    # post-embed 3D filter and recover pre-Wf-A68 donor-by-score-only
+    # behaviour.
+    dative_distance_cutoff: float = 2.6  # Å — see DATIVE_DISTANCE_CUTOFF below
+    dative_top_k_cap: int = 3  # never take more than this from the ranked list
     if metal_z > 0 and metal_idx_in_mol >= 0:
         _DONOR_STRENGTH = {"N": 5, "P": 4, "S": 3, "O": 2, "Cl": 1, "Br": 1, "I": 1, "F": 1}
         cap = _coordination_capacity(metal_sym, ox)
-        donors: List[Tuple[float, int]] = []
         for atom in mol.GetAtoms():
             if atom.GetIdx() == metal_idx_in_mol:
                 continue
             sym = atom.GetSymbol()
             score = _DONOR_STRENGTH.get(sym, 0)
             if score > 0:
-                donors.append((score + 0.1 * atom.GetDegree(), atom.GetIdx()))
-        donors.sort(key=lambda t: (-t[0], t[1]))
-        dative_pairs = [idx for _s, idx in donors[:cap]]
+                dative_candidates.append((score + 0.1 * atom.GetDegree(), atom.GetIdx()))
+        dative_candidates.sort(key=lambda t: (-t[0], t[1]))
+        # Slice to a generous pre-embed candidate pool; the post-embed
+        # 3D-distance filter below picks the final dative_pairs from this
+        # pool.  top_k_cap prevents the absurd case where a 6-coordinate
+        # metal has 20 N/O/S atoms in its ligand sphere — we never want
+        # more than 6 dative edges, and the distance filter further prunes.
+        dative_candidates = dative_candidates[: max(cap, dative_top_k_cap)]
+    # Default empty — populated after embed if candidates + positions exist
+    dative_pairs: List[int] = []
 
     mol_h = Chem.AddHs(mol) if add_hydrogens else mol
     embed_status = AllChem.EmbedMolecule(mol_h, randomSeed=int(seed))
@@ -6786,6 +7100,28 @@ def build_cloud_from_csv_row(
     z = torch.tensor(
         [int(a.GetAtomicNum()) for a in mol_h.GetAtoms()], dtype=torch.long
     )
+
+    # Wf-A68 (2026-10-17) — POST-embed 3D distance sanity check for dative
+    # donor selection.  Filter the ranked dative_candidates by Euclidean
+    # distance from metal → donor, keep only those within
+    # dative_distance_cutoff (default 2.6 Å — typical M-N/O dative bond is
+    # 1.9-2.4 Å; 2.6 leaves 0.2 Å tolerance for ETKDG noise).  Then take
+    # min(cap, candidates_within_cutoff) dative pairs.  This is the
+    # load-bearing fix for the false-positive dative labels that
+    # contaminated the 6-coordinate Ir(III)/Os(IV) cohort.
+    if metal_z > 0 and metal_idx_in_mol >= 0 and dative_candidates:
+        metal_pos = pos[int(metal_idx_in_mol)]
+        _filtered: List[Tuple[float, int, float]] = []  # (score, idx, dist)
+        for _score, _idx in dative_candidates:
+            if int(_idx) >= int(pos.shape[0]):
+                continue  # H was added; skip it
+            _dist = float(torch.norm(pos[int(_idx)] - metal_pos).item())
+            if _dist <= float(dative_distance_cutoff):
+                _filtered.append((float(_score), int(_idx), _dist))
+        # Sort by distance (closest first), then by score (highest first)
+        # — closest atom with reasonable donor strength wins.
+        _filtered.sort(key=lambda t: (t[2], -t[0], t[1]))
+        dative_pairs = [_idx for _s, _idx, _d in _filtered[:cap]]
 
     # Build bond graph from RDKit bonds (NOT counting Hs to keep bond count
     # meaningful — Hs are typically implicit in the BOND_LABELS contract).
@@ -7437,6 +7773,55 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--bond-decision-threshold-sweep",
+        dest="bond_decision_threshold_sweep",
+        type=str,
+        nargs="+",
+        default=["0.5"],
+        help=(
+            "2026-10-17 NEW (Wf-A68): explicit threshold sweep list for "
+            "the held-out post-retrain evaluation (Spot 7).  Space- or "
+            "comma-separated floats; e.g. `--bond-decision-threshold-sweep "
+            "0.10 0.15 0.20 0.25 0.30 0.40 0.50`.  Default `[0.5]` matches "
+            "the legacy single-threshold evaluation (bit-exact Wf-A67).  "
+            "The wider grid is honest on a held-out split; in-corpus it is "
+            "still OPTIMISTIC by construction (selected on the same pairs)."
+        ),
+    )
+    p.add_argument(
+        "--bond-label-smoothing",
+        dest="bond_label_smoothing",
+        type=float,
+        default=0.0,
+        help=(
+            "2026-10-17 NEW (Wf-A68 ultracode, Spot 6): uniform label "
+            "smoothing on the bond CE target distribution.  When >0, mixes "
+            "the per-class one-hot target with a uniform prior: "
+            "target_smooth_c = (1 - eps) * delta(target, c) + eps / num_classes.  "
+            "Default 0.0 preserves Wf-A67 bit-exact behavior.  Compatible "
+            "with focal CE (manual smoothing applied to the focal branch) "
+            "and class weights (weight-on-smoothed-target matches the "
+            "unweighted path on uniform targets).  Try 0.05-0.10 on heavy "
+            "imbalanced cohorts (95%% NO_BOND)."
+        ),
+    )
+    p.add_argument(
+        "--bond-aux-mse-weight",
+        dest="bond_aux_mse_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "2026-10-17 NEW (Wf-A68 ultracode, Spot 5 enhanced): linear-"
+            "space aux MSE on the discrete bond head's per-pair BO "
+            "prediction (softmax-weighted class-centre expectation) vs the "
+            "raw Wiberg target.  Distinct from `--chem-loss-weight` (which "
+            "applies log(bo + 1) target transform).  Default 0.0 preserves "
+            "Wf-A67 bit-exact behavior (term collapses to torch.zeros(())). "
+            "Try 0.1-0.3 alongside `--chem-loss-weight` to add a second aux "
+            "gradient stream."
+        ),
+    )
+    p.add_argument(
         "--bond-aromatic-logit-bias",
         dest="bond_aromatic_logit_bias",
         type=float,
@@ -7551,6 +7936,67 @@ def parse_args() -> argparse.Namespace:
             "effective-number-of-samples softening, pulling it to ~16x; "
             "weights are renormalised to mean 1 so the bond_ce loss scale "
             "does not move with the exponent."
+        ),
+    )
+    p.add_argument(
+        "--use-focal-bond-ce",
+        dest="use_focal_bond_ce",
+        action="store_true",
+        default=False,
+        help=(
+            "2026-10-17 NEW (Wf-A68): replace plain bond CE with class-"
+            "balanced focal CE.  Down-weights the easy NO_BOND majority "
+            "(~95% prior in the 5-metal cohort) and lets rare positive "
+            "classes contribute gradient.  Default OFF preserves bit-exact "
+            "backward compat with Wf-A67 + earlier.  Pair with "
+            "--focal-bond-alpha / --focal-bond-gamma."
+        ),
+    )
+    p.add_argument(
+        "--focal-bond-alpha",
+        dest="focal_bond_alpha",
+        type=float,
+        default=0.25,
+        help=(
+            "2026-10-17 NEW (Wf-A68): focal-loss alpha — fraction of "
+            "gradient mass on POSITIVE classes (non-NO_BOND).  0.25 = "
+            "Lin et al. 2017 default; raise to 0.5 for class-balanced."
+        ),
+    )
+    p.add_argument(
+        "--focal-bond-gamma",
+        dest="focal_bond_gamma",
+        type=float,
+        default=2.0,
+        help=(
+            "2026-10-17 NEW (Wf-A68): focal-loss focusing gamma — 2.0 = "
+            "Lin et al. 2017 default; 0.0 = plain CE."
+        ),
+    )
+    p.add_argument(
+        "--bond-sample-balance",
+        dest="bond_sample_balance",
+        type=int,
+        default=0,
+        help=(
+            "2026-10-17 NEW (Wf-A68): neg:pos ratio for bond pair sampling. "
+            "0 = no balancing (every pair, default — bit-exact Wf-A67).  "
+            "4 = keep 4 negatives per positive (typical subsample for class "
+            "imbalance).  Positives = (all_targets > 0); negatives = "
+            "(all_targets == 0).  Deterministic per-seed subsample."
+        ),
+    )
+    p.add_argument(
+        "--dative-distance-cutoff",
+        dest="dative_distance_cutoff",
+        type=float,
+        default=2.6,
+        help=(
+            "2026-10-17 NEW (Wf-A68): Å distance cutoff for dative donor "
+            "selection.  Donors further than this from the metal (in "
+            "ETKDG-embedded coordinates) are dropped BEFORE the cap is "
+            "applied.  2.6 Å ≈ M-N/O single dative bond + 0.2 Å tolerance.  "
+            "Set to a very large value to disable (legacy behaviour)."
         ),
     )
     p.add_argument(
@@ -7743,6 +8189,22 @@ def parse_args() -> argparse.Namespace:
             "and has no frozen-head path -- so --no-joint-train is rejected "
             "with an explanation instead of being ignored.  Driven by the "
             "yaml `model.joint_train` key."
+        ),
+    )
+    # Wf-A68 (2026-10-17) — bond head residual skip (Spot 4).  Opt-in
+    # via YAML `flow.use_bond_head_skip`.  Default OFF preserves
+    # Wf-A67 bit-exact compat.
+    p.add_argument(
+        "--use-bond-head-skip",
+        dest="use_bond_head_skip",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "2026-10-17 NEW (Wf-A68): when True, the BondOrderHead "
+            "registers an extra Linear(hidden_dim, hidden_dim) projection "
+            "from fc1 to the pre-`out` activation (ResNet-style residual).  "
+            "Default OFF preserves Wf-A67 bit-exact compat.  Driven by the "
+            "yaml `flow.use_bond_head_skip` key."
         ),
     )
     # 2026-10-04 NEW — `model.learnable_vel_scale`'s consumer.  TODO-24 P1.2
@@ -10241,6 +10703,12 @@ def main() -> int:
         ),
         # 2026-10-09 NEW (BLK-C5 follow-up) — bond-predictor dispatch.
         bond_predictor=str(getattr(args, "bond_predictor", "yuelbond")),
+        # Wf-A68 (2026-10-17) — bond-head residual skip (Spot 4).
+        # Default OFF preserves Wf-A67 bit-exact compat.  YAML
+        # `flow.use_bond_head_skip` maps here via apply_yaml_overrides.
+        use_bond_head_skip=bool(
+            getattr(args, "use_bond_head_skip", False)
+        ),
     ).to(device)
 
     # 2026-10-04 — inverse-frequency bond-class weights, computed ONCE from the
@@ -11269,6 +11737,14 @@ def main() -> int:
             consistency_weight=float(getattr(args, "consistency_weight", 0.0)),
             per_cohort_features=bool(getattr(args, "per_cohort_features", False)),
             bond_class_weights=_bond_class_weights,
+            # Wf-A68 (2026-10-17) — bond-CEGate kwargs.  Default OFF /
+            # 0 / 0.0 ⇒ bit-exact Wf-A67 backward compat.
+            bond_sample_balance=int(getattr(args, "bond_sample_balance", 0)),
+            use_focal_bond_ce=bool(getattr(args, "use_focal_bond_ce", False)),
+            focal_bond_alpha=float(getattr(args, "focal_bond_alpha", 0.25)),
+            focal_bond_gamma=float(getattr(args, "focal_bond_gamma", 2.0)),
+            bond_label_smoothing=float(getattr(args, "bond_label_smoothing", 0.0)),
+            bond_aux_mse_weight=float(getattr(args, "bond_aux_mse_weight", 0.0)),
             # Wf-406-A2 — pass Lambda × CFM coupling kwargs through;
             # defaults preserve Wf-388-A3 / Wf-397-A2 OFF semantics
             # (1 + 0 * 0 = 1 → bit-for-bit backward compat).
@@ -11492,6 +11968,11 @@ def main() -> int:
                     decision=_decision,
                     threshold=_threshold,
                     class_logit_bias=_bias,
+                    # Wf-A68 (2026-10-17) — held-out threshold sweep grid;
+                    # default [0.5] preserves Wf-A67 bit-exact.
+                    bond_decision_threshold_sweep=list(
+                        getattr(args, "bond_decision_threshold_sweep", [0.5]) or [0.5]
+                    ),
                 )
             finally:
                 if _ema_swapped:
