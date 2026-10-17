@@ -1,0 +1,1590 @@
+{
+  "metric": "stacked_dmpnn_xgb_within_metal",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "description": "FU2: stack the ECFP4→XGB scorer (component A) and the in-house D-MPNN scorer (component B) into one merged scorer via a meta-learner trained under strict nested CV. Closes G1 by routing around the weaker member instead of discarding it.",
+  "unit": "ROC-AUC (0-1, higher better); paired delta of merged vs each component",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/stack_dmpnn_xgb_within_metal.py",
+  "data_source": "MetalCytoToxDB (Krasnov et al., J. Med. Chem. 2026, 69(8), 8838)",
+  "cohort_spec": "paper_funnel",
+  "cohort": "paper_funnel (Krasnov-style): build_paper_cohort(raw, metal=m) then collapse_duplicates(tie_rule=active); the Table-1 / BLK-P1 cohort",
+  "deterministic": true,
+  "fold_protocol": "StratifiedKFold(n_splits=5, shuffle=True, random_state=split_seed); identical to the probe's within_metal, BLK-P1, and FU1.",
+  "components": {
+    "A_ecfp4_xgb": "ECFP4 (Morgan r=2, 2048) -> XGBoost (BLK-P1 / FU1 arm-1 anchor)",
+    "B_dmpnn": "in-house masked D-MPNN scorer (MaskedMetalCytotoxModel, BLK-P1 protocol)"
+  },
+  "merged": "meta-learner g([A, B]) on the base probabilities (or logits), trained with strict nested CV (inner K-fold OOF features for the meta-train rows; full outer-train base models for the meta-test rows)",
+  "meta_learner": "logreg",
+  "meta_space": "logit",
+  "inner_splits": 3,
+  "split_seeds": [
+    42,
+    43,
+    44,
+    49,
+    123
+  ],
+  "device": "cuda:0",
+  "hidden": 128,
+  "depth": 3,
+  "min_unique_for_gate": 200,
+  "per_metal": {
+    "Ru": {
+      "n_rows_raw": 15799,
+      "n_unique": 4793,
+      "pos_rate": 0.3248487377425412,
+      "resolvable": true,
+      "meta_learner": "logreg",
+      "meta_space": "logit",
+      "inner_splits": 3,
+      "n_invalid_graphs": 0,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "per_arm_seed_auc": {
+        "A_ecfp4_xgb": [
+          0.863954,
+          0.86406,
+          0.86184,
+          0.860389,
+          0.856716
+        ],
+        "B_dmpnn": [
+          0.799771,
+          0.793216,
+          0.794199,
+          0.784443,
+          0.779224
+        ],
+        "merged_stack": [
+          0.869389,
+          0.869279,
+          0.867331,
+          0.863828,
+          0.859648
+        ]
+      },
+      "per_arm_mean_auc": {
+        "A_ecfp4_xgb": 0.861392,
+        "B_dmpnn": 0.790171,
+        "merged_stack": 0.865895
+      },
+      "deltas": {
+        "merged_minus_A": {
+          "mean": 0.004503,
+          "sd": 0.001221,
+          "se": 0.000546,
+          "ci95": [
+            0.002987,
+            0.006019
+          ],
+          "ci95_ttest": [
+            0.002987,
+            0.006019
+          ],
+          "ci95_bootstrap_reference_only": [
+            0.003534,
+            0.005415
+          ],
+          "t": 8.2479,
+          "n_seeds": 5,
+          "n_seeds_positive": 5,
+          "all_seeds_positive": true,
+          "p_one_sided_ttest": 0.000589,
+          "p_one_sided_wilcoxon": 0.03125,
+          "p_one_sided_bootstrap_reference_only": 0.0,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "merged_minus_B": {
+          "mean": 0.075724,
+          "sd": 0.004461,
+          "se": 0.001995,
+          "ci95": [
+            0.070185,
+            0.081263
+          ],
+          "ci95_ttest": [
+            0.070185,
+            0.081263
+          ],
+          "ci95_bootstrap_reference_only": [
+            0.072274,
+            0.079136
+          ],
+          "t": 37.9578,
+          "n_seeds": 5,
+          "n_seeds_positive": 5,
+          "all_seeds_positive": true,
+          "p_one_sided_ttest": 1e-06,
+          "p_one_sided_wilcoxon": 0.03125,
+          "p_one_sided_bootstrap_reference_only": 0.0,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "merged_minus_max_AB": {
+          "mean": 0.004503,
+          "sd": 0.001221,
+          "se": 0.000546,
+          "ci95": [
+            0.002987,
+            0.006019
+          ],
+          "ci95_ttest": [
+            0.002987,
+            0.006019
+          ],
+          "ci95_bootstrap_reference_only": [
+            0.003534,
+            0.005415
+          ],
+          "t": 8.2479,
+          "n_seeds": 5,
+          "n_seeds_positive": 5,
+          "all_seeds_positive": true,
+          "p_one_sided_ttest": 0.000589,
+          "p_one_sided_wilcoxon": 0.03125,
+          "p_one_sided_bootstrap_reference_only": 0.0,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        }
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "A": 0.863954221456549,
+          "B": 0.7997714592247486,
+          "merged": 0.8693893769895465,
+          "max_A_B": 0.863954221456549,
+          "per_fold_A": [
+            0.8687383584987913,
+            0.85620269092062,
+            0.8603866460243738,
+            0.8625488900043237,
+            0.8718945218346363
+          ],
+          "per_fold_B": [
+            0.8081480600800541,
+            0.8127675068362857,
+            0.8044986304632606,
+            0.7835893587519942,
+            0.7898537399921478
+          ],
+          "per_fold_merged": [
+            0.8745937859152697,
+            0.8650923393968216,
+            0.8675618276368545,
+            0.8667110631805464,
+            0.872987868818241
+          ]
+        },
+        {
+          "split_seed": 43,
+          "A": 0.8640597011109525,
+          "B": 0.7932156389032755,
+          "merged": 0.8692793279178253,
+          "max_A_B": 0.8640597011109525,
+          "per_fold_A": [
+            0.8858191653786709,
+            0.8483161930804898,
+            0.8794534754475805,
+            0.8498784893920494,
+            0.8568311822559723
+          ],
+          "per_fold_B": [
+            0.8100156541037531,
+            0.7959393453017873,
+            0.797720416021595,
+            0.7922342545609963,
+            0.7701685245282456
+          ],
+          "per_fold_merged": [
+            0.8893264772321959,
+            0.8555586929814132,
+            0.8831725616291534,
+            0.8570995492428571,
+            0.8612393585035061
+          ]
+        },
+        {
+          "split_seed": 44,
+          "A": 0.861839873175148,
+          "B": 0.7941987679707819,
+          "merged": 0.8673311966012548,
+          "max_A_B": 0.861839873175148,
+          "per_fold_A": [
+            0.8623008560218761,
+            0.8506766932191971,
+            0.8795328688817434,
+            0.8436290174289449,
+            0.8730599303239786
+          ],
+          "per_fold_B": [
+            0.804274164784211,
+            0.7694685530852456,
+            0.8081060696280417,
+            0.7945402227445991,
+            0.7946048296118122
+          ],
+          "per_fold_merged": [
+            0.8677079617960607,
+            0.8518507510006736,
+            0.8843684252312334,
+            0.8530814990781097,
+            0.8796473459001972
+          ]
+        },
+        {
+          "split_seed": 49,
+          "A": 0.8603893874151854,
+          "B": 0.7844432546166453,
+          "merged": 0.863827598498087,
+          "max_A_B": 0.8603893874151854,
+          "per_fold_A": [
+            0.8795723853683669,
+            0.8792355249078588,
+            0.8430689531975704,
+            0.8463847488035305,
+            0.8536853247986005
+          ],
+          "per_fold_B": [
+            0.7992336424523442,
+            0.794242658423493,
+            0.7843376602754952,
+            0.7906985990249332,
+            0.753703712906961
+          ],
+          "per_fold_merged": [
+            0.8839961558276859,
+            0.8823514841675584,
+            0.8462496526537258,
+            0.8529199819100772,
+            0.8536207179313876
+          ]
+        },
+        {
+          "split_seed": 123,
+          "A": 0.8567160487974833,
+          "B": 0.779224464893233,
+          "merged": 0.8596477754799368,
+          "max_A_B": 0.8567160487974833,
+          "per_fold_A": [
+            0.8495620814013396,
+            0.8434738239606865,
+            0.85511194474217,
+            0.8604019541092452,
+            0.8750304397739754
+          ],
+          "per_fold_B": [
+            0.8000733166884636,
+            0.753787203265565,
+            0.7784774324163393,
+            0.7586784416823626,
+            0.8051059304134343
+          ],
+          "per_fold_merged": [
+            0.857032457496136,
+            0.8427059802639401,
+            0.8602477075145886,
+            0.8583072006838389,
+            0.8799455314411804
+          ]
+        }
+      ],
+      "wall_sec": 38028.5,
+      "three_column": {
+        "A_ecfp4_xgb": 0.861392,
+        "B_dmpnn": 0.790171,
+        "merged": 0.865895,
+        "max_A_B": 0.861392,
+        "merged_minus_max": 0.004503,
+        "merged_ge_max": true
+      },
+      "verdicts": {
+        "merged_minus_A": "MERGED_WINS",
+        "merged_minus_B": "MERGED_WINS",
+        "merged_minus_max_AB": "MERGED_WINS"
+      }
+    },
+    "Ir": {
+      "n_rows_raw": 3674,
+      "n_unique": 1281,
+      "pos_rate": 0.5113192818110851,
+      "resolvable": true,
+      "meta_learner": "logreg",
+      "meta_space": "logit",
+      "inner_splits": 3,
+      "n_invalid_graphs": 0,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "per_arm_seed_auc": {
+        "A_ecfp4_xgb": [
+          0.821032,
+          0.82264,
+          0.828143,
+          0.832134,
+          0.834551
+        ],
+        "B_dmpnn": [
+          0.622996,
+          0.621663,
+          0.653598,
+          0.624935,
+          0.636532
+        ],
+        "merged_stack": [
+          0.821377,
+          0.822508,
+          0.828919,
+          0.832499,
+          0.835232
+        ]
+      },
+      "per_arm_mean_auc": {
+        "A_ecfp4_xgb": 0.8277,
+        "B_dmpnn": 0.631945,
+        "merged_stack": 0.828107
+      },
+      "deltas": {
+        "merged_minus_A": {
+          "mean": 0.000407,
+          "sd": 0.000356,
+          "se": 0.000159,
+          "ci95": [
+            -3.5e-05,
+            0.000849
+          ],
+          "ci95_ttest": [
+            -3.5e-05,
+            0.000849
+          ],
+          "ci95_bootstrap_reference_only": [
+            0.000126,
+            0.000671
+          ],
+          "t": 2.5562,
+          "n_seeds": 5,
+          "n_seeds_positive": 4,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.031447,
+          "p_one_sided_wilcoxon": 0.0625,
+          "p_one_sided_bootstrap_reference_only": 0.0038,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "merged_minus_B": {
+          "mean": 0.196162,
+          "sd": 0.012224,
+          "se": 0.005467,
+          "ci95": [
+            0.180985,
+            0.21134
+          ],
+          "ci95_ttest": [
+            0.180985,
+            0.21134
+          ],
+          "ci95_bootstrap_reference_only": [
+            0.185038,
+            0.203955
+          ],
+          "t": 35.8843,
+          "n_seeds": 5,
+          "n_seeds_positive": 5,
+          "all_seeds_positive": true,
+          "p_one_sided_ttest": 2e-06,
+          "p_one_sided_wilcoxon": 0.03125,
+          "p_one_sided_bootstrap_reference_only": 0.0,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "merged_minus_max_AB": {
+          "mean": 0.000407,
+          "sd": 0.000356,
+          "se": 0.000159,
+          "ci95": [
+            -3.5e-05,
+            0.000849
+          ],
+          "ci95_ttest": [
+            -3.5e-05,
+            0.000849
+          ],
+          "ci95_bootstrap_reference_only": [
+            0.000126,
+            0.000671
+          ],
+          "t": 2.5562,
+          "n_seeds": 5,
+          "n_seeds_positive": 4,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.031447,
+          "p_one_sided_wilcoxon": 0.0625,
+          "p_one_sided_bootstrap_reference_only": 0.0038,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        }
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "A": 0.8210321095359262,
+          "B": 0.6229958560523445,
+          "merged": 0.8213771477038652,
+          "max_A_B": 0.8210321095359262,
+          "per_fold_A": [
+            0.7785956621834484,
+            0.8327938931297709,
+            0.8114198473282442,
+            0.843145038167939,
+            0.839206106870229
+          ],
+          "per_fold_B": [
+            0.6848418756815704,
+            0.6575267175572519,
+            0.6567328244274808,
+            0.5,
+            0.6158778625954199
+          ],
+          "per_fold_merged": [
+            0.7805040591300134,
+            0.8338320610687023,
+            0.8115419847328244,
+            0.843145038167939,
+            0.8378625954198473
+          ]
+        },
+        {
+          "split_seed": 43,
+          "A": 0.8226400096934448,
+          "B": 0.6216629104568036,
+          "merged": 0.8225081788440567,
+          "max_A_B": 0.8226400096934448,
+          "per_fold_A": [
+            0.7812916515206592,
+            0.8341374045801526,
+            0.8724274809160305,
+            0.8042748091603054,
+            0.8210687022900764
+          ],
+          "per_fold_B": [
+            0.701138979764934,
+            0.5928549618320611,
+            0.6720610687022901,
+            0.6422595419847328,
+            0.5
+          ],
+          "per_fold_merged": [
+            0.7873500545256271,
+            0.8281526717557252,
+            0.8735877862595419,
+            0.8023816793893129,
+            0.8210687022900764
+          ]
+        },
+        {
+          "split_seed": 44,
+          "A": 0.8281432691142614,
+          "B": 0.6535982551799345,
+          "merged": 0.8289192293711377,
+          "max_A_B": 0.8281432691142614,
+          "per_fold_A": [
+            0.8226705440445898,
+            0.8183206106870229,
+            0.828824427480916,
+            0.8306564885496183,
+            0.8402442748091602
+          ],
+          "per_fold_B": [
+            0.7071973827699018,
+            0.5982900763358778,
+            0.6494656488549619,
+            0.666381679389313,
+            0.6466564885496183
+          ],
+          "per_fold_merged": [
+            0.8262450018175207,
+            0.819114503816794,
+            0.8298625954198472,
+            0.8275419847328245,
+            0.8418320610687022
+          ]
+        },
+        {
+          "split_seed": 49,
+          "A": 0.832134060341694,
+          "B": 0.6249348358172786,
+          "merged": 0.8324991154731614,
+          "max_A_B": 0.832134060341694,
+          "per_fold_A": [
+            0.8475099963649582,
+            0.8354198473282443,
+            0.8419541984732825,
+            0.804763358778626,
+            0.8310229007633587
+          ],
+          "per_fold_B": [
+            0.7172543317581486,
+            0.6716946564885496,
+            0.6765801526717556,
+            0.5,
+            0.5591450381679389
+          ],
+          "per_fold_merged": [
+            0.8483581727856536,
+            0.8371908396946566,
+            0.8414656488549618,
+            0.804763358778626,
+            0.8307175572519084
+          ]
+        },
+        {
+          "split_seed": 123,
+          "A": 0.8345506361323155,
+          "B": 0.6365322670544045,
+          "merged": 0.83523179449897,
+          "max_A_B": 0.8345506361323155,
+          "per_fold_A": [
+            0.8256997455470737,
+            0.8578320610687024,
+            0.8547786259541985,
+            0.8357251908396947,
+            0.7987175572519084
+          ],
+          "per_fold_B": [
+            0.6864170604628619,
+            0.5204274809160306,
+            0.6951450381679389,
+            0.6267480916030536,
+            0.6539236641221372
+          ],
+          "per_fold_merged": [
+            0.8274566824185143,
+            0.8576488549618321,
+            0.856,
+            0.8340152671755725,
+            0.8010381679389313
+          ]
+        }
+      ],
+      "wall_sec": 9291.1,
+      "three_column": {
+        "A_ecfp4_xgb": 0.8277,
+        "B_dmpnn": 0.631945,
+        "merged": 0.828107,
+        "max_A_B": 0.8277,
+        "merged_minus_max": 0.000407,
+        "merged_ge_max": true
+      },
+      "verdicts": {
+        "merged_minus_A": "NULL",
+        "merged_minus_B": "MERGED_WINS",
+        "merged_minus_max_AB": "NULL"
+      }
+    },
+    "Rh": {
+      "n_rows_raw": 951,
+      "n_unique": 334,
+      "pos_rate": 0.5089820359281437,
+      "resolvable": true,
+      "meta_learner": "logreg",
+      "meta_space": "logit",
+      "inner_splits": 3,
+      "n_invalid_graphs": 0,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "per_arm_seed_auc": {
+        "A_ecfp4_xgb": [
+          0.811698,
+          0.815486,
+          0.803668,
+          0.80776,
+          0.805064
+        ],
+        "B_dmpnn": [
+          0.766316,
+          0.768427,
+          0.774855,
+          0.756478,
+          0.758985
+        ],
+        "merged_stack": [
+          0.810367,
+          0.815892,
+          0.805994,
+          0.803571,
+          0.811742
+        ]
+      },
+      "per_arm_mean_auc": {
+        "A_ecfp4_xgb": 0.808735,
+        "B_dmpnn": 0.765012,
+        "merged_stack": 0.809513
+      },
+      "deltas": {
+        "merged_minus_A": {
+          "mean": 0.000778,
+          "sd": 0.004077,
+          "se": 0.001823,
+          "ci95": [
+            -0.004284,
+            0.00584
+          ],
+          "ci95_ttest": [
+            -0.004284,
+            0.00584
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.002315,
+            0.004067
+          ],
+          "t": 0.4268,
+          "n_seeds": 5,
+          "n_seeds_positive": 3,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.345731,
+          "p_one_sided_wilcoxon": 0.40625,
+          "p_one_sided_bootstrap_reference_only": 0.32915,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "merged_minus_B": {
+          "mean": 0.044501,
+          "sd": 0.0081,
+          "se": 0.003622,
+          "ci95": [
+            0.034444,
+            0.054558
+          ],
+          "ci95_ttest": [
+            0.034444,
+            0.054558
+          ],
+          "ci95_bootstrap_reference_only": [
+            0.03752,
+            0.049883
+          ],
+          "t": 12.2851,
+          "n_seeds": 5,
+          "n_seeds_positive": 5,
+          "all_seeds_positive": true,
+          "p_one_sided_ttest": 0.000126,
+          "p_one_sided_wilcoxon": 0.03125,
+          "p_one_sided_bootstrap_reference_only": 0.0,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "merged_minus_max_AB": {
+          "mean": 0.000778,
+          "sd": 0.004077,
+          "se": 0.001823,
+          "ci95": [
+            -0.004284,
+            0.00584
+          ],
+          "ci95_ttest": [
+            -0.004284,
+            0.00584
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.002315,
+            0.004067
+          ],
+          "t": 0.4268,
+          "n_seeds": 5,
+          "n_seeds_positive": 3,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.345731,
+          "p_one_sided_wilcoxon": 0.40625,
+          "p_one_sided_bootstrap_reference_only": 0.32915,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        }
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "A": 0.8116978609625669,
+          "B": 0.7663157308377896,
+          "merged": 0.810366532976827,
+          "max_A_B": 0.8116978609625669,
+          "per_fold_A": [
+            0.7076648841354723,
+            0.8012477718360071,
+            0.857397504456328,
+            0.820855614973262,
+            0.8713235294117647
+          ],
+          "per_fold_B": [
+            0.7272727272727272,
+            0.748663101604278,
+            0.7450980392156862,
+            0.7566844919786095,
+            0.853860294117647
+          ],
+          "per_fold_merged": [
+            0.7076648841354723,
+            0.8065953654188949,
+            0.8279857397504455,
+            0.8226381461675579,
+            0.8869485294117647
+          ]
+        },
+        {
+          "split_seed": 43,
+          "A": 0.8154857397504456,
+          "B": 0.7684269162210338,
+          "merged": 0.8158923796791443,
+          "max_A_B": 0.8154857397504456,
+          "per_fold_A": [
+            0.7887700534759358,
+            0.7745098039215685,
+            0.8877005347593584,
+            0.8065953654188949,
+            0.8198529411764706
+          ],
+          "per_fold_B": [
+            0.767379679144385,
+            0.6844919786096257,
+            0.7370766488413547,
+            0.7450980392156863,
+            0.9080882352941175
+          ],
+          "per_fold_merged": [
+            0.7976827094474154,
+            0.7754010695187165,
+            0.8725490196078431,
+            0.805704099821747,
+            0.828125
+          ]
+        },
+        {
+          "split_seed": 44,
+          "A": 0.8036681149732618,
+          "B": 0.7748551693404634,
+          "merged": 0.8059937611408199,
+          "max_A_B": 0.8036681149732618,
+          "per_fold_A": [
+            0.8609625668449197,
+            0.7941176470588234,
+            0.821301247771836,
+            0.7308377896613191,
+            0.8111213235294117
+          ],
+          "per_fold_B": [
+            0.7869875222816398,
+            0.7352941176470589,
+            0.8600713012477719,
+            0.7290552584670231,
+            0.7628676470588235
+          ],
+          "per_fold_merged": [
+            0.8573975044563279,
+            0.7914438502673795,
+            0.8351158645276292,
+            0.7335115864527629,
+            0.8125
+          ]
+        },
+        {
+          "split_seed": 49,
+          "A": 0.8077595811051694,
+          "B": 0.7564783868092692,
+          "merged": 0.8035706327985739,
+          "max_A_B": 0.8077595811051694,
+          "per_fold_A": [
+            0.8770053475935828,
+            0.7415329768270944,
+            0.8052584670231728,
+            0.7611408199643493,
+            0.853860294117647
+          ],
+          "per_fold_B": [
+            0.8377896613190731,
+            0.7379679144385026,
+            0.7379679144385025,
+            0.6497326203208557,
+            0.8189338235294117
+          ],
+          "per_fold_merged": [
+            0.8787878787878788,
+            0.7406417112299466,
+            0.8065953654188948,
+            0.7379679144385026,
+            0.8538602941176471
+          ]
+        },
+        {
+          "split_seed": 123,
+          "A": 0.8050635026737968,
+          "B": 0.7589850713012478,
+          "merged": 0.8117424242424243,
+          "max_A_B": 0.8050635026737968,
+          "per_fold_A": [
+            0.8181818181818181,
+            0.7575757575757576,
+            0.8894830659536542,
+            0.7834224598930482,
+            0.776654411764706
+          ],
+          "per_fold_B": [
+            0.7923351158645278,
+            0.7335115864527629,
+            0.8012477718360071,
+            0.7647058823529411,
+            0.703125
+          ],
+          "per_fold_merged": [
+            0.8315508021390374,
+            0.7798573975044562,
+            0.890374331550802,
+            0.7959001782531194,
+            0.7610294117647058
+          ]
+        }
+      ],
+      "wall_sec": 2095.1,
+      "three_column": {
+        "A_ecfp4_xgb": 0.808735,
+        "B_dmpnn": 0.765012,
+        "merged": 0.809513,
+        "max_A_B": 0.808735,
+        "merged_minus_max": 0.000778,
+        "merged_ge_max": true
+      },
+      "verdicts": {
+        "merged_minus_A": "NULL",
+        "merged_minus_B": "POSITIVE_NOT_HOLM_SIGNIFICANT",
+        "merged_minus_max_AB": "NULL"
+      }
+    },
+    "Os": {
+      "n_rows_raw": 966,
+      "n_unique": 333,
+      "pos_rate": 0.46546546546546547,
+      "resolvable": true,
+      "meta_learner": "logreg",
+      "meta_space": "logit",
+      "inner_splits": 3,
+      "n_invalid_graphs": 0,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "per_arm_seed_auc": {
+        "A_ecfp4_xgb": [
+          0.828651,
+          0.806336,
+          0.82512,
+          0.808789,
+          0.837363
+        ],
+        "B_dmpnn": [
+          0.68321,
+          0.679933,
+          0.688492,
+          0.687742,
+          0.678326
+        ],
+        "merged_stack": [
+          0.822903,
+          0.79894,
+          0.823728,
+          0.815765,
+          0.839734
+        ]
+      },
+      "per_arm_mean_auc": {
+        "A_ecfp4_xgb": 0.821252,
+        "B_dmpnn": 0.683541,
+        "merged_stack": 0.820214
+      },
+      "deltas": {
+        "merged_minus_A": {
+          "mean": -0.001038,
+          "sd": 0.005886,
+          "se": 0.002632,
+          "ci95": [
+            -0.008346,
+            0.006271
+          ],
+          "ci95_ttest": [
+            -0.008346,
+            0.006271
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.005536,
+            0.00351
+          ],
+          "t": -0.3943,
+          "n_seeds": 5,
+          "n_seeds_positive": 2,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.643255,
+          "p_one_sided_wilcoxon": 0.6875,
+          "p_one_sided_bootstrap_reference_only": 0.67165,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "merged_minus_B": {
+          "mean": 0.136673,
+          "sd": 0.01589,
+          "se": 0.007106,
+          "ci95": [
+            0.116944,
+            0.156403
+          ],
+          "ci95_ttest": [
+            0.116944,
+            0.156403
+          ],
+          "ci95_bootstrap_reference_only": [
+            0.125498,
+            0.149497
+          ],
+          "t": 19.2333,
+          "n_seeds": 5,
+          "n_seeds_positive": 5,
+          "all_seeds_positive": true,
+          "p_one_sided_ttest": 2.2e-05,
+          "p_one_sided_wilcoxon": 0.03125,
+          "p_one_sided_bootstrap_reference_only": 0.0,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "merged_minus_max_AB": {
+          "mean": -0.001038,
+          "sd": 0.005886,
+          "se": 0.002632,
+          "ci95": [
+            -0.008346,
+            0.006271
+          ],
+          "ci95_ttest": [
+            -0.008346,
+            0.006271
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.005536,
+            0.00351
+          ],
+          "t": -0.3943,
+          "n_seeds": 5,
+          "n_seeds_positive": 2,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.643255,
+          "p_one_sided_wilcoxon": 0.6875,
+          "p_one_sided_bootstrap_reference_only": 0.67165,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        }
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "A": 0.8286507936507936,
+          "B": 0.68321044546851,
+          "merged": 0.8229032258064516,
+          "max_A_B": 0.8286507936507936,
+          "per_fold_A": [
+            0.7732974910394266,
+            0.8938172043010753,
+            0.7222222222222222,
+            0.9096774193548387,
+            0.8442396313364054
+          ],
+          "per_fold_B": [
+            0.6281362007168458,
+            0.8100358422939068,
+            0.6129032258064516,
+            0.6949308755760368,
+            0.6700460829493088
+          ],
+          "per_fold_merged": [
+            0.7652329749103941,
+            0.8942652329749103,
+            0.7195340501792115,
+            0.9161290322580645,
+            0.8193548387096774
+          ]
+        },
+        {
+          "split_seed": 43,
+          "A": 0.8063364055299539,
+          "B": 0.6799334357398873,
+          "merged": 0.7989400921658987,
+          "max_A_B": 0.8063364055299539,
+          "per_fold_A": [
+            0.8315412186379927,
+            0.814516129032258,
+            0.7934587813620071,
+            0.8059907834101383,
+            0.7861751152073732
+          ],
+          "per_fold_B": [
+            0.6827956989247311,
+            0.6272401433691757,
+            0.7016129032258065,
+            0.7465437788018433,
+            0.6414746543778802
+          ],
+          "per_fold_merged": [
+            0.7939068100358422,
+            0.8100358422939068,
+            0.8073476702508962,
+            0.8064516129032258,
+            0.7769585253456222
+          ]
+        },
+        {
+          "split_seed": 44,
+          "A": 0.8251203277009728,
+          "B": 0.6884920634920635,
+          "merged": 0.8237275985663082,
+          "max_A_B": 0.8251203277009728,
+          "per_fold_A": [
+            0.8476702508960573,
+            0.7876344086021505,
+            0.8396057347670252,
+            0.7714285714285714,
+            0.8792626728110599
+          ],
+          "per_fold_B": [
+            0.6621863799283154,
+            0.6783154121863798,
+            0.6733870967741935,
+            0.7105990783410138,
+            0.7179723502304147
+          ],
+          "per_fold_merged": [
+            0.825268817204301,
+            0.7921146953405017,
+            0.8431899641577061,
+            0.7806451612903226,
+            0.8774193548387097
+          ]
+        },
+        {
+          "split_seed": 49,
+          "A": 0.8087890424987199,
+          "B": 0.687741935483871,
+          "merged": 0.8157654889912953,
+          "max_A_B": 0.8087890424987199,
+          "per_fold_A": [
+            0.8109318996415771,
+            0.7844982078853047,
+            0.850358422939068,
+            0.7751152073732719,
+            0.8230414746543779
+          ],
+          "per_fold_B": [
+            0.6890681003584229,
+            0.6971326164874552,
+            0.7428315412186379,
+            0.6267281105990783,
+            0.6829493087557603
+          ],
+          "per_fold_merged": [
+            0.814516129032258,
+            0.793010752688172,
+            0.8593189964157706,
+            0.7815668202764976,
+            0.8304147465437788
+          ]
+        },
+        {
+          "split_seed": 123,
+          "A": 0.8373630312339989,
+          "B": 0.6783256528417819,
+          "merged": 0.8397337429595494,
+          "max_A_B": 0.8373630312339989,
+          "per_fold_A": [
+            0.7831541218637993,
+            0.8127240143369177,
+            0.9139784946236559,
+            0.8483870967741935,
+            0.8285714285714286
+          ],
+          "per_fold_B": [
+            0.6801075268817205,
+            0.6765232974910395,
+            0.7589605734767025,
+            0.6493087557603687,
+            0.6267281105990783
+          ],
+          "per_fold_merged": [
+            0.7912186379928315,
+            0.8172043010752689,
+            0.9220430107526881,
+            0.847926267281106,
+            0.8202764976958525
+          ]
+        }
+      ],
+      "wall_sec": 2486.3,
+      "three_column": {
+        "A_ecfp4_xgb": 0.821252,
+        "B_dmpnn": 0.683541,
+        "merged": 0.820214,
+        "max_A_B": 0.821252,
+        "merged_minus_max": -0.001038,
+        "merged_ge_max": false
+      },
+      "verdicts": {
+        "merged_minus_A": "NULL",
+        "merged_minus_B": "POSITIVE_NOT_HOLM_SIGNIFICANT",
+        "merged_minus_max_AB": "NULL"
+      }
+    },
+    "Re": {
+      "n_rows_raw": 666,
+      "n_unique": 250,
+      "pos_rate": 0.3,
+      "resolvable": true,
+      "meta_learner": "logreg",
+      "meta_space": "logit",
+      "inner_splits": 3,
+      "n_invalid_graphs": 0,
+      "status": "MEASURED",
+      "n_splits": 5,
+      "split_seeds": [
+        42,
+        43,
+        44,
+        49,
+        123
+      ],
+      "per_arm_seed_auc": {
+        "A_ecfp4_xgb": [
+          0.84381,
+          0.848,
+          0.855238,
+          0.850667,
+          0.815619
+        ],
+        "B_dmpnn": [
+          0.791619,
+          0.777524,
+          0.754667,
+          0.738667,
+          0.762286
+        ],
+        "merged_stack": [
+          0.846095,
+          0.848381,
+          0.84419,
+          0.848381,
+          0.816381
+        ]
+      },
+      "per_arm_mean_auc": {
+        "A_ecfp4_xgb": 0.842667,
+        "B_dmpnn": 0.764952,
+        "merged_stack": 0.840686
+      },
+      "deltas": {
+        "merged_minus_A": {
+          "mean": -0.001981,
+          "sd": 0.005329,
+          "se": 0.002383,
+          "ci95": [
+            -0.008598,
+            0.004636
+          ],
+          "ci95_ttest": [
+            -0.008598,
+            0.004636
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.006629,
+            0.001295
+          ],
+          "t": -0.8312,
+          "n_seeds": 5,
+          "n_seeds_positive": 3,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.773695,
+          "p_one_sided_wilcoxon": 0.6875,
+          "p_one_sided_bootstrap_reference_only": 0.78995,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "merged_minus_B": {
+          "mean": 0.075733,
+          "sd": 0.02392,
+          "se": 0.010698,
+          "ci95": [
+            0.046032,
+            0.105434
+          ],
+          "ci95_ttest": [
+            0.046032,
+            0.105434
+          ],
+          "ci95_bootstrap_reference_only": [
+            0.0576,
+            0.094629
+          ],
+          "t": 7.0795,
+          "n_seeds": 5,
+          "n_seeds_positive": 5,
+          "all_seeds_positive": true,
+          "p_one_sided_ttest": 0.001051,
+          "p_one_sided_wilcoxon": 0.03125,
+          "p_one_sided_bootstrap_reference_only": 0.0,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        },
+        "merged_minus_max_AB": {
+          "mean": -0.001981,
+          "sd": 0.005329,
+          "se": 0.002383,
+          "ci95": [
+            -0.008598,
+            0.004636
+          ],
+          "ci95_ttest": [
+            -0.008598,
+            0.004636
+          ],
+          "ci95_bootstrap_reference_only": [
+            -0.006629,
+            0.001295
+          ],
+          "t": -0.8312,
+          "n_seeds": 5,
+          "n_seeds_positive": 3,
+          "all_seeds_positive": false,
+          "p_one_sided_ttest": 0.773695,
+          "p_one_sided_wilcoxon": 0.6875,
+          "p_one_sided_bootstrap_reference_only": 0.78995,
+          "p_used_for_family_correction": "p_one_sided_ttest",
+          "ci_used_for_verdict": "ci95_ttest",
+          "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+        }
+      },
+      "per_split": [
+        {
+          "split_seed": 42,
+          "A": 0.8438095238095238,
+          "B": 0.7916190476190476,
+          "merged": 0.846095238095238,
+          "max_A_B": 0.8438095238095238,
+          "per_fold_A": [
+            0.8933333333333333,
+            0.8647619047619047,
+            0.8495238095238095,
+            0.8590476190476191,
+            0.7523809523809524
+          ],
+          "per_fold_B": [
+            0.8361904761904763,
+            0.8552380952380952,
+            0.7961904761904762,
+            0.8304761904761905,
+            0.6399999999999999
+          ],
+          "per_fold_merged": [
+            0.8971428571428571,
+            0.8647619047619047,
+            0.8514285714285714,
+            0.859047619047619,
+            0.758095238095238
+          ]
+        },
+        {
+          "split_seed": 43,
+          "A": 0.8480000000000001,
+          "B": 0.7775238095238095,
+          "merged": 0.8483809523809522,
+          "max_A_B": 0.8480000000000001,
+          "per_fold_A": [
+            0.8514285714285714,
+            0.8666666666666667,
+            0.8685714285714285,
+            0.8247619047619048,
+            0.8285714285714285
+          ],
+          "per_fold_B": [
+            0.7238095238095238,
+            0.8171428571428571,
+            0.758095238095238,
+            0.7428571428571429,
+            0.8457142857142858
+          ],
+          "per_fold_merged": [
+            0.8552380952380951,
+            0.8780952380952382,
+            0.8685714285714285,
+            0.8209523809523809,
+            0.819047619047619
+          ]
+        },
+        {
+          "split_seed": 44,
+          "A": 0.8552380952380952,
+          "B": 0.7546666666666667,
+          "merged": 0.8441904761904763,
+          "max_A_B": 0.8552380952380952,
+          "per_fold_A": [
+            0.9504761904761905,
+            0.8076190476190476,
+            0.8057142857142856,
+            0.8685714285714287,
+            0.8438095238095238
+          ],
+          "per_fold_B": [
+            0.8190476190476191,
+            0.7752380952380952,
+            0.6342857142857142,
+            0.7352380952380954,
+            0.8095238095238094
+          ],
+          "per_fold_merged": [
+            0.940952380952381,
+            0.8247619047619048,
+            0.7942857142857143,
+            0.8152380952380953,
+            0.8457142857142858
+          ]
+        },
+        {
+          "split_seed": 49,
+          "A": 0.8506666666666668,
+          "B": 0.7386666666666668,
+          "merged": 0.8483809523809522,
+          "max_A_B": 0.8506666666666668,
+          "per_fold_A": [
+            0.9047619047619048,
+            0.8857142857142858,
+            0.9085714285714285,
+            0.8247619047619048,
+            0.7295238095238097
+          ],
+          "per_fold_B": [
+            0.7466666666666667,
+            0.838095238095238,
+            0.8609523809523809,
+            0.5771428571428573,
+            0.6704761904761906
+          ],
+          "per_fold_merged": [
+            0.8952380952380952,
+            0.8761904761904762,
+            0.9161904761904762,
+            0.8266666666666667,
+            0.7276190476190476
+          ]
+        },
+        {
+          "split_seed": 123,
+          "A": 0.8156190476190476,
+          "B": 0.7622857142857142,
+          "merged": 0.8163809523809524,
+          "max_A_B": 0.8156190476190476,
+          "per_fold_A": [
+            0.819047619047619,
+            0.7466666666666666,
+            0.8971428571428571,
+            0.7638095238095238,
+            0.8514285714285715
+          ],
+          "per_fold_B": [
+            0.9066666666666666,
+            0.6019047619047619,
+            0.8342857142857143,
+            0.6552380952380952,
+            0.8133333333333334
+          ],
+          "per_fold_merged": [
+            0.8266666666666667,
+            0.7409523809523809,
+            0.8990476190476191,
+            0.7638095238095237,
+            0.8514285714285715
+          ]
+        }
+      ],
+      "wall_sec": 1880.2,
+      "three_column": {
+        "A_ecfp4_xgb": 0.842667,
+        "B_dmpnn": 0.764952,
+        "merged": 0.840686,
+        "max_A_B": 0.842667,
+        "merged_minus_max": -0.001981,
+        "merged_ge_max": false
+      },
+      "verdicts": {
+        "merged_minus_A": "NULL",
+        "merged_minus_B": "POSITIVE_NOT_HOLM_SIGNIFICANT",
+        "merged_minus_max_AB": "NULL"
+      }
+    }
+  },
+  "family": {
+    "comparisons": {
+      "merged_minus_A": {
+        "holm_confirmatory_ru_ir": {
+          "correction": "Holm-Bonferroni (family = 2 metals)",
+          "n_family": 2,
+          "p_one_sided_holm": {
+            "Ru": 0.001178,
+            "Ir": 0.031447
+          },
+          "significant_after_holm_0.05": [
+            "Ru",
+            "Ir"
+          ]
+        },
+        "holm_exploratory_5metal": {
+          "correction": "Holm-Bonferroni (family = 5 metals)",
+          "n_family": 5,
+          "p_one_sided_holm": {
+            "Ru": 0.002945,
+            "Ir": 0.125788,
+            "Rh": 1.0,
+            "Os": 1.0,
+            "Re": 1.0
+          },
+          "significant_after_holm_0.05": [
+            "Ru"
+          ]
+        }
+      },
+      "merged_minus_B": {
+        "holm_confirmatory_ru_ir": {
+          "correction": "Holm-Bonferroni (family = 2 metals)",
+          "n_family": 2,
+          "p_one_sided_holm": {
+            "Ru": 2e-06,
+            "Ir": 2e-06
+          },
+          "significant_after_holm_0.05": [
+            "Ru",
+            "Ir"
+          ]
+        },
+        "holm_exploratory_5metal": {
+          "correction": "Holm-Bonferroni (family = 5 metals)",
+          "n_family": 5,
+          "p_one_sided_holm": {
+            "Ru": 5e-06,
+            "Ir": 8e-06,
+            "Os": 6.6e-05,
+            "Rh": 0.000252,
+            "Re": 0.001051
+          },
+          "significant_after_holm_0.05": [
+            "Ru",
+            "Ir",
+            "Os",
+            "Rh",
+            "Re"
+          ]
+        }
+      },
+      "merged_minus_max_AB": {
+        "holm_confirmatory_ru_ir": {
+          "correction": "Holm-Bonferroni (family = 2 metals)",
+          "n_family": 2,
+          "p_one_sided_holm": {
+            "Ru": 0.001178,
+            "Ir": 0.031447
+          },
+          "significant_after_holm_0.05": [
+            "Ru",
+            "Ir"
+          ]
+        },
+        "holm_exploratory_5metal": {
+          "correction": "Holm-Bonferroni (family = 5 metals)",
+          "n_family": 5,
+          "p_one_sided_holm": {
+            "Ru": 0.002945,
+            "Ir": 0.125788,
+            "Rh": 1.0,
+            "Os": 1.0,
+            "Re": 1.0
+          },
+          "significant_after_holm_0.05": [
+            "Ru"
+          ]
+        }
+      }
+    },
+    "confirmatory_metals": [
+      "Ru",
+      "Ir"
+    ]
+  },
+  "acceptance": {
+    "rule": "merged >= max(A, B) on >=4/5 metals AND Holm-significant (paired one-sided t, df=4)",
+    "resolvable_metals": [
+      "Ru",
+      "Ir",
+      "Rh",
+      "Os",
+      "Re"
+    ],
+    "n_resolvable": 5,
+    "merged_ge_max_metals": [
+      "Ru",
+      "Ir",
+      "Rh"
+    ],
+    "merged_ge_max_count": 3,
+    "holm_significant_metals": [
+      "Ru"
+    ],
+    "holm_significant_count": 1,
+    "acceptance_met": false
+  },
+  "honest_negative": {
+    "pooled_mean_reported": false,
+    "why": "Ru is ~64% of the deduplicated cohort, so a pooled mean is a Ru mean wearing a 5-metal label. The per-metal table is the unit.",
+    "unresolvable_metals": [],
+    "component_numbers_unchanged": "The A and B columns are the same base learners as FU1's arm-1 anchor and BLK-P1's D-MPNN column; the component-level numbers are reported verbatim and are NOT rewritten. Only the FINAL model's definition changes (single D-MPNN -> merged scorer), per directive_2026_10_16.",
+    "fallback_if_stacking_does_not_win": "If merged < max(A, B) on the resolvable metals, the honest reading is that the two scorers are not complementary at this scale and the merger must be re-designed (FU3 metal-conditioned router), not reported as a win. MEASURED, not PROJECTED."
+  }
+}

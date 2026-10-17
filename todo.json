@@ -402,7 +402,7 @@
         "how": "D-MPNN OOF 预测 + XGB OOF 预测 → 逻辑回归 / 浅层 GBDT meta-learner，严格 nested CV 防 fold-bleed（复用 fuse runner 的 nested_bleed 机制）。",
         "deliverable": "metrics/by_metric/stacked_dmpnn_xgb_within_metal.json",
         "acceptance": "stacked ≥ max(D-MPNN, XGB) 在 ≥4/5 金属；三列 (A / B / merged) 全报告。",
-        "status": "RUNNING (GPU0)",
+        "status": "DONE_ACCEPTANCE_NOT_MET",
         "synced_from": "task_queue_2026_10_17 (2026-10-17)"
       },
       {
@@ -2963,7 +2963,8 @@
   "next_actions": [
     "2026-10-17 (v2 主线): WP0-WP4 全部完成。三个独立负结果收口到同一句话: 金属对活性的影响是真的 (concept shift 18.2% vs 9.6%), 但**不可从金属化学或金属条件化中利用** —— 它是配体固有属性。因此可部署能力 = 配体侧可靠性过滤器 (WP2, AUC 0.6704, Holm 0.04)。",
     "FU4 完成 (fsma_fused_kcurve.json): 在 FSMA 线上, **简单分数级平均** 达到 directive 验收 —— K=80 merged_avg 在 4/5 金属 >= max(A,B), Ru +0.0240 Holm 0.0007; K=20/K=80 merged_logit_avg 同样达标。但证据集中在 Ru (占队列 64%), Rh 边缘 (Holm 0.056), Os 为负。学习型 merged_stack 全面输给平均 (Re K=20: 0.4944 vs 0.7529) —— 与 FU3 的 uniform_avg 结论一致: 可学习合并器数据不足, 等权平均更稳。",
-    "在跑: FU2 (GPU0, stacking/路由合并器, Ru 3/5 seed, 约剩 10h)。#184 (CPU, Table 1 within-metal h512) 在跑。",
+    "FU2 完成 (stacked_dmpnn_xgb_within_metal.json): 组内 stacking 只在 Ru 达标 (merged 0.8659 > A 0.8614, +0.0045, 5/5 seed, Holm 0.0029); Ir/Rh 微正不显著, Os/Re 微负 → 3/5, 未达 directive 验收。但 merged_minus_B 在 5 金属全部 Holm 显著 (5e-06..0.0011): 合并器确实吸收了强分量, 只是停在 A+epsilon。directive 要求继续换结构 (未启动, 每个都是 >1h GPU0, 需 USER_OK)。",
+    "在跑: #184 (CPU, Table 1 within-metal h512) —— 唯一未落盘的预测线任务。FU2 已完成 (DONE_ACCEPTANCE_NOT_MET)。",
     "FU1 已完成 (NO_CONFIRMATORY_ARM_METAL_FUSION_WIN): 特征级融合 5 金属全负, 而 FU2 在 Ru 上分数级 stacking 为正 (0.8694 > 0.8640) —— 融合的正确层级是分数而非特征。",
     "PAPER-SYNC 提案已更新 (TODO/pending/paper_a_abstract_sync_proposal.md): 缺陷 4 已由 fsma_c3_sampler_pairwise.json 解决 (该句被支持)。用户 2026-10-17 决定: 暂不动 paper_a; LOMO 区间改用 EX1 的 0.62-0.66。落 hunk 仍需明确 OK (§5.3)。",
     "repo-hygiene: pre-flight 现唯一 FAIL 来自并行 session 的未跟踪文件 configs/cfm_5metal_smoke_2026_10_17.yaml (command_template 带 --device)。不是本研究引入; 待该 session 自行收口。"
@@ -7727,7 +7728,7 @@
         "id": "FU2",
         "title": "Stacking 合并器 (D-MPNN x ECFP4-XGB)",
         "deliverable": "metrics/by_metric/stacked_dmpnn_xgb_within_metal.json",
-        "status": "RUNNING (GPU0)",
+        "status": "DONE_ACCEPTANCE_NOT_MET",
         "note": "全量档 inner_splits=3, ETA ~16-17h"
       },
       {
@@ -7841,6 +7842,80 @@
     "device_caveat": "FU4 ran on cuda:0 (GPU0-only directive) with its own source cache, so B_dmpnn does NOT equal the published cuda:1 K-curve. A, B and merged are all measured on cuda:0 in the same run, so the three-column comparison is internally paired and valid.",
     "scope_caveat": "This is the FSMA line (LOMO, K support drawn from the held-out metal). It is NOT the within-metal Table-1 line -- that is FU1/FU2.",
     "runtime": "31.5 min wall on GPU0, concurrent with FU2 (GPU0 util ~15-35%, 1.5-7.6 GB)."
+  },
+  "fu2_result_2026_10_17": {
+    "date": "2026-10-17",
+    "task": "FU2 stacking / routing merger (within-metal Table-1 line, gap G1)",
+    "artifact": "metrics/by_metric/stacked_dmpnn_xgb_within_metal.json",
+    "config": "configs/stack_dmpnn_xgb_paper_funnel_gpu0.yaml",
+    "script": "molmetal/scripts/stack_dmpnn_xgb_within_metal.py",
+    "status": "DONE_ACCEPTANCE_NOT_MET",
+    "device": "cuda:0",
+    "runtime": "14h56m wall on GPU0: 5 metals x 5 split seeds x 5 outer folds x (3 inner folds + 1 full) D-MPNN trainings.",
+    "protocol": "paper_funnel, shared 5-fold splits, nested-OOF meta-features (inner_splits=3), meta-learner=logreg on logits. A=ECFP4->XGB (BLK-P1 anchor), B=in-house masked D-MPNN (BLK-P1 protocol), merged=g([A,B]).",
+    "three_column": {
+      "Ru": {
+        "A": 0.861392,
+        "B": 0.790171,
+        "merged": 0.865895,
+        "max": 0.861392,
+        "d_max": 0.004503,
+        "p_t": 0.000589,
+        "holm5": 0.002945,
+        "n_seeds_pos": 5,
+        "verdict": "MERGED_WINS"
+      },
+      "Ir": {
+        "A": 0.8277,
+        "B": 0.631945,
+        "merged": 0.828107,
+        "max": 0.8277,
+        "d_max": 0.000407,
+        "p_t": 0.031447,
+        "holm5": 0.125788,
+        "n_seeds_pos": 4,
+        "verdict": "NULL",
+        "note": "t-CI lower = -3.5e-05 < 0"
+      },
+      "Rh": {
+        "A": 0.808735,
+        "B": 0.765012,
+        "merged": 0.809513,
+        "max": 0.808735,
+        "d_max": 0.000778,
+        "p_t": 0.345731,
+        "holm5": 1.0,
+        "n_seeds_pos": 3,
+        "verdict": "NULL"
+      },
+      "Os": {
+        "A": 0.821252,
+        "B": 0.683541,
+        "merged": 0.820214,
+        "max": 0.821252,
+        "d_max": -0.001038,
+        "p_t": 0.643255,
+        "holm5": 1.0,
+        "n_seeds_pos": 2,
+        "verdict": "NULL"
+      },
+      "Re": {
+        "A": 0.842667,
+        "B": 0.764952,
+        "merged": 0.840686,
+        "max": 0.842667,
+        "d_max": -0.001981,
+        "p_t": 0.773695,
+        "holm5": 1.0,
+        "n_seeds_pos": 3,
+        "verdict": "NULL"
+      }
+    },
+    "acceptance": "NOT MET: merged >= max(A,B) on 3/5 metals (Ru, Ir, Rh) and only Ru is Holm-significant (Holm 0.0029 over the 5-metal family). The directive requires >=4/5 AND Holm significance.",
+    "honest_reading": "Score-level stacking of ECFP4->XGB and the in-house D-MPNN does NOT rescue the within-metal column. It wins only on Ru (+0.0045, 5/5 seeds, Holm 0.0029); Ir/Rh are +0.0004/+0.0008 nulls; Os/Re are slightly negative. The base-learner gap is the cause: B (D-MPNN) is 0.06-0.20 below A on every metal, and a 2-feature logreg merger cannot manufacture information B does not carry.",
+    "what_the_merger_DOES_achieve": "merged_minus_B is Holm-significant on ALL 5 metals (Holm 5e-06 .. 0.0011). So the merger does successfully absorb the stronger component and is never dragged down to B. It simply lands at A + epsilon, not above A. The one exception is Ru, where the two components are close enough (0.8614 vs 0.7902) for the merger to add +0.0045.",
+    "contrast_with_fu4": "On the FSMA line the SAME merger family MET the acceptance at K=80 (FU4 merged_avg: 4/5, Ru Holm 0.0007). The asymmetry is the point: score-level fusion pays when the two components are comparably strong and complementary (FSMA: XGB strong on Rh/Re, D-MPNN strong on Ru/Ir/Os), and does not pay when one component is uniformly much weaker (within-metal: XGB > D-MPNN on all 5).",
+    "directive_status": "Per directive_2026_10_16 this task is '未达成', and the directive says to keep changing the fusion/routing structure rather than downgrade to a negative. Candidate next structures (NOT launched; each is a fresh >1hr GPU0 job needing USER_OK): meta-learner=gbdt, meta-space=prob, LightGBM as component A, or a feature-level fusion that does not concatenate a much weaker representation (FU1 already showed concat loses)."
   },
   "c3_sampler_pairwise_2026_10_17": {
     "date": "2026-10-17",
