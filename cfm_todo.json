@@ -1722,7 +1722,7 @@
       {"sha": "722746e", "subject": "bond(cfm): head residual skip (Wf-A68 spot 4)", "files": 3},
       {"sha": "9789ca4a", "subject": "bond(cfm): CE/sampling/aux sweep + 27 tests (Wf-A68 spots 1+2+3+5+5e+6+7)", "files": 2},
       {"sha": "54a5dd8d", "subject": "configs(cfm): 11 Wf-A68 yaml flags + smoke variant (5-spot ablation opt-in)", "files": 2},
-      {"sha": "PENDING", "subject": "docs(wf-a68): \u00a76.96 NEW catalog + audit-log block", "files": 2}
+      {"sha": "51e594cd", "subject": "docs(wf-a68): \u00a76.96 NEW catalog + audit-log block", "files": 2}
     ],
     "catalog_count_delta": 1,
     "active_count_delta": 0,
