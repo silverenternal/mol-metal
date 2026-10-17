@@ -47,7 +47,14 @@ DOI 10.26434/chemrxiv-2025-pp32k) which uses MB-Finder as the 17,732-IC50 baseli
 > - Of those, **10,857 rows / 3,292 unique compounds are platinum** (60.7%).
 > - Pt-only view: `platinai_pt_all_cells.{jsonl,csv}` + per-cell
 >   `pt/platinai_<stem>_pt.{jsonl,csv}` (script `wf_a48_pt_only_view.py`).
-> - `get-substances` harvest running to attach SMILES (`wf_a47_substances_harvest.py`).
+> - `get-substances` harvest **completed**: 1,543/1,543 pages → 7,703 substances,
+>   all with SMILES, 0 pages unrecovered (`wf_a47_substances_harvest.py`).
+> - SMILES joined onto the Pt view (`wf_a49_smiles_join.py`): **3,292/3,292 Pt
+>   compounds and 10,857/10,857 Pt rows carry SMILES (100%)**; **9,744 rows**
+>   also carry `value_mean` and are directly training-ready. Files:
+>   `pt/platinai_pt_all_cells_with_smiles.{jsonl,csv}` +
+>   per-cell `pt/platinai_<stem>_pt_with_smiles.*`; coverage in
+>   `pt/smiles_join_summary.json`.
 >
 > ### The real remaining gap
 >
