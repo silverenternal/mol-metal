@@ -320,29 +320,47 @@ def main(argv=None) -> int:
 
     stats_lomo = _paired_test(ev["routed_auc"], "best_single_lomo", metals)
     stats_oracle = _paired_test(ev["routed_auc"], "best_single_oracle", metals)
+    stats_metal_gate = _paired_test(ev["routed_auc"], "gate_scores", metals)
 
-    # Verdict: the strictest question is whether any *learned* router beats the
-    # honest deployable baseline (best_single_lomo) beyond the seed spread.
-    spread = float(np.nanmax([v for m in metals for v in ev["routed_auc_std"].get("best_single_lomo", {}).values()] or [0.0]))
-    learned = ["gate_scores", "gate_scores_metal", "uniform_avg", "policy_metal_desc"]
-    best_learned = max(learned, key=lambda r: float(np.nanmean(list(ev["routed_auc"][r].values()))))
-    best_learned_auc = float(np.nanmean(list(ev["routed_auc"][best_learned].values())))
-    lomo_auc = float(np.nanmean(list(ev["routed_auc"]["best_single_lomo"].values())))
-    delta = best_learned_auc - lomo_auc
-    holm_p = stats_lomo["holm_vs_best_single_lomo"].get(best_learned, 1.0)
-    routing_wins = bool(delta > spread and holm_p < 0.05)
+    # --- Verdict, in three separable parts -----------------------------------
+    # A "router" DISPATCHES among experts; `uniform_avg` does not dispatch, it
+    # COMBINES.  Keeping them in one bucket conflates G3's question (does metal
+    # condition dispatch?) with the ensembling line (FU2).  So they are judged
+    # separately, against the honest deployable baseline `best_single_lomo`.
+    dispatch = ["gate_scores", "gate_scores_metal", "policy_metal_desc"]
+    mean_auc = {r: float(np.nanmean(list(ev["routed_auc"][r].values()))) for r in ev["routed_auc"]}
+    lomo_auc = mean_auc["best_single_lomo"]
+    oracle_auc = mean_auc["best_single_oracle"]
 
-    # Metal contribution to the gate.
-    gate_delta = float(np.nanmean(list(ev["routed_auc"]["gate_scores_metal"].values()))) - float(
-        np.nanmean(list(ev["routed_auc"]["gate_scores"].values()))
-    )
+    best_dispatch = max(dispatch, key=lambda r: mean_auc[r])
+    d_disp = stats_lomo["delta_vs_best_single_lomo"][best_dispatch]
+    p_disp = stats_lomo["holm_vs_best_single_lomo"][best_dispatch]
+    routing_wins = bool(d_disp > 0 and p_disp < 0.05)
 
-    verdict = (
-        "ROUTING_ADDS_SIGNAL" if routing_wins else "ROUTING_DOES_NOT_BEAT_BEST_SINGLE"
+    d_comb = stats_lomo["delta_vs_best_single_lomo"]["uniform_avg"]
+    p_comb = stats_lomo["holm_vs_best_single_lomo"]["uniform_avg"]
+    combination_wins = bool(d_comb > 0 and p_comb < 0.05)
+    d_comb_oracle = stats_oracle["delta_vs_best_single_oracle"]["uniform_avg"]
+    p_comb_oracle = stats_oracle["holm_vs_best_single_oracle"]["uniform_avg"]
+    combination_matches_oracle = bool(not (d_comb_oracle > 0 and p_comb_oracle < 0.05))
+
+    # Metal contribution to the gate: the gate with the metal descriptor vs the
+    # gate without it, same cells.
+    d_metal = stats_metal_gate["delta_vs_gate_scores"]["gate_scores_metal"]
+    p_metal = stats_metal_gate["holm_vs_gate_scores"]["gate_scores_metal"]
+    metal_adds = bool(d_metal > 0 and p_metal < 0.05)
+
+    spread = float(np.nanmax([
+        v for m in metals for v in ev["routed_auc_std"].get("best_single_lomo", {}).values()
+    ] or [0.0]))
+
+    verdict = "ROUTING_ADDS_SIGNAL" if routing_wins else "ROUTING_DOES_NOT_BEAT_BEST_SINGLE"
+    combination_verdict = (
+        "PLAIN_AVERAGING_MATCHES_ORACLE_SELECTION"
+        if (combination_wins and combination_matches_oracle)
+        else ("PLAIN_AVERAGING_BEATS_BEST_SINGLE" if combination_wins else "PLAIN_AVERAGING_NO_GAIN")
     )
-    metal_verdict = (
-        "METAL_CONDITIONS_ROUTING" if abs(gate_delta) > spread else "METAL_DOES_NOT_CONDITION_ROUTING"
-    )
+    metal_verdict = "METAL_CONDITIONS_ROUTING" if metal_adds else "METAL_DOES_NOT_CONDITION_ROUTING"
 
     rep = {
         "metric": "metal_router_ablation",
@@ -367,30 +385,51 @@ def main(argv=None) -> int:
         "routed_auc_std": ev["routed_auc_std"],
         "paired_vs_best_single_lomo": stats_lomo,
         "paired_vs_best_single_oracle": stats_oracle,
-        "gate_metal_contribution": gate_delta,
+        "paired_gate_metal_vs_gate_scores": stats_metal_gate,
+        "router_mean_auc": mean_auc,
         "seed_spread": spread,
         "verdict": verdict,
+        "combination_verdict": combination_verdict,
         "metal_verdict": metal_verdict,
         "acceptance": {
+            # G3's actual question: does any DISPATCH mechanism beat the honest
+            # deployable single-arm baseline?
             "routing_beats_best_single_lomo": routing_wins,
-            "best_learned_router": best_learned,
-            "best_learned_auc": best_learned_auc,
+            "best_dispatch_router": best_dispatch,
+            "best_dispatch_auc": mean_auc[best_dispatch],
+            "best_dispatch_delta": d_disp,
+            "best_dispatch_holm_p": p_disp,
             "best_single_lomo_auc": lomo_auc,
-            "delta": delta,
-            "holm_p": holm_p,
+            "best_single_oracle_auc": oracle_auc,
+            # The ensembling line, kept separate so it is not read as routing.
+            "uniform_avg_auc": mean_auc["uniform_avg"],
+            "uniform_avg_delta_vs_best_single_lomo": d_comb,
+            "uniform_avg_holm_p": p_comb,
+            "uniform_avg_matches_best_single_oracle": combination_matches_oracle,
+            "uniform_avg_delta_vs_best_single_oracle": d_comb_oracle,
+            "uniform_avg_holm_p_vs_oracle": p_comb_oracle,
+            # Metal's contribution to the gate.
+            "gate_metal_delta": d_metal,
+            "gate_metal_holm_p": p_metal,
             "seed_spread": spread,
         },
         "honest_framing": (
             "MEASURED only. oracle_row and best_single_oracle leak the held-out labels and are "
             "reported strictly as UPPER BOUNDS, never as methods. All learned routers are fitted "
-            "leave-one-metal-out, so their AUC is cross-metal. K is fixed at 10; the K-curve is FU4."
+            "leave-one-metal-out, so their AUC is cross-metal. K is fixed at 10; the K-curve is FU4. "
+            "DISPATCH and COMBINATION are judged separately: `uniform_avg` does not route, it "
+            "averages, so crediting it to G3 would conflate the routing question with the "
+            "ensembling line (FU2). Significance is the project standard (paired one-sided t, "
+            "Holm across the family); the seed spread is reported as context, not as the gate."
         ),
     }
     atomic_write_file(args.out, json.dumps(rep, indent=2, default=float, ensure_ascii=False))
-    print(f"[fu3] verdict={verdict} metal_verdict={metal_verdict} "
-          f"best_learned={best_learned} {best_learned_auc:.4f} vs lomo {lomo_auc:.4f} "
-          f"(delta {delta:+.4f}, holm_p {holm_p:.3g}, spread {spread:.4f})")
-    print(f"[fu3] gate metal contribution {gate_delta:+.4f}")
+    print(f"[fu3] routing : {verdict}  best_dispatch={best_dispatch} "
+          f"{mean_auc[best_dispatch]:.4f} vs lomo {lomo_auc:.4f} "
+          f"(delta {d_disp:+.4f}, holm {p_disp:.3g})")
+    print(f"[fu3] combine : {combination_verdict}  uniform_avg {mean_auc['uniform_avg']:.4f} "
+          f"(vs lomo {d_comb:+.4f} holm {p_comb:.3g}; vs oracle {d_comb_oracle:+.4f} holm {p_comb_oracle:.3g})")
+    print(f"[fu3] metal   : {metal_verdict}  gate metal contribution {d_metal:+.4f} (holm {p_metal:.3g})")
     print(f"[fu3] wrote {args.out}")
     return 0
 

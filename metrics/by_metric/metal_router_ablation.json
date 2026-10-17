@@ -1,0 +1,244 @@
+{
+  "metric": "metal_router_ablation",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "description": "FU3 / gap G3: does metal-awareness help as a ROUTING condition (dispatch among metal-blind vs metal-aware D-MPNN experts) rather than as a score injection? Row-level paired scores from four injection arms, leave-one-metal-out gate fitting.",
+  "unit": "ROC-AUC (0-1, higher better)",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/fu3_metal_router_ablation.py",
+  "data_source": "MetalCytoToxDB (Krasnov et al., J. Med. Chem. 2026, 69(8), 8838)",
+  "cohort_spec": "paper_funnel",
+  "dump": {
+    "path": "/tmp/fu3_router_test_scores.jsonl",
+    "sha1": "99ab990b6e9a5d33598440ce68ef41a3d7ad2d46",
+    "bytes": 6203352,
+    "n_cells": 25
+  },
+  "arms": [
+    "none",
+    "readout",
+    "message",
+    "film"
+  ],
+  "k": [
+    10
+  ],
+  "seeds": [
+    42,
+    43,
+    44,
+    49,
+    123
+  ],
+  "per_arm_auc": {
+    "none": {
+      "Ru": 0.6019375567223199,
+      "Ir": 0.6333727238944631,
+      "Rh": 0.7058471507528112,
+      "Os": 0.6469364161849711,
+      "Re": 0.6328538359788359
+    },
+    "readout": {
+      "Ru": 0.5874644719488324,
+      "Ir": 0.6133090548742723,
+      "Rh": 0.7252868305698495,
+      "Os": 0.6546319845857418,
+      "Re": 0.6067791005291006
+    },
+    "message": {
+      "Ru": 0.5998266593807008,
+      "Ir": 0.6047595689334819,
+      "Rh": 0.6879092814941872,
+      "Os": 0.6757302504816955,
+      "Re": 0.6253637566137565
+    },
+    "film": {
+      "Ru": 0.6305335176347874,
+      "Ir": 0.5764471695776043,
+      "Rh": 0.6241242614827521,
+      "Os": 0.6122504816955684,
+      "Re": 0.6732142857142857
+    }
+  },
+  "routed_auc": {
+    "uniform_avg": {
+      "Ir": 0.6361793633097981,
+      "Os": 0.6771830443159923,
+      "Re": 0.668121693121693,
+      "Rh": 0.7239832285115304,
+      "Ru": 0.6251684082436638
+    },
+    "oracle_row": {
+      "Ir": 0.9458991700730831,
+      "Os": 0.9319383429672448,
+      "Re": 0.9585482804232806,
+      "Rh": 0.9267009719839908,
+      "Ru": 0.9189403822262292
+    },
+    "gate_scores": {
+      "Ir": 0.6065536975102193,
+      "Os": 0.6353217726396918,
+      "Re": 0.6368882275132275,
+      "Rh": 0.7015246807699638,
+      "Ru": 0.5902767032838263
+    },
+    "gate_scores_metal": {
+      "Ir": 0.6224536108014369,
+      "Os": 0.6475761078998072,
+      "Re": 0.6590443121693121,
+      "Rh": 0.6947970268724986,
+      "Ru": 0.5981508274633082
+    },
+    "policy_metal_desc": {
+      "Ir": 0.6047595689334819,
+      "Os": 0.6469364161849711,
+      "Re": 0.6253637566137565,
+      "Rh": 0.6879092814941872,
+      "Ru": 0.6019375567223199
+    },
+    "best_single_lomo": {
+      "Ir": 0.6047595689334819,
+      "Os": 0.6469364161849711,
+      "Re": 0.6328538359788359,
+      "Rh": 0.7058471507528112,
+      "Ru": 0.6019375567223199
+    },
+    "best_single_oracle": {
+      "Ir": 0.6333727238944631,
+      "Os": 0.6757302504816955,
+      "Re": 0.6732142857142857,
+      "Rh": 0.7252868305698495,
+      "Ru": 0.6305335176347874
+    }
+  },
+  "routed_auc_std": {
+    "uniform_avg": {
+      "Ir": 0.029411729424319452,
+      "Os": 0.04150306979135066,
+      "Re": 0.03941927247698753,
+      "Rh": 0.01760761894403525,
+      "Ru": 0.0582445151520605
+    },
+    "oracle_row": {
+      "Ir": 0.0291753636900822,
+      "Os": 0.027804822397277554,
+      "Re": 0.013714139060082817,
+      "Rh": 0.03018409956156913,
+      "Ru": 0.01683656171053189
+    },
+    "gate_scores": {
+      "Ir": 0.024548787803525825,
+      "Os": 0.058553078289652505,
+      "Re": 0.05535761202098377,
+      "Rh": 0.03094512078801169,
+      "Ru": 0.05129635639958186
+    },
+    "gate_scores_metal": {
+      "Ir": 0.028401001174372817,
+      "Os": 0.06291995639562237,
+      "Re": 0.041134874558929495,
+      "Rh": 0.033551757864467575,
+      "Ru": 0.04769300488889996
+    },
+    "best_single_lomo": {
+      "Ir": 0.03064359366406397,
+      "Os": 0.04063233068874673,
+      "Re": 0.07131432769968434,
+      "Rh": 0.04338010596495637,
+      "Ru": 0.047705375903197095
+    },
+    "best_single_oracle": {
+      "Ir": 0.027104626502057364,
+      "Os": 0.04343406193784594,
+      "Re": 0.038172120070528864,
+      "Rh": 0.027098220854312637,
+      "Ru": 0.060223873314119054
+    }
+  },
+  "paired_vs_best_single_lomo": {
+    "delta_vs_best_single_lomo": {
+      "uniform_avg": 0.02766024178605151,
+      "oracle_row": 0.29793852382028163,
+      "gate_scores": -0.0043538893710982855,
+      "gate_scores_metal": 0.005937471326788591,
+      "policy_metal_desc": -0.005085589724740691,
+      "best_single_oracle": 0.02916061594453223
+    },
+    "holm_vs_best_single_lomo": {
+      "oracle_row": 0.00045813177916983355,
+      "uniform_avg": 0.002112109177419696,
+      "best_single_oracle": 0.002112109177419696,
+      "gate_scores_metal": 0.659501142705398,
+      "gate_scores": 1.0,
+      "policy_metal_desc": 1.0
+    }
+  },
+  "paired_vs_best_single_oracle": {
+    "delta_vs_best_single_oracle": {
+      "uniform_avg": -0.0015003741584807217,
+      "oracle_row": 0.26877790787574946,
+      "gate_scores": -0.033514505315630515,
+      "gate_scores_metal": -0.023223144617743642,
+      "policy_metal_desc": -0.034246205669272924,
+      "best_single_lomo": -0.02916061594453223
+    },
+    "holm_vs_best_single_oracle": {
+      "oracle_row": 0.0004407423330702969,
+      "uniform_avg": 1.0,
+      "gate_scores_metal": 1.0,
+      "best_single_lomo": 1.0,
+      "policy_metal_desc": 1.0,
+      "gate_scores": 1.0
+    }
+  },
+  "paired_gate_metal_vs_gate_scores": {
+    "delta_vs_gate_scores": {
+      "uniform_avg": 0.032014131157149794,
+      "oracle_row": 0.30229241319137995,
+      "gate_scores_metal": 0.010291360697886876,
+      "policy_metal_desc": -0.000731700353642406,
+      "best_single_lomo": 0.0043538893710982855,
+      "best_single_oracle": 0.033514505315630515
+    },
+    "holm_vs_gate_scores": {
+      "oracle_row": 0.00037082436151506475,
+      "uniform_avg": 0.0013771304347164233,
+      "best_single_oracle": 0.0013771304347164233,
+      "gate_scores_metal": 0.15211462802221193,
+      "best_single_lomo": 0.25423433885068936,
+      "policy_metal_desc": 0.5503452727555311
+    }
+  },
+  "router_mean_auc": {
+    "uniform_avg": 0.6661271475005355,
+    "oracle_row": 0.9364054295347657,
+    "gate_scores": 0.6341130163433857,
+    "gate_scores_metal": 0.6444043770412726,
+    "policy_metal_desc": 0.6333813159897432,
+    "best_single_lomo": 0.638466905714484,
+    "best_single_oracle": 0.6676275216590162
+  },
+  "seed_spread": 0.07131432769968434,
+  "verdict": "ROUTING_DOES_NOT_BEAT_BEST_SINGLE",
+  "combination_verdict": "PLAIN_AVERAGING_MATCHES_ORACLE_SELECTION",
+  "metal_verdict": "METAL_DOES_NOT_CONDITION_ROUTING",
+  "acceptance": {
+    "routing_beats_best_single_lomo": false,
+    "best_dispatch_router": "gate_scores_metal",
+    "best_dispatch_auc": 0.6444043770412726,
+    "best_dispatch_delta": 0.005937471326788591,
+    "best_dispatch_holm_p": 0.659501142705398,
+    "best_single_lomo_auc": 0.638466905714484,
+    "best_single_oracle_auc": 0.6676275216590162,
+    "uniform_avg_auc": 0.6661271475005355,
+    "uniform_avg_delta_vs_best_single_lomo": 0.02766024178605151,
+    "uniform_avg_holm_p": 0.002112109177419696,
+    "uniform_avg_matches_best_single_oracle": true,
+    "uniform_avg_delta_vs_best_single_oracle": -0.0015003741584807217,
+    "uniform_avg_holm_p_vs_oracle": 1.0,
+    "gate_metal_delta": 0.010291360697886876,
+    "gate_metal_holm_p": 0.15211462802221193,
+    "seed_spread": 0.07131432769968434
+  },
+  "honest_framing": "MEASURED only. oracle_row and best_single_oracle leak the held-out labels and are reported strictly as UPPER BOUNDS, never as methods. All learned routers are fitted leave-one-metal-out, so their AUC is cross-metal. K is fixed at 10; the K-curve is FU4. DISPATCH and COMBINATION are judged separately: `uniform_avg` does not route, it averages, so crediting it to G3 would conflate the routing question with the ensembling line (FU2). Significance is the project standard (paired one-sided t, Holm across the family); the seed spread is reported as context, not as the gate."
+}

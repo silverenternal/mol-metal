@@ -1,0 +1,284 @@
+{
+  "metric": "fsma_c3_sampler_pairwise",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "description": "C3 follow-up: the support-sampler PAIRWISE contrast. The published C3 family reports four separate one-sample tests against zero, which cannot support the abstract's claim that the four samplers are statistically indistinguishable. This is the missing sampler-vs-sampler test, on the same 25 paired (metal, seed) cells at K=20. Pure re-analysis of on-disk artifacts.",
+  "unit": "paired ROC-AUC delta",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/fsma_c3_sampler_pairwise.py",
+  "k": 20,
+  "n_cells": 25,
+  "cells": [
+    "Ir:42",
+    "Ir:43",
+    "Ir:44",
+    "Ir:49",
+    "Ir:123",
+    "Os:42",
+    "Os:43",
+    "Os:44",
+    "Os:49",
+    "Os:123",
+    "Re:42",
+    "Re:43",
+    "Re:44",
+    "Re:49",
+    "Re:123",
+    "Rh:42",
+    "Rh:43",
+    "Rh:44",
+    "Rh:49",
+    "Rh:123",
+    "Ru:42",
+    "Ru:43",
+    "Ru:44",
+    "Ru:49",
+    "Ru:123"
+  ],
+  "samplers": [
+    "random",
+    "scaffold_diverse",
+    "stratified",
+    "activity_scaffold"
+  ],
+  "source_artifacts": {
+    "random": "metrics/by_metric/fsma_inhouse_c3_random_ep50.json",
+    "scaffold_diverse": "metrics/by_metric/fsma_inhouse_c3_scaffold_diverse_ep50.json",
+    "activity_scaffold": "metrics/by_metric/fsma_inhouse_c3_activity_scaffold_ep50.json",
+    "stratified": "metrics/by_metric/fsma_inhouse_kcurve_ep50.json"
+  },
+  "sampler_mean": {
+    "random": 0.6742721708939307,
+    "scaffold_diverse": 0.6595891174450805,
+    "stratified": 0.6496302067294772,
+    "activity_scaffold": 0.643885313357438
+  },
+  "sampler_mean_delta_vs_zero_shot": {
+    "random": 0.03589071095303543,
+    "scaffold_diverse": 0.024866504267545806,
+    "stratified": 0.011637362482933011,
+    "activity_scaffold": 0.0030699512901065295
+  },
+  "mean_spread": 0.030386857536492617,
+  "per_metal_mean": {
+    "Ir": {
+      "random": 0.6469077502969641,
+      "scaffold_diverse": 0.6221424519431658,
+      "stratified": 0.6432356790496325,
+      "activity_scaffold": 0.6488032316520689
+    },
+    "Os": {
+      "random": 0.6814586380867536,
+      "scaffold_diverse": 0.6565318200032646,
+      "stratified": 0.6083545238290542,
+      "activity_scaffold": 0.622820113198261
+    },
+    "Re": {
+      "random": 0.7008974514602221,
+      "scaffold_diverse": 0.6595655713686717,
+      "stratified": 0.6626519038617337,
+      "activity_scaffold": 0.6410297956611756
+    },
+    "Rh": {
+      "random": 0.7315350804414469,
+      "scaffold_diverse": 0.7168060789744863,
+      "stratified": 0.7125649350649351,
+      "activity_scaffold": 0.7200974025974026
+    },
+    "Ru": {
+      "random": 0.6105619341842671,
+      "scaffold_diverse": 0.6428996649358145,
+      "stratified": 0.6213439918420306,
+      "activity_scaffold": 0.5866760236782821
+    }
+  },
+  "friedman": {
+    "statistic": 5.687999999999988,
+    "p": 0.12781667825330786
+  },
+  "friedman_on_delta": {
+    "statistic": 4.151999999999987,
+    "p": 0.2455117485744913
+  },
+  "pairwise": {
+    "random_vs_scaffold_diverse": {
+      "delta_mean": 0.01468305344885016,
+      "delta_std": 0.052309569367800846,
+      "t": 1.4034768041780434,
+      "p_two_sided": 0.17328156820022467,
+      "ci95_ttest": [
+        -0.006909275546666947,
+        0.03627538244436727
+      ],
+      "n_cells": 25,
+      "n_a_better": 16
+    },
+    "random_vs_stratified": {
+      "delta_mean": 0.024641964164453502,
+      "delta_std": 0.05184430996460816,
+      "t": 2.376535070220386,
+      "p_two_sided": 0.025799202969128927,
+      "ci95_ttest": [
+        0.003241684811543053,
+        0.046042243517363954
+      ],
+      "n_cells": 25,
+      "n_a_better": 17
+    },
+    "random_vs_activity_scaffold": {
+      "delta_mean": 0.03038685753649271,
+      "delta_std": 0.06271535848112553,
+      "t": 2.4226009603084524,
+      "p_two_sided": 0.023324401587699772,
+      "ci95_ttest": [
+        0.004499229904256531,
+        0.05627448516872889
+      ],
+      "n_cells": 25,
+      "n_a_better": 17
+    },
+    "scaffold_diverse_vs_stratified": {
+      "delta_mean": 0.00995891071560334,
+      "delta_std": 0.05789789998982165,
+      "t": 0.8600407542720978,
+      "p_two_sided": 0.3982766059781455,
+      "ci95_ttest": [
+        -0.013940167786451884,
+        0.03385798921765856
+      ],
+      "n_cells": 25,
+      "n_a_better": 12
+    },
+    "scaffold_diverse_vs_activity_scaffold": {
+      "delta_mean": 0.01570380408764255,
+      "delta_std": 0.06141324442322631,
+      "t": 1.2785356184262606,
+      "p_two_sided": 0.21328678383351177,
+      "ci95_ttest": [
+        -0.009646337278358865,
+        0.041053945453643964
+      ],
+      "n_cells": 25,
+      "n_a_better": 15
+    },
+    "stratified_vs_activity_scaffold": {
+      "delta_mean": 0.00574489337203921,
+      "delta_std": 0.053351364481531126,
+      "t": 0.5384017286032061,
+      "p_two_sided": 0.595258511623787,
+      "ci95_ttest": [
+        -0.016277467510825705,
+        0.027767254254904124
+      ],
+      "n_cells": 25,
+      "n_a_better": 14
+    }
+  },
+  "pairwise_on_delta": {
+    "random_vs_scaffold_diverse": {
+      "delta_mean": 0.01102420668548962,
+      "delta_std": 0.052108237051036656,
+      "t": 1.057818044649267,
+      "p_two_sided": 0.30066993831854344,
+      "ci95_ttest": [
+        -0.010485016414231716,
+        0.032533429785210954
+      ],
+      "n_cells": 25,
+      "n_a_better": 14
+    },
+    "random_vs_stratified": {
+      "delta_mean": 0.024253348470102413,
+      "delta_std": 0.05732109066013081,
+      "t": 2.115569347232573,
+      "p_two_sided": 0.04495022395746137,
+      "ci95_ttest": [
+        0.0005923651572236968,
+        0.04791433178298113
+      ],
+      "n_cells": 25,
+      "n_a_better": 17
+    },
+    "random_vs_activity_scaffold": {
+      "delta_mean": 0.0328207596629289,
+      "delta_std": 0.06054775979435914,
+      "t": 2.710319900719646,
+      "p_two_sided": 0.012214041801494104,
+      "ci95_ttest": [
+        0.007827872793053504,
+        0.05781364653280429
+      ],
+      "n_cells": 25,
+      "n_a_better": 17
+    },
+    "scaffold_diverse_vs_stratified": {
+      "delta_mean": 0.013229141784612795,
+      "delta_std": 0.06397672891460969,
+      "t": 1.0339026399950715,
+      "p_two_sided": 0.31148806296988674,
+      "ci95_ttest": [
+        -0.013179153972293006,
+        0.03963743754151859
+      ],
+      "n_cells": 25,
+      "n_a_better": 12
+    },
+    "scaffold_diverse_vs_activity_scaffold": {
+      "delta_mean": 0.021796552977439276,
+      "delta_std": 0.06710667493005346,
+      "t": 1.6240227220435395,
+      "p_two_sided": 0.11743377955312986,
+      "ci95_ttest": [
+        -0.005903720995316074,
+        0.049496826950194625
+      ],
+      "n_cells": 25,
+      "n_a_better": 15
+    },
+    "stratified_vs_activity_scaffold": {
+      "delta_mean": 0.008567411192826481,
+      "delta_std": 0.05734288463764951,
+      "t": 0.7470335026711746,
+      "p_two_sided": 0.4622998049393356,
+      "ci95_ttest": [
+        -0.015102568231822835,
+        0.0322373906174758
+      ],
+      "n_cells": 25,
+      "n_a_better": 12
+    }
+  },
+  "p_two_sided_holm": {
+    "random_vs_activity_scaffold": 0.13994640952619863,
+    "random_vs_stratified": 0.13994640952619863,
+    "random_vs_scaffold_diverse": 0.6931262728008987,
+    "scaffold_diverse_vs_activity_scaffold": 0.6931262728008987,
+    "scaffold_diverse_vs_stratified": 0.796553211956291,
+    "stratified_vs_activity_scaffold": 0.796553211956291
+  },
+  "p_two_sided_holm_on_delta": {
+    "random_vs_activity_scaffold": 0.07328425080896463,
+    "random_vs_stratified": 0.22475111978730686,
+    "scaffold_diverse_vs_activity_scaffold": 0.46973511821251945,
+    "random_vs_scaffold_diverse": 0.9020098149556304,
+    "scaffold_diverse_vs_stratified": 0.9020098149556304,
+    "stratified_vs_activity_scaffold": 0.9020098149556304
+  },
+  "max_abs_pairwise_delta": {
+    "pair": "random_vs_activity_scaffold",
+    "delta_mean": 0.03038685753649271,
+    "delta_std": 0.06271535848112553,
+    "t": 2.4226009603084524,
+    "p_two_sided": 0.023324401587699772,
+    "ci95_ttest": [
+      0.004499229904256531,
+      0.05627448516872889
+    ],
+    "n_cells": 25,
+    "n_a_better": 17
+  },
+  "significant_pairs_holm_0.05": [],
+  "significant_pairs_holm_0.05_on_delta": [],
+  "verdict": "SAMPLERS_INDISTINGUISHABLE",
+  "honest_framing": "MEASURED only. A negative verdict (SAMPLERS_INDISTINGUISHABLE) licenses the abstract's sentence; a positive one means the sentence must be reworded. The test is two-sided because the hypothesis under test is 'no difference', and it is Holm-corrected within the 6-pair family. Pooled means are reported but Ru is ~64% of the cohort, so per-metal means are the load-bearing view. PAIRING CAVEAT: the sampler draws the K support rows and the query is held-out-minus-support, so the four arms do NOT share a query set — n_query is identical but the zero-shot AUC is not. The contrast is therefore reported twice, on the absolute adapted AUC and on the delta-vs-zero-shot, and the verdict requires both to be indistinguishable. This is the same (metal, seed) cell structure the published C3 family uses (n_cells=25), so the test is consistent with it."
+}

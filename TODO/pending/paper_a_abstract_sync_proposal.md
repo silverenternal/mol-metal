@@ -82,7 +82,7 @@ families.C2_controls_matched.k20.members`:
 (The qualitative claim — adaptation beats both controls by a wide margin —
 survives; the magnitudes do not.)
 
-## Defect 4 — "the one real knob" / "samplers are indistinguishable" (lines 67–71)
+## Defect 4 — "the one real knob" / "samplers are indistinguishable" (lines 67–71) — **RESOLVED 2026-10-17**
 
 > **Current:** "a head-only scope removes the only significant negative in the
 > full-scope curve --- while the support-set construction rule is *not*: four
@@ -96,17 +96,34 @@ survives; the magnitudes do not.)
   in the full-scope curve**, so "removes the only significant negative" is stale.
   The defensible version: full-scope is *not* significantly worse at K=5, i.e. the
   scope choice is not what makes the effect appear.
-* `families.C3_support_sampler`: random **+0.0359**, scaffold-diverse **+0.0249**
-  (both Holm-significant), stratified +0.0116, activity-scaffold +0.0031 (not).
-  The four samplers span a ~0.03 effect-size range, so "statistically
-  indistinguishable" is **not supported by this artifact**. The artifact contains
-  no sampler-vs-sampler test at all.
+* `families.C3_support_sampler` reports four **one-sample** tests against zero
+  (random +0.0359 Holm 0.010; scaffold-diverse +0.0249 Holm 0.043; stratified
+  +0.0116 n.s.; activity-scaffold +0.0031 n.s.). Those carry **no information**
+  about whether the arms differ from each other, so the sentence originally had
+  no backing artifact.
 
-⚠️ **This is the one defect that changes a claim rather than a digit.** The honest
-options are (a) drop the sentence, (b) reword to "the effect is positive under all
-four samplers, but its size depends on the rule (random +0.036 vs activity-scaffold
-+0.003)", or (c) run the missing sampler-vs-sampler test. **(b) needs no new
-compute; (c) needs a paired test we have not run.** Requesting a decision.
+**Resolution (user directive 2026-10-17: "补跑 sampler 间对照检验").** The missing
+test was run — `molmetal/scripts/fsma_c3_sampler_pairwise.py` →
+`metrics/by_metric/fsma_c3_sampler_pairwise.json`, on the same 25 paired
+`(metal, seed)` cells at K=20:
+
+| test | result |
+|---|---|
+| Friedman across the 4 samplers | p = **0.128** (on delta-vs-zero-shot: 0.246) |
+| max pairwise |Δ| (random vs activity-scaffold) | +0.0304, raw p₂ = 0.0233, **Holm 0.140** |
+| all 6 pairwise Holm (absolute AUC) | all ≥ **0.140** |
+| all 6 pairwise Holm (delta vs zero-shot) | all ≥ **0.073** |
+
+**Verdict: `SAMPLERS_INDISTINGUISHABLE`.** The abstract's sentence is therefore
+*correct* and should be **kept**, with two changes:
+1. cite the new artifact, and
+2. drop the "the only significant negative" half (stale, per the bullet above).
+
+**Pairing caveat (now recorded in the artifact).** Unlike the C2 controls, the C3
+arms do **not** share a query set: the sampler draws the K support rows and the
+query is held-out-minus-support, so `n_query` is identical but the zero-shot AUC
+is not. The test is therefore reported twice — on the absolute adapted AUC and on
+the delta-vs-zero-shot — and the verdict requires both to agree. They do.
 
 ## Defect 5 — G2 wording, the cross-backbone sentence (lines 71–74)
 
