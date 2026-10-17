@@ -61,6 +61,42 @@ flow:
   bond_class_weight_power: 0.5
   bond_decision: threshold
   bond_decision_threshold: 0.5
+  # Wf-A68 (2026-10-17) — threshold sweep list applied at POST-retrain
+  # evaluation.  Default `{0.5}` matches the legacy single-threshold
+  # evaluation (bit-exact Wf-A67 report).  The post-retrain sweep picks
+  # the threshold by held-out F1, NOT by the in-corpus optimistic ceiling
+  # (see spot 7 — _bond_ranking_report's `bond_best_f1_threshold` was
+  # OPTIMISTIC by construction; the swept pick is held-out honest).
+  bond_decision_threshold_sweep: [0.5]
+  # Wf-A68 — focal bond CE (Spot 2).  Default OFF preserves Wf-A67
+  # bit-exact compat.  Opt-in per-spot for the ablation matrix.
+  use_focal_bond_ce: false
+  focal_bond_alpha: 0.25
+  focal_bond_gamma: 2.0
+  # Wf-A68 — balanced pair sampling (Spot 3).  Default 0 = no balancing.
+  # 4 = keep 4 negatives per positive (typical subsample for 95:5 imbalance).
+  bond_sample_balance: 0
+  # Wf-A68 — dative donor distance cutoff (Spot 1).  2.6 Å = M-N/O single
+  # dative bond + 0.2 Å tolerance for ETKDG noise.  Set to a large
+  # value (e.g. 100.0) to disable the post-embed 3D filter and recover
+  # pre-Wf-A68 donor-by-score-only behaviour.
+  dative_distance_cutoff: 2.6
+  # Wf-A68 — chem_loss_weight (Spot 5).  Wf-A15/A27 scaffolding is
+  # SHIPPED (ContinuousBO + per-cloud stash); default 0.0 keeps the
+  # 5-metal cohort bit-exact Wf-A67.  Bump to 0.1-0.3 at retrain to
+  # enable the Wiberg BO regression aux term.
+  chem_loss_weight: 0.0
+  # Wf-A68 — bond head residual skip (Spot 4).  Default OFF preserves
+  # Wf-A67 bit-exact compat.  ON adds an extra Linear(hidden_dim,
+  # hidden_dim) projection from fc1 to the pre-`out` activation.
+  use_bond_head_skip: false
+  # Wf-A68 ultracode (2026-10-17) Spot 6 — bond label smoothing.  0.0 =
+  # off (bit-exact Wf-A67); 0.05-0.10 typical on heavy imbalanced cohorts.
+  bond_label_smoothing: 0.0
+  # Wf-A68 ultracode (2026-10-17) Spot 5 enhanced — linear-space aux MSE on
+  # the discrete-head's softmax-expected bond order vs raw Wiberg target.
+  # 0.0 = off (bit-exact Wf-A67); 0.1-0.3 typical alongside chem_loss_weight.
+  bond_aux_mse_weight: 0.0
   n_steps: 100
   method: rk4
   optimizer: adam

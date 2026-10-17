@@ -1,0 +1,131 @@
+# configs/cfm_5metal_smoke_2026_10_17.yaml — small real-data CFM smoke run on gpu0.
+#
+# 2026-10-17 user request: "抽少量真实数据训练一下cfm吧，用gpu0，看看效果同时抓一下是不是还要bug".
+#
+# This config is a SMALL SMOKE variant of `cfm_5metal_default.yaml`:
+#   * n_seeds: 1 (was 5)
+#   * epochs: 5 (was 50)
+#   * batch_size: 8 (was 16)
+#   * n_train: 200 (overrides default; via CLI; not in YAML per §5.11 yaml-only)
+#   * n_val: 64
+#   * Same 5-metal cohort (Ru/Ir/Os/Rh/Re) from .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+#   * Same wasserstein_weight: 0.0 (W2 not load-bearing)
+#   * Same hidden_dim: 128, n_layers: 3
+#   * Same bond_head: learned, use_yuelbond: true
+#   * Output: results/cfm_5metal_wfa68_smoke/
+#   * GPU: cuda:0 (RTX PRO 6000 Blackwell, 95.8 GB free)
+#
+# WHY THIS IS A SEPARATE YAML (not a CLI override of cfm_5metal_default)
+# ---------------------------------------------------------------------
+# Per AGENTS.md §5.11: every hyperparameter lives in the YAML. We could
+# not edit the canonical 5-metal config in-place because it's the
+# production ship surface (5 seeds × 50 epochs × batch 16, 48h budget)
+# — mutating it would conflate smoke numbers with production numbers
+# and violate the §5.5 filesystem-truth rule.
+#
+# §5.7 50-step CPU smoke: N/A — this is a GPU run, not a trainer flag
+# wire-in.  The 50-step rule (§5.7) is for NEW flag wire-ins; no new
+# flags are introduced here.
+#
+# §5.2 MEASURED-vs-PROJECTED: every metric output by this run must
+# trace to a JSON / report path on disk with MEASURED tag.
+#
+# Bug-hunt purpose (per user 2026-10-17): the smoke run also serves
+# as a regression catch — any crash / NaN / decode_ratio drop /
+# bond_loss explosion surfaces in the first 200 clouds × 1 epoch
+# without burning a full 5 × 50 retrain.
+
+data:
+  dataset: csv
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+  cohort_filter:
+    metals:
+      - Ru
+      - Ir
+      - Os
+      - Rh
+      - Re
+model:
+  hidden_dim: 128
+  n_layers: 3
+  atom_vocab_size: 13
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  learnable_vel_scale: true
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  use_tmqm_init: false
+  pcgrad_multi_task: false
+  q_head_enabled: false
+flow:
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  n_steps: 100
+  method: rk4
+  optimizer: adam
+  warmup_steps: 50
+  ema_decay: 0.999
+  wasserstein_weight: 0.0
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 3.5
+protocol:
+  batch_size: 8
+  lr: 0.0001
+  gen_validity_samples: 8
+  gen_eval_n: 16
+  gen_eval_seeds: "0"
+  n_seeds: 1
+  epochs: 5
+  n_seeds_min: 1
+  scheduler:
+    type: cosine
+    warmup_epochs: 1
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+output:
+  base_dir: results/cfm_5metal_wfa68_smoke
+  log_master: results/cfm_5metal_wfa68_smoke/master.log
+  ckpt_dir: results/cfm_5metal_wfa68_smoke/checkpoints
+  events_jsonl: true
+  resume_from: none
+  resume_from_path: null
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+q_channel_lr_multiplier: 1.0
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+compute:
+  gpu: cuda:0
+directives:
+  kill_then_adapt: true
+  time_budget: 30m
+  user_ok_required: false
+  user_ok_granted: user_2026_10_17 "抽少量真实数据训练一下cfm吧，用gpu0"
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --n-train {n_train} --n-val {n_val} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  legacy_inline_command: ""
+honest_framing:
+  claims:
+  - CFM 5-metal anticancer drug smoke run, 200 train + 64 val, 1 seed × 1 epoch
+  - wasserstein_weight 0.0 (W2 not load-bearing on precious-metal anticancer axis)
+  - Output: results/cfm_5metal_wfa68_smoke/
+  - GPU: cuda:0 (RTX PRO 6000 Blackwell, 95.8 GB free per nvidia-smi 2026-10-17 08:43)
+  do_not_claim:
+  - Production-scale results (5 seeds × 50 epochs is the production surface)
+  - decode_ratio is paper-grade (smoke; 1 epoch on 200 clouds)
+  - 7-metal cohort coverage (still 5-metal only)
+  deferred:
+  - Multi-seed stability (3 seeds × 50 epochs canonical)
+  - Pt training (Au/Pd/Ag cell-line data absent; platinai_4cell 4078 separate pipeline)
