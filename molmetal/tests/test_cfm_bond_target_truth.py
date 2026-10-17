@@ -165,6 +165,18 @@ def test_training_loop_carries_bonds_through_the_device_move():
     The previous test cannot see this: it passes the ORIGINAL cloud, which
     still has its bonds.  Asserted on the source because the rebuild is inline
     in the training loop with no unit boundary to call.
+
+    Source-grep update (Wf-A66 housekeeping, 2026-10-17)
+    -----------------------------------------
+    The original assertion was ``assert "bonds=(" in src and "bond_types=(" in src``
+    (positional keyword-arg form).  When ``_to_device_cloud`` was refactored
+    to use a ``kwargs`` dict + ``AtomCloud(**kwargs)`` (per the Wf-A11
+    helper-routing refactor in 2026-10-13), the literal ``bonds=(`` pattern
+    disappeared but the bond-carrying contract was preserved as
+    ``kwargs["bonds"]`` and ``kwargs["bond_types"]``.  This test pins the
+    CURRENT pattern (dict-style kwarg build) and the contract (both keys
+    must be present in the same device-move helper, since stripping either
+    one alone re-triggers the 2026-10-04 bug).
     """
     src = (
         PROJECT_ROOT
@@ -172,10 +184,28 @@ def test_training_loop_carries_bonds_through_the_device_move():
         / "scripts"
         / "train_cfm_yuelbond_wasserstein.py"
     ).read_text()
-    assert "bonds=(" in src and "bond_types=(" in src, (
+    # Slice the source to the body of `_to_device_cloud` so we don't pick up
+    # incidental "bonds" or "bond_types" mentions elsewhere (e.g. metric
+    # names, log strings, the dataset parser).
+    import re as _re
+    m = _re.search(
+        r"def _to_device_cloud\([\s\S]+?\n    return AtomCloud\(\*\*kwargs\)\n",
+        src,
+    )
+    assert m is not None, (
+        "_to_device_cloud helper is missing from the trainer source — "
+        "device-move would not route through the bond-carrying chokepoint"
+    )
+    body = m.group(0)
+    assert 'kwargs["bonds"]' in body, (
         "the training loop's device-move rebuild no longer carries "
-        "bonds/bond_types — the bond target will silently fall back to the "
-        "Pt-only rule and train on an all-BOND_NO_BOND target"
+        "bonds in the kwargs dict — the bond target will silently fall "
+        "back to the Pt-only rule and train on an all-BOND_NO_BOND target"
+    )
+    assert 'kwargs["bond_types"]' in body, (
+        "the training loop's device-move rebuild no longer carries "
+        "bond_types in the kwargs dict — the bond head loses the per-pair "
+        "class label and degenerates to BOND_NO_BOND everywhere"
     )
 
 
