@@ -7974,7 +7974,7 @@
   "capacity_pair_2026_10_17": {
     "date": "2026-10-17",
     "task": "#184 device-matched within-metal capacity ablation (G1)",
-    "status": "H128_DONE_H512_RUNNING_3_OF_5",
+    "status": "H128_DONE_H512_RUNNING_4_OF_5",
     "artifacts": {
       "h128": "metrics/by_metric/dmpnn_within_metal_cap128_pf_gpu0.json",
       "h512": "metrics/by_metric/dmpnn_within_metal_cap512_pf_gpu0.json (pending)"
@@ -8069,7 +8069,7 @@
         "That Rh/Os/Re (n=334/333/250) are as well-resolved as Ru — their across-fold std is 0.053-0.062 vs Ru 0.012."
       ]
     },
-    "next": "Os (n=333) and Re (n=250) h512 running; artifact written when all 5 finish.",
+    "next": "Re (n=250) h512 running; artifact written when all 5 finish.",
     "h512_gpu0_partial": {
       "Ru": {
         "n": 4793,
@@ -8133,6 +8133,28 @@
         "capacity_effect_n_seeds_positive": 1,
         "wall_sec": 1439.6,
         "reading": "CAPACITY DOES NOT HELP Rh. 1/5 seeds positive, mean -0.0027. n=334 cannot support 512-wide layers: the G1 gap WORSENS from -0.0312 to -0.0339. Variance also widens (0.0617 -> 0.0710), the opposite of Ir. This is the cohort-size boundary of the capacity lever, not a tuning failure."
+      },
+      "Os": {
+        "n": 333,
+        "h512_gpu0": 0.6878,
+        "h512_gpu0_std": 0.0569,
+        "xgb_same_folds": 0.8213,
+        "delta_gpu0": -0.1334,
+        "h128_gpu0_same_folds": 0.6908,
+        "h128_gpu0_std": 0.0528,
+        "capacity_effect": -0.0029,
+        "capacity_effect_sd": 0.0137,
+        "per_seed_capacity_effect": {
+          "42": 0.0069,
+          "43": -0.0174,
+          "44": -0.012,
+          "49": 0.0156,
+          "123": -0.0078
+        },
+        "capacity_effect_all_seeds_positive": false,
+        "capacity_effect_n_seeds_positive": 2,
+        "wall_sec": 1390.8,
+        "reading": "Capacity is a wash-to-negative on Os: 2/5 seeds positive, mean -0.0029, and the per-seed swing (+0.0156 to -0.0174) is 6x the mean. The G1 gap widens slightly (-0.1305 -> -0.1334). Os was the metal I expected to gain most (lowest h128, 0.6908), so this REFUTES the simple 'capacity scales with headroom' rule: headroom alone does not buy capacity gains when n=333."
       }
     },
     "verdict_so_far": "Capacity is a real but partial lever, and its size scales with the headroom of the metal. Ru (h128 already 0.819): +0.0183, 43% of the gap closed, still -0.0239 behind XGB. Ir (h128 only 0.654): +0.0828, 47% closed, still -0.0906 behind. Neither reaches the XGB column. The earlier Ir-only probe (0.7393) was within 0.002 of the formal deterministic value (0.7371), so it was a valid preview."
