@@ -1,0 +1,391 @@
+{
+  "metric": "dmpnn_within_metal_capacity_foldwise",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "description": "Fold-level decomposition of the device-matched h128 vs h512 capacity pair. Derived entirely from the two MEASURED JSONs; no training.",
+  "unit": "ROC-AUC difference (h512 - h128) on identical folds",
+  "source": "molmetal/scripts/wfA_capacity_foldwise_analysis.py",
+  "inputs": {
+    "h128": "metrics/by_metric/dmpnn_within_metal_cap128_pf_gpu0.json",
+    "h512": "metrics/by_metric/dmpnn_within_metal_cap512_pf_gpu0.json"
+  },
+  "pairing": {
+    "status": "PASS",
+    "checked_keys": [
+      "cohort",
+      "cohort_spec",
+      "fold_protocol",
+      "data_source",
+      "device",
+      "deterministic",
+      "dmpnn_arch.depth",
+      "dmpnn_arch.dropout",
+      "dmpnn_arch.lr",
+      "dmpnn_arch.epochs",
+      "dmpnn_arch.batch_size",
+      "dmpnn_arch.class_weight",
+      "dmpnn_arch.mask_padding"
+    ],
+    "hidden": {
+      "h128": 128,
+      "h512": 512
+    },
+    "mismatches": []
+  },
+  "per_metal": {
+    "Ru": {
+      "n_unique": 4793,
+      "n_fold_pairs": 25,
+      "fold_level": {
+        "mean_delta": 0.018285,
+        "median_delta": 0.020389,
+        "sd_delta": 0.014354,
+        "n_folds_positive": 23,
+        "frac_folds_positive": 0.92,
+        "min_delta": -0.009888,
+        "max_delta": 0.046016,
+        "top5_folds_share_of_total_delta": 0.3981,
+        "worst_quintile_folds_mean_delta": 0.027424,
+        "other_folds_mean_delta": 0.016,
+        "h128_fold_sd": 0.011711,
+        "h512_fold_sd": 0.014222
+      },
+      "seed_clustered_test": {
+        "mean": 0.018285,
+        "sd": 0.005764,
+        "se": 0.002578,
+        "ci95": [
+          0.011128,
+          0.025443
+        ],
+        "ci95_ttest": [
+          0.011128,
+          0.025443
+        ],
+        "ci95_bootstrap_reference_only": [
+          0.013463,
+          0.022511
+        ],
+        "t": 7.0929,
+        "n_seeds": 5,
+        "n_seeds_positive": 5,
+        "all_seeds_positive": true,
+        "p_one_sided_ttest": 0.001043,
+        "p_one_sided_wilcoxon": 0.03125,
+        "p_one_sided_bootstrap_reference_only": 0.0,
+        "p_used_for_family_correction": "p_one_sided_ttest",
+        "ci_used_for_verdict": "ci95_ttest",
+        "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+      },
+      "naive_fold_test_DO_NOT_USE": {
+        "p_one_sided_ttest": 1e-06,
+        "n": 25,
+        "note": "125 fold pairs are pseudo-replicates (5 folds share one split, 5 seeds share one cohort). The nominal p is not trustworthy and the error is not one-sided: measured, Re's naive p (0.071) is LARGER than its clustered p (0.038). Reported only to show the gap against the seed-clustered test."
+      },
+      "fold_identity": {
+        "max_abs_xgb_diff": 0.0,
+        "identical": true
+      }
+    },
+    "Ir": {
+      "n_unique": 1281,
+      "n_fold_pairs": 25,
+      "fold_level": {
+        "mean_delta": 0.082786,
+        "median_delta": 0.055939,
+        "sd_delta": 0.082233,
+        "n_folds_positive": 25,
+        "frac_folds_positive": 1.0,
+        "min_delta": 0.001038,
+        "max_delta": 0.297008,
+        "top5_folds_share_of_total_delta": 0.5465,
+        "worst_quintile_folds_mean_delta": 0.226211,
+        "other_folds_mean_delta": 0.046929,
+        "h128_fold_sd": 0.078409,
+        "h512_fold_sd": 0.034606
+      },
+      "seed_clustered_test": {
+        "mean": 0.082786,
+        "sd": 0.019545,
+        "se": 0.008741,
+        "ci95": [
+          0.058517,
+          0.107054
+        ],
+        "ci95_ttest": [
+          0.058517,
+          0.107054
+        ],
+        "ci95_bootstrap_reference_only": [
+          0.066464,
+          0.096854
+        ],
+        "t": 9.4713,
+        "n_seeds": 5,
+        "n_seeds_positive": 5,
+        "all_seeds_positive": true,
+        "p_one_sided_ttest": 0.000347,
+        "p_one_sided_wilcoxon": 0.03125,
+        "p_one_sided_bootstrap_reference_only": 0.0,
+        "p_used_for_family_correction": "p_one_sided_ttest",
+        "ci_used_for_verdict": "ci95_ttest",
+        "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+      },
+      "naive_fold_test_DO_NOT_USE": {
+        "p_one_sided_ttest": 1.9e-05,
+        "n": 25,
+        "note": "125 fold pairs are pseudo-replicates (5 folds share one split, 5 seeds share one cohort). The nominal p is not trustworthy and the error is not one-sided: measured, Re's naive p (0.071) is LARGER than its clustered p (0.038). Reported only to show the gap against the seed-clustered test."
+      },
+      "fold_identity": {
+        "max_abs_xgb_diff": 0.0,
+        "identical": true
+      }
+    },
+    "Rh": {
+      "n_unique": 334,
+      "n_fold_pairs": 25,
+      "fold_level": {
+        "mean_delta": -0.002675,
+        "median_delta": 0.000891,
+        "sd_delta": 0.035419,
+        "n_folds_positive": 13,
+        "frac_folds_positive": 0.52,
+        "min_delta": -0.134581,
+        "max_delta": 0.047237,
+        "top5_folds_share_of_total_delta": null,
+        "worst_quintile_folds_mean_delta": -0.012467,
+        "other_folds_mean_delta": -0.000227,
+        "h128_fold_sd": 0.062938,
+        "h512_fold_sd": 0.072491
+      },
+      "seed_clustered_test": {
+        "mean": -0.002675,
+        "sd": 0.010545,
+        "se": 0.004716,
+        "ci95": [
+          -0.015768,
+          0.010419
+        ],
+        "ci95_ttest": [
+          -0.015768,
+          0.010419
+        ],
+        "ci95_bootstrap_reference_only": [
+          -0.010652,
+          0.006263
+        ],
+        "t": -0.5672,
+        "n_seeds": 5,
+        "n_seeds_positive": 1,
+        "all_seeds_positive": false,
+        "p_one_sided_ttest": 0.699556,
+        "p_one_sided_wilcoxon": 0.84375,
+        "p_one_sided_bootstrap_reference_only": 0.72005,
+        "p_used_for_family_correction": "p_one_sided_ttest",
+        "ci_used_for_verdict": "ci95_ttest",
+        "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+      },
+      "naive_fold_test_DO_NOT_USE": {
+        "p_one_sided_ttest": 0.64548,
+        "n": 25,
+        "note": "125 fold pairs are pseudo-replicates (5 folds share one split, 5 seeds share one cohort). The nominal p is not trustworthy and the error is not one-sided: measured, Re's naive p (0.071) is LARGER than its clustered p (0.038). Reported only to show the gap against the seed-clustered test."
+      },
+      "fold_identity": {
+        "max_abs_xgb_diff": 0.0,
+        "identical": true
+      }
+    },
+    "Os": {
+      "n_unique": 333,
+      "n_fold_pairs": 25,
+      "fold_level": {
+        "mean_delta": -0.002946,
+        "median_delta": 0.001843,
+        "sd_delta": 0.032242,
+        "n_folds_positive": 15,
+        "frac_folds_positive": 0.6,
+        "min_delta": -0.082028,
+        "max_delta": 0.060829,
+        "top5_folds_share_of_total_delta": null,
+        "worst_quintile_folds_mean_delta": 0.003333,
+        "other_folds_mean_delta": -0.004516,
+        "h128_fold_sd": 0.053892,
+        "h512_fold_sd": 0.058107
+      },
+      "seed_clustered_test": {
+        "mean": -0.002946,
+        "sd": 0.013725,
+        "se": 0.006138,
+        "ci95": [
+          -0.019988,
+          0.014095
+        ],
+        "ci95_ttest": [
+          -0.019988,
+          0.014095
+        ],
+        "ci95_bootstrap_reference_only": [
+          -0.013312,
+          0.008324
+        ],
+        "t": -0.48,
+        "n_seeds": 5,
+        "n_seeds_positive": 2,
+        "all_seeds_positive": false,
+        "p_one_sided_ttest": 0.671857,
+        "p_one_sided_wilcoxon": 0.78125,
+        "p_one_sided_bootstrap_reference_only": 0.71525,
+        "p_used_for_family_correction": "p_one_sided_ttest",
+        "ci_used_for_verdict": "ci95_ttest",
+        "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+      },
+      "naive_fold_test_DO_NOT_USE": {
+        "p_one_sided_ttest": 0.674071,
+        "n": 25,
+        "note": "125 fold pairs are pseudo-replicates (5 folds share one split, 5 seeds share one cohort). The nominal p is not trustworthy and the error is not one-sided: measured, Re's naive p (0.071) is LARGER than its clustered p (0.038). Reported only to show the gap against the seed-clustered test."
+      },
+      "fold_identity": {
+        "max_abs_xgb_diff": 0.0,
+        "identical": true
+      }
+    },
+    "Re": {
+      "n_unique": 250,
+      "n_fold_pairs": 25,
+      "fold_level": {
+        "mean_delta": 0.011352,
+        "median_delta": 0.019048,
+        "sd_delta": 0.037344,
+        "n_folds_positive": 15,
+        "frac_folds_positive": 0.6,
+        "min_delta": -0.047619,
+        "max_delta": 0.102857,
+        "top5_folds_share_of_total_delta": 1.1074,
+        "worst_quintile_folds_mean_delta": 0.017905,
+        "other_folds_mean_delta": 0.009714,
+        "h128_fold_sd": 0.056526,
+        "h512_fold_sd": 0.060358
+      },
+      "seed_clustered_test": {
+        "mean": 0.011352,
+        "sd": 0.010665,
+        "se": 0.004769,
+        "ci95": [
+          -0.00189,
+          0.024594
+        ],
+        "ci95_ttest": [
+          -0.00189,
+          0.024594
+        ],
+        "ci95_bootstrap_reference_only": [
+          0.002743,
+          0.0192
+        ],
+        "t": 2.3803,
+        "n_seeds": 5,
+        "n_seeds_positive": 4,
+        "all_seeds_positive": false,
+        "p_one_sided_ttest": 0.037983,
+        "p_one_sided_wilcoxon": 0.09375,
+        "p_one_sided_bootstrap_reference_only": 0.00475,
+        "p_used_for_family_correction": "p_one_sided_ttest",
+        "ci_used_for_verdict": "ci95_ttest",
+        "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+      },
+      "naive_fold_test_DO_NOT_USE": {
+        "p_one_sided_ttest": 0.07079,
+        "n": 25,
+        "note": "125 fold pairs are pseudo-replicates (5 folds share one split, 5 seeds share one cohort). The nominal p is not trustworthy and the error is not one-sided: measured, Re's naive p (0.071) is LARGER than its clustered p (0.038). Reported only to show the gap against the seed-clustered test."
+      },
+      "fold_identity": {
+        "max_abs_xgb_diff": 0.0,
+        "identical": true
+      }
+    }
+  },
+  "policy": {
+    "name": "size_adaptive_width",
+    "rule": "hidden=512 iff n_unique >= 1000, else 128",
+    "why_this_cut": "Measured, not tuned: both metals above the cut (Ru n=4793, Ir n=1281) have a Holm-significant capacity gain; all three below it (Rh 334, Os 333, Re 250) have point estimates between -0.003 and +0.011 and none survives correction. The cut sits in the empty interval between 334 and 1281; it is not fitted to a boundary.",
+    "per_metal": {
+      "Ru": {
+        "n_unique": 4793,
+        "chosen_hidden": 512,
+        "rule": "hidden=512 iff n >= 1000",
+        "chosen_auc": 0.8375332968544527,
+        "uniform_h128_auc": 0.819248061231169,
+        "gain_vs_uniform_h128": 0.018285,
+        "gap_to_xgb": -0.02385854953661104,
+        "beats_xgb": false,
+        "beats_krasnov": true
+      },
+      "Ir": {
+        "n_unique": 1281,
+        "chosen_hidden": 512,
+        "rule": "hidden=512 iff n >= 1000",
+        "chosen_auc": 0.7370562171331637,
+        "uniform_h128_auc": 0.6542706700593723,
+        "gain_vs_uniform_h128": 0.082786,
+        "gap_to_xgb": -0.09064379983036475,
+        "beats_xgb": false,
+        "beats_krasnov": true
+      },
+      "Rh": {
+        "n_unique": 334,
+        "chosen_hidden": 128,
+        "rule": "hidden=512 iff n >= 1000",
+        "chosen_auc": 0.7775245098039215,
+        "uniform_h128_auc": 0.7775245098039215,
+        "gain_vs_uniform_h128": 0.0,
+        "gap_to_xgb": -0.031210450089126596,
+        "beats_xgb": false,
+        "beats_krasnov": null
+      },
+      "Os": {
+        "n_unique": 333,
+        "chosen_hidden": 128,
+        "rule": "hidden=512 iff n >= 1000",
+        "chosen_auc": 0.6907788018433181,
+        "uniform_h128_auc": 0.6907788018433181,
+        "gain_vs_uniform_h128": 0.0,
+        "gap_to_xgb": -0.13047311827956976,
+        "beats_xgb": false,
+        "beats_krasnov": null
+      },
+      "Re": {
+        "n_unique": 250,
+        "chosen_hidden": 128,
+        "rule": "hidden=512 iff n >= 1000",
+        "chosen_auc": 0.8055619047619048,
+        "uniform_h128_auc": 0.8055619047619048,
+        "gain_vs_uniform_h128": 0.0,
+        "gap_to_xgb": -0.03710476190476186,
+        "beats_xgb": false,
+        "beats_krasnov": null
+      }
+    },
+    "still_does_not_beat_xgb_metals": [
+      "Ru",
+      "Ir",
+      "Rh",
+      "Os",
+      "Re"
+    ]
+  },
+  "scaling": {
+    "n_metals": 5,
+    "pearson_log10n_vs_effect": 0.4361874220845057,
+    "ols_slope_per_decade": 0.028608,
+    "caveat": "n=5. This is a descriptive fit, NOT evidence of a scaling law: the three small cohorts sit inside noise of zero and Re is positive, so the relation is driven by two high-n points. Do not quote a slope as a finding."
+  },
+  "honest_framing": {
+    "do_not_claim": [
+      "Fold-level p-values: 125 fold pairs are pseudo-replicates; only the seed-clustered test is valid.",
+      "A capacity scaling law from 5 metals.",
+      "That the size-adaptive policy beats XGBoost -- it beats it on 0/5 metals.",
+      "That the policy is a validated design rule on unseen cohorts; it is a post-hoc cut on 5 metals."
+    ],
+    "what_this_says": "Where the capacity gain lives inside each metal, whether it rescues bad folds, and what the five-metal column would look like under a size-adaptive width choice."
+  }
+}

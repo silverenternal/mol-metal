@@ -112,6 +112,7 @@ from molmetal.scripts.finetune_metalcytotox_from_tmqm import (  # noqa: E402
     _evaluate,
     _train_one_epoch,
 )
+from molmetal.width_policy import select_hidden  # noqa: E402
 
 # Belt-and-braces with the OMP_* env vars above: if torch was already imported
 # transitively, the env vars are too late, so cap the intra-op pool explicitly.
@@ -331,12 +332,22 @@ def _run_metal(
         smiles = [smiles[i] for i in keep]
         y = y[keep]
     n_unique = int(len(y))
+    # Resolve width AFTER n_unique is known: the size-adaptive policy keys on it.
+    # Under the default "fixed" policy this returns args.hidden unchanged, so
+    # published columns remain reproducible from their configs.
+    hidden, width_decision = select_hidden(
+        n_unique,
+        policy=getattr(args, "width_policy", "fixed"),
+        fixed_hidden=args.hidden,
+    )
     entry: Dict[str, object] = {
         "n_rows_raw": n_raw,
         "n_unique": n_unique,
         "pos_rate": float(y.mean()) if n_unique else float("nan"),
         "resolvable": bool(n_unique >= MIN_UNIQUE_FOR_GATE),
         "krasnov_reported_auc": KRASNOV_WITHIN_METAL_AUC.get(metal),
+        "hidden_used": int(hidden),
+        "width_decision": width_decision,
     }
 
     if n_unique < 2 * args.n_splits or len(set(y.tolist())) < 2:
@@ -374,7 +385,7 @@ def _run_metal(
                     tr,
                     te,
                     train_seed=sd,
-                    hidden=args.hidden,
+                    hidden=hidden,
                     depth=args.depth,
                     dropout=args.dropout,
                     lr=args.lr,
@@ -518,6 +529,13 @@ def run(args: argparse.Namespace) -> Dict[str, object]:
                 else "MetalCytotoxModel (D-MPNN backbone + 2-way head)"
             ),
             "hidden": args.hidden,
+            "hidden_policy": getattr(args, "width_policy", "fixed"),
+            "hidden_note": (
+                "hidden is the fixed value; with width_policy=size-adaptive the width "
+                "actually used is per_metal.<M>.hidden_used"
+                if getattr(args, "width_policy", "fixed") != "fixed"
+                else "uniform across metals"
+            ),
             "depth": args.depth,
             "dropout": args.dropout,
             "lr": args.lr,
@@ -591,6 +609,18 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--radius", type=int, default=2)
     p.add_argument("--nbits", type=int, default=2048)
     p.add_argument("--hidden", type=int, default=128)
+    p.add_argument(
+        "--width-policy",
+        choices=("fixed", "size-adaptive"),
+        default="fixed",
+        help=(
+            "fixed (default) uses --hidden for every metal. size-adaptive picks "
+            "hidden=512 when the deduplicated cohort has n>=1000 and 128 below that, "
+            "based on the measured #184 capacity pair "
+            "(metrics/by_metric/dmpnn_within_metal_capacity_pair_gpu0.json). The width "
+            "actually used is recorded per metal as hidden_used."
+        ),
+    )
     p.add_argument("--depth", type=int, default=3)
     p.add_argument("--dropout", type=float, default=0.1)
     p.add_argument("--lr", type=float, default=1e-3)

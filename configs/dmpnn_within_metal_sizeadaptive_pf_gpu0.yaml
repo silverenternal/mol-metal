@@ -1,0 +1,89 @@
+# Table 1 within-metal column under the size-adaptive width policy.
+#
+# WHY THIS FILE EXISTS
+# --------------------
+# #184 measured the capacity effect of hidden 128 -> 512 device-matched on GPU0
+# (metrics/by_metric/dmpnn_within_metal_capacity_pair_gpu0.json):
+#
+#   metal  n      capacity effect   seeds positive   p_Holm
+#   Ru    4793   +0.0183           5/5              0.0042
+#   Ir    1281   +0.0828           5/5              0.0017
+#   Rh     334   -0.0027           1/5              1.0000
+#   Os     333   -0.0029           2/5              1.0000
+#   Re     250   +0.0114           4/5              0.1139
+#
+# The gain is significant only where n >= 1000. This config encodes that rule:
+# `model.hidden: 128` is the base/fallback, and `model.width_policy:
+# size-adaptive` raises it to 512 per metal when the deduplicated cohort is at
+# least 1000 rows. The width actually used is recorded as per_metal.<M>.hidden_used.
+#
+# STATUS: AUTHORED, NOT RUN. Nothing in the paper cites this config yet. It is
+# the deployable form of the policy, not a new measurement.
+#
+# This does NOT replace the published Table-1 column (device=cpu, hidden=128),
+# and it does not change the two device-matched ablation configs.
+#
+# AGENTS.md §5.11: launch from this YAML only.
+
+entry:
+  script: molmetal/scripts/dmpnn_within_metal_auc.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/dmpnn_within_metal_auc.py
+    --config {yaml_path}
+
+data:
+  metals: [Ru, Ir, Rh, Os, Re]
+
+cohort_spec: paper_funnel
+
+protocol:
+  split_seeds: [42, 43, 44, 49, 123]
+  n_splits: 5
+
+model:
+  hidden: 128
+  width_policy: size-adaptive
+  depth: 3
+  dropout: 0.1
+
+train:
+  lr: 0.001
+  epochs: 50
+  batch_size: 64
+  max_atoms: 120
+  max_edges: 240
+  train_seeds: [0]
+  class_weight: true
+  mask_padding: true
+
+radius: 2
+nbits: 2048
+
+compute:
+  device: cuda:0
+  deterministic: true
+
+max_fold_n: 0
+
+output:
+  out_metric: metrics/by_metric/dmpnn_within_metal_sizeadaptive_pf_gpu0.json
+
+directives:
+  kill_then_adapt: false
+  time_budget: 10h
+  user_ok_required: true
+  # Authored, not launched. Flipping this to true is the user's call (§5.1).
+  user_ok_granted: false
+
+honest_framing:
+  purpose: >-
+    Size-adaptive width variant of the within-metal column. Ru and Ir train at
+    hidden=512, Rh/Os/Re stay at 128, per the measured #184 cut.
+  do_not_claim:
+    - That this replaces the published Table-1 column — that one is the CPU
+      h128 run (dmpnn_within_metal_auc_paper_funnel.json).
+    - That the policy is validated on held-out cohorts — it is a post-hoc cut
+      on five metals.
+    - That this config has been run; it has not.
+    - That the resulting column beats same-fold XGBoost — it does so on 0/5
+      metals even at h512.
+    - A pooled 5-metal mean (Ru is ~64% of the deduplicated cohort).
