@@ -1,5 +1,5 @@
 {
-  "version": "8.4 (refactored 2026-10-18 per user directive '重构cfm_todo.json': dropped 20 _arch_audit_log_* blocks + 7 closed tasks + 1 closed decision; audit history preserved in git log + docs/HONEST_NEGATIVE_CATALOG.md §6.75-§6.99; open tasks: L3_A_B_Phase_3_redo_or_treat_partial, OPT-5_ring_template_prior; open decisions: DEC_retrain_slot, DEC_general_sbdd_baselines, DEC_per_loss_projection_inert; forward_look: Wf-A73 (算子升级) ✅ SHIPPED §6.100 + Wf-A74 (MLP→高级架构迁移) ✅ SHIPPED §6.101 + Wf-A75 (MolDiff guidance) ✅ SHIPPED §6.103, MEASURED largest_fragment_frac 0.048→0.838, gen_validity collapse gate to next wave)",
+  "version": "8.4 (refactored 2026-10-18 per user directive '重构cfm_todo.json': dropped 20 _arch_audit_log_* blocks + 7 closed tasks + 1 closed decision; audit history preserved in git log + docs/HONEST_NEGATIVE_CATALOG.md §6.75-§6.99; open tasks: L3_A_B_Phase_3_redo_or_treat_partial, OPT-5_ring_template_prior; open decisions: DEC_retrain_slot, DEC_general_sbdd_baselines, DEC_per_loss_projection_inert; forward_look: Wf-A73 (算子升级) ✅ SHIPPED §6.100 + Wf-A74 (MLP→高级架构迁移) ✅ SHIPPED §6.101 + Wf-A75 (MolDiff guidance) ✅ SHIPPED §6.103, MEASURED largest_fragment_frac 0.048→0.838, gen_validity collapse gate to next wave) + Wf-A77 (Allegro SCAFFOLD) ✅ SHIPPED §6.104 (no MEASURED gate; SCAFFOLD only; L=0 path live + 5 tests, L≥1 NotImplementedError stub)",
   "purpose": "CFM-based 3D molecule generation for precious-metal anticancer drug design (target-conditioned). Same-dataset same-domain baselines; scoring scripts reused from cloned repos -- no new metric code.",
   "scope_boundary": "GENERATIVE line only. PREDICTIVE line (cross-metal pIC50 / Krasnov-2026 / Chemprop / Bemis-Murcko) is on a separate DeepSeek line and NOT in scope.",
   "task_definition": {
@@ -195,6 +195,18 @@
       "Wf-A75a": "guidance-weight sweep (0.05 / 0.1 / 0.2) to find the sweet spot that keeps the fragment-ratio win without breaking gen_validity (the §6.103 honest-negative; 3×5-epoch GPU smokes)",
       "Wf-A76": "30-epoch retrain consolidation after the Wf-A75a sweep picks the best guidance weight; carries Wf-A73 + Wf-A74 + Wf-A75 fixes",
       "Wf-A77+": "Allegro pairwise equivariant latent / EquiformerV2 backbone / MoE per-edge (per SOTA survey A3/A1/B4)"
+    },
+    "shipped_scaffolds": {
+      "Wf-A77": {
+        "scope": "Allegro-style pairwise equivariant latent SCAFFOLD (per Musaelian 2023 Nat. Commun., arXiv:2204.09490). L=0 (invariant) path LIVE + 5/5 unit tests; L≥1 (equivariant) path is NotImplementedError stub gated on use_equivariant=True. NO e3nn, NO GPU smoke, NO MEASURED gate.",
+        "shipped_files": [
+          "molmetal/adapters/pair_equivariant.py",
+          "molmetal/tests/test_pair_equivariant.py",
+          "configs/cfm_5metal_wfa77_allegro_scaffold.yaml"
+        ],
+        "deferred_to": "Wf-A77+ e3nn.o3.EquivariantTensorProduct wire-in (replaces _tensor_product stub, removes flow.pair_equivariant_enabled from DECLARED_INERT_PATHS, runs 30-epoch GPU retrain)",
+        "catalog_entry": "docs/HONEST_NEGATIVE_CATALOG.md §6.104"
+      }
     }
   },
   "pointer_to_history": {

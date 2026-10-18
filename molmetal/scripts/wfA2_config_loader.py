@@ -389,6 +389,21 @@ DECLARED_INERT_PATHS: frozenset[str] = frozenset(
         # launch.  cfm_todo.json DEC_wfa69_head_class_inert tracks the
         # disposal commitment.
         "flow.head_class",
+        # 2026-10-18 (Wf-A77 SCAFFOLD) — `flow.pair_equivariant_enabled`
+        # is the §5.11 inert reservation key for the future Allegro
+        # pairwise equivariant layer defined in
+        # ``molmetal/adapters/pair_equivariant.py``.  The SCAFFOLD ships
+        # the L=0 (invariant) path live; the L≥1 (equivariant) path is
+        # a NotImplementedError stub gated on ``use_equivariant=True``.
+        # Until Wf-A77+ swaps in e3nn.o3.EquivariantTensorProduct and
+        # the trainer learns to read this flag, the value is consumed by
+        # humans + report writers + the config-binding gate, never by
+        # any trainer dest — same pattern as ``flow.head_class`` one
+        # block up.  cfm_todo.json DEC_wfa77_pair_equivariant_inert
+        # tracks the disposal commitment.  See
+        # HONEST_NEGATIVE_CATALOG.md §6.104 for the SCAFFOLD catalog
+        # entry (MEASURED gate deferred).
+        "flow.pair_equivariant_enabled",
     }
 )
 

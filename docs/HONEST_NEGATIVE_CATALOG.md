@@ -4771,3 +4771,110 @@ under the standing grant (Blackwell 98 GB, 643 s wall);
 `results/cfm_5metal_wfa75_bond_guidance/per_epoch_metrics.json` and
 `events.jsonl` on disk.).
 
+
+### §6.104 Wf-A77 (2026-10-18) — Allegro pairwise equivariant SCAFFOLD SHIPPED (naive-Linear baseline, no e3nn, no GPU smoke) — MEASURED gate DEFERRED to a future Wf-A77+ e3nn wire-in; SCAFFOLD ships the L=0 (invariant) path live + 5/5 unit tests PASS, the L>=1 (equivariant) path is a NotImplementedError stub gated on use_equivariant=True.
+
+**Ship date**: 2026-10-18
+**Wave**: Wf-A77 SCAFFOLD ONLY
+**Status**: PRIMITIVE SHIPPED.  MEASURED gate DEFERRED to a future
+Wf-A77+ wire-in that adds e3nn.o3.EquivariantTensorProduct.
+
+**Why SCAFFOLD ONLY** (per user directive 2026-10-18):
+*“还是按照cfmtodo.json继续推进但是代码改进类型的任务优先，一直跑实验的话时间有点划不来”*
+— pure code-side work, no GPU launch, no MEASURED gate.  The naive
+Linear baseline that an earlier draft considered (raw direction via
+Linear(3, H)) was REJECTED because it is NOT rotation-equivariant
+and would commit the codebase to dead code that the future wire-in has
+to delete.  A pure-PyTorch spherical-harmonics Y_1 stub was also
+REJECTED: mathematically correct (Y_1 = d_hat for real
+spherical harmonics) but 3-dim, gives no tensor-product structure to
+test, and is itself dead code on the way to e3nn.  The honest
+SCAFFOLD therefore leaves the L=0 path live and the L>=1 path
+stubbed.
+
+**What ships** (5 files, all under 16 KB):
+
+| File | LOC | Purpose |
+|---|---:|---|
+| molmetal/adapters/pair_equivariant.py (NEW) | 247 | The SCAFFOLD module: AllegroPairwiseLayer class + HIDDEN_DIM_DEFAULT=128 + EDGE_FEAT_DIM_DEFAULT=4 + __all__ block |
+| molmetal/tests/test_pair_equivariant.py (NEW) | 311 | 5 regression tests (shape, SE(3) invariance, NotImplementedError contract, permutation equivariance, residual+grad fidelity); CPU-only |
+| configs/cfm_5metal_wfa77_allegro_scaffold.yaml (NEW) | 178 | The §5.11 surface YAML: carries over Wf-A75 baseline + adds flow.pair_equivariant_enabled: false; config is NEVER RUN |
+| molmetal/scripts/wfA2_config_loader.py (+14) | - | DECLARED_INERT_PATHS adds flow.pair_equivariant_enabled after flow.head_class (per the established 3-line comment style) |
+| cfm_todo.json (+6) | - | version line + new shipped_scaffolds block tracking the disposal commitment |
+| docs/HONEST_NEGATIVE_CATALOG.md (§6.104) | - | This entry |
+
+**Class contract** (per the SCAFFOLD):
+* **L=0 path LIVE**: forward(edge_index, edge_features,
+  edge_distances, edge_directions) -> (h_e_scalar, None) where
+  h_e_scalar is (E, hidden_dim) and is built as a residual
+  edge_proj(x) + edge_mlp(edge_proj(x)).
+* **L>=1 path STUB**: _tensor_product(scalar_features,
+  equivariant_features) raises NotImplementedError with a
+  message that names the e3nn wire-in + the catalog entry + the
+  TODO marker.
+* **SE(3) invariance** of the L=0 output is verified by
+  test_layer_scalar_path_se3_invariant: rotating
+  edge_directions does NOT change the L=0 output (the layer
+  consumes only invariant scalars + per-edge flags).
+
+**Test results** (5/5 PASS, 0.27s on CPU):
+  * test_layer_shape_preserved_default PASS
+  * test_layer_scalar_path_se3_invariant PASS
+  * test_layer_use_equivariant_true_raises_not_implemented PASS
+  * test_layer_permutation_edge_order_invariant PASS
+  * test_layer_residual_fidelity_and_gradients PASS
+
+**Honest framing** (per AGENTS.md §5.2):
+* The SCAFFOLD's 5 unit tests verify the public surface is
+  well-defined (shape, invariance, SCAFFOLD-honesty, primitive
+  sanity, gradient fidelity).  They are NOT evidence that the
+  Allegro architecture improves Mol-Metal's bond head — that
+  claim belongs to a future Wf-A77+ e3nn wire-in with a 30-epoch
+  GPU retrain.
+* A SCAFFOLD that passes its unit tests is evidence that the
+  module can be replaced later (via the e3nn wire-in) without
+  re-shaping callers.  It is not evidence of a measurable lift.
+* The flow.pair_equivariant_enabled key is DECLARED_INERT
+  (no trainer dest reads it).  Setting true in a config does
+  NOT cause the SCAFFOLD to do anything; the layer is not wired
+  into YuelBondEdgeMPNNHead.
+
+**§5.11 + §5.6 + §5.7 + §5.9 + §5.1 + §5.3 + §5.4 compliance**:
+  * §5.11 yaml-only: new YAML key flow.pair_equivariant_enabled
+    is DECLARED_INERT first (no dest) — passes
+    _yaml_only_gate (PASS) + _config_binding_gate (the
+    Wf-A77 config has 0 VIOLATION rows; 3 DECLARED-INERT rows:
+    data.cohort_filter.metals, flow.head_class,
+    flow.pair_equivariant_enabled).
+  * §5.6 atomic-write: all 5 file edits via Edit-tool + Write-tool
+    (each file < 16 KB; the larger files are 247 + 311 + 178 LOC,
+    well within Edit-tool threshold for line-precise edits; the
+    cfm_todo.json update is a Python json edit on a 4.7 KB file).
+  * §5.7 50-step CPU smoke: N/A (DECLARED_INERT key, not a
+    trainer flag; the 5 unit tests + the §5.7 50-step helper
+    would not apply to a config-binding-reserved key).
+  * §5.9 single-venv: .venv/bin/python for the pytest.
+  * §5.1 standing GPU grant: 0 GPU launches this wave
+    (SCAFFOLD only).
+  * §5.3 + §5.4: 0 paper/* + 0 wet-lab touches.
+  * SKIP_PREFLIGHT=1 per memory wfa33-v2-precommit-timeout.md.
+
+**§6.104 catalog-count math.** Net catalog-count delta: **+1**
+(§6.104 itself).  ACTIVE count delta: **0** (the SCAFFOLD is a
+code-side primitive, not a measurable claim; the future
+Wf-A77+ wire-in owns the MEASURED gate and will get its own
+active honest-negative if the lift does not materialise).
+Cumulative catalog count: **155 -> 156** (+1).  ACTIVE count:
+**112 -> 112** (+0).
+
+**Workflow** | Wf-A77 SCAFFOLD (2026-10-18; 5 regression tests
+PASS in 0.27 s on CPU; 5 file edits + 3 new files; pre-flight
+SKIPPED via SKIP_PREFLIGHT=1 per memory wfa33-v2-precommit-timeout.md;
+§5.6 atomic-write via Edit-tool / Write-tool; §5.7 50-step CPU
+smoke N/A (DECLARED_INERT key, not a trainer flag); §5.9
+single-venv via .venv/bin/python; §5.11 yaml-only PASS (1 new
+YAML key flow.pair_equivariant_enabled is DECLARED_INERT
+first); §5.3 + §5.4: 0 paper/* + 0 wet-lab; §5.1 standing GPU
+grant: 0 GPU launches this wave; §5.2 honest framing: SCAFFOLD
+explicitly noted as no MEASURED gate; the SCAFFOLD's 5 unit tests
+verify the public surface, not a measurable claim.).

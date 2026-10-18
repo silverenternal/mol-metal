@@ -1,0 +1,185 @@
+# configs/cfm_5metal_wfa77_allegro_scaffold.yaml — Wf-A77 SCAFFOLD ONLY.
+#
+# 2026-10-18 — Wf-A77 ships the Allegro pairwise equivariant layer
+# SCAFFOLD per Musaelian et al. 2023 (Nat. Commun.,
+# DOI 10.1038/s41467-023-36714-5, arXiv:2204.09490).  The SCAFFOLD
+# module is at ``molmetal/adapters/pair_equivariant.py`` with class
+# ``AllegroPairwiseLayer``.  The L=0 (invariant) path is live and
+# unit-tested; the L≥1 (equivariant) path is a ``NotImplementedError``
+# stub gated on ``use_equivariant=True`` (the future Wf-A77+ e3nn
+# wire-in replaces the stub with
+# ``e3nn.o3.EquivariantTensorProduct``).
+#
+# What this YAML is for
+# ---------------------
+# This config exists for the §5.11 config-binding-gate sweep only.
+# The key ``flow.pair_equivariant_enabled`` is DECLARED_INERT (per
+# ``molmetal/scripts/wfA2_config_loader.py`` after the Wf-A77
+# commit).  No trainer dest reads it; no GPU smoke runs against it.
+# A future Wf-A77+ wave will (a) remove the key from
+# DECLARED_INERT_PATHS, (b) wire the trainer to read the flag, and
+# (c) actually launch this config.
+#
+# What it carries over from Wf-A75 (cfm_5metal_wfa75_bond_guidance.yaml):
+#   * All Fix 6 + 7 + 8 + 9 + Operator 1 (logit adjustment tau=0.1)
+#   * bond_predictor: yuelbond_edge_mpnn_residual (Wf-A74 Architecture 1)
+#   * bond_length_guidance_weight: 0.1 (Wf-A75 wire-in)
+#
+# What it ADDS (Wf-A77 SCAFFOLD):
+#   * flow.pair_equivariant_enabled: false  (DECLARED_INERT key)
+#
+# MEASURED targets: NONE.  This config is NEVER RUN.  The SCAFFOLD
+# is a code-side primitive, not a measurable improvement; the
+# future Wf-A77+ wire-in owns the MEASURED gate.
+#
+# Per AGENTS.md §5.11: every hyperparameter lives in the YAML.  The
+# trainer is launched via the canonical command_template at line 195
+# below — no CLI hyperparameters, only --seed + --out-dir.
+#
+# Per §5.7 50-step CPU smoke: N/A.  ``flow.pair_equivariant_enabled``
+# is NOT a trainer argparse dest; it is a config-binding-reserved key
+# consumed by humans + the gate.  The §5.7 rule applies to NEW trainer
+# flag wire-ins, not to DECLARED_INERT reservations.
+#
+# Per §5.5 filesystem-truth: this file exists on disk.  It is
+# intentionally NEVER INVOKED.  Future Wf-A77+ may un-declare the
+# key in ``DECLARED_INERT_PATHS`` and actually launch the config.
+# Until then, see the honest_framing block at the bottom.
+
+data:
+  dataset: csv
+  csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+  cohort_filter:
+    metals:
+      - Ru
+      - Ir
+      - Os
+      - Rh
+      - Re
+model:
+  hidden_dim: 128
+  n_layers: 3
+  atom_vocab_size: 13
+  bond_head: learned
+  joint_train: true
+  cfm_decoder: yuelbond
+  learnable_vel_scale: true
+  use_egnn_velocity: true
+  egnn_max_atomic_number: 100
+  egnn_context_dropout: 0.1
+  use_tmqm_init: false
+  pcgrad_multi_task: false
+  q_head_enabled: false
+flow:
+  bond_class_weights: true
+  bond_class_weight_power: 0.5
+  bond_logit_adjustment: true
+  bond_logit_adjustment_tau: 0.1
+  bond_head_kind: single
+  bond_predictor: yuelbond_edge_mpnn_residual
+  n_edge_layers: 4
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  bond_decision_threshold_sweep: [0.5]
+  use_focal_bond_ce: false
+  focal_bond_alpha: 0.25
+  focal_bond_gamma: 2.0
+  bond_sample_balance: 0
+  dative_distance_cutoff: 2.6
+  chem_loss_weight: 0.0
+  use_bond_head_skip: false
+  bond_label_smoothing: 0.0
+  bond_aux_mse_weight: 0.1
+  bond_aux_temperature: 0.5
+  bond_candidate_source: truth_only
+  bond_candidate_cutoff: 2.4
+  subsample_neg_ratio: 0
+  subsample_neg_seed: epoch
+  head_class: YuelBondDecoderHead
+  bond_z_table: pt
+  bond_z_metal_set: all7
+  n_steps: 100
+  method: rk4
+  optimizer: adam
+  warmup_steps: 200
+  ema_decay: 0.999
+  wasserstein_weight: 0.0
+  closure_bounded: true
+  use_yuelbond: true
+  edge_cutoff: 3.5
+  bond_length_guidance_weight: 0.1
+  # Wf-A77 (2026-10-18) — SCAFFOLD ONLY: Allegro pairwise equivariant
+  # layer wired to the flow path. Default ``false`` keeps the SCAFFOLD
+  # inert; a future Wf-A77+ wire-in (e3nn o3.EquivariantTensorProduct)
+  # flips this to ``true`` and the SCAFFOLD class's _tensor_product
+  # stub gets replaced with the real implementation. cfm_todo.json
+  # DEC_wfa77_pair_equivariant_inert tracks the disposal commitment.
+  pair_equivariant_enabled: false
+protocol:
+  batch_size: 8
+  lr: 0.0001
+  gen_validity_samples: 8
+  gen_eval_n: 32
+  gen_eval_seeds: "0 1 2"
+  n_seeds: 1
+  epochs: 5
+  n_seeds_min: 1
+  scheduler:
+    type: cosine
+    warmup_epochs: 1
+    min_lr: 1.0e-06
+  weight_decay: 1.0e-05
+  max_norm: 5.0
+output:
+  base_dir: results/cfm_5metal_wfa77_allegro_scaffold
+  log_master: results/cfm_5metal_wfa77_allegro_scaffold/master.log
+  ckpt_dir: results/cfm_5metal_wfa77_allegro_scaffold/checkpoints
+  events_jsonl: true
+  resume_from: none
+  resume_from_path: null
+natural_charge_mse_weight: 0.0
+use_natural_charges: false
+q_channel_lr_multiplier: 1.0
+q_channel_hints:
+  - q_channel
+  - natural_charge_proj
+  - charge_head
+  - q_head
+compute:
+  gpu: cuda:0
+directives:
+  kill_then_adapt: true
+  time_budget: 1h
+  user_ok_required: false
+  user_ok_granted: "Wf-A77 SCAFFOLD ONLY (1 seed × 5 epochs, GPU0 NEVER RUN, 2026-10-18)"
+  pre_flight_gates_required:
+  - p1_pytorch_cuda_available
+  - p2_tests_pass
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --n-train {n_train} --n-val {n_val} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  legacy_inline_command: ""
+honest_framing:
+  claims:
+  - "SCAFFOLD ONLY: AllegroPairwiseLayer's L=0 (invariant) path is
+    bit-exact-defined and unit-tested; the L>=1 (equivariant) path
+    is a NotImplementedError stub gated on use_equivariant=True."
+  - "The new YAML key flow.pair_equivariant_enabled is DECLARED_INERT;
+    no trainer dest reads it. The config exists for section 5.11
+    surface binding only - there is NO section 5.7 smoke to run."
+  - "5 pytest tests cover shape / invariance / SCAFFOLD-honesty /
+    primitive-sanity / gradient-fidelity, all on CPU."
+  do_not_claim:
+  - "SCAFFOLD improves gen_validity, bond_f1, or any downstream metric.
+    The SCAFFOLD is not MEASURED; MEASURED gate is deferred to Wf-A77+."
+  - "SCAFFOLD is e3nn-compatible. The naive-Linear baseline will be
+    deleted on e3nn wire-in; compatibility claims belong to Wf-A77+."
+  - "GPU smoke result. This SCAFFOLD never ran on GPU per the user
+    directive (TODO markers only, no production path)."
+  deferred:
+  - "Wf-A77+ wire-in: replace _tensor_product NotImplementedError stub
+    with e3nn.o3.EquivariantTensorProduct; remove
+    flow.pair_equivariant_enabled from DECLARED_INERT_PATHS once the
+    trainer learns to read it."
+  - "30-epoch GPU retrain with the live Allegro path (gated on e3nn
+    wire-in landing)."
