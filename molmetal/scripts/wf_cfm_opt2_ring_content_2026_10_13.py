@@ -191,9 +191,13 @@ def _per_mol_summary(cohort: List[str]) -> Dict:
     }
 
 
-def _load_generated() -> List[str]:
+def _load_generated(path: Optional[Path] = None) -> List[str]:
+    """Load generated SMILES.  Wf-A78 (2026-10-18): path is a parameter so
+    the ring-size MEASURED gate can point at a fresh run's
+    generated_smiles.csv; the default keeps the OPT-2 cohort."""
     smiles: List[str] = []
-    with open(GENERATED_CSV) as f:
+    src = Path(path) if path is not None else GENERATED_CSV
+    with open(src) as f:
         for r in csv.DictReader(f):
             smiles.append(r["smiles"])
     return smiles
@@ -324,11 +328,33 @@ def main() -> int:
         help="Sample size for the real cohort (default 2000; 0 = use all 31k).",
     )
     parser.add_argument("--seed", type=int, default=0)
+    # Wf-A78 (2026-10-18) — point the measurement at a fresh run instead of
+    # the frozen OPT-2 cohort.  Defaults reproduce the OPT-2 output exactly.
+    parser.add_argument(
+        "--generated-csv",
+        type=Path,
+        default=None,
+        help="generated_smiles.csv to measure (default: the OPT-2 cohort).",
+    )
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="metric JSON path (default: metrics/by_metric/cfm_opt2_ring_content.json).",
+    )
+    parser.add_argument(
+        "--report-dir",
+        type=Path,
+        default=None,
+        help="report directory (default: the OPT-2 report dir).",
+    )
     args = parser.parse_args()
 
-    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    report_dir = args.report_dir or REPORT_DIR
+    metric_out = args.out or METRIC_OUT
+    report_dir.mkdir(parents=True, exist_ok=True)
 
-    gen = _load_generated()
+    gen = _load_generated(args.generated_csv)
     real_full = _load_real_six_metal()
     if args.real_sample and args.real_sample < len(real_full):
         import random
@@ -351,7 +377,7 @@ def main() -> int:
         "tag": "MEASURED",
         "date": "2026-10-13",
         "purpose": "OPT-2: ring content comparison. Generated (n=66) vs real six-metal baseline (n=31150; sampled).",
-        "generated_path": str(GENERATED_CSV),
+        "generated_path": str(args.generated_csv or GENERATED_CSV),
         "real_path": str(REAL_TMQM),
         "generated": gen_s,
         "real": real_s,
@@ -364,24 +390,24 @@ def main() -> int:
         },
     }
 
-    METRIC_OUT.parent.mkdir(parents=True, exist_ok=True)
-    with open(METRIC_OUT, "w") as f:
+    metric_out.parent.mkdir(parents=True, exist_ok=True)
+    with open(metric_out, "w") as f:
         json.dump(out, f, indent=2)
-    print(f"wrote metric: {METRIC_OUT}", file=sys.stderr)
+    print(f"wrote metric: {metric_out}", file=sys.stderr)
 
     # Write a slim report dir for browsing -- exclude the row-by-row list to
     # keep it readable.
     slim = {k: v for k, v in out.items() if k != "generated"}
     slim["generated"] = {k: v for k, v in out["generated"].items() if k != "rows"}
     slim["real"] = {k: v for k, v in out["real"].items() if k != "rows"}
-    with open(REPORT_DIR / "summary.json", "w") as f:
+    with open(report_dir / "summary.json", "w") as f:
         json.dump(slim, f, indent=2)
 
     # A per-row JSONL for the generated cohort (small) and the real sample
-    with open(REPORT_DIR / "generated_per_mol.jsonl", "w") as f:
+    with open(report_dir / "generated_per_mol.jsonl", "w") as f:
         for row in gen_s["rows"]:
             f.write(json.dumps(row) + "\n")
-    with open(REPORT_DIR / "real_sample_per_mol.jsonl", "w") as f:
+    with open(report_dir / "real_sample_per_mol.jsonl", "w") as f:
         for row in real_s["rows"]:
             f.write(json.dumps(row) + "\n")
 
