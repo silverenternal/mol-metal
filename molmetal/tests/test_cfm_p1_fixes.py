@@ -244,6 +244,11 @@ def test_p1_does_not_break_p0():
         atom_types=atom_types,
         bonds=bonds,
         bond_types=bond_types,
+        # `formal_charges` became a required field of the frozen dataclass
+        # after this test was written; every production caller passes it
+        # (rdkit_io, adapters, mock).  Omitting it here was test drift, not a
+        # missing default: a default would have to be a mutable tensor.
+        formal_charges=torch.zeros(4, dtype=torch.long),
     )
     loss = adapter.train_step(pocket=None, mols=[mol])
     assert math.isfinite(
@@ -385,9 +390,16 @@ def test_cross_attention_pocket():
             pocket_atom_embed=pocket_atom_embed,
             pocket_atom_mask=pocket_atom_mask,
         )
-    assert not torch.allclose(out_uncond["vel"], out_cond2["vel"], atol=1e-3), (
-        "After perturbing cross-attn weights, the conditioned forward "
-        "must differ from the unconditioned forward"
+    # 2c compares the HIDDEN STATE, not the velocity.  `vel_head.weight` is
+    # zero-initialised on purpose (a fresh flow field must start at v=0, the
+    # standard FM initialisation), so `vel` is exactly 0 in BOTH forwards and
+    # an allclose on it can never fail -- the pre-fix assertion was passing
+    # for the wrong reason before the zero-init landed and failing after.
+    # The cross-attention block writes into `h`, so `h` is where its effect
+    # is observable.  MEASURED: max|dh| = 0.474 with the perturbed weights.
+    assert not torch.allclose(out_uncond["h"], out_cond2["h"], atol=1e-3), (
+        "After perturbing cross-attn weights, the conditioned hidden state "
+        "must differ from the unconditioned one (vel is zero-init by design)"
     )
 
     # 3. Robustness to varying per-pocket-atom counts.

@@ -1612,6 +1612,15 @@ class EGNNVelocityField(nn.Module):
                 f"context_dropout must be in [0.0, 1.0), got {context_dropout!r}"
             )
         self.context_dropout = float(context_dropout)
+        # 2026-10-19 — every sibling module in this package (EGNNPredictor,
+        # UnifiedAtomBondFlow, ConfidenceHead, PerLayerPocketInjector,
+        # EGNNVelocityField's own `head` at :1405) stores `hidden_dim` as an
+        # attribute; this class was the only one that did not.  That made
+        # `vf.hidden_dim` an AttributeError instead of the construction width
+        # (test_cfm_p1_fixes::test_hidden_dim_default_128), and forced
+        # cfm_property_panel to recover the width from
+        # `model.head.atom_encoder.weight.shape[0]`.  Stored, not inferred.
+        self.hidden_dim = int(hidden_dim)
 
         self.time_mlp = _MaybeFusedSiLUMLP(
             in_dim=1,
