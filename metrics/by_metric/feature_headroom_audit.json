@@ -1,0 +1,293 @@
+{
+  "artifact": "feature_headroom_audit",
+  "version": "1.0",
+  "generated_utc": "2026-10-18T07:09:30+00:00",
+  "provenance": {
+    "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "script": "molmetal/scripts/audit_feature_headroom.py",
+    "git_commit": "dca1d7ad6460539aeef2139f8fb1b0499b8ebaba",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "endpoint": "potency",
+    "target": "value_log10 (log10 IC50, uM)",
+    "cv": "GroupKFold(5) grouped by ligand_main_fragment",
+    "learner": "LightGBM, identical hyper-parameters at every stage",
+    "stages": [
+      "ligand_only",
+      "+metal",
+      "+metal+cell (production)",
+      "+time",
+      "+metal chemistry (ox/charge/counterion)",
+      "+year",
+      "+doi (paper offset; interpolation only)",
+      "+metal chemistry AFTER doi (is it just a paper proxy?)"
+    ],
+    "warning": "doi is a paper-level categorical. Its R2 is an upper bound on an assay-offset model and is not deployable to an unseen paper.",
+    "lightgbm": {
+      "objective": "regression",
+      "n_estimators": 500,
+      "learning_rate": 0.05,
+      "num_leaves": 31,
+      "min_child_samples": 20,
+      "subsample": 0.8,
+      "subsample_freq": 1,
+      "colsample_bytree": 0.3,
+      "reg_lambda": 1.0,
+      "random_state": 20261018,
+      "n_jobs": 1,
+      "deterministic": true,
+      "force_row_wise": true,
+      "verbose": -1
+    },
+    "seed": 20261018
+  },
+  "coverage": {
+    "metal": {
+      "n_unique": 5,
+      "missing_share": 0.0
+    },
+    "oxidation_state": {
+      "n_unique": 5,
+      "missing_share": 0.0
+    },
+    "charge_complex": {
+      "n_unique": 11,
+      "missing_share": 0.0
+    },
+    "counterion": {
+      "n_unique": 62,
+      "missing_share": 0.3299
+    },
+    "cell_line_key": {
+      "n_unique": 733,
+      "missing_share": 0.0
+    },
+    "time_bucket": {
+      "n_unique": 6,
+      "missing_share": 0.0
+    },
+    "year": {
+      "n_unique": 25,
+      "missing_share": 0.0
+    },
+    "doi": {
+      "n_unique": 1905,
+      "missing_share": 0.0
+    },
+    "ligand_main_fragment": {
+      "n_unique": 3169,
+      "missing_share": 0.0
+    },
+    "ligand_canonical": {
+      "n_unique": 6658,
+      "missing_share": 0.0
+    },
+    "cell_line_top40_share": 0.7773,
+    "time_top_values": {
+      "48.0": 11346,
+      "72.0": 7010,
+      "24.0": 4838,
+      "96.0": 1744,
+      "144.0": 441,
+      "120.0": 347
+    }
+  },
+  "censoring": {
+    "n_rows_total": 26801,
+    "n_exact": 26801,
+    "n_censored": 5024,
+    "censored_share": 0.1875,
+    "censoring_kinds": {
+      "right": 5015,
+      "left": 9
+    },
+    "n_all_censored_groups": null,
+    "n_rows_at_the_ceiling": 2520,
+    "exact_median_log10": 1.3617,
+    "censored_bound_median_log10": 2.0,
+    "censored_share_by_metal": {
+      "Ir": {
+        "n_rows": 4546,
+        "n_censored": 727,
+        "censored_share": 0.1599,
+        "mean_value_log10": 1.0389
+      },
+      "Os": {
+        "n_rows": 1118,
+        "n_censored": 164,
+        "censored_share": 0.1467,
+        "mean_value_log10": 0.9728
+      },
+      "Re": {
+        "n_rows": 868,
+        "n_censored": 107,
+        "censored_share": 0.1233,
+        "mean_value_log10": 1.3172
+      },
+      "Rh": {
+        "n_rows": 1134,
+        "n_censored": 162,
+        "censored_share": 0.1429,
+        "mean_value_log10": 1.0459
+      },
+      "Ru": {
+        "n_rows": 19135,
+        "n_censored": 3864,
+        "censored_share": 0.2019,
+        "mean_value_log10": 1.3677
+      }
+    },
+    "censored_share_spread": 0.0786,
+    "interpretation": "Censored potency rows are NOT dropped: MSRS-0 carries them at the detection bound, so the target is a lower bound treated as exact. That compresses the inactive tail. Because the censored share differs across metals (spread above), the compression is differential and biases the metal ordering by roughly share_spread x tail_shortfall."
+  },
+  "reliability": {
+    "n_rows": 21406,
+    "n_exact_distribution": {
+      "1": 21090,
+      "2": 278,
+      "3": 31,
+      "4": 3,
+      "5": 1,
+      "7": 3
+    },
+    "share_single_measurement": 0.9852,
+    "note": "n_exact >= 2 rows are medians of replicate measurements and are the least noisy targets"
+  },
+  "stages": {
+    "ligand_only": {
+      "r2": 0.2207,
+      "mae": 0.5509,
+      "rmse": 0.7058,
+      "n_features": 2048,
+      "categorical_levels": {},
+      "elapsed_seconds": 25.4,
+      "r2_delta_vs_production": -0.1042
+    },
+    "+metal": {
+      "r2": 0.2665,
+      "mae": 0.5325,
+      "rmse": 0.6848,
+      "n_features": 2049,
+      "categorical_levels": {
+        "metal": 5
+      },
+      "elapsed_seconds": 26.4,
+      "r2_delta_vs_production": -0.0584
+    },
+    "+metal+cell (production)": {
+      "r2": 0.3249,
+      "mae": 0.5066,
+      "rmse": 0.6569,
+      "n_features": 2050,
+      "categorical_levels": {
+        "metal": 5,
+        "cell_line_key": 733
+      },
+      "elapsed_seconds": 26.7,
+      "r2_delta_vs_production": 0.0
+    },
+    "+time": {
+      "r2": 0.3386,
+      "mae": 0.5032,
+      "rmse": 0.6502,
+      "n_features": 2051,
+      "categorical_levels": {
+        "metal": 5,
+        "cell_line_key": 733,
+        "time_bucket": 6
+      },
+      "elapsed_seconds": 26.3,
+      "r2_delta_vs_production": 0.0137
+    },
+    "+metal chemistry (ox/charge/counterion)": {
+      "r2": 0.3924,
+      "mae": 0.4761,
+      "rmse": 0.6232,
+      "n_features": 2054,
+      "categorical_levels": {
+        "metal": 5,
+        "cell_line_key": 733,
+        "time_bucket": 6,
+        "oxidation_state": 5,
+        "charge_complex": 11,
+        "counterion": 63
+      },
+      "elapsed_seconds": 25.2,
+      "r2_delta_vs_production": 0.0675
+    },
+    "+year": {
+      "r2": 0.4115,
+      "mae": 0.4692,
+      "rmse": 0.6134,
+      "n_features": 2055,
+      "categorical_levels": {
+        "metal": 5,
+        "cell_line_key": 733,
+        "time_bucket": 6,
+        "oxidation_state": 5,
+        "charge_complex": 11,
+        "counterion": 63,
+        "year": 25
+      },
+      "elapsed_seconds": 26.7,
+      "r2_delta_vs_production": 0.0866
+    },
+    "+doi (paper offset; interpolation only)": {
+      "r2": 0.4437,
+      "mae": 0.4508,
+      "rmse": 0.5964,
+      "n_features": 2056,
+      "categorical_levels": {
+        "metal": 5,
+        "cell_line_key": 733,
+        "time_bucket": 6,
+        "oxidation_state": 5,
+        "charge_complex": 11,
+        "counterion": 63,
+        "year": 25,
+        "doi": 1905
+      },
+      "elapsed_seconds": 28.2,
+      "r2_delta_vs_production": 0.1188
+    },
+    "+metal chemistry AFTER doi (is it just a paper proxy?)": {
+      "r2": 0.4461,
+      "mae": 0.4499,
+      "rmse": 0.595,
+      "n_features": 2056,
+      "categorical_levels": {
+        "metal": 5,
+        "cell_line_key": 733,
+        "time_bucket": 6,
+        "year": 25,
+        "doi": 1905,
+        "oxidation_state": 5,
+        "charge_complex": 11,
+        "counterion": 63
+      },
+      "elapsed_seconds": 28.1,
+      "r2_delta_vs_production": 0.1212
+    }
+  },
+  "headroom": {
+    "production_r2": 0.3249,
+    "time_only_delta": 0.0137,
+    "metal_chemistry_delta": 0.0675,
+    "year_delta": 0.0866,
+    "paper_offset_delta": 0.1188,
+    "metal_chemistry_after_doi_delta": 0.0024
+  },
+  "caveats": [
+    "Cumulative stages: each R2 is the whole feature set, not the marginal value of the block in isolation.",
+    "The DOI stage can memorise paper-specific offsets and is reported as an upper bound only.",
+    "Counterion is 33.0% missing; missing is encoded as its own level.",
+    "Censored targets are fitted as if exact (they sit at the detection bound); the censoring block quantifies that bias separately.",
+    "The last stage tests whether the metal-chemistry block survives a paper offset. It largely does not: the block is a paper/ligand proxy here."
+  ]
+}
