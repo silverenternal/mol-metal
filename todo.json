@@ -131,7 +131,8 @@
       "msrs_phototoxicity": "metrics/by_metric/msrs_phototoxicity.json",
       "msrs_surface": "metrics/by_metric/msrs_surface_model.json",
       "msrs_actionability": "metrics/by_metric/msrs_actionability.json",
-      "msrs_lomo": "metrics/by_metric/msrs_lomo_surface.json"
+      "msrs_lomo": "metrics/by_metric/msrs_lomo_surface.json",
+      "msrs_recommendation": "metrics/by_metric/msrs_recommendation.json"
     }
   },
   "framework": {
@@ -891,11 +892,161 @@
       "acceptance": "模型显著优于 global-best (paired, Holm); 否则触发 kill criterion。",
       "gpu": "none",
       "wall": "2 天",
-      "status": "TODO",
+      "status": "DONE",
       "priority": "P2",
       "depends_on": [
         "MSRS-2",
         "MSRS-3"
+      ],
+      "completed": "2026-10-18",
+      "acceptance_met": false,
+      "why_not_met": "模型在四个主检验上均未优于 global-best (全部 Holm p = 1.0, 点估计方向相反)。按预设 kill criterion 结案: 只报告全局金属排序, 不做配体级推荐。",
+      "artifact": "metrics/by_metric/msrs_recommendation.json",
+      "producer": "molmetal/scripts/msrs_recommendation.py (tests/test_msrs_recommendation.py, 20 passed)",
+      "gpu_used": "none (纯 CPU, ~3.2 min)",
+      "result": {
+        "design": {
+          "cohort": "同配体 + 细胞系 + DOI + 时间点, 且至少测过 2 个金属",
+          "cohort_definitions": {
+            "strict": "ligand_canonical (同一化学实体) — 主视图",
+            "loose": "ligand_main_fragment — 与 MSRS-2/3/4 的配对键一致, 但会混入多个化合物"
+          },
+          "orientation": "y = log10 IC50 (uM), 越低越好; regret = y(选中) - y(观测最优)",
+          "baselines": "global_best / cell_best 均在训练折内重估 (fold-safe)",
+          "primary_test": "per-cohort regret 配对单侧 t, 但主推断按 DOI 聚类 (61 篇)"
+        },
+        "strict_potency_primary": {
+          "n_rows": 21045,
+          "n_cohorts": 424,
+          "n_dois": 61,
+          "cohort_size_distribution": {
+            "2": 424
+          },
+          "mean_regret": {
+            "additive": 0.1298,
+            "interaction": 0.1369,
+            "global_best": 0.1198,
+            "cell_best": 0.1228,
+            "oracle": 0.0,
+            "random_choice": 0.1587
+          },
+          "top1_accuracy": {
+            "additive": 0.5212,
+            "interaction": 0.5071,
+            "global_best": 0.5755,
+            "cell_best": 0.5778,
+            "oracle": 1.0
+          },
+          "ndcg": {
+            "additive": 0.93,
+            "interaction": 0.925,
+            "global_best": 0.9356,
+            "cell_best": 0.9346
+          },
+          "hit_at_0.1": {
+            "additive": 0.6509,
+            "global_best": 0.684
+          },
+          "paired_vs_global_best_cohort": {
+            "mean_delta": -0.01,
+            "p_one_sided": 0.829
+          },
+          "paired_vs_global_best_doi_clustered": {
+            "mean_delta": -0.0331,
+            "p_one_sided": 0.9103,
+            "bootstrap_ci95": [
+              -0.0844,
+              0.0125
+            ],
+            "holm_p": 1.0
+          }
+        },
+        "other_cells": {
+          "strict_cisplatin_ratio": {
+            "n_cohorts": 100,
+            "additive_regret": 0.1534,
+            "global_best_regret": 0.1428,
+            "doi_delta": -0.0143,
+            "holm_p": 1.0
+          },
+          "loose_potency": {
+            "n_cohorts": 651,
+            "additive_regret": 0.1503,
+            "global_best_regret": 0.1401,
+            "doi_delta": -0.0319,
+            "holm_p": 1.0
+          },
+          "loose_cisplatin_ratio": {
+            "n_cohorts": 222,
+            "additive_regret": 0.11,
+            "global_best_regret": 0.1089,
+            "doi_delta": -0.0058,
+            "holm_p": 1.0
+          }
+        },
+        "disagreement_decomposition_strict_potency": {
+          "agreement_rate": 0.7123,
+          "n_disagree": 122,
+          "regret_model_when_disagree": 0.1554,
+          "regret_baseline_when_disagree": 0.1207,
+          "model_wins_disagreements": 48,
+          "net_gain_when_disagree": -0.0347
+        },
+        "full_five_metal_strict_potency": {
+          "top1_is_observed_rate": 0.3491,
+          "n_verifiable": 148,
+          "mean_regret_verifiable": 0.1522,
+          "top1_metal_distribution": {
+            "Ir": 72,
+            "Rh": 352
+          }
+        },
+        "structural_check": {
+          "additive_within_cohort_ranking_is_constant": true,
+          "n_distinct_orders_per_fold": "1 in all 5 folds, in all 4 cells",
+          "model_implied_order_potency": "Rh first in 4/5 folds; Os always third",
+          "data_order_potency": [
+            "Os",
+            "Ir",
+            "Rh",
+            "Ru",
+            "Re"
+          ],
+          "data_mean_y_potency": {
+            "Os": 0.7812,
+            "Ir": 0.8494,
+            "Rh": 0.8946,
+            "Ru": 1.1816,
+            "Re": 1.2342
+          },
+          "data_order_cisplatin_ratio": [
+            "Ir",
+            "Re",
+            "Rh",
+            "Os",
+            "Ru"
+          ],
+          "verdict": "加性面在同一折内对所有配体给出同一个金属排序; 它不是配体级推荐器, 而是一个全局排序, 且该排序把数据上最优的 Os 放在第三位。"
+        }
+      },
+      "findings": [
+        "Kill criterion 触发: strict/potency 上 additive regret 0.1298 vs global_best 0.1198, DOI 聚类后 delta = -0.0331 log10 (95% CI [-0.0844, +0.0125], p_one_sided = 0.910, Holm = 1.0)。四个主检验全部为负, 无一通过。",
+        "模型仍优于随机: 随机选择的期望 regret 0.1587 vs additive 0.1298。信号存在, 但它全部是金属主效应, 不是配体条件化的。",
+        "失败不是估计噪声, 是结构: 加性面 (interaction_constraints 禁掉 ligand x metal 与 metal x cell) 的预测是 f(ligand)+g(metal)+h(cell), 所以同一折内所有队列的金属排序完全相同。实测 5/5 折、4/4 单元格均为单一排序 (n_distinct_orders = 1)。",
+        "模型学到的那个全局排序是错的: potency 上它把 Rh 放第一、Os 放第三 (4/5 折), 而数据均值是 Os 0.7812 < Ir 0.8494 < Rh 0.8946 < Ru 1.1816 < Re 1.2342。把最优金属排到第三, 必然输给直接取训练折均值。",
+        "偏离即错: 模型与 global_best 在 71.2% 的队列上选同一个金属; 在 122 个偏离队列里, 模型 regret 0.1554 vs 基线 0.1207, 只赢 48/122 (39.3%, 低于抛硬币), 净亏 -0.0347。这不是「略差」, 是反向信息。",
+        "五金属排序无法被观测验证: strict 队列 424/424 全部只有 2 个金属 (loose 651 个里也只有 42 个 k=3、16 个 k=4)。模型的自由五选一有 65.1% 落在该队列没测过的金属上; 可验证的 148 个里 regret 0.1522, 且选择集由模型自己决定。",
+        "自由排序退化成二元: strict/potency 上模型只选 Ir (72) 或 Rh (352), 从不选 Ru/Os/Re。这是加性面把金属块压成常数的直接后果。",
+        "数据侧唯一稳健的推荐是全局金属排序: Os < Ir < Rh < Ru < Re (potency), Ir < Re < Rh < Os < Ru (cisplatin_ratio)。两个终点一致地把 Ru 放最后、把 Ir 放前列。",
+        "loose 视图出现一个反转: additive top1 0.4869 (低于 50%), 但 interaction 0.5545 反超 global_best 0.5253。这是唯一一处交互臂看起来有用的格子; 但 58.3% 的 loose 队列混了 >=2 个化合物 (最多 8 个), 所以这个「交互」很可能是在拟合化合物身份, 不能当成配体级信号。"
+      ],
+      "decision": "MSRS-6 结案为负并执行 kill criterion: 只报告全局金属排序 (potency: Os<Ir<Rh<Ru<Re; RI: Ir<Re<Rh<Os<Ru), 不做配体级金属推荐, 也不把「五金属排序」写进论文卖点。 与 MSRS-2/3/4 合并成一条完整负链: 交互项显著但排序更差 -> 区间覆盖达标但过宽 -> 未见金属不可外推 -> 决策层打不过全局均值。D-MPNN 响应面臂因此不进入 GPU 队列, 除非它先在 delta 符号上超过 additive。",
+      "caveats": [
+        "strict 队列全部是 k=2, 所以「排序 5 个金属」这个任务在本数据上从未被完整观测过; 五选一的结果只能部分验证。",
+        "loose 队列 58.3% 混合了多个 canonical 化合物 (mean 1.91, max 8), 其 delta 混有化合物身份; loose 只作灵敏度检查。",
+        "基线在训练折内估计, 但评估队列来自同一语料; 真正的前瞻检验需要留出整篇论文。",
+        "DOI 聚类只有 61 篇 (strict/potency) 与 15 篇 (strict/RI), 检验功效有限; 但点估计方向为负且 CI 跨 0, 结论是「没有证据支持」而非「证明了更差」。",
+        "regret 只在选中金属被测量过时才有定义; 自由五选一的可验证子集由模型自身的选择决定, 存在选择偏差。"
       ]
     },
     {
@@ -949,7 +1100,7 @@
     "wave_4_paper": [
       "MSRS-8"
     ],
-    "note": "Wave 1 完成; MSRS-2/3/4 已用 CPU 结案, 零 GPU。结论链: 交互显著但排序更差 (MSRS-2); 90% 区间覆盖达标但过宽且不指示正确性 (MSRS-3); 未见金属无法外推 (MSRS-4, potency 上 no-metal 显著更好)。MSRS-6 的推荐层预计触发 kill criterion; MSRS-7 仍可做, 但只能验证插值, 不能验证外推。"
+    "note": "Wave 1 + Wave 2 + MSRS-6 全部完成, 零 GPU。结论链: 交互项显著但 delta 符号更差 (MSRS-2); 90% 区间覆盖达标但过宽且不指示正确性 (MSRS-3); 未见金属不可外推 (MSRS-4); 决策层打不过 global-best (MSRS-6, 四个主检验全负, Holm=1), 因为加性面在同一折内只有一个金属排序, 而它把数据最优的 Os 排到第三。MSRS-7 仍可做, 但只能验证插值。MSRS-8 待用户授权。"
   },
   "legacy_mainline": {
     "note": "二分类主线不再是论文主轴, 但其产物仍是 MSRS 的基线与对照, 不删除。",

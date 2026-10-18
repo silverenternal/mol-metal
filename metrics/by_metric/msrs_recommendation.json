@@ -1,0 +1,1317 @@
+{
+  "artifact": "msrs_recommendation",
+  "version": "1.0",
+  "framework": "MSRS — Metal Substitution Response Surface",
+  "level": "L3 decision layer",
+  "generated_utc": "2026-10-18T06:17:32+00:00",
+  "provenance": {
+    "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "metal_descriptors": "/home/hugo/codes/mol-metal/molmetal/data/metal_chemistry_5.csv",
+    "metal_descriptors_sha256": "8e5c9db485f7ab270b0e49d376fbcce2954cd678495813fd26a799047c43dcc7",
+    "script": "molmetal/scripts/msrs_recommendation.py",
+    "git_commit": "f5df3e579ad5f6addca30aedeae81ae80fd88eb6",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "question": "given a ligand and its assay context, which of the five metals is predicted to be most potent?",
+    "orientation": "y = log10 IC50 (µM); lower is better; regret = y(chosen) - y(best observed)",
+    "cohort": "same ligand + cell line + DOI + time point, >= 2 distinct metals measured",
+    "cohort_definitions": {
+      "strict": "ligand_canonical — one chemical entity; PRIMARY",
+      "loose": "ligand_main_fragment — MSRS-2/3/4 pairing key; pools distinct compounds"
+    },
+    "scorers": [
+      "additive",
+      "interaction",
+      "global_best",
+      "cell_best",
+      "oracle"
+    ],
+    "baselines_fold_safe": "metal / cell-line means recomputed on each training fold",
+    "hit_thresholds": [
+      0.1,
+      0.2091,
+      0.5
+    ],
+    "ndcg": {
+      "k": 3,
+      "gain": "2 ** (-(y - y_best) / 0.2091)",
+      "note": "every cohort has k=2 under the strict key, so nDCG is degenerate there"
+    },
+    "paired_test": "one-sided t on per-cohort regret delta; primary inference clusters by DOI",
+    "seed": 20261018,
+    "n_folds": 5
+  },
+  "acceptance": {
+    "criterion": "model beats global_best on paired regret, Holm-corrected across endpoints",
+    "met": false,
+    "reason": "mean regret delta -0.0331 log10, Holm p 1; model does not beat global_best",
+    "n_primary_tests_met": 0,
+    "by_test": {
+      "strict/potency": {
+        "met": false,
+        "mean_regret_delta": -0.0331,
+        "holm_p": 1.0,
+        "reason": "mean regret delta -0.0331 log10, Holm p 1; model does not beat global_best"
+      },
+      "strict/cisplatin_ratio": {
+        "met": false,
+        "mean_regret_delta": -0.0143,
+        "holm_p": 1.0,
+        "reason": "mean regret delta -0.0143 log10, Holm p 1; model does not beat global_best"
+      },
+      "loose/potency": {
+        "met": false,
+        "mean_regret_delta": -0.0319,
+        "holm_p": 1.0,
+        "reason": "mean regret delta -0.0319 log10, Holm p 1; model does not beat global_best"
+      },
+      "loose/cisplatin_ratio": {
+        "met": false,
+        "mean_regret_delta": -0.0058,
+        "holm_p": 1.0,
+        "reason": "mean regret delta -0.0058 log10, Holm p 1; model does not beat global_best"
+      }
+    },
+    "consequence_if_not_met": "kill criterion: report only the global metal ordering; no ligand-level recommendation"
+  },
+  "endpoints": {
+    "strict": {
+      "potency": {
+        "status": "OK",
+        "n_rows": 21045,
+        "n_dropped_censored": 4813,
+        "censored_share": 0.1836,
+        "n_cohorts": 424,
+        "cohort_definition": [
+          "ligand_canonical",
+          "cell_line_key",
+          "doi",
+          "time_h"
+        ],
+        "cohort_size_distribution": {
+          "2": 424
+        },
+        "n_dois": 61,
+        "mixing": {
+          "max_compounds_per_cohort": 1,
+          "note": "strict cohorts are one canonical ligand"
+        },
+        "baseline_notes": {
+          "rows_with_unseen_metal_in_train_fold": 0,
+          "rows_with_unseen_cell_metal_pair": 620
+        },
+        "random_choice_expected_regret": 0.1587,
+        "scores": {
+          "additive": {
+            "n_cohorts": 424,
+            "mean_regret": 0.1298,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.5212,
+            "mean_ndcg": 0.93,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 424,
+                "mean_regret": 0.1298,
+                "top1_accuracy": 0.5212,
+                "mean_ndcg": 0.93
+              }
+            },
+            "hit@0.1": 0.6509,
+            "hit@0.2091": 0.7877,
+            "hit@0.5": 0.9292
+          },
+          "interaction": {
+            "n_cohorts": 424,
+            "mean_regret": 0.1369,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.5071,
+            "mean_ndcg": 0.925,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 424,
+                "mean_regret": 0.1369,
+                "top1_accuracy": 0.5071,
+                "mean_ndcg": 0.925
+              }
+            },
+            "hit@0.1": 0.6344,
+            "hit@0.2091": 0.7594,
+            "hit@0.5": 0.9151
+          },
+          "global_best": {
+            "n_cohorts": 424,
+            "mean_regret": 0.1198,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.5755,
+            "mean_ndcg": 0.9356,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 424,
+                "mean_regret": 0.1198,
+                "top1_accuracy": 0.5755,
+                "mean_ndcg": 0.9356
+              }
+            },
+            "hit@0.1": 0.684,
+            "hit@0.2091": 0.7972,
+            "hit@0.5": 0.9292
+          },
+          "cell_best": {
+            "n_cohorts": 424,
+            "mean_regret": 0.1228,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.5778,
+            "mean_ndcg": 0.9346,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 424,
+                "mean_regret": 0.1228,
+                "top1_accuracy": 0.5778,
+                "mean_ndcg": 0.9346
+              }
+            },
+            "hit@0.1": 0.6863,
+            "hit@0.2091": 0.7901,
+            "hit@0.5": 0.9245
+          },
+          "oracle": {
+            "n_cohorts": 424,
+            "mean_regret": 0.0,
+            "median_regret": 0.0,
+            "top1_accuracy": 1.0,
+            "mean_ndcg": 1.0,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 424,
+                "mean_regret": 0.0,
+                "top1_accuracy": 1.0,
+                "mean_ndcg": 1.0
+              }
+            },
+            "hit@0.1": 1.0,
+            "hit@0.2091": 1.0,
+            "hit@0.5": 1.0
+          }
+        },
+        "paired_vs_global_best": {
+          "additive": {
+            "n_cohorts": 424,
+            "mean_regret_delta": -0.01,
+            "median_regret_delta": 0.0,
+            "t_cohort": -0.9501,
+            "p_one_sided_cohort": 0.8286974757215422,
+            "direction": "baseline better"
+          },
+          "interaction": {
+            "n_cohorts": 424,
+            "mean_regret_delta": -0.0171,
+            "median_regret_delta": 0.0,
+            "t_cohort": -1.4804,
+            "p_one_sided_cohort": 0.9302505336782256,
+            "direction": "baseline better"
+          }
+        },
+        "doi_clustered_vs_global_best": {
+          "additive": {
+            "n_dois": 61,
+            "mean_regret_delta": -0.0331,
+            "median_regret_delta": 0.0,
+            "t_doi": -1.3584,
+            "p_one_sided_doi": 0.9102929637141088,
+            "bootstrap_ci95_doi": [
+              -0.0844,
+              0.0125
+            ],
+            "n_boot": 2000,
+            "seed": 20261018,
+            "holm_p_across_primary_tests": 1.0
+          },
+          "interaction": {
+            "n_dois": 61,
+            "mean_regret_delta": -0.0208,
+            "median_regret_delta": 0.0,
+            "t_doi": -0.9364,
+            "p_one_sided_doi": 0.8235951273344493,
+            "bootstrap_ci95_doi": [
+              -0.0636,
+              0.0238
+            ],
+            "n_boot": 2000,
+            "seed": 20261018
+          }
+        },
+        "disagreement_decomposition": {
+          "additive": {
+            "n_cohorts": 424,
+            "agreement_rate": 0.7123,
+            "regret_agree": 0.1194,
+            "n_disagree": 122,
+            "regret_model_when_disagree": 0.1554,
+            "regret_baseline_when_disagree": 0.1207,
+            "model_wins_disagreements": 48,
+            "net_gain_when_disagree": -0.0347
+          },
+          "interaction": {
+            "n_cohorts": 424,
+            "agreement_rate": 0.658,
+            "regret_agree": 0.1149,
+            "n_disagree": 145,
+            "regret_model_when_disagree": 0.1793,
+            "regret_baseline_when_disagree": 0.1292,
+            "model_wins_disagreements": 57,
+            "net_gain_when_disagree": -0.0501
+          }
+        },
+        "full_five_metal": {
+          "n_cohorts": 424,
+          "top1_is_observed_rate": 0.3491,
+          "n_verifiable": 148,
+          "mean_regret_verifiable": 0.1522,
+          "top1_metal_distribution": {
+            "Ir": 72,
+            "Rh": 352
+          },
+          "caveat": "Cohorts only ever contain 2 metals, so three of the five ranks are unobserved for every cohort. Regret is computed only where the pick was measured, and that subset is selected by the model itself."
+        },
+        "additive_ranking_invariance": {
+          "by_fold": {
+            "0": {
+              "n_cohorts": 78,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Rh",
+                "Ir",
+                "Os",
+                "Ru",
+                "Re"
+              ],
+              "modal_share": 1.0
+            },
+            "1": {
+              "n_cohorts": 72,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Ir",
+                "Rh",
+                "Os",
+                "Ru",
+                "Re"
+              ],
+              "modal_share": 1.0
+            },
+            "2": {
+              "n_cohorts": 85,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Rh",
+                "Ir",
+                "Os",
+                "Re",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            },
+            "3": {
+              "n_cohorts": 89,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Rh",
+                "Ir",
+                "Os",
+                "Re",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            },
+            "4": {
+              "n_cohorts": 100,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Rh",
+                "Ir",
+                "Os",
+                "Re",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            }
+          },
+          "constant_within_fold": true,
+          "note": "additive prediction = f(ligand) + g(metal) + h(cell); a constant order means the within-cohort ranking carries no ligand information at all"
+        },
+        "global_metal_order_from_data": {
+          "mean_y_by_metal": {
+            "Ir": 0.8494,
+            "Os": 0.7812,
+            "Re": 1.2342,
+            "Rh": 0.8946,
+            "Ru": 1.1816
+          },
+          "ascending": [
+            "Os",
+            "Ir",
+            "Rh",
+            "Ru",
+            "Re"
+          ],
+          "note": "lower log10 IC50 = more potent; this is the only recommendation the data supports"
+        },
+        "elapsed_seconds": 59.3
+      },
+      "cisplatin_ratio": {
+        "status": "OK",
+        "n_rows": 11403,
+        "n_dropped_censored": 2510,
+        "censored_share": 0.1783,
+        "n_cohorts": 100,
+        "cohort_definition": [
+          "ligand_canonical",
+          "cell_line_key",
+          "doi",
+          "time_h"
+        ],
+        "cohort_size_distribution": {
+          "2": 100
+        },
+        "n_dois": 15,
+        "mixing": {
+          "max_compounds_per_cohort": 1,
+          "note": "strict cohorts are one canonical ligand"
+        },
+        "baseline_notes": {
+          "rows_with_unseen_metal_in_train_fold": 0,
+          "rows_with_unseen_cell_metal_pair": 471
+        },
+        "random_choice_expected_regret": 0.1762,
+        "scores": {
+          "additive": {
+            "n_cohorts": 100,
+            "mean_regret": 0.1534,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.52,
+            "mean_ndcg": 0.9231,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 100,
+                "mean_regret": 0.1534,
+                "top1_accuracy": 0.52,
+                "mean_ndcg": 0.9231
+              }
+            },
+            "hit@0.1": 0.63,
+            "hit@0.2091": 0.77,
+            "hit@0.5": 0.9
+          },
+          "interaction": {
+            "n_cohorts": 100,
+            "mean_regret": 0.1651,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.53,
+            "mean_ndcg": 0.918,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 100,
+                "mean_regret": 0.1651,
+                "top1_accuracy": 0.53,
+                "mean_ndcg": 0.918
+              }
+            },
+            "hit@0.1": 0.64,
+            "hit@0.2091": 0.74,
+            "hit@0.5": 0.86
+          },
+          "global_best": {
+            "n_cohorts": 100,
+            "mean_regret": 0.1428,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.55,
+            "mean_ndcg": 0.9302,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 100,
+                "mean_regret": 0.1428,
+                "top1_accuracy": 0.55,
+                "mean_ndcg": 0.9302
+              }
+            },
+            "hit@0.1": 0.67,
+            "hit@0.2091": 0.8,
+            "hit@0.5": 0.91
+          },
+          "cell_best": {
+            "n_cohorts": 100,
+            "mean_regret": 0.1502,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.57,
+            "mean_ndcg": 0.928,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 100,
+                "mean_regret": 0.1502,
+                "top1_accuracy": 0.57,
+                "mean_ndcg": 0.928
+              }
+            },
+            "hit@0.1": 0.69,
+            "hit@0.2091": 0.79,
+            "hit@0.5": 0.88
+          },
+          "oracle": {
+            "n_cohorts": 100,
+            "mean_regret": 0.0,
+            "median_regret": 0.0,
+            "top1_accuracy": 1.0,
+            "mean_ndcg": 1.0,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 100,
+                "mean_regret": 0.0,
+                "top1_accuracy": 1.0,
+                "mean_ndcg": 1.0
+              }
+            },
+            "hit@0.1": 1.0,
+            "hit@0.2091": 1.0,
+            "hit@0.5": 1.0
+          }
+        },
+        "paired_vs_global_best": {
+          "additive": {
+            "n_cohorts": 100,
+            "mean_regret_delta": -0.0106,
+            "median_regret_delta": 0.0,
+            "t_cohort": -0.4329,
+            "p_one_sided_cohort": 0.6669785447515255,
+            "direction": "baseline better"
+          },
+          "interaction": {
+            "n_cohorts": 100,
+            "mean_regret_delta": -0.0224,
+            "median_regret_delta": 0.0,
+            "t_cohort": -0.7432,
+            "p_one_sided_cohort": 0.7704262750094772,
+            "direction": "baseline better"
+          }
+        },
+        "doi_clustered_vs_global_best": {
+          "additive": {
+            "n_dois": 15,
+            "mean_regret_delta": -0.0143,
+            "median_regret_delta": 0.0,
+            "t_doi": -0.295,
+            "p_one_sided_doi": 0.6138231015506148,
+            "bootstrap_ci95_doi": [
+              -0.1014,
+              0.0783
+            ],
+            "n_boot": 2000,
+            "seed": 20261018,
+            "holm_p_across_primary_tests": 1.0
+          },
+          "interaction": {
+            "n_dois": 15,
+            "mean_regret_delta": -0.0303,
+            "median_regret_delta": 0.0,
+            "t_doi": -0.5237,
+            "p_one_sided_doi": 0.6956701656426129,
+            "bootstrap_ci95_doi": [
+              -0.1387,
+              0.0763
+            ],
+            "n_boot": 2000,
+            "seed": 20261018
+          }
+        },
+        "disagreement_decomposition": {
+          "additive": {
+            "n_cohorts": 100,
+            "agreement_rate": 0.87,
+            "regret_agree": 0.1295,
+            "n_disagree": 13,
+            "regret_model_when_disagree": 0.3131,
+            "regret_baseline_when_disagree": 0.2315,
+            "model_wins_disagreements": 5,
+            "net_gain_when_disagree": -0.0816
+          },
+          "interaction": {
+            "n_cohorts": 100,
+            "agreement_rate": 0.54,
+            "regret_agree": 0.1401,
+            "n_disagree": 46,
+            "regret_model_when_disagree": 0.1946,
+            "regret_baseline_when_disagree": 0.1459,
+            "model_wins_disagreements": 22,
+            "net_gain_when_disagree": -0.0487
+          }
+        },
+        "full_five_metal": {
+          "n_cohorts": 100,
+          "top1_is_observed_rate": 0.14,
+          "n_verifiable": 14,
+          "mean_regret_verifiable": 0.0603,
+          "top1_metal_distribution": {
+            "Ir": 42,
+            "Re": 58
+          },
+          "caveat": "Cohorts only ever contain 2 metals, so three of the five ranks are unobserved for every cohort. Regret is computed only where the pick was measured, and that subset is selected by the model itself."
+        },
+        "additive_ranking_invariance": {
+          "by_fold": {
+            "0": {
+              "n_cohorts": 13,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Re",
+                "Ir",
+                "Rh",
+                "Os",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            },
+            "1": {
+              "n_cohorts": 16,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Ir",
+                "Re",
+                "Rh",
+                "Os",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            },
+            "2": {
+              "n_cohorts": 26,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Ir",
+                "Re",
+                "Os",
+                "Rh",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            },
+            "3": {
+              "n_cohorts": 33,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Re",
+                "Rh",
+                "Ir",
+                "Os",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            },
+            "4": {
+              "n_cohorts": 12,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Re",
+                "Os",
+                "Rh",
+                "Ir",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            }
+          },
+          "constant_within_fold": true,
+          "note": "additive prediction = f(ligand) + g(metal) + h(cell); a constant order means the within-cohort ranking carries no ligand information at all"
+        },
+        "global_metal_order_from_data": {
+          "mean_y_by_metal": {
+            "Ir": -0.1777,
+            "Os": -0.029,
+            "Re": -0.1018,
+            "Rh": -0.0545,
+            "Ru": 0.207
+          },
+          "ascending": [
+            "Ir",
+            "Re",
+            "Rh",
+            "Os",
+            "Ru"
+          ],
+          "note": "lower log10 IC50 = more potent; this is the only recommendation the data supports"
+        },
+        "elapsed_seconds": 36.5
+      }
+    },
+    "loose": {
+      "potency": {
+        "status": "OK",
+        "n_rows": 21045,
+        "n_dropped_censored": 4813,
+        "censored_share": 0.1836,
+        "n_cohorts": 651,
+        "cohort_definition": [
+          "ligand_main_fragment",
+          "cell_line_key",
+          "doi",
+          "time_h"
+        ],
+        "cohort_size_distribution": {
+          "2": 593,
+          "3": 42,
+          "4": 16
+        },
+        "n_dois": 104,
+        "mixing": {
+          "max_compounds_per_cohort": 8,
+          "mean_compounds_per_cohort": 1.91,
+          "share_cohorts_with_multiple_compounds": 0.5828
+        },
+        "baseline_notes": {
+          "rows_with_unseen_metal_in_train_fold": 0,
+          "rows_with_unseen_cell_metal_pair": 620
+        },
+        "random_choice_expected_regret": 0.1703,
+        "scores": {
+          "additive": {
+            "n_cohorts": 651,
+            "mean_regret": 0.1503,
+            "median_regret": 0.0144,
+            "top1_accuracy": 0.4869,
+            "mean_ndcg": 0.919,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 593,
+                "mean_regret": 0.135,
+                "top1_accuracy": 0.5126,
+                "mean_ndcg": 0.9276
+              },
+              "3": {
+                "n_cohorts": 42,
+                "mean_regret": 0.2665,
+                "top1_accuracy": 0.1905,
+                "mean_ndcg": 0.8661
+              },
+              "4": {
+                "n_cohorts": 16,
+                "mean_regret": 0.4126,
+                "top1_accuracy": 0.3125,
+                "mean_ndcg": 0.7376
+              }
+            },
+            "hit@0.1": 0.6175,
+            "hit@0.2091": 0.7619,
+            "hit@0.5": 0.9078
+          },
+          "interaction": {
+            "n_cohorts": 651,
+            "mean_regret": 0.1316,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.5545,
+            "mean_ndcg": 0.929,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 593,
+                "mean_regret": 0.1125,
+                "top1_accuracy": 0.5767,
+                "mean_ndcg": 0.9394
+              },
+              "3": {
+                "n_cohorts": 42,
+                "mean_regret": 0.1224,
+                "top1_accuracy": 0.4524,
+                "mean_ndcg": 0.9252
+              },
+              "4": {
+                "n_cohorts": 16,
+                "mean_regret": 0.8608,
+                "top1_accuracy": 0.0,
+                "mean_ndcg": 0.5526
+              }
+            },
+            "hit@0.1": 0.6743,
+            "hit@0.2091": 0.7957,
+            "hit@0.5": 0.9217
+          },
+          "global_best": {
+            "n_cohorts": 651,
+            "mean_regret": 0.1401,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.5253,
+            "mean_ndcg": 0.9234,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 593,
+                "mean_regret": 0.1342,
+                "top1_accuracy": 0.5228,
+                "mean_ndcg": 0.9279
+              },
+              "3": {
+                "n_cohorts": 42,
+                "mean_regret": 0.0698,
+                "top1_accuracy": 0.6429,
+                "mean_ndcg": 0.9492
+              },
+              "4": {
+                "n_cohorts": 16,
+                "mean_regret": 0.5455,
+                "top1_accuracy": 0.3125,
+                "mean_ndcg": 0.6915
+              }
+            },
+            "hit@0.1": 0.6436,
+            "hit@0.2091": 0.7727,
+            "hit@0.5": 0.9171
+          },
+          "cell_best": {
+            "n_cohorts": 651,
+            "mean_regret": 0.1387,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.5499,
+            "mean_ndcg": 0.9267,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 593,
+                "mean_regret": 0.1205,
+                "top1_accuracy": 0.5632,
+                "mean_ndcg": 0.9353
+              },
+              "3": {
+                "n_cohorts": 42,
+                "mean_regret": 0.2202,
+                "top1_accuracy": 0.4524,
+                "mean_ndcg": 0.9049
+              },
+              "4": {
+                "n_cohorts": 16,
+                "mean_regret": 0.6005,
+                "top1_accuracy": 0.3125,
+                "mean_ndcg": 0.6684
+              }
+            },
+            "hit@0.1": 0.6713,
+            "hit@0.2091": 0.7819,
+            "hit@0.5": 0.9171
+          },
+          "oracle": {
+            "n_cohorts": 651,
+            "mean_regret": 0.0,
+            "median_regret": 0.0,
+            "top1_accuracy": 1.0,
+            "mean_ndcg": 1.0,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 593,
+                "mean_regret": 0.0,
+                "top1_accuracy": 1.0,
+                "mean_ndcg": 1.0
+              },
+              "3": {
+                "n_cohorts": 42,
+                "mean_regret": 0.0,
+                "top1_accuracy": 1.0,
+                "mean_ndcg": 1.0
+              },
+              "4": {
+                "n_cohorts": 16,
+                "mean_regret": 0.0,
+                "top1_accuracy": 1.0,
+                "mean_ndcg": 1.0
+              }
+            },
+            "hit@0.1": 1.0,
+            "hit@0.2091": 1.0,
+            "hit@0.5": 1.0
+          }
+        },
+        "paired_vs_global_best": {
+          "additive": {
+            "n_cohorts": 651,
+            "mean_regret_delta": -0.0102,
+            "median_regret_delta": 0.0,
+            "t_cohort": -1.0935,
+            "p_one_sided_cohort": 0.8627080788981087,
+            "direction": "baseline better"
+          },
+          "interaction": {
+            "n_cohorts": 651,
+            "mean_regret_delta": 0.0086,
+            "median_regret_delta": 0.0,
+            "t_cohort": 0.8387,
+            "p_one_sided_cohort": 0.20096239003070468,
+            "direction": "model better"
+          }
+        },
+        "doi_clustered_vs_global_best": {
+          "additive": {
+            "n_dois": 104,
+            "mean_regret_delta": -0.0319,
+            "median_regret_delta": 0.0,
+            "t_doi": -1.2655,
+            "p_one_sided_doi": 0.8957312295866203,
+            "bootstrap_ci95_doi": [
+              -0.0835,
+              0.0165
+            ],
+            "n_boot": 2000,
+            "seed": 20261018,
+            "holm_p_across_primary_tests": 1.0
+          },
+          "interaction": {
+            "n_dois": 104,
+            "mean_regret_delta": -0.0343,
+            "median_regret_delta": 0.0,
+            "t_doi": -1.2904,
+            "p_one_sided_doi": 0.9000981758786908,
+            "bootstrap_ci95_doi": [
+              -0.0895,
+              0.0135
+            ],
+            "n_boot": 2000,
+            "seed": 20261018
+          }
+        },
+        "disagreement_decomposition": {
+          "additive": {
+            "n_cohorts": 651,
+            "agreement_rate": 0.808,
+            "regret_agree": 0.1318,
+            "n_disagree": 125,
+            "regret_model_when_disagree": 0.2285,
+            "regret_baseline_when_disagree": 0.1755,
+            "model_wins_disagreements": 51,
+            "net_gain_when_disagree": -0.053
+          },
+          "interaction": {
+            "n_cohorts": 651,
+            "agreement_rate": 0.6436,
+            "regret_agree": 0.1076,
+            "n_disagree": 232,
+            "regret_model_when_disagree": 0.1748,
+            "regret_baseline_when_disagree": 0.1989,
+            "model_wins_disagreements": 122,
+            "net_gain_when_disagree": 0.0241
+          }
+        },
+        "full_five_metal": {
+          "n_cohorts": 651,
+          "top1_is_observed_rate": 0.3794,
+          "n_verifiable": 247,
+          "mean_regret_verifiable": 0.1656,
+          "top1_metal_distribution": {
+            "Ir": 145,
+            "Rh": 506
+          },
+          "caveat": "Cohorts only ever contain 2 metals, so three of the five ranks are unobserved for every cohort. Regret is computed only where the pick was measured, and that subset is selected by the model itself."
+        },
+        "additive_ranking_invariance": {
+          "by_fold": {
+            "0": {
+              "n_cohorts": 109,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Rh",
+                "Ir",
+                "Os",
+                "Ru",
+                "Re"
+              ],
+              "modal_share": 1.0
+            },
+            "1": {
+              "n_cohorts": 145,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Ir",
+                "Rh",
+                "Os",
+                "Ru",
+                "Re"
+              ],
+              "modal_share": 1.0
+            },
+            "2": {
+              "n_cohorts": 128,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Rh",
+                "Ir",
+                "Os",
+                "Re",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            },
+            "3": {
+              "n_cohorts": 135,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Rh",
+                "Ir",
+                "Os",
+                "Re",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            },
+            "4": {
+              "n_cohorts": 134,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Rh",
+                "Ir",
+                "Os",
+                "Re",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            }
+          },
+          "constant_within_fold": true,
+          "note": "additive prediction = f(ligand) + g(metal) + h(cell); a constant order means the within-cohort ranking carries no ligand information at all"
+        },
+        "global_metal_order_from_data": {
+          "mean_y_by_metal": {
+            "Ir": 0.8494,
+            "Os": 0.7812,
+            "Re": 1.2342,
+            "Rh": 0.8946,
+            "Ru": 1.1816
+          },
+          "ascending": [
+            "Os",
+            "Ir",
+            "Rh",
+            "Ru",
+            "Re"
+          ],
+          "note": "lower log10 IC50 = more potent; this is the only recommendation the data supports"
+        },
+        "elapsed_seconds": 56.7
+      },
+      "cisplatin_ratio": {
+        "status": "OK",
+        "n_rows": 11403,
+        "n_dropped_censored": 2510,
+        "censored_share": 0.1783,
+        "n_cohorts": 222,
+        "cohort_definition": [
+          "ligand_main_fragment",
+          "cell_line_key",
+          "doi",
+          "time_h"
+        ],
+        "cohort_size_distribution": {
+          "2": 210,
+          "3": 12
+        },
+        "n_dois": 37,
+        "mixing": {
+          "max_compounds_per_cohort": 5,
+          "mean_compounds_per_cohort": 2.04,
+          "share_cohorts_with_multiple_compounds": 0.6667
+        },
+        "baseline_notes": {
+          "rows_with_unseen_metal_in_train_fold": 0,
+          "rows_with_unseen_cell_metal_pair": 471
+        },
+        "random_choice_expected_regret": 0.1462,
+        "scores": {
+          "additive": {
+            "n_cohorts": 222,
+            "mean_regret": 0.11,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.536,
+            "mean_ndcg": 0.9404,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 210,
+                "mean_regret": 0.1028,
+                "top1_accuracy": 0.5429,
+                "mean_ndcg": 0.943
+              },
+              "3": {
+                "n_cohorts": 12,
+                "mean_regret": 0.2362,
+                "top1_accuracy": 0.4167,
+                "mean_ndcg": 0.894
+              }
+            },
+            "hit@0.1": 0.7027,
+            "hit@0.2091": 0.8423,
+            "hit@0.5": 0.9459
+          },
+          "interaction": {
+            "n_cohorts": 222,
+            "mean_regret": 0.1379,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.5586,
+            "mean_ndcg": 0.9359,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 210,
+                "mean_regret": 0.1125,
+                "top1_accuracy": 0.5714,
+                "mean_ndcg": 0.9404
+              },
+              "3": {
+                "n_cohorts": 12,
+                "mean_regret": 0.5814,
+                "top1_accuracy": 0.3333,
+                "mean_ndcg": 0.8562
+              }
+            },
+            "hit@0.1": 0.7072,
+            "hit@0.2091": 0.8243,
+            "hit@0.5": 0.9099
+          },
+          "global_best": {
+            "n_cohorts": 222,
+            "mean_regret": 0.1089,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.545,
+            "mean_ndcg": 0.9421,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 210,
+                "mean_regret": 0.1129,
+                "top1_accuracy": 0.5381,
+                "mean_ndcg": 0.9403
+              },
+              "3": {
+                "n_cohorts": 12,
+                "mean_regret": 0.0385,
+                "top1_accuracy": 0.6667,
+                "mean_ndcg": 0.974
+              }
+            },
+            "hit@0.1": 0.7162,
+            "hit@0.2091": 0.8514,
+            "hit@0.5": 0.9414
+          },
+          "cell_best": {
+            "n_cohorts": 222,
+            "mean_regret": 0.1554,
+            "median_regret": 0.0,
+            "top1_accuracy": 0.536,
+            "mean_ndcg": 0.931,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 210,
+                "mean_regret": 0.1276,
+                "top1_accuracy": 0.5524,
+                "mean_ndcg": 0.9372
+              },
+              "3": {
+                "n_cohorts": 12,
+                "mean_regret": 0.6421,
+                "top1_accuracy": 0.25,
+                "mean_ndcg": 0.823
+              }
+            },
+            "hit@0.1": 0.6892,
+            "hit@0.2091": 0.8153,
+            "hit@0.5": 0.9099
+          },
+          "oracle": {
+            "n_cohorts": 222,
+            "mean_regret": 0.0,
+            "median_regret": 0.0,
+            "top1_accuracy": 1.0,
+            "mean_ndcg": 1.0,
+            "by_cohort_size": {
+              "2": {
+                "n_cohorts": 210,
+                "mean_regret": 0.0,
+                "top1_accuracy": 1.0,
+                "mean_ndcg": 1.0
+              },
+              "3": {
+                "n_cohorts": 12,
+                "mean_regret": 0.0,
+                "top1_accuracy": 1.0,
+                "mean_ndcg": 1.0
+              }
+            },
+            "hit@0.1": 1.0,
+            "hit@0.2091": 1.0,
+            "hit@0.5": 1.0
+          }
+        },
+        "paired_vs_global_best": {
+          "additive": {
+            "n_cohorts": 222,
+            "mean_regret_delta": -0.0011,
+            "median_regret_delta": 0.0,
+            "t_cohort": -0.1063,
+            "p_one_sided_cohort": 0.5422928183039969,
+            "direction": "baseline better"
+          },
+          "interaction": {
+            "n_cohorts": 222,
+            "mean_regret_delta": -0.029,
+            "median_regret_delta": 0.0,
+            "t_cohort": -1.3697,
+            "p_one_sided_cohort": 0.9139088077517766,
+            "direction": "baseline better"
+          }
+        },
+        "doi_clustered_vs_global_best": {
+          "additive": {
+            "n_dois": 37,
+            "mean_regret_delta": -0.0058,
+            "median_regret_delta": 0.0,
+            "t_doi": -0.3006,
+            "p_one_sided_doi": 0.6172767349186681,
+            "bootstrap_ci95_doi": [
+              -0.0411,
+              0.034
+            ],
+            "n_boot": 2000,
+            "seed": 20261018,
+            "holm_p_across_primary_tests": 1.0
+          },
+          "interaction": {
+            "n_dois": 37,
+            "mean_regret_delta": -0.0538,
+            "median_regret_delta": 0.0,
+            "t_doi": -1.2521,
+            "p_one_sided_doi": 0.8907012078557524,
+            "bootstrap_ci95_doi": [
+              -0.1395,
+              0.0241
+            ],
+            "n_boot": 2000,
+            "seed": 20261018
+          }
+        },
+        "disagreement_decomposition": {
+          "additive": {
+            "n_cohorts": 222,
+            "agreement_rate": 0.9505,
+            "regret_agree": 0.0998,
+            "n_disagree": 11,
+            "regret_model_when_disagree": 0.3058,
+            "regret_baseline_when_disagree": 0.2835,
+            "model_wins_disagreements": 5,
+            "net_gain_when_disagree": -0.0223
+          },
+          "interaction": {
+            "n_cohorts": 222,
+            "agreement_rate": 0.6261,
+            "regret_agree": 0.0991,
+            "n_disagree": 83,
+            "regret_model_when_disagree": 0.2029,
+            "regret_baseline_when_disagree": 0.1254,
+            "model_wins_disagreements": 43,
+            "net_gain_when_disagree": -0.0775
+          }
+        },
+        "full_five_metal": {
+          "n_cohorts": 222,
+          "top1_is_observed_rate": 0.2027,
+          "n_verifiable": 45,
+          "mean_regret_verifiable": 0.0791,
+          "top1_metal_distribution": {
+            "Ir": 75,
+            "Re": 147
+          },
+          "caveat": "Cohorts only ever contain 2 metals, so three of the five ranks are unobserved for every cohort. Regret is computed only where the pick was measured, and that subset is selected by the model itself."
+        },
+        "additive_ranking_invariance": {
+          "by_fold": {
+            "0": {
+              "n_cohorts": 61,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Re",
+                "Ir",
+                "Rh",
+                "Os",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            },
+            "1": {
+              "n_cohorts": 31,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Ir",
+                "Re",
+                "Rh",
+                "Os",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            },
+            "2": {
+              "n_cohorts": 44,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Ir",
+                "Re",
+                "Os",
+                "Rh",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            },
+            "3": {
+              "n_cohorts": 49,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Re",
+                "Rh",
+                "Ir",
+                "Os",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            },
+            "4": {
+              "n_cohorts": 37,
+              "n_distinct_orders": 1,
+              "modal_order": [
+                "Re",
+                "Os",
+                "Rh",
+                "Ir",
+                "Ru"
+              ],
+              "modal_share": 1.0
+            }
+          },
+          "constant_within_fold": true,
+          "note": "additive prediction = f(ligand) + g(metal) + h(cell); a constant order means the within-cohort ranking carries no ligand information at all"
+        },
+        "global_metal_order_from_data": {
+          "mean_y_by_metal": {
+            "Ir": -0.1777,
+            "Os": -0.029,
+            "Re": -0.1018,
+            "Rh": -0.0545,
+            "Ru": 0.207
+          },
+          "ascending": [
+            "Ir",
+            "Re",
+            "Rh",
+            "Os",
+            "Ru"
+          ],
+          "note": "lower log10 IC50 = more potent; this is the only recommendation the data supports"
+        },
+        "elapsed_seconds": 37.9
+      }
+    }
+  },
+  "caveats": [
+    "Under the strict key every cohort contains exactly two metals, so the five-metal ranking is only ever observed in two of its five positions.",
+    "The additive arm is separable: prediction = f(ligand) + g(metal) + h(cell), so its within-cohort metal order is one global order per fold (see additive_ranking_invariance). It can only beat global_best by estimating that single order better than the raw fold mean does.",
+    "The loose key pools up to 18 distinct canonical compounds into one cohort; its deltas are confounded by compound identity and are a sensitivity check, not the primary result.",
+    "Baselines are fold-safe but still estimated from the same corpus that supplies the evaluation cohorts; a genuinely prospective test would need held-out papers.",
+    "The model's counterfactual five-metal picks are scored only where the pick happens to have been measured, a subset chosen by the model itself."
+  ]
+}
