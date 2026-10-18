@@ -4979,3 +4979,97 @@ resolves to the `--ring-template-weight` dest; `_config_binding_gate` PASS over
 0 GPU launches this wave; §5.2 honest framing: every number above traces to
 `/tmp/wfa78_smoke/per_epoch_metrics.json` and the pytest run).
 
+
+### §6.106 Wf-A79 (2026-10-18) — L3 "decode_rate 0.109" root cause found in the arm's own artifact (57/64 = 89.1% RDKit kekulization failures on aromatic bonds outside rings) and a decode-time repair SHIPPED (5 tests).  The repair is validated at the unit level only; re-measuring the arm's decode_rate is DEFERRED because the arm's input clouds were not persisted.
+
+**What the 0.109 actually was.** cfm_todo.json has carried
+"Phase 3 control arm decode_rate 0.109 (way below baseline 0.34)" since round 9,
+with no explanation.  The arm's artifact does explain it
+(`molmetal/reports/cfm_l3_decode_enabled_ab/control/arm_control.json`, MEASURED
+2026-10-12, 64 clouds, midpoint/50 steps, no training):
+
+| decode field | value |
+|---|---:|
+| `n_attempted` | 64 |
+| `n_with_smiles` | 7 |
+| `decode_rate` | 0.109375 |
+| `single_fragment_ratio` (of the 7) | 0.857 |
+| `n_errors` | 0 |
+
+Per-row error distribution (all 64 rows):
+
+| error | n |
+|---|---:|
+| `KekulizeException` | 30 |
+| `AtomKekulizeException` | 27 |
+| OK | 7 |
+
+The message on the failing rows is explicit: "non-ring atom 0 marked aromatic".
+So the arm did not "fail to decode" for an unexplained reason — the bond head
+labelled a bond AROMATIC although its endpoints close no ring, and RDKit's
+kekulizer refuses the entire molecule.  89.1% of the arm is that one defect.
+
+**Why this is the same defect OPT-2 measured.** OPT-2 reported ring SIZE as the
+problem (3-rings 89.8% generated vs 0.5% real; 5/6-rings 1.85% vs 96.92%).  A
+graph whose aromatic bonds sit on non-ring atoms is what "no 5/6-ring" looks
+like from the bond-label side.  The two measurements are the same failure seen
+from opposite ends.
+
+**The repair (decode-time, not a model change).**
+`_demote_aromatic_outside_rings` in
+`molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py` runs BEFORE
+`Chem.SanitizeMol` in `YuelBondBondDecoder.decode`:
+
+  * `Chem.GetSSSR(mol)` (finds rings AND initialises RingInfo),
+  * every AROMATIC bond with `not bond.IsInRing()` -> SINGLE, aromatic flag cleared,
+  * every atom still flagged aromatic that is in no ring -> flag cleared,
+  * no-op when there are no aromatic bonds or when ring perception fails.
+
+It cannot invent the missing ring; it refuses to call a non-ring bond aromatic,
+so the cloud survives as a valid non-aromatic molecule instead of being lost.
+
+**Three implementation traps, all caught by the 5 tests (none would have been
+caught by inspection):**
+
+| # | Trap | Effect | Fix |
+|---|---|---|---|
+| 1 | `mol.GetRingInfo().NumRings()` on an unsanitised mol | raises "RingInfo not initialized" (RDKit 2026.03.6) | call `Chem.GetSSSR(mol)` first |
+| 2 | `Chem` is imported INSIDE the decode path in this module, not at module level | bare `Chem.*` in the helper raised NameError, swallowed by `except Exception` -> silent no-op | import inside the helper |
+| 3 | demoting bonds but leaving atom aromatic flags | "non-ring atom marked aromatic" persists | clear atom flags when any bond was demoted |
+
+**MEASURED (unit level only, 5/5 PASS, 0.6 s CPU):**
+  * benzene unchanged (6 aromatic bonds in a ring stay aromatic),
+  * 3-atom aromatic chain demoted to 0 aromatic bonds AND sanitises to "CCC",
+  * non-aromatic molecule unchanged,
+  * non-ring atom flags cleared,
+  * benzene + one dangling aromatic bond: ring bonds survive (6), dangling demoted (1).
+
+**Honest-negative (ACTIVE, this entry):**
+  * **The arm's decode_rate has NOT been re-measured.**  The repair is a
+    decode-time pass, but the arm's input clouds were not persisted (only the
+    per-row outcome), so reproducing 0.109 -> X requires re-running the probe
+    (`molmetal/scripts/wf_blkc_l3_decode_ab_aggregate.py`) with the same
+    checkpoint (`molmetal/reports/cfm_fullcorpus_2026_10_10/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt`,
+    present on disk).  That re-run is DEFERRED; until it lands, the expected
+    decode-rate recovery is PROJECTED, not MEASURED.
+  * **A demoted bond is a chemistry change, not a free repair.**  A molecule
+    that decodes only after aromatic demotion has lost its aromaticity; the
+    SMILES is valid but the compound is not what the head predicted.  Any
+    decode-rate gain from this pass must be reported alongside the aromatic
+    fraction of the surviving molecules.
+  * The cisplatin decoder test
+    (`test_yuelbond_decoder_returns_valid_bonds_on_cisplatin`) FAILS, but it
+    failed at HEAD before this change (verified by stashing the file and
+    re-running); it is not caused by Wf-A79 and is not fixed by it.
+
+**§6.106 catalog-count math.** Net catalog-count delta: **+1** (§6.106 itself).
+ACTIVE count delta: **+1** (the un-re-measured decode rate).  Cumulative
+catalog count: **157 -> 158** (+1).  ACTIVE count: **113 -> 114** (+1).
+
+**Workflow** | Wf-A79 (2026-10-18; 5 regression tests PASS; 1 new helper + 1
+call site + 1 new test file; §5.6 atomic-write via Edit/Write; §5.7 CPU smoke
+N/A (decode-time pure function, covered by the 5 unit tests); §5.9 single-venv;
+§5.11: no new YAML key; §5.3 + §5.4: 0 paper/* + 0 wet-lab; §5.1 standing GPU
+grant: 0 GPU launches; §5.2 honest framing: the error counts trace to
+`arm_control.json::decode.rows`, the repair's scope is stated as unit-level).
+

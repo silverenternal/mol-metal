@@ -107,9 +107,12 @@
     "TIER_2_HONEST_NEGATIVE_ACCOUNTING_MEDIUM_ROI": [
       {
         "id": "L3_A_B_Phase_3_redo_or_treat_partial",
-        "what": "Phase 3 control arm decode_rate 0.109 (way below baseline 0.34) -- need to either (a) re-run with debugged yaml+method, or (b) document the partial as honest-negative with re-run queued for next GPU slot. The 0.344 smoke-scale number is the current best paper-defensible figure.",
-        "cost": "3-5 hr GPU if re-run; 30 min CPU if just document",
-        "blocks": "honest-negative section"
+        "what": "Phase 3 control arm decode_rate 0.109. ROOT CAUSE (MEASURED from molmetal/reports/cfm_l3_decode_enabled_ab/control/arm_control.json): 57/64 clouds (89.1%) failed with KekulizeException/AtomKekulizeException — the bond head marked a bond AROMATIC on atoms that close no ring ('non-ring atom 0 marked aromatic'), and RDKit refuses the whole molecule. Only 7/64 decoded (0.109). This is the same defect OPT-2 measured from the ring-size side.",
+        "cost": "0 (closed); optional re-measure ~15 min GPU/CPU",
+        "blocks": "honest-negative section",
+        "status": "CLOSED 2026-10-18 (root cause found in the arm artifact; Wf-A79 repair shipped §6.106)",
+        "what_shipped": "Wf-A79 decode-time repair _demote_aromatic_outside_rings in cfm_decoder_yuelbond.py (5 tests). Demotes aromatic bonds/atoms that lie in no ring BEFORE SanitizeMol.",
+        "remaining": "Optional: re-run wf_blkc_l3_decode_ab_aggregate.py on the same checkpoint to MEASURE the post-repair decode rate (PROJECTED to rise, NOT measured). Report the aromatic fraction of surviving molecules alongside it."
       }
     ],
     "TIER_3_DEFERRED_NO_TABLE_IMPACT": [
@@ -221,6 +224,16 @@
       "yaml_key": "flow.ring_template_weight (default 0.0, bit-exact)",
       "deferred": "GPU 5-epoch smoke + ring-size MEASURED gate (rings/mol, 3-ring share, 5/6-ring share)",
       "honest_negative": "docs/HONEST_NEGATIVE_CATALOG.md §6.105"
+    },
+    "Wf-A79_aromatic_outside_ring_repair": {
+      "status": "SHIPPED 2026-10-18 (§6.106)",
+      "files": [
+        "molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py (_demote_aromatic_outside_rings)",
+        "molmetal/tests/test_wfa79_aromatic_outside_ring.py"
+      ],
+      "evidence": "molmetal/reports/cfm_l3_decode_enabled_ab/control/arm_control.json::decode.rows (57/64 kekulize failures)",
+      "deferred": "re-measure the arm's decode_rate after the repair + report aromatic fraction of survivors",
+      "honest_negative": "docs/HONEST_NEGATIVE_CATALOG.md §6.106"
     }
   },
   "pointer_to_history": {

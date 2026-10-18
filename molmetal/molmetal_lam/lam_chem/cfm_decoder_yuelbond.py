@@ -317,6 +317,66 @@ def _detect_and_demote_anti_aromatic(
     return len(demoted_rings)
 
 
+
+
+def _demote_aromatic_outside_rings(mol):
+    """Demote aromatic bonds/atoms that lie in no ring; return the mol.
+
+    Wf-A79 (2026-10-18).  The L3 decode A/B arm
+    (molmetal/reports/cfm_l3_decode_enabled_ab/control/arm_control.json)
+    MEASURED 57/64 clouds failing to decode with
+    AtomKekulizeException / KekulizeException -- 89.1% of the arm --
+    and 0.109 decode_rate.  The message is explicit: "non-ring atom 0
+    marked aromatic".  The bond head labelled a bond AROMATIC although
+    its endpoints close no ring, and RDKit's kekulizer refuses the whole
+    molecule.
+
+    This is the same defect OPT-2 measured from the other side: ring
+    SIZE, not aromatic bond count (3-rings 89.8% generated vs 0.5%
+    real).  A decoder cannot invent the missing ring, but it can refuse
+    to call a non-ring bond aromatic -- which is what this pass does,
+    before sanitisation, so the cloud survives as a valid non-aromatic
+    molecule instead of being lost.
+
+    No-op when the molecule has no aromatic bonds or when ring
+    perception fails (the caller then sanitises exactly as before).
+    """
+    # RDKit is imported INSIDE the decode path in this module (see the
+    # other "from rdkit import Chem" sites); a module-level Chem does not
+    # exist, so a bare Chem.* here raised NameError and the except below
+    # silently turned the repair into a no-op (caught by the Wf-A79 tests).
+    from rdkit import Chem
+
+    # Chem.GetSSSR both finds the rings AND initialises RingInfo; calling
+    # mol.GetRingInfo().NumRings() first raises "RingInfo not initialized"
+    # on an unsanitised mol (RDKit 2026.03.6), which silently turned the
+    # whole repair into a no-op (caught by the Wf-A79 tests).
+    try:
+        Chem.GetSSSR(mol)
+    except Exception:
+        return mol
+    n_demoted = 0
+    for bond in mol.GetBonds():
+        if bond.GetBondType() != Chem.BondType.AROMATIC:
+            continue
+        try:
+            if bond.IsInRing():
+                continue
+        except Exception:
+            continue
+        bond.SetBondType(Chem.BondType.SINGLE)
+        bond.SetIsAromatic(False)
+        n_demoted += 1
+    if n_demoted:
+        for atom in mol.GetAtoms():
+            try:
+                if atom.GetIsAromatic() and not atom.IsInRing():
+                    atom.SetIsAromatic(False)
+            except Exception:
+                continue
+    return mol
+
+
 # ---------------------------------------------------------------------------
 # Result container
 # ---------------------------------------------------------------------------
@@ -983,6 +1043,11 @@ class YuelBondBondDecoder:
         sanitized = False
         smiles = ""
         sanitize_error: Optional[str] = None
+        # Wf-A79 (2026-10-18) — refuse to call a non-ring bond aromatic.
+        # MEASURED on the L3 arm: 57/64 clouds died in the kekulizer with
+        # "non-ring atom N marked aromatic" (decode_rate 0.109).  The pass
+        # is a no-op on molecules whose aromatic bonds are all in rings.
+        mol = _demote_aromatic_outside_rings(mol)
         try:
             Chem.SanitizeMol(mol)
             sanitized = True
