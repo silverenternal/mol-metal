@@ -1,0 +1,105 @@
+{
+  "artifact": "msrs_learning_curve",
+  "version": "1.0",
+  "generated_utc": "2026-10-18T07:25:08+00:00",
+  "provenance": {
+    "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_learning_curve.py",
+    "git_commit": "c6754e7980ee2e6a7dfd1567715fe7906a0d922e",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "endpoint": "potency",
+    "design": "ECFP4 + metal(onehot+3 descriptors) + cell(top40+other)",
+    "cv": "GroupKFold(5) grouped by ligand_main_fragment",
+    "subsample_unit": "ligand group (never row)",
+    "fractions": [
+      0.1,
+      0.25,
+      0.5,
+      1.0
+    ],
+    "lightgbm": {
+      "objective": "regression",
+      "n_estimators": 500,
+      "learning_rate": 0.05,
+      "num_leaves": 31,
+      "min_child_samples": 20,
+      "subsample": 0.8,
+      "subsample_freq": 1,
+      "colsample_bytree": 0.3,
+      "reg_lambda": 1.0,
+      "random_state": 20261018,
+      "n_jobs": 1,
+      "deterministic": true,
+      "force_row_wise": true,
+      "verbose": -1
+    },
+    "seed": 20261018
+  },
+  "n_rows": 21404,
+  "n_ligands": 2846,
+  "curve": {
+    "0.10": {
+      "mae": 0.5912,
+      "r2": 0.0081,
+      "rmse": 0.7593,
+      "fraction": 0.1,
+      "n_train_rows_per_fold": [
+        1325,
+        1610,
+        1413,
+        1536,
+        1370
+      ],
+      "elapsed_seconds": 1.8
+    },
+    "0.25": {
+      "mae": 0.5598,
+      "r2": 0.1014,
+      "rmse": 0.7227,
+      "fraction": 0.25,
+      "n_train_rows_per_fold": [
+        4426,
+        4119,
+        5163,
+        4817,
+        3696
+      ],
+      "elapsed_seconds": 6.0
+    },
+    "0.50": {
+      "mae": 0.5226,
+      "r2": 0.2136,
+      "rmse": 0.6761,
+      "fraction": 0.5,
+      "n_train_rows_per_fold": [
+        7673,
+        8510,
+        7562,
+        9426,
+        9698
+      ],
+      "elapsed_seconds": 12.2
+    },
+    "1.00": {
+      "mae": 0.4879,
+      "r2": 0.3081,
+      "rmse": 0.6342,
+      "fraction": 1.0,
+      "n_train_rows_per_fold": [
+        17123,
+        17123,
+        17123,
+        17123,
+        17124
+      ],
+      "elapsed_seconds": 23.8
+    }
+  },
+  "plateau_fraction_95pct_of_full": 1.0,
+  "reading": "If the curve is still climbing steeply at 1.00, more data is the lever. If 0.50 already reaches 95% of the full R2, rows are not the constraint and feature/structure work is."
+}

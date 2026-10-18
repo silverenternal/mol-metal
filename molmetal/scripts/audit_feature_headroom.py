@@ -253,6 +253,80 @@ def coverage_audit(df: pd.DataFrame) -> Dict[str, object]:
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+def select_rows(long: pd.DataFrame, mode: str) -> pd.DataFrame:
+    """Two target conventions, and they are not the same experiment.
+
+    ``exact_only`` is what MSRS-2 actually fits: ``all_censored`` groups are
+    dropped.  ``censored_at_bound`` keeps every row, with the censored ones
+    sitting at ``log10(bound)``.  The long table carries the bound; the dedup
+    table sets those rows to NaN and MSRS-2 drops them (4,813 of 26,219).
+    """
+    sub = long[
+        (long["endpoint"] == ENDPOINT)
+        & long["value_log10"].notna()
+        & long["ligand_main_fragment"].notna()
+        & long["ligand_canonical"].notna()
+    ]
+    if mode == "exact_only":
+        sub = sub[sub["censoring"].astype(str) == "none"]
+    elif mode != "censored_at_bound":
+        raise ValueError(f"unknown row mode: {mode}")
+    out = sub.copy().reset_index(drop=True)
+    out["time_bucket"] = time_bucket(out["time_h"])
+    return out
+
+
+def run_ladder(sub: pd.DataFrame) -> Tuple[Dict[str, object], float]:
+    y = sub["value_log10"].to_numpy(dtype=float)
+    groups = sub["ligand_main_fragment"].to_numpy()
+    fp = morgan_matrix(sub["ligand_main_fragment"].tolist())
+    print(f"[audit] rows={len(sub)} ligands={sub['ligand_main_fragment'].nunique()}")
+    stages: Dict[str, object] = {}
+    for name, features in STAGES:
+        t0 = time.time()
+        X, cat_idx, levels = build_stage(sub, features, fp)
+        oof, _ = oof_regression(X, y, groups, cat_idx)
+        stages[name] = {
+            **score(y, oof),
+            "n_features": int(X.shape[1]),
+            "categorical_levels": levels,
+            "elapsed_seconds": round(time.time() - t0, 1),
+        }
+        print(f"  {name:56s} R2={stages[name]['r2']:.4f} MAE={stages[name]['mae']:.4f}")
+
+    base = stages["+metal+cell (production)"]["r2"]
+    for name, entry in stages.items():
+        entry["r2_delta_vs_production"] = round(float(entry["r2"] - base), 4)
+    return stages, base
+
+
+def headroom_block(stages: Dict[str, object], base: float) -> Dict[str, object]:
+    return {
+        "production_r2": base,
+        "time_only_delta": stages["+time"]["r2_delta_vs_production"],
+        "metal_chemistry_delta": stages["+metal chemistry (ox/charge/counterion)"][
+            "r2_delta_vs_production"
+        ],
+        "year_delta": stages["+year"]["r2_delta_vs_production"],
+        "paper_offset_delta": stages["+doi (paper offset; interpolation only)"][
+            "r2_delta_vs_production"
+        ],
+        # Incremental value of metal-state chemistry once the paper offset is
+        # already in the model.  If this collapses, the chemistry block was a
+        # paper/ligand proxy, not a metal signal.
+        "metal_chemistry_after_doi_delta": round(
+            float(
+                stages["+metal chemistry AFTER doi (is it just a paper proxy?)"]["r2"]
+                - stages["+doi (paper offset; interpolation only)"]["r2"]
+            ),
+            4,
+        ),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -274,40 +348,25 @@ def main(argv: Optional[List[str]] = None) -> int:
     long = pd.read_parquet(args.long)
     dedup = pd.read_parquet(args.dedup)
 
-    sub = long[
-        (long["endpoint"] == ENDPOINT)
-        & long["value_log10"].notna()
-        & long["ligand_main_fragment"].notna()
-        & long["ligand_canonical"].notna()
-    ].copy()
-    sub = sub.reset_index(drop=True)
-    sub["time_bucket"] = time_bucket(sub["time_h"])
-    y = sub["value_log10"].to_numpy(dtype=float)
-    groups = sub["ligand_main_fragment"].to_numpy()
-    fp = morgan_matrix(sub["ligand_main_fragment"].tolist())
-
-    print(f"[audit] potency rows={len(sub)} ligands={sub['ligand_main_fragment'].nunique()}")
-    stages = {}
-    for name, features in STAGES:
-        t0 = time.time()
-        X, cat_idx, levels = build_stage(sub, features, fp)
-        oof, _ = oof_regression(X, y, groups, cat_idx)
-        stages[name] = {
-            **score(y, oof),
-            "n_features": int(X.shape[1]),
-            "categorical_levels": levels,
-            "elapsed_seconds": round(time.time() - t0, 1),
+    rowsets = {}
+    for mode in ("exact_only", "censored_at_bound"):
+        sub = select_rows(long, mode)
+        stages, base = run_ladder(sub)
+        rowsets[mode] = {
+            "n_rows": int(len(sub)),
+            "n_ligands": int(sub["ligand_main_fragment"].nunique()),
+            "coverage": coverage_audit(sub),
+            "stages": stages,
+            "headroom": headroom_block(stages, base),
         }
-        print(f"  {name:42s} R2={stages[name]['r2']:.4f} MAE={stages[name]['mae']:.4f}")
 
-    # Incremental R² over the production design.
-    base = stages["+metal+cell (production)"]["r2"]
-    for name, entry in stages.items():
-        entry["r2_delta_vs_production"] = round(float(entry["r2"] - base), 4)
+    # The production convention is the one the paper's numbers come from.
+    stages = rowsets["exact_only"]["stages"]
+    base = rowsets["exact_only"]["headroom"]["production_r2"]
 
     out = {
         "artifact": "feature_headroom_audit",
-        "version": "1.0",
+        "version": "1.1",
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "provenance": {
             "long_parquet": str(args.long),
@@ -324,6 +383,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             "cv": f"GroupKFold({N_FOLDS}) grouped by ligand_main_fragment",
             "learner": "LightGBM, identical hyper-parameters at every stage",
             "stages": [name for name, _ in STAGES],
+            "rowsets": {
+                "exact_only": "censored rows dropped (this is what MSRS-2 fits)",
+                "censored_at_bound": "censored rows kept at log10(bound)",
+            },
             "warning": (
                 "doi is a paper-level categorical. Its R2 is an upper bound on an assay-offset "
                 "model and is not deployable to an unseen paper."
@@ -331,37 +394,18 @@ def main(argv: Optional[List[str]] = None) -> int:
             "lightgbm": LGB_PARAMS,
             "seed": SEED,
         },
-        "coverage": coverage_audit(sub),
+        "coverage": rowsets["exact_only"]["coverage"],
         "censoring": censoring_audit(long),
         "reliability": reliability_audit(dedup),
+        "rowsets": rowsets,
         "stages": stages,
-        "headroom": {
-            "production_r2": base,
-            "time_only_delta": stages["+time"]["r2_delta_vs_production"],
-            "metal_chemistry_delta": stages["+metal chemistry (ox/charge/counterion)"][
-                "r2_delta_vs_production"
-            ],
-            "year_delta": stages["+year"]["r2_delta_vs_production"],
-            "paper_offset_delta": stages["+doi (paper offset; interpolation only)"][
-                "r2_delta_vs_production"
-            ],
-            # Incremental value of metal-state chemistry once the paper offset is
-            # already in the model.  If this collapses, the chemistry block was a
-            # paper/ligand proxy, not a metal signal.
-            "metal_chemistry_after_doi_delta": round(
-                float(
-                    stages["+metal chemistry AFTER doi (is it just a paper proxy?)"]["r2"]
-                    - stages["+doi (paper offset; interpolation only)"]["r2"]
-                ),
-                4,
-            ),
-        },
+        "headroom": rowsets["exact_only"]["headroom"],
         "caveats": [
             "Cumulative stages: each R2 is the whole feature set, not the marginal value of the block in isolation.",
+            "Two row sets are reported because the long and dedup tables disagree on censored rows; "
+            "`exact_only` matches MSRS-2, `censored_at_bound` is what the long table carries.",
             "The DOI stage can memorise paper-specific offsets and is reported as an upper bound only.",
             "Counterion is 33.0% missing; missing is encoded as its own level.",
-            "Censored targets are fitted as if exact (they sit at the detection bound); "
-            "the censoring block quantifies that bias separately.",
             "The last stage tests whether the metal-chemistry block survives a paper "
             "offset. It largely does not: the block is a paper/ligand proxy here.",
         ],
@@ -370,7 +414,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_file(args.out, json.dumps(out, indent=2, ensure_ascii=False) + "\n")
     print(f"\nwrote {args.out}")
-    print(f"production R2={base:.4f}; headroom = {json.dumps(out['headroom'], ensure_ascii=False)}")
+    for mode, block in rowsets.items():
+        print(f"  [{mode}] n={block['n_rows']} production R2={block['headroom']['production_r2']:.4f}")
+        print(f"           headroom = {json.dumps(block['headroom'], ensure_ascii=False)}")
     return 0
 
 

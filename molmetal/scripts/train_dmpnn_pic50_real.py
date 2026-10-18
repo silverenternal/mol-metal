@@ -63,6 +63,8 @@ del _wf130_cvd, _wf130_dir, _wf130_os, _wf130_sys
 # --- end CUDA default --------------------------------------------
 
 import argparse
+import hashlib
+import inspect
 import json
 import pickle
 import random
@@ -147,6 +149,28 @@ def load_5metal_split_table(csv_path: Path) -> pd.DataFrame:
     return df
 
 
+#: Bump when the featurizer's *output* changes without its source changing
+#: (e.g. a constant in another module).  The source hash below covers the rest.
+FEATURIZER_SCHEMA_VERSION = "dmpnn-graph-v1"
+
+
+def _featurizer_fingerprint() -> str:
+    """Content hash of the featurizer, used to version the on-disk cache.
+
+    The cache used to be keyed on ``(metal, seed)`` and validated by comparing
+    the SMILES list, so changing the atom/bond featurization silently reused
+    stale graphs and every downstream number became uninterpretable.
+    """
+    h = hashlib.sha256(FEATURIZER_SCHEMA_VERSION.encode())
+    try:
+        from molmetal.baselines import dmpnn as _fz
+
+        h.update(inspect.getsource(_fz).encode())
+    except Exception:  # source unavailable (zipimport / frozen) — version alone
+        pass
+    return h.hexdigest()[:12]
+
+
 def _featurize_with_cache(
     smiles: List[str],
     cache_key: str,
@@ -154,19 +178,27 @@ def _featurize_with_cache(
 ) -> List:
     """Featurise SMILES with on-disk pickle cache.
 
-    The first call writes ``{cache_dir}/{cache_key}.pkl``; subsequent
-    calls reuse it. This is critical for multi-seed training — without
+    The first call writes ``{cache_dir}/{cache_key}_{fingerprint}.pkl``;
+    subsequent calls reuse it. This is critical for multi-seed training — without
     the cache, RDKit graph construction (~7s for 3.6k SMILES) is
     repeated every (metal, seed, epoch) tuple.
+
+    The fingerprint is part of both the filename and the payload, so a changed
+    featurizer can never hit an old cache.
     """
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_path = cache_dir / f"{cache_key}.pkl"
+    fingerprint = _featurizer_fingerprint()
+    cache_path = cache_dir / f"{cache_key}_{fingerprint}.pkl"
     if cache_path.exists():
         try:
             with cache_path.open("rb") as f:
-                cached_smiles, cached_graphs = pickle.load(f)
-            if cached_smiles == smiles:
-                return cached_graphs
+                payload = pickle.load(f)
+            if (
+                isinstance(payload, dict)
+                and payload.get("fingerprint") == fingerprint
+                and payload.get("smiles") == smiles
+            ):
+                return payload["graphs"]
         except Exception:
             pass  # corrupt cache; rebuild
 
@@ -175,7 +207,11 @@ def _featurize_with_cache(
     elapsed = time.time() - t0
     try:
         with cache_path.open("wb") as f:
-            pickle.dump((smiles, graphs), f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(
+                {"smiles": smiles, "graphs": graphs, "fingerprint": fingerprint},
+                f,
+                protocol=pickle.HIGHEST_PROTOCOL,
+            )
     except Exception:
         pass  # cache write failure is non-fatal
     print(
