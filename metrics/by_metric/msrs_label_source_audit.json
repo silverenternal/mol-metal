@@ -1,0 +1,164 @@
+{
+  "artifact": "msrs_label_source_audit",
+  "version": "1.0",
+  "generated_utc": "2026-10-18T07:41:58+00:00",
+  "provenance": {
+    "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "script": "molmetal/scripts/msrs_label_source_audit.py"
+  },
+  "base_endpoint": "potency",
+  "n_base_exact_rows": 21404,
+  "n_base_ligands": 2846,
+  "endpoints": {
+    "cisplatin_ratio": {
+      "n_rows": 14309,
+      "n_rows_with_target": 14309,
+      "n_exact_rows": 11555,
+      "n_ligands": 1763,
+      "n_distinct_cohorts": 9435,
+      "censored_share": 0.1774
+    },
+    "phototoxicity": {
+      "n_rows": 2158,
+      "n_rows_with_target": 2158,
+      "n_exact_rows": 1130,
+      "n_ligands": 434,
+      "n_distinct_cohorts": 1361,
+      "censored_share": 0.4634
+    },
+    "potency": {
+      "n_rows": 26801,
+      "n_rows_with_target": 26801,
+      "n_exact_rows": 21404,
+      "n_ligands": 3169,
+      "n_distinct_cohorts": 18043,
+      "censored_share": 0.1868
+    }
+  },
+  "endpoint_overlap_vs_base": {
+    "cisplatin_ratio": {
+      "n_ligands": 1616,
+      "n_new_ligands": 0,
+      "n_cohorts": 7995,
+      "n_new_cohorts": 0,
+      "n_cell_doi": 3414,
+      "n_new_cell_doi": 0
+    },
+    "phototoxicity": {
+      "n_ligands": 279,
+      "n_new_ligands": 0,
+      "n_cohorts": 737,
+      "n_new_cohorts": 2,
+      "n_cell_doi": 441,
+      "n_new_cell_doi": 0
+    }
+  },
+  "cisplatin_ratio_identity": {
+    "n_matched_cohorts": 7995,
+    "n_groups": 3414,
+    "n_groups_multi_row": 1846,
+    "share_exact_constant": 0.9751,
+    "median_within_group_sd": 0.0,
+    "p90_within_group_sd": 0.0,
+    "offset_log10_range": [
+      -1.409,
+      3.342
+    ],
+    "offset_log10_sd_across_groups": 0.487
+  },
+  "external_sources": {
+    "platinai_5k": {
+      "present": true,
+      "n_rows": 5000,
+      "n_unique_ligands": 4998,
+      "n_new_ligands_vs_msrs_canonical": 4998,
+      "n_new_ligands_vs_msrs_fragment": 4996,
+      "n_reused_ligands_fragment": 0,
+      "labels": {
+        "ic50_nm": {
+          "non_null": 0,
+          "median": null
+        },
+        "selectivity": {
+          "non_null": 0,
+          "median": null
+        }
+      },
+      "metals": {
+        "Pd": 1243,
+        "Ru": 1075,
+        "Pt": 874,
+        "Ir": 602,
+        "Rh": 538,
+        "Au": 518,
+        "Os": 150
+      },
+      "has_any_label": false
+    },
+    "platinai_4cell": {
+      "present": true,
+      "n_rows": 4078,
+      "n_unique_ligands": 4078,
+      "n_new_ligands_vs_msrs_canonical": 4078,
+      "n_new_ligands_vs_msrs_fragment": 4078,
+      "n_reused_ligands_fragment": 0,
+      "labels": {
+        "ic50_mcf7_nm": {
+          "non_null": 4078,
+          "median": 8776.295
+        },
+        "ic50_a549_nm": {
+          "non_null": 4078,
+          "median": 12506.685
+        },
+        "ic50_a2780_nm": {
+          "non_null": 4078,
+          "median": 4375.585
+        },
+        "ic50_a2780cis_nm": {
+          "non_null": 4078,
+          "median": 13827.205
+        }
+      },
+      "metals": {},
+      "has_any_label": true
+    },
+    "nci60_precious_9cell": {
+      "present": true,
+      "n_rows": 7823,
+      "n_unique_ligands": 5207,
+      "n_new_ligands_vs_msrs_canonical": 0,
+      "n_new_ligands_vs_msrs_fragment": 45,
+      "n_reused_ligands_fragment": 2417,
+      "labels": {
+        "pIC50": {
+          "non_null": 7823,
+          "median": 4.721
+        }
+      },
+      "metals": {},
+      "has_any_label": true
+    },
+    "metallo_drugs_500_train": {
+      "present": true,
+      "n_rows": 449,
+      "n_unique_ligands": 329,
+      "n_new_ligands_vs_msrs_canonical": 271,
+      "n_new_ligands_vs_msrs_fragment": 269,
+      "n_reused_ligands_fragment": 24,
+      "labels": {},
+      "metals": {},
+      "has_any_label": false
+    }
+  },
+  "verdict": {
+    "aux_endpoints_add_ligands": false,
+    "aux_endpoints_add_cohorts": true,
+    "cisplatin_ratio_is_a_transform": true,
+    "external_sources_with_labels_and_new_ligands": {
+      "platinai_4cell": 4078,
+      "nci60_precious_9cell": 0
+    },
+    "max_new_ligands_available": 4078
+  }
+}
