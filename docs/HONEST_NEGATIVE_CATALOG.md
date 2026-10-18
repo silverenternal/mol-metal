@@ -4878,3 +4878,104 @@ first); §5.3 + §5.4: 0 paper/* + 0 wet-lab; §5.1 standing GPU
 grant: 0 GPU launches this wave; §5.2 honest framing: SCAFFOLD
 explicitly noted as no MEASURED gate; the SCAFFOLD's 5 unit tests
 verify the public surface, not a measurable claim.).
+
+### §6.105 Wf-A78 / OPT-5 (2026-10-18) — training-time ring-template prior SHIPPED (code + 10 unit tests + §5.7 CPU smoke); GPU 5-epoch smoke and the ring-size MEASURED gate DEFERRED.  The prior matches the cycle-size profile of the bond head's hard graph against each molecule's own truth profile; it is the first supervision aimed at the OPT-2 defect (3-rings 89.8% generated vs 0.5% real, 5/6-rings 1.85% vs 96.92%) rather than at aromatic BOND labels.
+
+**Why a ring prior and not a better head.** OPT-2 (docs/CFM_SIX_ROUND_CONCLUSION_2026_10_13.md §6) measured the
+defect as ring SIZE.  A bond classifier can relabel an edge; it cannot make
+five atoms close a five-ring.  Wf-A74's residual head lifted bond_f1 to 0.43
+and largest_fragment_frac to 1.000 without changing the ring-size profile,
+which is the same conclusion from the architecture side.
+
+**How the count is made differentiable.** Exact ring perception is discrete.
+The prior uses the non-backtracking (Hashimoto) operator B on directed edges:
+
+    B[(i->j), (j->l)] = p_jl  for l != i,  0 otherwise
+    #cycles of size k = trace(B ** k) / (2k)
+
+Every closed non-backtracking k-walk IS a k-cycle, so unlike trace(A**k) there
+is no back-and-forth contamination at even k — the size that matters here is 6.
+A closed 6-walk can still go around a TRIANGLE twice; each triangle adds
+exactly 0.5 to trace(B^6)/12, and that term is subtracted.
+
+**Value and gradient come from different graphs** (this is the design decision
+the smoke forced):
+  * value    = cycle counts on the HARD graph (p > 0.5),
+  * gradient = d(cycle counts on the SOFT graph)/d(logits), normalised by the
+    candidate-edge count E.
+
+**Three bugs caught before ship, all by the §5.7 CPU smoke / unit tests:**
+
+| # | Symptom (MEASURED) | Cause | Fix |
+|---|---|---|---|
+| 1 | `truth_counts` = 96 four-cycles + 1280 six-cycles on a 53-atom cloud | `cloud.bonds` is the CANDIDATE pair list (874 pairs), not the bond graph | filter by `cloud.bond_types != 0` in the stash |
+| 2 | `ring_prior_term` = 7.99e7 vs `bond_ce` 1.0; `grad_norm` 6e9 | cycle counts on the SOFT graph explode combinatorially (every 5%-probability noise edge participates) | hard-value + soft-gradient |
+| 3 | `grad_norm` 6.9e5 vs ~1.5 for bond_ce-only | soft-count gradient scale grows with E and with the count | divide the soft count by E on the gradient path only + `log1p` on the loss |
+
+**MEASURED (§5.7 50-step CPU smoke**, `configs/cfm_5metal_wfa78_ring_prior_cpu_smoke.yaml`,
+weight 0.01, 400 train / 32 val, 1 epoch, CPU, 147 s wall,
+`/tmp/wfa78_smoke/per_epoch_metrics.json`):
+
+| metric | value |
+|---|---:|
+| `train_loss` | 1.2192 |
+| `bond_ce` | 0.9972 |
+| `ring_prior_term` | 0.2382 (24% of bond_ce) |
+| `grad_norm` | 137.8 (bond_ce-only ≈ 1.5; global `max_norm=5.0` clips) |
+| `decode_ratio_rdkit_strict` | 1.000 (32/32) |
+| `gen_validity` | 1.000 (8/8, 1 seed) |
+
+**Honest-negative (ACTIVE, this entry):**
+  * **No GPU smoke, no ring-size MEASURED gate.**  The 5-epoch GPU smoke that
+    would measure `rings_per_mol` / 3-ring share / 5-6-ring share on generated
+    output is DEFERRED.  Until it runs, this is a code ship, not a result.
+  * **The weight 0.01 is not tuned.**  It was chosen to make the term ~24% of
+    `bond_ce` at epoch 0 (a prior should be a nudge, not the objective).  The
+    measured `grad_norm` is still ~90x the bond_ce-only value, so the first
+    epochs are ring-dominated by construction; whether that helps or hurts is
+    exactly what the deferred GPU smoke must measure.
+  * **`bond_candidate_source: truth_only` bounds what the prior can teach.**
+    The predicted graph can only contain candidate pairs, so the prior cannot
+    reward closing a ring over an edge the head was never asked about.  This
+    is the same structural limit that makes the decoder over-predict bonds at
+    generation time; a candidate-source change is a separate wave.
+
+**Files** (3 new + 4 edits + 2 configs):
+
+| File | LOC |
+|---|---:|
+| `molmetal/loss/ring_template.py` (NEW) | 246 |
+| `molmetal/tests/test_wfa78_ring_template_prior.py` (NEW, 10 tests) | 145 |
+| `configs/cfm_5metal_wfa78_ring_prior.yaml` (NEW) | 239 |
+| `configs/cfm_5metal_wfa78_ring_prior_cpu_smoke.yaml` (NEW) | 239 |
+| `molmetal/scripts/train_cfm_yuelbond_wasserstein.py` (import + stash attr/reset/method/call + loss kwarg + term + sum + EpochMetrics field + CLI flag + call plumbing) | +105 |
+| `molmetal/loss/__init__.py` (exports) | +4 |
+| `configs/cfm_5metal_smoke_2026_10_17.yaml` (pre-existing §5.11 violation: `--device` in `command_template`) | -1 flag |
+
+**Tests** (10/10 PASS, 0.5 s CPU; 38/38 across the Wf-A71/A73/A74/A75/A77/A78
+regression set):
+  * zero weight is exact zero and graphless
+  * perfect prediction scores near zero
+  * wrong ring size scores positive
+  * acyclic truth is skipped
+  * gradient reaches bond logits
+  * tuple pair_index accepted
+  * empty inputs return zero
+  * batch mean matches manual mean
+  * spectrum counts each cycle size exactly (triangle -> 1 at k=3, hexagon -> 1 at k=6)
+  * acyclic graph has zero counts
+
+**§6.105 catalog-count math.** Net catalog-count delta: **+1** (§6.105 itself).
+ACTIVE count delta: **+1** (the "no GPU smoke / weight untuned" honest-negative
+gates the Wf-A78 → GPU-smoke transition).  Cumulative catalog count:
+**156 -> 157** (+1).  ACTIVE count: **112 -> 113** (+1).
+
+**Workflow** | Wf-A78 / OPT-5 (2026-10-18; 10 regression tests + 1 §5.7 CPU
+smoke PASS; 4 new files + 4 edited files; §5.6 atomic-write via Edit/Write;
+§5.7 50-step CPU smoke PASS (the 3 bugs above were found by it); §5.9
+single-venv via .venv/bin/python; §5.11 yaml-only PASS (`flow.ring_template_weight`
+resolves to the `--ring-template-weight` dest; `_config_binding_gate` PASS over
+166 configs); §5.3 + §5.4: 0 paper/* + 0 wet-lab; §5.1 standing GPU grant:
+0 GPU launches this wave; §5.2 honest framing: every number above traces to
+`/tmp/wfa78_smoke/per_epoch_metrics.json` and the pytest run).
+

@@ -1,5 +1,5 @@
 {
-  "version": "8.4 (refactored 2026-10-18 per user directive '重构cfm_todo.json': dropped 20 _arch_audit_log_* blocks + 7 closed tasks + 1 closed decision; audit history preserved in git log + docs/HONEST_NEGATIVE_CATALOG.md §6.75-§6.99; open tasks: L3_A_B_Phase_3_redo_or_treat_partial, OPT-5_ring_template_prior; open decisions: DEC_retrain_slot, DEC_general_sbdd_baselines, DEC_per_loss_projection_inert; forward_look: Wf-A73 (算子升级) ✅ SHIPPED §6.100 + Wf-A74 (MLP→高级架构迁移) ✅ SHIPPED §6.101 + Wf-A75 (MolDiff guidance) ✅ SHIPPED §6.103, MEASURED largest_fragment_frac 0.048→0.838, gen_validity collapse gate to next wave) + Wf-A77 (Allegro SCAFFOLD) ✅ SHIPPED §6.104 (no MEASURED gate; SCAFFOLD only; L=0 path live + 5 tests, L≥1 NotImplementedError stub)",
+  "version": "8.4 (refactored 2026-10-18 per user directive '重构cfm_todo.json': dropped 20 _arch_audit_log_* blocks + 7 closed tasks + 1 closed decision; audit history preserved in git log + docs/HONEST_NEGATIVE_CATALOG.md §6.75-§6.99; open tasks: L3_A_B_Phase_3_redo_or_treat_partial, OPT-5_ring_template_prior; open decisions: DEC_retrain_slot, DEC_general_sbdd_baselines, DEC_per_loss_projection_inert; forward_look: Wf-A73 (算子升级) ✅ SHIPPED §6.100 + Wf-A74 (MLP→高级架构迁移) ✅ SHIPPED §6.101 + Wf-A75 (MolDiff guidance) ✅ SHIPPED §6.103, MEASURED largest_fragment_frac 0.048→0.838, gen_validity collapse gate to next wave) + Wf-A77 (Allegro SCAFFOLD) ✅ SHIPPED §6.104 + Wf-A78/OPT-5 (ring-template prior) ✅ CODE SHIPPED §6.105 (10 tests + §5.7 CPU smoke; GPU 5-epoch smoke + ring-size MEASURED gate DEFERRED) (no MEASURED gate; SCAFFOLD only; L=0 path live + 5 tests, L≥1 NotImplementedError stub)",
   "purpose": "CFM-based 3D molecule generation for precious-metal anticancer drug design (target-conditioned). Same-dataset same-domain baselines; scoring scripts reused from cloned repos -- no new metric code.",
   "scope_boundary": "GENERATIVE line only. PREDICTIVE line (cross-metal pIC50 / Krasnov-2026 / Chemprop / Bemis-Murcko) is on a separate DeepSeek line and NOT in scope.",
   "task_definition": {
@@ -115,8 +115,10 @@
     "TIER_3_DEFERRED_NO_TABLE_IMPACT": [
       {
         "id": "OPT-5_ring_template_prior",
-        "what": "Training-time ring-template prior; no script on disk; OPT-2 ring audit showed 7.3x defect after dative->single correction. Not Table-blocking.",
-        "cost": "design + 1-day GPU"
+        "what": "Training-time ring-template prior. SHIPPED as molmetal/loss/ring_template.py (non-backtracking cycle counts, hard-value/soft-gradient, 10 tests) wired into train_cfm_yuelbond_wasserstein.py behind flow.ring_template_weight (default 0.0, bit-exact). MEASURED on the §5.7 CPU smoke: ring_prior_term 0.238 vs bond_ce 0.997 at weight 0.01.",
+        "cost": "1 GPU smoke (~15 min) + 1 analysis script",
+        "status": "CODE SHIPPED 2026-10-18 (Wf-A78, §6.105)",
+        "remaining": "GPU 5-epoch smoke on configs/cfm_5metal_wfa78_ring_prior.yaml + ring-size MEASURED gate (rings/mol, 3-ring share, 5/6-ring share on generated output). Weight 0.01 is not tuned; grad_norm 137.8 vs 1.5 bond_ce-only, so the first epochs are ring-dominated."
       }
     ]
   },
@@ -207,6 +209,18 @@
         "deferred_to": "Wf-A77+ e3nn.o3.EquivariantTensorProduct wire-in (replaces _tensor_product stub, removes flow.pair_equivariant_enabled from DECLARED_INERT_PATHS, runs 30-epoch GPU retrain)",
         "catalog_entry": "docs/HONEST_NEGATIVE_CATALOG.md §6.104"
       }
+    },
+    "Wf-A78_OPT5_ring_template_prior": {
+      "status": "CODE SHIPPED 2026-10-18 (§6.105)",
+      "files": [
+        "molmetal/loss/ring_template.py",
+        "molmetal/tests/test_wfa78_ring_template_prior.py",
+        "configs/cfm_5metal_wfa78_ring_prior.yaml",
+        "configs/cfm_5metal_wfa78_ring_prior_cpu_smoke.yaml"
+      ],
+      "yaml_key": "flow.ring_template_weight (default 0.0, bit-exact)",
+      "deferred": "GPU 5-epoch smoke + ring-size MEASURED gate (rings/mol, 3-ring share, 5/6-ring share)",
+      "honest_negative": "docs/HONEST_NEGATIVE_CATALOG.md §6.105"
     }
   },
   "pointer_to_history": {

@@ -114,7 +114,7 @@ directives:
   - p1_pytorch_cuda_available
 entry:
   script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
-  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --n-train {n_train} --n-val {n_val} --device cuda:0 --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --n-train {n_train} --n-val {n_val} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
   legacy_inline_command: ""
 honest_framing:
   claims:

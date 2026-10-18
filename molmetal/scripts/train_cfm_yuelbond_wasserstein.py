@@ -193,6 +193,7 @@ from molmetal.loss import (
     MolecularPropertyTargetLoss,
     NaturalChargeLoss,
     QEDLoss,
+    RingTemplatePrior,
     SBOO3Term,
     SO3Term,
     ShortcutDistillLoss,
@@ -1246,6 +1247,10 @@ class EpochMetrics:
     # (sharpening) actually moves this term, not just whether the total
     # loss moves.  Default 0.0 = aux MSE off (Wf-A68 bit-exact path).
     bond_aux_mse_term: float = 0.0
+    # Wf-A78 (OPT-5) — ring-template prior term.  Tracked so a retrain can
+    # MEASURE whether the prior is actually moving, not just whether the
+    # total loss moved.  Default 0.0 = prior off (bit-exact path).
+    ring_prior_term: float = 0.0
     gen_validity: float = 0.0
     gen_validity_val: int = 0
     gen_validity_n: int = 0
@@ -1839,6 +1844,14 @@ class CFMJointModel(nn.Module):
         # `None` means the term is OFF (Wf-A68 bit-exact path, the
         # default when `bond_aux_mse_weight=0.0`).
         self.last_bond_aux_mse_term: Optional[torch.Tensor] = None
+        # Wf-A78 (OPT-5) — per-cloud (logits, pair_index, n_atoms, truth
+        # bonds) tuples for the ring-template prior.  Reset per batch; only
+        # populated when the cloud carries truth bonds AND the head returns
+        # its own pair index.  Empty list => the prior is an exact zero.
+        self.last_ring_prior_inputs: List[tuple] = []
+        # Scalar term set by train_one_epoch at the end of the batch loop
+        # (mirrors last_bond_aux_mse_term); None = prior OFF.
+        self.last_ring_prior_term: Optional[torch.Tensor] = None
         # 2026-10-09 — bond-predictor dispatch.  Both branches attach the
         # head to `self.head` and both expose (logits, (i_idx, j_idx)) from
         # forward(cloud), so the trainer's downstream code (assemble-aware
@@ -2496,6 +2509,11 @@ class CFMJointModel(nn.Module):
         # matching the pre-ultracode zero path.  Bit-exact identical
         # behaviour to Wf-A67 at default.
         self._maybe_stash_bond_aux_bo_linear(logits, cloud)
+        # Wf-A78 (OPT-5) — stash the head's own candidate pairs so the
+        # trainer can score the ring-size profile of the predicted graph
+        # against the molecule's truth profile.  No-op when the head does
+        # not return its pair index or the cloud has no truth bonds.
+        self._maybe_stash_ring_prior(logits, head_pair_index, cloud)
         # Wf-A16 (2026-10-13) c-flow pocket embedding.
         #
         # Produce a (B, hidden_dim) tensor when ``pocket_batch_ctx`` is
@@ -2727,6 +2745,45 @@ class CFMJointModel(nn.Module):
         tgt = target.detach().to(pred_bo.device, dtype=pred_bo.dtype)
         tgt = tgt.clamp(0.0, 4.0)
         self.last_bond_logits_bo_linear.append(pred_bo.contiguous())
+
+    def _maybe_stash_ring_prior(
+        self,
+        head_logits: Optional[torch.Tensor],
+        pair_index,
+        cloud: "AtomCloud",
+    ) -> None:
+        """Wf-A78 (OPT-5) — stash one molecule for the ring-template prior.
+
+        Stores (logits, pair_index, n_atoms, truth_bonds) so the trainer
+        can score the ring-size profile of the *predicted* soft graph
+        against the molecule's own truth profile.  Skips silently when
+        the head did not return its pair index or the cloud carries no
+        truth bonds — in that case the list stays empty and the prior
+        collapses to an exact zero (bit-exact default-off path).
+        """
+        if head_logits is None or head_logits.numel() == 0:
+            return
+        if pair_index is None:
+            return
+        truth = getattr(cloud, "bonds", None)
+        if truth is None or truth.numel() == 0:
+            return
+        # cloud.bonds is the CANDIDATE pair list, not the bond graph: the
+        # 5-metal cohort builds ~874 candidates for a 53-atom cloud.  The
+        # bond graph is the subset whose bond_types is not NO_BOND (0).
+        # Passing the candidate list as "truth" MEASURED 96 four-cycles
+        # and 1280 six-cycles on a single molecule (Wf-A78 debug run).
+        types = getattr(cloud, "bond_types", None)
+        if types is not None and types.numel() == truth.shape[1]:
+            truth = truth[:, types != 0]
+        if truth.numel() == 0:
+            return
+        n_atoms = int(cloud.atomic_numbers.shape[0])
+        if n_atoms <= 0:
+            return
+        self.last_ring_prior_inputs.append(
+            (head_logits, pair_index, n_atoms, truth)
+        )
 
     def _maybe_stash_q_pred(
         self, q_pred: Optional[torch.Tensor]
@@ -3536,6 +3593,11 @@ def train_one_epoch(
     focal_bond_gamma: float = 2.0,
     bond_label_smoothing: float = 0.0,  # 0.0 = no smoothing (OFF)
     bond_aux_mse_weight: float = 0.0,  # 0.0 = no aux MSE (OFF)
+    # Wf-A78 (OPT-5) — ring-template prior on the bond head's soft graph.
+    # 0.0 (default) returns an exact zero and never touches the stash, so
+    # a run that does not set flow.ring_template_weight is bit-exact with
+    # the pre-Wf-A78 trainer.
+    ring_template_weight: float = 0.0,
     # Wf-A70 W2 (2026-10-17) — Fix 8: temperature τ on the aux-MSE
     # softmax inside `_maybe_stash_bond_aux_bo_linear`.  Default 1.0
     # = bit-exact Wf-A68 (no temperature applied).  τ<1 sharpens,
@@ -3760,6 +3822,8 @@ def train_one_epoch(
         # (line ~4915) after `bond_aux_mse_term` is computed from the
         # concatenated `last_bond_logits_bo_linear` tensors.
         model.last_bond_aux_mse_term = None
+        # Wf-A78 (OPT-5) — ring-prior stash reset (parallel to the above).
+        model.last_ring_prior_inputs = []
         for idx in batch_indices:
             cloud = train_clouds[int(idx)]
             # Move cloud to device by re-creating (AtomCloud has no
@@ -5099,6 +5163,19 @@ def train_one_epoch(
         # Always stash (even when 0.0) so a reader sees the "did the term
         # run this epoch?" signal, not a missing field.
         model.last_bond_aux_mse_term = bond_aux_mse_term.detach()
+        # Wf-A78 (OPT-5) — ring-template prior.  Matches the ring-size
+        # profile of the predicted soft graph against each molecule's own
+        # truth profile (OPT-2 measured the defect as ring SIZE: 3-rings
+        # 89.8% generated vs 0.5% real).  Weight 0.0 => exact zero and the
+        # stash is never populated, so the sum below is bit-exact.
+        _ring_weight = float(ring_template_weight)
+        if _ring_weight > 0.0 and getattr(model, "last_ring_prior_inputs", None):
+            ring_prior_term = RingTemplatePrior(weight=_ring_weight).compute_batch(
+                model.last_ring_prior_inputs, device=device
+            )
+        else:
+            ring_prior_term = torch.zeros((), device=device)
+        model.last_ring_prior_term = ring_prior_term.detach()
         qed_term = QEDLoss(
             weight=float(qed_loss_weight),
             enabled=float(qed_loss_weight) > 0.0,
@@ -5403,6 +5480,9 @@ def train_one_epoch(
             # ``chem_loss_term`` (which applies a log transform).  Default
             # weight 0.0 ⇒ zero term, pre-ultracode sum preserved bit-exact.
             + bond_aux_mse_term
+            # Wf-A78 (OPT-5) — ring-template prior.  Default weight 0.0
+            # returns an exact zero, so the pre-Wf-A78 sum is preserved.
+            + ring_prior_term
             + qed_term
             + molecule_term
             + stereo_term
@@ -8500,6 +8580,20 @@ def parse_args() -> argparse.Namespace:
             "per-epoch 'best_f1(optimistic)' line reports what a sweep would "
             "reach, and picking a production threshold needs a held-out "
             "split (choosing it on the same pairs inflates the score)."
+        ),
+    )
+    p.add_argument(
+        "--ring-template-weight",
+        dest="ring_template_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "2026-10-18 NEW (Wf-A78 / OPT-5): weight on the ring-template "
+            "prior.  Matches the ring-size profile of the bond head's soft "
+            "graph against each molecule's truth profile (OPT-2 measured "
+            "3-rings at 89.8%% generated vs 0.5%% real).  Default 0.0 is an "
+            "exact zero term (bit-exact with pre-Wf-A78).  Opt-in via YAML "
+            "flow.ring_template_weight."
         ),
     )
     p.add_argument(
@@ -12743,6 +12837,9 @@ def main() -> int:
             focal_bond_gamma=float(getattr(args, "focal_bond_gamma", 2.0)),
             bond_label_smoothing=float(getattr(args, "bond_label_smoothing", 0.0)),
             bond_aux_mse_weight=float(getattr(args, "bond_aux_mse_weight", 0.0)),
+            # Wf-A78 (OPT-5) — ring-template prior weight (default 0.0 =
+            # exact zero term, bit-exact with the pre-Wf-A78 trainer).
+            ring_template_weight=float(getattr(args, "ring_template_weight", 0.0)),
             # Wf-A70 W2 (2026-10-17) — Fix 8: temperature τ on the
             # aux-MSE softmax inside the per-cloud stash.
             # Default 1.0 = bit-exact Wf-A68 (no temperature applied).
@@ -13874,6 +13971,14 @@ def main() -> int:
                 (
                     model.last_bond_aux_mse_term.item()
                     if getattr(model, "last_bond_aux_mse_term", None)
+                    is not None
+                    else 0.0
+                )
+            ),
+            ring_prior_term=float(
+                (
+                    model.last_ring_prior_term.item()
+                    if getattr(model, "last_ring_prior_term", None)
                     is not None
                     else 0.0
                 )

@@ -51,6 +51,7 @@ from molmetal.loss.chemistry_losses import (
 )
 from molmetal.loss.distillation_losses import ShortcutDistillLoss
 from molmetal.loss.fragment_losses import SingleFragmentLoss
+from molmetal.loss.ring_template import RingTemplatePrior, RingTemplatePriorConfig
 from molmetal.loss.prior_losses import ClashPenalty
 from molmetal.loss.regularization_losses import (
     ConsistencyTerm,
@@ -82,6 +83,9 @@ __all__ = [
     "ShortcutDistillLoss",
     # fragment_losses.py (Wf-A14, A.6 fix)
     "SingleFragmentLoss",
+    # ring_template.py (Wf-A78 / OPT-5)
+    "RingTemplatePrior",
+    "RingTemplatePriorConfig",
     # prior_losses.py
     "ClashPenalty",
     # property_losses.py (Wf-A14, A.4 fix)
