@@ -815,6 +815,49 @@ def _build_gated_csv_rows(
     return header, rows
 
 
+def _rebuild_v2_model(ckpt: object, state: object) -> object:
+    """Rebuild a v2 (EGNN-velocity) model from a checkpoint's serialised args.
+
+    Wf-A82 (2026-10-18).  ``strict=True`` on purpose: the whole point is that
+    the trainer's own factory reproduces the architecture exactly, so any
+    missing or mis-shaped parameter is a real mismatch and must be reported,
+    not smoothed over by ``strict=False``.
+    """
+    args_dict = ckpt.get("args") if isinstance(ckpt, dict) else None
+    if not isinstance(args_dict, dict):
+        print(
+            "[wfA54-decode] HONEST-NEGATIVE: ckpt has vel_field.* keys but no "
+            "serialised 'args' dict, so the v2 architecture cannot be rebuilt. "
+            "Returning empty SMILES list."
+        )
+        return None
+    try:
+        import argparse
+
+        from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
+            build_joint_model,
+        )
+
+        args = argparse.Namespace(**args_dict)
+        model = build_joint_model(args)
+        model.load_state_dict(state, strict=True)
+        model.eval()
+    except Exception as exc:
+        print(
+            f"[wfA54-decode] HONEST-NEGATIVE: v2 rebuild from ckpt['args'] "
+            f"failed ({type(exc).__name__}: {exc}). Returning empty SMILES list."
+        )
+        return None
+    print(
+        f"[wfA54-decode] v2 (EGNN-velocity) rebuilt from ckpt['args']: "
+        f"hidden_dim={getattr(args, 'hidden_dim', '?')} "
+        f"n_layers={getattr(args, 'n_layers', '?')} "
+        f"vocab={getattr(args, 'yuelbond_vocab', '?')} "
+        f"head={getattr(args, 'bond_head_kind', '?')}"
+    )
+    return model
+
+
 def _load_checkpoint_any(ckpt_path: Path) -> object:
     """Load a CFM checkpoint in EITHER serialisation the trainer emits.
 
@@ -948,18 +991,16 @@ def _decode_smiles_from_ckpt(
         )
         return []
 
-    # Head-only / pre-Wf-A36 ckpt detection.  A v2 (EGNN-velocity) ckpt
-    # would carry ``vel_field.*`` keys; if found, we refuse rather than
-    # silently zeroing out the velocity pathway (the Wf-A35-1 C1 raise
-    # pattern — fail fast and force a configuration fix).
+    # Wf-A82 (2026-10-18) — v2 (EGNN-velocity) checkpoints are now REBUILT
+    # from ``ckpt["args"]`` through the trainer's own factory.  Before this
+    # the helper refused them outright, which meant it could not decode a
+    # single checkpoint the current trainer produces.  The v1 path below
+    # stays for pre-Wf-A36 artifacts, which carry no serialised args.
+    model = None
     if any(k.startswith("vel_field.") for k in state.keys()):
-        print(
-            "[wfA54-decode] HONEST-NEGATIVE: ckpt has vel_field.* keys "
-            "(EGNN-velocity v2). This helper handles v1 (vel_probe) + "
-            "smoke-stub shapes only.  The EGNN-velocity decode path is "
-            "a future-wave deliverable. Returning empty SMILES list."
-        )
-        return []
+        model = _rebuild_v2_model(ckpt, state)
+        if model is None:
+            return []
 
     # Build templates.  Real templates come from the tmQM cohort; the
     # smoke helper uses 3 fixed scaffolds (4-atom / 8-atom / 12-atom)
@@ -993,114 +1034,116 @@ def _decode_smiles_from_ckpt(
     # state_dict keys alone.  We probe ``head.atom_encoder.weight`` for
     # the in_dim, and use the canonical 64-d hidden_dim that the bond
     # head expects when no explicit override is in the state_dict.
-    try:
-        from molmetal.scripts.train_cfm_yuelbond_wasserstein import (  # noqa: WPS433
-            CFMJointModel,
-        )
-    except ImportError as exc:
-        print(
-            f"[wfA54-decode] HONEST-NEGATIVE: CFMJointModel import "
-            f"failed ({exc!r}). Returning empty SMILES list."
-        )
-        return []
-
-    try:
-        # Probe hidden_dim from head.atom_encoder.weight.shape[0].  The
-        # atom_encoder is ``nn.Linear(z_table_len + 9, hidden_dim)``, so
-        # its OUTPUT feature count equals hidden_dim (verified on the
-        # smoke-stub which has shape (64, 13) → hidden_dim=64,
-        # z_table_len=4 because 13 = 9 + 4).  Using shape[1] would
-        # mis-infer hidden_dim because shape[1] = z_table_len + 9 is
-        # the atom-feature width, NOT the hidden dim.
-        ae_w = state.get("head.atom_encoder.weight")
-        if ae_w is None:
-            print(
-                "[wfA54-decode] HONEST-NEGATIVE: ckpt has no "
-                "head.atom_encoder.weight; cannot infer hidden_dim. "
-                "Returning empty SMILES list."
-            )
-            return []
-        hidden_dim = int(ae_w.shape[0])
-        if hidden_dim < 4:
-            print(
-                f"[wfA54-decode] HONEST-NEGATIVE: inferred hidden_dim="
-                f"{hidden_dim} from head.atom_encoder.weight.shape[0]={int(ae_w.shape[0])}; "
-                "suspiciously small, refusing to construct model."
-            )
-            return []
-
-        # z_table: probe from head.atom_encoder.weight.shape[1].
-        # atom_encoder input dim = z_table_len + 9 (one-hot z + 9 hand-crafted).
-        ae_in = int(ae_w.shape[1])
-        z_table_len = ae_in - 9
-        if z_table_len <= 0:
-            print(
-                f"[wfA54-decode] HONEST-NEGATIVE: head.atom_encoder "
-                f"weight.shape[1]={ae_in} implies z_table_len={z_table_len}; "
-                "refusing to construct model."
-            )
-            return []
-        # Map known z_table_len → canonical z_table tuple.  This helper
-        # supports the smoke-stub 4-entry and 9-entry shapes plus the
-        # production "pt" 13-entry and "all6" 18-entry shapes.  Anything
-        # else is an HONEST-NEGATIVE (the trainer's own z_table preset
-        # names are "pt" and "all6"; if a future preset is added the
-        # helper needs the matching tuple).
-        z_table_presets = {
-            4: (0, 1, 6, 78),                                    # smoke-stub mini
-            9: (0, 1, 6, 7, 8, 9, 15, 16, 17),                    # smoke-stub seed0
-            13: (0, 1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78),  # production "pt"
-            18: (0, 1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 44, 45,   # production "all6"
-                 53, 75, 76, 77, 78),
-        }
-        if z_table_len not in z_table_presets:
-            print(
-                f"[wfA54-decode] HONEST-NEGATIVE: ckpt z_table_len="
-                f"{z_table_len} (from head.atom_encoder.weight.shape[1]={ae_in}); "
-                "no matching preset registered (supported: 4, 9, 13, 18). "
-                "Returning empty SMILES list."
-            )
-            return []
-        z_table = z_table_presets[z_table_len]
-
-        model = CFMJointModel(
-            hidden_dim=hidden_dim,
-            n_layers=3,
-            use_egnn_velocity=False,  # v1 ckpt shape (vel_probe)
-            fm_objective=False,
-            z_table=z_table,
-        )
-        # ``strict=False`` mirrors the trainer's own resume path (Wf-A30-1)
-        # so a smoke-stub ckpt with no optimiser / EMA state can load.
-        # NOTE: PyTorch's load_state_dict(strict=False) does NOT suppress
-        # size-mismatch errors — those still raise RuntimeError.  We
-        # catch that case below and emit a per-shape HONEST-NEGATIVE so
-        # the helper does not crash on smoke-stub or partial-Z setups.
+    if model is None:
         try:
-            model.load_state_dict(state, strict=False)
-        except RuntimeError as rterr:
-            err_str = str(rterr)
-            # If the failure is a size mismatch in the head/vel head,
-            # emit a precise HONEST-NEGATIVE keyed on z_table_len.
-            if "size mismatch" in err_str:
+            from molmetal.scripts.train_cfm_yuelbond_wasserstein import (  # noqa: WPS433
+                CFMJointModel,
+            )
+        except ImportError as exc:
+            print(
+                f"[wfA54-decode] HONEST-NEGATIVE: CFMJointModel import "
+                f"failed ({exc!r}). Returning empty SMILES list."
+            )
+            return []
+
+        try:
+            # Probe hidden_dim from head.atom_encoder.weight.shape[0].  The
+            # atom_encoder is ``nn.Linear(z_table_len + 9, hidden_dim)``, so
+            # its OUTPUT feature count equals hidden_dim (verified on the
+            # smoke-stub which has shape (64, 13) → hidden_dim=64,
+            # z_table_len=4 because 13 = 9 + 4).  Using shape[1] would
+            # mis-infer hidden_dim because shape[1] = z_table_len + 9 is
+            # the atom-feature width, NOT the hidden dim.
+            ae_w = state.get("head.atom_encoder.weight")
+            if ae_w is None:
                 print(
-                    f"[wfA54-decode] HONEST-NEGATIVE: CFMJointModel "
-                    f"load_state_dict hit shape mismatches (z_table_len="
-                    f"{z_table_len}, hidden_dim={hidden_dim}). The "
-                    "smoke-stub ckpts use non-canonical vocab sizes "
-                    "and need a direct-bond-head-only load path (future "
-                    "wave). Returning empty SMILES list."
+                    "[wfA54-decode] HONEST-NEGATIVE: ckpt has no "
+                    "head.atom_encoder.weight; cannot infer hidden_dim. "
+                    "Returning empty SMILES list."
                 )
                 return []
-            raise
-        model.eval()
-    except Exception as exc:
-        print(
-            f"[wfA54-decode] HONEST-NEGATIVE: CFMJointModel "
-            f"construction / load_state_dict failed "
-            f"({type(exc).__name__}: {exc}). Returning empty SMILES list."
-        )
-        return []
+            hidden_dim = int(ae_w.shape[0])
+            if hidden_dim < 4:
+                print(
+                    f"[wfA54-decode] HONEST-NEGATIVE: inferred hidden_dim="
+                    f"{hidden_dim} from head.atom_encoder.weight.shape[0]={int(ae_w.shape[0])}; "
+                    "suspiciously small, refusing to construct model."
+                )
+                return []
+
+            # z_table: probe from head.atom_encoder.weight.shape[1].
+            # atom_encoder input dim = z_table_len + 9 (one-hot z + 9 hand-crafted).
+            ae_in = int(ae_w.shape[1])
+            z_table_len = ae_in - 9
+            if z_table_len <= 0:
+                print(
+                    f"[wfA54-decode] HONEST-NEGATIVE: head.atom_encoder "
+                    f"weight.shape[1]={ae_in} implies z_table_len={z_table_len}; "
+                    "refusing to construct model."
+                )
+                return []
+            # Map known z_table_len → canonical z_table tuple.  This helper
+            # supports the smoke-stub 4-entry and 9-entry shapes plus the
+            # production "pt" 13-entry and "all6" 18-entry shapes.  Anything
+            # else is an HONEST-NEGATIVE (the trainer's own z_table preset
+            # names are "pt" and "all6"; if a future preset is added the
+            # helper needs the matching tuple).
+            z_table_presets = {
+                4: (0, 1, 6, 78),                                    # smoke-stub mini
+                9: (0, 1, 6, 7, 8, 9, 15, 16, 17),                    # smoke-stub seed0
+                13: (0, 1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 53, 78),  # production "pt"
+                18: (0, 1, 6, 7, 8, 9, 15, 16, 17, 34, 35, 44, 45,   # production "all6"
+                     53, 75, 76, 77, 78),
+            }
+            if z_table_len not in z_table_presets:
+                print(
+                    f"[wfA54-decode] HONEST-NEGATIVE: ckpt z_table_len="
+                    f"{z_table_len} (from head.atom_encoder.weight.shape[1]={ae_in}); "
+                    "no matching preset registered (supported: 4, 9, 13, 18). "
+                    "Returning empty SMILES list."
+                )
+                return []
+            z_table = z_table_presets[z_table_len]
+
+            model = CFMJointModel(
+                hidden_dim=hidden_dim,
+                n_layers=3,
+                use_egnn_velocity=False,  # v1 ckpt shape (vel_probe)
+                fm_objective=False,
+                z_table=z_table,
+            )
+            # ``strict=False`` mirrors the trainer's own resume path (Wf-A30-1)
+            # so a smoke-stub ckpt with no optimiser / EMA state can load.
+            # NOTE: PyTorch's load_state_dict(strict=False) does NOT suppress
+            # size-mismatch errors — those still raise RuntimeError.  We
+            # catch that case below and emit a per-shape HONEST-NEGATIVE so
+            # the helper does not crash on smoke-stub or partial-Z setups.
+            try:
+                model.load_state_dict(state, strict=False)
+            except RuntimeError as rterr:
+                err_str = str(rterr)
+                # If the failure is a size mismatch in the head/vel head,
+                # emit a precise HONEST-NEGATIVE keyed on z_table_len.
+                if "size mismatch" in err_str:
+                    print(
+                        f"[wfA54-decode] HONEST-NEGATIVE: CFMJointModel "
+                        f"load_state_dict hit shape mismatches (z_table_len="
+                        f"{z_table_len}, hidden_dim={hidden_dim}). The "
+                        "smoke-stub ckpts use non-canonical vocab sizes "
+                        "and need a direct-bond-head-only load path (future "
+                        "wave). Returning empty SMILES list."
+                    )
+                    return []
+                raise
+            model.eval()
+        except Exception as exc:
+            print(
+                f"[wfA54-decode] HONEST-NEGATIVE: CFMJointModel "
+                f"construction / load_state_dict failed "
+                f"({type(exc).__name__}: {exc}). Returning empty SMILES list."
+            )
+            return []
+
 
     # Generate clouds from noise.
     device = torch.device("cpu")
@@ -1132,6 +1175,9 @@ def _decode_smiles_from_ckpt(
     # Decode each cloud via the bond head.
     try:
         head = model.head
+        # Wf-A82 — the v2 branch does not run the v1 hidden_dim probe above,
+        # so read it off the loaded head (exact on both paths).
+        hidden_dim = int(model.head.atom_encoder.weight.shape[0])
         # Wf-A81 (2026-10-18) — decode with the rule the checkpoint was
         # trained and scored under.  Before this, a "per_class" run's own
         # gen_validity was measured with calibrated thresholds while this
@@ -1163,12 +1209,29 @@ def _decode_smiles_from_ckpt(
         decoder = YuelBondBondDecoder(
             head=head, hidden_dim=hidden_dim, n_layers=3, **_dec_kw
         )
-        decoder.eval()
+        # Wf-A82 — YuelBondBondDecoder is a plain class, not an nn.Module, so
+        # the pre-existing `decoder.eval()` raised AttributeError on EVERY
+        # path (it was unreachable before because v2 ckpts were refused and
+        # the v1 path was never exercised end-to-end).  Put the inner module
+        # in eval mode when there is one.
+        _inner_decoder = getattr(decoder, "_decoder", None)
+        if hasattr(_inner_decoder, "eval"):
+            _inner_decoder.eval()
         smiles_list: list[str] = []
         for cloud in clouds:
             try:
                 result = decoder.decode(cloud)
-                smi = getattr(result, "smiles", None) or ""
+                # Wf-A82 — YuelBondDecodeResult carries the molecule on
+                # `.decoded`, not at top level.  Reading `.smiles` here
+                # always yielded "" (MEASURED: 0/3 decoded on a checkpoint
+                # whose decodes were in fact all sanitised), so the helper
+                # could not have returned a SMILES on any working path.
+                _decoded_obj = getattr(result, "decoded", None)
+                smi = (
+                    getattr(_decoded_obj, "smiles", None)
+                    or getattr(result, "smiles", None)
+                    or ""
+                )
                 if smi:
                     smiles_list.append(smi)
             except Exception:

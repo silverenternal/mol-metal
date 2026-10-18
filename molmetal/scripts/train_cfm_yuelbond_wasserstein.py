@@ -11318,6 +11318,81 @@ def parse_args() -> argparse.Namespace:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Model factory (Wf-A82, 2026-10-18)
+# ---------------------------------------------------------------------------
+def build_joint_model(args, device=None) -> "CFMJointModel":
+    """THE construction site for `CFMJointModel`.
+
+    Extracted from `main` so that the INFERENCE side can rebuild the exact
+    architecture a checkpoint was trained with.  The alternative -- a reader
+    re-deriving kwargs from a state_dict -- is what
+    `cfm_property_panel._decode_smiles_from_ckpt` did, and MEASURED on a real
+    v2 checkpoint it produced `head.atom_encoder.weight` 13 vs 4 and
+    `head.pair_head.0.weight` 131 vs 259: `bond_head_kind`,
+    `bond_z_table`/`bond_z_metal_set` and the pair-feature flags all move
+    shapes, and none of them is recoverable from the weights.
+
+    Every kwarg reads `args` through `getattr(..., default)`, so a
+    checkpoint's serialised `args` dict (an `argparse.Namespace(**ckpt["args"])`)
+    is sufficient input.  Keys added after a checkpoint was written fall back
+    to the same defaults the trainer used.
+    """
+    from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
+        get_z_table as _get_z_table,
+    )
+
+    _z_table = _get_z_table(str(getattr(args, "yuelbond_vocab", "pt")))
+    model = CFMJointModel(
+        hidden_dim=args.hidden_dim,
+        n_layers=args.n_layers,
+        cutoff=args.edge_cutoff,
+        fm_objective=bool(getattr(args, "use_fm_objective", False)),
+        z_table=_z_table,
+        # Wf-A69 W2 (2026-10-17) Fix 5 — opt-in metal-set override.
+        # Default ``all7`` covers Pt/Ru/Ir/Os/Rh/Re/Pd so the
+        # dative-bond rule lights up the 5-metal cohort's
+        # coordination chemistry.  Use ``args.yuelbond_vocab``
+        # (existing flag) for the vocab-table preset; the
+        # --bond-z-metal-set flag is independent and covers the
+        # metal-detection rule.
+        bond_z_metal_set=str(getattr(args, "bond_z_metal_set", "all7")),
+        bond_z_table=str(getattr(args, "bond_z_table", "pt")),
+        # Wf-A69 W2 (2026-10-17) Fix 3 — split-head topology.
+        # Default ``"single"`` is bit-exact Wf-A67/68/W1.
+        bond_head_kind=str(getattr(args, "bond_head_kind", "single")),
+        use_egnn_velocity=bool(getattr(args, "use_egnn_velocity", False)),
+        max_atomic_number=int(getattr(args, "egnn_max_atomic_number", 100)),
+        context_dropout=float(getattr(args, "egnn_context_dropout", 0.1)),
+        # An explicit path implies the warm start; asking for a checkpoint and
+        # silently not loading it is the failure mode this whole pass is about.
+        tmqm_init_path=getattr(args, "tmqm_init_path", None),
+        use_tmqm_init=bool(
+            getattr(args, "use_tmqm_init", False)
+            or getattr(args, "tmqm_init_path", None)
+        ),
+        # Wf-A15 (2026-10-13) Track-A L3a — pass q-head flag through.
+        # ``q_head_enabled`` defaults to ``False`` when the flag is
+        # absent (legacy / pre-Track-A YAMLs).
+        q_head_enabled=bool(getattr(args, "q_head_enabled", False)),
+        # Wf-A27 (2026-10-13) step-5 — per-layer sinusoidal-t opt-in.
+        # Defaults 0 / False preserve the legacy scalar-t path bit-for-bit.
+        t_embedding_dim=int(getattr(args, "t_embedding_dim", 0)),
+        pocket_per_layer=bool(getattr(args, "pocket_per_layer", False)),
+        # Wf-A32 (2026-10-14) step-1 — per-layer pocket injection opt-in.
+        pocket_inject_per_layer=bool(
+            getattr(args, "pocket_inject_per_layer", False)
+        ),
+        # 2026-10-09 NEW (BLK-C5 follow-up) — bond-predictor dispatch.
+        bond_predictor=str(getattr(args, "bond_predictor", "yuelbond")),
+        # Wf-A70 W1 (2026-10-17) Fix 6 — Edge-MPNN head line-graph K.
+        n_edge_layers=int(getattr(args, "n_edge_layers", 4)),
+        # Wf-A68 (2026-10-17) — bond-head residual skip (Spot 4).
+        use_bond_head_skip=bool(getattr(args, "use_bond_head_skip", False)),
+    )
+    return model.to(device) if device is not None else model
+
+
 def main() -> int:
     args = parse_args()
     # 2026-10-08 §5.7 — FLAG_ONLY reject guards.  Each dest below is declared
@@ -11745,72 +11820,10 @@ def main() -> int:
         f"{[z for z in _z_table if z in (78, 44, 77, 45, 76, 75)]})"
     )
     _use_egnn = bool(getattr(args, "use_egnn_velocity", False))
-    model = CFMJointModel(
-        hidden_dim=args.hidden_dim,
-        n_layers=args.n_layers,
-        cutoff=args.edge_cutoff,
-        fm_objective=bool(getattr(args, "use_fm_objective", False)),
-        z_table=_z_table,
-        # Wf-A69 W2 (2026-10-17) Fix 5 — opt-in metal-set override.
-        # Default ``all7`` covers Pt/Ru/Ir/Os/Rh/Re/Pd so the
-        # dative-bond rule lights up the 5-metal cohort's
-        # coordination chemistry.  Use ``args.yuelbond_vocab``
-        # (existing flag) for the vocab-table preset; the
-        # --bond-z-metal-set flag is independent and covers the
-        # metal-detection rule.
-        bond_z_metal_set=str(getattr(args, "bond_z_metal_set", "all7")),
-        bond_z_table=str(getattr(args, "bond_z_table", "pt")),
-        # Wf-A69 W2 (2026-10-17) Fix 3 — split-head topology.
-        # Default ``"single"`` is bit-exact Wf-A67/68/W1.
-        bond_head_kind=str(getattr(args, "bond_head_kind", "single")),
-        use_egnn_velocity=_use_egnn,
-        max_atomic_number=int(getattr(args, "egnn_max_atomic_number", 100)),
-        context_dropout=float(getattr(args, "egnn_context_dropout", 0.1)),
-        # An explicit path implies the warm start; asking for a checkpoint and
-        # silently not loading it is the failure mode this whole pass is about.
-        tmqm_init_path=getattr(args, "tmqm_init_path", None),
-        use_tmqm_init=bool(
-            getattr(args, "use_tmqm_init", False)
-            or getattr(args, "tmqm_init_path", None)
-        ),
-        # Wf-A15 (2026-10-13) Track-A L3a — pass q-head flag through.
-        # ``q_head_enabled`` defaults to ``False`` when the flag is
-        # absent (legacy / pre-Track-A YAMLs); see the new
-        # ``--q-head-enabled`` CLI flag below.
-        q_head_enabled=bool(
-            getattr(args, "q_head_enabled", False)
-        ),
-        # Wf-A27 (2026-10-13) step-5 — per-layer sinusoidal-t opt-in.
-        # Defaults 0 / False preserve the legacy scalar-t path
-        # bit-for-bit; yaml keys ``model.t_embedding_dim`` and
-        # ``model.pocket_per_layer`` map here.
-        t_embedding_dim=int(
-            getattr(args, "t_embedding_dim", 0)
-        ),
-        pocket_per_layer=bool(
-            getattr(args, "pocket_per_layer", False)
-        ),
-        # Wf-A32 (2026-10-14) step-1 — per-layer pocket injection
-        # opt-in.  Defaults False preserves the bit-exact legacy path;
-        # the yaml key ``model.pocket_inject_per_layer`` (or
-        # ``flow.pocket_inject_per_layer``) maps here via the cfg
-        # loader's leaf fallback.
-        pocket_inject_per_layer=bool(
-            getattr(args, "pocket_inject_per_layer", False)
-        ),
-        # 2026-10-09 NEW (BLK-C5 follow-up) — bond-predictor dispatch.
-        bond_predictor=str(getattr(args, "bond_predictor", "yuelbond")),
-        # Wf-A70 W1 (2026-10-17) Fix 6 — Edge-MPNN head line-graph K.
-        # Default 4 keeps the Wf-A70 expected param count.  Bit-exact
-        # ignored on the legacy ``yuelbond`` / ``dmpnn`` paths.
-        n_edge_layers=int(getattr(args, "n_edge_layers", 4)),
-        # Wf-A68 (2026-10-17) — bond-head residual skip (Spot 4).
-        # Default OFF preserves Wf-A67 bit-exact compat.  YAML
-        # `flow.use_bond_head_skip` maps here via apply_yaml_overrides.
-        use_bond_head_skip=bool(
-            getattr(args, "use_bond_head_skip", False)
-        ),
-    ).to(device)
+    # Wf-A82 (2026-10-18) — the construction moved to `build_joint_model` so
+    # the inference side rebuilds the SAME architecture from a checkpoint's
+    # serialised args instead of re-deriving kwargs from a state_dict.
+    model = build_joint_model(args, device)
 
     # 2026-10-04 — inverse-frequency bond-class weights, computed ONCE from the
     # training cohort.  Per-batch computation would make the loss

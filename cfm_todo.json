@@ -1,5 +1,5 @@
 {
-  "version": "8.4 (refactored 2026-10-18 per user directive '重构cfm_todo.json': dropped 20 _arch_audit_log_* blocks + 7 closed tasks + 1 closed decision; audit history preserved in git log + docs/HONEST_NEGATIVE_CATALOG.md §6.75-§6.99; open tasks: L3_A_B_Phase_3_redo_or_treat_partial, OPT-5_ring_template_prior; open decisions: DEC_retrain_slot, DEC_general_sbdd_baselines, DEC_per_loss_projection_inert; forward_look: Wf-A73 (算子升级) ✅ SHIPPED §6.100 + Wf-A74 (MLP→高级架构迁移) ✅ SHIPPED §6.101 + Wf-A75 (MolDiff guidance) ✅ SHIPPED §6.103, MEASURED largest_fragment_frac 0.048→0.838, gen_validity collapse gate to next wave) + Wf-A77 (Allegro SCAFFOLD) ✅ SHIPPED §6.104 + Wf-A78/OPT-5 (ring-template prior) ✅ CODE SHIPPED §6.105 (10 tests + §5.7 CPU smoke; GPU 5-epoch smoke + ring-size MEASURED gate DEFERRED) (no MEASURED gate; SCAFFOLD only; L=0 path live + 5 tests, L≥1 NotImplementedError stub) + Wf-A80/A81 (train->inference decode chain) SHIPPED 2026-10-18 §6.108: per-class thresholds now reach the decoder + the checkpoint stamp + EpochMetrics.decode_decision; failure taxonomy reordered so KekulizeException/assembly/empty-decode are separable (pre-fix every failure read 'no_smiles'). MEASURED end-to-end on /tmp/wfa81_smoke; NO GPU quality gate yet.",
+  "version": "8.4 (refactored 2026-10-18 per user directive '重构cfm_todo.json': dropped 20 _arch_audit_log_* blocks + 7 closed tasks + 1 closed decision; audit history preserved in git log + docs/HONEST_NEGATIVE_CATALOG.md §6.75-§6.99; open tasks: L3_A_B_Phase_3_redo_or_treat_partial, OPT-5_ring_template_prior; open decisions: DEC_retrain_slot, DEC_general_sbdd_baselines, DEC_per_loss_projection_inert; forward_look: Wf-A73 (算子升级) ✅ SHIPPED §6.100 + Wf-A74 (MLP→高级架构迁移) ✅ SHIPPED §6.101 + Wf-A75 (MolDiff guidance) ✅ SHIPPED §6.103, MEASURED largest_fragment_frac 0.048→0.838, gen_validity collapse gate to next wave) + Wf-A77 (Allegro SCAFFOLD) ✅ SHIPPED §6.104 + Wf-A78/OPT-5 (ring-template prior) ✅ CODE SHIPPED §6.105 (10 tests + §5.7 CPU smoke; GPU 5-epoch smoke + ring-size MEASURED gate DEFERRED) (no MEASURED gate; SCAFFOLD only; L=0 path live + 5 tests, L≥1 NotImplementedError stub) + Wf-A80/A81 (train->inference decode chain) SHIPPED 2026-10-18 §6.108: per-class thresholds now reach the decoder + the checkpoint stamp + EpochMetrics.decode_decision; failure taxonomy reordered so KekulizeException/assembly/empty-decode are separable (pre-fix every failure read 'no_smiles'). MEASURED end-to-end on /tmp/wfa81_smoke; NO GPU quality gate yet. + Wf-A82 (one construction site) SHIPPED 2026-10-18 §6.109: build_joint_model(args) is now the only place CFMJointModel is built; cfm_property_panel rebuilds v2 ckpts from ckpt['args'] with strict=True and decodes 6/6 (MEASURED).",
   "purpose": "CFM-based 3D molecule generation for precious-metal anticancer drug design (target-conditioned). Same-dataset same-domain baselines; scoring scripts reused from cloned repos -- no new metric code.",
   "scope_boundary": "GENERATIVE line only. PREDICTIVE line (cross-metal pIC50 / Krasnov-2026 / Chemprop / Bemis-Murcko) is on a separate DeepSeek line and NOT in scope.",
   "task_definition": {
@@ -199,14 +199,7 @@
     "deferred": {
       "Wf-A75a": "guidance-weight sweep (0.05 / 0.1 / 0.2) to find the sweet spot that keeps the fragment-ratio win without breaking gen_validity (the §6.103 honest-negative; 3×5-epoch GPU smokes)",
       "Wf-A76": "30-epoch retrain consolidation. CARRY: guidance_weight=0.10 AND early-stop at the ep-3 sweet spot (every arm collapses at ep 4; the guidance weight is not the lever). §6.107 is the evidence.",
-      "Wf-A77+": "Allegro pairwise equivariant latent / EquiformerV2 backbone / MoE per-edge (per SOTA survey A3/A1/B4)",
-      "Wf-A82_panel_v2_checkpoint_support": {
-        "why": "Wf-A81 wired decoder_kwargs_from_checkpoint into cfm_property_panel._decode_smiles_from_ckpt, but that helper refuses any ckpt with vel_field.* keys (its own HONEST-NEGATIVE at cfm_property_panel.py:922) and every current checkpoint is v2. The stamp is therefore read by a path that cannot run on the weights it describes.",
-        "scope": "1) Add a build_model_from_args(args_dict) factory in the trainer (or reuse the existing construction block) so the panel rebuilds the exact architecture the checkpoint came from. 2) Call it from _decode_smiles_from_ckpt for v2 ckpts. 3) Apply decoder_kwargs_from_checkpoint. 4) Test: round-trip /tmp/wfa81_smoke/ckpt/cfm_yuelbond_wasserstein_seed0.pt through the helper and assert >=1 non-empty SMILES.",
-        "cost": "0 GPU (CPU decode of 3 scaffolds)",
-        "blocked_by": "nothing -- non-GPU code task, do before the next GPU retrain",
-        "MEASURED": "The panel's torch.load path returned [] on a checkpoint the trainer had just written ('Invalid magic number'), fixed in Wf-A81 by _load_checkpoint_any. Rebuilding the v2 model naively mismatches head.atom_encoder.weight (13 vs 4) and head.pair_head.0.weight (131 vs 259) -- bond_head_kind / bond_z_table / pair-feature flags all move shapes, so the rebuild must come from ckpt['args'] via a shared factory, not from hand-set kwargs."
-      }
+      "Wf-A77+": "Allegro pairwise equivariant latent / EquiformerV2 backbone / MoE per-edge (per SOTA survey A3/A1/B4)"
     },
     "shipped_scaffolds": {
       "Wf-A77": {
@@ -263,6 +256,15 @@
         "NO quality gate: 1 epoch + untrained head puts every threshold on the grid floor; the bond_f1 / gen_validity LIFT is unmeasured. Needs a 5-epoch arm at the same budget as Wf-A75a (GPU).",
         "The ep-3/ep-4 no_smiles collapse (§6.107) has NOT been re-classified -- needs a re-run of one arm with the new taxonomy, not a re-parse.",
         "cfm_property_panel._decode_smiles_from_ckpt still refuses v2 (vel_field.*) checkpoints, so the stamp has no production consumer yet (see deferred.Wf-A82)."
+      ]
+    },
+    "Wf-A82_model_factory": {
+      "status": "SHIPPED 2026-10-18 (code + 6 tests + 1 CPU decode + 1 regression smoke; §6.109)",
+      "what": "Extracted the CFMJointModel construction out of main() into build_joint_model(args, device=None); cfm_property_panel._rebuild_v2_model builds argparse.Namespace(**ckpt['args']) and loads with strict=True. Fixed four more latent breaks in the panel decode path: hidden_dim unbound on the v2 branch, decoder.eval() on a non-nn.Module, result.smiles instead of result.decoded.smiles (this one made every decode count as 0/N), and the atomic-write pickle load (Wf-A81).",
+      "MEASURED": "/tmp/wfa81b_smoke ckpt (v2, hidden 128, 1 epoch): 6/6 clouds decoded, decision read from the checkpoint stamp (per_class, thresholds [0.05,0.1,0.05,0.1,0.05]). Regression: same state_dict keys/shapes/932,746 params as the pre-extraction run; max|dparam| 5.2e-5 after 50 steps (GPU non-determinism, no --deterministic).",
+      "remaining": [
+        "The helper decodes 3 fixed hydrocarbon scaffolds at the origin, not the tmQM corpus; the SMILES carry [HH] and one scaffold dies in the kekulizer (a 3-membered aromatic ring -- the OPT-2 ring-size defect).",
+        "No chemistry metric measured through this path; it is a wiring proof, not a quality result."
       ]
     }
   },

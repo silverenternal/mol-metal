@@ -5271,14 +5271,11 @@ single-seed Wf-A75a arms in §6.107 cannot support a point estimate.
     floor (0.05-0.10), i.e. the rule is "very permissive", not "well calibrated".
     Nothing here measures a bond_f1 or gen_validity LIFT; it measures that the
     calibration REACHES the decoder and the checkpoint.
-  * **The stamp's production consumer still refuses v2.**  `cfm_property_panel`
-    now loads the checkpoint (Break 4) and applies the stamp, but then refuses
-    any ckpt with `vel_field.*` keys — and every current checkpoint is v2.
-    Rebuilding `CFMJointModel` from `ckpt["args"]` is not a 5-line change:
-    `bond_head_kind`, `bond_z_table`/`bond_z_metal_set` and the pair-feature
-    flags all move `state_dict` shapes (MEASURED: a naive rebuild mismatches
-    `head.atom_encoder.weight` 13 vs 4 and `head.pair_head.0.weight` 131 vs
-    259).  Tracked as `forward_look.deferred.Wf-A82`.
+  * **The stamp's production consumer was still refusing v2 at the time this
+    entry was written.**  Wf-A82 (§6.109) fixed that in the same session: the
+    panel now rebuilds v2 checkpoints through the trainer's `build_joint_model`
+    factory and applies the stamp.  The bullets above still hold for the
+    quality claims — nothing here measured a chemistry metric.
   * **No re-read of the old artifacts.**  §6.106 / §6.107's `no_smiles` counts
     are historical; attributing them needs a re-run, not a re-parse.
   * **Single seed, 8 generated samples.**  `gen_validity 0.250` on n=8 is a
@@ -5295,3 +5292,76 @@ CPU-config smokes that the YAML's `compute.device: cuda:0` promoted to GPU0,
 smoke because the flag under test only fires at eval time; §5.2 honest framing:
 every number traces to `/tmp/wfa80_smoke` + `/tmp/wfa81_smoke` artifacts; §5.3
 + §5.4: 0 paper/* + 0 wet-lab).
+
+### §6.109 — Wf-A82: the inference helper could not decode a single current checkpoint (2026-10-18)
+
+**What was claimed vs what ran.**  `cfm_property_panel._decode_smiles_from_ckpt`
+is the only code path in the repo that takes a CFM `.pt` and produces
+molecules.  After Wf-A81 it also reads the checkpoint's `decode_calibration`.
+It had never been run against a checkpoint the current trainer writes.  When it
+was, it returned `[]` — five separate breaks, each hidden behind the previous
+one's `except`:
+
+| # | break | symptom | fix |
+|---|---|---|---|
+| 1 | `torch.load` on an atomic-write pickle | `RuntimeError: Invalid magic number` → `[]` | `_load_checkpoint_any` (Wf-A81) |
+| 2 | v2 (`vel_field.*`) ckpts refused outright | HONEST-NEGATIVE, `[]` | `_rebuild_v2_model` via `build_joint_model` |
+| 3 | `hidden_dim` only assigned in the v1 branch | `UnboundLocalError` | read from `model.head.atom_encoder.weight.shape[0]` |
+| 4 | `decoder.eval()` on a non-`nn.Module` | `AttributeError` | put `decoder._decoder` in eval mode when present |
+| 5 | read `result.smiles` instead of `result.decoded.smiles` | 0/N decoded although every decode sanitised | read `.decoded` first |
+
+Break 5 is the one that mattered most: with 1-4 fixed the helper still reported
+`0/3 clouds decoded` on decodes that had in fact produced
+`C.[HH].[HH].[HH].[HH]`.  The count was measuring the wrong attribute.
+
+**One construction site (Wf-A82).**  Break 2 cannot be fixed by hand-setting
+kwargs: MEASURED on a real v2 checkpoint, a naive rebuild gave
+`head.atom_encoder.weight` 13 vs 4 and `head.pair_head.0.weight` 131 vs 259,
+because `bond_head_kind`, `bond_z_table`/`bond_z_metal_set` and the
+pair-feature flags all move shapes.  The trainer's construction block is now
+`build_joint_model(args, device=None)`, called by `main` and by
+`_rebuild_v2_model` with `argparse.Namespace(**ckpt["args"])`.  Every kwarg
+reads through `getattr(default)`, so a checkpoint written before a kwarg
+existed still rebuilds.  Load is `strict=True`: drift between the factory and
+an artifact must raise, not half-initialise.
+
+**MEASURED, end-to-end** (`/tmp/wfa81b_smoke/ckpt/cfm_yuelbond_wasserstein_seed0.pt`,
+1-epoch v2 checkpoint, CPU):
+
+```
+[wfA54-decode] v2 (EGNN-velocity) rebuilt from ckpt['args']: hidden_dim=128 n_layers=3 vocab=pt head=single
+[wfA54-decode] decision from checkpoint: per_class thresholds=[0.05, 0.1, 0.05, 0.1, 0.05]
+[wfA54-decode] 6/6 clouds decoded to SMILES (n_samples=6, seed=0).
+['C.[HH].[HH].[HH].[HH]', 'C.[HH].[HH].[HH].[HH]', 'CC.[HH].[HH].[HH].[HH].[HH].[HH]', ...]
+```
+
+**Regression check on the training line.**  The extraction moved the
+construction out of `main`, so a 1-epoch re-run of the same config was compared
+to the pre-extraction run: same `state_dict` keys, same shapes, same 932,746
+parameters, `max|Δparam| = 5.2e-5` after 50 steps (GPU non-determinism; the
+trainer is not run with `--deterministic`), `train_loss` 0.91538 vs 0.91564.
+
+**Honest-negative (ACTIVE, this entry):**
+  * **3 fixed hydrocarbon scaffolds, not the corpus.**  The helper's templates
+    are methane / ethane / methylamine; it does not load the tmQM cohort, so
+    the SMILES above say nothing about the model's chemistry.
+  * **`[HH]` explicit hydrogens.**  The decoded strings carry isolated H atoms
+    as `[HH]` because the template atoms are placed at the origin; a real
+    panel run needs corpus templates.
+  * **One of the three scaffolds fails to kekulize under per_class.**  The
+    C/C/N cloud decoded to 3 bonds and died with
+    `KekulizeException: Can't kekulize mol. Unkekulized atoms: 0 1 2` — a
+    3-membered ring, i.e. the ring-SIZE defect of OPT-2, not a Wf-A82
+    regression.  Wf-A79's demotion cannot help: the bond IS in a ring.
+  * **No quality claim.**  This entry establishes that the path runs and that
+    it uses the checkpoint's own rule.  `bond_f1` / `gen_validity` remain
+    unmeasured at any meaningful budget.
+
+**§6.109 catalog-count math.** Net catalog-count delta: **+1** (§6.109 itself).
+ACTIVE count delta: **+1** (scaffold-only, no chemistry claim).
+Cumulative catalog count: **160 -> 161** (+1).  ACTIVE count: **116 -> 117** (+1).
+
+**Workflow** | Wf-A82 (2026-10-18; 0 GPU training — 1 CPU decode of 6 samples and
+1 one-epoch regression smoke on GPU0, 85 s; 6 new tests; §5.11 yaml-only PASS +
+config-binding PASS; §5.2: every number traces to `/tmp/wfa81b_smoke` +
+`/tmp/wfa82_smoke`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
