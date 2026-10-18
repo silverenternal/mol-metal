@@ -42,7 +42,9 @@
       "ligand-only 金属敏感性预测 AUC 0.6704 (51 pos/217 neg, permutation Holm 0.04)。→ 可预测但弱。",
       "金属描述符对迁移的增量 +0.0031 (可忽略); metal-as-domain-token 8/9 臂为负。→ 金属化学不是迁移的驱动因素。",
       "容量消融 (device-matched): Ru +0.0183 (Holm 0.0042), Ir +0.0828 (0.0017); Rh/Os 零, Re +0.0114 (Holm 0.114)。→ 宽度只在 n≥10^3 可检测。",
-      "同折 XGB 列 25/25 逐位复现; 0/5 金属在 h512 上赢过 XGB。"
+      "同折 XGB 列 25/25 逐位复现; 0/5 金属在 h512 上赢过 XGB。",
+      "L2 方差分解 (potency): DOI 65.1% / ligand|DOI 14.0% / 残差 21.0% 的随机方差; metal 固定效应 R²=3.95%, cell line 14.7%。",
+      "L2 交互: Ru↔Os 71.2% [60.1, 77.6] (检出); Ir↔Rh 0% [0, 25.7] 但最小可检测 41.7% (未定)。5% 阈值在本样本量下不可检验。"
     ],
     "continuous_data_audit_2026_10_18": {
       "numeric_dark_ic50": 21777,
@@ -207,8 +209,55 @@
       "acceptance": "报告每个终点的方差占比 + 交互 LRT + 95% CI; 与 WP1 的二分类结论对照 (是否一致)。",
       "gpu": "none",
       "wall": "1 天",
-      "status": "TODO",
-      "priority": "P0"
+      "status": "DONE",
+      "priority": "P0",
+      "completed": "2026-10-18",
+      "artifact": "metrics/by_metric/msrs_variance_decomposition.json",
+      "producer": "molmetal/scripts/msrs_variance_decomposition.py (tests/test_msrs_variance_decomposition.py, 9 passed)",
+      "result": {
+        "noise_floor_sigma": 0.2091,
+        "noise_floor_df": 371,
+        "variance_share_potency": {
+          "doi": 0.6506,
+          "ligand_within_doi": 0.1395,
+          "residual": 0.2099
+        },
+        "fixed_r2_potency": {
+          "metal": 0.0395,
+          "cell_line": 0.1472,
+          "metal_plus_cell": 0.1859
+        },
+        "interaction": {
+          "Ru-Os": {
+            "n": 269,
+            "share": 0.712,
+            "ci95": [
+              0.6011,
+              0.7756
+            ],
+            "min_detectable": 0.2567,
+            "detected": true
+          },
+          "Ir-Rh": {
+            "n": 117,
+            "share": 0.0,
+            "ci95": [
+              0.0,
+              0.2568
+            ],
+            "min_detectable": 0.4165,
+            "detected": false
+          }
+        }
+      },
+      "findings": [
+        "DOI 占随机方差的 65%, ligand|DOI 只占 14%, 残差 21%。数据集的主体异质性是论文/方案层面的, 不是配体层面的 —— 这限制了任何『配体决定活性』的叙述强度。",
+        "metal 固定效应只解释 potency 方差的 3.95%, cell line 解释 14.7%。且 metal 有 90% 嵌套在 DOI 内 (110/1801 个 DOI 含 >1 金属), 所以这个 3.95% 主要是跨论文对比, 不是干预效应。",
+        "Ru↔Os 的交互占 Δ 方差的 71.2% [60.1%, 77.6%], 远超噪声地板 (σ=0.209) —— 换金属的效应确实强烈依赖配体。这是推荐层成立的第一个正面证据。",
+        "Ir↔Rh 的交互点估计为 0, 但 80% 功效下最小可检测份额是 41.7%, 所以『未检出』只是功效陈述, 不能写成『无交互』。",
+        "5% 的 kill 阈值在当前样本量下不可检验: df_noise=371 时最小可检测份额是 25.7%。判据必须落在 CI 边界上 (下界>5% 才算成立, 上界<5% 才算否定), 并在每个 null 结果旁标注检测下限。"
+      ],
+      "decision": "交互在 Ru-Os 上成立, Ir-Rh 未定; 允许进入 MSRS-2/3, 但 regret 门 (L3) 仍未过。"
     },
     {
       "id": "MSRS-2",

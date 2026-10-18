@@ -1,0 +1,580 @@
+{
+  "artifact": "msrs_variance_decomposition",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L2 structural",
+  "generated_utc": "2026-10-18T04:28:23+00:00",
+  "provenance": {
+    "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "c51775f095aded1b918ea69614ecc35a0de00c86ffbb03384514dcb4a337b585",
+    "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "script": "molmetal/scripts/msrs_variance_decomposition.py",
+    "git_commit": "d2a3bf75d5f05e660ef2a337c04ad0c345558c87",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "noise_floor": {
+    "potency": {
+      "definition": "same (ligand, metal, cell line, duration, DOI); pooled within-group variance",
+      "n_groups_total": 21406,
+      "n_replicate_groups": 316,
+      "n_replicate_rows": 687,
+      "pooled": {
+        "df": 371,
+        "sigma2": 0.043712,
+        "sigma": 0.2091
+      },
+      "per_metal": {
+        "Ru": {
+          "n_groups": 235,
+          "df": 275,
+          "sigma2": 0.049223,
+          "sigma": 0.2219
+        },
+        "Ir": {
+          "n_groups": 52,
+          "df": 62,
+          "sigma2": 0.019672,
+          "sigma": 0.1403
+        },
+        "Rh": {
+          "n_groups": 4,
+          "df": 8,
+          "sigma2": 0.141691,
+          "sigma": 0.3764
+        },
+        "Os": {
+          "n_groups": 20,
+          "df": 21,
+          "sigma2": 0.002018,
+          "sigma": 0.0449
+        },
+        "Re": {
+          "n_groups": 5,
+          "df": 5,
+          "sigma2": 0.057024,
+          "sigma": 0.2388
+        }
+      },
+      "group_sd_quantiles": {
+        "0.25": 0.0,
+        "0.5": 0.0198,
+        "0.75": 0.1423,
+        "0.9": 0.3287
+      },
+      "caveat": "Rh has 4 replicate groups and Re 5; their sigma is barely constrained and must not be used to declare an interaction absent."
+    },
+    "phototoxicity": {
+      "definition": "same (ligand, metal, cell line, duration, DOI); pooled within-group variance",
+      "n_groups_total": 1014,
+      "n_replicate_groups": 120,
+      "n_replicate_rows": 256,
+      "pooled": {
+        "df": 136,
+        "sigma2": 0.193568,
+        "sigma": 0.44
+      },
+      "per_metal": {
+        "Ru": {
+          "n_groups": 86,
+          "df": 95,
+          "sigma2": 0.157364,
+          "sigma": 0.3967
+        },
+        "Ir": {
+          "n_groups": 34,
+          "df": 41,
+          "sigma2": 0.277456,
+          "sigma": 0.5267
+        },
+        "Rh": {
+          "n_groups": 0,
+          "df": 0,
+          "sigma2": null,
+          "sigma": null
+        },
+        "Os": {
+          "n_groups": 0,
+          "df": 0,
+          "sigma2": null,
+          "sigma": null
+        },
+        "Re": {
+          "n_groups": 0,
+          "df": 0,
+          "sigma2": null,
+          "sigma": null
+        }
+      },
+      "group_sd_quantiles": {
+        "0.25": 0.0883,
+        "0.5": 0.1733,
+        "0.75": 0.3707,
+        "0.9": 0.7464
+      },
+      "caveat": "Rh has 0 replicate groups and Re 0; their sigma is barely constrained and must not be used to declare an interaction absent."
+    },
+    "cisplatin_ratio": {
+      "definition": "same (ligand, metal, cell line, duration, DOI); pooled within-group variance",
+      "n_groups_total": 11571,
+      "n_replicate_groups": 124,
+      "n_replicate_rows": 276,
+      "pooled": {
+        "df": 152,
+        "sigma2": 0.046903,
+        "sigma": 0.2166
+      },
+      "per_metal": {
+        "Ru": {
+          "n_groups": 96,
+          "df": 113,
+          "sigma2": 0.042464,
+          "sigma": 0.2061
+        },
+        "Ir": {
+          "n_groups": 24,
+          "df": 31,
+          "sigma2": 0.038624,
+          "sigma": 0.1965
+        },
+        "Rh": {
+          "n_groups": 4,
+          "df": 8,
+          "sigma2": 0.141691,
+          "sigma": 0.3764
+        },
+        "Os": {
+          "n_groups": 0,
+          "df": 0,
+          "sigma2": null,
+          "sigma": null
+        },
+        "Re": {
+          "n_groups": 0,
+          "df": 0,
+          "sigma2": null,
+          "sigma": null
+        }
+      },
+      "group_sd_quantiles": {
+        "0.25": 0.0,
+        "0.5": 0.0504,
+        "0.75": 0.1883,
+        "0.9": 0.4287
+      },
+      "caveat": "Rh has 4 replicate groups and Re 0; their sigma is barely constrained and must not be used to declare an interaction absent."
+    }
+  },
+  "fixed_effect_r2": {
+    "potency": {
+      "metal": {
+        "n_params": 5,
+        "r2": 0.0395
+      },
+      "cell_line_key": {
+        "n_params": 717,
+        "r2": 0.1472
+      },
+      "metal+cell_line_key": {
+        "n_params": 721,
+        "r2": 0.1859
+      }
+    },
+    "phototoxicity": {
+      "metal": {
+        "n_params": 5,
+        "r2": 0.0549
+      },
+      "cell_line_key": {
+        "n_params": 88,
+        "r2": 0.1762
+      },
+      "metal+cell_line_key": {
+        "n_params": 92,
+        "r2": 0.205
+      }
+    },
+    "cisplatin_ratio": {
+      "metal": {
+        "n_params": 5,
+        "r2": 0.0258
+      },
+      "cell_line_key": {
+        "n_params": 544,
+        "r2": 0.2443
+      },
+      "metal+cell_line_key": {
+        "n_params": 548,
+        "r2": 0.2584
+      }
+    }
+  },
+  "variance_components": {
+    "potency": {
+      "n_rows": 21406,
+      "n_dois": 1801,
+      "n_ligand_within_doi": 6554,
+      "ms": {
+        "doi": 4.723665,
+        "ligand": 0.462181,
+        "residual": 0.11578
+      },
+      "sigma2": {
+        "doi": 0.358842,
+        "ligand_within_doi": 0.076948,
+        "residual": 0.11578
+      },
+      "share_of_random_variance": {
+        "doi": 0.6506,
+        "ligand_within_doi": 0.1395,
+        "residual": 0.2099
+      },
+      "share_of_total_y_variance": 0.9507,
+      "caveat": "components are sequential (DOI then ligand); with an unbalanced design a crossed model would split the same covariance differently"
+    },
+    "phototoxicity": {
+      "n_rows": 1014,
+      "n_dois": 196,
+      "n_ligand_within_doi": 490,
+      "ms": {
+        "doi": 1.984569,
+        "ligand": 0.522971,
+        "residual": 0.134553
+      },
+      "sigma2": {
+        "doi": 0.283738,
+        "ligand_within_doi": 0.112948,
+        "residual": 0.134553
+      },
+      "share_of_random_variance": {
+        "doi": 0.5341,
+        "ligand_within_doi": 0.2126,
+        "residual": 0.2533
+      },
+      "share_of_total_y_variance": 0.8804,
+      "caveat": "components are sequential (DOI then ligand); with an unbalanced design a crossed model would split the same covariance differently"
+    },
+    "cisplatin_ratio": {
+      "n_rows": 11571,
+      "n_dois": 939,
+      "n_ligand_within_doi": 3528,
+      "ms": {
+        "doi": 5.17774,
+        "ligand": 0.496196,
+        "residual": 0.19268
+      },
+      "sigma2": {
+        "doi": 0.380586,
+        "ligand_within_doi": 0.067985,
+        "residual": 0.19268
+      },
+      "share_of_random_variance": {
+        "doi": 0.5935,
+        "ligand_within_doi": 0.106,
+        "residual": 0.3005
+      },
+      "share_of_total_y_variance": 0.9647,
+      "caveat": "components are sequential (DOI then ligand); with an unbalanced design a crossed model would split the same covariance differently"
+    }
+  },
+  "interaction": {
+    "potency": {
+      "Ru-Ir": {
+        "pair": "Ru-Ir",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Ru-Rh": {
+        "pair": "Ru-Rh",
+        "status": "INSUFFICIENT",
+        "n_units": 5,
+        "min_required": 30
+      },
+      "Ru-Os": {
+        "pair": "Ru-Os",
+        "status": "OK",
+        "n_units": 269,
+        "n_ligands": 84,
+        "mean_delta": 0.1072,
+        "median_delta": 0.0223,
+        "sd_delta_units": 0.4218,
+        "sd_delta_per_ligand": 0.3735,
+        "sign_rate_positive": 0.5167,
+        "noise_var": 0.051241,
+        "noise_sd": 0.2264,
+        "interaction_var": 0.126657,
+        "interaction_share": 0.712,
+        "interaction_share_ci95_clustered_bootstrap": [
+          0.6011,
+          0.7756
+        ],
+        "F_vs_noise": 3.472,
+        "p_one_sided_F": 8.212514638895154e-25,
+        "min_detectable_share_80pct_power": 0.2567,
+        "detected": true,
+        "test_caveats": [
+          "the F-test treats units as independent; ligands contribute several units, so it is anti-conservative. Quote the clustered bootstrap interval.",
+          "the noise floor is estimated, not known; for Rh (4 replicate groups) it is barely constrained and the test has almost no power to reject."
+        ]
+      },
+      "Ru-Re": {
+        "pair": "Ru-Re",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Ir-Rh": {
+        "pair": "Ir-Rh",
+        "status": "OK",
+        "n_units": 117,
+        "n_ligands": 60,
+        "mean_delta": -0.0365,
+        "median_delta": -0.0458,
+        "sd_delta_units": 0.3841,
+        "sd_delta_per_ligand": 0.3775,
+        "sign_rate_positive": 0.3675,
+        "noise_var": 0.161363,
+        "noise_sd": 0.4017,
+        "interaction_var": 0.0,
+        "interaction_share": 0.0,
+        "interaction_share_ci95_clustered_bootstrap": [
+          0.0,
+          0.2568
+        ],
+        "F_vs_noise": 0.914,
+        "p_one_sided_F": 0.6691923886339061,
+        "min_detectable_share_80pct_power": 0.4165,
+        "detected": false,
+        "test_caveats": [
+          "the F-test treats units as independent; ligands contribute several units, so it is anti-conservative. Quote the clustered bootstrap interval.",
+          "the noise floor is estimated, not known; for Rh (4 replicate groups) it is barely constrained and the test has almost no power to reject."
+        ]
+      },
+      "Ir-Os": {
+        "pair": "Ir-Os",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Ir-Re": {
+        "pair": "Ir-Re",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Rh-Os": {
+        "pair": "Rh-Os",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Rh-Re": {
+        "pair": "Rh-Re",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Os-Re": {
+        "pair": "Os-Re",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      }
+    },
+    "phototoxicity": {
+      "Ru-Ir": {
+        "pair": "Ru-Ir",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Ru-Rh": {
+        "pair": "Ru-Rh",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Ru-Os": {
+        "pair": "Ru-Os",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Ru-Re": {
+        "pair": "Ru-Re",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Ir-Rh": {
+        "pair": "Ir-Rh",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Ir-Os": {
+        "pair": "Ir-Os",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Ir-Re": {
+        "pair": "Ir-Re",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Rh-Os": {
+        "pair": "Rh-Os",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Rh-Re": {
+        "pair": "Rh-Re",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Os-Re": {
+        "pair": "Os-Re",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      }
+    },
+    "cisplatin_ratio": {
+      "Ru-Ir": {
+        "pair": "Ru-Ir",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Ru-Rh": {
+        "pair": "Ru-Rh",
+        "status": "INSUFFICIENT",
+        "n_units": 2,
+        "min_required": 30
+      },
+      "Ru-Os": {
+        "pair": "Ru-Os",
+        "status": "OK",
+        "n_units": 67,
+        "n_ligands": 21,
+        "mean_delta": 0.0184,
+        "median_delta": -0.0348,
+        "sd_delta_units": 0.4311,
+        "sd_delta_per_ligand": 0.3412,
+        "sign_rate_positive": 0.4627,
+        "noise_var": 0.042464,
+        "noise_sd": 0.2061,
+        "interaction_var": 0.143389,
+        "interaction_share": 0.7715,
+        "interaction_share_ci95_clustered_bootstrap": [
+          0.5557,
+          0.8501
+        ],
+        "F_vs_noise": 4.377,
+        "p_one_sided_F": 3.0100995744984814e-12,
+        "min_detectable_share_80pct_power": 0.4192,
+        "detected": true,
+        "test_caveats": [
+          "the F-test treats units as independent; ligands contribute several units, so it is anti-conservative. Quote the clustered bootstrap interval.",
+          "the noise floor is estimated, not known; for Rh (4 replicate groups) it is barely constrained and the test has almost no power to reject."
+        ]
+      },
+      "Ru-Re": {
+        "pair": "Ru-Re",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Ir-Rh": {
+        "pair": "Ir-Rh",
+        "status": "INSUFFICIENT",
+        "n_units": 29,
+        "min_required": 30
+      },
+      "Ir-Os": {
+        "pair": "Ir-Os",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Ir-Re": {
+        "pair": "Ir-Re",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Rh-Os": {
+        "pair": "Rh-Os",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Rh-Re": {
+        "pair": "Rh-Re",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      },
+      "Os-Re": {
+        "pair": "Os-Re",
+        "status": "INSUFFICIENT",
+        "n_units": 0,
+        "min_required": 30
+      }
+    }
+  },
+  "decision": {
+    "kill_threshold_interaction_share": 0.05,
+    "estimable_pairs": [
+      "Ir-Rh",
+      "Ru-Os"
+    ],
+    "pairs_interaction_established": [
+      "Ru-Os"
+    ],
+    "pairs_interaction_killed": [],
+    "pairs_undetermined": [
+      "Ir-Rh"
+    ],
+    "pair_detail": {
+      "Ru-Os": {
+        "n_units": 269,
+        "interaction_share": 0.712,
+        "ci95": [
+          0.6011,
+          0.7756
+        ],
+        "min_detectable_share_80pct_power": 0.2567,
+        "detected": true
+      },
+      "Ir-Rh": {
+        "n_units": 117,
+        "interaction_share": 0.0,
+        "ci95": [
+          0.0,
+          0.2568
+        ],
+        "min_detectable_share_80pct_power": 0.4165,
+        "detected": false
+      }
+    },
+    "power_note": "A 5% variance share is below the detection limit of every pair: at n=269 the minimum detectable share at 80% power is 0.2567. So 'not detected' means 'share is below the minimum detectable value', never 'share is below 5%'. The criterion is therefore applied to the CI bounds, and the paper must quote the detection limit next to any null result.",
+    "second_half_of_kill_criterion": "L3 top-1 regret improvement vs global-best-metal (MSRS-3/6, not measured here)",
+    "verdict": "interaction is established on Ru-Os and undetermined on Ir-Rh; the undetermined pairs have a minimum detectable share of Ir-Rh=0.4165 and their null result is a power statement, not evidence of absence"
+  },
+  "design_facts": {
+    "metal_nested_in_doi": "110 of 1,801 potency DOIs contain >1 metal (2,217 of 21,406 units, 10.4%). The full-cohort metal R^2 is therefore mostly a between-paper contrast; only the matched subcohort identifies a within-paper metal effect.",
+    "ligand_across_dois": "379 of 5,965 potency ligands appear under more than one DOI, which is why ligand is modelled as nested within DOI rather than crossed."
+  },
+  "caveats": [
+    "Var(Delta) is compared to a *measured* noise floor, not to zero. A Delta that looks large can be entirely replicate disagreement: Ru sigma = 0.22 log on its own.",
+    "The noise floor comes from 309 replicate groups and is itself uncertain; the interaction share inherits that uncertainty, which is why every pair carries a clustered bootstrap CI.",
+    "Phototoxicity has no cross-metal matched unit (MSRS-0), so its interaction is not estimable at all and its entry is INSUFFICIENT by construction, not by low power."
+  ]
+}
