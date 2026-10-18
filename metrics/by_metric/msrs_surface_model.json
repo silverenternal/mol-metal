@@ -1,0 +1,537 @@
+{
+  "artifact": "msrs_surface_model",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L3 response surface (CPU baseline)",
+  "generated_utc": "2026-10-18T05:06:50+00:00",
+  "provenance": {
+    "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "metal_descriptors": "/home/hugo/codes/mol-metal/molmetal/data/metal_chemistry_5.csv",
+    "metal_descriptors_sha256": "8e5c9db485f7ab270b0e49d376fbcce2954cd678495813fd26a799047c43dcc7",
+    "script": "molmetal/scripts/msrs_surface_model.py",
+    "git_commit": "049cb68c8bad4485dfe67218758fc41c25ff9089",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "backbone": "LightGBM on ECFP4(2048) + metal one-hot(5) + metal descriptors(3) + cell one-hot(top 40 + other)",
+    "additive_definition": "interaction_constraints = [[ligand bits], [metal features], [cell features]]",
+    "interaction_definition": "same features, same hyper-parameters, no constraints",
+    "cv": "GroupKFold(5) grouped by ligand_main_fragment",
+    "seed": 20261018,
+    "lightgbm": {
+      "objective": "regression",
+      "n_estimators": 500,
+      "learning_rate": 0.05,
+      "num_leaves": 31,
+      "min_child_samples": 20,
+      "subsample": 0.8,
+      "subsample_freq": 1,
+      "colsample_bytree": 0.3,
+      "reg_lambda": 1.0,
+      "random_state": 20261018,
+      "n_jobs": 1,
+      "deterministic": true,
+      "force_row_wise": true,
+      "verbose": -1
+    },
+    "targets": [
+      "potency",
+      "cisplatin_ratio"
+    ],
+    "excluded_target": "phototoxicity (MSRS-5: out-of-fold R2 < 0)",
+    "sign_thresholds": [
+      0.0,
+      0.1,
+      0.2091,
+      0.5
+    ],
+    "primary_sign_threshold": 0.2091
+  },
+  "endpoints": {
+    "potency": {
+      "status": "OK",
+      "n_rows": 21045,
+      "n_dropped_censored": 4813,
+      "censored_share": 0.1836,
+      "n_ligands": 2846,
+      "n_cell_lines": 711,
+      "n_dois": 1784,
+      "n_features": 2097,
+      "feature_groups": {
+        "ligand_ecfp4": 2048,
+        "metal_onehot_plus_descriptors": 8,
+        "cell_line_onehot": 41
+      },
+      "models": {
+        "global_mean": {
+          "mae": 0.6057,
+          "r2": -0.0013,
+          "rmse": 0.7615,
+          "mae_by_metal": {
+            "Ru": 0.6193,
+            "Ir": 0.5446,
+            "Rh": 0.5639,
+            "Os": 0.7521,
+            "Re": 0.5209
+          },
+          "mae_by_fold": {
+            "0": 0.5988,
+            "1": 0.573,
+            "2": 0.6299,
+            "3": 0.6378,
+            "4": 0.5893
+          }
+        },
+        "per_metal_mean": {
+          "mae": 0.5911,
+          "r2": 0.0353,
+          "rmse": 0.7474,
+          "mae_by_metal": {
+            "Ru": 0.6092,
+            "Ir": 0.5143,
+            "Rh": 0.5517,
+            "Os": 0.727,
+            "Re": 0.5018
+          },
+          "mae_by_fold": {
+            "0": 0.5916,
+            "1": 0.5587,
+            "2": 0.6098,
+            "3": 0.6189,
+            "4": 0.5764
+          }
+        },
+        "ligand_only": {
+          "mae": 0.524,
+          "r2": 0.2055,
+          "rmse": 0.6783,
+          "mae_by_metal": {
+            "Ru": 0.5296,
+            "Ir": 0.4993,
+            "Rh": 0.5254,
+            "Os": 0.5746,
+            "Re": 0.4725
+          },
+          "mae_by_fold": {
+            "0": 0.5302,
+            "1": 0.5071,
+            "2": 0.5473,
+            "3": 0.509,
+            "4": 0.5263
+          }
+        },
+        "additive": {
+          "mae": 0.5103,
+          "r2": 0.251,
+          "rmse": 0.6585,
+          "mae_by_metal": {
+            "Ru": 0.5183,
+            "Ir": 0.4708,
+            "Rh": 0.5133,
+            "Os": 0.5644,
+            "Re": 0.4797
+          },
+          "mae_by_fold": {
+            "0": 0.5123,
+            "1": 0.4885,
+            "2": 0.5341,
+            "3": 0.5085,
+            "4": 0.5082
+          }
+        },
+        "interaction": {
+          "mae": 0.4957,
+          "r2": 0.2791,
+          "rmse": 0.6461,
+          "mae_by_metal": {
+            "Ru": 0.5104,
+            "Ir": 0.4401,
+            "Rh": 0.4754,
+            "Os": 0.5402,
+            "Re": 0.4516
+          },
+          "mae_by_fold": {
+            "0": 0.4954,
+            "1": 0.4722,
+            "2": 0.5195,
+            "3": 0.5,
+            "4": 0.4913
+          }
+        }
+      },
+      "paired_tests": {
+        "interaction_vs_additive": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4837,
+          "mean_mae_b": 0.4635,
+          "mean_delta": 0.0202,
+          "t": 11.4948,
+          "p_one_sided": 3.174541410788323e-30,
+          "direction": "b better",
+          "holm_p_across_endpoints": 6.349082821576646e-30
+        },
+        "interaction_vs_ligand_only": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.493,
+          "mean_mae_b": 0.4635,
+          "mean_delta": 0.0296,
+          "t": 11.7616,
+          "p_one_sided": 1.6069739826980012e-31,
+          "direction": "b better"
+        },
+        "additive_vs_per_metal_mean": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.5783,
+          "mean_mae_b": 0.4837,
+          "mean_delta": 0.0946,
+          "t": 17.3073,
+          "p_one_sided": 3.461402380754053e-64,
+          "direction": "b better"
+        }
+      },
+      "delta_sign": {
+        "n_pairs": 1284,
+        "n_dois": 104,
+        "by_metal_pair": {
+          "Ir-Os": {
+            "n_pairs": 16,
+            "additive_accuracy": 0.5,
+            "interaction_accuracy": 0.0
+          },
+          "Ir-Rh": {
+            "n_pairs": 69,
+            "additive_accuracy": 0.5217,
+            "interaction_accuracy": 0.4928
+          },
+          "Rh-Os": {
+            "n_pairs": 17,
+            "additive_accuracy": 0.4118,
+            "interaction_accuracy": 0.4706
+          },
+          "Ru-Ir": {
+            "n_pairs": 286,
+            "additive_accuracy": 0.5804,
+            "interaction_accuracy": 0.5804
+          },
+          "Ru-Os": {
+            "n_pairs": 211,
+            "additive_accuracy": 0.654,
+            "interaction_accuracy": 0.5403
+          },
+          "Ru-Rh": {
+            "n_pairs": 113,
+            "additive_accuracy": 0.7345,
+            "interaction_accuracy": 0.7699
+          }
+        },
+        "by_threshold": {
+          "0": {
+            "n_pairs": 1284,
+            "additive_accuracy": 0.5335,
+            "interaction_accuracy": 0.5132,
+            "delta_accuracy": -0.0202,
+            "n_interaction_right_additive_wrong": 205,
+            "n_additive_right_interaction_wrong": 231,
+            "mcnemar_p_one_sided": 0.9020344302761945
+          },
+          "0.1": {
+            "n_pairs": 966,
+            "additive_accuracy": 0.5559,
+            "interaction_accuracy": 0.5352,
+            "delta_accuracy": -0.0207,
+            "n_interaction_right_additive_wrong": 152,
+            "n_additive_right_interaction_wrong": 172,
+            "mcnemar_p_one_sided": 0.8783491797340715
+          },
+          "0.2091": {
+            "n_pairs": 712,
+            "additive_accuracy": 0.6152,
+            "interaction_accuracy": 0.5744,
+            "delta_accuracy": -0.0407,
+            "n_interaction_right_additive_wrong": 108,
+            "n_additive_right_interaction_wrong": 137,
+            "mcnemar_p_one_sided": 0.9724685387839067
+          },
+          "0.5": {
+            "n_pairs": 371,
+            "additive_accuracy": 0.717,
+            "interaction_accuracy": 0.6092,
+            "delta_accuracy": -0.1078,
+            "n_interaction_right_additive_wrong": 44,
+            "n_additive_right_interaction_wrong": 84,
+            "mcnemar_p_one_sided": 0.9998707367013658
+          }
+        },
+        "additive_delta_ligand_independent": true,
+        "additive_delta_ligand_independent_given_cell": true,
+        "additive_delta_max_within_pair_spread": 0.0,
+        "additive_delta_sd": 0.105505,
+        "interaction_delta_sd": 0.195085,
+        "primary_threshold": 0.2091,
+        "bootstrap_ci_interaction_accuracy": [
+          0.4635,
+          0.6768
+        ],
+        "bootstrap_ci_additive_accuracy": [
+          0.4933,
+          0.7283
+        ],
+        "shrinkage_curve": {
+          "0": 0.6152,
+          "0.1": 0.6236,
+          "0.2": 0.6138,
+          "0.3": 0.5983,
+          "0.4": 0.5941,
+          "0.5": 0.611,
+          "0.75": 0.6011,
+          "1": 0.5744
+        },
+        "best_shrinkage_alpha": "0.1",
+        "shrinkage_note": "alpha is scanned on the same out-of-fold pairs with one free parameter; treat the curve as a diagnostic, not a validated procedure."
+      },
+      "elapsed_seconds": 83.6
+    },
+    "cisplatin_ratio": {
+      "status": "OK",
+      "n_rows": 11403,
+      "n_dropped_censored": 2510,
+      "censored_share": 0.1783,
+      "n_ligands": 1616,
+      "n_cell_lines": 540,
+      "n_dois": 928,
+      "n_features": 2097,
+      "feature_groups": {
+        "ligand_ecfp4": 2048,
+        "metal_onehot_plus_descriptors": 8,
+        "cell_line_onehot": 41
+      },
+      "models": {
+        "global_mean": {
+          "mae": 0.6255,
+          "r2": -0.0072,
+          "rmse": 0.8163,
+          "mae_by_metal": {
+            "Ru": 0.6274,
+            "Ir": 0.5575,
+            "Rh": 0.6107,
+            "Os": 0.7714,
+            "Re": 0.6116
+          },
+          "mae_by_fold": {
+            "0": 0.6006,
+            "1": 0.7258,
+            "2": 0.6041,
+            "3": 0.6096,
+            "4": 0.5873
+          }
+        },
+        "per_metal_mean": {
+          "mae": 0.6171,
+          "r2": 0.0152,
+          "rmse": 0.8072,
+          "mae_by_metal": {
+            "Ru": 0.6259,
+            "Ir": 0.4851,
+            "Rh": 0.5891,
+            "Os": 0.784,
+            "Re": 0.6078
+          },
+          "mae_by_fold": {
+            "0": 0.5873,
+            "1": 0.7089,
+            "2": 0.6003,
+            "3": 0.6052,
+            "4": 0.5838
+          }
+        },
+        "ligand_only": {
+          "mae": 0.5616,
+          "r2": 0.18,
+          "rmse": 0.7366,
+          "mae_by_metal": {
+            "Ru": 0.5587,
+            "Ir": 0.5164,
+            "Rh": 0.5756,
+            "Os": 0.6558,
+            "Re": 0.6242
+          },
+          "mae_by_fold": {
+            "0": 0.5658,
+            "1": 0.6226,
+            "2": 0.5504,
+            "3": 0.529,
+            "4": 0.5403
+          }
+        },
+        "additive": {
+          "mae": 0.5306,
+          "r2": 0.2638,
+          "rmse": 0.698,
+          "mae_by_metal": {
+            "Ru": 0.5315,
+            "Ir": 0.47,
+            "Rh": 0.5323,
+            "Os": 0.5973,
+            "Re": 0.5963
+          },
+          "mae_by_fold": {
+            "0": 0.5316,
+            "1": 0.5793,
+            "2": 0.5287,
+            "3": 0.5093,
+            "4": 0.5038
+          }
+        },
+        "interaction": {
+          "mae": 0.5148,
+          "r2": 0.2989,
+          "rmse": 0.6811,
+          "mae_by_metal": {
+            "Ru": 0.5191,
+            "Ir": 0.4627,
+            "Rh": 0.4808,
+            "Os": 0.5621,
+            "Re": 0.55
+          },
+          "mae_by_fold": {
+            "0": 0.5219,
+            "1": 0.5538,
+            "2": 0.5067,
+            "3": 0.4972,
+            "4": 0.4944
+          }
+        }
+      },
+      "paired_tests": {
+        "interaction_vs_additive": {
+          "n_ligands": 1616,
+          "mean_mae_a": 0.4802,
+          "mean_mae_b": 0.4628,
+          "mean_delta": 0.0175,
+          "t": 7.8509,
+          "p_one_sided": 3.733763110036989e-15,
+          "direction": "b better",
+          "holm_p_across_endpoints": 3.733763110036989e-15
+        },
+        "interaction_vs_ligand_only": {
+          "n_ligands": 1616,
+          "mean_mae_a": 0.5065,
+          "mean_mae_b": 0.4628,
+          "mean_delta": 0.0437,
+          "t": 12.7219,
+          "p_one_sided": 1.0500667160873378e-35,
+          "direction": "b better"
+        },
+        "additive_vs_per_metal_mean": {
+          "n_ligands": 1616,
+          "mean_mae_a": 0.5984,
+          "mean_mae_b": 0.4802,
+          "mean_delta": 0.1181,
+          "t": 14.74,
+          "p_one_sided": 1.5624125595391098e-46,
+          "direction": "b better"
+        }
+      },
+      "delta_sign": {
+        "n_pairs": 376,
+        "n_dois": 37,
+        "by_metal_pair": {
+          "Ir-Rh": {
+            "n_pairs": 23,
+            "additive_accuracy": 0.4783,
+            "interaction_accuracy": 0.6087
+          },
+          "Ru-Ir": {
+            "n_pairs": 82,
+            "additive_accuracy": 0.4756,
+            "interaction_accuracy": 0.4512
+          },
+          "Ru-Os": {
+            "n_pairs": 41,
+            "additive_accuracy": 0.6341,
+            "interaction_accuracy": 0.3415
+          },
+          "Ru-Rh": {
+            "n_pairs": 30,
+            "additive_accuracy": 0.6333,
+            "interaction_accuracy": 0.5
+          }
+        },
+        "by_threshold": {
+          "0": {
+            "n_pairs": 376,
+            "additive_accuracy": 0.5027,
+            "interaction_accuracy": 0.484,
+            "delta_accuracy": -0.0186,
+            "n_interaction_right_additive_wrong": 64,
+            "n_additive_right_interaction_wrong": 71,
+            "mcnemar_p_one_sided": 0.7543687711085384
+          },
+          "0.1": {
+            "n_pairs": 253,
+            "additive_accuracy": 0.5059,
+            "interaction_accuracy": 0.4743,
+            "delta_accuracy": -0.0316,
+            "n_interaction_right_additive_wrong": 37,
+            "n_additive_right_interaction_wrong": 45,
+            "mcnemar_p_one_sided": 0.8398533181809928
+          },
+          "0.2091": {
+            "n_pairs": 176,
+            "additive_accuracy": 0.5398,
+            "interaction_accuracy": 0.4545,
+            "delta_accuracy": -0.0852,
+            "n_interaction_right_additive_wrong": 22,
+            "n_additive_right_interaction_wrong": 37,
+            "mcnemar_p_one_sided": 0.981828410021473
+          },
+          "0.5": {
+            "n_pairs": 95,
+            "additive_accuracy": 0.6737,
+            "interaction_accuracy": 0.5053,
+            "delta_accuracy": -0.1684,
+            "n_interaction_right_additive_wrong": 10,
+            "n_additive_right_interaction_wrong": 26,
+            "mcnemar_p_one_sided": 0.9980334134888835
+          }
+        },
+        "additive_delta_ligand_independent": true,
+        "additive_delta_ligand_independent_given_cell": true,
+        "additive_delta_max_within_pair_spread": 0.0,
+        "additive_delta_sd": 0.065932,
+        "interaction_delta_sd": 0.198488,
+        "primary_threshold": 0.2091,
+        "bootstrap_ci_interaction_accuracy": [
+          0.268,
+          0.6561
+        ],
+        "bootstrap_ci_additive_accuracy": [
+          0.3409,
+          0.7397
+        ],
+        "shrinkage_curve": {
+          "0": 0.5398,
+          "0.1": 0.5398,
+          "0.2": 0.483,
+          "0.3": 0.483,
+          "0.4": 0.4602,
+          "0.5": 0.4489,
+          "0.75": 0.4716,
+          "1": 0.4545
+        },
+        "best_shrinkage_alpha": "0",
+        "shrinkage_note": "alpha is scanned on the same out-of-fold pairs with one free parameter; treat the curve as a diagnostic, not a validated procedure."
+      },
+      "elapsed_seconds": 54.8
+    }
+  },
+  "caveats": [
+    "Censored rows (all measurements right- or left-censored) carry no numeric y and are dropped. They are disproportionately inactive compounds, so every fit is on the potent side of the cohort; the dropped share is reported per endpoint.",
+    "Matched delta pairs use ligand_main_fragment, i.e. the loose key: the organic ligand is held fixed but counterions/co-ligands may differ. This is the same estimand as MSRS-1's loose sensitivity analysis, not the strict single-variable substitution.",
+    "ECFP4 has no explicit metal, so the metal enters only through the metal block. That is the intended metal-aware design, but it means the model cannot represent coordination geometry.",
+    "The additive model's delta is ligand-independent by construction; its sign accuracy is therefore a constant per metal pair and is reported as the null, not as a fitted result."
+  ]
+}

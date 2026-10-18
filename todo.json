@@ -47,7 +47,9 @@
       "L2 交互: Ru↔Os 71.2% [60.1, 77.6] (检出); Ir↔Rh 0% [0, 25.7] 但最小可检测 41.7% (未定)。5% 阈值在本样本量下不可检验。",
       "L2 交互 (loose 键): Ru-Ir 64.5% [47.8, 73.7], Ru-Os 70.5% [57.7, 77.9] 均检出。",
       "光毒性 (功能终点): Ru switch 0.2624 (233/888) vs Ir 0.1373 (95/692), 差 +0.1251 [0.0395, 0.2048]; Ir 偏 antagonise (0.2413 vs 0.0631)。PI 本身不可预测 (OOF R² < 0)。",
-      "旧审计的 PI 中位 1.27/0.88 是 median log10(IC50_light) 误标; 真实 PI 中位 Ru 0.4914 / Ir -0.2218, 与 switch 率同向。该结论已撤回。"
+      "旧审计的 PI 中位 1.27/0.88 是 median log10(IC50_light) 误标; 真实 PI 中位 Ru 0.4914 / Ir -0.2218, 与 switch 率同向。该结论已撤回。",
+      "L3 响应面 (CPU, 21,045 potency / 11,403 RI): 交互比 additive 的 MAE 好 0.0202/0.0175 (Holm ≤6e-30), 但 Δ 符号准确率更差 (potency 0.5744 vs 0.6152; RI 0.4545 vs 0.5398)。",
+      "加性模型的 Δ 在 (metal pair, cell, fold) 内严格为常数; 38.5% 的 |Δ|≥0.21 配对符号与金属主效应相反 —— 这是加性推荐的错误率上限。"
     ],
     "continuous_data_audit_2026_10_18": {
       "numeric_dark_ic50": 21777,
@@ -122,7 +124,8 @@
       "capacity_policy": "molmetal/width_policy.py + configs/dmpnn_within_metal_sizeadaptive_pf_gpu0.yaml (AUTHORED, NOT RUN)",
       "msrs_endpoints": "metrics/by_metric/msrs_endpoints.json",
       "msrs_variance": "metrics/by_metric/msrs_variance_decomposition.json",
-      "msrs_phototoxicity": "metrics/by_metric/msrs_phototoxicity.json"
+      "msrs_phototoxicity": "metrics/by_metric/msrs_phototoxicity.json",
+      "msrs_surface": "metrics/by_metric/msrs_surface_model.json"
     }
   },
   "framework": {
@@ -290,10 +293,140 @@
       "acceptance": "交互模型在 ligand-grouped CV 上显著优于 additive (paired test, Holm); 报告 MAE/R² 与配对符号准确率。",
       "gpu": "small (≤4h)",
       "wall": "3-5 天",
-      "status": "TODO",
+      "status": "DONE",
       "priority": "P1",
       "depends_on": [
         "MSRS-0"
+      ],
+      "completed": "2026-10-18",
+      "artifact": "metrics/by_metric/msrs_surface_model.json",
+      "producer": "molmetal/scripts/msrs_surface_model.py (tests/test_msrs_surface_model.py, 12 passed)",
+      "scope": "CPU baseline 先做: 验收问题是定性的 (交互是否显著优于 additive), LightGBM 能在分钟级回答。D-MPNN 臂推迟到决策层指标证明值得之后再跑。",
+      "result": {
+        "potency": {
+          "n_rows": 21045,
+          "n_dropped_censored": 4813,
+          "n_ligands": 2846,
+          "n_features": 2097,
+          "mae": {
+            "global_mean": 0.6057,
+            "per_metal_mean": 0.5911,
+            "ligand_only": 0.524,
+            "additive": 0.5103,
+            "interaction": 0.4957
+          },
+          "r2": {
+            "per_metal_mean": 0.0353,
+            "ligand_only": 0.2055,
+            "additive": 0.251,
+            "interaction": 0.2791
+          },
+          "interaction_vs_additive": {
+            "mean_mae_delta_per_ligand": 0.0202,
+            "t": 11.4948,
+            "p_one_sided": 3.17e-30,
+            "holm_across_endpoints": 6.35e-30
+          },
+          "delta_sign_at_noise_floor": {
+            "n_pairs": 712,
+            "n_dois": 104,
+            "additive_accuracy": 0.6152,
+            "interaction_accuracy": 0.5744,
+            "mcnemar_p_interaction_better": 0.9725,
+            "bootstrap_ci_additive": [
+              0.4933,
+              0.7283
+            ],
+            "bootstrap_ci_interaction": [
+              0.4635,
+              0.6768
+            ]
+          },
+          "shrinkage_curve": {
+            "0": 0.6152,
+            "0.1": 0.6236,
+            "0.2": 0.6138,
+            "0.5": 0.611,
+            "1": 0.5744
+          },
+          "delta_sign_by_metal_pair": {
+            "Ru-Rh": {
+              "n": 113,
+              "additive": 0.7345,
+              "interaction": 0.7699
+            },
+            "Ru-Os": {
+              "n": 211,
+              "additive": 0.654,
+              "interaction": 0.5403
+            },
+            "Ru-Ir": {
+              "n": 286,
+              "additive": 0.5804,
+              "interaction": 0.5804
+            },
+            "Ir-Rh": {
+              "n": 69,
+              "additive": 0.5217,
+              "interaction": 0.4928
+            }
+          }
+        },
+        "cisplatin_ratio": {
+          "n_rows": 11403,
+          "n_dropped_censored": 2510,
+          "n_ligands": 1616,
+          "mae": {
+            "per_metal_mean": 0.6171,
+            "ligand_only": 0.5616,
+            "additive": 0.5306,
+            "interaction": 0.5148
+          },
+          "r2": {
+            "additive": 0.2638,
+            "interaction": 0.2989
+          },
+          "interaction_vs_additive": {
+            "mean_mae_delta_per_ligand": 0.0175,
+            "t": 7.8509,
+            "p_one_sided": 3.73e-15
+          },
+          "delta_sign_at_noise_floor": {
+            "n_pairs": 176,
+            "n_dois": 37,
+            "additive_accuracy": 0.5398,
+            "interaction_accuracy": 0.4545,
+            "mcnemar_p_interaction_better": 0.9818
+          },
+          "shrinkage_curve": {
+            "0": 0.5398,
+            "0.1": 0.5398,
+            "0.2": 0.483,
+            "0.5": 0.4489,
+            "1": 0.4545
+          }
+        },
+        "structural_check": {
+          "additive_delta_ligand_independent_given_cell_and_fold": true,
+          "max_within_pair_spread": 0.0,
+          "note": "加性模型的 Δ 在 (metal pair, cell, fold) 内严格为常数, 因此它的排序是配体无关的; 这正是对照的零假设。"
+        }
+      },
+      "findings": [
+        "交互模型确实显著优于 additive (potency ΔMAE/ligand +0.0202, Holm 6.3e-30; RI +0.0175, Holm 3.7e-15), R² 0.251→0.279 / 0.264→0.299。字面验收通过。",
+        "但决策层反过来: 在 |Δ|≥0.2091 (MSRS-1 噪声地板) 的 712 对 potency 上, additive 的 Δ 符号准确率 0.6152, 交互模型只有 0.5744 (McNemar 单侧 p(交互更好)=0.97, 即 additive 更好)。RI 同样 (0.5398 vs 0.4545)。",
+        "收缩曲线确认交互信号不可用: potency 最优 α=0.1 仅 +0.0084 (在 ±0.12 的 CI 内), RI 最优 α=0 (纯 additive)。交互模型不是「需要校准」, 而是「排序更差」。",
+        "加性模型的 Δ 在 (metal pair, cell, fold) 内严格为常数 (spread=0.0), 这是构造性的; 因此数据里 38.5% 的 |Δ|≥0.21 配对符号与金属主效应相反 —— 这是加性推荐的错误率, 而交互模型把这个错误率推得更高。",
+        "唯一交互占优的金属对是 Ru-Rh (0.7699 vs 0.7345, n=113), 其余全部 additive 更好或持平; 不足以支持交互模型。",
+        "交互信号在 2.7% 的跨金属单元上被监督, 模型必须从结构泛化; 当前密度下 ECFP4+GBDT 学不到。D-MPNN 若要翻盘, 必须在 Δ 符号上赢, 而不是只在 MAE 上赢。"
+      ],
+      "decision": "MSRS-2 以 CPU 基线结案: 交互在 MAE 上显著但不可用于排序。MSRS-3 用 additive 作为点预测器做 conformal; MSRS-6 的对照基线是 additive; MSRS-4 LOMO 用 additive 结构比较 descriptor / one-hot / no-metal。D-MPNN 臂不进入当前 Wave, 除非它能先在 Δ 符号上超过 additive。",
+      "caveats": [
+        "删失行 (potency 18.4%, RI 17.8%) 无数值 y 被丢弃, 样本偏向高活性一侧; 用 Tobit/删失似然是后续工作。",
+        "Δ 配对用 ligand_main_fragment (loose 键), 与 MSRS-1 的 loose 敏感性分析同口径; 不是严格单变量替换。",
+        "ECFP4 不含金属, 金属只通过 metal block 进入; 这是有意的 metal-aware 设计, 但无法表达配位几何。",
+        "additive 允许 metal×cell 交互 (cell 是独立组), 只禁止 ligand×metal 与 ligand×cell; 这与「金属替换效应不依赖配体」的零假设一致。",
+        "Δ 符号的 DOI 聚类 bootstrap CI 很宽 (104 个 DOI), 所以「additive 高于 50%」本身不显著; 但 additive vs interaction 是配对的 McNemar, 不受此影响。"
       ]
     },
     {
@@ -557,7 +690,7 @@
     "wave_4_paper": [
       "MSRS-8"
     ],
-    "note": "Wave 1 (MSRS-0/1/5) 已于 2026-10-18 全部完成, 纯 CPU。结论: 交互确实存在 (strict Ru-Os 71.2%, loose Ru-Ir 64.5%), 所以 Wave 2 值得做; 但光毒性只能当方向性机制读数, 不进预测目标。Wave 2 需要 GPU (>1h) → 需 USER_OK。"
+    "note": "Wave 1 (MSRS-0/1/5) 完成; Wave 2 的 MSRS-2 已用 CPU 基线结案, 零 GPU。结论: 交互显著但不可用于排序, additive 是更好的决策规则; 因此 MSRS-3/4 都在 additive 结构上做, 不需要 GPU。D-MPNN 臂只有在 Δ 符号上超过 additive 才值得开。"
   },
   "legacy_mainline": {
     "note": "二分类主线不再是论文主轴, 但其产物仍是 MSRS 的基线与对照, 不删除。",
