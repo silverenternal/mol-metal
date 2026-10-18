@@ -326,7 +326,14 @@ def harvest_one(
             print(f"[{cell_line}] SKIP (no file on disk)", flush=True)
             return {"cell_line": cell_line, "error": "no file on disk"}
         total = (prev or {}).get("api_meta_total") or len(records)
-        last_page = (prev or {}).get("api_meta_last_page")
+        # Cells harvested after the last summary write have no prev entry, so
+        # api_meta_last_page is absent.  Fall back to the pages actually on
+        # disk -- otherwise int(None) raises *after* the DONE print and the
+        # cell is recorded as an error, silently dropping its rows from the
+        # aggregate (observed: 25,646 rows on disk -> 18,090 in the summary).
+        last_page = (prev or {}).get("api_meta_last_page") or (
+            max(done_pages) if done_pages else 0
+        )
         pending: list = []
         if last_page:
             pending = [
@@ -411,7 +418,7 @@ def harvest_one(
     return {
         "cell_line": cell_line,
         "api_meta_total": total,
-        "api_meta_last_page": int(last_page),
+        "api_meta_last_page": int(last_page or 0),
         "rows_total": len(deduped),
         "rows_by_metal": dict(
             Counter(r.get("metal") or "?" for r in deduped).most_common()
