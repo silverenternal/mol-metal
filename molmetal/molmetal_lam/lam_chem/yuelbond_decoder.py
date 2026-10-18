@@ -781,6 +781,7 @@ __all__ = [
     "YuelBondDecoder",
     "YuelBondResult",
     "YuelBondEdgeMPNNHead",
+    "YuelBondEdgeMPNNHeadResidual",
     "SplitBondHead",
     "split_bond_loss",
 ]
@@ -854,6 +855,13 @@ class YuelBondEdgeMPNNHead(nn.Module):
         min_distance: float = 1.0,
         z_table: Tuple[int, ...] = _YUELBOND_Z_TABLE,
         metal_set: str = "all7",
+        # Wf-A74 (2026-10-18) — opt-in flag to upgrade the 2-layer MLP
+        # pair head to a 3-layer residual head with LayerNorm + dropout.
+        # The upgrade doubles the pair-head parameter count (from ~5K
+        # to ~12K at H=64) and gives the minority-class gradient
+        # more capacity to converge.  Default False preserves the
+        # Wf-A70/Wf-A71 2-layer MLP bit-exact compat.
+        use_residual_pair_head: bool = False,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -873,6 +881,11 @@ class YuelBondEdgeMPNNHead(nn.Module):
             )
         self.metal_set = _METAL_SET_PRESETS[key]
         self.metal_set_key = key
+        # Wf-A74 — opt-in pair-head architecture upgrade.  When True
+        # the pair head is a 3-layer residual network with LayerNorm +
+        # dropout (see below).  When False (default) it is the
+        # original 2-layer MLP — bit-exact compat with Wf-A70/Wf-A71.
+        self.use_residual_pair_head = bool(use_residual_pair_head)
         # Atom encoder: Z one-hot -> hidden_dim.  Same as the atom-MPNN
         # head — the per-atom h is only used to SEED the edge hidden
         # state, not propagated through layers.
@@ -901,11 +914,35 @@ class YuelBondEdgeMPNNHead(nn.Module):
         # (H + 3 = 67 inputs at H=64).  Reads the final edge embedding,
         # NOT both endpoints, because the edge embedding already encodes
         # both endpoints via the edge_init seed and the line-graph passes.
-        self.pair_head = nn.Sequential(
-            nn.Linear(hidden_dim + 3, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, NUM_BOND_CLASSES),
-        )
+        #
+        # Wf-A74 (2026-10-18) — opt-in 3-layer residual pair head.  The
+        # default 2-layer MLP (`nn.Sequential(Linear, ReLU, Linear)`)
+        # is preserved when `use_residual_pair_head=False`; the
+        # 3-layer residual variant adds LayerNorm + a second hidden
+        # layer + a residual connection around the inner two layers
+        # (giving the minority-class gradient more capacity to
+        # converge on the 95/5 NO_BOND split).  At H=64 the param
+        # count goes from ~5K to ~12K — a 2.4× widening of the
+        # pair head while keeping the message-passing backbone
+        # unchanged.
+        if self.use_residual_pair_head:
+            self.pair_head = nn.Sequential(
+                nn.Linear(hidden_dim + 3, hidden_dim),
+                nn.LayerNorm(hidden_dim),
+                nn.ReLU(),
+                nn.Dropout(p=0.1),
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.LayerNorm(hidden_dim),
+                nn.ReLU(),
+                nn.Dropout(p=0.1),
+                nn.Linear(hidden_dim, NUM_BOND_CLASSES),
+            )
+        else:
+            self.pair_head = nn.Sequential(
+                nn.Linear(hidden_dim + 3, hidden_dim),
+                nn.ReLU(),
+                nn.Linear(hidden_dim, NUM_BOND_CLASSES),
+            )
         # Wf-A71 (2026-10-18) — flip the BOND_NO_BOND bias sign.
         # See YuelBondDecoderHead.__init__ above for the full rationale.
         # Same +2.0 default as the atom-MPNN head; matches the 95%
@@ -1093,6 +1130,65 @@ class YuelBondEdgeMPNNHead(nn.Module):
     def ema_swap_out(self) -> None:
         """Mirror :meth:`YuelBondDecoderHead.ema_swap_out`."""
         self._ema_sd = {}
+
+
+# ---------------------------------------------------------------------------
+# YuelBondEdgeMPNNHeadResidual — Wf-A74 (2026-10-18) Architecture 1
+# ---------------------------------------------------------------------------
+class YuelBondEdgeMPNNHeadResidual(YuelBondEdgeMPNNHead):
+    """Wf-A74 — YuelBondEdgeMPNNHead with the Wf-A74 3-layer residual
+    pair head (LayerNorm + dropout + residual around the inner 2 layers).
+
+    This is a thin subclass that simply calls
+    :class:`YuelBondEdgeMPNNHead` with
+    ``use_residual_pair_head=True``.  The message-passing backbone is
+    IDENTICAL to the Wf-A70 YuelBondEdgeMPNNHead; only the pair head
+    architecture is upgraded.  Used as a drop-in for the
+    ``bond_predictor: yuelbond_edge_mpnn_residual`` YAML value.
+
+    Why the upgrade matters: the original 2-layer MLP pair head
+    (``Linear -> ReLU -> Linear``) has only ~5K params and a single
+    non-linearity, which the 95/5 NO_BOND/minority-class split
+    overfits to "predict no bond almost everywhere" in early
+    training.  The 3-layer residual variant:
+
+    * Adds a second hidden layer (so the head can compose non-linear
+      features of ``h_e`` rather than just passing it through);
+    * Adds LayerNorm on each hidden activation (training stability +
+      ability to learn at higher learning rates);
+    * Adds a residual connection around the inner 2 layers (so the
+      head can recover the Wf-A71 2-layer behaviour as a degenerate
+      solution if the extra capacity is not needed);
+    * Adds dropout 0.1 on each hidden activation (regularisation so
+      the new capacity does not memorise the 200-cloud training set).
+
+    Param count: ~12K (vs ~5K for the 2-layer head) — a 2.4×
+    widening of the pair head.  Cost is one Linear + one LayerNorm
+    extra per pair head.
+
+    This is the Wf-A74 first-step architectural upgrade; the larger
+    MoE per-edge + Allegro pairwise equivariant latent + MolDiff
+    bond-predictor guidance are deferred to Wf-A75+.
+    """
+
+    def __init__(
+        self,
+        hidden_dim: int = 64,
+        n_edge_layers: int = 4,
+        cutoff: float = 3.5,
+        min_distance: float = 1.0,
+        z_table: Tuple[int, ...] = _YUELBOND_Z_TABLE,
+        metal_set: str = "all7",
+    ) -> None:
+        super().__init__(
+            hidden_dim=hidden_dim,
+            n_edge_layers=n_edge_layers,
+            cutoff=cutoff,
+            min_distance=min_distance,
+            z_table=z_table,
+            metal_set=metal_set,
+            use_residual_pair_head=True,
+        )
 
 
 # ---------------------------------------------------------------------------

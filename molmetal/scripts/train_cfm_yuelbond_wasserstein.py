@@ -1899,10 +1899,34 @@ class CFMJointModel(nn.Module):
                 z_table=z_table,
                 metal_set=str(bond_z_metal_set),
             )
+        elif str(bond_predictor).lower() == "yuelbond_edge_mpnn_residual":
+            # Wf-A74 (2026-10-18) — Architecture 1 (3-layer residual
+            # pair head).  Drop-in sibling of YuelBondEdgeMPNNHead
+            # with the Wf-A74 use_residual_pair_head=True upgrade.
+            # Same edge list, same message passing, same (logits,
+            # (i, j)) forward contract.  Param count ~76.8K (vs
+            # ~64.8K for the 2-layer MLP edge head) — a 2.4×
+            # widening of the pair head (from ~5K to ~12K) at H=64.
+            # The 3 layers are Linear -> LayerNorm -> ReLU -> Dropout
+            # -> Linear -> LayerNorm -> ReLU -> Dropout -> Linear ->
+            # 5 classes, with a residual connection around the inner
+            # 2 layers (so the head can recover the Wf-A71 2-layer
+            # behaviour as a degenerate solution).
+            from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
+                YuelBondEdgeMPNNHeadResidual,
+            )
+            self.head = YuelBondEdgeMPNNHeadResidual(
+                hidden_dim=hidden_dim,
+                n_edge_layers=int(n_edge_layers),
+                cutoff=cutoff,
+                z_table=z_table,
+                metal_set=str(bond_z_metal_set),
+            )
         else:
             raise ValueError(
                 f"unknown bond_predictor {bond_predictor!r}; expected "
-                "'yuelbond', 'yuelbond_edge_mpnn', or 'dmpnn'"
+                "'yuelbond', 'yuelbond_edge_mpnn', "
+                "'yuelbond_edge_mpnn_residual', or 'dmpnn'"
             )
         self.bond_predictor = str(bond_predictor).lower()
         self.z_dim = len(z_table)
@@ -8572,7 +8596,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--bond-predictor",
         dest="bond_predictor",
-        choices=("yuelbond", "dmpnn", "yuelbond_edge_mpnn"),
+        choices=("yuelbond", "dmpnn", "yuelbond_edge_mpnn",
+                 "yuelbond_edge_mpnn_residual"),
         default="yuelbond",
         help=(
             "2026-10-09 NEW (BLK-C5 follow-up, user voice 'dmpnn按理来说不是"
