@@ -5073,3 +5073,80 @@ N/A (decode-time pure function, covered by the 5 unit tests); §5.9 single-venv;
 grant: 0 GPU launches; §5.2 honest framing: the error counts trace to
 `arm_control.json::decode.rows`, the repair's scope is stated as unit-level).
 
+
+### §6.107 Wf-A75a (2026-10-18) — guidance-weight sweep at a BUDGET-MATCHED control: the sweet spot is w=0.10 (gen_validity 0.469 -> 0.948 at ep 3), and the ep-4 collapse is NOT the guidance's fault.  The §6.103 attribution of the fragment/bond_f1 lift to the guidance is CORRECTED: that lift is the Wf-A74 head plus the 32 -> 200 train-size change, not the prior.
+
+**Why a control was needed.** Wf-A73 and Wf-A74 were run at 32 train / 16 val;
+Wf-A75 was run at 200 / 64.  §6.103's table put the Wf-A74 32/16 numbers next to
+the Wf-A75 200/64 numbers and read the difference as "the guidance lifted
+largest_fragment_frac 0.048 -> 0.838".  A 6x data increase and a new pair head
+were also in that difference.  This wave adds the missing cell: **w=0.0 at
+200/64**, same seed, same head, same candidate protocol.
+
+**MEASURED sweep** (5-epoch GPU smokes, cuda:0, seed 0, 200 train / 64 val,
+batch 8, 1 seed; `metrics/by_metric/cfm_wfa75a_guidance_sweep.json`):
+
+| guidance w | ep3 `gen_validity` | ep4 `gen_validity` | ep4 `bond_f1` | ep3 `largest_fragment_frac` | ep4 `largest_fragment_frac` |
+|---:|---:|---:|---:|---:|---:|
+| 0.00 (control) | **0.469** | 0.406 | 0.452 | 0.386 | 0.912 |
+| 0.02 | 0.677 | 0.531 | 0.452 | 0.566 | 0.802 |
+| 0.05 | 0.823 | 0.500 | 0.453 | 0.637 | 0.844 |
+| **0.10** | **0.948** | 0.479 | 0.454 | **0.664** | 0.838 |
+| 0.20 | 0.573 | 0.406 | 0.454 | 0.475 | 0.807 |
+
+**Three findings, in order of how much they change the plan:**
+
+1. **The ep-3 validity collapse is guidance-sensitive, with an interior
+   optimum at w=0.10.**  0.469 -> 0.677 -> 0.823 -> **0.948** -> 0.573.  More
+   is not better: 0.20 over-corrects below the 0.05 arm.  So §6.103's proposed
+   "sweep 0.05 / 0.1 / 0.2" lands on 0.10, and the answer is not the endpoint.
+
+2. **The ep-4 collapse is NOT guidance-driven.**  Every arm, including w=0.0,
+   sits at 0.406-0.531 by ep 4.  §6.103 said "the guidance pull is so strong
+   that at full magnitude the EGNN's diversity mode breaks".  The control
+   refutes that: with NO guidance at all the same collapse happens one epoch
+   later.  The driver is the residual head's bond over-prediction, which §6.101
+   already identified (its own sweet spot was ep 3, not ep 4).
+
+3. **The guidance does not touch the head.**  `bond_f1` at ep 4 is 0.452 /
+   0.452 / 0.453 / 0.454 / 0.454 across w = 0.00 -> 0.20, and AROMATIC PR-AUC
+   is 0.659 / 0.659 / 0.652 / 0.638 / 0.659.  This is the expected contract
+   (guidance shapes the sampler, not the loss), but it means the §6.103 table's
+   "bond_f1 0.000 -> 0.454" is a Wf-A74 + data-size result, not a Wf-A75 one.
+
+**What the control says about the fragment win.**  At w=0.0 the budget-matched
+control already reaches `largest_fragment_frac` 0.912 by ep 4 (guidance 0.10:
+0.838).  The 0.048 that §6.103 started from is a 32/16 Wf-A73 number.  The
+fragment fix is therefore the head + data, and the guidance is at best neutral
+on this metric (it wins at ep 3: 0.664 vs 0.386, and loses at ep 4: 0.838 vs
+0.912).
+
+**Honest-negative (ACTIVE, this entry):**
+  * **Single seed, 5 epochs, 96 generated samples per cell.**  The ep-3
+    ordering is monotone-then-reversing across five independent runs, which is
+    stronger than a single arm, but it is still one seed per arm.  The 0.10 vs
+    0.05 gap (0.948 vs 0.823) is 12 points on n=96; treat the interior optimum
+    as "0.10 is not worse than its neighbours", not as a calibrated value.
+  * **No 30-epoch evidence.**  The whole sweep is 5 epochs.  Whether w=0.10
+    still protects validity at ep 10-30 is the Wf-A76 retrain's question.
+  * **`gen_validity` is decode survival, not chemistry.**  A molecule that
+    survives the decoder is not thereby a good molecule; `largest_fragment_frac`
+    and `bond_f1` are the geometry/topology companions and they are flat in w.
+  * **The ep-4 collapse remains unfixed.**  Every arm loses ~half its validity
+    at ep 4.  The next wave must either early-stop at ep 3 or address the head's
+    over-prediction; the guidance weight is not the lever.
+
+**§6.107 catalog-count math.** Net catalog-count delta: **+1** (§6.107 itself).
+ACTIVE count delta: **+1** (the ep-4 collapse + single-seed caveat gate Wf-A76).
+Cumulative catalog count: **158 -> 159** (+1).  ACTIVE count: **114 -> 115** (+1).
+
+**Workflow** | Wf-A75a (2026-10-18; 4 new 5-epoch GPU smokes + 1 reused 0.10
+run; 1 new analysis script `molmetal/scripts/wfa75a_sweep_analysis.py`; 5 new
+configs; pre-flight PASS (24 PASS + SKIPs, no FAIL) before launch; §5.1 standing
+GPU grant used, GPU0 only; §5.11 yaml-only PASS (166 configs, 0 violations after
+fixing a pre-existing `--device` in `cfm_5metal_smoke_2026_10_17.yaml`);
+§5.2 honest framing: every number traces to the five
+`per_epoch_metrics.json` files, aggregated in
+`metrics/by_metric/cfm_wfa75a_guidance_sweep.json`; §5.3 + §5.4: 0 paper/* +
+0 wet-lab).
+

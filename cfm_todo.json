@@ -198,7 +198,7 @@
     },
     "deferred": {
       "Wf-A75a": "guidance-weight sweep (0.05 / 0.1 / 0.2) to find the sweet spot that keeps the fragment-ratio win without breaking gen_validity (the §6.103 honest-negative; 3×5-epoch GPU smokes)",
-      "Wf-A76": "30-epoch retrain consolidation after the Wf-A75a sweep picks the best guidance weight; carries Wf-A73 + Wf-A74 + Wf-A75 fixes",
+      "Wf-A76": "30-epoch retrain consolidation. CARRY: guidance_weight=0.10 AND early-stop at the ep-3 sweet spot (every arm collapses at ep 4; the guidance weight is not the lever). §6.107 is the evidence.",
       "Wf-A77+": "Allegro pairwise equivariant latent / EquiformerV2 backbone / MoE per-edge (per SOTA survey A3/A1/B4)"
     },
     "shipped_scaffolds": {
@@ -234,6 +234,14 @@
       "evidence": "molmetal/reports/cfm_l3_decode_enabled_ab/control/arm_control.json::decode.rows (57/64 kekulize failures)",
       "deferred": "re-measure the arm's decode_rate after the repair + report aromatic fraction of survivors",
       "honest_negative": "docs/HONEST_NEGATIVE_CATALOG.md §6.106"
+    },
+    "Wf-A75a_guidance_weight_sweep": {
+      "status": "SHIPPED 2026-10-18 (§6.107)",
+      "sweet_spot": "guidance_weight 0.10 at epoch 3: gen_validity 0.948 (w=0.00 control 0.469)",
+      "finding": "Interior optimum: ep3 gen_validity 0.469/0.677/0.823/0.948/0.573 for w=0/0.02/0.05/0.10/0.20. The ep4 collapse (0.406-0.531) happens with NO guidance too, so it is the Wf-A74 head, not the prior. bond_f1 is flat in w (0.452-0.454), so the fragment/bond_f1 lift in §6.103 was the head plus the 32->200 train-size change, NOT the guidance.",
+      "artifact": "metrics/by_metric/cfm_wfa75a_guidance_sweep.json",
+      "analysis_script": "molmetal/scripts/wfa75a_sweep_analysis.py",
+      "honest_negative": "docs/HONEST_NEGATIVE_CATALOG.md §6.107"
     }
   },
   "pointer_to_history": {
