@@ -1,0 +1,274 @@
+{
+  "generated_by": "molmetal/scripts/wf_a50_data_inventory.py",
+  "datasets": [
+    {
+      "id": "metalcytotox_raw",
+      "path": ".data/molmetal/MetalCytoToxDB.csv",
+      "role": "predictive_train",
+      "status": "ACTIVE",
+      "rows": 26801,
+      "bytes": 4839261,
+      "note": "Raw Krasnov corpus. Predictive cohorts are derived from this by build_paper_cohort() + collapse_duplicates(tie->active)."
+    },
+    {
+      "id": "cfm_5metal_v3",
+      "path": ".data/molmetal/metalcytotox_5metal_multitask_v3.csv",
+      "role": "generative_train",
+      "status": "ACTIVE",
+      "rows": 26632,
+      "bytes": 4772774,
+      "note": "Canonical CFM cohort (configs/cfm_5metal_default.yaml). Scaffold split column is carried in-file."
+    },
+    {
+      "id": "cfm_5metal_v4",
+      "path": ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+      "role": "generative_train",
+      "status": "ACTIVE",
+      "rows": 26632,
+      "bytes": 6902370,
+      "note": "Same rows as v3 plus lowercase smiles/metal aliases and source. Used by 10 configs; kept because both are wired."
+    },
+    {
+      "id": "cfm_5metal_v2",
+      "path": ".data/molmetal/metalcytotox_5metal_multitask_v2.csv",
+      "role": "generative_train",
+      "status": "SUPERSEDED",
+      "rows": 26632,
+      "bytes": 4671916,
+      "note": "Same 26,632 rows as v3, differing only in column naming (lowercase smiles/metal vs canonical SMILES_Ligands/Metal). Use v3."
+    },
+    {
+      "id": "cfm_5metal_v1",
+      "path": ".data/molmetal/metalcytotox_5metal_multitask.csv",
+      "role": "generative_train",
+      "status": "SUPERSEDED",
+      "rows": 26801,
+      "bytes": 4688719,
+      "note": "Pre-v2 cohort; only legacy configs."
+    },
+    {
+      "id": "pt_biodata_all",
+      "path": ".data/molmetal/wf_a37_platinai_biodata/pt/platinai_pt_all_cells_with_smiles.jsonl",
+      "role": "eval_pt",
+      "status": "ACTIVE",
+      "rows": 17735,
+      "bytes": 12219589,
+      "note": "17,735 real MB-Finder Pt IC50 rows, 100% SMILES-joined (Wf-A46/47/48/49)."
+    },
+    {
+      "id": "pt_biodata_raw",
+      "path": ".data/molmetal/wf_a37_platinai_biodata/harvest_summary_2026-10-16.json",
+      "role": "eval_pt",
+      "status": "ACTIVE",
+      "rows": 30185,
+      "bytes": 210481,
+      "note": "All-metal harvest summary: 485 cell lines / 30,185 rows."
+    },
+    {
+      "id": "pt_4cell_synthetic",
+      "path": ".data/molmetal/platinai_4cell.csv",
+      "role": "legacy",
+      "status": "DO-NOT-TRAIN",
+      "rows": 4078,
+      "bytes": 472144,
+      "note": "SYNTHETIC pIC50 (meta says 'synthetic IC50 labels for pipeline test'). Its ~0.50 AUC is a null test, not a measurement."
+    },
+    {
+      "id": "pt_real_label_pool",
+      "path": ".data/molmetal/platinai_4cell_real_label_pool.csv",
+      "role": "legacy",
+      "status": "SUPERSEDED",
+      "rows": 2053,
+      "bytes": 211854,
+      "note": "Real labels but 1/2,053 rows carry SMILES; superseded by pt_biodata_all."
+    },
+    {
+      "id": "moleculenet_bace",
+      "path": ".data/molmetal/moleculenet/bace.csv",
+      "role": "control_general",
+      "status": "ACTIVE",
+      "rows": 1513,
+      "bytes": 3897767,
+      "note": "Scaffold 70/10/20, 5 seeds."
+    },
+    {
+      "id": "moleculenet_bbbp",
+      "path": ".data/molmetal/moleculenet/bbbp.csv",
+      "role": "control_general",
+      "status": "ACTIVE",
+      "rows": 2050,
+      "bytes": 148743,
+      "note": "Scaffold 70/10/20, 5 seeds."
+    },
+    {
+      "id": "moleculenet_clintox",
+      "path": ".data/molmetal/moleculenet/clintox.csv.gz",
+      "role": "control_general",
+      "status": "ACTIVE",
+      "rows": 1484,
+      "bytes": 19870,
+      "note": "Scaffold 70/10/20, 5 seeds."
+    },
+    {
+      "id": "moleculenet_hiv",
+      "path": ".data/molmetal/moleculenet/hiv.csv",
+      "role": "control_general",
+      "status": "ACTIVE",
+      "rows": 41127,
+      "bytes": 2193844,
+      "note": "Scaffold 70/10/20, 5 seeds."
+    },
+    {
+      "id": "nci60_9cell",
+      "path": "molmetal/data/nci60_precious_9cell.csv",
+      "role": "control_general",
+      "status": "ACTIVE",
+      "rows": 7823,
+      "bytes": 787626,
+      "note": "9-cell precious-metal panel. Split is m21's Bemis-Murcko scaffold split (70/10/20, seed 0), reproduced byte-for-byte."
+    },
+    {
+      "id": "nci60_gi50_raw",
+      "path": ".data/molmetal/NCI60_GI50/GI50.csv",
+      "role": "reference",
+      "status": "UNUSED",
+      "rows": 4851917,
+      "bytes": 420971534,
+      "note": "Raw NCI-60 GI50 dump; the 9-cell panel above is the cohort actually used."
+    },
+    {
+      "id": "drugood_lbap_scaffold",
+      "path": ".data/molmetal/drugood/ic50/csv/lbap_refined_ic50_scaffold.csv",
+      "role": "control_ood",
+      "status": "ACTIVE",
+      "rows": 266522,
+      "bytes": 34325590,
+      "note": "OOD control; iid/ood train/val/test split is a column."
+    },
+    {
+      "id": "tmqm_dblock",
+      "path": "molmetal/data/tmqm_dblock_subset.csv",
+      "role": "pretrain",
+      "status": "ACTIVE",
+      "rows": 5000,
+      "bytes": 1023834,
+      "note": "5,000 d-block complexes with geometry; TMQM init is OFF in the current CFM config (does not transfer to ligand-only rows)."
+    },
+    {
+      "id": "crossdocked100",
+      "path": "molmetal/data/crossdocked100_manifest.csv",
+      "role": "pretrain",
+      "status": "ACTIVE",
+      "rows": 100,
+      "bytes": 30286,
+      "note": "100-pocket docking manifest for the pocket encoder."
+    },
+    {
+      "id": "rusanov_s5_ece",
+      "path": ".data/molmetal/rusanov_2025/parsed/s5_ece.json",
+      "role": "reference",
+      "status": "REFERENCE",
+      "rows": null,
+      "bytes": 1594,
+      "note": "Published ECE values; compared against, never trained on."
+    },
+    {
+      "id": "rusanov_s7_pt_wet_lab",
+      "path": ".data/molmetal/rusanov_2025/parsed/s7_pt_wet_lab.json",
+      "role": "reference",
+      "status": "REFERENCE",
+      "rows": null,
+      "bytes": 9715,
+      "note": "Published Pt-1..19 wet-lab panel; reference only (no wet lab per §5.4)."
+    }
+  ],
+  "predictive_cohort": {
+    "Ru": {
+      "funnel_rows": 15799,
+      "unique_smiles": 4793,
+      "active": 1557,
+      "inactive": 3236,
+      "rows_before_collapse": 15799
+    },
+    "Ir": {
+      "funnel_rows": 3674,
+      "unique_smiles": 1281,
+      "active": 655,
+      "inactive": 626,
+      "rows_before_collapse": 3674
+    },
+    "Rh": {
+      "funnel_rows": 951,
+      "unique_smiles": 334,
+      "active": 170,
+      "inactive": 164,
+      "rows_before_collapse": 951
+    },
+    "Os": {
+      "funnel_rows": 966,
+      "unique_smiles": 333,
+      "active": 155,
+      "inactive": 178,
+      "rows_before_collapse": 966
+    },
+    "Re": {
+      "funnel_rows": 666,
+      "unique_smiles": 250,
+      "active": 75,
+      "inactive": 175,
+      "rows_before_collapse": 666
+    },
+    "_total_unique": 6991
+  },
+  "generative_cohort": {
+    "rows": 26632,
+    "unique_smiles": 6743,
+    "metals": {
+      "Ru": 18987,
+      "Ir": 4546,
+      "Rh": 1118,
+      "Os": 1113,
+      "Re": 868
+    },
+    "split": {
+      "train": 18137,
+      "test": 5736,
+      "val": 2759
+    },
+    "activity": {
+      "0": 17471,
+      "1": 9161
+    },
+    "cell_lines": 744,
+    "top_cells": {
+      "A549": 2975,
+      "HeLa": 2670,
+      "MCF-7": 2195,
+      "HepG2": 1294,
+      "A2780": 1272
+    }
+  },
+  "nci60": {
+    "rows": 7823,
+    "unique_smiles": 5207,
+    "cells": 9,
+    "per_cell": {
+      "A549": 2647,
+      "MCF7": 1964,
+      "A2780": 1095,
+      "HCT116": 701,
+      "A2780cis": 564,
+      "PC3": 275,
+      "HL60": 225,
+      "SKOV3": 191,
+      "DU145": 161
+    }
+  },
+  "platinum": {
+    "rows": 17735,
+    "compounds": 3630,
+    "cells_with_pt_rows": 369,
+    "rows_with_smiles": 17735,
+    "rows_training_ready": 15953
+  }
+}

@@ -42,6 +42,10 @@ be audited (AGENTS.md section 5.5).
 - `ALIGNED_COMPARISON.md` — Same-protocol metric comparison across models.
 - `GENERATION_OBJECTIVE_METRIC_DESIGN.md` — Why the generation metrics are designed as they are.
 
+## What data do we train and test on?
+
+- `DATA_INVENTORY.md` — Every training/eval dataset with measured row counts, role, and status (ACTIVE / SUPERSEDED / DO-NOT-TRAIN). Regenerate with `molmetal/scripts/wf_a50_data_inventory.py`; do not hand-edit.
+
 ## Superseded but retained
 
 These are earlier drafts or intermediate decisions. A later document
