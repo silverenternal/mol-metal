@@ -3546,22 +3546,27 @@ Verify phase returned **SHIP** (48/48 targeted CFM tests PASS in 2.46s across 6 
 
 ## §6.90 Wf-A46/A47/A48/A49 (2026-10-17) MB-Finder Pt IC50 harvest — the Rusanov 17,732 *compound* target is unreachable, but its *row* target is not — +1 ACTIVE
 
-**Status: ACTIVE (honest-negative) for the compound-space claim; the row-space
-gap is being closed (see "Gap-fill" below).** The paper §3 protocol is described
-as matching Rusanov 2025's "17,732 IC50" MB-Finder baseline. That number is not
-obtainable *as 17,732 distinct platinum complexes* from MB-Finder's public API.
-Measured after an exhaustive harvest of the 21 largest cell lines:
+**Status: CLOSED for the row target (2026-10-19 01:08); ACTIVE (honest-negative)
+for the compound-space claim.** The paper §3 protocol is described as matching
+Rusanov 2025's "17,732 IC50" MB-Finder baseline. That number is not obtainable
+*as 17,732 distinct platinum complexes* from MB-Finder's public API — but as a
+*measurement-row* total it is now met. Measured after an exhaustive harvest:
 
 | Quantity | MEASURED | Source |
 |---|---|---|
-| Rows harvested (all metals), 21 cell lines | **17,882** | `.data/molmetal/wf_a37_platinai_biodata/platinai_*_biodata.jsonl` |
-| Rows that are platinum (`MB-Pt-` prefix) | **10,857** | `pt/pt_only_summary.json` → `pt_rows` |
-| ... as a fraction of the 17,732 target | **61.2%** | 10,857 / 17,732 |
-| Unique Pt compounds held | **3,292** | `pt/pt_only_summary.json` → `pt_unique_compounds` |
+| Cell lines harvested | **485 / 832** | `pt/pt_only_summary.json` → `per_cell_line` |
+| Rows harvested (all metals) | **30,185** | `harvest_summary_2026-10-16.json` → `rows_total_all_cells` |
+| Rows that are platinum (`MB-Pt-` prefix) | **17,735** | `pt/pt_only_summary.json` → `pt_rows` |
+| ... as a fraction of the 17,732 target | **100.02%** | 17,735 / 17,732 |
+| Unique Pt compounds held | **3,630** | `pt/pt_only_summary.json` → `pt_unique_compounds` |
 | MB-Finder's total Pt compounds | 3,614 | `GET /api/v2/get-count` → `metalCounts.Pt` |
-| Pt compound-space coverage from 21/832 cells | **91.1%** | 3,292 / 3,614 |
-| Pt rows carrying a SMILES structure | **10,857 / 10,857 (100%)** | `pt/smiles_join_summary.json` → `pt_rows_with_smiles` |
-| Pt rows training-ready (value_mean **and** SMILES) | **9,744** | `pt/smiles_join_summary.json` → `pt_rows_with_value_and_smiles` |
+| Pt compound-space coverage | **100.4%** | 3,630 / 3,614 |
+| Pt rows carrying a SMILES structure | **17,735 / 17,735 (100%)** | `pt/smiles_join_summary.json` → `pt_rows_with_smiles` |
+| Pt rows training-ready (value_mean **and** SMILES) | **15,953** | `pt/smiles_join_summary.json` → `pt_rows_with_value_and_smiles` |
+| Duplicate `biodata_id` / non-Pt rows / null SMILES | **0 / 0 / 0** | measured on `pt/platinai_pt_all_cells_with_smiles.jsonl` |
+
+Note the compound count (3,630) now *exceeds* `get-count`'s `metalCounts.Pt`
+(3,614) by 16, so that field is an approximation, not a hard ceiling.
 
 **Why the *compound* target is unreachable.** 21 of MB-Finder's 832 cell lines
 already supply 91.1% of its platinum *compound* space; the remaining 811 cell
@@ -3599,13 +3604,25 @@ near-duplicates are 481 groups (1,277 rows) sharing `(compound, cell, value)`
 across different DOIs — same value, different publication. Keeping them is the
 honest choice for a row-count target; dropping them would understate the data.
 
-**Gap-fill (in progress).** `wf_a46 --all-cells --pt-target 17732` harvests the
-811 remaining cell lines in descending `bioDataCount` order and stops when the
-cumulative Pt row count reaches the target. A 208-row smoke (A431) yielded 103 Pt
-(49.5%), so ~250-300 cells are expected to close the 6,772-row gap. The run is
-CPU-only and resumable; status is appended to `logs/wf_a46_gapfill.log` and the
-summary is rebuilt from disk (`--from-disk`) after every iteration. Until it
-finishes, the measured state is 10,960 Pt rows / 22 cells (18,090 rows total).
+**Gap-fill — DONE (2026-10-19 01:08).** `wf_a46 --all-cells --pt-target 17732`
+walked the remaining cell lines in descending `bioDataCount` order and stopped at
+**17,735 Pt rows** (target 17,732, +3). 485 of 832 cell lines harvested, 30,185
+rows total; 369 of those cells contributed Pt rows, 114 were Pt-free (harvested
+for the other metals). 116 of the 832 cells report no rows at all via the API.
+Wall time was dominated by the IP-level bans, not by fetching: the last leg
+(17,425 → 17,735, i.e. 307 rows) took ~5.5 h across six ban windows of 25-60 min.
+Logs: `logs/wf_a46_gapfill{,2,3}.log`; post-processing `logs/wf_a46_gapfill3_post.log`
+(`wf_a48 rc=0`, `wf_a49 rc=0`, `wf_a46 --from-disk rc=0`).
+
+**Reachability note (2026-10-19).** After the final long ban the **direct** path
+never recovered at the TLS layer — TCP connects, ClientHello is sent, no
+ServerHello returns, on every route including `get-count` — while the local
+proxy reached the API normally. `wf_a46` now honours `MBFINDER_PROXY`; unset
+keeps the historical direct path. The proxy is bursty, so the working shape is a
+short per-request timeout (~12 s) plus 8 page retries. Separately, the 429 burst
+limiter is independent of the `X-RateLimit-Limit: 30` header: it was observed at
+`Remaining: 27`, survived a 3-minute silence, and probing every 20 s appeared to
+extend it — probe at ≥5 min when the API answers 429.
 
 **Two subsidiary honest-negatives found in the same wave:**
 
@@ -3631,19 +3648,19 @@ finishes, the measured state is 10,960 Pt rows / 22 cells (18,090 rows total).
    `platinai_real_label_loader.metal_from_compound_code`; 7,025 rows corrected in place.
 
 **Resolution path.** For the *compound* target: none available in-silico from
-this source. Options: (a) accept 3,292 Pt compounds and re-state the §3 baseline
+this source. Options: (a) accept 3,630 Pt compounds and re-state the §3 baseline
 claim accordingly; (b) obtain the Rusanov curation itself (the SI-cited
 `github.com/thebabaklab/MetalKANO` returns 404); (c) add a second Pt source. For
-the *row* target: harvest the remaining 811 cell lines (`--all-cells`), which
-carry 13,618 API-reported rows — in progress, see "Gap-fill". Decision on how to
-phrase the §3 baseline remains the user's.
+the *row* target: **CLOSED 2026-10-19 at 17,735 rows** via `--all-cells`. Decision
+on how to phrase the §3 baseline remains the user's.
 
 | Verification | Command |
 |---|---|
 | Pt-only summary on disk | `ls -la .data/molmetal/wf_a37_platinai_biodata/pt/pt_only_summary.json` → exists |
-| Pt row count | `python -c "import json;d=json.load(open('.data/molmetal/wf_a37_platinai_biodata/pt/pt_only_summary.json'));assert d['pt_rows']==10857 and d['pt_unique_compounds']==3292"` → no AssertionError |
-| Combined Pt file | `wc -l .data/molmetal/wf_a37_platinai_biodata/pt/platinai_pt_all_cells.jsonl` → 10857 |
-| SMILES join full | `python -c "import json;d=json.load(open('.data/molmetal/wf_a37_platinai_biodata/pt/smiles_join_summary.json'));assert d['pt_compounds_missing_smiles']==0 and d['pt_rows_with_smiles']==10857"` → no AssertionError |
+| Pt row count | `python -c "import json;d=json.load(open('.data/molmetal/wf_a37_platinai_biodata/pt/pt_only_summary.json'));assert d['pt_rows']==17735 and d['pt_unique_compounds']==3630"` → no AssertionError |
+| Combined Pt file | `wc -l .data/molmetal/wf_a37_platinai_biodata/pt/platinai_pt_all_cells_with_smiles.jsonl` → 17735 |
+| No dupes / no non-Pt / no null SMILES | measured 2026-10-19: 17,735 unique `biodata_id`, 0 non-`MB-Pt-` rows, 0 empty `smiles` |
+| SMILES join full | `python -c "import json;d=json.load(open('.data/molmetal/wf_a37_platinai_biodata/pt/smiles_join_summary.json'));assert d['pt_compounds_missing_smiles']==0 and d['pt_rows_with_smiles']==17735"` → no AssertionError |
 | Substances walk complete | `python -c "import json;d=json.load(open('.data/molmetal/wf_a37_platinai_biodata/substances_harvest_summary.json'));assert d['pages_failed_unrecovered']==0 and d['with_smiles']==7703"` → no AssertionError |
 | MB-Finder totals | `curl -sS --noproxy '*' https://api.mb-finder.org/api/v2/get-count` → `metalCounts.Pt == 3614` |
 | `metal` backfill clean | `python -c "import json,glob;[json.loads(l) for p in glob.glob('.data/molmetal/wf_a37_platinai_biodata/platinai_*_biodata.jsonl') for l in open(p) if l.strip()]"` → no error; 0 mismatches vs code prefix |

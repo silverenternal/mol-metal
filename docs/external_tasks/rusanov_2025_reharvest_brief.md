@@ -41,28 +41,27 @@ DOI 10.26434/chemrxiv-2025-pp32k) which uses MB-Finder as the 17,732-IC50 baseli
 >
 > ### What was actually done
 >
-> - Harvested 21 cell lines → **17,882 rows** in
->   `.data/molmetal/wf_a37_platinai_biodata/` (script
->   `molmetal/scripts/wf_a46_mcf7_harvest.py`, commit `00559149`).
-> - Of those, **10,857 rows / 3,292 unique compounds are platinum** (60.7%).
-> - Pt-only view: `platinai_pt_all_cells.{jsonl,csv}` + per-cell
->   `pt/platinai_<stem>_pt.{jsonl,csv}` (script `wf_a48_pt_only_view.py`).
+> - **FINAL (2026-10-19 01:08): 485 of 832 cell lines → 30,185 rows**, of which
+>   **17,735 are platinum** = **100.02% of the 17,732 target**.
+> - 3,630 unique Pt compounds, **all** carrying SMILES; **15,953 rows** are
+>   training-ready (`value_mean` + SMILES). 0 duplicate `biodata_id`, 0 non-Pt
+>   rows in the Pt view, 0 empty SMILES.
+> - Pt-only view: `pt/platinai_pt_all_cells_with_smiles.{jsonl,csv}` + per-cell
+>   `pt/platinai_<stem>_pt_with_smiles.*` (scripts `wf_a48_pt_only_view.py`,
+>   `wf_a49_smiles_join.py`). Summary: `pt/pt_only_summary.json` +
+>   `pt/smiles_join_summary.json`.
 > - `get-substances` harvest **completed**: 1,543/1,543 pages → 7,703 substances,
 >   all with SMILES, 0 pages unrecovered (`wf_a47_substances_harvest.py`).
-> - SMILES joined onto the Pt view (`wf_a49_smiles_join.py`): **3,292/3,292 Pt
->   compounds and 10,857/10,857 Pt rows carry SMILES (100%)**; **9,744 rows**
->   also carry `value_mean` and are directly training-ready. Files:
->   `pt/platinai_pt_all_cells_with_smiles.{jsonl,csv}` +
->   per-cell `pt/platinai_<stem>_pt_with_smiles.*`; coverage in
->   `pt/smiles_join_summary.json`.
+> - Gap-fill was `wf_a46_mcf7_harvest.py --all-cells --pt-target 17732`; the last
+>   307 Pt rows took ~5.5 h because of six IP-level ban windows of 25-60 min.
 >
-> ### The real remaining gap
+> ### The remaining honest-negative
 >
-> The 17,732 **Pt** target is **not met**: we hold 10,857 Pt rows = 61.2%.
-> It is unlikely to be reachable from MB-Finder alone — 21 of 832 cell lines already
-> cover **91.1% of MB-Finder's 3,614 Pt compounds** (3,292), so the remaining cell
-> lines mostly repeat the same molecules. The paper's 4,078 Pt complexes also exceed
-> MB-Finder's 3,614, so its dataset draws on more than this one source.
+> The 17,732 **row** target is met; what is *not* available from this source is
+> 17,732 **distinct platinum complexes**. 485 cell lines yield 3,630 Pt compounds
+> (vs `get-count`'s `metalCounts.Pt` = 3,614), while Rusanov's own V2 SI describes
+> 4,078 unique Pt complexes. So the baseline is matched on measurements, not on
+> chemical space — that distinction should be stated in §3.
 
 ---
 
@@ -327,10 +326,10 @@ post-hoc).
 
 When the paper §3 cites this data, the citation should be:
 
-> "We harvested 17,882 IC50 measurements from MB-Finder (the curated metal-complex
-> database of Rusanov et al. 2025, https://www.mb-finder.org) across 21 cell lines
-> via the public `get-ceil-line-bio-data` API endpoint; 10,857 of these are platinum
-> (3,292 unique complexes). Structures were joined from `get-substances` on the
+> "We harvested 30,185 IC50 measurements from MB-Finder (the curated metal-complex
+> database of Rusanov et al. 2025, https://www.mb-finder.org) across 485 cell lines
+> via the public `get-ceil-line-bio-data` API endpoint; 17,735 of these are platinum
+> (3,630 unique complexes). Structures were joined from `get-substances` on the
 > compound code. DOI: 10.26434/chemrxiv-2025-pp32k"
 
 ⚠️ The original citation text in this section claimed "17,732 IC50 values ... across
