@@ -585,6 +585,21 @@ def build_panel(
         "n_parsed": n_parsed,
         "n_failed": n_input - n_parsed,
     }
+    # Wf-A85 (2026-10-19) — the OPT-2 deciding axis, on the SAME SMILES this
+    # panel scores.  Shared implementation with the trainer's per-epoch
+    # chemistry block (molmetal/eval/ring_profile.py), so an inference run and
+    # a training run cannot report different ring-size numbers for the same
+    # corpus.  See docs/HONEST_NEGATIVE_CATALOG.md §6.112.
+    # Same bootstrap as the other molmetal imports in this script (see
+    # _decode_smiles_from_ckpt): the standard invocation puts scripts/ on
+    # sys.path but NOT the repo root, so a bare `from molmetal...` fails
+    # when the panel is run from anywhere else.
+    _repo_root = Path(__file__).resolve().parent.parent.parent
+    if str(_repo_root) not in sys.path:
+        sys.path.insert(0, str(_repo_root))
+    from molmetal.eval.ring_profile import ring_profile as _ring_profile
+
+    aggregate["ring_profile"] = _ring_profile(smiles_list)
 
     if include_validity and per_molecule and "validity" in per_molecule[0]:
         keys = ("parse_ok", "sanitize_ok", "valence_ok", "ring_ok",

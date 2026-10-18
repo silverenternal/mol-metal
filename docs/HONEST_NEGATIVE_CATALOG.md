@@ -5514,3 +5514,72 @@ Cumulative catalog count: **162 -> 163** (+1).  ACTIVE count: **118 -> 119** (+1
 9 new tests; §5.2: every number traces to `/tmp/wfa84_smoke`; §5.3 + §5.4: 0
 paper/* + 0 wet-lab).
 
+
+---
+
+## §6.112 — Wf-A85: the deciding axis was measured by neither line
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (measurement plumbing; no quality
+claim).  **Code:** `molmetal/eval/ring_profile.py` (new), the trainer's
+`decode_chemistry` / `summarise_decode_chemistry` / `EpochMetrics`
+(`gen_rings_per_mol`, `gen_ring_5_6_share`, `gen_ring_3_share`,
+`gen_ring_size_distribution`), and `cfm_property_panel.build_panel`
+(`aggregate["ring_profile"]`).
+
+**The gap.**  OPT-2 (`metrics/by_metric/cfm_opt2_ring_content.json`,
+MEASURED 2026-10-13) decided the generation question on ring SIZE:
+5/6-membered rings are 1.85% generated vs 96.92% real, 3-membered 89.8% vs
+0.5%.  That verdict came from a one-off script reading one CSV.  No training
+run and no panel run could report the number that decides the question, so
+every later wave argued about bond F1 and validity while the deciding axis
+stayed unmeasured.
+
+**The fix.**  One implementation, two callers.  `ring_profile.py` defines SSSR
+(`GetRingInfo().AtomRings()` on a sanitised mol) and shares over RINGS — the
+same denominator OPT-2 used.  The trainer calls `ring_sizes_from_mol` per
+decoded molecule and `summarise_ring_sizes` over the pooled rows; the panel
+calls `ring_profile` on the SMILES it already scores.  A training run and an
+inference run on the same corpus now cannot disagree about what a ring is.
+
+**MEASURED — the shared implementation reproduces OPT-2 exactly.**  Re-scored
+the same 66-molecule corpus
+(`molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv`):
+
+| metric | OPT-2 published | ring_profile.py |
+|---|---|---|
+| 3-ring share | 0.8981 | **0.8981** |
+| 5/6-ring share | 0.0185 | **0.0185** |
+| rings per molecule | 1.6364 | **1.6364** |
+
+**MEASURED — the trainer plumb.**  `/tmp/wfa85_plumb/per_epoch_metrics.json`
+(32 train / 8 val, 4 gen samples, 1 epoch) now carries
+`gen_rings_per_mol = 16.75`, `gen_ring_5_6_share = 0.194`,
+`gen_ring_3_share = 0.582`,
+`gen_ring_size_distribution = {"3": 39, "4": 11, "5": 10, "6": 3, "7": 4}`.
+The field reaches the JSON; the VALUES from a 4-molecule, 4-step run are not
+a quality measurement.
+
+**Honest-negative (ACTIVE, this entry):**
+  * **Measuring is not fixing.**  The generator still emits 3-rings at 89.8%
+    (OPT-2 corpus).  Wf-A85 makes that number appear in every future run; it
+    does not move it.
+  * **The post-Wf-A84 ring profile is still UNMEASURED.**  The 400/32 smoke
+    (`/tmp/wfa85_smoke`) does not write `generated_smiles.csv` by default, so
+    the repaired corpus could not be re-audited from its own output.  Any
+    post-repair ring claim needs `--write-generated-smiles` (or the panel on a
+    saved corpus) first.
+  * **`gen_rings_per_mol = 16.75` on the plumb run is a warning, not a result.**
+    Four molecules, four optimiser steps, one epoch: the graph is still dense
+    with spurious rings.  It must not be quoted as a corpus statistic.
+  * **The panel block is additive.**  `aggregate["ring_profile"]` is a NEW key;
+    no existing panel field changed, so old panel JSONs remain comparable.
+
+**§6.112 catalog-count math.** Net catalog-count delta: **+1** (§6.112 itself).
+ACTIVE count delta: **+1** (measurement only).
+Cumulative catalog count: **163 -> 164** (+1).  ACTIVE count: **119 -> 120** (+1).
+
+**Workflow** | Wf-A85 (2026-10-19; 0 GPU training — 1 CPU 4-step plumb + 1
+OPT-2 reproduction; 9 new tests; §5.2: every number traces to
+`/tmp/wfa85_plumb` or `metrics/by_metric/cfm_opt2_ring_content.json`; §5.3 +
+§5.4: 0 paper/* + 0 wet-lab).
+

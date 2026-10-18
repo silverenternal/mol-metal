@@ -1284,6 +1284,18 @@ class EpochMetrics:
     gen_single_fragment_ratio: float = 0.0
     gen_metal_ratio: float = 0.0
     gen_mean_heavy_atoms: float = 0.0
+    # Wf-A85 (2026-10-19) — ring SIZE on the generated corpus.  OPT-2
+    # (metrics/by_metric/cfm_opt2_ring_content.json) decided the generation
+    # question on this axis: 5/6-membered rings 1.85% generated vs 96.92%
+    # real, 3-membered 89.8% vs 0.5%.  Until now that number came from a
+    # one-off script over one CSV, so no epoch record carried it.  Shares are
+    # over RINGS (same denominator as OPT-2), not over molecules.
+    gen_rings_per_mol: float = 0.0
+    gen_ring_5_6_share: float = 0.0
+    gen_ring_3_share: float = 0.0
+    # JSON dict {"3": n, ...} as a str: EpochMetrics serialises str as a JSON
+    # string, and a dict field would not survive the CSV writer.
+    gen_ring_size_distribution: str = ""
     # Wf-R43 m4 — the REAL Ertl-2009 SA observation on GENERATED molecules.
     # `gen_sa_observed` is the field to branch on: False means this run asked
     # for no SA or sascorer was unavailable, and `gen_sa_mean` is then a
@@ -6406,8 +6418,20 @@ def decode_chemistry(
         n_heavy = int(mol.GetNumHeavyAtoms())
         want = _TARGET_METALS if expected_metal_z is None else expected_metal_z
         has_metal = any(int(a.GetAtomicNum()) in want for a in mol.GetAtoms())
+        # Wf-A85 (2026-10-19) — ring SIZE, not ring count, is the axis OPT-2
+        # found decisive (5/6-membered 1.85% generated vs 96.92% real;
+        # 3-membered 89.8% vs 0.5%).  The audit lived in a one-off script
+        # (wf_cfm_opt2_ring_content_2026_10_13.py) reading one CSV, so no
+        # training run and no panel run could report the number that decides
+        # the question.  The mol is already sanitised here, so RingInfo is
+        # initialised and GetRingInfo().AtomRings() is the SSSR.
+        from molmetal.eval.ring_profile import ring_sizes_from_mol
+
+        ring_sizes = ring_sizes_from_mol(mol)
         return {
             "n_fragments": len(sizes),
+            "ring_sizes": ring_sizes,
+            "n_rings": len(ring_sizes),
             "n_heavy": n_heavy,
             "largest_fragment_frac": (max(sizes) / n_heavy) if n_heavy else 0.0,
             "has_metal": bool(has_metal),
@@ -6459,6 +6483,11 @@ def summarise_decode_chemistry(rows: Sequence[Optional[Dict[str, Any]]]) -> Dict
             "sa_target": None,
             "sa_synthesizable_rate": 0.0,
             "sa_subcriterion_met": None,
+            # Wf-A85 — same keys as the populated branch, zeroed.
+            "ring_size_distribution": {},
+            "rings_per_mol_mean": 0.0,
+            "ring_5_6_share": 0.0,
+            "ring_3_share": 0.0,
         }
     # Only rows that were actually SEEDED with a metal can be judged on
     # seed-metal presence.  A composition with no metal in it (a ligand-only
@@ -6489,8 +6518,17 @@ def summarise_decode_chemistry(rows: Sequence[Optional[Dict[str, Any]]]) -> Dict
     # SA (sa_target was None) or sascorer was unavailable, and `sa_mean` is
     # then a placeholder that must not be read as a measurement.
     sa_observed = bool(sa_vals)
+    # Wf-A85 (2026-10-19) — pooled ring-size profile.  Shares are over RINGS,
+    # not over molecules, so they are directly comparable to OPT-2's verdict
+    # numbers (fraction_of_rings_that_are_5_or_6_membered).
+    from molmetal.eval.ring_profile import summarise_ring_sizes
+
+    _ring_block = summarise_ring_sizes(
+        r.get("ring_sizes", []) or [] for r in valid
+    )
     return {
         "n_chemistry_scored": n,
+        **_ring_block,
         "largest_fragment_frac_mean": float(
             sum(r["largest_fragment_frac"] for r in valid) / n
         ),
@@ -14128,6 +14166,12 @@ def main() -> int:
             ),
             gen_metal_ratio=float(_gen_chem.get("metal_ratio", 0.0)),
             gen_mean_heavy_atoms=float(_gen_chem.get("mean_heavy_atoms", 0.0)),
+            gen_rings_per_mol=float(_gen_chem.get("rings_per_mol_mean", 0.0) or 0.0),
+            gen_ring_5_6_share=float(_gen_chem.get("ring_5_6_share", 0.0) or 0.0),
+            gen_ring_3_share=float(_gen_chem.get("ring_3_share", 0.0) or 0.0),
+            gen_ring_size_distribution=json.dumps(
+                _gen_chem.get("ring_size_distribution", {}) or {}
+            ),
             # Wf-R43 m4 — real SA on generated molecules.
             gen_sa_observed=bool(_gen_chem.get("sa_observed", False)),
             gen_sa_mean=float(_gen_chem.get("sa_mean", 0.0) or 0.0),
@@ -14221,6 +14265,16 @@ def main() -> int:
                     _gen_chem.get("single_fragment_ratio", 0.0)
                 ),
                 gen_metal_ratio=float(_gen_chem.get("metal_ratio", 0.0)),
+                gen_rings_per_mol=float(
+                    _gen_chem.get("rings_per_mol_mean", 0.0) or 0.0
+                ),
+                gen_ring_5_6_share=float(
+                    _gen_chem.get("ring_5_6_share", 0.0) or 0.0
+                ),
+                gen_ring_3_share=float(_gen_chem.get("ring_3_share", 0.0) or 0.0),
+                gen_ring_size_distribution=json.dumps(
+                    _gen_chem.get("ring_size_distribution", {}) or {}
+                ),
                 # Wf-R43 m4 — real SA on generated molecules (see the
                 # EpochMetrics field docs for why `gen_sa_observed` is the
                 # field to branch on).
