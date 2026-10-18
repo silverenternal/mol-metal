@@ -2969,7 +2969,8 @@
     "PAPER-SYNC 提案已更新 (TODO/pending/paper_a_abstract_sync_proposal.md): 缺陷 4 已由 fsma_c3_sampler_pairwise.json 解决 (该句被支持)。用户 2026-10-17 决定: 暂不动 paper_a; LOMO 区间改用 EX1 的 0.62-0.66。落 hunk 仍需明确 OK (§5.3)。",
     "repo-hygiene: pre-flight 现唯一 FAIL 来自并行 session 的未跟踪文件 configs/cfm_5metal_smoke_2026_10_17.yaml (command_template 带 --device)。不是本研究引入; 待该 session 自行收口。",
     "方法教训 (2026-10-17, 由 FU3+FU4 共同支撑): 任何合并器实验都必须**同时输出等权平均臂**。FU4 里 merged_avg 赢过学习型 merged_stack (Re K=20: 0.7529 vs 0.4944), FU3 里 uniform_avg 赢过学习型 router (pooled +0.0277 Holm 0.0021 vs +0.0059 Holm 0.66)。平均臂的边际成本是零 (分数已经算出来了), 而 FU2 当时没跑它, 导致现在无法事后回答『组内 stacking 输给平均了吗』—— 只能重跑 25h。",
-    "FU2 的 B 分量预算错配已记录 (todo.json fu2_result_2026_10_17.component_b_budget_mismatch): FU2 用 30 epoch, 已发表 Table-1 列用 50 epoch, B_ep30 在 4/5 金属低 0.013-0.038。ep50 重跑约 25h GPU0, 排在 #184 之后, 需 USER_OK。"
+    "FU2 的 B 分量预算错配已记录 (todo.json fu2_result_2026_10_17.component_b_budget_mismatch): FU2 用 30 epoch, 已发表 Table-1 列用 50 epoch, B_ep30 在 4/5 金属低 0.013-0.038。ep50 重跑约 25h GPU0, 排在 #184 之后, 需 USER_OK。",
+    "PAPER 缺陷 (2026-10-18, 需用户决策; 属 #172 Table 1 in-house migration 范围内): paper_a/sections/04_results.tex:215 把 within-metal ceiling 0.8545(Ru)/0.7570(Ir) 标为 'This work (D-MPNN)', 但来源 molmetal/reports/l3_within_pf_ceiling/metrics.json 的 model 字段是 chemprop v2 AtomMessagePassing。自研同队列同折 5-seed 实测: Ru h128 0.8192 / h512 0.8375, Ir h128 0.6543 / h512 0.7371。影响 4 处 (04_results.tex:29-30, 177-178, 191, 215) 与 recovery 分母。关键: '两个金属都赢 Krasnov' 只在 Ir h512 成立 (0.7371>0.73); h128 时 Ir 低 0.065。三个方案 A(仅改标注)/B(改用 h128 作 ceiling)/C(改用 size-adaptive 宽度) 见 TODO/pending/paper_a_capacity_ablation_proposal.md; 推荐 C。未动 paper_a。"
   ],
   "working_detail_2026_10_14": {
     "note": "2026-10-14 工作细节 (current_state 的依据)。model_unification_2026_10_14 已 SUPERSEDED (保留溯源)。",
@@ -8310,5 +8311,86 @@
       "Variance direction is metal-specific, not a rule: Ir 0.0768->0.0339 (halved), Ru 0.0115->0.0139, Rh 0.0617->0.0710, Os 0.0528->0.0569, Re 0.0554->0.0591.",
       "Wall time does not scale monotonically with width here: Ru h512 took 48% longer than h128 (15623 -> 23129 s) but Ir h512 was FASTER (6484 -> 5680 s). Total h512 leg 32723.8 s (9h05m24s) vs h128 26693.2 s (7h24m56s). So width is not a reliable cost model; cohort size dominates."
     ]
+  },
+  "capacity_improvements_2026_10_18": {
+    "date": "2026-10-18",
+    "task": "基于 #184 结果的三项非实验改进 (用户指令: 不要急着实验, 先把结果对应的改进做好)",
+    "no_new_training": true,
+    "items": {
+      "fold_level_analysis": {
+        "status": "DONE",
+        "artifact": "metrics/by_metric/dmpnn_within_metal_capacity_foldwise.json",
+        "producer": "molmetal/scripts/wfA_capacity_foldwise_analysis.py",
+        "findings": {
+          "Ir": "25/25 folds positive; gain 4.8x larger on the worst fold quintile (+0.2262 vs +0.0469); across-fold sd halves 0.0784 -> 0.0346. Mechanism = capacity rescues the folds where h128 collapsed.",
+          "Ru": "23/25 folds positive; broad +0.0183 shift (worst quintile +0.0274 vs rest +0.0160); sd widens 0.0117 -> 0.0142.",
+          "Rh_Os": "13/25 and 15/25 folds positive; null, no concentration signal.",
+          "Re": "15/25 folds positive, +0.0114; top-5 folds carry 111% of the total delta (rest is net negative)."
+        },
+        "stats_note": "125 fold pairs are pseudo-replicates (5 folds per split, 5 seeds per cohort). Only the seed-clustered test is valid. The naive fold test is NOT uniformly anti-conservative: Re naive p=0.0708 > clustered 0.0380. Recorded so nobody quotes a 125-pair p."
+      },
+      "width_policy": {
+        "status": "DONE",
+        "module": "molmetal/width_policy.py",
+        "cli": "molmetal/scripts/dmpnn_within_metal_auc.py --width-policy {fixed,size-adaptive}",
+        "rule": "hidden=512 iff n_unique>=1000, else 128",
+        "why_cut": "Lies in the empty interval between the largest null cohort (334) and the smallest significant one (1281); post-hoc, not validated on held-out cohorts.",
+        "backward_compat": "default=fixed; every published column still reproducible from its config. Width actually used is recorded per metal as hidden_used.",
+        "config": "configs/dmpnn_within_metal_sizeadaptive_pf_gpu0.yaml (AUTHORED, NOT RUN; directives.user_ok_granted=false)",
+        "tests": "tests/test_width_policy.py -- 20 passed, incl. a wiring test that _run_metal trains at the resolved width",
+        "gates": "config binding gate clean for this file; yaml-only gate PASS; §5.1 hyperparam contract PASS; start.sh --dry-run PASS"
+      },
+      "paper_proposal": {
+        "status": "BLOCKED-ON-USER",
+        "file": "TODO/pending/paper_a_capacity_ablation_proposal.md",
+        "contains": [
+          "proposed subsection hunk",
+          "proposed Table tab:capacity hunk",
+          "honest framing",
+          "ceiling-attribution defect with evidence",
+          "three options A/B/C"
+        ],
+        "rule": "AGENTS.md §5.3 -- nothing written to paper_a until the user approves specific hunks"
+      }
+    },
+    "defect_exposed": {
+      "severity": "paper-level (affects Table 1, recovery table, and the 'we win both metals' claim)",
+      "what": "paper_a labels the within-metal ceiling 0.8545 (Ru) / 0.7570 (Ir) as 'This work (D-MPNN)', but molmetal/reports/l3_within_pf_ceiling/metrics.json declares model='chemprop v2 AtomMessagePassing (d_h=300, depth=3)'. The value 0.854533391154804 matches that file's within_metal.Ru.mean_auc exactly and is also the denominator in fsma_paper_stats.json:recovery_to_ceiling.",
+      "affected_lines": "paper_a/sections/04_results.tex:29-30, 177-178, 191, 215",
+      "in_house_same_cohort": {
+        "Ru": {
+          "h128": 0.8192,
+          "h512": 0.8375,
+          "krasnov": 0.81
+        },
+        "Ir": {
+          "h128": 0.6543,
+          "h512": 0.7371,
+          "krasnov": 0.73
+        }
+      },
+      "consequence": "'we exceed both published values' is true for Ru at either width, but for Ir only at h512 (0.7371>0.73); at h128 the in-house model is 0.065 below 0.73. So the capacity result decides whether that sentence is true.",
+      "recovery_under_each_denominator": {
+        "chemprop_current": {
+          "Ru": "74.9%",
+          "Ir": "88.2%"
+        },
+        "in_house_h128": {
+          "Ru": "78.1%",
+          "Ir": "100.4% (incoherent: adapted > own ceiling)"
+        },
+        "in_house_h512": {
+          "Ru": "76.4%",
+          "Ir": "90.6%"
+        }
+      },
+      "options": {
+        "A": "relabel the row as the reference backbone + add an in-house row; smallest edit",
+        "B": "re-base ceiling on in-house h128; coherent for Ru, >100% for Ir",
+        "C": "re-base on the size-adaptive width (h512 for Ru/Ir); the only internally consistent option -- RECOMMENDED"
+      },
+      "action": "none taken; needs explicit user decision before any paper_a edit"
+    },
+    "next": "FU2 ep50 rerun (25h GPU0) and paper hunks both need USER_OK. Nothing queued."
   }
 }
