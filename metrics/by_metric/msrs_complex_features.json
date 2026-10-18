@@ -1,0 +1,165 @@
+{
+  "artifact": "msrs_complex_features",
+  "version": "1.0",
+  "generated_utc": "2026-10-18T11:35:36+00:00",
+  "provenance": {
+    "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_complex_features.py",
+    "git_commit": "2a334b573cceab87fc49691a6846c0aa6c0863e2"
+  },
+  "design": {
+    "rows": 21404,
+    "ligands_main_fragment": 2846,
+    "complexes_canonical": 5861,
+    "folds": "GroupKFold(5); fragment-grouped and canonical-grouped both reported",
+    "params": {
+      "n_estimators": 500,
+      "learning_rate": 0.05,
+      "num_leaves": 31,
+      "min_child_samples": 20,
+      "subsample": 0.8,
+      "subsample_freq": 1,
+      "colsample_bytree": 0.3,
+      "reg_lambda": 1.0,
+      "random_state": 20261018,
+      "n_jobs": 1,
+      "deterministic": true,
+      "force_row_wise": true,
+      "verbose": -1
+    },
+    "arms": {
+      "main": "ECFP4(ligand_main_fragment) — the pre-audit design",
+      "complex": "ECFP4(ligand_canonical) — all components pooled",
+      "main_plus_ancillary": "ECFP4(main) | ECFP4(ancillary)",
+      "full": "complex | main | ancillary | counterion one-hot | n_components"
+    },
+    "counterion_vocabulary_size": 33
+  },
+  "splits": {
+    "fragment": {
+      "main": {
+        "mae": 0.4766,
+        "r2": 0.3366,
+        "rmse": 0.621,
+        "n_features": 2048,
+        "wall_s": 23.7
+      },
+      "complex": {
+        "mae": 0.4376,
+        "r2": 0.4368,
+        "rmse": 0.5722,
+        "n_features": 2048,
+        "wall_s": 25.8,
+        "delta_r2_vs_main": 0.1002,
+        "vs_main": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4484,
+          "mean_mae_b": 0.4209,
+          "mean_delta": 0.0275,
+          "t": 9.2441,
+          "p_one_sided": 2.2591305664210322e-20,
+          "direction": "b better"
+        }
+      },
+      "main_plus_ancillary": {
+        "mae": 0.4472,
+        "r2": 0.4162,
+        "rmse": 0.5825,
+        "n_features": 4096,
+        "wall_s": 36.2,
+        "delta_r2_vs_main": 0.0796,
+        "vs_main": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4484,
+          "mean_mae_b": 0.4265,
+          "mean_delta": 0.0219,
+          "t": 8.384,
+          "p_one_sided": 3.96972829746101e-17,
+          "direction": "b better"
+        }
+      },
+      "full": {
+        "mae": 0.4281,
+        "r2": 0.4572,
+        "rmse": 0.5617,
+        "n_features": 6178,
+        "wall_s": 60.6,
+        "delta_r2_vs_main": 0.1206,
+        "vs_main": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4484,
+          "mean_mae_b": 0.4111,
+          "mean_delta": 0.0373,
+          "t": 12.4054,
+          "p_one_sided": 9.354476917222727e-35,
+          "direction": "b better"
+        }
+      }
+    },
+    "canonical": {
+      "main": {
+        "mae": 0.4484,
+        "r2": 0.3972,
+        "rmse": 0.5919,
+        "n_features": 2048,
+        "wall_s": 23.6
+      },
+      "complex": {
+        "mae": 0.4079,
+        "r2": 0.5012,
+        "rmse": 0.5384,
+        "n_features": 2048,
+        "wall_s": 28.7,
+        "delta_r2_vs_main": 0.104,
+        "vs_main": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4332,
+          "mean_mae_b": 0.4054,
+          "mean_delta": 0.0278,
+          "t": 9.1021,
+          "p_one_sided": 8.117819364982524e-20,
+          "direction": "b better"
+        }
+      },
+      "main_plus_ancillary": {
+        "mae": 0.4213,
+        "r2": 0.4488,
+        "rmse": 0.566,
+        "n_features": 4096,
+        "wall_s": 34.8,
+        "delta_r2_vs_main": 0.0516,
+        "vs_main": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4332,
+          "mean_mae_b": 0.4089,
+          "mean_delta": 0.0243,
+          "t": 9.4249,
+          "p_one_sided": 4.310166523998588e-21,
+          "direction": "b better"
+        }
+      },
+      "full": {
+        "mae": 0.4042,
+        "r2": 0.4848,
+        "rmse": 0.5472,
+        "n_features": 6178,
+        "wall_s": 59.5,
+        "delta_r2_vs_main": 0.0876,
+        "vs_main": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4332,
+          "mean_mae_b": 0.3922,
+          "mean_delta": 0.041,
+          "t": 13.8423,
+          "p_one_sided": 1.6042106239236182e-42,
+          "direction": "b better"
+        }
+      }
+    }
+  },
+  "best_arm_canonical_split": "complex",
+  "delta_r2_canonical_split": 0.104,
+  "verdict": "POSITIVE",
+  "reading": "完整配合物块在 canonical 分组下相对 main 基线 +0.1040 R2。fragment 分组下 main=0.3366。两个分组都必须报：同一臂换分组会差 0.06。"
+}
