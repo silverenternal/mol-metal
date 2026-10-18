@@ -132,7 +132,8 @@
       "msrs_surface": "metrics/by_metric/msrs_surface_model.json",
       "msrs_actionability": "metrics/by_metric/msrs_actionability.json",
       "msrs_lomo": "metrics/by_metric/msrs_lomo_surface.json",
-      "msrs_recommendation": "metrics/by_metric/msrs_recommendation.json"
+      "msrs_recommendation": "metrics/by_metric/msrs_recommendation.json",
+      "msrs_external_validation": "metrics/by_metric/msrs_external_validation.json"
     }
   },
   "framework": {
@@ -434,7 +435,8 @@
         "ECFP4 不含金属, 金属只通过 metal block 进入; 这是有意的 metal-aware 设计, 但无法表达配位几何。",
         "additive 允许 metal×cell 交互 (cell 是独立组), 只禁止 ligand×metal 与 ligand×cell; 这与「金属替换效应不依赖配体」的零假设一致。",
         "Δ 符号的 DOI 聚类 bootstrap CI 很宽 (104 个 DOI), 所以「additive 高于 50%」本身不显著; 但 additive vs interaction 是配对的 McNemar, 不受此影响。"
-      ]
+      ],
+      "cross_check_msrs7": "MSRS-7 在 DOI / year / scaffold 三种受控切分下重跑: 交互臂的 delta 符号为 0.5506 / 0.5470 / 0.6138, 不低于随机 CV 的 0.5744, 且在 scaffold 上显著优于 additive (McNemar p=0.0208)。 因此 MSRS-2 的「交互模型 delta 符号更差」只在随机配体分组 CV 下成立, 不是普遍结论。"
     },
     {
       "id": "MSRS-3",
@@ -1058,10 +1060,148 @@
       "acceptance": "三种切分都报告; 衰减幅度与解释写清楚; 不达标就如实写边界。",
       "gpu": "small (≤4h)",
       "wall": "3 天",
-      "status": "TODO",
+      "status": "DONE",
       "priority": "P2",
       "depends_on": [
         "MSRS-2"
+      ],
+      "completed": "2026-10-18",
+      "acceptance_met": true,
+      "artifact": "metrics/by_metric/msrs_external_validation.json",
+      "producer": "molmetal/scripts/msrs_external_validation.py (tests/test_msrs_external_validation.py, 16 passed)",
+      "gpu_used": "none (纯 CPU, ~7.6 min)",
+      "result": {
+        "potency": {
+          "random": {
+            "n": 21045,
+            "folds": 5,
+            "mae_additive": 0.5103,
+            "mae_interaction": 0.4957,
+            "mae_per_metal_mean": 0.5911,
+            "r2_additive": 0.251,
+            "delta_sign_additive": 0.6152,
+            "delta_sign_interaction": 0.5744
+          },
+          "doi": {
+            "n": 21045,
+            "folds": 5,
+            "mae_additive": 0.5424,
+            "mae_interaction": 0.5287,
+            "mae_per_metal_mean": 0.592,
+            "r2_additive": 0.1648,
+            "delta_sign_additive": 0.5927,
+            "delta_sign_interaction": 0.5506,
+            "mae_delta_vs_random": 0.0321
+          },
+          "year": {
+            "n": 6449,
+            "folds": 16,
+            "coverage": 0.3064,
+            "mae_additive": 0.5459,
+            "mae_interaction": 0.5421,
+            "mae_per_metal_mean": 0.6054,
+            "r2_additive": 0.1778,
+            "delta_sign_additive": 0.4786,
+            "delta_sign_interaction": 0.547,
+            "mae_delta_vs_random": 0.0356
+          },
+          "scaffold": {
+            "n": 21045,
+            "folds": 5,
+            "n_scaffolds": 1275,
+            "mae_additive": 0.5474,
+            "mae_interaction": 0.5343,
+            "mae_per_metal_mean": 0.5923,
+            "r2_additive": 0.1585,
+            "delta_sign_additive": 0.5815,
+            "delta_sign_interaction": 0.6138,
+            "mae_delta_vs_random": 0.0371,
+            "mcnemar_interaction_better": 0.0208
+          }
+        },
+        "cisplatin_ratio": {
+          "random": {
+            "n": 11403,
+            "mae_additive": 0.5306,
+            "mae_per_metal_mean": 0.6171,
+            "r2_additive": 0.2638,
+            "delta_sign_additive": 0.5398,
+            "delta_sign_interaction": 0.4545
+          },
+          "doi": {
+            "n": 11403,
+            "mae_additive": 0.5758,
+            "mae_per_metal_mean": 0.6198,
+            "r2_additive": 0.1529,
+            "delta_sign_additive": 0.5455,
+            "delta_sign_interaction": 0.5739,
+            "mae_delta_vs_random": 0.0452
+          },
+          "year": {
+            "n": 3411,
+            "coverage": 0.2991,
+            "mae_additive": 0.5721,
+            "mae_per_metal_mean": 0.541,
+            "r2_additive": -0.0284,
+            "delta_sign_additive": 0.5676,
+            "delta_sign_interaction": 0.5676,
+            "mae_delta_vs_random": 0.0415
+          },
+          "scaffold": {
+            "n": 11403,
+            "mae_additive": 0.571,
+            "mae_per_metal_mean": 0.6162,
+            "r2_additive": 0.1612,
+            "delta_sign_additive": 0.5284,
+            "delta_sign_interaction": 0.6307,
+            "mae_delta_vs_random": 0.0404,
+            "mcnemar_interaction_better": 0.0032
+          }
+        },
+        "decision_layer_by_split": {
+          "potency_top1_accuracy": {
+            "random": {
+              "add": 0.521,
+              "int": 0.507,
+              "global": 0.576
+            },
+            "doi": {
+              "add": 0.488,
+              "int": 0.552,
+              "global": 0.576
+            },
+            "year": {
+              "add": 0.391,
+              "int": 0.446,
+              "global": 0.409
+            },
+            "scaffold": {
+              "add": 0.483,
+              "int": 0.502,
+              "global": 0.576
+            }
+          },
+          "note": "year 只有 110 个队列; 该格 interaction 的 regret delta +0.0206, p=0.166, 不显著"
+        },
+        "verdict": "预测能力 (MAE) 在三种受控切分下都保留, 但决策能力没有: 除 year 小样本外, global_best 的 top-1 准确率 (0.576) 仍高于两个模型。additive 臂的 delta 符号优势是随机 CV 的产物。"
+      },
+      "findings": [
+        "MAE 泛化成立: potency 上 additive 在四种切分下都优于 per-metal mean (0.5103/0.5424/0.5459/0.5474 vs 0.5911/0.5920/0.6054/0.5923)。RI 只有 year 例外 (0.5721 vs 0.5410)。",
+        "衰减幅度温和且一致: potency 的 MAE 相对随机 CV 增加 +0.032 (DOI) / +0.036 (year) / +0.037 (scaffold); R² 从 0.251 掉到 0.159-0.178。即约 30-37% 的随机 CV R² 是乐观偏差, 剩余 0.16 是真实的。",
+        "additive 的 delta 符号优势不泛化: 0.6152 (random) -> 0.5927 (DOI) -> 0.5815 (scaffold) -> 0.4786 (year, 低于随机)。MSRS-2 的 0.615 是四种切分里最乐观的一个。",
+        "交互臂反而是稳定的那个: delta 符号 0.5744/0.5506/0.6138/0.5470, 无衰减; 在 scaffold 切分上显著优于 additive (McNemar 单侧 p=0.0208; RI 上 p=0.0032)。这修正了 MSRS-2 「交互排序更差」的结论 —— 那个结论只在随机 CV 下成立。",
+        "决策层仍不成立: 在 random/DOI/scaffold 三格, global_best 的 top-1 都是 0.576, 高于 additive (0.521/0.488/0.483) 与 interaction (0.507/0.552/0.502)。只有 year 格 interaction 以 0.446 vs 0.409 反超, 但 n=110, regret delta p=0.166, 不显著。",
+        "RI 在时间上完全不泛化: year 切分 additive MAE 0.5721 反而差于 per-metal mean 0.5410, R² = -0.0284。RI 的 year 格有 19 个队列, 两个模型 regret 0.0357 vs global 0.1195 (p=0.054) —— 小样本, 不作为结论。",
+        "时间切分的覆盖只有 30.6% (potency) / 29.9% (RI): DOI 里可解析出年份的行只占这部分, 所以 year 格的 n 与其它格不可直接比。",
+        "衰减的失败模式集中在 2015 (MAE 0.9096) 与 early (0.6513) 两个折; 2019-2024 各折 MAE 0.387-0.564, 与随机 CV 接近。"
+      ],
+      "decision": "MSRS-7 通过 (三种切分都报告, 衰减写清), 但结论是分裂的: 响应面作为**预测器**成立 (MAE 泛化, R²~0.16), 作为**决策器**不成立 (top-1 仍输给全局金属排序)。因此论文里只能把 L3 写成预测层, 不能写成推荐层。 同时修正 MSRS-2: 交互臂的 delta 符号在受控切分下不降反升, 所以「交互无用」的说法要限定为「随机 CV 下无用」。 MSRS-6 的 kill criterion 维持原判 (它在随机切分上预先注册), 但归因从「框架不行」改为「additive 臂不行」。",
+      "caveats": [
+        "year 切分只覆盖 30.6% 的行, 且 DOI 年份可能早于印刷年份, 标签是近似的。",
+        "三种切分都不留出金属; 金属外推的问题由 MSRS-4 回答, 结论仍为负。",
+        "DOI 切分允许同一配体以不同论文的身份同时出现在训练与测试, 这是真实部署情形, 但不是化学留出。",
+        "scaffold 切分只去掉环系记忆, 配体的取代基模式仍可能跨折共享; 最大的 scaffold 组有 1010 行 (ACYCLIC)。",
+        "decision_utility 区块不是预先注册的主分析; MSRS-6 的 kill criterion 固定在随机切分上, 此处不做事后翻案。"
       ]
     },
     {
@@ -1100,7 +1240,7 @@
     "wave_4_paper": [
       "MSRS-8"
     ],
-    "note": "Wave 1 + Wave 2 + MSRS-6 全部完成, 零 GPU。结论链: 交互项显著但 delta 符号更差 (MSRS-2); 90% 区间覆盖达标但过宽且不指示正确性 (MSRS-3); 未见金属不可外推 (MSRS-4); 决策层打不过 global-best (MSRS-6, 四个主检验全负, Holm=1), 因为加性面在同一折内只有一个金属排序, 而它把数据最优的 Os 排到第三。MSRS-7 仍可做, 但只能验证插值。MSRS-8 待用户授权。"
+    "note": "Wave 1 + Wave 2 + Wave 3 (MSRS-6/7) 全部完成, 零 GPU。结论链: 交互项显著 (MSRS-2); 90% 区间覆盖达标但过宽且不指示正确性 (MSRS-3); 未见金属不可外推 (MSRS-4); 决策层打不过 global-best (MSRS-6, 四个主检验全负); 预测能力在 DOI/年/骨架切分下保留 (R²~0.16) 但决策能力不保留, 且 additive 的 delta 符号优势是随机 CV 的产物 (MSRS-7)。MSRS-8 (论文整合) 待用户授权。"
   },
   "legacy_mainline": {
     "note": "二分类主线不再是论文主轴, 但其产物仍是 MSRS 的基线与对照, 不删除。",

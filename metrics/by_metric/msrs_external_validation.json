@@ -1,0 +1,2237 @@
+{
+  "artifact": "msrs_external_validation",
+  "version": "1.0",
+  "framework": "MSRS — Metal Substitution Response Surface",
+  "level": "L3 validation",
+  "generated_utc": "2026-10-18T06:41:43+00:00",
+  "provenance": {
+    "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "metal_descriptors": "/home/hugo/codes/mol-metal/molmetal/data/metal_chemistry_5.csv",
+    "metal_descriptors_sha256": "8e5c9db485f7ab270b0e49d376fbcce2954cd678495813fd26a799047c43dcc7",
+    "script": "molmetal/scripts/msrs_external_validation.py",
+    "git_commit": "19ad1c224aaa3b3a090d410c864ca1c6938952b6",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "splits": {
+      "random": "GroupKFold(5) on ligand_main_fragment — the MSRS-2 protocol",
+      "doi": "GroupKFold(5) on doi — no paper in both train and test",
+      "year": "LeaveOneGroupOut on the year parsed from the DOI; years with < 100 rows pooled as 'early'",
+      "scaffold": "GroupKFold(5) on the Bemis-Murcko scaffold"
+    },
+    "models": [
+      "additive (interaction constraints)",
+      "interaction (no constraints)",
+      "per_metal_mean"
+    ],
+    "primary_metric": "MAE in log10 units; delta sign accuracy at the MSRS-1 noise floor",
+    "decay_reference": "the random split of the same endpoint, recomputed here",
+    "seed": 20261018,
+    "lightgbm": {
+      "objective": "regression",
+      "n_estimators": 500,
+      "learning_rate": 0.05,
+      "num_leaves": 31,
+      "min_child_samples": 20,
+      "subsample": 0.8,
+      "subsample_freq": 1,
+      "colsample_bytree": 0.3,
+      "reg_lambda": 1.0,
+      "random_state": 20261018,
+      "n_jobs": 1,
+      "deterministic": true,
+      "force_row_wise": true,
+      "verbose": -1
+    },
+    "scope": "all three splits hold out papers, years or scaffolds, never a metal; this validates interpolation only"
+  },
+  "summary": {
+    "potency": {
+      "random": {
+        "n_evaluated": 21045,
+        "n_folds": 5,
+        "mae_additive": 0.5103,
+        "mae_interaction": 0.4957,
+        "mae_per_metal_mean": 0.5911,
+        "r2_additive": 0.251,
+        "delta_sign_additive": 0.6152,
+        "delta_sign_interaction": 0.5744,
+        "mae_additive_delta_vs_random": 0.0,
+        "regret_additive": 0.1298,
+        "regret_interaction": 0.1369,
+        "regret_global_best": 0.1198
+      },
+      "doi": {
+        "n_evaluated": 21045,
+        "n_folds": 5,
+        "mae_additive": 0.5424,
+        "mae_interaction": 0.5287,
+        "mae_per_metal_mean": 0.592,
+        "r2_additive": 0.1648,
+        "delta_sign_additive": 0.5927,
+        "delta_sign_interaction": 0.5506,
+        "mae_additive_delta_vs_random": 0.0321,
+        "regret_additive": 0.1474,
+        "regret_interaction": 0.1298,
+        "regret_global_best": 0.1198
+      },
+      "year": {
+        "n_evaluated": 6449,
+        "n_folds": 16,
+        "mae_additive": 0.5459,
+        "mae_interaction": 0.5421,
+        "mae_per_metal_mean": 0.6054,
+        "r2_additive": 0.1778,
+        "delta_sign_additive": 0.4786,
+        "delta_sign_interaction": 0.547,
+        "mae_additive_delta_vs_random": 0.0356,
+        "regret_additive": 0.1824,
+        "regret_interaction": 0.149,
+        "regret_global_best": 0.1697
+      },
+      "scaffold": {
+        "n_evaluated": 21045,
+        "n_folds": 5,
+        "mae_additive": 0.5474,
+        "mae_interaction": 0.5343,
+        "mae_per_metal_mean": 0.5923,
+        "r2_additive": 0.1585,
+        "delta_sign_additive": 0.5815,
+        "delta_sign_interaction": 0.6138,
+        "mae_additive_delta_vs_random": 0.0371,
+        "regret_additive": 0.1474,
+        "regret_interaction": 0.1518,
+        "regret_global_best": 0.1198
+      }
+    },
+    "cisplatin_ratio": {
+      "random": {
+        "n_evaluated": 11403,
+        "n_folds": 5,
+        "mae_additive": 0.5306,
+        "mae_interaction": 0.5148,
+        "mae_per_metal_mean": 0.6171,
+        "r2_additive": 0.2638,
+        "delta_sign_additive": 0.5398,
+        "delta_sign_interaction": 0.4545,
+        "mae_additive_delta_vs_random": 0.0,
+        "regret_additive": 0.1534,
+        "regret_interaction": 0.1651,
+        "regret_global_best": 0.1428
+      },
+      "doi": {
+        "n_evaluated": 11403,
+        "n_folds": 5,
+        "mae_additive": 0.5758,
+        "mae_interaction": 0.5675,
+        "mae_per_metal_mean": 0.6198,
+        "r2_additive": 0.1529,
+        "delta_sign_additive": 0.5455,
+        "delta_sign_interaction": 0.5739,
+        "mae_additive_delta_vs_random": 0.0452,
+        "regret_additive": 0.1694,
+        "regret_interaction": 0.131,
+        "regret_global_best": 0.1511
+      },
+      "year": {
+        "n_evaluated": 3411,
+        "n_folds": 15,
+        "mae_additive": 0.5721,
+        "mae_interaction": 0.5741,
+        "mae_per_metal_mean": 0.541,
+        "r2_additive": -0.0284,
+        "delta_sign_additive": 0.5676,
+        "delta_sign_interaction": 0.5676,
+        "mae_additive_delta_vs_random": 0.0415,
+        "regret_additive": 0.0357,
+        "regret_interaction": 0.0357,
+        "regret_global_best": 0.1195
+      },
+      "scaffold": {
+        "n_evaluated": 11403,
+        "n_folds": 5,
+        "mae_additive": 0.571,
+        "mae_interaction": 0.5598,
+        "mae_per_metal_mean": 0.6162,
+        "r2_additive": 0.1612,
+        "delta_sign_additive": 0.5284,
+        "delta_sign_interaction": 0.6307,
+        "mae_additive_delta_vs_random": 0.0404,
+        "regret_additive": 0.1989,
+        "regret_interaction": 0.1372,
+        "regret_global_best": 0.1428
+      }
+    }
+  },
+  "endpoints": {
+    "potency": {
+      "random": {
+        "status": "OK",
+        "n_rows_total": 26219,
+        "n_dropped_censored": 4813,
+        "n_evaluated": 21045,
+        "n_unassigned": 0,
+        "assignment_coverage": 1.0,
+        "n_folds": 5,
+        "group_counts": {
+          "key": "ligand_main_fragment",
+          "n_groups": 2846,
+          "largest_group_rows": 841
+        },
+        "models": {
+          "additive": {
+            "mae": 0.5103,
+            "r2": 0.251,
+            "rmse": 0.6585,
+            "mae_by_metal": {
+              "Ru": 0.5183,
+              "Ir": 0.4708,
+              "Rh": 0.5133,
+              "Os": 0.5644,
+              "Re": 0.4797
+            }
+          },
+          "interaction": {
+            "mae": 0.4957,
+            "r2": 0.2791,
+            "rmse": 0.6461,
+            "mae_by_metal": {
+              "Ru": 0.5104,
+              "Ir": 0.4401,
+              "Rh": 0.4754,
+              "Os": 0.5402,
+              "Re": 0.4516
+            }
+          },
+          "per_metal_mean": {
+            "mae": 0.5911,
+            "r2": 0.0353,
+            "rmse": 0.7474,
+            "mae_by_metal": {
+              "Ru": 0.6092,
+              "Ir": 0.5143,
+              "Rh": 0.5517,
+              "Os": 0.727,
+              "Re": 0.5018
+            }
+          }
+        },
+        "paired_tests": {
+          "interaction_vs_additive": {
+            "n_ligands": 2846,
+            "mean_mae_a": 0.4837,
+            "mean_mae_b": 0.4635,
+            "mean_delta": 0.0202,
+            "t": 11.4948,
+            "p_one_sided": 3.174541410788323e-30,
+            "direction": "b better",
+            "holm_p": 2.5396331286306585e-29
+          },
+          "additive_vs_per_metal_mean": {
+            "n_ligands": 2846,
+            "mean_mae_a": 0.5783,
+            "mean_mae_b": 0.4837,
+            "mean_delta": 0.0946,
+            "t": 17.3073,
+            "p_one_sided": 3.461402380754053e-64,
+            "direction": "b better"
+          }
+        },
+        "delta_sign": {
+          "n_pairs": 1284,
+          "n_dois": 104,
+          "by_metal_pair": {
+            "Ir-Os": {
+              "n_pairs": 16,
+              "additive_accuracy": 0.5,
+              "interaction_accuracy": 0.0
+            },
+            "Ir-Rh": {
+              "n_pairs": 69,
+              "additive_accuracy": 0.5217,
+              "interaction_accuracy": 0.4928
+            },
+            "Rh-Os": {
+              "n_pairs": 17,
+              "additive_accuracy": 0.4118,
+              "interaction_accuracy": 0.4706
+            },
+            "Ru-Ir": {
+              "n_pairs": 286,
+              "additive_accuracy": 0.5804,
+              "interaction_accuracy": 0.5804
+            },
+            "Ru-Os": {
+              "n_pairs": 211,
+              "additive_accuracy": 0.654,
+              "interaction_accuracy": 0.5403
+            },
+            "Ru-Rh": {
+              "n_pairs": 113,
+              "additive_accuracy": 0.7345,
+              "interaction_accuracy": 0.7699
+            }
+          },
+          "by_threshold": {
+            "0": {
+              "n_pairs": 1284,
+              "additive_accuracy": 0.5335,
+              "interaction_accuracy": 0.5132,
+              "delta_accuracy": -0.0202,
+              "n_interaction_right_additive_wrong": 205,
+              "n_additive_right_interaction_wrong": 231,
+              "mcnemar_p_one_sided": 0.9020344302761945
+            },
+            "0.1": {
+              "n_pairs": 966,
+              "additive_accuracy": 0.5559,
+              "interaction_accuracy": 0.5352,
+              "delta_accuracy": -0.0207,
+              "n_interaction_right_additive_wrong": 152,
+              "n_additive_right_interaction_wrong": 172,
+              "mcnemar_p_one_sided": 0.8783491797340715
+            },
+            "0.2091": {
+              "n_pairs": 712,
+              "additive_accuracy": 0.6152,
+              "interaction_accuracy": 0.5744,
+              "delta_accuracy": -0.0407,
+              "n_interaction_right_additive_wrong": 108,
+              "n_additive_right_interaction_wrong": 137,
+              "mcnemar_p_one_sided": 0.9724685387839067
+            },
+            "0.5": {
+              "n_pairs": 371,
+              "additive_accuracy": 0.717,
+              "interaction_accuracy": 0.6092,
+              "delta_accuracy": -0.1078,
+              "n_interaction_right_additive_wrong": 44,
+              "n_additive_right_interaction_wrong": 84,
+              "mcnemar_p_one_sided": 0.9998707367013658
+            }
+          },
+          "additive_delta_ligand_independent": true,
+          "additive_delta_ligand_independent_given_cell": true,
+          "additive_delta_max_within_pair_spread": 0.0,
+          "additive_delta_sd": 0.105505,
+          "interaction_delta_sd": 0.195085,
+          "primary_threshold": 0.2091,
+          "bootstrap_ci_interaction_accuracy": [
+            0.4635,
+            0.6768
+          ],
+          "bootstrap_ci_additive_accuracy": [
+            0.4933,
+            0.7283
+          ],
+          "shrinkage_curve": {
+            "0": 0.6152,
+            "0.1": 0.6236,
+            "0.2": 0.6138,
+            "0.3": 0.5983,
+            "0.4": 0.5941,
+            "0.5": 0.611,
+            "0.75": 0.6011,
+            "1": 0.5744
+          },
+          "best_shrinkage_alpha": "0.1",
+          "shrinkage_note": "alpha is scanned on the same out-of-fold pairs with one free parameter; treat the curve as a diagnostic, not a validated procedure."
+        },
+        "decision_utility": {
+          "n_cohorts": 424,
+          "additive": {
+            "mean_regret": 0.1298,
+            "top1_accuracy": 0.5212
+          },
+          "interaction": {
+            "mean_regret": 0.1369,
+            "top1_accuracy": 0.5071
+          },
+          "global_best": {
+            "mean_regret": 0.1198,
+            "top1_accuracy": 0.5755
+          },
+          "additive_vs_global_best": {
+            "mean_regret_delta": -0.01,
+            "t": -0.9501,
+            "p_one_sided": 0.8286974757215422,
+            "direction": "baseline better"
+          },
+          "interaction_vs_global_best": {
+            "mean_regret_delta": -0.0171,
+            "t": -1.4804,
+            "p_one_sided": 0.9302505336782256,
+            "direction": "baseline better"
+          }
+        },
+        "folds": {
+          "0": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.5123,
+            "mae_interaction": 0.4954,
+            "mae_per_metal_mean": 0.5916
+          },
+          "1": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.4885,
+            "mae_interaction": 0.4722,
+            "mae_per_metal_mean": 0.5587
+          },
+          "2": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.5341,
+            "mae_interaction": 0.5195,
+            "mae_per_metal_mean": 0.6098
+          },
+          "3": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.5085,
+            "mae_interaction": 0.5,
+            "mae_per_metal_mean": 0.6189
+          },
+          "4": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.5082,
+            "mae_interaction": 0.4913,
+            "mae_per_metal_mean": 0.5764
+          }
+        },
+        "elapsed_seconds": 62.1,
+        "decay_vs_random": {
+          "mae_additive_delta": 0.0,
+          "mae_interaction_delta": 0.0,
+          "r2_additive_delta": 0.0,
+          "note": "positive MAE delta = worse than the random ligand-grouped split"
+        }
+      },
+      "doi": {
+        "status": "OK",
+        "n_rows_total": 26219,
+        "n_dropped_censored": 4813,
+        "n_evaluated": 21045,
+        "n_unassigned": 0,
+        "assignment_coverage": 1.0,
+        "n_folds": 5,
+        "group_counts": {
+          "key": "doi",
+          "n_groups": 1784,
+          "largest_group_rows": 311
+        },
+        "models": {
+          "additive": {
+            "mae": 0.5424,
+            "r2": 0.1648,
+            "rmse": 0.6954,
+            "mae_by_metal": {
+              "Ru": 0.5552,
+              "Ir": 0.4899,
+              "Rh": 0.5663,
+              "Os": 0.6084,
+              "Re": 0.4379
+            }
+          },
+          "interaction": {
+            "mae": 0.5287,
+            "r2": 0.1977,
+            "rmse": 0.6816,
+            "mae_by_metal": {
+              "Ru": 0.543,
+              "Ir": 0.4713,
+              "Rh": 0.5231,
+              "Os": 0.6117,
+              "Re": 0.438
+            }
+          },
+          "per_metal_mean": {
+            "mae": 0.592,
+            "r2": 0.0321,
+            "rmse": 0.7486,
+            "mae_by_metal": {
+              "Ru": 0.6096,
+              "Ir": 0.513,
+              "Rh": 0.5536,
+              "Os": 0.7388,
+              "Re": 0.5081
+            }
+          }
+        },
+        "paired_tests": {
+          "interaction_vs_additive": {
+            "n_ligands": 2846,
+            "mean_mae_a": 0.5541,
+            "mean_mae_b": 0.5465,
+            "mean_delta": 0.0076,
+            "t": 3.6977,
+            "p_one_sided": 0.00011085792399151992,
+            "direction": "b better",
+            "holm_p": 0.0004434316959660797
+          },
+          "additive_vs_per_metal_mean": {
+            "n_ligands": 2846,
+            "mean_mae_a": 0.5794,
+            "mean_mae_b": 0.5541,
+            "mean_delta": 0.0253,
+            "t": 5.144,
+            "p_one_sided": 1.4361784532394508e-07,
+            "direction": "b better"
+          }
+        },
+        "delta_sign": {
+          "n_pairs": 1284,
+          "n_dois": 104,
+          "by_metal_pair": {
+            "Ir-Os": {
+              "n_pairs": 16,
+              "additive_accuracy": 0.5,
+              "interaction_accuracy": 0.3125
+            },
+            "Ir-Rh": {
+              "n_pairs": 69,
+              "additive_accuracy": 0.3478,
+              "interaction_accuracy": 0.5072
+            },
+            "Rh-Os": {
+              "n_pairs": 17,
+              "additive_accuracy": 0.1765,
+              "interaction_accuracy": 0.6471
+            },
+            "Ru-Ir": {
+              "n_pairs": 286,
+              "additive_accuracy": 0.5804,
+              "interaction_accuracy": 0.4965
+            },
+            "Ru-Os": {
+              "n_pairs": 211,
+              "additive_accuracy": 0.654,
+              "interaction_accuracy": 0.6493
+            },
+            "Ru-Rh": {
+              "n_pairs": 113,
+              "additive_accuracy": 0.7345,
+              "interaction_accuracy": 0.5487
+            }
+          },
+          "by_threshold": {
+            "0": {
+              "n_pairs": 1284,
+              "additive_accuracy": 0.521,
+              "interaction_accuracy": 0.5257,
+              "delta_accuracy": 0.0047,
+              "n_interaction_right_additive_wrong": 193,
+              "n_additive_right_interaction_wrong": 187,
+              "mcnemar_p_one_sided": 0.398804847018562
+            },
+            "0.1": {
+              "n_pairs": 966,
+              "additive_accuracy": 0.5383,
+              "interaction_accuracy": 0.5362,
+              "delta_accuracy": -0.0021,
+              "n_interaction_right_additive_wrong": 149,
+              "n_additive_right_interaction_wrong": 151,
+              "mcnemar_p_one_sided": 0.5687364536522663
+            },
+            "0.2091": {
+              "n_pairs": 712,
+              "additive_accuracy": 0.5927,
+              "interaction_accuracy": 0.5506,
+              "delta_accuracy": -0.0421,
+              "n_interaction_right_additive_wrong": 104,
+              "n_additive_right_interaction_wrong": 134,
+              "mcnemar_p_one_sided": 0.9778678444745441
+            },
+            "0.5": {
+              "n_pairs": 371,
+              "additive_accuracy": 0.6846,
+              "interaction_accuracy": 0.5391,
+              "delta_accuracy": -0.1456,
+              "n_interaction_right_additive_wrong": 40,
+              "n_additive_right_interaction_wrong": 94,
+              "mcnemar_p_one_sided": 0.9999992795999811
+            }
+          },
+          "additive_delta_ligand_independent": true,
+          "additive_delta_ligand_independent_given_cell": true,
+          "additive_delta_max_within_pair_spread": 0.0,
+          "additive_delta_sd": 0.104184,
+          "interaction_delta_sd": 0.211982,
+          "primary_threshold": 0.2091,
+          "bootstrap_ci_interaction_accuracy": [
+            0.42,
+            0.6783
+          ],
+          "bootstrap_ci_additive_accuracy": [
+            0.4764,
+            0.7048
+          ],
+          "shrinkage_curve": {
+            "0": 0.5927,
+            "0.1": 0.6166,
+            "0.2": 0.6096,
+            "0.3": 0.6081,
+            "0.4": 0.6081,
+            "0.5": 0.5702,
+            "0.75": 0.5379,
+            "1": 0.5506
+          },
+          "best_shrinkage_alpha": "0.1",
+          "shrinkage_note": "alpha is scanned on the same out-of-fold pairs with one free parameter; treat the curve as a diagnostic, not a validated procedure."
+        },
+        "decision_utility": {
+          "n_cohorts": 424,
+          "additive": {
+            "mean_regret": 0.1474,
+            "top1_accuracy": 0.4882
+          },
+          "interaction": {
+            "mean_regret": 0.1298,
+            "top1_accuracy": 0.5519
+          },
+          "global_best": {
+            "mean_regret": 0.1198,
+            "top1_accuracy": 0.5755
+          },
+          "additive_vs_global_best": {
+            "mean_regret_delta": -0.0276,
+            "t": -3.2427,
+            "p_one_sided": 0.9993610531798898,
+            "direction": "baseline better"
+          },
+          "interaction_vs_global_best": {
+            "mean_regret_delta": -0.01,
+            "t": -0.832,
+            "p_one_sided": 0.7970548915043343,
+            "direction": "baseline better"
+          }
+        },
+        "folds": {
+          "0": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.55,
+            "mae_interaction": 0.5172,
+            "mae_per_metal_mean": 0.6387
+          },
+          "1": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.583,
+            "mae_interaction": 0.5663,
+            "mae_per_metal_mean": 0.5977
+          },
+          "2": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.5257,
+            "mae_interaction": 0.5222,
+            "mae_per_metal_mean": 0.5615
+          },
+          "3": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.5592,
+            "mae_interaction": 0.5475,
+            "mae_per_metal_mean": 0.5924
+          },
+          "4": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.4939,
+            "mae_interaction": 0.4903,
+            "mae_per_metal_mean": 0.5696
+          }
+        },
+        "elapsed_seconds": 64.2,
+        "decay_vs_random": {
+          "mae_additive_delta": 0.0321,
+          "mae_interaction_delta": 0.033,
+          "r2_additive_delta": -0.0862,
+          "note": "positive MAE delta = worse than the random ligand-grouped split"
+        }
+      },
+      "year": {
+        "status": "OK",
+        "n_rows_total": 26219,
+        "n_dropped_censored": 4813,
+        "n_evaluated": 6449,
+        "n_unassigned": 14596,
+        "assignment_coverage": 0.3064,
+        "n_folds": 16,
+        "group_counts": {
+          "key": "year_group",
+          "n_groups": 16,
+          "largest_group_rows": 623
+        },
+        "models": {
+          "additive": {
+            "mae": 0.5459,
+            "r2": 0.1778,
+            "rmse": 0.7103,
+            "mae_by_metal": {
+              "Ru": 0.5703,
+              "Ir": 0.4476,
+              "Rh": 0.5727,
+              "Os": 0.6877,
+              "Re": 0.4144
+            }
+          },
+          "interaction": {
+            "mae": 0.5421,
+            "r2": 0.195,
+            "rmse": 0.7028,
+            "mae_by_metal": {
+              "Ru": 0.5596,
+              "Ir": 0.4513,
+              "Rh": 0.6007,
+              "Os": 0.7389,
+              "Re": 0.4385
+            }
+          },
+          "per_metal_mean": {
+            "mae": 0.6054,
+            "r2": 0.0096,
+            "rmse": 0.7796,
+            "mae_by_metal": {
+              "Ru": 0.6403,
+              "Ir": 0.4738,
+              "Rh": 0.6154,
+              "Os": 0.7602,
+              "Re": 0.445
+            }
+          }
+        },
+        "paired_tests": {
+          "interaction_vs_additive": {
+            "n_ligands": 1037,
+            "mean_mae_a": 0.5706,
+            "mean_mae_b": 0.5708,
+            "mean_delta": -0.0002,
+            "t": -0.0407,
+            "p_one_sided": 0.5162376711851867,
+            "direction": "a better",
+            "holm_p": 1.0
+          },
+          "additive_vs_per_metal_mean": {
+            "n_ligands": 1037,
+            "mean_mae_a": 0.5906,
+            "mean_mae_b": 0.5706,
+            "mean_delta": 0.02,
+            "t": 2.0887,
+            "p_one_sided": 0.01848759347694126,
+            "direction": "b better"
+          }
+        },
+        "delta_sign": {
+          "n_pairs": 300,
+          "n_dois": 32,
+          "by_metal_pair": {
+            "Ir-Os": {
+              "n_pairs": 2,
+              "additive_accuracy": 0.0,
+              "interaction_accuracy": 0.0
+            },
+            "Ir-Rh": {
+              "n_pairs": 24,
+              "additive_accuracy": 0.2917,
+              "interaction_accuracy": 0.5417
+            },
+            "Ru-Ir": {
+              "n_pairs": 49,
+              "additive_accuracy": 0.7143,
+              "interaction_accuracy": 0.7755
+            },
+            "Ru-Os": {
+              "n_pairs": 29,
+              "additive_accuracy": 0.3103,
+              "interaction_accuracy": 0.2759
+            },
+            "Ru-Rh": {
+              "n_pairs": 13,
+              "additive_accuracy": 0.3846,
+              "interaction_accuracy": 0.3846
+            }
+          },
+          "by_threshold": {
+            "0": {
+              "n_pairs": 300,
+              "additive_accuracy": 0.47,
+              "interaction_accuracy": 0.48,
+              "delta_accuracy": 0.01,
+              "n_interaction_right_additive_wrong": 57,
+              "n_additive_right_interaction_wrong": 54,
+              "mcnemar_p_one_sided": 0.4247750936572268
+            },
+            "0.1": {
+              "n_pairs": 187,
+              "additive_accuracy": 0.4759,
+              "interaction_accuracy": 0.4866,
+              "delta_accuracy": 0.0107,
+              "n_interaction_right_additive_wrong": 34,
+              "n_additive_right_interaction_wrong": 32,
+              "mcnemar_p_one_sided": 0.4510792500483497
+            },
+            "0.2091": {
+              "n_pairs": 117,
+              "additive_accuracy": 0.4786,
+              "interaction_accuracy": 0.547,
+              "delta_accuracy": 0.0684,
+              "n_interaction_right_additive_wrong": 22,
+              "n_additive_right_interaction_wrong": 14,
+              "mcnemar_p_one_sided": 0.12149247701745483
+            },
+            "0.5": {
+              "n_pairs": 61,
+              "additive_accuracy": 0.623,
+              "interaction_accuracy": 0.7705,
+              "delta_accuracy": 0.1475,
+              "n_interaction_right_additive_wrong": 13,
+              "n_additive_right_interaction_wrong": 4,
+              "mcnemar_p_one_sided": 0.0245208740234375
+            }
+          },
+          "additive_delta_ligand_independent": true,
+          "additive_delta_ligand_independent_given_cell": true,
+          "additive_delta_max_within_pair_spread": 0.0,
+          "additive_delta_sd": 0.119772,
+          "interaction_delta_sd": 0.231048,
+          "primary_threshold": 0.2091,
+          "bootstrap_ci_interaction_accuracy": [
+            0.3603,
+            0.7197
+          ],
+          "bootstrap_ci_additive_accuracy": [
+            0.2889,
+            0.6724
+          ],
+          "shrinkage_curve": {
+            "0": 0.4786,
+            "0.1": 0.4786,
+            "0.2": 0.4615,
+            "0.3": 0.4786,
+            "0.4": 0.4786,
+            "0.5": 0.5043,
+            "0.75": 0.5299,
+            "1": 0.547
+          },
+          "best_shrinkage_alpha": "1",
+          "shrinkage_note": "alpha is scanned on the same out-of-fold pairs with one free parameter; treat the curve as a diagnostic, not a validated procedure."
+        },
+        "decision_utility": {
+          "n_cohorts": 110,
+          "additive": {
+            "mean_regret": 0.1824,
+            "top1_accuracy": 0.3909
+          },
+          "interaction": {
+            "mean_regret": 0.149,
+            "top1_accuracy": 0.4455
+          },
+          "global_best": {
+            "mean_regret": 0.1697,
+            "top1_accuracy": 0.4091
+          },
+          "additive_vs_global_best": {
+            "mean_regret_delta": -0.0127,
+            "t": -0.6385,
+            "p_one_sided": 0.7377723013723834,
+            "direction": "baseline better"
+          },
+          "interaction_vs_global_best": {
+            "mean_regret_delta": 0.0206,
+            "t": 0.9756,
+            "p_one_sided": 0.16571976181016265,
+            "direction": "model better"
+          }
+        },
+        "folds": {
+          "2011": {
+            "n_test": 152,
+            "n_train": 6297,
+            "mae_additive": 0.5578,
+            "mae_interaction": 0.4963,
+            "mae_per_metal_mean": 0.6854
+          },
+          "2012": {
+            "n_test": 334,
+            "n_train": 6115,
+            "mae_additive": 0.574,
+            "mae_interaction": 0.5509,
+            "mae_per_metal_mean": 0.6554
+          },
+          "2013": {
+            "n_test": 315,
+            "n_train": 6134,
+            "mae_additive": 0.556,
+            "mae_interaction": 0.5491,
+            "mae_per_metal_mean": 0.6526
+          },
+          "2014": {
+            "n_test": 225,
+            "n_train": 6224,
+            "mae_additive": 0.5662,
+            "mae_interaction": 0.5782,
+            "mae_per_metal_mean": 0.6138
+          },
+          "2015": {
+            "n_test": 297,
+            "n_train": 6152,
+            "mae_additive": 0.9096,
+            "mae_interaction": 0.8684,
+            "mae_per_metal_mean": 0.9662
+          },
+          "2016": {
+            "n_test": 499,
+            "n_train": 5950,
+            "mae_additive": 0.5071,
+            "mae_interaction": 0.4726,
+            "mae_per_metal_mean": 0.4814
+          },
+          "2017": {
+            "n_test": 590,
+            "n_train": 5859,
+            "mae_additive": 0.5253,
+            "mae_interaction": 0.5159,
+            "mae_per_metal_mean": 0.6304
+          },
+          "2018": {
+            "n_test": 598,
+            "n_train": 5851,
+            "mae_additive": 0.5616,
+            "mae_interaction": 0.552,
+            "mae_per_metal_mean": 0.6708
+          },
+          "2019": {
+            "n_test": 485,
+            "n_train": 5964,
+            "mae_additive": 0.488,
+            "mae_interaction": 0.4876,
+            "mae_per_metal_mean": 0.5626
+          },
+          "2020": {
+            "n_test": 623,
+            "n_train": 5826,
+            "mae_additive": 0.5635,
+            "mae_interaction": 0.5526,
+            "mae_per_metal_mean": 0.6123
+          },
+          "2021": {
+            "n_test": 305,
+            "n_train": 6144,
+            "mae_additive": 0.5116,
+            "mae_interaction": 0.4848,
+            "mae_per_metal_mean": 0.5279
+          },
+          "2022": {
+            "n_test": 539,
+            "n_train": 5910,
+            "mae_additive": 0.4832,
+            "mae_interaction": 0.4998,
+            "mae_per_metal_mean": 0.4952
+          },
+          "2023": {
+            "n_test": 398,
+            "n_train": 6051,
+            "mae_additive": 0.5052,
+            "mae_interaction": 0.5196,
+            "mae_per_metal_mean": 0.489
+          },
+          "2024": {
+            "n_test": 515,
+            "n_train": 5934,
+            "mae_additive": 0.387,
+            "mae_interaction": 0.4039,
+            "mae_per_metal_mean": 0.4571
+          },
+          "2025": {
+            "n_test": 266,
+            "n_train": 6183,
+            "mae_additive": 0.6295,
+            "mae_interaction": 0.6381,
+            "mae_per_metal_mean": 0.6773
+          },
+          "early": {
+            "n_test": 308,
+            "n_train": 6141,
+            "mae_additive": 0.6513,
+            "mae_interaction": 0.7241,
+            "mae_per_metal_mean": 0.7943
+          }
+        },
+        "elapsed_seconds": 89.7,
+        "decay_vs_random": {
+          "mae_additive_delta": 0.0356,
+          "mae_interaction_delta": 0.0464,
+          "r2_additive_delta": -0.0732,
+          "note": "positive MAE delta = worse than the random ligand-grouped split"
+        }
+      },
+      "scaffold": {
+        "status": "OK",
+        "n_rows_total": 26219,
+        "n_dropped_censored": 4813,
+        "n_evaluated": 21045,
+        "n_unassigned": 0,
+        "assignment_coverage": 1.0,
+        "n_folds": 5,
+        "group_counts": {
+          "key": "scaffold",
+          "n_groups": 1275,
+          "largest_group_rows": 1010
+        },
+        "models": {
+          "additive": {
+            "mae": 0.5474,
+            "r2": 0.1585,
+            "rmse": 0.6981,
+            "mae_by_metal": {
+              "Ru": 0.5545,
+              "Ir": 0.4917,
+              "Rh": 0.5673,
+              "Os": 0.6726,
+              "Re": 0.5098
+            }
+          },
+          "interaction": {
+            "mae": 0.5343,
+            "r2": 0.1869,
+            "rmse": 0.6862,
+            "mae_by_metal": {
+              "Ru": 0.5465,
+              "Ir": 0.464,
+              "Rh": 0.5351,
+              "Os": 0.6667,
+              "Re": 0.4821
+            }
+          },
+          "per_metal_mean": {
+            "mae": 0.5923,
+            "r2": 0.0303,
+            "rmse": 0.7493,
+            "mae_by_metal": {
+              "Ru": 0.6105,
+              "Ir": 0.5123,
+              "Rh": 0.5506,
+              "Os": 0.74,
+              "Re": 0.5067
+            }
+          }
+        },
+        "paired_tests": {
+          "interaction_vs_additive": {
+            "n_ligands": 2846,
+            "mean_mae_a": 0.5384,
+            "mean_mae_b": 0.5234,
+            "mean_delta": 0.015,
+            "t": 7.9799,
+            "p_one_sided": 1.0521401683084187e-15,
+            "direction": "b better",
+            "holm_p": 7.36498117815893e-15
+          },
+          "additive_vs_per_metal_mean": {
+            "n_ligands": 2846,
+            "mean_mae_a": 0.5798,
+            "mean_mae_b": 0.5384,
+            "mean_delta": 0.0414,
+            "t": 8.3916,
+            "p_one_sided": 3.7256334129507245e-17,
+            "direction": "b better"
+          }
+        },
+        "delta_sign": {
+          "n_pairs": 1284,
+          "n_dois": 104,
+          "by_metal_pair": {
+            "Ir-Os": {
+              "n_pairs": 16,
+              "additive_accuracy": 0.25,
+              "interaction_accuracy": 0.5
+            },
+            "Ir-Rh": {
+              "n_pairs": 69,
+              "additive_accuracy": 0.2899,
+              "interaction_accuracy": 0.3333
+            },
+            "Rh-Os": {
+              "n_pairs": 17,
+              "additive_accuracy": 0.1765,
+              "interaction_accuracy": 0.5882
+            },
+            "Ru-Ir": {
+              "n_pairs": 286,
+              "additive_accuracy": 0.5804,
+              "interaction_accuracy": 0.6434
+            },
+            "Ru-Os": {
+              "n_pairs": 211,
+              "additive_accuracy": 0.654,
+              "interaction_accuracy": 0.5972
+            },
+            "Ru-Rh": {
+              "n_pairs": 113,
+              "additive_accuracy": 0.7345,
+              "interaction_accuracy": 0.7611
+            }
+          },
+          "by_threshold": {
+            "0": {
+              "n_pairs": 1284,
+              "additive_accuracy": 0.5101,
+              "interaction_accuracy": 0.5405,
+              "delta_accuracy": 0.0304,
+              "n_interaction_right_additive_wrong": 136,
+              "n_additive_right_interaction_wrong": 97,
+              "mcnemar_p_one_sided": 0.006313269910124764
+            },
+            "0.1": {
+              "n_pairs": 966,
+              "additive_accuracy": 0.5321,
+              "interaction_accuracy": 0.5621,
+              "delta_accuracy": 0.03,
+              "n_interaction_right_additive_wrong": 95,
+              "n_additive_right_interaction_wrong": 66,
+              "mcnemar_p_one_sided": 0.013511980258927232
+            },
+            "0.2091": {
+              "n_pairs": 712,
+              "additive_accuracy": 0.5815,
+              "interaction_accuracy": 0.6138,
+              "delta_accuracy": 0.0323,
+              "n_interaction_right_additive_wrong": 70,
+              "n_additive_right_interaction_wrong": 47,
+              "mcnemar_p_one_sided": 0.020750394353994048
+            },
+            "0.5": {
+              "n_pairs": 371,
+              "additive_accuracy": 0.6658,
+              "interaction_accuracy": 0.717,
+              "delta_accuracy": 0.0512,
+              "n_interaction_right_additive_wrong": 31,
+              "n_additive_right_interaction_wrong": 12,
+              "mcnemar_p_one_sided": 0.0027007863272956456
+            }
+          },
+          "additive_delta_ligand_independent": true,
+          "additive_delta_ligand_independent_given_cell": true,
+          "additive_delta_max_within_pair_spread": 0.0,
+          "additive_delta_sd": 0.117151,
+          "interaction_delta_sd": 0.185884,
+          "primary_threshold": 0.2091,
+          "bootstrap_ci_interaction_accuracy": [
+            0.4977,
+            0.7173
+          ],
+          "bootstrap_ci_additive_accuracy": [
+            0.4604,
+            0.6939
+          ],
+          "shrinkage_curve": {
+            "0": 0.5815,
+            "0.1": 0.5871,
+            "0.2": 0.5913,
+            "0.3": 0.5899,
+            "0.4": 0.5899,
+            "0.5": 0.5927,
+            "0.75": 0.6124,
+            "1": 0.6138
+          },
+          "best_shrinkage_alpha": "1",
+          "shrinkage_note": "alpha is scanned on the same out-of-fold pairs with one free parameter; treat the curve as a diagnostic, not a validated procedure."
+        },
+        "decision_utility": {
+          "n_cohorts": 424,
+          "additive": {
+            "mean_regret": 0.1474,
+            "top1_accuracy": 0.4835
+          },
+          "interaction": {
+            "mean_regret": 0.1518,
+            "top1_accuracy": 0.5024
+          },
+          "global_best": {
+            "mean_regret": 0.1198,
+            "top1_accuracy": 0.5755
+          },
+          "additive_vs_global_best": {
+            "mean_regret_delta": -0.0276,
+            "t": -3.6719,
+            "p_one_sided": 0.9998642032343273,
+            "direction": "baseline better"
+          },
+          "interaction_vs_global_best": {
+            "mean_regret_delta": -0.032,
+            "t": -3.1123,
+            "p_one_sided": 0.9990089009240224,
+            "direction": "baseline better"
+          }
+        },
+        "folds": {
+          "0": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.5027,
+            "mae_interaction": 0.4902,
+            "mae_per_metal_mean": 0.5276
+          },
+          "1": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.5969,
+            "mae_interaction": 0.5908,
+            "mae_per_metal_mean": 0.6729
+          },
+          "2": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.5219,
+            "mae_interaction": 0.4962,
+            "mae_per_metal_mean": 0.5747
+          },
+          "3": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.5584,
+            "mae_interaction": 0.5547,
+            "mae_per_metal_mean": 0.6075
+          },
+          "4": {
+            "n_test": 4209,
+            "n_train": 16836,
+            "mae_additive": 0.5572,
+            "mae_interaction": 0.5396,
+            "mae_per_metal_mean": 0.579
+          }
+        },
+        "elapsed_seconds": 64.9,
+        "decay_vs_random": {
+          "mae_additive_delta": 0.0371,
+          "mae_interaction_delta": 0.0386,
+          "r2_additive_delta": -0.0925,
+          "note": "positive MAE delta = worse than the random ligand-grouped split"
+        }
+      }
+    },
+    "cisplatin_ratio": {
+      "random": {
+        "status": "OK",
+        "n_rows_total": 14081,
+        "n_dropped_censored": 2510,
+        "n_evaluated": 11403,
+        "n_unassigned": 0,
+        "assignment_coverage": 1.0,
+        "n_folds": 5,
+        "group_counts": {
+          "key": "ligand_main_fragment",
+          "n_groups": 1616,
+          "largest_group_rows": 371
+        },
+        "models": {
+          "additive": {
+            "mae": 0.5306,
+            "r2": 0.2638,
+            "rmse": 0.698,
+            "mae_by_metal": {
+              "Ru": 0.5315,
+              "Ir": 0.47,
+              "Rh": 0.5323,
+              "Os": 0.5973,
+              "Re": 0.5963
+            }
+          },
+          "interaction": {
+            "mae": 0.5148,
+            "r2": 0.2989,
+            "rmse": 0.6811,
+            "mae_by_metal": {
+              "Ru": 0.5191,
+              "Ir": 0.4627,
+              "Rh": 0.4808,
+              "Os": 0.5621,
+              "Re": 0.55
+            }
+          },
+          "per_metal_mean": {
+            "mae": 0.6171,
+            "r2": 0.0152,
+            "rmse": 0.8072,
+            "mae_by_metal": {
+              "Ru": 0.6259,
+              "Ir": 0.4851,
+              "Rh": 0.5891,
+              "Os": 0.784,
+              "Re": 0.6078
+            }
+          }
+        },
+        "paired_tests": {
+          "interaction_vs_additive": {
+            "n_ligands": 1616,
+            "mean_mae_a": 0.4802,
+            "mean_mae_b": 0.4628,
+            "mean_delta": 0.0175,
+            "t": 7.8509,
+            "p_one_sided": 3.733763110036989e-15,
+            "direction": "b better",
+            "holm_p": 2.2402578660221936e-14
+          },
+          "additive_vs_per_metal_mean": {
+            "n_ligands": 1616,
+            "mean_mae_a": 0.5984,
+            "mean_mae_b": 0.4802,
+            "mean_delta": 0.1181,
+            "t": 14.74,
+            "p_one_sided": 1.5624125595391098e-46,
+            "direction": "b better"
+          }
+        },
+        "delta_sign": {
+          "n_pairs": 376,
+          "n_dois": 37,
+          "by_metal_pair": {
+            "Ir-Rh": {
+              "n_pairs": 23,
+              "additive_accuracy": 0.4783,
+              "interaction_accuracy": 0.6087
+            },
+            "Ru-Ir": {
+              "n_pairs": 82,
+              "additive_accuracy": 0.4756,
+              "interaction_accuracy": 0.4512
+            },
+            "Ru-Os": {
+              "n_pairs": 41,
+              "additive_accuracy": 0.6341,
+              "interaction_accuracy": 0.3415
+            },
+            "Ru-Rh": {
+              "n_pairs": 30,
+              "additive_accuracy": 0.6333,
+              "interaction_accuracy": 0.5
+            }
+          },
+          "by_threshold": {
+            "0": {
+              "n_pairs": 376,
+              "additive_accuracy": 0.5027,
+              "interaction_accuracy": 0.484,
+              "delta_accuracy": -0.0186,
+              "n_interaction_right_additive_wrong": 64,
+              "n_additive_right_interaction_wrong": 71,
+              "mcnemar_p_one_sided": 0.7543687711085384
+            },
+            "0.1": {
+              "n_pairs": 253,
+              "additive_accuracy": 0.5059,
+              "interaction_accuracy": 0.4743,
+              "delta_accuracy": -0.0316,
+              "n_interaction_right_additive_wrong": 37,
+              "n_additive_right_interaction_wrong": 45,
+              "mcnemar_p_one_sided": 0.8398533181809928
+            },
+            "0.2091": {
+              "n_pairs": 176,
+              "additive_accuracy": 0.5398,
+              "interaction_accuracy": 0.4545,
+              "delta_accuracy": -0.0852,
+              "n_interaction_right_additive_wrong": 22,
+              "n_additive_right_interaction_wrong": 37,
+              "mcnemar_p_one_sided": 0.981828410021473
+            },
+            "0.5": {
+              "n_pairs": 95,
+              "additive_accuracy": 0.6737,
+              "interaction_accuracy": 0.5053,
+              "delta_accuracy": -0.1684,
+              "n_interaction_right_additive_wrong": 10,
+              "n_additive_right_interaction_wrong": 26,
+              "mcnemar_p_one_sided": 0.9980334134888835
+            }
+          },
+          "additive_delta_ligand_independent": true,
+          "additive_delta_ligand_independent_given_cell": true,
+          "additive_delta_max_within_pair_spread": 0.0,
+          "additive_delta_sd": 0.065932,
+          "interaction_delta_sd": 0.198488,
+          "primary_threshold": 0.2091,
+          "bootstrap_ci_interaction_accuracy": [
+            0.268,
+            0.6561
+          ],
+          "bootstrap_ci_additive_accuracy": [
+            0.3409,
+            0.7397
+          ],
+          "shrinkage_curve": {
+            "0": 0.5398,
+            "0.1": 0.5398,
+            "0.2": 0.483,
+            "0.3": 0.483,
+            "0.4": 0.4602,
+            "0.5": 0.4489,
+            "0.75": 0.4716,
+            "1": 0.4545
+          },
+          "best_shrinkage_alpha": "0",
+          "shrinkage_note": "alpha is scanned on the same out-of-fold pairs with one free parameter; treat the curve as a diagnostic, not a validated procedure."
+        },
+        "decision_utility": {
+          "n_cohorts": 100,
+          "additive": {
+            "mean_regret": 0.1534,
+            "top1_accuracy": 0.52
+          },
+          "interaction": {
+            "mean_regret": 0.1651,
+            "top1_accuracy": 0.53
+          },
+          "global_best": {
+            "mean_regret": 0.1428,
+            "top1_accuracy": 0.55
+          },
+          "additive_vs_global_best": {
+            "mean_regret_delta": -0.0106,
+            "t": -0.4329,
+            "p_one_sided": 0.6669785447515255,
+            "direction": "baseline better"
+          },
+          "interaction_vs_global_best": {
+            "mean_regret_delta": -0.0224,
+            "t": -0.7432,
+            "p_one_sided": 0.7704262750094772,
+            "direction": "baseline better"
+          }
+        },
+        "folds": {
+          "0": {
+            "n_test": 2281,
+            "n_train": 9122,
+            "mae_additive": 0.5316,
+            "mae_interaction": 0.5219,
+            "mae_per_metal_mean": 0.5873
+          },
+          "1": {
+            "n_test": 2281,
+            "n_train": 9122,
+            "mae_additive": 0.5793,
+            "mae_interaction": 0.5538,
+            "mae_per_metal_mean": 0.7089
+          },
+          "2": {
+            "n_test": 2281,
+            "n_train": 9122,
+            "mae_additive": 0.5287,
+            "mae_interaction": 0.5067,
+            "mae_per_metal_mean": 0.6003
+          },
+          "3": {
+            "n_test": 2280,
+            "n_train": 9123,
+            "mae_additive": 0.5093,
+            "mae_interaction": 0.4972,
+            "mae_per_metal_mean": 0.6052
+          },
+          "4": {
+            "n_test": 2280,
+            "n_train": 9123,
+            "mae_additive": 0.5038,
+            "mae_interaction": 0.4944,
+            "mae_per_metal_mean": 0.5838
+          }
+        },
+        "elapsed_seconds": 41.7,
+        "decay_vs_random": {
+          "mae_additive_delta": 0.0,
+          "mae_interaction_delta": 0.0,
+          "r2_additive_delta": 0.0,
+          "note": "positive MAE delta = worse than the random ligand-grouped split"
+        }
+      },
+      "doi": {
+        "status": "OK",
+        "n_rows_total": 14081,
+        "n_dropped_censored": 2510,
+        "n_evaluated": 11403,
+        "n_unassigned": 0,
+        "assignment_coverage": 1.0,
+        "n_folds": 5,
+        "group_counts": {
+          "key": "doi",
+          "n_groups": 928,
+          "largest_group_rows": 311
+        },
+        "models": {
+          "additive": {
+            "mae": 0.5758,
+            "r2": 0.1529,
+            "rmse": 0.7486,
+            "mae_by_metal": {
+              "Ru": 0.579,
+              "Ir": 0.4884,
+              "Rh": 0.5945,
+              "Os": 0.7024,
+              "Re": 0.5582
+            }
+          },
+          "interaction": {
+            "mae": 0.5675,
+            "r2": 0.1715,
+            "rmse": 0.7404,
+            "mae_by_metal": {
+              "Ru": 0.5744,
+              "Ir": 0.4604,
+              "Rh": 0.5641,
+              "Os": 0.6741,
+              "Re": 0.5716
+            }
+          },
+          "per_metal_mean": {
+            "mae": 0.6198,
+            "r2": 0.0001,
+            "rmse": 0.8134,
+            "mae_by_metal": {
+              "Ru": 0.6265,
+              "Ir": 0.4891,
+              "Rh": 0.5926,
+              "Os": 0.8321,
+              "Re": 0.5993
+            }
+          }
+        },
+        "paired_tests": {
+          "interaction_vs_additive": {
+            "n_ligands": 1616,
+            "mean_mae_a": 0.5846,
+            "mean_mae_b": 0.5816,
+            "mean_delta": 0.003,
+            "t": 1.1618,
+            "p_one_sided": 0.12273444901126236,
+            "direction": "b better",
+            "holm_p": 0.3682033470337871
+          },
+          "additive_vs_per_metal_mean": {
+            "n_ligands": 1616,
+            "mean_mae_a": 0.5998,
+            "mean_mae_b": 0.5846,
+            "mean_delta": 0.0151,
+            "t": 2.1096,
+            "p_one_sided": 0.01752297758089925,
+            "direction": "b better"
+          }
+        },
+        "delta_sign": {
+          "n_pairs": 376,
+          "n_dois": 37,
+          "by_metal_pair": {
+            "Ir-Rh": {
+              "n_pairs": 23,
+              "additive_accuracy": 0.5217,
+              "interaction_accuracy": 0.6087
+            },
+            "Ru-Ir": {
+              "n_pairs": 82,
+              "additive_accuracy": 0.4756,
+              "interaction_accuracy": 0.5488
+            },
+            "Ru-Os": {
+              "n_pairs": 41,
+              "additive_accuracy": 0.6341,
+              "interaction_accuracy": 0.6341
+            },
+            "Ru-Rh": {
+              "n_pairs": 30,
+              "additive_accuracy": 0.6333,
+              "interaction_accuracy": 0.5333
+            }
+          },
+          "by_threshold": {
+            "0": {
+              "n_pairs": 376,
+              "additive_accuracy": 0.5053,
+              "interaction_accuracy": 0.5319,
+              "delta_accuracy": 0.0266,
+              "n_interaction_right_additive_wrong": 43,
+              "n_additive_right_interaction_wrong": 33,
+              "mcnemar_p_one_sided": 0.15093624524350396
+            },
+            "0.1": {
+              "n_pairs": 253,
+              "additive_accuracy": 0.5138,
+              "interaction_accuracy": 0.5455,
+              "delta_accuracy": 0.0316,
+              "n_interaction_right_additive_wrong": 30,
+              "n_additive_right_interaction_wrong": 22,
+              "mcnemar_p_one_sided": 0.1658748816847453
+            },
+            "0.2091": {
+              "n_pairs": 176,
+              "additive_accuracy": 0.5455,
+              "interaction_accuracy": 0.5739,
+              "delta_accuracy": 0.0284,
+              "n_interaction_right_additive_wrong": 25,
+              "n_additive_right_interaction_wrong": 20,
+              "mcnemar_p_one_sided": 0.2757421649012599
+            },
+            "0.5": {
+              "n_pairs": 95,
+              "additive_accuracy": 0.6632,
+              "interaction_accuracy": 0.6632,
+              "delta_accuracy": 0.0,
+              "n_interaction_right_additive_wrong": 14,
+              "n_additive_right_interaction_wrong": 14,
+              "mcnemar_p_one_sided": 0.5747229903936386
+            }
+          },
+          "additive_delta_ligand_independent": true,
+          "additive_delta_ligand_independent_given_cell": true,
+          "additive_delta_max_within_pair_spread": 0.0,
+          "additive_delta_sd": 0.071733,
+          "interaction_delta_sd": 0.152269,
+          "primary_threshold": 0.2091,
+          "bootstrap_ci_interaction_accuracy": [
+            0.364,
+            0.7808
+          ],
+          "bootstrap_ci_additive_accuracy": [
+            0.3488,
+            0.7405
+          ],
+          "shrinkage_curve": {
+            "0": 0.5455,
+            "0.1": 0.5682,
+            "0.2": 0.5682,
+            "0.3": 0.5682,
+            "0.4": 0.5682,
+            "0.5": 0.5568,
+            "0.75": 0.5455,
+            "1": 0.5739
+          },
+          "best_shrinkage_alpha": "1",
+          "shrinkage_note": "alpha is scanned on the same out-of-fold pairs with one free parameter; treat the curve as a diagnostic, not a validated procedure."
+        },
+        "decision_utility": {
+          "n_cohorts": 100,
+          "additive": {
+            "mean_regret": 0.1694,
+            "top1_accuracy": 0.5
+          },
+          "interaction": {
+            "mean_regret": 0.131,
+            "top1_accuracy": 0.57
+          },
+          "global_best": {
+            "mean_regret": 0.1511,
+            "top1_accuracy": 0.5
+          },
+          "additive_vs_global_best": {
+            "mean_regret_delta": -0.0183,
+            "t": -0.6686,
+            "p_one_sided": 0.7473317014001124,
+            "direction": "baseline better"
+          },
+          "interaction_vs_global_best": {
+            "mean_regret_delta": 0.0201,
+            "t": 0.8442,
+            "p_one_sided": 0.2002845910158173,
+            "direction": "model better"
+          }
+        },
+        "folds": {
+          "0": {
+            "n_test": 2281,
+            "n_train": 9122,
+            "mae_additive": 0.5522,
+            "mae_interaction": 0.5494,
+            "mae_per_metal_mean": 0.6828
+          },
+          "1": {
+            "n_test": 2281,
+            "n_train": 9122,
+            "mae_additive": 0.552,
+            "mae_interaction": 0.5495,
+            "mae_per_metal_mean": 0.5797
+          },
+          "2": {
+            "n_test": 2281,
+            "n_train": 9122,
+            "mae_additive": 0.5686,
+            "mae_interaction": 0.5559,
+            "mae_per_metal_mean": 0.5568
+          },
+          "3": {
+            "n_test": 2280,
+            "n_train": 9123,
+            "mae_additive": 0.6118,
+            "mae_interaction": 0.6026,
+            "mae_per_metal_mean": 0.633
+          },
+          "4": {
+            "n_test": 2280,
+            "n_train": 9123,
+            "mae_additive": 0.5946,
+            "mae_interaction": 0.5799,
+            "mae_per_metal_mean": 0.6466
+          }
+        },
+        "elapsed_seconds": 37.5,
+        "decay_vs_random": {
+          "mae_additive_delta": 0.0452,
+          "mae_interaction_delta": 0.0527,
+          "r2_additive_delta": -0.1109,
+          "note": "positive MAE delta = worse than the random ligand-grouped split"
+        }
+      },
+      "year": {
+        "status": "OK",
+        "n_rows_total": 14081,
+        "n_dropped_censored": 2510,
+        "n_evaluated": 3411,
+        "n_unassigned": 7992,
+        "assignment_coverage": 0.2991,
+        "n_folds": 15,
+        "group_counts": {
+          "key": "year_group",
+          "n_groups": 15,
+          "largest_group_rows": 378
+        },
+        "models": {
+          "additive": {
+            "mae": 0.5721,
+            "r2": -0.0284,
+            "rmse": 0.7392,
+            "mae_by_metal": {
+              "Ru": 0.5737,
+              "Ir": 0.5892,
+              "Rh": 0.5476,
+              "Os": 0.3711,
+              "Re": 0.4867
+            }
+          },
+          "interaction": {
+            "mae": 0.5741,
+            "r2": -0.0325,
+            "rmse": 0.7406,
+            "mae_by_metal": {
+              "Ru": 0.5846,
+              "Ir": 0.541,
+              "Rh": 0.5439,
+              "Os": 0.3218,
+              "Re": 0.4625
+            }
+          },
+          "per_metal_mean": {
+            "mae": 0.541,
+            "r2": 0.0183,
+            "rmse": 0.7222,
+            "mae_by_metal": {
+              "Ru": 0.5576,
+              "Ir": 0.4333,
+              "Rh": 0.5513,
+              "Os": 0.5947,
+              "Re": 0.4919
+            }
+          }
+        },
+        "paired_tests": {
+          "interaction_vs_additive": {
+            "n_ligands": 597,
+            "mean_mae_a": 0.6086,
+            "mean_mae_b": 0.6126,
+            "mean_delta": -0.004,
+            "t": -0.9303,
+            "p_one_sided": 0.8237102776775795,
+            "direction": "a better",
+            "holm_p": 1.0
+          },
+          "additive_vs_per_metal_mean": {
+            "n_ligands": 597,
+            "mean_mae_a": 0.5686,
+            "mean_mae_b": 0.6086,
+            "mean_delta": -0.04,
+            "t": -3.0909,
+            "p_one_sided": 0.9989557652727155,
+            "direction": "a better"
+          }
+        },
+        "delta_sign": {
+          "n_pairs": 120,
+          "n_dois": 12,
+          "by_metal_pair": {
+            "Ir-Rh": {
+              "n_pairs": 6,
+              "additive_accuracy": 0.8333,
+              "interaction_accuracy": 0.8333
+            },
+            "Ru-Ir": {
+              "n_pairs": 25,
+              "additive_accuracy": 0.48,
+              "interaction_accuracy": 0.48
+            },
+            "Ru-Os": {
+              "n_pairs": 3,
+              "additive_accuracy": 1.0,
+              "interaction_accuracy": 1.0
+            },
+            "Ru-Rh": {
+              "n_pairs": 3,
+              "additive_accuracy": 0.3333,
+              "interaction_accuracy": 0.3333
+            }
+          },
+          "by_threshold": {
+            "0": {
+              "n_pairs": 120,
+              "additive_accuracy": 0.5667,
+              "interaction_accuracy": 0.6,
+              "delta_accuracy": 0.0333,
+              "n_interaction_right_additive_wrong": 8,
+              "n_additive_right_interaction_wrong": 4,
+              "mcnemar_p_one_sided": 0.19384765625
+            },
+            "0.1": {
+              "n_pairs": 67,
+              "additive_accuracy": 0.5522,
+              "interaction_accuracy": 0.5522,
+              "delta_accuracy": 0.0,
+              "n_interaction_right_additive_wrong": 0,
+              "n_additive_right_interaction_wrong": 0,
+              "mcnemar_p_one_sided": 1.0
+            },
+            "0.2091": {
+              "n_pairs": 37,
+              "additive_accuracy": 0.5676,
+              "interaction_accuracy": 0.5676,
+              "delta_accuracy": 0.0,
+              "n_interaction_right_additive_wrong": 0,
+              "n_additive_right_interaction_wrong": 0,
+              "mcnemar_p_one_sided": 1.0
+            },
+            "0.5": {
+              "n_pairs": 22,
+              "additive_accuracy": 0.7273,
+              "interaction_accuracy": 0.7273,
+              "delta_accuracy": 0.0,
+              "n_interaction_right_additive_wrong": 0,
+              "n_additive_right_interaction_wrong": 0,
+              "mcnemar_p_one_sided": 1.0
+            }
+          },
+          "additive_delta_ligand_independent": true,
+          "additive_delta_ligand_independent_given_cell": true,
+          "additive_delta_max_within_pair_spread": 0.0,
+          "additive_delta_sd": 0.035329,
+          "interaction_delta_sd": 0.121578,
+          "primary_threshold": 0.2091,
+          "bootstrap_ci_interaction_accuracy": [
+            0.28,
+            0.8611
+          ],
+          "bootstrap_ci_additive_accuracy": [
+            0.28,
+            0.8611
+          ],
+          "shrinkage_curve": {
+            "0": 0.5676,
+            "0.1": 0.5676,
+            "0.2": 0.5676,
+            "0.3": 0.5676,
+            "0.4": 0.5676,
+            "0.5": 0.5676,
+            "0.75": 0.5676,
+            "1": 0.5676
+          },
+          "best_shrinkage_alpha": "0",
+          "shrinkage_note": "alpha is scanned on the same out-of-fold pairs with one free parameter; treat the curve as a diagnostic, not a validated procedure."
+        },
+        "decision_utility": {
+          "n_cohorts": 19,
+          "additive": {
+            "mean_regret": 0.0357,
+            "top1_accuracy": 0.7368
+          },
+          "interaction": {
+            "mean_regret": 0.0357,
+            "top1_accuracy": 0.7368
+          },
+          "global_best": {
+            "mean_regret": 0.1195,
+            "top1_accuracy": 0.6316
+          },
+          "additive_vs_global_best": {
+            "mean_regret_delta": 0.0838,
+            "t": 1.6909,
+            "p_one_sided": 0.05404449618162557,
+            "direction": "model better"
+          },
+          "interaction_vs_global_best": {
+            "mean_regret_delta": 0.0838,
+            "t": 1.6909,
+            "p_one_sided": 0.05404449618162557,
+            "direction": "model better"
+          }
+        },
+        "folds": {
+          "2012": {
+            "n_test": 193,
+            "n_train": 3218,
+            "mae_additive": 0.6879,
+            "mae_interaction": 0.6917,
+            "mae_per_metal_mean": 0.6173
+          },
+          "2013": {
+            "n_test": 161,
+            "n_train": 3250,
+            "mae_additive": 0.5168,
+            "mae_interaction": 0.4823,
+            "mae_per_metal_mean": 0.449
+          },
+          "2014": {
+            "n_test": 148,
+            "n_train": 3263,
+            "mae_additive": 0.5868,
+            "mae_interaction": 0.6153,
+            "mae_per_metal_mean": 0.6303
+          },
+          "2015": {
+            "n_test": 180,
+            "n_train": 3231,
+            "mae_additive": 0.5511,
+            "mae_interaction": 0.527,
+            "mae_per_metal_mean": 0.3959
+          },
+          "2016": {
+            "n_test": 378,
+            "n_train": 3033,
+            "mae_additive": 0.5949,
+            "mae_interaction": 0.6008,
+            "mae_per_metal_mean": 0.5308
+          },
+          "2017": {
+            "n_test": 307,
+            "n_train": 3104,
+            "mae_additive": 0.5536,
+            "mae_interaction": 0.5495,
+            "mae_per_metal_mean": 0.6184
+          },
+          "2018": {
+            "n_test": 287,
+            "n_train": 3124,
+            "mae_additive": 0.4412,
+            "mae_interaction": 0.4495,
+            "mae_per_metal_mean": 0.4734
+          },
+          "2019": {
+            "n_test": 223,
+            "n_train": 3188,
+            "mae_additive": 0.5972,
+            "mae_interaction": 0.6392,
+            "mae_per_metal_mean": 0.695
+          },
+          "2020": {
+            "n_test": 261,
+            "n_train": 3150,
+            "mae_additive": 0.5065,
+            "mae_interaction": 0.5152,
+            "mae_per_metal_mean": 0.5006
+          },
+          "2021": {
+            "n_test": 111,
+            "n_train": 3300,
+            "mae_additive": 0.5147,
+            "mae_interaction": 0.5295,
+            "mae_per_metal_mean": 0.5581
+          },
+          "2022": {
+            "n_test": 170,
+            "n_train": 3241,
+            "mae_additive": 0.5027,
+            "mae_interaction": 0.5315,
+            "mae_per_metal_mean": 0.5107
+          },
+          "2023": {
+            "n_test": 286,
+            "n_train": 3125,
+            "mae_additive": 0.6731,
+            "mae_interaction": 0.6478,
+            "mae_per_metal_mean": 0.5684
+          },
+          "2024": {
+            "n_test": 308,
+            "n_train": 3103,
+            "mae_additive": 0.5483,
+            "mae_interaction": 0.5611,
+            "mae_per_metal_mean": 0.4781
+          },
+          "2025": {
+            "n_test": 203,
+            "n_train": 3208,
+            "mae_additive": 0.8151,
+            "mae_interaction": 0.7871,
+            "mae_per_metal_mean": 0.6419
+          },
+          "early": {
+            "n_test": 195,
+            "n_train": 3216,
+            "mae_additive": 0.4781,
+            "mae_interaction": 0.4739,
+            "mae_per_metal_mean": 0.4549
+          }
+        },
+        "elapsed_seconds": 59.6,
+        "decay_vs_random": {
+          "mae_additive_delta": 0.0415,
+          "mae_interaction_delta": 0.0593,
+          "r2_additive_delta": -0.2922,
+          "note": "positive MAE delta = worse than the random ligand-grouped split"
+        }
+      },
+      "scaffold": {
+        "status": "OK",
+        "n_rows_total": 14081,
+        "n_dropped_censored": 2510,
+        "n_evaluated": 11403,
+        "n_unassigned": 0,
+        "assignment_coverage": 1.0,
+        "n_folds": 5,
+        "group_counts": {
+          "key": "scaffold",
+          "n_groups": 770,
+          "largest_group_rows": 497
+        },
+        "models": {
+          "additive": {
+            "mae": 0.571,
+            "r2": 0.1612,
+            "rmse": 0.745,
+            "mae_by_metal": {
+              "Ru": 0.5753,
+              "Ir": 0.4689,
+              "Rh": 0.5918,
+              "Os": 0.6623,
+              "Re": 0.6094
+            }
+          },
+          "interaction": {
+            "mae": 0.5598,
+            "r2": 0.1865,
+            "rmse": 0.7336,
+            "mae_by_metal": {
+              "Ru": 0.5646,
+              "Ir": 0.4627,
+              "Rh": 0.5638,
+              "Os": 0.6202,
+              "Re": 0.6375
+            }
+          },
+          "per_metal_mean": {
+            "mae": 0.6162,
+            "r2": 0.0177,
+            "rmse": 0.8062,
+            "mae_by_metal": {
+              "Ru": 0.6241,
+              "Ir": 0.4908,
+              "Rh": 0.5945,
+              "Os": 0.7879,
+              "Re": 0.5952
+            }
+          }
+        },
+        "paired_tests": {
+          "interaction_vs_additive": {
+            "n_ligands": 1616,
+            "mean_mae_a": 0.5611,
+            "mean_mae_b": 0.546,
+            "mean_delta": 0.0152,
+            "t": 5.9614,
+            "p_one_sided": 1.5329353828834873e-09,
+            "direction": "b better",
+            "holm_p": 7.664676914417436e-09
+          },
+          "additive_vs_per_metal_mean": {
+            "n_ligands": 1616,
+            "mean_mae_a": 0.5971,
+            "mean_mae_b": 0.5611,
+            "mean_delta": 0.036,
+            "t": 4.7881,
+            "p_one_sided": 9.189556654875472e-07,
+            "direction": "b better"
+          }
+        },
+        "delta_sign": {
+          "n_pairs": 376,
+          "n_dois": 37,
+          "by_metal_pair": {
+            "Ir-Rh": {
+              "n_pairs": 23,
+              "additive_accuracy": 0.3913,
+              "interaction_accuracy": 0.8696
+            },
+            "Ru-Ir": {
+              "n_pairs": 82,
+              "additive_accuracy": 0.4756,
+              "interaction_accuracy": 0.6098
+            },
+            "Ru-Os": {
+              "n_pairs": 41,
+              "additive_accuracy": 0.6341,
+              "interaction_accuracy": 0.5854
+            },
+            "Ru-Rh": {
+              "n_pairs": 30,
+              "additive_accuracy": 0.6333,
+              "interaction_accuracy": 0.5667
+            }
+          },
+          "by_threshold": {
+            "0": {
+              "n_pairs": 376,
+              "additive_accuracy": 0.4947,
+              "interaction_accuracy": 0.5559,
+              "delta_accuracy": 0.0612,
+              "n_interaction_right_additive_wrong": 76,
+              "n_additive_right_interaction_wrong": 53,
+              "mcnemar_p_one_sided": 0.02616176661195923
+            },
+            "0.1": {
+              "n_pairs": 253,
+              "additive_accuracy": 0.498,
+              "interaction_accuracy": 0.5889,
+              "delta_accuracy": 0.0909,
+              "n_interaction_right_additive_wrong": 45,
+              "n_additive_right_interaction_wrong": 22,
+              "mcnemar_p_one_sided": 0.0033707236815515617
+            },
+            "0.2091": {
+              "n_pairs": 176,
+              "additive_accuracy": 0.5284,
+              "interaction_accuracy": 0.6307,
+              "delta_accuracy": 0.1023,
+              "n_interaction_right_additive_wrong": 29,
+              "n_additive_right_interaction_wrong": 11,
+              "mcnemar_p_one_sided": 0.003213288047845708
+            },
+            "0.5": {
+              "n_pairs": 95,
+              "additive_accuracy": 0.6316,
+              "interaction_accuracy": 0.6842,
+              "delta_accuracy": 0.0526,
+              "n_interaction_right_additive_wrong": 11,
+              "n_additive_right_interaction_wrong": 6,
+              "mcnemar_p_one_sided": 0.1661529541015625
+            }
+          },
+          "additive_delta_ligand_independent": true,
+          "additive_delta_ligand_independent_given_cell": true,
+          "additive_delta_max_within_pair_spread": 0.0,
+          "additive_delta_sd": 0.05998,
+          "interaction_delta_sd": 0.134653,
+          "primary_threshold": 0.2091,
+          "bootstrap_ci_interaction_accuracy": [
+            0.4628,
+            0.7914
+          ],
+          "bootstrap_ci_additive_accuracy": [
+            0.3282,
+            0.7244
+          ],
+          "shrinkage_curve": {
+            "0": 0.5284,
+            "0.1": 0.5341,
+            "0.2": 0.5398,
+            "0.3": 0.5739,
+            "0.4": 0.5795,
+            "0.5": 0.5966,
+            "0.75": 0.5852,
+            "1": 0.6307
+          },
+          "best_shrinkage_alpha": "1",
+          "shrinkage_note": "alpha is scanned on the same out-of-fold pairs with one free parameter; treat the curve as a diagnostic, not a validated procedure."
+        },
+        "decision_utility": {
+          "n_cohorts": 100,
+          "additive": {
+            "mean_regret": 0.1989,
+            "top1_accuracy": 0.47
+          },
+          "interaction": {
+            "mean_regret": 0.1372,
+            "top1_accuracy": 0.6
+          },
+          "global_best": {
+            "mean_regret": 0.1428,
+            "top1_accuracy": 0.55
+          },
+          "additive_vs_global_best": {
+            "mean_regret_delta": -0.0561,
+            "t": -2.7659,
+            "p_one_sided": 0.9966136748066435,
+            "direction": "baseline better"
+          },
+          "interaction_vs_global_best": {
+            "mean_regret_delta": 0.0056,
+            "t": 0.266,
+            "p_one_sided": 0.39540881118247423,
+            "direction": "model better"
+          }
+        },
+        "folds": {
+          "0": {
+            "n_test": 2281,
+            "n_train": 9122,
+            "mae_additive": 0.5204,
+            "mae_interaction": 0.5118,
+            "mae_per_metal_mean": 0.555
+          },
+          "1": {
+            "n_test": 2281,
+            "n_train": 9122,
+            "mae_additive": 0.5906,
+            "mae_interaction": 0.5821,
+            "mae_per_metal_mean": 0.6355
+          },
+          "2": {
+            "n_test": 2281,
+            "n_train": 9122,
+            "mae_additive": 0.5477,
+            "mae_interaction": 0.5363,
+            "mae_per_metal_mean": 0.5942
+          },
+          "3": {
+            "n_test": 2280,
+            "n_train": 9123,
+            "mae_additive": 0.5799,
+            "mae_interaction": 0.5669,
+            "mae_per_metal_mean": 0.5927
+          },
+          "4": {
+            "n_test": 2280,
+            "n_train": 9123,
+            "mae_additive": 0.6164,
+            "mae_interaction": 0.602,
+            "mae_per_metal_mean": 0.7038
+          }
+        },
+        "elapsed_seconds": 33.8,
+        "decay_vs_random": {
+          "mae_additive_delta": 0.0404,
+          "mae_interaction_delta": 0.045,
+          "r2_additive_delta": -0.1026,
+          "note": "positive MAE delta = worse than the random ligand-grouped split"
+        }
+      }
+    }
+  },
+  "caveats": [
+    "Only 30.6% of potency rows (29.9% of cisplatin_ratio) carry a parseable year in the DOI, so the year cell is a subset and is not directly comparable in n.",
+    "The year split holds out whole papers by publication year, but a paper's DOI year can predate its print issue; treat the labels as approximate.",
+    "The DOI split still lets the same ligand appear in train and test under a different paper, which is realistic but not a chemistry holdout.",
+    "The scaffold split removes ring-system memorisation but keeps ligand decoration patterns; it is not a full analogue-series holdout.",
+    "No split holds out a metal. MSRS-4 covers that question and the answer there is negative.",
+    "The decision-utility block re-asks the MSRS-6 question on these splits but was not the pre-registered primary analysis; MSRS-6's kill criterion was fixed on the random split and is not reopened post hoc here."
+  ]
+}
