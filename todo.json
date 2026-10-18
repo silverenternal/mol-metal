@@ -49,7 +49,9 @@
       "光毒性 (功能终点): Ru switch 0.2624 (233/888) vs Ir 0.1373 (95/692), 差 +0.1251 [0.0395, 0.2048]; Ir 偏 antagonise (0.2413 vs 0.0631)。PI 本身不可预测 (OOF R² < 0)。",
       "旧审计的 PI 中位 1.27/0.88 是 median log10(IC50_light) 误标; 真实 PI 中位 Ru 0.4914 / Ir -0.2218, 与 switch 率同向。该结论已撤回。",
       "L3 响应面 (CPU, 21,045 potency / 11,403 RI): 交互比 additive 的 MAE 好 0.0202/0.0175 (Holm ≤6e-30), 但 Δ 符号准确率更差 (potency 0.5744 vs 0.6152; RI 0.4545 vs 0.5398)。",
-      "加性模型的 Δ 在 (metal pair, cell, fold) 内严格为常数; 38.5% 的 |Δ|≥0.21 配对符号与金属主效应相反 —— 这是加性推荐的错误率上限。"
+      "加性模型的 Δ 在 (metal pair, cell, fold) 内严格为常数; 38.5% 的 |Δ|≥0.21 配对符号与金属主效应相反 —— 这是加性推荐的错误率上限。",
+      "L3 conformal: 覆盖率 0.9044/0.8984 (名义 0.90), 但中位区间宽度 2.21/2.35 log10; 无任何配对联合宽度 <1.0。",
+      "actionable 子集并不更准: 整体 0.625 vs 0.623; 分层 Ru-Ir -0.043 / Ru-Os +0.075 / Ru-Rh +0.113; 最窄子集 (delta=1.5) 0.241 vs 0.640。MSRS-3 判据未过。"
     ],
     "continuous_data_audit_2026_10_18": {
       "numeric_dark_ic50": 21777,
@@ -125,7 +127,8 @@
       "msrs_endpoints": "metrics/by_metric/msrs_endpoints.json",
       "msrs_variance": "metrics/by_metric/msrs_variance_decomposition.json",
       "msrs_phototoxicity": "metrics/by_metric/msrs_phototoxicity.json",
-      "msrs_surface": "metrics/by_metric/msrs_surface_model.json"
+      "msrs_surface": "metrics/by_metric/msrs_surface_model.json",
+      "msrs_actionability": "metrics/by_metric/msrs_actionability.json"
     }
   },
   "framework": {
@@ -438,10 +441,116 @@
       "acceptance": "区间覆盖率接近名义值 (±5%); actionable 子集的推荐精度显著高于全体。",
       "gpu": "none",
       "wall": "2 天",
-      "status": "TODO",
+      "status": "DONE",
       "priority": "P1",
       "depends_on": [
         "MSRS-2"
+      ],
+      "completed": "2026-10-18",
+      "acceptance_met": false,
+      "artifact": "metrics/by_metric/msrs_actionability.json",
+      "producer": "molmetal/scripts/msrs_actionability.py (tests/test_msrs_actionability.py, 6 passed)",
+      "result": {
+        "potency": {
+          "n_rows": 21045,
+          "alpha": 0.1,
+          "coverage_global": 0.9044,
+          "width_p10": 1.5054,
+          "width_median": 2.2083,
+          "width_p90": 2.8527,
+          "coverage_metal_conditional": 0.9021,
+          "width_metal_conditional": 2.2083,
+          "q_global_median": 2.0947,
+          "coverage_by_metal": {
+            "Ru": 0.9036,
+            "Ir": 0.9157,
+            "Rh": 0.8863,
+            "Os": 0.8851,
+            "Re": 0.9127
+          },
+          "actionability": {
+            "delta_1_5": {
+              "n": 29,
+              "acc": 0.2414,
+              "rest": 0.6398
+            },
+            "delta_2_0": {
+              "n": 200,
+              "share": 0.2809,
+              "acc": 0.625,
+              "rest": 0.623,
+              "diff_ci95": [
+                -0.3231,
+                0.2518
+              ]
+            },
+            "delta_2_5": {
+              "n": 369,
+              "share": 0.5183,
+              "acc": 0.6721,
+              "rest": 0.5714
+            },
+            "width_quartile_accuracy": [
+              0.6047,
+              0.6033,
+              0.6829,
+              0.6094
+            ],
+            "point_biserial_width_vs_correct": 0.0677,
+            "stratified_by_metal_pair": {
+              "Ru-Ir": {
+                "n_act": 138,
+                "n_rest": 148,
+                "diff": -0.0434
+              },
+              "Ru-Os": {
+                "n_act": 25,
+                "n_rest": 186,
+                "diff": 0.0748
+              },
+              "Ru-Rh": {
+                "n_act": 37,
+                "n_rest": 76,
+                "diff": 0.1134
+              }
+            }
+          }
+        },
+        "cisplatin_ratio": {
+          "n_rows": 11403,
+          "coverage_global": 0.8984,
+          "width_p10": 1.5128,
+          "width_median": 2.3453,
+          "width_p90": 3.2317,
+          "coverage_metal_conditional": 0.9006,
+          "q_global_median": 2.259,
+          "actionability": {
+            "n_at_delta_2_0": 1,
+            "n_at_delta_2_5": 4,
+            "share_at_2_5": 0.0227
+          }
+        },
+        "acceptance": {
+          "coverage_within_5pct": true,
+          "actionable_precision_significantly_higher": false,
+          "why": "整体 diff CI 含 0; 分层后最大层 Ru-Ir 为负 (-0.043); 最窄子集 (delta=1.5) 反而最差 (0.241)。"
+        }
+      },
+      "findings": [
+        "覆盖率达标: potency 0.9044, RI 0.8984 (名义 0.90); 每金属覆盖 0.885-0.928, 所以金属条件 conformal 没有增量 (0.9021/0.9006, 宽度相同)。",
+        "但区间太宽: 中位宽度 2.21 log10 (160x IC50), p10 也有 1.51; 没有任何一对的联合宽度 < 1.0, 所以 delta<=1.0 时 actionable = 0。",
+        "宽度不是决策信号: 按宽度四分位的符号准确率 0.605/0.603/0.683/0.609 (point-biserial 0.068); 最窄子集 (delta=1.5, n=29) 准确率只有 0.241, 比其余 0.640 更差。",
+        "整体 actionable vs rest 无差异 (0.625 vs 0.623, CI [-0.323, 0.252]); 按金属对分层后符号不一致: Ru-Ir -0.043 (138 vs 148), Ru-Os +0.075, Ru-Rh +0.113。最大层为负。",
+        "RI 更差: delta<=1.5 时 0 个 actionable, delta=2.0 只有 1 个; 该终点没有可操作子集。",
+        "结论: 90% 覆盖下响应面无法支持「换金属」的可操作决策; 弃权机制救不了, 因为没有窄区间子群。"
+      ],
+      "decision": "MSRS-3 在 actionability 判据上结案为负。MSRS-6 的 kill criterion 预计触发: 只能报告 additive 的全局金属排序, 不能做配体级推荐。若仍要做, 必须先把区间宽度压到 <1.0 (更多跨金属数据或更强的金属特异特征), 而不是换校准方法。",
+      "caveats": [
+        "覆盖率是边缘覆盖, ligand-grouped CV 下它是「新配体」覆盖, 不是「新论文」覆盖; MSRS-7 才测后者。",
+        "difficulty model 只用 proper-train 的内层 OOF 残差拟合, 未看 calibration/test; 但它仍是学习量, 在分布外配体上可能乐观。",
+        "actionable 定义在 loose 键配对上, 且要求两端区间都窄, 偏保守。",
+        "金属条件分位数在 calibration 少于 30 行时回退到全局分位数; Rh/Os 在多折触发。",
+        "actionable vs rest 的对比在 DOI 聚类 bootstrap 内重新选择 actionable 集, 已包含选择变异。"
       ]
     },
     {
@@ -690,7 +799,7 @@
     "wave_4_paper": [
       "MSRS-8"
     ],
-    "note": "Wave 1 (MSRS-0/1/5) 完成; Wave 2 的 MSRS-2 已用 CPU 基线结案, 零 GPU。结论: 交互显著但不可用于排序, additive 是更好的决策规则; 因此 MSRS-3/4 都在 additive 结构上做, 不需要 GPU。D-MPNN 臂只有在 Δ 符号上超过 additive 才值得开。"
+    "note": "Wave 1 完成; MSRS-2 与 MSRS-3 已用 CPU 结案, 零 GPU。核心结论: 交互显著但排序更差; 90% 区间覆盖达标但过宽 (中位 2.2 log10), actionable 子集并不更准。MSRS-4 仍可做 (LOMO 是外推诊断, CPU), 但 MSRS-6 的推荐层预计触发 kill criterion。"
   },
   "legacy_mainline": {
     "note": "二分类主线不再是论文主轴, 但其产物仍是 MSRS 的基线与对照, 不删除。",

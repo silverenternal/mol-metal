@@ -1,0 +1,415 @@
+{
+  "artifact": "msrs_actionability",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L3 actionability (split conformal)",
+  "generated_utc": "2026-10-18T05:31:45+00:00",
+  "provenance": {
+    "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "metal_descriptors": "/home/hugo/codes/mol-metal/molmetal/data/metal_chemistry_5.csv",
+    "metal_descriptors_sha256": "8e5c9db485f7ab270b0e49d376fbcce2954cd678495813fd26a799047c43dcc7",
+    "script": "molmetal/scripts/msrs_actionability.py",
+    "git_commit": "9bf16294bb55b297e4ddb8f3eb4751f57c67bf79",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "point_model": "additive LightGBM from MSRS-2 (MSRS-2: better delta ranking than interaction)",
+    "outer_cv": "GroupKFold(5) by ligand_main_fragment",
+    "inner_split": "GroupShuffleSplit calibration fraction 0.25 by ligand",
+    "difficulty_model": "LightGBM on |OOF residual| from GroupKFold(3) inside proper-train",
+    "nonconformity": "|y - y_hat| / sigma(x), sigma clipped at 0.05",
+    "quantile": "ceil((n+1)(1-alpha))/n empirical quantile",
+    "alpha": 0.1,
+    "epsilon": 0.2091,
+    "delta_grid": [
+      0.5,
+      1.0,
+      1.5,
+      2.0,
+      2.5
+    ],
+    "primary_delta": 2.0
+  },
+  "endpoints": {
+    "potency": {
+      "status": "OK",
+      "n_rows": 21045,
+      "n_dropped_censored": 4813,
+      "censored_share": 0.1836,
+      "n_ligands": 2846,
+      "alpha": 0.1,
+      "target_coverage": 0.9,
+      "coverage_global": {
+        "n": 21045,
+        "coverage": 0.9044,
+        "mean_width": 2.2138,
+        "median_width": 2.2083,
+        "width_p10": 1.5054,
+        "width_p90": 2.8527,
+        "by_group": {
+          "Ir": {
+            "n": 3666,
+            "coverage": 0.9157,
+            "mean_width": 2.1456
+          },
+          "Os": {
+            "n": 879,
+            "coverage": 0.8851,
+            "mean_width": 2.3247
+          },
+          "Re": {
+            "n": 756,
+            "coverage": 0.9127,
+            "mean_width": 2.0931
+          },
+          "Rh": {
+            "n": 959,
+            "coverage": 0.8863,
+            "mean_width": 2.2725
+          },
+          "Ru": {
+            "n": 14785,
+            "coverage": 0.9036,
+            "mean_width": 2.2264
+          }
+        }
+      },
+      "coverage_metal_conditional": {
+        "n": 21045,
+        "coverage": 0.9021,
+        "mean_width": 2.2221,
+        "median_width": 2.2083,
+        "width_p10": 1.4659,
+        "width_p90": 2.894,
+        "by_group": {
+          "Ir": {
+            "n": 3666,
+            "coverage": 0.8775,
+            "mean_width": 1.9212
+          },
+          "Os": {
+            "n": 879,
+            "coverage": 0.9124,
+            "mean_width": 2.566
+          },
+          "Re": {
+            "n": 756,
+            "coverage": 0.8545,
+            "mean_width": 1.7589
+          },
+          "Rh": {
+            "n": 959,
+            "coverage": 0.8822,
+            "mean_width": 2.2484
+          },
+          "Ru": {
+            "n": 14785,
+            "coverage": 0.9113,
+            "mean_width": 2.2982
+          }
+        }
+      },
+      "q_global_median": 2.0947,
+      "actionability": {
+        "n_pairs": 1284,
+        "n_informative": 712,
+        "n_dois": 104,
+        "epsilon": 0.2091,
+        "delta_grid": {
+          "0.5": {
+            "n_actionable": 0,
+            "share_actionable": 0.0,
+            "accuracy_actionable": null,
+            "accuracy_rest": 0.6236,
+            "accuracy_all_informative": 0.6236,
+            "pair_coverage_actionable": null
+          },
+          "1": {
+            "n_actionable": 0,
+            "share_actionable": 0.0,
+            "accuracy_actionable": null,
+            "accuracy_rest": 0.6236,
+            "accuracy_all_informative": 0.6236,
+            "pair_coverage_actionable": null
+          },
+          "1.5": {
+            "n_actionable": 29,
+            "share_actionable": 0.0407,
+            "accuracy_actionable": 0.2414,
+            "accuracy_rest": 0.6398,
+            "accuracy_all_informative": 0.6236,
+            "pair_coverage_actionable": 1.0,
+            "accuracy_diff_actionable_minus_rest": -0.3984
+          },
+          "2": {
+            "n_actionable": 200,
+            "share_actionable": 0.2809,
+            "accuracy_actionable": 0.625,
+            "accuracy_rest": 0.623,
+            "accuracy_all_informative": 0.6236,
+            "pair_coverage_actionable": 0.985,
+            "accuracy_diff_actionable_minus_rest": 0.002
+          },
+          "2.5": {
+            "n_actionable": 369,
+            "share_actionable": 0.5183,
+            "accuracy_actionable": 0.6721,
+            "accuracy_rest": 0.5714,
+            "accuracy_all_informative": 0.6236,
+            "pair_coverage_actionable": 0.9919,
+            "accuracy_diff_actionable_minus_rest": 0.1007
+          }
+        },
+        "accuracy_by_width_quartile": {
+          "1": {
+            "n": 172,
+            "mean_pair_width": 3.1447,
+            "accuracy": 0.6047
+          },
+          "2": {
+            "n": 184,
+            "mean_pair_width": 3.9276,
+            "accuracy": 0.6033
+          },
+          "3": {
+            "n": 164,
+            "mean_pair_width": 4.6276,
+            "accuracy": 0.6829
+          },
+          "4": {
+            "n": 192,
+            "mean_pair_width": 5.8793,
+            "accuracy": 0.6094
+          }
+        },
+        "point_biserial_width_vs_correct": 0.0677,
+        "primary_delta": 2.0,
+        "primary": {
+          "n_actionable": 200,
+          "accuracy_actionable": 0.625,
+          "accuracy_rest": 0.623,
+          "accuracy_diff_ci95_doi_clustered": [
+            -0.3231,
+            0.2518
+          ],
+          "metal_pair_composition_actionable": {
+            "Ru-Ir": 138,
+            "Ru-Os": 25,
+            "Ru-Rh": 37
+          },
+          "metal_pair_composition_rest": {
+            "Ir-Os": 16,
+            "Ir-Rh": 69,
+            "Rh-Os": 17,
+            "Ru-Ir": 148,
+            "Ru-Os": 186,
+            "Ru-Rh": 76
+          },
+          "by_metal_pair": {
+            "Ru-Ir": {
+              "n_actionable": 138,
+              "n_rest": 148,
+              "accuracy_actionable": 0.558,
+              "accuracy_rest": 0.6014,
+              "diff": -0.0434
+            },
+            "Ru-Os": {
+              "n_actionable": 25,
+              "n_rest": 186,
+              "accuracy_actionable": 0.72,
+              "accuracy_rest": 0.6452,
+              "diff": 0.0748
+            },
+            "Ru-Rh": {
+              "n_actionable": 37,
+              "n_rest": 76,
+              "accuracy_actionable": 0.8108,
+              "accuracy_rest": 0.6974,
+              "diff": 0.1134
+            }
+          }
+        }
+      },
+      "elapsed_seconds": 150.6
+    },
+    "cisplatin_ratio": {
+      "status": "OK",
+      "n_rows": 11403,
+      "n_dropped_censored": 2510,
+      "censored_share": 0.1783,
+      "n_ligands": 1616,
+      "alpha": 0.1,
+      "target_coverage": 0.9,
+      "coverage_global": {
+        "n": 11403,
+        "coverage": 0.8984,
+        "mean_width": 2.3557,
+        "median_width": 2.3453,
+        "width_p10": 1.5128,
+        "width_p90": 3.2317,
+        "by_group": {
+          "Ir": {
+            "n": 1029,
+            "coverage": 0.8999,
+            "mean_width": 2.3745
+          },
+          "Os": {
+            "n": 453,
+            "coverage": 0.9249,
+            "mean_width": 2.9735
+          },
+          "Re": {
+            "n": 349,
+            "coverage": 0.9284,
+            "mean_width": 2.7328
+          },
+          "Rh": {
+            "n": 558,
+            "coverage": 0.8943,
+            "mean_width": 2.4912
+          },
+          "Ru": {
+            "n": 9014,
+            "coverage": 0.8961,
+            "mean_width": 2.2996
+          }
+        }
+      },
+      "coverage_metal_conditional": {
+        "n": 11403,
+        "coverage": 0.9006,
+        "mean_width": 2.38,
+        "median_width": 2.3566,
+        "width_p10": 1.5089,
+        "width_p90": 3.2538,
+        "by_group": {
+          "Ir": {
+            "n": 1029,
+            "coverage": 0.8834,
+            "mean_width": 2.1936
+          },
+          "Os": {
+            "n": 453,
+            "coverage": 0.9205,
+            "mean_width": 2.8029
+          },
+          "Re": {
+            "n": 349,
+            "coverage": 0.9398,
+            "mean_width": 2.9929
+          },
+          "Rh": {
+            "n": 558,
+            "coverage": 0.9373,
+            "mean_width": 3.0007
+          },
+          "Ru": {
+            "n": 9014,
+            "coverage": 0.8977,
+            "mean_width": 2.3179
+          }
+        }
+      },
+      "q_global_median": 2.259,
+      "actionability": {
+        "n_pairs": 376,
+        "n_informative": 176,
+        "n_dois": 37,
+        "epsilon": 0.2091,
+        "delta_grid": {
+          "0.5": {
+            "n_actionable": 0,
+            "share_actionable": 0.0,
+            "accuracy_actionable": null,
+            "accuracy_rest": 0.5284,
+            "accuracy_all_informative": 0.5284,
+            "pair_coverage_actionable": null
+          },
+          "1": {
+            "n_actionable": 0,
+            "share_actionable": 0.0,
+            "accuracy_actionable": null,
+            "accuracy_rest": 0.5284,
+            "accuracy_all_informative": 0.5284,
+            "pair_coverage_actionable": null
+          },
+          "1.5": {
+            "n_actionable": 0,
+            "share_actionable": 0.0,
+            "accuracy_actionable": null,
+            "accuracy_rest": 0.5284,
+            "accuracy_all_informative": 0.5284,
+            "pair_coverage_actionable": null
+          },
+          "2": {
+            "n_actionable": 1,
+            "share_actionable": 0.0057,
+            "accuracy_actionable": 1.0,
+            "accuracy_rest": 0.5257,
+            "accuracy_all_informative": 0.5284,
+            "pair_coverage_actionable": 1.0
+          },
+          "2.5": {
+            "n_actionable": 4,
+            "share_actionable": 0.0227,
+            "accuracy_actionable": 0.25,
+            "accuracy_rest": 0.5349,
+            "accuracy_all_informative": 0.5284,
+            "pair_coverage_actionable": 1.0
+          }
+        },
+        "accuracy_by_width_quartile": {
+          "1": {
+            "n": 44,
+            "mean_pair_width": 3.3307,
+            "accuracy": 0.4773
+          },
+          "2": {
+            "n": 42,
+            "mean_pair_width": 4.7533,
+            "accuracy": 0.2857
+          },
+          "3": {
+            "n": 46,
+            "mean_pair_width": 5.6432,
+            "accuracy": 0.587
+          },
+          "4": {
+            "n": 44,
+            "mean_pair_width": 8.3275,
+            "accuracy": 0.75
+          }
+        },
+        "point_biserial_width_vs_correct": 0.29,
+        "primary_delta": 2.0,
+        "primary": {
+          "n_actionable": 1,
+          "accuracy_actionable": 1.0,
+          "accuracy_rest": 0.5257,
+          "accuracy_diff_ci95_doi_clustered": null,
+          "metal_pair_composition_actionable": {
+            "Ru-Rh": 1
+          },
+          "metal_pair_composition_rest": {
+            "Ir-Rh": 23,
+            "Ru-Ir": 82,
+            "Ru-Os": 41,
+            "Ru-Rh": 29
+          },
+          "by_metal_pair": {}
+        }
+      },
+      "elapsed_seconds": 106.7
+    }
+  },
+  "caveats": [
+    "Coverage is marginal over the whole test fold; ligand-grouped CV makes it a new-ligand coverage statement, not a new-paper one. MSRS-7 tests the paper split.",
+    "The difficulty model is fitted on inner-OOF residuals from the proper-train ligands only, so it never sees calibration or test rows. It is still a learned quantity and can be optimistic where a ligand is unlike anything in training.",
+    "The actionable set is defined on matched pairs (loose key). A pair is actionable only if both endpoints' intervals are narrow; this is conservative.",
+    "Metal-conditional quantiles fall back to the global quantile when a metal has fewer than 30 calibration rows, which is the case for Rh/Os in several folds.",
+    "The actionable-vs-rest contrast resamples DOIs and re-selects the actionable set inside each resample, so the CI includes selection variability."
+  ]
+}
