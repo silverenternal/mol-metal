@@ -35,7 +35,9 @@
   },
   "current_position": {
     "measured_facts": [
-      "同 (配体,细胞系) 跨 ≥2 金属: 668 对, 标签翻转 18.2% vs 重复测量噪声 9.6% (binomial p=4.8e-12)。→ 金属确实改变 y, 不是噪声。",
+      "同 (配体,细胞系) 跨 ≥2 金属: 539 个精确测量单元 (不是 668; 668 含删失行)。其中 Ru-Os 354 / Ir-Rh 170 / Ru-Rh 15, Ru-Ir 为 0。",
+      "多金属单元仅占 potency 单元的 2.7%; 只有 3/10 金属对有配对数据。",
+      "光毒性 PI: 1,150 个精确值, 但跨金属配对 = 0, 只能做配体间对比。",
       "但强归因假设被证伪: metal-robust 子集 LOMO 只恢复到 within-metal 的 75-79% (<90%)。→ 概念漂移与配体分布漂移并存。",
       "ligand-only 金属敏感性预测 AUC 0.6704 (51 pos/217 neg, permutation Holm 0.04)。→ 可预测但弱。",
       "金属描述符对迁移的增量 +0.0031 (可忽略); metal-as-domain-token 8/9 臂为负。→ 金属化学不是迁移的驱动因素。",
@@ -47,7 +49,7 @@
       "numeric_light_ic50": 1919,
       "cisplatin_ic50": 13960,
       "matched_ligand_cell_groups_ge2_measurements": 1617,
-      "matched_groups_across_metals": 668,
+      "matched_groups_across_metals": 539,
       "within_group_log10_range_quantiles": {
         "p25": 0.05,
         "p50": 0.2,
@@ -79,7 +81,17 @@
         "Os": 9,
         "Rh": 3
       },
-      "pi_caveat": "Os (n=9) and Rh (n=3) are too small to rank; only Ru/Ir support a metal contrast. Report n with every median."
+      "pi_caveat": "Os (n=9) and Rh (n=3) are too small to rank; only Ru/Ir support a metal contrast. Report n with every median.",
+      "status": "SUPERSEDED_BY_ARTIFACT",
+      "artifact": "metrics/by_metric/msrs_endpoints.json",
+      "matched_groups_across_metals_note": "旧值 668 含删失行 + 原始细胞系字符串; 精确测量 + 归一化键后为 539。逐项对账见 artifact 的 design_consequences.reconciles_prior_audit。",
+      "matched_pairs_nonempty": {
+        "Ru-Os": 354,
+        "Ir-Rh": 170,
+        "Ru-Rh": 15
+      },
+      "ru_ir_matched_units": 0,
+      "phototoxicity_matched_units": 0
     },
     "assets": {
       "binary_mainline": "metrics/by_metric/dmpnn_within_metal_cap128|cap512|capacity_pair|capacity_foldwise*_gpu0.json",
@@ -149,8 +161,42 @@
       "acceptance": "每行有 DOI 来源; 删失行单独标记; 无静默丢弃; 五金属计数与 current_position 一致。",
       "gpu": "none",
       "wall": "0.5 天",
-      "status": "TODO",
-      "priority": "P0"
+      "status": "DONE",
+      "priority": "P0",
+      "completed": "2026-10-18",
+      "artifact": "metrics/by_metric/msrs_endpoints.json + data/msrs/measurements.parquet + data/msrs/measurements_dedup.parquet",
+      "producer": "molmetal/scripts/msrs_build_endpoints.py (tests/test_msrs_endpoints.py, 28 passed)",
+      "result": {
+        "rows": {
+          "potency": 26801,
+          "phototoxicity": 2158,
+          "cisplatin_ratio": 14309
+        },
+        "exact": {
+          "potency": 21777,
+          "phototoxicity": 1150,
+          "cisplatin_ratio": 11723
+        },
+        "censoring_rate": {
+          "potency": 0.1875,
+          "phototoxicity": 0.4671,
+          "cisplatin_ratio": 0.1807
+        },
+        "funnel_ligands_match_mainline": {
+          "Ru": 4793,
+          "Ir": 1281,
+          "Rh": 334,
+          "Os": 333,
+          "Re": 250
+        }
+      },
+      "findings": [
+        "IC50_*_value 对删失行填的是数值界, 不是缺失: 5,015 个 dark '>X' 行全都有 value=X, 逐位一致 (max|diff|=0)。所以纸面 funnel 的二分类标签把 '>100 uM' 当成 100 uM, 方向正确但连续值是把下界当精确值。",
+        "668 这个旧数字是把删失行算进去、且用原始细胞系字符串得到的。限制到精确测量 + 归一化细胞系键后是 539。已在 design_consequences.reconciles_prior_audit 里逐项对账。",
+        "potency 只有 3/10 个金属对有配对: Ru-Os 354 (75% 同 DOI+时长), Ir-Rh 170 (84%), Ru-Rh 15 (33%)。Ru-Ir 配对数为 0 —— 两个最大队列没有任何共同配体。",
+        "phototoxicity 的跨金属配对数为 0: 没有任何配体在两种金属下都测了 PI。MSRS-5 只能是配体间比较, 不能做 matched ΔPI。",
+        "多金属单元只占 potency 单元的 2.7% (539/19745), L3 每个金属对的监督样本极少。"
+      ]
     },
     {
       "id": "MSRS-1",
@@ -213,16 +259,17 @@
       "id": "MSRS-5",
       "title": "光毒性切换 (功能终点)",
       "why": "PI 是金属特异的机制读数: Ir 中位 1.27 (≈19×) vs Ru 0.88 (≈7.6×)。这是最可能出『眼前一亮』结论的轴。",
-      "method": "PI 的金属主效应 + 金属对 matched ΔPI; 预测 PI; 找出 swap 使 dark→photo 翻转的配体类 (scaffold 富集)。",
+      "method": "PI 的金属主效应 (混合模型, DOI 随机截距) + 按配体骨架的金属对比 + PI 的可预测性; 不做 matched ΔPI (MSRS-0 实测跨金属配对 = 0)。",
       "deliverable": "metrics/by_metric/msrs_phototoxicity.json",
-      "acceptance": "金属效应在控制 DOI 后仍显著; 给出至少一个可检验的配体类规则。",
+      "acceptance": "金属效应在控制 DOI 后仍显著; 每条结论必须带每金属 n (Ru 582 / Ir 528 / Re 28 / Os 9 / Rh 3 的精确子集); Os/Rh 不作为排序依据。",
       "gpu": "none",
       "wall": "2 天",
       "status": "TODO",
       "priority": "P1",
       "depends_on": [
         "MSRS-0"
-      ]
+      ],
+      "blocked_by_finding": "MSRS-0: phototoxicity_matched_units = 0. 『金属切换机制』只能写成配体间的观察性对比, 不能写成同一配体的干预效应。"
     },
     {
       "id": "MSRS-6",
