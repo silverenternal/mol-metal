@@ -51,7 +51,9 @@
       "L3 响应面 (CPU, 21,045 potency / 11,403 RI): 交互比 additive 的 MAE 好 0.0202/0.0175 (Holm ≤6e-30), 但 Δ 符号准确率更差 (potency 0.5744 vs 0.6152; RI 0.4545 vs 0.5398)。",
       "加性模型的 Δ 在 (metal pair, cell, fold) 内严格为常数; 38.5% 的 |Δ|≥0.21 配对符号与金属主效应相反 —— 这是加性推荐的错误率上限。",
       "L3 conformal: 覆盖率 0.9044/0.8984 (名义 0.90), 但中位区间宽度 2.21/2.35 log10; 无任何配对联合宽度 <1.0。",
-      "actionable 子集并不更准: 整体 0.625 vs 0.623; 分层 Ru-Ir -0.043 / Ru-Os +0.075 / Ru-Rh +0.113; 最窄子集 (delta=1.5) 0.241 vs 0.640。MSRS-3 判据未过。"
+      "actionable 子集并不更准: 整体 0.625 vs 0.623; 分层 Ru-Ir -0.043 / Ru-Os +0.075 / Ru-Rh +0.113; 最窄子集 (delta=1.5) 0.241 vs 0.640。MSRS-3 判据未过。",
+      "LOMO 金属外推失败: potency 加权 MAE descriptors 0.610 / one-hot 0.608 / no-metal 0.607, no-metal 显著更好 (Holm 0.036); 五金属均值排序 rho=0.1 (p=0.87)。",
+      "金属 90% 嵌套在 DOI 内 (potency 仅 10.4% 单元与另一金属同 DOI); 留出金属的均值主要是 cohort 效应, 描述符无法编码。"
     ],
     "continuous_data_audit_2026_10_18": {
       "numeric_dark_ic50": 21777,
@@ -128,7 +130,8 @@
       "msrs_variance": "metrics/by_metric/msrs_variance_decomposition.json",
       "msrs_phototoxicity": "metrics/by_metric/msrs_phototoxicity.json",
       "msrs_surface": "metrics/by_metric/msrs_surface_model.json",
-      "msrs_actionability": "metrics/by_metric/msrs_actionability.json"
+      "msrs_actionability": "metrics/by_metric/msrs_actionability.json",
+      "msrs_lomo": "metrics/by_metric/msrs_lomo_surface.json"
     }
   },
   "framework": {
@@ -562,10 +565,157 @@
       "acceptance": "明确回答能否外推; 若不能, 给出金属描述符为何不足的诊断 (与 WP3 的 +0.0031 对齐)。",
       "gpu": "small (≤4h)",
       "wall": "3 天",
-      "status": "TODO",
+      "status": "DONE",
       "priority": "P1",
       "depends_on": [
         "MSRS-2"
+      ],
+      "completed": "2026-10-18",
+      "acceptance_met": true,
+      "artifact": "metrics/by_metric/msrs_lomo_surface.json",
+      "producer": "molmetal/scripts/msrs_lomo_surface.py (tests/test_msrs_lomo_surface.py, 6 passed)",
+      "result": {
+        "potency": {
+          "n_rows": 21045,
+          "n_dois": 1784,
+          "dois_with_multiple_metals": 109,
+          "share_units_multi_metal_dois": 0.1039,
+          "metal_out": {
+            "weighted_mae": {
+              "descriptors": 0.61,
+              "one_hot": 0.6079,
+              "none": 0.6071
+            },
+            "weighted_r2": {
+              "descriptors": -0.0734,
+              "one_hot": -0.0708,
+              "none": -0.0806
+            },
+            "mean_abs_bias": {
+              "descriptors": 0.2125,
+              "one_hot": 0.1981,
+              "none": 0.2043
+            },
+            "max_abs_bias": {
+              "descriptors": 0.3358,
+              "one_hot": 0.2526,
+              "none": 0.3015
+            },
+            "negative_r2_metals": {
+              "descriptors": 4,
+              "one_hot": 4,
+              "none": 3
+            },
+            "rank_spearman": {
+              "descriptors": 0.1,
+              "one_hot": 0.2,
+              "none": 0.2
+            },
+            "rank_p": 0.8729,
+            "descriptors_vs_none": {
+              "direction": "none better",
+              "mean_delta": 0.0045,
+              "holm_p_baseline_better": 0.0359,
+              "holm_p_metal_block_better": 1.0
+            }
+          },
+          "metal_out_ligand_disjoint": {
+            "weighted_mae": {
+              "descriptors": 0.6345,
+              "one_hot": 0.6328,
+              "none": 0.6396
+            },
+            "weighted_r2": {
+              "descriptors": -0.15,
+              "one_hot": -0.1556,
+              "none": -0.184
+            },
+            "descriptors_vs_none": {
+              "direction": "none better",
+              "mean_delta": 0.0036,
+              "holm_p_baseline_better": 0.1101
+            }
+          },
+          "per_metal_predicted_vs_observed": {
+            "Rh": {
+              "observed": 0.894,
+              "descriptors": 1.2302,
+              "bias": 0.3358
+            },
+            "Re": {
+              "observed": 1.235,
+              "descriptors": 0.9514,
+              "bias": -0.283
+            },
+            "Ru": {
+              "observed": 1.182,
+              "descriptors": 0.972,
+              "bias": -0.21
+            },
+            "Ir": {
+              "observed": 0.849,
+              "descriptors": 1.0272,
+              "bias": 0.178
+            },
+            "Os": {
+              "observed": 0.781,
+              "descriptors": 0.7246,
+              "bias": -0.056
+            }
+          }
+        },
+        "cisplatin_ratio": {
+          "n_rows": 11403,
+          "n_dois": 928,
+          "share_units_multi_metal_dois": 0.0658,
+          "metal_out": {
+            "weighted_mae": {
+              "descriptors": 0.6476,
+              "one_hot": 0.6485,
+              "none": 0.6525
+            },
+            "weighted_r2": {
+              "descriptors": -0.0793,
+              "one_hot": -0.0804,
+              "none": -0.0948
+            },
+            "rank_spearman_descriptors": 0.7,
+            "descriptors_vs_none": {
+              "direction": "descriptors better",
+              "mean_delta": -0.0024,
+              "holm_p_metal_block_better": 0.4238
+            }
+          },
+          "metal_out_ligand_disjoint": {
+            "weighted_mae": {
+              "descriptors": 0.6938,
+              "one_hot": 0.6963,
+              "none": 0.7081
+            },
+            "descriptors_vs_none": {
+              "direction": "descriptors better",
+              "mean_delta": -0.0097,
+              "holm_p_metal_block_better": 3e-05
+            }
+          }
+        },
+        "verdict": "零样本金属外推失败: 在 potency 主切分上, 忽略金属 (none) 显著优于描述符 (Holm 0.036); 描述符对五个金属均值的排序 rho=0.1 (p=0.87)。"
+      },
+      "findings": [
+        "Potency LOMO: descriptors 加权 MAE 0.6100, one-hot 0.6079, no-metal 0.6071; 4/5 金属 R² 为负。no-metal 显著优于描述符 (Holm 0.036)。",
+        "描述符无法给五个未见金属排序: Spearman rho=0.1 (p=0.87)。Rh 观测 0.894 却预测 1.230, Re 观测 1.235 却预测 0.951 —— 两端互换。",
+        "偏置大: mean |bias| 0.213, max 0.336 (Rh)。这不是方差问题, 是水平放错了。",
+        "RI: descriptors 略好 (0.6476 vs 0.6525), 但只在 ligand-disjoint 切分显著 (Holm 3e-5, Delta 0.0097); 3/5 金属 R² 仍为负。",
+        "诊断: 金属 90% 嵌套在 DOI 内 (仅 10.4% potency 单元与另一金属同 DOI), 所以留出金属的均值主要是「哪些论文研究了它」的 cohort 效应, 不是化学效应; 3 个描述符无法编码 cohort。GBDT 也无法在描述符训练范围外做数值外推。",
+        "与 WP3 对齐: 分类上金属描述符只加 +0.0031 AUC, 9 个 metal-token 臂中 8 个为负; 连续端点是同一个结论。"
+      ],
+      "decision": "MSRS-4 结案为负: 框架只在有数据的金属间做插值, 不支持未见金属的零样本外推。MSRS-6 不得对未见金属做推荐; 论文中把「跨金属外推」写成明确边界, 而不是卖点。",
+      "caveats": [
+        "外推用的是 additive 结构 (MSRS-2 的决策最优臂), 因此没有金属特异斜率可用。",
+        "3 个描述符无法张成 5 个金属; 排序失败是描述符表的性质, 不只是学习器的性质。",
+        "删失行被丢弃 (potency 18.4%), 每个金属的拟合都偏向高活性一侧。",
+        "LOMO 每次留出一个金属, 五个测试队列在样本量与配体化学上都不同, 逐金属数字不可互换。",
+        "ligand-disjoint 切分只移除测试金属中出现过的配体, 跨金属共享配体本来就少 (2.7%), 所以两种切分差别不大。"
       ]
     },
     {
@@ -799,7 +949,7 @@
     "wave_4_paper": [
       "MSRS-8"
     ],
-    "note": "Wave 1 完成; MSRS-2 与 MSRS-3 已用 CPU 结案, 零 GPU。核心结论: 交互显著但排序更差; 90% 区间覆盖达标但过宽 (中位 2.2 log10), actionable 子集并不更准。MSRS-4 仍可做 (LOMO 是外推诊断, CPU), 但 MSRS-6 的推荐层预计触发 kill criterion。"
+    "note": "Wave 1 完成; MSRS-2/3/4 已用 CPU 结案, 零 GPU。结论链: 交互显著但排序更差 (MSRS-2); 90% 区间覆盖达标但过宽且不指示正确性 (MSRS-3); 未见金属无法外推 (MSRS-4, potency 上 no-metal 显著更好)。MSRS-6 的推荐层预计触发 kill criterion; MSRS-7 仍可做, 但只能验证插值, 不能验证外推。"
   },
   "legacy_mainline": {
     "note": "二分类主线不再是论文主轴, 但其产物仍是 MSRS 的基线与对照, 不删除。",

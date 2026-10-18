@@ -1,0 +1,1318 @@
+{
+  "artifact": "msrs_lomo_surface",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "L3 metal extrapolation",
+  "generated_utc": "2026-10-18T06:05:45+00:00",
+  "provenance": {
+    "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "metal_descriptors": "/home/hugo/codes/mol-metal/molmetal/data/metal_chemistry_5.csv",
+    "metal_descriptors_sha256": "8e5c9db485f7ab270b0e49d376fbcce2954cd678495813fd26a799047c43dcc7",
+    "script": "molmetal/scripts/msrs_lomo_surface.py",
+    "git_commit": "0c1e4e4cb362efe83c424899d96d15a0a7144237",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "design": {
+    "learner": "additive LightGBM from MSRS-2 (interaction_constraints on ligand/metal/cell)",
+    "representations": [
+      "descriptors",
+      "one_hot",
+      "none"
+    ],
+    "splits": [
+      "metal_out",
+      "metal_out_ligand_disjoint"
+    ],
+    "seed": 20261018,
+    "oracle_note": "oracle_metal_mean uses the held-out metal's labels and is an upper bound, not a model."
+  },
+  "endpoints": {
+    "potency": {
+      "status": "OK",
+      "n_rows": 21045,
+      "n_dropped_censored": 4813,
+      "censored_share": 0.1836,
+      "n_ligands": 2846,
+      "design_facts": {
+        "n_dois": 1784,
+        "dois_with_multiple_metals": 109,
+        "share_units_in_multi_metal_dois": 0.1039
+      },
+      "splits": {
+        "metal_out": {
+          "per_metal": {
+            "Ru": {
+              "status": "OK",
+              "n_train": 6260,
+              "n_test": 14785,
+              "n_ligands_test": 2234,
+              "train_mean": 0.8932,
+              "observed_mean": 1.1816,
+              "models": {
+                "descriptors": {
+                  "mae": 0.6347,
+                  "r2": -0.0777,
+                  "bias": -0.2096
+                },
+                "one_hot": {
+                  "mae": 0.6313,
+                  "r2": -0.0668,
+                  "bias": -0.2107
+                },
+                "none": {
+                  "mae": 0.6263,
+                  "r2": -0.0571,
+                  "bias": -0.182
+                },
+                "train_mean": {
+                  "mae": 0.6719,
+                  "r2": -0.1411,
+                  "bias": -0.2884
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.6085,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 0.972,
+                "one_hot": 0.9709,
+                "none": 0.9996
+              }
+            },
+            "Ir": {
+              "status": "OK",
+              "n_train": 17379,
+              "n_test": 3666,
+              "n_ligands_test": 572,
+              "train_mean": 1.1478,
+              "observed_mean": 0.8494,
+              "models": {
+                "descriptors": {
+                  "mae": 0.5391,
+                  "r2": -0.1283,
+                  "bias": 0.1778
+                },
+                "one_hot": {
+                  "mae": 0.5565,
+                  "r2": -0.2007,
+                  "bias": 0.2391
+                },
+                "none": {
+                  "mae": 0.5757,
+                  "r2": -0.2949,
+                  "bias": 0.3015
+                },
+                "train_mean": {
+                  "mae": 0.5596,
+                  "r2": -0.2168,
+                  "bias": 0.2984
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.5121,
+                  "r2": 0.0,
+                  "bias": -0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 1.0272,
+                "one_hot": 1.0885,
+                "none": 1.1509
+              }
+            },
+            "Rh": {
+              "status": "OK",
+              "n_train": 20086,
+              "n_test": 959,
+              "n_ligands_test": 221,
+              "train_mean": 1.1054,
+              "observed_mean": 0.8944,
+              "models": {
+                "descriptors": {
+                  "mae": 0.5924,
+                  "r2": -0.1589,
+                  "bias": 0.3358
+                },
+                "one_hot": {
+                  "mae": 0.5527,
+                  "r2": -0.0337,
+                  "bias": 0.2102
+                },
+                "none": {
+                  "mae": 0.5772,
+                  "r2": -0.1074,
+                  "bias": 0.2716
+                },
+                "train_mean": {
+                  "mae": 0.5658,
+                  "r2": -0.085,
+                  "bias": 0.211
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.5485,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 1.2302,
+                "one_hot": 1.1047,
+                "none": 1.166
+              }
+            },
+            "Os": {
+              "status": "OK",
+              "n_train": 20166,
+              "n_test": 879,
+              "n_ligands_test": 179,
+              "train_mean": 1.1095,
+              "observed_mean": 0.7807,
+              "models": {
+                "descriptors": {
+                  "mae": 0.5718,
+                  "r2": 0.3479,
+                  "bias": -0.0562
+                },
+                "one_hot": {
+                  "mae": 0.5669,
+                  "r2": 0.3349,
+                  "bias": 0.0778
+                },
+                "none": {
+                  "mae": 0.5647,
+                  "r2": 0.3181,
+                  "bias": 0.1784
+                },
+                "train_mean": {
+                  "mae": 0.7558,
+                  "r2": -0.142,
+                  "bias": 0.3288
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.725,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 0.7246,
+                "one_hot": 0.8586,
+                "none": 0.9592
+              }
+            },
+            "Re": {
+              "status": "OK",
+              "n_train": 20289,
+              "n_test": 756,
+              "n_ligands_test": 127,
+              "train_mean": 1.0906,
+              "observed_mean": 1.2346,
+              "models": {
+                "descriptors": {
+                  "mae": 0.5371,
+                  "r2": -0.1034,
+                  "bias": -0.2832
+                },
+                "one_hot": {
+                  "mae": 0.5172,
+                  "r2": -0.0388,
+                  "bias": -0.2526
+                },
+                "none": {
+                  "mae": 0.4712,
+                  "r2": 0.0706,
+                  "bias": -0.0879
+                },
+                "train_mean": {
+                  "mae": 0.5224,
+                  "r2": -0.0488,
+                  "bias": -0.144
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.4965,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 0.9514,
+                "one_hot": 0.982,
+                "none": 1.1467
+              }
+            }
+          },
+          "aggregate": {
+            "descriptors": {
+              "weighted_mae": 0.61,
+              "weighted_r2": -0.0734,
+              "mean_abs_bias": 0.2125,
+              "max_abs_bias": 0.3358,
+              "n_metals_negative_r2": 4
+            },
+            "one_hot": {
+              "weighted_mae": 0.6079,
+              "weighted_r2": -0.0708,
+              "mean_abs_bias": 0.1981,
+              "max_abs_bias": 0.2526,
+              "n_metals_negative_r2": 4
+            },
+            "none": {
+              "weighted_mae": 0.6071,
+              "weighted_r2": -0.0806,
+              "mean_abs_bias": 0.2043,
+              "max_abs_bias": 0.3015,
+              "n_metals_negative_r2": 3
+            }
+          },
+          "rank_agreement": {
+            "descriptors": {
+              "spearman_rho": 0.1,
+              "p": 0.8729,
+              "n_metals": 5,
+              "predicted_means": {
+                "Ru": 0.972,
+                "Ir": 1.0272,
+                "Rh": 1.2302,
+                "Os": 0.7246,
+                "Re": 0.9514
+              },
+              "observed_means": {
+                "Ru": 1.1816,
+                "Ir": 0.8494,
+                "Rh": 0.8944,
+                "Os": 0.7807,
+                "Re": 1.2346
+              }
+            },
+            "one_hot": {
+              "spearman_rho": 0.2,
+              "p": 0.7471,
+              "n_metals": 5,
+              "predicted_means": {
+                "Ru": 0.9709,
+                "Ir": 1.0885,
+                "Rh": 1.1047,
+                "Os": 0.8586,
+                "Re": 0.982
+              },
+              "observed_means": {
+                "Ru": 1.1816,
+                "Ir": 0.8494,
+                "Rh": 0.8944,
+                "Os": 0.7807,
+                "Re": 1.2346
+              }
+            },
+            "none": {
+              "spearman_rho": 0.2,
+              "p": 0.7471,
+              "n_metals": 5,
+              "predicted_means": {
+                "Ru": 0.9996,
+                "Ir": 1.1509,
+                "Rh": 1.166,
+                "Os": 0.9592,
+                "Re": 1.1467
+              },
+              "observed_means": {
+                "Ru": 1.1816,
+                "Ir": 0.8494,
+                "Rh": 0.8944,
+                "Os": 0.7807,
+                "Re": 1.2346
+              }
+            }
+          },
+          "paired_tests": {
+            "descriptors_vs_none": {
+              "n_ligands": 2846,
+              "mean_mae_a": 0.6142,
+              "mean_mae_b": 0.6097,
+              "mean_delta": 0.0045,
+              "t": 2.3676,
+              "p_one_sided_b_better": 0.008984726842115955,
+              "p_one_sided_a_better": 0.99101527,
+              "direction": "b better",
+              "holm_p_baseline_better": 0.03593890736846382,
+              "holm_p_metal_block_better": 1.0
+            },
+            "descriptors_vs_one_hot": {
+              "n_ligands": 2846,
+              "mean_mae_a": 0.6142,
+              "mean_mae_b": 0.6095,
+              "mean_delta": 0.0047,
+              "t": 3.0247,
+              "p_one_sided_b_better": 0.0012553817157051764,
+              "p_one_sided_a_better": 0.99874462,
+              "direction": "b better",
+              "holm_p_baseline_better": 0.003766145147115529,
+              "holm_p_metal_block_better": 1.0
+            }
+          }
+        },
+        "metal_out_ligand_disjoint": {
+          "per_metal": {
+            "Ru": {
+              "status": "OK",
+              "n_train": 3067,
+              "n_test": 14785,
+              "n_ligands_test": 2234,
+              "train_mean": 0.922,
+              "observed_mean": 1.1816,
+              "models": {
+                "descriptors": {
+                  "mae": 0.6507,
+                  "r2": -0.1154,
+                  "bias": -0.1539
+                },
+                "one_hot": {
+                  "mae": 0.6448,
+                  "r2": -0.0998,
+                  "bias": -0.1244
+                },
+                "none": {
+                  "mae": 0.6423,
+                  "r2": -0.0918,
+                  "bias": -0.1207
+                },
+                "train_mean": {
+                  "mae": 0.662,
+                  "r2": -0.1143,
+                  "bias": -0.2596
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.6085,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 1.0277,
+                "one_hot": 1.0572,
+                "none": 1.0609
+              }
+            },
+            "Ir": {
+              "status": "OK",
+              "n_train": 13404,
+              "n_test": 3666,
+              "n_ligands_test": 572,
+              "train_mean": 1.188,
+              "observed_mean": 0.8494,
+              "models": {
+                "descriptors": {
+                  "mae": 0.5867,
+                  "r2": -0.348,
+                  "bias": 0.2648
+                },
+                "one_hot": {
+                  "mae": 0.6143,
+                  "r2": -0.4778,
+                  "bias": 0.3489
+                },
+                "none": {
+                  "mae": 0.6487,
+                  "r2": -0.6223,
+                  "bias": 0.4169
+                },
+                "train_mean": {
+                  "mae": 0.5737,
+                  "r2": -0.2791,
+                  "bias": 0.3386
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.5121,
+                  "r2": 0.0,
+                  "bias": -0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 1.1142,
+                "one_hot": 1.1983,
+                "none": 1.2663
+              }
+            },
+            "Rh": {
+              "status": "OK",
+              "n_train": 16255,
+              "n_test": 959,
+              "n_ligands_test": 221,
+              "train_mean": 1.0892,
+              "observed_mean": 0.8944,
+              "models": {
+                "descriptors": {
+                  "mae": 0.6037,
+                  "r2": -0.1948,
+                  "bias": 0.3006
+                },
+                "one_hot": {
+                  "mae": 0.5731,
+                  "r2": -0.0899,
+                  "bias": 0.1737
+                },
+                "none": {
+                  "mae": 0.5996,
+                  "r2": -0.1775,
+                  "bias": 0.2472
+                },
+                "train_mean": {
+                  "mae": 0.5621,
+                  "r2": -0.0725,
+                  "bias": 0.1948
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.5485,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 1.195,
+                "one_hot": 1.0682,
+                "none": 1.1416
+              }
+            },
+            "Os": {
+              "status": "OK",
+              "n_train": 16971,
+              "n_test": 879,
+              "n_ligands_test": 179,
+              "train_mean": 1.1106,
+              "observed_mean": 0.7807,
+              "models": {
+                "descriptors": {
+                  "mae": 0.6705,
+                  "r2": 0.1143,
+                  "bias": 0.0767
+                },
+                "one_hot": {
+                  "mae": 0.6747,
+                  "r2": 0.0592,
+                  "bias": 0.2127
+                },
+                "none": {
+                  "mae": 0.7085,
+                  "r2": -0.0545,
+                  "bias": 0.3171
+                },
+                "train_mean": {
+                  "mae": 0.756,
+                  "r2": -0.1429,
+                  "bias": 0.3298
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.725,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 0.8575,
+                "one_hot": 0.9935,
+                "none": 1.0979
+              }
+            },
+            "Re": {
+              "status": "OK",
+              "n_train": 17797,
+              "n_test": 756,
+              "n_ligands_test": 127,
+              "train_mean": 1.1071,
+              "observed_mean": 1.2346,
+              "models": {
+                "descriptors": {
+                  "mae": 0.5478,
+                  "r2": -0.1173,
+                  "bias": -0.1696
+                },
+                "one_hot": {
+                  "mae": 0.5151,
+                  "r2": -0.0174,
+                  "bias": -0.1372
+                },
+                "none": {
+                  "mae": 0.5128,
+                  "r2": -0.0207,
+                  "bias": -0.0244
+                },
+                "train_mean": {
+                  "mae": 0.5185,
+                  "r2": -0.0383,
+                  "bias": -0.1275
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.4965,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 1.065,
+                "one_hot": 1.0974,
+                "none": 1.2102
+              }
+            }
+          },
+          "aggregate": {
+            "descriptors": {
+              "weighted_mae": 0.6345,
+              "weighted_r2": -0.15,
+              "mean_abs_bias": 0.1931,
+              "max_abs_bias": 0.3006,
+              "n_metals_negative_r2": 4
+            },
+            "one_hot": {
+              "weighted_mae": 0.6328,
+              "weighted_r2": -0.1556,
+              "mean_abs_bias": 0.1994,
+              "max_abs_bias": 0.3489,
+              "n_metals_negative_r2": 4
+            },
+            "none": {
+              "weighted_mae": 0.6396,
+              "weighted_r2": -0.184,
+              "mean_abs_bias": 0.2253,
+              "max_abs_bias": 0.4169,
+              "n_metals_negative_r2": 5
+            }
+          },
+          "rank_agreement": {
+            "descriptors": {
+              "spearman_rho": 0.2,
+              "p": 0.7471,
+              "n_metals": 5,
+              "predicted_means": {
+                "Ru": 1.0277,
+                "Ir": 1.1142,
+                "Rh": 1.195,
+                "Os": 0.8575,
+                "Re": 1.065
+              },
+              "observed_means": {
+                "Ru": 1.1816,
+                "Ir": 0.8494,
+                "Rh": 0.8944,
+                "Os": 0.7807,
+                "Re": 1.2346
+              }
+            },
+            "one_hot": {
+              "spearman_rho": 0.3,
+              "p": 0.6238,
+              "n_metals": 5,
+              "predicted_means": {
+                "Ru": 1.0572,
+                "Ir": 1.1983,
+                "Rh": 1.0682,
+                "Os": 0.9935,
+                "Re": 1.0974
+              },
+              "observed_means": {
+                "Ru": 1.1816,
+                "Ir": 0.8494,
+                "Rh": 0.8944,
+                "Os": 0.7807,
+                "Re": 1.2346
+              }
+            },
+            "none": {
+              "spearman_rho": 0.0,
+              "p": 1.0,
+              "n_metals": 5,
+              "predicted_means": {
+                "Ru": 1.0609,
+                "Ir": 1.2663,
+                "Rh": 1.1416,
+                "Os": 1.0979,
+                "Re": 1.2102
+              },
+              "observed_means": {
+                "Ru": 1.1816,
+                "Ir": 0.8494,
+                "Rh": 0.8944,
+                "Os": 0.7807,
+                "Re": 1.2346
+              }
+            }
+          },
+          "paired_tests": {
+            "descriptors_vs_none": {
+              "n_ligands": 2846,
+              "mean_mae_a": 0.6247,
+              "mean_mae_b": 0.621,
+              "mean_delta": 0.0036,
+              "t": 1.7912,
+              "p_one_sided_b_better": 0.036685696342172475,
+              "p_one_sided_a_better": 0.9633143,
+              "direction": "b better",
+              "holm_p_baseline_better": 0.11005708902651742,
+              "holm_p_metal_block_better": 1.0
+            },
+            "descriptors_vs_one_hot": {
+              "n_ligands": 2846,
+              "mean_mae_a": 0.6247,
+              "mean_mae_b": 0.6172,
+              "mean_delta": 0.0075,
+              "t": 4.5676,
+              "p_one_sided_b_better": 2.5712804553267995e-06,
+              "p_one_sided_a_better": 0.99999743,
+              "direction": "b better",
+              "holm_p_baseline_better": 1.0285121821307198e-05,
+              "holm_p_metal_block_better": 1.0
+            }
+          }
+        }
+      },
+      "elapsed_seconds": 193.8
+    },
+    "cisplatin_ratio": {
+      "status": "OK",
+      "n_rows": 11403,
+      "n_dropped_censored": 2510,
+      "censored_share": 0.1783,
+      "n_ligands": 1616,
+      "design_facts": {
+        "n_dois": 928,
+        "dois_with_multiple_metals": 40,
+        "share_units_in_multi_metal_dois": 0.0658
+      },
+      "splits": {
+        "metal_out": {
+          "per_metal": {
+            "Ru": {
+              "status": "OK",
+              "n_train": 2389,
+              "n_test": 9014,
+              "n_ligands_test": 1382,
+              "train_mean": -0.1099,
+              "observed_mean": 0.2071,
+              "models": {
+                "descriptors": {
+                  "mae": 0.6701,
+                  "r2": -0.106,
+                  "bias": -0.1878
+                },
+                "one_hot": {
+                  "mae": 0.6732,
+                  "r2": -0.1127,
+                  "bias": -0.201
+                },
+                "none": {
+                  "mae": 0.6706,
+                  "r2": -0.1021,
+                  "bias": -0.2033
+                },
+                "train_mean": {
+                  "mae": 0.6789,
+                  "r2": -0.1521,
+                  "bias": -0.3169
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.623,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 0.0193,
+                "one_hot": 0.0061,
+                "none": 0.0037
+              }
+            },
+            "Ir": {
+              "status": "OK",
+              "n_train": 10374,
+              "n_test": 1029,
+              "n_ligands_test": 168,
+              "train_mean": 0.1722,
+              "observed_mean": -0.1776,
+              "models": {
+                "descriptors": {
+                  "mae": 0.5207,
+                  "r2": -0.1179,
+                  "bias": 0.1578
+                },
+                "one_hot": {
+                  "mae": 0.5214,
+                  "r2": -0.1258,
+                  "bias": 0.1468
+                },
+                "none": {
+                  "mae": 0.5509,
+                  "r2": -0.2662,
+                  "bias": 0.2692
+                },
+                "train_mean": {
+                  "mae": 0.5715,
+                  "r2": -0.2956,
+                  "bias": 0.3498
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.4848,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": -0.0198,
+                "one_hot": -0.0308,
+                "none": 0.0916
+              }
+            },
+            "Rh": {
+              "status": "OK",
+              "n_train": 10845,
+              "n_test": 558,
+              "n_ligands_test": 136,
+              "train_mean": 0.1507,
+              "observed_mean": -0.0552,
+              "models": {
+                "descriptors": {
+                  "mae": 0.5774,
+                  "r2": 0.0541,
+                  "bias": 0.2522
+                },
+                "one_hot": {
+                  "mae": 0.5543,
+                  "r2": 0.1309,
+                  "bias": 0.1212
+                },
+                "none": {
+                  "mae": 0.5901,
+                  "r2": 0.0335,
+                  "bias": 0.2293
+                },
+                "train_mean": {
+                  "mae": 0.6141,
+                  "r2": -0.0673,
+                  "bias": 0.206
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.5822,
+                  "r2": 0.0,
+                  "bias": -0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 0.1969,
+                "one_hot": 0.0659,
+                "none": 0.1741
+              }
+            },
+            "Os": {
+              "status": "OK",
+              "n_train": 10950,
+              "n_test": 453,
+              "n_ligands_test": 77,
+              "train_mean": 0.1477,
+              "observed_mean": -0.0293,
+              "models": {
+                "descriptors": {
+                  "mae": 0.6225,
+                  "r2": 0.335,
+                  "bias": 0.0416
+                },
+                "one_hot": {
+                  "mae": 0.6179,
+                  "r2": 0.3471,
+                  "bias": 0.0493
+                },
+                "none": {
+                  "mae": 0.6361,
+                  "r2": 0.2916,
+                  "bias": 0.1825
+                },
+                "train_mean": {
+                  "mae": 0.7692,
+                  "r2": -0.0343,
+                  "bias": 0.177
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.7784,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 0.0123,
+                "one_hot": 0.02,
+                "none": 0.1532
+              }
+            },
+            "Re": {
+              "status": "OK",
+              "n_train": 11054,
+              "n_test": 349,
+              "n_ligands_test": 59,
+              "train_mean": 0.1483,
+              "observed_mean": -0.1022,
+              "models": {
+                "descriptors": {
+                  "mae": 0.5853,
+                  "r2": -0.0257,
+                  "bias": 0.0884
+                },
+                "one_hot": {
+                  "mae": 0.577,
+                  "r2": -0.0062,
+                  "bias": 0.0925
+                },
+                "none": {
+                  "mae": 0.6061,
+                  "r2": -0.1065,
+                  "bias": 0.2257
+                },
+                "train_mean": {
+                  "mae": 0.6124,
+                  "r2": -0.1078,
+                  "bias": 0.2506
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.5918,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": -0.0139,
+                "one_hot": -0.0098,
+                "none": 0.1235
+              }
+            }
+          },
+          "aggregate": {
+            "descriptors": {
+              "weighted_mae": 0.6476,
+              "weighted_r2": -0.0793,
+              "mean_abs_bias": 0.1456,
+              "max_abs_bias": 0.2522,
+              "n_metals_negative_r2": 3
+            },
+            "one_hot": {
+              "weighted_mae": 0.6485,
+              "weighted_r2": -0.0804,
+              "mean_abs_bias": 0.1222,
+              "max_abs_bias": 0.201,
+              "n_metals_negative_r2": 3
+            },
+            "none": {
+              "weighted_mae": 0.6525,
+              "weighted_r2": -0.0948,
+              "mean_abs_bias": 0.222,
+              "max_abs_bias": 0.2692,
+              "n_metals_negative_r2": 3
+            }
+          },
+          "rank_agreement": {
+            "descriptors": {
+              "spearman_rho": 0.7,
+              "p": 0.1881,
+              "n_metals": 5,
+              "predicted_means": {
+                "Ru": 0.0193,
+                "Ir": -0.0198,
+                "Rh": 0.1969,
+                "Os": 0.0123,
+                "Re": -0.0139
+              },
+              "observed_means": {
+                "Ru": 0.2071,
+                "Ir": -0.1776,
+                "Rh": -0.0552,
+                "Os": -0.0293,
+                "Re": -0.1022
+              }
+            },
+            "one_hot": {
+              "spearman_rho": 0.6,
+              "p": 0.2848,
+              "n_metals": 5,
+              "predicted_means": {
+                "Ru": 0.0061,
+                "Ir": -0.0308,
+                "Rh": 0.0659,
+                "Os": 0.02,
+                "Re": -0.0098
+              },
+              "observed_means": {
+                "Ru": 0.2071,
+                "Ir": -0.1776,
+                "Rh": -0.0552,
+                "Os": -0.0293,
+                "Re": -0.1022
+              }
+            },
+            "none": {
+              "spearman_rho": -0.1,
+              "p": 0.8729,
+              "n_metals": 5,
+              "predicted_means": {
+                "Ru": 0.0037,
+                "Ir": 0.0916,
+                "Rh": 0.1741,
+                "Os": 0.1532,
+                "Re": 0.1235
+              },
+              "observed_means": {
+                "Ru": 0.2071,
+                "Ir": -0.1776,
+                "Rh": -0.0552,
+                "Os": -0.0293,
+                "Re": -0.1022
+              }
+            }
+          },
+          "paired_tests": {
+            "descriptors_vs_none": {
+              "n_ligands": 1616,
+              "mean_mae_a": 0.6435,
+              "mean_mae_b": 0.6459,
+              "mean_delta": -0.0024,
+              "t": -1.075,
+              "p_one_sided_b_better": 0.8587288100337803,
+              "p_one_sided_a_better": 0.14127119,
+              "direction": "a better",
+              "holm_p_baseline_better": 1.0,
+              "holm_p_metal_block_better": 0.42381357
+            },
+            "descriptors_vs_one_hot": {
+              "n_ligands": 1616,
+              "mean_mae_a": 0.6435,
+              "mean_mae_b": 0.6427,
+              "mean_delta": 0.0008,
+              "t": 0.3547,
+              "p_one_sided_b_better": 0.3614206809327527,
+              "p_one_sided_a_better": 0.63857932,
+              "direction": "b better",
+              "holm_p_baseline_better": 0.7228413618655054,
+              "holm_p_metal_block_better": 1.0
+            }
+          }
+        },
+        "metal_out_ligand_disjoint": {
+          "per_metal": {
+            "Ru": {
+              "status": "OK",
+              "n_train": 1215,
+              "n_test": 9014,
+              "n_ligands_test": 1382,
+              "train_mean": -0.0963,
+              "observed_mean": 0.2071,
+              "models": {
+                "descriptors": {
+                  "mae": 0.7126,
+                  "r2": -0.2255,
+                  "bias": -0.18
+                },
+                "one_hot": {
+                  "mae": 0.7183,
+                  "r2": -0.2477,
+                  "bias": -0.2008
+                },
+                "none": {
+                  "mae": 0.7266,
+                  "r2": -0.2668,
+                  "bias": -0.2097
+                },
+                "train_mean": {
+                  "mae": 0.6741,
+                  "r2": -0.1394,
+                  "bias": -0.3033
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.623,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 0.027,
+                "one_hot": 0.0062,
+                "none": -0.0026
+              }
+            },
+            "Ir": {
+              "status": "OK",
+              "n_train": 8821,
+              "n_test": 1029,
+              "n_ligands_test": 168,
+              "train_mean": 0.2007,
+              "observed_mean": -0.1776,
+              "models": {
+                "descriptors": {
+                  "mae": 0.5672,
+                  "r2": -0.3061,
+                  "bias": 0.1828
+                },
+                "one_hot": {
+                  "mae": 0.5651,
+                  "r2": -0.306,
+                  "bias": 0.2026
+                },
+                "none": {
+                  "mae": 0.5891,
+                  "r2": -0.4116,
+                  "bias": 0.2907
+                },
+                "train_mean": {
+                  "mae": 0.5857,
+                  "r2": -0.3457,
+                  "bias": 0.3783
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.4848,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 0.0052,
+                "one_hot": 0.025,
+                "none": 0.1131
+              }
+            },
+            "Rh": {
+              "status": "OK",
+              "n_train": 8996,
+              "n_test": 558,
+              "n_ligands_test": 136,
+              "train_mean": 0.1108,
+              "observed_mean": -0.0552,
+              "models": {
+                "descriptors": {
+                  "mae": 0.6447,
+                  "r2": -0.1844,
+                  "bias": 0.2006
+                },
+                "one_hot": {
+                  "mae": 0.6092,
+                  "r2": -0.0911,
+                  "bias": 0.0747
+                },
+                "none": {
+                  "mae": 0.6409,
+                  "r2": -0.1592,
+                  "bias": 0.1813
+                },
+                "train_mean": {
+                  "mae": 0.6041,
+                  "r2": -0.0437,
+                  "bias": 0.166
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.5822,
+                  "r2": 0.0,
+                  "bias": -0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 0.1454,
+                "one_hot": 0.0194,
+                "none": 0.126
+              }
+            },
+            "Os": {
+              "status": "OK",
+              "n_train": 9745,
+              "n_test": 453,
+              "n_ligands_test": 77,
+              "train_mean": 0.116,
+              "observed_mean": -0.0293,
+              "models": {
+                "descriptors": {
+                  "mae": 0.7204,
+                  "r2": 0.059,
+                  "bias": 0.1046
+                },
+                "one_hot": {
+                  "mae": 0.7309,
+                  "r2": 0.0159,
+                  "bias": 0.121
+                },
+                "none": {
+                  "mae": 0.726,
+                  "r2": 0.0013,
+                  "bias": 0.252
+                },
+                "train_mean": {
+                  "mae": 0.7688,
+                  "r2": -0.0231,
+                  "bias": 0.1453
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.7784,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 0.0753,
+                "one_hot": 0.0917,
+                "none": 0.2227
+              }
+            },
+            "Re": {
+              "status": "OK",
+              "n_train": 9908,
+              "n_test": 349,
+              "n_ligands_test": 59,
+              "train_mean": 0.1697,
+              "observed_mean": -0.1022,
+              "models": {
+                "descriptors": {
+                  "mae": 0.6268,
+                  "r2": -0.1475,
+                  "bias": 0.2568
+                },
+                "one_hot": {
+                  "mae": 0.6082,
+                  "r2": -0.0973,
+                  "bias": 0.2203
+                },
+                "none": {
+                  "mae": 0.6646,
+                  "r2": -0.2613,
+                  "bias": 0.3934
+                },
+                "train_mean": {
+                  "mae": 0.6179,
+                  "r2": -0.127,
+                  "bias": 0.272
+                },
+                "oracle_metal_mean": {
+                  "mae": 0.5918,
+                  "r2": 0.0,
+                  "bias": 0.0
+                }
+              },
+              "pred_mean_by_representation": {
+                "descriptors": 0.1546,
+                "one_hot": 0.1181,
+                "none": 0.2911
+              }
+            }
+          },
+          "aggregate": {
+            "descriptors": {
+              "weighted_mae": 0.6938,
+              "weighted_r2": -0.2171,
+              "mean_abs_bias": 0.185,
+              "max_abs_bias": 0.2568,
+              "n_metals_negative_r2": 4
+            },
+            "one_hot": {
+              "weighted_mae": 0.6963,
+              "weighted_r2": -0.2302,
+              "mean_abs_bias": 0.1639,
+              "max_abs_bias": 0.2203,
+              "n_metals_negative_r2": 4
+            },
+            "none": {
+              "weighted_mae": 0.7081,
+              "weighted_r2": -0.2638,
+              "mean_abs_bias": 0.2654,
+              "max_abs_bias": 0.3934,
+              "n_metals_negative_r2": 4
+            }
+          },
+          "rank_agreement": {
+            "descriptors": {
+              "spearman_rho": 0.0,
+              "p": 1.0,
+              "n_metals": 5,
+              "predicted_means": {
+                "Ru": 0.027,
+                "Ir": 0.0052,
+                "Rh": 0.1454,
+                "Os": 0.0753,
+                "Re": 0.1546
+              },
+              "observed_means": {
+                "Ru": 0.2071,
+                "Ir": -0.1776,
+                "Rh": -0.0552,
+                "Os": -0.0293,
+                "Re": -0.1022
+              }
+            },
+            "one_hot": {
+              "spearman_rho": -0.5,
+              "p": 0.391,
+              "n_metals": 5,
+              "predicted_means": {
+                "Ru": 0.0062,
+                "Ir": 0.025,
+                "Rh": 0.0194,
+                "Os": 0.0917,
+                "Re": 0.1181
+              },
+              "observed_means": {
+                "Ru": 0.2071,
+                "Ir": -0.1776,
+                "Rh": -0.0552,
+                "Os": -0.0293,
+                "Re": -0.1022
+              }
+            },
+            "none": {
+              "spearman_rho": -0.3,
+              "p": 0.6238,
+              "n_metals": 5,
+              "predicted_means": {
+                "Ru": -0.0026,
+                "Ir": 0.1131,
+                "Rh": 0.126,
+                "Os": 0.2227,
+                "Re": 0.2911
+              },
+              "observed_means": {
+                "Ru": 0.2071,
+                "Ir": -0.1776,
+                "Rh": -0.0552,
+                "Os": -0.0293,
+                "Re": -0.1022
+              }
+            }
+          },
+          "paired_tests": {
+            "descriptors_vs_none": {
+              "n_ligands": 1616,
+              "mean_mae_a": 0.6612,
+              "mean_mae_b": 0.6709,
+              "mean_delta": -0.0097,
+              "t": -4.3457,
+              "p_one_sided_b_better": 0.9999926271581602,
+              "p_one_sided_a_better": 7.37e-06,
+              "direction": "a better",
+              "holm_p_baseline_better": 1.0,
+              "holm_p_metal_block_better": 2.948e-05
+            },
+            "descriptors_vs_one_hot": {
+              "n_ligands": 1616,
+              "mean_mae_a": 0.6612,
+              "mean_mae_b": 0.6632,
+              "mean_delta": -0.002,
+              "t": -0.8845,
+              "p_one_sided_b_better": 0.8117276980012798,
+              "p_one_sided_a_better": 0.1882723,
+              "direction": "a better",
+              "holm_p_baseline_better": 0.8117276980012798,
+              "holm_p_metal_block_better": 0.7530892
+            }
+          }
+        }
+      },
+      "elapsed_seconds": 148.0
+    }
+  },
+  "caveats": [
+    "The additive structure is imposed because MSRS-2 showed it ranks metals better. A metal-specific slope is therefore not available to the extrapolation.",
+    "Three descriptors cannot span five metals; a poor rank correlation is a property of the descriptor table, not of the learner.",
+    "Censored rows are dropped (potency 18.4%), so the extrapolation is fitted on the potent side of each metal's cohort.",
+    "LOMO evaluates one metal at a time; the five test cohorts differ in size and in ligand chemistry, so the per-metal numbers are not exchangeable."
+  ]
+}
