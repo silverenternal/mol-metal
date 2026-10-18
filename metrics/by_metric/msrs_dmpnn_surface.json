@@ -1,0 +1,307 @@
+{
+  "artifact": "msrs_dmpnn_surface",
+  "version": "1.0",
+  "requires_dual_split": true,
+  "generated_utc": "2026-10-18T17:57:46+00:00",
+  "provenance": {
+    "config": "configs/msrs_dmpnn_surface_gpu0.yaml",
+    "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_dmpnn_surface.py",
+    "git_commit": "a101e001ee4670cd3ed541c935159a8f1cbba8f4"
+  },
+  "design": {
+    "rows": 21404,
+    "ligands_main_fragment": 2846,
+    "complexes_canonical": 5861,
+    "unique_graphs": 6081,
+    "unparseable_graphs": 0,
+    "device": "cuda:0",
+    "folds": "GroupKFold(5) via folds_for; both splits reported",
+    "cond_dim": 59,
+    "metal_feat_dim": 18,
+    "cell_vocabulary_size": 41,
+    "model": {
+      "hidden": 128,
+      "depth": 3,
+      "dropout": 0.1
+    },
+    "train": {
+      "epochs": 60,
+      "batch_size": 64,
+      "lr": 0.001,
+      "weight_decay": 1e-05,
+      "patience": 10,
+      "inner_val_fraction": 0.1,
+      "seed": 20261018
+    },
+    "arms": {
+      "ligand_cell": {
+        "metal_mode": "blind",
+        "use_metal_node": false,
+        "metal_injection": "readout"
+      },
+      "metal_identity": {
+        "metal_mode": "identity",
+        "use_metal_node": true,
+        "metal_injection": "message"
+      },
+      "metal_state": {
+        "metal_mode": "state",
+        "use_metal_node": true,
+        "metal_injection": "message"
+      }
+    },
+    "arm_ligand_source": {
+      "ligand_cell": "ligand_canonical",
+      "metal_identity": "ligand_canonical",
+      "metal_state": "ligand_canonical"
+    },
+    "baseline_arm": "lgb_complex",
+    "baseline_note": "LightGBM reference recomputed in this script on the same folds; it sees metal and cell line as native categorical codes.",
+    "oof_path": "results/msrs_dmpnn_surface/oof.npz"
+  },
+  "splits": {
+    "fragment_grouped": {
+      "lgb_complex": {
+        "mae": 0.4376,
+        "r2": 0.4368,
+        "rmse": 0.5722,
+        "wall_s": 27.7
+      },
+      "ligand_cell": {
+        "mae": 0.4434,
+        "r2": 0.4107,
+        "rmse": 0.5853,
+        "inner_val_mae": [
+          0.4691,
+          0.4237,
+          0.4285,
+          0.4184,
+          0.4409
+        ],
+        "wall_s": 374.6,
+        "cond_dim": 59,
+        "vs_lgb": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4209,
+          "mean_mae_b": 0.4405,
+          "mean_delta": -0.0196,
+          "t": -4.2997,
+          "p_one_sided": 0.9999911623453264,
+          "direction": "a better"
+        },
+        "delta_r2_vs_lgb": -0.0261
+      },
+      "metal_identity": {
+        "mae": 0.44,
+        "r2": 0.4237,
+        "rmse": 0.5788,
+        "inner_val_mae": [
+          0.434,
+          0.3984,
+          0.4255,
+          0.4312,
+          0.4299
+        ],
+        "wall_s": 474.9,
+        "cond_dim": 59,
+        "vs_lgb": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4209,
+          "mean_mae_b": 0.4266,
+          "mean_delta": -0.0057,
+          "t": -1.2356,
+          "p_one_sided": 0.8916479543805175,
+          "direction": "a better"
+        },
+        "delta_r2_vs_lgb": -0.0131,
+        "vs_ligand_cell": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4405,
+          "mean_mae_b": 0.4266,
+          "mean_delta": 0.0139,
+          "t": 3.4361,
+          "p_one_sided": 0.00029933676844386115,
+          "direction": "b better"
+        },
+        "delta_r2_vs_ligand_cell": 0.013
+      },
+      "metal_state": {
+        "mae": 0.4363,
+        "r2": 0.4263,
+        "rmse": 0.5774,
+        "inner_val_mae": [
+          0.439,
+          0.4052,
+          0.4065,
+          0.4203,
+          0.4346
+        ],
+        "wall_s": 501.2,
+        "cond_dim": 59,
+        "vs_lgb": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4209,
+          "mean_mae_b": 0.4227,
+          "mean_delta": -0.0018,
+          "t": -0.3917,
+          "p_one_sided": 0.6523330658684994,
+          "direction": "a better"
+        },
+        "delta_r2_vs_lgb": -0.0105,
+        "vs_metal_identity": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4266,
+          "mean_mae_b": 0.4227,
+          "mean_delta": 0.0039,
+          "t": 1.0992,
+          "p_one_sided": 0.13589441036717909,
+          "direction": "b better"
+        },
+        "delta_r2_vs_metal_identity": 0.0026
+      }
+    },
+    "canonical_grouped": {
+      "lgb_complex": {
+        "mae": 0.4079,
+        "r2": 0.5012,
+        "rmse": 0.5384,
+        "wall_s": 28.7
+      },
+      "ligand_cell": {
+        "mae": 0.427,
+        "r2": 0.4553,
+        "rmse": 0.5627,
+        "inner_val_mae": [
+          0.398,
+          0.4214,
+          0.3866,
+          0.4088,
+          0.4173
+        ],
+        "wall_s": 466.2,
+        "cond_dim": 59,
+        "vs_lgb": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4054,
+          "mean_mae_b": 0.4228,
+          "mean_delta": -0.0174,
+          "t": -3.9936,
+          "p_one_sided": 0.9999666366881304,
+          "direction": "a better"
+        },
+        "delta_r2_vs_lgb": -0.0459
+      },
+      "metal_identity": {
+        "mae": 0.4182,
+        "r2": 0.4726,
+        "rmse": 0.5537,
+        "inner_val_mae": [
+          0.4035,
+          0.3724,
+          0.378,
+          0.4076,
+          0.4344
+        ],
+        "wall_s": 565.4,
+        "cond_dim": 59,
+        "vs_lgb": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4054,
+          "mean_mae_b": 0.4086,
+          "mean_delta": -0.0032,
+          "t": -0.6865,
+          "p_one_sided": 0.75376954266557,
+          "direction": "a better"
+        },
+        "delta_r2_vs_lgb": -0.0286,
+        "vs_ligand_cell": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4228,
+          "mean_mae_b": 0.4086,
+          "mean_delta": 0.0143,
+          "t": 3.6056,
+          "p_one_sided": 0.00015838185308508627,
+          "direction": "b better"
+        },
+        "delta_r2_vs_ligand_cell": 0.0173
+      },
+      "metal_state": {
+        "mae": 0.4078,
+        "r2": 0.5031,
+        "rmse": 0.5374,
+        "inner_val_mae": [
+          0.4024,
+          0.3752,
+          0.3784,
+          0.3904,
+          0.4017
+        ],
+        "wall_s": 553.3,
+        "cond_dim": 59,
+        "vs_lgb": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4054,
+          "mean_mae_b": 0.4065,
+          "mean_delta": -0.0011,
+          "t": -0.242,
+          "p_one_sided": 0.5956051512084664,
+          "direction": "a better"
+        },
+        "delta_r2_vs_lgb": 0.0019,
+        "vs_metal_identity": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4086,
+          "mean_mae_b": 0.4065,
+          "mean_delta": 0.0021,
+          "t": 0.6368,
+          "p_one_sided": 0.2621538852863592,
+          "direction": "b better"
+        },
+        "delta_r2_vs_metal_identity": 0.0305
+      }
+    }
+  },
+  "reference_bars": {
+    "fix_l1_best": {
+      "arm": "complex",
+      "r2": 0.5012,
+      "path": "metrics/by_metric/msrs_complex_features.json"
+    },
+    "fix_l5_best": {
+      "arm": "ligand+both",
+      "r2": 0.5556,
+      "path": "metrics/by_metric/msrs_joint_representation.json"
+    }
+  },
+  "acceptance": {
+    "criterion": "beat FIX-L1's LightGBM on canonical_grouped",
+    "bar": "fix_l1_best",
+    "bar_r2": 0.5012,
+    "measured_r2": 0.5031,
+    "passed": true,
+    "strong_bar_r2": 0.5556,
+    "beats_strong_bar": false
+  },
+  "best_arm_canonical_split": "metal_state",
+  "delta_r2_canonical_split": 0.0019,
+  "verdict": "POSITIVE",
+  "reading": "最佳 D-MPNN 臂 metal_state 在 canonical 分组下 R2=0.5031，同折 LightGBM(complex) R2=0.5012，差 +0.0019。三臂共享同一批图与折：ligand_cell→metal_identity 是金属作为图对象，metal_identity→metal_state 是金属态可见。",
+  "verdict_note": "机器判据是 delta>0，因此 verdict=POSITIVE；但 +0.0019 是 parity 量级，不是『D-MPNN 打赢 LightGBM』。同一 canonical split 上 FIX-L5 的树模型是 0.5556，本模型 0.5031（beats_strong_bar=false）。结论必须按 parity 表述。",
+  "scale_check": {
+    "pilot_limit_400_canonical": {
+      "lgb_complex": 0.4989,
+      "ligand_cell": 0.5007,
+      "metal_identity": 0.5349,
+      "metal_state": 0.5694
+    },
+    "full_cohort_canonical": {
+      "lgb_complex": 0.5012,
+      "ligand_cell": 0.4553,
+      "metal_identity": 0.4726,
+      "metal_state": 0.5031
+    },
+    "note": "400 配体 pilot 的 +0.0705 在全量上只剩 +0.0019；子集不能代替全量，pilot 结论作废。"
+  }
+}

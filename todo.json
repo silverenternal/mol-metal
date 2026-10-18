@@ -1,7 +1,7 @@
 {
   "schema": 3,
   "created": "2026-10-14",
-  "updated": "2026-10-18",
+  "updated": "2026-10-19",
   "rewritten": "2026-10-18 — 第三次重建 (v3)。旧版 556 KB 的逐条流水已归档到 todo.archive_2026_10_18.json (一字未删, §5.5)。本次按用户指令提升视角: 从『二分类 AUC 表』改为『金属替换的定量响应面框架』。",
   "supersedes": "todo.archive_2026_10_18.json (v2, 556 KB, 全部历史/blockers/working_detail)",
   "purpose": "把『换金属』当作一次可量化的干预 do(m)，估计并预测金属替换对活性的响应面 Δ(m→m′ | ligand, cell-line)，并把预测转成可执行的金属推荐（含弃权）。2026-10-18 起，主线不再是『再跑一个实验』，而是『顺着 数据→特征→模型→训练→推理 全链路逐层改代码，每改一层在同一折上量出 delta』。论文线在模型真正变强之前冻结。",
@@ -32,7 +32,7 @@
       "Nat. Commun. — 需要跨数据集泛化 + 决策价值量化"
     ],
     "positioning": "现有负结果 (WP1-WP4) 不是失败, 而是框架的三条边界: 迁移惩罚不可完全归因于金属敏感配体; 金属描述符不解释迁移; metal-token 不改善跨金属。新框架必须解释这三条, 而不是绕过它们。",
-    "immediate_goal": "表征层已修完并测完：L1 完整配合物 (+0.1002)、L2 氧化态 (+0.0444)、L3 配位环境 (+0.0272)、L5 联合 (+0.0130 于最佳单块)，canonical 分组回归 R2 从 0.3972 到 0.5556。但决策层两次尝试都失败：E2 用更好表征反而让 top-1 regret 恶化 (NEG-17)；E3 的 within-cohort centering 在论文内把 regret 降到 0.0939，E4 按 DOI 留出后恶化到 0.1468 (NEG-19)。当前判据不变：全量 regret < 0.1198 且 DOI 留出下 Holm p<0.05。下一步 FIX-M1：把自研 D-MPNN + metal_graph 接进 MSRS，检验表示容量能否提供树模型没有的金属差分信号。"
+    "immediate_goal": "FIX 波次已跑完（除 FIX-L4 因缺外部细胞系数据 BLOCKED）：表示层 L1-L5 把树模型推到 canonical 0.5556，模型类 M1 把 D-MPNN 推到 0.5031（parity），决策层 E2-E4/M1b 在所有方案下都未过「regret<0.1198 且 Holm p<0.05」。下一步不是再加特征或换架构，而是在两条路里选：(a) 等数据做 FIX-L4；(b) 重定义决策目标/收缩论文主张。由用户决定。"
   },
   "current_position": {
     "measured_facts": [
@@ -54,7 +54,8 @@
       "L3 conformal: 覆盖率 0.9044/0.8984 (名义 0.90), 但中位区间宽度 2.21/2.35 log10; 无任何配对联合宽度 <1.0。",
       "actionable 子集并不更准: 整体 0.625 vs 0.623; 分层 Ru-Ir -0.043 / Ru-Os +0.075 / Ru-Rh +0.113; 最窄子集 (delta=1.5) 0.241 vs 0.640。MSRS-3 判据未过。",
       "LOMO 金属外推失败: potency 加权 MAE descriptors 0.610 / one-hot 0.608 / no-metal 0.607, no-metal 显著更好 (Holm 0.036); 五金属均值排序 rho=0.1 (p=0.87)。",
-      "金属 90% 嵌套在 DOI 内 (potency 仅 10.4% 单元与另一金属同 DOI); 留出金属的均值主要是 cohort 效应, 描述符无法编码。"
+      "金属 90% 嵌套在 DOI 内 (potency 仅 10.4% 单元与另一金属同 DOI); 留出金属的均值主要是 cohort 效应, 描述符无法编码。",
+      "FIX-M1：自研 D-MPNN + metal_graph 在 21,404 行上 canonical R2 0.5031（LightGBM 0.5012，FIX-L5 树模型 0.5556）；424 cohort regret 最好 0.1190，但 DOI 聚类 Holm p=1.0。"
     ],
     "continuous_data_audit_2026_10_18": {
       "numeric_dark_ic50": 21777,
@@ -139,7 +140,7 @@
       "msrs_decision_policy": "metrics/by_metric/msrs_decision_policy.json"
     },
     "diagnosis": {
-      "headline": "回归指标差的根因在信息通路（特征算错对象）；推荐指标差的根因在目标与泛化，而不是继续加特征——两层必须分开判断。",
+      "headline": "回归指标差的根因在信息通路（特征算错对象），已修；推荐指标差的根因在目标与泛化，未修。FIX-M1 进一步证明：换模型类（D-MPNN + metal_graph）也不动决策层，绝对 R2 只到树模型 parity。",
       "evidence": [
         "生产设计 (ECFP4 + 5 metal one-hot + 3 周期描述符 + top-40 cell one-hot) 在 MSRS-2 的 21,045 行上 additive R²=0.2510 / interaction R²=0.2791；同一行集把 cell/metal 换成原生 categorical 到 0.3149，说明编码方式本身就值 +0.036。",
         "逐块累加到 DOI 是 0.4437，但这是论文内插值上界，不可部署到新论文。",
@@ -149,7 +150,9 @@
         "加性约束 (interaction_constraints 禁掉 ligand×metal 同路径) 的数学后果：同一折内所有队列的金属排序完全相同，MSRS-6 实测 5/5 折 × 4/4 格 n_distinct_orders = 1。配体级推荐在该结构下不可能成立，不是调参问题。",
         "编码方式本身就是最大的单一杠杆：cell/metal 从 top-40 one-hot 换成原生 categorical，R² 0.2704→0.3366 (+0.0662, +24.5% 相对)，MAE 0.5053→0.4766，配对 p=3.9e-53。再加 RDKit 或 rank-4 交互项不再提升 (0.3292) —— 三者提供的是同一部分信息。",
         "表征修复后 canonical 分组回归 R2 0.3972 → 0.5556（L1+L2+L3+L5 同折），但同一表征在决策层让 top-1 regret 从 0.1212 恶化到 0.1314（NEG-17）。",
-        "within-cohort centering 在论文内把 regret 降到 0.0939、top-1 抬到 0.653（NEG-18），但按 DOI 留出整篇论文后恶化到 0.1468，输给 regression 0.1165 与 global_best 0.1199（NEG-19）。"
+        "within-cohort centering 在论文内把 regret 降到 0.0939、top-1 抬到 0.653（NEG-18），但按 DOI 留出整篇论文后恶化到 0.1468，输给 regression 0.1165 与 global_best 0.1199（NEG-19）。",
+        "FIX-M1 全量：canonical R2 lgb 0.5012 / D-MPNN ligand_cell 0.4553 / metal_identity 0.4726 / metal_state 0.5031；金属分解在 GNN 内复现 (+0.0173, +0.0305)，但绝对水平低于 FIX-L5 的 0.5556。",
+        "FIX-M1 决策层：canonical regret global_best 0.1241 / lgb 0.1212 / metal_identity 0.1190 / metal_state 0.1219；对 global_best 与 lgb 的 DOI 聚类检验 p_holm 全为 1.0。"
       ],
       "not_the_problem": [
         "模型容量：h512 只在 n≥10^3 的金属上可检测 (+0.018~+0.083)，不是全局瓶颈。",
@@ -479,6 +482,81 @@
         "why_it_matters": "E3 里 centered 同时改善 regret 与 top-1，看起来像突破了决策层；但它利用的是同一批论文内的队列结构，换一批论文就失效。这是本会话第二个『同分布好看、分布外失效』的例子（第一个是 NEG-17 的 R2 vs 排名）。",
         "do_not": "不要把 FIX-E3 的 centered 数字写进任何结论或论文；它的适用域是已见论文。任何决策层方法在 DOI 留出下不过判据，就不能称为解决了推荐问题。",
         "next": "决策层继续加码的性价比已经很低：两个方向（更好回归、目标对齐）都在分布外失败。下一步应转向 FIX-M1（主模型 + metal_graph），看表示容量是否能提供当前线性/树模型没有的金属差分信号。"
+      },
+      {
+        "id": "NEG-20",
+        "title": "换模型类不动天花板：D-MPNN 全量 canonical 0.5031 ≈ LightGBM 0.5012，远低于树模型 0.5556",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_dmpnn_surface.json",
+          "canonical_grouped": {
+            "lgb_complex": 0.5012,
+            "ligand_cell": 0.4553,
+            "metal_identity": 0.4726,
+            "metal_state": 0.5031
+          },
+          "fragment_grouped": {
+            "lgb_complex": 0.4368,
+            "ligand_cell": 0.4107,
+            "metal_identity": 0.4237,
+            "metal_state": 0.4263
+          },
+          "fix_l5_strong_bar": 0.5556,
+          "paired_vs_lgb_canonical": {
+            "metal_state_mean_mae_delta": -0.0011,
+            "p_one_sided": 0.5956
+          },
+          "pilot_400_ligands": {
+            "lgb_complex": 0.4989,
+            "metal_state": 0.5694,
+            "delta": 0.0705,
+            "full_cohort_delta": 0.0019
+          }
+        },
+        "what_was_tested": "FIX-M1：把自研 D-MPNN + metal_graph（canonical 全配合物 + 金属节点 + 配位边）接进 MSRS，三臂（金属盲/身份/态）× 双 split × GroupKFold(5)，LightGBM 在同折同脚本内重算。",
+        "result": "canonical：lgb 0.5012，ligand_cell 0.4553，metal_identity 0.4726，metal_state 0.5031（+0.0019，per-ligand MAE 配对 p=0.60）；fragment：lgb 0.4368 vs metal_state 0.4263（−0.0105）。",
+        "why_it_matters": "表示层（L1-L5）与模型类（M1）是两条独立的轴，现在都测完了：树模型 0.5556 > D-MPNN 0.5031。当前瓶颈不是「模型不够深」或「金属没进图」，而是数据/目标能给的信息量。继续换架构的性价比很低。",
+        "do_not": "不要把 400 配体 pilot 的 +0.0705 写进任何结论或论文；全量只剩 +0.0019。也不要把 metal_state 的 +0.0019 说成「D-MPNN 打赢 LightGBM」。",
+        "next": "架构轴关闭。若要继续提升绝对 R2，只剩外部信息（FIX-L4 细胞系生物特征，BLOCKED-PENDING-DATA）或更强的正则/预训练，而不是继续改消息传递。"
+      },
+      {
+        "id": "NEG-21",
+        "title": "决策层依旧为空：D-MPNN 最好 regret 0.1190，但 DOI 聚类 Holm p=1.0",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_dmpnn_decision.json",
+          "canonical_grouped_regret": {
+            "global_best": 0.1241,
+            "cell_best": 0.1231,
+            "lgb_complex": 0.1212,
+            "ligand_cell": 0.1723,
+            "metal_identity": 0.119,
+            "metal_state": 0.1219
+          },
+          "fragment_grouped_regret": {
+            "global_best": 0.1198,
+            "cell_best": 0.1295,
+            "lgb_complex": 0.1237,
+            "ligand_cell": 0.1751,
+            "metal_identity": 0.1242,
+            "metal_state": 0.1448
+          },
+          "top1_canonical": {
+            "global_best": 0.566,
+            "lgb_complex": 0.5377,
+            "metal_identity": 0.592,
+            "metal_state": 0.566
+          },
+          "holm_p": {
+            "metal_identity_vs_global_best": 1.0,
+            "metal_state_vs_global_best": 1.0,
+            "metal_identity_vs_lgb": 1.0
+          },
+          "n_cohorts": 424
+        },
+        "what_was_tested": "FIX-M1b：用同一 OOF（results/msrs_dmpnn_surface/oof.npz）跑 FIX-E2/E3 的队列 regret 评估，基线 fold-safe，DOI 聚类单侧 t 检验 + Holm。",
+        "result": "canonical 上 metal_identity 的 regret 0.1190 低于 global_best 0.1241 与 lgb 0.1212，但 p=0.53、Holm=1.0，置信区间跨 0；metal_state（R2 最好的臂）regret 0.1219，反而更差。",
+        "why_it_matters": "这是 NEG-17 的第三次复现：更好的回归不等于更好的排序。即使把金属作为图对象送进消息传递，队列内的金属排序仍与「训练折金属均值」无法区分。决策层的失败不是模型容量问题。",
+        "do_not": "不要用「metal_identity regret 0.1190 < 0.1198」声称达到了论文解冻判据；判据要求 Holm p<0.05，实际为 1.0。",
+        "next": "决策层要么换 estimand（可学的 pairwise 目标 + 分布外约束），要么承认当前数据不支持配体级金属推荐，把论文主张收缩到「回归面 + 可验证的边界」。这需要用户决定。"
       }
     ],
     "reusable_assets": {
@@ -909,6 +987,29 @@
         },
         "why": "指纹只编码连接性，不编码『哪些原子朝向金属』；供体计数与齿合是化学上独立的轴。",
         "caveat": "元素+电荷启发式，不区分吡啶 N / 吡咯 N；几何覆盖率 80.1%。"
+      },
+      {
+        "id": "POS-6",
+        "title": "金属分解在 D-MPNN 内复现：身份 +0.0173，金属态再 +0.0305（canonical）",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_dmpnn_surface.json",
+          "canonical_grouped": {
+            "ligand_cell": 0.4553,
+            "metal_identity": 0.4726,
+            "metal_state": 0.5031
+          },
+          "fragment_grouped": {
+            "ligand_cell": 0.4107,
+            "metal_identity": 0.4237,
+            "metal_state": 0.4263
+          },
+          "metal_feat_dim": 18,
+          "cond_dim": 59,
+          "unique_graphs": 6081,
+          "unparseable": 0
+        },
+        "why": "同一批图、同一折、只改条件向量：金属身份（one-hot + 配位节点/边）与金属态（氧化态/电荷/d 电子/几何）在消息传递模型里各自贡献独立增量，方向与 FIX-L2 的树模型一致。说明这不是 LightGBM 的伪影。",
+        "caveat": "绝对水平只是 parity（0.5031 vs 0.5012）；fragment split 上反而 −0.0105。"
       }
     ],
     "full_stack_audit_2026_10_18": {
@@ -2790,7 +2891,7 @@
       "title": "把自研 D-MPNN + metal_graph 接进 MSRS",
       "layer": "模型",
       "priority": "P0",
-      "status": "PENDING",
+      "status": "DONE-NEGATIVE",
       "gpu": "conditional",
       "wall": "2 天",
       "why": "所有 msrs_*.py 都没有 import dmpnn/metal_graph；主任务跑的不是主模型。",
@@ -2800,7 +2901,45 @@
       "depends_on": [
         "FIX-L1",
         "FIX-E1"
-      ]
+      ],
+      "result": {
+        "canonical_grouped": {
+          "lgb_complex": 0.5012,
+          "ligand_cell": 0.4553,
+          "metal_identity": 0.4726,
+          "metal_state": 0.5031
+        },
+        "fragment_grouped": {
+          "lgb_complex": 0.4368,
+          "ligand_cell": 0.4107,
+          "metal_identity": 0.4237,
+          "metal_state": 0.4263
+        },
+        "best_delta_vs_lgb_canonical": 0.0019,
+        "fix_l5_strong_bar": 0.5556,
+        "metal_decomposition_canonical": {
+          "identity_minus_blind": 0.0173,
+          "state_minus_identity": 0.0305
+        },
+        "decision_regret_canonical": {
+          "global_best": 0.1241,
+          "lgb_complex": 0.1212,
+          "metal_identity": 0.119,
+          "metal_state": 0.1219
+        },
+        "decision_holm_p": {
+          "metal_identity_vs_global_best": 1.0,
+          "metal_state_vs_global_best": 1.0,
+          "metal_identity_vs_lgb": 1.0
+        },
+        "artifacts": [
+          "metrics/by_metric/msrs_dmpnn_surface.json",
+          "metrics/by_metric/msrs_dmpnn_decision.json",
+          "results/msrs_dmpnn_surface/oof.npz"
+        ],
+        "reading": "验收字面通过 (+0.0019)，实质是 parity；远低于 FIX-L5 的 0.5556。金属分解在 GNN 内复现，但换模型类没有抬高天花板。"
+      },
+      "acceptance_result": "PASSED_BY_LETTER (parity in substance)"
     },
     {
       "id": "FIX-E2",
@@ -3099,7 +3238,8 @@
     "AUD-M1 的交互秩 r：建议先跑 r=1/2/4 三条，按 DOI 聚类 regret 选，不按 R² 选。",
     "AUD-D1 的两条实现 (two-part vs 删失似然) 谁做主：建议删失似然做主线（连续、可直接给区间），two-part 做对照。",
     "AUD-D2 的 offset 是否进入最终部署模型：内插值可用、新论文不可用，需要明确边界后再定。",
-    "是否解冻论文线：等 AUD-F1/D1/M1 三条验收结果，由用户决定。"
+    "是否解冻论文线：等 AUD-F1/D1/M1 三条验收结果，由用户决定。",
+    "FIX 波次结束后往哪走：(a) 等外部细胞系数据做 FIX-L4；(b) 放弃配体级金属推荐，把论文收缩到回归面 + 边界；(c) 换可学的 pairwise 决策目标再做一次分布外验证。建议先讨论 (b) 的证据是否已经足够。"
   ],
   "do_not": [
     "不要把 668 对 matched 数据说成 5 金属全覆盖 — 只有 3 个金属对有 matched 样本。",
