@@ -1323,6 +1323,11 @@ class DecodedMol:
     n_bonds: int = 0
     sanitized: bool = False
     error: Optional[str] = None
+    repair: str = ""
+    """Non-empty when a decode-side repair produced a valid but altered
+    molecule (Wf-A84: `"kekulize_demoted_all"`).  Empty on a clean decode.
+    Consumers must keep treating `sanitized` as the validity flag; this
+    field exists so a repaired success is not counted as a clean one."""
 
 
 def _safe_z(z: int) -> int:

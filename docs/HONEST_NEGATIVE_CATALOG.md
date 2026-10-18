@@ -5424,3 +5424,76 @@ Cumulative catalog count: **161 -> 162** (+1).  ACTIVE count: **117 -> 118** (+1
 **Workflow** | Wf-A83 (2026-10-18; 0 GPU training — 1 CPU decode of 3 clouds on
 a 1-epoch checkpoint; 6 new tests; §5.2: every number traces to
 `/tmp/wfa81b_smoke`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
+
+## §6.111 — Wf-A84: keep the molecule, drop the aromaticity (kekulize fallback)
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (decode-side fallback; measured at smoke
+scale only).  **Code:** `molmetal/molmetal_lam/lam_chem/cfm_decoder_yuelbond.py::_demote_all_aromatic`
++ the `except` branch of `_assemble_mol`; `DecodedMol.repair` in
+`molmetal/models/bond_head.py`; the `ok_repaired:` bucket in
+`train_cfm_yuelbond_wasserstein.py::decode_clouds_and_classify`.
+
+**The negative this answers.**  The Wf-A83 post-fix smoke
+(`/tmp/wfa83_smoke`, 1 epoch, 400 train / 32 val, seeds 0+1) still reported
+`gen_validity = 0.500 (8/16)` and **every** failure was
+`sanitize_failed:KekulizeException`.  Wf-A79 removes aromatic bonds outside any
+ring; Wf-A83 removes aromatic bonds inside a <5 ring.  What remains is a ring the
+kekulizer refuses as a whole — no local bond edit can fix it, because RDKit needs
+one Kekulé assignment for the entire molecule or none.
+
+**The fallback.**  When (and only when) `SanitizeMol` raises a kekulization
+exception, clear every aromatic flag and rewrite every aromatic bond as SINGLE,
+then sanitise again.  The molecule survives; its rings become saturated.  A
+decode saved this way is **valid, not correct**, so it is recorded as
+`repair="kekulize_demoted_all"` and counted in `ok_repaired:kekulize_demoted_all`
+— never in `ok`.  `n_ok` sums both buckets, so `gen_validity` still means
+"RDKit accepts it".
+
+**MEASURED (same config, same data, CPU, 1 epoch):**
+
+| | Wf-A83 (/tmp/wfa83_smoke) | Wf-A84 (/tmp/wfa84_smoke) |
+|---|---|---|
+| `gen_validity` | 0.500 (8/16) | **1.000 (16/16)** |
+| `failure_reasons` | `{'ok': 8, 'sanitize_failed:KekulizeException': 8}` | `{'ok': 8, 'ok_repaired:kekulize_demoted_all': 8}` |
+| per-seed validity | `[0.125, 0.875]`, spread 0.750 | `[1.000, 1.000]`, spread 0.000 |
+| `decode_ratio` (truth graph, val) | 1.000 (32/32) | 1.000 (32/32) |
+| `gen_largest_fragment_frac` | 0.866 | 0.949 |
+| `gen_single_fragment_ratio` | 0.000 | 0.000 |
+
+**Honest-negative (ACTIVE, this entry):**
+  * **Half the "valid" molecules are repaired.**  8/16 are clean, 8/16 are
+    saturated versions of molecules the head emitted as aromatic.  A validity
+    of 1.000 does not mean 16/16 correct; the split is in the payload
+    (`ok` vs `ok_repaired:`) and must be quoted together.
+  * **This is not a ring-size or aromaticity fix.**  The generator still emits
+    3-rings at 89.8% (OPT-2) and still emits aromatic bonds it cannot Kekulize.
+    The fallback only stops losing those molecules at the last step.
+  * **Fragmentation is untouched.**  `gen_single_fragment_ratio = 0.000` and
+    `largest_fragment_frac = 0.949` in both arms — the Wf-A75 MolDiff guidance
+    lift (0.048 -> 0.838) is not reproduced at this 1-epoch scale, and Wf-A84
+    does not address it.
+  * **n = 16, 1 checkpoint, 1 epoch, CPU.**  The 0.500 -> 1.000 is a mechanism
+    demonstration, not a corpus-level rate.  The 30-epoch retrain's
+    `gen_validity` has NOT been measured under Wf-A79/A83/A84.
+  * **A repaired SMILES is a different molecule.**  Downstream property metrics
+    (QED, SA, ROTB) computed on a repaired corpus are metrics of the saturated
+    fallback, not of the model's aromatic prediction.
+
+**Incidental fix (same commit).**  `configs/cfm_5metal_wfa78_ring_prior_cpu_smoke.yaml`
+and `configs/cfm_5metal_wfa80_per_class_cpu_smoke.yaml` declared `compute.gpu: cpu`,
+which is a **start.sh-only** key (`CUDA_VISIBLE_DEVICES`); the trainer's own dest
+is `compute.device`.  MEASURED: `parse_args(["--config", cfg])` returned
+`device="auto"` and the "CPU" smoke ran on **cuda:0** (2.79 GiB, 94% util) until
+`compute.device: cpu` was added.  Both configs now carry it; the Wf-A84 run
+logged `device=cpu`.
+
+**§6.111 catalog-count math.** Net catalog-count delta: **+1** (§6.111 itself).
+ACTIVE count delta: **+1** (mechanism only, no corpus-level rate).
+Cumulative catalog count: **162 -> 163** (+1).  ACTIVE count: **118 -> 119** (+1).
+
+**Workflow** | Wf-A84 (2026-10-19; 0 GPU training — 1 CPU 1-epoch smoke on 400/32;
+9 new tests; §5.2: every number traces to `/tmp/wfa84_smoke`; §5.3 + §5.4: 0
+paper/* + 0 wet-lab).
+

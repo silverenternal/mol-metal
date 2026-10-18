@@ -200,6 +200,10 @@ q_channel_hints:
   - q_head
 compute:
   gpu: cpu
+  # 2026-10-19 — `compute.gpu` is a start.sh-only key (CUDA_VISIBLE_DEVICES);
+  # the trainer's own dest is `compute.device`.  Without this line a direct
+  # launch of a "cpu" config resolves --device to `auto` and runs on GPU0.
+  device: cpu
 directives:
   kill_then_adapt: true
   time_budget: 1h

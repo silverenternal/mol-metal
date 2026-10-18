@@ -6648,7 +6648,13 @@ def evaluate_generation_validity(
         chem_rows, sa_target, reason_counts,
     )
     first_error = reason_counts.pop("decode_error_example", "")
-    n_ok = int(reason_counts.get("ok", 0))
+    # Wf-A84 — successes split into `ok` and `ok_repaired:<repair>`; both
+    # are valid molecules, so both count.  The failure_reasons sum invariant
+    # (n_samples + n_decode_error) still holds because the repaired bucket
+    # lives in the same dict.
+    n_ok = int(reason_counts.get("ok", 0)) + sum(
+        int(v) for k, v in reason_counts.items() if k.startswith("ok_repaired:")
+    )
     n_decode_error = int(reason_counts.get("decode_raised", 0))
     if chemistry_out is not None:
         chemistry_out.clear()
@@ -6741,7 +6747,15 @@ def decode_clouds_and_classify(
                 # `except`, so every SUCCESS was recorded as a raise. A
                 # refactor that turns all successes into silent failures is
                 # the reason this loop now counts only through one variable.
-                reason_counts["ok"] = reason_counts.get("ok", 0) + 1
+                # Wf-A84 (2026-10-19) — a decode saved by the kekulize
+                # fallback is valid, not clean.  It counts toward n_ok (the
+                # molecule really is usable) but lands in its own bucket so
+                # the payload never reports a repaired success as an
+                # untouched one.  `ok_repaired:` is a SUCCESS prefix: the
+                # n_ok sum below adds it back in.
+                _repair = str(getattr(decoded, "repair", "") or "")
+                _bucket = f"ok_repaired:{_repair}" if _repair else "ok"
+                reason_counts[_bucket] = reason_counts.get(_bucket, 0) + 1
                 if per_cloud_out is not None:
                     per_cloud_out[-1] = True
             else:

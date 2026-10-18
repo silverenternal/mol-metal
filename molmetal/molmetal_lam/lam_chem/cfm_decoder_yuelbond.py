@@ -433,6 +433,43 @@ def _demote_small_ring_aromatic(mol, min_size: int = 5):
     return mol
 
 
+def _demote_all_aromatic(mol):
+    """Demote EVERY aromatic bond/atom to single; return the mol.
+
+    Wf-A84 (2026-10-19).  Third and last pass in the same repair chain as
+    Wf-A79 (aromatic outside any ring) and Wf-A83 (aromatic inside a <5
+    ring).  MEASURED on the Wf-A83 post-fix smoke (/tmp/wfa83_smoke):
+    `gen_validity=0.500 (8/16)` with every failure still
+    `sanitize_failed:KekulizeException` -- so the remaining refusals are
+    aromatic bonds the two targeted passes leave alone, i.e. inside rings
+    of size >= 5 that still cannot be kekulized (wrong number of aromatic
+    atoms, an exocyclic double bond, a metal in the ring).
+
+    There is no local repair for those: RDKit either finds a Kekule
+    structure for the whole molecule or refuses it.  What the decoder can
+    still do is keep the MOLECULE and drop the AROMATICITY: clear every
+    aromatic flag and rewrite every aromatic bond as SINGLE, then sanitise
+    again.  The ring becomes saturated -- chemically a downgrade, which is
+    why the caller records `repair="kekulize_demoted_all"` and the trainer
+    counts these in a separate `ok_repaired:` bucket instead of folding
+    them into `ok`.  A decode saved this way is valid, not correct.
+
+    Called ONLY from the `except` branch of `SanitizeMol`, and only for a
+    kekulization exception; a molecule that already sanitised is never
+    touched, so no existing numeric result changes.
+    """
+    from rdkit import Chem
+
+    for atom in mol.GetAtoms():
+        if atom.GetIsAromatic():
+            atom.SetIsAromatic(False)
+    for bond in mol.GetBonds():
+        if bond.GetIsAromatic() or bond.GetBondType() == Chem.BondType.AROMATIC:
+            bond.SetIsAromatic(False)
+            bond.SetBondType(Chem.BondType.SINGLE)
+    return mol
+
+
 # ---------------------------------------------------------------------------
 # Result container
 # ---------------------------------------------------------------------------
@@ -1117,6 +1154,7 @@ class YuelBondBondDecoder:
         sanitized = False
         smiles = ""
         sanitize_error: Optional[str] = None
+        repair = ""
         # Wf-A79 (2026-10-18) — refuse to call a non-ring bond aromatic.
         # MEASURED on the L3 arm: 57/64 clouds died in the kekulizer with
         # "non-ring atom N marked aromatic" (decode_rate 0.109).  The pass
@@ -1135,6 +1173,24 @@ class YuelBondBondDecoder:
             sanitized = False
             smiles = ""
             sanitize_error = f"{type(exc).__name__}: {exc}"
+            # Wf-A84 (2026-10-19) — last resort: keep the molecule, drop the
+            # aromaticity.  Wf-A79 + Wf-A83 already removed the two classes
+            # of aromatic bond that CAN be repaired locally; whatever the
+            # kekulizer still refuses is a ring it cannot Kekulize as a
+            # whole.  Demoting every aromatic bond to SINGLE makes the graph
+            # sanitizable at the cost of the ring's unsaturation, so the
+            # result is recorded as a REPAIR (trainer bucket
+            # `ok_repaired:kekulize_demoted_all`), never as a clean decode.
+            if "Kekulize" in type(exc).__name__:
+                mol = _demote_all_aromatic(mol)
+                try:
+                    Chem.SanitizeMol(mol)
+                    sanitized = True
+                    smiles = Chem.MolToSmiles(mol)
+                    sanitize_error = None
+                    repair = "kekulize_demoted_all"
+                except Exception as exc2:
+                    sanitize_error = f"{type(exc2).__name__}: {exc2}"
         return DecodedMol(
             mol=mol,
             smiles=smiles,
@@ -1144,6 +1200,7 @@ class YuelBondBondDecoder:
             n_bonds=len(bond_orders),
             sanitized=sanitized,
             error=sanitize_error,
+            repair=repair,
         )
 
     def _empty_decoded(
