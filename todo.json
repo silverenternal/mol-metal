@@ -32,7 +32,7 @@
       "Nat. Commun. — 需要跨数据集泛化 + 决策价值量化"
     ],
     "positioning": "现有负结果 (WP1-WP4) 不是失败, 而是框架的三条边界: 迁移惩罚不可完全归因于金属敏感配体; 金属描述符不解释迁移; metal-token 不改善跨金属。新框架必须解释这三条, 而不是绕过它们。",
-    "immediate_goal": "预测侧：(a) 已达成——DOI 论文级 offset 把 potency OOF R2 从 0.3366 推到 0.4071 (+0.0705, MAE 0.4520, 覆盖 69.9% 的行, inner cross-fit 无泄漏)。剩余 30.1% 的行来自训练集里没出现过的论文。决策侧：(b) 折内金属排序随配体变化已达成 (min_distinct_orders 2→4)；(c) DOI 聚类 top-1 regret 仍全部 ≥ 0.1198 (最好 0.1278, p=0.72)。下一步不是继续抬 R2，而是让决策层赢——预测精度已经不是瓶颈。"
+    "immediate_goal": "预测侧已达成：DOI 论文级 offset 把 R2 从 0.3366 推到 0.4071 (覆盖 69.9%, 无泄漏)。决策侧：全量 424 cohort 仍输 (regret 0.1278 vs 0.1198)，但弃权到 117 个高 margin cohort 后赢 0.0673 (p=0.097, 24 DOI)。下一个判据不是 R2，而是：在 ≥40% 覆盖率下，DOI 聚类 Holm 校正后 regret < 0.1198。"
   },
   "current_position": {
     "measured_facts": [
@@ -354,6 +354,18 @@
           "rare_share": "678/711 个细胞系是稀有 (<100 行)，占 24.5% 的行"
         },
         "why_it_matters": "总体 +0.0032 全部来自 33 个常见细胞系，代价是 24.5% 的行变差。D4 的验收门槛 (稀有系 MAE gap ≥0.05) 触发了，但触发的方向是『该修』而不是『修好了』。"
+      },
+      {
+        "id": "NEG-14",
+        "title": "弃权规则达不到 precision 0.70（覆盖率达标时）",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_decision_policy.json",
+          "coverage": 0.2759,
+          "precision": 0.641,
+          "bar": "coverage ≥ 0.20 时 precision ≥ 0.70",
+          "full_coverage_precision": 0.533
+        },
+        "why_it_matters": "margin 确实把 precision 从 0.533 抬到 0.641 (+0.108)，但离 0.70 还差 0.059。在 27.6% 覆盖下，每 5 个推荐仍有近 2 个选错金属。"
       }
     ],
     "reusable_assets": {
@@ -486,7 +498,7 @@
         "why": "固定 sigma=0.5 的删失似然让 18.7% 的删失行梯度主导拟合，exact 行 R2 0.2704→0.1607。"
       },
       "best": "doi_offset_nested (0.4071 / 0.4520, coverage 0.699) — 基准设计 cat_cell_full (0.3366 / 0.4766)",
-      "decision_winner": "global_best (regret 0.1198)。最好的模型臂是 cat_full_mdpg10 (0.1278, delta −0.0143, p=0.72)，仍不显著优于基线。DOI offset 在 cohort 内是常数，不改变排序。",
+      "decision_winner": "全量 424 cohort 上 global_best 仍最好 (regret 0.1198)。但在 abstention 保留的 117 个高 margin cohort 上，cat_cell_full regret 0.1041 < global_best 0.1633 (delta +0.0673, p=0.097, 24 DOI) —— 模型第一次在决策层赢，代价是只答 27.6%。",
       "d1b_twopart": {
         "classifier_auc": 0.7284,
         "classifier_brier": 0.1342,
@@ -603,6 +615,54 @@
           "mae_gap_rare_minus_common": 0.1143
         },
         "delta_mae_rare": 0.0337
+      },
+      "decision_policy": {
+        "artifact": "metrics/by_metric/msrs_decision_policy.json",
+        "i1_cohort_shape": {
+          "n_cohorts": 424,
+          "cohort_size_counts": {
+            "2": 424
+          },
+          "n_verifiable_pairs": 424,
+          "unverifiable_recommendations": 0,
+          "reading": "424 个 strict cohort 全部恰好 2 个金属。所谓『五金属排序』实际上是 424 个两两比较；可验证性 100%，代价是从来没有 3 个以上金属的同一 cohort。"
+        },
+        "i2_abstention": {
+          "rule": "abstain when score(second best) - score(best) < threshold",
+          "full_coverage": {
+            "coverage": 1.0,
+            "precision": 0.533,
+            "mean_regret": 0.1311
+          },
+          "best_at_min_coverage": {
+            "threshold": 0.18,
+            "coverage": 0.2759,
+            "precision": 0.641,
+            "n_kept": 117,
+            "mean_regret_kept": 0.1041,
+            "regret_by_scorer_on_kept": {
+              "global_best": 0.1633,
+              "cell_best": 0.1242,
+              "cat_cell_full": 0.1041
+            },
+            "vs_global_best_on_kept": {
+              "n_dois": 24,
+              "mean_regret_delta": 0.0673,
+              "median_regret_delta": 0.0,
+              "t_doi": 1.3393,
+              "p_one_sided_doi": 0.09677328918107728,
+              "bootstrap_ci95_doi": [
+                -0.0079,
+                0.1793
+              ],
+              "n_boot": 2000,
+              "seed": 20261018
+            }
+          },
+          "acceptance": "coverage ≥ 20% 时 precision ≥ 0.70",
+          "verdict": "NEGATIVE",
+          "reading": "在 27.6% 覆盖下 precision 0.641，未到 0.70。但同一 117 个高 margin cohort 上，模型 regret 0.1041 vs global_best 0.1633（delta +0.0673, p=0.097, 24 DOI）。"
+        }
       }
     },
     "positive_findings": [
@@ -620,6 +680,24 @@
         "what_it_means": "同一篇论文内的化合物共享一个 assay 级偏移 (细胞系+铂对照+读出方式)。这个偏移可以从该论文的训练行估出来，并外推到同论文的新化合物。",
         "what_it_does_not_mean": "对一篇没见过的论文无效 (30.1% 的行)；对同一 cohort 内的金属排序无效，因为偏移是常数，Δ(m→m') 不变。",
         "next": "把 coverage 拆成 per-cell / per-year，看剩余 30.1% 能否用 cell×year 代理；决策层另找杠杆。"
+      },
+      {
+        "id": "POS-2",
+        "title": "弃权把模型第一次推过 global_best（但样本只有 24 篇）",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_decision_policy.json",
+          "kept_cohorts": 117,
+          "coverage": 0.2759,
+          "margin_threshold": 0.18,
+          "regret_model": 0.1041,
+          "regret_global_best": 0.1633,
+          "delta": 0.0673,
+          "p_one_sided_doi": 0.09677328918107728,
+          "n_dois": 24
+        },
+        "what_it_means": "模型的 top-1 与第二名预测分差 (margin) 携带真实信号：在高 margin 子集上，它的 regret 比全局基线低 36%。这是全项目第一次在决策层赢。",
+        "what_it_does_not_mean": "p=0.097 未过 0.05；24 个 DOI 功效不足；precision 0.641 低于 0.70 验收线。不能作为『决策层已解决』的证据。",
+        "next": "把 margin 与 conformal 区间宽度组合成弃权分数；在 61 个 DOI 上做 Holm 校正后的正式检验。"
       }
     ]
   },
@@ -1975,7 +2053,7 @@
       "title": "反事实设计有效性：只在实际测过的金属间给 Δ",
       "layer": "推理",
       "priority": "P1",
-      "status": "PENDING",
+      "status": "DONE",
       "gpu": "none",
       "wall": "0.5 天",
       "why": "strict 队列 424/424 全是 k=2；模型自由五选一时 65.09% 落在该队列没测过的金属上，无法验证。full-5 top-1 只有 0.3491 可核验。",
@@ -1984,14 +2062,17 @@
       "acceptance": "0 个不可验证推荐；可验证子集上 regret 与覆盖同时报告。",
       "depends_on": [
         "AUD-M1"
-      ]
+      ],
+      "acceptance_met": true,
+      "result": "424 个 strict cohort 全部是 2 金属对；0 个不可验证推荐；424 个可验证 pair。『五金属排序』实为 424 个两两比较。",
+      "evidence": "metrics/by_metric/msrs_decision_policy.json:i1_verifiability"
     },
     {
       "id": "AUD-I2",
       "title": "弃权机制校准（现在从不触发）",
       "layer": "推理",
       "priority": "P2",
-      "status": "PENDING",
+      "status": "DONE-NEGATIVE",
       "gpu": "none",
       "wall": "0.5 天",
       "why": "MSRS-3 的区间中位宽度 2.21 log，任何 δ 都不触发弃权；等于没有弃权机制。",
@@ -2001,7 +2082,10 @@
       "depends_on": [
         "AUD-M1",
         "AUD-I1"
-      ]
+      ],
+      "acceptance_met": false,
+      "result": "覆盖率 0.276 时 precision 0.641 < 0.70；同子集上模型 regret 0.1041 vs global_best 0.1633 (p=0.097)。",
+      "evidence": "metrics/by_metric/msrs_decision_policy.json:i2_abstention"
     },
     {
       "id": "AUD-M2",
@@ -2094,11 +2178,9 @@
     },
     "wave_B_extend": {
       "items": [
-        "AUD-I1",
-        "AUD-I2",
         "AUD-F2"
       ],
-      "note": "M3/M3b/D1b/D2/D3/D4 已完成（见 work_packages）。剩余：I1 (反事实只在实际测过的金属间给 Δ)、I2 (弃权校准)、F2 (172d 特征，学习曲线显示边际低，排最后)。"
+      "note": "I1/I2 已完成：I1 通过（424 个 2 金属对，0 个不可验证推荐）；I2 负结果但留下 POS-2 （高 margin 子集上模型首次赢基线，p=0.097）。只剩 F2 (172d 特征)，学习曲线显示边际最低，放最后。"
     },
     "wave_C_decide": {
       "items": [
@@ -2108,7 +2190,7 @@
         "AUD-T1",
         "AUD-M2"
       ],
-      "note": "决策层现在是唯一瓶颈：所有模型臂的 DOI 聚类 regret 都 ≥ 0.1198。I1/I2 直接改决策规则，优先于任何新的预测特征。"
+      "note": "决策层现在有明确方向：margin 弃权把模型推到 global_best 之下 (0.1041 vs 0.1633)，但只在 27.6% 覆盖、24 DOI 上成立。下一步是把弃权分数做成 conformal 宽度 + margin 的联合规则，并在 61 DOI 上做 Holm 校正；不是再抬 R2。"
     },
     "wave_D_gpu_revalidate": {
       "items": [],
