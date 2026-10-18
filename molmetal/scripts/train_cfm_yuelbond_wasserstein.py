@@ -2838,6 +2838,58 @@ class CFMJointModel(nn.Module):
 # ---------------------------------------------------------------------------
 # Bond logits -> RDKit-strict sanitisation rate
 # ---------------------------------------------------------------------------
+def _apply_logit_adjustment(
+    logits: torch.Tensor,
+    class_prior: torch.Tensor,
+    tau: float,
+) -> torch.Tensor:
+    """Wf-A73 (2026-10-18) Operator 1 — per-class logit adjustment (Menon 2020).
+
+    Adds ``tau * log(pi_c)`` to the per-class logit BEFORE the cross-entropy
+    loss.  The result is an asymptotically-consistent classifier under known
+    class prior: with tau=1.0 the gradient steers the head to the OPTIMAL
+    decision boundary on the empirical class distribution, regardless of
+    the head's output distribution.  This is the principled upgrade over
+    ``bond_class_weights`` (inverse-frequency per-class loss scaling) — both
+    rebalance the loss toward minority classes, but logit adjustment does
+    it at the model-output level rather than the loss-multiplier level.
+
+    Reference: Menon, Jayasumana, Rawat, Jain, Veit, Kumar.  Long-Tail
+    Learning via Logit Adjustment.  ICLR 2021 (arXiv:2007.07314), §3.
+
+    Why ``log(pi_c)`` and not ``-log(pi_c)``: under-represented classes
+    have small pi_c, so log(pi_c) is a LARGE NEGATIVE number; adding it to
+    their logit makes the model WORK HARDER to predict them (because the
+    offset needs to be overcome before the class wins the argmax).  This
+    is the same intuition as class-weighted CE — logit adjustment just
+    applies the reweighting at the logit level (cleaner gradient flow,
+    no loss-magnitude drift).
+
+    Args:
+        logits: (E, num_classes) per-pair class logits from the bond head.
+        class_prior: (num_classes,) tensor of empirical class frequencies
+            pi_c (sums to 1; the caller is responsible for normalisation).
+            Caller is expected to pass ``_bond_class_prior`` computed in
+            ``main()`` from the same training-cohort counts that drive
+            ``_bond_class_weights``.
+        tau: float in [0, +inf).  1.0 = textbook Menon 2020 (recommended
+            for 95%% NO_BOND / 5%% minority-class imbalance).  0 = no-op
+            (returns logits unchanged).  >1 amplifies (rare; for ablation).
+
+    Returns:
+        (E, num_classes) adjusted logits.  The input tensor is NOT mutated.
+    """
+    if tau == 0.0 or class_prior is None:
+        return logits
+    # log(pi_c): for pi_c = 0 the log is -inf, which would zero out the
+    # gradient on that class forever.  In practice pi_c > 0 for every
+    # class (the head has to see at least one example), but the clamp is
+    # defensive against future cohort changes.
+    _pi = class_prior.clamp(min=1e-12)
+    _log_pi = _pi.log()  # (num_classes,)
+    return logits + tau * _log_pi.to(logits.device).to(logits.dtype)
+
+
 def _decode_with_rdkit_strict(decoder: YuelBondBondDecoder, cloud: AtomCloud):
     """Run the YuelBond decoder and return True iff RDKit accepts it."""
     if not RDKIT_AVAILABLE:
@@ -3355,6 +3407,15 @@ def train_one_epoch(
     # 0.293 with precision 0.870.  Weighting the rare classes lifts the
     # cost of missing a real bond above the cost of a false one.
     bond_class_weights: Optional[torch.Tensor] = None,
+    # 2026-10-18 — Wf-A73 Operator 1 (Menon 2020 per-class logit
+    # adjustment).  When bond_logit_adjustment is True and
+    # bond_class_prior is set, the bond logits are shifted by
+    # ``tau * log(pi_c)`` BEFORE the CE so the loss sees the
+    # class-prior-adjusted decision boundary.  Default OFF preserves
+    # Wf-A71 bit-exact compat.
+    bond_logit_adjustment: bool = False,
+    bond_logit_adjustment_tau: float = 1.0,
+    bond_class_prior: Optional[torch.Tensor] = None,
     # Wf-406-A2 — pass Lambda × CFM coupling kwargs through (re-wire of
     # Wf-329-W6 + Wf-394-A1). Both default to 0.0 so the multiplier
     # collapses to identity (1 + 0 * 0 = 1) → bit-for-bit backward
@@ -3912,6 +3973,19 @@ def train_one_epoch(
                 soft_valence_term = float(gen_validity_weight) * (
                     soft_valence_term / float(_sv_n_atoms_total)
                 )
+        # Wf-A73 (2026-10-18) Operator 1 — per-class logit adjustment
+        # (Menon 2020).  Applied to all_logits BEFORE the CE so every
+        # downstream branch (plain CE / focal CE / focal CE + label
+        # smoothing) sees the class-prior-adjusted decision boundary.
+        # Opt-in via YAML ``flow.bond_logit_adjustment: true`` +
+        # ``flow.bond_logit_adjustment_tau: 1.0``; default OFF preserves
+        # the Wf-A71 bit-exact compat.
+        if bool(bond_logit_adjustment) and bond_class_prior is not None:
+            all_logits = _apply_logit_adjustment(
+                all_logits,
+                bond_class_prior,
+                float(bond_logit_adjustment_tau),
+            )
         # Wf-A5-A2 — per-cohort alpha → label_smoothing override. Default
         # OFF preserves bit-for-bit backward compat with Wf-243..Wf-252
         # + Wf-388-A2/A3 + Wf-405-A2 + Wf-406-A2 + Wf-408-A2 + Wf-409-A1
@@ -8625,6 +8699,37 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--bond-logit-adjustment",
+        dest="bond_logit_adjustment",
+        action="store_true",
+        default=False,
+        help=(
+            "2026-10-18 NEW (Wf-A73 Operator 1): per-class logit adjustment "
+            "(Menon, Jayasumana, Rawat et al. ICLR 2021, arXiv:2007.07314). "
+            "At training time, add ``tau * log(pi_c)`` to the logits BEFORE "
+            "the cross-entropy loss; this gives the OPTIMAL decision "
+            "boundary under known class prior without changing the model's "
+            "output distribution.  Per-class logit adjustment is the "
+            "principled upgrade over --bond-class-weights (which is a "
+            "weaker version of the same idea: weights multiply the per-"
+            "class loss; logit adjustment shifts the per-class logit).  "
+            "Pair with --bond-logit-adjustment-tau.  Default OFF preserves "
+            "Wf-A71 bit-exact compat."
+        ),
+    )
+    p.add_argument(
+        "--bond-logit-adjustment-tau",
+        dest="bond_logit_adjustment_tau",
+        type=float,
+        default=1.0,
+        help=(
+            "2026-10-18 NEW (Wf-A73 Operator 1): logit adjustment strength "
+            "tau.  tau=1.0 is the textbook Menon 2020 setting (recommended "
+            "for 95%% NO_BOND / 5%% minority-class imbalance); tau=0 "
+            "disables the adjustment; tau>1 amplifies it.  Default 1.0."
+        ),
+    )
+    p.add_argument(
         "--use-focal-bond-ce",
         dest="use_focal_bond_ce",
         action="store_true",
@@ -11496,7 +11601,18 @@ def main() -> int:
     # statistic is fixed for the run, which is what a class weight is supposed
     # to be.
     _bond_class_weights: Optional[torch.Tensor] = None
-    if bool(getattr(args, "bond_class_weights", False)):
+    # Wf-A73 (2026-10-18) Operator 1 — per-class logit adjustment needs
+    # the same training-cohort counts that drive the weights.  Stays
+    # None when --bond-class-weights is OFF so the CE site falls back
+    # to the no-op path of _apply_logit_adjustment.
+    _bond_class_prior: Optional[torch.Tensor] = None
+    # Wf-A73 (2026-10-18) — compute the per-class prior whenever EITHER
+    # --bond-class-weights OR --bond-logit-adjustment is on, so the
+    # two flags share a single training-cohort counting pass.
+    _compute_class_stats = bool(getattr(args, "bond_class_weights", False)) or bool(
+        getattr(args, "bond_logit_adjustment", False)
+    )
+    if _compute_class_stats:
         _counts = torch.zeros(NUM_BOND_CLASSES, dtype=torch.long)
         for _c in train_clouds_d:
             _bt = getattr(_c, "bond_types", None)
@@ -11539,6 +11655,15 @@ def main() -> int:
             _p = _counts.float() / _counts.sum().float()
             _w = _w / (_p * _w).sum().clamp(min=1e-12)
             _bond_class_weights = _w.to(device)
+            # Wf-A73 (2026-10-18) Operator 1 — derive the per-class
+            # prior pi_c from the same training-cohort counts that drive
+            # _bond_class_weights.  This is the empirical frequency
+            # distribution over the 5 bond classes; the per-class logit
+            # adjustment adds ``tau * log(pi_c)`` to each logit so the
+            # loss sees the OPTIMAL decision boundary under known prior
+            # (Menon 2020).  ``_p`` is already on the right device; the
+            # CE call site in train_one_epoch moves it to logits.device.
+            _bond_class_prior = _p.to(device)
             print(
                 "[cfm-bond-weights] class counts="
                 + str(_counts.tolist())
@@ -11546,7 +11671,9 @@ def main() -> int:
                 + " raw_inv_freq="
                 + str([round(float(x), 3) for x in _raw.tolist()])
                 + " weights="
-                + str([round(float(w), 3) for w in _bond_class_weights.tolist()]),
+                + str([round(float(w), 3) for w in _bond_class_weights.tolist()])
+                + " class_prior="
+                + str([round(float(x), 4) for x in _bond_class_prior.tolist()]),
                 flush=True,
             )
     if _use_egnn:
@@ -12516,6 +12643,12 @@ def main() -> int:
             consistency_weight=float(getattr(args, "consistency_weight", 0.0)),
             per_cohort_features=bool(getattr(args, "per_cohort_features", False)),
             bond_class_weights=_bond_class_weights,
+            # Wf-A73 (2026-10-18) Operator 1 — per-class logit adjustment
+            # (Menon 2020).  Opt-in via YAML bond_logit_adjustment: true;
+            # default OFF preserves the Wf-A71 bit-exact compat path.
+            bond_logit_adjustment=bool(getattr(args, "bond_logit_adjustment", False)),
+            bond_logit_adjustment_tau=float(getattr(args, "bond_logit_adjustment_tau", 1.0)),
+            bond_class_prior=_bond_class_prior,
             # Wf-A68 (2026-10-17) — bond-CEGate kwargs.  Default OFF /
             # 0 / 0.0 ⇒ bit-exact Wf-A67 backward compat.
             bond_sample_balance=int(getattr(args, "bond_sample_balance", 0)),
