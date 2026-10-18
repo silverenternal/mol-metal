@@ -69,7 +69,15 @@ from molmetal.scripts.platinai_real_label_loader import (  # noqa: E402
 from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E402
 from molmetal.scripts.wf_a37_platinai_full_harvest import _flatten  # noqa: E402
 
-_PROXIES = {"http": None, "https": None}
+# Direct egress is sometimes blocked at the TLS layer (ClientHello goes out,
+# no ServerHello comes back) while a local proxy still reaches the API. Set
+# MBFINDER_PROXY=http://127.0.0.1:7890 to route around that; unset means direct.
+_PROXY_URL = os.environ.get("MBFINDER_PROXY", "").strip()
+_PROXIES = (
+    {"http": _PROXY_URL, "https": _PROXY_URL}
+    if _PROXY_URL
+    else {"http": None, "https": None}
+)
 _BIODATA_URL = f"{MB_API_BASE}/get-ceil-line-bio-data"
 
 # Largest remaining cell lines by ``meta.total`` (measured 2026-10-16).  The
