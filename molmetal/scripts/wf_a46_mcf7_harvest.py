@@ -231,7 +231,7 @@ def _post_biodata(cell_line: str, page: int, per_page: int, timeout: int):
 
 
 def fetch_page(
-    cell_line: str, page: int, per_page: int, timeout: int, retries: int = 4
+    cell_line: str, page: int, per_page: int, timeout: int, retries: int = 8
 ) -> Optional[list]:
     """Fetch one page. ``None`` => retry this page; a list is definitive."""
     for attempt in range(retries):
