@@ -45,7 +45,9 @@
       "同折 XGB 列 25/25 逐位复现; 0/5 金属在 h512 上赢过 XGB。",
       "L2 方差分解 (potency): DOI 65.1% / ligand|DOI 14.0% / 残差 21.0% 的随机方差; metal 固定效应 R²=3.95%, cell line 14.7%。",
       "L2 交互: Ru↔Os 71.2% [60.1, 77.6] (检出); Ir↔Rh 0% [0, 25.7] 但最小可检测 41.7% (未定)。5% 阈值在本样本量下不可检验。",
-      "L2 交互 (loose 键): Ru-Ir 64.5% [47.8, 73.7], Ru-Os 70.5% [57.7, 77.9] 均检出。"
+      "L2 交互 (loose 键): Ru-Ir 64.5% [47.8, 73.7], Ru-Os 70.5% [57.7, 77.9] 均检出。",
+      "光毒性 (功能终点): Ru switch 0.2624 (233/888) vs Ir 0.1373 (95/692), 差 +0.1251 [0.0395, 0.2048]; Ir 偏 antagonise (0.2413 vs 0.0631)。PI 本身不可预测 (OOF R² < 0)。",
+      "旧审计的 PI 中位 1.27/0.88 是 median log10(IC50_light) 误标; 真实 PI 中位 Ru 0.4914 / Ir -0.2218, 与 switch 率同向。该结论已撤回。"
     ],
     "continuous_data_audit_2026_10_18": {
       "numeric_dark_ic50": 21777,
@@ -94,7 +96,21 @@
         "Ru-Rh": 15
       },
       "ru_ir_matched_units": 0,
-      "phototoxicity_matched_units": 0
+      "phototoxicity_matched_units": 0,
+      "pi_median_by_metal_status": "MISLABELED",
+      "pi_median_by_metal_correction": {
+        "what_it_was": "median log10(IC50_light) per metal, not a dark/light ratio",
+        "reproduced": {
+          "Ru": 0.8791,
+          "Ir": 1.2714
+        },
+        "correct_pi_median_log10": {
+          "Ru": 0.4914,
+          "Ir": -0.2218
+        },
+        "artifact": "metrics/by_metric/msrs_phototoxicity.json:prior_claim_reconciliation",
+        "consequence": "「Ir ~19x 光毒性」撤回; Ru 才是光激活更强的一方"
+      }
     },
     "assets": {
       "binary_mainline": "metrics/by_metric/dmpnn_within_metal_cap128|cap512|capacity_pair|capacity_foldwise*_gpu0.json",
@@ -103,7 +119,10 @@
       "wp3": "metrics/by_metric/metal_transfer_chemistry.json",
       "wp4": "metrics/by_metric/wp4_metal_token_fsma.json",
       "fusion": "metrics/by_metric/fusion_decision_table_2026_10_17.json + stacked_dmpnn_xgb_within_metal.json + fsma_fused_kcurve.json",
-      "capacity_policy": "molmetal/width_policy.py + configs/dmpnn_within_metal_sizeadaptive_pf_gpu0.yaml (AUTHORED, NOT RUN)"
+      "capacity_policy": "molmetal/width_policy.py + configs/dmpnn_within_metal_sizeadaptive_pf_gpu0.yaml (AUTHORED, NOT RUN)",
+      "msrs_endpoints": "metrics/by_metric/msrs_endpoints.json",
+      "msrs_variance": "metrics/by_metric/msrs_variance_decomposition.json",
+      "msrs_phototoxicity": "metrics/by_metric/msrs_phototoxicity.json"
     }
   },
   "framework": {
@@ -310,18 +329,166 @@
     {
       "id": "MSRS-5",
       "title": "光毒性切换 (功能终点)",
-      "why": "PI 是金属特异的机制读数: Ir 中位 1.27 (≈19×) vs Ru 0.88 (≈7.6×)。这是最可能出『眼前一亮』结论的轴。",
+      "why": "光毒性是唯一直接测「换金属后功能是否改变」的终点: dark 与 light 两条 IC50 来自同一行, 不需要跨金属配对就能分类为 switch / antagonise。计划初稿误引了「Ir 1.27 vs Ru 0.88」, 那实际是 light IC50 的中位数; 实测方向相反 (Ru 光激活更强), 见 result.prior_claim_correction。",
       "method": "PI 的金属主效应 (混合模型, DOI 随机截距) + 按配体骨架的金属对比 + PI 的可预测性; 不做 matched ΔPI (MSRS-0 实测跨金属配对 = 0)。",
       "deliverable": "metrics/by_metric/msrs_phototoxicity.json",
       "acceptance": "金属效应在控制 DOI 后仍显著; 每条结论必须带每金属 n (Ru 582 / Ir 528 / Re 28 / Os 9 / Rh 3 的精确子集); Os/Rh 不作为排序依据。",
       "gpu": "none",
       "wall": "2 天",
-      "status": "TODO",
+      "status": "DONE",
       "priority": "P1",
       "depends_on": [
         "MSRS-0"
       ],
-      "blocked_by_finding": "MSRS-0: phototoxicity_matched_units = 0. 『金属切换机制』只能写成配体间的观察性对比, 不能写成同一配体的干预效应。"
+      "completed": "2026-10-18",
+      "artifact": "metrics/by_metric/msrs_phototoxicity.json",
+      "producer": "molmetal/scripts/msrs_phototoxicity.py (tests/test_msrs_phototoxicity.py, 13 passed)",
+      "design_limit": "MSRS-0: phototoxicity_matched_units = 0。所有金属对比都是配体间观察性对比 (按 DOI 聚类), 不是同一配体的干预效应。",
+      "result": {
+        "counts": {
+          "switch": 350,
+          "antagonise": 224,
+          "active_both": 195,
+          "inactive_both": 866,
+          "undecidable": 523
+        },
+        "switch_rate": {
+          "Ru": {
+            "n_decidable": 888,
+            "n": 233,
+            "rate": 0.2624,
+            "wilson": [
+              0.2345,
+              0.2923
+            ]
+          },
+          "Ir": {
+            "n_decidable": 692,
+            "n": 95,
+            "rate": 0.1373,
+            "wilson": [
+              0.1136,
+              0.1649
+            ]
+          },
+          "Re": {
+            "n_decidable": 34,
+            "n": 19,
+            "rate": 0.5588,
+            "wilson": [
+              0.3945,
+              0.7112
+            ],
+            "rankable": false
+          },
+          "Os": {
+            "n_decidable": 18,
+            "n": 1,
+            "rate": 0.0556,
+            "wilson": [
+              0.0099,
+              0.2576
+            ],
+            "rankable": false
+          },
+          "Rh": {
+            "n_decidable": 3,
+            "n": 2,
+            "rate": 0.6667,
+            "wilson": [
+              0.2077,
+              0.9385
+            ],
+            "rankable": false
+          }
+        },
+        "antagonise_rate": {
+          "Ru": {
+            "n": 56,
+            "rate": 0.0631
+          },
+          "Ir": {
+            "n": 167,
+            "rate": 0.2413
+          }
+        },
+        "ru_minus_ir": {
+          "switch": {
+            "rate_difference": 0.1251,
+            "ci95_doi_clustered_bootstrap": [
+              0.0395,
+              0.2048
+            ],
+            "n_dois": 241
+          },
+          "antagonise": {
+            "rate_difference": -0.1783,
+            "ci95_doi_clustered_bootstrap": [
+              -0.2802,
+              -0.0842
+            ],
+            "n_dois": 241
+          }
+        },
+        "pi_predictability": {
+          "Ru": {
+            "n_ligands": 173,
+            "r2_oof": -0.1303,
+            "mae_oof": 0.6649,
+            "baseline_mae": 0.6634,
+            "permutation_p": 0.005,
+            "verdict": "no usable signal"
+          },
+          "Ir": {
+            "n_ligands": 115,
+            "r2_oof": -0.3707,
+            "mae_oof": 0.8766,
+            "baseline_mae": 0.7716,
+            "permutation_p": 0.1294,
+            "verdict": "no usable signal"
+          }
+        },
+        "scaffold_enrichment": {
+          "Ru": {
+            "n_units": 862,
+            "n_scaffolds_tested": 18,
+            "surviving_bh_unit_level": 9,
+            "surviving_bh_paper_level": 0
+          },
+          "Ir": {
+            "n_units": 680,
+            "n_scaffolds_tested": 19,
+            "surviving_bh_unit_level": 6,
+            "surviving_bh_paper_level": 0
+          }
+        },
+        "prior_claim_correction": {
+          "prior": "pi_median_by_metal Ir 1.27 / Ru 0.88, read as log10 PI (Ir ~19x)",
+          "what_it_was": "median log10(IC50_light) 单独, 不是 dark/light 比值 (逐位复现 1.2714 / 0.8791)",
+          "corrected_pi_median_log10": {
+            "Ru": 0.4914,
+            "Ir": -0.2218
+          },
+          "corrected_pi_fold": {
+            "Ru": 3.1,
+            "Ir": 0.6
+          }
+        }
+      },
+      "findings": [
+        "光毒性是唯一显示出金属特异方向的机制轴, 但方向与旧计划相反: Ru 的 switch 率 0.2624 (233/888) 高于 Ir 的 0.1373 (95/692), 差 +0.1251 [0.0395, 0.2048] (DOI 聚类 bootstrap)。",
+        "Ir 偏 antagonise (0.2413 vs Ru 0.0631, 差 -0.1783 [-0.2802, -0.0842]): 光下反而失活, 与 Ru 的「光激活」方向相反。",
+        "旧的「Ir 中位 PI 1.27 (~19x) vs Ru 0.88 (~7.6x)」是误标: 1.2714/0.8791 是 median log10(IC50_light) 单独, 不是比值。真实 PI 中位数 Ru 0.4914 (3.1x) / Ir -0.2218 (0.6x), 与 switch 率同向。该结论撤回。",
+        "PI 本身不可预测: out-of-fold R² 为负 (Ru -0.1303, Ir -0.3707), 比预测金属均值更差。Ru 的 permutation p=0.005 不能读作信号 (置换模型同样差于均值); 主读数是 R² 符号。",
+        "Scaffold 富集在 unit 层显著 (Ru 9/18, Ir 6/19), 但把 (scaffold, DOI) 折叠成单观测后 0 个存活 → 富集是「一篇论文多细胞系」的伪影, 不能写成 scaffold 规则。",
+        "可判定率本身是金属特异的: Ru 404/1292 (31%) undecidable vs Ir 89/781 (11%), 因为 Ru 的 light 端删失更多。任何只比较 exact 子集的中位数都在比较两种不同的选择。"
+      ],
+      "decision": "光毒性保留为 MSRS 的功能终点, 但只作为「方向性机制读数」(Ru 光激活 / Ir 光失活), 不作为可预测或可设计的定量轴。MSRS-2 不把 PI 作为预测目标; 若要进决策层, 只能用分类后验 + 弃权。",
+      "caveats": [
+        "光下是否测过是论文层面的决定, DOI 聚类 bootstrap 只能反映已测样本的相关性, 不能校正从未做光照臂的论文。",
+        "10 uM 阈值沿用主线的二分类切点以便对照; 比值终点不需要阈值但无法使用右删失行。",
+        "Re (34 可判定) / Os (18) / Rh (3) 仅列全, 不得排序; Wilson 区间覆盖 [0,1] 的大部分。"
+      ]
     },
     {
       "id": "MSRS-6",
@@ -390,7 +557,7 @@
     "wave_4_paper": [
       "MSRS-8"
     ],
-    "note": "Wave 1 全部 CPU 且零 GPU, 先跑是因为它决定后续是否值得做: 若 MSRS-1 的交互占比接近 0, 直接改写论文角度, 省掉 Wave 2-3。"
+    "note": "Wave 1 (MSRS-0/1/5) 已于 2026-10-18 全部完成, 纯 CPU。结论: 交互确实存在 (strict Ru-Os 71.2%, loose Ru-Ir 64.5%), 所以 Wave 2 值得做; 但光毒性只能当方向性机制读数, 不进预测目标。Wave 2 需要 GPU (>1h) → 需 USER_OK。"
   },
   "legacy_mainline": {
     "note": "二分类主线不再是论文主轴, 但其产物仍是 MSRS 的基线与对照, 不删除。",

@@ -1,0 +1,507 @@
+{
+  "artifact": "msrs_phototoxicity",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "functional endpoint",
+  "generated_utc": "2026-10-18T04:41:35+00:00",
+  "provenance": {
+    "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_phototoxicity.py",
+    "git_commit": "bac6d233f7d40b8c74f202f83970f89187524ccf",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python"
+    ]
+  },
+  "definitions": {
+    "activity_threshold_um": 10.0,
+    "switch": "dark IC50 >= threshold and light IC50 < threshold",
+    "antagonise": "dark IC50 < threshold and light IC50 >= threshold",
+    "undecidable": "a censoring bound straddles the threshold, or a value is missing",
+    "pi": "PI = log10(IC50_dark / IC50_light); reported on exact rows only"
+  },
+  "counts": {
+    "inactive_both": 866,
+    "undecidable": 523,
+    "switch": 350,
+    "antagonise": 224,
+    "active_both": 195
+  },
+  "rates_by_metal": {
+    "Ru": {
+      "n_rows_with_light": 1292,
+      "n_decidable": 888,
+      "switch": {
+        "n": 233,
+        "rate": 0.2624,
+        "ci95_wilson": [
+          0.2345,
+          0.2923
+        ]
+      },
+      "antagonise": {
+        "n": 56,
+        "rate": 0.0631,
+        "ci95_wilson": [
+          0.0489,
+          0.081
+        ]
+      },
+      "active_both": {
+        "n": 90,
+        "rate": 0.1014,
+        "ci95_wilson": [
+          0.0832,
+          0.1229
+        ]
+      },
+      "inactive_both": {
+        "n": 509,
+        "rate": 0.5732,
+        "ci95_wilson": [
+          0.5404,
+          0.6053
+        ]
+      },
+      "n_undecidable": 404,
+      "pi_exact_only": {
+        "n": 582,
+        "median_log10": 0.4914,
+        "iqr_log10": [
+          -0.301,
+          1.0212
+        ]
+      }
+    },
+    "Ir": {
+      "n_rows_with_light": 781,
+      "n_decidable": 692,
+      "switch": {
+        "n": 95,
+        "rate": 0.1373,
+        "ci95_wilson": [
+          0.1136,
+          0.1649
+        ]
+      },
+      "antagonise": {
+        "n": 167,
+        "rate": 0.2413,
+        "ci95_wilson": [
+          0.2109,
+          0.2746
+        ]
+      },
+      "active_both": {
+        "n": 105,
+        "rate": 0.1517,
+        "ci95_wilson": [
+          0.1269,
+          0.1804
+        ]
+      },
+      "inactive_both": {
+        "n": 325,
+        "rate": 0.4697,
+        "ci95_wilson": [
+          0.4327,
+          0.5069
+        ]
+      },
+      "n_undecidable": 89,
+      "pi_exact_only": {
+        "n": 528,
+        "median_log10": -0.2218,
+        "iqr_log10": [
+          -1.0177,
+          0.4959
+        ]
+      }
+    },
+    "Rh": {
+      "n_rows_with_light": 9,
+      "n_decidable": 3,
+      "switch": {
+        "n": 2,
+        "rate": 0.6667,
+        "ci95_wilson": [
+          0.2077,
+          0.9385
+        ]
+      },
+      "antagonise": {
+        "n": 0,
+        "rate": 0.0,
+        "ci95_wilson": [
+          0.0,
+          0.5615
+        ]
+      },
+      "active_both": {
+        "n": 0,
+        "rate": 0.0,
+        "ci95_wilson": [
+          0.0,
+          0.5615
+        ]
+      },
+      "inactive_both": {
+        "n": 1,
+        "rate": 0.3333,
+        "ci95_wilson": [
+          0.0615,
+          0.7923
+        ]
+      },
+      "n_undecidable": 6,
+      "pi_exact_only": {
+        "n": 3,
+        "median_log10": 0.8751,
+        "iqr_log10": [
+          0.7543,
+          1.0256
+        ]
+      }
+    },
+    "Os": {
+      "n_rows_with_light": 26,
+      "n_decidable": 18,
+      "switch": {
+        "n": 1,
+        "rate": 0.0556,
+        "ci95_wilson": [
+          0.0099,
+          0.2576
+        ]
+      },
+      "antagonise": {
+        "n": 0,
+        "rate": 0.0,
+        "ci95_wilson": [
+          0.0,
+          0.1759
+        ]
+      },
+      "active_both": {
+        "n": 0,
+        "rate": 0.0,
+        "ci95_wilson": [
+          0.0,
+          0.1759
+        ]
+      },
+      "inactive_both": {
+        "n": 17,
+        "rate": 0.9444,
+        "ci95_wilson": [
+          0.7424,
+          0.9901
+        ]
+      },
+      "n_undecidable": 8,
+      "pi_exact_only": {
+        "n": 9,
+        "median_log10": 0.1139,
+        "iqr_log10": [
+          -0.2676,
+          0.4624
+        ]
+      }
+    },
+    "Re": {
+      "n_rows_with_light": 50,
+      "n_decidable": 34,
+      "switch": {
+        "n": 19,
+        "rate": 0.5588,
+        "ci95_wilson": [
+          0.3945,
+          0.7112
+        ]
+      },
+      "antagonise": {
+        "n": 1,
+        "rate": 0.0294,
+        "ci95_wilson": [
+          0.0052,
+          0.1492
+        ]
+      },
+      "active_both": {
+        "n": 0,
+        "rate": 0.0,
+        "ci95_wilson": [
+          0.0,
+          0.1015
+        ]
+      },
+      "inactive_both": {
+        "n": 14,
+        "rate": 0.4118,
+        "ci95_wilson": [
+          0.2637,
+          0.5778
+        ]
+      },
+      "n_undecidable": 16,
+      "pi_exact_only": {
+        "n": 28,
+        "median_log10": 0.9319,
+        "iqr_log10": [
+          0.5594,
+          1.4189
+        ]
+      }
+    }
+  },
+  "contrasts": {
+    "switch": {
+      "status": "OK",
+      "contrast": "Ru - Ir",
+      "outcome": "switch",
+      "rate_difference": 0.1251,
+      "ci95_doi_clustered_bootstrap": [
+        0.0395,
+        0.2048
+      ],
+      "n_dois": 241,
+      "n_units": {
+        "Ru": 888,
+        "Ir": 692
+      }
+    },
+    "antagonise": {
+      "status": "OK",
+      "contrast": "Ru - Ir",
+      "outcome": "antagonise",
+      "rate_difference": -0.1783,
+      "ci95_doi_clustered_bootstrap": [
+        -0.2802,
+        -0.0842
+      ],
+      "n_dois": 241,
+      "n_units": {
+        "Ru": 888,
+        "Ir": 692
+      }
+    }
+  },
+  "predictability": {
+    "Ru": {
+      "status": "OK",
+      "n_ligands": 173,
+      "r2_oof": -0.1303,
+      "mae_oof": 0.6649,
+      "baseline_mae_predict_mean": 0.6634,
+      "permutation_p": 0.005,
+      "n_permutations": 200,
+      "folds": 5,
+      "verdict": "no usable signal: out-of-fold R2 is negative, so the model is worse than predicting the metal's mean PI",
+      "permutation_caveat": "the permutation p compares the model to the same model fitted on shuffled labels; when both are worse than the mean it is not evidence of signal. The R2 sign is the primary read."
+    },
+    "Ir": {
+      "status": "OK",
+      "n_ligands": 115,
+      "r2_oof": -0.3707,
+      "mae_oof": 0.8766,
+      "baseline_mae_predict_mean": 0.7716,
+      "permutation_p": 0.1294,
+      "n_permutations": 200,
+      "folds": 5,
+      "verdict": "no usable signal: out-of-fold R2 is negative, so the model is worse than predicting the metal's mean PI",
+      "permutation_caveat": "the permutation p compares the model to the same model fitted on shuffled labels; when both are worse than the mean it is not evidence of signal. The R2 sign is the primary read."
+    }
+  },
+  "scaffold_enrichment": {
+    "Ru": {
+      "status": "OK",
+      "n_units": 862,
+      "n_scaffolds_tested": 18,
+      "overall_switch_rate": 0.2587,
+      "n_surviving_bh_0_05": 9,
+      "n_surviving_paper_level_bh_0_05": 0,
+      "top_scaffolds": [
+        {
+          "scaffold": "c1ccc(-c2nc3ccccc3s2)cc1",
+          "n": 18,
+          "n_switch": 12,
+          "rate": 0.6667,
+          "rate_rest": 0.25,
+          "z": 3.994,
+          "p_raw": 6.486973495681167e-05,
+          "p_bh": 0.00117,
+          "n_dois": 1,
+          "p_paper_level_mwu": null
+        },
+        {
+          "scaffold": "O=C(C=CC=Cc1ccccc1)C=Cc1ccccc1",
+          "n": 16,
+          "n_switch": 11,
+          "rate": 0.6875,
+          "rate_rest": 0.2506,
+          "z": 3.954,
+          "p_raw": 7.70010902599998e-05,
+          "p_bh": 0.00069,
+          "n_dois": 3,
+          "p_paper_level_mwu": 0.8006005725042094,
+          "p_paper_level_bh": 0.96072
+        },
+        {
+          "scaffold": "c1cnc2c(c1)ccc1cccnc12",
+          "n": 24,
+          "n_switch": 14,
+          "rate": 0.5833,
+          "rate_rest": 0.2494,
+          "z": 3.683,
+          "p_raw": 0.0002302589443307717,
+          "p_bh": 0.00138,
+          "n_dois": 12,
+          "p_paper_level_mwu": 0.018430973772440722,
+          "p_paper_level_bh": 0.22117
+        },
+        {
+          "scaffold": "c1ccc2nc(-c3ccc4ccccc4n3)ccc2c1",
+          "n": 11,
+          "n_switch": 7,
+          "rate": 0.6364,
+          "rate_rest": 0.2538,
+          "z": 2.879,
+          "p_raw": 0.0039933844566594255,
+          "p_bh": 0.01797,
+          "n_dois": 3,
+          "p_paper_level_mwu": 0.02423898434014957,
+          "p_paper_level_bh": 0.14543
+        },
+        {
+          "scaffold": "C(=Cc1ccnc(-c2cc(C=Cc3ccccc3)ccn2)c1)c1ccccc1",
+          "n": 35,
+          "n_switch": 2,
+          "rate": 0.0571,
+          "rate_rest": 0.2672,
+          "z": -2.78,
+          "p_raw": 0.00543651104859695,
+          "p_bh": 0.01957,
+          "n_dois": 3,
+          "p_paper_level_mwu": 0.7475262967511234,
+          "p_paper_level_bh": 0.9967
+        }
+      ],
+      "top_scaffold_permutation_p": 0.001,
+      "verdict": "9 scaffold(s) survive BH at the unit level but 0 at the paper level: the apparent enrichment is a paper effect (a scaffold measured many times inside one article), not a chemistry effect. Do not report a scaffold rule from this data.",
+      "note": "scaffold = Bemis-Murcko of the largest organic fragment; units are (compound, cell line, duration, DOI), so a scaffold's n counts measurements, not molecules. The paper-level column re-tests with one observation per (scaffold, DOI) and is the number to trust when a single paper supplies most of a scaffold's units."
+    },
+    "Ir": {
+      "status": "OK",
+      "n_units": 680,
+      "n_scaffolds_tested": 19,
+      "overall_switch_rate": 0.1397,
+      "n_surviving_bh_0_05": 6,
+      "n_surviving_paper_level_bh_0_05": 0,
+      "top_scaffolds": [
+        {
+          "scaffold": "c1cnc2c(c1)c1nc(-c3ccc4c(c3)OCO4)[nH]c1c1cccnc12",
+          "n": 11,
+          "n_switch": 7,
+          "rate": 0.6364,
+          "rate_rest": 0.1315,
+          "z": 4.79,
+          "p_raw": 1.6651909801301105e-06,
+          "p_bh": 3e-05,
+          "n_dois": 1,
+          "p_paper_level_mwu": null
+        },
+        {
+          "scaffold": "[c-]1ccccc1-c1ccccn1",
+          "n": 47,
+          "n_switch": 16,
+          "rate": 0.3404,
+          "rate_rest": 0.1248,
+          "z": 4.114,
+          "p_raw": 3.889203521100758e-05,
+          "p_bh": 0.00037,
+          "n_dois": 5,
+          "p_paper_level_mwu": 0.12072737633012169,
+          "p_paper_level_bh": 0.84509
+        },
+        {
+          "scaffold": "c1cc(-c2nc3ccccc3[nH]2)nc(-c2nc3ccccc3[nH]2)c1",
+          "n": 10,
+          "n_switch": 5,
+          "rate": 0.5,
+          "rate_rest": 0.1343,
+          "z": 3.311,
+          "p_raw": 0.0009300317501671498,
+          "p_bh": 0.00589,
+          "n_dois": 1,
+          "p_paper_level_mwu": null
+        },
+        {
+          "scaffold": "c1cnc2c(c1)ccc1cccnc12",
+          "n": 13,
+          "n_switch": 5,
+          "rate": 0.3846,
+          "rate_rest": 0.1349,
+          "z": 2.572,
+          "p_raw": 0.010116987158053543,
+          "p_bh": 0.04806,
+          "n_dois": 2,
+          "p_paper_level_mwu": null
+        },
+        {
+          "scaffold": "[c-]1cccc2c1c1ncccc1c1nc3cc4ccccc4cc3nc21",
+          "n": 38,
+          "n_switch": 0,
+          "rate": 0.0,
+          "rate_rest": 0.148,
+          "z": -2.557,
+          "p_raw": 0.010570099667636293,
+          "p_bh": 0.04017,
+          "n_dois": 3,
+          "p_paper_level_mwu": 0.3328057843049218,
+          "p_paper_level_bh": 1.0
+        }
+      ],
+      "top_scaffold_permutation_p": 0.001,
+      "verdict": "6 scaffold(s) survive BH at the unit level but 0 at the paper level: the apparent enrichment is a paper effect (a scaffold measured many times inside one article), not a chemistry effect. Do not report a scaffold rule from this data.",
+      "note": "scaffold = Bemis-Murcko of the largest organic fragment; units are (compound, cell line, duration, DOI), so a scaffold's n counts measurements, not molecules. The paper-level column re-tests with one observation per (scaffold, DOI) and is the number to trust when a single paper supplies most of a scaffold's units."
+    }
+  },
+  "naive_vs_censoring_aware": {
+    "pi_exact_median_Ru": 0.4914,
+    "pi_exact_median_Ir": -0.2218,
+    "naive_ranks_Ir_as_more_phototoxic": false,
+    "switch_rate_Ru": 0.2624,
+    "switch_rate_Ir": 0.1373,
+    "switch_ranks_Ru_as_more_light_activated": true,
+    "interpretation": "The exact-PI median and the switch rate agree on direction (both put Ru higher), but they are computed on different row sets: the exact-PI median silently drops every censored light measurement, and it drops 404/1292 (31%) for Ru against 89/781 (11%) for Ir. The switch rate keeps those rows and is the endpoint to quote; the exact-PI median is reported only to show how much the selection changes."
+  },
+  "prior_claim_reconciliation": {
+    "prior_value": "todo.json current_position.continuous_data_audit_2026_10_18.pi_median_by_metal = {Ir: 1.27, Ru: 0.88}",
+    "prior_reading": "Ir is ~19x phototoxic vs Ru ~7.6x (log10 PI)",
+    "what_it_actually_was": "median log10(IC50_light) per metal, not a dark/light ratio",
+    "measured_median_light_ic50_log10": {
+      "Ru": 0.8791,
+      "Ir": 1.2714
+    },
+    "correct_pi_median_log10": {
+      "Ru": 0.4914,
+      "Ir": -0.2218
+    },
+    "correct_pi_fold": {
+      "Ru": 3.1,
+      "Ir": 0.6
+    },
+    "consequence": "The 'Ir is far more phototoxic' reading is WITHDRAWN. On exact rows the median PI is Ru 3.1x vs Ir 0.6x, and the censoring-aware switch rate agrees (Ru 26% vs Ir 14%). The two independent endpoints now point the same way; the old one pointed the other way because it was not a ratio."
+  },
+  "design_facts": {
+    "matched_pairs": "zero within-ligand cross-metal PI units (MSRS-0), so every contrast here is between compounds and clustered by DOI",
+    "dois_with_both_metals": 4
+  },
+  "caveats": [
+    "Whether a compound was tested under light at all is a paper-level decision; the DOI-clustered bootstrap reflects that, but it cannot correct for papers that never ran the light arm.",
+    "The 10 uM activity threshold is the mainline's binary cut, kept for comparability. A ratio endpoint would avoid the threshold but cannot use right-censored rows.",
+    "Re (28 units), Os (9) and Rh (3) are reported for completeness and must not be ranked; their Wilson intervals span most of [0, 1].",
+    "Scaffold enrichment counts measurements, not molecules: a scaffold tested in five cell lines contributes five units and is not five independent observations.",
+    "The 'Ir is ~19x phototoxic' reading carried in the plan came from a median of the light IC50, not of the dark/light ratio. It is withdrawn; see prior_claim_reconciliation."
+  ]
+}
