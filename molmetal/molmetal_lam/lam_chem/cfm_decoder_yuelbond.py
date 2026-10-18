@@ -377,6 +377,62 @@ def _demote_aromatic_outside_rings(mol):
     return mol
 
 
+def _demote_small_ring_aromatic(mol, min_size: int = 5):
+    """Demote aromatic bonds inside rings SMALLER than `min_size`; return mol.
+
+    Wf-A83 (2026-10-18).  Companion to `_demote_aromatic_outside_rings`, and
+    the other half of the same measured defect.  OPT-2's ring audit found the
+    generated corpus is 89.8% three-membered rings against 0.5% in the real
+    corpus, and a 3-ring marked aromatic cannot be kekulized at all: MEASURED
+    on a 1-epoch checkpoint, one of three decoded clouds died with
+    `KekulizeException: Can't kekulize mol.  Unkekulized atoms: 0 1 2` --
+    three atoms, one ring, aromatic bonds.  Wf-A79 cannot help there because
+    the bond IS in a ring.
+
+    RDKit's smallest aromatic ring in this chemistry is 5 (furan/pyrrole/
+    thiophene); 3- and 4-membered aromatic rings require exotic charged
+    systems that this corpus does not contain (MEASURED: 0.5% 3-rings real).
+    Demoting their bonds to SINGLE turns a lost molecule into a valid, if
+    chemically implausible, one -- the same trade-off Wf-A79 makes, and the
+    same caveat: this is a DECODE-side repair, not a ring-size fix.  The
+    generator still makes 3-rings; this only stops losing them at the
+    kekulizer.
+
+    Only bonds whose BOTH endpoints lie in a small ring are touched, so a
+    fused aromatic system keeps its 6-ring bonds.  No-op when ring
+    perception fails.
+    """
+    from rdkit import Chem
+
+    try:
+        Chem.GetSSSR(mol)
+    except Exception:
+        return mol
+    small_atoms = set()
+    for ring in mol.GetRingInfo().AtomRings():
+        if len(ring) < int(min_size):
+            small_atoms.update(int(i) for i in ring)
+    if not small_atoms:
+        return mol
+    n_demoted = 0
+    for bond in mol.GetBonds():
+        if bond.GetBondType() != Chem.BondType.AROMATIC:
+            continue
+        if (
+            bond.GetBeginAtomIdx() in small_atoms
+            and bond.GetEndAtomIdx() in small_atoms
+        ):
+            bond.SetBondType(Chem.BondType.SINGLE)
+            bond.SetIsAromatic(False)
+            n_demoted += 1
+    if n_demoted:
+        for idx in small_atoms:
+            atom = mol.GetAtomWithIdx(idx)
+            if atom.GetIsAromatic():
+                atom.SetIsAromatic(False)
+    return mol
+
+
 # ---------------------------------------------------------------------------
 # Result container
 # ---------------------------------------------------------------------------
@@ -1066,6 +1122,11 @@ class YuelBondBondDecoder:
         # "non-ring atom N marked aromatic" (decode_rate 0.109).  The pass
         # is a no-op on molecules whose aromatic bonds are all in rings.
         mol = _demote_aromatic_outside_rings(mol)
+        # Wf-A83 (2026-10-18) — the other half: an aromatic bond inside a
+        # 3-/4-membered ring cannot be kekulized either, and Wf-A79's
+        # "not in a ring" test leaves it alone.  MEASURED on a 1-epoch
+        # checkpoint: "Can't kekulize mol. Unkekulized atoms: 0 1 2".
+        mol = _demote_small_ring_aromatic(mol)
         try:
             Chem.SanitizeMol(mol)
             sanitized = True

@@ -5365,3 +5365,62 @@ Cumulative catalog count: **160 -> 161** (+1).  ACTIVE count: **116 -> 117** (+1
 1 one-epoch regression smoke on GPU0, 85 s; 6 new tests; §5.11 yaml-only PASS +
 config-binding PASS; §5.2: every number traces to `/tmp/wfa81b_smoke` +
 `/tmp/wfa82_smoke`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+### §6.110 — Wf-A83: a 3-ring marked aromatic is lost at the kekulizer (2026-10-18)
+
+**The measurement that pointed here.**  OPT-2's ring audit found the generated
+corpus is 89.8% three-membered rings against 0.5% in the real corpus, and
+Wf-A79's decode-side repair handles only aromatic bonds that lie in NO ring.
+Re-running the panel decode on a 1-epoch v2 checkpoint produced exactly one
+such molecule:
+
+```
+smiles='' err=KekulizeException: Can't kekulize mol.  Unkekulized atoms: 0 1 2 nb=3
+```
+
+Three atoms, one ring, aromatic bonds.  `bond.IsInRing()` is True, so Wf-A79
+leaves every bond alone; RDKit then refuses the whole molecule.
+
+**The repair.**  `_demote_small_ring_aromatic(mol, min_size=5)`: every aromatic
+bond whose BOTH endpoints lie in a ring smaller than 5 becomes SINGLE and
+non-aromatic, and those atoms lose their aromatic flag.  Only bonds with both
+endpoints in a small ring are touched, so a fused 3+6 system keeps its 6-ring
+aromatic bonds.  Called right after `_demote_aromatic_outside_rings` and before
+`SanitizeMol`.
+
+Why 5 is the right floor for this corpus: RDKit's smallest aromatic ring in
+drug-like chemistry is 5 (furan / pyrrole / thiophene); 3- and 4-membered
+aromatic rings need exotic charged systems, and the real corpus has 0.5%
+3-rings.  MEASURED on the same cloud:
+
+| | smiles | error | bonds |
+|---|---|---|---|
+| before | `''` | `KekulizeException ... Unkekulized atoms: 0 1 2` | 3 |
+| after | `C1CN1.[HH].[HH].[HH].[HH].[HH]` | `None` | 3 |
+
+Decode on the 3-cloud probe: **2/3 -> 3/3**.  The ring survives as an aziridine
+with single bonds, i.e. the molecule is kept, not the chemistry corrected.
+
+**Honest-negative (ACTIVE, this entry):**
+  * **This is a decode-side band-aid, not a ring-size fix.**  The generator
+    still emits 89.8% 3-rings; the pass only stops losing them at the
+    kekulizer.  Any ring-size claim must come from re-running the OPT-2 audit
+    on a post-Wf-A83 corpus, which has NOT been done.
+  * **Demotion changes the molecule.**  `C1CN1` is not what the head
+    "predicted" if it meant an aromatic ring; it is what survives.  The
+    generated-corpus aromatic fraction will fall for a reason that is not the
+    model improving.
+  * **n=3 clouds, 1 checkpoint, 1 epoch.**  The 2/3 -> 3/3 is a mechanism
+    demonstration on the exact failure, not a decode-rate measurement.  The
+    L3 arm's 0.109 has not been re-measured under Wf-A83.
+  * **The floor is a chemistry assumption.**  5 is right for C/N/O/S drug-like
+    chemistry; a corpus containing cyclopropenyl or other 3-pi systems would
+    need `min_size` lowered, and the pass would then be wrong.
+
+**§6.110 catalog-count math.** Net catalog-count delta: **+1** (§6.110 itself).
+ACTIVE count delta: **+1** (mechanism only, no corpus-level rate).
+Cumulative catalog count: **161 -> 162** (+1).  ACTIVE count: **117 -> 118** (+1).
+
+**Workflow** | Wf-A83 (2026-10-18; 0 GPU training — 1 CPU decode of 3 clouds on
+a 1-epoch checkpoint; 6 new tests; §5.2: every number traces to
+`/tmp/wfa81b_smoke`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
