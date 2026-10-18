@@ -3262,7 +3262,7 @@
     "不要在 canonical 分组下用 full 块替代 complex 块——多出的 main/ancillary/counterion 在未见配合物上稀释 (0.4848 vs 0.5012)。"
   ],
   "paper_freeze": {
-    "directive": "用户 2026-10-18：论文线在模型完全变强之前不要动；同日重申。当前模型未达『强』：全量决策仍输基线 (NEG-16)。",
+    "directive": "用户 2026-10-18：论文线在模型完全变强之前不要动；同日重申。当前模型未达「强」：全量决策仍输基线 (NEG-16 → NEG-21：D-MPNN 最好 regret 0.1190，DOI 聚类 Holm p=1.0；绝对 R2 只到树模型 parity，NEG-20)。",
     "frozen": [
       {
         "id": "MSRS-8",
