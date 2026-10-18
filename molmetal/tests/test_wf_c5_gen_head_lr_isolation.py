@@ -276,13 +276,21 @@ class FailureReasonTaxonomy(unittest.TestCase):
         self.assertIsNone(M._rdkit_strict_reason("CCO", sanitized=True))
 
     def test_empty_smiles_is_its_own_bucket(self) -> None:
+        # Wf-A81 — `sanitized=True` with an empty SMILES is the only way a
+        # decode reaches "no_smiles" now.  `sanitized=False` + empty SMILES
+        # is what a failed sanitize looks like in this decoder, and it is
+        # filed as a sanitize failure below.
         self.assertEqual(
-            M._rdkit_strict_reason("", sanitized=False), "no_smiles"
+            M._rdkit_strict_reason("", sanitized=True), "no_smiles"
         )
 
     def test_unsanitized_is_reported_as_such(self) -> None:
+        # This test's NAME always said "reported as such"; its assertion used
+        # to say "no_smiles", which is the bug Wf-A81 fixed.  The decoder
+        # sets smiles="" in the same except branch that sets
+        # sanitized=False, so ("", False) IS a sanitize failure.
         self.assertEqual(
-            M._rdkit_strict_reason("", sanitized=False), "no_smiles"
+            M._rdkit_strict_reason("", sanitized=False), "sanitize_failed"
         )
 
     def test_rejected_string_that_was_claimed_sanitized(self) -> None:
@@ -316,7 +324,9 @@ class FailureReasonTaxonomy(unittest.TestCase):
             reasons[r] = reasons.get(r, 0) + 1
         self.assertEqual(sum(reasons.values()), 5)
         self.assertEqual(reasons["ok"], 2)
-        self.assertEqual(reasons["no_smiles"], 2)
+        # Wf-A81 — these two rows are ("", False), i.e. failed sanitizes,
+        # not "no_smiles" (see the two tests above).
+        self.assertEqual(reasons["sanitize_failed"], 2)
         self.assertEqual(reasons["reparse_failed"], 1)
 
 

@@ -467,6 +467,13 @@ class YuelBondBondDecoder:
         distance_cutoff: float = 3.5,
         valence_cap: Optional[Dict[int, int]] = None,
         decision: str = "argmax",
+        # Wf-A80 (2026-10-18) — per-class calibrated thresholds, one per
+        # BOND_LABELS class (index 0 unused).  Only read when
+        # decision="per_class"; None keeps every other mode unchanged.
+        # The trainer writes these per epoch (bond_class_k_best_threshold)
+        # and updates this attribute before gen_eval, so the calibration
+        # measured in training is the decision used at inference.
+        per_class_thresholds: Optional[Sequence[float]] = None,
         decision_threshold: float = 0.5,
         class_logit_bias: Optional[Sequence[float]] = None,
         connectivity_prior: bool = True,
@@ -537,15 +544,25 @@ class YuelBondBondDecoder:
                 self.class_logit_bias = None
         else:
             self.class_logit_bias = None
-        if self.decision not in ("argmax", "threshold"):
+        if self.decision not in ("argmax", "threshold", "per_class"):
             # Fail HERE, not at the first decode.  A yaml typo like
             # `bond_decision: treshold` otherwise decodes with argmax and the
             # only symptom is molecules that do not match the reported
             # metrics — discovered, if at all, days later.
             raise ValueError(
                 f"unknown bond decision rule {self.decision!r}; expected "
-                f"'argmax' or 'threshold'"
+                f"'argmax', 'threshold' or 'per_class'"
             )
+        # Wf-A80 — thresholds are a runtime attribute, not a frozen
+        # constructor argument: the trainer recalibrates them every epoch
+        # and assigns them here before the gen_eval decode.  A
+        # 'per_class' decoder constructed without them fails at the first
+        # decode with a message naming the missing vector.
+        self.per_class_thresholds = (
+            [float(x) for x in per_class_thresholds]
+            if per_class_thresholds is not None
+            else None
+        )
         # 2026-10-05 (Round-3 D2) — CONNECTIVITY PRIOR AT INFERENCE TIME.
         #
         # The selector above is purely PER-PAIR: it takes each candidate edge
@@ -661,6 +678,7 @@ class YuelBondBondDecoder:
             self.decision,
             self.decision_threshold,
             self.class_logit_bias,
+            self.per_class_thresholds,
         )
         # Build sorted pair list.  Wf-A49 (2026-10-16) arch_fix_6 —
         # hoist ``max_logits`` inside this loop so the empty-edge

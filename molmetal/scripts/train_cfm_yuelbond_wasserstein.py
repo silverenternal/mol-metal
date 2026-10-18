@@ -1176,6 +1176,14 @@ class EpochMetrics:
     bond_n_truth_bonds: int = 0
     bond_decision: str = ""
     bond_decision_threshold: float = 0.0
+    # Wf-A81 (2026-10-18) — the rule that actually ASSEMBLED the molecules
+    # this epoch, as opposed to `bond_decision` above, which describes the
+    # POOLED metric's rule.  In per_class mode the two differ on purpose
+    # (pooled stays on the global threshold so Wf-A73..A75 stay comparable),
+    # and before these fields a reader of per_epoch_metrics.json could not
+    # tell which rule produced gen_validity.
+    decode_decision: str = ""
+    decode_per_class_thresholds: str = ""
     # 2026-10-04 — the axis that decides whether the learned head is worth
     # keeping. Existence is nearly solved by classical toolkits; TYPE is not.
     bond_type_macro_f1_pooled: float = 0.0
@@ -2994,7 +3002,9 @@ def _decode_with_rdkit_strict(decoder: YuelBondBondDecoder, cloud: AtomCloud):
         return False
 
 
-def _rdkit_strict_reason(smi: str, sanitized: bool) -> Optional[str]:
+def _rdkit_strict_reason(
+    smi: str, sanitized: bool, error: str = ""
+) -> Optional[str]:
     """Classify ONE decoded molecule into the failure taxonomy.
 
     Returns ``None`` when the molecule passed RDKit-strict validation, else
@@ -3018,7 +3028,9 @@ def _rdkit_strict_reason(smi: str, sanitized: bool) -> Optional[str]:
     ``empty_decode``       head produced no candidate edges (N<2 or all
                            pairs beyond the cutoff)
     ``assembly_error``     RWMol could not be finalised
-    ``sanitize_failed``    RDKit rejected the valence/kekulisation
+    ``sanitize_failed``    RDKit rejected the valence/kekulisation — suffixed with the
+                           exception class (e.g. ``sanitize_failed:KekulizeException``)
+                           when the decoder reported one (Wf-A81)
     ``reparse_failed``     round-trip MolFromSmiles returned None
     ``resanitize_failed``  round-trip SanitizeMol raised
     ``multi_fragment``     parses cleanly but is >1 disconnected fragment —
@@ -3032,10 +3044,35 @@ def _rdkit_strict_reason(smi: str, sanitized: bool) -> Optional[str]:
     `_decode_with_rdkit_strict`) purely because there was no way to get a
     reason out of the first one.
     """
+    # Wf-A81 (2026-10-18) — ORDER IS THE WHOLE FIX.  The pre-fix version
+    # tested `not smi` FIRST, and `cfm_decoder_yuelbond` sets `smiles=""`
+    # in the same `except` branch that sets `sanitized=False` (`_assemble_mol`
+    # :1084) and in `_empty_decoded` (:1124).  So `sanitized=False` with a
+    # non-empty SMILES cannot happen, every failure arrived as `("", False)`,
+    # and every one of them was filed under "no_smiles".  MEASURED: the
+    # Wf-A75a w=0.0 arm's ep-3/ep-4 collapse reads `{"no_smiles": 51}` in
+    # events.jsonl, and the L3 arm's 57/64 KekulizeException refusals would
+    # have read the same way -- the taxonomy could not tell "the head
+    # produced no edges" from "RDKit refused the valence" from "the
+    # kekulizer refused a non-ring aromatic bond", which are three different
+    # repairs.  The `empty_decode` / `assembly_error` branches the caller
+    # keeps below were dead code for the same reason: `_reason` was never
+    # None when `smi` was empty.
+    _err = str(error or "")
+    if not sanitized:
+        if _err.startswith("yuelbond:"):
+            return "empty_decode"
+        if _err.startswith("RWMol"):
+            return "assembly_error"
+        if _err:
+            # "KekulizeException: ..." -> "sanitize_failed:KekulizeException".
+            # The exception CLASS is the actionable bucket; the message is in
+            # `decode_error_example` for the first one only.
+            _cls = _err.split(":", 1)[0].strip() or "unknown"
+            return f"sanitize_failed:{_cls}"
+        return "sanitize_failed"
     if not smi:
         return "no_smiles"
-    if not sanitized:
-        return "sanitize_failed"
     if not RDKIT_AVAILABLE:
         return "no_smiles"
     try:
@@ -6689,13 +6726,13 @@ def decode_clouds_and_classify(
             # re-decoding.  `decoded.error` carries the empty-candidate and
             # assembly-failure cases, which arrive as `smi == ""` and would
             # otherwise all collapse into one indistinguishable bucket.
-            _reason = _rdkit_strict_reason(smi, sanitized)
-            if _reason is None and not smi:
-                _err = str(getattr(decoded, "error", "") or "")
-                if _err.startswith("yuelbond:"):
-                    _reason = "empty_decode"
-                elif _err:
-                    _reason = "assembly_error"
+            # Wf-A81 — the decoder's own `error` field is the ONLY way to
+            # separate empty-decode from assembly-failure from a kekulizer
+            # refusal, and it is now passed INTO the classifier instead of
+            # being consulted after a check that could never fire.
+            _reason = _rdkit_strict_reason(
+                smi, sanitized, str(getattr(decoded, "error", "") or "")
+            )
             if _reason is None:
                 # `reason_counts` is the single counter. `n_ok` used to be a
                 # local of the caller before this loop was extracted; leaving
@@ -13034,14 +13071,18 @@ def main() -> int:
             # holding the EMA weights for the next training epoch.
             _ema_swapped = bool(use_ema) and model.ema_swap_in()
             try:
-                n_ok, n_total = evaluate_decode_ratio(
-                    model=model,
-                    decoder=decoder,
-                    val_clouds=val_clouds_d,
-                    device=device,
-                    closure_bounded=args.closure_bounded,
-                    closure_bias=closure_bias,
-                )
+                # Wf-A81 (2026-10-18) — decode_ratio moved BELOW the bond
+                # accuracy pass.  In "per_class" mode the decoder needs this
+                # epoch's calibrated thresholds, and they are produced by
+                # evaluate_bond_accuracy; decoding first meant the very first
+                # decode of every run happened with thresholds=None and the
+                # rule raised (MEASURED: /tmp/wfa80_smoke aborted at
+                # evaluate_decode_ratio before epoch 0 was ever scored).
+                # Both calls read the SAME model state -- there is no
+                # optimizer step between them -- so moving one after the
+                # other changes nothing except which decision rule the
+                # decode uses, which is the point: decode_ratio and
+                # gen_validity should be measured with the rule you ship.
                 # 2026-10-04 — the metric that gates.  `decode_ratio` is
                 # anti-correlated with correctness on a corpus whose bonds the
                 # head has to learn (it reads high while the head predicts
@@ -13050,6 +13091,13 @@ def main() -> int:
                 # graph to the corpus's Wiberg truth.  Reported every epoch so
                 # a run can be judged without decoding anything.
                 _decision, _threshold, _bias = _bond_decision_settings(vars(args))
+                # Wf-A80 — the POOLED metric stays on the global threshold
+                # even in "per_class" mode: evaluate_bond_accuracy needs a
+                # single rule to score pairs, and its per-class calibration
+                # is reported separately as bond_per_class_test_macro_f1.
+                # Keeping the pooled number on the same rule across runs is
+                # what makes the Wf-A73..A75 history comparable.
+                _metric_decision = "threshold" if str(_decision) == "per_class" else _decision
                 _bond_acc = evaluate_bond_accuracy(
                     model=model,
                     val_clouds=val_clouds_d,
@@ -13064,7 +13112,7 @@ def main() -> int:
                     # semantics here — it returns ``None`` when the user
                     # did not set ``--bond-aromatic-logit-bias``, which is
                     # what the helper reads as ``None`` too.
-                    decision=_decision,
+                    decision=_metric_decision,
                     threshold=_threshold,
                     class_logit_bias=_bias,
                     # Wf-A68 (2026-10-17) — held-out threshold sweep grid;
@@ -13076,6 +13124,31 @@ def main() -> int:
             finally:
                 if _ema_swapped:
                     model.ema_swap_out()
+            # Wf-A80 (2026-10-18) — TRAINING -> INFERENCE THRESHOLD HAND-OFF.
+            # The per-class thresholds were calibrated above on the held-out
+            # half of the validation pairs and, until now, only reached the
+            # metrics.  The decoder that gen_eval (and every later decode)
+            # uses took one global threshold instead, so the 0.457 per-class
+            # macro F1 never appeared in a generated molecule.  In
+            # "per_class" mode the decoder is handed this epoch's
+            # calibration BEFORE the gen_eval decode below.
+            if str(_dec_decision) == "per_class":
+                decoder.per_class_thresholds = [
+                    float(_bond_acc.get(f"bond_class_{_k}_best_threshold", 0.5))
+                    for _k in range(5)
+                ]
+            # Wf-A81 — decode_ratio now runs HERE, after the hand-off, so a
+            # "per_class" run decodes with calibrated thresholds instead of
+            # raising on thresholds=None.  Same model state as the bond
+            # accuracy pass above (no optimizer step in between).
+            n_ok, n_total = evaluate_decode_ratio(
+                model=model,
+                decoder=decoder,
+                val_clouds=val_clouds_d,
+                device=device,
+                closure_bounded=args.closure_bounded,
+                closure_bias=closure_bias,
+            )
             if _bond_acc.get("n_scored", 0.0) > 0:
                 print(
                     f"[cfm-bond] epoch={epoch} "
@@ -13844,6 +13917,14 @@ def main() -> int:
             bond_decision_threshold=float(
                 _bond_acc.get("bond_decision_threshold", 0.0)
             ),
+            decode_decision=str(getattr(decoder, "decision", "")),
+            decode_per_class_thresholds=(
+                json.dumps(
+                    [float(x) for x in decoder.per_class_thresholds]
+                )
+                if getattr(decoder, "per_class_thresholds", None) is not None
+                else ""
+            ),
             bond_type_macro_f1_pooled=float(
                 _bond_acc.get("bond_type_macro_f1_pooled", 0.0)
             ),
@@ -14194,6 +14275,18 @@ def main() -> int:
             # ``torch.save`` and ``torch.load`` are bit-equivalent on a
             # pickle round-trip, so the Wf-124 / Wf-299 / Wf-A6 reader
             # path stays a one-liner.
+            try:
+                from molmetal.eval.bond_threshold_calibration import (
+                    calibration_from_decoder as _cal_from_decoder_a81,
+                )
+
+                _decode_cal = _cal_from_decoder_a81(decoder, epoch=_epoch)
+            except Exception as _cal_exc_a81:  # pragma: no cover - safety net
+                # Never let the stamp abort a checkpoint write; an absent
+                # stamp is exactly the pre-Wf-A81 behaviour.
+                _decode_cal = {
+                    "error": f"{type(_cal_exc_a81).__name__}: {_cal_exc_a81}"
+                }
             _ckpt_state_a30 = {
                 "model_state_dict": model.state_dict(),
                 "optimiser_state_dict": optimiser.state_dict(),
@@ -14214,6 +14307,13 @@ def main() -> int:
                     if bool(getattr(args, "use_ema", False))
                     else {}
                 ),
+                # Wf-A81 (2026-10-18) — the decision rule these weights were
+                # decoded with.  `args.bond_decision` says "per_class" but
+                # carries no thresholds; without this stamp a reader that
+                # rebuilds a decoder from the .pt silently falls back to
+                # argmax, i.e. reads the weights with a different rule than
+                # the one that produced the run's own gen_validity.
+                "decode_calibration": _decode_cal,
             }
             try:
                 import pickle as _pickle_a30  # noqa: WPS433 (deferred import)

@@ -815,6 +815,37 @@ def _build_gated_csv_rows(
     return header, rows
 
 
+def _load_checkpoint_any(ckpt_path: Path) -> object:
+    """Load a CFM checkpoint in EITHER serialisation the trainer emits.
+
+    Wf-A81 (2026-10-18) — MEASURED break: since Wf-A30-1 (2026-10-14) the
+    trainer writes checkpoints as a raw pickle through
+    `wf386a3_atomic_write.atomic_write_file`, not through `torch.save`.
+    `torch.load` on such a file raises `RuntimeError: Invalid magic number;
+    corrupt file?`, and this helper caught it and returned an empty SMILES
+    list -- so every checkpoint the trainer produced for the last four days
+    read as "corrupt" at the one place that tries to decode it.  Verified on
+    `/tmp/wfa81_smoke/ckpt/cfm_yuelbond_wasserstein_seed0.pt`.
+
+    Order matters: `torch.load` first (zip magic), pickle only on the magic-
+    number error, so a genuinely truncated file still raises instead of
+    producing a confusing UnpicklingError.
+    """
+    import torch
+
+    try:
+        return torch.load(
+            str(ckpt_path), map_location="cpu", weights_only=False
+        )
+    except RuntimeError as exc:
+        if "magic number" not in str(exc):
+            raise
+        import pickle
+
+        with open(ckpt_path, "rb") as fh:
+            return pickle.load(fh)
+
+
 def _decode_smiles_from_ckpt(
     ckpt_path: Path,
     *,
@@ -899,10 +930,10 @@ def _decode_smiles_from_ckpt(
         return []
 
     try:
-        ckpt = torch.load(str(ckpt_path), map_location="cpu", weights_only=False)
+        ckpt = _load_checkpoint_any(ckpt_path)
     except Exception as exc:
         print(
-            f"[wfA54-decode] HONEST-NEGATIVE: torch.load('{ckpt_path}') "
+            f"[wfA54-decode] HONEST-NEGATIVE: load('{ckpt_path}') "
             f"failed ({type(exc).__name__}: {exc}). Returning empty "
             "SMILES list."
         )
@@ -1101,7 +1132,37 @@ def _decode_smiles_from_ckpt(
     # Decode each cloud via the bond head.
     try:
         head = model.head
-        decoder = YuelBondBondDecoder(head=head, hidden_dim=hidden_dim, n_layers=3)
+        # Wf-A81 (2026-10-18) — decode with the rule the checkpoint was
+        # trained and scored under.  Before this, a "per_class" run's own
+        # gen_validity was measured with calibrated thresholds while this
+        # panel decoded the same weights with the argparse default (argmax).
+        # Empty kwargs for any checkpoint without the stamp, so old
+        # artifacts decode exactly as before.
+        try:
+            from molmetal.eval.bond_threshold_calibration import (
+                decoder_kwargs_from_checkpoint as _dec_kw_from_ckpt,
+            )
+
+            _dec_kw = _dec_kw_from_ckpt(ckpt)
+        except Exception as _dec_kw_exc:  # pragma: no cover - safety net
+            _dec_kw = {}
+            print(
+                f"[wfA54-decode] WARNING: decode_calibration not applied "
+                f"({type(_dec_kw_exc).__name__}: {_dec_kw_exc})"
+            )
+        if _dec_kw:
+            print(
+                f"[wfA54-decode] decision from checkpoint: "
+                f"{_dec_kw.get('decision')}"
+                + (
+                    f" thresholds={_dec_kw.get('per_class_thresholds')}"
+                    if _dec_kw.get("per_class_thresholds")
+                    else f" @t={_dec_kw.get('decision_threshold', 0.5):.2f}"
+                )
+            )
+        decoder = YuelBondBondDecoder(
+            head=head, hidden_dim=hidden_dim, n_layers=3, **_dec_kw
+        )
         decoder.eval()
         smiles_list: list[str] = []
         for cloud in clouds:

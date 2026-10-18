@@ -5150,3 +5150,131 @@ fixing a pre-existing `--device` in `cfm_5metal_smoke_2026_10_17.yaml`);
 `metrics/by_metric/cfm_wfa75a_guidance_sweep.json`; §5.3 + §5.4: 0 paper/* +
 0 wet-lab).
 
+
+### §6.108 — Wf-A80/A81: the train→inference decode chain was broken in three places (2026-10-18)
+
+**The chain.**  The trainer calibrates one bond-decision threshold per class
+(`bond_class_k_best_threshold`, since Wf-A70), reports
+`bond_per_class_test_macro_f1` 0.457 against a pooled 0.219 on the Wf-A75a runs,
+and then decoded its own generated clouds with a rule that used none of it.  Wf-A80
+added the rule (`decision="per_class"` in `bond_decision` + a 5-vector of
+thresholds); wiring it exposed two older breaks that made the first smoke abort
+and the second smoke unreadable.
+
+**Break 1 — the decoder could not receive the calibration (Wf-A80).**
+`YuelBondBondDecoder` had `decision` but no per-class thresholds, and
+`bond_decision` took one global bar on `P(bonded)`.  MEASURED cost of that:
+the classes with the real deficit (SINGLE PR-AUC 0.082, DOUBLE 0.037 on
+`/tmp/wfa81_smoke`) were decided by the same 0.5 as AROMATIC, the one class
+that is not rare.  Fixed: a `per_class` branch in `yuelbond_decoder.bond_decision`
+(scores = `p_k - t_k` for k>=1, argmax, NO_BOND when nothing clears; `t_0` is
+accepted but never used as a veto — a global "is there a bond" bar is exactly
+what the per-class rule replaces), threaded through
+`YuelBondBondDecoder.__init__` / `_select_bonds`, and handed over in the trainer
+after the EMA swap-in and before gen_eval.
+
+**Break 2 — decode_ratio ran BEFORE the calibration existed (Wf-A81).**
+First smoke, `/tmp/wfa80_smoke`: `ValueError: decision='per_class' requires
+per_class_thresholds` raised inside `evaluate_decode_ratio` at
+`train_cfm_yuelbond_wasserstein.py:13037`, i.e. the run died before epoch 0 was
+scored.  The eval order was decode_ratio -> bond_accuracy -> gen_eval, so the
+decoder was asked to decode before the only pass that produces its thresholds.
+Fixed by moving the `evaluate_decode_ratio` call AFTER the hand-off.  Both calls
+read the same model state (no optimizer step between them), so nothing but the
+decision rule changes — and that is the point: `decode_ratio` and
+`gen_validity` now describe molecules decoded by the rule that ships.
+
+**Break 3 — every decode failure was counted as "no_smiles" (Wf-A81).**
+`_rdkit_strict_reason` tested `not smi` before `not sanitized`, and
+`cfm_decoder_yuelbond` sets `smiles=""` in the SAME `except` that sets
+`sanitized=False`.  So `sanitized=False` with a non-empty SMILES could not
+occur, every failure arrived as `("", False)`, and the three failure modes the
+taxonomy was written for were indistinguishable:
+
+| decoder state | `DecodedMol.error` | pre-Wf-A81 bucket | post-Wf-A81 bucket |
+|---|---|---|---|
+| head produced no candidate edges | `yuelbond:...` | no_smiles | empty_decode |
+| RWMol could not be finalised | `RWMol.GetMol failed: ...` | no_smiles | assembly_error |
+| RDKit refused the valence / kekulizer | `KekulizeException: ...` | no_smiles | sanitize_failed:KekulizeException |
+
+MEASURED, and this is the first evidence the taxonomy can now name a failure:
+`/tmp/wfa80_smoke` epoch 0 emits
+`{"ok": 3, "sanitize_failed:KekulizeException": 5}`.  The same five samples
+would have read `{"ok": 3, "no_smiles": 5}` an hour earlier.  The Wf-A75a
+w=0.0 arm's ep-3/ep-4 collapse (`{"no_smiles": 51}`, §6.107) and the L3 arm's
+57/64 kekulizer refusals (§6.106) were both filed under the wrong bucket by the
+old order; re-reading those artifacts is now a re-run, not a reinterpretation.
+The `empty_decode` / `assembly_error` branches the caller kept as a fallback
+were dead code for the same reason.
+
+**The artifact now carries the rule (Wf-A81).**
+`args.bond_decision: per_class` in a checkpoint names a rule and carries none of
+its parameters, so a reader that rebuilt a decoder from the .pt silently fell
+back to argmax.  Three additions:
+  * `_ckpt_state_a30["decode_calibration"]` — `{decision, decision_threshold,
+    per_class_thresholds, source_epoch}`, stamped at every save;
+  * `EpochMetrics.decode_decision` + `decode_per_class_thresholds` — so
+    `per_epoch_metrics.json` distinguishes the POOLED metric's rule
+    (`bond_decision: threshold`) from the rule that assembled the molecules
+    (`decode_decision: per_class`);
+  * `molmetal/eval/bond_threshold_calibration.py` gained
+    `calibration_from_decoder` / `decoder_kwargs_from_checkpoint`, and
+    `cfm_property_panel._decode_smiles_from_ckpt` applies them.  A checkpoint
+    without the stamp returns `{}`, so every pre-Wf-A81 artifact decodes
+    exactly as before; a `per_class` stamp with a missing/short threshold
+    vector is REFUSED rather than half-applied (a decoder built that way raises
+    on its first decode).
+
+**Break 4 — the panel could not load the checkpoints the trainer writes (Wf-A81).**
+Since Wf-A30-1 (2026-10-14) every checkpoint is a raw pickle emitted through
+`wf386a3_atomic_write.atomic_write_file`, not a `torch.save` zip.
+`cfm_property_panel._decode_smiles_from_ckpt` called `torch.load`, caught the
+resulting `RuntimeError: Invalid magic number; corrupt file?`, printed an
+HONEST-NEGATIVE and returned `[]`.  MEASURED: the helper returned `[]` on
+`/tmp/wfa81_smoke/ckpt/cfm_yuelbond_wasserstein_seed0.pt` — a checkpoint the
+trainer had written seconds earlier.  Fixed with `_load_checkpoint_any`
+(torch.load first, pickle only on the magic-number error, so a truncated file
+still raises instead of turning into an UnpicklingError).  4 tests cover both
+serialisations, truncation and garbage.
+
+**MEASURED, end-to-end (`/tmp/wfa81_smoke`, 1 epoch, 400 train / 32 val,
+batch 8, 1 seed, per_class):**
+
+| stage | value | where |
+|---|---|---|
+| calibration | `[0.05, 0.1, 0.05, 0.1, 0.05]` | `per_epoch_metrics.json:decode_per_class_thresholds` |
+| pooled metric rule | `threshold @ 0.50` | `bond_decision` / `bond_decision_threshold` |
+| decode under that rule | `decode_ratio 1.000` (32/32) | same file |
+| generation | `gen_validity 0.250` (2/8), `solver rk4/12` | same file |
+| checkpoint stamp | `{'decision': 'per_class', 'per_class_thresholds': [0.05,0.1,0.05,0.1,0.05], 'source_epoch': 0}` | `cfm_yuelbond_wasserstein_seed0.pt:decode_calibration` |
+| read-back | `decoder_kwargs_from_checkpoint(ckpt)` returns the same rule | 9 unit tests |
+
+**Honest-negative (ACTIVE, this entry):**
+  * **One epoch, untrained head.**  Every calibrated threshold sits on the grid
+    floor (0.05-0.10), i.e. the rule is "very permissive", not "well calibrated".
+    Nothing here measures a bond_f1 or gen_validity LIFT; it measures that the
+    calibration REACHES the decoder and the checkpoint.
+  * **The stamp's production consumer still refuses v2.**  `cfm_property_panel`
+    now loads the checkpoint (Break 4) and applies the stamp, but then refuses
+    any ckpt with `vel_field.*` keys — and every current checkpoint is v2.
+    Rebuilding `CFMJointModel` from `ckpt["args"]` is not a 5-line change:
+    `bond_head_kind`, `bond_z_table`/`bond_z_metal_set` and the pair-feature
+    flags all move `state_dict` shapes (MEASURED: a naive rebuild mismatches
+    `head.atom_encoder.weight` 13 vs 4 and `head.pair_head.0.weight` 131 vs
+    259).  Tracked as `forward_look.deferred.Wf-A82`.
+  * **No re-read of the old artifacts.**  §6.106 / §6.107's `no_smiles` counts
+    are historical; attributing them needs a re-run, not a re-parse.
+  * **Single seed, 8 generated samples.**  `gen_validity 0.250` on n=8 is a
+    plumb check, not a rate.
+
+**§6.108 catalog-count math.** Net catalog-count delta: **+1** (§6.108 itself).
+ACTIVE count delta: **+1** (untested at scale + no production consumer).
+Cumulative catalog count: **159 -> 160** (+1).  ACTIVE count: **115 -> 116** (+1).
+
+**Workflow** | Wf-A80 + Wf-A81 (2026-10-18; no GPU training run — two 1-2 epoch
+CPU-config smokes that the YAML's `compute.device: cuda:0` promoted to GPU0,
+87-112 s each, ~2.7 GB; 13 + 9 + 5 + 4 new tests; §5.11 yaml-only PASS (48 wrappers)
++ config-binding PASS; §5.7 50-step smoke replaced by the 1-epoch end-to-end
+smoke because the flag under test only fires at eval time; §5.2 honest framing:
+every number traces to `/tmp/wfa80_smoke` + `/tmp/wfa81_smoke` artifacts; §5.3
++ §5.4: 0 paper/* + 0 wet-lab).

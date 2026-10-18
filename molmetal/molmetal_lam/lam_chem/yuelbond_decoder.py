@@ -179,6 +179,7 @@ def bond_decision(
     decision: str = "argmax",
     threshold: float = 0.5,
     class_logit_bias: Optional[Sequence[float]] = None,
+    per_class_thresholds: Optional[Sequence[float]] = None,
 ) -> list:
     """Turn per-pair class logits into predicted bond classes.
 
@@ -250,11 +251,51 @@ def bond_decision(
 
     if decision == "argmax":
         return logits.argmax(dim=-1).tolist()
+    if decision == "per_class":
+        # Wf-A80 (2026-10-18) — per-class calibrated thresholds.
+        #
+        # WHY: the trainer has calibrated one threshold PER CLASS since
+        # Wf-A70 (bond_class_k_best_threshold, reported as
+        # bond_per_class_test_macro_f1 0.457 vs pooled 0.219), and the
+        # decode path ignored all of them in favour of one global 0.5 on
+        # P(bonded).  The classes where that hurts most are exactly the
+        # measured negatives: SINGLE PR-AUC 0.38 (target 0.7) and DOUBLE
+        # 0.055 (target 0.10).  A global threshold on the total bond mass
+        # cannot express "class 2 is rare, so it needs a lower bar".
+        #
+        # RULE: score_c = p_c - t_c for c >= 1; predict argmax_c score_c
+        # when that score is > 0, else NO_BOND.  t_0 is accepted but NOT
+        # used as a veto -- class 0's calibrated F1 threshold is ~0.3, and
+        # vetoing every pair with p_0 >= 0.3 would suppress almost the
+        # whole graph.
+        if per_class_thresholds is None:
+            raise ValueError(
+                "decision='per_class' requires per_class_thresholds "
+                "(one per BOND_LABELS class; index 0 is unused)."
+            )
+        t = torch.as_tensor(
+            list(per_class_thresholds), dtype=torch.float32, device=logits.device
+        )
+        if t.numel() != logits.shape[-1]:
+            raise ValueError(
+                f"per_class_thresholds has {t.numel()} entries but the logits "
+                f"have {logits.shape[-1]} classes."
+            )
+        prob = torch.softmax(logits.float(), dim=-1)
+        scores = prob[:, 1:] - t[1:].unsqueeze(0)
+        best = scores.argmax(dim=-1)
+        best_score = scores.gather(1, best.unsqueeze(1)).squeeze(1)
+        types = best + 1
+        return [
+            int(types[k]) if float(best_score[k]) > 0.0 else 0
+            for k in range(logits.shape[0])
+        ]
     if decision != "threshold":
         raise ValueError(
-            f"unknown bond decision rule {decision!r}; expected 'argmax' or "
-            f"'threshold'. A typo here would otherwise fall through to the "
-            f"argmax branch and silently decode with the wrong rule."
+            f"unknown bond decision rule {decision!r}; expected 'argmax', "
+            f"'threshold' or 'per_class'. A typo here would otherwise fall "
+            f"through to the argmax branch and silently decode with the "
+            f"wrong rule."
         )
     prob = torch.softmax(logits.float(), dim=-1)
     p_bonded = 1.0 - prob[:, 0]  # column 0 is BOND_NO_BOND
