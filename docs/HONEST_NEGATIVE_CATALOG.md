@@ -4223,3 +4223,75 @@ Net catalog-count delta: **+1** (§6.97 itself). ACTIVE count delta: **+1** (the
 **§6.98 catalog-count math.** Net catalog-count delta: **+1** (§6.98 itself). ACTIVE count delta: **0** (no new honest-negative was opened; the 9 fixes are infra/measurement improvements, not defects). Cumulative catalog count: **149 → 150** (+1). ACTIVE count: **110 → 110** (unchanged). The `bond_aux_mse_term=0.0` finding is a NEW honest-negative input (recorded as `aux_mse_zero_on_metalcytotox_v3` per the user direction to record structural limits; will be added in a follow-up catalog entry if user requests).
 
 **Workflow** | Wf-A70 (2026-10-18; CPU + 1 GPU 5-epoch smoke; 9 fixes SHIPPED on disk across 3 commits: W1 Fix 6+7 / W2 Fix 8+9 / W3 plumb-repair; pre-flight N/A via SKIP_PREFLIGHT=1 per memory wfa33-v2-precommit-timeout.md; §5.6 atomic-write via Edit-tool (3 modified files + 3 new test files + 3 new YAML configs, all < 20 KB per file); §5.7 50-step CPU smoke MET in W1+W2+W3 each; §5.11 yaml-only PASS; §5.3 + §5.4: 0 paper/* + 0 wet-lab; §5.1 standing GPU grant honored: 5-epoch smoke on cuda:0 (RTX PRO 6000 Blackwell 95.1 GiB free, 416s wall), 30-epoch retrain NOT launched per user directive; §5.2 honest framing: every MEASURED number traces to disk via `cat /tmp/cfm_wfa70_smoke/per_epoch_metrics.json` + `git diff --stat`; **no 0.99 claim**; honest ceiling 0.50-0.70 with 30-epoch retrain).
+
+### §6.99 Wf-A71 (2026-10-18) — Bond-head NO_BOND bias sign error: structural fix (4 sites + 5 new tests + 1 new GPU sanity); calibration flipped from over-predict to under-predict (gen_validity 0.0 → 1.0 but largest_fragment_frac stayed 0.048) — **honest-negative**: bias was the right knob but not the only knob; 30-epoch retrain needed for the 0.99 quality target
+
+**Bug**: Every bond-head class initialised `pair_head[-1].bias[BOND_NO_BOND] = -0.5` (and the legacy `molmetal.models.bond_head.BondOrderHead` set `out.bias[BOND_NO_BOND] = -0.5`). The accompanying comment said this was "so the head does not default to bonding every pair" — but the math runs the OTHER way. With bias=-0.5 and the other 4 class biases at 0:
+
+```
+softmax[0] = exp(-0.5) / (exp(-0.5) + 4*exp(0)) = 0.607 / 4.607 = 0.132
+p_bonded = 1 - 0.132 = 0.868
+```
+
+The threshold rule (`p_bonded >= 0.5` with `bond_decision_threshold=0.5`) then predicts a bond for ~100% of candidate pairs at init. MEASURED on the Wf-A70 5-epoch smoke (`configs/cfm_5metal_wfa70_w3_smoke.yaml`, ep 4): `bond_pr_auc=0.9934` (great ranking) but `bond_precision=0.0474` (broken calibration). The bug survived Wf-A67 / A68 / A69 / A70 because the head's MLP output eventually overrode the prior after 3-5 epochs, but `gen_validity` topped out at 0.32.
+
+**User directive 2026-10-18**: *"不不不, 这不是epoch预算的问题, 明显暴露了真实的代码问题和模型结构问题, 但是只要修基础模型关键位置就可以修复了, 你试试看"* — "this is NOT an epoch budget problem, it clearly exposes a real code / model structure problem, but as long as you fix the key base-model positions, it can be fixed. Try it."
+
+**What changed** (4 sites + 5 new regression tests + 1 GPU sanity):
+
+| File | LOC change | Bias value |
+|---|---:|---|
+| `molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:371-372` (YuelBondDecoderHead) | +18 / -2 | -0.5 → **+2.0** |
+| `molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:909-915` (YuelBondEdgeMPNNHead) | +5 / -2 | -0.5 → **+2.0** |
+| `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:1496-1501` (in-trainer BondOrderHead) | +5 / -2 | -0.5 → **+2.0** |
+| `molmetal/models/bond_head.py:875-883` (canonical BondOrderHead) | +13 / -2 | -0.5 → **+2.0** |
+| `molmetal/tests/test_wfa71_no_bond_default.py` (NEW) | +194 / 0 | 5 regression tests |
+| `molmetal/tests/test_cfm_rescue_yuelbond.py:111-130` (assertion flip) | +19 / -1 | bias<0 → bias>0 |
+
+**Math after the flip**: with `+2.0` and the other 4 class biases at 0:
+
+```
+softmax[0] = exp(2) / (exp(2) + 4*exp(0)) = 7.389 / 11.389 = 0.649
+p_bonded = 1 - 0.649 = 0.351
+```
+
+The head now defaults to NO_BOND at init (matches the comment, matches the 95% NO_BOND empirical prior on 5-metal complexes), and the MLP learns to override the prior for actual bonds.
+
+**MEASURED impact on the 1-epoch GPU sanity** (`results/cfm_5metal_wfa71_bias_sanity/`, 32 train / 16 val / batch=8 / cuda:0 / 5 epochs / seed=0):
+
+| Metric | Wf-A70 (bias=-0.5) | Wf-A71 (bias=+2.0) | Δ |
+|---|---:|---:|---:|
+| `gen_validity` ep 0 | 0.0 | 1.0 | **+1.0** |
+| `gen_validity` ep 4 | 0.32 | 1.0 | **+0.68** |
+| `gen_metal_ratio` ep 4 | 0.0 | 1.0 | **+1.0** |
+| `bond_class_0_pr_auc` ep 4 (NO_BOND) | 0.993 | 0.998 | +0.005 |
+| `bond_class_1_pr_auc` ep 4 (SINGLE) | (not measured) | 0.514 | NEW |
+| `bond_class_4_pr_auc` ep 4 (AROMATIC) | (not measured) | 0.403 | NEW (33× lift from 0.012 at ep 0) |
+| `largest_fragment_frac` ep 4 | 0.290 | **0.048** | **-0.242** ⚠️ |
+| `single_fragment_ratio` ep 4 | 0.31 | **0.000** | **-0.31** ⚠️ |
+
+**Honest framing** (per AGENTS.md §5.2): the bias flip moved the calibration in the right direction (`gen_validity` 0.0 → 1.0, the head now defaults to NO_BOND) but the calibration now sits at the OTHER extreme — the head defaults to under-predicting bonds, so the generated structures are loose atoms that parse trivially (RDKit accepts disconnected fragments as valid SMILES). The per-class PR-AUC is climbing rapidly (class 4 aromatic: 0.012 → 0.403, 33× lift in 5 epochs), so the head is learning the right patterns, but at 5 epochs the MLP has not yet accumulated enough signal to override the strong NO_BOND prior for the minority classes.
+
+**The 0.99 quality target requires**:
+1. A 30-epoch retrain (gated on the bias fix) so the head has time to learn the minority-class overrides
+2. **OR** a lower `bond_decision_threshold` (e.g., 0.3 instead of 0.5) so the threshold rule catches more bonds at the head's current confidence
+3. **OR** `use_focal_bond_ce: true` with `focal_bond_alpha=0.5` to focus the loss on minority classes (currently OFF; class weights with power 0.5 give minority classes ~8.94× weight but no focal gamma scaling)
+
+The bias flip is the right first step (it addresses the directional bug — pre-Wf-A71 the head had a sign error in the NO_BOND prior), but the structural recipe for 0.99 is the bias flip + lower threshold + 30 epochs. Wf-A72 is the natural next wave.
+
+**File-on-disk receipts**:
+
+| Item | Path | Status |
+|---|---|---|
+| Bias flip in legacy atom-MPNN head | `molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:371-372` | SHIPPED |
+| Bias flip in Edge MPNN head | `molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py:909-915` | SHIPPED |
+| Bias flip in trainer BondOrderHead | `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:1496-1501` | SHIPPED |
+| Bias flip in canonical BondOrderHead | `molmetal/models/bond_head.py:875-883` | SHIPPED |
+| Updated test_cfm_rescue_yuelbond assertion | `molmetal/tests/test_cfm_rescue_yuelbond.py:111-130` | SHIPPED |
+| New Wf-A71 regression test file | `molmetal/tests/test_wfa71_no_bond_default.py` (NEW, 194 LOC) | SHIPPED |
+| 1-epoch GPU sanity (32 train / 16 val / 5 epochs) | `results/cfm_5metal_wfa71_bias_sanity/per_epoch_metrics.json` (NEW) | SHIPPED |
+| Wf-A71 plan | `/home/hugo/.claude/plans/linear-whistling-graham.md` | SHIPPED |
+
+**§6.99 catalog-count math.** Net catalog-count delta: **+1** (§6.99 itself). ACTIVE count delta: **0** (the bias sign error is RESOLVED, not a new active honest-negative; the under-prediction at 5 epochs is recorded here as the residual honest-negative framing). Cumulative catalog count: **150 → 151** (+1). ACTIVE count: **110 → 110** (unchanged).
+
+**Workflow** | Wf-A71 (2026-10-18; CPU regression tests + 1 GPU 5-epoch sanity; 6 edits SHIPPED on disk: 4 bias flips + 1 test assertion flip + 1 new test file; pre-flight N/A via SKIP_PREFLIGHT=1 per memory wfa33-v2-precommit-timeout.md; §5.6 atomic-write via Edit-tool (4 modified files + 1 new test file, all < 5 KB per file); §5.7 50-step CPU smoke NOT required (no NEW flag wire-in; the new regression test is the wire-in smoke and runs in <1 s); §5.11 yaml-only PASS (no new YAML keys; existing `bond_decision_threshold: 0.5` and `bond_decision_threshold_sweep: [0.5]` unchanged); §5.3 + §5.4: 0 paper/* + 0 wet-lab; §5.1 standing GPU grant honored: 5-epoch sanity on cuda:0 (RTX PRO 6000 Blackwell 95.1 GiB free, 144s wall); §5.2 honest framing: every MEASURED number traces to disk via `cat results/cfm_5metal_wfa71_bias_sanity/per_epoch_metrics.json` + `git diff --stat`; **no 0.99 claim**; honest ceiling 0.30-0.50 with 30-epoch retrain + threshold tuning; the bias is the right first knob but the head needs more training or a lower threshold to express the right number of bonds for real molecular structures).

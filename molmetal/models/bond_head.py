@@ -872,15 +872,26 @@ class BondOrderHead(nn.Module):
             self.skip_proj = None  # type: ignore[assignment]
         self.out = nn.Linear(hidden_dim, num_classes)
         self.dropout = nn.Dropout(dropout)
-        # Wf-A11: BOND_NO_BOND bias becomes a learnable parameter (was a
-        # hard-coded -0.5 in Round-10).  Init to -0.5 preserves backward
-        # compat for fresh construction.  When a Round-10 checkpoint with the
-        # old `out.bias` shape is loaded under strict=False the bias term
-        # keeps its init value; callers wanting to enforce the legacy value
-        # can call `init_legacy_no_bond_bias()` after load.
+        # Wf-A71 (2026-10-18) — flip the BOND_NO_BOND bias sign.
+        #
+        # Pre-Wf-A71: bias[BOND_NO_BOND] = -0.5.  See
+        # YuelBondDecoderHead.__init__ in
+        # molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py for the
+        # full rationale (the legacy -0.5 was a sign error that made
+        # the head default to bonding every pair at init — verified
+        # on the Wf-A70 5-epoch smoke: bond_pr_auc=0.9934 but
+        # bond_precision=0.0474).
+        #
+        # Post-Wf-A71: +2.0.  The bias is still a learnable parameter
+        # (Wf-A11 kept it that way), so this only changes the INITIAL
+        # value; a checkpoint trained on either sign will continue to
+        # work because the bias is overwritten by the checkpoint dict
+        # on load.  ``init_legacy_no_bond_bias()`` below keeps its
+        # ``-0.5`` default for callers that explicitly want the
+        # legacy value.
         with torch.no_grad():
             self.out.bias.zero_()
-            self.out.bias[BOND_NO_BOND] = -0.5
+            self.out.bias[BOND_NO_BOND] = +2.0
         # Wf-A11 (M-A7): optional continuous bond-order regression head.
         # Disabled by default so existing checkpoints and consumers see the
         # exact same `(E, num_classes)` logits forward.  When enabled, the

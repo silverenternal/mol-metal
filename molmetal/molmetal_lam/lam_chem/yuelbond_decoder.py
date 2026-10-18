@@ -365,11 +365,28 @@ class YuelBondDecoderHead(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, NUM_BOND_CLASSES),
         )
-        # Bias the "no bond" class slightly negative so the head does
-        # not default to bonding every pair.
+        # Wf-A71 (2026-10-18) — flip the BOND_NO_BOND bias sign.
+        #
+        # Pre-Wf-A71: bias[BOND_NO_BOND] = -0.5.  Math: softmax[0] =
+        # exp(-0.5)/(exp(-0.5)+4*exp(0)) = 0.132, so p_bonded =
+        # 1 - 0.132 = 0.868 at init.  The threshold rule
+        # (``p_bonded >= 0.5``) then predicts a bond for ~100% of
+        # pairs.  MEASURED on the Wf-A70 5-epoch smoke
+        # (``configs/cfm_5metal_wfa70_w3_smoke.yaml``, ep 4):
+        # bond_pr_auc=0.9934 but bond_precision=0.0474 — strong
+        # ranking, broken calibration.  Comment + code disagreed: the
+        # comment said "so the head does not default to bonding every
+        # pair" (which is what a POSITIVE bias achieves), but the
+        # code did the opposite.
+        #
+        # Post-Wf-A71: bias[BOND_NO_BOND] = +2.0.  Math: softmax[0] =
+        # exp(2)/(exp(2)+4) = 0.649, so p_bonded = 0.351 at init —
+        # the head defaults to NO_BOND (matches the comment, matches
+        # the 95% NO_BOND empirical prior on 5-metal complexes), and
+        # the MLP learns to override the prior for actual bonds.
         with torch.no_grad():
             self.pair_head[-1].bias.zero_()
-            self.pair_head[-1].bias[BOND_NO_BOND] = -0.5
+            self.pair_head[-1].bias[BOND_NO_BOND] = +2.0
         # Wf-A68 (2026-10-17) — optional residual skip from atom_encoder
         # output to the message-passing output.  When use_skip is True, an
         # extra Linear(hidden_dim, hidden_dim) projection is registered
@@ -889,13 +906,13 @@ class YuelBondEdgeMPNNHead(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, NUM_BOND_CLASSES),
         )
-        # Bias the "no bond" class slightly negative so the head does
-        # not default to bonding every pair.  Same default as the
-        # atom-MPNN head; matches the BOND_NO_BOND prior of the
-        # 5-metal cohort.
+        # Wf-A71 (2026-10-18) — flip the BOND_NO_BOND bias sign.
+        # See YuelBondDecoderHead.__init__ above for the full rationale.
+        # Same +2.0 default as the atom-MPNN head; matches the 95%
+        # NO_BOND empirical prior on 5-metal complexes.
         with torch.no_grad():
             self.pair_head[-1].bias.zero_()
-            self.pair_head[-1].bias[BOND_NO_BOND] = -0.5
+            self.pair_head[-1].bias[BOND_NO_BOND] = +2.0
 
     def forward(self, cloud: AtomCloud) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """Return ``(E, NUM_BOND_CLASSES)`` logits over candidate edges.

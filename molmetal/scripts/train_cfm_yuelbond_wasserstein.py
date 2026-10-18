@@ -1493,12 +1493,14 @@ class DMPNNBondHead(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, NUM_BOND_CLASSES),
         )
-        # Bias the "no bond" class slightly negative so the head does
-        # not default to bonding every pair — matches YuelBond's
-        # calibration at init.
+        # Wf-A71 (2026-10-18) — flip the BOND_NO_BOND bias sign.
+        # See YuelBondDecoderHead.__init__ in
+        # molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py for the
+        # full rationale.  +2.0 matches YuelBond's new calibration
+        # (and the 95% NO_BOND prior on 5-metal complexes).
         with torch.no_grad():
             self.pair_head[-1].bias.zero_()
-            self.pair_head[-1].bias[BOND_NO_BOND] = -0.5
+            self.pair_head[-1].bias[BOND_NO_BOND] = +2.0
 
     def forward(self, cloud: "AtomCloud") -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """Return ``(logits (E, NUM_BOND_CLASSES), (i_idx, j_idx))``.

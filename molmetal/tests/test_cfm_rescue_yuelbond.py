@@ -108,10 +108,23 @@ def test_yuelbond_head_forward_returns_correct_shape():
     assert (
         i_idx.numel() >= 4
     ), f"Expected >= 4 edges (Pt-donor pairs), got {i_idx.numel()}"
-    # No bond class bias should be slightly negative (init check)
+    # Wf-A71 (2026-10-18) — flip the bias sign check.  Pre-Wf-A71
+    # this asserted ``logits[:, BOND_NO_BOND].mean() < 0.0`` to
+    # match the legacy -0.5 init, but the math at -0.5 gives
+    # softmax[0]=0.132 and p_bonded=0.868 — the head was
+    # over-predicting bonds at init.  The new +2.0 init gives
+    # softmax[0]=0.649 and p_bonded=0.351, so the head defaults to
+    # NO_BOND (matches the 95% NO_BOND empirical prior).  See
+    # molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py for the
+    # full rationale.
     assert (
-        logits[:, BOND_NO_BOND].mean() < 0.0
-    ), "BOND_NO_BOND class should be biased negative at init"
+        logits[:, BOND_NO_BOND].mean() > 0.0
+    ), (
+        "BOND_NO_BOND class should be biased positive at init (Wf-A71: "
+        "the legacy -0.5 was a sign error that made the head default "
+        "to bonding every pair; the new +2.0 default makes the head "
+        "default to NO_BOND, matching the corpus's 95% NO_BOND prior)."
+    )
 
 
 # ---------------------------------------------------------------------------
