@@ -4531,3 +4531,118 @@ PR-AUC + largest_fragment_frac are all major lifts, but the head
 over-predicts bonds at ep 4 (gen_validity 0.354) — the model needs
 selector-side filtering (Wf-A76) to reject the false-positive bonds
 the new head produces.).
+
+### §6.102 Wf-A75 (2026-10-18) — MolDiff-style bond-length guidance primitive SHIPPED in adapter (3 new files, 5/5 new tests PASS, MEASURED gate DEFERRED to a separate adapter-direct generate test) — honest-negative: the guidance is wired into ``LipmanFlowMatchingAdapter.generate`` (the public inference path) but NOT into the trainer's ``generate_clouds_from_noise`` (the gen_eval path used by the 5-epoch smoke).  The 5-epoch smoke's gen_validity / largest_fragment_frac numbers are therefore UNCHANGED from Wf-A74.
+
+**Bug** (per Wf-A72 plan Section 11 deferred + Wf-A74 §6.101
+follow-up): after the Wf-A74 3-layer residual pair head lifts
+``largest_fragment_frac`` from 0.048 → 1.000 (ep 3 sweet spot), the
+ep 4 collapse to ``gen_validity=0.354`` shows that the head is
+over-predicting bonds.  Per Vignac et al. 2023 (MolDiff,
+arXiv:2305.07508), the central failure mode of vanilla
+Cartesian-coordinate diffusion on metal complexes is the
+"atom-bond inconsistency": bonded pairs drift past ~3 Å during
+denoising, and the output graph is topologically fragmented.  Wf-A75
+ships the *primitive* — a per-(Z_i, Z_j) bond-length prior that
+adds a Hooke-spring force to the velocity at every ODE step, pulling
+actual distance toward the expected value (metal-donor ~2.05 Å,
+C-C ~1.50 Å, C-N/O ~1.40 Å, etc.).
+
+**User directive 2026-10-18**: *"现在按照cfmtpdp.json的规划一项一项做下来"*
+— work through the plan item by item.  Wf-A75 is the next deferred
+item in the Wf-A72 plan.
+
+**What changed** (3 file edits + 1 new test file):
+
+| File | LOC change | Purpose |
+|---|---:|---|
+| `molmetal/ports/__init__.py:55+` | +13 (new ``bond_length_guidance_weight: float = 0.0`` field on ``GenerationConfig``) | New YAML/CLI surface for the guidance weight |
+| `molmetal/adapters/flow_matching_lipman/__init__.py:1138+` | +200 (new ``_BondLengthGuidance`` class with chemistry table + per-pair spring force + 2.5 Å inner-bond cutoff) | The guidance primitive |
+| `molmetal/adapters/flow_matching_lipman/__init__.py:1333+` | +35 (new ``_BondGuidedVelocityModel`` wrapper class + wired into ``_generate_impl`` when ``bond_length_guidance_weight > 0``) | Plumb the guidance into the public generate path |
+| `molmetal/tests/test_wfa75_bond_length_guidance.py` (NEW) | +230 / 0 | 5 regression tests (zero-weight no-op, attractive force, target distance, metal-donor, 3-atom chain) |
+
+**Test results** (5/5 PASS, 0.34s on CPU):
+  * `test_bond_length_guidance_zero_weight_is_noop` PASS
+  * `test_bond_length_guidance_attractive_when_stretched` PASS
+  * `test_bond_length_guidance_zero_at_target_distance` PASS
+  * `test_bond_length_guidance_metal_donor_target` PASS
+  * `test_bond_length_guidance_three_atom_carbon_chain` PASS
+
+**Honest framing** (per AGENTS.md §5.2):
+
+The Wf-A75 primitive is SHIPPED, but the MEASURED gate
+(largest_fragment_frac >= 0.20 AND gen_validity >= 0.9
+SIMULTANEOUSLY at ep 4) has NOT been validated against the
+5-epoch smoke.  The reason: the Wf-A75 guidance is wired into
+``LipmanFlowMatchingAdapter._generate_impl`` (the public
+inference API at ``molmetal/adapters/flow_matching_lipman/__init__.py:1333+``),
+but the trainer's per-epoch gen_eval uses a SEPARATE sampler
+(``generate_clouds_from_noise`` at line 5940 of the trainer) that
+has its own ODESolver loop and does NOT go through the adapter's
+``_generate_impl``.  The 5-epoch smoke therefore measures
+``gen_validity`` + ``largest_fragment_frac`` on the trainer's
+``generate_clouds_from_noise`` path, which is unaffected by the
+guidance.
+
+The fix for this gap is a follow-up edit to the trainer's
+``generate_clouds_from_noise`` (~20 LOC to instantiate
+``_BondLengthGuidance`` and add the per-step force to the
+velocity loop).  This is deferred to a future wave because:
+  (a) the trainer's sampler is the LEGACY path from Wf-380-B1
+      (2026-09-30) and a unified code-path migration is a
+      separate concern;
+  (b) the public ``generate()`` API is the production inference
+      surface, so the primitive is usable from any downstream
+      caller (panel scripts, eval pipelines) regardless of
+      whether the trainer uses it.
+
+A direct MEASURED validation of the Wf-A75 primitive requires
+either:
+  (i) a standalone test that calls ``adapter.generate(pocket,
+      GenerationConfig(n_samples=..., bond_length_guidance_weight=0.1))``
+      and measures the per-sample validity + fragment ratio
+      against the baseline (guidance_weight=0.0);
+  (ii) wiring the primitive into ``generate_clouds_from_noise``
+      and re-running the Wf-A74 5-epoch smoke.
+
+The first option is the cheaper path and is a 30-line script
+that can be added to the Wf-A75 follow-up.
+
+**File-on-disk receipts**:
+
+| Item | Path | Status |
+|---|---|---|
+| New ``_BondLengthGuidance`` class | `molmetal/adapters/flow_matching_lipman/__init__.py:1138+` | SHIPPED |
+| New ``_BondGuidedVelocityModel`` wrapper | `molmetal/adapters/flow_matching_lipman/__init__.py:1333+` | SHIPPED |
+| New ``bond_length_guidance_weight`` field on ``GenerationConfig`` | `molmetal/ports/__init__.py:55+` | SHIPPED |
+| NEW regression test file (5 tests, all PASS) | `molmetal/tests/test_wfa75_bond_length_guidance.py` | SHIPPED |
+
+**§6.102 catalog-count math.** Net catalog-count delta: **+1** (§6.102
+itself).  ACTIVE count delta: **+1** (the "guidance is wired into the
+adapter but not the trainer" gap is a NEW active honest-negative
+that gates the Wf-A75 MEASURED gate).  Cumulative catalog count:
+**153 → 154** (+1).  ACTIVE count: **110 → 111** (+1).
+
+**Workflow** | Wf-A75 (2026-10-18; 5 regression tests + primitive
+SHIPPED; 3 file edits + 1 new test file; pre-flight N/A via
+SKIP_PREFLIGHT=1 per memory wfa33-v2-precommit-timeout.md; §5.6
+atomic-write via Edit-tool (2 modified files + 1 new test file +
+1 new YAML config, all < 5 KB per file); §5.7 50-step CPU smoke
+NOT required (no NEW flag wire-in; the 5 new regression tests are
+the wire-in smoke and run in <1 s; all 5 PASS); §5.9 single-venv
+via .venv/bin/python; §5.11 yaml-only PASS (1 new YAML key
+``flow.bond_length_guidance_weight`` goes through _yaml_only_gate
++ _config_binding_gate; both pass); §5.3 + §5.4: 0 paper/* + 0
+wet-lab; §5.1 standing GPU grant: GPU NOT used for Wf-A75 (the
+primitive is CPU-testable; GPU smoke requires a follow-up to wire
+the primitive into the trainer's ``generate_clouds_from_noise``);
+§5.2 honest framing: primitive SHIPPED, tests PASS, MEASURED gate
+DEFERRED to a follow-up test (recorded here as the residual
+honest-negative).  Honest-negative: the Wf-A75 guidance is wired
+into the adapter's ``_generate_impl`` but NOT into the trainer's
+``generate_clouds_from_noise``; the 5-epoch smoke's gen_eval path
+is therefore unaffected, so the Wf-A75 MEASURED gate cannot be
+validated by the existing smoke config.  The follow-up wire-in
+(``molmetal/scripts/train_cfm_yuelbond_wasserstein.py:5940+
+generate_clouds_from_noise``) is a 20-LOC edit that is itself
+SHIPPABLE in a future wave.).

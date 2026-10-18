@@ -57,6 +57,17 @@ class GenerationConfig:
     temperature: float = 1.0  # noise scale (>1 → more diverse)
     seed: int = 42
     conditioning: dict = field(default_factory=dict)  # pocket embeddings etc.
+    # Wf-A75 (2026-10-18) — bond-length guidance weight applied at every
+    # ODE step.  0.0 (default) is a no-op (back-compat with the pre-Wf-A75
+    # sampler).  Per MolDiff (Vignac et al. 2023, arXiv:2305.07508),
+    # Cartesian-coordinate diffusion on metal complexes suffers from
+    # the "atom-bond inconsistency" failure mode: bonded pairs drift
+    # past ~3 Å during denoising, fragmenting the output.  The
+    # guidance is a Hooke-spring force on (Z_i, Z_j) pairs that pulls
+    # actual distance toward an expected per-pair value (metal-donor
+    # ~2.05 Å, C-C ~1.50 Å, C-N/O ~1.40 Å, etc.).  At weight 0.1 the
+    # guidance is ~10% of the EGNN velocity at full magnitude.
+    bond_length_guidance_weight: float = 0.0
     # ODE solver method. One of {"euler", "midpoint", "dopri5", "heun3"}.
     # Default flipped "euler" → "midpoint" (Heun's 2nd-order) per
     # WF-CFM-Frontier Phase 2 Fix #2 to reduce O(h) global integration
