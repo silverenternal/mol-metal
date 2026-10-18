@@ -1,0 +1,459 @@
+{
+  "metric": "dmpnn_within_metal_capacity_pair_delta",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "description": "Device-matched capacity ablation on the Table-1 within-metal column. Both widths were trained on cuda:0 with --deterministic; model.hidden is the only free variable. Delta = h512 AUC - h128 AUC on the same folds and the same split seeds.",
+  "unit": "ROC-AUC difference (paired per split_seed)",
+  "scope": "tier2_precious_metal_anticancer",
+  "source": "molmetal/scripts/wfA_capacity_pair_analysis.py",
+  "inputs": {
+    "h128": "metrics/by_metric/dmpnn_within_metal_cap128_pf_gpu0.json",
+    "h512": "metrics/by_metric/dmpnn_within_metal_cap512_pf_gpu0.json"
+  },
+  "pairing": {
+    "invariants": {
+      "status": "PASS",
+      "checked_keys": [
+        "cohort",
+        "cohort_spec",
+        "fold_protocol",
+        "data_source",
+        "device",
+        "deterministic",
+        "dmpnn_arch.depth",
+        "dmpnn_arch.dropout",
+        "dmpnn_arch.lr",
+        "dmpnn_arch.epochs",
+        "dmpnn_arch.batch_size",
+        "dmpnn_arch.class_weight",
+        "dmpnn_arch.mask_padding"
+      ],
+      "hidden": {
+        "h128": 128,
+        "h512": 512
+      },
+      "mismatches": []
+    },
+    "fold_identity_check": {
+      "criterion": "max |xgb_auc(h128) - xgb_auc(h512)| <= 1e-12 per (metal, split_seed)",
+      "per_metal": {
+        "Ru": {
+          "max_abs_xgb_diff_across_seeds": 0.0,
+          "identical": true
+        },
+        "Ir": {
+          "max_abs_xgb_diff_across_seeds": 0.0,
+          "identical": true
+        },
+        "Rh": {
+          "max_abs_xgb_diff_across_seeds": 0.0,
+          "identical": true
+        },
+        "Os": {
+          "max_abs_xgb_diff_across_seeds": 0.0,
+          "identical": true
+        },
+        "Re": {
+          "max_abs_xgb_diff_across_seeds": 0.0,
+          "identical": true
+        }
+      },
+      "all_identical": true,
+      "interpretation": "XGBoost is deterministic given the fold split, so an identical column means both runs used the same cohort and the same folds."
+    }
+  },
+  "statistics": {
+    "test": "paired one-sided t-test on the 5 per-seed deltas (H1: h512 > h128)",
+    "family_correction": "Holm-Bonferroni (family = 5 metals)",
+    "p_one_sided_holm": {
+      "Ir": 0.001735,
+      "Ru": 0.004172,
+      "Re": 0.113949,
+      "Os": 1.0,
+      "Rh": 1.0
+    },
+    "significant_after_holm_0.05": [
+      "Ir",
+      "Ru"
+    ],
+    "why_not_bootstrap": "At n=5 a percentile bootstrap cannot produce enough distinct resamples and is anti-conservative (see synthesize_tmqm_pretrain_init_ab_multimetal._paired_stats)."
+  },
+  "per_metal": {
+    "Ru": {
+      "n_unique": 4793,
+      "krasnov_reported_auc": 0.81,
+      "xgb_auc_same_folds": 0.8613918463910637,
+      "h128_auc": 0.819248061231169,
+      "h128_std": 0.011474491479628169,
+      "h512_auc": 0.8375332968544527,
+      "h512_std": 0.013934423557214366,
+      "std_direction": "wider",
+      "per_seed": {
+        "42": {
+          "h128": 0.820382,
+          "h512": 0.829915,
+          "capacity_delta": 0.009533
+        },
+        "43": {
+          "h128": 0.821403,
+          "h512": 0.846024,
+          "capacity_delta": 0.024622
+        },
+        "44": {
+          "h128": 0.818968,
+          "h512": 0.840951,
+          "capacity_delta": 0.021983
+        },
+        "49": {
+          "h128": 0.821652,
+          "h512": 0.838382,
+          "capacity_delta": 0.01673
+        },
+        "123": {
+          "h128": 0.813836,
+          "h512": 0.832394,
+          "capacity_delta": 0.018558
+        }
+      },
+      "capacity_delta": {
+        "mean": 0.018285,
+        "sd": 0.005764,
+        "se": 0.002578,
+        "ci95": [
+          0.011128,
+          0.025443
+        ],
+        "ci95_ttest": [
+          0.011128,
+          0.025443
+        ],
+        "ci95_bootstrap_reference_only": [
+          0.013463,
+          0.022511
+        ],
+        "t": 7.0929,
+        "n_seeds": 5,
+        "n_seeds_positive": 5,
+        "all_seeds_positive": true,
+        "p_one_sided_ttest": 0.001043,
+        "p_one_sided_wilcoxon": 0.03125,
+        "p_one_sided_bootstrap_reference_only": 0.0,
+        "p_used_for_family_correction": "p_one_sided_ttest",
+        "ci_used_for_verdict": "ci95_ttest",
+        "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+      },
+      "gap_to_xgb_h128": -0.042144,
+      "gap_to_xgb_h512": -0.023859,
+      "gap_closed_fraction": 0.4339,
+      "h512_beats_xgb": false,
+      "h512_beats_krasnov": true,
+      "wall_h128_sec": 15623.4,
+      "wall_h512_sec": 23128.8
+    },
+    "Ir": {
+      "n_unique": 1281,
+      "krasnov_reported_auc": 0.73,
+      "xgb_auc_same_folds": 0.8277000169635285,
+      "h128_auc": 0.6542706700593723,
+      "h128_std": 0.07682434917212771,
+      "h512_auc": 0.7370562171331637,
+      "h512_std": 0.03390654629949232,
+      "std_direction": "narrower",
+      "per_seed": {
+        "42": {
+          "h128": 0.653666,
+          "h512": 0.757037,
+          "capacity_delta": 0.103371
+        },
+        "43": {
+          "h128": 0.645666,
+          "h512": 0.730437,
+          "capacity_delta": 0.084771
+        },
+        "44": {
+          "h128": 0.679314,
+          "h512": 0.732581,
+          "capacity_delta": 0.053268
+        },
+        "49": {
+          "h128": 0.649341,
+          "h512": 0.72548,
+          "capacity_delta": 0.076138
+        },
+        "123": {
+          "h128": 0.643366,
+          "h512": 0.739746,
+          "capacity_delta": 0.096379
+        }
+      },
+      "capacity_delta": {
+        "mean": 0.082786,
+        "sd": 0.019545,
+        "se": 0.008741,
+        "ci95": [
+          0.058517,
+          0.107054
+        ],
+        "ci95_ttest": [
+          0.058517,
+          0.107054
+        ],
+        "ci95_bootstrap_reference_only": [
+          0.066464,
+          0.096854
+        ],
+        "t": 9.4713,
+        "n_seeds": 5,
+        "n_seeds_positive": 5,
+        "all_seeds_positive": true,
+        "p_one_sided_ttest": 0.000347,
+        "p_one_sided_wilcoxon": 0.03125,
+        "p_one_sided_bootstrap_reference_only": 0.0,
+        "p_used_for_family_correction": "p_one_sided_ttest",
+        "ci_used_for_verdict": "ci95_ttest",
+        "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+      },
+      "gap_to_xgb_h128": -0.173429,
+      "gap_to_xgb_h512": -0.090644,
+      "gap_closed_fraction": 0.4773,
+      "h512_beats_xgb": false,
+      "h512_beats_krasnov": true,
+      "wall_h128_sec": 6483.9,
+      "wall_h512_sec": 5680.1
+    },
+    "Rh": {
+      "n_unique": 334,
+      "krasnov_reported_auc": null,
+      "xgb_auc_same_folds": 0.8087349598930481,
+      "h128_auc": 0.7775245098039215,
+      "h128_std": 0.06166685294382566,
+      "h512_auc": 0.7748495989304813,
+      "h512_std": 0.07102636738775567,
+      "std_direction": "wider",
+      "per_seed": {
+        "42": {
+          "h128": 0.779913,
+          "h512": 0.775318,
+          "capacity_delta": -0.004596
+        },
+        "43": {
+          "h128": 0.783751,
+          "h512": 0.797254,
+          "capacity_delta": 0.013503
+        },
+        "44": {
+          "h128": 0.75518,
+          "h512": 0.739411,
+          "capacity_delta": -0.01577
+        },
+        "49": {
+          "h128": 0.781662,
+          "h512": 0.780309,
+          "capacity_delta": -0.001354
+        },
+        "123": {
+          "h128": 0.787116,
+          "h512": 0.781957,
+          "capacity_delta": -0.005158
+        }
+      },
+      "capacity_delta": {
+        "mean": -0.002675,
+        "sd": 0.010545,
+        "se": 0.004716,
+        "ci95": [
+          -0.015768,
+          0.010419
+        ],
+        "ci95_ttest": [
+          -0.015768,
+          0.010419
+        ],
+        "ci95_bootstrap_reference_only": [
+          -0.010652,
+          0.006263
+        ],
+        "t": -0.5672,
+        "n_seeds": 5,
+        "n_seeds_positive": 1,
+        "all_seeds_positive": false,
+        "p_one_sided_ttest": 0.699556,
+        "p_one_sided_wilcoxon": 0.84375,
+        "p_one_sided_bootstrap_reference_only": 0.72005,
+        "p_used_for_family_correction": "p_one_sided_ttest",
+        "ci_used_for_verdict": "ci95_ttest",
+        "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+      },
+      "gap_to_xgb_h128": -0.03121,
+      "gap_to_xgb_h512": -0.033885,
+      "gap_closed_fraction": -0.0857,
+      "h512_beats_xgb": false,
+      "h512_beats_krasnov": null,
+      "wall_h128_sec": 1658.3,
+      "wall_h512_sec": 1439.6
+    },
+    "Os": {
+      "n_unique": 333,
+      "krasnov_reported_auc": null,
+      "xgb_auc_same_folds": 0.8212519201228878,
+      "h128_auc": 0.6907788018433181,
+      "h128_std": 0.05280338095300158,
+      "h512_auc": 0.6878325652841782,
+      "h512_std": 0.05693315201460692,
+      "std_direction": "wider",
+      "per_seed": {
+        "42": {
+          "h128": 0.699032,
+          "h512": 0.705888,
+          "capacity_delta": 0.006856
+        },
+        "43": {
+          "h128": 0.69256,
+          "h512": 0.675192,
+          "capacity_delta": -0.017368
+        },
+        "44": {
+          "h128": 0.676434,
+          "h512": 0.664421,
+          "capacity_delta": -0.012012
+        },
+        "49": {
+          "h128": 0.707778,
+          "h512": 0.723369,
+          "capacity_delta": 0.015591
+        },
+        "123": {
+          "h128": 0.67809,
+          "h512": 0.670292,
+          "capacity_delta": -0.007798
+        }
+      },
+      "capacity_delta": {
+        "mean": -0.002946,
+        "sd": 0.013725,
+        "se": 0.006138,
+        "ci95": [
+          -0.019988,
+          0.014095
+        ],
+        "ci95_ttest": [
+          -0.019988,
+          0.014095
+        ],
+        "ci95_bootstrap_reference_only": [
+          -0.013312,
+          0.008324
+        ],
+        "t": -0.48,
+        "n_seeds": 5,
+        "n_seeds_positive": 2,
+        "all_seeds_positive": false,
+        "p_one_sided_ttest": 0.671857,
+        "p_one_sided_wilcoxon": 0.78125,
+        "p_one_sided_bootstrap_reference_only": 0.71525,
+        "p_used_for_family_correction": "p_one_sided_ttest",
+        "ci_used_for_verdict": "ci95_ttest",
+        "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+      },
+      "gap_to_xgb_h128": -0.130473,
+      "gap_to_xgb_h512": -0.133419,
+      "gap_closed_fraction": -0.0226,
+      "h512_beats_xgb": false,
+      "h512_beats_krasnov": null,
+      "wall_h128_sec": 1619.0,
+      "wall_h512_sec": 1390.8
+    },
+    "Re": {
+      "n_unique": 250,
+      "krasnov_reported_auc": null,
+      "xgb_auc_same_folds": 0.8426666666666667,
+      "h128_auc": 0.8055619047619048,
+      "h128_std": 0.055383506471833724,
+      "h512_auc": 0.8169142857142857,
+      "h512_std": 0.05913804443266389,
+      "std_direction": "wider",
+      "per_seed": {
+        "42": {
+          "h128": 0.802667,
+          "h512": 0.820952,
+          "capacity_delta": 0.018286
+        },
+        "43": {
+          "h128": 0.814857,
+          "h512": 0.835048,
+          "capacity_delta": 0.02019
+        },
+        "44": {
+          "h128": 0.794667,
+          "h512": 0.796571,
+          "capacity_delta": 0.001905
+        },
+        "49": {
+          "h128": 0.806857,
+          "h512": 0.825524,
+          "capacity_delta": 0.018667
+        },
+        "123": {
+          "h128": 0.808762,
+          "h512": 0.806476,
+          "capacity_delta": -0.002286
+        }
+      },
+      "capacity_delta": {
+        "mean": 0.011352,
+        "sd": 0.010665,
+        "se": 0.004769,
+        "ci95": [
+          -0.00189,
+          0.024594
+        ],
+        "ci95_ttest": [
+          -0.00189,
+          0.024594
+        ],
+        "ci95_bootstrap_reference_only": [
+          0.002743,
+          0.0192
+        ],
+        "t": 2.3803,
+        "n_seeds": 5,
+        "n_seeds_positive": 4,
+        "all_seeds_positive": false,
+        "p_one_sided_ttest": 0.037983,
+        "p_one_sided_wilcoxon": 0.09375,
+        "p_one_sided_bootstrap_reference_only": 0.00475,
+        "p_used_for_family_correction": "p_one_sided_ttest",
+        "ci_used_for_verdict": "ci95_ttest",
+        "ci_method": "t-based 95% CI (t_{.975,4}=2.776); percentile bootstrap (20000 resamples, seed 0) is reported as reference only and is anti-conservative at n=5"
+      },
+      "gap_to_xgb_h128": -0.037105,
+      "gap_to_xgb_h512": -0.025752,
+      "gap_closed_fraction": 0.306,
+      "h512_beats_xgb": false,
+      "h512_beats_krasnov": null,
+      "wall_h128_sec": 1308.6,
+      "wall_h512_sec": 1084.5
+    }
+  },
+  "summary": {
+    "metals_positive": 3,
+    "metals_total": 5,
+    "metals_significant_after_holm": [
+      "Ir",
+      "Ru"
+    ],
+    "all_seeds_positive_metals": [
+      "Ru",
+      "Ir"
+    ],
+    "h512_beats_xgb_metals": []
+  },
+  "honest_framing": {
+    "do_not_claim": [
+      "that widening closes the gap to ECFP4->XGBoost — report h512_beats_xgb_metals",
+      "that capacity monotonically helps — small cohorts are reported individually",
+      "any pooled 5-metal mean (the metals differ in n by ~19x and are not exchangeable)"
+    ],
+    "what_this_says": "Per-metal, on identical folds and identical device, how much of the h128 gap is width rather than architecture or featurisation."
+  }
+}
