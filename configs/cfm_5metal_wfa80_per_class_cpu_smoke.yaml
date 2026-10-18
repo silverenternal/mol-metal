@@ -172,7 +172,9 @@ protocol:
   lr: 0.0001
   gen_validity_samples: 4
   gen_eval_n: 8
-  gen_eval_seeds: "0"
+  # Wf-A81 smoke: two seeds so the per-seed failure buckets can be checked
+  # against the pooled count (1 seed cannot distinguish them).
+  gen_eval_seeds: "0,1"
   n_seeds: 1
   epochs: 1
   n_seeds_min: 1

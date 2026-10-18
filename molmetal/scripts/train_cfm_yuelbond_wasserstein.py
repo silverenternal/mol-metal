@@ -13343,6 +13343,17 @@ def main() -> int:
                             "n_ok": int(_ok_s),
                             "n_total": int(_tot_s),
                             "template_offset": int(_si * _gen_n),
+                            # Wf-A81 — this seed's OWN failure buckets.
+                            # `failure_reasons` on the event below is the
+                            # pooled epoch count by design (a rate can be
+                            # repeated per seed; a COUNT cannot be summed
+                            # across seeds).  MEASURED on the Wf-A75a w=0.0
+                            # arm: 3 seeds x the same {"no_smiles": 51} in
+                            # events.jsonl, so a consumer that summed the
+                            # per-seed events over-counted the collapse 3x.
+                            "failure_reasons": dict(
+                                _chem_seed.get("failure_reasons", {}) or {}
+                            ),
                         }
                     )
                 # ONE summary over every pooled row, not a mean of per-seed
@@ -13823,6 +13834,14 @@ def main() -> int:
                         # The counts sum to n_samples + n_decode_error.
                         failure_reasons=json.dumps(
                             _gen_chem.get("failure_reasons", {}) or {},
+                            sort_keys=True,
+                        ),
+                        # Wf-A81 — the per-seed buckets, so the pooled
+                        # `failure_reasons` above can be decomposed without
+                        # a re-run.  Additive: the pooled field keeps its
+                        # documented epoch-level meaning.
+                        failure_reasons_seed=json.dumps(
+                            _row.get("failure_reasons", {}) or {},
                             sort_keys=True,
                         ),
                     )

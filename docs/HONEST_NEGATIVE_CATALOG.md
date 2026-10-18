@@ -5249,6 +5249,23 @@ batch 8, 1 seed, per_class):**
 | checkpoint stamp | `{'decision': 'per_class', 'per_class_thresholds': [0.05,0.1,0.05,0.1,0.05], 'source_epoch': 0}` | `cfm_yuelbond_wasserstein_seed0.pt:decode_calibration` |
 | read-back | `decoder_kwargs_from_checkpoint(ckpt)` returns the same rule | 9 unit tests |
 
+**Per-seed attribution (Wf-A81, `/tmp/wfa81b_smoke`, 2 eval seeds, 1 epoch).**
+The `gen_eval` event is emitted once per seed but carried the POOLED
+`failure_reasons`, which is right for a rate and wrong for a count: on the
+Wf-A75a w=0.0 arm the same `{"no_smiles": 51}` appeared 3 times, so a consumer
+that summed the per-seed events over-counted the collapse 3x.
+`failure_reasons_seed` is now emitted beside it (the pooled field keeps its
+documented epoch-level meaning).
+
+| event | pooled `failure_reasons` | `failure_reasons_seed` | gen_validity |
+|---|---|---|---|
+| seed 0 | `{ok: 8, sanitize_failed:KekulizeException: 8}` | `{ok: 2, sanitize_failed:KekulizeException: 6}` | 0.250 |
+| seed 1 | same (16 = 2 x 8) | `{ok: 6, sanitize_failed:KekulizeException: 2}` | 0.750 |
+
+The per-seed buckets sum to the pooled count (8+8 = 16), and the two seeds
+differ by 0.5 in gen_validity at one epoch — which is the reason the
+single-seed Wf-A75a arms in §6.107 cannot support a point estimate.
+
 **Honest-negative (ACTIVE, this entry):**
   * **One epoch, untrained head.**  Every calibrated threshold sits on the grid
     floor (0.05-0.10), i.e. the rule is "very permissive", not "well calibrated".
