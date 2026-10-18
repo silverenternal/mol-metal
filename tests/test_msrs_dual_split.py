@@ -17,6 +17,7 @@ from molmetal.scripts.msrs_dual_split import (
     requires_dual_split,
     validate_payload,
     write_report,
+    write_single_protocol_report,
 )
 
 
@@ -158,3 +159,16 @@ def test_check_directory_reports_missing_split(tmp_path):
     assert checked == 2
     assert passed == ["good.json"]
     assert len(failed) == 1 and "bad.json" in failed[0]
+
+
+def test_single_protocol_report_requires_its_split(tmp_path):
+    payload = {
+        "artifact": "msrs_ranking_confirmation",
+        "splits": {"doi_grouped": {"summary": {"centered": {"mean_regret": 0.09}}}},
+    }
+    target = tmp_path / "confirm.json"
+    write_single_protocol_report(target, payload, "doi_grouped")
+    assert json.loads(target.read_text())["splits"]["doi_grouped"]
+
+    with pytest.raises(DualSplitError):
+        write_single_protocol_report(target, {"splits": {}}, "doi_grouped")

@@ -180,6 +180,26 @@ def write_report(path: Path, payload: Mapping[str, Any]) -> None:
     )
 
 
+def write_single_protocol_report(
+    path: Path, payload: Mapping[str, Any], split_key: str
+) -> None:
+    """Write a report whose protocol is fixed by design, not by a grouping choice.
+
+    Used by the DOI-grouped confirmation: there is no second split to report
+    because every fold is a DOI fold.  The named split must exist and be
+    non-empty — the alternative is a report that claims a protocol it did not
+    run.  The payload should say so in ``design.split_schema``.
+    """
+    splits = payload.get("splits")
+    if not isinstance(splits, Mapping) or not splits.get(split_key):
+        raise DualSplitError(
+            f"{path}: single-protocol report needs a non-empty '{split_key}' split"
+        )
+    atomic_write_file(
+        path, json.dumps(dict(payload), indent=2, ensure_ascii=False) + "\n"
+    )
+
+
 def check_directory(metrics_dir: Path) -> tuple[int, List[str], List[str]]:
     """Validate every in-scope artifact in ``metrics_dir``.
 

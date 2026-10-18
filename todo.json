@@ -32,7 +32,7 @@
       "Nat. Commun. — 需要跨数据集泛化 + 决策价值量化"
     ],
     "positioning": "现有负结果 (WP1-WP4) 不是失败, 而是框架的三条边界: 迁移惩罚不可完全归因于金属敏感配体; 金属描述符不解释迁移; metal-token 不改善跨金属。新框架必须解释这三条, 而不是绕过它们。",
-    "immediate_goal": "痛点：全量 424 cohort 上模型输给 metal-only 基线（0.1278 vs 0.1198, p=0.76, NEG-16）。根因已定位到特征层而不是模型层：99.93% 的行是多组分配合物，却只对 ligand_main_fragment 算指纹；改用完整配合物后同折 A/B 从 0.3366 → 0.4368（+0.1002, p=2.3e-20），canonical 分组下 0.3972 → 0.5012。当前唯一判据：先把 FIX-L1 正式落地并让全量决策 regret < 0.1198，再谈别的杠杆。"
+    "immediate_goal": "表征层已修完并测完：L1 完整配合物 (+0.1002)、L2 氧化态 (+0.0444)、L3 配位环境 (+0.0272)、L5 联合 (+0.0130 于最佳单块)，canonical 分组回归 R2 从 0.3972 到 0.5556。但决策层两次尝试都失败：E2 用更好表征反而让 top-1 regret 恶化 (NEG-17)；E3 的 within-cohort centering 在论文内把 regret 降到 0.0939，E4 按 DOI 留出后恶化到 0.1468 (NEG-19)。当前判据不变：全量 regret < 0.1198 且 DOI 留出下 Holm p<0.05。下一步 FIX-M1：把自研 D-MPNN + metal_graph 接进 MSRS，检验表示容量能否提供树模型没有的金属差分信号。"
   },
   "current_position": {
     "measured_facts": [
@@ -139,7 +139,7 @@
       "msrs_decision_policy": "metrics/by_metric/msrs_decision_policy.json"
     },
     "diagnosis": {
-      "headline": "指标差的根因不在模型容量，在信息通路与目标定义。",
+      "headline": "回归指标差的根因在信息通路（特征算错对象）；推荐指标差的根因在目标与泛化，而不是继续加特征——两层必须分开判断。",
       "evidence": [
         "生产设计 (ECFP4 + 5 metal one-hot + 3 周期描述符 + top-40 cell one-hot) 在 MSRS-2 的 21,045 行上 additive R²=0.2510 / interaction R²=0.2791；同一行集把 cell/metal 换成原生 categorical 到 0.3149，说明编码方式本身就值 +0.036。",
         "逐块累加到 DOI 是 0.4437，但这是论文内插值上界，不可部署到新论文。",
@@ -147,12 +147,15 @@
         "时间 (24/48/72/96h) 单看 +0.0137；年份 +0.0191。",
         "18.7% 的 potency 目标是右删失下界，却以 log10(bound) 当精确值参与拟合（2520 行正好落在 2.0 = 100 µM 天花板）；金属间删失率差 0.079（Ru 0.202 vs Re 0.123），所以压缩是不对称的，直接偏置金属排序。",
         "加性约束 (interaction_constraints 禁掉 ligand×metal 同路径) 的数学后果：同一折内所有队列的金属排序完全相同，MSRS-6 实测 5/5 折 × 4/4 格 n_distinct_orders = 1。配体级推荐在该结构下不可能成立，不是调参问题。",
-        "编码方式本身就是最大的单一杠杆：cell/metal 从 top-40 one-hot 换成原生 categorical，R² 0.2704→0.3366 (+0.0662, +24.5% 相对)，MAE 0.5053→0.4766，配对 p=3.9e-53。再加 RDKit 或 rank-4 交互项不再提升 (0.3292) —— 三者提供的是同一部分信息。"
+        "编码方式本身就是最大的单一杠杆：cell/metal 从 top-40 one-hot 换成原生 categorical，R² 0.2704→0.3366 (+0.0662, +24.5% 相对)，MAE 0.5053→0.4766，配对 p=3.9e-53。再加 RDKit 或 rank-4 交互项不再提升 (0.3292) —— 三者提供的是同一部分信息。",
+        "表征修复后 canonical 分组回归 R2 0.3972 → 0.5556（L1+L2+L3+L5 同折），但同一表征在决策层让 top-1 regret 从 0.1212 恶化到 0.1314（NEG-17）。",
+        "within-cohort centering 在论文内把 regret 降到 0.0939、top-1 抬到 0.653（NEG-18），但按 DOI 留出整篇论文后恶化到 0.1468，输给 regression 0.1165 与 global_best 0.1199（NEG-19）。"
       ],
       "not_the_problem": [
         "模型容量：h512 只在 n≥10^3 的金属上可检测 (+0.018~+0.083)，不是全局瓶颈。",
         "金属注入位置：EX1 四臂 (none/readout/token/film) 差异在噪声内 → 注入方式不是瓶颈。",
-        "金属描述符丰富度：DOI 控制后 +0.0024，已判 NEGATIVE（见 AUD-F3）。"
+        "金属描述符丰富度：DOI 控制后 +0.0024，已判 NEGATIVE（见 AUD-F3）。",
+        "特征表示不足：已用 +0.10 / +0.04 / +0.03 三次独立增益证明不是；决策层的失败不是表征问题。"
       ]
     },
     "feature_audit": {
@@ -454,6 +457,28 @@
         "why_it_matters": "这不是『方法无效』，而是『在 61 个 DOI 簇上无法把 0.03 的效应与论文间异质性分开』。诚实结论：centered 是当前最强候选，但按预注册判据它仍是 NEGATIVE，不能写成已解决。",
         "do_not": "不要在同一份数据上换检验方法直到显著；也不要把 fragment 分组的 raw p=0.0299 当结果报。确认需要独立证据（新的 DOI 簇 / 时间切分 / 外部队列），见 FIX-E4。",
         "next": "FIX-E4：用时间切分或留出 DOI 做一次独立确认，预注册同一判据。"
+      },
+      {
+        "id": "NEG-19",
+        "title": "centered 的增益是论文内现象：按 DOI 留出后它从 0.0939 恶化到 0.1468",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_ranking_confirmation.json",
+          "doi_grouped": {
+            "global_best": 0.1199,
+            "regression": 0.1165,
+            "centered": 0.1468
+          },
+          "holm_p": {
+            "regression": 0.9308,
+            "centered": 0.9308
+          },
+          "fold_agreement_with_ligand_folds": 0.1955
+        },
+        "what_was_tested": "FIX-E4：GroupKFold(5) 按 doi 分组，整篇论文留出，重跑 FIX-E3 的三个臂。同一判据（regret<0.1198 且 Holm p<0.05）在跑之前写死。",
+        "result": "centered 0.1468 > global_best 0.1199 > regression 0.1165。regression 的点估计最好但 p=0.47，不显著；centered 显著方向反转。",
+        "why_it_matters": "E3 里 centered 同时改善 regret 与 top-1，看起来像突破了决策层；但它利用的是同一批论文内的队列结构，换一批论文就失效。这是本会话第二个『同分布好看、分布外失效』的例子（第一个是 NEG-17 的 R2 vs 排名）。",
+        "do_not": "不要把 FIX-E3 的 centered 数字写进任何结论或论文；它的适用域是已见论文。任何决策层方法在 DOI 留出下不过判据，就不能称为解决了推荐问题。",
+        "next": "决策层继续加码的性价比已经很低：两个方向（更好回归、目标对齐）都在分布外失败。下一步应转向 FIX-M1（主模型 + metal_graph），看表示容量是否能提供当前线性/树模型没有的金属差分信号。"
       }
     ],
     "reusable_assets": {
@@ -2889,17 +2914,41 @@
       "title": "独立确认：按 DOI 分组的 5 折 CV，检验 centered 的增益是否跨论文成立",
       "layer": "评估",
       "priority": "P0",
-      "status": "PENDING",
+      "status": "DONE-NEGATIVE",
       "gpu": "none",
       "wall": "0.5 天",
       "why": "NEG-18：centered 在 424 个 cohort 上把 regret 从 0.1242 降到 0.0939、top-1 从 0.566 抬到 0.653，但 DOI 聚类 Holm p 只有 0.0598（fragment）/0.6737（canonical）。聚类检验只修正方差，不检验『换一批论文还能不能用』。",
       "method": "GroupKFold(5) 按 doi 分组（同一篇论文的行只能落在同一折），重跑 regression / centered / global_best 三臂；判据仍是全量 regret < 0.1198 且 Holm p<0.05。这是分布外测试，不是同一份数据的再分析。",
-      "deliverable": "metrics/by_metric/msrs_ranking_confirmation.json",
+      "deliverable": "molmetal/scripts/msrs_ranking_confirmation.py + metrics/by_metric/msrs_ranking_confirmation.json",
       "acceptance": "centered 在 DOI-grouped 5 折下仍满足 regret<0.1198 且 Holm p<0.05；否则 NEGATIVE，centered 只能作为候选而非结论。",
       "depends_on": [
         "FIX-E3"
       ],
-      "result": null
+      "result": {
+        "artifact": "metrics/by_metric/msrs_ranking_confirmation.json",
+        "protocol": "GroupKFold(5) grouped by doi — entire papers held out; 61 DOI clusters, 424 cohorts",
+        "summary": {
+          "global_best": {
+            "regret": 0.1199,
+            "top1": 0.5755
+          },
+          "regression": {
+            "regret": 0.1165,
+            "top1": 0.5613
+          },
+          "centered": {
+            "regret": 0.1468,
+            "top1": 0.5755
+          }
+        },
+        "clustered_p_holm": {
+          "regression": 0.9308,
+          "centered": 0.9308
+        },
+        "verdict": "NEGATIVE — centered 在留出论文上从 0.0939 恶化到 0.1468，输给 regression 0.1165 与 global_best 0.1199",
+        "finding": "FIX-E3 的 centered 增益不跨论文成立：同一协议在 DOI 分组下反而最差。regression 也只比 global_best 低 0.0034，p=0.47，不显著。结论：在当前数据规模与论文异质性下，没有任何打分器能稳定赢过 metal-only 基线。"
+      },
+      "acceptance_met": "no — 最佳臂 regret 0.1165 虽 < 0.1198，但 Holm p=0.93；centered 直接恶化"
     },
     {
       "id": "FIX-P2",
