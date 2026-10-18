@@ -264,3 +264,57 @@ def test_bond_length_guidance_three_atom_carbon_chain() -> None:
         f"WF-A75: net force on a 3-atom chain must be zero "
         f"(Newton's 3rd law).  got net_x = {net_x:.3e}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test 6 — multi-batch ``(B, N)`` ``atom_types`` (trainer-side contract).
+# Catches the regression where the per-batch ``__call__`` loop indexed
+# ``self._atom_types[src_bi_eff]`` (flat, ``(B*N,)``) instead of
+# ``self._atom_types[bi, src_bi_eff]`` (per-batch, ``(B, N)``).  The
+# trainer always passes ``(B, N)``, so this is the contract.
+# ---------------------------------------------------------------------------
+def test_bond_length_guidance_batch_dim_atom_types() -> None:
+    """Per-batch ``__call__`` loop must index ``atom_types[bi, src]``
+    when ``atom_types`` is 2-D ``(B, N)``.  Regression guard for the
+    Wf-A75 wire-in to ``train_cfm_yuelbond_wasserstein.py`` (the
+    trainer passes ``(B, N)`` to ``_BondLengthGuidance.__init__``)."""
+    # 3 batches of 4 atoms each: Pt + 3 C
+    atom_types = torch.tensor(
+        [
+            [78, 6, 6, 6],  # batch 0: Pt + 3C
+            [78, 6, 6, 6],  # batch 1: Pt + 3C
+            [78, 6, 6, 6],  # batch 2: Pt + 3C
+        ],
+        dtype=torch.long,
+    )
+    guidance = _BLG(
+        atom_types=atom_types, cutoff=3.5, guidance_weight=1.0
+    )
+    # Place Pt at origin + 3 C at increasing x within Pt-C bond range.
+    # Metal-C target is 2.0 Å; we put them at 2.4 Å (stretched).
+    x = torch.zeros(3, 4, 3, dtype=torch.float32)
+    x[:, 0, 0] = 0.0   # Pt
+    x[:, 1, 0] = 2.4   # C1 stretched from 2.0
+    x[:, 2, 0] = 4.4   # C2 outside inner-bond cutoff (2.5 Å from Pt)
+    x[:, 3, 0] = 6.8   # C3 further out
+    f = guidance(x)
+    assert f.shape == x.shape
+    # Each batch should have the same force pattern (translation
+    # symmetry): the force on Pt (atom 0) of each batch is the same
+    # because the geometry is the same.
+    assert torch.allclose(f[0, 0, 0], f[1, 0, 0], atol=1e-5), (
+        f"WF-A75: per-batch force should be translation-symmetric. "
+        f"got f[0,0,0]={f[0,0,0].item():.3e} vs f[1,0,0]={f[1,0,0].item():.3e}"
+    )
+    assert torch.allclose(f[1, 0, 0], f[2, 0, 0], atol=1e-5), (
+        f"WF-A75: per-batch force should be translation-symmetric. "
+        f"got f[1,0,0]={f[1,0,0].item():.3e} vs f[2,0,0]={f[2,0,0].item():.3e}"
+    )
+    # Force direction: Pt (atom 0) pulled +x (toward C1 at x=2.4,
+    # which is within the 2.5 Å inner-bond cutoff for metal-C target
+    # 2.0).
+    f_Pt_x = float(f[0, 0, 0].item())
+    assert f_Pt_x > 0.0, (
+        f"WF-A75: Pt should be pulled +x toward stretched C1. "
+        f"got f_Pt_x = {f_Pt_x:.3e}"
+    )

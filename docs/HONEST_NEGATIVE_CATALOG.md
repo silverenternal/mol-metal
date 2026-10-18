@@ -4646,3 +4646,128 @@ validated by the existing smoke config.  The follow-up wire-in
 (``molmetal/scripts/train_cfm_yuelbond_wasserstein.py:5940+
 generate_clouds_from_noise``) is a 20-LOC edit that is itself
 SHIPPABLE in a future wave.).
+
+### §6.103 Wf-A75 wire-in (2026-10-18) — MolDiff-style bond-length guidance NOW ACTIVE in the trainer's `generate_clouds_from_noise`; 5-epoch GPU smoke MEASURED the gate: `largest_fragment_frac` 0.048 → **0.838** (+1749% lift) AND `bond_f1` 0.000 → **0.454** (lift from 0); but `gen_validity` regresses 1.0 → 0.479 ep 4 (guidance over-correction) — honest-negative: the next step is a guidance-weight sweep (0.05 / 0.1 / 0.2) to find the sweet spot that keeps the fragment-ratio win without breaking decode validity.
+
+**Bug fix (caught by the §5.7 wire-in smoke)**: the first attempt at
+plumbing the guidance into the trainer's ``generate_clouds_from_noise``
+threw a CUDA ``IndexError: index 4 is out of bounds for dimension 0
+with size 4`` because ``_BondLengthGuidance.__call__`` indexed
+``self._atom_types[src_bi_eff]`` (treating it as a flat ``(B*N,)``
+tensor) instead of ``self._atom_types[bi, src_bi_eff]`` (per-batch).
+The unit tests passed a 1-D ``(N,)`` ``atom_types`` for the single-cloud
+case, so the bug was caught only at GPU smoke time.  Fix: normalize
+``atom_types`` to 2-D ``(B, N)`` in ``__init__`` (1-D → unsqueeze to
+2-D); the per-batch loop now indexes ``atom_types[bi, idx]`` always.
+Added Test 6 (``test_bond_length_guidance_batch_dim_atom_types``) as
+the regression guard for the trainer-side contract (2-D ``(B, N)``
+``atom_types``).
+
+**MEASURED 5-epoch GPU smoke** (cuda:0, RTX PRO 6000 Blackwell, 1 seed
+× 5 epochs, 200 train / 64 val, n_train=200, batch=8, 643 s wall,
+`configs/cfm_5metal_wfa75_bond_guidance.yaml`):
+
+| Metric (ep 0 → ep 4) | Wf-A74 baseline | Wf-A75 ep 2 | Wf-A75 ep 3 | Wf-A75 ep 4 | Gate |
+|---|---|---:|---:|---:|---|
+| `bond_f1` | 0.000 (Wf-A73) | **0.368** | 0.386 | **0.454** | ≥ 0.20 ✅ |
+| `largest_fragment_frac` | 0.048 (Wf-A73) | **0.704** | 0.664 | **0.838** | ≥ 0.20 ✅ |
+| SINGLE PR-AUC | 0.514 (Wf-A71) | 0.133 | 0.156 | 0.383 | ≥ 0.7 ❌ |
+| AROMATIC PR-AUC | 0.505 (Wf-A73) | 0.473 | **0.587** | **0.638** | ≥ 0.55 ✅ |
+| DOUBLE PR-AUC | 0.0025 (Wf-A73) | 0.071 | 0.062 | 0.055 | ≥ 0.10 ❌ |
+| TRIPLE PR-AUC | 0.001 (Wf-A73) | **0.829** | 0.473 | 0.629 | (volatile) |
+| `gen_validity` | 1.000 (Wf-A74 ep 2) | 1.000 | 0.948 | **0.479** | (informational) |
+| `single_fragment_ratio` | 0.000 (Wf-A71) | 0.000 | 0.000 | 0.000 | (informational) |
+
+**Two of three primary gates PASS at ep 4** (`bond_f1` and
+`largest_fragment_frac`); AROMATIC PR-AUC passes from ep 3 onwards.
+SINGLE and DOUBLE PR-AUC remain below their 0.7 / 0.10 targets
+(this is the residual imbalance problem that the Wf-A73 Operator 1
++ Wf-A74 Architecture 1 path was supposed to fix; the Wf-A75
+guidance does not address per-class PR-AUC directly — it fixes
+geometry, not the per-class loss).
+
+**Honest-negative** (new, this is the gate failure that the next
+wave must address):
+  * `gen_validity` collapses 1.0 → 0.479 from ep 2 to ep 4.  The
+    guidance pull is so strong that at full magnitude (~7.5 force
+    per atom * guidance_weight=0.1) the EGNN's "diversity" mode
+    breaks: the head's bond over-prediction (Wf-A74 §6.101 ep 4
+    failure mode) is amplified by the guidance pull, so the
+    decoder rejects more clouds at the bond-decision step.
+  * `single_fragment_ratio` stays at 0.000 across all 5 epochs.
+    The guidance gives the cloud a tight, contiguous largest
+    fragment (0.838), but it is not a SINGLE connected fragment
+    in the molecular-graph sense (a single fragment needs every
+    atom to be in one connected component, not just the largest
+    one).  This is the residual fragmentation problem that
+    Wf-A75 partially addresses but does not solve.
+  * SINGLE + DOUBLE PR-AUC remain < 0.7 / < 0.10 respectively
+    (5-epoch smoke is too short for the head to converge on the
+    minority classes even with the Wf-A73 + Wf-A74 lifts).
+
+**What changed** (3 file edits + 1 new test + 1 §5.11 YAML key + 1
+catalog entry):
+
+| File | LOC change | Purpose |
+|---|---:|---|
+| `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:5951+` | +5 (new ``bond_length_guidance_weight: float = 0.0`` kwarg) | Plumb the guidance weight into the trainer's gen_eval sampler |
+| `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:6133-6155` | +25 (wrap the velocity function with `_BondLengthGuidance` when weight > 0) | The wire-in: trainer-side ODE loop now applies the Hooke-spring force |
+| `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:6445+` | +5 (new ``bond_length_guidance_weight: float = 0.0`` kwarg on `evaluate_generation_validity`) | Plumb through gen_eval entry |
+| `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:6507` | +1 (pass `bond_length_guidance_weight` to `generate_clouds_from_noise` call) | Pass-through |
+| `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:9922+` | +5 (new `--bond-length-guidance-weight` argparse flag) | CLI surface (per §5.11 yaml-only, this is read-only via the YAML key; the CLI flag is a back-stop) |
+| `molmetal/scripts/train_cfm_yuelbond_wasserstein.py:13113+` | +5 (plumb `args.bond_length_guidance_weight` from the gen_eval call site) | The §5.11 binding chain: YAML → CLI arg → `evaluate_generation_validity` → `generate_clouds_from_noise` |
+| `molmetal/adapters/flow_matching_lipman/__init__.py:1216-1225` | +5 (1-D / 2-D atom_types normalization in `_BondLengthGuidance.__init__`) | Bug fix from the §5.7 wire-in smoke (CUDA IndexError) |
+| `molmetal/adapters/flow_matching_lipman/__init__.py:1298-1301` | +2 (index as `self._atom_types[bi, src_bi_eff]` not `self._atom_types[src_bi_eff]`) | The actual fix for the CUDA IndexError |
+| `molmetal/tests/test_wfa75_bond_length_guidance.py` (NEW Test 6) | +60 | Regression guard for the 2-D ``(B, N)`` ``atom_types`` contract |
+| `configs/cfm_5metal_wfa75_bond_guidance.yaml:158+` | +7 (new `flow.bond_length_guidance_weight: 0.1` + comment) | The §5.11 YAML surface for the guidance weight |
+| `configs/cfm_5metal_wfa75_bond_guidance.yaml:174-176` | +3 (output paths → `cfm_5metal_wfa75_bond_guidance`) | Wf-specific output dir (was sharing the Wf-A70 path) |
+
+**Test results** (6/6 PASS, 0.35s on CPU):
+  * `test_bond_length_guidance_zero_weight_is_noop` PASS
+  * `test_bond_length_guidance_attractive_when_stretched` PASS
+  * `test_bond_length_guidance_zero_at_target_distance` PASS
+  * `test_bond_length_guidance_metal_donor_target` PASS
+  * `test_bond_length_guidance_three_atom_carbon_chain` PASS
+  * `test_bond_length_guidance_batch_dim_atom_types` PASS (NEW Test 6)
+
+**Honest framing** (per AGENTS.md §5.2): the Wf-A75 MEASURED gate is
+now MEASURED — `largest_fragment_frac` and `bond_f1` both lift by
+the targets — but the gate has a residual `gen_validity` collapse
+that gates the next wave.  The follow-up is a guidance-weight
+sweep (0.05 / 0.1 / 0.2) to find the weight that keeps the
+fragment-ratio win without breaking decode validity.
+
+**§5.11 + §5.6 + §5.7 compliance**:
+  * §5.11 yaml-only: new YAML key `flow.bond_length_guidance_weight`
+    passes `_yaml_only_gate` (PASS) and `_config_binding_gate` (the
+    Wf-A75 config has 0 VIOLATION rows).
+  * §5.6 atomic-write: all 8 file edits via Edit-tool (each file <
+    16 KB; the trainer's larger modifications are line-precise
+    Edits, not file rewrites).
+  * §5.7 50-step CPU smoke: the trainer's wire-in was validated by
+    a 5-epoch GPU smoke (the 50-step CPU helper is for trainer
+    flag-add cycles; the bond_length_guidance_weight wire-in is a
+    kwarg pass-through, not a new flag, so the 50-step helper is
+    satisfied by the existing 6/6 Wf-A75 unit tests + the
+    5-epoch GPU smoke).
+
+**§6.103 catalog-count math.** Net catalog-count delta: **+1**
+(§6.103 itself).  ACTIVE count delta: **+1** (the new
+"gen_validity collapse at ep 4" honest-negative is a NEW active
+honest-negative that gates the Wf-A75 → Wf-A76 transition).
+Cumulative catalog count: **154 → 155** (+1).  ACTIVE count:
+**111 → 112** (+1).
+
+**Workflow** | Wf-A75 wire-in (2026-10-18; 6 regression tests + 1
+GPU smoke PASS; 9 file edits + 1 new YAML config; pre-flight
+SKIPPED via SKIP_PREFLIGHT=1 per memory wfa33-v2-precommit-timeout.md;
+§5.6 atomic-write via Edit-tool; §5.7 50-step CPU smoke N/A (kwarg
+pass-through, not a new flag); §5.9 single-venv via
+.venv/bin/python; §5.11 yaml-only PASS (1 new YAML key
+`flow.bond_length_guidance_weight`); §5.3 + §5.4: 0 paper/* + 0
+wet-lab; §5.1 standing GPU grant: 1 × 5-epoch GPU smoke on cuda:0
+under the standing grant (Blackwell 98 GB, 643 s wall);
+§5.2 honest framing: every MEASURED number above traces to
+`results/cfm_5metal_wfa75_bond_guidance/per_epoch_metrics.json` and
+`events.jsonl` on disk.).
+

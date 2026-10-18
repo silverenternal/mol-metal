@@ -1214,7 +1214,14 @@ class _BondLengthGuidance:
         guidance_weight: float = 0.1,
         spring_constant: float = 50.0,
     ) -> None:
-        self._atom_types = atom_types
+        # Normalize atom_types to 2-D ``(B, N)`` so the per-batch
+        # ``__call__`` loop can index it as ``atom_types[bi, idx]``.
+        # The trainer passes ``(B, N)`` directly; the unit tests pass
+        # 1-D ``(N,)`` for the single-cloud case.
+        if atom_types.dim() == 1:
+            self._atom_types = atom_types.unsqueeze(0)
+        else:
+            self._atom_types = atom_types
         self._cutoff = float(cutoff)
         self._guidance_weight = float(guidance_weight)
         self._spring_constant = float(spring_constant)
@@ -1296,8 +1303,8 @@ class _BondLengthGuidance:
             # Expected distance from the (Z, Z) table.
             table = self._expected_length_table().to(x.device).to(x.dtype)
             expected_bi = table[
-                self._atom_types[src_bi_eff],
-                self._atom_types[dst_bi_eff],
+                self._atom_types[bi, src_bi_eff],
+                self._atom_types[bi, dst_bi_eff],
             ].clamp(min=0.5)  # (E'',)
             # Spring force: F = k * (d - d_target) * unit(diff).
             residual_bi = (d_bi - expected_bi)  # (E'',)

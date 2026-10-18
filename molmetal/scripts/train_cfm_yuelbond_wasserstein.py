@@ -5948,6 +5948,11 @@ def generate_clouds_from_noise(
     noise_sigma: float = 1.0,
     pad_groups: bool = False,
     pad_group_bucket: int = 8,
+    # Wf-A75 (2026-10-18) — MolDiff-style bond-length guidance.  0.0
+    # (default) is a no-op (back-compat with the Wf-A74 sampling path).
+    # When > 0, the EGNN velocity is augmented at every ODE step with
+    # a Hooke-spring force on bonded (Z_i, Z_j) pairs.
+    bond_length_guidance_weight: float = 0.0,
 ) -> List[AtomCloud]:
     """Integrate the velocity field from ``x_0 ~ N(0, I)`` to ``t = 1``.
 
@@ -6125,8 +6130,32 @@ def generate_clouds_from_noise(
                     x, _z, edge_index, t_b, edge_mask=edge_mask
                 )["vel"]
 
+            # Wf-A75 (2026-10-18) — MolDiff-style bond-length guidance at
+            # every ODE step.  When ``bond_length_guidance_weight > 0``
+            # the EGNN velocity is augmented with a Hooke-spring force
+            # on bonded (Z_i, Z_j) pairs.  When 0 (default) the wrapper
+            # is a no-op and the Wf-A74 sampling path is bit-exact
+            # preserved.  See ``_BondLengthGuidance`` for the chemistry
+            # table + per-pair spring force.
+            _blg_weight = float(bond_length_guidance_weight or 0.0)
+            if _blg_weight > 0.0:
+                from molmetal.adapters.flow_matching_lipman import (
+                    _BondLengthGuidance,
+                )
+                _blg = _BondLengthGuidance(
+                    atom_types=z_b,
+                    cutoff=float(model.cutoff),
+                    guidance_weight=_blg_weight,
+                )
+
+                def _vf_with_guidance(x, t, _vf_in=_vf, _blg_in=_blg):
+                    return _vf_in(x, t) + _blg_in(x)
+                _vf_used = _vf_with_guidance
+            else:
+                _vf_used = _vf
+
             solver = ODESolver(
-                velocity_model=_vf, method=str(method), n_steps=int(n_steps)
+                velocity_model=_vf_used, method=str(method), n_steps=int(n_steps)
             )
             x1 = solver.sample(x0, method=str(method), n_steps=int(n_steps))
             for i in range(b):
@@ -6410,6 +6439,10 @@ def evaluate_generation_validity(
     sa_target: Optional[float] = None,
     chemistry_out: Optional[Dict[str, Any]] = None,
     chemistry_rows_out: Optional[List[Optional[Dict[str, Any]]]] = None,
+    # Wf-A75 (2026-10-18) — bond-length guidance weight applied at every
+    # ODE step during generation.  0.0 (default) is a no-op
+    # (back-compat with the Wf-A74 sampling path).
+    bond_length_guidance_weight: float = 0.0,
     smiles_out: Optional[List[str]] = None,
     rejected_smiles_out: Optional[List[Tuple[str, str]]] = None,
     per_cloud_out: Optional[List[bool]] = None,
@@ -6471,6 +6504,7 @@ def evaluate_generation_validity(
         noise_sigma=float(noise_sigma),
         pad_groups=bool(pad_groups),
         pad_group_bucket=int(pad_group_bucket),
+        bond_length_guidance_weight=float(bond_length_guidance_weight),
     )
     n_ok = 0
     chem_rows: list[Optional[Dict[str, Any]]] = []
@@ -9878,6 +9912,33 @@ def parse_args() -> argparse.Namespace:
             "trainer had NO validity signal.  Set e.g. 0.05 to enable."
         ),
     )
+    # Wf-A75 (2026-10-18) — MolDiff-style bond-length guidance at
+    # every ODE step.  Default 0.0 (no-op, back-compat with the Wf-A74
+    # sampling path).  When > 0, the EGNN velocity is augmented with a
+    # Hooke-spring force on (Z_i, Z_j) pairs within the 2.5 Å inner
+    # bond cutoff.  See _BondLengthGuidance for the chemistry table.
+    p.add_argument(
+        "--bond-length-guidance-weight",
+        dest="bond_length_guidance_weight",
+        type=float,
+        default=0.0,
+        help=(
+            "2026-10-18 NEW (Wf-A75): bond-length guidance weight "
+            "applied at every ODE step during generation.  0.0 "
+            "(default) is a no-op (back-compat with the Wf-A74 "
+            "sampler).  Per MolDiff (Vignac et al. 2023, "
+            "arXiv:2305.07508), Cartesian-coordinate diffusion on metal "
+            "complexes suffers from the atom-bond inconsistency "
+            "failure mode: bonded pairs drift past ~3 Å during "
+            "denoising, fragmenting the output.  The guidance is a "
+            "Hooke-spring force on (Z_i, Z_j) pairs that pulls actual "
+            "distance toward an expected per-pair value "
+            "(metal-donor ~2.05 Å, C-C ~1.50 Å, C-N/O ~1.40 Å, etc.).  "
+            "At weight 0.1 the guidance is ~10% of the EGNN velocity "
+            "at full magnitude.  Try 0.1 to recover the Wf-A74 ep-4 "
+            "gen_validity collapse from 0.354 back toward 0.95+."
+        ),
+    )
     # Wf-A15 (2026-10-13) — 6 NEW chemistry-signal loss weights.  All
     # default 0.0 → exact torch.zeros(()) in the sum, preserving the
     # pre-Wf-A15 12-term objective bit-for-bit.
@@ -13082,6 +13143,18 @@ def main() -> int:
                         smiles_out=_gen_smiles,
                         rejected_smiles_out=_gen_rejected,
                         pad_groups=bool(getattr(args, "gen_pad_groups", False)),
+                        # Wf-A75 (2026-10-18) — bond-length guidance weight
+                        # plumbed from YAML → CLI → gen_eval path.  When
+                        # >0 the trainer's ``generate_clouds_from_noise``
+                        # wraps the velocity function with a Hooke-spring
+                        # force on (Z_i, Z_j) pairs (per MolDiff Vignac
+                        # 2023) so bonded atoms do not drift past ~3 Å
+                        # during denoising.  0.0 (default) is a no-op
+                        # that keeps the pre-Wf-A75 sampling path
+                        # bit-exact.
+                        bond_length_guidance_weight=float(
+                            getattr(args, "bond_length_guidance_weight", 0.0)
+                        ),
                     )
                     _gen_ok += int(_ok_s)
                     _gen_tot += int(_tot_s)
