@@ -1,0 +1,16 @@
+{
+  "n_unique_ligands": 2846,
+  "n_complete_172d": 2841,
+  "coverage_complete": 0.9982,
+  "coverage_per_stream": {
+    "rdkit": 1.0,
+    "multiph": 0.9982,
+    "pll": 0.9982
+  },
+  "coverage_rdkit_only": 1.0,
+  "n_duplicate_fragments": 0,
+  "wall_s": 169.65,
+  "imputation": "none \u2014 failed streams stay NaN for LightGBM's native handler",
+  "cohort_rows": 21404,
+  "cohort_rows_covered": 21399
+}
