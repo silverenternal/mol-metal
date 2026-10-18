@@ -659,6 +659,7 @@ def main(argv: Optional[list] = None) -> int:
         )
         return cur + prev
 
+    target_reached = False
     for cell in cells:
         if args.pt_target and _pt_total() >= args.pt_target:
             print(
@@ -666,6 +667,7 @@ def main(argv: Optional[list] = None) -> int:
                 f"{args.pt_target}); stopping before [{cell}]",
                 flush=True,
             )
+            target_reached = True
             break
         print(f"\n=== [{cell}] ===", flush=True)
         try:
@@ -772,7 +774,10 @@ def main(argv: Optional[list] = None) -> int:
         f"incomplete={incomplete}",
         flush=True,
     )
-    return 0 if not incomplete else 3
+    # A reached target is a successful stop, not a partial run: without this
+    # an old error entry keeps rc=3 and the outer retry loop re-runs, hits the
+    # target again immediately, and sleeps for nothing.
+    return 0 if target_reached or not incomplete else 3
 
 
 if __name__ == "__main__":
