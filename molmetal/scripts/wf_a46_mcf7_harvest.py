@@ -508,11 +508,35 @@ def resolve_all_cells(out_dir: Path) -> tuple[list, dict]:
     harvested = set(harvested_cells)
     used: set = set(stem_by_cell.values())
 
+    # The registry's bioDataCount is NOT the endpoint's meta.total: it runs
+    # systematically higher (HL-60 465 vs 400 returned; MCF-7 2877 vs 2747),
+    # so the 0.9 row-count heuristic re-queues cells that are already
+    # complete.  The last summary records each cell's real api_meta_total and
+    # whether any page failed, so trust that when it is available.
+    complete_from_summary: set = set()
+    summary_path = out_dir / "harvest_summary_2026-10-16.json"
+    if summary_path.exists():
+        try:
+            doc = json.loads(summary_path.read_text(encoding="utf-8"))
+            for s in doc.get("by_cell_line", []):
+                if (
+                    s.get("cell_line")
+                    and "error" not in s
+                    and not s.get("pages_failed_unrecovered", 0)
+                    and s.get("rows_total") is not None
+                    and s.get("rows_total") == s.get("api_meta_total")
+                ):
+                    complete_from_summary.add(s["cell_line"])
+        except (json.JSONDecodeError, OSError):
+            pass
+
     remaining = []
     for c in cells:
         cell = c.get("cellLine")
         if cell not in harvested:
             remaining.append(c)
+            continue
+        if cell in complete_from_summary:
             continue
         expected = c.get("bioDataCount") or 0
         if expected and rows_by_cell.get(cell, 0) < expected * 0.9:
