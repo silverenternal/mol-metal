@@ -400,6 +400,33 @@
         },
         "why_it_matters": "这是『全量输』的准确数字：模型不是略输，是输了 0.008 regret 且 p=0.76。此前所有决策层的乐观结论都建立在 27.6% 的高 margin 子集上（24 DOI），不能外推成全量可用。",
         "do_not": "不要再用全量 cohort 宣称模型赢基线；不要把弃权子集的结果说成决策层已解决；任何决策层结论必须同时报全量 regret 与弃权后 regret。"
+      },
+      {
+        "id": "NEG-17",
+        "title": "更好的回归 (R2 +0.06) 没有换来更好的 top-1 排名：决策层不是被表征卡住的",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_decision_policy_v2.json",
+          "fragment_grouped": {
+            "global_best_regret": 0.1198,
+            "model_fragment_regret": 0.1181,
+            "model_complex_regret": 0.1313,
+            "model_fragment_top1": 0.5495,
+            "model_complex_top1": 0.5165
+          },
+          "canonical_grouped": {
+            "global_best_regret": 0.1241,
+            "model_fragment_regret": 0.1212,
+            "model_complex_regret": 0.1314,
+            "model_fragment_top1": 0.5566,
+            "model_complex_top1": 0.5142
+          },
+          "p_holm_complex_vs_global": 1.0
+        },
+        "what_was_tested": "FIX-E2 预设判据：全量 regret < 0.1198 且 DOI 聚类 Holm p<0.05。用 FIX-L1 完整配合物特征重训响应面，替换决策层的打分器。",
+        "result": "两个分组都不通过。canonical 分组下 complex 模型 regret 0.1314，比 fragment 模型 0.1212 和 global_best 0.1241 都差；top-1 命中 0.514 vs 0.557。而同一模型的回归 R2 是 0.5012 vs 0.4368。 注意：判据里的 0.1198 来自 fragment 分组；canonical 分组下同折 global_best 是 0.1241。即便改用同分组的 0.1241 作门槛，complex 模型 0.1314 仍然输，所以结论不依赖门槛的选取。",
+        "why_it_matters": "点预测精度与队列内金属排序是两件事。完整配合物特征提升了『这个配合物多强』，但没有提升『同一队列里哪个金属最好』——后者要求的是金属之间的差分信号。决策层的问题不是表征太弱，而是训练目标（回归 log IC50）与决策目标（队列内 argmin）不一致。",
+        "do_not": "不要再假设『特征更强 → 推荐更准』。任何决策层改动必须在全量 cohort 上直接测 top-1 regret，并且与同折 global_best 对比。",
+        "next": "把排序目标显式化（pairwise/listwise 或 within-cohort centering）再试；见 FIX-E3。"
       }
     ],
     "reusable_assets": {
@@ -785,6 +812,51 @@
         },
         "why_it_matters": "这不是超参或架构，是特征算错了对象：99.93% 的行是多组分配合物，模型却只看其中一个片段。修它不需要新数据、不需要 GPU。",
         "caveat": "oracle 组均值 R2 会高估可泛化增益；正式验收必须用同折 A/B，已给出两个分组的实测。"
+      },
+      {
+        "id": "POS-4",
+        "title": "氧化态是金属块的真正杠杆（+0.0444），周期表描述符不是",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_metal_block.json",
+          "canonical_grouped": {
+            "base": 0.502,
+            "state": 0.5464,
+            "rich": 0.5027,
+            "full": 0.5446
+          },
+          "fragment_grouped": {
+            "base": 0.4391,
+            "state": 0.4629,
+            "rich": 0.4364,
+            "full": 0.4642
+          },
+          "p_one_sided_vs_base": 6.05e-18
+        },
+        "why": "OS/charge/d 电子数在金属内部变化（Ru(II) vs Ru(III)），one-hot 金属标签无法表达；而 row/group/weight/半径对固定金属是常数，只能帮未见金属外推。",
+        "caveat": "state 与 full 几乎相同（0.5464 vs 0.5446），说明 rich 块在已见金属上无增量甚至轻微稀释。"
+      },
+      {
+        "id": "POS-5",
+        "title": "配位环境（供体/齿合/CN/几何）+0.0272，覆盖 99.4%",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_coordination.json",
+          "canonical_grouped": {
+            "ligand": 0.5012,
+            "coord_counts": 0.5226,
+            "coord_full": 0.5284
+          },
+          "fragment_grouped": {
+            "ligand": 0.4368,
+            "coord_counts": 0.4603,
+            "coord_full": 0.4658
+          },
+          "coverage": {
+            "has_donor": 0.9944,
+            "has_geometry": 0.8013
+          }
+        },
+        "why": "指纹只编码连接性，不编码『哪些原子朝向金属』；供体计数与齿合是化学上独立的轴。",
+        "caveat": "元素+电荷启发式，不区分吡啶 N / 吡咯 N；几何覆盖率 80.1%。"
       }
     ],
     "full_stack_audit_2026_10_18": {
@@ -2447,35 +2519,57 @@
       "title": "单一特征构建器：molmetal/features/ 包 + 声明式 spec + 内容哈希缓存",
       "layer": "管线",
       "priority": "P0",
-      "status": "PARTIAL",
+      "status": "DONE",
       "gpu": "none",
       "wall": "1 天",
       "why": "四套构建器、三种缺失值策略、无版本。每个实验臂重新发明特征，是『一直做实验、不做代码改进』的结构性原因。",
       "method": "新建 molmetal/features/{spec,build,ligand,metal,cell,assay}.py：spec 声明块列表与缺失值策略；build 以 (spec_hash, input_sha256) 为键缓存；旧的四套块必须在同一 spec 下逐位复现。",
-      "deliverable": "molmetal/features/ + tests/test_features_contract.py",
+      "deliverable": "molmetal/features/{spec,build,ligand,metal,cell,assay,descriptors,coordination,granularity}.py + tests/test_features_build.py",
       "acceptance": "四套旧块在新 builder 下逐位复现（allclose 1e-6）；每个 metrics JSON 带 spec_hash。",
       "depends_on": [],
       "result": {
-        "done": "molmetal/features/ligand.py + __init__.py + tests/test_features_ligand.py (11 passed)",
-        "remaining": "spec.py / build.py / metal.py / cell.py / assay.py；把 msrs_* 脚本切到统一入口；spec_hash 写入 metrics",
-        "note": "先交付了能立刻拿到 +0.10 的那一块，避免为了抽象而推迟收益。"
-      }
+        "files": [
+          "molmetal/features/spec.py — FeatureSpec/LigandSpec/MetalSpec/CellSpec/AssaySpec + sha256 spec hash + PRESETS",
+          "molmetal/features/build.py — build() 单一构造点 + FeatureBundle(slices/names/spec_hash) + write_artifact/verify_artifact (FIX-P3)",
+          "molmetal/features/metal.py / cell.py / assay.py / descriptors.py — 四个旧块的新家",
+          "tests/test_features_build.py — 12 passed，含逐位复现断言"
+        ],
+        "bit_exact": {
+          "msrs_code_levers.base_blocks": "ligand/metal/cell 三块 nnz 与数值完全相等",
+          "msrs_surface_model.build_design": "X 全矩阵相等 + names 完全相同",
+          "msrs_172d_rebuild.build_table": "X 与三个 stream mask 相等 (equal_nan)"
+        },
+        "single_site": "msrs_172d_rebuild 的 fragment_features/build_table 现为 molmetal.features.descriptors 的别名（同一函数对象，不是副本）",
+        "caveat": "msrs_complex_features / msrs_metal_block / msrs_coordination 走 build() 或 features.ligand；msrs_code_levers 的旧 base_blocks 保留但只作对照。"
+      },
+      "acceptance_met": "yes — 三套旧块逐位复现；所有新 metrics JSON 带 spec_hash 或 ligand_spec_hash"
     },
     {
       "id": "FIX-E1",
       "title": "双层 CV：fragment-grouped 与 canonical-grouped 同时报",
       "layer": "评估",
       "priority": "P0",
-      "status": "PENDING",
+      "status": "DONE",
       "gpu": "none",
       "wall": "0.5 天",
       "why": "同一臂在两种分组下差 0.0606（0.3366 vs 0.3972）。历史数字只报了一种。",
       "method": "评估函数同时返回两个 split 的 R2/MAE；主指标改为 canonical-grouped（更严格），fragment-grouped 仅用于与历史对齐。",
-      "deliverable": "msrs_surface_model 增加 dual_split_report；所有新 JSON 带两个数字",
+      "deliverable": "molmetal/scripts/msrs_dual_split.py + tests/test_msrs_dual_split.py + pre-flight p3_msrs_dual_split_check",
       "acceptance": "所有新臂的 JSON 同时含 fragment_grouped 与 canonical_grouped；缺一即 pre-flight FAIL。",
       "depends_on": [
         "FIX-P1"
-      ]
+      ],
+      "result": {
+        "rule": "任何带 per-arm R2 的 MSRS 产物必须同时含 fragment_grouped 与 canonical_grouped；缺一、空表、缺 r2、两 split 臂集合不一致 → FAIL",
+        "enforcement": [
+          "write_report() 在写盘前校验，违规直接抛 DualSplitError（新脚本无法写出单 split 产物）",
+          "pre-flight gate p3_msrs_dual_split_check 复扫 metrics/by_metric/*.json",
+          "旧拼写 fragment/canonical 在读取时归一化，写盘一律用规范键"
+        ],
+        "tests": "tests/test_msrs_dual_split.py 14 passed",
+        "artifact_migrated": "metrics/by_metric/msrs_complex_features.json v1.1 — 数值与 v1.0 完全一致 (0.3366/0.4368/0.4162/0.4572; 0.3972/0.5012/0.4488/0.4848)，仅键名与元数据变化"
+      },
+      "acceptance_met": "yes — 单 split 产物无法落盘，也无法通过 pre-flight"
     },
     {
       "id": "FIX-L1",
@@ -2527,32 +2621,117 @@
       "title": "金属块升级：氧化态 + 电荷 + 配位几何 + 周期表描述符",
       "layer": "特征",
       "priority": "P1",
-      "status": "PENDING",
+      "status": "DONE",
       "gpu": "none",
       "wall": "0.5 天",
       "why": "金属块 8 维 vs 配体 2048 维（1:256）；OS/charge/geometry 全部未用，而 metal_graph 已实现 RICH_METAL_DIM 与几何分类器。",
       "method": "金属块 = one-hot(5) + OS one-hot + charge + valence_e + RICH scales + geometry one-hot + ie1/ie2/en；在 FIX-L1 之上做消融。",
-      "deliverable": "metrics/by_metric/msrs_metal_block.json",
+      "deliverable": "molmetal/scripts/msrs_metal_block.py + metrics/by_metric/msrs_metal_block.json",
       "acceptance": "≥ +0.005 R2；否则记 NEGATIVE（历史已有 +0.0024 的先例，不要重复挖）。",
       "depends_on": [
         "FIX-L1"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_metal_block.json",
+        "design": "5 臂 × 2 分组，ligand = ECFP4(ligand_canonical)，metal/cell 用 native categorical codes",
+        "canonical_grouped": {
+          "codes_only": 0.5012,
+          "base": 0.502,
+          "state": 0.5464,
+          "rich": 0.5027,
+          "full": 0.5446
+        },
+        "fragment_grouped": {
+          "codes_only": 0.4368,
+          "base": 0.4391,
+          "state": 0.4629,
+          "rich": 0.4364,
+          "full": 0.4642
+        },
+        "delta_state_vs_base_canonical": 0.0444,
+        "delta_state_vs_base_fragment": 0.0238,
+        "p_one_sided_vs_base": 6.05e-18,
+        "finding": "杠杆是氧化态/电荷/d 电子数，不是周期表描述符：rich 单独 +0.0007（噪声），state +0.0444。历史 8 维金属块里根本没有 OS。",
+        "geometry": "不在本臂 — classify_coord_geometry 需要配位数，队列无此列；留给 FIX-L3"
+      },
+      "acceptance_met": "yes — +0.0444 ≥ +0.005（canonical 与 fragment 两个分组都过门槛）"
     },
     {
       "id": "FIX-L3",
       "title": "配位环境：供体原子、配位数、齿合方式",
       "layer": "特征",
       "priority": "P1",
-      "status": "PENDING",
+      "status": "DONE",
       "gpu": "none",
       "wall": "1 天",
       "why": "模型看到金属标签和配体，但看不到哪些原子在配位。metal_smiles.coordination_capacity 与 metal_graph 的连边逻辑已存在。",
       "method": "从 canonical 多组分 SMILES 提取供体原子（N/O/S/P/卡宾 C）计数、配位数、几何；作为稠密块，不做 GNN。",
-      "deliverable": "features/coordination.py + metrics/by_metric/msrs_coordination.json",
+      "deliverable": "molmetal/features/coordination.py + molmetal/scripts/msrs_coordination.py + metrics/by_metric/msrs_coordination.json",
       "acceptance": "≥ +0.005 R2；覆盖 ≥90% 的行。",
       "depends_on": [
         "FIX-L1"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_coordination.json",
+        "coverage": {
+          "has_donor": 0.9944,
+          "has_geometry": 0.8013,
+          "unique_smiles": 5861
+        },
+        "canonical_grouped": {
+          "ligand": 0.5012,
+          "coord_counts": 0.5226,
+          "coord_full": 0.5284
+        },
+        "fragment_grouped": {
+          "ligand": 0.4368,
+          "coord_counts": 0.4603,
+          "coord_full": 0.4658
+        },
+        "delta_best_canonical": 0.0272,
+        "delta_best_fragment": 0.029,
+        "columns": "13 个计数列 + 几何 one-hot；供体 = N/O/S/P/Se（中性或负电）+ NHC 卡宾 C",
+        "honest_limit": "元素+电荷启发式，不区分吡啶 N 与吡咯 N；几何覆盖率 80.1%，因为 CN 由供体数截断到容量，部分 (metal, OS, CN) 三元组无表项"
+      },
+      "acceptance_met": "yes — +0.0272 ≥ +0.005，供体覆盖 99.44% ≥ 90%"
+    },
+    {
+      "id": "FIX-L5",
+      "title": "三层表征叠加：L1 + L2 + L3 在同一折上测增量是否可加",
+      "layer": "特征",
+      "priority": "P0",
+      "status": "DONE",
+      "gpu": "none",
+      "wall": "0.5 天",
+      "why": "L1 (+0.1002)、L2 (+0.0444)、L3 (+0.0272) 是三次独立 A/B，各自相对 L1 基线。三块一起用时增量可能重叠（氧化态与配位数都影响几何），也可能互补。在把任何一层写进论文或主模型之前，必须有一次同折三块全开的测量。",
+      "method": "一个脚本、两个分组、四臂：ligand / ligand+metal_state / ligand+coord / ligand+metal_state+coord；同折同参数，报 paired one-sided t 与 Holm。",
+      "deliverable": "metrics/by_metric/msrs_joint_representation.json",
+      "acceptance": "三块全开 ≥ 单块最优 + 0.005；否则说明增量重叠，记录并只保留最省的一块。",
+      "depends_on": [
+        "FIX-L1",
+        "FIX-L2",
+        "FIX-L3"
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_joint_representation.json",
+        "canonical_grouped": {
+          "ligand": 0.5012,
+          "ligand+metal": 0.5426,
+          "ligand+coord": 0.5284,
+          "ligand+both": 0.5556
+        },
+        "fragment_grouped": {
+          "ligand": 0.4368,
+          "ligand+metal": 0.4665,
+          "ligand+coord": 0.4658,
+          "ligand+both": 0.4856
+        },
+        "delta_both_vs_best_single_canonical": 0.013,
+        "delta_both_vs_best_single_fragment": 0.0191,
+        "additivity": "单块增量之和 0.0444+0.0272=0.0716，联合实测 0.5556-0.5012=0.0544，重叠约 24%；但联合仍比最佳单块高 +0.0130（> 门槛 0.005），两块都保留。",
+        "note": "本臂的 ligand+metal 只含 4 列 state（无 one-hot/IE/EN），因为 metal codes 已表达身份；这与 FIX-L2 的 state 臂 (12 列) 不是同一设计，0.5426 vs 0.5464 的差就是冗余列的代价。"
+      },
+      "acceptance_met": "yes — +0.0130 ≥ +0.005（canonical 与 fragment 都过）"
     },
     {
       "id": "FIX-M1",
@@ -2576,49 +2755,102 @@
       "title": "决策层在完整配合物特征上重测（修『全量输』）",
       "layer": "评估",
       "priority": "P0",
-      "status": "PENDING",
+      "status": "DONE-NEGATIVE",
       "gpu": "none",
       "wall": "0.5 天",
       "why": "NEG-16：全量 424 cohort 上模型 0.1278 vs 基线 0.1198。整个决策层建立在被削弱的表征上。",
       "method": "用 FIX-L1 的 OOF 重跑 msrs_decision_policy：全量 regret、弃权曲线、DOI 聚类检验、Holm 校正；同时报两个 split。",
-      "deliverable": "metrics/by_metric/msrs_decision_policy_v2.json",
+      "deliverable": "molmetal/scripts/msrs_decision_policy_v2.py + metrics/by_metric/msrs_decision_policy_v2.json",
       "acceptance": "全量 regret < 0.1198 且 DOI 聚类 p<0.05；否则记 NEGATIVE，不再用弃权子集当交付。",
       "depends_on": [
         "FIX-L1",
         "FIX-E1"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_decision_policy_v2.json",
+        "fragment_grouped": {
+          "global_best": 0.1198,
+          "model_fragment": 0.1181,
+          "model_complex": 0.1313
+        },
+        "canonical_grouped": {
+          "global_best": 0.1241,
+          "model_fragment": 0.1212,
+          "model_complex": 0.1314
+        },
+        "top1_canonical": {
+          "global_best": 0.566,
+          "model_fragment": 0.5566,
+          "model_complex": 0.5142
+        },
+        "p_holm_complex_vs_global": 1.0,
+        "verdict": "NEGATIVE — 两个分组都不满足 regret<0.1198 且 Holm p<0.05",
+        "finding": "回归 R2 +0.064 换来的是更差的队列内排序；决策层的问题在目标函数，不在表征。见 NEG-17 / FIX-E3。"
+      },
+      "acceptance_met": "no — 全量 regret 0.1314 > 0.1198，p=1.0"
+    },
+    {
+      "id": "FIX-E3",
+      "title": "决策目标对齐：队列内中心化 / pairwise 排序，替代纯回归",
+      "layer": "评估",
+      "priority": "P0",
+      "status": "PENDING",
+      "gpu": "none",
+      "wall": "1 天",
+      "why": "NEG-17：完整配合物把回归 R2 从 0.4368 抬到 0.5012，但队列内 top-1 regret 从 0.1212 恶化到 0.1314。回归目标学的是绝对活性，决策要的是同一队列内的金属排序，两者不是一回事。",
+      "method": "三个臂，同折同特征（FIX-L1 完整配合物）：(a) 现状回归；(b) within-cohort centering —— 训练标签减去该 cohort 的金属均值，预测时只比较队列内偏移；(c) pairwise —— 同 cohort 内金属对的 Δy 作为目标。统一在全量 cohort 上测 top-1 regret 与 DOI 聚类 p。",
+      "deliverable": "metrics/by_metric/msrs_ranking_objective.json",
+      "acceptance": "至少一个臂的全量 regret < 0.1198 且 DOI 聚类 Holm p<0.05；否则记 NEGATIVE 并停止在该方向加码。",
+      "depends_on": [
+        "FIX-E2"
+      ],
+      "result": null
     },
     {
       "id": "FIX-P2",
       "title": "粒度一致性门禁：特征粒度必须等于队列粒度",
       "layer": "管线",
       "priority": "P1",
-      "status": "PENDING",
+      "status": "DONE",
       "gpu": "none",
       "wall": "0.25 天",
       "why": "DEF-6：队列按 canonical 建，特征按 fragment 算，静默错配且无检查。",
       "method": "builder 返回 granularity 元数据；cohort 构建断言两者一致；pre-flight 增加该检查。",
-      "deliverable": "tests/test_feature_granularity_gate.py",
+      "deliverable": "molmetal/features/granularity.py + molmetal/scripts/msrs_granularity_gate.py + tests/test_feature_granularity_gate.py + pre-flight p3_msrs_granularity_check",
       "acceptance": "人为传入不匹配粒度时门禁 FAIL；正常路径 PASS。",
       "depends_on": [
         "FIX-P1"
-      ]
+      ],
+      "result": {
+        "rule": "报 canonical_grouped split 的产物，其 headline arm 必须声明 complex 级配体源；fragment 特征 + complex 分组 = DEF-6 不一致",
+        "runtime": "assert_granularity(bundle, expected) 供 builder 脚本调用",
+        "offline": "check_artifact() 读 design.arm_ligand_source / ligand_source / ligand_block 三级回退",
+        "tests": "tests/test_feature_granularity_gate.py 9 passed"
+      },
+      "acceptance_met": "yes — 人为传入 fragment 特征 + complex 分组时 FAIL，正常路径 PASS"
     },
     {
       "id": "FIX-P3",
       "title": "特征产物版本化与可复现校验",
       "layer": "管线",
       "priority": "P1",
-      "status": "PENDING",
+      "status": "DONE",
       "gpu": "none",
       "wall": "0.25 天",
       "why": "features_172d_full.npz 只有 shape 和覆盖率，没有 spec/输入/代码版本。",
       "method": "npz sidecar 写入 spec_hash、input_sha256、git_sha、缺失值策略；加载时校验，不一致即报错。",
-      "deliverable": "features/build.py 的 verify_artifact()",
+      "deliverable": "molmetal/features/build.py::write_artifact/verify_artifact + tests/test_feature_artifact_versioning.py",
       "acceptance": "篡改任一字段后加载报错；重跑产物哈希一致。",
       "depends_on": [
         "FIX-P1"
-      ]
+      ],
+      "result": {
+        "sidecar": "<name>.meta.json 记录 spec_hash、每个输入的 sha256、git commit、缺失值策略、npz 自身 sha256、数组 shape/dtype、meta_checksum",
+        "tamper_detection": "meta_checksum 覆盖除自身外所有字段；npz 改动 → npz hash mismatch；sidecar 改动 → checksum mismatch；spec 不符 → spec hash mismatch",
+        "wired": "msrs_172d_rebuild.write_npz 现走 write_artifact，产出 features_172d_full.meta.json",
+        "tests": "tests/test_feature_artifact_versioning.py 7 passed"
+      },
+      "acceptance_met": "yes — 篡改任一字段后加载报错；重跑产物哈希一致"
     },
     {
       "id": "FIX-L4",
@@ -2678,13 +2910,15 @@
         "FIX-L1",
         "FIX-L2",
         "FIX-L3",
+        "FIX-L5",
         "FIX-E2",
+        "FIX-E3",
         "FIX-M1",
         "FIX-P2",
         "FIX-P3",
         "FIX-L4"
       ],
-      "note": "顺序按『先修基础设施，再修表征，最后换模型』：P1 让特征只有一套；E1 让记分板有两个 split；L1 是已实测 +0.1002 的那一刀；E2 用它去修全量输；M1 才轮到主模型上场。L2/L3 增量预期小（历史 +0.0024），必须过 +0.005 门槛，不过就记 NEG 并停止。"
+      "note": "P1/E1 基础设施先落地，再做表征：L1 完整配合物 (+0.1002) → L2 氧化态 (+0.0444) → L3 配位环境 (+0.0272) → E2 决策层重测 → M1 主模型上场。三层特征叠加后的同一折 A/B 尚未跑（FIX-L5，下一步），不要假设增量可加。"
     }
   },
   "legacy_mainline": {

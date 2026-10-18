@@ -1,0 +1,978 @@
+{
+  "artifact": "msrs_decision_policy_v2",
+  "version": "1.0",
+  "requires_dual_split": true,
+  "generated_utc": "2026-10-18T15:58:38+00:00",
+  "provenance": {
+    "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_decision_policy_v2.py",
+    "git_commit": "b27bb1eb6de858194fb08b47f3098bc916259881",
+    "complex_spec_hash": "sha256:87b90e8bc97bc5cc3e177811697d98aa7c2e7dd72832cd6922535ab3271c910f",
+    "fragment_spec_hash": "sha256:b9dbb49ad93a401b882a9ea83aa8da94dfee662c36938961de595579ea7a910f"
+  },
+  "design": {
+    "cohort_keys": [
+      "ligand_canonical",
+      "cell_line_key",
+      "doi",
+      "time_h"
+    ],
+    "min_cohort_size": 2,
+    "scorers": [
+      "global_best",
+      "cell_best",
+      "model_fragment",
+      "model_complex"
+    ],
+    "arm_ligand_source": {
+      "global_best": "ligand_canonical",
+      "cell_best": "ligand_canonical",
+      "model_fragment": "ligand_main_fragment",
+      "model_complex": "ligand_canonical"
+    },
+    "baseline_full_regret": 0.1198,
+    "baseline_source": "NEG-16 / AUD-I2 full-cohort mean regret of global_best",
+    "alpha": 0.05,
+    "correction": "Holm over the two clustered tests per split",
+    "min_coverage": 0.2,
+    "min_precision": 0.7,
+    "headline_arm": "model_complex"
+  },
+  "n_rows": 21404,
+  "n_ligands": 2846,
+  "n_complexes": 5861,
+  "splits": {
+    "fragment_grouped": {
+      "n_rows": 21404,
+      "n_cohorts": 424,
+      "verifiability": {
+        "n_cohorts": 424,
+        "n_singleton_cohorts": 0,
+        "cohort_size_counts": {
+          "2": 424
+        },
+        "n_verifiable_pairs": 424,
+        "mean_metals_per_cohort": 2.0,
+        "unverifiable_recommendations": 0,
+        "why": "Scores are only compared inside a cohort, and a cohort holds only metals that were measured for that ligand/cell/paper/time. So every recommendation the evaluator can emit is pairwise verifiable by construction; the cost is coverage, reported above."
+      },
+      "baseline_meta": {
+        "rows_with_unseen_metal_in_train_fold": 0,
+        "rows_with_unseen_cell_metal_pair": 649
+      },
+      "full_cohort_regret": {
+        "global_best": 0.1198,
+        "cell_best": 0.1295,
+        "model_complex": 0.1313,
+        "model_fragment": 0.1181
+      },
+      "top1_accuracy": {
+        "global_best": 0.5755,
+        "cell_best": 0.5472,
+        "model_complex": 0.5165,
+        "model_fragment": 0.5495
+      },
+      "abstention": {
+        "curve": [
+          {
+            "threshold": 0.0,
+            "coverage": 1.0,
+            "precision": 0.5165,
+            "n_kept": 424,
+            "mean_regret_kept": 0.1313
+          },
+          {
+            "threshold": 0.0103,
+            "coverage": 0.9505,
+            "precision": 0.5112,
+            "n_kept": 403,
+            "mean_regret_kept": 0.135
+          },
+          {
+            "threshold": 0.0194,
+            "coverage": 0.8986,
+            "precision": 0.5302,
+            "n_kept": 381,
+            "mean_regret_kept": 0.131
+          },
+          {
+            "threshold": 0.02,
+            "coverage": 0.8892,
+            "precision": 0.5332,
+            "n_kept": 377,
+            "mean_regret_kept": 0.129
+          },
+          {
+            "threshold": 0.026,
+            "coverage": 0.8491,
+            "precision": 0.5333,
+            "n_kept": 360,
+            "mean_regret_kept": 0.129
+          },
+          {
+            "threshold": 0.0338,
+            "coverage": 0.7995,
+            "precision": 0.531,
+            "n_kept": 339,
+            "mean_regret_kept": 0.1287
+          },
+          {
+            "threshold": 0.04,
+            "coverage": 0.7594,
+            "precision": 0.528,
+            "n_kept": 322,
+            "mean_regret_kept": 0.1311
+          },
+          {
+            "threshold": 0.0429,
+            "coverage": 0.75,
+            "precision": 0.5252,
+            "n_kept": 318,
+            "mean_regret_kept": 0.1319
+          },
+          {
+            "threshold": 0.0543,
+            "coverage": 0.7005,
+            "precision": 0.5185,
+            "n_kept": 297,
+            "mean_regret_kept": 0.1363
+          },
+          {
+            "threshold": 0.06,
+            "coverage": 0.6651,
+            "precision": 0.5213,
+            "n_kept": 282,
+            "mean_regret_kept": 0.1346
+          },
+          {
+            "threshold": 0.0663,
+            "coverage": 0.6462,
+            "precision": 0.5328,
+            "n_kept": 274,
+            "mean_regret_kept": 0.1295
+          },
+          {
+            "threshold": 0.0758,
+            "coverage": 0.5991,
+            "precision": 0.5354,
+            "n_kept": 254,
+            "mean_regret_kept": 0.1318
+          },
+          {
+            "threshold": 0.08,
+            "coverage": 0.5873,
+            "precision": 0.5382,
+            "n_kept": 249,
+            "mean_regret_kept": 0.1317
+          },
+          {
+            "threshold": 0.0915,
+            "coverage": 0.5495,
+            "precision": 0.5408,
+            "n_kept": 233,
+            "mean_regret_kept": 0.1346
+          },
+          {
+            "threshold": 0.1,
+            "coverage": 0.5259,
+            "precision": 0.5426,
+            "n_kept": 223,
+            "mean_regret_kept": 0.1365
+          },
+          {
+            "threshold": 0.1052,
+            "coverage": 0.4976,
+            "precision": 0.5355,
+            "n_kept": 211,
+            "mean_regret_kept": 0.1391
+          },
+          {
+            "threshold": 0.1191,
+            "coverage": 0.4505,
+            "precision": 0.5236,
+            "n_kept": 191,
+            "mean_regret_kept": 0.1334
+          },
+          {
+            "threshold": 0.12,
+            "coverage": 0.4458,
+            "precision": 0.5238,
+            "n_kept": 189,
+            "mean_regret_kept": 0.1324
+          },
+          {
+            "threshold": 0.1305,
+            "coverage": 0.4009,
+            "precision": 0.5353,
+            "n_kept": 170,
+            "mean_regret_kept": 0.1286
+          },
+          {
+            "threshold": 0.1397,
+            "coverage": 0.3514,
+            "precision": 0.5436,
+            "n_kept": 149,
+            "mean_regret_kept": 0.1394
+          },
+          {
+            "threshold": 0.14,
+            "coverage": 0.3491,
+            "precision": 0.5405,
+            "n_kept": 148,
+            "mean_regret_kept": 0.1403
+          },
+          {
+            "threshold": 0.16,
+            "coverage": 0.3019,
+            "precision": 0.5547,
+            "n_kept": 128,
+            "mean_regret_kept": 0.141
+          },
+          {
+            "threshold": 0.1604,
+            "coverage": 0.2995,
+            "precision": 0.5512,
+            "n_kept": 127,
+            "mean_regret_kept": 0.1421
+          },
+          {
+            "threshold": 0.1796,
+            "coverage": 0.25,
+            "precision": 0.5755,
+            "n_kept": 106,
+            "mean_regret_kept": 0.143
+          },
+          {
+            "threshold": 0.18,
+            "coverage": 0.2476,
+            "precision": 0.581,
+            "n_kept": 105,
+            "mean_regret_kept": 0.143
+          },
+          {
+            "threshold": 0.1967,
+            "coverage": 0.2005,
+            "precision": 0.6235,
+            "n_kept": 85,
+            "mean_regret_kept": 0.1456
+          },
+          {
+            "threshold": 0.2,
+            "coverage": 0.184,
+            "precision": 0.6154,
+            "n_kept": 78,
+            "mean_regret_kept": 0.1438
+          },
+          {
+            "threshold": 0.2167,
+            "coverage": 0.1509,
+            "precision": 0.625,
+            "n_kept": 64,
+            "mean_regret_kept": 0.1404
+          },
+          {
+            "threshold": 0.22,
+            "coverage": 0.1462,
+            "precision": 0.629,
+            "n_kept": 62,
+            "mean_regret_kept": 0.1443
+          },
+          {
+            "threshold": 0.24,
+            "coverage": 0.1226,
+            "precision": 0.5962,
+            "n_kept": 52,
+            "mean_regret_kept": 0.1579
+          },
+          {
+            "threshold": 0.26,
+            "coverage": 0.1038,
+            "precision": 0.5909,
+            "n_kept": 44,
+            "mean_regret_kept": 0.1644
+          },
+          {
+            "threshold": 0.2624,
+            "coverage": 0.1014,
+            "precision": 0.6047,
+            "n_kept": 43,
+            "mean_regret_kept": 0.1655
+          },
+          {
+            "threshold": 0.28,
+            "coverage": 0.0802,
+            "precision": 0.5882,
+            "n_kept": 34,
+            "mean_regret_kept": 0.174
+          },
+          {
+            "threshold": 0.3,
+            "coverage": 0.0731,
+            "precision": 0.6129,
+            "n_kept": 31,
+            "mean_regret_kept": 0.1656
+          },
+          {
+            "threshold": 0.32,
+            "coverage": 0.059,
+            "precision": 0.6,
+            "n_kept": 25,
+            "mean_regret_kept": 0.1505
+          },
+          {
+            "threshold": 0.3352,
+            "coverage": 0.0519,
+            "precision": 0.5455,
+            "n_kept": 22,
+            "mean_regret_kept": 0.171
+          },
+          {
+            "threshold": 0.34,
+            "coverage": 0.0448,
+            "precision": 0.5263,
+            "n_kept": 19,
+            "mean_regret_kept": 0.1897
+          },
+          {
+            "threshold": 0.36,
+            "coverage": 0.0354,
+            "precision": 0.5333,
+            "n_kept": 15,
+            "mean_regret_kept": 0.1797
+          },
+          {
+            "threshold": 0.38,
+            "coverage": 0.0236,
+            "precision": 0.6,
+            "n_kept": 10,
+            "mean_regret_kept": 0.1229
+          },
+          {
+            "threshold": 0.4,
+            "coverage": 0.0212,
+            "precision": 0.5556,
+            "n_kept": 9,
+            "mean_regret_kept": 0.1366
+          },
+          {
+            "threshold": 0.42,
+            "coverage": 0.0165,
+            "precision": 0.5714,
+            "n_kept": 7,
+            "mean_regret_kept": 0.147
+          },
+          {
+            "threshold": 0.44,
+            "coverage": 0.0118,
+            "precision": 0.6,
+            "n_kept": 5,
+            "mean_regret_kept": 0.1667
+          },
+          {
+            "threshold": 0.46,
+            "coverage": 0.0118,
+            "precision": 0.6,
+            "n_kept": 5,
+            "mean_regret_kept": 0.1667
+          },
+          {
+            "threshold": 0.48,
+            "coverage": 0.0071,
+            "precision": 0.3333,
+            "n_kept": 3,
+            "mean_regret_kept": 0.2779
+          },
+          {
+            "threshold": 0.5,
+            "coverage": 0.0071,
+            "precision": 0.3333,
+            "n_kept": 3,
+            "mean_regret_kept": 0.2779
+          }
+        ],
+        "best_operating_point": {
+          "threshold": 0.1967,
+          "coverage": 0.2005,
+          "precision": 0.6235,
+          "n_kept": 85,
+          "mean_regret_kept": 0.1456
+        },
+        "note": "report only — the acceptance is on full_cohort_regret, per NEG-16"
+      },
+      "clustered_tests": {
+        "complex_vs_global": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0124,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.5925,
+          "p_one_sided_doi": 0.7221289802450478,
+          "bootstrap_ci95_doi": [
+            -0.0506,
+            0.0311
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "complex_vs_fragment": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0143,
+          "median_regret_delta": 0.0,
+          "t_doi": -1.3167,
+          "p_one_sided_doi": 0.9035293139647753,
+          "bootstrap_ci95_doi": [
+            -0.037,
+            0.007
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        }
+      },
+      "cohort_summary": {
+        "global_best": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1198,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5755,
+          "mean_ndcg": 0.9356,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1198,
+              "top1_accuracy": 0.5755,
+              "mean_ndcg": 0.9356
+            }
+          },
+          "hit@0.1": 0.684,
+          "hit@0.2091": 0.7972,
+          "hit@0.5": 0.9292
+        },
+        "cell_best": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1295,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5472,
+          "mean_ndcg": 0.9307,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1295,
+              "top1_accuracy": 0.5472,
+              "mean_ndcg": 0.9307
+            }
+          },
+          "hit@0.1": 0.6651,
+          "hit@0.2091": 0.7783,
+          "hit@0.5": 0.9175
+        },
+        "model_complex": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1313,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5165,
+          "mean_ndcg": 0.9288,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1313,
+              "top1_accuracy": 0.5165,
+              "mean_ndcg": 0.9288
+            }
+          },
+          "hit@0.1": 0.6533,
+          "hit@0.2091": 0.783,
+          "hit@0.5": 0.9245
+        },
+        "model_fragment": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1181,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5495,
+          "mean_ndcg": 0.9351,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1181,
+              "top1_accuracy": 0.5495,
+              "mean_ndcg": 0.9351
+            }
+          },
+          "hit@0.1": 0.6816,
+          "hit@0.2091": 0.7995,
+          "hit@0.5": 0.934
+        }
+      }
+    },
+    "canonical_grouped": {
+      "n_rows": 21404,
+      "n_cohorts": 424,
+      "verifiability": {
+        "n_cohorts": 424,
+        "n_singleton_cohorts": 0,
+        "cohort_size_counts": {
+          "2": 424
+        },
+        "n_verifiable_pairs": 424,
+        "mean_metals_per_cohort": 2.0,
+        "unverifiable_recommendations": 0,
+        "why": "Scores are only compared inside a cohort, and a cohort holds only metals that were measured for that ligand/cell/paper/time. So every recommendation the evaluator can emit is pairwise verifiable by construction; the cost is coverage, reported above."
+      },
+      "baseline_meta": {
+        "rows_with_unseen_metal_in_train_fold": 0,
+        "rows_with_unseen_cell_metal_pair": 421
+      },
+      "full_cohort_regret": {
+        "global_best": 0.1241,
+        "cell_best": 0.1231,
+        "model_complex": 0.1314,
+        "model_fragment": 0.1212
+      },
+      "top1_accuracy": {
+        "global_best": 0.566,
+        "cell_best": 0.559,
+        "model_complex": 0.5142,
+        "model_fragment": 0.5566
+      },
+      "abstention": {
+        "curve": [
+          {
+            "threshold": 0.0,
+            "coverage": 1.0,
+            "precision": 0.5142,
+            "n_kept": 424,
+            "mean_regret_kept": 0.1314
+          },
+          {
+            "threshold": 0.0076,
+            "coverage": 0.9505,
+            "precision": 0.5161,
+            "n_kept": 403,
+            "mean_regret_kept": 0.1311
+          },
+          {
+            "threshold": 0.0188,
+            "coverage": 0.8986,
+            "precision": 0.5013,
+            "n_kept": 381,
+            "mean_regret_kept": 0.1324
+          },
+          {
+            "threshold": 0.02,
+            "coverage": 0.8939,
+            "precision": 0.5013,
+            "n_kept": 379,
+            "mean_regret_kept": 0.1323
+          },
+          {
+            "threshold": 0.0257,
+            "coverage": 0.8491,
+            "precision": 0.5111,
+            "n_kept": 360,
+            "mean_regret_kept": 0.1277
+          },
+          {
+            "threshold": 0.0388,
+            "coverage": 0.7972,
+            "precision": 0.5266,
+            "n_kept": 338,
+            "mean_regret_kept": 0.1229
+          },
+          {
+            "threshold": 0.04,
+            "coverage": 0.783,
+            "precision": 0.5271,
+            "n_kept": 332,
+            "mean_regret_kept": 0.1235
+          },
+          {
+            "threshold": 0.0456,
+            "coverage": 0.75,
+            "precision": 0.5283,
+            "n_kept": 318,
+            "mean_regret_kept": 0.1222
+          },
+          {
+            "threshold": 0.0561,
+            "coverage": 0.7005,
+            "precision": 0.5286,
+            "n_kept": 297,
+            "mean_regret_kept": 0.1212
+          },
+          {
+            "threshold": 0.06,
+            "coverage": 0.6698,
+            "precision": 0.5317,
+            "n_kept": 284,
+            "mean_regret_kept": 0.1204
+          },
+          {
+            "threshold": 0.0634,
+            "coverage": 0.6486,
+            "precision": 0.5382,
+            "n_kept": 275,
+            "mean_regret_kept": 0.1182
+          },
+          {
+            "threshold": 0.0737,
+            "coverage": 0.6014,
+            "precision": 0.5451,
+            "n_kept": 255,
+            "mean_regret_kept": 0.1196
+          },
+          {
+            "threshold": 0.08,
+            "coverage": 0.566,
+            "precision": 0.5458,
+            "n_kept": 240,
+            "mean_regret_kept": 0.1187
+          },
+          {
+            "threshold": 0.0838,
+            "coverage": 0.5495,
+            "precision": 0.5451,
+            "n_kept": 233,
+            "mean_regret_kept": 0.1176
+          },
+          {
+            "threshold": 0.0929,
+            "coverage": 0.5,
+            "precision": 0.5377,
+            "n_kept": 212,
+            "mean_regret_kept": 0.1165
+          },
+          {
+            "threshold": 0.1,
+            "coverage": 0.4575,
+            "precision": 0.5567,
+            "n_kept": 194,
+            "mean_regret_kept": 0.1194
+          },
+          {
+            "threshold": 0.1008,
+            "coverage": 0.4481,
+            "precision": 0.5526,
+            "n_kept": 190,
+            "mean_regret_kept": 0.1194
+          },
+          {
+            "threshold": 0.1096,
+            "coverage": 0.4009,
+            "precision": 0.5412,
+            "n_kept": 170,
+            "mean_regret_kept": 0.1227
+          },
+          {
+            "threshold": 0.12,
+            "coverage": 0.3774,
+            "precision": 0.525,
+            "n_kept": 160,
+            "mean_regret_kept": 0.1288
+          },
+          {
+            "threshold": 0.1304,
+            "coverage": 0.3514,
+            "precision": 0.5168,
+            "n_kept": 149,
+            "mean_regret_kept": 0.1235
+          },
+          {
+            "threshold": 0.14,
+            "coverage": 0.3042,
+            "precision": 0.4961,
+            "n_kept": 129,
+            "mean_regret_kept": 0.1345
+          },
+          {
+            "threshold": 0.1417,
+            "coverage": 0.2995,
+            "precision": 0.5039,
+            "n_kept": 127,
+            "mean_regret_kept": 0.1261
+          },
+          {
+            "threshold": 0.16,
+            "coverage": 0.2571,
+            "precision": 0.5321,
+            "n_kept": 109,
+            "mean_regret_kept": 0.1079
+          },
+          {
+            "threshold": 0.1647,
+            "coverage": 0.25,
+            "precision": 0.5377,
+            "n_kept": 106,
+            "mean_regret_kept": 0.1071
+          },
+          {
+            "threshold": 0.18,
+            "coverage": 0.2028,
+            "precision": 0.5349,
+            "n_kept": 86,
+            "mean_regret_kept": 0.1162
+          },
+          {
+            "threshold": 0.1819,
+            "coverage": 0.2005,
+            "precision": 0.5294,
+            "n_kept": 85,
+            "mean_regret_kept": 0.1176
+          },
+          {
+            "threshold": 0.2,
+            "coverage": 0.1651,
+            "precision": 0.5143,
+            "n_kept": 70,
+            "mean_regret_kept": 0.1192
+          },
+          {
+            "threshold": 0.208,
+            "coverage": 0.1509,
+            "precision": 0.5312,
+            "n_kept": 64,
+            "mean_regret_kept": 0.1165
+          },
+          {
+            "threshold": 0.22,
+            "coverage": 0.1392,
+            "precision": 0.4915,
+            "n_kept": 59,
+            "mean_regret_kept": 0.1263
+          },
+          {
+            "threshold": 0.2381,
+            "coverage": 0.1014,
+            "precision": 0.4884,
+            "n_kept": 43,
+            "mean_regret_kept": 0.117
+          },
+          {
+            "threshold": 0.24,
+            "coverage": 0.0967,
+            "precision": 0.4878,
+            "n_kept": 41,
+            "mean_regret_kept": 0.1175
+          },
+          {
+            "threshold": 0.26,
+            "coverage": 0.0802,
+            "precision": 0.5,
+            "n_kept": 34,
+            "mean_regret_kept": 0.1187
+          },
+          {
+            "threshold": 0.28,
+            "coverage": 0.0637,
+            "precision": 0.5185,
+            "n_kept": 27,
+            "mean_regret_kept": 0.1076
+          },
+          {
+            "threshold": 0.2897,
+            "coverage": 0.0519,
+            "precision": 0.5,
+            "n_kept": 22,
+            "mean_regret_kept": 0.121
+          },
+          {
+            "threshold": 0.3,
+            "coverage": 0.0425,
+            "precision": 0.5556,
+            "n_kept": 18,
+            "mean_regret_kept": 0.1121
+          },
+          {
+            "threshold": 0.32,
+            "coverage": 0.0377,
+            "precision": 0.5,
+            "n_kept": 16,
+            "mean_regret_kept": 0.1261
+          },
+          {
+            "threshold": 0.34,
+            "coverage": 0.0354,
+            "precision": 0.4667,
+            "n_kept": 15,
+            "mean_regret_kept": 0.1345
+          },
+          {
+            "threshold": 0.36,
+            "coverage": 0.0259,
+            "precision": 0.4545,
+            "n_kept": 11,
+            "mean_regret_kept": 0.1177
+          },
+          {
+            "threshold": 0.38,
+            "coverage": 0.0259,
+            "precision": 0.4545,
+            "n_kept": 11,
+            "mean_regret_kept": 0.1177
+          },
+          {
+            "threshold": 0.4,
+            "coverage": 0.0236,
+            "precision": 0.5,
+            "n_kept": 10,
+            "mean_regret_kept": 0.1258
+          },
+          {
+            "threshold": 0.42,
+            "coverage": 0.0212,
+            "precision": 0.4444,
+            "n_kept": 9,
+            "mean_regret_kept": 0.1398
+          },
+          {
+            "threshold": 0.44,
+            "coverage": 0.0165,
+            "precision": 0.5714,
+            "n_kept": 7,
+            "mean_regret_kept": 0.16
+          },
+          {
+            "threshold": 0.46,
+            "coverage": 0.0165,
+            "precision": 0.5714,
+            "n_kept": 7,
+            "mean_regret_kept": 0.16
+          },
+          {
+            "threshold": 0.48,
+            "coverage": 0.0142,
+            "precision": 0.5,
+            "n_kept": 6,
+            "mean_regret_kept": 0.1866
+          },
+          {
+            "threshold": 0.5,
+            "coverage": 0.0118,
+            "precision": 0.6,
+            "n_kept": 5,
+            "mean_regret_kept": 0.0842
+          }
+        ],
+        "best_operating_point": {
+          "threshold": 0.1,
+          "coverage": 0.4575,
+          "precision": 0.5567,
+          "n_kept": 194,
+          "mean_regret_kept": 0.1194
+        },
+        "note": "report only — the acceptance is on full_cohort_regret, per NEG-16"
+      },
+      "clustered_tests": {
+        "complex_vs_global": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.007,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.335,
+          "p_one_sided_doi": 0.6305854584880748,
+          "bootstrap_ci95_doi": [
+            -0.0466,
+            0.0351
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "complex_vs_fragment": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0123,
+          "median_regret_delta": 0.0,
+          "t_doi": -1.2836,
+          "p_one_sided_doi": 0.8978852291634032,
+          "bootstrap_ci95_doi": [
+            -0.0307,
+            0.0074
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        }
+      },
+      "cohort_summary": {
+        "global_best": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1241,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.566,
+          "mean_ndcg": 0.9332,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1241,
+              "top1_accuracy": 0.566,
+              "mean_ndcg": 0.9332
+            }
+          },
+          "hit@0.1": 0.6745,
+          "hit@0.2091": 0.7901,
+          "hit@0.5": 0.9269
+        },
+        "cell_best": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1231,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.559,
+          "mean_ndcg": 0.9335,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1231,
+              "top1_accuracy": 0.559,
+              "mean_ndcg": 0.9335
+            }
+          },
+          "hit@0.1": 0.6792,
+          "hit@0.2091": 0.7901,
+          "hit@0.5": 0.9245
+        },
+        "model_complex": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1314,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5142,
+          "mean_ndcg": 0.9287,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1314,
+              "top1_accuracy": 0.5142,
+              "mean_ndcg": 0.9287
+            }
+          },
+          "hit@0.1": 0.6533,
+          "hit@0.2091": 0.7759,
+          "hit@0.5": 0.9222
+        },
+        "model_fragment": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1212,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5566,
+          "mean_ndcg": 0.9338,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1212,
+              "top1_accuracy": 0.5566,
+              "mean_ndcg": 0.9338
+            }
+          },
+          "hit@0.1": 0.6722,
+          "hit@0.2091": 0.7854,
+          "hit@0.5": 0.9316
+        }
+      }
+    }
+  },
+  "headline": {
+    "split": "canonical_grouped",
+    "full_cohort_regret_model_complex": 0.1314,
+    "p_holm_vs_global_best": 1.0
+  },
+  "verdict": "NEGATIVE",
+  "reading": "canonical 分组全量 regret：complex 0.1314 vs baseline 0.1198；DOI 聚类 Holm p=1.0000。弃权曲线仅作报告：按 NEG-16，高 margin 子集不能当交付。"
+}

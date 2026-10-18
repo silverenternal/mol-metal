@@ -21,7 +21,6 @@ Usage::
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 import time
 from datetime import datetime, timezone
@@ -36,10 +35,14 @@ import pandas as pd
 from scipy import sparse
 
 from molmetal.features.ligand import complex_ligand_blocks
+from molmetal.scripts.msrs_dual_split import (
+    SPLIT_CANONICAL_GROUPED,
+    SPLIT_FRAGMENT_GROUPED,
+    write_report,
+)
 from molmetal.scripts.msrs_code_levers import (
     ENDPOINT,
     LGB_PARAMS,
-    base_blocks,
     fit_arm,
     folds_for,
     native_codes,
@@ -63,7 +66,7 @@ ARMS: Dict[str, Tuple[Tuple[str, ...], str]] = {
     ),
 }
 
-SPLITS = ("fragment", "canonical")
+SPLITS = (SPLIT_FRAGMENT_GROUPED, SPLIT_CANONICAL_GROUPED)
 
 
 def build_ligand_blocks(
@@ -85,19 +88,23 @@ def run_split(
     frame: pd.DataFrame,
     y: np.ndarray,
     blocks: Dict[str, sparse.csr_matrix],
-    met: sparse.csr_matrix,
-    cell: sparse.csr_matrix,
     codes: np.ndarray,
     groups: np.ndarray,
 ) -> Dict[str, object]:
-    """Fit every arm on one fold assignment and score it."""
+    """Fit every arm on one fold assignment and score it.
+
+    Metal and cell line enter only through ``codes`` (LightGBM native
+    categorical); the one-hot ``met``/``cell`` matrices the old call passed were
+    never read on this path.  They are gone rather than passed as dead weight.
+    """
     fold_id = folds_for(groups)
+    empty = sparse.csr_matrix((len(frame), 0), dtype=np.float32)
     preds: Dict[str, np.ndarray] = {}
     results: Dict[str, object] = {}
     for arm in ARMS:
         t0 = time.time()
         preds[arm] = fit_arm(
-            blocks[arm], met, cell, None, 0, False, y, fold_id, cat_codes=codes
+            blocks[arm], empty, empty, None, 0, False, y, fold_id, cat_codes=codes
         )
         entry = score(y, preds[arm])
         entry["n_features"] = int(blocks[arm].shape[1])
@@ -145,9 +152,7 @@ def main(argv: List[str] | None = None) -> int:
         sub = sub[sub["ligand_main_fragment"].isin(set(keep))].reset_index(drop=True)
 
     y = sub["value_log10"].to_numpy(dtype=float)
-    descriptors = pd.read_csv(args.metal_desc)
     cell_vocab = sub["cell_line_key"].value_counts().head(TOP_CELL_LINES).index.tolist()
-    _lig, met, cell = base_blocks(sub, descriptors, cell_vocab)
     codes = native_codes(sub, cell_vocab, "full")
 
     counterions = sub["counterion"].fillna("").astype(str)
@@ -162,21 +167,25 @@ def main(argv: List[str] | None = None) -> int:
     for split in SPLITS:
         groups = (
             sub["ligand_main_fragment"].to_numpy()
-            if split == "fragment"
+            if split == SPLIT_FRAGMENT_GROUPED
             else sub["ligand_canonical"].to_numpy()
         )
         print(f"[complex] split={split}")
-        splits[split] = run_split(sub, y, blocks, met, cell, codes, groups)
+        splits[split] = run_split(sub, y, blocks, codes, groups)
 
-    base = splits["fragment"]["main"]["r2"]
+    base = splits[SPLIT_FRAGMENT_GROUPED]["main"]["r2"]
     best_arm = max(
         ("complex", "main_plus_ancillary", "full"),
-        key=lambda a: splits["canonical"][a]["r2"],
+        key=lambda a: splits[SPLIT_CANONICAL_GROUPED][a]["r2"],
     )
-    delta_canonical = splits["canonical"][best_arm]["r2"] - splits["canonical"]["main"]["r2"]
+    delta_canonical = (
+        splits[SPLIT_CANONICAL_GROUPED][best_arm]["r2"]
+        - splits[SPLIT_CANONICAL_GROUPED]["main"]["r2"]
+    )
     payload = {
         "artifact": "msrs_complex_features",
-        "version": "1.0",
+        "version": "1.1",
+        "requires_dual_split": True,
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "provenance": {
             "long_parquet": str(args.long),
@@ -188,9 +197,15 @@ def main(argv: List[str] | None = None) -> int:
             "rows": int(len(sub)),
             "ligands_main_fragment": int(sub["ligand_main_fragment"].nunique()),
             "complexes_canonical": int(sub["ligand_canonical"].nunique()),
-            "folds": "GroupKFold(5); fragment-grouped and canonical-grouped both reported",
+            "folds": "GroupKFold(5); both fragment_grouped and canonical_grouped reported",
             "params": {k: v for k, v in LGB_PARAMS.items() if k != "objective"},
             "arms": {arm: desc for arm, (_inc, desc) in ARMS.items()},
+            "arm_ligand_source": {
+                arm: (
+                    "ligand_main_fragment" if arm == "main" else "ligand_canonical"
+                )
+                for arm in ARMS
+            },
             "counterion_vocabulary_size": len(vocab) + 1,
         },
         "splits": splits,
@@ -204,7 +219,7 @@ def main(argv: List[str] | None = None) -> int:
         ),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
+    write_report(args.out, payload)
     print(f"[complex] verdict={payload['verdict']} best={best_arm} delta={delta_canonical:+.4f}")
     print(f"[complex] wrote {args.out}")
     return 0

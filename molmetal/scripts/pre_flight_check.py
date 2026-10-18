@@ -4869,6 +4869,12 @@ def gate_section9_entry_count(
 # pipeline only; 'frontier' / 'chemprop_v2_v3' / 'cfm' are subsets that
 # should remain stable per their contract (Wf-259 baseline).
 EXPECTED_GATE_COUNTS = {
+    # 2026-10-18 (FIX-E1 + FIX-P2, MSRS representation audit): "all" 124 -> 126
+    # and "launch" 126 -> 128, MEASURED via len(build_gates(...)) after adding
+    # p3_msrs_dual_split_check (every arm artifact must report both
+    # fragment_grouped and canonical_grouped) and p3_msrs_granularity_check
+    # (a complex-grouped split must be scored on complex features, DEF-6).
+    # Same-edit doc sync: TODO/completed/321d_preflight_gate_audit.md §9.
     # 2026-10-10 (narrative claim provenance, AGENTS.md §5.2): "all" 123 -> 124
     # and "launch" 125 -> 126, MEASURED via len(build_gates(...)) after adding
     # p3_narrative_claims_check, which re-resolves every claim in
@@ -4972,7 +4978,7 @@ EXPECTED_GATE_COUNTS = {
     # step and its two gates were already in the working tree uncommitted when
     # this edit landed; they are recorded here now so the count's provenance is
     # readable rather than implied. Measured: len(build_gates("all")) == 124.
-    "all": 124,
+    "all": 126,
     # (was 103 before Wf-R35 P-A; Wf-A16 2026-10-03: 105 -> 103, MEASURED via
     # len(build_gates("all")) == 103 after the two PRE-RETRAIN
     # gates moved out of the commit path into the new "launch"
@@ -5033,7 +5039,7 @@ EXPECTED_GATE_COUNTS = {
     # §5.11 (2026-10-09): 121 -> 123 with the two gates above; then
     # 2026-10-10: 125 -> 126 with the narrative-claims gate.
     # Measured: len(build_gates("launch")) == 126.
-    "launch": 126,
+    "launch": 128,
     "frontier": 25,
     "chemprop_v2_v3": 18,  # Wf-A12 FIX (2026-10-03): 14 → 18 MEASURED
     # via len(build_gates("chemprop_v2_v3"));
@@ -7868,6 +7874,114 @@ def gate_config_trainer_binding(
         name, priority, pipeline, "FAIL",
         f"config↔trainer binding gate FAIL (AGENTS.md §5.11, rc={rc}): "
         f"{len(violations)} key(s) resolve to no dest; first: {head}",
+        elapsed,
+    )
+
+
+def gate_msrs_dual_split(
+    name: str,
+    priority: str,
+    pipeline: str,
+    script_path: Path,
+    *,
+    timeout: float = 120.0,
+) -> GateResult:
+    """FIX-E1 — every MSRS arm report must carry both grouping protocols.
+
+    The audit measured the same arm at 0.3366 under ``fragment_grouped`` and
+    0.3972 under ``canonical_grouped``: 0.0606 of pure split artifact, and the
+    scoreboard only ever published the first. Since 99.93% of cohort rows are
+    multi-component complexes while 5,861 canonical complexes collapse onto
+    2,846 main fragments, the fragment-grouped number is the optimistic one
+    whenever the deployment unit is the complex. A single-split report is
+    therefore not a weaker claim — it is an uninterpretable one.
+
+    The gate re-reads the artifacts named in
+    ``msrs_dual_split.DUAL_SPLIT_ARTIFACTS`` (or flagged
+    ``"requires_dual_split": true``) and fails if either split is missing,
+    empty, missing ``r2``, or scored on a different arm set.
+
+    Cheap and offline: JSON reads only, no model fitting, no torch import.
+    """
+    t0 = time.perf_counter()
+    if not script_path.is_file():
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"script missing: {script_path}", time.perf_counter() - t0,
+        )
+    rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
+    elapsed = time.perf_counter() - t0
+    blob = (out + "\n" + err).strip()
+    if rc == 0:
+        tail = blob.splitlines()[-1] if blob else "(no output)"
+        return GateResult(
+            name, priority, pipeline, "PASS",
+            f"dual-split gate PASS (FIX-E1): {tail}", elapsed,
+        )
+    if rc == 2:
+        return GateResult(
+            name, priority, pipeline, "SKIP",
+            "dual-split gate SKIP (FIX-E1): no in-scope artifacts on disk",
+            elapsed,
+        )
+    failures = [ln.strip() for ln in blob.splitlines() if ln.strip().startswith("FAIL")]
+    head = failures[0] if failures else (blob.splitlines()[-1] if blob else "")
+    return GateResult(
+        name, priority, pipeline, "FAIL",
+        f"dual-split gate FAIL (FIX-E1, rc={rc}): {len(failures)} problem(s); "
+        f"first: {head}",
+        elapsed,
+    )
+
+
+def gate_msrs_granularity(
+    name: str,
+    priority: str,
+    pipeline: str,
+    script_path: Path,
+    *,
+    timeout: float = 120.0,
+) -> GateResult:
+    """FIX-P2 — a complex-grouped split must be scored on complex features.
+
+    DEF-6: the cohort is built per complex (``ligand_canonical``) while every
+    historical builder featurized the main fragment (``ligand_main_fragment``).
+    Both columns exist and nothing type-checks the pairing, so the mismatch was
+    silent for the whole pre-audit history — 5,861 complexes collapsed onto
+    2,846 fragments, and the "complex-grouped" protocol was grouping rows whose
+    features could not distinguish the complexes in the group.
+
+    The gate reads the artifacts that report a ``canonical_grouped`` split and
+    requires the headline arm to declare a complex-level ligand source.  Cheap:
+    JSON reads only.
+    """
+    t0 = time.perf_counter()
+    if not script_path.is_file():
+        return GateResult(
+            name, priority, pipeline, "FAIL",
+            f"script missing: {script_path}", time.perf_counter() - t0,
+        )
+    rc, out, err = _run([VENV_PY, str(script_path)], timeout=timeout, cwd=REPO_ROOT)
+    elapsed = time.perf_counter() - t0
+    blob = (out + "\n" + err).strip()
+    if rc == 0:
+        tail = blob.splitlines()[-1] if blob else "(no output)"
+        return GateResult(
+            name, priority, pipeline, "PASS",
+            f"granularity gate PASS (FIX-P2): {tail}", elapsed,
+        )
+    if rc == 2:
+        return GateResult(
+            name, priority, pipeline, "SKIP",
+            "granularity gate SKIP (FIX-P2): no complex-grouped artifacts on disk",
+            elapsed,
+        )
+    failures = [ln.strip() for ln in blob.splitlines() if ln.strip().startswith("FAIL")]
+    head = failures[0] if failures else (blob.splitlines()[-1] if blob else "")
+    return GateResult(
+        name, priority, pipeline, "FAIL",
+        f"granularity gate FAIL (FIX-P2, rc={rc}): {len(failures)} problem(s); "
+        f"first: {head}",
         elapsed,
     )
 
@@ -13488,6 +13602,35 @@ def build_gates(
                     "P3",
                     "ag511_binding",
                     REPO_ROOT / "scripts" / "_config_binding_gate.py",
+                ),
+            ),
+            # ---- FIX-E1 — one scoreboard, two splits.
+            # The same arm moves ~0.06 R2 between fragment-grouped and
+            # canonical-grouped CV, and only the optimistic protocol was ever
+            # published. Any arm artifact that reports per-arm R2 must now
+            # report both, or the commit fails. Cheap: JSON reads only.
+            (
+                "p3_msrs_dual_split_check",
+                lambda: gate_msrs_dual_split(
+                    "p3_msrs_dual_split_check",
+                    "P3",
+                    "fix_e1",
+                    SCRIPT_DIR / "msrs_dual_split.py",
+                ),
+            ),
+            # ---- FIX-P2 — granularity consistency (DEF-6).
+            # The cohort is built per complex; the historical builders
+            # featurized the main fragment. Nothing type-checked the pairing,
+            # so a "complex-grouped" split could group rows the features could
+            # not tell apart. Any artifact reporting that split must now
+            # declare a complex-level ligand source.
+            (
+                "p3_msrs_granularity_check",
+                lambda: gate_msrs_granularity(
+                    "p3_msrs_granularity_check",
+                    "P3",
+                    "fix_p2",
+                    SCRIPT_DIR / "msrs_granularity_gate.py",
                 ),
             ),
             # ---- §5.2 — narrative claim provenance.

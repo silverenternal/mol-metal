@@ -567,3 +567,31 @@ failure mode this gate exists to convert from silent into red.
 
 **Scope limit.** The gate checks existence and value only. Whether a claim
 *belongs* in the paper is a judgement, not provenance, and is not gated here.
+
+---
+
+## §9 2026-10-18 — MSRS representation gates (FIX-E1 + FIX-P2)
+
+**Gates added:** `p3_msrs_dual_split_check` (pipeline `fix_e1`) and
+`p3_msrs_granularity_check` (pipeline `fix_p2`).
+Gate counts moved `all` **124 → 126** and `launch` **126 → 128**,
+MEASURED via `len(build_gates("all")) == 126` / `len(build_gates("launch")) == 128`.
+
+**Why they exist.** Two silent failures in the MSRS feature audit:
+
+1. **Single-split scoreboards (FIX-E1).** The same arm scores 0.3366 under
+   fragment-grouped CV and 0.3972 under canonical-grouped CV — 0.0606 of pure
+   split artifact. The historical scoreboard only ever published the first.
+   The gate requires both `fragment_grouped` and `canonical_grouped` in every
+   artifact that reports per-arm R2, and `write_report()` refuses to write one
+   that does not.
+2. **Granularity mismatch (FIX-P2 / DEF-6).** The cohort is built per complex
+   (`ligand_canonical`) while every historical builder featurized the main
+   fragment (`ligand_main_fragment`): 5,861 complexes collapsed onto 2,846
+   fragments. Both columns exist and nothing type-checked the pairing. The gate
+   requires the headline arm of any complex-grouped split to declare a
+   complex-level ligand source.
+
+**What they do not check.** Whether the reported delta is large enough to
+matter, or whether the arm belongs in the paper. Those are judgements; these
+gates only make the two structural defects above impossible to ship silently.

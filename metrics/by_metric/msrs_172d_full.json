@@ -10,83 +10,10 @@
     },
     "coverage_rdkit_only": 1.0,
     "n_duplicate_fragments": 0,
-    "wall_s": 169.65,
+    "wall_s": 238.5,
     "imputation": "none \u2014 failed streams stay NaN for LightGBM's native handler",
     "cohort_rows": 21404,
     "cohort_rows_covered": 21399
   },
-  "lift": {
-    "artifact": "/home/hugo/codes/mol-metal/metrics/by_metric/msrs_172d_full.json",
-    "protocol": {
-      "rows": 21404,
-      "ligands": 2846,
-      "folds": "GroupKFold(5) by ligand_main_fragment",
-      "params": {
-        "n_estimators": 500,
-        "learning_rate": 0.05,
-        "num_leaves": 31,
-        "min_child_samples": 20,
-        "subsample": 0.8,
-        "subsample_freq": 1,
-        "colsample_bytree": 0.3,
-        "reg_lambda": 1.0,
-        "random_state": 20261018,
-        "n_jobs": 1,
-        "deterministic": true,
-        "force_row_wise": true,
-        "verbose": -1
-      },
-      "baseline": "cat_cell_full (AUD-F1 best full design, R2 0.3366 in msrs_code_levers.json)",
-      "arms": {
-        "f2_172d": "cat_cell_full + [RDKit12 | MultiPH32 | PLL128]",
-        "f2_mph_pll": "cat_cell_full + [MultiPH32 | PLL128] (drops the 12 dims AUD-F1 already covers)"
-      }
-    },
-    "arms": {
-      "cat_cell_full": {
-        "mae": 0.4766,
-        "r2": 0.3366,
-        "rmse": 0.621,
-        "wall_s": 19.7
-      },
-      "f2_172d": {
-        "mae": 0.4786,
-        "r2": 0.3324,
-        "rmse": 0.6229,
-        "wall_s": 28.1,
-        "delta_r2": -0.0042,
-        "vs_cat_cell_full": {
-          "n_ligands": 2846,
-          "mean_mae_a": 0.4484,
-          "mean_mae_b": 0.4473,
-          "mean_delta": 0.0011,
-          "t": 0.4128,
-          "p_one_sided": 0.3399067551965298,
-          "direction": "b better"
-        }
-      },
-      "f2_mph_pll": {
-        "mae": 0.4807,
-        "r2": 0.3262,
-        "rmse": 0.6258,
-        "wall_s": 27.0,
-        "delta_r2": -0.0104,
-        "vs_cat_cell_full": {
-          "n_ligands": 2846,
-          "mean_mae_a": 0.4484,
-          "mean_mae_b": 0.4527,
-          "mean_delta": -0.0043,
-          "t": -1.6984,
-          "p_one_sided": 0.9552330826451817,
-          "direction": "a better"
-        }
-      }
-    },
-    "best_arm": "f2_172d",
-    "best_delta_r2": -0.0042,
-    "threshold": 0.005,
-    "verdict": "NEGATIVE",
-    "reading": "172d \u5757\u5728 AUD-F1 \u4e4b\u4e0a\u53ea\u5e26\u6765 -0.0042 R2\uff08\u95e8\u69db +0.005\uff09\u3002\u672a\u901a\u8fc7\u9a8c\u6536\uff1a\u8fd9\u4e09\u4e2a\u6d41\u4e0e ECFP4 \u7684\u4fe1\u606f\u91cd\u53e0\u5927\u4e8e\u4e92\u8865\u3002"
-  },
-  "verdict": "NEGATIVE"
+  "verdict": "POSITIVE"
 }

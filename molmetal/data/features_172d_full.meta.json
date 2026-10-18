@@ -1,0 +1,71 @@
+{
+  "artifact": "features_172d",
+  "artifact_version": 1,
+  "created_utc": "2026-10-18T16:09:17+00:00",
+  "git_commit": "511444ec50c3da124ce8e1be24c3eac7c0eb8cb5",
+  "npz_sha256": "c5c51f0bf28806d954bd7e7c9be2a6188ff05ee6768fae88bbb84dedda955fbd",
+  "npz_bytes": 507663,
+  "arrays": {
+    "X": {
+      "shape": [
+        2846,
+        172
+      ],
+      "dtype": "float32"
+    },
+    "fragments": {
+      "shape": [
+        2846
+      ],
+      "dtype": "object"
+    },
+    "rdkit_ok": {
+      "shape": [
+        2846
+      ],
+      "dtype": "bool"
+    },
+    "multiph_ok": {
+      "shape": [
+        2846
+      ],
+      "dtype": "bool"
+    },
+    "pll_ok": {
+      "shape": [
+        2846
+      ],
+      "dtype": "bool"
+    }
+  },
+  "missing_value_policy": "none — failed streams stay NaN for LightGBM's native handler",
+  "inputs": [
+    {
+      "path": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+      "sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c"
+    }
+  ],
+  "spec_hash": null,
+  "spec": null,
+  "n_rows": 2846,
+  "n_features": null,
+  "blocks": null,
+  "descriptor_dim": 172,
+  "coverage": {
+    "n_unique_ligands": 2846,
+    "n_complete_172d": 2841,
+    "coverage_complete": 0.9982,
+    "coverage_per_stream": {
+      "rdkit": 1.0,
+      "multiph": 0.9982,
+      "pll": 0.9982
+    },
+    "coverage_rdkit_only": 1.0,
+    "n_duplicate_fragments": 0,
+    "wall_s": 238.5,
+    "imputation": "none — failed streams stay NaN for LightGBM's native handler",
+    "cohort_rows": 21404,
+    "cohort_rows_covered": 21399
+  },
+  "meta_checksum": "a47ccf42d3b6c54ed91a9cda17c2bcd5c119343c0a8ccac65ccf71154d693a7b"
+}

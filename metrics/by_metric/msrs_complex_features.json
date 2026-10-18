@@ -1,18 +1,19 @@
 {
   "artifact": "msrs_complex_features",
-  "version": "1.0",
-  "generated_utc": "2026-10-18T11:35:36+00:00",
+  "version": "1.1",
+  "requires_dual_split": true,
+  "generated_utc": "2026-10-18T15:59:41+00:00",
   "provenance": {
     "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
     "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
     "script": "molmetal/scripts/msrs_complex_features.py",
-    "git_commit": "2a334b573cceab87fc49691a6846c0aa6c0863e2"
+    "git_commit": "b27bb1eb6de858194fb08b47f3098bc916259881"
   },
   "design": {
     "rows": 21404,
     "ligands_main_fragment": 2846,
     "complexes_canonical": 5861,
-    "folds": "GroupKFold(5); fragment-grouped and canonical-grouped both reported",
+    "folds": "GroupKFold(5); both fragment_grouped and canonical_grouped reported",
     "params": {
       "n_estimators": 500,
       "learning_rate": 0.05,
@@ -34,23 +35,29 @@
       "main_plus_ancillary": "ECFP4(main) | ECFP4(ancillary)",
       "full": "complex | main | ancillary | counterion one-hot | n_components"
     },
+    "arm_ligand_source": {
+      "main": "ligand_main_fragment",
+      "complex": "ligand_canonical",
+      "main_plus_ancillary": "ligand_canonical",
+      "full": "ligand_canonical"
+    },
     "counterion_vocabulary_size": 33
   },
   "splits": {
-    "fragment": {
+    "fragment_grouped": {
       "main": {
         "mae": 0.4766,
         "r2": 0.3366,
         "rmse": 0.621,
         "n_features": 2048,
-        "wall_s": 23.7
+        "wall_s": 19.2
       },
       "complex": {
         "mae": 0.4376,
         "r2": 0.4368,
         "rmse": 0.5722,
         "n_features": 2048,
-        "wall_s": 25.8,
+        "wall_s": 22.4,
         "delta_r2_vs_main": 0.1002,
         "vs_main": {
           "n_ligands": 2846,
@@ -67,7 +74,7 @@
         "r2": 0.4162,
         "rmse": 0.5825,
         "n_features": 4096,
-        "wall_s": 36.2,
+        "wall_s": 28.9,
         "delta_r2_vs_main": 0.0796,
         "vs_main": {
           "n_ligands": 2846,
@@ -84,7 +91,7 @@
         "r2": 0.4572,
         "rmse": 0.5617,
         "n_features": 6178,
-        "wall_s": 60.6,
+        "wall_s": 48.6,
         "delta_r2_vs_main": 0.1206,
         "vs_main": {
           "n_ligands": 2846,
@@ -97,20 +104,20 @@
         }
       }
     },
-    "canonical": {
+    "canonical_grouped": {
       "main": {
         "mae": 0.4484,
         "r2": 0.3972,
         "rmse": 0.5919,
         "n_features": 2048,
-        "wall_s": 23.6
+        "wall_s": 19.4
       },
       "complex": {
         "mae": 0.4079,
         "r2": 0.5012,
         "rmse": 0.5384,
         "n_features": 2048,
-        "wall_s": 28.7,
+        "wall_s": 24.8,
         "delta_r2_vs_main": 0.104,
         "vs_main": {
           "n_ligands": 2846,
@@ -127,7 +134,7 @@
         "r2": 0.4488,
         "rmse": 0.566,
         "n_features": 4096,
-        "wall_s": 34.8,
+        "wall_s": 38.7,
         "delta_r2_vs_main": 0.0516,
         "vs_main": {
           "n_ligands": 2846,
@@ -144,7 +151,7 @@
         "r2": 0.4848,
         "rmse": 0.5472,
         "n_features": 6178,
-        "wall_s": 59.5,
+        "wall_s": 49.2,
         "delta_r2_vs_main": 0.0876,
         "vs_main": {
           "n_ligands": 2846,

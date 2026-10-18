@@ -83,20 +83,6 @@ def _morgan(smiles: Sequence[str], n_bits: int, radius: int) -> sparse.csr_matri
     return morgan_matrix(list(smiles), n_bits=n_bits, radius=radius)
 
 
-def _counterion_onehot(
-    counterions: Sequence[object], vocabulary: Sequence[str]
-) -> Tuple[np.ndarray, List[str]]:
-    """One-hot over a fixed counterion vocabulary, plus an ``other`` column."""
-    index = {c: i for i, c in enumerate(vocabulary)}
-    other = len(vocabulary)
-    out = np.zeros((len(counterions), len(vocabulary) + 1), dtype=np.float32)
-    for i, raw in enumerate(counterions):
-        key = "" if raw is None else str(raw)
-        out[i, index.get(key, other)] = 1.0
-    names = [f"counterion_{c}" for c in vocabulary] + ["counterion_other"]
-    return out, names
-
-
 def complex_ligand_blocks(
     frame,
     *,
@@ -159,24 +145,24 @@ def complex_ligand_blocks(
             [f"ecfp4_ancillary_{i}" for i in range(n_bits)],
         )
     if "counterion" in include:
+        from molmetal.features.assay import counterion_block
+
         vocab = list(counterion_vocabulary or [])
         if "counterion" in frame.columns:
-            dense, cnames = _counterion_onehot(frame["counterion"].tolist(), vocab)
-            add_block("counterion", sparse.csr_matrix(dense), cnames)
+            block, cnames = counterion_block(frame["counterion"].tolist(), vocab)
         else:
-            dense = np.zeros((len(frame), len(vocab) + 1), dtype=np.float32)
-            add_block(
-                "counterion",
-                sparse.csr_matrix(dense),
-                [f"counterion_{c}" for c in vocab] + ["counterion_other"],
+            # No counterion column means "unknown for every row", which is an
+            # all-zero block — not a silent "every row is the other level".
+            block = sparse.csr_matrix(
+                np.zeros((len(frame), len(vocab) + 1), dtype=np.float32)
             )
+            cnames = [f"counterion_{c}" for c in vocab] + ["counterion_other"]
+        add_block("counterion", block, cnames)
     if "n_fragments" in include:
-        counts = np.array([len(component_smiles(s)) for s in canonical], dtype=np.float32)
-        add_block(
-            "n_fragments",
-            sparse.csr_matrix(counts.reshape(-1, 1)),
-            ["n_components"],
-        )
+        from molmetal.features.assay import n_fragments_block
+
+        block, fnames = n_fragments_block(canonical)
+        add_block("n_fragments", block, fnames)
 
     if not parts:
         raise ValueError("complex_ligand_blocks: 'include' selected no blocks")

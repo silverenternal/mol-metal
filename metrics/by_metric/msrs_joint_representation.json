@@ -1,0 +1,217 @@
+{
+  "artifact": "msrs_joint_representation",
+  "version": "1.0",
+  "requires_dual_split": true,
+  "generated_utc": "2026-10-18T16:01:40+00:00",
+  "provenance": {
+    "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_joint_representation.py",
+    "git_commit": "b27bb1eb6de858194fb08b47f3098bc916259881",
+    "ligand_spec_hash": "sha256:453f77bb3ea233ee7b6666b72d9277a7849f901cd0b756dba828a898217f824b"
+  },
+  "design": {
+    "rows": 21404,
+    "ligand_source": "ligand_canonical",
+    "ligand_block": "ECFP4(ligand_canonical), 2048 bits",
+    "metal_cell_encoding": "LightGBM native categorical codes (2 columns)",
+    "metal_state_columns": [
+      "metal_os",
+      "metal_charge",
+      "metal_d_electrons",
+      "metal_valence_e"
+    ],
+    "coord_columns": [
+      "coord_n_donor",
+      "coord_n_N",
+      "coord_n_O",
+      "coord_n_S",
+      "coord_n_P",
+      "coord_n_Se",
+      "coord_n_carbene",
+      "coord_n_anionic",
+      "coord_n_aromatic",
+      "coord_max_component_donors",
+      "coord_n_donor_components",
+      "coord_has_donor",
+      "coord_est_cn",
+      "coord_geom_linear",
+      "coord_geom_trigonal_planar",
+      "coord_geom_tetrahedral",
+      "coord_geom_trigonal_bipyramidal",
+      "coord_geom_octahedral",
+      "coord_geom_square_planar",
+      "coord_geom_square_pyramidal",
+      "coord_geom_pentagonal_bipyramidal",
+      "coord_geom_unknown"
+    ],
+    "coverage": {
+      "rows": 21404,
+      "has_donor": 0.9944,
+      "has_geometry": 0.8013,
+      "unique_smiles": 5861
+    },
+    "min_extra": 0.005,
+    "arm_ligand_source": {
+      "ligand": "ligand_canonical",
+      "ligand+metal": "ligand_canonical",
+      "ligand+coord": "ligand_canonical",
+      "ligand+both": "ligand_canonical"
+    }
+  },
+  "splits": {
+    "fragment_grouped": {
+      "ligand": {
+        "mae": 0.4376,
+        "r2": 0.4368,
+        "rmse": 0.5722,
+        "n_features": 2048,
+        "n_extra_features": 0,
+        "wall_s": 33.9
+      },
+      "ligand+metal": {
+        "mae": 0.4237,
+        "r2": 0.4665,
+        "rmse": 0.5569,
+        "n_features": 2052,
+        "n_extra_features": 4,
+        "wall_s": 24.9,
+        "delta_r2_vs_ligand": 0.0297,
+        "vs_ligand": {
+          "n_groups": 2846,
+          "mean_mae_a": 0.4209,
+          "mean_mae_b": 0.4122,
+          "mean_delta": 0.0087,
+          "t": 5.1073,
+          "p_one_sided": 1.7413921120811763e-07,
+          "direction": "b better"
+        }
+      },
+      "ligand+coord": {
+        "mae": 0.4267,
+        "r2": 0.4658,
+        "rmse": 0.5572,
+        "n_features": 2070,
+        "n_extra_features": 22,
+        "wall_s": 26.1,
+        "delta_r2_vs_ligand": 0.029,
+        "vs_ligand": {
+          "n_groups": 2846,
+          "mean_mae_a": 0.4209,
+          "mean_mae_b": 0.4143,
+          "mean_delta": 0.0065,
+          "t": 4.0082,
+          "p_one_sided": 3.137915450822394e-05,
+          "direction": "b better"
+        }
+      },
+      "ligand+both": {
+        "mae": 0.4171,
+        "r2": 0.4856,
+        "rmse": 0.5468,
+        "n_features": 2074,
+        "n_extra_features": 26,
+        "wall_s": 26.5,
+        "delta_r2_vs_ligand": 0.0488,
+        "vs_ligand": {
+          "n_groups": 2846,
+          "mean_mae_a": 0.4209,
+          "mean_mae_b": 0.4095,
+          "mean_delta": 0.0114,
+          "t": 6.0273,
+          "p_one_sided": 9.410869895553583e-10,
+          "direction": "b better"
+        },
+        "delta_r2_vs_best_single": 0.0191,
+        "vs_best_single": {
+          "n_groups": 2846,
+          "mean_mae_a": 0.4122,
+          "mean_mae_b": 0.4095,
+          "mean_delta": 0.0027,
+          "t": 1.8225,
+          "p_one_sided": 0.034245372436735616,
+          "direction": "b better"
+        }
+      }
+    },
+    "canonical_grouped": {
+      "ligand": {
+        "mae": 0.4079,
+        "r2": 0.5012,
+        "rmse": 0.5384,
+        "n_features": 2048,
+        "n_extra_features": 0,
+        "wall_s": 24.4
+      },
+      "ligand+metal": {
+        "mae": 0.3906,
+        "r2": 0.5426,
+        "rmse": 0.5156,
+        "n_features": 2052,
+        "n_extra_features": 4,
+        "wall_s": 24.8,
+        "delta_r2_vs_ligand": 0.0414,
+        "vs_ligand": {
+          "n_groups": 5861,
+          "mean_mae_a": 0.4042,
+          "mean_mae_b": 0.3946,
+          "mean_delta": 0.0096,
+          "t": 7.3663,
+          "p_one_sided": 9.985800475529763e-14,
+          "direction": "b better"
+        }
+      },
+      "ligand+coord": {
+        "mae": 0.3972,
+        "r2": 0.5284,
+        "rmse": 0.5235,
+        "n_features": 2070,
+        "n_extra_features": 22,
+        "wall_s": 23.0,
+        "delta_r2_vs_ligand": 0.0272,
+        "vs_ligand": {
+          "n_groups": 5861,
+          "mean_mae_a": 0.4042,
+          "mean_mae_b": 0.393,
+          "mean_delta": 0.0112,
+          "t": 9.4064,
+          "p_one_sided": 3.5983913485836525e-21,
+          "direction": "b better"
+        }
+      },
+      "ligand+both": {
+        "mae": 0.3856,
+        "r2": 0.5556,
+        "rmse": 0.5082,
+        "n_features": 2074,
+        "n_extra_features": 26,
+        "wall_s": 23.9,
+        "delta_r2_vs_ligand": 0.0544,
+        "vs_ligand": {
+          "n_groups": 5861,
+          "mean_mae_a": 0.4042,
+          "mean_mae_b": 0.3869,
+          "mean_delta": 0.0173,
+          "t": 11.6521,
+          "p_one_sided": 2.4566482315488992e-31,
+          "direction": "b better"
+        },
+        "delta_r2_vs_best_single": 0.013,
+        "vs_best_single": {
+          "n_groups": 5861,
+          "mean_mae_a": 0.3946,
+          "mean_mae_b": 0.3869,
+          "mean_delta": 0.0077,
+          "t": 7.221,
+          "p_one_sided": 2.9081067614446813e-13,
+          "direction": "b better"
+        }
+      }
+    }
+  },
+  "best_single_block": "ligand+metal",
+  "delta_r2_both_vs_best_single": 0.013,
+  "p_one_sided_vs_best_single": 2.9081067614446813e-13,
+  "verdict": "POSITIVE",
+  "reading": "三块全开相对最佳单块 (ligand+metal) +0.0130 R2（门槛 +0.005）。单块增量不可假设可加：OS 与配位数化学耦合。"
+}

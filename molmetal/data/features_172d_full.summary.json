@@ -9,7 +9,7 @@
   },
   "coverage_rdkit_only": 1.0,
   "n_duplicate_fragments": 0,
-  "wall_s": 169.65,
+  "wall_s": 238.5,
   "imputation": "none \u2014 failed streams stay NaN for LightGBM's native handler",
   "cohort_rows": 21404,
   "cohort_rows_covered": 21399

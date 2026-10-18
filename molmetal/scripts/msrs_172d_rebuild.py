@@ -40,19 +40,24 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
-from molmetal.scripts.build_172d_features import (
+from molmetal.features.descriptors import (  # noqa: F401  (re-exported)
+    FEATURE_DIM,
     MULTI_PH_DIM,
     PLL_DIM,
-    RDKIT_DIM as RDKIT12_DIM,
-    compute_multiph_32d,
-    compute_pll_128d,
-    compute_rdkit_12d,
+    RDKIT12_DIM,
+    descriptor_table,
+    fragment_descriptor_row,
 )
 
 ENDPOINT = "potency"
-FEATURE_DIM = RDKIT12_DIM + MULTI_PH_DIM + PLL_DIM  # 172
 MIN_COVERAGE = 0.95
 MIN_LIFT = 0.005
+
+#: FIX-P1: the per-fragment computation lives in ``molmetal.features.descriptors``
+#: now.  These aliases keep the existing tests and callers working; they are the
+#: same function objects, not copies.
+fragment_features = fragment_descriptor_row
+build_table = descriptor_table
 
 
 # ---------------------------------------------------------------------------
@@ -69,42 +74,6 @@ def potency_cohort(long_path: Path) -> pd.DataFrame:
         & long["ligand_canonical"].notna()
     ].copy()
     return sub.reset_index(drop=True)
-
-
-def fragment_features(smiles: str) -> Tuple[np.ndarray, Dict[str, bool]]:
-    """One 172-d row with NaN on any stream that failed for this molecule."""
-    vec = np.full(FEATURE_DIM, np.nan, dtype=np.float32)
-    ok = {"rdkit": False, "multiph": False, "pll": False}
-
-    rd = compute_rdkit_12d(smiles)
-    if rd is not None and len(rd) == RDKIT12_DIM:
-        vec[:RDKIT12_DIM] = np.asarray(rd, dtype=np.float32)
-        ok["rdkit"] = True
-
-    mph = compute_multiph_32d(smiles)
-    if mph is not None and mph.size == MULTI_PH_DIM:
-        vec[RDKIT12_DIM : RDKIT12_DIM + MULTI_PH_DIM] = mph
-        ok["multiph"] = True
-
-    pll = compute_pll_128d(smiles)
-    if pll is not None and pll.size == PLL_DIM:
-        vec[RDKIT12_DIM + MULTI_PH_DIM :] = pll
-        ok["pll"] = True
-
-    return vec, ok
-
-
-def build_table(fragments: Sequence[str]) -> Tuple[np.ndarray, Dict[str, np.ndarray]]:
-    """Feature matrix + per-stream boolean masks, one row per fragment."""
-    n = len(fragments)
-    X = np.full((n, FEATURE_DIM), np.nan, dtype=np.float32)
-    masks = {k: np.zeros(n, dtype=bool) for k in ("rdkit", "multiph", "pll")}
-    for i, smi in enumerate(fragments):
-        vec, ok = fragment_features(smi)
-        X[i] = vec
-        for k, v in ok.items():
-            masks[k][i] = v
-    return X, masks
 
 
 def coverage_report(
@@ -131,15 +100,35 @@ def write_npz(
     X: np.ndarray,
     masks: Dict[str, np.ndarray],
     report: Dict[str, object],
+    input_paths: Sequence[Path] = (),
 ) -> None:
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(
+    """Write the table + a FIX-P3 sidecar (spec hash, input hash, git commit).
+
+    The sidecar is what makes the artifact checkable: before it, the file said
+    only "here is a matrix", so a loader could not tell whether it was built
+    from the current cohort with the current descriptor code.
+    """
+    from molmetal.features.build import write_artifact
+
+    write_artifact(
         out_path,
-        X=X,
-        fragments=np.asarray(list(fragments), dtype=object),
-        rdkit_ok=masks["rdkit"],
-        multiph_ok=masks["multiph"],
-        pll_ok=masks["pll"],
+        {
+            "X": X,
+            "fragments": np.asarray(list(fragments), dtype=object),
+            "rdkit_ok": masks["rdkit"],
+            "multiph_ok": masks["multiph"],
+            "pll_ok": masks["pll"],
+        },
+        artifact="features_172d",
+        missing_value_policy=(
+            "none — failed streams stay NaN for LightGBM's native handler"
+        ),
+        input_paths=input_paths,
+        extra={
+            "descriptor_dim": int(X.shape[1]),
+            "n_rows": int(X.shape[0]),
+            "coverage": report,
+        },
     )
     with open(out_path.with_suffix(".summary.json"), "w") as fh:
         json.dump(report, fh, indent=2)
@@ -299,7 +288,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             {f for f, ok in zip(fragments, ~np.isnan(X).any(axis=1)) if ok}
         ).sum()
     )
-    write_npz(args.out, fragments, X, masks, report)
+    write_npz(args.out, fragments, X, masks, report, input_paths=[args.long])
     print(
         f"[f2] coverage complete={report['coverage_complete']:.4f} "
         f"streams={report['coverage_per_stream']} wall={wall:.1f}s"
