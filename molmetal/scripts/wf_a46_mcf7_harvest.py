@@ -43,6 +43,7 @@ import argparse
 import csv
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -316,7 +317,7 @@ def harvest_one(
     """
     out_dir = Path(args.out_dir)
     if stem is None:
-        stem = cell_line.lower().replace("-", "")
+        stem = _slug(cell_line)
     jsonl_path = out_dir / f"platinai_{stem}_biodata.jsonl"
 
     records, done_pages = load_existing(jsonl_path)
@@ -430,7 +431,20 @@ def harvest_one(
     }
 
 
-def on_disk_cells(out_dir: Path) -> tuple[list, dict]:
+def _slug(cell_line: str) -> str:
+    """Filesystem-safe stem that preserves the historical names.
+
+    The old rule was ``lower().replace("-", "")``.  It is kept for every name
+    that survives it unchanged, so existing files still resume; anything else
+    (``/``, ``(``, spaces, ``*``) collapses to ``_``.  Without this,
+    ``BALB/3T3`` resolves to a non-existent ``platinai_balb/3t3_biodata.jsonl``.
+    """
+    base = cell_line.lower().replace("-", "")
+    base = re.sub(r"[^a-z0-9._]+", "_", base).strip("_")
+    return base or "cell"
+
+
+def on_disk_cells(out_dir: Path) -> tuple[list, dict, dict]:
     """Cell lines already on disk, with the stem each file uses.
 
     Scanning the JSONL rather than trusting the summary keeps the rebuild
@@ -439,25 +453,33 @@ def on_disk_cells(out_dir: Path) -> tuple[list, dict]:
     an ``os._exit(3)`` leaves completed cells absent from the summary.
     """
     harvested: dict = {}
+    rows_by_cell: dict = {}
     for p in sorted(out_dir.glob("platinai_*_biodata.jsonl")):
         try:
+            n = 0
+            cell = None
             with p.open("r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
-                    if line:
-                        harvested[json.loads(line)["cell_line"]] = p.name
-                        break
+                    if not line:
+                        continue
+                    n += 1
+                    if cell is None:
+                        cell = json.loads(line)["cell_line"]
         except (json.JSONDecodeError, OSError, KeyError):
             continue
+        if cell:
+            harvested[cell] = p.name
+            rows_by_cell[cell] = n
     stem_by_cell = {
         cell: name[len("platinai_") : -len("_biodata.jsonl")]
         for cell, name in harvested.items()
     }
-    return sorted(harvested), stem_by_cell
+    return sorted(harvested), stem_by_cell, rows_by_cell
 
 
 def resolve_all_cells(out_dir: Path) -> tuple[list, dict]:
-    """All API cell lines not yet on disk, largest ``bioDataCount`` first.
+    """All API cell lines not yet *complete* on disk, largest first.
 
     Returns ``(ordered_cell_lines, stem_by_cell)``.  Stems must be made
     collision-proof: the default ``lower().replace("-", "")`` slug maps
@@ -465,21 +487,36 @@ def resolve_all_cells(out_dir: Path) -> tuple[list, dict]:
     filename, so harvesting both would let the second overwrite the first.
     Cells already on disk keep their existing stem (so a re-run resumes); a
     later collision gets ``_<api id>`` appended.
+
+    A cell with a file is re-queued when the file holds fewer rows than
+    ``bioDataCount * 0.9``: a killed run leaves a partial file behind, and
+    treating file-existence as completeness would skip it forever.
     """
     registry = Path("logs/wf_a46_celllines.json")
     if not registry.exists():
         raise SystemExit(f"[wf-a46] missing {registry}; cannot enumerate cells")
     cells = json.loads(registry.read_text(encoding="utf-8"))
 
-    harvested_cells, stem_by_cell = on_disk_cells(out_dir)
+    harvested_cells, stem_by_cell, rows_by_cell = on_disk_cells(out_dir)
     harvested = set(harvested_cells)
     used: set = set(stem_by_cell.values())
 
-    remaining = [c for c in cells if c.get("cellLine") not in harvested]
+    remaining = []
+    for c in cells:
+        cell = c.get("cellLine")
+        if cell not in harvested:
+            remaining.append(c)
+            continue
+        expected = c.get("bioDataCount") or 0
+        if expected and rows_by_cell.get(cell, 0) < expected * 0.9:
+            remaining.append(c)
+
     remaining.sort(key=lambda c: (-(c.get("bioDataCount") or 0), c.get("id") or 0))
     for c in remaining:
         cell = c["cellLine"]
-        base = cell.lower().replace("-", "")
+        if cell in stem_by_cell:
+            continue
+        base = _slug(cell)
         stem = base if base not in used else f"{base}_{c.get('id')}"
         stem_by_cell[cell] = stem
         used.add(stem)
@@ -543,7 +580,7 @@ def main(argv: Optional[list] = None) -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     if args.from_disk:
-        cells, stem_by_cell = on_disk_cells(out_dir)
+        cells, stem_by_cell, _ = on_disk_cells(out_dir)
         print(
             f"[wf-a46] --from-disk: {len(cells)} cell line(s) on disk",
             flush=True,
