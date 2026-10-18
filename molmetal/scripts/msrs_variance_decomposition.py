@@ -249,15 +249,18 @@ def nested_variance_components(
 # ---------------------------------------------------------------------------
 # Interaction test on the matched subcohort
 # ---------------------------------------------------------------------------
-def _pair_units(dedup: pd.DataFrame, endpoint: str, m1: str, m2: str) -> pd.DataFrame:
+def _pair_units(
+    dedup: pd.DataFrame, endpoint: str, m1: str, m2: str, ligand_col: str = "ligand_canonical"
+) -> pd.DataFrame:
     """Units measured under BOTH metals in the SAME DOI and duration."""
     sub = dedup[(dedup["endpoint"] == endpoint) & (~dedup["all_censored"]) & dedup["metal"].isin((m1, m2))]
-    keys = ["ligand_canonical", "cell_line_key", "doi", "time_h"]
+    keys = [ligand_col, "cell_line_key", "doi", "time_h"]
     a = sub[sub["metal"] == m1].groupby(keys, dropna=False)["value_log10"].median().rename("y1")
     b = sub[sub["metal"] == m2].groupby(keys, dropna=False)["value_log10"].median().rename("y2")
     out = pd.concat([a, b], axis=1, join="inner").reset_index()
+    out = out[out[ligand_col].notna()]  # the loose key is null for rows with no real ligand
     out["delta"] = out["y1"] - out["y2"]
-    return out
+    return out.rename(columns={ligand_col: "ligand_canonical"})
 
 
 def _cell_adjust(units: pd.DataFrame, min_per_cell: int = 3) -> Tuple[np.ndarray, np.ndarray]:
@@ -308,9 +311,10 @@ def interaction_test(
     m2: str,
     sigma2: Dict[str, float],
     df_noise: int,
+    ligand_col: str = "ligand_canonical",
 ) -> Dict[str, object]:
     """Is Var(Delta) larger than the noise the two metals' replicates predict?"""
-    units = _pair_units(dedup, endpoint, m1, m2)
+    units = _pair_units(dedup, endpoint, m1, m2, ligand_col)
     if len(units) < MIN_UNITS_FOR_PAIR:
         return {
             "pair": f"{m1}-{m2}",
@@ -370,9 +374,7 @@ def interaction_test(
         "F_vs_noise": round(float(F), 3) if np.isfinite(F) else None,
         "p_one_sided_F": p_f,
         "min_detectable_share_80pct_power": round(float(min_detectable), 4),
-        "detected": bool(
-            p_f is not None and p_f < 0.05 and (share or 0.0) >= 0.05
-        ),
+        "detected": bool(ci[0] > 0.05 and p_f is not None and p_f < 0.05),
         "test_caveats": [
             "the F-test treats units as independent; ligands contribute several units, so it is "
             "anti-conservative. Quote the clustered bootstrap interval.",
@@ -380,6 +382,82 @@ def interaction_test(
             "constrained and the test has almost no power to reject.",
         ],
     }
+
+
+def decide(pot_results: Dict[str, object], threshold: float = 0.05) -> Dict[str, object]:
+    """Apply the kill criterion to the CI bounds, not to the point estimates.
+
+    "Established" needs the lower bound above the threshold; "killed" needs the
+    upper bound below it. Anything else is undetermined, and the detection limit
+    is quoted so a null result cannot be read as evidence of absence.
+    """
+    estimable = {k: v for k, v in pot_results.items() if v.get("status") == "OK"}
+
+    def _ci(k: str) -> Tuple[float, float]:
+        lo, hi = estimable[k]["interaction_share_ci95_clustered_bootstrap"]
+        return float(lo), float(hi)
+
+    established = [k for k in estimable if _ci(k)[0] > threshold]
+    killed = [k for k in estimable if _ci(k)[1] < threshold]
+    undetermined = [k for k in estimable if k not in established and k not in killed]
+
+    out: Dict[str, object] = {
+        "kill_threshold_interaction_share": threshold,
+        "estimable_pairs": sorted(estimable),
+        "pairs_interaction_established": sorted(established),
+        "pairs_interaction_killed": sorted(killed),
+        "pairs_undetermined": sorted(undetermined),
+        "pair_detail": {
+            k: {
+                "n_units": v["n_units"],
+                "interaction_share": v["interaction_share"],
+                "ci95": v["interaction_share_ci95_clustered_bootstrap"],
+                "min_detectable_share_80pct_power": v["min_detectable_share_80pct_power"],
+                "detected": v["detected"],
+            }
+            for k, v in estimable.items()
+        },
+        "power_note": "A 5% variance share is below the detection limit of every pair: the "
+        "smallest estimable minimum detectable share at 80% power is {}. So 'not detected' means "
+        "'share is below the minimum detectable value', never 'share is below 5%'. The criterion "
+        "is therefore applied to the CI bounds, and the paper must quote the detection limit next "
+        "to any null result.".format(
+            min((v["min_detectable_share_80pct_power"] for v in estimable.values()), default=None)
+        ),
+        "second_half_of_kill_criterion": "L3 top-1 regret improvement vs global-best-metal "
+        "(MSRS-3/6, not measured here)",
+    }
+    if not established and killed:
+        out["verdict"] = (
+            "interaction is excluded on {} (CI upper below 5%): a ligand-specific recommendation "
+            "is not supported; reframe around metal ranking and the phototoxicity axis".format(
+                ", ".join(sorted(killed))
+            )
+        )
+    elif established and not undetermined:
+        out["verdict"] = (
+            "interaction is established on every estimable pair: proceed to MSRS-2/3, but the "
+            "regret gate still has to pass"
+        )
+    elif established:
+        out["verdict"] = (
+            "interaction is established on {} and undetermined on {}; the undetermined pairs have "
+            "a minimum detectable share of {} and their null result is a power statement, not "
+            "evidence of absence".format(
+                ", ".join(sorted(established)),
+                ", ".join(sorted(undetermined)),
+                ", ".join(
+                    "{}={}".format(k, estimable[k]["min_detectable_share_80pct_power"])
+                    for k in sorted(undetermined)
+                ),
+            )
+        )
+    else:
+        out["verdict"] = (
+            "no pair is decisive: interaction is neither established nor excluded, so the "
+            "recommendation story cannot be closed on this data"
+        )
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -424,77 +502,28 @@ def main(argv: Optional[List[str]] = None) -> int:
                 pair_results[f"{m1}-{m2}"] = interaction_test(dedup, ep, m1, m2, sigma2, df_pair)
         interactions[ep] = pair_results
 
+    # ---- sensitivity: loose ligand key ------------------------------------
+    # The strict key requires the whole complex (including ancillary ligands) to
+    # match. The loose key keeps only the largest organic fragment, which buys
+    # Ru-Ir pairs at the cost of no longer holding the ancillary ligands fixed.
+    # Same estimator, same noise floor, different estimand -- reported side by
+    # side so the difference is visible rather than argued about.
+    loose: Dict[str, object] = {}
+    for ep in ENDPOINTS:
+        sigma2 = {metal: float(noise[ep]["per_metal"][metal]["sigma2"] or 0.0) for metal in METALS}
+        pair_results = {}
+        for i, m1 in enumerate(METALS):
+            for m2 in METALS[i + 1 :]:
+                df_pair = int(noise[ep]["per_metal"][m1]["df"]) + int(noise[ep]["per_metal"][m2]["df"])
+                pair_results[f"{m1}-{m2}"] = interaction_test(
+                    dedup, ep, m1, m2, sigma2, df_pair, ligand_col="ligand_main_fragment"
+                )
+        loose[ep] = pair_results
+
     # ---- the decision the kill criterion asks for -------------------------
     pot = interactions["potency"]
-    estimable = {k: v for k, v in pot.items() if v.get("status") == "OK"}
-    threshold = 0.05
-
-    def _ci(k: str) -> Tuple[float, float]:
-        lo, hi = estimable[k]["interaction_share_ci95_clustered_bootstrap"]
-        return float(lo), float(hi)
-
-    # The criterion is about the *share*, so it is read off the CI, not the
-    # point estimate: "established" needs the lower bound above 5%, and "killed"
-    # needs the upper bound below it. Anything in between is undetermined.
-    established = [k for k in estimable if _ci(k)[0] > threshold]
-    killed = [k for k in estimable if _ci(k)[1] < threshold]
-    undetermined = [k for k in estimable if k not in established and k not in killed]
-
-    decision = {
-        "kill_threshold_interaction_share": threshold,
-        "estimable_pairs": sorted(estimable),
-        "pairs_interaction_established": sorted(established),
-        "pairs_interaction_killed": sorted(killed),
-        "pairs_undetermined": sorted(undetermined),
-        "pair_detail": {
-            k: {
-                "n_units": v["n_units"],
-                "interaction_share": v["interaction_share"],
-                "ci95": v["interaction_share_ci95_clustered_bootstrap"],
-                "min_detectable_share_80pct_power": v["min_detectable_share_80pct_power"],
-                "detected": v["detected"],
-            }
-            for k, v in estimable.items()
-        },
-        "power_note": "A 5% variance share is below the detection limit of every pair: at n=269 "
-        "the minimum detectable share at 80% power is {}. So 'not detected' means 'share is below "
-        "the minimum detectable value', never 'share is below 5%'. The criterion is therefore "
-        "applied to the CI bounds, and the paper must quote the detection limit next to any null "
-        "result.".format(estimable["Ru-Os"]["min_detectable_share_80pct_power"] if "Ru-Os" in estimable else "n/a"),
-        "second_half_of_kill_criterion": "L3 top-1 regret improvement vs global-best-metal "
-        "(MSRS-3/6, not measured here)",
-        "verdict": None,
-    }
-    if not established and killed:
-        decision["verdict"] = (
-            "interaction is excluded on {} (CI upper below 5%): a ligand-specific recommendation "
-            "is not supported; reframe around metal ranking and the phototoxicity axis".format(
-                ", ".join(sorted(killed))
-            )
-        )
-    elif established and not undetermined:
-        decision["verdict"] = (
-            "interaction is established on every estimable pair: proceed to MSRS-2/3, but the "
-            "regret gate still has to pass"
-        )
-    elif established:
-        decision["verdict"] = (
-            "interaction is established on {} and undetermined on {}; the undetermined pairs have "
-            "a minimum detectable share of {} and their null result is a power statement, not "
-            "evidence of absence".format(
-                ", ".join(sorted(established)),
-                ", ".join(sorted(undetermined)),
-                ", ".join(
-                    "{}={}".format(k, estimable[k]["min_detectable_share_80pct_power"])
-                    for k in sorted(undetermined)
-                ),
-            )
-        )
-    else:
-        decision["verdict"] = (
-            "no pair is decisive: interaction is neither established nor excluded, so the "
-            "recommendation story cannot be closed on this data"
-        )
+    decision = decide(pot)
+    loose_decision = decide(loose["potency"])
 
     out = {
         "artifact": "msrs_variance_decomposition",
@@ -515,6 +544,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         "variance_components": decomposition,
         "interaction": interactions,
         "decision": decision,
+        "sensitivity_loose_ligand_key": {
+            "estimand": "same largest organic fragment, ancillary ligands free to differ",
+            "interaction": loose,
+            "decision": loose_decision,
+            "why": "the strict key requires the whole complex to match, which leaves Ru-Ir with no "
+            "pair at all; the loose key buys those pairs but is not a single-variable metal swap, "
+            "so it is reported as a sensitivity analysis and never as the primary result",
+        },
         "design_facts": {
             "metal_nested_in_doi": "110 of 1,801 potency DOIs contain >1 metal (2,217 of 21,406 units, "
             "10.4%). The full-cohort metal R^2 is therefore mostly a between-paper contrast; only the "
@@ -548,9 +585,16 @@ def main(argv: Optional[List[str]] = None) -> int:
                   f"detected={v['detected']}")
         else:
             print(f"  {k:7s} {v['status']} (n={v['n_units']})")
-    print(f"decision: established={decision['pairs_interaction_established']} "
+    print(f"decision (strict key): established={decision['pairs_interaction_established']} "
           f"undetermined={decision['pairs_undetermined']} "
           f"killed={decision['pairs_interaction_killed']}")
+    print("interaction (potency, loose key):")
+    for k, v in loose["potency"].items():
+        if v.get("status") == "OK":
+            print(f"  {k:7s} n={v['n_units']:4d} share={v['interaction_share']:.3f} "
+                  f"CI={v['interaction_share_ci95_clustered_bootstrap']} detected={v['detected']}")
+    print(f"decision (loose key): established={loose_decision['pairs_interaction_established']} "
+          f"undetermined={loose_decision['pairs_undetermined']}")
     print(f"json: {args.out}")
     print("PASS")
     return 0

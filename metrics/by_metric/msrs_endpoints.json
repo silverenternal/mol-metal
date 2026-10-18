@@ -2,13 +2,13 @@
   "artifact": "msrs_endpoints",
   "version": "1.0",
   "framework": "MSRS \u2014 Metal Substitution Response Surface",
-  "generated_utc": "2026-10-18T04:17:18+00:00",
+  "generated_utc": "2026-10-18T04:31:34+00:00",
   "provenance": {
     "source_csv": "/home/hugo/codes/mol-metal/.data/molmetal/MetalCytoToxDB.csv",
     "source_sha256": "cc2a142764ed022299da30203a7f897fb4e0c6ae8cb9b5217525961138fa0198",
     "n_source_rows": 26801,
     "script": "molmetal/scripts/msrs_build_endpoints.py",
-    "git_commit": "be1a98c32de117db8879ebd6201f36c27b14f14b",
+    "git_commit": "9d68ac865a23e7c4ae8079d9d1c2cc9afe664d6e",
     "argv": [
       "/home/hugo/codes/mol-metal/.venv/bin/python"
     ],
@@ -372,7 +372,9 @@
     }
   ],
   "matched_pairs": {
-    "definition": "unit = (ligand_canonical, cell_line_key); a unit is matched for a metal pair when both metals have a non-censored measurement in the dedup table",
+    "definition": "unit = (ligand, cell_line_key); a unit is matched for a metal pair when both metals have a non-censored measurement in the dedup table",
+    "primary_key": "ligand_canonical (whole canonical mixture; a match means only the metal changed)",
+    "secondary_key": "ligand_main_fragment (largest organic fragment; ancillary ligands may differ)",
     "by_endpoint": {
       "potency": {
         "Ru-Ir": {
@@ -561,6 +563,194 @@
         }
       }
     },
+    "by_endpoint_loose_ligand_key": {
+      "potency": {
+        "Ru-Ir": {
+          "n_matched_units": 550,
+          "n_same_doi": 276,
+          "n_same_time": 472,
+          "n_same_doi_and_time": 276
+        },
+        "Ru-Rh": {
+          "n_matched_units": 202,
+          "n_same_doi": 101,
+          "n_same_time": 175,
+          "n_same_doi_and_time": 99
+        },
+        "Ru-Os": {
+          "n_matched_units": 343,
+          "n_same_doi": 252,
+          "n_same_time": 311,
+          "n_same_doi_and_time": 243
+        },
+        "Ru-Re": {
+          "n_matched_units": 73,
+          "n_same_doi": 1,
+          "n_same_time": 52,
+          "n_same_doi_and_time": 1
+        },
+        "Ir-Rh": {
+          "n_matched_units": 163,
+          "n_same_doi": 132,
+          "n_same_time": 148,
+          "n_same_doi_and_time": 130
+        },
+        "Ir-Os": {
+          "n_matched_units": 55,
+          "n_same_doi": 21,
+          "n_same_time": 43,
+          "n_same_doi_and_time": 21
+        },
+        "Ir-Re": {
+          "n_matched_units": 51,
+          "n_same_doi": 4,
+          "n_same_time": 38,
+          "n_same_doi_and_time": 4
+        },
+        "Rh-Os": {
+          "n_matched_units": 38,
+          "n_same_doi": 21,
+          "n_same_time": 33,
+          "n_same_doi_and_time": 21
+        },
+        "Rh-Re": {
+          "n_matched_units": 11,
+          "n_same_doi": 0,
+          "n_same_time": 4,
+          "n_same_doi_and_time": 0
+        },
+        "Os-Re": {
+          "n_matched_units": 5,
+          "n_same_doi": 0,
+          "n_same_time": 2,
+          "n_same_doi_and_time": 0
+        }
+      },
+      "phototoxicity": {
+        "Ru-Ir": {
+          "n_matched_units": 28,
+          "n_same_doi": 15,
+          "n_same_time": 25,
+          "n_same_doi_and_time": 15
+        },
+        "Ru-Rh": {
+          "n_matched_units": 0,
+          "n_same_doi": 0,
+          "n_same_time": 0,
+          "n_same_doi_and_time": 0
+        },
+        "Ru-Os": {
+          "n_matched_units": 2,
+          "n_same_doi": 0,
+          "n_same_time": 2,
+          "n_same_doi_and_time": 0
+        },
+        "Ru-Re": {
+          "n_matched_units": 5,
+          "n_same_doi": 0,
+          "n_same_time": 5,
+          "n_same_doi_and_time": 0
+        },
+        "Ir-Rh": {
+          "n_matched_units": 0,
+          "n_same_doi": 0,
+          "n_same_time": 0,
+          "n_same_doi_and_time": 0
+        },
+        "Ir-Os": {
+          "n_matched_units": 0,
+          "n_same_doi": 0,
+          "n_same_time": 0,
+          "n_same_doi_and_time": 0
+        },
+        "Ir-Re": {
+          "n_matched_units": 7,
+          "n_same_doi": 2,
+          "n_same_time": 7,
+          "n_same_doi_and_time": 2
+        },
+        "Rh-Os": {
+          "n_matched_units": 0,
+          "n_same_doi": 0,
+          "n_same_time": 0,
+          "n_same_doi_and_time": 0
+        },
+        "Rh-Re": {
+          "n_matched_units": 0,
+          "n_same_doi": 0,
+          "n_same_time": 0,
+          "n_same_doi_and_time": 0
+        },
+        "Os-Re": {
+          "n_matched_units": 0,
+          "n_same_doi": 0,
+          "n_same_time": 0,
+          "n_same_doi_and_time": 0
+        }
+      },
+      "cisplatin_ratio": {
+        "Ru-Ir": {
+          "n_matched_units": 165,
+          "n_same_doi": 103,
+          "n_same_time": 146,
+          "n_same_doi_and_time": 103
+        },
+        "Ru-Rh": {
+          "n_matched_units": 131,
+          "n_same_doi": 47,
+          "n_same_time": 112,
+          "n_same_doi_and_time": 45
+        },
+        "Ru-Os": {
+          "n_matched_units": 122,
+          "n_same_doi": 65,
+          "n_same_time": 107,
+          "n_same_doi_and_time": 65
+        },
+        "Ru-Re": {
+          "n_matched_units": 45,
+          "n_same_doi": 0,
+          "n_same_time": 36,
+          "n_same_doi_and_time": 0
+        },
+        "Ir-Rh": {
+          "n_matched_units": 43,
+          "n_same_doi": 29,
+          "n_same_time": 35,
+          "n_same_doi_and_time": 27
+        },
+        "Ir-Os": {
+          "n_matched_units": 8,
+          "n_same_doi": 1,
+          "n_same_time": 5,
+          "n_same_doi_and_time": 1
+        },
+        "Ir-Re": {
+          "n_matched_units": 15,
+          "n_same_doi": 4,
+          "n_same_time": 11,
+          "n_same_doi_and_time": 4
+        },
+        "Rh-Os": {
+          "n_matched_units": 9,
+          "n_same_doi": 0,
+          "n_same_time": 7,
+          "n_same_doi_and_time": 0
+        },
+        "Rh-Re": {
+          "n_matched_units": 4,
+          "n_same_doi": 0,
+          "n_same_time": 1,
+          "n_same_doi_and_time": 0
+        },
+        "Os-Re": {
+          "n_matched_units": 1,
+          "n_same_doi": 0,
+          "n_same_time": 0,
+          "n_same_doi_and_time": 0
+        }
+      }
+    },
     "totals": {
       "potency": {
         "n_units_total": 19745,
@@ -583,6 +773,33 @@
         "n_units_3plus_metals": 0,
         "fraction_multi_metal": 0.0153
       }
+    },
+    "strict_vs_loose": {
+      "strict_same_doi_units_by_pair": {
+        "Ru-Ir": 0,
+        "Ru-Rh": 5,
+        "Ru-Os": 276,
+        "Ru-Re": 0,
+        "Ir-Rh": 144,
+        "Ir-Os": 0,
+        "Ir-Re": 0,
+        "Rh-Os": 0,
+        "Rh-Re": 0,
+        "Os-Re": 0
+      },
+      "loose_same_doi_units_by_pair": {
+        "Ru-Ir": 276,
+        "Ru-Rh": 101,
+        "Ru-Os": 252,
+        "Ru-Re": 1,
+        "Ir-Rh": 132,
+        "Ir-Os": 21,
+        "Ir-Re": 4,
+        "Rh-Os": 21,
+        "Rh-Re": 0,
+        "Os-Re": 0
+      },
+      "note": "the loose key recovers pairs where the ancillary ligands differ, so it is not a single-variable metal swap; use it as a sensitivity analysis, not the primary estimand"
     }
   },
   "cell_line_normalization": {
@@ -686,6 +903,34 @@
       "recomputed_censoring_blind_normalized_cell_key": 670,
       "recomputed_numeric_only_normalized_cell_key": 539,
       "explanation": "the 668 count treats '>100 uM' as a measurement; it also splits spelling variants of one cell line. Restricting to exact measurements and normalising the cell-line key gives the number in matched_pairs.totals.potency.n_units_multi_metal, which supersedes 668."
+    },
+    "ligand_key_sensitivity": {
+      "strict_same_doi_units": {
+        "Ru-Ir": 0,
+        "Ru-Rh": 5,
+        "Ru-Os": 276,
+        "Ru-Re": 0,
+        "Ir-Rh": 144,
+        "Ir-Os": 0,
+        "Ir-Re": 0,
+        "Rh-Os": 0,
+        "Rh-Re": 0,
+        "Os-Re": 0
+      },
+      "loose_same_doi_units": {
+        "Ru-Ir": 276,
+        "Ru-Rh": 101,
+        "Ru-Os": 252,
+        "Ru-Re": 1,
+        "Ir-Rh": 132,
+        "Ir-Os": 21,
+        "Ir-Re": 4,
+        "Rh-Os": 21,
+        "Rh-Re": 0,
+        "Os-Re": 0
+      },
+      "rows_without_a_main_fragment": 793,
+      "note": "the loose key roughly doubles the matched data and is the only way to get any Ru-Ir pair, but those pairs differ in ancillary ligands as well as the metal"
     },
     "statements": [
       "Only 3/10 metal pairs have any within-ligand potency comparison, and Ru-Ir has 0 matched units. Any 'Ru vs Ir' substitution claim is a between-ligand comparison and cannot be paired.",

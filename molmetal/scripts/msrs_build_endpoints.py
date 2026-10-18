@@ -166,6 +166,36 @@ def canonicalize(smiles: object) -> Optional[str]:
     return Chem.MolToSmiles(mol) if mol is not None else None
 
 
+# A fragment needs this many heavy atoms to count as a ligand rather than a
+# counterion or solvent (Cl-, BF4-, PF6-, MeCN, water, DMSO all fall below it).
+MIN_LIGAND_HEAVY_ATOMS = 6
+
+
+def main_fragment(smiles: object) -> Optional[str]:
+    """Canonical SMILES of the largest organic fragment, or ``None``.
+
+    This is the **loose** ligand key. The strict key (the whole canonical
+    mixture) preserves co-ligands such as PPh3 or Cp*, so a strict match means
+    the metal is the only thing that changed. The loose key keeps only the
+    dominant ligand, which is what lets a Ru and an Ir complex of the same
+    ligand match even when their ancillary ligands differ -- a weaker estimand
+    that must be labelled as such.
+    """
+    from rdkit import Chem, RDLogger
+
+    RDLogger.DisableLog("rdApp.*")
+    mol = Chem.MolFromSmiles(str(smiles))
+    if mol is None:
+        return None
+    frags = Chem.GetMolFrags(mol, asMols=True, sanitizeFrags=True)
+    if not frags:
+        return None
+    biggest = max(frags, key=lambda f: f.GetNumHeavyAtoms())
+    if biggest.GetNumHeavyAtoms() < MIN_LIGAND_HEAVY_ATOMS:
+        return None
+    return Chem.MolToSmiles(biggest)
+
+
 def combine_censoring(num: str, den: str) -> str:
     """Censoring direction of ``num / den`` given the two inputs' directions."""
     return _DERIVED_DIRECTION[(num, den)]
@@ -211,6 +241,8 @@ def build_long_table(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, object]]
 
     canon = {s: canonicalize(s) for s in df["SMILES_Ligands"].astype(str).unique()}
     ligand_canon = df["SMILES_Ligands"].astype(str).map(canon)
+    mfrag = {s: main_fragment(s) for s in canon}
+    ligand_main = ligand_canon.map(mfrag)
 
     base = pd.DataFrame(
         {
@@ -226,6 +258,7 @@ def build_long_table(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, object]]
             "valence_e": pd.to_numeric(df["Valence_e"], errors="coerce").to_numpy(),
             "ligand_raw": df["SMILES_Ligands"].astype(str).to_numpy(),
             "ligand_canonical": ligand_canon.to_numpy(),
+            "ligand_main_fragment": ligand_main.to_numpy(),
             "counterion": df["Counterion"].astype(str).to_numpy(),
             "cell_line_raw": df["Cell_line"].astype(str).to_numpy(),
             "cell_line_key": df["Cell_line"].map(normalize_cell_line).to_numpy(),
@@ -331,6 +364,7 @@ def build_long_table(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict[str, object]]
         "valence_e",
         "ligand_raw",
         "ligand_canonical",
+        "ligand_main_fragment",
         "n_fragments",
         "counterion",
         "cell_line_raw",
@@ -377,6 +411,8 @@ def build_dedup(long: pd.DataFrame) -> pd.DataFrame:
     out["n_censored"] = out["n_censored"].fillna(0).astype(int)
     out["n_measurements"] = out["n_exact"] + out["n_censored"]
     out["all_censored"] = out["value_log10"].isna()
+    lig_to_main = long.drop_duplicates("ligand_canonical").set_index("ligand_canonical")["ligand_main_fragment"]
+    out["ligand_main_fragment"] = out["ligand_canonical"].map(lig_to_main)
     out["is_cancer_line"] = out["cell_line_key"].isin(
         set(long.loc[long["is_cancer_line"], "cell_line_key"])
     )
@@ -389,15 +425,20 @@ def build_dedup(long: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Audit
 # ---------------------------------------------------------------------------
-def _metal_pair_coverage(dedup: pd.DataFrame, endpoint: str) -> Dict[str, object]:
+def _metal_pair_coverage(
+    dedup: pd.DataFrame, endpoint: str, ligand_col: str = "ligand_canonical"
+) -> Dict[str, object]:
     """How many (ligand, cell line) units carry both metals of each pair.
 
     ``same_doi`` / ``same_time`` split the clean comparisons (both metals
     measured in one paper, one assay duration) from the confounded ones.
+
+    ``ligand_col="ligand_main_fragment"`` switches to the loose key, where the
+    ancillary ligands may differ; see :func:`main_fragment`.
     """
     sub = dedup[(dedup["endpoint"] == endpoint) & (~dedup["all_censored"])]
     sub = sub[sub["metal"].isin(METALS)]
-    unit_keys = ["ligand_canonical", "cell_line_key"]
+    unit_keys = [ligand_col, "cell_line_key"]
 
     def _group_with_pairs(frame: pd.DataFrame) -> pd.DataFrame:
         """Per-unit sets of DOIs, durations, and (DOI, duration) tuples."""
@@ -557,6 +598,9 @@ def build_audit(
 
     # ---- matched pairs ----------------------------------------------------
     matched = {ep: _metal_pair_coverage(dedup, ep) for ep in ENDPOINTS}
+    matched_loose = {
+        ep: _metal_pair_coverage(dedup, ep, "ligand_main_fragment") for ep in ENDPOINTS
+    }
     matched_totals: Dict[str, object] = {}
     for ep in ENDPOINTS:
         sub = dedup[(dedup["endpoint"] == ep) & (~dedup["all_censored"]) & dedup["metal"].isin(METALS)]
@@ -618,10 +662,20 @@ def build_audit(
         "ru_ir_matched_units": int(pot_pairs["Ru-Ir"]["n_matched_units"]),
         "phototoxicity_matched_units": int(pi_multi),
         "reconciles_prior_audit": reconciliation,
+        "ligand_key_sensitivity": {
+            "strict_same_doi_units": {k: v["n_same_doi"] for k, v in matched["potency"].items()},
+            "loose_same_doi_units": {k: v["n_same_doi"] for k, v in matched_loose["potency"].items()},
+            "rows_without_a_main_fragment": int(long["ligand_main_fragment"].isna().sum()),
+            "note": "the loose key roughly doubles the matched data and is the only way to get any "
+            "Ru-Ir pair, but those pairs differ in ancillary ligands as well as the metal",
+        },
         "statements": [
-            "Only {}/10 metal pairs have any within-ligand potency comparison, and Ru-Ir has "
-            "{} matched units. Any 'Ru vs Ir' substitution claim is a between-ligand comparison "
-            "and cannot be paired.".format(len(nonempty_pairs), pot_pairs["Ru-Ir"]["n_matched_units"]),
+            "Under the strict key only {}/10 metal pairs have a within-ligand potency comparison, "
+            "and Ru-Ir has {} matched units: the two largest cohorts share no fully-specified "
+            "complex. The loose key (largest organic fragment) recovers {} Ru-Ir units, but those "
+            "complexes differ in ancillary ligands too, so they are not a single-variable swap.".format(
+                len(nonempty_pairs), pot_pairs["Ru-Ir"]["n_matched_units"], matched_loose["potency"]["Ru-Ir"]["n_matched_units"]
+            ),
             "The paired potency evidence is {}.".format(
                 "; ".join(
                     "{}: {} units, {:.0%} same DOI and duration".format(
@@ -705,10 +759,24 @@ def build_audit(
         "cohorts": cohorts,
         "filters": filters,
         "matched_pairs": {
-            "definition": "unit = (ligand_canonical, cell_line_key); a unit is matched for a metal "
-            "pair when both metals have a non-censored measurement in the dedup table",
+            "definition": "unit = (ligand, cell_line_key); a unit is matched for a metal pair when "
+            "both metals have a non-censored measurement in the dedup table",
+            "primary_key": "ligand_canonical (whole canonical mixture; a match means only the metal changed)",
+            "secondary_key": "ligand_main_fragment (largest organic fragment; ancillary ligands may differ)",
             "by_endpoint": matched,
+            "by_endpoint_loose_ligand_key": matched_loose,
             "totals": matched_totals,
+            "strict_vs_loose": {
+                "strict_same_doi_units_by_pair": {
+                    k: v["n_same_doi"] for k, v in matched["potency"].items()
+                },
+                "loose_same_doi_units_by_pair": {
+                    k: v["n_same_doi"] for k, v in matched_loose["potency"].items()
+                },
+                "note": "the loose key recovers pairs where the ancillary ligands differ, so it is "
+                "not a single-variable metal swap; use it as a sensitivity analysis, not the "
+                "primary estimand",
+            },
         },
         "cell_line_normalization": {
             "n_raw": len(raw_names),

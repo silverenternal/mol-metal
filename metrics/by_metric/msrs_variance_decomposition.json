@@ -3,13 +3,13 @@
   "version": "1.0",
   "framework": "MSRS \u2014 Metal Substitution Response Surface",
   "level": "L2 structural",
-  "generated_utc": "2026-10-18T04:28:23+00:00",
+  "generated_utc": "2026-10-18T04:34:33+00:00",
   "provenance": {
     "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
-    "dedup_sha256": "c51775f095aded1b918ea69614ecc35a0de00c86ffbb03384514dcb4a337b585",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
     "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
     "script": "molmetal/scripts/msrs_variance_decomposition.py",
-    "git_commit": "d2a3bf75d5f05e660ef2a337c04ad0c345558c87",
+    "git_commit": "9d68ac865a23e7c4ae8079d9d1c2cc9afe664d6e",
     "argv": [
       "/home/hugo/codes/mol-metal/.venv/bin/python"
     ]
@@ -564,9 +564,411 @@
         "detected": false
       }
     },
-    "power_note": "A 5% variance share is below the detection limit of every pair: at n=269 the minimum detectable share at 80% power is 0.2567. So 'not detected' means 'share is below the minimum detectable value', never 'share is below 5%'. The criterion is therefore applied to the CI bounds, and the paper must quote the detection limit next to any null result.",
+    "power_note": "A 5% variance share is below the detection limit of every pair: the smallest estimable minimum detectable share at 80% power is 0.2567. So 'not detected' means 'share is below the minimum detectable value', never 'share is below 5%'. The criterion is therefore applied to the CI bounds, and the paper must quote the detection limit next to any null result.",
     "second_half_of_kill_criterion": "L3 top-1 regret improvement vs global-best-metal (MSRS-3/6, not measured here)",
     "verdict": "interaction is established on Ru-Os and undetermined on Ir-Rh; the undetermined pairs have a minimum detectable share of Ir-Rh=0.4165 and their null result is a power statement, not evidence of absence"
+  },
+  "sensitivity_loose_ligand_key": {
+    "estimand": "same largest organic fragment, ancillary ligands free to differ",
+    "interaction": {
+      "potency": {
+        "Ru-Ir": {
+          "pair": "Ru-Ir",
+          "status": "OK",
+          "n_units": 258,
+          "n_ligands": 83,
+          "mean_delta": 0.1171,
+          "median_delta": 0.0,
+          "sd_delta_units": 0.4403,
+          "sd_delta_per_ligand": 0.5478,
+          "sign_rate_positive": 0.4922,
+          "noise_var": 0.068895,
+          "noise_sd": 0.2625,
+          "interaction_var": 0.125003,
+          "interaction_share": 0.6447,
+          "interaction_share_ci95_clustered_bootstrap": [
+            0.4776,
+            0.7366
+          ],
+          "F_vs_noise": 2.814,
+          "p_one_sided_F": 4.628357867091503e-19,
+          "min_detectable_share_80pct_power": 0.2525,
+          "detected": true,
+          "test_caveats": [
+            "the F-test treats units as independent; ligands contribute several units, so it is anti-conservative. Quote the clustered bootstrap interval.",
+            "the noise floor is estimated, not known; for Rh (4 replicate groups) it is barely constrained and the test has almost no power to reject."
+          ]
+        },
+        "Ru-Rh": {
+          "pair": "Ru-Rh",
+          "status": "OK",
+          "n_units": 85,
+          "n_ligands": 41,
+          "mean_delta": 0.1698,
+          "median_delta": 0.0513,
+          "sd_delta_units": 0.565,
+          "sd_delta_per_ligand": 0.5267,
+          "sign_rate_positive": 0.5647,
+          "noise_var": 0.190914,
+          "noise_sd": 0.4369,
+          "interaction_var": 0.128329,
+          "interaction_share": 0.402,
+          "interaction_share_ci95_clustered_bootstrap": [
+            0.0,
+            0.6155
+          ],
+          "F_vs_noise": 1.672,
+          "p_one_sided_F": 0.0010289101903337115,
+          "min_detectable_share_80pct_power": 0.3515,
+          "detected": false,
+          "test_caveats": [
+            "the F-test treats units as independent; ligands contribute several units, so it is anti-conservative. Quote the clustered bootstrap interval.",
+            "the noise floor is estimated, not known; for Rh (4 replicate groups) it is barely constrained and the test has almost no power to reject."
+          ]
+        },
+        "Ru-Os": {
+          "pair": "Ru-Os",
+          "status": "OK",
+          "n_units": 242,
+          "n_ligands": 72,
+          "mean_delta": 0.1002,
+          "median_delta": 0.017,
+          "sd_delta_units": 0.4166,
+          "sd_delta_per_ligand": 0.3724,
+          "sign_rate_positive": 0.5124,
+          "noise_var": 0.051241,
+          "noise_sd": 0.2264,
+          "interaction_var": 0.122316,
+          "interaction_share": 0.7048,
+          "interaction_share_ci95_clustered_bootstrap": [
+            0.5774,
+            0.7786
+          ],
+          "F_vs_noise": 3.387,
+          "p_one_sided_F": 3.6055388456318956e-23,
+          "min_detectable_share_80pct_power": 0.2629,
+          "detected": true,
+          "test_caveats": [
+            "the F-test treats units as independent; ligands contribute several units, so it is anti-conservative. Quote the clustered bootstrap interval.",
+            "the noise floor is estimated, not known; for Rh (4 replicate groups) it is barely constrained and the test has almost no power to reject."
+          ]
+        },
+        "Ru-Re": {
+          "pair": "Ru-Re",
+          "status": "INSUFFICIENT",
+          "n_units": 1,
+          "min_required": 30
+        },
+        "Ir-Rh": {
+          "pair": "Ir-Rh",
+          "status": "OK",
+          "n_units": 105,
+          "n_ligands": 54,
+          "mean_delta": -0.0191,
+          "median_delta": -0.0235,
+          "sd_delta_units": 0.3937,
+          "sd_delta_per_ligand": 0.3765,
+          "sign_rate_positive": 0.4,
+          "noise_var": 0.161363,
+          "noise_sd": 0.4017,
+          "interaction_var": 0.0,
+          "interaction_share": 0.0,
+          "interaction_share_ci95_clustered_bootstrap": [
+            0.0,
+            0.304
+          ],
+          "F_vs_noise": 0.961,
+          "p_one_sided_F": 0.5785009336031172,
+          "min_detectable_share_80pct_power": 0.4228,
+          "detected": false,
+          "test_caveats": [
+            "the F-test treats units as independent; ligands contribute several units, so it is anti-conservative. Quote the clustered bootstrap interval.",
+            "the noise floor is estimated, not known; for Rh (4 replicate groups) it is barely constrained and the test has almost no power to reject."
+          ]
+        },
+        "Ir-Os": {
+          "pair": "Ir-Os",
+          "status": "INSUFFICIENT",
+          "n_units": 21,
+          "min_required": 30
+        },
+        "Ir-Re": {
+          "pair": "Ir-Re",
+          "status": "INSUFFICIENT",
+          "n_units": 4,
+          "min_required": 30
+        },
+        "Rh-Os": {
+          "pair": "Rh-Os",
+          "status": "INSUFFICIENT",
+          "n_units": 21,
+          "min_required": 30
+        },
+        "Rh-Re": {
+          "pair": "Rh-Re",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        },
+        "Os-Re": {
+          "pair": "Os-Re",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        }
+      },
+      "phototoxicity": {
+        "Ru-Ir": {
+          "pair": "Ru-Ir",
+          "status": "INSUFFICIENT",
+          "n_units": 15,
+          "min_required": 30
+        },
+        "Ru-Rh": {
+          "pair": "Ru-Rh",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        },
+        "Ru-Os": {
+          "pair": "Ru-Os",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        },
+        "Ru-Re": {
+          "pair": "Ru-Re",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        },
+        "Ir-Rh": {
+          "pair": "Ir-Rh",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        },
+        "Ir-Os": {
+          "pair": "Ir-Os",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        },
+        "Ir-Re": {
+          "pair": "Ir-Re",
+          "status": "INSUFFICIENT",
+          "n_units": 2,
+          "min_required": 30
+        },
+        "Rh-Os": {
+          "pair": "Rh-Os",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        },
+        "Rh-Re": {
+          "pair": "Rh-Re",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        },
+        "Os-Re": {
+          "pair": "Os-Re",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        }
+      },
+      "cisplatin_ratio": {
+        "Ru-Ir": {
+          "pair": "Ru-Ir",
+          "status": "OK",
+          "n_units": 87,
+          "n_ligands": 34,
+          "mean_delta": 0.184,
+          "median_delta": 0.0218,
+          "sd_delta_units": 0.3343,
+          "sd_delta_per_ligand": 0.6068,
+          "sign_rate_positive": 0.5517,
+          "noise_var": 0.081088,
+          "noise_sd": 0.2848,
+          "interaction_var": 0.03066,
+          "interaction_share": 0.2744,
+          "interaction_share_ci95_clustered_bootstrap": [
+            0.0,
+            0.5705
+          ],
+          "F_vs_noise": 1.378,
+          "p_one_sided_F": 0.0449672130801168,
+          "min_detectable_share_80pct_power": 0.38,
+          "detected": false,
+          "test_caveats": [
+            "the F-test treats units as independent; ligands contribute several units, so it is anti-conservative. Quote the clustered bootstrap interval.",
+            "the noise floor is estimated, not known; for Rh (4 replicate groups) it is barely constrained and the test has almost no power to reject."
+          ]
+        },
+        "Ru-Rh": {
+          "pair": "Ru-Rh",
+          "status": "OK",
+          "n_units": 34,
+          "n_ligands": 17,
+          "mean_delta": 0.3066,
+          "median_delta": 0.0851,
+          "sd_delta_units": 0.441,
+          "sd_delta_per_ligand": 0.5741,
+          "sign_rate_positive": 0.6471,
+          "noise_var": 0.184155,
+          "noise_sd": 0.4291,
+          "interaction_var": 0.010315,
+          "interaction_share": 0.053,
+          "interaction_share_ci95_clustered_bootstrap": [
+            0.0,
+            0.4068
+          ],
+          "F_vs_noise": 1.056,
+          "p_one_sided_F": 0.4014873509576396,
+          "min_detectable_share_80pct_power": 0.4948,
+          "detected": false,
+          "test_caveats": [
+            "the F-test treats units as independent; ligands contribute several units, so it is anti-conservative. Quote the clustered bootstrap interval.",
+            "the noise floor is estimated, not known; for Rh (4 replicate groups) it is barely constrained and the test has almost no power to reject."
+          ]
+        },
+        "Ru-Os": {
+          "pair": "Ru-Os",
+          "status": "OK",
+          "n_units": 63,
+          "n_ligands": 20,
+          "mean_delta": -0.0093,
+          "median_delta": -0.0435,
+          "sd_delta_units": 0.4126,
+          "sd_delta_per_ligand": 0.33,
+          "sign_rate_positive": 0.4444,
+          "noise_var": 0.042464,
+          "noise_sd": 0.2061,
+          "interaction_var": 0.127807,
+          "interaction_share": 0.7506,
+          "interaction_share_ci95_clustered_bootstrap": [
+            0.4799,
+            0.8407
+          ],
+          "F_vs_noise": 4.01,
+          "p_one_sided_F": 7.82366216717384e-11,
+          "min_detectable_share_80pct_power": 0.4253,
+          "detected": true,
+          "test_caveats": [
+            "the F-test treats units as independent; ligands contribute several units, so it is anti-conservative. Quote the clustered bootstrap interval.",
+            "the noise floor is estimated, not known; for Rh (4 replicate groups) it is barely constrained and the test has almost no power to reject."
+          ]
+        },
+        "Ru-Re": {
+          "pair": "Ru-Re",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        },
+        "Ir-Rh": {
+          "pair": "Ir-Rh",
+          "status": "INSUFFICIENT",
+          "n_units": 27,
+          "min_required": 30
+        },
+        "Ir-Os": {
+          "pair": "Ir-Os",
+          "status": "INSUFFICIENT",
+          "n_units": 1,
+          "min_required": 30
+        },
+        "Ir-Re": {
+          "pair": "Ir-Re",
+          "status": "INSUFFICIENT",
+          "n_units": 4,
+          "min_required": 30
+        },
+        "Rh-Os": {
+          "pair": "Rh-Os",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        },
+        "Rh-Re": {
+          "pair": "Rh-Re",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        },
+        "Os-Re": {
+          "pair": "Os-Re",
+          "status": "INSUFFICIENT",
+          "n_units": 0,
+          "min_required": 30
+        }
+      }
+    },
+    "decision": {
+      "kill_threshold_interaction_share": 0.05,
+      "estimable_pairs": [
+        "Ir-Rh",
+        "Ru-Ir",
+        "Ru-Os",
+        "Ru-Rh"
+      ],
+      "pairs_interaction_established": [
+        "Ru-Ir",
+        "Ru-Os"
+      ],
+      "pairs_interaction_killed": [],
+      "pairs_undetermined": [
+        "Ir-Rh",
+        "Ru-Rh"
+      ],
+      "pair_detail": {
+        "Ru-Ir": {
+          "n_units": 258,
+          "interaction_share": 0.6447,
+          "ci95": [
+            0.4776,
+            0.7366
+          ],
+          "min_detectable_share_80pct_power": 0.2525,
+          "detected": true
+        },
+        "Ru-Rh": {
+          "n_units": 85,
+          "interaction_share": 0.402,
+          "ci95": [
+            0.0,
+            0.6155
+          ],
+          "min_detectable_share_80pct_power": 0.3515,
+          "detected": false
+        },
+        "Ru-Os": {
+          "n_units": 242,
+          "interaction_share": 0.7048,
+          "ci95": [
+            0.5774,
+            0.7786
+          ],
+          "min_detectable_share_80pct_power": 0.2629,
+          "detected": true
+        },
+        "Ir-Rh": {
+          "n_units": 105,
+          "interaction_share": 0.0,
+          "ci95": [
+            0.0,
+            0.304
+          ],
+          "min_detectable_share_80pct_power": 0.4228,
+          "detected": false
+        }
+      },
+      "power_note": "A 5% variance share is below the detection limit of every pair: the smallest estimable minimum detectable share at 80% power is 0.2525. So 'not detected' means 'share is below the minimum detectable value', never 'share is below 5%'. The criterion is therefore applied to the CI bounds, and the paper must quote the detection limit next to any null result.",
+      "second_half_of_kill_criterion": "L3 top-1 regret improvement vs global-best-metal (MSRS-3/6, not measured here)",
+      "verdict": "interaction is established on Ru-Ir, Ru-Os and undetermined on Ir-Rh, Ru-Rh; the undetermined pairs have a minimum detectable share of Ir-Rh=0.4228, Ru-Rh=0.3515 and their null result is a power statement, not evidence of absence"
+    },
+    "why": "the strict key requires the whole complex to match, which leaves Ru-Ir with no pair at all; the loose key buys those pairs but is not a single-variable metal swap, so it is reported as a sensitivity analysis and never as the primary result"
   },
   "design_facts": {
     "metal_nested_in_doi": "110 of 1,801 potency DOIs contain >1 metal (2,217 of 21,406 units, 10.4%). The full-cohort metal R^2 is therefore mostly a between-paper contrast; only the matched subcohort identifies a within-paper metal effect.",
