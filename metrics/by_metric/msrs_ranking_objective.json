@@ -1,0 +1,162 @@
+{
+  "artifact": "msrs_ranking_objective",
+  "version": "1.0",
+  "requires_dual_split": true,
+  "generated_utc": "2026-10-18T16:12:02+00:00",
+  "provenance": {
+    "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_ranking_objective.py",
+    "git_commit": "511444ec50c3da124ce8e1be24c3eac7c0eb8cb5",
+    "ligand_spec_hash": "sha256:453f77bb3ea233ee7b6666b72d9277a7849f901cd0b756dba828a898217f824b"
+  },
+  "design": {
+    "rows": 21404,
+    "n_cohorts": 20621,
+    "features": "ECFP4(ligand_canonical) | metal state (4) | coordination",
+    "ligand_source": "ligand_canonical",
+    "ligand_block": "ECFP4(ligand_canonical), 2048 bits",
+    "objectives": {
+      "regression": "y",
+      "centered": "y - mean(y | cohort, training folds); singleton cohorts weight 0",
+      "pair_delta": "y_b - y_a for ordered within-cohort metal pairs"
+    },
+    "coverage": {
+      "rows": 21404,
+      "has_donor": 0.9944,
+      "has_geometry": 0.8013,
+      "unique_smiles": 5861
+    },
+    "baseline_full_regret": 0.1198,
+    "alpha": 0.05,
+    "correction": "Holm over the objectives tested per split"
+  },
+  "splits": {
+    "fragment_grouped": {
+      "summary": {
+        "global_best": {
+          "mean_regret": 0.1199,
+          "top1_accuracy": 0.5755,
+          "n_cohorts": 424
+        },
+        "regression": {
+          "mean_regret": 0.1199,
+          "top1_accuracy": 0.5684,
+          "n_cohorts": 424
+        },
+        "centered": {
+          "mean_regret": 0.093,
+          "top1_accuracy": 0.6439,
+          "n_cohorts": 424
+        }
+      },
+      "clustered_tests": {
+        "regression": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.004,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.1965,
+          "p_one_sided_doi": 0.5775632245600855,
+          "bootstrap_ci95_doi": [
+            -0.0421,
+            0.039
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 0.577563
+        },
+        "centered": {
+          "n_dois": 61,
+          "mean_regret_delta": 0.0348,
+          "median_regret_delta": 0.0,
+          "t_doi": 1.9188,
+          "p_one_sided_doi": 0.029886980153850457,
+          "bootstrap_ci95_doi": [
+            0.0006,
+            0.0731
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 0.059774
+        }
+      }
+    },
+    "canonical_grouped": {
+      "summary": {
+        "global_best": {
+          "mean_regret": 0.1242,
+          "top1_accuracy": 0.566,
+          "n_cohorts": 424
+        },
+        "regression": {
+          "mean_regret": 0.1187,
+          "top1_accuracy": 0.566,
+          "n_cohorts": 424
+        },
+        "centered": {
+          "mean_regret": 0.0939,
+          "top1_accuracy": 0.6533,
+          "n_cohorts": 424
+        },
+        "pair_delta": {
+          "mean_regret": 0.2236,
+          "top1_accuracy": 0.375,
+          "n_cohorts": 424
+        }
+      },
+      "clustered_tests": {
+        "regression": {
+          "n_dois": 61,
+          "mean_regret_delta": 0.0023,
+          "median_regret_delta": 0.0,
+          "t_doi": 0.1152,
+          "p_one_sided_doi": 0.45433490084496075,
+          "bootstrap_ci95_doi": [
+            -0.0366,
+            0.0455
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 0.90867
+        },
+        "centered": {
+          "n_dois": 61,
+          "mean_regret_delta": 0.0177,
+          "median_regret_delta": 0.0,
+          "t_doi": 0.7619,
+          "p_one_sided_doi": 0.22455514460110823,
+          "bootstrap_ci95_doi": [
+            -0.0302,
+            0.0624
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 0.673665
+        },
+        "pair_delta": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0854,
+          "median_regret_delta": -0.0055,
+          "t_doi": -3.3053,
+          "p_one_sided_doi": 0.9991976719792518,
+          "bootstrap_ci95_doi": [
+            -0.1376,
+            -0.0401
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 0.999198
+        }
+      }
+    }
+  },
+  "best_arm": "centered",
+  "headline": {
+    "split": "canonical_grouped",
+    "arm": "centered",
+    "mean_regret": 0.0939,
+    "p_holm_vs_global_best": 0.673665
+  },
+  "verdict": "NEGATIVE",
+  "reading": "canonical 分组最佳目标 centered：全量 regret 0.0939（基线 0.1198），Holm p=0.6737。pair_delta 只在 canonical 分组跑（成本最高）；它若不胜过 centered，说明「相对强度」这一层就够，不必显式建模金属对。"
+}

@@ -427,6 +427,33 @@
         "why_it_matters": "点预测精度与队列内金属排序是两件事。完整配合物特征提升了『这个配合物多强』，但没有提升『同一队列里哪个金属最好』——后者要求的是金属之间的差分信号。决策层的问题不是表征太弱，而是训练目标（回归 log IC50）与决策目标（队列内 argmin）不一致。",
         "do_not": "不要再假设『特征更强 → 推荐更准』。任何决策层改动必须在全量 cohort 上直接测 top-1 regret，并且与同折 global_best 对比。",
         "next": "把排序目标显式化（pairwise/listwise 或 within-cohort centering）再试；见 FIX-E3。"
+      },
+      {
+        "id": "NEG-18",
+        "title": "队列内中心化把 regret 降到 0.0939，但 61 个 DOI 簇下不显著；显式金属对建模显著更差",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_ranking_objective.json",
+          "canonical_grouped": {
+            "global_best": 0.1242,
+            "regression": 0.1187,
+            "centered": 0.0939,
+            "pair_delta": 0.2236
+          },
+          "fragment_grouped": {
+            "global_best": 0.1199,
+            "centered": 0.093
+          },
+          "centered_holm_p": {
+            "fragment": 0.0598,
+            "canonical": 0.6737
+          },
+          "pair_delta_p_one": 0.9992
+        },
+        "what_was_tested": "FIX-E3 预注册：固定联合表征（L1+L2+L3），只改训练目标。regression / within-cohort centering / ordered metal-pair delta 三臂，全量 424 cohort，DOI 聚类 + Holm。",
+        "result": "centered 是全项目第一个在 regret 与 top-1 上同时大幅超过 global_best 的打分器（0.0939 vs 0.1242；0.653 vs 0.566），但 Holm p 在 fragment 分组 0.0598、canonical 分组 0.6737，未过 0.05。pair_delta 反向：regret 0.2236，p_one≈1.0，说明逐对差分在这份数据上放大了噪声。",
+        "why_it_matters": "这不是『方法无效』，而是『在 61 个 DOI 簇上无法把 0.03 的效应与论文间异质性分开』。诚实结论：centered 是当前最强候选，但按预注册判据它仍是 NEGATIVE，不能写成已解决。",
+        "do_not": "不要在同一份数据上换检验方法直到显著；也不要把 fragment 分组的 raw p=0.0299 当结果报。确认需要独立证据（新的 DOI 簇 / 时间切分 / 外部队列），见 FIX-E4。",
+        "next": "FIX-E4：用时间切分或留出 DOI 做一次独立确认，预注册同一判据。"
       }
     ],
     "reusable_assets": {
@@ -2794,15 +2821,83 @@
       "title": "决策目标对齐：队列内中心化 / pairwise 排序，替代纯回归",
       "layer": "评估",
       "priority": "P0",
-      "status": "PENDING",
+      "status": "DONE-NEGATIVE",
       "gpu": "none",
       "wall": "1 天",
       "why": "NEG-17：完整配合物把回归 R2 从 0.4368 抬到 0.5012，但队列内 top-1 regret 从 0.1212 恶化到 0.1314。回归目标学的是绝对活性，决策要的是同一队列内的金属排序，两者不是一回事。",
       "method": "三个臂，同折同特征（FIX-L1 完整配合物）：(a) 现状回归；(b) within-cohort centering —— 训练标签减去该 cohort 的金属均值，预测时只比较队列内偏移；(c) pairwise —— 同 cohort 内金属对的 Δy 作为目标。统一在全量 cohort 上测 top-1 regret 与 DOI 聚类 p。",
-      "deliverable": "metrics/by_metric/msrs_ranking_objective.json",
+      "deliverable": "molmetal/scripts/msrs_ranking_objective.py + metrics/by_metric/msrs_ranking_objective.json",
       "acceptance": "至少一个臂的全量 regret < 0.1198 且 DOI 聚类 Holm p<0.05；否则记 NEGATIVE 并停止在该方向加码。",
       "depends_on": [
         "FIX-E2"
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_ranking_objective.json",
+        "fragment_grouped": {
+          "global_best": {
+            "regret": 0.1199,
+            "top1": 0.5755
+          },
+          "regression": {
+            "regret": 0.1199,
+            "top1": 0.5684
+          },
+          "centered": {
+            "regret": 0.093,
+            "top1": 0.6439
+          }
+        },
+        "canonical_grouped": {
+          "global_best": {
+            "regret": 0.1242,
+            "top1": 0.566
+          },
+          "regression": {
+            "regret": 0.1187,
+            "top1": 0.566
+          },
+          "centered": {
+            "regret": 0.0939,
+            "top1": 0.6533
+          },
+          "pair_delta": {
+            "regret": 0.2236,
+            "top1": 0.375
+          }
+        },
+        "clustered_p": {
+          "centered_fragment": {
+            "raw": 0.0299,
+            "holm": 0.0598
+          },
+          "centered_canonical": {
+            "raw": 0.2246,
+            "holm": 0.6737
+          },
+          "pair_delta_canonical": {
+            "raw": 0.9992,
+            "holm": 0.9992
+          }
+        },
+        "verdict": "NEGATIVE — 未过预注册门槛（Holm p<0.05）",
+        "finding": "within-cohort centering 在两个分组上方向一致且幅度大（regret 0.0939 vs 0.1242；top-1 0.653 vs 0.566），fragment 分组 raw p=0.0299 但 Holm 0.0598，canonical 分组 p=0.22。61 个 DOI 簇对 0.03 的效应检验力不足。pair_delta 显著更差（delta -0.085，p≈1.0），显式金属对建模在这份数据上是负收益。"
+      },
+      "acceptance_met": "no — 预注册判据为全量 regret<0.1198 且 Holm p<0.05；regret 达标但 Holm 未达"
+    },
+    {
+      "id": "FIX-E4",
+      "title": "独立确认：按 DOI 分组的 5 折 CV，检验 centered 的增益是否跨论文成立",
+      "layer": "评估",
+      "priority": "P0",
+      "status": "PENDING",
+      "gpu": "none",
+      "wall": "0.5 天",
+      "why": "NEG-18：centered 在 424 个 cohort 上把 regret 从 0.1242 降到 0.0939、top-1 从 0.566 抬到 0.653，但 DOI 聚类 Holm p 只有 0.0598（fragment）/0.6737（canonical）。聚类检验只修正方差，不检验『换一批论文还能不能用』。",
+      "method": "GroupKFold(5) 按 doi 分组（同一篇论文的行只能落在同一折），重跑 regression / centered / global_best 三臂；判据仍是全量 regret < 0.1198 且 Holm p<0.05。这是分布外测试，不是同一份数据的再分析。",
+      "deliverable": "metrics/by_metric/msrs_ranking_confirmation.json",
+      "acceptance": "centered 在 DOI-grouped 5 折下仍满足 regret<0.1198 且 Holm p<0.05；否则 NEGATIVE，centered 只能作为候选而非结论。",
+      "depends_on": [
+        "FIX-E3"
       ],
       "result": null
     },
@@ -2913,6 +3008,7 @@
         "FIX-L5",
         "FIX-E2",
         "FIX-E3",
+        "FIX-E4",
         "FIX-M1",
         "FIX-P2",
         "FIX-P3",
