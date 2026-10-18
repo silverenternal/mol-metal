@@ -256,7 +256,60 @@
         "do_not": "不要用 loose 队列做『同一化合物换金属』的因果陈述；strict 才是单变量。",
         "artifact": "metrics/by_metric/msrs_recommendation.json"
       }
-    ]
+    ],
+    "reusable_assets": {
+      "_note": "仓库里已有、但当前响应面没用上的代码/数据资产。status: USED / UNUSED / EXHAUSTED / NEGATIVE。",
+      "rdkit_2d_extended.py": {
+        "what": "32 维 RDKit 2D 描述符（前 12 维与 Wf-49 冻结集 bit-for-bit 一致）",
+        "status": "UNUSED",
+        "goes_to": "AUD-F1"
+      },
+      "build_172d_features.py": {
+        "what": "12 RDKit + 32 Multi-PH + 128 PLL = 172 维；可全量重建",
+        "status": "PARTIAL",
+        "goes_to": "AUD-F2"
+      },
+      "features_172d_5metal.npz": {
+        "what": "1000×172，`--max-rows` 采样，只覆盖 5 金属的一小部分",
+        "status": "PARTIAL",
+        "goes_to": "AUD-F2"
+      },
+      "metal_graph.py": {
+        "what": "METAL_FEAT_DIM=18 / RICH_METAL_DIM=25 / CHEM_METAL_DIM=3；Δo 与 redox 电位 BLOCKED-pending-source",
+        "status": "NEGATIVE",
+        "goes_to": "AUD-F3"
+      },
+      "transition_metals_30.csv": {
+        "what": "30 个过渡金属 row/group/oxidation_state/coordination_geometry",
+        "status": "UNUSED",
+        "goes_to": "AUD-F3（仅作新金属扩展的元数据，不作方差杠杆）"
+      },
+      "metal_aware_dmpnn.py": {
+        "what": "metal_injection none/readout/message + FiLM + LowRankAdapter",
+        "status": "EXHAUSTED",
+        "goes_to": "NEG-6（注入位置不是瓶颈）"
+      },
+      "collate_multimetal.py": {
+        "what": "只 collate metal_ids，不 collate metal_feats",
+        "status": "UNUSED",
+        "goes_to": "AUD-M2（若池化模型需要 metal 状态向量）"
+      },
+      "dmpnn_cache.py": {
+        "what": "cache key 只含 SMILES，不含特征 schema",
+        "status": "BUG",
+        "goes_to": "AUD-F4"
+      },
+      "measurements.parquet": {
+        "what": "26,801 potency / 14,309 RI / 2,158 PI，含 ox/charge/counterion/time/doi/year/is_cancer_line",
+        "status": "USED",
+        "goes_to": "全部"
+      },
+      "measurements_dedup.parquet": {
+        "what": "按 (ligand, metal, cell, time, doi) 折叠，带 n_exact / all_censored",
+        "status": "USED",
+        "goes_to": "AUD-D3"
+      }
+    }
   },
   "framework": {
     "name": "MSRS — Metal Substitution Response Surface",
