@@ -705,9 +705,20 @@ def main(argv: Iterable[str] | None = None) -> int:
     manifest["sources"] = cache.sources()
     manifest["missing_total"] = total_missing
     manifest["optional_absent_total"] = total_absent
-    (args.out_dir / "manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
-    )
+
+    manifest_path = args.out_dir / "manifest.json"
+    if manifest_path.exists():
+        # Keep the old timestamp when nothing but the clock changed, so a
+        # rebuild is byte-identical and does not dirty the working tree.
+        try:
+            old = json.loads(manifest_path.read_text())
+        except json.JSONDecodeError:
+            old = {}
+        if {k: v for k, v in old.items() if k != "generated_utc"} == {
+            k: v for k, v in manifest.items() if k != "generated_utc"
+        }:
+            manifest["generated_utc"] = old.get("generated_utc", now)
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
     print(
         f"[paper_metric_tables] wrote {len(manifest['tables'])} tables to "
         f"{_display_path(args.out_dir)} (missing cells: {total_missing})"

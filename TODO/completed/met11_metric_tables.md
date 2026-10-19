@@ -3,7 +3,7 @@
 **日期**：2026-10-19
 **状态**：DONE / PASS
 **脚本**：`molmetal/scripts/paper_metric_tables.py`
-**测试**：`molmetal/tests/test_paper_metric_tables.py`（18 个，全过）
+**测试**：`molmetal/tests/test_paper_metric_tables.py`（19 个，全过）
 **产物**：`metrics/paper_tables/`（10 张表 × md + csv + `manifest.json`）
 
 ## 为什么做
@@ -33,8 +33,8 @@
     `target_effect`），记入 `optional_absent`，不阻断 `--strict`。
 - **manifest**：每张表的行数、列名、输出路径、缺失清单，以及 **11 个源
   artifact 的 sha256**。表是快照，sha256 是判断快照是否过期的唯一依据。
-- **表体不含时间戳**：重建 10 张表只在 `manifest.json` 的 `generated_utc`
-  上产生 diff，md/csv 逐字节稳定，便于 review。
+- **重建幂等**：表体不含时间戳；`manifest.json` 只在内容真的变化时才更新
+  `generated_utc`。同样的 artifact 重建两次，输出逐字节相同。
 
 ## MEASURED
 

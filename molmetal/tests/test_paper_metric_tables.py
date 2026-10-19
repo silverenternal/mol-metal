@@ -171,6 +171,23 @@ def test_strict_exits_zero_when_only_optional_cells_are_absent(tmp_path: Path, m
     assert pmt.main(["--out-dir", str(tmp_path / "out"), "--strict"]) == 0
 
 
+def test_a_rebuild_is_byte_identical(tmp_path: Path, monkeypatch):
+    (tmp_path / "by_metric").mkdir()
+    (tmp_path / "by_metric" / "x.json").write_text(json.dumps({"a": 1}))
+
+    def build() -> pmt.Table:
+        return pmt.Table("T_x", "X", ["Value"], rows=[pmt.Row("a", [pmt.P("x.json", "/a")])])
+
+    monkeypatch.setattr(pmt, "TABLES", (build,))
+    monkeypatch.setattr(pmt, "METRICS_DIR", tmp_path / "by_metric")
+    out = tmp_path / "out"
+    assert pmt.main(["--out-dir", str(out)]) == 0
+    first = {p.name: p.read_bytes() for p in out.iterdir()}
+    assert pmt.main(["--out-dir", str(out)]) == 0
+    second = {p.name: p.read_bytes() for p in out.iterdir()}
+    assert first == second
+
+
 def test_only_filters_by_id_prefix(tmp_path: Path, monkeypatch):
     (tmp_path / "by_metric").mkdir()
     (tmp_path / "by_metric" / "x.json").write_text(json.dumps({"a": 1}))
