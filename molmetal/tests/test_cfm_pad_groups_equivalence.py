@@ -124,9 +124,16 @@ def test_measurements_underlying_the_optimisation_are_recorded():
     repo = Path(__file__).resolve().parent.parent.parent
     blocker = repo / "cfm_todo.json"
     assert blocker.is_file(), f"cfm_todo.json disappeared from {repo}"
-    d = json.loads(blocker.read_text())
-    ids = {b.get("id") for b in d.get("blockers", [])}
-    assert "BLK-C-PERF" in ids, (
-        "BLK-C-PERF is missing from cfm_todo.json; the launch-bound finding "
-        "and its measured scaling numbers must stay on disk"
+    # 2026-10-19 — cfm_todo.json was rewritten without a top-level "blockers"
+    # array (verified: the key is absent at HEAD, so the old assertion failed
+    # on a schema change, not on a lost measurement).  The finding now lives
+    # in docs/CFM_STATUS_2026_10_12.md.  Check BOTH homes so the measurement
+    # cannot be dropped by a future re-schema.
+    text = blocker.read_text()
+    status_doc = repo / "docs" / "CFM_STATUS_2026_10_12.md"
+    assert status_doc.is_file(), f"{status_doc} disappeared from {repo}"
+    assert "BLK-C-PERF" in text or "BLK-C-PERF" in status_doc.read_text(), (
+        "BLK-C-PERF is in neither cfm_todo.json nor "
+        "docs/CFM_STATUS_2026_10_12.md; the launch-bound finding and its "
+        "measured scaling numbers must stay on disk"
     )

@@ -6066,6 +6066,38 @@ def evaluate_synthesis_certificates(
     return n_certified, n_attempted, records
 
 
+def _carry_metal_index(tpl: "AtomCloud") -> torch.Tensor:
+    """Copy the template's metal index onto a generated cloud.
+
+    Wf-A88 (2026-10-19).  ``generate_clouds_from_noise`` copies
+    ``atomic_numbers`` verbatim and re-draws only the coordinates, so the
+    metal sits at the same index in the sample as in the template.  Dropping
+    the field is not cosmetic: :meth:`BondAwareDecoder._featurise` reads it
+    to fill ``angle_to_metal`` and ``d_to_metal``, so a cloud without it
+    decodes with BOTH columns pinned at 0.0 — 2 of the 11 pair features —
+    while the same decoder sees their real values on every training cloud.
+    The sampled decode was therefore a strictly easier problem than the one
+    the head was fitted on, and nothing in the log said so.
+
+    Precedence: an explicit template index wins (including the ``-1``
+    sentinel — the loader said "no metal"); when the field is absent we fall
+    back to the first atom whose Z is in ``_TARGET_METALS``; otherwise
+    ``NO_METAL_INDEX``.
+    """
+    idx = getattr(tpl, "metal_atom_index", None)
+    n = int(tpl.atomic_numbers.shape[0])
+    if idx is not None:
+        value = int(idx.item()) if torch.is_tensor(idx) else int(idx)
+        if 0 <= value < n:
+            return torch.tensor(value, dtype=torch.long)
+        if value == AtomCloud.NO_METAL_INDEX:
+            return torch.tensor(AtomCloud.NO_METAL_INDEX, dtype=torch.long)
+    for k, z in enumerate(tpl.atomic_numbers.tolist()):
+        if int(z) in _TARGET_METALS:
+            return torch.tensor(k, dtype=torch.long)
+    return torch.tensor(AtomCloud.NO_METAL_INDEX, dtype=torch.long)
+
+
 def generate_clouds_from_noise(
     model: "CFMJointModel",
     templates: Sequence[AtomCloud],
@@ -6224,6 +6256,7 @@ def generate_clouds_from_noise(
                 AtomCloud(
                     positions=x1[i, :n_i].detach().cpu(),
                     atomic_numbers=g.atomic_numbers.cpu(),
+                    metal_atom_index=_carry_metal_index(g),
                 )
             )
         del x0, x1, z_b, node_mask
@@ -6292,6 +6325,7 @@ def generate_clouds_from_noise(
                     AtomCloud(
                         positions=x1[i].detach().cpu(),
                         atomic_numbers=group[i].atomic_numbers.cpu(),
+                        metal_atom_index=_carry_metal_index(group[i]),
                     )
                 )
     if was_training:
@@ -8101,6 +8135,61 @@ def build_cloud_from_csv_row(
     return (AtomCloud(**common_kwargs), status)
 
 
+def _stratified_row_sample(
+    rows: "List[Tuple[str, str, Optional[int]]]",
+    n_target: int,
+    seed: int,
+) -> "List[Tuple[str, str, Optional[int]]]":
+    """Take ``n_target`` rows with every metal represented proportionally.
+
+    Wf-A89 (2026-10-19).  The corpus CSV is grouped by metal — MEASURED on
+    ``metalcytotox_5metal_multitask_v3.csv``: the first 512 train rows are
+    ALL Ru, and the full split is Ru 12,471 / Ir 3,444 / Os 834 / Rh 696 /
+    Re 692.  The pre-fix selector was ``rows[:n_clouds]``, so every capped
+    run trained a "5-metal" model on ONE metal: ``--n-train 64`` was 64 Ru
+    complexes, and the val cohort was Ru-only too.  Nothing in the log said
+    so; the run still printed the 5-metal config.
+
+    Selection is a seeded per-metal shuffle plus a largest-remainder quota,
+    then a seeded shuffle of the merged list, so the sample is proportional
+    and the batch order is not metal-homogeneous.  Deterministic in
+    ``seed``; a full run (``n_clouds`` >= corpus size) never calls this, so
+    archived uncapped runs keep their exact row order.
+    """
+    import random as _random
+
+    if n_target >= len(rows) or n_target <= 0:
+        return list(rows)
+    rng = _random.Random(int(seed))
+    groups: "Dict[str, List[Tuple[str, str, Optional[int]]]]" = {}
+    for row in rows:
+        key = str(_parse_metal_string(str(row[1] or ""))[0] or "")
+        groups.setdefault(key, []).append(row)
+    keys = sorted(groups)
+    for k in keys:
+        rng.shuffle(groups[k])
+    total = len(rows)
+    quotas = {k: (n_target * len(groups[k])) // total for k in keys}
+    rem = n_target - sum(quotas.values())
+    if rem > 0:
+        # Largest remainder first; the key breaks ties so the result is
+        # reproducible rather than dependent on dict insertion order.
+        order = sorted(
+            keys,
+            key=lambda k: (
+                -((n_target * len(groups[k])) / total - quotas[k]),
+                k,
+            ),
+        )
+        for k in order[:rem]:
+            quotas[k] += 1
+    picked: "List[Tuple[str, str, Optional[int]]]" = []
+    for k in keys:
+        picked.extend(groups[k][: quotas[k]])
+    rng.shuffle(picked)
+    return picked
+
+
 def build_csv_cohort(
     csv_path: str,
     split: str = "train",
@@ -8190,7 +8279,10 @@ def build_csv_cohort(
                 ox_val = None
             rows.append((smi, metal_str, ox_val))
     if n_clouds is not None:
-        rows = rows[: int(n_clouds)]
+        # Wf-A89 — proportional, seeded selection.  The CSV is grouped by
+        # metal, so a plain prefix is a single-metal cohort (see
+        # _stratified_row_sample).
+        rows = _stratified_row_sample(rows, int(n_clouds), seed)
 
     clouds: List[AtomCloud] = []
     n_parse_fail = 0
@@ -8221,6 +8313,19 @@ def build_csv_cohort(
         if cloud.bonds is not None and cloud.bonds.numel() > 0:
             n_bond_graph_built += 1
         clouds.append(cloud)
+    # Wf-A89 — the metal MIX, not just the "inserted" count.  A cohort of 64
+    # Ru complexes reported "64 inserted" and looked like a 5-metal run; the
+    # count cannot distinguish one metal from five.
+    _Z_TO_METAL = {v: k for k, v in _METAL_SYMBOL_TO_Z.items()}
+    _mix: Dict[str, int] = {}
+    for _c in clouds:
+        _mi = getattr(_c, "metal_atom_index", None)
+        if _mi is None or int(_mi.item()) < 0:
+            _mix["none"] = _mix.get("none", 0) + 1
+            continue
+        _z = int(_c.atomic_numbers[int(_mi.item())].item())
+        _sym = _Z_TO_METAL.get(_z, str(_z))
+        _mix[_sym] = _mix.get(_sym, 0) + 1
     print(
         f"[cfm-cohort] csv={Path(csv_path).name} split={split}: "
         f"{len(clouds)} cloud(s) built from {len(rows)} row(s); "
@@ -8229,6 +8334,7 @@ def build_csv_cohort(
         f"{n_skipped_empty_smiles} empty-smiles; "
         f"metal: {len(clouds) - n_no_metal - n_metal_unsupported} inserted / "
         f"{n_no_metal} no-metal / {n_metal_unsupported} unsupported; "
+        f"mix={dict(sorted(_mix.items()))}; "
         f"bond graph: {n_bond_graph_built} populated"
     )
     if not clouds:
