@@ -1,11 +1,11 @@
 {
-  "schema": 4,
+  "schema": 5,
   "created": "2026-10-14",
   "updated": "2026-10-19",
-  "rewritten": "2026-10-19 — 第四次重建。用户指令：按『强指标论文』重做指标分析，并删除已完成的 work package。旧版全文归档到 todo.archive_2026_10_19.json（一字未删）。新版只保留未完成项，新增 MET-1..MET-11。",
-  "supersedes": "todo.archive_2026_10_19.json (187 KB, 43 个 work package 的完整历史)",
-  "purpose": "把项目从『继续做实验』切换为『把已有结果补齐到强指标论文的评测标准』。判据、缺口与目标值见 docs/METRIC_GAP_ANALYSIS.md。",
-  "how_to_read": "先读 metric_gap_analysis 的四个桶（strong / medium / weak / missing），再读 work_packages。每个数字必须能追到 artifact；目标值标 PROPOSED，不是测量值。",
+  "rewritten": "2026-10-19 — 测量阶段（MET-1..MET-11 + FIX-L4）全部关闭，计划切换为强化阶段（STR-1..STR-7）。",
+  "supersedes": "MET-1..MET-11 + FIX-L4；结果见 closed_work 与 TODO/completed/。",
+  "purpose": "测量已经做完，结论是：只有『金属感知承重』和『表示增益』是硬的正结果，DOI R²（0.3321）、Δ 符号（0.6193）、Δ 幅度（MAE 0.5089）都未达标。本计划只做一件事：用现有数据把 DOI R² 与 Δ 符号抬到门槛，抬不动就按边界论文定稿。",
+  "how_to_read": "先读 north_star.decision_rule，再看 work_packages 的 gate/kill。每个包都有明确的 PASS 门槛和 KILL 条件；没有门槛的实验不许跑。expected_gain_projected 一律是 PROJECTED，不是测量值。",
   "rules": {
     "truth": "§5.2 诚实负结果不隐藏; MISSING 必须显式标注, 不静默丢弃。",
     "artifacts": "§5.5 supersede-don't-delete; 每个数字必须有 producer 脚本 + 落盘 JSON。",
@@ -17,15 +17,15 @@
   },
   "north_star": {
     "thesis": "把『换金属』当作可量化的干预 do(m)，估计 Δ(m→m′ | ligand, cell-line)，并转成可执行的金属推荐（含弃权）。",
-    "current_goal": "发一篇强指标论文：主表每一条都满足『同协议外部基线 / 5-seed / ≥2 种划分 / 效应量+CI / 可追溯』中的至少 4 条。",
-    "strong_metric_criteria": {
-      "S1": "同协议外部基线（同数据、同划分、同指标）",
-      "S2": "5 seed 均值±标准差",
-      "S3": "≥2 种互不重叠的划分（ligand + DOI/scaffold/temporal）",
-      "S4": "效应量 + 置信区间 + 多重校正（DOI 聚类、Holm）",
-      "S5": "每个数字可追到 artifact 字段"
+    "current_goal": "强化阶段：DOI R² 0.3321 → ≥0.36（配对 ΔR² 的 95% CI 下界 >0），Δ 符号 0.6193 → ≥0.65（DOI 聚类 CI 下界 >0.55）。两条都达成 → 强指标路径；任一失败 → 边界论文，停止建模投入。",
+    "immediate_goal": "先跑 Wave S1（STR-1 五 seed OOF、STR-2 四协议融合臂）。这两项最便宜，且直接回答『单 seed 的 Δ 是不是噪声』与『融合臂在 DOI 上是否成立』。S1 结果出来后再决定是否投入 S2 的删失标签与特征扩展。",
+    "decision_rule": {
+      "strong_metric_path": "DOI R² ≥0.36 且配对 CI 下界 >0 且 Δ 符号 ≥0.65 且 CI 下界 >0.55",
+      "boundary_paper": "上述任一不满足；停止 STR-5/STR-6，按『严格协议下的边界』定稿",
+      "no_p_hacking": "门槛在看到结果之前写死；同一假设只允许一次主检验，重跑只做 seed 稳健性",
+      "mde_context": "DOI R² 的边际 MDE 0.0643，但配对 ΔR² 的 CI 宽度约 0.03，所以 +0.02 的配对增益可检测；判据用配对 CI，不用绝对 R² 的边际 CI。"
     },
-    "immediate_goal": "MET-1..MET-11 与 FIX-L4 全部关闭：MET-1/6/8/10/11 PASS，MET-2/3/4/5/9 NEGATIVE，MET-7 与 FIX-L4 均为「已测量」的 BLOCKED-PENDING-DATA。唯一未完成项是 MSRS-8 论文整合，仍冻结，需用户显式同意；解冻后从 metrics/paper_tables/ 取数，外部验证与细胞特征只能写成「未完成」。"
+    "paper_state": "MSRS-8 仍冻结；解冻需用户显式同意，且只允许从 metrics/paper_tables/ 取数。"
   },
   "current_position": {
     "measured_facts": [
@@ -49,43 +49,57 @@
       "生成侧指标（MET-9，66 个存活样本）：yield 0.344、uniqueness 1.0；max Tanimoto 仅 0.108–0.185，平均 novelty 0.8517（<0.90），但 max T<0.9 比例 1.000；IntDiv1 0.8526 vs 同 n 训练子样本 0.8234（+0.0292，与 m7 的 0.869@n=37 符号相反）；SA 6.4423（>4.5）、QED 0.0944；金属合规 1.0（Ir18/Ru16/Rh15/Re13/Os4）；对接 BLOCKED（1/10 pocket，run died）。",
       "指标表自动化（MET-11）：9 张表 / 98 行 / 10 个源 artifact，0 MISSING、1 optional absent（delta_mae_doi 无 target_effect）；每格带 JSON pointer，manifest 记 10 个源文件 sha256；18 个测试全过。",
       "指标表自动化（MET-11）：10 张表 / 106 行 / 11 个源 artifact，0 MISSING、1 optional absent（delta_mae_doi 无 target_effect）；每格带 JSON pointer，manifest 记源文件 sha256；18 个测试全过。",
-      "细胞系特征（FIX-L4）：磁盘上 0 个 CCLE/GDSC/DepMap/Cellosaurus 文件；711 个细胞系中 46 个即可覆盖 80% 的行（top10 53.37%、top50 81.17%），539 个系各 <10 行只占 6.21%；细胞身份本身值 0.0629（ligand）/ 0.0442（DOI）R²。"
+      "细胞系特征（FIX-L4）：磁盘上 0 个 CCLE/GDSC/DepMap/Cellosaurus 文件；711 个细胞系中 46 个即可覆盖 80% 的行（top10 53.37%、top50 81.17%），539 个系各 <10 行只占 6.21%；细胞身份本身值 0.0629（ligand）/ 0.0442（DOI）R²。",
+      "删失信息（2026-10-19 检查）：potency 26,801 行中右删失 5,015 行、左删失 9 行；右删失 bound 中位 100 µM（log10=2.0），全部有 bound，97.9% 有 ligand_main_fragment。这 5,015 行目前被丢弃，是现有语料里唯一未使用的信息。",
+      "ChEMBL 29 本地库（.data/molmetal/chembl_29/chembl_29_sqlite/chembl_29.db，21 GB，2,084,724 结构 / 18,635,916 活性）实测含 0 个金属结构：`%Pt%`、`%Ru%`、`%Fe%`、`%[Na%` 全部为 0。该 dump 已被去金属化，不能用来补外部队列。"
     ]
   },
   "metric_gap_analysis": {
     "doc": "docs/METRIC_GAP_ANALYSIS.md",
-    "strong": [
+    "phase": "测量阶段已完成（2026-10-19）；下面是强化计划的输入，不是待办清单。",
+    "positive": [
       {
-        "metric": "MoleculeNet mean (D-MPNN, 5-seed)",
-        "value": 0.8149,
-        "artifact": "moleculenet_auc_dmpnn_5seed.json"
+        "metric": "metal-blind drop (ligand)",
+        "value": 0.0683,
+        "ci95": [
+          0.0516,
+          0.0903
+        ],
+        "p": 0.0099,
+        "artifact": "msrs_metal_ablation.json"
       },
       {
-        "metric": "Docking RMSD median",
-        "value": 0.6578,
-        "unit": "angstrom",
-        "artifact": "docked_pose_rmsd.json"
+        "metric": "metal-blind drop (DOI)",
+        "value": 0.0693,
+        "ci95": [
+          0.0509,
+          0.0884
+        ],
+        "artifact": "msrs_metal_ablation.json"
       },
       {
-        "metric": "decode_ratio (real)",
-        "value": 0.998,
-        "artifact": "decode_ratio.json"
+        "metric": "representation gain (ligand)",
+        "value": 0.1002,
+        "artifact": "msrs_complex_features.json"
       },
       {
-        "metric": "Ir within-metal AUC",
-        "value": "0.8295-0.8597",
-        "baseline": 0.73,
-        "artifact": "metal_activity_transfer_seed_stability.json"
+        "metric": "representation gain (DOI)",
+        "value": 0.0423,
+        "ci95": [
+          0.0271,
+          0.0571
+        ],
+        "mde": 0.019,
+        "artifact": "msrs_power.json"
       },
       {
-        "metric": "Ru within-metal AUC",
-        "value": "0.8128-0.8363",
-        "baseline": 0.81,
-        "note": "tie; tie-rule sensitive",
-        "artifact": "metal_activity_transfer_tie_sensitivity.json"
+        "metric": "canonical R2, stack 5-seed",
+        "value": 0.5828,
+        "std": 0.0102,
+        "artifact": "msrs_seed_stability.json"
       },
       {
-        "metric": "Phototoxicity switch diff (Ru-Ir)",
+        "metric": "phototoxicity switch diff (Ru-Ir)",
         "value": 0.1251,
         "ci95": [
           0.0395,
@@ -94,1187 +108,387 @@
         "artifact": "msrs_phototoxicity.json"
       },
       {
-        "metric": "Complex representation gain",
-        "value": 0.1002,
-        "unit": "R2",
-        "p": 2.259e-20,
-        "artifact": "msrs_complex_features.json"
+        "metric": "Ir within-metal AUC",
+        "value": "0.8295-0.8597",
+        "artifact": "metal_activity_transfer_seed_stability.json"
       }
     ],
-    "medium": [
+    "negative": [
       {
-        "metric": "MSRS R2 canonical",
-        "value": "0.5828 +/- 0.0102",
-        "why_not_strong": "5-seed now OK; still ligand splits only and no same-protocol external baseline",
-        "artifact": "msrs_hybrid.json",
-        "satisfies": [
-          "S2",
-          "S4",
-          "S5"
-        ]
+        "metric": "R2 DOI",
+        "value": 0.3321,
+        "target": 0.5,
+        "artifact": "msrs_generalization.json"
       },
       {
-        "metric": "MSRS R2 fragment",
-        "value": "0.5137 +/- 0.0048",
-        "why_not_strong": "same",
-        "artifact": "msrs_hybrid.json",
-        "satisfies": [
-          "S2",
-          "S4",
-          "S5"
-        ]
+        "metric": "R2 scaffold / year",
+        "value": "0.4503 / 0.3739",
+        "target": 0.5,
+        "artifact": "msrs_generalization.json"
       },
       {
-        "metric": "Delta sign accuracy",
-        "value": "0.6193 [0.5085, 0.7137] (DOI)",
-        "threshold": 0.2091,
-        "why_not_strong": "sign barely above chance; MAE(delta) 0.51 vs 0.53 for a zero predictor; calibration slope 0.32",
+        "metric": "delta sign (DOI)",
+        "value": 0.6193,
+        "ci95": [
+          0.5085,
+          0.7137
+        ],
+        "target": 0.65,
         "artifact": "msrs_delta_metrics.json"
       },
       {
-        "metric": "top-1 accuracy",
-        "value": 0.566,
-        "why_not_strong": "random 0.5; 61 DOI",
-        "artifact": "msrs_hybrid_decision.json"
+        "metric": "MAE(delta)",
+        "value": 0.5089,
+        "constant_zero": 0.5299,
+        "target": 0.3,
+        "artifact": "msrs_delta_metrics.json"
       },
       {
-        "metric": "Decision regret",
-        "value": 0.1186,
-        "baseline": 0.1198,
-        "why_not_strong": "not significant",
-        "artifact": "msrs_hybrid_decision.json"
+        "metric": "decision regret (50% coverage)",
+        "value": 0.1115,
+        "baseline": 0.1067,
+        "p_holm": 1.0,
+        "target": 0.1,
+        "artifact": "msrs_decision_curve.json"
+      },
+      {
+        "metric": "conformal median width (DOI)",
+        "value": 2.0052,
+        "target": 1.0,
+        "artifact": "msrs_calibration.json"
       },
       {
         "metric": "LOMO AUC",
         "value": 0.5575,
-        "why_not_strong": "3 metal pairs only; no external baseline",
+        "target": 0.65,
         "artifact": "metal_lomo_auc_wasserstein.json"
       },
       {
-        "metric": "NCI-60 9-cell AUC",
-        "value": 0.7294,
-        "std": 0.2137,
-        "baseline": 0.81,
-        "why_not_strong": "-0.08; 2 cells n<10",
-        "artifact": "nci60_precious_9cell_auc.json"
-      },
-      {
-        "metric": "Strong model DOI R2",
-        "value": "0.3321 [0.2806, 0.3820]",
-        "why_not_strong": "this IS the generalization number; 0.5556 is interpolation only",
-        "artifact": "msrs_generalization.json",
-        "satisfies": [
-          "S3",
-          "S4",
-          "S5"
-        ]
-      },
-      {
-        "metric": "Strong model scaffold R2",
-        "value": "0.4503 [0.4102, 0.4884]",
-        "why_not_strong": "above DOI, below interpolation",
-        "artifact": "msrs_generalization.json",
-        "satisfies": [
-          "S3",
-          "S4",
-          "S5"
-        ]
-      },
-      {
-        "metric": "Strong model year R2",
-        "value": "0.3739 [0.3230, 0.4175]",
-        "why_not_strong": "temporal holdout; delta sign below chance (0.4286)",
-        "artifact": "msrs_generalization.json",
-        "satisfies": [
-          "S3",
-          "S4",
-          "S5"
-        ]
-      },
-      {
-        "metric": "Metal-state representation gain (all four protocols)",
-        "value": "+0.0392 to +0.0611 R2",
-        "why_not_strong": "consistent in sign, but the protocol is still observational",
-        "artifact": "msrs_generalization.json",
-        "satisfies": [
-          "S2",
-          "S3",
-          "S4",
-          "S5"
-        ]
+        "metric": "generation SA / novelty",
+        "value": "6.4423 / 0.8517",
+        "target": "4.5 / 0.90",
+        "artifact": "cfm_generation_metrics.json"
       }
     ],
-    "weak": [
+    "blocked": [
       {
-        "metric": "Decision regret vs global_best",
-        "value": "0.1186 vs 0.1198",
-        "problem": "Holm p=1.0",
-        "artifact": "msrs_hybrid_decision.json"
+        "metric": "external cohort",
+        "measured": "triple intersection 0",
+        "artifact": "msrs_external_dataset.json"
       },
       {
-        "metric": "Year-split delta sign",
-        "value": 0.4786,
-        "problem": "below chance",
-        "artifact": "msrs_external_validation.json"
+        "metric": "cell-line biology features",
+        "measured": "0 annotation files; 46 lines cover 80%",
+        "artifact": "msrs_cell_features.json"
       },
       {
-        "metric": "Conformal median width",
-        "value": 2.0052,
-        "unit": "log10 (DOI, global)",
-        "problem": "~101x IC50 span; coverage 0.9004 is a conformal construction, not skill",
-        "artifact": "msrs_calibration.json"
-      },
-      {
-        "metric": "Phototoxicity PI prediction",
-        "value": "OOF R2<0",
-        "problem": "descriptive only",
-        "artifact": "msrs_surface_model.json"
-      },
-      {
-        "metric": "Vina on precious metals",
-        "value": "BLOCKED",
-        "problem": "force-field parameters missing",
-        "artifact": "vina_status.json"
-      },
-      {
-        "metric": "Generated SA",
-        "value": "not measured on generated set",
-        "problem": "4.71 is the metallo_drugs cohort",
-        "artifact": "sa_score.json"
-      },
-      {
-        "metric": "Difficulty-scaled conformal",
-        "value": "coverage 0.8789 / Winkler 2.8587",
-        "problem": "worse than global on every proper score; sigma(x) fit on the same residuals it quantiles",
-        "artifact": "msrs_calibration.json"
-      },
-      {
-        "metric": "Conditional coverage, cohort >=2 metals",
-        "value": 0.8096,
-        "unit": "coverage",
-        "problem": "exchangeability broken by cohort structure (n=851; singletons 0.9050)",
-        "artifact": "msrs_calibration.json"
+        "metric": "docking on precious metals",
+        "measured": "1/10 pockets, run died",
+        "artifact": "cfm_vina_generated.json"
       }
     ],
-    "missing": [
-      "Decision curve (regret-coverage, net benefit)",
-      "Independent external dataset",
-      "Metal-blind ablation on the final model",
-      "Statistical power / minimum detectable effect",
-      "Generation novelty / uniqueness / same-protocol SA",
-      "Dataset card + leakage audit"
-    ],
-    "targets": [
-      {
-        "metric": "canonical R2",
-        "current": 0.5828,
-        "target": 0.6,
-        "fallback": "report 0.58 +/- std and the +0.1002 representation gain"
+    "gates": {
+      "strong_metric_path": {
+        "DOI_R2": 0.36,
+        "paired_CI_lower": ">0",
+        "delta_sign": 0.65,
+        "delta_CI_lower": 0.55
       },
-      {
-        "metric": "DOI/scaffold R2",
-        "current": "DOI 0.3321 / scaffold 0.4503 / year 0.3739",
-        "target": 0.5,
-        "fallback": "report the drop and scope every claim to interpolation"
-      },
-      {
-        "metric": "Delta sign (0.2091)",
-        "current": 0.6193,
-        "target": 0.65,
-        "fallback": "report 0.6193 [0.5085, 0.7137] as barely above chance"
-      },
-      {
-        "metric": "Delta MAE",
-        "current": 0.5089,
-        "target": 0.3,
-        "fallback": "model is 4.0% better than a zero predictor; magnitude not learnable"
-      },
-      {
-        "metric": "Decision regret",
-        "current": 0.1186,
-        "target": 0.1,
-        "fallback": "demote to boundary, not a selling point"
-      },
-      {
-        "metric": "top-1",
-        "current": 0.566,
-        "target": 0.65,
-        "fallback": "same"
-      },
-      {
-        "metric": "Conformal width",
-        "current": 2.0052,
-        "target": 1.0,
-        "fallback": "coverage 0.90 is by construction; width 2.01 log10 makes intervals a limitation, not a contribution"
-      },
-      {
-        "metric": "LOMO AUC",
-        "current": 0.5575,
-        "target": 0.65,
-        "fallback": "state unseen-metal extrapolation fails"
-      },
-      {
-        "metric": "External dataset",
-        "current": "none",
-        "target": "n>=200, R2>=0.5 or AUC>=0.75",
-        "fallback": "BLOCKED-PENDING-DATA"
-      },
-      {
-        "metric": "Generation novelty",
-        "current": "not measured",
-        "target": 0.9,
-        "fallback": "report IntDiv1 0.869"
-      },
-      {
-        "metric": "Docking success",
-        "current": "5/5 <=2A",
-        "target": ">=50% on >=20 pockets",
-        "fallback": "report the 5-pocket result"
-      }
-    ]
+      "note": "PROPOSED 门槛，写死在 STR-1..STR-5 的 gate 字段；不因结果调整。"
+    }
   },
-  "work_packages": [
+  "closed_work": [
     {
       "id": "MET-1",
-      "title": "强模型 5-seed 稳定性",
-      "layer": "评估",
-      "priority": "P0",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "1 天",
-      "why": "R² 0.5807 是单 seed 20261018 的结果。强指标论文的主表必须是 mean±std；融合权重也需要跨 seed 的稳定性证据。",
-      "method": "固定 FIX-L5 特征与 FIX-M1 GNN，seeds {0,1,2,3,4}，同一 GroupKFold(5) 同一折；每个 seed 记录 tree / gnn / blend_equal / blend_foldwise / stack_foldwise。5 seed 用配对 t 检验，不用 5 点 bootstrap（已知反保守）。",
-      "deliverable": "metrics/by_metric/msrs_seed_stability.json",
-      "acceptance": "5-seed R² std ≤0.02；blend_equal 在 ≥4/5 seed 上优于 tree；逐 seed 值与 mean±std 全部落盘。",
-      "depends_on": [
-        "FIX-M2"
-      ],
-      "result": {
-        "canonical_grouped": {
-          "lgb_tree": {
-            "r2": 0.5555,
-            "std": 0.0026,
-            "mae": 0.3855
-          },
-          "gnn_metal_state": {
-            "r2": 0.5032,
-            "std": 0.0248,
-            "mae": 0.4023,
-            "delta_vs_tree": -0.0522,
-            "p": 0.9956,
-            "n_seeds_better": 0
-          },
-          "blend_equal": {
-            "r2": 0.5759,
-            "std": 0.0116,
-            "delta_vs_tree": 0.0205,
-            "p": 0.0071
-          },
-          "blend_foldwise": {
-            "r2": 0.5775,
-            "std": 0.0101,
-            "delta_vs_tree": 0.0221,
-            "p": 0.0034
-          },
-          "stack_foldwise": {
-            "r2": 0.5828,
-            "std": 0.0102,
-            "mae": 0.3702,
-            "delta_vs_tree": 0.0273,
-            "p": 0.0016,
-            "n_seeds_better": 5
-          }
-        },
-        "fragment_grouped": {
-          "lgb_tree": {
-            "r2": 0.4832,
-            "std": 0.0018,
-            "mae": 0.4182
-          },
-          "gnn_metal_state": {
-            "r2": 0.4331,
-            "std": 0.0164,
-            "delta_vs_tree": -0.0501,
-            "p": 0.9988,
-            "n_seeds_better": 0
-          },
-          "blend_equal": {
-            "r2": 0.5071,
-            "std": 0.0075,
-            "delta_vs_tree": 0.0239,
-            "p": 0.0013
-          },
-          "blend_foldwise": {
-            "r2": 0.5101,
-            "std": 0.0055,
-            "delta_vs_tree": 0.0269,
-            "p": 0.00029
-          },
-          "stack_foldwise": {
-            "r2": 0.5137,
-            "std": 0.0048,
-            "mae": 0.4029,
-            "delta_vs_tree": 0.0304,
-            "p": 0.00011,
-            "n_seeds_better": 5
-          }
-        },
-        "design": {
-          "seeds": [
-            0,
-            1,
-            2,
-            3,
-            4
-          ],
-          "folds": "fixed GroupKFold(5) on the ligand key across seeds",
-          "statistic": "one-sided paired t over seeds",
-          "residual_corr": {
-            "canonical": 0.804,
-            "fragment": 0.82
-          }
-        },
-        "reading": "5-seed 确认单 seed 0.5807 不是运气：stack 0.5828±0.0102（canonical）/ 0.5137±0.0048（fragment），Δ+0.0273 (p=0.0016) / +0.0304 (p=1.1e-4)，5/5 seed 更好。但 GNN 单模在所有 seed、两个 split 上都差于树（−0.052/−0.050），所以只能写「融合优于单模」，不能写「D-MPNN 打赢 LightGBM」。std 只度量训练方差——折划分被固定，跨论文方差由 MET-2 回答。",
-        "artifacts": [
-          "metrics/by_metric/msrs_seed_stability.json",
-          "results/msrs_seed_stability/"
-        ]
-      },
-      "acceptance_result": "PASS (mean 0.5828 > tree 0.5555; std 0.0102 <= 0.02; 5/5 seeds better)"
+      "result": "PASS",
+      "headline": "canonical stack 0.5828 ± 0.0102；树 0.5555、D-MPNN 0.5032、blend 0.5759"
     },
     {
       "id": "MET-2",
-      "title": "强模型四协议泛化矩阵",
-      "layer": "评估",
-      "priority": "P0",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "1 天",
-      "why": "现有四协议只跑过旧特征集（random R² 0.251 / DOI 0.165 / scaffold 0.159 / year 0.178）。最强模型的跨论文性能完全未知，而配体分组会泄漏论文内一致性（FIX-M4 已演示）。",
-      "method": "同一 L5 特征与超参，四个协议：ligand-grouped / DOI-grouped / Bemis-Murcko scaffold / leave-one-year-out。报 R²、MAE、Δ 符号、regret；DOI 聚类单侧检验。",
-      "deliverable": "metrics/by_metric/msrs_final_generalization.json",
-      "acceptance": "四协议齐全；报告相对 random 的下降；DOI R² ≥0.50，否则如实记为负结果。",
-      "depends_on": [
-        "MET-1"
-      ],
-      "result": {
-        "protocols": {
-          "ligand": {
-            "ligand_blind": 0.5012,
-            "ligand_both": 0.5556,
-            "ci95": [
-              0.5358,
-              0.5744
-            ],
-            "mae": 0.3856,
-            "regret": 0.1191,
-            "top1": 0.5647
-          },
-          "doi": {
-            "ligand_blind": 0.2898,
-            "ligand_both": 0.3321,
-            "ci95": [
-              0.2806,
-              0.382
-            ],
-            "mae": 0.4786,
-            "regret": 0.1168,
-            "top1": 0.56,
-            "p_vs_global": 0.565
-          },
-          "scaffold": {
-            "ligand_blind": 0.3892,
-            "ligand_both": 0.4503,
-            "ci95": [
-              0.4102,
-              0.4884
-            ],
-            "mae": 0.434,
-            "regret": 0.1116,
-            "top1": 0.5576,
-            "p_vs_global": 0.282
-          },
-          "year": {
-            "ligand_blind": 0.3347,
-            "ligand_both": 0.3739,
-            "ci95": [
-              0.323,
-              0.4175
-            ],
-            "mae": 0.4721,
-            "regret": 0.1585,
-            "top1": 0.4144,
-            "p_vs_global": 0.982,
-            "n_rows": 6499,
-            "folds": 16
-          }
-        },
-        "representation_gain": {
-          "ligand": 0.0544,
-          "doi": 0.0423,
-          "scaffold": 0.0611,
-          "year": 0.0392
-        },
-        "pair_sign_at_0.2091": {
-          "ligand": 0.6147,
-          "doi": 0.6193,
-          "scaffold": 0.6422,
-          "year": 0.4286
-        },
-        "reading": "R² 从 ligand 0.5556 掉到 DOI 0.3321（−0.2235，CI 不重叠）、scaffold 0.4503、year 0.3739 → 0.58 是内插。但表示增益在四个协议上全为正（+0.0544/+0.0423/+0.0611/+0.0392），是第一条跨全部划分稳定的效应。决策层仍为零，且在 year 上显著为负（regret 0.1585 vs 0.1172，p=0.982）→ 不要跨时间推荐。Δ 符号在 DOI 留出下不退化（0.6193 vs 0.6147），但在 year 下崩到 0.4286（低于随机）。",
-        "artifacts": [
-          "metrics/by_metric/msrs_generalization.json"
-        ]
-      },
-      "acceptance_result": "FAILED (R2 drop 0.2235 > 0.05; DOI 0.3321 vs ligand 0.5556)"
+      "result": "NEGATIVE",
+      "headline": "四协议 R²：ligand 0.5556 / DOI 0.3321 / scaffold 0.4503 / year 0.3739"
     },
     {
       "id": "MET-3",
-      "title": "Δ 效应量指标",
-      "layer": "评估",
-      "priority": "P0",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "0.5 天",
-      "why": "现在只有 Δ 符号准确率 0.6152，没有 MAE(Δ)、没有校准斜率、没有按金属对/效应量分层的 CI。符号对不代表幅度对。",
-      "method": "对 1284 个匹配对（阈值 0.2091 时 712 对）计算 MAE(Δ)、RMSE(Δ)、calibration slope/intercept、per-metal-pair、按 |Δ| 分层；DOI 聚类 bootstrap 2000 次。",
-      "deliverable": "metrics/by_metric/msrs_delta_metrics.json",
-      "acceptance": "DOI split 上符号 ≥0.65 且 CI 下界 >0.55；MAE(Δ) 与校准斜率落盘；达不到则记为边界。",
-      "depends_on": [
-        "MET-2"
-      ],
-      "result": {
-        "pairs": 427,
-        "dois": 61,
-        "at_threshold_0.2091": {
-          "ligand": {
-            "n": 218,
-            "sign": 0.6147,
-            "ci": [
-              0.5067,
-              0.7071
-            ],
-            "mae": 0.4988,
-            "slope": 0.8533,
-            "r2": 0.0351
-          },
-          "doi": {
-            "n": 218,
-            "sign": 0.6193,
-            "ci": [
-              0.5085,
-              0.7137
-            ],
-            "mae": 0.5089,
-            "slope": 0.3201,
-            "r2": 0.0039
-          },
-          "scaffold": {
-            "n": 218,
-            "sign": 0.6422,
-            "ci": [
-              0.5385,
-              0.7281
-            ],
-            "mae": 0.5114,
-            "slope": 0.2363,
-            "r2": 0.0025
-          },
-          "year": {
-            "n": 49,
-            "sign": 0.4286,
-            "ci": [
-              0.22,
-              0.6842
-            ],
-            "mae": 0.5484,
-            "slope": -1.1365,
-            "r2": 0.1187
-          }
-        },
-        "zero_predictor": {
-          "mae": 0.5299,
-          "model_mae": 0.5089,
-          "improvement": 0.04
-        },
-        "mean_abs_delta": {
-          "observed": 0.5299,
-          "predicted": 0.0985
-        },
-        "by_abs_delta_doi": {
-          "[0,0.1)": 0.3717,
-          "[0.1,0.2091)": 0.5208,
-          "[0.2091,0.5)": 0.562,
-          "[0.5,1)": 0.6867,
-          "[1,inf)": 0.7143
-        },
-        "reading": "DOI 留出下符号 0.6193（CI 下界 0.5085），未过 0.65/0.55 门槛。更关键的是幅度：校准斜率 0.32、R² 0.0039，预测 |Δ| 恒在 0.10–0.13 而观测 |Δ| 是 0.53；MAE 0.5089 vs 恒零预测器 0.5299，只好 4.0%。模型只学到很弱的方向，没有幅度。符号主要由大效应驱动（|Δ|<0.1 时 0.37，|Δ|≥0.5 时 0.69–0.71）。year 斜率 −1.14。金属对只有 Os-Ru / Ir-Rh / Rh-Ru 三种，不能外推。",
-        "artifacts": [
-          "metrics/by_metric/msrs_delta_metrics.json",
-          "results/msrs_generalization/oof.npz"
-        ]
-      },
-      "acceptance_result": "FAILED (sign 0.6193 < 0.65; CI lower 0.5085 < 0.55)"
+      "result": "NEGATIVE",
+      "headline": "Δ 符号 0.6193 [0.5085,0.7137]；MAE(Δ) 0.5089（恒零 0.5299）；斜率 0.32、R² 0.0039"
     },
     {
       "id": "MET-4",
-      "title": "回归校准与区间",
-      "layer": "评估",
-      "priority": "P0",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "0.5 天",
-      "why": "conformal coverage 0.9044 达标，但中位宽度 2.2083 log10（约 162 倍 IC50 跨度），不可操作；且没有 interval score、PIT、校准斜率。",
-      "method": "split conformal + 难度模型，报 coverage / mean+median width / Winkler interval score / PIT histogram / 点预测校准斜率与截距；按金属与队列大小分层。",
-      "deliverable": "metrics/by_metric/msrs_calibration.json",
-      "acceptance": "coverage 0.90±0.02；中位宽度 ≤1.0 log10；interval score 与 PIT 落盘。",
-      "depends_on": [
-        "MET-2"
-      ],
-      "result": {
-        "artifact": "metrics/by_metric/msrs_calibration.json",
-        "n_evaluated": 21404,
-        "point_calibration": {
-          "doi": {
-            "slope": 0.9256,
-            "intercept": 0.0493,
-            "r2_point": 0.3321,
-            "r2_fit": 0.3363,
-            "rmse": 0.6231,
-            "gaussian_width_90": 2.0466
-          },
-          "ligand": {
-            "slope": 1.074,
-            "intercept": -0.0765,
-            "r2_point": 0.5556,
-            "r2_fit": 0.5583,
-            "rmse": 0.5082,
-            "gaussian_width_90": 1.672
-          }
-        },
-        "intervals": {
-          "doi": {
-            "global": {
-              "coverage": 0.9004,
-              "median_width": 2.0052,
-              "winkler": 2.7362,
-              "pit_ks": 0.0012
-            },
-            "metal": {
-              "coverage": 0.9002,
-              "median_width": 2.0231,
-              "winkler": 2.7328,
-              "pit_ks": 0.0019
-            },
-            "difficulty": {
-              "coverage": 0.8789,
-              "median_width": 1.9195,
-              "winkler": 2.8587,
-              "pit_ks": 0.0439
-            }
-          },
-          "ligand": {
-            "global": {
-              "coverage": 0.9003,
-              "median_width": 1.6515,
-              "winkler": 2.2437,
-              "pit_ks": 0.0012
-            },
-            "metal": {
-              "coverage": 0.9003,
-              "median_width": 1.6278,
-              "winkler": 2.2405,
-              "pit_ks": 0.0019
-            },
-            "difficulty": {
-              "coverage": 0.8835,
-              "median_width": 1.6389,
-              "winkler": 2.3525,
-              "pit_ks": 0.0455
-            }
-          }
-        },
-        "conditional_coverage": {
-          "doi": {
-            "cohort_1_metal": 0.905,
-            "cohort_ge2_metals": 0.8096,
-            "n_ge2": 851
-          },
-          "ligand": {
-            "cohort_1_metal": 0.9063,
-            "cohort_ge2_metals": 0.7673,
-            "n_ge2": 851
-          }
-        },
-        "reading": "DOI 的 difficulty 变体 coverage 0.8789（偏离 0.90 超 0.02）、中位宽 1.9195 log10，两项判据都没过。global 的 0.9004 是 conformal 构造保证，不是能力；真正的问题是宽度——残差 SD 推出的高斯 90% 宽是 2.0466，conformal 实测 2.0052，说明模型就是有这么不准。金属 Mondrian 只把各组覆盖率拉平，平均宽度仍是 2.01。学出来的 difficulty 函数是负收益：宽度降 4.3%，coverage 掉 2.2 点、Winkler 变差、PIT KS 涨 36 倍（σ(x) 与取分位数用同一批残差）。条件覆盖在同队列多金属的 851 行上掉到 0.81（ligand 0.77），是交换性被队列结构打破的直接证据。DOI 的下降不是尺度问题：slope 0.9256、r2_fit−r2_point=0.004。",
-        "artifacts": [
-          "metrics/by_metric/msrs_calibration.json",
-          "results/msrs_generalization/oof.npz"
-        ]
-      },
-      "acceptance_result": "FAILED (doi/difficulty coverage 0.8789 vs 0.90±0.02; median width 1.9195 > 1.0 log10)"
+      "result": "NEGATIVE",
+      "headline": "DOI conformal coverage 0.9004、中位宽 2.0052；difficulty 0.8789/1.9195；多金属队列覆盖 0.8096"
     },
     {
       "id": "MET-5",
-      "title": "决策效用曲线",
-      "layer": "决策",
-      "priority": "P1",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "0.5 天",
-      "why": "单点 regret 0.1186 vs 0.1198 不显著，但没有 coverage-risk 曲线、net benefit、NDCG@k 分层；无法回答『在多大覆盖下有用』。",
-      "method": "按置信度排序，画 regret-coverage、precision-coverage、net benefit；比较 global_best / cell_best / model；DOI 聚类 + Holm。",
-      "deliverable": "metrics/by_metric/msrs_decision_curve.json",
-      "acceptance": "≥50% 覆盖下 regret ≤0.10 且 Holm p<0.05；否则记为边界，不作为卖点。",
-      "depends_on": [
-        "MET-4"
-      ],
-      "result": {
-        "artifact": "metrics/by_metric/msrs_decision_curve.json",
-        "n_cohorts": 425,
-        "coverages": [
-          0.1,
-          0.2,
-          0.3,
-          0.4,
-          0.5,
-          0.6,
-          0.7,
-          0.8,
-          0.9,
-          1.0
-        ],
-        "doi_at_0.5": {
-          "model_regret": 0.1115,
-          "global_best_regret": 0.1067,
-          "delta_clustered": -0.0143,
-          "p": 0.6996,
-          "p_holm": 1.0
-        },
-        "ligand_at_0.5": {
-          "model_regret": 0.1181,
-          "global_best_regret": 0.1394,
-          "delta_clustered": 0.0095,
-          "p": 0.3764,
-          "p_holm": 1.0
-        },
-        "full_coverage_doi": {
-          "model_regret": 0.1168,
-          "global_best_regret": 0.1195,
-          "top1_model": 0.56,
-          "top1_global": 0.5765,
-          "ndcg_model": 0.9368,
-          "ndcg_global": 0.9358,
-          "hit_model": 0.8047,
-          "hit_global": 0.7976,
-          "nb_0.5_model": 0.6094,
-          "nb_0.5_global": 0.5952
-        },
-        "confidence": {
-          "model_margin_mean": 0.1107,
-          "global_margin_mean": 0.2801,
-          "cell_margin_mean": 0.3122
-        },
-        "reading": "50% 覆盖下 DOI regret 0.1115 > 0.10、Holm p=1.0，判据失败。弃权不买准确率：q=0.3–0.5 时模型反而比 global_best 差（−0.035/−0.023/−0.014）。置信度 margin 只有 0.111 log10（baseline 0.280），说明模型也无法给自身确定性排序。ligand 低覆盖的「优势」是按模型 margin 选子集导致 baseline 退化的选择效应，Holm 后全为 1.0。按 DOI 聚类后 regret 差翻号（池化 +0.0027 → 聚类 −0.0034）。net benefit 只多 1.4 个点，且全部来自 hit rate +0.7pp；p_t≥0.8 时转负。DOI 上 top-1 反而更低（0.560 vs 0.577）。",
-        "artifacts": [
-          "metrics/by_metric/msrs_decision_curve.json",
-          "results/msrs_generalization/oof.npz"
-        ]
-      },
-      "acceptance_result": "FAILED (doi q=0.5 regret 0.1115 > 0.10; Holm p=1.0)"
+      "result": "NEGATIVE",
+      "headline": "50% 覆盖 regret 0.1115 vs 0.1067，Holm p=1.0；margin 0.111 vs baseline 0.280"
     },
     {
       "id": "MET-6",
-      "title": "金属感知消融",
-      "layer": "机制",
-      "priority": "P0",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "1 天",
-      "why": "必须证明最终模型的增益来自金属信息，而不是配体或细胞系。现有只有树模型上的 ligand vs +metal，没有最终模型的 metal-blind 与 permutation null。",
-      "method": "最终模型逐块去掉 metal one-hot / state / coordination / complex；再做 metal-label permutation null（100 次，同折同 seed）。",
-      "deliverable": "metrics/by_metric/msrs_metal_ablation.json",
-      "acceptance": "metal-blind 掉 R² ≥0.05；permutation p<0.01；逐块增量与 CI 落盘。",
-      "depends_on": [
-        "MET-1"
-      ],
-      "result": {
-        "artifact": "metrics/by_metric/msrs_metal_ablation.json",
-        "protocols": [
-          "ligand",
-          "doi"
-        ],
-        "arms_ligand": {
-          "full": 0.5556,
-          "no_metal_code": 0.5492,
-          "no_state": 0.5284,
-          "no_coord": 0.5426,
-          "no_state_coord": 0.5012,
-          "metal_blind": 0.4873,
-          "no_complex": 0.4186,
-          "cell_blind": 0.4927,
-          "ligand_only": 0.42
-        },
-        "arms_doi": {
-          "full": 0.3321,
-          "no_metal_code": 0.3268,
-          "no_state": 0.3125,
-          "no_coord": 0.3218,
-          "no_state_coord": 0.2898,
-          "metal_blind": 0.2628,
-          "no_complex": 0.2419,
-          "cell_blind": 0.2879,
-          "ligand_only": 0.2163
-        },
-        "metal_blind_drop": {
-          "ligand": 0.0683,
-          "ci95": [
-            0.0516,
-            0.0903
-          ],
-          "doi": 0.0693,
-          "doi_ci95": [
-            0.0509,
-            0.0884
-          ]
-        },
-        "permutation": {
-          "n": 100,
-          "metal_label_p": 0.0099,
-          "metal_label_null_mean": 0.5442,
-          "metal_block_p": 0.0099,
-          "metal_block_null_gap_mean": -0.0063
-        },
-        "reading": "metal-blind 在 ligand 掉 0.0683、DOI 掉 0.0693，两个协议几乎相同，是少数跨协议不缩水的结论；置换 p=0.0099（100 次的分辨率下限）。但 cell-blind 同样掉 0.0629/0.0442，细胞系是同等量级的杠杆；金属 one-hot 本身只值 0.0064/0.0053（DOI 不显著），金属身份由 state/coord 连续描述符携带。no_coord 单独不显著。26 列金属/细胞特征单独 R²=0.4186，ECFP4 单独 0.4200，两半近似可加——池化 R² 不能读成配体结构学习能力。",
-        "artifacts": [
-          "metrics/by_metric/msrs_metal_ablation.json"
-        ]
-      },
-      "acceptance_result": "PASSED (metal_blind drop 0.0683 >= 0.05; metal_block p=0.0099 < 0.01; DOI replicates 0.0693)"
+      "result": "PASS",
+      "headline": "metal-blind −0.0683 [0.0516,0.0903]（DOI −0.0693），block p=0.0099；金属 one-hot 只值 0.0064；cell-blind 同为 −0.0629"
     },
     {
       "id": "MET-7",
-      "title": "外部独立数据集验证",
-      "layer": "外部验证",
-      "priority": "P1",
-      "status": "BLOCKED-PENDING-DATA",
-      "gpu": "none",
-      "wall": "?",
-      "why": "所有验证都是同一语料的重划分。强指标论文需要至少一个独立 cohort，否则『泛化』只是重采样。",
-      "method": "优先用 NCI-60 / PlatinAI 与 MSRS 的交集（同配体+同金属+同细胞系）做外部回归或分类；若无 ≥200 行交集，保持 BLOCKED，不硬凑。",
-      "deliverable": "metrics/by_metric/msrs_external_dataset.json",
-      "acceptance": "≥200 行；R² ≥0.5 或 AUC ≥0.75；否则 BLOCKED-PENDING-DATA。",
-      "depends_on": [
-        "MET-2"
-      ],
-      "result": {
-        "artifact": "metrics/by_metric/msrs_external_dataset.json",
-        "script": "molmetal/scripts/msrs_external_dataset.py",
-        "tests": "molmetal/tests/test_msrs_external_dataset.py (12 passed)",
-        "candidates": [
-          "PlatinAI 4cell (Pt-only, 4,078 complexes)",
-          "NCI-60 GI50 (no SMILES, no metal)"
-        ],
-        "intersection": {
-          "metal": 0,
-          "ligand_main_fragment": 144,
-          "cell_line": 3,
-          "triple_same_metal_rows": 0,
-          "complexes_with_a_shared_ligand": 909,
-          "label_cells_with_a_shared_ligand": 2727
-        },
-        "cell_lines": {
-          "MCF7": 3586,
-          "A549": 4884,
-          "A2780": 2063,
-          "A2780cis": 0
-        },
-        "nci60_usable_rows": 0,
-        "verdict": "BLOCKED-PENDING-DATA",
-        "reading": "The blocker is metal, not ligand: 144 main fragments and 3 cell lines overlap, but PlatinAI is Pt-only and MSRS has zero Pt training rows. The 909 ligand-matched Pt complexes (2,727 labels) could support an unseen-metal extrapolation study, but that is a different estimand and is not counted. NCI-60 has no SMILES and no metal column, so it cannot join at all.",
-        "artifacts": [
-          "metrics/by_metric/msrs_external_dataset.json"
-        ]
-      },
-      "acceptance_result": "BLOCKED-PENDING-DATA (measured triple intersection = 0 rows; metal sets disjoint; ligand 144 / cell 3 overlap does not rescue it)"
+      "result": "BLOCKED (measured)",
+      "headline": "三键交集 0：Pt vs 五金属不重叠；配体 144、细胞系 3 有重叠"
     },
     {
       "id": "MET-8",
-      "title": "统计功效与最小可检测效应",
-      "layer": "统计",
-      "priority": "P1",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "0.5 天",
-      "why": "61 DOI / 424 队列下，p=0.054 与 p=0.95 分别意味着什么并不清楚。没有 MDE，所有 null 都无法解释。",
-      "method": "基于观测方差与 DOI 聚类，计算 regret / R² / Δ 符号在 80% power、α=0.05 下的 MDE；反推达到目标效应所需的 DOI 数与队列数。",
-      "deliverable": "metrics/by_metric/msrs_power.json",
-      "acceptance": "每个主指标给出 MDE 与所需样本量；用于解释已有 null。",
-      "depends_on": [],
-      "result": {
-        "artifact": "metrics/by_metric/msrs_power.json",
-        "alpha": 0.05,
-        "sided": "one-sided",
-        "power": 0.8,
-        "k": 2.4865,
-        "metrics": {
-          "decision_regret_doi_full": {
-            "observed": -0.0034,
-            "sd": 0.0202,
-            "mde": 0.0503,
-            "powered": false,
-            "n_required": 13571,
-            "target": 0.1,
-            "n_for_target": 16
-          },
-          "decision_regret_doi_q0.5": {
-            "observed": -0.0143,
-            "sd": 0.0273,
-            "mde": 0.0678,
-            "powered": false,
-            "n_required": 900,
-            "target": 0.1,
-            "n_for_target": 19
-          },
-          "delta_sign_doi": {
-            "observed": 0.6193,
-            "sd": 0.0523,
-            "mde": 0.1302,
-            "powered": false,
-            "n_required": 64,
-            "target": 0.15,
-            "n_for_target": 40
-          },
-          "delta_mae_doi": {
-            "observed": 0.5089,
-            "sd": 0.0308,
-            "mde": 0.0766,
-            "powered": false,
-            "n_required": 706
-          },
-          "r2_doi": {
-            "observed": 0.3321,
-            "sd": 0.0259,
-            "mde": 0.0643,
-            "powered": true,
-            "n_required": 262
-          },
-          "representation_gain_doi": {
-            "observed": 0.0423,
-            "sd": 0.0077,
-            "mde": 0.019,
-            "powered": true,
-            "n_required": 362
-          },
-          "metal_blind_gain_doi": {
-            "observed": 0.0693,
-            "sd": 0.0096,
-            "mde": 0.0238,
-            "powered": true,
-            "n_required": 211
-          }
-        },
-        "reading": "决策层 null 不是功效不足：62 DOI 下 MDE=0.050，目标 0.10 本来可检测，真实增益 <0.05。观测到的 −0.0034 需要 13,571 个 DOI 才能检测（现有 62 的 219 倍）。Δ 符号 MDE=0.130；0.65 门槛（效应 0.15）只需 40 DOI，现有 53 足够，所以没到 0.65 是真 miss；观测 0.619（效应 0.119）需 64 DOI。MAE 改善 0.021 vs MDE 0.077，需 706 DOI，只能当描述。DOI R² 距 0.50 差 0.168 >> MDE 0.064，miss 是真的。表示增益与金属消融是仅有的两个效应远大于 MDE 的正结果。决策/符号的有效样本是 ~60 篇论文，不是 1,784。",
-        "artifacts": [
-          "metrics/by_metric/msrs_power.json"
-        ]
-      },
-      "acceptance_result": "PASSED (7 metrics with MDE + required-n; nulls classified)"
+      "result": "PASS",
+      "headline": "regret MDE 0.050（62 DOI）、符号 MDE 0.130（53 DOI）、MAE MDE 0.077；null 均为真 miss"
     },
     {
       "id": "MET-9",
-      "title": "生成侧指标补齐",
-      "layer": "生成",
-      "priority": "P2",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "1 天",
-      "why": "validity 1.0 与 decode_ratio 0.998 很强，但 novelty、生成物 SA、对接覆盖缺失或口径不一（SA 4.71 是 metallo_drugs 队列，不是生成物）。",
-      "method": "对 CFM 生成样本计算 novelty（1−max Tanimoto to train）、uniqueness、IntDiv1、SA、QED、metal compliance；对接成功率单独报，并标注贵金属力场限制。",
-      "deliverable": "metrics/by_metric/cfm_generation_metrics.json",
-      "acceptance": "novelty ≥0.90、IntDiv1 ≥0.85、SA ≤4.5、docking success ≥50%（≥20 pockets）。",
-      "depends_on": [],
-      "result": {
-        "artifact": "metrics/by_metric/cfm_generation_metrics.json",
-        "cohort": "cfm_fullcorpus_2026_10_10 epoch 10 seed 0, 192 attempts -> 66 survivors",
-        "yield_from_attempts": 0.344,
-        "parse_rate": 1.0,
-        "uniqueness": 1.0,
-        "novelty": {
-          "mean_max_tanimoto": 0.1483,
-          "min_max_tanimoto": 0.1078,
-          "max_max_tanimoto": 0.1848,
-          "mean_novelty": 0.8517,
-          "fraction_below_0.9": 1.0,
-          "fraction_below_0.7": 1.0
-        },
-        "intdiv1": {
-          "value": 0.8526,
-          "target": 0.85,
-          "n_matched_training": 0.8234,
-          "n_matched_sd": 0.0073,
-          "delta_vs_n_matched": 0.0292,
-          "canonical_m7_value": 0.869,
-          "canonical_m7_n": 37
-        },
-        "sa": {
-          "value": 6.4423,
-          "target": 4.5
-        },
-        "qed": {
-          "value": 0.0944
-        },
-        "metal_compliance": {
-          "value": 1.0,
-          "distribution": {
-            "Ir": 18,
-            "Ru": 16,
-            "Rh": 15,
-            "Re": 13,
-            "Os": 4
-          }
-        },
-        "docking": {
-          "status": "BLOCKED",
-          "reason": "INCOMPLETE_RUN_DIED",
-          "pockets_planned": 10,
-          "pockets_completed": 1
-        },
-        "verdict": "NEGATIVE",
-        "reading": "Uniqueness/novelty fraction pass on paper (all 66 max T < 0.9) but mean novelty 0.8517 is below 0.90, and max Tanimoto only 0.108-0.185 means the high novelty is partly 'structurally odd', not 'usefully novel'. IntDiv1 0.8526 beats the n-matched training subsample 0.8234 by +0.0292, but the sign flips versus the m7 tmQM reference (0.869 at n=37), so it is n-dependent and not a clean win. SA 6.4423 is far above the 4.5 target (worse than the 4.71 metallo_drugs cohort) and QED is 0.0944. Metal compliance is 1.0. Docking cannot be scored: 1 of 10 pockets before the run died, and the precious-metal force-field gap is separate and still open.",
-        "artifacts": [
-          "metrics/by_metric/cfm_generation_metrics.json"
-        ]
-      },
-      "acceptance_result": "FAILED (SA 6.4423 > 4.5; docking BLOCKED 1/10 pockets; mean novelty 0.8517 < 0.90)"
+      "result": "NEGATIVE",
+      "headline": "novelty 0.8517、SA 6.4423、QED 0.0944、对接 BLOCKED（1/10 pocket）"
     },
     {
       "id": "MET-10",
-      "title": "数据卡与泄漏审计",
-      "layer": "数据",
-      "priority": "P0",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "0.5 天",
-      "why": "强指标论文的标配；且 FIX-M4 已证明配体分组会泄漏论文内一致性。现有 docs/DATA_LEAKAGE_AUDIT.md 来自另一个 session，尚未合并。",
-      "method": "记录每个 split 的 group key、重复率、DOI 跨折率、配体跨折率、censoring 比例、去重与平票规则；合并现有审计文档。",
-      "deliverable": "docs/DATASET_CARD.md + docs/DATA_LEAKAGE_AUDIT.md",
-      "acceptance": "每个 split 有泄漏量化；论文可直接引用；平票规则与去重规则写明。",
-      "depends_on": [],
-      "result": {
-        "artifact": "metrics/by_metric/msrs_data_card.json",
-        "docs": [
-          "docs/DATASET_CARD.md",
-          "docs/DATA_LEAKAGE_AUDIT.md §8"
-        ],
-        "corpus": {
-          "rows": 21404,
-          "metals": 5,
-          "cell_lines": 711,
-          "ligands": 5861,
-          "dois": 1784,
-          "metal_in_smiles_rows": 0
-        },
-        "cross_fold_rates": {
-          "ligand": {
-            "ligand": 0.0,
-            "doi": 0.8943,
-            "scaffold": 0.7117,
-            "cell": 0.984
-          },
-          "doi": {
-            "ligand": 0.1543,
-            "doi": 0.0,
-            "scaffold": 0.4957,
-            "cell": 0.9604
-          },
-          "scaffold": {
-            "ligand": 0.0,
-            "doi": 0.6558,
-            "scaffold": 0.0,
-            "cell": 0.9776
-          },
-          "year": {
-            "ligand": 0.148,
-            "doi": 0.0,
-            "scaffold": 0.5315,
-            "cell": 0.9741
-          }
-        },
-        "duplicates": {
-          "repeated_keys": 304,
-          "rows_in_repeated": 663,
-          "conflicting_keys": 176,
-          "exact_dup_rows": 142,
-          "crossing_keys_per_protocol": 0,
-          "rows_without_time_h": 188
-        },
-        "censoring": {
-          "right": 5015,
-          "left": 9,
-          "share_of_potency": 0.187
-        },
-        "reading": "ligand 划分有 89.43% 的测试行与训练集共享 DOI，0.5556 是内插；doi 划分 DOI 交叉为 0 但有 15.43% 的测试行配体在别的论文出现过（不是泄漏，但不是冷启动）。scaffold 留出骨架但仍有 65.58% 共享论文，因此 0.4503 位于两者之间。细胞系四种协议都 96–98% 复现。重复键跨折为 0（键嵌套在分组键内）。18.7% potency 行右删失被排除，是选择偏差不是泄漏。",
-        "artifacts": [
-          "metrics/by_metric/msrs_data_card.json",
-          "data/msrs/measurements.parquet"
-        ]
-      },
-      "acceptance_result": "PASS (every split quantified; dedup and tie rules written)"
+      "result": "PASS",
+      "headline": "数据卡 + 泄漏审计：ligand 划分 89.43% 测试行共享 DOI；doi 划分 0% DOI 交叉但 15.43% 共享配体"
     },
     {
       "id": "MET-11",
-      "title": "指标表自动生成",
-      "layer": "打包",
-      "priority": "P3",
-      "status": "DONE",
-      "gpu": "none",
-      "wall": "0.5 天",
-      "why": "论文数字必须可追溯；手工表会漂移，且 §5.2 要求每个数字有 artifact 路径。",
-      "method": "从 metrics/by_metric/*.json 读字段生成 markdown/CSV 表；缺字段显式 MISSING，不静默。",
-      "deliverable": "molmetal/scripts/paper_metric_tables.py + metrics/paper_tables/",
-      "acceptance": "一条命令重建全部表；无硬编码数字；缺字段报 MISSING。",
-      "depends_on": [
-        "MET-1",
-        "MET-2",
-        "MET-3",
-        "MET-4"
-      ],
-      "result": {
-        "artifact": "metrics/paper_tables/",
-        "script": "molmetal/scripts/paper_metric_tables.py",
-        "tests": "molmetal/tests/test_paper_metric_tables.py (18 passed)",
-        "tables": 10,
-        "rows": 106,
-        "source_artifacts": 11,
-        "missing_cells": 0,
-        "optional_absent": [
-          "msrs_power.json:/metrics/delta_mae_doi/target_effect"
-        ],
-        "strict_exit": 0,
-        "reading": "Each cell is a (file, JSON pointer) pair, so the tables cannot drift from the artifacts without producing MISSING. The manifest records the sha256 of all 10 sources. What it does not do: detect a stale artifact (no freshness check), keep T1 as a single fit (it mixes seed_stability, generalization, delta_metrics and decision_curve), show differences below 4 decimals, or distinguish optional absence in the table body (only in the manifest).",
-        "artifacts": [
-          "metrics/paper_tables/manifest.json",
-          "metrics/paper_tables/T1_main_predictive.md",
-          "metrics/paper_tables/T2_generalization.md",
-          "metrics/paper_tables/T3_calibration.md",
-          "metrics/paper_tables/T4_mechanism.md",
-          "metrics/paper_tables/T5_decision.md",
-          "metrics/paper_tables/T6_power.md",
-          "metrics/paper_tables/T7_generation.md",
-          "metrics/paper_tables/T8_data.md",
-          "metrics/paper_tables/T9_seed_stability.md",
-          "metrics/paper_tables/T10_external.md"
-        ]
-      },
-      "acceptance_result": "PASSED (one command rebuilds 10 tables / 106 rows; 0 hardcoded numbers; 0 MISSING, 1 optional absent; --strict exits 0)"
+      "result": "PASS",
+      "headline": "10 张表 / 106 行 / 0 MISSING，每格带 JSON pointer"
     },
     {
       "id": "FIX-L4",
-      "title": "细胞系生物学特征（外部数据）",
-      "layer": "特征",
-      "priority": "P2",
+      "result": "BLOCKED (measured)",
+      "headline": "磁盘 0 个 CCLE/GDSC 文件；46/711 细胞系覆盖 80%；身份值 0.0629 R²"
+    }
+  ],
+  "blockers": [
+    {
+      "id": "B1",
+      "what": "外部独立 cohort",
       "status": "BLOCKED-PENDING-DATA",
-      "gpu": "none",
-      "wall": "?",
-      "why": "细胞系只有 ID 类别；739 个级别、678 个稀有系占 24.46% 的行。",
-      "method": "需要可引用的 CCLE/GDSC 表达或突变表；仓库内没有。禁止凭记忆硬编码。",
-      "deliverable": "（未开始）",
-      "acceptance": "数据来源可引用 + 覆盖率 ≥80% 的队列细胞系 + ≥ +0.005 R²；否则保持 BLOCKED。",
-      "depends_on": [
-        "FIX-L1"
-      ],
-      "result": {
-        "artifact": "metrics/by_metric/msrs_cell_features.json",
-        "script": "molmetal/scripts/msrs_cell_features.py",
-        "tests": "molmetal/tests/test_msrs_cell_features.py (12 passed)",
-        "on_disk_annotation_files": 0,
-        "n_cell_lines": 711,
-        "min_lines_for_80pct": 46,
-        "coverage": {
-          "top_10": 0.5337,
-          "top_25": 0.7108,
-          "top_50": 0.8117,
-          "top_100": 0.8913,
-          "top_200": 0.9487
-        },
-        "lines_below_10_rows": 539,
-        "share_rows_in_lines_below_10": 0.0621,
-        "identity_ceiling": {
-          "ligand": 0.0629,
-          "doi": 0.0442
-        },
-        "measured_gain": null,
-        "verdict": "BLOCKED-PENDING-DATA",
-        "reading": "No CCLE/GDSC/DepMap/Cellosaurus table exists on disk, so the feature table cannot be built. The coverage gate is not the obstacle: 46 of 711 cell lines cover 80% of rows. The real obstacle is data acquisition plus a measured ablation. Cell identity is already worth 0.0629 R2 (ligand) / 0.0442 (DOI); FIX-L4 targets an increment on top of that, not a replacement.",
-        "artifacts": [
-          "metrics/by_metric/msrs_cell_features.json"
-        ]
-      },
-      "acceptance_result": "BLOCKED-PENDING-DATA (0 annotation files on disk; 46 lines suffice for 80% coverage; no measured gain)"
+      "measured": "MET-7：同金属交集 0；ChEMBL 29 本地库 0 个金属结构（2026-10-19 实测）",
+      "unblock": "需要一份含 Ru/Ir/Rh/Os/Re + SMILES + 细胞系 + potency 的外部表；仓库内和 ChEMBL dump 都没有",
+      "do_not": "不要用 Pt 的 PlatinAI 冒充外部验证；不要从 ChEMBL 29 挖（已去金属）"
     },
     {
-      "id": "MSRS-8",
-      "title": "论文整合（强指标版）",
-      "layer": "论文",
-      "priority": "P3",
-      "status": "FROZEN-UNTIL-METRICS-COMPLETE",
+      "id": "B2",
+      "what": "细胞系生物学特征",
+      "status": "BLOCKED-PENDING-DATA",
+      "measured": "FIX-L4：0 个注释文件；46 个系即可覆盖 80%",
+      "unblock": "下载 ≥46 个系的 CCLE/GDSC 表，并跑一次带特征的消融（≥+0.005）"
+    },
+    {
+      "id": "B3",
+      "what": "决策层增益",
+      "status": "CLOSED",
+      "measured": "MET-5 + MET-8：观测 −0.0034，MDE 0.050；要检测它需 13,571 个 DOI",
+      "decision": "不再投入；作为边界陈述"
+    },
+    {
+      "id": "B4",
+      "what": "pairwise / rerank",
+      "status": "CLOSED",
+      "measured": "msrs_pairwise_reranker：原始 Δregret +0.0208（p=0.054，方向错），DOI post-hoc −0.0011（p=0.53）",
+      "decision": "不再重试；STR-5 只做一次『直接 Δ 回归』，不是 rerank"
+    }
+  ],
+  "work_packages": [
+    {
+      "id": "STR-1",
+      "title": "五 seed OOF 与 seed 平均后的 Δ / 校准 / 决策",
+      "layer": "统计",
+      "priority": "P0",
+      "status": "TODO",
       "gpu": "none",
-      "wall": "3 天",
-      "why": "用户 2026-10-18：模型真正变强之前不动论文线。现在改为强指标论文，但主表指标尚未补齐（MET-1..MET-6）。",
-      "method": "按 docs/METRIC_GAP_ANALYSIS.md §4 的主张-指标映射组织：主表 C1/C3/C4/C6，机制 C2，边界 C5，泛化 C7。",
-      "deliverable": "TODO/pending/paper_a_msrs_proposal.md (hunk only)",
-      "acceptance": "MET-1..MET-6 全部落盘 + 用户显式同意后才解冻。",
+      "wall": "2 小时",
+      "why": "MET-3/4/5 全部消费单 seed OOF（results/msrs_generalization/oof.npz，seed 20261018）。MET-1 实测 blend 的 seed SD 是 0.0102，单 seed 的 Δ 可能被 seed 噪声主导；在谈『Δ 不可学』之前必须先排除这一项。",
+      "method": "复用现有 msrs_generalization.py（已有 --seed 与 --oof-out）：四个协议 × 5 seed = 20 次树模型，保存每个 seed 的 OOF；对预测取均值后重算 Δ 符号/MAE/校准、conformal、决策曲线；同时报每个指标的 seed SD。评估行不变（21,404）。",
+      "deliverable": "metrics/by_metric/msrs_seed_ensemble.json + results/msrs_seed_ensemble/",
+      "gate": "报告 seed SD；若 Δ 符号 seed SD >0.05，现有单 seed 结论标记为『噪声主导』，后续一律用 5-seed 均值。",
+      "kill": "无（诊断项）",
+      "expected_gain_projected": "Δ 符号可能 ±0.01–0.03；不承诺翻正",
+      "depends_on": [],
+      "code_work": "无（脚本已支持）；新增一个聚合脚本 msrs_seed_ensemble.py。"
+    },
+    {
+      "id": "STR-2",
+      "title": "四协议融合臂补全（GNN + blend + stack）",
+      "layer": "模型",
+      "priority": "P0",
+      "status": "TODO",
+      "gpu": "cuda:0",
+      "wall": "8 小时",
+      "why": "msrs_generalization.design.arms_not_measured = 3：DOI/scaffold/year 只测了树。融合臂的 +0.0273 只在 ligand 上验证过，跨论文是否成立完全未知。这是最便宜的、可能直接抬高 DOI R² 的未测项。",
+      "method": "给 msrs_generalization.py 增加 GNN 臂（当前显式不跑，design.arms_not_measured=3）：GNN 必须在同一 fold 上产出 OOF，再与树臂做 blend_equal / stack_foldwise；四个协议各 5 seed；配对 DOI 聚类 bootstrap 给 ΔR² 的 CI。",
+      "deliverable": "metrics/by_metric/msrs_fusion_protocols.json",
+      "gate": "DOI stack R² ≥0.36 且配对 ΔR² 的 95% CI 下界 >0。",
+      "kill": "DOI stack R² <0.34，或配对 CI 含 0 且点估计 <+0.01。",
+      "expected_gain_projected": "PROJECTED +0.01–0.03 DOI R²（基于 ligand 上的 +0.0273）",
+      "depends_on": [],
+      "code_work": "中等：GNN 臂接线 + fold 对齐 + OOF 保存；先用 --limit 200 做 smoke。"
+    },
+    {
+      "id": "STR-3",
+      "title": "删失标签训练（右删失 5,015 行）",
+      "layer": "数据",
+      "priority": "P0",
+      "status": "TODO",
+      "gpu": "cuda:0（树先跑，GNN 可选）",
+      "wall": "4 小时（树 2h + 分析）",
+      "why": "potency 26,801 行里 5,015 行右删失（bound 中位 100 µM）被直接丢弃，占 18.7%。这是现有语料里唯一没被用上的信息，且集中在『不活跃』一端——而 Δ 符号恰恰需要两端。",
+      "method": "训练集 = 21,404 有值行 + 5,015 右删失行（+9 左删失，可选）；右删失用 hinge `max(0, log10(bound) − pred)`，左删失镜像；评估仍在同一 21,404 行。先跑树，通过 gate 再上 GNN。",
+      "deliverable": "metrics/by_metric/msrs_censored_training.json",
+      "gate": "DOI R² ≥0.36 且配对 ΔR² CI 下界 >0；ligand R² 不低于 0.5828 − 0.005。",
+      "kill": "DOI R² <0.34，或 ligand R² 掉 >0.01。",
+      "expected_gain_projected": "PROJECTED +0.01–0.04 DOI R²；不确定，因为删失 bound 大多落在现有 y 范围内",
       "depends_on": [
-        "MET-1",
-        "MET-2",
-        "MET-3",
-        "MET-4",
-        "MET-5",
-        "MET-6"
+        "STR-1"
+      ]
+    },
+    {
+      "id": "STR-4",
+      "title": "特征扩展：ECFP6 + MACCS + RDKit 描述符 + 实验条件",
+      "layer": "特征",
+      "priority": "P1",
+      "status": "TODO",
+      "gpu": "none",
+      "wall": "3 小时",
+      "why": "当前 2,074 维 = ECFP4 2048 + 2 类别 + 26 金属/细胞列。DOI 留出下新论文的实验条件（time_h、method、is_cancer_line）没有被显式建模；ECFP4 也可能截断了大片段信息。",
+      "method": "三组臂：(a) ECFP6 4096；(b) + MACCS + 20 个 RDKit 描述符；(c) + time_h / method / is_cancer_line。每组只加一个块，避免混淆。",
+      "deliverable": "metrics/by_metric/msrs_feature_expansion.json",
+      "gate": "任一臂 DOI R² ≥0.36 且配对 ΔR² CI 下界 >0。",
+      "kill": "全部臂 DOI R² <0.34。",
+      "expected_gain_projected": "PROJECTED +0.005–0.02 DOI R²",
+      "depends_on": [
+        "STR-1"
+      ]
+    },
+    {
+      "id": "STR-5",
+      "title": "Δ 直接目标（一次性，预算匹配）",
+      "layer": "目标",
+      "priority": "P1",
+      "status": "TODO",
+      "gpu": "cuda:0",
+      "wall": "4 小时",
+      "why": "pairwise/rerank 已失败（B4）。唯一没试的是直接对 Δ 回归：在共享配体的配对上建 pair 特征，预测 Δ 本身，而不是对绝对强度建模后相减。相减会把两份残差相加，直接回归不经过这一步。",
+      "method": "配对来自 427 个队列；pair 特征 = 金属对 one-hot + 两金属的 state/coord 差 + 配体上下文；目标 = 观测 Δ。训练/评估按 DOI 分组。预算匹配：optimizer steps 与主模型相同（防止用更多步数换增益）。",
+      "deliverable": "metrics/by_metric/msrs_delta_direct.json",
+      "gate": "DOI Δ 符号 ≥0.65 且 DOI 聚类 CI 下界 >0.55。",
+      "kill": "Δ 符号 <0.62 或 MAE(Δ) 未改善（<0.50）。只做一次，不调参重试。",
+      "expected_gain_projected": "PROJECTED 不确定；R²(Δ)=0.0039 说明排序信息很少，成功概率低",
+      "depends_on": [
+        "STR-1",
+        "STR-3"
+      ]
+    },
+    {
+      "id": "STR-6",
+      "title": "SA 引导解码",
+      "layer": "生成",
+      "priority": "P2",
+      "status": "TODO",
+      "gpu": "cuda:0",
+      "wall": "3 小时",
+      "why": "生成物 SA 6.4423 vs 目标 4.5；bond head 正常（bond F1 0.996、connectivity 0.970），瓶颈是配体 realism，不是成键。--sa-penalty 已接线但没在 3 seed × 200 样本上验证。",
+      "method": "3 seed × 200 样本，开/关 SA penalty 对照；报 SA、QED、novelty 双口径、IntDiv1、金属合规；对接仍 BLOCKED，不假装能算。",
+      "deliverable": "metrics/by_metric/cfm_sa_guided.json",
+      "gate": "SA ≤4.5 且平均 novelty ≥0.90。",
+      "kill": "SA >5.5（说明 penalty 无效，生成线按现状定稿）。",
+      "expected_gain_projected": "PROJECTED SA 6.44 → 5.0–5.8（不确定能否到 4.5）",
+      "depends_on": []
+    },
+    {
+      "id": "STR-7",
+      "title": "结果打包与主张台账",
+      "layer": "打包",
+      "priority": "P3",
+      "status": "TODO",
+      "gpu": "none",
+      "wall": "1 小时",
+      "why": "每轮强化后表必须重生成；且需要一张『主张 → 支持/不支持/未测』的台账，防止正文比 artifact 走得远。",
+      "method": "重跑 paper_metric_tables.py；新增 claim_ledger.md（C1–C7 × 证据 × 判定）；catalog 增补新负结果。",
+      "deliverable": "metrics/paper_tables/ + docs/CLAIM_LEDGER.md",
+      "gate": "0 MISSING；每条主张有 artifact 或明确写 UNMEASURED。",
+      "kill": "无",
+      "depends_on": [
+        "STR-1",
+        "STR-2",
+        "STR-3",
+        "STR-4",
+        "STR-5",
+        "STR-6"
       ]
     }
   ],
+  "decision_points": [
+    {
+      "id": "DP-1",
+      "after": [
+        "STR-1",
+        "STR-2"
+      ],
+      "question": "融合臂在 DOI 上是否成立？",
+      "if_yes": "继续 STR-3 / STR-4；把 DOI 数字作为主表跨论文行。",
+      "if_no": "停止模型侧投入，直接按边界论文定稿；不再跑 STR-5。"
+    },
+    {
+      "id": "DP-2",
+      "after": [
+        "STR-3",
+        "STR-4"
+      ],
+      "question": "DOI R² 是否到 0.36、Δ 符号是否到 0.65？",
+      "if_yes": "进入强指标路径：补 STR-5（Δ）与 STR-6（生成）。",
+      "if_no": "按边界论文定稿；STR-5/STR-6 不跑，节省 GPU。"
+    },
+    {
+      "id": "DP-3",
+      "after": [
+        "STR-7"
+      ],
+      "question": "是否解冻 MSRS-8？",
+      "owner": "用户",
+      "note": "解冻需用户显式同意；解冻前不得编辑 paper_a/* 或 paper/*。"
+    }
+  ],
   "sequence": {
-    "wave_M1_measurement": {
+    "wave_S1_variance_and_fusion": {
       "items": [
-        "MET-1",
-        "MET-2",
-        "MET-3",
-        "MET-4",
-        "MET-6",
-        "MET-10"
+        "STR-1",
+        "STR-2"
       ],
-      "note": "P0 全部 DONE：MET-1 PASS、MET-2/3/4 NEGATIVE、MET-6 PASS、MET-10 DONE。下一波 wave_M2_decision：MET-5 + MET-8。"
+      "note": "P0，最便宜；回答『单 seed Δ 是否噪声』与『融合臂 DOI 是否成立』。"
     },
-    "wave_M2_decision": {
+    "wave_S2_data_and_features": {
       "items": [
-        "MET-5",
-        "MET-8"
+        "STR-3",
+        "STR-4"
       ],
-      "note": "P1：MET-5 DONE-NEGATIVE、MET-8 DONE（null 均为真 miss，非功效不足）。决策层可以按「边界 + MDE」定稿，不再投入数据采集。"
+      "note": "P0/P1，只在 DP-1 通过后启动；用现有数据，不依赖外部下载。"
     },
-    "wave_M3_external_generation": {
+    "wave_S3_delta": {
       "items": [
-        "MET-7",
-        "MET-9"
+        "STR-5"
       ],
-      "note": "P1/P2：MET-9 生成侧指标 DONE-NEGATIVE（novelty 0.8517、SA 6.4423、对接 BLOCKED）；MET-7 外部独立数据集仍 BLOCKED-PENDING-DATA（无 ≥200 行外部交集）。"
+      "note": "P1，只在 DP-2 通过后跑；只做一次。"
     },
-    "wave_M4_packaging": {
+    "wave_S4_generation": {
       "items": [
-        "MET-11",
-        "MSRS-8"
+        "STR-6"
       ],
-      "note": "P3：MET-11 DONE（9 张表 / 98 行 / 0 MISSING，metrics/paper_tables/）；MSRS-8 论文整合仍冻结，需用户显式同意。"
+      "note": "P2，独立于主表；可与 S3 并行。"
+    },
+    "wave_S5_packaging": {
+      "items": [
+        "STR-7"
+      ],
+      "note": "P3，所有结果落盘后重生成表与台账。"
     }
   },
   "open_decisions": [
-    "主表放哪几条主张：建议 C1 表示增益 / C3 跨金属迁移 / C4 光毒性 / C6 生成对接；C2 作机制，C5 作边界，C7 作泛化。",
-    "是否把生成线并入同一篇：并进去能多两条强指标（decode 0.998、RMSD 0.6578），但会拉长篇幅并引入 Vina BLOCKED 的说明。",
-    "外部数据集用哪一个：NCI-60/PlatinAI 交集是现成的，但样本可能 <200 行；若不够，MET-7 保持 BLOCKED。",
-    "R² 目标 0.60 是否现实：当前 0.5807，差距小；若 MET-2 的 DOI R² 掉到 0.4，主表应改以内插为主。",
-    "是否解冻论文线：等 MET-1..MET-6 全部落盘后由用户决定。"
+    "主表放哪几条主张：C1 表示增益 / C3 跨金属迁移 / C4 光毒性 是可写的；C5 决策、C6 生成、C7 跨论文 是负的。",
+    "是否把生成线并入同一篇：并进去能多两条描述性指标，但会拉长篇幅并引入 SA 6.44 / 对接 BLOCKED 的说明。",
+    "若 DP-1/DP-2 失败，是否接受『严格协议下的边界』这篇定位（二区可投，但不宣称 SOTA）。",
+    "是否解冻论文线（MSRS-8）：需要用户显式同意。"
   ],
   "do_not": [
     "不要把 DOI 当特征 — 它带来 +0.1109 R²，但金属化学在 DOI 之后只剩 −0.0003。",
@@ -1283,17 +497,23 @@
     "不要把 NCI-60 0.7294 写成接近 Krasnov 0.81 — 差 0.08，且 2 个细胞系 n<10。",
     "不要单列 bond_f1 或 decode_ratio — 前者塌向全正，后者不是化学指标。",
     "不要把 424 个严格队列说成五金属排序可验证 — 65% 是 k=2，且只有 61 DOI。",
-    "不要在 paper_a 未获 OK 前写任何 hunk。"
+    "不要在 paper_a 未获 OK 前写任何 hunk。",
+    "不要再调决策层 — MET-8 已证明要检测观测效应需要 13,571 个 DOI。",
+    "不要再试 pairwise / rerank — B4 已关闭（原始方向为负，DOI post-hoc p=0.53）。",
+    "不要从 ChEMBL 29 本地库挖外部队列 — 实测 0 个金属结构（2026-10-19）。",
+    "不要把 cell_blind 的 0.063 R² 当成『生物特征可加的增益』 — 那是身份的贡献。",
+    "不要用单 seed 的 Δ 数字下结论 — 先看 STR-1 的 seed SD。",
+    "不要在看到结果后改 gate — 门槛写死在本文件里。"
   ],
   "paper_freeze": {
-    "directive": "用户 2026-10-18：论文线在模型完全变强之前不要动；2026-10-19 改为强指标论文，但主表指标尚未补齐。",
+    "directive": "用户 2026-10-18：论文线在模型完全变强之前不要动；2026-10-19 改为强指标论文。",
     "frozen": [
       {
         "id": "MSRS-8",
         "what": "论文整合（强指标版）"
       }
     ],
-    "unfreeze_condition": "MET-1..MET-6 全部落盘；主表每个数字满足 S1-S5 中至少 4 条；用户显式同意。",
+    "unfreeze_condition": "STR-1..STR-4 结果落盘；DP-1/DP-2 有明确结论；用户显式同意。",
     "hard_rule": "解冻前不得编辑 paper_a/* 或 paper/*；不得生成 hunk。"
   }
 }

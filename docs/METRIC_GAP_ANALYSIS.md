@@ -149,6 +149,10 @@
 - **P2（生成线专用）**：MET-9 生成指标（DONE，负：SA 6.4423 > 4.5、平均 novelty 0.8517 < 0.90、对接 BLOCKED）。
 - **P3（打包）**：MET-11 指标表自动生成（DONE：10 张表 / 106 行 / 0 MISSING，`metrics/paper_tables/`）。
 
+**强化阶段（2026-10-19 起）**：测量已全部完成，计划改为 `todo.json :: work_packages`
+的 STR-1..STR-7。判据写死在两处：DOI R² ≥0.36（配对 CI 下界 >0）与 Δ 符号 ≥0.65
+（DOI 聚类 CI 下界 >0.55）。任一失败即按边界论文定稿，不再投入 STR-5/STR-6。
+
 **S5 现在是机械的。** `molmetal/scripts/paper_metric_tables.py` 从
 `metrics/by_metric/*.json` 直接生成 T1–T9，每个单元格带 artifact pointer，
 解析失败即 `MISSING`（`--strict` 退出码 1）。它保证「表 == 产物」，不保证
