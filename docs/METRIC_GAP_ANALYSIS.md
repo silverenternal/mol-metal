@@ -90,7 +90,7 @@
 | ~~决策曲线（regret-coverage、net benefit）~~ | ~~单点 regret 不能说明可用性~~ | **已补（MET-5）：50% 覆盖 regret 0.1115 vs 0.1067，Holm p=1.0，负** |
 | 外部独立数据集 | 所有验证都是同一语料的重划分 | 无 |
 | ~~最终模型的 metal-blind 消融~~ | ~~证明"金属感知"承重，而不只是相关~~ | **已补（MET-6）：metal-blind −0.0683（ligand）/ −0.0693（DOI），p=0.0099；金属标签本身只值 0.006** |
-| 统计功效 / 最小可检测效应 | 61 DOI 下 p=0.054 到底意味着什么 | 无 |
+| ~~统计功效 / 最小可检测效应~~ | ~~61 DOI 下 p=0.054 到底意味着什么~~ | **已补（MET-8）：regret MDE 0.050（62 DOI），符号 MDE 0.130（53 DOI），MAE MDE 0.077** |
 | 生成 novelty / uniqueness | validity 高不等于分子新 | 只有 IntDiv1 0.869 |
 | ~~数据卡 + 泄漏审计~~ | ~~强指标论文的标配~~ | **已补（MET-10）：`DATASET_CARD.md` + `DATA_LEAKAGE_AUDIT.md` §8；ligand 划分 89.43% 测试行共享 DOI** |
 
@@ -114,6 +114,10 @@
 | 外部数据集 | 无 | ≥200 行，R²≥0.5 或 AUC≥0.75 | 标 BLOCKED-PENDING-DATA |
 | 生成 novelty | 无 | **≥0.90**（1−max Tanimoto to train） | 报 IntDiv1 0.869 |
 | 对接成功率 | 5/5 ≤2 Å | ≥50% on ≥20 pockets | 报 5 个 pocket 的现状 |
+
+**每个 null 的 MDE**（MET-8，`msrs_power.json`）：决策 regret 0.050（62 DOI）、
+Δ 符号 0.130（53 DOI）、Δ MAE 0.077（53 DOI）、DOI R² 0.064（1,784 DOI）。
+判读规则：观测效应 < MDE 时写「低于可检测下限」，不要写「不显著」。
 
 ---
 
@@ -139,7 +143,7 @@
 见 `todo.json :: work_packages` 的 MET-1..MET-11。优先级：
 
 - **P0（不做就不能投）**：MET-1 5-seed（DONE）、MET-2 四协议（DONE，负）、MET-3 Δ 指标（DONE，负）、MET-4 校准（DONE，负）、MET-6 金属消融（DONE，PASS）、MET-10 数据卡（DONE）。**P0 全部完成。**
-- **P1（决定论文上限）**：MET-5 决策曲线（DONE，负）、MET-7 外部数据、MET-8 统计功效。
+- **P1（决定论文上限）**：MET-5 决策曲线（DONE，负）、MET-7 外部数据、MET-8 统计功效（DONE）。
 - **P2（生成线专用）**：MET-9 生成指标。
 - **P3（打包）**：MET-11 指标表自动生成。
 

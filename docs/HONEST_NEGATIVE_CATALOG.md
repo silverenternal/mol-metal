@@ -6921,3 +6921,71 @@ wet-lab).
 
 ---
 
+## §6.130 — MET-8: the nulls are genuine, and the observed decision gain would need 13,571 DOIs
+
+**Claim under test.**  MET-2/3/5 report nulls.  Are they "no effect" or "not
+enough data"?  MET-8 converts every clustered CI into an MDE at 80% power,
+one-sided alpha 0.05, and reports the DOI count each effect would need.
+
+**Method.**  `sd = CI_width / (2*1.96)`; `MDE = 2.4865*sd`;
+`MDE(n) = MDE(n0)*sqrt(n0/n)`; `n_req = n0*(MDE/effect)^2`.  `n0` is the
+number of DOI clusters.  Targets are effects, not levels: sign 0.65-0.5,
+R2 0.50-0.3321, regret 0.10.
+
+**MEASURED.**
+
+| metric | observed | sd | MDE | powered? | DOIs for observed | DOIs for target |
+|---|---:|---:|---:|:-:|---:|---:|
+| decision regret (full) | -0.0034 | 0.0202 | 0.0503 | no | 13,571 | 16 |
+| decision regret (q=0.5) | -0.0143 | 0.0273 | 0.0678 | no | 900 | 19 |
+| Delta sign (DOI) | 0.6193 | 0.0523 | 0.1302 | no | 64 | 40 |
+| Delta MAE (DOI) | 0.5089 | 0.0308 | 0.0766 | no | 706 | - |
+| DOI R2 | 0.3321 | 0.0259 | 0.0643 | yes | 262 | 262 |
+| representation gain (DOI) | 0.0423 | 0.0077 | 0.0190 | yes | 362 | 259 |
+| metal-blind gain (DOI) | 0.0693 | 0.0096 | 0.0238 | yes | 211 | 404 |
+
+`n0`: decision 62 DOIs, sign/MAE 53 DOIs, R2/ablations 1,784 DOIs.
+
+**Honest negatives (ACTIVE, this entry):**
+  * **The decision null is not a power failure.**  At 62 DOIs the MDE is 0.050,
+    half the pre-registered target 0.10.  A true 0.10 gain would have been
+    detected.  The true gain is below ~0.05.
+  * **The observed decision gain is far below any practical sample size.**
+    Detecting -0.0034 needs 13,571 DOIs: 219x the current 62, 7.6x the entire
+    1,784-DOI corpus.  "Not significant" understates it; the effect is
+    unmeasurable at this scale.
+  * **The sign gate miss is genuine.**  The 0.65 gate is an effect of 0.15,
+    detectable with 40 DOIs; the corpus has 53.  The observed 0.619 (effect
+    0.119) would need 64.  So "0.619 is above chance" and "0.65 was missed"
+    are both true.
+  * **The 4% MAE improvement is statistically invisible.**  Effect 0.021 vs
+    MDE 0.0766; 706 DOIs required.  Report it as description only.
+  * **The DOI R2 miss is real.**  MDE 0.0643 at 1,784 DOIs; the shortfall from
+    the 0.50 target is 0.168.  Do not attribute 0.3321 to sample size.
+  * **Effective n for decision/sign is ~60 papers, not 1,784.**  Only 61-62
+    DOIs contain a multi-metal cohort or a usable pair.  R2 and the ablations
+    use all 1,784.  Mixing the two n's misstates every CI.
+  * **Halving the MDE costs 4x the DOIs.**  Decision regret 0.050 -> 0.025 needs
+    ~248 DOIs; 0.0125 needs ~992.  At this corpus size the direction is not
+    worth further data collection.
+  * **CI->sd assumes normality.**  Percentile bootstrap intervals are skewed;
+    the conversion is an approximation applied identically to all metrics, so
+    the powered/underpowered ranking is robust but the absolute MDE carries
+    that error.
+
+**Why this matters.**  Every null in the main table should carry its MDE.
+"regret -0.003 (MDE 0.050, 62 DOIs)" says the true gain is <0.05; "not
+significant" says nothing.  The same conversion shows the two positive
+mechanism results (representation gain, metal-blind gain) are the only effects
+that clear their MDE by a comfortable margin.
+
+**§6.130 catalog-count math.** Net catalog-count delta: **+1** (§6.130 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **182 -> 183** (+1).
+ACTIVE count: **138 -> 139** (+1).
+
+**Workflow** | MET-8 (2026-10-19; 0 GPU — CPU, reads four artifacts; 8 new
+tests; §5.2: every number traces to `metrics/by_metric/msrs_power.json`;
+§5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
+

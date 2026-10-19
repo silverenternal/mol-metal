@@ -25,7 +25,7 @@
       "S4": "效应量 + 置信区间 + 多重校正（DOI 聚类、Holm）",
       "S5": "每个数字可追到 artifact 字段"
     },
-    "immediate_goal": "P0 全部关闭，P1 已开：MET-5 决策曲线 DONE-NEGATIVE（50% 覆盖 0.1115 > 0.10，Holm p=1.0；置信度 margin 仅 0.11 log10，弃权不买准确率）。下一步 MET-8 统计功效：用观测方差与 DOI 聚类给出 regret / R² / Δ 符号的 MDE 与所需 DOI 数，把 MET-2/3/5 的 null 写成「在这个样本量下能检测到多大效应」的定量结论。"
+    "immediate_goal": "P0 + wave_M2_decision 全部关闭。MET-8 的结论：决策/符号的 null 是真 miss，不是功效不足——regret MDE 0.050 < 目标 0.10，观测 −0.0034 需 13,571 DOI；符号门槛 0.65 需 40 DOI，现有 53。剩余 P1：MET-7 外部独立数据集（BLOCKED-PENDING-DATA），P2 MET-9 生成侧指标，P3 MET-11 指标表自动化。论文线仍冻结（MSRS-8），解冻需用户显式同意。"
   },
   "current_position": {
     "measured_facts": [
@@ -44,7 +44,8 @@
       "DOI offset 带来 +0.1109 R²，但金属化学在 DOI 之后只剩 −0.0003 → DOI 是论文代理，不能当特征。",
       "数据卡（MET-10，21,404 行）：ligand 划分测试行 89.43% 共享 DOI（内插），DOI 划分 0% 共享 DOI 但 15.43% 共享配体；scaffold 65.58% 共享 DOI；细胞系 96–98% 复现。重复键 304 个/663 行，跨折 0；右删失 5,015 行（18.7%）被排除。ligand_canonical 不含金属原子（0 行）。",
       "金属消融（MET-6，最终树）：metal-blind 掉 0.0683 [0.0516, 0.0903]（ligand）/ 0.0693 [0.0509, 0.0884]（DOI），置换 p=0.0099（分辨率下限）。金属 one-hot 只值 0.0064/0.0053；cell-blind 掉 0.0629/0.0442；no_coord 单独 CI 含 0；仅 26 列金属/细胞特征 R²=0.4186，仅 ECFP4 R²=0.4200，两半近似可加。",
-      "决策曲线（MET-5，425 队列）：DOI 50% 覆盖 regret 0.1115 vs global_best 0.1067（聚类 Δ−0.0143，Holm p=1.0）；全覆盖 0.1168 vs 0.1195（top-1 0.560 vs 0.577）。模型 top-1 margin 均值 0.111 log10，baseline 0.280。net benefit(0.5) 0.609 vs 0.595。"
+      "决策曲线（MET-5，425 队列）：DOI 50% 覆盖 regret 0.1115 vs global_best 0.1067（聚类 Δ−0.0143，Holm p=1.0）；全覆盖 0.1168 vs 0.1195（top-1 0.560 vs 0.577）。模型 top-1 margin 均值 0.111 log10，baseline 0.280。net benefit(0.5) 0.609 vs 0.595。",
+      "统计功效（MET-8）：决策 regret MDE 0.050（62 DOI），观测 −0.0034 需 13,571 DOI；Δ 符号 MDE 0.130（53 DOI），0.65 门槛需 40 DOI 可检测；Δ MAE MDE 0.077，观测改善 0.021 需 706 DOI；DOI R² MDE 0.064（1,784 DOI），距 0.50 差 0.168；表示增益 MDE 0.019、金属消融 MDE 0.024，两者效应均远超 MDE。"
     ]
   },
   "metric_gap_analysis": {
@@ -868,14 +869,83 @@
       "title": "统计功效与最小可检测效应",
       "layer": "统计",
       "priority": "P1",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "0.5 天",
       "why": "61 DOI / 424 队列下，p=0.054 与 p=0.95 分别意味着什么并不清楚。没有 MDE，所有 null 都无法解释。",
       "method": "基于观测方差与 DOI 聚类，计算 regret / R² / Δ 符号在 80% power、α=0.05 下的 MDE；反推达到目标效应所需的 DOI 数与队列数。",
       "deliverable": "metrics/by_metric/msrs_power.json",
       "acceptance": "每个主指标给出 MDE 与所需样本量；用于解释已有 null。",
-      "depends_on": []
+      "depends_on": [],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_power.json",
+        "alpha": 0.05,
+        "sided": "one-sided",
+        "power": 0.8,
+        "k": 2.4865,
+        "metrics": {
+          "decision_regret_doi_full": {
+            "observed": -0.0034,
+            "sd": 0.0202,
+            "mde": 0.0503,
+            "powered": false,
+            "n_required": 13571,
+            "target": 0.1,
+            "n_for_target": 16
+          },
+          "decision_regret_doi_q0.5": {
+            "observed": -0.0143,
+            "sd": 0.0273,
+            "mde": 0.0678,
+            "powered": false,
+            "n_required": 900,
+            "target": 0.1,
+            "n_for_target": 19
+          },
+          "delta_sign_doi": {
+            "observed": 0.6193,
+            "sd": 0.0523,
+            "mde": 0.1302,
+            "powered": false,
+            "n_required": 64,
+            "target": 0.15,
+            "n_for_target": 40
+          },
+          "delta_mae_doi": {
+            "observed": 0.5089,
+            "sd": 0.0308,
+            "mde": 0.0766,
+            "powered": false,
+            "n_required": 706
+          },
+          "r2_doi": {
+            "observed": 0.3321,
+            "sd": 0.0259,
+            "mde": 0.0643,
+            "powered": true,
+            "n_required": 262
+          },
+          "representation_gain_doi": {
+            "observed": 0.0423,
+            "sd": 0.0077,
+            "mde": 0.019,
+            "powered": true,
+            "n_required": 362
+          },
+          "metal_blind_gain_doi": {
+            "observed": 0.0693,
+            "sd": 0.0096,
+            "mde": 0.0238,
+            "powered": true,
+            "n_required": 211
+          }
+        },
+        "reading": "决策层 null 不是功效不足：62 DOI 下 MDE=0.050，目标 0.10 本来可检测，真实增益 <0.05。观测到的 −0.0034 需要 13,571 个 DOI 才能检测（现有 62 的 219 倍）。Δ 符号 MDE=0.130；0.65 门槛（效应 0.15）只需 40 DOI，现有 53 足够，所以没到 0.65 是真 miss；观测 0.619（效应 0.119）需 64 DOI。MAE 改善 0.021 vs MDE 0.077，需 706 DOI，只能当描述。DOI R² 距 0.50 差 0.168 >> MDE 0.064，miss 是真的。表示增益与金属消融是仅有的两个效应远大于 MDE 的正结果。决策/符号的有效样本是 ~60 篇论文，不是 1,784。",
+        "artifacts": [
+          "metrics/by_metric/msrs_power.json"
+        ]
+      },
+      "acceptance_result": "PASSED (7 metrics with MDE + required-n; nulls classified)"
     },
     {
       "id": "MET-9",
@@ -1039,7 +1109,7 @@
         "MET-5",
         "MET-8"
       ],
-      "note": "P1：MET-5 DONE-NEGATIVE（曲线全部 p=1.0）。剩余 MET-8 统计功效；目的是把『决策层是边界』写成有 MDE 支撑的定量结论，而不是一句 negative。"
+      "note": "P1：MET-5 DONE-NEGATIVE、MET-8 DONE（null 均为真 miss，非功效不足）。决策层可以按「边界 + MDE」定稿，不再投入数据采集。"
     },
     "wave_M3_external_generation": {
       "items": [

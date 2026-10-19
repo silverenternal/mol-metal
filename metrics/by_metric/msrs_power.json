@@ -1,0 +1,442 @@
+{
+  "artifact": "msrs_power",
+  "version": "1.0",
+  "requires_dual_split": false,
+  "generated_utc": "2026-10-19T11:32:57+00:00",
+  "provenance": {
+    "metrics_dir": "/home/hugo/codes/mol-metal/metrics/by_metric",
+    "inputs": {
+      "msrs_generalization": "30dbec08253fe25f662f395d32f09d5e7b0d44b69c34f1cc1d68b4b942495646",
+      "msrs_delta_metrics": "3178ca6e3dba0e76b69723ca9e4aa91616cdfb87b2185faa59abf8585edcd530",
+      "msrs_decision_curve": "9bbcb4c105013ecf0edfb061ac994f4aafd43d8fde05d785c4d15b45a3ab47e1",
+      "msrs_metal_ablation": "534ad5e89818fa9d0c983a61a72ffab5748f5125a1e06603194bd2d702c1f5f0"
+    },
+    "script": "molmetal/scripts/msrs_power.py",
+    "git_commit": "31a42cf190b760e45989471fe29fd1b0463c65dc"
+  },
+  "design": {
+    "alpha": 0.05,
+    "sided": "one-sided",
+    "power": 0.8,
+    "z_alpha": 1.6449,
+    "z_power": 0.8416,
+    "k": 2.4865,
+    "sd_from_ci": "sd = (hi - lo) / (2 * 1.96)",
+    "mde": "MDE = k * sd; MDE(n) = MDE * sqrt(n0/n)",
+    "required_n": "n = n0 * (MDE / effect)^2",
+    "clustering": "the CI's n0 is the number of DOI clusters, not rows",
+    "target_scale": "target_effect is an effect (a difference), not an absolute level: sign 0.65-0.5, R2 0.50-observed, regret 0.10",
+    "noise_floor": 0.2091,
+    "caveat": "Percentile bootstrap CIs are not exactly normal, so the CI->sd step is an approximation.  It is applied identically to every metric, so the relative comparison (which nulls are power failures) is robust; the absolute MDE carries that error."
+  },
+  "metrics": {
+    "decision_regret_doi_full": {
+      "observed": -0.0034,
+      "ci95": [
+        -0.0405,
+        0.0388
+      ],
+      "sd_implied": 0.0202,
+      "n_groups": 62,
+      "unit": "regret (log10 IC50)",
+      "mde_80pct": 0.0503,
+      "observed_effect": 0.0034,
+      "powered_for_observed": false,
+      "n_required_for_observed": 13571,
+      "power_curve": [
+        {
+          "n": 25,
+          "mde": 0.0792
+        },
+        {
+          "n": 40,
+          "mde": 0.0626
+        },
+        {
+          "n": 50,
+          "mde": 0.056
+        },
+        {
+          "n": 62,
+          "mde": 0.0503
+        },
+        {
+          "n": 100,
+          "mde": 0.0396
+        },
+        {
+          "n": 200,
+          "mde": 0.028
+        },
+        {
+          "n": 500,
+          "mde": 0.0177
+        },
+        {
+          "n": 1000,
+          "mde": 0.0125
+        },
+        {
+          "n": 2000,
+          "mde": 0.0089
+        }
+      ],
+      "source": "msrs_decision_curve.json:protocols.doi.curve[-1].model_vs_global_best",
+      "target_effect": 0.1,
+      "mde_vs_target": "above_mde",
+      "n_required_for_target": 16,
+      "note": "A negative delta means the model is worse than global_best.  The target is a 0.10 regret improvement; the observed effect is -0.0034."
+    },
+    "decision_regret_doi_q0.5": {
+      "observed": -0.0143,
+      "ci95": [
+        -0.0651,
+        0.0418
+      ],
+      "sd_implied": 0.0273,
+      "n_groups": 40,
+      "unit": "regret (log10 IC50)",
+      "mde_80pct": 0.0678,
+      "observed_effect": 0.0143,
+      "powered_for_observed": false,
+      "n_required_for_observed": 900,
+      "power_curve": [
+        {
+          "n": 25,
+          "mde": 0.0858
+        },
+        {
+          "n": 40,
+          "mde": 0.0678
+        },
+        {
+          "n": 50,
+          "mde": 0.0606
+        },
+        {
+          "n": 62,
+          "mde": 0.0545
+        },
+        {
+          "n": 100,
+          "mde": 0.0429
+        },
+        {
+          "n": 200,
+          "mde": 0.0303
+        },
+        {
+          "n": 500,
+          "mde": 0.0192
+        },
+        {
+          "n": 1000,
+          "mde": 0.0136
+        },
+        {
+          "n": 2000,
+          "mde": 0.0096
+        }
+      ],
+      "source": "msrs_decision_curve.json:protocols.doi.curve[4].model_vs_global_best",
+      "target_effect": 0.1,
+      "mde_vs_target": "above_mde",
+      "n_required_for_target": 19
+    },
+    "delta_sign_doi": {
+      "observed": 0.6193,
+      "ci95": [
+        0.5085,
+        0.7137
+      ],
+      "sd_implied": 0.0523,
+      "n_groups": 53,
+      "unit": "sign accuracy",
+      "mde_80pct": 0.1302,
+      "observed_effect": 0.1193,
+      "powered_for_observed": false,
+      "n_required_for_observed": 64,
+      "power_curve": [
+        {
+          "n": 25,
+          "mde": 0.1895
+        },
+        {
+          "n": 40,
+          "mde": 0.1498
+        },
+        {
+          "n": 50,
+          "mde": 0.134
+        },
+        {
+          "n": 62,
+          "mde": 0.1203
+        },
+        {
+          "n": 100,
+          "mde": 0.0948
+        },
+        {
+          "n": 200,
+          "mde": 0.067
+        },
+        {
+          "n": 500,
+          "mde": 0.0424
+        },
+        {
+          "n": 1000,
+          "mde": 0.03
+        },
+        {
+          "n": 2000,
+          "mde": 0.0212
+        }
+      ],
+      "source": "msrs_delta_metrics.json:protocols.doi.thresholds.0.2091",
+      "target_effect": 0.15,
+      "mde_vs_target": "above_mde",
+      "n_required_for_target": 40,
+      "note": "Effect is measured above the 0.5 chance line.  The gate (0.65) is an effect of 0.15; compare it with the MDE, not with 0.619."
+    },
+    "delta_mae_doi": {
+      "observed": 0.5089,
+      "ci95": [
+        0.4508,
+        0.5716
+      ],
+      "sd_implied": 0.0308,
+      "n_groups": 53,
+      "unit": "MAE(delta), log10",
+      "mde_80pct": 0.0766,
+      "observed_effect": 0.021,
+      "powered_for_observed": false,
+      "n_required_for_observed": 706,
+      "power_curve": [
+        {
+          "n": 25,
+          "mde": 0.1116
+        },
+        {
+          "n": 40,
+          "mde": 0.0882
+        },
+        {
+          "n": 50,
+          "mde": 0.0789
+        },
+        {
+          "n": 62,
+          "mde": 0.0708
+        },
+        {
+          "n": 100,
+          "mde": 0.0558
+        },
+        {
+          "n": 200,
+          "mde": 0.0394
+        },
+        {
+          "n": 500,
+          "mde": 0.0249
+        },
+        {
+          "n": 1000,
+          "mde": 0.0176
+        },
+        {
+          "n": 2000,
+          "mde": 0.0125
+        }
+      ],
+      "source": "msrs_delta_metrics.json:protocols.doi.thresholds.0.2091",
+      "note": "Effect is the improvement over the constant-zero predictor (MAE 0.5299); a negative value means the model is worse."
+    },
+    "r2_doi": {
+      "observed": 0.3321,
+      "ci95": [
+        0.2806,
+        0.382
+      ],
+      "sd_implied": 0.0259,
+      "n_groups": 1784,
+      "unit": "R2",
+      "mde_80pct": 0.0643,
+      "observed_effect": 0.1679,
+      "powered_for_observed": true,
+      "n_required_for_observed": 262,
+      "power_curve": [
+        {
+          "n": 25,
+          "mde": 0.5433
+        },
+        {
+          "n": 40,
+          "mde": 0.4295
+        },
+        {
+          "n": 50,
+          "mde": 0.3842
+        },
+        {
+          "n": 62,
+          "mde": 0.345
+        },
+        {
+          "n": 100,
+          "mde": 0.2717
+        },
+        {
+          "n": 200,
+          "mde": 0.1921
+        },
+        {
+          "n": 500,
+          "mde": 0.1215
+        },
+        {
+          "n": 1000,
+          "mde": 0.0859
+        },
+        {
+          "n": 2000,
+          "mde": 0.0607
+        }
+      ],
+      "source": "msrs_generalization.json:splits.doi.arms.ligand+both",
+      "target_effect": 0.1679,
+      "mde_vs_target": "above_mde",
+      "n_required_for_target": 262,
+      "note": "Effect is the shortfall from the pre-registered 0.50 DOI target (0.50 - 0.3321), i.e. 'can this study detect that the model misses the target?'.  A negative value would mean the target was met."
+    },
+    "representation_gain_doi": {
+      "observed": 0.0423,
+      "ci95": [
+        0.0271,
+        0.0571
+      ],
+      "sd_implied": 0.0077,
+      "n_groups": 1784,
+      "unit": "delta R2",
+      "mde_80pct": 0.019,
+      "observed_effect": 0.0423,
+      "powered_for_observed": true,
+      "n_required_for_observed": 362,
+      "power_curve": [
+        {
+          "n": 25,
+          "mde": 0.1608
+        },
+        {
+          "n": 40,
+          "mde": 0.1271
+        },
+        {
+          "n": 50,
+          "mde": 0.1137
+        },
+        {
+          "n": 62,
+          "mde": 0.1021
+        },
+        {
+          "n": 100,
+          "mde": 0.0804
+        },
+        {
+          "n": 200,
+          "mde": 0.0568
+        },
+        {
+          "n": 500,
+          "mde": 0.0359
+        },
+        {
+          "n": 1000,
+          "mde": 0.0254
+        },
+        {
+          "n": 2000,
+          "mde": 0.018
+        }
+      ],
+      "source": "msrs_metal_ablation.json:protocols.doi.arms.no_state_coord",
+      "target_effect": 0.05,
+      "mde_vs_target": "above_mde",
+      "n_required_for_target": 259
+    },
+    "metal_blind_gain_doi": {
+      "observed": 0.0693,
+      "ci95": [
+        0.0509,
+        0.0884
+      ],
+      "sd_implied": 0.0096,
+      "n_groups": 1784,
+      "unit": "delta R2",
+      "mde_80pct": 0.0238,
+      "observed_effect": 0.0693,
+      "powered_for_observed": true,
+      "n_required_for_observed": 211,
+      "power_curve": [
+        {
+          "n": 25,
+          "mde": 0.2009
+        },
+        {
+          "n": 40,
+          "mde": 0.1589
+        },
+        {
+          "n": 50,
+          "mde": 0.1421
+        },
+        {
+          "n": 62,
+          "mde": 0.1276
+        },
+        {
+          "n": 100,
+          "mde": 0.1005
+        },
+        {
+          "n": 200,
+          "mde": 0.071
+        },
+        {
+          "n": 500,
+          "mde": 0.0449
+        },
+        {
+          "n": 1000,
+          "mde": 0.0318
+        },
+        {
+          "n": 2000,
+          "mde": 0.0225
+        }
+      ],
+      "source": "msrs_metal_ablation.json:protocols.doi.arms.metal_blind",
+      "target_effect": 0.05,
+      "mde_vs_target": "above_mde",
+      "n_required_for_target": 404
+    }
+  },
+  "summary": {
+    "powered": [
+      "metal_blind_gain_doi",
+      "r2_doi",
+      "representation_gain_doi"
+    ],
+    "underpowered": [
+      "decision_regret_doi_full",
+      "decision_regret_doi_q0.5",
+      "delta_mae_doi",
+      "delta_sign_doi"
+    ]
+  },
+  "verdict": "PASS",
+  "verdict_rule": "every headline metric reports an MDE and a required-n"
+}
