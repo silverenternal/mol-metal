@@ -75,12 +75,30 @@ mean), so the −0.134 vs chemprop is a genuine D-MPNN regression and is reporte
 implementation — `astartes`' `Scaffold.generate_bemis_murcko_scaffold`, which chemprop moved to — defaults
 to `include_chirality=False`. A chirality-retaining key splits less, so **the MoleculeNet numbers in the
 table above were measured on a marginally easier split than the chemprop column they are compared
-against**. The key has since been aligned: it is now bit-exact with
-`MurckoScaffoldSmiles(includeChirality=False)` on every row of all four tasks. Re-keying turns over
-63.6-76.5 % (bbbp), 59.3-83.5 % (bace) and 39.3-87.0 % (clintox) of the test molecules across the five
-seeds; **hiv is bit-identical** because none of its scaffolds carry stereocentres
-(`metrics/by_metric/moleculenet_scaffold_key_alignment.json`). No number in the table above has been
-re-measured under the aligned key — that needs the four-task re-run, which has not been launched.
+against**. The key is now bit-exact with `MurckoScaffoldSmiles(includeChirality=False)` on every row of
+all four tasks. Re-keying turns over 63.6-76.5 % (bbbp), 59.3-83.5 % (bace) and 39.3-87.0 % (clintox) of
+the test molecules across the five seeds; **hiv is bit-identical** because none of its scaffolds carry
+stereocentres (`metrics/by_metric/moleculenet_scaffold_key_alignment.json`).
+
+**Aligned-key re-run (MEASURED 2026-10-19).** The four-task, five-seed protocol at hidden 512 / depth 4
+was re-run end-to-end under the aligned key (`configs/pa14_moleculenet_cap512_d4.yaml`, 40 min on GPU 0,
+pre-flight PASS, all 20 per-seed outputs fresh):
+
+| Task | Aligned key (512/4, 5-seed) | Pre-alignment 300/3 (table above) | chemprop D-MPNN |
+|---|---:|---:|---:|
+| bbbp | **0.9025 ± 0.0350** | 0.9065 ± 0.0227 | 0.940 |
+| bace | **0.7422 ± 0.0828** | 0.7421 ± 0.0446 | 0.876 |
+| hiv | **0.7976 ± 0.0170** | 0.7900 ± 0.0109 | 0.823 |
+| clintox | **0.7957 ± 0.1075** | 0.8209 ± 0.0122 | 0.894 |
+| mean | **0.8095** | 0.8149 | 0.883 |
+
+Source: `metrics/by_metric/moleculenet_auc.json` (`split_key: bemis_murcko_stereo_blind`). The
+pre-alignment 512/4 artifact is retained as `moleculenet_auc_dmpnn_5seed_cap512_d4.json`, explicitly
+annotated as superseded. **Do not mix the two columns**: the test sets differ (59-87 % turnover), so a
+row-by-row delta is not a paired comparison. bbbp and hiv are flat within seed noise (hiv's split is
+unchanged, so its +0.008 is training nondeterminism); bace (−0.051) and clintox (−0.035) move down, but
+both have 5-seed standard deviations of 0.08-0.11, so a 5-seed mean cannot resolve a shift of that size
+as significant. What is certain is that all four numbers are now on the reference key.
 
 **bace rescue attempt (MEASURED, honest-negative — 2026-10-08):** the hypothesis that the
 unconditional `pos_weight=neg/pos` class weighting (applied even to near-balanced bace, pos_rate≈0.45)

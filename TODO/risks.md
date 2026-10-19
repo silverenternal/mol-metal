@@ -108,9 +108,20 @@ Fixed 2026-10-19 (Wf-A53):
   (`metrics/by_metric/moleculenet_scaffold_key_alignment.json`): scaffold
   counts 1113→1036 (bbbp), 739→671 (bace), 820→788 (clintox), hiv unchanged;
   test-set turnover 63.6-76.5 % / 59.3-83.5 % / 39.3-87.0 % across the five
-  seeds. **hiv is bit-identical, so its shipped 0.7900 stands unchanged**;
-  bbbp/bace/clintox shipped AUCs are on the old key and must not be cited
-  until re-run. Pinned by `molmetal/tests/test_moleculenet_scaffold_key.py`.
+  seeds. **hiv is bit-identical, so its shipped 0.7900 stands unchanged**.
+  The four-task five-seed re-run has now landed (below).
+  Pinned by `molmetal/tests/test_moleculenet_scaffold_key.py`.
+- **MoleculeNet re-run under the aligned key (2026-10-19, 23:07).**
+  `configs/pa14_moleculenet_cap512_d4.yaml` (4 tasks × 5 seeds, 50 epochs,
+  hidden 512 / depth 4) completed in **40 min** with pre-flight PASS and all
+  20 per-seed outputs fresh (0 stale). MEASURED
+  (`metrics/by_metric/moleculenet_auc.json`, `split_key:
+  bemis_murcko_stereo_blind`): bbbp **0.9025 ± 0.0350**, bace
+  **0.7422 ± 0.0828**, hiv **0.7976 ± 0.0170**, clintox **0.7957 ± 0.1075**,
+  mean **0.8095**. The pre-alignment 512/4 artifact is retained and annotated
+  `superseded`; the two columns must not be mixed because 59-87 % of the test
+  molecules differ. hiv moved +0.0087 on an identical split — that is the
+  training-nondeterminism floor, not an effect of the key.
 - **Pt 4-cell has a real scaffold split (2026-10-19).**
   `--platinai-split-strategy bemis_murcko_70_10_10` groups rows by the
   desalted stereo-blind Bemis-Murcko scaffold
@@ -128,16 +139,22 @@ Fixed 2026-10-19 (Wf-A53):
   legacy `ID1,X1,ID2,X2,Y` spelling.
 
 Still open (needs re-runs, not silent code changes):
-- MoleculeNet: the key is aligned and a **one-seed smoke passed** (2026-10-19,
-  `metrics/by_metric/moleculenet_smoke1_aligned_key.json`): all four tasks
-  wrote metrics, bace's split matches the artifact exactly (299 test rows,
-  0.4849 positive), and hiv reproduced its old-key seed-0 AUC to 1e-4
-  (0.7667 vs 0.7666). The **five-seed run has not been launched**;
-  `configs/pa14_moleculenet_cap512_d4.yaml` is ready. MEASURED wall time for
-  one seed is 354 s (hiv 300 s), so the five-seed run is ~30 min, not the
-  4 h the config budget allows. Until it lands the paper's `tab:moleculenet`
-  is on the old, easier key.
 - Pt 4-cell: the honest split exists but **no model has been trained on it**.
   Every shipped Pt 4-cell number is on the legacy hash split.
 - CFM: a true held-out number needs a checkpoint trained from
   `configs/cfm_5metal_v5_full.yaml`.
+
+Closed 2026-10-19 (data-side, no model or CFM file touched):
+- **A partial MoleculeNet run can no longer replace the canonical artifact.**
+  `_resolve_output_paths` gives precedence explicit path > canonical (full
+  four-task, >=5-seed only) > `<out-dir>`. This was triggered by a real
+  incident: a bace/seed-0 run overwrote `moleculenet_auc.json` with a
+  one-task fragment (n_test 302 -> 299).
+- **Stale per-seed files are no longer back-filled.** The reused out-dir made
+  a failed seed inherit the previous run's metrics; `_per_seed_outputs`
+  filters by mtime and the aggregate is refused (exit 2) if any seed output
+  is missing or stale.
+- **An unreadable BindingDB file now raises** instead of loading as an empty
+  domain (the 990,630-row/0-row incident).
+- **The leakage audit no longer deletes §8.** The generator preserves any
+  `## 8.` tail verbatim; a re-run had removed 54 lines.

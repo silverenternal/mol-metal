@@ -1055,6 +1055,7 @@ def _write_report(
     requested_tasks: List[str],
     backbone: str = "morgan_mlp",
     seeds: Sequence[int] = (0, 1, 2),
+    out_metric: Path | None = None,
 ) -> None:
     if backbone == "dmpnn":
         feat_line = "**Featurization:** D-MPNN atom+bond features (atom+bond message passing)"
@@ -1069,6 +1070,8 @@ def _write_report(
         "# Metric Tier 2 — MoleculeNet cross-benchmark (BBBP / BACE / HIV / ClinTox)",
         "",
         "**Split:** Bemis-Murcko scaffold (70 / 10 / 20) per Chemprop convention",
+        "**Split key:** Bemis-Murcko, stereo-blind (`includeChirality=False`) — "
+        "the `astartes`/chemprop reference",
         feat_line,
         model_line,
         f"**Backbone:** {backbone}",
@@ -1181,7 +1184,8 @@ def _write_report(
     lines += [
         "* `molmetal/scripts/train_moleculenet.py` — driver.",
         f"* `{out_path}` — this report.",
-        "* `metrics/by_metric/moleculenet_auc_dmpnn.json` — aggregate JSON (per-task x per-seed).",
+        f"* `{out_metric or (METRICS_DIR / 'moleculenet_auc.json')}` — aggregate "
+        "JSON (per-task x per-seed).",
         "",
         "## Baseline provenance (literature-sourced, protocol-differs)",
         "",
@@ -1505,6 +1509,10 @@ def main(argv: List[str] | None = None) -> int:
             else "attentivefp_atom_bond"
         ),
         "split": "scaffold (Bemis-Murcko, 70/10/20)",
+        # Provenance, not decoration: without this a reader cannot tell which
+        # key produced the numbers, which is how the pre-2026-10-19 (isomeric)
+        # AUCs stayed citable as if they were on the reference split.
+        "split_key": "bemis_murcko_stereo_blind (includeChirality=False)",
         "seeds": args.seeds,
         "epochs": args.epochs,
         "batch_size": args.batch_size,
@@ -1551,6 +1559,7 @@ def main(argv: List[str] | None = None) -> int:
         out_report, all_results, gate_pass, args.tasks,
         backbone=getattr(args, "backbone", "morgan_mlp"),
         seeds=list(args.seeds),
+        out_metric=out_metric,
     )
     print(f"[molnet] wrote {out_report}", flush=True)
     return 0

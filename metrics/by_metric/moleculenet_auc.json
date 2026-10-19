@@ -1,45 +1,165 @@
 {
-  "date": "2026-10-09",
-  "model": "attentivefp_v4",
-  "backbone": "attentivefp",
-  "featurization": "attentivefp_atom_bond",
+  "date": "2026-10-19",
+  "model": "dmpnn_v4",
+  "backbone": "dmpnn",
+  "featurization": "dmpnn_atom_bond",
   "split": "scaffold (Bemis-Murcko, 70/10/20)",
   "seeds": [
-    0
+    0,
+    1,
+    2,
+    3,
+    4
   ],
-  "epochs": 1,
-  "batch_size": 32,
+  "epochs": 50,
+  "batch_size": 64,
   "lr": 0.001,
-  "hidden": 32,
-  "depth": 2,
+  "hidden": 512,
+  "depth": 4,
   "class_weight": "on",
   "dropout": 0.0,
   "weight_decay": 0.0,
   "patience": 0,
   "tasks": {
-    "bace": {
-      "n_seeds_total": 1,
-      "n_seeds_valid": 1,
-      "test_auc_mean": 0.46334168975678414,
-      "test_auc_std": 0.0,
-      "test_pr_auc_mean": 0.449541563136307,
-      "test_hit_top5_mean": 0.4,
+    "bbbp": {
+      "n_seeds_total": 5,
+      "n_seeds_valid": 5,
+      "test_auc_mean": 0.902496183231291,
+      "test_auc_std": 0.03498151486029417,
+      "test_pr_auc_mean": 0.9705739776168707,
+      "test_hit_top5_mean": 1.0,
       "per_seed_auc": [
-        0.46334168975678414
+        0.9506350347471842,
+        0.9356600660066008,
+        0.8864118445613439,
+        0.8573188859333437,
+        0.8824550849079822
       ],
       "per_seed_pr_auc": [
-        0.449541563136307
+        0.9847024453055164,
+        0.9765366966436969,
+        0.9716980261820408,
+        0.9542577559576066,
+        0.9656749639954927
       ],
       "per_seed_hit_top5": [
-        0.4
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "task": "bbbp",
+      "backbone": "dmpnn",
+      "chemprop_dmpnn_baseline": 0.94,
+      "chemprop_rf_baseline": 0.728,
+      "elapsed_seconds": 102.60327315330505
+    },
+    "bace": {
+      "n_seeds_total": 5,
+      "n_seeds_valid": 5,
+      "test_auc_mean": 0.7421780729333869,
+      "test_auc_std": 0.08278157370478599,
+      "test_pr_auc_mean": 0.7189046065887458,
+      "test_hit_top5_mean": 0.84,
+      "per_seed_auc": [
+        0.6053739364084192,
+        0.8128879310344828,
+        0.8060329861111111,
+        0.6864262705798139,
+        0.8001692405331076
+      ],
+      "per_seed_pr_auc": [
+        0.6356880930854464,
+        0.7936765155204955,
+        0.7838762414048861,
+        0.5893842357551764,
+        0.7918979471777244
+      ],
+      "per_seed_hit_top5": [
+        0.8,
+        1.0,
+        0.8666666666666667,
+        0.6,
+        0.9333333333333333
       ],
       "task": "bace",
-      "backbone": "attentivefp",
+      "backbone": "dmpnn",
       "chemprop_dmpnn_baseline": 0.876,
       "chemprop_rf_baseline": 0.868,
-      "elapsed_seconds": 4.890493154525757
+      "elapsed_seconds": 89.27701377868652
+    },
+    "hiv": {
+      "n_seeds_total": 5,
+      "n_seeds_valid": 5,
+      "test_auc_mean": 0.7976065019174337,
+      "test_auc_std": 0.01700957584366592,
+      "test_pr_auc_mean": 0.34554782214475266,
+      "test_hit_top5_mean": 0.3457403335971624,
+      "per_seed_auc": [
+        0.7966984314466419,
+        0.7893508576432705,
+        0.7743380720545278,
+        0.8013665261456682,
+        0.8262786222970601
+      ],
+      "per_seed_pr_auc": [
+        0.38677103950323805,
+        0.31252775620612466,
+        0.3688087684914847,
+        0.31793444300438006,
+        0.3416971035185358
+      ],
+      "per_seed_hit_top5": [
+        0.3759036144578313,
+        0.30170316301703165,
+        0.3722627737226277,
+        0.3284671532846715,
+        0.35036496350364965
+      ],
+      "task": "hiv",
+      "backbone": "dmpnn",
+      "chemprop_dmpnn_baseline": 0.823,
+      "chemprop_rf_baseline": 0.761,
+      "elapsed_seconds": 2021.6706938743591
+    },
+    "clintox": {
+      "n_seeds_total": 5,
+      "n_seeds_valid": 5,
+      "test_auc_mean": 0.7957040671150708,
+      "test_auc_std": 0.10754935049984239,
+      "test_pr_auc_mean": 0.28093286391094197,
+      "test_hit_top5_mean": 0.3066666666666667,
+      "per_seed_auc": [
+        0.8423285198555958,
+        0.8897881694644285,
+        0.8445576306357291,
+        0.5859119496855345,
+        0.8159340659340659
+      ],
+      "per_seed_pr_auc": [
+        0.21851313738520822,
+        0.44123641555282067,
+        0.34001085875328324,
+        0.17347346695947313,
+        0.23143044090392445
+      ],
+      "per_seed_hit_top5": [
+        0.2,
+        0.4666666666666667,
+        0.4,
+        0.26666666666666666,
+        0.2
+      ],
+      "task": "clintox",
+      "backbone": "dmpnn",
+      "chemprop_dmpnn_baseline": 0.894,
+      "chemprop_rf_baseline": 0.832,
+      "elapsed_seconds": 107.78848910331726
     }
   },
   "gate_mean_auc_threshold": 0.8,
-  "chemprop_dmpnn_baseline_mean": 0.876
+  "chemprop_dmpnn_baseline_mean": 0.88325,
+  "split_key": "bemis_murcko_stereo_blind (includeChirality=False)",
+  "source_run": "configs/pa14_moleculenet_cap512_d4.yaml"
 }

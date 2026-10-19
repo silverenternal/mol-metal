@@ -208,5 +208,7 @@
     "Both arms use the historical varying-per-seed scaffold split (split_seed unset), so the 5-seed std mixes split and seed variance; the fixed-split confirmation lives in molmetal/reports/wf_a1_bace_capacity/SUMMARY.md (+0.1098).",
     "The chemprop reference column is a literature best-of-search constant; BLK-PA17 supplies the same-protocol value."
   ],
-  "honest_framing_note": "MEASURED from the PA14 report on disk; the verdict is derived from the per-task deltas, not asserted."
+  "honest_framing_note": "MEASURED from the PA14 report on disk; the verdict is derived from the per-task deltas, not asserted.",
+  "split_key": "bemis_murcko_isomeric (PRE-2026-10-19; superseded)",
+  "superseded_by": "metrics/by_metric/moleculenet_auc.json"
 }
