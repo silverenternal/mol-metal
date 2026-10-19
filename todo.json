@@ -32,7 +32,7 @@
       "Nat. Commun. — 需要跨数据集泛化 + 决策价值量化"
     ],
     "positioning": "现有负结果 (WP1-WP4) 不是失败, 而是框架的三条边界: 迁移惩罚不可完全归因于金属敏感配体; 金属描述符不解释迁移; metal-token 不改善跨金属。新框架必须解释这三条, 而不是绕过它们。",
-    "immediate_goal": "FIX 波次（除 L4 缺数据）已跑完。绝对回归从 0.4572 推到 0.5807（L1→L5→M2 融合），但决策层在所有方案下都停在 0.1186-0.1241 且 Holm p=1.0。下一步不是再加特征/模型/融合，而是先量化『队列内金属标签还剩多少可解释方差』：若上限本身接近基线，则论文主张必须收缩到回归面；若上限显著更高，才值得投入可学 pairwise 目标。"
+    "immediate_goal": "上限分析已完成：数据噪声不封顶，决策层的余量是真实存在的（top-1 至少 +0.13）。下一步是唯一还没试过的一条轴——目标函数：在 DOI-grouped 折上做可学的 pairwise/listwise 排序目标，以 regret 为选择准则，并用 FIX-E4 的分布外协议验证。表示、模型类、融合三条轴都已关闭。"
   },
   "current_position": {
     "measured_facts": [
@@ -56,7 +56,8 @@
       "LOMO 金属外推失败: potency 加权 MAE descriptors 0.610 / one-hot 0.608 / no-metal 0.607, no-metal 显著更好 (Holm 0.036); 五金属均值排序 rho=0.1 (p=0.87)。",
       "金属 90% 嵌套在 DOI 内 (potency 仅 10.4% 单元与另一金属同 DOI); 留出金属的均值主要是 cohort 效应, 描述符无法编码。",
       "FIX-M1：自研 D-MPNN + metal_graph 在 21,404 行上 canonical R2 0.5031（LightGBM 0.5012，FIX-L5 树模型 0.5556）；424 cohort regret 最好 0.1190，但 DOI 聚类 Holm p=1.0。",
-      "FIX-M2：树+D-MPNN 等权融合 canonical R2 0.5727（+0.0171, p=4.8e-12），堆叠 0.5807（+0.0251, p=5.1e-34）；决策层 regret 最好仍是树模型 0.1186，所有融合臂 Holm p=1.0。"
+      "FIX-M2：树+D-MPNN 等权融合 canonical R2 0.5727（+0.0171, p=4.8e-12），堆叠 0.5807（+0.0251, p=5.1e-34）；决策层 regret 最好仍是树模型 0.1186，所有融合臂 Holm p=1.0。",
+      "FIX-M3：424 队列 848 单元，队列内方差 0.0945，金属主效应占 3.4%；重复噪声池化 σ=0.211、中位数 0.027；评估单元中仅 3/848 有重复；完美模型 top-1 0.70–0.95，当前 0.566；盈亏平衡 σ=1.24（top-1）/0.395（regret）。"
     ],
     "continuous_data_audit_2026_10_18": {
       "numeric_dark_ic50": 21777,
@@ -141,7 +142,7 @@
       "msrs_decision_policy": "metrics/by_metric/msrs_decision_policy.json"
     },
     "diagnosis": {
-      "headline": "回归与决策是两个独立的失败模式，FIX-M2 把这条结论钉死了：融合把回归推到 0.5807（+0.0251，p=5e-34），决策层却一步没动（Holm p=1.0）；秩融合的表面增益是评估器的并列取首行 artifact。",
+      "headline": "回归与决策是两个独立的失败模式；FIX-M3 进一步排除了『数据噪声封顶』：排序指标的上限在任何合理噪声下都高于当前模型，差距在模型/目标，不在数据。",
       "evidence": [
         "生产设计 (ECFP4 + 5 metal one-hot + 3 周期描述符 + top-40 cell one-hot) 在 MSRS-2 的 21,045 行上 additive R²=0.2510 / interaction R²=0.2791；同一行集把 cell/metal 换成原生 categorical 到 0.3149，说明编码方式本身就值 +0.036。",
         "逐块累加到 DOI 是 0.4437，但这是论文内插值上界，不可部署到新论文。",
@@ -154,7 +155,8 @@
         "within-cohort centering 在论文内把 regret 降到 0.0939、top-1 抬到 0.653（NEG-18），但按 DOI 留出整篇论文后恶化到 0.1468，输给 regression 0.1165 与 global_best 0.1199（NEG-19）。",
         "FIX-M1 全量：canonical R2 lgb 0.5012 / D-MPNN ligand_cell 0.4553 / metal_identity 0.4726 / metal_state 0.5031；金属分解在 GNN 内复现 (+0.0173, +0.0305)，但绝对水平低于 FIX-L5 的 0.5556。",
         "FIX-M1 决策层：canonical regret global_best 0.1241 / lgb 0.1212 / metal_identity 0.1190 / metal_state 0.1219；对 global_best 与 lgb 的 DOI 聚类检验 p_holm 全为 1.0。",
-        "FIX-M2：tree 0.5556 / gnn 0.5031 / equal 0.5727 / stack 0.5807（canonical）；424 cohort regret：tree 0.1186，融合臂 0.1223-0.1225，秩融合 tie-broken 后 = 0.1186，Holm 全 1.0。"
+        "FIX-M2：tree 0.5556 / gnn 0.5031 / equal 0.5727 / stack 0.5807（canonical）；424 cohort regret：tree 0.1186，融合臂 0.1223-0.1225，秩融合 tie-broken 后 = 0.1186，Holm 全 1.0。",
+        "FIX-M3：队列内方差 0.0945，金属主效应仅 3.4%；完美模型 top-1 0.70–0.95 / regret 0.001–0.106（σ∈[0.027,0.36]），当前 0.566 / 0.1186；盈亏平衡 σ 为 1.24 / 0.395。"
       ],
       "not_the_problem": [
         "模型容量：h512 只在 n≥10^3 的金属上可检测 (+0.018~+0.083)，不是全局瓶颈。",
@@ -592,6 +594,28 @@
         "why_it_matters": "这是 NEG-17 的第四次复现，也是最强的一次：即使把两个模型的预测融合、把排序方式换掉，队列内的金属排序仍然与单一强模型无异。决策层的瓶颈既不是表示、不是模型类、也不是融合方式。",
         "do_not": "不要把 0.1099 / top1 0.6203 写进任何结论或论文；它是行序 artifact。也不要用 blend_equal 的 +0.0171 R2 声称决策能力提升。",
         "next": "决策层只剩两种可能：(a) 目标函数（可学 pairwise + 分布外约束）；(b) 数据本身不含足够的队列内金属差异信号。在投入 (a) 之前，应先量化队列内金属标签的可解释方差上限。"
+      },
+      {
+        "id": "NEG-23",
+        "title": "队列内方差上限不可识别：848 个评估单元只有 3 个重复，重复方差还是双峰的",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_variance_ceiling.json",
+          "evaluation_cells": 848,
+          "cells_with_replicates": 3,
+          "replicate_df": 3,
+          "pooled_sigma": 0.2114,
+          "median_within_cell_sigma": 0.0265,
+          "p90": 0.3301,
+          "r2_ceiling_range": [
+            0.0,
+            0.9923
+          ]
+        },
+        "what_was_tested": "用重复测量估计测量噪声，再把队列内方差分解为金属主效应 + 交互 + 噪声。",
+        "result": "304 个重复单元的组内方差中位数 σ=0.027、池化 σ=0.211、p90=0.330，呈明显双峰；这 304 个单元里只有 3 个落在 424 个评估队列内。因此 R² 上限在 0–99.2% 之间不可识别，任何点估计都是假设的产物。",
+        "why_it_matters": "不能再用『数据噪声太大』解释决策层失败，也不能反过来说『上限很高所以模型很差』。可识别的是：金属主效应占 3.4%（真实下界），排序指标的上限高于当前模型。",
+        "do_not": "不要引用任何单一的 R² 上限数字；不要把池化 σ=0.211 当作全数据的噪声水平。",
+        "next": "若要识别 R² 上限，需要在 424 个评估队列内补约 200 个组内重复自由度（约 200 个单元测两次）；这是数据采集问题，不是建模问题。"
       }
     ],
     "reusable_assets": {
@@ -1074,6 +1098,42 @@
         },
         "why": "两个模型的残差相关 0.82 而非 1.0，说明它们错在不同的行上。等权平均不拟合任何参数，却已经在两个 split 上都显著优于强模型；折内权重在 5 折间稳定（0.60-0.71），不是单折偶然。这是 FIX-L5 之后第一个真正抬高绝对 R2 的杠杆，而且 D-MPNN 留在链路里。",
         "caveat": "决策层没有跟着动（NEG-22）。融合改善的是回归面，不是配体级金属排序。"
+      },
+      {
+        "id": "POS-8",
+        "title": "决策层有可证明的余量：即使按最悲观的噪声估计，完美模型的 top-1 仍比当前高 0.13",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_variance_ceiling.json",
+          "decision_ceiling_sigma_0.027_0.36": {
+            "top1": [
+              0.6998,
+              0.9492
+            ],
+            "regret": [
+              0.0013,
+              0.1056
+            ]
+          },
+          "current": {
+            "top1": 0.566,
+            "regret": 0.1186
+          },
+          "break_even_sigma": {
+            "top1": 1.2393,
+            "regret": 0.3948
+          },
+          "noise_upper_bound": {
+            "within_cell_pooled": 0.2114,
+            "between_doi": 0.186
+          },
+          "model_within_corr": {
+            "lgb_tree": 0.1947,
+            "gnn": 0.2543,
+            "stack": 0.2782
+          }
+        },
+        "why": "R² 上限随噪声假设从 0 变到 99%，但 top-1/regret 几乎不随噪声塌缩：排序是序数任务，单次测量的噪声只会让完美模型从 1.0 降到 0.70–0.95。当前 0.566 在任何合理 σ 下都低于上限；要让当前成绩等于上限，噪声必须 ≥1.24（top-1）。所以决策层的差距不是数据封顶，而是模型/目标没把已有信号提出来。",
+        "caveat": "上限分析只说明噪声不封顶，不能区分『表示不足』与『目标不对』；且完美模型假设真实单元均值可被特征预测，这一点未被证明。"
       }
     ],
     "full_stack_audit_2026_10_18": {
@@ -3293,6 +3353,77 @@
         ]
       },
       "acceptance_result": "REGRESSION PASSED / DECISION NULL"
+    },
+    {
+      "id": "FIX-M3",
+      "title": "队列内金属标签的可解释方差上限",
+      "layer": "评估/决策",
+      "priority": "P0",
+      "status": "DONE",
+      "gpu": "none",
+      "wall": "0.5 天",
+      "why": "FIX-M2 之后必须回答：决策层的失败是数据噪声封顶，还是模型没学到？若上限本身接近基线，继续做 pairwise 目标没有意义，论文应收缩到回归面。",
+      "method": "在 424 个多金属队列（848 个 cohort×metal 单元）上分解队列内方差：金属主效应（可由上千行稳定估计，是真实信号的下界）+ 队列×金属交互 + 噪声。噪声从 304 个重复单元的池化组内方差估计，并做 σ 敏感性曲线与参数化 bootstrap；另做跨论文重复（同一配体+金属+细胞系在不同 DOI）的独立核对。",
+      "deliverable": "molmetal/scripts/msrs_variance_ceiling.py + metrics/by_metric/msrs_variance_ceiling.json",
+      "acceptance": "给出可识别的下界、不可识别的上界、以及当前模型相对上限的位置；若上限不可识别，必须说明需要什么数据才能识别。",
+      "depends_on": [
+        "FIX-M2"
+      ],
+      "result": {
+        "var_within": 0.09455,
+        "metal_main_share": 0.034,
+        "noise": {
+          "pooled_sigma": 0.2114,
+          "median_within_cell_sigma": 0.0265,
+          "p90_within_cell_sigma": 0.3301,
+          "replicated_cells": 304,
+          "evaluation_cells": 848,
+          "evaluation_cells_with_replicates": 3
+        },
+        "r2_ceiling_range": [
+          0.0,
+          0.9923
+        ],
+        "decision_ceiling_sigma_0.027_0.36": {
+          "top1": [
+            0.6998,
+            0.9492
+          ],
+          "regret": [
+            0.0013,
+            0.1056
+          ]
+        },
+        "current_best_decision": {
+          "arm": "lgb_tree",
+          "top1": 0.566,
+          "regret": 0.1186
+        },
+        "break_even_sigma": {
+          "top1": 1.2393,
+          "regret": 0.3948
+        },
+        "cross_paper": {
+          "pairs": 15,
+          "top1_agreement": 0.8667,
+          "wilson95": [
+            0.6212,
+            0.9626
+          ],
+          "between_doi_sigma": 0.186
+        },
+        "current_model_within_corr": {
+          "lgb_tree": 0.1947,
+          "gnn_metal_state": 0.2543,
+          "blend_equal": 0.2755,
+          "stack_foldwise": 0.2782
+        },
+        "reading": "R² 意义上的上限不可识别（0–99.2%），因为评估队列 848 个单元里只有 3 个有重复，且重复单元方差是双峰的（中位数 σ=0.027，池化 σ=0.211）。但排序指标对噪声稳健：σ 在 [0.027,0.36] 全区间，完美模型 top-1 0.70–0.95、regret 0.001–0.106，始终优于当前的 0.566/0.1186。盈亏平衡噪声 σ≥1.24（top-1）/ σ≥0.395（regret），高于任何合理估计。结论：数据不是决策层的绑定约束。",
+        "artifacts": [
+          "metrics/by_metric/msrs_variance_ceiling.json"
+        ]
+      },
+      "acceptance_result": "PASSED (identified lower bound + bounded decision ceiling + stated data requirement)"
     }
   ],
   "sequence": {
@@ -3344,9 +3475,10 @@
         "FIX-M2",
         "FIX-P2",
         "FIX-P3",
-        "FIX-L4"
+        "FIX-L4",
+        "FIX-M3"
       ],
-      "note": "P1/E1 基础设施先落地，再做表征：L1 (+0.1002) → L2 (+0.0444) → L3 (+0.0272) → L5 叠加 (+0.0130) → M1 主模型 (parity) → M2 融合 (+0.0251 回归，决策层无变化)。"
+      "note": "P1/E1 基础设施先落地，再做表征：L1 (+0.1002) → L2 (+0.0444) → L3 (+0.0272) → L5 叠加 (+0.0130) → M1 主模型 (parity) → M2 融合 (+0.0251 回归，决策层无变化)。 FIX-M3 排除了噪声封顶：排序上限高于当前模型，下一步只剩目标函数。"
     }
   },
   "legacy_mainline": {
@@ -3384,7 +3516,8 @@
     "AUD-D2 的 offset 是否进入最终部署模型：内插值可用、新论文不可用，需要明确边界后再定。",
     "是否解冻论文线：等 AUD-F1/D1/M1 三条验收结果，由用户决定。",
     "FIX 波次结束后往哪走：(a) 等外部细胞系数据做 FIX-L4；(b) 放弃配体级金属推荐，把论文收缩到回归面 + 边界；(c) 换可学的 pairwise 决策目标再做一次分布外验证。建议先讨论 (b) 的证据是否已经足够。",
-    "FIX-M2 之后：(a) 先做队列内方差上限估计，再决定论文是否收缩；(b) 直接投入 pairwise 决策目标 + DOI 分布外验证；(c) 等外部细胞系数据做 FIX-L4。建议 (a)，因为它决定 (b) 是否还有意义。"
+    "FIX-M2 之后：(a) 先做队列内方差上限估计，再决定论文是否收缩；(b) 直接投入 pairwise 决策目标 + DOI 分布外验证；(c) 等外部细胞系数据做 FIX-L4。建议 (a)，因为它决定 (b) 是否还有意义。",
+    "FIX-M3 之后：(a) 投入 pairwise/listwise 目标 + DOI 分布外验证（当前证据支持）；(b) 补数据：在 424 个评估队列内做约 200 个组内重复，以识别 R² 上限；(c) 收缩论文主张到回归面。建议 (a)，(b) 作为数据采集的并行项。"
   ],
   "do_not": [
     "不要把 668 对 matched 数据说成 5 金属全覆盖 — 只有 3 个金属对有 matched 样本。",

@@ -5717,3 +5717,56 @@ ACTIVE count: **121 -> 122** (+1).
 new tests; §5.2: every number traces to the sweep printed above and
 `/tmp`-free reproducible commands; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 
+
+## §6.114 — FIX-M3: the variance ceiling is unidentifiable, but it is not binding
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (identifiability limit) + one POSITIVE
+bound.  **Code:** `molmetal/scripts/msrs_variance_ceiling.py`.
+**Artifact:** `metrics/by_metric/msrs_variance_ceiling.json`.
+
+**What was tested.**  The decision layer has failed five times.  Before trying a
+sixth objective, this asks whether the target itself supports ranking.  In the
+424 evaluation cohorts (848 cohort x metal cells) the within-cohort variance is
+decomposed into a metal main effect, a cohort x metal interaction, and
+measurement noise.  Only the interaction can change a within-cohort ranking.
+
+**MEASURED.**  var_within = 0.09455; metal main effect = 3.4% (real signal, and
+therefore a lower bound on the explainable share).  Replicate noise: 304 cells,
+359 df, pooled sigma 0.2114, median within-cell sigma 0.0265, p90 0.3301 — a
+bimodal sample.  Only **3 of 848** evaluation cells have a replicate.
+
+**Honest-negative (ACTIVE, this entry):**
+  * **The R2 ceiling is not identifiable.**  Depending on which replicate
+    summary is used, it ranges from 0% to 99.2%.  No single number may be
+    quoted, in either direction.
+  * **The replicate sample cannot be extrapolated.**  Its pooled sigma and its
+    median differ by 12x, and it is almost disjoint from the cohorts being
+    scored.
+  * **Identifying it needs data, not modelling.**  About 200 within-cell
+    replicate degrees of freedom inside the 424 evaluation cohorts (~200 cells
+    measured twice); currently 3.
+
+**Positive bound (the reason this is not a dead end).**  Ranking metrics are
+far more noise-robust than R2.  Across sigma in [0.027, 0.36] a perfect
+predictor of the true cell mean scores top-1 0.700-0.949 and regret
+0.001-0.106, while the current best (`lgb_tree`) scores 0.566 / 0.1186.  The
+break-even noise is sigma >= 1.2393 for top-1 and sigma >= 0.3948 for regret,
+both above every defensible estimate (pooled 0.2114, between-DOI 0.186).
+So the data is **not** the binding constraint on the decision layer.
+
+Cross-paper check: 15 comparable paper pairs, top-1 agreement 13/15 = 0.867
+(Wilson 95% 0.621-0.963), between-DOI sigma 0.186.  Directional only; the
+sample is small and the papers are likely related.
+
+**What this does and does not establish.**  It rules out noise as the ceiling.
+It does not separate "the representation lacks the information" from "the
+objective does not extract it" — that is what a pairwise/listwise objective on
+DOI-grouped folds must answer next.
+
+**§6.114 catalog-count math.** Net catalog-count delta: **+1** (§6.114 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **165 -> 166** (+1).
+ACTIVE count: **121 -> 122** (+1).
+
+**Workflow** | FIX-M3 (2026-10-19; 0 GPU; 6 new tests; §5.2: every number
+traces to `metrics/by_metric/msrs_variance_ceiling.json`; §5.3 + §5.4: 0
+paper/* + 0 wet-lab).

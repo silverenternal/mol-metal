@@ -1,0 +1,243 @@
+{
+  "artifact": "msrs_variance_ceiling",
+  "version": "1.0",
+  "generated_utc": "2026-10-19T03:40:52+00:00",
+  "provenance": {
+    "long_parquet": "data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "oof": "results/msrs_hybrid/oof.npz",
+    "oof_sha256": "2036bf0258bcf55b95c1c6e52245c50f401e3d772701d9500b51c1c665249508",
+    "script": "molmetal/scripts/msrs_variance_ceiling.py",
+    "git_commit": "9248a7f2b3f8508fda68c49a607ba8e64d5af08e"
+  },
+  "design": {
+    "cohort_keys": [
+      "ligand_canonical",
+      "cell_line_key",
+      "doi",
+      "time_h"
+    ],
+    "min_metals": 2,
+    "sigma_grid": [
+      0.027,
+      0.05,
+      0.1,
+      0.15,
+      0.211,
+      0.25,
+      0.3,
+      0.36
+    ],
+    "n_boot": 300,
+    "seed": 7,
+    "estimand": "variance of y within a cohort (same ligand, cell line, DOI, time); only the cohort x metal interaction can change a within-cohort ranking"
+  },
+  "replicate_noise": {
+    "n_replicated_cells": 304,
+    "n_rows": 663,
+    "df": 359,
+    "pooled_sigma": 0.2114,
+    "pooled_sigma2": 0.04469,
+    "median_within_cell_sigma": 0.0265,
+    "p90_within_cell_sigma": 0.3301,
+    "by_metal": {
+      "Ir": {
+        "cells": 49,
+        "pooled_sigma": 0.1438
+      },
+      "Os": {
+        "cells": 20,
+        "pooled_sigma": 0.0449
+      },
+      "Re": {
+        "cells": 5,
+        "pooled_sigma": 0.2388
+      },
+      "Rh": {
+        "cells": 4,
+        "pooled_sigma": 0.3764
+      },
+      "Ru": {
+        "cells": 226,
+        "pooled_sigma": 0.2241
+      }
+    },
+    "n_evaluation_cells": 848,
+    "n_evaluation_cells_with_replicates": 3,
+    "evaluation_replicate_df": 3
+  },
+  "decomposition": {
+    "n_cohorts": 424,
+    "n_cells": 848,
+    "var_within": 0.09455,
+    "additive_residual_ms": 0.09133,
+    "metal_main_share": 0.034,
+    "interaction_plus_noise_share": 0.966
+  },
+  "ceiling_curve": [
+    {
+      "sigma": 0.027,
+      "interaction_var": 0.0906,
+      "interaction_share_of_within": 0.9582,
+      "max_within_r2": 0.9923,
+      "perfect_model_top1": 0.9492,
+      "perfect_model_regret": 0.0013,
+      "two_measurement_top1": 0.9337,
+      "two_measurement_regret": 0.0022
+    },
+    {
+      "sigma": 0.05,
+      "interaction_var": 0.08883,
+      "interaction_share_of_within": 0.9395,
+      "max_within_r2": 0.9736,
+      "perfect_model_top1": 0.9187,
+      "perfect_model_regret": 0.0038,
+      "two_measurement_top1": 0.8908,
+      "two_measurement_regret": 0.0067
+    },
+    {
+      "sigma": 0.1,
+      "interaction_var": 0.08133,
+      "interaction_share_of_within": 0.8602,
+      "max_within_r2": 0.8942,
+      "perfect_model_top1": 0.8615,
+      "perfect_model_regret": 0.013,
+      "two_measurement_top1": 0.8144,
+      "two_measurement_regret": 0.0226
+    },
+    {
+      "sigma": 0.15,
+      "interaction_var": 0.06883,
+      "interaction_share_of_within": 0.728,
+      "max_within_r2": 0.762,
+      "perfect_model_top1": 0.814,
+      "perfect_model_regret": 0.0262,
+      "two_measurement_top1": 0.7579,
+      "two_measurement_regret": 0.0436
+    },
+    {
+      "sigma": 0.211,
+      "interaction_var": 0.04681,
+      "interaction_share_of_within": 0.4951,
+      "max_within_r2": 0.5291,
+      "perfect_model_top1": 0.7727,
+      "perfect_model_regret": 0.0457,
+      "two_measurement_top1": 0.7053,
+      "two_measurement_regret": 0.0739
+    },
+    {
+      "sigma": 0.25,
+      "interaction_var": 0.02883,
+      "interaction_share_of_within": 0.3049,
+      "max_within_r2": 0.339,
+      "perfect_model_top1": 0.7479,
+      "perfect_model_regret": 0.0607,
+      "two_measurement_top1": 0.6777,
+      "two_measurement_regret": 0.0959
+    },
+    {
+      "sigma": 0.3,
+      "interaction_var": 0.00133,
+      "interaction_share_of_within": 0.0141,
+      "max_within_r2": 0.0481,
+      "perfect_model_top1": 0.7232,
+      "perfect_model_regret": 0.0802,
+      "two_measurement_top1": 0.6513,
+      "two_measurement_regret": 0.1226
+    },
+    {
+      "sigma": 0.36,
+      "interaction_var": 0.0,
+      "interaction_share_of_within": 0.0,
+      "max_within_r2": 0.0,
+      "perfect_model_top1": 0.6998,
+      "perfect_model_regret": 0.1056,
+      "two_measurement_top1": 0.6232,
+      "two_measurement_regret": 0.1588
+    }
+  ],
+  "cross_paper": {
+    "n_groups_with_multiple_dois": 15,
+    "n_paper_pairs": 15,
+    "top1_agreement": 0.8667,
+    "top1_agreement_wilson95": [
+      0.6212,
+      0.9626
+    ],
+    "between_doi_sigma": 0.186,
+    "between_doi_sigma_all_groups": 0.186,
+    "between_doi_df_all_groups": 30,
+    "note": "Between-DOI sigma includes protocol and lab differences, so it is an upper bound on measurement noise, not an estimate of it."
+  },
+  "current_models": {
+    "global_best": {
+      "within_corr": 0.1221,
+      "calibrated_within_r2": 0.0149,
+      "pred_within_sd": 0.0479
+    },
+    "cell_best": {
+      "within_corr": 0.176,
+      "calibrated_within_r2": 0.031,
+      "pred_within_sd": 0.1065
+    },
+    "lgb_tree": {
+      "within_corr": 0.1947,
+      "calibrated_within_r2": 0.0379,
+      "pred_within_sd": 0.0729
+    },
+    "gnn_metal_state": {
+      "within_corr": 0.2543,
+      "calibrated_within_r2": 0.0647,
+      "pred_within_sd": 0.1952
+    },
+    "blend_equal": {
+      "within_corr": 0.2755,
+      "calibrated_within_r2": 0.0759,
+      "pred_within_sd": 0.1159
+    },
+    "stack_foldwise": {
+      "within_corr": 0.2782,
+      "calibrated_within_r2": 0.0774,
+      "pred_within_sd": 0.1107
+    },
+    "_note": "calibrated_within_r2 = corr^2, i.e. R2 after the best linear rescaling. Plain R2 is near zero because the predictions are shrunk ~100x; ranking only needs the correlation."
+  },
+  "break_even": {
+    "sigma_top1": 1.2393,
+    "sigma_regret": 0.3948,
+    "grid_hi": 1.5,
+    "note": "current model is at the ceiling only if the true noise is at least this large",
+    "current": {
+      "top1": 0.566,
+      "regret": 0.1186
+    },
+    "current_arm": "lgb_tree"
+  },
+  "verdict": {
+    "identified": false,
+    "identified_metric": "within-cohort R2",
+    "explainable_share_range": [
+      0.0,
+      0.9923
+    ],
+    "decision_ceiling_range": {
+      "top1": [
+        0.6998,
+        0.9492
+      ],
+      "regret": [
+        0.0013,
+        0.1056
+      ],
+      "sigma_range": [
+        0.027,
+        0.36
+      ]
+    },
+    "identified_lower_bound": 0.034,
+    "best_current_model": "stack_foldwise",
+    "best_current_within_corr": 0.2782,
+    "reading": "The metal main effect is real signal and explains 3.4% of within-cohort variance, which is a lower bound on the explainable share. In R2 terms the ceiling is not identified: pooled replicate sigma is 0.2114 but its median is 0.0265, and only 3 of 848 evaluation cells have a replicate, so the R2 ceiling ranges from 0 to 99.2%. The ranking metrics are far more noise-robust than R2: across the whole plausible noise range sigma in [0.027, 0.36], a perfect predictor of the true cell mean scores top-1 0.70-0.95 and regret 0.001-0.106, always better than the current 0.566 / 0.1186. The break-even noise is sigma>=1.2393 for top-1 and sigma>=0.3948 for regret, both above every defensible estimate. Conclusion: the data is not the binding constraint on the decision layer; the model is.",
+    "what_would_identify_it": "About 200 within-cell replicate degrees of freedom inside the 424 evaluation cohorts (currently 3); e.g. ~200 cells measured twice."
+  }
+}
