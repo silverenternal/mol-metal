@@ -88,7 +88,7 @@
 | ~~回归校准（斜率、区间分数）~~ | ~~coverage 好不代表 sharpness 好~~ | **已补（MET-4）：DOI 斜率 0.9256、r2_fit 0.3363、Winkler 2.74，负** |
 | 决策曲线（regret-coverage、net benefit） | 单点 regret 不能说明可用性 | 无 |
 | 外部独立数据集 | 所有验证都是同一语料的重划分 | 无 |
-| 最终模型的 metal-blind 消融 | 证明"金属感知"承重，而不只是相关 | 只有树模型上的 ligand vs +metal |
+| ~~最终模型的 metal-blind 消融~~ | ~~证明"金属感知"承重，而不只是相关~~ | **已补（MET-6）：metal-blind −0.0683（ligand）/ −0.0693（DOI），p=0.0099；金属标签本身只值 0.006** |
 | 统计功效 / 最小可检测效应 | 61 DOI 下 p=0.054 到底意味着什么 | 无 |
 | 生成 novelty / uniqueness | validity 高不等于分子新 | 只有 IntDiv1 0.869 |
 | ~~数据卡 + 泄漏审计~~ | ~~强指标论文的标配~~ | **已补（MET-10）：`DATASET_CARD.md` + `DATA_LEAKAGE_AUDIT.md` §8；ligand 划分 89.43% 测试行共享 DOI** |
@@ -121,7 +121,7 @@
 | 主张 | 必需指标 | 现状 |
 |---|---|---|
 | C1 全配合物表征优于配体片段 | R² 增量 + 配对 CI + 5 seed + 两 split | 有 +0.1002（单 seed）；5 seed 只在最终模型上补了（MET-1），表征臂本身仍单 seed |
-| C2 金属状态/配位是承重的 | metal-blind 消融 + permutation null | 只有 ligand vs +metal（树）；缺最终模型 |
+| C2 金属状态/配位是承重的 | metal-blind 消融 + permutation null | **已补（MET-6）**：metal-blind −0.0683 [0.0516, 0.0903]，DOI −0.0693 [0.0509, 0.0884]，block p=0.0099；但 cell-blind 同为 −0.0629 |
 | C3 跨金属迁移有代价但可量化 | within-metal vs LOMO + seed spread + 平票敏感性 | **齐全** |
 | C4 光毒性可切换且金属依赖 | switch 率 + Wilson CI + 跨金属配对 | **齐全**（描述性） |
 | C5 金属替换推荐可用 | regret/top-1/NDCG + 决策曲线 + 显著性 | **不成立**（n.s.） |
@@ -137,7 +137,7 @@
 
 见 `todo.json :: work_packages` 的 MET-1..MET-11。优先级：
 
-- **P0（不做就不能投）**：MET-1 5-seed（DONE）、MET-2 四协议（DONE，负）、MET-3 Δ 指标（DONE，负）、MET-4 校准（DONE，负）、MET-6 金属消融、MET-10 数据卡（DONE）。
+- **P0（不做就不能投）**：MET-1 5-seed（DONE）、MET-2 四协议（DONE，负）、MET-3 Δ 指标（DONE，负）、MET-4 校准（DONE，负）、MET-6 金属消融（DONE，PASS）、MET-10 数据卡（DONE）。**P0 全部完成。**
 - **P1（决定论文上限）**：MET-5 决策曲线、MET-7 外部数据、MET-8 统计功效。
 - **P2（生成线专用）**：MET-9 生成指标。
 - **P3（打包）**：MET-11 指标表自动生成。

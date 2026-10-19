@@ -6592,6 +6592,15 @@ So the halide extension is **bit-exact on the canonical 5-metal cohort**
   guards are gone; the file is 5 passed, 0 skipped.
 * Two new regression tests in `test_wfa92_dative_provenance.py` pin the halide
   rule and the 2.6 Å bound.
+* `cfm_property_panel._panel_templates` crashed with `NameError: torch` (then
+  `AtomCloud`) on the scaffold fallback path — the CSV path never reaches it,
+  so the crash was invisible. Imports fixed, and the dative-provenance line now
+  prints unconditionally (an empty dict is information, not silence).
+* `metallo_drug_smoke_retrain.py` had lost `--ref-repo-path` while two tests
+  still asserted it; the flag is restored (only passed when set, so the default
+  adapter is unchanged) and printed as `[metallo_smoke] ref_repo_path = ...`.
+  `test_cfm_infrastructure` was also looking for the clone's modules one level
+  too high (they live in `root/flow_matching/`, not `root/`).
 
 ### 6.125f Honest negatives that REMAIN (ACTIVE)
 
@@ -6765,6 +6774,80 @@ ACTIVE count: **135 -> 136** (+1).
 **Workflow** | MET-4 (2026-10-19; 0 GPU — CPU over 21,404 rows; 10 new tests;
 §5.2: every number traces to `metrics/by_metric/msrs_calibration.json`;
 §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
+
+## §6.128 — MET-6 passed, but the metal label is redundant and the cell line is as large a lever
+
+**Claim under test.**  "The final model is metal-aware": removing metal-derived
+features must cost real accuracy, and permuting them must destroy that gain.
+
+**Setup.**  Nine arms on MET-2's folds, same seed and LightGBM parameters.
+Blocks: ECFP4 of `ligand_canonical` (2,048), state (4), coordination (22),
+metal categorical code, cell categorical code.  Two 100-draw permutation nulls:
+label-only (state/coord kept) and whole metal block (code + state + coord
+permuted together).  Protocols: ligand and DOI.
+
+**MEASURED (ligand / DOI, delta R2 vs full, group-bootstrap CI95).**
+
+| arm | ligand | DOI |
+|---|---|---|
+| full | 0.5556 | 0.3321 |
+| no_metal_code | 0.0064 [0.0014, 0.0111] | 0.0053 [-0.0062, 0.0155] |
+| no_state | 0.0272 [0.0092, 0.0557] | 0.0196 [0.0074, 0.0317] |
+| no_coord | 0.0130 [-0.0005, 0.0230] | 0.0103 [-0.0004, 0.0206] |
+| no_state_coord | 0.0544 [0.0401, 0.0736] | 0.0423 [0.0271, 0.0571] |
+| **metal_blind** | **0.0683 [0.0516, 0.0903]** | **0.0693 [0.0509, 0.0884]** |
+| no_complex | 0.1370 [0.0994, 0.1665] | 0.0902 [0.0603, 0.1208] |
+| cell_blind | 0.0629 [0.0502, 0.0806] | 0.0442 [0.0258, 0.0620] |
+| ligand_only | 0.1356 [0.1088, 0.1756] | 0.1158 [0.0900, 0.1415] |
+
+Permutation nulls (ligand): label p = 0.0099 (null mean R2 0.5442,
+CI [0.5402, 0.5475]); block p = 0.0099 (null gap mean -0.0063).
+Pre-registered gate met: drop 0.0683 >= 0.05 and p < 0.01.
+
+**Honest negatives that REMAIN (ACTIVE, this entry):**
+  * **The cell line is an equally large lever.**  Dropping the cell categorical
+    code costs 0.0629 (ligand) / 0.0442 (DOI), essentially the same as dropping
+    every metal-derived block (0.0683 / 0.0693).  The correct claim is "metal
+    adds information beyond ligand and cell line", not "metal makes the model
+    good".  A pooled R2 contains a large cell-line baseline.
+  * **The metal label is nearly redundant.**  Removing the categorical metal
+    code costs 0.0064 (ligand, CI excludes 0) and 0.0053 (DOI, n.s.).  Metal
+    identity is carried by the continuous state/coord descriptors; the one-hot
+    says it again.  Do not claim "metal one-hot is load-bearing".
+  * **Coordination alone is not significant.**  no_coord CI touches 0 on both
+    protocols; only the state block and the combined state+coord arm are.
+  * **The p-value sits at the resolution floor.**  With 100 draws the smallest
+    attainable p is 1/101 = 0.0099.  Both nulls had 0/100 exceedances, so the
+    reported 0.0099 means "at most this", not a measured value; the gate
+    p < 0.01 is met exactly at the boundary.  Distinguishing p=0.005 from
+    p=0.0099 needs 500+ draws.
+  * **The block null is centred below the blind arm.**  Null mean R2 0.4810 vs
+    metal_blind 0.4873: 26 noise columns still consume capacity.  The test asks
+    "real block vs same-width noise block", not "block vs no block"; the
+    offset is inside the gap null by construction.
+  * **Most of the R2 does not need the ligand structure.**  The 26 metal/cell
+    columns alone score 0.4186; ECFP4 alone scores 0.4200; together 0.5556.
+    The two halves are nearly additive and each explains ~42% of variance.
+    Pooled R2 is not a measure of ligand-structure learning.
+  * **The GNN was not re-run.**  MET-1 showed the tree is the decision variable
+    (GNN alone loses in 10/10 combinations); the GNN consumes the same
+    state/coord blocks, so the tree bounds what fusion can recover.
+
+**Why this matters.**  This is the one mechanism claim that survives DOI
+holdout at full size (0.0693 vs 0.0683 on ligand), so it can headline C2.  But
+it must be stated as an incremental effect over ligand + cell line, with the
+cell-blind number beside it, or it will be read as "metal is the model".
+
+**§6.128 catalog-count math.** Net catalog-count delta: **+1** (§6.128 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **180 -> 181** (+1).
+ACTIVE count: **136 -> 137** (+1).
+
+**Workflow** | MET-6 (2026-10-19; 0 GPU — CPU, 18 fits + 200 permutations,
+1,270 s; 9 new tests; §5.2: every number traces to
+`metrics/by_metric/msrs_metal_ablation.json`; §5.3 + §5.4: 0 paper/* + 0
+wet-lab).
 
 ---
 

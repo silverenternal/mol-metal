@@ -25,7 +25,7 @@
       "S4": "效应量 + 置信区间 + 多重校正（DOI 聚类、Holm）",
       "S5": "每个数字可追到 artifact 字段"
     },
-    "immediate_goal": "MET-3 已关闭 Δ 效应量这条路：符号 0.62 未过门槛，幅度校准斜率 0.32、R² 0.004，MAE 只比恒零预测器好 4%。「Δ 可操作」的主张不成立。下一步 MET-4：把回归本身校准好（coverage / 宽度 / interval score / PIT），这决定主表能否用「区间预测」而不是点预测或 Δ 来承载预测主张。"
+    "immediate_goal": "P0 全部关闭：MET-1（5-seed PASS）、MET-2（四协议，DOI 0.3321，负）、MET-3（Δ 符号 0.6193、斜率 0.32，负）、MET-4（区间宽 1.92 log10，负）、MET-6（metal-blind −0.0683，p=0.0099，PASS，但 cell-blind 同为 −0.0629）、MET-10（数据卡：ligand 划分 89.43% 测试行共享 DOI）。下一步 P1：MET-5 决策曲线 + MET-8 统计功效，把「决策层是边界」写成有 MDE 支撑的定量结论。"
   },
   "current_position": {
     "measured_facts": [
@@ -42,7 +42,8 @@
       "光毒性：Ru switch 0.2624 vs Ir 0.1373，差 +0.1251 [0.0395, 0.2048]；PI 预测 OOF R²<0。",
       "NCI-60 9 细胞系 AUC 0.7294 ± 0.2137 vs Krasnov 0.81（−0.08；2 个细胞系 n<10）。",
       "DOI offset 带来 +0.1109 R²，但金属化学在 DOI 之后只剩 −0.0003 → DOI 是论文代理，不能当特征。",
-      "数据卡（MET-10，21,404 行）：ligand 划分测试行 89.43% 共享 DOI（内插），DOI 划分 0% 共享 DOI 但 15.43% 共享配体；scaffold 65.58% 共享 DOI；细胞系 96–98% 复现。重复键 304 个/663 行，跨折 0；右删失 5,015 行（18.7%）被排除。ligand_canonical 不含金属原子（0 行）。"
+      "数据卡（MET-10，21,404 行）：ligand 划分测试行 89.43% 共享 DOI（内插），DOI 划分 0% 共享 DOI 但 15.43% 共享配体；scaffold 65.58% 共享 DOI；细胞系 96–98% 复现。重复键 304 个/663 行，跨折 0；右删失 5,015 行（18.7%）被排除。ligand_canonical 不含金属原子（0 行）。",
+      "金属消融（MET-6，最终树）：metal-blind 掉 0.0683 [0.0516, 0.0903]（ligand）/ 0.0693 [0.0509, 0.0884]（DOI），置换 p=0.0099（分辨率下限）。金属 one-hot 只值 0.0064/0.0053；cell-blind 掉 0.0629/0.0442；no_coord 单独 CI 含 0；仅 26 列金属/细胞特征 R²=0.4186，仅 ECFP4 R²=0.4200，两半近似可加。"
     ]
   },
   "metric_gap_analysis": {
@@ -728,7 +729,7 @@
       "title": "金属感知消融",
       "layer": "机制",
       "priority": "P0",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "1 天",
       "why": "必须证明最终模型的增益来自金属信息，而不是配体或细胞系。现有只有树模型上的 ligand vs +metal，没有最终模型的 metal-blind 与 permutation null。",
@@ -737,7 +738,60 @@
       "acceptance": "metal-blind 掉 R² ≥0.05；permutation p<0.01；逐块增量与 CI 落盘。",
       "depends_on": [
         "MET-1"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_metal_ablation.json",
+        "protocols": [
+          "ligand",
+          "doi"
+        ],
+        "arms_ligand": {
+          "full": 0.5556,
+          "no_metal_code": 0.5492,
+          "no_state": 0.5284,
+          "no_coord": 0.5426,
+          "no_state_coord": 0.5012,
+          "metal_blind": 0.4873,
+          "no_complex": 0.4186,
+          "cell_blind": 0.4927,
+          "ligand_only": 0.42
+        },
+        "arms_doi": {
+          "full": 0.3321,
+          "no_metal_code": 0.3268,
+          "no_state": 0.3125,
+          "no_coord": 0.3218,
+          "no_state_coord": 0.2898,
+          "metal_blind": 0.2628,
+          "no_complex": 0.2419,
+          "cell_blind": 0.2879,
+          "ligand_only": 0.2163
+        },
+        "metal_blind_drop": {
+          "ligand": 0.0683,
+          "ci95": [
+            0.0516,
+            0.0903
+          ],
+          "doi": 0.0693,
+          "doi_ci95": [
+            0.0509,
+            0.0884
+          ]
+        },
+        "permutation": {
+          "n": 100,
+          "metal_label_p": 0.0099,
+          "metal_label_null_mean": 0.5442,
+          "metal_block_p": 0.0099,
+          "metal_block_null_gap_mean": -0.0063
+        },
+        "reading": "metal-blind 在 ligand 掉 0.0683、DOI 掉 0.0693，两个协议几乎相同，是少数跨协议不缩水的结论；置换 p=0.0099（100 次的分辨率下限）。但 cell-blind 同样掉 0.0629/0.0442，细胞系是同等量级的杠杆；金属 one-hot 本身只值 0.0064/0.0053（DOI 不显著），金属身份由 state/coord 连续描述符携带。no_coord 单独不显著。26 列金属/细胞特征单独 R²=0.4186，ECFP4 单独 0.4200，两半近似可加——池化 R² 不能读成配体结构学习能力。",
+        "artifacts": [
+          "metrics/by_metric/msrs_metal_ablation.json"
+        ]
+      },
+      "acceptance_result": "PASSED (metal_blind drop 0.0683 >= 0.05; metal_block p=0.0099 < 0.01; DOI replicates 0.0693)"
     },
     {
       "id": "MET-7",
@@ -924,7 +978,7 @@
         "MET-6",
         "MET-10"
       ],
-      "note": "P0：MET-1 DONE（5-seed PASS）、MET-2 DONE-NEGATIVE（DOI 0.3321）、MET-3 DONE-NEGATIVE（符号 0.6193，斜率 0.32）、MET-4 DONE-NEGATIVE（coverage 0.8789，宽 1.9195）、MET-10 DONE（数据卡 + 泄漏审计）。剩余 MET-6。"
+      "note": "P0 全部 DONE：MET-1 PASS、MET-2/3/4 NEGATIVE、MET-6 PASS、MET-10 DONE。下一波 wave_M2_decision：MET-5 + MET-8。"
     },
     "wave_M2_decision": {
       "items": [

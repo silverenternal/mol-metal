@@ -1,0 +1,482 @@
+{
+  "artifact": "msrs_metal_ablation",
+  "version": "1.0",
+  "requires_dual_split": false,
+  "generated_utc": "2026-10-19T11:23:51+00:00",
+  "provenance": {
+    "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_metal_ablation.py",
+    "git_commit": "c98c1da62231afd27841a4e2ec583ddb1e9af9db",
+    "ligand_spec_hash": "sha256:453f77bb3ea233ee7b6666b72d9277a7849f901cd0b756dba828a898217f824b"
+  },
+  "design": {
+    "split_schema": "ligand and doi GroupKFold(5); consumes MET-2's partition code",
+    "ligand_source": "ligand_canonical",
+    "arm_ligand_source": {
+      "full": "ligand_canonical",
+      "no_metal_code": "ligand_canonical",
+      "no_state": "ligand_canonical",
+      "no_coord": "ligand_canonical",
+      "no_state_coord": "ligand_canonical",
+      "metal_blind": "ligand_canonical",
+      "no_complex": "ligand_canonical",
+      "cell_blind": "ligand_canonical",
+      "ligand_only": "ligand_canonical"
+    },
+    "rows": 21404,
+    "protocols": [
+      "ligand",
+      "doi"
+    ],
+    "primary_protocol": "ligand",
+    "arms": {
+      "full": {
+        "complex": true,
+        "state": true,
+        "coord": true,
+        "metal_code": true,
+        "cell_code": true
+      },
+      "no_metal_code": {
+        "complex": true,
+        "state": true,
+        "coord": true,
+        "metal_code": false,
+        "cell_code": true
+      },
+      "no_state": {
+        "complex": true,
+        "state": false,
+        "coord": true,
+        "metal_code": true,
+        "cell_code": true
+      },
+      "no_coord": {
+        "complex": true,
+        "state": true,
+        "coord": false,
+        "metal_code": true,
+        "cell_code": true
+      },
+      "no_state_coord": {
+        "complex": true,
+        "state": false,
+        "coord": false,
+        "metal_code": true,
+        "cell_code": true
+      },
+      "metal_blind": {
+        "complex": true,
+        "state": false,
+        "coord": false,
+        "metal_code": false,
+        "cell_code": true
+      },
+      "no_complex": {
+        "complex": false,
+        "state": true,
+        "coord": true,
+        "metal_code": true,
+        "cell_code": true
+      },
+      "cell_blind": {
+        "complex": true,
+        "state": true,
+        "coord": true,
+        "metal_code": true,
+        "cell_code": false
+      },
+      "ligand_only": {
+        "complex": true,
+        "state": false,
+        "coord": false,
+        "metal_code": false,
+        "cell_code": false
+      }
+    },
+    "state_columns": [
+      "metal_os",
+      "metal_charge",
+      "metal_d_electrons",
+      "metal_valence_e"
+    ],
+    "coord_columns": [
+      "coord_n_donor",
+      "coord_n_N",
+      "coord_n_O",
+      "coord_n_S",
+      "coord_n_P",
+      "coord_n_Se",
+      "coord_n_carbene",
+      "coord_n_anionic",
+      "coord_n_aromatic",
+      "coord_max_component_donors",
+      "coord_n_donor_components",
+      "coord_has_donor",
+      "coord_est_cn",
+      "coord_geom_linear",
+      "coord_geom_trigonal_planar",
+      "coord_geom_tetrahedral",
+      "coord_geom_trigonal_bipyramidal",
+      "coord_geom_octahedral",
+      "coord_geom_square_planar",
+      "coord_geom_square_pyramidal",
+      "coord_geom_pentagonal_bipyramidal",
+      "coord_geom_unknown"
+    ],
+    "donor_coverage": {
+      "rows": 21404,
+      "has_donor": 0.9944,
+      "has_geometry": 0.8013,
+      "unique_smiles": 5861
+    },
+    "n_perm": 100,
+    "seed": 20261018,
+    "min_drop_ok": 0.05,
+    "p_gate": 0.01,
+    "model": "LightGBM, LGB_PARAMS from msrs_surface_model (n_jobs=1, deterministic)",
+    "gnn_note": "The GNN arm is not re-run. MET-1 showed the tree is the decision variable (GNN alone loses to the tree in 10/10 combinations); the GNN consumes the same state/coord blocks, so a block-level conclusion from the tree bounds what the fusion can recover."
+  },
+  "protocols": {
+    "ligand": {
+      "fold_info": {
+        "n_groups": 5861,
+        "n_folds": 5,
+        "n_rows_evaluated": 21404,
+        "n_rows_unscored": 0
+      },
+      "arms": {
+        "full": {
+          "r2": 0.5556,
+          "mae": 0.3856,
+          "n_features": 2074,
+          "n_cat_features": 2
+        },
+        "no_metal_code": {
+          "r2": 0.5492,
+          "mae": 0.3884,
+          "n_features": 2074,
+          "n_cat_features": 1,
+          "delta_r2_vs_full": 0.0064,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 5861,
+            "ci95": [
+              0.0014,
+              0.0111
+            ],
+            "mean": 0.0063,
+            "p_one_sided": 0.005
+          }
+        },
+        "no_state": {
+          "r2": 0.5284,
+          "mae": 0.3972,
+          "n_features": 2070,
+          "n_cat_features": 2,
+          "delta_r2_vs_full": 0.0272,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 5861,
+            "ci95": [
+              0.0092,
+              0.0557
+            ],
+            "mean": 0.0265,
+            "p_one_sided": 0.0
+          }
+        },
+        "no_coord": {
+          "r2": 0.5426,
+          "mae": 0.3906,
+          "n_features": 2052,
+          "n_cat_features": 2,
+          "delta_r2_vs_full": 0.013,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 5861,
+            "ci95": [
+              -0.0005,
+              0.023
+            ],
+            "mean": 0.0133,
+            "p_one_sided": 0.029
+          }
+        },
+        "no_state_coord": {
+          "r2": 0.5012,
+          "mae": 0.4079,
+          "n_features": 2048,
+          "n_cat_features": 2,
+          "delta_r2_vs_full": 0.0544,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 5861,
+            "ci95": [
+              0.0401,
+              0.0736
+            ],
+            "mean": 0.054,
+            "p_one_sided": 0.0
+          }
+        },
+        "metal_blind": {
+          "r2": 0.4873,
+          "mae": 0.4131,
+          "n_features": 2048,
+          "n_cat_features": 1,
+          "delta_r2_vs_full": 0.0683,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 5861,
+            "ci95": [
+              0.0516,
+              0.0903
+            ],
+            "mean": 0.0679,
+            "p_one_sided": 0.0
+          }
+        },
+        "no_complex": {
+          "r2": 0.4186,
+          "mae": 0.4469,
+          "n_features": 26,
+          "n_cat_features": 2,
+          "delta_r2_vs_full": 0.137,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 5861,
+            "ci95": [
+              0.0994,
+              0.1665
+            ],
+            "mean": 0.1377,
+            "p_one_sided": 0.0
+          }
+        },
+        "cell_blind": {
+          "r2": 0.4927,
+          "mae": 0.4154,
+          "n_features": 2074,
+          "n_cat_features": 1,
+          "delta_r2_vs_full": 0.0629,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 5861,
+            "ci95": [
+              0.0502,
+              0.0806
+            ],
+            "mean": 0.0627,
+            "p_one_sided": 0.0
+          }
+        },
+        "ligand_only": {
+          "r2": 0.42,
+          "mae": 0.4419,
+          "n_features": 2048,
+          "n_cat_features": 0,
+          "delta_r2_vs_full": 0.1356,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 5861,
+            "ci95": [
+              0.1088,
+              0.1756
+            ],
+            "mean": 0.1348,
+            "p_one_sided": 0.0
+          }
+        }
+      },
+      "wall_s": 223.8
+    },
+    "doi": {
+      "fold_info": {
+        "n_groups": 1784,
+        "n_folds": 5,
+        "n_rows_evaluated": 21404,
+        "n_rows_unscored": 0
+      },
+      "arms": {
+        "full": {
+          "r2": 0.3321,
+          "mae": 0.4786,
+          "n_features": 2074,
+          "n_cat_features": 2
+        },
+        "no_metal_code": {
+          "r2": 0.3268,
+          "mae": 0.4792,
+          "n_features": 2074,
+          "n_cat_features": 1,
+          "delta_r2_vs_full": 0.0053,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 1784,
+            "ci95": [
+              -0.0062,
+              0.0155
+            ],
+            "mean": 0.0053,
+            "p_one_sided": 0.178
+          }
+        },
+        "no_state": {
+          "r2": 0.3125,
+          "mae": 0.4855,
+          "n_features": 2070,
+          "n_cat_features": 2,
+          "delta_r2_vs_full": 0.0196,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 1784,
+            "ci95": [
+              0.0074,
+              0.0317
+            ],
+            "mean": 0.0195,
+            "p_one_sided": 0.0005
+          }
+        },
+        "no_coord": {
+          "r2": 0.3218,
+          "mae": 0.4821,
+          "n_features": 2052,
+          "n_cat_features": 2,
+          "delta_r2_vs_full": 0.0103,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 1784,
+            "ci95": [
+              -0.0004,
+              0.0206
+            ],
+            "mean": 0.0101,
+            "p_one_sided": 0.0275
+          }
+        },
+        "no_state_coord": {
+          "r2": 0.2898,
+          "mae": 0.4935,
+          "n_features": 2048,
+          "n_cat_features": 2,
+          "delta_r2_vs_full": 0.0423,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 1784,
+            "ci95": [
+              0.0271,
+              0.0571
+            ],
+            "mean": 0.042,
+            "p_one_sided": 0.0
+          }
+        },
+        "metal_blind": {
+          "r2": 0.2628,
+          "mae": 0.5013,
+          "n_features": 2048,
+          "n_cat_features": 1,
+          "delta_r2_vs_full": 0.0693,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 1784,
+            "ci95": [
+              0.0509,
+              0.0884
+            ],
+            "mean": 0.0693,
+            "p_one_sided": 0.0
+          }
+        },
+        "no_complex": {
+          "r2": 0.2419,
+          "mae": 0.514,
+          "n_features": 26,
+          "n_cat_features": 2,
+          "delta_r2_vs_full": 0.0902,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 1784,
+            "ci95": [
+              0.0603,
+              0.1208
+            ],
+            "mean": 0.0907,
+            "p_one_sided": 0.0
+          }
+        },
+        "cell_blind": {
+          "r2": 0.2879,
+          "mae": 0.4945,
+          "n_features": 2074,
+          "n_cat_features": 1,
+          "delta_r2_vs_full": 0.0442,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 1784,
+            "ci95": [
+              0.0258,
+              0.062
+            ],
+            "mean": 0.0439,
+            "p_one_sided": 0.0
+          }
+        },
+        "ligand_only": {
+          "r2": 0.2163,
+          "mae": 0.5177,
+          "n_features": 2048,
+          "n_cat_features": 0,
+          "delta_r2_vs_full": 0.1158,
+          "delta_ci": {
+            "n_boot": 2000,
+            "n_groups": 1784,
+            "ci95": [
+              0.09,
+              0.1415
+            ],
+            "mean": 0.1157,
+            "p_one_sided": 0.0
+          }
+        }
+      },
+      "wall_s": 210.4
+    }
+  },
+  "permutation": {
+    "n_perm": 100,
+    "protocol": "ligand",
+    "observed_full_r2": 0.5556,
+    "observed_metal_blind_r2": 0.4873,
+    "observed_gap": 0.0683,
+    "metal_label": {
+      "null_r2_mean": 0.5442,
+      "null_r2_ci95": [
+        0.5402,
+        0.5475
+      ],
+      "p_value": 0.0099,
+      "note": "state and coord kept; tests the categorical label alone"
+    },
+    "metal_block": {
+      "null_r2_mean": 0.481,
+      "null_r2_ci95": [
+        0.4774,
+        0.4841
+      ],
+      "null_gap_mean": -0.0063,
+      "p_value": 0.0099,
+      "note": "metal code + state + coord permuted together; null for the metal-blind gap"
+    },
+    "wall_s": 810.3
+  },
+  "verdict": "PASS",
+  "verdict_rule": "ligand: R2(full) - R2(metal_blind) >= 0.05 AND metal_block permutation p < 0.01",
+  "gate_measurement": {
+    "metal_blind_drop": 0.0683,
+    "metal_block_p": 0.0099
+  }
+}
