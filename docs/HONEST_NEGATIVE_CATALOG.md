@@ -7167,3 +7167,52 @@ ACTIVE count: **141 -> 142** (+1).
 wet-lab).
 
 ---
+## §6.134 — FIX-L4: the cell-feature blocker is acquisition, not coverage
+
+**Claim under test.**  FIX-L4 asks for CCLE/GDSC expression or mutation
+features on the 711 MSRS cell lines, with acceptance ">=80% coverage AND
+>= +0.005 R2".  The status had been "BLOCKED-PENDING-DATA" without an artifact.
+
+**Setup.**  Scan `.data`, `data`, `molmetal/data` (depth <=4) for filenames
+matching ccle/gdsc/depmap/cellosaurus/cosmic/expression/mutation/omics/rnaseq/
+transcriptome.  Measure the row concentration of the 711 cell lines.  Read the
+`cell_blind` arm of `msrs_metal_ablation.json` as the identity ceiling.  The
+script never trains, so `measured_gain` stays null and the verdict cannot pass
+on availability alone.
+
+**MEASURED.**  Annotation files on disk: **0**.  Coverage: top-10 53.37%,
+top-25 71.08%, top-50 81.17%, top-100 89.13%.  **46 cell lines cover 80% of
+rows.**  539 lines have <10 rows and account for 6.21% of rows.  Identity
+ceiling: removing the cell-line code costs **0.0629 R2** (ligand, CI
+[0.0502, 0.0806]) and **0.0442** (DOI, CI [0.0258, 0.0620]).
+
+**Honest negatives (ACTIVE, this entry):**
+  * **The coverage gate is not the obstacle.**  46 lines suffice, so "711 lines
+    cannot all be annotated" is not a valid reason to stay blocked.  The
+    obstacle is that no table exists on disk.
+  * **Identity already carries 0.06 R2.**  FIX-L4 targets an increment *on top
+    of* identity.  Reading the cell_blind drop as "biology can add 0.06" is
+    wrong.
+  * **No tissue column exists.**  Even the cheapest annotation (tissue
+    one-hot) needs an external mapping; MSRS has only `cell_line_key` and
+    `is_cancer_line`.
+  * **Availability does not imply a gain.**  A downloaded table plus 80%
+    coverage still leaves the verdict BLOCKED until an ablation measures
+    >= +0.005.
+  * **The rare tail stays on the category code.**  665 lines below the top 46
+    cover only 19% of rows; no feature table will fix them.
+  * **Nothing was hard-coded from memory.**  The scan reports 0 and stops.
+
+**Why this matters.**  The remaining path is explicit: download ~46 lines of
+CCLE/GDSC, run one ablation, and only then does FIX-L4 have a number.
+
+**§6.134 catalog-count math.** Net catalog-count delta: **+1** (§6.134 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **186 -> 187** (+1).
+ACTIVE count: **142 -> 143** (+1).
+
+**Workflow** | FIX-L4 (2026-10-19; 0 GPU — parquet read + filesystem scan; 12
+new tests; §5.2: every count traces to
+`metrics/by_metric/msrs_cell_features.json`; §5.3 + §5.4: 0 paper/* + 0
+wet-lab).
+
+---

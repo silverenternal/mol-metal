@@ -25,7 +25,7 @@
       "S4": "效应量 + 置信区间 + 多重校正（DOI 聚类、Holm）",
       "S5": "每个数字可追到 artifact 字段"
     },
-    "immediate_goal": "MET-1..MET-11 全部关闭：MET-1/6/8/10/11 PASS，MET-2/3/4/5/9 NEGATIVE，MET-7 BLOCKED（已测量：同金属交集 0，金属不重叠）。剩余未完成项：FIX-L4（外部细胞系特征，BLOCKED-PENDING-DATA）；MSRS-8 论文整合仍冻结，需用户显式同意。解冻后直接从 metrics/paper_tables/ 取数，外部验证只能写成「未完成」。"
+    "immediate_goal": "MET-1..MET-11 与 FIX-L4 全部关闭：MET-1/6/8/10/11 PASS，MET-2/3/4/5/9 NEGATIVE，MET-7 与 FIX-L4 均为「已测量」的 BLOCKED-PENDING-DATA。唯一未完成项是 MSRS-8 论文整合，仍冻结，需用户显式同意；解冻后从 metrics/paper_tables/ 取数，外部验证与细胞特征只能写成「未完成」。"
   },
   "current_position": {
     "measured_facts": [
@@ -48,7 +48,8 @@
       "统计功效（MET-8）：决策 regret MDE 0.050（62 DOI），观测 −0.0034 需 13,571 DOI；Δ 符号 MDE 0.130（53 DOI），0.65 门槛需 40 DOI 可检测；Δ MAE MDE 0.077，观测改善 0.021 需 706 DOI；DOI R² MDE 0.064（1,784 DOI），距 0.50 差 0.168；表示增益 MDE 0.019、金属消融 MDE 0.024，两者效应均远超 MDE。",
       "生成侧指标（MET-9，66 个存活样本）：yield 0.344、uniqueness 1.0；max Tanimoto 仅 0.108–0.185，平均 novelty 0.8517（<0.90），但 max T<0.9 比例 1.000；IntDiv1 0.8526 vs 同 n 训练子样本 0.8234（+0.0292，与 m7 的 0.869@n=37 符号相反）；SA 6.4423（>4.5）、QED 0.0944；金属合规 1.0（Ir18/Ru16/Rh15/Re13/Os4）；对接 BLOCKED（1/10 pocket，run died）。",
       "指标表自动化（MET-11）：9 张表 / 98 行 / 10 个源 artifact，0 MISSING、1 optional absent（delta_mae_doi 无 target_effect）；每格带 JSON pointer，manifest 记 10 个源文件 sha256；18 个测试全过。",
-      "指标表自动化（MET-11）：10 张表 / 106 行 / 11 个源 artifact，0 MISSING、1 optional absent（delta_mae_doi 无 target_effect）；每格带 JSON pointer，manifest 记源文件 sha256；18 个测试全过。"
+      "指标表自动化（MET-11）：10 张表 / 106 行 / 11 个源 artifact，0 MISSING、1 optional absent（delta_mae_doi 无 target_effect）；每格带 JSON pointer，manifest 记源文件 sha256；18 个测试全过。",
+      "细胞系特征（FIX-L4）：磁盘上 0 个 CCLE/GDSC/DepMap/Cellosaurus 文件；711 个细胞系中 46 个即可覆盖 80% 的行（top10 53.37%、top50 81.17%），539 个系各 <10 行只占 6.21%；细胞身份本身值 0.0629（ligand）/ 0.0442（DOI）R²。"
     ]
   },
   "metric_gap_analysis": {
@@ -1182,7 +1183,35 @@
       "acceptance": "数据来源可引用 + 覆盖率 ≥80% 的队列细胞系 + ≥ +0.005 R²；否则保持 BLOCKED。",
       "depends_on": [
         "FIX-L1"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_cell_features.json",
+        "script": "molmetal/scripts/msrs_cell_features.py",
+        "tests": "molmetal/tests/test_msrs_cell_features.py (12 passed)",
+        "on_disk_annotation_files": 0,
+        "n_cell_lines": 711,
+        "min_lines_for_80pct": 46,
+        "coverage": {
+          "top_10": 0.5337,
+          "top_25": 0.7108,
+          "top_50": 0.8117,
+          "top_100": 0.8913,
+          "top_200": 0.9487
+        },
+        "lines_below_10_rows": 539,
+        "share_rows_in_lines_below_10": 0.0621,
+        "identity_ceiling": {
+          "ligand": 0.0629,
+          "doi": 0.0442
+        },
+        "measured_gain": null,
+        "verdict": "BLOCKED-PENDING-DATA",
+        "reading": "No CCLE/GDSC/DepMap/Cellosaurus table exists on disk, so the feature table cannot be built. The coverage gate is not the obstacle: 46 of 711 cell lines cover 80% of rows. The real obstacle is data acquisition plus a measured ablation. Cell identity is already worth 0.0629 R2 (ligand) / 0.0442 (DOI); FIX-L4 targets an increment on top of that, not a replacement.",
+        "artifacts": [
+          "metrics/by_metric/msrs_cell_features.json"
+        ]
+      },
+      "acceptance_result": "BLOCKED-PENDING-DATA (0 annotation files on disk; 46 lines suffice for 80% coverage; no measured gain)"
     },
     {
       "id": "MSRS-8",

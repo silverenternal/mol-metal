@@ -1,0 +1,104 @@
+{
+  "artifact": "msrs_cell_features",
+  "version": 1.0,
+  "requires_dual_split": false,
+  "generated_utc": "2026-10-19T12:02:21+00:00",
+  "provenance": {
+    "script": "molmetal/scripts/msrs_cell_features.py",
+    "msrs_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "ablation_artifact": "/home/hugo/codes/mol-metal/metrics/by_metric/msrs_metal_ablation.json"
+  },
+  "design": {
+    "coverage_gate": 0.8,
+    "gain_gate": 0.005,
+    "min_rows_per_line": 10,
+    "scan_roots": [
+      "/home/hugo/codes/mol-metal/.data",
+      "/home/hugo/codes/mol-metal/data",
+      "/home/hugo/codes/mol-metal/molmetal/data"
+    ],
+    "scan_patterns": [
+      "ccle",
+      "gdsc",
+      "depmap",
+      "cellosaurus",
+      "cosmic",
+      "expression",
+      "mutation",
+      "omics",
+      "rnaseq",
+      "transcriptome"
+    ],
+    "acceptance": "a citable annotation table covering >=80% of rows AND >= +0.005 R2"
+  },
+  "corpus": {
+    "n_rows": 21404,
+    "n_cell_lines": 711,
+    "top_10": {
+      "A549": 2321,
+      "HELA": 2162,
+      "MCF7": 1880,
+      "HEPG2": 1045,
+      "A2780": 1036,
+      "MDAMB231": 917,
+      "HCT116": 666,
+      "A2780CISR": 511,
+      "SW480": 450,
+      "HEK293": 435
+    },
+    "coverage": [
+      {
+        "top_k": 10,
+        "rows": 11423,
+        "share": 0.5337
+      },
+      {
+        "top_k": 25,
+        "rows": 15215,
+        "share": 0.7108
+      },
+      {
+        "top_k": 50,
+        "rows": 17374,
+        "share": 0.8117
+      },
+      {
+        "top_k": 100,
+        "rows": 19078,
+        "share": 0.8913
+      },
+      {
+        "top_k": 200,
+        "rows": 20307,
+        "share": 0.9487
+      }
+    ],
+    "min_lines_for_80pct": 46,
+    "n_lines_below_10_rows": 539,
+    "rows_in_lines_below_10": 1330,
+    "share_rows_in_lines_below_10": 0.0621
+  },
+  "on_disk_annotation_files": [],
+  "identity_ceiling": {
+    "available": true,
+    "artifact": "msrs_metal_ablation.json",
+    "ligand": {
+      "delta_r2_vs_full": 0.0629,
+      "ci95": [
+        0.0502,
+        0.0806
+      ]
+    },
+    "doi": {
+      "delta_r2_vs_full": 0.0442,
+      "ci95": [
+        0.0258,
+        0.062
+      ]
+    }
+  },
+  "measured_gain": null,
+  "verdict": "BLOCKED-PENDING-DATA",
+  "verdict_rule": "at least one citable annotation table on disk AND enough lines for 80% coverage AND a measured >= +0.005 R2; else BLOCKED-PENDING-DATA",
+  "reading": "No CCLE/GDSC/DepMap/Cellosaurus file exists under .data, data or molmetal/data, so the feature table cannot be built without downloading one. The corpus is concentrated: the top 46 cell lines cover 80% of rows, so an 80%-coverage table does not need all 711 lines. The identity ceiling is the R2 lost when the cell-line code is removed (0.0629 ligand / 0.0442 DOI): any biological feature can at most recover that much, and the +0.005 target is the increment on top of identity."
+}
