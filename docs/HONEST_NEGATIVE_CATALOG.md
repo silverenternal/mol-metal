@@ -7819,3 +7819,61 @@ ACTIVE count: **147 -> 148** (+1).
 read from `msrs_seed_ensemble.json`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 
 ---
+## §6.140 — STR-6: the SA gate is unreachable, and the guidance lever does not exist
+
+**Claim under test.**  "SA-guided decoding can bring generated molecules to
+SA <= 4.5 with mean novelty >= 0.90" (STR-6: 3 seeds x 200, penalty on/off).
+
+**Setup.**  Three independent blockers were found before any GPU was spent:
+(a) ``--sa-penalty`` is inert - ``sa_penalty.py`` documents that sascorer has no
+gradient and the trainer proxy is wrapped in ``torch.tensor(float(...))``
+(``requires_grad=False``), so on/off produce bit-identical updates; (b) there is
+no differentiable SA surrogate, the fake one having been deleted 2026-10-04;
+(c) each run has exactly one checkpoint (``..._seed0.pt``), so a 3-seed sweep
+needs two more training runs.  A 600-sample regeneration was attempted and
+failed: the checkpoint carries ``time_embed_proj`` (128x32) and
+``pocket_per_layer_injector`` while its own ``args`` record neither flag
+(``None``), i.e. it cannot be rebuilt from its recorded configuration.  Inferring
+the flags from weight shapes was rejected - a wrong guess loads wrong weights
+silently.  The pcgrad checkpoints are corrupt (``Invalid magic number``).
+
+**MEASURED.**  SA over 2,396 unguided molecules: panel of record 66 (mean
+6.4423, **0** at <= 4.5, min 4.751); pcgrad_on 1,155 (mean 7.5478, **9**);
+pcgrad_off 1,175 (mean 7.4741, **7**).  Combined **16 / 2,396 = 0.67%**
+(Wilson 95% CI [0.41%, 1.08%]).  The 16 gated molecules have mean novelty
+**0.8757** (median 0.8889) against the 18,137-row training split, n=16
+(underpowered).
+
+**Honest negatives (ACTIVE, this entry):**
+  * **Both halves of the gate fail.**  Yield 0.67% (bar: 5% for the verdict)
+    and, even after hand-picking on SA, novelty 0.8757 < 0.90.
+  * **"SA <= 4.5" is a property of a 0.67% filter, not of the generator.**
+    Any table that reports it must report the yield beside it.
+  * **The lever does not exist.**  A loss-time flag with zero gradient plus no
+    differentiable surrogate means "guided decoding" has no mechanism; running
+    the planned A/B would have returned two identical arms.
+  * **The checkpoint cannot be rebuilt from its own args.**  This is a
+    reproducibility defect independent of SA: the recorded configuration is
+    insufficient to reconstruct the model.
+  * **The pool of record is the strictest evidence and the worst result.**
+    0/66, minimum 4.751.  The 0.67% comes from 30-epoch dumps that include
+    early epochs, so it is an upper-side estimate.
+  * **Generation is harder than reality, not just worse.**  Mean SA 6.44-7.55
+    vs 5.03 for real tmQM; QED 0.0944 vs 0.2685.  Two axes, same direction.
+  * **Docking stays BLOCKED.**  Nothing here changes §6.52d.
+
+**Why this matters.**  The generation line is now closed with numbers on both
+axes, and the paper cannot promise an SA improvement that has no mechanism
+behind it.  It also cannot cite ``--sa-penalty`` as a training lever.
+
+**§6.140 catalog-count math.** Net catalog-count delta: **+1** (§6.140 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **192 -> 193** (+1).
+ACTIVE count: **148 -> 149** (+1).
+
+**Workflow** | STR-6 (2026-10-20; CPU only, 0 GPU-hours of generation;
+6 new tests; §5.2: every number traces to
+`metrics/by_metric/cfm_sa_guided.json` with per-pool sha256, and the novelty
+reference is `.data/molmetal/metalcytotox_5metal_multitask_v4.csv` split=train;
+§5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---

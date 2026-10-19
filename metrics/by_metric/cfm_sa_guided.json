@@ -1,0 +1,115 @@
+{
+  "artifact": "cfm_sa_guided",
+  "combined": {
+    "n_sa_le_gate": 16,
+    "n_scored": 2396,
+    "rate_sa_le_gate": 0.0067,
+    "wilson_ci95": [
+      0.0041,
+      0.0108
+    ]
+  },
+  "design": {
+    "blockers": [
+      "--sa-penalty is inert: sascorer has no gradient and the trainer proxy is wrapped in torch.tensor(float(...)) with requires_grad=False",
+      "no differentiable SA surrogate exists; the previous one was deleted on 2026-10-04 as fake",
+      "one checkpoint per run (..._seed0.pt), so a 3-seed sweep needs two more training runs"
+    ],
+    "guided_decoding": "UNAVAILABLE",
+    "novelty_gate": 0.9,
+    "pool_of_record": "cfm_free_generation_panel_seed0.json (66 molecules, 192 attempts)",
+    "sa_gate": 4.5,
+    "thresholds": [
+      4.0,
+      4.5,
+      5.0,
+      5.5,
+      6.0
+    ]
+  },
+  "gate_subset": {
+    "n": 16,
+    "note": "the gate asks for SA <= 4.5 AND mean novelty >= 0.90; both can hold for a 0.7% hand-picked subset while the generator itself is unchanged",
+    "novelty": {
+      "fingerprint": "Morgan radius 2, 1024 bits",
+      "mean_novelty": 0.8757,
+      "median_novelty": 0.8889,
+      "n": 16,
+      "train_reference": ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+      "underpowered": true
+    }
+  },
+  "generated_utc": "2026-10-19T16:55:09+00:00",
+  "pools": [
+    {
+      "label": "panel_of_record",
+      "n_rows": 66,
+      "n_scored": 66,
+      "n_unscored": 0,
+      "path": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv",
+      "qed_mean": 0.0944,
+      "sa_counts_at_or_below": {
+        "4.0": 0,
+        "4.5": 0,
+        "5.0": 2,
+        "5.5": 2,
+        "6.0": 20
+      },
+      "sa_max": 7.6949,
+      "sa_mean": 6.4423,
+      "sa_median": 6.424,
+      "sa_min": 4.751,
+      "sha256": "6e17eb2d037937d0f0ed71de4aa0cbf68687af7edf882c385d4f2e44f539e8ef"
+    },
+    {
+      "label": "pcgrad_on",
+      "n_rows": 1155,
+      "n_scored": 1155,
+      "n_unscored": 0,
+      "path": "molmetal/reports/cfm_pcgrad_on_2026_10_14/generated_smiles.csv",
+      "qed_mean": 0.2001,
+      "sa_counts_at_or_below": {
+        "4.0": 5,
+        "4.5": 9,
+        "5.0": 31,
+        "5.5": 72,
+        "6.0": 140
+      },
+      "sa_max": 9.8846,
+      "sa_mean": 7.5478,
+      "sa_median": 7.3112,
+      "sa_min": 3.4792,
+      "sha256": "ccf3162466fe787336d0c585114b3e0bc4da79053b71afbff8381670be06512a"
+    },
+    {
+      "label": "pcgrad_off",
+      "n_rows": 1175,
+      "n_scored": 1175,
+      "n_unscored": 0,
+      "path": "molmetal/reports/cfm_pcgrad_off_2026_10_15/generated_smiles.csv",
+      "qed_mean": 0.1981,
+      "sa_counts_at_or_below": {
+        "4.0": 6,
+        "4.5": 7,
+        "5.0": 26,
+        "5.5": 83,
+        "6.0": 151
+      },
+      "sa_max": 9.9084,
+      "sa_mean": 7.4741,
+      "sa_median": 7.2204,
+      "sa_min": 3.8776,
+      "sha256": "78a12ec4a782b65464c08c24982eef6f124928ee278e74f03c9db4f2b592a771"
+    }
+  ],
+  "provenance": {
+    "git_commit": "73671a62121ed531fc38d34756d558f9f588c1f6",
+    "script": "molmetal/scripts/cfm_sa_yield_audit.py"
+  },
+  "verdict": "KILL",
+  "verdict_detail": {
+    "gate_met": false,
+    "note": "the gate is a property of the generator only if the yield is reported next to it"
+  },
+  "version": "1.0"
+}
