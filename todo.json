@@ -415,7 +415,7 @@
       "title": "删失标签训练（右删失 5,015 行）",
       "layer": "数据",
       "priority": "P0",
-      "status": "TODO",
+      "status": "IN_PROGRESS",
       "gpu": "cuda:0（树先跑，GNN 可选）",
       "wall": "4 小时（树 2h + 分析）",
       "why": "potency 26,801 行里 5,015 行右删失（bound 中位 100 µM）被直接丢弃，占 18.7%。这是现有语料里唯一没被用上的信息，且集中在『不活跃』一端——而 Δ 符号恰恰需要两端。",
@@ -433,7 +433,7 @@
       "title": "特征扩展：ECFP6 + MACCS + RDKit 描述符 + 实验条件",
       "layer": "特征",
       "priority": "P1",
-      "status": "TODO",
+      "status": "IN_PROGRESS",
       "gpu": "none",
       "wall": "3 小时",
       "why": "当前 2,074 维 = ECFP4 2048 + 2 类别 + 26 金属/细胞列。DOI 留出下新论文的实验条件（time_h、method、is_cancer_line）没有被显式建模；ECFP4 也可能截断了大片段信息。",
@@ -514,7 +514,7 @@
       "question": "融合臂在 DOI 上是否成立？",
       "if_yes": "继续 STR-3 / STR-4；把 DOI 数字作为主表跨论文行。",
       "if_no": "停止模型侧投入，直接按边界论文定稿；不再跑 STR-5。",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "evidence": {
         "answer": "效应成立，绝对水平未过线",
         "doi_stack_r2": 0.3597,
@@ -527,6 +527,12 @@
         ],
         "delta_sign_doi": 0.5413,
         "note": "按 if_no 的字面（gate 未过）应停止模型侧投入；但 +0.0217 的 CI 排除 0，且差 0.0003。需要用户裁定。"
+      },
+      "resolution": {
+        "date": "2026-10-19",
+        "owner": "用户",
+        "decision": "继续 STR-3 + STR-4",
+        "note": "融合效应成立；gate 差 0.0003 由 S2 尝试补上。"
       }
     },
     {
