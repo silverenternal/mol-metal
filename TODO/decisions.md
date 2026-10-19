@@ -1,6 +1,6 @@
 # Pending Decisions — INDEX (ADR format)
 
-**Last updated:** 2026-10-02 (Fri 02) 07:08 CST via Wf-A2 ADR docs-only sync
+**Last updated:** 2026-10-19 (D14 split-protocol ADR added)
 
 This file is the **INDEX** linking to per-decision Architecture Decision Records (ADRs) at `TODO/decisions/`. Per Wf-A2 docs-only sync: the previous 338-line flat-file format is replaced with one-decision-per-file ADRs.
 
@@ -21,6 +21,7 @@ This file is the **INDEX** linking to per-decision Architecture Decision Records
 | `TODO/decisions/0011-atomic-write-protocol.md` | D-Wf-386 | Atomic write protocol adopted (AGENTS.md §5.6) | Adopt the atomic write protocol via 3 NEW helper functions at `molmetal/scripts/wf386a3_atomic_write.py` (~366 LOC): atomic_write_file + safe_overwrite_check + detect_truncation. Process adoption: AGENTS.md §5.6 NEW MANDATE. | 2026-09-30 |
 | `TODO/decisions/0012-cfm-m7-m4-wire-in.md` | D-Wf-388 | 6 diversity + 2 SA CLI flags wired (default OFF) | Wire 6 m7 Diversity CLI flags (Wf-380-B1 SCAFFOLD layer) + 2 m4 SA CLI flags (Wf-380-A6 SA SCAFFOLD layer) into the actual loss / sampling computation in `train_cfm_yuelbond_wasserstein.py:train_one_epoch`. All 8 flags default OFF (bit-exact backward compat with Wf-380-B1 / Wf-299). Wire-in is CPU-only SCAFFOLD + READY-FOR-GPU-RETRAIN state. MEASURED end-to-end lift on Blackwell sm_120 BLOCKED per AGENTS.md §5.1 (no per-launch user OK yet). | 2026-09-30 |
 | `TODO/decisions/0013-todo376-todo179-todo-plan.md` | D-Wf-390 | TODO-376 5-metal subset plan + TODO-179 alt encoder + TODO-383 SE(3) SB wire-in | Surface 3 TODO items that were NOT covered by Wf-371..389 ultracode waves. (a) TODO-376 m2 R² Path A 5-metal subset GPU retrain PLAN_ONLY ~455 LOC. (b) TODO-179 L5 R² deeper audit + alternative encoder bootstrap ~24 KB. (c) TODO-383 SE(3) SB wire-in audit + smoke scaffold ~17 KB. All 3 sub-flows are CPU-only docs+code+plan; 0 GPU launches performed. | 2026-09-30 |
+| `TODO/decisions/0014-split-protocol.md` | D14 | Split protocol: one headline axis, two declared stress axes | Predictive headline stays **DOI-grouped 10-fold** (Krasnov-comparable); the generative line declares a **desalted, stereo-blind ligand-scaffold** axis; MoleculeNet must match `astartes`' `include_chirality=False` before the chemprop column is like-for-like. Three splits were found to be mislabelled (CFM 73.7 %/79.6 % ligand-scaffold overlap, MoleculeNet stereo-aware, Pt `scaffold_70_10_10` = SMILES hash at 41.9 %). No model/trainer/config changed; handoff tracked in `TODO/risks.md` R9. | 2026-10-19 |
 
 ## Cross-cutting
 

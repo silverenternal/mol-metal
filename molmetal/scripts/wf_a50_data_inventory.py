@@ -274,6 +274,7 @@ def render_md(doc: Dict[str, Any]) -> str:
         nci_lk = lk["nci60"]
         nci_split = nci_lk["split_sizes"]
         pt_lk = lk["pt"]
+        pt4_lk = lk.get("platinai_4cell")
         molnet = lk["moleculenet"]["tasks"]
         molnet_bm_max = max(
             s["bemis_murcko_desalted"]["train_vs_test"]["n_intersect_keys"]
@@ -303,6 +304,7 @@ def render_md(doc: Dict[str, Any]) -> str:
         cfm = cfm_test = cfm_val = cfm_full_ns = None
         nci_split = None
         pt_lk = None
+        pt4_lk = None
         molnet_bm_max = 0
         molnet_bm_frac = 0.0
         molnet_ns_max = 0
@@ -404,6 +406,21 @@ def render_md(doc: Dict[str, Any]) -> str:
             f"SMILES fail RDKit parsing."
             if pt_lk
             else "- Split status: not measured — run `wf_a51_leakage_audit.py`."
+        ),
+        (
+            f"- **Pt 4-cell training cohort** (`.data/molmetal/platinai_4cell.csv`, "
+            f"a different file from the pool): the loader's `split_strategy` is "
+            f"named `scaffold_70_10_10` but sets `scaffold_id` to a stable hash of "
+            f"the SMILES string, i.e. a molecule-level split. "
+            f"{pt4_lk['pairs']['train_vs_test']['bemis_murcko']['n_intersect_keys']} "
+            f"desalted scaffolds are shared between train and test "
+            f"({100.0 * pt4_lk['pairs']['train_vs_test']['bemis_murcko']['frac_b_rows_seen_in_a']:.1f} % "
+            f"of test rows) and "
+            f"{100.0 * pt4_lk['pairs']['train_vs_val']['bemis_murcko']['frac_b_rows_seen_in_a']:.1f} % "
+            f"of val rows. Canonical overlap is 0."
+            if pt4_lk
+            else "- **Pt 4-cell training cohort**: split not measured — run "
+            "`wf_a51_leakage_audit.py`."
         ),
         "",
         "### 1.4 Controls",

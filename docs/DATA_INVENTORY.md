@@ -27,7 +27,7 @@ a count of distinct molecules. Evaluation: `StratifiedKFold(n_splits=5)` ×
 seeds `[42,43,44,49,123]`, no fixed holdout — every molecule is tested in
 one fold.
 
-**Leakage (measured, `docs/DATA_LEAKAGE_AUDIT.md`):** the raw SMILES are canonical and unique within each metal cohort (0 multi-string molecules, 0 exact duplicates after collapse), so there is **no molecule-level train/test leak** (0.00 % under both the random and DOI-grouped protocols). The random CV is nevertheless **in-domain by scaffold**: 75.6–87.1 % of test rows share a Bemis-Murcko scaffold with train (45.7–65.6 % under DOI-grouped 10-fold). It is a random-split AUC, not a scaffold-generalisation estimate.
+**Leakage (measured, `docs/DATA_LEAKAGE_AUDIT.md`):** the raw SMILES are canonical and unique within each metal cohort (0 multi-string molecules, 0 exact duplicates after collapse), so there is **no molecule-level train/test leak** (0.00 % under both the random and DOI-grouped protocols). The random CV is nevertheless **in-domain by scaffold**: 74.8–85.7 % of test rows share a Bemis-Murcko scaffold with train (45.7–64.2 % under DOI-grouped 10-fold). It is a random-split AUC, not a scaffold-generalisation estimate.
 
 ### 1.2 Generative — CFM 5-metal
 
@@ -40,13 +40,14 @@ The CFM is generative: there is no held-out property test set. Quality is
 measured by decoding validation clouds (validity, ring profile, novelty,
 docking), not by a train/test AUC.
 
-**Leakage (measured):** the in-file `scaffold_id` is stereo-aware and full-complex (counterions/solvent included). It is disjoint across train/val/test (0 shared) and no SMILES carries more than one split label. At the **desalted, stereo-blind ligand-scaffold** level, however, 223 scaffolds are shared between train and test (74.2 % of test rows) and 132 between train and val (79.8 % of val rows). Removing stereo alone leaves 30 shared scaffolds (4.2 % of test rows); the gap is dominated by counterion/solvent fragments. The split is not a ligand-scaffold OOD split.
+**Leakage (measured):** the in-file `scaffold_id` is stereo-aware and full-complex (counterions/solvent included). It is disjoint across train/val/test (0 shared) and no SMILES carries more than one split label. At the **desalted, stereo-blind ligand-scaffold** level, however, 222 scaffolds are shared between train and test (73.7 % of test rows) and 131 between train and val (79.6 % of val rows). Removing stereo alone leaves 30 shared scaffolds (4.2 % of test rows); the gap is dominated by counterion/solvent fragments. The split is not a ligand-scaffold OOD split.
 
 ### 1.3 Platinum external evaluation
 
 - Rows **17,735**, unique compounds **3,630**, cell lines contributing Pt rows **369**
 - Rows with SMILES **17,735** / 17,735; training-ready (value + SMILES) **15,953**
 - **No split column** — a pool, not a partition. Duplicate `(compound_code, cell_line)` rows **3,668**; exact duplicate `(code, cell, value)` rows **987**. 296/3,555 unique SMILES fail RDKit parsing.
+- **Pt 4-cell training cohort** (`.data/molmetal/platinai_4cell.csv`, a different file from the pool): the loader's `split_strategy` is named `scaffold_70_10_10` but sets `scaffold_id` to a stable hash of the SMILES string, i.e. a molecule-level split. 172 desalted scaffolds are shared between train and test (41.9 % of test rows) and 40.8 % of val rows. Canonical overlap is 0.
 
 ### 1.4 Controls
 

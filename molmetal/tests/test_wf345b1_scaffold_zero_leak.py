@@ -30,7 +30,7 @@ Tests (2 NEW)
    regression test. Writes a tmp_path CSV with disjoint
    train/val/test scaffold sets (Bemis-Murcko style), invokes the
    gate directly, asserts ``status == "PASS"`` and
-   ``"OK 0 scaffold leak"`` in evidence.
+   ``"0 scaffold leak"`` in evidence.
 
 2. **test_gate_scaffold_zero_leak_skip_when_pandas_missing** — SKIP
    branch contract test. Monkeypatches the gate's ``_run`` helper to
@@ -54,7 +54,7 @@ Backward-compat verdict
 -----------------------
 The fix is a strict superset of the original Wf-261 contract:
   * On a valid CSV + pandas-enabled runtime → the gate emits the
-    same PASS / FAIL / evidence as before (``OK 0 scaffold leak`` on
+    same PASS / FAIL / evidence as before (``0 scaffold leak`` on
     PASS; leak counts on FAIL).
   * On a missing-pandas host → the gate now emits SKIP instead of
     FAIL with a misleading "rc=1" message. The SKIP evidence names
@@ -197,10 +197,10 @@ def test_gate_scaffold_zero_leak_pass_on_valid_csv(preflight, tmp_path) -> None:
     Pre-condition: writes a tmp_path CSV with 3 disjoint scaffold sets
     across the train/val/test splits (the Wf-261 v2 contract).
     Subprocess imports pandas (already in the .venv runtime) and
-    emits ``OK 0 scaffold leak`` to stdout.
+    emits ``0 scaffold leak`` to stdout.
 
     Contract: the gate emits ``status == "PASS"`` with
-    ``"OK 0 scaffold leak"`` in evidence. This is the Wf-261 PASS
+    ``"0 scaffold leak"`` in evidence. This is the Wf-261 PASS
     contract preserved verbatim by the Wf-345B1 fix (the fix only
     adds an env-aware SKIP branch; the PASS branch is untouched).
     """
@@ -209,13 +209,13 @@ def test_gate_scaffold_zero_leak_pass_on_valid_csv(preflight, tmp_path) -> None:
         "wf345b1_sc_pass",
         "P0",
         "data",
-        csv_path,
+        [(csv_path, "scaffold_disjoint")],
     )
     assert result.status == "PASS", (
         f"disjoint-scaffold CSV should PASS; got {result.status}: " f"{result.evidence}"
     )
-    assert "OK 0 scaffold leak" in result.evidence, (
-        f"PASS evidence must contain 'OK 0 scaffold leak' for "
+    assert "0 scaffold leak" in result.evidence, (
+        f"PASS evidence must contain '0 scaffold leak' for "
         f"operator verifiability; got: {result.evidence}"
     )
     assert result.wall_sec >= 0.0
@@ -284,7 +284,7 @@ def test_gate_scaffold_zero_leak_skip_when_pandas_missing(
         "wf345b1_sc_skip",
         "P0",
         "data",
-        csv_path,
+        [(csv_path, "scaffold_disjoint")],
     )
 
     assert result.status == "SKIP", (

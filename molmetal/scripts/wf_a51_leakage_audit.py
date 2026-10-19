@@ -89,11 +89,17 @@ def _scaffold_full_nostereo(values: Sequence[str]) -> np.ndarray:
     def fn(s: str) -> str:
         mol = _parse(s)
         if mol is None:
-            return s
-        return (
-            MurckoScaffold.MurckoScaffoldSmiles(mol=mol, includeChirality=False)
-            or f"__empty__{s}"
-        )
+            return f"__empty__{s}"
+        try:
+            return (
+                MurckoScaffold.MurckoScaffoldSmiles(mol=mol, includeChirality=False)
+                or f"__empty__{canonicalize_smiles(s)}"
+            )
+        except Exception:
+            # Murcko decomposition raises AtomValenceException on a handful of
+            # metal-organic rows; treat them as per-molecule keys, matching
+            # ``_bemis_murcko_key``'s empty-scaffold contract.
+            return f"__empty__{canonicalize_smiles(s)}"
 
     return _map_unique(values, fn)
 
@@ -196,7 +202,10 @@ def audit_predictive() -> Dict[str, object]:
 
         canon = _canon(smiles)
         lig = _map_unique(smiles, _ligand_key)
-        scaf = _scaffold(smiles)
+        # ``_scaffold_split_key`` maps an empty scaffold to a per-molecule
+        # sentinel.  Using the raw empty string would group every acyclic
+        # molecule into one bucket and report a false overlap.
+        scaf = _scaffold_split_key(smiles)
         union_raw.update(canon.tolist())
         union_lig.update(lig.tolist())
 
@@ -297,7 +306,7 @@ def audit_cfm(path: Path, smiles_col: str, metal_col: str) -> Dict[str, object]:
 
     canon = _canon(smiles)
     lig = _map_unique(smiles, _ligand_key)
-    scaf_bm = _scaffold(smiles)
+    scaf_bm = _scaffold_split_key(smiles)
     scaf_full_nostereo = _scaffold_full_nostereo(smiles)
     scaf_col = df["scaffold_id"].astype(str).to_numpy()
 
@@ -406,6 +415,62 @@ def audit_pt() -> Dict[str, object]:
         "_lig": set(lig.tolist()),
         "_stripped": set(stripped.tolist()),
         "_frags": set().union(*[set(x) for x in frags.tolist()]),
+    }
+
+
+# ---------------------------------------------------------------------------
+# 3b. Platinum 4-cell TRAINING cohort (a split, unlike the pool above)
+# ---------------------------------------------------------------------------
+def audit_platinai_4cell() -> Dict[str, object]:
+    """Audit the split the Pt 4-cell trainer actually builds.
+
+    The loader is imported rather than re-implemented so this measures the
+    real code path.  ``split_strategy`` is named ``scaffold_70_10_10`` but
+    resolves to a stable hash of the SMILES string
+    (``train_dmpnn_multitask_wasserstein.py:702``); this section measures
+    what that name costs on the scaffold axis.
+    """
+    from molmetal.scripts.train_dmpnn_multitask_wasserstein import (
+        load_platinai_4cell_split_table,
+    )
+
+    path = DATA / "platinai_4cell.csv"
+    df = load_platinai_4cell_split_table(path)
+    uniq = df.drop_duplicates(subset=["smiles"])[["smiles", "split"]]
+    smiles = uniq["smiles"].astype(str).to_numpy()
+    split = uniq["split"].astype(str).to_numpy()
+
+    canon = _canon(smiles)
+    scaf = _scaffold_split_key(smiles)
+    full_ns = _scaffold_full_nostereo(smiles)
+
+    pairs: Dict[str, object] = {}
+    for a, b in (("train", "val"), ("train", "test"), ("val", "test")):
+        pairs[f"{a}_vs_{b}"] = {
+            "canonical": _overlap(smiles, split, a, b, canon),
+            "bemis_murcko": _overlap(smiles, split, a, b, scaf),
+            "bemis_murcko_full_nostereo": _overlap(smiles, split, a, b, full_ns),
+        }
+
+    return {
+        "path": str(path),
+        "split_strategy_in_code": "scaffold_70_10_10",
+        # Measured, not asserted: the current loader sets scaffold_id to an
+        # integer hash.  If that is ever changed to a scaffold SMILES this
+        # flips to False and the report stops calling it a hash split.
+        "scaffold_id_looks_like_hash": bool(
+            pd.to_numeric(df["scaffold_id"], errors="coerce").notna().all()
+        ),
+        "split_sizes_unique_smiles": {
+            s: int((split == s).sum()) for s in ("train", "val", "test")
+        },
+        "n_rows_long": int(len(df)),
+        "n_unique_smiles": int(len(uniq)),
+        "n_parse_failures": _n_parse_failures(smiles),
+        "n_smiles_with_multiple_split_labels": int(
+            (pd.Series(split).groupby(pd.Series(smiles)).nunique() > 1).sum()
+        ),
+        "pairs": pairs,
     }
 
 
@@ -780,7 +845,46 @@ def render_markdown(result: Dict[str, object]) -> str:
     add(f"- Fixed split column present: **{pt['has_split_column']}** — the pool is not partitioned.")
     add("")
 
-    add("## 4. Controls")
+    add("## 4. Platinum 4-cell training cohort")
+    add("")
+    add(
+        "This is a different file from the pool above, and it *is* partitioned. "
+        "The loader is imported so the audit measures the split the trainer "
+        "builds, not a re-implementation of it."
+    )
+    add("")
+    p4 = result["platinai_4cell"]
+    add(
+        f"- `split_strategy` in code: **`{p4['split_strategy_in_code']}`** — "
+        + (
+            "despite the name, `scaffold_id` is a numeric hash of the SMILES "
+            "string (`_stable_hash_int(smiles, 10**8)`, "
+            "`train_dmpnn_multitask_wasserstein.py:702`), so this is a "
+            "molecule-level hash split."
+            if p4["scaffold_id_looks_like_hash"]
+            else "`scaffold_id` is a scaffold string, not a numeric hash."
+        )
+    )
+    add(
+        f"- {p4['n_unique_smiles']:,} unique SMILES / {p4['n_rows_long']:,} "
+        f"long-format rows; split {p4['split_sizes_unique_smiles']}; parse "
+        f"failures {p4['n_parse_failures']:,}; SMILES with >1 split label "
+        f"{p4['n_smiles_with_multiple_split_labels']:,}."
+    )
+    add("")
+    add("| Pair | canonical shared | desalted stereo-blind BM shared | frac of B rows | whole-complex stereo-blind BM shared | frac of B rows |")
+    add("|---|---:|---:|---:|---:|---:|")
+    for pair_name, rec in p4["pairs"].items():
+        add(
+            f"| {pair_name} | {rec['canonical']['n_intersect_keys']} | "
+            f"{rec['bemis_murcko']['n_intersect_keys']} | "
+            f"{_pct(rec['bemis_murcko']['frac_b_rows_seen_in_a'])} | "
+            f"{rec['bemis_murcko_full_nostereo']['n_intersect_keys']} | "
+            f"{_pct(rec['bemis_murcko_full_nostereo']['frac_b_rows_seen_in_a'])} |"
+        )
+    add("")
+
+    add("## 5. Controls")
     add("")
     nci = result["nci60"]
     add(
@@ -837,7 +941,7 @@ def render_markdown(result: Dict[str, object]) -> str:
     )
     add("")
 
-    add("## 5. Cross-dataset overlap")
+    add("## 6. Cross-dataset overlap")
     add("")
     add("| Pair | level | shared | frac of A | frac of B |")
     add("|---|---|---:|---:|---:|")
@@ -867,7 +971,7 @@ def render_markdown(result: Dict[str, object]) -> str:
     )
     add("")
 
-    add("## 6. Verdict")
+    add("## 7. Verdict")
     add("")
     add(result["verdict"])
     add("")
@@ -878,23 +982,25 @@ def render_markdown(result: Dict[str, object]) -> str:
 # Main
 # ---------------------------------------------------------------------------
 def main() -> int:
-    print("[1/7] predictive cohorts ...", flush=True)
+    print("[1/8] predictive cohorts ...", flush=True)
     pred = audit_predictive()
-    print("[2/7] CFM v3 ...", flush=True)
+    print("[2/8] CFM v3 ...", flush=True)
     cfm_v3 = audit_cfm(
         DATA / "metalcytotox_5metal_multitask_v3.csv", "SMILES_Ligands", "Metal"
     )
-    print("[3/7] CFM v4 ...", flush=True)
+    print("[3/8] CFM v4 ...", flush=True)
     cfm_v4 = audit_cfm(
         DATA / "metalcytotox_5metal_multitask_v4.csv", "smiles", "metal"
     )
-    print("[4/7] platinum pool ...", flush=True)
+    print("[4/8] platinum pool ...", flush=True)
     pt = audit_pt()
-    print("[5/7] NCI-60 ...", flush=True)
+    print("[5/8] platinum 4-cell training cohort ...", flush=True)
+    pt4 = audit_platinai_4cell()
+    print("[6/8] NCI-60 ...", flush=True)
     nci = audit_nci60()
-    print("[6/7] MoleculeNet ...", flush=True)
+    print("[7/8] MoleculeNet ...", flush=True)
     molnet = audit_moleculenet()
-    print("[7/7] DrugOOD + cross-dataset ...", flush=True)
+    print("[8/8] DrugOOD + cross-dataset ...", flush=True)
     drugood = audit_drugood()
     cross = cross_overlap(pred, cfm_v3, pt, nci, molnet)
 
@@ -904,6 +1010,7 @@ def main() -> int:
         "predictive": {k: v for k, v in pred.items() if not k.startswith("_")},
         "cfm": {"v3": cfm_v3, "v4": cfm_v4},
         "pt": {k: v for k, v in pt.items() if not k.startswith("_")},
+        "platinai_4cell": pt4,
         "nci60": {k: v for k, v in nci.items() if not k.startswith("_")},
         "moleculenet": {
             "tasks": {
@@ -920,6 +1027,15 @@ def main() -> int:
         r["mean_frac_test_rows_canon_in_train"]
         for rec in pred["metals"].values()
         for r in rec["stratified_kfold"]["per_seed"]
+    ]
+    skf_scaf = [
+        r["mean_frac_test_rows_scaffold_in_train"]
+        for rec in pred["metals"].values()
+        for r in rec["stratified_kfold"]["per_seed"]
+    ]
+    doi_scaf = [
+        rec["doi_grouped_10fold"]["mean_frac_test_rows_scaffold_in_train"]
+        for rec in pred["metals"].values()
     ]
     cfm_multi = cfm_v3["n_smiles_with_multiple_split_labels"]
     cfm_bm = cfm_v3["pairs"]["train_vs_test"]["bemis_murcko"]["n_intersect_keys"]
@@ -987,8 +1103,10 @@ def main() -> int:
         f"**No molecule-level leak in these splits.**",
         "",
         "**Scaffold-level (same Bemis-Murcko scaffold in train and test):**",
-        f"- Predictive random CV: 75-87% of test rows share a BM scaffold with train "
-        f"(DOI-grouped 10-fold: 46-66%). This is the expected property of random CV, "
+        f"- Predictive random CV: {_pct(min(skf_scaf))}-{_pct(max(skf_scaf))} of "
+        f"test rows share a BM scaffold with train "
+        f"(DOI-grouped 10-fold: {_pct(min(doi_scaf))}-{_pct(max(doi_scaf))}). "
+        f"This is the expected property of random CV, "
         f"not a bug, but the number is **not** a scaffold-generalisation estimate.",
         f"- CFM v3: in-file `scaffold_id` overlap {cfm_scaf_col}. The split key is "
         f"stereo-aware and full-complex. Removing stereo alone leaves "
@@ -1007,6 +1125,21 @@ def main() -> int:
         f"stereo-only, hiv is counterion-only, bbbp has both.",
         f"- NCI-60: split-key BM overlap {nci_bm} (zero after the empty-scaffold "
         f"fix).",
+        f"- Pt 4-cell: the loader's `split_strategy` is named "
+        f"`scaffold_70_10_10` but "
+        + (
+            "is a stable hash of the SMILES string, i.e. a molecule-level split"
+            if pt4["scaffold_id_looks_like_hash"]
+            else "`scaffold_id` is a scaffold string"
+        )
+        + f". Measured: "
+        f"{pt4['pairs']['train_vs_test']['bemis_murcko']['n_intersect_keys']} shared "
+        f"desalted scaffolds "
+        f"({_pct(pt4['pairs']['train_vs_test']['bemis_murcko']['frac_b_rows_seen_in_a'])} "
+        f"of test rows) and "
+        f"{_pct(pt4['pairs']['train_vs_val']['bemis_murcko']['frac_b_rows_seen_in_a'])} "
+        f"of val rows; canonical overlap "
+        f"{pt4['pairs']['train_vs_test']['canonical']['n_intersect_keys']}.",
         "",
         "**Cross-dataset:**",
         f"- NCI-60 is a **subset of MetalCytoToxDB**: {nci_pred:,}/{nci['n_unique_canonical']:,} "
@@ -1031,13 +1164,20 @@ def main() -> int:
         "",
         "**Action:**",
         "- No re-split is required to remove molecule-level leakage: none was found.",
+        "- Three split *labels* do not describe their implementations: the CFM "
+        "file claims a strict Bemis-Murcko split but its key is stereo-aware and "
+        "full-complex; `train_moleculenet._bemis_murcko_scaffold` keeps chirality "
+        "where astartes defaults to `include_chirality=False`; and "
+        "`load_platinai_4cell_split_table(split_strategy='scaffold_70_10_10')` is a "
+        "SMILES hash. Fix the label or the key before reporting any "
+        "scaffold-generalisation number.",
         "- Before reporting a scaffold/OOD number, group by a **stereo-blind, "
         "desalted ligand scaffold** (``_bemis_murcko_key`` with "
-        "``includeChirality=False``). The current CFM split is disjoint only at the "
-        "stereo-aware full-complex level; the MoleculeNet split only at the "
-        "stereo-aware level.",
-        "- Build and freeze a Pt scaffold split before using the Pt pool as an "
-        "external evaluation set.",
+        "``includeChirality=False``). For MoleculeNet comparability the reference "
+        "key is astartes' stereo-blind, *non*-desalted key.",
+        "- The Pt **pool** is not partitioned, so it needs no scaffold split; it "
+        "needs de-duplication before use as an external evaluation set. The Pt "
+        "**4-cell cohort** is partitioned and is the split that needs fixing.",
     ]
     result["verdict"] = "\n".join(verdict_lines)
 

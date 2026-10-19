@@ -1310,6 +1310,20 @@ def gate_scaffold_zero_leak(
 ) -> GateResult:
     """PASS if 0 scaffold_id overlap across train/val/test in EVERY given CSV.
 
+    **What this gate does and does not prove (2026-10-19).** It checks that the
+    shipped ``scaffold_id`` column is internally consistent with the shipped
+    ``split`` column.  That is circular by construction: the split was built
+    by grouping on that same column, so a split that leaks chemically still
+    passes.  It is **not** evidence of chemical scaffold disjointness.  The
+    audit that measures the chemical axis is
+    ``molmetal/scripts/wf_a51_leakage_audit.py`` (``docs/DATA_LEAKAGE_AUDIT.md``);
+    MEASURED there: the CFM v3/v4 in-file key is stereo-aware and
+    full-complex, and a desalted stereo-blind ligand key puts 73.7 % of test
+    rows and 79.6 % of val rows in a scaffold also present in train.  The gate
+    now prints that number alongside PASS, so the gap is visible at launch
+    time; it does not FAIL on it, because re-splitting is a model-session
+    change and a hard FAIL would block every launch in the meantime.
+
     HOLE-5 fix (2026-10-03): the verifier was previously registered against
     the single v4 CSV.  It now takes a list of ``(path, label)`` specs and is
     registered against metalcytotox v2 + v3 + v4 (all three carry
@@ -1331,11 +1345,14 @@ def gate_scaffold_zero_leak(
     manifest and are therefore NOT gated; they become gateable once a
     train-time split manifest (seed + indices + scaffold_id) is emitted
     (same pattern as metalcytotox v4's own ``scaffold_id`` column).
+    MEASURED 2026-10-19 for the ungated Pt 4-cell cohort: its
+    ``split_strategy='scaffold_70_10_10'`` is a stable SMILES hash, and 41.9 %
+    of its test rows share a desalted scaffold with train.
 
-    v2 §1.4 P0 BLOCKER (post-Wf-261 2026-09-28).  Strict Bemis-Murcko
-    scaffold 70/10/20 must produce disjoint scaffold sets across
-    splits.  v1 had 29-48 scaffold leaks (pre-Wf-261 honest-negative);
-    v2 was regenerated with seed=42 to guarantee 0 leaks.
+    v2 §1.4 P0 BLOCKER (post-Wf-261 2026-09-28).  The shipped
+    ``scaffold_id`` column must produce disjoint scaffold sets across splits.
+    v1 had 29-48 scaffold leaks (pre-Wf-261 honest-negative);
+    v2 was regenerated with seed=42 to guarantee 0 leaks **at that key**.
 
     Env-aware SKIP contract (Wf-345B1):
     The verifier subprocess imports ``pandas`` at module top-level.
@@ -1381,6 +1398,29 @@ def gate_scaffold_zero_leak(
     probe = (
         "import pandas as pd\n"
         "SPECS = " + specs_literal + "\n"
+        "try:\n"
+        "    from rdkit import Chem, RDLogger\n"
+        "    from rdkit.Chem.MolStandardize import rdMolStandardize\n"
+        "    from rdkit.Chem.Scaffolds import MurckoScaffold\n"
+        "    RDLogger.DisableLog('rdApp.*')\n"
+        "    def _ligand_key(s):\n"
+        "        m = Chem.MolFromSmiles(str(s))\n"
+        "        if m is None:\n"
+        "            return '__unparsed__' + str(s)\n"
+        "        try:\n"
+        "            if len(Chem.GetMolFrags(m)) > 1:\n"
+        "                m = rdMolStandardize.FragmentParent(m)\n"
+        "                m = Chem.MolFromSmiles(Chem.MolToSmiles(m))\n"
+        "                if m is None or m.GetNumAtoms() == 0:\n"
+        "                    return '__empty__' + str(s)\n"
+        "            sc = MurckoScaffold.MurckoScaffoldSmiles(\n"
+        "                mol=m, includeChirality=False)\n"
+        "            return sc or ('__empty__' + str(s))\n"
+        "        except Exception:\n"
+        "            return '__empty__' + str(s)\n"
+        "    HAVE_RDKIT = True\n"
+        "except Exception:\n"
+        "    HAVE_RDKIT = False\n"
         "for path, label in SPECS:\n"
         "    df = pd.read_csv(path)\n"
         "    sc = {s: set(df[df['split']==s]['scaffold_id'].dropna()) "
@@ -1389,10 +1429,23 @@ def gate_scaffold_zero_leak(
         "if a < b and sc[a] & sc[b]]\n"
         "    print(('LEAK ' if leaks else 'OK ') + label + ' rows=' "
         "+ str(len(df)) + (' leaks=' + str(leaks) if leaks else ''))\n"
+        "    smi_col = ('smiles' if 'smiles' in df.columns else "
+        "('SMILES_Ligands' if 'SMILES_Ligands' in df.columns else None))\n"
+        "    if HAVE_RDKIT and smi_col:\n"
+        "        _u = df[smi_col].astype(str).drop_duplicates()\n"
+        "        _m = {v: _ligand_key(v) for v in _u}\n"
+        "        k = df[smi_col].astype(str).map(_m)\n"
+        "        train_keys = set(k[df['split']=='train'])\n"
+        "        for s in ['test', 'val']:\n"
+        "            m = df['split'] == s\n"
+        "            frac = (100.0 * k[m].isin(train_keys).mean()) if m.any() else 0.0\n"
+        "            print('LIGAND ' + label + ' ' + s + '_rows_seen=%.2f%%' % frac)\n"
+        "    else:\n"
+        "        print('LIGAND ' + label + ' unavailable')\n"
     )
     rc, out, err = _run(
         [sys.executable, "-c", probe],
-        timeout=20.0 + 20.0 * len(csv_specs),
+        timeout=40.0 + 40.0 * len(csv_specs),
     )
     elapsed = time.perf_counter() - t0
     if rc != 0:
@@ -1452,6 +1505,11 @@ def gate_scaffold_zero_leak(
         for line in out.strip().splitlines()
         if line.startswith("OK ") or line.startswith("LEAK ")
     ]
+    lig_lines = [
+        line[len("LIGAND ") :]
+        for line in out.strip().splitlines()
+        if line.startswith("LIGAND ")
+    ]
     leak_lines = [line for line in lines if line.startswith("LEAK ")]
     if leak_lines:
         return GateResult(
@@ -1472,12 +1530,21 @@ def gate_scaffold_zero_leak(
             f"raw output: {out.strip()[:300] or '(empty)'}",
             elapsed,
         )
+    lig_note = (
+        " | chemical-scaffold axis (desalted, stereo-blind; NOT gated): "
+        + "; ".join(lig_lines)
+        if lig_lines
+        else ""
+    )
     return GateResult(
         name,
         priority,
         pipeline,
         "PASS",
-        f"0 scaffold leak in all {len(lines)} CSVs: " + "; ".join(lines),
+        f"0 scaffold leak at the in-file scaffold_id key in all {len(lines)} "
+        f"CSVs: "
+        + "; ".join(lines)
+        + lig_note,
         elapsed,
     )
 

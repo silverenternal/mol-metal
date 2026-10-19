@@ -106,9 +106,15 @@ class TestNci60SplitGate:
         assert r.status == "FAIL", r.evidence
         assert "nci60 CSV missing" in r.evidence
 
-    def test_healthy_tree_passes_with_honest_negative(self) -> None:
-        """Integration (~30 s): the shipped cohort PASSes + reports the
-        HOLE-5 honest-negative (real scaffold overlap, degenerate splitter).
+    def test_healthy_tree_passes_with_blk_pa12_fix_confirmed(self) -> None:
+        """Integration (~30 s): the shipped cohort PASSes and the BLK-PA12
+        splitter fix is confirmed.
+
+        Pre-2026-10-13 this test asserted the HOLE-5 honest-negative
+        (``splitter_scaffold_for_degenerate=True`` + non-zero real
+        overlap).  The splitter fix landed 2026-10-13 and the gate now
+        reports the post-fix branch, so the assertion follows the gate's
+        own "BLK-PA12 fix confirmed" contract.
         """
         pytest.importorskip("pandas")
         pytest.importorskip("numpy")
@@ -118,5 +124,6 @@ class TestNci60SplitGate:
         r = gate_nci60_split_no_leak("t", "P0", "data", NCI60_CSV)
         assert r.status == "PASS", r.evidence
         assert "REAL-scaffold-overlap" in r.evidence
-        assert "splitter_scaffold_for_degenerate=True" in r.evidence
-        assert "HONEST-NEGATIVE" in r.evidence
+        assert "splitter_scaffold_for_degenerate=False" in r.evidence
+        assert "BLK-PA12 fix confirmed" in r.evidence
+        assert "REAL-scaffold-overlap=0/0/0" in r.evidence

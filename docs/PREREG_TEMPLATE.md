@@ -49,7 +49,7 @@ The launch scripts (`scripts/launch_wf124_p3_g5.sh` + `launch_wf124_p3_g6.sh` + 
 
 **Primary dataset:** <name + version + SHA-256 hash; e.g. `metalcytotox_5metal_multitask_v4.csv` at `/home/hugo/codes/mol-metal/.data/molmetal/` + sha256=…>
 
-**Cohort definition:** <e.g. "5 metals (Pt, Ru, Ir, Os, Rh) × 3 seeds (0,1,2) × 50 epochs; scaffold split (Wf-261 v4 strict, 0 leak); n_train / n_val / n_test = …">
+**Cohort definition:** <e.g. "5 metals (Pt, Ru, Ir, Os, Rh) × 3 seeds (0,1,2) × 50 epochs; scaffold split (Wf-261 v4 key, 0 leak *at that key* — see `docs/DATA_LEAKAGE_AUDIT.md` for the desalted ligand-scaffold overlap); n_train / n_val / n_test = …">
 
 **Exclusion criteria:** <e.g. "compounds with MW > 800 Da excluded; metal-coordination bonds only; SMILES sanitize-required">
 

@@ -199,23 +199,20 @@ def _try_canonicalize(smi: str) -> Optional[str]:
 
 
 def _try_murcko_scaffold(canon: str) -> Optional[str]:
-    """Bemis-Murcko scaffold SMILES; ``None`` on parse failure."""
-    try:
-        from rdkit import Chem, RDLogger
-        from rdkit.Chem.Scaffolds import MurckoScaffold
+    """Bemis-Murcko scaffold SMILES; ``None`` on parse failure or empty scaffold.
 
-        RDLogger.DisableLog("rdApp.*")
-        mol = Chem.MolFromSmiles(canon)
-        if mol is None:
-            return None
-        scaffold = MurckoScaffold.GetScaffoldForMol(mol)
-        if scaffold is None:
-            return None
-        out = Chem.MolToSmiles(scaffold)
-        # An empty scaffold (single-atom / acyclic only) is signalled by
-        # an empty string from ``Chem.MolToSmiles``.  Treat it as a parse
-        # failure so we don't lump unrelated acyclic molecules into one
-        # bucket.
+    Delegates to ``molmetal.data.splits._bemis_murcko_key``, the project's
+    canonical key: desalted to the largest fragment and stereo-blind
+    (``includeChirality=False``).  The previous local implementation called
+    ``GetScaffoldForMol`` with default chirality and no desalting, which
+    understates overlap on metal-organic rows (counterion rings leak into the
+    key) and on stereoisomer series (each stereoisomer becomes its own key).
+    See ``docs/DATA_LEAKAGE_AUDIT.md`` for the measured difference.
+    """
+    try:
+        from molmetal.data.splits import _bemis_murcko_key
+
+        out = _bemis_murcko_key(canon)
         return out if out else None
     except Exception:
         return None
