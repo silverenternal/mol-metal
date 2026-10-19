@@ -266,7 +266,12 @@ def _angle_to_metal(
 def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tensor]:
     """Return ``(X, y)`` tensors of synthetic per-pair bond features.
 
-    X: shape ``(N, 9)`` — see :func:`_featurise_label` for the layout.
+    X: shape ``(N, 11)`` — the same 11-feature layout
+    :meth:`BondAwareDecoder._featurise` produces at inference time
+    (``d, bucket_i, bucket_j, angle, dative, z_i, z_j, bucket_prod,
+    gap, d_to_metal, bo_target``).  The width is ``BondOrderHead.in_dim``;
+    keeping the two in step is what stops ``default_trained_head()`` from
+    raising ``expected (E, 11) pair_features, got (N, 9)``.
     y: shape ``(N,)`` — long labels over ``BOND_LABELS``.
     """
     rng = torch.Generator().manual_seed(seed)

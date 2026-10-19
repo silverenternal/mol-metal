@@ -79,7 +79,11 @@ def _decode_smiles_from_atoms(
 # ---------------------------------------------------------------------------
 def test_head_forward_shape(head) -> None:
     """Forward on a 3-pair batch returns (3, 5) logits."""
-    feats = torch.randn(3, 9)
+    # Width comes from the head, not a literal: the synthetic set and
+    # _featurise were widened from 9 to 11 by Wf-A11/Wf-A57 (two extra
+    # pair features) and a hardcoded 9 here silently stopped testing the
+    # contract it was written to test.
+    feats = torch.randn(3, head.in_dim)
     head.eval()
     with torch.no_grad():
         out = head(feats)
@@ -99,7 +103,9 @@ def test_training_script_runs() -> None:
 def test_synthetic_dataset_size_and_distribution() -> None:
     """Sanity-check the synthetic dataset has the expected shapes and class mix."""
     X, y = make_synthetic_training_set(seed=0)
-    assert X.dim() == 2 and X.shape[1] == 9
+    # The synthetic rows must match the width live inference feeds the head;
+    # asserting a literal 9 is what let the two drift apart in the first place.
+    assert X.dim() == 2 and X.shape[1] == BondOrderHead().in_dim
     assert y.dim() == 1 and X.shape[0] == y.shape[0]
     # Each class must have at least a few examples (no degenerate rows).
     for cls in range(5):
