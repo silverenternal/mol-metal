@@ -952,7 +952,8 @@ def _panel_templates(ckpt: object, n_samples: int) -> "list":
                 if clouds:
                     print(
                         f"[wfA54-decode] {len(clouds)} REAL val cloud(s) from "
-                        f"{csv_path.name} (metal-bearing; scaffolds skipped)"
+                        f"{csv_path.name} (metal-bearing; scaffolds skipped; "
+                        f"metal_placement={_placement})"
                     )
                     return list(clouds)[: int(n_samples)]
             except Exception as exc:  # noqa: BLE001

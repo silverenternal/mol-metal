@@ -8520,6 +8520,7 @@ def build_csv_cohort(
         f"metal: {len(clouds) - n_no_metal - n_metal_unsupported} inserted / "
         f"{n_no_metal} no-metal / {n_metal_unsupported} unsupported; "
         f"mix={dict(sorted(_mix.items()))}; "
+        f"metal_placement={metal_placement}; "
         f"bond graph: {n_bond_graph_built} populated"
     )
     if not clouds:
