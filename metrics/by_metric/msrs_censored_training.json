@@ -1,0 +1,254 @@
+{
+  "artifact": "msrs_censored_training",
+  "design": {
+    "arm": "ligand+both",
+    "censored_share": 0.1868,
+    "doi_gate": 0.36,
+    "doi_kill": 0.34,
+    "evaluation": "exact rows only, fold >= 0",
+    "folds": "scheme_folds on the exact rows; censored rows inherit their group's fold",
+    "ligand_kill": 0.01,
+    "ligand_reference": "same-seed tree on the same rows (not the 0.5828 stack)",
+    "ligand_tolerance": 0.005,
+    "n_censored": 4918,
+    "n_exact": 21404,
+    "n_features": 2074,
+    "objectives": [
+      "tobit",
+      "hinge"
+    ],
+    "seed": 0
+  },
+  "generated_utc": "2026-10-19T16:09:06+00:00",
+  "protocols": {
+    "doi": {
+      "arms": {
+        "hinge": {
+          "mae": 0.4919,
+          "n_censored_train": 4918,
+          "n_evaluated": 21404,
+          "n_train_rows": 26322,
+          "r2": 0.2828,
+          "rmse": 0.6457,
+          "vs_tree": {
+            "ci_high": -0.0276,
+            "ci_low": -0.0733,
+            "delta_r2": -0.0504,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 60.8
+        },
+        "tobit": {
+          "mae": 0.5051,
+          "n_censored_train": 4918,
+          "n_evaluated": 21404,
+          "n_train_rows": 26322,
+          "r2": 0.24,
+          "rmse": 0.6647,
+          "vs_tree": {
+            "ci_high": -0.0635,
+            "ci_low": -0.1244,
+            "delta_r2": -0.0933,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 40.5
+        }
+      },
+      "folds": {
+        "censored_rows": 4918,
+        "censored_training_in_all_folds": 922,
+        "censored_with_unseen_group": 922,
+        "n_folds": 5,
+        "n_groups": 1784,
+        "n_rows_evaluated": 21404,
+        "n_rows_unscored": 0
+      }
+    },
+    "ligand": {
+      "arms": {
+        "hinge": {
+          "mae": 0.3909,
+          "n_censored_train": 4918,
+          "n_evaluated": 21404,
+          "n_train_rows": 26322,
+          "r2": 0.5326,
+          "rmse": 0.5212,
+          "vs_tree": {
+            "ci_high": -0.0041,
+            "ci_low": -0.0381,
+            "delta_r2": -0.0228,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 38.1
+        },
+        "tobit": {
+          "mae": 0.405,
+          "n_censored_train": 4918,
+          "n_evaluated": 21404,
+          "n_train_rows": 26322,
+          "r2": 0.4962,
+          "rmse": 0.5411,
+          "vs_tree": {
+            "ci_high": -0.0352,
+            "ci_low": -0.08,
+            "delta_r2": -0.0592,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 37.4
+        }
+      },
+      "folds": {
+        "censored_rows": 4918,
+        "censored_training_in_all_folds": 2414,
+        "censored_with_unseen_group": 2414,
+        "n_folds": 5,
+        "n_groups": 5861,
+        "n_rows_evaluated": 21404,
+        "n_rows_unscored": 0
+      }
+    },
+    "scaffold": {
+      "arms": {
+        "hinge": {
+          "mae": 0.4486,
+          "n_censored_train": 4918,
+          "n_evaluated": 21404,
+          "n_train_rows": 26322,
+          "r2": 0.4014,
+          "rmse": 0.5898,
+          "vs_tree": {
+            "ci_high": -0.0275,
+            "ci_low": -0.0616,
+            "delta_r2": -0.0445,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 60.1
+        },
+        "tobit": {
+          "mae": 0.465,
+          "n_censored_train": 4918,
+          "n_evaluated": 21404,
+          "n_train_rows": 26322,
+          "r2": 0.3564,
+          "rmse": 0.6116,
+          "vs_tree": {
+            "ci_high": -0.0658,
+            "ci_low": -0.1136,
+            "delta_r2": -0.0895,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 76.5
+        }
+      },
+      "folds": {
+        "censored_rows": 4918,
+        "censored_training_in_all_folds": 1090,
+        "censored_with_unseen_group": 1090,
+        "n_folds": 5,
+        "n_groups": 2636,
+        "n_rows_evaluated": 21404,
+        "n_rows_unscored": 0
+      }
+    },
+    "year": {
+      "arms": {
+        "hinge": {
+          "mae": 0.4864,
+          "n_censored_train": 4918,
+          "n_evaluated": 6499,
+          "n_train_rows": 26322,
+          "r2": 0.3296,
+          "rmse": 0.6413,
+          "vs_tree": {
+            "ci_high": -0.0099,
+            "ci_low": -0.0737,
+            "delta_r2": -0.0407,
+            "n_boot": 2000,
+            "n_clusters": 625,
+            "n_rows": 6499,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 209.9
+        },
+        "tobit": {
+          "mae": 0.5024,
+          "n_censored_train": 4918,
+          "n_evaluated": 6499,
+          "n_train_rows": 26322,
+          "r2": 0.2872,
+          "rmse": 0.6612,
+          "vs_tree": {
+            "ci_high": -0.0464,
+            "ci_low": -0.1237,
+            "delta_r2": -0.0831,
+            "n_boot": 2000,
+            "n_clusters": 625,
+            "n_rows": 6499,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 265.5
+        }
+      },
+      "folds": {
+        "censored_rows": 4918,
+        "censored_training_in_all_folds": 3419,
+        "censored_with_unseen_group": 0,
+        "n_folds": 16,
+        "n_groups": 16,
+        "n_rows_evaluated": 6499,
+        "n_rows_unscored": 14905,
+        "n_years": 15,
+        "note": "leave-one-year-out; years with fewer than 100 rows are pooled into 'early'"
+      }
+    }
+  },
+  "provenance": {
+    "baseline_oof": "results/msrs_seed_ensemble/oof_seed0.npz",
+    "git_commit": "cee79a9609c6319a391ebfd4a55b1fdb91b27ad7",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_censored_training.py"
+  },
+  "verdicts": {
+    "hinge": {
+      "doi_ci": [
+        -0.0733,
+        -0.0276
+      ],
+      "doi_delta": -0.0504,
+      "doi_r2": 0.2828,
+      "ligand_r2": 0.5326,
+      "ligand_tree_r2": 0.5554,
+      "status": "KILL"
+    },
+    "tobit": {
+      "doi_ci": [
+        -0.1244,
+        -0.0635
+      ],
+      "doi_delta": -0.0933,
+      "doi_r2": 0.24,
+      "ligand_r2": 0.4962,
+      "ligand_tree_r2": 0.5554,
+      "status": "KILL"
+    }
+  },
+  "version": "1.0"
+}

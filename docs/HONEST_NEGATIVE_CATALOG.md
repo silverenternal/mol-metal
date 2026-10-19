@@ -7655,3 +7655,57 @@ repaired tests; §5.2: numbers trace to `wfa97_bond_metric_recheck.json`;
 
 ---
 
+## §6.137 — STR-3: censored rows are a biased sample, not free information
+
+**Claim under test.**  18.7% of the potency table (4,918 rows after the
+feature filters) is right-censored and had always been dropped.  Treating the
+bound as a lower bound should, in principle, add information at the inactive
+end.  Gate: DOI R2 >= 0.36 with paired CI low > 0, ligand within 0.01 of the
+tree.
+
+**Setup.**  Training = 21,404 exact rows + 4,918 censored rows; evaluation
+stays on the 21,404 exact rows.  A censored row inherits the fold of its
+ligand/DOI/scaffold/year group; groups absent from the evaluation set train in
+every fold and are never scored.  Two objectives: right-censored normal NLL
+(`tobit`, the AUD-D1 implementation) and the pre-registered hinge
+`max(0, bound - pred)`.
+
+**MEASURED.**  DOI: tree 0.3332, tobit 0.2400 (delta -0.0933
+[-0.1244, -0.0635]), hinge 0.2828 (-0.0504 [-0.0733, -0.0276]).  Ligand:
+0.5554 -> 0.4962 / 0.5326.  Scaffold: 0.4484 -> 0.3564 / 0.4014.  Year:
+0.3703 -> 0.2872 / 0.3296.  **All eight protocol x objective cells are
+negative and all eight CIs exclude zero.**
+
+**Honest negatives (ACTIVE, this entry):**
+  * **Censoring is not missing-at-random given x.**  A right-censored row
+    means "no inhibition in this paper's dose range", which encodes the assay
+    protocol.  Adding 4,918 rows at y~2.0 teaches the model "this ligand/paper
+    -> y~2.0" and shifts the whole prediction surface upward.
+  * **The more principled objective is worse.**  Tobit (-0.093) loses more than
+    the hinge (-0.050), because its gradient grows as the prediction falls
+    below the bound.  A correct likelihood applied to a violated sampling
+    assumption biases harder.
+  * **Dropping the censored rows was right for a conditional-mean target.**
+    E[y|x] over measured IC50s is not E[y|x, measurable]; mixing the two
+    changes the estimand.
+  * **No seed noise can rescue it.**  DOI R2 seed SD is 0.0029; the observed
+    losses are 17-32 SD.
+  * **The ligand kill line is crossed.**  0.5554 -> 0.5326 (hinge) is -0.023,
+    beyond the 0.01 tolerance.
+  * **The two-part model is a different target.**  AUD-D1b predicts
+    P(censored|x); it does not estimate potency and cannot lift DOI R2.
+
+**Why this matters.**  The paper can state that censored rows were tested and
+rejected with two objectives on four protocols, which is stronger than
+silently dropping 18.7% of the data.
+
+**§6.137 catalog-count math.** Net catalog-count delta: **+1** (§6.137 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **189 -> 190** (+1).
+ACTIVE count: **145 -> 146** (+1).
+
+**Workflow** | STR-3 (2026-10-19; CPU only, 8 LightGBM fits per objective;
+8 new tests; §5.2: every number traces to
+`metrics/by_metric/msrs_censored_training.json`; §5.3 + §5.4: 0 paper/* + 0
+wet-lab).
+
+---

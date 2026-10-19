@@ -29,6 +29,7 @@
   },
   "current_position": {
     "measured_facts": [
+      "STR-3（删失训练，seed 0）：+4,918 右删失行，DOI R² tobit 0.2400 / hinge 0.2828（树 0.3332），Δ −0.0933 / −0.0504，两个 CI 均排除 0；ligand 0.4962 / 0.5326（树 0.5554）；scaffold 0.3564 / 0.4014；year 0.2872 / 0.3296。8/8 协议×目标为负。结论：删失行编码剂量设计，不是随机缺失，条件均值目标下应继续排除。",
       "STR-2（5 树 + 5 GNN，四协议）：DOI stack R² 0.3597（gate 0.36，差 0.0003）、equal 0.3606、tree 0.3380、gnn 0.3089；配对 ΔR² +0.0217 [+0.0044,+0.0377]。ligand 0.5997（Δ+0.0401）、scaffold 0.4839（Δ+0.0310）、year 0.3968（CI 含 0）。单模型（同 seed）stack：ligand 0.5828±0.0102 / DOI 0.3485±0.0046 / scaffold 0.4693±0.0068 / year 0.3862±0.0082。DOI Δ 符号：tree 0.5826 → stack 0.5413（融合反而变差）。残差相关 0.86–0.90。",
       "STR-1（5 seed，四协议）：seed 平均预测 R² ligand 0.5596 / DOI 0.3380 / scaffold 0.4530 / year 0.3780（R² seed SD 0.0026–0.0066）；Δ 符号 ligand 0.6101 / DOI 0.5826 / scaffold 0.6330 / year 0.4082（seed SD 0.0179–0.0387，max 0.0387 < 0.05 → STABLE）。单 seed 的 DOI 0.6193 高于全部五个 seed，属偏高抽样，主表改用 0.5826。DOI 全覆盖 regret 0.1279（单 seed 0.1168）、q=0.5 0.1072、p_holm 1.0。",
       "MSRS 全量 21,404 行 / 5 金属 / 424 个严格多金属队列 / 61 DOI；严格队列全部 k=2。",
@@ -269,6 +270,11 @@
       "id": "STR-2",
       "result": "PARTIAL",
       "headline": "DOI stack 0.3597（gate 0.36，差 0.0003），ΔR² +0.0217 [+0.0044,+0.0377]；equal 0.3606；单模型 stack 0.3485±0.0046；融合后 DOI Δ 符号 0.5826→0.5413"
+    },
+    {
+      "id": "STR-3",
+      "result": "KILL",
+      "headline": "删失训练：DOI tobit 0.2400 / hinge 0.2828（树 0.3332），8/8 组合为负且 CI 排除 0"
     }
   ],
   "blockers": [
@@ -415,7 +421,7 @@
       "title": "删失标签训练（右删失 5,015 行）",
       "layer": "数据",
       "priority": "P0",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "gpu": "cuda:0（树先跑，GNN 可选）",
       "wall": "4 小时（树 2h + 分析）",
       "why": "potency 26,801 行里 5,015 行右删失（bound 中位 100 µM）被直接丢弃，占 18.7%。这是现有语料里唯一没被用上的信息，且集中在『不活跃』一端——而 Δ 符号恰恰需要两端。",
@@ -426,7 +432,38 @@
       "expected_gain_projected": "PROJECTED +0.01–0.04 DOI R²；不确定，因为删失 bound 大多落在现有 y 范围内",
       "depends_on": [
         "STR-1"
-      ]
+      ],
+      "result": {
+        "verdict": "KILL",
+        "doi_r2": {
+          "tobit": 0.24,
+          "hinge": 0.2828
+        },
+        "doi_delta": {
+          "tobit": -0.0933,
+          "hinge": -0.0504
+        },
+        "doi_ci": {
+          "tobit": [
+            -0.1244,
+            -0.0635
+          ],
+          "hinge": [
+            -0.0733,
+            -0.0276
+          ]
+        },
+        "ligand_r2": {
+          "tobit": 0.4962,
+          "hinge": 0.5326,
+          "tree": 0.5554
+        },
+        "n_censored_train": 4918,
+        "artifact": "metrics/by_metric/msrs_censored_training.json",
+        "doc": "TODO/completed/str3_censored_training.md",
+        "note": "8/8 协议×目标组合为负，8/8 CI 排除 0。删失不是随机缺失：bound 编码论文剂量设计，加入后把预测面整体上拉。Tobit 比 hinge 更差。"
+      },
+      "acceptance_result": "KILL — DOI 最好 0.2828（<0.34），ligand 掉 0.023–0.059。"
     },
     {
       "id": "STR-4",
