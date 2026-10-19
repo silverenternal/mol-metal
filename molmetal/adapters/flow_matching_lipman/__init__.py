@@ -2848,6 +2848,10 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
             atom_loss_weight = self._atom_loss_weight
         if bond_loss_weight is None:
             bond_loss_weight = self._bond_loss_weight
+        # 2026-10-19 — cumulative diagnostics (skipped_oov, oov_target_*_rows,
+        # bond_skipped_no_edges, bond_subsampled_negatives) must survive the
+        # end-of-step merge; only the previous step's verdict is cleared.
+        self.last_losses.pop("nonfinite_terms", None)
         assert self.path is not None, "call setup() first"
 
         b = len(mols)
@@ -3061,11 +3065,6 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 per_row_logits,
                 atom_logits.reshape(-1, atom_logits.shape[-1]),
             )
-        atom_loss_per_node = F.cross_entropy(
-            per_row_logits,
-            atom_types.reshape(-1),
-            reduction="none",
-        ).view(b, max_n)
         # Wf-A62 W1 (JM2) — fully-masked batch silently contributes zero
         # atom_loss which poisons the per-batch metric without raising.
         # Surface the upstream data leak (e.g., a degenerate dataset
@@ -3077,8 +3076,49 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 "Check upstream data loader for empty/all-padding samples.",
                 stacklevel=2,
             )
-        n_real = node_mask.sum().clamp(min=1)
-        atom_loss = atom_loss_per_node[node_mask].sum() / n_real
+        flat_targets = atom_types.reshape(-1)
+        atom_loss_per_node = F.cross_entropy(
+            per_row_logits,
+            flat_targets,
+            reduction="none",
+        ).view(b, max_n)
+        # Wf-A87 (2026-10-19) — a row whose TARGET class is masked still
+        # yields +inf: the row itself is finite, so the all-(-inf) fallback
+        # above does not catch it.  That inf poisoned the whole batch and
+        # tripped the non-finite guard, discarding every valid row in the
+        # step.  Exclude the unusable rows from the mean and report them.
+        # torch.where (not multiply-by-mask) so inf * 0 cannot become nan.
+        target_logit = per_row_logits.gather(
+            1,
+            flat_targets.clamp(min=0, max=per_row_logits.shape[1] - 1).unsqueeze(1),
+        ).squeeze(1)
+        real_rows = node_mask.reshape(-1)
+        target_finite = torch.isfinite(target_logit)
+        usable = real_rows & target_finite
+        n_unusable = int((real_rows & ~target_finite).sum().item())
+        if n_unusable:
+            warnings.warn(
+                f"_joint_adapter atom CE: {n_unusable} real atom(s) have a "
+                "target class masked by the vocab mask (OOV atom); excluded "
+                "from atom_loss for this step. Check the upstream data guard.",
+                stacklevel=2,
+            )
+            self.last_losses["oov_target_atom_rows"] = (
+                int(self.last_losses.get("oov_target_atom_rows", 0)) + n_unusable
+            )
+        if int(usable.sum().item()) == 0 and int(real_rows.sum().item()) > 0:
+            warnings.warn(
+                "_joint_adapter atom CE: every real atom in this batch is "
+                "OOV; atom_loss contributes 0 for this step.",
+                stacklevel=2,
+            )
+        per_node = torch.where(
+            usable,
+            atom_loss_per_node.reshape(-1),
+            torch.zeros_like(target_logit),
+        )
+        n_real = usable.sum().clamp(min=1)
+        atom_loss = per_node.sum() / n_real
 
         # ------------------------------------------------------------------
         # WF-2 A5 — joint bond-order loss
@@ -3222,7 +3262,37 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                     edge_z_i,
                     edge_z_j,
                 )
-            bond_loss_tensor = F.cross_entropy(bond_logits_e, edge_labels)
+            # Wf-A87 (2026-10-19) — same masked-target problem as the atom
+            # CE: a truth bond whose class the pattern mask forbids has a
+            # -inf target logit, so CE is +inf even though the row has
+            # finite slots.  Drop those edges from the mean and report
+            # them; the alternative was losing the whole step — and every
+            # valid edge in it — to one bad pair.
+            _bond_target_logit = bond_logits_e.gather(
+                1, edge_labels.clamp(min=0).unsqueeze(1)
+            ).squeeze(1)
+            _bond_usable = torch.isfinite(_bond_target_logit)
+            _n_bond_unusable = int((~_bond_usable).sum().item())
+            if _n_bond_unusable:
+                warnings.warn(
+                    f"_joint_adapter bond CE: {_n_bond_unusable}/"
+                    f"{edge_labels.shape[0]} truth edges have a class masked "
+                    "by the bond-pattern mask (OOV pair); excluded from "
+                    "bond_loss for this step.",
+                    stacklevel=2,
+                )
+                self.last_losses["oov_target_bond_rows"] = (
+                    int(self.last_losses.get("oov_target_bond_rows", 0))
+                    + _n_bond_unusable
+                )
+            if bool(_bond_usable.any()):
+                bond_loss_tensor = F.cross_entropy(
+                    bond_logits_e[_bond_usable], edge_labels[_bond_usable]
+                )
+            else:
+                bond_loss_tensor = torch.zeros(
+                    (), device=self.device, dtype=cfm_loss.dtype
+                )
             bond_loss_value = float(bond_loss_tensor.item())
 
         loss = (
@@ -3364,24 +3434,24 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
                 )
                 if not bool(torch.isfinite(term).all())
             ]
-            self.last_losses = {
+            self.last_losses.update({
                 "cfm": float("nan"),
                 "atom": float("nan"),
                 "bond": float("nan"),
                 "total": float(loss.item()),
                 "skipped_oov": int(self.last_losses.get("skipped_oov", 0)) + 1,
                 "nonfinite_terms": nonfinite_terms,
-            }
+            })
             return self.last_losses["total"]
         self.optimizer.step()
         # Stash individual losses for logging; return the total as a float
         # to honour the Protocol contract.
-        self.last_losses = {
+        self.last_losses.update({
             "cfm": float(cfm_loss.item()),
             "atom": float(atom_loss.item()),
             "bond": float(bond_loss_value),
             "total": float(loss.item()),
-        }
+        })
         # Wf-A69 W1 (2026-10-17) — diagnostic counters for the bond
         # candidate list.  ``last_bond_n_candidates`` is the raw size
         # of the candidate list before any subsampling; ``last_bond_n_pos``

@@ -5827,9 +5827,9 @@ adjacent bond-head/CFM files).
   * **`teacher_forced` has no consumer yet.**  It makes the leak visible; it
     does not stop anyone from averaging a teacher-forced decode into a blind
     metric.  The generation path is unaffected (no truth → False).
-  * **The atom CE still returns inf for a masked target class.**  That is the
-    P1 guard's intended signal, not a bug: the fix is at the data boundary,
-    not a clamp inside the loss.
+  * **The atom CE still returns inf for a masked target class** in this
+    entry's code; superseded the same day by §6.116, which excludes the
+    unusable rows instead of poisoning the batch.
   * **No model behaviour changed.**  These are diagnostics, a result field and
     test repairs; no training or generation number moves.
   * **The stale tests were stale for weeks**, not since Wf-A86 — the pre-flight
@@ -5843,4 +5843,63 @@ ACTIVE count: **122 -> 123** (+1).
 **Workflow** | Wf-A87 (2026-10-19; 0 GPU — CPU-only diagnostics + tests; §5.2:
 every number traces to the runs printed above; §5.3 + §5.4: 0 paper/* + 0
 wet-lab).
+
+
+---
+
+## §6.116 — Wf-A87b: a masked TARGET is not a poisoned batch
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (loss-level repair; supersedes the
+corresponding §6.115 bullet).  **Code:** `LipmanFlowMatchingAdapter.train_step`
+atom CE and bond CE in `molmetal/adapters/flow_matching_lipman/__init__.py`.
+
+**The negative this answers.**  §6.115 left one known inf: a row whose TARGET
+class is masked by the vocab mask still yields `+inf` from
+`F.cross_entropy`, because the row itself has finite slots and therefore
+does not trigger the all-(-inf) fallback.  One out-of-vocabulary atom
+discarded the entire step — including every valid atom and bond in it — via
+the non-finite guard.  The bond CE had the same hole: a truth bond whose
+class the pattern mask forbids has a `-inf` target logit.
+
+**The fix.**  Both CEs now check the TARGET logit, not just the row:
+
+* rows whose target slot is `-inf` are excluded from the mean;
+* the per-row values are combined with `torch.where`, never `x * mask`, so
+  `inf * 0` cannot become `nan`;
+* the exclusion is counted (`oov_target_atom_rows`, `oov_target_bond_rows`)
+  and warned about, so the leak is still visible;
+* if every real row is unusable, the term contributes 0 and a second warning
+  says so.
+
+**MEASURED** on the 2-molecule batch with elements 2-5 (4 of 8 atoms OOV):
+`loss` is finite, `oov_target_atom_rows = 8`, `oov_target_bond_rows = 14` of
+18 truth edges, `skipped_oov` absent.  The step now trains on the 8 valid
+atoms and 4 valid edges instead of discarding all 16 atoms and 18 edges.
+
+**Also fixed in the same pass.**  The cumulative diagnostics were written
+into `self.last_losses` and then erased by the end-of-step assignment, so
+`skipped_oov`, `bond_skipped_no_edges` and `bond_subsampled_negatives` could
+never exceed 1 (and were absent after any successful step).  The assignment
+is now `update`, and only the per-step `nonfinite_terms` key is cleared at
+the start of a step.
+
+**Honest-negative (ACTIVE, this entry):**
+  * **Excluding rows is not cleaning the data.**  An OOV-heavy batch now
+    contributes little or no supervision; the counter is the signal, and an
+    upstream data guard is still required.
+  * **If every real atom is OOV, `atom_loss` is 0** and the step runs on the
+    flow + bond terms.  A warning fires; nothing raises.
+  * **The bond CE drops the whole edge**, it does not re-weight or repair it.
+  * **Batches without masked targets are numerically unchanged** (the mask
+    is all-True, so the CE is the same reduction).  Verified by the 75-test
+    bond/adapter suite.
+  * **`test_lipman_spatial_contract` still fails** (velocity-norm bound);
+    verified failing at HEAD, unrelated to this change.
+
+**§6.116 catalog-count math.** Net catalog-count delta: **+1** (§6.116 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **167 -> 168** (+1).
+ACTIVE count: **123 -> 124** (+1).
+
+**Workflow** | Wf-A87b (2026-10-19; 0 GPU — CPU-only; §5.2: every number
+traces to the runs above; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 

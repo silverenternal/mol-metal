@@ -15,6 +15,7 @@ All tests CPU-friendly, <5s.
 
 from __future__ import annotations
 
+import math
 import sys
 from pathlib import Path
 
@@ -176,8 +177,7 @@ def test_legacy_no_bond_head_works():
     ), "use_bond_head=False must NOT construct BondOrderHead"
 
 
-def test_nonfinite_step_names_the_offending_term():
-    """An OOV batch is skipped, and the diagnostic says WHICH loss blew up."""
+def _tiny_adapter() -> LipmanFlowMatchingAdapter:
     torch.manual_seed(0)
     adapter = LipmanFlowMatchingAdapter(
         hidden_dim=64,
@@ -187,9 +187,35 @@ def test_nonfinite_step_names_the_offending_term():
         joint_train=True,
     )
     adapter.setup(device="cpu")
-    # Elements 2-5 are outside the atom vocab; the P1 guard must skip the step
-    # and the payload must identify the atom CE as the non-finite term.
+    return adapter
+
+
+def test_oov_targets_are_excluded_instead_of_poisoning_the_step():
+    """Wf-A87 — a masked TARGET is dropped from the mean, not turned into inf."""
+    adapter = _tiny_adapter()
+    # Elements 2-5 are outside the atom vocab.  Their CE is +inf because the
+    # target slot is masked, so the whole step used to be discarded.
     mols = _tiny_mol_list(2, atom_types=[2, 3, 4, 5, 6, 7, 8, 6])
-    adapter.train_step(pocket=None, mols=mols)
+    loss = adapter.train_step(pocket=None, mols=mols)
+    assert math.isfinite(loss), f"OOV rows must not poison the batch: {loss}"
+    assert adapter.last_losses.get("skipped_oov", 0) == 0
+    # 4 OOV atoms per molecule x 2 molecules.
+    assert adapter.last_losses["oov_target_atom_rows"] == 8
+    # Truth bonds touching those atoms are masked by the pattern mask too.
+    assert adapter.last_losses["oov_target_bond_rows"] > 0
+
+
+def test_nonfinite_step_names_the_offending_term():
+    """A genuinely non-finite loss is still skipped, and named."""
+    adapter = _tiny_adapter()
+    # Inject NaN into the flow velocity: the OOV path no longer produces inf,
+    # so this is the remaining route into the guard.
+    hook = adapter.velocity_field.register_forward_hook(
+        lambda module, args, out: {**out, "vel": out["vel"] * float("nan")}
+    )
+    try:
+        adapter.train_step(pocket=None, mols=_tiny_mol_list(2))
+    finally:
+        hook.remove()
     assert adapter.last_losses["skipped_oov"] == 1
-    assert "atom" in adapter.last_losses["nonfinite_terms"]
+    assert adapter.last_losses["nonfinite_terms"] == ["cfm"]
