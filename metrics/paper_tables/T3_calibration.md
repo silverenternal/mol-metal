@@ -1,6 +1,6 @@
 # Conformal calibration (alpha=0.10, nominal 90%)
 
-Generated 2026-10-19T11:52:15Z from `metrics/by_metric/*.json`.
+Generated from `metrics/by_metric/*.json`; see `manifest.json` for the timestamp and source hashes.
 
 Coverage alone is guaranteed by the conformal construction; width and PIT are the informative columns.
 

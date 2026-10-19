@@ -1,6 +1,6 @@
 # Main predictive metrics
 
-Generated 2026-10-19T11:52:15Z from `metrics/by_metric/*.json`.
+Generated from `metrics/by_metric/*.json`; see `manifest.json` for the timestamp and source hashes.
 
 | Metric | Unit | Value | Source | Tag |
 |---|---|---|---|---|

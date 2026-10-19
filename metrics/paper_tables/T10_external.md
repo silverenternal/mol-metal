@@ -1,6 +1,6 @@
 # External cohort availability (MET-7)
 
-Generated 2026-10-19T11:52:15Z from `metrics/by_metric/*.json`.
+Generated from `metrics/by_metric/*.json`; see `manifest.json` for the timestamp and source hashes.
 
 The pre-registered estimand is same ligand + same metal + same cell line. Metal is the key that reaches zero.
 

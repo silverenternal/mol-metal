@@ -1,6 +1,6 @@
 # Metal ablation, LightGBM (R2 and paired group bootstrap)
 
-Generated 2026-10-19T11:52:15Z from `metrics/by_metric/*.json`.
+Generated from `metrics/by_metric/*.json`; see `manifest.json` for the timestamp and source hashes.
 
 Permutation nulls are in msrs_metal_ablation.json: metal_label p and metal_block p are both 0.0099 at n_perm=100.
 

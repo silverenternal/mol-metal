@@ -1,6 +1,6 @@
 # Decision curve: model vs global_best at two coverage levels
 
-Generated 2026-10-19T11:52:15Z from `metrics/by_metric/*.json`.
+Generated from `metrics/by_metric/*.json`; see `manifest.json` for the timestamp and source hashes.
 
 Net benefit uses hit = regret <= 0.2091 and cost ratio p_t/(1-p_t).
 

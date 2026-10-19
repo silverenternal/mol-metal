@@ -604,9 +604,16 @@ def _row_values(
     return out
 
 
-def render_md(table: Table, cache: ArtifactCache, now: str) -> tuple[str, list[str], list[str]]:
+def render_md(table: Table, cache: ArtifactCache) -> tuple[str, list[str], list[str]]:
     header = table.header()
-    lines = [f"# {table.title}", "", f"Generated {now} from `metrics/by_metric/*.json`.", ""]
+    # No timestamp in the body: it would make every rebuild a diff.  The
+    # generation time and the source hashes live in manifest.json.
+    lines = [
+        f"# {table.title}",
+        "",
+        "Generated from `metrics/by_metric/*.json`; see `manifest.json` for the timestamp and source hashes.",
+        "",
+    ]
     if table.note:
         lines.extend([table.note, ""])
     lines.append("| " + " | ".join(header) + " |")
@@ -668,7 +675,7 @@ def main(argv: Iterable[str] | None = None) -> int:
         table = build()
         if args.only and not any(table.ident.startswith(p) for p in args.only):
             continue
-        md, missing_md, absent_md = render_md(table, cache, now)
+        md, missing_md, absent_md = render_md(table, cache)
         csv_text, missing_csv, absent_csv = render_csv(table, cache)
         missing = sorted(set(missing_md) | set(missing_csv))
         absent = sorted(set(absent_md) | set(absent_csv))

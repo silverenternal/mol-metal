@@ -33,6 +33,8 @@
     `target_effect`），记入 `optional_absent`，不阻断 `--strict`。
 - **manifest**：每张表的行数、列名、输出路径、缺失清单，以及 **11 个源
   artifact 的 sha256**。表是快照，sha256 是判断快照是否过期的唯一依据。
+- **表体不含时间戳**：重建 10 张表只在 `manifest.json` 的 `generated_utc`
+  上产生 diff，md/csv 逐字节稳定，便于 review。
 
 ## MEASURED
 

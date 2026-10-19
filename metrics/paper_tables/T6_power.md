@@ -1,6 +1,6 @@
 # Minimum detectable effect at 80% power, alpha=0.05 one-sided
 
-Generated 2026-10-19T11:52:15Z from `metrics/by_metric/*.json`.
+Generated from `metrics/by_metric/*.json`; see `manifest.json` for the timestamp and source hashes.
 
 MDE = 2.4865 * sd, sd = CI width / (2*1.96). A null is only interpretable against its MDE.
 
