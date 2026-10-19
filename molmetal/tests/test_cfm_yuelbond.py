@@ -36,6 +36,7 @@ from molmetal.molmetal_lam.lam_chem.cfm_decoder_yuelbond import (
     covalent_valence_table,
 )
 from molmetal.models.bond_head import (
+    BOND_SINGLE,
     AtomCloud,
     DecodedMol,
 )
@@ -131,6 +132,16 @@ def test_yuelbond_decoder_returns_valid_bonds_on_cisplatin():
     """
     torch.manual_seed(0)
     decoder = YuelBondBondDecoder(hidden_dim=32, n_layers=2)
+    # Wf-A71 flipped the head's INIT bias to BOND_NO_BOND (+2.0), so a random
+    # head now predicts "no bond" for every pair.  The assertion below then
+    # measured the bias, not the selector: it failed at HEAD with
+    # ``bonds_accepted=0`` and ``bonds_rejected_overvalent=0``, i.e. the
+    # selector never saw a candidate.  Bias the pair head toward SINGLE so
+    # this test exercises the valence selector + RDKit assembly, which is
+    # what its docstring claims.
+    with torch.no_grad():
+        decoder._decoder.head.pair_head[-1].bias.zero_()
+        decoder._decoder.head.pair_head[-1].bias[BOND_SINGLE] = 5.0
     cloud = _cisplatin_like_cloud()
     result = decoder.decode(cloud)
     assert isinstance(result, YuelBondDecodeResult)

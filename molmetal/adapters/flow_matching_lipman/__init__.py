@@ -2140,7 +2140,28 @@ class EGNNVelocityField(nn.Module):
         # vel_scale (init=1.0) — replaces the previous tanh saturation
         # gate (Lipman 2023 Thm 2 + Albergo 2023 stochastic interpolant).
         relative_to_centroid = x_t - x_t.mean(dim=1, keepdim=True)
-        vel = self.vel_head(h) * self.vel_scale * relative_to_centroid + last_v
+        # Wf-A91 (2026-10-19) — the per-atom gate is BOUNDED; the global
+        # scale stays learnable.
+        #
+        # This was `vel_head(h) * vel_scale * relative_to_centroid`, an
+        # unbounded scalar.  `h` depends on pairwise DISTANCES, so at
+        # coordinate scale s the gate can itself grow like s and the product
+        # becomes QUADRATIC in s.  MEASURED (fresh field, 2 layers, gates
+        # randomised to std 0.03): |v| went 0.066 -> 300 for x -> 100x, a
+        # 7,519x ratio where linear growth would be 100x.  That is the
+        # "superlinear ODE field" the class comment claims was prevented.
+        #
+        # tanh restores the documented contract without capping the model:
+        # the per-atom gate is in (-1, 1) while `vel_scale` (a free
+        # parameter) carries the magnitude, so the optimiser keeps an
+        # unconstrained path to any scale.  tanh is C-infinity, so the
+        # Lipman 2023 Thm 2 smoothness requirement is satisfied — the
+        # earlier comment's "non-differentiable kink at the saturation
+        # boundary" is not a property of tanh (a hard clamp would be).
+        # With `bounded_coordinate_messages=True` on every layer, last_v is
+        # a degree-normalised mean of tanh-gated displacement vectors, so
+        # |vel| <= |vel_scale| * centroid_radius + mean_pair_distance.
+        vel = torch.tanh(self.vel_head(h)) * self.vel_scale * relative_to_centroid + last_v
         atom_logits = self.atom_head(h)  # (B, N, max_atomic_number)
         # Wf-A56 W2 (2026-10-16) — P4 BF16 overflow guard.  R17 BF16
         # regression: untrained Blackwell kernels overflowed

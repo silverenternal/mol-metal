@@ -6747,10 +6747,17 @@ def evaluate_generation_validity(
     # second time (the old loop called `_decode_with_rdkit_strict(decoder,
     # cloud)`, re-running the whole head + assembly per sample).
     reason_counts: Dict[str, int] = {}
+    # Wf-A92 — decode-side caveats that are not failure classes:
+    # `teacher_forced` (the decode saw bond truth) and
+    # `dative_source:<truth|z_rule|mixed>` / `dative_manufactured_bonds`.
+    # Kept OUT of `reason_counts` on purpose — that dict sums to
+    # n_samples + n_decode_error and adding flags would break the invariant.
+    decode_flags: Dict[str, int] = {}
     chem_rows: List[Optional[Dict[str, Any]]] = []
     decode_clouds_and_classify(
         decoder, clouds, smiles_out, rejected_smiles_out, per_cloud_out,
         chem_rows, sa_target, reason_counts,
+        decode_flags_out=decode_flags,
     )
     first_error = reason_counts.pop("decode_error_example", "")
     # Wf-A84 — successes split into `ok` and `ok_repaired:<repair>`; both
@@ -6774,6 +6781,10 @@ def evaluate_generation_validity(
         # n_samples + n_decode_error, so a reader can tell a model that
         # produced bad chemistry from a decoder that never ran.
         chemistry_out["failure_reasons"] = dict(reason_counts)
+        # Wf-A92 — always emitted (empty dict = the decoder did not report
+        # any flag, which is itself information), so "no teacher-forced
+        # decode" and "the flag was never measured" stay distinguishable.
+        chemistry_out["decode_flags"] = dict(decode_flags)
     if chemistry_rows_out is not None:
         chemistry_rows_out.clear()
         chemistry_rows_out.extend(chem_rows)
@@ -6789,6 +6800,7 @@ def decode_clouds_and_classify(
     chem_rows: List[Optional[Dict[str, Any]]],
     sa_target: Optional[float],
     reason_counts: Dict[str, int],
+    decode_flags_out: Optional[Dict[str, int]] = None,
 ) -> None:
     """Decode every cloud, classify RDKit-strict, and fill the out-params.
 
@@ -6820,6 +6832,32 @@ def decode_clouds_and_classify(
             decoded = getattr(res, "decoded", None)
             smi = getattr(decoded, "smiles", None) or ""
             sanitized = bool(getattr(decoded, "sanitized", False))
+            # Wf-A92 (2026-10-19) — a decode that consumed bond truth, or
+            # whose dative flags were manufactured rather than read from the
+            # cloud, is NOT a blind prediction.  Counted here (and emitted as
+            # `decode_flags` beside `failure_reasons`) so no report can call
+            # such a decode blind without contradicting its own payload.
+            if decode_flags_out is not None:
+                if bool(getattr(decoded, "teacher_forced", False)):
+                    decode_flags_out["teacher_forced"] = (
+                        decode_flags_out.get("teacher_forced", 0) + 1
+                    )
+                _n_manuf = int(
+                    getattr(decoded, "dative_manufactured", 0) or 0
+                )
+                if _n_manuf:
+                    decode_flags_out["dative_manufactured_bonds"] = (
+                        decode_flags_out.get("dative_manufactured_bonds", 0)
+                        + _n_manuf
+                    )
+                _dative_src = str(
+                    getattr(decoded, "dative_source", "") or ""
+                )
+                if _dative_src:
+                    _src_key = f"dative_source:{_dative_src}"
+                    decode_flags_out[_src_key] = (
+                        decode_flags_out.get(_src_key, 0) + 1
+                    )
             # Wf-R44 m4/m5/m7 — persist the decoded SMILES.  These strings were
             # computed and thrown away here; without them no decode->panel link
             # exists and m4/m5/m7 stay UNMEASURED (property panel is post-hoc).
@@ -12761,16 +12799,32 @@ def main() -> int:
     # changes pair_head.0.weight from (H, 2H+3) to (H, 2H+6); a run that
     # silently fell back to the narrow head would look identical in every
     # other log line.
-    _metal_pair_on = bool(getattr(args, "use_metal_pair_features", False))
-    if _metal_pair_on:
+    # Wf-A91 — report the HEAD's state, not the flag.  A head that does not
+    # implement the block (DMPNN) or a run whose flag was overridden by a
+    # resumed checkpoint would otherwise print a setting the model is not
+    # using.  MEASURED cause: --use-metal-pair-features=True was logged while
+    # bond_predictor=yuelbond_edge_mpnn_residual still built the narrow head,
+    # because the edge heads had not been wired yet.
+    _head_obj = getattr(model, "head", None)
+    _head_has_metal = hasattr(_head_obj, "use_metal_features")
+    _metal_pair_on = bool(getattr(_head_obj, "use_metal_features", False))
+    if not _head_has_metal:
         print(
-            "[cfm-head] metal_pair_features=ON "
-            "(d_to_metal / angle_to_metal / is_metal_edge -> pair_head)"
+            f"[cfm-head] metal_pair_features=n/a "
+            f"({type(_head_obj).__name__} has no metal block; "
+            f"flag={bool(getattr(args, 'use_metal_pair_features', False))})"
+        )
+    elif _metal_pair_on:
+        print(
+            f"[cfm-head] metal_pair_features=ON "
+            f"({type(_head_obj).__name__}: d_to_metal / angle_to_metal / "
+            f"is_metal_edge -> pair_head)"
         )
     else:
         print(
-            "[cfm-head] metal_pair_features=OFF (pre-Wf-A90 architecture: "
-            "the head sees the metal only through the Z embedding + is_dative)"
+            f"[cfm-head] metal_pair_features=OFF "
+            f"({type(_head_obj).__name__}: pre-Wf-A90 architecture; the head "
+            f"sees the metal only through the Z embedding + is_dative)"
         )
     # BLK-C5 (2026-10-09) — 用户建议二: '检查解码策略'.  Echo the decode knobs
     # actually in force so the log says what the decoder was doing, plus the
@@ -13583,6 +13637,9 @@ def main() -> int:
         # Initialised HERE, outside the try, so the epoch-level print below
         # is safe even when generation eval raised.
         _gen_reasons: Dict[str, int] = {}
+        # Wf-A92 — pooled decode-side caveats (teacher forcing / dative
+        # source), kept separate from the failure taxonomy above.
+        _gen_flags: Dict[str, int] = {}
         _gen_spread = 0.0
         # 2026-10-04 — `gen_validity` shares decode_ratio's blind spot: it
         # counts a decode as good when RDKit parses it, and `C.C.C.C` parses.
@@ -13661,6 +13718,10 @@ def main() -> int:
                         _chem_seed.get("failure_reasons", {}) or {}
                     ).items():
                         _gen_reasons[_rk] = _gen_reasons.get(_rk, 0) + int(_rv)
+                    for _fk, _fv in (
+                        _chem_seed.get("decode_flags", {}) or {}
+                    ).items():
+                        _gen_flags[_fk] = _gen_flags.get(_fk, 0) + int(_fv)
                     if not _gen_first_err and _chem_seed.get("decode_error_example"):
                         _gen_first_err = str(_chem_seed["decode_error_example"])
                     _gen_per_seed.append(
@@ -13700,6 +13761,7 @@ def main() -> int:
                 # it only records RDKit-strict survivors.
                 _gen_chem["failure_reasons"] = dict(_gen_reasons)
                 _gen_chem["failure_reasons_total"] = int(sum(_gen_reasons.values()))
+                _gen_chem["decode_flags"] = dict(_gen_flags)
                 # Wf-A15 (2026-10-13) — Layer H.  4 NEW discriminator calls
                 # over the decoded pool.  Each returns a flat Dict[str, float]
                 # that we emit alongside the existing chemistry breakdown.
@@ -13986,6 +14048,7 @@ def main() -> int:
                 _gen_ok = _gen_tot = 0
                 _gen_per_seed = []
                 _gen_reasons = {}
+                _gen_flags = {}
             finally:
                 if _ema_swapped_gen:
                     model.ema_swap_out()
@@ -14021,6 +14084,16 @@ def main() -> int:
                     f"{dict(sorted(_gen_reasons.items()))}",
                     flush=True,
                 )
+                # Wf-A92 — a non-empty `decode_flags` says the decode was
+                # not fully blind (teacher_forced) or that its dative flags
+                # are a heuristic (`dative_source:z_rule`).  Printed on its
+                # own line so it can never be read as a failure bucket.
+                if _gen_flags:
+                    print(
+                        f"[cfm-gen] epoch={epoch} decode_flags="
+                        f"{dict(sorted(_gen_flags.items()))}",
+                        flush=True,
+                    )
             else:
                 print(
                     f"[cfm-gen] epoch={epoch} gen_validity="
@@ -14161,6 +14234,14 @@ def main() -> int:
                         # The counts sum to n_samples + n_decode_error.
                         failure_reasons=json.dumps(
                             _gen_chem.get("failure_reasons", {}) or {},
+                            sort_keys=True,
+                        ),
+                        # Wf-A92 — decode provenance, kept OUT of
+                        # `failure_reasons` (which sums to n_samples +
+                        # n_decode_errors).  Empty {} means the decoder
+                        # reported no caveat, not that it was unmeasured.
+                        decode_flags=json.dumps(
+                            dict(sorted(_gen_flags.items())),
                             sort_keys=True,
                         ),
                         # Wf-A81 — the per-seed buckets, so the pooled

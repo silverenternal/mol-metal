@@ -904,6 +904,88 @@ def _load_checkpoint_any(ckpt_path: Path) -> object:
             return pickle.load(fh)
 
 
+def _panel_templates(ckpt: object, n_samples: int) -> "list":
+    """Templates for a panel decode: REAL metal complexes when available.
+
+    Wf-A91 (2026-10-19).  This used to return three metal-free scaffolds
+    (methane / ethane / methylamine) for every checkpoint.  The model is
+    trained on 5-metal complexes, so every panel decode ran the bond head on
+    out-of-domain input, and the Wf-A90 metal columns could never fire
+    (``metal_atom_index`` was absent).  The old comment even claimed "the
+    atomic numbers include Pt (Z=78)" while the list contained none —
+    ``Z_PT`` was defined and unused.
+
+    Order of preference:
+      1. the checkpoint's own ``data.csv`` val split (metal-bearing, real
+         geometry, real ``metal_atom_index``);
+      2. a metal-bearing scaffold set (cisplatin-like Pt + two organic
+         fragments) when the CSV is absent, with a printed reason;
+      3. the original metal-free scaffolds only if even that cannot be built.
+    """
+    from pathlib import Path as _Path
+
+    args = ckpt.get("args") if isinstance(ckpt, dict) else None
+    csv_rel = args.get("data_csv") if isinstance(args, dict) else None
+    if csv_rel:
+        csv_path = _Path(str(csv_rel))
+        if not csv_path.is_absolute():
+            csv_path = _Path(__file__).resolve().parents[2] / csv_path
+        if csv_path.is_file():
+            try:
+                from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
+                    build_csv_cohort,
+                )
+
+                clouds = build_csv_cohort(
+                    str(csv_path),
+                    split="val",
+                    n_clouds=int(n_samples),
+                    seed=0,
+                )
+                if clouds:
+                    print(
+                        f"[wfA54-decode] {len(clouds)} REAL val cloud(s) from "
+                        f"{csv_path.name} (metal-bearing; scaffolds skipped)"
+                    )
+                    return list(clouds)[: int(n_samples)]
+            except Exception as exc:  # noqa: BLE001
+                print(
+                    f"[wfA54-decode] real val cohort unavailable "
+                    f"({type(exc).__name__}: {exc}); falling back to scaffolds"
+                )
+        else:
+            print(
+                f"[wfA54-decode] checkpoint data_csv not on disk ({csv_path}); "
+                "falling back to scaffolds"
+            )
+
+    Z_H, Z_C, Z_N, Z_O, Z_CL, Z_PT = 1, 6, 7, 8, 17, 78
+    # Metal-bearing first: a cisplatin-like square-planar Pt with two NH3
+    # and two Cl, plus two organic fragments for size variety.
+    scaffolds = [
+        ([Z_PT, Z_N, Z_N, Z_CL, Z_CL, Z_H, Z_H, Z_H, Z_H, Z_H, Z_H], 0),
+        ([Z_C, Z_C, Z_N, Z_H, Z_H, Z_H, Z_H, Z_H], None),
+        ([Z_C, Z_C, Z_O, Z_H, Z_H, Z_H, Z_H], None),
+    ]
+    templates: "list" = []
+    per_scaffold = max(1, int(n_samples) // len(scaffolds))
+    for atomic_numbers, metal_idx in scaffolds:
+        n_atoms = len(atomic_numbers)
+        for _ in range(per_scaffold):
+            positions = torch.zeros((n_atoms, 3), dtype=torch.float32)
+            templates.append(
+                AtomCloud(
+                    positions=positions,
+                    atomic_numbers=torch.tensor(atomic_numbers, dtype=torch.long),
+                    metal_atom_index=(
+                        None
+                        if metal_idx is None
+                        else torch.tensor(int(metal_idx), dtype=torch.long)
+                    ),
+                )
+            )
+    return templates[: int(n_samples)]
+
 def _decode_smiles_from_ckpt(
     ckpt_path: Path,
     *,
@@ -1017,28 +1099,10 @@ def _decode_smiles_from_ckpt(
         if model is None:
             return []
 
-    # Build templates.  Real templates come from the tmQM cohort; the
-    # smoke helper uses 3 fixed scaffolds (4-atom / 8-atom / 12-atom)
-    # to exercise the velocity field at varying cloud sizes.  The
-    # atomic numbers include Pt (Z=78) so the velocity field has a
-    # meaningful centre-of-mass shift from noise to data.
-    Z_H, Z_C, Z_N, Z_O, Z_PT = 1, 6, 7, 8, 78
-    scaffolds = [
-        ([Z_C, Z_H, Z_H, Z_H, Z_H], 5),                       # methane
-        ([Z_C, Z_C, Z_H, Z_H, Z_H, Z_H, Z_H, Z_H], 8),        # ethane
-        ([Z_C, Z_C, Z_N, Z_H, Z_H, Z_H, Z_H, Z_H], 8),        # methylamine-ish
-    ]
-    # Distribute n_samples evenly across scaffolds so each size band
-    # gets a fair share.
-    per_scaffold = max(1, n_samples // len(scaffolds))
-    templates: list[AtomCloud] = []
-    for atomic_numbers, n_atoms in scaffolds:
-        for _ in range(per_scaffold):
-            positions = torch.zeros((n_atoms, 3), dtype=torch.float32)
-            templates.append(
-                AtomCloud(positions=positions, atomic_numbers=torch.tensor(atomic_numbers, dtype=torch.long))
-            )
-    templates = templates[:n_samples]
+    # Wf-A91 — real metal-bearing val clouds when the checkpoint names a
+    # corpus; metal-bearing scaffolds only as a fallback.  See
+    # _panel_templates for why the old metal-free scaffold list was wrong.
+    templates = _panel_templates(ckpt, int(n_samples))
     if not templates:
         return []
 
@@ -1233,6 +1297,11 @@ def _decode_smiles_from_ckpt(
         if hasattr(_inner_decoder, "eval"):
             _inner_decoder.eval()
         smiles_list: list[str] = []
+        # Wf-A92 — a decode that consumed bond truth, or whose dative flags
+        # came from the Z-only rule rather than the cloud, is not a blind
+        # prediction.  Counted here so the panel cannot report one as such.
+        _dative_sources: dict[str, int] = {}
+        _n_teacher_forced = 0
         for cloud in clouds:
             try:
                 result = decoder.decode(cloud)
@@ -1247,6 +1316,11 @@ def _decode_smiles_from_ckpt(
                     or getattr(result, "smiles", None)
                     or ""
                 )
+                _src = str(getattr(_decoded_obj, "dative_source", "") or "")
+                if _src:
+                    _dative_sources[_src] = _dative_sources.get(_src, 0) + 1
+                if bool(getattr(_decoded_obj, "teacher_forced", False)):
+                    _n_teacher_forced += 1
                 if smi:
                     smiles_list.append(smi)
             except Exception:
@@ -1264,6 +1338,13 @@ def _decode_smiles_from_ckpt(
         f"[wfA54-decode] {len(smiles_list)}/{len(clouds)} clouds decoded "
         f"to SMILES (n_samples={n_samples}, seed={seed})."
     )
+    if _dative_sources or _n_teacher_forced:
+        print(
+            f"[wfA54-decode] dative provenance="
+            f"{dict(sorted(_dative_sources.items()))} "
+            f"teacher_forced={_n_teacher_forced}/{len(clouds)} "
+            "(z_rule = Z-only heuristic, NOT the cloud's label truth)"
+        )
     return smiles_list
 
 

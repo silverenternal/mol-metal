@@ -352,6 +352,67 @@ def _bo_truth_available(pf: "PairFeature", cloud: "AtomCloud") -> bool:
     )
 
 
+def _dative_truth_pairs(cloud: "AtomCloud") -> Optional[frozenset]:
+    """Truth dative pairs as a direction-free ``frozenset`` of index pairs.
+
+    Returns ``None`` when the cloud carries no per-pair truth (a generated
+    cloud, or a loader that did not supply ``is_dative_pair``).  Both
+    orderings of every true pair are included, because
+    ``DecodedMol.dative_bonds`` is stored ``(donor, metal)`` while
+    ``AtomCloud.bonds`` has no canonical direction.
+
+    Added Wf-A92 (2026-10-19): before this, the decoder's Z-only
+    ``_is_dative_pair`` rule was the only source of dative flags, so a
+    metal-amido single bond (covalent) and a metal-amine single bond
+    (dative) were indistinguishable in every reported metric.
+    """
+    flags = getattr(cloud, "is_dative_pair", None)
+    bonds = getattr(cloud, "bonds", None)
+    if flags is None or bonds is None:
+        return None
+    try:
+        n = int(bonds.shape[1])
+        if int(flags.numel()) != n:
+            return None
+        b = bonds.detach().cpu().tolist()
+        f = flags.detach().cpu().tolist()
+        out = set()
+        for k in range(n):
+            if not bool(f[k]):
+                continue
+            i, j = int(b[0][k]), int(b[1][k])
+            out.add((i, j))
+            out.add((j, i))
+        return frozenset(out)
+    except Exception:
+        return None
+
+
+def _classify_dative_source(
+    cloud: "AtomCloud",
+    dative_bonds: Sequence[Tuple[int, int]],
+) -> Tuple[str, int]:
+    """``(dative_source, dative_manufactured)`` for a decode.
+
+    See :attr:`DecodedMol.dative_source`.  Cheap: one tensor->list
+    conversion of the cloud's truth bonds, and only when the decode
+    actually emitted a dative flag.
+    """
+    if not dative_bonds:
+        return "", 0
+    truth = _dative_truth_pairs(cloud)
+    if truth is None:
+        return "z_rule", 0
+    manufactured = sum(
+        1 for (donor, metal) in dative_bonds if (int(donor), int(metal)) not in truth
+    )
+    if manufactured == 0:
+        return "truth", 0
+    if manufactured >= len(dative_bonds):
+        return "z_rule", manufactured
+    return "mixed", manufactured
+
+
 def _angle_to_metal(
     cloud: "AtomCloud",
     atom_i: int,
@@ -1501,6 +1562,45 @@ class DecodedMol:
     for its true pairs and MUST NOT be reported as a blind prediction —
     the CFM generation path has no truth, so its decodes stay False.
     """
+    dative_source: str = ""
+    """How ``dative_bonds`` was decided (Wf-A92, 2026-10-19).
+
+    * ``"truth"`` — every emitted flag is backed by the cloud's own
+      :attr:`AtomCloud.is_dative_pair` label-side flag (which is itself
+      derived from Wiberg BO < 1.0 plus the loader's coordination rule —
+      label truth, not an experimental observation).
+    * ``"z_rule"`` — no truth was present (a generated cloud), or every
+      flag disagrees with it; the Z-only donor×metal heuristic decided.
+    * ``"mixed"`` — some flags agree with truth, some were manufactured.
+    * ``""`` — no dative bond was emitted.
+
+    The distinction exists because ``_is_dative_pair`` is a Z-only rule:
+    it calls every N/O/P/S/Se–metal single bond dative, including anionic
+    amido/thiolato bonds that are covalent.  A decode that reports
+    ``"z_rule"`` is reporting a GUESS, and a metric that treats it as
+    observed dative chemistry is reading the heuristic back to itself.
+    """
+    dative_manufactured: int = 0
+    """Number of ``dative_bonds`` entries NOT backed by the cloud's
+    ``is_dative_pair`` truth.  0 when no truth was available — see
+    :attr:`dative_source` for why that case is ``"z_rule"`` rather than
+    a silent zero.
+    """
+    warnings: List[str] = field(default_factory=list)
+    """Machine-readable caveats about this decode (Wf-A92).
+
+    Populated in :meth:`__post_init__` so every construction site gets
+    them for free: ``"teacher_forced"`` when the decode consumed bond
+    truth, ``"dative_manufactured"`` when at least one dative flag was
+    not truth-backed.  Consumers that report a decode as a blind
+    prediction must check this list.
+    """
+
+    def __post_init__(self) -> None:
+        if self.teacher_forced and "teacher_forced" not in self.warnings:
+            self.warnings.append("teacher_forced")
+        if self.dative_manufactured > 0 and "dative_manufactured" not in self.warnings:
+            self.warnings.append("dative_manufactured")
 
 
 def _safe_z(z: int) -> int:
@@ -1655,11 +1755,21 @@ class BondAwareDecoder:
             else:
                 bond_orders.append((int(i), int(j), int(order)))
 
+        # Wf-A92 (2026-10-19) — record HOW the dative flags were decided and
+        # HOW MANY of them the cloud's own truth contradicts.  The Z-only
+        # ``is_dative_candidate`` rule cannot tell a dative M-N(amine) bond
+        # from a covalent M-N(amido) one, so a decode that never consulted
+        # truth must not be reported as observed dative chemistry.
+        _dative_source, _dative_manufactured = _classify_dative_source(
+            cloud, dative_bonds
+        )
         return self._assemble_mol(
             cloud,
             bond_orders,
             dative_bonds,
             teacher_forced=_bo_truth_available(pair_features, cloud),
+            dative_source=_dative_source,
+            dative_manufactured=_dative_manufactured,
         )
 
     # ------------------------------------------------------------------
@@ -1835,6 +1945,8 @@ class BondAwareDecoder:
         bond_orders: Sequence[Tuple[int, int, int]],
         dative_bonds: Sequence[Tuple[int, int]],
         teacher_forced: bool = False,
+        dative_source: str = "",
+        dative_manufactured: int = 0,
     ) -> DecodedMol:
         # Late import keeps the module importable without rdkit installed.
         from rdkit import Chem
@@ -1867,6 +1979,9 @@ class BondAwareDecoder:
                 bond_orders=list(bond_orders),
                 dative_bonds=list(dative_bonds),
                 n_atoms=cloud.positions.shape[0],
+                teacher_forced=bool(teacher_forced),
+                dative_source=dative_source,
+                dative_manufactured=int(dative_manufactured),
             )
 
         # Sanitise; if it fails, mark and return what we have.
@@ -1900,6 +2015,8 @@ class BondAwareDecoder:
             sanitized=sanitized,
             error=sanitize_error,
             teacher_forced=bool(teacher_forced),
+            dative_source=dative_source,
+            dative_manufactured=int(dative_manufactured),
         )
 
 

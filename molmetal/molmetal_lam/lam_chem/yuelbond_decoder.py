@@ -99,6 +99,18 @@ _METAL_SET_PRESETS: dict = {
     "all7": _DEFAULT_METAL_SET,
 }
 
+#: Wf-A92 (2026-10-19) — THE donor set for dative-bond detection.
+#:
+#: Three different donor lists used to coexist on the same bond:
+#:   * ``YuelBondDecoderHead.forward``  N/O/P/S      = {7, 8, 15, 16}
+#:   * ``YuelBondDecoderHead.featurise`` N/O/S      = {7, 8, 16}
+#:   * ``YuelBondBondDecoder._is_donor`` N/O/P/S/Se = {7, 8, 15, 16, 34}
+#: so a P- or Se-donor bond was dative to the selector, covalent to the
+#: head's featuriser, and (for Se) invisible to the head's forward.  The
+#: head is TRAINED with one list and DECODED with another.  One set now,
+#: imported by every site.
+_DONOR_ZS: frozenset = frozenset({7, 8, 15, 16, 34})  # N, O, P, S, Se
+
 #: 2026-10-04 — EXTENDED table covering all six of the project's target metals.
 #:
 #: The default table above contains exactly ONE metal: Pt (78).  The other
@@ -631,11 +643,20 @@ class YuelBondDecoderHead(nn.Module):
         # O(E) ``isin`` membership check against ``self.metal_set`` (default
         # all7 covers Pt/Ru/Ir/Os/Rh/Re/Pd).  Bit-exact for ``metal_set=
         # "pt_only"`` — pre-Wf-A69 W2 callers see no behaviour change.
-        donor_mask = (
-            (atomic_numbers[i_idx] == 7)
-            | (atomic_numbers[i_idx] == 8)
-            | (atomic_numbers[i_idx] == 15)
-            | (atomic_numbers[i_idx] == 16)
+        #
+        # Wf-A92 (2026-10-19) — SYMMETRIC dative test.  The Wf-A69 form
+        # tested only ``donor_mask[i_idx] & metal(j_idx)``, and the
+        # edge list comes from ``torch.triu_indices`` (i < j).  So a
+        # metal-donor bond was encoded as dative ONLY when the donor
+        # happened to have the LOWER atom index: the same physical bond
+        # carried ``is_dative=1`` or ``0`` depending on atom ordering, and
+        # on any corpus that puts the metal first (tmQM does) every
+        # dative bond was encoded as 0.  That is the Wf-A69 defect again,
+        # one layer down.  The test below is order-free.
+        donor_t = torch.as_tensor(
+            sorted(_DONOR_ZS),
+            device=atomic_numbers.device,
+            dtype=atomic_numbers.dtype,
         )
         # ``isin`` with the project's frozen-set is an O(E) op.  We build the
         # tensor on the head's device once per call; the alternative (looping
@@ -644,8 +665,12 @@ class YuelBondDecoderHead(nn.Module):
         metal_t = torch.as_tensor(
             sorted(self.metal_set), device=atomic_numbers.device, dtype=atomic_numbers.dtype
         )
-        is_dative = donor_mask & torch.isin(
-            atomic_numbers[j_idx], metal_t
+        _z_i = atomic_numbers[i_idx]
+        _z_j = atomic_numbers[j_idx]
+        is_dative = (
+            torch.isin(_z_i, donor_t) & torch.isin(_z_j, metal_t)
+        ) | (
+            torch.isin(_z_i, metal_t) & torch.isin(_z_j, donor_t)
         )
         is_dative = is_dative.float().unsqueeze(-1)
         # K message-passing iterations.
@@ -844,16 +869,24 @@ class YuelBondDecoder:
         d = d_vec.norm(dim=-1).clamp(min=self.head.min_distance)
         z_i = cloud.atomic_numbers[edge_index[0]].long()
         z_j = cloud.atomic_numbers[edge_index[1]].long()
-        # Crude dative detector: N/O/S <-> Pt (either ordering)
-        donor_mask = (
-            (z_i == 7)
-            | (z_i == 8)
-            | (z_i == 16)
-            | (z_j == 7)
-            | (z_j == 8)
-            | (z_j == 16)
+        # Wf-A92 (2026-10-19) — the dative flag on this path used to be a
+        # hardcoded Pt-only, N/O/S-only rule (``z == 78``), while
+        # :meth:`YuelBondDecoderHead.forward` — the path the head is
+        # TRAINED through — used ``self.metal_set`` (all7) and a different
+        # donor list.  The decode-side pair features therefore disagreed
+        # with the training-side ones for every Ru/Ir/Os/Rh/Re complex and
+        # for every P/Se donor.  Both now read the same two sets.
+        donor_t = torch.as_tensor(
+            sorted(_DONOR_ZS), device=z_i.device, dtype=z_i.dtype
         )
-        is_dative = donor_mask & ((z_i == 78) | (z_j == 78))
+        metal_t = torch.as_tensor(
+            sorted(self.head.metal_set), device=z_i.device, dtype=z_i.dtype
+        )
+        is_dative = (
+            torch.isin(z_i, donor_t) & torch.isin(z_j, metal_t)
+        ) | (
+            torch.isin(z_i, metal_t) & torch.isin(z_j, donor_t)
+        )
         pf = PairFeature(
             edge_index=edge_index,
             distance=d,

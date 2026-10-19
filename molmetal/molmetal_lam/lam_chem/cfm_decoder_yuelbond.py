@@ -69,9 +69,12 @@ from molmetal.models.bond_head import (
     NUM_BOND_CLASSES,
     AtomCloud,
     DecodedMol,
+    _classify_dative_source,
+    _dative_truth_pairs,
 )
 
 from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
+    _DONOR_ZS,
     YuelBondDecoder,
     YuelBondDecoderHead,
     YuelBondResult,
@@ -582,6 +585,15 @@ class YuelBondBondDecoder:
         # boron-like defaults, or set to ``"raise"`` to refuse unknown
         # Z outright at decode time.
         unknown_z_default: Optional[object] = None,
+        # Wf-A92 (2026-10-19) — distance bound for the Z-only dative rule.
+        # ``_is_dative_pair`` used to test Z roles only, so a predicted
+        # metal-donor single bond at 3.4 A (a genuine coordination bond, but
+        # far longer than any dative contact) was still reported as dative.
+        # ``BondAwareDecoder`` has always applied a 2.5 A bound; this mirrors
+        # it.  A cloud that carries ``is_dative_pair`` truth bypasses the
+        # rule entirely (truth wins), so the bound only governs the
+        # generation path, where there is no truth.
+        dative_max_distance: float = 2.5,
     ) -> None:
         self._decoder = YuelBondDecoder(
             head=head,
@@ -599,6 +611,7 @@ class YuelBondBondDecoder:
         # stricter surface pass ``unknown_z_default="raise"`` or a
         # numeric override.
         self.unknown_z_default = unknown_z_default
+        self.dative_max_distance = float(dative_max_distance)
         # 2026-10-05 — HOW PER-PAIR LOGITS BECOME A CLASS.
         #
         # This decoder hardcoded `argmax` in `_select_bonds`, so the decision
@@ -721,7 +734,19 @@ class YuelBondBondDecoder:
                 dative_bonds,
             )
         # Step 3: assemble into an RDKit Mol.
-        decoded = self._assemble_mol(cloud, bond_orders, dative_bonds)
+        # Wf-A92 — say HOW the dative flags were decided.  A decode whose
+        # ``dative_source`` is ``"z_rule"`` is reporting a guess; only
+        # ``"truth"`` is backed by the cloud's own label-side flag.
+        _dative_source, _dative_manufactured = _classify_dative_source(
+            cloud, dative_bonds
+        )
+        decoded = self._assemble_mol(
+            cloud,
+            bond_orders,
+            dative_bonds,
+            dative_source=_dative_source,
+            dative_manufactured=_dative_manufactured,
+        )
         return YuelBondDecodeResult(
             decoded=decoded,
             yuelbond_result=yres,
@@ -832,6 +857,11 @@ class YuelBondBondDecoder:
         dative_bonds: List[Tuple[int, int]] = []
         n_overvalent = 0
         n_kept = 0
+        # Wf-A92 — resolve the cloud's own dative truth ONCE.  ``None``
+        # means the cloud carries no per-pair truth (a generated cloud),
+        # in which case the Z+distance rule below decides and the decode is
+        # labelled ``dative_source="z_rule"``.
+        dative_truth = _dative_truth_pairs(cloud)
         for _, i, j, order in pairs:
             # 2026-10-04 — the VALENCE cost of a class is not its class index.
             #
@@ -904,13 +934,13 @@ class YuelBondBondDecoder:
             # Dative flag — same convention as BondAwareDecoder.
             zi = int(z_list[i])
             zj = int(z_list[j])
-            dative_ok = self._is_dative_pair(zi, zj) and order == BOND_SINGLE
+            dative_ok = order == BOND_SINGLE and self._is_dative_pair_at(
+                cloud, i, j, zi, zj, dative_truth
+            )
             if dative_ok:
-                # Donor = non-metal, Metal = the Pt/Au/Cu/Ru/Ir/Zn/Pd
-                if self._is_metal(zi) and not self._is_metal(zj):
+                # Donor = non-metal, Metal = the head's metal_set.
+                if self._is_metal_z(zi) and not self._is_metal_z(zj):
                     dative_bonds.append((j, i))
-                elif self._is_metal(zj) and not self._is_metal(zi):
-                    dative_bonds.append((i, j))
                 else:
                     dative_bonds.append((i, j))
         return bond_orders, dative_bonds, n_kept, n_overvalent
@@ -1050,6 +1080,8 @@ class YuelBondBondDecoder:
 
         # --- greedily bridge ----------------------------------------------
         n_added = 0
+        # Wf-A92 — same truth-first dative rule as ``_select_bonds``.
+        dative_truth = _dative_truth_pairs(cloud)
         for _score, i, j in candidates:
             if n_components <= 1:
                 break
@@ -1062,8 +1094,10 @@ class YuelBondBondDecoder:
             remaining[j] -= 1.0
             have.add((i, j) if i < j else (j, i))
             # Mirror `_select_bonds`' dative convention for a metal-donor pair.
-            if self._is_dative_pair(z_list[i], z_list[j]):
-                if self._is_metal(z_list[i]) and not self._is_metal(z_list[j]):
+            if self._is_dative_pair_at(
+                cloud, i, j, z_list[i], z_list[j], dative_truth
+            ):
+                if self._is_metal_z(z_list[i]) and not self._is_metal_z(z_list[j]):
                     dative_bonds.append((j, i))
                 else:
                     dative_bonds.append((i, j))
@@ -1080,6 +1114,8 @@ class YuelBondBondDecoder:
         cloud: AtomCloud,
         bond_orders: List[Tuple[int, int, int]],
         dative_bonds: List[Tuple[int, int]],
+        dative_source: str = "",
+        dative_manufactured: int = 0,
     ) -> DecodedMol:
         """Assemble an RDKit Mol from the predicted bond_orders.
 
@@ -1134,6 +1170,8 @@ class YuelBondBondDecoder:
             return DecodedMol(
                 error=f"RWMol.GetMol failed: {exc}",
                 n_atoms=cloud.positions.shape[0],
+                dative_source=dative_source,
+                dative_manufactured=int(dative_manufactured),
             )
         # 2026-10-13 (BLK-C-L3 / instrument-fix) — SanitizeMol branch must
         # populate ``DecodedMol.error`` so the rejection reason reaches the
@@ -1201,6 +1239,8 @@ class YuelBondBondDecoder:
             sanitized=sanitized,
             error=sanitize_error,
             repair=repair,
+            dative_source=dative_source,
+            dative_manufactured=int(dative_manufactured),
         )
 
     def _empty_decoded(
@@ -1293,36 +1333,66 @@ class YuelBondBondDecoder:
             )
         return float(self.unknown_z_default)
 
-    @staticmethod
-    def _is_metal(z: int) -> bool:
-        """Whether Z is a metal for the purposes of the dative-bond detector.
+    def _is_metal_z(self, z: int) -> bool:
+        """Whether Z is a metal for the dative-bond detector.
 
         2026-10-04: the tuple below used to be (78, 44, 30, 77, 29, 79, 46,
         26, 28), which covers Pt/Ru/Zn/Ir/Cu/Au/Pd/Fe/Ni but NOT Os (76),
-        Re (75) or Rh (45) -- three of this project's six target metals.  A
-        tmQM Os/Re/Rh complex would therefore have had its metal-to-donor
-        bonds classified as ordinary covalent bonds: the vocabulary extension
-        alone would not have been enough.
+        Re (75) or Rh (45) -- three of this project's six target metals.
 
-        Grouped rather than left as a bare tuple so the gap is visible:
-          * the six project targets: Pt 78, Ru 44, Ir 77, Rh 45, Os 76, Re 75
-          * first-row transition metals already in the list: Fe 26, Ni 28,
-            Cu 29, Zn 30
-          * other d8/d10 metals already in the list: Pd 46, Au 79
+        Wf-A92 (2026-10-19): this used to be a hardcoded 12-metal tuple
+        that disagreed with the HEAD's ``metal_set`` (all7 = Ru/Rh/Pd/Re/
+        Os/Ir/Pt).  The head is trained with its own set, so the selector
+        could flag a Fe/Ni/Cu/Zn/Au bond as dative while the head had never
+        seen that element as a metal.  The head's set is now the single
+        source of truth; the old 12-metal tuple (which added Fe/Ni/Cu/Zn/
+        Au) is recorded in this docstring, not in code.
         """
-        return z in (
-            78, 44, 77, 45, 76, 75,  # the six project targets (Rh/Os/Re NEW)
-            26, 28, 29, 30, 46, 79,  # pre-existing: Fe, Ni, Cu, Zn, Pd, Au
-        )
+        return int(z) in self._decoder.head.metal_set
 
     @staticmethod
     def _is_donor(z: int) -> bool:
-        return z in (7, 8, 15, 16, 34)
+        return z in _DONOR_ZS
 
     def _is_dative_pair(self, z_i: int, z_j: int) -> bool:
-        return (self._is_metal(z_i) and self._is_donor(z_j)) or (
-            self._is_metal(z_j) and self._is_donor(z_i)
+        """Z-only dative rule (no distance, no truth).  See
+        :meth:`_is_dative_pair_at` for the rule the decoder actually uses."""
+        return (self._is_metal_z(z_i) and self._is_donor(z_j)) or (
+            self._is_metal_z(z_j) and self._is_donor(z_i)
         )
+
+    def _is_dative_pair_at(
+        self,
+        cloud: AtomCloud,
+        i: int,
+        j: int,
+        z_i: int,
+        z_j: int,
+        truth: Optional[frozenset] = None,
+    ) -> bool:
+        """Is the kept bond ``(i, j)`` dative?
+
+        Precedence (Wf-A92):
+          1. the cloud's own ``is_dative_pair`` truth, when present — a
+             metal-amido bond is covalent and truth says so;
+          2. otherwise the Z rule AND ``d <= dative_max_distance``.  The
+             distance bound is what stops a long, genuinely covalent
+             metal-donor contact from being reported as a dative bond.
+        """
+        if truth is not None:
+            return (int(i), int(j)) in truth
+        if not self._is_dative_pair(z_i, z_j):
+            return False
+        try:
+            d = float(
+                torch.norm(
+                    cloud.positions[int(i)].float()
+                    - cloud.positions[int(j)].float()
+                ).item()
+            )
+        except Exception:
+            return True
+        return d <= float(self.dative_max_distance)
 
 
 # ---------------------------------------------------------------------------

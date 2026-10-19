@@ -6224,3 +6224,110 @@ ACTIVE count: **129 -> 130** (+1).
 smokes including a two-run reproducibility check and two resume checks; §5.2:
 every number traces to `/tmp/audit_e2e3` / `/tmp/repro1` / `/tmp/repro2`;
 §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+## §6.122 — Wf-A91/A92: the decode reported its own guesses as observations
+
+Four defects, all on the path from a trained checkpoint to a reported number.
+None of them changes a training loss; every one of them changes what a decode
+*claims* to be.
+
+**1. The EGNN velocity gate was quadratic in the coordinate scale.**
+`vel = vel_head(h) * vel_scale * (x_t - centroid) + last_v` multiplies an
+UNBOUNDED head output by a displacement, so the field grew superlinearly with
+the cloud radius.  The class comment claimed the superlinear ODE field was
+already prevented; it was not.  MEASURED on
+`test_lipman_spatial_contract::test_nonzero_velocity_equivariance_and_first_update_gradients`:
+scaling the input coordinates 100x moved the velocity norm 0.066 -> 300, a
+7,519x ratio where a linear field gives 100x.  The gate is now
+`torch.tanh(vel_head(h))`, which keeps the field C-infinity (the Lipman 2023
+Thm 2 smoothness argument still holds) and bounds it by
+`|vel_scale| * centroid_radius + mean_pair_distance`.  3/3 tests pass.
+
+**2. The property panel decoded metal-free scaffolds.**  `cfm_property_panel`
+built methane / ethane / methylamine clouds (Z = 6, 6, 6, 7, ...), so the
+metal columns of the Wf-A90 head could never fire and every panel decode was
+out of domain.  The dead `Z_PT` constant and the comment claiming the
+scaffold "includes Pt (Z=78)" were both still in the file.  `_panel_templates`
+now prefers the checkpoint's own `data.csv` val split.  MEASURED on
+`/tmp/audit_e2e4`: `4 REAL val cloud(s) ... mix={'Ir': 1, 'Ru': 3}` and
+`4/4 clouds decoded to SMILES`.
+
+**3. The `[cfm-head]` line reported the launch flag, not the model.**  It read
+`args.use_metal_pair_features`, so a run whose `bond_predictor` was an EDGE
+head logged `metal_pair_features=ON` while running a head that had never been
+given the block (the checkpoint rebuild then failed `strict=True` in the
+panel).  The line now reads `model.head.use_metal_features` and names the head
+class.  VERIFIED on `/tmp/audit_e2e4`:
+`metal_pair_features=ON (YuelBondEdgeMPNNHeadResidual: ...)`.
+
+**4. The head's dative feature depended on ATOM ORDER.**
+`YuelBondDecoderHead.forward` built `is_dative` as
+`donor(i) & metal(j)` over `torch.triu_indices` (i < j).  The same physical
+metal-donor bond therefore carried `is_dative=1` only when the donor had the
+lower index; on any metal-first ordering (tmQM puts the metal first) every
+dative bond was encoded as 0 — the Wf-A69 defect again, one layer down.  The
+test is now symmetric (`(donor_i & metal_j) | (metal_i & donor_j)`), and a
+regression test reads the pair-head INPUT and requires the dative column to be
+1.0 with the metal first AND with the metal last.
+
+**5. Three donor lists and two metal lists were live at once.**  The head's
+forward used N/O/P/S = {7,8,15,16}; its decode-side `featurise` used N/O/S =
+{7,8,16} and a hardcoded Pt (Z=78); the selector used N/O/P/S/Se =
+{7,8,15,16,34} and a 12-metal tuple (Fe/Ni/Cu/Zn/Au included, while the head
+was trained on `metal_set=all7`).  A P- or Se-donor bond was dative to the
+selector, covalent to the featuriser, and invisible to the forward.  Both
+sides now import `_DONOR_ZS` and read `head.metal_set`.
+
+**6. `dative_bonds` recorded a Z-only guess as if it were chemistry.**  The
+rule is "donor element x metal element", so an anionic metal-amido bond
+(covalent) and a metal-amine bond (dative) were indistinguishable.  The
+selector also had no distance bound, while `BondAwareDecoder` has always used
+2.5 A.  `DecodedMol` now carries `dative_source` (`truth` / `z_rule` / `mixed` /
+`""`), `dative_manufactured`, and a derived `warnings` list; truth wins when
+the cloud has `is_dative_pair`, and the Z rule gains the same 2.5 A bound.
+
+**7. `teacher_forced` was set and never read.**  `DecodedMol.teacher_forced`
+existed since Wf-A86 and no metric path consumed it, so a decode that saw the
+answer could be reported as a blind prediction.  `decode_clouds_and_classify`
+now fills `decode_flags` (`teacher_forced`, `dative_source:<src>`,
+`dative_manufactured_bonds`), `chemistry_out` and `per_epoch_metrics.json`
+carry it beside `failure_reasons`, and the `[cfm-gen]` line prints it
+separately (it is NOT a failure bucket: `reason_counts` still sums to
+`n_samples + n_decode_errors`).  The panel prints the same provenance.
+
+**8. A stale test measured the init bias.**
+`test_cfm_yuelbond.py::test_yuelbond_decoder_returns_valid_bonds_on_cisplatin`
+failed at HEAD (confirmed in a detached worktree) with
+`bonds_accepted=0, bonds_rejected_overvalent=0`: Wf-A71 flipped the head's
+init bias to `BOND_NO_BOND` (+2.0), so a random head predicts no bond at all
+and the selector never saw a candidate.  The test now biases the pair head
+toward SINGLE, which is what its docstring says it measures.
+
+**Honest-negative (ACTIVE, this entry):**
+  * **The symmetric-dative fix is bit-exact on the current corpus and
+    unmeasured on metal-first corpora.**  MEASURED on the 63-cloud val cohort
+    (`build_csv_cohort(..., split="val", n_clouds=64)`): 466 dative flag
+    entries, **0** would have been missed by the old asymmetric rule — every
+    donor happens to sit below the metal index.  So the change costs nothing
+    on MetalCytoTox and fixes a real loss on tmQM-style ordering, but the
+    tmQM case has no measurement here.
+  * **`dative_source="truth"` is label-side truth, not experiment.**
+    `is_dative_pair` comes from Wiberg BO < 1.0 plus the loader's coordination
+    rule.  "Truth" means "the cloud's own label", not "observed".
+  * **The 2.5 A bound is inherited, not calibrated.**  It mirrors
+    `BondAwareDecoder`; no sweep establishes it as the right cut.
+  * **The panel provenance line is silent when nothing fired.**  On the
+    1-epoch `/tmp/audit_e2e4` checkpoint all four decodes emitted no dative
+    bond, so the line does not print.  Silence here means "no dative bond",
+    not "not measured" (the trainer's `decode_flags` is always emitted).
+  * **No GPU quality gate.**  These fixes change what a decode reports, not
+    whether it is right.  Bond F1 / ring profile after Wf-A92 is unmeasured.
+
+**§6.122 catalog-count math.** Net catalog-count delta: **+1** (§6.122 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **174 -> 175** (+1).
+ACTIVE count: **130 -> 131** (+1).
+
+**Workflow** | Wf-A91/A92 (2026-10-19; 0 GPU — 15 new CPU tests, 102-test
+CFM regression sweep, one panel e2e on a real checkpoint, one 63-cloud
+provenance measurement; §5.2: every number traces to a test or to
+`/tmp/audit_e2e4` / the val-cohort probe; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
