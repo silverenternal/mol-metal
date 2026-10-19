@@ -994,6 +994,10 @@ class YuelBondEdgeMPNNHead(nn.Module):
         # more capacity to converge.  Default False preserves the
         # Wf-A70/Wf-A71 2-layer MLP bit-exact compat.
         use_residual_pair_head: bool = False,
+        # Wf-A90 (2026-10-19) — same 3-d metal-geometry block as the
+        # atom-MPNN head.  Default False keeps every existing checkpoint
+        # loadable; the trainer turns it ON with the rest of the heads.
+        use_metal_features: bool = False,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -1026,7 +1030,9 @@ class YuelBondEdgeMPNNHead(nn.Module):
         # (2*H + 4 = 132 inputs at H=64; same flag set as the
         # atom-MPNN head's msg_in so the two heads share a feature
         # schema at the input layer)
-        self.edge_init = nn.Linear(hidden_dim * 2 + 4, hidden_dim)
+        self.use_metal_features = bool(use_metal_features)
+        _edge_extra = METAL_PAIR_FEATURE_DIM if self.use_metal_features else 0
+        self.edge_init = nn.Linear(hidden_dim * 2 + 4 + _edge_extra, hidden_dim)
         # Edge MP.  Input is [h_e, h_nbr_e_max, d, is_short, is_long,
         # is_dative] (2*H + 4 = 132 at H=64 — h_e and h_nbr_e_max
         # plus 4 flag scalars).  Output is a residual on h_e via ReLU.
@@ -1057,9 +1063,10 @@ class YuelBondEdgeMPNNHead(nn.Module):
         # count goes from ~5K to ~12K — a 2.4× widening of the
         # pair head while keeping the message-passing backbone
         # unchanged.
+        _pair_extra = METAL_PAIR_FEATURE_DIM if self.use_metal_features else 0
         if self.use_residual_pair_head:
             self.pair_head = nn.Sequential(
-                nn.Linear(hidden_dim + 3, hidden_dim),
+                nn.Linear(hidden_dim + 3 + _pair_extra, hidden_dim),
                 nn.LayerNorm(hidden_dim),
                 nn.ReLU(),
                 nn.Dropout(p=0.1),
@@ -1071,7 +1078,7 @@ class YuelBondEdgeMPNNHead(nn.Module):
             )
         else:
             self.pair_head = nn.Sequential(
-                nn.Linear(hidden_dim + 3, hidden_dim),
+                nn.Linear(hidden_dim + 3 + _pair_extra, hidden_dim),
                 nn.ReLU(),
                 nn.Linear(hidden_dim, NUM_BOND_CLASSES),
             )
@@ -1175,14 +1182,17 @@ class YuelBondEdgeMPNNHead(nn.Module):
         )  # (E, 4)
         # Initial edge state: project [h_i, h_j, d, is_short, is_long,
         # is_dative] to hidden_dim.
-        edge_init_in = torch.cat(
-            [
-                h_atom[i_idx],
-                h_atom[j_idx],
-                edge_flags,
-            ],
-            dim=-1,
+        _metal_feats = (
+            _metal_pair_features(
+                cloud, i_idx, j_idx, self.metal_set, cutoff=self.cutoff
+            )
+            if self.use_metal_features
+            else None
         )
+        _edge_init_parts = [h_atom[i_idx], h_atom[j_idx], edge_flags]
+        if _metal_feats is not None:
+            _edge_init_parts.append(_metal_feats)
+        edge_init_in = torch.cat(_edge_init_parts, dim=-1)
         h_e = self.edge_init(edge_init_in)  # (E, H)
         # Pre-build the line-graph neighbour map.  This is O(E^2) which
         # for our 5-metal training (E ≈ 170 pairs / cloud at N=19
@@ -1240,10 +1250,10 @@ class YuelBondEdgeMPNNHead(nn.Module):
         # chemistry — dative bonds are SINGLE on the Wiberg scale, but
         # the is_dative flag lets the head weight its TRIPLE/AROMATIC
         # output away from the donor-atom direction.
-        pair_in = torch.cat(
-            [h_e, d.unsqueeze(-1), is_short, is_dative_f],
-            dim=-1,
-        )
+        _pair_parts = [h_e, d.unsqueeze(-1), is_short, is_dative_f]
+        if _metal_feats is not None:
+            _pair_parts.append(_metal_feats)
+        pair_in = torch.cat(_pair_parts, dim=-1)
         logits = self.pair_head(pair_in)
         return logits, (i_idx, j_idx)
 
@@ -1311,6 +1321,7 @@ class YuelBondEdgeMPNNHeadResidual(YuelBondEdgeMPNNHead):
         min_distance: float = 1.0,
         z_table: Tuple[int, ...] = _YUELBOND_Z_TABLE,
         metal_set: str = "all7",
+        use_metal_features: bool = False,
     ) -> None:
         super().__init__(
             hidden_dim=hidden_dim,
@@ -1320,6 +1331,7 @@ class YuelBondEdgeMPNNHeadResidual(YuelBondEdgeMPNNHead):
             z_table=z_table,
             metal_set=metal_set,
             use_residual_pair_head=True,
+            use_metal_features=use_metal_features,
         )
 
 

@@ -1936,6 +1936,7 @@ class CFMJointModel(nn.Module):
                 cutoff=cutoff,
                 z_table=z_table,
                 metal_set=str(bond_z_metal_set),
+                use_metal_features=bool(use_metal_pair_features),
             )
         elif str(bond_predictor).lower() == "yuelbond_edge_mpnn_residual":
             # Wf-A74 (2026-10-18) — Architecture 1 (3-layer residual
@@ -1959,6 +1960,7 @@ class CFMJointModel(nn.Module):
                 cutoff=cutoff,
                 z_table=z_table,
                 metal_set=str(bond_z_metal_set),
+                use_metal_features=bool(use_metal_pair_features),
             )
         else:
             raise ValueError(

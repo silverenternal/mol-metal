@@ -6172,9 +6172,11 @@ atoms at the same distance were indistinguishable — the one distinction a
     angle_to_metal  angle i-metal-j / pi      (0 for metal-incident edges)
     is_metal_edge   1.0 if either endpoint IS the metal
 
-`pair_head.0.weight` goes from (H, 2H+3) to (H, 2H+6).  Default OFF in the
-class (bit-exact for every direct constructor and every pre-Wf-A90
-checkpoint); the trainer turns it ON through `--use-metal-pair-features`
+`pair_head.0.weight` goes from (H, 2H+3) to (H, 2H+6).  The two edge-MPNN
+heads get the same block (`edge_init` 2H+4 -> 2H+7, `pair_head` H+3 ->
+H+6).  Default OFF in the classes (bit-exact for every direct constructor and
+every pre-Wf-A90 checkpoint); the trainer turns it ON through
+`--use-metal-pair-features`
 (argparse default True, declared as `flow.use_metal_pair_features` in the
 configs).  MEASURED on `/tmp/audit_e2e3`: `[cfm-head] metal_pair_features=ON`,
 `gen_validity=1.000 (16/16)`, `failure_reasons={ok: 16}`, train_loss 0.9520.
@@ -6202,9 +6204,11 @@ two runs of the same config now report identical
     (`test_metal_geometry_changes_the_logits` moves only the metal and
     requires the logits to move) and to train end-to-end, but no 5-epoch GPU
     run has measured whether it improves bond F1 / ring profile.
-  * **The other three heads are unchanged.**  `YuelBondEdgeMPNNHead` and
-    `YuelBondEdgeMPNNHeadResidual` still see the metal only through Z +
-    `is_dative`; `DMPNNBondHead` likewise.
+  * **`DMPNNBondHead` is unchanged.**  The two edge-MPNN heads
+    (`YuelBondEdgeMPNNHead`, `YuelBondEdgeMPNNHeadResidual`) were given the
+    same 3 columns (edge_init 2H+4 -> 2H+7, pair_head H+3 -> H+6, both
+    gated); the D-MPNN head has its own featuriser and still sees the metal
+    only through Z + `is_dative`.
   * **Old checkpoints need the automatic fallback.**  A pre-Wf-A90 checkpoint
     carries no `use_metal_pair_features` key, so the resume probe and
     `build_joint_model` both default it to False.  That is a compatibility

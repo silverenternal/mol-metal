@@ -328,9 +328,9 @@
     },
     "Wf-A90_metal_pair_features": {
       "status": "SHIPPED 2026-10-19 (metal pair block + dual-format checkpoint loader + reproducible permutation; 13 tests; §6.121)",
-      "what": "YuelBondDecoderHead gains use_metal_features: 3 columns (d_to_metal / angle_to_metal / is_metal_edge) appended to the pair-head input, pair_head.0.weight (H,2H+3)->(H,2H+6). Trainer flag --use-metal-pair-features (YAML flow.use_metal_pair_features, default ON for new runs, OFF in the class for bit-exact compat). load_cfm_checkpoint reads both torch.save zip and the raw pickle the trainer has written since Wf-A30-1. _epoch_permutation makes batch order reproducible in (seed, epoch).",
+      "what": "YuelBondDecoderHead, YuelBondEdgeMPNNHead and YuelBondEdgeMPNNHeadResidual gain use_metal_features: 3 columns (d_to_metal / angle_to_metal / is_metal_edge) appended to the pair-head input (atom head 2H+3 -> 2H+6; edge heads edge_init 2H+4 -> 2H+7 and pair_head H+3 -> H+6). Trainer flag --use-metal-pair-features (YAML flow.use_metal_pair_features, default ON for new runs, OFF in the classes for bit-exact compat). load_cfm_checkpoint reads both torch.save zip and the raw pickle the trainer has written since Wf-A30-1. _epoch_permutation makes batch order reproducible in (seed, epoch).",
       "measured": "/tmp/audit_e2e3: metal_pair_features=ON, gen_validity 1.000 (16/16), failure_reasons {ok:16}, train_loss 0.9520. Resume from /tmp/audit_e2e3 works (pickle path; torch.load alone fails with 'Invalid magic number'). Resume from a pre-A90 ckpt auto-overrides the flag to False and loads. Two same-seed runs: train_loss=0.9364 bond_ce=1.0109 grad_norm=2.717 identical.",
-      "honest": "No GPU quality gate yet: the block is verified to be read (moving only the metal changes the logits) and to train, not to improve bond F1 or the ring profile. The edge-MPNN and D-MPNN heads are unchanged. Pre-A90 checkpoints keep the old architecture via the compatibility default."
+      "honest": "No GPU quality gate yet: the block is verified to be read (moving only the metal changes the logits, for all three heads) and to train, not to improve bond F1 or the ring profile. DMPNNBondHead is unchanged (own featuriser). Pre-A90 checkpoints keep the old architecture via the compatibility default."
     }
   },
   "pointer_to_history": {

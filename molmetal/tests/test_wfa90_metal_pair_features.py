@@ -213,3 +213,46 @@ def test_checkpoint_loader_reads_both_serialisations(tmp_path):
         pickle.dump(payload, fh)
     assert load_cfm_checkpoint(zip_path)["epoch"] == 3
     assert load_cfm_checkpoint(pick_path)["epoch"] == 3
+
+
+@pytest.mark.parametrize(
+    "head_cls_name",
+    ["YuelBondEdgeMPNNHead", "YuelBondEdgeMPNNHeadResidual"],
+)
+def test_edge_heads_carry_the_metal_block(head_cls_name):
+    """The two edge-MPNN heads get the same 3 columns as the atom head."""
+    import molmetal.molmetal_lam.lam_chem.yuelbond_decoder as yb
+
+    cls = getattr(yb, head_cls_name)
+    off = cls(hidden_dim=16, n_edge_layers=1)
+    on = cls(hidden_dim=16, n_edge_layers=1, use_metal_features=True)
+    assert off.use_metal_features is False
+    assert on.use_metal_features is True
+    assert on.pair_head[0].in_features == off.pair_head[0].in_features + 3
+    assert on.edge_init.in_features == off.edge_init.in_features + 3
+
+
+@pytest.mark.parametrize(
+    "head_cls_name",
+    ["YuelBondEdgeMPNNHead", "YuelBondEdgeMPNNHeadResidual"],
+)
+def test_edge_heads_react_to_the_metal_position(head_cls_name):
+    import molmetal.molmetal_lam.lam_chem.yuelbond_decoder as yb
+
+    torch.manual_seed(0)
+    head = getattr(yb, head_cls_name)(
+        hidden_dim=16, n_edge_layers=1, use_metal_features=True
+    )
+    head.eval()
+    z = [78, 8, 8]
+    near = _cloud(
+        z, [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [-2.0, 0.0, 0.0]], metal_index=0
+    )
+    far = _cloud(
+        z, [[0.6, 0.6, 0.0], [2.0, 0.0, 0.0], [-2.0, 0.0, 0.0]], metal_index=0
+    )
+    with torch.no_grad():
+        a, _ = head(near)
+        b, _ = head(far)
+    assert not torch.allclose(a, b)
+
