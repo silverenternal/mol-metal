@@ -128,10 +128,15 @@ Fixed 2026-10-19 (Wf-A53):
   legacy `ID1,X1,ID2,X2,Y` spelling.
 
 Still open (needs re-runs, not silent code changes):
-- MoleculeNet: the key is aligned but the **re-run has not been launched**.
-  `configs/pa14_moleculenet_cap512_d4.yaml` (5 seeds × 50 epochs, 4 h) runs
-  all four tasks; hiv will reproduce exactly, the other three are new numbers.
-  Until then the paper's `tab:moleculenet` is on the old, easier key.
+- MoleculeNet: the key is aligned and a **one-seed smoke passed** (2026-10-19,
+  `metrics/by_metric/moleculenet_smoke1_aligned_key.json`): all four tasks
+  wrote metrics, bace's split matches the artifact exactly (299 test rows,
+  0.4849 positive), and hiv reproduced its old-key seed-0 AUC to 1e-4
+  (0.7667 vs 0.7666). The **five-seed run has not been launched**;
+  `configs/pa14_moleculenet_cap512_d4.yaml` is ready. MEASURED wall time for
+  one seed is 354 s (hiv 300 s), so the five-seed run is ~30 min, not the
+  4 h the config budget allows. Until it lands the paper's `tab:moleculenet`
+  is on the old, easier key.
 - Pt 4-cell: the honest split exists but **no model has been trained on it**.
   Every shipped Pt 4-cell number is on the legacy hash split.
 - CFM: a true held-out number needs a checkpoint trained from

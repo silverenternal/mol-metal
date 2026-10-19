@@ -117,6 +117,15 @@ are closed without changing any reported number:
   reproduces the audited 41.9 % — so no shipped checkpoint is invalidated
   by this change. `metrics/by_metric/platinai_4cell_scaffold_split_alignment.json`.
 
+- **The aligned key was smoke-tested end-to-end.** One seed (0) of the PA14
+  512/4 protocol: all four tasks wrote metrics, bace's split matches the
+  pre-computed artifact exactly (299 test rows, 0.4849 positive), and hiv
+  reproduced its old-key seed-0 AUC to 1e-4 (0.7667 vs 0.7666) — as it must,
+  since none of its scaffolds carry stereocentres. Single-seed mean 0.8153 vs
+  the old key's five-seed mean 0.8280; one seed cannot resolve the direction.
+  `metrics/by_metric/moleculenet_smoke1_aligned_key.json`.
+
 Still open, because each requires a re-run rather than a code edit:
-MoleculeNet re-run (config ready, not launched), a Pt 4-cell model trained
-on the scaffold split, and a CFM checkpoint trained on v5.
+the MoleculeNet **five-seed** run (config ready, ~30 min MEASURED per seed
+× 5), a Pt 4-cell model trained on the scaffold split, and a CFM checkpoint
+trained on v5.

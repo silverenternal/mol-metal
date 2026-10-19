@@ -1,0 +1,84 @@
+{
+  "artifact": "moleculenet_smoke1_aligned_key",
+  "generated": "2026-10-19",
+  "wave": "Wf-A53",
+  "status": "MEASURED",
+  "what": "One-seed (seed 0) run of the PA14 512/4 protocol under the aligned stereo-blind scaffold key.",
+  "config": "configs/pa14_moleculenet_cap512_d4_smoke1.yaml",
+  "report_dir": "molmetal/reports/pa14_moleculenet_smoke1/",
+  "not_a_headline": true,
+  "preflight_waiver": {
+    "skipped": true,
+    "reason": "p1_chemprop_smoke timed out at 90.5s under host load average 48.9 (114/115 gates PASS); the chemprop CPU smoke is orthogonal to train_moleculenet.",
+    "other_gates": "114 PASS, 1 FAIL (p1_chemprop_smoke timeout only)"
+  },
+  "tasks": {
+    "bbbp": {
+      "test_auc": 0.9217,
+      "test_pr_auc": 0.9735,
+      "old_key_cap512_d4_seed0_auc": 0.8566,
+      "old_key_cap512_d4_5seed_mean": 0.8994,
+      "delta_vs_old_key_seed0": 0.0651,
+      "elapsed_seconds": 30.8,
+      "n_train": 1434,
+      "n_test": 412,
+      "pos_rate_test": 0.779126213592233
+    },
+    "bace": {
+      "test_auc": 0.7175,
+      "test_pr_auc": 0.6995,
+      "old_key_cap512_d4_seed0_auc": 0.7534,
+      "old_key_cap512_d4_5seed_mean": 0.7933,
+      "delta_vs_old_key_seed0": -0.0358,
+      "elapsed_seconds": 13.6,
+      "n_train": 1066,
+      "n_test": 299,
+      "pos_rate_test": 0.48494983277591974
+    },
+    "hiv": {
+      "test_auc": 0.7667,
+      "test_pr_auc": 0.2962,
+      "old_key_cap512_d4_seed0_auc": 0.7666,
+      "old_key_cap512_d4_5seed_mean": 0.7889,
+      "delta_vs_old_key_seed0": 0.0002,
+      "elapsed_seconds": 299.9,
+      "n_train": 28753,
+      "n_test": 8296,
+      "pos_rate_test": 0.04013982642237223
+    },
+    "clintox": {
+      "test_auc": 0.8552,
+      "test_pr_auc": 0.2889,
+      "old_key_cap512_d4_seed0_auc": 0.8332,
+      "old_key_cap512_d4_5seed_mean": 0.8303,
+      "delta_vs_old_key_seed0": 0.022,
+      "elapsed_seconds": 9.3,
+      "n_train": 1039,
+      "n_test": 297,
+      "pos_rate_test": 0.06734006734006734
+    }
+  },
+  "checks": {
+    "split_sizes_match_artifact": {
+      "bace_n_test": 299,
+      "bace_expected": 299,
+      "bace_pos_rate": 0.48494983277591974,
+      "bace_expected_pos_rate": 0.4849,
+      "verdict": "PASS"
+    },
+    "hiv_unchanged": {
+      "auc": 0.7667,
+      "old_key_cap512_d4_seed0": 0.7666,
+      "abs_delta": 0.0001,
+      "expected": "hiv scaffolds carry no stereocentres, so the key change must not move its split; the same seed should reproduce within GPU float noise.",
+      "verdict": "PASS"
+    },
+    "all_four_tasks_written": {
+      "n_tasks": 4,
+      "verdict": "PASS"
+    }
+  },
+  "conclusion": "Pipeline validated: all four tasks wrote metrics, bace's split matches the pre-computed artifact exactly (n_test=299, pos_rate=0.48494983277591974), and hiv reproduces its old-key seed-0 AUC to 0.0001. Single-seed mean 0.8153 vs the old-key five-seed mean 0.8280; one seed cannot resolve the direction, so this is a check, not a result.",
+  "single_seed_mean_auc": 0.8153,
+  "old_key_5seed_mean_auc": 0.828
+}

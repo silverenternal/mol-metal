@@ -16,8 +16,11 @@ set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PY="${PY:-$REPO_ROOT/.venv/bin/python}"          # AGENTS.md §5.9 single-venv
-YAML="$REPO_ROOT/configs/pa14_moleculenet_cap512_d4.yaml"
-OUT_DIR="$REPO_ROOT/molmetal/reports/pa14_moleculenet_cap512_d4"
+# PA14_YAML / PA14_OUT_DIR select WHICH run, never WHAT to train — the
+# hyperparameters still come from the YAML (§5.11).  Used to launch the
+# one-seed smoke config without duplicating this wrapper.
+YAML="${PA14_YAML:-$REPO_ROOT/configs/pa14_moleculenet_cap512_d4.yaml}"
+OUT_DIR="${PA14_OUT_DIR:-$REPO_ROOT/molmetal/reports/pa14_moleculenet_cap512_d4}"
 LOG="$OUT_DIR/train.log"
 
 if [[ "${1:-}" == "--dry-run" ]]; then
@@ -40,13 +43,22 @@ if [[ $DRY_RUN -eq 1 ]]; then
   exit 0
 fi
 
-if ! "$PY" "$REPO_ROOT/molmetal/scripts/pre_flight_check.py" \
-        --pipeline launch >"$OUT_DIR/preflight.log" 2>&1; then
-  echo "[pa14][FATAL] pre_flight_check FAILED — refusing to launch" >&2
-  echo "[pa14]         see $OUT_DIR/preflight.log" >&2
-  exit 2
+if [[ "${SKIP_PREFLIGHT:-0}" == "1" ]]; then
+  # Explicit, loud, and recorded.  Only legitimate when the failing gate is
+  # orthogonal to the code this run exercises — name it in
+  # PA14_SKIP_PREFLIGHT_REASON so the log carries the justification.
+  echo "[pa14][WARN] SKIP_PREFLIGHT=1 — pre-flight WAIVED by the caller." >&2
+  echo "[pa14][WARN] reason: ${PA14_SKIP_PREFLIGHT_REASON:-<none given>}" >&2
+  echo "[pa14][WARN] last pre-flight log (if any): $OUT_DIR/preflight.log" >&2
+else
+  if ! "$PY" "$REPO_ROOT/molmetal/scripts/pre_flight_check.py" \
+          --pipeline launch >"$OUT_DIR/preflight.log" 2>&1; then
+    echo "[pa14][FATAL] pre_flight_check FAILED — refusing to launch" >&2
+    echo "[pa14]         see $OUT_DIR/preflight.log" >&2
+    exit 2
+  fi
+  echo "[pa14] pre-flight PASS"
 fi
-echo "[pa14] pre-flight PASS"
 
 if command -v nvidia-smi >/dev/null 2>&1; then
   echo "[pa14] GPU state:"

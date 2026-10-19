@@ -1,0 +1,75 @@
+# PA14-smoke1 — one-seed validation of the aligned MoleculeNet scaffold key.
+#
+# WHY
+# ---
+# Wf-A53 (2026-10-19) switched `train_moleculenet._bemis_murcko_scaffold` to
+# `isomericSmiles=False`, which is bit-exact with the astartes/chemprop
+# reference (`MurckoScaffoldSmiles(includeChirality=False)`).  MEASURED
+# consequence (metrics/by_metric/moleculenet_scaffold_key_alignment.json):
+# test-set turnover across seeds 0-4 is 63.6-76.5% (bbbp), 59.3-83.5% (bace)
+# and 39.3-87.0% (clintox); hiv is 0% because none of its scaffolds carry
+# stereocentres.
+#
+# This config runs ONE seed of the SAME protocol as
+# configs/pa14_moleculenet_cap512_d4.yaml, so the run can be checked against
+# three things before the five-seed run is paid for:
+#   1. the split sizes match the artifact (bace seed 0: 299 test rows, not 302);
+#   2. hiv reproduces its old-key seed-0 AUC.  The reference is the 512/4
+#      artifact (metrics/by_metric/moleculenet_auc_dmpnn_5seed_cap512_d4.json,
+#      seed 0 = 0.7666), NOT the 300/3 five-seed mean 0.7900 — different
+#      capacity.  MEASURED on this run: 0.7667, i.e. a 1e-4 delta.
+#   3. metrics.json is written for all four tasks.
+#
+# NOT a headline.  One seed has no std, and this is the same 512/4 capacity
+# whose five-seed result the main config exists to produce.
+
+data:
+  tasks:
+  - bbbp
+  - bace
+  - hiv
+  - clintox
+  scaffold_split: true
+
+model:
+  backbone: dmpnn
+  hidden: 512
+  depth: 4
+
+protocol:
+  epochs: 50
+  batch_size: 64
+  lr: 0.001
+  seeds:
+  - 0
+
+output:
+  base_dir: molmetal/reports/pa14_moleculenet_smoke1
+  out_dir: molmetal/reports/pa14_moleculenet_smoke1
+  log_master: molmetal/reports/pa14_moleculenet_smoke1/master.log
+  training_summary: molmetal/reports/pa14_moleculenet_smoke1/training_summary.json
+  out_metric: molmetal/reports/pa14_moleculenet_smoke1/metrics.json
+  out_report: molmetal/reports/pa14_moleculenet_smoke1/report.md
+  events_jsonl: true
+
+directives:
+  kill_then_adapt: true
+  time_budget: 30m
+  user_ok_required: true
+  user_ok_granted: "2026-10-19 — user approved a 1-seed smoke before the full run"
+  per_wave_user_ok_required: false
+
+entry:
+  script: molmetal/scripts/train_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_moleculenet.py
+    --config {yaml_path} --out-dir {out_dir}
+
+honest_framing:
+  purpose: One-seed validation that the aligned scaffold key runs end-to-end.
+  note: >
+    This run is a CHECK, not a result.  Its per-task AUCs are single-seed and
+    must not be cited in place of the five-seed table.  MEASURED: bace's split
+    matches the pre-computed artifact exactly (299 test rows, 0.4849 positive)
+    and hiv's AUC is 0.7667 vs the old key's 0.7666 — a 1e-4 delta, as it must
+    be, since hiv has no stereocentres.  The single-seed mean is 0.8153 vs the
+    old-key five-seed mean 0.8280; one seed cannot resolve the direction.
