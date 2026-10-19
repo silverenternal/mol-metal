@@ -18,8 +18,11 @@ Pipeline:
      ``--epochs`` (default 50), lr=1e-3, batch=32, with class-weighted
      BCE loss to handle the heavy label imbalance in HIV (3.5 % positive).
   5. Evaluate ROC-AUC (and PR-AUC, hit-rate@top-5 %) per seed, aggregate
-     mean ± std across seeds, write to ``metrics/by_metric/moleculenet_auc.json``
-     and ``molmetal/reports/wf_tier2_molnet/final.md``.
+     mean ± std across seeds.  The full four-task, five-seed protocol writes
+     the canonical ``metrics/by_metric/moleculenet_auc.json`` and
+     ``molmetal/reports/wf_tier2_molnet/final.md``; a partial run writes
+     ``<out-dir>/metrics.json`` and ``<out-dir>/report.md`` instead, so it
+     cannot replace the project headline with a fragment.
 
 Usage
 -----
@@ -85,6 +88,16 @@ from molmetal.baselines.dmpnn_attentive import (
 DATA_DIR = PROJECT_ROOT / ".data" / "molmetal" / "moleculenet"
 METRICS_DIR = PROJECT_ROOT / "metrics" / "by_metric"
 REPORTS_DIR = PROJECT_ROOT / "molmetal" / "reports"
+
+# The canonical aggregate artifact is the full four-task, five-seed protocol.
+# A partial run (one task, or one seed) that lands there replaces the project's
+# headline table with a fragment, and nothing downstream can tell.  Measured
+# 2026-10-19: a bare `train_moleculenet.py --tasks bace --seeds 0` overwrote
+# `metrics/by_metric/moleculenet_auc.json` and `wf_tier2_molnet/final.md` with
+# a one-task, one-seed table.  Only a full-protocol run may write canonical;
+# every other run writes beside its own outputs.
+FULL_PROTOCOL_TASKS = ("bace", "bbbp", "clintox", "hiv")
+FULL_PROTOCOL_MIN_SEEDS = 5
 
 # Each task: csv filename, label column, smiles column, optional gz suffix
 TASK_INFO: Dict[str, Dict[str, object]] = {
@@ -1333,6 +1346,70 @@ def _parse_args(argv: List[str] | None = None) -> argparse.Namespace:
     return args
 
 
+def _per_seed_outputs(
+    out_dir: Path,
+    task: str,
+    backbone: str,
+    seeds: Sequence[int],
+    run_started: float,
+) -> Tuple[List[Path], List[Path]]:
+    """Split this task's per-seed JSON paths into ``(fresh, stale_or_missing)``.
+
+    The output directory is reused across runs.  Without the mtime check, a
+    seed that failed to write would be back-filled from the previous run's
+    file, silently mixing two protocols in one aggregate.
+    """
+    fresh: List[Path] = []
+    stale: List[Path] = []
+    for s in seeds:
+        p = out_dir / f"{task}_{backbone}_seed{s}.json"
+        if p.exists() and p.stat().st_mtime >= run_started - 1.0:
+            fresh.append(p)
+        else:
+            stale.append(p)
+    return fresh, stale
+
+
+def _is_full_protocol(tasks: Sequence[str], seeds: Sequence[int]) -> bool:
+    """True iff this run may write the project-level canonical artifacts."""
+    return (
+        tuple(sorted(tasks)) == FULL_PROTOCOL_TASKS
+        and len(seeds) >= FULL_PROTOCOL_MIN_SEEDS
+    )
+
+
+def _resolve_output_paths(
+    args: "argparse.Namespace", out_dir: Path
+) -> Tuple[Path, Path]:
+    """Resolve the aggregate JSON and markdown report destinations.
+
+    Precedence: explicit ``--out-metric`` / ``--out-report`` > canonical (only
+    for the full protocol) > ``out_dir``.  A partial run therefore cannot
+    replace ``metrics/by_metric/moleculenet_auc.json`` by accident; it writes
+    ``out_dir/metrics.json`` and says so on stdout.
+    """
+    if args.out_metric:
+        out_metric = Path(args.out_metric)
+    elif _is_full_protocol(args.tasks, args.seeds):
+        out_metric = METRICS_DIR / "moleculenet_auc.json"
+    else:
+        out_metric = out_dir / "metrics.json"
+        print(
+            f"[molnet] NOTE: partial protocol (tasks={list(args.tasks)}, "
+            f"seeds={len(args.seeds)}) — writing {out_metric} instead of the "
+            f"canonical {METRICS_DIR / 'moleculenet_auc.json'}",
+            flush=True,
+        )
+
+    if args.out_report:
+        out_report = Path(args.out_report)
+    elif _is_full_protocol(args.tasks, args.seeds):
+        out_report = REPORTS_DIR / "wf_tier2_molnet" / "final.md"
+    else:
+        out_report = out_dir / "report.md"
+    return out_metric, out_report
+
+
 def main(argv: List[str] | None = None) -> int:
     args = _parse_args(argv)
     if args.quick:
@@ -1341,16 +1418,7 @@ def main(argv: List[str] | None = None) -> int:
 
     out_dir = PROJECT_ROOT / args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_metric = (
-        Path(args.out_metric)
-        if args.out_metric
-        else METRICS_DIR / "moleculenet_auc.json"
-    )
-    out_report = (
-        Path(args.out_report)
-        if args.out_report
-        else REPORTS_DIR / "wf_tier2_molnet" / "final.md"
-    )
+    out_metric, out_report = _resolve_output_paths(args, out_dir)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(
@@ -1360,6 +1428,7 @@ def main(argv: List[str] | None = None) -> int:
     )
 
     all_results: Dict[str, object] = {}
+    run_started = time.time()
     for task in args.tasks:
         agg = _run_task(
             task,
@@ -1383,10 +1452,18 @@ def main(argv: List[str] | None = None) -> int:
         )
         # Pull per-seed rows for the report (read back from disk)
         per_seed: List[Dict[str, object]] = []
-        for s in args.seeds:
-            p = out_dir / f"{task}_{args.backbone}_seed{s}.json"
+        fresh, stale = _per_seed_outputs(
+            out_dir, task, args.backbone, args.seeds, run_started
+        )
+        for p in stale:
             if p.exists():
-                per_seed.append(json.loads(p.read_text()))
+                print(
+                    f"[molnet] WARNING: ignoring stale {p.name} (older than this "
+                    f"run) — it produced no output this time",
+                    flush=True,
+                )
+        for p in fresh:
+            per_seed.append(json.loads(p.read_text()))
         agg["per_seed"] = per_seed
         # Lever B6 — seed-ensembled inference (only when the flag is set, so a
         # default run's payload is unchanged).
@@ -1402,6 +1479,22 @@ def main(argv: List[str] | None = None) -> int:
         all_results[task] = agg
 
     # Aggregate JSON
+    missing_outputs: List[str] = []
+    for task in args.tasks:
+        _, stale = _per_seed_outputs(
+            out_dir, task, args.backbone, args.seeds, run_started
+        )
+        missing_outputs.extend(p.name for p in stale)
+    if missing_outputs:
+        print(
+            f"[molnet] ERROR: {len(missing_outputs)} per-seed output(s) missing or "
+            f"stale ({', '.join(missing_outputs[:5])}"
+            f"{', ...' if len(missing_outputs) > 5 else ''}) — refusing to write "
+            f"an aggregate that would mix runs.",
+            flush=True,
+        )
+        return 2
+
     payload = {
         "date": time.strftime("%Y-%m-%d"),
         "model": f"{args.backbone}_v4",

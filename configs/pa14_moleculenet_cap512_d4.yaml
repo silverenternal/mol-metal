@@ -49,8 +49,11 @@ output:
   out_dir: molmetal/reports/pa14_moleculenet_cap512_d4
   log_master: molmetal/reports/pa14_moleculenet_cap512_d4/master.log
   training_summary: molmetal/reports/pa14_moleculenet_cap512_d4/training_summary.json
-  out_metric: molmetal/reports/pa14_moleculenet_cap512_d4/metrics.json
-  out_report: molmetal/reports/pa14_moleculenet_cap512_d4/report.md
+  # Deliberately NOT set: this is the full four-task x five-seed protocol, so
+  # train_moleculenet._resolve_output_paths writes the canonical
+  # metrics/by_metric/moleculenet_auc.json + wf_tier2_molnet/final.md.
+  # A partial run (one task, or <5 seeds) is redirected to <out_dir>/ instead
+  # — see molmetal/tests/test_moleculenet_output_guard.py.
   events_jsonl: true
 
 directives:

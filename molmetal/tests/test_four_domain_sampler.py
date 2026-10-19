@@ -43,6 +43,7 @@ import torch
 from torch.utils.data import WeightedRandomSampler
 
 from molmetal.data.four_domain_combined import (
+    DEFAULT_BINDINGDB_CSV,
     DOMAIN_BINDINGDB,
     DOMAIN_DRUGOOD,
     DOMAIN_METALCYTOTOX,
@@ -106,21 +107,35 @@ def test_combined_length_matches_sum(four_ds: FourDomainDataset) -> None:
     assert 5_000 <= domain_lens[DOMAIN_METALCYTOTOX] <= 5_500
 
 
+def _bindingdb_data_rows() -> int:
+    """Data rows in the BindingDB file on disk (header excluded).
+
+    Wf-A53 (2026-10-19) — the tests below used to hardcode 1,072,931, the row
+    count of the TDC file that was truncated to 0 bytes on 2026-09-30.  The
+    surviving export has a different count, so pinning the old number tested
+    the file's identity rather than the loader.  Deriving it keeps the
+    assertion about the loader.
+    """
+    with DEFAULT_BINDINGDB_CSV.open("rb") as fh:
+        return max(0, sum(1 for _ in fh) - 1)
+
+
 def test_combined_length_with_all_full() -> None:
     """Without caps the length equals the real sum of full domain sizes.
 
-    DrugOOD's full CSV is 1,583,302 rows; BindingDB's full CSV is ~1,072,931
-    rows.  We assert ``len(ds) == sum(full)`` *without* loading any row (the
-    lazy len uses line counting).
+    DrugOOD's full CSV is 1,583,302 rows; BindingDB's count is read from the
+    file on disk.  We assert ``len(ds) == sum(full)`` *without* loading any row
+    (the lazy len uses line counting).
     """
     ds = FourDomainDataset()
     full_lens = ds._lens  # type: ignore[attr-defined]
     # NCI-60 pre-filtered (allow ±2 for trailing-newline quirks):
     assert abs(full_lens[DOMAIN_NCI60] - 7_824) <= 2
-    # BindingDB IC50 is ~1.07M rows (allow ±10 for trailing-newline quirks)
+    # BindingDB: the lazy count must match the file actually on disk
+    expected_bdb = _bindingdb_data_rows()
     assert (
-        1_070_000 < full_lens[DOMAIN_BINDINGDB] < 1_080_000
-    ), f"BindingDB has {full_lens[DOMAIN_BINDINGDB]} rows, expected ~1.07M"
+        abs(full_lens[DOMAIN_BINDINGDB] - expected_bdb) <= 2
+    ), f"BindingDB lazy count {full_lens[DOMAIN_BINDINGDB]} != file rows {expected_bdb}"
     # DrugOOD is 1.58M; allow ±10 to accommodate header/trailing-newline quirks
     assert (
         1_583_000 < full_lens[DOMAIN_DRUGOOD] < 1_584_000
@@ -131,17 +146,12 @@ def test_combined_length_with_all_full() -> None:
 
 
 def test_combined_total_is_2_6m() -> None:
-    """Honest framing: 1.58M DrugOOD + 1.07M BindingDB + 7.8K NCI-60 + 5K MetalCytotox ≈ 2.66M.
+    """Honest framing: the four-domain total is dominated by DrugOOD + BindingDB.
 
-    The BindingDB IC50 vendored via ``.data/molmetal/bindingdb_ic50.csv``
-    (symlink to ``/home/hugo/codes/pocket/data/tdc/bindingdb_ic50.csv``)
-    contains 1,072,931 rows of (drug SMILES, target protein, IC50 in nM).
-    Combined with DrugOOD's 1,583,302 rows the four-domain total lands
-    between 2.65M and 2.68M.
-
-    Without the symlink (i.e. only the fallback ``protein_metal_binding.csv``
-    with 5,258 rows), the total drops to ~1.61M.  This test therefore
-    asserts the *real* total when the symlink is present.
+    BindingDB's row count is read from the file on disk rather than pinned to
+    a version that no longer exists (see ``_bindingdb_data_rows``).  Without
+    the symlink (i.e. only the fallback ``protein_metal_binding.csv`` with
+    5,258 rows), the total drops to ~1.61M.
     """
     ds = FourDomainDataset()
     full_lens = ds._lens  # type: ignore[attr-defined]
@@ -153,13 +163,20 @@ def test_combined_total_is_2_6m() -> None:
             1_590_000 < total < 1_620_000
         ), f"fallback total = {total}; expected ~1.61M (no BindingDB symlink)"
         return
-    # Real BindingDB IC50 wired: total ≈ 2.66M
+    expected_bdb = _bindingdb_data_rows()
     assert (
-        2_650_000 < total < 2_680_000
-    ), f"four-domain total = {total}; expected ~2.66M with real BindingDB IC50"
-    assert (
-        1_070_000 < full_lens[DOMAIN_BINDINGDB] < 1_080_000
-    ), f"BindingDB has {full_lens[DOMAIN_BINDINGDB]} rows, expected ~1.07M"
+        abs(full_lens[DOMAIN_BINDINGDB] - expected_bdb) <= 2
+    ), f"BindingDB lazy count {full_lens[DOMAIN_BINDINGDB]} != file rows {expected_bdb}"
+    # Total is whatever the three fixed domains plus the real BindingDB sum to.
+    expected_total = (
+        full_lens[DOMAIN_DRUGOOD]
+        + expected_bdb
+        + full_lens[DOMAIN_NCI60]
+        + full_lens[DOMAIN_METALCYTOTOX]
+    )
+    assert abs(total - expected_total) <= 4, (
+        f"four-domain total {total} != sum of parts {expected_total}"
+    )
 
 
 # ---------------------------------------------------------------------------

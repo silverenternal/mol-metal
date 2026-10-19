@@ -344,8 +344,10 @@ class _BindingDBRows:
             return ""
 
         rows: List[Tuple[str, float, str, str, bool]] = []
+        header: List[str] = []
         with self.path.open("r", encoding="utf-8", errors="replace") as fh:
             reader = csv.DictReader(fh)
+            header = list(reader.fieldnames or [])
             for row in reader:
                 smi = _col(row, "X1").strip()
                 if not smi:
@@ -367,6 +369,16 @@ class _BindingDBRows:
                 target_seq = _col(row, "X2").strip()
                 active = pIC50 >= 5.0  # ≤ 10 µM
                 rows.append((smi, float(pIC50), target_id, target_seq, bool(active)))
+        if not rows:
+            # 2026-10-19 (Wf-A53) — a file that exists but has a header we do
+            # not recognise used to load as an empty dataset with no error.
+            # That is how a 990,630-row BindingDB export silently became zero
+            # rows.  An empty file is a data defect, not an empty cohort.
+            raise ValueError(
+                f"BindingDB file {self.path} exists but yielded 0 usable rows "
+                f"(header={header}). Expected smiles/value columns named "
+                f"X1|Drug, Y, ID2|Target_ID, X2|Target."
+            )
         return rows
 
     def _load_fallback(self) -> List[Tuple[str, float, str, str, bool]]:

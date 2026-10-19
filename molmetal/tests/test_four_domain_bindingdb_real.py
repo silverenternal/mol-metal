@@ -245,3 +245,21 @@ def test_bindingdb_symlink_points_to_pocket_data_tdc() -> None:
     assert (
         resolved.stat().st_size > 100_000_000
     ), f"BindingDB IC50 file is only {resolved.stat().st_size} bytes; expected > 100MB"
+
+
+# ---------------------------------------------------------------------------
+# 6. A file with an unrecognised header must not load as an empty cohort
+# ---------------------------------------------------------------------------
+def test_unknown_header_raises_instead_of_loading_empty(tmp_path: Path) -> None:
+    """Wf-A53 (2026-10-19) — 0 usable rows is a data defect, not an empty domain.
+
+    The original incident: a 990,630-row export with header
+    ``Drug_ID,Drug,Target_ID,Target,Y`` loaded as zero rows because the loader
+    only knew ``X1/ID2/X2``.  Nothing raised; downstream saw an empty domain.
+    Both spellings are now accepted, and anything else is a loud failure.
+    """
+    p = tmp_path / "bindingdb_unknown_header.csv"
+    p.write_text("foo,bar,baz\nCCO,1.0,2.0\n", encoding="utf-8")
+    loader = _BindingDBRows(path=p)
+    with pytest.raises(ValueError, match="0 usable rows"):
+        loader._ensure_loaded()

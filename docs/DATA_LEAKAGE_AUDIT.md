@@ -57,6 +57,7 @@ This is a different file from the pool above, and it *is* partitioned. The loade
 
 - `split_strategy` in code: **`scaffold_70_10_10`** — despite the name, `scaffold_id` is a numeric hash of the SMILES string (`_stable_hash_int(smiles, 10**8)`, `train_dmpnn_multitask_wasserstein.py:702`), so this is a molecule-level hash split.
 - 4,078 unique SMILES / 16,312 long-format rows; split {'train': 2855, 'val': 414, 'test': 809}; parse failures 0; SMILES with >1 split label 0.
+- Opt-in real scaffold split **`bemis_murcko_70_10_10`** (added 2026-10-19): split {'train': 3287, 'val': 264, 'test': 527}; test rows sharing a desalted stereo-blind scaffold with train 0.00% (0 shared scaffolds). It is not the default because it changes the training cohort.
 
 | Pair | canonical shared | desalted stereo-blind BM shared | frac of B rows | whole-complex stereo-blind BM shared | frac of B rows |
 |---|---:|---:|---:|---:|---:|
@@ -74,9 +75,9 @@ This is a different file from the pool above, and it *is* partitioned. The loade
 
 | MoleculeNet task | rows | parse failures | canonical | seeds | max canonical train/test overlap | max split-key BM overlap | max stereo-blind BM overlap | max desalted BM overlap | random fallback |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| bace | 1,513 | 0 | 1,513 | 5 | 0 | 0 | 23 | 23 | False |
-| bbbp | 2,050 | 11 | 1,986 | 5 | 0 | 0 | 22 | 24 | False |
-| clintox | 1,484 | 4 | 1,465 | 5 | 0 | 0 | 11 | 11 | False |
+| bace | 1,513 | 0 | 1,513 | 5 | 0 | 0 | 0 | 0 | False |
+| bbbp | 2,050 | 11 | 1,986 | 5 | 0 | 0 | 0 | 3 | False |
+| clintox | 1,484 | 4 | 1,465 | 5 | 0 | 0 | 0 | 2 | False |
 | hiv | 41,127 | 7 | 41,127 | 5 | 0 | 0 | 0 | 52 | False |
 
 **DrugOOD lbap** — 266,522 rows / 266,522 canonical molecules. train vs ood_test: canonical 0 shared, scaffold_split_id 0 shared.
@@ -117,9 +118,9 @@ This is a different file from the pool above, and it *is* partitioned. The loade
 **Scaffold-level (same Bemis-Murcko scaffold in train and test):**
 - Predictive random CV: 74.80%-85.73% of test rows share a BM scaffold with train (DOI-grouped 10-fold: 45.70%-64.24%). This is the expected property of random CV, not a bug, but the number is **not** a scaffold-generalisation estimate.
 - CFM v3: in-file `scaffold_id` overlap 0. The split key is stereo-aware and full-complex. Removing stereo alone leaves 30 shared scaffolds (4.18% of test rows); removing counterions as well leaves 222 (73.71% of test rows). The dominant gap is counterion/solvent fragments in the split key, not stereochemistry. Train vs val is worse: 79.63% of val rows share a desalted ligand scaffold with train — and val clouds are what the CFM quality metrics are measured on.
-- MoleculeNet: the split key is stereo-aware. Removing stereo leaves up to 23 shared scaffolds (bace); the row-level maximum is 32.34% (bace). Desalting adds the counterion-driven component: up to 52 scaffolds (hiv); the row-level maximum is 32.68% (bbbp). The mechanism differs by task — bace is stereo-only, hiv is counterion-only, bbbp has both.
+- MoleculeNet: **key aligned 2026-10-19.** The split key is now the stereo-blind `includeChirality=False` key (the `astartes`/chemprop reference), so the `split-key BM` and `stereo-blind BM` columns are one measurement and both are 0 by construction. The pre-fix key kept chirality; its test-set turnover and old overlap figures are in `metrics/by_metric/moleculenet_scaffold_key_alignment.json`.
 - NCI-60: split-key BM overlap 0 (zero after the empty-scaffold fix).
-- Pt 4-cell: the loader's `split_strategy` is named `scaffold_70_10_10` but is a stable hash of the SMILES string, i.e. a molecule-level split. Measured: 172 shared desalted scaffolds (41.90% of test rows) and 40.82% of val rows; canonical overlap 0.
+- Pt 4-cell: the loader's `split_strategy` is named `scaffold_70_10_10` but is a stable hash of the SMILES string, i.e. a molecule-level split. Measured: 172 shared desalted scaffolds (41.90% of test rows) and 40.82% of val rows; canonical overlap 0. **Opt-in fix 2026-10-19:** `bemis_murcko_70_10_10` gives a real scaffold split at 0.0% test-row overlap (`metrics/by_metric/platinai_4cell_scaffold_split_alignment.json`); it is not the default because it changes the training cohort.
 
 **Cross-dataset:**
 - NCI-60 is a **subset of MetalCytoToxDB**: 5,207/5,207 canonical molecules are in the 5-metal pool and 5,183 are in CFM. It is a re-slice of the same corpus, not an independent control.
@@ -131,7 +132,7 @@ This is a different file from the pool above, and it *is* partitioned. The loade
 
 **Action:**
 - No re-split is required to remove molecule-level leakage: none was found.
-- Three split *labels* do not describe their implementations: the CFM file claims a strict Bemis-Murcko split but its key is stereo-aware and full-complex; `train_moleculenet._bemis_murcko_scaffold` keeps chirality where astartes defaults to `include_chirality=False`; and `load_platinai_4cell_split_table(split_strategy='scaffold_70_10_10')` is a SMILES hash. Fix the label or the key before reporting any scaffold-generalisation number.
+- Three split *labels* did not describe their implementations. Two are aligned as of 2026-10-19: `train_moleculenet._bemis_murcko_scaffold` uses the astartes stereo-blind key, and the Pt 4-cell loader offers a real `bemis_murcko_70_10_10` strategy beside the legacy hash. The CFM file still claims a strict Bemis-Murcko split while its key is stereo-aware and full-complex; that file belongs to the CFM session and remains open.
 - Before reporting a scaffold/OOD number, group by a **stereo-blind, desalted ligand scaffold** (``_bemis_murcko_key`` with ``includeChirality=False``). For MoleculeNet comparability the reference key is astartes' stereo-blind, *non*-desalted key.
 - The Pt **pool** is not partitioned, so it needs no scaffold split; it needs de-duplication before use as an external evaluation set. The Pt **4-cell cohort** is partitioned and is the split that needs fixing.
 

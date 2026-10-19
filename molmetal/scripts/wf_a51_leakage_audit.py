@@ -51,6 +51,23 @@ REPORT_DIR = PROJECT_ROOT / "molmetal" / "reports" / "wf_a51_leakage_audit"
 OUT_JSON = REPORT_DIR / "leakage_audit.json"
 OUT_MD = PROJECT_ROOT / "docs" / "DATA_LEAKAGE_AUDIT.md"
 
+# Sections at or after this heading are not produced by this script.
+PRESERVED_TAIL_MARKER = "\n## 8."
+
+
+def _preserved_tail(path: Path) -> str:
+    """Trailing sections of *path* that this generator must not delete.
+
+    §8 (MSRS strong-model splits) is maintained outside this script.  On
+    2026-10-19 a plain overwrite removed it; a re-run must regenerate §1-§7
+    without destroying sections it does not own.
+    """
+    if not path.exists():
+        return ""
+    text = path.read_text(encoding="utf-8")
+    idx = text.find(PRESERVED_TAIL_MARKER)
+    return text[idx + 1 :] if idx >= 0 else ""
+
 METALS = ("Ru", "Ir", "Rh", "Os", "Re")
 SEEDS = (42, 43, 44, 49, 123)
 
@@ -452,6 +469,19 @@ def audit_platinai_4cell() -> Dict[str, object]:
             "bemis_murcko_full_nostereo": _overlap(smiles, split, a, b, full_ns),
         }
 
+    # 2026-10-19 (Wf-A53): the opt-in real scaffold split, measured through the
+    # same loader so the comparison is like-for-like.
+    alt_df = load_platinai_4cell_split_table(
+        path, split_strategy="bemis_murcko_70_10_10"
+    )
+    alt_uniq = alt_df.drop_duplicates(subset=["smiles"])[["smiles", "split"]]
+    alt_smiles = alt_uniq["smiles"].astype(str).to_numpy()
+    alt_split = alt_uniq["split"].astype(str).to_numpy()
+    alt_scaf = _scaffold_split_key(alt_smiles)
+    alt_pairs: Dict[str, object] = {}
+    for a, b in (("train", "val"), ("train", "test"), ("val", "test")):
+        alt_pairs[f"{a}_vs_{b}"] = _overlap(alt_smiles, alt_split, a, b, alt_scaf)
+
     return {
         "path": str(path),
         "split_strategy_in_code": "scaffold_70_10_10",
@@ -471,6 +501,13 @@ def audit_platinai_4cell() -> Dict[str, object]:
             (pd.Series(split).groupby(pd.Series(smiles)).nunique() > 1).sum()
         ),
         "pairs": pairs,
+        "bemis_murcko_strategy": {
+            "split_strategy": "bemis_murcko_70_10_10",
+            "split_sizes_unique_smiles": {
+                s: int((alt_split == s).sum()) for s in ("train", "val", "test")
+            },
+            "pairs": alt_pairs,
+        },
     }
 
 
@@ -871,6 +908,15 @@ def render_markdown(result: Dict[str, object]) -> str:
         f"failures {p4['n_parse_failures']:,}; SMILES with >1 split label "
         f"{p4['n_smiles_with_multiple_split_labels']:,}."
     )
+    alt = p4["bemis_murcko_strategy"]
+    add(
+        f"- Opt-in real scaffold split **`{alt['split_strategy']}`** (added "
+        f"2026-10-19): split {alt['split_sizes_unique_smiles']}; test rows sharing "
+        f"a desalted stereo-blind scaffold with train "
+        f"{_pct(alt['pairs']['train_vs_test']['frac_b_rows_seen_in_a'])} "
+        f"({alt['pairs']['train_vs_test']['n_intersect_keys']} shared scaffolds). "
+        f"It is not the default because it changes the training cohort."
+    )
     add("")
     add("| Pair | canonical shared | desalted stereo-blind BM shared | frac of B rows | whole-complex stereo-blind BM shared | frac of B rows |")
     add("|---|---:|---:|---:|---:|---:|")
@@ -1117,12 +1163,12 @@ def main() -> int:
         f"stereochemistry. Train vs val is worse: {_pct(cfm_val_frac)} of val rows "
         f"share a desalted ligand scaffold with train — and val clouds are what the "
         f"CFM quality metrics are measured on.",
-        f"- MoleculeNet: the split key is stereo-aware. Removing stereo leaves up to "
-        f"{molnet_ns_max} shared scaffolds (bace); the row-level maximum is "
-        f"{_pct(molnet_ns_frac)} (bace). Desalting adds the counterion-driven "
-        f"component: up to {molnet_bm_max} scaffolds (hiv); the row-level maximum "
-        f"is {_pct(molnet_bm_frac)} (bbbp). The mechanism differs by task — bace is "
-        f"stereo-only, hiv is counterion-only, bbbp has both.",
+        f"- MoleculeNet: **key aligned 2026-10-19.** The split key is now the "
+        f"stereo-blind `includeChirality=False` key (the `astartes`/chemprop "
+        f"reference), so the `split-key BM` and `stereo-blind BM` columns are "
+        f"one measurement and both are 0 by construction. The pre-fix key kept "
+        f"chirality; its test-set turnover and old overlap figures are in "
+        f"`metrics/by_metric/moleculenet_scaffold_key_alignment.json`.",
         f"- NCI-60: split-key BM overlap {nci_bm} (zero after the empty-scaffold "
         f"fix).",
         f"- Pt 4-cell: the loader's `split_strategy` is named "
@@ -1139,7 +1185,11 @@ def main() -> int:
         f"of test rows) and "
         f"{_pct(pt4['pairs']['train_vs_val']['bemis_murcko']['frac_b_rows_seen_in_a'])} "
         f"of val rows; canonical overlap "
-        f"{pt4['pairs']['train_vs_test']['canonical']['n_intersect_keys']}.",
+        f"{pt4['pairs']['train_vs_test']['canonical']['n_intersect_keys']}. "
+        f"**Opt-in fix 2026-10-19:** `bemis_murcko_70_10_10` gives a real "
+        f"scaffold split at 0.0% test-row overlap "
+        f"(`metrics/by_metric/platinai_4cell_scaffold_split_alignment.json`); it "
+        f"is not the default because it changes the training cohort.",
         "",
         "**Cross-dataset:**",
         f"- NCI-60 is a **subset of MetalCytoToxDB**: {nci_pred:,}/{nci['n_unique_canonical']:,} "
@@ -1164,13 +1214,12 @@ def main() -> int:
         "",
         "**Action:**",
         "- No re-split is required to remove molecule-level leakage: none was found.",
-        "- Three split *labels* do not describe their implementations: the CFM "
-        "file claims a strict Bemis-Murcko split but its key is stereo-aware and "
-        "full-complex; `train_moleculenet._bemis_murcko_scaffold` keeps chirality "
-        "where astartes defaults to `include_chirality=False`; and "
-        "`load_platinai_4cell_split_table(split_strategy='scaffold_70_10_10')` is a "
-        "SMILES hash. Fix the label or the key before reporting any "
-        "scaffold-generalisation number.",
+        "- Three split *labels* did not describe their implementations. Two are "
+        "aligned as of 2026-10-19: `train_moleculenet._bemis_murcko_scaffold` uses "
+        "the astartes stereo-blind key, and the Pt 4-cell loader offers a real "
+        "`bemis_murcko_70_10_10` strategy beside the legacy hash. The CFM file "
+        "still claims a strict Bemis-Murcko split while its key is stereo-aware "
+        "and full-complex; that file belongs to the CFM session and remains open.",
         "- Before reporting a scaffold/OOD number, group by a **stereo-blind, "
         "desalted ligand scaffold** (``_bemis_murcko_key`` with "
         "``includeChirality=False``). For MoleculeNet comparability the reference "
@@ -1183,7 +1232,15 @@ def main() -> int:
 
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     OUT_JSON.write_text(json.dumps(result, indent=2, sort_keys=True, default=str))
-    OUT_MD.write_text(render_markdown(result))
+    rendered = render_markdown(result)
+    # 2026-10-19 (Wf-A53) — this generator owns §1-§7 only.  §8 (MSRS) is
+    # maintained outside this script, and a plain overwrite deleted it.  Keep
+    # any trailing section verbatim so a re-run is a regeneration, not a loss.
+    tail = _preserved_tail(OUT_MD)
+    if tail:
+        rendered = rendered.rstrip("\n") + "\n\n---\n\n" + tail
+        print(f"preserved {len(tail.splitlines())} trailing line(s) from {OUT_MD}")
+    OUT_MD.write_text(rendered)
     print(f"wrote {OUT_JSON}")
     print(f"wrote {OUT_MD}")
     print(result["verdict"])
