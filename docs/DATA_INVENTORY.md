@@ -52,7 +52,7 @@ docking), not by a train/test AUC.
 ### 1.4 Controls
 
 - **NCI-60 precious-metal panel**: 7,823 rows / 5,207 unique SMILES / 9 cell lines. Split is a Bemis-Murcko scaffold split on unique SMILES, seed 0: train 4,860 / val 115 / test 232 molecules. It is a **subset of MetalCytoToxDB** (5,207/5,207 canonical molecules in the 5-metal pool, 5,183 in CFM), not an independent corpus. The older 3,645/521/1,041 figure came from the pre-BLK-PA12 splitter (empty scaffold key).
-- **MoleculeNet** (bace / bbbp / clintox / hiv): scaffold 70/10/20, 5 seeds. The split key is **stereo-aware**. At the stereo-blind level up to 23 scaffolds are shared between train and test (32.3 % of test rows, bace); desalting adds a counterion-driven component up to 52 scaffolds (hiv), with a row-level maximum of 32.7 % (bbbp). No canonical molecule overlap.
+- **MoleculeNet** (bace / bbbp / clintox / hiv): scaffold 70/10/20, 5 seeds. The split key **was stereo-aware until 2026-10-19**; it is now stereo-blind and bit-exact with `MurckoScaffoldSmiles(includeChirality=False)`, the `astartes` reference. The shipped AUCs predate the fix: re-keying turns over 63.6-76.5 % (bbbp), 59.3-83.5 % (bace) and 39.3-87.0 % (clintox) of test molecules, while hiv is unchanged (`metrics/by_metric/moleculenet_scaffold_key_alignment.json`). No canonical molecule overlap under either key.
 - **DrugOOD lbap**: 266,522 rows with iid/ood train/val/test as a column; used as the OOD control, not as a headline result. train vs ood_test has 0 canonical and 0 scaffold_split_id overlap; train vs iid_test shares scaffold IDs by design.
 
 ## 2. File register
@@ -123,9 +123,12 @@ docking), not by a train/test AUC.
 - The CFM `scaffold_id` is a full-complex, stereo-aware key. Rebuilding
   it as a desalted, stereo-blind ligand scaffold would change the split
   and require retraining.
-- The MoleculeNet `_scaffold_split` uses a stereo-aware key; the D-MPNN
-  `ScaffoldSplitter` uses a stereo-blind key. They are not the same
-  protocol.
+- The MoleculeNet `_scaffold_split` now uses the stereo-blind `astartes` key
+  (fixed 2026-10-19); the D-MPNN `ScaffoldSplitter` uses the same key. The
+  shipped MoleculeNet metrics were measured before the fix and need a re-run.
+- The Pt 4-cell cohort has a real Bemis-Murcko split available
+  (`--platinai-split-strategy bemis_murcko_70_10_10`, 0.0 % test-row scaffold
+  overlap); the legacy default is still the SMILES hash at 41.9 %.
 
 ## 6. Leakage audit
 

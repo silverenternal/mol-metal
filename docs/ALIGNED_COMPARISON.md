@@ -70,16 +70,17 @@ D-MPNN backbone (same Bemis-Murcko scaffold split, same ROC-AUC) closes most of 
 architecture-level miss**: 5 seeds give 0.7421 ± 0.0446 (tightening the 3-seed ± 0.0687 without moving the
 mean), so the −0.134 vs chemprop is a genuine D-MPNN regression and is reported as an honest-negative.
 
-**Split-key caveat (MEASURED 2026-10-19, `docs/DATA_LEAKAGE_AUDIT.md` §5):** our split key
-(`train_moleculenet._bemis_murcko_scaffold`) keeps stereochemistry, while the reference
+**Split-key caveat (MEASURED 2026-10-19, `docs/DATA_LEAKAGE_AUDIT.md` §5):** the split key
+(`train_moleculenet._bemis_murcko_scaffold`) used to keep stereochemistry, while the reference
 implementation — `astartes`' `Scaffold.generate_bemis_murcko_scaffold`, which chemprop moved to — defaults
-to `include_chirality=False`. A chirality-retaining key splits less, so **our MoleculeNet numbers are
-measured on a marginally easier split than the chemprop column they are compared against**. The audit
-quantifies it: re-keying stereo-blind leaves up to 23 shared scaffolds (bace) covering 32.34 % of test
-rows; desalting adds a counterion component (hiv: 0 → 52 scaffolds), with a row-level maximum of 32.68 %
-(bbbp). The bias runs **in our favour**: the gap to chemprop is understated until the key is aligned and
-the four tasks are re-run. This is an open item for the model session; no number in the table above has
-been re-measured under the aligned key.
+to `include_chirality=False`. A chirality-retaining key splits less, so **the MoleculeNet numbers in the
+table above were measured on a marginally easier split than the chemprop column they are compared
+against**. The key has since been aligned: it is now bit-exact with
+`MurckoScaffoldSmiles(includeChirality=False)` on every row of all four tasks. Re-keying turns over
+63.6-76.5 % (bbbp), 59.3-83.5 % (bace) and 39.3-87.0 % (clintox) of the test molecules across the five
+seeds; **hiv is bit-identical** because none of its scaffolds carry stereocentres
+(`metrics/by_metric/moleculenet_scaffold_key_alignment.json`). No number in the table above has been
+re-measured under the aligned key — that needs the four-task re-run, which has not been launched.
 
 **bace rescue attempt (MEASURED, honest-negative — 2026-10-08):** the hypothesis that the
 unconditional `pos_weight=neg/pos` class weighting (applied even to near-balanced bace, pos_rate≈0.45)
