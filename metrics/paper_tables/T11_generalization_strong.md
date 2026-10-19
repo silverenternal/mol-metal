@@ -1,0 +1,12 @@
+# Five-seed generalization matrix: ECFP4 tree, MACCS+RDKit tree, GNN fusion
+
+Generated from `metrics/by_metric/*.json`; see `manifest.json` for the timestamp and source hashes.
+
+All three arms are seed-averaged over the same five seeds; DOI R2 gate is 0.36. The dR2 column is the arithmetic difference of the two columns - the paired DOI-clustered delta lives in the artifact.
+
+| Metric | ECFP4 tree | MACCS+RDKit tree | MACCS+GNN fusion | dR2 (MACCS - ECFP4) | Source | Tag |
+|---|---|---|---|---|---|---|
+| ligand | 0.5596 | 0.5593 | 0.5935 | -0.0003 | msrs_seed_ensemble.json:/protocols/ligand/ensemble/r2; msrs_feature_expansion_5seed.json:/protocols/ligand/r2_seed_averaged; msrs_feature_fusion.json:/protocols/ligand/fused_r2; msrs_feature_expansion_5seed.json:/protocols/ligand/r2_seed_averaged - /protocols/ligand/ensemble/r2 | MEASURED |
+| doi | 0.3380 | 0.3767 | 0.3811 | 0.0387 | msrs_seed_ensemble.json:/protocols/doi/ensemble/r2; msrs_feature_expansion_5seed.json:/protocols/doi/r2_seed_averaged; msrs_feature_fusion.json:/protocols/doi/fused_r2; msrs_feature_expansion_5seed.json:/protocols/doi/r2_seed_averaged - /protocols/doi/ensemble/r2 | MEASURED |
+| scaffold | 0.4530 | 0.4733 | 0.4903 | 0.0203 | msrs_seed_ensemble.json:/protocols/scaffold/ensemble/r2; msrs_feature_expansion_5seed.json:/protocols/scaffold/r2_seed_averaged; msrs_feature_fusion.json:/protocols/scaffold/fused_r2; msrs_feature_expansion_5seed.json:/protocols/scaffold/r2_seed_averaged - /protocols/scaffold/ensemble/r2 | MEASURED |
+| year | 0.3780 | 0.3946 | 0.4011 | 0.0166 | msrs_seed_ensemble.json:/protocols/year/ensemble/r2; msrs_feature_expansion_5seed.json:/protocols/year/r2_seed_averaged; msrs_feature_fusion.json:/protocols/year/fused_r2; msrs_feature_expansion_5seed.json:/protocols/year/r2_seed_averaged - /protocols/year/ensemble/r2 | MEASURED |

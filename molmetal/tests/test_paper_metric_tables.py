@@ -81,6 +81,24 @@ def test_a_delta_cell_subtracts_two_pointers(tmp_path: Path):
     assert text == "0.5000"
 
 
+def test_a_cross_file_delta_subtracts_across_artifacts(tmp_path: Path):
+    (tmp_path / "a.json").write_text(json.dumps({"r2": 0.3767}))
+    (tmp_path / "b.json").write_text(json.dumps({"r2": 0.3380}))
+    cache = pmt.ArtifactCache(tmp_path)
+    text, status, _ = pmt.DX("a.json", "/r2", "b.json", "/r2").value(cache)
+    assert status == "ok"
+    assert text == "0.0387"
+
+
+def test_a_cross_file_delta_is_missing_when_the_second_file_is_absent(tmp_path: Path):
+    (tmp_path / "a.json").write_text(json.dumps({"r2": 0.3767}))
+    cache = pmt.ArtifactCache(tmp_path)
+    text, status, where = pmt.DX("a.json", "/r2", "nope.json", "/r2").value(cache)
+    assert status == "missing"
+    assert text == pmt.MISSING
+    assert "nope.json" in where
+
+
 def test_formats_cover_ci_pct_int_and_raw():
     assert pmt._fmt([0.1, 0.2], "ci") == "[0.1000, 0.2000]"
     assert pmt._fmt(0.1234, "pct") == "12.34%"

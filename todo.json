@@ -29,6 +29,7 @@
   },
   "current_position": {
     "measured_facts": [
+      "STR-7（打包）：paper_metric_tables --strict 生成 12 张表、0 MISSING；新增 T11（5-seed：ECFP4 树 / MACCS+RDKit / 融合）与 T12（排序三路线同一 0.65 门槛）。docs/CLAIM_LEDGER.md 的 11 条 artifact 指针由测试逐条解析。C6 更正：LOMO 0.5575±0.0949 低于 0.7 门槛（verdict BELOW_TARGET_BASELINE_REAL_ONLY），跨金属迁移不可写；可写的是 within-metal（Ru 0.8271 / Ir 0.8430）。",
       "STR-6（SA 引导解码，BLOCKED→KILL）：--sa-penalty 零梯度（sascorer 无梯度，代理被 torch.tensor(float(...)) 包住）、无可微 SA 代理、每 run 仅 seed0 checkpoint，计划中的 3×200 A/B 不可执行；600 样本补测因 checkpoint 无法从其 args 重建而失败。产量审计（2,396 个无引导分子）：SA≤4.5 共 16 个 = 0.67% [0.41%,1.08%]；SA 均值 6.4423 / 7.5478 / 7.4741 vs 真实 tmQM 5.03。门内 16 个 novelty 0.8757 < 0.90（n=16 不可用）。",
       "STR-5（Δ 直接回归，复用 FIX-M4 pair_full，只加逐对落盘）：DOI 留出 427 对 / 门槛内 218 对，符号 0.5183 [0.3902,0.6539]、MAE(Δ) 0.5559 [0.4267,0.6829]、bias −0.1730、校准斜率 0.1658、R² 0.0155；无门槛 427 对符号 0.4988 ≈ 随机。同 218 对的水平模型：符号 0.5826 [0.4670,0.6805]、MAE 0.5115、斜率 0.3919。排序线三连负：相减 0.5826 / 融合 0.5505 / 直接回归 0.5183，均远低于 0.65。",
       "STR-4（特征扩展，5 seed）：MACCS+RDKit 臂 DOI R² 0.3767（seed mean 0.3697±0.0022），配对 Δ +0.0387 [+0.0241,+0.0535]；ligand 0.5593（−0.0003）、scaffold 0.4733（+0.0204 [+0.0077,+0.0337]）、year 0.3946（+0.0166 [−0.0050,+0.0385]）。置换控制（DOI，5 seed）0.3275±0.0022 < 原树 0.3332 → 增益来自描述符内容。与 GNN 融合后 DOI 0.3811（+0.0431 [+0.0260,+0.0604]）。单 seed 筛选：ECFP6 DOI 0.3321 KILL、assay 0.3410（+0.0078，CI 含 0）。但 DOI Δ 符号仍 0.5826（融合 0.5505）< 0.65 —— R² 与排序分离。",
@@ -293,6 +294,11 @@
       "id": "STR-6",
       "result": "KILL",
       "headline": "SA≤4.5 产量 16/2,396 = 0.67% [0.41%,1.08%]；门内 16 个 novelty 0.8757 <0.90；--sa-penalty 空转、无可微代理、单 checkpoint"
+    },
+    {
+      "id": "STR-7",
+      "result": "PASS",
+      "headline": "12 张表 / 0 MISSING；台账 C1-C7（4 支持 / 3 不支持）；C6 更正为 LOMO 0.5575 < 0.7 不可写"
     }
   ],
   "blockers": [
@@ -703,7 +709,7 @@
       "title": "结果打包与主张台账",
       "layer": "打包",
       "priority": "P3",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "1 小时",
       "why": "每轮强化后表必须重生成；且需要一张『主张 → 支持/不支持/未测』的台账，防止正文比 artifact 走得远。",
@@ -718,7 +724,36 @@
         "STR-4",
         "STR-5",
         "STR-6"
-      ]
+      ],
+      "result": {
+        "verdict": "PASS",
+        "tables": 12,
+        "missing_cells": 0,
+        "new_tables": [
+          "T11_generalization_strong",
+          "T12_ranking"
+        ],
+        "ledger": "docs/CLAIM_LEDGER.md",
+        "claims": {
+          "supported": [
+            "C1 representation",
+            "C2 cross-paper R2",
+            "C4 fusion (R2 only)",
+            "C5 calibration (with subgroup caveat)"
+          ],
+          "not_supported": [
+            "C3 ranking",
+            "C6 cross-metal transfer (LOMO 0.5575 < 0.7)",
+            "C7 generation"
+          ],
+          "unmeasured": 3,
+          "blocked": 3
+        },
+        "artifact": "metrics/paper_tables/manifest.json",
+        "doc": "docs/CLAIM_LEDGER.md",
+        "note": "12 张表 0 MISSING；新增 T11（5-seed 三臂泛化矩阵）与 T12（三条排序路线同一门槛）。台账 11 条 artifact 指针由 test_claim_ledger.py 逐条解析验证。C6 更正：LOMO 低于 0.7 门槛，跨金属迁移不可写；可写的是 within-metal。"
+      },
+      "acceptance_result": "PASS — 12 张表 0 MISSING；7 条主张全部有 artifact 指针或明确 UNMEASURED/BLOCKED。"
     }
   ],
   "decision_points": [
@@ -825,9 +860,9 @@
     }
   },
   "open_decisions": [
-    "主表放哪几条主张：C1 表示增益 / C3 跨金属迁移 / C4 光毒性 是可写的；C5 决策、C6 生成、C7 跨论文 是负的。",
-    "是否把生成线并入同一篇：并进去能多两条描述性指标，但会拉长篇幅并引入 SA 6.44 / 对接 BLOCKED 的说明。",
-    "若 DP-1/DP-2 失败，是否接受『严格协议下的边界』这篇定位（二区可投，但不宣称 SOTA）。",
+    "主表放哪几条主张：C1 表示增益 / C2 跨论文 R² / C5 校准（含子群边界）/ C6 within-metal 是可写的；C3 排序、C6 LOMO、C7 生成是负的。",
+    "是否把生成线并入同一篇：并进去能多两条描述性指标，但会拉长篇幅并引入 SA 6.44 / SA≤4.5 产量 0.67% / 对接 BLOCKED 的说明。",
+    "是否接受『严格协议下的边界』这篇定位（二区可投，但不宣称 SOTA）。",
     "是否解冻论文线（MSRS-8）：需要用户显式同意。"
   ],
   "do_not": [
@@ -853,7 +888,7 @@
         "what": "论文整合（强指标版）"
       }
     ],
-    "unfreeze_condition": "STR-1..STR-4 结果落盘；DP-1/DP-2 有明确结论；用户显式同意。",
+    "unfreeze_condition": "STR-1..STR-7 全部落盘；DP-1/DP-2 已裁定；台账 0 MISSING；用户显式同意。",
     "hard_rule": "解冻前不得编辑 paper_a/* 或 paper/*；不得生成 hunk。"
   }
 }

@@ -17,3 +17,4 @@ Novelty is 1 - max Tanimoto to the CFM train split (Morgan r=2, 1024 bits).
 | QED | 0.0944 | - | - | cfm_generation_metrics.json:/checks/qed/value | MEASURED |
 | Metal compliance | 1.0000 | - | - | cfm_generation_metrics.json:/metal_compliance/compliance | MEASURED |
 | Docking status | BLOCKED | - | BLOCKED | cfm_generation_metrics.json:/checks/docking/status; cfm_generation_metrics.json:/checks/docking/status | MEASURED |
+| SA<=4.5 yield (STR-6, 2,396 unguided molecules) | 0.0067 | - | - | cfm_sa_guided.json:/combined/rate_sa_le_gate | MEASURED |

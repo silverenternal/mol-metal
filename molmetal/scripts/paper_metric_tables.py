@@ -162,6 +162,7 @@ class Cell:
     file: str = ""
     pointer: str = ""
     other: str = ""
+    file_b: str = ""
     fmt: str = "f4"
     optional: bool = False
 
@@ -174,7 +175,10 @@ class Cell:
             return MISSING, "missing", f"{self.file} ({cache.error(self.file)})"
         try:
             if self.kind == "delta":
-                raw = float(resolve(doc, self.pointer)) - float(resolve(doc, self.other))
+                doc_b = cache.get(self.file_b) if self.file_b else doc
+                if doc_b is None:
+                    raise KeyError(f"{self.file_b} missing")
+                raw = float(resolve(doc, self.pointer)) - float(resolve(doc_b, self.other))
             else:
                 raw = resolve(doc, self.pointer)
             return _fmt(raw, self.fmt), "ok", ""
@@ -200,6 +204,11 @@ def D(file: str, a: str, b: str, fmt: str = "f4") -> Cell:
     return Cell(kind="delta", file=file, pointer=a, other=b, fmt=fmt)
 
 
+def DX(file_a: str, a: str, file_b: str, b: str, fmt: str = "f4") -> Cell:
+    """Cross-artifact difference: ``a`` from ``file_a`` minus ``b`` from ``file_b``."""
+    return Cell(kind="delta", file=file_a, pointer=a, other=b, file_b=file_b, fmt=fmt)
+
+
 def NONE() -> Cell:
     return Cell(kind="none")
 
@@ -219,6 +228,10 @@ CARD = "msrs_data_card.json"
 GENM = "cfm_generation_metrics.json"
 LOMO = "metal_lomo_auc_wasserstein.json"
 EXT = "msrs_external_dataset.json"
+ENS = "msrs_seed_ensemble.json"
+FEXP = "msrs_feature_expansion_5seed.json"
+FFUS = "msrs_feature_fusion.json"
+DDIR = "msrs_delta_direct.json"
 
 PROTOCOLS = ("ligand", "doi", "scaffold", "year")
 ABL_ARMS = (
@@ -485,6 +498,95 @@ def table_generation() -> Table:
                 ],
             )
         )
+    t.rows.append(
+        Row(
+            "SA<=4.5 yield (STR-6, 2,396 unguided molecules)",
+            [
+                P("cfm_sa_guided.json", "/combined/rate_sa_le_gate", "f4"),
+                NONE(),
+                NONE(),
+            ],
+        )
+    )
+    return t
+
+
+def table_strong_generalization() -> Table:
+    """The post-STR-4 matrix: ECFP4 tree / MACCS+RDKit tree / +GNN fusion.
+
+    T2 reports the original single-seed ECFP4 tree.  This table reports the
+    five-seed arms, so a reader can see that the DOI gain comes from the
+    feature block (0.3380 -> 0.3767) and then from fusion (0.3811) without
+    having to reconcile two different seeds.
+    """
+    t = Table(
+        "T11_generalization_strong",
+        "Five-seed generalization matrix: ECFP4 tree, MACCS+RDKit tree, GNN fusion",
+        ["ECFP4 tree", "MACCS+RDKit tree", "MACCS+GNN fusion", "dR2 (MACCS - ECFP4)"],
+        note="All three arms are seed-averaged over the same five seeds; DOI R2 gate is 0.36. The dR2 column is the arithmetic difference of the two columns - the paired DOI-clustered delta lives in the artifact.",
+    )
+    for proto in PROTOCOLS:
+        t.rows.append(
+            Row(
+                proto,
+                [
+                    P(ENS, f"/protocols/{proto}/ensemble/r2"),
+                    P(FEXP, f"/protocols/{proto}/r2_seed_averaged"),
+                    P(FFUS, f"/protocols/{proto}/fused_r2"),
+                    DX(
+                        FEXP,
+                        f"/protocols/{proto}/r2_seed_averaged",
+                        ENS,
+                        f"/protocols/{proto}/ensemble/r2",
+                    ),
+                ],
+            )
+        )
+    return t
+
+
+def table_ranking() -> Table:
+    """The delta-sign line under DOI holdout, all three routes that were tried."""
+    t = Table(
+        "T12_ranking",
+        "Delta-sign under DOI holdout: three routes, one gate (0.65)",
+        ["Sign@|d|>=0.2091", "95% CI", "MAE(d)", "Pairs"],
+        note="Differencing and fusion have no DOI-clustered interval for the sign in their artifacts; direct regression does.",
+    )
+    delta = "/protocols/doi/ensemble/delta/0.2091"
+    t.rows.append(
+        Row(
+            "differencing two level predictions",
+            [
+                P(ENS, f"{delta}/sign_accuracy"),
+                P(ENS, f"{delta}/bootstrap/sign_accuracy/ci95", "ci"),
+                P(ENS, f"{delta}/mae_delta"),
+                P(ENS, f"{delta}/n_pairs", "int"),
+            ],
+        )
+    )
+    t.rows.append(
+        Row(
+            "fusion (MACCS tree + GNN)",
+            [
+                P(FFUS, "/protocols/doi/delta_sign/sign_accuracy"),
+                NONE(),
+                P(FFUS, "/protocols/doi/delta_sign/mae_delta"),
+                P(FFUS, "/protocols/doi/delta_sign/n_pairs", "int"),
+            ],
+        )
+    )
+    t.rows.append(
+        Row(
+            "direct delta regression",
+            [
+                P(DDIR, "/gated/sign_accuracy"),
+                P(DDIR, "/gated/bootstrap/sign_accuracy/ci95", "ci"),
+                P(DDIR, "/gated/mae_delta"),
+                P(DDIR, "/gated/n_pairs", "int"),
+            ],
+        )
+    )
     return t
 
 
@@ -582,6 +684,8 @@ TABLES = (
     table_data,
     table_seed,
     table_external,
+    table_strong_generalization,
+    table_ranking,
 )
 
 

@@ -211,6 +211,13 @@ GNN 融合后 DOI **0.3811**（+0.0431 [+0.0260,+0.0604]）。**但 DOI Δ 符�
 4.751）；门内 16 个的 novelty **0.8757 < 0.90**。**两条门槛同时不过**，且
 "SA≤4.5" 只能作为 0.67% 手挑子集的性质来写，不能作为生成器的性质。
 
+**STR-7（打包，DONE / PASS）**：`paper_metric_tables.py --strict` 生成 **12 张表、
+0 MISSING**；新增 T11（5-seed 三臂泛化矩阵：ECFP4 树 0.3380 / MACCS+RDKit 0.3767 /
+融合 0.3811）与 T12（排序三路线同一 0.65 门槛：0.5826 / 0.5505 / 0.5183）。
+`docs/CLAIM_LEDGER.md` 把 C1–C7 逐条绑定到 artifact 指针（11 条，由
+`test_claim_ledger.py` 解析验证）。**C6 被更正**：LOMO 0.5575±0.0949 低于 0.7 门槛，
+「跨金属迁移」不可写；可写的是 within-metal（Ru 0.8271 / Ir 0.8430）。
+
 **S5 现在是机械的。** `molmetal/scripts/paper_metric_tables.py` 从
 `metrics/by_metric/*.json` 直接生成 T1–T9，每个单元格带 artifact pointer，
 解析失败即 `MISSING`（`--strict` 退出码 1）。它保证「表 == 产物」，不保证

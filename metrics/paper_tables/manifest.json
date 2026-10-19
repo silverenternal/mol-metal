@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-19T11:52:54Z",
+  "generated_utc": "2026-10-19T16:57:15Z",
   "tables": [
     {
       "id": "T1_main_predictive",
@@ -120,7 +120,7 @@
     {
       "id": "T7_generation",
       "title": "Generation-side metrics (66 survivors from 192 attempts)",
-      "rows": 11,
+      "rows": 12,
       "columns": [
         "Metric",
         "Value",
@@ -183,19 +183,60 @@
       "csv": "metrics/paper_tables/T10_external.csv",
       "missing": [],
       "optional_absent": []
+    },
+    {
+      "id": "T11_generalization_strong",
+      "title": "Five-seed generalization matrix: ECFP4 tree, MACCS+RDKit tree, GNN fusion",
+      "rows": 4,
+      "columns": [
+        "Metric",
+        "ECFP4 tree",
+        "MACCS+RDKit tree",
+        "MACCS+GNN fusion",
+        "dR2 (MACCS - ECFP4)",
+        "Source",
+        "Tag"
+      ],
+      "markdown": "metrics/paper_tables/T11_generalization_strong.md",
+      "csv": "metrics/paper_tables/T11_generalization_strong.csv",
+      "missing": [],
+      "optional_absent": []
+    },
+    {
+      "id": "T12_ranking",
+      "title": "Delta-sign under DOI holdout: three routes, one gate (0.65)",
+      "rows": 3,
+      "columns": [
+        "Metric",
+        "Sign@|d|>=0.2091",
+        "95% CI",
+        "MAE(d)",
+        "Pairs",
+        "Source",
+        "Tag"
+      ],
+      "markdown": "metrics/paper_tables/T12_ranking.md",
+      "csv": "metrics/paper_tables/T12_ranking.csv",
+      "missing": [],
+      "optional_absent": []
     }
   ],
   "sources": {
     "cfm_generation_metrics.json": "435a50b1e21b282fe3cb235603522ce3adff891c80139657d76ffa781dd7bb29",
+    "cfm_sa_guided.json": "a61f62ded049b299e7b22e609d71770d3db15301dce0dcd94a36d8a69b216948",
     "metal_lomo_auc_wasserstein.json": "0a3d3cae45b526679613ee64768d76becb9a309ed4fc37917d09d0a29fb6ceb9",
     "msrs_calibration.json": "80f752b603bf5e1316fabcfa2076703a194ee380f5e2d5215fe39ba774babb29",
     "msrs_data_card.json": "e5ede80810c1c8c0823c8da3c6b7d72e63f25bd9d9d7d5d2f47a703b76169e19",
     "msrs_decision_curve.json": "9bbcb4c105013ecf0edfb061ac994f4aafd43d8fde05d785c4d15b45a3ab47e1",
+    "msrs_delta_direct.json": "212f53ad01c41ab816bc314d58aa3721f775315c3855fb941b72487959100616",
     "msrs_delta_metrics.json": "3178ca6e3dba0e76b69723ca9e4aa91616cdfb87b2185faa59abf8585edcd530",
     "msrs_external_dataset.json": "4f789944977123909541f77ea33926d32807d6bbd22922311ee14068a12311ae",
+    "msrs_feature_expansion_5seed.json": "4e13f05391a78a3be54b90da0433665f051b738a52f659ade6f8f7f7619712d1",
+    "msrs_feature_fusion.json": "d9748a243e2930534875593b33a2e8822b02c15abf1160838678c00c9e9db40a",
     "msrs_generalization.json": "30dbec08253fe25f662f395d32f09d5e7b0d44b69c34f1cc1d68b4b942495646",
     "msrs_metal_ablation.json": "534ad5e89818fa9d0c983a61a72ffab5748f5125a1e06603194bd2d702c1f5f0",
     "msrs_power.json": "e9de828d3e365ad72cbed4be4ae2de5694d7114b2a263628847a867dca8fe0da",
+    "msrs_seed_ensemble.json": "0ba1e932049f3521657dd0db613a83b29a6cf34e47fff6fdabf51af2f231be5f",
     "msrs_seed_stability.json": "aba8b56cacc00bdf8a56f98d9c9f06c940dc75b4a87b2989b7b7939289315ea7"
   },
   "missing_total": 0,
