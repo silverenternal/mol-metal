@@ -5958,10 +5958,10 @@ ACTIVE count: **125 -> 126** (+1).
 baseline; 4 new CPU tests; §5.2: every number traces to the run above; §5.3 +
 §5.4: 0 paper/* + 0 wet-lab).
 
-## §6.118 — FIX-M4: the first decision-layer signal, 0.004 short of the gate
+## §6.118 — FIX-M4: the pairwise signal was a within-paper offset
 
-**Date:** 2026-10-19.  **Status:** ACTIVE (negative by pre-registration; boundary
-evidence, not a finding).  **Code:** `molmetal/scripts/msrs_pairwise_reranker.py`.
+**Date:** 2026-10-19.  **Status:** ACTIVE (negative; the ligand-split gain is
+killed by whole-paper holdout).  **Code:** `molmetal/scripts/msrs_pairwise_reranker.py`.
 **Tests:** `molmetal/tests/test_msrs_pairwise_reranker.py` (9).
 **Artifact:** `metrics/by_metric/msrs_pairwise_reranker.json`.
 
@@ -5994,10 +5994,30 @@ t=+1.651, **p=0.05204** ([-0.0006, +0.0426]).  `pair_state` returns the same
 regret (0.1125) and p=0.368: it wins the hard cohorts and loses the easy ones.
 `pair_identity` is essentially the main effect (+0.0069, p=0.192).
 
+**MEASURED, whole-paper holdout (post hoc, added after the table above).**
+Both ligand-grouped protocols leave rows from the same paper in train and test.
+Grouping the same 5 folds by DOI instead — the FIX-E4 deployment condition —
+reverses the picture: main_effect 0.1199, cell_effect 0.1358, pair_identity
+0.1496, pair_state 0.1441, pair_full 0.1568.  Versus main_effect:
+pair_state **-0.0011** (t=-0.068, p=0.527, CI [-0.0322, +0.0271]),
+pair_identity **-0.0440** (t=-2.500, p=0.992, CI [-0.0801, -0.0139]),
+pair_full -0.0244 (p=0.792).  No pair arm beats the main effect once whole
+papers are held out.
+
 **Honest-negative (ACTIVE, this entry):**
   * **The pre-registered gate was not met.**  The criterion was p<0.05 on
     canonical; the measurement is 0.05393.  Missing by 0.004 does not become a
     finding by rounding, and the acceptance result is `FAILED`.
+  * **The gain does not survive whole-paper holdout.**  Under DOI-grouped
+    folds `pair_state` is -0.0011 (p=0.527) and `pair_identity` is
+    significantly *worse* than the main effect (-0.0440, CI excludes 0).
+    The +0.02 on the ligand splits is a within-paper offset: the model learns
+    this paper's metal ordering, not one that transfers.  This is the decisive
+    negative, and it is stronger than the 0.004 miss.
+  * **The DOI protocol is post hoc and must be labelled as such.**  It was
+    added after the canonical table was seen.  It does not change the primary
+    verdict (already NEGATIVE); it explains why the boundary result should not
+    be promoted.
   * **The gain is the metal-state difference, not the pairwise objective.**
     `pair_identity` — the same objective with only identity features — is
     +0.0069 and not significant.  Re-labelling the target as a pair does
@@ -6018,11 +6038,13 @@ regret (0.1125) and p=0.368: it wins the hard cohorts and loses the easy ones.
     selection artefact.  The only clean continuation is a pre-registered
     single test of the frozen `pair_state` specification on new DOIs.
 
-**Why this still matters.**  Representation (FIX-L*), model class (FIX-M1) and
-combination (FIX-M2) each produced zero decision-layer movement.  This is the
-first axis to produce a same-direction, same-magnitude, cross-split signal, and
-it is the first evidence that the 0.1186 plateau is a target-function limit
-rather than a data limit.  It is still not a result.
+**Why this still matters.**  Representation (FIX-L*), model class (FIX-M1),
+combination (FIX-M2) and now the objective (FIX-M4) each produced zero
+decision-layer movement that survives whole-paper holdout.  The 0.1186 plateau
+is therefore not shown to be a target-function limit; on this dataset it is
+consistent with every axis being exhausted.  The clean next step is new papers
+(new DOIs) plus a pre-registered DOI-grouped test of the frozen specification —
+not another feature or alpha search on the same 61 DOIs.
 
 **§6.118 catalog-count math.** Net catalog-count delta: **+1** (§6.118 itself).
 ACTIVE count delta: **+1**.  Cumulative catalog count: **170 -> 171** (+1).

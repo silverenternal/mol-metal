@@ -32,7 +32,7 @@
       "Nat. Commun. — 需要跨数据集泛化 + 决策价值量化"
     ],
     "positioning": "现有负结果 (WP1-WP4) 不是失败, 而是框架的三条边界: 迁移惩罚不可完全归因于金属敏感配体; 金属描述符不解释迁移; metal-token 不改善跨金属。新框架必须解释这三条, 而不是绕过它们。",
-    "immediate_goal": "目标函数轴已试：反对称 pair_state 给出 +0.0208 regret（p=0.05393），是四条轴里第一次接近显著、跨 split 稳定的信号，但未过门槛。下一步不是在同一批数据上继续换特征，而是在新增 DOI 上对固定 pair_state 做预注册单次重复；同时可并行补 424 个评估队列内约 200 个组内重复，以识别 R² 上限（FIX-M3 NEG-23）。"
+    "immediate_goal": "四条模型轴（表示、模型类、融合、目标函数）已全部为零：FIX-M4 的 +0.02 在整篇论文留出后归零。决策层在现有 61 个 DOI 上已无干净的可试项——继续调特征/α 只会过拟合。下一步二选一：(a) 补新论文（新 DOI）后用 DOI-grouped 协议做预注册单次检验；(b) 把论文主张收缩到回归面 + 边界，并把 FIX-M3 的 R² 上限不可识别作为数据采集需求写入。"
   },
   "current_position": {
     "measured_facts": [
@@ -58,7 +58,7 @@
       "FIX-M1：自研 D-MPNN + metal_graph 在 21,404 行上 canonical R2 0.5031（LightGBM 0.5012，FIX-L5 树模型 0.5556）；424 cohort regret 最好 0.1190，但 DOI 聚类 Holm p=1.0。",
       "FIX-M2：树+D-MPNN 等权融合 canonical R2 0.5727（+0.0171, p=4.8e-12），堆叠 0.5807（+0.0251, p=5.1e-34）；决策层 regret 最好仍是树模型 0.1186，所有融合臂 Holm p=1.0。",
       "FIX-M3：424 队列 848 单元，队列内方差 0.0945，金属主效应占 3.4%；重复噪声池化 σ=0.211、中位数 0.027；评估单元中仅 3/848 有重复；完美模型 top-1 0.70–0.95，当前 0.566；盈亏平衡 σ=1.24（top-1）/0.395（regret）。",
-      "FIX-M4：反对称 pair_state 在 424 队列上 regret 0.1069（canonical Δ+0.0208 p=0.05393；fragment Δ+0.0179 p=0.05204），两 split 同值同向；pair_identity 仅 +0.0069（p=0.19）→ 增益来自金属状态差而非配对目标；pair_full 学不出配体交互（p=0.37）。"
+      "FIX-M4：配体分组下反对称 pair_state regret 0.1069（canonical Δ+0.0208 p=0.05393；fragment Δ+0.0179 p=0.05204），但整篇论文留出（DOI-grouped）后 −0.0011（p=0.527），pair_identity 显著更差 −0.044 → 增益是论文内偏移，不跨论文；pair_identity 配体分组仅 +0.0069（p=0.19）→ 增益来自金属状态差而非配对目标。"
     ],
     "continuous_data_audit_2026_10_18": {
       "numeric_dark_ic50": 21777,
@@ -3431,7 +3431,7 @@
       "title": "反对称 pairwise reranker：直接学队列内金属排序",
       "layer": "模型/决策",
       "priority": "P0",
-      "status": "DONE-NEGATIVE-BOUNDARY",
+      "status": "DONE-NEGATIVE",
       "gpu": "none",
       "wall": "0.5 天",
       "why": "FIX-M3 排除了噪声封顶，并指出金属主效应只占队列内方差 3.4%——现有模型正停在这个水平。表示、模型类、融合三条轴都已关闭，剩下唯一未试的是目标函数。FIX-E3 的 pair_delta 实现不对称（金属 B 只贡献身份编码）且用 500 棵树拟合 ~700 个对，需重做。",
@@ -3486,12 +3486,26 @@
           ],
           "n_svd": 32
         },
-        "reading": "pair_state 在两个 split 上给出同一个 0.1069（Δ +0.0208 / +0.0179，p=0.05393 / 0.05204）。方向与幅度都稳定，但差 0.004 未过预注册门槛，判 NEGATIVE。pair_full 的 top-1 最高（0.6203）却 regret 更差且不显著（p=0.368），说明配体上下文交互在 ~700 个对上学不出来。pair_identity 基本等于主效应（+0.0069, p=0.19），因此增益来自金属状态差，不是来自配对目标本身。",
+        "reading": "配体分组下 pair_state 在两个 split 上给出同一个 0.1069（Δ +0.0208 / +0.0179，p=0.05393 / 0.05204），方向与幅度都稳定但差 0.004 未过预注册门槛。事后补的 DOI-grouped 协议（整篇论文留出，部署条件）推翻了它：pair_state −0.0011（p=0.527），pair_identity 显著更差 −0.044（p=0.992），pair_full −0.0244。配体 split 上的 +0.02 是同一篇论文内部的偏移，不跨论文。pair_identity 在配体 split 上仅 +0.0069（p=0.19），说明增益来自金属状态差而非配对目标本身。",
         "artifacts": [
           "metrics/by_metric/msrs_pairwise_reranker.json"
-        ]
+        ],
+        "doi_grouped": {
+          "main_effect": 0.1199,
+          "cell_effect": 0.1358,
+          "pair_identity": 0.1496,
+          "pair_state": 0.1441,
+          "pair_full": 0.1568,
+          "pair_state_delta": -0.0011,
+          "pair_state_p": 0.527,
+          "pair_identity_delta": -0.044,
+          "pair_identity_p": 0.9924,
+          "pair_full_delta": -0.0244,
+          "pair_full_p": 0.7915,
+          "note": "post hoc — whole papers held out; added after the canonical result was seen"
+        }
       },
-      "acceptance_result": "FAILED BY 0.004 (p=0.05393 vs 0.05); recorded as boundary evidence, not a finding"
+      "acceptance_result": "FAILED (canonical p=0.05393; DOI holdout delta -0.0011, p=0.527)"
     }
   ],
   "sequence": {
@@ -3547,7 +3561,7 @@
         "FIX-M3",
         "FIX-M4"
       ],
-      "note": "P1/E1 基础设施先落地，再做表征：L1 (+0.1002) → L2 (+0.0444) → L3 (+0.0272) → L5 叠加 (+0.0130) → M1 主模型 (parity) → M2 融合 (+0.0251 回归，决策层无变化)。 FIX-M3 排除了噪声封顶：排序上限高于当前模型。FIX-M4 是目标函数轴：pair_state 给出 +0.0208/+0.0179（p=0.054/0.052），同向同幅但未过门槛；增益来自金属状态差，不来自配对目标。"
+      "note": "P1/E1 基础设施先落地，再做表征：L1 (+0.1002) → L2 (+0.0444) → L3 (+0.0272) → L5 叠加 (+0.0130) → M1 主模型 (parity) → M2 融合 (+0.0251 回归，决策层无变化) → M3 排除噪声封顶 → M4 目标函数（配体分组 +0.02，DOI holdout 归零）。四条轴全部为零，决策层在现有数据上已无可试项。"
     }
   },
   "legacy_mainline": {
@@ -3587,7 +3601,7 @@
     "FIX 波次结束后往哪走：(a) 等外部细胞系数据做 FIX-L4；(b) 放弃配体级金属推荐，把论文收缩到回归面 + 边界；(c) 换可学的 pairwise 决策目标再做一次分布外验证。建议先讨论 (b) 的证据是否已经足够。",
     "FIX-M2 之后：(a) 先做队列内方差上限估计，再决定论文是否收缩；(b) 直接投入 pairwise 决策目标 + DOI 分布外验证；(c) 等外部细胞系数据做 FIX-L4。建议 (a)，因为它决定 (b) 是否还有意义。",
     "FIX-M3 之后：(a) 投入 pairwise/listwise 目标 + DOI 分布外验证（当前证据支持）；(b) 补数据：在 424 个评估队列内做约 200 个组内重复，以识别 R² 上限；(c) 收缩论文主张到回归面。建议 (a)，(b) 作为数据采集的并行项。",
-    "FIX-M4 之后：(a) 冻结 pair_state 规格，等新增 DOI 做预注册重复（唯一不引入选择偏差的路径）；(b) 在现有数据上继续调配对特征/目标（会重演 pair_full 的过拟合，不建议）；(c) 把决策线收缩到回归面 + 边界，论文按当前证据写。建议 (a) 为主、(c) 为并行文档工作。"
+    "FIX-M4 之后：(a) 补新论文（新 DOI），用 DOI-grouped 协议对冻结的 pair_state 做预注册单次检验；(b) 收缩论文主张到回归面 + 边界（现有证据已支持：四条轴全零、DOI holdout 归零）；(c) 补 424 个评估队列内约 200 个组内重复，识别 R² 上限。建议 (b) 为主线、(a)(c) 作为数据采集并行项；不再在同一批 61 DOI 上调参。"
   ],
   "do_not": [
     "不要把 668 对 matched 数据说成 5 金属全覆盖 — 只有 3 个金属对有 matched 样本。",

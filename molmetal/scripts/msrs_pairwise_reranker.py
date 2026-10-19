@@ -29,6 +29,11 @@ Two protocols, both out of sample (``requires_dual_split``):
   canonical_grouped  — folds split on ``ligand_canonical``
   fragment_grouped   — folds split on ``ligand_main_fragment``
 
+A third protocol is reported but is **post hoc**: ``doi_grouped`` holds out
+whole papers (the FIX-E4 deployment condition).  It was added after the
+canonical result was seen, so it is reported as a robustness check and never
+used to change the primary verdict.
+
 Acceptance: on ``canonical_grouped`` the best pair arm's mean within-cohort
 regret must beat ``main_effect`` with a DOI-clustered one-sided p < 0.05.
 Anything else is logged as negative.
@@ -77,10 +82,12 @@ LIGAND_ONLY = FeatureSpec(
     metal=MetalSpec(one_hot=False, columns=()),
     cell=CellSpec(mode="none"),
 )
-SPLITS = (SPLIT_FRAGMENT_GROUPED, SPLIT_CANONICAL_GROUPED)
+SPLIT_DOI_GROUPED = "doi_grouped"
+SPLITS = (SPLIT_FRAGMENT_GROUPED, SPLIT_CANONICAL_GROUPED, SPLIT_DOI_GROUPED)
 GROUP_COL = {
     SPLIT_FRAGMENT_GROUPED: "ligand_main_fragment",
     SPLIT_CANONICAL_GROUPED: "ligand_canonical",
+    SPLIT_DOI_GROUPED: "doi",
 }
 ALPHAS = (0.1, 1.0, 10.0, 100.0, 1000.0)
 N_SVD = 32
@@ -400,6 +407,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     verdict = "POSITIVE" if (delta > 0 and p_one < 0.05) else "NEGATIVE"
 
+    doi = splits[SPLIT_DOI_GROUPED]
+    doi_best = max(
+        ("pair_identity", "pair_state", "pair_full"),
+        key=lambda a: -doi["arms"][a]["mean_regret"],
+    )
+    doi_p = float(doi["tests"][doi_best]["vs_main_effect"].get("p_one_sided_doi", 1.0))
+    doi_delta = float(
+        doi["tests"][doi_best]["vs_main_effect"].get("mean_regret_delta", 0.0)
+    )
+    doi_verdict = "POSITIVE" if (doi_delta > 0 and doi_p < 0.05) else "NEGATIVE"
+
     payload = {
         "artifact": "msrs_pairwise_reranker",
         "version": "1.0",
@@ -439,10 +457,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "delta_regret_vs_main_effect": round(delta, 4),
         "p_one_sided_doi": p_one,
         "verdict": verdict,
+        "post_hoc_doi_protocol": {
+            "split": SPLIT_DOI_GROUPED,
+            "status": "post hoc — added after the canonical result was seen",
+            "role": "robustness check only; the primary verdict above is unchanged",
+            "best_pair_arm": doi_best,
+            "delta_regret_vs_main_effect": round(doi_delta, 4),
+            "p_one_sided_doi": doi_p,
+            "verdict": doi_verdict,
+        },
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     write_report(args.out, payload)
     print(f"[m4] verdict={verdict} best={best_pair} delta={delta:+.4f} p={p_one:.4g}")
+    print(
+        f"[m4] post-hoc doi: best={doi_best} delta={doi_delta:+.4f} "
+        f"p={doi_p:.4g} verdict={doi_verdict}"
+    )
     print(f"[m4] wrote {args.out}")
     return 0
 

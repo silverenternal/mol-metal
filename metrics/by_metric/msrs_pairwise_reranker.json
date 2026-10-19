@@ -2,12 +2,12 @@
   "artifact": "msrs_pairwise_reranker",
   "version": "1.0",
   "requires_dual_split": true,
-  "generated_utc": "2026-10-19T03:55:38+00:00",
+  "generated_utc": "2026-10-19T04:01:32+00:00",
   "provenance": {
     "long_parquet": "data/msrs/measurements.parquet",
     "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
     "script": "molmetal/scripts/msrs_pairwise_reranker.py",
-    "git_commit": "0163e74312f8decac1e01c2fdc25dc8da23a5974",
+    "git_commit": "d36e24da1f8a9e7d0a7113b9a1c6d781f3b1d98e",
     "ligand_spec_hash": "sha256:453f77bb3ea233ee7b6666b72d9277a7849f901cd0b756dba828a898217f824b"
   },
   "design": {
@@ -354,10 +354,177 @@
           "n_training_pairs": 3440
         }
       }
+    },
+    "doi_grouped": {
+      "n_cohorts": 424,
+      "arms": {
+        "main_effect": {
+          "mean_regret": 0.1199,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5755,
+          "pairwise_accuracy": 0.5588,
+          "n_ordered_pairs": 834
+        },
+        "cell_effect": {
+          "mean_regret": 0.1358,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5472,
+          "pairwise_accuracy": 0.5276,
+          "n_ordered_pairs": 834
+        },
+        "pair_identity": {
+          "mean_regret": 0.1496,
+          "median_regret": 0.0183,
+          "top1_accuracy": 0.4811,
+          "pairwise_accuracy": 0.4628,
+          "n_ordered_pairs": 834
+        },
+        "pair_state": {
+          "mean_regret": 0.1441,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5377,
+          "pairwise_accuracy": 0.5204,
+          "n_ordered_pairs": 834
+        },
+        "pair_full": {
+          "mean_regret": 0.1568,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5307,
+          "pairwise_accuracy": 0.5108,
+          "n_ordered_pairs": 834
+        }
+      },
+      "tests": {
+        "pair_identity": {
+          "vs_main_effect": {
+            "n_dois": 61,
+            "mean_regret_delta": -0.044,
+            "median_regret_delta": 0.0,
+            "t_doi": -2.4998,
+            "p_one_sided_doi": 0.9924099740564593,
+            "bootstrap_ci95_doi": [
+              -0.0801,
+              -0.0139
+            ],
+            "n_boot": 2000,
+            "seed": 20261018
+          },
+          "vs_cell_effect": {
+            "n_dois": 61,
+            "mean_regret_delta": -0.0283,
+            "median_regret_delta": 0.0,
+            "t_doi": -1.8012,
+            "p_one_sided_doi": 0.9616528328698108,
+            "bootstrap_ci95_doi": [
+              -0.0612,
+              0.0004
+            ],
+            "n_boot": 2000,
+            "seed": 20261018
+          }
+        },
+        "pair_state": {
+          "vs_main_effect": {
+            "n_dois": 61,
+            "mean_regret_delta": -0.0011,
+            "median_regret_delta": 0.0,
+            "t_doi": -0.068,
+            "p_one_sided_doi": 0.5269773479906715,
+            "bootstrap_ci95_doi": [
+              -0.0322,
+              0.0271
+            ],
+            "n_boot": 2000,
+            "seed": 20261018
+          },
+          "vs_cell_effect": {
+            "n_dois": 61,
+            "mean_regret_delta": 0.0147,
+            "median_regret_delta": 0.0,
+            "t_doi": 0.7949,
+            "p_one_sided_doi": 0.21490575756536504,
+            "bootstrap_ci95_doi": [
+              -0.0213,
+              0.0505
+            ],
+            "n_boot": 2000,
+            "seed": 20261018
+          }
+        },
+        "pair_full": {
+          "vs_main_effect": {
+            "n_dois": 61,
+            "mean_regret_delta": -0.0244,
+            "median_regret_delta": 0.0,
+            "t_doi": -0.8173,
+            "p_one_sided_doi": 0.7915020791649194,
+            "bootstrap_ci95_doi": [
+              -0.0851,
+              0.0307
+            ],
+            "n_boot": 2000,
+            "seed": 20261018
+          },
+          "vs_cell_effect": {
+            "n_dois": 61,
+            "mean_regret_delta": -0.0086,
+            "median_regret_delta": 0.0,
+            "t_doi": -0.319,
+            "p_one_sided_doi": 0.6245904605073229,
+            "bootstrap_ci95_doi": [
+              -0.0648,
+              0.0415
+            ],
+            "n_boot": 2000,
+            "seed": 20261018
+          }
+        }
+      },
+      "fit": {
+        "pair_identity": {
+          "alphas": [
+            0.1,
+            100.0,
+            1000.0,
+            100.0,
+            1000.0
+          ],
+          "n_training_pairs": 3440
+        },
+        "pair_state": {
+          "alphas": [
+            100.0,
+            10.0,
+            100.0,
+            100.0,
+            100.0
+          ],
+          "n_training_pairs": 3440
+        },
+        "pair_full": {
+          "alphas": [
+            100.0,
+            100.0,
+            10.0,
+            100.0,
+            100.0
+          ],
+          "n_training_pairs": 3440
+        }
+      }
     }
   },
   "best_pair_arm": "pair_state",
   "delta_regret_vs_main_effect": 0.0208,
   "p_one_sided_doi": 0.053925727165880497,
-  "verdict": "NEGATIVE"
+  "verdict": "NEGATIVE",
+  "post_hoc_doi_protocol": {
+    "split": "doi_grouped",
+    "status": "post hoc — added after the canonical result was seen",
+    "role": "robustness check only; the primary verdict above is unchanged",
+    "best_pair_arm": "pair_state",
+    "delta_regret_vs_main_effect": -0.0011,
+    "p_one_sided_doi": 0.5269773479906715,
+    "verdict": "NEGATIVE"
+  }
 }
