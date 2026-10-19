@@ -128,7 +128,20 @@
     "panel_pre_a95_checkpoint": "[cfm-compat] checkpoint has no feature_schema (pre-Wf-A95); ... 2/2 clouds decoded",
     "decoder_line": "[cfm-decoder] ... dative_max_distance=2.60 A"
   },
-  "interpretation": "GPU EXECUTION: PASS. No NaN/Inf, loss falls 17.77 -> 0.92, decode_ratio 1.000 (64/64), gen_validity 1.000 (48/48 across 3 seeds), metal_ratio 1.000, bond PR-AUC 0.9246 -> 0.9825. QUALITY: NOT established. gen_single_fragment_ratio is 0.000 at every epoch and fragments_mean was 10.5 at epoch 0: decode_ratio counts RDKit-sanitised strings and loose atoms sanitise, so 1.000 must not be read as connected molecules. bond_f1 at the shipped threshold is 0.04-0.10 while PR-AUC is 0.98 — the ranking is strong and the operating point is wrong, which is a calibration problem (Wf-A81 per-class thresholds), not a representation problem.",
+  "interpretation": "GPU EXECUTION: PASS. No NaN/Inf, loss falls 17.77 -> 0.92, decode_ratio 1.000 (64/64), gen_validity 1.000 (48/48 across 3 seeds), metal_ratio 1.000, bond PR-AUC 0.9246 -> 0.9825. QUALITY: NOT established. gen_single_fragment_ratio is 0.000 at every epoch and fragments_mean was 10.5 at epoch 0: decode_ratio counts RDKit-sanitised strings and loose atoms sanitise, so 1.000 must not be read as connected molecules. bond_f1 at the shipped threshold is 0.04-0.10 while PR-AUC is 0.98 \u2014 the ranking is strong and the operating point is wrong, which is a calibration problem (Wf-A81 per-class thresholds), not a representation problem.",
   "verdict": "GPU PLUMBING GATE PASS; CONNECTIVITY NOT ESTABLISHED",
-  "generated": "2026-10-19"
+  "generated": "2026-10-19",
+  "candidate_set_at_run": [
+    6,
+    7,
+    8,
+    9,
+    15,
+    16,
+    17,
+    34,
+    35,
+    53
+  ],
+  "note_candidate_set": "The gate ran with the carbon-inclusive set (Wf-A95).  B/Si/As joined afterwards (Wf-A95b) and add exactly 1 pair-feature column on this cohort (metrics/by_metric/wfa95_metalcytotox_feature_flips.json), so the gate numbers are unchanged for practical purposes; the checkpoint carries its own donor_zs and decodes with it."
 }

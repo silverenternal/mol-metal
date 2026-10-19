@@ -399,14 +399,15 @@
         "ceiling_old_min": 0.349,
         "ceiling_old_max": 0.557,
         "ceiling_with_carbon": 1.0,
-        "metalcytotox_pair_feature_flips": 1539,
+        "metalcytotox_pair_feature_flips": 1540,
         "metalcytotox_builder_bonds_changed": 0,
         "gpu_gate_wall_s": 913.0,
         "gpu_gate_pr_auc_epoch4": 0.9825,
-        "gpu_gate_single_fragment_ratio": 0.0
+        "gpu_gate_single_fragment_ratio": 0.0,
+        "metalcytotox_pair_feature_flips_carbon_only": 1539
       },
       "OPEN": [
-        "B/Si/As candidate gap (0.8-3.6%) blocked on vocab extension",
+        "B/Si/As are candidates but their atom one-hot is padding (vocab extension would break ckpts)",
         "connectivity: single_fragment_ratio 0.000 at 5 epochs",
         "5-epoch gate, not a 30-epoch quality run"
       ]

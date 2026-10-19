@@ -192,23 +192,19 @@ def test_featurise_marks_a_non_pt_metal_donor_pair_dative() -> None:
     assert bool(pf.is_dative_candidate.any())
 
 
-def test_featurise_marks_a_carbon_metal_pair_dative_but_not_a_vocab_gap() -> None:
-    """Wf-A95 — C is a candidate; B/Si/As are not (they are not in the vocab).
+def test_featurise_marks_every_tmqm_bonded_element_as_a_candidate() -> None:
+    """Wf-A95 — C, B, Si and As are candidates, closing the element ceiling.
 
-    The residual is measured, not accidental: B/Si/As are absent from
-    ``_YUELBOND_Z_TABLE``, so their atom one-hot is the padding slot and
-    flagging them would feed the head a feature it cannot attribute.  They
-    are 0.8-3.6% of true metal bonds on tmQM.
+    B/Si/As are absent from ``_YUELBOND_Z_TABLE`` (padding one-hot), but the
+    ``is_dative`` column is computed from the raw Z: flagging the pair adds
+    the metal contact without claiming the head can identify the atom.
     """
     head = YuelBondDecoderHead(hidden_dim=16, n_layers=1)
     decoder = YuelBondDecoder(head=head)
-    pf = decoder.featurise(_two_atom_cloud(44, 6, 2.2)).pair_features
-    assert pf is not None
-    assert bool(pf.is_dative_candidate.any())
-    for z_gap in (5, 14, 33):
-        assert z_gap not in _DONOR_ZS
-        pf = decoder.featurise(_two_atom_cloud(44, z_gap, 2.2)).pair_features
-        assert not bool(pf.is_dative_candidate.any()), z_gap
+    for z_cand in (5, 6, 14, 33):
+        assert z_cand in _DONOR_ZS
+        pf = decoder.featurise(_two_atom_cloud(44, z_cand, 2.2)).pair_features
+        assert bool(pf.is_dative_candidate.any()), z_cand
 
 def test_halide_donors_are_dative_on_the_decode_path() -> None:
     """Wf-A94 — halides are donors, matching the cohort builder's labels.

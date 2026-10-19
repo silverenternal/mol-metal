@@ -1,0 +1,28 @@
+{
+  "metric": "wfa95_metalcytotox_feature_flips",
+  "description": "MEASURED pair-feature columns flipped by the Wf-A94/A95 donor-set extensions on the canonical 5-metal MetalCytoTox cohort. Counts every i<j pair within the head's 3.5 A edge cutoff where exactly one endpoint is a project metal and the other is in the added element set.",
+  "scope": "Wf-A94 halides + Wf-A95 carbon/B/Si/As",
+  "wf": "Wf-A95b",
+  "source_script": "/tmp/wfa95b_organic_flip.py",
+  "data_source": ".data/molmetal/metalcytotox_5metal_multitask_v3.csv (train split)",
+  "cohort": {
+    "n_clouds_built": 399,
+    "seed": 0,
+    "metal_placement": "bonded",
+    "dative_distance_cutoff": 2.6
+  },
+  "measurements": {
+    "n_pairs": 597661,
+    "metal_organic_pairs_lt_3p5A": 1540,
+    "metal_organic_pairs_lt_2p6A": 668,
+    "metal_carbon_pairs_lt_3p5A": 1539,
+    "clouds_with_any_flip": 308,
+    "flip_frac": 0.002577,
+    "builder_written_metal_organic_bonds": 0,
+    "metal_halide_pairs_lt_3p5A": 8,
+    "metal_halide_pairs_lt_2p6A": 6
+  },
+  "interpretation": "The organic extension is feature-side only: 1,540 pair-feature columns flip (0.26% of pairs, 77% of clouds) and 0 builder-written bond labels change, because the builder ranks no organic element. Carbon accounts for 1,539 of the 1,540; B/Si/As add exactly 1 pair. Halides add 8. Any pre-A95 checkpoint would see a different is_dative column on 77% of clouds, which is why the feature_schema stamp exists.",
+  "verdict": "MEASURED; LABELS UNCHANGED, FEATURES CHANGED",
+  "generated": "2026-10-19"
+}

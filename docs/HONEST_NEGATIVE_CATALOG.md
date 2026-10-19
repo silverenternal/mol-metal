@@ -7325,9 +7325,10 @@ error term.
 
 ### 6.130c MEASURED — MetalCytoTox impact of adding carbon
 
-399 built clouds, 597,661 pairs: **1,539 pair-feature columns flip**
-(308/399 clouds, 0.26% of pairs; 667 of them within 2.6 Å) and **0**
-builder-written bonds change — carbon is feature-side only. This is a
+399 built clouds, 597,661 pairs: **1,540 pair-feature columns flip**
+(308/399 clouds, 0.26% of pairs; 668 of them within 2.6 Å) and **0**
+builder-written bonds change — the organic elements are feature-side only.
+C alone accounts for 1,539; B/Si/As add 1. This is a
 substantial input change for new runs, which is exactly why item 4 below had
 to be fixed in the same wave.
 
@@ -7350,9 +7351,10 @@ representation gap.
 
 ### 6.130e What was fixed
 
-* `_DONOR_ZS` now includes carbon (feature-side). The cohort builder keeps an
-  explicit `_DONOR_RANK`; an element in the candidate set without a rank is
-  feature-only, so C/B/Si/As can never become builder labels by accident.
+* `_DONOR_ZS` now includes carbon and B/Si/As (feature-side). The cohort
+  builder keeps an explicit `_DONOR_RANK`; an element in the candidate set
+  without a rank is feature-only, so none of them can become a builder label
+  by accident.
 * `YuelBondEdgeMPNNHead` gained `donor_zs` and the symmetric rule — the same
   Wf-A92 fix, one class later.
 * `feature_schema` is stamped into every checkpoint (`donor_zs`, `metal_set`,
@@ -7365,10 +7367,12 @@ representation gap.
 
 ### 6.130f Honest negatives that REMAIN (ACTIVE)
 
-* **B/Si/As are still not candidates** (0.8-3.6% of true bonds). They are
-  absent from `_YUELBOND_Z_TABLE`, so the head would read a padding slot;
-  adding them needs a vocab extension, which reshapes `atom_encoder` and
-  breaks every checkpoint. Deferred with a measured size, not silently.
+* **B/Si/As are candidates but not identifiable.** They joined the set in
+  Wf-A95b (they are 0.8-3.6% of true bonds, and the `is_dative` column is
+  computed from the raw Z, so the pair flag is still informative). Their
+  atom one-hot remains the padding slot because they are absent from
+  `_YUELBOND_Z_TABLE`; making the head tell B from Si needs a vocab
+  extension, which reshapes `atom_encoder` and breaks every checkpoint.
 * **Connectivity is unsolved at 5 epochs** (`single_fragment_ratio` 0.000).
   The GPU gate must not be cited as a quality pass.
 * **The gate is 5 epochs on 199 clouds**, not the 30-epoch production run.

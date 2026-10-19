@@ -131,12 +131,19 @@ _METAL_SET_PRESETS: dict = {
 #: 0.88-0.95 / recall 0.88-0.99 (F1 0.92-0.99).  C is FEATURE-side only: the
 #: cohort builder does not rank it (``_DONOR_RANK`` in the trainer), because
 #: a free-ligand SMILES carries no metal-carbon bond intent.  On the
-#: canonical MetalCytoTox cohort it flips 1,539 of 597,661 pair-feature
-#: columns (308/399 clouds) and adds 0 builder-written bonds.  B/Si/As stay
-#: out: they are absent from ``_YUELBOND_Z_TABLE`` (the head would read a
-#: padding slot) and together are 0.8-3.6% of true bonds.
-_DONOR_ZS: frozenset = frozenset({6, 7, 8, 9, 15, 16, 17, 34, 35, 53})
-#: C, N, O, F, P, S, Cl, Se, Br, I
+#: canonical MetalCytoTox cohort the organic elements flip 1,540 of 597,661
+#: pair-feature columns (308/399 clouds; C alone is 1,539, B/Si/As add 1)
+#: and add 0 builder-written bonds.
+#:
+#: B/Si/As are included too (Wf-A95b).  They are absent from
+#: ``_YUELBOND_Z_TABLE``, so their atom one-hot is the padding slot — but
+#: that was already true when they were excluded, and the ``is_dative``
+#: column is computed from the RAW Z, so flagging the pair adds information
+#: (the metal contact) without pretending the head can identify the atom.
+#: Together they are 0.8-3.6% of true bonds; with them the element ceiling is
+#: 100% for all six metals.  They are FEATURE-side only: no builder rank.
+_DONOR_ZS: frozenset = frozenset({5, 6, 7, 8, 9, 14, 15, 16, 17, 33, 34, 35, 53})
+#: B, C, N, O, F, Si, P, S, Cl, As, Se, Br, I
 
 #: 2026-10-04 — EXTENDED table covering all six of the project's target metals.
 #:
