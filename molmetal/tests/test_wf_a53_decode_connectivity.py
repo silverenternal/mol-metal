@@ -91,3 +91,19 @@ def test_decode_with_rdkit_strict_keeps_its_boolean_contract(monkeypatch):
         lambda decoder, cloud: (False, "C.C"),
     )
     assert trainer._decode_with_rdkit_strict(None, None) is False
+
+
+def test_n_train_zero_means_every_row():
+    """configs/cfm_5metal_v5_full.yaml relies on ``<= 0`` meaning "all rows".
+
+    If ``_stratified_row_sample`` ever treats 0 as "no rows", that config
+    would silently train on an empty cohort.  This pins the contract the
+    config documents.
+    """
+    rows = [("CCO", "Ru", None)] * 10 + [("CCN", "Ir", None)] * 10
+    out = trainer._stratified_row_sample(rows, 0, seed=0)
+    assert len(out) == len(rows)
+    out_neg = trainer._stratified_row_sample(rows, -1, seed=0)
+    assert len(out_neg) == len(rows)
+    capped = trainer._stratified_row_sample(rows, 4, seed=0)
+    assert len(capped) == 4
