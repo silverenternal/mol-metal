@@ -108,6 +108,11 @@ flow:
   # Wf-A67 bit-exact compat.  ON adds an extra Linear(hidden_dim,
   # hidden_dim) projection from fc1 to the pre-`out` activation.
   use_bond_head_skip: false
+  # Wf-A90 (2026-10-19) — 3-d metal-geometry block on the pair head
+  # (d_to_metal / angle_to_metal / is_metal_edge).  ON = the head can tell a
+  # cis-donor pair from two unrelated ligand atoms at the same distance.
+  # Set false only to reproduce a pre-Wf-A90 architecture.
+  use_metal_pair_features: true
   # Wf-A68 ultracode (2026-10-17) Spot 6 — bond label smoothing.  0.0 =
   # off (bit-exact Wf-A67); 0.05-0.10 typical on heavy imbalanced cohorts.
   bond_label_smoothing: 0.0

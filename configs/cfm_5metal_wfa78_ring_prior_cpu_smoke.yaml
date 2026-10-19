@@ -135,6 +135,11 @@ flow:
   dative_distance_cutoff: 2.6
   chem_loss_weight: 0.0
   use_bond_head_skip: false
+  # Wf-A90 (2026-10-19) — 3-d metal-geometry block on the pair head
+  # (d_to_metal / angle_to_metal / is_metal_edge).  ON = the head can tell a
+  # cis-donor pair from two unrelated ligand atoms at the same distance.
+  # Set false only to reproduce a pre-Wf-A90 architecture.
+  use_metal_pair_features: true
   bond_label_smoothing: 0.0
   # Fix 8 (W2) — aux MSE + temperature.
   bond_aux_mse_weight: 0.1

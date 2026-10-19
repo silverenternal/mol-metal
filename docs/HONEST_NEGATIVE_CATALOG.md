@@ -6134,9 +6134,13 @@ needing the Wf-A84 kekulize repair once the cohort stopped being Ru-only.
 This is ONE run and the cohort changed, so it is a lead, not a result.
 
 **Honest-negative (ACTIVE, this entry):**
-  * **Full runs still read the CSV in file order**, which is metal-grouped, so
-    every batch of 8 is single-metal.  Changing that would perturb archived
-    runs, so it is left as a recommendation, not a change.
+  * **Full runs still read the CSV in file order** (metal-grouped), but that
+    order does NOT reach the batches: `train_one_epoch` permutes the cohort
+    every epoch (`_epoch_permutation`), so batch composition is mixed
+    regardless.  CORRECTED 2026-10-19: an earlier draft of this entry claimed
+    every batch of 8 was single-metal; that was wrong — the permutation was
+    already there.  The file order only decides which rows the cohort
+    contains, not how they are batched.
   * **The 16-cloud val cohort still has no Re** (expected 0.6 rows at the
     corpus share).  A 16-cloud val set cannot cover 5 metals.
   * **The mix line reports BUILT clouds**, not selected rows, so it stays
@@ -6150,3 +6154,69 @@ ACTIVE count: **128 -> 129** (+1).
 end-to-end smokes; §5.2: every number traces to `/tmp/audit_e2e2`; §5.3 + §5.4:
 0 paper/* + 0 wet-lab).
 
+## §6.121 — Wf-A90: the head could not see the metal, and no run could resume
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (three fixes, one architecture
+change).  **Code:** `_metal_pair_features` + `use_metal_features` in
+`molmetal/molmetal_lam/lam_chem/yuelbond_decoder.py`;
+`--use-metal-pair-features`, `load_cfm_checkpoint`, `_epoch_permutation` in
+`molmetal/scripts/train_cfm_yuelbond_wasserstein.py`.
+
+**1. The shipped head had no metal-geometry input.**  `YuelBondDecoderHead`
+consumed `[h_i, h_j, d, is_dative, is_short]`: the metal entered only through
+the atom-Z embedding and a boolean.  A cis-donor pair and two unrelated ligand
+atoms at the same distance were indistinguishable — the one distinction a
+5-metal model exists to make.  Wf-A90 appends three columns:
+
+    d_to_metal      ||midpoint(i,j) - metal|| / cutoff
+    angle_to_metal  angle i-metal-j / pi      (0 for metal-incident edges)
+    is_metal_edge   1.0 if either endpoint IS the metal
+
+`pair_head.0.weight` goes from (H, 2H+3) to (H, 2H+6).  Default OFF in the
+class (bit-exact for every direct constructor and every pre-Wf-A90
+checkpoint); the trainer turns it ON through `--use-metal-pair-features`
+(argparse default True, declared as `flow.use_metal_pair_features` in the
+configs).  MEASURED on `/tmp/audit_e2e3`: `[cfm-head] metal_pair_features=ON`,
+`gen_validity=1.000 (16/16)`, `failure_reasons={ok: 16}`, train_loss 0.9520.
+
+**2. `--resume-from` could not read a checkpoint the trainer wrote.**  Since
+Wf-A30-1 the checkpoint is a raw pickle written through
+`atomic_write_file`; the resume path called `torch.load` directly, which
+raises `RuntimeError: Invalid magic number; corrupt file?`.  MEASURED on
+`/tmp/audit_e2e2/ckpt/...seed0.pt`: torch.load FAIL, pickle.load OK.  The
+inference side had fixed this on 2026-10-18 (`_load_checkpoint_any`); the
+trainer had not.  `load_cfm_checkpoint` now tries torch.load first and falls
+back to pickle only on the magic-number error.  VERIFIED: resuming from
+`/tmp/audit_e2e3` loads and continues at epoch 1.
+
+**3. `--seed` did not control the batch order.**  `train_one_epoch` built its
+permutation from `np.random.default_rng(seed=int(time.time()) % 2**31 - 1)`,
+so two identical launches saw different batches and could not be compared
+step by step.  `_epoch_permutation(n, shuffle_seed, epoch)` mixes the run seed
+with the epoch: reproducible per run, still different every epoch.  MEASURED:
+two runs of the same config now report identical
+`train_loss=0.9364 bond_ce=1.0109 grad_norm=2.717`.
+
+**Honest-negative (ACTIVE, this entry):**
+  * **No quality gate yet.**  The metal block is verified to be *read*
+    (`test_metal_geometry_changes_the_logits` moves only the metal and
+    requires the logits to move) and to train end-to-end, but no 5-epoch GPU
+    run has measured whether it improves bond F1 / ring profile.
+  * **The other three heads are unchanged.**  `YuelBondEdgeMPNNHead` and
+    `YuelBondEdgeMPNNHeadResidual` still see the metal only through Z +
+    `is_dative`; `DMPNNBondHead` likewise.
+  * **Old checkpoints need the automatic fallback.**  A pre-Wf-A90 checkpoint
+    carries no `use_metal_pair_features` key, so the resume probe and
+    `build_joint_model` both default it to False.  That is a compatibility
+    path, not a recommendation: a resumed run keeps the old architecture.
+  * **The checkpoint probe reads the whole file** to inspect `args`.  On a
+    6 MB checkpoint this is negligible; on a multi-GB one it would not be.
+
+**§6.121 catalog-count math.** Net catalog-count delta: **+1** (§6.121 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **173 -> 174** (+1).
+ACTIVE count: **129 -> 130** (+1).
+
+**Workflow** | Wf-A90 (2026-10-19; 0 GPU — 13 new CPU tests + 4 CPU e2e
+smokes including a two-run reproducibility check and two resume checks; §5.2:
+every number traces to `/tmp/audit_e2e3` / `/tmp/repro1` / `/tmp/repro2`;
+§5.3 + §5.4: 0 paper/* + 0 wet-lab).

@@ -320,6 +320,82 @@ def _z_to_onehot(z: torch.Tensor) -> torch.Tensor:
 # ---------------------------------------------------------------------------
 # YuelBondDecoderHead — small message-passing GNN
 # ---------------------------------------------------------------------------
+#: Width of the metal-geometry block appended to the pair head input.
+#: Wf-A90 (2026-10-19) — see :func:`_metal_pair_features`.
+METAL_PAIR_FEATURE_DIM: int = 3
+
+
+def _metal_pair_features(
+    cloud: "AtomCloud",
+    i_idx: torch.Tensor,
+    j_idx: torch.Tensor,
+    metal_set: "frozenset",
+    cutoff: float = 3.5,
+) -> torch.Tensor:
+    """(E, 3) metal-geometry features for the pair head.
+
+    Wf-A90 (2026-10-19) — the shipped head saw the metal only through the
+    atom-Z embedding and a boolean ``is_dative``.  It had no way to express
+    "this pair subtends 170 degrees at the metal" or "this pair sits 2.1 A
+    from the metal", which is exactly what separates a cis-donor pair from
+    two ligand atoms that merely happen to be close.  The 5-metal
+    differentiation therefore rested on Z alone.
+
+    Columns (all scaled to O(1), matching the other pair inputs):
+
+      0. ``d_to_metal``     — ||midpoint(i, j) - metal|| / cutoff.
+      1. ``angle_to_metal`` — angle i-metal-j in radians / pi, in [0, 1].
+         Zero for edges incident to the metal (the angle is undefined)
+         and for clouds with no metal.
+      2. ``is_metal_edge``  — 1.0 when either endpoint IS the metal.
+
+    The metal index comes from ``cloud.metal_atom_index`` when it is a
+    valid atom index (Wf-A88 makes the sampler carry it), else from the
+    first atom whose Z is in ``metal_set``.  With no metal at all this
+    returns zeros, so a metal-free decode behaves exactly as before.
+    """
+    n_edges = int(i_idx.numel())
+    p = cloud.positions
+    z = cloud.atomic_numbers
+    dev = p.device
+    out = torch.zeros((n_edges, METAL_PAIR_FEATURE_DIM), device=dev, dtype=p.dtype)
+    if n_edges == 0:
+        return out
+    n_atoms = int(z.shape[0])
+    metal_idx = -1
+    idx_attr = getattr(cloud, "metal_atom_index", None)
+    if idx_attr is not None:
+        value = int(idx_attr.item()) if torch.is_tensor(idx_attr) else int(idx_attr)
+        if 0 <= value < n_atoms:
+            metal_idx = value
+    if metal_idx < 0:
+        for k, zk in enumerate(z.tolist()):
+            if int(zk) in metal_set:
+                metal_idx = k
+                break
+    if metal_idx < 0:
+        return out
+    p_m = p[metal_idx]
+    u = p[i_idx] - p_m
+    v = p[j_idx] - p_m
+    nu = u.norm(dim=-1)
+    nv = v.norm(dim=-1)
+    eps = 1e-6
+    cos = (u * v).sum(-1) / (nu.clamp(min=eps) * nv.clamp(min=eps))
+    angle = torch.acos(cos.clamp(-1.0, 1.0)) / torch.pi
+    degenerate = (nu < eps) | (nv < eps)
+    angle = torch.where(degenerate, torch.zeros_like(angle), angle)
+    mid = 0.5 * (p[i_idx] + p[j_idx])
+    d_to_metal = (mid - p_m).norm(dim=-1) / max(float(cutoff), eps)
+    metal_t = torch.as_tensor(sorted(metal_set), device=dev, dtype=z.dtype)
+    is_metal_edge = (
+        torch.isin(z[i_idx], metal_t) | torch.isin(z[j_idx], metal_t)
+    ).to(p.dtype)
+    out[:, 0] = d_to_metal
+    out[:, 1] = angle
+    out[:, 2] = is_metal_edge
+    return out
+
 class YuelBondDecoderHead(nn.Module):
     """Small GNN that maps an :class:`AtomCloud` to per-pair bond logits.
 
@@ -365,6 +441,12 @@ class YuelBondDecoderHead(nn.Module):
         # behaviour bit-exactly for older checkpoints; ``"all6"`` covers
         # the 6 precious-metal Pt-group + Re subset.
         metal_set: str = "all7",
+        # Wf-A90 (2026-10-19) — append the 3-d metal-geometry block
+        # (d_to_metal / angle_to_metal / is_metal_edge) to the pair-head
+        # input.  Default False keeps every existing checkpoint loadable
+        # bit-exactly; the trainer turns it ON for new runs through
+        # --use-metal-pair-features (YAML flow.use_metal_pair_features).
+        use_metal_features: bool = False,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -401,8 +483,13 @@ class YuelBondDecoderHead(nn.Module):
             ]
         )
         # Pair head: [h_i, h_j, d_ij, dative] -> NUM_BOND_CLASSES logits
+        # Wf-A90 — +3 metal-geometry columns when use_metal_features.
+        self.use_metal_features = bool(use_metal_features)
+        _pair_in_dim = hidden_dim * 2 + 3 + (
+            METAL_PAIR_FEATURE_DIM if self.use_metal_features else 0
+        )
         self.pair_head = nn.Sequential(
-            nn.Linear(hidden_dim * 2 + 3, hidden_dim),
+            nn.Linear(_pair_in_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, NUM_BOND_CLASSES),
         )
@@ -606,16 +693,20 @@ class YuelBondDecoderHead(nn.Module):
         if self.use_skip and self.skip_proj is not None:
             h = h + self.skip_proj(h_atom)
         # Pair head
-        pair_in = torch.cat(
-            [
-                h[i_idx],
-                h[j_idx],
-                d.unsqueeze(-1),
-                is_dative,
-                is_short,
-            ],
-            dim=-1,
-        )
+        _pair_parts = [
+            h[i_idx],
+            h[j_idx],
+            d.unsqueeze(-1),
+            is_dative,
+            is_short,
+        ]
+        if self.use_metal_features:
+            _pair_parts.append(
+                _metal_pair_features(
+                    cloud, i_idx, j_idx, self.metal_set, cutoff=self.cutoff
+                )
+            )
+        pair_in = torch.cat(_pair_parts, dim=-1)
         logits = self.pair_head(pair_in)
         return logits, (i_idx, j_idx)
 

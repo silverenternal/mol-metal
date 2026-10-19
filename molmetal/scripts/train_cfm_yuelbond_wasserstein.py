@@ -1743,6 +1743,10 @@ class CFMJointModel(nn.Module):
         # BondOrderHead registers an extra Linear(hidden_dim, hidden_dim)
         # projection from fc1 to the pre-`out` activation (ResNet-style).
         use_bond_head_skip: bool = False,
+        # Wf-A90 (2026-10-19) — 3-d metal-geometry block on the pair head
+        # (d_to_metal / angle_to_metal / is_metal_edge).  Default False so
+        # every pre-Wf-A90 checkpoint rebuilds with its original width.
+        use_metal_pair_features: bool = False,
         # Wf-A69 W2 (2026-10-17) Fix 5 — metal-set preset passed to
         # :class:`YuelBondDecoderHead`.  Default ``"all7"`` covers
         # Pt/Ru/Ir/Os/Rh/Re/Pd so the dative-bond rule lights up the
@@ -1913,6 +1917,7 @@ class CFMJointModel(nn.Module):
                 # for bit-exact legacy behaviour on Wf-A67/68/W1
                 # checkpoints.
                 metal_set=str(bond_z_metal_set),
+                use_metal_features=bool(use_metal_pair_features),
             )
         elif str(bond_predictor).lower() == "yuelbond_edge_mpnn":
             # Wf-A70 W1 (2026-10-17) — Fix 6: YuelBond B.1 edge-state
@@ -3502,6 +3507,22 @@ def apply_fm_distortion(
 ENTROPY_REG_MEASURED_FLOOR = 0.12
 
 
+def _epoch_permutation(n: int, shuffle_seed: int, epoch: int) -> "list[int]":
+    """Batch order for one epoch, reproducible in (run seed, epoch).
+
+    Wf-A90 (2026-10-19).  This was inline
+    ``np.random.default_rng(seed=int(time.time()) % 2**31 - 1)``: every run
+    and every epoch drew from the wall clock, so ``--seed`` did not control
+    the order and two identical launches could not be compared step by
+    step.  The epoch is mixed in so the permutation still changes between
+    epochs (a fixed order every epoch would let the model learn batch
+    boundaries).
+    """
+    rng = np.random.default_rng(
+        (int(shuffle_seed) * 100003 + int(epoch)) % (2**31 - 1)
+    )
+    return rng.permutation(int(n)).tolist()
+
 def train_one_epoch(
     model: CFMJointModel,
     decoder: YuelBondBondDecoder,
@@ -3537,6 +3558,13 @@ def train_one_epoch(
     # 0.293 with precision 0.870.  Weighting the rare classes lifts the
     # cost of missing a real bond above the cost of a false one.
     bond_class_weights: Optional[torch.Tensor] = None,
+    # Wf-A90 (2026-10-19) — batch-order reproducibility.  The epoch
+    # permutation was seeded from time.time(), so --seed did not control it
+    # and two runs with identical args saw different batches (and therefore
+    # different losses).  shuffle_seed=args.seed + epoch gives a fresh
+    # permutation each epoch that is reproducible for a given run seed.
+    shuffle_seed: int = 0,
+    epoch: int = 0,
     # 2026-10-18 — Wf-A73 Operator 1 (Menon 2020 per-class logit
     # adjustment).  When bond_logit_adjustment is True and
     # bond_class_prior is set, the bond logits are shifted by
@@ -3828,8 +3856,11 @@ def train_one_epoch(
     # legacy 2-tuple path stays bit-for-bit untouched.
     _need_edge_index = _use_assemble or _use_soft_valence
     n_train = len(train_clouds)
-    rng = np.random.default_rng(seed=int(time.time()) % (2**31 - 1))
-    order = rng.permutation(n_train).tolist()
+    # Wf-A90 — deterministic in (run seed, epoch).  MEASURED consequence of
+    # the old time.time() seed: identical launches produced different batch
+    # orders, so a "same-seed" pair of runs could not be compared step by
+    # step.  The permutation still changes every epoch.
+    order = _epoch_permutation(n_train, shuffle_seed, epoch)
     for batch_start in range(0, n_train, batch_size):
         _t_loop0 = _stage_tick()
         batch_indices = order[batch_start : batch_start + batch_size]
@@ -9334,6 +9365,23 @@ def parse_args() -> argparse.Namespace:
     # via YAML `flow.use_bond_head_skip`.  Default OFF preserves
     # Wf-A67 bit-exact compat.
     p.add_argument(
+        "--use-metal-pair-features",
+        dest="use_metal_pair_features",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Wf-A90 (2026-10-19): append three metal-geometry columns "
+            "(d_to_metal / angle_to_metal / is_metal_edge) to the YuelBond "
+            "pair-head input.  Before this the shipped head saw the metal "
+            "only through the atom-Z embedding and the is_dative boolean, "
+            "so a cis-donor pair and two unrelated ligand atoms at the same "
+            "distance were indistinguishable.  Default ON for new runs; "
+            "set false (YAML flow.use_metal_pair_features) to reproduce a "
+            "pre-Wf-A90 architecture.  A checkpoint written before this "
+            "flag existed rebuilds with the feature OFF automatically."
+        ),
+    )
+    p.add_argument(
         "--use-bond-head-skip",
         dest="use_bond_head_skip",
         action=argparse.BooleanOptionalAction,
@@ -11547,9 +11595,45 @@ def build_joint_model(args, device=None) -> "CFMJointModel":
         n_edge_layers=int(getattr(args, "n_edge_layers", 4)),
         # Wf-A68 (2026-10-17) — bond-head residual skip (Spot 4).
         use_bond_head_skip=bool(getattr(args, "use_bond_head_skip", False)),
+        # Wf-A90 — default False HERE on purpose: this getattr is also the
+        # path that rebuilds a checkpoint from its serialised args, and a
+        # pre-Wf-A90 checkpoint has no such key.  parse_args supplies the
+        # live default (True) for new runs.
+        use_metal_pair_features=bool(
+            getattr(args, "use_metal_pair_features", False)
+        ),
     )
     return model.to(device) if device is not None else model
 
+
+def load_cfm_checkpoint(path, map_location="cpu"):
+    """Load a CFM checkpoint in EITHER serialisation the trainer emits.
+
+    Wf-A90 (2026-10-19) — the same break `cfm_property_panel._load_checkpoint_any`
+    fixed on the inference side on 2026-10-18: since Wf-A30-1 the trainer
+    writes checkpoints as a raw pickle through
+    `wf386a3_atomic_write.atomic_write_file`, not through `torch.save`.
+    `torch.load` on such a file raises
+    `RuntimeError: Invalid magic number; corrupt file?`.  MEASURED on
+    `/tmp/audit_e2e2/ckpt/cfm_yuelbond_wasserstein_seed0.pt`: torch.load
+    fails, pickle.load succeeds and returns the expected keys.  Because the
+    `--resume-from` path called torch.load directly, NO run could resume
+    from a checkpoint its own trainer had written for the preceding five
+    days.
+
+    Order matters: torch.load first (zip magic), pickle only on the
+    magic-number error, so a genuinely truncated file still raises instead
+    of producing a confusing UnpicklingError.
+    """
+    import pickle
+
+    try:
+        return torch.load(str(path), map_location=map_location, weights_only=False)
+    except RuntimeError as exc:
+        if "magic number" not in str(exc):
+            raise
+        with open(path, "rb") as fh:
+            return pickle.load(fh)
 
 def main() -> int:
     args = parse_args()
@@ -11715,6 +11799,56 @@ def main() -> int:
             flush=True,
         )
     ckpt_dir.mkdir(parents=True, exist_ok=True)
+
+    # Wf-A90 (2026-10-19) — reconcile the ARCHITECTURE with the checkpoint
+    # BEFORE the model is built.
+    #
+    # --use-metal-pair-features defaults ON for new runs, but a checkpoint
+    # written before the flag existed carries a narrower
+    # head.pair_head.0.weight.  load_state_dict raises on a shape mismatch
+    # even with strict=False, and rebuilding the head afterwards would leave
+    # its new parameters outside the already-constructed optimizer's param
+    # groups.  So the checkpoint wins here, once, before either exists.
+    _probe_mode = str(getattr(args, "resume_from", "auto") or "auto").strip().lower()
+    _probe_path: Optional[Path] = None
+    if _probe_mode == "auto":
+        _probe_cand = ckpt_dir / f"cfm_yuelbond_wasserstein_seed{int(args.seed)}.pt"
+        if _probe_cand.is_file():
+            _probe_path = _probe_cand
+    elif _probe_mode == "path":
+        _probe_raw = getattr(args, "resume_from_path", None)
+        if _probe_raw and str(_probe_raw).strip():
+            _probe_try = Path(str(_probe_raw))
+            if not _probe_try.is_file():
+                _probe_try = PROJECT_ROOT / str(_probe_raw)
+            if _probe_try.is_file():
+                _probe_path = _probe_try
+    if _probe_path is not None:
+        try:
+            _probe = load_cfm_checkpoint(_probe_path, map_location="cpu")
+        except Exception as _probe_exc:  # noqa: BLE001
+            _probe = None
+            print(
+                f"[cfm-resume] could not probe {_probe_path.name} "
+                f"({type(_probe_exc).__name__}); architecture reconciliation "
+                "skipped.",
+                flush=True,
+            )
+        _probe_args = _probe.get("args") if isinstance(_probe, dict) else None
+        if isinstance(_probe_args, dict):
+            # A pre-Wf-A90 checkpoint has no key at all: its head had no
+            # metal block, so the honest default for a missing key is False.
+            _ck_metal = bool(_probe_args.get("use_metal_pair_features", False))
+            if _ck_metal != bool(getattr(args, "use_metal_pair_features", True)):
+                print(
+                    f"[cfm-resume] {_probe_path.name} was trained with "
+                    f"use_metal_pair_features={_ck_metal}; overriding the "
+                    f"launch value "
+                    f"({bool(getattr(args, 'use_metal_pair_features', True))}) "
+                    "so the head width matches the weights.",
+                    flush=True,
+                )
+            args.use_metal_pair_features = _ck_metal
 
     # Wf-TUI NEW: install structured-event emitter BEFORE any training
     # step (so epoch-start + checkpoint-resume + lr-step events all
@@ -12621,6 +12755,21 @@ def main() -> int:
         f"use_yuelbond={_use_yuelbond} joint_train=True "
         f"learnable_vel_scale=True (consistent)"
     )
+    # Wf-A90 — say which pair-head architecture is live.  The metal block
+    # changes pair_head.0.weight from (H, 2H+3) to (H, 2H+6); a run that
+    # silently fell back to the narrow head would look identical in every
+    # other log line.
+    _metal_pair_on = bool(getattr(args, "use_metal_pair_features", False))
+    if _metal_pair_on:
+        print(
+            "[cfm-head] metal_pair_features=ON "
+            "(d_to_metal / angle_to_metal / is_metal_edge -> pair_head)"
+        )
+    else:
+        print(
+            "[cfm-head] metal_pair_features=OFF (pre-Wf-A90 architecture: "
+            "the head sees the metal only through the Z embedding + is_dative)"
+        )
     # BLK-C5 (2026-10-09) — 用户建议二: '检查解码策略'.  Echo the decode knobs
     # actually in force so the log says what the decoder was doing, plus the
     # alternative to try if decode_ratio keeps falling (the BLK-C4 signature
@@ -12831,7 +12980,9 @@ def main() -> int:
             f"--resume-from must be one of auto/none/path; got {_resume_mode!r}."
         )
     if _resume_path is not None:
-        _rsd = torch.load(_resume_path, map_location=device, weights_only=False)
+        # Wf-A90 — torch.load cannot read the pickle the trainer writes
+        # since Wf-A30-1; see load_cfm_checkpoint.
+        _rsd = load_cfm_checkpoint(_resume_path, map_location=device)
         _rstate = _rsd.get("model_state_dict", _rsd)
         try:
             # Wf-A30-1 (2026-10-14) — strict=False + allow-list log so a
@@ -13031,6 +13182,9 @@ def main() -> int:
             consistency_weight=float(getattr(args, "consistency_weight", 0.0)),
             per_cohort_features=bool(getattr(args, "per_cohort_features", False)),
             bond_class_weights=_bond_class_weights,
+            # Wf-A90 — reproducible epoch permutation.
+            shuffle_seed=int(getattr(args, "seed", 0)),
+            epoch=int(epoch),
             # Wf-A73 (2026-10-18) Operator 1 — per-class logit adjustment
             # (Menon 2020).  Opt-in via YAML bond_logit_adjustment: true;
             # default OFF preserves the Wf-A71 bit-exact compat path.

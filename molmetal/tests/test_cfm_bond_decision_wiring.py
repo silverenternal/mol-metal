@@ -169,12 +169,20 @@ def test_decoder_selector_is_not_hardcoded_argmax():
 
 
 def test_trainer_passes_the_configured_rule_to_the_decoder():
+    # 2026-10-19 — Wf-A35-1 replaced the inline
+    # `decision=str(getattr(args, "bond_decision", ...))` spelling with the
+    # single `bond_decision_settings(vars(args))` read-site, so the old
+    # string assertion failed on a refactor that kept the wiring intact.
+    # Assert the wiring, not the spelling.
     src = TRAINER.read_text()
-    assert "decision=str(getattr(args, \"bond_decision\"" in src, (
-        "the trainer must forward --bond-decision to YuelBondBondDecoder; "
+    assert "_bond_decision_settings(" in src, (
+        "the trainer must read the decision triplet through the one helper; "
         "otherwise the yaml setting only reaches the metrics"
     )
-    assert "decision_threshold=float(" in src
+    assert "decision=_dec_decision," in src, (
+        "the trainer must forward --bond-decision to YuelBondBondDecoder"
+    )
+    assert "decision_threshold=_dec_threshold," in src
 
 
 def test_metric_and_decode_share_one_definition():
