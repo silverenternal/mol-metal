@@ -7061,3 +7061,55 @@ wet-lab).
 
 ---
 
+## §6.132 — MET-11: a generated table is only as honest as the artifact behind it
+
+**Claim under test.**  §5.2 requires every number in the paper to trace to a
+JSON/report path.  MET-11 asks whether that trace can be *generated* rather
+than transcribed, and what a generated table still cannot promise.
+
+**Setup.**  `molmetal/scripts/paper_metric_tables.py` declares 9 tables
+(T1..T9) whose cells are `(file, JSON pointer)` pairs.  It resolves each
+pointer against `metrics/by_metric/*.json`, writes md + csv, and records the
+sha256 of every source artifact in `metrics/paper_tables/manifest.json`.
+`--strict` exits 1 on any unresolved cell.
+
+**MEASURED.**  98 rows, 9 tables, 10 source artifacts, **0 MISSING**, 1
+optional absent (`msrs_power.json:/metrics/delta_mae_doi/target_effect`, absent
+by design because that metric has no target effect).  18 tests pass.  Spot
+checks: 0.5828 / 0.3321 / 0.4503 / 0.3739 / 0.6193 / 0.5089 / 0.1168 / 0.5600 /
+0.5575 all equal their artifact fields.
+
+**Honest negatives (ACTIVE, this entry):**
+  * **Table correct is not conclusion correct.**  The generator guarantees the
+    table matches the artifact, not that the artifact is current.  The manifest
+    stores sha256 but does not compare it with anything; re-running an artifact
+    does not re-run the tables.  A stale table is a silent failure mode.
+  * **T1 mixes runs.**  5-seed R2 comes from `msrs_seed_stability`, the four
+    protocols from `msrs_generalization`, the delta metrics from
+    `msrs_delta_metrics`, and the decision numbers from `msrs_decision_curve`.
+    Same corpus and arm name, different fits.  T1 is a reading convenience, not
+    one model's row.
+  * **Four decimals hide small differences.**  Any effect below 1e-4 is
+    invisible in the tables; fine-grained comparisons must read the artifact.
+  * **Optional absence is invisible in the table body.**  A missing-by-design
+    field renders as `-`, exactly like a definitionally-empty column.  Only the
+    manifest's `optional_absent` list distinguishes them.
+  * **No wording is generated.**  "Boundary", "limitation", "not a selling
+    point" stay in `METRIC_GAP_ANALYSIS.md` and this catalog.  If the tables
+    ever grow prose, there will be two narratives that can disagree.
+  * **No automatic recompute.**  The script reads artifacts and nothing else.
+    Wiring it to training would turn "generate tables" into a multi-hour job
+    whose output depends on the machine.
+
+**Why this matters.**  The tables make S5 mechanical for the numbers they
+cover, and they make the remaining gap explicit: provenance is checked, freshness
+is not.
+
+**§6.132 catalog-count math.** Net catalog-count delta: **+1** (§6.132 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **184 -> 185** (+1).
+ACTIVE count: **140 -> 141** (+1).
+
+**Workflow** | MET-11 (2026-10-19; 0 GPU — pure JSON reads; 18 new tests; §5.2:
+every cell names its artifact pointer; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---

@@ -1,0 +1,187 @@
+{
+  "generated_utc": "2026-10-19T11:45:22Z",
+  "tables": [
+    {
+      "id": "T1_main_predictive",
+      "title": "Main predictive metrics",
+      "rows": 14,
+      "columns": [
+        "Metric",
+        "Unit",
+        "Value",
+        "Source",
+        "Tag"
+      ],
+      "markdown": "metrics/paper_tables/T1_main_predictive.md",
+      "csv": "metrics/paper_tables/T1_main_predictive.csv",
+      "missing": [],
+      "optional_absent": []
+    },
+    {
+      "id": "T2_generalization",
+      "title": "Four-protocol generalization matrix (arm ligand+both)",
+      "rows": 4,
+      "columns": [
+        "Metric",
+        "Groups",
+        "Rows scored",
+        "R2",
+        "95% CI",
+        "dR2 vs ligand",
+        "Source",
+        "Tag"
+      ],
+      "markdown": "metrics/paper_tables/T2_generalization.md",
+      "csv": "metrics/paper_tables/T2_generalization.csv",
+      "missing": [],
+      "optional_absent": []
+    },
+    {
+      "id": "T3_calibration",
+      "title": "Conformal calibration (alpha=0.10, nominal 90%)",
+      "rows": 8,
+      "columns": [
+        "Metric",
+        "Coverage",
+        "Median width",
+        "Winkler",
+        "PIT KS",
+        "Slope",
+        "R2(fit)",
+        "Bias",
+        "Source",
+        "Tag"
+      ],
+      "markdown": "metrics/paper_tables/T3_calibration.md",
+      "csv": "metrics/paper_tables/T3_calibration.csv",
+      "missing": [],
+      "optional_absent": []
+    },
+    {
+      "id": "T4_mechanism",
+      "title": "Metal ablation, LightGBM (R2 and paired group bootstrap)",
+      "rows": 18,
+      "columns": [
+        "Metric",
+        "R2",
+        "dR2 vs full",
+        "95% CI",
+        "p (one-sided)",
+        "Features",
+        "Source",
+        "Tag"
+      ],
+      "markdown": "metrics/paper_tables/T4_mechanism.md",
+      "csv": "metrics/paper_tables/T4_mechanism.csv",
+      "missing": [],
+      "optional_absent": []
+    },
+    {
+      "id": "T5_decision",
+      "title": "Decision curve: model vs global_best at two coverage levels",
+      "rows": 8,
+      "columns": [
+        "Metric",
+        "Mean regret",
+        "Top-1",
+        "NB(0.5)",
+        "p (Holm)",
+        "Source",
+        "Tag"
+      ],
+      "markdown": "metrics/paper_tables/T5_decision.md",
+      "csv": "metrics/paper_tables/T5_decision.csv",
+      "missing": [],
+      "optional_absent": []
+    },
+    {
+      "id": "T6_power",
+      "title": "Minimum detectable effect at 80% power, alpha=0.05 one-sided",
+      "rows": 7,
+      "columns": [
+        "Metric",
+        "Observed",
+        "95% CI",
+        "MDE",
+        "n clusters",
+        "n required",
+        "Powered",
+        "Target effect",
+        "Source",
+        "Tag"
+      ],
+      "markdown": "metrics/paper_tables/T6_power.md",
+      "csv": "metrics/paper_tables/T6_power.csv",
+      "missing": [],
+      "optional_absent": [
+        "msrs_power.json:/metrics/delta_mae_doi/target_effect ('target_effect')"
+      ]
+    },
+    {
+      "id": "T7_generation",
+      "title": "Generation-side metrics (66 survivors from 192 attempts)",
+      "rows": 11,
+      "columns": [
+        "Metric",
+        "Value",
+        "Target",
+        "Passed",
+        "Source",
+        "Tag"
+      ],
+      "markdown": "metrics/paper_tables/T7_generation.md",
+      "csv": "metrics/paper_tables/T7_generation.csv",
+      "missing": [],
+      "optional_absent": []
+    },
+    {
+      "id": "T8_data",
+      "title": "Corpus and split contamination",
+      "rows": 23,
+      "columns": [
+        "Metric",
+        "Value",
+        "Source",
+        "Tag"
+      ],
+      "markdown": "metrics/paper_tables/T8_data.md",
+      "csv": "metrics/paper_tables/T8_data.csv",
+      "missing": [],
+      "optional_absent": []
+    },
+    {
+      "id": "T9_seed_stability",
+      "title": "Five-seed stability, canonical ligand-grouped split",
+      "rows": 5,
+      "columns": [
+        "Metric",
+        "R2 mean",
+        "R2 SD",
+        "MAE mean",
+        "MAE SD",
+        "dR2 vs tree",
+        "p (one-sided)",
+        "Source",
+        "Tag"
+      ],
+      "markdown": "metrics/paper_tables/T9_seed_stability.md",
+      "csv": "metrics/paper_tables/T9_seed_stability.csv",
+      "missing": [],
+      "optional_absent": []
+    }
+  ],
+  "sources": {
+    "cfm_generation_metrics.json": "435a50b1e21b282fe3cb235603522ce3adff891c80139657d76ffa781dd7bb29",
+    "metal_lomo_auc_wasserstein.json": "0a3d3cae45b526679613ee64768d76becb9a309ed4fc37917d09d0a29fb6ceb9",
+    "msrs_calibration.json": "80f752b603bf5e1316fabcfa2076703a194ee380f5e2d5215fe39ba774babb29",
+    "msrs_data_card.json": "e5ede80810c1c8c0823c8da3c6b7d72e63f25bd9d9d7d5d2f47a703b76169e19",
+    "msrs_decision_curve.json": "9bbcb4c105013ecf0edfb061ac994f4aafd43d8fde05d785c4d15b45a3ab47e1",
+    "msrs_delta_metrics.json": "3178ca6e3dba0e76b69723ca9e4aa91616cdfb87b2185faa59abf8585edcd530",
+    "msrs_generalization.json": "30dbec08253fe25f662f395d32f09d5e7b0d44b69c34f1cc1d68b4b942495646",
+    "msrs_metal_ablation.json": "534ad5e89818fa9d0c983a61a72ffab5748f5125a1e06603194bd2d702c1f5f0",
+    "msrs_power.json": "e9de828d3e365ad72cbed4be4ae2de5694d7114b2a263628847a867dca8fe0da",
+    "msrs_seed_stability.json": "aba8b56cacc00bdf8a56f98d9c9f06c940dc75b4a87b2989b7b7939289315ea7"
+  },
+  "missing_total": 0,
+  "optional_absent_total": 1
+}

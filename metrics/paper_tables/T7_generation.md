@@ -1,0 +1,19 @@
+# Generation-side metrics (66 survivors from 192 attempts)
+
+Generated 2026-10-19T11:45:22Z from `metrics/by_metric/*.json`.
+
+Novelty is 1 - max Tanimoto to the CFM train split (Morgan r=2, 1024 bits).
+
+| Metric | Value | Target | Passed | Source | Tag |
+|---|---|---|---|---|---|
+| Yield from attempts | 0.3440 | - | - | cfm_generation_metrics.json:/cohort/yield_from_attempts | MEASURED |
+| Parse rate | 1.0000 | - | - | cfm_generation_metrics.json:/cohort/parse_rate | MEASURED |
+| Uniqueness | 1.0000 | - | - | cfm_generation_metrics.json:/cohort/uniqueness | MEASURED |
+| Mean max Tanimoto | 0.1483 | - | - | cfm_generation_metrics.json:/novelty/mean_max_tanimoto | MEASURED |
+| Mean novelty | 0.8517 | 0.9000 | False | cfm_generation_metrics.json:/checks/mean_novelty/value; cfm_generation_metrics.json:/checks/mean_novelty/target; cfm_generation_metrics.json:/checks/mean_novelty/passed | MEASURED |
+| Fraction max T < 0.9 | 1.0000 | 0.9000 | True | cfm_generation_metrics.json:/checks/novelty_fraction_at_0.9/value; cfm_generation_metrics.json:/checks/novelty_fraction_at_0.9/target; cfm_generation_metrics.json:/checks/novelty_fraction_at_0.9/passed | MEASURED |
+| IntDiv1 | 0.8526 | 0.8500 | True | cfm_generation_metrics.json:/checks/intdiv1/value; cfm_generation_metrics.json:/checks/intdiv1/target; cfm_generation_metrics.json:/checks/intdiv1/passed | MEASURED |
+| SA | 6.4423 | 4.5000 | False | cfm_generation_metrics.json:/checks/sa/value; cfm_generation_metrics.json:/checks/sa/target; cfm_generation_metrics.json:/checks/sa/passed | MEASURED |
+| QED | 0.0944 | - | - | cfm_generation_metrics.json:/checks/qed/value | MEASURED |
+| Metal compliance | 1.0000 | - | - | cfm_generation_metrics.json:/metal_compliance/compliance | MEASURED |
+| Docking status | BLOCKED | - | BLOCKED | cfm_generation_metrics.json:/checks/docking/status; cfm_generation_metrics.json:/checks/docking/status | MEASURED |

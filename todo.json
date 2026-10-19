@@ -25,7 +25,7 @@
       "S4": "效应量 + 置信区间 + 多重校正（DOI 聚类、Holm）",
       "S5": "每个数字可追到 artifact 字段"
     },
-    "immediate_goal": "P0 + wave_M2_decision 已全部关闭；P2 MET-9 生成侧指标 DONE-NEGATIVE（SA 6.4423 > 4.5、平均 novelty 0.8517 < 0.90、对接 BLOCKED 1/10）。剩余：MET-7 外部独立数据集（BLOCKED-PENDING-DATA）、P3 MET-11 指标表自动化。论文线仍冻结（MSRS-8），解冻需用户显式同意。"
+    "immediate_goal": "P0 + P1 + P2 + P3 全部关闭：MET-1/6/10/11 PASS，MET-2/3/4/5/9 NEGATIVE，MET-8 PASS（null 均为真 miss）。唯一未完成项是 MET-7 外部独立数据集（BLOCKED-PENDING-DATA：无 ≥200 行外部交集）。论文线仍冻结（MSRS-8），解冻需用户显式同意；解冻后直接从 metrics/paper_tables/ 取数。"
   },
   "current_position": {
     "measured_facts": [
@@ -46,7 +46,8 @@
       "金属消融（MET-6，最终树）：metal-blind 掉 0.0683 [0.0516, 0.0903]（ligand）/ 0.0693 [0.0509, 0.0884]（DOI），置换 p=0.0099（分辨率下限）。金属 one-hot 只值 0.0064/0.0053；cell-blind 掉 0.0629/0.0442；no_coord 单独 CI 含 0；仅 26 列金属/细胞特征 R²=0.4186，仅 ECFP4 R²=0.4200，两半近似可加。",
       "决策曲线（MET-5，425 队列）：DOI 50% 覆盖 regret 0.1115 vs global_best 0.1067（聚类 Δ−0.0143，Holm p=1.0）；全覆盖 0.1168 vs 0.1195（top-1 0.560 vs 0.577）。模型 top-1 margin 均值 0.111 log10，baseline 0.280。net benefit(0.5) 0.609 vs 0.595。",
       "统计功效（MET-8）：决策 regret MDE 0.050（62 DOI），观测 −0.0034 需 13,571 DOI；Δ 符号 MDE 0.130（53 DOI），0.65 门槛需 40 DOI 可检测；Δ MAE MDE 0.077，观测改善 0.021 需 706 DOI；DOI R² MDE 0.064（1,784 DOI），距 0.50 差 0.168；表示增益 MDE 0.019、金属消融 MDE 0.024，两者效应均远超 MDE。",
-      "生成侧指标（MET-9，66 个存活样本）：yield 0.344、uniqueness 1.0；max Tanimoto 仅 0.108–0.185，平均 novelty 0.8517（<0.90），但 max T<0.9 比例 1.000；IntDiv1 0.8526 vs 同 n 训练子样本 0.8234（+0.0292，与 m7 的 0.869@n=37 符号相反）；SA 6.4423（>4.5）、QED 0.0944；金属合规 1.0（Ir18/Ru16/Rh15/Re13/Os4）；对接 BLOCKED（1/10 pocket，run died）。"
+      "生成侧指标（MET-9，66 个存活样本）：yield 0.344、uniqueness 1.0；max Tanimoto 仅 0.108–0.185，平均 novelty 0.8517（<0.90），但 max T<0.9 比例 1.000；IntDiv1 0.8526 vs 同 n 训练子样本 0.8234（+0.0292，与 m7 的 0.869@n=37 符号相反）；SA 6.4423（>4.5）、QED 0.0944；金属合规 1.0（Ir18/Ru16/Rh15/Re13/Os4）；对接 BLOCKED（1/10 pocket，run died）。",
+      "指标表自动化（MET-11）：9 张表 / 98 行 / 10 个源 artifact，0 MISSING、1 optional absent（delta_mae_doi 无 target_effect）；每格带 JSON pointer，manifest 记 10 个源文件 sha256；18 个测试全过。"
     ]
   },
   "metric_gap_analysis": {
@@ -1094,7 +1095,7 @@
       "title": "指标表自动生成",
       "layer": "打包",
       "priority": "P3",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "0.5 天",
       "why": "论文数字必须可追溯；手工表会漂移，且 §5.2 要求每个数字有 artifact 路径。",
@@ -1106,7 +1107,34 @@
         "MET-2",
         "MET-3",
         "MET-4"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/paper_tables/",
+        "script": "molmetal/scripts/paper_metric_tables.py",
+        "tests": "molmetal/tests/test_paper_metric_tables.py (18 passed)",
+        "tables": 9,
+        "rows": 98,
+        "source_artifacts": 10,
+        "missing_cells": 0,
+        "optional_absent": [
+          "msrs_power.json:/metrics/delta_mae_doi/target_effect"
+        ],
+        "strict_exit": 0,
+        "reading": "Each cell is a (file, JSON pointer) pair, so the tables cannot drift from the artifacts without producing MISSING. The manifest records the sha256 of all 10 sources. What it does not do: detect a stale artifact (no freshness check), keep T1 as a single fit (it mixes seed_stability, generalization, delta_metrics and decision_curve), show differences below 4 decimals, or distinguish optional absence in the table body (only in the manifest).",
+        "artifacts": [
+          "metrics/paper_tables/manifest.json",
+          "metrics/paper_tables/T1_main_predictive.md",
+          "metrics/paper_tables/T2_generalization.md",
+          "metrics/paper_tables/T3_calibration.md",
+          "metrics/paper_tables/T4_mechanism.md",
+          "metrics/paper_tables/T5_decision.md",
+          "metrics/paper_tables/T6_power.md",
+          "metrics/paper_tables/T7_generation.md",
+          "metrics/paper_tables/T8_data.md",
+          "metrics/paper_tables/T9_seed_stability.md"
+        ]
+      },
+      "acceptance_result": "PASSED (one command rebuilds 9 tables / 98 rows; 0 hardcoded numbers; 0 MISSING, 1 optional absent; --strict exits 0)"
     },
     {
       "id": "FIX-L4",
@@ -1177,7 +1205,7 @@
         "MET-11",
         "MSRS-8"
       ],
-      "note": "P3：指标表自动生成；论文整合仍冻结，需 MET-1..6 落盘 + 用户显式同意。"
+      "note": "P3：MET-11 DONE（9 张表 / 98 行 / 0 MISSING，metrics/paper_tables/）；MSRS-8 论文整合仍冻结，需用户显式同意。"
     }
   },
   "open_decisions": [

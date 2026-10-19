@@ -147,7 +147,12 @@
 - **P0（不做就不能投）**：MET-1 5-seed（DONE）、MET-2 四协议（DONE，负）、MET-3 Δ 指标（DONE，负）、MET-4 校准（DONE，负）、MET-6 金属消融（DONE，PASS）、MET-10 数据卡（DONE）。**P0 全部完成。**
 - **P1（决定论文上限）**：MET-5 决策曲线（DONE，负）、MET-7 外部数据、MET-8 统计功效（DONE）。
 - **P2（生成线专用）**：MET-9 生成指标（DONE，负：SA 6.4423 > 4.5、平均 novelty 0.8517 < 0.90、对接 BLOCKED）。
-- **P3（打包）**：MET-11 指标表自动生成。
+- **P3（打包）**：MET-11 指标表自动生成（DONE：9 张表 / 98 行 / 0 MISSING，`metrics/paper_tables/`）。
+
+**S5 现在是机械的。** `molmetal/scripts/paper_metric_tables.py` 从
+`metrics/by_metric/*.json` 直接生成 T1–T9，每个单元格带 artifact pointer，
+解析失败即 `MISSING`（`--strict` 退出码 1）。它保证「表 == 产物」，不保证
+「产物是新的」——manifest 只记 sha256，重跑 artifact 后必须重跑脚本。
 
 ---
 
