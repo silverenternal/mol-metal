@@ -71,8 +71,13 @@ def test_n_train_argparse_default_is_32():
     the legacy 8) lifts the per-step gradient signal above noise.
     """
     default = _get_argparse_default("--n-train")
-    assert default == "32", (
-        f"WF-CFM-Rescue Phase 3: --n-train default must be 32 to give the "
+    # Wf-A94 (2026-10-19) — the exact value is no longer pinned.  Phase 3
+    # set 32; later waves replaced it with DEFAULT_TRAIN_CLOUDS (500), which
+    # is a deliberate data-scale choice, not a regression.  What this test
+    # guards is the invariant it was written for: the default must give the
+    # velocity field far more than the legacy 8 distinct ligands.
+    assert int(default) >= 32, (
+        f"WF-CFM-Rescue Phase 3: --n-train default must be >= 32 to give the "
         f"velocity field enough distinct gradients; got {default}.  Pre-fix "
         f"value was 8."
     )

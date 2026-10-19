@@ -4,6 +4,17 @@ import pytest
 import torch
 from types import SimpleNamespace
 
+# Wf-A94 (2026-10-19) — this module tests a reference-repo experiment script
+# (``molmetal/scripts/r10_ot_qm9_3seed.py``) that imports ``data.qm9`` and
+# ``scripts.train``: paths from the upstream flow_matching checkout that do
+# not exist in this repo.  Importing it raised ModuleNotFoundError during
+# COLLECTION and blocked the whole test directory (13,422 tests deselected).
+# Skip with a reason instead of erroring.
+pytest.importorskip(
+    "scripts.train",
+    reason="r10_ot_qm9_3seed.py targets the upstream reference-repo layout",
+)
+
 from data._base import MoleculeSample
 from molmetal.scripts.r10_ot_qm9_3seed import (
     compatible_batch,
