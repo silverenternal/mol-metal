@@ -71,6 +71,7 @@ IDENTITY = (
     "ligand_canonical",
     "ligand_main_fragment",
 )
+STR_KEYS = ("metal", "cell_line_key", "doi", "ligand_canonical", "ligand_main_fragment")
 
 
 # ---------------------------------------------------------------------------
@@ -94,8 +95,20 @@ def stack_seeds(paths: Sequence[Path], protocols: Sequence[str], arm: str) -> Di
     """Load one arm from several seeds; verify identity columns and folds."""
     per_seed: List[Dict[str, np.ndarray]] = []
     for path in paths:
-        with np.load(path, allow_pickle=False) as data:
+        # These are this project's own OOF files.  Earlier runs stored string
+        # columns as object arrays (a pandas .to_numpy() artefact), which
+        # numpy refuses to load without pickling; the writer now emits <U.
+        with np.load(path, allow_pickle=True) as data:
             per_seed.append({k: data[k] for k in data.files})
+
+    # Normalise dtypes so object/<U and int/float variants compare cleanly.
+    for arrays in per_seed:
+        for key in STR_KEYS:
+            if key in arrays:
+                arrays[key] = np.asarray(arrays[key]).astype(str)
+        for key in ("y", "time_h"):
+            if key in arrays:
+                arrays[key] = np.asarray(arrays[key]).astype(float)
 
     first = per_seed[0]
     for path, arrays in zip(paths[1:], per_seed[1:]):

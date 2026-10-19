@@ -127,5 +127,30 @@ def test_foldwise_one_weight_stays_in_the_unit_interval():
     assert all(0.0 <= p["w_tree"] <= 1.0 for p in params)
 
 
+def test_stack_seeds_accepts_object_string_columns(tmp_path):
+    """Legacy OOF files stored strings as object arrays (pandas artefact)."""
+    n = 4
+    arrays = {
+        "y": np.arange(n, dtype=float),
+        "metal": np.array(["Pt"] * n, dtype=object),
+        "cell_line_key": np.array(["A"] * n, dtype=object),
+        "doi": np.array([f"10.1/{i}" for i in range(n)], dtype=object),
+        "time_h": np.array([24.0] * n, dtype=object),
+        "ligand_canonical": np.array([f"L{i}" for i in range(n)], dtype=object),
+        "ligand_main_fragment": np.array([f"L{i}" for i in range(n)], dtype=object),
+    }
+    for proto in ("ligand", "doi", "scaffold", "year"):
+        arrays[f"{proto}__fold"] = np.array([0, 0, 1, 1], dtype=np.int16)
+        arrays[f"{proto}__ligand+both"] = np.zeros(n)
+        arrays[f"{proto}__gnn_metal_state"] = np.zeros(n)
+    path = tmp_path / "oof_seed0.npz"
+    np.savez_compressed(path, **arrays)
+
+    out = stack_seeds([path], ("doi",), "ligand+both")
+    assert out["doi"].dtype.kind == "U"
+    assert out["time_h"].dtype == float
+    assert out["doi__pred"].shape == (n,)
+
+
 def test_identity_columns_are_the_merge_keys():
     assert "doi" in IDENTITY and "y" in IDENTITY

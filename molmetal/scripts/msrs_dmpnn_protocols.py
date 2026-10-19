@@ -274,12 +274,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     schemes: Dict[str, object] = {}
     oof_arrays: Dict[str, np.ndarray] = {
         "y": y,
-        "metal": frame["metal"].astype(str).to_numpy(),
-        "cell_line_key": frame["cell_line_key"].astype(str).to_numpy(),
-        "doi": frame["doi"].astype(str).to_numpy(),
-        "time_h": frame["time_h"].to_numpy(),
-        "ligand_canonical": frame["ligand_canonical"].astype(str).to_numpy(),
-        "ligand_main_fragment": frame["ligand_main_fragment"].astype(str).to_numpy(),
+        "metal": np.asarray(frame["metal"], dtype=str),
+        "cell_line_key": np.asarray(frame["cell_line_key"], dtype=str),
+        "doi": np.asarray(frame["doi"], dtype=str),
+        "time_h": frame["time_h"].to_numpy(dtype=float),
+        "ligand_canonical": np.asarray(frame["ligand_canonical"], dtype=str),
+        "ligand_main_fragment": np.asarray(frame["ligand_main_fragment"], dtype=str),
     }
     for scheme in args.schemes:
         fold_id, oof, entry = run_protocol(frame, y, graphs, scheme, cfg, device)
