@@ -1,0 +1,51 @@
+# configs/msrs_dmpnn_protocols_gpu0.yaml — STR-2a formal run on GPU0.
+#
+# Same model/train block as configs/msrs_dmpnn_surface_gpu0.yaml (FIX-M1), so
+# the protocol numbers are comparable to the ligand-grouped reference. Only the
+# metal_state arm is trained: FIX-M2 already showed it is the best of the three.
+#
+# Invoke per seed with:
+#   .venv/bin/python molmetal/scripts/msrs_dmpnn_protocols.py \
+#       --config configs/msrs_dmpnn_protocols_gpu0.yaml --seed N
+#
+# GPU policy: cuda:0 only (user directive 2026-10-16). This script calls torch
+# directly, so compute.device is the only device knob; do not add compute.gpu.
+
+data:
+  long: data/msrs/measurements.parquet
+  endpoint: potency
+  top_cell_lines: 40
+  limit: 0
+
+model:
+  hidden: 128
+  depth: 3
+  dropout: 0.1
+
+train:
+  epochs: 60
+  batch_size: 64
+  lr: 0.001
+  weight_decay: 0.00001
+  patience: 10
+  inner_val_fraction: 0.1
+  seed: 20261018
+
+compute:
+  device: cuda:0
+  num_threads: 1
+  deterministic: true
+
+eval:
+  splits:
+    - canonical_grouped
+  baseline_arm: complex
+
+arms:
+  metal_state:
+    metal_mode: state
+    use_metal_node: true
+    metal_injection: message
+
+output:
+  path: results/msrs_dmpnn_protocols/
