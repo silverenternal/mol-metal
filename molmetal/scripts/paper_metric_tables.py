@@ -218,6 +218,7 @@ POWER = "msrs_power.json"
 CARD = "msrs_data_card.json"
 GENM = "cfm_generation_metrics.json"
 LOMO = "metal_lomo_auc_wasserstein.json"
+EXT = "msrs_external_dataset.json"
 
 PROTOCOLS = ("ligand", "doi", "scaffold", "year")
 ABL_ARMS = (
@@ -542,6 +543,34 @@ def table_seed() -> Table:
     return t
 
 
+def table_external() -> Table:
+    t = Table(
+        "T10_external",
+        "External cohort availability (MET-7)",
+        ["Value"],
+        note="The pre-registered estimand is same ligand + same metal + same cell line. Metal is the key that reaches zero.",
+    )
+    spec = [
+        ("Verdict", P(EXT, "/verdict", "raw")),
+        ("Metal intersection", P(EXT, "/intersection/metal", "int")),
+        ("Ligand main-fragment intersection", P(EXT, "/intersection/ligand", "int")),
+        ("Cell-line intersection", P(EXT, "/intersection/cell_line", "int")),
+        ("Triple same-metal rows", P(EXT, "/intersection/triple_same_metal_rows", "int")),
+        (
+            "PlatinAI complexes sharing a ligand",
+            P(EXT, "/candidates/platin_ai_4cell/complexes_with_a_shared_ligand", "int"),
+        ),
+        (
+            "Labels on shared cells, ignoring metal",
+            P(EXT, "/intersection/label_cells_available_ignoring_metal", "int"),
+        ),
+        ("NCI-60 usable rows", P(EXT, "/candidates/nci60_gi50/usable_rows", "int")),
+    ]
+    for label, cell in spec:
+        t.rows.append(Row(label, [cell]))
+    return t
+
+
 TABLES = (
     table_main,
     table_generalization,
@@ -552,6 +581,7 @@ TABLES = (
     table_generation,
     table_data,
     table_seed,
+    table_external,
 )
 
 

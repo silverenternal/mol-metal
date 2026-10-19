@@ -48,7 +48,7 @@
       "统计功效（MET-8）：决策 regret MDE 0.050（62 DOI），观测 −0.0034 需 13,571 DOI；Δ 符号 MDE 0.130（53 DOI），0.65 门槛需 40 DOI 可检测；Δ MAE MDE 0.077，观测改善 0.021 需 706 DOI；DOI R² MDE 0.064（1,784 DOI），距 0.50 差 0.168；表示增益 MDE 0.019、金属消融 MDE 0.024，两者效应均远超 MDE。",
       "生成侧指标（MET-9，66 个存活样本）：yield 0.344、uniqueness 1.0；max Tanimoto 仅 0.108–0.185，平均 novelty 0.8517（<0.90），但 max T<0.9 比例 1.000；IntDiv1 0.8526 vs 同 n 训练子样本 0.8234（+0.0292，与 m7 的 0.869@n=37 符号相反）；SA 6.4423（>4.5）、QED 0.0944；金属合规 1.0（Ir18/Ru16/Rh15/Re13/Os4）；对接 BLOCKED（1/10 pocket，run died）。",
       "指标表自动化（MET-11）：9 张表 / 98 行 / 10 个源 artifact，0 MISSING、1 optional absent（delta_mae_doi 无 target_effect）；每格带 JSON pointer，manifest 记 10 个源文件 sha256；18 个测试全过。",
-      "外部数据集（MET-7）：PlatinAI 4,078 个配合物全是 Pt，MSRS 五金属无 Pt 行 → 同金属交集 0；配体主片段交集 144、细胞系交集 3（MCF7/A549/A2780，A2780cis 0 行）；放宽到同配体有 909 个配合物 / 2,727 个标签，但属「未见金属外推」；NCI-60 GI50 无 SMILES、无金属，可用行 0。"
+      "指标表自动化（MET-11）：10 张表 / 106 行 / 11 个源 artifact，0 MISSING、1 optional absent（delta_mae_doi 无 target_effect）；每格带 JSON pointer，manifest 记源文件 sha256；18 个测试全过。"
     ]
   },
   "metric_gap_analysis": {
@@ -1143,9 +1143,9 @@
         "artifact": "metrics/paper_tables/",
         "script": "molmetal/scripts/paper_metric_tables.py",
         "tests": "molmetal/tests/test_paper_metric_tables.py (18 passed)",
-        "tables": 9,
-        "rows": 98,
-        "source_artifacts": 10,
+        "tables": 10,
+        "rows": 106,
+        "source_artifacts": 11,
         "missing_cells": 0,
         "optional_absent": [
           "msrs_power.json:/metrics/delta_mae_doi/target_effect"
@@ -1162,10 +1162,11 @@
           "metrics/paper_tables/T6_power.md",
           "metrics/paper_tables/T7_generation.md",
           "metrics/paper_tables/T8_data.md",
-          "metrics/paper_tables/T9_seed_stability.md"
+          "metrics/paper_tables/T9_seed_stability.md",
+          "metrics/paper_tables/T10_external.md"
         ]
       },
-      "acceptance_result": "PASSED (one command rebuilds 9 tables / 98 rows; 0 hardcoded numbers; 0 MISSING, 1 optional absent; --strict exits 0)"
+      "acceptance_result": "PASSED (one command rebuilds 10 tables / 106 rows; 0 hardcoded numbers; 0 MISSING, 1 optional absent; --strict exits 0)"
     },
     {
       "id": "FIX-L4",

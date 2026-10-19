@@ -7067,13 +7067,13 @@ wet-lab).
 JSON/report path.  MET-11 asks whether that trace can be *generated* rather
 than transcribed, and what a generated table still cannot promise.
 
-**Setup.**  `molmetal/scripts/paper_metric_tables.py` declares 9 tables
-(T1..T9) whose cells are `(file, JSON pointer)` pairs.  It resolves each
+**Setup.**  `molmetal/scripts/paper_metric_tables.py` declares 10 tables
+(T1..T10) whose cells are `(file, JSON pointer)` pairs.  It resolves each
 pointer against `metrics/by_metric/*.json`, writes md + csv, and records the
 sha256 of every source artifact in `metrics/paper_tables/manifest.json`.
 `--strict` exits 1 on any unresolved cell.
 
-**MEASURED.**  98 rows, 9 tables, 10 source artifacts, **0 MISSING**, 1
+**MEASURED.**  106 rows, 10 tables, 11 source artifacts, **0 MISSING**, 1
 optional absent (`msrs_power.json:/metrics/delta_mae_doi/target_effect`, absent
 by design because that metric has no target effect).  18 tests pass.  Spot
 checks: 0.5828 / 0.3321 / 0.4503 / 0.3739 / 0.6193 / 0.5089 / 0.1168 / 0.5600 /

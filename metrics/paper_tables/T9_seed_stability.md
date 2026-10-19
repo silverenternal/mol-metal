@@ -1,6 +1,6 @@
 # Five-seed stability, canonical ligand-grouped split
 
-Generated 2026-10-19T11:45:22Z from `metrics/by_metric/*.json`.
+Generated 2026-10-19T11:52:15Z from `metrics/by_metric/*.json`.
 
 Folds are fixed by the ligand key; only model seeds vary.
 

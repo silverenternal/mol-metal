@@ -1,6 +1,6 @@
 # Corpus and split contamination
 
-Generated 2026-10-19T11:45:22Z from `metrics/by_metric/*.json`.
+Generated 2026-10-19T11:52:15Z from `metrics/by_metric/*.json`.
 
 Cross-fold rate = share of test rows whose key value also appears in that fold's training rows.
 

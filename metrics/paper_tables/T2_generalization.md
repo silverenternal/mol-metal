@@ -1,6 +1,6 @@
 # Four-protocol generalization matrix (arm ligand+both)
 
-Generated 2026-10-19T11:45:22Z from `metrics/by_metric/*.json`.
+Generated 2026-10-19T11:52:15Z from `metrics/by_metric/*.json`.
 
 Each protocol holds out a different unit: ligand / DOI / Bemis-Murcko scaffold / publication year.
 

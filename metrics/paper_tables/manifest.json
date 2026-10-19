@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-19T11:45:22Z",
+  "generated_utc": "2026-10-19T11:52:15Z",
   "tables": [
     {
       "id": "T1_main_predictive",
@@ -168,6 +168,21 @@
       "csv": "metrics/paper_tables/T9_seed_stability.csv",
       "missing": [],
       "optional_absent": []
+    },
+    {
+      "id": "T10_external",
+      "title": "External cohort availability (MET-7)",
+      "rows": 8,
+      "columns": [
+        "Metric",
+        "Value",
+        "Source",
+        "Tag"
+      ],
+      "markdown": "metrics/paper_tables/T10_external.md",
+      "csv": "metrics/paper_tables/T10_external.csv",
+      "missing": [],
+      "optional_absent": []
     }
   ],
   "sources": {
@@ -177,6 +192,7 @@
     "msrs_data_card.json": "e5ede80810c1c8c0823c8da3c6b7d72e63f25bd9d9d7d5d2f47a703b76169e19",
     "msrs_decision_curve.json": "9bbcb4c105013ecf0edfb061ac994f4aafd43d8fde05d785c4d15b45a3ab47e1",
     "msrs_delta_metrics.json": "3178ca6e3dba0e76b69723ca9e4aa91616cdfb87b2185faa59abf8585edcd530",
+    "msrs_external_dataset.json": "4f789944977123909541f77ea33926d32807d6bbd22922311ee14068a12311ae",
     "msrs_generalization.json": "30dbec08253fe25f662f395d32f09d5e7b0d44b69c34f1cc1d68b4b942495646",
     "msrs_metal_ablation.json": "534ad5e89818fa9d0c983a61a72ffab5748f5125a1e06603194bd2d702c1f5f0",
     "msrs_power.json": "e9de828d3e365ad72cbed4be4ae2de5694d7114b2a263628847a867dca8fe0da",

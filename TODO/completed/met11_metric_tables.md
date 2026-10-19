@@ -4,7 +4,7 @@
 **状态**：DONE / PASS
 **脚本**：`molmetal/scripts/paper_metric_tables.py`
 **测试**：`molmetal/tests/test_paper_metric_tables.py`（18 个，全过）
-**产物**：`metrics/paper_tables/`（9 张表 × md + csv + `manifest.json`）
+**产物**：`metrics/paper_tables/`（10 张表 × md + csv + `manifest.json`）
 
 ## 为什么做
 
@@ -31,7 +31,7 @@
   - `-` — 该行按定义没有这一列（如 `full` 臂没有「相对 full 的 Δ」）；
   - `-`（optional）— 字段按设计不存在（如 `delta_mae_doi` 没有
     `target_effect`），记入 `optional_absent`，不阻断 `--strict`。
-- **manifest**：每张表的行数、列名、输出路径、缺失清单，以及 **10 个源
+- **manifest**：每张表的行数、列名、输出路径、缺失清单，以及 **11 个源
   artifact 的 sha256**。表是快照，sha256 是判断快照是否过期的唯一依据。
 
 ## MEASURED
@@ -47,8 +47,9 @@
 | T7 generation | 11 | yield、novelty 双口径、IntDiv1、SA、QED、金属合规、对接状态 | 0 |
 | T8 data | 23 | 语料计数、删失、重复键、四协议 × 三种键的跨折率 | 0 |
 | T9 seed_stability | 5 | 5 个臂的 R²/MAE 均值±SD、相对 tree 的 Δ、单侧 p | 0 |
+| T10 external | 8 | 外部队列三键交集（金属 0 / 配体 144 / 细胞系 3）、三键行 0、NCI-60 可用 0 | 0 |
 
-合计 **98 行**、**9 张表**、**10 个源 artifact**、**0 MISSING**、**1 optional
+合计 **106 行**、**10 张表**、**11 个源 artifact**、**0 MISSING**、**1 optional
 absent**（`msrs_power.json:/metrics/delta_mae_doi/target_effect`，该指标按设计
 没有目标效应量）。
 
