@@ -160,6 +160,13 @@ ligand 0.6101 / DOI **0.5826** / scaffold 0.6330 / year 0.4082（seed SD
 五个 seed（0.5183–0.5963）**，是偏高抽样，主表必须改用 0.5826。决策 regret
 0.1279（单 seed 0.1168），p_holm 仍 1.0，MET-5 的 null 没有翻转。
 
+**STR-2（四协议融合，DONE / PARTIAL）**：5 树 + 5 GNN 集成后 DOI stack R²
+**0.3597**（gate 0.36，**差 0.0003**），equal 臂 0.3606；配对 ΔR²
+**+0.0217 [+0.0044, +0.0377]** 排除 0。ligand 0.5997（Δ+0.0401）、scaffold
+0.4839（Δ+0.0310）、year 0.3968（CI 含 0）。**单模型 stack 只有 DOI
+0.3485 ± 0.0046**——集成贡献了约一半增益。融合把 DOI Δ 符号从 0.5826 压到
+**0.5413**，R² 与排序方向相反，推荐线不能改用融合模型。
+
 **S5 现在是机械的。** `molmetal/scripts/paper_metric_tables.py` 从
 `metrics/by_metric/*.json` 直接生成 T1–T9，每个单元格带 artifact pointer，
 解析失败即 `MISSING`（`--strict` 退出码 1）。它保证「表 == 产物」，不保证

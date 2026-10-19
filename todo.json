@@ -29,6 +29,7 @@
   },
   "current_position": {
     "measured_facts": [
+      "STR-2（5 树 + 5 GNN，四协议）：DOI stack R² 0.3597（gate 0.36，差 0.0003）、equal 0.3606、tree 0.3380、gnn 0.3089；配对 ΔR² +0.0217 [+0.0044,+0.0377]。ligand 0.5997（Δ+0.0401）、scaffold 0.4839（Δ+0.0310）、year 0.3968（CI 含 0）。单模型（同 seed）stack：ligand 0.5828±0.0102 / DOI 0.3485±0.0046 / scaffold 0.4693±0.0068 / year 0.3862±0.0082。DOI Δ 符号：tree 0.5826 → stack 0.5413（融合反而变差）。残差相关 0.86–0.90。",
       "STR-1（5 seed，四协议）：seed 平均预测 R² ligand 0.5596 / DOI 0.3380 / scaffold 0.4530 / year 0.3780（R² seed SD 0.0026–0.0066）；Δ 符号 ligand 0.6101 / DOI 0.5826 / scaffold 0.6330 / year 0.4082（seed SD 0.0179–0.0387，max 0.0387 < 0.05 → STABLE）。单 seed 的 DOI 0.6193 高于全部五个 seed，属偏高抽样，主表改用 0.5826。DOI 全覆盖 regret 0.1279（单 seed 0.1168）、q=0.5 0.1072、p_holm 1.0。",
       "MSRS 全量 21,404 行 / 5 金属 / 424 个严格多金属队列 / 61 DOI；严格队列全部 k=2。",
       "最强回归（5-seed）：canonical R² 0.5828±0.0102（stack_foldwise）/ 0.5555±0.0026（tree）；fragment 0.5137±0.0048 / 0.4832±0.0018。融合 Δ+0.0273（p=0.0016）/ +0.0304（p=1.1e-4），5/5 seed 更好。GNN 单模 0.5032 / 0.4331，显著差于树（0/5 seed）。",
@@ -263,6 +264,11 @@
       "id": "STR-1",
       "result": "STABLE",
       "headline": "5-seed：DOI R² 0.3380（单 seed 0.3321）、Δ 符号 0.5826（单 seed 0.6193，seed 均值 0.567±0.033）；regret 0.1279 变差，p=1.0"
+    },
+    {
+      "id": "STR-2",
+      "result": "PARTIAL",
+      "headline": "DOI stack 0.3597（gate 0.36，差 0.0003），ΔR² +0.0217 [+0.0044,+0.0377]；equal 0.3606；单模型 stack 0.3485±0.0046；融合后 DOI Δ 符号 0.5826→0.5413"
     }
   ],
   "blockers": [
@@ -352,7 +358,7 @@
       "title": "四协议融合臂补全（GNN + blend + stack）",
       "layer": "模型",
       "priority": "P0",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "cuda:0",
       "wall": "8 小时",
       "why": "msrs_generalization.design.arms_not_measured = 3：DOI/scaffold/year 只测了树。融合臂的 +0.0273 只在 ligand 上验证过，跨论文是否成立完全未知。这是最便宜的、可能直接抬高 DOI R² 的未测项。",
@@ -362,7 +368,47 @@
       "kill": "DOI stack R² <0.34，或配对 CI 含 0 且点估计 <+0.01。",
       "expected_gain_projected": "PROJECTED +0.01–0.03 DOI R²（基于 ligand 上的 +0.0273）",
       "depends_on": [],
-      "code_work": "中等：GNN 臂接线 + fold 对齐 + OOF 保存；先用 --limit 200 做 smoke。"
+      "code_work": "中等：GNN 臂接线 + fold 对齐 + OOF 保存；先用 --limit 200 做 smoke。",
+      "result": {
+        "verdict": "PARTIAL",
+        "gate_arm": "stack_foldwise",
+        "doi_stack_r2": 0.3597,
+        "doi_stack_delta_r2": 0.0217,
+        "doi_stack_ci": [
+          0.0044,
+          0.0377
+        ],
+        "doi_equal_r2": 0.3606,
+        "doi_tree_r2": 0.338,
+        "doi_gnn_r2": 0.3089,
+        "per_seed_single_model_stack": {
+          "ligand": 0.5828,
+          "doi": 0.3485,
+          "scaffold": 0.4693,
+          "year": 0.3862
+        },
+        "ensemble_stack": {
+          "ligand": 0.5997,
+          "doi": 0.3597,
+          "scaffold": 0.4839,
+          "year": 0.3968
+        },
+        "delta_sign_doi": {
+          "tree": 0.5826,
+          "equal": 0.5413,
+          "stack": 0.5413
+        },
+        "residual_correlation": {
+          "ligand": 0.8648,
+          "doi": 0.8902,
+          "scaffold": 0.8814,
+          "year": 0.8952
+        },
+        "artifact": "metrics/by_metric/msrs_fusion_protocols.json",
+        "doc": "TODO/completed/str2_fusion_protocols.md",
+        "note": "效应成立（+0.0217，CI 下界 +0.0044），绝对门槛差 0.0003（0.3597 < 0.36）。equal 臂 0.3606 过线但不替换 gate 臂。融合把 DOI Δ 符号从 0.5826 降到 0.5413。"
+      },
+      "acceptance_result": "PARTIAL — 配对 ΔR² CI 排除 0，但 gate 臂 R² 0.3597 < 0.36（差 0.0003）；不改门槛。"
     },
     {
       "id": "STR-3",
@@ -467,7 +513,21 @@
       ],
       "question": "融合臂在 DOI 上是否成立？",
       "if_yes": "继续 STR-3 / STR-4；把 DOI 数字作为主表跨论文行。",
-      "if_no": "停止模型侧投入，直接按边界论文定稿；不再跑 STR-5。"
+      "if_no": "停止模型侧投入，直接按边界论文定稿；不再跑 STR-5。",
+      "status": "OPEN",
+      "evidence": {
+        "answer": "效应成立，绝对水平未过线",
+        "doi_stack_r2": 0.3597,
+        "gate": 0.36,
+        "doi_equal_r2": 0.3606,
+        "doi_delta_r2": 0.0217,
+        "ci": [
+          0.0044,
+          0.0377
+        ],
+        "delta_sign_doi": 0.5413,
+        "note": "按 if_no 的字面（gate 未过）应停止模型侧投入；但 +0.0217 的 CI 排除 0，且差 0.0003。需要用户裁定。"
+      }
     },
     {
       "id": "DP-2",

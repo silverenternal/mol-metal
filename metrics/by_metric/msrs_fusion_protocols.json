@@ -1,0 +1,726 @@
+{
+  "artifact": "msrs_fusion_protocols",
+  "design": {
+    "bootstrap": {
+      "cluster": "doi",
+      "n_boot": 2000,
+      "paired": true,
+      "seed": 20261019
+    },
+    "doi_stack_gate": 0.36,
+    "doi_stack_kill": 0.34,
+    "gate_arm": "stack_foldwise",
+    "gnn_arm": "gnn_metal_state",
+    "min_gain": 0.01,
+    "n_gnn_seeds": 5,
+    "n_tree_seeds": 5,
+    "note": "Predictions are seed-averaged before scoring. blend_equal fits nothing and is the primary arm; the gate uses stack_foldwise because that is what STR-2 pre-registered.",
+    "primary_arm": "blend_equal",
+    "protocols": [
+      "ligand",
+      "doi",
+      "scaffold",
+      "year"
+    ],
+    "tree_arm": "ligand+both"
+  },
+  "diagnostics": {
+    "doi": {
+      "gnn_r2": 0.3089,
+      "residual_correlation": 0.8902,
+      "tree_r2": 0.338
+    },
+    "ligand": {
+      "gnn_r2": 0.567,
+      "residual_correlation": 0.8648,
+      "tree_r2": 0.5596
+    },
+    "scaffold": {
+      "gnn_r2": 0.4402,
+      "residual_correlation": 0.8814,
+      "tree_r2": 0.453
+    },
+    "year": {
+      "gnn_r2": 0.3554,
+      "residual_correlation": 0.8952,
+      "tree_r2": 0.378
+    }
+  },
+  "generated_utc": "2026-10-19T15:32:32+00:00",
+  "protocols": {
+    "doi": {
+      "arms": {
+        "blend_equal": {
+          "mae": 0.466,
+          "r2": 0.3606,
+          "rmse": 0.6096,
+          "vs_tree": {
+            "ci_high": 0.0407,
+            "ci_low": 0.0045,
+            "delta_r2": 0.0226,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "blend_foldwise": {
+          "mae": 0.4669,
+          "r2": 0.3588,
+          "rmse": 0.6105,
+          "vs_tree": {
+            "ci_high": 0.0361,
+            "ci_low": 0.005,
+            "delta_r2": 0.0208,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "gnn": {
+          "mae": 0.482,
+          "r2": 0.3089,
+          "rmse": 0.6338,
+          "vs_tree": {
+            "ci_high": 0.0082,
+            "ci_low": -0.0709,
+            "delta_r2": -0.0291,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "stack_foldwise": {
+          "mae": 0.4669,
+          "r2": 0.3597,
+          "rmse": 0.61,
+          "vs_tree": {
+            "ci_high": 0.0377,
+            "ci_low": 0.0044,
+            "delta_r2": 0.0217,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "tree": {
+          "mae": 0.4763,
+          "r2": 0.338,
+          "rmse": 0.6203
+        }
+      },
+      "best_blend": "blend_equal",
+      "delta_vs_tree": {
+        "blend_equal": 0.0226,
+        "blend_foldwise": 0.0208,
+        "gnn": -0.0291,
+        "stack_foldwise": 0.0217
+      },
+      "n_evaluated": 21404,
+      "n_unscored": 0,
+      "weights": {
+        "linear": [
+          {
+            "a_tree": 0.5351,
+            "b_gnn": 0.5349,
+            "c": -0.1057,
+            "fold": 0
+          },
+          {
+            "a_tree": 0.6556,
+            "b_gnn": 0.4178,
+            "c": -0.1056,
+            "fold": 1
+          },
+          {
+            "a_tree": 0.6063,
+            "b_gnn": 0.4554,
+            "c": -0.1169,
+            "fold": 2
+          },
+          {
+            "a_tree": 0.58,
+            "b_gnn": 0.4733,
+            "c": -0.1108,
+            "fold": 3
+          },
+          {
+            "a_tree": 0.6638,
+            "b_gnn": 0.3744,
+            "c": -0.0929,
+            "fold": 4
+          }
+        ],
+        "one_weight": [
+          {
+            "fold": 0,
+            "w_tree": 0.5197
+          },
+          {
+            "fold": 1,
+            "w_tree": 0.6369
+          },
+          {
+            "fold": 2,
+            "w_tree": 0.5932
+          },
+          {
+            "fold": 3,
+            "w_tree": 0.5733
+          },
+          {
+            "fold": 4,
+            "w_tree": 0.6605
+          }
+        ]
+      }
+    },
+    "ligand": {
+      "arms": {
+        "blend_equal": {
+          "mae": 0.3674,
+          "r2": 0.5929,
+          "rmse": 0.4865,
+          "vs_tree": {
+            "ci_high": 0.0447,
+            "ci_low": 0.0195,
+            "delta_r2": 0.0333,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "blend_foldwise": {
+          "mae": 0.3677,
+          "r2": 0.5915,
+          "rmse": 0.4873,
+          "vs_tree": {
+            "ci_high": 0.0446,
+            "ci_low": 0.0161,
+            "delta_r2": 0.0319,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "gnn": {
+          "mae": 0.3767,
+          "r2": 0.567,
+          "rmse": 0.5017,
+          "vs_tree": {
+            "ci_high": 0.0293,
+            "ci_low": -0.0187,
+            "delta_r2": 0.0074,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "stack_foldwise": {
+          "mae": 0.3612,
+          "r2": 0.5997,
+          "rmse": 0.4824,
+          "vs_tree": {
+            "ci_high": 0.0522,
+            "ci_low": 0.0256,
+            "delta_r2": 0.0401,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "tree": {
+          "mae": 0.3836,
+          "r2": 0.5596,
+          "rmse": 0.5059
+        }
+      },
+      "best_blend": "stack_foldwise",
+      "delta_vs_tree": {
+        "blend_equal": 0.0333,
+        "blend_foldwise": 0.0319,
+        "gnn": 0.0074,
+        "stack_foldwise": 0.0401
+      },
+      "n_evaluated": 21404,
+      "n_unscored": 0,
+      "weights": {
+        "linear": [
+          {
+            "a_tree": 0.4734,
+            "b_gnn": 0.6673,
+            "c": -0.1751,
+            "fold": 0
+          },
+          {
+            "a_tree": 0.5687,
+            "b_gnn": 0.5845,
+            "c": -0.1571,
+            "fold": 1
+          },
+          {
+            "a_tree": 0.599,
+            "b_gnn": 0.5537,
+            "c": -0.162,
+            "fold": 2
+          },
+          {
+            "a_tree": 0.5616,
+            "b_gnn": 0.5868,
+            "c": -0.1645,
+            "fold": 3
+          },
+          {
+            "a_tree": 0.5507,
+            "b_gnn": 0.5969,
+            "c": -0.1668,
+            "fold": 4
+          }
+        ],
+        "one_weight": [
+          {
+            "fold": 0,
+            "w_tree": 0.4011
+          },
+          {
+            "fold": 1,
+            "w_tree": 0.4805
+          },
+          {
+            "fold": 2,
+            "w_tree": 0.5176
+          },
+          {
+            "fold": 3,
+            "w_tree": 0.4729
+          },
+          {
+            "fold": 4,
+            "w_tree": 0.4695
+          }
+        ]
+      }
+    },
+    "scaffold": {
+      "arms": {
+        "blend_equal": {
+          "mae": 0.4202,
+          "r2": 0.4795,
+          "rmse": 0.55,
+          "vs_tree": {
+            "ci_high": 0.038,
+            "ci_low": 0.0149,
+            "delta_r2": 0.0265,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "blend_foldwise": {
+          "mae": 0.4206,
+          "r2": 0.4791,
+          "rmse": 0.5503,
+          "vs_tree": {
+            "ci_high": 0.0368,
+            "ci_low": 0.0157,
+            "delta_r2": 0.0261,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "gnn": {
+          "mae": 0.4339,
+          "r2": 0.4402,
+          "rmse": 0.5704,
+          "vs_tree": {
+            "ci_high": 0.0089,
+            "ci_low": -0.0342,
+            "delta_r2": -0.0128,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "stack_foldwise": {
+          "mae": 0.4167,
+          "r2": 0.4839,
+          "rmse": 0.5477,
+          "vs_tree": {
+            "ci_high": 0.0416,
+            "ci_low": 0.0202,
+            "delta_r2": 0.031,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "tree": {
+          "mae": 0.4332,
+          "r2": 0.453,
+          "rmse": 0.5639
+        }
+      },
+      "best_blend": "stack_foldwise",
+      "delta_vs_tree": {
+        "blend_equal": 0.0265,
+        "blend_foldwise": 0.0261,
+        "gnn": -0.0128,
+        "stack_foldwise": 0.031
+      },
+      "n_evaluated": 21404,
+      "n_unscored": 0,
+      "weights": {
+        "linear": [
+          {
+            "a_tree": 0.5774,
+            "b_gnn": 0.5183,
+            "c": -0.1369,
+            "fold": 0
+          },
+          {
+            "a_tree": 0.6128,
+            "b_gnn": 0.5213,
+            "c": -0.1628,
+            "fold": 1
+          },
+          {
+            "a_tree": 0.5903,
+            "b_gnn": 0.5259,
+            "c": -0.1482,
+            "fold": 2
+          },
+          {
+            "a_tree": 0.6577,
+            "b_gnn": 0.4774,
+            "c": -0.1616,
+            "fold": 3
+          },
+          {
+            "a_tree": 0.5972,
+            "b_gnn": 0.5206,
+            "c": -0.1526,
+            "fold": 4
+          }
+        ],
+        "one_weight": [
+          {
+            "fold": 0,
+            "w_tree": 0.5312
+          },
+          {
+            "fold": 1,
+            "w_tree": 0.5493
+          },
+          {
+            "fold": 2,
+            "w_tree": 0.5269
+          },
+          {
+            "fold": 3,
+            "w_tree": 0.5949
+          },
+          {
+            "fold": 4,
+            "w_tree": 0.5406
+          }
+        ]
+      }
+    },
+    "year": {
+      "arms": {
+        "blend_equal": {
+          "mae": 0.4573,
+          "r2": 0.3999,
+          "rmse": 0.6067,
+          "vs_tree": {
+            "ci_high": 0.0492,
+            "ci_low": -0.0074,
+            "delta_r2": 0.0219,
+            "n_boot": 2000,
+            "n_clusters": 625,
+            "n_rows": 6499,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "blend_foldwise": {
+          "mae": 0.4585,
+          "r2": 0.3976,
+          "rmse": 0.6079,
+          "vs_tree": {
+            "ci_high": 0.0445,
+            "ci_low": -0.0082,
+            "delta_r2": 0.0197,
+            "n_boot": 2000,
+            "n_clusters": 625,
+            "n_rows": 6499,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "gnn": {
+          "mae": 0.4692,
+          "r2": 0.3554,
+          "rmse": 0.6288,
+          "vs_tree": {
+            "ci_high": 0.0289,
+            "ci_low": -0.082,
+            "delta_r2": -0.0225,
+            "n_boot": 2000,
+            "n_clusters": 625,
+            "n_rows": 6499,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "stack_foldwise": {
+          "mae": 0.459,
+          "r2": 0.3968,
+          "rmse": 0.6083,
+          "vs_tree": {
+            "ci_high": 0.0431,
+            "ci_low": -0.0092,
+            "delta_r2": 0.0189,
+            "n_boot": 2000,
+            "n_clusters": 625,
+            "n_rows": 6499,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          }
+        },
+        "tree": {
+          "mae": 0.4705,
+          "r2": 0.378,
+          "rmse": 0.6177
+        }
+      },
+      "best_blend": "blend_equal",
+      "delta_vs_tree": {
+        "blend_equal": 0.0219,
+        "blend_foldwise": 0.0197,
+        "gnn": -0.0225,
+        "stack_foldwise": 0.0189
+      },
+      "n_evaluated": 6499,
+      "n_unscored": 14905,
+      "weights": {
+        "linear": [
+          {
+            "a_tree": 0.5955,
+            "b_gnn": 0.5001,
+            "c": -0.129,
+            "fold": 0
+          },
+          {
+            "a_tree": 0.6095,
+            "b_gnn": 0.4705,
+            "c": -0.1102,
+            "fold": 1
+          },
+          {
+            "a_tree": 0.6089,
+            "b_gnn": 0.4695,
+            "c": -0.1071,
+            "fold": 2
+          },
+          {
+            "a_tree": 0.5952,
+            "b_gnn": 0.5029,
+            "c": -0.1224,
+            "fold": 3
+          },
+          {
+            "a_tree": 0.5897,
+            "b_gnn": 0.5099,
+            "c": -0.1112,
+            "fold": 4
+          },
+          {
+            "a_tree": 0.6069,
+            "b_gnn": 0.4823,
+            "c": -0.1189,
+            "fold": 5
+          },
+          {
+            "a_tree": 0.6177,
+            "b_gnn": 0.4472,
+            "c": -0.0864,
+            "fold": 6
+          },
+          {
+            "a_tree": 0.5062,
+            "b_gnn": 0.5725,
+            "c": -0.1005,
+            "fold": 7
+          },
+          {
+            "a_tree": 0.6482,
+            "b_gnn": 0.4633,
+            "c": -0.157,
+            "fold": 8
+          },
+          {
+            "a_tree": 0.619,
+            "b_gnn": 0.4624,
+            "c": -0.1094,
+            "fold": 9
+          },
+          {
+            "a_tree": 0.6098,
+            "b_gnn": 0.5039,
+            "c": -0.1447,
+            "fold": 10
+          },
+          {
+            "a_tree": 0.6068,
+            "b_gnn": 0.4888,
+            "c": -0.1312,
+            "fold": 11
+          },
+          {
+            "a_tree": 0.6238,
+            "b_gnn": 0.4691,
+            "c": -0.1206,
+            "fold": 12
+          },
+          {
+            "a_tree": 0.6277,
+            "b_gnn": 0.4797,
+            "c": -0.1428,
+            "fold": 13
+          },
+          {
+            "a_tree": 0.6054,
+            "b_gnn": 0.4863,
+            "c": -0.1166,
+            "fold": 14
+          },
+          {
+            "a_tree": 0.6266,
+            "b_gnn": 0.4614,
+            "c": -0.12,
+            "fold": 15
+          }
+        ],
+        "one_weight": [
+          {
+            "fold": 0,
+            "w_tree": 0.5738
+          },
+          {
+            "fold": 1,
+            "w_tree": 0.5887
+          },
+          {
+            "fold": 2,
+            "w_tree": 0.5907
+          },
+          {
+            "fold": 3,
+            "w_tree": 0.5721
+          },
+          {
+            "fold": 4,
+            "w_tree": 0.5698
+          },
+          {
+            "fold": 5,
+            "w_tree": 0.5859
+          },
+          {
+            "fold": 6,
+            "w_tree": 0.605
+          },
+          {
+            "fold": 7,
+            "w_tree": 0.4876
+          },
+          {
+            "fold": 8,
+            "w_tree": 0.6213
+          },
+          {
+            "fold": 9,
+            "w_tree": 0.5946
+          },
+          {
+            "fold": 10,
+            "w_tree": 0.5824
+          },
+          {
+            "fold": 11,
+            "w_tree": 0.59
+          },
+          {
+            "fold": 12,
+            "w_tree": 0.6009
+          },
+          {
+            "fold": 13,
+            "w_tree": 0.5999
+          },
+          {
+            "fold": 14,
+            "w_tree": 0.5835
+          },
+          {
+            "fold": 15,
+            "w_tree": 0.6062
+          }
+        ]
+      }
+    }
+  },
+  "provenance": {
+    "git_commit": "1c1be9fdaa62ae7f87d6ad9bb77647e58eaa87c9",
+    "gnn_seed_sha256": [
+      "8ad00553593d9c39e6fcce7792cf26350235dce738a5e8cd844e09652ee1b471",
+      "9c908cbd5cad8937b70beb9ab1f257ae717de5b5c9386bcc213fdba4530d48c7",
+      "0da58e85981b433a4611b5cd3774e5832f1452722591c48af910229bb3f42bcb",
+      "a411a575a9db07f7a1530779f3eed843944aac4f39d6e2d2aa63c78967300f7d",
+      "469caff26f8c31c43bec52cc42ef287572808e1769e8a4989dcec122fbdd18f6"
+    ],
+    "gnn_seeds": [
+      "results/msrs_dmpnn_protocols/oof_seed0.npz",
+      "results/msrs_dmpnn_protocols/oof_seed1.npz",
+      "results/msrs_dmpnn_protocols/oof_seed2.npz",
+      "results/msrs_dmpnn_protocols/oof_seed3.npz",
+      "results/msrs_dmpnn_protocols/oof_seed4.npz"
+    ],
+    "script": "molmetal/scripts/msrs_fusion_protocols.py",
+    "tree_seed_sha256": [
+      "416ec24642e008ed9a44347a08a112134d691f319acd7fe9bfe09cf9f68f5e6e",
+      "cc4298c56cf96ae6371b3fd86469847599d8504406e8df2470a6a91f08627284",
+      "0505d8fca20742ec6d55f3b619bdb3ee5ada7d05bb321ae23833d13ac38a14ed",
+      "2f61d423899fd27a1959fe99948256e73f9e0e689f71b4e59701c132b9f5f3cb",
+      "de23b63f9382efdfdda0f37670c76f4321e30843b5bdbed543e0de03550f69ef"
+    ],
+    "tree_seeds": [
+      "results/msrs_seed_ensemble/oof_seed0.npz",
+      "results/msrs_seed_ensemble/oof_seed1.npz",
+      "results/msrs_seed_ensemble/oof_seed2.npz",
+      "results/msrs_seed_ensemble/oof_seed3.npz",
+      "results/msrs_seed_ensemble/oof_seed4.npz"
+    ]
+  },
+  "verdict": "PARTIAL",
+  "verdict_arm": {
+    "arm": "stack_foldwise",
+    "ci": [
+      0.0044,
+      0.0377
+    ],
+    "delta_r2": 0.0217,
+    "protocol": "doi",
+    "r2": 0.3597
+  },
+  "version": "1.0"
+}

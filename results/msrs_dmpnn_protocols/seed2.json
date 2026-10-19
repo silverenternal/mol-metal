@@ -1,0 +1,114 @@
+{
+  "artifact": "msrs_dmpnn_protocols",
+  "design": {
+    "arm": "gnn_metal_state",
+    "arm_spec": {
+      "metal_injection": "message",
+      "metal_mode": "state",
+      "use_metal_node": true
+    },
+    "cell_vocabulary_size": 41,
+    "complexes_canonical": 5861,
+    "cond_dim": 59,
+    "device": "cuda:0",
+    "folds": "scheme_folds from msrs_generalization (same as MET-2)",
+    "inner_validation": "whole protocol groups held out",
+    "ligands_main_fragment": 2846,
+    "rows": 21404,
+    "seed": 2,
+    "unique_graphs": 6081,
+    "unparseable_graphs": 0
+  },
+  "generated_utc": "2026-10-19T15:30:01+00:00",
+  "provenance": {
+    "config": "configs/msrs_dmpnn_protocols_gpu0.yaml",
+    "config_sha256": "4a820be28ae65b8970768a9cc8569bc97f8465d3ade4a707e72ed3220e319cc9",
+    "git_commit": "1c1be9fdaa62ae7f87d6ad9bb77647e58eaa87c9",
+    "oof": "results/msrs_dmpnn_protocols/oof_seed2.npz",
+    "script": "molmetal/scripts/msrs_dmpnn_protocols.py"
+  },
+  "schemes": {
+    "doi": {
+      "inner_val_mae": [
+        0.4408,
+        0.4684,
+        0.4782,
+        0.4887,
+        0.531
+      ],
+      "mae": 0.497,
+      "n_folds": 5,
+      "n_groups": 1784,
+      "n_rows_evaluated": 21404,
+      "n_rows_unscored": 0,
+      "r2": 0.2683,
+      "rmse": 0.6521,
+      "wall_s": 634.8
+    },
+    "ligand": {
+      "inner_val_mae": [
+        0.3952,
+        0.3955,
+        0.3998,
+        0.3863,
+        0.3882
+      ],
+      "mae": 0.3891,
+      "n_folds": 5,
+      "n_groups": 5861,
+      "n_rows_evaluated": 21404,
+      "n_rows_unscored": 0,
+      "r2": 0.5342,
+      "rmse": 0.5203,
+      "wall_s": 1318.8
+    },
+    "scaffold": {
+      "inner_val_mae": [
+        0.4387,
+        0.4516,
+        0.4244,
+        0.469,
+        0.4213
+      ],
+      "mae": 0.4693,
+      "n_folds": 5,
+      "n_groups": 2636,
+      "n_rows_evaluated": 21404,
+      "n_rows_unscored": 0,
+      "r2": 0.3422,
+      "rmse": 0.6184,
+      "wall_s": 898.9
+    },
+    "year": {
+      "inner_val_mae": [
+        0.5365,
+        0.443,
+        0.4827,
+        0.4296,
+        0.4956,
+        0.5028,
+        0.5176,
+        0.4426,
+        0.4705,
+        0.4734,
+        0.4365,
+        0.473,
+        0.4167,
+        0.5037,
+        0.4756,
+        0.448
+      ],
+      "mae": 0.4823,
+      "n_folds": 16,
+      "n_groups": 16,
+      "n_rows_evaluated": 6499,
+      "n_rows_unscored": 14905,
+      "n_years": 15,
+      "note": "leave-one-year-out; years with fewer than 100 rows are pooled into 'early'",
+      "r2": 0.3101,
+      "rmse": 0.6505,
+      "wall_s": 2906.7
+    }
+  },
+  "version": "1.0"
+}
