@@ -6853,3 +6853,71 @@ wet-lab).
 
 ---
 
+## §6.129 — MET-5: abstention does not buy accuracy; the confidence signal is 0.11 log10
+
+**Claim under test.**  A single regret point (0.1168 vs 0.1195) hides the useful
+question: can the model abstain on hard cohorts and be better on the ones it
+keeps?  MET-5 sweeps coverage 0.1-1.0 by top-1 margin and adds net benefit.
+
+**Setup.**  425 cohorts (all k=2), MET-2 OOF for `ligand+both`, both protocols.
+Confidence = second-best minus best predicted potency.  At each coverage the
+model and both baselines are scored on the **same** subset.  Paired regret
+delta tested with a DOI-clustered one-sided t-test, Holm across 10 coverage
+levels.  Net benefit: `NB = (TP - FP*p_t/(1-p_t))/N`, hit = regret <= 0.2091.
+
+**MEASURED (DOI, primary).**
+
+| coverage | model regret | global regret | delta | p | Holm p |
+|---:|---:|---:|---:|---:|---:|
+| 0.1 | 0.1427 | 0.2221 | +0.0450 | 0.289 | 1.0 |
+| 0.3 | 0.1322 | 0.1260 | -0.0348 | 0.772 | 1.0 |
+| **0.5** | **0.1115** | **0.1067** | **-0.0143** | 0.700 | **1.0** |
+| 0.7 | 0.1179 | 0.1209 | -0.0013 | 0.526 | 1.0 |
+| 1.0 | 0.1168 | 0.1195 | -0.0034 | 0.565 | 1.0 |
+
+Full coverage: top-1 0.5600 vs 0.5765 (model **worse**), NDCG@3 0.9368 vs
+0.9358, hit@0.2091 0.8047 vs 0.7976.  NB(0.5) 0.6094 vs 0.5952.
+Ligand coverage 0.5: 0.1181 vs 0.1394 (delta +0.0095, Holm p = 1.0).
+
+**Honest negatives (ACTIVE, this entry):**
+  * **The gate fails.**  At coverage 0.5, DOI regret 0.1115 > 0.10 and Holm
+    p = 1.0.  No coverage level produces a significant gain.
+  * **Abstention does not improve decisions.**  DOI regret is non-monotone in
+    coverage and the model is *worse* than `global_best` at q = 0.3, 0.4 and
+    0.5 (-0.035, -0.023, -0.014).  Keeping confident cohorts does not make the
+    kept ones better.
+  * **The confidence signal is compressed.**  Mean top-1 margin is 0.1107
+    log10, 40% of `global_best` (0.2801) and half the noise floor.  MET-3
+    already showed predicted |delta| sits at 0.10-0.13; this is the same
+    compression seen at the decision layer, so the model cannot rank its own
+    certainty either.
+  * **The ligand-protocol low-coverage gain is a selection artefact.**  At
+    q = 0.1 the model looks 0.087 better than `global_best` (0.1072 vs 0.1943),
+    but the baseline degrades on cohorts selected by the *model's* margin.
+    `cell_best` is also poor there (0.1484), and Holm leaves p = 1.0.
+  * **Clustering flips the sign.**  Pooled regret deltas are +0.0027 (DOI) and
+    +0.0047 (ligand); DOI-clustered they are -0.0034 and -0.0028.  Papers with
+    many cohorts dominate the pooled mean and favour the model.
+  * **Net benefit gains 1.4 points, all from the hit rate.**  NB(0.5) 0.6094
+    vs 0.5952; hit@0.2091 0.8047 vs 0.7976.  At p_t >= 0.8 NB turns negative.
+  * **Top-1 is lower on DOI** (0.5600 vs 0.5765) while regret is slightly
+    better.  Regret and top-1 are different objectives; reporting only regret
+    would overstate the model.
+
+**Why this matters.**  The decision layer is a boundary, not a selling point.
+The only defensible decision number is hit@0.2091 = 0.805 ("in 80% of cohorts
+the recommendation is within noise of the best"), and it is 0.7 points above
+the global baseline.  MET-3 (no magnitude) and MET-8 (MDE) explain why no
+coverage sweep can rescue it.
+
+**§6.129 catalog-count math.** Net catalog-count delta: **+1** (§6.129 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **181 -> 182** (+1).
+ACTIVE count: **137 -> 138** (+1).
+
+**Workflow** | MET-5 (2026-10-19; 0 GPU — CPU over 425 cohorts x 10 coverage
+levels x 2 protocols; 7 new tests; §5.2: every number traces to
+`metrics/by_metric/msrs_decision_curve.json`; §5.3 + §5.4: 0 paper/* + 0
+wet-lab).
+
+---
+

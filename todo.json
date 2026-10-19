@@ -25,7 +25,7 @@
       "S4": "效应量 + 置信区间 + 多重校正（DOI 聚类、Holm）",
       "S5": "每个数字可追到 artifact 字段"
     },
-    "immediate_goal": "P0 全部关闭：MET-1（5-seed PASS）、MET-2（四协议，DOI 0.3321，负）、MET-3（Δ 符号 0.6193、斜率 0.32，负）、MET-4（区间宽 1.92 log10，负）、MET-6（metal-blind −0.0683，p=0.0099，PASS，但 cell-blind 同为 −0.0629）、MET-10（数据卡：ligand 划分 89.43% 测试行共享 DOI）。下一步 P1：MET-5 决策曲线 + MET-8 统计功效，把「决策层是边界」写成有 MDE 支撑的定量结论。"
+    "immediate_goal": "P0 全部关闭，P1 已开：MET-5 决策曲线 DONE-NEGATIVE（50% 覆盖 0.1115 > 0.10，Holm p=1.0；置信度 margin 仅 0.11 log10，弃权不买准确率）。下一步 MET-8 统计功效：用观测方差与 DOI 聚类给出 regret / R² / Δ 符号的 MDE 与所需 DOI 数，把 MET-2/3/5 的 null 写成「在这个样本量下能检测到多大效应」的定量结论。"
   },
   "current_position": {
     "measured_facts": [
@@ -43,7 +43,8 @@
       "NCI-60 9 细胞系 AUC 0.7294 ± 0.2137 vs Krasnov 0.81（−0.08；2 个细胞系 n<10）。",
       "DOI offset 带来 +0.1109 R²，但金属化学在 DOI 之后只剩 −0.0003 → DOI 是论文代理，不能当特征。",
       "数据卡（MET-10，21,404 行）：ligand 划分测试行 89.43% 共享 DOI（内插），DOI 划分 0% 共享 DOI 但 15.43% 共享配体；scaffold 65.58% 共享 DOI；细胞系 96–98% 复现。重复键 304 个/663 行，跨折 0；右删失 5,015 行（18.7%）被排除。ligand_canonical 不含金属原子（0 行）。",
-      "金属消融（MET-6，最终树）：metal-blind 掉 0.0683 [0.0516, 0.0903]（ligand）/ 0.0693 [0.0509, 0.0884]（DOI），置换 p=0.0099（分辨率下限）。金属 one-hot 只值 0.0064/0.0053；cell-blind 掉 0.0629/0.0442；no_coord 单独 CI 含 0；仅 26 列金属/细胞特征 R²=0.4186，仅 ECFP4 R²=0.4200，两半近似可加。"
+      "金属消融（MET-6，最终树）：metal-blind 掉 0.0683 [0.0516, 0.0903]（ligand）/ 0.0693 [0.0509, 0.0884]（DOI），置换 p=0.0099（分辨率下限）。金属 one-hot 只值 0.0064/0.0053；cell-blind 掉 0.0629/0.0442；no_coord 单独 CI 含 0；仅 26 列金属/细胞特征 R²=0.4186，仅 ECFP4 R²=0.4200，两半近似可加。",
+      "决策曲线（MET-5，425 队列）：DOI 50% 覆盖 regret 0.1115 vs global_best 0.1067（聚类 Δ−0.0143，Holm p=1.0）；全覆盖 0.1168 vs 0.1195（top-1 0.560 vs 0.577）。模型 top-1 margin 均值 0.111 log10，baseline 0.280。net benefit(0.5) 0.609 vs 0.595。"
     ]
   },
   "metric_gap_analysis": {
@@ -713,7 +714,7 @@
       "title": "决策效用曲线",
       "layer": "决策",
       "priority": "P1",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "0.5 天",
       "why": "单点 regret 0.1186 vs 0.1198 不显著，但没有 coverage-risk 曲线、net benefit、NDCG@k 分层；无法回答『在多大覆盖下有用』。",
@@ -722,7 +723,60 @@
       "acceptance": "≥50% 覆盖下 regret ≤0.10 且 Holm p<0.05；否则记为边界，不作为卖点。",
       "depends_on": [
         "MET-4"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_decision_curve.json",
+        "n_cohorts": 425,
+        "coverages": [
+          0.1,
+          0.2,
+          0.3,
+          0.4,
+          0.5,
+          0.6,
+          0.7,
+          0.8,
+          0.9,
+          1.0
+        ],
+        "doi_at_0.5": {
+          "model_regret": 0.1115,
+          "global_best_regret": 0.1067,
+          "delta_clustered": -0.0143,
+          "p": 0.6996,
+          "p_holm": 1.0
+        },
+        "ligand_at_0.5": {
+          "model_regret": 0.1181,
+          "global_best_regret": 0.1394,
+          "delta_clustered": 0.0095,
+          "p": 0.3764,
+          "p_holm": 1.0
+        },
+        "full_coverage_doi": {
+          "model_regret": 0.1168,
+          "global_best_regret": 0.1195,
+          "top1_model": 0.56,
+          "top1_global": 0.5765,
+          "ndcg_model": 0.9368,
+          "ndcg_global": 0.9358,
+          "hit_model": 0.8047,
+          "hit_global": 0.7976,
+          "nb_0.5_model": 0.6094,
+          "nb_0.5_global": 0.5952
+        },
+        "confidence": {
+          "model_margin_mean": 0.1107,
+          "global_margin_mean": 0.2801,
+          "cell_margin_mean": 0.3122
+        },
+        "reading": "50% 覆盖下 DOI regret 0.1115 > 0.10、Holm p=1.0，判据失败。弃权不买准确率：q=0.3–0.5 时模型反而比 global_best 差（−0.035/−0.023/−0.014）。置信度 margin 只有 0.111 log10（baseline 0.280），说明模型也无法给自身确定性排序。ligand 低覆盖的「优势」是按模型 margin 选子集导致 baseline 退化的选择效应，Holm 后全为 1.0。按 DOI 聚类后 regret 差翻号（池化 +0.0027 → 聚类 −0.0034）。net benefit 只多 1.4 个点，且全部来自 hit rate +0.7pp；p_t≥0.8 时转负。DOI 上 top-1 反而更低（0.560 vs 0.577）。",
+        "artifacts": [
+          "metrics/by_metric/msrs_decision_curve.json",
+          "results/msrs_generalization/oof.npz"
+        ]
+      },
+      "acceptance_result": "FAILED (doi q=0.5 regret 0.1115 > 0.10; Holm p=1.0)"
     },
     {
       "id": "MET-6",
@@ -985,7 +1039,7 @@
         "MET-5",
         "MET-8"
       ],
-      "note": "P1：决策曲线 + 统计功效。目的是把『决策层是边界』写成一个有 MDE 支撑的定量结论，而不是一句 negative。"
+      "note": "P1：MET-5 DONE-NEGATIVE（曲线全部 p=1.0）。剩余 MET-8 统计功效；目的是把『决策层是边界』写成有 MDE 支撑的定量结论，而不是一句 negative。"
     },
     "wave_M3_external_generation": {
       "items": [

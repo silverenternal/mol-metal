@@ -60,7 +60,8 @@
 | MSRS R²（fragment） | **0.5137 ± 0.0048** / 0.4832 ± 0.0018，5 seed | 同上 | 同上 |
 | Δ 符号准确率 | **0.6193** [0.5085, 0.7137]（DOI，阈值 0.2091） | 只比随机高 0.12；MAE(Δ) 0.51 vs 恒零 0.53；校准斜率 0.32、R² 0.004 | `msrs_delta_metrics.json` |
 | top-1 准确率 | 0.5660 | 随机 0.50；424 队列只有 61 DOI | `msrs_hybrid_decision.json` |
-| 决策 regret | 0.1186 | 全局最优基线 0.1198，差异不显著 | 同上 |
+| 决策 regret | 0.1186 | 全局最优基线 0.1198，差异不显著；50% 覆盖下 0.1115 vs 0.1067（更差） | `msrs_hybrid_decision.json` + `msrs_decision_curve.json` |
+| 决策效用曲线 | 50% 覆盖 regret 0.1115，Holm p=1.0 | 弃权不买准确率；置信度 margin 仅 0.11 log10 | `msrs_decision_curve.json` |
 | LOMO 跨金属 AUC | 0.5575 / 0.5845 | 只有 3 个金属对有数据；无外部基线 | `metal_lomo_auc_wasserstein.json` |
 | NCI-60 9 细胞系 AUC | 0.7294 ± 0.2137 | Krasnov 0.81（−0.08）；2 个细胞系 n<10 | `nci60_precious_9cell_auc.json` |
 | Krasnov 对齐 chemprop | 0.7812 | 3 金属，9/9 run；仍是内部复现 | `wf219_...scaffold.json` |
@@ -69,7 +70,7 @@
 
 | 指标 | 当前值 | 问题 | 出处 |
 |---|---|---|---|
-| 决策 regret vs global_best | 0.1186 vs 0.1198 | 差 0.0012，Holm p=1.0 | `msrs_hybrid_decision.json` |
+| 决策 regret vs global_best | 0.1186 vs 0.1198 | 差 0.0012，Holm p=1.0；MET-5 曲线同样 p=1.0 | `msrs_hybrid_decision.json` + `msrs_decision_curve.json` |
 | 时间划分 Δ 符号 | **0.4786** | 低于随机；说明跨年份方向不可学 | `msrs_external_validation.json` |
 | conformal 区间宽度 | 中位 **2.0052** log10（DOI，global） | 约 100 倍 IC50 跨度；coverage 0.9004 是 conformal 构造保证，不是能力 | `msrs_calibration.json` |
 | 学出来的难度函数（difficulty） | coverage **0.8789**、Winkler **2.8587** | 比 global 更差：宽度只降 4.3%，coverage 掉 2.2 点，PIT KS 涨 36 倍 | 同上 |
@@ -86,7 +87,7 @@
 | ~~强模型 5-seed 稳定性~~ | ~~0.5807 是单 seed~~ | **已补：0.5828 ± 0.0102，MET-1** |
 | ~~Δ 的 MAE / 校准斜率 / 分层~~ | ~~符号准确率不能说明幅度~~ | **已补（MET-3）：MAE(Δ) 0.5089、斜率 0.32、R² 0.0039，负** |
 | ~~回归校准（斜率、区间分数）~~ | ~~coverage 好不代表 sharpness 好~~ | **已补（MET-4）：DOI 斜率 0.9256、r2_fit 0.3363、Winkler 2.74，负** |
-| 决策曲线（regret-coverage、net benefit） | 单点 regret 不能说明可用性 | 无 |
+| ~~决策曲线（regret-coverage、net benefit）~~ | ~~单点 regret 不能说明可用性~~ | **已补（MET-5）：50% 覆盖 regret 0.1115 vs 0.1067，Holm p=1.0，负** |
 | 外部独立数据集 | 所有验证都是同一语料的重划分 | 无 |
 | ~~最终模型的 metal-blind 消融~~ | ~~证明"金属感知"承重，而不只是相关~~ | **已补（MET-6）：metal-blind −0.0683（ligand）/ −0.0693（DOI），p=0.0099；金属标签本身只值 0.006** |
 | 统计功效 / 最小可检测效应 | 61 DOI 下 p=0.054 到底意味着什么 | 无 |
@@ -106,7 +107,7 @@
 | DOI/scaffold R² | **DOI 0.3321 / scaffold 0.4503 / year 0.3739** | ≥0.50，相对 random 下降 ≤0.10 | 未达标：报下降幅度，全部主张收缩到内插 |
 | Δ 符号（0.2091） | **0.6193 [0.5085, 0.7137]** | ≥0.65，CI 下界 >0.55 | 未达标：报 0.62 + CI，写明仅略高于随机 |
 | Δ MAE | **0.5089**（恒零预测器 0.5299） | ≤0.30 log10 | 未达标：模型只比恒零好 4.0%，幅度不可预测 |
-| 决策 regret | 0.1186 | **≤0.10**，Holm p<0.05，覆盖 ≥50% | 降级为边界，不作为卖点 |
+| 决策 regret | 0.1186 | **≤0.10**，Holm p<0.05，覆盖 ≥50% | 未达标：50% 覆盖 0.1115，Holm p=1.0；降级为边界，不作为卖点 |
 | top-1 | 0.5660 | **≥0.65** | 同上 |
 | conformal 宽度 | **2.0052**（DOI global）/ 1.9195（difficulty） | **中位 ≤1.0 log10** | 未达标：报 coverage 0.90 + 宽度 2.01，写明区间只能当限制 |
 | LOMO AUC | 0.5575 | **≥0.65** | 报"未见金属不可外推" |
@@ -138,7 +139,7 @@
 见 `todo.json :: work_packages` 的 MET-1..MET-11。优先级：
 
 - **P0（不做就不能投）**：MET-1 5-seed（DONE）、MET-2 四协议（DONE，负）、MET-3 Δ 指标（DONE，负）、MET-4 校准（DONE，负）、MET-6 金属消融（DONE，PASS）、MET-10 数据卡（DONE）。**P0 全部完成。**
-- **P1（决定论文上限）**：MET-5 决策曲线、MET-7 外部数据、MET-8 统计功效。
+- **P1（决定论文上限）**：MET-5 决策曲线（DONE，负）、MET-7 外部数据、MET-8 统计功效。
 - **P2（生成线专用）**：MET-9 生成指标。
 - **P3（打包）**：MET-11 指标表自动生成。
 
