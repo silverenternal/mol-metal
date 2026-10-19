@@ -1,0 +1,153 @@
+# 强指标论文的指标缺口分析
+
+日期：2026-10-19
+范围：`metrics/by_metric/*.json`（342 个产物）+ `docs/00_MODEL_NARRATIVE.md`
+规则：每个"当前值"都是 MEASURED 并附产物路径；每个"目标值"都是 PROPOSED，不是测量值。
+
+---
+
+## 0. 一句话结论
+
+我们已经**有 6 个可以直接当头条的强指标**（生成、对接、跨金属迁移、光毒性、表示增益、校准覆盖率），
+但**核心的金属替换预测线只有中等强度，且缺少同协议外部锚点**；决策层是明确的弱项。
+要发强指标论文，不需要再造模型，需要做三件事：
+
+1. 把强项补齐到"5 seed + 多协议 + 外部基线"的可发表标准；
+2. 把弱项如实降级为边界，不要包装成卖点；
+3. 补上现在完全没有的 6 类指标（外部数据、Δ 误差、回归校准、决策曲线、金属消融、统计功效）。
+
+---
+
+## 1. "强指标"的判据（PROPOSED）
+
+一条指标能进主表，需要满足 ≥4/5：
+
+| 编号 | 判据 | 说明 |
+|---|---|---|
+| S1 | 同协议外部基线 | 同数据、同划分、同指标；不能用"别人论文里的不同任务数字" |
+| S2 | 5 seed 均值±标准差 | 单 seed 的 0.58 不是结果，是抽样 |
+| S3 | ≥2 种互不重叠的划分 | 至少 ligand-grouped + DOI/scaffold/temporal 之一 |
+| S4 | 效应量 + 置信区间 + 多重校正 | 配对检验，DOI 聚类，Holm |
+| S5 | 可追溯 | 每个数字能追到一个 artifact 的字段 |
+
+现有指标里，满足 S1 的只有跨金属迁移线（Krasnov）和 MoleculeNet；满足 S2 的只有 MoleculeNet、
+跨金属迁移、NCI-60；MSRS 主线最多满足 S3，而且它的两个 split 都是配体划分、高度相关，
+不构成真正的双协议证据（单 seed、无外部基线）。
+
+---
+
+## 2. 现有指标盘点
+
+### 2.1 已经够强（可直接当头条）
+
+| 指标 | 当前值 | 对照 | 出处 | 缺什么 |
+|---|---|---|---|---|
+| MoleculeNet 均值（D-MPNN, 5-seed） | **0.8149** | 内部 gate 0.80 | `moleculenet_auc_dmpnn_5seed.json` | 无（bace 单任务仍 −0.036） |
+| 对接 RMSD（5 pockets × 3 seeds） | **0.6578 Å**，5/5 ≤2.0 Å | DiffDock 38.2% <2 Å | `docked_pose_rmsd.json` | 只有 5 个 pocket，且是 redocking |
+| decode_ratio（real） | **0.998**（5979/5991） | TargetDiff ≥0.5 | `decode_ratio.json` | 不是化学指标，需与 validity 联报 |
+| Ir within-metal AUC | **0.8295–0.8597** | Krasnov 0.73 | `metal_activity_transfer_seed_stability.json` | 只有 534 行，需外部复核 |
+| Ru within-metal AUC | **0.8128–0.8363** | Krasnov 0.81（持平） | 同上 + `metal_activity_transfer_tie_sensitivity.json` | 平票规则敏感，只能写"持平" |
+| 光毒性 switch 差（Ru−Ir） | **+0.1251** [0.0395, 0.2048] | 无外部基线 | `msrs_phototoxicity.json` | 描述性，PI 本身不可预测 |
+| 全配合物表征增益（fragment） | **+0.1002 R²**（p=2.3e-20） | ligand_main_fragment 基线 | `msrs_complex_features.json` | 单 seed；canonical 上是 +0.1040 |
+| conformal 覆盖率 | **0.9044**（名义 0.90） | — | `msrs_actionability.json` | 区间宽度 2.21 log10，太宽 |
+
+**结论：这 8 条里，生成/对接/迁移/光毒性四条足以支撑一篇强指标论文的半张表。**
+
+### 2.2 中等（能写，但不能当头条）
+
+| 指标 | 当前值 | 为什么不够强 | 出处 |
+|---|---|---|---|
+| MSRS R²（canonical） | 0.5807（堆叠）/ 0.5556（树） | 单 seed；只有配体划分；无同协议外部基线 | `msrs_hybrid.json` |
+| MSRS R²（fragment） | 0.5128 / 0.4856 | 同上 | 同上 |
+| Δ 符号准确率 | 0.6152（additive, 阈值 0.2091） | 只比随机高 0.115；无 MAE(Δ)、无校准 | `msrs_surface_model.json` |
+| top-1 准确率 | 0.5660 | 随机 0.50；424 队列只有 61 DOI | `msrs_hybrid_decision.json` |
+| 决策 regret | 0.1186 | 全局最优基线 0.1198，差异不显著 | 同上 |
+| LOMO 跨金属 AUC | 0.5575 / 0.5845 | 只有 3 个金属对有数据；无外部基线 | `metal_lomo_auc_wasserstein.json` |
+| NCI-60 9 细胞系 AUC | 0.7294 ± 0.2137 | Krasnov 0.81（−0.08）；2 个细胞系 n<10 | `nci60_precious_9cell_auc.json` |
+| Krasnov 对齐 chemprop | 0.7812 | 3 金属，9/9 run；仍是内部复现 | `wf219_...scaffold.json` |
+
+### 2.3 弱（必须降级或补强）
+
+| 指标 | 当前值 | 问题 | 出处 |
+|---|---|---|---|
+| 决策 regret vs global_best | 0.1186 vs 0.1198 | 差 0.0012，Holm p=1.0 | `msrs_hybrid_decision.json` |
+| 时间划分 Δ 符号 | **0.4786** | 低于随机；说明跨年份方向不可学 | `msrs_external_validation.json` |
+| conformal 区间宽度 | 中位 **2.2083** log10 | 约 162 倍 IC50 跨度，不可操作 | `msrs_actionability.json` |
+| 光毒性 PI 预测 | OOF R² < 0 | 只能描述，不能预测 | `msrs_surface_model.json` |
+| Vina（贵金属） | BLOCKED | 力场缺贵金属参数 | `vina_status.json` |
+| 生成 SA | 4.71（**metallo_drugs 队列**，不是生成物） | 生成物的 SA 没有同口径值 | `sa_score.json` |
+
+### 2.4 缺失（完全没有 artifact）
+
+| 缺的指标 | 为什么必须有 | 现状 |
+|---|---|---|
+| 强模型的 DOI/scaffold/year 泛化 | 配体分组会泄漏论文内一致性（FIX-M4 已演示） | 只有旧特征集（R² 0.165/0.159/0.178） |
+| 强模型 5-seed 稳定性 | 0.5807 是单 seed 20261018 | 无 |
+| Δ 的 MAE / 校准斜率 / 分层 | 符号准确率不能说明幅度 | 无 |
+| 回归校准（斜率、区间分数） | coverage 好不代表 sharpness 好 | 只有 coverage/width |
+| 决策曲线（regret-coverage、net benefit） | 单点 regret 不能说明可用性 | 无 |
+| 外部独立数据集 | 所有验证都是同一语料的重划分 | 无 |
+| 最终模型的 metal-blind 消融 | 证明"金属感知"承重，而不只是相关 | 只有树模型上的 ligand vs +metal |
+| 统计功效 / 最小可检测效应 | 61 DOI 下 p=0.054 到底意味着什么 | 无 |
+| 生成 novelty / uniqueness | validity 高不等于分子新 | 只有 IntDiv1 0.869 |
+| 数据卡 + 泄漏审计 | 强指标论文的标配 | 部分（另一个 session 的 `docs/DATA_LEAKAGE_AUDIT.md`） |
+
+---
+
+## 3. 目标值（PROPOSED）
+
+这些是"投二区强指标论文"的门槛，不是当前测量值。定得太高会逼出 p-hacking，所以每条都同时给
+"达不到时怎么写"。
+
+| 指标 | 当前 | 目标 | 达不到时的写法 |
+|---|---|---|---|
+| canonical R² | 0.5807 | **≥0.60**，5-seed std ≤0.02 | 报 0.58 ± std，强调 +0.1002 的表示增益 |
+| DOI/scaffold R² | 未测（旧特征 0.165/0.159） | **≥0.50**，相对 random 下降 ≤0.10 | 报下降幅度，主张收缩到内插 |
+| Δ 符号（0.2091） | 0.6152 | **≥0.65**，CI 下界 >0.55 | 报 0.615 + CI，写明仅略高于随机 |
+| Δ MAE | 未测 | **≤0.30 log10** | 报实测值 + 与 |Δ| 分布对比 |
+| 决策 regret | 0.1186 | **≤0.10**，Holm p<0.05，覆盖 ≥50% | 降级为边界，不作为卖点 |
+| top-1 | 0.5660 | **≥0.65** | 同上 |
+| conformal 宽度 | 2.2083 | **中位 ≤1.0 log10** | 报 coverage 达标、宽度不达标 |
+| LOMO AUC | 0.5575 | **≥0.65** | 报"未见金属不可外推" |
+| 外部数据集 | 无 | ≥200 行，R²≥0.5 或 AUC≥0.75 | 标 BLOCKED-PENDING-DATA |
+| 生成 novelty | 无 | **≥0.90**（1−max Tanimoto to train） | 报 IntDiv1 0.869 |
+| 对接成功率 | 5/5 ≤2 Å | ≥50% on ≥20 pockets | 报 5 个 pocket 的现状 |
+
+---
+
+## 4. 论文主张 → 必需指标
+
+| 主张 | 必需指标 | 现状 |
+|---|---|---|
+| C1 全配合物表征优于配体片段 | R² 增量 + 配对 CI + 5 seed + 两 split | 有 +0.1002（单 seed）；缺 5 seed |
+| C2 金属状态/配位是承重的 | metal-blind 消融 + permutation null | 只有 ligand vs +metal（树）；缺最终模型 |
+| C3 跨金属迁移有代价但可量化 | within-metal vs LOMO + seed spread + 平票敏感性 | **齐全** |
+| C4 光毒性可切换且金属依赖 | switch 率 + Wilson CI + 跨金属配对 | **齐全**（描述性） |
+| C5 金属替换推荐可用 | regret/top-1/NDCG + 决策曲线 + 显著性 | **不成立**（n.s.） |
+| C6 生成+对接可用 | validity/decode/novelty/SA/docking | 缺 novelty/SA 同口径 |
+| C7 结论跨论文成立 | DOI/scaffold/year 三协议 | 只有旧特征集 |
+
+**取舍建议：** 主表放 C1/C3/C4/C6，C2 作为机制支撑，C5 放"边界与负结果"，C7 作为泛化表。
+这样论文的强项全部有 5-seed/外部基线，弱项不伪装成强项。
+
+---
+
+## 5. 补齐计划
+
+见 `todo.json :: work_packages` 的 MET-1..MET-11。优先级：
+
+- **P0（不做就不能投）**：MET-1 5-seed、MET-2 四协议、MET-3 Δ 指标、MET-4 校准、MET-6 金属消融、MET-10 数据卡。
+- **P1（决定论文上限）**：MET-5 决策曲线、MET-7 外部数据、MET-8 统计功效。
+- **P2（生成线专用）**：MET-9 生成指标。
+- **P3（打包）**：MET-11 指标表自动生成。
+
+---
+
+## 6. 不要做的事
+
+1. **不要把 DOI 当特征。** `feature_headroom_audit.json` 实测：DOI offset 带来 +0.1109 R²，
+   但金属化学在 DOI 之后只有 **−0.0003**。DOI 是论文代理，不是可部署信号。
+2. **不要继续在 61 个 DOI 上调决策层。** FIX-M4 已证明配体分组的 +0.02 在整篇论文留出后归零。
+3. **不要把配体分组的 R² 0.58 写成"跨论文"性能。** 跨论文数字还没测。
+4. **不要把 NCI-60 的 0.7294 写成"接近 Krasnov 0.81"。** 差 0.08，且 2 个细胞系 n<10。
+5. **不要单列 bond_f1 或 decode_ratio。** 前者会塌向全正，后者不是化学指标。
