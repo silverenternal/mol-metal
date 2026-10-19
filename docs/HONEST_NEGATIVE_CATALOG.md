@@ -7216,3 +7216,63 @@ new tests; §5.2: every count traces to
 wet-lab).
 
 ---
+## §6.135 — STR-1: the published single-seed Δ sign was a high draw
+
+**Claim under test.**  MET-3/4/5 consume one OOF file (seed 20261018).  Before
+claiming "the Δ is not learnable", STR-1 asks whether the single-seed numbers
+are dominated by seed noise.  Gate (fixed in advance): if the seed SD of
+Δ sign accuracy exceeds 0.05, existing single-seed conclusions are labelled
+noise-dominated.
+
+**Setup.**  Re-ran `msrs_generalization.py` with seeds 0–4 on the same 21,404
+rows and the same four folds (20 tree fits, 30m54s CPU).  Averaged the OOF
+predictions across seeds, then recomputed Δ (4 thresholds, DOI-cluster
+bootstrap), conformal (global / metal / difficulty) and the decision curve on
+the averaged prediction.  Also reported every per-seed metric.
+
+**MEASURED.**  `max_sign_seed_sd = 0.0387` (scaffold) < 0.05 → **STABLE**.
+Seed-averaged predictions: ligand R2 **0.5596** (seed mean 0.5555 ± 0.0026),
+DOI **0.3380** (0.3322 ± 0.0029), scaffold **0.4530** (0.4475 ± 0.0028), year
+**0.3780** (0.3728 ± 0.0066).  Δ sign at |Δ|>=0.2091: ligand **0.6101**
+(0.6110 ± 0.0179), DOI **0.5826** (0.5670 ± 0.0332), scaffold **0.6330**
+(0.6027 ± 0.0387), year **0.4082** (0.4245 ± 0.0303).  DOI conformal width
+2.0040 (single seed 2.0052); DOI full-coverage regret 0.1279 (single seed
+0.1168), q=0.5 0.1072, p_holm 1.0.
+
+**Honest negatives (ACTIVE, this entry):**
+  * **The gate passes but the single-seed headline does not survive.**  DOI
+    Δ sign was published as 0.6193.  The five seeds span 0.5183–0.5963 and the
+    seed mean is 0.5670 — the published value is higher than *every* seed and
+    1.6 SD above the mean.  It must be replaced by 0.5826 (seed-averaged) or
+    0.567 ± 0.033.
+  * **Seed averaging does not flip any negative.**  All four protocols remain
+    below the 0.65 sign gate; DOI R2 0.3380 is still below 0.36; decision
+    regret is still p=1.0 and, in fact, 0.011 worse.
+  * **The decision null got stronger, not weaker.**  The single-seed regret
+    0.1168 was a favourable draw; seed averaging gives 0.1279.  MET-5's
+    conclusion is unchanged in direction and larger in magnitude.
+  * **"STABLE" is not "noise-free".**  A 5-seed SD has ~35% relative
+    uncertainty; scaffold's 0.0387 could plausibly be 0.025 or 0.052.  The
+    correct reading is "no evidence that seed noise dominates", not "seed
+    noise is small".
+  * **Year's sign is below chance.**  0.4082 on 110 pairs.  The year protocol
+    cannot support a sign claim at this sample size, regardless of seeds.
+  * **R2 is the only thing that improved.**  +0.003 to +0.006 across four
+    protocols; Δ MAE moved by at most 0.003 except year (−0.0203).  This is
+    variance reduction, not new signal.
+
+**Why this matters.**  Every downstream table must use the seed-averaged
+numbers, and the paper cannot cite 0.6193.  The R2 seed SD (0.0026–0.0066) is
+much smaller than the +0.01–0.03 fusion effect STR-2 is looking for, so five
+seeds are enough there.
+
+**§6.135 catalog-count math.** Net catalog-count delta: **+1** (§6.135 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **187 -> 188** (+1).
+ACTIVE count: **143 -> 144** (+1).
+
+**Workflow** | STR-1 (2026-10-19; 0 GPU — 20 LightGBM fits on 32 CPU cores;
+9 new tests; §5.2: every number traces to
+`metrics/by_metric/msrs_seed_ensemble.json`; §5.3 + §5.4: 0 paper/* + 0
+wet-lab).
+
+---

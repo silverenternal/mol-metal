@@ -134,8 +134,23 @@ def _summary(rows: List[Dict[str, Any]], keys: List[str]) -> Dict[str, Any]:
     return out
 
 
+def _pick(mapping: Any, *keys: str, default: Any = None) -> Any:
+    """Nested ``.get`` that returns ``default`` on any missing level."""
+    cur = mapping
+    for key in keys:
+        if not isinstance(cur, dict) or key not in cur:
+            return default
+        cur = cur[key]
+    return cur
+
+
 def _reference(metrics_dir: Path) -> Dict[str, Any]:
-    """The published single-seed numbers, read rather than recomputed."""
+    """The published single-seed numbers, read rather than recomputed.
+
+    Calibration and the decision curve were only measured on ``ligand`` and
+    ``doi`` (MET-4 / MET-5); the missing protocols stay ``None`` rather than
+    being invented.
+    """
     ref: Dict[str, Any] = {}
     try:
         gen = json.loads((metrics_dir / SINGLE_SEED_ARTIFACTS["generalization"]).read_text())
@@ -144,15 +159,25 @@ def _reference(metrics_dir: Path) -> Dict[str, Any]:
         dec = json.loads((metrics_dir / SINGLE_SEED_ARTIFACTS["decision"]).read_text())
     except FileNotFoundError as exc:
         return {"status": "MISSING", "error": str(exc)}
+    gate = f"{GATE_THRESHOLD:g}"
     for protocol in PROTOCOLS:
-        gate = f"{GATE_THRESHOLD:g}"
         ref[protocol] = {
-            "r2": gen["splits"][protocol]["arms"][ARM]["r2"],
-            "sign_at_gate": delta["protocols"][protocol]["thresholds"][gate]["sign_accuracy"],
-            "mae_delta": delta["protocols"][protocol]["thresholds"][gate]["mae_delta"],
-            "calibration_coverage": cal["protocols"][protocol]["variants"]["global"]["coverage"],
-            "calibration_median_width": cal["protocols"][protocol]["variants"]["global"]["median_width"],
-            "decision_regret_full": dec["protocols"][protocol]["full_coverage"]["model"]["mean_regret"],
+            "r2": _pick(gen, "splits", protocol, "arms", ARM, "r2"),
+            "sign_at_gate": _pick(
+                delta, "protocols", protocol, "thresholds", gate, "sign_accuracy"
+            ),
+            "mae_delta": _pick(
+                delta, "protocols", protocol, "thresholds", gate, "mae_delta"
+            ),
+            "calibration_coverage": _pick(
+                cal, "protocols", protocol, "variants", "global", "coverage"
+            ),
+            "calibration_median_width": _pick(
+                cal, "protocols", protocol, "variants", "global", "median_width"
+            ),
+            "decision_regret_full": _pick(
+                dec, "protocols", protocol, "full_coverage", "model", "mean_regret"
+            ),
         }
     return ref
 
@@ -277,13 +302,13 @@ def build(directory: Path = DEFAULT_DIR, metrics_dir: Path = PROJECT_ROOT / "met
 
     return {
         "artifact": "msrs_seed_ensemble",
-        "version": 1.0,
+        "version": "1.0",
         "requires_dual_split": False,
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "provenance": {
             "script": "molmetal/scripts/msrs_seed_ensemble.py",
             "git_commit": _git_commit(),
-            "oof_files": [str(p) for p in paths],
+            "oof_files": [_display_path(p) for p in paths],
             "oof_sha256": {p.name: _sha256(p) for p in paths},
             "seeds": data["seeds"],
         },
@@ -306,6 +331,13 @@ def _diff(a: Any, b: Any) -> Any:
     if a is None or b is None:
         return None
     return round(float(a) - float(b), 4)
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return str(Path(path).resolve().relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
 
 
 def main(argv: List[str] | None = None) -> int:

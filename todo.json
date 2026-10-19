@@ -29,6 +29,7 @@
   },
   "current_position": {
     "measured_facts": [
+      "STR-1（5 seed，四协议）：seed 平均预测 R² ligand 0.5596 / DOI 0.3380 / scaffold 0.4530 / year 0.3780（R² seed SD 0.0026–0.0066）；Δ 符号 ligand 0.6101 / DOI 0.5826 / scaffold 0.6330 / year 0.4082（seed SD 0.0179–0.0387，max 0.0387 < 0.05 → STABLE）。单 seed 的 DOI 0.6193 高于全部五个 seed，属偏高抽样，主表改用 0.5826。DOI 全覆盖 regret 0.1279（单 seed 0.1168）、q=0.5 0.1072、p_holm 1.0。",
       "MSRS 全量 21,404 行 / 5 金属 / 424 个严格多金属队列 / 61 DOI；严格队列全部 k=2。",
       "最强回归（5-seed）：canonical R² 0.5828±0.0102（stack_foldwise）/ 0.5555±0.0026（tree）；fragment 0.5137±0.0048 / 0.4832±0.0018。融合 Δ+0.0273（p=0.0016）/ +0.0304（p=1.1e-4），5/5 seed 更好。GNN 单模 0.5032 / 0.4331，显著差于树（0/5 seed）。",
       "表示增益（fragment）：全配合物 +0.1002 R²（p=2.3e-20，canonical +0.1040）；金属状态 +0.0444；配位 +0.0272。",
@@ -257,6 +258,11 @@
       "id": "FIX-L4",
       "result": "BLOCKED (measured)",
       "headline": "磁盘 0 个 CCLE/GDSC 文件；46/711 细胞系覆盖 80%；身份值 0.0629 R²"
+    },
+    {
+      "id": "STR-1",
+      "result": "STABLE",
+      "headline": "5-seed：DOI R² 0.3380（单 seed 0.3321）、Δ 符号 0.5826（单 seed 0.6193，seed 均值 0.567±0.033）；regret 0.1279 变差，p=1.0"
     }
   ],
   "blockers": [
@@ -296,7 +302,7 @@
       "title": "五 seed OOF 与 seed 平均后的 Δ / 校准 / 决策",
       "layer": "统计",
       "priority": "P0",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "2 小时",
       "why": "MET-3/4/5 全部消费单 seed OOF（results/msrs_generalization/oof.npz，seed 20261018）。MET-1 实测 blend 的 seed SD 是 0.0102，单 seed 的 Δ 可能被 seed 噪声主导；在谈『Δ 不可学』之前必须先排除这一项。",
@@ -306,7 +312,40 @@
       "kill": "无（诊断项）",
       "expected_gain_projected": "Δ 符号可能 ±0.01–0.03；不承诺翻正",
       "depends_on": [],
-      "code_work": "无（脚本已支持）；新增一个聚合脚本 msrs_seed_ensemble.py。"
+      "code_work": "无（脚本已支持）；新增一个聚合脚本 msrs_seed_ensemble.py。",
+      "result": {
+        "verdict": "STABLE",
+        "max_sign_seed_sd": 0.0387,
+        "r2_seed_averaged": {
+          "ligand": 0.5596,
+          "doi": 0.338,
+          "scaffold": 0.453,
+          "year": 0.378
+        },
+        "r2_seed_sd": {
+          "ligand": 0.0026,
+          "doi": 0.0029,
+          "scaffold": 0.0028,
+          "year": 0.0066
+        },
+        "sign_seed_averaged": {
+          "ligand": 0.6101,
+          "doi": 0.5826,
+          "scaffold": 0.633,
+          "year": 0.4082
+        },
+        "sign_seed_sd": {
+          "ligand": 0.0179,
+          "doi": 0.0332,
+          "scaffold": 0.0387,
+          "year": 0.0303
+        },
+        "single_seed_sign_doi": 0.6193,
+        "artifact": "metrics/by_metric/msrs_seed_ensemble.json",
+        "doc": "TODO/completed/str1_seed_ensemble.md",
+        "note": "单 seed 0.6193 高于全部五个 seed（0.5183–0.5963），是偏高抽样；主表改用 0.5826。决策 regret 从 0.1168 变差到 0.1279（p_holm 仍 1.0）。"
+      },
+      "acceptance_result": "PASS — max sign SD 0.0387 < 0.05（STABLE）；不翻正任何负结果，但钉住了误差棒。"
     },
     {
       "id": "STR-2",
