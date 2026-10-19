@@ -25,7 +25,7 @@
       "S4": "效应量 + 置信区间 + 多重校正（DOI 聚类、Holm）",
       "S5": "每个数字可追到 artifact 字段"
     },
-    "immediate_goal": "P0 + P1 + P2 + P3 全部关闭：MET-1/6/10/11 PASS，MET-2/3/4/5/9 NEGATIVE，MET-8 PASS（null 均为真 miss）。唯一未完成项是 MET-7 外部独立数据集（BLOCKED-PENDING-DATA：无 ≥200 行外部交集）。论文线仍冻结（MSRS-8），解冻需用户显式同意；解冻后直接从 metrics/paper_tables/ 取数。"
+    "immediate_goal": "MET-1..MET-11 全部关闭：MET-1/6/8/10/11 PASS，MET-2/3/4/5/9 NEGATIVE，MET-7 BLOCKED（已测量：同金属交集 0，金属不重叠）。剩余未完成项：FIX-L4（外部细胞系特征，BLOCKED-PENDING-DATA）；MSRS-8 论文整合仍冻结，需用户显式同意。解冻后直接从 metrics/paper_tables/ 取数，外部验证只能写成「未完成」。"
   },
   "current_position": {
     "measured_facts": [
@@ -47,7 +47,8 @@
       "决策曲线（MET-5，425 队列）：DOI 50% 覆盖 regret 0.1115 vs global_best 0.1067（聚类 Δ−0.0143，Holm p=1.0）；全覆盖 0.1168 vs 0.1195（top-1 0.560 vs 0.577）。模型 top-1 margin 均值 0.111 log10，baseline 0.280。net benefit(0.5) 0.609 vs 0.595。",
       "统计功效（MET-8）：决策 regret MDE 0.050（62 DOI），观测 −0.0034 需 13,571 DOI；Δ 符号 MDE 0.130（53 DOI），0.65 门槛需 40 DOI 可检测；Δ MAE MDE 0.077，观测改善 0.021 需 706 DOI；DOI R² MDE 0.064（1,784 DOI），距 0.50 差 0.168；表示增益 MDE 0.019、金属消融 MDE 0.024，两者效应均远超 MDE。",
       "生成侧指标（MET-9，66 个存活样本）：yield 0.344、uniqueness 1.0；max Tanimoto 仅 0.108–0.185，平均 novelty 0.8517（<0.90），但 max T<0.9 比例 1.000；IntDiv1 0.8526 vs 同 n 训练子样本 0.8234（+0.0292，与 m7 的 0.869@n=37 符号相反）；SA 6.4423（>4.5）、QED 0.0944；金属合规 1.0（Ir18/Ru16/Rh15/Re13/Os4）；对接 BLOCKED（1/10 pocket，run died）。",
-      "指标表自动化（MET-11）：9 张表 / 98 行 / 10 个源 artifact，0 MISSING、1 optional absent（delta_mae_doi 无 target_effect）；每格带 JSON pointer，manifest 记 10 个源文件 sha256；18 个测试全过。"
+      "指标表自动化（MET-11）：9 张表 / 98 行 / 10 个源 artifact，0 MISSING、1 optional absent（delta_mae_doi 无 target_effect）；每格带 JSON pointer，manifest 记 10 个源文件 sha256；18 个测试全过。",
+      "外部数据集（MET-7）：PlatinAI 4,078 个配合物全是 Pt，MSRS 五金属无 Pt 行 → 同金属交集 0；配体主片段交集 144、细胞系交集 3（MCF7/A549/A2780，A2780cis 0 行）；放宽到同配体有 909 个配合物 / 2,727 个标签，但属「未见金属外推」；NCI-60 GI50 无 SMILES、无金属，可用行 0。"
     ]
   },
   "metric_gap_analysis": {
@@ -864,7 +865,37 @@
       "acceptance": "≥200 行；R² ≥0.5 或 AUC ≥0.75；否则 BLOCKED-PENDING-DATA。",
       "depends_on": [
         "MET-2"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_external_dataset.json",
+        "script": "molmetal/scripts/msrs_external_dataset.py",
+        "tests": "molmetal/tests/test_msrs_external_dataset.py (12 passed)",
+        "candidates": [
+          "PlatinAI 4cell (Pt-only, 4,078 complexes)",
+          "NCI-60 GI50 (no SMILES, no metal)"
+        ],
+        "intersection": {
+          "metal": 0,
+          "ligand_main_fragment": 144,
+          "cell_line": 3,
+          "triple_same_metal_rows": 0,
+          "complexes_with_a_shared_ligand": 909,
+          "label_cells_with_a_shared_ligand": 2727
+        },
+        "cell_lines": {
+          "MCF7": 3586,
+          "A549": 4884,
+          "A2780": 2063,
+          "A2780cis": 0
+        },
+        "nci60_usable_rows": 0,
+        "verdict": "BLOCKED-PENDING-DATA",
+        "reading": "The blocker is metal, not ligand: 144 main fragments and 3 cell lines overlap, but PlatinAI is Pt-only and MSRS has zero Pt training rows. The 909 ligand-matched Pt complexes (2,727 labels) could support an unseen-metal extrapolation study, but that is a different estimand and is not counted. NCI-60 has no SMILES and no metal column, so it cannot join at all.",
+        "artifacts": [
+          "metrics/by_metric/msrs_external_dataset.json"
+        ]
+      },
+      "acceptance_result": "BLOCKED-PENDING-DATA (measured triple intersection = 0 rows; metal sets disjoint; ligand 144 / cell 3 overlap does not rescue it)"
     },
     {
       "id": "MET-8",

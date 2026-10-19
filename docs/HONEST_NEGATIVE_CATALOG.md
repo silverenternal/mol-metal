@@ -7113,3 +7113,57 @@ ACTIVE count: **140 -> 141** (+1).
 every cell names its artifact pointer; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 
 ---
+## §6.133 — MET-7: external validation is blocked by metal, not by ligand count
+
+**Claim under test.**  MET-7's pre-registered estimand is *same ligand + same
+metal + same cell line* with a numeric label in both MSRS and an outside
+cohort, at >=200 rows.  The status had been "BLOCKED-PENDING-DATA" without a
+number behind it.
+
+**Setup.**  MSRS reference: `data/msrs/measurements.parquet` (21,404 rows, 5
+metals, 3,169 `ligand_main_fragment`, 711 cell lines).  Candidates on disk:
+PlatinAI 4cell (4,078 Pt complexes, 4 cell lines, pIC50) and NCI-60 GI50
+(421 MB).  External SMILES are metal-bearing complexes, so the metal is deleted
+before the ligand comparison; otherwise the raw-string intersection is a false
+zero.
+
+**MEASURED.**  Metal intersection **0** (PlatinAI is Pt-only; MSRS has zero Pt
+rows).  Ligand main-fragment intersection **144**.  Cell-line intersection
+**3 of 4** (MCF7 3,586 MSRS rows / A549 4,884 / A2780 2,063 / A2780cis 0).
+Triple intersection **0 rows**.  Relaxing the metal key: 909 PlatinAI complexes
+share a ligand and 2,727 (complex, shared-cell) labels exist.  NCI-60 GI50 has
+no SMILES and no metal column: **0 usable rows**.
+
+**Honest negatives (ACTIVE, this entry):**
+  * **External validation is still absent.**  Every generalization claim in the
+    paper is a re-split of one corpus.  MET-2's DOI 0.3321 is cross-paper, not
+    cross-database.
+  * **The blocker is the metal, not the chemistry.**  144 shared ligands and 3
+    shared cell lines show the chemical spaces overlap; PlatinAI simply has no
+    Ru/Ir/Rh/Os/Re.
+  * **A raw-string ligand comparison would have reported a false zero.**  The
+    external SMILES contain `[Pt+6]` with dative bonds while MSRS stores the
+    metal-stripped fragment.  Any future intersection count must delete the
+    metal first, as this script does.
+  * **The 909 Pt complexes are not a substitute.**  They support an
+    unseen-metal extrapolation study (a different estimand), and only after the
+    label scale is reconciled (pIC50 = -log10(IC50/M) vs log10(IC50/uM)).
+  * **NCI-60 is structurally unusable, not merely untried.**  It carries NSC
+    ids and cell names only; without an NSC-to-structure map there is no join
+    key and no metal.
+  * **A2780cis has 0 MSRS rows.**  Even if the metal problem were solved, the
+    cisplatin-resistant line contributes nothing.
+
+**Why this matters.**  "BLOCKED-PENDING-DATA" is now a measurement with a named
+cause.  The paper must not describe any result as external validation.
+
+**§6.133 catalog-count math.** Net catalog-count delta: **+1** (§6.133 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **185 -> 186** (+1).
+ACTIVE count: **141 -> 142** (+1).
+
+**Workflow** | MET-7 (2026-10-19; 0 GPU — RDKit parse of 4,078 external SMILES
++ parquet read; 12 new tests; §5.2: every count traces to
+`metrics/by_metric/msrs_external_dataset.json`; §5.3 + §5.4: 0 paper/* + 0
+wet-lab).
+
+---

@@ -1,0 +1,140 @@
+{
+  "artifact": "msrs_external_dataset",
+  "version": 1.0,
+  "requires_dual_split": false,
+  "generated_utc": "2026-10-19T11:51:00+00:00",
+  "provenance": {
+    "script": "molmetal/scripts/msrs_external_dataset.py",
+    "git_commit": "c7e81756cb605031732b1d8af12b2c847f11ee4e",
+    "msrs_parquet": "data/msrs/measurements.parquet",
+    "msrs_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c"
+  },
+  "design": {
+    "estimand": "same ligand (main fragment) + same metal + same cell line, numeric label in both cohorts",
+    "min_rows": 200,
+    "r2_gate": 0.5,
+    "auc_gate": 0.75,
+    "ligand_key": "ligand_main_fragment, the loose key; metal is deleted from the external SMILES before comparison",
+    "metal_key": "exact element symbol",
+    "cell_line_key": "MSRS cell_line_key, lower-cased",
+    "no_imputation": "rows that fail any key are excluded, never filled or re-labelled"
+  },
+  "msrs_reference": {
+    "n_rows": 43268,
+    "n_metals": 5,
+    "metals": [
+      "Ir",
+      "Os",
+      "Re",
+      "Rh",
+      "Ru"
+    ],
+    "n_ligands": 3169,
+    "n_cell_lines": 739
+  },
+  "candidates": {
+    "platin_ai_4cell": {
+      "path": ".data/molmetal/platinai_4cell.csv",
+      "sha256": "5f939af7eae2a932c467339194d276f366b4fe5b8e7dd54d03f16f60f803f27b",
+      "n_complexes": 4078,
+      "n_parsed_ligands": 4078,
+      "n_unique_ligands": 2612,
+      "metals": [
+        "Pt"
+      ],
+      "cell_lines": [
+        "a2780",
+        "a2780cis",
+        "a549",
+        "mcf7"
+      ],
+      "label_columns": {
+        "mcf7": "pIC50_mcf7",
+        "a549": "pIC50_a549",
+        "a2780": "pIC50_a2780",
+        "a2780cis": "pIC50_a2780cis"
+      },
+      "label_scale": "pIC50 = -log10(IC50 / M); MSRS is log10(IC50 / uM)",
+      "metal_overlap": {
+        "left_unique": 1,
+        "right_unique": 5,
+        "intersection_unique": 0,
+        "examples": []
+      },
+      "cell_line_overlap": {
+        "external": [
+          "a2780",
+          "a2780cis",
+          "a549",
+          "mcf7"
+        ],
+        "msrs_present": [
+          "a2780",
+          "a549",
+          "mcf7"
+        ],
+        "intersection_unique": 3,
+        "msrs_rows_by_cell": {
+          "a2780": 2063,
+          "a2780cis": 0,
+          "a549": 4884,
+          "mcf7": 3586
+        }
+      },
+      "ligand_overlap": {
+        "left_unique": 2612,
+        "right_unique": 3169,
+        "intersection_unique": 144,
+        "examples": [
+          "Brc1ccnc(-c2cc(Br)ccn2)c1",
+          "C(C=NC1CCCCC1)=NC1CCCCC1",
+          "C1=CCC(P(c2ccccc2)c2ccccc2)CC=C1",
+          "C1=CCCC=CCC1",
+          "C1=Cc2nc1c(-c1ccccc1)c1ccc([n-]1)c(-c1ccccc1)c1nc(c(-c3ccccc3)c3ccc([n-]3)c2-c2ccccc2)C=C1"
+        ]
+      },
+      "complexes_with_a_shared_ligand": 909,
+      "label_cells_with_a_shared_ligand": 2727,
+      "same_metal_rows": 0
+    },
+    "nci60_gi50": {
+      "path": ".data/molmetal/NCI60_GI50/GI50.csv",
+      "columns": [
+        "RELEASE_DATE",
+        "EXPID",
+        "PREFIX",
+        "NSC",
+        "CONCENTRATION_UNIT",
+        "LOG_HI_CONCENTRATION",
+        "PANEL_NUMBER",
+        "CELL_NUMBER",
+        "PANEL_NAME",
+        "CELL_NAME",
+        "PANEL_CODE",
+        "COUNT",
+        "AVERAGE",
+        "STDDEV"
+      ],
+      "has_smiles": false,
+      "has_metal": false,
+      "has_cell_line": true,
+      "join_key": "NSC id only; no structure column on disk",
+      "usable_rows": 0,
+      "reason": "no SMILES and no metal; an NSC-to-structure map is not on disk"
+    }
+  },
+  "intersection": {
+    "metal": 0,
+    "cell_line": 3,
+    "ligand": 144,
+    "triple_same_metal_rows": 0,
+    "label_cells_available_ignoring_metal": 2727
+  },
+  "verdict": "BLOCKED-PENDING-DATA",
+  "verdict_rule": "triple_same_metal_rows >= 200 AND (R2 >= 0.5 OR AUC >= 0.75); else BLOCKED-PENDING-DATA",
+  "reading": "Metal sets are disjoint: PlatinAI is Pt-only, MSRS has ['Ir', 'Os', 'Re', 'Rh', 'Ru'] and zero Pt rows. So the same-metal intersection is 0, even though 909 PlatinAI complexes share a ligand main fragment with MSRS and 2727 (complex, shared-cell) labels exist. Those rows could support a Pt-extrapolation study, but that is a different estimand and is NOT counted here. NCI-60 GI50 has neither SMILES nor metal on disk, so it cannot join at all.",
+  "not_measured": [
+    "Pt zero-shot transfer on the 909 ligand-matched PlatinAI complexes (different estimand: unseen metal)",
+    "NCI-60 GI50 regression (no structure column)"
+  ]
+}
