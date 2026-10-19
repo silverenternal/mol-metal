@@ -66,6 +66,7 @@ from sklearn.metrics import roc_auc_score  # noqa: E402
 # the D-MPNN run differ only in model class.
 from molmetal.scripts.train_moleculenet import (  # noqa: E402
     CHEMPROP_DMPNN_BASELINE,
+    SPLIT_KEY,
     _load_task,
     _scaffold_split,
 )
@@ -277,6 +278,12 @@ def main(argv: Optional[List[str]] = None) -> int:
             "per_seed_auc": [r["test_auc"] for r in runs],
             "n_test": runs[0]["n_test"] if runs else None,
             "n_train": runs[0]["n_train"] if runs else None,
+            # Full per-seed fingerprint.  Each seed re-splits (the split RNG is
+            # seeded by the training seed), so five seeds mean five different
+            # test sets; seed 0's size alone cannot establish that this run and
+            # another arm used the same splits.
+            "per_seed_n_train": [int(r["n_train"]) for r in runs],
+            "per_seed_n_test": [int(r["n_test"]) for r in runs],
             "chemprop_dmpnn_literature_baseline": CHEMPROP_DMPNN_BASELINE[task],
             "delta_vs_literature": (
                 float(np.mean(aucs) - CHEMPROP_DMPNN_BASELINE[task]) if aucs else None
@@ -301,6 +308,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         "backbone": "chemprop_v2",
         "featurization": "chemprop_v2 SimpleMoleculeMolGraphFeaturizer (atom+bond)",
         "split": "scaffold (Bemis-Murcko, 70/10/20) via train_moleculenet._scaffold_split",
+        # Provenance, not decoration.  This report used to say only "via
+        # train_moleculenet._scaffold_split", which is true of both the
+        # pre-2026-10-19 isomeric key and the aligned stereo-blind one — so the
+        # 2026-10-12 run stayed citable as "same protocol" after the key
+        # changed.  Imported rather than re-typed so the two writers cannot
+        # drift apart.
+        "split_key": SPLIT_KEY,
         "seeds": [int(s) for s in args.seeds],
         "epochs": int(args.epochs),
         "batch_size": int(args.batch_size),
@@ -311,7 +325,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "tasks": tasks_out,
         "mean_auc": float(np.mean(means)) if means else None,
         "chemprop_dmpnn_literature_mean": float(np.mean(list(CHEMPROP_DMPNN_BASELINE.values()))),
-        "comparison_baseline": "metrics/by_metric/moleculenet_auc_dmpnn_5seed.json",
+        "comparison_baseline": "metrics/by_metric/moleculenet_auc.json",
         "why": (
             "BLK-PA17: the paper's chemprop column is a literature best-of-search "
             "constant on an unproven split match.  This run measures chemprop v2 "
@@ -320,7 +334,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         "honest_framing_note": (
             "MEASURED only.  Same scaffold split, same seeds, same epochs/batch as "
             "the canonical D-MPNN MoleculeNet metric; the only difference is the "
-            "model class.  class_weight defaults to chemprop's 'off'."
+            "model class.  class_weight defaults to chemprop's 'off'.  Verify the "
+            "split claim by comparing this report's per_seed_n_test against the "
+            "other arm's — the sizes differ between the aligned and the "
+            "pre-2026-10-19 key, so a match is evidence and a mismatch is a "
+            "false same-protocol claim."
         ),
         "config": {
             "tasks": list(args.tasks),

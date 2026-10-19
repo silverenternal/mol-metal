@@ -203,6 +203,13 @@ def _bemis_murcko_scaffold(smiles: str) -> str:
         return smiles
 
 
+# The split key, named once.  Every writer that produces a MoleculeNet number
+# (this trainer, train_chemprop_v2_moleculenet.py, synthesize_pa17_metric.py)
+# records this string, so a reader can tell an aligned table from a
+# pre-2026-10-19 one without guessing.  Two copies of the literal drift apart.
+SPLIT_KEY = "bemis_murcko_stereo_blind (includeChirality=False)"
+
+
 def _scaffold_split(
     smiles: List[str],
     seed: int,
@@ -905,6 +912,9 @@ def _aggregate(per_seed: List[Dict[str, object]]) -> Dict[str, object]:
         for d in per_seed
         if not np.isnan(d["test_metrics"]["hit_rate_top5pct"])
     ]
+    # A seed that raised is recorded with an error payload and no split sizes;
+    # it must not contribute to the fingerprint either.
+    sized = [d for d in per_seed if "n_train" in d and "n_test" in d]
     return {
         "n_seeds_total": len(per_seed),
         "n_seeds_valid": len(aucs),
@@ -915,6 +925,17 @@ def _aggregate(per_seed: List[Dict[str, object]]) -> Dict[str, object]:
         "per_seed_auc": aucs,
         "per_seed_pr_auc": aps,
         "per_seed_hit_top5": hits,
+        # Split fingerprint.  ``split_key`` says which key was used; this says
+        # the split actually came out the same.  The two are not redundant:
+        # a comparison can name the same key and still be run against a
+        # different file.  MEASURED 2026-10-20 — the aligned key gives bace
+        # seed0 n_test 299 and the pre-alignment key gives 302, so a scalar
+        # mismatch is a decisive "not the same split".  The per-seed vector is
+        # needed because ``_scaffold_split`` seeds its RNG with the training
+        # seed: the five seeds use five DIFFERENT splits (bace 299/305/304/
+        # 303/308), so one seed's size cannot stand in for the rest.
+        "per_seed_n_train": [int(d["n_train"]) for d in sized],
+        "per_seed_n_test": [int(d["n_test"]) for d in sized],
     }
 
 
@@ -1512,7 +1533,7 @@ def main(argv: List[str] | None = None) -> int:
         # Provenance, not decoration: without this a reader cannot tell which
         # key produced the numbers, which is how the pre-2026-10-19 (isomeric)
         # AUCs stayed citable as if they were on the reference split.
-        "split_key": "bemis_murcko_stereo_blind (includeChirality=False)",
+        "split_key": SPLIT_KEY,
         "seeds": args.seeds,
         "epochs": args.epochs,
         "batch_size": args.batch_size,

@@ -17,12 +17,14 @@ protocol + same metric 才 comparable."*
 - **Protocol-aligned (same dataset+task+metric) — competitive or winning:** m1 Ru AUC (paper-protocol
   replication 0.7717 vs Krasnov 0.810, cross-cohort), m21 NCI-60 9-cell (0.8007 vs 0.81), Krasnov-aligned
   chemprop 3-metal (0.7812), m15 RMSD (0.6578 Å, 5/5 pass 2.0 Å), decode_ratio (0.998), n_distinct (20 vs
-  gate 3), RDKit validity (1.000), m1 vs our own single-task baseline (+0.049), MoleculeNet mean 0.8149
-  (D-MPNN backbone, 5-seed, passes the 0.80 gate).
-- **Protocol-aligned — genuinely behind:** MoleculeNet clintox (0.8209 vs chemprop-D-MPNN 0.894, −0.073),
-  hiv (0.7900 vs 0.823, −0.033), bbbp (0.9065 vs 0.940, −0.034), bace (0.7421 vs 0.876, −0.134 — a real
-  architecture-level miss, not seed noise), m19 LOMO real-only (0.5575 vs target 0.70; 0.5845 with
-  per-metal centering).
+  gate 3), RDKit validity (1.000), m1 vs our own single-task baseline (+0.049), MoleculeNet mean 0.8095
+  (D-MPNN backbone, 5-seed, **aligned split key**, passes the 0.80 gate), MoleculeNet bbbp/hiv vs
+  same-protocol chemprop v2 (+0.033 / +0.028).
+- **Protocol-aligned — genuinely behind:** MoleculeNet bace (0.7422 vs same-protocol chemprop v2 0.8279,
+  −0.086; **and vs Morgan-MLP 0.8500, −0.108** — an architecture-level miss, not seed noise), clintox
+  (0.7957 vs 0.8652, −0.070), m19 LOMO real-only (0.5575 vs target 0.70; 0.5845 with per-metal
+  centering). The literature chemprop column (0.8832 mean) sits 0.050 above its own reproduction, so
+  gaps quoted against it overstate the real one.
 - **Readout finding, NOT a feature gap:** pearson r pIC50 — the bottleneck is the neural head, not the
   multi-task α (3-seed ridge probe on the frozen encoder embedding 0.403 ± 0.004 vs head 0.198 ± 0.023;
   we already beat the same-split Morgan ridge 0.3232). A random encoder scores nearly as well (0.378),
@@ -57,18 +59,17 @@ cell lines). It is a cross-cohort estimate, labelled as such, not a reproduction
 
 | Metric | Ours (MEASURED) | Baseline (same protocol) | Gap | Source JSON |
 |---|---|---|---|---|
-| **MoleculeNet clintox** | 0.7016 (Morgan-MLP) → **0.8209 ± 0.0122** (D-MPNN, 5-seed) | chemprop D-MPNN **0.894** | −0.192 → **−0.073** | `moleculenet_auc_morgan_mlp.json::tasks.clintox` / `moleculenet_auc_dmpnn_5seed.json::tasks.clintox` |
-| **MoleculeNet hiv** | 0.7470 → **0.7900 ± 0.0109** (D-MPNN, 5-seed) | chemprop D-MPNN **0.823** | −0.076 → **−0.033** | `moleculenet_auc_dmpnn_5seed.json::tasks.hiv` |
-| **MoleculeNet bbbp** | 0.8720 → **0.9065 ± 0.0227** (D-MPNN, 5-seed) | chemprop D-MPNN **0.940** | −0.068 → **−0.034** | `moleculenet_auc_dmpnn_5seed.json::tasks.bbbp` |
-| **MoleculeNet bace** | 0.8609 → **0.7421 ± 0.0446** (D-MPNN, 5-seed) | chemprop D-MPNN 0.876 | **−0.134** (D-MPNN worse; 5-seed std 0.045 — a REAL regression, not seed noise) | `moleculenet_auc_dmpnn_5seed.json::tasks.bace` |
+| **MoleculeNet clintox** | **0.7957 ± 0.1075** (D-MPNN 512/4, 5-seed, aligned key) | chemprop v2 **0.8652 ± 0.0236** | **−0.070** | `moleculenet_auc.json::tasks.clintox` / `moleculenet_auc_chemprop_v2_same_protocol.json::tasks.clintox` |
+| **MoleculeNet bace** | **0.7422 ± 0.0828** (D-MPNN 512/4, 5-seed, aligned key) | chemprop v2 0.8279 / **Morgan-MLP 0.8500** | **−0.086** vs chemprop, **−0.108** vs Morgan | `moleculenet_auc.json::tasks.bace` / `moleculenet_auc_morgan_mlp_aligned.json::tasks.bace` |
 | **m19 LOMO (real-only)** | 0.5575 (0.5845 w/ per-metal centering) | target 0.70 | −0.14 (−0.116) | `metal_lomo_auc_wasserstein.json` |
 
-**Caveat on MoleculeNet:** the original run was **Morgan-FP + MLP** (`morgan_fp_2048_r2`); the aligned
-D-MPNN backbone (same Bemis-Murcko scaffold split, same ROC-AUC) closes most of the gap — Morgan mean
-0.7954 → D-MPNN **0.8149** (5-seed; 3-seed was 0.8161), passing the 0.80 gate. The residual clintox
-(−0.073) / hiv (−0.033) / bbbp (−0.034) gaps are now tuning, not architecture. **`bace` is the one real
-architecture-level miss**: 5 seeds give 0.7421 ± 0.0446 (tightening the 3-seed ± 0.0687 without moving the
-mean), so the −0.134 vs chemprop is a genuine D-MPNN regression and is reported as an honest-negative.
+**Caveat on MoleculeNet:** under the aligned key the D-MPNN **wins bbbp (+0.033) and hiv (+0.028)** and
+**loses bace (−0.086) and clintox (−0.070)** against same-protocol chemprop v2, for a net −0.024 on the
+mean (0.8095 vs 0.8330). The earlier "behind on 4/4" reading came from the pre-alignment key and from
+comparing against the literature constant rather than a reproduction. **`bace` is the one real
+architecture-level miss**, and the sharper form of it is that Morgan-MLP (0.8500) beats our D-MPNN
+(0.7422) by 0.108: this is not "we lose to message passing", it is a task where our architecture
+underperforms a fixed fingerprint MLP. Reported as an honest-negative.
 
 **Split-key caveat (MEASURED 2026-10-19, `docs/DATA_LEAKAGE_AUDIT.md` §5):** the split key
 (`train_moleculenet._bemis_murcko_scaffold`) used to keep stereochemistry, while the reference
@@ -100,13 +101,48 @@ unchanged, so its +0.008 is training nondeterminism); bace (−0.051) and clinto
 both have 5-seed standard deviations of 0.08-0.11, so a 5-seed mean cannot resolve a shift of that size
 as significant. What is certain is that all four numbers are now on the reference key.
 
-**The baseline columns are still pre-alignment.** The chemprop v2 same-protocol artifact
-(`moleculenet_auc_chemprop_v2_same_protocol.json`, 2026-10-12) imports `train_moleculenet._scaffold_split`,
-so it used the splitter correctly — but it ran before the key fix and therefore on the isomeric key. The
-Morgan-MLP artifact (`moleculenet_auc_morgan_mlp.json`, 2026-09-25) predates it as well. Both are
-annotated `split_key: bemis_murcko_isomeric`. A fully like-for-like table needs both re-run under the
-aligned key; until then, compare our aligned numbers against the literature constants only, and do not
-read the two baseline columns as same-split measurements.
+**Same-protocol baselines, now re-measured on the aligned key (MEASURED 2026-10-19/20).** Both baseline
+arms have been re-run under the aligned key, so the comparison is now genuinely same-protocol rather
+than "same splitter, different key":
+
+| Task | Ours D-MPNN 512/4 | chemprop v2 | Morgan-MLP | chemprop D-MPNN (lit.) | ours−cp | cp−lit |
+|---|---:|---:|---:|---:|---:|---:|
+| bbbp | **0.9025 ± 0.0350** | 0.8693 ± 0.0441 | 0.8610 ± 0.0527 | 0.940 | **+0.0332** | −0.0707 |
+| bace | 0.7422 ± 0.0828 | 0.8279 ± 0.0118 | 0.8500 ± 0.0334 | 0.876 | **−0.0857** | −0.0481 |
+| hiv | **0.7976 ± 0.0170** | 0.7698 ± 0.0258 | 0.7600 ± 0.0368 | 0.823 | **+0.0278** | −0.0532 |
+| clintox | 0.7957 ± 0.1075 | 0.8652 ± 0.0236 | 0.7250 ± 0.0471 | 0.894 | **−0.0695** | −0.0288 |
+| mean | 0.8095 | **0.8330** | 0.7990 | 0.8832 | −0.0235 | −0.0502 |
+
+Sources: `moleculenet_auc.json`, `moleculenet_auc_chemprop_v2_same_protocol.json`,
+`moleculenet_auc_morgan_mlp_aligned.json`. All three carry
+`split_key: bemis_murcko_stereo_blind (includeChirality=False)`.
+
+**The alignment is verified, not asserted.** Each seed re-splits (`_scaffold_split` seeds its RNG with
+the training seed), so the five seeds are five different test sets and a single size cannot stand in
+for the rest. Comparing the full per-seed size vector:
+
+- Morgan-MLP vs D-MPNN: **5/5 seeds × 4/4 tasks identical** (e.g. bace 299/305/304/303/308).
+- chemprop v2 vs D-MPNN: **seed 0 identical on 4/4 tasks** (bbbp 412, bace 299, hiv 8296,
+  clintox 297). That report predates the per-seed vector, so only seed 0 is comparable; the
+  synthesizer records `split_check.seeds_compared = 1` rather than implying more.
+
+The check is decisive because the two keys give different sizes — bbbp 390→412, bace 302→299,
+clintox 298→297, hiv 8296→8296 (unchanged, no stereocentres). A match is evidence; a mismatch aborts
+the write (`synthesize_pa17_metric.py` returns 2 and writes nothing unless
+`--allow-unverified-split` is passed, which stamps `split_check.verified = false`).
+
+**What the three-way table says.** chemprop v2 is 0.0502 *below* the literature constant it is
+usually quoted as — the reference column was best-of-search. Against the reproduced baseline we win
+2/4 (bbbp +0.033, hiv +0.028) and lose 2/4 (bace −0.086, clintox −0.070), netting −0.024 on the
+mean. The bace loss is the sharper one: **Morgan-MLP at 0.8500 beats our D-MPNN at 0.7422 by 0.108**,
+so bace is not "we lose to message passing" — it is a task where our architecture underperforms even
+a fixed fingerprint MLP. That remains an open honest-negative, not a tuning opportunity already
+exploited.
+
+**Superseded columns.** The pre-alignment chemprop artifact is preserved as
+`moleculenet_auc_chemprop_v2_same_protocol_pre_alignment.json` and the pre-alignment Morgan artifact
+as `moleculenet_auc_morgan_mlp.json`, both annotated `split_key: bemis_murcko_isomeric`. Do not read
+either against the aligned table: the test sets differ by 39-87 %.
 
 **bace rescue attempt (MEASURED, honest-negative — 2026-10-08):** the hypothesis that the
 unconditional `pos_weight=neg/pos` class weighting (applied even to near-balanced bace, pos_rate≈0.45)

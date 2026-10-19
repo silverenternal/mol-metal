@@ -171,5 +171,6 @@
     "skipped": true,
     "reason": "p1_chemprop_smoke timed out at 90.7s under host load ~20 (3 concurrent msrs_dmpnn_protocol workers); 114 PASS / 1 FAIL / 11 SKIP, the only FAIL is the CPU smoke, orthogonal to train_moleculenet.py"
   },
-  "why_rerun": "The 2026-09-25 Morgan baseline used the isomeric Bemis-Murcko key. The 2026-10-19 alignment turns over 59-87% of the test molecules for bbbp/bace/clintox, so the old numbers are not on the same split as the aligned D-MPNN run."
+  "why_rerun": "The 2026-09-25 Morgan baseline used the isomeric Bemis-Murcko key. The 2026-10-19 alignment turns over 59-87% of the test molecules for bbbp/bace/clintox, so the old numbers are not on the same split as the aligned D-MPNN run.",
+  "device": "cuda:0"
 }

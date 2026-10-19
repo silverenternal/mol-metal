@@ -74,6 +74,9 @@ rc=$?
 echo "[pa17] finished $(date -Iseconds) rc=$rc"
 echo "[pa17] log=$LOG"
 echo "[pa17] HONEST: rc=0 means the run COMPLETED. The verdict is each task's"
-echo "[pa17]         test_auc_mean vs the literature constant in"
-echo "[pa17]         metrics/by_metric/moleculenet_auc_dmpnn_5seed.json."
+echo "[pa17]         test_auc_mean vs the literature constant carried in"
+echo "[pa17]         metrics/by_metric/moleculenet_auc.json (aligned split key)."
+echo "[pa17]         The pre-2026-10-19 constant lived in"
+echo "[pa17]         moleculenet_auc_dmpnn_5seed.json, which is on the OLD key —"
+echo "[pa17]         do not cite it against this run."
 exit $rc

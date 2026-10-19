@@ -122,6 +122,35 @@ Fixed 2026-10-19 (Wf-A53):
   `superseded`; the two columns must not be mixed because 59-87 % of the test
   molecules differ. hiv moved +0.0087 on an identical split — that is the
   training-nondeterminism floor, not an effect of the key.
+- **Both baseline arms re-measured on the aligned key (2026-10-19/20).** The
+  "same protocol" label was previously unearned: both baselines were on the
+  isomeric key. Now:
+  - Morgan-MLP, 8.5 min, 5 seeds → `moleculenet_auc_morgan_mlp_aligned.json`:
+    bbbp 0.8610 ± 0.0527, bace 0.8500 ± 0.0334, hiv 0.7600 ± 0.0368,
+    clintox 0.7250 ± 0.0471, mean **0.7990**.
+  - chemprop v2, 31 min on GPU 0 (bf16), 5 seeds →
+    `moleculenet_auc_chemprop_v2_same_protocol.json`: bbbp 0.8693 ± 0.0441,
+    bace 0.8279 ± 0.0118, hiv 0.7698 ± 0.0258, clintox 0.8652 ± 0.0236,
+    mean **0.8330**.
+  - The pre-alignment artifacts are preserved with explicit
+    `split_key: bemis_murcko_isomeric (PRE-2026-10-19)` annotations.
+- **The same-protocol claim is now checked, not asserted (2026-10-20).**
+  `synthesize_pa17_metric.py` compares the two arms' per-seed test-set sizes
+  and **refuses to write** on a mismatch (exit 2; `--allow-unverified-split`
+  writes with `split_check.verified = false`). This is decisive because the
+  keys give different sizes — bbbp 390→412, bace 302→299, clintox 298→297,
+  hiv 8296 unchanged. MEASURED: Morgan vs D-MPNN **5/5 seeds × 4/4 tasks
+  identical**; chemprop v2 vs D-MPNN **seed 0 identical on 4/4** (its report
+  predates the per-seed vector, so `seeds_compared = 1`). Both trainers now
+  emit `split_key` and a per-seed size vector. Pinned by
+  `molmetal/tests/test_synthesize_pa17_split_check.py` (6 tests).
+- **Verdict under the aligned key: we win 2/4, lose 2/4.** bbbp +0.033 and
+  hiv +0.028 against same-protocol chemprop v2; bace −0.086 and clintox
+  −0.070; mean 0.8095 vs 0.8330. The literature column (0.8832) sits 0.050
+  above its own reproduction. **bace is sharper than "we lose to message
+  passing": Morgan-MLP 0.8500 beats our D-MPNN 0.7422 by 0.108**, so the
+  architecture underperforms a fixed fingerprint MLP on that task. Honest-
+  negative, unresolved.
 - **Pt 4-cell has a real scaffold split (2026-10-19).**
   `--platinai-split-strategy bemis_murcko_70_10_10` groups rows by the
   desalted stereo-blind Bemis-Murcko scaffold
