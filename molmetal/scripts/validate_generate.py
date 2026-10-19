@@ -298,13 +298,29 @@ def train(
             "cfm": float(ll["cfm"]),
             "atom": float(ll["atom"]),
             "dt": dt,
+            # Wf-A87c — cumulative OOV counters, so a step whose atoms were
+            # excluded from the CE is not indistinguishable from a clean one.
+            "oov_target_atom_rows": int(ll.get("oov_target_atom_rows", 0)),
+            "oov_target_bond_rows": int(ll.get("oov_target_bond_rows", 0)),
+            "skipped_oov": int(ll.get("skipped_oov", 0)),
         }
         losses.append(record)
         if step < 5 or step == n_steps - 1 or step % 10 == 0:
+            _oov = (
+                f"  oov_atom_rows={record['oov_target_atom_rows']}"
+                f"  oov_bond_rows={record['oov_target_bond_rows']}"
+                f"  skipped_oov={record['skipped_oov']}"
+                if (
+                    record["oov_target_atom_rows"]
+                    or record["oov_target_bond_rows"]
+                    or record["skipped_oov"]
+                )
+                else ""
+            )
             print(
                 f"[validate] step {step:3d}: total={loss:.4f}  "
                 f"cfm={ll['cfm']:.4f}  atom={ll['atom']:.4f}  "
-                f"({dt*1000:.1f} ms)"
+                f"({dt*1000:.1f} ms){_oov}"
             )
     return losses
 

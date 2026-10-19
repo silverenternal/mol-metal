@@ -534,10 +534,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             bond = loss_curves["bond"][-1] if loss_curves["bond"] else 0.0
             cfm = loss_curves["cfm"][-1] if loss_curves["cfm"] else 0.0
             atom = loss_curves["atom"][-1] if loss_curves["atom"] else 0.0
+            # Wf-A87c — cumulative OOV counters, only when non-zero.
+            _oov_atom = int(adapter.last_losses.get("oov_target_atom_rows", 0))
+            _oov_bond = int(adapter.last_losses.get("oov_target_bond_rows", 0))
+            _oov_skip = int(adapter.last_losses.get("skipped_oov", 0))
+            _oov_suffix = (
+                f"  oov_atom_rows={_oov_atom}  oov_bond_rows={_oov_bond}"
+                f"  skipped_oov={_oov_skip}"
+                if (_oov_atom or _oov_bond or _oov_skip)
+                else ""
+            )
             print(
                 f"[metallo_smoke] step {step:4d}/{args.steps}  "
                 f"loss={loss:.4f}  cfm={cfm:.4f}  atom={atom:.4f}  "
                 f"bond={bond:.4f}  elapsed={elapsed:.1f}s  eta={eta:.1f}s"
+                f"{_oov_suffix}"
             )
         if step % args.decode_smoke_every == 0 or step == args.steps:
             t_probe = time.time()
@@ -632,6 +643,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         },
         "wall_clock_s": wall,
         "loss_curves_summary": {k: _summary(v) for k, v in loss_curves.items()},
+        # Wf-A87c — machine-readable OOV counters (cumulative).
+        "oov_diagnostics": {
+            "oov_target_atom_rows": int(
+                adapter.last_losses.get("oov_target_atom_rows", 0)
+            ),
+            "oov_target_bond_rows": int(
+                adapter.last_losses.get("oov_target_bond_rows", 0)
+            ),
+            "skipped_oov_steps": int(adapter.last_losses.get("skipped_oov", 0)),
+            "bond_skipped_no_edges": int(
+                adapter.last_losses.get("bond_skipped_no_edges", 0)
+            ),
+        },
         "decode_summary": decode_summary,
         "p0_fixes_active": {
             "F1_bond_aware_decoder_wired": True,

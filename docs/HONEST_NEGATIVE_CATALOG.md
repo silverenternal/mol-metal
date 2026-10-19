@@ -5903,3 +5903,57 @@ ACTIVE count: **123 -> 124** (+1).
 **Workflow** | Wf-A87b (2026-10-19; 0 GPU — CPU-only; §5.2: every number
 traces to the runs above; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 
+
+---
+
+## §6.117 — Wf-A87c: the counters existed, but no training log printed them
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (logging visibility).  **Code:**
+`_oov_log_suffix` + `oov_diagnostics` in `molmetal/scripts/train_pocket_flow.py`;
+log suffix + `oov_diagnostics` in `molmetal/scripts/metallo_drug_smoke_retrain.py`;
+per-step record fields in `molmetal/scripts/validate_generate.py`.
+
+**The negative this answers.**  Wf-A87b added `oov_target_atom_rows` /
+`oov_target_bond_rows` / `skipped_oov` to `adapter.last_losses`, but the
+scripts that train with this adapter printed only `loss / cfm / atom`
+(`train_pocket_flow`, `metallo_drug_smoke_retrain`) or recorded only
+`cfm / atom` per step (`validate_generate`).  A run whose atoms were excluded
+from the CE looked identical to a clean one in its own log.
+
+**MEASURED — the visibility gap was not hypothetical.**
+`train_pocket_flow._toy_mol` draws `randint(1, 10)`, i.e. elements 2-5, which
+are outside the adapter's atom vocab: **10 of 32 atoms per step are OOV**.
+Before this entry the log line was
+
+    [step   1/2] loss=6.0134 cfm=5.7139 atom=2.9957 (2740ms)
+
+with no indication that 10 atoms had been dropped.  After the change:
+
+    [step   1/2] loss=6.0134 cfm=5.7139 atom=2.9957 (2740ms) | oov_atom_rows=10 oov_bond_rows=0 skipped_oov=0
+
+and the machine-readable sidecar carries
+`"oov_diagnostics": {"oov_target_atom_rows": 20, "oov_target_bond_rows": 0,
+"skipped_oov_steps": 0, "bond_skipped_no_edges": 0}` after two steps
+(cumulative: 10 per step).  `r10_cfg_real_crossdocked.py` already dumped the
+whole `last_losses` dict into its report, so it needed no change.
+
+**Honest-negative (ACTIVE, this entry):**
+  * **The toy data is still OOV.**  The counter makes the 10/32 visible; it
+    does not fix `_toy_mol`.  Changing the toy atoms would change the demo's
+    loss curve, so the data was left alone deliberately.
+  * **The counters are cumulative, not per-step.**  A log line shows the run
+    total; the per-step delta is not recorded.
+  * **Visibility is not enforcement.**  A run can still ignore the counter;
+    only the upstream data guard can prevent the leak.
+  * **`metallo_drug_smoke_retrain` and `validate_generate` were
+    syntax-checked, not run end-to-end in this pass** — the empirical
+    verification is the `train_pocket_flow` run above plus the 4 new tests.
+
+**§6.117 catalog-count math.** Net catalog-count delta: **+1** (§6.117 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **168 -> 169** (+1).
+ACTIVE count: **124 -> 125** (+1).
+
+**Workflow** | Wf-A87c (2026-10-19; 2-step GPU0 verification run, 2.7 s, ~4 MiB
+baseline; 4 new CPU tests; §5.2: every number traces to the run above; §5.3 +
+§5.4: 0 paper/* + 0 wet-lab).
+

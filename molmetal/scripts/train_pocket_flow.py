@@ -104,6 +104,19 @@ def _toy_mol(n_atoms: int = 8, seed: int = 0):
     )
 
 
+def _oov_log_suffix(last_losses: dict) -> str:
+    """Cumulative OOV counters, rendered only when something was excluded."""
+    atom_rows = int(last_losses.get("oov_target_atom_rows", 0))
+    bond_rows = int(last_losses.get("oov_target_bond_rows", 0))
+    skipped = int(last_losses.get("skipped_oov", 0))
+    if not (atom_rows or bond_rows or skipped):
+        return ""
+    return (
+        f" | oov_atom_rows={atom_rows} oov_bond_rows={bond_rows}"
+        f" skipped_oov={skipped}"
+    )
+
+
 def _mini_batch(batch_size: int = 4, n_atoms: int = 8):
     """One mini-batch of pocket + ligands.  The pocket is BROADCAST to
     every ligand (typical SBDD setting: one pocket, many ligands)."""
@@ -166,11 +179,15 @@ def main(argv: list[str] | None = None) -> int:
         cfm_losses.append(adapter.last_losses["cfm"])
         atom_losses.append(adapter.last_losses["atom"])
         if (step + 1) % 10 == 0 or step == 0:
+            # Wf-A87c (2026-10-19) — surface the OOV counters.  They are
+            # cumulative (last_losses is merged, not replaced), and printing
+            # them only when non-zero keeps normal runs byte-identical.
+            oov_suffix = _oov_log_suffix(adapter.last_losses)
             print(
                 f"[step {step+1:3d}/{args.steps}] "
                 f"loss={loss:.4f} cfm={adapter.last_losses['cfm']:.4f} "
                 f"atom={adapter.last_losses['atom']:.4f} "
-                f"({wall_times[-1]*1000:.0f}ms)"
+                f"({wall_times[-1]*1000:.0f}ms){oov_suffix}"
             )
 
     total_wall = time.time() - t_start
@@ -252,6 +269,21 @@ def main(argv: list[str] | None = None) -> int:
         "total_wall_seconds": total_wall,
         "avg_step_ms": 1000 * float(np.mean(wall_times)),
         "loss_decreased": final_loss < init_loss,
+        # Wf-A87c — the OOV counters must be in the machine-readable sidecar,
+        # not only on stderr, or a run whose atoms were silently excluded
+        # looks identical to a clean one.
+        "oov_diagnostics": {
+            "oov_target_atom_rows": int(
+                adapter.last_losses.get("oov_target_atom_rows", 0)
+            ),
+            "oov_target_bond_rows": int(
+                adapter.last_losses.get("oov_target_bond_rows", 0)
+            ),
+            "skipped_oov_steps": int(adapter.last_losses.get("skipped_oov", 0)),
+            "bond_skipped_no_edges": int(
+                adapter.last_losses.get("bond_skipped_no_edges", 0)
+            ),
+        },
         "checkpoint": str(ckpt_path),
     }
     json_path = REPORTS_DIR / "fm_pocket_train_summary.json"
