@@ -41,7 +41,8 @@
       "生成/对接：decode_ratio 0.998；RMSD 0.6578 Å，5/5 ≤2 Å；Vina 贵金属 BLOCKED。",
       "光毒性：Ru switch 0.2624 vs Ir 0.1373，差 +0.1251 [0.0395, 0.2048]；PI 预测 OOF R²<0。",
       "NCI-60 9 细胞系 AUC 0.7294 ± 0.2137 vs Krasnov 0.81（−0.08；2 个细胞系 n<10）。",
-      "DOI offset 带来 +0.1109 R²，但金属化学在 DOI 之后只剩 −0.0003 → DOI 是论文代理，不能当特征。"
+      "DOI offset 带来 +0.1109 R²，但金属化学在 DOI 之后只剩 −0.0003 → DOI 是论文代理，不能当特征。",
+      "数据卡（MET-10，21,404 行）：ligand 划分测试行 89.43% 共享 DOI（内插），DOI 划分 0% 共享 DOI 但 15.43% 共享配体；scaffold 65.58% 共享 DOI；细胞系 96–98% 复现。重复键 304 个/663 行，跨折 0；右删失 5,015 行（18.7%）被排除。ligand_canonical 不含金属原子（0 行）。"
     ]
   },
   "metric_gap_analysis": {
@@ -787,14 +788,74 @@
       "title": "数据卡与泄漏审计",
       "layer": "数据",
       "priority": "P0",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "0.5 天",
       "why": "强指标论文的标配；且 FIX-M4 已证明配体分组会泄漏论文内一致性。现有 docs/DATA_LEAKAGE_AUDIT.md 来自另一个 session，尚未合并。",
       "method": "记录每个 split 的 group key、重复率、DOI 跨折率、配体跨折率、censoring 比例、去重与平票规则；合并现有审计文档。",
       "deliverable": "docs/DATASET_CARD.md + docs/DATA_LEAKAGE_AUDIT.md",
       "acceptance": "每个 split 有泄漏量化；论文可直接引用；平票规则与去重规则写明。",
-      "depends_on": []
+      "depends_on": [],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_data_card.json",
+        "docs": [
+          "docs/DATASET_CARD.md",
+          "docs/DATA_LEAKAGE_AUDIT.md §8"
+        ],
+        "corpus": {
+          "rows": 21404,
+          "metals": 5,
+          "cell_lines": 711,
+          "ligands": 5861,
+          "dois": 1784,
+          "metal_in_smiles_rows": 0
+        },
+        "cross_fold_rates": {
+          "ligand": {
+            "ligand": 0.0,
+            "doi": 0.8943,
+            "scaffold": 0.7117,
+            "cell": 0.984
+          },
+          "doi": {
+            "ligand": 0.1543,
+            "doi": 0.0,
+            "scaffold": 0.4957,
+            "cell": 0.9604
+          },
+          "scaffold": {
+            "ligand": 0.0,
+            "doi": 0.6558,
+            "scaffold": 0.0,
+            "cell": 0.9776
+          },
+          "year": {
+            "ligand": 0.148,
+            "doi": 0.0,
+            "scaffold": 0.5315,
+            "cell": 0.9741
+          }
+        },
+        "duplicates": {
+          "repeated_keys": 304,
+          "rows_in_repeated": 663,
+          "conflicting_keys": 176,
+          "exact_dup_rows": 142,
+          "crossing_keys_per_protocol": 0,
+          "rows_without_time_h": 188
+        },
+        "censoring": {
+          "right": 5015,
+          "left": 9,
+          "share_of_potency": 0.187
+        },
+        "reading": "ligand 划分有 89.43% 的测试行与训练集共享 DOI，0.5556 是内插；doi 划分 DOI 交叉为 0 但有 15.43% 的测试行配体在别的论文出现过（不是泄漏，但不是冷启动）。scaffold 留出骨架但仍有 65.58% 共享论文，因此 0.4503 位于两者之间。细胞系四种协议都 96–98% 复现。重复键跨折为 0（键嵌套在分组键内）。18.7% potency 行右删失被排除，是选择偏差不是泄漏。",
+        "artifacts": [
+          "metrics/by_metric/msrs_data_card.json",
+          "data/msrs/measurements.parquet"
+        ]
+      },
+      "acceptance_result": "PASS (every split quantified; dedup and tie rules written)"
     },
     {
       "id": "MET-11",
@@ -863,7 +924,7 @@
         "MET-6",
         "MET-10"
       ],
-      "note": "P0：MET-1 DONE（5-seed PASS）、MET-2 DONE-NEGATIVE（DOI 0.3321）、MET-3 DONE-NEGATIVE（符号 0.6193，斜率 0.32）、MET-4 DONE-NEGATIVE（coverage 0.8789，宽 1.9195）。剩余 MET-6/10 全部 CPU。"
+      "note": "P0：MET-1 DONE（5-seed PASS）、MET-2 DONE-NEGATIVE（DOI 0.3321）、MET-3 DONE-NEGATIVE（符号 0.6193，斜率 0.32）、MET-4 DONE-NEGATIVE（coverage 0.8789，宽 1.9195）、MET-10 DONE（数据卡 + 泄漏审计）。剩余 MET-6。"
     },
     "wave_M2_decision": {
       "items": [

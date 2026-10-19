@@ -91,7 +91,7 @@
 | 最终模型的 metal-blind 消融 | 证明"金属感知"承重，而不只是相关 | 只有树模型上的 ligand vs +metal |
 | 统计功效 / 最小可检测效应 | 61 DOI 下 p=0.054 到底意味着什么 | 无 |
 | 生成 novelty / uniqueness | validity 高不等于分子新 | 只有 IntDiv1 0.869 |
-| 数据卡 + 泄漏审计 | 强指标论文的标配 | 部分（另一个 session 的 `docs/DATA_LEAKAGE_AUDIT.md`） |
+| ~~数据卡 + 泄漏审计~~ | ~~强指标论文的标配~~ | **已补（MET-10）：`DATASET_CARD.md` + `DATA_LEAKAGE_AUDIT.md` §8；ligand 划分 89.43% 测试行共享 DOI** |
 
 ---
 
@@ -137,7 +137,7 @@
 
 见 `todo.json :: work_packages` 的 MET-1..MET-11。优先级：
 
-- **P0（不做就不能投）**：MET-1 5-seed（DONE）、MET-2 四协议（DONE，负）、MET-3 Δ 指标（DONE，负）、MET-4 校准（DONE，负）、MET-6 金属消融、MET-10 数据卡。
+- **P0（不做就不能投）**：MET-1 5-seed（DONE）、MET-2 四协议（DONE，负）、MET-3 Δ 指标（DONE，负）、MET-4 校准（DONE，负）、MET-6 金属消融、MET-10 数据卡（DONE）。
 - **P1（决定论文上限）**：MET-5 决策曲线、MET-7 外部数据、MET-8 统计功效。
 - **P2（生成线专用）**：MET-9 生成指标。
 - **P3（打包）**：MET-11 指标表自动生成。
