@@ -334,6 +334,24 @@ def _bo_target_for_edges(
     return out
 
 
+def _bo_truth_available(pf: "PairFeature", cloud: "AtomCloud") -> bool:
+    """Whether the bo_target column CAN be teacher-forced for this decode.
+
+    Conservative on purpose: True when an explicit
+    ``PairFeature.bond_orders_continuous`` is present, or when the cloud
+    carries both ``bonds`` and ``bond_orders_continuous``.  It does not
+    check whether any candidate edge actually matched a truth bond —
+    "truth was available" is the property a consumer needs in order to
+    refuse to call the decode blind.
+    """
+    if getattr(pf, "bond_orders_continuous", None) is not None:
+        return True
+    return (
+        getattr(cloud, "bond_orders_continuous", None) is not None
+        and getattr(cloud, "bonds", None) is not None
+    )
+
+
 def _angle_to_metal(
     cloud: "AtomCloud",
     atom_i: int,
@@ -1475,6 +1493,14 @@ class DecodedMol:
     molecule (Wf-A84: `"kekulize_demoted_all"`).  Empty on a clean decode.
     Consumers must keep treating `sanitized` as the validity flag; this
     field exists so a repaired success is not counted as a clean one."""
+    teacher_forced: bool = False
+    """True when the ``bo_target`` input column was populated from bond
+    truth (Wf-A86/Wf-A87): either an explicit
+    :attr:`PairFeature.bond_orders_continuous` or the cloud's own
+    ``bonds`` + ``bond_orders_continuous``.  Such a decode saw the answer
+    for its true pairs and MUST NOT be reported as a blind prediction —
+    the CFM generation path has no truth, so its decodes stay False.
+    """
 
 
 def _safe_z(z: int) -> int:
@@ -1629,7 +1655,12 @@ class BondAwareDecoder:
             else:
                 bond_orders.append((int(i), int(j), int(order)))
 
-        return self._assemble_mol(cloud, bond_orders, dative_bonds)
+        return self._assemble_mol(
+            cloud,
+            bond_orders,
+            dative_bonds,
+            teacher_forced=_bo_truth_available(pair_features, cloud),
+        )
 
     # ------------------------------------------------------------------
     # Helpers
@@ -1803,6 +1834,7 @@ class BondAwareDecoder:
         cloud: AtomCloud,
         bond_orders: Sequence[Tuple[int, int, int]],
         dative_bonds: Sequence[Tuple[int, int]],
+        teacher_forced: bool = False,
     ) -> DecodedMol:
         # Late import keeps the module importable without rdkit installed.
         from rdkit import Chem
@@ -1867,6 +1899,7 @@ class BondAwareDecoder:
             n_bonds=len(bond_orders),
             sanitized=sanitized,
             error=sanitize_error,
+            teacher_forced=bool(teacher_forced),
         )
 
 

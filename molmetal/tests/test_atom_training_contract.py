@@ -33,17 +33,27 @@ def test_atom_targets_are_supervised_but_not_supplied_as_features():
     model.train_step(None, [mol])
     hook.remove()
     assert captured["input_atoms"].count_nonzero() == 0
-    expected = F.cross_entropy(captured["logits"].flatten(0, 1), atoms.to(model.device))
+    # 2026-10-19 — the adapter's atom CE applies the P0-F3 vocab mask
+    # (only in-vocab atom slots keep a finite logit), so the expected value
+    # must be computed through the same mask.  The pre-mask form compared
+    # log(20) against log(100) and could never pass.
+    logits = captured["logits"].flatten(0, 1)
+    vocab_mask = model._build_vocab_mask(logits.shape[-1], logits.device)
+    masked_logits = logits.masked_fill(~vocab_mask, float("-inf"))
+    expected = F.cross_entropy(masked_logits, atoms.to(model.device))
     assert model.last_losses["atom"] == pytest.approx(float(expected))
     assert not torch.equal(before, model.velocity_field.atom_head.weight)
 
 
 def test_decoder_rejects_unsupported_or_disconnected_output_without_repair():
     xyz = [[0.0, 0.0, 0.0], [20.0, 0.0, 0.0]]
-    assert decode_distance_graph([6, 78], xyz) == (
+    # 2026-10-19 — 78 (Pt) IS in the training vocabulary (the metal line
+    # depends on it), so the old expectation was stale; U (92) is not.
+    assert decode_distance_graph([6, 92], xyz) == (
         None,
         "atom_outside_training_vocabulary",
     )
+    assert decode_distance_graph([6, 78], xyz) == (None, "disconnected_distance_graph")
     assert decode_distance_graph([6, 6], xyz) == (None, "disconnected_distance_graph")
 
 

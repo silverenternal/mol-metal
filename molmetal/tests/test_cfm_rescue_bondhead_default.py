@@ -28,13 +28,25 @@ from molmetal.adapters.flow_matching_lipman import LipmanFlowMatchingAdapter
 from molmetal.domain import Molecule
 
 
-def _tiny_mol_list(n_mols: int = 2):
-    """Return a list of Molecule objects with valid 8-atom CNOF bonds."""
+def _tiny_mol_list(n_mols: int = 2, atom_types=None):
+    """Return a list of Molecule objects with valid 8-atom CNOF bonds.
+
+    ``atom_types`` overrides the default in-vocab H/C/N/O mix; the
+    non-finite diagnostic test uses it to inject out-of-vocab elements.
+    """
     out = []
     for k in range(n_mols):
         torch.manual_seed(k)
         positions = torch.randn(8, 3) * 0.5
-        atom_types = torch.randint(1, 10, (8,))
+        # 2026-10-19 — draw from the adapter's atom vocab (H/C/N/O), not
+        # randint(1, 10).  Elements 2-5 are not in the vocab, so the P1 OOV
+        # guard (Wf-A56) correctly skipped the step and zeroed the grads,
+        # and this fixture made test 2 fail for a reason unrelated to the
+        # joint-training wiring it was written to check.
+        if atom_types is None:
+            atom_types = torch.tensor([6, 7, 8, 1, 6, 7, 8, 6])
+        else:
+            atom_types = torch.as_tensor(atom_types).clone()
         bonds = torch.tensor(
             [
                 [0, 0, 1, 2, 3, 4, 5, 6, 7],
@@ -99,6 +111,11 @@ def test_bond_head_receives_gradient_when_joint_train_true():
     adapter.setup(device="cpu")
     mols = _tiny_mol_list(2)
     adapter.train_step(pocket=None, mols=mols)
+    assert adapter.last_losses.get("skipped_oov", 0) == 0, (
+        "the step was skipped as non-finite, so this test would be asserting "
+        "on zeroed grads rather than on the joint-training wiring: "
+        f"{adapter.last_losses}"
+    )
     if adapter.bond_head is not None:
         n_with_grad = sum(
             1 for p in adapter.bond_head.parameters() if p.grad is not None
@@ -125,6 +142,11 @@ def test_bond_head_no_gradient_when_joint_train_false():
     adapter.setup(device="cpu")
     mols = _tiny_mol_list(2)
     adapter.train_step(pocket=None, mols=mols)
+    assert adapter.last_losses.get("skipped_oov", 0) == 0, (
+        "the step was skipped as non-finite, so this test would be asserting "
+        "on zeroed grads rather than on the joint-training wiring: "
+        f"{adapter.last_losses}"
+    )
     if adapter.bond_head is not None:
         n_with_grad = sum(
             1 for p in adapter.bond_head.parameters() if p.grad is not None
@@ -152,3 +174,22 @@ def test_legacy_no_bond_head_works():
     assert (
         adapter.bond_head is None
     ), "use_bond_head=False must NOT construct BondOrderHead"
+
+
+def test_nonfinite_step_names_the_offending_term():
+    """An OOV batch is skipped, and the diagnostic says WHICH loss blew up."""
+    torch.manual_seed(0)
+    adapter = LipmanFlowMatchingAdapter(
+        hidden_dim=64,
+        n_layers=2,
+        max_atomic_number=20,
+        use_bond_head=True,
+        joint_train=True,
+    )
+    adapter.setup(device="cpu")
+    # Elements 2-5 are outside the atom vocab; the P1 guard must skip the step
+    # and the payload must identify the atom CE as the non-finite term.
+    mols = _tiny_mol_list(2, atom_types=[2, 3, 4, 5, 6, 7, 8, 6])
+    adapter.train_step(pocket=None, mols=mols)
+    assert adapter.last_losses["skipped_oov"] == 1
+    assert "atom" in adapter.last_losses["nonfinite_terms"]

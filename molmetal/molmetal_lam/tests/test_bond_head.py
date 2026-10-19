@@ -540,3 +540,33 @@ def test_synthetic_set_trains_both_bo_regimes() -> None:
     )
     # The mix must be near the declared fraction, not an accident of seed 0.
     assert abs(n_truth / col.numel() - _BO_TEACHER_FORCE_P) < 0.05
+
+
+def test_decode_flags_teacher_forcing_from_cloud(decoder) -> None:
+    """A truth-carrying cloud must be marked teacher-forced."""
+    result = decoder.decode(_cloud_with_truth_bo())
+    assert result.teacher_forced is True
+
+
+def test_decode_is_not_teacher_forced_without_truth(decoder) -> None:
+    cloud = AtomCloud(
+        positions=torch.tensor([[0.0, 0.0, 0.0], [1.4, 0.0, 0.0]]),
+        atomic_numbers=torch.tensor([6, 6]),
+    )
+    assert decoder.decode(cloud).teacher_forced is False
+
+
+def test_decode_flags_teacher_forcing_from_explicit_pair_feature(decoder) -> None:
+    cloud = AtomCloud(
+        positions=torch.tensor([[0.0, 0.0, 0.0], [1.4, 0.0, 0.0], [3.0, 0.0, 0.0]]),
+        atomic_numbers=torch.tensor([6, 6, 6]),
+    )
+    pf = _pf_two_edges()
+    pf.bond_orders_continuous = torch.tensor([1.0, 0.0])
+    assert decoder.decode(cloud, pf).teacher_forced is True
+
+
+def test_teacher_forced_defaults_to_false_on_the_result_container() -> None:
+    from molmetal.models.bond_head import DecodedMol
+
+    assert DecodedMol().teacher_forced is False

@@ -2635,6 +2635,14 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         # bit-exactly; opt in via ``use_pcgrad=True`` (or the
         # ``--use-pcgrad`` CLI flag on r10_cfg_real_crossdocked.py).
         self._use_pcgrad = bool(use_pcgrad)
+        # Diagnostics: per-term losses from the most recent train_step.
+        # Initialised here (2026-10-19) because the non-finite-loss guard
+        # reads ``self.last_losses.get("skipped_oov", 0)`` BEFORE assigning
+        # the dict — so a FIRST step that produced NaN/Inf raised
+        # AttributeError instead of reporting the skip.  That is exactly the
+        # step a caller is most likely to inspect (fresh init, bad batch),
+        # and it made test_cfm_rescue_bondhead_default fail on 3 tests.
+        self.last_losses: dict = {}
         # Diagnostics: stores the most-recent PCGrad conflict metrics
         # (n_conflicts, mean_cos_sim) so callers can log them.  Updated
         # by :func:`_pcgrad_resolve` whenever PCGrad runs.
@@ -3342,12 +3350,27 @@ class LipmanFlowMatchingAdapter(MoleculeGenerator):
         )
         if bad_atoms:
             self.optimizer.zero_grad()
+            # 2026-10-19 — name the term(s) that blew up.  The step is still
+            # skipped and the losses still report nan (the numbers are not
+            # meaningful), but without this a caller could see 'skipped_oov'
+            # and still not know whether the leak was in the atom CE, the
+            # bond CE or the flow loss.
+            nonfinite_terms = [
+                name
+                for name, term in (
+                    ("cfm", cfm_loss),
+                    ("atom", atom_loss),
+                    ("bond", bond_loss_tensor),
+                )
+                if not bool(torch.isfinite(term).all())
+            ]
             self.last_losses = {
                 "cfm": float("nan"),
                 "atom": float("nan"),
                 "bond": float("nan"),
                 "total": float(loss.item()),
                 "skipped_oov": int(self.last_losses.get("skipped_oov", 0)) + 1,
+                "nonfinite_terms": nonfinite_terms,
             }
             return self.last_losses["total"]
         self.optimizer.step()

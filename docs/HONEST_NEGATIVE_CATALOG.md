@@ -5770,3 +5770,77 @@ ACTIVE count: **121 -> 122** (+1).
 **Workflow** | FIX-M3 (2026-10-19; 0 GPU; 6 new tests; §5.2: every number
 traces to `metrics/by_metric/msrs_variance_ceiling.json`; §5.3 + §5.4: 0
 paper/* + 0 wet-lab).
+
+---
+
+## §6.115 — Wf-A87: the skip guard that could not report, and four tests asserting yesterday's contract
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (diagnostics + stale-test repair; no model
+behaviour changes).  **Code:** `LipmanFlowMatchingAdapter.last_losses` init +
+`nonfinite_terms` in `molmetal/adapters/flow_matching_lipman/__init__.py`;
+`DecodedMol.teacher_forced` + `_bo_truth_available` in
+`molmetal/models/bond_head.py`; four test files.
+
+**Problem 1 — the guard crashed on the step it was meant to report.**
+`train_step`'s P1 OOV guard read `self.last_losses.get("skipped_oov", 0)`
+BEFORE assigning the dict, and `last_losses` was never initialised.  A first
+step with a non-finite loss therefore raised `AttributeError` instead of
+recording the skip — exactly the step a caller is most likely to inspect.
+Fixed by initialising `self.last_losses = {}` in `__init__`.
+
+**Problem 2 — the skip payload did not say which term blew up.**  All three
+terms were overwritten with `nan`, so `skipped_oov == 1` told a maintainer
+that something leaked but not what.  The payload now also carries
+`nonfinite_terms`, a list naming the offending term(s).  MEASURED on an
+out-of-vocab batch (elements 2-5): `skipped_oov == 1`, `nonfinite_terms ==
+['atom', 'bond']` — both CEs, as expected, because those elements are masked
+in both vocab masks.
+
+**Problem 3 — teacher-forced decodes were indistinguishable from blind ones.**
+Wf-A86 made the `bo_target` column live, but `DecodedMol` had no way to say
+that a decode had seen bond truth.  `DecodedMol.teacher_forced` is now set by
+`_bo_truth_available(pf, cloud)`: True when an explicit
+`PairFeature.bond_orders_continuous` is present, or when the cloud carries both
+`bonds` and `bond_orders_continuous`.  Conservative by design — it reports
+"truth was available", not "truth was consumed for this particular pair".
+
+**Problem 4 — four tests asserted contracts that no longer exist** (all
+verified failing at HEAD before this change):
+
+| test | stale assumption | current contract |
+|---|---|---|
+| `test_cfm_rescue_bondhead_default::test_bond_head_receives_gradient...` | fixture atoms drawn with `randint(1, 10)`, i.e. elements 2-5 | P1 OOV guard skips the step and zeroes grads → test asserted on zeroed grads |
+| `test_a5_joint_training::test_bond_loss_backward_grad_to_atom_head` (×2) | `BondOrderHead(in_dim=9)` | Wf-A35-1 removed the silent shape fallback; the head must be `9 + 2*hidden` |
+| `test_atom_training_contract::test_atom_targets_are_supervised...` | expected CE from unmasked logits (log 100) | P0-F3 masks to the 20-slot vocab → log 20 |
+| `test_atom_training_contract::test_decoder_rejects_...` | Pt (78) is out-of-vocabulary | Pt is IN the training vocab; U (92) is not |
+
+Each is repaired at the test, not by weakening the production contract.  The
+rescue fixture now also asserts `skipped_oov == 0`, so it can never again pass
+or fail through the guard instead of through the wiring it checks.
+
+**MEASURED:** 117 passed, 1 xfailed across the 11 affected test files
+(`test_bond_head` 31, `test_cfm_rescue_bondhead_default` 5,
+`test_a5_joint_training` 10, `test_atom_training_contract` 3, plus the six
+adjacent bond-head/CFM files).
+
+**Honest-negative (ACTIVE, this entry):**
+  * **`teacher_forced` has no consumer yet.**  It makes the leak visible; it
+    does not stop anyone from averaging a teacher-forced decode into a blind
+    metric.  The generation path is unaffected (no truth → False).
+  * **The atom CE still returns inf for a masked target class.**  That is the
+    P1 guard's intended signal, not a bug: the fix is at the data boundary,
+    not a clamp inside the loss.
+  * **No model behaviour changed.**  These are diagnostics, a result field and
+    test repairs; no training or generation number moves.
+  * **The stale tests were stale for weeks**, not since Wf-A86 — the pre-flight
+    gate does not run this set (see the `project_preflight_test_blind_spot`
+    note), which is why they survived.
+
+**§6.115 catalog-count math.** Net catalog-count delta: **+1** (§6.115 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **166 -> 167** (+1).
+ACTIVE count: **122 -> 123** (+1).
+
+**Workflow** | Wf-A87 (2026-10-19; 0 GPU — CPU-only diagnostics + tests; §5.2:
+every number traces to the runs printed above; §5.3 + §5.4: 0 paper/* + 0
+wet-lab).
+

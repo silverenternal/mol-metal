@@ -263,7 +263,11 @@ def test_bond_loss_backward_grad_to_atom_head() -> None:
     from molmetal.models.bond_head import BondOrderHead
 
     adapter.bond_head = BondOrderHead(
-        in_dim=9,
+        # 9 geometric features + the 2*hidden EGNN node features that
+        # _gather_edge_features concatenates.  Wf-A35-1 removed the silent
+        # shape-mismatch fallback, so a head built with in_dim=9 now raises
+        # instead of quietly dropping the graph context these tests check.
+        in_dim=9 + 2 * adapter._hidden_dim,
         hidden_dim=16,
         dropout=0.0,
         num_classes=5,
@@ -386,7 +390,11 @@ def test_bond_loss_zero_with_no_true_bonds() -> None:
         max_atomic_number=100,
     ).to(adapter.device)
     adapter.bond_head = BondOrderHead(
-        in_dim=9,
+        # 9 geometric features + the 2*hidden EGNN node features that
+        # _gather_edge_features concatenates.  Wf-A35-1 removed the silent
+        # shape-mismatch fallback, so a head built with in_dim=9 now raises
+        # instead of quietly dropping the graph context these tests check.
+        in_dim=9 + 2 * adapter._hidden_dim,
         hidden_dim=16,
         dropout=0.0,
         num_classes=5,
