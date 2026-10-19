@@ -34,13 +34,16 @@ from molmetal.models.bond_head import (
     BOND_DOUBLE,
     BOND_SINGLE,
     BOND_TRIPLE,
+    PAIR_FEATURE_DIM,
+    PAIR_FEATURE_NAMES,
     BondAwareDecoder,
     BondOrderHead,
     PairFeature,
-    default_trained_head,
-    train_synthetic,
     _bond_distance,
+    _pair_feature_vector,
+    default_trained_head,
     make_synthetic_training_set,
+    train_synthetic,
 )
 
 
@@ -104,8 +107,9 @@ def test_synthetic_dataset_size_and_distribution() -> None:
     """Sanity-check the synthetic dataset has the expected shapes and class mix."""
     X, y = make_synthetic_training_set(seed=0)
     # The synthetic rows must match the width live inference feeds the head;
-    # asserting a literal 9 is what let the two drift apart in the first place.
-    assert X.dim() == 2 and X.shape[1] == BondOrderHead().in_dim
+    # asserting a literal is what let the two drift apart in the first place.
+    assert X.dim() == 2 and X.shape[1] == PAIR_FEATURE_DIM
+    assert X.shape[1] == BondOrderHead().in_dim
     assert y.dim() == 1 and X.shape[0] == y.shape[0]
     # Each class must have at least a few examples (no degenerate rows).
     for cls in range(5):
@@ -392,3 +396,57 @@ def test_decoder_accepts_explicit_pair_features(decoder) -> None:
     assert all(
         p == (0, 1) for p in pairs
     ), f"decoder produced unexpected bonds when only 0-1 listed: {pairs}"
+
+
+# ---------------------------------------------------------------------------
+# Feature-layout contract — one table, three producers
+# ---------------------------------------------------------------------------
+def test_pair_feature_layout_is_well_formed() -> None:
+    """Names are unique and the head default is derived from them."""
+    assert len(PAIR_FEATURE_NAMES) == PAIR_FEATURE_DIM
+    assert len(set(PAIR_FEATURE_NAMES)) == PAIR_FEATURE_DIM
+    assert BondOrderHead().in_dim == PAIR_FEATURE_DIM
+
+
+def test_pair_feature_vector_rejects_layout_drift() -> None:
+    """A declared-but-unpopulated (or unknown) name must raise, not pad."""
+    with pytest.raises(RuntimeError, match="missing"):
+        _pair_feature_vector({n: 0.0 for n in PAIR_FEATURE_NAMES[:-1]})
+    with pytest.raises(RuntimeError, match="extra"):
+        _pair_feature_vector(
+            {**{n: 0.0 for n in PAIR_FEATURE_NAMES}, "surprise": 0.0}
+        )
+
+
+def test_pair_feature_vector_orders_by_name() -> None:
+    # Build the mapping in reverse insertion order: the helper must return
+    # canonical order, not dict order.
+    values = {
+        n: float(PAIR_FEATURE_NAMES.index(n))
+        for n in reversed(PAIR_FEATURE_NAMES)
+    }
+    assert _pair_feature_vector(values) == [float(i) for i in range(PAIR_FEATURE_DIM)]
+
+
+def test_live_featuriser_width_and_order(decoder) -> None:
+    """_featurise must emit PAIR_FEATURE_NAMES order, not a private one."""
+    cloud = AtomCloud(
+        positions=torch.tensor([[0.0, 0.0, 0.0], [1.5, 0.0, 0.0]]),
+        atomic_numbers=torch.tensor([6, 6]),
+    )
+    pf = PairFeature(
+        edge_index=torch.tensor([[0], [1]], dtype=torch.long),
+        distance=torch.tensor([1.5]),
+        z_i=torch.tensor([6]),
+        z_j=torch.tensor([6]),
+        angle_to_metal=torch.tensor([0.0]),
+        is_dative_candidate=torch.tensor([False]),
+    )
+    feats = decoder._featurise(pf, cloud)
+    X, _ = make_synthetic_training_set(seed=0)
+    assert feats.shape == (1, X.shape[1]) == (1, PAIR_FEATURE_DIM)
+    gap = 1.5 - _bond_distance(6, 6, BOND_SINGLE)
+    expected = torch.tensor(
+        [[1.5, 0.0, 0.0, 0.0, 0.0, 6 / 90, 6 / 90, 0.0, gap, 0.0, gap]]
+    )
+    assert torch.allclose(feats, expected, atol=1e-6), feats

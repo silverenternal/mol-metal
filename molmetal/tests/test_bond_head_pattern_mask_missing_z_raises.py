@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from molmetal.models.bond_head import BondOrderHead
+from molmetal.models.bond_head import PAIR_FEATURE_DIM, BondOrderHead
 
 
 def _make_head() -> BondOrderHead:
@@ -23,7 +23,7 @@ def _make_head() -> BondOrderHead:
     the test fast.
     """
     return BondOrderHead(
-        in_dim=11,
+        in_dim=PAIR_FEATURE_DIM,
         hidden_dim=16,
         num_classes=5,
         atom_vocab=(1, 6, 7, 8),

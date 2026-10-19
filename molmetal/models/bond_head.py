@@ -98,6 +98,8 @@ __all__ = [
     "BOND_LABELS",
     "NUM_BOND_CLASSES",
     "MAX_ATOMIC_NUMBER",
+    "PAIR_FEATURE_NAMES",
+    "PAIR_FEATURE_DIM",
     "BondOrderHead",
     "AtomCloud",
     "PairFeature",
@@ -125,6 +127,53 @@ NUM_BOND_CLASSES: int = 5
 # up to 71.  Higher atomic numbers (actinides etc.) are clipped — they
 # rarely appear in drug-like SBDD ligands.
 MAX_ATOMIC_NUMBER: int = 90
+
+
+# ---------------------------------------------------------------------------
+# Pair-feature layout — the single source of truth for the head's input width
+# ---------------------------------------------------------------------------
+# 2026-10-19: the width used to be written as a literal in four places (this
+# module's in_dim default, the synthetic generator's rows, the live
+# BondAwareDecoder._featurise stack, and two tests).  Wf-A11 widened the
+# layout from 9 to 11 and the tests kept asserting 9, so test_bond_head
+# failed against a head that was correct.  Declaring the layout once means
+# adding or reordering a feature is a one-line change here; every producer
+# builds its vector BY NAME, so a name that is declared but not populated
+# raises instead of silently emitting a shorter row.
+PAIR_FEATURE_NAMES: Tuple[str, ...] = (
+    "distance",        # 0 — pair distance (Å)
+    "bucket_i",        # 1 — coarse Z bucket of atom i
+    "bucket_j",        # 2 — coarse Z bucket of atom j
+    "angle_to_metal",  # 3 — deviation from the ideal dative angle (rad)
+    "is_dative",       # 4 — dative-candidate flag
+    "z_i",             # 5 — Z_i / MAX_ATOMIC_NUMBER
+    "z_j",             # 6 — Z_j / MAX_ATOMIC_NUMBER
+    "bucket_prod",     # 7 — bucket_i * 6 + bucket_j
+    "gap",             # 8 — distance - single-bond anchor
+    "d_to_metal",      # 9 — midpoint-to-metal distance (0 when no metal)
+    "bo_target",       # 10 — continuous Wiberg BO, else the gap fallback
+)
+PAIR_FEATURE_DIM: int = len(PAIR_FEATURE_NAMES)
+
+
+def _pair_feature_vector(values: "dict[str, object]") -> "list[object]":
+    """Order a named feature mapping into the canonical layout.
+
+    Called by every producer of pair features (the synthetic generator and
+    BondAwareDecoder._featurise).  Raises on a missing or unknown name
+    rather than padding or truncating, so a layout change can never again
+    surface as a silent (N, 9) vs in_dim=11 mismatch deep inside
+    train_synthetic.
+    """
+    missing = [n for n in PAIR_FEATURE_NAMES if n not in values]
+    extra = [k for k in values if k not in PAIR_FEATURE_NAMES]
+    if missing or extra:
+        raise RuntimeError(
+            "pair-feature layout mismatch: "
+            f"missing={missing} extra={extra} "
+            f"(PAIR_FEATURE_NAMES={PAIR_FEATURE_NAMES})"
+        )
+    return [values[n] for n in PAIR_FEATURE_NAMES]
 
 
 # ---------------------------------------------------------------------------
@@ -266,12 +315,12 @@ def _angle_to_metal(
 def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tensor]:
     """Return ``(X, y)`` tensors of synthetic per-pair bond features.
 
-    X: shape ``(N, 11)`` — the same 11-feature layout
-    :meth:`BondAwareDecoder._featurise` produces at inference time
-    (``d, bucket_i, bucket_j, angle, dative, z_i, z_j, bucket_prod,
-    gap, d_to_metal, bo_target``).  The width is ``BondOrderHead.in_dim``;
-    keeping the two in step is what stops ``default_trained_head()`` from
-    raising ``expected (E, 11) pair_features, got (N, 9)``.
+    X: shape ``(N, PAIR_FEATURE_DIM)`` — the columns are
+    :data:`PAIR_FEATURE_NAMES`, the same table
+    :meth:`BondAwareDecoder._featurise` stacks at inference time.  Both
+    producers build their vector by name, so the synthetic width cannot
+    drift away from ``BondOrderHead.in_dim`` (the default is
+    ``PAIR_FEATURE_DIM``) without raising here.
     y: shape ``(N,)`` — long labels over ``BOND_LABELS``.
     """
     rng = torch.Generator().manual_seed(seed)
@@ -303,34 +352,29 @@ def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tens
             angle_dev = 0.0
             if dative:
                 angle_dev = abs(torch.randn((), generator=rng).item()) * 0.05
-            # Order-specific distance anchors that the head should learn.
+            # Distance gap to single-bond anchor (the head should learn:
+            # gap~0 -> single; gap<0 -> double/triple/aromatic;
+            # gap>0.4 -> no bond).  Synthetic rows have no metal position, so
+            # d_to_metal is 0 and bo_target falls back to the same gap the
+            # live featuriser uses when a cloud carries no continuous BO.
             anchor_single = _bond_distance(z_i, z_j, BOND_SINGLE)
+            gap = float(d - anchor_single)
             X_rows.append(
-                [
-                    d,
-                    float(_bucket(z_i)),
-                    float(_bucket(z_j)),
-                    float(angle_dev),
-                    1.0 if dative else 0.0,
-                    float(min(z_i, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
-                    float(min(z_j, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
-                    float(_bucket(z_i) * 6 + _bucket(z_j)),
-                    # Distance gap to single-bond anchor (the head should
-                    # learn: gap~0 -> single; gap<0 -> double/triple/aromatic;
-                    # gap>0.4 -> no bond).
-                    float(d - anchor_single),
-                    # Wf-A57 W9-P4 (2026-10-16): synthetic rows had a
-                    # 9-feature layout (pre-Wf-A11). BondAwareDecoder
-                    # ._featurise was extended on 2026-10-13 to stack
-                    # 11 features (added `d_to_metal` and `bo_target`),
-                    # and BondOrderHead.in_dim defaults to 11 to match
-                    # live inference. Without these trailing slots
-                    # default_trained_head() crashed at line 942 with
-                    # ``in_dim=11 vs X=(N, 9)`` shape mismatch.
-                    0.0,  # 9 — d_to_metal (synthetic: no real metal position)
-                    # 10 — bo_target gap fallback (mirrors _featurise 1509-11)
-                    float(d - anchor_single),
-                ]
+                _pair_feature_vector(
+                    {
+                        "distance": d,
+                        "bucket_i": float(_bucket(z_i)),
+                        "bucket_j": float(_bucket(z_j)),
+                        "angle_to_metal": float(angle_dev),
+                        "is_dative": 1.0 if dative else 0.0,
+                        "z_i": float(min(z_i, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
+                        "z_j": float(min(z_j, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
+                        "bucket_prod": float(_bucket(z_i) * 6 + _bucket(z_j)),
+                        "gap": gap,
+                        "d_to_metal": 0.0,
+                        "bo_target": gap,
+                    }
+                )
             )
             y_rows.append(order)
 
@@ -355,25 +399,23 @@ def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tens
         for _ in range(n):
             d = 2.8 + abs(torch.randn((), generator=rng).item()) * 0.5
             anchor_single = _bond_distance(z_i, z_j, BOND_SINGLE)
+            gap = float(d - anchor_single)
             X_rows.append(
-                [
-                    d,
-                    float(_bucket(z_i)),
-                    float(_bucket(z_j)),
-                    0.0,
-                    0.0,
-                    float(min(z_i, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
-                    float(min(z_j, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
-                    float(_bucket(z_i) * 6 + _bucket(z_j)),
-                    float(d - anchor_single),
-                    # Wf-A57 W9-P4 (2026-10-16): match the live 11-feature
-                    # layout (see _add above); no-bond rejection rows also
-                    # need the trailing ``d_to_metal=0`` and ``bo_target``
-                    # gap fallback or torch.tensor() at line 380 raises
-                    # ``expected sequence of length 11 at dim 1 (got 9)``.
-                    0.0,  # 9 — d_to_metal (no metal partner for no-bond rows)
-                    float(d - anchor_single),  # 10 — bo_target gap fallback
-                ]
+                _pair_feature_vector(
+                    {
+                        "distance": d,
+                        "bucket_i": float(_bucket(z_i)),
+                        "bucket_j": float(_bucket(z_j)),
+                        "angle_to_metal": 0.0,
+                        "is_dative": 0.0,
+                        "z_i": float(min(z_i, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
+                        "z_j": float(min(z_j, MAX_ATOMIC_NUMBER)) / MAX_ATOMIC_NUMBER,
+                        "bucket_prod": float(_bucket(z_i) * 6 + _bucket(z_j)),
+                        "gap": gap,
+                        "d_to_metal": 0.0,
+                        "bo_target": gap,
+                    }
+                )
             )
             y_rows.append(BOND_NO_BOND)
 
@@ -805,7 +847,7 @@ class BondOrderHead(nn.Module):
 
     def __init__(
         self,
-        in_dim: int = 11,
+        in_dim: int = PAIR_FEATURE_DIM,
         hidden_dim: int = 64,
         dropout: float = 0.10,
         num_classes: int = NUM_BOND_CLASSES,
@@ -1620,23 +1662,28 @@ class BondAwareDecoder:
         bo_target = getattr(pf, "bond_orders_continuous", None)
         if bo_target is None:
             bo_target = gap
-        feats = torch.stack(
-            [
-                d,
-                bi,
-                bj,
-                angle,
-                dative,
-                zi_raw,
-                zj_raw,
-                bucket_prod,
-                gap,
-                d_to_metal,
-                bo_target,
-            ],
+        # Ordered by name against PAIR_FEATURE_NAMES, the same table the
+        # synthetic generator uses.  Adding a feature is one entry there plus
+        # one entry here; a forgotten one raises instead of shifting every
+        # column silently.
+        return torch.stack(
+            _pair_feature_vector(
+                {
+                    "distance": d,
+                    "bucket_i": bi,
+                    "bucket_j": bj,
+                    "angle_to_metal": angle,
+                    "is_dative": dative,
+                    "z_i": zi_raw,
+                    "z_j": zj_raw,
+                    "bucket_prod": bucket_prod,
+                    "gap": gap,
+                    "d_to_metal": d_to_metal,
+                    "bo_target": bo_target,
+                }
+            ),
             dim=-1,
         )
-        return feats
 
     def _assemble_mol(
         self,
