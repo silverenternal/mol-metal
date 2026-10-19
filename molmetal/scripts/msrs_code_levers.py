@@ -229,6 +229,7 @@ def fit_arm(
     cat_codes: Optional[np.ndarray] = None,
     sample_weight: Optional[np.ndarray] = None,
     params_override: Optional[Dict[str, object]] = None,
+    objective_fn: Optional[object] = None,
 ) -> np.ndarray:
     """OOF predictions for one arm.  SVD is fitted inside each training fold.
 
@@ -296,7 +297,11 @@ def fit_arm(
             p = dict(params)
             p.pop("objective", None)
             n_rounds = p.pop("n_estimators", 500)
-            p["objective"] = tobit_objective(censored[tr], SIGMA)
+            p["objective"] = (
+                objective_fn(censored[tr])
+                if objective_fn is not None
+                else tobit_objective(censored[tr], SIGMA)
+            )
             init = float(np.mean(y[tr]))
             booster = lgb_train(
                 p,
