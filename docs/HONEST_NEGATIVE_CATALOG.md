@@ -6056,3 +6056,97 @@ tests; §5.2: every number traces to `metrics/by_metric/msrs_pairwise_reranker.j
 
 ---
 
+## §6.119 — Wf-A88: the sampler dropped the metal index, zeroing 2 of 11 pair features
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (feature mismatch, adapter path).
+**Code:** `_carry_metal_index` + both `AtomCloud(...)` sites in
+`generate_clouds_from_noise` (`molmetal/scripts/train_cfm_yuelbond_wasserstein.py`).
+
+**The negative this answers.**  `generate_clouds_from_noise` copies
+`atomic_numbers` from the template verbatim and re-draws only the coordinates,
+so the metal sits at the same index in the sample as in the template.  It
+dropped `metal_atom_index` anyway, and `BondAwareDecoder._featurise` reads that
+field to fill `angle_to_metal` and `d_to_metal`.  Every generated decode
+therefore ran with **2 of the 11** pair-feature columns pinned at 0.0, while
+the same decoder saw their real values on every training cloud.  Nothing in
+the log said so.
+
+**MEASURED.**  Before: the generated `AtomCloud` was constructed with exactly
+two fields (`positions`, `atomic_numbers`) at both sampler return sites.
+After: the template index is carried through; the 6 new tests include an
+end-to-end case that drives the real sampler (zero-velocity model, `n_steps=1`)
+in both the grouped and the `pad_groups=True` paths and asserts the returned
+cloud carries index 3 for a `[C, C, N, Pt, H]` template.
+
+**Honest-negative (ACTIVE, this entry):**
+  * **This does NOT touch the shipped CFM path.**  `train_cfm_yuelbond_wasserstein.py`
+    trains and decodes through `YuelBondDecoderHead` / `YuelBondBondDecoder`,
+    whose per-edge features are only `is_short`, `is_long`, `is_dative` and
+    the distance — that head never reads `metal_atom_index` at all.  The fix
+    lands in `BondAwareDecoder`, i.e. the `LipmanFlowMatchingAdapter` path
+    (`validate_generate.py`, `metallo_drug_smoke_retrain.py`).
+  * **The shipped head has no metal-geometry feature.**  So the 5-metal
+    differentiation in the shipped model rests on the atom-Z embedding plus
+    the `is_dative` flag alone.  That is a modelling gap, not a bug, and it
+    is not fixed here.
+  * **`cfm_property_panel` still decodes metal-free scaffolds**
+    (methane / ethane / methylamine), so its decode path cannot exercise the
+    metal features regardless of this fix.
+
+**§6.119 catalog-count math.** Net catalog-count delta: **+1** (§6.119 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **171 -> 172** (+1).
+ACTIVE count: **127 -> 128** (+1).
+
+**Workflow** | Wf-A88 (2026-10-19; 0 GPU — 6 new CPU tests + one 1-epoch CPU
+end-to-end smoke; §5.2: every number traces to `/tmp/audit_e2e2`; §5.3 + §5.4:
+0 paper/* + 0 wet-lab).
+
+## §6.120 — Wf-A89: a capped "5-metal" cohort was a single-metal prefix
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (data-selection defect; fixed for
+capped runs, full-run ordering still metal-grouped).  **Code:**
+`_stratified_row_sample` + the `n_clouds` branch of `build_csv_cohort`
+(`molmetal/scripts/train_cfm_yuelbond_wasserstein.py`).
+
+**The negative this answers.**  `build_csv_cohort` selected with
+`rows[:n_clouds]`.  The corpus CSV is grouped by metal, so every capped run
+trained a "5-metal" model on one metal while printing the 5-metal config and
+a healthy `metal: 64 inserted` line — a metal COUNT cannot distinguish one
+metal from five.
+
+**MEASURED — the prefix bias.**  `metalcytotox_5metal_multitask_v3.csv`,
+train split: **the first 512 rows are ALL Ru**; full split Ru 12,471 / Ir 3,444
+/ Os 834 / Rh 696 / Re 692.  `--n-train 64` therefore built 64 Ru complexes,
+and `--n-val 16` built 16 Ru complexes.  After the fix the same command
+reports
+
+    train mix={Ir: 12, Os: 3, Re: 2, Rh: 3, Ru: 44}
+    val   mix={Ir: 1, Os: 1, Rh: 1, Ru: 13}
+
+(Ru share 44/64 = 68.75% vs the corpus 68.77%).  Selection is a seeded
+per-metal shuffle plus a largest-remainder quota, then a seeded shuffle of the
+merged list; a full run (`n_clouds` >= corpus size) is untouched.
+
+**MEASURED side-effect, cohort-confounded.**  The same 1-epoch CPU smoke moved
+from `failure_reasons={ok: 10, ok_repaired:kekulize_demoted_all: 6}` to
+`{ok: 16}`, and `largest_fragment_frac` 0.951 -> 0.775.  The decode stopped
+needing the Wf-A84 kekulize repair once the cohort stopped being Ru-only.
+This is ONE run and the cohort changed, so it is a lead, not a result.
+
+**Honest-negative (ACTIVE, this entry):**
+  * **Full runs still read the CSV in file order**, which is metal-grouped, so
+    every batch of 8 is single-metal.  Changing that would perturb archived
+    runs, so it is left as a recommendation, not a change.
+  * **The 16-cloud val cohort still has no Re** (expected 0.6 rows at the
+    corpus share).  A 16-cloud val set cannot cover 5 metals.
+  * **The mix line reports BUILT clouds**, not selected rows, so it stays
+    honest when rows fail to embed.
+
+**§6.120 catalog-count math.** Net catalog-count delta: **+1** (§6.120 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **172 -> 173** (+1).
+ACTIVE count: **128 -> 129** (+1).
+
+**Workflow** | Wf-A89 (2026-10-19; 0 GPU — 6 new CPU tests + two 1-epoch CPU
+end-to-end smokes; §5.2: every number traces to `/tmp/audit_e2e2`; §5.3 + §5.4:
+0 paper/* + 0 wet-lab).
+
