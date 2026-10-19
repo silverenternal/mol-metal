@@ -187,3 +187,59 @@ Closed 2026-10-19 (data-side, no model or CFM file touched):
   domain (the 990,630-row/0-row incident).
 - **The leakage audit no longer deletes §8.** The generator preserves any
   `## 8.` tail verbatim; a re-run had removed 54 lines.
+
+## R10 — Data-side defects found and closed 2026-10-20
+
+All four were found while auditing the remaining open data items; none touch a
+CFM file.
+
+**a. A gate was passing on a placeholder table (m21).** `nci60_precious_9cell_auc.json`
+carried two tables that disagreed: the real `per_cell_line` (5 seeds, 9 cells, mean
+0.7294, A2780cis 0.3356) and a `wf312b_nci60_smoke_aggregate` block whose per-cell
+values were placeholders — 7 of 9 cells at the identical 0.80072, and DU145 given
+that value only to reach the 9-key floor `p3_nci60_9cell_per_cell_aggregate`
+enforces. The gate checked the block's internal consistency, never its agreement
+with the real table, so it PASSed. Fixed:
+`molmetal/scripts/wf_a55_nci60_aggregate_refresh.py` rebuilds the block from
+`per_cell_line`; the gate now cross-checks the two (Δ > 1e-3 on any cell = FAIL).
+The block also carries `resolvable_subset` — 0.6521 over the 7 cells with
+`n_test >= 10`. Pinned by `molmetal/tests/test_nci60_aggregate_refresh.py` (8 tests).
+**Citation correction:** 0.8007 is a real but superseded 8-cell / 3-seed run
+(DU145 had no test rows); the live number is 0.7294 / 0.6521. `ALIGNED_COMPARISON`
+§0/§2 and both skill files are corrected. `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md`
+still quotes 0.8007 and is **not** edited here (paper text, §5.3).
+
+**b. The merged Pt pool mixes two label definitions.** In
+`platinai_4cells_with_5metal_train.csv` the `activity` column is not one task:
+recovering each source's threshold from `pic50` gives **MetalCytoToxDB 5.01 pIC50
+(~9.8 µM, 99.65 % self-consistent)** and **PlatinAI 7.95 pIC50 (~0.011 µM, 100 %)** —
+an 872× difference in what "active" means. `IC50_Dark_value` is also unit-
+inconsistent across sources (µM for MetalCytoToxDB, nM for PlatinAI). The file has
+**no consumers** in the repo (orphan build artefact from `melt_platinai_4cell.py`),
+which is why nothing broke — and why the next reader would have inherited it.
+`wf_a54_dedup_platinai_pool.py` writes a deduplicated variant (42,944 → 40,795;
+1,584 duplicate groups; 727 exact full-row duplicates) plus a `.meta.json` beside
+the original recording both warnings. No cross-split duplicates exist, so dedup
+cannot move a row across the train/test boundary (asserted before writing).
+
+**c. Every `cuda:1` config migrated to `cuda:0`.** 23 configs (16 `device:`, 7
+`gpu:`) plus `scripts/launch_dmpnn_clean5v3_loso.sh` pinned GPU 1, against the
+2026-10-16 GPU0-only directive. All 176 configs parse; the device census is now
+63 × `device: cuda:0` + 66 × `gpu: cuda:0` and zero `cuda:1`. The four ex1 configs
+that justified `cuda:1` because the source-cache key includes `str(device)` now say
+so in the past tense and warn that a `cuda:0` run retrains its source, so its
+`zero_shot_auc` is not device-matched to the published `cuda:1` baselines.
+**Still on GPU 1:** `scripts/launch_cfm_fm_control_2026_10_09.sh:37` sets
+`CUDA_VISIBLE_DEVICES=1`. Left untouched — it is a CFM file and the CFM session
+owns it.
+
+**d. Pt 4-cell was already on the honest split.** The claim that no model had been
+trained on `bemis_murcko_70_10_10` was wrong for the headline number:
+`train_platinai_4cell.py --scaffold-split` uses `ScaffoldSplitter`, and its seed-0
+split (3287 / 264 / 527) matches `platinai_4cell_scaffold_split_alignment.json`
+exactly. What was missing was evidence in the artifact. Added `split_key` +
+`split_fingerprint` (per-seed n_train/n_val/n_test) to both the per-seed record and
+the metric payload. Also added the output guard this trainer was missing: a partial
+run (any seed set other than `[0,1,2]`, or epochs ≠ 50) now writes
+`<out-dir>/metrics.json` instead of replacing `metrics/by_metric/platinai_4cell_auc.json`.
+Pinned by `molmetal/tests/test_platinai_output_guard.py` (7 tests).

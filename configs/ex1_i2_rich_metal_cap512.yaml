@@ -50,10 +50,11 @@ protocol:
   l2sp: 0.0
 
 compute:
-  # cuda:1 == the device of the h128 EX1 run.  The source-cache key includes
-  # str(device); a different device would retrain a materially different source
-  # and break the single-variable comparison.
-  device: cuda:1
+  # cuda:0 per the standing GPU0-only directive (2026-10-16, reaffirmed
+  # 2026-10-20).  This arm used to pin cuda:1 to match the h128 EX1 run; the
+  # source-cache key includes str(device), so on cuda:0 it retrains its source
+  # and is NOT device-matched to that baseline.  Compare like-device runs only.
+  device: cuda:0
   deterministic: true
   cache_source: true
 

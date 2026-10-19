@@ -15,16 +15,26 @@ protocol + same metric 才 comparable."*
 ## §0 TL;DR — the honest split
 
 - **Protocol-aligned (same dataset+task+metric) — competitive or winning:** m1 Ru AUC (paper-protocol
-  replication 0.7717 vs Krasnov 0.810, cross-cohort), m21 NCI-60 9-cell (0.8007 vs 0.81), Krasnov-aligned
+  replication 0.7717 vs Krasnov 0.810, cross-cohort), Krasnov-aligned
   chemprop 3-metal (0.7812), m15 RMSD (0.6578 Å, 5/5 pass 2.0 Å), decode_ratio (0.998), n_distinct (20 vs
   gate 3), RDKit validity (1.000), m1 vs our own single-task baseline (+0.049), MoleculeNet mean 0.8095
   (D-MPNN backbone, 5-seed, **aligned split key**, passes the 0.80 gate), MoleculeNet bbbp/hiv vs
   same-protocol chemprop v2 (+0.033 / +0.028).
 - **Protocol-aligned — genuinely behind:** MoleculeNet bace (0.7422 vs same-protocol chemprop v2 0.8279,
   −0.086; **and vs Morgan-MLP 0.8500, −0.108** — an architecture-level miss, not seed noise), clintox
-  (0.7957 vs 0.8652, −0.070), m19 LOMO real-only (0.5575 vs target 0.70; 0.5845 with per-metal
-  centering). The literature chemprop column (0.8832 mean) sits 0.050 above its own reproduction, so
-  gaps quoted against it overstate the real one.
+  (0.7957 vs 0.8652, −0.070), m21 NCI-60 (0.7294 all-9 / **0.6521** on the 7 resolvable cells vs Krasnov
+  0.81), m19 LOMO real-only (0.5575 vs target 0.70; 0.5845 with per-metal centering). The literature
+  chemprop column (0.8832 mean) sits 0.050 above its own reproduction, so gaps quoted against it
+  overstate the real one.
+- **Corrected 2026-10-20 — m21's live number is 0.7294, not 0.8007.** 0.8007 is a real
+  measurement, but of an **older, 8-cell, 3-seed run** in which DU145 had no test rows. The 2026-10-12
+  fixed-splitter rerun (5 seeds) added DU145 and replaced the panel mean with **0.7294 over 9 cells**.
+  Two things went wrong on the way into the docs: (a) the documents kept quoting 0.8007, and (b) the
+  artifact's `wf312b_nci60_smoke_aggregate` block held placeholders — 7 of 9 cells at the identical
+  0.80072 (the old mean) and DU145 given that value only to reach the 9-key floor the gate enforces. The
+  gate validated that block in isolation and passed. The block is now rebuilt from `per_cell_line`, the
+  gate cross-checks the two, and `resolvable_subset` reports 0.6521 over the 7 cells with `n_test ≥ 10`.
+  DU145 (n_test=7) and SKOV3 (n_test=3) both score exactly 1.0 across every seed — they are not evidence.
 - **Readout finding, NOT a feature gap:** pearson r pIC50 — the bottleneck is the neural head, not the
   multi-task α (3-seed ridge probe on the frozen encoder embedding 0.403 ± 0.004 vs head 0.198 ± 0.023;
   we already beat the same-split Morgan ridge 0.3232). A random encoder scores nearly as well (0.378),
@@ -43,7 +53,6 @@ protocol + same metric 才 comparable."*
 | **m1 Ru AUC — paper-protocol replication** | **0.7717 ± 0.0380** | Krasnov 2026 LightGBM **0.810 ± 0.024** (DOI-split 10-fold CV) | −0.038, **cross-cohort** (our 591 vs paper 23 cell lines); D-MPNN vs LightGBM | `metalcytotox_ru_auc.json::paper_protocol_measurement` |
 | **m1 Ru AUC — our own single-task baseline** | 0.7613 | 0.7123 (single-task, 5-epoch) | **+0.049** apples-to-apples internal | `metalcytotox_ru_auc.json` |
 | **Krasnov-aligned chemprop v2 (3-metal)** | **0.7812** (Re 0.8027 / Os 0.7884 / Rh 0.7525) | Krasnov per-metal | scaffold-split (Bemis-Murcko), 9/9 runs | `wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold.json` |
-| **m21 NCI-60 9-cell AUC** | **0.8007 ± 0.0160** | Krasnov 0.81 (single-cell-line avg) | ≈ tie (−0.009); MCF7 0.846 / A549 0.870 / A2780cis 0.721 | `nci60_precious_9cell_auc.json` |
 | **m15 docking RMSD** | **0.6578 Å** (5/5 pockets ≤ 2.0 Å) | DiffDock 38.2% < 2 Å | **100% vs 38.2%** pass-rate (self-built 5-pocket, no external table) | `docked_pose_rmsd.json` |
 | **m14 decode_ratio (real)** | **0.998** | TargetDiff lit ≥ 0.5 | **~2× lit** | `decode_ratio.json` |
 | **m13 RDKit validity** | **1.000** | SOTA 0.99–1.00 | met | `rdkit_validity.json` |
@@ -62,6 +71,7 @@ cell lines). It is a cross-cohort estimate, labelled as such, not a reproduction
 | **MoleculeNet clintox** | **0.7957 ± 0.1075** (D-MPNN 512/4, 5-seed, aligned key) | chemprop v2 **0.8652 ± 0.0236** | **−0.070** | `moleculenet_auc.json::tasks.clintox` / `moleculenet_auc_chemprop_v2_same_protocol.json::tasks.clintox` |
 | **MoleculeNet bace** | **0.7422 ± 0.0828** (D-MPNN 512/4, 5-seed, aligned key) | chemprop v2 0.8279 / **Morgan-MLP 0.8500** | **−0.086** vs chemprop, **−0.108** vs Morgan | `moleculenet_auc.json::tasks.bace` / `moleculenet_auc_morgan_mlp_aligned.json::tasks.bace` |
 | **m19 LOMO (real-only)** | 0.5575 (0.5845 w/ per-metal centering) | target 0.70 | −0.14 (−0.116) | `metal_lomo_auc_wasserstein.json` |
+| **m21 NCI-60 9-cell** | **0.7294** all-9-cell mean / **0.6521** over the 7 cells with `n_test ≥ 10` | Krasnov 0.81 | **−0.081 / −0.158** | `nci60_precious_9cell_auc.json::per_cell_line` + `::resolvable_subset` |
 
 **Caveat on MoleculeNet:** under the aligned key the D-MPNN **wins bbbp (+0.033) and hiv (+0.028)** and
 **loses bace (−0.086) and clintox (−0.070)** against same-protocol chemprop v2, for a net −0.024 on the

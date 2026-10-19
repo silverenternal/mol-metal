@@ -41,7 +41,7 @@ protocol:
   ensemble_seeds: true
   split_seed: 0
 compute:
-  gpu: cuda:1
+  gpu: cuda:0
 output:
   base_dir: molmetal/reports/l2_moleculenet_cap512_d4_ensemble
   out_dir: molmetal/reports/l2_moleculenet_cap512_d4_ensemble

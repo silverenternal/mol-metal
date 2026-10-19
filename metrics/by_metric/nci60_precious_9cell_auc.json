@@ -185,77 +185,94 @@
   },
   "wf312b_nci60_smoke_aggregate": {
     "per_cell_breakdown": {
-      "MCF7": {
-        "mean_auc": 0.80072,
-        "std_auc": 0.01598,
-        "n_train": 500,
-        "n_test": 75
-      },
-      "A549": {
-        "mean_auc": 0.80072,
-        "std_auc": 0.01598,
-        "n_train": 500,
-        "n_test": 75
-      },
       "A2780": {
-        "mean_auc": 0.80072,
-        "std_auc": 0.01598,
-        "n_train": 500,
-        "n_test": 75
+        "mean_auc": 0.5103703703703704,
+        "std_auc": 0.0712286836690745,
+        "n_train": 1031,
+        "n_test": 48
       },
       "A2780cis": {
-        "mean_auc": 0.42,
-        "std_auc": 0.05,
-        "n_train": 350,
-        "n_test": 90,
-        "honest_negative": true,
-        "honest_negative_reason": "Wf-312B smoke: A2780cis (cisplatin-resistant) cohort MEASURED at 0.42 < random-chance floor 0.5; model intrinsic collapse on resistant cell line structural — not retrainable without chemprop v2 backbone + cisplatin-resistance-aware head (separate Wf-374 follow-up).",
-        "badge": "honest-negative"
+        "mean_auc": 0.3355555555555555,
+        "std_auc": 0.026434171674156254,
+        "n_train": 530,
+        "n_test": 28
       },
-      "HCT116": {
-        "mean_auc": 0.85,
-        "std_auc": 0.04,
-        "n_train": 800,
-        "n_test": 200
-      },
-      "PC3": {
-        "mean_auc": 0.80072,
-        "std_auc": 0.01598,
-        "n_train": 500,
-        "n_test": 75
-      },
-      "HL60": {
-        "mean_auc": 0.80072,
-        "std_auc": 0.01598,
-        "n_train": 500,
-        "n_test": 75
-      },
-      "SKOV3": {
-        "mean_auc": 0.80072,
-        "std_auc": 0.01598,
-        "n_train": 500,
-        "n_test": 75
+      "A549": {
+        "mean_auc": 0.6950859950859951,
+        "std_auc": 0.0025454988153841202,
+        "n_train": 2482,
+        "n_test": 107
       },
       "DU145": {
-        "mean_auc": 0.80072,
-        "std_auc": 0.01598,
-        "n_train": 500,
-        "n_test": 75
+        "mean_auc": 1.0,
+        "std_auc": 0.0,
+        "n_train": 150,
+        "n_test": 7
+      },
+      "HCT116": {
+        "mean_auc": 0.7516666666666667,
+        "std_auc": 0.03462096346306833,
+        "n_train": 658,
+        "n_test": 31
+      },
+      "HL60": {
+        "mean_auc": 0.8,
+        "std_auc": 0.062269984907723876,
+        "n_train": 202,
+        "n_test": 11
+      },
+      "MCF7": {
+        "mean_auc": 0.6689655172413793,
+        "std_auc": 0.015300917734961847,
+        "n_train": 1829,
+        "n_test": 90
+      },
+      "PC3": {
+        "mean_auc": 0.8027777777777778,
+        "std_auc": 0.1569874572327199,
+        "n_train": 250,
+        "n_test": 18
+      },
+      "SKOV3": {
+        "mean_auc": 1.0,
+        "std_auc": 0.0,
+        "n_train": 188,
+        "n_test": 3
       }
     },
-    "overall_mean": 0.763893,
+    "overall_mean": 0.7293802091886383,
     "overall_mean_tolerance": 0.0001,
     "highlight": {
       "cell": "HCT116",
-      "value": 0.85
+      "value": 0.7516666666666667
     },
     "honest_negative": {
       "cell": "A2780cis",
-      "value": 0.42,
-      "honest_negative_reason": "Wf-312B smoke: A2780cis (cisplatin-resistant) cohort MEASURED at 0.42 < random-chance floor 0.5; model intrinsic collapse on resistant cell line structural — not retrainable without chemprop v2 backbone + cisplatin-resistance-aware head (separate Wf-374 follow-up).",
+      "value": 0.3355555555555555,
+      "honest_negative_reason": "A2780cis MEASURED at 0.3356, below the 0.5 random-chance floor on n_test=28. Recorded as an honest-negative; the panel mean is not rescued by it.",
       "badge": "honest-negative"
     },
-    "wf_ref": "339 (Wf-312B NCI-60 9-cell per-cell aggregate contract)"
+    "source_of_truth": "per_cell_line — every value here is a copy of that block.  Before 2026-10-20 this block held placeholders (7 of 9 cells at the identical 0.80072, DU145 included only to reach the 9-key floor) and the pre-flight gate validated those instead of the real table.",
+    "resolvable_subset": {
+      "min_n_test": 10,
+      "cells_included": [
+        "A2780",
+        "A2780cis",
+        "A549",
+        "HCT116",
+        "HL60",
+        "MCF7",
+        "PC3"
+      ],
+      "cells_excluded": [
+        "DU145",
+        "SKOV3"
+      ],
+      "n_cells": 7,
+      "unweighted_mean": 0.6520602689568207,
+      "n_weighted_mean": 0.6560527639239814,
+      "why": "A per-cell AUC on a single-digit test set is not evidence — DU145 (n_test=7) and SKOV3 (n_test=3) both scored exactly 1.0 across every seed.  The unweighted 9-cell mean gives those two the same weight as A549 (n_test=107), which is why it is the larger number."
+    }
   },
   "n_cells_panel": 9,
   "n_cells_with_measured_auc": 9,

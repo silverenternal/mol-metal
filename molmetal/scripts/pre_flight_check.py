@@ -2712,6 +2712,40 @@ def gate_nci60_9cell_per_cell_aggregate(
             errors.append("highlight.value missing or non-numeric")
         if not isinstance(highlight.get("cell"), str):
             errors.append("highlight.cell missing or non-string")
+
+    # Cross-check against the real measurement table when the file carries one.
+    #
+    # Without this the gate validated a block in isolation, and the block could
+    # hold anything self-consistent.  MEASURED 2026-10-20: it held placeholders
+    # — 7 of 9 cells at the identical 0.80072 (the older 8-cell run's mean),
+    # DU145 given that value only to reach the 9-key floor — while
+    # ``per_cell_line`` from the 5-seed rerun said 0.7294 overall and 0.3356 on
+    # A2780cis.  The gate passed on the placeholders.
+    per_cell_line = data.get("per_cell_line")
+    if isinstance(per_cell_line, dict) and isinstance(breakdown, dict):
+        disagree = []
+        for cell, entry in breakdown.items():
+            real = per_cell_line.get(cell)
+            if not isinstance(real, dict):
+                continue
+            real_mean = real.get("auc_mean")
+            block_mean = entry.get("mean_auc") if isinstance(entry, dict) else None
+            if isinstance(real_mean, (int, float)) and isinstance(
+                block_mean, (int, float)
+            ):
+                if abs(float(real_mean) - float(block_mean)) > 1e-3:
+                    disagree.append(
+                        f"{cell}: block {float(block_mean):.5f} vs "
+                        f"per_cell_line {float(real_mean):.5f}"
+                    )
+        if disagree:
+            errors.append(
+                f"wf312b_nci60_smoke_aggregate disagrees with per_cell_line on "
+                f"{len(disagree)} cell(s) ({'; '.join(disagree[:3])}"
+                f"{'...' if len(disagree) > 3 else ''}) — rebuild the block with "
+                f"molmetal/scripts/wf_a55_nci60_aggregate_refresh.py"
+            )
+
     honest_negative = block.get("honest_negative")
     if not isinstance(honest_negative, dict):
         errors.append("honest_negative missing or not a dict")

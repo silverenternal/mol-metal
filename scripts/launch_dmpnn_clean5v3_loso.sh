@@ -124,9 +124,11 @@ if [[ ${WASSERSTEIN_REAL} -eq 1 ]]; then
     CMD+=(--wasserstein-real)
 fi
 
-# Use GPU 1 (D6 retrain owns GPU 0)
+# GPU 0 only (2026-10-16 directive, reaffirmed 2026-10-20).  The old default of
+# GPU 1 dated from when "D6 retrain owns GPU 0"; that job is long finished and
+# the directive is absolute, so this launcher must not reach for GPU 1.
 if [[ -z "${CUDA_VISIBLE_DEVICES:-}" ]]; then
-    export CUDA_VISIBLE_DEVICES=1
+    export CUDA_VISIBLE_DEVICES=0
 fi
 
 echo "=== dmpnn_clean5v3_loso launcher (Round 5, E2 fix) ==="

@@ -39,7 +39,7 @@ train:
   max_atoms: 120
   max_edges: 240
 
-device: cuda:1
+device: cuda:0
 
 output:
   # base_dir drives start.sh's {out_dir} substitution; out_dir is the trainer

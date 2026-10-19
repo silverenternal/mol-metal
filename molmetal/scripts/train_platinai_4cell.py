@@ -1052,6 +1052,17 @@ def _run_one_seed(args: argparse.Namespace, seed: int) -> Dict[str, object]:
         "lr": args.lr,
         "alpha": args.alpha,
         "n_rows": int(len(ds)),
+        # Split fingerprint (2026-10-20).  "scaffold_split: true" says which
+        # splitter was asked for; these say what came out.  The splitter is
+        # rebuilt per seed, so the three sizes differ across seeds and a
+        # comparison against another arm must match the whole vector.
+        "split_key": (
+            f"bemis_murcko_70_10_20 (ScaffoldSplitter, seed={seed})"
+            if getattr(args, "scaffold_split", False)
+            else f"random_70_10_20 (seed={seed})"
+        ),
+        "n_train": int(len(runner._train_idx)) if runner._train_idx is not None else None,
+        "n_val": int(len(runner._val_idx)) if runner._val_idx is not None else None,
         "n_test": int(eval_out["n_test"]),
         "per_line_auc": pl_auc,
         "per_line_ap": pl_ap,
@@ -1062,6 +1073,52 @@ def _run_one_seed(args: argparse.Namespace, seed: int) -> Dict[str, object]:
         "elapsed_seconds": elapsed,
         "checkpoint_path": ckpt_path,
     }
+
+
+# The canonical Pt artefact is the three-seed, 50-epoch protocol.
+CANONICAL_SEEDS = (0, 1, 2)
+
+
+def _is_full_protocol(seeds, epochs) -> bool:
+    """True iff this run may write the project-level canonical Pt artefacts."""
+    return (
+        tuple(int(s) for s in seeds) == CANONICAL_SEEDS
+        and int(epochs) == int(MT2_EPOCHS)
+    )
+
+
+def _resolve_output_paths(args) -> Tuple[Path, Path]:
+    """Resolve ``(metric_json, markdown_report)`` for this run.
+
+    Precedence: explicit ``--out-metric`` / ``--out-report`` > canonical (only
+    for the full three-seed 50-epoch protocol) > ``<out-dir>``.
+
+    Before 2026-10-20 a partial run — one seed, one epoch, the shape of every
+    smoke test — wrote straight to ``metrics/by_metric/platinai_4cell_auc.json``
+    and ``reports/wf_tier1_metric2_platinai/final.md``, replacing the canonical
+    three-seed table with a fragment that nothing downstream could identify as
+    such.  Same defect, same rule as ``train_moleculenet._resolve_output_paths``.
+    """
+    out_dir = Path(args.out_dir)
+    if args.out_metric:
+        metric_path = Path(args.out_metric)
+    elif _is_full_protocol(args.seeds, args.epochs):
+        metric_path = METRICS_DIR / "platinai_4cell_auc.json"
+    else:
+        metric_path = out_dir / "metrics.json"
+        print(
+            f"[metric2] NOTE: partial protocol (seeds={list(args.seeds)}, "
+            f"epochs={args.epochs}) — writing {metric_path} instead of the "
+            f"canonical {METRICS_DIR / 'platinai_4cell_auc.json'}",
+            flush=True,
+        )
+    if args.out_report:
+        report_path = Path(args.out_report)
+    elif _is_full_protocol(args.seeds, args.epochs):
+        report_path = REPORTS_DIR / "wf_tier1_metric2_platinai" / "final.md"
+    else:
+        report_path = out_dir / "report.md"
+    return metric_path, report_path
 
 
 def _aggregate(per_seed: List[Dict[str, object]]) -> Dict[str, object]:
@@ -1209,6 +1266,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         "depth": args.depth,
         "cell_lines": list(CELL_LINES),
         "scaffold_split": args.scaffold_split,
+        # Provenance for the split itself: the per-seed sizes are the only
+        # way a reader can confirm that the "scaffold" label in the metric
+        # block corresponds to a split that was actually scaffold-disjoint.
+        "split_key": (
+            "bemis_murcko_70_10_20 (ScaffoldSplitter, per-seed)"
+            if args.scaffold_split
+            else "random_70_10_20 (per-seed)"
+        ),
+        "split_fingerprint": [
+            {
+                "seed": d.get("seed"),
+                "n_train": d.get("n_train"),
+                "n_val": d.get("n_val"),
+                "n_test": d.get("n_test"),
+            }
+            for d in per_seed
+            if "error" not in d
+        ],
         "ckpt_dir": (
             None if getattr(args, "no_save_checkpoints", False) else args.ckpt_dir
         ),
@@ -1235,12 +1310,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     print(f"[metric2] wrote {aggregate_path}", flush=True)
 
-    # metrics/by_metric/<key>.json
-    metric_path = (
-        Path(args.out_metric)
-        if args.out_metric
-        else METRICS_DIR / "platinai_4cell_auc.json"
-    )
+    # metrics/by_metric/<key>.json + markdown report
+    metric_path, report_path = _resolve_output_paths(args)
+
     metric_payload = {
         "metric": "platinai_4cell_auc",
         "description": (
@@ -1277,6 +1349,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             "see build_platinai_4cell.py for honest framing"
         ),
         "split": "scaffold" if args.scaffold_split else "random",
+        # The word "scaffold" above is a label, not evidence.  These two carry
+        # the evidence: which splitter and seed produced the split, and what
+        # it actually contained.  MEASURED reference for the scaffold arm
+        # (seed 0): 3287 / 264 / 527, matching
+        # metrics/by_metric/platinai_4cell_scaffold_split_alignment.json.
+        "split_key": full_payload.get("split_key"),
+        "split_fingerprint": full_payload.get("split_fingerprint"),
         "model": "dmpnn_4cell_multitask",
     }
     metric_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1284,11 +1363,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"[metric2] wrote {metric_path}", flush=True)
 
     # Markdown report
-    report_path = (
-        Path(args.out_report)
-        if args.out_report
-        else REPORTS_DIR / "wf_tier1_metric2_platinai" / "final.md"
-    )
+
     _write_report(report_path, args, aggregate, per_seed)
     print(f"[metric2] wrote {report_path}", flush=True)
 

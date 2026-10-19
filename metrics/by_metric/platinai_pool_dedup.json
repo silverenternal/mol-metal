@@ -1,0 +1,86 @@
+{
+  "metric": "platinai_pool_dedup",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "unit": "row counts",
+  "scope": "tier1_precious_metal_anticancer / training-pool hygiene",
+  "source": "molmetal/scripts/wf_a54_dedup_platinai_pool.py",
+  "input": ".data/molmetal/platinai_4cells_with_5metal_train.csv",
+  "output": ".data/molmetal/platinai_4cells_with_5metal_train_dedup.csv",
+  "dedup_keys": [
+    "smiles",
+    "metal",
+    "cell_line"
+  ],
+  "keep": "first",
+  "before": {
+    "rows": 42944,
+    "unique_keys": 40795,
+    "duplicate_groups": 1584,
+    "excess_rows": 2149,
+    "exact_full_row_duplicates": 727,
+    "groups_with_conflicting_pic50": 1088
+  },
+  "after": {
+    "rows": 40795,
+    "unique_keys": 40795,
+    "duplicate_groups": 0,
+    "excess_rows": 0,
+    "exact_full_row_duplicates": 0,
+    "groups_with_conflicting_pic50": 0
+  },
+  "rows_removed": 2149,
+  "per_split": {
+    "before": {
+      "train": 34449,
+      "test": 5736,
+      "val": 2759
+    },
+    "after": {
+      "train": 32978,
+      "test": 5266,
+      "val": 2551
+    }
+  },
+  "per_metal": {
+    "before": {
+      "Ru": 18987,
+      "Pt": 16312,
+      "Ir": 4546,
+      "Rh": 1118,
+      "Os": 1113,
+      "Re": 868
+    },
+    "after": {
+      "Ru": 17223,
+      "Pt": 16312,
+      "Ir": 4382,
+      "Rh": 1069,
+      "Os": 1039,
+      "Re": 770
+    }
+  },
+  "cross_split_groups": 0,
+  "label_definition_check": {
+    "per_source": {
+      "MetalCytoToxDB": {
+        "n": 26632,
+        "best_pic50_threshold": 5.01,
+        "implied_ic50_uM": 9.7724,
+        "accuracy": 0.9965
+      },
+      "PlatinAI_4cell_synthetic_Rusanov2025_§1.2": {
+        "n": 16312,
+        "best_pic50_threshold": 7.95,
+        "implied_ic50_uM": 0.0112,
+        "accuracy": 1.0
+      }
+    },
+    "thresholds_differ": true,
+    "why": "If the recovered thresholds differ by more than 0.5 pIC50 (a factor of ~3 in IC50), the sources' 'activity' columns mean different things and must not be concatenated into one binary target without re-deriving it."
+  },
+  "consumers": "NONE.  MEASURED 2026-10-20: no config and no trainer in this repo reads this file — melt_platinai_4cell.py writes it and nothing loads it.  It is an orphan build artefact, so the risk is that a future run picks it up and inherits its two label definitions.",
+  "why": "The same (complex, cell line) measurement appeared more than once in the merged pool, so those compounds carried extra weight in proportion to how many times they were published.  Deduplicating makes every measurement count once.",
+  "honest_framing_note": "MEASURED row counts only.  This script does not retrain anything: any metric produced on the undeduplicated pool is still on disk and still describes that pool.  Re-run a model on the dedup CSV before quoting a number as deduplicated.",
+  "conflict_policy": "Where repeats disagree on pic50 the first row in file order is kept (the repo convention in molmetal.data.cytotox.PAPER_DEDUP_KEYS).  groups_with_conflicting_pic50 counts how many groups this decision applied to; it is not a tie-break on quality."
+}

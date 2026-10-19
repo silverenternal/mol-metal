@@ -43,7 +43,7 @@ n_permutations: 0
 perm_seed: 42
 
 compute:
-  gpu: cuda:1
+  gpu: cuda:0
 
 output:
   base_dir: molmetal/reports/l3_kshot_k5

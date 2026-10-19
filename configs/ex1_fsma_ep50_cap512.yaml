@@ -47,10 +47,13 @@ protocol:
   # NO adapt_lr / adapt_eval_encoder: this arm isolates capacity.
 
 compute:
-  # cuda:1 == the device of the h128 baseline.  The source cache key includes
-  # str(device), so a cuda:0 run would retrain a materially different source and
-  # break the single-variable comparison.
-  device: cuda:1
+  # cuda:0 per the standing GPU0-only directive (2026-10-16, reaffirmed
+  # 2026-10-20).  This arm used to pin cuda:1 because the h128 baseline was
+  # measured there and the source-cache key includes str(device).  Moving to
+  # cuda:0 is therefore a cache MISS that RETRAINS the source model, so any
+  # number here is NOT device-matched to the published cuda:1 baseline — record
+  # the device alongside the result and do not difference the two directly.
+  device: cuda:0
   deterministic: true
   cache_source: true
 

@@ -9,8 +9,11 @@
 # fsma_inhouse_kcurve_ep50_combined.json isolates --adapt-eval-encoder
 # (assuming the two effects are approximately additive, which the paper states).
 #
-# Shares /tmp/fsma_gpu_src_ep50 on cuda:1 -> zero_shot_auc bit-identical to both
-# the baseline and the combined arm.
+# Was written to share /tmp/fsma_gpu_src_ep50 on cuda:1 so zero_shot_auc would
+# be bit-identical to the baseline and the combined arm.  Per the standing
+# GPU0-only directive (2026-10-16, reaffirmed 2026-10-20) this now runs on
+# cuda:0, which is a device-keyed cache MISS: the source retrains, so
+# zero_shot_auc is not bit-identical to those cuda:1 artifacts.
 #
 # AGENTS.md §5.11: launched from this YAML only.
 
@@ -42,7 +45,7 @@ protocol:
   # adapt_eval_encoder deliberately ABSENT (default false) -> the isolation.
 
 compute:
-  device: cuda:1
+  device: cuda:0
   deterministic: true
   cache_source: true
 
