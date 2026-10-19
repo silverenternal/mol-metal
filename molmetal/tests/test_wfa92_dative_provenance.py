@@ -198,8 +198,8 @@ def test_halide_donors_are_dative_on_the_decode_path() -> None:
     MEASURED on 400 real Pt tmQM clouds with Wiberg-BO truth: 332 of
     1,701 true Pt bonds (19.5%) are Pt-Cl/Br/I/F, and the pre-Wf-A94 donor
     set flagged 0 of them.  On the canonical 5-metal MetalCytoTox cohort
-    the extension is bit-exact (0 of 1,894 builder-written metal bonds have
-    a halide partner).
+    the extension changes 0 of 1,894 bond labels and flips 8 of 597,661
+    pair-feature columns (7/399 clouds).
     """
     for z_halide in (9, 17, 35, 53):
         assert z_halide in _DONOR_ZS

@@ -27,9 +27,14 @@
     "outside_frac": 0,
     "bond_dist_p50_A": 2.05,
     "bond_dist_p95_A": 2.4025,
-    "bond_dist_max_A": 2.5944
+    "bond_dist_max_A": 2.5944,
+    "metal_halide_pair_features_flipped_lt_3p5A": 8,
+    "metal_halide_pair_features_lt_2p6A": 6,
+    "n_pair_features": 597661,
+    "clouds_with_any_flip": 7,
+    "flip_frac_of_pair_features": 1.3385514530812618e-05
   },
-  "interpretation": "The push cap fires on 0.50% of clouds (2/399), so 'could not clear the ligand' is a rare tail rather than a silent failure mode. Every builder-written metal bond is N/O/S/P, i.e. already inside the pre-Wf-A94 donor set: adding halides is bit-exact on this corpus (0/1,894 bonds change), which is why no archived CFM result moves.",
+  "interpretation": "The push cap fires on 0.50% of clouds (2/399), so 'could not clear the ligand' is a rare tail rather than a silent failure mode. Every builder-written metal bond is N/O/S/P, i.e. already inside the pre-Wf-A94 donor set: 0 of 1,894 bond LABELS change. The halide extension does flip 8 of 597,661 pair-feature columns (7/399 clouds, 1.3e-5), because a ligand halide within 3.5 A of the metal is now flagged dative. That is the intended effect, and it is small enough that no archived result moves materially.",
   "verdict": "CAP RATE MEASURED (0.50%); DONOR EXTENSION BIT-EXACT ON THE CANONICAL COHORT",
   "generated": "2026-10-19"
 }

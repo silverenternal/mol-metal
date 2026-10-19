@@ -6570,6 +6570,7 @@ C 396, As 15, B 8, Si 5 = 424 (24.9%) are covalent/organometallic.
 | builder-written metal bonds | 1,894 |
 | by element | N 564, O 1,228, S 50, P 52 |
 | outside the pre-Wf-A94 donor set | 0 |
+| pair-feature columns flipped by the halide extension | 8 / 597,661 (7/399 clouds) |
 | bond length p50 / p95 / max | 2.050 / 2.402 / 2.594 Å |
 
 So the halide extension is **bit-exact on the canonical 5-metal cohort**
@@ -6578,8 +6579,9 @@ So the halide extension is **bit-exact on the canonical 5-metal cohort**
 ### 6.125e What was fixed
 
 * `_DONOR_ZS` → `{N,O,F,P,S,Cl,Se,Br,I}` (Wf-A94). Halides are in the YuelBond
-  vocab already; the extension costs nothing on MetalCytoTox and closes 19.5%
-  of the tmQM recall gap.
+  vocab already; the extension closes 19.5% of the tmQM recall gap and costs
+  0/1,894 bond labels + 8/597,661 pair-feature columns on MetalCytoTox
+  (7/399 clouds, MEASURED).
 * The cohort builder now derives its ranking from `_DONOR_ZS`
   (`{z: rank}`), so the label side and the decode side cannot drift again.
 * `YuelBondBondDecoder` default `dative_max_distance` 2.5 → 2.6 (calibrated),

@@ -118,10 +118,10 @@ _METAL_SET_PRESETS: dict = {
 #: (19.5%) are Pt-Cl/Br/I/F and the old set flagged 0 of them, so the
 #: element-filtered ceiling rose from 945/1,701 (55.6%) to 1,277/1,701
 #: (75.1%).  The distance bound itself is calibrated in the same file
-#: (2.6 A: precision 0.9935 / recall 0.9841).  On the
-#: canonical 5-metal MetalCytoTox cohort the extension is BIT-EXACT: 0 of
-#: 1,894 builder-written metal bonds have a halide partner (MEASURED, 399
-#: clouds), so no archived result moves.
+#: (2.6 A: precision 0.9935 / recall 0.9841).  On the canonical 5-metal
+#: MetalCytoTox cohort the extension changes 0 of 1,894 builder-written
+#: bond LABELS and flips 8 of 597,661 pair-feature columns (7/399 clouds;
+#: MEASURED), so no archived result moves materially.
 _DONOR_ZS: frozenset = frozenset({7, 8, 9, 15, 16, 17, 34, 35, 53})
 #: N, O, F, P, S, Cl, Se, Br, I
 

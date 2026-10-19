@@ -1368,13 +1368,16 @@ def _decode_smiles_from_ckpt(
         f"[wfA54-decode] {len(smiles_list)}/{len(clouds)} clouds decoded "
         f"to SMILES (n_samples={n_samples}, seed={seed})."
     )
-    if _dative_sources or _n_teacher_forced:
-        print(
-            f"[wfA54-decode] dative provenance="
-            f"{dict(sorted(_dative_sources.items()))} "
-            f"teacher_forced={_n_teacher_forced}/{len(clouds)} "
-            "(z_rule = Z-only heuristic, NOT the cloud's label truth)"
-        )
+    # Wf-A94 (2026-10-19) — printed UNCONDITIONALLY.  It used to be gated on
+    # ``_dative_sources or _n_teacher_forced``, so a decode that fired
+    # neither printed nothing and a reader could not tell "no dative bonds"
+    # from "provenance was never collected".  An empty dict is information.
+    print(
+        f"[wfA54-decode] dative provenance="
+        f"{dict(sorted(_dative_sources.items())) or '{}'} "
+        f"teacher_forced={_n_teacher_forced}/{len(clouds)} "
+        "(z_rule = Z-only heuristic, NOT the cloud's label truth)"
+    )
     return smiles_list
 
 
