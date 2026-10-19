@@ -123,5 +123,6 @@
   "recovered_from_commit": "c289aa42",
   "recovered_note": "The original metrics/by_metric/moleculenet_auc.json was overwritten on 2026-10-09 by a bace-only attentivefp run, then legitimately by the aligned-key D-MPNN run on 2026-10-19. This file preserves the Morgan-MLP baseline that ALIGNED_COMPARISON cites.",
   "split_key": "bemis_murcko_isomeric (PRE-2026-10-19)",
-  "status": "MEASURED (3 seeds, pre-alignment key)"
+  "status": "MEASURED (pre-alignment key; superseded)",
+  "superseded_by": "metrics/by_metric/moleculenet_auc_morgan_mlp_aligned.json"
 }

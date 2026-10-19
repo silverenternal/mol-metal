@@ -1,0 +1,63 @@
+# PA17b — Morgan-FP + MLP on MoleculeNet under the ALIGNED split key.
+#
+# WHY
+# ---
+# The 2026-09-25 Morgan baseline (metrics/by_metric/moleculenet_auc_morgan_mlp.json)
+# was measured with the isomeric Bemis-Murcko key.  On 2026-10-19
+# train_moleculenet._bemis_murcko_scaffold was aligned to the astartes/chemprop
+# reference (includeChirality=False), which turns over 59-87% of the test
+# molecules for bbbp/bace/clintox.  The old Morgan numbers are therefore not on
+# the same split as the aligned D-MPNN run and cannot be differenced against it.
+#
+# This run re-measures the SAME architecture (2048-bit Morgan FP radius 2 ->
+# MLP, hidden 256) on the aligned key.  Seeds go 3 -> 5 for parity with the
+# aligned D-MPNN run; every other hyperparameter is the original value.
+#
+# AGENTS.md §5.11: launched from this YAML; the wrapper passes --config and
+# --out-dir and nothing else.
+
+entry:
+  script: molmetal/scripts/train_moleculenet.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_moleculenet.py
+    --config {yaml_path} --out-dir {out_dir}
+
+data:
+  tasks: [bbbp, bace, hiv, clintox]
+
+model:
+  backbone: morgan_mlp
+  hidden: 256
+  # Declared because AGENTS.md §5.1 requires model.n_layers (alias: depth) for
+  # every config whose trainer has that dest, and train_moleculenet.py does.
+  # _MorganMLP does NOT consume it: the architecture is fixed at
+  # 2048 -> 256 -> 128 -> 1 (molmetal/scripts/train_moleculenet.py:271).
+  # The value matches that stack's three weight matrices.
+  depth: 3
+
+protocol:
+  epochs: 50
+  batch_size: 32
+  lr: 0.001
+  seeds: [0, 1, 2, 3, 4]
+
+output:
+  base_dir: molmetal/reports/pa17_morgan_mlp_moleculenet
+  out_dir: molmetal/reports/pa17_morgan_mlp_moleculenet
+  out_metric: molmetal/reports/pa17_morgan_mlp_moleculenet/metrics.json
+  out_report: molmetal/reports/pa17_morgan_mlp_moleculenet/report.md
+  events_jsonl: true
+
+# No `compute.device` key: train_moleculenet.py has no --device dest and
+# hardcodes cuda:0 when CUDA is available (verified).  Declaring it would be an
+# inert key that the config-binding gate reports.
+
+directives:
+  user_ok_required: true
+  wall_note: >
+    Morgan FP featurization is CPU-side; hiv (41k rows) dominates.  No wall
+    estimate is claimed until the first task finishes.
+
+honest_framing: >
+  MEASURED only.  This is the baseline column, not a headline.  If it moves
+  relative to the 2026-09-25 values, the cause is the split key, not the
+  architecture — the model and featurization are unchanged.

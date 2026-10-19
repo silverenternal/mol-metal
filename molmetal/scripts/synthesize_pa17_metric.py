@@ -34,8 +34,12 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 REPORT = "molmetal/reports/pa17_chemprop_v2_moleculenet/metrics.json"
-OURS = "metrics/by_metric/moleculenet_auc_dmpnn_5seed_cap512_d4.json"
-LITERATURE = "metrics/by_metric/moleculenet_auc_dmpnn_5seed.json"
+# 2026-10-19 (Wf-A53) — this used to point at
+# moleculenet_auc_dmpnn_5seed_cap512_d4.json, which was measured on the OLD
+# isomeric split key.  The aligned-key canonical run now lives here, and it
+# also carries the literature constants, so both pointers resolve to one file.
+OURS = "metrics/by_metric/moleculenet_auc.json"
+LITERATURE = "metrics/by_metric/moleculenet_auc.json"
 OUT = "metrics/by_metric/moleculenet_auc_chemprop_v2_same_protocol.json"
 TASKS = ("bbbp", "bace", "hiv", "clintox")
 
@@ -91,6 +95,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             "same_protocol_minus_literature_mean": cp_mean - lit_mean,
             "tasks_we_beat_same_protocol_chemprop": wins,
             "comparison_baseline": args.literature,
+            "ours_source": args.ours,
+            "split_key": ours.get("split_key"),
+            "same_protocol_requires": (
+                "Both arms must be measured under the same split key.  The "
+                "2026-10-12 chemprop run predates the 2026-10-19 key alignment; "
+                "re-running it is what makes this block same-protocol."
+            ),
             "why": (
                 "BLK-PA17: the paper's chemprop column is the Wu-2018 "
                 "best-of-search constant and the repo never reproduced it on its "

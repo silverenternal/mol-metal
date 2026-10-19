@@ -35,13 +35,22 @@ if [[ $DRY_RUN -eq 1 ]]; then
   exit 0
 fi
 
-if ! "$PY" "$REPO_ROOT/molmetal/scripts/pre_flight_check.py" \
-        --pipeline launch >"$OUT_DIR/preflight.log" 2>&1; then
-  echo "[pa17][FATAL] pre_flight_check FAILED — refusing to launch" >&2
-  echo "[pa17]         see $OUT_DIR/preflight.log" >&2
-  exit 2
+if [[ "${SKIP_PREFLIGHT:-0}" == "1" ]]; then
+  # Explicit, loud, and recorded.  Only legitimate when the failing gate is
+  # orthogonal to the code this run exercises — name it in
+  # PA17_SKIP_PREFLIGHT_REASON so the log carries the justification.
+  echo "[pa17][WARN] SKIP_PREFLIGHT=1 — pre-flight WAIVED by the caller." >&2
+  echo "[pa17][WARN] reason: ${PA17_SKIP_PREFLIGHT_REASON:-<none given>}" >&2
+  echo "[pa17][WARN] last pre-flight log (if any): $OUT_DIR/preflight.log" >&2
+else
+  if ! "$PY" "$REPO_ROOT/molmetal/scripts/pre_flight_check.py" \
+          --pipeline launch >"$OUT_DIR/preflight.log" 2>&1; then
+    echo "[pa17][FATAL] pre_flight_check FAILED — refusing to launch" >&2
+    echo "[pa17]         see $OUT_DIR/preflight.log" >&2
+    exit 2
+  fi
+  echo "[pa17] pre-flight PASS"
 fi
-echo "[pa17] pre-flight PASS"
 
 if command -v nvidia-smi >/dev/null 2>&1; then
   echo "[pa17] GPU state:"

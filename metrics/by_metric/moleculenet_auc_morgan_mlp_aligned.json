@@ -1,0 +1,175 @@
+{
+  "date": "2026-10-19",
+  "model": "morgan_mlp_v4",
+  "backbone": "morgan_mlp",
+  "featurization": "morgan_fp_2048_r2",
+  "split": "scaffold (Bemis-Murcko, 70/10/20)",
+  "split_key": "bemis_murcko_stereo_blind (includeChirality=False)",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "epochs": 50,
+  "batch_size": 32,
+  "lr": 0.001,
+  "hidden": 256,
+  "depth": 3,
+  "class_weight": "on",
+  "dropout": 0.0,
+  "weight_decay": 0.0,
+  "patience": 0,
+  "tasks": {
+    "bbbp": {
+      "n_seeds_total": 5,
+      "n_seeds_valid": 5,
+      "test_auc_mean": 0.860965508456006,
+      "test_auc_std": 0.05273020593799776,
+      "test_pr_auc_mean": 0.9513482285327379,
+      "test_hit_top5_mean": 0.97,
+      "per_seed_auc": [
+        0.9341344014241211,
+        0.9008085808580858,
+        0.781117427456304,
+        0.8401658582381473,
+        0.8486012743033716
+      ],
+      "per_seed_pr_auc": [
+        0.9748325511731,
+        0.9583822947620362,
+        0.9240560308224985,
+        0.9481109532189781,
+        0.9513593126870767
+      ],
+      "per_seed_hit_top5": [
+        1.0,
+        1.0,
+        0.9,
+        0.95,
+        1.0
+      ],
+      "task": "bbbp",
+      "backbone": "morgan_mlp",
+      "chemprop_dmpnn_baseline": 0.94,
+      "chemprop_rf_baseline": 0.728,
+      "elapsed_seconds": 26.08989119529724
+    },
+    "bace": {
+      "n_seeds_total": 5,
+      "n_seeds_valid": 5,
+      "test_auc_mean": 0.8500030119329625,
+      "test_auc_std": 0.03339330454476078,
+      "test_pr_auc_mean": 0.8141804558015097,
+      "test_hit_top5_mean": 0.92,
+      "per_seed_auc": [
+        0.8580832960143304,
+        0.8330818965517242,
+        0.8848958333333332,
+        0.794157122405154,
+        0.8797969113602707
+      ],
+      "per_seed_pr_auc": [
+        0.8309125334604682,
+        0.809443130315026,
+        0.8738540678208134,
+        0.6755560018920151,
+        0.8811365455192256
+      ],
+      "per_seed_hit_top5": [
+        0.9333333333333333,
+        1.0,
+        1.0,
+        0.7333333333333333,
+        0.9333333333333333
+      ],
+      "task": "bace",
+      "backbone": "morgan_mlp",
+      "chemprop_dmpnn_baseline": 0.876,
+      "chemprop_rf_baseline": 0.868,
+      "elapsed_seconds": 13.163622617721558
+    },
+    "hiv": {
+      "n_seeds_total": 5,
+      "n_seeds_valid": 5,
+      "test_auc_mean": 0.7600010639067759,
+      "test_auc_std": 0.03684039247230844,
+      "test_pr_auc_mean": 0.34952374099866496,
+      "test_hit_top5_mean": 0.324291619030868,
+      "per_seed_auc": [
+        0.7819347666139077,
+        0.6985432486882597,
+        0.7721783836416749,
+        0.7420065619736548,
+        0.8053423586163827
+      ],
+      "per_seed_pr_auc": [
+        0.4009366924408098,
+        0.25364859666930134,
+        0.3247435334593645,
+        0.31497734062928734,
+        0.4533125417945618
+      ],
+      "per_seed_hit_top5": [
+        0.39518072289156625,
+        0.22627737226277372,
+        0.35523114355231145,
+        0.30656934306569344,
+        0.3381995133819951
+      ],
+      "task": "hiv",
+      "backbone": "morgan_mlp",
+      "chemprop_dmpnn_baseline": 0.823,
+      "chemprop_rf_baseline": 0.761,
+      "elapsed_seconds": 453.16965913772583
+    },
+    "clintox": {
+      "n_seeds_total": 5,
+      "n_seeds_valid": 5,
+      "test_auc_mean": 0.7249573976987329,
+      "test_auc_std": 0.04710697628272486,
+      "test_pr_auc_mean": 0.22902707126865507,
+      "test_hit_top5_mean": 0.30666666666666664,
+      "per_seed_auc": [
+        0.7127256317689531,
+        0.6567745803357314,
+        0.7270326353518204,
+        0.8042767295597484,
+        0.7239774114774115
+      ],
+      "per_seed_pr_auc": [
+        0.18830377056545616,
+        0.1475738361111503,
+        0.2309682555224638,
+        0.3851212449994641,
+        0.19316824914474104
+      ],
+      "per_seed_hit_top5": [
+        0.13333333333333333,
+        0.2,
+        0.26666666666666666,
+        0.6,
+        0.3333333333333333
+      ],
+      "task": "clintox",
+      "backbone": "morgan_mlp",
+      "chemprop_dmpnn_baseline": 0.894,
+      "chemprop_rf_baseline": 0.832,
+      "elapsed_seconds": 13.821208238601685
+    }
+  },
+  "gate_mean_auc_threshold": 0.8,
+  "chemprop_dmpnn_baseline_mean": 0.88325,
+  "metric": "moleculenet_auc_morgan_mlp_aligned",
+  "status": "MEASURED",
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "source_run": "configs/pa17_morgan_mlp_moleculenet.yaml",
+  "source_report": "molmetal/reports/pa17_morgan_mlp_moleculenet/metrics.json",
+  "pre_alignment_artifact": "metrics/by_metric/moleculenet_auc_morgan_mlp.json",
+  "preflight_waiver": {
+    "skipped": true,
+    "reason": "p1_chemprop_smoke timed out at 90.7s under host load ~20 (3 concurrent msrs_dmpnn_protocol workers); 114 PASS / 1 FAIL / 11 SKIP, the only FAIL is the CPU smoke, orthogonal to train_moleculenet.py"
+  },
+  "why_rerun": "The 2026-09-25 Morgan baseline used the isomeric Bemis-Murcko key. The 2026-10-19 alignment turns over 59-87% of the test molecules for bbbp/bace/clintox, so the old numbers are not on the same split as the aligned D-MPNN run."
+}
