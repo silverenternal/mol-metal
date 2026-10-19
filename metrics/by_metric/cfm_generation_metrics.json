@@ -1,0 +1,103 @@
+{
+  "artifact": "cfm_generation_metrics",
+  "version": "1.0",
+  "requires_dual_split": false,
+  "generated_utc": "2026-10-19T11:39:33+00:00",
+  "provenance": {
+    "generated_csv": "/home/hugo/codes/mol-metal/molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv",
+    "generated_sha256": "6e17eb2d037937d0f0ed71de4aa0cbf68687af7edf882c385d4f2e44f539e8ef",
+    "train_csv": "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+    "train_sha256": "5a2550c83b631169feb3175d610478c3861d7b71e7bac20ba9087120e2b6a93d",
+    "script": "molmetal/scripts/cfm_generation_metrics.py"
+  },
+  "design": {
+    "cohort": "cfm_fullcorpus_2026_10_10 epoch 10 seed 0, 192 attempts -> 66 survivors",
+    "train_reference": "metalcytotox_5metal_multitask_v4.csv, split == train (18,137 rows)",
+    "fingerprint": "Morgan radius 2, 1024 bits",
+    "novelty": "1 - max Tanimoto to any training molecule",
+    "intdiv1": "MOSES: 1 - mean pairwise Tanimoto, self-pairs included",
+    "n_matched_subsamples": 40,
+    "seed": 0,
+    "single_seed_caveat": "One seed, one checkpoint, n=66 survivors.  This is a first measurement, not a settled number."
+  },
+  "cohort": {
+    "n_generated": 66,
+    "n_parsed": 66,
+    "parse_rate": 1.0,
+    "n_unique_canonical": 66,
+    "uniqueness": 1.0,
+    "yield_from_attempts": 0.344,
+    "yield_source": "cfm_free_generation_panel_seed0.json:generation.gen_validity"
+  },
+  "novelty": {
+    "mean_max_tanimoto": 0.1483,
+    "median_max_tanimoto": 0.1493,
+    "min_max_tanimoto": 0.1078,
+    "max_max_tanimoto": 0.1848,
+    "mean_novelty": 0.8517,
+    "fraction_below_0.9": 1.0,
+    "fraction_below_0.7": 1.0
+  },
+  "metal_compliance": {
+    "n_parsed": 66,
+    "n_exactly_one_metal": 66,
+    "compliance": 1.0,
+    "counts_histogram": {
+      "1": 66
+    },
+    "metal_distribution": {
+      "Ir": 18,
+      "Ru": 16,
+      "Rh": 15,
+      "Re": 13,
+      "Os": 4
+    }
+  },
+  "checks": {
+    "novelty_fraction_at_0.9": {
+      "value": 1.0,
+      "target": 0.9,
+      "passed": true,
+      "definition": "fraction of generated molecules with max Tanimoto < 0.9"
+    },
+    "mean_novelty": {
+      "value": 0.8517,
+      "target": 0.9,
+      "passed": false,
+      "definition": "1 - mean(max Tanimoto to train); stricter than the fraction"
+    },
+    "intdiv1": {
+      "value": 0.8526,
+      "target": 0.85,
+      "passed": true,
+      "n_matched_training": 0.8234,
+      "n_matched_sd": 0.0073,
+      "delta_vs_n_matched": 0.0292,
+      "canonical_m7_value": 0.8690399367522098,
+      "canonical_m7_n": 37,
+      "note": "IntDiv1 is strongly n-dependent; compare with the n-matched training subsample, not with the MOSES 0.857 reference."
+    },
+    "sa": {
+      "value": 6.4423,
+      "target": 4.5,
+      "passed": false,
+      "source": "cfm_free_generation_panel_seed0.json:panel.sa_mean"
+    },
+    "qed": {
+      "value": 0.0944,
+      "target": null,
+      "passed": null,
+      "source": "cfm_free_generation_panel_seed0.json:panel.qed_mean"
+    },
+    "docking": {
+      "status": "BLOCKED",
+      "reason": "INCOMPLETE_RUN_DIED",
+      "pockets_planned": 10,
+      "pockets_completed": 1,
+      "source": "cfm_vina_generated.json:RUN_STATUS",
+      "note": "1 of 10 pockets docked before the run died; no success rate can be computed.  The precious-metal force-field gap is separate and still open (vina_status.json)."
+    }
+  },
+  "verdict": "NEGATIVE",
+  "verdict_rule": "novelty fraction >= 0.90 AND IntDiv1 >= 0.85 AND SA <= 4.5 AND docking >= 50% on >= 20 pockets; docking is BLOCKED so the overall verdict cannot be PASS"
+}

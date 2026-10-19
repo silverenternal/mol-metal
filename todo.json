@@ -25,7 +25,7 @@
       "S4": "效应量 + 置信区间 + 多重校正（DOI 聚类、Holm）",
       "S5": "每个数字可追到 artifact 字段"
     },
-    "immediate_goal": "P0 + wave_M2_decision 全部关闭。MET-8 的结论：决策/符号的 null 是真 miss，不是功效不足——regret MDE 0.050 < 目标 0.10，观测 −0.0034 需 13,571 DOI；符号门槛 0.65 需 40 DOI，现有 53。剩余 P1：MET-7 外部独立数据集（BLOCKED-PENDING-DATA），P2 MET-9 生成侧指标，P3 MET-11 指标表自动化。论文线仍冻结（MSRS-8），解冻需用户显式同意。"
+    "immediate_goal": "P0 + wave_M2_decision 已全部关闭；P2 MET-9 生成侧指标 DONE-NEGATIVE（SA 6.4423 > 4.5、平均 novelty 0.8517 < 0.90、对接 BLOCKED 1/10）。剩余：MET-7 外部独立数据集（BLOCKED-PENDING-DATA）、P3 MET-11 指标表自动化。论文线仍冻结（MSRS-8），解冻需用户显式同意。"
   },
   "current_position": {
     "measured_facts": [
@@ -45,7 +45,8 @@
       "数据卡（MET-10，21,404 行）：ligand 划分测试行 89.43% 共享 DOI（内插），DOI 划分 0% 共享 DOI 但 15.43% 共享配体；scaffold 65.58% 共享 DOI；细胞系 96–98% 复现。重复键 304 个/663 行，跨折 0；右删失 5,015 行（18.7%）被排除。ligand_canonical 不含金属原子（0 行）。",
       "金属消融（MET-6，最终树）：metal-blind 掉 0.0683 [0.0516, 0.0903]（ligand）/ 0.0693 [0.0509, 0.0884]（DOI），置换 p=0.0099（分辨率下限）。金属 one-hot 只值 0.0064/0.0053；cell-blind 掉 0.0629/0.0442；no_coord 单独 CI 含 0；仅 26 列金属/细胞特征 R²=0.4186，仅 ECFP4 R²=0.4200，两半近似可加。",
       "决策曲线（MET-5，425 队列）：DOI 50% 覆盖 regret 0.1115 vs global_best 0.1067（聚类 Δ−0.0143，Holm p=1.0）；全覆盖 0.1168 vs 0.1195（top-1 0.560 vs 0.577）。模型 top-1 margin 均值 0.111 log10，baseline 0.280。net benefit(0.5) 0.609 vs 0.595。",
-      "统计功效（MET-8）：决策 regret MDE 0.050（62 DOI），观测 −0.0034 需 13,571 DOI；Δ 符号 MDE 0.130（53 DOI），0.65 门槛需 40 DOI 可检测；Δ MAE MDE 0.077，观测改善 0.021 需 706 DOI；DOI R² MDE 0.064（1,784 DOI），距 0.50 差 0.168；表示增益 MDE 0.019、金属消融 MDE 0.024，两者效应均远超 MDE。"
+      "统计功效（MET-8）：决策 regret MDE 0.050（62 DOI），观测 −0.0034 需 13,571 DOI；Δ 符号 MDE 0.130（53 DOI），0.65 门槛需 40 DOI 可检测；Δ MAE MDE 0.077，观测改善 0.021 需 706 DOI；DOI R² MDE 0.064（1,784 DOI），距 0.50 差 0.168；表示增益 MDE 0.019、金属消融 MDE 0.024，两者效应均远超 MDE。",
+      "生成侧指标（MET-9，66 个存活样本）：yield 0.344、uniqueness 1.0；max Tanimoto 仅 0.108–0.185，平均 novelty 0.8517（<0.90），但 max T<0.9 比例 1.000；IntDiv1 0.8526 vs 同 n 训练子样本 0.8234（+0.0292，与 m7 的 0.869@n=37 符号相反）；SA 6.4423（>4.5）、QED 0.0944；金属合规 1.0（Ir18/Ru16/Rh15/Re13/Os4）；对接 BLOCKED（1/10 pocket，run died）。"
     ]
   },
   "metric_gap_analysis": {
@@ -952,14 +953,67 @@
       "title": "生成侧指标补齐",
       "layer": "生成",
       "priority": "P2",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "1 天",
       "why": "validity 1.0 与 decode_ratio 0.998 很强，但 novelty、生成物 SA、对接覆盖缺失或口径不一（SA 4.71 是 metallo_drugs 队列，不是生成物）。",
       "method": "对 CFM 生成样本计算 novelty（1−max Tanimoto to train）、uniqueness、IntDiv1、SA、QED、metal compliance；对接成功率单独报，并标注贵金属力场限制。",
       "deliverable": "metrics/by_metric/cfm_generation_metrics.json",
       "acceptance": "novelty ≥0.90、IntDiv1 ≥0.85、SA ≤4.5、docking success ≥50%（≥20 pockets）。",
-      "depends_on": []
+      "depends_on": [],
+      "result": {
+        "artifact": "metrics/by_metric/cfm_generation_metrics.json",
+        "cohort": "cfm_fullcorpus_2026_10_10 epoch 10 seed 0, 192 attempts -> 66 survivors",
+        "yield_from_attempts": 0.344,
+        "parse_rate": 1.0,
+        "uniqueness": 1.0,
+        "novelty": {
+          "mean_max_tanimoto": 0.1483,
+          "min_max_tanimoto": 0.1078,
+          "max_max_tanimoto": 0.1848,
+          "mean_novelty": 0.8517,
+          "fraction_below_0.9": 1.0,
+          "fraction_below_0.7": 1.0
+        },
+        "intdiv1": {
+          "value": 0.8526,
+          "target": 0.85,
+          "n_matched_training": 0.8234,
+          "n_matched_sd": 0.0073,
+          "delta_vs_n_matched": 0.0292,
+          "canonical_m7_value": 0.869,
+          "canonical_m7_n": 37
+        },
+        "sa": {
+          "value": 6.4423,
+          "target": 4.5
+        },
+        "qed": {
+          "value": 0.0944
+        },
+        "metal_compliance": {
+          "value": 1.0,
+          "distribution": {
+            "Ir": 18,
+            "Ru": 16,
+            "Rh": 15,
+            "Re": 13,
+            "Os": 4
+          }
+        },
+        "docking": {
+          "status": "BLOCKED",
+          "reason": "INCOMPLETE_RUN_DIED",
+          "pockets_planned": 10,
+          "pockets_completed": 1
+        },
+        "verdict": "NEGATIVE",
+        "reading": "Uniqueness/novelty fraction pass on paper (all 66 max T < 0.9) but mean novelty 0.8517 is below 0.90, and max Tanimoto only 0.108-0.185 means the high novelty is partly 'structurally odd', not 'usefully novel'. IntDiv1 0.8526 beats the n-matched training subsample 0.8234 by +0.0292, but the sign flips versus the m7 tmQM reference (0.869 at n=37), so it is n-dependent and not a clean win. SA 6.4423 is far above the 4.5 target (worse than the 4.71 metallo_drugs cohort) and QED is 0.0944. Metal compliance is 1.0. Docking cannot be scored: 1 of 10 pockets before the run died, and the precious-metal force-field gap is separate and still open.",
+        "artifacts": [
+          "metrics/by_metric/cfm_generation_metrics.json"
+        ]
+      },
+      "acceptance_result": "FAILED (SA 6.4423 > 4.5; docking BLOCKED 1/10 pockets; mean novelty 0.8517 < 0.90)"
     },
     {
       "id": "MET-10",
@@ -1116,7 +1170,7 @@
         "MET-7",
         "MET-9"
       ],
-      "note": "P1/P2：外部独立数据集（可能 BLOCKED）+ 生成侧 novelty/SA/对接覆盖。"
+      "note": "P1/P2：MET-9 生成侧指标 DONE-NEGATIVE（novelty 0.8517、SA 6.4423、对接 BLOCKED）；MET-7 外部独立数据集仍 BLOCKED-PENDING-DATA（无 ≥200 行外部交集）。"
     },
     "wave_M4_packaging": {
       "items": [

@@ -6989,3 +6989,75 @@ tests; §5.2: every number traces to `metrics/by_metric/msrs_power.json`;
 
 ---
 
+## §6.131 — MET-9: generation novelty is 1.00 by one definition and 0.85 by another; SA 6.44 fails
+
+**Claim under test.**  The generation line reports "chemistry validity 1.000"
+and "decode_ratio 0.998".  MET-9 asks the questions those numbers do not:
+novelty, uniqueness, IntDiv1, SA/QED on the generated set, metal compliance,
+and docking coverage.
+
+**Setup.**  `cfm_fullcorpus_2026_10_10` epoch 10 seed 0: 192 attempts, 66
+survivors.  Novelty against the CFM train split (18,137 rows, 4,597 unique
+canonical), Morgan r=2/1024.  IntDiv1 (MOSES, self-pairs included) against an
+n-matched training subsample (40 draws).  SA/QED read from
+`cfm_free_generation_panel_seed0.json`; docking from `cfm_vina_generated.json`.
+
+**MEASURED.**
+
+| metric | value | target | verdict |
+|---|---:|---:|:-:|
+| yield (66/192) | 0.344 | - | description |
+| parsed / unique | 66 / 66 | - | PASS |
+| mean max Tanimoto | 0.1483 | - | description |
+| fraction max T < 0.9 | 1.000 | >=0.90 | PASS |
+| mean novelty (1 - mean max T) | 0.8517 | >=0.90 | FAIL |
+| IntDiv1 (n=66) | 0.8526 | >=0.85 | PASS |
+| training n-matched IntDiv1 | 0.8234 +/- 0.0073 | - | +0.0292 |
+| SA | 6.4423 | <=4.5 | **FAIL** |
+| QED | 0.0944 | - | description |
+| exactly one metal | 1.000 (66/66) | - | PASS |
+| docking | BLOCKED (1/10 pockets) | >=50% / >=20 | **BLOCKED** |
+
+**Honest negatives (ACTIVE, this entry):**
+  * **The headline yield is 0.344, not 1.000.**  1.000 is the chemistry
+    validity of the 66 survivors; two thirds of attempts produce no usable
+    molecule.  Quoting 1.000 is survivor bias.
+  * **Novelty depends on the definition.**  Fraction with max Tanimoto < 0.9 is
+    1.000; 1 - mean max Tanimoto is 0.8517, below the 0.90 target.  Report both
+    and the similarity range (0.108-0.185), never "novelty 1.0".
+  * **High novelty is partly strangeness.**  Max similarity is at most 0.185
+    because the metal centres are filled with small inorganic ligands
+    (`[Re](OH)(OH)(N(O)O)`); such structures are absent from training because
+    they are not drug-like.  Novel is not the same as useful.
+  * **SA 6.44 and QED 0.094 name the real bottleneck: ligand realism.**  Bond
+    existence F1 is 0.996 and connectivity 0.970, better than the real corpus,
+    so the bond head works; the head fills the coordination sphere without
+    making drug-like ligands.
+  * **IntDiv1's sign flips with the reference corpus.**  Against its own
+    training corpus at n=66 it is +0.029; the canonical m7 comparison at n=37
+    against the tmQM d-block subset is -0.016.  Both are real.  Do not compare
+    0.853 with the MOSES 0.857 reference: neither n nor corpus matches.
+  * **Metal compliance 1.000 is weak.**  The model always emits exactly one
+    metal, but the distribution is skewed (Ir 18 / Ru 16 / Rh 15 / Re 13 /
+    Os 4).  Compliance says "a metal is present", not "the right metal".
+  * **Docking is BLOCKED, not failed.**  1 of 10 pockets completed before the
+    run died; no success rate exists.  The precious-metal force-field gap is a
+    separate BLOCKED.
+  * **Single seed, single checkpoint, n=66.**  First real measurement, not a
+    settled number.
+
+**Why this matters.**  The generation line's publishable claims shrink to
+"valid survivors, novel but hard to synthesise, not yet dockable".  The strong
+validity/decode numbers measure reconstruction, not generation quality.
+
+**§6.131 catalog-count math.** Net catalog-count delta: **+1** (§6.131 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **183 -> 184** (+1).
+ACTIVE count: **139 -> 140** (+1).
+
+**Workflow** | MET-9 (2026-10-19; 0 GPU — CPU RDKit over 66 molecules x 4,597
+training fingerprints; 7 new tests; §5.2: every number traces to
+`metrics/by_metric/cfm_generation_metrics.json`; §5.3 + §5.4: 0 paper/* + 0
+wet-lab).
+
+---
+

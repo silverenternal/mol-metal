@@ -77,7 +77,9 @@
 | 同队列多金属的条件覆盖 | **0.8096**（n=851） | 交换性被队列结构打破；单金属队列 0.9050 | 同上 |
 | 光毒性 PI 预测 | OOF R² < 0 | 只能描述，不能预测 | `msrs_surface_model.json` |
 | Vina（贵金属） | BLOCKED | 力场缺贵金属参数 | `vina_status.json` |
-| 生成 SA | 4.71（**metallo_drugs 队列**，不是生成物） | 生成物的 SA 没有同口径值 | `sa_score.json` |
+| 生成 SA | 生成物 **6.4423**（目标 ≤4.5）；4.71 是 metallo_drugs 训练队列 | 生成物比真实语料更难合成；QED 0.0944 | `cfm_generation_metrics.json` |
+| 生成 novelty | max T <0.9 比例 **1.000**，平均 novelty **0.8517** | 口径依赖；高 novelty 部分来自「结构奇怪」 | 同上 |
+| 生成对接 | **BLOCKED**（1/10 pocket，run died） | 无法计算成功率 | `cfm_vina_generated.json` |
 
 ### 2.4 缺失（完全没有 artifact）
 
@@ -91,7 +93,7 @@
 | 外部独立数据集 | 所有验证都是同一语料的重划分 | 无 |
 | ~~最终模型的 metal-blind 消融~~ | ~~证明"金属感知"承重，而不只是相关~~ | **已补（MET-6）：metal-blind −0.0683（ligand）/ −0.0693（DOI），p=0.0099；金属标签本身只值 0.006** |
 | ~~统计功效 / 最小可检测效应~~ | ~~61 DOI 下 p=0.054 到底意味着什么~~ | **已补（MET-8）：regret MDE 0.050（62 DOI），符号 MDE 0.130（53 DOI），MAE MDE 0.077** |
-| 生成 novelty / uniqueness | validity 高不等于分子新 | 只有 IntDiv1 0.869 |
+| ~~生成 novelty / uniqueness~~ | ~~validity 高不等于分子新~~ | **已补（MET-9）：max T<0.9 比例 1.000、平均 novelty 0.8517、IntDiv1 0.8526（同 n 训练 0.8234）；但 SA 6.4423 未达标、对接 BLOCKED，整体负** |
 | ~~数据卡 + 泄漏审计~~ | ~~强指标论文的标配~~ | **已补（MET-10）：`DATASET_CARD.md` + `DATA_LEAKAGE_AUDIT.md` §8；ligand 划分 89.43% 测试行共享 DOI** |
 
 ---
@@ -112,7 +114,7 @@
 | conformal 宽度 | **2.0052**（DOI global）/ 1.9195（difficulty） | **中位 ≤1.0 log10** | 未达标：报 coverage 0.90 + 宽度 2.01，写明区间只能当限制 |
 | LOMO AUC | 0.5575 | **≥0.65** | 报"未见金属不可外推" |
 | 外部数据集 | 无 | ≥200 行，R²≥0.5 或 AUC≥0.75 | 标 BLOCKED-PENDING-DATA |
-| 生成 novelty | 无 | **≥0.90**（1−max Tanimoto to train） | 报 IntDiv1 0.869 |
+| 生成 novelty | **平均 0.8517**（max T<0.9 比例 1.000） | **≥0.90**（1−max Tanimoto to train） | 未达标：报双口径 + IntDiv1 0.8526，写明高 novelty 部分来自结构异常（max T 仅 0.11–0.19） |
 | 对接成功率 | 5/5 ≤2 Å | ≥50% on ≥20 pockets | 报 5 个 pocket 的现状 |
 
 **每个 null 的 MDE**（MET-8，`msrs_power.json`）：决策 regret 0.050（62 DOI）、
@@ -130,7 +132,7 @@
 | C3 跨金属迁移有代价但可量化 | within-metal vs LOMO + seed spread + 平票敏感性 | **齐全** |
 | C4 光毒性可切换且金属依赖 | switch 率 + Wilson CI + 跨金属配对 | **齐全**（描述性） |
 | C5 金属替换推荐可用 | regret/top-1/NDCG + 决策曲线 + 显著性 | **不成立**（n.s.） |
-| C6 生成+对接可用 | validity/decode/novelty/SA/docking | 缺 novelty/SA 同口径 |
+| C6 生成+对接可用 | validity/decode/novelty/SA/docking | **已补（MET-9）但为负**：novelty 平均 0.8517、SA 6.4423（>4.5）、对接 BLOCKED；C6 只能作为限制陈述 |
 | C7 结论跨论文成立 | DOI/scaffold/year 三协议 | **已测（MET-2），结论为否**：DOI 掉 0.2235、year Δ 符号 0.4286 |
 
 **取舍建议：** 主表放 C1/C3/C4/C6，C2 作为机制支撑，C5 放"边界与负结果"，C7 作为泛化表。
@@ -144,7 +146,7 @@
 
 - **P0（不做就不能投）**：MET-1 5-seed（DONE）、MET-2 四协议（DONE，负）、MET-3 Δ 指标（DONE，负）、MET-4 校准（DONE，负）、MET-6 金属消融（DONE，PASS）、MET-10 数据卡（DONE）。**P0 全部完成。**
 - **P1（决定论文上限）**：MET-5 决策曲线（DONE，负）、MET-7 外部数据、MET-8 统计功效（DONE）。
-- **P2（生成线专用）**：MET-9 生成指标。
+- **P2（生成线专用）**：MET-9 生成指标（DONE，负：SA 6.4423 > 4.5、平均 novelty 0.8517 < 0.90、对接 BLOCKED）。
 - **P3（打包）**：MET-11 指标表自动生成。
 
 ---
