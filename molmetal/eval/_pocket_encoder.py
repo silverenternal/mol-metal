@@ -241,7 +241,26 @@ def try_build_full_cfm_model(
             n_layers=int(n_layers),
         )
         # strict=False so future flag additions do not break the loader.
-        model.load_state_dict(model_state, strict=False)
+        _missing, _unexpected = model.load_state_dict(model_state, strict=False)
+        # Wf-A96 (2026-10-19) — a checkpoint whose velocity field was built
+        # with opt-in modules this constructor does not pass (t_embedding_dim,
+        # pocket_inject_per_layer, ...) leaves those tensors UNEXPECTED.  The
+        # old code called that a successful build: the head loaded, the
+        # velocity field stayed at random init, and every downstream EMA
+        # number was measured on a model that was not the checkpoint.
+        # MEASURED on cfm_fullcorpus_2026_10_10 (vel_field.time_embed_proj.*,
+        # vel_field.pocket_per_layer_injector.*).  Refuse instead of
+        # pretending, so the caller's documented head-only fallback runs.
+        _vel_unexpected = [k for k in _unexpected if k.startswith("vel_field.")]
+        if _vel_unexpected:
+            LOG.warning(
+                "[eval.pocket_encoder] checkpoint carries %d velocity-field "
+                "tensor(s) this constructor does not build (%s); refusing the "
+                "partial build and falling back to head-only EMA",
+                len(_vel_unexpected),
+                ", ".join(_vel_unexpected[:3]),
+            )
+            return (False, None)
     except Exception as exc:
         LOG.warning(
             "[eval.pocket_encoder] CFMJointModel ctor / load_state_dict "

@@ -1,4 +1,7 @@
-# configs/cfm_5metal_wfa78_ring_prior.yaml — Wf-A75a budget-matched control (weight=0.0, n_train=200)
+# configs/cfm_5metal_wfa78_ring_prior.yaml — OPT-5 ring-template prior, weight=0.01 (n_train=200)
+# (The old header said "budget-matched control (weight=0.0)" while the body
+#  has carried 0.01 since Wf-A78; corrected by Wf-A96 so the file does not
+#  describe a run it would not perform.)
 # (3-layer residual pair head with LayerNorm + dropout) smoke.
 #
 # 2026-10-18 — Wf-A74 ships the model-side architectural upgrade that
@@ -172,6 +175,13 @@ flow:
   # profile.  0.0 (default) is an exact zero term.
   ring_template_weight: 0.01
 protocol:
+  # Wf-A96 (2026-10-19) — the smoke subset used to live in the
+  # command_template as {n_train}/{n_val}, which start.sh cannot fill (it
+  # has no such placeholder), so the canonical launcher died with a
+  # KeyError reported as "could not parse YAML".  They are trainer dests
+  # (--n-train / --n-val), so per AGENTS.md 5.11 they belong here.
+  n_train: 200
+  n_val: 64
   batch_size: 8
   lr: 0.0001
   gen_validity_samples: 8
@@ -217,7 +227,7 @@ entry:
   # the launch wrapper, NOT a hyperparameter override); the §5.11 rule
   # applies to training hyperparameters (lr, epochs, batch_size, etc.),
   # not to data-subset selectors.  Same pattern as cfm_5metal_wfa68_smoke.yaml.
-  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --n-train {n_train} --n-val {n_val} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
   legacy_inline_command: ""
 honest_framing:
   claims:

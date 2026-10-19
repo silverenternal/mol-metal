@@ -7050,6 +7050,40 @@ n-matched training subsample (40 draws).  SA/QED read from
 "valid survivors, novel but hard to synthesise, not yet dockable".  The strong
 validity/decode numbers measure reconstruction, not generation quality.
 
+### 6.131g MEASURED — OPT-5 ring-template prior (5 epochs, cuda:0)
+
+`metrics/by_metric/wfa96_ring_prior_gate.json`; run `results/cfm_5metal_wfa78_ring_prior`
+(199 train / 64 val, 1 seed, 1,399 s total).
+
+| epoch | train_loss | bond_ce | ring_prior | rings/mol | 5/6 share | 3 share | single-frag |
+|---|---|---|---|---|---|---|---|
+| 0 | 1.2663 | 1.0285 | 0.3159 | 0.000 | 0.000 | 0.000 | 0.000 |
+| 1 | 1.2480 | 1.0155 | 0.2221 | 0.000 | 0.000 | 0.000 | 0.000 |
+| 2 | 1.2079 | 0.9897 | 0.3115 | 0.000 | 0.000 | 0.000 | 0.000 |
+| 3 | 1.4458 | 0.9787 | 0.9839 | 3.021 | 0.183 | 0.472 | 0.000 |
+| 4 | 1.8939 | 0.9094 | 0.7178 | 7.052 | 0.191 | 0.437 | 0.000 |
+| **real (OPT-2)** | — | — | — | **4.193** | **0.969** | **0.005** | — |
+| **pre-prior gen (OPT-2)** | — | — | — | 1.636 | 0.019 | 0.898 | — |
+
+**Gate: PASS on direction, FAIL on quality.** 5/6 share 0.019 -> 0.191 (10x),
+3-share 0.898 -> 0.437 (halved), rings/mol 1.636 -> 7.052. The prior is
+wired and it moves the profile. But:
+
+* **It overshoots the ring count** — 7.05 vs 4.19 real — while the 5/6 share
+  is still 0.191 vs 0.969. It is making more rings, not the right rings.
+* **The term dominates the loss.** `ring_prior_term` is 38% of
+  `train_loss` at epoch 4, and `train_loss` rises 1.208 -> 1.894 across
+  epochs 2-4 while `bond_ce` keeps falling (0.990 -> 0.909). Weight 0.01 is
+  not tuned; Wf-A78's own note (grad_norm 137.8 vs 1.5) predicted this.
+* **Connectivity did not move**: `gen_single_fragment_ratio = 0.000` at all
+  five epochs. The prior shapes rings inside fragments; it does not join them.
+* **5 epochs, ~96 molecules/epoch.** This is a wiring + direction gate, not a
+  quality result.
+
+Launch fix: the config could not be launched through `scripts/start.sh`
+before this wave (`{n_train}`/`{n_val}` are not start.sh placeholders).
+Both keys now live under `protocol:`.
+
 **§6.131 catalog-count math.** Net catalog-count delta: **+1** (§6.131 itself).
 ACTIVE count delta: **+1**.  Cumulative catalog count: **183 -> 184** (+1).
 ACTIVE count: **139 -> 140** (+1).
@@ -7386,5 +7420,163 @@ ACTIVE count: **144 -> 145** (+1).
 **Workflow** | Wf-A95 (2026-10-19; 1 GPU gate, 913 s on cuda:0; 8 tests added/
 rewritten; §5.2: every number traces to the two `wfa95_*.json` files; §5.3 +
 §5.4: 0 paper/* + 0 wet-lab).
+
+---
+
+## §6.131 Wf-A96 (2026-10-19) — L3 re-measure, repair A/B, legacy checkpoint compatibility
+
+**Scope.** CFM line only: the L3 Phase-3 re-measure that `cfm_todo.json` left open,
+a causal A/B of the decode-side aromatic repairs, and the checkpoint-compatibility
+defects that blocked both. 0 paper/*, 0 wet-lab, 0 predictive-line changes.
+
+### 6.131a MEASURED — the L3 probe could not load the checkpoint at all
+
+```
+RuntimeError: state_dict mismatch: [] /
+  ['vel_field.time_embed_proj.weight', 'vel_field.time_embed_proj.bias',
+   'vel_field.pocket_per_layer_injector.proj.weight',
+   'vel_field.pocket_per_layer_injector.proj.bias']
+```
+
+The checkpoint at `molmetal/reports/cfm_fullcorpus_2026_10_10/checkpoints/
+cfm_yuelbond_wasserstein_seed0_last.pt` was written by a code state whose
+velocity field named its sinusoidal-t projection `time_embed_proj` and built
+it **with** a bias; the current field names it `t_to_h` and builds it with
+`bias=False`. The probe passed neither `t_embedding_dim` nor
+`pocket_inject_per_layer`, so the two modules were unexpected keys and the
+loader raised. **The L3 Phase-3 re-measure had never been runnable on the
+current code**, which is why the todo still called the post-repair rate
+PROJECTED.
+
+Fix: `migrate_legacy_vel_state_dict` (trainer) renames the keys and, when the
+checkpoint carries a bias, **rebuilds `t_to_h` with `bias=True`** before
+copying — dropping the trained bias would silently change the velocity field.
+The probe now infers `t_embedding_dim` from the weight shape and
+`pocket_inject_per_layer` from the presence of the module, restores
+`feature_schema`, passes the calibrated `dative_max_distance`, and loads via
+`load_cfm_checkpoint` (the raw-pickle format the trainer has written since
+Wf-A30-1; `torch.load` cannot read it).
+
+### 6.131b MEASURED — post-repair decode rate (current checkpoint)
+
+`metrics/by_metric/cfm_l3_decode_post_repair.json` — 64 tmQM val clouds,
+midpoint/50 steps, seed 1234, guidance 0.0, checkpoint sha256
+`b76198add67c...`, mtime 2026-10-13T20:17:44.
+
+| arm | decode_rate | single-fragment | aromatic (any) | Wf-A84 repairs |
+|---|---|---|---|---|
+| shipped (repairs on) | **1.000** (64/64) | 0.047 | 0.031 | 0 |
+| repairs disabled (same weights) | 0.953 (61/64) | 0.049 | 0.033 | 0 |
+
+The disabled arm fails with exactly 3 `AtomKekulizeException`; the shipped
+path sanitises all 64. **The repair is worth +0.047 on this checkpoint**, and
+it needs no last-resort Wf-A84 demotion to get there.
+
+### 6.131c Honest negative — the 0.109 -> 1.000 headline is mostly the checkpoint
+
+The 2026-10-12 arm (`decode_rate = 0.109`, 57/64 Kekulize failures) is dated
+one day **before** the checkpoint file's mtime. The file at that path was
+overwritten on 2026-10-13, so the old arm measured a file that no longer
+exists. The two arms cannot be differenced as a repair effect. What CAN be
+said, and is what the A/B above measures, is that on the current file the
+repair converts 3 failures into 3 sanitised molecules. The rest of the
+0.109 -> 1.000 change is a different model.
+
+### 6.131d Honest negative — decode_rate is not chemistry
+
+At `decode_rate = 1.000`, `single_fragment_ratio = 0.047` and
+`frac_any_aromatic = 0.031` (2/64). The molecules sanitise; they are still
+mostly disconnected and almost never aromatic. Any claim that the L3 axis is
+"fixed" on decode rate alone is reading a sanitisation count as chemistry.
+
+### 6.131e Fixed alongside
+
+* `try_build_full_cfm_model` (eval) built `CFMJointModel(hidden, layers)`,
+  loaded `strict=False`, and returned `(True, model)` while every
+  velocity-field tensor stayed at random init. It now refuses a partial
+  velocity build and returns `(False, None)`, so the documented head-only
+  fallback runs instead of an EMA on the wrong model.
+* `configs/cfm_5metal_wfa78_ring_prior*.yaml` could not be launched through
+  `scripts/start.sh`: their `command_template` used `{n_train}`/`{n_val}`,
+  which start.sh does not supply (KeyError reported as "could not parse
+  YAML"). Both keys moved into `protocol:` (they are real trainer dests), and
+  the stale "weight=0.0 control" headers now say 0.01.
+* The probe's `date` was hardcoded to `2026-10-12` and it recorded only the
+  checkpoint path. It now stamps the real date plus sha256 + mtime + the
+  migration it applied — the exact information whose absence created 6.131c.
+* 4 tests: `test_wfa96_legacy_ckpt_compat.py`.
+
+### 6.131f Honest negatives that REMAIN (ACTIVE)
+
+* **The 2026-10-12 L3 arm is unreproducible**; its checkpoint was overwritten.
+* **decode_rate is a sanitisation count.** 4.7% single-fragment / 3.1%
+  aromatic at decode_rate 1.000.
+* **Aromatic share is measured after demotion**, so it is a floor on what the
+  head predicts, not what it predicts.
+* **n = 64 clouds, one seed, one checkpoint.**
+
+**§6.131 catalog-count math.** Net catalog-count delta: **+1** (§6.131 itself).
+ACTIVE count delta: **+1**. Cumulative catalog count: **189 -> 190**. ACTIVE
+count: **145 -> 146**.
+
+**Workflow** | Wf-A96 (2026-10-19; L3 re-measure + repair A/B + OPT-5 5-epoch
+GPU smoke, 1,399 s on cuda:0; 4 tests; §5.2: every number traces to
+`cfm_l3_decode_post_repair.json`, `wfa96_ring_prior_gate.json` and the two arm
+JSONs; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
+
+## §6.136 — STR-2: the cross-paper fusion is real, the absolute gate is not met
+
+**Claim under test.**  FIX-M2 measured tree+GNN fusion at +0.0273 R2 on a
+ligand-grouped partition; MET-2 showed the tree collapses to 0.3321 under DOI
+grouping.  STR-2 asks whether the fusion rescues the paper-held-out number.
+Pre-registered gate: DOI `stack_foldwise` R2 >= 0.36 AND paired delta-R2 CI
+low > 0.
+
+**Setup.**  D-MPNN `metal_state` (FIX-M1 hyperparameters) trained on the four
+`msrs_generalization.scheme_folds` partitions, 5 seeds, inner validation
+holding out whole protocol groups.  Tree OOF from STR-1 (5 seeds).  Both
+seed-averaged before scoring.  Delta-R2 uses a paired DOI-cluster bootstrap
+(2,000 draws).
+
+**MEASURED.**  DOI: tree 0.3380, GNN 0.3089, equal 0.3606, stack **0.3597**;
+stack delta +0.0217 [+0.0044, +0.0377].  Ligand 0.5596 / 0.5670 / 0.5929 /
+**0.5997**, delta +0.0401 [+0.0256, +0.0522].  Scaffold 0.4530 / 0.4402 /
+0.4795 / **0.4839**, delta +0.0310 [+0.0202, +0.0416].  Year 0.3780 / 0.3554 /
+0.3999 / **0.3968**, delta +0.0189 [-0.0092, +0.0431].  Per-seed (single
+model) stack: ligand 0.5828 +/- 0.0102, DOI 0.3485 +/- 0.0046, scaffold
+0.4693 +/- 0.0068, year 0.3862 +/- 0.0082.  Residual correlation 0.86-0.90.
+
+**Honest negatives (ACTIVE, this entry):**
+  * **The gate arm misses by 0.0003.**  DOI stack 0.3597 < 0.36.  The verdict
+    is PARTIAL, not PASS; the number is not rounded up.
+  * **Half the fusion gain is GNN seed averaging, not fusion.**  DOI GNN goes
+    0.2442 (single) -> 0.3089 (5-model), the tree only 0.3322 -> 0.3380.  The
+    single-model stack is 0.3485 +/- 0.0046, below the 5+5 ensemble's 0.3597.
+    Any 0.3597 claim must say "5 GNN + 5 tree ensemble".
+  * **Fusion makes the DOI delta sign worse.**  Tree 0.5826 -> stack 0.5413;
+    MAE(delta) 0.5115 -> 0.5092.  R2 and within-cohort ranking move in
+    opposite directions, so the fusion cannot support the recommendation
+    story.
+  * **The two models make similar mistakes.**  Residual correlation 0.86-0.90;
+    only a small decorrelated component is available to fuse.
+  * **Year's interval contains zero.**  6,499 rows and 625 clusters cannot
+    establish the +0.0189 point estimate.
+  * **The best number in the project is still interpolation.**  Ligand 0.5997
+    shares papers between train and test; it is not cross-paper performance.
+
+**Why this matters.**  The paper may claim "fusion improves DOI R2 by +0.022
+[0.004, 0.038]", but not "fusion lifts DOI above 0.36".  DP-1 is decided on
+this exact miss.
+
+**§6.136 catalog-count math.** Net catalog-count delta: **+1** (§6.136 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **188 -> 189** (+1).
+ACTIVE count: **144 -> 145** (+1).
+
+**Workflow** | STR-2 (2026-10-19; 5x GPU0 concurrent, 1h38m wall; 12 new
+tests; §5.2: every number traces to
+`metrics/by_metric/msrs_fusion_protocols.json`; §5.3 + §5.4: 0 paper/* + 0
+wet-lab).
 
 ---

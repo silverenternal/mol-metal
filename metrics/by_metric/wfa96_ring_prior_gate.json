@@ -1,0 +1,132 @@
+{
+ "metric": "wfa96_ring_prior_gate",
+ "tag": "MEASURED",
+ "date": "2026-10-19",
+ "source": "/home/hugo/codes/mol-metal/results/cfm_5metal_wfa78_ring_prior/per_epoch_metrics.json",
+ "run_dir": "/home/hugo/codes/mol-metal/results/cfm_5metal_wfa78_ring_prior",
+ "n_epochs_with_ring_fields": 5,
+ "epochs": [
+  {
+   "epoch": 0,
+   "rings_per_mol": 0.0,
+   "ring_size_distribution": {},
+   "n_rings": 0,
+   "share_5_6": 0.0,
+   "share_3": 0.0,
+   "ring_prior_term": 0.3159434199333191,
+   "bond_ce_loss": 1.0284778356552124,
+   "grad_norm": 53.64554901123047,
+   "train_loss": 1.2663377714157105
+  },
+  {
+   "epoch": 1,
+   "rings_per_mol": 0.0,
+   "ring_size_distribution": {},
+   "n_rings": 0,
+   "share_5_6": 0.0,
+   "share_3": 0.0,
+   "ring_prior_term": 0.22207459807395935,
+   "bond_ce_loss": 1.0155143332481384,
+   "grad_norm": 86.10041133880615,
+   "train_loss": 1.2480239105224609
+  },
+  {
+   "epoch": 2,
+   "rings_per_mol": 0.0,
+   "ring_size_distribution": {},
+   "n_rings": 0,
+   "share_5_6": 0.0,
+   "share_3": 0.0,
+   "ring_prior_term": 0.3115133047103882,
+   "bond_ce_loss": 0.9896566939353942,
+   "grad_norm": 279.8289967346191,
+   "train_loss": 1.2078732872009277
+  },
+  {
+   "epoch": 3,
+   "rings_per_mol": 3.0208333333333335,
+   "ring_size_distribution": {
+    "3": 137,
+    "4": 61,
+    "5": 26,
+    "6": 27,
+    "7": 13,
+    "8": 12,
+    "9": 3,
+    "10": 1,
+    "11": 2,
+    "12": 1,
+    "14": 3,
+    "17": 1,
+    "19": 3
+   },
+   "n_rings": 290,
+   "share_5_6": 0.18275862068965518,
+   "share_3": 0.4724137931034483,
+   "ring_prior_term": 0.983866274356842,
+   "bond_ce_loss": 0.9786866068840027,
+   "grad_norm": 25.073538670539858,
+   "train_loss": 1.4458190488815308
+  },
+  {
+   "epoch": 4,
+   "rings_per_mol": 7.052083333333333,
+   "ring_size_distribution": {
+    "3": 296,
+    "4": 153,
+    "5": 82,
+    "6": 47,
+    "7": 27,
+    "8": 17,
+    "9": 21,
+    "10": 9,
+    "11": 5,
+    "12": 11,
+    "13": 4,
+    "15": 4,
+    "19": 1
+   },
+   "n_rings": 677,
+   "share_5_6": 0.19054652880354506,
+   "share_3": 0.43722304283604135,
+   "ring_prior_term": 0.7178196310997009,
+   "bond_ce_loss": 0.9094425821304322,
+   "grad_norm": 1.6681039476394652,
+   "train_loss": 1.8939233589172364
+  }
+ ],
+ "references": {
+  "real_tmqm_opt2": {
+   "rings_per_mol": 4.193,
+   "share_5_6": 0.9692344383496303,
+   "share_3": 0.004889100882423086
+  },
+  "pre_prior_generated_opt2": {
+   "rings_per_mol": 1.6363636363636365,
+   "share_5_6": 0.018518518518518517,
+   "share_3": 0.8981481481481481
+  }
+ },
+ "gate": {
+  "share_5_6_doubled": true,
+  "share_3_reduced_20pct": true,
+  "rings_per_mol_moved_toward_real": true
+ },
+ "diagnostics": {
+  "rings_per_mol_vs_real": 2.8590833333333334,
+  "share_5_6_vs_real": -0.7786879095460852,
+  "share_3_vs_real": 0.4323339419536183,
+  "ring_prior_share_of_train_loss": 0.37901197412237486,
+  "train_loss_first_to_last": [
+   1.2663377714157105,
+   1.8939233589172364
+  ]
+ },
+ "verdict": "PASS",
+ "honest_limits": [
+  "5 epochs, ~32 generated molecules per epoch: this measures DIRECTION, not quality.",
+  "The 5/6-share reference is the OPT-2 real tmQM sample (n=2000 complexes), not this cohort.",
+  "A PASS means the prior is wired and moves the profile the right way; it does not fix the ring-size defect.",
+  "Weight 0.01 was not tuned; Wf-A78 measured grad_norm 137.8 vs 1.5 bond-CE-only, so early epochs are ring-dominated."
+ ]
+}

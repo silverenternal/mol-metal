@@ -1,4 +1,6 @@
-# configs/cfm_5metal_wfa78_ring_prior_cpu_smoke.yaml — Wf-A75a budget-matched control (weight=0.0, n_train=200)
+# configs/cfm_5metal_wfa78_ring_prior_cpu_smoke.yaml — OPT-5 ring-template prior, weight=0.01, CPU smoke
+# (The old header said "budget-matched control (weight=0.0)" while the body
+#  has carried 0.01 since Wf-A78; corrected by Wf-A96.)
 # (3-layer residual pair head with LayerNorm + dropout) smoke.
 #
 # 2026-10-18 — Wf-A74 ships the model-side architectural upgrade that
@@ -177,6 +179,10 @@ flow:
   # profile.  0.0 (default) is an exact zero term.
   ring_template_weight: 0.01
 protocol:
+  # Wf-A96 (2026-10-19) — see the GPU config: {n_train}/{n_val} are not
+  # start.sh placeholders, so they move into the YAML as trainer dests.
+  n_train: 200
+  n_val: 64
   batch_size: 8
   lr: 0.0001
   gen_validity_samples: 4
@@ -226,7 +232,7 @@ entry:
   # the launch wrapper, NOT a hyperparameter override); the §5.11 rule
   # applies to training hyperparameters (lr, epochs, batch_size, etc.),
   # not to data-subset selectors.  Same pattern as cfm_5metal_wfa68_smoke.yaml.
-  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --n-train {n_train} --n-val {n_val} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir} --ckpt-dir {ckpt_dir}
   legacy_inline_command: ""
 honest_framing:
   claims:

@@ -11924,6 +11924,86 @@ def restore_feature_schema(model, decoder, ckpt, *, verbose: bool = True) -> dic
     return schema
 
 
+def migrate_legacy_vel_state_dict(model, state_dict, *, verbose: bool = True):
+    """Rename pre-Wf-A27-final velocity-field keys onto the current modules.
+
+    Wf-A96 (2026-10-19).  MEASURED on
+    molmetal/reports/cfm_fullcorpus_2026_10_10/checkpoints/
+    cfm_yuelbond_wasserstein_seed0_last.pt: the checkpoint carries
+    vel_field.time_embed_proj.weight (128x32) and
+    vel_field.time_embed_proj.bias (128), while the current field names
+    the same projection vel_field.t_to_h and builds it with
+    bias=False.  Strict loading therefore failed with those keys as
+    UNEXPECTED, and NO current consumer could load the checkpoint at all --
+    the L3 Phase-3 re-measure was blocked on this, not on the model.
+
+    The rename is not cosmetic.  The historical module had a TRAINED bias
+    and the current one has no bias parameter, so dropping the tensor would
+    silently change the velocity field this checkpoint defines.  When the
+    checkpoint carries a bias the module is rebuilt with bias=True and
+    both tensors are copied in; otherwise only the name changes.
+
+    Returns (migrated_state_dict, report).  report is empty when there was
+    nothing to migrate, so a caller can print it only when it fired.
+    """
+    import torch.nn as nn
+
+    sd = dict(state_dict)
+    legacy = sorted(k for k in sd if k.startswith("vel_field.time_embed_proj."))
+    if not legacy:
+        return sd, {}
+
+    vf = getattr(model, "vel_field", None)
+    t_to_h = getattr(vf, "t_to_h", None) if vf is not None else None
+    if t_to_h is None:
+        raise RuntimeError(
+            "checkpoint carries vel_field.time_embed_proj.* but the model "
+            "built no vel_field.t_to_h (was t_embedding_dim set from the "
+            "checkpoint's own weight shape?)"
+        )
+
+    w = sd.get("vel_field.time_embed_proj.weight")
+    if w is None:
+        raise RuntimeError("vel_field.time_embed_proj.bias without .weight")
+    in_features, out_features = int(w.shape[1]), int(w.shape[0])
+    if tuple(t_to_h.weight.shape) != (out_features, in_features):
+        raise RuntimeError(
+            f"legacy time_embed_proj is {tuple(w.shape)} but t_to_h is "
+            f"{tuple(t_to_h.weight.shape)}"
+        )
+
+    rebuilt_bias = False
+    if "vel_field.time_embed_proj.bias" in sd and t_to_h.bias is None:
+        _ref = t_to_h.weight
+        new = nn.Linear(in_features, out_features, bias=True).to(
+            device=_ref.device, dtype=_ref.dtype
+        )
+        new.weight.data.copy_(_ref.data)
+        vf.t_to_h = new
+        rebuilt_bias = True
+
+    for k in list(sd):
+        if k.startswith("vel_field.time_embed_proj."):
+            sd["vel_field.t_to_h." + k[len("vel_field.time_embed_proj."):]] = sd.pop(k)
+
+    report = {
+        "renamed": len(legacy),
+        "from": "vel_field.time_embed_proj",
+        "to": "vel_field.t_to_h",
+        "rebuilt_with_bias": rebuilt_bias,
+        "t_embedding_dim": in_features,
+    }
+    if verbose:
+        print(
+            "[cfm-compat] migrated legacy velocity keys: "
+            f"{report['from']}.* -> {report['to']}.* "
+            f"(n={report['renamed']}, rebuilt_with_bias={rebuilt_bias}, "
+            f"t_embedding_dim={in_features})",
+            flush=True,
+        )
+    return sd, report
+
+
 def load_cfm_checkpoint(path, map_location="cpu"):
     """Load a CFM checkpoint in EITHER serialisation the trainer emits.
 
@@ -14875,6 +14955,16 @@ def main() -> int:
                 total_epochs=int(args.epochs),
                 train_loss=float(train_loss),
                 bond_ce=float(bond_ce),
+                # Wf-A96 (2026-10-19) — the ring-template prior's own value.
+                # It was in per_epoch_metrics.json but NOT in the structured
+                # event, so a live reader could not tell an active prior from
+                # a zero term.  Same visibility gap Wf-A87c fixed for the OOV
+                # counters.  Emitted unconditionally so 0.0 is a statement.
+                ring_prior_term=float(
+                    model.last_ring_prior_term.item()
+                    if getattr(model, "last_ring_prior_term", None) is not None
+                    else 0.0
+                ),
                 train_w2=float(w2_val),
                 grad_norm=float(grad_norm),
                 catherine_pass=float(catherine_rate),

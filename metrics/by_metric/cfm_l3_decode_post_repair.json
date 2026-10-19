@@ -1,0 +1,99 @@
+{
+ "metric": "cfm_l3_decode_post_repair",
+ "tag": "MEASURED",
+ "date": "2026-10-19",
+ "wave": "Wf-A96",
+ "question": "cfm_todo.json::L3_A_B_Phase_3_redo \u2014 what is the decode rate after the Wf-A79/83/84 aromatic repairs, and how much of the change is the repair?",
+ "sources": {
+  "old_arm": {
+   "path": "molmetal/reports/cfm_l3_decode_enabled_ab/control/arm_control.json",
+   "sha256": "4a3351408867e4c7dc07c3fa75ede7c071946688a0f59227809bd226235afb5f"
+  },
+  "post_repair_arm": {
+   "path": "molmetal/reports/cfm_l3_decode_enabled_ab/control/arm_control_post_wfa96.json",
+   "sha256": "71bbbe8a9fc7609f8deac7480405ca997667e959032a7adb9ef21823537e403c"
+  },
+  "repair_ab": {
+   "path": "molmetal/reports/cfm_l3_decode_enabled_ab/control/arm_control_repair_ab.json",
+   "sha256": "5d76189737d87b264908f02cecf618cbc1ec5182af77d07ed4b5a9381231690e"
+  }
+ },
+ "checkpoint_now": {
+  "path": "molmetal/reports/cfm_fullcorpus_2026_10_10/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+  "sha256": "b76198add67c2794ffb4947c0201104dc5fe31ee108f2b761354f71b574217a0",
+  "mtime_iso": "2026-10-13T20:17:44"
+ },
+ "measurements": {
+  "post_repair_current_checkpoint": {
+   "decode_rate": 1.0,
+   "n_with_smiles": 64,
+   "n_attempted": 64,
+   "single_fragment_ratio": 0.046875,
+   "aromatic": {
+    "all_survivors": {
+     "n": 64,
+     "frac_any_aromatic": 0.03125,
+     "mean_aromatic_atoms": 0.109375
+    },
+    "clean_decodes_only": {
+     "n": 64,
+     "frac_any_aromatic": 0.03125,
+     "mean_aromatic_atoms": 0.109375
+    }
+   },
+   "n_repaired": 0,
+   "repair_counts": {
+    "<none>": 64
+   }
+  },
+  "causal_ab_same_weights": {
+   "shipped": {
+    "n_attempted": 64,
+    "n_with_smiles": 64,
+    "decode_rate": 1.0,
+    "error_classes": {},
+    "single_fragment_ratio": 0.046875,
+    "frac_any_aromatic": 0.03125,
+    "mean_aromatic_atoms": 0.109375,
+    "n_repaired": 0,
+    "repair_counts": {
+     "<none>": 64
+    }
+   },
+   "no_repairs": {
+    "n_attempted": 64,
+    "n_with_smiles": 61,
+    "decode_rate": 0.953125,
+    "error_classes": {
+     "AtomKekulizeException": 3
+    },
+    "single_fragment_ratio": 0.04918032786885246,
+    "frac_any_aromatic": 0.03278688524590164,
+    "mean_aromatic_atoms": 0.11475409836065574,
+    "n_repaired": 0,
+    "repair_counts": {
+     "<none>": 61
+    }
+   },
+   "delta_decode_rate": 0.046875,
+   "delta_n_with_smiles": 3
+  },
+  "historical_2026_10_12_arm": {
+   "decode_rate": 0.109375,
+   "n_with_smiles": 7,
+   "n_attempted": 64,
+   "note": "Measured on a DIFFERENT file than the one now at the same path: the arm is dated 2026-10-12, the checkpoint mtime is 2026-10-13T20:17:44. 57/64 failures were KekulizeException/AtomKekulizeException. This number is history, not a control for the post-repair arm."
+  }
+ },
+ "verdict": {
+  "decode_rate_after_repair": 1.0,
+  "repair_attributable_gain": 0.046875,
+  "attribution": "On the CURRENT checkpoint the repair converts 3/64 AtomKekulizeException failures into sanitised molecules (+0.047). The 0.109 -> 1.000 headline is mostly a checkpoint change, not the repair; the two cannot be separated further because the 2026-10-12 file was overwritten.",
+  "chemistry_quality": "NOT established. single_fragment_ratio 0.047, frac_any_aromatic 0.031 (2/64). decode_rate counts sanitised strings, not molecules."
+ },
+ "honest_limits": [
+  "The checkpoint at the L3 path was overwritten on 2026-10-13; the 2026-10-12 0.109 arm cannot be reproduced.",
+  "Aromatic share is measured AFTER the demotion repairs, so it is a floor on what the head predicts.",
+  "n=64 clouds, one seed, one checkpoint."
+ ]
+}

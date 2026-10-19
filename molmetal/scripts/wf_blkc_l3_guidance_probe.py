@@ -77,11 +77,41 @@ def _sys_path() -> None:
 
 def load_model(ckpt: Path, device: torch.device):
     _sys_path()
-    from molmetal.scripts.train_cfm_yuelbond_wasserstein import CFMJointModel
+    from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
+        CFMJointModel,
+        load_cfm_checkpoint,
+        migrate_legacy_vel_state_dict,
+    )
     from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import get_z_table
 
-    state = torch.load(str(ckpt), map_location="cpu", weights_only=False)
+    # Wf-A96 — the trainer has written raw pickles through atomic_write_file
+    # since Wf-A30-1, and torch.load raises "Invalid magic number" on those.
+    # load_cfm_checkpoint is the loader that handles both serialisations
+    # (the same fix Wf-A90 applied to --resume-from).  Calling torch.load
+    # here meant this probe could only ever read pre-Wf-A30-1 checkpoints.
+    state = load_cfm_checkpoint(str(ckpt), map_location="cpu")
     a = state["args"]
+    _sd = state["model_state_dict"]
+    # Wf-A96 — two opt-in axes were added AFTER this checkpoint was written
+    # and its args dict does not record them, but the parameters are in the
+    # state_dict.  Infer them from the tensors so the model is built to the
+    # shape the checkpoint actually has, rather than to a default that
+    # cannot hold it.
+    if not a.get("t_embedding_dim") and "vel_field.time_embed_proj.weight" in _sd:
+        a["t_embedding_dim"] = int(_sd["vel_field.time_embed_proj.weight"].shape[1])
+    if not a.get("pocket_inject_per_layer") and any(
+        k.startswith("vel_field.pocket_per_layer_injector.") for k in _sd
+    ):
+        a["pocket_inject_per_layer"] = True
+    # Wf-A96 (2026-10-19) — construct the SAME model the checkpoint was
+    # trained as.  The loader used to pass only the Wf-A70-era kwargs, so any
+    # checkpoint carrying an opt-in module (t_embedding_dim>0 ->
+    # vel_field.time_embed_proj.*, pocket_inject_per_layer=True ->
+    # vel_field.pocket_per_layer_injector.*) failed with a state_dict
+    # mismatch and the probe could not run at all.  MEASURED on
+    # cfm_fullcorpus_2026_10_10: unexpected keys were exactly those two
+    # modules.  Every opt-in axis is read from the checkpoint's own args, so
+    # a future axis added there does not silently break this script again.
     model = CFMJointModel(
         hidden_dim=int(a["hidden_dim"]),
         n_layers=int(a["n_layers"]),
@@ -93,9 +123,27 @@ def load_model(ckpt: Path, device: torch.device):
         context_dropout=float(a["egnn_context_dropout"]),
         tmqm_init_path=None,
         use_tmqm_init=False,
+        q_head_enabled=bool(a.get("q_head_enabled", False)),
+        t_embedding_dim=int(a.get("t_embedding_dim", 0) or 0),
+        pocket_per_layer=bool(a.get("pocket_per_layer", False)),
+        pocket_inject_per_layer=bool(a.get("pocket_inject_per_layer", False)),
         bond_predictor=str(a.get("bond_predictor", "yuelbond")),
+        n_edge_layers=int(a.get("n_edge_layers", 4) or 4),
+        bond_aux_temperature=float(a.get("bond_aux_temperature", 1.0) or 1.0),
+        use_bond_head_skip=bool(a.get("use_bond_head_skip", False)),
+        use_metal_pair_features=bool(a.get("use_metal_pair_features", False)),
+        bond_z_metal_set=str(a.get("bond_z_metal_set", "all7")),
+        bond_z_table=str(a.get("bond_z_table", "pt")),
+        bond_head_kind=str(a.get("bond_head_kind", "single")),
+        t_eval_grid=tuple(float(x) for x in (a.get("t_eval_grid") or (1.0,))),
+        clash_penalty_weight=float(a.get("clash_penalty_weight", 0.0) or 0.0),
+        bond_pattern_mask_in_train=bool(a.get("bond_pattern_mask_in_train", False)),
+        use_pocket_encoder=bool(a.get("use_pocket_encoder", True)),
     )
-    missing, unexpected = model.load_state_dict(state["model_state_dict"], strict=False)
+    _sd, _mig = migrate_legacy_vel_state_dict(model, state["model_state_dict"])
+    if _mig:
+        state["_legacy_key_migration"] = _mig
+    missing, unexpected = model.load_state_dict(_sd, strict=False)
     if missing or unexpected:
         raise RuntimeError(f"state_dict mismatch: {missing[:5]} / {unexpected[:5]}")
     model.to(device).eval()
@@ -334,7 +382,62 @@ def integrate(
     return out
 
 
-def decode(model, clouds: List[Dict[str, Any]], args_dict: dict):
+def _count_aromatic_atoms(smiles: str) -> Optional[int]:
+    """Aromatic atom count of a decoded SMILES, or None if RDKit refuses it.
+
+    Wf-A96 (2026-10-19).  This is a REPORTING helper only: it never feeds
+    back into the decode, and a None means "the SMILES the decoder emitted
+    does not round-trip through RDKit", which is itself information.
+    """
+    try:
+        from rdkit import Chem
+
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is None:
+            return None
+        return int(sum(1 for at in mol.GetAtoms() if at.GetIsAromatic()))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _aromatic_summary(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Share of surviving molecules that contain aromaticity.
+
+    Reported twice on purpose.  Wf-A84's last-resort repair demotes EVERY
+    aromatic bond to single, so a repaired survivor is aromatic-free BY
+    CONSTRUCTION.  Mixing it into the headline share would make the repair
+    look like a model that stopped predicting aromaticity.  The clean-only
+    number answers "what does the head predict"; the all-survivors number
+    answers "what does the pipeline emit".
+    """
+    def _share(subset: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        vals = [r.get("n_aromatic_atoms") for r in subset]
+        vals = [v for v in vals if isinstance(v, int)]
+        if not vals:
+            return None
+        return {
+            "n": len(vals),
+            "frac_any_aromatic": sum(1 for v in vals if v > 0) / len(vals),
+            "mean_aromatic_atoms": statistics.fmean(vals),
+        }
+
+    clean = [r for r in rows if not r.get("repair")]
+    return {
+        "all_survivors": _share(rows),
+        "clean_decodes_only": _share(clean),
+    }
+
+
+def _count_by(rows: List[Dict[str, Any]], key: str) -> Dict[str, int]:
+    out: Dict[str, int] = {}
+    for r in rows:
+        v = r.get(key)
+        k = str(v) if v else "<none>"
+        out[k] = out.get(k, 0) + 1
+    return out
+
+
+def decode(model, clouds: List[Dict[str, Any]], args_dict: dict, state=None):
     """Run the shipped bond head + decode_chemistry on sampled clouds.
 
     2026-10-12 FIX. This function had never executed: it imported
@@ -372,7 +475,21 @@ def decode(model, clouds: List[Dict[str, Any]], args_dict: dict):
         connectivity_prior_min_logit=float(
             args_dict.get("connectivity_prior_min_logit", 0.0)
         ),
+        # Wf-A96 (2026-10-19) — the probe was constructing a decoder that the
+        # trainer's gen_eval would NOT construct: no dative cutoff from the
+        # checkpoint's own yaml, and no feature-schema restore.  Both decide
+        # which pairs the head calls dative, so the L3 decode rate measured
+        # here could differ from the shipped decode for reasons that have
+        # nothing to do with guidance.  Mirror the trainer construction.
+        dative_max_distance=float(
+            args_dict.get("dative_distance_cutoff", 2.6)
+        ),
     )
+    if state is not None:
+        from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
+            restore_feature_schema,
+        )
+        restore_feature_schema(model, dec, state)
     from molmetal.scripts.train_cfm_yuelbond_wasserstein import decode_chemistry
 
     rows: List[Dict[str, Any]] = []
@@ -427,6 +544,12 @@ def decode(model, clouds: List[Dict[str, Any]], args_dict: dict):
                 "smiles": smi,
                 "sanitized": bool(getattr(res.decoded, "sanitized", False)),
                 "decode_error": str(getattr(res.decoded, "error", "") or "") or None,
+                # Wf-A96 — Wf-A84's last-resort repair returns a VALID but
+                # DE-AROMATISED molecule.  Counting it as a clean decode
+                # would report the aromatic fraction of a set that was
+                # partly rebuilt without aromaticity, which is precisely the
+                # number this re-measure exists to report.
+                "repair": str(getattr(res.decoded, "repair", "") or "") or None,
                 "bonds_accepted": getattr(res, "bonds_accepted", None),
                 "bonds_rejected_overvalent": getattr(
                     res, "bonds_rejected_overvalent", None
@@ -434,6 +557,7 @@ def decode(model, clouds: List[Dict[str, Any]], args_dict: dict):
                 "n_fragments": info.get("n_fragments"),
                 "largest_fragment_frac": info.get("largest_fragment_frac"),
                 "has_metal": info.get("has_metal"),
+                "n_aromatic_atoms": _count_aromatic_atoms(smi),
             }
         )
     return rows
@@ -629,16 +753,37 @@ def main() -> int:
     cli = _merge_config(_parse_args())
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model, a, _ = load_model(Path(cli.ckpt), device)
+    model, a, state = load_model(Path(cli.ckpt), device)
     clouds = load_clouds(a, cli.n_clouds)
     noise_sigma = float(a.get("fm_noise_sigma", 1.0))
 
+    # Wf-A96 (2026-10-19) — record WHICH FILE was measured, not just its
+    # path.  The 2026-10-12 arm and this one name the same path but are
+    # different files (the checkpoint was overwritten on 2026-10-13), which
+    # made a 0.109 -> 1.000 change look like a repair effect.  The date was
+    # also hardcoded to 2026-10-12, so every later arm claimed the first
+    # run's date.
+    import datetime
+    import hashlib
+
+    _ckpt_path = Path(cli.ckpt)
+    _h = hashlib.sha256()
+    with _ckpt_path.open("rb") as _f:
+        for _chunk in iter(lambda: _f.read(1 << 20), b""):
+            _h.update(_chunk)
     report: Dict[str, Any] = {
         "metric": f"cfm_{cli.arm}_guidance_probe",
         "tag": "MEASURED",
-        "date": "2026-10-12",
+        "date": datetime.date.today().isoformat(),
         "arm": cli.arm,
-        "checkpoint": str(Path(cli.ckpt)),
+        "checkpoint": str(_ckpt_path),
+        "checkpoint_identity": {
+            "sha256": _h.hexdigest(),
+            "mtime_iso": datetime.datetime.fromtimestamp(
+                _ckpt_path.stat().st_mtime
+            ).isoformat(timespec="seconds"),
+            "legacy_key_migration": state.get("_legacy_key_migration"),
+        },
         "cohort": {
             "source": "tmQM real, split=val (composition templates)",
             "n_clouds": len(clouds),
@@ -702,12 +847,21 @@ def main() -> int:
             _v = getattr(cli, _k, None)
             if _v is not None:
                 run_args[_k] = _v
-        dec_rows = decode(model, sampled, run_args)
+        dec_rows = decode(model, sampled, run_args, state=state)
         got = [r for r in dec_rows if r.get("smiles")]
         report["decode"] = {
             "n_attempted": len(dec_rows),
             "n_with_smiles": len(got),
             "decode_rate": (len(got) / len(dec_rows)) if dec_rows else 0.0,
+            # Wf-A96 — the aromatic fraction of the SURVIVORS, requested by
+            # cfm_todo.json::L3_A_B_Phase_3_redo.  A repaired molecule
+            # (Wf-A84 repair tag) is valid but has had its aromaticity
+            # stripped, so the two shares are reported separately:
+            # any_aromatic over every survivor, and the same quantity
+            # restricted to clean (repair-free) decodes.
+            "aromatic": _aromatic_summary(got),
+            "n_repaired": sum(1 for r in got if r.get("repair")),
+            "repair_counts": _count_by(got, "repair"),
             "single_fragment_ratio": (
                 sum(1 for r in got if r.get("n_fragments") == 1) / len(got)
             )
