@@ -7709,3 +7709,58 @@ ACTIVE count: **145 -> 146** (+1).
 wet-lab).
 
 ---
+## §6.138 — STR-4: R2 and ranking dissociate under the winning feature block
+
+**Claim under test.**  Three one-block feature expansions, each judged by
+"DOI R2 >= 0.36 AND paired CI low > 0", with a pre-registered delta-sign bar
+of 0.65.
+
+**Setup.**  ECFP6(4096, radius 3) replacing ECFP4; ECFP4 + MACCS(167) + 20
+RDKit descriptors; ECFP4 + log1p(time_h) + is_cancer_line.  Same folds, same
+categorical codes, paired DOI-cluster bootstrap.  The winning block was rerun
+for five seeds and against a row-shuffled version of itself.
+
+**MEASURED.**  Single-seed screening DOI: tree 0.3332, ECFP6 0.3321, MACCS+RDKit
+**0.3706**, assay 0.3410.  Five-seed MACCS+RDKit: DOI **0.3767** (seed mean
+0.3697 +/- 0.0022), delta **+0.0387 [+0.0241, +0.0535]**; ligand 0.5593
+(-0.0003); scaffold 0.4733 (+0.0204 [+0.0077, +0.0337]); year 0.3946 (+0.0166
+[-0.0050, +0.0385]).  Shuffled block, DOI, five seeds: **0.3275 +/- 0.0022**
+(0.3238 / 0.3286 / 0.3287 / 0.3270 / 0.3294; below the unpermuted tree in every
+seed).
+Fusion with the five-seed GNN: DOI **0.3811** (+0.0431 [+0.0260, +0.0604]).
+Delta sign at |d|>=0.2091: MACCS 0.5826, fusion 0.5505, tree 0.5826.
+
+**Honest negatives (ACTIVE, this entry):**
+  * **The sign gate fails even as R2 passes.**  0.5826 (and 0.5505 after
+    fusion) vs the 0.65 bar.  The feature block moves the level, not the
+    ordering; the recommendation line cannot use it.
+  * **Fusion lowers the sign further.**  0.5826 -> 0.5505 while R2 rises
+    0.3767 -> 0.3811.  The two metrics pull in opposite directions, which is
+    the paper's central negative result, not a side note.
+  * **ECFP6 is a loss.**  0.3321 vs 0.3332: wider fingerprints dilute the
+    cross-paper signal with paper-specific substructures.
+  * **Assay metadata is null.**  time_h + is_cancer_line give +0.0078 with a CI
+    that contains zero.  The cohort has **no `method` column**, so "assay
+    conditions are controlled" cannot be claimed.
+  * **No ligand gain.**  -0.0003 on the ligand protocol: the block is not a
+    better fingerprint, it is a more transferable one.
+  * **Year's interval still contains zero.**  6,499 rows / 625 clusters.
+  * **MACCS vs the 20 descriptors is not attributed.**  Only the combined
+    187-column block was tested; claiming "the descriptors do it" would need
+    two more arms.
+
+**Why this matters.**  The paper now has one configuration above 0.36, with a
+clean permutation control showing the gain is content rather than width.  It
+still cannot claim a ranking or recommendation improvement.
+
+**§6.138 catalog-count math.** Net catalog-count delta: **+1** (§6.138 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **190 -> 191** (+1).
+ACTIVE count: **146 -> 147** (+1).
+
+**Workflow** | STR-4 (2026-10-19; CPU only, 5 seeds + shuffle control;
+9 new tests; §5.2: every number traces to
+`metrics/by_metric/msrs_feature_expansion_5seed.json`,
+`msrs_feature_fusion.json` and
+`msrs_feature_expansion_shuffle.json`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---

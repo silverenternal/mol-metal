@@ -1,0 +1,332 @@
+{
+  "artifact": "msrs_feature_expansion",
+  "design": {
+    "arms": [
+      "ecfp6",
+      "maccs_rdkit",
+      "assay"
+    ],
+    "assay": {
+      "columns": [
+        "time_h (log1p)",
+        "is_cancer_line"
+      ],
+      "method_column_present": false,
+      "note": "the cohort has no `method` column; it is not silently imputed"
+    },
+    "baseline_features": 2074,
+    "doi_gate": 0.36,
+    "doi_kill": 0.34,
+    "ecfp6": {
+      "n_bits": 4096,
+      "radius": 3
+    },
+    "maccs_rdkit": {
+      "maccs_bits": 167,
+      "rdkit_descriptors": [
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
+        "NumRotatableBonds",
+        "RingCount",
+        "HeavyAtomCount",
+        "FractionCSP3",
+        "NumAromaticRings",
+        "NumAliphaticRings",
+        "NumSaturatedRings",
+        "NumHeteroatoms",
+        "MaxPartialCharge",
+        "MinPartialCharge",
+        "BalabanJ",
+        "BertzCT",
+        "Chi0",
+        "Chi1",
+        "Kappa1"
+      ]
+    },
+    "n_boot": 2000,
+    "protocols": [
+      "ligand",
+      "doi",
+      "scaffold",
+      "year"
+    ],
+    "seed": 0
+  },
+  "generated_utc": "2026-10-19T16:17:09+00:00",
+  "protocols": {
+    "doi": {
+      "arms": {
+        "assay": {
+          "mae": 0.4745,
+          "n_features": 2076,
+          "r2": 0.341,
+          "rmse": 0.6189,
+          "vs_tree": {
+            "ci_high": 0.0192,
+            "ci_low": -0.004,
+            "delta_r2": 0.0078,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 65.7
+        },
+        "ecfp6": {
+          "mae": 0.4764,
+          "n_features": 4122,
+          "r2": 0.3321,
+          "rmse": 0.6231,
+          "vs_tree": {
+            "ci_high": 0.0137,
+            "ci_low": -0.0162,
+            "delta_r2": -0.0012,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 115.0
+        },
+        "maccs_rdkit": {
+          "mae": 0.4619,
+          "n_features": 2261,
+          "r2": 0.3706,
+          "rmse": 0.6048,
+          "vs_tree": {
+            "ci_high": 0.0539,
+            "ci_low": 0.0205,
+            "delta_r2": 0.0374,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 75.1
+        }
+      },
+      "folds": {
+        "n_folds": 5,
+        "n_groups": 1784,
+        "n_rows_evaluated": 21404,
+        "n_rows_unscored": 0
+      }
+    },
+    "ligand": {
+      "arms": {
+        "assay": {
+          "mae": 0.3801,
+          "n_features": 2076,
+          "r2": 0.567,
+          "rmse": 0.5017,
+          "vs_tree": {
+            "ci_high": 0.0164,
+            "ci_low": 0.0069,
+            "delta_r2": 0.0116,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 60.7
+        },
+        "ecfp6": {
+          "mae": 0.3913,
+          "n_features": 4122,
+          "r2": 0.5402,
+          "rmse": 0.517,
+          "vs_tree": {
+            "ci_high": -0.0043,
+            "ci_low": -0.0269,
+            "delta_r2": -0.0152,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 75.1
+        },
+        "maccs_rdkit": {
+          "mae": 0.382,
+          "n_features": 2261,
+          "r2": 0.5563,
+          "rmse": 0.5078,
+          "vs_tree": {
+            "ci_high": 0.0269,
+            "ci_low": -0.0422,
+            "delta_r2": 0.0009,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 97.4
+        }
+      },
+      "folds": {
+        "n_folds": 5,
+        "n_groups": 5861,
+        "n_rows_evaluated": 21404,
+        "n_rows_unscored": 0
+      }
+    },
+    "scaffold": {
+      "arms": {
+        "assay": {
+          "mae": 0.4296,
+          "n_features": 2076,
+          "r2": 0.4587,
+          "rmse": 0.5609,
+          "vs_tree": {
+            "ci_high": 0.0197,
+            "ci_low": 0.0058,
+            "delta_r2": 0.0128,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 30.2
+        },
+        "ecfp6": {
+          "mae": 0.4349,
+          "n_features": 4122,
+          "r2": 0.4397,
+          "rmse": 0.5707,
+          "vs_tree": {
+            "ci_high": 0.0042,
+            "ci_low": -0.0174,
+            "delta_r2": -0.0062,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 150.5
+        },
+        "maccs_rdkit": {
+          "mae": 0.4288,
+          "n_features": 2261,
+          "r2": 0.4638,
+          "rmse": 0.5583,
+          "vs_tree": {
+            "ci_high": 0.0338,
+            "ci_low": 0.0029,
+            "delta_r2": 0.0179,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 76.1
+        }
+      },
+      "folds": {
+        "n_folds": 5,
+        "n_groups": 2636,
+        "n_rows_evaluated": 21404,
+        "n_rows_unscored": 0
+      }
+    },
+    "year": {
+      "arms": {
+        "assay": {
+          "mae": 0.4724,
+          "n_features": 2076,
+          "r2": 0.3783,
+          "rmse": 0.6176,
+          "vs_tree": {
+            "ci_high": 0.0296,
+            "ci_low": -0.0173,
+            "delta_r2": 0.008,
+            "n_boot": 2000,
+            "n_clusters": 625,
+            "n_rows": 6499,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 104.9
+        },
+        "ecfp6": {
+          "mae": 0.4735,
+          "n_features": 4122,
+          "r2": 0.3757,
+          "rmse": 0.6188,
+          "vs_tree": {
+            "ci_high": 0.0294,
+            "ci_low": -0.0176,
+            "delta_r2": 0.0054,
+            "n_boot": 2000,
+            "n_clusters": 625,
+            "n_rows": 6499,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 220.1
+        },
+        "maccs_rdkit": {
+          "mae": 0.4635,
+          "n_features": 2261,
+          "r2": 0.386,
+          "rmse": 0.6137,
+          "vs_tree": {
+            "ci_high": 0.0406,
+            "ci_low": -0.0091,
+            "delta_r2": 0.0157,
+            "n_boot": 2000,
+            "n_clusters": 625,
+            "n_rows": 6499,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 151.1
+        }
+      },
+      "folds": {
+        "n_folds": 16,
+        "n_groups": 16,
+        "n_rows_evaluated": 6499,
+        "n_rows_unscored": 14905,
+        "n_years": 15,
+        "note": "leave-one-year-out; years with fewer than 100 rows are pooled into 'early'"
+      }
+    }
+  },
+  "provenance": {
+    "baseline_oof": "results/msrs_seed_ensemble/oof_seed0.npz",
+    "git_commit": "54e7b8ac6fd5d8b149c8118ed5b150693d94fd3e",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_feature_expansion.py"
+  },
+  "verdict": "PASS",
+  "verdicts": {
+    "assay": {
+      "doi_ci": [
+        -0.004,
+        0.0192
+      ],
+      "doi_delta": 0.0078,
+      "doi_r2": 0.341,
+      "status": "PARTIAL"
+    },
+    "ecfp6": {
+      "doi_ci": [
+        -0.0162,
+        0.0137
+      ],
+      "doi_delta": -0.0012,
+      "doi_r2": 0.3321,
+      "status": "KILL"
+    },
+    "maccs_rdkit": {
+      "doi_ci": [
+        0.0205,
+        0.0539
+      ],
+      "doi_delta": 0.0374,
+      "doi_r2": 0.3706,
+      "status": "PASS"
+    }
+  },
+  "version": "1.0"
+}

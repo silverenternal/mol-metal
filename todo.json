@@ -1,7 +1,7 @@
 {
   "schema": 5,
   "created": "2026-10-14",
-  "updated": "2026-10-19",
+  "updated": "2026-10-20",
   "rewritten": "2026-10-19 — 测量阶段（MET-1..MET-11 + FIX-L4）全部关闭，计划切换为强化阶段（STR-1..STR-7）。",
   "supersedes": "MET-1..MET-11 + FIX-L4；结果见 closed_work 与 TODO/completed/。",
   "purpose": "测量已经做完，结论是：只有『金属感知承重』和『表示增益』是硬的正结果，DOI R²（0.3321）、Δ 符号（0.6193）、Δ 幅度（MAE 0.5089）都未达标。本计划只做一件事：用现有数据把 DOI R² 与 Δ 符号抬到门槛，抬不动就按边界论文定稿。",
@@ -29,6 +29,7 @@
   },
   "current_position": {
     "measured_facts": [
+      "STR-4（特征扩展，5 seed）：MACCS+RDKit 臂 DOI R² 0.3767（seed mean 0.3697±0.0022），配对 Δ +0.0387 [+0.0241,+0.0535]；ligand 0.5593（−0.0003）、scaffold 0.4733（+0.0204 [+0.0077,+0.0337]）、year 0.3946（+0.0166 [−0.0050,+0.0385]）。置换控制（DOI，5 seed）0.3275±0.0022 < 原树 0.3332 → 增益来自描述符内容。与 GNN 融合后 DOI 0.3811（+0.0431 [+0.0260,+0.0604]）。单 seed 筛选：ECFP6 DOI 0.3321 KILL、assay 0.3410（+0.0078，CI 含 0）。但 DOI Δ 符号仍 0.5826（融合 0.5505）< 0.65 —— R² 与排序分离。",
       "STR-3（删失训练，seed 0）：+4,918 右删失行，DOI R² tobit 0.2400 / hinge 0.2828（树 0.3332），Δ −0.0933 / −0.0504，两个 CI 均排除 0；ligand 0.4962 / 0.5326（树 0.5554）；scaffold 0.3564 / 0.4014；year 0.2872 / 0.3296。8/8 协议×目标为负。结论：删失行编码剂量设计，不是随机缺失，条件均值目标下应继续排除。",
       "STR-2（5 树 + 5 GNN，四协议）：DOI stack R² 0.3597（gate 0.36，差 0.0003）、equal 0.3606、tree 0.3380、gnn 0.3089；配对 ΔR² +0.0217 [+0.0044,+0.0377]。ligand 0.5997（Δ+0.0401）、scaffold 0.4839（Δ+0.0310）、year 0.3968（CI 含 0）。单模型（同 seed）stack：ligand 0.5828±0.0102 / DOI 0.3485±0.0046 / scaffold 0.4693±0.0068 / year 0.3862±0.0082。DOI Δ 符号：tree 0.5826 → stack 0.5413（融合反而变差）。残差相关 0.86–0.90。",
       "STR-1（5 seed，四协议）：seed 平均预测 R² ligand 0.5596 / DOI 0.3380 / scaffold 0.4530 / year 0.3780（R² seed SD 0.0026–0.0066）；Δ 符号 ligand 0.6101 / DOI 0.5826 / scaffold 0.6330 / year 0.4082（seed SD 0.0179–0.0387，max 0.0387 < 0.05 → STABLE）。单 seed 的 DOI 0.6193 高于全部五个 seed，属偏高抽样，主表改用 0.5826。DOI 全覆盖 regret 0.1279（单 seed 0.1168）、q=0.5 0.1072、p_holm 1.0。",
@@ -275,6 +276,11 @@
       "id": "STR-3",
       "result": "KILL",
       "headline": "删失训练：DOI tobit 0.2400 / hinge 0.2828（树 0.3332），8/8 组合为负且 CI 排除 0"
+    },
+    {
+      "id": "STR-4",
+      "result": "PASS_R2_FAIL_SIGN",
+      "headline": "MACCS+RDKit 把 DOI R² 抬到 0.3767（Δ +0.0387 [+0.0241,+0.0535]），置换控制 0.3275 证明是内容而非宽度；Δ 符号仍 0.5826（融合 0.5505）"
     }
   ],
   "blockers": [
@@ -470,7 +476,7 @@
       "title": "特征扩展：ECFP6 + MACCS + RDKit 描述符 + 实验条件",
       "layer": "特征",
       "priority": "P1",
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "gpu": "none",
       "wall": "3 小时",
       "why": "当前 2,074 维 = ECFP4 2048 + 2 类别 + 26 金属/细胞列。DOI 留出下新论文的实验条件（time_h、method、is_cancer_line）没有被显式建模；ECFP4 也可能截断了大片段信息。",
@@ -481,7 +487,81 @@
       "expected_gain_projected": "PROJECTED +0.005–0.02 DOI R²",
       "depends_on": [
         "STR-1"
-      ]
+      ],
+      "result": {
+        "verdict": "PASS_R2_FAIL_SIGN",
+        "single_seed": {
+          "ecfp6_doi": 0.3321,
+          "ecfp6_delta": -0.0012,
+          "maccs_rdkit_doi": 0.3706,
+          "maccs_rdkit_delta": 0.0374,
+          "maccs_rdkit_ci": [
+            0.0205,
+            0.0539
+          ],
+          "assay_doi": 0.341,
+          "assay_delta": 0.0078,
+          "assay_ci": [
+            -0.004,
+            0.0192
+          ]
+        },
+        "doi_r2_maccs_5seed": 0.3767,
+        "doi_r2_seed_mean": 0.3697,
+        "doi_r2_seed_sd": 0.0022,
+        "doi_delta": 0.0387,
+        "doi_ci": [
+          0.0241,
+          0.0535
+        ],
+        "doi_r2_fused": 0.3811,
+        "doi_fused_delta": 0.0431,
+        "doi_fused_ci": [
+          0.026,
+          0.0604
+        ],
+        "other_protocols_maccs": {
+          "ligand": 0.5593,
+          "scaffold": 0.4733,
+          "year": 0.3946
+        },
+        "other_protocols_delta": {
+          "ligand": [
+            -0.0003,
+            -0.0483,
+            0.0278
+          ],
+          "scaffold": [
+            0.0204,
+            0.0077,
+            0.0337
+          ],
+          "year": [
+            0.0166,
+            -0.005,
+            0.0385
+          ]
+        },
+        "shuffle_control_doi": 0.3275,
+        "shuffle_control_sd": 0.0022,
+        "sign_doi": {
+          "maccs": 0.5826,
+          "fused": 0.5505
+        },
+        "n_features": {
+          "baseline": 2074,
+          "maccs_rdkit": 2261,
+          "ecfp6": 4122,
+          "assay": 2076
+        },
+        "artifact": "metrics/by_metric/msrs_feature_expansion.json",
+        "artifact_5seed": "metrics/by_metric/msrs_feature_expansion_5seed.json",
+        "artifact_fusion": "metrics/by_metric/msrs_feature_fusion.json",
+        "doc": "TODO/completed/str4_feature_expansion.md",
+        "note": "R² 过线（0.3767 ≥ 0.36，CI 下界 +0.0241）且置换控制 0.3275 低于原树 0.3332，证明增益来自描述符内容而非 187 列宽度；但 Δ 符号仍是 0.5826（融合后 0.5505）< 0.65 —— R² 与排序分离。ECFP6 KILL（0.3321）；assay 只 +0.0078 且 CI 含 0；语料无 method 列。",
+        "artifact_shuffle": "metrics/by_metric/msrs_feature_expansion_shuffle.json"
+      },
+      "acceptance_result": "PASS on R²（0.3767 ≥ 0.36，配对 Δ +0.0387 [+0.0241,+0.0535]）；FAIL on Δ 符号（0.5826 < 0.65，融合后 0.5505）。"
     },
     {
       "id": "STR-5",
@@ -580,7 +660,19 @@
       ],
       "question": "DOI R² 是否到 0.36、Δ 符号是否到 0.65？",
       "if_yes": "进入强指标路径：补 STR-5（Δ）与 STR-6（生成）。",
-      "if_no": "按边界论文定稿；STR-5/STR-6 不跑，节省 GPU。"
+      "if_no": "按边界论文定稿；STR-5/STR-6 不跑，节省 GPU。",
+      "status": "OPEN",
+      "evidence": {
+        "doi_r2_best": 0.3811,
+        "doi_r2_tree_only": 0.3767,
+        "gate_r2": 0.36,
+        "delta_sign_best": 0.5826,
+        "delta_sign_fused": 0.5505,
+        "gate_sign": 0.65,
+        "answer": "R² 到了（0.3767 / 0.3811），Δ 符号没到（0.5826 / 0.5505）",
+        "note": "按 if_no 的字面（两项未同时满足）应停止 STR-5/STR-6 并定稿边界论文；但 R² 已过线，是否仍投入 STR-5（Δ 直接回归，GPU 4h）需用户裁定。"
+      },
+      "needs_user": true
     },
     {
       "id": "DP-3",

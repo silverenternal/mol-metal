@@ -151,6 +151,8 @@ def build_arm(
     arm: str,
     base_ligand: sparse.csr_matrix,
     state_coord: sparse.csr_matrix,
+    shuffle_extra: bool = False,
+    shuffle_seed: int = 0,
 ) -> sparse.csr_matrix:
     if arm == "ecfp6":
         spec = replace(
@@ -162,8 +164,13 @@ def build_arm(
         lig = build(frame, spec).X
         return sparse.hstack([lig, state_coord], format="csr")
     if arm == "maccs_rdkit":
-        extra = sparse.csr_matrix(maccs_rdkit_block(frame))
-        return sparse.hstack([base_ligand, extra], format="csr")
+        extra = maccs_rdkit_block(frame)
+        if shuffle_extra:
+            # Control: destroy the ligand association but keep the block's
+            # width, density and marginal distributions.
+            order = np.random.default_rng(shuffle_seed).permutation(len(extra))
+            extra = extra[order]
+        return sparse.hstack([base_ligand, sparse.csr_matrix(extra)], format="csr")
     if arm == "assay":
         extra = sparse.csr_matrix(assay_block(frame))
         return sparse.hstack([base_ligand, extra], format="csr")
@@ -190,9 +197,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--protocols", nargs="+", default=list(PROTOCOLS), choices=list(PROTOCOLS))
     parser.add_argument("--arms", nargs="+", default=list(ARMS), choices=list(ARMS))
     parser.add_argument(
+        "--shuffle-extra",
+        action="store_true",
+        help="control: permute the added block across rows (destroys the ligand link)",
+    )
+    parser.add_argument(
         "--out",
         type=Path,
         default=PROJECT_ROOT / "metrics" / "by_metric" / "msrs_feature_expansion.json",
+    )
+    parser.add_argument(
+        "--oof-out",
+        type=Path,
+        default=None,
+        help="row-level OOF predictions (path selection only)",
     )
     args = parser.parse_args(argv)
 
@@ -230,15 +248,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     doi = frame["doi"].astype(str).to_numpy()
     empty = sparse.csr_matrix((len(frame), 0), dtype=np.float32)
+    oof_store: Dict[str, np.ndarray] = {
+        "y": y,
+        "metal": np.asarray(frame["metal"], dtype=str),
+        "cell_line_key": np.asarray(frame["cell_line_key"], dtype=str),
+        "doi": doi,
+        "time_h": frame["time_h"].to_numpy(dtype=float),
+        "ligand_canonical": np.asarray(frame["ligand_canonical"], dtype=str),
+        "ligand_main_fragment": np.asarray(frame["ligand_main_fragment"], dtype=str),
+    }
     protocols: Dict[str, object] = {}
     for protocol in args.protocols:
         fold_id, _groups, info = scheme_folds(frame, protocol)
+        oof_store[f"{protocol}__fold"] = fold_id.astype(np.int16)
         ev = fold_id >= 0
         protocols[protocol] = {"folds": info, "arms": {}}
         print(f"[str4] {protocol:9s} folds={info['n_folds']} rows={int(ev.sum())}")
         for arm in args.arms:
             t = time.time()
-            X = build_arm(frame, arm, base_ligand, state_coord)
+            X = build_arm(frame, arm, base_ligand, state_coord, args.shuffle_extra, args.seed)
             pred = fit_arm(
                 X,
                 empty,
@@ -263,6 +291,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     y[finite], base_pred[finite], pred[finite], doi[finite],
                     n_boot=N_BOOT,
                 )
+            oof_store[f"{protocol}__{arm}"] = pred
             protocols[protocol]["arms"][arm] = entry
             print(
                 f"[str4]   {arm:12s} R2={entry['r2']:.4f} MAE={entry['mae']:.4f} "
@@ -320,6 +349,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "method_column_present": bool("method" in frame.columns),
                 "note": "the cohort has no `method` column; it is not silently imputed",
             },
+            "shuffle_extra": bool(args.shuffle_extra),
             "doi_gate": DOI_GATE,
             "doi_kill": DOI_KILL,
             "n_boot": N_BOOT,
@@ -328,6 +358,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "verdicts": verdicts,
         "verdict": overall,
     }
+    if args.oof_out:
+        args.oof_out.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(args.oof_out, **oof_store)
+        print(f"[str4] wrote {args.oof_out}")
     args.out.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_file(args.out, json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     for arm, verdict in verdicts.items():

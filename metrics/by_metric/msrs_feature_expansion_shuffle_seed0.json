@@ -1,0 +1,102 @@
+{
+  "artifact": "msrs_feature_expansion",
+  "design": {
+    "arms": [
+      "maccs_rdkit"
+    ],
+    "assay": {
+      "columns": [
+        "time_h (log1p)",
+        "is_cancer_line"
+      ],
+      "method_column_present": false,
+      "note": "the cohort has no `method` column; it is not silently imputed"
+    },
+    "baseline_features": 2074,
+    "doi_gate": 0.36,
+    "doi_kill": 0.34,
+    "ecfp6": {
+      "n_bits": 4096,
+      "radius": 3
+    },
+    "maccs_rdkit": {
+      "maccs_bits": 167,
+      "rdkit_descriptors": [
+        "MolWt",
+        "MolLogP",
+        "TPSA",
+        "NumHDonors",
+        "NumHAcceptors",
+        "NumRotatableBonds",
+        "RingCount",
+        "HeavyAtomCount",
+        "FractionCSP3",
+        "NumAromaticRings",
+        "NumAliphaticRings",
+        "NumSaturatedRings",
+        "NumHeteroatoms",
+        "MaxPartialCharge",
+        "MinPartialCharge",
+        "BalabanJ",
+        "BertzCT",
+        "Chi0",
+        "Chi1",
+        "Kappa1"
+      ]
+    },
+    "n_boot": 2000,
+    "protocols": [
+      "doi"
+    ],
+    "seed": 0,
+    "shuffle_extra": true
+  },
+  "generated_utc": "2026-10-19T16:28:21+00:00",
+  "protocols": {
+    "doi": {
+      "arms": {
+        "maccs_rdkit": {
+          "mae": 0.4816,
+          "n_features": 2261,
+          "r2": 0.3238,
+          "rmse": 0.6269,
+          "vs_tree": {
+            "ci_high": -0.0012,
+            "ci_low": -0.0186,
+            "delta_r2": -0.0095,
+            "n_boot": 2000,
+            "n_clusters": 1784,
+            "n_rows": 21404,
+            "note": "paired cluster bootstrap; positive = b better than a"
+          },
+          "wall_s": 49.0
+        }
+      },
+      "folds": {
+        "n_folds": 5,
+        "n_groups": 1784,
+        "n_rows_evaluated": 21404,
+        "n_rows_unscored": 0
+      }
+    }
+  },
+  "provenance": {
+    "baseline_oof": "results/msrs_seed_ensemble/oof_seed0.npz",
+    "git_commit": "54e7b8ac6fd5d8b149c8118ed5b150693d94fd3e",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_feature_expansion.py"
+  },
+  "verdict": "KILL",
+  "verdicts": {
+    "maccs_rdkit": {
+      "doi_ci": [
+        -0.0186,
+        -0.0012
+      ],
+      "doi_delta": -0.0095,
+      "doi_r2": 0.3238,
+      "status": "KILL"
+    }
+  },
+  "version": "1.0"
+}
