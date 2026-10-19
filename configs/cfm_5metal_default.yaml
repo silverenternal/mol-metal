@@ -28,6 +28,26 @@ data:
   # 2026-10-15 Wf-A37-8: canonical 5-metal anticancer drug cohort.
   dataset: csv
   csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+  # ---------------------------------------------------------------------
+  # NOTE (2026-10-19): this run does NOT train on the full cohort.
+  #
+  # `--n-train` / `--n-val` are not declared here, so the trainer's argparse
+  # defaults apply (256 / 192 clouds). MEASURED on the 2026-10-17 run:
+  #     train: 256 rows -> 239 unique molecules (18,137 rows / 4,597 unique
+  #            molecules are in the CSV, i.e. 1.4% of the rows)
+  #     val  : 192 rows -> 186 embedded clouds (2,759 rows in the CSV)
+  # Per-metal train sample: Ru 176 / Ir 48 / Os 12 / Rh 10 / Re 10.
+  # The values are intentionally left unchanged for now; raise
+  # `data.n_train` / `data.n_val` in the YAML (not on the CLI, per §5.11)
+  # to use the full cohort.
+  #
+  # A deduplicated, ligand-scaffold-disjoint rebuild is on disk at
+  # `.data/molmetal/metalcytotox_5metal_multitask_v5.csv`
+  # (24,483 rows; 17,138 / 2,448 / 4,897; 0 shared desalted stereo-blind
+  # scaffolds across every split pair; all 5 metals in all 3 splits).
+  # Manifest: metalcytotox_5metal_multitask_v5_split_manifest.json.
+  # This config still points at v3 until the switch is authorised.
+  # ---------------------------------------------------------------------
   # MetalCytoToxDB multi-task v3 cohort filter — keep ALL 5 metals
   # the corpus ships with (Ru/Ir/Os/Rh/Re).  This key is in the loader's
   # DECLARED_INERT_PATHS (no trainer dest) and is printed-but-not-fatal

@@ -29,6 +29,15 @@
       "note": "Same rows as v3 plus lowercase smiles/metal aliases and source. Used by 10 configs; kept because both are wired. Same split caveat as v3."
     },
     {
+      "id": "cfm_5metal_v5",
+      "path": ".data/molmetal/metalcytotox_5metal_multitask_v5.csv",
+      "role": "generative_train",
+      "status": "UNUSED",
+      "rows": 24483,
+      "bytes": 5174117,
+      "note": "Deduplicated rebuild (24,483 rows) with a desalted stereo-blind ligand-scaffold split: 17,138/2,448/4,897, 0 shared scaffolds and 0 shared canonical SMILES across every split pair, all 5 metals in all 3 splits. Built by wf_a52_rebuild_cfm_split.py; no config points at it yet."
+    },
+    {
       "id": "cfm_5metal_v2",
       "path": ".data/molmetal/metalcytotox_5metal_multitask_v2.csv",
       "role": "generative_train",

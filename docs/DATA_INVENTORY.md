@@ -62,6 +62,7 @@ docking), not by a train/test AUC.
 | `metalcytotox_raw` | predictive_train | **ACTIVE** | 26,801 | `.data/molmetal/MetalCytoToxDB.csv` |
 | `cfm_5metal_v3` | generative_train | **ACTIVE** | 26,632 | `.data/molmetal/metalcytotox_5metal_multitask_v3.csv` |
 | `cfm_5metal_v4` | generative_train | **ACTIVE** | 26,632 | `.data/molmetal/metalcytotox_5metal_multitask_v4.csv` |
+| `cfm_5metal_v5` | generative_train | **UNUSED** | 24,483 | `.data/molmetal/metalcytotox_5metal_multitask_v5.csv` |
 | `cfm_5metal_v2` | generative_train | **SUPERSEDED** | 26,632 | `.data/molmetal/metalcytotox_5metal_multitask_v2.csv` |
 | `cfm_5metal_v1` | generative_train | **SUPERSEDED** | 26,801 | `.data/molmetal/metalcytotox_5metal_multitask.csv` |
 | `pt_biodata_all` | eval_pt | **ACTIVE** | 17,735 | `.data/molmetal/wf_a37_platinai_biodata/pt/platinai_pt_all_cells_with_smiles.jsonl` |
@@ -85,6 +86,7 @@ docking), not by a train/test AUC.
 - **`metalcytotox_raw`** (ACTIVE) — Raw Krasnov corpus. Predictive cohorts are derived from this by build_paper_cohort() + collapse_duplicates(tie->active).
 - **`cfm_5metal_v3`** (ACTIVE) — Canonical CFM cohort (configs/cfm_5metal_default.yaml). Scaffold split column is carried in-file; it is stereo-aware and full-complex, not a desalted ligand-scaffold split (see docs/DATA_LEAKAGE_AUDIT.md).
 - **`cfm_5metal_v4`** (ACTIVE) — Same rows as v3 plus lowercase smiles/metal aliases and source. Used by 10 configs; kept because both are wired. Same split caveat as v3.
+- **`cfm_5metal_v5`** (UNUSED) — Deduplicated rebuild (24,483 rows) with a desalted stereo-blind ligand-scaffold split: 17,138/2,448/4,897, 0 shared scaffolds and 0 shared canonical SMILES across every split pair, all 5 metals in all 3 splits. Built by wf_a52_rebuild_cfm_split.py; no config points at it yet.
 - **`cfm_5metal_v2`** (SUPERSEDED) — Same 26,632 rows as v3, differing only in column naming (lowercase smiles/metal vs canonical SMILES_Ligands/Metal). Use v3.
 - **`cfm_5metal_v1`** (SUPERSEDED) — Pre-v2 cohort; only legacy configs.
 - **`pt_biodata_all`** (ACTIVE) — 17,735 real MB-Finder Pt IC50 rows, 100% SMILES-joined (Wf-A46/47/48/49). No split column; 3,668 duplicate (code, cell) rows and 987 exact duplicate measurements. 296 unique SMILES fail RDKit parsing.

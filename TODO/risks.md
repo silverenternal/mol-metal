@@ -81,9 +81,11 @@ than they deliver:
   molecule-level hash split. 41.9 % of test rows and 40.8 % of val rows share a
   desalted scaffold with train.
 
-Mitigation is owned by the model session (no model or training change was made in
-the audit wave). Minimum honest action until then: report these as
-molecule-level/DOI-grouped splits, not scaffold splits. `pre_flight_check`'s
-`p0_scaffold_zero_leak` now prints the ligand-scaffold overlap next to PASS so the
-gap is visible at launch, but it does not FAIL on it — a hard FAIL would block
-every launch before the re-split lands.
+Data-side mitigation landed 2026-10-19: `metalcytotox_5metal_multitask_v5.csv`
+is deduplicated (24,483 rows) and split on the desalted stereo-blind ligand
+scaffold (17,138 / 2,448 / 4,897; 0 shared scaffolds and 0 shared canonical
+SMILES across every pair; all 5 metals in all 3 splits), built by
+`molmetal/scripts/wf_a52_rebuild_cfm_split.py`. No config points at it yet —
+switching `data.csv` to v5 and raising `n_train` / `n_val` are the model-session
+steps. `p0_scaffold_zero_leak` now prints the chemical-axis overlap next to PASS
+so v3/v4 launches stay visible.

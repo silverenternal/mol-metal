@@ -57,6 +57,12 @@ DECLARED: List[tuple] = [
      "generative_train", "ACTIVE",
      "Same rows as v3 plus lowercase smiles/metal aliases and source. Used by "
      "10 configs; kept because both are wired. Same split caveat as v3."),
+    ("cfm_5metal_v5", DATA / "metalcytotox_5metal_multitask_v5.csv",
+     "generative_train", "UNUSED",
+     "Deduplicated rebuild (24,483 rows) with a desalted stereo-blind "
+     "ligand-scaffold split: 17,138/2,448/4,897, 0 shared scaffolds and 0 "
+     "shared canonical SMILES across every split pair, all 5 metals in all 3 "
+     "splits. Built by wf_a52_rebuild_cfm_split.py; no config points at it yet."),
     ("cfm_5metal_v2", DATA / "metalcytotox_5metal_multitask_v2.csv",
      "generative_train", "SUPERSEDED",
      "Same 26,632 rows as v3, differing only in column naming (lowercase "

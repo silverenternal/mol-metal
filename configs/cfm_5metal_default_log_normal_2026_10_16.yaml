@@ -56,6 +56,11 @@ data:
   # Wf-A37-8 canonical 5-metal anticancer drug cohort.
   dataset: csv
   csv: .data/molmetal/metalcytotox_5metal_multitask_v3.csv
+  # NOTE (2026-10-19): same cohort-size caveat as cfm_5metal_default.yaml —
+  # n_train/n_val are undeclared, so the trainer defaults (256/192) apply and
+  # the run uses 239 unique molecules, not the 4,597 in the CSV. A deduped,
+  # ligand-scaffold-disjoint rebuild is at metalcytotox_5metal_multitask_v5.csv.
+  # This config still points at v3.
   # MetalCytoToxDB multi-task v3 cohort filter — keep ALL 5 metals
   # the corpus ships with (Ru/Ir/Os/Rh/Re).  This key is in the loader's
   # DECLARED_INERT_PATHS (no trainer dest) and is printed-but-not-fatal
