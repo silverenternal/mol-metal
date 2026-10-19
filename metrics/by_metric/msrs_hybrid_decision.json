@@ -1,0 +1,671 @@
+{
+  "artifact": "msrs_dmpnn_decision",
+  "version": "1.0",
+  "requires_dual_split": true,
+  "generated_utc": "2026-10-19T03:24:34+00:00",
+  "provenance": {
+    "oof": "results/msrs_hybrid/oof.npz",
+    "script": "molmetal/scripts/msrs_dmpnn_decision.py",
+    "git_commit": "ed28480db7265f4773a5c0dacc74d53f0a599bc4"
+  },
+  "design": {
+    "cohort_keys": [
+      "ligand_canonical",
+      "cell_line_key",
+      "doi",
+      "time_h"
+    ],
+    "ligand_source": "ligand_canonical",
+    "min_cohort_size": 2,
+    "baseline_reference_regret": 0.1198,
+    "note": "Regret = y(chosen) - min y in cohort, lower is better. global_best/cell_best are fold-safe (training folds only). The DOI-clustered t-test is the decision statistic; the bootstrap CI is descriptive (5-seed bootstrap is known anti-conservative, see NEG ledger)."
+  },
+  "splits": {
+    "fragment_grouped": {
+      "n_rows": 21404,
+      "n_cohorts": 424,
+      "min_cohort_size": 2,
+      "verifiability": {
+        "n_cohorts": 424,
+        "n_singleton_cohorts": 0,
+        "cohort_size_counts": {
+          "2": 424
+        },
+        "n_verifiable_pairs": 424,
+        "mean_metals_per_cohort": 2.0,
+        "unverifiable_recommendations": 0,
+        "why": "Scores are only compared inside a cohort, and a cohort holds only metals that were measured for that ligand/cell/paper/time. So every recommendation the evaluator can emit is pairwise verifiable by construction; the cost is coverage, reported above."
+      },
+      "baseline_meta": {
+        "rows_with_unseen_metal_in_train_fold": 0,
+        "rows_with_unseen_cell_metal_pair": 649
+      },
+      "full_cohort_regret": {
+        "global_best": 0.1198,
+        "cell_best": 0.1295,
+        "blend_equal": 0.1306,
+        "blend_foldwise": 0.1239,
+        "blend_rank": 0.1197,
+        "gnn_metal_state": 0.1448,
+        "lgb_tree": 0.1197,
+        "stack_foldwise": 0.1236
+      },
+      "top1_accuracy": {
+        "global_best": 0.5755,
+        "cell_best": 0.5472,
+        "blend_equal": 0.5519,
+        "blend_foldwise": 0.5778,
+        "blend_rank": 0.5684,
+        "gnn_metal_state": 0.5165,
+        "lgb_tree": 0.5684,
+        "stack_foldwise": 0.5802
+      },
+      "cohort_summary": {
+        "global_best": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1198,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5755,
+          "mean_ndcg": 0.9356,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1198,
+              "top1_accuracy": 0.5755,
+              "mean_ndcg": 0.9356
+            }
+          },
+          "hit@0.1": 0.684,
+          "hit@0.2091": 0.7972,
+          "hit@0.5": 0.9292
+        },
+        "cell_best": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1295,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5472,
+          "mean_ndcg": 0.9307,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1295,
+              "top1_accuracy": 0.5472,
+              "mean_ndcg": 0.9307
+            }
+          },
+          "hit@0.1": 0.6651,
+          "hit@0.2091": 0.7783,
+          "hit@0.5": 0.9175
+        },
+        "blend_equal": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1306,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5519,
+          "mean_ndcg": 0.9309,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1306,
+              "top1_accuracy": 0.5519,
+              "mean_ndcg": 0.9309
+            }
+          },
+          "hit@0.1": 0.6722,
+          "hit@0.2091": 0.7877,
+          "hit@0.5": 0.9175
+        },
+        "blend_foldwise": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1239,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5778,
+          "mean_ndcg": 0.9346,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1239,
+              "top1_accuracy": 0.5778,
+              "mean_ndcg": 0.9346
+            }
+          },
+          "hit@0.1": 0.6863,
+          "hit@0.2091": 0.7995,
+          "hit@0.5": 0.9222
+        },
+        "blend_rank": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1197,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5684,
+          "mean_ndcg": 0.9363,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1197,
+              "top1_accuracy": 0.5684,
+              "mean_ndcg": 0.9363
+            }
+          },
+          "hit@0.1": 0.691,
+          "hit@0.2091": 0.8113,
+          "hit@0.5": 0.9269
+        },
+        "gnn_metal_state": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1448,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5165,
+          "mean_ndcg": 0.9235,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1448,
+              "top1_accuracy": 0.5165,
+              "mean_ndcg": 0.9235
+            }
+          },
+          "hit@0.1": 0.6392,
+          "hit@0.2091": 0.7594,
+          "hit@0.5": 0.9009
+        },
+        "lgb_tree": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1197,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5684,
+          "mean_ndcg": 0.9363,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1197,
+              "top1_accuracy": 0.5684,
+              "mean_ndcg": 0.9363
+            }
+          },
+          "hit@0.1": 0.691,
+          "hit@0.2091": 0.8113,
+          "hit@0.5": 0.9269
+        },
+        "stack_foldwise": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1236,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5802,
+          "mean_ndcg": 0.9348,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1236,
+              "top1_accuracy": 0.5802,
+              "mean_ndcg": 0.9348
+            }
+          },
+          "hit@0.1": 0.6887,
+          "hit@0.2091": 0.7995,
+          "hit@0.5": 0.9222
+        }
+      },
+      "clustered_vs_global_best": {
+        "blend_equal": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.02,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.7496,
+          "p_one_sided_doi": 0.7717992989134073,
+          "bootstrap_ci95_doi": [
+            -0.072,
+            0.0341
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "blend_foldwise": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0129,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.491,
+          "p_one_sided_doi": 0.6873981936196066,
+          "bootstrap_ci95_doi": [
+            -0.0636,
+            0.0394
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "blend_rank": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.004,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.1965,
+          "p_one_sided_doi": 0.5775632245600855,
+          "bootstrap_ci95_doi": [
+            -0.0421,
+            0.039
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "gnn_metal_state": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0281,
+          "median_regret_delta": -0.002,
+          "t_doi": -1.0083,
+          "p_one_sided_doi": 0.8413230690592837,
+          "bootstrap_ci95_doi": [
+            -0.0838,
+            0.0275
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "stack_foldwise": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0127,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.4853,
+          "p_one_sided_doi": 0.685395604072169,
+          "bootstrap_ci95_doi": [
+            -0.0635,
+            0.0394
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        }
+      },
+      "clustered_vs_lightgbm": {
+        "blend_equal": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.016,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.9286,
+          "p_one_sided_doi": 0.8215860747578303,
+          "bootstrap_ci95_doi": [
+            -0.0534,
+            0.0144
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "blend_foldwise": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0088,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.5379,
+          "p_one_sided_doi": 0.7036778358585225,
+          "bootstrap_ci95_doi": [
+            -0.0446,
+            0.0197
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "blend_rank": {
+          "n_dois": 61,
+          "mean_regret_delta": 0.0,
+          "t_doi": 0.0,
+          "p_one_sided_doi": 1.0,
+          "p_holm": 1.0
+        },
+        "gnn_metal_state": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0241,
+          "median_regret_delta": 0.0,
+          "t_doi": -1.1763,
+          "p_one_sided_doi": 0.8779394899695889,
+          "bootstrap_ci95_doi": [
+            -0.066,
+            0.0134
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "stack_foldwise": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0087,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.5291,
+          "p_one_sided_doi": 0.7006451674714049,
+          "bootstrap_ci95_doi": [
+            -0.0446,
+            0.0199
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        }
+      }
+    },
+    "canonical_grouped": {
+      "n_rows": 21404,
+      "n_cohorts": 424,
+      "min_cohort_size": 2,
+      "verifiability": {
+        "n_cohorts": 424,
+        "n_singleton_cohorts": 0,
+        "cohort_size_counts": {
+          "2": 424
+        },
+        "n_verifiable_pairs": 424,
+        "mean_metals_per_cohort": 2.0,
+        "unverifiable_recommendations": 0,
+        "why": "Scores are only compared inside a cohort, and a cohort holds only metals that were measured for that ligand/cell/paper/time. So every recommendation the evaluator can emit is pairwise verifiable by construction; the cost is coverage, reported above."
+      },
+      "baseline_meta": {
+        "rows_with_unseen_metal_in_train_fold": 0,
+        "rows_with_unseen_cell_metal_pair": 421
+      },
+      "full_cohort_regret": {
+        "global_best": 0.1241,
+        "cell_best": 0.1231,
+        "blend_equal": 0.1225,
+        "blend_foldwise": 0.1224,
+        "blend_rank": 0.1186,
+        "gnn_metal_state": 0.1219,
+        "lgb_tree": 0.1186,
+        "stack_foldwise": 0.1223
+      },
+      "top1_accuracy": {
+        "global_best": 0.566,
+        "cell_best": 0.559,
+        "blend_equal": 0.566,
+        "blend_foldwise": 0.559,
+        "blend_rank": 0.566,
+        "gnn_metal_state": 0.566,
+        "lgb_tree": 0.566,
+        "stack_foldwise": 0.5613
+      },
+      "cohort_summary": {
+        "global_best": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1241,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.566,
+          "mean_ndcg": 0.9332,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1241,
+              "top1_accuracy": 0.566,
+              "mean_ndcg": 0.9332
+            }
+          },
+          "hit@0.1": 0.6745,
+          "hit@0.2091": 0.7901,
+          "hit@0.5": 0.9269
+        },
+        "cell_best": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1231,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.559,
+          "mean_ndcg": 0.9335,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1231,
+              "top1_accuracy": 0.559,
+              "mean_ndcg": 0.9335
+            }
+          },
+          "hit@0.1": 0.6792,
+          "hit@0.2091": 0.7901,
+          "hit@0.5": 0.9245
+        },
+        "blend_equal": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1225,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.566,
+          "mean_ndcg": 0.9344,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1225,
+              "top1_accuracy": 0.566,
+              "mean_ndcg": 0.9344
+            }
+          },
+          "hit@0.1": 0.6792,
+          "hit@0.2091": 0.7948,
+          "hit@0.5": 0.9198
+        },
+        "blend_foldwise": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1224,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.559,
+          "mean_ndcg": 0.9342,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1224,
+              "top1_accuracy": 0.559,
+              "mean_ndcg": 0.9342
+            }
+          },
+          "hit@0.1": 0.6816,
+          "hit@0.2091": 0.7948,
+          "hit@0.5": 0.9269
+        },
+        "blend_rank": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1186,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.566,
+          "mean_ndcg": 0.9361,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1186,
+              "top1_accuracy": 0.566,
+              "mean_ndcg": 0.9361
+            }
+          },
+          "hit@0.1": 0.6934,
+          "hit@0.2091": 0.8042,
+          "hit@0.5": 0.9316
+        },
+        "gnn_metal_state": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1219,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.566,
+          "mean_ndcg": 0.9347,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1219,
+              "top1_accuracy": 0.566,
+              "mean_ndcg": 0.9347
+            }
+          },
+          "hit@0.1": 0.684,
+          "hit@0.2091": 0.7948,
+          "hit@0.5": 0.9245
+        },
+        "lgb_tree": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1186,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.566,
+          "mean_ndcg": 0.9361,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1186,
+              "top1_accuracy": 0.566,
+              "mean_ndcg": 0.9361
+            }
+          },
+          "hit@0.1": 0.6934,
+          "hit@0.2091": 0.8042,
+          "hit@0.5": 0.9316
+        },
+        "stack_foldwise": {
+          "n_cohorts": 424,
+          "mean_regret": 0.1223,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5613,
+          "mean_ndcg": 0.9342,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 424,
+              "mean_regret": 0.1223,
+              "top1_accuracy": 0.5613,
+              "mean_ndcg": 0.9342
+            }
+          },
+          "hit@0.1": 0.6816,
+          "hit@0.2091": 0.7948,
+          "hit@0.5": 0.9269
+        }
+      },
+      "clustered_vs_global_best": {
+        "blend_equal": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0101,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.4626,
+          "p_one_sided_doi": 0.6773397351274577,
+          "bootstrap_ci95_doi": [
+            -0.0501,
+            0.0332
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "blend_foldwise": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0045,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.2388,
+          "p_one_sided_doi": 0.5939447051496074,
+          "bootstrap_ci95_doi": [
+            -0.0391,
+            0.0348
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "blend_rank": {
+          "n_dois": 61,
+          "mean_regret_delta": 0.0023,
+          "median_regret_delta": 0.0,
+          "t_doi": 0.1152,
+          "p_one_sided_doi": 0.45433490084496075,
+          "bootstrap_ci95_doi": [
+            -0.0366,
+            0.0455
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "gnn_metal_state": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0084,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.3777,
+          "p_one_sided_doi": 0.6464933053974133,
+          "bootstrap_ci95_doi": [
+            -0.0514,
+            0.0353
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "stack_foldwise": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0044,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.2301,
+          "p_one_sided_doi": 0.59061437962541,
+          "bootstrap_ci95_doi": [
+            -0.0391,
+            0.0348
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        }
+      },
+      "clustered_vs_lightgbm": {
+        "blend_equal": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0124,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.8065,
+          "p_one_sided_doi": 0.7884373125083581,
+          "bootstrap_ci95_doi": [
+            -0.0452,
+            0.0175
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "blend_foldwise": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0069,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.5898,
+          "p_one_sided_doi": 0.7212293772692008,
+          "bootstrap_ci95_doi": [
+            -0.0286,
+            0.0157
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "blend_rank": {
+          "n_dois": 61,
+          "mean_regret_delta": 0.0,
+          "t_doi": 0.0,
+          "p_one_sided_doi": 1.0,
+          "p_holm": 1.0
+        },
+        "gnn_metal_state": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0108,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.629,
+          "p_one_sided_doi": 0.7341208631416992,
+          "bootstrap_ci95_doi": [
+            -0.045,
+            0.0218
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        },
+        "stack_foldwise": {
+          "n_dois": 61,
+          "mean_regret_delta": -0.0067,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.5755,
+          "p_one_sided_doi": 0.7164497283418003,
+          "bootstrap_ci95_doi": [
+            -0.0285,
+            0.0159
+          ],
+          "n_boot": 2000,
+          "seed": 20261018,
+          "p_holm": 1.0
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,340 @@
+{
+  "artifact": "msrs_hybrid",
+  "version": "1.0",
+  "requires_dual_split": true,
+  "generated_utc": "2026-10-19T03:25:08+00:00",
+  "provenance": {
+    "tree_oof": "results/msrs_joint_representation/oof.npz",
+    "tree_oof_sha256": "d92f27378483becb9603823e8b463846d6503c9f8259c4a368d2bdc04310455e",
+    "gnn_oof": "results/msrs_dmpnn_surface/oof.npz",
+    "gnn_oof_sha256": "77042bec063d014ce743f6f9b5d69be1d198362475c17a75da9a84b72db09708",
+    "script": "molmetal/scripts/msrs_hybrid.py",
+    "git_commit": "ed28480db7265f4773a5c0dacc74d53f0a599bc4"
+  },
+  "design": {
+    "tree_arm": "ligand+both",
+    "gnn_arm": "metal_state",
+    "ligand_source": "ligand_canonical",
+    "primary_arm": "blend_equal",
+    "min_gain": 0.005,
+    "note": "blend_equal has no fitted parameters and is the primary result. blend_foldwise / stack_foldwise fit on the other four folds (standard stacking, mild optimism). ORACLE is in-sample and is not a result.",
+    "arm_ligand_source": {
+      "lgb_tree": "ligand_canonical",
+      "gnn_metal_state": "ligand_canonical",
+      "blend_equal": "ligand_canonical",
+      "blend_foldwise": "ligand_canonical",
+      "stack_foldwise": "ligand_canonical"
+    }
+  },
+  "splits": {
+    "fragment_grouped": {
+      "lgb_tree": {
+        "mae": 0.4171,
+        "r2": 0.4856,
+        "rmse": 0.5468,
+        "vs_tree": {
+          "n_groups": 2846,
+          "mean_mae_a": 0.4095,
+          "mean_mae_b": 0.4095,
+          "mean_delta": 0.0,
+          "t": 0.0,
+          "p_one_sided": 1.0,
+          "direction": "a better"
+        }
+      },
+      "gnn_metal_state": {
+        "mae": 0.4363,
+        "r2": 0.4263,
+        "rmse": 0.5774,
+        "vs_tree": {
+          "n_groups": 2846,
+          "mean_mae_a": 0.4095,
+          "mean_mae_b": 0.4227,
+          "mean_delta": -0.0132,
+          "t": -3.0292,
+          "p_one_sided": 0.998762784420695,
+          "direction": "a better"
+        }
+      },
+      "blend_equal": {
+        "mae": 0.4079,
+        "r2": 0.505,
+        "rmse": 0.5364,
+        "vs_tree": {
+          "n_groups": 2846,
+          "mean_mae_a": 0.4095,
+          "mean_mae_b": 0.3957,
+          "mean_delta": 0.0138,
+          "t": 5.9128,
+          "p_one_sided": 1.8816391266483438e-09,
+          "direction": "b better"
+        }
+      },
+      "blend_foldwise": {
+        "mae": 0.4069,
+        "r2": 0.5089,
+        "rmse": 0.5342,
+        "vs_tree": {
+          "n_groups": 2846,
+          "mean_mae_a": 0.4095,
+          "mean_mae_b": 0.396,
+          "mean_delta": 0.0135,
+          "t": 8.1222,
+          "p_one_sided": 3.37442721486567e-16,
+          "direction": "b better"
+        }
+      },
+      "stack_foldwise": {
+        "mae": 0.4039,
+        "r2": 0.5128,
+        "rmse": 0.5322,
+        "vs_tree": {
+          "n_groups": 2846,
+          "mean_mae_a": 0.4095,
+          "mean_mae_b": 0.3942,
+          "mean_delta": 0.0153,
+          "t": 8.2786,
+          "p_one_sided": 9.468148531509118e-17,
+          "direction": "b better"
+        }
+      }
+    },
+    "canonical_grouped": {
+      "lgb_tree": {
+        "mae": 0.3856,
+        "r2": 0.5556,
+        "rmse": 0.5082,
+        "vs_tree": {
+          "n_groups": 5861,
+          "mean_mae_a": 0.3869,
+          "mean_mae_b": 0.3869,
+          "mean_delta": 0.0,
+          "t": 0.0,
+          "p_one_sided": 1.0,
+          "direction": "a better"
+        }
+      },
+      "gnn_metal_state": {
+        "mae": 0.4078,
+        "r2": 0.5031,
+        "rmse": 0.5374,
+        "vs_tree": {
+          "n_groups": 5861,
+          "mean_mae_a": 0.3869,
+          "mean_mae_b": 0.4024,
+          "mean_delta": -0.0154,
+          "t": -5.1302,
+          "p_one_sided": 0.9999998506260624,
+          "direction": "a better"
+        }
+      },
+      "blend_equal": {
+        "mae": 0.3785,
+        "r2": 0.5727,
+        "rmse": 0.4984,
+        "vs_tree": {
+          "n_groups": 5861,
+          "mean_mae_a": 0.3869,
+          "mean_mae_b": 0.3759,
+          "mean_delta": 0.0111,
+          "t": 6.8251,
+          "p_one_sided": 4.837229479861113e-12,
+          "direction": "b better"
+        }
+      },
+      "blend_foldwise": {
+        "mae": 0.3779,
+        "r2": 0.574,
+        "rmse": 0.4976,
+        "vs_tree": {
+          "n_groups": 5861,
+          "mean_mae_a": 0.3869,
+          "mean_mae_b": 0.3763,
+          "mean_delta": 0.0107,
+          "t": 9.1471,
+          "p_one_sided": 3.960370798038261e-20,
+          "direction": "b better"
+        }
+      },
+      "stack_foldwise": {
+        "mae": 0.3728,
+        "r2": 0.5807,
+        "rmse": 0.4937,
+        "vs_tree": {
+          "n_groups": 5861,
+          "mean_mae_a": 0.3869,
+          "mean_mae_b": 0.3703,
+          "mean_delta": 0.0167,
+          "t": 12.1789,
+          "p_one_sided": 5.130680342944504e-34,
+          "direction": "b better"
+        }
+      }
+    }
+  },
+  "diagnostics": {
+    "fragment_grouped": {
+      "best_blend": "stack_foldwise",
+      "delta_r2_vs_tree": 0.0272,
+      "oracle": {
+        "w_tree": 0.6513,
+        "r2": 0.5095,
+        "note": "in-sample weight — upper bound only, excluded from the verdict"
+      },
+      "weights": {
+        "one_weight": [
+          {
+            "fold": 0,
+            "w_tree": 0.6562,
+            "w_gnn": 0.3438
+          },
+          {
+            "fold": 1,
+            "w_tree": 0.6708,
+            "w_gnn": 0.3292
+          },
+          {
+            "fold": 2,
+            "w_tree": 0.6333,
+            "w_gnn": 0.3667
+          },
+          {
+            "fold": 3,
+            "w_tree": 0.6288,
+            "w_gnn": 0.3712
+          },
+          {
+            "fold": 4,
+            "w_tree": 0.6673,
+            "w_gnn": 0.3327
+          }
+        ],
+        "linear": [
+          {
+            "fold": 0,
+            "a_tree": 0.7216,
+            "b_gnn": 0.3811,
+            "c": -0.1285
+          },
+          {
+            "fold": 1,
+            "a_tree": 0.7436,
+            "b_gnn": 0.3581,
+            "c": -0.124
+          },
+          {
+            "fold": 2,
+            "a_tree": 0.7001,
+            "b_gnn": 0.4098,
+            "c": -0.1516
+          },
+          {
+            "fold": 3,
+            "a_tree": 0.6918,
+            "b_gnn": 0.3943,
+            "c": -0.1123
+          },
+          {
+            "fold": 4,
+            "a_tree": 0.7447,
+            "b_gnn": 0.3898,
+            "c": -0.173
+          }
+        ]
+      },
+      "residual_correlation": {
+        "pearson": 0.8211,
+        "spearman": 0.8034,
+        "n_rows": 21404
+      },
+      "rank_tie_check": {
+        "n_cohorts": 424,
+        "n_tied_at_min": 148,
+        "first_row_is_best_when_tied": 0.5946
+      }
+    },
+    "canonical_grouped": {
+      "best_blend": "stack_foldwise",
+      "delta_r2_vs_tree": 0.0251,
+      "oracle": {
+        "w_tree": 0.6513,
+        "r2": 0.5767,
+        "note": "in-sample weight — upper bound only, excluded from the verdict"
+      },
+      "weights": {
+        "one_weight": [
+          {
+            "fold": 0,
+            "w_tree": 0.5962,
+            "w_gnn": 0.4038
+          },
+          {
+            "fold": 1,
+            "w_tree": 0.6701,
+            "w_gnn": 0.3299
+          },
+          {
+            "fold": 2,
+            "w_tree": 0.7124,
+            "w_gnn": 0.2876
+          },
+          {
+            "fold": 3,
+            "w_tree": 0.6603,
+            "w_gnn": 0.3397
+          },
+          {
+            "fold": 4,
+            "w_tree": 0.6163,
+            "w_gnn": 0.3837
+          }
+        ],
+        "linear": [
+          {
+            "fold": 0,
+            "a_tree": 0.6704,
+            "b_gnn": 0.4512,
+            "c": -0.1346
+          },
+          {
+            "fold": 1,
+            "a_tree": 0.7485,
+            "b_gnn": 0.3777,
+            "c": -0.1106
+          },
+          {
+            "fold": 2,
+            "a_tree": 0.7795,
+            "b_gnn": 0.3518,
+            "c": -0.1225
+          },
+          {
+            "fold": 3,
+            "a_tree": 0.7371,
+            "b_gnn": 0.4031,
+            "c": -0.1384
+          },
+          {
+            "fold": 4,
+            "a_tree": 0.6963,
+            "b_gnn": 0.4361,
+            "c": -0.134
+          }
+        ]
+      },
+      "residual_correlation": {
+        "pearson": 0.8179,
+        "spearman": 0.8015,
+        "n_rows": 21404
+      },
+      "rank_tie_check": {
+        "n_cohorts": 424,
+        "n_tied_at_min": 158,
+        "first_row_is_best_when_tied": 0.6519
+      }
+    }
+  },
+  "best_blend": "stack_foldwise",
+  "delta_r2_best_blend_vs_tree": 0.0251,
+  "verdict": "POSITIVE"
+}

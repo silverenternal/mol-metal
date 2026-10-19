@@ -76,7 +76,7 @@ def run_split(
     codes: np.ndarray,
     groups: np.ndarray,
     group_col: str,
-) -> Dict[str, object]:
+) -> tuple[Dict[str, object], Dict[str, np.ndarray]]:
     fold_id = folds_for(groups)
     empty = sparse.csr_matrix((len(frame), 0), dtype=np.float32)
     preds: Dict[str, np.ndarray] = {}
@@ -116,7 +116,7 @@ def run_split(
         group_col,
     )
     out["_best_single"] = best_single
-    return out
+    return out, preds
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -135,6 +135,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         default=PROJECT_ROOT / "metrics" / "by_metric" / "msrs_joint_representation.json",
     )
     parser.add_argument("--limit", type=int, default=0, help="smoke: first N ligands")
+    parser.add_argument(
+        "--oof-out",
+        type=Path,
+        default=PROJECT_ROOT / "results" / "msrs_joint_representation" / "oof.npz",
+        help="row-level out-of-fold predictions (needed by the hybrid model)",
+    )
     args = parser.parse_args(argv)
 
     long = pd.read_parquet(args.long)
@@ -184,14 +190,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
 
     splits: Dict[str, object] = {}
+    oof: Dict[str, np.ndarray] = {}
     for split, col in (
         (SPLIT_FRAGMENT_GROUPED, "ligand_main_fragment"),
         (SPLIT_CANONICAL_GROUPED, "ligand_canonical"),
     ):
         print(f"[joint] split={split}")
-        splits[split] = run_split(
+        splits[split], preds = run_split(
             sub, y, bundle.X, extras, codes, sub[col].to_numpy(), col
         )
+        for arm, values in preds.items():
+            oof[f"{split}__{arm}"] = values
 
     canonical = splits[SPLIT_CANONICAL_GROUPED]
     best_single = canonical["_best_single"]
@@ -237,6 +246,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     write_report(args.out, payload)
+
+    if args.oof_out:
+        arrays = {
+            "y": y.astype(np.float64),
+            "metal": sub["metal"].to_numpy().astype(str),
+            "cell_line_key": sub["cell_line_key"].to_numpy().astype(str),
+            "doi": sub["doi"].to_numpy().astype(str),
+            "time_h": sub["time_h"].to_numpy(),
+            "ligand_canonical": sub["ligand_canonical"].to_numpy().astype(str),
+            "ligand_main_fragment": sub["ligand_main_fragment"].to_numpy().astype(str),
+        }
+        arrays.update({k: v.astype(np.float64) for k, v in oof.items()})
+        args.oof_out.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(args.oof_out, **arrays)
+        print(f"[joint] wrote {args.oof_out}")
     print(f"[joint] verdict={verdict} extra={extra:+.4f}")
     print(f"[joint] wrote {args.out}")
     return 0

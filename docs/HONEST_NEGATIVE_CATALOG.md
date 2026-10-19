@@ -5583,3 +5583,57 @@ OPT-2 reproduction; 9 new tests; §5.2: every number traces to
 `/tmp/wfa85_plumb` or `metrics/by_metric/cfm_opt2_ring_content.json`; §5.3 +
 §5.4: 0 paper/* + 0 wet-lab).
 
+
+## §6.113 — FIX-M2: blending raises R², not ranking; the rank gain was row order
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (negative on the decision layer;
+positive on the regression layer).  **Code:** `molmetal/scripts/msrs_hybrid.py`,
+`molmetal/tests/test_msrs_hybrid.py`, `molmetal/scripts/msrs_joint_representation.py`
+(`--oof-out`).  **Artifacts:** `metrics/by_metric/msrs_hybrid.json`,
+`metrics/by_metric/msrs_hybrid_decision.json`, `results/msrs_hybrid/oof.npz`.
+
+**What was tested.**  FIX-L5's LightGBM on `ligand+both` (canonical R² 0.5556)
+and FIX-M1's D-MPNN `metal_state` (0.5031) are two models on the same 21,404
+rows and the same GroupKFold(5).  Their residuals correlate 0.818, so a blend
+can in principle beat both.  Five arms: tree, GNN, equal-weight (zero
+parameters), fold-wise one weight, fold-wise linear stack; plus a within-cohort
+rank-average arm for the decision layer.
+
+**MEASURED, regression.**  canonical: tree 0.5556, gnn 0.5031, equal 0.5727
+(+0.0171, paired p=4.8e-12), foldwise 0.5740, stack 0.5807 (+0.0251,
+p=5.1e-34).  fragment: 0.4856 / 0.4263 / 0.5050 / 0.5089 / 0.5128.  The
+fold-wise tree weight is stable across folds (0.596–0.712, mean 0.651).  Both
+splits move the same direction.
+
+**MEASURED, decision (424 cohorts, canonical, regret lower is better).**
+global_best 0.1241, tree 0.1186, gnn 0.1219, equal 0.1225, foldwise 0.1224,
+stack 0.1223.  Every blend arm's DOI-clustered Holm p versus the tree is 1.0.
+
+**The artifact that had to be caught.**  The rank-average arm first reported
+regret 0.1099 and top-1 0.6203 — a 5.4-point jump.  At w=0.5, 158 of 424
+cohorts have a two-way tie at the minimum score; `regret_matrix` resolves ties
+with `idxmin`, i.e. by row order, and the first row happens to be the true best
+in 65.2% of those cohorts.  Moving the weight to 0.4 or 0.6 removes the gain
+(0.1213 / 0.1186).  With a deterministic tie-break toward the tree, the rank
+blend is bit-identical to the tree alone: 0.1186 / 0.5660.
+
+**Honest-negative (ACTIVE, this entry):**
+  * **Blending does not move the decision layer.**  This is the fourth
+    independent confirmation of NEG-17 (better regression ≠ better ranking),
+    and the strongest: changing the representation, the model class, and now
+    the combination rule all leave within-cohort metal ranking where it was.
+  * **Do not quote 0.1099 / top-1 0.6203.**  They are row-order artifacts.
+  * **Do not translate +0.0171 R² into a recommendation claim.**  The
+    regression gain is real and significant; the decision gain is zero.
+  * **`regret_matrix` remains tie-sensitive by design.**  It was not changed,
+    because continuous scorers never tie and historical numbers must stay
+    comparable.  Any new discrete or rank scorer must carry its own
+    deterministic tie-break (DEF-7).
+
+**§6.113 catalog-count math.** Net catalog-count delta: **+1** (§6.113 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **164 -> 165** (+1).
+ACTIVE count: **120 -> 121** (+1).
+
+**Workflow** | FIX-M2 (2026-10-19; 0 GPU — reads two OOF files; 8 new tests;
+§5.2: every number traces to the two artifact JSONs; §5.3 + §5.4: 0 paper/*
++ 0 wet-lab).

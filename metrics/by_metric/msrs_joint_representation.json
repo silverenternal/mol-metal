@@ -2,12 +2,12 @@
   "artifact": "msrs_joint_representation",
   "version": "1.0",
   "requires_dual_split": true,
-  "generated_utc": "2026-10-18T16:01:40+00:00",
+  "generated_utc": "2026-10-19T03:19:22+00:00",
   "provenance": {
     "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
     "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
     "script": "molmetal/scripts/msrs_joint_representation.py",
-    "git_commit": "b27bb1eb6de858194fb08b47f3098bc916259881",
+    "git_commit": "5b9fc5b1fef418ea09b71da79014d80e4a03d318",
     "ligand_spec_hash": "sha256:453f77bb3ea233ee7b6666b72d9277a7849f901cd0b756dba828a898217f824b"
   },
   "design": {
@@ -67,7 +67,7 @@
         "rmse": 0.5722,
         "n_features": 2048,
         "n_extra_features": 0,
-        "wall_s": 33.9
+        "wall_s": 24.9
       },
       "ligand+metal": {
         "mae": 0.4237,
@@ -75,7 +75,7 @@
         "rmse": 0.5569,
         "n_features": 2052,
         "n_extra_features": 4,
-        "wall_s": 24.9,
+        "wall_s": 25.5,
         "delta_r2_vs_ligand": 0.0297,
         "vs_ligand": {
           "n_groups": 2846,
@@ -93,7 +93,7 @@
         "rmse": 0.5572,
         "n_features": 2070,
         "n_extra_features": 22,
-        "wall_s": 26.1,
+        "wall_s": 25.8,
         "delta_r2_vs_ligand": 0.029,
         "vs_ligand": {
           "n_groups": 2846,
@@ -111,7 +111,7 @@
         "rmse": 0.5468,
         "n_features": 2074,
         "n_extra_features": 26,
-        "wall_s": 26.5,
+        "wall_s": 26.6,
         "delta_r2_vs_ligand": 0.0488,
         "vs_ligand": {
           "n_groups": 2846,
@@ -141,7 +141,7 @@
         "rmse": 0.5384,
         "n_features": 2048,
         "n_extra_features": 0,
-        "wall_s": 24.4
+        "wall_s": 39.4
       },
       "ligand+metal": {
         "mae": 0.3906,
@@ -149,7 +149,7 @@
         "rmse": 0.5156,
         "n_features": 2052,
         "n_extra_features": 4,
-        "wall_s": 24.8,
+        "wall_s": 23.7,
         "delta_r2_vs_ligand": 0.0414,
         "vs_ligand": {
           "n_groups": 5861,
@@ -167,7 +167,7 @@
         "rmse": 0.5235,
         "n_features": 2070,
         "n_extra_features": 22,
-        "wall_s": 23.0,
+        "wall_s": 25.4,
         "delta_r2_vs_ligand": 0.0272,
         "vs_ligand": {
           "n_groups": 5861,
@@ -185,7 +185,7 @@
         "rmse": 0.5082,
         "n_features": 2074,
         "n_extra_features": 26,
-        "wall_s": 23.9,
+        "wall_s": 25.6,
         "delta_r2_vs_ligand": 0.0544,
         "vs_ligand": {
           "n_groups": 5861,

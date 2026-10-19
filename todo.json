@@ -32,7 +32,7 @@
       "Nat. Commun. — 需要跨数据集泛化 + 决策价值量化"
     ],
     "positioning": "现有负结果 (WP1-WP4) 不是失败, 而是框架的三条边界: 迁移惩罚不可完全归因于金属敏感配体; 金属描述符不解释迁移; metal-token 不改善跨金属。新框架必须解释这三条, 而不是绕过它们。",
-    "immediate_goal": "FIX 波次已跑完（除 FIX-L4 因缺外部细胞系数据 BLOCKED）：表示层 L1-L5 把树模型推到 canonical 0.5556，模型类 M1 把 D-MPNN 推到 0.5031（parity），决策层 E2-E4/M1b 在所有方案下都未过「regret<0.1198 且 Holm p<0.05」。下一步不是再加特征或换架构，而是在两条路里选：(a) 等数据做 FIX-L4；(b) 重定义决策目标/收缩论文主张。由用户决定。"
+    "immediate_goal": "FIX 波次（除 L4 缺数据）已跑完。绝对回归从 0.4572 推到 0.5807（L1→L5→M2 融合），但决策层在所有方案下都停在 0.1186-0.1241 且 Holm p=1.0。下一步不是再加特征/模型/融合，而是先量化『队列内金属标签还剩多少可解释方差』：若上限本身接近基线，则论文主张必须收缩到回归面；若上限显著更高，才值得投入可学 pairwise 目标。"
   },
   "current_position": {
     "measured_facts": [
@@ -55,7 +55,8 @@
       "actionable 子集并不更准: 整体 0.625 vs 0.623; 分层 Ru-Ir -0.043 / Ru-Os +0.075 / Ru-Rh +0.113; 最窄子集 (delta=1.5) 0.241 vs 0.640。MSRS-3 判据未过。",
       "LOMO 金属外推失败: potency 加权 MAE descriptors 0.610 / one-hot 0.608 / no-metal 0.607, no-metal 显著更好 (Holm 0.036); 五金属均值排序 rho=0.1 (p=0.87)。",
       "金属 90% 嵌套在 DOI 内 (potency 仅 10.4% 单元与另一金属同 DOI); 留出金属的均值主要是 cohort 效应, 描述符无法编码。",
-      "FIX-M1：自研 D-MPNN + metal_graph 在 21,404 行上 canonical R2 0.5031（LightGBM 0.5012，FIX-L5 树模型 0.5556）；424 cohort regret 最好 0.1190，但 DOI 聚类 Holm p=1.0。"
+      "FIX-M1：自研 D-MPNN + metal_graph 在 21,404 行上 canonical R2 0.5031（LightGBM 0.5012，FIX-L5 树模型 0.5556）；424 cohort regret 最好 0.1190，但 DOI 聚类 Holm p=1.0。",
+      "FIX-M2：树+D-MPNN 等权融合 canonical R2 0.5727（+0.0171, p=4.8e-12），堆叠 0.5807（+0.0251, p=5.1e-34）；决策层 regret 最好仍是树模型 0.1186，所有融合臂 Holm p=1.0。"
     ],
     "continuous_data_audit_2026_10_18": {
       "numeric_dark_ic50": 21777,
@@ -140,7 +141,7 @@
       "msrs_decision_policy": "metrics/by_metric/msrs_decision_policy.json"
     },
     "diagnosis": {
-      "headline": "回归指标差的根因在信息通路（特征算错对象），已修；推荐指标差的根因在目标与泛化，未修。FIX-M1 进一步证明：换模型类（D-MPNN + metal_graph）也不动决策层，绝对 R2 只到树模型 parity。",
+      "headline": "回归与决策是两个独立的失败模式，FIX-M2 把这条结论钉死了：融合把回归推到 0.5807（+0.0251，p=5e-34），决策层却一步没动（Holm p=1.0）；秩融合的表面增益是评估器的并列取首行 artifact。",
       "evidence": [
         "生产设计 (ECFP4 + 5 metal one-hot + 3 周期描述符 + top-40 cell one-hot) 在 MSRS-2 的 21,045 行上 additive R²=0.2510 / interaction R²=0.2791；同一行集把 cell/metal 换成原生 categorical 到 0.3149，说明编码方式本身就值 +0.036。",
         "逐块累加到 DOI 是 0.4437，但这是论文内插值上界，不可部署到新论文。",
@@ -152,7 +153,8 @@
         "表征修复后 canonical 分组回归 R2 0.3972 → 0.5556（L1+L2+L3+L5 同折），但同一表征在决策层让 top-1 regret 从 0.1212 恶化到 0.1314（NEG-17）。",
         "within-cohort centering 在论文内把 regret 降到 0.0939、top-1 抬到 0.653（NEG-18），但按 DOI 留出整篇论文后恶化到 0.1468，输给 regression 0.1165 与 global_best 0.1199（NEG-19）。",
         "FIX-M1 全量：canonical R2 lgb 0.5012 / D-MPNN ligand_cell 0.4553 / metal_identity 0.4726 / metal_state 0.5031；金属分解在 GNN 内复现 (+0.0173, +0.0305)，但绝对水平低于 FIX-L5 的 0.5556。",
-        "FIX-M1 决策层：canonical regret global_best 0.1241 / lgb 0.1212 / metal_identity 0.1190 / metal_state 0.1219；对 global_best 与 lgb 的 DOI 聚类检验 p_holm 全为 1.0。"
+        "FIX-M1 决策层：canonical regret global_best 0.1241 / lgb 0.1212 / metal_identity 0.1190 / metal_state 0.1219；对 global_best 与 lgb 的 DOI 聚类检验 p_holm 全为 1.0。",
+        "FIX-M2：tree 0.5556 / gnn 0.5031 / equal 0.5727 / stack 0.5807（canonical）；424 cohort regret：tree 0.1186，融合臂 0.1223-0.1225，秩融合 tie-broken 后 = 0.1186，Holm 全 1.0。"
       ],
       "not_the_problem": [
         "模型容量：h512 只在 n≥10^3 的金属上可检测 (+0.018~+0.083)，不是全局瓶颈。",
@@ -557,6 +559,39 @@
         "why_it_matters": "这是 NEG-17 的第三次复现：更好的回归不等于更好的排序。即使把金属作为图对象送进消息传递，队列内的金属排序仍与「训练折金属均值」无法区分。决策层的失败不是模型容量问题。",
         "do_not": "不要用「metal_identity regret 0.1190 < 0.1198」声称达到了论文解冻判据；判据要求 Holm p<0.05，实际为 1.0。",
         "next": "决策层要么换 estimand（可学的 pairwise 目标 + 分布外约束），要么承认当前数据不支持配体级金属推荐，把论文主张收缩到「回归面 + 可验证的边界」。这需要用户决定。"
+      },
+      {
+        "id": "NEG-22",
+        "title": "融合抬高了回归但没有抬高决策：秩融合的 0.1099 是 idxmin 取首行的假象",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_hybrid_decision.json",
+          "canonical_regret": {
+            "global_best": 0.1241,
+            "lgb_tree": 0.1186,
+            "gnn_metal_state": 0.1219,
+            "blend_equal": 0.1225,
+            "blend_foldwise": 0.1224,
+            "stack_foldwise": 0.1223,
+            "blend_rank_raw": 0.1099,
+            "blend_rank_tiebroken": 0.1186
+          },
+          "canonical_top1": {
+            "lgb_tree": 0.566,
+            "blend_rank_raw": 0.6203,
+            "blend_rank_tiebroken": 0.566
+          },
+          "holm_p_vs_tree": "all 1.0",
+          "tie_check": {
+            "n_cohorts": 424,
+            "n_tied_at_min": 158,
+            "first_row_is_best_when_tied": 0.6519
+          }
+        },
+        "what_was_tested": "FIX-M2 的决策层读数：用同一批 OOF，把 tree / gnn / 三种数值融合 / 队列内秩平均送进 424 个 cohort 的 regret 与 top-1。",
+        "result": "数值融合的 regret 0.1223-0.1225，全部差于树模型 0.1186；秩平均在 w=0.5 时给出 0.1099/top1 0.6203，但 158/424 个队列在最小值处并列，idxmin 取首行，而首行恰好是真最优的比例是 65.2%。加入确定性 tie-break（并列时归树模型）后，秩融合与树模型逐位相同（0.1186/0.5660）。",
+        "why_it_matters": "这是 NEG-17 的第四次复现，也是最强的一次：即使把两个模型的预测融合、把排序方式换掉，队列内的金属排序仍然与单一强模型无异。决策层的瓶颈既不是表示、不是模型类、也不是融合方式。",
+        "do_not": "不要把 0.1099 / top1 0.6203 写进任何结论或论文；它是行序 artifact。也不要用 blend_equal 的 +0.0171 R2 声称决策能力提升。",
+        "next": "决策层只剩两种可能：(a) 目标函数（可学 pairwise + 分布外约束）；(b) 数据本身不含足够的队列内金属差异信号。在投入 (a) 之前，应先量化队列内金属标签的可解释方差上限。"
       }
     ],
     "reusable_assets": {
@@ -1010,6 +1045,35 @@
         },
         "why": "同一批图、同一折、只改条件向量：金属身份（one-hot + 配位节点/边）与金属态（氧化态/电荷/d 电子/几何）在消息传递模型里各自贡献独立增量，方向与 FIX-L2 的树模型一致。说明这不是 LightGBM 的伪影。",
         "caveat": "绝对水平只是 parity（0.5031 vs 0.5012）；fragment split 上反而 −0.0105。"
+      },
+      {
+        "id": "POS-7",
+        "title": "树模型 + D-MPNN 融合把 canonical R2 从 0.5556 抬到 0.5727（零参数），堆叠到 0.5807",
+        "evidence": {
+          "artifact": "metrics/by_metric/msrs_hybrid.json",
+          "canonical": {
+            "tree": 0.5556,
+            "gnn": 0.5031,
+            "equal": 0.5727,
+            "foldwise": 0.574,
+            "stack": 0.5807
+          },
+          "fragment": {
+            "tree": 0.4856,
+            "gnn": 0.4263,
+            "equal": 0.505,
+            "foldwise": 0.5089,
+            "stack": 0.5128
+          },
+          "paired_equal_vs_tree": {
+            "canonical_p": 4.84e-12,
+            "fragment_p": 1.88e-09
+          },
+          "residual_correlation": 0.8179,
+          "fold_weights_tree": "0.596-0.712 (mean 0.651)"
+        },
+        "why": "两个模型的残差相关 0.82 而非 1.0，说明它们错在不同的行上。等权平均不拟合任何参数，却已经在两个 split 上都显著优于强模型；折内权重在 5 折间稳定（0.60-0.71），不是单折偶然。这是 FIX-L5 之后第一个真正抬高绝对 R2 的杠杆，而且 D-MPNN 留在链路里。",
+        "caveat": "决策层没有跟着动（NEG-22）。融合改善的是回归面，不是配体级金属排序。"
       }
     ],
     "full_stack_audit_2026_10_18": {
@@ -1173,6 +1237,14 @@
         "blast_radius": "所有 cohort 级指标",
         "measured_cost": "未量化；属于静默错配",
         "fix": "FIX-P2"
+      },
+      {
+        "id": "DEF-7",
+        "layer": "评估/决策",
+        "defect": "regret_matrix 用 idxmin 解并列分数，等价于按行序决定推荐，而行序不是随机的",
+        "blast_radius": "任何会产生并列的 scorer（秩、分档、离散化）；连续回归预测不受影响",
+        "measured_cost": "队列内秩平均臂：regret 0.1099 → 0.1186，top1 0.6203 → 0.5660（虚高 5.4 个百分点）",
+        "fix": "在 scorer 端加确定性 tie-break（msrs_hybrid.rank_blend 已加 1e-9×tree_rank）；评估端保持原样以免改动历史连续 scorer 的数字，但新增并列诊断 rank_tie_check"
       }
     ]
   },
@@ -3150,6 +3222,77 @@
       "depends_on": [
         "FIX-L1"
       ]
+    },
+    {
+      "id": "FIX-M2",
+      "title": "强模型与 D-MPNN 的融合：树模型 + 图模型",
+      "layer": "模型",
+      "priority": "P0",
+      "status": "DONE-MIXED",
+      "gpu": "none",
+      "wall": "0.5 天",
+      "why": "FIX-M1 验收字面通过但只是 parity（0.5031 vs 0.5012），NEG-20 已关闭『换模型类』这条轴。但两个模型的残差相关只有 0.82，不是同一个模型；若融合能抬高绝对 R2，主模型仍留在链路里。",
+      "method": "读 FIX-L5 与 FIX-M1 的行级 OOF（同一 21,404 行、同一 GroupKFold(5)），五臂：tree(ligand+both) / gnn(metal_state) / 等权平均 / 折内拟合单权重 / 折内线性堆叠；另加队列内秩平均臂送决策层。等权臂零参数，是主结果；拟合臂标注 stacking 乐观偏差。",
+      "deliverable": "molmetal/scripts/msrs_hybrid.py + metrics/by_metric/msrs_hybrid.json + metrics/by_metric/msrs_hybrid_decision.json + results/msrs_hybrid/oof.npz",
+      "acceptance": "canonical split 上最优融合 ≥ tree + 0.005 且配对 p<0.05；否则 NEGATIVE。",
+      "depends_on": [
+        "FIX-L5",
+        "FIX-M1"
+      ],
+      "result": {
+        "canonical_grouped": {
+          "lgb_tree": 0.5556,
+          "gnn_metal_state": 0.5031,
+          "blend_equal": 0.5727,
+          "blend_foldwise": 0.574,
+          "stack_foldwise": 0.5807,
+          "delta_equal_vs_tree": 0.0171,
+          "p_equal_vs_tree": 4.84e-12,
+          "delta_stack_vs_tree": 0.0251,
+          "p_stack_vs_tree": 5.13e-34
+        },
+        "fragment_grouped": {
+          "lgb_tree": 0.4856,
+          "gnn_metal_state": 0.4263,
+          "blend_equal": 0.505,
+          "blend_foldwise": 0.5089,
+          "stack_foldwise": 0.5128,
+          "delta_equal_vs_tree": 0.0194,
+          "p_equal_vs_tree": 1.88e-09
+        },
+        "residual_correlation": {
+          "canonical": 0.8179,
+          "fragment": 0.8211
+        },
+        "fold_weights_tree": {
+          "min": 0.5962,
+          "max": 0.7124,
+          "mean": 0.6511
+        },
+        "decision_canonical": {
+          "global_best": 0.1241,
+          "lgb_tree": 0.1186,
+          "gnn_metal_state": 0.1219,
+          "blend_equal": 0.1225,
+          "blend_foldwise": 0.1224,
+          "stack_foldwise": 0.1223,
+          "blend_rank": 0.1186,
+          "holm_p_vs_tree": {
+            "blend_equal": 1.0,
+            "blend_foldwise": 1.0,
+            "stack_foldwise": 1.0,
+            "blend_rank": 1.0,
+            "gnn_metal_state": 1.0
+          }
+        },
+        "reading": "回归轴确实抬高：等权 +0.0171、堆叠 +0.0251，两个 split 同向且高度显著。决策轴完全不动：所有融合臂的 DOI 聚类 Holm p=1.0，秩融合在确定性 tie-break 后与树模型逐位相同。",
+        "artifacts": [
+          "metrics/by_metric/msrs_hybrid.json",
+          "metrics/by_metric/msrs_hybrid_decision.json",
+          "results/msrs_hybrid/oof.npz"
+        ]
+      },
+      "acceptance_result": "REGRESSION PASSED / DECISION NULL"
     }
   ],
   "sequence": {
@@ -3198,11 +3341,12 @@
         "FIX-E3",
         "FIX-E4",
         "FIX-M1",
+        "FIX-M2",
         "FIX-P2",
         "FIX-P3",
         "FIX-L4"
       ],
-      "note": "P1/E1 基础设施先落地，再做表征：L1 完整配合物 (+0.1002) → L2 氧化态 (+0.0444) → L3 配位环境 (+0.0272) → E2 决策层重测 → M1 主模型上场。三层特征叠加后的同一折 A/B 尚未跑（FIX-L5，下一步），不要假设增量可加。"
+      "note": "P1/E1 基础设施先落地，再做表征：L1 (+0.1002) → L2 (+0.0444) → L3 (+0.0272) → L5 叠加 (+0.0130) → M1 主模型 (parity) → M2 融合 (+0.0251 回归，决策层无变化)。"
     }
   },
   "legacy_mainline": {
@@ -3239,7 +3383,8 @@
     "AUD-D1 的两条实现 (two-part vs 删失似然) 谁做主：建议删失似然做主线（连续、可直接给区间），two-part 做对照。",
     "AUD-D2 的 offset 是否进入最终部署模型：内插值可用、新论文不可用，需要明确边界后再定。",
     "是否解冻论文线：等 AUD-F1/D1/M1 三条验收结果，由用户决定。",
-    "FIX 波次结束后往哪走：(a) 等外部细胞系数据做 FIX-L4；(b) 放弃配体级金属推荐，把论文收缩到回归面 + 边界；(c) 换可学的 pairwise 决策目标再做一次分布外验证。建议先讨论 (b) 的证据是否已经足够。"
+    "FIX 波次结束后往哪走：(a) 等外部细胞系数据做 FIX-L4；(b) 放弃配体级金属推荐，把论文收缩到回归面 + 边界；(c) 换可学的 pairwise 决策目标再做一次分布外验证。建议先讨论 (b) 的证据是否已经足够。",
+    "FIX-M2 之后：(a) 先做队列内方差上限估计，再决定论文是否收缩；(b) 直接投入 pairwise 决策目标 + DOI 分布外验证；(c) 等外部细胞系数据做 FIX-L4。建议 (a)，因为它决定 (b) 是否还有意义。"
   ],
   "do_not": [
     "不要把 668 对 matched 数据说成 5 金属全覆盖 — 只有 3 个金属对有 matched 样本。",
