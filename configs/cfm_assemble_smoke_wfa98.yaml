@@ -1,0 +1,89 @@
+# configs/cfm_assemble_smoke_wfa98.yaml
+#
+# Wf-A98 (2026-10-19) — CPU smoke for the assemble dead-zone fix.
+#
+# WHAT IT PROVES, and nothing else:
+#   1. --assemble-hinge-tau-mode corpus derives tau from THIS cohort and
+#      prints it, instead of importing tmQM's 0.30;
+#   2. the derived tau is above the corpus maximum (no correct complex is
+#      charged), so the term is not inert by construction;
+#   3. assemble_loss is NONZERO on at least one epoch — the check that the
+#      old 0.30 could never pass;
+#   4. assemble_hinge_tau / assemble_inert reach events.jsonl.
+#
+# It is NOT a quality measurement: 2 epochs on 24 clouds says nothing about
+# whether the term helps, only that it fires. The A/B is a separate run.
+
+data:
+  tmqm_dir: .data/molmetal/tmQM
+  tmqm_metals:
+    - Pt
+  tmqm_coord_number: -1
+  tmqm_val_frac: 0.25
+  tmqm_split_kind: random
+
+model:
+  hidden_dim: 128
+  n_layers: 3
+  yuelbond_vocab: pt
+  use_egnn_velocity: true
+  use_fm_objective: true
+  fm_t_per_cloud: 1
+  connectivity_prior: "on"
+  connectivity_prior_min_logit: 0.0
+
+train:
+  epochs: 2
+  batch_size: 8
+  lr: 3.0e-4
+  weight_decay: 0.0
+  max_norm: 5.0
+  bond_head_warmup_epochs: 0
+
+flow:
+  # The term under test. escape_time is the only formulation with a live
+  # gradient (~7e4x the product's); product would be a diagnostic.
+  assemble_loss_weight: 1.0
+  assemble_formulation: escape_time
+  # Wf-A98 — derive the dead zone from this run's own bond truth.
+  assemble_hinge_tau_mode: corpus
+  # Leave the dead-zone value unset: corpus mode overwrites it, and writing
+  # 0.30 here would suggest it still has an effect.
+  bond_decision: threshold
+  bond_decision_threshold: 0.5
+  dative_distance_cutoff: 2.6
+  n_steps: 8
+  method: midpoint
+  edge_cutoff: 3.5
+
+protocol:
+  n_train: 24
+  n_val: 8
+  seed: 0
+  n_seeds: 1
+
+compute:
+  device: cpu
+  tf32: false
+  torch_compile: false
+
+eval:
+  gen_eval_n: 4
+  gen_eval_seeds: "0"
+  gen_validity_samples: 4
+
+output:
+  base_dir: /tmp/wfa98_smoke
+  log_master: /tmp/wfa98_smoke/master.log
+  ckpt_dir: /tmp/wfa98_smoke/checkpoints
+  events_jsonl: true
+  resume_from: none
+
+directives:
+  kill_then_adapt: true
+  time_budget: 1h
+  user_ok_required: false
+
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed} --out-dir {out_dir} --ckpt-dir {ckpt_dir}

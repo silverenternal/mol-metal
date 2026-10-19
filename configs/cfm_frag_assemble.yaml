@@ -208,6 +208,14 @@ train:
   # ---- BLK-C11 treatment (this arm only) -------------------------------
   assemble_loss_weight: 1.0
   assemble_formulation: escape_time
+  # Wf-A98 (2026-10-19) — the dead zone is now DERIVED from this run's own
+  # training cohort instead of carried in from tmQM. The 0.30 that used to sit
+  # here was MEASURED inert: on every cohort this repo actually trained, the
+  # model's stay_mean ran below it, so assemble_loss was exactly 0.0 at every
+  # epoch while assemble_enabled reported 1.0. The 0.30 stays as the value
+  # used when the mode is "fixed", so this file still reproduces the historical
+  # arm bit-for-bit; "corpus" is what makes a NEW run of this arm meaningful.
+  assemble_hinge_tau_mode: corpus
   assemble_hinge_tau: 0.30
 
 flow:

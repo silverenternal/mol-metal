@@ -53,7 +53,7 @@ import os
 import statistics
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import torch
 
@@ -334,9 +334,25 @@ def integrate(
     from molmetal.adapters.flow_matching_lipman._reference.solver import ODESolver
 
     gen = torch.Generator(device=device).manual_seed(int(seed))
-    by_size: Dict[int, List[Any]] = {}
-    for tpl in templates:
-        by_size.setdefault(int(tpl.atomic_numbers.shape[0]), []).append(tpl)
+    # Wf-A98 (2026-10-19) — carry the INPUT INDEX through the size grouping.
+    #
+    # The ODE has to run in same-size batches, so this function walks
+    # sorted(by_size) and used to emit in that order.  Every caller, however,
+    # pairs the result with its template list by position:
+    #
+    #     for cloud, c in zip(clouds, integrate(model, clouds, ...))
+    #
+    # On a mixed-size cohort those two orders differ, so the template (bond
+    # truth, original geometry) and the sampled geometry came from different
+    # molecules.  MEASURED while writing wf_a98: template 0 had 16 atoms, the
+    # paired output had 14, and the truth graph indexed atom 15 of a 14-atom
+    # cloud.  That raised instead of lying, but only because the probe touched
+    # the template; a probe that reads only the sampled entry (as wf_a97 did)
+    # cannot notice.  Emitting in input order makes the positional contract
+    # true.
+    by_size: Dict[int, List[Tuple[int, Any]]] = {}
+    for _i, tpl in enumerate(templates):
+        by_size.setdefault(int(tpl.atomic_numbers.shape[0]), []).append((_i, tpl))
 
     out: List[Dict[str, Any]] = []
     with torch.no_grad():
@@ -344,7 +360,7 @@ def integrate(
             group = by_size[n_atoms]
             b = len(group)
             z_b = torch.stack(
-                [g.atomic_numbers.long().to(device) for g in group], dim=0
+                [g.atomic_numbers.long().to(device) for _i, g in group], dim=0
             )
             mask = torch.ones(b, n_atoms, dtype=torch.bool, device=device)
             rcov = torch.tensor(
@@ -373,12 +389,16 @@ def integrate(
             solver = ODESolver(velocity_model=_vf, method=method, n_steps=n_steps)
             x1 = solver.sample(x0, method=method, n_steps=n_steps)
             for i in range(b):
+                _src, _tpl = group[i]
                 out.append(
                     {
                         "positions": x1[i].detach().cpu(),
-                        "zs": group[i].atomic_numbers.cpu().tolist(),
+                        "zs": _tpl.atomic_numbers.cpu().tolist(),
+                        "template_index": int(_src),
                     }
                 )
+    # Input order, so zip(templates, out) is correct by construction.
+    out.sort(key=lambda r: r["template_index"])
     return out
 
 

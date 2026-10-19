@@ -107,6 +107,7 @@ question.
 
 from __future__ import annotations
 
+import math
 from typing import Optional, Tuple
 
 import torch
@@ -211,6 +212,57 @@ def mean_stay_probability(
         return float(torch.stack(diags).mean(dim=0).mean())
 
 
+def _spectral_component_penalty(
+    adj: torch.Tensor,
+    *,
+    sharpness: float = 0.05,
+    heat_scale: float = 8.0,
+) -> torch.Tensor:
+    """Soft connected-component count -> a [0, 1) connectivity penalty.
+
+    ``c = trace(exp(-t L))`` with ``L = D - W`` the combinatorial Laplacian
+    of the DECODE-RULE graph (weights = sigmoid((p - 0.5) / sharpness)).  As
+    ``t -> inf`` this equals the number of connected components exactly: each
+    component contributes one zero eigenvalue, every other eigenvalue is
+    damped.  The penalty ``1 - 1/c`` is 0 for one component, 0.5 for two, and
+    approaches 1 as the graph shatters.
+
+    Why the heat kernel and not ``eigvalsh(L)[1]``: a disconnected graph has
+    a REPEATED zero eigenvalue, and the eigen-decomposition backward pass
+    divides by eigenvalue differences, so it returns NaN exactly on the
+    inputs this term is meant to penalise.  ``matrix_exp`` has no such
+    degeneracy.  MEASURED on n=30: chain 1.0003, three fragments 1.74,
+    isolated atoms 11.7 -- monotone in fragmentation, finite gradient at the
+    bridge probability.
+
+    ``t = heat_scale / lambda2(P_n)`` because the path is the sparsest
+    connected graph, so its Fiedler value is the smallest any connected
+    graph can have; scaling by it makes ``t`` resolve "connected" for every
+    real molecule instead of only for dense ones.
+    """
+    n = int(adj.shape[0])
+    if n < 2:
+        return torch.zeros((), device=adj.device, dtype=adj.dtype)
+    dtype = adj.dtype
+    s = max(float(sharpness), 1e-6)
+    # SHIFTED, RENORMALISED sigmoid.  A plain sigmoid((p-0.5)/s) never reaches
+    # zero: at p=0 it still returns sigmoid(-0.5/s) = 4.5e-05 for s=0.05, and
+    # a molecule has O(100) such pairs per atom, so the leakage alone sums to
+    # ~5e-03 per atom -- enough to bridge every fragment at the heat-kernel
+    # scale.  MEASURED before this shift: five 16-atom fragments on n=80
+    # scored c=1.00 (loss 0.0) instead of c=5.  The shift makes a p=0 pair
+    # contribute exactly nothing while leaving the gradient at p~0.5 intact.
+    _lo = torch.sigmoid(torch.tensor(-0.5 / s, dtype=dtype))
+    w = ((torch.sigmoid((adj - 0.5) / s) - _lo) / (1.0 - _lo)).clamp(min=0.0)
+    # No self-loops: they are edges to nowhere and would inflate every degree.
+    w = w - torch.diag_embed(torch.diagonal(w))
+    w = (w + w.t()) * 0.5
+    lap = torch.diag(w.sum(dim=1)) - w
+    lam2_path = 2.0 * (1.0 - math.cos(math.pi / n))
+    t = float(heat_scale) / max(lam2_path, 1e-9)
+    c = torch.matrix_exp(-t * lap).diagonal().sum().clamp(min=1.0)
+    return 1.0 - 1.0 / c
+
 def assemble_fragment_loss(
     logits: torch.Tensor,
     edge_index: Tuple[torch.Tensor, torch.Tensor],
@@ -221,6 +273,7 @@ def assemble_fragment_loss(
     eps: float = 1e-12,
     formulation: str = "product",
     hinge_tau: float | None = None,
+    sharpness: float = 0.05,
 ) -> Tuple[torch.Tensor, float, float]:
     """Differentiable assemble-aware penalty for one cloud.
 
@@ -314,6 +367,78 @@ def assemble_fragment_loss(
         adj = adj.index_put((ei, ej), p, accumulate=True).index_put(
             (ej, ei), p, accumulate=True
         )
+
+    # ---- Spectral branch (Wf-A98) --------------------------------------
+    #
+    # WHY THIS EXISTS.  MEASURED 2026-10-19 on 64 real tmQM val clouds
+    # (metrics/by_metric/wfa98_assemble_discrimination.json):
+    #
+    #   stay_mean   truth graph              0.175  (max 0.212)
+    #               DECODED graph, fragmented 0.239  <- correctly higher
+    #               DECODED graph, connected  0.123  <- correctly lower
+    #               MODEL SOFT graph          0.145  <- below every truth
+    #
+    # The statistic is directionally RIGHT on the decoded graph: fragments
+    # score 0.239 against 0.123 for connected molecules.  It is the SOFT
+    # relaxation that breaks it.  A softmax head spreads probability over
+    # every candidate pair inside the 3.5 A cutoff, so the soft graph is
+    # dense, the walk leaves every atom quickly, and stay_mean lands BELOW
+    # the p50 of the truth graphs it is supposed to reproduce.  The hinge
+    # then cannot fire: any tau low enough to fire on the soft graph would
+    # also fire on correct truth graphs (0.175-0.212).  That is not a
+    # tuning problem, and it is why assemble_loss read exactly 0.0 at every
+    # epoch on every cohort that ever ran this term.
+    #
+    # So the fix is not a different tau, it is a statistic that is evaluated
+    # on the graph the DECODER will see.  MEASURED on the same 64 clouds, the
+    # size-normalised algebraic connectivity of the NORMALISED Laplacian
+    # separates by five orders of magnitude where stay_mean separates by 2x:
+    #
+    #   lambda2 ratio   truth graph              6.92 (min 1.90)
+    #                   DECODED, fragmented      7.9e-05
+    #                   DECODED, connected      27.49
+    #
+    # and 0/64 truth graphs are disconnected against 33/64 decoded ones.
+    #
+    # The spectral form measures the thing that actually defines
+    # disconnection: a graph is disconnected iff its Laplacian has a second
+    # zero eigenvalue.  Counting zero eigenvalues directly is not
+    # differentiable, so this uses the heat-kernel trace
+    #
+    #     c = trace(exp(-t * L)),  L = D - W the COMBINATORIAL Laplacian
+    #
+    # which equals the number of connected components as t -> infinity
+    # (each component contributes exactly one eigenvalue 0; every other
+    # eigenvalue is damped away).  The penalty is 1 - 1/c, so it is 0 for one
+    # component, 0.5 for two, and approaches 1 as the graph shatters -- the
+    # same [0, 1] scale as the escape-time term it replaces, without a
+    # threshold to calibrate.
+    #
+    # Two design choices that are load-bearing:
+    #
+    #   * COMBINATORIAL, not normalised.  Row-normalisation is scale-free,
+    #     so a single sub-threshold edge (p=0.3 -> weight 0.018) counts as
+    #     much as a real bond and every soft graph looks connected.  The
+    #     combinatorial form keeps small weights small.
+    #   * t = heat_scale / lambda2(P_n).  The path is the sparsest connected
+    #     graph, so its Fiedler value is the smallest a connected graph can
+    #     have; scaling by it makes the damping resolve "connected" for any
+    #     real molecule.  MEASURED on n=30: chain c=1.0003, three fragments
+    #     c=1.74, isolated atoms c=11.7.
+    #
+    # The sharpening sigmoid is what lets the term see the DECODE rule: it
+    # is near 1 above the 0.5 decision boundary and near 0 below it, while
+    # staying differentiable through it.  ``sharpness`` is its width; 0.05
+    # is the default and is NOT tuned (recorded as such in the catalog).
+    if formulation == "spectral":
+        loss = _spectral_component_penalty(adj, sharpness=float(sharpness))
+        if hinge_tau is not None:
+            loss = (loss - float(hinge_tau)).clamp(min=0.0)
+        with torch.no_grad():
+            hard = (adj.detach() > 0.5).to(torch.int64)
+            hard = torch.minimum(hard, torch.ones_like(hard))
+            n_fragments, largest_frac = _count_components(hard)
+        return loss, float(n_fragments), float(largest_frac)
 
     # ---- Soft, differentiable term ------------------------------------
     # Lazy (self-looped) walk.  The self-loop is what makes the walk
@@ -475,6 +600,7 @@ def batch_assemble_loss(
     *,
     formulation: str = "product",
     hinge_tau: Optional[float] = None,
+    sharpness: float = 0.05,
 ) -> Tuple[torch.Tensor, float, float, int]:
     """Mean assemble loss over a batch of ``(logits, edge_index, z)`` triples.
 
@@ -512,6 +638,7 @@ def batch_assemble_loss(
             logits, edge_index, z,
             formulation=formulation,
             hinge_tau=hinge_tau,
+            sharpness=sharpness,
         )
         losses.append(term)
         frags.append(n_frag)

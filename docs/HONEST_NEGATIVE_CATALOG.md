@@ -7876,4 +7876,84 @@ ACTIVE count: **148 -> 149** (+1).
 reference is `.data/molmetal/metalcytotox_5metal_multitask_v4.csv` split=train;
 §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 
+### §6.141 Wf-A98 — the connectivity term could not fire, and the reason is the soft graph (2026-10-19)
+
+**The defect.** `assemble_loss_weight: 1.0` with `assemble_formulation: escape_time`
+and `assemble_hinge_tau: 0.30` is shipped in `configs/cfm_frag_assemble.yaml` and
+`configs/cfm_objective_terms_2026_10_11.yaml`. On every run it produced
+`assemble_enabled = 1.0` beside `assemble_loss = 0.0` at every epoch — a knob that
+reads ON and contributes no gradient. The previous explanation ("the hinge sits above
+the model") was right about the symptom and wrong about the cause, and the fix it
+suggested (lower the tau) would have been wrong in the other direction.
+
+**MEASURED — 64 real tmQM val clouds, checkpoint `b76198add67c…217a0`**
+(`metrics/by_metric/wfa98_assemble_discrimination.json`):
+
+| statistic | truth graph | decoded, fragmented (n=61) | decoded, connected (n=3) | model SOFT graph |
+|---|---|---|---|---|
+| `stay_mean` (escape_time) | 0.175 (max 0.212) | 0.239 | 0.123 | **0.145** |
+| `lambda2` ratio (normalised Laplacian) | 6.92 (min 1.90) | 7.9e-05 | 27.49 | 48.75 |
+
+The escape-time statistic is **directionally correct on the decoded graph** — fragments
+0.239 against connected 0.123 — but the model's **soft** graph reads 0.145, below the
+p50 of the truth graphs it is supposed to reproduce. A softmax head spreads probability
+over every candidate pair inside the 3.5 A cutoff, so the soft graph is dense, the walk
+leaves every atom quickly, and the statistic lands on the wrong side of every correct
+complex. Any tau low enough to fire on the soft graph also fires on correct data, which
+is why 0.30 was inert and why no other tau would have been better. The lambda2 ratio
+makes the same point from the other side: the soft graph is **7x more connected than
+truth** (48.75 vs 6.92), and 0/64 truth graphs are disconnected against 33/64 decoded ones.
+
+**MEASURED — two 2-epoch CPU smokes, same 24-cloud Pt cohort, same seed, differing only
+in the formulation** (`metrics/by_metric/wfa98_assemble_smoke.json`):
+
+| arm | `assemble_loss` ep0 -> ep1 | `assemble_inert` | `assemble_fragments` |
+|---|---|---|---|
+| `escape_time`, tau derived from the cohort (0.2400) | 0.0 -> 0.0 | 1.0 | 21.96 |
+| `spectral` (no hinge) | 0.0159 -> 0.0044 | 0.0 | 21.96 |
+
+This is the first connectivity term in the repo to produce a nonzero value on a real
+cohort, and it halves across two epochs. It is **not** a quality result:
+`decode_fragments_mean` fell 10.125 -> 2.5 in the arm whose term was exactly zero, so at
+n=8 decoded clouds the metric cannot attribute anything to either term.
+
+**Code shipped.** (1) `assemble_inert` + `assemble_hinge_tau` in the epoch event and a
+`[cfm-assemble] INERT` line when the term is enabled and reads exactly 0.0 — inertness is
+now visible instead of inferred. (2) `--assemble-hinge-tau-mode corpus` derives tau from the
+run's own bond truth with the published rule (max x 1.13, rounded up to 0.01), which
+reproduces the artifact's 0.30 from its 0.2649 and yields 0.2400 on the Pt cohort; the
+artifact itself says tau is not portable across cohorts. (3) `assemble_formulation: spectral`
+— a heat-kernel component count `1 - 1/trace(exp(-tL))` on the decode-rule graph, 0 for one
+component and rising with the count, with no threshold to calibrate. (4)
+`wf_blkc_l3_guidance_probe.integrate()` returned outputs grouped by atom count while every
+caller `zip`ped them with its template list, so a probe pairing templates with samples was
+reading another molecule's geometry; it now emits in input order with a `template_index`.
+
+**Honest negatives that REMAIN (ACTIVE).**
+
+* **The spectral term is saturated on hard-fragmented graphs.** The heat-kernel trace is
+  locally constant there, so its gradient is numerically zero (pinned by
+  `test_saturated_graph_has_no_gradient_and_that_is_documented`). It can only move logits in
+  the transition band around p = 0.5, and the head's non-bond logits sit at p ~ 0.3, far
+  outside it. Its measured 0.0159 is real but small against a bond_ce of 1.11.
+* **The spectral loss is 0.6 s/cloud on CPU** (one `matrix_exp` per cloud per step). Fine on
+  GPU, prohibitive for a 6714-cloud CPU epoch. Not benchmarked on GPU.
+* **Fragmentation is not a missing-gradient problem.** Wf-A97 measured 0/16 fragmented clouds
+  with valence budget at the closest inter-component pair: the selector already spent it
+  intra-fragment. A connectivity term that succeeds would have to create valence, not bonds.
+* **`assemble_fragments = 21.96` at epoch 0 in both arms** — the thresholded candidate graph is
+  far more fragmented than the decoded molecule (10.1 components), because the diagnostic counts
+  the component structure of every candidate pair, hydrogens included. The two numbers are not
+  the same quantity and must not be quoted interchangeably.
+* **No GPU quality gate.** Both smokes are CPU, 2 epochs, 1 seed, 24 clouds.
+
+**§6.141 catalog-count math.** Net catalog-count delta: **+1** (§6.141 itself).
+ACTIVE count delta: **+1**. Cumulative catalog count: **193 -> 194** (+1).
+ACTIVE count: **149 -> 150** (+1).
+
+**Workflow** | Wf-A98 (2026-10-19/20; 2 CPU smokes + 1 GPU probe; 14 new tests across
+`test_wfa98_assemble_hinge_tau.py` (6) and `test_wfa98_spectral_connectivity.py` (8); §5.2:
+every number traces to `metrics/by_metric/wfa98_assemble_discrimination.json` or
+`metrics/by_metric/wfa98_assemble_smoke.json`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
 ---

@@ -284,6 +284,12 @@ _LAST_ASSEMBLE_STATS: Dict[str, float] = {
     # used for that because it is post-weight and post-hinge.
     "assemble_stay_mean": 0.0,
     "assemble_enabled": 0.0,
+    # Wf-A98 (2026-10-19) — the threshold actually applied (-1 = no dead zone)
+    # and whether the term was exactly zero on every batch while enabled. A
+    # term that reads ON and contributes nothing is only detectable by
+    # reading these two next to assemble_loss.
+    "assemble_hinge_tau": -1.0,
+    "assemble_inert": 0.0,
 }
 
 #: PCGrad diagnostics, refreshed whenever the PCGrad branch runs.
@@ -3861,6 +3867,7 @@ def train_one_epoch(
     assemble_loss_weight: float = 0.0,
     assemble_formulation: str = "product",
     assemble_hinge_tau: float = -1.0,
+    assemble_sharpness: float = 0.05,
     # Wf-R41 — differentiable soft-valence surrogate for gen_validity.
     # User hypothesis (verbatim 2026-10-08): "gen_validity 在 loss 里的对应项
     # 符号有可能是写反了或者说训练框架里没有对这一部分做对应的思考和处理".
@@ -5213,6 +5220,8 @@ def train_one_epoch(
                     None if float(assemble_hinge_tau) < 0.0
                     else float(assemble_hinge_tau)
                 ),
+                # Wf-A98 — only the spectral formulation reads this.
+                sharpness=float(assemble_sharpness),
             )
             if _STEP_TIMING_ON:
                 _STEP_TIMING["assemble_loss_s"] = (
@@ -5976,6 +5985,37 @@ def train_one_epoch(
             "assemble_enabled": 1.0 if _use_assemble else 0.0,
         }
     )
+    # Wf-A98 (2026-10-19) — INERTNESS MUST BE LOUD.
+    #
+    # The shipped tau (0.30, derived from tmQM) sat above the model's own
+    # stay_mean on every cohort actually trained, so the hinge floored the
+    # term at exactly 0.0 while `assemble_enabled` reported 1.0 and the epoch
+    # event carried no contradiction.  That is the BLK-C5/BLK-C14 shape: a
+    # knob that reads ON and trains nothing.  Reading the two numbers
+    # together is what makes it visible, so the check lives here, where both
+    # are in scope, and it writes a flag into the same stats dict the event
+    # serializer reads.
+    _asm_mean_epoch = float(_LAST_ASSEMBLE_STATS.get("assemble_loss", 0.0))
+    _stay_epoch = float(_LAST_ASSEMBLE_STATS.get("assemble_stay_mean", 0.0))
+    _tau_epoch = (
+        None if float(assemble_hinge_tau) < 0.0 else float(assemble_hinge_tau)
+    )
+    _asm_inert = bool(_use_assemble and assemble_losses and _asm_mean_epoch == 0.0)
+    _LAST_ASSEMBLE_STATS["assemble_inert"] = 1.0 if _asm_inert else 0.0
+    _LAST_ASSEMBLE_STATS["assemble_hinge_tau"] = (
+        -1.0 if _tau_epoch is None else _tau_epoch
+    )
+    if _asm_inert and (int(epoch) == 0 or int(epoch) % 5 == 0):
+        print(
+            f"[cfm-assemble] INERT at epoch {int(epoch)}: "
+            f"assemble_enabled=1 but assemble_loss==0.0 on every batch "
+            f"(stay_mean={_stay_epoch:.4f}, hinge_tau="
+            f"{'none' if _tau_epoch is None else f'{_tau_epoch:.4f}'}). "
+            "The dead zone is above the model's own operating point, so this "
+            "term is contributing no gradient. Use "
+            "--assemble-hinge-tau-mode corpus (Wf-A98) or lower the tau.",
+            flush=True,
+        )
     return (
         float(np.mean(total_losses) if total_losses else 0.0),
         float(np.mean(bond_losses) if bond_losses else 0.0),
@@ -7634,10 +7674,14 @@ def _bond_ranking_report_per_class(
     # ``bond_pr_auc_note``.
     best_f1 = 0.0
     best_t = 0.0
-    # Wf-A97 — the grid used to start at 0.05.  MEASURED best threshold on
-    # real val geometry is 0.01, i.e. BELOW the grid, so the reported
-    # "optimistic ceiling" was itself understated and the sweep could not
-    # see the operating point that actually works.  1% steps over (0, 1).
+    # Wf-A97 — the grid used to start at 0.05.  The reason to extend it was
+    # that on a 95%-NO_BOND prior the optimum CAN sit below the grid, and a
+    # sweep that cannot reach its own optimum reports a ceiling that is not
+    # one.  MEASURED afterwards on 64 real val clouds
+    # (metrics/by_metric/wfa97_bond_metric_recheck.json): the optimum here is
+    # 0.87, so the extension did NOT move this cohort's number — 0.4657 @0.87
+    # vs 0.4656 @0.50.  It stays because the grid should not presuppose where
+    # the optimum is, not because it was needed on this cohort.
     for t_pct in range(1, 100):
         t = t_pct / 100.0
         tp_t = fp_t = fn_t = 0
@@ -10478,7 +10522,7 @@ def parse_args() -> argparse.Namespace:
         "--assemble-formulation",
         type=str,
         default="product",
-        choices=["product", "escape_time"],
+        choices=["product", "escape_time", "spectral"],
         help=(
             "BLK-C11 (2026-10-10): how the K per-step walk stay-probabilities "
             "are combined. 'product' is the Round-3 D1 geometric mean; "
@@ -10499,6 +10543,36 @@ def parse_args() -> argparse.Namespace:
             "metrics/by_metric/cfm_assemble_hinge_tau.json: it clears both the "
             "corpus maximum (0.2649 over 1500 correct complexes) and the "
             "model's own initial predictions (0.0775). Do not pick this by eye."
+        ),
+    )
+    p.add_argument(
+        "--assemble-hinge-tau-mode",
+        type=str,
+        default="fixed",
+        choices=["fixed", "corpus"],
+        help=(
+            "Wf-A98 (2026-10-19): how the assemble dead zone is chosen. "
+            "'fixed' (default, bit-exact) uses --assemble-hinge-tau as given. "
+            "'corpus' derives it from THIS run's training clouds' own bond "
+            "truth, using the rule published in "
+            "metrics/by_metric/cfm_assemble_hinge_tau.json (max * 1.13, "
+            "rounded up to 0.01). That artifact states plainly that tau is "
+            "not portable across cohorts; on the synthetic click cohort the "
+            "shipped 0.30 floored the term at 0.0 every epoch while the knob "
+            "read ON. Use 'corpus' for any cohort that is not tmQM."
+        ),
+    )
+    p.add_argument(
+        "--assemble-sharpness",
+        type=float,
+        default=0.05,
+        help=(
+            "Wf-A98 (2026-10-19): width of the sigmoid that turns the bond "
+            "probabilities into the DECODE-RULE graph for "
+            "--assemble-formulation spectral. Only read by that "
+            "formulation. Smaller = closer to the hard thresholded graph, "
+            "and a smaller gradient for logits far from 0.5. 0.05 is a "
+            "default, NOT a tuned value."
         ),
     )
     p.add_argument(
@@ -12059,6 +12133,89 @@ def load_cfm_checkpoint(path, map_location="cpu"):
         with open(path, "rb") as fh:
             return pickle.load(fh)
 
+def derive_assemble_hinge_tau(
+    clouds: Sequence[AtomCloud],
+    *,
+    headroom: float = 1.13,
+    round_to: float = 0.01,
+    max_clouds: int = 2000,
+) -> dict:
+    """Derive the assemble dead-zone threshold from THIS run's own corpus.
+
+    Wf-A98 (2026-10-19).  The shipped value, 0.30, was derived from tmQM in
+    metrics/by_metric/cfm_assemble_hinge_tau.json -- and that artifact says,
+    in its own words, "tau is NOT portable across cohorts".  It was not a
+    hypothetical: on the synthetic click cohort the model sits at
+    stay_mean 0.2093, under 0.30, so the hinge floored the term at exactly
+    0.0 every epoch while `assemble_enabled` reported 1.0.  A knob that reads
+    ON and does nothing is the BLK-C5 / BLK-C14 failure shape, and hardcoding
+    a constant from a different corpus is how it happened.
+
+    This closes it at the source: the threshold is computed from the bond
+    truth of the very clouds the run trains on, using the same rule the
+    published artifact used (max * 1.13, rounded up to the next 0.01).  The
+    rule reproduces the published number from the published input --
+    0.2649 * 1.13 = 0.2993 -> 0.30 -- so the two derivations are comparable
+    rather than being two different conventions.
+
+    Returns a report dict; `report["tau"]` is what the caller passes to
+    train_one_epoch.  Raises when no cloud carries bond truth: silently
+    keeping a foreign constant is the defect this function exists to remove.
+    """
+    import math
+
+    vals: List[float] = []
+    n_seen = 0
+    for cloud in list(clouds)[: int(max_clouds)]:
+        n_seen += 1
+        bonds = getattr(cloud, "bonds", None)
+        btypes = getattr(cloud, "bond_types", None)
+        if bonds is None or btypes is None:
+            continue
+        if int(bonds.numel()) == 0 or int(btypes.numel()) != int(bonds.shape[1]):
+            continue
+        z = getattr(cloud, "atomic_numbers", None)
+        if z is None or int(z.shape[0]) == 0:
+            continue
+        # Hard one-hot at p in {0, 1}: the truth graph IS the answer, so the
+        # question is only "what does a correct complex score", not "how
+        # confident is anything".
+        e = int(btypes.shape[0])
+        logits = torch.full((e, 5), -20.0, dtype=torch.float32, device=btypes.device)
+        logits[torch.arange(e, device=btypes.device), btypes.long().clamp(0, 4)] = 20.0
+        vals.append(float(_mean_stay_probability(logits, bonds, z.long())))
+
+    if not vals:
+        raise RuntimeError(
+            "assemble_hinge_tau_mode=corpus needs ground-truth bond graphs, but "
+            f"0 of {n_seen} training clouds carry bonds+bond_types. Refusing to "
+            "fall back to a threshold derived from a different corpus."
+        )
+
+    vals.sort()
+    vmax = vals[-1]
+    tau = math.ceil(vmax * float(headroom) / float(round_to)) * float(round_to)
+    report = {
+        "tau": float(tau),
+        "rule": "ceil(max * headroom / round_to) * round_to",
+        "headroom": float(headroom),
+        "round_to": float(round_to),
+        "n_used": len(vals),
+        "n_seen": n_seen,
+        "max": vmax,
+        "p99": vals[int(0.99 * (len(vals) - 1))],
+        "p90": vals[int(0.90 * (len(vals) - 1))],
+        "p50": vals[len(vals) // 2],
+    }
+    print(
+        "[cfm-assemble] tau derived from this corpus: "
+        f"tau={tau:.4f} (max={vmax:.4f} p99={report['p99']:.4f} "
+        f"p50={report['p50']:.4f} n={len(vals)}/{n_seen}, "
+        f"rule={report['rule']})",
+        flush=True,
+    )
+    return report
+
 def main() -> int:
     args = parse_args()
     # 2026-10-08 §5.7 — FLAG_ONLY reject guards.  Each dest below is declared
@@ -12523,6 +12680,43 @@ def main() -> int:
     # molmetal/tests/test_cfm_bond_target_truth.py.
     train_clouds_d = [_to_device_cloud(c, device) for c in train_clouds]
     val_clouds_d = [_to_device_cloud(c, device) for c in val_clouds]
+
+    # Wf-A98 (2026-10-19) — resolve the assemble dead zone against THIS corpus
+    # before a single step runs.  'fixed' keeps the historical behaviour
+    # exactly; 'corpus' derives tau from the training clouds' own bond truth,
+    # because the published artifact says tau is not portable across cohorts
+    # and carrying tmQM's 0.30 onto another cohort is what made the term inert.
+    _tau_mode = str(getattr(args, "assemble_hinge_tau_mode", "fixed") or "fixed").lower()
+    if _tau_mode == "corpus":
+        _tau_report = derive_assemble_hinge_tau(train_clouds)
+        args.assemble_hinge_tau_resolved = float(_tau_report["tau"])
+        args.assemble_hinge_tau_report = dict(_tau_report)
+    elif _tau_mode == "fixed":
+        args.assemble_hinge_tau_resolved = float(
+            getattr(args, "assemble_hinge_tau", -1.0)
+        )
+    else:
+        raise SystemExit(
+            f"--assemble-hinge-tau-mode must be 'fixed' or 'corpus', got {_tau_mode!r}"
+        )
+    # Wf-A98 — the OTHER way this term reads ON and trains nothing.
+    # 'product' is the Round-3 D1 geometric mean; MEASURED at ~5e-09 |dL/dlogit|
+    # in every regime including where its own value is 0.286, because the
+    # gradient scales WITH the product.  It is a diagnostic, not an objective.
+    # The default weight is 0.0 so this cannot bite by default, but a config
+    # that turns the weight on and leaves the formulation alone would get a
+    # silently inert term -- say so at launch rather than at epoch 30.
+    if float(getattr(args, "assemble_loss_weight", 0.0)) > 0.0 and str(
+        getattr(args, "assemble_formulation", "product")
+    ).lower() == "product":
+        print(
+            "[cfm-assemble] WARNING: assemble_loss_weight>0 with "
+            "assemble_formulation='product'. MEASURED |dL/dlogit| ~5e-09 in "
+            "every regime (it scales with the product), i.e. this is a "
+            "DIAGNOSTIC that will move nothing. Set "
+            "assemble_formulation='escape_time'.",
+            flush=True,
+        )
 
 
     print(
@@ -13754,8 +13948,17 @@ def main() -> int:
             assemble_formulation=str(
                 getattr(args, "assemble_formulation", "product")
             ),
+            # Wf-A98 — prefer the tau resolved against this corpus in main();
+            # the raw flag is the fallback for args namespaces built elsewhere.
             assemble_hinge_tau=float(
-                getattr(args, "assemble_hinge_tau", -1.0)
+                getattr(
+                    args,
+                    "assemble_hinge_tau_resolved",
+                    getattr(args, "assemble_hinge_tau", -1.0),
+                )
+            ),
+            assemble_sharpness=float(
+                getattr(args, "assemble_sharpness", 0.05)
             ),
             # Wf-R41 — gen_validity soft-valence weight.  getattr with an
             # explicit default so an args namespace built elsewhere (tests,
@@ -15107,6 +15310,17 @@ def main() -> int:
                 # when the term is off, same caveat as `assemble_enabled`.
                 assemble_stay_mean=float(
                     _LAST_ASSEMBLE_STATS.get("assemble_stay_mean", 0.0)
+                ),
+                # Wf-A98 (2026-10-19) — the two numbers that make inertness
+                # checkable post-hoc without re-deriving anything: the tau
+                # actually used, and whether the term was exactly zero while
+                # enabled. Reading assemble_loss alone cannot distinguish
+                # "no fragmentation" from "dead zone swallowed everything".
+                assemble_hinge_tau=float(
+                    _LAST_ASSEMBLE_STATS.get("assemble_hinge_tau", -1.0)
+                ),
+                assemble_inert=float(
+                    _LAST_ASSEMBLE_STATS.get("assemble_inert", 0.0)
                 ),
                 lr=float(args.lr),
                 epoch_time_sec=float(elapsed),

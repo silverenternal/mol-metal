@@ -1,0 +1,90 @@
+{
+ "metric": "wfa98_assemble_smoke",
+ "tag": "MEASURED",
+ "date": "2026-10-20",
+ "what": "Two 2-epoch CPU smokes on the same 24-cloud Pt tmQM cohort, same seed, differing ONLY in flow.assemble_formulation. Purpose: does the term produce a nonzero value at all.",
+ "not_a_quality_claim": "2 epochs, 1 seed, 8 decoded val clouds. decode_fragments_mean moved 10.125 -> 2.5 in the arm whose connectivity term was EXACTLY ZERO, so that metric is not stable enough at n=8 to attribute anything to either term.",
+ "cohort": {
+  "n_train": 24,
+  "n_val": 8,
+  "metal": "Pt",
+  "device": "cpu",
+  "seed": 0,
+  "epochs": 2
+ },
+ "tau_derivation_escape_time": "tau=0.2400 (max=0.2122 p99=0.2016 p50=0.1789 n=24/24) derived from this cohort by --assemble-hinge-tau-mode corpus",
+ "arms": {
+  "escape_time": {
+   "config": "configs/cfm_assemble_smoke_wfa98.yaml",
+   "events": "/tmp/wfa98_smoke/events.jsonl",
+   "rows": [
+    {
+     "epoch": 0,
+     "train_loss": 9.592336018880209,
+     "bond_ce": 1.113639811674754,
+     "assemble_enabled": 1.0,
+     "assemble_loss": 0.0,
+     "assemble_inert": 1.0,
+     "assemble_hinge_tau": 0.24,
+     "assemble_stay_mean": 0.09833827956269185,
+     "assemble_fragments": 21.958333333333332,
+     "assemble_largest_fragment_frac": 0.38194524930810453,
+     "decode_fragments_mean": 10.125,
+     "decode_single_fragment_ratio": 0.25,
+     "decode_ratio": 1.0
+    },
+    {
+     "epoch": 1,
+     "train_loss": 9.155459721883139,
+     "bond_ce": 0.9003928899765015,
+     "assemble_enabled": 1.0,
+     "assemble_loss": 0.0,
+     "assemble_inert": 1.0,
+     "assemble_hinge_tau": 0.24,
+     "assemble_stay_mean": 0.10960897182424863,
+     "assemble_fragments": 34.75,
+     "assemble_largest_fragment_frac": 0.03583455124099887,
+     "decode_fragments_mean": 2.5,
+     "decode_single_fragment_ratio": 0.25,
+     "decode_ratio": 1.0
+    }
+   ]
+  },
+  "spectral": {
+   "config": "configs/cfm_assemble_smoke_wfa98_spectral.yaml",
+   "events": "/tmp/wfa98_smoke_spectral/events.jsonl",
+   "rows": [
+    {
+     "epoch": 0,
+     "train_loss": 9.608002344767252,
+     "bond_ce": 1.1134947141011555,
+     "assemble_enabled": 1.0,
+     "assemble_loss": 0.015918036301930744,
+     "assemble_inert": 0.0,
+     "assemble_hinge_tau": -1.0,
+     "assemble_stay_mean": 0.09826183877885342,
+     "assemble_fragments": 21.958333333333332,
+     "assemble_largest_fragment_frac": 0.38194524930810453,
+     "decode_fragments_mean": 2.25,
+     "decode_single_fragment_ratio": 0.25,
+     "decode_ratio": 1.0
+    },
+    {
+     "epoch": 1,
+     "train_loss": 9.180241584777832,
+     "bond_ce": 0.9365391532580057,
+     "assemble_enabled": 1.0,
+     "assemble_loss": 0.004400665561358134,
+     "assemble_inert": 0.0,
+     "assemble_hinge_tau": -1.0,
+     "assemble_stay_mean": 0.09897237395246823,
+     "assemble_fragments": 32.041666666666664,
+     "assemble_largest_fragment_frac": 0.09084583938198626,
+     "decode_fragments_mean": 2.25,
+     "decode_single_fragment_ratio": 0.25,
+     "decode_ratio": 1.0
+    }
+   ]
+  }
+ }
+}
