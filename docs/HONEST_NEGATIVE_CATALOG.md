@@ -5718,7 +5718,7 @@ new tests; §5.2: every number traces to the sweep printed above and
 `/tmp`-free reproducible commands; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 
 
-## §6.114 — FIX-M3: the variance ceiling is unidentifiable, but it is not binding
+## §6.114b — FIX-M3: the variance ceiling is unidentifiable, but it is not binding
 
 **Date:** 2026-10-19.  **Status:** ACTIVE (identifiability limit) + one POSITIVE
 bound.  **Code:** `molmetal/scripts/msrs_variance_ceiling.py`.
@@ -5763,9 +5763,10 @@ It does not separate "the representation lacks the information" from "the
 objective does not extract it" — that is what a pairwise/listwise objective on
 DOI-grouped folds must answer next.
 
-**§6.114 catalog-count math.** Net catalog-count delta: **+1** (§6.114 itself).
-ACTIVE count delta: **+1**.  Cumulative catalog count: **165 -> 166** (+1).
-ACTIVE count: **121 -> 122** (+1).
+**§6.114b catalog-count math.** Net catalog-count delta: **+1** (§6.114b itself; numbered `b`
+because §6.114 was already taken by Wf-A86 above).  ACTIVE count delta: **+1**.
+Cumulative catalog count: **166 -> 167** (+1).
+ACTIVE count: **122 -> 123** (+1).
 
 **Workflow** | FIX-M3 (2026-10-19; 0 GPU; 6 new tests; §5.2: every number
 traces to `metrics/by_metric/msrs_variance_ceiling.json`; §5.3 + §5.4: 0
@@ -5837,8 +5838,8 @@ adjacent bond-head/CFM files).
     note), which is why they survived.
 
 **§6.115 catalog-count math.** Net catalog-count delta: **+1** (§6.115 itself).
-ACTIVE count delta: **+1**.  Cumulative catalog count: **166 -> 167** (+1).
-ACTIVE count: **122 -> 123** (+1).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **167 -> 168** (+1).
+ACTIVE count: **123 -> 124** (+1).
 
 **Workflow** | Wf-A87 (2026-10-19; 0 GPU — CPU-only diagnostics + tests; §5.2:
 every number traces to the runs printed above; §5.3 + §5.4: 0 paper/* + 0
@@ -5897,8 +5898,8 @@ the start of a step.
     verified failing at HEAD, unrelated to this change.
 
 **§6.116 catalog-count math.** Net catalog-count delta: **+1** (§6.116 itself).
-ACTIVE count delta: **+1**.  Cumulative catalog count: **167 -> 168** (+1).
-ACTIVE count: **123 -> 124** (+1).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **168 -> 169** (+1).
+ACTIVE count: **124 -> 125** (+1).
 
 **Workflow** | Wf-A87b (2026-10-19; 0 GPU — CPU-only; §5.2: every number
 traces to the runs above; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
@@ -5950,10 +5951,86 @@ whole `last_losses` dict into its report, so it needed no change.
     verification is the `train_pocket_flow` run above plus the 4 new tests.
 
 **§6.117 catalog-count math.** Net catalog-count delta: **+1** (§6.117 itself).
-ACTIVE count delta: **+1**.  Cumulative catalog count: **168 -> 169** (+1).
-ACTIVE count: **124 -> 125** (+1).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **169 -> 170** (+1).
+ACTIVE count: **125 -> 126** (+1).
 
 **Workflow** | Wf-A87c (2026-10-19; 2-step GPU0 verification run, 2.7 s, ~4 MiB
 baseline; 4 new CPU tests; §5.2: every number traces to the run above; §5.3 +
 §5.4: 0 paper/* + 0 wet-lab).
+
+## §6.118 — FIX-M4: the first decision-layer signal, 0.004 short of the gate
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (negative by pre-registration; boundary
+evidence, not a finding).  **Code:** `molmetal/scripts/msrs_pairwise_reranker.py`.
+**Tests:** `molmetal/tests/test_msrs_pairwise_reranker.py` (9).
+**Artifact:** `metrics/by_metric/msrs_pairwise_reranker.json`.
+
+**What was tested.**  FIX-M3 (this catalog, §6.114b) showed that only the
+cohort x metal interaction can change a within-cohort ranking, that the metal
+main effect is 3.4% of within-cohort variance, and that every existing model
+sits at that level.  FIX-E3's `pair_delta` was the one attempt at a ranking
+objective, but its pair descriptor was `[X[a], cell_a, metal_a code,
+metal_b code]` — asymmetric, so metal B contributed only an identity code and
+its oxidation state / charge / coordination were invisible — and it was fitted
+with 500 boosted trees on ~700 pairs.
+
+FIX-M4 redoes it as an **antisymmetric difference**: swapping the two metals
+negates both features and target, `d_onehot = onehot[b] - onehot[a]`, plus
+`d(state)` and optionally `outer(mean(ligand), d_onehot)`.  Closed-form ridge,
+alpha by inner 3-fold GroupKFold (0.1 / 1 / 10 / 100 / 1000, usually 100-1000),
+pairs built only inside multi-metal cohorts (834 ordered pairs / 424 cohorts).
+
+**MEASURED (mean within-cohort regret, lower is better).**
+
+| split | main_effect | cell_effect | pair_identity | pair_state | pair_full |
+|---|---|---|---|---|---|
+| canonical | 0.1242 | 0.1231 | 0.1182 | **0.1069** | 0.1125 |
+| fragment | 0.1199 | 0.1295 | 0.1200 | **0.1069** | 0.1107 |
+
+`pair_state` vs `main_effect`: canonical delta +0.0208, t=+1.632,
+**p=0.05393** (bootstrap 95% [-0.0014, +0.0491]); fragment delta +0.0179,
+t=+1.651, **p=0.05204** ([-0.0006, +0.0426]).  `pair_state` returns the same
+0.1069 on both splits.  `pair_full` has the best top-1 (0.6203) but a worse
+regret (0.1125) and p=0.368: it wins the hard cohorts and loses the easy ones.
+`pair_identity` is essentially the main effect (+0.0069, p=0.192).
+
+**Honest-negative (ACTIVE, this entry):**
+  * **The pre-registered gate was not met.**  The criterion was p<0.05 on
+    canonical; the measurement is 0.05393.  Missing by 0.004 does not become a
+    finding by rounding, and the acceptance result is `FAILED`.
+  * **The gain is the metal-state difference, not the pairwise objective.**
+    `pair_identity` — the same objective with only identity features — is
+    +0.0069 and not significant.  Re-labelling the target as a pair does
+    nothing on its own.
+  * **The ligand-context interaction did not materialise.**  `pair_full` is
+    indistinguishable from the main effect on both splits (p=0.368 / 0.510)
+    with ~700 training pairs.  This is consistent with FIX-M3's finding that
+    most of the interaction variance is unidentifiable.
+  * **The improvement is concentrated, not a distribution shift.**  Median
+    regret is 0 in every arm; the mean moves because a minority of cohorts
+    change.  No arm is a deployable recommender.
+  * **`pair_state` vs `cell_effect` is significant (p=0.0154 / 0.0265) but is
+    not the primary test.**  `cell_effect` is a weaker baseline and this
+    comparison was chosen after seeing the table.  It must not be quoted as
+    the headline.
+  * **Do not re-tune on this dataset to cross the line.**  Any further feature
+    or alpha search on the same 61 DOIs converts a boundary result into a
+    selection artefact.  The only clean continuation is a pre-registered
+    single test of the frozen `pair_state` specification on new DOIs.
+
+**Why this still matters.**  Representation (FIX-L*), model class (FIX-M1) and
+combination (FIX-M2) each produced zero decision-layer movement.  This is the
+first axis to produce a same-direction, same-magnitude, cross-split signal, and
+it is the first evidence that the 0.1186 plateau is a target-function limit
+rather than a data limit.  It is still not a result.
+
+**§6.118 catalog-count math.** Net catalog-count delta: **+1** (§6.118 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **170 -> 171** (+1).
+ACTIVE count: **126 -> 127** (+1).
+
+**Workflow** | FIX-M4 (2026-10-19; 0 GPU — CPU ridge over 21,404 rows; 9 new
+tests; §5.2: every number traces to `metrics/by_metric/msrs_pairwise_reranker.json`;
+§5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
 
