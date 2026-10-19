@@ -25,17 +25,17 @@
       "S4": "效应量 + 置信区间 + 多重校正（DOI 聚类、Holm）",
       "S5": "每个数字可追到 artifact 字段"
     },
-    "immediate_goal": "先补 P0 评测缺口（MET-1/2/3/4/6/10），再决定主表放哪些指标。不新增模型结构；现有强项已经足够撑半张表。"
+    "immediate_goal": "MET-2 已回答泛化问题：0.5828 是内插，DOI 留出只有 0.3321。主表必须同时写这两个数。唯一跨四协议稳定的正效应是「金属状态+配位」的表示增益（+0.04~+0.06），这是可以主张的机制结论。下一步 MET-3（Δ 效应量/校准）与 MET-4（回归校准与区间）：R² 既然只是内插，主表就需要用「Δ 的幅度与区间」而不是绝对 R² 来承载预测主张。"
   },
   "current_position": {
     "measured_facts": [
       "MSRS 全量 21,404 行 / 5 金属 / 424 个严格多金属队列 / 61 DOI；严格队列全部 k=2。",
-      "最强回归：canonical R² 0.5807（stack_foldwise）/ 0.5556（tree）；fragment 0.5128 / 0.4856；单 seed 20261018。",
+      "最强回归（5-seed）：canonical R² 0.5828±0.0102（stack_foldwise）/ 0.5555±0.0026（tree）；fragment 0.5137±0.0048 / 0.4832±0.0018。融合 Δ+0.0273（p=0.0016）/ +0.0304（p=1.1e-4），5/5 seed 更好。GNN 单模 0.5032 / 0.4331，显著差于树（0/5 seed）。",
       "表示增益（fragment）：全配合物 +0.1002 R²（p=2.3e-20，canonical +0.1040）；金属状态 +0.0444；配位 +0.0272。",
       "融合：等权 +0.0171（p=4.8e-12）；堆叠 +0.0251（p=5.1e-34）；决策层无变化。",
       "Δ 符号：additive 0.6152 / interaction 0.5744（阈值 0.2091，712 对，104 DOI）。",
       "决策：regret 0.1186 vs global_best 0.1198；top-1 0.566；Holm p=1.0。",
-      "跨论文（旧特征）：DOI R² 0.1648、scaffold 0.1585、year 0.1778；year Δ 符号 0.4786（低于随机）。",
+      "跨论文（强特征，MET-2）：DOI R² 0.3321 [0.2806, 0.3820]、scaffold 0.4503 [0.4102, 0.4884]、year 0.3739 [0.3230, 0.4175]；相对 ligand 0.5556 分别 −0.2235 / −0.1053 / −0.1817。旧特征对应值 0.1648 / 0.1585 / 0.1778。表示增益四协议全正 +0.0544/+0.0423/+0.0611/+0.0392。",
       "校准：coverage 0.9044（名义 0.90），中位宽度 2.2083 log10。",
       "跨金属：Ir 0.8295–0.8597 vs Krasnov 0.73；Ru 0.8128–0.8363 vs 0.81（持平）；LOMO 0.5575 / 0.5845。",
       "生成/对接：decode_ratio 0.998；RMSD 0.6578 Å，5/5 ≤2 Å；Vina 贵金属 BLOCKED。",
@@ -102,15 +102,25 @@
     "medium": [
       {
         "metric": "MSRS R2 canonical",
-        "value": 0.5807,
-        "why_not_strong": "single seed; ligand splits only; no external same-protocol baseline",
-        "artifact": "msrs_hybrid.json"
+        "value": "0.5828 +/- 0.0102",
+        "why_not_strong": "5-seed now OK; still ligand splits only and no same-protocol external baseline",
+        "artifact": "msrs_hybrid.json",
+        "satisfies": [
+          "S2",
+          "S4",
+          "S5"
+        ]
       },
       {
         "metric": "MSRS R2 fragment",
-        "value": 0.5128,
+        "value": "0.5137 +/- 0.0048",
         "why_not_strong": "same",
-        "artifact": "msrs_hybrid.json"
+        "artifact": "msrs_hybrid.json",
+        "satisfies": [
+          "S2",
+          "S4",
+          "S5"
+        ]
       },
       {
         "metric": "Delta sign accuracy",
@@ -145,6 +155,51 @@
         "baseline": 0.81,
         "why_not_strong": "-0.08; 2 cells n<10",
         "artifact": "nci60_precious_9cell_auc.json"
+      },
+      {
+        "metric": "Strong model DOI R2",
+        "value": "0.3321 [0.2806, 0.3820]",
+        "why_not_strong": "this IS the generalization number; 0.5556 is interpolation only",
+        "artifact": "msrs_generalization.json",
+        "satisfies": [
+          "S3",
+          "S4",
+          "S5"
+        ]
+      },
+      {
+        "metric": "Strong model scaffold R2",
+        "value": "0.4503 [0.4102, 0.4884]",
+        "why_not_strong": "above DOI, below interpolation",
+        "artifact": "msrs_generalization.json",
+        "satisfies": [
+          "S3",
+          "S4",
+          "S5"
+        ]
+      },
+      {
+        "metric": "Strong model year R2",
+        "value": "0.3739 [0.3230, 0.4175]",
+        "why_not_strong": "temporal holdout; delta sign below chance (0.4286)",
+        "artifact": "msrs_generalization.json",
+        "satisfies": [
+          "S3",
+          "S4",
+          "S5"
+        ]
+      },
+      {
+        "metric": "Metal-state representation gain (all four protocols)",
+        "value": "+0.0392 to +0.0611 R2",
+        "why_not_strong": "consistent in sign, but the protocol is still observational",
+        "artifact": "msrs_generalization.json",
+        "satisfies": [
+          "S2",
+          "S3",
+          "S4",
+          "S5"
+        ]
       }
     ],
     "weak": [
@@ -187,7 +242,6 @@
       }
     ],
     "missing": [
-      "Strong model under DOI / scaffold / year splits",
       "Strong model 5-seed mean±std",
       "Delta MAE / calibration slope / stratified CI",
       "Regression calibration (slope, interval score, PIT)",
@@ -201,15 +255,15 @@
     "targets": [
       {
         "metric": "canonical R2",
-        "current": 0.5807,
+        "current": 0.5828,
         "target": 0.6,
         "fallback": "report 0.58 +/- std and the +0.1002 representation gain"
       },
       {
         "metric": "DOI/scaffold R2",
-        "current": "not measured (old features 0.165/0.159)",
+        "current": "DOI 0.3321 / scaffold 0.4503 / year 0.3739",
         "target": 0.5,
-        "fallback": "report the drop and scope to interpolation"
+        "fallback": "report the drop and scope every claim to interpolation"
       },
       {
         "metric": "Delta sign (0.2091)",
@@ -273,7 +327,7 @@
       "title": "强模型 5-seed 稳定性",
       "layer": "评估",
       "priority": "P0",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "1 天",
       "why": "R² 0.5807 是单 seed 20261018 的结果。强指标论文的主表必须是 mean±std；融合权重也需要跨 seed 的稳定性证据。",
@@ -282,14 +336,106 @@
       "acceptance": "5-seed R² std ≤0.02；blend_equal 在 ≥4/5 seed 上优于 tree；逐 seed 值与 mean±std 全部落盘。",
       "depends_on": [
         "FIX-M2"
-      ]
+      ],
+      "result": {
+        "canonical_grouped": {
+          "lgb_tree": {
+            "r2": 0.5555,
+            "std": 0.0026,
+            "mae": 0.3855
+          },
+          "gnn_metal_state": {
+            "r2": 0.5032,
+            "std": 0.0248,
+            "mae": 0.4023,
+            "delta_vs_tree": -0.0522,
+            "p": 0.9956,
+            "n_seeds_better": 0
+          },
+          "blend_equal": {
+            "r2": 0.5759,
+            "std": 0.0116,
+            "delta_vs_tree": 0.0205,
+            "p": 0.0071
+          },
+          "blend_foldwise": {
+            "r2": 0.5775,
+            "std": 0.0101,
+            "delta_vs_tree": 0.0221,
+            "p": 0.0034
+          },
+          "stack_foldwise": {
+            "r2": 0.5828,
+            "std": 0.0102,
+            "mae": 0.3702,
+            "delta_vs_tree": 0.0273,
+            "p": 0.0016,
+            "n_seeds_better": 5
+          }
+        },
+        "fragment_grouped": {
+          "lgb_tree": {
+            "r2": 0.4832,
+            "std": 0.0018,
+            "mae": 0.4182
+          },
+          "gnn_metal_state": {
+            "r2": 0.4331,
+            "std": 0.0164,
+            "delta_vs_tree": -0.0501,
+            "p": 0.9988,
+            "n_seeds_better": 0
+          },
+          "blend_equal": {
+            "r2": 0.5071,
+            "std": 0.0075,
+            "delta_vs_tree": 0.0239,
+            "p": 0.0013
+          },
+          "blend_foldwise": {
+            "r2": 0.5101,
+            "std": 0.0055,
+            "delta_vs_tree": 0.0269,
+            "p": 0.00029
+          },
+          "stack_foldwise": {
+            "r2": 0.5137,
+            "std": 0.0048,
+            "mae": 0.4029,
+            "delta_vs_tree": 0.0304,
+            "p": 0.00011,
+            "n_seeds_better": 5
+          }
+        },
+        "design": {
+          "seeds": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "folds": "fixed GroupKFold(5) on the ligand key across seeds",
+          "statistic": "one-sided paired t over seeds",
+          "residual_corr": {
+            "canonical": 0.804,
+            "fragment": 0.82
+          }
+        },
+        "reading": "5-seed 确认单 seed 0.5807 不是运气：stack 0.5828±0.0102（canonical）/ 0.5137±0.0048（fragment），Δ+0.0273 (p=0.0016) / +0.0304 (p=1.1e-4)，5/5 seed 更好。但 GNN 单模在所有 seed、两个 split 上都差于树（−0.052/−0.050），所以只能写「融合优于单模」，不能写「D-MPNN 打赢 LightGBM」。std 只度量训练方差——折划分被固定，跨论文方差由 MET-2 回答。",
+        "artifacts": [
+          "metrics/by_metric/msrs_seed_stability.json",
+          "results/msrs_seed_stability/"
+        ]
+      },
+      "acceptance_result": "PASS (mean 0.5828 > tree 0.5555; std 0.0102 <= 0.02; 5/5 seeds better)"
     },
     {
       "id": "MET-2",
       "title": "强模型四协议泛化矩阵",
       "layer": "评估",
       "priority": "P0",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "1 天",
       "why": "现有四协议只跑过旧特征集（random R² 0.251 / DOI 0.165 / scaffold 0.159 / year 0.178）。最强模型的跨论文性能完全未知，而配体分组会泄漏论文内一致性（FIX-M4 已演示）。",
@@ -298,7 +444,77 @@
       "acceptance": "四协议齐全；报告相对 random 的下降；DOI R² ≥0.50，否则如实记为负结果。",
       "depends_on": [
         "MET-1"
-      ]
+      ],
+      "result": {
+        "protocols": {
+          "ligand": {
+            "ligand_blind": 0.5012,
+            "ligand_both": 0.5556,
+            "ci95": [
+              0.5358,
+              0.5744
+            ],
+            "mae": 0.3856,
+            "regret": 0.1191,
+            "top1": 0.5647
+          },
+          "doi": {
+            "ligand_blind": 0.2898,
+            "ligand_both": 0.3321,
+            "ci95": [
+              0.2806,
+              0.382
+            ],
+            "mae": 0.4786,
+            "regret": 0.1168,
+            "top1": 0.56,
+            "p_vs_global": 0.565
+          },
+          "scaffold": {
+            "ligand_blind": 0.3892,
+            "ligand_both": 0.4503,
+            "ci95": [
+              0.4102,
+              0.4884
+            ],
+            "mae": 0.434,
+            "regret": 0.1116,
+            "top1": 0.5576,
+            "p_vs_global": 0.282
+          },
+          "year": {
+            "ligand_blind": 0.3347,
+            "ligand_both": 0.3739,
+            "ci95": [
+              0.323,
+              0.4175
+            ],
+            "mae": 0.4721,
+            "regret": 0.1585,
+            "top1": 0.4144,
+            "p_vs_global": 0.982,
+            "n_rows": 6499,
+            "folds": 16
+          }
+        },
+        "representation_gain": {
+          "ligand": 0.0544,
+          "doi": 0.0423,
+          "scaffold": 0.0611,
+          "year": 0.0392
+        },
+        "pair_sign_at_0.2091": {
+          "ligand": 0.6147,
+          "doi": 0.6193,
+          "scaffold": 0.6422,
+          "year": 0.4286
+        },
+        "reading": "R² 从 ligand 0.5556 掉到 DOI 0.3321（−0.2235，CI 不重叠）、scaffold 0.4503、year 0.3739 → 0.58 是内插。但表示增益在四个协议上全为正（+0.0544/+0.0423/+0.0611/+0.0392），是第一条跨全部划分稳定的效应。决策层仍为零，且在 year 上显著为负（regret 0.1585 vs 0.1172，p=0.982）→ 不要跨时间推荐。Δ 符号在 DOI 留出下不退化（0.6193 vs 0.6147），但在 year 下崩到 0.4286（低于随机）。",
+        "artifacts": [
+          "metrics/by_metric/msrs_generalization.json"
+        ]
+      },
+      "acceptance_result": "FAILED (R2 drop 0.2235 > 0.05; DOI 0.3321 vs ligand 0.5556)"
     },
     {
       "id": "MET-3",
@@ -489,7 +705,7 @@
         "MET-6",
         "MET-10"
       ],
-      "note": "P0：不做这些，主表就没有 5-seed、没有跨论文数字、没有 Δ 幅度、没有校准、没有金属消融。全部 CPU，零 GPU。"
+      "note": "P0：MET-1 DONE（5-seed PASS，0.5828±0.0102）；MET-2 DONE-NEGATIVE（DOI 0.3321，掉 0.2235）。剩余 MET-3/4/6/10 全部 CPU，零 GPU。"
     },
     "wave_M2_decision": {
       "items": [

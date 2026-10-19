@@ -6419,3 +6419,73 @@ ACTIVE count: **131 -> 132** (+1).
 placement measurement, one 1-epoch CPU smoke, two panel runs (bonded ckpt +
 pre-A93 ckpt); §5.2: every number traces to a test or to the val-cohort
 probe / `/tmp/wfa93_smoke`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+## §6.124 — MET-2: the strong model's 0.58 is interpolation; whole-paper holdout is 0.33
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (negative; the generalization claim fails).
+**Code:** `molmetal/scripts/msrs_generalization.py`.
+**Tests:** `molmetal/tests/test_msrs_generalization.py` (11).
+**Artifact:** `metrics/by_metric/msrs_generalization.json`.
+
+**What was tested.**  MET-1 established 5-seed stability (canonical R2
+0.5828 +/- 0.0102) on a *fixed ligand-grouped* partition.  Both ligand splits
+leave rows from the same paper on both sides of the fold boundary, and FIX-M4
+already showed that within-paper structure can manufacture a decision-layer
+gain that disappears when whole papers are held out.  MET-2 re-runs the same
+features and hyperparameters under four partitions: ligand (5 folds), DOI
+(5 folds, whole papers out), Bemis-Murcko scaffold (5 folds), and leave-one-
+year-out (16 folds, 30.4% of rows carry a parseable year).
+
+Two arms: metal-blind (`ligand`) and the strong arm (`ligand+both` = ligand +
+metal state + coordination).  The GNN is not re-run — it adds +0.027 over the
+tree, so the tree is the decision variable; this is recorded in
+`design.arms_not_measured`.
+
+**MEASURED (R2, group-bootstrap 95% CI).**
+
+| protocol | metal-blind | ligand+both | representation gain | vs ligand protocol |
+|---|---|---|---|---|
+| ligand | 0.5012 [0.4766, 0.5253] | **0.5556** [0.5358, 0.5744] | +0.0544 | — |
+| doi | 0.2898 [0.2377, 0.3397] | **0.3321** [0.2806, 0.3820] | +0.0423 | **-0.2235** |
+| scaffold | 0.3892 [0.3504, 0.4232] | **0.4503** [0.4102, 0.4884] | +0.0611 | -0.1053 |
+| year | 0.3347 [0.2848, 0.3779] | **0.3739** [0.3230, 0.4175] | +0.0392 | -0.1817 |
+
+Decision layer (425 evaluable cohorts; 111 for year): model vs `global_best`
+regret is null on ligand (0.1191 vs 0.1238, p=0.554), DOI (0.1168 vs 0.1195,
+p=0.565) and scaffold (0.1116 vs 0.1237, p=0.282), and **significantly worse**
+on year (0.1585 vs 0.1172, p=0.982, CI [-0.1154, -0.0144]).  Pairwise delta
+sign at 0.2091: ligand 0.6147, DOI 0.6193, scaffold 0.6422, **year 0.4286**
+(below chance).
+
+**Honest-negative (ACTIVE, this entry):**
+  * **The 0.5828 headline is interpolation.**  Whole-paper holdout costs
+    0.2235 R2 and the two CIs do not overlap.  Any table that prints 0.58
+    without 0.33 is reporting a resampling artefact as a capability.
+  * **The decision layer is zero everywhere and negative over time.**  The
+    year split is the only one where the paired test is significant, and the
+    sign is against the model.  Do not deploy this recommender across years.
+  * **Delta sign does not transfer in time either.**  0.4286 at the 0.2091
+    threshold (49 pairs) is below chance, consistent with the earlier
+    year-split result of 0.4786.
+  * **The protocol is still observational.**  The four partitions are
+    re-splits of the same 61-paper corpus, not an independent cohort.  MET-7
+    remains BLOCKED-PENDING-DATA.
+  * **Scaffold is easier than DOI** (0.4503 vs 0.3321).  The loss is therefore
+    mostly paper-level assay offset, not new chemistry — consistent with the
+    +0.1109 R2 DOI offset in `feature_headroom_audit.json`.
+
+**What survives, and is the one claim worth making.**  The metal-state +
+coordination representation gain is positive under *every* partition:
++0.0544 / +0.0423 / +0.0611 / +0.0392.  That is the first effect in this
+project to hold its sign across all four splits.  It supports the mechanism
+claim ("the model uses metal chemistry"), not an absolute-accuracy claim.
+
+**§6.124 catalog-count math.** Net catalog-count delta: **+1** (§6.124 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **176 -> 177** (+1).
+ACTIVE count: **132 -> 133** (+1).
+
+**Workflow** | MET-2 (2026-10-19; 0 GPU — CPU LightGBM over 21,404 rows; 11 new
+tests; §5.2: every number traces to `metrics/by_metric/msrs_generalization.json`;
+§5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
+

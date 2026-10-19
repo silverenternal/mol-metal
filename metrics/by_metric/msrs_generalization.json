@@ -1,0 +1,780 @@
+{
+  "artifact": "msrs_generalization",
+  "version": "1.0",
+  "requires_dual_split": false,
+  "generated_utc": "2026-10-19T10:33:47+00:00",
+  "provenance": {
+    "long": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_generalization.py",
+    "git_commit": "9e02cf318d675f6186ab5a95591b2815aed8975e",
+    "ligand_spec_hash": "sha256:453f77bb3ea233ee7b6666b72d9277a7849f901cd0b756dba828a898217f824b"
+  },
+  "design": {
+    "rows": 21404,
+    "ligand_source": "ligand_canonical",
+    "ligand_block": "ECFP4(ligand_canonical), 2048 bits",
+    "metal_cell_encoding": "LightGBM native categorical codes (2 columns)",
+    "metal_state_columns": [
+      "metal_os",
+      "metal_charge",
+      "metal_d_electrons",
+      "metal_valence_e"
+    ],
+    "coord_columns": [
+      "coord_n_donor",
+      "coord_n_N",
+      "coord_n_O",
+      "coord_n_S",
+      "coord_n_P",
+      "coord_n_Se",
+      "coord_n_carbene",
+      "coord_n_anionic",
+      "coord_n_aromatic",
+      "coord_max_component_donors",
+      "coord_n_donor_components",
+      "coord_has_donor",
+      "coord_est_cn",
+      "coord_geom_linear",
+      "coord_geom_trigonal_planar",
+      "coord_geom_tetrahedral",
+      "coord_geom_trigonal_bipyramidal",
+      "coord_geom_octahedral",
+      "coord_geom_square_planar",
+      "coord_geom_square_pyramidal",
+      "coord_geom_pentagonal_bipyramidal",
+      "coord_geom_unknown"
+    ],
+    "coverage": {
+      "rows": 21404,
+      "has_donor": 0.9944,
+      "has_geometry": 0.8013,
+      "unique_smiles": 5861
+    },
+    "split_schema": "four-protocol matrix (ligand / doi / scaffold / year); the dual-split gate does not apply because this artifact reports more protocols than it requires",
+    "schemes": [
+      "ligand",
+      "doi",
+      "scaffold",
+      "year"
+    ],
+    "arms": [
+      "ligand",
+      "ligand+both"
+    ],
+    "arms_not_measured": [
+      "gnn_metal_state",
+      "blend_equal",
+      "stack_foldwise"
+    ],
+    "arms_not_measured_reason": "the GNN adds +0.027 R2 over the tree (MET-1); if the tree's R2 collapses under a partition the fusion cannot rescue it, so the tree is the decision variable. The fusion arms are not claimed for any protocol other than the ligand one.",
+    "arm_ligand_source": {
+      "ligand": "ligand_canonical",
+      "ligand+both": "ligand_canonical"
+    },
+    "n_folds": 5,
+    "n_pairs": 427,
+    "bootstrap": {
+      "n_boot": 2000,
+      "unit": "the scheme's group key"
+    },
+    "max_drop_ok": 0.05,
+    "seed": 20261018
+  },
+  "splits": {
+    "ligand": {
+      "n_groups": 5861,
+      "n_folds": 5,
+      "n_rows_evaluated": 21404,
+      "n_rows_unscored": 0,
+      "arms": {
+        "ligand": {
+          "mae": 0.4079,
+          "r2": 0.5012,
+          "rmse": 0.5384,
+          "n_features": 2048,
+          "bootstrap_r2": {
+            "n_boot": 2000,
+            "n_groups": 5861,
+            "ci95": [
+              0.4766,
+              0.5253
+            ]
+          },
+          "pair_sign": {
+            "n_pairs": 427,
+            "n_dois": 61,
+            "by_threshold": {
+              "0": {
+                "n_pairs": 427,
+                "sign_accuracy": 0.5082
+              },
+              "0.2091": {
+                "n_pairs": 218,
+                "sign_accuracy": 0.6055
+              }
+            }
+          },
+          "wall_s": 33.7
+        },
+        "ligand+both": {
+          "mae": 0.3856,
+          "r2": 0.5556,
+          "rmse": 0.5082,
+          "n_features": 2074,
+          "bootstrap_r2": {
+            "n_boot": 2000,
+            "n_groups": 5861,
+            "ci95": [
+              0.5358,
+              0.5744
+            ]
+          },
+          "pair_sign": {
+            "n_pairs": 427,
+            "n_dois": 61,
+            "by_threshold": {
+              "0": {
+                "n_pairs": 427,
+                "sign_accuracy": 0.5363
+              },
+              "0.2091": {
+                "n_pairs": 218,
+                "sign_accuracy": 0.6147
+              }
+            }
+          },
+          "wall_s": 61.3
+        }
+      },
+      "baselines": {
+        "rows_with_unseen_metal_in_train_fold": 0,
+        "rows_with_unseen_cell_metal_pair": 421
+      },
+      "decision": {
+        "n_cohorts": 425,
+        "ligand": {
+          "n_cohorts": 425,
+          "mean_regret": 0.1216,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5365,
+          "mean_ndcg": 0.9337,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 425,
+              "mean_regret": 0.1216,
+              "top1_accuracy": 0.5365,
+              "mean_ndcg": 0.9337
+            }
+          },
+          "hit@0.1": 0.6776,
+          "hit@0.2091": 0.7976,
+          "hit@0.5": 0.9271
+        },
+        "ligand+both": {
+          "n_cohorts": 425,
+          "mean_regret": 0.1191,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5647,
+          "mean_ndcg": 0.9358,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 425,
+              "mean_regret": 0.1191,
+              "top1_accuracy": 0.5647,
+              "mean_ndcg": 0.9358
+            }
+          },
+          "hit@0.1": 0.6918,
+          "hit@0.2091": 0.8024,
+          "hit@0.5": 0.9318
+        },
+        "global_best": {
+          "n_cohorts": 425,
+          "mean_regret": 0.1238,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5671,
+          "mean_ndcg": 0.9333,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 425,
+              "mean_regret": 0.1238,
+              "top1_accuracy": 0.5671,
+              "mean_ndcg": 0.9333
+            }
+          },
+          "hit@0.1": 0.6753,
+          "hit@0.2091": 0.7906,
+          "hit@0.5": 0.9271
+        },
+        "cell_best": {
+          "n_cohorts": 425,
+          "mean_regret": 0.1228,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.56,
+          "mean_ndcg": 0.9337,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 425,
+              "mean_regret": 0.1228,
+              "top1_accuracy": 0.56,
+              "mean_ndcg": 0.9337
+            }
+          },
+          "hit@0.1": 0.68,
+          "hit@0.2091": 0.7906,
+          "hit@0.5": 0.9247
+        },
+        "ligand_vs_global_best": {
+          "n_dois": 62,
+          "mean_regret_delta": -0.0067,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.3,
+          "p_one_sided_doi": 0.6174077875314352,
+          "bootstrap_ci95_doi": [
+            -0.0486,
+            0.039
+          ],
+          "n_boot": 2000,
+          "seed": 20261018
+        },
+        "ligand+both_vs_global_best": {
+          "n_dois": 62,
+          "mean_regret_delta": -0.0028,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.1354,
+          "p_one_sided_doi": 0.5536113186884309,
+          "bootstrap_ci95_doi": [
+            -0.0398,
+            0.0383
+          ],
+          "n_boot": 2000,
+          "seed": 20261018
+        }
+      },
+      "wall_s": 61.6
+    },
+    "doi": {
+      "n_groups": 1784,
+      "n_folds": 5,
+      "n_rows_evaluated": 21404,
+      "n_rows_unscored": 0,
+      "arms": {
+        "ligand": {
+          "mae": 0.4935,
+          "r2": 0.2898,
+          "rmse": 0.6425,
+          "n_features": 2048,
+          "bootstrap_r2": {
+            "n_boot": 2000,
+            "n_groups": 1784,
+            "ci95": [
+              0.2377,
+              0.3397
+            ]
+          },
+          "pair_sign": {
+            "n_pairs": 427,
+            "n_dois": 61,
+            "by_threshold": {
+              "0": {
+                "n_pairs": 427,
+                "sign_accuracy": 0.5386
+              },
+              "0.2091": {
+                "n_pairs": 218,
+                "sign_accuracy": 0.6055
+              }
+            }
+          },
+          "wall_s": 25.1
+        },
+        "ligand+both": {
+          "mae": 0.4786,
+          "r2": 0.3321,
+          "rmse": 0.6231,
+          "n_features": 2074,
+          "bootstrap_r2": {
+            "n_boot": 2000,
+            "n_groups": 1784,
+            "ci95": [
+              0.2806,
+              0.382
+            ]
+          },
+          "pair_sign": {
+            "n_pairs": 427,
+            "n_dois": 61,
+            "by_threshold": {
+              "0": {
+                "n_pairs": 427,
+                "sign_accuracy": 0.5316
+              },
+              "0.2091": {
+                "n_pairs": 218,
+                "sign_accuracy": 0.6193
+              }
+            }
+          },
+          "wall_s": 48.6
+        }
+      },
+      "baselines": {
+        "rows_with_unseen_metal_in_train_fold": 0,
+        "rows_with_unseen_cell_metal_pair": 1479
+      },
+      "decision": {
+        "n_cohorts": 425,
+        "ligand": {
+          "n_cohorts": 425,
+          "mean_regret": 0.1323,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5671,
+          "mean_ndcg": 0.9332,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 425,
+              "mean_regret": 0.1323,
+              "top1_accuracy": 0.5671,
+              "mean_ndcg": 0.9332
+            }
+          },
+          "hit@0.1": 0.6894,
+          "hit@0.2091": 0.7976,
+          "hit@0.5": 0.9129
+        },
+        "ligand+both": {
+          "n_cohorts": 425,
+          "mean_regret": 0.1168,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.56,
+          "mean_ndcg": 0.9368,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 425,
+              "mean_regret": 0.1168,
+              "top1_accuracy": 0.56,
+              "mean_ndcg": 0.9368
+            }
+          },
+          "hit@0.1": 0.6965,
+          "hit@0.2091": 0.8047,
+          "hit@0.5": 0.9294
+        },
+        "global_best": {
+          "n_cohorts": 425,
+          "mean_regret": 0.1195,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5765,
+          "mean_ndcg": 0.9358,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 425,
+              "mean_regret": 0.1195,
+              "top1_accuracy": 0.5765,
+              "mean_ndcg": 0.9358
+            }
+          },
+          "hit@0.1": 0.6847,
+          "hit@0.2091": 0.7976,
+          "hit@0.5": 0.9294
+        },
+        "cell_best": {
+          "n_cohorts": 425,
+          "mean_regret": 0.1355,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5482,
+          "mean_ndcg": 0.9284,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 425,
+              "mean_regret": 0.1355,
+              "top1_accuracy": 0.5482,
+              "mean_ndcg": 0.9284
+            }
+          },
+          "hit@0.1": 0.6635,
+          "hit@0.2091": 0.7671,
+          "hit@0.5": 0.9059
+        },
+        "ligand_vs_global_best": {
+          "n_dois": 62,
+          "mean_regret_delta": -0.0043,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.1979,
+          "p_one_sided_doi": 0.5781245504656101,
+          "bootstrap_ci95_doi": [
+            -0.0467,
+            0.0381
+          ],
+          "n_boot": 2000,
+          "seed": 20261018
+        },
+        "ligand+both_vs_global_best": {
+          "n_dois": 62,
+          "mean_regret_delta": -0.0034,
+          "median_regret_delta": 0.0,
+          "t_doi": -0.165,
+          "p_one_sided_doi": 0.5652508188501393,
+          "bootstrap_ci95_doi": [
+            -0.0405,
+            0.0388
+          ],
+          "n_boot": 2000,
+          "seed": 20261018
+        }
+      },
+      "wall_s": 48.8
+    },
+    "scaffold": {
+      "n_groups": 2636,
+      "n_folds": 5,
+      "n_rows_evaluated": 21404,
+      "n_rows_unscored": 0,
+      "arms": {
+        "ligand": {
+          "mae": 0.4597,
+          "r2": 0.3892,
+          "rmse": 0.5958,
+          "n_features": 2048,
+          "bootstrap_r2": {
+            "n_boot": 2000,
+            "n_groups": 2636,
+            "ci95": [
+              0.3504,
+              0.4232
+            ]
+          },
+          "pair_sign": {
+            "n_pairs": 427,
+            "n_dois": 61,
+            "by_threshold": {
+              "0": {
+                "n_pairs": 427,
+                "sign_accuracy": 0.5129
+              },
+              "0.2091": {
+                "n_pairs": 218,
+                "sign_accuracy": 0.6009
+              }
+            }
+          },
+          "wall_s": 25.7
+        },
+        "ligand+both": {
+          "mae": 0.434,
+          "r2": 0.4503,
+          "rmse": 0.5653,
+          "n_features": 2074,
+          "bootstrap_r2": {
+            "n_boot": 2000,
+            "n_groups": 2636,
+            "ci95": [
+              0.4102,
+              0.4884
+            ]
+          },
+          "pair_sign": {
+            "n_pairs": 427,
+            "n_dois": 61,
+            "by_threshold": {
+              "0": {
+                "n_pairs": 427,
+                "sign_accuracy": 0.5293
+              },
+              "0.2091": {
+                "n_pairs": 218,
+                "sign_accuracy": 0.6422
+              }
+            }
+          },
+          "wall_s": 49.9
+        }
+      },
+      "baselines": {
+        "rows_with_unseen_metal_in_train_fold": 0,
+        "rows_with_unseen_cell_metal_pair": 717
+      },
+      "decision": {
+        "n_cohorts": 425,
+        "ligand": {
+          "n_cohorts": 425,
+          "mean_regret": 0.1211,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5412,
+          "mean_ndcg": 0.9341,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 425,
+              "mean_regret": 0.1211,
+              "top1_accuracy": 0.5412,
+              "mean_ndcg": 0.9341
+            }
+          },
+          "hit@0.1": 0.6753,
+          "hit@0.2091": 0.7953,
+          "hit@0.5": 0.9318
+        },
+        "ligand+both": {
+          "n_cohorts": 425,
+          "mean_regret": 0.1116,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5576,
+          "mean_ndcg": 0.9386,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 425,
+              "mean_regret": 0.1116,
+              "top1_accuracy": 0.5576,
+              "mean_ndcg": 0.9386
+            }
+          },
+          "hit@0.1": 0.6918,
+          "hit@0.2091": 0.8165,
+          "hit@0.5": 0.9412
+        },
+        "global_best": {
+          "n_cohorts": 425,
+          "mean_regret": 0.1237,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5624,
+          "mean_ndcg": 0.9335,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 425,
+              "mean_regret": 0.1237,
+              "top1_accuracy": 0.5624,
+              "mean_ndcg": 0.9335
+            }
+          },
+          "hit@0.1": 0.6729,
+          "hit@0.2091": 0.7906,
+          "hit@0.5": 0.9271
+        },
+        "cell_best": {
+          "n_cohorts": 425,
+          "mean_regret": 0.1281,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5529,
+          "mean_ndcg": 0.9322,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 425,
+              "mean_regret": 0.1281,
+              "top1_accuracy": 0.5529,
+              "mean_ndcg": 0.9322
+            }
+          },
+          "hit@0.1": 0.68,
+          "hit@0.2091": 0.7906,
+          "hit@0.5": 0.9153
+        },
+        "ligand_vs_global_best": {
+          "n_dois": 62,
+          "mean_regret_delta": 0.0065,
+          "median_regret_delta": 0.0,
+          "t_doi": 0.2575,
+          "p_one_sided_doi": 0.39883807382295455,
+          "bootstrap_ci95_doi": [
+            -0.0383,
+            0.0588
+          ],
+          "n_boot": 2000,
+          "seed": 20261018
+        },
+        "ligand+both_vs_global_best": {
+          "n_dois": 62,
+          "mean_regret_delta": 0.014,
+          "median_regret_delta": 0.0,
+          "t_doi": 0.5805,
+          "p_one_sided_doi": 0.2818633991498666,
+          "bootstrap_ci95_doi": [
+            -0.0298,
+            0.062
+          ],
+          "n_boot": 2000,
+          "seed": 20261018
+        }
+      },
+      "wall_s": 50.1
+    },
+    "year": {
+      "n_groups": 16,
+      "n_folds": 16,
+      "n_rows_evaluated": 6499,
+      "n_rows_unscored": 14905,
+      "n_years": 15,
+      "note": "leave-one-year-out; years with fewer than 100 rows are pooled into 'early'",
+      "arms": {
+        "ligand": {
+          "mae": 0.4877,
+          "r2": 0.3347,
+          "rmse": 0.6388,
+          "n_features": 2048,
+          "bootstrap_r2": {
+            "n_boot": 2000,
+            "n_groups": 16,
+            "ci95": [
+              0.2848,
+              0.3779
+            ]
+          },
+          "pair_sign": {
+            "n_pairs": 110,
+            "n_dois": 21,
+            "by_threshold": {
+              "0": {
+                "n_pairs": 110,
+                "sign_accuracy": 0.4091
+              },
+              "0.2091": {
+                "n_pairs": 49,
+                "sign_accuracy": 0.4694
+              }
+            }
+          },
+          "wall_s": 90.3
+        },
+        "ligand+both": {
+          "mae": 0.4721,
+          "r2": 0.3739,
+          "rmse": 0.6197,
+          "n_features": 2074,
+          "bootstrap_r2": {
+            "n_boot": 2000,
+            "n_groups": 16,
+            "ci95": [
+              0.323,
+              0.4175
+            ]
+          },
+          "pair_sign": {
+            "n_pairs": 110,
+            "n_dois": 21,
+            "by_threshold": {
+              "0": {
+                "n_pairs": 110,
+                "sign_accuracy": 0.3727
+              },
+              "0.2091": {
+                "n_pairs": 49,
+                "sign_accuracy": 0.4286
+              }
+            }
+          },
+          "wall_s": 185.6
+        }
+      },
+      "baselines": {
+        "rows_with_unseen_metal_in_train_fold": 0,
+        "rows_with_unseen_cell_metal_pair": 2169
+      },
+      "decision": {
+        "n_cohorts": 111,
+        "ligand": {
+          "n_cohorts": 111,
+          "mean_regret": 0.1532,
+          "median_regret": 0.03,
+          "top1_accuracy": 0.4505,
+          "mean_ndcg": 0.9197,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 111,
+              "mean_regret": 0.1532,
+              "top1_accuracy": 0.4505,
+              "mean_ndcg": 0.9197
+            }
+          },
+          "hit@0.1": 0.6396,
+          "hit@0.2091": 0.7568,
+          "hit@0.5": 0.9099
+        },
+        "ligand+both": {
+          "n_cohorts": 111,
+          "mean_regret": 0.1585,
+          "median_regret": 0.0362,
+          "top1_accuracy": 0.4144,
+          "mean_ndcg": 0.9161,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 111,
+              "mean_regret": 0.1585,
+              "top1_accuracy": 0.4144,
+              "mean_ndcg": 0.9161
+            }
+          },
+          "hit@0.1": 0.6126,
+          "hit@0.2091": 0.7387,
+          "hit@0.5": 0.9099
+        },
+        "global_best": {
+          "n_cohorts": 111,
+          "mean_regret": 0.1172,
+          "median_regret": 0.0,
+          "top1_accuracy": 0.5045,
+          "mean_ndcg": 0.9322,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 111,
+              "mean_regret": 0.1172,
+              "top1_accuracy": 0.5045,
+              "mean_ndcg": 0.9322
+            }
+          },
+          "hit@0.1": 0.6486,
+          "hit@0.2091": 0.7838,
+          "hit@0.5": 0.9459
+        },
+        "cell_best": {
+          "n_cohorts": 111,
+          "mean_regret": 0.1778,
+          "median_regret": 0.0651,
+          "top1_accuracy": 0.3964,
+          "mean_ndcg": 0.9066,
+          "by_cohort_size": {
+            "2": {
+              "n_cohorts": 111,
+              "mean_regret": 0.1778,
+              "top1_accuracy": 0.3964,
+              "mean_ndcg": 0.9066
+            }
+          },
+          "hit@0.1": 0.5766,
+          "hit@0.2091": 0.6937,
+          "hit@0.5": 0.8739
+        },
+        "ligand_vs_global_best": {
+          "n_dois": 22,
+          "mean_regret_delta": -0.0526,
+          "median_regret_delta": 0.0,
+          "t_doi": -1.7429,
+          "p_one_sided_doi": 0.9520077656956902,
+          "bootstrap_ci95_doi": [
+            -0.1128,
+            0.001
+          ],
+          "n_boot": 2000,
+          "seed": 20261018
+        },
+        "ligand+both_vs_global_best": {
+          "n_dois": 22,
+          "mean_regret_delta": -0.0603,
+          "median_regret_delta": 0.0,
+          "t_doi": -2.2378,
+          "p_one_sided_doi": 0.9818996199318651,
+          "bootstrap_ci95_doi": [
+            -0.1154,
+            -0.0144
+          ],
+          "n_boot": 2000,
+          "seed": 20261018
+        }
+      },
+      "wall_s": 185.7
+    }
+  },
+  "delta_r2_doi_vs_ligand": 0.2235,
+  "verdict": "NEGATIVE",
+  "verdict_rule": "R2(ligand+both, ligand) - R2(ligand+both, doi) <= 0.05 (a DOI holdout may cost at most this much); INCOMPLETE if either protocol was not run",
+  "wall_s": 376.6
+}
