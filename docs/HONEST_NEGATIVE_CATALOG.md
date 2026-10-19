@@ -7764,3 +7764,58 @@ ACTIVE count: **146 -> 147** (+1).
 `msrs_feature_expansion_shuffle.json`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 
 ---
+## §6.139 — STR-5: regressing the delta directly is at chance under DOI holdout
+
+**Claim under test.**  If differencing two absolute predictions adds two sets of
+residuals, then modelling the observed delta itself should order better.  Gate:
+delta sign at |d| >= 0.2091 >= 0.65 with a DOI-clustered lower bound > 0.55.
+
+**Setup.**  The model already exists: FIX-M4's ``pair_full`` arm (ridge on
+d(metal one-hot) + d(state) + d(coordination) + ligand-context x d(one-hot),
+target = y[b] - y[a], ~850 ordered training pairs, alpha by inner DOI-grouped
+CV).  With k = 2 cohorts a row potential and a direct pair regression are the
+same object, so STR-5 is a readout, not a retrain.  Only ``--pair-oof-out`` was
+added (path selection); the rerun reproduced FIX-M4's regrets exactly
+(0.1199 / 0.1242 / 0.1568), which is the control that the model did not change.
+
+**MEASURED.**  DOI holdout, 427 unordered pairs, 218 gated:
+sign **0.5183** [0.3902, 0.6539], MAE(delta) **0.5559** [0.4267, 0.6829],
+bias -0.1730, calibration slope 0.1658, R2 0.0155, mean |pred| 0.3224 vs
+observed 0.5299.  Ungated (427 pairs): sign **0.4988**, MAE 0.4515, slope
+0.0601.  Level model on the same 218 pairs: sign 0.5826 [0.4670, 0.6805],
+MAE 0.5115 [0.4575, 0.5697].
+
+**Honest negatives (ACTIVE, this entry):**
+  * **The ordering signal is not there, at any threshold.**  0.4988 ungated is
+    chance.  Gating on |d| does not rescue it (0.5183).
+  * **The kill is absolute, not comparative.**  0.5183 < 0.62 and 0.5559 >=
+    0.50.  The intervals overlap the level model's, so this entry does **not**
+    claim direct regression is significantly worse than differencing - only
+    that it fails the pre-registered bar on its own.
+  * **Amplitude was never the bottleneck.**  The level model predicts |d| at
+    0.0982 (slope 0.392) and still gets MAE 0.5115; the direct model predicts
+    0.3224 (slope 0.166) and gets 0.5559.  Bigger deltas with the wrong sign do
+    not help.
+  * **Capacity cannot be raised honestly.**  218 gated pairs / 53 DOIs.  FIX-M4
+    chose a linear model for this reason; a nonlinear delta model here would be
+    fitting noise, so "try a GBM" is not an available next step.
+  * **One shot, no retries.**  Per the plan the run is not repeated and no
+    hyperparameter is revisited, so this is a verdict, not a first attempt.
+
+**Why this matters.**  The ordering line is now closed from three directions:
+differencing (0.5826), fusion (0.5505), direct regression (0.5183).  All three
+sit far below 0.65 while the level model is above the R2 gate (0.3767/0.3811).
+The paper can state that prediction and ranking dissociate, and that this is
+not an artefact of one modelling choice.
+
+**§6.139 catalog-count math.** Net catalog-count delta: **+1** (§6.139 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **191 -> 192** (+1).
+ACTIVE count: **147 -> 148** (+1).
+
+**Workflow** | STR-5 (2026-10-20; CPU only, ~40 s rerun + 5 s readout;
+4 new tests; §5.2: every number traces to
+`metrics/by_metric/msrs_delta_direct.json` +
+`results/msrs_pairwise_reranker/pair_oof_doi.npz`, with the level baseline
+read from `msrs_seed_ensemble.json`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---

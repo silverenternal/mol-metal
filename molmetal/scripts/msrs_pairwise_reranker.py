@@ -244,8 +244,15 @@ def run_pair_arm(
     arm: str,
     multi_metal: np.ndarray,
     metals: np.ndarray,
+    sink: Optional[List[Tuple[int, int, float, float]]] = None,
 ) -> Tuple[np.ndarray, Dict[str, object]]:
-    """OOF per-row score = mean predicted delta against the cohort's metals."""
+    """OOF per-row score = mean predicted delta against the cohort's metals.
+
+    ``sink`` (STR-5) collects ``(a, b, observed delta, predicted delta)`` for
+    every ordered test pair, in the model's own units.  The row scores above
+    are a potential whose difference is 2x the delta for k=2 cohorts, so they
+    cannot be compared against MAE(delta) without this raw dump.
+    """
     scores = np.full(len(fold_id), np.nan)
     alphas: List[float] = []
     n_pairs = 0
@@ -270,6 +277,10 @@ def run_pair_arm(
                 # delta = f(b) - f(a); each row's score is its own value.
                 acc[int(a)].append(-delta)
                 acc[int(b)].append(delta)
+                if sink is not None:
+                    sink.append(
+                        (int(a), int(b), float(blocks["_y"][b] - blocks["_y"][a]), delta)
+                    )
             for i, vals in acc.items():
                 scores[i] = float(np.mean(vals))
     return scores, {"alphas": alphas, "n_training_pairs": n_pairs}
@@ -307,6 +318,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         type=Path,
         default=PROJECT_ROOT / "metrics" / "by_metric" / "msrs_pairwise_reranker.json",
     )
+    parser.add_argument(
+        "--pair-oof-out",
+        type=Path,
+        default=None,
+        help="STR-5: dump per-pair DOI-holdout predictions of the pair_full arm",
+    )
     args = parser.parse_args(argv)
 
     long = pd.read_parquet(args.long)
@@ -334,6 +351,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
 
     splits: Dict[str, object] = {}
+    pair_dump: List[Tuple[int, int, float, float]] = []
+    pair_fold: Optional[np.ndarray] = None
     for split in SPLITS:
         groups = sub[GROUP_COL[split]].to_numpy()
         fold_id = folds_for(groups)
@@ -347,8 +366,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         meta: Dict[str, object] = {}
         for arm in ("pair_identity", "pair_state", "pair_full"):
             print(f"[m4] split={split} arm={arm}")
+            sink = pair_dump if (split == SPLIT_DOI_GROUPED and arm == "pair_full") else None
+            if sink is not None:
+                pair_fold = fold_id
             scores, info = run_pair_arm(
-                blocks, fold_id, cohorts, arm, multi_metal, sub["metal"].astype(str).to_numpy()
+                blocks, fold_id, cohorts, arm, multi_metal, sub["metal"].astype(str).to_numpy(),
+                sink=sink,
             )
             arms[arm] = scores
             meta[arm] = info
@@ -393,6 +416,28 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             }
         splits[split] = {"n_cohorts": int(valid["cohort"].nunique()), "arms": table, "tests": tests, "fit": meta}
         print(f"[m4] {split}: " + " | ".join(f"{k}={v['mean_regret']:.4f}" for k, v in table.items()))
+
+    if args.pair_oof_out is not None:
+        if not pair_dump or pair_fold is None:
+            raise RuntimeError("pair_full / doi_grouped pair dump was not collected")
+        arr = np.asarray(pair_dump, dtype=np.float64)
+        args.pair_oof_out.parent.mkdir(parents=True, exist_ok=True)
+        np.savez(
+            args.pair_oof_out,
+            pair_a=arr[:, 0].astype(np.int64),
+            pair_b=arr[:, 1].astype(np.int64),
+            pair_obs=arr[:, 2],
+            pair_pred=arr[:, 3],
+            y=y,
+            metal=np.asarray(sub["metal"], dtype=str),
+            doi=np.asarray(sub["doi"], dtype=str),
+            ligand_canonical=np.asarray(sub["ligand_canonical"], dtype=str),
+            cell_line_key=np.asarray(sub["cell_line_key"], dtype=str),
+            time_h=sub["time_h"].to_numpy(dtype=float),
+            cohort=cohorts,
+            fold=pair_fold,
+        )
+        print(f"[m4] pair oof -> {args.pair_oof_out} ({len(arr)} ordered pairs)")
 
     canonical = splits[SPLIT_CANONICAL_GROUPED]
     best_pair = max(

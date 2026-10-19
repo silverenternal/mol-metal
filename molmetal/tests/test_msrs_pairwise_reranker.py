@@ -25,6 +25,7 @@ from molmetal.scripts.msrs_pairwise_reranker import (  # noqa: E402
     pair_accuracy,
     pair_design,
     pair_matrix,
+    run_pair_arm,
 )
 
 
@@ -87,3 +88,26 @@ def test_pair_accuracy_detects_a_sign_flip():
     bad = -good
     assert pair_accuracy(good, cohorts, y)["pairwise_accuracy"] == 1.0
     assert pair_accuracy(bad, cohorts, y)["pairwise_accuracy"] == 0.0
+
+
+def test_pair_oof_sink_records_signed_delta_not_the_row_potential():
+    """STR-5 reads MAE(delta) off the sink, so it must be the raw pair delta.
+
+    The row scores are a potential whose difference is 2x the delta for k=2
+    cohorts; dumping those instead would halve every predicted magnitude and
+    silently inflate MAE(delta).
+    """
+    blocks = _blocks(6)
+    y = np.array([1.0, 2.0, 2.5, 1.5, 3.0, 3.5])
+    blocks["_y"] = y
+    cohorts = np.array([0, 0, 1, 1, 2, 2])
+    metals = np.array(["Pt", "Ru", "Pt", "Ru", "Ir", "Ru"])
+    fold_id = np.array([0, 0, 1, 1, 0, 0])
+    sink: list = []
+    run_pair_arm(blocks, fold_id, cohorts, "pair_state", np.ones(6, bool), metals, sink=sink)
+
+    # 3 cohorts x 2 ordered pairs, every cohort lands in a test fold
+    assert len(sink) == 6
+    for a, b, obs, pred in sink:
+        assert obs == pytest.approx(y[b] - y[a])
+        assert np.isfinite(pred)

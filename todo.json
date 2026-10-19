@@ -29,6 +29,7 @@
   },
   "current_position": {
     "measured_facts": [
+      "STR-5（Δ 直接回归，复用 FIX-M4 pair_full，只加逐对落盘）：DOI 留出 427 对 / 门槛内 218 对，符号 0.5183 [0.3902,0.6539]、MAE(Δ) 0.5559 [0.4267,0.6829]、bias −0.1730、校准斜率 0.1658、R² 0.0155；无门槛 427 对符号 0.4988 ≈ 随机。同 218 对的水平模型：符号 0.5826 [0.4670,0.6805]、MAE 0.5115、斜率 0.3919。排序线三连负：相减 0.5826 / 融合 0.5505 / 直接回归 0.5183，均远低于 0.65。",
       "STR-4（特征扩展，5 seed）：MACCS+RDKit 臂 DOI R² 0.3767（seed mean 0.3697±0.0022），配对 Δ +0.0387 [+0.0241,+0.0535]；ligand 0.5593（−0.0003）、scaffold 0.4733（+0.0204 [+0.0077,+0.0337]）、year 0.3946（+0.0166 [−0.0050,+0.0385]）。置换控制（DOI，5 seed）0.3275±0.0022 < 原树 0.3332 → 增益来自描述符内容。与 GNN 融合后 DOI 0.3811（+0.0431 [+0.0260,+0.0604]）。单 seed 筛选：ECFP6 DOI 0.3321 KILL、assay 0.3410（+0.0078，CI 含 0）。但 DOI Δ 符号仍 0.5826（融合 0.5505）< 0.65 —— R² 与排序分离。",
       "STR-3（删失训练，seed 0）：+4,918 右删失行，DOI R² tobit 0.2400 / hinge 0.2828（树 0.3332），Δ −0.0933 / −0.0504，两个 CI 均排除 0；ligand 0.4962 / 0.5326（树 0.5554）；scaffold 0.3564 / 0.4014；year 0.2872 / 0.3296。8/8 协议×目标为负。结论：删失行编码剂量设计，不是随机缺失，条件均值目标下应继续排除。",
       "STR-2（5 树 + 5 GNN，四协议）：DOI stack R² 0.3597（gate 0.36，差 0.0003）、equal 0.3606、tree 0.3380、gnn 0.3089；配对 ΔR² +0.0217 [+0.0044,+0.0377]。ligand 0.5997（Δ+0.0401）、scaffold 0.4839（Δ+0.0310）、year 0.3968（CI 含 0）。单模型（同 seed）stack：ligand 0.5828±0.0102 / DOI 0.3485±0.0046 / scaffold 0.4693±0.0068 / year 0.3862±0.0082。DOI Δ 符号：tree 0.5826 → stack 0.5413（融合反而变差）。残差相关 0.86–0.90。",
@@ -281,6 +282,11 @@
       "id": "STR-4",
       "result": "PASS_R2_FAIL_SIGN",
       "headline": "MACCS+RDKit 把 DOI R² 抬到 0.3767（Δ +0.0387 [+0.0241,+0.0535]），置换控制 0.3275 证明是内容而非宽度；Δ 符号仍 0.5826（融合 0.5505）"
+    },
+    {
+      "id": "STR-5",
+      "result": "KILL",
+      "headline": "Δ 直接回归 DOI 符号 0.5183 [0.3902,0.6539]（无门槛 0.4988），MAE 0.5559 差于恒零；水平相减 0.5826 仍最好"
     }
   ],
   "blockers": [
@@ -568,7 +574,7 @@
       "title": "Δ 直接目标（一次性，预算匹配）",
       "layer": "目标",
       "priority": "P1",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "cuda:0",
       "wall": "4 小时",
       "why": "pairwise/rerank 已失败（B4）。唯一没试的是直接对 Δ 回归：在共享配体的配对上建 pair 特征，预测 Δ 本身，而不是对绝对强度建模后相减。相减会把两份残差相加，直接回归不经过这一步。",
@@ -580,7 +586,47 @@
       "depends_on": [
         "STR-1",
         "STR-3"
-      ]
+      ],
+      "method_note": "执行前核实：STR-5 描述的『反对称 pair 特征 + 直接回归 Δ』已经由 FIX-M4 的 pair_full 臂实现（msrs_pairwise_reranker.py，ridge，DOI 留出已测）。因此 STR-5 不新训模型，而是把该臂的 DOI 留出逐对预测重新按本计划的 gate 统计（sign@|Δ|≥0.2091、MAE(Δ)、DOI 聚类 CI）；只加 --oof-out 落盘（路径选择，不改模型）。预算匹配改为容量匹配：线性模型 + 内层 GroupKFold 选 alpha，无法比主模型花更多容量。",
+      "result": {
+        "verdict": "KILL",
+        "sign_accuracy": 0.5183,
+        "sign_ci": [
+          0.3902,
+          0.6539
+        ],
+        "mae_delta": 0.5559,
+        "mae_ci": [
+          0.4267,
+          0.6829
+        ],
+        "bias_delta": -0.173,
+        "calibration_slope": 0.1658,
+        "calibration_r2": 0.0155,
+        "ungated_sign": 0.4988,
+        "ungated_mae": 0.4515,
+        "n_pairs": 218,
+        "n_pairs_total": 427,
+        "n_dois_gated": 53,
+        "level_baseline": {
+          "sign_accuracy": 0.5826,
+          "sign_ci": [
+            0.467,
+            0.6805
+          ],
+          "mae_delta": 0.5115,
+          "mae_ci": [
+            0.4575,
+            0.5697
+          ],
+          "slope": 0.3919
+        },
+        "artifact": "metrics/by_metric/msrs_delta_direct.json",
+        "pairs_artifact": "results/msrs_pairwise_reranker/pair_oof_doi.npz",
+        "doc": "TODO/completed/str5_delta_direct.md",
+        "note": "直接回归 Δ 在 DOI 留出下只有 0.5183（无门槛 0.4988 ≈ 随机），MAE 0.5559 差于恒零 0.5299；两条 kill 线同时触发。区间与水平模型重叠，故不主张『显著更差』，只主张未过绝对门槛。FIX-M4 regret 完全复现，证明只加落盘未改模型。"
+      },
+      "acceptance_result": "KILL — 符号 0.5183 < 0.62，MAE 0.5559 ≥ 0.50；无门槛符号 0.4988 ≈ 随机。"
     },
     {
       "id": "STR-6",
@@ -661,7 +707,7 @@
       "question": "DOI R² 是否到 0.36、Δ 符号是否到 0.65？",
       "if_yes": "进入强指标路径：补 STR-5（Δ）与 STR-6（生成）。",
       "if_no": "按边界论文定稿；STR-5/STR-6 不跑，节省 GPU。",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "evidence": {
         "doi_r2_best": 0.3811,
         "doi_r2_tree_only": 0.3767,
@@ -672,7 +718,13 @@
         "answer": "R² 到了（0.3767 / 0.3811），Δ 符号没到（0.5826 / 0.5505）",
         "note": "按 if_no 的字面（两项未同时满足）应停止 STR-5/STR-6 并定稿边界论文；但 R² 已过线，是否仍投入 STR-5（Δ 直接回归，GPU 4h）需用户裁定。"
       },
-      "needs_user": true
+      "needs_user": true,
+      "resolution": {
+        "date": "2026-10-20",
+        "owner": "用户",
+        "decision": "STR-5 + STR-6 都跑",
+        "note": "R² 已过线，用户选择继续投排序轴（STR-5）并补生成线（STR-6）；边界论文推迟到两者出结果后。"
+      }
     },
     {
       "id": "DP-3",
