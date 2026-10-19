@@ -359,21 +359,6 @@ def _smiles_fragment_stats(smiles: Sequence[str]) -> Dict[str, Any]:
     }
 
 
-def _decode_fragment_stats(decoder: Any, clouds: Sequence[Any]) -> Dict[str, Any]:
-    """Re-decode the same clouds (deterministic) and measure connectivity."""
-    smiles: List[str] = []
-    for cloud in clouds:
-        try:
-            result = decoder.decode(cloud)
-        except Exception:
-            continue
-        decoded = getattr(result, "decoded", None)
-        smi = getattr(decoded, "smiles", "") or ""
-        if smi:
-            smiles.append(smi)
-    return _smiles_fragment_stats(smiles)
-
-
 def _load_model(ckpt: Any, device: Any) -> Any:
     """Rebuild the architecture from ``ckpt['args']`` and load the weights."""
     import argparse as _argparse
@@ -636,6 +621,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     dec_ok, dec_total = 0, 0
     if n_dec:
         print(f"[wfA53] decode ratio on {n_dec}/{len(clouds_d)} clouds ...")
+        # ``stats_out`` is the trainer's own connectivity measurement, taken
+        # from the same decode call as the ratio.  Re-decoding here would be
+        # a second definition of the same pass.
+        dec_stats: Dict[str, Any] = {}
         with torch.no_grad():
             dec_ok, dec_total = evaluate_decode_ratio(
                 model=model,
@@ -644,9 +633,25 @@ def main(argv: Optional[List[str]] = None) -> int:
                 device=device,
                 closure_bounded=bool(getattr(model_args, "closure_bounded", True)),
                 closure_bias=ckpt.get("closure_bias"),
+                stats_out=dec_stats,
             )
         print(f"[wfA53] decode_ratio={dec_ok}/{dec_total}")
-        frag = _decode_fragment_stats(decoder, clouds_d[:n_dec])
+        frag = {
+            "available": bool(dec_stats),
+            "n_decoded": int(dec_stats.get("decode_n_decoded", 0)),
+            "n_single_fragment": int(
+                dec_stats.get("decode_n_single_fragment", 0)
+            ),
+            "single_fragment_ratio": float(
+                dec_stats.get("decode_single_fragment_ratio", 0.0)
+            ),
+            "fragments_mean": float(dec_stats.get("decode_fragments_mean", 0.0)),
+            "fragments_max": int(dec_stats.get("decode_fragments_max", 0)),
+            "n_containing_metal": int(
+                dec_stats.get("decode_n_with_metal", 0)
+            ),
+            "metal_ratio": float(dec_stats.get("decode_metal_ratio", 0.0)),
+        }
         if frag.get("n_decoded"):
             print(
                 f"[wfA53] decoded connectivity: "
@@ -657,8 +662,6 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f"max={frag['fragments_max']}, "
                 f"metal_containing={100.0 * frag['metal_ratio']:.1f}%"
             )
-        else:
-            frag = {"available": True, "n_decoded": 0}
     else:
         frag = {"available": False}
     report["decode_ratio"] = {

@@ -149,6 +149,7 @@ from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
     YuelBondEdgeMPNNHead,
     bond_decision as _bond_decision,
     z_to_onehot,
+    _DONOR_ZS,
     _YUELBOND_Z_TABLE,
 )
 # Wf-A35-1 (2026-10-14) C3 — single read-site for the
@@ -1323,6 +1324,14 @@ class EpochMetrics:
     # Engine-tag contributions for honest reporting (per TODO-126 §7):
     w2_engine_tag: str = "wasserstein_reg"
     closure_engine_tag: str = "closure_catherine_bounded"
+    # Wf-A53 (2026-10-19) — connectivity of the decoded molecules.  The
+    # decode_ratio above counts RDKit-sanitised strings, and loose atoms
+    # sanitise; without these a run reports 1.000 while producing 20
+    # fragments per "molecule".  Measured on the same clouds as
+    # decode_ratio_val/decode_ratio_n.
+    decode_n_single_fragment: int = 0
+    decode_single_fragment_ratio: float = 0.0
+    decode_fragments_mean: float = 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -2998,27 +3007,88 @@ def _apply_logit_adjustment(
     return logits + tau * _log_pi.to(logits.device).to(logits.dtype)
 
 
-def _decode_with_rdkit_strict(decoder: YuelBondBondDecoder, cloud: AtomCloud):
-    """Run the YuelBond decoder and return True iff RDKit accepts it."""
+def _decode_with_rdkit_strict_detail(
+    decoder: YuelBondBondDecoder, cloud: AtomCloud
+) -> Tuple[bool, str]:
+    """Run the decoder; return ``(rdkit_strict_ok, smiles)``.
+
+    2026-10-19 (Wf-A53) — the SMILES is returned even when the decode is
+    rejected, so a caller can tell a valence failure from a loose-atom
+    "success".  ``_decode_with_rdkit_strict`` keeps the old boolean contract.
+    """
     if not RDKIT_AVAILABLE:
-        return False
+        return False, ""
     res = decoder.decode(cloud)
     decoded = res.decoded
-    if decoded is None or not decoded.sanitized:
-        return False
-    smi = decoded.smiles
-    if not smi:
-        return False
+    if decoded is None:
+        return False, ""
+    smi = decoded.smiles or ""
+    if not decoded.sanitized or not smi:
+        return False, smi
     # RDKit-strict: re-parse the canonical SMILES and re-sanitise
     # to ensure the round-trip is robust.
     mol = Chem.MolFromSmiles(smi)
     if mol is None:
-        return False
+        return False, smi
     try:
         Chem.SanitizeMol(mol)
-        return True
+        return True, smi
     except Exception:
-        return False
+        return False, smi
+
+
+def _decode_with_rdkit_strict(decoder: YuelBondBondDecoder, cloud: AtomCloud):
+    """Run the YuelBond decoder and return True iff RDKit accepts it."""
+    return _decode_with_rdkit_strict_detail(decoder, cloud)[0]
+
+
+def _decoded_smiles_stats(smiles: Sequence[str]) -> Dict[str, float]:
+    """Connectivity of a list of decoded SMILES.
+
+    2026-10-19 (Wf-A53) — ``decode_ratio`` counts RDKit-sanitised strings.
+    A cloud of loose atoms sanitises perfectly, so a head that predicts
+    BOND_NO_BOND everywhere scores 1.000 while producing ``C.C.C...[HH]``.
+    MEASURED on the shipped 5-metal checkpoint: 256/256 "successes", 0/256
+    single-fragment, mean 20.5 fragments.  These counters are reported
+    beside the ratio so that pair is read together.
+
+    Returns an empty dict when RDKit is unavailable, so callers can merge
+    unconditionally.
+    """
+    if not RDKIT_AVAILABLE:
+        return {}
+    frag_counts: List[int] = []
+    n_with_metal = 0
+    metal_z = {44, 45, 75, 76, 77}  # Ru Rh Re Os Ir
+    for smi in smiles:
+        if not smi:
+            continue
+        mol = Chem.MolFromSmiles(smi)
+        if mol is None:
+            continue
+        frag_counts.append(len(Chem.GetMolFrags(mol)))
+        if any(a.GetAtomicNum() in metal_z for a in mol.GetAtoms()):
+            n_with_metal += 1
+    if not frag_counts:
+        return {
+            "decode_n_decoded": 0,
+            "decode_n_single_fragment": 0,
+            "decode_single_fragment_ratio": 0.0,
+            "decode_fragments_mean": 0.0,
+            "decode_fragments_max": 0,
+            "decode_n_with_metal": 0,
+            "decode_metal_ratio": 0.0,
+        }
+    n_single = sum(1 for n in frag_counts if n == 1)
+    return {
+        "decode_n_decoded": float(len(frag_counts)),
+        "decode_n_single_fragment": float(n_single),
+        "decode_single_fragment_ratio": float(n_single / len(frag_counts)),
+        "decode_fragments_mean": float(sum(frag_counts) / len(frag_counts)),
+        "decode_fragments_max": float(max(frag_counts)),
+        "decode_n_with_metal": float(n_with_metal),
+        "decode_metal_ratio": float(n_with_metal / len(frag_counts)),
+    }
 
 
 def _rdkit_strict_reason(
@@ -6646,6 +6716,7 @@ def metal_presence_verdict(miss_rate: float, n_seeded: int) -> str:
     return "PASS"
 
 
+@torch.no_grad()
 def evaluate_generation_validity(
     model: "CFMJointModel",
     decoder: "YuelBondBondDecoder",
@@ -7019,6 +7090,7 @@ def _aromatic_bias_vector(args) -> Optional[List[float]]:
     return vec
 
 
+@torch.no_grad()
 def evaluate_bond_accuracy(
     model: "CFMJointModel",
     val_clouds: Sequence[AtomCloud],
@@ -7801,6 +7873,7 @@ def _bond_per_class_threshold_sweep(
     return out
 
 
+@torch.no_grad()
 def evaluate_decode_ratio(
     model: CFMJointModel,
     decoder: YuelBondBondDecoder,
@@ -7810,11 +7883,19 @@ def evaluate_decode_ratio(
     closure_bounded: bool = True,
     closure_bias: Optional[Dict[str, float]] = None,
     prefer_dative: bool = True,
+    stats_out: Optional[Dict[str, Any]] = None,
 ) -> Tuple[int, int]:
-    """Run inference on val clouds and count RDKit-strict successes."""
+    """Run inference on val clouds and count RDKit-strict successes.
+
+    ``stats_out`` (2026-10-19, Wf-A53): when supplied, receives the
+    connectivity of the decoded molecules (``decode_single_fragment_ratio``
+    / ``decode_fragments_mean`` / ``decode_n_single_fragment``).  Without it
+    the function behaves exactly as before.
+    """
     model.eval()
     n_ok = 0
     n_total = len(val_clouds)
+    decoded_smiles: List[str] = []
     for cloud in val_clouds:
         # Through the helper, not an inline rebuild: decoding does not read
         # `bonds` today, but an inline rebuild here is precisely the shape
@@ -7860,16 +7941,20 @@ def evaluate_decode_ratio(
                 ).squeeze(0)
                 last_layer.bias.data = orig_bias + bias_delta
                 try:
-                    ok = _decode_with_rdkit_strict(decoder, cloud_d)
+                    ok, smi = _decode_with_rdkit_strict_detail(decoder, cloud_d)
                 finally:
                     last_layer.bias.data = orig_bias
             except Exception:
                 # Fall back to no-bias decode if monkey-patch fails.
-                ok = _decode_with_rdkit_strict(decoder, cloud_d)
+                ok, smi = _decode_with_rdkit_strict_detail(decoder, cloud_d)
         else:
-            ok = _decode_with_rdkit_strict(decoder, cloud_d)
+            ok, smi = _decode_with_rdkit_strict_detail(decoder, cloud_d)
         if ok:
             n_ok += 1
+        if stats_out is not None and smi:
+            decoded_smiles.append(smi)
+    if stats_out is not None:
+        stats_out.update(_decoded_smiles_stats(decoded_smiles))
     return n_ok, n_total
 
 
@@ -8157,13 +8242,20 @@ def build_cloud_from_csv_row(
     # a large value (e.g. 100.0) to disable the post-embed 3D filter.
     dative_top_k_cap: int = 3  # never take more than this from the ranked list
     if metal_z > 0 and metal_idx_in_mol >= 0:
-        _DONOR_STRENGTH = {"N": 5, "P": 4, "S": 3, "O": 2, "Cl": 1, "Br": 1, "I": 1, "F": 1}
+        # Wf-A94 (2026-10-19) — derived from the ONE canonical donor set
+        # (``_DONOR_ZS`` in yuelbond_decoder.py) instead of being restated
+        # as element symbols.  The two lists had already drifted: this
+        # builder accepted halides while the decoder did not, so a
+        # metal-halide edge was a training LABEL carrying is_dative=0 at
+        # decode time.  Ranking is N > P > S > O > halide (Wf-A68); every
+        # other member of the canonical set takes the halide rank.
+        _DONOR_RANK = {7: 5, 15: 4, 16: 3, 8: 2}
+        _DONOR_STRENGTH = {z: _DONOR_RANK.get(z, 1) for z in _DONOR_ZS}
         cap = _coordination_capacity(metal_sym, ox)
         for atom in mol.GetAtoms():
             if atom.GetIdx() == metal_idx_in_mol:
                 continue
-            sym = atom.GetSymbol()
-            score = _DONOR_STRENGTH.get(sym, 0)
+            score = _DONOR_STRENGTH.get(int(atom.GetAtomicNum()), 0)
             if score > 0:
                 dative_candidates.append((score + 0.1 * atom.GetDegree(), atom.GetIdx()))
         dative_candidates.sort(key=lambda t: (-t[0], t[1]))
@@ -12540,6 +12632,14 @@ def main() -> int:
         # EXISTING checkpoint changes behaviour the moment it is set, with no
         # retrain. ``None`` keeps the no-op path free of tensor arithmetic.
         class_logit_bias=_dec_bias,
+        # Wf-A94 (2026-10-19) — the same cutoff the cohort builder used to
+        # WRITE the metal-donor labels now gates the decoder's Z-rule
+        # fallback.  Before this the builder read the yaml key (2.6 A) and
+        # the decoder silently used its own default (2.5 A), so label and
+        # inference disagreed on which pairs count as dative.
+        dative_max_distance=float(
+            getattr(args, "dative_distance_cutoff", 2.6)
+        ),
     )
     print(
         f"[cfm-decoder] decision={decoder.decision} "
@@ -12548,7 +12648,8 @@ def main() -> int:
         f"connectivity_prior="
         f"{'on' if decoder.connectivity_prior else 'off'} "
         f"@ min_logit={decoder.connectivity_prior_min_logit:.3f} "
-        f"(D2 postprocess, no retrain needed)",
+        f"(D2 postprocess, no retrain needed) | "
+        f"dative_max_distance={decoder.dative_max_distance:.2f} A",
         flush=True,
     )
     # The decoder's head *is* model.head — we share weights so training
@@ -13660,6 +13761,11 @@ def main() -> int:
             # "per_class" run decodes with calibrated thresholds instead of
             # raising on thresholds=None.  Same model state as the bond
             # accuracy pass above (no optimizer step in between).
+            # Wf-A53 (2026-10-19) — collect connectivity alongside the ratio.
+            # A sanitised string is not a connected molecule: MEASURED on
+            # the shipped checkpoint, 256/256 "successes" and 0/256
+            # single-fragment (mean 20.5 fragments).
+            _decode_stats: Dict[str, Any] = {}
             n_ok, n_total = evaluate_decode_ratio(
                 model=model,
                 decoder=decoder,
@@ -13667,6 +13773,18 @@ def main() -> int:
                 device=device,
                 closure_bounded=args.closure_bounded,
                 closure_bias=closure_bias,
+                stats_out=_decode_stats,
+            )
+            print(
+                f"[cfm-decode] epoch={epoch} "
+                f"decode_ratio={n_ok}/{n_total} "
+                f"single_fragment="
+                f"{int(_decode_stats.get('decode_n_single_fragment', 0))}/"
+                f"{n_total} "
+                f"({100.0 * _decode_stats.get('decode_single_fragment_ratio', 0.0):.1f}%) "
+                f"fragments_mean="
+                f"{_decode_stats.get('decode_fragments_mean', 0.0):.1f}",
+                flush=True,
             )
             if _bond_acc.get("n_scored", 0.0) > 0:
                 print(
@@ -14457,6 +14575,15 @@ def main() -> int:
             decode_ratio_rdkit_strict=decode_ratio,
             decode_ratio_val=n_ok,
             decode_ratio_n=n_total,
+            decode_n_single_fragment=int(
+                _decode_stats.get("decode_n_single_fragment", 0)
+            ),
+            decode_single_fragment_ratio=float(
+                _decode_stats.get("decode_single_fragment_ratio", 0.0)
+            ),
+            decode_fragments_mean=float(
+                _decode_stats.get("decode_fragments_mean", 0.0)
+            ),
             decoding_attempted=decoding_attempted,
             lr=args.lr,
             grad_norm=grad_norm,
@@ -14693,6 +14820,15 @@ def main() -> int:
                 decode_ratio=float(decode_ratio),
                 decode_ratio_val=int(n_ok),
                 decode_ratio_n=int(n_total),
+                decode_n_single_fragment=int(
+                    _decode_stats.get("decode_n_single_fragment", 0)
+                ),
+                decode_single_fragment_ratio=float(
+                    _decode_stats.get("decode_single_fragment_ratio", 0.0)
+                ),
+                decode_fragments_mean=float(
+                    _decode_stats.get("decode_fragments_mean", 0.0)
+                ),
                 # Round-4 E3 — the bond scores were missing from the structured
                 # event stream too, so a TUI panel reading events.jsonl showed
                 # decode_ratio (the anti-correlated one) and no bond number.
@@ -15359,6 +15495,11 @@ def main() -> int:
                 "decode_ratio",
                 "decode_ratio_val",
                 "decode_ratio_n",
+                # Wf-A53 — connectivity beside the ratio.  A sanitised
+                # string is not a connected molecule.
+                "decode_n_single_fragment",
+                "decode_single_fragment_ratio",
+                "decode_fragments_mean",
                 "decoding_attempted",
                 # Round-4 E3 — the bond columns were missing here entirely, so
                 # the CSV (the grep surface) silently carried no bond number at
@@ -15410,6 +15551,9 @@ def main() -> int:
                     f"{m.decode_ratio_rdkit_strict:.4f}",
                     m.decode_ratio_val,
                     m.decode_ratio_n,
+                    m.decode_n_single_fragment,
+                    f"{m.decode_single_fragment_ratio:.4f}",
+                    f"{m.decode_fragments_mean:.2f}",
                     int(m.decoding_attempted),
                     f"{m.bond_precision:.4f}",
                     f"{m.bond_recall:.4f}",
@@ -15524,7 +15668,8 @@ def main() -> int:
             f"| {m.epoch} | {m.train_loss:.4f} | {m.bond_ce_loss:.4f} | "
             f"{m.wasserstein_loss:.4f} | {m.grad_norm:.3f} | "
             f"{m.decode_ratio_rdkit_strict:.3f} | "
-            f"({m.decode_ratio_val}/{m.decode_ratio_n}) | "
+            f"({m.decode_ratio_val}/{m.decode_ratio_n}, "
+            f"single_frag={m.decode_n_single_fragment}) | "
             f"{m.wall_time_s:.1f} |"
         )
     lines += [

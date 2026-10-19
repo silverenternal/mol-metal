@@ -183,7 +183,23 @@ def _scaffold_split(
     seed: int,
     fractions: Tuple[float, float, float] = (0.7, 0.1, 0.2),
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Group by Bemis-Murcko scaffold; assign each scaffold to one split."""
+    """Group by Bemis-Murcko scaffold; assign each scaffold to one split.
+
+    Wf-A53 (2026-10-19) — CAVEAT, printed on every call: the key below is
+    ``GetScaffoldForMol`` + isomeric SMILES, so stereoisomers get DIFFERENT
+    keys.  The astartes/chemprop reference calls
+    ``MurckoScaffoldSmiles(includeChirality=False)``, which groups them.  Our
+    split is therefore marginally EASIER than the published column — the bias
+    runs in our favour (docs/ALIGNED_COMPARISON.md).  Changing the key
+    changes every MoleculeNet split and invalidates the shipped metrics, so
+    it is left as-is until those tasks are re-run.
+    """
+    print(
+        "[moleculenet] WARNING: scaffold key retains stereochemistry; the "
+        "astartes/chemprop reference is stereo-blind. Our split is marginally "
+        "easier (see docs/ALIGNED_COMPARISON.md).",
+        flush=True,
+    )
     rng = np.random.default_rng(seed)
     scaffold_to_idx: Dict[str, List[int]] = {}
     for i, smi in enumerate(smiles):

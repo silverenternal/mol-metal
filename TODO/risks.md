@@ -85,7 +85,29 @@ Data-side mitigation landed 2026-10-19: `metalcytotox_5metal_multitask_v5.csv`
 is deduplicated (24,483 rows) and split on the desalted stereo-blind ligand
 scaffold (17,138 / 2,448 / 4,897; 0 shared scaffolds and 0 shared canonical
 SMILES across every pair; all 5 metals in all 3 splits), built by
-`molmetal/scripts/wf_a52_rebuild_cfm_split.py`. No config points at it yet —
-switching `data.csv` to v5 and raising `n_train` / `n_val` are the model-session
-steps. `p0_scaffold_zero_leak` now prints the chemical-axis overlap next to PASS
-so v3/v4 launches stay visible.
+`molmetal/scripts/wf_a52_rebuild_cfm_split.py`. `p0_scaffold_zero_leak` now
+prints the chemical-axis overlap next to PASS so v3/v4 launches stay visible.
+
+Fixed 2026-10-19 (Wf-A53):
+- **v5 is now launchable.** `configs/cfm_5metal_v5_full.yaml` points at v5 and
+  sets `n_train: 0` / `n_val: 0`, which `_stratified_row_sample` reads as "every
+  embeddable row". The default config is untouched so the 2026-10-17 checkpoint
+  stays reproducible.
+- **The test split has a reader.** `wf_a53_eval_cfm_test_split.py` scores a
+  checkpoint on `split=test` read-only and reports whether the split is
+  actually held out relative to that checkpoint. MEASURED for the current
+  v3-trained checkpoint: `NOT_HELD_OUT`, 609/848 (71.8%) of v5-test molecules
+  were seen in v3-train.
+- **The two mislabels are now loud at runtime.** `train_moleculenet` prints
+  the stereo-aware-key caveat on every scaffold split;
+  `train_dmpnn_multitask_wasserstein` prints that `scaffold_70_10_10` is a
+  SMILES hash, not a scaffold split.
+
+Still open (needs re-runs, not silent code changes):
+- MoleculeNet: aligning the key to `includeChirality=False` changes every
+  split, so the 4 tasks must be re-run before the chemprop column is
+  like-for-like.
+- Pt 4-cell: implementing a real scaffold split changes the training cohort
+  and invalidates the existing checkpoints.
+- CFM: a true held-out number needs a checkpoint trained from
+  `configs/cfm_5metal_v5_full.yaml`.

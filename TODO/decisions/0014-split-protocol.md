@@ -74,3 +74,26 @@ papers**".
 - Aligning the MoleculeNet key will **lower** the four task AUCs. That is the
   cost of removing an unfair advantage over the chemprop baseline, and it must
   be reported as a protocol correction, not a regression.
+
+## Update 2026-10-19 (Wf-A53) — what moved after this ADR
+
+The ADR above records the audit state. Since then, four of the handoff items
+are closed without changing any reported number:
+
+- **CFM v5 is launchable.** `configs/cfm_5metal_v5_full.yaml` pins v5 and sets
+  `n_train: 0` / `n_val: 0` (<= 0 means "every embeddable row"). The default
+  config is unchanged, so the 2026-10-17 checkpoint remains reproducible.
+- **The test split has a reader.** `wf_a53_eval_cfm_test_split.py` is
+  read-only and reports `HELD_OUT` / `NOT_HELD_OUT` by comparing the evaluated
+  split against the checkpoint's own training file. For the v3-trained
+  checkpoint on v5-test the verdict is `NOT_HELD_OUT` (609/848, 71.8%).
+- **Decode connectivity is measured.** `evaluate_decode_ratio` now returns
+  fragment statistics via `stats_out`, and the trainer writes
+  `decode_single_fragment_ratio` / `decode_fragments_mean` to the CSV and
+  event stream. MEASURED: 256/256 decodes, 0/256 single-fragment, mean 16.7
+  fragments — the ratio alone was uninformative.
+- **The two mislabels are loud at runtime**, not only in this document.
+
+Still open, because each requires a re-run rather than a code edit:
+MoleculeNet key alignment (4 tasks), Pt 4-cell real scaffold split, and a
+CFM checkpoint trained on v5.

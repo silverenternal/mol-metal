@@ -703,6 +703,18 @@ def load_platinai_4cell_split_table(
         long_df["smiles"].astype(str).map(lambda s: _stable_hash_int(s, 10**8))
     )
     if split_strategy == "scaffold_70_10_10":
+        # Wf-A53 (2026-10-19) — the name is not what the code does.  This is
+        # a per-molecule SMILES hash, not a Bemis-Murcko scaffold split:
+        # MEASURED, 41.9% of test rows share a desalted stereo-blind scaffold
+        # with train (docs/DATA_LEAKAGE_AUDIT.md).  Printed on every call so
+        # the label cannot be read as a chemical-disjointness claim.
+        print(
+            "[platinai-4cell] WARNING: split_strategy='scaffold_70_10_10' is "
+            "a stable SMILES hash, NOT a Bemis-Murcko scaffold split "
+            "(MEASURED: 41.9% of test rows share a desalted stereo-blind "
+            "scaffold with train).",
+            flush=True,
+        )
         # 70/10/10 bucket, derived from the stable id only.  (Was
         # ``abs(hash(sid)) % 100`` on an int — stable in practice, but it
         # still leaned on a builtin whose stability is not part of its

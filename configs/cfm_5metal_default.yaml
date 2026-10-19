@@ -47,6 +47,10 @@ data:
   # scaffolds across every split pair; all 5 metals in all 3 splits).
   # Manifest: metalcytotox_5metal_multitask_v5_split_manifest.json.
   # This config still points at v3 until the switch is authorised.
+  # A ready-to-launch v5 full-cohort config is `cfm_5metal_v5_full.yaml`
+  # (same model/protocol, v5 data, n_train/n_val = 0 meaning "all rows",
+  # output under results/cfm_5metal_v5_full/). This file is deliberately
+  # left untouched so the 2026-10-17 checkpoint stays reproducible.
   #
   # The v5 test split now has a reader (nothing else did):
   #     molmetal/scripts/wf_a53_eval_cfm_test_split.py

@@ -8,7 +8,7 @@
       "bond_class_0_cal_f1": 0.9670311809551866,
       "bond_class_0_n_pos": 190845.0,
       "bond_class_0_pos_rate": 0.9379423213021939,
-      "bond_class_0_pr_auc": 0.9934141454794143,
+      "bond_class_0_pr_auc": 0.9934141652467354,
       "bond_class_0_test_f1": 0.9674834726270145,
       "bond_class_0_test_n_pos": 95447.0,
       "bond_class_0_test_n_pred_pos": 101499.0,
@@ -18,7 +18,7 @@
       "bond_class_1_cal_f1": 0.31276513690705743,
       "bond_class_1_n_pos": 5178.0,
       "bond_class_1_pos_rate": 0.0254482189195565,
-      "bond_class_1_pr_auc": 0.21015868342172622,
+      "bond_class_1_pr_auc": 0.21011032456236084,
       "bond_class_1_test_f1": 0.31504424778761064,
       "bond_class_1_test_n_pos": 2587.0,
       "bond_class_1_test_n_pred_pos": 2498.0,
@@ -28,7 +28,7 @@
       "bond_class_2_cal_f1": 0.08820286659316429,
       "bond_class_2_n_pos": 708.0,
       "bond_class_2_pos_rate": 0.003479594243925454,
-      "bond_class_2_pr_auc": 0.0455780281254831,
+      "bond_class_2_pr_auc": 0.04564796034341619,
       "bond_class_2_test_f1": 0.08204551840404609,
       "bond_class_2_test_n_pos": 345.0,
       "bond_class_2_test_n_pred_pos": 3214.0,
@@ -38,7 +38,7 @@
       "bond_class_3_cal_f1": 0.20512820512820512,
       "bond_class_3_n_pos": 22.0,
       "bond_class_3_pos_rate": 0.00010812298498073445,
-      "bond_class_3_pr_auc": 0.08861217614107421,
+      "bond_class_3_pr_auc": 0.09224429595499035,
       "bond_class_3_test_f1": 0.15,
       "bond_class_3_test_n_pos": 10.0,
       "bond_class_3_test_n_pred_pos": 70.0,
@@ -48,7 +48,7 @@
       "bond_class_4_cal_f1": 0.43120021971985717,
       "bond_class_4_n_pos": 6719.0,
       "bond_class_4_pos_rate": 0.0330217425493434,
-      "bond_class_4_pr_auc": 0.28727458721095095,
+      "bond_class_4_pr_auc": 0.28726668666953864,
       "bond_class_4_test_f1": 0.4197804225482056,
       "bond_class_4_test_n_pos": 3347.0,
       "bond_class_4_test_n_pred_pos": 7492.0,
@@ -71,7 +71,7 @@
       "bond_held_out_threshold_grid_size": 1.0,
       "bond_n_pairs_scored": 203472.0,
       "bond_per_class_calibration_frac": 0.5,
-      "bond_per_class_macro_pr_auc": 0.32500752407572975,
+      "bond_per_class_macro_pr_auc": 0.3257366865554083,
       "bond_per_class_n_calibration": 101736.0,
       "bond_per_class_n_classes_with_pos": 5.0,
       "bond_per_class_n_classes_with_test_pos": 5.0,
@@ -91,7 +91,7 @@
       ],
       "bond_per_class_threshold_grid_size": 8.0,
       "bond_positive_rate": 0.06205767869780609,
-      "bond_pr_auc": 0.9934141454794143,
+      "bond_pr_auc": 0.9934141652467354,
       "bond_pr_auc_note": "bond_pr_auc is threshold-free (honest). bond_best_f1_* are selected on the same pairs (OPTIMISTIC \u2014 a ceiling, not a result).  bond_class_{c}_pr_auc are per-class one-vs-rest AP (Fix 9); bond_per_class_macro_pr_auc averages them over classes with at least one positive.  bond_positive_rate is the legacy existence fraction; bond_class_{c}_pos_rate is the per-class fraction (different concept).",
       "bond_precision": 0.2542108620160166,
       "bond_precision_alt_rule": 0.3610608534486563,
@@ -157,8 +157,8 @@
   "decode_ratio": {
     "decoded_connectivity": {
       "available": true,
-      "fragments_max": 45,
-      "fragments_mean": 20.5234375,
+      "fragments_max": 41,
+      "fragments_mean": 16.74609375,
       "metal_ratio": 1.0,
       "n_containing_metal": 256,
       "n_decoded": 256,
@@ -170,7 +170,7 @@
     "n_total": 256,
     "ratio": 1.0
   },
-  "generated_at_unix": 1792404846,
+  "generated_at_unix": 1792406958,
   "generation_validity": {
     "decoded_connectivity": {
       "available": true,
@@ -200,5 +200,5 @@
   },
   "script": "wf_a53_eval_cfm_test_split",
   "tag": "MEASURED",
-  "wall_seconds": 194.31
+  "wall_seconds": 199.62
 }
