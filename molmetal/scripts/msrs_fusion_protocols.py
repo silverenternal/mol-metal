@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -91,6 +92,13 @@ def load_seed_files(directory: Path, pattern: str) -> List[Path]:
     return paths
 
 
+def _same(key: str, a: np.ndarray, b: np.ndarray) -> bool:
+    """Column equality that tolerates NaN in the float columns."""
+    if key in ("y", "time_h"):
+        return bool(np.allclose(a.astype(float), b.astype(float), equal_nan=True))
+    return bool(np.array_equal(a, b))
+
+
 def stack_seeds(paths: Sequence[Path], protocols: Sequence[str], arm: str) -> Dict[str, np.ndarray]:
     """Load one arm from several seeds; verify identity columns and folds."""
     per_seed: List[Dict[str, np.ndarray]] = []
@@ -115,7 +123,7 @@ def stack_seeds(paths: Sequence[Path], protocols: Sequence[str], arm: str) -> Di
         for key in IDENTITY:
             if key not in first or key not in arrays:
                 continue
-            if not np.array_equal(first[key], arrays[key]):
+            if not _same(key, first[key], arrays[key]):
                 raise ValueError(f"{path}: column {key!r} differs from {paths[0]}")
         for proto in protocols:
             fkey = f"{proto}__fold"
@@ -131,7 +139,10 @@ def stack_seeds(paths: Sequence[Path], protocols: Sequence[str], arm: str) -> Di
             if key not in arrays:
                 raise KeyError(f"{paths[0].parent}: missing {key!r}")
             preds.append(arrays[key].astype(float))
-        out[f"{proto}__pred"] = np.nanmean(np.stack(preds, axis=1), axis=1)
+        with warnings.catch_warnings():
+            # Rows outside the protocol (fold = -1) are NaN in every seed.
+            warnings.simplefilter("ignore", RuntimeWarning)
+            out[f"{proto}__pred"] = np.nanmean(np.stack(preds, axis=1), axis=1)
     out["n_seeds"] = np.array([len(paths)])
     return out
 
@@ -311,7 +322,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     gnn = stack_seeds(gnn_paths, PROTOCOLS, GNN_ARM)
 
     for key in IDENTITY:
-        if key in tree and key in gnn and not np.array_equal(tree[key], gnn[key]):
+        if key in tree and key in gnn and not _same(key, tree[key], gnn[key]):
             raise ValueError(f"tree and GNN OOF disagree on {key!r}")
     for proto in PROTOCOLS:
         if not np.array_equal(tree[f"{proto}__fold"], gnn[f"{proto}__fold"]):

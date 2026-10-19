@@ -154,3 +154,13 @@ def test_stack_seeds_accepts_object_string_columns(tmp_path):
 
 def test_identity_columns_are_the_merge_keys():
     assert "doi" in IDENTITY and "y" in IDENTITY
+
+
+def test_same_tolerates_nan_in_float_columns():
+    from molmetal.scripts.msrs_fusion_protocols import _same
+
+    a = np.array([1.0, np.nan, 3.0])
+    b = np.array([1.0, np.nan, 3.0])
+    assert _same("time_h", a, b)
+    assert not _same("time_h", a, np.array([1.0, 2.0, 3.0]))
+    assert _same("doi", np.array(["a", "b"]), np.array(["a", "b"]))
