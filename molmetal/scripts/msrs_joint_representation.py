@@ -52,6 +52,7 @@ from molmetal.scripts.msrs_dual_split import (
 )
 from molmetal.scripts.msrs_metal_block import paired_group_test
 from molmetal.scripts.msrs_surface_model import (
+    SEED,
     TOP_CELL_LINES,
     _git_commit,
     _sha256,
@@ -76,6 +77,7 @@ def run_split(
     codes: np.ndarray,
     groups: np.ndarray,
     group_col: str,
+    seed: int = SEED,
 ) -> tuple[Dict[str, object], Dict[str, np.ndarray]]:
     fold_id = folds_for(groups)
     empty = sparse.csr_matrix((len(frame), 0), dtype=np.float32)
@@ -86,7 +88,16 @@ def run_split(
         t0 = time.time()
         X = sparse.hstack([ligand, extra], format="csr")
         preds[arm] = fit_arm(
-            X, empty, empty, None, 0, False, y, fold_id, cat_codes=codes
+            X,
+            empty,
+            empty,
+            None,
+            0,
+            False,
+            y,
+            fold_id,
+            cat_codes=codes,
+            params_override={"random_state": int(seed)},
         )
         entry = score(y, preds[arm])
         entry["n_features"] = int(X.shape[1])
@@ -135,6 +146,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         default=PROJECT_ROOT / "metrics" / "by_metric" / "msrs_joint_representation.json",
     )
     parser.add_argument("--limit", type=int, default=0, help="smoke: first N ligands")
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=SEED,
+        help="LightGBM random_state; the fold partition is deterministic",
+    )
     parser.add_argument(
         "--oof-out",
         type=Path,
@@ -197,7 +214,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ):
         print(f"[joint] split={split}")
         splits[split], preds = run_split(
-            sub, y, bundle.X, extras, codes, sub[col].to_numpy(), col
+            sub, y, bundle.X, extras, codes, sub[col].to_numpy(), col, seed=args.seed
         )
         for arm, values in preds.items():
             oof[f"{split}__{arm}"] = values

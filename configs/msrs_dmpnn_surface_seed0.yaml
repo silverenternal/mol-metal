@@ -1,0 +1,52 @@
+# configs/msrs_dmpnn_surface_seed0.yaml — MET-1 seed 0 (metal_state arm only).
+#
+# Same schema as configs/msrs_dmpnn_surface_cpu0.yaml; only the cohort size and
+# the compute block differ, so the smoke and the formal run are the same code
+# path with the same hyperparameters.
+#
+# Invoke with: .venv/bin/python molmetal/scripts/msrs_dmpnn_surface.py \
+#                  --config configs/msrs_dmpnn_surface_gpu0.yaml
+#
+# GPU policy: cuda:0 only (user directive 2026-10-16). Do NOT add compute.device
+# alongside compute.gpu — start.sh double-indexes and crashes (see
+# TODO/environment.md). >1 hr wall needs explicit USER_OK before launch.
+
+data:
+  long: data/msrs/measurements.parquet
+  endpoint: potency
+  top_cell_lines: 40
+  limit: 0
+
+model:
+  hidden: 128
+  depth: 3
+  dropout: 0.1
+
+train:
+  epochs: 60
+  batch_size: 64
+  lr: 0.001
+  weight_decay: 0.00001
+  patience: 10
+  inner_val_fraction: 0.1
+  seed: 0
+
+compute:
+  device: cuda:0
+  num_threads: 1
+  deterministic: true
+
+eval:
+  splits:
+    - fragment_grouped
+    - canonical_grouped
+  baseline_arm: complex
+
+arms:
+  metal_state:
+    metal_mode: state
+    use_metal_node: true
+    metal_injection: message
+
+output:
+  path: results/msrs_seed_stability/gnn_seed0.json

@@ -423,6 +423,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument(
         "--limit", type=int, default=None, help="override data.limit (smoke subset)"
     )
+    parser.add_argument(
+        "--oof-out",
+        type=Path,
+        default=PROJECT_ROOT / "results" / "msrs_dmpnn_surface" / "oof.npz",
+        help="row-level out-of-fold predictions (path selection only)",
+    )
     parser.add_argument("--dry-run", action="store_true", help="do not write the artifact")
     args = parser.parse_args(argv)
 
@@ -630,7 +636,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     }
 
     out = args.out or (PROJECT_ROOT / str(cfg["output"]["path"]))
-    oof_path = PROJECT_ROOT / "results" / "msrs_dmpnn_surface" / "oof.npz"
+    oof_path = args.oof_out
     if not args.dry_run:
         # Row-level OOF is the only way to answer the estimand question later
         # (within-cohort Δ ranking, FIX-E2/E3) without re-running the GPU job.
@@ -651,7 +657,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         for (split, arm), pred in oof_store.items():
             arrays[f"{split}__{arm}"] = pred
         np.savez_compressed(oof_path, **arrays)
-        payload["design"]["oof_path"] = str(oof_path.relative_to(PROJECT_ROOT))
+        try:
+            payload["design"]["oof_path"] = str(oof_path.relative_to(PROJECT_ROOT))
+        except ValueError:
+            payload["design"]["oof_path"] = str(oof_path)
         print(f"[m1] wrote {oof_path}")
     if args.dry_run:
         print(json.dumps(payload["splits"], ensure_ascii=False, indent=2)[:4000])

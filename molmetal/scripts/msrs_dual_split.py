@@ -72,6 +72,7 @@ DUAL_SPLIT_ARTIFACTS: tuple[str, ...] = (
     "msrs_hybrid",
     "msrs_hybrid_decision",
     "msrs_pairwise_reranker",
+    "msrs_seed_stability",
 )
 
 

@@ -1,0 +1,143 @@
+{
+  "artifact": "msrs_dmpnn_surface",
+  "version": "1.0",
+  "requires_dual_split": true,
+  "generated_utc": "2026-10-19T05:47:38+00:00",
+  "provenance": {
+    "config": "configs/msrs_dmpnn_surface_seed3.yaml",
+    "long_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements.parquet",
+    "long_sha256": "cec3a524354ebebe94d2399b53d9bc162333d83b985b249f959df5b968c9db3c",
+    "script": "molmetal/scripts/msrs_dmpnn_surface.py",
+    "git_commit": "d2175d7e582882747a793c808463bcaee658c267"
+  },
+  "design": {
+    "rows": 21404,
+    "ligands_main_fragment": 2846,
+    "complexes_canonical": 5861,
+    "unique_graphs": 6081,
+    "unparseable_graphs": 0,
+    "device": "cuda:0",
+    "folds": "GroupKFold(5) via folds_for; both splits reported",
+    "cond_dim": 59,
+    "metal_feat_dim": 18,
+    "cell_vocabulary_size": 41,
+    "model": {
+      "hidden": 128,
+      "depth": 3,
+      "dropout": 0.1
+    },
+    "train": {
+      "epochs": 60,
+      "batch_size": 64,
+      "lr": 0.001,
+      "weight_decay": 1e-05,
+      "patience": 10,
+      "inner_val_fraction": 0.1,
+      "seed": 3
+    },
+    "arms": {
+      "metal_state": {
+        "metal_mode": "state",
+        "use_metal_node": true,
+        "metal_injection": "message"
+      }
+    },
+    "arm_ligand_source": {
+      "metal_state": "ligand_canonical"
+    },
+    "baseline_arm": "lgb_complex",
+    "baseline_note": "LightGBM reference recomputed in this script on the same folds; it sees metal and cell line as native categorical codes.",
+    "oof_path": "results/msrs_seed_stability/gnn_seed3.npz"
+  },
+  "splits": {
+    "fragment_grouped": {
+      "lgb_complex": {
+        "mae": 0.4376,
+        "r2": 0.4368,
+        "rmse": 0.5722,
+        "wall_s": 23.9
+      },
+      "metal_state": {
+        "mae": 0.4371,
+        "r2": 0.4327,
+        "rmse": 0.5742,
+        "inner_val_mae": [
+          0.469,
+          0.4246,
+          0.4018,
+          0.3846,
+          0.4667
+        ],
+        "wall_s": 386.8,
+        "cond_dim": 59,
+        "vs_lgb": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4209,
+          "mean_mae_b": 0.4323,
+          "mean_delta": -0.0114,
+          "t": -2.5087,
+          "p_one_sided": 0.9939138600565017,
+          "direction": "a better"
+        },
+        "delta_r2_vs_lgb": -0.0041
+      }
+    },
+    "canonical_grouped": {
+      "lgb_complex": {
+        "mae": 0.4079,
+        "r2": 0.5012,
+        "rmse": 0.5384,
+        "wall_s": 25.2
+      },
+      "metal_state": {
+        "mae": 0.4112,
+        "r2": 0.4688,
+        "rmse": 0.5557,
+        "inner_val_mae": [
+          0.3896,
+          0.3592,
+          0.4145,
+          0.3739,
+          0.3944
+        ],
+        "wall_s": 548.3,
+        "cond_dim": 59,
+        "vs_lgb": {
+          "n_ligands": 2846,
+          "mean_mae_a": 0.4054,
+          "mean_mae_b": 0.3996,
+          "mean_delta": 0.0058,
+          "t": 1.2824,
+          "p_one_sided": 0.09990425999684562,
+          "direction": "b better"
+        },
+        "delta_r2_vs_lgb": -0.0324
+      }
+    }
+  },
+  "reference_bars": {
+    "fix_l1_best": {
+      "arm": "complex",
+      "r2": 0.5012,
+      "path": "metrics/by_metric/msrs_complex_features.json"
+    },
+    "fix_l5_best": {
+      "arm": "ligand+both",
+      "r2": 0.5556,
+      "path": "metrics/by_metric/msrs_joint_representation.json"
+    }
+  },
+  "acceptance": {
+    "criterion": "beat FIX-L1's LightGBM on canonical_grouped",
+    "bar": "fix_l1_best",
+    "bar_r2": 0.5012,
+    "measured_r2": 0.4688,
+    "passed": false,
+    "strong_bar_r2": 0.5556,
+    "beats_strong_bar": false
+  },
+  "best_arm_canonical_split": "metal_state",
+  "delta_r2_canonical_split": -0.0324,
+  "verdict": "NEGATIVE",
+  "reading": "最佳 D-MPNN 臂 metal_state 在 canonical 分组下 R2=0.4688，同折 LightGBM(complex) R2=0.5012，差 -0.0324。三臂共享同一批图与折：ligand_cell→metal_identity 是金属作为图对象，metal_identity→metal_state 是金属态可见。"
+}
