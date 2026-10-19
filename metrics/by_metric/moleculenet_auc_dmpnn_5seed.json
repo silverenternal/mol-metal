@@ -155,5 +155,7 @@
     }
   },
   "gate_mean_auc_threshold": 0.8,
-  "chemprop_dmpnn_baseline_mean": 0.88325
+  "chemprop_dmpnn_baseline_mean": 0.88325,
+  "split_key": "bemis_murcko_isomeric (PRE-2026-10-19)",
+  "superseded_by": "metrics/by_metric/moleculenet_auc.json"
 }

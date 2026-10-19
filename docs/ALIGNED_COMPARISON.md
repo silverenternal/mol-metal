@@ -57,7 +57,7 @@ cell lines). It is a cross-cohort estimate, labelled as such, not a reproduction
 
 | Metric | Ours (MEASURED) | Baseline (same protocol) | Gap | Source JSON |
 |---|---|---|---|---|
-| **MoleculeNet clintox** | 0.7016 (Morgan-MLP) → **0.8209 ± 0.0122** (D-MPNN, 5-seed) | chemprop D-MPNN **0.894** | −0.192 → **−0.073** | `moleculenet_auc.json::tasks.clintox` / `moleculenet_auc_dmpnn_5seed.json::tasks.clintox` |
+| **MoleculeNet clintox** | 0.7016 (Morgan-MLP) → **0.8209 ± 0.0122** (D-MPNN, 5-seed) | chemprop D-MPNN **0.894** | −0.192 → **−0.073** | `moleculenet_auc_morgan_mlp.json::tasks.clintox` / `moleculenet_auc_dmpnn_5seed.json::tasks.clintox` |
 | **MoleculeNet hiv** | 0.7470 → **0.7900 ± 0.0109** (D-MPNN, 5-seed) | chemprop D-MPNN **0.823** | −0.076 → **−0.033** | `moleculenet_auc_dmpnn_5seed.json::tasks.hiv` |
 | **MoleculeNet bbbp** | 0.8720 → **0.9065 ± 0.0227** (D-MPNN, 5-seed) | chemprop D-MPNN **0.940** | −0.068 → **−0.034** | `moleculenet_auc_dmpnn_5seed.json::tasks.bbbp` |
 | **MoleculeNet bace** | 0.8609 → **0.7421 ± 0.0446** (D-MPNN, 5-seed) | chemprop D-MPNN 0.876 | **−0.134** (D-MPNN worse; 5-seed std 0.045 — a REAL regression, not seed noise) | `moleculenet_auc_dmpnn_5seed.json::tasks.bace` |
@@ -99,6 +99,14 @@ row-by-row delta is not a paired comparison. bbbp and hiv are flat within seed n
 unchanged, so its +0.008 is training nondeterminism); bace (−0.051) and clintox (−0.035) move down, but
 both have 5-seed standard deviations of 0.08-0.11, so a 5-seed mean cannot resolve a shift of that size
 as significant. What is certain is that all four numbers are now on the reference key.
+
+**The baseline columns are still pre-alignment.** The chemprop v2 same-protocol artifact
+(`moleculenet_auc_chemprop_v2_same_protocol.json`, 2026-10-12) imports `train_moleculenet._scaffold_split`,
+so it used the splitter correctly — but it ran before the key fix and therefore on the isomeric key. The
+Morgan-MLP artifact (`moleculenet_auc_morgan_mlp.json`, 2026-09-25) predates it as well. Both are
+annotated `split_key: bemis_murcko_isomeric`. A fully like-for-like table needs both re-run under the
+aligned key; until then, compare our aligned numbers against the literature constants only, and do not
+read the two baseline columns as same-split measurements.
 
 **bace rescue attempt (MEASURED, honest-negative — 2026-10-08):** the hypothesis that the
 unconditional `pos_weight=neg/pos` class weighting (applied even to near-balanced bace, pos_rate≈0.45)
