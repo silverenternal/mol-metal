@@ -153,6 +153,13 @@
 的 STR-1..STR-7。判据写死在两处：DOI R² ≥0.36（配对 CI 下界 >0）与 Δ 符号 ≥0.65
 （DOI 聚类 CI 下界 >0.55）。任一失败即按边界论文定稿，不再投入 STR-5/STR-6。
 
+**STR-1（5 seed，DONE / STABLE）**：seed 平均预测把 R² 抬到 ligand 0.5596 /
+DOI **0.3380** / scaffold 0.4530 / year 0.3780（seed SD 0.0026–0.0066）；Δ 符号
+ligand 0.6101 / DOI **0.5826** / scaffold 0.6330 / year 0.4082（seed SD
+0.0179–0.0387，max 0.0387 < 0.05）。**已发布的单 seed DOI 符号 0.6193 高于全部
+五个 seed（0.5183–0.5963）**，是偏高抽样，主表必须改用 0.5826。决策 regret
+0.1279（单 seed 0.1168），p_holm 仍 1.0，MET-5 的 null 没有翻转。
+
 **S5 现在是机械的。** `molmetal/scripts/paper_metric_tables.py` 从
 `metrics/by_metric/*.json` 直接生成 T1–T9，每个单元格带 artifact pointer，
 解析失败即 `MISSING`（`--strict` 退出码 1）。它保证「表 == 产物」，不保证
@@ -165,6 +172,6 @@
 1. **不要把 DOI 当特征。** `feature_headroom_audit.json` 实测：DOI offset 带来 +0.1109 R²，
    但金属化学在 DOI 之后只有 **−0.0003**。DOI 是论文代理，不是可部署信号。
 2. **不要继续在 61 个 DOI 上调决策层。** FIX-M4 已证明配体分组的 +0.02 在整篇论文留出后归零。
-3. **不要把配体分组的 R² 0.58 写成"跨论文"性能。** 跨论文数字还没测。
+3. **不要把配体分组的 R² 0.5596 写成"跨论文"性能。** 跨论文（DOI）是 0.3380。
 4. **不要把 NCI-60 的 0.7294 写成"接近 Krasnov 0.81"。** 差 0.08，且 2 个细胞系 n<10。
 5. **不要单列 bond_f1 或 decode_ratio。** 前者会塌向全正，后者不是化学指标。
