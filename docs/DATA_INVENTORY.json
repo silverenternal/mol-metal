@@ -17,7 +17,7 @@
       "status": "ACTIVE",
       "rows": 26632,
       "bytes": 4772774,
-      "note": "Canonical CFM cohort (configs/cfm_5metal_default.yaml). Scaffold split column is carried in-file."
+      "note": "Canonical CFM cohort (configs/cfm_5metal_default.yaml). Scaffold split column is carried in-file; it is stereo-aware and full-complex, not a desalted ligand-scaffold split (see docs/DATA_LEAKAGE_AUDIT.md)."
     },
     {
       "id": "cfm_5metal_v4",
@@ -26,7 +26,7 @@
       "status": "ACTIVE",
       "rows": 26632,
       "bytes": 6902370,
-      "note": "Same rows as v3 plus lowercase smiles/metal aliases and source. Used by 10 configs; kept because both are wired."
+      "note": "Same rows as v3 plus lowercase smiles/metal aliases and source. Used by 10 configs; kept because both are wired. Same split caveat as v3."
     },
     {
       "id": "cfm_5metal_v2",
@@ -53,7 +53,7 @@
       "status": "ACTIVE",
       "rows": 17735,
       "bytes": 12219589,
-      "note": "17,735 real MB-Finder Pt IC50 rows, 100% SMILES-joined (Wf-A46/47/48/49)."
+      "note": "17,735 real MB-Finder Pt IC50 rows, 100% SMILES-joined (Wf-A46/47/48/49). No split column; 3,668 duplicate (code, cell) rows and 987 exact duplicate measurements. 296 unique SMILES fail RDKit parsing."
     },
     {
       "id": "pt_biodata_raw",
@@ -125,7 +125,7 @@
       "status": "ACTIVE",
       "rows": 7823,
       "bytes": 787626,
-      "note": "9-cell precious-metal panel. Split is m21's Bemis-Murcko scaffold split (70/10/20, seed 0), reproduced byte-for-byte."
+      "note": "9-cell precious-metal panel. It is a subset of MetalCytoToxDB (5,207/5,207 canonical molecules), not an independent corpus. Split is a Bemis-Murcko scaffold split on unique SMILES, seed 0: 4,860/115/232 molecules. The older 3,645/521/1,041 figure is superseded by the BLK-PA12 fix."
     },
     {
       "id": "nci60_gi50_raw",
@@ -270,5 +270,10 @@
     "cells_with_pt_rows": 369,
     "rows_with_smiles": 17735,
     "rows_training_ready": 15953
+  },
+  "leakage_audit": {
+    "path": "molmetal/reports/wf_a51_leakage_audit/leakage_audit.json",
+    "generated_by": "molmetal/scripts/wf_a51_leakage_audit.py",
+    "present": true
   }
 }

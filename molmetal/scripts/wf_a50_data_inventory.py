@@ -37,6 +37,9 @@ if str(ROOT) not in sys.path:
 DATA = ROOT / ".data" / "molmetal"
 MD_OUT = ROOT / "docs" / "DATA_INVENTORY.md"
 JSON_OUT = ROOT / "docs" / "DATA_INVENTORY.json"
+LEAKAGE_JSON = (
+    ROOT / "molmetal" / "reports" / "wf_a51_leakage_audit" / "leakage_audit.json"
+)
 
 # (id, path, role, status, note)
 DECLARED: List[tuple] = [
@@ -48,11 +51,12 @@ DECLARED: List[tuple] = [
     ("cfm_5metal_v3", DATA / "metalcytotox_5metal_multitask_v3.csv",
      "generative_train", "ACTIVE",
      "Canonical CFM cohort (configs/cfm_5metal_default.yaml). Scaffold split "
-     "column is carried in-file."),
+     "column is carried in-file; it is stereo-aware and full-complex, not a "
+     "desalted ligand-scaffold split (see docs/DATA_LEAKAGE_AUDIT.md)."),
     ("cfm_5metal_v4", DATA / "metalcytotox_5metal_multitask_v4.csv",
      "generative_train", "ACTIVE",
      "Same rows as v3 plus lowercase smiles/metal aliases and source. Used by "
-     "10 configs; kept because both are wired."),
+     "10 configs; kept because both are wired. Same split caveat as v3."),
     ("cfm_5metal_v2", DATA / "metalcytotox_5metal_multitask_v2.csv",
      "generative_train", "SUPERSEDED",
      "Same 26,632 rows as v3, differing only in column naming (lowercase "
@@ -62,7 +66,9 @@ DECLARED: List[tuple] = [
     # --- platinum --------------------------------------------------------
     ("pt_biodata_all", DATA / "wf_a37_platinai_biodata" / "pt" /
      "platinai_pt_all_cells_with_smiles.jsonl", "eval_pt", "ACTIVE",
-     "17,735 real MB-Finder Pt IC50 rows, 100% SMILES-joined (Wf-A46/47/48/49)."),
+     "17,735 real MB-Finder Pt IC50 rows, 100% SMILES-joined (Wf-A46/47/48/49). "
+     "No split column; 3,668 duplicate (code, cell) rows and 987 exact duplicate "
+     "measurements. 296 unique SMILES fail RDKit parsing."),
     ("pt_biodata_raw", DATA / "wf_a37_platinai_biodata" /
      "harvest_summary_2026-10-16.json", "eval_pt", "ACTIVE",
      "All-metal harvest summary: 485 cell lines / 30,185 rows."),
@@ -83,8 +89,11 @@ DECLARED: List[tuple] = [
      "control_general", "ACTIVE", "Scaffold 70/10/20, 5 seeds."),
     ("nci60_9cell", ROOT / "molmetal" / "data" / "nci60_precious_9cell.csv",
      "control_general", "ACTIVE",
-     "9-cell precious-metal panel. Split is m21's Bemis-Murcko scaffold split "
-     "(70/10/20, seed 0), reproduced byte-for-byte."),
+     "9-cell precious-metal panel. It is a subset of MetalCytoToxDB "
+     "(5,207/5,207 canonical molecules), not an independent corpus. Split is a "
+     "Bemis-Murcko scaffold split on unique SMILES, seed 0: 4,860/115/232 "
+     "molecules. The older 3,645/521/1,041 figure is superseded by the "
+     "BLK-PA12 fix."),
     ("nci60_gi50_raw", DATA / "NCI60_GI50" / "GI50.csv", "reference", "UNUSED",
      "Raw NCI-60 GI50 dump; the 9-cell panel above is the cohort actually used."),
     ("drugood_lbap_scaffold", DATA / "drugood" / "ic50" / "csv" /
@@ -104,6 +113,17 @@ DECLARED: List[tuple] = [
      "s7_pt_wet_lab.json", "reference", "REFERENCE",
      "Published Pt-1..19 wet-lab panel; reference only (no wet lab per §5.4)."),
 ]
+
+
+def _leakage() -> Dict[str, Any] | None:
+    """Measured leakage audit (Wf-A51), if it has been run.
+
+    The inventory must stay regenerable without the audit; a missing file is
+    reported in the markdown rather than treated as an error.
+    """
+    if not LEAKAGE_JSON.exists():
+        return None
+    return json.loads(LEAKAGE_JSON.read_text(encoding="utf-8"))
 
 
 def _rows(path: Path) -> int | None:
@@ -216,6 +236,7 @@ def build() -> Dict[str, Any]:
         "generative_cohort": _generative_cohort(),
         "nci60": _nci60(),
         "platinum": _platinum(),
+        "leakage": _leakage(),
     }
 
 
@@ -228,6 +249,65 @@ def render_md(doc: Dict[str, Any]) -> str:
     g = doc["generative_cohort"]
     n = doc["nci60"]
     pt = doc["platinum"]
+    lk = doc.get("leakage") or {}
+
+    # Compact measured-leakage values (absent if wf_a51 has not been run).
+    if lk:
+        pm = lk["predictive"]["metals"]
+        pred_skf_scaf = [
+            r["mean_frac_test_rows_scaffold_in_train"]
+            for rec in pm.values()
+            for r in rec["stratified_kfold"]["per_seed"]
+        ]
+        pred_skf_min = 100.0 * min(pred_skf_scaf)
+        pred_skf_max = 100.0 * max(pred_skf_scaf)
+        pred_doi = [
+            rec["doi_grouped_10fold"]["mean_frac_test_rows_scaffold_in_train"]
+            for rec in pm.values()
+        ]
+        pred_doi_min = 100.0 * min(pred_doi)
+        pred_doi_max = 100.0 * max(pred_doi)
+        cfm = lk["cfm"]["v3"]
+        cfm_test = cfm["pairs"]["train_vs_test"]["bemis_murcko"]
+        cfm_val = cfm["pairs"]["train_vs_val"]["bemis_murcko"]
+        cfm_full_ns = cfm["pairs"]["train_vs_test"]["bemis_murcko_full_nostereo"]
+        nci_lk = lk["nci60"]
+        nci_split = nci_lk["split_sizes"]
+        pt_lk = lk["pt"]
+        molnet = lk["moleculenet"]["tasks"]
+        molnet_bm_max = max(
+            s["bemis_murcko_desalted"]["train_vs_test"]["n_intersect_keys"]
+            for rec in molnet.values()
+            for s in rec["per_seed"]
+        )
+        molnet_bm_frac = 100.0 * max(
+            s["bemis_murcko_desalted"]["train_vs_test"]["frac_b_rows_seen_in_a"]
+            for rec in molnet.values()
+            for s in rec["per_seed"]
+        )
+        molnet_ns_max = max(
+            s["bemis_murcko_split_key_nostereo"]["train_vs_test"]["n_intersect_keys"]
+            for rec in molnet.values()
+            for s in rec["per_seed"]
+        )
+        molnet_ns_frac = 100.0 * max(
+            s["bemis_murcko_split_key_nostereo"]["train_vs_test"]["frac_b_rows_seen_in_a"]
+            for rec in molnet.values()
+            for s in rec["per_seed"]
+        )
+        nci_pred = lk["cross"]["nci60_vs_predictive5"]["canonical"]["n_intersect"]
+        nci_cfm = lk["cross"]["nci60_vs_cfm_all"]["canonical"]["n_intersect"]
+    else:
+        pred_skf_min = pred_skf_max = 0.0
+        pred_doi_min = pred_doi_max = 0.0
+        cfm = cfm_test = cfm_val = cfm_full_ns = None
+        nci_split = None
+        pt_lk = None
+        molnet_bm_max = 0
+        molnet_bm_frac = 0.0
+        molnet_ns_max = 0
+        molnet_ns_frac = 0.0
+        nci_pred = nci_cfm = 0
     lines = [
         "# Data inventory — training and evaluation",
         "",
@@ -263,6 +343,21 @@ def render_md(doc: Dict[str, Any]) -> str:
         "seeds `[42,43,44,49,123]`, no fixed holdout — every molecule is tested in",
         "one fold.",
         "",
+        (
+            f"**Leakage (measured, `docs/DATA_LEAKAGE_AUDIT.md`):** the raw SMILES "
+            f"are canonical and unique within each metal cohort (0 multi-string "
+            f"molecules, 0 exact duplicates after collapse), so there is **no "
+            f"molecule-level train/test leak** (0.00 % under both the random and "
+            f"DOI-grouped protocols). The random CV is nevertheless **in-domain by "
+            f"scaffold**: {pred_skf_min:.1f}–{pred_skf_max:.1f} % of test rows share "
+            f"a Bemis-Murcko scaffold with train ({pred_doi_min:.1f}–"
+            f"{pred_doi_max:.1f} % under DOI-grouped 10-fold). It is a "
+            f"random-split AUC, not a scaffold-generalisation estimate."
+            if lk
+            else "**Leakage:** not measured — run `molmetal/scripts/"
+            "wf_a51_leakage_audit.py`."
+        ),
+        "",
         "### 1.2 Generative — CFM 5-metal",
         "",
         f"- Rows **{_fmt(g['rows'])}**, unique SMILES **{_fmt(g['unique_smiles'])}**, "
@@ -275,6 +370,24 @@ def render_md(doc: Dict[str, Any]) -> str:
         "measured by decoding validation clouds (validity, ring profile, novelty,",
         "docking), not by a train/test AUC.",
         "",
+        (
+            f"**Leakage (measured):** the in-file `scaffold_id` is stereo-aware and "
+            f"full-complex (counterions/solvent included). It is disjoint across "
+            f"train/val/test (0 shared) and no SMILES carries more than one split "
+            f"label. At the **desalted, stereo-blind ligand-scaffold** level, "
+            f"however, {cfm_test['n_intersect_keys']} scaffolds are shared between "
+            f"train and test ({100.0 * cfm_test['frac_b_rows_seen_in_a']:.1f} % of "
+            f"test rows) and {cfm_val['n_intersect_keys']} between train and val "
+            f"({100.0 * cfm_val['frac_b_rows_seen_in_a']:.1f} % of val rows). "
+            f"Removing stereo alone leaves {cfm_full_ns['n_intersect_keys']} shared "
+            f"scaffolds ({100.0 * cfm_full_ns['frac_b_rows_seen_in_a']:.1f} % of "
+            f"test rows); the gap is dominated by counterion/solvent fragments. "
+            f"The split is not a ligand-scaffold OOD split."
+            if lk
+            else "**Leakage:** not measured — run `molmetal/scripts/"
+            "wf_a51_leakage_audit.py`."
+        ),
+        "",
         "### 1.3 Platinum external evaluation",
         "",
         f"- Rows **{_fmt(pt['rows'])}**, unique compounds **{_fmt(pt['compounds'])}**, "
@@ -282,16 +395,50 @@ def render_md(doc: Dict[str, Any]) -> str:
         f"- Rows with SMILES **{_fmt(pt['rows_with_smiles'])}** / "
         f"{_fmt(pt['rows'])}; training-ready (value + SMILES) "
         f"**{_fmt(pt['rows_training_ready'])}**",
+        (
+            f"- **No split column** — a pool, not a partition. Duplicate "
+            f"`(compound_code, cell_line)` rows **{pt_lk['n_duplicate_code_cell_rows']:,}**; "
+            f"exact duplicate `(code, cell, value)` rows "
+            f"**{pt_lk['n_duplicate_code_cell_value_rows']:,}**. "
+            f"{pt_lk['n_parse_failures']:,}/{pt_lk['n_unique_raw_smiles']:,} unique "
+            f"SMILES fail RDKit parsing."
+            if pt_lk
+            else "- Split status: not measured — run `wf_a51_leakage_audit.py`."
+        ),
         "",
         "### 1.4 Controls",
         "",
-        f"- **NCI-60 precious-metal panel**: {_fmt(n['rows'])} rows / "
-        f"{_fmt(n['unique_smiles'])} unique SMILES / {n['cells']} cell lines. "
-        "Split is m21's Bemis-Murcko scaffold split (70/10/20, seed 0) on unique "
-        "SMILES: train 3,645 / val 521 / test 1,041.",
-        "- **MoleculeNet** (bace / bbbp / clintox / hiv): scaffold 70/10/20, 5 seeds.",
+        (
+            f"- **NCI-60 precious-metal panel**: {_fmt(n['rows'])} rows / "
+            f"{_fmt(n['unique_smiles'])} unique SMILES / {n['cells']} cell lines. "
+            f"Split is a Bemis-Murcko scaffold split on unique SMILES, seed 0: "
+            f"train {nci_split['train']:,} / val {nci_split['val']:,} / "
+            f"test {nci_split['test']:,} molecules. It is a **subset of "
+            f"MetalCytoToxDB** ({nci_pred:,}/{n['unique_smiles']:,} canonical "
+            f"molecules in the 5-metal pool, {nci_cfm:,} in CFM), not an "
+            f"independent corpus. The older 3,645/521/1,041 figure came from the "
+            f"pre-BLK-PA12 splitter (empty scaffold key)."
+            if lk
+            else f"- **NCI-60 precious-metal panel**: {_fmt(n['rows'])} rows / "
+            f"{_fmt(n['unique_smiles'])} unique SMILES / {n['cells']} cell lines. "
+            "Split: not measured — run `wf_a51_leakage_audit.py`."
+        ),
+        (
+            f"- **MoleculeNet** (bace / bbbp / clintox / hiv): scaffold 70/10/20, "
+            f"5 seeds. The split key is **stereo-aware**. At the stereo-blind "
+            f"level up to {molnet_ns_max} scaffolds are shared between train and "
+            f"test ({molnet_ns_frac:.1f} % of test rows, bace); desalting adds a "
+            f"counterion-driven component up to {molnet_bm_max} scaffolds (hiv), "
+            f"with a row-level maximum of {molnet_bm_frac:.1f} % (bbbp). No "
+            f"canonical molecule overlap."
+            if lk
+            else "- **MoleculeNet** (bace / bbbp / clintox / hiv): scaffold "
+            "70/10/20, 5 seeds."
+        ),
         "- **DrugOOD lbap**: 266,522 rows with iid/ood train/val/test as a column; "
-        "used as the OOD control, not as a headline result.",
+        "used as the OOD control, not as a headline result. train vs ood_test has "
+        "0 canonical and 0 scaffold_split_id overlap; train vs iid_test shares "
+        "scaffold IDs by design.",
         "",
         "## 2. File register",
         "",
@@ -328,7 +475,22 @@ def render_md(doc: Dict[str, Any]) -> str:
         "  file (`/home/hugo/codes/pocket/data/tdc/bindingdb_ic50.csv`); any",
         "  BindingDB path is BLOCKED until that source is restored.",
         "- The platinum set has no scaffold split yet: the 17,735 rows are a pool,",
-        "  not a fixed train/val/test partition.",
+        "  not a fixed train/val/test partition. It also needs deduplication at",
+        "  the `(compound_code, cell_line)` level before any AUC is reported.",
+        "- The CFM `scaffold_id` is a full-complex, stereo-aware key. Rebuilding",
+        "  it as a desalted, stereo-blind ligand scaffold would change the split",
+        "  and require retraining.",
+        "- The MoleculeNet `_scaffold_split` uses a stereo-aware key; the D-MPNN",
+        "  `ScaffoldSplitter` uses a stereo-blind key. They are not the same",
+        "  protocol.",
+        "",
+        "## 6. Leakage audit",
+        "",
+        "The measured train/val/test audit is `docs/DATA_LEAKAGE_AUDIT.md`",
+        "(machine twin `molmetal/reports/wf_a51_leakage_audit/leakage_audit.json`,",
+        "generated by `molmetal/scripts/wf_a51_leakage_audit.py`). Headline:",
+        "**no molecule-level leak** in any active split; scaffold-level caveats",
+        "are listed above.",
         "",
     ]
     return "\n".join(lines)
@@ -336,7 +498,17 @@ def render_md(doc: Dict[str, Any]) -> str:
 
 def main() -> int:
     doc = build()
-    JSON_OUT.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    # The full audit is a separate 120 KB artefact; keep the inventory JSON a
+    # pointer, not a copy.  The markdown renderer still sees the full dict.
+    out_doc = {k: v for k, v in doc.items() if k != "leakage"}
+    out_doc["leakage_audit"] = {
+        "path": str(LEAKAGE_JSON.relative_to(ROOT)),
+        "generated_by": "molmetal/scripts/wf_a51_leakage_audit.py",
+        "present": LEAKAGE_JSON.exists(),
+    }
+    JSON_OUT.write_text(
+        json.dumps(out_doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     MD_OUT.write_text(render_md(doc), encoding="utf-8")
     print(f"wrote {MD_OUT.relative_to(ROOT)} and {JSON_OUT.relative_to(ROOT)}")
     for d in doc["datasets"]:

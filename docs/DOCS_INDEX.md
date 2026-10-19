@@ -45,6 +45,7 @@ be audited (AGENTS.md section 5.5).
 ## What data do we train and test on?
 
 - `DATA_INVENTORY.md` — Every training/eval dataset with measured row counts, role, and status (ACTIVE / SUPERSEDED / DO-NOT-TRAIN). Regenerate with `molmetal/scripts/wf_a50_data_inventory.py`; do not hand-edit.
+- `DATA_LEAKAGE_AUDIT.md` — Measured train/val/test leakage audit for every active dataset (molecule-level, scaffold-level, cross-dataset). Regenerate with `molmetal/scripts/wf_a51_leakage_audit.py`; do not hand-edit.
 
 ## Superseded but retained
 
