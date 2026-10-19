@@ -36,7 +36,7 @@
       "Δ 效应量（MET-3，427 对/61 DOI）：DOI 留出下符号 0.6193 [0.5085, 0.7137]，MAE(Δ) 0.5089（恒零预测器 0.5299，只好 4.0%），校准斜率 0.32、R² 0.0039；预测 |Δ| 恒 0.10–0.13 vs 观测 0.53 → 只有方向、没有幅度。year 斜率 −1.14。",
       "决策：regret 0.1186 vs global_best 0.1198；top-1 0.566；Holm p=1.0。",
       "跨论文（强特征，MET-2）：DOI R² 0.3321 [0.2806, 0.3820]、scaffold 0.4503 [0.4102, 0.4884]、year 0.3739 [0.3230, 0.4175]；相对 ligand 0.5556 分别 −0.2235 / −0.1053 / −0.1817。旧特征对应值 0.1648 / 0.1585 / 0.1778。表示增益四协议全正 +0.0544/+0.0423/+0.0611/+0.0392。",
-      "校准：coverage 0.9044（名义 0.90），中位宽度 2.2083 log10。",
+      "校准（MET-4，21,404 行，α=0.10）：DOI global coverage 0.9004 / 中位宽 2.0052 log10；difficulty 0.8789 / 1.9195；ligand global 0.9003 / 1.6515。点校准 DOI slope 0.9256、r2_point 0.3321、r2_fit 0.3363；残差高斯 90% 宽 2.0466 ≈ conformal 实测 2.0052。同队列多金属 851 行覆盖仅 0.8096（单金属 0.9050）。旧 actionability 的 0.9044 / 2.2083 是不同设计，已被本 artifact 取代。",
       "跨金属：Ir 0.8295–0.8597 vs Krasnov 0.73；Ru 0.8128–0.8363 vs 0.81（持平）；LOMO 0.5575 / 0.5845。",
       "生成/对接：decode_ratio 0.998；RMSD 0.6578 Å，5/5 ≤2 Å；Vina 贵金属 BLOCKED。",
       "光毒性：Ru switch 0.2624 vs Ir 0.1373，差 +0.1251 [0.0395, 0.2048]；PI 预测 OOF R²<0。",
@@ -91,12 +91,6 @@
         "unit": "R2",
         "p": 2.259e-20,
         "artifact": "msrs_complex_features.json"
-      },
-      {
-        "metric": "Conformal coverage",
-        "value": 0.9044,
-        "nominal": 0.9,
-        "artifact": "msrs_actionability.json"
       }
     ],
     "medium": [
@@ -217,10 +211,10 @@
       },
       {
         "metric": "Conformal median width",
-        "value": 2.2083,
-        "unit": "log10",
-        "problem": "~162x IC50 span",
-        "artifact": "msrs_actionability.json"
+        "value": 2.0052,
+        "unit": "log10 (DOI, global)",
+        "problem": "~101x IC50 span; coverage 0.9004 is a conformal construction, not skill",
+        "artifact": "msrs_calibration.json"
       },
       {
         "metric": "Phototoxicity PI prediction",
@@ -239,12 +233,22 @@
         "value": "not measured on generated set",
         "problem": "4.71 is the metallo_drugs cohort",
         "artifact": "sa_score.json"
+      },
+      {
+        "metric": "Difficulty-scaled conformal",
+        "value": "coverage 0.8789 / Winkler 2.8587",
+        "problem": "worse than global on every proper score; sigma(x) fit on the same residuals it quantiles",
+        "artifact": "msrs_calibration.json"
+      },
+      {
+        "metric": "Conditional coverage, cohort >=2 metals",
+        "value": 0.8096,
+        "unit": "coverage",
+        "problem": "exchangeability broken by cohort structure (n=851; singletons 0.9050)",
+        "artifact": "msrs_calibration.json"
       }
     ],
     "missing": [
-      "Strong model 5-seed mean±std",
-      "Delta MAE / calibration slope / stratified CI",
-      "Regression calibration (slope, interval score, PIT)",
       "Decision curve (regret-coverage, net benefit)",
       "Independent external dataset",
       "Metal-blind ablation on the final model",
@@ -267,15 +271,15 @@
       },
       {
         "metric": "Delta sign (0.2091)",
-        "current": 0.6152,
+        "current": 0.6193,
         "target": 0.65,
-        "fallback": "report 0.615 + CI as barely above chance"
+        "fallback": "report 0.6193 [0.5085, 0.7137] as barely above chance"
       },
       {
         "metric": "Delta MAE",
-        "current": "not measured",
+        "current": 0.5089,
         "target": 0.3,
-        "fallback": "report measured value against the |delta| distribution"
+        "fallback": "model is 4.0% better than a zero predictor; magnitude not learnable"
       },
       {
         "metric": "Decision regret",
@@ -291,9 +295,9 @@
       },
       {
         "metric": "Conformal width",
-        "current": 2.2083,
+        "current": 2.0052,
         "target": 1.0,
-        "fallback": "report coverage pass / width fail"
+        "fallback": "coverage 0.90 is by construction; width 2.01 log10 makes intervals a limitation, not a contribution"
       },
       {
         "metric": "LOMO AUC",
@@ -609,7 +613,7 @@
       "title": "回归校准与区间",
       "layer": "评估",
       "priority": "P0",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "0.5 天",
       "why": "conformal coverage 0.9044 达标，但中位宽度 2.2083 log10（约 162 倍 IC50 跨度），不可操作；且没有 interval score、PIT、校准斜率。",
@@ -618,7 +622,89 @@
       "acceptance": "coverage 0.90±0.02；中位宽度 ≤1.0 log10；interval score 与 PIT 落盘。",
       "depends_on": [
         "MET-2"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_calibration.json",
+        "n_evaluated": 21404,
+        "point_calibration": {
+          "doi": {
+            "slope": 0.9256,
+            "intercept": 0.0493,
+            "r2_point": 0.3321,
+            "r2_fit": 0.3363,
+            "rmse": 0.6231,
+            "gaussian_width_90": 2.0466
+          },
+          "ligand": {
+            "slope": 1.074,
+            "intercept": -0.0765,
+            "r2_point": 0.5556,
+            "r2_fit": 0.5583,
+            "rmse": 0.5082,
+            "gaussian_width_90": 1.672
+          }
+        },
+        "intervals": {
+          "doi": {
+            "global": {
+              "coverage": 0.9004,
+              "median_width": 2.0052,
+              "winkler": 2.7362,
+              "pit_ks": 0.0012
+            },
+            "metal": {
+              "coverage": 0.9002,
+              "median_width": 2.0231,
+              "winkler": 2.7328,
+              "pit_ks": 0.0019
+            },
+            "difficulty": {
+              "coverage": 0.8789,
+              "median_width": 1.9195,
+              "winkler": 2.8587,
+              "pit_ks": 0.0439
+            }
+          },
+          "ligand": {
+            "global": {
+              "coverage": 0.9003,
+              "median_width": 1.6515,
+              "winkler": 2.2437,
+              "pit_ks": 0.0012
+            },
+            "metal": {
+              "coverage": 0.9003,
+              "median_width": 1.6278,
+              "winkler": 2.2405,
+              "pit_ks": 0.0019
+            },
+            "difficulty": {
+              "coverage": 0.8835,
+              "median_width": 1.6389,
+              "winkler": 2.3525,
+              "pit_ks": 0.0455
+            }
+          }
+        },
+        "conditional_coverage": {
+          "doi": {
+            "cohort_1_metal": 0.905,
+            "cohort_ge2_metals": 0.8096,
+            "n_ge2": 851
+          },
+          "ligand": {
+            "cohort_1_metal": 0.9063,
+            "cohort_ge2_metals": 0.7673,
+            "n_ge2": 851
+          }
+        },
+        "reading": "DOI 的 difficulty 变体 coverage 0.8789（偏离 0.90 超 0.02）、中位宽 1.9195 log10，两项判据都没过。global 的 0.9004 是 conformal 构造保证，不是能力；真正的问题是宽度——残差 SD 推出的高斯 90% 宽是 2.0466，conformal 实测 2.0052，说明模型就是有这么不准。金属 Mondrian 只把各组覆盖率拉平，平均宽度仍是 2.01。学出来的 difficulty 函数是负收益：宽度降 4.3%，coverage 掉 2.2 点、Winkler 变差、PIT KS 涨 36 倍（σ(x) 与取分位数用同一批残差）。条件覆盖在同队列多金属的 851 行上掉到 0.81（ligand 0.77），是交换性被队列结构打破的直接证据。DOI 的下降不是尺度问题：slope 0.9256、r2_fit−r2_point=0.004。",
+        "artifacts": [
+          "metrics/by_metric/msrs_calibration.json",
+          "results/msrs_generalization/oof.npz"
+        ]
+      },
+      "acceptance_result": "FAILED (doi/difficulty coverage 0.8789 vs 0.90±0.02; median width 1.9195 > 1.0 log10)"
     },
     {
       "id": "MET-5",
@@ -777,7 +863,7 @@
         "MET-6",
         "MET-10"
       ],
-      "note": "P0：MET-1 DONE（5-seed PASS）、MET-2 DONE-NEGATIVE（DOI 0.3321）、MET-3 DONE-NEGATIVE（符号 0.6193，斜率 0.32）。剩余 MET-4/6/10 全部 CPU。"
+      "note": "P0：MET-1 DONE（5-seed PASS）、MET-2 DONE-NEGATIVE（DOI 0.3321）、MET-3 DONE-NEGATIVE（符号 0.6193，斜率 0.32）、MET-4 DONE-NEGATIVE（coverage 0.8789，宽 1.9195）。剩余 MET-6/10 全部 CPU。"
     },
     "wave_M2_decision": {
       "items": [

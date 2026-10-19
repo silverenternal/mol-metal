@@ -1,0 +1,480 @@
+{
+  "artifact": "msrs_calibration",
+  "version": "1.0",
+  "requires_dual_split": false,
+  "generated_utc": "2026-10-19T10:56:11+00:00",
+  "provenance": {
+    "oof": "/home/hugo/codes/mol-metal/results/msrs_generalization/oof.npz",
+    "oof_sha256": "2a512e3ff6dfbbe8c4ba04b56e66e0af009896fc7b5daaaeba87260d6600fef5",
+    "script": "molmetal/scripts/msrs_calibration.py",
+    "git_commit": "21973f650e207546467886c468ae627246cdd7c2"
+  },
+  "design": {
+    "split_schema": "consumes MET-2's out-of-fold predictions; the dual-split gate does not apply",
+    "arm": "ligand+both",
+    "protocols": [
+      "doi",
+      "ligand"
+    ],
+    "alpha": 0.1,
+    "nominal_coverage": 0.9,
+    "coverage_tolerance": 0.02,
+    "width_gate": 1.0,
+    "min_metal_calibration_rows": 30,
+    "difficulty_model": {
+      "features": [
+        "prediction",
+        "metal_code",
+        "cell_line_code"
+      ],
+      "params": {
+        "n_estimators": 200,
+        "learning_rate": 0.05,
+        "num_leaves": 31,
+        "min_child_samples": 40,
+        "subsample": 0.8,
+        "subsample_freq": 1,
+        "colsample_bytree": 0.9,
+        "random_state": 20261018,
+        "verbose": -1
+      }
+    },
+    "caveat": "base predictions are MET-2 out-of-fold, so for outer fold k the calibration rows come from models that saw fold k; their residuals are mildly optimistic, which shrinks q. Coverage is therefore a lower bound, not an unbiased estimate."
+  },
+  "protocols": {
+    "doi": {
+      "n_evaluated": 21404,
+      "alpha": 0.1,
+      "point_calibration": {
+        "slope": 0.9256,
+        "intercept": 0.0493,
+        "r2_point": 0.3321,
+        "r2_fit": 0.3363,
+        "mean_bias": -0.0347,
+        "rmse": 0.6231,
+        "gaussian_width_90": 2.0466
+      },
+      "variants": {
+        "global": {
+          "n": 21404,
+          "coverage": 0.9004,
+          "mean_width": 2.0139,
+          "median_width": 2.0052,
+          "width_p10": 2.0029,
+          "width_p90": 2.031,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9187,
+              "mean_width": 2.0151
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.85,
+              "mean_width": 2.017
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9435,
+              "mean_width": 2.0157
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8811,
+              "mean_width": 2.0114
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.898,
+              "mean_width": 2.0135
+            }
+          },
+          "winkler": 2.7362,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.0998,
+              0.1006,
+              0.0997,
+              0.0999,
+              0.0995,
+              0.1004,
+              0.0998,
+              0.1001,
+              0.1006,
+              0.0996
+            ],
+            "max_abs_deviation_from_uniform": 0.0006,
+            "mean_pit": 0.5,
+            "ks_stat": 0.0012
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.905,
+              "mean_width": 2.014
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8096,
+              "mean_width": 2.0131
+            }
+          }
+        },
+        "metal": {
+          "n": 21404,
+          "coverage": 0.9002,
+          "mean_width": 2.0099,
+          "median_width": 2.0231,
+          "width_p10": 1.8488,
+          "width_p90": 2.0622,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9015,
+              "mean_width": 1.8661
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.9022,
+              "mean_width": 2.3371
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9014,
+              "mean_width": 1.6396
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8987,
+              "mean_width": 2.2201
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8997,
+              "mean_width": 2.0312
+            }
+          },
+          "winkler": 2.7328,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1004,
+              0.0998,
+              0.1003,
+              0.0995,
+              0.1002,
+              0.0995,
+              0.0996,
+              0.1001,
+              0.1,
+              0.1005
+            ],
+            "max_abs_deviation_from_uniform": 0.0005,
+            "mean_pit": 0.4998,
+            "ks_stat": 0.0019
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.9038,
+              "mean_width": 2.0052
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8331,
+              "mean_width": 2.1206
+            }
+          }
+        },
+        "difficulty": {
+          "n": 21404,
+          "coverage": 0.8789,
+          "mean_width": 1.9846,
+          "median_width": 1.9195,
+          "width_p10": 1.4246,
+          "width_p90": 2.5741,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.883,
+              "mean_width": 1.8968
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8644,
+              "mean_width": 2.196
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.8791,
+              "mean_width": 1.7122
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8769,
+              "mean_width": 2.0488
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8788,
+              "mean_width": 2.0034
+            }
+          },
+          "winkler": 2.8587,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1182,
+              0.1149,
+              0.1058,
+              0.1043,
+              0.0939,
+              0.0883,
+              0.0837,
+              0.0839,
+              0.0857,
+              0.1214
+            ],
+            "max_abs_deviation_from_uniform": 0.0214,
+            "mean_pit": 0.4834,
+            "ks_stat": 0.0439
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.8821,
+              "mean_width": 1.9778
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.8073,
+              "mean_width": 2.1054
+            }
+          }
+        }
+      }
+    },
+    "ligand": {
+      "n_evaluated": 21404,
+      "alpha": 0.1,
+      "point_calibration": {
+        "slope": 1.074,
+        "intercept": -0.0765,
+        "r2_point": 0.5556,
+        "r2_fit": 0.5583,
+        "mean_bias": 0.0042,
+        "rmse": 0.5082,
+        "gaussian_width_90": 1.672
+      },
+      "variants": {
+        "global": {
+          "n": 21404,
+          "coverage": 0.9003,
+          "mean_width": 1.6522,
+          "median_width": 1.6515,
+          "width_p10": 1.6449,
+          "width_p90": 1.6657,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9052,
+              "mean_width": 1.6518
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8433,
+              "mean_width": 1.6527
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9343,
+              "mean_width": 1.6513
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8645,
+              "mean_width": 1.6521
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.903,
+              "mean_width": 1.6524
+            }
+          },
+          "winkler": 2.2437,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1003,
+              0.0999,
+              0.0997,
+              0.1001,
+              0.0998,
+              0.1003,
+              0.0998,
+              0.099,
+              0.1011,
+              0.0999
+            ],
+            "max_abs_deviation_from_uniform": 0.0011,
+            "mean_pit": 0.5,
+            "ks_stat": 0.0012
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.9063,
+              "mean_width": 1.6523
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.7673,
+              "mean_width": 1.6515
+            }
+          }
+        },
+        "metal": {
+          "n": 21404,
+          "coverage": 0.9003,
+          "mean_width": 1.6568,
+          "median_width": 1.6278,
+          "width_p10": 1.6064,
+          "width_p90": 1.6617,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.9015,
+              "mean_width": 1.6195
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.9011,
+              "mean_width": 1.9634
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9054,
+              "mean_width": 1.4424
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8987,
+              "mean_width": 1.9825
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8999,
+              "mean_width": 1.6376
+            }
+          },
+          "winkler": 2.2405,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1004,
+              0.0992,
+              0.1005,
+              0.0997,
+              0.1003,
+              0.0995,
+              0.0995,
+              0.099,
+              0.1016,
+              0.1002
+            ],
+            "max_abs_deviation_from_uniform": 0.0016,
+            "mean_pit": 0.5001,
+            "ks_stat": 0.0019
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.9052,
+              "mean_width": 1.6512
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.7967,
+              "mean_width": 1.7953
+            }
+          }
+        },
+        "difficulty": {
+          "n": 21404,
+          "coverage": 0.8835,
+          "mean_width": 1.6486,
+          "median_width": 1.6389,
+          "width_p10": 1.1794,
+          "width_p90": 2.1135,
+          "by_group": {
+            "Ir": {
+              "n": 3725,
+              "coverage": 0.8985,
+              "mean_width": 1.6887
+            },
+            "Os": {
+              "n": 900,
+              "coverage": 0.8456,
+              "mean_width": 1.7468
+            },
+            "Re": {
+              "n": 761,
+              "coverage": 0.9041,
+              "mean_width": 1.5323
+            },
+            "Rh": {
+              "n": 967,
+              "coverage": 0.8614,
+              "mean_width": 1.781
+            },
+            "Ru": {
+              "n": 15051,
+              "coverage": 0.8824,
+              "mean_width": 1.6302
+            }
+          },
+          "winkler": 2.3525,
+          "pit": {
+            "n": 21404,
+            "bin_fraction": [
+              0.1173,
+              0.1142,
+              0.11,
+              0.1019,
+              0.0953,
+              0.0886,
+              0.0849,
+              0.0839,
+              0.0864,
+              0.1175
+            ],
+            "max_abs_deviation_from_uniform": 0.0175,
+            "mean_pit": 0.4816,
+            "ks_stat": 0.0455
+          },
+          "by_cohort_size": {
+            "1.0": {
+              "n": 20365,
+              "coverage": 0.8883,
+              "mean_width": 1.6451
+            },
+            "2.0": {
+              "n": 851,
+              "coverage": 0.7767,
+              "mean_width": 1.7215
+            }
+          }
+        }
+      }
+    }
+  },
+  "verdict": "NEGATIVE",
+  "verdict_rule": "doi protocol, difficulty variant: |coverage - 0.90| <= 0.02 AND median width <= 1.0 log10",
+  "gate_measurement": {
+    "coverage": 0.8789,
+    "median_width": 1.9195,
+    "mean_width": 1.9846,
+    "winkler": 2.8587
+  }
+}

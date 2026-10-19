@@ -8,13 +8,13 @@
 
 ## 0. 一句话结论
 
-我们已经**有 6 个可以直接当头条的强指标**（生成、对接、跨金属迁移、光毒性、表示增益、校准覆盖率），
-但**核心的金属替换预测线只有中等强度，且缺少同协议外部锚点**；决策层是明确的弱项。
+我们已经**有 5 个可以直接当头条的强指标**（生成、对接、跨金属迁移、光毒性、表示增益），
+但**核心的金属替换预测线只有中等强度，且缺少同协议外部锚点**；决策层与不确定性层是明确的弱项。
 要发强指标论文，不需要再造模型，需要做三件事：
 
 1. 把强项补齐到"5 seed + 多协议 + 外部基线"的可发表标准；
 2. 把弱项如实降级为边界，不要包装成卖点；
-3. 补上现在完全没有的 6 类指标（外部数据、Δ 误差、回归校准、决策曲线、金属消融、统计功效）。
+3. 补上现在完全没有的 5 类指标（外部数据、决策曲线、金属消融、统计功效、数据卡）。
 
 ---
 
@@ -49,9 +49,8 @@
 | Ru within-metal AUC | **0.8128–0.8363** | Krasnov 0.81（持平） | 同上 + `metal_activity_transfer_tie_sensitivity.json` | 平票规则敏感，只能写"持平" |
 | 光毒性 switch 差（Ru−Ir） | **+0.1251** [0.0395, 0.2048] | 无外部基线 | `msrs_phototoxicity.json` | 描述性，PI 本身不可预测 |
 | 全配合物表征增益（fragment） | **+0.1002 R²**（p=2.3e-20） | ligand_main_fragment 基线 | `msrs_complex_features.json` | 单 seed；canonical 上是 +0.1040 |
-| conformal 覆盖率 | **0.9044**（名义 0.90） | — | `msrs_actionability.json` | 区间宽度 2.21 log10，太宽 |
 
-**结论：这 8 条里，生成/对接/迁移/光毒性四条足以支撑一篇强指标论文的半张表。**
+**结论：这 7 条里，生成/对接/迁移/光毒性四条足以支撑一篇强指标论文的半张表。**
 
 ### 2.2 中等（能写，但不能当头条）
 
@@ -72,7 +71,9 @@
 |---|---|---|---|
 | 决策 regret vs global_best | 0.1186 vs 0.1198 | 差 0.0012，Holm p=1.0 | `msrs_hybrid_decision.json` |
 | 时间划分 Δ 符号 | **0.4786** | 低于随机；说明跨年份方向不可学 | `msrs_external_validation.json` |
-| conformal 区间宽度 | 中位 **2.2083** log10 | 约 162 倍 IC50 跨度，不可操作 | `msrs_actionability.json` |
+| conformal 区间宽度 | 中位 **2.0052** log10（DOI，global） | 约 100 倍 IC50 跨度；coverage 0.9004 是 conformal 构造保证，不是能力 | `msrs_calibration.json` |
+| 学出来的难度函数（difficulty） | coverage **0.8789**、Winkler **2.8587** | 比 global 更差：宽度只降 4.3%，coverage 掉 2.2 点，PIT KS 涨 36 倍 | 同上 |
+| 同队列多金属的条件覆盖 | **0.8096**（n=851） | 交换性被队列结构打破；单金属队列 0.9050 | 同上 |
 | 光毒性 PI 预测 | OOF R² < 0 | 只能描述，不能预测 | `msrs_surface_model.json` |
 | Vina（贵金属） | BLOCKED | 力场缺贵金属参数 | `vina_status.json` |
 | 生成 SA | 4.71（**metallo_drugs 队列**，不是生成物） | 生成物的 SA 没有同口径值 | `sa_score.json` |
@@ -83,8 +84,8 @@
 |---|---|---|
 | ~~强模型的 DOI/scaffold/year 泛化~~ | ~~配体分组会泄漏论文内一致性~~ | **已补（MET-2）：DOI 0.3321 / scaffold 0.4503 / year 0.3739** |
 | ~~强模型 5-seed 稳定性~~ | ~~0.5807 是单 seed~~ | **已补：0.5828 ± 0.0102，MET-1** |
-| Δ 的 MAE / 校准斜率 / 分层 | 符号准确率不能说明幅度 | 无 |
-| 回归校准（斜率、区间分数） | coverage 好不代表 sharpness 好 | 只有 coverage/width |
+| ~~Δ 的 MAE / 校准斜率 / 分层~~ | ~~符号准确率不能说明幅度~~ | **已补（MET-3）：MAE(Δ) 0.5089、斜率 0.32、R² 0.0039，负** |
+| ~~回归校准（斜率、区间分数）~~ | ~~coverage 好不代表 sharpness 好~~ | **已补（MET-4）：DOI 斜率 0.9256、r2_fit 0.3363、Winkler 2.74，负** |
 | 决策曲线（regret-coverage、net benefit） | 单点 regret 不能说明可用性 | 无 |
 | 外部独立数据集 | 所有验证都是同一语料的重划分 | 无 |
 | 最终模型的 metal-blind 消融 | 证明"金属感知"承重，而不只是相关 | 只有树模型上的 ligand vs +metal |
@@ -107,7 +108,7 @@
 | Δ MAE | **0.5089**（恒零预测器 0.5299） | ≤0.30 log10 | 未达标：模型只比恒零好 4.0%，幅度不可预测 |
 | 决策 regret | 0.1186 | **≤0.10**，Holm p<0.05，覆盖 ≥50% | 降级为边界，不作为卖点 |
 | top-1 | 0.5660 | **≥0.65** | 同上 |
-| conformal 宽度 | 2.2083 | **中位 ≤1.0 log10** | 报 coverage 达标、宽度不达标 |
+| conformal 宽度 | **2.0052**（DOI global）/ 1.9195（difficulty） | **中位 ≤1.0 log10** | 未达标：报 coverage 0.90 + 宽度 2.01，写明区间只能当限制 |
 | LOMO AUC | 0.5575 | **≥0.65** | 报"未见金属不可外推" |
 | 外部数据集 | 无 | ≥200 行，R²≥0.5 或 AUC≥0.75 | 标 BLOCKED-PENDING-DATA |
 | 生成 novelty | 无 | **≥0.90**（1−max Tanimoto to train） | 报 IntDiv1 0.869 |
@@ -136,7 +137,7 @@
 
 见 `todo.json :: work_packages` 的 MET-1..MET-11。优先级：
 
-- **P0（不做就不能投）**：MET-1 5-seed（DONE）、MET-2 四协议（DONE，负）、MET-3 Δ 指标、MET-4 校准、MET-6 金属消融、MET-10 数据卡。
+- **P0（不做就不能投）**：MET-1 5-seed（DONE）、MET-2 四协议（DONE，负）、MET-3 Δ 指标（DONE，负）、MET-4 校准（DONE，负）、MET-6 金属消融、MET-10 数据卡。
 - **P1（决定论文上限）**：MET-5 决策曲线、MET-7 外部数据、MET-8 统计功效。
 - **P2（生成线专用）**：MET-9 生成指标。
 - **P3（打包）**：MET-11 指标表自动生成。

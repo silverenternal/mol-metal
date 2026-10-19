@@ -6688,3 +6688,83 @@ ACTIVE count: **134 -> 135** (+1).
 
 ---
 
+## §6.127 — MET-4: the 90% interval is honest and useless (width ~2 log10)
+
+**Claim under test.**  MET-2 established that DOI holdout R2 is 0.3321.  The
+question MET-4 answers is whether the model knows *where* it is imprecise and
+whether a usable prediction interval exists.  Without one the model can only
+rank; it cannot say "this complex is better by X".
+
+**Setup.**  Split conformal on MET-2's out-of-fold predictions (arm
+`ligand+both`), alpha = 0.10, 21,404 evaluated rows, per outer fold.  Three
+variants: `global` (one quantile), `metal` (Mondrian by metal, <30 calibration
+rows falls back to global), `difficulty` (LightGBM sigma(x) on absolute OOF
+residuals with features `prediction / metal_code / cell_line_code`, then
+Mondrian on the normalised score).  Scored by coverage, mean/median width,
+Winkler interval score and PIT KS.
+
+**MEASURED.**
+
+| protocol | variant | coverage | median width | Winkler | PIT KS |
+|---|---|---|---|---|---|
+| doi | global | 0.9004 | 2.0052 | 2.7362 | 0.0012 |
+| doi | metal | 0.9002 | 2.0231 | 2.7328 | 0.0019 |
+| doi | **difficulty** | **0.8789** | **1.9195** | 2.8587 | 0.0439 |
+| ligand | global | 0.9003 | 1.6515 | 2.2437 | 0.0012 |
+| ligand | metal | 0.9003 | 1.6278 | 2.2405 | 0.0019 |
+| ligand | difficulty | 0.8835 | 1.6389 | 2.3525 | 0.0455 |
+
+Point calibration (DOI): slope 0.9256, intercept 0.0493, `r2_point` 0.3321,
+`r2_fit` 0.3363, RMSE 0.6231, Gaussian 90% width 2.0466.
+
+**Honest-negative (ACTIVE, this entry):**
+  * **The pre-registered gate was not met.**  Required |coverage - 0.90| <= 0.02
+    and median width <= 1.0 log10 on the DOI difficulty variant; measured
+    coverage 0.8789 (off by 0.0211) and median width 1.9195.
+  * **Coverage 0.90 is a construction, not a capability.**  Split conformal hits
+    nominal coverage by design under exchangeability.  The informative number is
+    width, and 1.92 log10 spans roughly two orders of magnitude in each
+    direction.
+  * **The width is not a tuning failure.**  The residual standard deviation
+    implies a Gaussian 90% width of 2.0466; conformal measures 2.0052.  The
+    interval is exactly as wide as the model is imprecise.  Narrowing it
+    requires better point predictions, not a different conformal variant.
+  * **Metal Mondrian buys nothing.**  Per-metal coverage is levelled
+    (0.8987-0.9022) but mean width stays at 2.01 and Winkler moves only
+    2.7362 -> 2.7328.  Residual scale is essentially metal-independent.
+  * **The difficulty model is a net loss.**  It cuts median width 4.3% but costs
+    2.2 coverage points, worsens Winkler (2.7362 -> 2.8587) and triples the PIT
+    KS statistic (0.0012 -> 0.0439).  sigma(x) is fit on the same residuals it
+    then quantiles, so q is systematically too small; the failure mode is the
+    finding: at this residual SNR a learned difficulty function does not
+    generalise.
+  * **Conditional coverage breaks where metals compete.**  The 851 rows (4.0%)
+    whose cohort contains >=2 metals get coverage 0.8096 (DOI) / 0.7673
+    (ligand) versus ~0.90 for singletons.  Residuals within a cohort are
+    correlated while conformal treats rows as independent.  This is the one
+    repairable direction, but 851 rows spread over cohorts leaves too few rows
+    per cluster for this task.
+  * **The DOI drop is not a scaling artefact.**  Slope 0.9256 and
+    `r2_fit` - `r2_point` = 0.004: linear recalibration recovers almost nothing.
+    MET-2's 0.22 loss is genuine signal loss.
+  * **A flat PIT is not a selling point.**  KS 0.0012 for `global` says the
+    conformal guarantee holds on that fold, nothing about the residual law.
+    The `difficulty` PIT is the informative one: 11.8% in the first bin against
+    a nominal 10%, i.e. over-confidence at both tails.
+
+**Why this matters.**  "Uncertainty quantification" cannot be a contribution.
+The intervals are valid and three times wider than MET-3's mean |delta| (0.53),
+so they cannot support any decision claim.  They belong in the limitations
+section, and the improvement path runs through point accuracy (MET-2's
+representation gain), not through interval methodology.
+
+**§6.127 catalog-count math.** Net catalog-count delta: **+1** (§6.127 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **179 -> 180** (+1).
+ACTIVE count: **135 -> 136** (+1).
+
+**Workflow** | MET-4 (2026-10-19; 0 GPU — CPU over 21,404 rows; 10 new tests;
+§5.2: every number traces to `metrics/by_metric/msrs_calibration.json`;
+§5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
+
