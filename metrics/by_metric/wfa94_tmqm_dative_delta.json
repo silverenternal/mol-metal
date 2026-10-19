@@ -1,0 +1,37 @@
+{
+  "metric": "wfa94_tmqm_dative_rule_delta",
+  "description": "MEASURED old-vs-new dative-candidate rule delta on real Pt tmQM clouds (metal-first atom ordering). Counts every i<j pair; 'old head' is the pre-Wf-A92 asymmetric donor(i)&metal(j) test over triu indices, 'new head' adds the transpose. 'old featurise' is the pre-Wf-A92 hardcoded Pt-only N/O/S rule.",
+  "scope": "Wf-A92 symmetric-dative fix, measured on a corpus that actually orders the metal first (the fix was bit-exact on MetalCytoTox, where the metal is appended last)",
+  "wf": "Wf-A94",
+  "source_script": "/tmp/wfa94_tmqm_dative.py (invoked as: python /tmp/wfa94_tmqm_dative.py 400)",
+  "data_source": ".data/molmetal/tmQM (tmQM_X{1,2,3}.xyz.gz + tmqm_parsed.csv)",
+  "cohort": {
+    "n_clouds": 400,
+    "metal": "Pt",
+    "include_hydrogens": false,
+    "seed": 0,
+    "split": null
+  },
+  "measurements": {
+    "n_pairs": 263796,
+    "metal_first_clouds": 342,
+    "metal_first_frac": 0.855,
+    "old_head_dative": 244,
+    "new_head_dative": 2007,
+    "head_missed_pairs": 1763,
+    "head_missed_frac_of_new": 0.8784,
+    "clouds_with_head_miss": 353,
+    "clouds_with_head_miss_frac": 0.8825,
+    "old_featurise_dative": 1767,
+    "new_featurise_dative": 2007,
+    "featurise_delta": 240,
+    "missed_dist_median_A": 2.8217,
+    "missed_dist_p90_A": 6.6552,
+    "missed_dist_max_A": 25.5616,
+    "missed_frac_lt_2p5A": 0.4697,
+    "missed_pairs_lt_2p5A": 828
+  },
+  "interpretation": "The old rule encoded 87.8% of all dative flags as 0 on tmQM, and 88.3% of clouds had at least one dropped flag. 828 of the 1,763 dropped pairs are within 2.5 A, i.e. at coordination-bond scale rather than long-range noise. MetalCytoTox was blind to this only because it appends the metal last (donor index < metal index).",
+  "verdict": "DEFECT CONFIRMED + FIXED (Wf-A92)",
+  "generated": "2026-10-19"
+}

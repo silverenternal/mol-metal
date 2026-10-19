@@ -924,6 +924,15 @@ def _panel_templates(ckpt: object, n_samples: int) -> "list":
     """
     from pathlib import Path as _Path
 
+    # Wf-A94 (2026-10-19) — this function builds tensors on the scaffold
+    # fallback path but never imported torch; ``import torch`` at line ~892
+    # is local to another function, so the fallback raised NameError: name
+    # 'torch' is not defined and the panel exited rc=1.  The CSV path hid it
+    # because it never reaches the scaffold branch.  ``AtomCloud`` was in the
+    # same state (imported only inside ``_decode_smiles_from_ckpt``).
+    import torch
+    from molmetal.models.bond_head import AtomCloud
+
     args = ckpt.get("args") if isinstance(ckpt, dict) else None
     csv_rel = args.get("data_csv") if isinstance(args, dict) else None
     if csv_rel:
@@ -1293,8 +1302,21 @@ def _decode_smiles_from_ckpt(
                     else f" @t={_dec_kw.get('decision_threshold', 0.5):.2f}"
                 )
             )
+        # Wf-A94 (2026-10-19) — decode with the same dative cutoff the
+        # checkpoint was trained with, exactly as the decision rule above.
+        # A pre-A93 checkpoint carries no key; 2.6 is the calibrated value
+        # (metrics/by_metric/wfa94_tmqm_dative_calibration.json).
+        _ck_args = ckpt.get("args") if isinstance(ckpt, dict) else None
+        _dative_cut = float(
+            (_ck_args or {}).get("dative_distance_cutoff", 2.6)
+            if isinstance(_ck_args, dict) else 2.6
+        )
         decoder = YuelBondBondDecoder(
-            head=head, hidden_dim=hidden_dim, n_layers=3, **_dec_kw
+            head=head,
+            hidden_dim=hidden_dim,
+            n_layers=3,
+            dative_max_distance=_dative_cut,
+            **_dec_kw,
         )
         # Wf-A82 — YuelBondBondDecoder is a plain class, not an nn.Module, so
         # the pre-existing `decoder.eval()` raised AttributeError on EVERY

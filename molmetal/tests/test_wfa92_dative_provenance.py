@@ -192,6 +192,39 @@ def test_featurise_does_not_mark_a_carbon_metal_pair_dative() -> None:
     assert pf is not None
     assert not bool(pf.is_dative_candidate.any())
 
+def test_halide_donors_are_dative_on_the_decode_path() -> None:
+    """Wf-A94 — halides are donors, matching the cohort builder's labels.
+
+    MEASURED on 400 real Pt tmQM clouds with Wiberg-BO truth: 332 of
+    1,701 true Pt bonds (19.5%) are Pt-Cl/Br/I/F, and the pre-Wf-A94 donor
+    set flagged 0 of them.  On the canonical 5-metal MetalCytoTox cohort
+    the extension is bit-exact (0 of 1,894 builder-written metal bonds have
+    a halide partner).
+    """
+    for z_halide in (9, 17, 35, 53):
+        assert z_halide in _DONOR_ZS
+        head = YuelBondDecoderHead(hidden_dim=16, n_layers=1)
+        decoder = YuelBondDecoder(head=head)
+        pf = decoder.featurise(_two_atom_cloud(78, z_halide, 2.2)).pair_features
+        assert pf is not None
+        assert bool(pf.is_dative_candidate.any()), z_halide
+
+
+def test_decoder_dative_bound_matches_the_calibrated_default() -> None:
+    """Wf-A94 — 2.6 A, the same cutoff the cohort builder labels with.
+
+    Swept against tmQM BO truth: 2.6 A is the best-F1 point (0.9888) and
+    the value every config already declares under
+    ``flow.dative_distance_cutoff``; the decoder used to hardcode 2.5 and
+    never read that key.
+    """
+    dec = YuelBondBondDecoder(hidden_dim=16, n_layers=1)
+    assert dec.dative_max_distance == 2.6
+    near = _two_atom_cloud(78, 7, 2.55)
+    far = _two_atom_cloud(78, 7, 2.75)
+    assert dec._is_dative_pair_at(near, 0, 1, 78, 7, None)
+    assert not dec._is_dative_pair_at(far, 0, 1, 78, 7, None)
+
 
 # ---------------------------------------------------------------------------
 # The selector's rule: truth first, then Z + distance

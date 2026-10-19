@@ -82,12 +82,18 @@ def test_blocker_1_configure_reference_resolves_default_clone(tmp_path):
         f"expected {root}/__init__.py to exist — Facebook clone is "
         f"missing or in the wrong place"
     )
-    # Sanity: the root should contain the standard Facebook upstream modules.
+    # Sanity: the clone must carry the standard Facebook upstream modules.
+    # Wf-A94 (2026-10-19) — they live one level DOWN (root/flow_matching/),
+    # not at the root; ``configure_reference`` only guarantees
+    # ``root/__init__.py`` (a symlink into the inner package).  The old
+    # assertions looked at the outer root and failed on a complete clone.
+    inner = root / "flow_matching"
+    assert inner.is_dir(), f"expected {inner} to exist"
     assert (
-        root / "interpolation.py"
+        inner / "interpolation.py"
     ).is_file(), "expected flow_matching/interpolation.py — clone is incomplete"
     assert (
-        root / "sampler.py"
+        inner / "sampler.py"
     ).is_file(), "expected flow_matching/sampler.py — clone is incomplete"
 
 

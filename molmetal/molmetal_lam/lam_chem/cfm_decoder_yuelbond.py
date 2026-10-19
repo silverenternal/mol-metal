@@ -593,7 +593,16 @@ class YuelBondBondDecoder:
         # it.  A cloud that carries ``is_dative_pair`` truth bypasses the
         # rule entirely (truth wins), so the bound only governs the
         # generation path, where there is no truth.
-        dative_max_distance: float = 2.5,
+        #
+        # Wf-A94 (2026-10-19) — 2.5 -> 2.6 A, CALIBRATED rather than
+        # inherited.  Swept against Wiberg-BO truth on 400 real Pt tmQM
+        # clouds (1,701 true Pt bonds): 2.5 A gives precision 0.9946 /
+        # recall 0.9677 (F1 0.9809); 2.6 A gives 0.9935 / 0.9841
+        # (F1 0.9888), the best F1 on the grid.  2.6 A is also the cutoff
+        # the cohort builder writes the labels with, so label and decode
+        # now agree.  See
+        # ``metrics/by_metric/wfa94_tmqm_dative_calibration.json``.
+        dative_max_distance: float = 2.6,
     ) -> None:
         self._decoder = YuelBondDecoder(
             head=head,

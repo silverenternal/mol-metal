@@ -109,7 +109,21 @@ _METAL_SET_PRESETS: dict = {
 #: head's featuriser, and (for Se) invisible to the head's forward.  The
 #: head is TRAINED with one list and DECODED with another.  One set now,
 #: imported by every site.
-_DONOR_ZS: frozenset = frozenset({7, 8, 15, 16, 34})  # N, O, P, S, Se
+#:
+#: Wf-A94 (2026-10-19) — HALIDES ADDED.  The cohort builder had always
+#: accepted halide donors (``_DONOR_STRENGTH`` in the trainer listed
+#: Cl/Br/I/F), so a metal-halide edge was written as a training LABEL while
+#: the head was told ``is_dative=0`` for the same pair.  MEASURED on 400
+#: real Pt tmQM clouds with Wiberg-BO truth: 332 of 1,701 true Pt bonds
+#: (19.5%) are Pt-Cl/Br/I/F and the old set flagged 0 of them, so the
+#: element-filtered ceiling rose from 945/1,701 (55.6%) to 1,277/1,701
+#: (75.1%).  The distance bound itself is calibrated in the same file
+#: (2.6 A: precision 0.9935 / recall 0.9841).  On the
+#: canonical 5-metal MetalCytoTox cohort the extension is BIT-EXACT: 0 of
+#: 1,894 builder-written metal bonds have a halide partner (MEASURED, 399
+#: clouds), so no archived result moves.
+_DONOR_ZS: frozenset = frozenset({7, 8, 9, 15, 16, 17, 34, 35, 53})
+#: N, O, F, P, S, Cl, Se, Br, I
 
 #: 2026-10-04 — EXTENDED table covering all six of the project's target metals.
 #:

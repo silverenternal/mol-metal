@@ -273,6 +273,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=500,
         help="Cap on SMILES loaded from CSV (default 500)",
     )
+    parser.add_argument(
+        "--ref-repo-path",
+        dest="ref_repo_path",
+        type=str,
+        default=None,
+        help=(
+            "Wf-257 blocker 3 — path to the upstream flow_matching clone. "
+            "None (default) keeps LipmanFlowMatchingAdapter's canonical "
+            "default (molmetal/references/flow_matching)."
+        ),
+    )
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument(
@@ -484,6 +495,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             cfg_scale=1.0,
             context_dropout=0.1,
             pocket_embed_scale=0.1,
+            # Wf-A94 (2026-10-19) — the flag was dropped in a later rewrite
+            # while two tests still asserted it.  Only pass it when set, so
+            # the default path constructs exactly the same adapter as before.
+            **(
+                {}
+                if getattr(args, "ref_repo_path", None) is None
+                else {"ref_repo_path": str(args.ref_repo_path)}
+            ),
         )
 
     # Resolve device: prefer cuda:0
@@ -491,6 +510,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"[metallo_smoke] setup(device={device})...")
     adapter.setup(device=device)
     print(f"[metallo_smoke] resolved device: {adapter.device}")
+    print(f"[metallo_smoke] ref_repo_path = {adapter._ref_repo}")
 
     # Quick sanity: confirm P0/P1 stack
     print(

@@ -1,0 +1,35 @@
+{
+  "metric": "wfa94_cohort_placement_audit",
+  "description": "MEASURED audit of the canonical 5-metal MetalCytoTox cohort build: frequency of the Wf-A93 metal-placement push-cap hit, and the element distribution of the metal-donor bonds the builder writes (which is what the donor-set extension must stay bit-exact against).",
+  "scope": "Wf-A93 bonded placement cap + Wf-A94 donor-set unification",
+  "wf": "Wf-A94",
+  "source_script": "/tmp/wfa94_cohort_audit.py (invoked as: python /tmp/wfa94_cohort_audit.py 400)",
+  "data_source": ".data/molmetal/metalcytotox_5metal_multitask_v3.csv (train split)",
+  "cohort": {
+    "n_clouds_requested": 400,
+    "n_clouds_built": 399,
+    "seed": 0,
+    "metal_placement": "bonded",
+    "dative_distance_cutoff": 2.6
+  },
+  "measurements": {
+    "placement_calls": 399,
+    "placement_cap_hit": 2,
+    "placement_cap_hit_rate": 0.00501,
+    "n_metal_bonds": 1894,
+    "metal_bond_z": {
+      "N": 564,
+      "O": 1228,
+      "S": 50,
+      "P": 52
+    },
+    "metal_bond_z_outside_pre_wfa94_donor_set": {},
+    "outside_frac": 0,
+    "bond_dist_p50_A": 2.05,
+    "bond_dist_p95_A": 2.4025,
+    "bond_dist_max_A": 2.5944
+  },
+  "interpretation": "The push cap fires on 0.50% of clouds (2/399), so 'could not clear the ligand' is a rare tail rather than a silent failure mode. Every builder-written metal bond is N/O/S/P, i.e. already inside the pre-Wf-A94 donor set: adding halides is bit-exact on this corpus (0/1,894 bonds change), which is why no archived CFM result moves.",
+  "verdict": "CAP RATE MEASURED (0.50%); DONOR EXTENSION BIT-EXACT ON THE CANONICAL COHORT",
+  "generated": "2026-10-19"
+}

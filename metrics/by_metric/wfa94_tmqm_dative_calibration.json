@@ -1,0 +1,131 @@
+{
+  "metric": "wfa94_tmqm_dative_calibration",
+  "description": "MEASURED calibration of the dative candidate rule against Wiberg bond-order ground truth on 400 real Pt tmQM clouds. Scores the distance cutoff (precision/recall/F1) and the element filter (donor-set coverage) independently, because they are two separate gates.",
+  "scope": "Wf-A92 dative_max_distance (was inherited 2.5 A) + Wf-A94 donor-set extension (halides)",
+  "wf": "Wf-A94",
+  "source_script": "/tmp/wfa94_tmqm_coordination.py (invoked as: python /tmp/wfa94_tmqm_coordination.py 400)",
+  "data_source": ".data/molmetal/tmQM (Wiberg BO blocks, BO >= BO_BOND_THRESHOLD)",
+  "cohort": {
+    "n_clouds": 400,
+    "metal": "Pt",
+    "n_true_pt_bonds": 1701,
+    "seed": 0
+  },
+  "measurements": {
+    "n_clouds_with_pt_bonds": 400,
+    "true_bond_z_inside_donor_set_pre_wfa94": {
+      "N": 518,
+      "O": 108,
+      "P": 206,
+      "S": 109,
+      "Se": 4
+    },
+    "true_bond_z_outside_donor_set_pre_wfa94": {
+      "Cl": 267,
+      "C": 396,
+      "I": 38,
+      "Br": 26,
+      "Si": 5,
+      "As": 15,
+      "B": 8,
+      "F": 1
+    },
+    "donor_ceiling_pre_wfa94": 945,
+    "donor_ceiling_post_wfa94": 1277,
+    "donor_ceiling_frac_pre": 0.5556,
+    "donor_ceiling_frac_post": 0.7507,
+    "true_bond_dist_p50_A": 2.1226,
+    "true_bond_dist_p90_A": 2.3696,
+    "true_bond_dist_p99_A": 2.6258,
+    "true_bond_dist_max_A": 2.8007,
+    "n_donor_pairs_without_bond": 1062,
+    "nonbond_donor_dist_p01_A": 2.5764,
+    "nonbond_donor_dist_p05_A": 2.8019,
+    "nonbond_donor_dist_p50_A": 4.1335,
+    "cutoff_sweep": {
+      "2.0": {
+        "tp": 317,
+        "fp": 0,
+        "fn": 1384,
+        "precision": 1,
+        "recall": 0.1864,
+        "f1": 0.3142
+      },
+      "2.1": {
+        "tp": 797,
+        "fp": 0,
+        "fn": 904,
+        "precision": 1,
+        "recall": 0.4685,
+        "f1": 0.6381
+      },
+      "2.2": {
+        "tp": 974,
+        "fp": 0,
+        "fn": 727,
+        "precision": 1,
+        "recall": 0.5726,
+        "f1": 0.7282
+      },
+      "2.3": {
+        "tp": 1325,
+        "fp": 2,
+        "fn": 376,
+        "precision": 0.9985,
+        "recall": 0.779,
+        "f1": 0.8752
+      },
+      "2.4": {
+        "tp": 1590,
+        "fp": 4,
+        "fn": 111,
+        "precision": 0.9975,
+        "recall": 0.9347,
+        "f1": 0.9651
+      },
+      "2.5": {
+        "tp": 1646,
+        "fp": 9,
+        "fn": 55,
+        "precision": 0.9946,
+        "recall": 0.9677,
+        "f1": 0.9809
+      },
+      "2.6": {
+        "tp": 1674,
+        "fp": 11,
+        "fn": 27,
+        "precision": 0.9935,
+        "recall": 0.9841,
+        "f1": 0.9888
+      },
+      "2.8": {
+        "tp": 1700,
+        "fp": 53,
+        "fn": 1,
+        "precision": 0.9698,
+        "recall": 0.9994,
+        "f1": 0.9844
+      },
+      "3.0": {
+        "tp": 1701,
+        "fp": 172,
+        "fn": 0,
+        "precision": 0.9082,
+        "recall": 1,
+        "f1": 0.9519
+      },
+      "3.2": {
+        "tp": 1701,
+        "fp": 306,
+        "fn": 0,
+        "precision": 0.8475,
+        "recall": 1,
+        "f1": 0.9175
+      }
+    }
+  },
+  "interpretation": "2.6 A is the best-F1 point (0.9888) and is the cutoff the cohort builder already writes labels with, so the decoder default was moved 2.5 -> 2.6. The element filter is the larger error term: even at the perfect distance the pre-Wf-A94 set can only reach 55.6% of true Pt bonds; halides lift that to 75.1%. The remaining 24.9% is Pt-C (396), Pt-As (15), Pt-B (8), Pt-Si (5) - covalent/organometallic bonds, left OUT of the donor set deliberately because 'dative candidate' would then fire on every Pt-C contact.",
+  "verdict": "CUTOFF CALIBRATED (2.6 A); HALIDES ADDED; Pt-C GAP RECORDED",
+  "generated": "2026-10-19"
+}
