@@ -8249,8 +8249,14 @@ def build_cloud_from_csv_row(
         # metal-halide edge was a training LABEL carrying is_dative=0 at
         # decode time.  Ranking is N > P > S > O > halide (Wf-A68); every
         # other member of the canonical set takes the halide rank.
-        _DONOR_RANK = {7: 5, 15: 4, 16: 3, 8: 2}
-        _DONOR_STRENGTH = {z: _DONOR_RANK.get(z, 1) for z in _DONOR_ZS}
+        # Wf-A95 (2026-10-19) — only elements with an explicit rank become
+        # BUILDER donors.  The candidate set now also carries C/B/As/Si
+        # (feature-side: tmQM shows 424/1,701 true Pt bonds to those), but a
+        # free-ligand SMILES has no metal-carbon bond intent, so ranking C as
+        # a donor would manufacture Pt-C coordination edges that the chemistry
+        # does not support.
+        _DONOR_RANK = {7: 5, 15: 4, 16: 3, 8: 2, 9: 1, 17: 1, 34: 1, 35: 1, 53: 1}
+        _DONOR_STRENGTH = {z: r for z, r in _DONOR_RANK.items() if z in _DONOR_ZS}
         cap = _coordination_capacity(metal_sym, ox)
         for atom in mol.GetAtoms():
             if atom.GetIdx() == metal_idx_in_mol:
@@ -11868,6 +11874,56 @@ def build_joint_model(args, device=None) -> "CFMJointModel":
     return model.to(device) if device is not None else model
 
 
+def checkpoint_feature_schema(ckpt) -> dict:
+    """Return the Wf-A95 feature schema a checkpoint was trained under."""
+    if isinstance(ckpt, dict):
+        fs = ckpt.get("feature_schema")
+        if isinstance(fs, dict):
+            return fs
+    return {}
+
+
+def restore_feature_schema(model, decoder, ckpt, *, verbose: bool = True) -> dict:
+    """Apply a checkpoint's feature schema so its decode matches its training.
+
+    Wf-A95 (2026-10-19) — ``is_dative`` is computed at DECODE time from the
+    donor set, so extending that set (Wf-A94 halides, Wf-A95 C/B/As/Si)
+    changes the pair-head input for every checkpoint that predates the
+    extension.  A checkpoint that carries ``feature_schema`` restores its
+    donor set and dative cutoff; one that does not is left on the current
+    defaults and the caller is told, so "not comparable" is a printed fact
+    rather than a silent reinterpretation.
+    """
+    schema = checkpoint_feature_schema(ckpt)
+    if not schema:
+        if verbose:
+            print(
+                "[cfm-compat] checkpoint has no feature_schema (pre-Wf-A95); "
+                "decoding with the CURRENT donor set / dative cutoff — its "
+                "is_dative column may differ from the one it trained on.",
+                flush=True,
+            )
+        return {}
+    donor = schema.get("donor_zs")
+    if donor:
+        model.head.donor_zs = frozenset(int(z) for z in donor)
+    metal = schema.get("metal_set")
+    if metal:
+        model.head.metal_set = frozenset(int(z) for z in metal)
+    if "dative_max_distance" in schema and decoder is not None:
+        decoder.dative_max_distance = float(schema["dative_max_distance"])
+    if verbose:
+        _cut = getattr(decoder, "dative_max_distance", None)
+        print(
+            f"[cfm-compat] restored feature_schema: "
+            f"donor_zs={sorted(model.head.donor_zs)} "
+            + (f"dative_max_distance={float(_cut):.2f} " if _cut is not None else "")
+            + f"metal_placement={schema.get('metal_placement')}",
+            flush=True,
+        )
+    return schema
+
+
 def load_cfm_checkpoint(path, map_location="cpu"):
     """Load a CFM checkpoint in EITHER serialisation the trainer emits.
 
@@ -13279,6 +13335,11 @@ def main() -> int:
         # since Wf-A30-1; see load_cfm_checkpoint.
         _rsd = load_cfm_checkpoint(_resume_path, map_location=device)
         _rstate = _rsd.get("model_state_dict", _rsd)
+        # Wf-A95 — decode/train the resumed run with the feature schema the
+        # checkpoint was fitted under (donor set + dative cutoff), not the
+        # current module defaults.  No-op for a pre-Wf-A95 checkpoint, which
+        # prints why its is_dative column may differ.
+        restore_feature_schema(model, decoder, _rsd)
         try:
             # Wf-A30-1 (2026-10-14) — strict=False + allow-list log so a
             # checkpoint predating the new velocity field (vel_probe vs.
@@ -15004,6 +15065,24 @@ def main() -> int:
                 _decode_cal = {
                     "error": f"{type(_cal_exc_a81).__name__}: {_cal_exc_a81}"
                 }
+            # Wf-A95 (2026-10-19) — the FEATURE SCHEMA these weights were
+            # fitted under.  ``is_dative`` is computed at decode time from
+            # the donor set, so extending the set silently changes the input
+            # every pre-existing checkpoint sees.  Stamping it lets
+            # ``restore_feature_schema`` decode an old checkpoint with the
+            # set it was trained on instead of the current one.
+            _feature_schema = {
+                "donor_zs": sorted(
+                    int(z) for z in getattr(model.head, "donor_zs", _DONOR_ZS)
+                ),
+                "metal_set": sorted(int(z) for z in model.head.metal_set),
+                "dative_max_distance": float(
+                    getattr(decoder, "dative_max_distance", 2.6)
+                ),
+                "metal_placement": str(
+                    getattr(args, "metal_placement", "bonded")
+                ),
+            }
             _ckpt_state_a30 = {
                 "model_state_dict": model.state_dict(),
                 "optimiser_state_dict": optimiser.state_dict(),
@@ -15031,6 +15110,7 @@ def main() -> int:
                 # argmax, i.e. reads the weights with a different rule than
                 # the one that produced the run's own gen_validity.
                 "decode_calibration": _decode_cal,
+                "feature_schema": _feature_schema,
             }
             try:
                 import pickle as _pickle_a30  # noqa: WPS433 (deferred import)

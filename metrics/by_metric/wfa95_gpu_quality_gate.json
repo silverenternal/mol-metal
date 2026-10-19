@@ -1,0 +1,134 @@
+{
+  "metric": "wfa95_gpu_quality_gate",
+  "description": "MEASURED 5-epoch GPU gate for the Wf-A90..A95 CFM stack (metal pair features ON, donor set with carbon, calibrated 2.6 A dative cutoff, checkpoint feature_schema). Purpose: prove the new code paths run end-to-end on CUDA and record a post-A95 baseline. This is a PLUMBING gate, not an accuracy claim.",
+  "scope": "Wf-A95 GPU quality gate",
+  "wf": "Wf-A95",
+  "config": "/tmp/wfa95_gpu_gate.yaml (copy of configs/cfm_5metal_smoke_2026_10_17.yaml with flow.metal_placement=bonded, compute.device=cuda:0, protocol.epochs=5, gen_eval_seeds=0,1,2)",
+  "data_source": ".data/molmetal/metalcytotox_5metal_multitask_v3.csv (train 199 / val 64)",
+  "device": "cuda:0 (NVIDIA RTX PRO 6000 Blackwell; 93.7 GiB free at launch)",
+  "cohort": {
+    "n_train": 199,
+    "n_val": 64,
+    "seed": 0,
+    "metal_mix_train": {
+      "Ru": 137,
+      "Ir": 38,
+      "Os": 8,
+      "Re": 8,
+      "Rh": 8
+    },
+    "metal_mix_val": {
+      "Ru": 50,
+      "Ir": 6,
+      "Rh": 5,
+      "Os": 2,
+      "Re": 1
+    }
+  },
+  "wall_time_s": 913,
+  "per_epoch": [
+    {
+      "epoch": 0,
+      "wall_s": 324.3,
+      "train_loss": 17.7692,
+      "bond_ce": 15.13864,
+      "decode_ratio": 1,
+      "bond_f1": 0.0975,
+      "bond_pr_auc": 0.9246,
+      "gen_validity": 1,
+      "gen_validity_n": 48,
+      "gen_single_fragment_ratio": 0,
+      "gen_largest_fragment_frac": 0.8629,
+      "gen_metal_ratio": 1
+    },
+    {
+      "epoch": 1,
+      "wall_s": 145.6,
+      "train_loss": 13.05707,
+      "bond_ce": 11.33738,
+      "decode_ratio": 1,
+      "bond_f1": 0.0973,
+      "bond_pr_auc": 0.9255,
+      "gen_validity": 1,
+      "gen_validity_n": 48,
+      "gen_single_fragment_ratio": 0,
+      "gen_largest_fragment_frac": 0.584,
+      "gen_metal_ratio": 1
+    },
+    {
+      "epoch": 2,
+      "wall_s": 146.8,
+      "train_loss": 4.53108,
+      "bond_ce": 3.77693,
+      "decode_ratio": 1,
+      "bond_f1": 0.0405,
+      "bond_pr_auc": 0.9615,
+      "gen_validity": 1,
+      "gen_validity_n": 48,
+      "gen_single_fragment_ratio": 0,
+      "gen_largest_fragment_frac": 0.748,
+      "gen_metal_ratio": 1
+    },
+    {
+      "epoch": 3,
+      "wall_s": 153.7,
+      "train_loss": 1.3248,
+      "bond_ce": 1.31069,
+      "decode_ratio": 1,
+      "bond_f1": 0.0435,
+      "bond_pr_auc": 0.9673,
+      "gen_validity": 1,
+      "gen_validity_n": 48,
+      "gen_single_fragment_ratio": 0,
+      "gen_largest_fragment_frac": 0.6735,
+      "gen_metal_ratio": 1
+    },
+    {
+      "epoch": 4,
+      "wall_s": 142.5,
+      "train_loss": 0.92119,
+      "bond_ce": 0.9879,
+      "decode_ratio": 1,
+      "bond_f1": 0.0925,
+      "bond_pr_auc": 0.9825,
+      "gen_validity": 1,
+      "gen_validity_n": 48,
+      "gen_single_fragment_ratio": 0,
+      "gen_largest_fragment_frac": 0.6996,
+      "gen_metal_ratio": 1
+    }
+  ],
+  "verification": {
+    "checkpoint_feature_schema": {
+      "donor_zs": [
+        6,
+        7,
+        8,
+        9,
+        15,
+        16,
+        17,
+        34,
+        35,
+        53
+      ],
+      "metal_set": [
+        44,
+        45,
+        46,
+        75,
+        76,
+        77,
+        78
+      ],
+      "dative_max_distance": 2.6,
+      "metal_placement": "bonded"
+    },
+    "panel_new_checkpoint": "[cfm-compat] restored feature_schema: donor_zs=[6,7,8,9,15,16,17,34,35,53] dative_max_distance=2.60 metal_placement=bonded; 4/4 clouds decoded",
+    "panel_pre_a95_checkpoint": "[cfm-compat] checkpoint has no feature_schema (pre-Wf-A95); ... 2/2 clouds decoded",
+    "decoder_line": "[cfm-decoder] ... dative_max_distance=2.60 A"
+  },
+  "interpretation": "GPU EXECUTION: PASS. No NaN/Inf, loss falls 17.77 -> 0.92, decode_ratio 1.000 (64/64), gen_validity 1.000 (48/48 across 3 seeds), metal_ratio 1.000, bond PR-AUC 0.9246 -> 0.9825. QUALITY: NOT established. gen_single_fragment_ratio is 0.000 at every epoch and fragments_mean was 10.5 at epoch 0: decode_ratio counts RDKit-sanitised strings and loose atoms sanitise, so 1.000 must not be read as connected molecules. bond_f1 at the shipped threshold is 0.04-0.10 while PR-AUC is 0.98 — the ranking is strong and the operating point is wrong, which is a calibration problem (Wf-A81 per-class thresholds), not a representation problem.",
+  "verdict": "GPU PLUMBING GATE PASS; CONNECTIVITY NOT ESTABLISHED",
+  "generated": "2026-10-19"
+}

@@ -1318,6 +1318,20 @@ def _decode_smiles_from_ckpt(
             dative_max_distance=_dative_cut,
             **_dec_kw,
         )
+        # Wf-A95 — a checkpoint that carries ``feature_schema`` decodes with
+        # the donor set and cutoff it was TRAINED under.  Pre-A95 checkpoints
+        # print that they are being read with the current defaults.
+        try:
+            from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
+                restore_feature_schema as _restore_schema,
+            )
+
+            _restore_schema(model, decoder, ckpt)
+        except Exception as _schema_exc:  # pragma: no cover - safety net
+            print(
+                f"[wfA54-decode] WARNING: feature_schema not applied "
+                f"({type(_schema_exc).__name__}: {_schema_exc})"
+            )
         # Wf-A82 — YuelBondBondDecoder is a plain class, not an nn.Module, so
         # the pre-existing `decoder.eval()` raised AttributeError on EVERY
         # path (it was unreachable before because v2 ckpts were refused and

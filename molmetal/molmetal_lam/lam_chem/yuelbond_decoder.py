@@ -122,8 +122,21 @@ _METAL_SET_PRESETS: dict = {
 #: MetalCytoTox cohort the extension changes 0 of 1,894 builder-written
 #: bond LABELS and flips 8 of 597,661 pair-feature columns (7/399 clouds;
 #: MEASURED), so no archived result moves materially.
-_DONOR_ZS: frozenset = frozenset({7, 8, 9, 15, 16, 17, 34, 35, 53})
-#: N, O, F, P, S, Cl, Se, Br, I
+#:
+#: Wf-A95 (2026-10-19) — CARBON ADDED.  Per-metal tmQM calibration
+#: (``metrics/by_metric/wfa95_per_metal_dative_calibration.json``): the old
+#: set reached only 35-56% of true metal bonds on Ru/Ir/Rh/Os/Re and 53% on
+#: Pt; carbon alone is 295-721 bonds per metal (28-51%).  With C the element
+#: ceiling is 100% for all six, and the 2.6 A distance rule keeps precision
+#: 0.88-0.95 / recall 0.88-0.99 (F1 0.92-0.99).  C is FEATURE-side only: the
+#: cohort builder does not rank it (``_DONOR_RANK`` in the trainer), because
+#: a free-ligand SMILES carries no metal-carbon bond intent.  On the
+#: canonical MetalCytoTox cohort it flips 1,539 of 597,661 pair-feature
+#: columns (308/399 clouds) and adds 0 builder-written bonds.  B/Si/As stay
+#: out: they are absent from ``_YUELBOND_Z_TABLE`` (the head would read a
+#: padding slot) and together are 0.8-3.6% of true bonds.
+_DONOR_ZS: frozenset = frozenset({6, 7, 8, 9, 15, 16, 17, 34, 35, 53})
+#: C, N, O, F, P, S, Cl, Se, Br, I
 
 #: 2026-10-04 — EXTENDED table covering all six of the project's target metals.
 #:
@@ -473,6 +486,13 @@ class YuelBondDecoderHead(nn.Module):
         # bit-exactly; the trainer turns it ON for new runs through
         # --use-metal-pair-features (YAML flow.use_metal_pair_features).
         use_metal_features: bool = False,
+        # Wf-A95 (2026-10-19) — the donor set is now a CONSTRUCTOR input so a
+        # checkpoint can decode with the set it was TRAINED with.  Before
+        # this, ``forward`` read the module-global ``_DONOR_ZS``; extending
+        # that global silently changed the ``is_dative`` column for every
+        # pre-existing checkpoint, which made its decode no longer the one
+        # its weights were fitted to.  ``None`` keeps the current set.
+        donor_zs: Optional[Tuple[int, ...]] = None,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -495,6 +515,12 @@ class YuelBondDecoderHead(nn.Module):
             )
         self.metal_set = _METAL_SET_PRESETS[key]
         self.metal_set_key = key
+        # Wf-A95 (2026-10-19) — the donor set is an ATTRIBUTE, not a module
+        # global, so a checkpoint can restore the set it was trained with.
+        # Frozen: a caller must not mutate it under a running decode.
+        self.donor_zs = (
+            frozenset(_DONOR_ZS) if donor_zs is None else frozenset(donor_zs)
+        )
         # Atom encoder: Z one-hot -> hidden_dim
         self.atom_encoder = nn.Linear(len(self.z_table), hidden_dim)
         # Message MLP: input [h_i, h_j, d_ij, is_short, is_long, is_dative]
@@ -668,7 +694,7 @@ class YuelBondDecoderHead(nn.Module):
         # dative bond was encoded as 0.  That is the Wf-A69 defect again,
         # one layer down.  The test below is order-free.
         donor_t = torch.as_tensor(
-            sorted(_DONOR_ZS),
+            sorted(self.donor_zs),
             device=atomic_numbers.device,
             dtype=atomic_numbers.dtype,
         )
@@ -891,7 +917,7 @@ class YuelBondDecoder:
         # with the training-side ones for every Ru/Ir/Os/Rh/Re complex and
         # for every P/Se donor.  Both now read the same two sets.
         donor_t = torch.as_tensor(
-            sorted(_DONOR_ZS), device=z_i.device, dtype=z_i.dtype
+            sorted(self.head.donor_zs), device=z_i.device, dtype=z_i.dtype
         )
         metal_t = torch.as_tensor(
             sorted(self.head.metal_set), device=z_i.device, dtype=z_i.dtype
@@ -1045,6 +1071,9 @@ class YuelBondEdgeMPNNHead(nn.Module):
         # atom-MPNN head.  Default False keeps every existing checkpoint
         # loadable; the trainer turns it ON with the rest of the heads.
         use_metal_features: bool = False,
+        # Wf-A95 (2026-10-19) — same constructor-input donor set as the
+        # atom-MPNN head, so a checkpoint restores the set it trained with.
+        donor_zs: Optional[Tuple[int, ...]] = None,
     ) -> None:
         super().__init__()
         self.hidden_dim = int(hidden_dim)
@@ -1064,6 +1093,10 @@ class YuelBondEdgeMPNNHead(nn.Module):
             )
         self.metal_set = _METAL_SET_PRESETS[key]
         self.metal_set_key = key
+        # Wf-A95 — see the ``donor_zs`` parameter doc (atom-MPNN head).
+        self.donor_zs = (
+            frozenset(_DONOR_ZS) if donor_zs is None else frozenset(donor_zs)
+        )
         # Wf-A74 — opt-in pair-head architecture upgrade.  When True
         # the pair head is a 3-layer residual network with LayerNorm +
         # dropout (see below).  When False (default) it is the
@@ -1201,18 +1234,26 @@ class YuelBondEdgeMPNNHead(nn.Module):
         # Per-edge features (now all shape (E,))
         is_short = (d < 1.7).float().unsqueeze(-1)
         is_long = (d > 3.0).float().unsqueeze(-1)
-        # Dative-bond flag — same opt-in rule as the atom-MPNN head.
-        donor_mask = (
-            (atomic_numbers[i_idx] == 7)
-            | (atomic_numbers[i_idx] == 8)
-            | (atomic_numbers[i_idx] == 15)
-            | (atomic_numbers[i_idx] == 16)
+        # Dative-bond flag — same rule as the atom-MPNN head.
+        # Wf-A95 (2026-10-19) — this head still carried the PRE-Wf-A92 rule:
+        # a hardcoded N/O/P/S mask, tested only as donor(i) & metal(j) over
+        # triu indices.  It therefore (a) missed every halide and carbon, and
+        # (b) was atom-order dependent.  It now reads ``self.donor_zs`` and
+        # tests both directions, exactly like ``YuelBondDecoderHead``.
+        donor_t = torch.as_tensor(
+            sorted(self.donor_zs),
+            device=atomic_numbers.device,
+            dtype=atomic_numbers.dtype,
         )
         metal_t = torch.as_tensor(
             sorted(self.metal_set), device=atomic_numbers.device, dtype=atomic_numbers.dtype
         )
-        is_dative = donor_mask & torch.isin(
-            atomic_numbers[j_idx], metal_t
+        _z_i = atomic_numbers[i_idx]
+        _z_j = atomic_numbers[j_idx]
+        is_dative = (
+            torch.isin(_z_i, donor_t) & torch.isin(_z_j, metal_t)
+        ) | (
+            torch.isin(_z_i, metal_t) & torch.isin(_z_j, donor_t)
         )
         is_dative_f = is_dative.float().unsqueeze(-1)
         # 5-d edge feature vector (d, is_short, is_long, is_dative,

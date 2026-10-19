@@ -74,7 +74,6 @@ from molmetal.models.bond_head import (
 )
 
 from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
-    _DONOR_ZS,
     YuelBondDecoder,
     YuelBondDecoderHead,
     YuelBondResult,
@@ -1359,9 +1358,15 @@ class YuelBondBondDecoder:
         """
         return int(z) in self._decoder.head.metal_set
 
-    @staticmethod
-    def _is_donor(z: int) -> bool:
-        return z in _DONOR_ZS
+    def _is_donor(self, z: int) -> bool:
+        """Wf-A95 — read the HEAD's set, not the module global.
+
+        A checkpoint stamped before the donor set changed decodes with the
+        set it was trained under (``head.donor_zs`` restored from
+        ``feature_schema``), so its ``is_dative`` column is bit-identical to
+        the one its weights saw.
+        """
+        return int(z) in self._decoder.head.donor_zs
 
     def _is_dative_pair(self, z_i: int, z_j: int) -> bool:
         """Z-only dative rule (no distance, no truth).  See

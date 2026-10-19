@@ -153,7 +153,14 @@ def test_dative_feature_does_not_depend_on_atom_order() -> None:
     assert _dative_column_for_pair(head, metal_last, 2, 0) == 1.0
 
 
-def test_carbon_metal_pair_is_not_dative_in_either_order() -> None:
+def test_carbon_metal_pair_is_dative_in_either_order() -> None:
+    """Wf-A95 — carbon is a metal-ligand candidate, in both orderings.
+
+    MEASURED on tmQM: carbon is 295-721 of each metal's true bonds
+    (28-51%), and the pre-A95 set reached only 35-56% of them.  This test
+    used to assert the OPPOSITE (C was deliberately excluded); the
+    exclusion was the defect, not the contract.
+    """
     torch.manual_seed(0)
     head = YuelBondDecoderHead(hidden_dim=16, n_layers=2)
     positions = torch.tensor(
@@ -162,14 +169,14 @@ def test_carbon_metal_pair_is_not_dative_in_either_order() -> None:
     z = torch.tensor([78, 6], dtype=torch.long)
     assert _dative_column_for_pair(
         head, AtomCloud(positions=positions, atomic_numbers=z), 0, 1
-    ) == 0.0
+    ) == 1.0
     perm = torch.tensor([1, 0], dtype=torch.long)
     assert _dative_column_for_pair(
         head,
         AtomCloud(positions=positions[perm], atomic_numbers=z[perm]),
         0,
         1,
-    ) == 0.0
+    ) == 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -185,12 +192,23 @@ def test_featurise_marks_a_non_pt_metal_donor_pair_dative() -> None:
     assert bool(pf.is_dative_candidate.any())
 
 
-def test_featurise_does_not_mark_a_carbon_metal_pair_dative() -> None:
+def test_featurise_marks_a_carbon_metal_pair_dative_but_not_a_vocab_gap() -> None:
+    """Wf-A95 — C is a candidate; B/Si/As are not (they are not in the vocab).
+
+    The residual is measured, not accidental: B/Si/As are absent from
+    ``_YUELBOND_Z_TABLE``, so their atom one-hot is the padding slot and
+    flagging them would feed the head a feature it cannot attribute.  They
+    are 0.8-3.6% of true metal bonds on tmQM.
+    """
     head = YuelBondDecoderHead(hidden_dim=16, n_layers=1)
     decoder = YuelBondDecoder(head=head)
     pf = decoder.featurise(_two_atom_cloud(44, 6, 2.2)).pair_features
     assert pf is not None
-    assert not bool(pf.is_dative_candidate.any())
+    assert bool(pf.is_dative_candidate.any())
+    for z_gap in (5, 14, 33):
+        assert z_gap not in _DONOR_ZS
+        pf = decoder.featurise(_two_atom_cloud(44, z_gap, 2.2)).pair_features
+        assert not bool(pf.is_dative_candidate.any()), z_gap
 
 def test_halide_donors_are_dative_on_the_decode_path() -> None:
     """Wf-A94 — halides are donors, matching the cohort builder's labels.

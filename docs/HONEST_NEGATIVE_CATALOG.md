@@ -7276,3 +7276,111 @@ ACTIVE count: **143 -> 144** (+1).
 wet-lab).
 
 ---
+
+## §6.130 — Wf-A95: "carbon is deliberate" was half the coordination sphere; the edge head never got the Wf-A92 fix
+
+**Scope.** CFM line only. Closes the four gaps §6.125f left open, and found a
+fifth on the way.
+
+### 6.130a What was broken
+
+1. **Carbon was excluded from the donor set "by design".** The design reason
+   was that a free-ligand SMILES carries no metal-carbon bond intent, so
+   ranking C as a *builder* donor would manufacture Pt-C edges. That reason is
+   correct for the BUILDER and was wrongly applied to the FEATURE. MEASURED
+   consequence: the element filter could reach only **35-56%** of true metal
+   bonds on the five non-Pt metals, and carbon alone is **295-721 bonds per
+   metal (28-51%)**.
+2. **The edge-MPNN head still carried the pre-Wf-A92 dative rule.**
+   `YuelBondEdgeMPNNHead.forward` tested a hardcoded N/O/P/S mask as
+   `donor(i) & metal(j)` over triu indices — no halides, no carbon, and
+   atom-order dependent. Wf-A92 fixed the atom-MPNN head and left this one
+   behind. It surfaced when adding C made `_is_donor` read `head.donor_zs`
+   (absent on this head): the cloud was skipped, `pair_probs` stayed empty,
+   and `test_evaluate_bond_accuracy_emits_per_class_fields` failed with
+   `n_scored=0`. A latent defect caught by a test that was not about it.
+3. **2.6 A was asserted as a Pt transfer assumption** with no per-metal
+   measurement.
+4. **Pre-A94/A95 checkpoints decoded with a different `is_dative` column**
+   than they were trained on, silently: the column is computed at decode time
+   from a module global.
+
+### 6.130b MEASURED — per-metal calibration (tmQM, Wiberg BO truth)
+
+`metrics/by_metric/wfa95_per_metal_dative_calibration.json` (250 clouds / metal)
+
+| metal | true bonds | p50 / p99 (Å) | ceiling old | +halides | +C/org | best cut | F1@2.6 | P@2.6 | R@2.6 | non-bonded M–C < 2.6 Å |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Pt | 1,074 | 2.097 / 2.619 | 0.530 | 0.709 | 1.000 | 2.6 | 0.9893 | 0.9916 | 0.9870 | 4 |
+| Ru | 1,712 | 2.268 / 2.994 | 0.450 | 0.572 | 1.000 | 2.6 | 0.9439 | 0.9342 | 0.9539 | 102 |
+| Ir | 1,431 | 2.185 / 2.699 | 0.408 | 0.504 | 1.000 | 2.7 | 0.9284 | 0.8828 | 0.9790 | 170 |
+| Rh | 1,406 | 2.197 / 2.721 | 0.349 | 0.461 | 1.000 | 2.5 | 0.9381 | 0.9032 | 0.9758 | 126 |
+| Os | 1,446 | 2.253 / 3.028 | 0.557 | 0.690 | 1.000 | 2.5 | 0.9361 | 0.9205 | 0.9523 | 107 |
+| Re | 1,625 | 2.159 / 3.094 | 0.546 | 0.628 | 1.000 | 2.7 | 0.9167 | 0.9523 | 0.8837 | 64 |
+
+**2.6 A transfers.** The best-F1 cutoff is 2.5-2.7 for every metal and
+F1@2.6 is within 0.004 of each metal's own best (Ir 0.9284 vs 0.9322 at 2.7;
+Rh 0.9381 vs 0.9457 at 2.5). The element filter, not the distance, was the
+error term.
+
+### 6.130c MEASURED — MetalCytoTox impact of adding carbon
+
+399 built clouds, 597,661 pairs: **1,539 pair-feature columns flip**
+(308/399 clouds, 0.26% of pairs; 667 of them within 2.6 Å) and **0**
+builder-written bonds change — carbon is feature-side only. This is a
+substantial input change for new runs, which is exactly why item 4 below had
+to be fixed in the same wave.
+
+### 6.130d MEASURED — GPU gate (5 epochs, cuda:0, 199 train / 64 val)
+
+`metrics/by_metric/wfa95_gpu_quality_gate.json` (wall 913 s)
+
+| epoch | train_loss | decode_ratio | gen_validity | bond PR-AUC | single-fragment |
+|---|---|---|---|---|---|
+| 0 | 17.769 | 1.000 | 1.000 (48/48) | 0.9246 | 0.000 |
+| 2 | 4.531 | 1.000 | 1.000 | 0.9615 | 0.000 |
+| 4 | 0.921 | 1.000 | 1.000 | 0.9825 | 0.000 |
+
+**GPU execution: PASS** (no NaN, loss 17.77 -> 0.92, metal_ratio 1.000,
+PR-AUC 0.925 -> 0.983). **Quality: NOT established.** `decode_ratio=1.000`
+counts RDKit-sanitised strings and loose atoms sanitise; `single_fragment=0.000`
+at every epoch says the molecules are still disconnected. `bond_f1` at the
+shipped threshold is 0.04-0.10 while PR-AUC is 0.98 — a calibration gap, not a
+representation gap.
+
+### 6.130e What was fixed
+
+* `_DONOR_ZS` now includes carbon (feature-side). The cohort builder keeps an
+  explicit `_DONOR_RANK`; an element in the candidate set without a rank is
+  feature-only, so C/B/Si/As can never become builder labels by accident.
+* `YuelBondEdgeMPNNHead` gained `donor_zs` and the symmetric rule — the same
+  Wf-A92 fix, one class later.
+* `feature_schema` is stamped into every checkpoint (`donor_zs`, `metal_set`,
+  `dative_max_distance`, `metal_placement`). `restore_feature_schema` applies
+  it on resume and in the property panel; a checkpoint without the stamp
+  prints why its `is_dative` column may differ. VERIFIED both ways: new ckpt
+  prints `restored feature_schema: donor_zs=[6,7,...] dative_max_distance=2.60`;
+  the Wf-A70 ckpt prints the pre-Wf-A95 warning and still decodes 2/2.
+* 6 new tests (`test_wfa95_feature_schema.py`) + 2 rewritten carbon tests.
+
+### 6.130f Honest negatives that REMAIN (ACTIVE)
+
+* **B/Si/As are still not candidates** (0.8-3.6% of true bonds). They are
+  absent from `_YUELBOND_Z_TABLE`, so the head would read a padding slot;
+  adding them needs a vocab extension, which reshapes `atom_encoder` and
+  breaks every checkpoint. Deferred with a measured size, not silently.
+* **Connectivity is unsolved at 5 epochs** (`single_fragment_ratio` 0.000).
+  The GPU gate must not be cited as a quality pass.
+* **The gate is 5 epochs on 199 clouds**, not the 30-epoch production run.
+  It proves the plumbing, not the model.
+* **Pre-A95 checkpoints are not feature-comparable**; they now say so.
+
+**§6.130 catalog-count math.** Net catalog-count delta: **+1** (§6.130 itself).
+ACTIVE count delta: **+1**. Cumulative catalog count: **188 -> 189** (+1).
+ACTIVE count: **144 -> 145** (+1).
+
+**Workflow** | Wf-A95 (2026-10-19; 1 GPU gate, 913 s on cuda:0; 8 tests added/
+rewritten; §5.2: every number traces to the two `wfa95_*.json` files; §5.3 +
+§5.4: 0 paper/* + 0 wet-lab).
+
+---
