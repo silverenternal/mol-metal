@@ -25,7 +25,7 @@
       "S4": "效应量 + 置信区间 + 多重校正（DOI 聚类、Holm）",
       "S5": "每个数字可追到 artifact 字段"
     },
-    "immediate_goal": "MET-2 已回答泛化问题：0.5828 是内插，DOI 留出只有 0.3321。主表必须同时写这两个数。唯一跨四协议稳定的正效应是「金属状态+配位」的表示增益（+0.04~+0.06），这是可以主张的机制结论。下一步 MET-3（Δ 效应量/校准）与 MET-4（回归校准与区间）：R² 既然只是内插，主表就需要用「Δ 的幅度与区间」而不是绝对 R² 来承载预测主张。"
+    "immediate_goal": "MET-3 已关闭 Δ 效应量这条路：符号 0.62 未过门槛，幅度校准斜率 0.32、R² 0.004，MAE 只比恒零预测器好 4%。「Δ 可操作」的主张不成立。下一步 MET-4：把回归本身校准好（coverage / 宽度 / interval score / PIT），这决定主表能否用「区间预测」而不是点预测或 Δ 来承载预测主张。"
   },
   "current_position": {
     "measured_facts": [
@@ -33,7 +33,7 @@
       "最强回归（5-seed）：canonical R² 0.5828±0.0102（stack_foldwise）/ 0.5555±0.0026（tree）；fragment 0.5137±0.0048 / 0.4832±0.0018。融合 Δ+0.0273（p=0.0016）/ +0.0304（p=1.1e-4），5/5 seed 更好。GNN 单模 0.5032 / 0.4331，显著差于树（0/5 seed）。",
       "表示增益（fragment）：全配合物 +0.1002 R²（p=2.3e-20，canonical +0.1040）；金属状态 +0.0444；配位 +0.0272。",
       "融合：等权 +0.0171（p=4.8e-12）；堆叠 +0.0251（p=5.1e-34）；决策层无变化。",
-      "Δ 符号：additive 0.6152 / interaction 0.5744（阈值 0.2091，712 对，104 DOI）。",
+      "Δ 效应量（MET-3，427 对/61 DOI）：DOI 留出下符号 0.6193 [0.5085, 0.7137]，MAE(Δ) 0.5089（恒零预测器 0.5299，只好 4.0%），校准斜率 0.32、R² 0.0039；预测 |Δ| 恒 0.10–0.13 vs 观测 0.53 → 只有方向、没有幅度。year 斜率 −1.14。",
       "决策：regret 0.1186 vs global_best 0.1198；top-1 0.566；Holm p=1.0。",
       "跨论文（强特征，MET-2）：DOI R² 0.3321 [0.2806, 0.3820]、scaffold 0.4503 [0.4102, 0.4884]、year 0.3739 [0.3230, 0.4175]；相对 ligand 0.5556 分别 −0.2235 / −0.1053 / −0.1817。旧特征对应值 0.1648 / 0.1585 / 0.1778。表示增益四协议全正 +0.0544/+0.0423/+0.0611/+0.0392。",
       "校准：coverage 0.9044（名义 0.90），中位宽度 2.2083 log10。",
@@ -124,10 +124,10 @@
       },
       {
         "metric": "Delta sign accuracy",
-        "value": 0.6152,
+        "value": "0.6193 [0.5085, 0.7137] (DOI)",
         "threshold": 0.2091,
-        "why_not_strong": "no MAE(delta), no calibration",
-        "artifact": "msrs_surface_model.json"
+        "why_not_strong": "sign barely above chance; MAE(delta) 0.51 vs 0.53 for a zero predictor; calibration slope 0.32",
+        "artifact": "msrs_delta_metrics.json"
       },
       {
         "metric": "top-1 accuracy",
@@ -521,7 +521,7 @@
       "title": "Δ 效应量指标",
       "layer": "评估",
       "priority": "P0",
-      "status": "TODO",
+      "status": "DONE",
       "gpu": "none",
       "wall": "0.5 天",
       "why": "现在只有 Δ 符号准确率 0.6152，没有 MAE(Δ)、没有校准斜率、没有按金属对/效应量分层的 CI。符号对不代表幅度对。",
@@ -530,7 +530,79 @@
       "acceptance": "DOI split 上符号 ≥0.65 且 CI 下界 >0.55；MAE(Δ) 与校准斜率落盘；达不到则记为边界。",
       "depends_on": [
         "MET-2"
-      ]
+      ],
+      "result": {
+        "pairs": 427,
+        "dois": 61,
+        "at_threshold_0.2091": {
+          "ligand": {
+            "n": 218,
+            "sign": 0.6147,
+            "ci": [
+              0.5067,
+              0.7071
+            ],
+            "mae": 0.4988,
+            "slope": 0.8533,
+            "r2": 0.0351
+          },
+          "doi": {
+            "n": 218,
+            "sign": 0.6193,
+            "ci": [
+              0.5085,
+              0.7137
+            ],
+            "mae": 0.5089,
+            "slope": 0.3201,
+            "r2": 0.0039
+          },
+          "scaffold": {
+            "n": 218,
+            "sign": 0.6422,
+            "ci": [
+              0.5385,
+              0.7281
+            ],
+            "mae": 0.5114,
+            "slope": 0.2363,
+            "r2": 0.0025
+          },
+          "year": {
+            "n": 49,
+            "sign": 0.4286,
+            "ci": [
+              0.22,
+              0.6842
+            ],
+            "mae": 0.5484,
+            "slope": -1.1365,
+            "r2": 0.1187
+          }
+        },
+        "zero_predictor": {
+          "mae": 0.5299,
+          "model_mae": 0.5089,
+          "improvement": 0.04
+        },
+        "mean_abs_delta": {
+          "observed": 0.5299,
+          "predicted": 0.0985
+        },
+        "by_abs_delta_doi": {
+          "[0,0.1)": 0.3717,
+          "[0.1,0.2091)": 0.5208,
+          "[0.2091,0.5)": 0.562,
+          "[0.5,1)": 0.6867,
+          "[1,inf)": 0.7143
+        },
+        "reading": "DOI 留出下符号 0.6193（CI 下界 0.5085），未过 0.65/0.55 门槛。更关键的是幅度：校准斜率 0.32、R² 0.0039，预测 |Δ| 恒在 0.10–0.13 而观测 |Δ| 是 0.53；MAE 0.5089 vs 恒零预测器 0.5299，只好 4.0%。模型只学到很弱的方向，没有幅度。符号主要由大效应驱动（|Δ|<0.1 时 0.37，|Δ|≥0.5 时 0.69–0.71）。year 斜率 −1.14。金属对只有 Os-Ru / Ir-Rh / Rh-Ru 三种，不能外推。",
+        "artifacts": [
+          "metrics/by_metric/msrs_delta_metrics.json",
+          "results/msrs_generalization/oof.npz"
+        ]
+      },
+      "acceptance_result": "FAILED (sign 0.6193 < 0.65; CI lower 0.5085 < 0.55)"
     },
     {
       "id": "MET-4",
@@ -705,7 +777,7 @@
         "MET-6",
         "MET-10"
       ],
-      "note": "P0：MET-1 DONE（5-seed PASS，0.5828±0.0102）；MET-2 DONE-NEGATIVE（DOI 0.3321，掉 0.2235）。剩余 MET-3/4/6/10 全部 CPU，零 GPU。"
+      "note": "P0：MET-1 DONE（5-seed PASS）、MET-2 DONE-NEGATIVE（DOI 0.3321）、MET-3 DONE-NEGATIVE（符号 0.6193，斜率 0.32）。剩余 MET-4/6/10 全部 CPU。"
     },
     "wave_M2_decision": {
       "items": [

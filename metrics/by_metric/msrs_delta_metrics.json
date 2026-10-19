@@ -1,0 +1,973 @@
+{
+  "artifact": "msrs_delta_metrics",
+  "version": "1.0",
+  "requires_dual_split": false,
+  "generated_utc": "2026-10-19T10:48:44+00:00",
+  "provenance": {
+    "oof": "/home/hugo/codes/mol-metal/results/msrs_generalization/oof.npz",
+    "oof_sha256": "2a512e3ff6dfbbe8c4ba04b56e66e0af009896fc7b5daaaeba87260d6600fef5",
+    "script": "molmetal/scripts/msrs_delta_metrics.py",
+    "git_commit": "7f0bcd427f5e56ed55a566009f1880b38f2ec20c"
+  },
+  "design": {
+    "split_schema": "consumes MET-2's out-of-fold predictions; four protocols, so the dual-split gate does not apply",
+    "arm": "ligand+both",
+    "protocols": [
+      "ligand",
+      "doi",
+      "scaffold",
+      "year"
+    ],
+    "pair_key": [
+      "ligand_canonical",
+      "cell_line_key",
+      "doi",
+      "time_h"
+    ],
+    "thresholds": [
+      0.0,
+      0.1,
+      0.2091,
+      0.5
+    ],
+    "gate_threshold": 0.2091,
+    "sign_gate": 0.65,
+    "ci_lower_gate": 0.55,
+    "bootstrap": {
+      "unit": "doi",
+      "n_boot": 2000
+    },
+    "note": "pairs are keyed on the complex, not the main fragment, because the features are built on ligand_canonical; the 1284-pair count in todo.json came from the fragment-keyed surface model"
+  },
+  "protocols": {
+    "ligand": {
+      "n_pairs_scored": 427,
+      "n_dois": 61,
+      "thresholds": {
+        "0": {
+          "n_pairs": 427,
+          "mae_delta": 0.3278,
+          "rmse_delta": 0.4299,
+          "bias_delta": -0.0054,
+          "sign_accuracy": 0.5363,
+          "mean_abs_observed_delta": 0.3164,
+          "mean_abs_predicted_delta": 0.1176,
+          "calibration": {
+            "slope": 0.4186,
+            "intercept": 0.047,
+            "r2": 0.0155,
+            "slope_through_origin": 0.5768
+          },
+          "bootstrap": {
+            "n_dois": 61,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.4579,
+                0.6039
+              ],
+              "mean": 0.5349
+            },
+            "mae_delta": {
+              "ci95": [
+                0.2806,
+                0.3815
+              ],
+              "mean": 0.3278
+            },
+            "slope": {
+              "ci95": [
+                -0.2462,
+                1.0485
+              ],
+              "mean": 0.3879
+            }
+          }
+        },
+        "0.1": {
+          "n_pairs": 314,
+          "mae_delta": 0.4016,
+          "rmse_delta": 0.4931,
+          "bias_delta": -0.023,
+          "sign_accuracy": 0.5828,
+          "mean_abs_observed_delta": 0.4143,
+          "mean_abs_predicted_delta": 0.1197,
+          "calibration": {
+            "slope": 0.547,
+            "intercept": 0.0592,
+            "r2": 0.0193,
+            "slope_through_origin": 0.7605
+          },
+          "bootstrap": {
+            "n_dois": 57,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.4952,
+                0.6667
+              ],
+              "mean": 0.5836
+            },
+            "mae_delta": {
+              "ci95": [
+                0.3481,
+                0.4602
+              ],
+              "mean": 0.4011
+            },
+            "slope": {
+              "ci95": [
+                -0.4171,
+                1.2495
+              ],
+              "mean": 0.4919
+            }
+          }
+        },
+        "0.2091": {
+          "n_pairs": 218,
+          "mae_delta": 0.4988,
+          "rmse_delta": 0.5734,
+          "bias_delta": -0.0767,
+          "sign_accuracy": 0.6147,
+          "mean_abs_observed_delta": 0.5299,
+          "mean_abs_predicted_delta": 0.116,
+          "calibration": {
+            "slope": 0.8533,
+            "intercept": 0.0872,
+            "r2": 0.0351,
+            "slope_through_origin": 1.1459
+          },
+          "bootstrap": {
+            "n_dois": 53,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.5067,
+                0.7071
+              ],
+              "mean": 0.6144
+            },
+            "mae_delta": {
+              "ci95": [
+                0.446,
+                0.5547
+              ],
+              "mean": 0.4977
+            },
+            "slope": {
+              "ci95": [
+                -0.5297,
+                1.6512
+              ],
+              "mean": 0.729
+            }
+          }
+        },
+        "0.5": {
+          "n_pairs": 97,
+          "mae_delta": 0.7189,
+          "rmse_delta": 0.7619,
+          "bias_delta": -0.2393,
+          "sign_accuracy": 0.701,
+          "mean_abs_observed_delta": 0.7746,
+          "mean_abs_predicted_delta": 0.1306,
+          "calibration": {
+            "slope": 1.3972,
+            "intercept": 0.2137,
+            "r2": 0.0749,
+            "slope_through_origin": 1.9319
+          },
+          "bootstrap": {
+            "n_dois": 35,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.5324,
+                0.8316
+              ],
+              "mean": 0.6926
+            },
+            "mae_delta": {
+              "ci95": [
+                0.6447,
+                0.7898
+              ],
+              "mean": 0.7164
+            },
+            "slope": {
+              "ci95": [
+                -1.9556,
+                2.633
+              ],
+              "mean": 1.0182
+            }
+          }
+        }
+      },
+      "by_metal_pair": {
+        "Ir-Rh": {
+          "n_pairs": 143,
+          "sign_accuracy": 0.5594,
+          "mae_delta": 0.2958,
+          "calibration": {
+            "slope": 0.5546,
+            "intercept": 0.046,
+            "r2": 0.04,
+            "slope_through_origin": 0.5221
+          }
+        },
+        "Os-Ru": {
+          "n_pairs": 279,
+          "sign_accuracy": 0.5305,
+          "mae_delta": 0.342,
+          "calibration": {
+            "slope": 0.3844,
+            "intercept": 0.0583,
+            "r2": 0.0057,
+            "slope_through_origin": 0.712
+          }
+        },
+        "Rh-Ru": {
+          "n_pairs": 5,
+          "sign_accuracy": 0.2,
+          "mae_delta": 0.4527,
+          "calibration": {
+            "slope": -1.9108,
+            "intercept": 0.3718,
+            "r2": 0.4255,
+            "slope_through_origin": -0.7338
+          }
+        }
+      },
+      "by_abs_delta": {
+        "[0,0.1)": {
+          "n_pairs": 113,
+          "sign_accuracy": 0.4071,
+          "mae_delta": 0.1227
+        },
+        "[0.1,0.2091)": {
+          "n_pairs": 96,
+          "sign_accuracy": 0.5104,
+          "mae_delta": 0.181
+        },
+        "[0.2091,0.5)": {
+          "n_pairs": 121,
+          "sign_accuracy": 0.5455,
+          "mae_delta": 0.3223
+        },
+        "[0.5,1)": {
+          "n_pairs": 83,
+          "sign_accuracy": 0.6988,
+          "mae_delta": 0.6501
+        },
+        "[1,inf)": {
+          "n_pairs": 14,
+          "sign_accuracy": 0.7143,
+          "mae_delta": 1.1269
+        }
+      }
+    },
+    "doi": {
+      "n_pairs_scored": 427,
+      "n_dois": 61,
+      "thresholds": {
+        "0": {
+          "n_pairs": 427,
+          "mae_delta": 0.3364,
+          "rmse_delta": 0.4438,
+          "bias_delta": -0.014,
+          "sign_accuracy": 0.5316,
+          "mean_abs_observed_delta": 0.3164,
+          "mean_abs_predicted_delta": 0.1108,
+          "calibration": {
+            "slope": 0.0556,
+            "intercept": 0.0734,
+            "r2": 0.0003,
+            "slope_through_origin": 0.281
+          },
+          "bootstrap": {
+            "n_dois": 61,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.4615,
+                0.5946
+              ],
+              "mean": 0.5309
+            },
+            "mae_delta": {
+              "ci95": [
+                0.2846,
+                0.3952
+              ],
+              "mean": 0.3364
+            },
+            "slope": {
+              "ci95": [
+                -0.5182,
+                0.6801
+              ],
+              "mean": 0.0422
+            }
+          }
+        },
+        "0.1": {
+          "n_pairs": 314,
+          "mae_delta": 0.4103,
+          "rmse_delta": 0.5086,
+          "bias_delta": -0.0339,
+          "sign_accuracy": 0.5892,
+          "mean_abs_observed_delta": 0.4143,
+          "mean_abs_predicted_delta": 0.109,
+          "calibration": {
+            "slope": 0.066,
+            "intercept": 0.0983,
+            "r2": 0.0003,
+            "slope_through_origin": 0.4005
+          },
+          "bootstrap": {
+            "n_dois": 57,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.5034,
+                0.6701
+              ],
+              "mean": 0.5899
+            },
+            "mae_delta": {
+              "ci95": [
+                0.3502,
+                0.4781
+              ],
+              "mean": 0.4099
+            },
+            "slope": {
+              "ci95": [
+                -0.7629,
+                0.9696
+              ],
+              "mean": 0.0532
+            }
+          }
+        },
+        "0.2091": {
+          "n_pairs": 218,
+          "mae_delta": 0.5089,
+          "rmse_delta": 0.5892,
+          "bias_delta": -0.0905,
+          "sign_accuracy": 0.6193,
+          "mean_abs_observed_delta": 0.5299,
+          "mean_abs_predicted_delta": 0.0985,
+          "calibration": {
+            "slope": 0.3201,
+            "intercept": 0.1295,
+            "r2": 0.0039,
+            "slope_through_origin": 0.7825
+          },
+          "bootstrap": {
+            "n_dois": 53,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.5085,
+                0.7137
+              ],
+              "mean": 0.6197
+            },
+            "mae_delta": {
+              "ci95": [
+                0.4508,
+                0.5716
+              ],
+              "mean": 0.5079
+            },
+            "slope": {
+              "ci95": [
+                -1.1289,
+                1.592
+              ],
+              "mean": 0.2287
+            }
+          }
+        },
+        "0.5": {
+          "n_pairs": 97,
+          "mae_delta": 0.7483,
+          "rmse_delta": 0.7965,
+          "bias_delta": -0.2478,
+          "sign_accuracy": 0.6907,
+          "mean_abs_observed_delta": 0.7746,
+          "mean_abs_predicted_delta": 0.1082,
+          "calibration": {
+            "slope": 0.1909,
+            "intercept": 0.2929,
+            "r2": 0.0012,
+            "slope_through_origin": 0.9673
+          },
+          "bootstrap": {
+            "n_dois": 35,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.5301,
+                0.8155
+              ],
+              "mean": 0.6829
+            },
+            "mae_delta": {
+              "ci95": [
+                0.6563,
+                0.8338
+              ],
+              "mean": 0.7442
+            },
+            "slope": {
+              "ci95": [
+                -2.7591,
+                2.3543
+              ],
+              "mean": -0.1
+            }
+          }
+        }
+      },
+      "by_metal_pair": {
+        "Ir-Rh": {
+          "n_pairs": 143,
+          "sign_accuracy": 0.5524,
+          "mae_delta": 0.3027,
+          "calibration": {
+            "slope": 0.3356,
+            "intercept": 0.0449,
+            "r2": 0.0137,
+            "slope_through_origin": 0.2871
+          }
+        },
+        "Os-Ru": {
+          "n_pairs": 279,
+          "sign_accuracy": 0.5269,
+          "mae_delta": 0.3489,
+          "calibration": {
+            "slope": -0.3213,
+            "intercept": 0.1335,
+            "r2": 0.0037,
+            "slope_through_origin": 0.4686
+          }
+        },
+        "Rh-Ru": {
+          "n_pairs": 5,
+          "sign_accuracy": 0.2,
+          "mae_delta": 0.5967,
+          "calibration": {
+            "slope": -0.8672,
+            "intercept": 0.2012,
+            "r2": 0.4632,
+            "slope_through_origin": -0.4959
+          }
+        }
+      },
+      "by_abs_delta": {
+        "[0,0.1)": {
+          "n_pairs": 113,
+          "sign_accuracy": 0.3717,
+          "mae_delta": 0.131
+        },
+        "[0.1,0.2091)": {
+          "n_pairs": 96,
+          "sign_accuracy": 0.5208,
+          "mae_delta": 0.1864
+        },
+        "[0.2091,0.5)": {
+          "n_pairs": 121,
+          "sign_accuracy": 0.562,
+          "mae_delta": 0.317
+        },
+        "[0.5,1)": {
+          "n_pairs": 83,
+          "sign_accuracy": 0.6867,
+          "mae_delta": 0.6689
+        },
+        "[1,inf)": {
+          "n_pairs": 14,
+          "sign_accuracy": 0.7143,
+          "mae_delta": 1.2188
+        }
+      }
+    },
+    "scaffold": {
+      "n_pairs_scored": 427,
+      "n_dois": 61,
+      "thresholds": {
+        "0": {
+          "n_pairs": 427,
+          "mae_delta": 0.3307,
+          "rmse_delta": 0.4406,
+          "bias_delta": -0.0075,
+          "sign_accuracy": 0.5293,
+          "mean_abs_observed_delta": 0.3164,
+          "mean_abs_predicted_delta": 0.1098,
+          "calibration": {
+            "slope": 0.1144,
+            "intercept": 0.069,
+            "r2": 0.0011,
+            "slope_through_origin": 0.3499
+          },
+          "bootstrap": {
+            "n_dois": 61,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.4539,
+                0.5991
+              ],
+              "mean": 0.5293
+            },
+            "mae_delta": {
+              "ci95": [
+                0.2803,
+                0.3862
+              ],
+              "mean": 0.3305
+            },
+            "slope": {
+              "ci95": [
+                -0.3537,
+                0.7424
+              ],
+              "mean": 0.1267
+            }
+          }
+        },
+        "0.1": {
+          "n_pairs": 314,
+          "mae_delta": 0.4091,
+          "rmse_delta": 0.5065,
+          "bias_delta": -0.0235,
+          "sign_accuracy": 0.5828,
+          "mean_abs_observed_delta": 0.4143,
+          "mean_abs_predicted_delta": 0.1125,
+          "calibration": {
+            "slope": 0.1139,
+            "intercept": 0.0938,
+            "r2": 0.0008,
+            "slope_through_origin": 0.4559
+          },
+          "bootstrap": {
+            "n_dois": 57,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.4931,
+                0.6688
+              ],
+              "mean": 0.5835
+            },
+            "mae_delta": {
+              "ci95": [
+                0.3525,
+                0.4695
+              ],
+              "mean": 0.4089
+            },
+            "slope": {
+              "ci95": [
+                -0.5448,
+                0.9732
+              ],
+              "mean": 0.1332
+            }
+          }
+        },
+        "0.2091": {
+          "n_pairs": 218,
+          "mae_delta": 0.5114,
+          "rmse_delta": 0.5894,
+          "bias_delta": -0.0728,
+          "sign_accuracy": 0.6422,
+          "mean_abs_observed_delta": 0.5299,
+          "mean_abs_predicted_delta": 0.1114,
+          "calibration": {
+            "slope": 0.2363,
+            "intercept": 0.1301,
+            "r2": 0.0025,
+            "slope_through_origin": 0.714
+          },
+          "bootstrap": {
+            "n_dois": 53,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.5385,
+                0.7281
+              ],
+              "mean": 0.6416
+            },
+            "mae_delta": {
+              "ci95": [
+                0.458,
+                0.5662
+              ],
+              "mean": 0.5107
+            },
+            "slope": {
+              "ci95": [
+                -0.7563,
+                1.3814
+              ],
+              "mean": 0.2303
+            }
+          }
+        },
+        "0.5": {
+          "n_pairs": 97,
+          "mae_delta": 0.7395,
+          "rmse_delta": 0.7875,
+          "bias_delta": -0.2217,
+          "sign_accuracy": 0.7423,
+          "mean_abs_observed_delta": 0.7746,
+          "mean_abs_predicted_delta": 0.1147,
+          "calibration": {
+            "slope": 0.2273,
+            "intercept": 0.2849,
+            "r2": 0.0015,
+            "slope_through_origin": 1.2374
+          },
+          "bootstrap": {
+            "n_dois": 35,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.5789,
+                0.8636
+              ],
+              "mean": 0.7353
+            },
+            "mae_delta": {
+              "ci95": [
+                0.6617,
+                0.8118
+              ],
+              "mean": 0.7368
+            },
+            "slope": {
+              "ci95": [
+                -1.6956,
+                2.9239
+              ],
+              "mean": 0.2917
+            }
+          }
+        }
+      },
+      "by_metal_pair": {
+        "Ir-Rh": {
+          "n_pairs": 143,
+          "sign_accuracy": 0.5245,
+          "mae_delta": 0.3079,
+          "calibration": {
+            "slope": -0.1862,
+            "intercept": 0.0337,
+            "r2": 0.0029,
+            "slope_through_origin": -0.238
+          }
+        },
+        "Os-Ru": {
+          "n_pairs": 279,
+          "sign_accuracy": 0.5376,
+          "mae_delta": 0.3363,
+          "calibration": {
+            "slope": 0.6777,
+            "intercept": 0.0282,
+            "r2": 0.0148,
+            "slope_through_origin": 0.8482
+          }
+        },
+        "Rh-Ru": {
+          "n_pairs": 5,
+          "sign_accuracy": 0.2,
+          "mae_delta": 0.6691,
+          "calibration": {
+            "slope": -0.6405,
+            "intercept": 0.1506,
+            "r2": 0.479,
+            "slope_through_origin": -0.4207
+          }
+        }
+      },
+      "by_abs_delta": {
+        "[0,0.1)": {
+          "n_pairs": 113,
+          "sign_accuracy": 0.3805,
+          "mae_delta": 0.1127
+        },
+        "[0.1,0.2091)": {
+          "n_pairs": 96,
+          "sign_accuracy": 0.4479,
+          "mae_delta": 0.177
+        },
+        "[0.2091,0.5)": {
+          "n_pairs": 121,
+          "sign_accuracy": 0.562,
+          "mae_delta": 0.3285
+        },
+        "[0.5,1)": {
+          "n_pairs": 83,
+          "sign_accuracy": 0.747,
+          "mae_delta": 0.6651
+        },
+        "[1,inf)": {
+          "n_pairs": 14,
+          "sign_accuracy": 0.7143,
+          "mae_delta": 1.1806
+        }
+      }
+    },
+    "year": {
+      "n_pairs_scored": 110,
+      "n_dois": 21,
+      "thresholds": {
+        "0": {
+          "n_pairs": 110,
+          "mae_delta": 0.3433,
+          "rmse_delta": 0.4526,
+          "bias_delta": 0.0442,
+          "sign_accuracy": 0.3727,
+          "mean_abs_observed_delta": 0.2692,
+          "mean_abs_predicted_delta": 0.1299,
+          "calibration": {
+            "slope": -0.5572,
+            "intercept": 0.0757,
+            "r2": 0.0623,
+            "slope_through_origin": -0.3883
+          },
+          "bootstrap": {
+            "n_dois": 21,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.2461,
+                0.5109
+              ],
+              "mean": 0.378
+            },
+            "mae_delta": {
+              "ci95": [
+                0.2772,
+                0.4248
+              ],
+              "mean": 0.3428
+            },
+            "slope": {
+              "ci95": [
+                -1.27,
+                0.0703
+              ],
+              "mean": -0.5566
+            }
+          }
+        },
+        "0.1": {
+          "n_pairs": 72,
+          "mae_delta": 0.4505,
+          "rmse_delta": 0.5455,
+          "bias_delta": 0.0467,
+          "sign_accuracy": 0.4167,
+          "mean_abs_observed_delta": 0.3888,
+          "mean_abs_predicted_delta": 0.1365,
+          "calibration": {
+            "slope": -0.7595,
+            "intercept": 0.1218,
+            "r2": 0.0851,
+            "slope_through_origin": -0.4747
+          },
+          "bootstrap": {
+            "n_dois": 19,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.253,
+                0.6267
+              ],
+              "mean": 0.4243
+            },
+            "mae_delta": {
+              "ci95": [
+                0.3654,
+                0.5548
+              ],
+              "mean": 0.4515
+            },
+            "slope": {
+              "ci95": [
+                -1.97,
+                0.0627
+              ],
+              "mean": -0.8064
+            }
+          }
+        },
+        "0.2091": {
+          "n_pairs": 49,
+          "mae_delta": 0.5484,
+          "rmse_delta": 0.624,
+          "bias_delta": -0.0167,
+          "sign_accuracy": 0.4286,
+          "mean_abs_observed_delta": 0.4988,
+          "mean_abs_predicted_delta": 0.1271,
+          "calibration": {
+            "slope": -1.1365,
+            "intercept": 0.1878,
+            "r2": 0.1187,
+            "slope_through_origin": -0.6926
+          },
+          "bootstrap": {
+            "n_dois": 18,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.22,
+                0.6842
+              ],
+              "mean": 0.4421
+            },
+            "mae_delta": {
+              "ci95": [
+                0.4562,
+                0.6526
+              ],
+              "mean": 0.5467
+            },
+            "slope": {
+              "ci95": [
+                -2.6248,
+                0.426
+              ],
+              "mean": -1.1075
+            }
+          }
+        },
+        "0.5": {
+          "n_pairs": 22,
+          "mae_delta": 0.7545,
+          "rmse_delta": 0.8135,
+          "bias_delta": -0.2297,
+          "sign_accuracy": 0.5455,
+          "mean_abs_observed_delta": 0.7186,
+          "mean_abs_predicted_delta": 0.1457,
+          "calibration": {
+            "slope": -1.3351,
+            "intercept": 0.4658,
+            "r2": 0.1791,
+            "slope_through_origin": -0.4778
+          },
+          "bootstrap": {
+            "n_dois": 12,
+            "n_boot": 2000,
+            "sign_accuracy": {
+              "ci95": [
+                0.2273,
+                0.7943
+              ],
+              "mean": 0.5362
+            },
+            "mae_delta": {
+              "ci95": [
+                0.6231,
+                0.938
+              ],
+              "mean": 0.7584
+            },
+            "slope": {
+              "ci95": [
+                -4.2074,
+                0.0709
+              ],
+              "mean": -1.5077
+            }
+          }
+        }
+      },
+      "by_metal_pair": {
+        "Ir-Rh": {
+          "n_pairs": 60,
+          "sign_accuracy": 0.4333,
+          "mae_delta": 0.2905,
+          "calibration": {
+            "slope": 0.1395,
+            "intercept": 0.12,
+            "r2": 0.0013,
+            "slope_through_origin": -0.0637
+          }
+        },
+        "Os-Ru": {
+          "n_pairs": 45,
+          "sign_accuracy": 0.3111,
+          "mae_delta": 0.3691,
+          "calibration": {
+            "slope": -1.9386,
+            "intercept": 0.2273,
+            "r2": 0.0915,
+            "slope_through_origin": -0.5827
+          }
+        },
+        "Rh-Ru": {
+          "n_pairs": 5,
+          "sign_accuracy": 0.2,
+          "mae_delta": 0.7445,
+          "calibration": {
+            "slope": -0.7103,
+            "intercept": 0.2391,
+            "r2": 0.5388,
+            "slope_through_origin": -0.3794
+          }
+        }
+      },
+      "by_abs_delta": {
+        "[0,0.1)": {
+          "n_pairs": 38,
+          "sign_accuracy": 0.2895,
+          "mae_delta": 0.14
+        },
+        "[0.1,0.2091)": {
+          "n_pairs": 23,
+          "sign_accuracy": 0.3913,
+          "mae_delta": 0.2419
+        },
+        "[0.2091,0.5)": {
+          "n_pairs": 27,
+          "sign_accuracy": 0.3333,
+          "mae_delta": 0.3806
+        },
+        "[0.5,1)": {
+          "n_pairs": 20,
+          "sign_accuracy": 0.6,
+          "mae_delta": 0.7052
+        },
+        "[1,inf)": {
+          "n_pairs": 2,
+          "sign_accuracy": 0.0,
+          "mae_delta": 1.2475
+        }
+      }
+    }
+  },
+  "verdict": "NEGATIVE",
+  "verdict_rule": "doi protocol at |delta| >= 0.2091: sign accuracy >= 0.65 AND DOI-clustered CI lower > 0.55",
+  "gate_measurement": {
+    "sign_accuracy": 0.6193,
+    "ci95": [
+      0.5085,
+      0.7137
+    ],
+    "n_pairs": 218,
+    "mae_delta": 0.5089,
+    "calibration": {
+      "slope": 0.3201,
+      "intercept": 0.1295,
+      "r2": 0.0039,
+      "slope_through_origin": 0.7825
+    }
+  }
+}

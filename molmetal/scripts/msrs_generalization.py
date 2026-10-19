@@ -81,6 +81,7 @@ from molmetal.scripts.msrs_surface_model import (  # noqa: E402
     _sha256,
     score,
 )
+from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E402
 
 SCHEMES = ("ligand", "doi", "scaffold", "year")
 ARMS = ("ligand", "ligand+both")
@@ -284,6 +285,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         type=Path,
         default=PROJECT_ROOT / "metrics" / "by_metric" / "msrs_generalization.json",
     )
+    parser.add_argument(
+        "--oof-out",
+        type=Path,
+        default=PROJECT_ROOT / "results" / "msrs_generalization" / "oof.npz",
+        help="row-level out-of-fold predictions for every protocol (path only)",
+    )
     parser.add_argument("--seed", type=int, default=SEED)
     parser.add_argument("--limit", type=int, default=0, help="smoke: first N ligands")
     parser.add_argument(
@@ -341,9 +348,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
 
     splits: Dict[str, object] = {}
+    oof: Dict[str, np.ndarray] = {}
     for scheme in args.schemes:
         t0 = time.time()
         fold_id, groups, info = scheme_folds(sub, scheme)
+        oof[f"{scheme}__fold"] = fold_id.astype(np.int16)
         print(
             f"[met2] scheme={scheme} folds={info['n_folds']} "
             f"groups={info['n_groups']} evaluated={info['n_rows_evaluated']}"
@@ -371,6 +380,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 params_override={"random_state": int(args.seed)},
             )
             preds[arm] = pred
+            oof[f"{scheme}__{arm}"] = pred.astype(np.float64)
             ev = fold_id >= 0
             entry: Dict[str, object] = {
                 **score(y[ev], pred[ev]),
@@ -510,7 +520,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "wall_s": round(time.time() - t_start, 1),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    atomic_write_file(
+        args.out, json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+    )
+
+    arrays = {
+        "y": y.astype(np.float64),
+        "metal": sub["metal"].to_numpy().astype(str),
+        "cell_line_key": sub["cell_line_key"].to_numpy().astype(str),
+        "doi": sub["doi"].to_numpy().astype(str),
+        "time_h": sub["time_h"].to_numpy(dtype=np.float64),
+        "ligand_canonical": sub["ligand_canonical"].to_numpy().astype(str),
+        "ligand_main_fragment": sub["ligand_main_fragment"].to_numpy().astype(str),
+    }
+    arrays.update(oof)
+    args.oof_out.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(args.oof_out, **arrays)
+    print(f"[met2] wrote {args.oof_out}")
     print(
         f"[met2] verdict={verdict} ligand={ligand_r2} doi={doi_r2} drop={drop}"
     )

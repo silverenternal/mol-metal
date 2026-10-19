@@ -6489,3 +6489,202 @@ tests; §5.2: every number traces to `metrics/by_metric/msrs_generalization.json
 
 ---
 
+## §6.125 — Wf-A94: the acceleration tests covered nothing, and the dative donor set was two lists
+
+**Scope.** CFM line only (the prediction line and DMPNN were out of scope per
+the user's instruction). Six defects, all measured before/after.
+
+### 6.125a What was broken
+
+1. **Three "acceleration" tests could never run.**
+   `molmetal/tests/test_wf348c1_cfm_acceleration_trainer_wiring.py` tests 2-4
+   guarded on `getattr(mod, "_CFM_ACCEL_AVAILABLE", False)` and
+   `_EXACT_OT_AVAILABLE` — module flags that **were never defined anywhere** —
+   so `pytest.skip` fired on every platform, and the tests then passed kwargs
+   (`accel_lr_scheduler`, `accel_ema`) that `train_one_epoch` /
+   `evaluate_decode_ratio` do not accept. The claimed coverage of the Wf-348-C1
+   acceleration surface was zero while the suite reported green.
+2. **The decoder never read the dative cutoff.** Every config declares
+   `flow.dative_distance_cutoff: 2.6`; the cohort builder consumed it (Wf-A93),
+   but `YuelBondBondDecoder` was constructed without it and used its own
+   hardcoded `2.5`. The label side and the decode side therefore disagreed
+   about which pairs count as dative.
+3. **Two donor lists, still.** Wf-A92 unified the three decoder-side lists into
+   `_DONOR_ZS = {N,O,P,S,Se}`, but the cohort builder ranked donors from a
+   separate symbol dict that **included halides** (Cl/Br/I/F). A metal-halide
+   edge was written as a training LABEL while the head was told
+   `is_dative = 0` for the same pair.
+4. **The 2.5 Å bound was inherited, not calibrated.** No sweep against bond
+   truth existed.
+5. **The Wf-A92 symmetric fix had no measurement on a metal-first corpus.** It
+   was bit-exact on MetalCytoTox only because that corpus appends the metal
+   last.
+6. **The Wf-A93 push-loop cap was unmeasured.**
+
+### 6.125b MEASURED — tmQM dative-rule delta (400 Pt clouds, 263,796 pairs)
+
+`metrics/by_metric/wfa94_tmqm_dative_delta.json`
+
+| quantity | value |
+|---|---|
+| metal-first clouds | 342 / 400 (85.5%) |
+| old (asymmetric) dative flags | 244 |
+| new (symmetric) dative flags | 2,007 |
+| pairs the old rule dropped | 1,763 (87.8%) |
+| clouds with ≥1 dropped pair | 353 / 400 (88.3%) |
+| dropped pairs within 2.5 Å | 828 (46.97%) |
+| featurise delta (P/Se donors) | +240 |
+
+The old rule encoded **87.8%** of all dative flags as 0 on a metal-first corpus.
+828 of the dropped pairs are at coordination-bond scale, not long-range noise.
+
+### 6.125c MEASURED — cutoff calibration against Wiberg BO truth
+
+`metrics/by_metric/wfa94_tmqm_dative_calibration.json` (400 clouds, 1,701 true
+Pt bonds)
+
+| cutoff | precision | recall | F1 |
+|---|---|---|---|
+| 2.4 Å | 0.9975 | 0.9347 | 0.9651 |
+| 2.5 Å | 0.9946 | 0.9677 | 0.9809 |
+| **2.6 Å** | **0.9935** | **0.9841** | **0.9888** |
+| 2.8 Å | 0.9698 | 0.9994 | 0.9844 |
+| 3.0 Å | 0.9082 | 1.0000 | 0.9519 |
+
+2.6 Å is the best-F1 point and is the value every config already declares, so
+the decoder default moved 2.5 → 2.6 and the trainer now passes the configured
+value at construction.
+
+**Donor-set coverage is the larger error term.** Of 1,701 true Pt bonds:
+N 518, O 108, P 206, S 109, Se 4 = **945 (55.6%)** were inside the pre-Wf-A94
+set; Cl 267, Br 26, I 38, F 1 = **332 (19.5%)** were halides and flagged 0;
+C 396, As 15, B 8, Si 5 = 424 (24.9%) are covalent/organometallic.
+
+### 6.125d MEASURED — canonical-cohort audit (399 built clouds)
+
+`metrics/by_metric/wfa94_cohort_placement_audit.json`
+
+| quantity | value |
+|---|---|
+| push-cap hits | 2 / 399 (0.50%) |
+| builder-written metal bonds | 1,894 |
+| by element | N 564, O 1,228, S 50, P 52 |
+| outside the pre-Wf-A94 donor set | 0 |
+| bond length p50 / p95 / max | 2.050 / 2.402 / 2.594 Å |
+
+So the halide extension is **bit-exact on the canonical 5-metal cohort**
+(0/1,894 bonds change) and the push cap is a 0.5% tail, not a silent failure.
+
+### 6.125e What was fixed
+
+* `_DONOR_ZS` → `{N,O,F,P,S,Cl,Se,Br,I}` (Wf-A94). Halides are in the YuelBond
+  vocab already; the extension costs nothing on MetalCytoTox and closes 19.5%
+  of the tmQM recall gap.
+* The cohort builder now derives its ranking from `_DONOR_ZS`
+  (`{z: rank}`), so the label side and the decode side cannot drift again.
+* `YuelBondBondDecoder` default `dative_max_distance` 2.5 → 2.6 (calibrated),
+  and the trainer + `cfm_property_panel.py` pass the configured/checkpoint
+  value. The trainer prints `dative_max_distance=` on the `[cfm-decoder]` line.
+* Tests 2-4 of `test_wf348c1` rewritten to the surfaces that ship:
+  `build_lr_scheduler` warmup (lr bounded, epoch leaves it alone),
+  `CFMJointModel.ema_swap_in/out` (bit-exact restore around a real eval), and
+  `exact_minibatch_ot_coupling` (permutation + cost ≤ identity). The undefined
+  guards are gone; the file is 5 passed, 0 skipped.
+* Two new regression tests in `test_wfa92_dative_provenance.py` pin the halide
+  rule and the 2.6 Å bound.
+
+### 6.125f Honest negatives that REMAIN (ACTIVE)
+
+* **Pt–C is outside the donor set** (396/1,701 = 23.3% of true Pt bonds).
+  Deliberate: adding C would make "dative candidate" fire on every Pt–C
+  contact, conflating covalent organometallic bonds with dative ones. The gap
+  is measured, not hidden; any claim of "the decoder sees every coordination
+  bond" is false for carbene/alkyl/carbonyl Pt chemistry.
+* **No GPU quality gate** for the Wf-A90/A91/A92/A93 stack. All evidence here
+  is CPU-side; a GPU retrain is required before any quality claim.
+* **The sweep is Pt-only.** MetalCytoTox ships no Wiberg BO truth, so the
+  2.6 Å calibration is a Pt transfer assumption for Ru/Ir/Rh/Os/Re.
+* **`dative_source="truth"` is label-side truth.** It says the cloud carried a
+  dative flag, not that the flag is chemically correct.
+* **Pre-Wf-A93 checkpoints are not comparable** on geometry (metal placement)
+  and pre-Wf-A94 checkpoints are not comparable on the `is_dative` feature.
+
+**§6.125 catalog-count math.** Net catalog-count delta: **+1** (§6.125 itself).
+ACTIVE count delta: **+1**. Cumulative catalog count: **177 → 178** (+1).
+ACTIVE count: **133 → 134** (+1).
+
+**Workflow** | Wf-A94 (2026-10-19; 0 GPU — CPU only; 5 tests repaired, 2 added;
+§5.2: every number traces to the three `wfa94_*.json` files above; §5.3 + §5.4:
+0 paper/* + 0 wet-lab).
+
+---
+
+## §6.126 — MET-3: the model gets the sign, not the size (MAE 4% better than zero)
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (negative; the effect-size claim fails).
+**Code:** `molmetal/scripts/msrs_delta_metrics.py`.
+**Tests:** `molmetal/tests/test_msrs_delta_metrics.py` (8).
+**Artifact:** `metrics/by_metric/msrs_delta_metrics.json`.
+**Input:** `results/msrs_generalization/oof.npz` (MET-2's out-of-fold predictions).
+
+**What was tested.**  The only delta number in the project was a sign accuracy
+(0.6152).  A sign can be right while the magnitude is off by 3x, and the
+decision layer consumes magnitudes.  MET-3 turns the matched-pair predictions
+into MAE(delta), RMSE(delta), calibration slope/intercept/R2, per-metal-pair
+and per-|delta|-stratum breakdowns, with a DOI-clustered bootstrap (2000).
+
+Pairs are keyed on `ligand_canonical` (the feature unit): 427 pairs / 61 DOIs,
+not the 1284 in todo.json, which came from the older fragment-keyed surface
+model.
+
+**MEASURED at the 0.2091 noise floor.**
+
+| protocol | n | sign | sign CI95 | MAE(delta) | slope | R2 | mean abs obs | mean abs pred |
+|---|---|---|---|---|---|---|---|---|
+| ligand | 218 | 0.6147 | [0.5067, 0.7071] | 0.4988 | 0.8533 | 0.0351 | 0.5299 | 0.1160 |
+| **doi** | 218 | **0.6193** | **[0.5085, 0.7137]** | **0.5089** | **0.3201** | **0.0039** | 0.5299 | 0.0985 |
+| scaffold | 218 | 0.6422 | [0.5385, 0.7281] | 0.5114 | 0.2363 | 0.0025 | 0.5299 | 0.1114 |
+| year | 49 | 0.4286 | [0.2200, 0.6842] | 0.5484 | -1.1365 | 0.1187 | 0.4988 | 0.1271 |
+
+By |delta| (DOI): [0,0.1) sign 0.3717, [0.1,0.2091) 0.5208, [0.2091,0.5)
+0.5620, [0.5,1) 0.6867, [1,inf) 0.7143.  By metal pair (all 427): Ir-Rh
+0.5524 (n=143), Os-Ru 0.5269 (n=279), Rh-Ru 0.2000 (n=5).
+
+**Honest-negative (ACTIVE, this entry):**
+  * **The pre-registered gate was not met.**  Required sign >= 0.65 with CI
+    lower > 0.55 on the DOI protocol; measured 0.6193 with lower bound 0.5085.
+  * **The magnitude is not learned at all.**  Calibration slope 0.32 and
+    R2 0.0039 under DOI holdout; even on the ligand protocol R2 is 0.035.
+    Predicted |delta| sits at 0.10-0.13 for every protocol and every threshold
+    while observed |delta| rises from 0.32 to 0.77.
+  * **The model is barely better than predicting zero.**  A constant-zero
+    predictor has MAE 0.5299 on this pair set; the model has 0.5089 — 4.0%
+    better (5.9% on the ligand protocol).  This, not "sign 0.62", is the
+    accurate description.
+  * **Sign accuracy is carried by large effects.**  Below |delta| 0.1 it is
+    0.37 (below chance, as expected under noise); above 0.5 it is 0.69-0.71.
+    The model separates metal pairs that were already far apart.
+  * **Time reverses the slope** (-1.14): across years the predicted magnitude
+    points the wrong way, consistent with MET-2's year sign of 0.4286.
+  * **Coverage is three metal pairs.**  427 pairs contain only Os-Ru (279),
+    Ir-Rh (143) and Rh-Ru (5).  No claim generalises beyond those.
+  * **Do not quote the through-origin slope (0.78).**  It is inflated by the
+    near-zero predicted variance; the with-intercept slope (0.32) and R2
+    (0.004) are the numbers that describe the fit.
+
+**Why this matters.**  It explains MET-2's null decision layer mechanically:
+the model has a weak direction signal and no magnitude signal, so it cannot
+rank or size a metal swap.  The only surviving positive claim in the project
+remains the representation gain (MET-2: +0.039 to +0.061 R2, positive under
+all four protocols).
+
+**§6.126 catalog-count math.** Net catalog-count delta: **+1** (§6.126 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **178 -> 179** (+1).
+ACTIVE count: **134 -> 135** (+1).
+
+**Workflow** | MET-3 (2026-10-19; 0 GPU — CPU over 427 pairs; 8 new tests;
+§5.2: every number traces to `metrics/by_metric/msrs_delta_metrics.json`;
+§5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
+
