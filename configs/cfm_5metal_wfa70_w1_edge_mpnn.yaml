@@ -133,6 +133,9 @@ flow:
   # value (e.g. 100.0) to disable the post-embed 3D filter and recover
   # pre-Wf-A68 donor-by-score-only behaviour.
   dative_distance_cutoff: 2.6
+  # Wf-A93 — archived run: keep the pre-Wf-A93 metal placement so
+  # this config still reproduces its checkpoint.
+  metal_placement: legacy
   # Wf-A68 — chem_loss_weight (Spot 5).  Wf-A15/A27 scaffolding is
   # SHIPPED (ContinuousBO + per-cloud stash); default 0.0 keeps the
   # 5-metal cohort bit-exact Wf-A67.  Bump to 0.1-0.3 at retrain to

@@ -6331,3 +6331,91 @@ ACTIVE count: **130 -> 131** (+1).
 CFM regression sweep, one panel e2e on a real checkpoint, one 63-cloud
 provenance measurement; §5.2: every number traces to a test or to
 `/tmp/audit_e2e4` / the val-cohort probe; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+## §6.123 — Wf-A93: the metal was embedded INSIDE the ligand
+
+**Symptom.**  Every CFM run on the MetalCytoTox 5-metal cohort trained on a
+geometry in which the metal overlaps the ligand.
+
+**MEASURED (legacy placement).**
+
+| Quantity | Value |
+|---|---:|
+| clouds with a heavy atom < 1.0 A from the metal, train | 30 / 32 |
+| clouds with a heavy atom < 1.0 A from the metal, val | 32 / 32 |
+| val label-side dative bonds | 233 |
+| median M-donor distance | **0.366 A** |
+| share of M-donor bonds < 1.0 A | **61.8%** |
+| share in the physical [1.8, 2.6] A band | 24.0% |
+
+**Cause.**  The Metal column is a separate CSV field and the ligand SMILES has
+no metal, so `build_cloud_from_csv_row` appends the metal as an isolated atom
+and lets ETKDG embed it.  RDKit places an isolated atom at the ORIGIN and
+centres the ligand at the origin too, so the metal lands at the ligand
+centroid.  Wf-A66 described this as "inserted into the cloud at the centroid";
+the intent was to have the metal present, and nothing checked whether the
+resulting geometry was physical.  Every downstream feature computed from the
+metal position — pair distances, `d_to_metal`, `angle_to_metal`, `is_metal_edge`
+(Wf-A90) — inherited it.
+
+**Fix (Wf-A93).**  `flow.metal_placement` / `--metal-placement`, two modes:
+
+* `bonded` (default, and set in `configs/cfm_5metal_default.yaml`) — place the
+  metal `2.05 A` outside the top-ranked donor along
+  `donor - heavy_atom_centroid`, then push it outward in 0.1 A steps until no
+  other heavy atom is within `1.2 A`.  The donor selection then re-runs on the
+  new position.
+* `legacy` — leave the ETKDG position.  Pinned in the 19 archived configs so
+  each still reproduces its checkpoint.
+
+Also: `--dative-distance-cutoff` was parsed into `args.dative_distance_cutoff`
+and then ignored — `build_cloud_from_csv_row` hardcoded 2.6.  The key is now a
+real parameter of `build_cloud_from_csv_row` / `build_csv_cohort`.  Every
+config already declared 2.6, so wiring it changes no archived result.
+
+**MEASURED (bonded vs legacy, same 32 val clouds, seed 0).**
+
+| Quantity | legacy | bonded |
+|---|---:|---:|
+| dative bonds | 121 | 54 |
+| median M-donor | 0.366 A | **2.050 A** |
+| share < 1.0 A | 58.7% | **0.0%** |
+| share in [1.8, 2.6] A | 24.0% | **96.3%** |
+| median nearest-heavy distance | 0.366 A | **1.633 A** |
+| clouds with a heavy atom < 1.0 A | 32 / 32 | **0 / 32** |
+
+1-epoch CPU smoke (`configs/cfm_5metal_wfa80_per_class_cpu_smoke.yaml`,
+`--metal-placement bonded`, 64 train / 16 val): `train_loss=0.9664`
+(legacy smoke 0.9780), `gen_validity=1.000 (16/16)`, `decode_ratio=1.000`,
+`failure_reasons={ok: 13, ok_repaired:kekulize_demoted_all: 3}`.  The panel
+decodes 4/4 with the checkpoint's own placement (bonded on the new ckpt,
+legacy on a pre-A93 ckpt).
+
+**Honest-negative (ACTIVE, this entry):**
+  * **The bonded position is a GUESS.**  MetalCytoTox ships free-ligand
+    SMILES, not experimental coordination geometry.  Placing the metal
+    2.05 A from one donor is the only defensible construction; the dative
+    count falling 121 -> 54 means most other donors are now > 2.6 A away.
+    That is "the guess is monodentate", not "coordination was recovered".
+  * **The top-ranked donor is not necessarily the real one.**  Ranking is
+    N > P > S > O > halide with a degree tie-break; the CSV has no
+    coordination table to check it against.
+  * **No GPU quality gate.**  Whether bond F1 / ring profile improves on
+    physical geometry is unmeasured.  The 1-epoch smoke only proves the path
+    runs.
+  * **Pre-Wf-A93 checkpoints are not comparable.**  They were trained with
+    the metal inside the ligand; their bond F1 and decode numbers cannot be
+    compared with a post-A93 run on the same config name.
+  * **The push loop is capped** at 40 x 0.1 A.  If it cannot clear the
+    ligand it keeps the last position and prints
+    `[cfm-metal-placement][WARNING]`; the frequency on the full corpus is
+    not measured (0/32 val + 0/32 train in this sample).
+
+**§6.123 catalog-count math.** Net catalog-count delta: **+1** (§6.123 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **175 -> 176** (+1).
+ACTIVE count: **131 -> 132** (+1).
+
+**Workflow** | Wf-A93 (2026-10-19; 0 GPU — 6 new CPU tests, one 32-cloud
+placement measurement, one 1-epoch CPU smoke, two panel runs (bonded ckpt +
+pre-A93 ckpt); §5.2: every number traces to a test or to the val-cohort
+probe / `/tmp/wfa93_smoke`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).

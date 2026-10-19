@@ -133,6 +133,9 @@ flow:
   focal_bond_gamma: 2.0
   bond_sample_balance: 0
   dative_distance_cutoff: 2.6
+  # Wf-A93 — archived run: keep the pre-Wf-A93 metal placement so
+  # this config still reproduces its checkpoint.
+  metal_placement: legacy
   chem_loss_weight: 0.0
   use_bond_head_skip: false
   # Wf-A90 (2026-10-19) — 3-d metal-geometry block on the pair head

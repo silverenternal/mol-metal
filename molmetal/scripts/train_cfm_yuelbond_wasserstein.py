@@ -7946,6 +7946,76 @@ def _parse_metal_string(metal_str: str) -> Tuple[str, int]:
     return (sym, _DEFAULT_OXIDATION_STATE.get(sym, 0))
 
 
+#: Wf-A93 (2026-10-19) — where the metal atom is placed in a CSV-built cloud.
+#:
+#: ``"legacy"``   — leave the ETKDG position.  For a multi-fragment molecule
+#:                 RDKit puts an isolated metal at the ORIGIN and centres the
+#:                 ligand at the origin too, so the metal sits inside the
+#:                 ligand.  MEASURED on the 5-metal cohort: 30/32 train and
+#:                 32/32 val clouds have a heavy atom within 1.0 A of the
+#:                 metal, and 61.8% of the label-side dative bonds are
+#:                 shorter than 1.0 A (median 0.366 A).  Kept only so
+#:                 archived configs reproduce their checkpoints.
+#: ``"bonded"``   — move the metal to ``bond_length`` outside the top-ranked
+#:                 donor, then push it further out until no other heavy atom
+#:                 is within ``min_clearance``.  The donor selection below
+#:                 then re-runs on the new position.
+METAL_PLACEMENT_MODES: Tuple[str, ...] = ("legacy", "bonded")
+METAL_DONOR_BOND_LENGTH: float = 2.05
+METAL_PLACEMENT_MIN_CLEARANCE: float = 1.2
+
+
+def _place_metal_at_donor(
+    pos: torch.Tensor,
+    z: torch.Tensor,
+    metal_idx: int,
+    donor_idx: int,
+    bond_length: float = METAL_DONOR_BOND_LENGTH,
+    min_clearance: float = METAL_PLACEMENT_MIN_CLEARANCE,
+    step: float = 0.1,
+    max_steps: int = 40,
+) -> Tuple[torch.Tensor, bool]:
+    """Move ``metal_idx`` to a bonded position outside ``donor_idx``.
+
+    The direction is ``donor - heavy_atom_centroid``: outward, away from the
+    ligand body.  The metal is placed ``bond_length`` along it, then pushed
+    outward in ``step`` increments until every OTHER heavy atom is at least
+    ``min_clearance`` away.  Returns ``(positions, clearance_ok)``; the input
+    tensor is not mutated.
+
+    Why not just use the donor centroid?  For a monodentate ligand the donor
+    centroid IS the donor, and for a chelate it is inside the ligand — the
+    same overlap this replaces.  A bonded position has to be OUTSIDE the
+    donor, on the side the ligand does not occupy.
+    """
+    p = pos.clone()
+    d = p[int(donor_idx)]
+    heavy = z != 1
+    heavy = heavy.clone()
+    heavy[int(metal_idx)] = False
+    heavy[int(donor_idx)] = False
+    if int(heavy.sum().item()) > 0:
+        centroid = p[heavy].mean(dim=0)
+    else:
+        centroid = torch.zeros_like(d)
+    u = d - centroid
+    if float(u.norm().item()) < 1e-6:
+        u = torch.tensor([1.0, 0.0, 0.0], dtype=p.dtype, device=p.device)
+    u = u / u.norm()
+    candidate = d + float(bond_length) * u
+    others = p[heavy]
+    for _ in range(int(max_steps)):
+        if int(others.shape[0]) == 0:
+            p[int(metal_idx)] = candidate
+            return p, True
+        if float((others - candidate).norm(dim=-1).min().item()) >= float(min_clearance):
+            p[int(metal_idx)] = candidate
+            return p, True
+        candidate = candidate + float(step) * u
+    p[int(metal_idx)] = candidate
+    return p, False
+
+
 def build_cloud_from_csv_row(
     smiles_ligands: str,
     metal: str,
@@ -7953,6 +8023,12 @@ def build_cloud_from_csv_row(
     charge_complex: Optional[int] = None,
     seed: int = 0,
     add_hydrogens: bool = True,
+    # Wf-A93 (2026-10-19) — metal placement + the dative distance cutoff.
+    # ``dative_distance_cutoff`` was parsed by --dative-distance-cutoff and
+    # then hardcoded to 2.6 here, so the YAML key changed nothing.  Both are
+    # now real parameters.
+    metal_placement: str = "bonded",
+    dative_distance_cutoff: float = 2.6,
 ) -> Tuple[Optional["AtomCloud"], str]:
     """Build ONE AtomCloud from a CSV row (smiles_ligands, metal, oxidation_state).
 
@@ -7963,11 +8039,18 @@ def build_cloud_from_csv_row(
        via :func:`molmetal.data.metal_smiles.reconstruct_multi_component`.
     2. RDKit-parsing, finding the metal atom + top-cap donor atoms (same
        scoring as :func:`molmetal.data.metal_graph._donor_atom_indices`).
-    3. Adding single bonds between the metal and each donor (dative edges).
+    3. Adding the metal-donor edges as BOND-GRAPH LABELS only (not as
+       RDKit bonds before embed — 3/4 rows fail to embed that way).
     4. Building a bond graph with RDKit bond types + dative-pair flags.
     5. Emitting a populated :class:`AtomCloud` with bonds + bond_types +
        metal_atom_index + smiles set.  ``bonds=None`` and ``metal_atom_index=NO_METAL_INDEX``
        are returned ONLY when the metal column is empty or unsupported.
+
+    Wf-A93 (2026-10-19) — ``metal_placement`` decides where the metal sits.
+    ETKDG places an isolated atom at the ORIGIN and centres the ligand
+    there too, so ``legacy`` leaves the metal inside the ligand (MEASURED:
+    61.8% of dative bonds < 1.0 A, median 0.366 A).  ``bonded`` (default)
+    moves it outside the top-ranked donor first.
 
     Returns
     -------
@@ -7993,6 +8076,12 @@ def build_cloud_from_csv_row(
         _rdkit_bond_int_to_bond_head_label as _rdkit_to_bh_label,
     )
 
+    _placement = str(metal_placement).strip().lower()
+    if _placement not in METAL_PLACEMENT_MODES:
+        raise ValueError(
+            f"unknown metal_placement {metal_placement!r}; "
+            f"available: {METAL_PLACEMENT_MODES}"
+        )
     smi = (smiles_ligands or "").strip()
     if not smi:
         return (None, "smiles_unparseable")
@@ -8061,13 +8150,11 @@ def build_cloud_from_csv_row(
     # the bond graph builder below slices the candidate list after the
     # distance filter is applied.
     dative_candidates: List[Tuple[float, int]] = []  # (score, atom_idx) ranked
-    # Wf-A68 (2026-10-17) — 2.6 Å is a tunable default, overridable via
-    # the YAML `flow.dative_distance_cutoff` flag (parsed into
-    # ``args.dative_distance_cutoff``).  See `--dative-distance-cutoff`
-    # argparse below.  Set to a large value (e.g. 100.0) to disable the
-    # post-embed 3D filter and recover pre-Wf-A68 donor-by-score-only
-    # behaviour.
-    dative_distance_cutoff: float = 2.6  # Å — see DATIVE_DISTANCE_CUTOFF below
+    # Wf-A68 (2026-10-17) — the 2.6 Å cutoff is now the caller's
+    # ``dative_distance_cutoff`` argument.  Wf-A93 (2026-10-19): it used to
+    # be a LOCAL hardcoded 2.6 while --dative-distance-cutoff wrote
+    # ``args.dative_distance_cutoff`` — a knob with no consumer.  Set it to
+    # a large value (e.g. 100.0) to disable the post-embed 3D filter.
     dative_top_k_cap: int = 3  # never take more than this from the ranked list
     if metal_z > 0 and metal_idx_in_mol >= 0:
         _DONOR_STRENGTH = {"N": 5, "P": 4, "S": 3, "O": 2, "Cl": 1, "Br": 1, "I": 1, "F": 1}
@@ -8114,6 +8201,26 @@ def build_cloud_from_csv_row(
     # load-bearing fix for the false-positive dative labels that
     # contaminated the 6-coordinate Ir(III)/Os(IV) cohort.
     if metal_z > 0 and metal_idx_in_mol >= 0 and dative_candidates:
+        # Wf-A93 (2026-10-19) — the metal is an isolated atom in a
+        # multi-fragment molecule, so ETKDG puts it at the ORIGIN while the
+        # ligand is centred there too: the metal ends up INSIDE the ligand.
+        # MEASURED: 61.8% of label-side dative bonds were < 1.0 A (median
+        # 0.366 A).  ``bonded`` moves it outside the top donor first; the
+        # distance filter below then re-selects donors from the new spot.
+        if _placement == "bonded":
+            _top_donor = int(dative_candidates[0][1])
+            if _top_donor < int(pos.shape[0]):
+                pos, _clear = _place_metal_at_donor(
+                    pos, z, int(metal_idx_in_mol), _top_donor
+                )
+                if not _clear:
+                    print(
+                        "[cfm-metal-placement][WARNING] could not clear "
+                        f"the ligand within {40} x 0.1 A for metal "
+                        f"Z={int(z[int(metal_idx_in_mol)].item())}; "
+                        "keeping the last pushed position.",
+                        flush=True,
+                    )
         metal_pos = pos[int(metal_idx_in_mol)]
         _filtered: List[Tuple[float, int, float]] = []  # (score, idx, dist)
         for _score, _idx in dative_candidates:
@@ -8267,6 +8374,8 @@ def build_csv_cohort(
     n_clouds: Optional[int] = None,
     seed: int = 0,
     add_hydrogens: bool = True,
+    metal_placement: str = "bonded",
+    dative_distance_cutoff: float = 2.6,
 ) -> List["AtomCloud"]:
     """Build training clouds from the REAL MetalCytoToxDB corpus.
 
@@ -8278,7 +8387,10 @@ def build_csv_cohort(
     - The SMILES column is read dual-key (``smiles`` or ``SMILES_Ligands``)
       — Wf-A65.
     - The ``Metal`` column is read and the metal atom is INSERTED into the
-      cloud at the centroid — Wf-A66 (closes §6.93c).
+      cloud — Wf-A66 (closes §6.93c).  Wf-A93 (2026-10-19): the insertion
+      position is ``metal_placement`` — ``bonded`` (default) puts it 2.05 A
+      outside the top donor; ``legacy`` leaves the ETKDG position, which is
+      the ligand centroid and overlaps the ligand.
     - The bond graph is built from RDKit bond types + metal-donor
       coordination edges — Wf-A66 (closes §6.93b, makes the
       Pt-only fallback in :func:`_bond_target_for_clean_cloud` unreachable
@@ -8368,6 +8480,8 @@ def build_csv_cohort(
             oxidation_state=ox_val,
             seed=seed,
             add_hydrogens=add_hydrogens,
+            metal_placement=metal_placement,
+            dative_distance_cutoff=dative_distance_cutoff,
         )
         if cloud is None:
             if status == "smiles_unparseable":
@@ -9207,6 +9321,21 @@ def parse_args() -> argparse.Namespace:
             "ETKDG-embedded coordinates) are dropped BEFORE the cap is "
             "applied.  2.6 Å ≈ M-N/O single dative bond + 0.2 Å tolerance.  "
             "Set to a very large value to disable (legacy behaviour)."
+        ),
+    )
+    p.add_argument(
+        "--metal-placement",
+        dest="metal_placement",
+        type=str,
+        choices=("legacy", "bonded"),
+        default="bonded",
+        help=(
+            "Wf-A93 (2026-10-19): where the metal sits in a CSV-built "
+            "cloud.  'bonded' places it 2.05 A outside the top-ranked "
+            "donor and pushes it clear of the ligand; 'legacy' keeps the "
+            "ETKDG position, which for an isolated atom is the ligand "
+            "CENTROID (MEASURED: 61.8%% of dative bonds < 1.0 A).  Set "
+            "legacy only to reproduce a pre-Wf-A93 checkpoint."
         ),
     )
     p.add_argument(
@@ -12062,12 +12191,20 @@ def main() -> int:
             split=str(getattr(args, "data_split", "train")),
             n_clouds=args.n_train,
             seed=args.seed,
+            metal_placement=str(getattr(args, "metal_placement", "bonded")),
+            dative_distance_cutoff=float(
+                getattr(args, "dative_distance_cutoff", 2.6)
+            ),
         )
         val_clouds = build_csv_cohort(
             _csv_path,
             split=str(getattr(args, "val_split", "val")),
             n_clouds=args.n_val,
             seed=args.seed + 1,
+            metal_placement=str(getattr(args, "metal_placement", "bonded")),
+            dative_distance_cutoff=float(
+                getattr(args, "dative_distance_cutoff", 2.6)
+            ),
         )
     else:
         train_clouds = build_training_cohort(args.n_train, seed=args.seed)

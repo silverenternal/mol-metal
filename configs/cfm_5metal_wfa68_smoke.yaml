@@ -60,6 +60,9 @@ model:
   pcgrad_multi_task: false
   q_head_enabled: false
 flow:
+  # Wf-A93 — archived run: keep the pre-Wf-A93 metal placement so
+  # this config still reproduces its checkpoint.
+  metal_placement: legacy
   bond_class_weights: true
   bond_class_weight_power: 0.5
   bond_decision: threshold

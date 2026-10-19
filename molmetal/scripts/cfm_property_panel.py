@@ -936,11 +936,18 @@ def _panel_templates(ckpt: object, n_samples: int) -> "list":
                     build_csv_cohort,
                 )
 
+                # Wf-A93 — decode the SAME geometry the checkpoint was
+                # trained on.  A pre-Wf-A93 checkpoint has no key and was
+                # trained with the legacy (centroid) placement.
+                _placement = str(args.get("metal_placement", "legacy"))
+                _dative_cut = float(args.get("dative_distance_cutoff", 2.6))
                 clouds = build_csv_cohort(
                     str(csv_path),
                     split="val",
                     n_clouds=int(n_samples),
                     seed=0,
+                    metal_placement=_placement,
+                    dative_distance_cutoff=_dative_cut,
                 )
                 if clouds:
                     print(
