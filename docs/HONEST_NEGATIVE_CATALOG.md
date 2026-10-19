@@ -5637,3 +5637,83 @@ ACTIVE count: **120 -> 121** (+1).
 **Workflow** | FIX-M2 (2026-10-19; 0 GPU — reads two OOF files; 8 new tests;
 §5.2: every number traces to the two artifact JSONs; §5.3 + §5.4: 0 paper/*
 + 0 wet-lab).
+
+---
+
+## §6.114 — Wf-A86: the bo_target slot was dead for six days, and reviving it needed a training change
+
+**Date:** 2026-10-19.  **Status:** ACTIVE (input-feature wiring; mechanism measured,
+no generation metric moves).  **Code:** `PairFeature.bond_orders_continuous`,
+`_bo_target_for_edges`, `BondAwareDecoder._featurise` in
+`molmetal/models/bond_head.py`; the two-regime mix in
+`make_synthetic_training_set`.
+
+**The negative this answers.**  Wf-A11 (2026-10-13) added the `bo_target`
+column and documented it as "the loader's float Wiberg BO if the pair is in
+the loader's per-pair list, else 0 (gap)".  The featuriser read it as
+`getattr(pf, "bond_orders_continuous", None)` — but `PairFeature` never had
+that field.  The attribute lives on `AtomCloud`, next to `bonds`.  So the
+`getattr` always returned `None` and the column was permanently the gap
+fallback: a documented supervision slot that carried no supervision.
+
+**The fix, in three levels of precedence** (most specific first):
+
+1. an explicit `PairFeature.bond_orders_continuous` — authoritative, the
+   caller is asking for teacher forcing;
+2. the cloud's own truth (`AtomCloud.bonds` + `bond_orders_continuous`),
+   mapped onto the candidate edges by `_bo_target_for_edges`;
+3. the gap fallback — the generation path, where a CFM-sampled cloud has
+   positions and Z only.
+
+A cloud whose `bond_orders_continuous` and `bonds` disagree in length now
+raises instead of silently falling back.  A `PairFeature` whose BO tensor
+does not align with its edge list raises the same way.
+
+**The problem the fix exposed.**  Reviving the slot makes it live in TWO
+regimes: a truth-carrying cloud feeds Wiberg BOs (0-3), a generated cloud
+feeds the gap (roughly -0.4 to +1.5).  The synthetic training set only ever
+produced the gap, so the live truth value would have been out of
+distribution.  `make_synthetic_training_set` now emits the order-implied
+Wiberg BO on a fraction `_BO_TEACHER_FORCE_P` of rows and the gap on the
+rest, so the head sees both scales.
+
+**MEASURED (CPU, seed 0, 200 epochs, synthetic 832/208):**
+
+| p (truth-BO rows) | train_acc | val_acc | gap-regime acc | truth-regime acc |
+|---|---|---|---|---|
+| 0.00 (pre-Wf-A86) | 0.9579 | 0.9471 | 0.9579 | n/a (column always gap) |
+| 0.25 (shipped) | 0.9651 | 0.9760 | **0.9571** | 0.9963 |
+| 0.35 | 0.9675 | 0.9712 | 0.9540 | 0.9945 |
+| 0.50 | 0.9736 | 0.9663 | 0.9444 | 1.0000 |
+
+0.25 is the largest mix that keeps the gap-regime accuracy at the pre-A86
+level (0.9571 vs 0.9579); above it the generation regime starts paying for
+the aggregate gain.
+
+**Honest-negative (ACTIVE, this entry):**
+  * **The truth-regime 0.9963 is teacher forcing, not a prediction.**  Any
+    decode of a cloud that carries `bond_orders_continuous` now sees the
+    answer for its true pairs.  Such a decode must not be reported as a
+    blind decode; the generation path (no truth) is unaffected and its
+    numbers do not move.
+  * **No generation metric moves.**  The CFM path samples positions and Z,
+    so `_bo_target_for_edges` returns the gap unchanged.  This entry fixes
+    a dead slot; it does not improve validity, ring size or connectivity.
+  * **`default_trained_head()` weights are not bit-identical to pre-A86.**
+    The gap-regime accuracy is preserved, but any stored number produced by
+    a pre-A86 head is not reproducible from the current code.
+  * **Only `BondAwareDecoder` consumes the field.**  `YuelBondDecoder` also
+    builds `PairFeature`s but feeds its own edge MPNN, so the CFM decode
+    path's `PairFeature`s are unaffected.
+  * **The 1.5 aromatic value is nominal.**  tmQM Wiberg aromatic BOs sit
+    around 1.4-1.5; the synthetic rows use a single representative value,
+    not a distribution.
+
+**§6.114 catalog-count math.** Net catalog-count delta: **+1** (§6.114 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **165 -> 166** (+1).
+ACTIVE count: **121 -> 122** (+1).
+
+**Workflow** | Wf-A86 (2026-10-19; 0 GPU training — CPU synthetic retrain + 7
+new tests; §5.2: every number traces to the sweep printed above and
+`/tmp`-free reproducible commands; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+

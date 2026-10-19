@@ -123,6 +123,26 @@ BOND_AROMATIC: int = 4
 BOND_LABELS: Tuple[str, ...] = ("none", "single", "double", "triple", "aromatic")
 NUM_BOND_CLASSES: int = 5
 
+# Wf-A86 (2026-10-19) — nominal Wiberg bond orders per class, the scale
+# AtomCloud.bond_orders_continuous arrives on (tmQM: single ~1.0, aromatic
+# ~1.4-1.5, double ~2.0, triple ~3.0).  Used by the synthetic generator so
+# the bo_target column means the same thing in training and at inference.
+_WIBERG_BO_BY_ORDER: dict = {
+    BOND_NO_BOND: 0.0,
+    BOND_SINGLE: 1.0,
+    BOND_DOUBLE: 2.0,
+    BOND_TRIPLE: 3.0,
+    BOND_AROMATIC: 1.5,
+}
+
+# Fraction of synthetic rows that carry the teacher-forced BO instead of the
+# gap fallback.  The generation path (a CFM-sampled cloud) only ever has the
+# gap, so this is the fraction of the training set that does NOT match what
+# the head sees when it is actually used — keep it a minority.  MEASURED
+# (seed 0, 200 epochs): p=0.5 -> gap-regime acc 0.944 / aggregate 0.974;
+# p=0.25 -> see Wf-A86 catalog entry.  Changing it changes default_trained_head.
+_BO_TEACHER_FORCE_P: float = 0.25
+
 # Maximum atomic number we one-hot.  Covers all of period 1-6 plus lanthanides
 # up to 71.  Higher atomic numbers (actinides etc.) are clipped — they
 # rarely appear in drug-like SBDD ligands.
@@ -151,7 +171,7 @@ PAIR_FEATURE_NAMES: Tuple[str, ...] = (
     "bucket_prod",     # 7 — bucket_i * 6 + bucket_j
     "gap",             # 8 — distance - single-bond anchor
     "d_to_metal",      # 9 — midpoint-to-metal distance (0 when no metal)
-    "bo_target",       # 10 — continuous Wiberg BO, else the gap fallback
+    "bo_target",       # 10 — teacher-forced Wiberg BO, else the gap fallback
 )
 PAIR_FEATURE_DIM: int = len(PAIR_FEATURE_NAMES)
 
@@ -258,6 +278,62 @@ def _is_donor(z: int) -> bool:
     return z in (7, 8, 15, 16)
 
 
+def _bo_target_for_edges(
+    cloud: "AtomCloud",
+    edge_index: torch.Tensor,
+    gap: torch.Tensor,
+) -> torch.Tensor:
+    """Merge a cloud's continuous Wiberg BOs into the gap fallback.
+
+    Wf-A86 (2026-10-19).  The ``bo_target`` column was added by Wf-A11 as
+    "the loader's float Wiberg BO if the pair is in the loader's per-pair
+    list, else 0 (gap)", but the featuriser read it from ``PairFeature``,
+    which has no such field, so the column was permanently the gap.  The
+    data actually lives on :class:`AtomCloud` (``bonds`` +
+    ``bond_orders_continuous``, both (E,) aligned with each other).
+
+    Returns ``gap`` unchanged when the cloud carries no bond truth — the
+    CFM generation path samples positions and Z only, so its input is
+    bit-identical to before.  When the cloud DOES carry truth, entries for
+    real bonds get the loader's Wiberg BO and every other candidate pair
+    keeps the gap; that is teacher forcing and the caller should not
+    report such a decode as a blind prediction.
+
+    Raises on a length mismatch instead of falling back silently: a cloud
+    whose two per-pair tensors disagree is a loader bug, and swallowing it
+    is how this slot stayed dead for six days.
+    """
+    bo = getattr(cloud, "bond_orders_continuous", None)
+    bonds = getattr(cloud, "bonds", None)
+    if bo is None or bonds is None:
+        return gap
+    n_edges = int(edge_index.shape[1])
+    if n_edges == 0:
+        return gap
+    n_bonds = int(bonds.shape[1])
+    if int(bo.shape[0]) != n_bonds:
+        raise ValueError(
+            "cloud.bond_orders_continuous must align with cloud.bonds: "
+            f"got {int(bo.shape[0])} BOs for {n_bonds} bonds"
+        )
+    bo = bo.to(dtype=torch.float32)
+    lookup = {}
+    for k in range(n_bonds):
+        i = int(bonds[0, k].item())
+        j = int(bonds[1, k].item())
+        value = float(bo[k].item())
+        lookup[(i, j)] = value
+        lookup[(j, i)] = value
+    out = gap.clone()
+    for k in range(n_edges):
+        i = int(edge_index[0, k].item())
+        j = int(edge_index[1, k].item())
+        value = lookup.get((i, j))
+        if value is not None:
+            out[k] = value
+    return out
+
+
 def _angle_to_metal(
     cloud: "AtomCloud",
     atom_i: int,
@@ -354,11 +430,18 @@ def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tens
                 angle_dev = abs(torch.randn((), generator=rng).item()) * 0.05
             # Distance gap to single-bond anchor (the head should learn:
             # gap~0 -> single; gap<0 -> double/triple/aromatic;
-            # gap>0.4 -> no bond).  Synthetic rows have no metal position, so
-            # d_to_metal is 0 and bo_target falls back to the same gap the
-            # live featuriser uses when a cloud carries no continuous BO.
+            # gap>0.4 -> no bond).  Synthetic rows have no metal position,
+            # so d_to_metal is 0.
             anchor_single = _bond_distance(z_i, z_j, BOND_SINGLE)
             gap = float(d - anchor_single)
+            # Wf-A86 — the live bo_target column is teacher-forced: a cloud
+            # with bond truth carries the loader's Wiberg BO, a CFM-generated
+            # cloud carries the gap.  Train on BOTH regimes (one coin flip
+            # per row) so neither path sees an out-of-distribution column.
+            if torch.rand((), generator=rng).item() < _BO_TEACHER_FORCE_P:
+                bo_target = _WIBERG_BO_BY_ORDER[order]
+            else:
+                bo_target = gap
             X_rows.append(
                 _pair_feature_vector(
                     {
@@ -372,7 +455,7 @@ def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tens
                         "bucket_prod": float(_bucket(z_i) * 6 + _bucket(z_j)),
                         "gap": gap,
                         "d_to_metal": 0.0,
-                        "bo_target": gap,
+                        "bo_target": bo_target,
                     }
                 )
             )
@@ -400,6 +483,13 @@ def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tens
             d = 2.8 + abs(torch.randn((), generator=rng).item()) * 0.5
             anchor_single = _bond_distance(z_i, z_j, BOND_SINGLE)
             gap = float(d - anchor_single)
+            # Wf-A86 — same two-regime mix as _add; a no-bond pair's truth BO
+            # is 0.0, which is a different (and informative) value from a
+            # far-pair gap of +0.5..+1.5.
+            if torch.rand((), generator=rng).item() < _BO_TEACHER_FORCE_P:
+                bo_target = _WIBERG_BO_BY_ORDER[BOND_NO_BOND]
+            else:
+                bo_target = gap
             X_rows.append(
                 _pair_feature_vector(
                     {
@@ -413,7 +503,7 @@ def make_synthetic_training_set(seed: int = 0) -> Tuple[torch.Tensor, torch.Tens
                         "bucket_prod": float(_bucket(z_i) * 6 + _bucket(z_j)),
                         "gap": gap,
                         "d_to_metal": 0.0,
-                        "bo_target": gap,
+                        "bo_target": bo_target,
                     }
                 )
             )
@@ -801,6 +891,16 @@ class PairFeature:
     z_j: torch.Tensor  # (E,) long
     angle_to_metal: torch.Tensor  # (E,) float32 — deviation from ideal angle (rad)
     is_dative_candidate: torch.Tensor  # (E,) bool — see module docstring
+    # Wf-A86 (2026-10-19) — teacher-forced continuous bond order, aligned
+    # with edge_index.  This is the slot _featurise reads for the
+    # ``bo_target`` column; before this field existed the featuriser did
+    # getattr(pf, "bond_orders_continuous", None) on a dataclass that never
+    # had it, so the column was permanently the gap fallback.  None means
+    # "derive it": from the cloud's bond truth when the cloud carries it
+    # (AtomCloud.bond_orders_continuous + bonds), else the gap.  Supplying
+    # a tensor makes it authoritative — that is the explicit teacher-forcing
+    # path, and a caller that uses it is feeding the answer to the head.
+    bond_orders_continuous: Optional[torch.Tensor] = None
 
 
 # ---------------------------------------------------------------------------
@@ -1657,11 +1757,24 @@ class BondAwareDecoder:
                 d_to_metal = torch.zeros((0,), dtype=torch.float32)
         else:
             d_to_metal = torch.zeros_like(d)
-        # bond_orders_continuous may not exist on older clouds; fall back
-        # to gap so the slot always carries a non-NaN value.
+        # Wf-A86 — three-level precedence, most specific first:
+        #   1. an explicit PairFeature.bond_orders_continuous (teacher forcing
+        #      requested by the caller; authoritative),
+        #   2. the cloud's own bond truth, mapped onto these candidate edges,
+        #   3. the gap fallback (the generation path: a CFM-sampled cloud
+        #      carries positions and Z only).
+        # Before this, level 1 read a field PairFeature did not have, so the
+        # column was always level 3 — a dead slot since Wf-A11.
         bo_target = getattr(pf, "bond_orders_continuous", None)
-        if bo_target is None:
-            bo_target = gap
+        if bo_target is not None:
+            bo_target = bo_target.to(dtype=torch.float32)
+            if tuple(bo_target.shape) != tuple(d.shape):
+                raise ValueError(
+                    "PairFeature.bond_orders_continuous must align with the "
+                    f"edge list: got {tuple(bo_target.shape)}, expected {tuple(d.shape)}"
+                )
+        else:
+            bo_target = _bo_target_for_edges(cloud, pf.edge_index, gap)
         # Ordered by name against PAIR_FEATURE_NAMES, the same table the
         # synthetic generator uses.  Adding a feature is one entry there plus
         # one entry here; a forgotten one raises instead of shifting every

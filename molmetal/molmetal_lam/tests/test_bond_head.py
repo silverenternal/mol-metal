@@ -36,6 +36,8 @@ from molmetal.models.bond_head import (
     BOND_TRIPLE,
     PAIR_FEATURE_DIM,
     PAIR_FEATURE_NAMES,
+    _BO_TEACHER_FORCE_P,
+    _WIBERG_BO_BY_ORDER,
     BondAwareDecoder,
     BondOrderHead,
     PairFeature,
@@ -450,3 +452,91 @@ def test_live_featuriser_width_and_order(decoder) -> None:
         [[1.5, 0.0, 0.0, 0.0, 0.0, 6 / 90, 6 / 90, 0.0, gap, 0.0, gap]]
     )
     assert torch.allclose(feats, expected, atol=1e-6), feats
+
+
+# ---------------------------------------------------------------------------
+# bo_target — teacher-forced Wiberg BO vs the gap fallback (Wf-A86)
+# ---------------------------------------------------------------------------
+def _pf_two_edges() -> PairFeature:
+    """Edges (0,1) and (0,2); atom 2 is far away, so only 0-1 can be a bond."""
+    return PairFeature(
+        edge_index=torch.tensor([[0, 0], [1, 2]], dtype=torch.long),
+        distance=torch.tensor([1.4, 3.0]),
+        z_i=torch.tensor([6, 6]),
+        z_j=torch.tensor([6, 6]),
+        angle_to_metal=torch.tensor([0.0, 0.0]),
+        is_dative_candidate=torch.tensor([False, False]),
+    )
+
+
+def _cloud_with_truth_bo() -> AtomCloud:
+    return AtomCloud(
+        positions=torch.tensor([[0.0, 0.0, 0.0], [1.4, 0.0, 0.0], [3.0, 0.0, 0.0]]),
+        atomic_numbers=torch.tensor([6, 6, 6]),
+        bonds=torch.tensor([[0], [1]]),
+        bond_types=torch.tensor([BOND_DOUBLE]),
+        bond_orders_continuous=torch.tensor([2.0]),
+    )
+
+
+def test_pair_feature_bo_defaults_to_none() -> None:
+    assert _pf_two_edges().bond_orders_continuous is None
+
+
+def test_featuriser_uses_cloud_truth_bo(decoder) -> None:
+    """A truth-carrying cloud must put its Wiberg BO in column 10."""
+    feats = decoder._featurise(_pf_two_edges(), _cloud_with_truth_bo())
+    gap = 3.0 - _bond_distance(6, 6, BOND_SINGLE)
+    assert feats[0, 10].item() == 2.0
+    # A candidate pair that is NOT a true bond keeps the gap fallback.
+    assert abs(feats[1, 10].item() - gap) < 1e-6
+
+
+def test_featuriser_falls_back_to_gap_without_truth(decoder) -> None:
+    cloud = AtomCloud(
+        positions=torch.tensor([[0.0, 0.0, 0.0], [1.4, 0.0, 0.0], [3.0, 0.0, 0.0]]),
+        atomic_numbers=torch.tensor([6, 6, 6]),
+    )
+    feats = decoder._featurise(_pf_two_edges(), cloud)
+    gap = 3.0 - _bond_distance(6, 6, BOND_SINGLE)
+    assert abs(feats[1, 10].item() - gap) < 1e-6
+    assert abs(feats[0, 10].item() - (1.4 - _bond_distance(6, 6, BOND_SINGLE))) < 1e-6
+
+
+def test_explicit_pair_feature_bo_wins_over_cloud(decoder) -> None:
+    pf = _pf_two_edges()
+    pf.bond_orders_continuous = torch.tensor([1.0, 3.0])
+    feats = decoder._featurise(pf, _cloud_with_truth_bo())
+    assert feats[:, 10].tolist() == [1.0, 3.0]
+
+
+def test_malformed_pair_feature_bo_raises(decoder) -> None:
+    pf = _pf_two_edges()
+    pf.bond_orders_continuous = torch.tensor([1.0])
+    with pytest.raises(ValueError, match="align"):
+        decoder._featurise(pf, _cloud_with_truth_bo())
+
+
+def test_cloud_bo_misaligned_with_bonds_raises(decoder) -> None:
+    cloud = _cloud_with_truth_bo()
+    # Bypass __post_init__ (it already rejects this) to prove the featuriser
+    # fails loudly rather than silently dropping the column.
+    object.__setattr__(cloud, "bond_orders_continuous", torch.tensor([1.0, 2.0]))
+    with pytest.raises(ValueError, match="align"):
+        decoder._featurise(_pf_two_edges(), cloud)
+
+
+def test_synthetic_set_trains_both_bo_regimes() -> None:
+    X, _ = make_synthetic_training_set(seed=0)
+    col = X[:, 10]
+    truth_values = set(_WIBERG_BO_BY_ORDER.values())
+    is_truth = torch.zeros_like(col, dtype=torch.bool)
+    for v in truth_values:
+        is_truth |= torch.isclose(col, torch.tensor(float(v)))
+    n_truth = int(is_truth.sum())
+    assert 0 < n_truth < col.numel(), (
+        "synthetic rows must mix the teacher-forced BO with the gap: the"
+        " generation path only ever sees the gap, a truth decode only the BO"
+    )
+    # The mix must be near the declared fraction, not an accident of seed 0.
+    assert abs(n_truth / col.numel() - _BO_TEACHER_FORCE_P) < 0.05
