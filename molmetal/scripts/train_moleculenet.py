@@ -165,6 +165,18 @@ def _load_task(task: str) -> Tuple[List[str], np.ndarray]:
 # Scaffold splitter (Bemis-Murcko)
 # ---------------------------------------------------------------------------
 def _bemis_murcko_scaffold(smiles: str) -> str:
+    """Bemis-Murcko scaffold, stereo-BLIND — the astartes/chemprop key.
+
+    Wf-A53 (2026-10-19) — ``GetScaffoldForMol`` + isomeric SMILES gave every
+    stereoisomer its own key, while the reference splitter chemprop moved to
+    (``astartes.samplers.extrapolation.scaffold``) calls
+    ``MurckoScaffoldSmiles(includeChirality=False)``.  Two molecules that
+    differ only in stereochemistry therefore landed on opposite sides of our
+    split while the reference keeps them together.  The effect on the score
+    is PROJECTED (a stereo-pair is near-duplicate, so separating it leaks
+    information), not measured as an AUC delta.  Dropping ``isomericSmiles``
+    is the exact equivalent of the reference call.
+    """
     from rdkit import Chem
     from rdkit.Chem.Scaffolds import MurckoScaffold
 
@@ -173,7 +185,7 @@ def _bemis_murcko_scaffold(smiles: str) -> str:
         return smiles  # group invalid SMILES by their string
     try:
         scaffold = MurckoScaffold.GetScaffoldForMol(mol)
-        return Chem.MolToSmiles(scaffold, canonical=True)
+        return Chem.MolToSmiles(scaffold, canonical=True, isomericSmiles=False)
     except Exception:
         return smiles
 
@@ -185,19 +197,19 @@ def _scaffold_split(
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Group by Bemis-Murcko scaffold; assign each scaffold to one split.
 
-    Wf-A53 (2026-10-19) — CAVEAT, printed on every call: the key below is
-    ``GetScaffoldForMol`` + isomeric SMILES, so stereoisomers get DIFFERENT
-    keys.  The astartes/chemprop reference calls
-    ``MurckoScaffoldSmiles(includeChirality=False)``, which groups them.  Our
-    split is therefore marginally EASIER than the published column — the bias
-    runs in our favour (docs/ALIGNED_COMPARISON.md).  Changing the key
-    changes every MoleculeNet split and invalidates the shipped metrics, so
-    it is left as-is until those tasks are re-run.
+    Wf-A53 (2026-10-19) — the key is now stereo-BLIND and bit-exact with
+    ``MurckoScaffoldSmiles(includeChirality=False)``, the astartes/chemprop
+    reference call (verified on every row of all four tasks).  Before this
+    change stereoisomers got separate keys, so the split was not the
+    reference split.  MEASURED test-set turnover between
+    the two keys (metrics/by_metric/moleculenet_scaffold_key_alignment.json):
+    bbbp 63.6-76.5%, bace 59.3-83.5%, clintox 39.3-87.0%; hiv 0% (its
+    scaffolds carry no stereocentres).  The shipped bbbp/bace/clintox AUCs
+    were measured on the old key and must be re-run before being cited.
     """
     print(
-        "[moleculenet] WARNING: scaffold key retains stereochemistry; the "
-        "astartes/chemprop reference is stereo-blind. Our split is marginally "
-        "easier (see docs/ALIGNED_COMPARISON.md).",
+        "[moleculenet] scaffold key = Bemis-Murcko, stereo-blind "
+        "(astartes/chemprop equivalent).",
         flush=True,
     )
     rng = np.random.default_rng(seed)

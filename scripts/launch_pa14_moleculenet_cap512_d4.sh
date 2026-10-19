@@ -5,8 +5,10 @@
 # NOTHING else.  Every hyperparameter lives in
 # configs/pa14_moleculenet_cap512_d4.yaml.  Scanned by scripts/_yaml_only_gate.py.
 #
-# Runs on GPU 1 (the RTX 5090) so it can proceed alongside other GPU-0 work; the
-# job is minutes-scale and needs a fraction of the card.
+# Runs on GPU 0 (the 98 GB RTX PRO 6000) per the 2026-10-16 user directive:
+# "以后所有操作都上gpu0,不要再在gpu1上做".  GPU 1 (the 32 GB RTX 5090) stays
+# idle.  The job is minutes-scale and needs a fraction of the card; still
+# check free VRAM before launching (the user reminder is "不要让他oom").
 #
 # NO `set -o pipefail`: per the SIGPIPE lesson, a pipefail wrapper dies silently
 # when a worker flushes after the trainer exits.
@@ -52,7 +54,7 @@ if command -v nvidia-smi >/dev/null 2>&1; then
     --format=csv,noheader || true
 fi
 
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0
 export TOKENIZERS_PARALLELISM=false
 export TRANSFORMERS_VERBOSITY=error
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

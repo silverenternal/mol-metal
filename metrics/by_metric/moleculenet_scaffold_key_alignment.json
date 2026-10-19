@@ -1,0 +1,310 @@
+{
+  "artifact": "moleculenet_scaffold_key_alignment",
+  "generated": "2026-10-19",
+  "wave": "Wf-A53",
+  "status": "MEASURED",
+  "method": "Both splits produced by train_moleculenet._scaffold_split itself (old key monkeypatched in), not a reimplementation.",
+  "what": "Effect of switching train_moleculenet._bemis_murcko_scaffold from isomeric SMILES (pre-2026-10-19) to the astartes/chemprop stereo-blind key.",
+  "reference_call": "rdkit.Chem.Scaffolds.MurckoScaffold.MurckoScaffoldSmiles(smiles=s, includeChirality=False)",
+  "bit_exact_vs_reference": {
+    "bbbp": {
+      "n_rows": 2050,
+      "n_rows_identical": 2050
+    },
+    "bace": {
+      "n_rows": 1513,
+      "n_rows_identical": 1513
+    },
+    "hiv": {
+      "n_rows": 41127,
+      "n_rows_identical": 41127
+    },
+    "clintox": {
+      "n_rows": 1484,
+      "n_rows_identical": 1484
+    }
+  },
+  "tasks": {
+    "bbbp": {
+      "n_rows": 2050,
+      "n_scaffolds_old": 1113,
+      "n_scaffolds_new": 1036,
+      "rows_with_changed_key": 547,
+      "rows_with_changed_key_pct": 26.68,
+      "per_seed": [
+        {
+          "seed": 0,
+          "n_test_old": 390,
+          "n_test_new": 412,
+          "jaccard": 0.136,
+          "test_turnover_pct": 75.38,
+          "pos_rate_old": 0.7,
+          "pos_rate_new": 0.7791
+        },
+        {
+          "seed": 1,
+          "n_test_old": 463,
+          "n_test_new": 401,
+          "jaccard": 0.1444,
+          "test_turnover_pct": 76.46,
+          "pos_rate_old": 0.7905,
+          "pos_rate_new": 0.7481
+        },
+        {
+          "seed": 2,
+          "n_test_old": 410,
+          "n_test_new": 403,
+          "jaccard": 0.1648,
+          "test_turnover_pct": 71.95,
+          "pos_rate_old": 0.7463,
+          "pos_rate_new": 0.8238
+        },
+        {
+          "seed": 3,
+          "n_test_old": 412,
+          "n_test_new": 409,
+          "jaccard": 0.2109,
+          "test_turnover_pct": 65.29,
+          "pos_rate_old": 0.7354,
+          "pos_rate_new": 0.8117
+        },
+        {
+          "seed": 4,
+          "n_test_old": 379,
+          "n_test_new": 474,
+          "jaccard": 0.193,
+          "test_turnover_pct": 63.59,
+          "pos_rate_old": 0.8047,
+          "pos_rate_new": 0.7954
+        }
+      ]
+    },
+    "bace": {
+      "n_rows": 1513,
+      "n_scaffolds_old": 739,
+      "n_scaffolds_new": 671,
+      "rows_with_changed_key": 236,
+      "rows_with_changed_key_pct": 15.6,
+      "per_seed": [
+        {
+          "seed": 0,
+          "n_test_old": 302,
+          "n_test_new": 299,
+          "jaccard": 0.2573,
+          "test_turnover_pct": 59.27,
+          "pos_rate_old": 0.4735,
+          "pos_rate_new": 0.4849
+        },
+        {
+          "seed": 1,
+          "n_test_old": 300,
+          "n_test_new": 305,
+          "jaccard": 0.1957,
+          "test_turnover_pct": 67.0,
+          "pos_rate_old": 0.4233,
+          "pos_rate_new": 0.4754
+        },
+        {
+          "seed": 2,
+          "n_test_old": 306,
+          "n_test_new": 304,
+          "jaccard": 0.1776,
+          "test_turnover_pct": 69.93,
+          "pos_rate_old": 0.4902,
+          "pos_rate_new": 0.4737
+        },
+        {
+          "seed": 3,
+          "n_test_old": 303,
+          "n_test_new": 303,
+          "jaccard": 0.0899,
+          "test_turnover_pct": 83.5,
+          "pos_rate_old": 0.5182,
+          "pos_rate_new": 0.4191
+        },
+        {
+          "seed": 4,
+          "n_test_old": 303,
+          "n_test_new": 308,
+          "jaccard": 0.1594,
+          "test_turnover_pct": 72.28,
+          "pos_rate_old": 0.4389,
+          "pos_rate_new": 0.5292
+        }
+      ]
+    },
+    "hiv": {
+      "n_rows": 41127,
+      "n_scaffolds_old": 19089,
+      "n_scaffolds_new": 19089,
+      "rows_with_changed_key": 0,
+      "rows_with_changed_key_pct": 0.0,
+      "per_seed": [
+        {
+          "seed": 0,
+          "n_test_old": 8296,
+          "n_test_new": 8296,
+          "jaccard": 1.0,
+          "test_turnover_pct": 0.0,
+          "pos_rate_old": 0.0401,
+          "pos_rate_new": 0.0401
+        },
+        {
+          "seed": 1,
+          "n_test_old": 8226,
+          "n_test_new": 8226,
+          "jaccard": 1.0,
+          "test_turnover_pct": 0.0,
+          "pos_rate_old": 0.031,
+          "pos_rate_new": 0.031
+        },
+        {
+          "seed": 2,
+          "n_test_old": 8225,
+          "n_test_new": 8225,
+          "jaccard": 1.0,
+          "test_turnover_pct": 0.0,
+          "pos_rate_old": 0.0395,
+          "pos_rate_new": 0.0395
+        },
+        {
+          "seed": 3,
+          "n_test_old": 8226,
+          "n_test_new": 8226,
+          "jaccard": 1.0,
+          "test_turnover_pct": 0.0,
+          "pos_rate_old": 0.0395,
+          "pos_rate_new": 0.0395
+        },
+        {
+          "seed": 4,
+          "n_test_old": 8227,
+          "n_test_new": 8227,
+          "jaccard": 1.0,
+          "test_turnover_pct": 0.0,
+          "pos_rate_old": 0.0314,
+          "pos_rate_new": 0.0314
+        }
+      ]
+    },
+    "clintox": {
+      "n_rows": 1484,
+      "n_scaffolds_old": 820,
+      "n_scaffolds_new": 788,
+      "rows_with_changed_key": 466,
+      "rows_with_changed_key_pct": 31.4,
+      "per_seed": [
+        {
+          "seed": 0,
+          "n_test_old": 298,
+          "n_test_new": 297,
+          "jaccard": 0.1039,
+          "test_turnover_pct": 81.21,
+          "pos_rate_old": 0.1275,
+          "pos_rate_new": 0.0673
+        },
+        {
+          "seed": 1,
+          "n_test_old": 300,
+          "n_test_new": 296,
+          "jaccard": 0.07,
+          "test_turnover_pct": 87.0,
+          "pos_rate_old": 0.07,
+          "pos_rate_new": 0.0608
+        },
+        {
+          "seed": 2,
+          "n_test_old": 295,
+          "n_test_new": 298,
+          "jaccard": 0.4324,
+          "test_turnover_pct": 39.32,
+          "pos_rate_old": 0.0576,
+          "pos_rate_new": 0.0638
+        },
+        {
+          "seed": 3,
+          "n_test_old": 297,
+          "n_test_new": 295,
+          "jaccard": 0.1233,
+          "test_turnover_pct": 78.11,
+          "pos_rate_old": 0.0606,
+          "pos_rate_new": 0.1017
+        },
+        {
+          "seed": 4,
+          "n_test_old": 298,
+          "n_test_new": 297,
+          "jaccard": 0.0759,
+          "test_turnover_pct": 85.91,
+          "pos_rate_old": 0.0503,
+          "pos_rate_new": 0.0808
+        }
+      ]
+    }
+  },
+  "shipped_metrics_validity": {
+    "bbbp": {
+      "min_turnover_pct": 63.59,
+      "max_turnover_pct": 76.46,
+      "verdict": "RE_RUN_REQUIRED"
+    },
+    "bace": {
+      "min_turnover_pct": 59.27,
+      "max_turnover_pct": 83.5,
+      "verdict": "RE_RUN_REQUIRED"
+    },
+    "hiv": {
+      "min_turnover_pct": 0.0,
+      "max_turnover_pct": 0.0,
+      "verdict": "UNCHANGED"
+    },
+    "clintox": {
+      "min_turnover_pct": 39.32,
+      "max_turnover_pct": 87.0,
+      "verdict": "RE_RUN_REQUIRED"
+    }
+  },
+  "conclusion": "bbbp/bace/clintox test sets turn over 39.3-87.0% -> their shipped AUCs must be re-run. hiv is bit-identical (0% turnover) -> its shipped 0.7900 stands.",
+  "summary": {
+    "bbbp": {
+      "scaffolds_old": 1113,
+      "scaffolds_new": 1036,
+      "rows_changed_pct": 26.68,
+      "test_turnover_pct_range": [
+        63.59,
+        76.46
+      ],
+      "validity": "RE_RUN_REQUIRED"
+    },
+    "bace": {
+      "scaffolds_old": 739,
+      "scaffolds_new": 671,
+      "rows_changed_pct": 15.6,
+      "test_turnover_pct_range": [
+        59.27,
+        83.5
+      ],
+      "validity": "RE_RUN_REQUIRED"
+    },
+    "hiv": {
+      "scaffolds_old": 19089,
+      "scaffolds_new": 19089,
+      "rows_changed_pct": 0.0,
+      "test_turnover_pct_range": [
+        0.0,
+        0.0
+      ],
+      "validity": "UNCHANGED"
+    },
+    "clintox": {
+      "scaffolds_old": 820,
+      "scaffolds_new": 788,
+      "rows_changed_pct": 31.4,
+      "test_turnover_pct_range": [
+        39.32,
+        87.0
+      ],
+      "validity": "RE_RUN_REQUIRED"
+    }
+  }
+}

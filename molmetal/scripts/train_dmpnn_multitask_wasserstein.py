@@ -712,7 +712,10 @@ def load_platinai_4cell_split_table(
             "[platinai-4cell] WARNING: split_strategy='scaffold_70_10_10' is "
             "a stable SMILES hash, NOT a Bemis-Murcko scaffold split "
             "(MEASURED: 41.9% of test rows share a desalted stereo-blind "
-            "scaffold with train).",
+            "scaffold with train). Use "
+            "split_strategy='bemis_murcko_70_10_10' for a real scaffold "
+            "split (MEASURED 0.0% overlap); it changes the training cohort, "
+            "so existing checkpoints do not carry over.",
             flush=True,
         )
         # 70/10/10 bucket, derived from the stable id only.  (Was
@@ -728,10 +731,57 @@ def load_platinai_4cell_split_table(
             return "test"
 
         long_df["split"] = long_df["scaffold_id"].map(_split_bucket)
+    elif split_strategy == "bemis_murcko_70_10_10":
+        # Wf-A53 (2026-10-19) — the honest counterpart to the hash split
+        # above.  Groups rows by the Bemis-Murcko scaffold of the DESALTED,
+        # stereo-blind ligand (``molmetal.data.splits.ScaffoldSplitter``,
+        # ``include_chirality=False``), assigns each scaffold to exactly one
+        # split, then maps every row through its SMILES.
+        #
+        # The assignment runs on UNIQUE SMILES, so all four cell lines of a
+        # molecule land in the same split — that is what prevents cross-cell
+        # leakage (same protocol as ``load_nci60_9cell_split_table``).
+        #
+        # ADDITIVE: the default stays ``scaffold_70_10_10`` so every existing
+        # checkpoint remains loadable.  Choosing this strategy changes the
+        # training cohort and therefore invalidates those checkpoints.
+        from molmetal.data.splits import ScaffoldSplitter, _bemis_murcko_key
+
+        uniq = np.asarray(sorted(long_df["smiles"].astype(str).unique()), dtype=object)
+        result = ScaffoldSplitter(
+            strategy="largest_first",
+            fractions=(0.7, 0.1, 0.2),
+            seed=0,
+        )(_SmilesOnlyAdapter(uniq))
+        smi_to_split: Dict[str, str] = {}
+        for _name, _idx in (
+            ("train", result.train_idx),
+            ("val", result.val_idx),
+            ("test", result.test_idx),
+        ):
+            for _i in _idx:
+                smi_to_split[str(uniq[int(_i)])] = _name
+        long_df["split"] = long_df["smiles"].astype(str).map(smi_to_split)
+        _unassigned = int(long_df["split"].isna().sum())
+        if _unassigned:
+            raise ValueError(
+                f"{_unassigned} platinai rows received no split assignment — "
+                f"the splitter saw a different SMILES set than the rows carry."
+            )
+        # ``scaffold_id`` must name the scaffold actually grouped on, not a
+        # SMILES hash; a downstream reader would otherwise believe it is a
+        # scaffold.  Hash it only to keep the int dtype.
+        long_df["scaffold_id"] = long_df["smiles"].astype(str).map(
+            lambda s: _stable_hash_int(
+                _bemis_murcko_key(s, include_chirality=False) or f"__empty__{s}",
+                10**8,
+            )
+        )
     else:
         raise ValueError(
             f"Unknown split_strategy={split_strategy!r}. Supported: "
-            f"'scaffold_70_10_10'."
+            f"'scaffold_70_10_10' (SMILES hash, legacy), "
+            f"'bemis_murcko_70_10_10' (real scaffold split)."
         )
     long_df = long_df.reset_index(drop=False).rename(columns={"index": "row_id"})
     return long_df
@@ -777,6 +827,7 @@ def build_platinai_cell_line_axis(
     csv_path: Path,
     active_pic50_threshold: float = 6.0,
     active_labeling: str = "per_cell_median",
+    split_strategy: str = "scaffold_70_10_10",
 ) -> Tuple[pd.DataFrame, "MetalCytotoxDataset"]:
     """Build ``(split_df, ds)`` for the platinAI 4-cell cohort on a CELL-LINE task axis.
 
@@ -805,7 +856,9 @@ def build_platinai_cell_line_axis(
     task.  See the ``--active-pic50-threshold`` help text for the full
     measured sweep.
     """
-    split_df = load_platinai_4cell_split_table(csv_path).copy()
+    split_df = load_platinai_4cell_split_table(
+        csv_path, split_strategy=split_strategy
+    ).copy()
     split_df["metal"] = split_df["cell_line"].astype(str)
 
     ds_df = pd.DataFrame(
@@ -3308,6 +3361,27 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--platinai-split-strategy",
+        choices=("scaffold_70_10_10", "bemis_murcko_70_10_10"),
+        default="scaffold_70_10_10",
+        help=(
+            "How the platinai_4cell rows are split (Wf-A53). "
+            "'scaffold_70_10_10' (default) is the LEGACY behaviour: a stable "
+            "SHA-256 hash of each SMILES bucketed 70/10/10. Despite the name "
+            "it is NOT a scaffold split — MEASURED, 41.9%% of test rows share "
+            "a desalted stereo-blind scaffold with train. It stays the "
+            "default so every shipped Pt checkpoint remains loadable. "
+            "'bemis_murcko_70_10_10' is the real split: rows are grouped by "
+            "the desalted stereo-blind Bemis-Murcko scaffold of the ligand "
+            "(molmetal.data.splits.ScaffoldSplitter, include_chirality=False, "
+            "largest_first, seed 0) and each scaffold goes to exactly one "
+            "split. MEASURED on platinai_4cell.csv: 0.0%% of test rows share "
+            "a scaffold with train, at 13,148 / 1,056 / 2,108 rows. Choosing "
+            "it changes the training cohort and therefore invalidates the "
+            "existing checkpoints."
+        ),
+    )
+    p.add_argument(
         "--dataset",
         choices=("metalcytotox_5metal", "platinai_4cell", "nci60_9cell"),
         default="metalcytotox_5metal",
@@ -4012,6 +4086,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             args.csv,
             float(args.active_pic50_threshold),
             str(args.active_labeling),
+            str(args.platinai_split_strategy),
         )
         print(
             f"[Wf-A10 cell-line axis] dataset=platinai_4cell "
@@ -4024,7 +4099,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 f" (global threshold pIC50 > {args.active_pic50_threshold})"
                 if args.active_labeling == "global"
                 else " (per-cell median split)"
-            ),
+            )
+            + f"; split_strategy={args.platinai_split_strategy}",
             flush=True,
         )
     elif args.dataset == "nci60_9cell":

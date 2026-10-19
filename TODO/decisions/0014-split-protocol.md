@@ -15,8 +15,8 @@ than they deliver:
 | Split | Claimed | Measured |
 |---|---|---|
 | CFM v3/v4 | strict Bemis-Murcko, 0 scaffold leak | 0 at the shipped key, but **73.7 % of test rows and 79.6 % of val rows** share a desalted stereo-blind ligand scaffold with train |
-| MoleculeNet | Bemis-Murcko scaffold split | key keeps chirality; `astartes` (chemprop's splitter) defaults to `include_chirality=False`, so ours is the easier split |
-| Pt 4-cell | `scaffold_70_10_10` | `scaffold_id = _stable_hash_int(smiles, 10**8)` — a molecule-level hash; **41.9 % of test rows** share a desalted scaffold with train |
+| MoleculeNet | Bemis-Murcko scaffold split | key kept chirality until 2026-10-19; now stereo-blind and bit-exact with `astartes` (`include_chirality=False`). The shipped AUCs predate the fix |
+| Pt 4-cell | `scaffold_70_10_10` | `scaffold_id = _stable_hash_int(smiles, 10**8)` — a molecule-level hash; **41.9 % of test rows** share a desalted scaffold with train. A real split is now opt-in (`bemis_murcko_70_10_10`, 0.0 % overlap) |
 
 The literature does not support "always scaffold split" as the remedy:
 
@@ -71,9 +71,12 @@ papers**".
 - The CFM generative metrics remain measured on a split whose val set shares
   79.6 % of its rows' ligand scaffolds with train. That is now stated wherever
   the audit is cited; it is not fixed.
-- Aligning the MoleculeNet key will **lower** the four task AUCs. That is the
-  cost of removing an unfair advantage over the chemprop baseline, and it must
-  be reported as a protocol correction, not a regression.
+- Aligning the MoleculeNet key is expected to **lower** the bbbp/bace/clintox
+  AUCs (PROJECTED: separating a stereo-pair is an information leak, and the
+  aligned split closes it; the size of the drop is not measured until the
+  re-run). hiv is unaffected — its scaffolds carry no stereocentres. This is
+  the cost of removing an unfair advantage over the chemprop baseline, and it
+  must be reported as a protocol correction, not a regression.
 
 ## Update 2026-10-19 (Wf-A53) — what moved after this ADR
 
@@ -93,7 +96,27 @@ are closed without changing any reported number:
   event stream. MEASURED: 256/256 decodes, 0/256 single-fragment, mean 16.7
   fragments — the ratio alone was uninformative.
 - **The two mislabels are loud at runtime**, not only in this document.
+- **The MoleculeNet key is aligned** to `includeChirality=False`
+  (bit-exact with `MurckoScaffoldSmiles(includeChirality=False)` on all
+  85,174 rows across the four tasks). This is a code change, so it belongs
+  here rather than in the "still open" list: the *key* is fixed, the
+  *numbers* are not. MEASURED test-set turnover across the five seeds is
+  63.6-76.5 % (bbbp), 59.3-83.5 % (bace) and 39.3-87.0 % (clintox); hiv is
+  0 % because none of its scaffolds carry stereocentres. Consequently hiv's
+  shipped 0.7900 remains valid, while bbbp/bace/clintox are on a different
+  test set and their shipped AUCs must be re-run before citation
+  (`metrics/by_metric/moleculenet_scaffold_key_alignment.json`).
+- **BindingDB loads again.** The symlink target had been truncated to zero
+  bytes on 2026-09-30; it now points at the 990,630-row TDC export and the
+  loader accepts both header spellings.
+- **Pt 4-cell has an honest split available.** `--platinai-split-strategy
+  bemis_murcko_70_10_10` is a real Bemis-Murcko scaffold split (desalted,
+  stereo-blind, `largest_first`, seed 0) with MEASURED **0.0 %** test-row
+  scaffold overlap at 13,148 / 1,056 / 2,108 rows. The legacy
+  `scaffold_70_10_10` remains the default — it is a SMILES hash and still
+  reproduces the audited 41.9 % — so no shipped checkpoint is invalidated
+  by this change. `metrics/by_metric/platinai_4cell_scaffold_split_alignment.json`.
 
 Still open, because each requires a re-run rather than a code edit:
-MoleculeNet key alignment (4 tasks), Pt 4-cell real scaffold split, and a
-CFM checkpoint trained on v5.
+MoleculeNet re-run (config ready, not launched), a Pt 4-cell model trained
+on the scaffold split, and a CFM checkpoint trained on v5.

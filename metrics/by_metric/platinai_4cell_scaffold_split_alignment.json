@@ -1,0 +1,41 @@
+{
+  "artifact": "platinai_4cell_scaffold_split_alignment",
+  "generated": "2026-10-19",
+  "wave": "Wf-A53",
+  "status": "MEASURED",
+  "what": "Comparison of the legacy SMILES-hash split and the new opt-in Bemis-Murcko scaffold split for the PlatinAI 4-cell cohort.",
+  "cohort": ".data/molmetal/platinai_4cell.csv",
+  "strategies": {
+    "scaffold_70_10_10": {
+      "rows": {
+        "train": 11420,
+        "test": 3236,
+        "val": 1656
+      },
+      "unique_smiles": {
+        "test": 809,
+        "train": 2855,
+        "val": 414
+      },
+      "test_rows_sharing_scaffold_with_train_pct": 41.9,
+      "n_test_rows": 3236,
+      "molecule_in_exactly_one_split": true
+    },
+    "bemis_murcko_70_10_10": {
+      "rows": {
+        "train": 13148,
+        "test": 2108,
+        "val": 1056
+      },
+      "unique_smiles": {
+        "test": 527,
+        "train": 3287,
+        "val": 264
+      },
+      "test_rows_sharing_scaffold_with_train_pct": 0.0,
+      "n_test_rows": 2108,
+      "molecule_in_exactly_one_split": true
+    }
+  },
+  "conclusion": "The legacy strategy reproduces the audited 41.9% test-row scaffold overlap; bemis_murcko_70_10_10 reaches 0.0%. The legacy name is kept as the default only so existing checkpoints stay loadable; any new Pt 4-cell result should use the scaffold strategy."
+}

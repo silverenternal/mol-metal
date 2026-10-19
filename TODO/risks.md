@@ -99,15 +99,40 @@ Fixed 2026-10-19 (Wf-A53):
   v3-trained checkpoint: `NOT_HELD_OUT`, 609/848 (71.8%) of v5-test molecules
   were seen in v3-train.
 - **The two mislabels are now loud at runtime.** `train_moleculenet` prints
-  the stereo-aware-key caveat on every scaffold split;
-  `train_dmpnn_multitask_wasserstein` prints that `scaffold_70_10_10` is a
-  SMILES hash, not a scaffold split.
+  the scaffold key on every split; `train_dmpnn_multitask_wasserstein` prints
+  that `scaffold_70_10_10` is a SMILES hash, not a scaffold split.
+- **MoleculeNet key aligned to the reference (2026-10-19).**
+  `_bemis_murcko_scaffold` now returns `isomericSmiles=False`, which is
+  bit-exact with `MurckoScaffoldSmiles(includeChirality=False)` on **every row
+  of all four tasks** (2,050 / 1,513 / 41,127 / 1,484). MEASURED
+  (`metrics/by_metric/moleculenet_scaffold_key_alignment.json`): scaffold
+  counts 1113→1036 (bbbp), 739→671 (bace), 820→788 (clintox), hiv unchanged;
+  test-set turnover 63.6-76.5 % / 59.3-83.5 % / 39.3-87.0 % across the five
+  seeds. **hiv is bit-identical, so its shipped 0.7900 stands unchanged**;
+  bbbp/bace/clintox shipped AUCs are on the old key and must not be cited
+  until re-run. Pinned by `molmetal/tests/test_moleculenet_scaffold_key.py`.
+- **Pt 4-cell has a real scaffold split (2026-10-19).**
+  `--platinai-split-strategy bemis_murcko_70_10_10` groups rows by the
+  desalted stereo-blind Bemis-Murcko scaffold
+  (`molmetal.data.splits.ScaffoldSplitter`, `largest_first`, seed 0) and
+  assigns each scaffold to one split. MEASURED
+  (`metrics/by_metric/platinai_4cell_scaffold_split_alignment.json`):
+  **0.0 %** of test rows share a scaffold with train, at 13,148 / 1,056 /
+  2,108 rows. The legacy `scaffold_70_10_10` is still the default and still
+  reproduces the audited 41.9 %, so existing checkpoints stay loadable.
+  Pinned by `molmetal/tests/test_platinai_split_strategies.py`.
+- **BindingDB now loads (2026-10-19).** The `.data/molmetal/bindingdb_ic50.csv`
+  symlink pointed at a 0-byte file truncated 2026-09-30; it now points at
+  `bindingdb_ic50_export.csv` (990,630 rows). `_load_real_bindingdb` accepts
+  both the TDC export header (`Drug_ID,Drug,Target_ID,Target,Y`) and the
+  legacy `ID1,X1,ID2,X2,Y` spelling.
 
 Still open (needs re-runs, not silent code changes):
-- MoleculeNet: aligning the key to `includeChirality=False` changes every
-  split, so the 4 tasks must be re-run before the chemprop column is
-  like-for-like.
-- Pt 4-cell: implementing a real scaffold split changes the training cohort
-  and invalidates the existing checkpoints.
+- MoleculeNet: the key is aligned but the **re-run has not been launched**.
+  `configs/pa14_moleculenet_cap512_d4.yaml` (5 seeds × 50 epochs, 4 h) runs
+  all four tasks; hiv will reproduce exactly, the other three are new numbers.
+  Until then the paper's `tab:moleculenet` is on the old, easier key.
+- Pt 4-cell: the honest split exists but **no model has been trained on it**.
+  Every shipped Pt 4-cell number is on the legacy hash split.
 - CFM: a true held-out number needs a checkpoint trained from
   `configs/cfm_5metal_v5_full.yaml`.

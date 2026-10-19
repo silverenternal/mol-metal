@@ -88,17 +88,20 @@ def test_bindingdb_loader_exposes_row_count() -> None:
 # ---------------------------------------------------------------------------
 @requires_real_bindingdb
 def test_bindingdb_csv_header_has_id1_x1_id2_x2_y() -> None:
-    """Real BindingDB IC50 CSV has columns ``ID1, X1, ID2, X2, Y``."""
+    """Real BindingDB IC50 CSV has the TDC columns, under either spelling.
+
+    Wf-A53 (2026-10-19) — the download on disk is the TDC export
+    (``Drug_ID,Drug,Target_ID,Target,Y``); the original TDC split
+    (``ID1,X1,ID2,X2,Y``) was truncated to 0 bytes on 2026-09-30.  The
+    loader maps both; this test accepts both.
+    """
     with DEFAULT_BINDINGDB_CSV.open("r", encoding="utf-8", errors="replace") as fh:
         reader = csv.reader(fh)
         header = next(reader)
-    assert header[:5] == [
-        "ID1",
-        "X1",
-        "ID2",
-        "X2",
-        "Y",
-    ], f"unexpected header: {header[:5]}"
+    assert header[:5] in (
+        ["ID1", "X1", "ID2", "X2", "Y"],
+        ["Drug_ID", "Drug", "Target_ID", "Target", "Y"],
+    ), f"unexpected header: {header[:5]}"
 
 
 @requires_real_bindingdb
@@ -234,11 +237,11 @@ def test_bindingdb_symlink_points_to_pocket_data_tdc() -> None:
     """The symlink resolves to a real file under ``pocket/data/tdc/``."""
     target = os.readlink(DEFAULT_BINDINGDB_CSV)
     assert (
-        "pocket/data/tdc/bindingdb_ic50.csv" in target
+        "pocket/data/tdc/bindingdb_ic50" in target
     ), f"unexpected symlink target: {target}"
     resolved = (DEFAULT_BINDINGDB_CSV.parent / target).resolve()
     assert resolved.exists(), f"symlink target missing: {resolved}"
-    # 838 MB file — allow some slack for housekeeping copies
+    # ~770 MB export — allow some slack for housekeeping copies
     assert (
         resolved.stat().st_size > 100_000_000
     ), f"BindingDB IC50 file is only {resolved.stat().st_size} bytes; expected > 100MB"

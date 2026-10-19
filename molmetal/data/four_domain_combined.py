@@ -321,18 +321,37 @@ class _BindingDBRows:
         """Parse ``ID1,X1,ID2,X2,Y`` (TDC bindingdb_ic50.csv format).
 
         Returns list of ``(smi, pIC50, target_id, target_seq, active)``.
+
+        Wf-A53 (2026-10-19) — the download on disk is the TDC export, whose
+        header is ``Drug_ID,Drug,Target_ID,Target,Y``.  The two names are the
+        same columns; reading only ``X1``/``ID2``/``X2`` made a 990,630-row
+        file load as an empty dataset.  Both spellings are accepted so a
+        re-export with either header works.
         """
         import math
+
+        aliases = {
+            "X1": ("X1", "Drug"),
+            "Y": ("Y",),
+            "ID2": ("ID2", "Target_ID"),
+            "X2": ("X2", "Target"),
+        }
+
+        def _col(row: Dict[str, str], name: str) -> str:
+            for key in aliases[name]:
+                if key in row:
+                    return row.get(key) or ""
+            return ""
 
         rows: List[Tuple[str, float, str, str, bool]] = []
         with self.path.open("r", encoding="utf-8", errors="replace") as fh:
             reader = csv.DictReader(fh)
             for row in reader:
-                smi = (row.get("X1") or "").strip()
+                smi = _col(row, "X1").strip()
                 if not smi:
                     continue
                 try:
-                    y_nM = float(row.get("Y", "") or "")
+                    y_nM = float(_col(row, "Y").strip())
                 except (ValueError, TypeError):
                     continue
                 # Y is IC50 in nM.  Skip non-positive (censored) and extreme outliers.
@@ -344,8 +363,8 @@ class _BindingDBRows:
                 # Clip pIC50 to a sane range to avoid overflow / log-underflow artefacts.
                 if not (-2.0 <= pIC50 <= 14.0):
                     continue
-                target_id = (row.get("ID2") or "").strip()
-                target_seq = (row.get("X2") or "").strip()
+                target_id = _col(row, "ID2").strip()
+                target_seq = _col(row, "X2").strip()
                 active = pIC50 >= 5.0  # ≤ 10 µM
                 rows.append((smi, float(pIC50), target_id, target_seq, bool(active)))
         return rows
