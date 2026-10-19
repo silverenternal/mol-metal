@@ -47,6 +47,16 @@ data:
   # scaffolds across every split pair; all 5 metals in all 3 splits).
   # Manifest: metalcytotox_5metal_multitask_v5_split_manifest.json.
   # This config still points at v3 until the switch is authorised.
+  #
+  # The v5 test split now has a reader (nothing else did):
+  #     molmetal/scripts/wf_a53_eval_cfm_test_split.py
+  #         --ckpt-path <ckpt> --csv ...v5.csv --split test --out-json <json>
+  # It is read-only (no training, no checkpoint writes) and it MEASURES
+  # whether the split is actually held out relative to the checkpoint.
+  # MEASURED 2026-10-19 for the current v3-trained checkpoint: 609 of 848
+  # unique v5-test molecules (71.8%) are in v3's train split, so a number
+  # produced from that pair is IN-SAMPLE, not a generalisation result. A true
+  # held-out number needs a checkpoint trained on v5's train split.
   # ---------------------------------------------------------------------
   # MetalCytoToxDB multi-task v3 cohort filter — keep ALL 5 metals
   # the corpus ships with (Ru/Ir/Os/Rh/Re).  This key is in the loader's

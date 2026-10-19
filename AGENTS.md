@@ -323,6 +323,7 @@ Most recent work (for full detail read `docs/WF_HISTORY.md`):
 | `molmetal/scripts/train_dmpnn_multitask_wasserstein.py` | D-MPNN multi-task Wasserstein training |
 | `molmetal/scripts/train_chemprop_v2_v3.py` | chemprop v2/v3 training (default `v3-fallback` per Wf-263A) |
 | `molmetal/scripts/cfm_property_panel.py` | CFM property panel (SA / QED / diversity) |
+| `molmetal/scripts/wf_a53_eval_cfm_test_split.py` | Held-out-split CFM evaluation (read-only; measures whether the split is actually held out vs the checkpoint) |
 | `molmetal/scripts/cfm_vina_dock_panel.py` | CFM Vina docking panel (BLOCKED on Pt+2 per Wf-299B) |
 | `molmetal/scripts/platinai_real_label_loader.py` | MB-Finder PlatinAI loader (Wf-295B) |
 | `molmetal/scripts/platinai_selenium_loader.py` | PlatinAI Selenium S1 loader (Wf-292D / Wf-304B) |

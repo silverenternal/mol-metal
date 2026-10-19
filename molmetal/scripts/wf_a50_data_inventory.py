@@ -62,7 +62,10 @@ DECLARED: List[tuple] = [
      "Deduplicated rebuild (24,483 rows) with a desalted stereo-blind "
      "ligand-scaffold split: 17,138/2,448/4,897, 0 shared scaffolds and 0 "
      "shared canonical SMILES across every split pair, all 5 metals in all 3 "
-     "splits. Built by wf_a52_rebuild_cfm_split.py; no config points at it yet."),
+     "splits. Built by wf_a52_rebuild_cfm_split.py. No training config points "
+     "at it yet, but its test split now HAS a consumer: "
+     "wf_a53_eval_cfm_test_split.py scores a checkpoint on split='test' "
+     "read-only (4,888 of 4,897 rows embed; 4,888 carry bond truth)."),
     ("cfm_5metal_v2", DATA / "metalcytotox_5metal_multitask_v2.csv",
      "generative_train", "SUPERSEDED",
      "Same 26,632 rows as v3, differing only in column naming (lowercase "
