@@ -1,0 +1,233 @@
+{
+ "metric": "wfa97_fragmentation_diagnosis",
+ "tag": "MEASURED",
+ "date": "2026-10-19",
+ "checkpoint": "molmetal/reports/cfm_fullcorpus_2026_10_10/checkpoints/cfm_yuelbond_wasserstein_seed0_last.pt",
+ "n_clouds": 16,
+ "connectivity_prior": true,
+ "summary": {
+  "frac_fragmented": 1.0,
+  "mean_components": 4.9375,
+  "mean_bonds_added_connectivity": 0.8125,
+  "n_clouds_with_zero_bridges": 7,
+  "frac_fragmented_with_candidate_bridge": 0.75,
+  "frac_fragmented_with_candidate_and_budget": 0.0,
+  "median_closest_inter_component_distance": 2.7507708072662354
+ },
+ "rows": [
+  {
+   "n_atoms": 15,
+   "n_components": 4,
+   "bonds_added_connectivity": 2,
+   "n_fragments": 4,
+   "closest_inter_component": {
+    "d": 2.3310511112213135,
+    "i": 10,
+    "j": 1,
+    "in_candidates": true,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 19,
+   "n_components": 6,
+   "bonds_added_connectivity": 0,
+   "n_fragments": 6,
+   "closest_inter_component": {
+    "d": 1.5075039863586426,
+    "i": 10,
+    "j": 6,
+    "in_candidates": true,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 27,
+   "n_components": 7,
+   "bonds_added_connectivity": 1,
+   "n_fragments": 7,
+   "closest_inter_component": {
+    "d": 1.406455159187317,
+    "i": 8,
+    "j": 20,
+    "in_candidates": true,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 27,
+   "n_components": 4,
+   "bonds_added_connectivity": 1,
+   "n_fragments": 4,
+   "closest_inter_component": {
+    "d": 3.149064540863037,
+    "i": 2,
+    "j": 10,
+    "in_candidates": true,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 28,
+   "n_components": 6,
+   "bonds_added_connectivity": 2,
+   "n_fragments": 6,
+   "closest_inter_component": {
+    "d": 3.61580753326416,
+    "i": 11,
+    "j": 16,
+    "in_candidates": false,
+    "budget": 2.0
+   }
+  },
+  {
+   "n_atoms": 32,
+   "n_components": 6,
+   "bonds_added_connectivity": 0,
+   "n_fragments": 6,
+   "closest_inter_component": {
+    "d": 2.8328161239624023,
+    "i": 26,
+    "j": 5,
+    "in_candidates": true,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 33,
+   "n_components": 8,
+   "bonds_added_connectivity": 1,
+   "n_fragments": 8,
+   "closest_inter_component": {
+    "d": 2.7452290058135986,
+    "i": 5,
+    "j": 10,
+    "in_candidates": true,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 33,
+   "n_components": 6,
+   "bonds_added_connectivity": 0,
+   "n_fragments": 6,
+   "closest_inter_component": {
+    "d": 1.0590218305587769,
+    "i": 7,
+    "j": 32,
+    "in_candidates": true,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 33,
+   "n_components": 2,
+   "bonds_added_connectivity": 1,
+   "n_fragments": 2,
+   "closest_inter_component": {
+    "d": 2.356049060821533,
+    "i": 5,
+    "j": 6,
+    "in_candidates": true,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 34,
+   "n_components": 5,
+   "bonds_added_connectivity": 1,
+   "n_fragments": 5,
+   "closest_inter_component": {
+    "d": 2.797489881515503,
+    "i": 30,
+    "j": 4,
+    "in_candidates": true,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 34,
+   "n_components": 6,
+   "bonds_added_connectivity": 0,
+   "n_fragments": 6,
+   "closest_inter_component": {
+    "d": 1.5668929815292358,
+    "i": 18,
+    "j": 5,
+    "in_candidates": true,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 35,
+   "n_components": 3,
+   "bonds_added_connectivity": 0,
+   "n_fragments": 3,
+   "closest_inter_component": {
+    "d": 3.5346932411193848,
+    "i": 33,
+    "j": 19,
+    "in_candidates": false,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 37,
+   "n_components": 3,
+   "bonds_added_connectivity": 1,
+   "n_fragments": 3,
+   "closest_inter_component": {
+    "d": 3.826390027999878,
+    "i": 26,
+    "j": 34,
+    "in_candidates": false,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 46,
+   "n_components": 2,
+   "bonds_added_connectivity": 3,
+   "n_fragments": 2,
+   "closest_inter_component": {
+    "d": 2.3960278034210205,
+    "i": 8,
+    "j": 32,
+    "in_candidates": true,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 61,
+   "n_components": 8,
+   "bonds_added_connectivity": 0,
+   "n_fragments": 8,
+   "closest_inter_component": {
+    "d": 2.756312608718872,
+    "i": 31,
+    "j": 16,
+    "in_candidates": true,
+    "budget": 0.0
+   }
+  },
+  {
+   "n_atoms": 71,
+   "n_components": 3,
+   "bonds_added_connectivity": 0,
+   "n_fragments": 3,
+   "closest_inter_component": {
+    "d": 3.599701404571533,
+    "i": 30,
+    "j": 23,
+    "in_candidates": false,
+    "budget": 1.0
+   }
+  }
+ ],
+ "reading": {
+  "why_it_matters": "connectivity_prior is ON in every shipped decode, yet single_fragment_ratio is 0.047 (L3) and 0.000 (OPT-5 every epoch).",
+  "diagnosis": "Every fragmented cloud had a candidate pair crossing components, but 0/16 had valence budget >= 1.0 at the closest inter-component pair: the selector spends the full valence on intra-fragment bonds, so the prior cannot add a bridge. The fragments are saturated small molecules, not geometry errors (median closest inter-component distance 2.75 A).",
+  "implication": "A decode-side prior cannot fix this. The fix has to be upstream: a training-time connectivity term (assemble_loss_weight, 0.0 in every shipped config) or sampling that keeps the ligand contracted.",
+  "caveat": "16 clouds, one checkpoint, one seed."
+ }
+}

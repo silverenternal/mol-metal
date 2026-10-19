@@ -408,13 +408,14 @@ def test_per_class_pr_auc_emits_new_fields():
     assert "bond_per_class_n_classes_with_pos" in out
 
 
-def test_per_class_pr_auc_no_bond_equals_legacy_existence():
-    """``bond_pr_auc`` == ``bond_class_0_pr_auc`` (NO_BOND one-vs-rest).
+def test_per_class_pr_auc_existence_is_not_the_no_bond_ap():
+    """Wf-A97 — ``bond_pr_auc`` is the EXISTENCE AP, not the NO_BOND AP.
 
-    A monotone reversal of the score is ranking-preserving so AP is
-    the same number (the legacy existence AP used 1-prob[:, NO_BOND]
-    as the score, the new NO_BOND AP uses prob[:, NO_BOND] directly
-    against (truth == NO_BOND) — same ranking, just inverted label).
+    The pre-Wf-A97 invariant (``bond_pr_auc == bond_class_0_pr_auc``) rested
+    on a false claim: reversing the score reverses the ranking, and AP of the
+    complement is not AP of the class.  On 64 real tmQM val clouds the two
+    differ by 2.3x (0.266 existence vs 0.621 NO_BOND,
+    metrics/by_metric/wfa97_bond_metric_recheck.json).
     """
     from molmetal.scripts.train_cfm_yuelbond_wasserstein import (
         _bond_ranking_report_per_class,
@@ -427,7 +428,11 @@ def test_per_class_pr_auc_no_bond_equals_legacy_existence():
         pair_probs=pair_probs,
         pair_truth_class=pair_truth_class,
     )
-    assert out["bond_pr_auc"] == pytest.approx(out["bond_class_0_pr_auc"])
+    assert out["bond_pr_auc"] == pytest.approx(out["bond_existence_ap"])
+    assert out["bond_pr_auc_class0"] == pytest.approx(
+        out["bond_class_0_pr_auc"]
+    )
+    assert out["bond_pr_auc"] != pytest.approx(out["bond_class_0_pr_auc"])
 
 
 def test_per_class_pr_auc_handles_empty_input():
@@ -568,8 +573,14 @@ def test_evaluate_bond_accuracy_emits_per_class_pr_auc_fields():
     assert "bond_best_f1_threshold" in out
     assert "bond_best_f1_at_threshold" in out
     assert "bond_n_pairs_scored" in out
-    # Legacy equality: bond_pr_auc == bond_class_0_pr_auc.
-    assert out["bond_pr_auc"] == pytest.approx(out["bond_class_0_pr_auc"])
+    # Wf-A97 — bond_pr_auc is the EXISTENCE AP; the NO_BOND AP is kept under
+    # its own name.  The pre-A97 equality was the metric defect.
+    assert "bond_existence_ap" in out
+    assert "bond_pr_auc_class0" in out
+    assert out["bond_pr_auc"] == pytest.approx(out["bond_existence_ap"])
+    assert out["bond_pr_auc_class0"] == pytest.approx(
+        out["bond_class_0_pr_auc"]
+    )
 
 
 def test_legacy_bond_ranking_report_still_works():

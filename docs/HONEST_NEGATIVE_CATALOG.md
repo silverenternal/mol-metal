@@ -7580,3 +7580,78 @@ tests; §5.2: every number traces to
 wet-lab).
 
 ---
+
+## §6.132 Wf-A97 (2026-10-19) — the bond PR-AUC was measuring the majority class
+
+**Scope.** CFM line: the headline bond ranking metric. 0 paper/*, 0 wet-lab.
+
+### 6.132a The defect
+
+`_bond_ranking_report_per_class` set
+
+```python
+out["bond_pr_auc"] = out["bond_class_0_pr_auc"]   # NO_BOND one-vs-rest AP
+```
+
+with the justification *"reversing the score is monotone so the ranking is
+identical, and the resulting AP is the same number"*. **That is false.** AP of
+the complement is not AP of the class. Ranking by `P(NO_BOND)` with label
+`truth == NO_BOND` puts the majority class first; ranking by
+`1 - P(NO_BOND)` with label `truth != NO_BOND` puts the bonds first. The two
+orderings are reverses of each other and their average precisions differ
+whenever the ranking is partial — which is always.
+
+### 6.132b MEASURED
+
+`metrics/by_metric/wfa97_bond_metric_recheck.json` — 64 real tmQM val clouds,
+checkpoint `cfm_fullcorpus_2026_10_10/..._last.pt` (sha256 in the JSON),
+evaluated on cuda:0.
+
+| quantity | value |
+|---|---|
+| **existence AP (corrected `bond_pr_auc`)** | **0.2659** |
+| NO_BOND one-vs-rest AP (the old headline) | 0.6209 |
+| best F1 (1% sweep) | 0.4657 @ threshold 0.87 |
+| F1 at the shipped 0.5 | 0.4656 |
+
+The old number was **2.3x** the real one. Every "bond PR-AUC 0.9246 -> 0.9825"
+in §6.130d, and every earlier citation of a 0.9+ bond PR-AUC, is the NO_BOND
+one-vs-rest AP: it is high because 70-94% of candidate pairs are not bonds.
+
+### 6.132c The fix
+
+* `bond_pr_auc` is the **existence AP** again
+  (`1 - P(NO_BOND)` vs `truth != NO_BOND`).
+* `bond_existence_ap` carries the same number under an unambiguous name.
+* `bond_pr_auc_class0` keeps the old number, labelled for what it is.
+* The optimistic best-F1 sweep grid moved from 0.05..0.95 in 5% steps to
+  0.01..0.99 in 1% steps. The old grid could not see a threshold below 0.05;
+  on this cohort the optimum is 0.87, so the grid was not the binding problem
+  here, but it was on a 16-cloud subsample where 0.01 won.
+* 3 new tests (`test_wfa97_bond_existence_ap.py`) + 2 repaired tests in
+  `test_wf_a70_w2_temperature_pr_auc.py` that had pinned the false invariant.
+
+### 6.132d Honest negatives that REMAIN (ACTIVE)
+
+* **Existence AP 0.266 is below the 0.298 positive rate** on this candidate
+  set — the head ranks bonds no better than chance on real tmQM geometry.
+  F1 0.466 is reached only because the candidate set is dense.
+* **A classical toolkit beats this head on existence.** OpenBabel recovers
+  bond existence at F1 ~0.98 on the same corpus (recorded in the trainer's
+  own comment block); the learned head reaches 0.466.
+* **The correction invalidates prior comparisons**, not just relabels them:
+  a 30-epoch run's "0.98 PR-AUC" and a 5-epoch run's "0.92" were both
+  majority-class numbers, so their ordering says nothing about bond ranking.
+* **The metric fix does not change any model.** It changes what the model is
+  allowed to claim.
+
+**§6.132 catalog-count math.** Net catalog-count delta: **+1** (§6.132 itself).
+ACTIVE count delta: **+1**. Cumulative catalog count: **190 -> 191**. ACTIVE
+count: **146 -> 147**.
+
+**Workflow** | Wf-A97 (2026-10-19; 1 GPU re-measure on 64 clouds; 3 new + 2
+repaired tests; §5.2: numbers trace to `wfa97_bond_metric_recheck.json`;
+§5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
+

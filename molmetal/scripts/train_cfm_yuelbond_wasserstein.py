@@ -7521,12 +7521,16 @@ def _bond_ranking_report_per_class(
         reader sees the support; TRIPLE has ~9 pairs / cloud so the
         variance is high)
 
-    Backward-compat invariant: ``bond_pr_auc`` ==
-    ``bond_class_0_pr_auc`` (NO_BOND one-vs-rest AP), the same number
-    the legacy existence AP reported, just exposed under a class-keyed
-    field name.  ``bond_positive_rate`` keeps the legacy semantic
-    (fraction of pairs that are NOT NO_BOND) — distinct from the new
-    per-class ``pos_rate`` (fraction of pairs that ARE class c).
+    Wf-A97 (2026-10-19) — ``bond_pr_auc`` is the EXISTENCE AP again.
+    Between Wf-A70 and Wf-A97 it was set to ``bond_class_0_pr_auc`` on a
+    false invariance claim (reversing the score was said to preserve the
+    ranking).  It does not: AP of the complement is not AP of the class,
+    and with 70-94% NO_BOND pairs the class-0 AP is trivially high.  The
+    old number is still emitted as ``bond_pr_auc_class0``, explicitly
+    labelled, and the corrected number is also under
+    ``bond_existence_ap``.  ``bond_positive_rate`` keeps the legacy
+    semantic (fraction of pairs that are NOT NO_BOND) — distinct from the
+    per-class ``pos_rate`` (fraction that ARE class c).
 
     Why per-class matters.  The legacy ``bond_pr_auc`` collapses to
     existence — a high number can hide that the head never ranks
@@ -7592,12 +7596,30 @@ def _bond_ranking_report_per_class(
         out[f"bond_class_{int(c)}_pr_auc"] = float(ap)
         out[f"bond_class_{int(c)}_pos_rate"] = float(n_pos / max(n, 1))
         out[f"bond_class_{int(c)}_n_pos"] = float(n_pos)
-    # Backward-compat: NO_BOND one-vs-rest PR-AUC == legacy existence AP
-    # ranking (a positive has prob[:,0] < threshold, a negative has prob[:,0]
-    # > threshold; reversing the score is monotone so the ranking is
-    # identical, and the resulting AP is the same number).  ``bond_pr_auc``
-    # preserves the legacy field name.
-    out["bond_pr_auc"] = out[f"bond_class_{int(BOND_NO_BOND)}_pr_auc"]
+    # Wf-A97 (2026-10-19) — METRIC FIX.  ``bond_pr_auc`` was being set to
+    # the NO_BOND one-vs-rest AP, on the claim that "reversing the score is
+    # monotone so the ranking is identical, and the resulting AP is the same
+    # number".  That claim is false: reversing the score reverses the
+    # ranking, and the positive class flips with it.  AP of the COMPLEMENT is
+    # not AP of the class.  MEASURED on the cfm_fullcorpus checkpoint over 16
+    # real val clouds (2,141 candidate pairs, positive rate 0.298):
+    #
+    #     existence AP (1 - P(NO_BOND), label = bonded)  = 0.2651
+    #     NO_BOND one-vs-rest AP (the old bond_pr_auc)   = 0.6366
+    #
+    # The old number is high because 70% of these pairs are NOT bonded and
+    # ranking those first is easy; the number the project has been reading as
+    # "the head ranks bonds at PR-AUC 0.98" is the majority class.  The
+    # corrected existence AP is reported under both the legacy field name and
+    # an explicit one; the old value stays available, honestly labelled.
+    existence_scores = (1.0 - probs[:, int(BOND_NO_BOND)]).tolist()
+    existence_is_true = (truth != int(BOND_NO_BOND)).long().tolist()
+    existence_ap = _bond_average_precision_block(
+        existence_scores, existence_is_true
+    )
+    out["bond_existence_ap"] = float(existence_ap)
+    out["bond_pr_auc"] = float(existence_ap)
+    out["bond_pr_auc_class0"] = float(out[f"bond_class_{int(BOND_NO_BOND)}_pr_auc"])
     # Legacy ``bond_positive_rate`` = fraction of pairs that are NOT
     # NO_BOND (existence), distinct from the new per-class pos_rate
     # (fraction that ARE class c).  Computed from the same probs/truth.
@@ -7610,12 +7632,14 @@ def _bond_ranking_report_per_class(
     # original function ran, just on the existence view rather than
     # per-class.  The ``bond_best_f1_*`` fields remain a CEILING — see
     # ``bond_pr_auc_note``.
-    existence_scores = (1.0 - probs[:, int(BOND_NO_BOND)]).tolist()
-    existence_is_true = (truth != int(BOND_NO_BOND)).long().tolist()
     best_f1 = 0.0
     best_t = 0.0
-    for t_tenth in range(5, 100, 5):
-        t = t_tenth / 100.0
+    # Wf-A97 — the grid used to start at 0.05.  MEASURED best threshold on
+    # real val geometry is 0.01, i.e. BELOW the grid, so the reported
+    # "optimistic ceiling" was itself understated and the sweep could not
+    # see the operating point that actually works.  1% steps over (0, 1).
+    for t_pct in range(1, 100):
+        t = t_pct / 100.0
         tp_t = fp_t = fn_t = 0
         for s, lab in zip(existence_scores, existence_is_true):
             if s >= t:
@@ -7645,7 +7669,9 @@ def _bond_ranking_report_per_class(
     out["bond_per_class_n_classes_with_pos"] = float(len(aps_with_pos))
     out["bond_per_class_n_pairs"] = float(n)
     out["bond_pr_auc_note"] = (
-        "bond_pr_auc is threshold-free (honest). "
+        "bond_pr_auc is threshold-free (honest) and measures EXISTENCE "
+        "(1 - P(NO_BOND) vs bonded); bond_pr_auc_class0 is the NO_BOND "
+        "one-vs-rest AP and is trivially high (Wf-A97). "
         "bond_best_f1_* are selected on the same pairs (OPTIMISTIC — a "
         "ceiling, not a result).  bond_class_{c}_pr_auc are per-class "
         "one-vs-rest AP (Fix 9); bond_per_class_macro_pr_auc averages "
