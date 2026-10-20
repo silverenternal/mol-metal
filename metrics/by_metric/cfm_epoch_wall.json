@@ -229,5 +229,188 @@
     "peak_allocated_note": "converged by step ~150 of epoch 5 and did not move for the next 300 steps, i.e. it is the max over sampled cloud sizes, not growth",
     "interpretation": "nvidia-smi's 97,331 MiB peak is reserved, not live tensors. The model's true per-step requirement is peak_allocated 85,030 MiB. Any statement that the run 'used 97 GB' is a statement about empty allocator blocks.",
     "caveat": "peak_allocated 85,030 MiB is still within 10 GB of the 95.06 GiB card minus the 11.3 GB co-tenant, which is why the un-instrumented run died and this one survives."
+  },
+  "regularizer_fallbacks": {
+    "run": "cfm_c7_fullgen_2026_10_20 (18/18 epochs, n_train=26,715, batch 64)",
+    "status": "MEASURED",
+    "source": "molmetal/reports/cfm_c7_fullgen_2026_10_20/events.jsonl (train_epoch events)",
+    "what": "Steps per epoch on which a weighted regulariser raised and returned torch.zeros(()). Counts come from FALLBACK_COUNTS (commit ba604b88); an empty dict means every weighted term contributed on every step.",
+    "steps_per_epoch": 418,
+    "by_epoch": [
+      {
+        "epoch": 0,
+        "wall_time_s": 1063.6,
+        "regularizer_fallbacks": null
+      },
+      {
+        "epoch": 1,
+        "wall_time_s": 974.5,
+        "regularizer_fallbacks": null
+      },
+      {
+        "epoch": 2,
+        "wall_time_s": 1042.5,
+        "regularizer_fallbacks": null
+      },
+      {
+        "epoch": 3,
+        "wall_time_s": 1097.0,
+        "regularizer_fallbacks": null
+      },
+      {
+        "epoch": 4,
+        "wall_time_s": 1140.2,
+        "regularizer_fallbacks": {}
+      },
+      {
+        "epoch": 5,
+        "wall_time_s": 1005.8,
+        "regularizer_fallbacks": {
+          "EnergyConservation": 1,
+          "SBOO3Term": 1
+        }
+      },
+      {
+        "epoch": 6,
+        "wall_time_s": 1131.4,
+        "regularizer_fallbacks": {
+          "EnergyConservation": 1,
+          "SBOO3Term": 1
+        }
+      },
+      {
+        "epoch": 7,
+        "wall_time_s": 867.3,
+        "regularizer_fallbacks": {
+          "EnergyConservation": 2,
+          "SBOO3Term": 2
+        }
+      },
+      {
+        "epoch": 8,
+        "wall_time_s": 918.7,
+        "regularizer_fallbacks": {
+          "EnergyConservation": 2,
+          "SBOO3Term": 3
+        }
+      },
+      {
+        "epoch": 9,
+        "wall_time_s": 468.2,
+        "regularizer_fallbacks": {
+          "EnergyConservation": 2,
+          "SBOO3Term": 3
+        }
+      },
+      {
+        "epoch": 10,
+        "wall_time_s": 513.7,
+        "regularizer_fallbacks": {
+          "EnergyConservation": 2,
+          "SBOO3Term": 3,
+          "FmOdeTerm": 1
+        }
+      },
+      {
+        "epoch": 11,
+        "wall_time_s": 694.9,
+        "regularizer_fallbacks": {
+          "EnergyConservation": 3,
+          "SBOO3Term": 4,
+          "FmOdeTerm": 1
+        }
+      },
+      {
+        "epoch": 12,
+        "wall_time_s": 816.3,
+        "regularizer_fallbacks": {
+          "EnergyConservation": 3,
+          "SBOO3Term": 5,
+          "FmOdeTerm": 2
+        }
+      },
+      {
+        "epoch": 13,
+        "wall_time_s": 823.5,
+        "regularizer_fallbacks": {
+          "EnergyConservation": 3,
+          "SBOO3Term": 6,
+          "FmOdeTerm": 2
+        }
+      },
+      {
+        "epoch": 14,
+        "wall_time_s": 817.9,
+        "regularizer_fallbacks": {
+          "EnergyConservation": 3,
+          "SBOO3Term": 6,
+          "FmOdeTerm": 3
+        }
+      },
+      {
+        "epoch": 15,
+        "wall_time_s": 814.7,
+        "regularizer_fallbacks": {
+          "EnergyConservation": 3,
+          "SBOO3Term": 6,
+          "FmOdeTerm": 3
+        }
+      },
+      {
+        "epoch": 16,
+        "wall_time_s": 526.9,
+        "regularizer_fallbacks": {
+          "EnergyConservation": 3,
+          "SBOO3Term": 6,
+          "FmOdeTerm": 3
+        }
+      },
+      {
+        "epoch": 17,
+        "wall_time_s": 597.0,
+        "regularizer_fallbacks": {
+          "EnergyConservation": 3,
+          "SBOO3Term": 6,
+          "FmOdeTerm": 4
+        }
+      }
+    ],
+    "totals": {
+      "EnergyConservation": 31,
+      "SBOO3Term": 52,
+      "FmOdeTerm": 19
+    },
+    "epochs_with_any_fallback": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "epochs_with_no_fallback": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "reading": "Epochs 0-3 predate the per-epoch counter (commit ba604b88 landed mid-run), so their fallback count is UNKNOWN, not zero. Epoch 4 is the only epoch recorded as fully clean. From epoch 5 on, at least one weighted term returned zero on 1-6 steps per epoch (EnergyConservation 31, SBOO3Term 52, FmOdeTerm 19 steps in total). The objective that produced the 18-epoch pool is therefore not the objective the config declares, and the loss curve is smooth throughout - this is visible only because the counts are emitted per epoch.",
+    "epochs_recorded_as_zero": [
+      4
+    ],
+    "epochs_not_recorded": [
+      0,
+      1,
+      2,
+      3
+    ]
   }
 }

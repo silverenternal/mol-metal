@@ -9233,6 +9233,17 @@ Six conclusions, three of which overturn what §6.150b inferred from four epochs
     and it reframes the target: the problem is not "generate more bonds", it is the ring-size /
     topology prior.
 
+**"Six terms on" was true for one epoch, not eighteen.** The per-epoch counter from commit `ba604b88`
+landed **mid-run**, so its coverage is uneven and the artifact says so rather than rounding the gap
+to zero: epochs 0-3 predate it and are **UNKNOWN**, epoch 4 is the only epoch recorded clean, and
+epochs 5-17 each contain 1-6 steps on which a weighted term raised and returned `torch.zeros(())`
+— `EnergyConservation` **31** steps, `SBOO3Term` **52**, `FmOdeTerm` **19** in total
+(`metrics/by_metric/cfm_epoch_wall.json:/regularizer_fallbacks`). The loss curve is smooth across
+all of it: `train_loss` falls 26.77 → 25.21 with no discontinuity at epoch 5 where the fallbacks
+start. So the pool was produced by an objective that drifted between six and three-to-five active
+terms, and nothing in the loss would have shown it. This is the failure mode the counter was added
+to expose, caught on the first run that could have hidden it.
+
 **One bookkeeping correction the resume forced.** `cfm_c7_fullgen_ep4_partial_2026_10_20` was
 preserved from the crashed run. While the resumed pool was also 4 epochs the two files were
 byte-identical and a sha256 rule dropped the duplicate. Once the resume passed epoch 4 they stopped
@@ -9328,6 +9339,17 @@ statement that every weighted term contributed. The warning behaviour is deliber
     capping the pair tensors, which is a model change, not an allocator one.
   * **Every number here was taken with a foreign 11.3 GB resident on the same GPU** (the user's
     `lineageflow` run), and some arms raced a second agent's cold C7 launch that was later stopped.
+  * **The +51% `empty_cache` cost is a 4,096-cloud number; at 26,715 clouds it is UNMEASURED.**
+    Every arm in this entry ran at `n_train=4096`. The full-corpus run that followed used
+    `empty_cache_every: 8` and completed 18/18 epochs at 1,064-1,140 s/epoch with 46 recoverable
+    OOMs, but no matched no-`empty_cache` arm was run at that scale, so the *ratio* is a PROJECTED
+    extrapolation. What is MEASURED at full corpus is only the outcome (it fit and finished); the
+    cost of the lever at that scale is not.
+  * **The run that finished did NOT use `expandable_segments`.** §6.150c calls it the single
+    largest lever, so it would be natural to assume the completed run used it. It did not: the
+    resume config sets `empty_cache_every: 8` and no `PYTORCH_CUDA_ALLOC_CONF` is exported by
+    `scripts/start.sh`, so the flag was never set for this process. The completed 18-epoch run is
+    therefore evidence for `empty_cache_every`, not for `expandable_segments` at full corpus.
     The `torch.cuda` numbers are per-process and unaffected; the `nvidia-smi` numbers are totals and
     are not directly comparable across arms.
 
