@@ -13979,30 +13979,6 @@ def main() -> int:
     _loop_end = _start_epoch + 1 if _eval_only else args.epochs
     for epoch in range(_start_epoch, _loop_end):
         epoch_start = time.time()
-        # 2026-10-21 (FIX-C12) — opt-in allocator trace, `MOLMETAL_MEM_TRACE=1`.
-        #
-        # The full-corpus run's peak grows with the number of training STEPS:
-        # MEASURED at n_train=4096 (64 steps/epoch) the peak is 70,324 MiB with
-        # expandable_segments, while n_train=26715 (418 steps/epoch) climbs past
-        # 96,000 MiB inside its first epoch.  nvidia-smi cannot tell a real
-        # leak (allocated grows) from allocator caching of heterogeneous shapes
-        # (reserved grows, allocated flat), and that distinction decides whether
-        # the fix is a code change or a bigger `max_split_size_mb`.  Printing
-        # both at every epoch boundary is cheaper than another 80-minute run.
-        if _wf130_os.environ.get("MOLMETAL_MEM_TRACE") == "1" and device.type == "cuda":
-            _gib = 2**30
-
-            def _gb(n: int) -> str:
-                return f"{n / _gib:.2f}G"
-
-            print(
-                f"[mem-trace] epoch={epoch} "
-                f"allocated={_gb(torch.cuda.memory_allocated(device))} "
-                f"reserved={_gb(torch.cuda.memory_reserved(device))} "
-                f"max_allocated={_gb(torch.cuda.max_memory_allocated(device))} "
-                f"max_reserved={_gb(torch.cuda.max_memory_reserved(device))}",
-                flush=True,
-            )
         # Round-4 E3 — per-epoch bond-score accumulator.  Reset HERE, at the
         # top of the loop, so a stale score from the previous epoch cannot
         # leak into this epoch's record if the eval is skipped.  (It used to
