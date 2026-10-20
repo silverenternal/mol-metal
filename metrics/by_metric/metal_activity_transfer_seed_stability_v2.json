@@ -199,8 +199,9 @@
     "unresolvable_confirmed_quantitatively": "Os swings 0.3133-0.5867 (spread 0.2733) across seeds -- far larger than Ru/Ir. That swing IS the unresolvability: at n=36 unique ligands the estimate moves more than any method would move it.",
     "tie_rule_caveat": "Every number above is under the default tie rule (ties -> ACTIVE, ``sum*2>=n``). Under the conservative rule Ru spans 0.7880-0.8082 and no longer clears Krasnov 0.81 on every seed -- see metal_activity_transfer_tie_sensitivity.json. So 'Ru beats Krasnov' is seed-robust but NOT tie-rule robust: state it as parity. Ir is robust under either rule."
   },
-  "supersedes": {
-    "path": "metrics/by_metric/metal_activity_transfer_seed_stability.json",
-    "reason": "The superseded artifact's cross_metal_per_seed covers only 3 of its 5 seeds (the sweep was still running when it was written) and its producer was an ad-hoc workflow script that no longer exists. Preserved verbatim per AGENTS.md \u00a75.5."
+  "supersedes": "metal_activity_transfer_seed_stability",
+  "supersedes_reason": "The superseded artifact's cross_metal_per_seed covers only 3 of its 5 seeds (the sweep was still running when it was written) and its producer was an ad-hoc workflow script that no longer exists. Preserved verbatim per AGENTS.md §5.5.",
+  "supersedes_note": {
+    "path_as_written": "metrics/by_metric/metal_activity_transfer_seed_stability.json"
   }
 }

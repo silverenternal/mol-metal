@@ -40,6 +40,6 @@
     "arm_B_d_atoms": -6.135890151515149
   },
   "why_the_control_is_required": "SA contains a size penalty (nAtoms**1.005 - nAtoms), and the intervention deletes atoms, so an unguarded SA improvement would be indistinguishable from simply having fewer atoms. Arm B deletes the same count of non-stereocentre atoms; the difference between the arms is what is attributable to the stereocentres.",
-  "supersedes": "cfm_todo.json::OPT_1_MEASURED_2026_10_13, which reported SA 3.3039 -> 4.4189 (+1.115, worse) and closed OPT-1 as INFEASIBLE_AT_DECODE_TIME. Those numbers came from the broken in-tree fork; the sign reverses under the canonical scorer.",
-  "what_does_not_change": "set_tag and remove_annotation remain VACUOUS -- scorer-independent, because FindMolChiralCenters(includeUnassigned=True) counts assigned centres too. That half of round 8 stands."
+  "what_does_not_change": "set_tag and remove_annotation remain VACUOUS -- scorer-independent, because FindMolChiralCenters(includeUnassigned=True) counts assigned centres too. That half of round 8 stands.",
+  "supersedes_note": "cfm_todo.json::OPT_1_MEASURED_2026_10_13, which reported SA 3.3039 -> 4.4189 (+1.115, worse) and closed OPT-1 as INFEASIBLE_AT_DECODE_TIME. Those numbers came from the broken in-tree fork; the sign reverses under the canonical scorer."
 }

@@ -42,6 +42,7 @@ Fails if any of the following holds:
 | `value` is `None` | No scalar headline. Unless the file declares `no_headline_reason`, in which case that reason is printed instead of a generic gap. |
 | `cisplatin_reference_mean_is_control` / `value_is_control` | A positive control is not a model score. |
 | `value_is_half_synthetic` / `value_is_synthetic` | A value averaged over real and synthetic folds is not a measurement of the real task. |
+| `superseded_by` is set | A superseded measurement is not a current claim, whatever its `status` says. |
 | `source_json` is not tracked by git | An untracked source cannot be cited. |
 
 #### A status is a token, not a sentence
@@ -94,6 +95,31 @@ Requires `quotable`, plus all of:
 6. **The file does not decline the claim.** `status` starting with
    `MEASURED_NOT_A_CLAIM` or `MEASURED_BUT_NOT_A_QUALITY_METRIC` stays
    quotable but can never be table-grade.
+7. **The definition has not changed.** `definition_status` starting with
+   `REDEFINED` / `RECONSTRUCTED` / `RENAMED` stays quotable but can never be
+   table-grade: values measured before the change are not comparable with
+   values measured after it, and a table that puts both in one column asserts
+   they are.
+
+### Supersession is a pointer, not a paragraph
+
+`supersedes` and `superseded_by` accept **one path or one id**
+(`metrics/by_metric/x.json` or `x`). PROV-O calls the relation
+`prov:wasRevisionOf`; a governed semantic layer calls the same thing "version
+history — see what the metric meant last quarter, and what changed since".
+
+Anything that is not a single path-like token is prose, and prose is not a
+relationship that can be checked: `supersedes` had been used for a paragraph,
+for a `file::key` reference into a non-metric JSON, and for a dict with
+`old_values`. Those moved to `supersedes_note`, and the registry now records
+`superseded_by_resolved` / `supersedes_dangling` so a pointer that names a file
+which does not exist is visible instead of decorative.
+
+That is not hypothetical. `dmpnn_within_metal_ir_cap512_pf` declared
+`superseded_by: metrics/by_metric/dmpnn_within_metal_cap512_pf.json`; that file
+has never existed on disk or in git history, so nothing said the old number was
+dead and nothing could have said so. The real replacement is
+`dmpnn_within_metal_cap512_pf_gpu0.json`.
 
 ### Optional disclosure field
 
@@ -103,7 +129,7 @@ cohort alias, a superseded baseline, a single-seed warning.
 
 ---
 
-## 3. Why these five facts
+## 3. Why these facts
 
 Anchored on the **ML Reproducibility Checklist v2.0** (Pineau et al., 2020),
 which asks, for every reported result, for:
@@ -190,7 +216,8 @@ a merge, so those files looked like they had never been committed at all.
   not citability. `registry.py check` counts the marks in its evidence string;
   `registry.py cite` is the report.
 - **It does not parse prose.** A file that describes its protocol only in an
-  `honest_framing` paragraph does not pass. The five facts must be fields.
+  `honest_framing` paragraph does not pass. Every fact the rule reads must be a
+  field.
 
 ---
 
@@ -211,6 +238,7 @@ a merge, so those files looked like they had never been committed at all.
 | 0 paper-line + 0 artifact claims without a status (15 hold a narrative verdict instead)
 | 0 paper-line + 198 artifact rows record no measurement date (198 carry a commit date instead, 0 carry neither)
 | 0 paper-line + 118 artifact rows labelled MEASURED with no standardised scalar (117 hold numbers under a file-specific key, 1 hold none)
+| 0 dangling supersession pointers
 ```
 
 The zeros are the point: every paper-line row has a status, a date and — if it

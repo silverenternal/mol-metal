@@ -1,7 +1,7 @@
 {
   "wave": "F3",
   "finding": "D-MPNN LOMO regression auxiliary on metal-stripped graph, not capacity, is the transfer bottleneck",
-  "metric": "Rh LOMO test ROC-AUC (n_test=54, seeds 0-4)",
+  "metric": "f3_dmpnn_lomo_target_centering",
   "v3_baseline_claimed": 0.338,
   "reproduced_baseline": 0.3512,
   "ablations": {
@@ -176,5 +176,6 @@
     "centering_plus_alpha1_rh": "Rh 1-metal combined: 0.4185 +/- 0.0236 (per-seed [0.4159,0.3959,0.4112,0.4638,0.4057]). WORSE than centering alone (0.5022) and worse than alpha=1.0 alone (0.4352). The two levers do NOT stack; the centered regression auxiliary is helping, so dropping it hurts. Source: molmetal/reports/m19_centering_plus_alpha1_rh_2026_10_08/Rh/per_seed_metrics.json.",
     "verdict": "REPRODUCED_ON_REAL_ONLY_WORST_FOLD_ONLY. The F3 worst-fold (Rh) lift reproduces under real-only via BOTH alpha=1.0 (+0.057) and per-metal centering (+0.121); the aggregate 5-metal centering lift is inside noise and must not be shipped as a default change. 'TO CLOSE' item is CLOSED.",
     "timestamp": "2026-10-08"
-  }
+  },
+  "metric_label": "Rh LOMO test ROC-AUC (n_test=54, seeds 0-4)"
 }

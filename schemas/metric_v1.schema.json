@@ -83,6 +83,22 @@
       "type": ["string", "null"],
       "format": "date",
       "description": "Measurement date when it is not in `timestamp`. The registry reads timestamp / date / date_utc, then any ISO date under a date-named key, and records which one it used."
+    },
+    "supersedes": {
+      "type": ["string", "null"],
+      "description": "One path or id this file replaces (prov:wasRevisionOf). A single path-like token only; prose belongs in supersedes_note, because a relationship that cannot be resolved cannot be checked."
+    },
+    "superseded_by": {
+      "type": ["string", "null"],
+      "description": "One path or id that replaces this file. Makes the row non-quotable regardless of `status` -- a superseded measurement is not a current claim."
+    },
+    "supersedes_note": {
+      "type": ["string", "object", "null"],
+      "description": "Free-form record of what was replaced and why, when the relation is not a file-to-file pointer."
+    },
+    "definition_status": {
+      "type": ["string", "null"],
+      "description": "REDEFINED / RECONSTRUCTED / RENAMED when the metric's definition changed. Stays quotable but can never be table-grade: values on either side of the change are not comparable."
     }
   }
 }

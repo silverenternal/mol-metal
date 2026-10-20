@@ -67,7 +67,15 @@
     "fallback_invoked": "BLK-PA12 honest_negative_fallback: '若重跑后 tmQM A/B 的配对 delta 变得不显著，如实报告为随机切分下的 +0.0181 不稳健'. Here it is not merely non-significant -- the point estimate flipped sign.",
     "what_survives": "The paired design still cancels seed variance; the arms remain identical apart from init; both arms loaded the tmQM encoder tensors (so the ON arm was not a silent random arm)."
   },
-  "supersedes": {
+  "comparator": {
+    "Krasnov2026_Ru_subset_auc": 0.81,
+    "tmqm_arm": 0.777773,
+    "random_arm": 0.787205,
+    "note": "both arms sit below the named 0.81 comparator; the gate is the delta, not the absolute"
+  },
+  "transfer_verified": "both arms printed 'loaded 12 backbone tensors from tmQM'",
+  "timestamp": "2026-10-12",
+  "supersedes_note": {
     "previous_value": 0.018136,
     "previous_paired_delta": {
       "mean": 0.018136,
@@ -113,13 +121,5 @@
     },
     "why": "the previous run (n_test 714) was on the degenerate scaffold splitter -- molecule-level, not scaffold-disjoint (BLK-PA12). The fixed splitter gives n_test 215 and a different (null) result.",
     "cited_by": "paper_a/sections/04_results.tex tab:pretrain (Claim 2) -- updated 2026-10-12 to the honest negative"
-  },
-  "comparator": {
-    "Krasnov2026_Ru_subset_auc": 0.81,
-    "tmqm_arm": 0.777773,
-    "random_arm": 0.787205,
-    "note": "both arms sit below the named 0.81 comparator; the gate is the delta, not the absolute"
-  },
-  "transfer_verified": "both arms printed 'loaded 12 backbone tensors from tmQM'",
-  "timestamp": "2026-10-12"
+  }
 }

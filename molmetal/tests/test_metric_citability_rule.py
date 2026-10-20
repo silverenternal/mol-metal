@@ -44,7 +44,9 @@ from molmetal.scripts.registry import (  # noqa: E402
     _has_numeric_leaf,
     _metric_timestamp,
     _preserve_underived_datasets,
+    _resolve_metric_ref,
     _status_with_source,
+    _supersession_fields,
 )
 
 
@@ -400,3 +402,60 @@ def test_preserve_underived_datasets_does_not_override_a_derived_row(tmp_path):
 
 def test_preserve_underived_datasets_tolerates_a_missing_file(tmp_path):
     assert _preserve_underived_datasets({}, tmp_path / "absent.yaml") == []
+
+
+# --- supersession: a pointer has to resolve, and it has to bite -----------
+
+
+def test_resolve_metric_ref_accepts_a_path_or_an_id():
+    assert _resolve_metric_ref("metrics/by_metric/moleculenet_auc.json") == "moleculenet_auc"
+    assert _resolve_metric_ref("moleculenet_auc") == "moleculenet_auc"
+
+
+def test_resolve_metric_ref_rejects_prose_and_dicts():
+    # `supersedes` was used for both pointers and paragraphs; only one of them
+    # can be checked.
+    assert _resolve_metric_ref("the framing 'the loss contains no objective'") is None
+    assert _resolve_metric_ref({"path": "metrics/by_metric/x.json"}) is None
+    assert _resolve_metric_ref(None) is None
+    assert _resolve_metric_ref("") is None
+
+
+def test_superseded_row_is_not_quotable():
+    r = _assess(_good(superseded_by="metrics/by_metric/newer_measurement.json"))
+    assert r["quotable"] is False
+    assert any("superseded by" in x for x in r["not_quotable"])
+
+
+def test_superseded_row_stays_unquotable_when_the_target_is_missing():
+    r = _assess(_good(superseded_by="metrics/by_metric/never_existed.json"))
+    assert r["quotable"] is False
+    assert any("does not exist" in x for x in r["not_quotable"])
+
+
+def test_supersession_fields_resolve_a_pointer():
+    f = _supersession_fields({"superseded_by": "metrics/by_metric/m7_diversity.json"})
+    assert f["superseded_by"] == "m7_diversity"
+    assert f["superseded_by_resolved"] is True
+
+
+def test_supersession_fields_flag_a_dangling_pointer():
+    f = _supersession_fields({"supersedes": "metrics/by_metric/never_existed.json"})
+    assert f["supersedes"] == "never_existed"
+    assert f["supersedes_dangling"] is True
+
+
+def test_supersession_fields_ignore_prose():
+    assert _supersession_fields({"supersedes": "a paragraph about the old number"}) == {}
+
+
+def test_redefined_metric_cannot_be_table_grade():
+    r = _assess(_good(definition_status="REDEFINED - now a reproducible IntDiv1"))
+    assert r["quotable"] is True
+    assert r["headline_grade"] is False
+    assert any("not comparable" in x for x in r["not_headline"])
+
+
+def test_definition_status_that_is_not_a_redefinition_is_ignored():
+    r = _assess(_good(definition_status="STABLE since 2026-09-01"))
+    assert r["headline_grade"] is True

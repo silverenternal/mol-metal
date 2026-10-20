@@ -105,5 +105,5 @@
     "not_a_silent_cap": "Reported explicitly rather than averaged away. A full-coverage arm would need per-molecule ring perception that tolerates dative bonds, which RDKit does not offer; that is a real gap, not a rounding error."
   },
   "what_does_NOT_change": "Fragmentation was still not the story, and ring SIZE was still the right axis to look at rather than ring count -- both hold on the corrected arm. What changes is the size of the gap, and therefore the size of any lift quoted against it.",
-  "supersedes": "The 0.43% real three-membered figure and the 184x ratio in metrics/by_metric/cfm_opt2_ring_content.json. That file's GENERATED numbers are unaffected (no dative bonds on that side); only its REAL denominator is confounded."
+  "supersedes_note": "The 0.43% real three-membered figure and the 184x ratio in metrics/by_metric/cfm_opt2_ring_content.json. That file's GENERATED numbers are unaffected (no dative bonds on that side); only its REAL denominator is confounded."
 }

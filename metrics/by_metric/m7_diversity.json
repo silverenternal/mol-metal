@@ -9,15 +9,6 @@
   "dataset": "generated cohort cfm_fullcorpus_2026_10_10 (n_used=37, n_unique=37)",
   "split": "not applicable (generation; IntDiv1 is computed over the generated cohort)",
   "why_this_definition": "This file previously used 'unit': 'CLI flag count wired-in (count 0-6)'. That is not what the metric's name denotes: m7 DIVERSITY must measure diversity, and a count of wired-in argparse flags measures the trainer's plumbing, not any generated molecule. The number in BLK-C6's title (0.9159 / 0.9215 / 0.8674) came from a throwaway script using 2048-bit Morgan and EXCLUDING self-pairs, i.e. not the reference configuration; it was being read as a strength against a 0.81 target while measuring nothing reproducible.",
-
-  "supersedes": {
-    "old_unit": "CLI flag count wired-in (count 0-6)",
-    "old_values": {"fm_ab": 0.9159, "fm_control": 0.9215, "blk_c5_repair": 0.8674},
-    "old_protocol": "Morgan r=2 / 2048 bit, self-pairs EXCLUDED, ad-hoc script — NOT the MOSES configuration",
-    "why_retired": "unreproducible (the generating script was not kept, and the run cohorts that produced these numbers have no generated_smiles.csv on disk) AND on a non-reference protocol",
-    "code_moved_to": "metrics/by_metric/cfm_internal_diversity_intdiv1.json (side file, Wf 2026-10-10) — that redefinition was real but landed OUTSIDE this canonical slot, so this file kept contradicting it. Merged here."
-  },
-
   "aggregate": {
     "best_measured": 0.8690399367522098,
     "best_measured_run": "cfm_fullcorpus_2026_10_10",
@@ -26,46 +17,81 @@
     "metric_name_measured": true,
     "n_runs_measured": 4
   },
-
   "measured_rows": [
-    {"run": "cfm_fullcorpus_2026_10_10", "intdiv1": 0.8690399367522098, "n_used": 37, "n_unique": 37, "source_csv": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv"},
-    {"run": "cfm_objective_terms_2026_10_11", "intdiv1": 0.8670613979253008, "n_used": 43, "n_unique": 43, "source_csv": "molmetal/reports/cfm_objective_terms_2026_10_11/generated_smiles.csv"},
-    {"run": "cfm_fullcorpus_b64_2026_10_11", "intdiv1": 0.8662410865671835, "n_used": 40, "n_unique": 40, "source_csv": "molmetal/reports/cfm_fullcorpus_b64_2026_10_11/generated_smiles.csv"},
-    {"run": "wf124_p2_cfm_full", "intdiv1": 0.8335268023255074, "n_used": 47, "n_unique": 47, "source_csv": "molmetal/reports/wf124_p2_cfm_full/generated_smiles.csv", "note": "older G4-era run, retained for spread only"}
+    {
+      "run": "cfm_fullcorpus_2026_10_10",
+      "intdiv1": 0.8690399367522098,
+      "n_used": 37,
+      "n_unique": 37,
+      "source_csv": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv"
+    },
+    {
+      "run": "cfm_objective_terms_2026_10_11",
+      "intdiv1": 0.8670613979253008,
+      "n_used": 43,
+      "n_unique": 43,
+      "source_csv": "molmetal/reports/cfm_objective_terms_2026_10_11/generated_smiles.csv"
+    },
+    {
+      "run": "cfm_fullcorpus_b64_2026_10_11",
+      "intdiv1": 0.8662410865671835,
+      "n_used": 40,
+      "n_unique": 40,
+      "source_csv": "molmetal/reports/cfm_fullcorpus_b64_2026_10_11/generated_smiles.csv"
+    },
+    {
+      "run": "wf124_p2_cfm_full",
+      "intdiv1": 0.8335268023255074,
+      "n_used": 47,
+      "n_unique": 47,
+      "source_csv": "molmetal/reports/wf124_p2_cfm_full/generated_smiles.csv",
+      "note": "older G4-era run, retained for spread only"
+    }
   ],
-
   "FINITE_SAMPLE_WARNING": {
     "finding": "IntDiv1 is strongly n-dependent, so these cohorts CANNOT be compared to the MOSES 0.857 reference, which is computed over ~1.9M molecules.",
     "measured_on_training_corpus": {
       "corpus": "molmetal/data/tmqm_dblock_subset.csv (5000 molecules, the project's own d-block training distribution)",
       "protocol": "MOSES IntDiv1, random subsample, seed 0",
-      "intdiv1_by_n": {"20": 0.8663, "25": 0.8747, "30": 0.8820, "35": 0.8843, "37": 0.8845, "100": 0.8973, "300": 0.9044, "1000": 0.9079, "3000": 0.9101},
+      "intdiv1_by_n": {
+        "20": 0.8663,
+        "25": 0.8747,
+        "30": 0.882,
+        "35": 0.8843,
+        "37": 0.8845,
+        "100": 0.8973,
+        "300": 0.9044,
+        "1000": 0.9079,
+        "3000": 0.9101
+      },
       "reading": "the SAME corpus rises ~0.044 from n=20 to n=3000 purely from sample size"
     },
     "n_matched_comparison": {
       "generated": "cfm_fullcorpus_2026_10_10, IntDiv1 0.8690 at n=37",
       "training_at_same_n": "0.8845 +/- 0.0058 (sd over 40 subsamples)",
       "delta": -0.0155,
-      "stable_across_n": {"n20": -0.0184, "n25": -0.0172, "n30": -0.0178, "n35": -0.0165, "n37": -0.0155},
+      "stable_across_n": {
+        "n20": -0.0184,
+        "n25": -0.0172,
+        "n30": -0.0178,
+        "n35": -0.0165,
+        "n37": -0.0155
+      },
       "reading": "at every matched n, the generated cohort sits ~0.017 BELOW the training distribution. The delta is stable in n, so it is a property of the cohort, not of the sample size."
     },
     "consequence": "The 0.88 'distribution shift' warning threshold from Vendi Score (arXiv:2210.02410) does not apply to an n=37-47 cohort — an n=37 sample of the TRAINING DATA ITSELF already sits at 0.885 and would trip that threshold. No m7 comparison against MOSES/Guan 2023 numbers is valid until a >=1000-molecule generated cohort exists."
   },
-
   "correction_to_prior_claim": {
     "claim_retracted": "cfm_internal_diversity_intdiv1.json's INTERNAL_EVIDENCE asserts 'within our own five runs, IntDiv1 is INVERSELY related to chemical quality' (the best-validity, best-SA run cfm_blk_c5_repair scored lowest, 0.8516).",
     "why_retracted": "NONE of those five runs has a generated_smiles.csv on disk (molmetal/reports/cfm_fm_ab_2026_10_09/, cfm_fm_control_2026_10_09/, cfm_blk_c5_repair_2026_10_09/, cfm_frag_control/, cfm_frag_assemble/ contain only per_epoch_metrics.{csv,json} + logs). The numbers are not reproducible from disk.",
     "on_the_four_cohorts_that_DO_exist": "the relationship REVERSES. cfm_fullcorpus_2026_10_10 has both the highest IntDiv1 of the four (0.8690) and among the best SA (4.974) and single-fragment QED (0.2397), while the older wf124_p2_cfm_full has the lowest IntDiv1 (0.8335) and the worst SA (6.489) and worst QED (0.1071). IntDiv1 is POSITIVELY related to quality on the reproducible data.",
     "what_survives": "the narrow, defensible part — IntDiv is a mode-collapse ALARM, not a quality score, and a high value is not by itself a strength — stands on the MOSES/Vendi literature and needs no project-internal table."
   },
-
   "target": {
     "value": null,
     "note": "NO target is asserted. The previously recorded 0.65 (registry) / 0.81 (BLK-C6, Krasnov 2026) / 0.860 (Guan 2023) targets all presume a cohort size comparable to the reference. With n=37-47 they are not measurable, so no target is claimed rather than a target that would be decided in advance."
   },
-
   "verdict": "MEASURED_NOT_A_CLAIM — m7 now measures its name (IntDiv1 on a real generated cohort) and the number is neither a strength nor a weakness. It is a collapse alarm, and at the cohort sizes that currently exist it cannot be compared to any published value.",
-
   "diversity_term_wiring": {
     "note": "The 6 trainer diversity flags (top-p / top-k / temperature / mmd-weight / repulsion-weight / scaffold-conditioning) remain wired in molmetal/scripts/train_cfm_yuelbond_wasserstein.py per Wf-388-A2, all default OFF, diversity_term == 0 when all OFF. That wiring is preserved and is a TRAINER-side fact. It is simply no longer what this metric file reports — the previous conflation of 'flag count' with 'm7 value' is what made the metric unreadable.",
     "n_flags_total": 6,
@@ -73,18 +99,28 @@
     "n_flags_default_off": 6,
     "cross_ref": "TODO/completed/388a2_m7_diversity_wire.md, molmetal/adapters/flow_matching_lipman/diversity_sampling.py"
   },
-
   "restore_condition": "m7 becomes comparable to published values when a generated_smiles.csv with >=1000 unique molecules exists (a GPU run with --gen-validity-samples >= 1000 --save-generated-smiles). At that n the finite-sample curve has flattened (0.9079 at n=1000 vs 0.9101 at n=3000) and an n-matched training-distribution control can be run in the same call, making the MOSES comparison valid. CPU-only today; BLOCKED on GPU (AGENTS.md 5.1).",
-
   "tests": "molmetal/tests/test_m7_internal_diversity.py (7, MEASURED 7 passed in 0.68s on 2026-10-11) — includes the MOSES-configuration check (1024 bits, radius 2, self-pairs on), total-collapse -> 0.0 rather than None, and the 1-1/n ceiling.",
-
   "not_comparable_with": "metrics/by_metric/diversity_tanimoto.json (0.1366) — that is the Lambda MCTS GA/search path, a different protocol; the low value there is the diagnostic one per the same literature.",
-
   "cross_references": {
     "definition_side_file": "metrics/by_metric/cfm_internal_diversity_intdiv1.json",
     "implementation": "molmetal/scripts/cfm_property_panel.py::internal_diversity (L451) + build_panel (L627)",
     "csv_reader": "cfm_property_panel.read_smiles_csv (last_epoch=True selects the final checkpoint; these CSVs are single-epoch so pooled == last)",
-    "literature": ["MOSES arXiv:1811.12823", "Vendi Score arXiv:2210.02410"],
+    "literature": [
+      "MOSES arXiv:1811.12823",
+      "Vendi Score arXiv:2210.02410"
+    ],
     "registry": "registry/metrics.yaml::m7_diversity"
+  },
+  "supersedes_note": {
+    "old_unit": "CLI flag count wired-in (count 0-6)",
+    "old_values": {
+      "fm_ab": 0.9159,
+      "fm_control": 0.9215,
+      "blk_c5_repair": 0.8674
+    },
+    "old_protocol": "Morgan r=2 / 2048 bit, self-pairs EXCLUDED, ad-hoc script — NOT the MOSES configuration",
+    "why_retired": "unreproducible (the generating script was not kept, and the run cohorts that produced these numbers have no generated_smiles.csv on disk) AND on a non-reference protocol",
+    "code_moved_to": "metrics/by_metric/cfm_internal_diversity_intdiv1.json (side file, Wf 2026-10-10) — that redefinition was real but landed OUTSIDE this canonical slot, so this file kept contradicting it. Merged here."
   }
 }

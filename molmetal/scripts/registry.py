@@ -519,6 +519,61 @@ def _is_vocab_token(value: Any) -> bool:
         _STATUS_VOCAB_PREFIXES
     )
 
+
+# ---------------------------------------------------------------------------
+# Supersession.  A metric file may say it replaces, or was replaced by, another
+# one -- PROV-O's prov:wasRevisionOf, and the practice a governed semantic layer
+# calls "version history: see what the metric meant last quarter".  The claim
+# has to resolve: `dmpnn_within_metal_ir_cap512_pf` declared
+# `superseded_by: metrics/by_metric/dmpnn_within_metal_cap512_pf.json`, a file
+# that has never existed, so nothing said the old number was dead.
+# ---------------------------------------------------------------------------
+
+_SUPERSESSION_KEYS = ("supersedes", "superseded_by")
+
+
+def _resolve_metric_ref(ref: Any) -> Optional[str]:
+    """Normalise a path or a bare id to a ``metrics/by_metric`` stem.
+
+    Returns None for anything that is not a single path-like token -- prose and
+    dicts are not pointers, and treating them as pointers is how a field ends
+    up asserting a relationship that cannot be checked.
+    """
+    if not isinstance(ref, str):
+        return None
+    s = ref.strip()
+    if not s or any(c.isspace() for c in s):
+        return None
+    if s.endswith(".json"):
+        s = s[: -len(".json")]
+    s = s.rsplit("/", 1)[-1]
+    return s or None
+
+
+def _ref_exists(ref: Optional[str]) -> bool:
+    return bool(ref) and (BY_METRIC_DIR / f"{ref}.json").is_file()
+
+
+def _supersession_fields(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Row columns for a supersession declaration, with the pointer resolved.
+
+    ``supersedes_dangling`` is the column that matters: it says the file claims
+    to replace something that is not there, which is a claim no reader can
+    follow and no gate would otherwise catch.
+    """
+    out: Dict[str, Any] = {}
+    sup_by = _resolve_metric_ref(payload.get("superseded_by"))
+    if sup_by:
+        out["superseded_by"] = sup_by
+        out["superseded_by_resolved"] = _ref_exists(sup_by)
+    sup = _resolve_metric_ref(payload.get("supersedes"))
+    if sup:
+        out["supersedes"] = sup
+        out["supersedes_dangling"] = not _ref_exists(sup)
+    if isinstance(payload.get("definition_status"), str):
+        out["definition_status"] = payload["definition_status"].strip()
+    return out
+
 # Some verdicts lead with the token and then explain it: "MEASURED — 0.7 on 10
 # curated SMILES", "VERIFIED_LIFT — 0.000 -> 0.1065".  The token before the
 # separator is the status; the rest is the finding.  A sentence that merely
@@ -656,6 +711,15 @@ def assess_citability(
         not_quotable.append(
             f"status {status.split()[0]!r} is not a measurement of this metric"
         )
+    # A superseded measurement is not a current claim, whatever its `status`
+    # says.  Without this, `status: MEASURED` + `superseded_by: ...` stayed
+    # quotable and the supersession was decorative.
+    superseded_by = _resolve_metric_ref(payload.get("superseded_by"))
+    if superseded_by:
+        not_quotable.append(
+            f"superseded by {superseded_by}"
+            + ("" if _ref_exists(superseded_by) else " (which does not exist)")
+        )
     if value is None:
         declared = payload.get("no_headline_reason")
         if isinstance(declared, str) and declared:
@@ -680,6 +744,17 @@ def assess_citability(
     if status.upper().startswith(_NON_HEADLINE_STATUSES):
         not_headline.append(
             f"status {status.split()[0]!r}: the file itself declines the claim"
+        )
+    # A redefinition breaks comparability with everything measured before it.
+    # `m7_diversity` used to be "count of wired-in CLI flags" and is now MOSES
+    # IntDiv1; the old values live in the same file under supersedes.old_values.
+    definition_status = payload.get("definition_status")
+    if isinstance(definition_status, str) and definition_status.upper().startswith(
+        ("REDEFINED", "RECONSTRUCTED", "RENAMED")
+    ):
+        not_headline.append(
+            f"definition was changed ({definition_status.split()[0]}); "
+            "values measured before the change are not comparable"
         )
     runs = _run_count(payload)
     if runs is None:
@@ -784,6 +859,7 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
                 and not payload.get("no_headline_reason")
             )
             rec["carries_claim"] = rec["value"] is not None
+            rec.update(_supersession_fields(payload))
             if rec["value_missing"]:
                 rec["has_numeric_leaf"] = _has_numeric_leaf(payload)
             rec.update(METRIC_TARGETS.get(metric_id, {}))
@@ -851,6 +927,7 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
             and not (isinstance(payload, dict) and payload.get("no_headline_reason"))
         )
         rec["carries_claim"] = rec["value"] is not None
+        rec.update(_supersession_fields(payload if isinstance(payload, dict) else {}))
         if rec["value_missing"]:
             rec["has_numeric_leaf"] = _has_numeric_leaf(payload)
         rec.update(
@@ -989,6 +1066,11 @@ def check_metrics(repo_root: Path = REPO_ROOT) -> CheckResult:
     missing_art = [r for r in rows if r.get("value_missing") and r.get("registry_role") != "paper_line"]
     missing_unstandardised = sum(1 for r in missing_art if r.get("has_numeric_leaf"))
     missing_none = len(missing_art) - missing_unstandardised
+    dangling = sum(
+        1
+        for r in rows
+        if r.get("supersedes_dangling") or r.get("superseded_by_resolved") is False
+    )
     quotable = sum(1 for r in paper_rows if r.get("quotable"))
     headline_grade = sum(1 for r in paper_rows if r.get("headline_grade"))
     return CheckResult(
@@ -1006,7 +1088,7 @@ def check_metrics(repo_root: Path = REPO_ROOT) -> CheckResult:
         f"{value_missing_paper} paper-line + {len(missing_art)} artifact rows "
         f"labelled MEASURED with no standardised scalar "
         f"({missing_unstandardised} hold numbers under a file-specific key, "
-        f"{missing_none} hold none)",
+        f"{missing_none} hold none) | {dangling} dangling supersession pointers",
     )
 
 

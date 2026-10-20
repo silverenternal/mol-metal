@@ -109,7 +109,6 @@
     "caveat": "the 0.45 floor is a FITTED constant and is the weak point of this proposal; it must be derived from a bond_f1 distribution, not chosen. Recorded as such, not shipped."
   },
   "PROPOSAL_NOT_YET_SHIPPED": "replace the dead `combined` criterion with one that is neither identically zero nor maximised by an empty generator, and select the checkpoint on it instead of reporting the endpoint. Held pending the leverage gate on the derived floor value.",
-  "supersedes": "the framing 'the loss contains no generation objective, therefore collapse' — that was refuted: the objective term that was tried never fired (gradient ~5e-09), and the selection criterion, not the objective, is what is provably dead.",
   "FLOOR_DERIVATION_ATTEMPTED_2026_10_10": {
     "verdict": "NEGATIVE — the criterion is not derivable from the available data. NOT SHIPPED.",
     "step_1_the_bond_f1_floor_is_inert": {
@@ -183,5 +182,6 @@
     "why_it_matters": "the two metrics the project reports for generation quality — decode_ratio and gen_validity — do not see this at all. It is the same blind spot the Vendi Score paper identifies from the other side: IntDiv cannot separate real diversity from combinatorial randomness, and here the reverse also holds — a real collapse signal hides in nearest-neighbour similarity while every reported metric is flat.",
     "status": "recorded as a candidate metric; NOT added to the panel and NOT used in any claim",
     "honest_caveat": "n per band is small (10-488) and derived from the append-only generated_smiles.csv, which only holds decodes that passed the gate. Not a validated metric; one run, one seed."
-  }
+  },
+  "supersedes_note": "the framing 'the loss contains no generation objective, therefore collapse' — that was refuted: the objective term that was tried never fired (gradient ~5e-09), and the selection criterion, not the objective, is what is provably dead."
 }
