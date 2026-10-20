@@ -1,6 +1,7 @@
 {
   "metric": "m7_diversity",
   "tag": "MEASURED",
+  "status": "MEASURED_NOT_A_CLAIM",
   "date": "2026-10-11",
   "definition_status": "REDEFINED — m7 is now a reproducible MOSES IntDiv1 with a value on disk",
   "definition": "IntDiv1 = 1 - mean_{m1,m2 in G} T(m1,m2), MOSES (arXiv:1811.12823); Morgan radius 2 / 1024-bit ECFP4; ordered pairs INCLUDING self-pairs; deterministic subsample (max 300). Implementation: molmetal/scripts/cfm_property_panel.py::internal_diversity, reached via build_panel['aggregate']['internal_diversity'].",

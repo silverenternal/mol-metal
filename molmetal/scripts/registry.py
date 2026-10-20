@@ -112,7 +112,11 @@ LINE_METRICS: Dict[str, Dict[str, str]] = {
     },
     "line3_lambda_mcts": {
         "l5_hilbert_r2": "hilbert_4cell_r2",
-        "l6_closure": "molmetal/reports/wf67_p4_2_closure_r20/reachability_overall",
+        # Was `molmetal/reports/wf67_p4_2_closure_r20/reachability_overall`, a
+        # path .gitignore:145 ignores — so the paper line's L6 number had no
+        # source in version control.  The metric file now carries the headline
+        # and names the report as its (untracked) raw artifact.
+        "l6_closure": "l6_closure",
         "m6_kappa": "m6_kappa",
     },
 }
@@ -335,6 +339,25 @@ def build_protocols(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
     return out
 
 
+def _metric_timestamp(payload: Dict[str, Any]) -> Any:
+    """The date a metric file records, under any of the three keys in use.
+
+    ``timestamp`` (105 files), ``date`` (60) and ``date_utc`` (3) all mean the
+    same thing; reading only the first left 63 dated files with a null
+    timestamp in the registry.
+    """
+    for key in ("timestamp", "date", "date_utc"):
+        v = payload.get(key)
+        if v:
+            return v
+    return None
+
+
+def _n_seeds(payload: Dict[str, Any]) -> Optional[float]:
+    v = payload.get("n_seeds")
+    return _coerce_float(v) if _coerce_float(v) is not None else None
+
+
 def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
     """Harvest the metric layer from metrics/by_metric/*.json.
 
@@ -377,9 +400,19 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
                 "status": payload.get("status"),
                 "verdict": payload.get("verdict"),
                 "scope": payload.get("scope"),
-                "metric_timestamp": payload.get("timestamp"),
+                "metric_timestamp": _metric_timestamp(payload),
+                "registry_role": "paper_line",
                 "last_refreshed": _now_utc(),
             }
+            seeds = _n_seeds(payload)
+            if seeds is not None:
+                rec["n_seeds"] = seeds
+            # A MEASURED label with no scalar is invisible to any target
+            # comparison.  Flag it rather than letting `value: null` read as
+            # "no data" when the file claims to have measured something.
+            rec["value_missing"] = rec["value"] is None and str(
+                rec.get("status") or ""
+            ).startswith("MEASURED")
             rec.update(METRIC_TARGETS.get(metric_id, {}))
             out[metric_id] = rec
     # Wf-A36-3 G1 (2026-10-14): walk every JSON under metrics/by_metric/
@@ -398,9 +431,12 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
         if not metric_id or not isinstance(metric_id, str):
             metric_id = stem
         # Avoid clobbering a LINE_METRICS entry when the JSON's
-        # ``metric`` field happens to equal a paper-line id.
+        # ``metric`` field happens to equal a paper-line id.  Several files
+        # share a ``metric`` field (7 vina_score_* files all say
+        # "vina_score"), so name the variant after its file stem — an id like
+        # ``vina_score__disk`` says nothing about which file it came from.
         if metric_id in out:
-            metric_id = f"{metric_id}__disk"
+            metric_id = stem if stem not in out else f"{metric_id}__disk"
         rec = {
             "source_json": _rel(src_path),
             "source_json_sha256": _sha256_file(src_path),
@@ -409,10 +445,17 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
             "status": payload.get("status") if isinstance(payload, dict) else None,
             "verdict": payload.get("verdict") if isinstance(payload, dict) else None,
             "scope": payload.get("scope") if isinstance(payload, dict) else None,
-            "metric_timestamp": payload.get("timestamp") if isinstance(payload, dict) else None,
+            "metric_timestamp": _metric_timestamp(payload) if isinstance(payload, dict) else None,
+            "registry_role": "artifact",
             "last_refreshed": _now_utc(),
             "registry_origin": "wf_a36_3_g1_disk_walk",
         }
+        seeds = _n_seeds(payload) if isinstance(payload, dict) else None
+        if seeds is not None:
+            rec["n_seeds"] = seeds
+        rec["value_missing"] = rec["value"] is None and str(
+            rec.get("status") or ""
+        ).startswith("MEASURED")
         out[metric_id] = rec
     return out, covered_files
 
@@ -498,15 +541,27 @@ def check_metrics(repo_root: Path = REPO_ROOT) -> CheckResult:
             continue
         checks.append({"id": mid, "status": "PASS", "detail": "source_json hash current"})
     status = "FAIL" if bad else ("STALE" if stale else "PASS")
-    unlabelled = sum(
-        1 for rec in (reg.get("metrics") or {}).values() if rec.get("status") is None
+    rows = list((reg.get("metrics") or {}).values())
+    unlabelled_paper = sum(
+        1
+        for r in rows
+        if r.get("status") is None and r.get("registry_role") == "paper_line"
     )
+    unlabelled_artifact = sum(
+        1
+        for r in rows
+        if r.get("status") is None and r.get("registry_role") != "paper_line"
+    )
+    undated = sum(1 for r in rows if r.get("metric_timestamp") is None)
+    value_missing = sum(1 for r in rows if r.get("value_missing"))
     return CheckResult(
         "metrics",
         status,
         checks,
-        f"{len(checks)-bad-stale} current, {stale} stale, {bad} missing, "
-        f"{unlabelled} indexed without a status field",
+        f"{len(checks)-bad-stale} current, {stale} stale, {bad} missing; "
+        f"{unlabelled_paper} paper-line and {unlabelled_artifact} artifact rows "
+        f"without a status; {undated} without a date; "
+        f"{value_missing} labelled MEASURED with no scalar",
     )
 
 
@@ -536,6 +591,21 @@ _VALUE_KEYS = (
     "mean_auc",
     "aggregate_combined_r2_mean",
     "reachability_rate",
+)
+
+# Scalar keys tried inside a dict-valued ``value`` block, most specific first.
+_VALUE_DICT_KEYS = (
+    "mean",
+    "mean_A",  # com_shift_* / rigid_fragment_rmsd_*: mean in Angstrom
+    "rate",
+    "score_kcal_mol",
+    "median",
+    "value",
+    "auc_mean",
+    "r2_mean",
+    "pearson_r",
+    "accuracy",
+    "f1",
 )
 
 
@@ -568,7 +638,18 @@ def _extract_value(payload: Dict[str, Any], value_key: Optional[str] = None) -> 
             v = agg.get(key)
             if _coerce_float(v) is not None:
                 return v
-    return payload.get("value")
+    raw = payload.get("value")
+    if isinstance(raw, dict):
+        # Some files nest their headline inside ``value`` — e.g.
+        # vina_high_affinity.value.rate, vina_reference.value.score_kcal_mol.
+        # Returning the dict made the registry's ``value`` column non-numeric
+        # for 19 rows, which no consumer can compare against a target.
+        for key in _VALUE_DICT_KEYS:
+            v = raw.get(key)
+            if _coerce_float(v) is not None:
+                return v
+        return None
+    return raw
 
 
 def gap_table(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
