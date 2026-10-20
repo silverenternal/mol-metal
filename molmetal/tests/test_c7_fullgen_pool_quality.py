@@ -79,3 +79,43 @@ def test_missing_fragment_columns_do_not_crash(tmp_path):
     payload = json.loads(out_path.read_text())
     assert payload["overall"]["single_fragment_rate"] is None
     assert payload["overall"]["mean_largest_frag_frac"] is None
+
+
+def test_bond_head_trajectory_is_none_without_a_metrics_file(tmp_path):
+    run = tmp_path / "run"
+    run.mkdir()
+    with (run / "generated_smiles.csv").open("w", newline="") as handle:
+        writer = csv.DictWriter(
+            handle, fieldnames=["epoch", "smiles", "n_frags_raw", "largest_frag_frac"]
+        )
+        writer.writeheader()
+        writer.writerow(_row(0, "c1ccccc1"))
+    out_path = tmp_path / "out.json"
+    assert main(["--run", str(run), "--out", str(out_path)]) == 0
+    assert json.loads(out_path.read_text())["bond_head_trajectory"] is None
+
+
+def test_bond_head_trajectory_carries_the_head_metrics(tmp_path):
+    run = tmp_path / "run"
+    run.mkdir()
+    with (run / "generated_smiles.csv").open("w", newline="") as handle:
+        writer = csv.DictWriter(
+            handle, fieldnames=["epoch", "smiles", "n_frags_raw", "largest_frag_frac"]
+        )
+        writer.writeheader()
+        writer.writerow(_row(0, "c1ccccc1"))
+    (run / "per_epoch_metrics.json").write_text(
+        json.dumps(
+            {
+                "per_epoch_metrics": [
+                    {"epoch": 0, "bond_f1": 0.1, "bond_recall": 0.05, "bond_n_scored": 192},
+                    {"epoch": 1, "bond_f1": 0.6, "bond_recall": 0.48, "bond_n_scored": 192},
+                ]
+            }
+        )
+    )
+    out_path = tmp_path / "out.json"
+    assert main(["--run", str(run), "--out", str(out_path)]) == 0
+    traj = json.loads(out_path.read_text())["bond_head_trajectory"]
+    assert [row["bond_f1"] for row in traj] == [0.1, 0.6]
+    assert traj[0]["bond_n_scored"] == 192

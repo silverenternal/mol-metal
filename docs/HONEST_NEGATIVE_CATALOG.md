@@ -9183,7 +9183,7 @@ same card) and completed all 18 epochs: `exit=0`, wall **11,232 s**, `nvidia-smi
 | 17 | — | **12.22%** | 67.5% | 0.57% |
 | **all 18** | | **8.51%** | 66.8% | **0.28%** [0.21, 0.39] (36/12,668) |
 
-Four conclusions, three of which overturn what §6.150b inferred from four epochs:
+Five conclusions, three of which overturn what §6.150b inferred from four epochs:
 
   * **Connectivity does not plateau — it keeps degrading.** 2.84% → 8.38% → 10.23% → **12.22%**
     single-fragment across 18 epochs, a 4.3× rise. §6.150b read the first four points as "the
@@ -9200,6 +9200,14 @@ Four conclusions, three of which overturn what §6.150b inferred from four epoch
     ≥ 0.90) is **0 / 10,190**; the mean novelty *within* the SA-passing subset is 0.8587, below the
     0.90 gate. The 36 molecules that clear SA are close analogues of training data, so "SA ≤ 4.5"
     alone overstates the useful yield.
+  * **The bond head gets better while generation gets worse — the two paths diverge.** Over the
+    same 14 epochs (4 → 17) the teacher-forced bond head improves monotonically: `bond_f1`
+    **0.173 → 0.605**, recall **0.099 → 0.485**, PR-AUC **0.583 → 0.757** (n=192 held-out
+    geometries, threshold 0.5). Free generation over the same window goes the other way. So the
+    connectivity failure is **not** "the head never learned bonds" — given true atoms it predicts
+    them 3.5× better by the last epoch. Whatever breaks connectivity happens in the sampler /
+    decode path, downstream of the head. This is a mechanism statement, not a fix: nothing here
+    says which part of the sampler is at fault.
 
 **One bookkeeping correction the resume forced.** `cfm_c7_fullgen_ep4_partial_2026_10_20` was
 preserved from the crashed run. While the resumed pool was also 4 epochs the two files were

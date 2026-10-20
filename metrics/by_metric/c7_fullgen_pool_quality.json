@@ -1,5 +1,119 @@
 {
   "artifact": "c7_fullgen_pool_quality",
+  "bond_head_trajectory": [
+    {
+      "bond_f1": 0.17311827956989248,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.5834111599462843,
+      "bond_precision": 0.7097722263041881,
+      "bond_recall": 0.09858148790692928,
+      "epoch": 4
+    },
+    {
+      "bond_f1": 0.25768120862332367,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.5987998904790711,
+      "bond_precision": 0.7655068078668684,
+      "bond_recall": 0.15491376671088886,
+      "epoch": 5
+    },
+    {
+      "bond_f1": 0.400184842883549,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.6163031274802759,
+      "bond_precision": 0.8156985871271586,
+      "bond_recall": 0.2651290948055924,
+      "epoch": 6
+    },
+    {
+      "bond_f1": 0.41708390229100284,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.631904201653016,
+      "bond_precision": 0.8125923736328702,
+      "bond_recall": 0.28053883049290745,
+      "epoch": 7
+    },
+    {
+      "bond_f1": 0.440997878411003,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.643052956561241,
+      "bond_precision": 0.778811369509044,
+      "bond_recall": 0.3075824063679967,
+      "epoch": 8
+    },
+    {
+      "bond_f1": 0.4424131627056673,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.6504996392497353,
+      "bond_precision": 0.7804437564499485,
+      "bond_recall": 0.3087049698948872,
+      "epoch": 9
+    },
+    {
+      "bond_f1": 0.4694928405163292,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.664372565092346,
+      "bond_precision": 0.760164458656921,
+      "bond_recall": 0.3396264924992346,
+      "epoch": 10
+    },
+    {
+      "bond_f1": 0.48526140155728587,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.6750288862783037,
+      "bond_precision": 0.7611777535441657,
+      "bond_recall": 0.35615879171344017,
+      "epoch": 11
+    },
+    {
+      "bond_f1": 0.508880571623001,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.6880510006682881,
+      "bond_precision": 0.7636846405228758,
+      "bond_recall": 0.38156954791305236,
+      "epoch": 12
+    },
+    {
+      "bond_f1": 0.5209730975130447,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.7007041290661224,
+      "bond_precision": 0.7753126260588947,
+      "bond_recall": 0.39228492703337076,
+      "epoch": 13
+    },
+    {
+      "bond_f1": 0.5568033429093758,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.7133965385993233,
+      "bond_precision": 0.7728838136668479,
+      "bond_recall": 0.4351464435146444,
+      "epoch": 14
+    },
+    {
+      "bond_f1": 0.5773951037717664,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.7253459155439328,
+      "bond_precision": 0.7794934073560028,
+      "bond_recall": 0.4585161751199102,
+      "epoch": 15
+    },
+    {
+      "bond_f1": 0.5727785798661241,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.7432815090918133,
+      "bond_precision": 0.8023533737819452,
+      "bond_recall": 0.44535156648637614,
+      "epoch": 16
+    },
+    {
+      "bond_f1": 0.6045772409408773,
+      "bond_n_scored": 192,
+      "bond_pr_auc": 0.7570876364053882,
+      "bond_precision": 0.8017197774405666,
+      "bond_recall": 0.48525359730584755,
+      "epoch": 17
+    }
+  ],
   "first_vs_last": {
     "epoch_first": 0,
     "epoch_last": 17,
@@ -16,7 +130,7 @@
       1.0
     ]
   },
-  "generated_utc": "2026-10-20T21:16:43+00:00",
+  "generated_utc": "2026-10-20T21:19:46+00:00",
   "overall": {
     "mean_heavy_atoms": 44.362,
     "mean_largest_frag_frac": 0.7395,
@@ -766,11 +880,11 @@
   },
   "provenance": {
     "epochs": 18,
-    "git_commit": "78fad531b3a9acb4e8e93557a3522832d39c81a7",
+    "git_commit": "e206cc7b9f5de235e760061ae130d966348e57c6",
     "n_rows": 12669,
     "pool": "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
     "script": "molmetal/scripts/c7_fullgen_pool_quality.py"
   },
-  "reading": "Single-fragment rate is the share of parsed molecules that came out as one connected component; three_ring_share is the fraction of all atom rings that are 3-membered. Both are descriptive: they say what the pool looks like, not whether it is useful.",
+  "reading": "Single-fragment rate is the share of parsed molecules that came out as one connected component; three_ring_share is the fraction of all atom rings that are 3-membered. Both are descriptive: they say what the pool looks like, not whether it is useful. bond_head_trajectory is teacher-forced (true atoms, predicted bonds) and is NOT comparable to the pool's connectivity: it measures the head, the pool measures the sampler.",
   "tag": "MEASURED"
 }

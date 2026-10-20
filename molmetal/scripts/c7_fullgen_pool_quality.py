@@ -95,6 +95,35 @@ def _epoch_summary(rows: Sequence[Dict[str, str]]) -> Dict[str, object]:
     }
 
 
+def _bond_head_trajectory(run_dir: Path) -> Dict[str, object] | None:
+    """Teacher-forced bond metrics per epoch, from the run's own metrics file.
+
+    These are computed on real held-out geometries (the head is given the true
+    atoms and asked for the bonds), which is a different question from whether
+    the sampler can connect a cloud. Putting them side by side is the point:
+    if the head improves while the generated pools fragment more, the failure
+    is in the sampling path, not in the head.
+    """
+    path = run_dir / "per_epoch_metrics.json"
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return None
+    rows = payload.get("per_epoch_metrics") or []
+    keep = (
+        "epoch",
+        "bond_precision",
+        "bond_recall",
+        "bond_f1",
+        "bond_pr_auc",
+        "bond_n_scored",
+    )
+    out = [{k: row.get(k) for k in keep if k in row} for row in rows]
+    return out or None
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -154,11 +183,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         "overall": overall,
         "per_epoch": per_epoch,
         "first_vs_last": trend,
+        "bond_head_trajectory": _bond_head_trajectory(args.run),
         "reading": (
             "Single-fragment rate is the share of parsed molecules that came out "
             "as one connected component; three_ring_share is the fraction of all "
             "atom rings that are 3-membered. Both are descriptive: they say what "
-            "the pool looks like, not whether it is useful."
+            "the pool looks like, not whether it is useful. bond_head_trajectory "
+            "is teacher-forced (true atoms, predicted bonds) and is NOT comparable "
+            "to the pool's connectivity: it measures the head, the pool measures "
+            "the sampler."
         ),
     }
     from datetime import datetime, timezone

@@ -14,7 +14,7 @@
 | C4 | 树 + GNN 融合提升跨论文 R² | **SUPPORTED（仅 R²）** | DOI +0.0217 [+0.0044,+0.0377]；融合后 Δ 符号 0.5826→0.5505 | `msrs_fusion_protocols.json:/protocols/doi/arms/stack_foldwise/vs_tree` |
 | C5 | 不确定性区间校准 | **SUPPORTED（有边界）** | DOI 覆盖 0.9004、中位宽 2.0052；同队列多金属仅 0.8096 | `msrs_calibration.json:/protocols/doi/variants/global/coverage` |
 | C6 | 跨金属迁移达到可用水平 | **NOT SUPPORTED**（LOMO）；within-metal 另计 | 可解析 Ru/Ir 0.5974（集成 0.5947）< 0.6；Rh 0.3812 CI 含 0.5；within-metal Ru 0.8271 / Ir 0.8430 | `lomo_resolvability_audit.json:/aggregates/resolvable_only/value`；`lomo_seed_ensemble.json:/aggregates/resolvable_only/auc_of_mean_score` |
-| C7 | 生成物可合成且新颖的金属药物 | **NOT SUPPORTED**（全语料真生成池已存在，18/18 epoch，SA≤4.5 = **0.28%**，低于 256 样本的 0.69%；联合闸 0/10,190） | 全语料自由生成池 `cfm_c7_fullgen_2026_10_20`（n_train=26,715，**18 epoch** × 704 = **12,668** 可打分 / 10,190 唯一 SMILES）：SA 6.99、QED 0.124、SA≤4.5 **0.28% [0.21,0.39]**（36/12,668）；对照 n_train=256 池 SA≤4.5 **0.69% [0.42,1.11]**（n=2,330）。单片段率 2.84→12.22% 随 epoch 上升（连通性变差），SA 不动。联合闸（SA≤4.5 且 novelty≥0.90）**0/10,190**，SA 子集平均新颖度 0.8587。`gen_validity`=1.0 是松散原子假象（`sa_scored`=0） | `c7_scale_matched_pools.json:/by_pipeline/generation/by_tier/full_corpus/rate_sa_le_gate`；`.../wilson_ci95`；`.../by_tier/small/rate_sa_le_gate`；`.../tiers_missing`；`c7_fullgen_pool_quality.json:/first_vs_last`；`molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv` |
+| C7 | 生成物可合成且新颖的金属药物 | **NOT SUPPORTED**（全语料真生成池已存在，18/18 epoch，SA≤4.5 = **0.28%**，低于 256 样本的 0.69%；联合闸 0/10,190） | 全语料自由生成池 `cfm_c7_fullgen_2026_10_20`（n_train=26,715，**18 epoch** × 704 = **12,668** 可打分 / 10,190 唯一 SMILES）：SA 6.99、QED 0.124、SA≤4.5 **0.28% [0.21,0.39]**（36/12,668）；对照 n_train=256 池 SA≤4.5 **0.69% [0.42,1.11]**（n=2,330）。单片段率 2.84→12.22% 随 epoch 上升（连通性变差），SA 不动。联合闸（SA≤4.5 且 novelty≥0.90）**0/10,190**，SA 子集平均新颖度 0.8587。`gen_validity`=1.0 是松散原子假象（`sa_scored`=0） | `c7_scale_matched_pools.json:/by_pipeline/generation/by_tier/full_corpus/rate_sa_le_gate`；`.../wilson_ci95`；`.../by_tier/small/rate_sa_le_gate`；`.../tiers_missing`；`c7_fullgen_pool_quality.json:/first_vs_last`；`.../bond_head_trajectory`；`molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv` |
 
 ---
 
@@ -86,7 +86,8 @@ QED 0.124）。它的 SA≤4.5 是 **0.28% [0.21,0.39]**（36/12,668），**低�
 0.69% [0.42,1.11]（n=2,330）：把语料放大到全量**没有**改善可合成性。18 个 epoch 内单片段率
 从 2.84% 升到 **12.22%**（合计 8.51%），SA 不动，说明连通性随训练**变差**而不是变好。
 联合闸（SA≤4.5 且 novelty≥0.90）是 **0/10,190**，SA 通过子集的平均新颖度只有 0.8587，
-低于 0.90——通过 SA 的 36 个分子都是训练集的近亲。」
+低于 0.90——通过 SA 的 36 个分子都是训练集的近亲。同期键头（teacher-forced）反而在变好：
+`bond_f1` 0.173→0.605、recall 0.099→0.485，所以连通性失效不在键头，在采样/解码路径。」
 
 **不能写**：「生成器做不出可合成的金属配合物」——虽然现在有 **18/18 个 epoch**（`exit=0`，
 wall 11,232 s），仍**没有**证据说这是收敛值或天花板；也**不能**写「全语料 SA≤4.5 可达
