@@ -86,6 +86,19 @@ def _run_3epoch_smoke(
         "cpu",
         "--out-dir",
         str(out_dir),
+        # Wf-A101 (2026-10-20) — hermetic, both sides.  Without
+        # --resume-from none the trainer resumes the shipped checkpoint that
+        # happens to sit in the default ckpt_dir, so all three epochs start
+        # from converged weights and train_loss is FLAT (MEASURED 0.0403 ->
+        # 0.0403, which is what made this test red).  Without --ckpt-dir the
+        # smoke also WRITES into the repo-global molmetal/checkpoints, so a
+        # test run could overwrite a shipped checkpoint.  The liveness test
+        # fixed the identical pair of omissions on 2026-10-04; this smoke had
+        # kept both.
+        "--resume-from",
+        "none",
+        "--ckpt-dir",
+        str(out_dir / "ck"),
     ] + extra_flags
     t0 = time.time()
     completed = subprocess.run(

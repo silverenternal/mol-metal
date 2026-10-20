@@ -495,12 +495,21 @@ def test_cli_end_to_end_with_stub_fallback(tmp_path):
         panel = json.load(fh)
     assert panel["n_input"] == 2
     assert panel["metadata"]["vina_binary_ok"] is False
-    # Every cell must be STUB_FALLBACK because the fake binary is missing.
+    # Wf-A101 (2026-10-20) — with the binary missing the panel emits
+    # STUB_FALLBACK, or MEEKO_PREP_ONLY when meeko is installed and can still
+    # prepare the ligand (cfm_vina_dock_panel.py:1877-1884).  MEASURED on this
+    # venv: meeko is present, so every cell reads MEEKO_PREP_ONLY.  The
+    # invariant that actually matters is not the label but that NO score is
+    # invented without a binary, so that is what is asserted; the old test
+    # pinned the label and went red the day the meeko path landed.
     for entry in panel["per_molecule"]:
         for cell in entry["per_pocket"].values():
-            assert cell["status"] == "STUB_FALLBACK", (
-                f"Expected STUB_FALLBACK when binary missing; got " f"{cell['status']}"
+            assert cell["status"] in {"STUB_FALLBACK", "MEEKO_PREP_ONLY"}, (
+                f"binary missing must never produce a docked status; got "
+                f"{cell['status']}"
             )
-            assert cell["best_kcal_mol"] is None
+            assert cell["best_kcal_mol"] is None, (
+                "no docking score may be reported without a Vina binary"
+            )
     # aggregate best_score_overall must be None.
     assert panel["aggregate"]["best_score_overall"] is None

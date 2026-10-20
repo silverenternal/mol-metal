@@ -8438,6 +8438,22 @@ driver integrates it "via the new `--use-tanimoto-ood-filter` CLI flag (added in
 `--use-tanimoto-ood-filter` nor `--ood-filter-threshold`, and **no trainer module imports the
 file**. The docstring is corrected; the test is a strict xfail.
 
+**Two more repairs in the same batch (found while re-running the subset).**
+
+* `test_wf406a2_lambda_cfm_patch::test_patch_application_loss_decrease` — its 3-epoch smoke passed
+  neither `--resume-from none` nor `--ckpt-dir`, so it resumed whatever checkpoint sat in the
+  default directory and **all three epochs started from converged weights**: MEASURED flat
+  `train_loss` 0.0403 → 0.0403. Re-run hermetically (`--resume-from none --ckpt-dir <out>/ck`)
+  the same smoke gives 0.0560 → 0.0403 and the test passes. It was also **writing into the
+  repo-global `molmetal/checkpoints`** on every run — the identical pair of omissions the
+  liveness test fixed on 2026-10-04.
+* `test_wf264_cfm_vina_dock_panel::test_cli_end_to_end_with_stub_fallback` — pinned the label
+  `STUB_FALLBACK` for a missing Vina binary. The panel emits `MEEKO_PREP_ONLY` instead when meeko
+  can still prepare the ligand (`cfm_vina_dock_panel.py:1877-1884`), which is the case on this
+  venv. MEASURED: `status=MEEKO_PREP_ONLY`, `best_kcal_mol=None`, aggregate `best_score_overall
+  = None`. The test now asserts the invariant that matters — **no docking score is invented
+  without a binary** — instead of the label.
+
 **Honest negatives that REMAIN (ACTIVE).**
 
 * **Still red, and NOT touched here** — every one belongs to another line or another subsystem:
