@@ -12,8 +12,8 @@
     {
       "run": "c7_calib_eval0_2026_10_20 (PRE-FIX)",
       "what": "512 clouds, 1 epoch, batch 64, gen_eval_n=0, six regularisers at their argparse defaults",
-      "epoch_time_sec": 304.302690,
-      "wall_time_s": 304.302690,
+      "epoch_time_sec": 304.30269,
+      "wall_time_s": 304.30269,
       "n_train": 512,
       "n_val": 192,
       "batch_size": 64,
@@ -48,7 +48,7 @@
       "run": "c7_vramprobe_2026_10_20 (POST-FIX, full eval suite)",
       "what": "byte-identical to configs/c7_fullgen_2026_10_20.yaml except n_train 26715->512 and epochs 18->1, so it carries the REAL gen_eval_n=128 x 6 seeds = 704 scored candidates; run to size the full-corpus launch after the earlier 91.7 GB OOM",
       "epoch_time_sec": 160.440561,
-      "wall_time_s": 160.521150,
+      "wall_time_s": 160.52115,
       "n_train": 512,
       "n_val": 192,
       "batch_size": 64,
@@ -63,6 +63,34 @@
       "source": "molmetal/reports/c7_vramprobe_2026_10_20/events.jsonl",
       "vram_sampler": "nvidia-smi -i 0 every 2 s for the whole run; peak = max over samples",
       "caveat": "gen_validity 1.0 at epoch 0 is the documented loose-atom artefact (decode_ratio 1.0 while the bond head predicts BOND_NO_BOND everywhere — see decode_ratio.json::blind_spot), NOT evidence of generation quality. gen_sa_scored is 0, so no SA was measured in this run."
+    },
+    {
+      "run": "c7_sixterms_smoke_2026_10_20",
+      "what": "six regularisers ALL on (consistency_weight 0.05, shortcut_distill true, so3_average true, fm_ode/energy/sboo3 at their 0.05 defaults); 512 clouds, gen_eval_n 128 x 6 seeds",
+      "epoch_time_sec": 116.716008,
+      "n_train": 512,
+      "n_val": 192,
+      "batch_size": 64,
+      "steps_per_epoch": 8,
+      "gen_eval_n": 128,
+      "gen_validity": 1.0,
+      "gen_validity_n": 704,
+      "train_loss": 27.194684,
+      "peak_vram_mib": 71491,
+      "status": "MEASURED",
+      "source": "molmetal/reports/c7_sixterms_smoke_2026_10_20/events.jsonl"
+    },
+    {
+      "run": "c7_sixterms_nogen_2026_10_20",
+      "what": "same six-term arm with gen_eval_n 0; exists only to price the generation eval",
+      "epoch_time_sec": 47.364676,
+      "n_train": 512,
+      "n_val": 192,
+      "batch_size": 64,
+      "steps_per_epoch": 8,
+      "train_loss": 27.194684,
+      "status": "MEASURED",
+      "source": "molmetal/reports/c7_sixterms_nogen_2026_10_20/events.jsonl"
     }
   ],
   "speedup": {
@@ -80,14 +108,14 @@
   },
   "projection_full_corpus": {
     "status": "PROJECTED",
-    "basis": "26715 clouds / batch 64 = 418 steps at the DERIVED 2.608251 s/step, plus the DERIVED 19.44 s bond+decode eval, plus the MEASURED gen-eval delta (160.440561 - 40.303891 = 120.14 s)",
-    "epoch_sec": 1230.0,
-    "epoch_min": 20.5,
+    "basis": "418 steps at the DERIVED 3.4907 s/step (six terms) + 19.437882 s bond+decode eval + 69.351332 s generation eval",
+    "epoch_sec": 1548.0,
+    "epoch_min": 25.8,
     "n_epochs": 18,
-    "total_hours": 6.15,
-    "peak_vram_mib_expected": 72996,
-    "vram_headroom_gib": 24.9,
-    "caveat": "PROJECTED, not MEASURED: assumes per-step cost is flat in n_train (it should be, since each step touches a fixed 64 clouds) and that gen-eval cost is flat in the number of training clouds (it is a fixed 704 candidates). Excludes the one-time cohort load. VRAM headroom is measured against 97887 MiB total on GPU0."
+    "total_hours": 7.74,
+    "peak_vram_mib_expected": 71491,
+    "vram_headroom_gib": 26.2,
+    "caveat": "PROJECTED, not MEASURED. Supersedes the earlier 6.15 h figure, which was computed on the three-term arm. Assumes per-step cost is flat in n_train and that gen-eval cost is flat in the number of training clouds (fixed 704 candidates). Excludes the one-time cohort load."
   },
   "attribution": {
     "pre_fix_hotspot": "triton autotune, not the model",
@@ -116,5 +144,19 @@
     "metrics/by_metric/cfm_bond_accuracy.json",
     "metrics/by_metric/decode_ratio.json",
     "docs/HONEST_NEGATIVE_CATALOG.md §6.149"
-  ]
+  ],
+  "six_term_objective": {
+    "status": "MEASURED",
+    "why": "user directive '6个loss得开啊'. Before this change consistency_weight was 0.0 and shortcut_distill/so3_average were False in every config on disk (grep -rl consistency_weight configs/*.yaml = 0 files), so only three of the six were live — including in cfm_fullcorpus_b64.",
+    "three_terms_train_loss": 13.815618,
+    "six_terms_train_loss": 27.194684,
+    "bond_ce_three": 1.418784,
+    "bond_ce_six": 1.418785,
+    "grad_norm_three": 18.734685,
+    "grad_norm_six": 18.774021,
+    "gen_eval_cost_sec": 69.351332,
+    "per_step_sec_six_terms": 3.4907,
+    "per_step_method": "(47.364676 - 19.437882 bond+decode eval) / 8",
+    "comparability": "this run's objective is NOT byte-identical to cfm_fullcorpus_b64; b64-vs-C7 must be read as 'different objective', not 'different scale'"
+  }
 }
