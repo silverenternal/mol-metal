@@ -1,0 +1,611 @@
+# configs/c7_fullgen_2026_10_20.yaml — CFM full-corpus run that SAVES its generations.
+#
+# WHY THIS FILE EXISTS (2026-10-20, FIX-C7 v1.1). C7 asks whether the generator
+# can emit synthesizable, novel metal complexes. The audit found that no
+# full-corpus FREE-GENERATION pool exists on disk: every full-corpus
+# generated_smiles.csv in the repo was written by
+# molmetal/scripts/wf_cfm_decode_dump_smiles.py, which loads real tmQM geometries
+# and runs only the bond head (header `metal_z`) -- it never calls the sampler.
+# The real generation path writes `n_frags_raw` and only runs during training
+# when `save_generated_smiles` is on.
+#
+# This file is a byte-for-byte copy of configs/cfm_fullcorpus_b64_2026_10_11.yaml
+# with EXACTLY these changes, so the run differs from that reference in nothing
+# but the recording budget:
+#
+#   train.epochs              50 -> 16      (b64 early-stopped at 12; 16 gives
+#                                            headroom without a 7-hour run)
+#   eval.early_stop_patience  default -> 16 (effectively off: we want the epoch
+#                                            count, not an early exit)
+#   eval.gen_eval_seeds       "0 1 2 3" -> "0 1 2 3 4 5"
+#                                           (1,536 candidates/epoch; at b64's
+#                                            MEASURED gen_validity 0.0859 that
+#                                            is ~130 accepted molecules/epoch,
+#                                            ~2,000 over 16 epochs -- the C7
+#                                            gate needs >=1,000)
+#   output.save_generated_smiles  absent -> true
+#   output.checkpoint_interval    5 -> 1
+#   output.* paths            re-pointed to molmetal/reports/cfm_c7_fullgen_2026_10_20
+#   compute.device            auto -> cuda:0  (GPU0 only, per project directive)
+#
+# NOTHING ELSE CHANGES. n_train stays 26,715, batch 64, lr 3.0e-4, and the
+# architecture is untouched, so any difference from cfm_fullcorpus_b64 is the
+# recording budget plus seed noise.
+#
+# WALL CLOCK, MEASURED not projected: cfm_fullcorpus_b64 ran 12 epochs in
+# 10,465 s (872 s/epoch) with gen_eval_n 256 x 4 seeds. Doubling the eval seeds
+# adds generation cost, so budget ~15-16 min/epoch -> ~4 h for 16 epochs.
+#
+# --- parent header follows, unedited ---------------------------------------
+# configs/cfm_fullcorpus_b64_2026_10_11.yaml — CFM (conditional flow matching).
+#
+# DERIVED FILE (2026-10-11). Copied from configs/cfm_fullcorpus_2026_10_10.yaml
+# and changed in exactly two ways: `train.batch_size` 16 -> 64 (see the long
+# comment there for the literature, the Adam/sqrt argument that keeps `lr` at
+# 3.0e-4, and the confound in our own batch-64 runs), and the `output:` paths
+# re-pointed to a new report directory so the batch-16 run that owns
+# molmetal/reports/cfm_fullcorpus_2026_10_10/ is never touched. Every other
+# hyperparameter is identical, so a run launched from this file differs from
+# the live one in batch size and nothing else. See DIFF FROM PARENT below.
+#
+# Consumed by: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+# Invoke with:  .venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py \
+#                  --config configs/cfm_fullcorpus_b64_2026_10_11.yaml
+#
+# WHY THIS FILE (user directive 2026-10-07, "所有启动脚本都用yaml管理… 不要用cli,
+# 那样不好追溯"): `parse_args()` already ends in `apply_yaml_overrides(p, args,
+# args.config)` (train_cfm_yuelbond_wasserstein.py:6039-6041), so `--config` is
+# a first-class input. Launchers should pass `--config <yaml>` and nothing else.
+#
+# PRECEDENCE (wfA2_config_loader.py:404 apply_yaml_overrides):
+#   explicit CLI flag  >  YAML  >  argparse default
+# ONE exception: LIST-valued dests (`metals`, `seeds`) are always YAML-wins,
+# because list defaults are rarely the caller's intent.
+#
+# SECTION SCHEMA — READ BEFORE ADDING A KEY
+# -------------------------------------------
+# The loader does NOT flatten arbitrary sections. `_resolve_dest`
+# (wfA2_config_loader.py:258) only matches a leaf when the YAML path is
+# EXACTLY two components AND the section is in `_LEAF_FALLBACK_SECTIONS`
+# (wfA2_config_loader.py:78):
+#     protocol | model | flow | data | compute | eval | output | train
+# A key under any other section (`training:`, `decoder:`, `ot_cfm:`, …) or at
+# three components deep (`flow.ot.eps`) resolves to nothing and is reported as
+# SKIPPED — that is the Wf-A9 silent-lie class, and it is why this file sticks
+# to the whitelist even though the grouping below reads naturally.
+#
+# Validate any edit to this file with:
+#   WFA2_CONFIG_STRICT=1 .venv/bin/python -c "import sys; sys.argv=['x','--config','configs/cfm.yaml']; ..."
+# Strict mode raises UnresolvedConfigKey listing every dead key. Run it after
+# every edit — a key that stops resolving fails loudly there, never silently.
+
+model:
+  # CFM spells this --hidden-dim (dest `hidden_dim`); D-MPNN spells it --hidden.
+  # Do NOT use `hidden:` here — there is no `hidden` dest on this parser.
+  hidden_dim: 128
+  n_layers: 3
+  # 13-entry YuelBond table holds ONE metal (Pt). `all6` widens it to 18 by
+  # adding Ru/Ir/Rh/Os/Re, which CHANGES state_dict keys — a checkpoint trained
+  # under one preset will not load under the other. That is a real consequence
+  # of a dimension change, not a bug.
+  yuelbond_vocab: all6
+  # The production EGNN velocity field. Until this existed the trainer built
+  # CFMJointModel, whose velocity path was a 2-layer MLP placeholder — so every
+  # term the `flow:` block turns on was regularising a placeholder. Note this
+  # also changes state_dict keys, so it cannot resume an MLP-path checkpoint.
+  use_egnn_velocity: true
+  # Warm-start the EGNN velocity field from the tmQM-pretrained encoder.
+  # MEASURED working on this host: direct construction logs
+  #   "[load_tmQM_pretrained] Loaded tmQM-pretrained encoder:
+  #    47/51 params transferred (0 unexpected, 4 missing)"
+  # against models/tmqm_pretrained/tmqm_pretrained_encoder.pt, which exists.
+  # Documented in TODO/AUDIT_RESEARCH_GRADE.md 3.4 and TODO/risks.md R6.
+  #
+  # WHY THIS WAS MISSING: 9 ablation configs (cfm_fm_control, cfm_fm_ab,
+  # cfm_blk_c5_repair, cfm_full_retrain, cfm_per_innovation_ablation_p1.4,
+  # cfm_real_decode_lift_p1.3, cfm_tmqm_all6, cfm_gen_collapse_fm,
+  # cfm_bond_head_30ep_onecycle) all declare `use_tmqm_init: true`, but
+  # cfm.yaml did NOT. So the production config trained its velocity field from
+  # random init while the ablations warm-started it — an unrecorded confound in
+  # any production-vs-ablation comparison.
+  use_tmqm_init: true
+  # F5 (Wf-R5/Round-7): FM objective gating. Without this, the velocity field
+  # was trained on a zero target because `use_fm_objective` was missing from
+  # the config — cfm_round2/D6 best_decode_ratio=0.402 was the *untrained*
+  # model. Default ON.
+  use_fm_objective: true
+  # F6 (Wf-R7/Round-7): per-cloud t-distribution. Default 1 collapses to
+  # per-atom t (one t per atom in the cloud), losing the per-cloud
+  # Lipschitz scaling. Per-cloud (1 t per cloud) restored 23% FM MSE in
+  # smoke (Wf-R7 §1.4).
+  fm_t_per_cloud: 1
+  # Round-3 D2 (Wf-R3): connectivity prior gate. Earlier models went off-dist
+  # because the velocity field's softmax allowed any bond topology. ON keeps
+  # sampled fragments chemically plausible. With min_logit=0.0 the prior is
+  # advisory, not restrictive — strict mode would push it higher but would
+  # collapse valid novelty at the current cohort size.
+  connectivity_prior: "on"
+  connectivity_prior_min_logit: 0.0
+
+train:
+  # n_train DECLARED, not inherited. Until now this key was absent, so the
+  # trainer fell back to DEFAULT_TRAIN_CLOUDS=256 -- 0.77% of the corpus --
+  # while `load_tmqm_clouds` was printing "26715/26715 requested complexes
+  # have a Wiberg BO block" on every run. MEASURED, same val split, same
+  # hidden_dim and lr:
+  #     n_train 256   -> bond_type_macro_f1 0.3770 (cfm_fm_control_2026_10_09)
+  #     n_train 26715 -> bond_type_macro_f1 0.9470 (cfm_r9_fix_v2)
+  # 2.51x, from 104x more complexes (~417x vs 4 optimizer steps per epoch).
+  #
+  # NOT ATTRIBUTED TO ONE VARIABLE: r9 also differs in batch_size and epoch
+  # budget, so this config bundles n_train + batch_size. metrics/by_metric/
+  # cfm_run_census.json carries every run's own recorded config; see
+  # `already_answers` before launching anything else on this axis.
+  #
+  # WALL CLOCK: cfm_r9_fix_v2 ran 29,681 s for 11 epochs (~45 min/epoch) and
+  # early-stopped at patience 3. A 50-epoch run on this cohort is NOT a
+  # ~1 hour job.
+  n_train: 26715
+  # argparse defaults: epochs=50, batch_size=64, lr=3.0e-4 (DEFAULT_LR).
+  epochs: 16
+  # 2026-10-11 (Wf-11xx batch track): 16 -> 64. This file is otherwise a
+  # byte-for-byte copy of configs/cfm_fullcorpus_2026_10_10.yaml with only the
+  # output paths re-pointed, so batch_size is the ONE changed hyperparameter.
+  #
+  # WHY 16 WAS DEFENSIBLE AND NO LONGER IS — the published literature, not
+  # our own runs. Batch/n_train for molecular equivariant CFM in the papers:
+  #     EDM / Hoogeboom QM9            64   (1/  508  at n_train 32k)
+  #     GeoLDM QM9                     64
+  #     GeoLDM GEOM-DRUGS              32
+  #     ADiT                           256  (1/  508)
+  #     chemprop v1 / v2            50 / 64
+  # This repo at batch 16 / n_train 26715 is 1/1670 — mid-family, but at the
+  # very small-batch end for a method whose published default is 64. Batch 64
+  # gives 1/418, TIGHTER than any published point above.
+  #
+  # THE REAL RISK OF THIS CHANGE, stated because the intuitive sentence here
+  # used to say the opposite and was wrong: raising batch does NOT give more
+  # steps per sample, it gives FEWER. Total optimiser steps over the 50-epoch
+  # schedule fall from ~83,500 (26715/16 x 50) to ~20,900 (26715/64 x 50), i.e.
+  # 3.13 -> 0.78 updates per training sample. For a run whose epoch-0->2
+  # train_loss only fell 9.93 -> 9.41, 4x fewer updates is the change most
+  # likely to hurt, and it is not offset by the speedup. Any comparison
+  # against the live baseline must treat "same wall-clock, 4x fewer updates"
+  # as the confound, not batch size alone.
+  #
+  # WHY lr IS UNCHANGED AT 3.0e-4 (this is the part a reader must not have to
+  # re-derive). The folklore "scale lr linearly with batch" is Goyal et al.
+  # 2017, and Goyal is SGD. This trainer uses AdamW-family optimisers, where
+  # the batch-size dependence of the OPTIMAL step size is NOT linear. Li et
+  # al., "Surge Phenomenon in Optimal Learning Rate and Batch Size Scaling"
+  # (NeurIPS 2024, arXiv:2405.14578) show that for adaptive optimisers the
+  # optimal step size RISES with batch below a noise-dominated threshold and
+  # then FALLS above it, because Adam updates by sign(G) and E[sign(G)]
+  # saturates. So linear scaling does not apply, and 4x batch does NOT imply
+  # 4x lr.
+  #
+  # HONEST LIMIT OF THAT CITATION: the specific closed form
+  # eps_opt(B) = eps_max / (0.5*(sqrt(B_noise/B) + sqrt(B/B_noise))) is NOT
+  # what this paper is cited for here and must not be attributed to it. The
+  # defensible claim is only the qualitative one above. Leaving lr alone is a
+  # CONSERVATIVE CHOICE under that claim, not a consequence of a formula.
+  # Warmup is untouched: lr_warmup_epochs 5 / lr_scheduler cosine below are
+  # identical to the parent.
+  #
+  # HONEST FRAMING — OUR OWN batch-16-vs-64 EVIDENCE IS CONFOUNDED AND IS NOT
+  # THE JUSTIFICATION HERE. The only two runs on disk at batch 64 are
+  # cfm_frag_control (bond_type_macro_f1 0.2703) and cfm_frag_assemble
+  # (0.1756) — MEASURED, both rows in metrics/by_metric/cfm_run_census.json
+  # (:188 for the control's 0.2703, :383 for the pair) — and batch size was
+  # NOT the isolated variable in either:
+  #   * neither config declares `train.n_train`, so both fell back to
+  #     DEFAULT_TRAIN_CLOUDS = 256 (train_cfm_yuelbond_wasserstein.py:626) —
+  #     256 clouds, not 26715. 256 / batch 64 = 4 optimizer steps per epoch,
+  #     against ~1670 here. Both also ran epochs 30 with
+  #     early_stop_patience 999, gen_eval_n 32 and save_generated_smiles on.
+  #   * neither declares `model.use_tmqm_init` (the parent does), so their
+  #     velocity field started from random init while this one warm-starts from
+  #     the tmQM encoder.
+  #   * cfm_frag_assemble additionally carries assemble_loss_weight 1.0,
+  #     assemble_formulation escape_time and assemble_hinge_tau 0.30; this
+  #     config has no assemble_* key at all.
+  # So the two arms differ from this config in cohort size, epoch budget, warm
+  # start and objective, and agree only in batch_size — which is the OPPOSITE of
+  # an isolated variable. The parent config concedes the same point about its
+  # own n_train change ("NOT ATTRIBUTED TO ONE VARIABLE"). Reading 0.270/0.176
+  # as "batch 64 is harmful" would be reading a confound. The justification for
+  # 16 -> 64 here is the PUBLISHED batch sizes above, plus the launch-bound
+  # evidence below.
+  #
+  # LAUNCH-BOUND (in-tree, so it needs no citation to a paper): the trainer
+  # itself records at :2064-2069 that the per-cloud Python dict used to cost
+  # 2.314 ms/cloud = 43.5% of model.forward and called `.tolist()` FIVE times
+  # per cloud — five device-to-host syncs per cloud, ~134,000 syncs per epoch
+  # at n_train 26715. MEASURED 2026-10-11 with the batch-16 run in flight:
+  #   nvidia-smi -> RTX PRO 6000 Blackwell, 97887 MiB total, 6252 MiB used
+  # i.e. 6.4% of the card, while only 16 clouds (order 640 atoms) are being
+  # fed. This run cannot be compute-bound; it is host-sync-bound. Bigger
+  # batches amortise the fixed per-step overhead over 4x the samples. Speed is
+  # a secondary benefit here, not the headline: the headline is that 16 is
+  # below the published family and 64 is inside it.
+  # PROJECTED (not measured): wall-clock per epoch should fall by roughly the
+  # launch-bound share, but the per-cloud path was already vectorised, so the
+  # speedup is an expectation, not a result. Do not quote a number for it until
+  # an epoch time is on disk.
+  batch_size: 64
+  # UNCHANGED from the parent config and from DEFAULT_LR. See the
+  # conservative reading above (Li et al. NeurIPS 2024, arXiv:2405.14578).
+  # Do not "fix" this to 1.2e-3 without an A/B that changes ONLY the lr.
+  lr: 3.0e-4
+  weight_decay: 0.0
+  max_norm: 5.0
+  ema_decay: 0.999
+  # EDM-style noise scale the flow is trained on: the std of the base
+  # distribution x0, applied to BOTH the training draw
+  # (x0 = randn_like(x1) * fm_noise_sigma) and the sampler's initial state.
+  #
+  # 2026-10-07 (Wf-R28) — this was 1.0, a 2.5x scale mismatch against the
+  # data. The trainer's own comment (L1714-1720) states the requirement: "The
+  # tmQM loader does NOT scale its coordinates, so the data sits at
+  # per-coordinate std 2.505 A while the prior sat at 1.0 — a 2.5x scale
+  # mismatch between the two ends of the interpolant." x0 and x1 must share a
+  # scale or the learned velocity carries a constant-magnitude artefact
+  # instead of structure.
+  #
+  # MEASURED, not copied: 600 clouds drawn with the EXACT cohort this file
+  # selects (metals Pt,Ru,Ir,Rh,Os,Re; coord_number -1 = no filter; split
+  # train; val_frac 0.2; seed 0) -> global std 2.4850, per-axis
+  # [2.4219, 2.4712, 2.5599], mean [0,0,0]. At sigma 1.0 the radius graph's
+  # edge density swings 0.843 (t=0) -> 0.259 (t=1), a 3.3x reshuffle, so the
+  # EGNN message-passing neighbourhood is dominated by the noise scale.
+  #
+  # HONEST-NEGATIVE: the R10 fix plan argued for LOWERING sigma to 0.5 to
+  # shrink the irreducible fm_loss floor. That is a separate A/B (its "GPU-F"
+  # arm) and it would RE-BREAK this same-scale invariant, so it is NOT folded
+  # in here. Only the mismatch to the data is fixed.
+  fm_noise_sigma: 2.485
+  # 2026-10-07 (Wf-R28) — cosine anneal + warmup were inert. The trainer built
+  # the schedule with total_steps = epochs * steps_per_epoch but called
+  # scheduler.step() once per EPOCH, so cosine covered 16.7% of its decay and
+  # ended at a 0.9330 LR multiplier. The unit mismatch is fixed in the
+  # trainer; these two keys turn the schedule on.
+  lr_scheduler: cosine
+  lr_warmup_epochs: 5
+  # 2026-10-10 — start COLD, always. This is a real hazard, not a style rule.
+  #
+  # `resume_from` defaults to "auto", which picks up
+  # <ckpt_dir>/cfm_yuelbond_wasserstein_seed0.pt if a file is lying there. A
+  # stale one from before `--use-egnn-velocity` existed is not a soft failure —
+  # it aborts the run outright:
+  #     Missing key(s): "vel_field.vel_scale", "vel_field.time_mlp...", 54 more
+  #     Unexpected key(s): "vel_probe.0.weight", ..., 8 more
+  #     size mismatch for head.atom_encoder.weight: checkpoint [128, 13]
+  #                                      vs this model [128, 18] (all6 vocab)
+  # MEASURED 2026-10-10 03:38 — both arms of the BLK-C11 A/B died this way in
+  # 37 s before a single epoch ran.
+  #
+  # A stale repo-global checkpoint silently changing what a run trains is the
+  # same class of bug as a config key that never reaches a dest: the run looks
+  # reproducible and is not. Checkpoints are loaded explicitly by the
+  # resume-capable launchers, never by accident.
+  resume_from: none
+  # 2026-10-10 (BLK-C13) — bond-head staged freeze, written out EXPLICITLY as 0.
+  #
+  # This is documentation, not a behaviour change: the argparse default was
+  # already 0, so this file was never paying for the freeze. It is here because
+  # FOUR sibling configs do set it to 5
+  # (cfm_blk_c5_repair / cfm_fm_ab / cfm_fm_control / cfm_gen_collapse_fm), and
+  # that setting is actively harmful to the generation objective:
+  #
+  #   bond_head_warmup_epochs freezes model.head.parameters() (L7730-7743), and
+  #   BOTH generation-side terms are built from model.head's own bond-order
+  #   softmax — valence_log_barrier reads the per-pair class probabilities, and
+  #   the entropy regulariser reads the same logits. So with the freeze on, both
+  #   terms are gradient-dead for the first 5 epochs no matter what weight they
+  #   are given.
+  #
+  # MEASURED consequence: those four runs are the ones that generated the 2146
+  # molecules scored in metrics/by_metric/cfm_decode_chemistry_validity.json,
+  # every one of which has valence_ok = false. The model was never once
+  # penalised for an impossible valence.
+  #
+  # Do not set this above 0 in any config that turns on gen_validity_weight or
+  # entropy_reg_weight — the two settings are mutually defeating.
+  bond_head_warmup_epochs: 0
+
+  # ======================================================================
+  # Wf-TRACK5 (2026-10-11) — the two zero-weight loss terms that are NOT
+  # degenerate. The third (gen_validity_weight / soft_valence_term) stays 0
+  # on purpose; see the block at the end of this section.
+  #
+  # Both of these were weight 0.0, i.e. exact `torch.zeros(())` in the
+  # `loss = (...)` sum at train_cfm_yuelbond_wasserstein.py:3679-3703,
+  # while the metrics they correspond to (gen_validity,
+  # gen_single_fragment_ratio) are tracked and gate nothing.
+  # ======================================================================
+
+
+
+  # --- (A) gen_validity_weight / soft_valence_term: DELIBERATELY LEFT OFF --
+  # Not an oversight. It is a ONE-SIDED squared hinge:
+  #     sum_a max(0, atom_orders_a - cap_a + eps)^2
+  # (decoder_rework.py, valence_log_barrier). MEASURED on two carbons
+  # (cap 4), gradient w.r.t. bond order:
+  #     order 0.0 -> 0.000e+00 | 1.0 -> 0.000e+00 | 3.0 -> 0.000e+00
+  #     order 4.001 -> 8.00e-03 | 6.0 -> 8.00e+00
+  # EXACTLY zero everywhere at or below the cap. So it never rewards
+  # forming a bond -- it only ever pushes bond orders DOWN. Two edges on
+  # the same atom totalling 1.0 of a 4.0 cap: loss 0.0, gradient [0, 0].
+  #
+  # That would buy the tracked gen_validity number by degrading the metric
+  # this config's early-stop gate actually selects on
+  # (early_stop_metric: bond_type_f1): decoding fewer bonds always
+  # "improves" valence feasibility. metrics/by_metric/decode_ratio.json
+  # records the same trade in the limit — a NO_BOND head reads
+  # gen_validity 0.977 while bond precision craters.
+  #
+  # The term is NOT deleted: it stays wired and tested in
+  # molmetal/tests/test_wf_r41_soft_valence_loss.py. It is off because it
+  # is a degenerate direction, not because it is broken. Its one-sidedness
+  # is now pinned by
+  # molmetal/tests/test_wf_track5_zero_weight_loss_terms.py.
+
+flow:
+  # 2026-10-07 (Wf-R31) — ROOT FIX for `bond_exact_type_rate` pinned at 0.
+  #
+  # NOT a gate-metric problem. The gate swap the Wf-R31 brief proposed
+  # (`combined` -> `bond_exact_type`) was checked against the artifacts and is a
+  # NUMERICAL NO-OP: on the round-7 cohort `combined` = gen_validity x
+  # bond_exact_type_rate = 0.9753 x 0.0 = 0.0, and `bond_exact_type` alone is
+  # also 0.0. Both constants gate identically. (`bond_exact_type_rate` is not
+  # even an accepted --early-stop-metric value; the choice list is
+  # decode_ratio / gen_validity / bond_exact_type / combined.)
+  #
+  # The bond head is NOT gradient-starved and NOT stuck. MEASURED on
+  # molmetal/reports/cfm_r8_cosine_40ep/per_epoch_metrics.json (6714 scored
+  # complexes, 9 epochs):
+  #     epoch        0      2      4      6      8
+  #     bond_f1   0.535  0.592  0.634  0.674  0.718   (monotone increasing)
+  #     macro_f1  0.2545 0.3223 0.3751 0.3738 0.4206
+  #     pr_auc    0.519  0.597  0.646  0.718  0.771
+  # and bond_ce_loss fell 2.214 -> 1.018 across the round-7 run. The head
+  # learns; `bond_exact_type_rate` is 0.0 because it is STRUCTURALLY
+  # UNREACHABLE at this accuracy: it requires ALL ~42 bonds of a complex to be
+  # exactly right AND correctly typed. At the best MEASURED bond_f1 0.7177 the
+  # bound is 0.7177**42 = 8.8e-07, so ~0 of 6714 complexes can hit it. That is
+  # arithmetic, not a defect.
+  #
+  # The actual defect is the DECISION RULE, not the gate. Round-7 ran with
+  # `bond_decision: argmax` (the argparse default, since this file set no key)
+  # and its recall trajectory was 1.0, 1.0, 0.027, 0.001 — the 5-way argmax
+  # collapses onto NO_BOND as the head sharpens. Round-8 ran `threshold` and
+  # held recall 0.702 -> 0.817 while bond_f1 climbed to 0.718. Same trainer,
+  # same gate, different decision rule.
+  #
+  # HONEST-NEGATIVE: this raises bond_f1 / macro_f1. It does NOT make
+  # `bond_exact_type_rate` non-zero, and it will not while bond_f1 is ~0.72 —
+  # do not report an exact_type number off the back of this change.
+  bond_decision: threshold
+  # A PRIOR, not a tuned value, and deliberately left at the argparse default
+  # 0.5 so this change is a one-variable edit. The per-epoch
+  # `best_f1(optimistic)` line reports what a sweep would reach; picking a
+  # production threshold needs a held-out split.
+  bond_decision_threshold: 0.5
+
+  # OT-CFM coupling. When on, train_cfm_yuelbond_wasserstein.py:2349-2400
+  # recomputes an OT plan on freshly drawn noise EVERY batch.
+  use_ot_cfm: false
+  # NOTE: there is deliberately no `ot_eps` / `ot_max_iter` key here. MEASURED
+  # against this parser — `hasattr(args, 'ot_eps')` and `hasattr(args,
+  # 'ot_max_iter')` are both False, so no such CLI flag exists to configure.
+  # The OT solver's own constants live in
+  # molmetal/adapters/flow_matching_lipman/optimal_transport_v2.py. Adding
+  # either key would be a dead key, and strict mode would correctly fail.
+  # HONEST-NEGATIVE — this is a HYPERPARAMETER no-op at small batch size, not a
+  # missing wire-in. Measured in-code at L2368-2382: the MA factor derives from
+  # the empirical covariance of x0, which is (d_flat x d_flat) with
+  # d_flat = N_atoms*3. When batch size B <= d_flat that covariance is
+  # rank-deficient, det(Q) is pinned by the epsilon clamp, and the factor
+  # saturates to a constant for EVERY input:
+  #     B=2,4    -> factor identical for well-conditioned and degenerate input
+  #     B=32     -> factor 1.336 vs 7.743   (active)
+  #     B=128    -> factor 0.997 vs 7.743   (active)
+  # So MA is inert at --batch-size 8 with 5-atom clouds (d_flat=15), while the
+  # batch_size=64 below is comfortably above it. The trainer raises a
+  # RuntimeWarning in exactly this case (L2386); this comment is the
+  # config-side record of the same constraint.
+  monge_ampere: false
+
+# NO `data:` SECTION. Two measured reasons, both load-bearing:
+#   1. A section with only comments parses as the bare leaf `data: None`, which
+#      the loader reports as an unresolved key (`data=None`) and strict mode
+#      raises on. So a comment-only section is NOT safe — delete it instead.
+#   2. `data_csv: null` is actively harmful: the loader runs every YAML value
+#      through the argparse action's own `type=` converter
+#      (wfA2_config_loader.py:495-505), so null is stringified to the literal
+#      path "None" and the run dies with
+#      `data.csv='None' not found (tried 'None' and <repo>/None)`.
+#      MEASURED — this happened on the first smoke attempt of this file.
+# The argparse default for `data_csv` is already None, which selects the
+# built-in loader, so omitting the key is correct.
+#
+# There is deliberately no `metals:` key either — MEASURED
+# `hasattr(args, 'metals')` is False on this parser. The CFM trainer trains a
+# single cohort selected by the out_dir / data_csv pair, so a per-metal cohort
+# list is not a knob it has. (D-MPNN does expose `metals`; see dmpnn.yaml.)
+#
+# To decode real metal complexes, pass a real corpus path — e.g. the tmQM
+# extract — as `--data-csv`. The default synthetic corpus is 100% one
+# square-planar Pt layout, which yields decode_ratio 1.000 for the wrong reason.
+
+compute:
+  # "auto" picks cuda when available; set "cpu" for the §5.7 smoke.
+  device: cuda:0
+  tf32: false
+  torch_compile: false
+  triton_ot: false
+
+eval:
+  # Epsilon-constraint checkpoint selection. The generation objective is bound
+  # to a floor; among epochs that clear it, the best bond-type macro-F1 wins.
+  #
+  # Why this replaced `combined`: `combined` is a scalarisation, and the front
+  # it sits on is FLAT where it matters. Measured on the control arm, dropping
+  # epsilon 0.85 -> 0.6 costs 0.27 of gen_validity (0.875 -> 0.604) to gain
+  # 0.0004 of macro-F1. A product cannot express that trade; a constraint can.
+  #
+  # epsilon = 0.85 is read off metrics/by_metric/blk_c13_epsilon_constraint.json,
+  # not chosen by hand: the slice is insensitive over [0.7, 0.85] across all
+  # four (run x bond-objective) analyses, and the criterion reproduces the
+  # knee that analysis found (ep17 control / ep20 fm_ab) when replayed over
+  # the recorded runs — pinned by
+  # test_epsilon_criterion_reproduces_the_knee.
+  #
+  # epsilon remains a PREFERENCE, not a discovered optimum, and the front may
+  # be the front of a broken objective (BLK-C12: 8 of 12 loss terms dead).
+  # 2026-10-11 — was `bond_type_f1_eps` with epsilon 0.85. MEASURED on the
+  # first launch of this run: epoch 0 logged
+  #   [cfm-early-stop] criterion=bond_type_f1_eps value=-0.6446
+  #     (gen_validity 0.0586 < epsilon 0.8500; ...)
+  # The criterion NEGATES the score when gen_validity cannot reach epsilon,
+  # and the gate keeps the HIGHER value — so with epsilon unreachable the gate
+  # keeps the LOWEST bond_type_macro_f1. That is the opposite of the intent.
+  # Epsilon 0.85 was derived on the n_train=256 cohort where gen_validity did
+  # reach it; it is not reachable here (full corpus + use_fm_objective). The
+  # epsilon-constraint gate is left in place in cfm.yaml for a regime where
+  # gen_validity approaches it; this run scores the metric directly.
+  early_stop_metric: bond_type_f1
+  early_stop_epsilon: 0.85
+  # C7 v1.1: effectively off -- we want the epoch budget, not an early exit.
+  early_stop_patience: 16
+  # Weight of the Wasserstein regulariser in the loss cascade (default 0.1).
+  # 0 gives the G6 "no_wass" ablation arm.
+  wasserstein_weight: 0.1
+  # NOTE: no `use_wasserstein_2` key here — MEASURED `hasattr(args,
+  # 'use_wasserstein_2')` is False on this parser (it exists on D-MPNN). The
+  # brief I was handed listed it for CFM; it is not a CFM flag.
+  # Round-3 D3 (Wf-R3): gen-eval seed sweep. The "0 1 2 3" seed sweep is what
+  # produced the 0.402 → 1.000 decode_ratio lift in Round-3. Default 128
+  # samples per seed (4 seeds = 512 samples) — the pre-Round-3 default was
+  # 32, which gave noisy 0/32 * 128 = 0 success on degenerate inputs.
+  gen_eval_n: 256
+  # C7 v1.1: 6 seeds x 256 = 1,536 candidates/epoch. At b64's MEASURED
+  # gen_validity 0.0859 that is ~130 accepted molecules/epoch, ~2,000 over
+  # 16 epochs -- the C7 gate needs >=1,000.
+  gen_eval_seeds: "0 1 2 3 4 5"
+  # 2026-10-07 (Wf-R28) — ODE solver cost. `n_steps` is the integrator step
+  # count and `method` the integrator; together they set the accuracy/cost
+  # tradeoff for the sampler that produces every gen_validity sample.
+  #
+  # MEASURED from the trainer's own help text (verified against the exact
+  # solution of dx/dt = -x at 64 steps): euler 2.9e-3, midpoint 1.5e-5,
+  # rk4 6.0e-8. euler is ~2000x less accurate than midpoint here.
+  #
+  # The R10 fix plan proposed n_steps 100 -> 50 to halve the 13-min gen_eval.
+  # With `method: midpoint` (2nd order) the accuracy at 50 steps is better
+  # than euler at 100, so this is a strict improvement rather than a
+  # like-for-like halving: 2nd-order midpoint at 50 steps beats 1st-order
+  # euler at 100 on truncation error alone.
+  n_steps: 50
+  method: midpoint
+
+output:
+  out_dir: molmetal/reports/cfm_c7_fullgen_2026_10_20
+  # canonical checkpoint path (was missing -> the trainer fell back to
+  # <out_dir>/checkpoints per run; the CLI help names "yaml output.ckpt_dir"
+  # as the intended source).
+  ckpt_dir: molmetal/reports/cfm_c7_fullgen_2026_10_20/checkpoints
+  # `base_dir` has NO dest on the CFM parser (MEASURED hasattr base_dir=False)
+  # — the loader reports it as a skipped key. It is here anyway because
+  # start.sh derives out_dir, the log path and the events.jsonl path from it
+  # (scripts/start.sh:272-274); with the key absent start.sh fell back to the
+  # literal `results/auto` while the trainer wrote to `output.out_dir`, so the
+  # two halves of the run landed in different directories. MEASURED
+  # before/after this edit, via `start.sh --dry-run`. configs/cfm_full_retrain.yaml
+  # carries the same key for the same reason.
+  base_dir: molmetal/reports/cfm_c7_fullgen_2026_10_20
+  # start.sh:453 reads this with a default of 50, and cfm.yaml never declared
+  # it, so the first launch of this run saved weights ONLY at the very end.
+  # Combined with an inverted gate that is a 54-hour run whose only artefact
+  # is the worst bond head. At 5 every epoch is kept, which also makes the
+  # epoch-5 fragmentation collapse comparable: there is a pre-collapse
+  # checkpoint to replay against a post-collapse one.
+  # C7 v1.1: every epoch, so the C7 measurement can also be taken at an
+  # intermediate checkpoint if the run is interrupted.
+  checkpoint_interval: 1
+  # C7 v1.1: the whole point of this run. Writes <out_dir>/generated_smiles.csv
+  # through the production path (epoch,smiles,n_frags_raw,largest_frag_frac).
+  save_generated_smiles: true
+  # 2026-10-10 — start.sh:477/476 read these two and have NO default:
+  # an absent key yields an empty string, and start.sh:708 then runs `: > ""`
+  # and dies with `No such file or directory` BEFORE the trainer starts.
+  # MEASURED: `scripts/start.sh --dry-run` printed an empty `log file:` and
+  # the launch produced an empty run dir, no process and an idle GPU. So the
+  # canonical cfm.yaml could not be launched through the single canonical
+  # entry point at all. Both keys are output paths, not trainer flags.
+  log_master: molmetal/reports/cfm_c7_fullgen_2026_10_20/master.log
+  training_summary: molmetal/reports/cfm_c7_fullgen_2026_10_20/synthesis.md
+
+
+# ---------------------------------------------------------------------------
+# LAUNCH sections (added 2026-10-07, Wf-R27 FIX 5)
+# ---------------------------------------------------------------------------
+# Why these exist: `scripts/launch_all_training.sh` drives every run through
+# `scripts/start.sh <yaml>`, and start.sh's pre-flight
+# (scripts/_pre_flight_check.sh:162) requires the top-level keys
+#     data, model, protocol, output, directives
+# to be PRESENT. MEASURED before this edit: start.sh on this file exited 1
+# with `FAIL:missing=data,protocol,directives` — so cfm.yaml, the trainer's
+# own single source of truth, was unreachable from the one canonical launcher.
+#
+# The `data:` section below is the tmQM corpus, NOT a null placeholder. The
+# reason quoted above for omitting `data:` was that `data_csv: null` is
+# stringified to the literal path "None" by the loader's converter — that is
+# still true, and this section therefore never declares `csv` / `data_csv`.
+# It declares `tmqm_*` keys instead, all of which are real dests on this
+# parser (MEASURED hasattr: tmqm_dir, tmqm_metals, tmqm_coord_number,
+# tmqm_val_frac all True), and tmQM is what the run actually consumes: the
+# argparse default (`data_csv=None`) selects the SYNTHETIC corpus, which is
+# one jittered square-planar Pt layout and yields decode_ratio 1.000 for the
+# wrong reason (see the note above this section).
+#
+# `protocol:` repeats no key that `train:` already carries — the loader is
+# last-key-wins within the YAML, so duplicating `epochs` here would silently
+# override `train.epochs` depending on file order. Only run-shaping values
+# that no other section declares are placed here.
+#
+# `entry.command_template` passes `--config {yaml_path}` and nothing else, so
+# the yaml drives every hyperparameter (start.sh substitutes {yaml_path} with
+# argv[1] and {seed} with the sweep default). `--seed` is passed because the
+# CFM parser takes a single `--seed`, not a seed list, and 0 is the trainer's
+# own default — stated explicitly so the launch is traceable.
+data:
+  tmqm_dir: .data/molmetal/tmQM
+  tmqm_metals:
+    - Pt
+    - Ru
+    - Ir
+    - Rh
+    - Os
+    - Re
+  # -1 = no coordination-number filter (4 = square-planar, 6 = octahedral).
+  tmqm_coord_number: -1
+  tmqm_val_frac: 0.2
+  # Wf-A41-fixup-1 (2026-10-15) C13 fix — flip to scaffold split for
+  # OOD-by-construction (Wf-A14, 2026-10-13 rationale: DrugOOD axes Ji 2023,
+  # iMoLD 2024 — same scaffold family never crosses train/val/test).
+  tmqm_split_kind: scaffold
+
+protocol:
+  # Only keys absent from train:/eval: above, to avoid last-key-wins clashes.
+  seed: 0
+
+directives:
+  kill_then_adapt: true
+  time_budget: 48h
+  user_ok_required: true
+  user_ok_granted: 48h budget + RTX PRO 6000 Blackwell + project root results/ (2026-09-28)
+
+entry:
+  script: molmetal/scripts/train_cfm_yuelbond_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_cfm_yuelbond_wasserstein.py --config {yaml_path} --seed {seed}

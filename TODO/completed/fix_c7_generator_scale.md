@@ -119,3 +119,30 @@ OMP_NUM_THREADS=1 .venv/bin/python molmetal/scripts/c7_scale_matched_pools.py
 `save_generated_smiles`，产出 ≥1,000 个**真生成**分子，再重跑本审计。
 这是唯一能填上 `generation/full_corpus` 空格、把 C7 从「artifact 不存在」变成
 可点估计的路径。
+
+- 配置：`configs/c7_fullgen_2026_10_20.yaml`（`cfm_fullcorpus_b64_2026_10_11.yaml`
+  的逐字节副本，只改 epochs 16 / gen_eval_seeds 6 个 / save_generated_smiles /
+  checkpoint_interval 1 / device cuda:0 / 输出路径）
+- 冒烟：`configs/c7_fullgen_smoke_2026_10_20.yaml`，1 epoch × 512 clouds，
+  MEASURED 301 s，写出 `epoch,smiles,n_frags_raw,largest_frag_frac` 32 行 —— 确认走的是
+  生产生成路径，不是键头重建
+- pre-flight：114 pass / 0 fail / 10 skip
+
+## 顺带发现（不在 C7 范围，未在 run 中修复）
+
+`--consistency-term-weight` 默认 **0.05** 且 `enabled=True`，但
+`consistency_loss_fn` 内部的 `sample_edm_sigma` 默认 `device=cpu`，与 cuda 上的
+`noise` 相乘抛 `RuntimeError`，被 `ConsistencyTerm.compute` 的 `except` 捕获后
+返回 `torch.zeros(())`。三行复现：
+
+```python
+from molmetal.adapters.flow_matching_lipman.consistency_regularization_wf380 import consistency_loss_fn
+x = torch.randn(4, 3, device="cuda:0")
+consistency_loss_fn(lambda z: z * 0.5, x, weight=0.05)
+# RuntimeError: Expected all tensors to be on the same device ... cuda:0 and cpu
+```
+
+**这一项自该权重上线起每一步都是精确 0。** 没有在本次 run 中修复，因为修了会改变
+目标函数、使本 run 与 `cfm_fullcorpus_b64` 不可比；而这一项在 b64 里同样是死的，
+所以两者仍然可比。已记为 `FIX-C8`（OPEN）。
+

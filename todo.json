@@ -29,6 +29,7 @@
   },
   "current_position": {
     "measured_facts": [
+      "FIX-C8（新发现）：--consistency-term-weight 默认 0.05，但 sample_edm_sigma 默认 device=cpu，每步抛 RuntimeError 被吞，该项自上线起恒为 0。",
       "C7 v1.1：全语料池全部是 wf_cfm_decode_dump_smiles.py 的键头重建（metal_z 表头），SA 5.032 是构造产物；真生成池最大 n_train=256，SA≤4.5 = 16/2,330 = 0.69% [0.42,1.11]；gen_validity 全语料 0.074-0.086 未高于 256 样本 0.083-0.292。",
       "FIX-C7（生成溯源）：三个被打分的池来自 n_train=64/256/256（语料 26,715）。全语料池 n=83：SA 5.032、SA≤4.5 33.7% [24.5,44.4]、QED 0.2042–0.2275；小规模池 n=2,396：SA 6.44–7.55、0.67%。但 SA 子集 novelty 0.8677→0.6977，联合门槛 0/83、0/2,396。cfm_r9_fix_v2（type-F1 0.947）无 checkpoint。",
       "FIX-C6（LOMO 可解析性 + seed 集成）：按 MIN_UNIQUE_FOR_GATE=200，只有 Ru(1,311)/Ir(538) 可入闸，LOMO=0.5974（all-metals 0.5576）；seed 集成 resolvable=0.5957（Ru 0.5901 / Ir 0.6012）。Rh n=51、AUC 0.3812 CI [0.2217,0.5407] 含 0.5。重跑与已发布面板差 0.0158（CUDA 非确定性）。",
@@ -954,6 +955,22 @@
         "note": "盘上无全语料自由生成池；真生成最大只到 n_train=256。gen_validity 全语料 0.074-0.086 vs 256 样本 0.083-0.292，未随规模改善。cfm_r9_fix_v2 仍无 checkpoint。"
       },
       "acceptance_result": "重新归因 v1.1 — 全语料池为键头重建；真生成 SA≤4.5 = 0.69% [0.42,1.11]；C7 判定所需 artifact 不存在。"
+    },
+    {
+      "id": "FIX-C8",
+      "title": "一致性正则项权重 0.05 但每步静默返回 0（设备不匹配）",
+      "layer": "模型",
+      "priority": "P2",
+      "status": "OPEN",
+      "gpu": "none",
+      "wall": "1 小时",
+      "why": "--consistency-term-weight 默认 0.05 且 enabled=True，但 consistency_loss_fn 内部 sample_edm_sigma 默认 device=cpu，与 cuda 上的 noise 相乘抛 RuntimeError，被 ConsistencyTerm.compute 的 except 捕获后返回 torch.zeros(())。所以自该权重上线以来，这一项在每一步都是精确 0。",
+      "method": "三行复现：consistency_loss_fn(lambda z: z*0.5, torch.randn(4,3,device='cuda:0'), weight=0.05) -> RuntimeError: Expected all tensors to be on the same device。修复：sample_edm_sigma(b, ..., device=x_t.device)。",
+      "deliverable": "molmetal/adapters/flow_matching_lipman/consistency_regularization_wf380.py + 回归测试",
+      "gate": "修复后同 seed 单 epoch CPU/GPU smoke：该项非零且 grad 非零。",
+      "kill": "若修复后该项数值爆炸或训练发散，则把它显式设为 0 并声明为 DECLARED_INERT_PATHS。",
+      "depends_on": [],
+      "note": "2026-10-20 C7 全语料 run 的 smoke 日志里发现。刻意未在 C7 run 进行中修复：修了会改变目标函数，使该 run 与 cfm_fullcorpus_b64 不可比，且这一项在 b64 里同样是死的。"
     }
   ],
   "decision_points": [
