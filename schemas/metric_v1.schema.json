@@ -46,6 +46,43 @@
     "dataset": {
       "type": ["string", "null"],
       "description": "Legacy dataset string (pre-v1)."
+    },
+    "status": {
+      "type": ["string", "null"],
+      "description": "One status token from the project's vocabulary: MEASURED*, PROJECTED, DEFERRED, BLOCKED, SUPERSEDED, DESIGN, PARTIAL, VERIFIED, KILL, POSITIVE, NEGATIVE, TBD, ... No whitespace: a sentence here cannot be classified and makes the row non-quotable (docs/METRIC_CITABILITY_RULE.md)."
+    },
+    "status_basis": {
+      "type": ["string", "null"],
+      "description": "Why that status applies, in one sentence. Added 2026-10-20 to the 15 artifact claims that had no status at all."
+    },
+    "no_headline_reason": {
+      "type": ["string", "null"],
+      "description": "Declares that this file has no scalar headline BY DESIGN (probe-scale result, multi-arm table). Suppresses the generic 'no scalar headline' gap in registry.py cite."
+    },
+    "headline_key": {
+      "type": ["string", "null"],
+      "description": "Dotted JSON path to the headline number when no generic key order can find it (e.g. 'aggregate.closure_bounded_5pocket_simple_mean'). The registry records the resolved path in the row's value_basis."
+    },
+    "headline_caveat": {
+      "type": ["string", "null"],
+      "description": "One sentence a reader needs alongside the number even when it is table-grade: a cohort alias, a superseded baseline, a single-seed warning. Printed by registry.py cite."
+    },
+    "n_seeds": {
+      "type": ["number", "integer", "null"],
+      "description": "Number of seeds actually run. Required for a table-grade mark; n=1 stays quotable but never table-grade."
+    },
+    "n_runs": {
+      "type": ["number", "integer", "null"],
+      "description": "Number of independent runs, when that is the right count (a deterministic pass over a fixed cohort has n_runs=1 and no seeds)."
+    },
+    "split": {
+      "type": ["string", "null"],
+      "description": "The evaluation split (e.g. '5 seeds x 5-fold CV', 'scaffold', 'not applicable (generation)'). Required for a table-grade mark."
+    },
+    "date_utc": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "Measurement date when it is not in `timestamp`. The registry reads timestamp / date / date_utc, then any ISO date under a date-named key, and records which one it used."
     }
   }
 }
