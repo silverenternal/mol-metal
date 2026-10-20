@@ -8999,3 +8999,76 @@ number above is a probe stdout value; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 
 ---
 
+### §6.150 FIX-C10/C11 — the full-corpus run does not fit in VRAM, and the six terms cost 19 GB of it (2026-10-20)
+
+**⚠️ Numbering note:** there are now **two §6.149 entries** — this file's §6.149 (FIX-C9, autotune key) and a §6.149 added later the same day by Wf-A106 (four duplicate wrappers deleted). Both are on disk; the collision is recorded here rather than silently renumbered, because FIX-C9's ID is referenced by `metrics/by_metric/cfm_epoch_wall.json` and by commits `d0a1ad72` / `73538adf`.
+
+**What happened.** With all six regularisers on, the C7 full-corpus launch (`n_train=26715`) OOM'd before finishing its first optimizer step. Two separate causes were found; both are fixed, and the run still only fits with ~3 GB of margin.
+
+**Cause 1 — the whole training cohort was resident on the GPU (FIX-C10).** The trainer built
+`train_clouds_d = [_to_device_cloud(c, device) for c in train_clouds]`. `_to_device_cloud` builds a
+one-cloud `Batch`, so that is ~20 small CUDA allocations per cloud — ~530k allocations at
+`n_train=26715` before the first step.
+
+MEASURED (one epoch, six regularisers, `gen_eval_n=0`, 11.3 GB of another project's memory resident
+on the same GPU):
+
+| `n_train` | peak |
+|---:|---:|
+| 512 | 71,491 MiB |
+| 4,096 | 86,031 MiB (+13.7 GB for +3,584 clouds) |
+
+The payload is **not** the problem: MEASURED 5,842 B/cloud of tensor data = **0.15 GiB** for the
+whole corpus. The cost is per-cloud allocator fragmentation, so it scales with the *number* of
+clouds, not their size.
+
+Fix: keep the train cohort on CPU; `train_one_epoch` already calls `_to_device_cloud` on each cloud
+it draws, so the model sees identical tensors. The one eager consumer (the Wf-A73 class-prior
+counting pass, which runs the head) now moves each cloud itself.
+
+MEASURED bit-identical on the 512-cloud six-term arm: `train_loss` 27.194684267044067,
+`grad_norm` 18.774024963378906, `bond_ce` 1.4187850058078766 — all three unchanged before vs after;
+`epoch_time_sec` 47.365 → 44.700. At `n_train=4096` the training-phase peak fell 86,031 → 55,170 MiB.
+
+**Negative result, recorded so nobody re-tries it.** `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`
+does **not** fix this. At `n_train=4096` it reserved 97,340 MiB and still logged 4 allocator OOMs,
+versus 86,031 MiB and 1 OOM without it. It was tested because the symptom looked like fragmentation;
+what ruled fragmentation out was the trajectory — a monotonic climb in ~13 GB jumps, not a flat
+reserved plateau.
+
+**Cause 2 — the three dormant regularisers cost 19 GB (FIX-C11).** With FIX-C10 in place the
+full-corpus run still did not fit, because turning on `consistency_weight` / `shortcut_distill` /
+`so3_average` (§6.145b) adds extra velocity-field forwards whose graphs are held until backward.
+`SBOO3Term` alone runs `2 * n_rot` extra forwards per step.
+
+| arm | `n_train=4096` peak |
+|---|---:|
+| three regularisers | 78,320 MiB |
+| six, `n_rot=4` | 97,286 MiB (whole card) |
+| six, `n_rot=1` | 92,431 MiB (2 recoverable OOMs) |
+
+`n_rot` 4 → 1 bought **5 GB, not the ~9 GB predicted** — because the peak is the held-out **eval**
+phase, not the training step, and the eval does not depend on `n_rot`.
+
+**Honest boundaries (ACTIVE, this entry):**
+  * **The C7 run fits by ~3 GB, not comfortably.** Peak 92,431 MiB against 97,887 MiB, while another
+    project holds 11.3 GB on the same card. Any additional co-tenant kills it. This is not a
+    "solved" state; it is a state that happened to complete a 4,096-cloud probe.
+  * **`n_rot=1` is an estimator change, not a weight change.** The term still enters the loss at
+    0.05, but the O(3) residual is a 1-sample estimate of the same expectation — unbiased, higher
+    variance per step. This run's loss is therefore **not** numerically comparable to an `n_rot=4`
+    run at the same seed.
+  * **"Six terms on" costs 19 GB and ~1.5x the epoch time.** MEASURED at 512 clouds: `train_loss`
+    13.8156 → 27.1947, `epoch_time_sec` 40.304 → 116.716 (with generation eval). The user asked for
+    the six; the cost is recorded rather than optimised away.
+  * **The 3-term arm is the only one that has ever completed at full corpus** (`cfm_fullcorpus_b64`,
+    11 epochs). Every six-term number in this repo comes from a ≤4,096-cloud arm.
+
+**§6.150 catalog-count math.** Net catalog-count delta: **+1**. Cumulative catalog count
+**202 → 203**. ACTIVE count **158 → 159**.
+
+**Workflow** | FIX-C10 + FIX-C11 (2026-10-20; GPU: 6 short probe runs at ≤4,096 clouds; §5.2: every
+MiB above is a `nvidia-smi` sample or an `events.jsonl` field; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
+
