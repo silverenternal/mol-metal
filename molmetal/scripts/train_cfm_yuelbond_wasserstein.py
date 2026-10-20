@@ -12694,7 +12694,36 @@ def main() -> int:
     # train_one_epoch's batch loop, and fixing only that one changes nothing —
     # by then the bonds are already gone.  Both are guarded by
     # molmetal/tests/test_cfm_bond_target_truth.py.
-    train_clouds_d = [_to_device_cloud(c, device) for c in train_clouds]
+    # 2026-10-20 (FIX-C10) — the TRAIN cohort stays on CPU; only the VAL
+    # cohort is moved up front.
+    #
+    # Why: this line used to be
+    #     train_clouds_d = [_to_device_cloud(c, device) for c in train_clouds]
+    # i.e. every training cloud got its own set of device tensors for the whole
+    # run. `_to_device_cloud` builds a one-cloud `Batch`, so that is ~20 small
+    # CUDA allocations per cloud; at n_train=26715 it is ~530k allocations
+    # before the first optimizer step.
+    #
+    # MEASURED (one epoch, six regularisers on, gen_eval_n=0, foreign 11.3 GB
+    # resident on the same GPU):
+    #     n_train  512   peak 71,491 MiB
+    #     n_train 4096   peak 86,031 MiB   (+13.7 GB for +3584 clouds)
+    # and the n_train=26715 launch OOM'd before finishing its first step.
+    # The payload itself is NOT the problem: MEASURED 5,842 B/cloud of tensor
+    # data, i.e. 0.15 GiB for the whole corpus. The cost is allocator
+    # fragmentation from the per-cloud small allocations, so it scales with
+    # the number of clouds rather than with their size.
+    #
+    # This is safe because `train_one_epoch` already calls
+    # `_to_device_cloud(cloud, device)` on each cloud it draws (the per-batch
+    # site below), so the model still sees device tensors with identical
+    # values — it just stops paying for 26,715 clouds it will not touch for
+    # another 25 minutes. Same numbers, less residency.
+    #
+    # The one eager consumer is the Wf-A73 class-prior counting pass, which
+    # runs the head and therefore needs a device cloud; it now moves each
+    # cloud itself (see `_compute_class_stats` below).
+    train_clouds_d = list(train_clouds)
     val_clouds_d = [_to_device_cloud(c, device) for c in val_clouds]
 
     # Wf-A98 (2026-10-19) — resolve the assemble dead zone against THIS corpus
@@ -12782,6 +12811,10 @@ def main() -> int:
             _bt = getattr(_c, "bond_types", None)
             if _bt is None:
                 continue
+            # FIX-C10 — `train_clouds_d` is CPU-resident now, and this loop
+            # runs the head, so move the single cloud here instead of relying
+            # on the whole cohort having been moved up front.
+            _c = _to_device_cloud(_c, device)
             # Targets are per CANDIDATE PAIR, not per true bond: the head is
             # asked about every pair within the cutoff, and the vast majority
             # of those are BOND_NO_BOND.  Count the same thing the loss sees.
