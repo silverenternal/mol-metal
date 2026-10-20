@@ -62,13 +62,26 @@ def _check_cuda_pointers(arg_names: dict[str, torch.Tensor]) -> None:
 # ---------------------------------------------------------------------------
 # Aggregate (scatter-sum) over neighbours
 # ---------------------------------------------------------------------------
-# Autotune over (num_warps, num_stages) keyed on the problem size.
-# ``FEAT_BLOCK`` is a constexpr on the kernel itself (it controls the
-# inner reduction width), so we cannot include it as a tuning axis —
-# the autotuner just picks the best warp / pipeline combination for
-# each (n_edges, feat_dim) shape.
+# Autotune over (num_warps, num_stages) keyed on ``feat_dim`` ONLY.
+#
+# ``n_edges`` used to be in the key.  It is not a legitimate tuning axis for
+# this kernel: the grid is ``(n_edges,)``, i.e. one program per edge, and the
+# body has no loop over edges — ``n_edges`` appears only in the guard
+# ``eid >= n_edges``.  The per-program instruction stream is therefore
+# independent of ``n_edges``, so the optimal (num_warps, num_stages) cannot
+# depend on it.  Keying on it only multiplied the cache.
+#
+# MEASURED (2026-10-20, cProfile on a 128-cloud/2-step CFM run): 576 module
+# forwards produced 981 autotune ``_bench`` calls, 109.4 s inside
+# ``triton.testing.do_bench`` and 40.1 s inside ``torch._C._cuda_synchronize``
+# — out of 126.9 s of ``train_one_epoch``.  ``n_edges`` changes on every batch
+# (and on every eval cloud, since eval runs one cloud at a time), so nearly
+# every call re-benchmarked all 9 configs.
+#
+# ``FEAT_BLOCK`` is a constexpr derived from ``feat_dim`` in the wrapper, so
+# ``feat_dim`` alone is a complete key.
 @triton.autotune(
-    configs=AUTOTUNE_CONFIGS, key=["n_edges", "feat_dim"], reset_to_zero=["out_ptr"]
+    configs=AUTOTUNE_CONFIGS, key=["feat_dim"], reset_to_zero=["out_ptr"]
 )
 @triton.jit
 def _aggregate_vectors_kernel(
