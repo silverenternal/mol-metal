@@ -1,0 +1,361 @@
+{
+  "artifact": "c7_scale_matched_pools",
+  "by_tier": {
+    "full_corpus": {
+      "n_joint_gate": 0,
+      "n_pools": 2,
+      "n_sa_le_gate": 28,
+      "n_scored": 83,
+      "pool_mean_qed": 0.2158,
+      "pool_mean_sa": 5.0327,
+      "rate_joint_gate": 0.0,
+      "rate_sa_le_gate": 0.3373,
+      "wilson_ci95": [
+        0.2448,
+        0.4442
+      ]
+    },
+    "mid": {
+      "n_joint_gate": 0,
+      "n_pools": 1,
+      "n_sa_le_gate": 1,
+      "n_scored": 12,
+      "pool_mean_qed": 0.2445,
+      "pool_mean_sa": 5.6503,
+      "rate_joint_gate": 0.0,
+      "rate_sa_le_gate": 0.0833,
+      "wilson_ci95": [
+        0.0149,
+        0.3539
+      ]
+    },
+    "small": {
+      "n_joint_gate": 0,
+      "n_pools": 3,
+      "n_sa_le_gate": 16,
+      "n_scored": 2396,
+      "pool_mean_qed": 0.1642,
+      "pool_mean_sa": 7.1547,
+      "rate_joint_gate": 0.0,
+      "rate_sa_le_gate": 0.0067,
+      "wilson_ci95": [
+        0.0041,
+        0.0108
+      ]
+    }
+  },
+  "design": {
+    "full_corpus_n_train": 26715,
+    "sa_gate": 4.5,
+    "small_train_cutoff": 1024,
+    "thresholds": [
+      4.0,
+      4.5,
+      5.0,
+      5.5,
+      6.0
+    ],
+    "tier_rule": "full_corpus if n_train >= 26715; small if < 1024; else mid"
+  },
+  "generated_utc": "2026-10-20T10:58:19+00:00",
+  "pools": [
+    {
+      "bond_exact_type_rate": 0.0,
+      "bond_type_macro_f1": null,
+      "epochs_configured": 1,
+      "gate_smiles": [],
+      "joint_gate": {
+        "mean_novelty_of_sa_subset": null,
+        "n": 66,
+        "n_sa_and_novel": 0,
+        "rate": 0.0,
+        "wilson_ci95": [
+          0.0,
+          0.055
+        ]
+      },
+      "label": "cfm_fullcorpus_2026_10_10",
+      "n_rows": 66,
+      "n_scored": 66,
+      "n_train": 64,
+      "n_unscored": 0,
+      "path": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv",
+      "qed_mean": 0.0944,
+      "sa_counts_at_or_below": {
+        "4.0": 0,
+        "4.5": 0,
+        "5.0": 2,
+        "5.5": 2,
+        "6.0": 20
+      },
+      "sa_max": 7.6949,
+      "sa_mean": 6.4423,
+      "sa_median": 6.424,
+      "sa_min": 4.751,
+      "sha256": "6e17eb2d037937d0f0ed71de4aa0cbf68687af7edf882c385d4f2e44f539e8ef",
+      "tier": "small",
+      "train_fraction_of_corpus": 0.0024
+    },
+    {
+      "bond_exact_type_rate": 0.1875,
+      "bond_type_macro_f1": null,
+      "epochs_configured": 50,
+      "gate_smiles": [
+        "C1=CC=[N][Ir][N]=CC=CC(c2ccccc2P(c2ccccc2)c2ccccc2)=CC=C1.c1ccc(P(c2ccccc2)c2ccccc2)cc1",
+        "COc1ccc(C2=[N][Ru]3([Cl])([Cl])([N]=C2c2ccc(OC)cc2)[N]=C(c2ccc(OC)cc2)C(c2ccc(OC)cc2)=[N]3)cc1",
+        "CCC[N](C)[Ru]1([Cl])([Cl])([P](c2ccccc2)c2ccccc2)[N]=CC=CC=CC=[N]1.c1ccccc1",
+        "Fc1c(F)c(F)c([S][Ru][S]c2c(F)c(F)c(F)c(F)c2F)c(F)c1F.c1ccc(P(c2ccccc2)c2ccccc2)cc1.c1ccc(P(c2ccccc2)c2ccccc2)cc1",
+        "CC(C)P(C(C)C)C(C)C.CC(C)P(C(C)C)C(C)C.CN(C)[BH][Ru][Cl]",
+        "CC(C)P(C(C)C)C(C)C.CC(C)P(C(C)C)C(C)Cc1ccccc1[Si]([Os])(c1ccccc1)c1ccccc1",
+        "[Cl][Ru]12([Cl])([P](c3ccccc3)c3ccccc3)[C]3=CC=[C]1[CH]32.c1ccc(P(c2ccccc2)c2ccccc2)cc1.c1ccccc1",
+        "CC(C)C=[C]=[Re]([Cl])[Cl].CP(C)c1cccc(-c2cccc(P(C)C)c2)c1.CP(C)c1ccccc1",
+        "CC1(C)OB([O][Rh]234([P](c5ccccc5)c5ccccc5)[C]5=[C]2CC[C]3=[C]4CC5)OC1(C)C.c1ccccc1",
+        "Cc1ccccc1P(c1ccccc1C)c1ccccc1[CH2][Ir]([Cl])[c]1cccc(C)c1P(c1ccccc1C)c1ccccc1C",
+        "C[C]1=[C](C)[Ir]1([P](C)c1ccccc1C)([P](C)c1ccccc1C)[P](C)c1ccccc1C",
+        "c1ccc(-c2ccccc2-c2ccccc2[P](c2ccccc2)[Ir]234([P](c5ccccc5)c5ccccc5)[C]5=[C]2CC[C]3=[C]4CC5)cc1"
+      ],
+      "joint_gate": {
+        "mean_novelty_of_sa_subset": 0.6977,
+        "n": 40,
+        "n_sa_and_novel": 0,
+        "rate": 0.0,
+        "wilson_ci95": [
+          0.0,
+          0.0876
+        ]
+      },
+      "label": "cfm_fullcorpus_b64_2026_10_11",
+      "n_rows": 40,
+      "n_scored": 40,
+      "n_train": 26715,
+      "n_unscored": 0,
+      "path": "molmetal/reports/cfm_fullcorpus_b64_2026_10_11/generated_smiles.csv",
+      "qed_mean": 0.2275,
+      "sa_counts_at_or_below": {
+        "4.0": 4,
+        "4.5": 12,
+        "5.0": 24,
+        "5.5": 29,
+        "6.0": 33
+      },
+      "sa_max": 7.192,
+      "sa_mean": 5.032,
+      "sa_median": 4.8398,
+      "sa_min": 3.3551,
+      "sha256": "0fc3a83fdc7f9d2e5fd9c24dc96a4ffbbe3d0ddbc5392236ae6acc7fab0763f3",
+      "tier": "full_corpus",
+      "train_fraction_of_corpus": 1.0
+    },
+    {
+      "bond_exact_type_rate": 0.2708333333333333,
+      "bond_type_macro_f1": null,
+      "epochs_configured": 50,
+      "gate_smiles": [
+        "C1=CC=CC=[N][Ir]([c]2ccccc2)([c]2ccccc2)([P](c2ccccc2)c2ccccc2)([P](c2ccccc2)c2ccccc2)[N]=CC=CC=C1",
+        "COc1ccc(C2=[N][Ru]3([Cl])([Cl])([N]=C2)[N]=C(c2ccc(OC)cc2)C(c2cc(OC)ccc2-c2ccc(OC)cc2)=[N]3)cc1",
+        "Fc1c(F)c(F)c([S][Ru][S]c2c(F)c(F)c(F)c(F)c2F)c(F)c1F.c1ccc(P(c2ccccc2)c2ccccc2)cc1.c1ccc(P(c2ccccc2)c2ccccc2)cc1",
+        "[CH3][Ir]([Cl])([C]#N)([CH2]P(c1ccccc1)c1ccccc1)([P](c1ccccc1)c1ccccc1)[P](c1ccccc1)c1ccccc1CP(c1ccccc1)c1ccccc1",
+        "CC(C)P(C(C)C)C(C)C.CC(C)P(C(C)C)C(C)C.CN(C)[BH][Ru][Cl]",
+        "Cc1ccc([N]=[Re]2([Cl])([Cl])[N]=C(Oc3ccccc3)c3ccccc3[O]2)cc1.c1ccc(P(c2ccccc2)c2ccccc2)cc1",
+        "CC(C)P(C(C)C)C(C)C.CC(C)P(C(C)C)C(C)Cc1ccccc1[Si]([Os])(c1ccccc1)c1ccccc1",
+        "[Cl][Ru]123([Cl])[C]4=C[C]1=[C]2[C]43P(c1ccccc1)c1ccccc1.c1ccc(P(c2ccccc2)c2ccccc2)cc1.c1ccccc1",
+        "CC(C)C1=CCC([O][Ru]([O]C2=CC=CC(C(C)C)=CC2)([O]c2ccccc2)([O]c2ccccc2)([P](c2ccccc2)c2ccccc2)[P](c2ccccc2)c2ccccc2)=CC=C1",
+        "CC(C)C#[C][Re]([Cl])[Cl].CP(C)c1ccccc1.CP(C)c1ccccc1.CP(C)c1ccccc1",
+        "CC1(C)OB([O][Rh]234([P](c5ccccc5)c5ccccc5)[C]5=[C]2CC[C]3=[C]4CC5)OC1(C)C.c1ccccc1",
+        "Cc1ccccc1[P](c1ccccc1C)[Ir]([Cl])([c]1ccccc1C)([c]1ccccc1C)[P](c1ccccc1C)c1ccccc1C",
+        "C[C]1=[C](C)[Ir]1([P](C)c1ccccc1C)([P](C)c1ccccc1C)[P](C)c1ccccc1C",
+        "CC#Cc1ccccc1.CP(c1ccccc1)c1ccccc1.Cc1ccccc1[P](c1ccccc1)[Re]([Cl])([Cl])[Cl]",
+        "c1ccc(-c2ccccc2)cc1.c1ccc([P](c2ccccc2)[Ir]234([P](c5ccccc5)c5ccccc5)[C]5=[C]2CC[C]3=[C]4CC5)cc1",
+        "Cc1cccc([N](c2ccccc2)[Ru]([OH])([CH]=O)([c]2cccc(-c3ccccc3)c2N)([As](c2ccccc2)c2ccccc2)[As](c2ccccc2)c2ccccc2)c1.c1ccccc1"
+      ],
+      "joint_gate": {
+        "mean_novelty_of_sa_subset": 0.6987,
+        "n": 43,
+        "n_sa_and_novel": 0,
+        "rate": 0.0,
+        "wilson_ci95": [
+          0.0,
+          0.082
+        ]
+      },
+      "label": "cfm_objective_terms_2026_10_11",
+      "n_rows": 43,
+      "n_scored": 43,
+      "n_train": 26715,
+      "n_unscored": 0,
+      "path": "molmetal/reports/cfm_objective_terms_2026_10_11/generated_smiles.csv",
+      "qed_mean": 0.2042,
+      "sa_counts_at_or_below": {
+        "4.0": 8,
+        "4.5": 16,
+        "5.0": 23,
+        "5.5": 30,
+        "6.0": 35
+      },
+      "sa_max": 7.5901,
+      "sa_mean": 5.0334,
+      "sa_median": 4.8398,
+      "sa_min": 3.3081,
+      "sha256": "bc2ffe14e965131e6f3a04fae0717db8f260dd90571a9d5b04579b6ee46ac673",
+      "tier": "full_corpus",
+      "train_fraction_of_corpus": 1.0
+    },
+    {
+      "bond_exact_type_rate": 0.0,
+      "bond_type_macro_f1": null,
+      "epochs_configured": 2,
+      "gate_smiles": [
+        "C.C.C.Cc1ccnc(C)c1.ClC1C=C1.N.[CH]1=[CH][Ru]1"
+      ],
+      "joint_gate": {
+        "mean_novelty_of_sa_subset": 0.6486,
+        "n": 12,
+        "n_sa_and_novel": 0,
+        "rate": 0.0,
+        "wilson_ci95": [
+          0.0,
+          0.2425
+        ]
+      },
+      "label": "cfm_ode_link_probe",
+      "n_rows": 12,
+      "n_scored": 12,
+      "n_train": 2048,
+      "n_unscored": 0,
+      "path": "molmetal/reports/cfm_ode_link_probe/generated_smiles.csv",
+      "qed_mean": 0.2445,
+      "sa_counts_at_or_below": {
+        "4.0": 1,
+        "4.5": 1,
+        "5.0": 2,
+        "5.5": 6,
+        "6.0": 8
+      },
+      "sa_max": 6.7227,
+      "sa_mean": 5.6503,
+      "sa_median": 5.6065,
+      "sa_min": 3.816,
+      "sha256": "e589e0965158d8f389983161418edaed4a53c44b16f0dcc175e47645a9e40272",
+      "tier": "mid",
+      "train_fraction_of_corpus": 0.0767
+    },
+    {
+      "bond_exact_type_rate": 0.0,
+      "bond_type_macro_f1": null,
+      "epochs_configured": 30,
+      "gate_smiles": [
+        "CCCC(C)(C)N(CC)C(=[C]=[Ru](=[C](C)CN)=[C](C(C)C)C(C)(C)C)CC",
+        "C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.Cl.N.N.N.O.O.P.P.[Ir]",
+        "C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.Cl.N.N.N.O.O.P.P.[Ir]",
+        "C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.Cl.N.N.N.O.O.P.P.[Ir]",
+        "C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.Cl.N.N.N.O.O.P.P.[Ir]",
+        "C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.Cl.N.N.N.O.O.P.P.[Ir]",
+        "C[CH](C)[Ru]([C](C)(C)C)([C](C)(C)C)([C](C)(C)C)([C](C)(C)C)[C](C)(C)N(C)N"
+      ],
+      "joint_gate": {
+        "mean_novelty_of_sa_subset": 0.8677,
+        "n": 953,
+        "n_sa_and_novel": 0,
+        "rate": 0.0,
+        "wilson_ci95": [
+          0.0,
+          0.004
+        ]
+      },
+      "label": "cfm_pcgrad_off_2026_10_15",
+      "n_rows": 1175,
+      "n_scored": 1175,
+      "n_train": 256,
+      "n_unscored": 0,
+      "path": "molmetal/reports/cfm_pcgrad_off_2026_10_15/generated_smiles.csv",
+      "qed_mean": 0.1981,
+      "sa_counts_at_or_below": {
+        "4.0": 6,
+        "4.5": 7,
+        "5.0": 26,
+        "5.5": 83,
+        "6.0": 151
+      },
+      "sa_max": 9.9084,
+      "sa_mean": 7.4741,
+      "sa_median": 7.2204,
+      "sa_min": 3.8776,
+      "sha256": "78a12ec4a782b65464c08c24982eef6f124928ee278e74f03c9db4f2b592a771",
+      "tier": "small",
+      "train_fraction_of_corpus": 0.0096
+    },
+    {
+      "bond_exact_type_rate": 0.0,
+      "bond_type_macro_f1": null,
+      "epochs_configured": 30,
+      "gate_smiles": [
+        "CCCC(C)(C)N(CC)C(=[C]=[Ru](=[C](C)CN)=[C](C(C)C)C(C)(C)C)CC",
+        "C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.Cl.N.N.N.O.O.P.P.[Ir]",
+        "C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.Cl.N.N.N.O.O.P.P.[Ir]",
+        "C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.Cl.N.N.N.O.O.P.P.[Ir]",
+        "C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.Cl.N.N.N.O.O.P.P.[Ir]",
+        "CC[C](C)(CC)[Ir]12([C](C)(C)C)([C](C)(C)OC)[C](C)(C)N([C]1(C(C)(C)C)C(C)(C)C)[C]21C23C45N6C27N4C63C571",
+        "C[CH](C)[Ru]([CH3])([C](C)(C)C)([C](C)(C)C)([C](C)(C)C)[C](C)(N(C)N)C(C)(C)C",
+        "CCC(C)(C)C(C(C)(C)C)(C(C)(C)C)C(C)(CN(C)[N](C)[Ru])C(C)(C)C",
+        "CCN1C23N4C15C42[C]1(C(C)(Cl)CC)[C](N)(CC)[Ir]1([CH](C)C)([CH](C)C)([C](C)(CC)C(C)(C)CC)[C]35C"
+      ],
+      "joint_gate": {
+        "mean_novelty_of_sa_subset": 0.8643,
+        "n": 949,
+        "n_sa_and_novel": 0,
+        "rate": 0.0,
+        "wilson_ci95": [
+          0.0,
+          0.004
+        ]
+      },
+      "label": "cfm_pcgrad_on_2026_10_14",
+      "n_rows": 1155,
+      "n_scored": 1155,
+      "n_train": 256,
+      "n_unscored": 0,
+      "path": "molmetal/reports/cfm_pcgrad_on_2026_10_14/generated_smiles.csv",
+      "qed_mean": 0.2001,
+      "sa_counts_at_or_below": {
+        "4.0": 5,
+        "4.5": 9,
+        "5.0": 31,
+        "5.5": 72,
+        "6.0": 140
+      },
+      "sa_max": 9.8846,
+      "sa_mean": 7.5478,
+      "sa_median": 7.3112,
+      "sa_min": 3.4792,
+      "sha256": "ccf3162466fe787336d0c585114b3e0bc4da79053b71afbff8381670be06512a",
+      "tier": "small",
+      "train_fraction_of_corpus": 0.0096
+    }
+  ],
+  "provenance": {
+    "census": "metrics/by_metric/cfm_run_census.json",
+    "git_commit": "7484b69772a6be2d0c439a1ab0b6dd1e409b11ca",
+    "scoring": "reuses cfm_sa_yield_audit.pool_report (SA + QED, unscored counted)",
+    "script": "molmetal/scripts/c7_scale_matched_pools.py"
+  },
+  "selection_gap": {
+    "note": "cfm_sa_guided.json scored 2,396 molecules from three runs with n_train 64/256/256 and did not score the two full-corpus pools.",
+    "pools_omitted_there": [
+      "cfm_fullcorpus_b64_2026_10_11",
+      "cfm_objective_terms_2026_10_11",
+      "cfm_ode_link_probe"
+    ],
+    "pools_scored_here": 6,
+    "pools_used_by_cfm_sa_guided": [
+      "cfm_fullcorpus_2026_10_10",
+      "cfm_pcgrad_off_2026_10_15",
+      "cfm_pcgrad_on_2026_10_14"
+    ]
+  },
+  "verdict": {
+    "full_corpus_molecules_scored": 83,
+    "reading": "If the full-corpus tier is not materially better on SA, training scale is not the explanation and C7 stands as measured. If it is better, the published SA number describes a 1%-scale model and must not be quoted as the generator's property.",
+    "small_molecules_scored": 2396
+  },
+  "version": "1.0"
+}

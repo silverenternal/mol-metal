@@ -14,7 +14,7 @@
 | C4 | 树 + GNN 融合提升跨论文 R² | **SUPPORTED（仅 R²）** | DOI +0.0217 [+0.0044,+0.0377]；融合后 Δ 符号 0.5826→0.5505 | `msrs_fusion_protocols.json:/protocols/doi/arms/stack_foldwise/vs_tree` |
 | C5 | 不确定性区间校准 | **SUPPORTED（有边界）** | DOI 覆盖 0.9004、中位宽 2.0052；同队列多金属仅 0.8096 | `msrs_calibration.json:/protocols/doi/variants/global/coverage` |
 | C6 | 跨金属迁移达到可用水平 | **NOT SUPPORTED**（LOMO）；within-metal 另计 | 可解析 Ru/Ir 0.5974（集成 0.5947）< 0.6；Rh 0.3812 CI 含 0.5；within-metal Ru 0.8271 / Ir 0.8430 | `lomo_resolvability_audit.json:/aggregates/resolvable_only/value`；`lomo_seed_ensemble.json:/aggregates/resolvable_only/auc_of_mean_score` |
-| C7 | 生成物可合成且新颖的金属药物 | **NOT SUPPORTED** | SA 6.4423、QED 0.0944、novelty 0.8517；SA≤4.5 产量 0.67% | `cfm_generation_metrics.json:/checks/sa/value`；`cfm_sa_guided.json:/combined/rate_sa_le_gate` |
+| C7 | 生成物可合成且新颖的金属药物 | **NOT SUPPORTED**（联合门槛 0/83；SA 半边随训练规模可达） | 全语料(26,715) SA 5.032、SA≤4.5 **33.7% [24.5,44.4]**、但 SA 子集 novelty 0.6977 → 联合 **0/83**；256 样本 SA 6.44–7.55、0.67% | `c7_scale_matched_pools.json:/by_tier/full_corpus/rate_sa_le_gate`；`c7_scale_matched_pools.json:/by_tier/full_corpus/rate_joint_gate` |
 
 ---
 
@@ -80,12 +80,15 @@ vs 0.81，Ir 0.8430（0.8295–0.8597）vs 0.73；最差 seed 仍过线。」
 
 ## C7 — 生成
 
-**能写**：「生成物 SA 6.4423（真实 tmQM 参考 5.0269）、QED 0.0944（真实 0.2685）、
-novelty 0.8517、金属合规 1.0；SA≤4.5 的产量是 16/2,396 = 0.67% [0.41%,1.08%]。」
+**能写**：「SA/QED 强烈依赖训练规模。256 样本模型（n=2,396）：SA 6.4423–7.5478、
+QED 0.0944–0.2001、SA≤4.5 **0.67% [0.41%,1.08%]**；全语料模型（n_train=26,715，
+n=83）：SA **5.032**、QED 0.2042–0.2275、SA≤4.5 **33.7% [24.5%,44.4%]**
+（真实 tmQM SA 5.0269 / QED 0.2685）。但 SA≤4.5 子集的平均 novelty 从 0.8677
+（小规模）降到 **0.6977**（全语料），**联合门槛 0/83、0/2,396**。」
 
-**不能写**：「SA 引导解码可把 SA 降到 4.5」——`--sa-penalty` 零梯度、无可微代理，
-机制不存在；「SA≤4.5」只对 0.67% 手挑子集成立，且那 16 个的 novelty 0.8757 还没
-过 0.90。对接仍 BLOCKED。
+**不能写**：「生成器做不出可合成的金属配合物」——那个 6.4423 是 1% 规模模型的
+性质；也不能写「SA≤4.5 可达 33.7%」而不带 novelty 同时下降这半句。`--sa-penalty`
+仍然零梯度、无可微代理，机制不存在。对接仍 BLOCKED。
 
 ---
 
