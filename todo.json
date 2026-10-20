@@ -1037,6 +1037,73 @@
         ]
       },
       "acceptance_result": "epoch 从 304.303 s 降到 40.304 s（7.55x），六项 loss 全开；三条错误归因已入册撤回。仍慢的部分：trainer 的 forward 契约是单分子进、单分子出，batch 64 = 64 次模型调用，批量化是契约改动，本轮未做。"
+    },
+    {
+      "id": "FIX-C10",
+      "title": "训练集全部 26,715 个分子常驻显存，全语料 run 首步 OOM",
+      "layer": "性能",
+      "priority": "P1",
+      "status": "DONE",
+      "gpu": "~10 分钟（≤4096 云的探针）",
+      "wall": "1.5 小时",
+      "why": "train_clouds_d = [_to_device_cloud(c, device) for c in train_clouds] 把每个训练分子都搬到显存，每云约 20 次小分配，26715 云 = 约 53 万次分配。载荷本身只有 5,842 B/云（全语料 0.15 GiB），代价是分配器碎片，因此随云数而非云大小增长。",
+      "method": "4096 云实测：512 云峰值 71,491 MiB，4096 云 86,031 MiB（+3,584 云 = +13.7 GB）。改为训练集留 CPU、按 batch 搬运（train_one_epoch 本来就逐云调用 _to_device_cloud），并让 Wf-A73 类先验统计循环自己搬运。",
+      "deliverable": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+      "gate": "同配置 512 云 arm 的 train_loss / grad_norm / bond_ce 逐位不变，且 4096 云峰值显著下降。",
+      "kill": "若逐位不一致说明搬运改变了数值路径，必须回退。",
+      "depends_on": [],
+      "note": "expandable_segments:True 实测无效（97,340 MiB 预留 + 4 次 OOM，对照 86,031 + 1 次），已作为负结果记录。",
+      "result": {
+        "verdict": "FIXED (bit-identical)",
+        "train_loss_before": 27.194684267044067,
+        "train_loss_after": 27.194684267044067,
+        "grad_norm": 18.774024963378906,
+        "bond_ce": 1.4187850058078766,
+        "epoch_sec_before": 47.365,
+        "epoch_sec_after": 44.7,
+        "peak_4096_before": 86031,
+        "peak_4096_after_training_phase": 55170,
+        "artifacts": [
+          "docs/HONEST_NEGATIVE_CATALOG.md §6.150",
+          "commit 432ab5b6"
+        ]
+      },
+      "acceptance_result": "逐位一致且训练段峰值 86,031 → 55,170 MiB。"
+    },
+    {
+      "id": "FIX-C11",
+      "title": "六项全开比三项多 19 GB 显存；SBOO3 的 n_rot/n_perm/alpha 没有 argparse dest",
+      "layer": "性能",
+      "priority": "P1",
+      "status": "DONE",
+      "gpu": "~15 分钟",
+      "wall": "1 小时",
+      "why": "用户要求六项 loss 全开。开启 consistency/shortcut_distill/so3 后，4096 云峰值从 78,320 升到 97,286 MiB（整卡）。SBOO3Term 每步做 2*n_rot 次额外前向并保留全部图到 backward。三个旋钮此前只是 train_one_epoch 的函数默认值（0.5/4/4），§5.11 无法从 YAML 绑定。",
+      "method": "把 sboo3_alpha / sboo3_n_perm / sboo3_n_rot 提升为真正的 argparse dest（默认值不变，保持既有配置逐位兼容），调用点用同样的 getattr 兜底；YAML 设 sboo3_n_rot: 1。",
+      "deliverable": "molmetal/scripts/train_cfm_yuelbond_wasserstein.py + configs/c7_fullgen_2026_10_20.yaml",
+      "gate": "默认值下所有既有配置逐位不变；n_rot=1 时峰值下降。",
+      "kill": "若 n_rot=1 让 loss 发散则回到 4 并改 batch。",
+      "depends_on": [
+        "FIX-C10"
+      ],
+      "note": "n_rot 4→1 只买到 5 GB 而不是预期的 9 GB：峰值来自留出评估段，评估不随 n_rot 变化。",
+      "result": {
+        "verdict": "PARTIAL — 5 GB of the 19 GB recovered",
+        "peak_3term_4096": 78320,
+        "peak_6term_nrot4_4096": 97286,
+        "peak_6term_nrot1_4096": 92431,
+        "smoke_512_nrot1": {
+          "epoch_sec": 169.161,
+          "train_loss": 27.541544675827026,
+          "gen_validity": 1.0,
+          "gen_validity_n": 704
+        },
+        "artifacts": [
+          "docs/HONEST_NEGATIVE_CATALOG.md §6.150",
+          "commit d3e4d341"
+        ]
+      },
+      "acceptance_result": "六项全开可跑，但只剩约 3 GB 余量；n_rot=1 是无偏的 1 样本估计，方差更大，且与 n_rot=4 的同 seed run 数值不可比。"
     }
   ],
   "decision_points": [
