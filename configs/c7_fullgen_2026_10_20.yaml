@@ -13,16 +13,17 @@
 # with EXACTLY these changes, so the run differs from that reference in nothing
 # but the recording budget:
 #
-#   train.epochs              50 -> 16      (b64 early-stopped at 12; 16 gives
+#   train.epochs              50 -> 18      (b64 early-stopped at 12; 18 gives
 #                                            headroom without a 7-hour run)
 #   eval.early_stop_patience  default -> 16 (effectively off: we want the epoch
 #                                            count, not an early exit)
+#   eval.gen_eval_n           256 -> 128    (see the OOM note in the eval block)
 #   eval.gen_eval_seeds       "0 1 2 3" -> "0 1 2 3 4 5"
-#                                           (1,536 candidates/epoch; at b64's
-#                                            MEASURED gen_validity 0.0859 that
-#                                            is ~130 accepted molecules/epoch,
-#                                            ~2,000 over 16 epochs -- the C7
-#                                            gate needs >=1,000)
+#                                           (128 x 6 = 768 candidates/epoch, the
+#                                            same pool b64 ran; at its MEASURED
+#                                            gen_validity 0.0859 that is ~66
+#                                            accepted/epoch, ~1,200 over 18
+#                                            epochs -- the C7 gate needs >=1,000)
 #   output.save_generated_smiles  absent -> true
 #   output.checkpoint_interval    5 -> 1
 #   output.* paths            re-pointed to molmetal/reports/cfm_c7_fullgen_2026_10_20
@@ -33,8 +34,12 @@
 # recording budget plus seed noise.
 #
 # WALL CLOCK, MEASURED not projected: cfm_fullcorpus_b64 ran 12 epochs in
-# 10,465 s (872 s/epoch) with gen_eval_n 256 x 4 seeds. Doubling the eval seeds
-# adds generation cost, so budget ~15-16 min/epoch -> ~4 h for 16 epochs.
+# 10,465 s (872 s/epoch) with a 768-candidate eval. This run uses the same 768,
+# so ~15 min/epoch -> ~4.5 h for 18 epochs.
+#
+# FIRST LAUNCH (2026-10-20 19:25) was stopped after 20 min: gen_eval_n 256 x 6
+# seeds peaked at 91.7 GB of 97.9 GB and the caching allocator logged one OOM
+# before recovering. The eval pool is the memory driver, so it is cut to 768.
 #
 # --- parent header follows, unedited ---------------------------------------
 # configs/cfm_fullcorpus_b64_2026_10_11.yaml — CFM (conditional flow matching).
@@ -147,7 +152,7 @@ train:
   # ~1 hour job.
   n_train: 26715
   # argparse defaults: epochs=50, batch_size=64, lr=3.0e-4 (DEFAULT_LR).
-  epochs: 16
+  epochs: 18
   # 2026-10-11 (Wf-11xx batch track): 16 -> 64. This file is otherwise a
   # byte-for-byte copy of configs/cfm_fullcorpus_2026_10_10.yaml with only the
   # output paths re-pointed, so batch_size is the ONE changed hyperparameter.
@@ -312,6 +317,39 @@ train:
   # Do not set this above 0 in any config that turns on gen_validity_weight or
   # entropy_reg_weight — the two settings are mutually defeating.
   bond_head_warmup_epochs: 0
+
+  # ======================================================================
+  # 2026-10-20 (FIX-C9 follow-up, user directive "6个loss得开啊") — the
+  # three regularisers that were OFF in every config on disk.
+  #
+  # MEASURED via parse_args() on this exact file before the change:
+  #   fm_ode_term_weight           0.05   ON   (argparse default)
+  #   energy_conservation_weight   0.05   ON   (argparse default)
+  #   sboo3_term_weight            0.05   ON   (argparse default)
+  #   consistency_weight           0.00   OFF  (argparse default)
+  #   shortcut_distill             False  OFF  (argparse default)
+  #   so3_average                  False  OFF  (argparse default)
+  # and `grep -rl consistency_weight configs/*.yaml` returned 0 files, so the
+  # consistency term has never been active in any config-driven run —
+  # including cfm_fullcorpus_b64, the reference this file copies. This is
+  # NOT a change that was made for speed; it is a change that makes the
+  # objective the one the user asked for.
+  #
+  # CONSEQUENCE, stated up front: with these three on, this run's objective
+  # is NOT byte-identical to cfm_fullcorpus_b64_2026_10_11. C7's job is to
+  # produce the full-corpus FREE-GENERATION pool that does not exist on disk
+  # (see docs/HONEST_NEGATIVE_CATALOG.md §6.143b), not to reproduce b64, but
+  # any b64-vs-C7 number must now be read as "different objective", not
+  # "different scale".
+  #
+  # Values: 0.05 matches the three terms that were already live, so the six
+  # sit at one weight rather than five at 0.05 and one at something else.
+  # so3_average_weight is left at its 0.1 default (it is a per-rotation MSE
+  # average, K=2 rotations by default).
+  # ======================================================================
+  consistency_weight: 0.05
+  shortcut_distill: true
+  so3_average: true
 
   # ======================================================================
   # Wf-TRACK5 (2026-10-11) — the two zero-weight loss terms that are NOT
@@ -488,7 +526,12 @@ eval:
   # produced the 0.402 → 1.000 decode_ratio lift in Round-3. Default 128
   # samples per seed (4 seeds = 512 samples) — the pre-Round-3 default was
   # 32, which gave noisy 0/32 * 128 = 0 success on degenerate inputs.
-  gen_eval_n: 256
+  # C7 v1.1: 128 per seed x 6 seeds = 768 candidates/epoch. The first launch
+  # used 256 x 6 = 1,536 and peaked at 91.7 GB of 97.9 GB with one allocator
+  # OOM, so the per-epoch pool is cut to the 768 that cfm_fullcorpus_b64 ran
+  # at (its logged gen_validity_n is 768). Epoch budget rises to 18 to keep
+  # the total near 2,000 molecules at the MEASURED 0.0859 validity.
+  gen_eval_n: 128
   # C7 v1.1: 6 seeds x 256 = 1,536 candidates/epoch. At b64's MEASURED
   # gen_validity 0.0859 that is ~130 accepted molecules/epoch, ~2,000 over
   # 16 epochs -- the C7 gate needs >=1,000.
