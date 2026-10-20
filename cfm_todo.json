@@ -291,7 +291,10 @@
       "reserved_in_frozenset": "molmetal/scripts/wfA2_config_loader.py:312 (after the Wf-A28 step-3 commit)",
       "disposal_trigger": "First `LossProjection` class landing in any loss module with a `--per-loss-projection-lr` dest → remove from DECLARED_INERT_PATHS + add to consuming entry",
       "added_by": "Wf-A28 step-3 commit (2026-10-14)",
-      "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.49c"
+      "honest_negative_ref": "HONEST_NEGATIVE_CATALOG.md §6.49c",
+      "disposal_trigger_enforced_by": "molmetal/tests/test_dec_per_loss_projection_disposal.py (Wf-A104, 4 tests)",
+      "disposal_note": "Since Wf-A104 the trigger is mechanical, not a memo: the test globs molmetal/loss/*.py for a class matching *Projection* and molmetal/scripts/*.py for the --per-loss-projection-lr dest, and fails if exactly one of {reserved, consumed} holds. It also re-asserts the NEGATIVE half on every run (no class, no dest), so 'nothing consumes it' is verified rather than assumed.",
+      "disposal_instruction": "When it fires: remove 'model.per_loss_projection_lr' from DECLARED_INERT_PATHS in molmetal/scripts/wfA2_config_loader.py, wire the dest into the trainer, and delete the 4 tests."
     }
   ],
   "pocket_pool": {
