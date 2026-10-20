@@ -127,8 +127,53 @@ def generation_validity(run_dir: Path) -> Optional[Dict[str, object]]:
     return last
 
 
+def config_from_checkpoint(run_dir: Path) -> Dict[str, object]:
+    """Read a run's config out of its own checkpoint.
+
+    A run that dies before its first ``per_epoch_metrics.json`` write leaves no
+    metrics file and therefore no census row, so ``tier_of`` would return
+    "unknown" and its pool would silently fall out of every cross-scale table.
+    The checkpoint carries ``args`` verbatim and is written every epoch, so it
+    is the only surviving record of what such a run actually trained.
+
+    MEASURED 2026-10-20: the C7 full-corpus launch died inside epoch 4 on a
+    fatal CUDA OOM after producing 4 epochs / 2,816 generated SMILES and no
+    metrics file.  Without this fallback that pool — the first full-corpus
+    free-generation pool on disk — was invisible to the C7 verdict.
+
+    Unpickling a checkpoint executes code, so this only ever reads files under
+    this repo's own ``molmetal/reports`` tree, which the trainer wrote.
+    """
+    ckpt_dir = run_dir / "checkpoints"
+    if not ckpt_dir.is_dir():
+        return {}
+    candidates = sorted(ckpt_dir.glob("*_last.pt")) or sorted(ckpt_dir.glob("*.pt"))
+    for ckpt in candidates:
+        blob: object = None
+        try:
+            import pickle as _pickle
+
+            with ckpt.open("rb") as handle:
+                blob = _pickle.load(handle)
+        except Exception:
+            # The trainer writes raw pickle via atomic_write_file; a run that
+            # took the torch.save fallback wrote a zip instead.  Try both.
+            try:
+                import torch as _torch
+
+                blob = _torch.load(ckpt, map_location="cpu", weights_only=False)
+            except Exception:
+                continue
+        if not isinstance(blob, dict):
+            continue
+        args = blob.get("args")
+        if isinstance(args, dict) and args.get("n_train"):
+            return dict(args)
+    return {}
+
+
 def run_config(run_dir: Path, census: Dict[str, object]) -> Dict[str, object]:
-    """Prefer the run's own per_epoch_metrics.json, fall back to the census."""
+    """Prefer the run's own per_epoch_metrics.json, then the census, then its checkpoint."""
     path = run_dir / "per_epoch_metrics.json"
     cfg: Dict[str, object] = {}
     if path.exists():
@@ -146,6 +191,8 @@ def run_config(run_dir: Path, census: Dict[str, object]) -> Dict[str, object]:
             if row.get("run") == run_dir.name:
                 cfg.update({k: v for k, v in row.get("config", {}).items() if k not in cfg})
                 break
+    if not cfg.get("n_train"):
+        cfg.update({k: v for k, v in config_from_checkpoint(run_dir).items() if k not in cfg})
     return cfg
 
 
@@ -236,6 +283,55 @@ def per_epoch_stats(
         bucket["wilson_ci95"] = wilson(int(bucket["n_sa_le_gate"]), n_e)
         bucket.pop("sa_sum", None)
     return buckets
+
+
+def verdict_reading(generation: Dict[str, object]) -> str:
+    """Build the verdict sentence from the aggregates instead of hard-coding it.
+
+    The previous version was a literal string.  When the first full-corpus
+    free-generation pool appeared on disk the flag
+    ``full_corpus_generation_pool_exists`` — which IS computed from the data —
+    flipped to True, while the prose kept saying "There is no full-corpus
+    free-generation pool".  A reader taking the sentence at face value would
+    have retracted a result that had just been measured.  Nothing could catch
+    it, because no test compared the two.
+
+    MEASURED 2026-10-20: cfm_c7_fullgen_2026_10_20, 2,816 molecules at
+    n_train=26,715, SA<=4.5 = 10 (0.0036).
+    """
+    tiers = generation.get("by_tier") or {}
+    full = tiers.get("full_corpus")
+    small = tiers.get("small")
+    parts = [
+        "Only pools from the same pipeline are comparable: a bond-head "
+        "reconstruction of a real tmQM geometry inherits real chemistry, so its "
+        "SA score is not generator quality."
+    ]
+    if full:
+        parts.append(
+            f"A full-corpus free-generation pool exists "
+            f"({full['n_scored']} molecules, SA<={SA_GATE} = "
+            f"{full['rate_sa_le_gate']:.4f} [{full['wilson_ci95'][0]:.4f}, "
+            f"{full['wilson_ci95'][1]:.4f}])."
+        )
+        if small:
+            better = full["rate_sa_le_gate"] > small["rate_sa_le_gate"]
+            parts.append(
+                f"The small tier (n_train < {SMALL_TRAIN_CUTOFF}) scores "
+                f"{small['rate_sa_le_gate']:.4f} [{small['wilson_ci95'][0]:.4f}, "
+                f"{small['wilson_ci95'][1]:.4f}], so scaling to the full corpus is "
+                f"{'better' if better else 'not better'} on this gate."
+            )
+    else:
+        parts.append(
+            "There is no full-corpus free-generation pool; the largest "
+            "generation pool is below the full-corpus tier."
+        )
+    parts.append(
+        "gen_validity is the one metric both scales compute through the same "
+        "path, and it does not improve with scale on the runs that have it."
+    )
+    return " ".join(parts)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -405,15 +501,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "reconstruction_molecules": by_pipeline.get("reconstruction", {}).get("n_scored", 0),
             "full_corpus_generation_pool_exists": "full_corpus"
             in by_pipeline.get("generation", {}).get("by_tier", {}),
-            "reading": (
-                "Only pools from the same pipeline are comparable. Every full-corpus "
-                "pool on disk is a bond-head reconstruction of a real tmQM geometry, "
-                "so its SA inherits real chemistry and cannot be quoted as generator "
-                "quality. There is no full-corpus free-generation pool; the largest "
-                "generation pool comes from an n_train=256 run. gen_validity is the "
-                "one metric both scales compute through the same path, and it does "
-                "not improve with scale on the runs that have it."
-            ),
+            "reading": verdict_reading(by_pipeline.get("generation", {})),
         },
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)

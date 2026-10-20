@@ -270,6 +270,28 @@ _EVENT_LOG_PATH: Optional[Path] = None
 #: it during training, so it costs one dict store per batch.
 _LAST_LOSS_TERMS: Dict[str, "torch.Tensor"] = {}
 
+#: FIX-C12 (2026-10-21) — opt-in CUDA allocator trace, off by default.
+#:
+#: Set ``MOLMETAL_MEM_TRACE=1`` to print ``memory_allocated`` /
+#: ``memory_reserved`` / ``max_memory_allocated`` after every optimizer step.
+#: The distinction matters: a real reference leak raises ``allocated``, while
+#: the caching allocator holding one block per distinct tensor shape leaves
+#: ``allocated`` flat and raises ``reserved``.  Reading one number (as
+#: ``nvidia-smi`` gives) cannot tell those apart, which is why the first two
+#: attributions for the full-corpus OOM were both wrong.
+def _mem_trace_enabled() -> bool:
+    """Read ``MOLMETAL_MEM_TRACE`` without re-binding module-level ``os``.
+
+    The module deliberately deletes its ``os`` alias after the CUDA-default
+    block, so the import is local here rather than added back at the top.
+    """
+    import os as _os
+
+    return _os.environ.get("MOLMETAL_MEM_TRACE", "") == "1"
+
+
+_MEM_TRACE_ON = _mem_trace_enabled()
+
 #: Wf-A105 — the audit pair that makes `_LAST_LOSS_TERMS` provably complete and
 #: exact.  `total` is `float(loss)`; `sum_recorded` is the sum of every tensor
 #: in `_LAST_LOSS_TERMS`.  If they disagree, either a term entered the objective
@@ -5871,6 +5893,24 @@ def train_one_epoch(
         # ``main()``.  The previous ``getattr(args, ...)`` form raised
         # NameError at the first backward step because ``args`` is
         # ``main()``-scoped (AGENTS.md §5.7 smoke floor #2).
+        # FIX-C12 (2026-10-21) — opt-in allocator trace.  The full-corpus run's
+        # peak grew with the number of steps processed, not with batch size or
+        # with any single phase, which is the signature either of a real
+        # reference leak (``allocated`` climbs) or of the caching allocator
+        # keeping a block per distinct tensor shape (``allocated`` flat,
+        # ``reserved`` climbs).  The two need different fixes, so the trace
+        # prints both.  Off unless MOLMETAL_MEM_TRACE=1, so every existing run
+        # is bit-identical.
+        if _MEM_TRACE_ON:
+            _mt_alloc = torch.cuda.memory_allocated() / 2**20
+            _mt_res = torch.cuda.memory_reserved() / 2**20
+            _mt_peak = torch.cuda.max_memory_allocated() / 2**20
+            print(
+                f"[mem-trace] epoch={epoch} step={batch_start // batch_size} "
+                f"alloc={_mt_alloc:.0f} reserved={_mt_res:.0f} "
+                f"peak_alloc={_mt_peak:.0f}",
+                flush=True,
+            )
         _clip_norm = float(max_norm) if max_norm > 0.0 else float("inf")
         grad_norm = float(
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=_clip_norm)
@@ -12276,6 +12316,33 @@ def derive_assemble_hinge_tau(
     )
     return report
 
+
+def resume_mode_error(mode: str) -> str:
+    """Explain a bad ``resume_from`` in terms of what the caller probably meant.
+
+    ``resume_from`` is a MODE (auto / none / path); the checkpoint file goes in
+    ``resume_from_path``.  That split is not guessable from the error alone, and
+    the failure mode is expensive: the launch spends ~100 s building the corpus
+    and the model before this check runs, so a wrong key costs a full startup
+    and produces a message that names neither the fix nor the second key.
+
+    MEASURED 2026-10-21: configs/c7_fullgen_resume_2026_10_20.yaml put the .pt
+    path in ``resume_from`` and the C7 resume died at 99 s with the bare
+    'must be one of auto/none/path' message.
+    """
+    message = f"--resume-from must be one of auto/none/path; got {mode!r}."
+    looks_like_a_path = (
+        "/" in mode or "\\" in mode or mode.endswith(".pt") or mode.endswith(".ckpt")
+    )
+    if looks_like_a_path:
+        message += (
+            "  That value is a checkpoint PATH, but this key is a MODE.  Set"
+            " `resume_from: path` and put the file in `resume_from_path`"
+            " (YAML: output.resume_from / output.resume_from_path)."
+        )
+    return message
+
+
 def main() -> int:
     args = parse_args()
     # 2026-10-08 §5.7 — FLAG_ONLY reject guards.  Each dest below is declared
@@ -13720,9 +13787,7 @@ def main() -> int:
         if _cand.is_file():
             _resume_path = _cand
     elif _resume_mode != "none":
-        raise SystemExit(
-            f"--resume-from must be one of auto/none/path; got {_resume_mode!r}."
-        )
+        raise SystemExit(resume_mode_error(_resume_mode))
     if _resume_path is not None:
         # Wf-A90 — torch.load cannot read the pickle the trainer writes
         # since Wf-A30-1; see load_cfm_checkpoint.

@@ -19,6 +19,7 @@ from molmetal.scripts.c7_scale_matched_pools import (
     pipeline_of,
     run_config,
     tier_of,
+    verdict_reading,
 )
 
 
@@ -76,6 +77,64 @@ def test_run_config_survives_a_corrupt_metrics_file(tmp_path):
     (tmp_path / "per_epoch_metrics.json").write_text("{not json")
     census = {"runs": [{"run": tmp_path.name, "config": {"n_train": 256}}]}
     assert run_config(tmp_path, census)["n_train"] == 256
+
+
+# --- the crashed-run fallback ------------------------------------------------
+# A run that dies before its first per_epoch_metrics.json write has no census
+# row either, so without a third source its pool would be tier "unknown" and
+# drop out of every cross-scale table. MEASURED 2026-10-20: the C7 full-corpus
+# launch died inside epoch 4 with 2,816 generated SMILES and no metrics file.
+
+
+def _write_ckpt(run_dir, args, *, use_torch=False, name="cfm_yuelbond_wasserstein_seed0_last.pt"):
+    ckpt_dir = run_dir / "checkpoints"
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    path = ckpt_dir / name
+    blob = {"args": args, "epoch": 3, "model_state_dict": {}}
+    if use_torch:
+        import torch
+
+        torch.save(blob, path)
+    else:
+        import pickle
+
+        path.write_bytes(pickle.dumps(blob))
+    return path
+
+
+def test_run_config_reads_the_checkpoint_when_metrics_and_census_are_absent(tmp_path):
+    _write_ckpt(tmp_path, {"n_train": 26715, "epochs": 18, "batch_size": 64})
+    cfg = run_config(tmp_path, {})
+    assert cfg["n_train"] == 26715
+    assert tier_of(cfg["n_train"]) == "full_corpus"
+
+
+def test_run_config_reads_a_torch_save_checkpoint_too(tmp_path):
+    # The trainer writes raw pickle through atomic_write_file, but falls back
+    # to torch.save if that fails; both must be readable.
+    _write_ckpt(tmp_path, {"n_train": 4096, "epochs": 2}, use_torch=True)
+    assert run_config(tmp_path, {})["n_train"] == 4096
+
+
+def test_checkpoint_fallback_never_overrides_a_real_metrics_file(tmp_path):
+    (tmp_path / "per_epoch_metrics.json").write_text(json.dumps({"config": {"n_train": 64}}))
+    _write_ckpt(tmp_path, {"n_train": 26715})
+    assert run_config(tmp_path, {})["n_train"] == 64
+
+
+def test_checkpoint_fallback_returns_empty_without_a_checkpoints_dir(tmp_path):
+    assert run_config(tmp_path, {}) == {}
+
+
+def test_checkpoint_fallback_ignores_a_checkpoint_without_args(tmp_path):
+    ckpt_dir = tmp_path / "checkpoints"
+    ckpt_dir.mkdir()
+    import pickle
+
+    (ckpt_dir / "cfm_yuelbond_wasserstein_seed0_last.pt").write_bytes(
+        pickle.dumps({"epoch": 0, "model_state_dict": {}})
+    )
+    assert run_config(tmp_path, {}) == {}
 
 
 # --- pipeline classification -------------------------------------------------
@@ -183,3 +242,63 @@ def test_per_epoch_reports_wilson_for_small_n():
     # 1 of 1 is not 1.0: the Wilson interval still carries the sample size.
     assert 0.0 < lo < 1.0
     assert lo < hi <= 1.0
+
+
+# --- the verdict sentence is derived, not written ----------------------------
+# The sentence used to be a literal. When the first full-corpus free-generation
+# pool landed, `full_corpus_generation_pool_exists` (computed from the data)
+# flipped to True while the prose still said "There is no full-corpus
+# free-generation pool". Nothing compared the two, so nothing failed.
+
+
+def _tier(n, rate, lo, hi):
+    return {"n_scored": n, "rate_sa_le_gate": rate, "wilson_ci95": [lo, hi]}
+
+
+def test_reading_says_a_full_corpus_pool_exists_when_it_does():
+    reading = verdict_reading({"by_tier": {"full_corpus": _tier(2816, 0.0036, 0.0019, 0.0065)}})
+    assert "full-corpus free-generation pool exists" in reading
+    assert "There is no full-corpus" not in reading
+    assert "2816" in reading
+    assert "0.0036" in reading
+
+
+def test_reading_says_absent_when_the_tier_is_absent():
+    reading = verdict_reading({"by_tier": {"small": _tier(2330, 0.0069, 0.0042, 0.0111)}})
+    assert "There is no full-corpus free-generation pool" in reading
+
+
+def test_reading_compares_full_corpus_against_small_in_the_right_direction():
+    worse = verdict_reading(
+        {
+            "by_tier": {
+                "full_corpus": _tier(2816, 0.0036, 0.0019, 0.0065),
+                "small": _tier(2330, 0.0069, 0.0042, 0.0111),
+            }
+        }
+    )
+    assert "not better" in worse
+
+    better = verdict_reading(
+        {
+            "by_tier": {
+                "full_corpus": _tier(2816, 0.0200, 0.015, 0.026),
+                "small": _tier(2330, 0.0069, 0.0042, 0.0111),
+            }
+        }
+    )
+    assert "better on this gate" in better
+    assert "not better" not in better
+
+
+def test_reading_never_contradicts_the_pool_exists_flag():
+    for tiers in (
+        {"full_corpus": _tier(10, 0.5, 0.2, 0.8)},
+        {"small": _tier(10, 0.5, 0.2, 0.8)},
+        {},
+    ):
+        generation = {"by_tier": tiers}
+        exists = "full_corpus" in tiers
+        reading = verdict_reading(generation)
+        assert exists == ("full-corpus free-generation pool exists" in reading)
+        assert exists != ("There is no full-corpus free-generation pool" in reading)
