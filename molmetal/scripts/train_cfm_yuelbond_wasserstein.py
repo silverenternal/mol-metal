@@ -292,6 +292,32 @@ def _mem_trace_enabled() -> bool:
 
 _MEM_TRACE_ON = _mem_trace_enabled()
 
+
+def _empty_cache_every() -> int:
+    """Read ``MOLMETAL_EMPTY_CACHE_EVERY``; 0 (the default) means never.
+
+    FIX-C12 (2026-10-21) — the caching allocator keeps one block per distinct
+    tensor shape it has been asked for.  Every cloud in this corpus has a
+    different atom count, so a full-corpus epoch asks for thousands of
+    distinct shapes and ``memory_reserved`` climbs for the whole epoch while
+    ``memory_allocated`` stays at ~76 MiB.  ``nvidia-smi`` reports the
+    reserved number, which is why the run looked like it was leaking 20+ GB
+    of live tensors when it was only holding empty blocks.
+
+    Returning those blocks every N steps bounds ``reserved`` at roughly one
+    step's peak.  ``empty_cache`` is a no-op when nothing is cached, so an
+    interval of 0 keeps every existing run bit-identical.
+    """
+    import os as _os
+
+    try:
+        return max(0, int(_os.environ.get("MOLMETAL_EMPTY_CACHE_EVERY", "0")))
+    except ValueError:
+        return 0
+
+
+_EMPTY_CACHE_EVERY = _empty_cache_every()
+
 #: Wf-A105 — the audit pair that makes `_LAST_LOSS_TERMS` provably complete and
 #: exact.  `total` is `float(loss)`; `sum_recorded` is the sum of every tensor
 #: in `_LAST_LOSS_TERMS`.  If they disagree, either a term entered the objective
@@ -5933,6 +5959,13 @@ def train_one_epoch(
         # default path is unchanged.
         if use_ema:
             model.update_ema()
+        # FIX-C12 (2026-10-21) — hand the allocator's empty shape blocks back
+        # to the driver every N steps.  MEASURED at n_train=256 / batch=32:
+        # ``memory_allocated`` after each step is 71-76 MiB and does not grow,
+        # while ``memory_reserved`` climbs 8.8 -> 18.0 GiB over 8 steps purely
+        # from distinct cloud shapes.  Default 0 keeps existing runs identical.
+        if _EMPTY_CACHE_EVERY and (batch_start // batch_size) % _EMPTY_CACHE_EVERY == 0:
+            torch.cuda.empty_cache()
         bond_losses.append(float(bond_ce.detach()))
         w2_losses.append(float(w2_val.detach()))
         total_losses.append(float(loss.detach()))
@@ -13946,6 +13979,30 @@ def main() -> int:
     _loop_end = _start_epoch + 1 if _eval_only else args.epochs
     for epoch in range(_start_epoch, _loop_end):
         epoch_start = time.time()
+        # 2026-10-21 (FIX-C12) — opt-in allocator trace, `MOLMETAL_MEM_TRACE=1`.
+        #
+        # The full-corpus run's peak grows with the number of training STEPS:
+        # MEASURED at n_train=4096 (64 steps/epoch) the peak is 70,324 MiB with
+        # expandable_segments, while n_train=26715 (418 steps/epoch) climbs past
+        # 96,000 MiB inside its first epoch.  nvidia-smi cannot tell a real
+        # leak (allocated grows) from allocator caching of heterogeneous shapes
+        # (reserved grows, allocated flat), and that distinction decides whether
+        # the fix is a code change or a bigger `max_split_size_mb`.  Printing
+        # both at every epoch boundary is cheaper than another 80-minute run.
+        if _wf130_os.environ.get("MOLMETAL_MEM_TRACE") == "1" and device.type == "cuda":
+            _gib = 2**30
+
+            def _gb(n: int) -> str:
+                return f"{n / _gib:.2f}G"
+
+            print(
+                f"[mem-trace] epoch={epoch} "
+                f"allocated={_gb(torch.cuda.memory_allocated(device))} "
+                f"reserved={_gb(torch.cuda.memory_reserved(device))} "
+                f"max_allocated={_gb(torch.cuda.max_memory_allocated(device))} "
+                f"max_reserved={_gb(torch.cuda.max_memory_reserved(device))}",
+                flush=True,
+            )
         # Round-4 E3 — per-epoch bond-score accumulator.  Reset HERE, at the
         # top of the loop, so a stale score from the previous epoch cannot
         # leak into this epoch's record if the eval is skipped.  (It used to
