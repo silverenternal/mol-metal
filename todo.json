@@ -1122,7 +1122,7 @@
         "FIX-C10",
         "FIX-C11"
       ],
-      "note": "expandable_segments 的旧「无效」负结果是在 FIX-C10 之前的代码上测的（当时整个训练集常驻显存），不成立，已撤回。峰值随步数增长：4096 云 64 步 → 70,324 MiB；26,715 云 418 步 → 首 epoch 内即破 96,000 MiB，最终 nvidia-smi 峰值 97,331 MiB（这是 reserved，不是 allocated：MOLMETAL_MEM_TRACE 显示 allocated 全程 87-88 MiB，无泄漏）。⚠️ §6.150b 曾据 4 个 epoch 推断「连通性单调改善、4 epoch 不是平台」；18 个 epoch 证明相反：单片段率 2.84% → 12.22%，连通性随训练变差。 后续诊断：键密度到 epoch 17 已达 1.137 键/重原子（真实 1.069），但 3 元环占 67.5%、真实语料 0.01%；6 元环 2.8% vs 87.5%。同期 teacher-forced 键头 bond_f1 0.173→0.605。所以失效不是「键头没学会」也不是「键不够」，而是环大小/拓扑先验，发生在键头下游的采样路径。目标应改写为环大小先验，而不是继续加训练。",
+      "note": "expandable_segments 的旧「无效」负结果是在 FIX-C10 之前的代码上测的（当时整个训练集常驻显存），不成立，已撤回。峰值随步数增长：4096 云 64 步 → 70,324 MiB；26,715 云 418 步 → 首 epoch 内即破 96,000 MiB，最终 nvidia-smi 峰值 97,331 MiB（这是 reserved，不是 allocated：MOLMETAL_MEM_TRACE 显示 allocated 全程 87-88 MiB，无泄漏）。⚠️ 两次错误归因已撤回：(1)「单片段率上升=连通性改善/变差」——语料把金属写成单独 component（69.1% 是 3 成分，均值 3.34，单一成分 0.07%），单片段率在这个数据集里不是质量指标；(2)「失效只在采样器、不在键头」——键头重建池平均只有 1.35/1.49 个成分（语料 3.34），过度成键从键头就开始。站得住的结论：成分均值收敛（22.17→3.45 vs 3.34）但成分构成不收敛（ep17 有 60.5% 的多成分分子第二成分是单个原子，语料 1.5%）；键密度 1.137（语料 1.069）但 3 元环 67.5% vs 0.01%。",
       "result": {
         "verdict": "PASS — 显存机制查清并撤回三条错误归因；全语料 18/18 epoch 跑完，C7 判定 NOT SUPPORTED 且这次有收敛池",
         "measured": {
@@ -1142,26 +1142,6 @@
             0.0039
           ],
           "c7_small_rate": 0.0069,
-          "single_fragment_rate_by_epoch": [
-            0.0284,
-            0.0227,
-            0.044,
-            0.0838,
-            0.0895,
-            0.0952,
-            0.0952,
-            0.0753,
-            0.1023,
-            0.0852,
-            0.1067,
-            0.1023,
-            0.0882,
-            0.0897,
-            0.0952,
-            0.0938,
-            0.1122,
-            0.1222
-          ],
           "source": [
             "metrics/by_metric/c7_scale_matched_pools.json",
             "metrics/by_metric/c7_fullgen_pool_quality.json",
@@ -1214,6 +1194,29 @@
               17
             ],
             "bond_n_scored": 192
+          },
+          "component_count_by_epoch": {
+            "corpus": 3.34,
+            "epoch_0": 22.17,
+            "epoch_8": 6.28,
+            "epoch_17": 3.45
+          },
+          "second_frag_single_atom_share": {
+            "corpus": 0.0146,
+            "epoch_0": 0.8801,
+            "epoch_8": 0.6677,
+            "epoch_17": 0.6052
+          },
+          "mean_second_frag_size": {
+            "corpus": 12.088,
+            "epoch_0": 1.218,
+            "epoch_8": 1.82,
+            "epoch_17": 1.982
+          },
+          "head_recon_component_count": {
+            "cfm_fullcorpus_b64": 1.35,
+            "cfm_objective_terms": 1.488,
+            "n": 83
           }
         },
         "retracted": [
