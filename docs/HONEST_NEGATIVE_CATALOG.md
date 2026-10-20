@@ -9147,9 +9147,10 @@ Two things follow, and they point in opposite directions:
     absence of one.
 
 **Honest boundaries (ACTIVE, this entry):**
-  * **The 4-epoch pool is not the 18-epoch pool.** It is what a crashed run left behind. Its
-    single-fragment trend suggests more epochs would help; the SA trend does not. Quoting either
-    as "the C7 result" without the epoch count would be dishonest.
+  * ⚠️ **CORRECTED below ("the run finished").** ~~The 4-epoch pool is not the 18-epoch pool.~~
+    It is what a crashed run left behind. Its single-fragment trend suggests more epochs would
+    help; the SA trend does not. Quoting either as "the C7 result" without the epoch count would
+    be dishonest.
   * **`gen_validity = 1.0` on this pool is the loose-atom artefact, not quality.** `sa_scored` is
     0 and `sa_observed` is false on every epoch: the strings parse because RDKit accepts
     disconnected atoms. The honest metric on this pool is the single-fragment rate and SA, not
@@ -9164,6 +9165,51 @@ Two things follow, and they point in opposite directions:
     `full_corpus_generation_pool_exists` flag — computed from the data — had already flipped to
     `true`. The sentence is now derived from the aggregates, and a test asserts the two can never
     disagree.
+
+**The run finished — 18/18 epochs, and the four-epoch reading was wrong about the trend
+(2026-10-21).** The crashed run was resumed twice (once aborted after 99 s on the `resume_from`
+mode/path mistake, once SIGTERM'd at 856 s when a parallel session started its own probe on the
+same card) and completed all 18 epochs: `exit=0`, wall **11,232 s**, `nvidia-smi` peak
+**97,331 MiB**, **46** recoverable OOMs. The pool is now 18 × 704 = **12,669 rows**, of which
+**12,668** score and **10,190** are unique SMILES. MEASURED
+(`metrics/by_metric/c7_scale_matched_pools.json` v1.3 +
+`metrics/by_metric/c7_fullgen_pool_quality.json`):
+
+| epoch | train_loss | single-fragment | 3-ring share | SA ≤ 4.5 |
+|---:|---:|---:|---:|---:|
+| 0 | 26.7720 | 2.84% | 66.8% | 0.14% |
+| 3 | 26.4265 | 8.38% | 78.1% | 0.00% |
+| 8 | — | 10.23% | 65.0% | 0.14% |
+| 17 | — | **12.22%** | 67.5% | 0.57% |
+| **all 18** | | **8.51%** | 66.8% | **0.28%** [0.21, 0.39] (36/12,668) |
+
+Four conclusions, three of which overturn what §6.150b inferred from four epochs:
+
+  * **Connectivity does not plateau — it keeps degrading.** 2.84% → 8.38% → 10.23% → **12.22%**
+    single-fragment across 18 epochs, a 4.3× rise. §6.150b read the first four points as "the
+    generator is learning to bond atoms, just slowly". Fourteen more epochs show the opposite: the
+    model increasingly emits disconnected fragments. Extrapolating a monotone trend from 4 of 18
+    epochs was the error, and the full run is what refutes it.
+  * **Validity is not the failure mode.** RDKit parse rate stays at 1.000 for 17 of 18 epochs
+    (0.9986 at epoch 13), and mean heavy atoms is constant at 44.37. The strings are well-formed
+    and the size is stable; the molecules are simply not connected.
+  * **The synthesis gate is flat-to-worse.** 0.28% over all 18 epochs, 0.57% at the last one,
+    against **0.69%** for the n_train=256 pools. Sixteen extra epochs of full-corpus training moved
+    SA ≤ 4.5 from 0.36% to 0.28%. Scaling the corpus up still does not buy synthesisability.
+  * **Even the SA-passing molecules are not novel.** The joint gate (SA ≤ 4.5 **and** novelty
+    ≥ 0.90) is **0 / 10,190**; the mean novelty *within* the SA-passing subset is 0.8587, below the
+    0.90 gate. The 36 molecules that clear SA are close analogues of training data, so "SA ≤ 4.5"
+    alone overstates the useful yield.
+
+**One bookkeeping correction the resume forced.** `cfm_c7_fullgen_ep4_partial_2026_10_20` was
+preserved from the crashed run. While the resumed pool was also 4 epochs the two files were
+byte-identical and a sha256 rule dropped the duplicate. Once the resume passed epoch 4 they stopped
+being identical — the partial became a strict **prefix** — and the sha256 rule stopped firing, so
+the tier double-counted 2,816 molecules again (15,484 scored instead of 12,668). The dedupe now also
+drops a pool whose `(epoch, smiles)` row set is a strict subset of a kept pool's, and records
+`reason: strict_prefix_of`. A content rule that assumes "duplicate" means "identical file" silently
+expires the moment the duplicate grows.
+
 
 **§6.150b catalog-count math.** Net catalog-count delta: **+1**. Cumulative catalog count
 **203 → 204**. ACTIVE count **159 → 160**.

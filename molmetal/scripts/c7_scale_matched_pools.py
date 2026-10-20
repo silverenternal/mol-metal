@@ -288,7 +288,7 @@ def per_epoch_stats(
 def dedupe_pools(
     pools: Sequence[Dict[str, object]],
 ) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
-    """Drop pools whose molecules are byte-identical to one already kept.
+    """Drop pools that repeat rows already counted by a larger pool.
 
     Two directories holding the same molecules are ONE pool, not two.
 
@@ -299,23 +299,54 @@ def dedupe_pools(
     tier reported 5,715 scored instead of 2,899 and the generation total 7,974
     instead of 5,158.
 
+    The same run then RESUMED and finished 18 epochs, so the two files stopped
+    being byte-identical: the partial is now a strict PREFIX of the full pool
+    (epochs 0-3 of 0-17).  A sha256 rule cannot see that, and the tier again
+    double-counted 2,816 molecules — this time as 15,484 instead of 12,668.
+    Hence the second rule: a pool whose ``(epoch, smiles)`` row set is a
+    subset of a kept pool's is a prefix of it, not an independent sample.
+
     Keying on content rather than on the directory name also catches a re-run
     that happens to regenerate the same strings, which a name rule would miss.
-    Pools with no sha256 are kept: an unhashed pool cannot be proven a
-    duplicate, and silently dropping it would be the worse error.
+    Pools with no sha256/row keys are kept: an unprovable duplicate is the
+    worse error to drop silently.
     """
     seen: Dict[str, str] = {}
     kept: List[Dict[str, object]] = []
     duplicates: List[Dict[str, object]] = []
-    for pool in pools:
+    # Largest first, so a prefix always meets its superset already kept,
+    # whatever order the filesystem handed us.
+    for pool in sorted(pools, key=lambda p: (-int(p.get("n_rows") or 0), str(p.get("label")))):
         sha = str(pool.get("sha256") or "")
         if sha and sha in seen:
             duplicates.append(
                 {
                     "label": pool.get("label"),
                     "same_content_as": seen[sha],
+                    "reason": "identical_sha256",
                     "n_rows": pool.get("n_rows"),
                     "sha256": sha,
+                }
+            )
+            continue
+        keys = pool.get("_row_keys")
+        prefix_of = None
+        if isinstance(keys, (set, frozenset)) and keys:
+            for other in kept:
+                other_keys = other.get("_row_keys")
+                if not isinstance(other_keys, (set, frozenset)):
+                    continue
+                if len(keys) < len(other_keys) and keys <= other_keys:
+                    prefix_of = other
+                    break
+        if prefix_of is not None:
+            duplicates.append(
+                {
+                    "label": pool.get("label"),
+                    "same_content_as": prefix_of.get("label"),
+                    "reason": "strict_prefix_of",
+                    "n_rows": pool.get("n_rows"),
+                    "n_rows_of_kept": prefix_of.get("n_rows"),
                 }
             )
             continue
@@ -414,6 +445,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         with path.open(newline="") as handle:
             rows = list(_csv.DictReader(handle))
+        # Row identity for prefix detection: a resumed run rewrites the same
+        # (epoch, smiles) pairs the partial run already had, so a subset test
+        # is the only way to see that one pool is the head of the other.
+        report["_row_keys"] = {(r.get("epoch", ""), r.get("smiles", "")) for r in rows}
         texts = [r.get("smiles", "") for r in rows]
         sa_map = sa_per_molecule(texts)
         nov_map = novelty_per_molecule(list(sa_map), args.train_reference)
@@ -504,10 +539,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         for p in pools
         if p["label"] not in used_by_sa_audit and int(p.get("n_scored") or 0) > 0
     ]
+    for pool in pools:
+        pool.pop("_row_keys", None)
 
     payload = {
         "artifact": "c7_scale_matched_pools",
-        "version": "1.2",
+        "version": "1.3",
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "provenance": {
             "script": "molmetal/scripts/c7_scale_matched_pools.py",
@@ -524,6 +561,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "pools are deduplicated on file content (sha256), because two "
                 "directories holding the same molecules were counted twice and "
                 "doubled the full-corpus tier."
+            ),
+            "v1_3_correction": (
+                "sha256 alone stopped working once the full run resumed to 18 "
+                "epochs: the 4-epoch partial is then a strict prefix, not a copy. "
+                "A pool whose (epoch, smiles) rows are a subset of a kept pool's "
+                "is now dropped as a prefix."
             ),
         },
         "duplicate_pools_dropped": _duplicates,

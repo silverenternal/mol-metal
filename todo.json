@@ -1111,8 +1111,8 @@
       "layer": "性能",
       "priority": "P1",
       "status": "DONE",
-      "gpu": "~45 分钟（3 次 4096 云探针 + 1 次 99 s 失败启动 + 1 次 856 s 被杀的续跑）",
-      "wall": "3 小时",
+      "gpu": "~7 小时（3 次 4096 云探针 + 1 次 99 s 失败启动 + 1 次 856 s 被杀的续跑 + 1 次 11,232 s 跑完 18/18 epoch 的续跑）",
+      "wall": "7 小时",
       "why": "全语料 18-epoch run 在 epoch 4 死于致命 OOM（此前 48 次可恢复 OOM，峰值 97,331 MiB，另有余量被另一项目 lineageflow 的 11.3 GB 占走）。§6.150 当时给出的归因是「峰值在评估段」，但该归因自相矛盾：n_rot 4→1 让峰值降了 5 GB，评估不依赖 n_rot，所以峰值必然在训练侧。",
       "method": "4096 云、六项全开、n_rot=1、gen_eval_n=0（完全不跑生成评估）下对比三种配置；再用 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True 在修好后的代码上重测。",
       "deliverable": "molmetal/scripts/c7_scale_matched_pools.py（checkpoint 兜底 + 结论句由数据推导 + 内容哈希去重）、molmetal/scripts/train_cfm_yuelbond_wasserstein.py（resume_mode_error）、configs/c7_fullgen_resume_2026_10_20.yaml、docs/HONEST_NEGATIVE_CATALOG.md §6.150b、docs/CLAIM_LEDGER.md C7 行",
@@ -1122,51 +1122,77 @@
         "FIX-C10",
         "FIX-C11"
       ],
-      "note": "expandable_segments 的旧「无效」负结果是在 FIX-C10 之前的代码上测的（当时整个训练集常驻显存），不成立，已撤回。峰值随步数增长：4096 云 64 步 → 70,324 MiB；26,715 云 418 步 → 首 epoch 内即破 96,000 MiB。",
+      "note": "expandable_segments 的旧「无效」负结果是在 FIX-C10 之前的代码上测的（当时整个训练集常驻显存），不成立，已撤回。峰值随步数增长：4096 云 64 步 → 70,324 MiB；26,715 云 418 步 → 首 epoch 内即破 96,000 MiB，最终 nvidia-smi 峰值 97,331 MiB（这是 reserved，不是 allocated：MOLMETAL_MEM_TRACE 显示 allocated 全程 87-88 MiB，无泄漏）。⚠️ §6.150b 曾据 4 个 epoch 推断「连通性单调改善、4 epoch 不是平台」；18 个 epoch 证明相反：单片段率 2.84% → 12.22%，连通性随训练变差。",
       "result": {
-        "verdict": "PARTIAL — 显存机制查清并撤回三条错误归因；18-epoch run 仍未完成",
+        "verdict": "PASS — 显存机制查清并撤回三条错误归因；全语料 18/18 epoch 跑完，C7 判定 NOT SUPPORTED 且这次有收敛池",
         "measured": {
           "peak_4096_b64_no_expand": 92431,
           "peak_4096_b32_no_expand": 85695,
           "peak_4096_b64_expand": 70324,
           "oom_4096_b64_expand": 0,
           "epoch_sec_4096_expand": 188.36,
-          "c7_fullgen_epochs_completed": 4,
+          "c7_fullgen_epochs_completed": 18,
           "c7_fullgen_peak": 97331,
-          "c7_fullgen_recoverable_ooms": 48,
+          "c7_fullgen_recoverable_ooms": 46,
           "c7_fullgen_candidates": 2816,
-          "c7_fullgen_sa_le_4_5": 10,
-          "c7_fullgen_rate": 0.0036,
+          "c7_fullgen_sa_le_4_5": 36,
+          "c7_fullgen_rate": 0.0028,
           "c7_fullgen_ci95": [
-            0.0019,
-            0.0065
+            0.0021,
+            0.0039
           ],
           "c7_small_rate": 0.0069,
           "single_fragment_rate_by_epoch": [
             0.0284,
             0.0227,
             0.044,
-            0.0838
+            0.0838,
+            0.0895,
+            0.0952,
+            0.0952,
+            0.0753,
+            0.1023,
+            0.0852,
+            0.1067,
+            0.1023,
+            0.0882,
+            0.0897,
+            0.0952,
+            0.0938,
+            0.1122,
+            0.1222
           ],
           "source": [
             "metrics/by_metric/c7_scale_matched_pools.json",
+            "metrics/by_metric/c7_fullgen_pool_quality.json",
             "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
             "molmetal/reports/cfm_c7_fullgen_2026_10_20/events.jsonl"
-          ]
+          ],
+          "c7_fullgen_exit_code": 0,
+          "c7_fullgen_wall_s": 11232,
+          "c7_fullgen_rows": 12669,
+          "c7_fullgen_scored": 12668,
+          "c7_fullgen_unique_smiles": 10190,
+          "c7_fullgen_last_epoch_rate": 0.0057,
+          "c7_joint_gate": "0/10190",
+          "c7_sa_subset_mean_novelty": 0.8587,
+          "single_fragment_rate_overall": 0.0851
         },
         "retracted": [
           "「峰值在留出评估段」——n_rot 改动能移动峰值，评估不依赖 n_rot，自相矛盾",
           "「expandable_segments 无效（97,340 MiB + 4 次 OOM）」——那是在 FIX-C10 之前测的；修好后同一设置 70,324 MiB / 0 OOM",
           "「训练段峰值 86,031 → 55,170 MiB」——55,170 是运行中的一个采样点，不是峰值；修后峰值是 92,431"
         ],
-        "blocked_on": "续跑（epoch 4→18）在 856 s 被并行 session 的 SIGTERM 终止——它同时在同一张卡上启动了 configs/c7_nrot1_4096_2026_10_20.yaml。产物未损坏（仍是 4 epoch / 2,816 行）。",
+        "blocked_on": "无。此前两次续跑分别因 resume_from 模式/路径混用（99 s）与并行 session 同卡启动 SIGTERM（856 s）失败；第三次跑到 18/18。",
         "artifacts": [
+          "molmetal/scripts/c7_fullgen_pool_quality.py（逐 epoch 单片段/环分布/可解析率）",
+          "metrics/by_metric/c7_fullgen_pool_quality.json",
           "docs/HONEST_NEGATIVE_CATALOG.md §6.150b",
           "docs/CLAIM_LEDGER.md C7",
-          "commits 22a209a8 / c972b91b / 0183a454 / e8de7cb2"
+          "commits 22a209a8 / c972b91b / 0183a454 / e8de7cb2 / 2e8a87d5 / c4b038d7 / 78fad531"
         ]
       },
-      "acceptance_result": "显存机制查清：峰值随训练步数增长，expandable_segments 在修好后的代码上把 4096 云峰值从 92,431 降到 70,324 MiB 且消除 OOM。C7 拿到盘上第一个全语料自由生成池（2,816 候选）：SA≤4.5 = 0.36%，低于 256 样本的 0.69%，判定仍 NOT SUPPORTED。18-epoch 未完成。"
+      "acceptance_result": "显存机制查清：峰值随训练步数增长，expandable_segments 在修好后的代码上把 4096 云峰值从 92,431 降到 70,324 MiB 且消除 OOM。C7 全语料自由生成池跑到 18/18 epoch（exit=0，wall 11,232 s，46 次可恢复 OOM，12,668 可打分）：SA≤4.5 = 0.28% [0.21,0.39]，低于 256 样本的 0.69%；联合闸 0/10,190；单片段率升到 12.22%。判定 NOT SUPPORTED。"
     }
   ],
   "decision_points": [

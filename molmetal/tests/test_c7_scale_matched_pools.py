@@ -341,3 +341,56 @@ def test_dedupe_does_not_depend_on_directory_names():
         ]
     )
     assert len(kept) == 1
+
+
+def test_a_strict_prefix_pool_is_dropped_even_with_a_different_hash():
+    # MEASURED 2026-10-21: after the full-corpus run resumed past epoch 4, the
+    # 4-epoch partial stopped being a byte copy and became a prefix. The sha256
+    # rule went quiet and the tier counted 2,816 molecules twice.
+    full = {
+        "label": "full",
+        "sha256": "h-full",
+        "n_rows": 8,
+        "_row_keys": {(str(e), "C") for e in range(8)},
+    }
+    partial = {
+        "label": "partial",
+        "sha256": "h-partial",
+        "n_rows": 4,
+        "_row_keys": {(str(e), "C") for e in range(4)},
+    }
+    kept, dropped = dedupe_pools([partial, full])
+    assert [p["label"] for p in kept] == ["full"]
+    assert len(dropped) == 1
+    assert dropped[0]["reason"] == "strict_prefix_of"
+    assert dropped[0]["same_content_as"] == "full"
+
+
+def test_a_partially_overlapping_pool_is_kept():
+    # Overlap is not containment: the pool holds molecules the larger one does
+    # not, so dropping it would delete real samples.
+    big = {"label": "big", "sha256": "h1", "n_rows": 6, "_row_keys": {(str(e), "C") for e in range(6)}}
+    other = {"label": "other", "sha256": "h2", "n_rows": 3, "_row_keys": {("0", "C"), ("99", "N"), ("98", "O")}}
+    kept, dropped = dedupe_pools([big, other])
+    assert [p["label"] for p in kept] == ["big", "other"]
+    assert dropped == []
+
+
+def test_prefix_dedupe_is_order_independent():
+    # The larger pool must win regardless of which file the glob returned first.
+    full = {"label": "full", "sha256": "h-full", "n_rows": 8, "_row_keys": {(str(e), "C") for e in range(8)}}
+    partial = {"label": "partial", "sha256": "h-p", "n_rows": 2, "_row_keys": {(str(e), "C") for e in range(2)}}
+    for order in ([full, partial], [partial, full]):
+        kept, dropped = dedupe_pools(order)
+        assert [p["label"] for p in kept] == ["full"], order
+        assert len(dropped) == 1
+
+
+def test_equal_size_identical_row_sets_are_not_treated_as_a_prefix():
+    # Same size + same rows but different hashes should not be silently merged;
+    # "strict" subset is the only safe rule.
+    a = {"label": "a", "sha256": "h1", "n_rows": 3, "_row_keys": {("0", "C"), ("1", "N"), ("2", "O")}}
+    b = {"label": "b", "sha256": "h2", "n_rows": 3, "_row_keys": {("0", "C"), ("1", "N"), ("2", "O")}}
+    kept, dropped = dedupe_pools([a, b])
+    assert len(kept) == 2
+    assert dropped == []
