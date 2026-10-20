@@ -7,8 +7,9 @@
   "gate_target": 0.7,
   "gate_target_provenance": "INTERNAL -- 0.7 is our own GATE_AUC constant (train_metal_lomo_wasserstein.py). It is NOT a literature value. Krasnov 2026 reports its own MetalCytoToxDB numbers on a different cohort + different split; the 0.7577 headline is NOT compared numerically against Krasnov here.",
   "external_paper_baseline": null,
-  "value_is_half_synthetic": true,
-  "half_synthetic_note": "HONEST-NEGATIVE (MEASURED, resolved to source, 2026-10-07 per wf-R33 m19 cohort-conflict): the 0.7577 mean pools 2 folds fed by the SAME synthetic Rh cohort -- wf139_p7_rh_active_cohort/synthetic_rh_pos_neg_normalized.json -- via append_synthetic_rh_to_dataset() with n_synthetic_rh_appended=500, confirmed identically on all 7 runs in molmetal/reports/wf131_p3_deferred_runs/run.log (n=27132, n_synthetic_rh_appended=500). The prior note claiming 'Re is real-only' is CORRECTED and RETRACTED: Re was NOT real-only. The synthetic block is appended to the shared 5-metal pool BEFORE the LOMO split, so it contaminates the Rh train fold AND enters the Re train fold too -- only the held-out TEST fold of each metal is clean, which is why the headline number is still a held-out measurement but not a real-data-only measurement. is_synthetic on the resolved cohort: the wf139_p7 file carries NO is_synthetic key; it is synthetic by construction (Rh_act_label_generation output, 250 simulated active + 250 simulated inactive). The wf387a2 balanced cohort's is_synthetic:false describes REAL compounds and was never used here. rh_cohort_source in this file previously pointed at wf387a2; that was a retroactive overwrite and is restored to the value the trainer actually wrote. Open honest-negative (unchanged): the trainer docstring predicts n_synthetic_rh_appended=500 waves land Rh at 0.338-0.411, but this wave MEASURED Rh=0.8798. The divergence is unexplained and is a result to investigate, not to celebrate.",
+  "value_is_half_synthetic": false,
+  "value_is_half_synthetic_scope": "FALSE for the live headline (value=0.5575). This flag was left at `true` after the Wf-R43 real-only re-measurement replaced the 0.7577 half-synthetic number, so it asserted a provenance the headline no longer had — the same defect class as the old `v3_cohort_median_REAL`. The half-synthetic number is still preserved, clearly labelled, under `synthetic_augmented_baseline_preserved_for_diff` (0.7577, Rh fold 0.8798). Evidence that the live panel is real-only: rh_oversample=0, n_synthetic_rh_appended=0, rh_cohort_source=null, verdict=..._REAL_ONLY, and `real_only_pa_m19_re_measurement_2026_10_08.n_synthetic_rh_appended_used=0`.",
+  "split": "leave-one-metal-out: 5 folds (Ru/Ir/Os/Rh/Re) x 5 seeds = 25 runs, 30 epochs each, rh_oversample=0 (real-only)",
   "real_only_fold_value": 0.381174168297456,
   "synthetic_affected_fold_value": 0.8798174728752262,
   "value": 0.5575471269535148,
@@ -75,7 +76,7 @@
   "rh_oversample": 0,
   "n_synthetic_rh_appended": 0,
   "model": "dmpnn_multitask_wasserstein",
-  "data_source": "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+  "data_source": ".data/molmetal/metalcytotox_5metal_multitask_v4.csv",
   "rh_cohort_source": null,
   "use_l2_guard": true,
   "use_astr_scale_guard": false,
@@ -290,5 +291,8 @@
     "which_to_cite": "引用 m19 时**必须写明是哪一臂**：0.5575（无 centering）或 0.5845（per-metal pIC50 centering）。两者不可混引，也不可取平均。两者 Rh 都远低于 gate，centering 只是把最差折从 0.3812 抬到 0.5022。",
     "resolution_deferred": "ALIGNED_COMPARISON §2 的处置是 'refresh the canonical file after the next re-measure'。**尚未发生重测**，所以此处只加注记不覆盖。真正的解决需要一次匹配协议的重测。",
     "self_contradiction_warning": "注意 molmetal/reports/dmpnn_clean5_lomo/aggregate.json（0.5575 那臂）的 description 写着 '+ Rh closure-oversample'，而同文件的 rh_oversample=0 / n_synthetic_rh_appended=0 / Rh n_test=108。**结构化字段是权威的**：0.5575 那臂未被 synthetic Rh 污染，过时的只有 description 字符串。"
-  }
+  },
+  "superseded_half_synthetic_baseline_note": "SUPERSEDED BASELINE (describes the retracted 0.7577 number, NOT the live headline). HONEST-NEGATIVE (MEASURED, resolved to source, 2026-10-07 per wf-R33 m19 cohort-conflict): the 0.7577 mean pools 2 folds fed by the SAME synthetic Rh cohort -- wf139_p7_rh_active_cohort/synthetic_rh_pos_neg_normalized.json -- via append_synthetic_rh_to_dataset() with n_synthetic_rh_appended=500, confirmed identically on all 7 runs in molmetal/reports/wf131_p3_deferred_runs/run.log (n=27132, n_synthetic_rh_appended=500). The prior note claiming 'Re is real-only' is CORRECTED and RETRACTED: Re was NOT real-only. The synthetic block is appended to the shared 5-metal pool BEFORE the LOMO split, so it contaminates the Rh train fold AND enters the Re train fold too -- only the held-out TEST fold of each metal is clean, which is why the headline number is still a held-out measurement but not a real-data-only measurement. is_synthetic on the resolved cohort: the wf139_p7 file carries NO is_synthetic key; it is synthetic by construction (Rh_act_label_generation output, 250 simulated active + 250 simulated inactive). The wf387a2 balanced cohort's is_synthetic:false describes REAL compounds and was never used here. rh_cohort_source in this file previously pointed at wf387a2; that was a retroactive overwrite and is restored to the value the trainer actually wrote. Open honest-negative (unchanged): the trainer docstring predicts n_synthetic_rh_appended=500 waves land Rh at 0.338-0.411, but this wave MEASURED Rh=0.8798. The divergence is unexplained and is a result to investigate, not to celebrate.",
+  "data_source_tracked": false,
+  "data_source_note": "Repo-relative path into .data/molmetal/, which .gitignore:192 ignores; the cohort is derived from MetalCytoToxDB, not redistributed here."
 }

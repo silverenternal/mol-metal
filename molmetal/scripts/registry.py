@@ -57,6 +57,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -358,6 +359,201 @@ def _n_seeds(payload: Dict[str, Any]) -> Optional[float]:
     return _coerce_float(v) if _coerce_float(v) is not None else None
 
 
+# ---------------------------------------------------------------------------
+# Citability rule — see docs/METRIC_CITABILITY_RULE.md
+#
+# Anchored on the ML Reproducibility Checklist v2.0 (Pineau et al., 2020):
+# for every reported result, state "the exact number of training and
+# evaluation runs" and give "central tendency (e.g. mean) & variation (e.g.
+# error bars)".  A std of a single run is not variation — R's ``sd()`` returns
+# NA for a length-one vector, and so does this rule.
+# ---------------------------------------------------------------------------
+
+# Status prefixes that describe something other than a measurement of this
+# metric: a projection, a blocked run, a synthetic stand-in, a placeholder.
+_NON_QUOTABLE_STATUS_PREFIXES = (
+    "PROJECTED",
+    "DEFERRED",
+    "BLOCKED",
+    "REINDEX_PENDING",
+    "SUPERSEDED",
+    "UNMEASURED",
+    "DESIGN",
+    "CHECKPOINT",
+    "WIRED",
+    "PARTIAL",
+    "MEASURED_SYNTHETIC_LABELS",
+    "MEASURED_PILOT_MOCK",
+)
+
+# Statuses that ARE a measurement but whose own text says it must not be read
+# as a result.  decode_ratio = 0.998 means the decoder almost never abstains —
+# it is not evidence of quality; m7 IntDiv1 is a property of the generated
+# cohort, not a claim about the method.  Quotable with a caveat, never a table
+# headline.
+_NON_HEADLINE_STATUSES = (
+    "MEASURED_NOT_A_CLAIM",
+    "MEASURED_BUT_NOT_A_QUALITY_METRIC",
+)
+
+# A value averaged over real + synthetic folds is not a measurement of the real
+# task.  m19 is exactly this: real_only_fold = 0.381, synthetic fold = 0.880,
+# headline 0.5575 — the mean of two things that are not the same task.
+_SYNTHETIC_VALUE_FLAGS = ("value_is_half_synthetic", "value_is_synthetic")
+
+_DATASET_KEYS = ("dataset", "data_source", "cohort", "cohorts_tested")
+
+
+def _tracked_paths() -> Optional[set]:
+    """Repo-relative paths known to git, or None when git is unavailable."""
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=str(REPO_ROOT),
+            capture_output=True,
+            check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return {p for p in out.decode("utf-8", "replace").split("\0") if p}
+
+
+def _declares_dataset(payload: Dict[str, Any]) -> bool:
+    return any(payload.get(k) for k in _DATASET_KEYS)
+
+
+def _declares_split(payload: Dict[str, Any]) -> bool:
+    if payload.get("split"):
+        return True
+    protocol = payload.get("protocol")
+    if isinstance(protocol, str):
+        low = protocol.lower()
+        return "fold" in low or "split" in low
+    return False
+
+
+def _run_count(payload: Dict[str, Any]) -> Optional[float]:
+    """The number of training/evaluation runs, however the file names it.
+
+    The checklist asks for "the exact number of training and evaluation runs";
+    files record that as n_seeds, n_runs or n_seeds_total, at the top level or
+    inside ``aggregate``.
+    """
+    for key in ("n_seeds", "n_runs", "n_seeds_total"):
+        n = _coerce_float(payload.get(key))
+        if n is not None:
+            return n
+    seeds = payload.get("seeds")
+    if isinstance(seeds, list) and seeds:
+        return float(len(seeds))
+    agg = payload.get("aggregate")
+    if isinstance(agg, dict):
+        for key in ("n_runs_measured", "n_seeds", "n_runs"):
+            n = _coerce_float(agg.get(key))
+            if n is not None:
+                return n
+    return None
+
+
+# Only std fields that describe run-to-run variation count as an error bar.
+# A bare ``std`` is usually the spread of the per-sample distribution
+# (m6_kappa: 449 molecules), which is a property of the cohort, not evidence
+# that a single run was repeated.  Flagging those would be a false positive.
+_RUN_STD_NAME_HINTS = ("value_std", "seed", "run")
+
+
+def _std_fields(payload: Dict[str, Any]) -> List[str]:
+    out = []
+    for k, v in payload.items():
+        if _coerce_float(v) is None:
+            continue
+        low = k.lower()
+        if "std" in low and any(h in low for h in _RUN_STD_NAME_HINTS):
+            out.append(k)
+    return out
+
+
+def assess_citability(
+    payload: Dict[str, Any],
+    value: Any,
+    source_rel: Optional[str] = None,
+    tracked: Optional[set] = None,
+) -> Dict[str, Any]:
+    """Apply the citability rule to one metric payload.
+
+    Two levels, because "is this number real?" and "is this number fit for a
+    headline?" are different questions:
+
+    ``quotable``      the number is a real measurement of this metric, with a
+                      source that exists in version control.
+    ``headline_grade`` quotable AND the protocol is disclosed well enough to
+                      put the number in a table: run count, variation when
+                      n > 1, evaluation dataset and split.
+
+    Returns a dict with both booleans and the reasons each failed.
+    """
+    not_quotable: List[str] = []
+    status = str(payload.get("status") or "").strip()
+    if not status:
+        not_quotable.append("no status")
+    elif status.upper().startswith(_NON_QUOTABLE_STATUS_PREFIXES):
+        not_quotable.append(
+            f"status {status.split()[0]!r} is not a measurement of this metric"
+        )
+    if value is None:
+        declared = payload.get("no_headline_reason")
+        if isinstance(declared, str) and declared:
+            not_quotable.append(f"no scalar headline by design: {declared}")
+        else:
+            not_quotable.append("no scalar headline")
+    if payload.get("cisplatin_reference_mean_is_control") or payload.get(
+        "value_is_control"
+    ):
+        not_quotable.append("value is a positive control, not a model score")
+    for flag in _SYNTHETIC_VALUE_FLAGS:
+        if payload.get(flag):
+            not_quotable.append(
+                f"value mixes real and synthetic folds ({flag}); "
+                "see the file's honest-framing note for the real-only value"
+            )
+            break
+    if tracked is not None and source_rel is not None and source_rel not in tracked:
+        not_quotable.append("source file is not tracked by git")
+
+    not_headline: List[str] = []
+    if status.upper().startswith(_NON_HEADLINE_STATUSES):
+        not_headline.append(
+            f"status {status.split()[0]!r}: the file itself declines the claim"
+        )
+    runs = _run_count(payload)
+    if runs is None:
+        not_headline.append("run count not declared (n_seeds/seeds/n_runs)")
+    elif runs == 1 and _std_fields(payload):
+        not_headline.append(
+            f"std reported for a single run ({', '.join(_std_fields(payload))})"
+        )
+    if runs is not None and runs < 2:
+        not_headline.append(
+            "single run: quote as a single-run measurement, not a table mean"
+        )
+    if not _declares_dataset(payload):
+        not_headline.append("evaluation dataset not declared")
+    if not _declares_split(payload):
+        not_headline.append("split not declared")
+
+    quotable = not not_quotable
+    caveat = payload.get("headline_caveat")
+    return {
+        "quotable": quotable,
+        "headline_grade": quotable and not not_headline,
+        "not_quotable": not_quotable,
+        "not_headline": not_headline,
+        "headline_caveat": (
+            caveat.strip() if isinstance(caveat, str) and caveat.strip() else None
+        ),
+    }
+
+
 def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
     """Harvest the metric layer from metrics/by_metric/*.json.
 
@@ -381,6 +577,7 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
     """
     out: Dict[str, Any] = {}
     covered_files: set = set()
+    tracked = _tracked_paths()
     for _line, mapping in LINE_METRICS.items():
         for metric_id, src in mapping.items():
             covered_files.add(src)
@@ -409,11 +606,18 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
                 rec["n_seeds"] = seeds
             # A MEASURED label with no scalar is invisible to any target
             # comparison.  Flag it rather than letting `value: null` read as
-            # "no data" when the file claims to have measured something.
-            rec["value_missing"] = rec["value"] is None and str(
-                rec.get("status") or ""
-            ).startswith("MEASURED")
+            # "no data" when the file claims to have measured something.  A
+            # file that declares `no_headline_reason` has answered the
+            # question, so it is not a gap.
+            rec["value_missing"] = (
+                rec["value"] is None
+                and str(rec.get("status") or "").startswith("MEASURED")
+                and not payload.get("no_headline_reason")
+            )
             rec.update(METRIC_TARGETS.get(metric_id, {}))
+            rec.update(
+                assess_citability(payload, rec["value"], _rel(src_path), tracked)
+            )
             out[metric_id] = rec
     # Wf-A36-3 G1 (2026-10-14): walk every JSON under metrics/by_metric/
     # and add a registry row for each one not already covered by
@@ -453,9 +657,19 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
         seeds = _n_seeds(payload) if isinstance(payload, dict) else None
         if seeds is not None:
             rec["n_seeds"] = seeds
-        rec["value_missing"] = rec["value"] is None and str(
-            rec.get("status") or ""
-        ).startswith("MEASURED")
+        rec["value_missing"] = (
+            rec["value"] is None
+            and str(rec.get("status") or "").startswith("MEASURED")
+            and not (isinstance(payload, dict) and payload.get("no_headline_reason"))
+        )
+        rec.update(
+            assess_citability(
+                payload if isinstance(payload, dict) else {},
+                rec["value"],
+                _rel(src_path),
+                tracked,
+            )
+        )
         out[metric_id] = rec
     return out, covered_files
 
@@ -554,14 +768,28 @@ def check_metrics(repo_root: Path = REPO_ROOT) -> CheckResult:
     )
     undated = sum(1 for r in rows if r.get("metric_timestamp") is None)
     value_missing = sum(1 for r in rows if r.get("value_missing"))
+    undated_paper = sum(
+        1 for r in rows if r.get("metric_timestamp") is None and r.get("registry_role") == "paper_line"
+    )
+    undated_artifact = undated - undated_paper
+    paper_rows = [r for r in rows if r.get("registry_role") == "paper_line"]
+    value_missing_paper = sum(
+        1 for r in paper_rows if r.get("value_missing")
+    )
+    quotable = sum(1 for r in paper_rows if r.get("quotable"))
+    headline_grade = sum(1 for r in paper_rows if r.get("headline_grade"))
     return CheckResult(
         "metrics",
         status,
         checks,
-        f"{len(checks)-bad-stale} current, {stale} stale, {bad} missing; "
-        f"{unlabelled_paper} paper-line and {unlabelled_artifact} artifact rows "
-        f"without a status; {undated} without a date; "
-        f"{value_missing} labelled MEASURED with no scalar",
+        f"{len(checks)-bad-stale} current, {stale} stale, {bad} missing | "
+        f"{len(paper_rows)} paper-line ({quotable} quotable, "
+        f"{headline_grade} headline-grade) | "
+        f"{unlabelled_paper} paper-line + {unlabelled_artifact} artifact rows "
+        f"without a status | "
+        f"{undated_paper} paper-line + {undated_artifact} artifact undated | "
+        f"{value_missing_paper} paper-line + {value_missing - value_missing_paper} "
+        f"artifact labelled MEASURED with no scalar",
     )
 
 
@@ -614,9 +842,15 @@ def _extract_value(payload: Dict[str, Any], value_key: Optional[str] = None) -> 
 
     ``value_key`` (from METRIC_TARGETS) may be a dotted path like
     ``aggregate.best_measured_real``; it wins when present and finite.
-    Otherwise fall through the common top-level + nested keys so the registry
-    value tracks the real number rather than a misleading None.
+    Otherwise a file may declare its own ``headline_key`` (same dotted-path
+    form) — the escape hatch for files whose headline lives in a list of arms
+    or a per-metal block, where no generic key order can know which entry is
+    the headline.  Otherwise fall through the common top-level + nested keys.
     """
+    if value_key is None:
+        declared = payload.get("headline_key")
+        if isinstance(declared, str) and declared:
+            value_key = declared
     if value_key:
         node: Any = payload
         for part in value_key.split("."):
@@ -779,6 +1013,33 @@ def main(argv: Optional[List[str]] = None) -> int:
                 worst = "STALE"
         print(f"REGISTRY: {worst}")
         return 0 if worst == "PASS" else 1
+    if cmd == "cite":
+        reg = _load_yaml(METRICS_PATH)
+        rows = reg.get("metrics") or {}
+        shown = 0
+        for mid, r in rows.items():
+            if r.get("registry_role") != "paper_line":
+                continue
+            shown += 1
+            if r.get("headline_grade"):
+                mark = "CITE"
+            elif r.get("quotable"):
+                mark = "NUM "
+            else:
+                mark = "NO  "
+            value = r.get("value")
+            value_s = "None" if value is None else f"{value:+.4f}" if isinstance(value, float) else str(value)
+            print(f"[{mark}] {mid:20s} value={value_s:>10s} target={r.get('target')}")
+            caveat = r.get("headline_caveat")
+            if caveat:
+                print(f"        caveat: {caveat}")
+            for reason in r.get("not_quotable") or []:
+                print(f"        not quotable: {reason}")
+            for reason in r.get("not_headline") or []:
+                print(f"        not headline: {reason}")
+        print(f"-- {shown} paper-line metrics; CITE = table-grade, NUM = quotable with caveats, NO = do not quote")
+        print("   rule: docs/METRIC_CITABILITY_RULE.md")
+        return 0
     if cmd == "gaps":
         table = gap_table()
         for line, info in table.items():
@@ -792,7 +1053,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                     f"{row['verdict']}"
                 )
         return 0
-    print(f"unknown command {cmd!r}; use 'generate', 'check' or 'gaps'", file=sys.stderr)
+    print(
+        f"unknown command {cmd!r}; use 'generate', 'check', 'gaps' or 'cite'",
+        file=sys.stderr,
+    )
     return 2
 
 

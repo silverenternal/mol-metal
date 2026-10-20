@@ -2,6 +2,8 @@
   "metric": "hilbert_4cell_r2",
   "description": "Mean combined Hilbert primal-dual + ASTSR evolutionary R² across 4 PlatinAI cell lines (mcf7 / a549 / a2780 / a2780cis) with per-fold alpha selection on 90/10 inner validation. Post-fix Wf-122 P3 values (L2 + scale-guard + best_ast_lisp fixes applied). Pre-fix Wf-83 P1 5-fold random CV values preserved for comparison.",
   "unit": "R² (can be negative; 1.0 = perfect, 0 = constant-mean baseline)",
+  "dataset": "PlatinAI 4-cell (mcf7 / a549 / a2780 / a2780cis)",
+  "split": "per-fold alpha selection on 90/10 inner validation",
   "baseline_provenance": "The only baselines referenced in this file are INTERNAL and statistical: (a) the constant-mean predictor (R² = 0 reference point, a definitional convention, not a paper number), and (b) the Wf-85 P3 pre-fix self-anchor preserved under pre_fix_comparison. NEITHER is a literature / field-average R². No external Hilbert+ASTSR R² baseline is cited in this file. See TODO/03_baselines/COMPARISON_BASELINES.md 3 for the per-metric alignment state (m2 = APPROX ALIGN, not a numerical comparison).",
   "external_paper_baseline": null,
   "scope": "tier1_precious_metal_anticancer / Wf-122 P3 post-fix combined anchor",

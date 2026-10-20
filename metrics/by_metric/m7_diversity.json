@@ -6,6 +6,8 @@
   "definition_status": "REDEFINED — m7 is now a reproducible MOSES IntDiv1 with a value on disk",
   "definition": "IntDiv1 = 1 - mean_{m1,m2 in G} T(m1,m2), MOSES (arXiv:1811.12823); Morgan radius 2 / 1024-bit ECFP4; ordered pairs INCLUDING self-pairs; deterministic subsample (max 300). Implementation: molmetal/scripts/cfm_property_panel.py::internal_diversity, reached via build_panel['aggregate']['internal_diversity'].",
   "unit": "MOSES IntDiv1 (unitless, 0-1)",
+  "dataset": "generated cohort cfm_fullcorpus_2026_10_10 (n_used=37, n_unique=37)",
+  "split": "not applicable (generation; IntDiv1 is computed over the generated cohort)",
   "why_this_definition": "This file previously used 'unit': 'CLI flag count wired-in (count 0-6)'. That is not what the metric's name denotes: m7 DIVERSITY must measure diversity, and a count of wired-in argparse flags measures the trainer's plumbing, not any generated molecule. The number in BLK-C6's title (0.9159 / 0.9215 / 0.8674) came from a throwaway script using 2048-bit Morgan and EXCLUDING self-pairs, i.e. not the reference configuration; it was being read as a strength against a 0.81 target while measuring nothing reproducible.",
 
   "supersedes": {

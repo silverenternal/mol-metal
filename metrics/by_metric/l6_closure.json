@@ -18,6 +18,9 @@
   "overall_gate_pass": false,
   "dataset": "tmqm",
   "dataset_path": "molmetal/data/tmqm_dblock_subset.csv",
+  "split": "no train/test split — the closure pipeline is deterministic and has no fitted parameters; all 5000 complexes are evaluated once",
+  "n_runs": 1,
+  "n_runs_note": "One deterministic pass over the 5000-complex cohort. There is no seed to vary and therefore no error bar: quoting a std here would be a std of one number.",
   "protocol": "max_depth=1, max_products=64, seeds=1, CPU-only closure-theorem end-to-end",
   "honest_framing": "MEASURED_BELOW_GATE — 2981/5000 complexes reach closure (0.5962) against a 0.95 gate; 1 of 30 metals passes. Smiles preprocessor rewrites dative '<-' to covalent '-' before parsing, so the rate is a property of the closure pipeline on this cohort, not of the underlying chemistry alone. CPU-only; no GPU work.",
   "timestamp": "2026-09-26"

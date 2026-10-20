@@ -3,6 +3,9 @@
   "description": "Fraction of DECODED clouds whose SMILES passes RDKit-strict parsing (MolFromSmiles + SanitizeMol). NOT a chemistry metric — see blind_spot. Note the two inputs are different populations: the pre-Wf-148 entries decode GENERATED samples, while the Wf-148/Wf-139 'real' entries decode the REAL val geometry, so they measure bond perception on given clouds, not generation. Values across those two populations are not comparable.",
   "unit": "ratio (0-1)",
   "scope": "CFM (Conditional Flow Matching) generate path",
+  "dataset": "NCI-60 9-cell + DrugOOD native (wf148_m14_real_cfm)",
+  "split": "not applicable (generation; decode ratio is computed on generated clouds and, for the wf148/wf139 real entries, on real val geometry — see description)",
+  "n_seeds": 3,
   "measurements": [
     {
       "run": "wf2_cfg_e2e_a5 (2000-step baseline)",
@@ -242,5 +245,7 @@
   ],
   "blind_spot": "2026-10-04 — decode_ratio counts RDKit-PARSEABLE decodes; it does NOT measure chemistry. MEASURED on 24 real Ru complexes: with the bond head predicting BOND_NO_BOND for nearly every pair the metric read 0.977 (a decoder emitting each atom as its own fragment gives 'C.C.C.C', which MolFromSmiles + SanitizeMol accept); once the head learned real bond classes it FELL to 0.219. The metric is therefore ANTI-CORRELATED with correctness over the range that mattered, and a value near 1.000 here is evidence the model learned nothing. It must not be read, quoted, or gated on as a decoder-quality result. Use metrics/by_metric/cfm_bond_accuracy.json (bond F1 / precision / recall vs the corpus Wiberg truth) as the CFM bond-quality metric, and read the gen_* chemistry fields (largest_fragment_frac, single_fragment_ratio, metal_ratio) beside any generation-validity number.",
   "status": "MEASURED_BUT_NOT_A_QUALITY_METRIC",
-  "superseded_as_gate_by": "metrics/by_metric/cfm_bond_accuracy.json"
+  "superseded_as_gate_by": "metrics/by_metric/cfm_bond_accuracy.json",
+  "date_utc": "2026-09-27",
+  "date_source": "measurements[] entry with n_samples=5991 (wf148 real NCI-60+DrugOOD), which is the source of the headline 0.998"
 }

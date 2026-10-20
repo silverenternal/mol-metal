@@ -7,7 +7,7 @@
   "krasnov_2026_baseline": 0.81,
   "gate_target": 0.86,
   "value": 0.7613038529802696,
-  "value_std": 0.0,
+  "value_std": null,
   "per_seed_values": [
     0.7613038529802696
   ],
@@ -205,5 +205,7 @@
       "note": "1 seed × 50 epoch, encoder fallback to random init (tmQM arch mismatch). Per-seed variance ±0.1; no statistical lift. R17 baseline 0.7123 → Wf-22 retrain 0.630 = Δ = -0.082 honest-negative.",
       "date_utc": "2026-09-25"
     }
-  }
+  },
+  "value_std_undefined_reason": "n_seeds=1. The standard deviation of one run is undefined, not zero — R's sd() returns NA for a length-one vector. The previous 0.0 read as \"perfectly stable\" and was the only thing making this row look like a replicated result.",
+  "headline_caveat": "SINGLE SEED (seed=0, 30 epochs) on a scaffold split, and the run's cohort filter was never recorded: shipped_filter_spec is null and n_train_avg=2509 / n_test_avg=796 match no measured rerun (see cohort_filter_note + paper_protocol_measurement.shipped_record_untouched). Do not present 0.7613 as a mean. The traceable multi-fold number in this same file is paper_protocol_measurement: DOI-grouped 10-fold CV, 0.7717 +/- 0.0380, 10 folds, seed 0, cohort md5 recorded — but it is also single-seed, and its cohort does not replicate the paper (591 vs 23 cell lines), so it is a cross-cohort estimate, not a reproduction."
 }

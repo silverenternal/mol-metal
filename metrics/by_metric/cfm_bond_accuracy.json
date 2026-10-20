@@ -3,6 +3,7 @@
   "description": "CFM bond-head accuracy vs the corpus's TRUE bond graph (Wiberg bond orders read from tmQM .BO shards), scored pair by pair. This is the CFM bond-quality metric; it supersedes decode_ratio as the gate and as the reported number — see metrics/by_metric/decode_ratio.json ::blind_spot for why decode_ratio could not serve.",
   "unit": "ratio (0-1) over candidate pairs within the edge cutoff",
   "scope": "CFM (EGNN velocity field + YuelBond bond head) on tmQM",
+  "no_headline_reason": "PROBE SCALE, deliberately unscalarised: this file reports the DIRECTION of each class-weight lever (precision/recall/F1/pr_auc per exponent) at 4 epochs on a 946-cloud cohort, and its own caveat states that exact-match and F1 at production scale are NOT yet measured. Picking one of those probe numbers as a headline would promote a lever-direction probe into an achievable-score claim. A scalar becomes declarable when the 20-epoch production run lands.",
   "measured": {
     "cohort": "tmQM real CSD-derived geometry, all six target metals (Pt/Ru/Ir/Rh/Os/Re), coord_number unfiltered, tmqm_val_frac 0.2, CSD-code-hash disjoint split",
     "n_val_clouds": 192,
@@ -80,5 +81,7 @@
     "verdict": "sqrt weighting nearly closes the calibration gap (0.491 -> 0.089), so at power 0.5 the argmax operating point is close to optimal and threshold tuning buys little. Both rules are scored and printed every epoch (flow.bond_decision selects which drives the gate) so the choice stays measured rather than assumed."
   },
   "status": "MEASURED_PROBE_SCALE",
-  "honest_framing": "MEASURED at probe scale (4 epochs, 946-cloud train cohort, 192 held-out clouds carrying 8,634 true bonds from tmQM's Wiberg .BO shards). What this ESTABLISHES: the objective and the metric are now correct (the target was previously synthesised by a Pt-only rule and was all-BOND_NO_BOND for every non-Pt metal), class weighting lifts recall as intended, and sqrt softening beats both no weighting and the textbook inverse frequency on both F1 and PR-AUC. What it does NOT establish: any achievable production score. bond_exact_match is 0.000 at every setting — no complex's full bond graph is reproduced — and PR-AUC 0.593 against a 0.299 base rate is a modest lift. The 20-epoch production run is required before any of this is quoted as a result. Not a wet-lab or experimental measurement of any kind."
+  "honest_framing": "MEASURED at probe scale (4 epochs, 946-cloud train cohort, 192 held-out clouds carrying 8,634 true bonds from tmQM's Wiberg .BO shards). What this ESTABLISHES: the objective and the metric are now correct (the target was previously synthesised by a Pt-only rule and was all-BOND_NO_BOND for every non-Pt metal), class weighting lifts recall as intended, and sqrt softening beats both no weighting and the textbook inverse frequency on both F1 and PR-AUC. What it does NOT establish: any achievable production score. bond_exact_match is 0.000 at every setting — no complex's full bond graph is reproduced — and PR-AUC 0.593 against a 0.299 base rate is a modest lift. The 20-epoch production run is required before any of this is quoted as a result. Not a wet-lab or experimental measurement of any kind.",
+  "date_utc": "2026-10-04",
+  "date_source": "measured.date_utc"
 }
