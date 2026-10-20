@@ -9028,10 +9028,17 @@ counting pass, which runs the head) now moves each cloud itself.
 
 MEASURED bit-identical on the 512-cloud six-term arm: `train_loss` 27.194684267044067,
 `grad_norm` 18.774024963378906, `bond_ce` 1.4187850058078766 — all three unchanged before vs after;
-`epoch_time_sec` 47.365 → 44.700. At `n_train=4096` the training-phase peak fell 86,031 → 55,170 MiB.
+`epoch_time_sec` 47.365 → 44.700.
 
-**Negative result, recorded so nobody re-tries it.** `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`
-does **not** fix this. At `n_train=4096` it reserved 97,340 MiB and still logged 4 allocator OOMs,
+> ⚠️ **CORRECTED by §6.150b.** The sentence that stood here — "At `n_train=4096` the
+> training-phase peak fell 86,031 → 55,170 MiB" — compared a **peak** against a
+> **mid-run sample**. 55,170 MiB was one `nvidia-smi` reading taken during the training
+> phase, not the run's maximum. The post-FIX-C10 peak at `n_train=4096` is **92,431 MiB**
+> (§6.150b), i.e. *higher* than the pre-fix 86,031 MiB it was said to have beaten. The
+> bit-identical numbers above are unaffected and still hold.
+
+**Negative result, recorded so nobody re-tries it.** ⚠️ **RETRACTED by §6.150b.**
+`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` does **not** fix this. At `n_train=4096` it reserved 97,340 MiB and still logged 4 allocator OOMs,
 versus 86,031 MiB and 1 OOM without it. It was tested because the symptom looked like fragmentation;
 what ruled fragmentation out was the trajectory — a monotonic climb in ~13 GB jumps, not a flat
 reserved plateau.
@@ -9047,13 +9054,20 @@ full-corpus run still did not fit, because turning on `consistency_weight` / `sh
 | six, `n_rot=4` | 97,286 MiB (whole card) |
 | six, `n_rot=1` | 92,431 MiB (2 recoverable OOMs) |
 
-`n_rot` 4 → 1 bought **5 GB, not the ~9 GB predicted** — because the peak is the held-out **eval**
-phase, not the training step, and the eval does not depend on `n_rot`.
+`n_rot` 4 → 1 bought **5 GB, not the ~9 GB predicted**.
+
+> ⚠️ **CORRECTED by §6.150b.** The explanation that followed — "because the peak is the
+> held-out **eval** phase, not the training step, and the eval does not depend on `n_rot`" —
+> is **wrong**, and self-refuting: if the eval were the peak, changing `n_rot` could not have
+> moved the peak at all. It moved by 5 GB, so the peak is training-bound. §6.150b measures
+> where it actually comes from.
 
 **Honest boundaries (ACTIVE, this entry):**
-  * **The C7 run fits by ~3 GB, not comfortably.** Peak 92,431 MiB against 97,887 MiB, while another
-    project holds 11.3 GB on the same card. Any additional co-tenant kills it. This is not a
-    "solved" state; it is a state that happened to complete a 4,096-cloud probe.
+  * ⚠️ **SUPERSEDED by §6.150b.** ~~The C7 run fits by ~3 GB, not comfortably.~~ Peak 92,431 MiB
+    against 97,887 MiB, while another project holds 11.3 GB on the same card. Any additional
+    co-tenant kills it. This is not a "solved" state; it is a state that happened to complete a
+    4,096-cloud probe. **It did not survive the full corpus:** the `n_train=26715` launch died
+    inside epoch 4 after 48 recoverable OOMs.
   * **`n_rot=1` is an estimator change, not a weight change.** The term still enters the loss at
     0.05, but the O(3) residual is a 1-sample estimate of the same expectation — unbiased, higher
     variance per step. This run's loss is therefore **not** numerically comparable to an `n_rot=4`
@@ -9069,6 +9083,95 @@ phase, not the training step, and the eval does not depend on `n_rot`.
 
 **Workflow** | FIX-C10 + FIX-C11 (2026-10-20; GPU: 6 short probe runs at ≤4,096 clouds; §5.2: every
 MiB above is a `nvidia-smi` sample or an `events.jsonl` field; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
+
+### §6.150b FIX-C12 — three corrections to §6.150, and the pool the crashed run did produce (2026-10-21)
+
+§6.150 was written from measurements that did not support three of its sentences. All three are
+corrected here rather than edited away, because each one changed a decision.
+
+**Correction 1 — the peak is NOT the eval phase.** §6.150 reasoned that `n_rot` 4 → 1 buying only
+5 GB meant "the peak is the held-out eval phase". That inference refutes itself: if the eval were
+the peak, changing `n_rot` could not have moved it. It moved, so the peak is training-bound. Where
+it actually comes from is **step count**, not batch size and not phase — MEASURED at
+`n_train=4096`, six terms, `n_rot=1`, `gen_eval_n=0` (so no generation eval ran at all):
+
+| arm | peak | OOMs |
+|---|---:|---:|
+| batch 64 | 92,431 MiB | 2 (recoverable) |
+| batch 32 | 85,695 MiB | 0 |
+| batch 64 + `expandable_segments:True` | **70,324 MiB** | **0** |
+
+Halving the batch — i.e. halving the activations of every single step — bought 7 GB. The remaining
+22 GB came from `expandable_segments`. A within-epoch VRAM trace shows a monotonic climb
+(11 → 23 → 47 → 66 → 86 GB) over ~64 steps, which is the caching allocator accumulating blocks for
+the many distinct tensor shapes that heterogeneous cloud sizes produce. The peak therefore scales
+with the number of *steps*, which is why `n_train=26715` (418 steps/epoch) died where 4,096 (64
+steps/epoch) survived.
+
+**Correction 2 — `expandable_segments` DOES fix it.** §6.150 recorded it as a negative result
+("97,340 MiB reserved, 4 OOMs, vs 86,031 and 1 OOM"). That measurement was taken **before
+FIX-C10**, while the entire training cohort was still device-resident, so the allocator was being
+asked to hold ~530k live allocations that no setting could compact. On the post-FIX-C10 code the
+same flag at the same `n_train` is **70,324 MiB with 0 OOMs** — the single largest VRAM lever found
+in this whole investigation. The retraction matters because a reader who trusted §6.150 would have
+skipped the one setting that made the run fit.
+
+**Correction 3 — 86,031 → 55,170 MiB compared a peak to a sample.** 55,170 was one mid-run
+`nvidia-smi` reading during the training phase, not a maximum. The post-FIX-C10 peak at
+`n_train=4096` is 92,431 MiB. FIX-C10's *bit-identical* result (`train_loss` 27.194684267044067,
+`grad_norm` 18.774024963378906, `bond_ce` 1.4187850058078766 all unchanged) is unaffected and still
+holds; only the memory claim was wrong.
+
+**What the crashed run did produce — the first full-corpus free-generation pool.** The
+`n_train=26715` launch died inside epoch 4 (48 recoverable OOMs, then a fatal one in
+`fused_mlp` backward: 204 MiB requested, 50 MiB free, 83.96 GiB held). Before it died it wrote
+4 epochs × 704 = **2,816 free-generation candidates** — the artifact §6.143b said did not exist.
+MEASURED on that pool:
+
+| epoch | train_loss | bond_ce | single-fragment | SA ≤ 4.5 |
+|---:|---:|---:|---:|---:|
+| 0 | 26.7720 | 0.9364 | 2.84% | 0.14% |
+| 1 | 26.6372 | 0.7872 | 2.27% | 0.71% |
+| 2 | 26.5462 | 0.7528 | 4.40% | 0.57% |
+| 3 | 26.4265 | 0.7312 | **8.38%** | 0.00% |
+| **all** | | | **4.47%** (126/2,816) | **0.36%** [0.19, 0.65] (10/2,816) |
+
+Two things follow, and they point in opposite directions:
+  * **Connectivity is improving monotonically** — 2.84% → 8.38% single-fragment over four epochs.
+    The generator is learning to bond atoms, just slowly; four epochs is not where it plateaus.
+  * **The synthesis gate is not.** SA ≤ 4.5 at full corpus is **0.36%**, against **0.69%** for the
+    n_train=256 pools. Scaling the corpus up did **not** improve it. This is the same conclusion as
+    C7 v1.1, now measured on a real full-corpus generation pool rather than inferred from the
+    absence of one.
+
+**Honest boundaries (ACTIVE, this entry):**
+  * **The 4-epoch pool is not the 18-epoch pool.** It is what a crashed run left behind. Its
+    single-fragment trend suggests more epochs would help; the SA trend does not. Quoting either
+    as "the C7 result" without the epoch count would be dishonest.
+  * **`gen_validity = 1.0` on this pool is the loose-atom artefact, not quality.** `sa_scored` is
+    0 and `sa_observed` is false on every epoch: the strings parse because RDKit accepts
+    disconnected atoms. The honest metric on this pool is the single-fragment rate and SA, not
+    `gen_validity`.
+  * **Resume is a two-key operation and the failure is expensive.** `resume_from` is a MODE
+    (`auto`/`none`/`path`); the file goes in `resume_from_path`. Putting the path in the mode key
+    aborts ~100 s into startup, after the corpus build and model construction, with a message that
+    named neither the mistake nor the second key. `resume_mode_error` now names both, with a hint
+    that fires only when the value looks like a path.
+  * **C7's verdict string was hard-coded and had become false.** `verdict.reading` was a literal
+    that said "There is no full-corpus free-generation pool" while the adjacent
+    `full_corpus_generation_pool_exists` flag — computed from the data — had already flipped to
+    `true`. The sentence is now derived from the aggregates, and a test asserts the two can never
+    disagree.
+
+**§6.150b catalog-count math.** Net catalog-count delta: **+1**. Cumulative catalog count
+**203 → 204**. ACTIVE count **159 → 160**.
+
+**Workflow** | FIX-C12 (2026-10-21; GPU: 3 probe runs at 4,096 clouds + one 99 s aborted launch +
+the crashed 4-epoch full-corpus run; §5.2: every MiB is an `nvidia-smi` sample, every loss an
+`events.jsonl` field, every rate a Wilson interval over the pool's own rows; §5.3 + §5.4: 0
+paper/* + 0 wet-lab).
 
 ---
 
