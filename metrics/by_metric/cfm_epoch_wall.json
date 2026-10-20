@@ -43,6 +43,26 @@
       "steps_per_epoch": 2,
       "status": "MEASURED",
       "source": "molmetal/reports/c7_prof_2026_10_20/events.jsonl"
+    },
+    {
+      "run": "c7_vramprobe_2026_10_20 (POST-FIX, full eval suite)",
+      "what": "byte-identical to configs/c7_fullgen_2026_10_20.yaml except n_train 26715->512 and epochs 18->1, so it carries the REAL gen_eval_n=128 x 6 seeds = 704 scored candidates; run to size the full-corpus launch after the earlier 91.7 GB OOM",
+      "epoch_time_sec": 160.440561,
+      "wall_time_s": 160.521150,
+      "n_train": 512,
+      "n_val": 192,
+      "batch_size": 64,
+      "gen_eval_n": 128,
+      "gen_eval_seeds": "0,1,2,3,4,5",
+      "gen_validity": 1.0,
+      "gen_validity_n": 704,
+      "gen_sa_scored": 0,
+      "peak_vram_mib": 72996,
+      "peak_gpu_util_pct": 100,
+      "status": "MEASURED",
+      "source": "molmetal/reports/c7_vramprobe_2026_10_20/events.jsonl",
+      "vram_sampler": "nvidia-smi -i 0 every 2 s for the whole run; peak = max over samples",
+      "caveat": "gen_validity 1.0 at epoch 0 is the documented loose-atom artefact (decode_ratio 1.0 while the bond head predicts BOND_NO_BOND everywhere — see decode_ratio.json::blind_spot), NOT evidence of generation quality. gen_sa_scored is 0, so no SA was measured in this run."
     }
   ],
   "speedup": {
@@ -60,12 +80,14 @@
   },
   "projection_full_corpus": {
     "status": "PROJECTED",
-    "basis": "26715 clouds / batch 64 = 418 steps at the DERIVED 2.608251 s/step, plus the DERIVED 19.44 s eval",
-    "epoch_sec": 1109.6,
-    "epoch_min": 18.5,
+    "basis": "26715 clouds / batch 64 = 418 steps at the DERIVED 2.608251 s/step, plus the DERIVED 19.44 s bond+decode eval, plus the MEASURED gen-eval delta (160.440561 - 40.303891 = 120.14 s)",
+    "epoch_sec": 1230.0,
+    "epoch_min": 20.5,
     "n_epochs": 18,
-    "total_hours": 5.55,
-    "caveat": "PROJECTED, not MEASURED: assumes per-step cost is flat in n_train (it should be, since each step touches a fixed 64 clouds) and that no epoch is slower for another reason (early-stop bookkeeping, checkpoint writes). The 5.55 h excludes the one-time ~90 s cohort load."
+    "total_hours": 6.15,
+    "peak_vram_mib_expected": 72996,
+    "vram_headroom_gib": 24.9,
+    "caveat": "PROJECTED, not MEASURED: assumes per-step cost is flat in n_train (it should be, since each step touches a fixed 64 clouds) and that gen-eval cost is flat in the number of training clouds (it is a fixed 704 candidates). Excludes the one-time cohort load. VRAM headroom is measured against 97887 MiB total on GPU0."
   },
   "attribution": {
     "pre_fix_hotspot": "triton autotune, not the model",
