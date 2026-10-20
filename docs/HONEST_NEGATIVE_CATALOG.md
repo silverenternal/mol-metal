@@ -8872,3 +8872,87 @@ traces to an `events.jsonl` on disk, the two retracted claims trace to
 
 ---
 
+### §6.149 Wf-A106 — the four duplicate wrappers were deleted, not relabelled (2026-10-20)
+
+§6.148 stopped four loss weights from lying: it moved their tensors out of `_LAST_LOSS_TERMS` and
+rewrote their help text to say "DIAGNOSTIC ONLY". That was the smaller half. The knobs themselves
+were the defect, and they are now gone.
+
+**Decision, and why it is safe.** The four wrappers were strict duplicates of inline paths already
+in the loss sum:
+
+| wrapper | inline sibling that is actually summed | removed with it |
+|---|---|---|
+| `ConsistencyTerm` | `--consistency-weight` → `consistency_term` | `--consistency-term-weight` |
+| `SO3Term` | `--so3-average-weight` → `so3_term` | `--so3-term-weight` |
+| `EDMTerm` | `--edm-preconditioning` → `edm_term` | `--edm-term-weight` |
+| `ShortcutDistillLoss` | `--shortcut-distill` → `shortcut_distill_loss` | `--shortcut-distill-term-weight`, `--shortcut-distill-perturb-sigma` |
+
+No capability is lost: every one of those objectives is still reachable through its inline flag.
+What is lost is a second, unsummed copy of each formula — the thing Wf-A102 and Wf-A103 spent two
+waves calibrating.
+
+**MEASURED — what deleting them changes.** Same command, 2 epochs, seed 0, 32 clouds, cuda:0, the
+pre-change trainer taken from `git show HEAD:…` and run side by side:
+
+| | epoch 0 | epoch 1 |
+|---|---|---|
+| before (wrappers present, defaults 0.05/0.05) | 5.4288 / bond_ce 1.1657 / grad 80.749 | 3.4511 |
+| after (wrappers deleted) | 5.0606 / bond_ce 1.1691 / grad 48.909 | 6.0958 |
+
+The "after" epoch 0 is **bit-identical to the pre-change `--consistency-term-weight 0
+--edm-term-weight 0` arm**. So the old default was not a baseline: it was the baseline plus a
+random-number stream that no objective consumed. Epoch 1 diverges further (3.45 vs 6.10) because the
+two runs are on different trajectories from step 1. **This is a real behaviour change and it is the
+point** — every run before this wave was steered by randomness spent on a term worth zero.
+
+**MEASURED — it does not save wall time on this cohort.** Steady-state epoch (epoch 1, where cohort
+construction is not included): **1.0 s before, 1.1 s after**. Two extra velocity-field forwards per
+step are cheap relative to everything else at 32 clouds and a 32-dim model. The reason to delete is
+correctness and maintenance, not speed; a PROJECTED saving on a full-corpus run is not claimed here
+because it was not measured.
+
+**What was retired with them.**
+* `_LAST_DIAGNOSTIC_TERMS` (an empty second dict would be a tombstone, not a fix).
+* `molmetal/scripts/wfa103_shortcut_sigma_sweep.py` and its test. The artefact
+  `metrics/by_metric/wfa103_shortcut_sigma_sweep.json` is **retained as the measurement of record**
+  for a quantity that no longer exists in the trainer; it is now a frozen historical artefact, not a
+  live pipeline output, because its knob was removed.
+* The four `*_class_term` entries in the liveness guard's tables, and `DIAGNOSTIC_TERMS`.
+
+**What was kept.**
+* `_LAST_LOSS_AUDIT` (`total` vs `sum_recorded`) — the invariant that caught the defect.
+* `fm_ode_class_term` / `energy_class_term` / `sboo3_class_term` and their three flags: these have
+  no inline sibling, so they are the only way to enable those objectives. A test asserts they are
+  still in the sum, so the same defect cannot silently migrate to them.
+* `ShortcutDistillLoss`, `ConsistencyTerm`, `SO3Term`, `EDMTerm` in `molmetal.loss` — the classes
+  are the reference implementations and are still tested; only the trainer's second call site is gone.
+
+**A third stale test fell out of the same sweep.** `test_wf_c6_diversity_smoke`'s in-process probe
+reused a fixed out-dir and did not pass `--resume-from none`, so on any machine where the probe had
+run before, the trainer printed `resume target is already complete (epoch=1 >= args.epochs=1);
+nothing to train`, left `_LAST_LOSS_TERMS` empty, and the test reported "diversity_term not
+captured". The probe also inherited the full 192-cloud validation set under a 120 s budget
+(MEASURED ~290 s), and returned a bare `None` on every failure path. Now hermetic
+(`--resume-from none`, own `--ckpt-dir`), sized to its purpose (16/8 clouds), and it says which of
+the four ways it failed. MEASURED after repair: `diversity_term = 0.0161`, test passes.
+
+**Honest limits.**
+* **The RNG change is not reversible without re-adding dead code.** Any comparison against a
+  checkpoint trained before this wave is confounded by it, and that includes the A/B table above —
+  the two rows differ in trajectory, not only in objective.
+* **Two forward passes per step were removed but not costed on a real run.** On the toy cohort the
+  cost was within noise; the full-corpus figure is unmeasured.
+* **The classes remain untested by any training path.** With the trainer's call site gone, only unit
+  tests exercise `ConsistencyTerm` / `SO3Term` / `EDMTerm` / `ShortcutDistillLoss`. If they are
+  meant to be used, they need a real consumer; if not, they are dead code kept for reference.
+
+**§6.149 catalog-count math.** Net catalog-count delta: **+1** (§6.149 itself). ACTIVE count
+delta: **+1**. Cumulative catalog count: **201 -> 202** (+1). ACTIVE count: **157 -> 158** (+1).
+
+**Workflow** | Wf-A106 (2026-10-20; 0 GPU-hours of training — 2 one/two-epoch 32-cloud A/B probes on
+cuda:0 + 1 pre-change trainer run from `git show HEAD:`; 66 tests green across 10 files; §5.2: every
+number above is a probe stdout value; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
+

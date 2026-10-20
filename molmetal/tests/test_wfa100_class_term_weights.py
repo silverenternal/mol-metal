@@ -28,18 +28,42 @@ import pytest
 REPO = Path(__file__).resolve().parents[2]
 TRAINER = REPO / "molmetal" / "scripts" / "train_cfm_yuelbond_wasserstein.py"
 
-#: flag dest -> (documented default, train_one_epoch parameter name)
+#: flag dest -> documented default.
+#:
+#: Wf-A100 declared seven.  Wf-A105 measured that FOUR of them (consistency,
+#: so3, edm, shortcut) controlled tensors that were never summed into the loss,
+#: and Wf-A106 deleted those wrappers and their flags outright — see
+#: HONEST_NEGATIVE_CATALOG.md §6.149.  The three below are the ones with no
+#: inline sibling, i.e. the only weights that actually move an objective.
 WEIGHTS = {
-    "consistency_term_weight": 0.05,
-    "so3_term_weight": 0.0,
-    "edm_term_weight": 0.05,
-    # Wf-A102 moved this one 0.05 -> 0.0: it was inert at 0.05, so the move
-    # changes no run and stops the weight claiming to be ON.
-    "shortcut_distill_term_weight": 0.0,
     "fm_ode_term_weight": 0.05,
     "energy_conservation_weight": 0.05,
     "sboo3_term_weight": 0.05,
 }
+
+#: The four Wf-A106 removed.  Kept as a negative list so a re-introduction is
+#: caught here rather than in a training run.
+REMOVED = (
+    "consistency_term_weight",
+    "so3_term_weight",
+    "edm_term_weight",
+    "shortcut_distill_term_weight",
+    "shortcut_distill_perturb_sigma",
+)
+
+
+def test_the_four_duplicate_weights_are_gone():
+    """Wf-A106 — deleting a knob must not silently bring back a duplicate.
+
+    If one of these reappears, it needs a live inline consumer or it is the
+    same defect again: a flag that reads ON and trains nothing.
+    """
+    args = _parse()
+    for dest in REMOVED:
+        assert not hasattr(args, dest), (
+            f"{dest} is back. It has no objective to weight unless the "
+            "wrapper was also re-added AND summed into loss; see §6.149."
+        )
 
 
 def _parse(argv_extra=()):
@@ -98,10 +122,10 @@ def test_a_non_default_value_round_trips_through_the_yaml():
     cfg = Path(tempfile.mkdtemp()) / "wfa100.yaml"
     cfg.write_text(
         "train:\n"
-        "  so3_term_weight: 0.02\n"
-        "  shortcut_distill_term_weight: 0.0\n",
+        "  fm_ode_term_weight: 0.02\n"
+        "  sboo3_term_weight: 0.0\n",
         encoding="utf-8",
     )
     args = _parse(["--config", str(cfg)])
-    assert float(args.so3_term_weight) == pytest.approx(0.02)
-    assert float(args.shortcut_distill_term_weight) == 0.0
+    assert float(args.fm_ode_term_weight) == pytest.approx(0.02)
+    assert float(args.sboo3_term_weight) == 0.0

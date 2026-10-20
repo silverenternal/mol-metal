@@ -117,8 +117,9 @@ ALL_TERMS = frozenset(
         "clash_penalty_term",
         # Wf-A23 class wrappers that Wf-A34-1 KEPT in the sum — these three
         # have no inline duplicate.  The other four (consistency/so3/edm/
-        # shortcut) are NOT here: Wf-A105 measured that they never reach the
-        # objective at all.  See DIAGNOSTIC_TERMS.
+        # shortcut) are not here because they do not exist any more: Wf-A105
+        # measured that they never reached the objective, and Wf-A106 deleted
+        # the wrappers and their flags (HONEST_NEGATIVE_CATALOG §6.149).
         "fm_ode_class_term",
         "energy_class_term",
         "sboo3_class_term",
@@ -126,26 +127,6 @@ ALL_TERMS = frozenset(
         # from the side-channel, so this guard could not see them.
         "bond_aux_mse_term",
         "ring_prior_term",
-    }
-)
-
-#: Wf-A105 — computed every step, recorded, gradient-carrying, and NOT part of
-#: the objective.  Wf-A34-1 dropped these four duplicate class wrappers from
-#: the sum (their inline siblings are already there) but kept computing them
-#: and kept listing them in `_LAST_LOSS_TERMS`, whose contract says "the exact
-#: tensor that entered loss".  That was false for all four.
-#:
-#: MEASURED: --consistency-term-weight 1e-9 and 500 give a bit-identical epoch
-#: (train_loss 5.4288, bond_ce 1.1657, grad_norm 80.749).  A 5e11x weight
-#: change that moves the loss by zero is not in the objective.  The flag's only
-#: effect is the extra forward and the torch.randn_like it consumes, which
-#: shifts the RNG stream (weight 0.0 -> train_loss 5.0606).
-DIAGNOSTIC_TERMS = frozenset(
-    {
-        "consistency_class_term",
-        "so3_class_term",
-        "edm_class_term",
-        "shortcut_distill_class_term",
     }
 )
 
@@ -275,9 +256,9 @@ ALLOWED_DEAD: dict = {
         "the toy cohort (no clashing pairs in 32 clouds)."
     ),
     # Wf-A105 — "so3_class_term" and "shortcut_distill_class_term" used to
-    # live here.  They are not in the loss sum at all (Wf-A34-1 removed them),
-    # so declaring them dead in a table about the objective was the wrong
-    # table.  They are now in DIAGNOSTIC_TERMS.
+    # live here.  They were not in the loss sum at all (Wf-A34-1 removed
+    # them), so declaring them dead in a table about the objective was the
+    # wrong table.  Wf-A106 deleted them outright (§6.149).
     "bond_aux_mse_term": (
         "OFF at flow.bond_aux_mse_weight 0.0 (default; Wf-A68 opt-in). The "
         "smoke does not set it, so this is an exact torch.zeros(()). Wf-A105 "
@@ -359,10 +340,6 @@ out = {{k: {{"requires_grad": bool(v.requires_grad),
             "value": float(v.detach())}}
        for k, v in m._LAST_LOSS_TERMS.items()}}
 print("LOSS_TERMS_JSON=" + json.dumps(out))
-diag = {{k: {{"requires_grad": bool(v.requires_grad),
-             "value": float(v.detach())}}
-        for k, v in m._LAST_DIAGNOSTIC_TERMS.items()}}
-print("DIAG_TERMS_JSON=" + json.dumps(diag))
 print("AUDIT_JSON=" + json.dumps(m._LAST_LOSS_AUDIT))
 """
 
@@ -372,10 +349,7 @@ print("AUDIT_JSON=" + json.dumps(m._LAST_LOSS_AUDIT))
 #: paying it twice for the same measurement would be pure waste.
 _MEASURED_CACHE: dict = {}
 
-#: Wf-A105 — the terms that are computed but NOT in the objective, and the
-#: audit pair proving the dict above is complete.  Separate caches because
-#: they answer different questions and must not be conflated again.
-_DIAG_CACHE: dict = {}
+#: Wf-A105 — the audit pair proving the dict above is complete and exact.
 _AUDIT_CACHE: dict = {}
 
 
@@ -421,7 +395,6 @@ def _measure_terms_uncached(tmp_path: Path) -> dict:
     )
     markers = {
         "LOSS_TERMS_JSON=": _MEASURED_CACHE,
-        "DIAG_TERMS_JSON=": _DIAG_CACHE,
         "AUDIT_JSON=": _AUDIT_CACHE,
     }
     for line in reversed(proc.stdout.splitlines()):
@@ -488,28 +461,6 @@ def test_loss_terms_carry_gradients(tmp_path: Path) -> None:
     )
 
 
-def test_diagnostic_terms_are_not_in_the_objective(tmp_path: Path) -> None:
-    """Wf-A105 — the split must hold at runtime, not just in this file.
-
-    A term in DIAGNOSTIC_TERMS is computed and recorded, but it must NOT
-    appear in _LAST_LOSS_TERMS, whose contract is "the exact tensor that
-    entered loss".
-    """
-    loss_terms = _measure_terms(tmp_path)
-    assert _DIAG_CACHE, "the trainer did not emit DIAG_TERMS_JSON"
-    assert set(_DIAG_CACHE) == set(DIAGNOSTIC_TERMS), (
-        "DIAGNOSTIC_TERMS has drifted from the trainer: "
-        f"declared-not-in-loss={sorted(set(DIAGNOSTIC_TERMS) - set(_DIAG_CACHE))}, "
-        f"measured-not-in-loss={sorted(set(_DIAG_CACHE) - set(DIAGNOSTIC_TERMS))}"
-    )
-    leaked = sorted(set(_DIAG_CACHE) & set(loss_terms))
-    assert not leaked, (
-        f"{leaked} are declared as NOT entering the objective but are present "
-        "in _LAST_LOSS_TERMS. Either they were added back to the sum (then "
-        "move them to EXPECTED_LIVE) or the side-channel is lying again."
-    )
-
-
 def test_the_side_channel_is_complete_and_exact(tmp_path: Path) -> None:
     """Wf-A105 — `loss` must equal the sum of the recorded tensors.
 
@@ -529,21 +480,3 @@ def test_the_side_channel_is_complete_and_exact(tmp_path: Path) -> None:
         "objective without being recorded, or a recorded term does not "
         "enter it. Both are the defect this file exists to catch."
     )
-
-
-def test_diagnostic_terms_are_still_computed(tmp_path: Path) -> None:
-    """The four are NOT deleted — they are still measured, just not summed.
-
-    Keeping them computed is what preserves bit-exactness for every existing
-    run (they consume the RNG stream).  If someone deletes them, runs change
-    and this test should say so loudly.
-    """
-    _measure_terms(tmp_path)
-    for name in ("consistency_class_term", "edm_class_term"):
-        assert name in _DIAG_CACHE, f"{name} is no longer computed"
-        assert _DIAG_CACHE[name]["requires_grad"], (
-            f"{name} is computed but carries no gradient — it was live at "
-            "Wf-A105 and its liveness is what made it look like an objective "
-            "term in the first place."
-        )
-

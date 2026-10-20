@@ -115,6 +115,13 @@ class C6DiversitySmoke(unittest.TestCase):
             "import sys as _s\n"
             "_s.argv = ['trainer', "
             "'--epochs', '1', '--batch-size', '4', "
+            # Wf-A106 — this probe reads _LAST_LOSS_TERMS after ONE step; it
+            # does not need the full cohort.  Without these two it inherited
+            # the default 192-cloud validation set, MEASURED ~290 s, against
+            # the 120 s timeout below — so the probe raised TimeoutExpired and
+            # the test reported "diversity_term not captured".  A budget that
+            # is smaller than the work is a test that fails on machine load.
+            "'--n-train', '16', '--n-val', '8', "
             "'--hidden-dim', '32', '--n-layers', '2', "
             "'--use-egnn-velocity', "
             "'--top-p', '0.9', '--top-k', '50', '--temperature', '0.8', "
@@ -122,7 +129,15 @@ class C6DiversitySmoke(unittest.TestCase):
             "'--scaffold-conditioning', "
             "'--device', 'cpu', '--early-stop-patience', '999', "
             "'--tmqm-dir', '.data/molmetal/tmQM', "
-            f"'--out-dir', {out_dir + '_probe'!r}]\n"
+            # Wf-A106 — the probe was NOT hermetic.  It reused a fixed out-dir,
+            # so the trainer found the checkpoint a previous run had left
+            # there, printed "resume target is already complete (epoch=1 >=
+            # args.epochs=1); nothing to train", and returned with
+            # _LAST_LOSS_TERMS EMPTY.  The test then reported
+            # "diversity_term not captured" — a passing probe that never ran.
+            "'--resume-from', 'none', "
+            f"'--out-dir', {out_dir + '_probe'!r}, "
+            f"'--ckpt-dir', {out_dir + '_probe_ck'!r}]\n"
             "t.main()\n"
             "terms = {k: (float(v) if hasattr(v, 'item') else None) "
             "         for k, v in t._LAST_LOSS_TERMS.items()}\n"
@@ -136,7 +151,7 @@ class C6DiversitySmoke(unittest.TestCase):
             cwd=str(REPO),
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=300,
         )
         if proc.returncode != 0:
             print(f"[_read_diversity_term] probe rc={proc.returncode} stderr={proc.stderr[-500:]}")
@@ -148,9 +163,23 @@ class C6DiversitySmoke(unittest.TestCase):
                 try:
                     obj = json.loads(line)
                     v = obj.get("diversity_term")
+                    if v is None:
+                        # Wf-A106 — the probe DID emit a line, but the term was
+                        # missing/None inside it.  Say so instead of returning a
+                        # bare None that reads like "the probe never ran".
+                        print(
+                            f"[_read_diversity_term] parsed line has no "
+                            f"diversity_term: {obj!r}"
+                        )
                     return float(v) if v is not None else None
                 except Exception:
                     continue
+        # Wf-A106 — a bare None is undiagnosable.  This probe failed with
+        # "diversity_term not captured" and nothing else, twice.
+        print(
+            f"[_read_diversity_term] rc={proc.returncode} no JSON line; "
+            f"stdout tail={proc.stdout[-400:]!r} stderr tail={proc.stderr[-400:]!r}"
+        )
         return None
 
 

@@ -270,21 +270,6 @@ _EVENT_LOG_PATH: Optional[Path] = None
 #: it during training, so it costs one dict store per batch.
 _LAST_LOSS_TERMS: Dict[str, "torch.Tensor"] = {}
 
-#: Wf-A105 (2026-10-20) — terms that are COMPUTED but do NOT enter `loss`.
-#:
-#: Wf-A34-1 removed four duplicate class wrappers from the sum (their inline
-#: siblings `consistency_term` / `so3_term` / `edm_term` /
-#: `shortcut_distill_loss` are already there).  They kept being computed and
-#: were still listed in `_LAST_LOSS_TERMS`, whose stated contract is "the exact
-#: tensor that entered `loss` above" — which was false for all four.
-#:
-#: MEASURED: the epoch loss is bit-identical at `--consistency-term-weight 1e-9`
-#: and at `500` (train_loss 5.4288, bond_ce 1.1657, grad_norm 80.749).  A
-#: 5e11x weight change that moves the loss by zero cannot be in the objective.
-#: The flag's only real effect is the extra forward and the `torch.randn_like`
-#: it consumes, which shifts the global RNG stream (weight 0.0 -> 5.0606).
-_LAST_DIAGNOSTIC_TERMS: Dict[str, "torch.Tensor"] = {}
-
 #: Wf-A105 — the audit pair that makes `_LAST_LOSS_TERMS` provably complete and
 #: exact.  `total` is `float(loss)`; `sum_recorded` is the sum of every tensor
 #: in `_LAST_LOSS_TERMS`.  If they disagree, either a term entered the objective
@@ -3757,18 +3742,6 @@ def train_one_epoch(
     wasserstein_pocket_weight: float = 0.0,  # 0.0 = no per-pocket W₂ (OFF; bit-exact pre-A34)
     wasserstein_pocket_n_mc: int = 64,      # Monte-Carlo samples for the per-pocket W₂
     pocket_dist: Optional[torch.Tensor] = None,  # per-pocket W₂ distribution; None = disable
-    consistency_term_weight: float = 0.05,  # Wf-A43 C — default ON; 0.0 = ConsistencyTerm off (bit-exact pre-Wf-A23)
-    so3_term_weight: float = 0.0,  # 0.0 = SO3Term off (bit-exact pre-Wf-A23)
-    edm_term_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = EDMTerm off)
-    # Wf-A102 (2026-10-20) — default moved 0.05 -> 0.0.  The term was
-    # exactly zero at 0.05 (x_prime was never passed), so this changes
-    # NO run: it only stops the weight claiming to be ON.
-    shortcut_distill_term_weight: float = 0.0,  # 0.0 = OFF (was 0.05 = inert); >0 builds the second view
-    # Wf-A103 — scale of the input perturbation used to build the second
-    # view.  0.01 A was an uncalibrated constant; it is now a YAML key so the
-    # measured sweep (metrics/by_metric/wfa103_shortcut_sigma_sweep.json) can
-    # move it without a code change.  Default unchanged => bit-exact.
-    shortcut_distill_perturb_sigma: float = 0.01,
     fm_ode_term_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = FmOdeTerm off)
     energy_conservation_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = EnergyConservation off)
     sboo3_term_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = SBOO3Term off)
@@ -5526,117 +5499,25 @@ def train_one_epoch(
         else:
             wasserstein_pocket_term = torch.zeros((), device=device)
 
-        # Wf-A23 (2026-10-13) — 7 NEW class-wrapper loss terms.  Each is a
-        # second call site alongside the inline path the trainer already
-        # uses.  The default ``*_term_weight=0.0`` ⇒ each class returns
-        # ``torch.zeros(())`` ⇒ the loss sum is bit-exact identical to
-        # pre-Wf-A23 when no NEW flag is set.  These close the L8 DEAD
-        # count without disturbing the shipped path.  Inline modules
-        # (`_cr`, `_so3`, `_edm`, `_sd`) are NOT touched — bit-exact
-        # invariant from Wf-A14/A17/A20/A22.
+        # Wf-A23 (2026-10-13) — class-wrapper loss terms.
         #
-        # Term 1 — ConsistencyTerm class wrapper (step 2).  Class exists
-        # in ``molmetal.loss.regularization_losses.ConsistencyTerm``; it
-        # delegates to the same `_cr.consistency_loss_fn` inline path.  At
-        # weight 0.0 the class short-circuits to ``torch.zeros(())``.
-        consistency_class_term = ConsistencyTerm(
-            weight=float(consistency_term_weight),
-            enabled=float(consistency_term_weight) > 0.0,
-        ).compute(
-            pred_fn=(lambda x: model.fm_velocity(
-                x, t, z_all, cloud_sizes=_cloud_sizes,
-                pocket_embed=_pocket_embed,
-            )) if (fm_objective and x_t is not None) else None,
-            x_t=x_t,
-            device=device,
-        )
-        # Term 2 — SO3Term class wrapper (step 3).  Class delegates to the
-        # same `_so3.so3_average_loss` inline path.
-        so3_class_term = SO3Term(
-            weight=float(so3_term_weight),
-            enabled=float(so3_term_weight) > 0.0,
-        ).compute(
-            pred_fn=(lambda x: model.fm_velocity(
-                x, t, z_all, cloud_sizes=_cloud_sizes,
-                pocket_embed=_pocket_embed,
-            )) if (fm_objective and x_t is not None and t is not None) else None,
-            x_t=x_t,
-            target=target_dx,
-            n_rotations=int(so3_averaged_fm_k),
-            device=device,
-        )
-        # Term 3 — EDMTerm class wrapper (step 4).  Class delegates to the
-        # same `_edm.preconditioned_loss` inline path.
-        _edm_sigma = None
-        if fm_objective and x_t is not None:
-            _edm_sigma = torch.full(
-                (int(x_t.shape[0]),),
-                float(edm_sigma_data),
-                dtype=torch.float32,
-                device=device,
-            )
-        edm_class_term = EDMTerm(
-            weight=float(edm_term_weight),
-            enabled=float(edm_term_weight) > 0.0,
-        ).compute(
-            pred_raw=(
-                model.fm_velocity(
-                    x_t, t, z_all, cloud_sizes=_cloud_sizes,
-                    pocket_embed=_pocket_embed,
-                )
-                if (fm_objective and x_t is not None)
-                else None
-            ),
-            x_t=x_t,
-            target_dx=target_dx,
-            sigma=_edm_sigma,
-            device=device,
-        )
-        # Term 4 — ShortcutDistillLoss class wrapper (step 5).  Class
-        # delegates to the KL or self-consistency branch.  Default weight
-        # 0.0 ⇒ ``torch.zeros(())`` (bit-exact pre-Wf-A23).
+        # Wf-A105/A106 (2026-10-20) — the FOUR wrappers that used to sit
+        # here (ConsistencyTerm, SO3Term, EDMTerm, ShortcutDistillLoss)
+        # were REMOVED, together with their --*-term-weight flags.  They
+        # were strict duplicates of the inline paths already in the loss
+        # sum (--consistency-weight / --so3-average-weight /
+        # --edm-preconditioning / --shortcut-distill), so Wf-A34-1 had
+        # taken them out of the objective; they kept being computed,
+        # recorded, given a flag each, and thrown away.  MEASURED: their
+        # weight changed the epoch loss by exactly zero (1e-9 vs 500 were
+        # bit-identical) while costing two extra velocity-field forwards
+        # per step at the shipped defaults.  Keeping a second copy of a
+        # formula is how Wf-A102 and Wf-A103 ended up calibrating a
+        # quantity that never reached the loss.  See §6.149.
         #
-        # Wf-A102 (2026-10-20) — this term could NEVER be non-zero.  Its
-        # self-consistency branch needs the SECOND view (``x_prime``), and
-        # the trainer passed ``x_prime=None`` unconditionally, so ``compute``
-        # short-circuited to ``torch.zeros(())`` at every weight — MEASURED
-        # 0.0 with requires_grad=False at the shipped 0.05 while the old
-        # ``shortcut_distill_loss`` read 1.897 and live in the same batch.
-        # The second view is now built (a second forward on a 0.01 Å
-        # perturbed input) but ONLY when the weight is > 0, so the shipped
-        # default costs nothing and every existing run stays bit-exact.
-        _sd_second_view = None
-        if (
-            float(shortcut_distill_term_weight) > 0.0
-            and fm_objective
-            and x_t is not None
-        ):
-            _sd_second_view = model.fm_velocity(
-                x_t + float(shortcut_distill_perturb_sigma) * torch.randn_like(x_t),
-                t,
-                z_all,
-                cloud_sizes=_cloud_sizes,
-                pocket_embed=_pocket_embed,
-            )
-        shortcut_distill_class_term = ShortcutDistillLoss(
-            weight=float(shortcut_distill_term_weight),
-            enabled=float(shortcut_distill_term_weight) > 0.0,
-        ).compute(
-            student_logits=(
-                model.fm_velocity(
-                    x_t, t, z_all, cloud_sizes=_cloud_sizes,
-                    pocket_embed=_pocket_embed,
-                )
-                if (fm_objective and x_t is not None)
-                else None
-            ),
-            teacher_logits=None,  # class path uses self-consistency; teacher
-            # path remains on the inline ``_sd.shortcut_distillation_loss``
-            # block, untouched.
-            x_prime=_sd_second_view,
-            device=device,
-        )
-        # Term 5 — FmOdeTerm NEW (step 6).  RK4 ODE closure penalty.
+        # The three below are NOT duplicates — they have no inline
+        # sibling and are the only way to enable those objectives.
+        # Term 2 — FmOdeTerm (step 6).  RK4 ODE closure penalty.
         fm_ode_class_term = FmOdeTerm(
             weight=float(fm_ode_term_weight),
             enabled=float(fm_ode_term_weight) > 0.0,
@@ -5650,7 +5531,7 @@ def train_one_epoch(
             n_steps=4,
             device=device,
         )
-        # Term 6 — EnergyConservation NEW (step 7).  KE+PE drift penalty.
+        # Term 3 — EnergyConservation (step 7).  KE+PE drift penalty.
         energy_class_term = EnergyConservation(
             weight=float(energy_conservation_weight),
             enabled=float(energy_conservation_weight) > 0.0,
@@ -5662,7 +5543,7 @@ def train_one_epoch(
             x_t=x_t,
             device=device,
         )
-        # Term 7 — SBOO3Term NEW (step 8).  SBO × O(3) joint variance.
+        # Term 4 — SBOO3Term (step 8).  SBO × O(3) joint variance.
         sboo3_class_term = SBOO3Term(
             weight=float(sboo3_term_weight),
             enabled=float(sboo3_term_weight) > 0.0,
@@ -5854,18 +5735,6 @@ def train_one_epoch(
                 # backward graph is local to the cloud loop, identical
                 # to the assemble_term / entropy_term convention.
                 "clash_penalty_term": clash_penalty_term,
-            }
-        )
-        # Wf-A105 — the four class wrappers Wf-A34-1 removed from the sum.
-        # They are still computed (so no run's RNG stream moves) but they are
-        # NOT objective terms, and saying so is the point of the split.
-        _LAST_DIAGNOSTIC_TERMS.clear()
-        _LAST_DIAGNOSTIC_TERMS.update(
-            {
-                "consistency_class_term": consistency_class_term,
-                "so3_class_term": so3_class_term,
-                "edm_class_term": edm_class_term,
-                "shortcut_distill_class_term": shortcut_distill_class_term,
             }
         )
         # Wf-406-A2 — TODO-21 Lambda × CFM reward-weighting wiring
@@ -10444,86 +10313,18 @@ def parse_args() -> argparse.Namespace:
             "of the 12-term sum, matching the BLK-C5 floor."
         ),
     )
-    # Wf-A100 (2026-10-20) — the seven Wf-A23/A44 class-term weights were
+    # Wf-A100 (2026-10-20) — the Wf-A23/A44 class-term weights were
     # PARAMETERS of train_one_epoch with no argparse dest and no call-site
-    # kwarg, so their values came from the function defaults and could not be
-    # read, tuned, or turned off from a YAML config (AGENTS.md §5.11).  Six of
-    # the seven default to 0.05, i.e. they were ON and shaping every run's
-    # objective while being invisible to the config surface.  A comment at the
-    # class-term wire-in even claimed "opt-in via --fm-ode-term-weight /
-    # --energy-conservation-weight / --sboo3-term-weight"; those flags did not
-    # exist.  Declaring them changes NO default, so every existing run stays
-    # bit-exact — it only makes the knobs real.
-    p.add_argument(
-        "--consistency-term-weight",
-        type=float,
-        default=0.05,
-        help=(
-            "Wf-A105: DIAGNOSTIC ONLY - this tensor is NOT added to the loss. "
-            "Wf-A34-1 removed this duplicate class wrapper from the objective "
-            "(the inline --consistency-weight path is what trains). MEASURED: "
-            "1e-9 and 500 give a bit-identical epoch (train_loss 5.4288, "
-            "bond_ce 1.1657), so the value cannot be in the objective; the "
-            "only effect of >0 is an extra forward plus the torch.randn_like "
-            "it consumes, which shifts the RNG stream (0.0 -> 5.0606). "
-            "Recorded in _LAST_DIAGNOSTIC_TERMS, not _LAST_LOSS_TERMS."
-        ),
-    )
-    p.add_argument(
-        "--so3-term-weight",
-        type=float,
-        default=0.0,
-        help=(
-            "Wf-A105: DIAGNOSTIC ONLY - this tensor is NOT added to the loss. "
-            "Wf-A34-1 removed this duplicate class wrapper from the objective "
-            "(the inline --so3-average-weight path is what trains). Default "
-            "0.0 = OFF; setting it > 0 perturbs the RNG stream and nothing "
-            "else. Recorded in _LAST_DIAGNOSTIC_TERMS."
-        ),
-    )
-    p.add_argument(
-        "--edm-term-weight",
-        type=float,
-        default=0.05,
-        help=(
-            "Wf-A105: DIAGNOSTIC ONLY - this tensor is NOT added to the loss. "
-            "Wf-A34-1 removed this duplicate class wrapper from the objective "
-            "(the inline --edm-preconditioning path is what trains). The 0.05 "
-            "default costs one extra forward per step and shifts the RNG "
-            "stream; it adds nothing to the objective. Recorded in "
-            "_LAST_DIAGNOSTIC_TERMS."
-        ),
-    )
-    p.add_argument(
-        "--shortcut-distill-term-weight",
-        type=float,
-        default=0.0,
-        help=(
-            "Wf-A105: DIAGNOSTIC ONLY - this tensor is NOT added to the loss. "
-            "Wf-A34-1 removed this duplicate class wrapper from the "
-            "objective (the inline --shortcut-distill path is what trains). "
-            "Wf-A102 built the missing second view and Wf-A103 calibrated its "
-            "sigma, but Wf-A105 then MEASURED that the result never reaches "
-            "the loss: 1e-9 and 500 give a bit-identical epoch. Above 0 the "
-            "trainer does one extra forward on a perturbed input, which "
-            "shifts the RNG stream and costs time; it adds nothing to the "
-            "objective. Recorded in _LAST_DIAGNOSTIC_TERMS."
-        ),
-    )
-    p.add_argument(
-        "--shortcut-distill-perturb-sigma",
-        type=float,
-        default=0.01,
-        help=(
-            "Wf-A103: standard deviation (Angstrom) of the input perturbation "
-            "used to build the ShortcutDistillLoss DIAGNOSTIC view (not in "
-            "the loss; see --shortcut-distill-term-weight). Only used when "
-            "that weight > 0. 0.01 was an uncalibrated "
-            "constant; the sweep in metrics/by_metric/"
-            "wfa103_shortcut_sigma_sweep.json measures how the term grows "
-            "with it. Default unchanged => bit-exact."
-        ),
-    )
+    # kwarg, so their values came from the function defaults and could not
+    # be read, tuned, or turned off from a YAML config (AGENTS.md §5.11).
+    #
+    # Wf-A106 (2026-10-20) — FOUR of them are gone, not declared: the
+    # consistency / so3 / edm / shortcut wrappers were strict duplicates
+    # of inline paths already in the loss sum, so Wf-A34-1 had removed
+    # them from the objective.  Wf-A100 declared flags for them anyway and
+    # Wf-A105 measured that those flags changed the loss by exactly zero.
+    # Their knobs, their wrappers and their two extra forwards per step
+    # are removed.  The three below have no inline sibling and stay.
     p.add_argument(
         "--fm-ode-term-weight",
         type=float,
@@ -14051,21 +13852,12 @@ def main() -> int:
             stable_vm=bool(getattr(args, "stable_vm", False)),
             shortcut_distill=bool(getattr(args, "shortcut_distill", False)),
             consistency_weight=float(getattr(args, "consistency_weight", 0.0)),
-            # Wf-A100 — the 7 Wf-A23/A44 class-term weights.  Defaults are the
+            # Wf-A100 — the class-term weights.  Defaults are the
             # train_one_epoch defaults verbatim, so a caller that does not set
             # them behaves exactly as before; the flags only make them
             # reachable from YAML (§5.11).
-            consistency_term_weight=float(
-                getattr(args, "consistency_term_weight", 0.05)
-            ),
-            so3_term_weight=float(getattr(args, "so3_term_weight", 0.0)),
-            edm_term_weight=float(getattr(args, "edm_term_weight", 0.05)),
-            shortcut_distill_term_weight=float(
-                getattr(args, "shortcut_distill_term_weight", 0.0)
-            ),
-            shortcut_distill_perturb_sigma=float(
-                getattr(args, "shortcut_distill_perturb_sigma", 0.01)
-            ),
+            # Wf-A106 — the four duplicate wrappers' weights are gone with
+            # the wrappers; the three below are the only ones left.
             fm_ode_term_weight=float(
                 getattr(args, "fm_ode_term_weight", 0.05)
             ),
