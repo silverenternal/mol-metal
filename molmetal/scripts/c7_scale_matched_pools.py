@@ -44,7 +44,7 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -285,6 +285,46 @@ def per_epoch_stats(
     return buckets
 
 
+def dedupe_pools(
+    pools: Sequence[Dict[str, object]],
+) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
+    """Drop pools whose molecules are byte-identical to one already kept.
+
+    Two directories holding the same molecules are ONE pool, not two.
+
+    MEASURED 2026-10-21: a second session preserved the crashed full-corpus
+    run's pool under ``cfm_c7_fullgen_ep4_partial_2026_10_20`` while
+    ``cfm_c7_fullgen_2026_10_20`` still existed.  Identical file, identical
+    sha256, but the aggregates counted 2,816 molecules twice — the full-corpus
+    tier reported 5,715 scored instead of 2,899 and the generation total 7,974
+    instead of 5,158.
+
+    Keying on content rather than on the directory name also catches a re-run
+    that happens to regenerate the same strings, which a name rule would miss.
+    Pools with no sha256 are kept: an unhashed pool cannot be proven a
+    duplicate, and silently dropping it would be the worse error.
+    """
+    seen: Dict[str, str] = {}
+    kept: List[Dict[str, object]] = []
+    duplicates: List[Dict[str, object]] = []
+    for pool in pools:
+        sha = str(pool.get("sha256") or "")
+        if sha and sha in seen:
+            duplicates.append(
+                {
+                    "label": pool.get("label"),
+                    "same_content_as": seen[sha],
+                    "n_rows": pool.get("n_rows"),
+                    "sha256": sha,
+                }
+            )
+            continue
+        if sha:
+            seen[sha] = str(pool.get("label"))
+        kept.append(pool)
+    return kept, duplicates
+
+
 def verdict_reading(generation: Dict[str, object]) -> str:
     """Build the verdict sentence from the aggregates instead of hard-coding it.
 
@@ -399,6 +439,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         pools.append(report)
 
+    # Two directories holding the same molecules are ONE pool, not two.
+    #
+    # MEASURED 2026-10-21: a second session preserved the crashed full-corpus
+    # run's pool under cfm_c7_fullgen_ep4_partial_2026_10_20 while the original
+    # cfm_c7_fullgen_2026_10_20 still existed.  Identical file, identical
+    # sha256, but the aggregates counted 2,816 molecules twice — the full-corpus
+    # tier reported 5,715 scored instead of 2,899.  Deduplicating on content
+    # (not on name) also catches a re-run that happens to regenerate the same
+    # strings, which a name-based rule would miss.
+    _deduped, _duplicates = dedupe_pools(pools)
+    pools = _deduped
+
     def pooled(rows: List[Dict[str, object]]) -> Dict[str, object]:
         n_scored = sum(int(p.get("n_scored") or 0) for p in rows)
         k_gate = sum(int((p.get("sa_counts_at_or_below") or {}).get(str(SA_GATE), 0)) for p in rows)
@@ -455,20 +507,26 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     payload = {
         "artifact": "c7_scale_matched_pools",
-        "version": "1.1",
+        "version": "1.2",
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "provenance": {
             "script": "molmetal/scripts/c7_scale_matched_pools.py",
             "git_commit": _git_commit(),
             "census": "metrics/by_metric/cfm_run_census.json",
             "scoring": "reuses cfm_sa_yield_audit.pool_report (SA + QED, unscored counted)",
-            "v1_0_correction": (
+            "v1_1_correction": (
                 "v1.0 aggregated by tier alone. The full_corpus cell is entirely "
                 "bond-head reconstruction (wf_cfm_decode_dump_smiles.py) and the "
                 "small cell is 98.8% free generation, so v1.0's 'training scale' "
                 "reading compared two pipelines."
             ),
+            "v1_2_correction": (
+                "pools are deduplicated on file content (sha256), because two "
+                "directories holding the same molecules were counted twice and "
+                "doubled the full-corpus tier."
+            ),
         },
+        "duplicate_pools_dropped": _duplicates,
         "design": {
             "sa_gate": SA_GATE,
             "novelty_gate": NOVELTY_GATE,

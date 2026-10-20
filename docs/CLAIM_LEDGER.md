@@ -14,7 +14,7 @@
 | C4 | 树 + GNN 融合提升跨论文 R² | **SUPPORTED（仅 R²）** | DOI +0.0217 [+0.0044,+0.0377]；融合后 Δ 符号 0.5826→0.5505 | `msrs_fusion_protocols.json:/protocols/doi/arms/stack_foldwise/vs_tree` |
 | C5 | 不确定性区间校准 | **SUPPORTED（有边界）** | DOI 覆盖 0.9004、中位宽 2.0052；同队列多金属仅 0.8096 | `msrs_calibration.json:/protocols/doi/variants/global/coverage` |
 | C6 | 跨金属迁移达到可用水平 | **NOT SUPPORTED**（LOMO）；within-metal 另计 | 可解析 Ru/Ir 0.5974（集成 0.5947）< 0.6；Rh 0.3812 CI 含 0.5；within-metal Ru 0.8271 / Ir 0.8430 | `lomo_resolvability_audit.json:/aggregates/resolvable_only/value`；`lomo_seed_ensemble.json:/aggregates/resolvable_only/auc_of_mean_score` |
-| C7 | 生成物可合成且新颖的金属药物 | **NOT SUPPORTED**（无全语料自由生成池；真生成 SA≤4.5 = 0.69%） | 真生成池最大到 n_train=256：SA 7.47–7.55、SA≤4.5 **0.69% [0.42,1.11]**（n=2,330）；全语料池全是键头重建（SA 5.032 是构造产物）；`gen_validity` 全语料 0.074–0.086 vs 256 样本 0.083–0.292 | `c7_scale_matched_pools.json:/by_pipeline/generation/by_tier/small/rate_sa_le_gate`；`c7_scale_matched_pools.json:/by_pipeline/generation/tiers_missing`；`c7_scale_matched_pools.json:/by_pipeline/generation/gen_validity_mean` |
+| C7 | 生成物可合成且新颖的金属药物 | **NOT SUPPORTED**（全语料真生成池已存在，SA≤4.5 = **0.36%**，低于 256 样本的 0.69%） | 全语料自由生成池 `cfm_c7_fullgen_2026_10_20`（n_train=26,715，4 epoch × 704 = **2,816** 候选）：SA 6.83、QED 0.152、SA≤4.5 **0.36% [0.19,0.65]**（10/2,816）；对照 n_train=256 池 SA≤4.5 **0.69% [0.42,1.11]**（n=2,330）。单片段率 2.84→8.38% 随 epoch 单调上升，SA 不动。`gen_validity`=1.0 是松散原子假象（`sa_scored`=0） | `c7_scale_matched_pools.json:/by_pipeline/generation/by_tier/full_corpus/rate_sa_le_gate`；`.../wilson_ci95`；`.../by_tier/small/rate_sa_le_gate`；`.../tiers_missing`；`molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv` |
 
 ---
 
@@ -80,14 +80,16 @@ vs 0.81，Ir 0.8430（0.8295–0.8597）vs 0.73；最差 seed 仍过线。」
 
 ## C7 — 生成
 
-**能写**：「盘上不存在全语料的自由生成池。全语料 CSV（`cfm_fullcorpus_b64`、
-`cfm_objective_terms`）由 `wf_cfm_decode_dump_smiles.py` 生成，是给定真实 tmQM 几何的
-键头重建，其 SA 5.032 是构造产物。真生成池最大只到 `n_train=256`（n=2,330）：
-SA 7.47–7.55、QED 0.198–0.200、SA≤4.5 **0.69% [0.42,1.11]**。跨规模唯一同管线的
-指标 `gen_validity`：全语料 0.074–0.086、256 样本 0.083–0.292，**没有随规模改善**。」
+**能写**：「全语料的自由生成池现在存在（`cfm_c7_fullgen_2026_10_20`，n_train=26,715，
+4 个 epoch × 704 = 2,816 个候选，SA 6.83、QED 0.152）。它的 SA≤4.5 是 **0.36%
+[0.19,0.65]**（10/2,816），**低于** n_train=256 池的 0.69% [0.42,1.11]（n=2,330）：
+把语料放大到全量**没有**改善可合成性。四个 epoch 内单片段率从 2.84% 单调升到 8.38%
+（合计 4.47%，126/2,816），说明生成器在学连通性，但 SA 不动。」
 
-**不能写**：「生成器做不出可合成的金属配合物」——现有证据只到 1% 规模；
-也**不能**写「全语料 SA≤4.5 可达 33.7%」——那是重建池的数字，v1.0 已撤回。
+**不能写**：「生成器做不出可合成的金属配合物」——现有全语料证据只到 **4/18 个 epoch**
+（OOM 死亡 + 续跑被并行 session 的 SIGTERM 终止），不是收敛值；也**不能**写
+「全语料 SA≤4.5 可达 33.7%」——那是重建池的数字，v1.0 已撤回；也不能用
+`gen_validity=1.0` 当质量证据——该池 `sa_scored`=0，1.0 是松散原子假象。
 `--sa-penalty` 仍然零梯度、无可微代理，机制不存在。对接仍 BLOCKED。
 
 ---

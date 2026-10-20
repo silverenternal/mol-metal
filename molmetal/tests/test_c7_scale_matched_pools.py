@@ -14,6 +14,7 @@ import json
 from molmetal.scripts.c7_scale_matched_pools import (
     FULL_CORPUS_N_TRAIN,
     SMALL_TRAIN_CUTOFF,
+    dedupe_pools,
     generation_validity,
     per_epoch_stats,
     pipeline_of,
@@ -302,3 +303,41 @@ def test_reading_never_contradicts_the_pool_exists_flag():
         reading = verdict_reading(generation)
         assert exists == ("full-corpus free-generation pool exists" in reading)
         assert exists != ("There is no full-corpus free-generation pool" in reading)
+
+
+# --- duplicate pools are one pool --------------------------------------------
+# MEASURED 2026-10-21: a second session copied the crashed full-corpus run's
+# directory to cfm_c7_fullgen_ep4_partial_2026_10_20, and the aggregates counted
+# the same 2,816 molecules twice (full-corpus tier 5,715 instead of 2,899).
+
+
+def test_a_byte_identical_pool_is_dropped_and_reported():
+    pools = [
+        {"label": "a", "sha256": "h1", "n_rows": 10, "n_scored": 10},
+        {"label": "b", "sha256": "h1", "n_rows": 10, "n_scored": 10},
+        {"label": "c", "sha256": "h2", "n_rows": 5, "n_scored": 5},
+    ]
+    kept, dropped = dedupe_pools(pools)
+    assert [p["label"] for p in kept] == ["a", "c"]
+    assert len(dropped) == 1
+    assert dropped[0]["label"] == "b"
+    assert dropped[0]["same_content_as"] == "a"
+
+
+def test_a_pool_without_a_hash_is_kept():
+    # An unhashed pool cannot be proven a duplicate; dropping it would be the
+    # worse error, so it survives and is counted.
+    kept, dropped = dedupe_pools([{"label": "a"}, {"label": "b"}])
+    assert len(kept) == 2
+    assert dropped == []
+
+
+def test_dedupe_does_not_depend_on_directory_names():
+    # Same content under unrelated names is still one pool.
+    kept, _ = dedupe_pools(
+        [
+            {"label": "cfm_c7_fullgen_2026_10_20", "sha256": "x"},
+            {"label": "cfm_c7_fullgen_ep4_partial_2026_10_20", "sha256": "x"},
+        ]
+    )
+    assert len(kept) == 1
