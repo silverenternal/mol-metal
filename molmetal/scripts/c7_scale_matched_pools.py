@@ -199,6 +199,45 @@ def novelty_per_molecule(smiles: Sequence[str], train_path: Path) -> Dict[str, f
     return {k: float(1.0 - s) for k, s in zip(keys, sims)}
 
 
+def per_epoch_stats(
+    rows: Sequence[Dict[str, str]],
+    sa_map: Dict[str, float],
+    nov_map: Dict[str, float],
+) -> Dict[str, Dict[str, object]]:
+    """SA / joint-gate rate per ``epoch`` value, for pools that span epochs.
+
+    ``cfm_pcgrad_*`` wrote 30 epochs into one CSV; pooling them reports a rate
+    for a model that spent most of those epochs unable to emit bonds. The last
+    epoch is the model anyone would ship, so it gets its own row.
+    """
+    buckets: Dict[str, Dict[str, object]] = {}
+    for row in rows:
+        epoch = row.get("epoch")
+        if epoch is None or epoch == "":
+            continue
+        smiles = row.get("smiles", "")
+        sa = sa_map.get(smiles)
+        if sa is None:
+            continue
+        bucket = buckets.setdefault(
+            str(epoch), {"n": 0, "n_sa_le_gate": 0, "n_joint": 0, "sa_sum": 0.0}
+        )
+        bucket["n"] = int(bucket["n"]) + 1
+        bucket["sa_sum"] = float(bucket["sa_sum"]) + float(sa)
+        if sa <= SA_GATE:
+            bucket["n_sa_le_gate"] = int(bucket["n_sa_le_gate"]) + 1
+            nov = nov_map.get(smiles)
+            if nov is not None and nov >= NOVELTY_GATE:
+                bucket["n_joint"] = int(bucket["n_joint"]) + 1
+    for bucket in buckets.values():
+        n_e = int(bucket["n"])
+        bucket["sa_mean"] = round(float(bucket["sa_sum"]) / n_e, 4) if n_e else None
+        bucket["rate_sa_le_gate"] = round(int(bucket["n_sa_le_gate"]) / n_e, 4) if n_e else None
+        bucket["wilson_ci95"] = wilson(int(bucket["n_sa_le_gate"]), n_e)
+        bucket.pop("sa_sum", None)
+    return buckets
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reports", type=Path, default=PROJECT_ROOT / "molmetal" / "reports")
@@ -238,7 +277,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         import csv as _csv
 
         with path.open(newline="") as handle:
-            texts = [r.get("smiles", "") for r in _csv.DictReader(handle)]
+            rows = list(_csv.DictReader(handle))
+        texts = [r.get("smiles", "") for r in rows]
         sa_map = sa_per_molecule(texts)
         nov_map = novelty_per_molecule(list(sa_map), args.train_reference)
         joint = [k for k, s_ in sa_map.items() if s_ <= SA_GATE and nov_map.get(k, 0.0) >= NOVELTY_GATE]
@@ -250,6 +290,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             "wilson_ci95": wilson(len(joint), len(sa_map)),
             "mean_novelty_of_sa_subset": round(sum(gate_subset) / len(gate_subset), 4) if gate_subset else None,
         }
+        # Per-epoch breakdown. Pooling every epoch mixes a model that has not
+        # learned to emit bonds with one that has, so the headline for a
+        # multi-epoch pool should be the LAST epoch, not the pooled rate.
+        per_epoch = per_epoch_stats(rows, sa_map, nov_map)
+        report["by_epoch"] = per_epoch
+        if per_epoch:
+            last = max(per_epoch, key=lambda k: int(k))
+            report["last_epoch"] = {"epoch": int(last), **per_epoch[last]}
         report["train_fraction_of_corpus"] = (
             round(float(n_train) / FULL_CORPUS_N_TRAIN, 4) if n_train else None
         )
@@ -373,10 +421,13 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     for p in pools:
         gv = (p.get("gen_validity") or {}).get("value")
+        last = p.get("last_epoch") or {}
         print(
             f"[c7] {p['label'][:38]:38s} {p['pipeline'][:14]:14s} n={p.get('n_scored', 0):5d} "
             f"n_train={p['n_train']} sa_mean={p.get('sa_mean')} qed={p.get('qed_mean')} "
-            f"gate={((p.get('sa_counts_at_or_below') or {}).get(str(SA_GATE)))} gen_validity={gv}"
+            f"gate={((p.get('sa_counts_at_or_below') or {}).get(str(SA_GATE)))} "
+            f"last_epoch={last.get('epoch')} last_gate={last.get('rate_sa_le_gate')} "
+            f"gen_validity={gv}"
         )
     for tier, row in tiers.items():
         print(

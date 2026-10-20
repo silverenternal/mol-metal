@@ -15,6 +15,7 @@ from molmetal.scripts.c7_scale_matched_pools import (
     FULL_CORPUS_N_TRAIN,
     SMALL_TRAIN_CUTOFF,
     generation_validity,
+    per_epoch_stats,
     pipeline_of,
     run_config,
     tier_of,
@@ -133,3 +134,52 @@ def test_generation_validity_absent_is_none(tmp_path):
 def test_generation_validity_survives_a_truncated_line(tmp_path):
     (tmp_path / "events.jsonl").write_text('{"epoch": 1, "gen_validity": 0.4}\n{"epoch": 2, "gen_')
     assert generation_validity(tmp_path)["value"] == 0.4
+
+
+# --- per-epoch breakdown -----------------------------------------------------
+# A 30-epoch pool mixes a model that cannot emit bonds with one that can. The
+# pooled rate is not the rate anyone would ship, so the last epoch is reported
+# separately.
+
+
+def _rows(pairs):
+    return [{"epoch": str(e), "smiles": s} for e, s in pairs]
+
+
+def test_per_epoch_splits_by_epoch():
+    rows = _rows([(0, "a"), (0, "b"), (1, "a")])
+    sa = {"a": 4.0, "b": 6.0}
+    got = per_epoch_stats(rows, sa, {})
+    assert got["0"]["n"] == 2
+    assert got["0"]["n_sa_le_gate"] == 1
+    assert got["1"]["n"] == 1
+    assert got["1"]["n_sa_le_gate"] == 1
+
+
+def test_per_epoch_counts_joint_only_when_both_hold():
+    rows = _rows([(0, "a"), (0, "b")])
+    sa = {"a": 4.0, "b": 4.0}
+    nov = {"a": 0.95, "b": 0.50}
+    got = per_epoch_stats(rows, sa, nov)
+    assert got["0"]["n_sa_le_gate"] == 2
+    assert got["0"]["n_joint"] == 1
+
+
+def test_per_epoch_skips_unparseable_smiles():
+    rows = _rows([(0, "a"), (0, "unparseable")])
+    got = per_epoch_stats(rows, {"a": 4.0}, {})
+    assert got["0"]["n"] == 1
+
+
+def test_per_epoch_skips_blank_epoch():
+    rows = [{"epoch": "", "smiles": "a"}]
+    assert per_epoch_stats(rows, {"a": 4.0}, {}) == {}
+
+
+def test_per_epoch_reports_wilson_for_small_n():
+    rows = _rows([(0, "a")])
+    got = per_epoch_stats(rows, {"a": 4.0}, {})
+    lo, hi = got["0"]["wilson_ci95"]
+    # 1 of 1 is not 1.0: the Wilson interval still carries the sample size.
+    assert 0.0 < lo < 1.0
+    assert lo < hi <= 1.0
