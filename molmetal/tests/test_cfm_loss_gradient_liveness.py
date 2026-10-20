@@ -254,11 +254,16 @@ ALLOWED_DEAD: dict = {
         "existed, so this term could not be enabled from a config at all."
     ),
     "shortcut_distill_class_term": (
-        "MEASURED INERT at its shipped weight 0.05: value exactly 0.0 with "
-        "requires_grad=False while the OLD shortcut_distill_loss term "
-        "measured 1.897 and live in the same batch. The class wrapper is the "
-        "dead one, not the weight — recorded as an ACTIVE honest negative in "
-        "HONEST_NEGATIVE_CATALOG.md §6.143 (Wf-A99/A100)."
+        "OFF at --shortcut-distill-term-weight 0.0 (default since Wf-A102). "
+        "Until Wf-A102 it was 0.05 and still exactly 0.0 with "
+        "requires_grad=False, because the self-consistency branch needs the "
+        "SECOND view and the trainer passed x_prime=None unconditionally. "
+        "Wf-A102 builds that view (a second forward on a 0.01 A perturbed "
+        "input) whenever the weight is > 0; the default is 0.0 so no existing "
+        "run changes. MEASURED at weight 0.05: requires_grad True, value "
+        "1.24e-08 — LIVE but three orders of magnitude below observability "
+        "against a loss of ~1.5, because a 0.01 A input perturbation barely "
+        "moves the velocity field. See HONEST_NEGATIVE_CATALOG.md §6.146."
     ),
 }
 

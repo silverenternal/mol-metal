@@ -3735,7 +3735,10 @@ def train_one_epoch(
     consistency_term_weight: float = 0.05,  # Wf-A43 C — default ON; 0.0 = ConsistencyTerm off (bit-exact pre-Wf-A23)
     so3_term_weight: float = 0.0,  # 0.0 = SO3Term off (bit-exact pre-Wf-A23)
     edm_term_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = EDMTerm off)
-    shortcut_distill_term_weight: float = 0.05,  # Wf-A44 B.1 — default ON; 0.0 = ShortcutDistillLoss class off (bit-exact pre-Wf-A23)
+    # Wf-A102 (2026-10-20) — default moved 0.05 -> 0.0.  The term was
+    # exactly zero at 0.05 (x_prime was never passed), so this changes
+    # NO run: it only stops the weight claiming to be ON.
+    shortcut_distill_term_weight: float = 0.0,  # 0.0 = OFF (was 0.05 = inert); >0 builds the second view
     fm_ode_term_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = FmOdeTerm off)
     energy_conservation_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = EnergyConservation off)
     sboo3_term_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = SBOO3Term off)
@@ -5559,6 +5562,29 @@ def train_one_epoch(
         # Term 4 — ShortcutDistillLoss class wrapper (step 5).  Class
         # delegates to the KL or self-consistency branch.  Default weight
         # 0.0 ⇒ ``torch.zeros(())`` (bit-exact pre-Wf-A23).
+        #
+        # Wf-A102 (2026-10-20) — this term could NEVER be non-zero.  Its
+        # self-consistency branch needs the SECOND view (``x_prime``), and
+        # the trainer passed ``x_prime=None`` unconditionally, so ``compute``
+        # short-circuited to ``torch.zeros(())`` at every weight — MEASURED
+        # 0.0 with requires_grad=False at the shipped 0.05 while the old
+        # ``shortcut_distill_loss`` read 1.897 and live in the same batch.
+        # The second view is now built (a second forward on a 0.01 Å
+        # perturbed input) but ONLY when the weight is > 0, so the shipped
+        # default costs nothing and every existing run stays bit-exact.
+        _sd_second_view = None
+        if (
+            float(shortcut_distill_term_weight) > 0.0
+            and fm_objective
+            and x_t is not None
+        ):
+            _sd_second_view = model.fm_velocity(
+                x_t + 0.01 * torch.randn_like(x_t),
+                t,
+                z_all,
+                cloud_sizes=_cloud_sizes,
+                pocket_embed=_pocket_embed,
+            )
         shortcut_distill_class_term = ShortcutDistillLoss(
             weight=float(shortcut_distill_term_weight),
             enabled=float(shortcut_distill_term_weight) > 0.0,
@@ -5574,7 +5600,7 @@ def train_one_epoch(
             teacher_logits=None,  # class path uses self-consistency; teacher
             # path remains on the inline ``_sd.shortcut_distillation_loss``
             # block, untouched.
-            x_prime=None,
+            x_prime=_sd_second_view,
             device=device,
         )
         # Term 5 — FmOdeTerm NEW (step 6).  RK4 ODE closure penalty.
@@ -10407,13 +10433,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--shortcut-distill-term-weight",
         type=float,
-        default=0.05,
+        default=0.0,
         help=(
-            "Wf-A100: weight of the ShortcutDistillLoss class wrapper "
-            "(Wf-A23/A44 B.1). Default 0.05 = ON. NOTE (MEASURED, Wf-A99): "
-            "at this default the term contributes exactly 0.0 with no "
-            "gradient in the CPU smoke, so the weight reads ON while the "
-            "term trains nothing — see HONEST_NEGATIVE_CATALOG.md §6.143."
+            "Wf-A100 declared this weight; Wf-A102 changed its default 0.05 "
+            "-> 0.0 and made >0 actually work. Before Wf-A102 the term was "
+            "exactly 0.0 at every weight (the self-consistency branch needs "
+            "a second view and the trainer passed x_prime=None), so the "
+            "default move changes no run. Above 0 the trainer builds the "
+            "second view with a second forward on a 0.01 A perturbed input, "
+            "which costs one extra forward per step."
         ),
     )
     p.add_argument(
@@ -13953,7 +13981,7 @@ def main() -> int:
             so3_term_weight=float(getattr(args, "so3_term_weight", 0.0)),
             edm_term_weight=float(getattr(args, "edm_term_weight", 0.05)),
             shortcut_distill_term_weight=float(
-                getattr(args, "shortcut_distill_term_weight", 0.05)
+                getattr(args, "shortcut_distill_term_weight", 0.0)
             ),
             fm_ode_term_weight=float(
                 getattr(args, "fm_ode_term_weight", 0.05)

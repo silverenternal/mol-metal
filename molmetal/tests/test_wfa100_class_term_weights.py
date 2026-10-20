@@ -33,7 +33,9 @@ WEIGHTS = {
     "consistency_term_weight": 0.05,
     "so3_term_weight": 0.0,
     "edm_term_weight": 0.05,
-    "shortcut_distill_term_weight": 0.05,
+    # Wf-A102 moved this one 0.05 -> 0.0: it was inert at 0.05, so the move
+    # changes no run and stops the weight claiming to be ON.
+    "shortcut_distill_term_weight": 0.0,
     "fm_ode_term_weight": 0.05,
     "energy_conservation_weight": 0.05,
     "sboo3_term_weight": 0.05,

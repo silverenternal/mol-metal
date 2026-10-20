@@ -8244,6 +8244,12 @@ that is always red cannot distinguish a new undeclared term from the 16 already-
 | `so3_class_term` | False | 0.0 |
 | `chem/qed/molecule/stereo/fragment/property/natural_charge/wasserstein_pocket/clash_penalty` | False | 0.0 (weight 0) |
 
+**CPU-only caveat (added 2026-10-20 after §6.145).** This table was measured on CPU. The
+parallel FIX-C8 entry (§6.145) then MEASURED that `consistency_class_term` was **dead on CUDA**
+until it fixed a device bug in `sample_edm_sigma`. So "live" here means "live on CPU"; for
+`consistency_class_term` it was NOT live on GPU until FIX-C8, and no checkpoint on disk carries
+its effect.
+
 **`shortcut_distill_class_term` is MEASURED INERT at its shipped weight 0.05** — value exactly
 0.0 with no gradient, while the OLD `shortcut_distill_loss` term measured **1.897** and live in
 the same batch. The weight reads ON and the class wrapper trains nothing: the BLK-C5 / BLK-C14
@@ -8539,3 +8545,59 @@ ACTIVE count: **153 -> 154** (+1).
 §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 
 ---
+
+### §6.146 Wf-A102 — the shortcut class term could never be non-zero, and wiring it shows why it was invisible (2026-10-20)
+
+**What was wrong.** `ShortcutDistillLoss.compute` has two branches: (a) KL against a teacher,
+(b) self-consistency against a second view `x_prime`. The trainer passed
+`teacher_logits=None` and `x_prime=None` **unconditionally**, so branch (b) short-circuited to
+`torch.zeros(())` at every weight. MEASURED in the same batch:
+
+| term | weight | value | requires_grad |
+|---|---|---|---|
+| `shortcut_distill_class_term` | 0.05 | **0.0** | **False** |
+| `shortcut_distill_loss` (old inline term) | — | 1.897 | True |
+
+The weight read ON and the wrapper trained nothing — the BLK-C5 / BLK-C14 shape again, and the
+reason Wf-A100 had to declare it `ALLOWED_DEAD` while leaving the cause open.
+
+**What shipped.**
+
+* The trainer now builds the second view when — and only when — the weight is > 0: a second
+  `model.fm_velocity` call on `x_t + 0.01 * randn_like(x_t)`. At the shipped default the branch
+  does not run, so **every existing run is bit-exact**.
+* `--shortcut-distill-term-weight` default moved **0.05 -> 0.0**. This changes no run (the term
+  was exactly 0.0 at 0.05) and stops the weight claiming to be ON.
+* `molmetal/tests/test_wfa102_shortcut_class_term.py` — 4 tests: the default is 0.0; the second
+  view is guarded by the weight and forwarded (`x_prime=_sd_second_view`); the class is 0 with no
+  second view and non-zero with one; a disabled weight short-circuits before any forward.
+* The liveness table's `ALLOWED_DEAD` entry now states the real reason (OFF by default, LIVE
+  above 0) instead of "inert at 0.05".
+
+**MEASURED at weight 0.05** (the liveness probe, 1 epoch, 32 clouds): `requires_grad True`,
+value **1.24e-08**. So the term is live — and **three orders of magnitude below observability**
+against a `bond_ce` of 1.68. A 0.01 Å input perturbation barely moves the velocity field, and the
+penalty is a mean squared difference of that motion.
+
+**Honest negatives that REMAIN (ACTIVE).**
+
+* **Live is not the same as useful.** At 1.24e-08 the term is 1e-8 of the objective: enabling it
+  changes nothing measurable. Making it matter needs a **scale-free** formulation (e.g. relative
+  MSE normalised by the velocity magnitude) or a perturbation at the data's own noise scale —
+  both are design decisions that change what the term means, and neither has been measured here.
+* **The 0.01 Å constant is not calibrated.** It was chosen as "small enough to be a perturbation,
+  large enough to be non-zero". The measured magnitude says it is far too small to matter; a
+  calibration sweep is the work item.
+* **The default moved, so a run that explicitly set 0.05 now pays an extra forward** for a term
+  worth 1e-8. That is the honest cost of making the knob real, but it is a cost.
+* **No GPU run, no quality claim.** Everything above is one CPU epoch of the liveness probe.
+
+**§6.146 catalog-count math.** Net catalog-count delta: **+1** (§6.146 itself). ACTIVE count
+delta: **+1**. Cumulative catalog count: **198 -> 199** (+1). ACTIVE count: **154 -> 155** (+1).
+
+**Workflow** | Wf-A102 (2026-10-20; 0 GPU; 4 new tests + 1 table entry corrected; §5.2: the
+1.24e-08 and 1.897 numbers are the liveness probe's own output; §5.3 + §5.4: 0 paper/* + 0
+wet-lab).
+
+---
+
