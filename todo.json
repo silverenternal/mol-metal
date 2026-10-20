@@ -1,7 +1,7 @@
 {
   "schema": 5,
   "created": "2026-10-14",
-  "updated": "2026-10-20",
+  "updated": "2026-10-21",
   "rewritten": "2026-10-19 — 测量阶段（MET-1..MET-11 + FIX-L4）全部关闭，计划切换为强化阶段（STR-1..STR-7）。",
   "supersedes": "MET-1..MET-11 + FIX-L4；结果见 closed_work 与 TODO/completed/。",
   "purpose": "测量已经做完，结论是：只有『金属感知承重』和『表示增益』是硬的正结果，DOI R²（0.3321）、Δ 符号（0.6193）、Δ 幅度（MAE 0.5089）都未达标。本计划只做一件事：用现有数据把 DOI R² 与 Δ 符号抬到门槛，抬不动就按边界论文定稿。",
@@ -1104,6 +1104,69 @@
         ]
       },
       "acceptance_result": "六项全开可跑，但只剩约 3 GB 余量；n_rot=1 是无偏的 1 样本估计，方差更大，且与 n_rot=4 的同 seed run 数值不可比。"
+    },
+    {
+      "id": "FIX-C12",
+      "title": "全语料 run 的显存峰值随步数增长；expandable_segments 是唯一有效杠杆；顺带修掉 C7 脚本三处盲点",
+      "layer": "性能",
+      "priority": "P1",
+      "status": "DONE",
+      "gpu": "~45 分钟（3 次 4096 云探针 + 1 次 99 s 失败启动 + 1 次 856 s 被杀的续跑）",
+      "wall": "3 小时",
+      "why": "全语料 18-epoch run 在 epoch 4 死于致命 OOM（此前 48 次可恢复 OOM，峰值 97,331 MiB，另有余量被另一项目 lineageflow 的 11.3 GB 占走）。§6.150 当时给出的归因是「峰值在评估段」，但该归因自相矛盾：n_rot 4→1 让峰值降了 5 GB，评估不依赖 n_rot，所以峰值必然在训练侧。",
+      "method": "4096 云、六项全开、n_rot=1、gen_eval_n=0（完全不跑生成评估）下对比三种配置；再用 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True 在修好后的代码上重测。",
+      "deliverable": "molmetal/scripts/c7_scale_matched_pools.py（checkpoint 兜底 + 结论句由数据推导 + 内容哈希去重）、molmetal/scripts/train_cfm_yuelbond_wasserstein.py（resume_mode_error）、configs/c7_fullgen_resume_2026_10_20.yaml、docs/HONEST_NEGATIVE_CATALOG.md §6.150b、docs/CLAIM_LEDGER.md C7 行",
+      "gate": "同一 n_train 下峰值显著下降且 0 次 OOM；C7 结论句与 full_corpus_generation_pool_exists 不得互相矛盾。",
+      "kill": "若 expandable_segments 在修好后的代码上仍无改善，说明增长是真实引用泄漏，需改用逐层定位。",
+      "depends_on": [
+        "FIX-C10",
+        "FIX-C11"
+      ],
+      "note": "expandable_segments 的旧「无效」负结果是在 FIX-C10 之前的代码上测的（当时整个训练集常驻显存），不成立，已撤回。峰值随步数增长：4096 云 64 步 → 70,324 MiB；26,715 云 418 步 → 首 epoch 内即破 96,000 MiB。",
+      "result": {
+        "verdict": "PARTIAL — 显存机制查清并撤回三条错误归因；18-epoch run 仍未完成",
+        "measured": {
+          "peak_4096_b64_no_expand": 92431,
+          "peak_4096_b32_no_expand": 85695,
+          "peak_4096_b64_expand": 70324,
+          "oom_4096_b64_expand": 0,
+          "epoch_sec_4096_expand": 188.36,
+          "c7_fullgen_epochs_completed": 4,
+          "c7_fullgen_peak": 97331,
+          "c7_fullgen_recoverable_ooms": 48,
+          "c7_fullgen_candidates": 2816,
+          "c7_fullgen_sa_le_4_5": 10,
+          "c7_fullgen_rate": 0.0036,
+          "c7_fullgen_ci95": [
+            0.0019,
+            0.0065
+          ],
+          "c7_small_rate": 0.0069,
+          "single_fragment_rate_by_epoch": [
+            0.0284,
+            0.0227,
+            0.044,
+            0.0838
+          ],
+          "source": [
+            "metrics/by_metric/c7_scale_matched_pools.json",
+            "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
+            "molmetal/reports/cfm_c7_fullgen_2026_10_20/events.jsonl"
+          ]
+        },
+        "retracted": [
+          "「峰值在留出评估段」——n_rot 改动能移动峰值，评估不依赖 n_rot，自相矛盾",
+          "「expandable_segments 无效（97,340 MiB + 4 次 OOM）」——那是在 FIX-C10 之前测的；修好后同一设置 70,324 MiB / 0 OOM",
+          "「训练段峰值 86,031 → 55,170 MiB」——55,170 是运行中的一个采样点，不是峰值；修后峰值是 92,431"
+        ],
+        "blocked_on": "续跑（epoch 4→18）在 856 s 被并行 session 的 SIGTERM 终止——它同时在同一张卡上启动了 configs/c7_nrot1_4096_2026_10_20.yaml。产物未损坏（仍是 4 epoch / 2,816 行）。",
+        "artifacts": [
+          "docs/HONEST_NEGATIVE_CATALOG.md §6.150b",
+          "docs/CLAIM_LEDGER.md C7",
+          "commits 22a209a8 / c972b91b / 0183a454 / e8de7cb2"
+        ]
+      },
+      "acceptance_result": "显存机制查清：峰值随训练步数增长，expandable_segments 在修好后的代码上把 4096 云峰值从 92,431 降到 70,324 MiB 且消除 OOM。C7 拿到盘上第一个全语料自由生成池（2,816 候选）：SA≤4.5 = 0.36%，低于 256 样本的 0.69%，判定仍 NOT SUPPORTED。18-epoch 未完成。"
     }
   ],
   "decision_points": [
