@@ -44,7 +44,13 @@ overlapping coverage, (d) verifies every gate is MEASURED-only, and
 
 ## §2 Gate inventory (per-pipeline; counts synced 2026-10-03, HOLE-1 + HOLE-5 + L4 + L5)
 
-### §2.1 `all` pipeline — 121 gates
+### §2.1 `all` pipeline — 126 gates
+
+> **Count synced 2026-10-20: 121 → 126.** The constant and
+> `len(build_gates("all"))` had both been at 126 since 2026-10-18 (§9), but
+> this header and the §6 row still said 121 — a partial sync that left
+> `test_audit_doc_table_count_matches_constant` red. The code was right; the
+> doc was stale. `launch` is 128 (126 + the 2 pre-retrain gates).
 
 > **Gate inventory (2026-10-08): 120 → 121.** 1 NEW report-only gate
 > `p0_gate_inventory_audit` that introspects `build_gates()` (no gate
@@ -384,7 +390,7 @@ When a gate is removed (rare; requires Wf-level justification):
 
 | Metric | Value |
 |---|---:|
-| `n_gates_total` (per-pipeline COUNT) | 121 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 7 (`cfm`) — plus the `launch` pipeline at 123 (`launch` = `all` + the 2 pre-retrain gates; MEASURED by `test_wf344b3_gate_count.py`) |
+| `n_gates_total` (per-pipeline COUNT) | 126 (`all`) / 25 (`frontier`) / 18 (`chemprop_v2_v3`) / 7 (`cfm`) — plus the `launch` pipeline at 128 (`launch` = `all` + the 2 pre-retrain gates; MEASURED by `test_wf344b3_gate_count.py`) |
 | `n_overlaps_found` | 2 (`p3_pb_*` family + P0/P2 CSV line-count) |
 | `n_deduped` | 0 (all overlaps were DOCUMENTED instead) |
 | `n_documented` | 2 |

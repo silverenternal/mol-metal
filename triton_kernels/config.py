@@ -341,6 +341,36 @@ class TritonConfig:
         return True
 
     # ------------------------------------------------------------------
+    # D-MPNN edge-update gates (fused_relu_linear / fused_relu_mlp)
+    # ------------------------------------------------------------------
+    # ``triton_kernels.fused_relu_mlp`` has always called these two
+    # methods (``_cfg.use_fused_relu_linear(x2)``), but they were never
+    # defined here — so the fused path raised ``AttributeError`` on any
+    # CUDA input instead of falling through to PyTorch.  Both delegate
+    # to :meth:`should_use_fused`, which already carries the
+    # ``TRITON_USE_FUSED`` / ``TRITON_USE_FUSED_EVAL`` policy and the
+    # shape/byte gates.
+    def use_fused_relu_linear(
+        self,
+        x: torch.Tensor,
+        *,
+        training: Optional[bool] = None,
+    ) -> bool:
+        """Return ``True`` iff ``ReLU(Linear(x, W, b))`` should use the
+        fused kernel for a 2-D input ``x`` of shape ``(N, D)``."""
+        return self.should_use_fused(x, op="relu_linear", training=training)
+
+    def use_fused_relu_mlp(
+        self,
+        x: torch.Tensor,
+        *,
+        training: Optional[bool] = None,
+    ) -> bool:
+        """Return ``True`` iff the two-layer ``Linear->ReLU->Linear`` fused
+        kernel should be used for a 2-D input ``x`` of shape ``(N, D)``."""
+        return self.should_use_fused(x, op="relu_mlp", training=training)
+
+    # ------------------------------------------------------------------
     # Dunder
     # ------------------------------------------------------------------
     def __repr__(self) -> str:  # pragma: no cover - cosmetic only

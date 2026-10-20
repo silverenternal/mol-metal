@@ -46,7 +46,8 @@ Tests (2 main scenarios + helpers):
         pass explicit flags:
           * DEFAULT_BF16 == True (W3)
           * DEFAULT_TF32 == True (W4)
-          * DEFAULT_W2_GRADIENT_MODE == "sort" (W5)
+          * DEFAULT_W2_GRADIENT_MODE == "sliced" (W5; the sort flip did
+            not survive the m21 revert)
           * --torch-compile default True (W1)
           * --cpu-num-workers default 4 (Wf-260 trainer baseline)
           * parse_args([]) resolves to production defaults
@@ -62,7 +63,7 @@ Honest framing (AGENTS.md §5.2 / party-twenty-spirit §3.5):
   - MEASURED: 6 launch scripts hard-coded --cpu-num-workers 0 (Wf-326B grep
     2026-09-29); Wf-328-W2 fix replaced with --cpu-num-workers 8.
   - MEASURED: trainer defaults are DEFAULT_BF16=True, DEFAULT_TF32=True,
-    DEFAULT_W2_GRADIENT_MODE="sort", --torch-compile default=True.
+    DEFAULT_W2_GRADIENT_MODE="sliced", --torch-compile default=False.
   - PROJECTED: 2-3x step throughput from Wf-328 quick-wins (BLOCKED on
     AGENTS.md §5.1 kill_then_adapt; needs > 1 hr GPU launch to measure
     end-to-end).
@@ -95,11 +96,9 @@ if str(ROOT) not in sys.path:
 # Constants — the launch scripts that Wf-328 (W2 batch) fixed
 # ---------------------------------------------------------------------------
 WF328W2_TARGETS = (
-    SCRIPTS / "launch_wf124_p3_g4.sh",
     SCRIPTS / "launch_wf124_p3_g5.sh",
     SCRIPTS / "launch_wf124_p3_g6.sh",
     SCRIPTS / "launch_wf310b_g6_final.sh",
-    SCRIPTS / "launch_wf300_cfm_main.sh",
     SCRIPTS / "retry_g5_missing_pairs.sh",
 )
 
@@ -261,39 +260,44 @@ def test_backward_compat_no_flags_means_baseline() -> None:
         "(production default ON; ~1.5x matmul speedup with negligible "
         "accuracy loss per Wf-326A quick wins)"
     )
-    assert getattr(_trainer, "DEFAULT_W2_GRADIENT_MODE", None) == "sort", (
-        "DEFAULT_W2_GRADIENT_MODE drifted from 'sort'; Wf-328-W5 expects "
-        "'sort' (sort-based W2 is 2-3x faster than sliced per Wf-326A)"
+    assert getattr(_trainer, "DEFAULT_W2_GRADIENT_MODE", None) == "sliced", (
+        "DEFAULT_W2_GRADIENT_MODE drifted from 'sliced'; that is what "
+        "argparse, the trainer signatures and every live config use.  The "
+        "Wf-328-W5 sort flip did not survive the m21 revert (af84a545); the "
+        "sort path is still selectable via --w2-gradient-mode sort."
     )
 
     # ---- parse_args([]) defaults (CLI wire-through) ----
+    # 2026-10-20: these used to assert the pre-revert surface (bf16 True,
+    # tf32 True, torch_compile True, w2 "sort", cpu_num_workers 4).  All five
+    # left with the m21 selective revert (af84a545); the shipped defaults are
+    # below.  The removed *dest* (``bf16``) is asserted absent so a partial
+    # restore cannot slip through.
     args = _trainer.parse_args([])
-    assert getattr(args, "bf16", None) is True, (
-        f"parse_args([]).bf16 = {getattr(args, 'bf16', None)}; "
-        f"Wf-328-W3 expects True (DEFAULT_BF16=True)"
+    assert not hasattr(args, "bf16"), (
+        "parse_args([]) grew a .bf16 dest again — the BooleanOptionalAction "
+        "pair left with the m21 revert; DEFAULT_BF16 only feeds the helper"
     )
-    assert getattr(args, "tf32", None) is True, (
-        f"parse_args([]).tf32 = {getattr(args, 'tf32', None)}; "
-        f"Wf-328-W4 expects True (DEFAULT_TF32=True)"
+    assert getattr(args, "tf32", None) is False, (
+        f"parse_args([]).tf32 = {getattr(args, 'tf32', None)}; the shipped "
+        f"lever is store_true default OFF"
     )
-    assert getattr(args, "torch_compile", None) is True, (
+    assert getattr(args, "torch_compile", None) is False, (
         f"parse_args([]).torch_compile = "
-        f"{getattr(args, 'torch_compile', None)}; Wf-328-W1 expects True"
+        f"{getattr(args, 'torch_compile', None)}; shipped default is OFF"
     )
-    assert getattr(args, "w2_gradient_mode", None) == "sort", (
+    assert getattr(args, "w2_gradient_mode", None) == "sliced", (
         f"parse_args([]).w2_gradient_mode = "
-        f"{getattr(args, 'w2_gradient_mode', None)}; Wf-328-W5 expects 'sort'"
+        f"{getattr(args, 'w2_gradient_mode', None)}; shipped default is 'sliced'"
     )
-    assert getattr(args, "cpu_num_workers", None) == 4, (
+    assert getattr(args, "cpu_num_workers", None) == 0, (
         f"parse_args([]).cpu_num_workers = "
-        f"{getattr(args, 'cpu_num_workers', None)}; trainer baseline is 4 "
-        f"(Wf-260); launchers override to 8 via --cpu-num-workers 8 (Wf-328-W2)"
+        f"{getattr(args, 'cpu_num_workers', None)}; shipped default is 0 and "
+        f"the flag is inert (no DataLoader).  Launchers still pass 8 (Wf-328-W2)"
     )
-    assert getattr(args, "num_workers", None) is None, (
-        f"parse_args([]).num_workers = "
-        f"{getattr(args, 'num_workers', None)}; Wf-328-W6 expects None "
-        f"(default = use --cpu-num-workers via legacy path; chemprop-specific "
-        f"DataLoader factory is opt-in via --num-workers N)"
+    assert not hasattr(args, "num_workers"), (
+        "parse_args([]) grew a .num_workers dest again — the Wf-328-W6 "
+        "DataLoader factory left with the m21 revert"
     )
 
     # ---- W2 OPTIMAL_NUM_WORKERS constant matches ----
@@ -355,13 +359,13 @@ def test_trainer_help_shows_all_wf328_flags() -> None:
     out = proc.stdout
 
     expected = [
-        "--cpu-num-workers",  # W2
-        "--num-workers",  # W6 (chemprop)
+        "--cpu-num-workers",  # W2 (accepted, inert)
         "--tf32",  # W4
-        "--bf16",  # W3
         "--torch-compile",  # W1
         "--w2-gradient-mode",  # W5
     ]
+    # ``--num-workers`` (W6) and ``--bf16`` (W3) left with the m21 revert;
+    # asserting them from --help was asserting flags that no longer exist.
     for flag in expected:
         assert flag in out, (
             f"trainer --help is missing {flag}; Wf-328 regression "

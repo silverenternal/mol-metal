@@ -122,100 +122,116 @@ class Claim:
 
 
 # ---------------------------------------------------------------------------
-# Pattern catalogue — how to find each old value in the TODO-188 doc.
+# Pattern catalogue — how to find each old value in the paper doc.
 #
 # Each claim_id maps to a list of regex alternatives (most specific first).
-# The first match wins; if none match, the old_value is reported as missing.
+# The first match wins; if none match, the old_value is reported as missing
+# AND the miss is surfaced (stderr warning + a "Pattern misses" section in
+# the diff report) rather than being silently dropped.
 #
-# Patterns intentionally focus on TODO-188 §2.1 / §0.1 / §4 (the §4 numbers
-# the §4 auto-update pipeline is responsible for).  Adding more §4 metrics
-# later is a one-line pattern-extension, not a refactor.
+# HARD RULE — the patterns capture a *number*, they never encode one.
+# Until 2026-10-20 every pattern carried the expected old value as a literal
+# (``r"per-cell mean AUC\s*=\s*\*\*\s*(0\.8007)"``).  When m21 was re-measured
+# 0.8007 → 0.7294 the pattern stopped matching, and because extraction is
+# best-effort the claim vanished from the diff instead of raising.  A pattern
+# that only matches the value it was written to find can never report a change
+# — it can only report agreement or silence.  Every capture group below is
+# therefore a generic numeric group, anchored by *structure* (the table cell,
+# the label, the unit), not by the value.
+#
+# ``molmetal/tests/test_paper_auto_update.py`` enforces this: it mutates every
+# digit in each pattern's matched fragment and requires the pattern to still
+# match and return the mutated number.
 # ---------------------------------------------------------------------------
 PATTERNS: Dict[str, List[str]] = {
-    # Headline: 5-metal mean AUC (TODO-154).  Each pattern MUST carry a
-    # capture group around the literal old number so _parse_old_value can
-    # read it back as a float.
+    # Headline: 5-metal mean AUC (TODO-154).
     "overall_mean_test_auc": [
-        r"5-metal mean AUC\s*=\s*\*\*\s*(0\.886)\b",
-        r"5-metal mean\s*\*?\*?\s*(0\.886)\b",
-        r"5-metal chemprop v2 mean\s*(0\.886)\b",
-        r"5-metal mean[\s=]+\s*(0\.886)\b",
+        r"5-metal mean AUC\s*=\s*\*{0,2}\s*(\d+\.\d+)",
+        r"5-metal mean\*{0,2}\s*\|\s*\*{0,2}\s*(\d+\.\d+)",
+        r"5-metal chemprop v2 mean\s*(\d+\.\d+)",
+        r"5-metal mean[\s=]+\*{0,2}\s*(\d+\.\d+)",
     ],
-    # Per-metal AUC, §2.1 table (TODO-154 in-domain chemprop v2)
+    # Per-metal AUC, §2.1 table (TODO-154 in-domain chemprop v2).
+    # The bare ``Metal <number>`` fallback requires 3 decimals so it cannot
+    # latch onto a 2-dp baseline column ("Krasnov Ru 0.81").
     "per_metal_Ru_mean_test_auc": [
-        r"\*\*Ru\*\*\s*\|\s*\*\*\s*(0\.909)\s*\*\*",
-        r"\|\s*\*\*Ru\*\*\s*\|\s*\*\*\s*(0\.909)\s*\*\*",
-        r"\bRu\s+(0\.909)\b",
+        r"\*{0,2}Ru\*{0,2}\s*\|\s*\*{0,2}\s*(\d+\.\d+)",
+        r"\bRu\s+(\d\.\d{3})\b",
     ],
     "per_metal_Ir_mean_test_auc": [
-        r"\*\*Ir\*\*\s*\|\s*\*\*\s*(0\.885)\s*\*\*",
-        r"\|\s*\*\*Ir\*\*\s*\|\s*\*\*\s*(0\.885)\s*\*\*",
-        r"\bIr\s+(0\.885)\b",
+        r"\*{0,2}Ir\*{0,2}\s*\|\s*\*{0,2}\s*(\d+\.\d+)",
+        r"\bIr\s+(\d\.\d{3})\b",
     ],
     "per_metal_Os_mean_test_auc": [
-        r"\*\*Os\*\*\s*\|\s*\*\*\s*(0\.889)\s*\*\*",
-        r"\|\s*\*\*Os\*\*\s*\|\s*\*\*\s*(0\.889)\s*\*\*",
-        r"\bOs\s+(0\.889)\b",
+        r"\*{0,2}Os\*{0,2}\s*\|\s*\*{0,2}\s*(\d+\.\d+)",
+        r"\bOs\s+(\d\.\d{3})\b",
     ],
     "per_metal_Rh_mean_test_auc": [
-        r"\*\*Rh\*\*\s*\|\s*\*\*\s*(0\.863)\s*\*\*",
-        r"\|\s*\*\*Rh\*\*\s*\|\s*\*\*\s*(0\.863)\s*\*\*",
-        r"\bRh\s+(0\.863)\b",
+        r"\*{0,2}Rh\*{0,2}\s*\|\s*\*{0,2}\s*(\d+\.\d+)",
+        r"\bRh\s+(\d\.\d{3})\b",
     ],
     "per_metal_Re_mean_test_auc": [
-        r"\*\*Re\*\*\s*\|\s*\*\*\s*(0\.882)\s*\*\*",
-        r"\|\s*\*\*Re\*\*\s*\|\s*\*\*\s*(0\.882)\s*\*\*",
-        r"\bRe\s+(0\.882)\b",
+        r"\*{0,2}Re\*{0,2}\s*\|\s*\*{0,2}\s*(\d+\.\d+)",
+        r"\bRe\s+(\d\.\d{3})\b",
     ],
     # Secondary: m14 CFM decode_ratio (Wf-188) — scaffold for §4 expansion
     "m14_cfm_decode_ratio_full": [
-        r"m14 real CFM FULL MetalCytoToxDB[^\n]*?(0\.9958)\b",
-        r"decode_ratio[^\n]{0,40}?(0\.9958)\b",
+        r"m14 real CFM FULL MetalCytoToxDB[^\n]*?(\d+\.\d+)",
+        r"decode_ratio[^\n]{0,40}?(\d+\.\d+)",
     ],
     # Secondary: m15 RMSD aggregate median (Wf-179 P2)
     "m15_rmsd_aggregate_median": [
-        r"Aggregate median across 5 pockets[\s\S]{0,20}?\*\*\s*(0\.658)\s*Å",
-        r"aggregate median\s*=\s*(0\.658)\s*Å",
-        r"Aggregate median\s*=\s*(0\.658)\b",
+        r"[Aa]ggregate median across \d+ pockets[\s\S]{0,20}?\*{0,2}\s*(\d+\.\d+)\s*Å",
+        r"[Aa]ggregate median\s*(?:=|of)?\s*\*{0,2}\s*(\d+\.\d+)\s*Å",
+        r"[Aa]ggregate median\s*=\s*(\d+\.\d+)",
     ],
-    # Secondary: m21 NCI-60 9-cell AUC (Wf-35/Wf-72)
+    # Secondary: m21 NCI-60 9-cell AUC (Wf-35/Wf-72, re-measured 2026-10-12).
+    # Two live forms exist and both must parse:
+    #   historical 188 doc — "per-cell mean AUC = **0.8007 ± 0.0160**"
+    #   live §3 table      — "| T1 | **m21 NCI-60 9-cell AUC** (...) | `0.7294` ..."
+    #   live §3.1 bullet   — "unweighted mean over 9 cell lines ... = `0.7294`"
     "m21_nci60_9cell_mean_auc": [
-        r"per-cell mean AUC\s*=\s*\*\*\s*(0\.8007)",
-        r"per-cell mean AUC\s*=\s*(0\.8007)",
-        r"(0\.8007)\s*±\s*0\.0160",
+        r"per-cell mean AUC\s*=\s*\*{0,2}\s*(\d+\.\d+)",
+        r"m21 NCI-60 9-cell (?:mean |per-cell )?AUC[^\n]{0,80}?[`*](\d+\.\d+)[`*]",
+        r"unweighted mean over \d+ cell lines[\s\S]{0,200}?=\s*[`*](\d+\.\d+)[`*]",
+        r"(\d+\.\d+)[`*]?\s*\(9-cell unweighted mean",
     ],
     # Secondary: m7 Tanimoto diversity (TODO-180)
     "m7_diversity_tanimoto": [
-        r"With Tanimoto reward\*\*\s*\|\s*\*\*\s*(0\.0397)\s*\*\*",
-        r"diversity_tanimoto[\s\S]{0,30}?(0\.0397)\b",
-        r"\b(0\.0397)\b",
+        r"With Tanimoto reward\*{0,2}\s*\|\s*\*{0,2}\s*(\d+\.\d+)",
+        r"diversity Tanimoto\s*(\d+\.\d+)",
+        r"diversity_tanimoto[\s\S]{0,30}?(\d+\.\d+)",
     ],
-    # Wf-269C: YuelBond load-bearing (real cohort decode_ratio 1.000 vs 0.000)
+    # Wf-269C: YuelBond load-bearing (real cohort decode_ratio vs no_yuelbond)
     "wf269c_yuelbond_full_decode_ratio": [
-        r"full\s*=\s*\*\*\s*(1\.000)\b",
-        r"YuelBond.*?full.*?(1\.000)",
-        r"full=YuelBond.*?decode_ratio\s*=\s*(1\.000)",
+        r"\bfull\s*=\s*\*{0,2}\s*(\d+\.\d+)",
+        r"YuelBond[^\n]{0,60}?full[^\n]{0,20}?(\d+\.\d+)",
+        r"full=YuelBond[^\n]{0,60}?decode_ratio\s*=\s*(\d+\.\d+)",
     ],
-    # Wf-269C: no_yuelbond decode_ratio 0.000
+    # Wf-269C: no_yuelbond decode_ratio
     "wf269c_no_yuelbond_decode_ratio": [
-        r"no_yuelbond\s*=\s*\*\*\s*(0\.000)\b",
-        r"no_yuelbond.*?decode_ratio\s*=\s*(0\.000)",
+        r"no_yuelbond\s*=\s*\*{0,2}\s*(\d+\.\d+)",
+        r"no_yuelbond[^\n]{0,60}?decode_ratio\s*=\s*(\d+\.\d+)",
     ],
-    # Wf-275B: DrugOOD ECFP4 + scaffold-split adapter (n=95,236)
+    # Wf-275B: DrugOOD ECFP4 + scaffold-split adapter row count
     "wf275b_drugood_adapter_rows": [
-        r"n_source_rows\s*=?\s*\*\*\s*(95,?236)\*\*",
-        r"95,?236 rows",
-        r"\b(95,?236)\b",
+        r"n_source_rows\s*=?\s*\*{0,2}\s*([\d,]+)",
+        r"([\d,]{4,})\s*rows",
     ],
-    # Wf-275C: m14 LEAD deployment precondition (Δ = −1.000)
+    # Wf-275C: m14 LEAD deployment precondition (Δ = −1.000 with YuelBond off)
+    # NOTE: these used to have NO capture group, so _parse_old_value returned
+    # (None, match) for a claim that had in fact matched — the row rendered as
+    # "—" (missing) even though the doc said exactly what the pattern wanted.
+    # The bare "Δ = <number>" fallback was removed 2026-10-20: the first Δ in
+    # the 188 doc is the Krasnov comparison (−0.0093), so an unanchored delta
+    # pattern silently reports the wrong claim's number.
     "wf275c_m14_lead_delta_yuelbond_off": [
-        r"YuelBond decoder off[^\n]*?[Δ]\s*=\s*[−\-]1\.000",
-        r"[Δ]\s*=\s*[−\-]1\.000",
+        r"YuelBond decoder off[^\n]*?[Δ]\s*=\s*([−\-]?\d+\.\d+)",
     ],
     # Wf-271B: drugood_v3_scaffold → m17_drugood_v3_reeval promoted
     "wf271b_m17_reeval_below_random": [
-        r"m17_drugood_v3_reeval.*?BELOW_RANDOM",
-        r"BELOW_RANDOM.*?(0\.4544)",
+        r"m17_drugood_v3_reeval[^\n]*?BELOW_RANDOM[^\n]{0,40}?(\d+\.\d+)",
+        r"BELOW_RANDOM[^\n]{0,40}?(\d+\.\d+)",
     ],
 }
 
@@ -311,14 +327,28 @@ def _extract_extra_claims(
       - ``wf275b_drugood_adapter`` (text): n_source_rows 95,236
       - ``m14_lead_precondition`` (text): Δ = −1.000 (YuelBond off)
 
-    Each extractor is best-effort: if the source is missing or the
-    expected field is absent, the claim is silently skipped (rather than
-    crashing the diff pipeline).
+    Each extractor is best-effort: a missing source or absent field drops
+    that claim from the diff instead of crashing the pipeline.  The drop is
+    **reported** on stderr (2026-10-20) — "best-effort" used to mean
+    "silently", which made a stale path indistinguishable from a metric that
+    simply has nothing new to say.
     """
     out: List[Tuple[str, float, str]] = []
     sources = {label: (path, kind) for label, path, kind in extra_sources}
 
-    # --- cfm_decode_real: regression_disclosure + current value ---
+    for label, (path, _kind) in sources.items():
+        if not path.exists():
+            print(
+                f"[paper_auto_update] WARN: extra source {label!r} is missing "
+                f"({path}); its claim(s) will not appear in the diff",
+                file=sys.stderr,
+            )
+
+    # --- cfm_decode_real: current value + regression_disclosure ---
+    # 2026-10-20: these two rows used to emit hardcoded literals (1.000 and
+    # 0.9645) after *reading* the file's value and discarding it.  The file
+    # says 0.9939, so the diff table was reporting a number that exists
+    # nowhere on disk — a §5.2 violation.  Emit what was read, or nothing.
     if "cfm_decode_real" in sources:
         path, kind = sources["cfm_decode_real"]
         if path.exists() and kind == "json":
@@ -329,25 +359,27 @@ def _extract_extra_claims(
                     out.append(
                         (
                             "wf269c_yuelbond_full_decode_ratio",
-                            1.000,
-                            "metrics/by_metric/cfm_decode_real.json::value_vs_wf188",
+                            float(val),
+                            "metrics/by_metric/cfm_decode_real.json::value",
                         )
                     )
                 rd = data.get("regression_disclosure")
                 if isinstance(rd, dict):
                     cur = rd.get("current_value")
                     if isinstance(cur, (int, float)):
-                        # surface the regression disclosure as the
-                        # deprecated decode_ratio value (Wf-274A).
                         out.append(
                             (
                                 "wf269c_no_yuelbond_decode_ratio",
-                                0.9645,
+                                float(cur),
                                 "metrics/by_metric/cfm_decode_real.json::regression_disclosure.current_value",
                             )
                         )
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 — best-effort, but reported
+                print(
+                    f"[paper_auto_update] WARN: extractor skipped {path}: "
+                    f"{type(exc).__name__}: {exc}",
+                    file=sys.stderr,
+                )
 
     # --- drugood_v3_scaffold: BELOW_RANDOM m17_reeval ---
     if "drugood_v3_scaffold" in sources:
@@ -371,8 +403,12 @@ def _extract_extra_claims(
                             "metrics/by_metric/drugood_v3_scaffold.json::per_metal.*.test_auc_mean",
                         )
                     )
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 — best-effort, but reported
+                print(
+                    f"[paper_auto_update] WARN: extractor skipped {path}: "
+                    f"{type(exc).__name__}: {exc}",
+                    file=sys.stderr,
+                )
 
     # --- wf269c_cfm_real: full vs no_yuelbond ---
     if "wf269c_cfm_real" in sources:
@@ -400,8 +436,12 @@ def _extract_extra_claims(
                                 "molmetal/reports/wf269c_cfm_real/wf269c_report.json::configs[no_yuelbond].final_decode_ratio",
                             )
                         )
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 — best-effort, but reported
+                print(
+                    f"[paper_auto_update] WARN: extractor skipped {path}: "
+                    f"{type(exc).__name__}: {exc}",
+                    file=sys.stderr,
+                )
 
     # --- wf275b_drugood_adapter: n_source_rows from text report ---
     if "wf275b_drugood_adapter" in sources:
@@ -419,8 +459,12 @@ def _extract_extra_claims(
                             "molmetal/reports/wf275b_drugood_adapter/adapter_report.md::n_source_rows",
                         )
                     )
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 — best-effort, but reported
+                print(
+                    f"[paper_auto_update] WARN: extractor skipped {path}: "
+                    f"{type(exc).__name__}: {exc}",
+                    file=sys.stderr,
+                )
 
     # --- m14_lead_precondition: delta vs full ---
     if "m14_lead_precondition" in sources:
@@ -428,40 +472,97 @@ def _extract_extra_claims(
         if path.exists() and kind == "text":
             try:
                 text = path.read_text(encoding="utf-8")
-                # Match unicode minus (U+2212) AND ASCII minus
-                m = re.search(r"[Δ]\s*=\s*([−\-]1\.000)", text)
+                # Match unicode minus (U+2212) AND ASCII minus.  The value is
+                # captured, not written into the pattern (it was `1\.000`).
+                m = re.search(r"[Δ]\s*=\s*([−\-]?\d+\.\d+)", text)
                 if m:
-                    raw = m.group(1)
-                    # Normalize unicode minus to ASCII float
-                    val_str = raw.replace("−", "-")
-                    out.append(
-                        (
-                            "wf275c_m14_lead_delta_yuelbond_off",
-                            float(val_str),
-                            "TODO/completed/m14_lead_deployment_precondition.md::Δ_yuelbond_off",
+                    val = _to_float(m.group(1))
+                    if val is not None:
+                        out.append(
+                            (
+                                "wf275c_m14_lead_delta_yuelbond_off",
+                                val,
+                                "TODO/completed/m14_lead_deployment_precondition.md::Δ_yuelbond_off",
+                            )
                         )
+                else:
+                    print(
+                        f"[paper_auto_update] WARN: no Δ = <number> in {path}; "
+                        f"claim wf275c_m14_lead_delta_yuelbond_off dropped",
+                        file=sys.stderr,
                     )
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 — best-effort, but reported
+                print(
+                    f"[paper_auto_update] WARN: extractor skipped {path}: "
+                    f"{type(exc).__name__}: {exc}",
+                    file=sys.stderr,
+                )
 
     return out
 
 
-def _parse_old_value(doc_text: str, claim_id: str) -> Tuple[Optional[float], str]:
+def _to_float(raw: str) -> Optional[float]:
+    """Parse a captured numeric group.
+
+    Handles the three formats the paper docs actually use: a plain decimal,
+    a thousands-separated integer (``95,236``) and the Unicode minus
+    (``−1.000``, U+2212) that markdown writers emit for a negative delta.
+    """
+    cleaned = raw.replace("−", "-").replace(",", "").strip()
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
+
+
+def _parse_old_value(
+    doc_text: str, claim_id: str, *, warn: bool = True
+) -> Tuple[Optional[float], str]:
     """Return (old_value, matched_substring) for ``claim_id`` in ``doc_text``.
 
-    Returns (None, "") if no pattern matches.
+    Returns (None, "") if no pattern matches — and says so on stderr.  A miss
+    is not a soft skip: it means the doc's wording moved and the catalogue is
+    stale, so the claim would otherwise disappear from the diff with no trace.
     """
     pats = PATTERNS.get(claim_id, [])
+    if not pats:
+        if warn:
+            print(
+                f"[paper_auto_update] WARN: claim {claim_id!r} has no entry in "
+                f"PATTERNS — it can never be diffed against the paper doc",
+                file=sys.stderr,
+            )
+        return None, ""
     for pat in pats:
         m = re.search(pat, doc_text)
         if m:
             try:
-                return float(m.group(1)), m.group(0)
-            except (IndexError, ValueError):
-                # Pattern didn't carry a captured number; fall through to the
-                # caller, which will record "—" as the old value.
+                raw = m.group(1)
+            except IndexError:
+                if warn:
+                    print(
+                        f"[paper_auto_update] WARN: pattern for {claim_id!r} has "
+                        f"no capture group: {pat!r}",
+                        file=sys.stderr,
+                    )
                 return None, m.group(0)
+            val = _to_float(raw)
+            if val is None:
+                if warn:
+                    print(
+                        f"[paper_auto_update] WARN: pattern for {claim_id!r} "
+                        f"captured a non-numeric group {raw!r}: {pat!r}",
+                        file=sys.stderr,
+                    )
+                return None, m.group(0)
+            return val, m.group(0)
+    if warn:
+        print(
+            f"[paper_auto_update] WARN: no pattern matched claim {claim_id!r} — "
+            f"the paper doc's wording changed and the catalogue is stale "
+            f"({len(pats)} pattern(s) tried)",
+            file=sys.stderr,
+        )
     return None, ""
 
 
@@ -522,6 +623,11 @@ def render_diff_md(
     lines.append(f"- paper_doc:     `{paper_path}`\n")
     lines.append(f"- n_claims:      {len(claims)}\n")
     lines.append(f"- dry_run:       {dry_run}\n")
+    misses = [c for c in claims if not c.has_old]
+    lines.append(
+        f"- n_pattern_misses: {len(misses)}"
+        f"{' (see §Pattern misses)' if misses else ''}\n"
+    )
     lines.append("\n## Claims\n\n")
     lines.append("| claim_id | label | old_value | new_value | delta | json_path |\n")
     lines.append("|---|---|---:|---:|---:|---|\n")
@@ -537,9 +643,28 @@ def render_diff_md(
             f"**{c.new_value:.4f}** | {delta_s} | `{c.json_path}` |\n"
         )
 
+    if misses:
+        lines.append("\n## Pattern misses\n\n")
+        lines.append(
+            "These claims produced a new value but no pattern in "
+            "`paper_auto_update.py::PATTERNS` matched the paper doc, so there "
+            "is no old value to diff against. **This is not a soft skip** — "
+            "either the doc's wording moved (extend the catalogue) or the "
+            "claim has no home in the doc at all (drop it from the catalogue's "
+            "counterpart list).\n\n"
+        )
+        lines.append("| claim_id | label | new_value | json_path |\n")
+        lines.append("|---|---|---:|---|\n")
+        for c in misses:
+            lines.append(
+                f"| `{c.claim_id}` | {c.label} | {c.new_value:.4f} | "
+                f"`{c.json_path}` |\n"
+            )
+
     lines.append("\n## Provenance\n\n")
     lines.append(
-        "- **NEW values** come from the Wf-265-Collect JSON. "
+        "- **NEW values** come from the Wf-265-Collect JSON or the extra "
+        "metric/report sources. "
         "Every row carries its dotted JSON path so the number can be "
         "back-traced verbatim.\n"
     )
@@ -578,6 +703,10 @@ def render_updated_doc(paper_doc_text: str, claims: List[Claim]) -> str:
     """Apply the diff to the paper doc text.  Only claims with matched
     patterns and non-NaN old values are substituted.
 
+    Only the *number* inside the matched fragment is swapped, not the whole
+    fragment — the fragment carries the surrounding markup (``**``, table
+    pipes, the ``Å`` unit) that must survive the edit.
+
     Every substitution is also stamped with a `(Wf-265 auto-update)` inline
     annotation so the user can audit the diff in the rendered markdown.
     """
@@ -588,8 +717,11 @@ def render_updated_doc(paper_doc_text: str, claims: List[Claim]) -> str:
         if not c.has_old or not c.old_pattern:
             skipped.append(c)
             continue
-        new_substr = f"{c.new_value:.4f} <!-- Wf-265 auto-update -->"
-        new_text = out.replace(c.old_pattern, new_substr, 1)
+        new_fragment = _substitute_number(c.old_pattern, c.old_value, c.new_value)
+        if new_fragment is None:
+            skipped.append(c)
+            continue
+        new_text = out.replace(c.old_pattern, new_fragment, 1)
         if new_text != out:
             out = new_text
             applied.append(c)
@@ -603,6 +735,41 @@ def render_updated_doc(paper_doc_text: str, claims: List[Claim]) -> str:
         f"<!-- generated_utc: {_now_iso()} -->\n"
     )
     return out + banner
+
+
+_NUM_TOKEN = re.compile(r"[−\-]?\d[\d,]*(?:\.\d+)?")
+
+
+def _substitute_number(
+    fragment: str, old_value: float, new_value: float
+) -> Optional[str]:
+    """Swap the numeric token in ``fragment`` that equals ``old_value``.
+
+    Returns the rewritten fragment, or ``None`` when the fragment carries no
+    token that parses back to ``old_value`` (caller then skips the claim
+    rather than guessing which number to overwrite).
+
+    The replacement inherits the token's own formatting: ``0.8007`` keeps 4
+    decimals, ``0.658`` keeps 3, ``95,236`` keeps the thousands separator.
+    """
+    for m in _NUM_TOKEN.finditer(fragment):
+        token = m.group(0)
+        parsed = _to_float(token)
+        if parsed is None or abs(parsed - old_value) > 1e-9:
+            continue
+        if "," in token:
+            replacement = f"{new_value:,.0f}"
+        elif "." in token:
+            decimals = len(token.split(".")[1])
+            replacement = f"{new_value:.{decimals}f}"
+            # Never let the doc's own precision truncate the measurement:
+            # the paper writes AUC at 3 dp, but the new value usually has 4.
+            if abs(float(replacement) - new_value) > 5e-5:
+                replacement = f"{new_value:.4f}"
+        else:
+            replacement = f"{new_value:.0f}"
+        return fragment[: m.start()] + replacement + " <!-- Wf-265 auto-update -->" + fragment[m.end() :]
+    return None
 
 
 def write_updated_doc(updated_text: str, out_path: Path) -> Path:
@@ -768,6 +935,15 @@ def _build_argparser() -> argparse.ArgumentParser:
             "When omitted, the DEFAULT_EXTRA_SOURCES list is used."
         ),
     )
+    p.add_argument(
+        "--strict",
+        action="store_true",
+        help=(
+            "Exit 3 when any claim has no matching pattern in the paper doc "
+            "(instead of reporting the miss and exiting 0).  Use this in CI "
+            "so a stale PATTERNS catalogue cannot pass unnoticed."
+        ),
+    )
     return p
 
 
@@ -817,16 +993,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         dry_run=args.dry_run,
     )
     write_diff_md(diff_md, args.out_diff, args.dry_run)
+    misses = [c.claim_id for c in claims if not c.has_old]
     print(
         f"[paper_auto_update] wrote diff_report -> {args.out_diff} "
-        f"({len(claims)} claims, dry_run={args.dry_run})"
+        f"({len(claims)} claims, {len(misses)} without an old-value anchor, "
+        f"dry_run={args.dry_run})"
     )
+    if misses:
+        print(
+            f"[paper_auto_update] WARN: {len(misses)} claim(s) could not be "
+            f"anchored to the paper doc: {', '.join(misses)}",
+            file=sys.stderr,
+        )
 
     if not args.dry_run:
         updated_text = render_updated_doc(paper_text, claims)
         write_updated_doc(updated_text, args.updated_out)
         print(f"[paper_auto_update] wrote updated paper doc -> {args.updated_out}")
 
+    if args.strict and misses:
+        return 3
     return 0
 
 

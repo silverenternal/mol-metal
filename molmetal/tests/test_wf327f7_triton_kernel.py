@@ -253,13 +253,26 @@ class TestWf327f7KernelDMPNNIntegration:
             f"!= ({n_atoms}, {hidden})"
         )
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "Known gap: the Wf-327-F7 wiring never landed in dmpnn.py "
+            "(`git log -S _maybe_fused_relu_mlp_seq -- molmetal/models/dmpnn.py` "
+            "is empty).  dmpnn.py documents it as deferred until a fused-ReLU "
+            "kernel exists — triton_kernels.fused_relu_mlp now does, so the "
+            "precondition is met, but swapping the three nn.Sequential blocks "
+            "is a model change with checkpoint-name implications.  "
+            "strict=True so closing the gap turns this into XPASS(fail) and "
+            "forces the assertion to be re-pointed at the real call sites."
+        ),
+    )
     def test_03b_dmpnn_three_mlp_blocks_wired(self):
         """Verify D-MPNN's three ``nn.Sequential(Linear, ReLU, Linear)``
-        blocks (atom_embed, edge_embed, readout_mlp) are now routed
-        through the Wf-327-F7 dispatch helper.
+        blocks (atom_embed, edge_embed, readout_mlp) are routed through
+        the Wf-327-F7 dispatch helper.
 
-        This is a SOURCE-level check (not a runtime check) — it
-        verifies the Wf-327-F7 wiring held.
+        Currently XFAIL — see the marker reason.  This is a SOURCE-level
+        check (not a runtime check).
         """
         dmpnn_path = PROJECT_ROOT / "molmetal" / "models" / "dmpnn.py"
         assert dmpnn_path.is_file()

@@ -118,7 +118,9 @@ def test_trainer_parses() -> None:
     # but require all 3 classes to be present.
     assert v.try_count >= 1, "expected at least one try block in trainer"
     assert v.except_count >= 1, "expected at least one except handler"
-    assert v.finally_count >= 1, "expected the Wf-328-W1 encoder-restore finally block"
+    # 2026-10-20: the ``finally`` requirement was dropped — it asserted the
+    # Wf-328-W1 encoder-restore block, which left with the m21 selective
+    # revert (af84a545).  The shipped trainer has no try/finally at all.
 
     # No Triton-3.x-incompatible kwargs left over from the Wf-328 race.
     assert "pre_hook" not in src, (
@@ -158,7 +160,8 @@ def test_all_ten_wf328_integrations_present() -> None:
     ), "W1: missing compiled_w2_penalty thread-through"
     # --torch-compile default ON; --no-torch-compile lever is opt-out.
     assert "--torch-compile" in src, "W1: missing --torch-compile CLI flag"
-    assert "use_compile" in src, "W1: missing use_compile toggle"
+    # ``use_compile`` left with the m21 revert; ``--torch-compile`` is
+    # store_true default OFF and is the surviving lever.
 
     # Wf-328-W2 — launch-script --cpu-num-workers 8 override is wired
     # into the trainer's argparse (the launcher wires the value; the
@@ -172,10 +175,9 @@ def test_all_ten_wf328_integrations_present() -> None:
     # Wf-328-W3 — BF16 autocast default ON.
     assert "bf16_autocast" in src, "W3: missing bf16_autocast factory"
     assert "configure_bf16" in src, "W3: missing configure_bf16 helper"
-    assert "use_bf16" in src, "W3: missing use_bf16 toggle"
-    assert "bf16_fallback_occurred" in src, "W3: missing bf16_fallback_occurred flag"
+    # ``use_bf16`` / ``bf16_fallback_occurred`` / ``--no-bf16`` left with the
+    # m21 revert; the helper + constant survived.
     assert "DEFAULT_BF16" in src, "W3: missing DEFAULT_BF16 constant"
-    assert "--no-bf16" in src, "W3: missing --no-bf16 CLI lever"
 
     # Wf-328-W4 — TF32 default ON.
     assert "configure_tf32" in src, "W4: missing configure_tf32 helper"
@@ -183,33 +185,38 @@ def test_all_ten_wf328_integrations_present() -> None:
         "torch.backends.cuda.matmul.allow_tf32" in src
     ), "W4: missing tf32 matmul flag"
     assert "DEFAULT_TF32" in src, "W4: missing DEFAULT_TF32 constant"
-    assert "--no-tf32" in src, "W4: missing --no-tf32 CLI lever"
+    assert "--tf32" in src, "W4: missing --tf32 CLI lever"
 
     # Wf-328-W5 — W₂ sort mode default (closed-form 1-D torch.sort).
     assert (
         "DEFAULT_W2_GRADIENT_MODE" in src
     ), "W5: missing DEFAULT_W2_GRADIENT_MODE constant"
-    assert (
-        'DEFAULT_W2_GRADIENT_MODE: str = "sort"' in src
-    ), "W5: DEFAULT_W2_GRADIENT_MODE must default to 'sort'"
+    assert 'DEFAULT_W2_GRADIENT_MODE: str = "sliced"' in src, (
+        "W5: DEFAULT_W2_GRADIENT_MODE must default to 'sliced' — that is what "
+        "argparse, the signatures and every live config use"
+    )
     assert "w2_gradient_mode" in src, "W5: missing w2_gradient_mode dispatch"
     assert (
         "wasserstein_pic50_gradient" in src
     ), "W5: missing closed-form W₂ gradient call"
 
-    # Wf-328-W6 — Wf-326B build_optimized_loader() factory wire-in.
-    assert (
-        "build_optimized_loader" in src
-    ), "W6: missing build_optimized_loader factory import"
-    assert (
-        "wf326b_dataloader_optimized" in src
-    ), "W6: missing wf326b_dataloader_optimized module ref"
-    assert "effective_num_workers" in src, "W6: missing effective_num_workers resolver"
-    assert "suggest_num_workers" in src, "W6: missing suggest_num_workers heuristic"
+    # Wf-328-W6 — NOT WIRED.  The trainer builds batches manually; there is
+    # no torch DataLoader for the Wf-326B factory to feed.  Assert the absence
+    # so the reverted surface cannot leak back in silently.
+    for absent in (
+        "build_optimized_loader",
+        "wf326b_dataloader_optimized",
+        "effective_num_workers",
+        "suggest_num_workers",
+        "torch.utils.data.DataLoader",
+    ):
+        assert absent not in src, (
+            f"W6: {absent!r} is back in the trainer — the Wf-326B DataLoader "
+            f"factory was removed with the m21 revert"
+        )
 
     # Wf-328-W7 — D-MPNN PyG port reference (lives in
     # :mod:`molmetal.models.dmpnn_pyg`; trainer wires --dmpnn-backend CLI).
-    assert "--dmpnn-backend" in src, "W7: missing --dmpnn-backend CLI flag"
     assert "DEFAULT_DMPNN_BACKEND" in src, "W7: missing DEFAULT_DMPNN_BACKEND constant"
     assert (
         'DEFAULT_DMPNN_BACKEND: str = "pyg"' in src
@@ -219,18 +226,20 @@ def test_all_ten_wf328_integrations_present() -> None:
     ).exists(), "W7: PyG port module missing — expected molmetal/models/dmpnn_pyg.py"
 
     # Wf-328-W8 — CUDA Graphs capture wrapper.
-    assert "use_cuda_graph" in src, "W8: missing use_cuda_graph toggle"
-    assert "CudaGraphDMPNNWrapper" in src, "W8: missing CudaGraphDMPNNWrapper import"
-    assert "cuda_graph_wrapper" in src, "W8: missing cuda_graph_wrapper instantiation"
-    assert "--cuda-graph" in src, "W8: missing --cuda-graph CLI flag"
-    # --cuda-graph is opt-in (default OFF per Wf-326A quick wins); no
-    # explicit --no-cuda-graph lever (leaving the flag unset == OFF).
+    # W8 — CUDA Graphs NOT WIRED (same revert).
+    for absent in ("use_cuda_graph", "CudaGraphDMPNNWrapper", "--cuda-graph"):
+        assert absent not in src, (
+            f"W8: {absent!r} is back in the trainer — CUDA graphs were "
+            f"removed with the m21 revert"
+        )
 
     # Wf-328-W9 — Triton fused ReLU+Linear kernel opt-in.
     assert "TRITON_USE_FUSED" in src, "W9: missing TRITON_USE_FUSED env var"
-    assert "TRITON_RELU_LINEAR" in src, "W9: missing TRITON_RELU_LINEAR env var"
-    assert "TRITON_EDGE_UPDATE" in src, "W9: missing TRITON_EDGE_UPDATE env var"
-    assert "triton_edge_update" in src, "W9: missing triton_edge_update CLI toggle"
+    for absent in ("TRITON_RELU_LINEAR", "TRITON_EDGE_UPDATE", "triton_edge_update"):
+        assert absent not in src, (
+            f"W9: {absent!r} is back in the trainer — the per-op Triton "
+            f"toggles were removed with the m21 revert"
+        )
 
     # Wf-328-W10 — on-disk pickle cache for featurisation.
     assert "_featurize_with_cache" in src, "W10: missing _featurize_with_cache helper"
@@ -239,7 +248,8 @@ def test_all_ten_wf328_integrations_present() -> None:
     # Cross-cutting regression gate — pre-Wf-328 features must survive.
     assert "use_dann" in src, "Wf-285B: use_dann toggle must survive the merge"
     assert "ReverseLayerF" in src, "Wf-285B: ReverseLayerF.apply must survive the merge"
-    assert "lambda_grl" in src, "Wf-285B: lambda_grl weighting must survive the merge"
+    # ``lambda_grl`` left with the m21 revert; ``use_dann`` / ``ReverseLayerF``
+    # are the surviving DANN surface.
     assert "use_kendall" in src, "Wf-251-F4: use_kendall toggle must survive the merge"
     assert "single_task" in src, "Wf-197: single_task flag must survive the merge"
 
@@ -260,18 +270,25 @@ def test_all_ten_wf328_integrations_present() -> None:
 
 # Per Wf-328-W2 closeout (TODO/completed/328w2_launcher_num_workers_fix.md
 # §2.1): 6 launch scripts were updated from --cpu-num-workers 0 to 8.
-_LAUNCH_SCRIPTS_WITH_NUM_WORKERS = (
+# 2026-10-20: down from 6 to 4 — ``launch_wf124_p3_g4.sh`` and
+# ``launch_wf300_cfm_main.sh`` were archived under
+# ``TODO/archive/wf437_simplify/`` (Wf-437).  Kept in step with the
+# pre-flight gate's ``wf327_launch_scripts`` list.
+ARCHIVED_LAUNCH_SCRIPTS = (
     "launch_wf124_p3_g4.sh",
+    "launch_wf300_cfm_main.sh",
+)
+
+_LAUNCH_SCRIPTS_WITH_NUM_WORKERS = (
     "launch_wf124_p3_g5.sh",
     "launch_wf124_p3_g6.sh",
     "launch_wf310b_g6_final.sh",
-    "launch_wf300_cfm_main.sh",
     "retry_g5_missing_pairs.sh",
 )
 
 
 def test_six_launch_scripts_wire_num_workers_8() -> None:
-    """All 6 Wf-328-W2 launch scripts carry ``--cpu-num-workers 8``.
+    """All 4 active Wf-328-W2 launch scripts carry ``--cpu-num-workers 8``.
 
     Per Wf-326B grep (2026-09-29): 6 launch scripts hard-coded
     ``--cpu-num-workers 0`` which forced the trainer's manual-loop
@@ -279,6 +296,14 @@ def test_six_launch_scripts_wire_num_workers_8() -> None:
     OPTIMAL_NUM_WORKERS for the 24-core kanzi host) across the 6
     active launchers.  This test confirms each carries the new value.
     """
+    assert len(_LAUNCH_SCRIPTS_WITH_NUM_WORKERS) == 4, (
+        "expected exactly 4 active launchers; if another was archived, add it "
+        "to ARCHIVED_LAUNCH_SCRIPTS and narrow the pre-flight gate together"
+    )
+    for fname in ARCHIVED_LAUNCH_SCRIPTS:
+        assert not (SCRIPTS_DIR / fname).exists(), (
+            f"{fname} is back on disk but listed as archived"
+        )
     matched: list[str] = []
     for fname in _LAUNCH_SCRIPTS_WITH_NUM_WORKERS:
         path = SCRIPTS_DIR / fname
@@ -326,90 +351,60 @@ def test_six_launch_scripts_wire_num_workers_8() -> None:
 
 
 def test_backward_compat_baseline_no_flags() -> None:
-    """When no CLI flags are set, defaults match the documented baseline.
+    """When no CLI flags are set, defaults match the SHIPPED baseline.
 
     Per AGENTS.md §5.2 honest framing, the trainer's argparse defaults
     define the "no flags = baseline" contract.  Any silent change to
     these defaults would invalidate every prior G5 / G6 dry-run
     timing projection that was calibrated against the baseline.
 
-    The gate asserts:
-      1. Each documented DEFAULT_* constant exists in source.
-      2. Each constant's value matches the documented baseline.
-      3. The trainer's argparse CLI flag defaults match the constants.
-      4. The trainer falls back to the Wf-260 default ``num_workers=4``
-         when --cpu-num-workers and --num-workers are both unset.
+    2026-10-20: this test used to assert the *pre-revert* surface
+    (``DEFAULT_W2_GRADIENT_MODE="sort"``, ``--bf16``, ``--num-workers``,
+    ``default=4``).  That surface left with the m21 selective revert
+    (``af84a545``), so the test was asserting code that is not on disk.
+    It now asserts what ships, and asserts the removed levers are gone.
     """
     src = _read_trainer_source()
 
-    # 1) DEFAULT_* constants present + values match.
-    for cname, expected in _expected_default_constants().items():
-        if cname == "w2_gradient_mode":
-            assert (
-                'DEFAULT_W2_GRADIENT_MODE: str = "sort"' in src
-            ), f"baseline default {cname} missing or wrong"
-        elif cname == "tf32":
-            assert (
-                "DEFAULT_TF32: bool = True" in src
-            ), f"baseline default {cname} missing or wrong"
-        elif cname == "bf16":
-            assert (
-                "DEFAULT_BF16: bool = True" in src
-            ), f"baseline default {cname} missing or wrong"
-        elif cname == "dmpnn_backend":
-            assert (
-                'DEFAULT_DMPNN_BACKEND: str = "pyg"' in src
-            ), f"baseline default {cname} missing or wrong"
-        elif cname == "num_workers":
-            # Trainer default num_workers lives in argparse --cpu-num-workers
-            # default=4 (line 1837).  Also validated by the help text on
-            # line 1839 ("default 4 = forked workers").
-            assert "default=4" in src, f"baseline default {cname} missing or wrong"
-            assert (
-                "default 4 = " in src or "default 4" in src
-            ), f"baseline default {cname} help-text annotation missing"
+    # 1) DEFAULT_* constants present with the shipped values.
+    shipped = {
+        'DEFAULT_W2_GRADIENT_MODE: str = "sliced"': "w2_gradient_mode",
+        "DEFAULT_TF32: bool = True": "tf32",
+        "DEFAULT_BF16: bool = True": "bf16",
+        'DEFAULT_DMPNN_BACKEND: str = "pyg"': "dmpnn_backend",
+    }
+    for literal, cname in shipped.items():
+        assert literal in src, f"baseline default {cname} missing or wrong"
 
-    # 2) CLI flag defaults match the constants (no hidden override).
-    # Use regex to match `default=DEFAULT_<NAME>` patterns inside add_argument.
-    for flag, const in (
-        ("--w2-gradient-mode", "DEFAULT_W2_GRADIENT_MODE"),
-        ("--tf32", "DEFAULT_TF32"),
-        ("--bf16", "DEFAULT_BF16"),
-        ("--dmpnn-backend", "DEFAULT_DMPNN_BACKEND"),
-    ):
-        # The flag may appear as ``default=DEFAULT_<NAME>`` or
-        # ``action="store_true"`` (TF32 / BF16 use store_true so the
-        # default boolean is encoded via --no-<flag> instead).  Either
-        # pattern is acceptable.
-        assert flag in src, f"baseline CLI flag missing: {flag}"
-        if const in ("DEFAULT_TF32", "DEFAULT_BF16"):
-            # store_true flags: --no-<flag> lever must point at the default.
-            assert (
-                f"--no-{flag.lstrip('--')}" in src
-            ), f"baseline {flag}: expected --no-{flag.lstrip('--')} lever"
-
-    # 3) Wf-260 default num_workers=4 is the fallback when neither
-    # --num-workers nor --cpu-num-workers is set on the CLI.
-    # Verify the trainer's precedence comment block.
-    assert "--num-workers" in src, (
-        "backward-compat: --num-workers CLI flag must exist for explicit "
-        "override (precedence: --num-workers > --cpu-num-workers > default)"
+    # 2) The surviving CLI levers.
+    assert "--w2-gradient-mode" in src
+    assert "default=DEFAULT_W2_GRADIENT_MODE" in src, (
+        "the --w2-gradient-mode default must be the constant, not a literal"
+    )
+    assert "--tf32" in src, "baseline CLI flag missing: --tf32"
+    assert "--cpu-num-workers" in src
+    # The worker flag is accepted but inert (no DataLoader); the source says so.
+    assert "structurally a no-op" in src, (
+        "--cpu-num-workers must keep its honest 'inert' disclosure"
     )
 
-    # 4) Wf-326B suggest_num_workers heuristic is reachable as the ultimate
-    # fallback when --cpu-num-workers and --num-workers are both None.
-    assert "suggest_num_workers" in src, (
-        "backward-compat: Wf-326B suggest_num_workers heuristic must be the "
-        "ultimate fallback (--num-workers > --cpu-num-workers > suggest)."
-    )
+    # 3) Levers that left with the m21 revert must not come back silently.
+    #    Check *declarations*, not mentions: ``--bf16`` still appears in a
+    #    DEFAULT_BF16 docstring, which is a comment, not a CLI surface.
+    for absent in ("--bf16", "--no-bf16", "--num-workers", "--dmpnn-backend"):
+        declared = re.search(
+            r"add_argument\(\s*\n?\s*[\"']" + re.escape(absent) + r"[\"']", src
+        )
+        assert declared is None, (
+            f"backward-compat: {absent} is declared again in the trainer — it "
+            f"was removed with the m21 revert"
+        )
 
-    # 5) Cross-cutting regression gate — DANN / Kendall / single-task
-    # levers must survive (their default values are documented but not
-    # asserted here; this is a structural gate).  Per Wf-283B the
-    # CLI levers are ``--no-kendall`` (dest=kendall), ``--no-dann``
-    # (dest=dann), ``--single-task`` (dest=single_task).
+    # 4) Cross-cutting regression gate — DANN / Kendall / single-task
+    # levers must survive.
     for tok in ("--no-kendall", "--no-dann", "--single-task"):
         assert tok in src, (
             f"backward-compat: pre-Wf-328 CLI lever {tok} missing — "
             "Wf-285B / Wf-251-F4 / Wf-197 regression."
         )
+

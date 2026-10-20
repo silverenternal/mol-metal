@@ -54,12 +54,22 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # ---------------------------------------------------------------------------
 # Launch scripts under audit (Wf-326B §6.1 + Wf-328-W2)
+#
+# 2026-10-20: down from 6 to 4.  ``launch_wf124_p3_g4.sh`` and
+# ``launch_wf300_cfm_main.sh`` were archived under
+# ``TODO/archive/wf437_simplify/`` (Wf-437).  The pre-flight gate was already
+# narrowed to these 4 (``pre_flight_check.py`` wf327_launch_scripts, Wf-446
+# comment); this list now matches it instead of asserting two files that are
+# not on disk.
 # ---------------------------------------------------------------------------
-LAUNCH_SCRIPTS = (
+ARCHIVED_LAUNCH_SCRIPTS = (
     PROJECT_ROOT / "scripts" / "launch_wf124_p3_g4.sh",
+    PROJECT_ROOT / "scripts" / "launch_wf300_cfm_main.sh",
+)
+
+LAUNCH_SCRIPTS = (
     PROJECT_ROOT / "scripts" / "launch_wf124_p3_g5.sh",
     PROJECT_ROOT / "scripts" / "launch_wf124_p3_g6.sh",
-    PROJECT_ROOT / "scripts" / "launch_wf300_cfm_main.sh",
     PROJECT_ROOT / "scripts" / "launch_wf310b_g6_final.sh",
     PROJECT_ROOT / "scripts" / "retry_g5_missing_pairs.sh",
 )
@@ -71,12 +81,22 @@ LAUNCH_SCRIPTS = (
 def test_launch_scripts_all_use_cpu_num_workers_at_least_4():
     """Wf-326B §6.1 — every launch script must request >= 4 workers.
 
-    Per Wf-328-W2 (2026-09-29), the 6 active launch scripts were all
+    Per Wf-328-W2 (2026-09-29), the active launch scripts were all
     migrated to ``--cpu-num-workers 8``.  This test is the MEASURED
     verification that the migration held — a regression here would
     re-enable the Wf-326B root-cause (manual-loop fallback path,
     no pin_memory, no workers, no prefetch).
     """
+    assert len(LAUNCH_SCRIPTS) == 4, (
+        f"expected exactly 4 active launchers, found {len(LAUNCH_SCRIPTS)}; "
+        f"if another launcher was archived, update ARCHIVED_LAUNCH_SCRIPTS "
+        f"and the pre-flight gate together"
+    )
+    for archived in ARCHIVED_LAUNCH_SCRIPTS:
+        assert not archived.exists(), (
+            f"{archived.name} is back on disk but listed as archived — "
+            f"either restore it to LAUNCH_SCRIPTS or update the archive note"
+        )
     pattern = re.compile(r"--cpu-num-workers\s+(\d+)")
     n_pass = 0
     failures = []
@@ -128,10 +148,13 @@ def test_pre_flight_wf327_gate_passes():
         min_workers=4,
     )
     assert result.status == "PASS", f"Wf-327 pre-flight gate FAILED: {result.evidence}"
-    # 6/6 scripts must show max >= 4 (Wf-328-W2 + Wf-326B §6.2)
-    assert (
-        "6/6" in result.evidence
-    ), f"expected 6/6 launch scripts in evidence, got: {result.evidence}"
+    # Every active script must show max >= 4 (Wf-328-W2 + Wf-326B §6.2).
+    # Derived, not frozen: the count moved 6 -> 4 when Wf-437 archived two
+    # launchers, and a hardcoded "6/6" turned that into a red test.
+    expected = f"{len(LAUNCH_SCRIPTS)}/{len(LAUNCH_SCRIPTS)}"
+    assert expected in result.evidence, (
+        f"expected {expected} launch scripts in evidence, got: {result.evidence}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -156,29 +179,50 @@ def test_pre_flight_wf327_gate_registered_in_build_gates():
 
 
 # ---------------------------------------------------------------------------
-# Test 4 — DataLoader factory is wired into D-MPNN trainer (Wf-326B §6.3)
+# Test 4 — D-MPNN trainer batch construction (Wf-326B §6.3 → superseded)
 # ---------------------------------------------------------------------------
-def test_dmpnn_trainer_uses_build_optimized_loader():
-    """Wf-326B §6.3 / Wf-328-W6 — D-MPNN trainer imports + calls factory.
+def test_dmpnn_trainer_batches_without_a_dataloader():
+    """The trainer builds batches itself; there is no DataLoader to wire.
 
-    The Wf-328-W6 closeout wired ``build_optimized_loader()`` from
+    Wf-328-W6 wired ``build_optimized_loader()`` from
     :mod:`molmetal.scripts.wf326b_dataloader_optimized` into
-    :func:`train_one_epoch_joint`.  This test verifies the wiring
-    held (the Wf-328-W6 source-level import + call).
+    ``train_one_epoch_joint``.  That wiring is **gone**: the trainer was
+    restored from ``7edc3823a8`` (m21 selective revert, ``af84a545``,
+    2026-10-12) and the shipped trainer builds its batches manually.
+
+    Asserting the old wiring was asserting a feature that cannot exist — a
+    DataLoader factory has nothing to feed.  The live contract is the
+    inverse, and it is asserted here so a silent re-introduction is caught:
+    no factory import, and ``--cpu-num-workers`` is accepted but inert.
     """
     trainer = (
         PROJECT_ROOT / "molmetal" / "scripts" / "train_dmpnn_multitask_wasserstein.py"
     )
     assert trainer.is_file()
     text = trainer.read_text(encoding="utf-8")
-    assert "from molmetal.scripts.wf326b_dataloader_optimized import" in text, (
-        "D-MPNN trainer does NOT import build_optimized_loader — "
-        "Wf-328-W6 wiring regressed?"
+
+    # The factory is not wired, and no torch DataLoader is constructed.
+    assert "wf326b_dataloader_optimized" not in text, (
+        "the trainer imports the Wf-326B DataLoader factory again — if a "
+        "DataLoader was re-introduced on purpose, re-enable "
+        "test_dmpnn_trainer_uses_build_optimized_loader and update the "
+        "Wf-328-W6 record; if not, this is the revert leaking back in."
     )
-    assert "build_optimized_loader(" in text, (
-        "D-MPNN trainer does NOT call build_optimized_loader — "
-        "Wf-328-W6 wiring regressed?"
+    assert "torch.utils.data.DataLoader" not in text, (
+        "the trainer constructs a torch DataLoader again"
     )
+
+    # The worker flag survives as an accepted-but-inert surface, and says so.
+    assert "--cpu-num-workers" in text
+    assert "structurally a no-op" in text, (
+        "the trainer no longer documents --cpu-num-workers as inert; the "
+        "honest disclosure must stay next to the flag"
+    )
+
+    # The factory module itself must still exist (it is public API and is
+    # still exercised by its own test file).
+    factory = PROJECT_ROOT / "molmetal" / "scripts" / "wf326b_dataloader_optimized.py"
+    assert factory.is_file(), "wf326b_dataloader_optimized.py was deleted"
 
 
 # ---------------------------------------------------------------------------
@@ -209,23 +253,30 @@ def test_chemprop_trainer_num_workers_is_honest_negative():
 
 
 # ---------------------------------------------------------------------------
-# Test 6 — pre-flight v2 25/25 PASS gate count is 62 (Wf-327 +1)
+# Test 6 — the gate-count constant matches what build_gates() registers
 # ---------------------------------------------------------------------------
-def test_pre_flight_expected_gate_count_bumped_to_62():
-    """Wf-327 — EXPECTED_GATE_COUNTS['all'] must be 62 (was 61 pre-Wf-327).
+def test_pre_flight_gate_count_matches_registration():
+    """``EXPECTED_GATE_COUNTS`` must equal the registered gate count.
 
-    Per Wf-321D gate-count consistency audit: bumping a count requires
-    updating both this constant AND
-    ``TODO/completed/321d_preflight_gate_audit.md`` together.  Wf-327
-    adds 1 gate (``p3_wf327_cpu_num_workers_sufficient``); the
-    audit doc will be updated separately by the Wf-321D owner.
+    This test used to assert a frozen literal (62, the Wf-327 checkpoint).  It
+    went stale the first time a gate was added, and the only way to "fix" it
+    was to edit the literal — which asserts nothing about the code.  The
+    invariant that actually matters is constant == ``len(build_gates(...))``;
+    the audit-doc half of the sync is covered by
+    ``test_wf327f11_gate_count_consistency.py``.
     """
-    from molmetal.scripts.pre_flight_check import EXPECTED_GATE_COUNTS
-
-    assert EXPECTED_GATE_COUNTS["all"] == 62, (
-        f"EXPECTED_GATE_COUNTS['all'] = {EXPECTED_GATE_COUNTS['all']} "
-        f"!= 62 (Wf-327 bumped by 1)"
+    from molmetal.scripts.pre_flight_check import (
+        EXPECTED_GATE_COUNTS,
+        build_gates,
     )
+
+    for pipeline in ("all", "launch", "frontier", "chemprop_v2_v3", "cfm"):
+        registered = len(build_gates(pipeline))
+        assert registered == EXPECTED_GATE_COUNTS[pipeline], (
+            f"pipeline={pipeline!r}: build_gates() registers {registered} "
+            f"but EXPECTED_GATE_COUNTS says {EXPECTED_GATE_COUNTS[pipeline]}. "
+            f"Update the constant in the same edit that registers the gate."
+        )
 
 
 if __name__ == "__main__":

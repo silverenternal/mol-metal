@@ -15,12 +15,20 @@ Covers the public surface of ``paper_auto_update.py``:
 11. test_render_updated_doc_appends_banner      — atomic apply appends the Wf-265 banner.
 12. test_end_to_end_dry_run                     — main() in dry-run writes only the diff.
 13. test_end_to_end_apply_atomic                — main() with --no-dry-run writes both files.
+14. test_pattern_catalogue_is_structural        — every pattern captures the number it
+                                                  finds; mutating the digits still matches.
+15. test_m21_patterns_track_the_live_doc        — 0.8007 (legacy) and 0.7294 (live) both parse.
+16. test_pattern_miss_is_reported               — a miss reaches stderr, not the void.
+17. test_strict_exit_code_on_pattern_miss       — --strict turns a miss into rc=3.
+18. test_apply_preserves_markup                 — only the number is swapped, not the
+                                                  surrounding ``**`` / table pipes.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -339,3 +347,151 @@ def test_end_to_end_apply_atomic(tmp_path: Path):
     # The source paper doc must be untouched (atomic write goes to updated_path,
     # NOT in place).
     assert paper_path.read_text(encoding="utf-8") == original_paper
+
+
+# ---------------------------------------------------------------------------
+# 14) The pattern catalogue must be STRUCTURAL, not a set of frozen literals.
+#
+# This is the regression test for the 2026-10-20 defect: every pattern used to
+# embed the old value it was written to find (`(0\.8007)`), so when m21 was
+# re-measured the pattern stopped matching and the claim vanished from the diff
+# with no error.  Here we take each pattern's own match, replace every digit in
+# the captured group with 7, and require the catalogue to still find it and to
+# return the mutated number.  A pattern that encodes a literal fails instantly.
+# ---------------------------------------------------------------------------
+# Claims whose numbers live in report files but have no home in either paper
+# doc on disk.  This set is asserted, not skipped: a claim that silently stops
+# being anchored anywhere shows up as a test failure.
+UNANCHORED_CLAIMS = {
+    "wf269c_yuelbond_full_decode_ratio",
+    "wf269c_no_yuelbond_decode_ratio",
+    "wf271b_m17_reeval_below_random",
+    "wf275b_drugood_adapter_rows",
+    "wf275c_m14_lead_delta_yuelbond_off",
+}
+
+
+def _corpus() -> list[tuple[str, str]]:
+    """(label, text) for every paper doc on disk that the catalogue targets."""
+    out = [("<fixture>", PAPER_DOC_TEMPLATE)]
+    for rel in (
+        "TODO/completed/188_paper_4_krasnov_protocol_aligned.md",
+        "docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md",
+    ):
+        p = Path(_REPO) / rel
+        if p.exists():
+            out.append((rel, p.read_text(encoding="utf-8")))
+    return out
+
+
+def test_pattern_catalogue_is_structural():
+    unanchored = []
+    failures = []
+    for claim_id, pats in pau.PATTERNS.items():
+        found_any = False
+        for label, doc in _corpus():
+            for pat in pats:
+                m = re.search(pat, doc)
+                if not m:
+                    continue
+                found_any = True
+                if m.re.groups < 1:
+                    failures.append(f"{claim_id}: pattern has no capture group: {pat!r}")
+                    continue
+                # Mutate ONLY the captured number, so structural anchors such
+                # as "5-metal" or "NCI-60 9-cell" stay intact.
+                raw = m.group(1)
+                mutated_group = re.sub(r"\d", "7", raw)
+                mutated_frag = (
+                    m.group(0)[: m.start(1) - m.start(0)]
+                    + mutated_group
+                    + m.group(0)[m.end(1) - m.start(0) :]
+                )
+                val, _ = pau._parse_old_value(mutated_frag, claim_id, warn=False)
+                expected = pau._to_float(mutated_group)
+                if val is None or expected is None or abs(val - expected) > 1e-9:
+                    failures.append(
+                        f"{claim_id}: pattern stopped matching after mutating "
+                        f"{raw!r} -> {mutated_group!r} in {label} ({pat!r}); "
+                        f"got {val!r}, expected {expected!r}"
+                    )
+        if not found_any:
+            unanchored.append(claim_id)
+
+    assert not failures, "non-structural pattern(s):\n" + "\n".join(failures)
+    assert set(unanchored) == UNANCHORED_CLAIMS, (
+        f"anchored-claim set changed: {sorted(set(unanchored))} != "
+        f"{sorted(UNANCHORED_CLAIMS)}.  If a doc was edited, extend PATTERNS; "
+        f"do not delete the claim silently."
+    )
+
+
+# ---------------------------------------------------------------------------
+# 15) m21 must parse BOTH the superseded and the live doc form
+# ---------------------------------------------------------------------------
+def test_m21_patterns_track_the_live_doc():
+    legacy = "**Aggregate**: per-cell mean AUC = **0.8007 ± 0.0160** (3 seeds ...)"
+    val, _ = pau._parse_old_value(legacy, "m21_nci60_9cell_mean_auc", warn=False)
+    assert val == pytest.approx(0.8007)
+
+    live_table = (
+        "| T1 | **m21 NCI-60 9-cell AUC** (D-MPNN k-cell-line multi-task) | "
+        "`0.7294` (9-cell unweighted mean, 5 seeds) | MEASURED_HONEST_NEGATIVE |"
+    )
+    val, _ = pau._parse_old_value(live_table, "m21_nci60_9cell_mean_auc", warn=False)
+    assert val == pytest.approx(0.7294)
+
+    live_bullet = (
+        "- **MEASURED headline**: per-cell ROC-AUC, unweighted mean over 9 cell lines\n"
+        "  x 5 seeds x 50 epoch; fixed Bemis-Murcko scaffold split\n"
+        "  = `0.7294` (sample SD across cells `0.2137`)\n"
+    )
+    val, _ = pau._parse_old_value(live_bullet, "m21_nci60_9cell_mean_auc", warn=False)
+    assert val == pytest.approx(0.7294)
+
+
+# ---------------------------------------------------------------------------
+# 16) A pattern miss reaches stderr (it used to return (None, "") in silence)
+# ---------------------------------------------------------------------------
+def test_pattern_miss_is_reported(capsys):
+    val, substr = pau._parse_old_value(
+        "nothing here", "m21_nci60_9cell_mean_auc", warn=True
+    )
+    assert (val, substr) == (None, "")
+    err = capsys.readouterr().err
+    assert "no pattern matched claim 'm21_nci60_9cell_mean_auc'" in err
+    assert "catalogue is stale" in err
+
+
+# ---------------------------------------------------------------------------
+# 17) --strict turns a pattern miss into a non-zero exit
+# ---------------------------------------------------------------------------
+def test_strict_exit_code_on_pattern_miss(tmp_path: Path):
+    collect_path = tmp_path / "collect.json"
+    paper_path = tmp_path / "paper.md"
+    collect_path.write_text(json.dumps(_make_collect()), encoding="utf-8")
+    # A doc with none of the expected anchors -> every claim is a miss.
+    paper_path.write_text("# empty\n", encoding="utf-8")
+    base = [
+        "--collect-json",
+        str(collect_path),
+        "--paper-doc",
+        str(paper_path),
+        "--out-diff",
+        str(tmp_path / "diff.md"),
+    ]
+    assert pau.main(base) == 0
+    assert pau.main(base + ["--strict"]) == 3
+
+
+# ---------------------------------------------------------------------------
+# 18) Apply mode swaps the number and leaves the surrounding markup alone
+# ---------------------------------------------------------------------------
+def test_apply_preserves_markup():
+    claims = pau.build_diff(_make_collect(), PAPER_DOC_TEMPLATE)
+    updated = pau.render_updated_doc(PAPER_DOC_TEMPLATE, claims)
+    body, _, _ = updated.partition("<!-- Wf-265 auto-update banner -->")
+    # Table row for Ru survives as a well-formed row with the new number.
+    assert "| **Ru** | **0.7483 <!-- Wf-265 auto-update -->** | 0.81 |" in body
+    # The 5-metal mean keeps its "± 0.014" tail.
+    assert "± 0.014**" in body

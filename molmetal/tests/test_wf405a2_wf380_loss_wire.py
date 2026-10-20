@@ -438,8 +438,12 @@ def test_backward_compat_all_flags_off(cfm_parse_args, dmpnn_parse_args):
     assert args_dmpnn.single_task is False
     assert args_dmpnn.loose_filter is False
     assert args_dmpnn.max_joint_rows is None
-    # Legacy defaults
-    assert args_dmpnn.metals == ["Ru", "Ir", "Rh", "Os", "Re"]
+    # Legacy defaults.
+    # 2026-10-20: --metals default is ["auto"], not the five-metal literal.
+    # Wf-A6 BLOCKER A removed the hard-coded FIVE_METALS cohort so the same
+    # trainer serves platinai_4cell (Pt) and metalcytotox_5metal from the CSV;
+    # the literal is resolved from the data, not from argparse.
+    assert args_dmpnn.metals == ["auto"]
     assert args_dmpnn.epochs == 50
 
 

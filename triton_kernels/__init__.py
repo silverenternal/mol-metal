@@ -58,6 +58,7 @@ from . import fused_dropout
 from . import fused_mlp
 from . import fused_gelu_mlp as fused_gelu_mlp_module
 from . import fused_norm
+from . import fused_relu_mlp as fused_relu_mlp_module
 from . import fused_residual_add
 from . import fused_rmsnorm_residual
 from . import fused_softmax
@@ -76,6 +77,12 @@ fused_rms_norm = fused_norm.fused_rms_norm
 fused_silu_mlp = fused_mlp.fused_silu_mlp
 fused_gelu_mlp = fused_mlp.fused_gelu_mlp
 FusedGeluMLP = fused_gelu_mlp_module.FusedGeluMLP
+# D-MPNN edge-update kernels.  ``fused_relu_mlp`` here is the *function*; the
+# submodule stays importable as ``triton_kernels.fused_relu_mlp`` only until
+# this attribute assignment shadows it, so the module is kept under the
+# ``_module`` alias (same convention as ``fused_gelu_mlp_module``).
+fused_relu_linear = fused_relu_mlp_module.fused_relu_linear
+fused_relu_mlp = fused_relu_mlp_module.fused_relu_mlp
 softmax_last_dim = fused_softmax.softmax_last_dim
 fused_cross_entropy = fused_cross_entropy.fused_cross_entropy
 fused_dropout_residual = fused_dropout.fused_dropout_residual
@@ -105,6 +112,9 @@ __all__ = [
     "fused_silu_mlp",
     "fused_gelu_mlp",
     "FusedGeluMLP",
+    # Fused ReLU linear / MLP (D-MPNN edge update)
+    "fused_relu_linear",
+    "fused_relu_mlp",
     # Fused softmax + cross-entropy
     "softmax_last_dim",
     "fused_cross_entropy",

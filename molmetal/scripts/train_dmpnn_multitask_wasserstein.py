@@ -217,13 +217,22 @@ DEFAULT_TF32: bool = True
 #: ``nullcontext`` no-op via :func:`bf16_autocast`.
 DEFAULT_BF16: bool = True
 
-#: Default W₂ penalty mode (Wf-328-W5): the closed-form 1-D sort path.
-#: NOTE (honest framing): this flips the *constant/default* from the historical
-#: literal ``"sliced"`` to ``"sort"``.  The live ``train_one_epoch_joint`` /
-#: ``train_one_metal_one_seed`` signatures now default to this constant.  The
-#: slicer remains reachable via ``--w2-gradient-mode sliced`` for Wf-131 P1
-#: reproducibility.
-DEFAULT_W2_GRADIENT_MODE: str = "sort"
+#: Default W₂ penalty mode.
+#:
+#: History (2026-10-20): Wf-328-W5 flipped this constant to ``"sort"`` and
+#: claimed the live ``train_one_epoch_joint`` / ``train_one_metal_one_seed``
+#: signatures defaulted to it.  They did not — both kept the historical
+#: ``"sliced"`` literal, argparse kept ``default="sliced"``, and every live
+#: config pins ``w2_gradient_mode: sliced``.  The constant was therefore dead
+#: code carrying a false claim, which is worse than either value.
+#:
+#: It is now wired (the signatures and argparse read it) and set to the value
+#: that actually ships, so the declaration and the behaviour agree.  The
+#: closed-form sort path remains implemented and reachable via
+#: ``--w2-gradient-mode sort``; it is opt-in, not default.  Flipping this to
+#: ``"sort"`` is a *numerics* change for every unconfigured call site — do it
+#: deliberately, with a rerun, not as a side effect.
+DEFAULT_W2_GRADIENT_MODE: str = "sliced"
 
 #: Default D-MPNN encoder backend (Wf-334u1).  ``"pyg"`` = the vectorised
 #: flat-graph encoder (``_forward_flat``); ``"loop"`` = the legacy Python
@@ -1466,7 +1475,7 @@ def train_one_epoch_joint(
     batch_size: int,
     device: torch.device,
     w_config: WassersteinConfig,
-    w2_gradient_mode: str = "sliced",
+    w2_gradient_mode: str = DEFAULT_W2_GRADIENT_MODE,
     # Wf-405-A2 — Wf-380 NEW CLI flag wire-in kwargs.  All default
     # to OFF / zero-contribution so backward compat with Wf-131 P1 +
     # Wf-251-F4 baseline is preserved bit-for-bit when no flag is
@@ -1857,7 +1866,7 @@ def train_one_metal_one_seed(
     single_task: bool = False,
     hidden: Optional[int] = None,
     depth: Optional[int] = None,
-    w2_gradient_mode: str = "sliced",
+    w2_gradient_mode: str = DEFAULT_W2_GRADIENT_MODE,
     # Wf-427-A3 — Wf-405-A2 + Wf-424-A1 wire-in fix.  These kwargs were
     # referenced as ``args.<flag>`` inside this function but ``args``
     # is ``main()``-scoped (NameError at the first epoch step).  Threaded
@@ -3097,7 +3106,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p.add_argument(
         "--w2-gradient-mode",
         choices=("sliced", "sort"),
-        default="sliced",
+        default=DEFAULT_W2_GRADIENT_MODE,
         help="W₂ gradient source (Wf-251-F4): sliced (default — Wf-131 P1 "
         "shipped behaviour) or sort (closed-form 1-D torch.sort; "
         "more numerically stable; modest AUC lift).",
@@ -3821,6 +3830,36 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
+
+    # Wf-335-P3 / AGENTS.md §5.7 — flag → env bridge, and loud rejection for
+    # the flags nothing consumes.  These two flags used to be declared in
+    # argparse and read by nobody; a flag that reaches no consumer is worse
+    # than a missing flag because it reads as configured.
+    if getattr(args, "use_triton_bond_head", False):
+        raise SystemExit(
+            "--use-triton-bond-head has no call site in this trainer "
+            "(verified 2026-10-20). Refusing to accept a Triton flag that "
+            "computes nothing; wire fused_bond_head_aggregation first."
+        )
+    if getattr(args, "use_triton_smiles_featurize", False):
+        raise SystemExit(
+            "--use-triton-smiles-featurize has no call site in this trainer "
+            "(verified 2026-10-20). Refusing to accept a Triton flag that "
+            "computes nothing; wire fused_smiles_featurize first."
+        )
+    _triton_enabled: List[str] = []
+    if getattr(args, "use_triton_relu_mlp", False):
+        _wf130_os.environ["TRITON_RELU_MLP"] = "1"
+        _triton_enabled.append("TRITON_RELU_MLP")
+    if getattr(args, "use_triton_wasserstein_sliced", False):
+        _wf130_os.environ["TRITON_WASSERSTEIN_SLICED"] = "1"
+        _triton_enabled.append("TRITON_WASSERSTEIN_SLICED")
+    if _triton_enabled:
+        _wf130_os.environ["TRITON_USE_FUSED"] = "1"
+        print(
+            f"[dmpnn-flags] triton dispatch enabled via env: "
+            f"{','.join(_triton_enabled + ['TRITON_USE_FUSED'])}"
+        )
     # 2026-10-04 — `model.task` (dest `task`) validation.  The multi-task
     # head layout is hardcoded (shared encoder + one head pair per cohort
     # member), so any other value must FAIL LOUDLY instead of being

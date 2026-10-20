@@ -9,9 +9,13 @@
 # Per Wf-328-W2: --cpu-num-workers 8 (Wf-326B OPTIMAL_NUM_WORKERS on 24-core host)
 # — replaces Wf-326B-reverted --cpu-num-workers 0 override.
 #
-# Per Wf-328-W5: --w2-gradient-mode sort (Wf-326A MEASURED 2-3× speedup on
-# RTX PRO 6000 Blackwell sm_120; replaces the legacy --w2-gradient-mode
-# sliced override that was preserved bit-exact for in-flight retrains).
+# Per Wf-328-W5 §Integration points: G5/G6 keep --w2-gradient-mode sliced.
+# The sort default is for FUTURE launchers; these two are the in-flight
+# retrains whose numbers are compared bit-exact against the Wf-131 P1
+# baseline in the paper §6 reproducibility audit.  (bc29aa90 flipped this
+# to `sort` in an unrelated venv-path commit; reverted 2026-10-20.)
+# NOTE: the YAML also pins `w2_gradient_mode: sliced`; the explicit flag is
+# kept only because Wf-334u4 asserts it is present and equal to sliced.
 #
 # Per Wf-328-W6: --num-workers 8 (Wf-326B build_optimized_loader() factory;
 # takes precedence over --cpu-num-workers; wires prefetch_factor=8 +
@@ -169,7 +173,7 @@ COMMON_ARGS=(
   --depth 3
   --lr 1e-3
   --alpha 0.5
-  --w2-gradient-mode sort
+  --w2-gradient-mode sliced
   --n-mc 256
   --use-l2-guard
   --device "${GPU}"
@@ -279,7 +283,7 @@ if [[ "${DRY_RUN}" == "1" ]]; then
     --wrapper "$(basename "$0")" \
     --mode "G6_per_innovation_ablation" \
     --trainer "${SCRIPT}" \
-    --flags "--epochs 50 --batch-size 256 --hidden 300 --depth 3 --lr 1e-3 --alpha 0.5 --w2-gradient-mode sort --n-mc 256 --use-l2-guard --device ${GPU} --cpu-num-workers 8 ${COMMON_ARGS[*]}" \
+    --flags "--epochs 50 --batch-size 256 --hidden 300 --depth 3 --lr 1e-3 --alpha 0.5 --w2-gradient-mode sliced --n-mc 256 --use-l2-guard --device ${GPU} --cpu-num-workers 8 ${COMMON_ARGS[*]}" \
     --gpu "${GPU}" \
     --budget-hr "7.5" \
     --user-ok "REQUIRED" \

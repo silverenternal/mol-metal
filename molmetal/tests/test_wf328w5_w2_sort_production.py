@@ -49,31 +49,37 @@ from molmetal.scripts.train_dmpnn_multitask_wasserstein import (  # noqa: E402
 
 
 def test_w2_gradient_mode_sort_default_implemented():
-    """``--w2-gradient-mode sort`` is implemented + is the production default.
+    """``--w2-gradient-mode sort`` is implemented; ``sliced`` is the default.
+
+    Wf-328-W5 flipped the default to ``sort``.  That flip did not survive the
+    m21 selective revert (``af84a545``, 2026-10-12): the signatures, argparse
+    and every live config all ship ``sliced``.  The constant now agrees with
+    them and is actually read by the signatures/argparse (it used to be dead).
 
     Verifies:
-      1. ``DEFAULT_W2_GRADIENT_MODE = "sort"`` (the Wf-328-W5 default flip).
-      2. ``parse_args([])`` resolves to ``"sort"`` so an *untouched*
-         invocation of the trainer inherits the sort path.
-      3. ``parse_args(["--w2-gradient-mode", "sort"])"`` also yields
-         ``"sort"`` (explicit override is a no-op).
-      4. ``parse_args(["--w2-gradient-mode", "sliced"])"`` is still
-         accepted (backward-compat / paper §6 reproducibility audits).
+      1. ``DEFAULT_W2_GRADIENT_MODE == "sliced"`` (the shipped default).
+      2. ``parse_args([])`` resolves to the constant, so the constant is live.
+      3. ``parse_args(["--w2-gradient-mode", "sort"])`` yields ``"sort"``
+         — the Wf-328-W5 path is still reachable and selectable.
+      4. ``parse_args(["--w2-gradient-mode", "sliced"])`` is accepted.
     """
-    # Sanity: the constant is the production default.
-    assert DEFAULT_W2_GRADIENT_MODE == "sort", (
-        "DEFAULT_W2_GRADIENT_MODE must be 'sort' (Wf-328-W5 default ON); "
-        "Wf-326A quick wins gave 2-3x W2 speedup."
+    # Sanity: the constant matches what the trainer actually ships.
+    assert DEFAULT_W2_GRADIENT_MODE == "sliced", (
+        "DEFAULT_W2_GRADIENT_MODE must be 'sliced' — that is what argparse, "
+        "the trainer signatures and every live config use.  Flipping it to "
+        "'sort' is a numerics change for unconfigured call sites and needs a "
+        "deliberate rerun, not a test edit."
     )
 
-    # Untouched invocation → sort (the new default).
+    # Untouched invocation → the constant (proves the constant is wired).
     args_default = parse_args([])
-    assert args_default.w2_gradient_mode == "sort", (
-        f"default --w2-gradient-mode should be 'sort' (Wf-328-W5); got "
+    assert args_default.w2_gradient_mode == DEFAULT_W2_GRADIENT_MODE, (
+        f"default --w2-gradient-mode should be "
+        f"{DEFAULT_W2_GRADIENT_MODE!r}; got "
         f"{args_default.w2_gradient_mode!r}"
     )
 
-    # Explicit sort is a no-op (idempotent).
+    # The sort path is still selectable (Wf-328-W5's implementation).
     args_sort = parse_args(["--w2-gradient-mode", "sort"])
     assert args_sort.w2_gradient_mode == "sort", (
         f"--w2-gradient-mode sort should yield 'sort'; got "
@@ -318,7 +324,7 @@ def test_integration_with_trainer():
         device=device,
         w_config=cfg,
         w2_gradient_mode="sort",
-        num_workers=0,
+        # num_workers was removed with the DataLoader (m21 revert).
     )
     # Live contract (Wf-A9 extension): the epoch loop returns a 5-tuple
     # ``(total, cls, reg, w, last_grad_norm)`` — the trailing grad-norm was
@@ -351,7 +357,7 @@ def test_integration_with_trainer():
         device=device,
         w_config=cfg,
         w2_gradient_mode="sliced",
-        num_workers=0,
+        # num_workers was removed with the DataLoader (m21 revert).
     )
     assert len(losses_sliced) == 5
     for name, val in zip(
@@ -363,7 +369,7 @@ def test_integration_with_trainer():
 
         assert math.isfinite(val), f"{name} loss not finite: {val}"
 
-    # --- CLI default verification: parse_args([]) → "sort" ---
+    # --- CLI default verification: parse_args([]) == the shipped constant ---
     args_default = parse_args([])
     assert args_default.w2_gradient_mode == DEFAULT_W2_GRADIENT_MODE
-    assert args_default.w2_gradient_mode == "sort"
+    assert args_default.w2_gradient_mode == "sliced"

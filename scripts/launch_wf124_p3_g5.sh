@@ -8,9 +8,13 @@
 # Per Wf-328-W2: --cpu-num-workers 8 (Wf-326B OPTIMAL_NUM_WORKERS on 24-core host)
 # — replaces Wf-326B-reverted --cpu-num-workers 0 override.
 #
-# Per Wf-328-W5: --w2-gradient-mode sort (Wf-326A MEASURED 2-3× speedup on
-# RTX PRO 6000 Blackwell sm_120; replaces the legacy --w2-gradient-mode
-# sliced override that was preserved bit-exact for in-flight retrains).
+# Per Wf-328-W5 §Integration points: G5/G6 keep --w2-gradient-mode sliced.
+# The sort default is for FUTURE launchers; these two are the in-flight
+# retrains whose numbers are compared bit-exact against the Wf-131 P1
+# baseline in the paper §6 reproducibility audit.  (bc29aa90 flipped this
+# to `sort` in an unrelated venv-path commit; reverted 2026-10-20.)
+# NOTE: the YAML also pins `w2_gradient_mode: sliced`; the explicit flag is
+# kept only because Wf-334u4 asserts it is present and equal to sliced.
 #
 # Wf-r28 (2026-10-07): --num-workers and --no-cuda-graphs REMOVED from
 # COMMON_ARGS. Neither is declared in this trainer's argparse, so all 15
@@ -160,10 +164,16 @@ COMMON_ARGS=(
   --wasserstein-weight 0.05
   --use-l2-guard
   --ablation-config mtl_baseline
-  --w2-gradient-mode sort
+  --w2-gradient-mode sliced
   --n-mc 256
   --device "${GPU}"
   --cuda-visible-devices 0
+  --cpu-num-workers 8
+  # Wf-328-W2: the worker count is 8 here as well as in the dry-run --flags
+  # line below.  It was previously only in the log string, so the actual
+  # launch ran with the argparse default.  The flag is inert in the shipped
+  # trainer (it builds batches itself), but the launcher must still declare
+  # what it intends — a value that only exists in a log is not a setting.
   # Wf-r28 (2026-10-07): `--num-workers 8` and `--no-cuda-graphs` were
   # REMOVED — neither is declared in this trainer's argparse
   # (train_dmpnn_multitask_wasserstein.py), so every one of the 15 G5
@@ -223,7 +233,7 @@ if [[ "${DRY_RUN}" == "1" ]]; then
     --wrapper "$(basename "$0")" \
     --mode "G5_50epoch_full_sweep" \
     --trainer "${SCRIPT}" \
-    --flags "--epochs 50 --batch-size 256 --hidden 300 --depth 3 --lr 1e-3 --alpha 0.5 --wasserstein-weight 0.05 --use-l2-guard --ablation-config mtl_baseline --w2-gradient-mode sort --n-mc 256 --device ${GPU} --cpu-num-workers 8" \
+    --flags "--epochs 50 --batch-size 256 --hidden 300 --depth 3 --lr 1e-3 --alpha 0.5 --wasserstein-weight 0.05 --use-l2-guard --ablation-config mtl_baseline --w2-gradient-mode sliced --n-mc 256 --device ${GPU} --cpu-num-workers 8" \
     --gpu "${GPU}" \
     --budget-hr "5" \
     --user-ok "REQUIRED" \
