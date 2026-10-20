@@ -115,15 +115,37 @@ ALL_TERMS = frozenset(
         "wasserstein_pocket_term",
         # Wf-A27 clash penalty (OFF at weight 0).
         "clash_penalty_term",
-        # Wf-A23 class wrappers.  Five are ON at their shipped default and
-        # MEASURED live; see EXPECTED_LIVE.
+        # Wf-A23 class wrappers that Wf-A34-1 KEPT in the sum — these three
+        # have no inline duplicate.  The other four (consistency/so3/edm/
+        # shortcut) are NOT here: Wf-A105 measured that they never reach the
+        # objective at all.  See DIAGNOSTIC_TERMS.
+        "fm_ode_class_term",
+        "energy_class_term",
+        "sboo3_class_term",
+        # Wf-A105 — these two were inside the sum all along but were missing
+        # from the side-channel, so this guard could not see them.
+        "bond_aux_mse_term",
+        "ring_prior_term",
+    }
+)
+
+#: Wf-A105 — computed every step, recorded, gradient-carrying, and NOT part of
+#: the objective.  Wf-A34-1 dropped these four duplicate class wrappers from
+#: the sum (their inline siblings are already there) but kept computing them
+#: and kept listing them in `_LAST_LOSS_TERMS`, whose contract says "the exact
+#: tensor that entered loss".  That was false for all four.
+#:
+#: MEASURED: --consistency-term-weight 1e-9 and 500 give a bit-identical epoch
+#: (train_loss 5.4288, bond_ce 1.1657, grad_norm 80.749).  A 5e11x weight
+#: change that moves the loss by zero is not in the objective.  The flag's only
+#: effect is the extra forward and the torch.randn_like it consumes, which
+#: shifts the RNG stream (weight 0.0 -> train_loss 5.0606).
+DIAGNOSTIC_TERMS = frozenset(
+    {
         "consistency_class_term",
         "so3_class_term",
         "edm_class_term",
         "shortcut_distill_class_term",
-        "fm_ode_class_term",
-        "energy_class_term",
-        "sboo3_class_term",
     }
 )
 
@@ -186,8 +208,11 @@ EXPECTED_LIVE = frozenset(
         # non-zero value): the Wf-A23 class wrappers that Wf-A43/A44 left ON
         # at 0.05.  They were reaching the objective with no flag to read or
         # disable them until Wf-A100 declared --*-term-weight.
-        "consistency_class_term",
-        "edm_class_term",
+        #
+        # Wf-A105 — consistency_class_term and edm_class_term were REMOVED
+        # from this set: they are live but they are not in the objective, so
+        # "carries a gradient" was the wrong assertion for them.  The three
+        # below really are summed into `loss`.
         "fm_ode_class_term",
         "energy_class_term",
         "sboo3_class_term",
@@ -249,21 +274,20 @@ ALLOWED_DEAD: dict = {
         "OFF at --clash-penalty-weight 0 (default). MEASURED 0.0 at 0.05 on "
         "the toy cohort (no clashing pairs in 32 clouds)."
     ),
-    "so3_class_term": (
-        "OFF at --so3-term-weight 0.0 (default). Before Wf-A100 no flag "
-        "existed, so this term could not be enabled from a config at all."
+    # Wf-A105 — "so3_class_term" and "shortcut_distill_class_term" used to
+    # live here.  They are not in the loss sum at all (Wf-A34-1 removed them),
+    # so declaring them dead in a table about the objective was the wrong
+    # table.  They are now in DIAGNOSTIC_TERMS.
+    "bond_aux_mse_term": (
+        "OFF at flow.bond_aux_mse_weight 0.0 (default; Wf-A68 opt-in). The "
+        "smoke does not set it, so this is an exact torch.zeros(()). Wf-A105 "
+        "registered it here because it was in the loss sum while invisible "
+        "to this guard."
     ),
-    "shortcut_distill_class_term": (
-        "OFF at --shortcut-distill-term-weight 0.0 (default since Wf-A102). "
-        "Until Wf-A102 it was 0.05 and still exactly 0.0 with "
-        "requires_grad=False, because the self-consistency branch needs the "
-        "SECOND view and the trainer passed x_prime=None unconditionally. "
-        "Wf-A102 builds that view (a second forward on a 0.01 A perturbed "
-        "input) whenever the weight is > 0; the default is 0.0 so no existing "
-        "run changes. MEASURED at weight 0.05: requires_grad True, value "
-        "1.24e-08 — LIVE but three orders of magnitude below observability "
-        "against a loss of ~1.5, because a 0.01 A input perturbation barely "
-        "moves the velocity field. See HONEST_NEGATIVE_CATALOG.md §6.146."
+    "ring_prior_term": (
+        "OFF at flow.ring_prior_weight 0.0 (default; OPT-5/Wf-A78 opt-in). "
+        "The smoke does not set it, so this is an exact torch.zeros(()). "
+        "Wf-A105 registered it for the same reason as bond_aux_mse_term."
     ),
 }
 
@@ -335,6 +359,11 @@ out = {{k: {{"requires_grad": bool(v.requires_grad),
             "value": float(v.detach())}}
        for k, v in m._LAST_LOSS_TERMS.items()}}
 print("LOSS_TERMS_JSON=" + json.dumps(out))
+diag = {{k: {{"requires_grad": bool(v.requires_grad),
+             "value": float(v.detach())}}
+        for k, v in m._LAST_DIAGNOSTIC_TERMS.items()}}
+print("DIAG_TERMS_JSON=" + json.dumps(diag))
+print("AUDIT_JSON=" + json.dumps(m._LAST_LOSS_AUDIT))
 """
 
 
@@ -342,6 +371,12 @@ print("LOSS_TERMS_JSON=" + json.dumps(out))
 #: torch in a fresh subprocess and running an all-flags-on epoch costs ~50 s;
 #: paying it twice for the same measurement would be pure waste.
 _MEASURED_CACHE: dict = {}
+
+#: Wf-A105 — the terms that are computed but NOT in the objective, and the
+#: audit pair proving the dict above is complete.  Separate caches because
+#: they answer different questions and must not be conflated again.
+_DIAG_CACHE: dict = {}
+_AUDIT_CACHE: dict = {}
 
 
 def _measure_terms(tmp_path: Path) -> dict:
@@ -384,10 +419,16 @@ def _measure_terms_uncached(tmp_path: Path) -> dict:
         cwd=str(REPO_ROOT),
         timeout=900,
     )
-    marker = "LOSS_TERMS_JSON="
+    markers = {
+        "LOSS_TERMS_JSON=": _MEASURED_CACHE,
+        "DIAG_TERMS_JSON=": _DIAG_CACHE,
+        "AUDIT_JSON=": _AUDIT_CACHE,
+    }
     for line in reversed(proc.stdout.splitlines()):
-        if marker in line:
-            _MEASURED_CACHE.update(json.loads(line.split(marker, 1)[1]))
+        for marker, sink in markers.items():
+            if marker in line:
+                sink.update(json.loads(line.split(marker, 1)[1]))
+        if _MEASURED_CACHE:
             return _MEASURED_CACHE
     raise AssertionError(
         "trainer did not emit LOSS_TERMS_JSON — it crashed or the "
@@ -445,3 +486,64 @@ def test_loss_terms_carry_gradients(tmp_path: Path) -> None:
         "EXPECTED_LIVE, or declare it in ALLOWED_DEAD with a specific reason "
         "and the work item that retires it."
     )
+
+
+def test_diagnostic_terms_are_not_in_the_objective(tmp_path: Path) -> None:
+    """Wf-A105 — the split must hold at runtime, not just in this file.
+
+    A term in DIAGNOSTIC_TERMS is computed and recorded, but it must NOT
+    appear in _LAST_LOSS_TERMS, whose contract is "the exact tensor that
+    entered loss".
+    """
+    loss_terms = _measure_terms(tmp_path)
+    assert _DIAG_CACHE, "the trainer did not emit DIAG_TERMS_JSON"
+    assert set(_DIAG_CACHE) == set(DIAGNOSTIC_TERMS), (
+        "DIAGNOSTIC_TERMS has drifted from the trainer: "
+        f"declared-not-in-loss={sorted(set(DIAGNOSTIC_TERMS) - set(_DIAG_CACHE))}, "
+        f"measured-not-in-loss={sorted(set(_DIAG_CACHE) - set(DIAGNOSTIC_TERMS))}"
+    )
+    leaked = sorted(set(_DIAG_CACHE) & set(loss_terms))
+    assert not leaked, (
+        f"{leaked} are declared as NOT entering the objective but are present "
+        "in _LAST_LOSS_TERMS. Either they were added back to the sum (then "
+        "move them to EXPECTED_LIVE) or the side-channel is lying again."
+    )
+
+
+def test_the_side_channel_is_complete_and_exact(tmp_path: Path) -> None:
+    """Wf-A105 — `loss` must equal the sum of the recorded tensors.
+
+    This is the invariant that makes every other test in this file mean
+    something.  Without it a term can enter the objective unrecorded (the
+    guard cannot see it) or be recorded without entering it (the guard
+    watches a tensor that trains nothing) — both happened here.
+    """
+    _measure_terms(tmp_path)
+    assert _AUDIT_CACHE, "the trainer did not emit AUDIT_JSON"
+    total = _AUDIT_CACHE["total"]
+    recorded = _AUDIT_CACHE["sum_recorded"]
+    assert total == total, "audit total is NaN — the side-channel never ran"
+    assert abs(total - recorded) <= 1e-5 * max(1.0, abs(total)), (
+        f"loss={total!r} but the recorded terms sum to {recorded!r} "
+        f"(delta {total - recorded:+.3e}). Either a term enters the "
+        "objective without being recorded, or a recorded term does not "
+        "enter it. Both are the defect this file exists to catch."
+    )
+
+
+def test_diagnostic_terms_are_still_computed(tmp_path: Path) -> None:
+    """The four are NOT deleted — they are still measured, just not summed.
+
+    Keeping them computed is what preserves bit-exactness for every existing
+    run (they consume the RNG stream).  If someone deletes them, runs change
+    and this test should say so loudly.
+    """
+    _measure_terms(tmp_path)
+    for name in ("consistency_class_term", "edm_class_term"):
+        assert name in _DIAG_CACHE, f"{name} is no longer computed"
+        assert _DIAG_CACHE[name]["requires_grad"], (
+            f"{name} is computed but carries no gradient — it was live at "
+            "Wf-A105 and its liveness is what made it look like an objective "
+            "term in the first place."
+        )
+

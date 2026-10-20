@@ -8688,3 +8688,104 @@ delta: **+1**. Cumulative catalog count: **199 -> 200** (+1). ACTIVE count: **15
 
 ---
 
+### §6.148 Wf-A105 — four loss weights were computed, recorded and thrown away, and the side-channel said otherwise (2026-10-20)
+
+The side-channel `_LAST_LOSS_TERMS` is documented, in the trainer and in the guard that reads it, as
+"the exact tensor that entered `loss` above". Wf-A34-1 (2026-10-14) removed four duplicate class
+wrappers from the sum — `consistency_class_term`, `so3_class_term`, `edm_class_term`,
+`shortcut_distill_class_term` — because their inline siblings are already there. The wrappers kept
+being **computed**, kept being **recorded in that dict**, and kept a **flag each** whose help text
+described a weight on the objective. All three of those statements were false.
+
+**MEASURED — the term's value cannot be in the loss.** One epoch, 32 clouds, seed 0, otherwise
+identical:
+
+| `--consistency-term-weight` | train_loss | bond_ce | grad_norm |
+|---|---|---|---|
+| 0.0 | 5.0606 | 1.1691 | 48.909 |
+| 1e-9 | 5.4288 | 1.1657 | 80.749 |
+| 500 | 5.4288 | 1.1657 | 80.749 |
+
+1e-9 and 500 are **bit-identical**. A 5×10¹¹ change in weight that moves the loss by exactly zero
+is not in the objective. The 0.0 → 1e-9 difference is not the term either: `consistency_loss_fn`
+calls `torch.randn_like(x_t)`, so merely enabling the branch draws from the global RNG and shifts
+every later sample. **The flag's only effect on training is to perturb the RNG stream.**
+
+**A second, opposite defect in the same dict.** `bond_aux_mse_term` and `ring_prior_term` were in
+the loss sum but were *absent* from the side-channel. So the guard that exists to notice "a term
+reached the objective while training nothing" could not see two terms that reached the objective at
+all. The dict was wrong in both directions at once: four entries that were not in the loss, two
+terms in the loss with no entry.
+
+**The repair (no numeric change).**
+* `_LAST_DIAGNOSTIC_TERMS` — a second dict for tensors that are computed but not summed. The four
+  moved there. `_LAST_LOSS_TERMS` now means what it says.
+* `_LAST_LOSS_AUDIT` — records `float(loss)` and the sum of every recorded tensor. The guard
+  asserts they agree, which is the invariant that makes every other assertion in that file
+  meaningful. MEASURED on the probe: both 3.290618896484375, exact.
+* `bond_aux_mse_term` + `ring_prior_term` added to `_LAST_LOSS_TERMS` (and declared dead at their
+  0.0 defaults in `ALLOWED_DEAD`).
+* The four flag help texts now open with "DIAGNOSTIC ONLY - this tensor is NOT added to the loss".
+* Guard: `test_diagnostic_terms_are_not_in_the_objective`, `test_the_side_channel_is_complete_and_exact`,
+  `test_diagnostic_terms_are_still_computed` (liveness file) + 6 static tests in
+  `test_wfa105_diagnostic_terms.py`.
+
+**Bit-exactness.** The wrappers are still computed, so the RNG stream is unchanged and every
+existing run reproduces. MEASURED after the repair: 5.0606 / 1.1691 / 0.7631 / 48.909 — identical to
+the pre-repair row above.
+
+**Honest limits.**
+* **This does not decide what to do with the four.** Deleting them would save one or two forwards
+  per step *and* change every run's RNG stream (the 0.0 row above shows what that looks like). That
+  is a training-behaviour change and needs an explicit decision; this wave only stops the knobs
+  from lying.
+* **"Not in the loss" is not "useless".** The four class wrappers are the only place those three
+  formulas are exercised end-to-end; they are a test harness. The defect was the naming and the
+  documentation, not the computation.
+* **§6.146 and §6.147 are corrected, not withdrawn.** Wf-A102's wiring is real and Wf-A103's σ²
+  curve is a valid statement about the velocity field's smoothness. What neither could see is that
+  the quantity they measured is discarded. "Live but unobservable" should have read "computed,
+  recorded, and discarded".
+
+**§6.148 catalog-count math.** Net catalog-count delta: **+1** (§6.148 itself). ACTIVE count
+delta: **+1**. Cumulative catalog count: **200 -> 201** (+1). ACTIVE count: **156 -> 157** (+1).
+
+**Workflow** | Wf-A105 (2026-10-20; 0 GPU-hours of training — 3 one-epoch 32-cloud probes on cuda:0;
+6 new static tests + 3 new guard tests; §5.2: every number above is a probe stdout value reproduced
+by the commands in this section; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
+
+### §6.148b addendum — the same audit found a dead gate and a test that had been red on a deleted line
+
+*Addendum to §6.148; no new catalog row, count math below is unchanged.*
+
+Two more findings fell out of the same check.
+
+**1. `_need_edge_index` was a dead variable with a false comment.** The trainer computed
+`_need_edge_index = _use_assemble or _use_soft_valence` and never read it. Its comment promised
+"when BOTH are off the legacy 2-tuple path stays bit-for-bit untouched" — but the cloud loop always
+forwards with `return_edge_index=True` (3-tuple), so there is no 2-tuple path left to protect.
+Removed. **Cost, recorded rather than fixed:** every cloud now computes pair indices even when
+neither the assemble nor the soft-valence term is weighted. Restoring the gate would change the
+forward's tuple arity for default runs, which is a behaviour change and not this wave's business.
+
+**2. `test_train_one_epoch_kwarg_signature_default_off` had been RED on a line that no longer
+exists.** It asserted the literal `logits, velocities = model(cloud)`; MEASURED: that string is
+absent from the trainer at HEAD as well as after this wave, so the test was failing before it. It
+was asserting a deleted line, not a behaviour — it could only ever report "the file changed".
+Rewritten as `test_soft_valence_gate_is_weight_driven`, which pins the weight gate AND the fact
+that the forward is unconditionally 3-tuple. MEASURED after repair: 11 passed in that file.
+
+This is the third test in two waves that was red for a reason already fixed elsewhere (§6.144 found
+six). The pattern is the same each time: a test asserts a source line, the line is refactored, and
+nobody notices because the failure is indistinguishable from noise.
+
+**§6.148b catalog-count math.** Net catalog-count delta: **0** (addendum). Cumulative catalog count
+unchanged at **201**. ACTIVE count unchanged at **157**.
+
+**Workflow** | Wf-A105b (2026-10-20; 0 GPU; 1 dead variable removed + 1 stale test repaired;
+§5.2: the "absent at HEAD" claim is `git show HEAD:... | grep -c` = 0).
+
+---
+

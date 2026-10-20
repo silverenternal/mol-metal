@@ -311,11 +311,21 @@ def test_trainer_exposes_gen_validity_weight_kwarg():
     )
 
 
-def test_train_one_epoch_kwarg_signature_default_off():
-    """When gen_validity_weight=0, train_one_epoch must NOT call
-    model(cloud, return_edge_index=True) (the legacy 2-tuple path stays
-    bit-for-bit untouched).  We can't run the trainer end-to-end without
-    a real cohort, so we inspect the source for the gating pattern."""
+def test_soft_valence_gate_is_weight_driven():
+    """The soft-valence branch must stay OFF at gen_validity_weight=0.
+
+    Wf-A105 repair: this test used to also assert the literal
+    `logits, velocities = model(cloud)` — the "legacy 2-tuple path" — and
+    that line no longer exists anywhere in the trainer.  It had been RED for
+    reasons unrelated to Wf-R41, and it was asserting a deleted line rather
+    than a behaviour: it could only ever tell us the file changed.
+
+    The real contract now: the forward is always the 3-tuple form (the
+    trainer asks for edge indices unconditionally), and the soft-valence
+    TERM is still gated on the weight.  Pinning both means the "default path
+    is untouched" claim cannot be made again without noticing that the
+    forward shape changed.
+    """
     src_path = os.path.join(
         REPO_ROOT,
         "molmetal",
@@ -328,8 +338,12 @@ def test_train_one_epoch_kwarg_signature_default_off():
     assert "_use_soft_valence = float(gen_validity_weight) > 0.0" in src, (
         "missing _use_soft_valence gating in train_one_epoch"
     )
-    # The legacy 2-tuple path must remain reachable when _use_soft_valence=False
-    # (this is the line `logits, velocities = model(cloud)`)
-    assert "logits, velocities = model(cloud)" in src, (
-        "legacy 2-tuple model(cloud) call removed; bit-for-bit compat broken"
+    # The forward is unconditional and 3-tuple; the 2-tuple path is retired.
+    assert "logits, velocities, edge_index = model(" in src, (
+        "the 3-tuple forward disappeared — if it went back to 2-tuple, the "
+        "assemble/soft-valence terms have nothing to read"
+    )
+    assert "logits, velocities = model(cloud)" not in src, (
+        "a 2-tuple forward reappeared; there is now more than one forward "
+        "shape and the edge-index gating must be re-derived"
     )

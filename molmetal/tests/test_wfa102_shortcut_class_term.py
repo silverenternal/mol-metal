@@ -16,6 +16,13 @@ The term is LIVE now, but MEASURED at 1.24e-08 at weight 0.05: a 0.01 A input
 perturbation barely moves the velocity field, so the penalty is three orders of
 magnitude below observability.  That is recorded, not hidden — see
 HONEST_NEGATIVE_CATALOG.md §6.146.
+
+**Wf-A105 correction (2026-10-20).** "Live but unobservable" was still too
+generous.  Wf-A34-1 had removed this class wrapper from the loss SUM, so the
+tensor was computed, recorded and thrown away: --shortcut-distill-term-weight
+1e-9 and 500 give a bit-identical epoch.  The wiring below is correct and
+harmless, but it feeds a diagnostic, not the objective.  See §6.148 and
+test_wfa105_diagnostic_terms.py.
 """
 from __future__ import annotations
 

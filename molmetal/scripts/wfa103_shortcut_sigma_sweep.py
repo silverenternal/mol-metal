@@ -63,9 +63,15 @@ spec = importlib.util.spec_from_file_location("_t", {trainer!r})
 m = importlib.util.module_from_spec(spec); sys.modules["_t"] = m
 spec.loader.exec_module(m)
 m.main()
+# Wf-A105 moved the shortcut class term out of _LAST_LOSS_TERMS: it is
+# computed but not summed into the loss.  Read the diagnostic dict, and merge
+# it so the lookup below keeps working; bond_ce stays in the loss dict.
 out = {{k: {{"requires_grad": bool(v.requires_grad),
             "value": float(v.detach())}}
        for k, v in m._LAST_LOSS_TERMS.items()}}
+out.update({{k: {{"requires_grad": bool(v.requires_grad),
+                 "value": float(v.detach())}}
+            for k, v in m._LAST_DIAGNOSTIC_TERMS.items()}})
 print("LOSS_TERMS_JSON=" + json.dumps(out))
 """
 
@@ -244,7 +250,12 @@ def main() -> int:
         "probe": {
             "cohort": "same 32-cloud / 1-epoch CPU smoke as test_cfm_loss_gradient_liveness",
             "flags": SMOKE_ARGS + ["--shortcut-distill-term-weight 0.05"],
-            "read_from": "trainer _LAST_LOSS_TERMS",
+            "read_from": (
+                "trainer _LAST_DIAGNOSTIC_TERMS (the shortcut term is computed "
+                "but NOT summed into the loss since Wf-A34-1; Wf-A105 made that "
+                "explicit, see HONEST_NEGATIVE_CATALOG.md §6.148). bond_ce is "
+                "read from _LAST_LOSS_TERMS."
+            ),
         },
         "rows": rows,
         "growth_exponent": exponents,

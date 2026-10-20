@@ -270,6 +270,31 @@ _EVENT_LOG_PATH: Optional[Path] = None
 #: it during training, so it costs one dict store per batch.
 _LAST_LOSS_TERMS: Dict[str, "torch.Tensor"] = {}
 
+#: Wf-A105 (2026-10-20) — terms that are COMPUTED but do NOT enter `loss`.
+#:
+#: Wf-A34-1 removed four duplicate class wrappers from the sum (their inline
+#: siblings `consistency_term` / `so3_term` / `edm_term` /
+#: `shortcut_distill_loss` are already there).  They kept being computed and
+#: were still listed in `_LAST_LOSS_TERMS`, whose stated contract is "the exact
+#: tensor that entered `loss` above" — which was false for all four.
+#:
+#: MEASURED: the epoch loss is bit-identical at `--consistency-term-weight 1e-9`
+#: and at `500` (train_loss 5.4288, bond_ce 1.1657, grad_norm 80.749).  A
+#: 5e11x weight change that moves the loss by zero cannot be in the objective.
+#: The flag's only real effect is the extra forward and the `torch.randn_like`
+#: it consumes, which shifts the global RNG stream (weight 0.0 -> 5.0606).
+_LAST_DIAGNOSTIC_TERMS: Dict[str, "torch.Tensor"] = {}
+
+#: Wf-A105 — the audit pair that makes `_LAST_LOSS_TERMS` provably complete and
+#: exact.  `total` is `float(loss)`; `sum_recorded` is the sum of every tensor
+#: in `_LAST_LOSS_TERMS`.  If they disagree, either a term entered the objective
+#: without being recorded (invisible to the liveness guard) or a term was
+#: recorded without entering it (the Wf-A105 defect).  Mutated in place.
+_LAST_LOSS_AUDIT: Dict[str, float] = {
+    "total": float("nan"),
+    "sum_recorded": float("nan"),
+}
+
 #: Round-3 D1 — per-epoch assemble diagnostics, read by the ``train_epoch``
 #: event emitter so ``assemble_loss`` / ``assemble_fragments`` land in
 #: events.jsonl.
@@ -3952,11 +3977,14 @@ def train_one_epoch(
     # of the batch.  Default 0.0 → identity (this whole block is skipped).
     _use_soft_valence = float(gen_validity_weight) > 0.0
     soft_valence_terms: List[torch.Tensor] = []
-    # Wf-R41 — when EITHER `_use_assemble` or `_use_soft_valence` is on, the
-    # cloud loop must ask the head for its pair indices (otherwise the loss
-    # term has nothing to rebuild a graph from).  When BOTH are off the
-    # legacy 2-tuple path stays bit-for-bit untouched.
-    _need_edge_index = _use_assemble or _use_soft_valence
+    # Wf-A105 — `_need_edge_index` used to live here, computing
+    # `_use_assemble or _use_soft_valence`, with a comment promising that
+    # "when BOTH are off the legacy 2-tuple path stays bit-for-bit
+    # untouched".  Neither half is true any more: the variable had no
+    # consumer anywhere in the file, and the cloud loop below always forwards
+    # with `return_edge_index=True` (3-tuple).  The dead variable is gone; the
+    # cost of the unconditional edge-index computation is recorded in
+    # HONEST_NEGATIVE_CATALOG.md §6.148.
     n_train = len(train_clouds)
     # Wf-A90 — deterministic in (run seed, epoch).  MEASURED consequence of
     # the old time.time() seed: identical launches produced different batch
@@ -5784,6 +5812,12 @@ def train_one_epoch(
                 # expect), LIVE when the corresponding ``*_weight`` flag is
                 # set > 0.
                 "chem_loss_term": chem_loss_term,
+                # Wf-A105 — these two were IN the sum but absent from this
+                # dict, so the guard that claims to watch "every term that
+                # enters loss" could not see them.  Added, not moved: the
+                # objective is unchanged.
+                "bond_aux_mse_term": bond_aux_mse_term,
+                "ring_prior_term": ring_prior_term,
                 "qed_term": qed_term,
                 "molecule_term": molecule_term,
                 "stereo_term": stereo_term,
@@ -5799,16 +5833,10 @@ def train_one_epoch(
                 # when --wasserstein-pocket-weight > 0 AND a
                 # ``pocket_dist`` is threaded via batch_ctx.
                 "wasserstein_pocket_term": wasserstein_pocket_term,
-                # Wf-A23 (2026-10-13) — 7 NEW class-wrapper loss terms
-                # (steps 2-8).  Same gradient-dead-at-weight-0 convention
-                # as ``assemble_term``: registered unconditionally so
-                # the guard test can see them; LIVE when the corresponding
-                # ``*_term_weight`` flag is set > 0.  At default weight
-                # 0.0 each is ``torch.zeros(())`` ⇒ bit-exact pre-Wf-A23.
-                "consistency_class_term": consistency_class_term,
-                "so3_class_term": so3_class_term,
-                "edm_class_term": edm_class_term,
-                "shortcut_distill_class_term": shortcut_distill_class_term,
+                # Wf-A23 (2026-10-13) — the 3 class-wrapper terms that ARE in
+                # the sum (Wf-A34-1 kept only these three; they have no inline
+                # duplicate).  Same gradient-dead-at-weight-0 convention as
+                # ``assemble_term``.
                 "fm_ode_class_term": fm_ode_class_term,
                 "energy_class_term": energy_class_term,
                 "sboo3_class_term": sboo3_class_term,
@@ -5828,6 +5856,18 @@ def train_one_epoch(
                 "clash_penalty_term": clash_penalty_term,
             }
         )
+        # Wf-A105 — the four class wrappers Wf-A34-1 removed from the sum.
+        # They are still computed (so no run's RNG stream moves) but they are
+        # NOT objective terms, and saying so is the point of the split.
+        _LAST_DIAGNOSTIC_TERMS.clear()
+        _LAST_DIAGNOSTIC_TERMS.update(
+            {
+                "consistency_class_term": consistency_class_term,
+                "so3_class_term": so3_class_term,
+                "edm_class_term": edm_class_term,
+                "shortcut_distill_class_term": shortcut_distill_class_term,
+            }
+        )
         # Wf-406-A2 — TODO-21 Lambda × CFM reward-weighting wiring
         # (re-wire of Wf-329-W6 + Wf-394-A1; CPU-safe scaffolding;
         # GPU retrain remains BLOCKED on upstream decode_ratio > 0
@@ -5841,6 +5881,15 @@ def train_one_epoch(
             loss = loss * (
                 1.0 + float(lambda_cfm_coupling_weight) * float(lambda_cfm_mean_weight)
             )
+        # Wf-A105 — audit pair, recorded AFTER every global rescale so the
+        # liveness guard can assert that `_LAST_LOSS_TERMS` is complete and
+        # exact: total == sum of the recorded tensors.  A term that enters the
+        # objective without being recorded is invisible to the guard; a term
+        # that is recorded without entering it is the Wf-A105 defect.
+        _LAST_LOSS_AUDIT["total"] = float(loss.detach())
+        _LAST_LOSS_AUDIT["sum_recorded"] = float(
+            sum(v.detach() for v in _LAST_LOSS_TERMS.values())
+        )
         if nucleus_sample_invocations > 0:
             # Wf-388-A2 audit — track that the diversity path ran
             # at least once per epoch.  Bit-exact identity
@@ -10410,10 +10459,14 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.05,
         help=(
-            "Wf-A100: weight of the ConsistencyTerm class wrapper (Wf-A23). "
-            "Wf-A43 C set the default ON at 0.05. Declared here because it "
-            "was a train_one_epoch parameter with no flag; 0.0 turns the "
-            "class term off (bit-exact pre-Wf-A23)."
+            "Wf-A105: DIAGNOSTIC ONLY - this tensor is NOT added to the loss. "
+            "Wf-A34-1 removed this duplicate class wrapper from the objective "
+            "(the inline --consistency-weight path is what trains). MEASURED: "
+            "1e-9 and 500 give a bit-identical epoch (train_loss 5.4288, "
+            "bond_ce 1.1657), so the value cannot be in the objective; the "
+            "only effect of >0 is an extra forward plus the torch.randn_like "
+            "it consumes, which shifts the RNG stream (0.0 -> 5.0606). "
+            "Recorded in _LAST_DIAGNOSTIC_TERMS, not _LAST_LOSS_TERMS."
         ),
     )
     p.add_argument(
@@ -10421,9 +10474,11 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.0,
         help=(
-            "Wf-A100: weight of the SO3Term class wrapper (Wf-A23). Default "
-            "0.0 = OFF, and until this flag existed the term could not be "
-            "turned on at all from a config."
+            "Wf-A105: DIAGNOSTIC ONLY - this tensor is NOT added to the loss. "
+            "Wf-A34-1 removed this duplicate class wrapper from the objective "
+            "(the inline --so3-average-weight path is what trains). Default "
+            "0.0 = OFF; setting it > 0 perturbs the RNG stream and nothing "
+            "else. Recorded in _LAST_DIAGNOSTIC_TERMS."
         ),
     )
     p.add_argument(
@@ -10431,8 +10486,12 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.05,
         help=(
-            "Wf-A100: weight of the EDMTerm class wrapper (Wf-A23/A44). "
-            "Default 0.05 = ON; 0.0 is bit-exact pre-Wf-A23."
+            "Wf-A105: DIAGNOSTIC ONLY - this tensor is NOT added to the loss. "
+            "Wf-A34-1 removed this duplicate class wrapper from the objective "
+            "(the inline --edm-preconditioning path is what trains). The 0.05 "
+            "default costs one extra forward per step and shifts the RNG "
+            "stream; it adds nothing to the objective. Recorded in "
+            "_LAST_DIAGNOSTIC_TERMS."
         ),
     )
     p.add_argument(
@@ -10440,13 +10499,15 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.0,
         help=(
-            "Wf-A100 declared this weight; Wf-A102 changed its default 0.05 "
-            "-> 0.0 and made >0 actually work. Before Wf-A102 the term was "
-            "exactly 0.0 at every weight (the self-consistency branch needs "
-            "a second view and the trainer passed x_prime=None), so the "
-            "default move changes no run. Above 0 the trainer builds the "
-            "second view with a second forward on a 0.01 A perturbed input, "
-            "which costs one extra forward per step."
+            "Wf-A105: DIAGNOSTIC ONLY - this tensor is NOT added to the loss. "
+            "Wf-A34-1 removed this duplicate class wrapper from the "
+            "objective (the inline --shortcut-distill path is what trains). "
+            "Wf-A102 built the missing second view and Wf-A103 calibrated its "
+            "sigma, but Wf-A105 then MEASURED that the result never reaches "
+            "the loss: 1e-9 and 500 give a bit-identical epoch. Above 0 the "
+            "trainer does one extra forward on a perturbed input, which "
+            "shifts the RNG stream and costs time; it adds nothing to the "
+            "objective. Recorded in _LAST_DIAGNOSTIC_TERMS."
         ),
     )
     p.add_argument(
@@ -10455,8 +10516,9 @@ def parse_args() -> argparse.Namespace:
         default=0.01,
         help=(
             "Wf-A103: standard deviation (Angstrom) of the input perturbation "
-            "used to build ShortcutDistillLoss second view. Only used when "
-            "--shortcut-distill-term-weight > 0. 0.01 was an uncalibrated "
+            "used to build the ShortcutDistillLoss DIAGNOSTIC view (not in "
+            "the loss; see --shortcut-distill-term-weight). Only used when "
+            "that weight > 0. 0.01 was an uncalibrated "
             "constant; the sweep in metrics/by_metric/"
             "wfa103_shortcut_sigma_sweep.json measures how the term grows "
             "with it. Default unchanged => bit-exact."
