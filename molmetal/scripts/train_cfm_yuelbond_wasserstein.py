@@ -10364,6 +10364,86 @@ def parse_args() -> argparse.Namespace:
             "of the 12-term sum, matching the BLK-C5 floor."
         ),
     )
+    # Wf-A100 (2026-10-20) — the seven Wf-A23/A44 class-term weights were
+    # PARAMETERS of train_one_epoch with no argparse dest and no call-site
+    # kwarg, so their values came from the function defaults and could not be
+    # read, tuned, or turned off from a YAML config (AGENTS.md §5.11).  Six of
+    # the seven default to 0.05, i.e. they were ON and shaping every run's
+    # objective while being invisible to the config surface.  A comment at the
+    # class-term wire-in even claimed "opt-in via --fm-ode-term-weight /
+    # --energy-conservation-weight / --sboo3-term-weight"; those flags did not
+    # exist.  Declaring them changes NO default, so every existing run stays
+    # bit-exact — it only makes the knobs real.
+    p.add_argument(
+        "--consistency-term-weight",
+        type=float,
+        default=0.05,
+        help=(
+            "Wf-A100: weight of the ConsistencyTerm class wrapper (Wf-A23). "
+            "Wf-A43 C set the default ON at 0.05. Declared here because it "
+            "was a train_one_epoch parameter with no flag; 0.0 turns the "
+            "class term off (bit-exact pre-Wf-A23)."
+        ),
+    )
+    p.add_argument(
+        "--so3-term-weight",
+        type=float,
+        default=0.0,
+        help=(
+            "Wf-A100: weight of the SO3Term class wrapper (Wf-A23). Default "
+            "0.0 = OFF, and until this flag existed the term could not be "
+            "turned on at all from a config."
+        ),
+    )
+    p.add_argument(
+        "--edm-term-weight",
+        type=float,
+        default=0.05,
+        help=(
+            "Wf-A100: weight of the EDMTerm class wrapper (Wf-A23/A44). "
+            "Default 0.05 = ON; 0.0 is bit-exact pre-Wf-A23."
+        ),
+    )
+    p.add_argument(
+        "--shortcut-distill-term-weight",
+        type=float,
+        default=0.05,
+        help=(
+            "Wf-A100: weight of the ShortcutDistillLoss class wrapper "
+            "(Wf-A23/A44 B.1). Default 0.05 = ON. NOTE (MEASURED, Wf-A99): "
+            "at this default the term contributes exactly 0.0 with no "
+            "gradient in the CPU smoke, so the weight reads ON while the "
+            "term trains nothing — see HONEST_NEGATIVE_CATALOG.md §6.143."
+        ),
+    )
+    p.add_argument(
+        "--fm-ode-term-weight",
+        type=float,
+        default=0.05,
+        help=(
+            "Wf-A100: weight of the FmOdeTerm class wrapper (Wf-A23/A44). "
+            "Default 0.05 = ON; 0.0 is bit-exact pre-Wf-A23."
+        ),
+    )
+    p.add_argument(
+        "--energy-conservation-weight",
+        type=float,
+        default=0.05,
+        help=(
+            "Wf-A100: weight of the EnergyConservation class term "
+            "(Wf-A23/A44). Default 0.05 = ON; 0.0 is bit-exact pre-Wf-A23."
+        ),
+    )
+    p.add_argument(
+        "--sboo3-term-weight",
+        type=float,
+        default=0.05,
+        help=(
+            "Wf-A100: weight of the SBOO3Term class wrapper (Wf-A23/A44). "
+            "Default 0.05 = ON; 0.0 is bit-exact pre-Wf-A23. sboo3_alpha / "
+            "n_perm / n_rot remain function defaults (0.5 / 4 / 4)."
+        ),
+    )
     p.add_argument(
         "--gen-head-dropout",
         type=float,
@@ -13863,6 +13943,27 @@ def main() -> int:
             stable_vm=bool(getattr(args, "stable_vm", False)),
             shortcut_distill=bool(getattr(args, "shortcut_distill", False)),
             consistency_weight=float(getattr(args, "consistency_weight", 0.0)),
+            # Wf-A100 — the 7 Wf-A23/A44 class-term weights.  Defaults are the
+            # train_one_epoch defaults verbatim, so a caller that does not set
+            # them behaves exactly as before; the flags only make them
+            # reachable from YAML (§5.11).
+            consistency_term_weight=float(
+                getattr(args, "consistency_term_weight", 0.05)
+            ),
+            so3_term_weight=float(getattr(args, "so3_term_weight", 0.0)),
+            edm_term_weight=float(getattr(args, "edm_term_weight", 0.05)),
+            shortcut_distill_term_weight=float(
+                getattr(args, "shortcut_distill_term_weight", 0.05)
+            ),
+            fm_ode_term_weight=float(
+                getattr(args, "fm_ode_term_weight", 0.05)
+            ),
+            energy_conservation_weight=float(
+                getattr(args, "energy_conservation_weight", 0.05)
+            ),
+            sboo3_term_weight=float(
+                getattr(args, "sboo3_term_weight", 0.05)
+            ),
             per_cohort_features=bool(getattr(args, "per_cohort_features", False)),
             bond_class_weights=_bond_class_weights,
             # Wf-A90 — reproducible epoch permutation.

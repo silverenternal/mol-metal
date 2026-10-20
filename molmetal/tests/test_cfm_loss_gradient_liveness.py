@@ -96,6 +96,34 @@ ALL_TERMS = frozenset(
         # the sign (term is negative at weight>0, i.e. entropy is maximised)
         # and the exact-zero default.
         "entropy_term",
+        # Wf-A100 (2026-10-20) — the 16 terms registered by Wf-A15 / Wf-A22 /
+        # Wf-A23 / Wf-A27 never made it into this file, so the guard against
+        # "silently adding term #14" had been RED since 2026-10-13: every run
+        # reported them as UNDECLARED and the failure stopped meaning
+        # anything.  Classification below is MEASURED with the probe in this
+        # file, not read off the code.
+        #
+        # Wf-A15 chemistry-signal terms (OFF at weight 0).
+        "chem_loss_term",
+        "qed_term",
+        "molecule_term",
+        "stereo_term",
+        "fragment_term",
+        "property_term",
+        "natural_charge_term",
+        # Wf-A22 per-pocket W2 (OFF at weight 0; also needs pocket_dist).
+        "wasserstein_pocket_term",
+        # Wf-A27 clash penalty (OFF at weight 0).
+        "clash_penalty_term",
+        # Wf-A23 class wrappers.  Five are ON at their shipped default and
+        # MEASURED live; see EXPECTED_LIVE.
+        "consistency_class_term",
+        "so3_class_term",
+        "edm_class_term",
+        "shortcut_distill_class_term",
+        "fm_ode_class_term",
+        "energy_class_term",
+        "sboo3_class_term",
     }
 )
 
@@ -154,6 +182,15 @@ EXPECTED_LIVE = frozenset(
         # requires_grad=False at value 0.17 even with mmd_weight=1.0.  Only the
         # target side stays detached now.
         "diversity_term",
+        # Wf-A100 — MEASURED live in this file's own smoke (requires_grad True,
+        # non-zero value): the Wf-A23 class wrappers that Wf-A43/A44 left ON
+        # at 0.05.  They were reaching the objective with no flag to read or
+        # disable them until Wf-A100 declared --*-term-weight.
+        "consistency_class_term",
+        "edm_class_term",
+        "fm_ode_class_term",
+        "energy_class_term",
+        "sboo3_class_term",
     }
 )
 
@@ -168,7 +205,62 @@ EXPECTED_LIVE = frozenset(
 #: Keep it that way: an entry here means a term is inside the objective while
 #: training nothing, and each one has to earn its place with a specific
 #: reason.  Prefer fixing the term or taking it out of the sum.
-ALLOWED_DEAD: dict = {}
+#: Wf-A100 (2026-10-20) — the 11 terms that are inside the loss sum but carry
+#: no gradient in this file's smoke.  Nine are OFF at their shipped weight 0
+#: and are gated on per-cloud inputs the 32-cloud toy cohort does not carry:
+#: setting the flag to 0.05 in this smoke still MEASURED exactly 0.0 with
+#: requires_grad=False, so the weight is not the only gate.  Each entry names
+#: the flag that would turn it on and the input it still needs.
+ALLOWED_DEAD: dict = {
+    "chem_loss_term": (
+        "OFF at --chem-loss-weight 0 (default). MEASURED 0.0 even at 0.05 on "
+        "the toy cohort: needs per-cloud chemistry targets."
+    ),
+    "qed_term": (
+        "OFF at --qed-loss-weight 0 (default). MEASURED 0.0 at 0.05: the "
+        "QED surrogate needs a decoded/generated molecule, not a noise batch."
+    ),
+    "molecule_term": (
+        "OFF at --molecule-loss-weight 0 (default). MEASURED 0.0 at 0.05: "
+        "needs molecule-level targets."
+    ),
+    "stereo_term": (
+        "OFF at --stereo-loss-weight 0 (default). MEASURED 0.0 at 0.05: the "
+        "toy cohort carries no stereocentre labels."
+    ),
+    "fragment_term": (
+        "OFF at --fragment-loss-weight 0 (default). MEASURED 0.0 at 0.05: "
+        "needs fragment-level targets."
+    ),
+    "property_term": (
+        "OFF at --property-loss-weight 0 (default). MEASURED 0.0 at 0.05: "
+        "needs per-cloud property labels the toy cohort does not have."
+    ),
+    "natural_charge_term": (
+        "OFF at --natural-charge-mse-weight 0 (default). MEASURED 0.0 at "
+        "0.05: needs per-atom NBO charges."
+    ),
+    "wasserstein_pocket_term": (
+        "OFF at --wasserstein-pocket-weight 0 (default) AND gated on "
+        "pocket_dist being threaded via batch_ctx; the smoke passes "
+        "--pocket-id but no pocket distribution."
+    ),
+    "clash_penalty_term": (
+        "OFF at --clash-penalty-weight 0 (default). MEASURED 0.0 at 0.05 on "
+        "the toy cohort (no clashing pairs in 32 clouds)."
+    ),
+    "so3_class_term": (
+        "OFF at --so3-term-weight 0.0 (default). Before Wf-A100 no flag "
+        "existed, so this term could not be enabled from a config at all."
+    ),
+    "shortcut_distill_class_term": (
+        "MEASURED INERT at its shipped weight 0.05: value exactly 0.0 with "
+        "requires_grad=False while the OLD shortcut_distill_loss term "
+        "measured 1.897 and live in the same batch. The class wrapper is the "
+        "dead one, not the weight — recorded as an ACTIVE honest negative in "
+        "HONEST_NEGATIVE_CATALOG.md §6.143 (Wf-A99/A100)."
+    ),
+}
 
 #: The trainer invocation used to sample a real loss.  Every feature flag is
 #: ON so the ACTIVE branch of each term runs — with flags off, a dead term and

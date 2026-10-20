@@ -8201,3 +8201,172 @@ ACTIVE count: **150 -> 151** (+1).
 `msrs_rank_within_cohort.json`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 
 ---
+
+### §6.143 Wf-A100 — six loss weights shaped every run while no flag could reach them, and the guard that should have caught it had been red for a week (2026-10-20)
+
+**What was wrong, part 1 — unreachable objective weights.** Seven Wf-A23/A44 class-term
+weights were parameters of `train_one_epoch` with **no argparse dest and no call-site kwarg**.
+Their values came from the function defaults, so:
+
+| parameter | default | effect |
+|---|---|---|
+| `consistency_term_weight` | 0.05 | ON |
+| `edm_term_weight` | 0.05 | ON |
+| `shortcut_distill_term_weight` | 0.05 | ON (but inert — see below) |
+| `fm_ode_term_weight` | 0.05 | ON |
+| `energy_conservation_weight` | 0.05 | ON |
+| `sboo3_term_weight` | 0.05 | ON |
+| `so3_term_weight` | 0.0 | OFF **and impossible to turn on** |
+
+Six of the seven were contributing to every run's objective while being invisible to the
+config surface, and the SO3 class term could not be enabled from a YAML at all. The comment at
+the wire-in site even claimed *"Opt-in via `--fm-ode-term-weight`,
+`--energy-conservation-weight`, `--sboo3-term-weight`"* — **those flags did not exist**. This
+is the §5.11 failure shape: a knob that lives only in a Python default is a knob nobody audits.
+
+**What was wrong, part 2 — the guard was red, so it was not guarding.**
+`molmetal/tests/test_cfm_loss_gradient_liveness.py` exists to fail when a loss term reaches the
+sum without being declared ("the guard against silently adding term #14"). Wf-A15 / Wf-A22 /
+Wf-A23 / Wf-A27 added **16 terms** to `_LAST_LOSS_TERMS` and never added them to the test's
+tables, so `test_no_undeclared_loss_terms` failed on all 16 — **since 2026-10-13**. A guard
+that is always red cannot distinguish a new undeclared term from the 16 already-known ones.
+
+**MEASURED** with the test's own probe (1 epoch, 32 clouds, all feature flags on):
+
+| term | requires_grad | value |
+|---|---|---|
+| `consistency_class_term` | True | 1.81e-04 |
+| `edm_class_term` | True | 0.0876 |
+| `fm_ode_class_term` | True | 0.0319 |
+| `energy_class_term` | True | 0.0222 |
+| `sboo3_class_term` | True | 5.70e-04 |
+| `shortcut_distill_class_term` | **False** | **0.0** |
+| `so3_class_term` | False | 0.0 |
+| `chem/qed/molecule/stereo/fragment/property/natural_charge/wasserstein_pocket/clash_penalty` | False | 0.0 (weight 0) |
+
+**`shortcut_distill_class_term` is MEASURED INERT at its shipped weight 0.05** — value exactly
+0.0 with no gradient, while the OLD `shortcut_distill_loss` term measured **1.897** and live in
+the same batch. The weight reads ON and the class wrapper trains nothing: the BLK-C5 / BLK-C14
+failure shape, third occurrence in this line.
+
+**What was wrong, part 3 — three configs shared one checkpoint directory.**
+`configs/cfm.yaml`, `cfm_frag_assemble.yaml` and `cfm_frag_control.yaml` pinned
+`output.ckpt_dir: molmetal/checkpoints`, so every run launched from them wrote the same
+`<model>_seed0.pt` as every other one. `start.sh` forwards that value as `--ckpt-dir`, so the
+yaml overrode the trainer's per-run default. `test_cfm_checkpoint_isolation.py::test_no_cfm_config_pins_the_shared_directory`
+had been RED on exactly these three configs. Each now points at
+`molmetal/reports/<run>/checkpoints`.
+
+**What shipped.**
+
+* 7 argparse flags (`--consistency-term-weight`, `--so3-term-weight`, `--edm-term-weight`,
+  `--shortcut-distill-term-weight`, `--fm-ode-term-weight`, `--energy-conservation-weight`,
+  `--sboo3-term-weight`) with the function defaults verbatim, plus the call-site forwarding.
+  **No default moved**, so existing runs stay bit-exact.
+* `test_cfm_loss_gradient_liveness.py` — the 16 terms declared: 5 moved to `EXPECTED_LIVE`
+  (MEASURED live), 11 to `ALLOWED_DEAD` with the flag that would enable them and the input the
+  toy cohort lacks. `shortcut_distill_class_term` is declared dead **with its inertness named**,
+  not excused. Both tests in the file pass.
+* 3 configs re-pointed at per-run checkpoint directories.
+* `molmetal/tests/test_wfa100_class_term_weights.py` — 4 tests: every flag is declared with the
+  documented default; the flag default EQUALS the `train_one_epoch` parameter default (drift
+  between the two would silently change a run); each dest is forwarded at the call site; a YAML
+  value round-trips over the argparse default (§5.11).
+
+**Honest negatives that REMAIN (ACTIVE).**
+
+* **`shortcut_distill_class_term` is still inert.** Wf-A100 only made it visible and declared.
+  The term's 0.0 is not a weight problem: the old `shortcut_distill_loss` is live in the same
+  batch, so the class wrapper's inputs are the suspect. Not fixed here.
+* **9 terms are still OFF and untested by the gradient guard.** Setting each flag to 0.05 in this
+  cohort still MEASURED 0.0 (the cohort carries no property labels, no NBO charges, no pocket
+  distribution, no stereocentres), so the guard cannot assert them live. They are declared dead
+  with the missing input named; a cohort that carries those labels is the work item that retires
+  each entry.
+* **`sboo3_alpha` / `sboo3_n_perm` / `sboo3_n_rot` remain function defaults** (0.5 / 4 / 4) —
+  the same §5.11 shape as the weights, one level deeper. Not declared.
+* **No GPU run was made.** The liveness measurement is the file's own CPU smoke (1 epoch,
+  32 clouds); it establishes gradient presence, not quality.
+* **`--so3-term-weight` is now reachable but has never been run at > 0.** Its 0.05 sibling terms
+  were ON for a week with nobody able to see them; this one has no measured effect at all.
+
+**§6.143 catalog-count math.** Net catalog-count delta: **+1** (§6.143 itself). ACTIVE count
+delta: **+1**. Cumulative catalog count: **195 -> 196** (+1). ACTIVE count: **151 -> 152** (+1).
+
+**Workflow** | Wf-A100 (2026-10-20; 0 GPU; 4 new tests + 2 previously-red tests repaired +
+3 configs re-pointed; §5.2: every number traces to the probe output reproduced in the table above
+and to `test_cfm_loss_gradient_liveness.py`'s own measurement; §5.3 + §5.4: 0 paper/* + 0
+wet-lab).
+
+---
+
+## §6.143 — C7: the synthesisability number describes a model trained on 1% of the corpus
+
+**Claim under test.**  The generator cannot produce synthesizable, novel metal
+complexes: SA 6.4423 (real tmQM 5.0269), QED 0.0944 (real 0.2685), SA <= 4.5
+yield 16/2,396 = 0.67% [0.41%, 1.08%].
+
+**What was not checked.**  ``cfm_sa_yield_audit.py`` scored three pools and left
+three on disk unscored.  Two of the three it scored come from runs whose recorded
+``n_train`` is **256**; the third from a **1-epoch / 64-sample** run.  The corpus
+is **26,715** complexes.  The two pools it skipped
+(``cfm_objective_terms_2026_10_11``, ``cfm_fullcorpus_b64_2026_10_11``) are the
+only ones generated by full-corpus runs.  Measured from each run's own
+``per_epoch_metrics.json``; census cross-check in ``cfm_run_census.json``.
+
+**MEASURED — SA / QED by training scale** (``c7_scale_matched_pools.json``):
+
+| tier | n_train | molecules | SA mean | SA <= 4.5 | joint (SA<=4.5 AND novelty>=0.90) |
+|---|---:|---:|---:|---|---|
+| full corpus | 26,715 | 83 | **5.032 / 5.033** | **28 = 33.7% [24.5, 44.4]** | **0** |
+| mid | 2,048 | 12 | 5.650 | 1 = 8.3% [1.5, 35.4] | 0 |
+| small | 64 / 256 | 2,396 | 6.442 / 7.474 / 7.548 | 16 = **0.67% [0.41, 1.08]** | 0 |
+
+* **SA improves 50x with training scale and the intervals do not overlap.**  At
+  full-corpus scale the mean SA (5.032) is within 0.005 of real tmQM (5.0269), and
+  QED rises 0.0944 -> 0.2042-0.2275 against a real reference of 0.2685.  The
+  published 6.4423 / 0.0944 is a property of a 1%-scale model.
+* **Novelty moves the other way.**  Mean novelty of the SA <= 4.5 subset is
+  **0.8677** at small scale and **0.6977** at full-corpus scale: the model that
+  learned the corpus well reproduces it more closely.  The pre-registered joint
+  gate is therefore **0/83 and 0/2,396** - not because SA is unreachable, but
+  because the two halves pull in opposite directions with scale.
+* **The pre-registered novelty bar (>= 0.90 mean) is stricter than it looks.**
+  0.90 means a maximum Tanimoto <= 0.10 to *every* training molecule in a 26k
+  metal-complex corpus.  It is kept as the gate, but the trade-off is the finding,
+  not a threshold to relax post hoc.
+
+**Honest negatives (ACTIVE, this entry):**
+  * **The published C7 number was measured on the wrong generator.**  Three of
+    three scored pools came from <= 256-molecule runs; 97% of the 2,396 molecules
+    came from the two 256-sample pcgrad runs.  Quoting 0.67% as "the generator's
+    SA yield" attributes a training-scale artefact to the architecture.
+  * **The full-corpus evidence is 83 molecules, at epochs 5 and 8 of 50.**  It
+    establishes the direction, not the level; n=83 gives a +-10pt interval on the
+    33.7% rate and the two pools are early-epoch snapshots.
+  * **No pool satisfies the joint gate, at any scale.**  0/83 and 0/2,396.
+  * **The best full-corpus run has no weights on disk.**  ``cfm_r9_fix_v2``
+    (n_train 26,715, type-F1 0.947) has no ``checkpoints/`` directory, so the
+    generator cannot be re-sampled without a retrain.  Every pool in the repo
+    predates that run or comes from a 256-sample one.
+  * **Bond chemistry at full corpus scale is still imperfect.**  The full-corpus
+    pools were generated at epoch 5-8 of 50; the runs' own
+    ``bond_exact_type_rate`` at those epochs is not recorded per-pool, so the SA
+    gain cannot yet be separated from "fewer bonds emitted".
+
+**Why this matters.**  C7 changes from "the generator cannot make drug-like metal
+complexes" to "we measured a 1%-scale model; at full scale SA reaches the real
+corpus level, novelty does not, and the checkpoint that would let us test it
+properly is not on disk".  That is a BLOCKED claim with a named cause, not a
+refutation.
+
+**§6.143 catalog-count math.** Net catalog-count delta: **+1** (§6.143 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **195 -> 196** (+1).
+ACTIVE count: **151 -> 152** (+1).
+
+**Workflow** | FIX-C7 (2026-10-20; CPU only, 0 GPU; scoring reuses
+``cfm_sa_yield_audit.pool_report`` so the SA/QED path is identical to the audit
+it corrects; §5.2: every number traces to `c7_scale_matched_pools.json`;
+§5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---

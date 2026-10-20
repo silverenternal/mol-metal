@@ -356,10 +356,13 @@ eval:
 
 output:
   out_dir: molmetal/reports/cfm_frag_assemble
-  # canonical checkpoint path (was missing -> the trainer fell back to
-  # <out_dir>/checkpoints per run; the CLI help names "yaml output.ckpt_dir"
-  # as the intended source).
-  ckpt_dir: molmetal/checkpoints
+  # Wf-A100 (2026-10-20) — per-RUN checkpoint directory.  This used to pin
+  # the repo-global molmetal/checkpoints, which meant every run launched from
+  # this config overwrote the same <model>_seed0.pt as every other one
+  # (test_cfm_checkpoint_isolation.py::test_no_cfm_config_pins_the_shared_directory
+  # had been RED on exactly these three configs).  start.sh forwards this
+  # value as --ckpt-dir, so it has to be the run's own directory.
+  ckpt_dir: molmetal/reports/cfm_frag_assemble/checkpoints
   # `base_dir` has NO dest on the CFM parser (MEASURED hasattr base_dir=False)
   # — the loader reports it as a skipped key. It is here anyway because
   # start.sh derives out_dir, the log path and the events.jsonl path from it
