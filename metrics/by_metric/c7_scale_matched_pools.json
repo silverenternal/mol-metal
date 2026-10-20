@@ -1,11 +1,101 @@
 {
   "artifact": "c7_scale_matched_pools",
+  "by_pipeline": {
+    "generation": {
+      "by_tier": {
+        "mid": {
+          "n_joint_gate": 0,
+          "n_pools": 1,
+          "n_sa_le_gate": 1,
+          "n_scored": 12,
+          "pool_mean_qed": 0.2445,
+          "pool_mean_sa": 5.6503,
+          "rate_joint_gate": 0.0,
+          "rate_sa_le_gate": 0.0833,
+          "wilson_ci95": [
+            0.0149,
+            0.3539
+          ]
+        },
+        "small": {
+          "n_joint_gate": 0,
+          "n_pools": 2,
+          "n_sa_le_gate": 16,
+          "n_scored": 2330,
+          "pool_mean_qed": 0.1991,
+          "pool_mean_sa": 7.5109,
+          "rate_joint_gate": 0.0,
+          "rate_sa_le_gate": 0.0069,
+          "wilson_ci95": [
+            0.0042,
+            0.0111
+          ]
+        }
+      },
+      "gen_validity_mean": 0.1293,
+      "n_pools": 3,
+      "n_scored": 2342,
+      "tiers_missing": [
+        "full_corpus"
+      ],
+      "tiers_present": [
+        "mid",
+        "small"
+      ]
+    },
+    "reconstruction": {
+      "by_tier": {
+        "full_corpus": {
+          "n_joint_gate": 0,
+          "n_pools": 2,
+          "n_sa_le_gate": 28,
+          "n_scored": 83,
+          "pool_mean_qed": 0.2158,
+          "pool_mean_sa": 5.0327,
+          "rate_joint_gate": 0.0,
+          "rate_sa_le_gate": 0.3373,
+          "wilson_ci95": [
+            0.2448,
+            0.4442
+          ]
+        },
+        "small": {
+          "n_joint_gate": 0,
+          "n_pools": 1,
+          "n_sa_le_gate": 0,
+          "n_scored": 66,
+          "pool_mean_qed": 0.0944,
+          "pool_mean_sa": 6.4423,
+          "rate_joint_gate": 0.0,
+          "rate_sa_le_gate": 0.0,
+          "wilson_ci95": [
+            0.0,
+            0.055
+          ]
+        }
+      },
+      "gen_validity_mean": 0.3581,
+      "n_pools": 3,
+      "n_scored": 149,
+      "tiers_missing": [
+        "mid"
+      ],
+      "tiers_present": [
+        "full_corpus",
+        "small"
+      ]
+    }
+  },
   "by_tier": {
     "full_corpus": {
+      "comparable": true,
       "n_joint_gate": 0,
       "n_pools": 2,
       "n_sa_le_gate": 28,
       "n_scored": 83,
+      "pipeline_mix": {
+        "reconstruction": 83
+      },
       "pool_mean_qed": 0.2158,
       "pool_mean_sa": 5.0327,
       "rate_joint_gate": 0.0,
@@ -16,10 +106,14 @@
       ]
     },
     "mid": {
+      "comparable": true,
       "n_joint_gate": 0,
       "n_pools": 1,
       "n_sa_le_gate": 1,
       "n_scored": 12,
+      "pipeline_mix": {
+        "generation": 12
+      },
       "pool_mean_qed": 0.2445,
       "pool_mean_sa": 5.6503,
       "rate_joint_gate": 0.0,
@@ -30,10 +124,15 @@
       ]
     },
     "small": {
+      "comparable": false,
       "n_joint_gate": 0,
       "n_pools": 3,
       "n_sa_le_gate": 16,
       "n_scored": 2396,
+      "pipeline_mix": {
+        "generation": 2330,
+        "reconstruction": 66
+      },
       "pool_mean_qed": 0.1642,
       "pool_mean_sa": 7.1547,
       "rate_joint_gate": 0.0,
@@ -45,7 +144,10 @@
     }
   },
   "design": {
+    "comparable_across_tiers_only_within_a_pipeline": true,
     "full_corpus_n_train": 26715,
+    "novelty_gate": 0.9,
+    "pipeline_rule": "header contains 'metal_z' -> reconstruction; 'n_frags_raw' -> generation",
     "sa_gate": 4.5,
     "small_train_cutoff": 1024,
     "thresholds": [
@@ -57,13 +159,18 @@
     ],
     "tier_rule": "full_corpus if n_train >= 26715; small if < 1024; else mid"
   },
-  "generated_utc": "2026-10-20T10:58:19+00:00",
+  "generated_utc": "2026-10-20T11:06:19+00:00",
   "pools": [
     {
       "bond_exact_type_rate": 0.0,
       "bond_type_macro_f1": null,
       "epochs_configured": 1,
       "gate_smiles": [],
+      "gen_validity": {
+        "epoch": 0,
+        "n": 128,
+        "value": 0.9140625
+      },
       "joint_gate": {
         "mean_novelty_of_sa_subset": null,
         "n": 66,
@@ -80,6 +187,7 @@
       "n_train": 64,
       "n_unscored": 0,
       "path": "molmetal/reports/cfm_fullcorpus_2026_10_10/generated_smiles.csv",
+      "pipeline": "reconstruction",
       "qed_mean": 0.0944,
       "sa_counts_at_or_below": {
         "4.0": 0,
@@ -114,6 +222,11 @@
         "C[C]1=[C](C)[Ir]1([P](C)c1ccccc1C)([P](C)c1ccccc1C)[P](C)c1ccccc1C",
         "c1ccc(-c2ccccc2-c2ccccc2[P](c2ccccc2)[Ir]234([P](c5ccccc5)c5ccccc5)[C]5=[C]2CC[C]3=[C]4CC5)cc1"
       ],
+      "gen_validity": {
+        "epoch": 11,
+        "n": 768,
+        "value": 0.0859375
+      },
       "joint_gate": {
         "mean_novelty_of_sa_subset": 0.6977,
         "n": 40,
@@ -130,6 +243,7 @@
       "n_train": 26715,
       "n_unscored": 0,
       "path": "molmetal/reports/cfm_fullcorpus_b64_2026_10_11/generated_smiles.csv",
+      "pipeline": "reconstruction",
       "qed_mean": 0.2275,
       "sa_counts_at_or_below": {
         "4.0": 4,
@@ -168,6 +282,11 @@
         "c1ccc(-c2ccccc2)cc1.c1ccc([P](c2ccccc2)[Ir]234([P](c5ccccc5)c5ccccc5)[C]5=[C]2CC[C]3=[C]4CC5)cc1",
         "Cc1cccc([N](c2ccccc2)[Ru]([OH])([CH]=O)([c]2cccc(-c3ccccc3)c2N)([As](c2ccccc2)c2ccccc2)[As](c2ccccc2)c2ccccc2)c1.c1ccccc1"
       ],
+      "gen_validity": {
+        "epoch": 8,
+        "n": 768,
+        "value": 0.07421875
+      },
       "joint_gate": {
         "mean_novelty_of_sa_subset": 0.6987,
         "n": 43,
@@ -184,6 +303,7 @@
       "n_train": 26715,
       "n_unscored": 0,
       "path": "molmetal/reports/cfm_objective_terms_2026_10_11/generated_smiles.csv",
+      "pipeline": "reconstruction",
       "qed_mean": 0.2042,
       "sa_counts_at_or_below": {
         "4.0": 8,
@@ -207,6 +327,11 @@
       "gate_smiles": [
         "C.C.C.Cc1ccnc(C)c1.ClC1C=C1.N.[CH]1=[CH][Ru]1"
       ],
+      "gen_validity": {
+        "epoch": 1,
+        "n": 768,
+        "value": 0.013020833333333334
+      },
       "joint_gate": {
         "mean_novelty_of_sa_subset": 0.6486,
         "n": 12,
@@ -223,6 +348,7 @@
       "n_train": 2048,
       "n_unscored": 0,
       "path": "molmetal/reports/cfm_ode_link_probe/generated_smiles.csv",
+      "pipeline": "generation",
       "qed_mean": 0.2445,
       "sa_counts_at_or_below": {
         "4.0": 1,
@@ -252,6 +378,11 @@
         "C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.C.Cl.N.N.N.O.O.P.P.[Ir]",
         "C[CH](C)[Ru]([C](C)(C)C)([C](C)(C)C)([C](C)(C)C)([C](C)(C)C)[C](C)(C)N(C)N"
       ],
+      "gen_validity": {
+        "epoch": 29,
+        "n": 48,
+        "value": 0.08333333333333333
+      },
       "joint_gate": {
         "mean_novelty_of_sa_subset": 0.8677,
         "n": 953,
@@ -268,6 +399,7 @@
       "n_train": 256,
       "n_unscored": 0,
       "path": "molmetal/reports/cfm_pcgrad_off_2026_10_15/generated_smiles.csv",
+      "pipeline": "generation",
       "qed_mean": 0.1981,
       "sa_counts_at_or_below": {
         "4.0": 6,
@@ -299,6 +431,11 @@
         "CCC(C)(C)C(C(C)(C)C)(C(C)(C)C)C(C)(CN(C)[N](C)[Ru])C(C)(C)C",
         "CCN1C23N4C15C42[C]1(C(C)(Cl)CC)[C](N)(CC)[Ir]1([CH](C)C)([CH](C)C)([C](C)(CC)C(C)(C)CC)[C]35C"
       ],
+      "gen_validity": {
+        "epoch": 29,
+        "n": 48,
+        "value": 0.2916666666666667
+      },
       "joint_gate": {
         "mean_novelty_of_sa_subset": 0.8643,
         "n": 949,
@@ -315,6 +452,7 @@
       "n_train": 256,
       "n_unscored": 0,
       "path": "molmetal/reports/cfm_pcgrad_on_2026_10_14/generated_smiles.csv",
+      "pipeline": "generation",
       "qed_mean": 0.2001,
       "sa_counts_at_or_below": {
         "4.0": 5,
@@ -334,9 +472,10 @@
   ],
   "provenance": {
     "census": "metrics/by_metric/cfm_run_census.json",
-    "git_commit": "7484b69772a6be2d0c439a1ab0b6dd1e409b11ca",
+    "git_commit": "65d3c5f0cf8383d3d7d306d963b0af54d555d3c4",
     "scoring": "reuses cfm_sa_yield_audit.pool_report (SA + QED, unscored counted)",
-    "script": "molmetal/scripts/c7_scale_matched_pools.py"
+    "script": "molmetal/scripts/c7_scale_matched_pools.py",
+    "v1_0_correction": "v1.0 aggregated by tier alone. The full_corpus cell is entirely bond-head reconstruction (wf_cfm_decode_dump_smiles.py) and the small cell is 98.8% free generation, so v1.0's 'training scale' reading compared two pipelines."
   },
   "selection_gap": {
     "note": "cfm_sa_guided.json scored 2,396 molecules from three runs with n_train 64/256/256 and did not score the two full-corpus pools.",
@@ -353,9 +492,14 @@
     ]
   },
   "verdict": {
-    "full_corpus_molecules_scored": 83,
-    "reading": "If the full-corpus tier is not materially better on SA, training scale is not the explanation and C7 stands as measured. If it is better, the published SA number describes a 1%-scale model and must not be quoted as the generator's property.",
-    "small_molecules_scored": 2396
+    "full_corpus_generation_pool_exists": false,
+    "generation_molecules": 2342,
+    "generation_pools": 3,
+    "generation_tiers_missing": [
+      "full_corpus"
+    ],
+    "reading": "Only pools from the same pipeline are comparable. Every full-corpus pool on disk is a bond-head reconstruction of a real tmQM geometry, so its SA inherits real chemistry and cannot be quoted as generator quality. There is no full-corpus free-generation pool; the largest generation pool comes from an n_train=256 run. gen_validity is the one metric both scales compute through the same path, and it does not improve with scale on the runs that have it.",
+    "reconstruction_molecules": 149
   },
-  "version": "1.0"
+  "version": "1.1"
 }

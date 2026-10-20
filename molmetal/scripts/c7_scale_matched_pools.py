@@ -15,6 +15,23 @@ reach SA <= 4.5.  Two things were not checked:
 This script scores all six, attaches each to its run's recorded training size,
 and reports SA / QED by scale tier.  It changes no model and launches nothing.
 
+!! V1.1 CORRECTION (2026-10-20): TIER IS NOT THE ONLY THING THAT DIFFERS !!
+    The v1.0 table compared ``full_corpus`` against ``small`` and attributed the
+    gap to training scale.  That is wrong: the two cells were produced by two
+    different pipelines.  ``molmetal/scripts/wf_cfm_decode_dump_smiles.py``
+    writes a CSV with a ``metal_z`` column by loading REAL tmQM geometries and
+    running only the bond head -- a reconstruction, never the sampler.  The
+    trainer's own path (``evaluate_generation_validity``) writes
+    ``n_frags_raw``.  Every full-corpus pool on disk is a reconstruction; every
+    multi-hundred-molecule generation pool is a 256-sample run.  Reconstruction
+    inherits the SA of real chemistry, so its SA mean lands within 0.005 of the
+    tmQM population -- the agreement is the fingerprint of the artefact, not
+    evidence of quality.
+
+    v1.1 therefore classifies each pool by CSV header and only aggregates within
+    a pipeline.  It also carries ``gen_validity`` from the run's events.jsonl,
+    the one number both scales compute through the same code path.
+
 Usage::
 
     OMP_NUM_THREADS=1 .venv/bin/python molmetal/scripts/c7_scale_matched_pools.py
@@ -46,9 +63,68 @@ from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E40
 FULL_CORPUS_N_TRAIN = 26715
 SMALL_TRAIN_CUTOFF = 1024
 
+# CSV header markers.  ``metal_z`` is written only by
+# wf_cfm_decode_dump_smiles.py (bond-head reconstruction of a real tmQM
+# geometry); ``n_frags_raw`` only by the trainer's free-generation path.
+RECONSTRUCTION_MARKER = "metal_z"
+GENERATION_MARKER = "n_frags_raw"
+
 
 def discover_pools(reports: Path) -> List[Path]:
     return sorted(p for p in reports.glob("cfm_*/generated_smiles.csv") if p.is_file())
+
+
+def pipeline_of(csv_path: Path) -> str:
+    """Which code path produced this CSV: ``reconstruction``, ``generation`` or ``unknown``.
+
+    Read from the header, not from the run name: two of the reconstruction runs
+    are named ``cfm_fullcorpus_*`` and would otherwise be indistinguishable from
+    a real full-corpus generation run.
+    """
+    import csv as _csv
+
+    try:
+        with csv_path.open(newline="") as handle:
+            header = next(_csv.reader(handle), [])
+    except OSError:
+        return "unknown"
+    if RECONSTRUCTION_MARKER in header:
+        return "reconstruction"
+    if GENERATION_MARKER in header:
+        return "generation"
+    return "unknown"
+
+
+def generation_validity(run_dir: Path) -> Optional[Dict[str, object]]:
+    """Last ``gen_validity`` the trainer logged, with its sample count.
+
+    This is the only metric in the C7 story computed identically at every
+    training scale -- the SA/QED pools are split by pipeline, so a cross-scale
+    comparison has to use this instead.
+    """
+    path = run_dir / "events.jsonl"
+    if not path.exists():
+        return None
+    last: Optional[Dict[str, object]] = None
+    try:
+        with path.open() as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if "gen_validity" in row:
+                    last = {
+                        "value": float(row["gen_validity"]),
+                        "n": row.get("gen_validity_n"),
+                        "epoch": row.get("epoch"),
+                    }
+    except OSError:
+        return None
+    return last
 
 
 def run_config(run_dir: Path, census: Dict[str, object]) -> Dict[str, object]:
@@ -156,6 +232,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         report["bond_exact_type_rate"] = cfg.get("bond_exact_type_rate")
         report["bond_type_macro_f1"] = cfg.get("bond_type_macro_f1")
         report["tier"] = tier_of(n_train)
+        report["pipeline"] = pipeline_of(path)
+        report["gen_validity"] = generation_validity(path.parent)
         # joint gate: SA <= 4.5 AND novelty >= 0.90, per molecule
         import csv as _csv
 
@@ -177,28 +255,48 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         pools.append(report)
 
-    def pooled(tier: str) -> Dict[str, object]:
-        rows = [p for p in pools if p["tier"] == tier]
+    def pooled(rows: List[Dict[str, object]]) -> Dict[str, object]:
         n_scored = sum(int(p.get("n_scored") or 0) for p in rows)
         k_gate = sum(int((p.get("sa_counts_at_or_below") or {}).get(str(SA_GATE), 0)) for p in rows)
+        k_joint = sum(int((p.get("joint_gate") or {}).get("n_sa_and_novel") or 0) for p in rows)
         sa_means = [p["sa_mean"] for p in rows if p.get("sa_mean") is not None]
         qed_means = [p["qed_mean"] for p in rows if p.get("qed_mean") is not None]
         return {
             "n_pools": len(rows),
             "n_scored": n_scored,
             "n_sa_le_gate": k_gate,
-            "n_joint_gate": sum(int((p.get("joint_gate") or {}).get("n_sa_and_novel") or 0) for p in rows),
-            "rate_joint_gate": round(
-                sum(int((p.get("joint_gate") or {}).get("n_sa_and_novel") or 0) for p in rows) / n_scored, 4
-            ) if n_scored else None,
+            "n_joint_gate": k_joint,
+            "rate_joint_gate": round(k_joint / n_scored, 4) if n_scored else None,
             "rate_sa_le_gate": round(k_gate / n_scored, 4) if n_scored else None,
             "wilson_ci95": wilson(k_gate, n_scored),
             "pool_mean_sa": round(sum(sa_means) / len(sa_means), 4) if sa_means else None,
             "pool_mean_qed": round(sum(qed_means) / len(qed_means), 4) if qed_means else None,
         }
 
-    tiers = {t: pooled(t) for t in ("full_corpus", "small", "mid", "unknown")}
+    TIERS = ("full_corpus", "mid", "small", "unknown")
+    tiers = {t: pooled([p for p in pools if p["tier"] == t]) for t in TIERS}
     tiers = {k: v for k, v in tiers.items() if v["n_pools"]}
+    for tier, row in tiers.items():
+        row["pipeline_mix"] = {
+            pl: sum(int(p.get("n_scored") or 0) for p in pools if p["tier"] == tier and p["pipeline"] == pl)
+            for pl in sorted({p["pipeline"] for p in pools if p["tier"] == tier})
+        }
+        row["comparable"] = len(row["pipeline_mix"]) == 1
+
+    by_pipeline: Dict[str, Dict[str, object]] = {}
+    for pl in sorted({str(p["pipeline"]) for p in pools}):
+        rows = [p for p in pools if p["pipeline"] == pl]
+        sub = {t: pooled([p for p in rows if p["tier"] == t]) for t in TIERS}
+        sub = {k: v for k, v in sub.items() if v["n_pools"]}
+        gv = [p["gen_validity"]["value"] for p in rows if p.get("gen_validity")]
+        by_pipeline[pl] = {
+            "n_pools": len(rows),
+            "n_scored": sum(int(p.get("n_scored") or 0) for p in rows),
+            "by_tier": sub,
+            "tiers_present": sorted(sub),
+            "tiers_missing": [t for t in ("full_corpus", "mid", "small") if t not in sub],
+            "gen_validity_mean": round(sum(gv) / len(gv), 4) if gv else None,
+        }
 
     used_by_sa_audit = {
         "cfm_fullcorpus_2026_10_10",
@@ -213,23 +311,36 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     payload = {
         "artifact": "c7_scale_matched_pools",
-        "version": "1.0",
+        "version": "1.1",
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "provenance": {
             "script": "molmetal/scripts/c7_scale_matched_pools.py",
             "git_commit": _git_commit(),
             "census": "metrics/by_metric/cfm_run_census.json",
             "scoring": "reuses cfm_sa_yield_audit.pool_report (SA + QED, unscored counted)",
+            "v1_0_correction": (
+                "v1.0 aggregated by tier alone. The full_corpus cell is entirely "
+                "bond-head reconstruction (wf_cfm_decode_dump_smiles.py) and the "
+                "small cell is 98.8% free generation, so v1.0's 'training scale' "
+                "reading compared two pipelines."
+            ),
         },
         "design": {
             "sa_gate": SA_GATE,
+            "novelty_gate": NOVELTY_GATE,
             "thresholds": list(THRESHOLDS),
             "full_corpus_n_train": FULL_CORPUS_N_TRAIN,
             "small_train_cutoff": SMALL_TRAIN_CUTOFF,
             "tier_rule": "full_corpus if n_train >= 26715; small if < 1024; else mid",
+            "pipeline_rule": (
+                f"header contains {RECONSTRUCTION_MARKER!r} -> reconstruction; "
+                f"{GENERATION_MARKER!r} -> generation"
+            ),
+            "comparable_across_tiers_only_within_a_pipeline": True,
         },
         "pools": pools,
         "by_tier": tiers,
+        "by_pipeline": by_pipeline,
         "selection_gap": {
             "pools_scored_here": len(pools),
             "pools_used_by_cfm_sa_guided": sorted(used_by_sa_audit),
@@ -240,13 +351,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             ),
         },
         "verdict": {
-            "full_corpus_molecules_scored": tiers.get("full_corpus", {}).get("n_scored", 0),
-            "small_molecules_scored": tiers.get("small", {}).get("n_scored", 0),
+            "generation_pools": by_pipeline.get("generation", {}).get("n_pools", 0),
+            "generation_molecules": by_pipeline.get("generation", {}).get("n_scored", 0),
+            "generation_tiers_missing": by_pipeline.get("generation", {}).get("tiers_missing", []),
+            "reconstruction_molecules": by_pipeline.get("reconstruction", {}).get("n_scored", 0),
+            "full_corpus_generation_pool_exists": "full_corpus"
+            in by_pipeline.get("generation", {}).get("by_tier", {}),
             "reading": (
-                "If the full-corpus tier is not materially better on SA, training "
-                "scale is not the explanation and C7 stands as measured. If it is "
-                "better, the published SA number describes a 1%-scale model and "
-                "must not be quoted as the generator's property."
+                "Only pools from the same pipeline are comparable. Every full-corpus "
+                "pool on disk is a bond-head reconstruction of a real tmQM geometry, "
+                "so its SA inherits real chemistry and cannot be quoted as generator "
+                "quality. There is no full-corpus free-generation pool; the largest "
+                "generation pool comes from an n_train=256 run. gen_validity is the "
+                "one metric both scales compute through the same path, and it does "
+                "not improve with scale on the runs that have it."
             ),
         },
     }
@@ -254,13 +372,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     atomic_write_file(args.out, json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
 
     for p in pools:
+        gv = (p.get("gen_validity") or {}).get("value")
         print(
-            f"[c7] {p['label'][:38]:38s} n={p.get('n_scored', 0):5d} "
+            f"[c7] {p['label'][:38]:38s} {p['pipeline'][:14]:14s} n={p.get('n_scored', 0):5d} "
             f"n_train={p['n_train']} sa_mean={p.get('sa_mean')} qed={p.get('qed_mean')} "
-            f"gate={((p.get('sa_counts_at_or_below') or {}).get(str(SA_GATE)))}"
+            f"gate={((p.get('sa_counts_at_or_below') or {}).get(str(SA_GATE)))} gen_validity={gv}"
         )
     for tier, row in tiers.items():
-        print(f"[c7] tier={tier:11s} pools={row['n_pools']} n={row['n_scored']} rate={row['rate_sa_le_gate']} ci={row['wilson_ci95']}")
+        print(
+            f"[c7] tier={tier:11s} pools={row['n_pools']} n={row['n_scored']} "
+            f"rate={row['rate_sa_le_gate']} ci={row['wilson_ci95']} "
+            f"mix={row['pipeline_mix']} comparable={row['comparable']}"
+        )
+    for pl, row in by_pipeline.items():
+        print(f"[c7] pipeline={pl:14s} n={row['n_scored']} tiers={row['tiers_present']} missing={row['tiers_missing']}")
     print(f"[c7] wrote {args.out}")
     return 0
 

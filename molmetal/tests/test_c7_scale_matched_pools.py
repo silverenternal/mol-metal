@@ -14,6 +14,8 @@ import json
 from molmetal.scripts.c7_scale_matched_pools import (
     FULL_CORPUS_N_TRAIN,
     SMALL_TRAIN_CUTOFF,
+    generation_validity,
+    pipeline_of,
     run_config,
     tier_of,
 )
@@ -73,3 +75,61 @@ def test_run_config_survives_a_corrupt_metrics_file(tmp_path):
     (tmp_path / "per_epoch_metrics.json").write_text("{not json")
     census = {"runs": [{"run": tmp_path.name, "config": {"n_train": 256}}]}
     assert run_config(tmp_path, census)["n_train"] == 256
+
+
+# --- pipeline classification -------------------------------------------------
+# v1.0 compared a full-corpus reconstruction against a 256-sample generation
+# pool and called the gap "training scale". The header is the only reliable
+# discriminator: two reconstruction runs are named cfm_fullcorpus_*.
+
+
+def _write_csv(path, header):
+    path.write_text(",".join(header) + "\n")
+
+
+def test_metal_z_header_is_a_reconstruction(tmp_path):
+    path = tmp_path / "generated_smiles.csv"
+    _write_csv(path, ["epoch", "seed", "smiles", "sanitized", "n_fragments", "largest_fragment_frac", "metal_z"])
+    assert pipeline_of(path) == "reconstruction"
+
+
+def test_n_frags_raw_header_is_generation(tmp_path):
+    path = tmp_path / "generated_smiles.csv"
+    _write_csv(path, ["epoch", "smiles", "n_frags_raw", "largest_frag_frac"])
+    assert pipeline_of(path) == "generation"
+
+
+def test_unknown_header_is_not_silently_generation(tmp_path):
+    path = tmp_path / "generated_smiles.csv"
+    _write_csv(path, ["epoch", "smiles"])
+    assert pipeline_of(path) == "unknown"
+
+
+def test_missing_file_is_unknown(tmp_path):
+    assert pipeline_of(tmp_path / "nope.csv") == "unknown"
+
+
+def test_generation_validity_takes_the_last_logged_epoch(tmp_path):
+    (tmp_path / "events.jsonl").write_text(
+        "\n".join(
+            [
+                json.dumps({"epoch": 1, "gen_validity": 0.1}),
+                json.dumps({"epoch": 2, "gen_validity": 0.25, "gen_validity_n": 768}),
+                json.dumps({"epoch": 2, "event": "done"}),
+            ]
+        )
+    )
+    got = generation_validity(tmp_path)
+    assert got["value"] == 0.25
+    assert got["n"] == 768
+    assert got["epoch"] == 2
+
+
+def test_generation_validity_absent_is_none(tmp_path):
+    (tmp_path / "events.jsonl").write_text(json.dumps({"epoch": 1, "train_loss": 3.0}))
+    assert generation_validity(tmp_path) is None
+
+
+def test_generation_validity_survives_a_truncated_line(tmp_path):
+    (tmp_path / "events.jsonl").write_text('{"epoch": 1, "gen_validity": 0.4}\n{"epoch": 2, "gen_')
+    assert generation_validity(tmp_path)["value"] == 0.4
