@@ -1,0 +1,122 @@
+{
+  "aggregates": {
+    "all_metals": {
+      "n_metals": 5,
+      "value": 0.5576,
+      "vs_target": -0.0424
+    },
+    "resolvable_only": {
+      "metals": [
+        "Ru",
+        "Ir"
+      ],
+      "n_metals": 2,
+      "value": 0.5974,
+      "vs_target": -0.0026
+    }
+  },
+  "artifact": "lomo_resolvability_audit",
+  "design": {
+    "min_unique_for_gate": 200,
+    "n_seeds": 5,
+    "rule": "MIN_UNIQUE_FOR_GATE",
+    "rule_source": "molmetal/scripts/metal_activity_transfer_probe.py:185",
+    "target_overall_auc": 0.6,
+    "uncertainty": "Hanley-McNeil SE on n_pos/n_neg; seed spread is model variance, not sampling error"
+  },
+  "folds": [
+    {
+      "auc_mean": 0.5972,
+      "auc_seed_max": 0.6142,
+      "auc_seed_min": 0.5806,
+      "auc_seed_sd": 0.0135,
+      "ci95_hanley": [
+        0.5622,
+        0.6322
+      ],
+      "hanley_se": 0.0179,
+      "metal": "Ru",
+      "n_neg": 945,
+      "n_pos": 366,
+      "n_unique": 1311,
+      "resolvable": true
+    },
+    {
+      "auc_mean": 0.5975,
+      "auc_seed_max": 0.6277,
+      "auc_seed_min": 0.5763,
+      "auc_seed_sd": 0.0208,
+      "ci95_hanley": [
+        0.5495,
+        0.6456
+      ],
+      "hanley_se": 0.0245,
+      "metal": "Ir",
+      "n_neg": 289,
+      "n_pos": 249,
+      "n_unique": 538,
+      "resolvable": true
+    },
+    {
+      "auc_mean": 0.5831,
+      "auc_seed_max": 0.6396,
+      "auc_seed_min": 0.5623,
+      "auc_seed_sd": 0.0319,
+      "ci95_hanley": [
+        0.3907,
+        0.7755
+      ],
+      "hanley_se": 0.0982,
+      "metal": "Os",
+      "n_neg": 21,
+      "n_pos": 15,
+      "n_unique": 36,
+      "resolvable": false
+    },
+    {
+      "auc_mean": 0.3812,
+      "auc_seed_max": 0.4309,
+      "auc_seed_min": 0.3526,
+      "auc_seed_sd": 0.0301,
+      "ci95_hanley": [
+        0.2217,
+        0.5407
+      ],
+      "hanley_se": 0.0814,
+      "metal": "Rh",
+      "n_neg": 34,
+      "n_pos": 17,
+      "n_unique": 51,
+      "resolvable": false
+    },
+    {
+      "auc_mean": 0.6288,
+      "auc_seed_max": 0.6886,
+      "auc_seed_min": 0.5554,
+      "auc_seed_sd": 0.0616,
+      "ci95_hanley": [
+        0.4628,
+        0.7947
+      ],
+      "hanley_se": 0.0847,
+      "metal": "Re",
+      "n_neg": 59,
+      "n_pos": 15,
+      "n_unique": 74,
+      "resolvable": false
+    }
+  ],
+  "generated_utc": "2026-10-20T09:56:50+00:00",
+  "provenance": {
+    "cohort": "molmetal/data/metal_lomo.csv after collapse_ligand_duplicates",
+    "git_commit": "639b50e669ca02aea73344f9e4d3fda6f0686bc5",
+    "script": "molmetal/scripts/lomo_resolvability_audit.py",
+    "source_artifact": "metrics/by_metric/metal_lomo_auc_wasserstein.json"
+  },
+  "verdict": {
+    "gate_target_met_all_metals": false,
+    "gate_target_met_resolvable_only": false,
+    "reading": "neither aggregate clears 0.6; the all-metal mean overstates the shortfall because three of five folds are unresolvable"
+  },
+  "version": "1.0"
+}

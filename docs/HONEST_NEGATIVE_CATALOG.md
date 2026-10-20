@@ -7957,3 +7957,240 @@ every number traces to `metrics/by_metric/wfa98_assemble_discrimination.json` or
 `metrics/by_metric/wfa98_assemble_smoke.json`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 
 ---
+
+### §6.142 Wf-A99 — `bond_pr_auc` carried no definition, so cross-era tables compared two metrics (2026-10-20)
+
+**What was wrong.** Wf-A97 corrected `bond_pr_auc` from the NO_BOND one-vs-rest AP
+(majority class, MEASURED 0.6209) to the bond-existence AP (MEASURED 0.2659 on the same 64
+tmQM val clouds). The field name did not change, and **no artefact recorded which definition
+produced the number**. Three readers load `bond_pr_auc` out of run directories written on both
+sides of that correction:
+
+| reader | what it does | rows on disk |
+|---|---|---|
+| `molmetal/scripts/wf_cfm_run_census.py` | one row per CFM run directory, `bond_pr_auc` from the last epoch's CSV | 26 runs, **all unstamped** |
+| `molmetal/scripts/wf_blk_c13_epsilon_constraint.py` | Pareto front / epsilon slices over `bond_pr_auc` | 2 runs dated 2026-10-09 (pre-Wf-A97) |
+| `molmetal/scripts/wf_blk_g1_bond_head_scaling.py` | per-epoch bond-head scaling table | runtime `acc` dict |
+
+Putting 0.62 (majority-class AP) beside 0.27 (existence AP) and reading the difference as a
+regression is the exact failure Wf-A97 was shipped to stop — the fix corrected the trainer but
+left every already-written artefact indistinguishable.
+
+**MEASURED** (`metrics/by_metric/cfm_run_census.json`): `bond_pr_auc_definitions:
+{"undeclared": 26}`. Every run currently on disk predates the stamp, which is the honest state:
+**none of the historical `bond_pr_auc` numbers can be attributed to a definition from the
+artefact alone.**
+
+**What shipped.**
+
+* `molmetal/eval/bond_metric_schema.py` — `existence_ap_v2` / `no_bond_ap_v1` /
+  `undeclared`, plus `bond_ap_definition`, `bond_ap_legend`, `group_by_definition`,
+  `require_single_definition` (raises `MixedBondApDefinition` naming the offending rows) and
+  `stamp_counts`. Exported from `molmetal.eval`.
+* Trainer: both `_bond_ranking_report` and `_bond_ranking_report_per_class` stamp
+  `bond_pr_auc_definition`; `EpochMetrics.bond_pr_auc_definition` defaults to `""` (**not**
+  to `existence_ap_v2` — a default would relabel every pre-existing artefact); the field is
+  written to `per_epoch_metrics.json` and to a new `bond_pr_auc_definition` CSV column.
+* `wf_cfm_run_census.py` — per-row stamp, a `def` column (`v2`/`v1`/`?`), a printed legend,
+  and `bond_pr_auc_definitions` in the artefact.
+* `wf_blk_c13_epsilon_constraint.py` — `second_objective_definition` per analysis,
+  `bond_pr_auc_definition` per run, and a `require_single_definition` guard before the front is
+  built (a future re-run that stamps one arm and not the other now raises instead of producing a
+  frontier over two scales).
+* `wf_blk_g1_bond_head_scaling.py` — the row carries `bond_pr_auc_definition` from the runtime
+  report.
+* `hinge_tau_from_values` in `assemble_connectivity.py` — the assemble dead-zone rule
+  (`ceil(max * 1.13 / 0.01) * 0.01`) was spelled **twice**: inside
+  `derive_assemble_hinge_tau` and, as `math.ceil(max(truth) * 1.13 * 100) / 100`, inside
+  `wf_a98_assemble_discrimination.py`. Both now call the same function object, pinned by
+  `test_the_rule_lives_in_exactly_one_place` (identity, not equality of results). Same drift
+  class as the donor-list unification (Wf-A94).
+* `molmetal/tests/test_wfa99_bond_metric_definition.py` — 9 tests: undeclared is never guessed,
+  mapping and attribute rows both read, the legend distinguishes the two, the guard raises and
+  names the rows, grouping/counts preserve order, both report entry points stamp, and the
+  dataclass default is `""`.
+
+**A second hole found while doing this: a test that had been failing since Wf-A43.**
+`test_wf_blk_c14_entropy_weight_floor.py::test_default_is_zero_and_below_the_floor` asserted
+`default == 0.0`; the shipped default has been **0.1** since Wf-A43 (2026-10-15), which flipped
+it deliberately and documented the flip in the `--entropy-reg-weight` help text. The test was
+never updated, so it failed on every run of the suite — a stale assertion that hides every other
+failure in its file behind a red line. It also surfaced a live consequence: the BLK-C14 measured
+observability floor is **0.12**, so the shipped default 0.1 sits *inside* the sub-threshold band
+and **every run that does not set the flag prints the sub-threshold warning**. That warning is
+truthful (at 0.1 the term is below the measured floor). Raising the default to 0.12 is a training
+change that moves the objective of the ~157 configs relying on the default, so it was **not**
+applied; it is recorded as `DEC_entropy_default_below_floor` in `cfm_todo.json`. The test now
+pins the actual contract (default 0.1, explicitly below the floor) so a future move to the floor
+shows up as a deliberate diff. 7/7 tests in that file pass.
+
+**Honest negatives that REMAIN (ACTIVE).**
+
+* **The guard prevents future mixes; it cannot attribute the past.** All 26 runs on disk are
+  `undeclared`. Any table that quotes two `bond_pr_auc` numbers from different dates is still
+  comparing two metrics, and no code change fixes that — it needs re-measurement of the old arms
+  against per-pair probabilities, which the CSVs do not carry.
+* **`metrics/by_metric/blk_g1_bond_head_scaling.json` still holds 0.9996** with no stamp. It was
+  produced by the pre-Wf-A97 code path and is not relabelled here.
+* **`metrics/by_metric/blk_c13_epsilon_constraint.json` values are unchanged.** The re-run added
+  `second_objective_definition: "undeclared"` to each analysis; the Pareto front, knee and epsilon
+  slices are bit-identical, so nothing was "fixed" by the label.
+* **No test asserts that a new run actually writes the CSV column.** The dataclass field and the
+  two report dicts are tested; the CSV write path is not (it needs an end-to-end training step).
+
+**§6.142 catalog-count math.** Net catalog-count delta: **+1** (§6.142 itself). ACTIVE count
+delta: **+1**. Cumulative catalog count: **194 -> 195** (+1). ACTIVE count: **150 -> 151** (+1).
+
+**Workflow** | Wf-A99 (2026-10-20; 0 GPU; 9 new tests + 1 stale test repaired; §5.2: every number
+traces to `metrics/by_metric/cfm_run_census.json` or the pre-Wf-A97 artefacts it names; §5.3 +
+§5.4: 0 paper/* + 0 wet-lab).
+
+---
+
+## §6.141 — C6: the LOMO shortfall was mostly three unresolvable folds
+
+**Claim under test.**  Leave-one-metal-out transfer reaches AUC 0.6 (published
+headline 0.5575, read as "0.04 short").
+
+**Setup.**  The headline is an equal-weight mean over five folds, three of which
+(Rh 51, Os 36, Re 74 unique ligands) sit below the project's own
+``MIN_UNIQUE_FOR_GATE = 200`` - a rule that says such an AUC "must not be
+gated".  The mean never applied it.  The audit applies it mechanically, adds
+Hanley-McNeil intervals, and then tests whether seed-averaging the *scores*
+(not the AUCs) closes the gap.  Scores were dumped by a new
+``--dump-test-scores-dir`` flag; 5 folds x 5 seeds x 30 epochs reran in 2m33s.
+
+**MEASURED.**  Per fold: Ru n=1311 AUC 0.5972 [0.5622,0.6322]; Ir n=538 0.5975
+[0.5495,0.6456]; Os n=36 0.5831 [0.3907,0.7755]; Rh n=51 **0.3812**
+[0.2217,0.5407]; Re n=74 0.6288 [0.4628,0.7947].  Aggregates: all-metals
+**0.5576**, resolvable-only (Ru+Ir) **0.5974** vs 0.6.  Seed ensemble
+(score-average): Ru 0.5901, Ir **0.6012**, Os 0.5636, Rh 0.3814, Re 0.5722;
+resolvable-only **0.5957**.
+
+**Honest negatives (ACTIVE, this entry):**
+  * **The published 0.5575 is an artefact of the aggregation.**  Under the
+    project's own resolvability rule the gap is 0.0026, not 0.0424.  Both
+    numbers are reported; only the resolvable one may be gated.
+  * **Rh is a measurement floor, not a model failure.**  n=51, CI [0.22, 0.54]
+    contains 0.5.  Five seeds landing in 0.35-0.43 is model variance on one
+    test set, not sampling error (Hanley SE = 0.081).
+  * **Seed ensembling is the right direction and is not enough.**  +0.0016 (Ru)
+    and +0.0025 (Ir); resolvable-only 0.5957 < 0.6.  Closing 0.004 needs a
+    different representation, not a different aggregate.
+  * **The rerun does not reproduce the published panel.**  Re-run all-metal
+    mean 0.5417 vs published 0.5575 (|diff| 0.0158 > the 0.01 pre-registered
+    bar); Re moves 0.6288 -> 0.5438.  Consistent with the known CUDA
+    non-determinism (+-0.08/fold); ``--deterministic`` was not used and the
+    historical panel did not record it.  The ensemble gain is an internal
+    comparison and is valid; the absolute level is not comparable.
+  * **The 0.7 and 0.6 targets were being mixed.**  ``gate_target`` in the
+    artifact is 0.7 while ``target_overall_auc`` is 0.6; quoting 0.5575 < 0.7
+    overstates the gap.
+  * **Both resolvable CIs contain 0.6.**  "No evidence above 0.6" is supported;
+    "proven below 0.6" is not.
+
+**Why this matters.**  C6 stays NOT SUPPORTED, but the paper must not claim
+either "0.04 short" or "transfer works at 0.6".  The correct sentence is:
+at the two resolvable metals, transfer is 0.597 (0.596 ensembled), inside the
+0.6 target's interval; the other three folds cannot resolve anything.
+
+**§6.141 catalog-count math.** Net catalog-count delta: **+1** (§6.141 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **193 -> 194** (+1).
+ACTIVE count: **149 -> 150** (+1).
+
+**Workflow** | FIX-C6 (2026-10-20; GPU0, 5 concurrent folds, 2m33s; 7 new
+tests; §5.2: every number traces to `lomo_resolvability_audit.json` and
+`lomo_seed_ensemble.json` + `results/lomo_seed_ensemble/*.npz`; §5.3 + §5.4:
+0 paper/* + 0 wet-lab).
+
+---
+
+## §6.142 — C3: the delta-sign metric has a 0.60 floor, and no route clears it
+
+**Claim under test.**  The model can order metals within a cohort; published
+sign accuracy 0.5826 against a 0.65 gate, previously read against a 0.5 chance
+line.
+
+**Setup.**  On the 218 gated pairs (|delta| >= 0.2091) the signs are not
+balanced: 60.09% positive, and only two metal pairs exist (Os-Ru 153, Ir-Rh 64,
+both leaning positive).  The audit reports raw sign, the majority-class rate,
+and balanced sign ((TPR+TNR)/2, 0.5 for any constant predictor) with a
+DOI-clustered interval.  It also adds the one ordering mechanism not yet tried:
+LightGBM ``lambdarank`` on within-cohort relevance, capacity-matched to the
+regressor (500 trees / 31 leaves / 0.05).
+
+**MEASURED.**  Majority class **0.6009**; metal-pair prior 0.6055.  Level
+differencing raw **0.5826**, balanced **0.5272** [0.4359,0.6198], TPR 0.8015,
+TNR 0.2529.  Direct delta regression raw 0.5183, balanced **0.5162**
+[0.3939,0.6430], TPR 0.5267, TNR 0.5057.  Lambdarank raw **0.0734**
+[0.0126,0.1454], ungated 0.1007, mean |pred| 0.0455 vs observed 0.5299.
+
+**Honest negatives (ACTIVE, this entry):**
+  * **The published 0.5826 is below the trivial constant predictor (0.6009).**
+    It was never "close to 0.65"; it is 0.018 below "always say positive".
+  * **Balanced accuracy is 0.527 and its interval contains 0.5.**  The level
+    model learned the base rate (TPR 0.80 / TNR 0.25), not the ordering.
+  * **The gate was 0.049 above trivial, not 0.15 above chance.**  Same gate,
+    different reading; the old framing overstated how much was left to gain.
+  * **Only two metal pairs are ever tested.**  153 Os-Ru + 64 Ir-Rh; any
+    "metal ranking" claim is a two-pair claim.
+  * **Lambdarank is degenerate here.**  0.0734 with near-constant scores.  A
+    synthetic self-check on the same code path gives sign 1.000, so this is
+    not a wiring bug - and it is not evidence about ranking either.
+  * **The direct model is the unbiased one and the useless one.**  TPR/TNR
+    0.53/0.51: no base-rate bias, no signal.
+
+**Why this matters.**  The ordering line is closed for a better reason than
+before: it is not that three routes fell short of an ambitious bar, it is that
+none of them beats a constant, and the metric they were judged on could not
+tell the difference.
+
+### §6.142b addendum — the ranker is metal-blind, and the gate is unreachable by construction
+
+*Addendum to §6.142; no new catalog row, count math below is unchanged.*
+
+**The 0.0734 is a tie artifact, not an inversion.**  Of the 218 gated pairs, **181
+(83.03%) receive exactly the same score for both rows**.  ``sign(pred)`` is then 0,
+and ``delta_stats`` scores the pair as wrong.  Tie-aware sign accuracy is
+**0.4885** — chance, not anti-signal.  (``msrs_rank_within_cohort.json:/ties``.)
+
+**Mechanism: the objective ranked ligands, not metals.**  Both rows of a pair share
+ligand / cell line / DOI / time, so their feature vectors differ only in the metal
+block.  If no tree splits on that block, both rows land in the same leaf and get the
+same score — which is what happens in 83% of pairs.  The arm never learned a metal
+ordering, so it is not evidence that ordering is unlearnable; it is evidence that
+this objective, on 725 comparable queries / 1,508 rows (7% of 21,404), does not.
+
+**The gate cannot be met on this pair set.**  Only 3 of 10 metal contrasts survive
+the gate (Os–Ru 153, Ir–Rh 64, Rh–Ru 1), so 7 contrasts are absent and no
+five-metal ranking is identified.  The two informative contrasts are won by
+different routes — Os–Ru: metal-mean prior **0.6209** [0.5420,0.6939] vs learned
+**0.4641** [0.3869,0.5430]; Ir–Rh: learned **0.6562** [0.5340,0.7608] vs prior
+**0.5625** [0.4409,0.6771].  An oracle that picks the better route per contrast
+reaches (153×0.6209 + 64×0.6562)/218 = **0.6284**, still below 0.65.  A global
+two-signal blend fitted out-of-fold does worse (**0.4679**), because the weights it
+needs have opposite signs per contrast.
+(``msrs_rank_diagnostics.json:/coverage/per_pair``, ``:/routes``.)
+
+**It is not assay drift and it is not label noise.**  All 427 pairs are same-DOI
+(share **1.0000**), so the paper offset is already cancelled.  602 replicate groups
+(1,340 rows) sharing ligand/metal/cell line/time give a within-group SD of 0.1283
+(median 0.0373), which implies a sign-accuracy ceiling of **0.9747** on the gated
+pairs.  The binding constraint is the model, not the measurement.
+(``msrs_rank_diagnostics.json:/design/same_doi_share``, ``:/replicate_noise``.)
+
+**Workflow** | FIX-C3b (2026-10-20; CPU, 0 GPU; new
+`molmetal/scripts/msrs_rank_diagnostics.py` + `ties` block in the ranker artifact;
+§5.2: every number traces to `msrs_rank_diagnostics.json`,
+`msrs_rank_within_cohort.json` or `results/msrs_rank_within_cohort/oof_scores.npz`;
+§5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+**§6.142 catalog-count math.** Net catalog-count delta: **+1** (§6.142 itself).
+ACTIVE count delta: **+1**.  Cumulative catalog count: **194 -> 195** (+1).
+ACTIVE count: **150 -> 151** (+1).
+
+**Workflow** | FIX-C3 (2026-10-20; CPU, lambdarank ~6 min; 12 new tests;
+§5.2: every number traces to `msrs_delta_metric_audit.json` and
+`msrs_rank_within_cohort.json`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---

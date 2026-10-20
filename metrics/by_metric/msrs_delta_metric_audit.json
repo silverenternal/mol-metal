@@ -1,0 +1,70 @@
+{
+  "artifact": "msrs_delta_metric_audit",
+  "baselines": {
+    "always_positive_sign": 0.6009,
+    "majority_class_rate": 0.6009,
+    "metal_pair_prior_balanced": 0.5057,
+    "metal_pair_prior_sign": 0.6055
+  },
+  "design": {
+    "bootstrap": {
+      "cluster": "doi",
+      "n_boot": 2000,
+      "seed": 20261020
+    },
+    "gate_threshold": 0.2091,
+    "metric_note": "balanced = (TPR + TNR)/2; 0.5 for any constant predictor",
+    "n_gated_pairs": 218
+  },
+  "generated_utc": "2026-10-20T10:30:05+00:00",
+  "pair_composition": {
+    "Ir-Rh": {
+      "fraction_positive": 0.5625,
+      "n": 64
+    },
+    "Os-Ru": {
+      "fraction_positive": 0.6209,
+      "n": 153
+    },
+    "Rh-Ru": {
+      "fraction_positive": 0.0,
+      "n": 1
+    }
+  },
+  "provenance": {
+    "direct_predictions": "results/msrs_pairwise_reranker/pair_oof_doi.npz",
+    "git_commit": "639b50e669ca02aea73344f9e4d3fda6f0686bc5",
+    "level_predictions": "results/msrs_seed_ensemble",
+    "script": "molmetal/scripts/msrs_delta_metric_audit.py"
+  },
+  "routes": {
+    "direct_regression": {
+      "balanced": 0.5162,
+      "balanced_ci95": [
+        0.3939,
+        0.643
+      ],
+      "n": 218,
+      "raw_sign": 0.5183,
+      "tnr": 0.5057,
+      "tpr": 0.5267
+    },
+    "level_differencing": {
+      "balanced": 0.5272,
+      "balanced_ci95": [
+        0.4359,
+        0.6198
+      ],
+      "n": 218,
+      "raw_sign": 0.5826,
+      "tnr": 0.2529,
+      "tpr": 0.8015
+    }
+  },
+  "verdict": {
+    "floor": 0.6009,
+    "note": "raw sign must be read against the majority-class rate, not 0.5",
+    "published_level_raw": 0.5826
+  },
+  "version": "1.0"
+}

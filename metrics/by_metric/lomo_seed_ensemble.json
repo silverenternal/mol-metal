@@ -1,0 +1,187 @@
+{
+  "aggregates": {
+    "all_metals": {
+      "auc_of_mean_score": 0.5417,
+      "mean_of_seed_aucs": 0.5374
+    },
+    "resolvable_only": {
+      "auc_of_mean_score": 0.5957,
+      "mean_of_seed_aucs": 0.5936,
+      "metals": [
+        "Ru",
+        "Ir"
+      ]
+    }
+  },
+  "artifact": "lomo_seed_ensemble",
+  "consistency": {
+    "abs_diff": 0.0202,
+    "max_abs_gap": 0.085,
+    "note": "A gap is expected: the trainer runs on CUDA without a fixed algorithm seed, so a fold's AUC moves by ~1e-2 between runs (Re, n=74, moved 0.085). A gap is NOT evidence that the dump covers a different cohort; that would need a fold-size check, and the dumped row counts are recorded above.",
+    "per_fold_gap": {
+      "Ir": 0.0012,
+      "Os": -0.0003,
+      "Re": -0.085,
+      "Rh": -0.0079,
+      "Ru": -0.0087
+    },
+    "published_all_metals": 0.5576,
+    "reproduced_all_metals": 0.5374
+  },
+  "design": {
+    "auc_of_mean_score": "seed ensemble: average the scores, then one AUC",
+    "mean_of_seed_aucs": "published method: AUC per seed, then arithmetic mean",
+    "min_unique_for_gate": 200,
+    "resolvability_rule": "MIN_UNIQUE_FOR_GATE",
+    "target_overall_auc": 0.6
+  },
+  "folds": [
+    {
+      "auc_of_mean_score": 0.5901,
+      "ci95_hanley": [
+        0.5687,
+        0.6115
+      ],
+      "ensemble_gain": 0.0016,
+      "files": [
+        "Ru_seed0.npz",
+        "Ru_seed1.npz",
+        "Ru_seed2.npz",
+        "Ru_seed3.npz",
+        "Ru_seed4.npz"
+      ],
+      "hanley_se": 0.0109,
+      "mean_of_seed_aucs": 0.5885,
+      "metal": "Ru",
+      "n_neg": 2704,
+      "n_pos": 964,
+      "n_seeds": 5,
+      "n_test_rows": 3668,
+      "n_unique_ligands": 1311,
+      "published_auc_mean": 0.5972,
+      "reproduction_gap": -0.0087,
+      "resolvable": true,
+      "seed_sd": 0.02
+    },
+    {
+      "auc_of_mean_score": 0.6012,
+      "ci95_hanley": [
+        0.5695,
+        0.6329
+      ],
+      "ensemble_gain": 0.0025,
+      "files": [
+        "Ir_seed0.npz",
+        "Ir_seed1.npz",
+        "Ir_seed2.npz",
+        "Ir_seed3.npz",
+        "Ir_seed4.npz"
+      ],
+      "hanley_se": 0.0162,
+      "mean_of_seed_aucs": 0.5987,
+      "metal": "Ir",
+      "n_neg": 685,
+      "n_pos": 557,
+      "n_seeds": 5,
+      "n_test_rows": 1242,
+      "n_unique_ligands": 538,
+      "published_auc_mean": 0.5975,
+      "reproduction_gap": 0.0012,
+      "resolvable": true,
+      "seed_sd": 0.0175
+    },
+    {
+      "auc_of_mean_score": 0.5636,
+      "ci95_hanley": [
+        0.4412,
+        0.6861
+      ],
+      "ensemble_gain": -0.0191,
+      "files": [
+        "Os_seed0.npz",
+        "Os_seed1.npz",
+        "Os_seed2.npz",
+        "Os_seed3.npz",
+        "Os_seed4.npz"
+      ],
+      "hanley_se": 0.0625,
+      "mean_of_seed_aucs": 0.5828,
+      "metal": "Os",
+      "n_neg": 49,
+      "n_pos": 38,
+      "n_seeds": 5,
+      "n_test_rows": 87,
+      "n_unique_ligands": 36,
+      "published_auc_mean": 0.5831,
+      "reproduction_gap": -0.0003,
+      "resolvable": false,
+      "seed_sd": 0.0271
+    },
+    {
+      "auc_of_mean_score": 0.3814,
+      "ci95_hanley": [
+        0.2718,
+        0.491
+      ],
+      "ensemble_gain": 0.0081,
+      "files": [
+        "Rh_seed0.npz",
+        "Rh_seed1.npz",
+        "Rh_seed2.npz",
+        "Rh_seed3.npz",
+        "Rh_seed4.npz"
+      ],
+      "hanley_se": 0.0559,
+      "mean_of_seed_aucs": 0.3733,
+      "metal": "Rh",
+      "n_neg": 73,
+      "n_pos": 35,
+      "n_seeds": 5,
+      "n_test_rows": 108,
+      "n_unique_ligands": 51,
+      "published_auc_mean": 0.3812,
+      "reproduction_gap": -0.0079,
+      "resolvable": false,
+      "seed_sd": 0.0227
+    },
+    {
+      "auc_of_mean_score": 0.5722,
+      "ci95_hanley": [
+        0.4506,
+        0.6938
+      ],
+      "ensemble_gain": 0.0284,
+      "files": [
+        "Re_seed0.npz",
+        "Re_seed1.npz",
+        "Re_seed2.npz",
+        "Re_seed3.npz",
+        "Re_seed4.npz"
+      ],
+      "hanley_se": 0.062,
+      "mean_of_seed_aucs": 0.5438,
+      "metal": "Re",
+      "n_neg": 139,
+      "n_pos": 27,
+      "n_seeds": 5,
+      "n_test_rows": 166,
+      "n_unique_ligands": 74,
+      "published_auc_mean": 0.6288,
+      "reproduction_gap": -0.085,
+      "resolvable": false,
+      "seed_sd": 0.1063
+    }
+  ],
+  "generated_utc": "2026-10-20T10:26:03+00:00",
+  "provenance": {
+    "git_commit": "639b50e669ca02aea73344f9e4d3fda6f0686bc5",
+    "score_dumps": "results/lomo_seed_ensemble",
+    "script": "molmetal/scripts/lomo_seed_ensemble.py",
+    "source_artifact": "metrics/by_metric/lomo_resolvability_audit.json"
+  },
+  "verdict": {
+    "target_met_all_metals": false,
+    "target_met_resolvable_only": false
+  },
+  "version": "1.0"
+}

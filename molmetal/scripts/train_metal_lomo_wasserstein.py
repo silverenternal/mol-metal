@@ -970,6 +970,11 @@ class WassersteinLOMORunner:
         lr_warmup_epochs: int = 5,
         lr_min_lr: float = 1e-6,
         weight_decay: float = 0.0,
+        # C6 (2026-10-20) — optional per-row test-score dump.  Path selection
+        # only: it writes the scores this run already computed, and changes no
+        # parameter.  Needed because seed-ensembling needs the rows, and the
+        # artifact only ever stored the AUC.
+        score_dump_dir: Optional[str] = None,
     ) -> None:
         self.ds = ds
         self.held_out_metal = held_out_metal
@@ -1002,6 +1007,7 @@ class WassersteinLOMORunner:
                 f"{sorted(_WASSERSTEIN_CADENCES)}, got {wasserstein_cadence!r}"
             )
         self.wasserstein_cadence = _wc
+        self.score_dump_dir = score_dump_dir
         self.n_mc = int(n_mc)
         self.hidden = hidden
         self.depth = depth
@@ -1656,6 +1662,16 @@ class WassersteinLOMORunner:
             )[0]
         tm = compute_metrics(active_test, test_score)
         test_auc = float(tm["roc_auc"])
+        if self.score_dump_dir:
+            _dump_dir = Path(self.score_dump_dir)
+            _dump_dir.mkdir(parents=True, exist_ok=True)
+            np.savez(
+                _dump_dir / f"{self.held_out_metal}_seed{self.seed}.npz",
+                y=np.asarray(active_test, dtype=np.int64),
+                score=np.asarray(test_score, dtype=np.float64),
+                metal=str(self.held_out_metal),
+                seed=int(self.seed),
+            )
         # F3 — when the regression target was per-metal centered, the head
         # predicts on the centered scale.  Map the predictions back to the
         # raw pIC50 scale so ``test_pic50_mae`` stays comparable to every
@@ -2057,6 +2073,17 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Path to the 5-metal LOMO CSV.",
     )
     p.add_argument(
+        "--dump-test-scores-dir",
+        type=str,
+        default=None,
+        help=(
+            "C6: write per-row test scores to <dir>/<metal>_seed<seed>.npz. "
+            "Path selection only - the scores are computed either way; this "
+            "just keeps them so a seed ensemble can be scored without "
+            "retraining twice."
+        ),
+    )
+    p.add_argument(
         "--time-threshold",
         type=float,
         default=24.0,
@@ -2421,6 +2448,7 @@ def _run_one(
         model_select=str(getattr(args, "model_select", "last_epoch")),
         rh_loso_validation=bool(getattr(args, "rh_loso_validation", False)),
         drop_leaked_ligands=bool(getattr(args, "drop_leaked_ligands", False)),
+        score_dump_dir=getattr(args, "dump_test_scores_dir", None),
         per_metal_pic50_center=bool(
             getattr(args, "per_metal_pic50_center", False)
         ),
