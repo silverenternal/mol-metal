@@ -9175,3 +9175,90 @@ paper/* + 0 wet-lab).
 
 ---
 
+### §6.150c FIX-C12b — `nvidia-smi` was reporting the wrong number all along (2026-10-21)
+
+§6.150b reached the right mechanism (the caching allocator keeping one block per distinct tensor
+shape) from `nvidia-smi` samples. This entry adds the measurement that distinguishes the two
+quantities those samples conflate, and it changes one conclusion in §6.150b.
+
+**The measurement.** `MOLMETAL_MEM_TRACE=1` prints `memory_allocated` / `memory_reserved` /
+`max_memory_allocated` after every optimizer step. At `n_train=256`, batch 32, six terms,
+`gen_eval_n=0`:
+
+| step | `allocated` | `reserved` | `peak_alloc` |
+|---:|---:|---:|---:|
+| 0 | 71 MiB | 8,836 MiB | 8,563 MiB |
+| 3 | 76 MiB | 16,068 MiB | 10,226 MiB |
+| 7 | **76 MiB** | **17,998 MiB** | 16,555 MiB |
+
+`allocated` is **flat at 71-77 MiB after every step**, in every arm measured. There is no reference
+leak, no retained graph, no accumulating list. What grows is `reserved` — empty blocks the allocator
+keeps for shapes it has already seen — and `nvidia-smi` reports `reserved`, not `allocated`. Every
+"the run is using 92 GB" statement in §6.150 and §6.150b is a statement about empty blocks.
+
+**Correction to §6.150b's Correction 1.** §6.150b says "halving the batch — i.e. halving the
+activations of every single step — bought 7 GB", and concludes the peak does not depend on batch
+size. That is true of the `nvidia-smi` number and false of the real one. MEASURED
+(`max_memory_allocated`, `n_train=4096`, `n_rot=1`, `gen_eval_n=0`):
+
+| arm | `peak_alloc` | `nvidia-smi` peak | epoch |
+|---|---:|---:|---:|
+| batch 64, `empty_cache` every 8 | 56,706 MiB | 82,076 MiB reserved | 161.6 s |
+| batch 32, `empty_cache` every step | 36,769 MiB | ~20,000 MiB reserved | 286.3 s |
+| batch 32, no `empty_cache` | — | — | 189.6 s |
+
+At the **first** batch the difference is starker: 34,279 MiB at batch 64 vs 11,499 MiB at batch 32 —
+3.0x for 2x the batch, i.e. superlinear, which is the O(pairs) shape of the bond-pair and
+`x.unsqueeze(0) - x.unsqueeze(1)` terms. Batch size is a real lever on live memory; it only looked
+inert because 40-60 GB of reserved blocks sat on top of it.
+
+**`torch.cuda.empty_cache()` bounds the reserved number, at a price.** `MOLMETAL_EMPTY_CACHE_EVERY=N`
+(default 0 = off, so every existing run is bit-identical) calls it every N steps. Measured at batch
+32 / 4,096 clouds: `reserved` becomes a sawtooth between 8 and 21 GB instead of climbing past 80 GB,
+and `peak_alloc` stays at 36.8 GB. The cost is **+51% epoch time** (189.6 → 286.3 s), because
+freeing and re-allocating tens of GB every step is not free. So this is a correctness-of-memory
+lever, not a speed lever, and it should be set as large as the headroom allows rather than to 1.
+
+**A hypothesis I had and killed.** I guessed `SBOO3Term`'s `n_perm` was buying extra forwards, since
+it is the largest multiplier in that term. It is not: `n_perm` permutes `per_sample_loss.detach()`,
+a tensor that already exists, and runs **no** model call. Only `n_rot` does forwards (2 per
+rotation). The probe was launched and then killed on reading the code, before it produced a number;
+recording it because "n_perm is free" is the kind of thing that gets re-guessed.
+
+**The second bug this investigation found, now fixed (commit `ba604b88`).** Every term in
+`regularization_losses.py` returns `torch.zeros(())` when its body raises, and
+`_maybe_warn_import` gates the warning on `(class_name, exc_type_name)` so each pair warns **once per
+process**. On the crashed full-corpus run both of these fired:
+
+    [EnergyConservation] OutOfMemoryError — CUDA out of memory ...; returning 0
+    [SBOO3Term] RuntimeError — cusolver error ...; returning 0
+
+Both terms were configured at weight 0.05 and both returned zero for the rest of the run. **"Six
+terms on" was not true under memory pressure, and the run's own artifacts could not say so** — the
+loss curve is smooth and the YAML weights are correct. `FALLBACK_COUNTS` now increments on every
+swallow, and `train_epoch` events carry `regularizer_fallbacks`, so an empty dict is a positive
+statement that every weighted term contributed. The warning behaviour is deliberately unchanged.
+
+**Honest boundaries (ACTIVE, this entry):**
+  * **The 20 GB figure is a batch-32 number, not a batch-64 one.** Real peak allocation is 11.5-36.8
+    GB at batch 32 and 34.3-56.7 GB at batch 64. Getting batch-64 semantics under 20 GB requires
+    gradient accumulation (2 x 32), which this trainer does not have; changing `batch_size` instead
+    changes the number of optimizer steps per epoch (418 -> 835), which is a different run.
+  * **`peak_alloc` still grows within an epoch** (11.5 -> 36.8 GB over 128 steps at batch 32) even
+    with `allocated` flat. The growth is in the per-step transient, driven by the largest clouds in
+    each batch (corpus: median 34 atoms, max 146), not by retained state. Bounding it further means
+    capping the pair tensors, which is a model change, not an allocator one.
+  * **Every number here was taken with a foreign 11.3 GB resident on the same GPU** (the user's
+    `lineageflow` run), and some arms raced a second agent's cold C7 launch that was later stopped.
+    The `torch.cuda` numbers are per-process and unaffected; the `nvidia-smi` numbers are totals and
+    are not directly comparable across arms.
+
+**§6.150c catalog-count math.** Net catalog-count delta: **+1**. Cumulative catalog count
+**204 → 205**. ACTIVE count **160 → 161**.
+
+**Workflow** | FIX-C12b (2026-10-21; GPU: 4 probe runs at 4,096 clouds + 1 at 256; §5.2: every MiB
+is a `torch.cuda` reading or an `nvidia-smi` sample, every second an `epoch_time_sec` field; §5.3 +
+§5.4: 0 paper/* + 0 wet-lab).
+
+---
+
