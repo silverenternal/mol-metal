@@ -1,0 +1,51 @@
+# c6_lomo_seed_dump_smoke.yaml — C6 timing probe (1 metal x 1 seed x 30 epochs).
+#
+# WHY THIS FILE EXISTS: the C6 repair needs per-row test scores from every
+# (metal, seed) run of the published LOMO protocol so a seed ensemble can be
+# scored.  Before paying for the full 5x5 grid this probe measures the cost of
+# ONE cell at the published hyperparameters.
+#
+# This file changes NO hyperparameter relative to the published headline
+# (metrics/by_metric/metal_lomo_auc_wasserstein.json = 0.5575 +/- 0.0949):
+# default CSV (the <=24h snapshot), rh_oversample=0, time_threshold=24,
+# hidden 128 / depth 3 / alpha 0.5, batch 64 / lr 1e-3 / 30 epochs /
+# wasserstein 0.05 / model_select last_epoch.
+# Only the SCOPE is narrowed (metals=[Ru], seeds=[0]) and a dump dir is added.
+#
+# The dump flag is path selection only: the scores are computed either way.
+data:
+  metals:
+    - Ru
+  rh_oversample: 0
+  time_threshold: 24
+model:
+  hidden: 128
+  depth: 3
+  alpha: 0.5
+protocol:
+  batch_size: 64
+  lr: 0.001
+  epochs: 30
+  seeds: [0]
+  wasserstein_weight: 0.05
+  model_select: last_epoch
+compute:
+  device: cuda:0
+output:
+  base_dir: molmetal/reports/c6_lomo_seed_dump_smoke
+  out_dir: molmetal/reports/c6_lomo_seed_dump_smoke
+  log_master: molmetal/reports/c6_lomo_seed_dump_smoke/master.log
+  training_summary: molmetal/reports/c6_lomo_seed_dump_smoke/training_summary.json
+  out_metric: molmetal/reports/c6_lomo_seed_dump_smoke/metrics.json
+  dump_test_scores_dir: results/lomo_seed_ensemble_smoke
+directives:
+  kill_then_adapt: true
+  time_budget: 30m
+  user_ok_required: false
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: C6 timing probe — cost of one (metal, seed) cell at the published hyperparameters.
+  note: Not a result. Narrowed scope (1 metal, 1 seed) means its AUC is NOT comparable to the 25-run headline.

@@ -1,0 +1,175 @@
+{
+  "artifact": "msrs_rank_diagnostics",
+  "coverage": {
+    "gated_pairs_missing": [
+      "Ir<Os",
+      "Ir<Re",
+      "Ir<Ru",
+      "Os<Re",
+      "Os<Rh",
+      "Re<Rh",
+      "Re<Ru"
+    ],
+    "metal_pairs_gated": 3,
+    "metal_pairs_possible": 10,
+    "metal_pairs_present": 3,
+    "per_pair": [
+      {
+        "learned_ci95_wilson": [
+          0.534,
+          0.7608
+        ],
+        "learned_sign": 0.6562,
+        "metal_pair": "Ir<Rh",
+        "n_dois": 30,
+        "n_gated": 64,
+        "n_ligands": 62,
+        "n_pairs": 143,
+        "obs_mean_delta": 0.05,
+        "prior_ci95_wilson": [
+          0.4409,
+          0.6771
+        ],
+        "prior_sign": 0.5625
+      },
+      {
+        "learned_ci95_wilson": [
+          0.3869,
+          0.543
+        ],
+        "learned_sign": 0.4641,
+        "metal_pair": "Os<Ru",
+        "n_dois": 31,
+        "n_gated": 153,
+        "n_ligands": 82,
+        "n_pairs": 279,
+        "obs_mean_delta": 0.1943,
+        "prior_ci95_wilson": [
+          0.542,
+          0.6939
+        ],
+        "prior_sign": 0.6209
+      },
+      {
+        "learned_ci95_wilson": [
+          0.0,
+          0.7935
+        ],
+        "learned_sign": 0.0,
+        "metal_pair": "Rh<Ru",
+        "n_dois": 2,
+        "n_gated": 1,
+        "n_ligands": 4,
+        "n_pairs": 5,
+        "obs_mean_delta": -0.699,
+        "prior_ci95_wilson": [
+          0.0,
+          0.7935
+        ],
+        "prior_sign": 0.0
+      }
+    ]
+  },
+  "design": {
+    "gate_threshold": 0.2091,
+    "min_pairs_for_pair_level": 20,
+    "n_boot": 2000,
+    "n_gated_pairs": 218,
+    "n_unordered_pairs": 427,
+    "replicate_keys": [
+      "ligand_canonical",
+      "metal",
+      "cell_line_key",
+      "time_h"
+    ],
+    "same_doi_share": 1.0
+  },
+  "generated_utc": "2026-10-20T10:26:12+00:00",
+  "provenance": {
+    "git_commit": "639b50e669ca02aea73344f9e4d3fda6f0686bc5",
+    "note": "pair predictions are the DOI-held-out OOF values from the pairwise reranker",
+    "pair_dump": "results/msrs_pairwise_reranker/pair_oof_doi.npz",
+    "script": "molmetal/scripts/msrs_rank_diagnostics.py"
+  },
+  "replicate_noise": {
+    "mean_sd": {
+      "ceiling_sign_accuracy": 0.9747,
+      "share_of_gated_pairs_resolvable": 0.6835,
+      "sigma": 0.1283
+    },
+    "median_sd": {
+      "ceiling_sign_accuracy": 1.0,
+      "share_of_gated_pairs_resolvable": 1.0,
+      "sigma": 0.0373
+    },
+    "n_replicate_groups": 602,
+    "n_rows_in_replicates": 1340
+  },
+  "routes": {
+    "learned_pair_model": {
+      "gated": {
+        "bootstrap": {
+          "mae_delta": {
+            "ci95": [
+              0.4343,
+              0.6796
+            ],
+            "mean": 0.5533
+          },
+          "n_boot": 2000,
+          "n_dois": 53,
+          "sign_accuracy": {
+            "ci95": [
+              0.3953,
+              0.6541
+            ],
+            "mean": 0.5193
+          }
+        },
+        "mae_delta": 0.5559,
+        "n_pairs": 218,
+        "sign_accuracy": 0.5183
+      },
+      "ungated": {
+        "mae_delta": 0.4515,
+        "n_pairs": 427,
+        "sign_accuracy": 0.4988
+      }
+    },
+    "metal_mean_prior": {
+      "gated": {
+        "bootstrap": {
+          "mae_delta": {
+            "ci95": [
+              0.4128,
+              0.5544
+            ],
+            "mean": 0.4857
+          },
+          "n_boot": 2000,
+          "n_dois": 53,
+          "sign_accuracy": {
+            "ci95": [
+              0.4762,
+              0.7143
+            ],
+            "mean": 0.6002
+          }
+        },
+        "mae_delta": 0.487,
+        "n_pairs": 218,
+        "sign_accuracy": 0.6009
+      },
+      "ungated": {
+        "mae_delta": 0.3885,
+        "n_pairs": 427,
+        "sign_accuracy": 0.5457
+      }
+    }
+  },
+  "verdict": {
+    "gated_sign_gap": 0.0826,
+    "learned_beats_prior_gated": false
+  },
+  "version": "1.0"
+}

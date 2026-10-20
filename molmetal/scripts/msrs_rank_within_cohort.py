@@ -113,6 +113,34 @@ def group_sizes(keys: np.ndarray) -> np.ndarray:
     return counts.astype(np.int32)
 
 
+def tie_stats(obs: np.ndarray, pred: np.ndarray, gate: float) -> Dict[str, object]:
+    """Separate "the model tied" from "the model got it backwards".
+
+    A lambdarank score is a per-query quantity.  If the trees never split on the
+    metal block, both rows of a within-cohort metal pair land in the same leaf
+    and get the SAME score; ``sign(pred)`` is then 0 and ``delta_stats`` counts
+    the pair as wrong.  That is not an inversion, it is a tie, and the two must
+    not be reported as the same thing.
+    """
+    keep = np.abs(obs) >= gate
+    tie = np.isclose(pred, 0.0, atol=1e-12)
+    n_gated = int(keep.sum())
+    n_tied = int((tie & keep).sum())
+    correct = np.sign(pred[keep]) == np.sign(obs[keep])
+    tie_aware = np.where(tie[keep], 0.5, correct.astype(float))
+    return {
+        "n_gated": n_gated,
+        "n_tied": n_tied,
+        "tie_share": round(float(n_tied / max(1, n_gated)), 4),
+        "sign_accuracy_ties_half": round(float(tie_aware.mean()), 4) if n_gated else None,
+        "reading": (
+            "tie_share is the share of gated pairs the model scores identically. "
+            "High tie_share means the learned function is metal-blind: it ranks "
+            "ligands, not metals, and the ordering claim has no mechanism behind it."
+        ),
+    }
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -214,35 +242,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     boot = cluster_bootstrap(obs[scored], pred[scored], clusters[scored], GATE_THRESHOLD)
     base = level_baseline(PROJECT_ROOT / "metrics" / "by_metric" / "msrs_seed_ensemble.json")
 
-    # A lambdarank score is a per-query quantity.  If the trees never split on
-    # the metal block, both rows of a within-cohort metal pair land in the same
-    # leaf and get the SAME score; ``sign(pred)`` is then 0 and delta_stats
-    # counts the pair as wrong.  That is not an inversion, it is a tie, and the
-    # two must not be reported as the same thing.
-    gated_mask = np.abs(obs[scored]) >= GATE_THRESHOLD
-    tie = np.isclose(pred[scored], 0.0, atol=1e-12)
-    ties = {
-        "n_gated": int(gated_mask.sum()),
-        "n_tied": int((tie & gated_mask).sum()),
-        "tie_share": round(float((tie & gated_mask).sum() / max(1, int(gated_mask.sum()))), 4),
-        "sign_accuracy_ties_half": round(
-            float(
-                np.mean(
-                    np.where(
-                        tie[gated_mask],
-                        0.5,
-                        (np.sign(pred[scored][gated_mask]) == np.sign(obs[scored][gated_mask])).astype(float),
-                    )
-                )
-            ),
-            4,
-        ),
-        "reading": (
-            "tie_share is the share of gated pairs the model scores identically. "
-            "High tie_share means the learned function is metal-blind: it ranks "
-            "ligands, not metals, and the ordering claim has no mechanism behind it."
-        ),
-    }
+    # A lambdarank score is a per-query quantity; ties are not inversions.
+    ties = tie_stats(obs[scored], pred[scored], GATE_THRESHOLD)
 
     sign = gated.get("sign_accuracy")
     sign_tie = ties["sign_accuracy_ties_half"]

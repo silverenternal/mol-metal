@@ -1,12 +1,12 @@
 {
   "aggregates": {
     "all_metals": {
-      "auc_of_mean_score": 0.5417,
-      "mean_of_seed_aucs": 0.5374
+      "auc_of_mean_score": 0.5383,
+      "mean_of_seed_aucs": 0.5405
     },
     "resolvable_only": {
-      "auc_of_mean_score": 0.5957,
-      "mean_of_seed_aucs": 0.5936,
+      "auc_of_mean_score": 0.5947,
+      "mean_of_seed_aucs": 0.5897,
       "metals": [
         "Ru",
         "Ir"
@@ -15,21 +15,22 @@
   },
   "artifact": "lomo_seed_ensemble",
   "consistency": {
-    "abs_diff": 0.0202,
-    "max_abs_gap": 0.085,
+    "abs_diff": 0.0171,
+    "max_abs_gap": 0.0567,
     "note": "A gap is expected: the trainer runs on CUDA without a fixed algorithm seed, so a fold's AUC moves by ~1e-2 between runs (Re, n=74, moved 0.085). A gap is NOT evidence that the dump covers a different cohort; that would need a fold-size check, and the dumped row counts are recorded above.",
     "per_fold_gap": {
-      "Ir": 0.0012,
-      "Os": -0.0003,
-      "Re": -0.085,
-      "Rh": -0.0079,
+      "Ir": -0.0067,
+      "Os": -0.0023,
+      "Re": -0.0567,
+      "Rh": -0.0107,
       "Ru": -0.0087
     },
     "published_all_metals": 0.5576,
-    "reproduced_all_metals": 0.5374
+    "reproduced_all_metals": 0.5405
   },
   "design": {
     "auc_of_mean_score": "seed ensemble: average the scores, then one AUC",
+    "interval": "ci95_hanley uses the ligand-collapsed n (conservative, and the same n the resolvability audit uses); ci95_hanley_rows uses the dumped row count and is recorded only so the difference is visible.",
     "mean_of_seed_aucs": "published method: AUC per seed, then arithmetic mean",
     "min_unique_for_gate": 200,
     "resolvability_rule": "MIN_UNIQUE_FOR_GATE",
@@ -39,6 +40,10 @@
     {
       "auc_of_mean_score": 0.5901,
       "ci95_hanley": [
+        0.5551,
+        0.6252
+      ],
+      "ci95_hanley_rows": [
         0.5687,
         0.6115
       ],
@@ -50,7 +55,8 @@
         "Ru_seed3.npz",
         "Ru_seed4.npz"
       ],
-      "hanley_se": 0.0109,
+      "hanley_se": 0.0179,
+      "hanley_se_rows": 0.0109,
       "mean_of_seed_aucs": 0.5885,
       "metal": "Ru",
       "n_neg": 2704,
@@ -64,12 +70,16 @@
       "seed_sd": 0.02
     },
     {
-      "auc_of_mean_score": 0.6012,
+      "auc_of_mean_score": 0.5993,
       "ci95_hanley": [
-        0.5695,
-        0.6329
+        0.5513,
+        0.6473
       ],
-      "ensemble_gain": 0.0025,
+      "ci95_hanley_rows": [
+        0.5676,
+        0.631
+      ],
+      "ensemble_gain": 0.0085,
       "files": [
         "Ir_seed0.npz",
         "Ir_seed1.npz",
@@ -77,8 +87,9 @@
         "Ir_seed3.npz",
         "Ir_seed4.npz"
       ],
-      "hanley_se": 0.0162,
-      "mean_of_seed_aucs": 0.5987,
+      "hanley_se": 0.0245,
+      "hanley_se_rows": 0.0162,
+      "mean_of_seed_aucs": 0.5908,
       "metal": "Ir",
       "n_neg": 685,
       "n_pos": 557,
@@ -86,17 +97,21 @@
       "n_test_rows": 1242,
       "n_unique_ligands": 538,
       "published_auc_mean": 0.5975,
-      "reproduction_gap": 0.0012,
+      "reproduction_gap": -0.0067,
       "resolvable": true,
-      "seed_sd": 0.0175
+      "seed_sd": 0.0212
     },
     {
-      "auc_of_mean_score": 0.5636,
+      "auc_of_mean_score": 0.5701,
       "ci95_hanley": [
-        0.4412,
-        0.6861
+        0.377,
+        0.7632
       ],
-      "ensemble_gain": -0.0191,
+      "ci95_hanley_rows": [
+        0.4478,
+        0.6923
+      ],
+      "ensemble_gain": -0.0107,
       "files": [
         "Os_seed0.npz",
         "Os_seed1.npz",
@@ -104,8 +119,9 @@
         "Os_seed3.npz",
         "Os_seed4.npz"
       ],
-      "hanley_se": 0.0625,
-      "mean_of_seed_aucs": 0.5828,
+      "hanley_se": 0.0985,
+      "hanley_se_rows": 0.0624,
+      "mean_of_seed_aucs": 0.5808,
       "metal": "Os",
       "n_neg": 49,
       "n_pos": 38,
@@ -113,17 +129,21 @@
       "n_test_rows": 87,
       "n_unique_ligands": 36,
       "published_auc_mean": 0.5831,
-      "reproduction_gap": -0.0003,
+      "reproduction_gap": -0.0023,
       "resolvable": false,
-      "seed_sd": 0.0271
+      "seed_sd": 0.034
     },
     {
-      "auc_of_mean_score": 0.3814,
+      "auc_of_mean_score": 0.3724,
       "ci95_hanley": [
-        0.2718,
-        0.491
+        0.2141,
+        0.5307
       ],
-      "ensemble_gain": 0.0081,
+      "ci95_hanley_rows": [
+        0.2637,
+        0.4811
+      ],
+      "ensemble_gain": 0.0019,
       "files": [
         "Rh_seed0.npz",
         "Rh_seed1.npz",
@@ -131,8 +151,9 @@
         "Rh_seed3.npz",
         "Rh_seed4.npz"
       ],
-      "hanley_se": 0.0559,
-      "mean_of_seed_aucs": 0.3733,
+      "hanley_se": 0.0807,
+      "hanley_se_rows": 0.0555,
+      "mean_of_seed_aucs": 0.3705,
       "metal": "Rh",
       "n_neg": 73,
       "n_pos": 35,
@@ -140,17 +161,21 @@
       "n_test_rows": 108,
       "n_unique_ligands": 51,
       "published_auc_mean": 0.3812,
-      "reproduction_gap": -0.0079,
+      "reproduction_gap": -0.0107,
       "resolvable": false,
-      "seed_sd": 0.0227
+      "seed_sd": 0.0214
     },
     {
-      "auc_of_mean_score": 0.5722,
+      "auc_of_mean_score": 0.5594,
       "ci95_hanley": [
-        0.4506,
-        0.6938
+        0.3924,
+        0.7265
       ],
-      "ensemble_gain": 0.0284,
+      "ci95_hanley_rows": [
+        0.438,
+        0.6809
+      ],
+      "ensemble_gain": -0.0127,
       "files": [
         "Re_seed0.npz",
         "Re_seed1.npz",
@@ -158,8 +183,9 @@
         "Re_seed3.npz",
         "Re_seed4.npz"
       ],
-      "hanley_se": 0.062,
-      "mean_of_seed_aucs": 0.5438,
+      "hanley_se": 0.0852,
+      "hanley_se_rows": 0.062,
+      "mean_of_seed_aucs": 0.5721,
       "metal": "Re",
       "n_neg": 139,
       "n_pos": 27,
@@ -167,14 +193,14 @@
       "n_test_rows": 166,
       "n_unique_ligands": 74,
       "published_auc_mean": 0.6288,
-      "reproduction_gap": -0.085,
+      "reproduction_gap": -0.0567,
       "resolvable": false,
-      "seed_sd": 0.1063
+      "seed_sd": 0.083
     }
   ],
-  "generated_utc": "2026-10-20T10:26:03+00:00",
+  "generated_utc": "2026-10-20T10:34:45+00:00",
   "provenance": {
-    "git_commit": "639b50e669ca02aea73344f9e4d3fda6f0686bc5",
+    "git_commit": "f19ac4162966be0b2df2a716042bacbb2b57c290",
     "score_dumps": "results/lomo_seed_ensemble",
     "script": "molmetal/scripts/lomo_seed_ensemble.py",
     "source_artifact": "metrics/by_metric/lomo_resolvability_audit.json"

@@ -63,6 +63,32 @@ def load_fold(directory: Path, metal: str) -> Dict[str, np.ndarray]:
     return {"y": first, "scores": np.column_stack(scores), "paths": [p.name for p in paths]}
 
 
+def intervals(
+    auc: float,
+    n_pos_rows: int,
+    n_neg_rows: int,
+    n_pos_eff: int,
+    n_neg_eff: int,
+) -> Dict[str, object]:
+    """Two standard errors, because they answer two different questions.
+
+    ``*_rows`` is the textbook binomial SE for an AUC computed on these rows.
+    But rows repeat ligands (~2.8 rows per ligand on Ru), so they are not
+    independent draws and that SE is too small.  The ligand-collapsed n is the
+    conservative choice, and it is the one the resolvability audit already uses,
+    so it is the headline; the row-based interval is kept beside it so the two
+    are never quoted interchangeably.
+    """
+    se_rows = hanley_se(auc, n_pos_rows, n_neg_rows)
+    se_eff = hanley_se(auc, n_pos_eff, n_neg_eff)
+    return {
+        "hanley_se": round(se_eff, 4),
+        "ci95_hanley": [round(auc - 1.96 * se_eff, 4), round(auc + 1.96 * se_eff, 4)],
+        "hanley_se_rows": round(se_rows, 4),
+        "ci95_hanley_rows": [round(auc - 1.96 * se_rows, 4), round(auc + 1.96 * se_rows, 4)],
+    }
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -97,8 +123,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         per_seed = [float(roc_auc_score(y, scores[:, j])) for j in range(scores.shape[1])]
         mean_score = scores.mean(axis=1)
         ensemble = float(roc_auc_score(y, mean_score))
-        se = hanley_se(ensemble, n_pos, n_neg)
+        # Two standard errors: see intervals().
         ref = by_metal.get(metal, {})
+        n_u_pos, n_u_neg = int(ref.get("n_pos", n_pos)), int(ref.get("n_neg", n_neg))
+        se_block = intervals(ensemble, n_pos, n_neg, n_u_pos, n_u_neg)
         folds.append(
             {
                 "metal": metal,
@@ -111,8 +139,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "seed_sd": round(float(np.std(per_seed, ddof=1)), 4),
                 "auc_of_mean_score": round(ensemble, 4),
                 "ensemble_gain": round(ensemble - float(np.mean(per_seed)), 4),
-                "hanley_se": round(se, 4),
-                "ci95_hanley": [round(ensemble - 1.96 * se, 4), round(ensemble + 1.96 * se, 4)],
+                **se_block,
                 "published_auc_mean": ref.get("auc_mean"),
                 "reproduction_gap": round(float(np.mean(per_seed)) - ref["auc_mean"], 4)
                 if ref.get("auc_mean") is not None
@@ -156,6 +183,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             "auc_of_mean_score": "seed ensemble: average the scores, then one AUC",
             "resolvability_rule": audit["design"]["rule"],
             "min_unique_for_gate": audit["design"]["min_unique_for_gate"],
+            "interval": (
+                "ci95_hanley uses the ligand-collapsed n (conservative, and the "
+                "same n the resolvability audit uses); ci95_hanley_rows uses the "
+                "dumped row count and is recorded only so the difference is visible."
+            ),
         },
         "folds": folds,
         "aggregates": aggregates,

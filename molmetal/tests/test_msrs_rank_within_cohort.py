@@ -72,3 +72,51 @@ def test_relevance_rejects_nothing_but_leaves_nan_ordering_stable():
     rel = relevance(frame, y)
     # NaN sorts last under argsort, so the finite value takes rank 0
     assert sorted(rel.tolist()) == [0, 1]
+
+
+# --- ties are not inversions -------------------------------------------------
+# The arm scored 0.0734 raw, which reads as "anti-signal".  It is not: 83% of
+# gated pairs get an identical score for both rows, sign() reads 0, and the pair
+# is counted wrong.  Reporting the raw number as evidence about ranking would be
+# a false negative of exactly the kind the project forbids.
+
+
+def test_tied_pairs_count_as_half_not_as_wrong():
+    from molmetal.scripts.msrs_rank_within_cohort import tie_stats
+
+    obs = np.array([1.0, 1.0, 1.0, 1.0])
+    pred = np.array([0.0, 0.0, 0.0, 0.0])
+    out = tie_stats(obs, pred, gate=0.2)
+    assert out["tie_share"] == 1.0
+    assert out["sign_accuracy_ties_half"] == 0.5
+    # the raw convention would call every one of these wrong
+    assert float(np.mean(np.sign(pred) == np.sign(obs))) == 0.0
+
+
+def test_ties_outside_the_gate_do_not_count():
+    from molmetal.scripts.msrs_rank_within_cohort import tie_stats
+
+    obs = np.array([1.0, 0.05, 1.0])
+    pred = np.array([0.0, 0.0, 1.0])
+    out = tie_stats(obs, pred, gate=0.2)
+    assert out["n_gated"] == 2
+    assert out["n_tied"] == 1
+
+
+def test_a_real_inversion_is_still_reported_as_zero():
+    from molmetal.scripts.msrs_rank_within_cohort import tie_stats
+
+    obs = np.array([1.0, 1.0, 1.0])
+    pred = np.array([-1.0, -2.0, -3.0])
+    out = tie_stats(obs, pred, gate=0.2)
+    assert out["tie_share"] == 0.0
+    assert out["sign_accuracy_ties_half"] == 0.0
+
+
+def test_tie_stats_on_an_empty_gated_set_does_not_divide_by_zero():
+    from molmetal.scripts.msrs_rank_within_cohort import tie_stats
+
+    out = tie_stats(np.array([0.01]), np.array([0.0]), gate=0.2)
+    assert out["n_gated"] == 0
+    assert out["tie_share"] == 0.0
+    assert out["sign_accuracy_ties_half"] is None

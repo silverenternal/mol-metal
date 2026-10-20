@@ -47,7 +47,7 @@
     "objective": "lambdarank on within-cohort relevance",
     "protocol": "doi",
     "sign_gate": 0.65,
-    "wall_s": 68.1
+    "wall_s": 63.2
   },
   "gated": {
     "bias_delta": -0.1642,
@@ -81,9 +81,9 @@
     "rmse_delta": 0.5949,
     "sign_accuracy": 0.0734
   },
-  "generated_utc": "2026-10-20T10:31:28+00:00",
+  "generated_utc": "2026-10-20T10:35:51+00:00",
   "provenance": {
-    "git_commit": "639b50e669ca02aea73344f9e4d3fda6f0686bc5",
+    "git_commit": "f19ac4162966be0b2df2a716042bacbb2b57c290",
     "script": "molmetal/scripts/msrs_rank_within_cohort.py"
   },
   "ties": {

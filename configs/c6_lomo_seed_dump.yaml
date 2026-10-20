@@ -1,0 +1,63 @@
+# c6_lomo_seed_dump.yaml — C6: full 5-metal x 5-seed LOMO grid with per-row score dumps.
+#
+# WHY: the published LOMO headline (metrics/by_metric/metal_lomo_auc_wasserstein.json
+# = 0.5575 +/- 0.0949) averages five per-seed AUCs per fold.  A deployed model
+# instead averages the five seeds' SCORES and computes one AUC.  Those two
+# numbers are not the same, and only the second is what a single checkpoint
+# ensemble would actually deliver.  This grid keeps the per-row test scores so
+# both can be computed from one training pass.
+#
+# This file changes NO hyperparameter relative to the published headline:
+# default CSV (the <=24h snapshot), rh_oversample=0, time_threshold=24,
+# hidden 128 / depth 3 / alpha 0.5, batch 64 / lr 1e-3 / 30 epochs /
+# wasserstein 0.05 / model_select last_epoch, seeds 0-4, metals Ru/Ir/Os/Rh/Re.
+# The only addition is output.dump_test_scores_dir (path selection; the scores
+# are computed either way).
+data:
+  metals:
+    - Ru
+    - Ir
+    - Os
+    - Rh
+    - Re
+  rh_oversample: 0
+  time_threshold: 24
+model:
+  hidden: 128
+  depth: 3
+  alpha: 0.5
+protocol:
+  batch_size: 64
+  lr: 0.001
+  epochs: 30
+  seeds: [0, 1, 2, 3, 4]
+  wasserstein_weight: 0.05
+  model_select: last_epoch
+compute:
+  device: cuda:0
+output:
+  base_dir: molmetal/reports/c6_lomo_seed_dump
+  out_dir: molmetal/reports/c6_lomo_seed_dump
+  log_master: molmetal/reports/c6_lomo_seed_dump/master.log
+  training_summary: molmetal/reports/c6_lomo_seed_dump/training_summary.json
+  out_metric: molmetal/reports/c6_lomo_seed_dump/metrics.json
+  dump_test_scores_dir: results/lomo_seed_ensemble
+directives:
+  kill_then_adapt: true
+  time_budget: 1h
+  user_ok_required: false          # AGENTS.md §5.1 standing grant; <1 hr wall
+  per_wave_user_ok_required: false
+entry:
+  script: molmetal/scripts/train_metal_lomo_wasserstein.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python molmetal/scripts/train_metal_lomo_wasserstein.py --config {yaml_path} --out-dir {out_dir}
+honest_framing:
+  purpose: C6 — can a 5-seed score ensemble clear 0.6 on the resolvable LOMO folds?
+  note: >-
+    This is a re-run of the published protocol, not a new protocol. CUDA
+    nondeterminism means individual fold AUCs differ from the published ones by
+    ~1e-2; the artifact reports the reproduced mean alongside the published one
+    so the difference is visible rather than assumed away.
+  not_a_lift: >-
+    Seed ensembling is a deployment choice, not a model improvement. If the
+    ensemble AUC exceeds the mean-of-AUCs, that is a property of variance
+    reduction, and it must be reported as such.

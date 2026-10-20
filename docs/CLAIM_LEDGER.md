@@ -10,10 +10,10 @@
 |---|---|---|---|---|
 | C1 | 金属感知表示（配合物 + 态 + 配位）显著优于配体单独 | **SUPPORTED** | Δ R² +0.1002（p=2.3e-20）；metal_blind 0.4873 vs full 0.5556 | `msrs_complex_features.json:/splits/fragment_grouped/complex/delta_r2_vs_main`；`msrs_metal_ablation.json:/protocols/ligand/arms/metal_blind/r2` |
 | C2 | 跨论文（整篇 DOI 留出）绝对强度预测达 R² 0.36 | **SUPPORTED** | 0.3767（MACCS 树）/ 0.3811（融合） | `msrs_feature_expansion_5seed.json:/protocols/doi/r2_seed_averaged`；`msrs_feature_fusion.json:/protocols/doi/fused_r2` |
-| C3 | 模型能判断同一队列里"哪个金属更好" | **NOT SUPPORTED**（且低于恒定预测） | 多数类 0.6009；相减 0.5826（平衡 0.5272）；直接 0.5183（平衡 0.5162）；lambdarank 0.0734 | `msrs_delta_metric_audit.json:/routes/level_differencing/balanced`；`msrs_delta_metric_audit.json:/baselines/majority_class_rate`；`msrs_rank_within_cohort.json:/gated/sign_accuracy` |
+| C3 | 模型能判断同一队列里"哪个金属更好" | **NOT SUPPORTED**（且低于恒定预测） | 多数类 0.6009；相减 0.5826（平衡 0.5272）；直接 0.5183（平衡 0.5162）；lambdarank 0.0734 | `msrs_delta_metric_audit.json:/routes/level_differencing/balanced`；`msrs_delta_metric_audit.json:/baselines/majority_class_rate`；`msrs_rank_within_cohort.json:/ties/sign_accuracy_ties_half`；`msrs_rank_diagnostics.json:/coverage/metal_pairs_gated` |
 | C4 | 树 + GNN 融合提升跨论文 R² | **SUPPORTED（仅 R²）** | DOI +0.0217 [+0.0044,+0.0377]；融合后 Δ 符号 0.5826→0.5505 | `msrs_fusion_protocols.json:/protocols/doi/arms/stack_foldwise/vs_tree` |
 | C5 | 不确定性区间校准 | **SUPPORTED（有边界）** | DOI 覆盖 0.9004、中位宽 2.0052；同队列多金属仅 0.8096 | `msrs_calibration.json:/protocols/doi/variants/global/coverage` |
-| C6 | 跨金属迁移达到可用水平 | **NOT SUPPORTED**（LOMO）；within-metal 另计 | 可解析 Ru/Ir 0.5974（集成 0.5957）< 0.6；Rh 0.3812 CI 含 0.5；within-metal Ru 0.8271 / Ir 0.8430 | `lomo_resolvability_audit.json:/aggregates/resolvable_only/value`；`lomo_seed_ensemble.json:/aggregates/resolvable_only/auc_of_mean_score` |
+| C6 | 跨金属迁移达到可用水平 | **NOT SUPPORTED**（LOMO）；within-metal 另计 | 可解析 Ru/Ir 0.5974（集成 0.5947）< 0.6；Rh 0.3812 CI 含 0.5；within-metal Ru 0.8271 / Ir 0.8430 | `lomo_resolvability_audit.json:/aggregates/resolvable_only/value`；`lomo_seed_ensemble.json:/aggregates/resolvable_only/auc_of_mean_score` |
 | C7 | 生成物可合成且新颖的金属药物 | **NOT SUPPORTED** | SA 6.4423、QED 0.0944、novelty 0.8517；SA≤4.5 产量 0.67% | `cfm_generation_metrics.json:/checks/sa/value`；`cfm_sa_guided.json:/combined/rate_sa_le_gate` |
 
 ---
@@ -41,8 +41,12 @@ DOI offset 值 +0.1109 R²，而金属化学在 DOI 之后只有 −0.0003。
 **能写**：「门内 218 对的多数类率是 **0.6009**（60.1% 正号，只有 Os–Ru 与
 Ir–Rh 两个金属对）。水平相减 0.5826 **低于恒定预测**，平衡符号准确率
 **0.5272 [0.4359, 0.6198]**（TPR 0.80 / TNR 0.25）；Δ 直接回归 0.5183，
-平衡 **0.5162 [0.3939, 0.6430]**；lambdarank 0.0734 且分数近常数（退化）。
-**没有任何路线超过恒定预测**，平衡准确率与 0.5 无差别。」
+平衡 **0.5162 [0.3939, 0.6430]**；lambdarank 0.0734 是**平局假象**——218 对里
+181 对（83.03%）两行拿到完全相同的分数，按平局 0.5 计是 **0.4885**，即金属盲。
+门内只有 **3/10** 个金属对比（Os–Ru 153、Ir–Rh 64、Rh–Ru 1），七个对比缺失，
+五金属排序在本队列上**不可识别**。**没有任何路线超过恒定预测**（0.6009），
+平衡准确率与 0.5 无差别；逐对比看，Os–Ru 是金属先验赢（0.6209 vs 0.4641），
+Ir–Rh 是学习模型赢（0.6562 vs 0.5625），按对比取优的上界也只有 0.6284 < 0.65。」
 
 **不能写**：「0.5826 接近 0.65 的门槛」——它比「永远答正号」低 0.018；也不能
 写「模型学到了排序」：它学到的是基准率。也不能写「直接回归显著更差」：区间重叠。
@@ -69,7 +73,7 @@ year 的 CI 含 0。**融合不改善排序**（0.5826→0.5505）。」
 vs 0.81，Ir 0.8430（0.8295–0.8597）vs 0.73；最差 seed 仍过线。」
 
 **不能写**：「跨金属迁移可用」——按项目自己的 `MIN_UNIQUE_FOR_GATE=200`，
-只有 Ru（1,311）与 Ir（538）可入闸，其 LOMO 为 **0.5974**（seed 集成 0.5957），
+只有 Ru（1,311）与 Ir（538）可入闸，其 LOMO 为 **0.5974**（seed 集成 0.5947），
 低于 0.6 目标 0.0026，且两个 CI 都包含 0.6。Rh（51）/Os（36）/Re（74）低于阈值，
 **不得入闸**：Rh 的 0.3812 的 CI 是 [0.2217, 0.5407]，包含 0.5，它是测量地板。
 也不能写「差 0.04」——那是把三个不可解析的折等权平均进去的结果。

@@ -98,3 +98,35 @@ def test_averaging_scores_beats_averaging_aucs_when_one_seed_inverts():
     auc_of_mean = float(roc_auc_score(y, scores.mean(axis=1)))
     assert mean_of_aucs < auc_of_mean
     assert auc_of_mean > 0.9
+
+
+# --- two standard errors -----------------------------------------------------
+# The AUC is computed on dumped rows, but rows repeat ligands.  A binomial SE on
+# rows is too small; the ligand-collapsed SE is the conservative one and is the
+# headline.  If these ever collapse into one number the artifact will claim more
+# precision than the cohort supports.
+
+
+def test_effective_interval_is_wider_than_the_row_interval():
+    from molmetal.scripts.lomo_seed_ensemble import intervals
+
+    out = intervals(0.60, n_pos_rows=964, n_neg_rows=2704, n_pos_eff=366, n_neg_eff=945)
+    width_eff = out["ci95_hanley"][1] - out["ci95_hanley"][0]
+    width_rows = out["ci95_hanley_rows"][1] - out["ci95_hanley_rows"][0]
+    assert width_eff > width_rows
+    assert out["hanley_se"] > out["hanley_se_rows"]
+
+
+def test_both_intervals_are_centred_on_the_same_auc():
+    from molmetal.scripts.lomo_seed_ensemble import intervals
+
+    out = intervals(0.5947, 964, 2704, 366, 945)
+    assert out["ci95_hanley"][0] < 0.5947 < out["ci95_hanley"][1]
+    assert out["ci95_hanley_rows"][0] < 0.5947 < out["ci95_hanley_rows"][1]
+
+
+def test_identical_counts_give_identical_intervals():
+    from molmetal.scripts.lomo_seed_ensemble import intervals
+
+    out = intervals(0.6, 100, 100, 100, 100)
+    assert out["ci95_hanley"] == out["ci95_hanley_rows"]
