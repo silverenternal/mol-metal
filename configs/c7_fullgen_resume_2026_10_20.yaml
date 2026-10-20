@@ -372,6 +372,10 @@ train:
   # bias. It also means this run's loss is NOT numerically comparable to a
   # n_rot=4 run at the same seed.
   sboo3_n_rot: 1
+  # FIX-C12 — bound the caching allocator's per-shape blocks. 0 would be the
+  # pre-FIX-C12 behaviour. MEASURED: without it, `memory_reserved` climbs past
+  # 80 GB on a full-corpus epoch while `memory_allocated` stays at 88 MiB.
+  empty_cache_every: 8
 
   # ======================================================================
   # Wf-TRACK5 (2026-10-11) — the two zero-weight loss terms that are NOT

@@ -10488,6 +10488,32 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--empty-cache-every",
+        type=int,
+        default=0,
+        help=(
+            "FIX-C12 (2026-10-21): call torch.cuda.empty_cache() every N "
+            "optimizer steps. 0 (default) = never, which keeps every existing "
+            "run bit-identical. The caching allocator keeps one block per "
+            "distinct tensor shape, and every cloud in this corpus has a "
+            "different atom count, so `memory_reserved` climbs for a whole "
+            "epoch while `memory_allocated` stays at ~88 MiB. nvidia-smi "
+            "reports the reserved number. Bounding it costs throughput "
+            "(MEASURED +51% epoch time at every step), so set it as large as "
+            "the headroom allows. Overrides MOLMETAL_EMPTY_CACHE_EVERY."
+        ),
+    )
+    p.add_argument(
+        "--mem-trace",
+        action="store_true",
+        default=False,
+        help=(
+            "FIX-C12 (2026-10-21): print memory_allocated / memory_reserved / "
+            "max_memory_allocated after every optimizer step. Overrides "
+            "MOLMETAL_MEM_TRACE=1. Diagnostic only; no effect on training."
+        ),
+    )
+    p.add_argument(
         "--gen-head-dropout",
         type=float,
         default=None,
@@ -12395,6 +12421,18 @@ def resume_mode_error(mode: str) -> str:
 
 def main() -> int:
     args = parse_args()
+    # FIX-C12 (2026-10-21) — promote the two memory knobs from env-var-only to
+    # real argparse dests.  They were introduced as MOLMETAL_EMPTY_CACHE_EVERY /
+    # MOLMETAL_MEM_TRACE, which is exactly the §5.11 failure shape: a knob that
+    # lives only in the launch command is a knob nobody audits, and a run's own
+    # checkpoint cannot say which value it ran under.  The env vars still work
+    # as the fallback, so every existing launcher keeps behaving identically;
+    # a YAML `train.empty_cache_every` / `train.mem_trace` now wins over them.
+    global _EMPTY_CACHE_EVERY, _MEM_TRACE_ON
+    if int(getattr(args, "empty_cache_every", 0) or 0) > 0:
+        _EMPTY_CACHE_EVERY = int(args.empty_cache_every)
+    if bool(getattr(args, "mem_trace", False)):
+        _MEM_TRACE_ON = True
     # 2026-10-08 §5.7 — FLAG_ONLY reject guards.  Each dest below is declared
     # by argparse but has NO live consumer in this trainer, so a non-default
     # value would be a silent no-op.  Fail loudly instead of pretending the
