@@ -278,5 +278,7 @@
   "cisplatin_reference_mean_unit": "kcal/mol",
   "cisplatin_reference_mean_is_control": true,
   "cisplatin_reference_mean_note": "This is the cisplatin POSITIVE CONTROL, not a generated-molecule score. Renamed 2026-10-20 from `v3_cohort_median_REAL`, a name that asserted it was the V3 cohort median while its own source string pointed at the cisplatin aggregate. No generated-molecule Vina measurement exists in this file.",
-  "cisplatin_reference_mean_honest_framing": "MEASURED_REAL_VINA_SHIP_PARTIAL — bottleneck is covalent mechanism (Vina does not score Pt-DNA N7 bond), NOT search thoroughness OR VDW tuning. 0/10 pockets reach industry cutoff ≥ -7 across all 3 workflows."
+  "cisplatin_reference_mean_honest_framing": "MEASURED_REAL_VINA_SHIP_PARTIAL — bottleneck is covalent mechanism (Vina does not score Pt-DNA N7 bond), NOT search thoroughness OR VDW tuning. 0/10 pockets reach industry cutoff ≥ -7 across all 3 workflows.",
+  "date_utc": "2026-09-26",
+  "date_source": "measurements[] cisplatin sweep (wf121_cisplatin_real_vina/sweep_summary.json, n_samples=30), the source of aggregate.cisplatin_mean_kcal_per_mol"
 }
