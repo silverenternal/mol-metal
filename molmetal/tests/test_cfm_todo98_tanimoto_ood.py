@@ -250,6 +250,18 @@ def test_existing_cfm_imports_unaffected(ood_module):
     assert hasattr(tcfm, "build_training_cohort")
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "Wf-A100 (2026-10-20): the flag the module's own docstring claimed "
+        "('added in Wf-257-Apply') was never wired — train_cfm_yuelbond_"
+        "wasserstein.py --help contains neither --use-tanimoto-ood-filter nor "
+        "--ood-filter-threshold, and no trainer imports "
+        "cfm_tanimoto_ood_filter. strict=True so this flips to a failure the "
+        "day the flag lands, forcing the marker to be removed. See "
+        "HONEST_NEGATIVE_CATALOG.md §6.144."
+    ),
+)
 def test_ood_filter_cli_flag_exists_in_train_script(ood_module):
     """``--use-tanimoto-ood-filter`` must appear in ``--help`` output."""
     import subprocess

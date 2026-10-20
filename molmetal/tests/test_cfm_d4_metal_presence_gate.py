@@ -306,7 +306,19 @@ def test_gate_does_not_alter_the_eval_return_shape(trainer):
         # hand its output to a property panel.  Listed here for the same
         # reason as sa_target: this assertion is the tripwire that catches a
         # kwarg added to the eval without the caller being updated.
+        # Wf-A100 (2026-10-20) — the tripwire fired: five kwargs had been
+        # added since this list was written (Wf-A75 guidance, Wf-A81's
+        # rejection collector, and the pad-group path) and nobody updated the
+        # list, so this test was RED and the tripwire had stopped being
+        # readable.  All five are live features with live callers; the list
+        # now matches the signature again, IN SIGNATURE ORDER, and keeps
+        # catching the next one.
+        "bond_length_guidance_weight",
         "smiles_out",
+        "rejected_smiles_out",
+        "per_cloud_out",
+        "pad_groups",
+        "pad_group_bucket",
     ]
     src = inspect.getsource(trainer.evaluate_generation_validity)
     # The function body must never branch on the gate verdict.

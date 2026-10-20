@@ -8370,3 +8370,73 @@ it corrects; §5.2: every number traces to `c7_scale_matched_pools.json`;
 §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 
 ---
+
+### §6.144 Wf-A101 — six CFM tests were red for reasons that had already been fixed (and one of them was a real code bug) (2026-10-20)
+
+**Why this matters.** A red suite is not a neutral state. Every entry below was failing for a
+reason that had been *deliberately* changed elsewhere, so the failure carried no information —
+and the two genuine defects in the batch were invisible among them.
+
+**Repaired (each MEASURED, each verified green).**
+
+| test | why it was red | repair |
+|---|---|---|
+| `test_cfm_d4_metal_presence_gate::test_gate_does_not_alter_the_eval_return_shape` | the exact-signature tripwire listed 13 params; `evaluate_generation_validity` has 18 (Wf-A75 guidance, Wf-A81 rejection collector, pad-group path) | list updated **in signature order**, tripwire kept |
+| `test_cfm_f6_t_per_cloud::test_per_cloud_t_lowers_fm_mse_at_equal_steps` | pinned seed 0 and asserted the SIGN of a 300-step comparison; MEASURED 3/5 seeds favour per-cloud t, seed 0 does not | asserts the **median of 5 fixed seeds**; the per-seed table is in the docstring |
+| `test_cfm_rescue_yuelbond::test_yuelbond_decoder_dative_flag_for_N_Pt_pair` | hardcoded the donor set as `{7, 8, 16}`; Wf-A94 added the halides after measuring 332/1,701 Pt bonds were Pt-Cl/Br/I/F | imports `_DONOR_ZS` instead of restating it |
+| `test_cfm_todo98_tanimoto_ood::test_ood_filter_cli_flag_exists_in_train_script` | the flag never existed (see below) | `xfail(strict=True)` so it flips the day the flag lands |
+| `test_cfm_next_action_resolver::test_settled_mcnemar_moves_perf_out_of_the_dead_branch` | **real code bug** — see below | resolver checks the permanent artefact |
+| `test_cfm_checkpoint_isolation` | 3 configs pinned the shared `molmetal/checkpoints` | §6.143 |
+
+**MEASURED, F6 direction by seed** (per-cloud minus shared, 300 steps, identical seed per pair):
+
+| seed | per-cloud | shared | delta |
+|---|---|---|---|
+| 0 | 3.2496 | 2.7213 | **+0.5283** |
+| 1 | 3.4942 | 3.6911 | −0.1969 |
+| 2 | 2.2116 | 3.3603 | −1.1488 |
+| 3 | 3.3849 | 2.9105 | **+0.4744** |
+| 4 | 2.8892 | 3.2592 | −0.3700 |
+
+3/5 seeds favour per-cloud t, median −0.1969. The premise holds in **median**, not per seed: at
+300 steps the sign is dominated by the noise draw. Asserting one seed made the suite red about
+one run in five for a reason unrelated to the code.
+
+**The real code bug — a settled blocker that could not be found settled.**
+`scripts/cfm_next_action.py` closed `BLK-C-PERF` only from *inside* a loop over
+`$CLAUDE_JOB_DIR/tmp/equiv2.txt` and `equiv.txt` — ephemeral files. The settlement itself
+depends on nothing ephemeral: it reads the committed
+`metrics/by_metric/cfm_pad_groups_mcnemar.json`. Once `/tmp` was cleared, a SETTLED blocker fell
+through to **neither closed nor dead**: it vanished from the report entirely. The resolver now
+checks the permanent artefact before the loop, and the settlement text lives in one constant
+(`_MCNEMAR_SETTLED_TEXT`) shared by both branches instead of being pasted twice.
+
+**The feature that was never wired.** `cfm_tanimoto_ood_filter.py`'s own docstring claimed the
+driver integrates it "via the new `--use-tanimoto-ood-filter` CLI flag (added in Wf-257-Apply)".
+**MEASURED**: `train_cfm_yuelbond_wasserstein.py --help` contains neither
+`--use-tanimoto-ood-filter` nor `--ood-filter-threshold`, and **no trainer module imports the
+file**. The docstring is corrected; the test is a strict xfail.
+
+**Honest negatives that REMAIN (ACTIVE).**
+
+* **Still red, and NOT touched here** — every one belongs to another line or another subsystem:
+  8 launcher-existence tests (`launch_wf300_cfm_main.sh`, `launch_wf264_cfm_property_panel.sh`
+  are not on disk), 6 `--detect-anomaly` tests (the flag was removed from both trainers and the
+  test file covers DMPNN as well), `test_wf345a2_yuelbond_env` (pre-flight gate count 126 vs 68),
+  `test_wf406a2_lambda_cfm_patch`, and `test_wf_config_binding_gate` (8 `msrs_dmpnn_*` configs
+  are skipped by the gate — the DMPNN line's configs).
+* **The Tanimoto OOD filter is still not wired.** The xfail records the gap; it does not close it.
+  Choosing a reference set and a threshold is a design decision, not a test repair.
+* **The F6 test now asserts a median, not a mechanism.** It can still pass while per-cloud t
+  loses on any individual seed; 300 CPU steps cannot resolve the effect per seed.
+* **No GPU run.** Every number here is CPU, single-process.
+
+**§6.144 catalog-count math.** Net catalog-count delta: **+1** (§6.144 itself). ACTIVE count
+delta: **+1**. Cumulative catalog count: **196 -> 197** (+1). ACTIVE count: **152 -> 153** (+1).
+
+**Workflow** | Wf-A101 (2026-10-20; 0 GPU; 5 test files repaired + 1 script bug fixed + 1
+docstring corrected; §5.2: every number traces to the probe output reproduced above; §5.3 +
+§5.4: 0 paper/* + 0 wet-lab).
+
+---
+

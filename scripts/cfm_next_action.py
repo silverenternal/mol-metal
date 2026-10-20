@@ -36,6 +36,22 @@ import subprocess
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+
+#: Wf-A100 (2026-10-20) — ONE copy of the McNemar settlement text.  It used to
+#: exist only inside the loop over the ephemeral equiv*.txt logs, which is why
+#: the settlement disappeared with /tmp.  Both the permanent-artefact check and
+#: the legacy log branch read this constant, so the two can never disagree
+#: about what was measured.
+_MCNEMAR_SETTLED_TEXT = (
+    "SETTLED by the McNemar A/B "
+    "(metrics/by_metric/cfm_pad_groups_mcnemar.json): "
+    "4.78x speedup, McNemar exact p=0.0769 with 63 of 192 "
+    "clouds flipping -- net difference NOT established, but "
+    "the churn is far too large to call the two paths "
+    "equivalent on one seed. The 22.8x figure is WITHDRAWN: "
+    "it came from the 92 GiB single-batch implementation "
+    "that could not run."
+)
 TODO = REPO / "cfm_todo.json"
 
 
@@ -293,6 +309,21 @@ def resolve() -> dict:
     # checked; the newest one with a VERDICT wins.
     job = Path(os.environ.get("CLAUDE_JOB_DIR", "/tmp")) / "tmp"
     ab_outs = [job / "equiv2.txt", job / "equiv.txt"]
+    # Wf-A100 (2026-10-20) — the settlement does NOT depend on those /tmp logs.
+    # The McNemar verdict is a committed artefact, but it used to be reachable
+    # only from inside the loop below, so once /tmp was cleared (or the host
+    # changed) a SETTLED blocker fell through to nothing at all: neither
+    # closed nor dead.  test_cfm_next_action_resolver caught exactly that.
+    # Check the permanent artefact first; the loop then has nothing to read.
+    _mcnemar_permanent = (
+        REPO / "metrics" / "by_metric" / "cfm_pad_groups_mcnemar.json"
+    )
+    if _mcnemar_permanent.is_file():
+        closed.append({
+            "id": "BLK-C-PERF (pad_groups A/B)",
+            "outcome": _MCNEMAR_SETTLED_TEXT,
+        })
+        ab_outs = []
     for ab_out in ab_outs:
         if not ab_out.is_file():
             continue
@@ -354,16 +385,7 @@ def resolve() -> dict:
             if _settled:
                 closed.append({
                     "id": f"BLK-C-PERF ({ab_out.name})",
-                    "outcome": (
-                        "SETTLED by the McNemar A/B "
-                        "(metrics/by_metric/cfm_pad_groups_mcnemar.json): "
-                        "4.78x speedup, McNemar exact p=0.0769 with 63 of 192 "
-                        "clouds flipping -- net difference NOT established, but "
-                        "the churn is far too large to call the two paths "
-                        "equivalent on one seed. The 22.8x figure is WITHDRAWN: "
-                        "it came from the 92 GiB single-batch implementation "
-                        "that could not run."
-                    ),
+                    "outcome": _MCNEMAR_SETTLED_TEXT,
                 })
                 break
             if _dead and not dist_done:

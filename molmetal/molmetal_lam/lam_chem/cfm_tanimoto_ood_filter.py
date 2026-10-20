@@ -43,7 +43,7 @@ Honest framing (party-twenty-spirit §3.5)
   ``train_cfm_yuelbond_wasserstein.py`` driver does not depend on it.
   Integration with the driver happens at the **data-loader layer**
   via the new ``--use-tanimoto-ood-filter`` CLI flag (added in
-  Wf-257-Apply).
+  Wf-257-Apply).  **Wf-A100 (2026-10-20) MEASURED that flag does not exist**: train_cfm_yuelbond_wasserstein.py --help contains neither --use-tanimoto-ood-filter nor --ood-filter-threshold, and no trainer module imports this file.  The wire-in never shipped.  The claim is corrected here rather than left to be re-discovered; test_cfm_todo98_tanimoto_ood.py::test_ood_filter_cli_flag_exists_in_train_script is now a strict xfail so it flips the day the flag lands.
 
 Use cases
 ---------

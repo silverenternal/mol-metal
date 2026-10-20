@@ -218,11 +218,17 @@ def test_yuelbond_decoder_distance_cutoff_filters_long_pairs():
 # Test 5: dative candidate flag for (N -> Pt) pair
 # ---------------------------------------------------------------------------
 def test_yuelbond_decoder_dative_flag_for_N_Pt_pair():
-    """Dative flag is True when Z_i in {7,8,16} and Z_j = 78 (Pt).
+    """Dative flag is True for donor-metal pairs, read from the SHIPPED set.
 
-    On the cisplatin cloud, the 2 Pt-NH3 pairs should have
-    ``is_dative_candidate=True``; the 2 Pt-Cl pairs should have
-    ``is_dative_candidate=False`` (Cl is not in {7,8,16}).
+    Wf-A100 (2026-10-20) — this test used to hardcode the donor set as
+    {7, 8, 16} (N, O, S) and assert that Pt-Cl was NOT a dative candidate.
+    Wf-A94 added the halides to ``_DONOR_ZS`` after MEASURING that 332/1,701
+    true Pt bonds (19.5%) are Pt-Cl/Br/I/F and were flagged 0, so Pt-Cl is
+    now a legitimate candidate and the hardcoded set made this test fail for
+    a reason that had already been fixed on purpose.
+
+    The set is imported rather than restated: a test that hardcodes a
+    chemistry constant drifts the moment the constant is calibrated.
     """
     decoder = YuelBondDecoder()
     cloud = _cisplatin_like_cloud()
@@ -241,11 +247,13 @@ def test_yuelbond_decoder_dative_flag_for_N_Pt_pair():
     # The 2 Pt-N edges (i=Pt, j=N) and 2 N-Pt edges (i=N, j=Pt)
     # depending on ordering.  Verify that every dative flag has Z_i in
     # {7,8,16} AND Z_j == 78 OR Z_i == 78 AND Z_j in {7,8,16}.
+    from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import _DONOR_ZS
+
     for k in range(e):
         if pf.is_dative_candidate[k]:
             zi = int(pf.z_i[k])
             zj = int(pf.z_j[k])
-            ok = (zi in (7, 8, 16) and zj == 78) or (zj in (7, 8, 16) and zi == 78)
+            ok = (zi in _DONOR_ZS and zj == 78) or (zj in _DONOR_ZS and zi == 78)
             assert ok, (
                 f"Dative pair (Z_i={zi}, Z_j={zj}) must have one donor "
                 f"and one Pt; got (Z_i={zi}, Z_j={zj})"
