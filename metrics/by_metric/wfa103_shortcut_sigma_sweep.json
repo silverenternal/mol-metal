@@ -1,0 +1,147 @@
+{
+  "metric": "wfa103_shortcut_sigma_sweep",
+  "purpose": "Calibrate the ShortcutDistillLoss second-view perturbation scale. The term is a mean squared difference of two velocity fields, so its size is a property of the FIELD, not of the weight.",
+  "probe": {
+    "cohort": "same 32-cloud / 1-epoch CPU smoke as test_cfm_loss_gradient_liveness",
+    "flags": [
+      "--device",
+      "cpu",
+      "--n-train",
+      "32",
+      "--n-val",
+      "16",
+      "--batch-size",
+      "8",
+      "--use-fm-objective",
+      "--resume-from",
+      "none",
+      "--shortcut-distill-term-weight 0.05"
+    ],
+    "read_from": "trainer _LAST_LOSS_TERMS"
+  },
+  "rows": [
+    {
+      "sigma": 0.01,
+      "shortcut_distill_class_term": 1.4881801568833453e-08,
+      "shortcut_requires_grad": true,
+      "bond_ce": 1.0158201456069946,
+      "ratio_to_bond_ce": 1.4650035868250042e-08,
+      "normalized_by_sigma2": 0.00014881801568833453
+    },
+    {
+      "sigma": 0.05,
+      "shortcut_distill_class_term": 3.728694935034582e-07,
+      "shortcut_requires_grad": true,
+      "bond_ce": 1.0158201456069946,
+      "ratio_to_bond_ce": 3.6706251113050455e-07,
+      "normalized_by_sigma2": 0.00014914779740138326
+    },
+    {
+      "sigma": 0.1,
+      "shortcut_distill_class_term": 1.4958224028305267e-06,
+      "shortcut_requires_grad": true,
+      "bond_ce": 1.0158201456069946,
+      "ratio_to_bond_ce": 1.4725268142193724e-06,
+      "normalized_by_sigma2": 0.00014958224028305264
+    },
+    {
+      "sigma": 0.25,
+      "shortcut_distill_class_term": 9.438536835659761e-06,
+      "shortcut_requires_grad": true,
+      "bond_ce": 1.0158201456069946,
+      "ratio_to_bond_ce": 9.291543268242475e-06,
+      "normalized_by_sigma2": 0.00015101658937055618
+    },
+    {
+      "sigma": 0.5,
+      "shortcut_distill_class_term": 3.844291131827049e-05,
+      "shortcut_requires_grad": true,
+      "bond_ce": 1.0158201456069946,
+      "ratio_to_bond_ce": 3.78442103993707e-05,
+      "normalized_by_sigma2": 0.00015377164527308196
+    },
+    {
+      "sigma": 1.0,
+      "shortcut_distill_class_term": 0.0001601113035576418,
+      "shortcut_requires_grad": true,
+      "bond_ce": 1.0158201456069946,
+      "ratio_to_bond_ce": 0.00015761776752514457,
+      "normalized_by_sigma2": 0.0001601113035576418
+    }
+  ],
+  "growth_exponent": [
+    {
+      "from": 0.01,
+      "to": 0.05,
+      "exponent": 2.0013753590093972
+    },
+    {
+      "from": 0.05,
+      "to": 0.1,
+      "exponent": 2.004196223705268
+    },
+    {
+      "from": 0.1,
+      "to": 0.25,
+      "exponent": 2.0104151990430785
+    },
+    {
+      "from": 0.25,
+      "to": 0.5,
+      "exponent": 2.0260824618308706
+    },
+    {
+      "from": 0.5,
+      "to": 1.0,
+      "exponent": 2.0582856609824
+    }
+  ],
+  "epoch_ladder": {
+    "sigma": 0.1,
+    "rows": [
+      {
+        "sigma": 0.1,
+        "shortcut_distill_class_term": 1.4958224028305267e-06,
+        "shortcut_requires_grad": true,
+        "bond_ce": 1.0158201456069946,
+        "ratio_to_bond_ce": 1.4725268142193724e-06,
+        "epochs": 1
+      },
+      {
+        "sigma": 0.1,
+        "shortcut_distill_class_term": 1.553750394123199e-06,
+        "shortcut_requires_grad": true,
+        "bond_ce": 0.6770865321159363,
+        "ratio_to_bond_ce": 2.2947589716009194e-06,
+        "epochs": 2
+      },
+      {
+        "sigma": 0.1,
+        "shortcut_distill_class_term": 1.316268367190787e-06,
+        "shortcut_requires_grad": true,
+        "bond_ce": 0.3667011260986328,
+        "ratio_to_bond_ce": 3.5894854788003734e-06,
+        "epochs": 4
+      },
+      {
+        "sigma": 0.1,
+        "shortcut_distill_class_term": 1.4098729934630683e-06,
+        "shortcut_requires_grad": true,
+        "bond_ce": 0.045184921473264694,
+        "ratio_to_bond_ce": 3.120228933666004e-05,
+        "epochs": 8
+      }
+    ],
+    "purpose": "The sigma sweep is run on a 1-epoch model, whose velocity field is barely trained. If the term stays this small as training proceeds, the smoothness is a property of the architecture; if it grows, the sigma-sweep magnitude is a lower bound only valid at initialisation."
+  },
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "not_established": "No claim that a larger sigma helps quality. This measures the term magnitude only; whether the smoothness penalty helps or hurts bond_type_f1 / gen_validity is unmeasured and needs a GPU A/B.",
+  "sigma2_normalised": {
+    "n": 6,
+    "min": 0.00014881801568833453,
+    "max": 0.0001601113035576418,
+    "spread_over_min": 0.07588656398267331,
+    "mean": 0.00015207459859567507,
+    "interpretation": "E[||grad v||^2] on this cohort. A spread close to 0 across the ladder means sigma is a free parameter of the probe and the term's magnitude is a field property."
+  }
+}

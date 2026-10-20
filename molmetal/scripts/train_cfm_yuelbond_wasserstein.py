@@ -3739,6 +3739,11 @@ def train_one_epoch(
     # exactly zero at 0.05 (x_prime was never passed), so this changes
     # NO run: it only stops the weight claiming to be ON.
     shortcut_distill_term_weight: float = 0.0,  # 0.0 = OFF (was 0.05 = inert); >0 builds the second view
+    # Wf-A103 — scale of the input perturbation used to build the second
+    # view.  0.01 A was an uncalibrated constant; it is now a YAML key so the
+    # measured sweep (metrics/by_metric/wfa103_shortcut_sigma_sweep.json) can
+    # move it without a code change.  Default unchanged => bit-exact.
+    shortcut_distill_perturb_sigma: float = 0.01,
     fm_ode_term_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = FmOdeTerm off)
     energy_conservation_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = EnergyConservation off)
     sboo3_term_weight: float = 0.05,  # Wf-A44 — default ON (bit-exact OFF when set to 0.0; pre-Wf-A23 = SBOO3Term off)
@@ -5579,7 +5584,7 @@ def train_one_epoch(
             and x_t is not None
         ):
             _sd_second_view = model.fm_velocity(
-                x_t + 0.01 * torch.randn_like(x_t),
+                x_t + float(shortcut_distill_perturb_sigma) * torch.randn_like(x_t),
                 t,
                 z_all,
                 cloud_sizes=_cloud_sizes,
@@ -10445,6 +10450,19 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--shortcut-distill-perturb-sigma",
+        type=float,
+        default=0.01,
+        help=(
+            "Wf-A103: standard deviation (Angstrom) of the input perturbation "
+            "used to build ShortcutDistillLoss second view. Only used when "
+            "--shortcut-distill-term-weight > 0. 0.01 was an uncalibrated "
+            "constant; the sweep in metrics/by_metric/"
+            "wfa103_shortcut_sigma_sweep.json measures how the term grows "
+            "with it. Default unchanged => bit-exact."
+        ),
+    )
+    p.add_argument(
         "--fm-ode-term-weight",
         type=float,
         default=0.05,
@@ -13982,6 +14000,9 @@ def main() -> int:
             edm_term_weight=float(getattr(args, "edm_term_weight", 0.05)),
             shortcut_distill_term_weight=float(
                 getattr(args, "shortcut_distill_term_weight", 0.0)
+            ),
+            shortcut_distill_perturb_sigma=float(
+                getattr(args, "shortcut_distill_perturb_sigma", 0.01)
             ),
             fm_ode_term_weight=float(
                 getattr(args, "fm_ode_term_weight", 0.05)

@@ -8601,3 +8601,90 @@ wet-lab).
 
 ---
 
+### §6.147 Wf-A103 — the shortcut term is small because the field is smooth, not because the constant was wrong (2026-10-20)
+
+Wf-A102 (§6.146) wired the `ShortcutDistillLoss` second view and MEASURED the resulting term at
+1.24e-08 against a `bond_ce` of 1.68. The perturbation was a hard-coded `0.01 * randn_like(x_t)`,
+never calibrated, so "0.01 Å is too small" was an inference. The open task
+(`SHORTCUT_CLASS_TERM_SCALE_FREE_WFA102`) asked for a *scale-free* formulation. This wave measures
+the scale first, because a scale-free rewrite of a quantity nobody has sized is guesswork.
+
+**The knob.** `--shortcut-distill-perturb-sigma` (default 0.01, so every existing run stays
+bit-exact) is threaded through `train_one_epoch(..., shortcut_distill_perturb_sigma)`. The old
+literal `0.01 * torch.randn_like(x_t)` is gone; a test pins its absence.
+
+**MEASURED — sigma ladder** (32 clouds, 1 epoch, CPU, weight 0.05, `bond_ce` 1.0158 throughout):
+
+| sigma (Å) | term | term / bond_ce | local exponent |
+|---|---|---|---|
+| 0.01 | 1.488e-08 | 1.465e-08 | — |
+| 0.05 | 3.729e-07 | 3.671e-07 | 2.001 |
+| 0.10 | 1.496e-06 | 1.473e-06 | 2.004 |
+| 0.25 | 9.439e-06 | 9.292e-06 | 2.010 |
+| 0.50 | 3.844e-05 | 3.784e-05 | 2.026 |
+| 1.00 | 1.601e-04 | 1.576e-04 | 2.058 |
+
+The exponent is 2.00–2.06 across a 100× ladder: the term is exactly the quadratic form it claims to
+be. There is no bug and no saturation — including at `sigma = 1.0`, which is the CFM path's own
+`noise_sigma`, i.e. the largest perturbation that still describes the same objective.
+
+**MEASURED — the scale-free statistic.** Dividing by sigma² leaves `E[||grad v||^2]`:
+
+| sigma | 0.01 | 0.05 | 0.10 | 0.25 | 0.50 | 1.00 |
+|---|---|---|---|---|---|---|
+| term / sigma² | 1.4882e-04 | 1.4915e-04 | 1.4958e-04 | 1.5102e-04 | 1.5377e-04 | 1.6011e-04 |
+
+Spread over the minimum: **7.6%**. So sigma is a free parameter of the probe, and the term's size is
+a property of the *field*. That is the scale-free object the follow-up wanted — and it is the reason
+the follow-up's premise was half wrong: normalising removes the sigma-dependence but **does not make
+the term large**. `E[||grad v||^2] = 1.52e-04` means the velocity field's Lipschitz constant is
+about 0.012 per Å. A self-consistency penalty on a field that smooth is intrinsically negligible at
+any sigma.
+
+**MEASURED — is that an untrained-field artefact?** The sigma ladder runs on a 1-epoch model. A
+ladder over epochs at sigma = 0.10 answers it:
+
+| epochs | term | bond_ce | term / bond_ce |
+|---|---|---|---|
+| 1 | 1.496e-06 | 1.0158 | 1.473e-06 |
+| 2 | 1.554e-06 | 0.6771 | 2.295e-06 |
+| 4 | 1.316e-06 | 0.3667 | 3.589e-06 |
+| 8 | 1.410e-06 | 0.0452 | 3.120e-05 |
+
+The term is **flat** (1.32e-06 – 1.55e-06) across an 8× training ladder while `bond_ce` falls 22×.
+The smoothness is a property of the architecture, not of initialisation. What moves is the *ratio*:
+it improves 21× as the main loss shrinks, so the term is least invisible late in training — still
+four orders of magnitude below the loss it sits in.
+
+**What weight would make it observable.** For the term to contribute 1% of `bond_ce`:
+epoch 1 needs **weight ≈ 68**; epoch 8 needs **weight ≈ 321** (the required weight rises as
+`bond_ce` falls). A weight in the hundreds on a squared difference of two nearly identical forwards
+would be amplifying numerical noise in the finite difference, not adding a signal.
+
+**Honest limits.**
+* **The A102 number and this one differ by 20%** (1.24e-08 vs 1.488e-08 at the same sigma, 1 epoch,
+  32 clouds) because the liveness guard turns *every* feature flag on (`bond_ce` 1.68) and this
+  sweep uses the minimal set (`bond_ce` 1.0158). The term is not invariant to the cohort's flag set.
+  Every comparison above is within one flag set; cross-wave comparisons are not valid.
+* **The epoch ladder tops out at 8 epochs on 32 clouds.** `bond_ce` 0.0452 is already near
+  memorisation. Whether a model trained on the real corpus has a rougher field is unmeasured.
+* **No quality claim.** Nothing here says the shortcut penalty helps or hurts `bond_type_f1` or
+  `gen_validity`. That needs a GPU A/B and has not been run.
+* **The term stays at weight 0.0 by default.** This wave does not change a single training run.
+
+**Conclusion for the open task.** `SHORTCUT_CLASS_TERM_SCALE_FREE_WFA102` is answered in the
+negative on its own terms: the scale-free variant is now *implemented as a statistic*
+(`term / sigma^2`, `derive_sigma_rows`) and *measured* to be 1.52e-04 with 7.6% spread — stable,
+interpretable, and still negligible. The remaining question is not scale but whether a
+self-consistency penalty is the right regulariser for a field this smooth. That is a modelling
+question, not a calibration one, and it is recorded as such.
+
+**§6.147 catalog-count math.** Net catalog-count delta: **+1** (§6.147 itself). ACTIVE count
+delta: **+1**. Cumulative catalog count: **199 -> 200** (+1). ACTIVE count: **155 -> 156** (+1).
+
+**Workflow** | Wf-A103 (2026-10-20; 0 GPU, ~20 min CPU; 8 new tests; §5.2: every number is
+`metrics/by_metric/wfa103_shortcut_sigma_sweep.json`, produced by
+`molmetal/scripts/wfa103_shortcut_sigma_sweep.py`; §5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
+
