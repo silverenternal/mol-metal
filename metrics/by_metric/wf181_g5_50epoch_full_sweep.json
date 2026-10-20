@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED",
+  "status_basis": "5 metals x 3 seeds x 50 epochs, D-MPNN multi-task with the Wasserstein pIC50 regulariser; full planned sweep",
   "metric": "wf181_g5_50epoch_full_sweep",
   "description": "Wf-181 TODO-181 G5 50-epoch full sweep: 5-metal x 3-seed x 50-epoch multi-task D-MPNN + Wasserstein pIC50 regulariser (alpha=0.5, w_w=0.05, L2 gradient-norm guard, mtl_baseline ablation, sliced W2 mode). Wf-310A path+schema-fix re-aggregation; 13/15 pairs MEASURED, 2 missing (Ru/seed2 + Ir/seed0) pending Wf-310A retry. Per-metal std reported honestly per party-twenty-spirit \u00a73.5.",
   "unit": "ROC-AUC (0-1, higher better)",

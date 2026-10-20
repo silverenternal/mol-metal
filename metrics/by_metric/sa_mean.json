@@ -1,4 +1,8 @@
 {
+  "headline_key": "aggregate.closure_bounded_5pocket_simple_mean",
+  "headline_key_reason": "The generic extractor preferred aggregate.best_measured (2.2884), which is the BEST of the five pocket means and comes from the smallest cohort (4aaw, n=14). The registry now records aggregate.closure_bounded_5pocket_simple_mean (2.4486) so the value column holds the central tendency the file itself reports, not a best case.",
+  "status": "PARTIAL_LIFT",
+  "status_basis": "the file's own verdict is PARTIAL_LIFT_v5: SA falls from 3.099 (unconstrained) to a five-pocket mean of 2.4486, which passes the <=3.0 target and the <=2.8 stretch on 5/5 pockets, but only 1/5 pockets beats the TargetDiff 2.65 ceiling",
   "metric": "sa_mean",
   "description": "Mean Synthetic Accessibility (Ertl 2008) score of generated molecules (lower = easier to synthesize)",
   "unit": "ratio (1=very easy, 10=very hard)",

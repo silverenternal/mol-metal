@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED_BASELINE_COMPARISON",
+  "status_basis": "LightGBM 0.7677 +/- 0.0368 vs D-MPNN 0.7717 +/- 0.0380 on the same cohort and folds; the delta -0.0041 is inside both error bars",
   "metric": "metalcytotox_ru_paper_lightgbm_cv",
   "description": "Morgan-FP + LightGBM on the paper-funnel Ru cohort and the SAME DOI-grouped 10-fold partition used by the D-MPNN paper-protocol measurement. Isolates model class from cohort (BLK-PA5).",
   "unit": "ROC-AUC (0-1, higher better)",

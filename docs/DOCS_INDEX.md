@@ -27,6 +27,7 @@ be audited (AGENTS.md section 5.5).
 - `PAPER_SECTION_6_v4_FINAL.md` — Paper section 6 limitations (2026-10-06).
 - `SUBMISSION_PLAN.md` — Submission plan (2026-10-12).
 - `HONEST_NEGATIVE_CATALOG.md` — Every honest-negative, 1300+ lines. The source for any negative claim.
+- `METRIC_CITABILITY_RULE.md` — Which numbers may go in a table (`[CITE]`), which only in prose (`[NUM ]`), which not at all (`[NO ]`). Run `registry.py cite`.
 
 ## What is the architecture?
 

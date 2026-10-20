@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED",
+  "status_basis": "5 pockets x 3 seeds, RDKit rdMolAlign.GetBestRMS (Wf-247-A redesign); full planned grid",
   "metric": "ligand_vs_pocket_rmsd",
   "description": "Median best heavy-atom RMSD (RDKit Chem.rdMolAlign.GetBestRMS, symmetrizeConjugatedTerminalGroups=True) of docked poses vs crystal ligand pose. 5 pockets x 3 seeds x 5 poses (where docked output exists). Wf-247-A TODO-130 m15 REDESIGN.",
   "unit": "angstrom",

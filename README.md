@@ -31,7 +31,7 @@ available on disk.
 - [`docs/DESIGN_BOUNDARY.md`](docs/DESIGN_BOUNDARY.md) — FROZEN / STABLE / PROPOSED / OUT-OF-SCOPE surface
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — 21-mechanism M1-M21 phase diagram
 - [`docs/POCKET_ENCODER_PIPELINE.md`](docs/POCKET_ENCODER_PIPELINE.md) — Pocket encoder (c) pipeline: PocketGen + P2Rank + platiny_pocket_pool + PerLayerPocketInjector (Wf-A31/A32)
-- [`metrics/`](metrics/) — single source of truth for MEASURED numbers (393 files, counted 2026-10-20)
+- [`metrics/`](metrics/) — single source of truth for MEASURED numbers (394 files, counted 2026-10-20)
 - [`molmetal/reports/`](molmetal/reports/) — per-workflow JSON/MD reports
 
 ## Wave-versioning policy (2026-10-01)

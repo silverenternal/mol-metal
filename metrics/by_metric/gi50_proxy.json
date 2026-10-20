@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED_DESCRIPTOR_PANEL",
+  "status_basis": "mean GI50 heuristic (Hou 2007) over 5000 molecules; a deterministic function of the input SMILES, not a model prediction",
   "metric": "gi50_proxy",
   "description": "NCI60 GI50 heuristic from Hou 2007 descriptors (-log10[GI50_molair], clipped [0, 8]).",
   "unit": "-log10(mol/L)",

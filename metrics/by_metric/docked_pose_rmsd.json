@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED_PARTIAL_GRID",
+  "status_basis": "13 of the planned 15 Vina redocking runs (5 pockets x 3 seeds) completed; the file's own note records which cells are missing, so the aggregate is over a partial grid, not the planned one",
   "metric": "docked_pose_rmsd",
   "description": "Median best heavy-atom RMSD (Kabsch+Hungarian, adaptive centroid pre-alignment) of Vina redocked poses vs crystal ligand pose across 5 pockets x 3 seeds x exhaustiveness=16. BD-9 m15 RMSD Phase 2 Vina redocking (canonical script). 13 of 15 grid runs MEASURED (3ny8 1/3 seeds).",
   "unit": "angstrom",

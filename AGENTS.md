@@ -48,7 +48,7 @@ These rules apply to **every** agent action in this repo. Violations are honest-
 | "What's every file's status?" | [`TODO/INDEX.md`](TODO/INDEX.md) |
 | "What's the recent Wf timeline?" | [`TODO/INDEX.md`](TODO/INDEX.md) §0 + §22 |
 | "What's the project status today?" | [`README.md`](README.md) §0 |
-| "Where are measured numbers?" | [`metrics/by_metric/*.json`](metrics/) (393 files, counted 2026-10-20; 393 registry rows, 0 stale) |
+| "Where are measured numbers?" | [`metrics/by_metric/*.json`](metrics/) (394 files, counted 2026-10-20; 394 registry rows, 0 stale) |
 | **"Which numbers may I quote in the paper?"** | **[`docs/METRIC_CITABILITY_RULE.md`](docs/METRIC_CITABILITY_RULE.md) — `[CITE]` / `[NUM]` / `[NO]` per paper-line metric; run `.venv/bin/python molmetal/scripts/registry.py cite`** |
 | "What are the architectural decisions?" | [`TODO/decisions.md`](TODO/decisions.md) |
 | "What are the open blockers?" | [`TODO/risks.md`](TODO/risks.md) |

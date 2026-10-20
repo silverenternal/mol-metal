@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED_SMOKE",
+  "status_basis": "27/27 runs in 3.23 min on CPU at 5 epochs and 3 seeds; a plumbing smoke, not a trained comparison, and several cell lines are below gate",
   "metric": "nci60_precious_9cell_auc",
   "description": "Wf-312A per-cell ROC-AUC on the precious-metal (Ru/Ir/Rh/Os/Re) 9-cell-line subset of MetalCytoToxDB overlapping with the NCI-60 panel (k=8 unique cells; the HCT-116 key is an alias of HCT116 with byte-identical per-seed arrays and is excluded from aggregates; SKOV3 absent from this run) using per-cell single-task chemprop v2 with random 80/10/20 split. 3-seed x 5-epoch CPU smoke (paper-grade numbers need GPU per kill_then_adapt).",
   "unit": "ROC-AUC (0-1, higher better) per cell line",

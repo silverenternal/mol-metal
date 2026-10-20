@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED_DESCRIPTOR_PANEL",
+  "status_basis": "mean of a structural-alert flag (Benigni-Richard 2005 / Sushko 2012) over 449 molecules; a deterministic function of the input SMILES, not a model prediction and not a train/test measurement",
   "metric": "ames_mutagen",
   "description": "AMES mutagenicity flag via Benigni-Richard 2005 / Sushko 2012 structural alerts (aromatic amine + nitro). Returns 1.0 if any alert matches.",
   "unit": "flag (0 or 1)",

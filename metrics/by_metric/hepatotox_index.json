@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED_DESCRIPTOR_PANEL",
+  "status_basis": "mean rule-of-2 / alert composite (Hughes 2008, Stepan 2011) over 449 molecules; a deterministic function of the input SMILES, not a model prediction",
   "metric": "hepatotox_index",
   "description": "Hepatotoxicity heuristic (Hughes 2008 rule-of-2 + Stepan 2011 alerts). Composite of logP, MW, HBD, aniline/hydrazine/furan/thiophene alerts.",
   "unit": "ratio (0-1)",

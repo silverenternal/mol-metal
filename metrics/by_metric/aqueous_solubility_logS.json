@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED_DESCRIPTOR_PANEL",
+  "status_basis": "mean ESOL logS (Delaney 2004) over 449 molecules; a deterministic function of the input SMILES, not a model prediction",
   "metric": "aqueous_solubility_logS",
   "description": "Aqueous solubility logS via ESOL method (Delaney 2004). Clipped to [-12, 2].",
   "unit": "logS (mol/L)",

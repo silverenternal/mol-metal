@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED_DESCRIPTOR_PANEL",
+  "status_basis": "mean 4-rule hERG heuristic (Veith 2009) over 449 molecules; a deterministic function of the input SMILES, not a model prediction",
   "metric": "herg_cardio_risk",
   "description": "hERG cardiotoxicity risk heuristic (Veith 2009). 4-rule shortcut: MW>400, logP>3.5, TPSA<75, basic N. Higher = more risk.",
   "unit": "ratio (0-1)",

@@ -39,6 +39,13 @@ if str(REPO_ROOT) not in str(sys.path):
     sys.path.insert(0, str(REPO_ROOT))
 
 from molmetal.scripts.registry import assess_citability  # noqa: E402
+from molmetal.scripts.registry import (  # noqa: E402
+    _extract_value_basis,
+    _has_numeric_leaf,
+    _metric_timestamp,
+    _preserve_underived_datasets,
+    _status_with_source,
+)
 
 
 def _good(**over):
@@ -232,3 +239,164 @@ def test_absent_caveat_is_none():
 
 def test_blank_caveat_is_none():
     assert _assess(_good(headline_caveat="   "))["headline_caveat"] is None
+
+
+# --- status tokens: a status is a word, not a paragraph -------------------
+
+
+def test_status_token_is_accepted_verbatim():
+    assert _status_with_source({"status": "MEASURED"}) == ("MEASURED", "status", None)
+
+
+def test_verdict_token_is_accepted_as_a_status():
+    assert _status_with_source({"verdict": "MEASURED_HONEST_NEGATIVE"}) == (
+        "MEASURED_HONEST_NEGATIVE",
+        "verdict",
+        None,
+    )
+
+
+def test_tag_is_a_status_source():
+    # 44 artifacts carry their status only as `tag`.
+    assert _status_with_source({"tag": "MEASURED"}) == ("MEASURED", "tag", None)
+
+
+def test_explicit_status_wins_over_tag():
+    assert _status_with_source({"status": "BLOCKED", "tag": "MEASURED"})[0] == "BLOCKED"
+
+
+def test_sentence_verdict_is_not_promoted_to_a_status():
+    # Before this, 36 rows held a paragraph in `status` -- a provenance claim
+    # the value did not support.
+    payload = {"verdict": "THE HEAD IS NOT THE RING DEFECT. On clean geometry ..."}
+    status, source, narrative = _status_with_source(payload)
+    assert status is None
+    assert source is None
+    assert narrative == "verdict"
+
+
+def test_leading_token_is_extracted_from_an_explained_verdict():
+    payload = {"verdict": "MEASURED \u2014 pharmacophore_pass_rate=0.7 on 10 curated SMILES"}
+    assert _status_with_source(payload) == (
+        "MEASURED",
+        "verdict:leading_token",
+        None,
+    )
+
+
+def test_parenthesised_leading_token_is_extracted():
+    payload = {"verdict": "MEASURED (3-metal x 3-seed x 50-epoch, scaffold)"}
+    assert _status_with_source(payload)[0] == "MEASURED"
+
+
+def test_two_word_answer_is_not_a_status_token():
+    # "NO CLEAR DIFFERENCE -- ..." is a finding, not a status vocabulary word.
+    assert _status_with_source({"verdict": "NO CLEAR DIFFERENCE -- flips do not clear"})[0] is None
+
+
+def test_a_sentence_status_is_not_quotable():
+    r = _assess(_good(status="THE HEAD IS NOT THE RING DEFECT."))
+    assert r["quotable"] is False
+
+
+# --- value provenance: a best-of is not a central tendency ----------------
+
+
+def test_value_basis_prefers_mean_over_best_measured():
+    payload = {"aggregate": {"best_measured": 2.2884, "mean": 2.4486}}
+    assert _extract_value_basis(payload) == (2.4486, "aggregate.mean")
+
+
+def test_value_basis_falls_back_to_best_measured_when_alone():
+    assert _extract_value_basis({"aggregate": {"best_measured": 0.7}}) == (
+        0.7,
+        "aggregate.best_measured",
+    )
+
+
+def test_headline_key_overrides_a_best_measured_aggregate():
+    payload = {
+        "aggregate": {"best_measured": 2.2884, "five_pocket_mean": 2.4486},
+        "headline_key": "aggregate.five_pocket_mean",
+    }
+    assert _extract_value_basis(payload) == (2.4486, "headline_key")
+
+
+def test_value_basis_names_the_top_level_key_it_used():
+    assert _extract_value_basis({"value": 0.5}) == (0.5, "value")
+
+
+def test_value_basis_is_none_when_no_number_exists():
+    assert _extract_value_basis({"note": "no numbers here"}) == (None, None)
+
+
+# --- numeric leaves ------------------------------------------------------
+
+
+def test_has_numeric_leaf_finds_nested_numbers():
+    assert _has_numeric_leaf({"a": [{"b": 1.0}]}) is True
+
+
+def test_has_numeric_leaf_ignores_booleans():
+    assert _has_numeric_leaf({"ok": True, "flag": False}) is False
+
+
+def test_has_numeric_leaf_false_for_prose_only():
+    assert _has_numeric_leaf({"verdict": "MEASURED", "note": "see report"}) is False
+
+
+# --- dates ---------------------------------------------------------------
+
+
+def test_nested_date_key_is_read_and_its_path_recorded():
+    payload = {"run": {"completed_date": "2026-10-04"}}
+    assert _metric_timestamp(payload) == ("2026-10-04", "nested:run.completed_date")
+
+
+def test_latest_nested_date_wins():
+    payload = {"a": {"date": "2026-01-01"}, "b": {"date_utc": "2026-05-05"}}
+    assert _metric_timestamp(payload)[0] == "2026-05-05"
+
+
+def test_top_level_date_wins_over_nested():
+    payload = {"date": "2026-02-02", "run": {"date": "2026-09-09"}}
+    assert _metric_timestamp(payload) == ("2026-02-02", "date")
+
+
+def test_a_year_in_prose_is_not_a_date():
+    # 119 of 142 undated files contain a date somewhere; only 23 under a
+    # key that claims to be one.  A citation year must not become the date.
+    payload = {"reference": "Guan 2023 ICLR", "note": "measured 2026-10-01"}
+    assert _metric_timestamp(payload) == (None, None)
+
+
+# --- generate must not delete rows it cannot re-derive -------------------
+
+
+def test_preserve_underived_datasets_keeps_hand_added_rows(tmp_path):
+    path = tmp_path / "datasets.yaml"
+    path.write_text(
+        "datasets:\n"
+        "  derived_row:\n"
+        "    source: configs/data_checksums.json\n"
+        "  hand_added_row:\n"
+        "    source: b76ef187\n"
+        "    note: no generator declares this\n"
+    )
+    built = {"derived_row": {"source": "configs/data_checksums.json"}}
+    kept = _preserve_underived_datasets(built, path)
+    assert kept == ["hand_added_row"]
+    assert set(built) == {"derived_row", "hand_added_row"}
+    assert built["hand_added_row"]["preserved_from"] == "previous registry/datasets.yaml"
+
+
+def test_preserve_underived_datasets_does_not_override_a_derived_row(tmp_path):
+    path = tmp_path / "datasets.yaml"
+    path.write_text("datasets:\n  row:\n    stale: true\n")
+    built = {"row": {"fresh": True}}
+    assert _preserve_underived_datasets(built, path) == []
+    assert built["row"] == {"fresh": True}
+
+
+def test_preserve_underived_datasets_tolerates_a_missing_file(tmp_path):
+    assert _preserve_underived_datasets({}, tmp_path / "absent.yaml") == []

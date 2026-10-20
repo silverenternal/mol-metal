@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED",
+  "status_basis": "5 seeds (0-4), 100 epochs, 3 cell lines after dropping A2780; per-cell AUCs with per-cell std",
   "metric": "platinai_3cell_resistance",
   "description": "Test ROC-AUC per cell line on PlatinAI 4,078 Pt dataset after dropping the A2780 column (label-noise, r=0.003 vs A2780cis). 3-cell-line D-MPNN with chemoinformatic resistance side-features and tmQM-pretrained init.",
   "unit": "ROC-AUC (0-1, higher better) per cell line",

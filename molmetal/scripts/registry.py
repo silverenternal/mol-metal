@@ -57,6 +57,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -340,18 +341,89 @@ def build_protocols(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
     return out
 
 
-def _metric_timestamp(payload: Dict[str, Any]) -> Any:
-    """The date a metric file records, under any of the three keys in use.
+_TOP_LEVEL_DATE_KEYS = ("timestamp", "date", "date_utc")
+
+# A key is a date claim when its name says so.  Searching *values* for a date
+# instead would pick up citation years and target dates out of prose — 119 of
+# the 142 undated files contain a date somewhere, but only 23 contain one under
+# a key that claims to be a date.
+_DATE_KEY_RE = re.compile(r"(^|_)(date|timestamp|time|at)($|_)", re.IGNORECASE)
+_ISO_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _walk_date_keys(obj: Any, path: str = ""):
+    """Yield ``(iso_date, json_path)`` for date-named keys holding an ISO date."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            p = f"{path}.{k}" if path else str(k)
+            if isinstance(v, str) and _DATE_KEY_RE.search(str(k)):
+                m = _ISO_DATE_RE.search(v)
+                if m:
+                    yield m.group(0), p
+            yield from _walk_date_keys(v, p)
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            yield from _walk_date_keys(v, f"{path}[{i}]")
+
+
+def _metric_timestamp(payload: Dict[str, Any]) -> tuple:
+    """(date, where it came from) for a metric payload.
 
     ``timestamp`` (105 files), ``date`` (60) and ``date_utc`` (3) all mean the
-    same thing; reading only the first left 63 dated files with a null
-    timestamp in the registry.
+    same thing at the top level; reading only the first left 63 dated files
+    with a null timestamp.  When no top-level key exists, the latest date under
+    a *date-named* key is used and its JSON path is recorded, so the value is
+    checkable rather than inferred.
     """
-    for key in ("timestamp", "date", "date_utc"):
+    for key in _TOP_LEVEL_DATE_KEYS:
         v = payload.get(key)
         if v:
-            return v
-    return None
+            return v, key
+    hits = sorted(_walk_date_keys(payload), key=lambda h: h[0])
+    if hits:
+        date, path = hits[-1]
+        return date, f"nested:{path}"
+    return None, None
+
+
+def _vcs_added_dates(repo_root: Path = REPO_ROOT) -> Dict[str, str]:
+    """repo-relative metric path -> the date it first entered mainline history.
+
+    This is a PROV ``generatedAtTime`` for the *file entity*, not the date the
+    measurement was made (Git2PROV maps commit time to the activity that
+    produced the entity).  The registry keeps the two apart: ``metric_timestamp``
+    is the measurement date, ``date_added_to_repo`` is this one.
+
+    ``--first-parent`` rather than ``--diff-filter=A``: 20 metric files reached
+    mainline through a merge commit, and ``git log --diff-filter=A`` shows no
+    file changes for a merge, so those files looked like they had never been
+    committed.  The oldest commit on the first-parent chain that names the path
+    is the one that introduced it.
+    """
+    try:
+        out = subprocess.run(
+            [
+                "git", "log", "--first-parent", "--name-only", "--format=%cs",
+                "--", "metrics/by_metric",
+            ],
+            cwd=str(repo_root),
+            capture_output=True,
+            check=True,
+        ).stdout.decode("utf-8", "replace")
+    except (OSError, subprocess.CalledProcessError):
+        return {}
+    seen: Dict[str, str] = {}
+    current: Optional[str] = None
+    for line in out.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", line):
+            current = line
+        elif current:
+            # git log is newest-first; overwriting leaves the OLDEST add event.
+            seen[line] = current
+    return seen
 
 
 def _n_seeds(payload: Dict[str, Any]) -> Optional[float]:
@@ -402,6 +474,84 @@ _NON_HEADLINE_STATUSES = (
 _SYNTHETIC_VALUE_FLAGS = ("value_is_half_synthetic", "value_is_synthetic")
 
 _DATASET_KEYS = ("dataset", "data_source", "cohort", "cohorts_tested")
+
+# A file can carry its status under a different name.  Reading only `status`
+# counted 44 artifacts as unlabelled whose `tag` is literally "MEASURED".
+_STATUS_ALIAS_KEYS = ("verdict", "honest_framing", "tag")
+
+# ...but only a *token* is a status.  `verdict` is also used for narrative
+# findings ("THE HEAD IS NOT THE RING DEFECT. On clean geometry ..."), and
+# copying that into `status` would put a sentence in a column that is supposed
+# to hold one word from a controlled vocabulary -- a claim of provenance that
+# the value does not support.  Narrative verdicts are surfaced separately.
+#
+# The vocabulary is a prefix list, not an enumeration: MEASURED_HONEST_NEGATIVE,
+# MEASURED_NOT_A_CLAIM, PARTIAL_LIFT_v5, DESIGN+1-PILOT and
+# DEFERRED_receptors_missing are all legitimate and all share a stem.  It is
+# consulted only when a token has to be *cut out* of a longer string, where the
+# risk is grabbing the first word of a sentence ("THE HEAD IS NOT ...").
+_STATUS_VOCAB_PREFIXES = (
+    "MEASURED", "PROJECTED", "DEFERRED", "BLOCKED", "SUPERSEDED", "UNMEASURED",
+    "DESIGN", "CHECKPOINT", "WIRED", "PARTIAL", "VERIFIED", "EXPECTED",
+    "INCOMPLETE", "NOT_A", "PROVENANCE", "RETRACTED", "FAILED", "PASS",
+    # outcome words the artifact files use as their only declaration
+    "POSITIVE", "NEGATIVE", "KILL", "STABLE", "TBD", "ROOT_CAUSE", "SPRINT",
+    "PRODUCTION", "PENDING", "RESOLVED", "CONFIRMED", "REFUTED", "MIXED",
+    "INCONCLUSIVE",
+)
+
+
+def _is_status_token(value: Any) -> bool:
+    """True for a single-word status: no whitespace, starts with a capital.
+
+    Structural rather than vocabulary-based, because the project's artifact
+    verdicts include KILL / POSITIVE / NEGATIVE / STABLE / TBD alongside the
+    MEASURED_* family, and a closed list would keep rejecting legitimate ones.
+    """
+    if not isinstance(value, str):
+        return False
+    s = value.strip()
+    return 3 <= len(s) <= 40 and s[0].isupper() and not any(c.isspace() for c in s)
+
+
+def _is_vocab_token(value: Any) -> bool:
+    return isinstance(value, str) and value.strip().upper().startswith(
+        _STATUS_VOCAB_PREFIXES
+    )
+
+# Some verdicts lead with the token and then explain it: "MEASURED — 0.7 on 10
+# curated SMILES", "VERIFIED_LIFT — 0.000 -> 0.1065".  The token before the
+# separator is the status; the rest is the finding.  A sentence that merely
+# starts with a capital word ("THE HEAD IS NOT THE RING DEFECT.") has no
+# separator after that word and is correctly left as narrative.
+_LEADING_STATUS_RE = re.compile(r"^([A-Z][A-Z0-9_+\-]{2,})\s*(?:[\u2014\u2013]|--|:|\()")
+
+
+def _status_with_source(payload: Dict[str, Any]) -> tuple:
+    """(status, status_source, narrative_alias_key).
+
+    ``status`` is a token or None.  ``narrative_alias_key`` names a
+    ``verdict``/``honest_framing``/``tag`` that carries prose instead, so the
+    check can distinguish "nothing was concluded" from "a conclusion was
+    written, in the wrong field".
+    """
+    v = payload.get("status")
+    if isinstance(v, str) and v.strip():
+        return v.strip(), "status", None
+    narrative = None
+    for k in _STATUS_ALIAS_KEYS:
+        v = payload.get(k)
+        if not isinstance(v, str) or not v.strip():
+            continue
+        token = v.strip()
+        if _is_status_token(token):
+            return token, k, None
+        m = _LEADING_STATUS_RE.match(token)
+        if m and _is_vocab_token(m.group(1)):
+            return m.group(1), f"{k}:leading_token", None
+        if narrative is None:
+            narrative = k
+    return None, None, narrative
 
 
 def _tracked_paths() -> Optional[set]:
@@ -493,9 +643,15 @@ def assess_citability(
     Returns a dict with both booleans and the reasons each failed.
     """
     not_quotable: List[str] = []
-    status = str(payload.get("status") or "").strip()
+    status = (_status_with_source(payload)[0] or "").strip()
     if not status:
         not_quotable.append("no status")
+    elif not _is_status_token(status):
+        # An explicit `status` is authoritative, but a paragraph there is not a
+        # status: no prefix rule can read it, so it cannot be classified.
+        not_quotable.append(
+            f"status {status[:48]!r} is prose, not a status token"
+        )
     elif status.upper().startswith(_NON_QUOTABLE_STATUS_PREFIXES):
         not_quotable.append(
             f"status {status.split()[0]!r} is not a measurement of this metric"
@@ -578,6 +734,7 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
     out: Dict[str, Any] = {}
     covered_files: set = set()
     tracked = _tracked_paths()
+    vcs_added = _vcs_added_dates(repo_root)
     for _line, mapping in LINE_METRICS.items():
         for metric_id, src in mapping.items():
             covered_files.add(src)
@@ -589,18 +746,30 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
                 src_path = BY_METRIC_DIR / f"{src}.json"
             payload = _load_json(src_path)
             exists = src_path.is_file()
+            status, status_source, narrative = _status_with_source(payload)
+            stamp, stamp_source = _metric_timestamp(payload)
+            value, value_basis = _extract_value_basis(
+                payload, METRIC_TARGETS.get(metric_id, {}).get("value_key")
+            )
             rec: Dict[str, Any] = {
                 "source_json": _rel(src_path),
                 "source_json_sha256": _sha256_file(src_path),
                 "source_json_missing": not exists,
-                "value": _extract_value(payload, METRIC_TARGETS.get(metric_id, {}).get("value_key")),
-                "status": payload.get("status"),
+                "value": value,
+                "value_basis": value_basis,
+                "status": status,
+                "status_source": status_source,
+                "status_narrative_source": narrative,
                 "verdict": payload.get("verdict"),
                 "scope": payload.get("scope"),
-                "metric_timestamp": _metric_timestamp(payload),
+                "metric_timestamp": stamp,
+                "metric_timestamp_source": stamp_source,
                 "registry_role": "paper_line",
                 "last_refreshed": _now_utc(),
             }
+            added = vcs_added.get(_rel(src_path))
+            if added:
+                rec["date_added_to_repo"] = added
             seeds = _n_seeds(payload)
             if seeds is not None:
                 rec["n_seeds"] = seeds
@@ -614,6 +783,9 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
                 and str(rec.get("status") or "").startswith("MEASURED")
                 and not payload.get("no_headline_reason")
             )
+            rec["carries_claim"] = rec["value"] is not None
+            if rec["value_missing"]:
+                rec["has_numeric_leaf"] = _has_numeric_leaf(payload)
             rec.update(METRIC_TARGETS.get(metric_id, {}))
             rec.update(
                 assess_citability(payload, rec["value"], _rel(src_path), tracked)
@@ -641,19 +813,35 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
         # ``vina_score__disk`` says nothing about which file it came from.
         if metric_id in out:
             metric_id = stem if stem not in out else f"{metric_id}__disk"
+        status, status_source, narrative = (
+            _status_with_source(payload) if isinstance(payload, dict) else (None, None, None)
+        )
+        stamp, stamp_source = (
+            _metric_timestamp(payload) if isinstance(payload, dict) else (None, None)
+        )
+        value, value_basis = _extract_value_basis(
+            payload if isinstance(payload, dict) else {}
+        )
         rec = {
             "source_json": _rel(src_path),
             "source_json_sha256": _sha256_file(src_path),
             "source_json_missing": not exists,
-            "value": _extract_value(payload),
-            "status": payload.get("status") if isinstance(payload, dict) else None,
+            "value": value,
+            "value_basis": value_basis,
+            "status": status,
+            "status_source": status_source,
+            "status_narrative_source": narrative,
             "verdict": payload.get("verdict") if isinstance(payload, dict) else None,
             "scope": payload.get("scope") if isinstance(payload, dict) else None,
-            "metric_timestamp": _metric_timestamp(payload) if isinstance(payload, dict) else None,
+            "metric_timestamp": stamp,
+            "metric_timestamp_source": stamp_source,
             "registry_role": "artifact",
             "last_refreshed": _now_utc(),
             "registry_origin": "wf_a36_3_g1_disk_walk",
         }
+        added = vcs_added.get(_rel(src_path))
+        if added:
+            rec["date_added_to_repo"] = added
         seeds = _n_seeds(payload) if isinstance(payload, dict) else None
         if seeds is not None:
             rec["n_seeds"] = seeds
@@ -662,6 +850,9 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
             and str(rec.get("status") or "").startswith("MEASURED")
             and not (isinstance(payload, dict) and payload.get("no_headline_reason"))
         )
+        rec["carries_claim"] = rec["value"] is not None
+        if rec["value_missing"]:
+            rec["has_numeric_leaf"] = _has_numeric_leaf(payload)
         rec.update(
             assess_citability(
                 payload if isinstance(payload, dict) else {},
@@ -761,10 +952,20 @@ def check_metrics(repo_root: Path = REPO_ROOT) -> CheckResult:
         for r in rows
         if r.get("status") is None and r.get("registry_role") == "paper_line"
     )
+    # A status qualifies a *claim*.  A probe log or a design note that carries
+    # no scalar has nothing to qualify, so counting it as "unlabelled" made the
+    # evidence string read like 170 broken claims when it was 12.
     unlabelled_artifact = sum(
         1
         for r in rows
-        if r.get("status") is None and r.get("registry_role") != "paper_line"
+        if r.get("status") is None
+        and r.get("registry_role") != "paper_line"
+        and r.get("carries_claim")
+    )
+    narrative_only = sum(
+        1
+        for r in rows
+        if r.get("status") is None and r.get("status_narrative_source")
     )
     undated = sum(1 for r in rows if r.get("metric_timestamp") is None)
     value_missing = sum(1 for r in rows if r.get("value_missing"))
@@ -772,10 +973,22 @@ def check_metrics(repo_root: Path = REPO_ROOT) -> CheckResult:
         1 for r in rows if r.get("metric_timestamp") is None and r.get("registry_role") == "paper_line"
     )
     undated_artifact = undated - undated_paper
+    # W3C PROV ``generatedAtTime`` for the file entity: a file with no
+    # measurement date still has a commit date, which is checkable provenance.
+    undated_no_vcs = sum(
+        1
+        for r in rows
+        if r.get("metric_timestamp") is None
+        and r.get("registry_role") != "paper_line"
+        and not r.get("date_added_to_repo")
+    )
     paper_rows = [r for r in rows if r.get("registry_role") == "paper_line"]
     value_missing_paper = sum(
         1 for r in paper_rows if r.get("value_missing")
     )
+    missing_art = [r for r in rows if r.get("value_missing") and r.get("registry_role") != "paper_line"]
+    missing_unstandardised = sum(1 for r in missing_art if r.get("has_numeric_leaf"))
+    missing_none = len(missing_art) - missing_unstandardised
     quotable = sum(1 for r in paper_rows if r.get("quotable"))
     headline_grade = sum(1 for r in paper_rows if r.get("headline_grade"))
     return CheckResult(
@@ -785,11 +998,15 @@ def check_metrics(repo_root: Path = REPO_ROOT) -> CheckResult:
         f"{len(checks)-bad-stale} current, {stale} stale, {bad} missing | "
         f"{len(paper_rows)} paper-line ({quotable} quotable, "
         f"{headline_grade} headline-grade) | "
-        f"{unlabelled_paper} paper-line + {unlabelled_artifact} artifact rows "
-        f"without a status | "
-        f"{undated_paper} paper-line + {undated_artifact} artifact undated | "
-        f"{value_missing_paper} paper-line + {value_missing - value_missing_paper} "
-        f"artifact labelled MEASURED with no scalar",
+        f"{unlabelled_paper} paper-line + {unlabelled_artifact} artifact claims "
+        f"without a status ({narrative_only} hold a narrative verdict instead) | "
+        f"{undated_paper} paper-line + {undated_artifact} artifact rows record no "
+        f"measurement date ({undated_artifact - undated_no_vcs} of the artifacts "
+        f"carry a commit date instead, {undated_no_vcs} carry neither) | "
+        f"{value_missing_paper} paper-line + {len(missing_art)} artifact rows "
+        f"labelled MEASURED with no standardised scalar "
+        f"({missing_unstandardised} hold numbers under a file-specific key, "
+        f"{missing_none} hold none)",
     )
 
 
@@ -808,6 +1025,25 @@ def _coerce_float(v: Any) -> Optional[float]:
         return float(v)
     except (TypeError, ValueError):
         return None
+
+
+def _has_numeric_leaf(obj: Any) -> bool:
+    """True if any non-bool number appears anywhere in the payload.
+
+    Separates two things that ``value: null`` was conflating: a file whose
+    headline simply is not at a standard key (numbers exist, the extractor
+    cannot know which one is the claim) versus a decision/probe record that
+    carries no numbers at all.
+    """
+    if isinstance(obj, bool):
+        return False
+    if isinstance(obj, (int, float)):
+        return True
+    if isinstance(obj, dict):
+        return any(_has_numeric_leaf(v) for v in obj.values())
+    if isinstance(obj, list):
+        return any(_has_numeric_leaf(v) for v in obj)
+    return False
 
 
 # The metric JSONs store their headline under different keys depending on the
@@ -837,8 +1073,17 @@ _VALUE_DICT_KEYS = (
 )
 
 
-def _extract_value(payload: Dict[str, Any], value_key: Optional[str] = None) -> Any:
-    """Pull the headline number from an arbitrary metric JSON.
+def _extract_value_basis(
+    payload: Dict[str, Any], value_key: Optional[str] = None
+) -> tuple:
+    """(value, basis) — the headline number and the JSON path it came from.
+
+    ``basis`` exists because a ``value`` column with no provenance cannot be
+    audited: ``sa_mean`` read 2.2884 from ``aggregate.best_measured``, which is
+    the *best* of five pockets (n=14), while the file's own five-pocket mean is
+    2.4486.  The ML Reproducibility Checklist asks for central tendency, and a
+    best-of is not one.  Recording where the number came from makes that
+    visible instead of leaving a best case sitting in a column called ``value``.
 
     ``value_key`` (from METRIC_TARGETS) may be a dotted path like
     ``aggregate.best_measured_real``; it wins when present and finite.
@@ -847,10 +1092,12 @@ def _extract_value(payload: Dict[str, Any], value_key: Optional[str] = None) -> 
     or a per-metal block, where no generic key order can know which entry is
     the headline.  Otherwise fall through the common top-level + nested keys.
     """
+    declared_by = None
     if value_key is None:
         declared = payload.get("headline_key")
         if isinstance(declared, str) and declared:
             value_key = declared
+            declared_by = "headline_key"
     if value_key:
         node: Any = payload
         for part in value_key.split("."):
@@ -860,18 +1107,17 @@ def _extract_value(payload: Dict[str, Any], value_key: Optional[str] = None) -> 
                 node = None
                 break
         if _coerce_float(node) is not None:
-            return node
+            return node, declared_by or f"value_key:{value_key}"
     for key in _VALUE_KEYS:
         v = payload.get(key)
         if _coerce_float(v) is not None:
-            return v
-    # nested aggregate.value / aggregate.best_measured
+            return v, key
     agg = payload.get("aggregate")
     if isinstance(agg, dict):
-        for key in ("value", "best_measured", "mean_r2", "reachability_rate", "cisplatin_mean"):
+        for key in ("value", "mean", "mean_r2", "reachability_rate", "cisplatin_mean", "best_measured"):
             v = agg.get(key)
             if _coerce_float(v) is not None:
-                return v
+                return v, f"aggregate.{key}"
     raw = payload.get("value")
     if isinstance(raw, dict):
         # Some files nest their headline inside ``value`` — e.g.
@@ -881,9 +1127,14 @@ def _extract_value(payload: Dict[str, Any], value_key: Optional[str] = None) -> 
         for key in _VALUE_DICT_KEYS:
             v = raw.get(key)
             if _coerce_float(v) is not None:
-                return v
-        return None
-    return raw
+                return v, f"value.{key}"
+        return None, None
+    return raw, "value" if raw is not None else None
+
+
+def _extract_value(payload: Dict[str, Any], value_key: Optional[str] = None) -> Any:
+    """The headline number only; see :func:`_extract_value_basis`."""
+    return _extract_value_basis(payload, value_key)[0]
 
 
 def gap_table(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
@@ -934,11 +1185,69 @@ def gap_table(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _preserve_underived_datasets(
+    datasets: Dict[str, Any], path: Path = DATASETS_PATH
+) -> List[str]:
+    """Carry over rows the builder cannot re-derive, instead of deleting them.
+
+    ``build_datasets`` reads two sources (data_checksums.json, protocol_lock).
+    Ten ``rusanov_2025_*`` rows were hand-added in b76ef187 and no source
+    declares them, so a plain regenerate shrank the registry 21 -> 11 while
+    ``check_datasets`` still reported 11/11 PASS — a smaller registry that
+    looks green.  A generator must not delete what it cannot re-derive.
+    """
+    if not path.is_file():
+        return []
+    try:
+        prev = (_load_yaml(path).get("datasets") or {})
+    except Exception:  # noqa: BLE001 — a corrupt previous file must not block a rebuild
+        return []
+    kept: List[str] = []
+    for did, row in prev.items():
+        if did in datasets or not isinstance(row, dict):
+            continue
+        row = dict(row)
+        row["preserved_from"] = "previous registry/datasets.yaml"
+        row["preserved_reason"] = (
+            "no generator source (configs/data_checksums.json or "
+            "configs/locks/protocol_lock.yaml) declares this row; generate() "
+            "must not delete what it cannot re-derive"
+        )
+        datasets[did] = row
+        kept.append(did)
+    return kept
+
+
+# The dataset registry's field documentation lives in a comment header.  A
+# yaml.safe_dump rewrite silently deleted it, so the file that explains itself
+# became the one file that did not.  Emit it from here instead.
+_DATASETS_HEADER = """\
+# mol-metal dataset registry
+#
+# Each entry: {path, md5, sha256, why, source, locked_for}
+# - path: relative to repo root
+# - md5/sha256: file content hash (MEASURED at registration)
+# - why: one-paragraph intent + caveats + join keys
+# - source: yaml or pdf or zip or 'cistern' or 'manual'
+# - locked_for: list of metric/protocol IDs that depend on this dataset
+#
+# Regenerate via: .venv/bin/python molmetal/scripts/registry.py check
+# Update via: .venv/bin/python molmetal/scripts/registry.py generate
+#
+"""
+
+
 def generate(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
     """Build + write the three registry files. Returns a coverage report."""
     from molmetal.scripts.wf386a3_atomic_write import atomic_write_file
-
     datasets = build_datasets(repo_root)
+    preserved = _preserve_underived_datasets(datasets)
+    if preserved:
+        print(
+            f"registry: preserved {len(preserved)} dataset row(s) with no generator "
+            f"source: {', '.join(sorted(preserved))}",
+            file=sys.stderr,
+        )
     protocols = build_protocols(repo_root)
     metrics, covered = build_metrics(repo_root)
 
@@ -977,6 +1286,8 @@ def generate(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
     ):
         path.parent.mkdir(parents=True, exist_ok=True)
         text = yaml.safe_dump(doc, sort_keys=False, allow_unicode=True)
+        if path == DATASETS_PATH:
+            text = _DATASETS_HEADER + text
         # Skip a rewrite that would change nothing but the timestamp header, so a
         # read-only caller (e.g. the test suite) does not dirty the tracked file.
         if path.is_file() and _strip_generated_at(path.read_text(encoding="utf-8")) == _strip_generated_at(text):
@@ -985,6 +1296,7 @@ def generate(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
 
     return {
         "datasets": len(datasets),
+        "datasets_preserved": len(preserved),
         "protocols": len(protocols),
         "metrics": len(metrics),
         "uncovered_metric_files": len(uncovered),

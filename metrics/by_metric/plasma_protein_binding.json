@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED_DESCRIPTOR_PANEL",
+  "status_basis": "mean Obach 1999 logistic regression on Crippen logP over 449 molecules; a deterministic function of the input SMILES, not a model prediction",
   "metric": "plasma_protein_binding",
   "description": "Plasma protein binding fraction from Obach 1999 logistic regression on Crippen logP. Range [0, 1].",
   "unit": "ratio (0-1)",

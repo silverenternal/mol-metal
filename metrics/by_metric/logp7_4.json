@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED_DESCRIPTOR_PANEL",
+  "status_basis": "mean Crippen logP with pH 7.4 ionisation correction over 449 molecules; a deterministic function of the input SMILES, not a model prediction",
   "metric": "logp7_4",
   "description": "Crippen logP with ionisation correction at pH=7.4 (Patrick 2009). Range: [-10, 10] typical.",
   "unit": "log-ratio",

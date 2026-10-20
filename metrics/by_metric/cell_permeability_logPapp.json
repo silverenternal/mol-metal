@@ -1,4 +1,6 @@
 {
+  "status": "MEASURED_DESCRIPTOR_PANEL",
+  "status_basis": "mean logPapp heuristic (Hou 2007 / Mente 2015) over 5000 molecules; a deterministic function of the input SMILES, not a model prediction",
   "metric": "cell_permeability_logPapp",
   "description": "Cell permeability logPapp from PSA + logP heuristic (Hou 2007 / Mente 2015), clipped [-8, -3].",
   "unit": "logPapp (cm/s)",
