@@ -9142,12 +9142,14 @@ MEASURED on that pool:
 below for the numbers that supersede the "all" row.)*
 
 Two things follow, and they point in opposite directions:
-  * ⚠️ **CORRECTED below ("the run finished").** ~~**Connectivity is improving monotonically** —
-    2.84% → 8.38% single-fragment over four epochs. The generator is learning to bond atoms, just
-    slowly; four epochs is not where it plateaus.~~ The second sentence was right for the wrong
-    reason: four epochs is not where it plateaus, but the trend does not continue upward in
-    quality — it continues upward in *fragmentation*, reaching 12.22% by epoch 17. Reading a
-    monotone four-point rise as "learning" was an extrapolation, and the full run refutes it.
+  * ⚠️ **CORRECTED twice — see "RETRACTED: connectivity keeps degrading" below.** ~~**Connectivity
+    is improving monotonically** — 2.84% → 8.38% single-fragment over four epochs. The generator is
+    learning to bond atoms, just slowly; four epochs is not where it plateaus.~~ Two things were
+    wrong. Four epochs is indeed not where it plateaus — the 18-epoch run reaches 12.22% — but more
+    importantly, **single-fragment rate is not a quality metric for this dataset at all**: the
+    corpus writes the metal as a separate component (69.1% of rows have 3 components, 0.07% have
+    one), so a *correct* generation is multi-component. Reading the rise as "learning" here and as
+    "degrading" further down were the same error pointing in opposite directions.
   * **The synthesis gate is not.** SA ≤ 4.5 at full corpus is **0.36%**, against **0.69%** for the
     n_train=256 pools. Scaling the corpus up did **not** improve it. This is the same conclusion as
     C7 v1.1, now measured on a real full-corpus generation pool rather than inferred from the
@@ -9190,16 +9192,37 @@ same card) and completed all 18 epochs: `exit=0`, wall **11,232 s**, `nvidia-smi
 | 17 | — | **12.22%** | 67.5% | 0.57% |
 | **all 18** | | **8.51%** | 66.8% | **0.28%** [0.21, 0.39] (36/12,668) |
 
-Six conclusions, three of which overturn what §6.150b inferred from four epochs:
+*(The "single-fragment" column is kept for continuity but is **not** a quality trend — see the
+retraction below. The corpus is multi-component by convention.)*
 
-  * **Connectivity does not plateau — it keeps degrading.** 2.84% → 8.38% → 10.23% → **12.22%**
-    single-fragment across 18 epochs, a 4.3× rise. §6.150b read the first four points as "the
-    generator is learning to bond atoms, just slowly". Fourteen more epochs show the opposite: the
-    model increasingly emits disconnected fragments. Extrapolating a monotone trend from 4 of 18
-    epochs was the error, and the full run is what refutes it.
+Seven conclusions. Three overturn what §6.150b inferred from four epochs; one overturns what this
+entry itself said two commits ago.
+
+  * ⚠️ **RETRACTED: "connectivity keeps degrading".** I read the 2.84% → 12.22% rise in
+    single-fragment rate as the model emitting more and more disconnected fragments. That reading
+    assumed one component = a molecule. **It is wrong for this dataset.** The corpus writes the
+    metal as its own component: **69.1% of training rows have exactly 3 components**, mean
+    **3.34**, and only **0.07%** have one. A correct generation is therefore *multi-component*,
+    and "single-fragment" was never a quality metric — not when §6.150b read it as improving, and
+    not when this entry read it as degrading. The same mistake, twice, in opposite directions.
+  * **The component COUNT converges. The component SIZES never do.** Measured per epoch against the
+    corpus (`metrics/by_metric/c7_fullgen_pool_quality.json`):
+
+    | | mean components | share 2-6 | share ≥21 | 2nd component = 1 atom | mean 2nd size | largest-frag share |
+    |---|---:|---:|---:|---:|---:|---:|
+    | corpus | 3.34 | 99.9% | 0% | **1.5%** | **12.09** | 0.553 |
+    | epoch 0 | 22.17 | 39.4% | 56.4% | 88.0% | 1.22 | 0.426 |
+    | epoch 8 | 6.28 | 77.0% | 10.9% | 66.8% | 1.82 | 0.831 |
+    | epoch 17 | **3.45** | 83.8% | 0.9% | **60.5%** | **1.98** | 0.916 |
+
+    By epoch 17 the mean component count (3.45) is within 3% of the corpus (3.34). But 60.5% of
+    the multi-component molecules have a **single atom** as their second component — the corpus
+    does that 1.5% of the time — and the second component averages **2.0 atoms against 12.1**. The
+    model produces one fused blob plus leftover atoms, not several ligands. So the pool matches the
+    corpus on the statistic that is easy to match and misses on the one that requires chemistry.
   * **Validity is not the failure mode.** RDKit parse rate stays at 1.000 for 17 of 18 epochs
     (0.9986 at epoch 13), and mean heavy atoms is constant at 44.37. The strings are well-formed
-    and the size is stable; the molecules are simply not connected.
+    and the size is stable; the composition is wrong.
   * **The synthesis gate is flat-to-worse.** 0.28% over all 18 epochs, 0.57% at the last one,
     against **0.69%** for the n_train=256 pools. Sixteen extra epochs of full-corpus training moved
     SA ≤ 4.5 from 0.36% to 0.28%. Scaling the corpus up still does not buy synthesisability.
@@ -9207,14 +9230,16 @@ Six conclusions, three of which overturn what §6.150b inferred from four epochs
     ≥ 0.90) is **0 / 10,190**; the mean novelty *within* the SA-passing subset is 0.8587, below the
     0.90 gate. The 36 molecules that clear SA are close analogues of training data, so "SA ≤ 4.5"
     alone overstates the useful yield.
-  * **The bond head gets better while generation gets worse — the two paths diverge.** Over the
-    same 14 epochs (4 → 17) the teacher-forced bond head improves monotonically: `bond_f1`
+  * **The bond head improves on held-out geometries — and it is the one over-fusing.** Over the
+    same 14 epochs (4 → 17) the teacher-forced head improves monotonically: `bond_f1`
     **0.173 → 0.605**, recall **0.099 → 0.485**, PR-AUC **0.583 → 0.757** (n=192 held-out
-    geometries, threshold 0.5). Free generation over the same window goes the other way. So the
-    connectivity failure is **not** "the head never learned bonds" — given true atoms it predicts
-    them 3.5× better by the last epoch. Whatever breaks connectivity happens in the sampler /
-    decode path, downstream of the head. This is a mechanism statement, not a fix: nothing here
-    says which part of the sampler is at fault.
+    geometries, threshold 0.5). ⚠️ **RETRACTED: "the failure is downstream of the head."** The two
+    full-corpus bond-head reconstruction pools (real tmQM atoms, head-predicted bonds, no sampler;
+    n=40 and n=43) average **1.35 and 1.49 components** — against the corpus's **3.34**. Given
+    true atoms, the head already predicts bonds that fuse separate ligands into one graph, dropping
+    a third of the components. So over-connection starts in the head; the sampler neither fixes it
+    nor is solely to blame. (Directional only: 83 molecules, and from different checkpoints than
+    the 18-epoch run.)
   * **The model learned how many bonds, not which bonds.** Bonds per heavy atom against the real
     training corpus (n=18,137; reference measured from the same corpus file):
 
@@ -9229,9 +9254,8 @@ Six conclusions, three of which overturn what §6.150b inferred from four epochs
     slightly *above* it. Nothing is missing: the bonds are there, they are simply spent on
     3-membered rings inside fragments instead of 6-membered rings connecting the molecule. Real
     chemistry in this corpus has essentially **zero** 3-membered rings (0.01%); the pool has
-    **two thirds**. That is the sharpest form of the failure available from the artifacts on disk,
-    and it reframes the target: the problem is not "generate more bonds", it is the ring-size /
-    topology prior.
+    **two thirds**. That reframes the target: the problem is not "generate more bonds", it is the
+    ring-size / topology prior.
 
 **"Six terms on" was true for one epoch, not eighteen.** The per-epoch counter from commit `ba604b88`
 landed **mid-run**, so its coverage is uneven and the artifact says so rather than rounding the gap

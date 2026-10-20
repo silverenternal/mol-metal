@@ -152,3 +152,25 @@ def test_reference_stats_use_the_train_split_only(tmp_path):
     assert ref["n"] == 1
     assert ref["ring_size_distribution"] == {"6": 1}
     assert ref["three_ring_share"] == 0.0
+
+
+def test_component_count_and_second_component_size():
+    # The corpus writes the metal as its own atom, so "components" is the
+    # measure that matters, and a lone second component is a different failure
+    # from a second ligand.
+    rows = [_row(0, "c1ccccc1.C1CC1.[Pt]", 3), _row(0, "c1ccccc1.[Pt]", 2)]
+    out = _epoch_summary(rows)
+    assert out["mean_n_frags"] == 2.5
+    assert out["share_n_frags_2_to_6"] == 1.0
+    assert out["connected_rate"] == 0.0
+    # second component is the 3-atom ring in row 1 and the lone Pt in row 2
+    assert out["second_frag_is_single_atom"] == 0.5
+    assert out["mean_second_frag_size"] == 2.0
+
+
+def test_connected_rate_agrees_with_the_trainer_column_on_generation_pools():
+    # Both should count the same molecules; the RDKit measure exists so that
+    # reconstruction pools (no n_frags_raw column) are comparable.
+    rows = [_row(0, "c1ccccc1", 1), _row(0, "C.C", 2), _row(0, "C1CC1", 1)]
+    out = _epoch_summary(rows)
+    assert out["connected_rate"] == out["single_fragment_rate"] == round(2 / 3, 4)

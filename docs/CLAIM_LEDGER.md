@@ -14,7 +14,7 @@
 | C4 | 树 + GNN 融合提升跨论文 R² | **SUPPORTED（仅 R²）** | DOI +0.0217 [+0.0044,+0.0377]；融合后 Δ 符号 0.5826→0.5505 | `msrs_fusion_protocols.json:/protocols/doi/arms/stack_foldwise/vs_tree` |
 | C5 | 不确定性区间校准 | **SUPPORTED（有边界）** | DOI 覆盖 0.9004、中位宽 2.0052；同队列多金属仅 0.8096 | `msrs_calibration.json:/protocols/doi/variants/global/coverage` |
 | C6 | 跨金属迁移达到可用水平 | **NOT SUPPORTED**（LOMO）；within-metal 另计 | 可解析 Ru/Ir 0.5974（集成 0.5947）< 0.6；Rh 0.3812 CI 含 0.5；within-metal Ru 0.8271 / Ir 0.8430 | `lomo_resolvability_audit.json:/aggregates/resolvable_only/value`；`lomo_seed_ensemble.json:/aggregates/resolvable_only/auc_of_mean_score` |
-| C7 | 生成物可合成且新颖的金属药物 | **NOT SUPPORTED**（全语料真生成池已存在，18/18 epoch，SA≤4.5 = **0.28%**，低于 256 样本的 0.69%；联合闸 0/10,190） | 全语料自由生成池 `cfm_c7_fullgen_2026_10_20`（n_train=26,715，**18 epoch** × 704 = **12,668** 可打分 / 10,190 唯一 SMILES）：SA 6.99、QED 0.124、SA≤4.5 **0.28% [0.21,0.39]**（36/12,668）；对照 n_train=256 池 SA≤4.5 **0.69% [0.42,1.11]**（n=2,330）。单片段率 2.84→12.22% 随 epoch 上升（连通性变差），SA 不动。联合闸（SA≤4.5 且 novelty≥0.90）**0/10,190**，SA 子集平均新颖度 0.8587。`gen_validity`=1.0 是松散原子假象（`sa_scored`=0） | `c7_scale_matched_pools.json:/by_pipeline/generation/by_tier/full_corpus/rate_sa_le_gate`；`.../wilson_ci95`；`.../by_tier/small/rate_sa_le_gate`；`.../tiers_missing`；`c7_fullgen_pool_quality.json:/first_vs_last`；`.../bond_head_trajectory`；`.../reference`；`.../per_epoch/17/three_ring_share`；`molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv` |
+| C7 | 生成物可合成且新颖的金属药物 | **NOT SUPPORTED**（全语料真生成池已存在，18/18 epoch，SA≤4.5 = **0.28%**，低于 256 样本的 0.69%；联合闸 0/10,190） | 全语料自由生成池 `cfm_c7_fullgen_2026_10_20`（n_train=26,715，**18 epoch** × 704 = **12,668** 可打分 / 10,190 唯一 SMILES）：SA 6.99、QED 0.124、SA≤4.5 **0.28% [0.21,0.39]**（36/12,668）；对照 n_train=256 池 SA≤4.5 **0.69% [0.42,1.11]**（n=2,330）。成分均值 22.17→**3.45**（语料 3.34），但第二成分是单原子的占 **60.5%**（语料 1.5%）、第二成分均 **1.98** 原子（语料 12.09）。键密度 1.137（语料 1.069），3 元环 **67.5%** vs 语料 **0.01%**。联合闸（SA≤4.5 且 novelty≥0.90）**0/10,190**，SA 子集平均新颖度 0.8587。键头 teacher-forced `bond_f1` 0.173→0.605，但重建池只有 **1.35/1.49** 个成分（语料 3.34）。`gen_validity`=1.0 是松散原子假象（`sa_scored`=0） | `c7_scale_matched_pools.json:/by_pipeline/generation/by_tier/full_corpus/rate_sa_le_gate`；`.../wilson_ci95`；`.../by_tier/small/rate_sa_le_gate`；`.../tiers_missing`；`c7_fullgen_pool_quality.json:/reference`；`.../per_epoch/17`；`.../head_on_real_geometries`；`.../bond_head_trajectory`；`molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv` |
 
 ---
 
@@ -83,18 +83,26 @@ vs 0.81，Ir 0.8430（0.8295–0.8597）vs 0.73；最差 seed 仍过线。」
 **能写**：「全语料的自由生成池现在存在（`cfm_c7_fullgen_2026_10_20`，n_train=26,715，
 **18/18 个 epoch** × 704 = 12,669 行 / 12,668 个可打分、10,190 个唯一 SMILES，SA 6.99、
 QED 0.124）。它的 SA≤4.5 是 **0.28% [0.21,0.39]**（36/12,668），**低于** n_train=256 池的
-0.69% [0.42,1.11]（n=2,330）：把语料放大到全量**没有**改善可合成性。18 个 epoch 内单片段率
-从 2.84% 升到 **12.22%**（合计 8.51%），SA 不动，说明连通性随训练**变差**而不是变好。
+0.69% [0.42,1.11]（n=2,330）：把语料放大到全量**没有**改善可合成性。
 联合闸（SA≤4.5 且 novelty≥0.90）是 **0/10,190**，SA 通过子集的平均新颖度只有 0.8587，
-低于 0.90——通过 SA 的 36 个分子都是训练集的近亲。同期键头（teacher-forced）反而在变好：
-`bond_f1` 0.173→0.605、recall 0.099→0.485，所以连通性失效不在键头，在采样/解码路径。
+低于 0.90——通过 SA 的 36 个分子都是训练集的近亲。
+成分数会收敛、成分大小不会：语料的金属是单独一个 component（训练集 69.1% 是 3 个
+component，均值 3.34，单一 component 只占 0.07%），所以「单片段」在这个数据集里**不是**
+质量指标。生成池的成分均值从 22.17 降到 **3.45**（语料 3.34），但 60.5% 的多成分分子
+第二成分是**单个原子**（语料 1.5%），第二成分平均 **1.98** 个原子（语料 12.09）——
+是一个融合大块加零散原子，不是几个配体。
 键密度到 epoch 17 已达 1.137 键/重原子（真实语料 1.069），但 3 元环占比 **67.5%**，
-真实语料只有 **0.01%**（6 元环 2.8% vs 87.5%）：模型学到的是键的**数量**，不是键的**拓扑**。」
+真实语料只有 **0.01%**（6 元环 2.8% vs 87.5%）：模型学到的是键的**数量**，不是键的**拓扑**。
+键头在真实几何上 teacher-forced 反而在变好（`bond_f1` 0.173→0.605），但同样过连接：
+两个重建池平均只有 **1.35 / 1.49** 个成分（语料 3.34），说明过度成键从键头就开始了，
+不能只归咎于采样器。」
 
 **不能写**：「生成器做不出可合成的金属配合物」——虽然现在有 **18/18 个 epoch**（`exit=0`，
 wall 11,232 s），仍**没有**证据说这是收敛值或天花板；也**不能**写「全语料 SA≤4.5 可达
 33.7%」——那是重建池的数字，v1.0 已撤回；也不能用 `gen_validity=1.0` 当质量证据——该池
-`sa_scored`=0，1.0 是松散原子假象。`--sa-penalty` 仍然零梯度、无可微代理，机制不存在。
+`sa_scored`=0，1.0 是松散原子假象。**也不能再把单片段率当质量趋势**——它在这个数据集里
+既不表示「在学会成键」也不表示「连通性变差」，两种读法都已撤回。
+`--sa-penalty` 仍然零梯度、无可微代理，机制不存在。
 对接仍 BLOCKED。**也不能说这是「六项全开」的结果**：逐 epoch 计数器只有 epoch 4 记录为干净，
 epochs 5-17 每轮都有 1-6 步某个加权项返回 0（`EnergyConservation` 31 步 / `SBOO3Term` 52 /
 `FmOdeTerm` 19），epochs 0-3 是未记录而非零（计数器在 run 中途才落地）。
