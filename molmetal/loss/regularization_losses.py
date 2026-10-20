@@ -44,14 +44,28 @@ import torch
 # ``flow_matching_lipman/__init__.py:2097``.
 _IMPORT_WARNED: set = set()
 
+#: FIX-C12 (2026-10-21) — how many times each term has fallen back to zero.
+#:
+#: The warning above fires once per (class, exception-type) pair and then goes
+#: quiet, so a run whose terms are being zeroed by memory pressure looks
+#: exactly like a run whose terms are live: the loss curve is smooth and the
+#: weights in the YAML are correct.  MEASURED on the 2026-10-20 full-corpus
+#: C7 run, both ``EnergyConservation`` (CUDA OOM) and ``SBOO3Term`` (cusolver)
+#: fired and returned zero while the run continued.  This counter makes that
+#: auditable after the fact instead of inferable from a single warning line.
+FALLBACK_COUNTS: Dict[str, int] = {}
+
 
 def _maybe_warn_import(cls_name: str, exc: BaseException) -> None:
-    """Emit a once-per-process warning if the import swallow fired.
+    """Count the swallow, and warn once per (class, exception-type) pair.
 
-    No-op when the ``(cls_name, exc_type_name)`` pair has already been
-    surfaced; adds the pair to ``_IMPORT_WARNED`` on first sight so
-    subsequent identical swallows stay quiet.
+    No-op on the warning when the ``(cls_name, exc_type_name)`` pair has
+    already been surfaced; adds the pair to ``_IMPORT_WARNED`` on first sight
+    so subsequent identical swallows stay quiet.  The *count* in
+    :data:`FALLBACK_COUNTS` increments on every swallow, not just the first,
+    so a run can report how many steps it actually lost.
     """
+    FALLBACK_COUNTS[cls_name] = FALLBACK_COUNTS.get(cls_name, 0) + 1
     key = (cls_name, type(exc).__name__)
     if key in _IMPORT_WARNED:
         return

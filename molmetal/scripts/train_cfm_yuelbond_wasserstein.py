@@ -318,6 +318,23 @@ def _empty_cache_every() -> int:
 
 _EMPTY_CACHE_EVERY = _empty_cache_every()
 
+
+def _regularizer_fallbacks() -> Dict[str, int]:
+    """Cumulative count of swallowed regulariser exceptions, by class name.
+
+    FIX-C12 (2026-10-21).  The terms in
+    ``molmetal/loss/regularization_losses.py`` return ``torch.zeros(())`` when
+    their body raises, warning once per (class, exception-type) pair.  A run
+    whose terms are being zeroed by memory pressure therefore looks identical,
+    from its own loss curve, to a run whose terms are live.  Emitting this
+    dict on every ``train_epoch`` event makes that auditable: an empty dict
+    means every term that was weighted actually contributed.
+    """
+    from molmetal.loss.regularization_losses import FALLBACK_COUNTS
+
+    return dict(FALLBACK_COUNTS)
+
+
 #: Wf-A105 — the audit pair that makes `_LAST_LOSS_TERMS` provably complete and
 #: exact.  `total` is `float(loss)`; `sum_recorded` is the sum of every tensor
 #: in `_LAST_LOSS_TERMS`.  If they disagree, either a term entered the objective
@@ -15409,6 +15426,10 @@ def main() -> int:
                     if getattr(model, "last_ring_prior_term", None) is not None
                     else 0.0
                 ),
+                # FIX-C12 (2026-10-21) — cumulative swallows per term.  Empty
+                # means every weighted regulariser was live.  Without this a
+                # run can claim "six terms on" while two of them return 0.
+                regularizer_fallbacks=_regularizer_fallbacks(),
                 train_w2=float(w2_val),
                 grad_norm=float(grad_norm),
                 catherine_pass=float(catherine_rate),
