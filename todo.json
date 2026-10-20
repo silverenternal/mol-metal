@@ -318,7 +318,7 @@
     {
       "id": "FIX-C7",
       "result": "RE-ATTRIBUTED",
-      "headline": "SA 6.4423 是 1% 规模模型；全语料 SA 5.032 / SA≤4.5 33.7%，但 novelty 0.6977，联合 0/83"
+      "headline": "v1.1 重归因：盘上不存在全语料自由生成池（full_corpus 那个 csv 是 wf_cfm_decode_dump_smiles 的键头重建，表头 metal_z）；真生成 SA≤4.5 = 0.69% [0.42,1.11]（n=2330，n_train 全为 256）；gen_validity 全语料 0.074–0.086 vs 256 样本 0.083–0.292，未随规模改善。33.7% / novelty 0.8677 已撤回"
     }
   ],
   "blockers": [
@@ -988,6 +988,55 @@
         "note": "C7 在跑的 run 用的是修前代码（启动早于编辑），因此目标函数与 b64 一致。"
       },
       "acceptance_result": "修复后该项非零且梯度非零；质量影响未测，不得声称。"
+    },
+    {
+      "id": "FIX-C9",
+      "title": "每个 epoch 86% 的时间在给一个不可调优的 kernel 做 autotune；顺带撤回我自己三条错误归因",
+      "layer": "性能",
+      "priority": "P2",
+      "status": "DONE",
+      "gpu": "~4 分钟（两次 512 云标定 + 一次 128 云分离点）",
+      "wall": "2 小时",
+      "why": "用户报 'cpu跑满了' 并要求 '6个loss得开啊，该上gpu的地方进gpu就行'。cProfile 显示不是 CPU 也不是六个正则项：triton_kernels/equivariant_ops.py 的 _aggregate_vectors_kernel 用 key=['n_edges','feat_dim'] 做 autotune，但该 kernel grid=(n_edges,)、每 program 处理一条边、body 里没有任何按边循环，n_edges 只出现在 eid >= n_edges 的守卫里 —— 每个 program 的指令流与 n_edges 无关，最优 (num_warps,num_stages) 不可能依赖它。而 n_edges 每个 batch 都变、eval 又是逐分子调用，于是几乎每次调用都重新 benchmark 9 个配置。",
+      "method": "1) cProfile 一个 128 云/2 步 run：576 次 forward 触发 981 次 autotune _bench，109.4 s 在 triton.testing.do_bench、40.1 s 在 torch._C._cuda_synchronize，占 train_one_epoch 126.9 s 的 86%。2) 改 key 为 ['feat_dim']（FEAT_BLOCK 是 wrapper 里由 feat_dim 派生的 constexpr，feat_dim 已是完备 key）。3) 同配置 512 云单 epoch 前后对比。",
+      "deliverable": "triton_kernels/equivariant_ops.py + molmetal/tests/test_triton_autotune_keys.py（2 测试）+ metrics/by_metric/cfm_epoch_wall.json + docs/HONEST_NEGATIVE_CATALOG.md §6.149",
+      "gate": "同配置 epoch_time_sec 显著下降，且逐项 loss 相对变化 ≤1e-3。",
+      "kill": "若改 key 后 loss 出现 >1% 的系统性偏移，说明不同 kernel 配置改变了数值路径，需回退并改用固定 config。",
+      "depends_on": [],
+      "note": "非 bit-exact：kernel 配置变了会改变 atomic_add 的求和顺序。实测逐项 ≤1.5e-4 相对，train_loss 5.8e-3 相对（六个正则项逐步采样）。",
+      "result": {
+        "verdict": "FIXED (7.55x epoch speedup)",
+        "measured": {
+          "epoch_time_sec_pre": 304.30269,
+          "epoch_time_sec_post": 40.303891,
+          "ratio": 7.5501,
+          "n_train": 512,
+          "n_val": 192,
+          "batch_size": 64,
+          "steps_per_epoch": 8,
+          "source": [
+            "molmetal/reports/c7_calib_eval0_2026_10_20/events.jsonl",
+            "molmetal/reports/c7_calib_postfix_2026_10_20/events.jsonl"
+          ]
+        },
+        "derived_split": {
+          "per_train_step_sec": 2.608251,
+          "per_epoch_eval_sec": 19.437882,
+          "method": "两个 MEASURED 点联立（8 步+E=40.303891，2 步+E=24.654188）"
+        },
+        "tests": "molmetal/tests/test_triton_autotune_keys.py 2 passed；test_typed_dispatch_triton + test_wf328w9_triton_edge + test_wf333t2_triton_kernels_full 24 passed",
+        "retracted": [
+          "六项全关 262.0s vs 304.4s（14%）—— configs/c7_calib_noterms_2026_10_20.yaml 的 4 个 key 不 resolve 到任何 dest，_config_binding_gate 报 4 VIOLATION，六项其实没关；配置已删除",
+          "fm_ode 占 12%（269.1s vs 304.4s）—— key 有效，但 35 s 差值落在修前 autotune 噪声内，不能作为归因",
+          "_build_bond_pair_features 是 CPU 热点 —— 该函数在 cProfile 里完全不出现，本 trainer 不走 adapter.train_step"
+        ],
+        "artifacts": [
+          "docs/HONEST_NEGATIVE_CATALOG.md §6.149",
+          "metrics/by_metric/cfm_epoch_wall.json",
+          "commits d0a1ad72 + 73538adf"
+        ]
+      },
+      "acceptance_result": "epoch 从 304.303 s 降到 40.304 s（7.55x），六项 loss 全开；三条错误归因已入册撤回。仍慢的部分：trainer 的 forward 契约是单分子进、单分子出，batch 64 = 64 次模型调用，批量化是契约改动，本轮未做。"
     }
   ],
   "decision_points": [
