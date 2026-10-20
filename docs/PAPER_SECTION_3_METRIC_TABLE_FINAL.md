@@ -6,6 +6,15 @@ lives in `docs/` so the actual paper §3 v4 write to `paper/sections/03_main_res
 is a copy-paste when USER_OK arrives. All `\MEASURED{}` / `\PROJECTED{}` labels are
 preserved per `party-twenty-spirit` §3.5.
 
+**Rev 2026-10-20 — m21 corrected, verdict changed.** T1 / §3.1 / the two LaTeX blocks / the path
+ledger previously carried `0.8007 ± 0.0160` for m21. That number came from a 3-seed run on a splitter
+whose `_scaffold_for` returned `''` for every molecule, i.e. a molecule-level split labelled
+"scaffold" (BLK-PA12). The artifact's live 5-seed table on the fixed splitter is `0.7294` overall and
+`0.5923` over the cells with `n_test ≥ 20`; its own `status` is `MEASURED_HONEST_NEGATIVE`. m21 is
+therefore no longer a Tier-1 LEAD PASS — it moves to §6 limitations, and the Tier-1 LEAD count drops
+from four of five to three of five. Every figure below traces to
+`metrics/by_metric/nci60_precious_9cell_auc.json`.
+
 **Date:** 2026-10-01 (Wf-424-A14 timestamp)
 **Owner:** Hugo Lee + Wf-424-A14 ultracode (workflow: Wf-424 docs+plan sub-flow)
 **Workflow:** Wf-424-A14 paper §3 v4 metric table update (Main Results)
@@ -75,7 +84,7 @@ Wf-413-A1**. The final lineup is:
 
 | # | Metric | Headline value | Verdict |
 |---|---|---|---|
-| T1 | **m21 NCI-60 9-cell AUC** (D-MPNN k-cell-line multi-task) | `0.8007 ± 0.0160` (k=9 cell lines × 3 seeds × 50 epoch; HCT116 0.85 PASS + HL60 0.9324 + SKOV3 0.9046 + PC3 0.87 + MCF7 0.7441 + A549 0.7758 + A2780 0.6931 + A2780cis 0.7278) | MEASURED |
+| T1 | **m21 NCI-60 9-cell AUC** (D-MPNN k-cell-line multi-task) | `0.7294` (9-cell unweighted mean, 5 seeds × 50 epoch, fixed Bemis-Murcko scaffold split; **0.5923** over the 5 cells with `n_test ≥ 20`) | MEASURED_HONEST_NEGATIVE |
 | T2 | **m17 DrugOOD OOD** (chemprop v2 retrain) | `0.891` (Wf-185 reference, n=5 seeds) | MEASURED (PROJECTED for v3 per Wf-252 §2) |
 | T3 | **m13 RDKit validity** (3D-coords generate) | **1.000** (RDKit-strict on synthetic 192 samples + 0.998 real NCI-60+DrugOOD) | MEASURED |
 | T4 | **m14 CFM decode** (RDKit-strict 3D-embed + sanitise) | **0.998** real (Wf-148 m14_real_cfm, n=5991) + **1.000** synthetic (Wf-124 P2, n=192) | MEASURED_TARGET_HIT_ON_BOTH |
@@ -87,6 +96,11 @@ Wf-413-A1**. The final lineup is:
   honest-limitations as complementary heuristic per Wf-365-A3 §6 + Wf-371-A1 §3.5 +
   Wf-377-A1 §4.2 + Wf-389-A1 §3; `metrics/by_metric/m6_kappa.json::verdict` =
   `MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL`.
+- **m21 NCI-60 9-cell AUC** → DEMOTED from the Tier-1 LEAD sub-table (2026-10-20).
+  `0.7294` on the 9-cell mean but `0.5923` over the cells with `n_test ≥ 20`, on the
+  fixed Bemis-Murcko splitter; the `0.8007` that justified the LEAD claim was measured
+  on a degenerate molecule-level split (BLK-PA12). `metrics/by_metric/nci60_precious_9cell_auc.json::status`
+  = `MEASURED_HONEST_NEGATIVE`. Keep it in §6 as an honest-negative, not in §3.
 
 **Why this reframe is honest** (per `party-twenty-spirit` §3.5):
 
@@ -352,33 +366,48 @@ Tier-2-shippable but also Tier-1-submittable per `party-twenty-spirit §3.5` fra
 
 ### §3.1 T1: m21 NCI-60 9-cell per-cell AUC (D-MPNN k-cell-line multi-task)
 
-**Source:** `metrics/by_metric/nci60_precious_9cell_auc.json` (Wf-312B + Wf-336 audit).
+**Source:** `metrics/by_metric/nci60_precious_9cell_auc.json` (Wf-312B + Wf-336 audit;
+re-measured 2026-10-12 on the fixed Bemis-Murcko splitter, BLK-PA12).
 
-- **MEASURED headline**: per-cell mean ROC-AUC averaged across 9 cell lines × 3 seeds × 50 epoch
-  D-MPNN k-cell-line multi-task (9 cls + 9 reg heads); scaffold split per Wf-246 scaffold
-  utility = `0.8007 ± 0.0160`
-- **Gate target**: `≥ 0.7` (Tier-1 LEAD acceptance floor) — PASSED (margin +0.1007)
-- **Per-cell breakdown**:
-  - `HL60`: `0.9320 ± 0.0136` (highest; 3 seeds: 0.9503, 0.9178, 0.9280)
-  - `SKOV3`: `0.9046 ± 0.0474` (3 seeds: 0.9572, 0.9144, 0.8422)
-  - `PC3`: `0.8700 ± 0.0041` (3 seeds: 0.870, 0.865, 0.875)
-  - `HCT116`: `0.7584 ± 0.0146` (3 seeds: 0.7589, 0.7759, 0.7402)
-  - `A549`: `0.7758 ± 0.0029` (3 seeds: 0.7780, 0.7777, 0.7717)
-  - `MCF7`: `0.7441 ± 0.0017` (3 seeds: 0.7421, 0.7438, 0.7463)
-  - `A2780cis`: `0.7278 ± 0.0406` (3 seeds: 0.7692, 0.7415, 0.6726)
-  - `A2780`: `0.6931 ± 0.0254` (3 seeds: 0.7131, 0.7088, 0.6572; **below 0.7 gate**)
-  - `DU145`: `null` (3 seeds all null — not enough data for cohort)
-- **Krasnow 2026 baseline 0.81** (cite-only, `\PROJECTED{}`); our `0.8007` is essentially
-  AT parity with the Krasnow 2026 reference (gap −0.0093)
-- **Krasnow 2026 gate target 0.86** (cite-only, `\PROJECTED{}`); our overall `0.8007` is
-  BELOW with gap −0.0593 — paper §6 honest-negative
-- **Audit provenance**: Wf-336 audit (`TODO/completed/nci60_9cell_audit.md`) confirms
-  seeds=[0,1,2], epochs=50, scaffold_split=True all match JSON + trainer source
+> **Superseded 2026-10-20.** This section previously reported `0.8007 ± 0.0160` from a 3-seed run on a
+> splitter whose `_scaffold_for` returned `''` for every molecule — i.e. a molecule-level split labelled
+> "scaffold" (BLK-PA12). The 5-seed re-measurement on the fixed splitter is `0.7294`, and the artifact's
+> own `status` is `MEASURED_HONEST_NEGATIVE`. The old per-cell values (HL60 0.9320, SKOV3 0.9046, …) came
+> from that run and no longer appear in `per_cell_line`. Everything below is the live table.
+
+- **MEASURED headline**: per-cell ROC-AUC, unweighted mean over 9 cell lines × 5 seeds × 50 epoch
+  D-MPNN k-cell-line multi-task (9 cls + 9 reg heads); fixed Bemis-Murcko scaffold split
+  = `0.7294` (sample SD across cells `0.2137`; per-seed vectors are not retained in the artifact,
+  so this is not a seed-level error bar)
+- **Resolvable subset**: `0.5923` over the 5 cells with `n_test ≥ 20` — the artifact's own
+  `test_set_size_funnel.primary_mean_auc`. A per-cell AUC on a single-digit test set is not evidence.
+- **Gate target**: `≥ 0.7` (Tier-1 LEAD acceptance floor) — the 9-cell mean PASSES (margin +0.0294);
+  **the resolvable subset does NOT** (−0.1077). Both are reported.
+- **Per-cell breakdown** (`per_cell_line`, 5 seeds):
+  - `PC3`: `0.8028 ± 0.1570` (n_test 18)
+  - `HL60`: `0.8000 ± 0.0623` (n_test 11)
+  - `HCT116`: `0.7517 ± 0.0346` (n_test 31)
+  - `A549`: `0.6951 ± 0.0025` (n_test 107 — the largest test set, and below the 0.7 gate)
+  - `MCF7`: `0.6690 ± 0.0153` (n_test 90)
+  - `A2780`: `0.5104 ± 0.0712` (n_test 48; **at chance**)
+  - `A2780cis`: `0.3356 ± 0.0264` (n_test 28; **below chance** — the artifact's honest-negative cell)
+  - `DU145`: `1.0000` (n_test 7) — not evidence
+  - `SKOV3`: `1.0000` (n_test 3) — not evidence
+- **Krasnov 2026 baseline 0.81** (cite-only, `\PROJECTED{}`); our `0.7294` is BELOW (gap −0.081;
+  −0.218 on the resolvable subset). **Protocol caveat**: Krasnov's 0.81 is a within-metal stratified
+  random-split 5-fold CV; this panel holds whole scaffolds out, which is strictly harder. The two are
+  not like-for-like, so this gap is an upper bound on the true one.
+- **Krasnov 2026 gate target 0.86** (cite-only, `\PROJECTED{}`); BELOW with gap −0.1306 — paper §6
+  honest-negative
+- **Audit provenance**: Wf-336 audit (`TODO/completed/nci60_9cell_audit.md`) confirmed
+  seeds=[0,1,2], epochs=50, scaffold_split=True against the *old* run. The live artifact is the
+  2026-10-12 5-seed rerun (`source: configs/training/nci60_9cell_5seed_50ep_v1.yaml`).
 - **Source**: `metrics/by_metric/nci60_precious_9cell_auc.json::value_overall_mean_auc`
-  + `per_cell_line` + `audit_provenance`
-- **Verdict**: MEASURED on 8 of 9 cells; overall `0.8007 ± 0.0160` PASSED Tier-1 LEAD
-  gate ≥ 0.7; paper §4 LEAD claim candidate (Tier-2 §4 candidate per
-  `docs/SECTION_3_METRIC_REFRAME_TEMPLATE.md`).
+  + `per_cell_line` + `test_set_size_funnel` + `honest_negative`
+- **Verdict**: MEASURED_HONEST_NEGATIVE. The 9-cell mean clears the ≥ 0.7 floor at `0.7294`, but the
+  subset that excludes single-digit test sets is `0.5923` and is behind both the floor and Krasnov.
+  **Not** a §4 LEAD claim candidate; demote to §6 limitations. (The 0.8007 that supported the LEAD
+  claim was measured on the degenerate splitter.)
 
 ### §3.2 T2: m17 DrugOOD OOD AUC (chemprop v2 retrain reference)
 
@@ -519,14 +548,16 @@ to the source JSON / report path on disk.
       \textsc{honest\_negative\_partial\_structural} verdict per Wf-365-A3 +
       Wf-371-A1 + Wf-377-A1 + Wf-389-A1 + Wf-411-A4 verdicts (see
       \S\ref{sec:limitations:v4} for the demoted m6\_kappa honest-negative entry).
-\item \textbf{Tier-1 LEAD acceptance}: per Wf-411-A4 + Wf-413-A1, four of the five
-      Tier-1 LEAD supplementary sub-table metrics (m21 NCI-60 9-cell AUC
-      $0.8007 \pm 0.0160$, m17 DrugOOD OOD chemprop v2 retrain reference
-      $0.6707 \pm 0.0042$ on the lbap\_refined\_ic50\_scaffold split, m13 RDKit
-      validity $1.000$ synthetic / $0.998$ real, m14 CFM decode $0.998$ real /
-      $1.000$ synthetic) PASS the Tier-1 LEAD gate $\geq 0.7$ (AUC) / $\geq 0.8$
-      (decode / validity); m3 Vina V3 combined $-7.782$\,kcal/mol (5/5 PASS
-      industry cutoff $\geq -7.0$) bridges Tier-1 with Tier-2.
+\item \textbf{Tier-1 LEAD acceptance}: per Wf-411-A4 + Wf-413-A1, three of the five
+      Tier-1 LEAD supplementary sub-table metrics (m17 DrugOOD OOD chemprop v2
+      retrain reference $0.6707 \pm 0.0042$ on the
+      lbap\_refined\_ic50\_scaffold split, m13 RDKit validity $1.000$ synthetic /
+      $0.998$ real, m14 CFM decode $0.998$ real / $1.000$ synthetic) PASS the
+      Tier-1 LEAD gate $\geq 0.7$ (AUC) / $\geq 0.8$ (decode / validity).  m21
+      NCI-60 9-cell AUC is $0.7294$ on the 9-cell mean but $0.5923$ once the
+      single-digit test sets are excluded, so it is reported as an
+      honest-negative rather than a PASS.  m3 Vina V3 combined $-7.782$\,kcal/mol
+      (5/5 PASS industry cutoff $\geq -7.0$) bridges Tier-1 with Tier-2.
 \item \textbf{Tier-2 supplementary sub-table scope}: the three supplementary
       invariants (MolLogP, MorganDensity\_r2, Chi3v) are mostly-MODERATE-band
       exploratory correlates ($|r| \geq 0.1$ per Cohen 1988 3-band scheme per
@@ -663,13 +694,17 @@ outputs that anchor paper \S4 (Lead claim candidates) per Wf-411-A4 + Wf-413-A1 
 Wf-424-A14:
 
 \begin{itemize}
-\item \textbf{m21 NCI-60 9-cell AUC} (D-MPNN k-cell-line multi-task, 3 seeds $\times$
-      50 epoch, scaffold split): $0.8007 \pm 0.0160$
-      (\MEASURED{}; \texttt{metrics/by\_metric/nci60\_precious\_9cell\_auc.json::value\_overall\_mean\_auc}).
-      Per-cell breakdown: HL60 $0.9320$, SKOV3 $0.9046$, PC3 $0.8700$, HCT116
-      $0.7584$, A549 $0.7758$, MCF7 $0.7441$, A2780cis $0.7278$, A2780 $0.6931$
-      (\MEASURED{}; same JSON \texttt{per\_cell\_line}). Krasnow 2026 baseline
-      $0.81$ (\PROJECTED{}; cite-only).
+\item \textbf{m21 NCI-60 9-cell AUC} (D-MPNN k-cell-line multi-task, 5 seeds $\times$
+      50 epoch, fixed Bemis-Murcko scaffold split): $0.7294$ on the 9-cell mean,
+      $0.5923$ over the five cells with $n_{\text{test}} \geq 20$
+      (\MEASURED{}; \texttt{metrics/by\_metric/nci60\_precious\_9cell\_auc.json::value\_overall\_mean\_auc}
+      and \texttt{::test\_set\_size\_funnel.primary\_mean\_auc}).
+      Per-cell breakdown: PC3 $0.8028$, HL60 $0.8000$, HCT116 $0.7517$, A549
+      $0.6951$, MCF7 $0.6690$, A2780 $0.5104$, A2780cis $0.3356$; DU145
+      (n=7) and SKOV3 (n=3) both score $1.0000$ and are excluded as
+      unresolvable (\MEASURED{}; same JSON \texttt{per\_cell\_line}). Krasnow 2026
+      baseline $0.81$ (\PROJECTED{}; cite-only, random-split CV — not
+      like-for-like). Recorded as an honest-negative.
 \item \textbf{m17 DrugOOD OOD} (chemprop v2 retrain reference, n=5 seeds):
       $0.6707 \pm 0.0042$ on the lbap\_refined\_ic50\_scaffold split
       (\MEASURED{}; \texttt{metrics/by\_metric/drugood\_v3\_scaffold.json::wf185\_measured\_baseline.lbap\_refined\_ic50\_scaffold\_ood\_test\_mean}).
@@ -778,7 +813,7 @@ discoveries cite honestly and motivate future per-metal targeted experiments.
 - `metrics/by_metric/m2_r2_per_cohort.json::per_cohort[*]` (Wf-388-A1 + Wf-398-A2 + Wf-390-A2)
 - `metrics/by_metric/vina_kcal_per_mol.json::measurements[9].wf333_v3_vina_combined_smoke` (Wf-362-A2)
 - `metrics/by_metric/docked_pose_rmsd.json::aggregate_median_across_pockets = 0.6578` (Wf-362-A3)
-- `metrics/by_metric/nci60_precious_9cell_auc.json::value_overall_mean_auc = 0.8007` (Wf-336 audit)
+- `metrics/by_metric/nci60_precious_9cell_auc.json::value_overall_mean_auc = 0.7294` (5-seed, fixed splitter; `::test_set_size_funnel.primary_mean_auc = 0.5923` over `n_test >= 20`)
 - `metrics/by_metric/drugood_v3_scaffold.json::wf185_measured_baseline.lbap_refined_ic50_scaffold_ood_test_mean = 0.6707`
 - `metrics/by_metric/decode_ratio.json::aggregate.all_measured_cfm_decode_ratio = 0.998` (post-Wf-398-A3 fix)
 - `metrics/by_metric/m6_kappa.json::verdict = MEASURED_HONEST_NEGATIVE_PARTIAL_STRUCTURAL_FINAL`
@@ -840,7 +875,8 @@ the institutional pre-preparation per `AGENTS.md §5.3`.
 This doc lives in `docs/` (NOT `paper/`) per TODO-84 + AGENTS.md §5.3.
 **4 main-result metrics** (m1_auc 0.7577 ± 0.0924 7/7 + m2 R² +0.1981 WEAK_RECOVERY + m3 Vina
 −7.782 kcal/mol + m15 RMSD 0.6578 Å); **5 Tier-1 LEAD supplementary sub-table metrics**
-(m21 NCI-60 9-cell 0.8007 ± 0.0160 + m17 DrugOOD OOD 0.6707/0.62 PROJECTED + m13 RDKit
+(m21 NCI-60 9-cell 0.7294 / 0.5923 resolvable — HONEST-NEGATIVE, not a PASS + m17 DrugOOD OOD
+0.6707/0.62 PROJECTED + m13 RDKit
 validity 1.000 + m14 CFM decode 0.998 + m3 Vina V3 cross-ref); **3 Tier-2 supplementary
 sub-table metrics** (MolLogP +0.1999 5/5 MODERATE + MorganDensity_r2 +0.1644 3/5 MODERATE
 + Chi3v +0.1541 5/5 MODERATE per Wf-411-A4 3-band Cohen 1988 refinement);

@@ -60,6 +60,15 @@
       "status": "HONEST_NEUTRAL",
       "date_utc": "2026-09-27",
       "note": "Wf-129 P2 replay learner regularised bench ran on the Wf-36 P4 synthetic replay buffer (n_entries=128, n_states=8, n_actions=16), NOT on the diversity-evolution pool. Replay learner final_policy_loss = 3.1316 ± 0.27 (target < 0.5, NOT MET); final_value_loss = 0.2969 (target < 1.0, MET). The W₂ regulariser is wired into the policy + value heads (mean_w2_policy = 0.1057, mean_w2_value = 0.4894) but does not lift the synthetic-fixture signal-noise. No diversity_tanimoto effect measurable on the Wf-36 P4 synthetic — the replay learner is upstream of the diversity evolution, not a Tanimoto driver. See TODO/completed/129_l2_l4_l7_joint_rescue.md §2."
+    },
+    {
+      "run": "wf31_phase4_multi_ph_diversity_bench (PlatinAI 5K random subset, n_samples=500, seed=42, n_bins=16)",
+      "value": 0.9036262631416321,
+      "n_samples": 500,
+      "status": "MEASURED",
+      "date_utc": "2026-09-26",
+      "wall_seconds": 164.74,
+      "note": "Multi-PH diversity bench. Cohort differs from the Lambda-MCTS rows above: this measures the intrinsic diversity of a fixed PlatinAI 5K subset, not the model's generation. See wf31_phase5_lift_update.lift_r18_minus_r17_interpretation — the naive lift is APPLES_TO_ORANGES."
     }
   ],
   "aggregate": {
@@ -73,8 +82,41 @@
       "Scaffold-aware gate (auto-pt-strict -> 3 strict-Pt_II compatible rules)",
       "Partner tiles (8 new: 3 azides + 3 boronic + 2 bromides)"
     ],
-    "2026_09_17_EV3_lift": "+28.3% over R12 Path A"
+    "2026_09_17_EV3_lift": "+28.3% over R12 Path A",
+    "scope_note": "best_measured is scoped to the Lambda-MCTS click-diversity trajectory. The wf31_phase4_multi_ph_diversity_bench row is a different cohort (PlatinAI 5K intrinsic diversity) and is deliberately not folded into it — see that row's note."
   },
-  "verdict": "VERIFIED_LIFT \u2014 diversity_tanimoto 0.000 -> 0.1065 on 30 cells after all 4 fixes ship + decoder_rework. Deterministic per-cell (std=0.0). Path B alone did NOT lift (need all 4). Gap to TargetDiff 0.860 still large but lift is real and reproducible. Wf-129 P2 replay learner (regularised, 5-seed \u00d7 30-epoch) ran on the Wf-36 P4 synthetic replay buffer (n_entries=128) \u2014 NO diversity_tanimoto effect measurable on the synthetic (final_policy_loss = 3.13, NOT lifted); the replay learner is upstream of the diversity evolution, not a Tanimoto driver. Real GPU retrain (TODO-92 P1.3) is the deferred workstream.",
-  "honest_framing": "Data source: Lambda-only MCTS path with 30 cells (10x3 ablation) on cisplatin+all-5 cohort (Wf_lift_ev3 n=30, 3 seeds). Model: Lambda MCTS + 4-fix bundle (rule-symmetry, decoder rework, scaffold-aware gate, partner tiles) + SA penalty guidance --sa-weight=0.3. Protocol: 3 seeds \u00d7 10 cells per cohort. TargetDiff 2023 ICLR lit target 0.860 cite-only; iMoLD cite-only. The '4 fixes' mechanism is reproduced (rule-symmetry + decoder rework + scaffold-aware gate + 8 partner tiles) \u2014 Path B alone does NOT lift (need all 4). NOT a head-to-head against TargetDiff graph-NN diversity. Cites TODO-140/141/142/143/144."
+  "verdict": "VERIFIED_LIFT — diversity_tanimoto 0.000 -> 0.1065 on 30 cells after all 4 fixes ship + decoder_rework. Deterministic per-cell (std=0.0). Path B alone did NOT lift (need all 4). Gap to TargetDiff 0.860 still large but lift is real and reproducible. Wf-129 P2 replay learner (regularised, 5-seed × 30-epoch) ran on the Wf-36 P4 synthetic replay buffer (n_entries=128) — NO diversity_tanimoto effect measurable on the synthetic (final_policy_loss = 3.13, NOT lifted); the replay learner is upstream of the diversity evolution, not a Tanimoto driver. Real GPU retrain (TODO-92 P1.3) is the deferred workstream.",
+  "honest_framing": "Data source: Lambda-only MCTS path with 30 cells (10x3 ablation) on cisplatin+all-5 cohort (Wf_lift_ev3 n=30, 3 seeds). Model: Lambda MCTS + 4-fix bundle (rule-symmetry, decoder rework, scaffold-aware gate, partner tiles) + SA penalty guidance --sa-weight=0.3. Protocol: 3 seeds × 10 cells per cohort. TargetDiff 2023 ICLR lit target 0.860 cite-only; iMoLD cite-only. The '4 fixes' mechanism is reproduced (rule-symmetry + decoder rework + scaffold-aware gate + 8 partner tiles) — Path B alone does NOT lift (need all 4). NOT a head-to-head against TargetDiff graph-NN diversity. Cites TODO-140/141/142/143/144.",
+  "wf31_phase5_lift_update": {
+    "metric_id": "m7",
+    "metric_name": "Multi-PH Diversity Tanimoto distance (PlatinAI 5K random subset, Morgan-ECFP4)",
+    "workflow": "Wf-31",
+    "phase": "Phase 5 — MEASURED vs R17 baseline lift comparison",
+    "source_analysis": "molmetal/reports/wf31_m1_m2_m7_lift_analysis.json::metrics[2]",
+    "r17_baseline_value": 0.1065,
+    "r17_baseline_source": "metrics/by_metric/diversity_tanimoto.json measurements[3] (wf_round12_lambda_patha_10x3)",
+    "r17_baseline_status": "MEASURED",
+    "r18_wf31_status": "MEASURED",
+    "r18_wf31_measured_value": 0.9036262631416321,
+    "r18_wf31_source": "molmetal/reports/wf31_m7/metrics.json diversity.mean_tanimoto_distance",
+    "r18_wf31_note": "Wf-31 Phase 4 bench: bench_multi_ph_diversity.py on PlatinAI 5K random subset (n_samples=500, seed=42, n_bins=16, max_pocket_atoms=60, max_radius=5.0). Mean pairwise Tanimoto distance 0.904 (Morgan-ECFP4). Wall = 164.74s on RTX 5090. n_parsed_diversity = 500/500 (0 failures on diversity metric). n_parsed_multiph = 380/500 (120 parse failures on Multi-PH feature, 24% — likely Pt(II) square-planar geometries outside max_radius 5Å).",
+    "r18_wf31_defer_reason": "Both R17 baseline and Wf-31 use Morgan-ECFP4 Tanimoto *distance* on the molecule set. R17 measured GENERATED molecules via Lambda-MCTS (n=30, after gate); Wf-31 measured a FIXED DATASET (PlatinAI 5K random subset, n=500). These are NOT identical cohorts: R17 evaluates the model's ability to generate diverse molecules, Wf-31 evaluates the dataset's intrinsic diversity. The R17 baseline 0.1065 reflects Lambda-MCTS mode collapse (deterministic per-cell, n_distinct_mean=20) while Wf-31 0.904 reflects the much-larger PlatinAI 5K corpus. The naive +0.798 lift is dominated by cohort-size + corpus-intrinsic-differences, not by R18 module lift.",
+    "lift_r18_minus_r17": null,
+    "pass_target_r18": "≥0.75 (R18 PLAN §3 m7 floor)",
+    "sota_target": "0.860 (TargetDiff, Guan 2023 ICLR)",
+    "ship_gate": "≥0.75 (R18 §3 floor) — PASS",
+    "ship_gate_passed": true,
+    "verdict": "HONEST_PASS_ON_FLOOR_APPLES_TO_ORANGES_VS_R17",
+    "verdict_detail": "Wf-31 m7 MEASURED 0.904 ≥ 0.75 R18 §3 floor → PASS. Expressivity delta +0.122 ≥ 0 (R18 §3.6 T5) → PASS. However, the comparison to R17 baseline 0.1065 (Lambda-MCTS generated molecules, n=30, deterministic per-cell) is NOT apples-to-apples: Wf-31 measured a fixed PlatinAI 5K random subset (n=500), which is an order-of-magnitude larger and a fundamentally different source corpus. The honest framing per party-twenty-spirit §3.5 is: floor PASS yes, baseline-comparison lift no. To claim a real generated-molecule lift vs the R17 0.1065, a future bench must run Lambda-MCTS with R18 Multi-PH feature attached and compute Tanimoto distance on the resulting generated molecules (this is the F3(c) flow_matching multi-ph extension work, deferred to R20·P8 new).",
+    "r20_plan_item": "R20·P8 (NEW) — m7 Lambda-MCTS generated-molecule diversity retrain (10 cells × 3 seeds, n_sim=100, attach R18 Multi-PH feature to Lambda-MCTS reward channel; compute Morgan-ECFP4 Tanimoto distance on resulting molecules; honest-apples-to-apples vs R17 0.1065 baseline)",
+    "lift_r18_minus_r17_naive": 0.7971262631416322,
+    "lift_r18_minus_r17_interpretation": "APPLES_TO_ORANGES — R17 measures generated-molecule diversity on 30 cells; Wf-31 measures dataset-intrinsic diversity on 500 PlatinAI 5K molecules. Naive +0.798 lift is dominated by cohort-size and source-corpus differences, not R18 module lift. Honest framing: report MEASURED-on-floor PASS (0.904 ≥ 0.75 floor) without claiming a real lift vs the R17 generated-molecule baseline.",
+    "r18_wf31_expressivity_measured": {
+      "value_delta": 0.12215710431337357,
+      "source": "molmetal/reports/wf31_m7/metrics.json expressivity.delta",
+      "note": "Multi-PH (2-parameter) expressivity = 0.242, Single-PH (1-D Betti marginal) expressivity = 0.120, delta = +0.122. PASS on R18 PLAN §3.6 T5 Multi-PH theoretical lift condition.",
+      "status": "MEASURED"
+    },
+    "r18_section_3_6_t5_multi_ph_theoretical_lift_passed": true
+  }
 }

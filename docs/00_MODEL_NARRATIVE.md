@@ -60,7 +60,7 @@
 | └ hiv | 0.7900 ± 0.0109 | 0.823 | −0.033（已从 −0.076 补回） | 同上 |
 | **m15  docking RMSD** | **0.6578 Å**（5/5 pockets ≤ 2.0 Å） | DiffDock 38.2% < 2 Å | **通过率 100% vs 38.2%** | `docked_pose_rmsd.json` |
 | **m14  decode_ratio** | **0.9647–0.998** | TargetDiff 文献 ≥ 0.5 | **约 2×** | `decode_ratio.json` |
-| **m21  NCI-60 面板 AUC** | **0.7294**（MEASURED, post-Wf-A17 回归, Bemis-Murcko split）／PROJECTED post-revert **0.8007** | Krasnov 0.81 | **−0.08（MEASURED）／≈打平（PROJECTED post-revert）** | `nci60_precious_9cell_auc.json::value_overall_mean_auc` |
+| **m21  NCI-60 面板 AUC** | **0.7294**（MEASURED, 5-seed, 固定 Bemis-Murcko split）／**0.5923**（`n_test ≥ 20` 的 5 个细胞系） | Krasnov 0.81（random-split CV，非同协议） | **−0.08 / −0.22，落后**（honest-negative） | `nci60_precious_9cell_auc.json::value_overall_mean_auc` + `::test_set_size_funnel.primary_mean_auc` |
 | **MoleculeNet bace (m3 pool=mean)** | **0.8399 ± 0.0213** | chemprop-D-MPNN 0.876 | **−0.036**（competitive）— Δ +0.0430 vs M3b baseline 0.7970, paired‑t p₁=0.033 | `molmetal/reports/m3_bace_clintox_mean_2026_10_14/metrics.json` + `metrics/by_metric/m1_m2_m3_ablation.json::arms.M3_pool_mean` |
 | **MoleculeNet clintox (m3 pool=mean)** | **0.8378 ± 0.0319** | chemprop-D-MPNN ~0.90 | −0.06 (within noise) — Δ +0.0058 vs baseline 0.8321, paired‑t p₁=0.346 | 同上 |
 | **Krasnov 对齐 chemprop（3 金属）** | **0.7812**（Re 0.8027 / Os 0.7884 / Rh 0.7525） | Krasnov per-metal | scaffold split, 9/9 runs | `wf219_krasnov_aligned_chemprop_v2_3seed_50epoch_scaffold.json` |
@@ -141,7 +141,7 @@ Ru/Ir 恰好是唯二样本量够分辨的金属（n=1255 / 534，其余 51 / 36
 | 金属内活性 | XGB (Morgan FP + GBDT) 胜出 | Ru 0.8363 / Ir 0.8295 |
 | 跨金属迁移 | D-MPNN (LOMO) | 0.5845 ± 0.0764 |
 | 分子对接 | 自建 Vina 流程 | 中位 RMSD **0.6578 Å**，5/5 ≤ 2.0 Å |
-| NCI-60 贵金属面板 | 自建多细胞系轴 | **0.7294**（MEASURED, post-Wf-A17 回归, Bemis-Murcko split）／PROJECTED 0.8007 post-Wf-A39-1 revert |
+| NCI-60 贵金属面板 | 自建多细胞系轴 | **0.7294**（MEASURED, 5-seed, 固定 Bemis-Murcko split）／**0.5923**（`n_test ≥ 20`） |
 | MoleculeNet bace | D-MPNN pool=**mean**（m3 config） | **0.8399 ± 0.0213** vs chemprop-D-MPNN 0.876, gap −0.036（Δ +0.0430 vs pool=sum baseline, paired‑t p₁=0.033, MEASURED 5-seed） |
 | MoleculeNet clintox | D-MPNN pool=**mean**（m3 config） | **0.8378 ± 0.0319**（Δ +0.0058 vs pool=sum baseline, p₁=0.346, 在噪声内） |
 
@@ -284,18 +284,32 @@ Krasnov 的 0.73（保守 0.8237–0.8374 / 当前 0.8295–0.8597），而 **Ru
 降至 0.7880–0.8082，整体低于 0.81**。因此我们把 Ir 表述为"超过"，**Ru 表述为
 "与已发表值持平"**，并同时报告两种规则下的区间。
 
-**L6 — m21 头条 4 天静默漂移（2026-10-12 → 2026-10-15）。** `nci60_precious_9cell_auc.json`
-的 headline 在 2026-10-12 Wf-A17 commit `0e232defe6`（"+660 line rewrite" of
-`train_dmpnn_multitask_wasserstein.py`）由 **0.8007 降到 0.7294**（A2780cis 0.7278 → 0.3356，
-A2780 0.6931 → 0.5104，7/9 其他细胞系未变）；但本文件 §2.1 仍写 0.8007 直至 2026-10-15。
-Wf-A39-1（commit `af84a5451b`，2026-10-15 08:12）`git checkout 7edc3823a8` 还原了 trainer +
-config；Wf-A39-2 5-seed × 50ep 重测启动但**只跑完 A2780 / A2780cis 的 seed 0（部分完成），
-其余 7 细胞系 × 5 seed 全部未跑**，未生成新的 `training_summary.json`，
-metric JSON **保留 0.7294**。PROJECTED post-revert = 0.8007（数学重构：A2780cis
-0.7278 + A2780 0.6931 完全恢复则 8-cell 均值 = 0.8007），但此为 PROJECTED 标签、
-未经 MEASURED 验证。**披露规则**：paper / reviewer rebuttal 凡引用 m21 必须标
-"0.8007 (pre-Wf-A17 MEASURED; 0.7294 post-Wf-A17 MEASURED, current on-disk)，
-PROJECTED 0.8007 post-Wf-A39-1 revert (re-measurement incomplete)"。
+**L6 — m21 头条 0.8007 → 0.7294（2026-10-12）。** `nci60_precious_9cell_auc.json` 的
+headline 在 2026-10-12 由 **0.8007 降到 0.7294**。artifact 记录的原因是 splitter 修复：
+`molmetal/data/splits.py`（mtime 2026-10-12 01:56:12，BLK-PA12 Step 1）修好了
+`ScaffoldSplitter._scaffold_for` —— 修复前它对每个分子都返回 `''`，所谓 "scaffold" split
+实际是分子级随机 split。修复后整条 scaffold 被留出，split 从 3,645/521/1,041 变为
+4,860/115/232。
+
+**同一天还换了 trainer**（`train_nci60_10cell.py` → `train_dmpnn_multitask_wasserstein.py`
++ `configs/training/nci60_9cell_5seed_50ep_v1.yaml`），所以 0.8007→0.7294 的差值里
+splitter 与 trainer 两个因素**是混在一起的**，不能单独归因于其中一个。原文把原因全归给
+Wf-A17 的 trainer 改写，与 artifact 记录不一致，此处更正。
+
+原文"7/9 其他细胞系未变"是错的。artifact 的
+`::fixed_split_rerun_2026_10_12.prior_values_superseded` 保留了旧值，逐细胞比对
+**8 个已测细胞系全部改变**：MCF7 0.7441→0.6690、A549 0.7758→0.6951、A2780 0.6931→0.5104、
+A2780cis 0.7278→0.3356、HCT116 0.7584→0.7517、PC3 0.8700→0.8028、HL60 0.9320→0.8000、
+SKOV3 0.9046→1.0000（n_test=3）。这种"全变"正是换了测试集的形状，不是换 head 的形状。
+
+**撤回 PROJECTED post-revert 0.8007。** 0.8007 来自退化 splitter（且来自另一个 trainer），
+还原 trainer 不会把它恢复；Wf-A39-2 的 5-seed 重测也只跑完 2 个细胞系的 seed 0。
+该 PROJECTED 没有依据，不再出现在任何主张里。
+
+**披露规则**：paper / reviewer rebuttal 引用 m21 一律用 `0.7294`（9-cell）/
+`0.5923`（`n_test ≥ 20`，5 cells），标 `MEASURED_HONEST_NEGATIVE`，并说明 Krasnov 0.81
+是 within-metal random-split CV、本面板是 scaffold split，两者非同协议。DU145（n=7）与
+SKOV3（n=3）都是 1.0000，属于不可分辨，不作为证据。
 
 ---
 

@@ -2746,6 +2746,36 @@ def gate_nci60_9cell_per_cell_aggregate(
                 f"molmetal/scripts/wf_a55_nci60_aggregate_refresh.py"
             )
 
+    # Same defect class one level up: the file states an "honest" number twice —
+    # once in the block's resolvable_subset, once in test_set_size_funnel's
+    # primary_mean_auc.  Measured 2026-10-20: the first rebuild used a
+    # hand-picked n_test>=10 and wrote 0.6521 while the funnel said 0.5923 at
+    # its own declared primary (n_test_ge_20).
+    funnel = data.get("test_set_size_funnel")
+    resolvable = block.get("resolvable_subset")
+    if isinstance(funnel, dict) and isinstance(resolvable, dict):
+        primary_mean = funnel.get("primary_mean_auc")
+        subset_mean = resolvable.get("unweighted_mean")
+        if isinstance(primary_mean, (int, float)) and isinstance(
+            subset_mean, (int, float)
+        ):
+            if abs(float(primary_mean) - float(subset_mean)) > 1e-3:
+                errors.append(
+                    f"resolvable_subset.unweighted_mean="
+                    f"{float(subset_mean):.4f} disagrees with "
+                    f"test_set_size_funnel.primary_mean_auc="
+                    f"{float(primary_mean):.4f} — one file, two honest numbers; "
+                    f"rebuild with wf_a55_nci60_aggregate_refresh.py"
+                )
+        declared_filter = funnel.get("primary_filter")
+        declared_min = resolvable.get("min_n_test")
+        if isinstance(declared_filter, str) and isinstance(declared_min, int):
+            if declared_filter != f"n_test_ge_{declared_min}":
+                errors.append(
+                    f"resolvable_subset.min_n_test={declared_min} does not match "
+                    f"test_set_size_funnel.primary_filter={declared_filter!r}"
+                )
+
     honest_negative = block.get("honest_negative")
     if not isinstance(honest_negative, dict):
         errors.append("honest_negative missing or not a dict")
@@ -2780,8 +2810,9 @@ def gate_nci60_9cell_per_cell_aggregate(
         priority,
         pipeline,
         "PASS",
-        f"{json_path}: 9-cell breakdown + HCT116 highlight "
-        f"({float(highlight['value']):.4f}) + PC3 honest-negative "
+        f"{json_path}: 9-cell breakdown + {highlight['cell']} highlight "
+        f"({float(highlight['value']):.4f}) + "
+        f"{honest_negative.get('cell', '?')} honest-negative "
         f"({float(honest_negative['value']):.4f}) + overall_mean "
         f"={float(block['overall_mean']):.4f} all consistent",
         elapsed,
@@ -10703,14 +10734,15 @@ def gate_p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds(
             f"parse error: {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
-    # Per actual on-disk JSON schema (Wf-430 fresh-run audit):
-    # nci60_precious_9cell_auc.json::value_overall_mean_auc = 0.8007
-    # is the REAL-MEASURED 9-cell mean AUC (Wf-393-A2 §11.1).
+    # Live field first.  ``aggregate_mean_auc_REAL`` is a legacy 3-seed value
+    # measured on the degenerate splitter (BLK-PA12) and still sits in the file
+    # as history; reading it first made this gate report 0.8007 while the live
+    # table said 0.7294.
     real_value = (
-        data.get("aggregate_mean_auc_REAL")
-        or data.get("aggregate", {}).get("aggregate_mean_auc_REAL")
+        data.get("value_overall_mean_auc")
         or data.get("aggregate_mean_auc")
-        or data.get("value_overall_mean_auc")
+        or data.get("aggregate_mean_auc_REAL")
+        or data.get("aggregate", {}).get("aggregate_mean_auc_REAL")
     )
     if real_value is None:
         return GateResult(
@@ -10718,16 +10750,24 @@ def gate_p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds(
             priority,
             pipeline,
             "FAIL",
-            "nci60_precious_9cell_auc.json missing aggregate_mean_auc_REAL field",
+            "nci60_precious_9cell_auc.json has no aggregate AUC field",
             time.perf_counter() - t0,
         )
+    legacy = data.get("aggregate_mean_auc_REAL")
+    note = ""
+    if isinstance(legacy, (int, float)) and abs(float(legacy) - float(real_value)) > 1e-3:
+        note = (
+            f"; legacy aggregate_mean_auc_REAL={float(legacy):.4f} is the "
+            f"superseded 3-seed degenerate-split value, not the headline"
+        )
+    n_seeds = data.get("n_seeds", "?")
     return GateResult(
         name,
         priority,
         pipeline,
         "PASS",
-        f"m21 NCI-60 9-cell REAL-MEASURED on 3 seeds: mean AUC = {real_value} "
-        f"(per Wf-393-A2 §11.1: 0.8007 ± 0.0160)",
+        f"m21 NCI-60 9-cell REAL-MEASURED on {n_seeds} seeds: mean AUC = "
+        f"{float(real_value):.4f} (status={data.get('status', '?')}){note}",
         time.perf_counter() - t0,
     )
 

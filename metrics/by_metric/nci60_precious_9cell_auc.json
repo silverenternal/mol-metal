@@ -142,7 +142,9 @@
       0.7792
     ],
     "per_seed_mean_auc_mean": 0.8007,
-    "correction_note": "Earlier turn claimed seeds=N/A epochs=N/A. This audit confirms seeds=[0,1,2], epochs=50 are real and reproducible across the trainer source, JSON, and wf report. The N/A claim was wrong."
+    "correction_note": "Earlier turn claimed seeds=N/A epochs=N/A. This audit confirms seeds=[0,1,2], epochs=50 are real and reproducible across the trainer source, JSON, and wf report. The N/A claim was wrong.",
+    "applies_to": "the 3-seed / 0.8007 run audited on 2026-09-27 ONLY. It does NOT cover the live value_overall_mean_auc (0.7294), which is the 2026-10-12 5-seed rerun on the fixed Bemis-Murcko splitter — see fixed_split_rerun_2026_10_12.",
+    "superseded_by": "fixed_split_rerun_2026_10_12"
   },
   "wf31_phase5_lift_update": {
     "metric_id": "m2",
@@ -254,24 +256,25 @@
     },
     "source_of_truth": "per_cell_line — every value here is a copy of that block.  Before 2026-10-20 this block held placeholders (7 of 9 cells at the identical 0.80072, DU145 included only to reach the 9-key floor) and the pre-flight gate validated those instead of the real table.",
     "resolvable_subset": {
-      "min_n_test": 10,
+      "min_n_test": 20,
+      "threshold_source": "test_set_size_funnel.primary_filter",
       "cells_included": [
         "A2780",
         "A2780cis",
         "A549",
         "HCT116",
-        "HL60",
-        "MCF7",
-        "PC3"
+        "MCF7"
       ],
       "cells_excluded": [
         "DU145",
+        "HL60",
+        "PC3",
         "SKOV3"
       ],
-      "n_cells": 7,
-      "unweighted_mean": 0.6520602689568207,
+      "n_cells": 5,
+      "unweighted_mean": 0.5923288209839934,
       "n_weighted_mean": 0.6560527639239814,
-      "why": "A per-cell AUC on a single-digit test set is not evidence — DU145 (n_test=7) and SKOV3 (n_test=3) both scored exactly 1.0 across every seed.  The unweighted 9-cell mean gives those two the same weight as A549 (n_test=107), which is why it is the larger number."
+      "why": "A per-cell AUC on a test set smaller than 20 is not evidence.  Excluded here: DU145 (n_test=7, AUC=1.0000), HL60 (n_test=11, AUC=0.8000), PC3 (n_test=18, AUC=0.8028), SKOV3 (n_test=3, AUC=1.0000).  The unweighted 9-cell mean gives each of those the same weight as A549 (n_test=107), which is why it is the larger number."
     }
   },
   "n_cells_panel": 9,
@@ -298,6 +301,12 @@
       "new_value": "9 / [] / '...9 with MEASURED AUC...'",
       "reason": "The 2026-10-12 fixed-splitter rerun (this file's fixed_split_rerun_2026_10_12 block) trained DU145 for 5 seeds and it scored test_auc=1.0 (n_test=7). value_overall_mean_auc was already updated to the 9-cell mean (0.7293802091886383) but the cell-count metadata still described the pre-rerun 8-cell state, so the headline number and its own n_cells disagreed.",
       "date": "2026-10-12"
+    },
+    {
+      "field": "aggregate_mean_auc_REAL",
+      "old_value": 0.80072017249287,
+      "new_value": null,
+      "reason": "Deprecated 2026-10-20. The field held the 3-seed degenerate-split mean and sat beside value_overall_mean_auc=0.7294 (5 seeds, fixed splitter). Two headline numbers in one file; the live one is value_overall_mean_auc. Field retained, not deleted, because pre-flight's m21 gate and several TODO records referenced it."
     }
   ],
   "aggregate_mean_auc_REAL": 0.80072017249287,
@@ -527,5 +536,13 @@
     "protocol_mismatch_note": "Krasnov 2026's 0.81 is a within-metal stratified 5-fold CV (random split).  This panel is measured on a Bemis-Murcko scaffold split (whole scaffolds held out), which is strictly harder.  The two numbers are not like-for-like; the scaffold-split panel should be compared to a random-split re-measurement of the same panel.",
     "verdict": "Under the BLK-PA16 n_test>=20 filter the panel mean is 0.5923 over 5 cell lines, versus 0.7294 over all 9.  The n_test>=10 sensitivity gives 0.6521 over 7.  Both are BELOW the 0.81 comparator, so on this panel the honest reading is an explicit miss — not a tie, and not a win.  The comparison is also protocol-mismatched (scaffold split here vs Krasnov's random within-metal CV).",
     "honest_framing": "MEASURED, recomputed from on-disk values.  No cell line is dropped from the record: the unfiltered mean and every per_cell_line entry are preserved above."
+  },
+  "aggregate_mean_auc_REAL_deprecated": {
+    "field": "aggregate_mean_auc_REAL",
+    "value": 0.80072017249287,
+    "status": "SUPERSEDED",
+    "reason": "3-seed run on a splitter whose _scaffold_for returned '' for every molecule — a molecule-level split labelled 'scaffold' (BLK-PA12). Do not quote this as the m21 headline.",
+    "superseded_by": "value_overall_mean_auc (5 seeds, fixed Bemis-Murcko splitter)",
+    "deprecated_on": "2026-10-20"
   }
 }

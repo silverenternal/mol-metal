@@ -119,13 +119,31 @@ def test_capped_claim_is_flagged_as_capped():
 
 
 def test_nci60_cell_count_claim_exists():
-    """The 8-vs-9 cell discrepancy must stay asserted, not regress to 9."""
+    """The 8-vs-9 cell discrepancy must stay asserted, not drift silently.
+
+    It moved 8 -> 9 on 2026-10-12: DU145's per-seed AUC was null under the old
+    splitter and is measured (n_test=7) under the fixed one.  Pin the claim
+    against the artifact it cites, so a future edit to either is caught.
+    """
     import yaml
 
     doc = yaml.safe_load(CLAIMS.read_text(encoding="utf-8"))
     by_id = {c["id"]: c for c in doc["claims"]}
-    assert by_id["nci60_cells_with_auc"]["value"] == 8
-    assert by_id["nci60_cells_with_auc"]["field"] == "n_cells_with_measured_auc"
+    claim = by_id["nci60_cells_with_auc"]
+    assert claim["value"] == 9
+    assert claim["field"] == "n_cells_with_measured_auc"
+
+    artifact = json.loads(
+        (REPO_ROOT / claim["source"]).read_text(encoding="utf-8")
+    )
+    assert artifact[claim["field"]] == claim["value"]
+    # The cells that are measured but unresolvable are named, not hidden.
+    unresolvable = {
+        c
+        for c, v in artifact["per_cell_line"].items()
+        if v["n_test"] < 10
+    }
+    assert unresolvable == {"DU145", "SKOV3"}
 
 
 def test_preflight_registers_the_gate():

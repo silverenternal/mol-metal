@@ -100,6 +100,47 @@ def test_n_weighted_mean_uses_test_sizes():
     assert rs["n_weighted_mean"] == pytest.approx(num / sum(N_TEST.values()))
 
 
+def test_threshold_is_taken_from_the_funnel_when_present():
+    """One file must not carry two different 'honest' subsets.
+
+    The artifact's own ``test_set_size_funnel.primary_filter`` is the declared
+    primary (``n_test_ge_20``).  The first rebuild hardcoded 10 and wrote
+    0.6521 beside a funnel that said 0.5923.
+    """
+    doc = _doc()
+    doc["test_set_size_funnel"] = {
+        "primary_filter": "n_test_ge_20",
+        "primary_mean_auc": 0.5923288209839935,
+    }
+    assert refresh._resolve_threshold(doc) == (
+        20,
+        "test_set_size_funnel.primary_filter",
+    )
+    assert refresh._resolve_threshold(_doc())[0] == refresh.MIN_RESOLVABLE_N_TEST
+
+
+def test_build_block_honours_an_explicit_threshold():
+    rs = refresh.build_block(_per_cell(), 20)["resolvable_subset"]
+    assert rs["min_n_test"] == 20
+    assert rs["cells_excluded"] == ["DU145", "HL60", "PC3", "SKOV3"]
+    expected = sum(v for c, v in CELLS.items() if N_TEST[c] >= 20) / 5
+    assert rs["unweighted_mean"] == pytest.approx(expected)
+
+
+def test_refresh_refuses_to_write_when_funnel_disagrees(tmp_path):
+    doc = _doc()
+    doc["test_set_size_funnel"] = {
+        "primary_filter": "n_test_ge_20",
+        "primary_mean_auc": 0.6521,  # the stale n>=10 number
+    }
+    rc = refresh.main(["--artifact", str(_write(tmp_path, doc))])
+    assert rc == 2
+    # Nothing was written: the artifact still has no rebuilt block.
+    assert refresh.BLOCK_KEY not in json.loads(
+        (tmp_path / "nci60.json").read_text(encoding="utf-8")
+    )
+
+
 # --- gate cross-check -----------------------------------------------------
 
 
@@ -135,3 +176,73 @@ def test_gate_still_passes_without_a_real_table(tmp_path):
         "g", "P3", "x", _write(tmp_path, doc)
     )
     assert r.status == "PASS"
+
+
+def _doc_with_funnel():
+    doc = _doc()
+    doc["test_set_size_funnel"] = {
+        "primary_filter": "n_test_ge_20",
+        "primary_mean_auc": 0.5923288209839935,
+    }
+    doc[refresh.BLOCK_KEY] = refresh.build_block(_per_cell(), 20, "funnel")
+    return doc
+
+
+def test_gate_passes_when_subset_and_funnel_agree(tmp_path):
+    r = pf.gate_nci60_9cell_per_cell_aggregate(
+        "g", "P3", "x", _write(tmp_path, _doc_with_funnel())
+    )
+    assert r.status == "PASS"
+
+
+def test_gate_fails_when_subset_mean_disagrees_with_funnel(tmp_path):
+    doc = _doc_with_funnel()
+    doc[refresh.BLOCK_KEY]["resolvable_subset"]["unweighted_mean"] = 0.6521
+    r = pf.gate_nci60_9cell_per_cell_aggregate(
+        "g", "P3", "x", _write(tmp_path, doc)
+    )
+    assert r.status == "FAIL"
+    assert "primary_mean_auc" in r.evidence
+
+
+def test_gate_fails_when_threshold_does_not_match_primary_filter(tmp_path):
+    doc = _doc_with_funnel()
+    doc[refresh.BLOCK_KEY]["resolvable_subset"]["min_n_test"] = 10
+    r = pf.gate_nci60_9cell_per_cell_aggregate(
+        "g", "P3", "x", _write(tmp_path, doc)
+    )
+    assert r.status == "FAIL"
+    assert "primary_filter" in r.evidence
+
+
+# --- the "REAL on 3 seeds" gate reads the live field, not the legacy one ---
+
+
+def _real_doc():
+    doc = _doc()
+    doc["value_overall_mean_auc"] = 0.7293802091886383
+    doc["n_seeds"] = 5
+    doc["status"] = "MEASURED_HONEST_NEGATIVE"
+    # The 3-seed degenerate-split value is still in the file as history.
+    doc["aggregate_mean_auc_REAL"] = 0.80072017249287
+    return doc
+
+
+def test_real_gate_reports_the_live_value_and_names_the_legacy_one(tmp_path):
+    r = pf.gate_p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds(
+        "g", "P3", "x", _write(tmp_path, _real_doc())
+    )
+    assert r.status == "PASS"
+    assert "0.7294" in r.evidence
+    assert "legacy" in r.evidence and "0.8007" in r.evidence
+    assert "5 seeds" in r.evidence
+
+
+def test_real_gate_falls_back_to_the_legacy_field_when_live_is_absent(tmp_path):
+    """A file without the live field still passes — it just says which it read."""
+    doc = {"aggregate_mean_auc_REAL": 0.80072017249287, "n_seeds": 3}
+    r = pf.gate_p3_mock_to_real_m21_nci60_precious_9cell_REAL_3_seeds(
+        "g", "P3", "x", _write(tmp_path, doc)
+    )
+    assert r.status == "PASS"
+    assert "0.8007" in r.evidence

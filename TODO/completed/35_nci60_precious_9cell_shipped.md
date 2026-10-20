@@ -1,5 +1,7 @@
 # TODO-35 — NCI-60 Precious-Metal 9-Cell-Line Cytotoxicity AUC SHIPPED
 
+> **SUPERSEDED 2026-10-20** — the m21 figures in this record (`0.8007 ± 0.0160`, 3 seeds) were measured on a splitter whose `_scaffold_for` returned `''` for every molecule, i.e. a molecule-level split labelled "scaffold" (BLK-PA12). The live 5-seed table on the fixed Bemis-Murcko splitter is **0.7294** (9-cell mean) / **0.5923** (`n_test >= 20`), status `MEASURED_HONEST_NEGATIVE`. See `metrics/by_metric/nci60_precious_9cell_auc.json` and `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` §3.1.
+
 **Supersedes TODO-31 in `pending/`** (`31_r17_ultracode_dispatch.md` §M-R17-M4: Tier-1 NCI-60 metric m21).
 
 **Date shipped**: 2026-09-25

@@ -82,7 +82,10 @@ not buried.
 
 ### Supporting
 
-- `m21_nci60_9cell` 0.8007 ± 0.0160, target 0.70 — **PASS**
+- `m21_nci60_9cell` **0.7294** (9-cell mean) / **0.5923** (`n_test ≥ 20`, 5 cells),
+  target 0.70 — the 9-cell mean passes (+0.029) but the resolvable subset does
+  not (−0.108); recorded as `MEASURED_HONEST_NEGATIVE`, **not** a supporting
+  result. 0.8007 was a 3-seed run on the pre-BLK-PA12 degenerate splitter.
   (`metrics/by_metric/nci60_precious_9cell_auc.json`)
 - Ir within-metal exceeds Krasnov 0.73 under **both** tie rules and all 5 seeds
   (conservative min 0.8237) — **safe to state**

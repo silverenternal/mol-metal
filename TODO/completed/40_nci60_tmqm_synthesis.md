@@ -1,5 +1,7 @@
 # TODO-40 — NCI-60 + tmQM + Protein-Metal Binding (m17/m18/m21) Synthesis
 
+> **SUPERSEDED 2026-10-20** — the m21 figures in this record (`0.8007 ± 0.0160`, 3 seeds) were measured on a splitter whose `_scaffold_for` returned `''` for every molecule, i.e. a molecule-level split labelled "scaffold" (BLK-PA12). The live 5-seed table on the fixed Bemis-Murcko splitter is **0.7294** (9-cell mean) / **0.5923** (`n_test >= 20`), status `MEASURED_HONEST_NEGATIVE`. See `metrics/by_metric/nci60_precious_9cell_auc.json` and `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` §3.1.
+
 **Supersedes TODO-31 in `pending/`** (`31_r17_ultracode_dispatch.md` §M-R17-M2/M3/M4 — three Tier-1 metrics: NCI-60 9-cell AUC + DrugOOD + Protein-Metal binding).
 
 **Date**: 2026-09-25 (R17 close-out)

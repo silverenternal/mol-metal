@@ -1,5 +1,7 @@
 # Wf-18 R18 Mechanism Mapping Synthesis — M22-M44 × 20 Metrics × 8 Skills
 
+> **SUPERSEDED 2026-10-20** — the m21 figures in this record (`0.8007 ± 0.0160`, 3 seeds) were measured on a splitter whose `_scaffold_for` returned `''` for every molecule, i.e. a molecule-level split labelled "scaffold" (BLK-PA12). The live 5-seed table on the fixed Bemis-Murcko splitter is **0.7294** (9-cell mean) / **0.5923** (`n_test >= 20`), status `MEASURED_HONEST_NEGATIVE`. See `metrics/by_metric/nci60_precious_9cell_auc.json` and `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` §3.1.
+
 **Date**: 2026-09-26
 **Round**: R18 ultracode dispatch — closing cycle (Wf-13 → Wf-18)
 **Workflow**: **Wf-18** — synthesis of 23 R18 mechanisms (M22-M44) into the §3 / §5 / §6 / §7 cross-mapping of `TODO/02_metrics/MECHANISM_METRIC_MAPPING.md`, the §7 R18 PROJECTED gains table of `TODO/02_metrics/METRICS_TARGETS.md`, and an 8-skill R18 cross-reference table.

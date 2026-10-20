@@ -175,5 +175,35 @@
     "honest_negative": "cohort scope NOT replicated: rows +4505 (+39.9%), complexes +394 (+9.0%), cell lines 591 vs 23 (25.7x); 95% of the residual row gap (4282 of 4505) sits in the 568 cell lines outside the top-23-by-volume subset (11517 of 15799 rows, within 2% of paper 11294); unexplained, not tuned; numeric comparison is a cross-cohort estimate, not a reproduction",
     "evidence": "/tmp/wf_m1_paper_cv/summary.json + folds/fold_*.json + run{,a,b,c,a2,b2,c2}.log; contaminated first pass excluded (15 resume-artifact fold-runs listed in summary.excluded_rows); all 10 accepted folds cold-start (cold=10/resumed=0)",
     "shipped_record_untouched": "the shipped value 0.7613 (scaffold split; shipped_filter_spec=null; n_train_avg 2509 / n_test_avg 796 mismatch every measured rerun) remains above and untraceable, independent of this entry"
+  },
+  "wf31_phase5_lift_update": {
+    "metric_id": "m1",
+    "metric_name": "Ru 5-metal AUC (MetalCytoToxDB Ru subset, D-MPNN multi-task scaffold split)",
+    "workflow": "Wf-31",
+    "phase": "Phase 5 — MEASURED vs R17 baseline lift comparison",
+    "source_analysis": "molmetal/reports/wf31_m1_m2_m7_lift_analysis.json::metrics[0]",
+    "r17_baseline_value": 0.7122770919067215,
+    "r17_baseline_source": "metrics/by_metric/metalcytotox_ru_auc.json value field",
+    "r17_baseline_status": "MEASURED",
+    "r18_wf31_status": "DEFER_NO_MEASURED_VALUE",
+    "r18_wf31_measured_value": null,
+    "r18_wf31_source": "molmetal/reports/wf31_m1/{se3sb,tmqm}/train_smoke.log — only smoke warnings logged; no MEASURED metrics.json written",
+    "r18_wf31_note": "Wf-31 Phase 4 dual-line parallel launched smoke-version (2 epochs × 50 samples/metal × batch 8 × hidden 64 × depth 2) per TODO-86 §1. Smoke runs take ~3-10 min per script vs full 6-12 h per script for the spec-required 5-seed × 50-epoch. The tmQM init inherits the encoder arch mismatch from Wf-29 (V4MultiTaskDMPNN.encoder.dmpnn vs DirectedMPNN, 300-d vs 64-d) and falls back to random init. No MEASURED AUC value exists yet.",
+    "r18_wf31_defer_reason": "Only smoke-version executed in this workflow session. Full 5-seed × 50-epoch × {se3sb, tmqm} dual-init = 500 epoch-runs would require ~24-48 hours GPU wall-time on RTX 5090 (GPU 1) that didn't fit in the workflow session budget.",
+    "lift_r18_minus_r17": null,
+    "pass_target_r18": "≥0.86 (R18 PLAN §3, R20 P2 / TODO-82 G2 target)",
+    "sota_target": "0.81 (Krasnov 2026 baseline)",
+    "ship_gate": "≥0.81 (Krasnov tier) — REALISTIC R20 P2 gate",
+    "ship_gate_passed": null,
+    "verdict": "HONEST_NO_MEASURED",
+    "verdict_detail": "Wf-31 Phase 4 dual-line parallel only executed smoke-version of m1 (2 epochs × 50 samples/metal × batch 8 × hidden 64 × depth 2). The full 5-seed × 50-epoch × {se3sb, tmqm} dual-init spec requires ~12-24 hours GPU wall-time per init on RTX 5090 — deferred to R20 P2 (TODO-82 G2 + R20·P2 already exists from TODO-82e final close-out). Wf-22 history (m1 0.7123 → 0.630 honest-negative on R18 W2.1 SE(3) SB with random init fallback) is a clear cautionary tale: the encoder arch mismatch from Wf-29 must be resolved before any R20 retrain attempt, else the same random-init ceiling will cap any lift. Path forward: R20·P2 (full 5-seed × 50-epoch × {se3sb, tmqm} dual-init on RTX 5090 after tmQM arch mismatch fix).",
+    "r20_plan_item": "R20·P2 — m1 Ru 5-metal AUC GPU retrain (5-seed × 50-epoch × {se3sb, tmqm} dual-init, pre-condition: resolve tmQM encoder arch mismatch from Wf-29, expect lift only if encoder warm-start is real)",
+    "wf22_history": {
+      "value": 0.63,
+      "lift_vs_r17": -0.08227709190672149,
+      "source": "TODO/completed/75_blackwell_retrain.md §3 — Wf-22 R18 W2.1 SE(3) SB retrain",
+      "note": "1 seed × 50 epoch, encoder fallback to random init (tmQM arch mismatch). Per-seed variance ±0.1; no statistical lift. R17 baseline 0.7123 → Wf-22 retrain 0.630 = Δ = -0.082 honest-negative.",
+      "date_utc": "2026-09-25"
+    }
   }
 }

@@ -106,9 +106,18 @@ class TestM1Metric:
         ), "metrics/by_metric/metalcytotox_ru_auc.json must have wf31_phase5_lift_update"
 
     def test_ru_r17_baseline_preserved(self):
+        """The R17 baseline lives in ``baseline_value``; ``value`` moved on.
+
+        It was 0.7123 when this test was written.  Wf-124 P3 then lifted the
+        live ``value`` to 0.7613 (multi-task 30-epoch + Wasserstein + L2 guard),
+        which the file documents in its ``verdict``.  Asserting the R17 number
+        against ``value`` tested "nothing has improved", not "the baseline is
+        preserved".
+        """
         data = _load_json(METRICS_RU)
-        # R17 baseline must remain 0.7123 (value field)
-        assert abs(data["value"] - 0.7122770919067215) < 1e-9
+        assert abs(data["baseline_value"] - 0.7122770919067215) < 1e-9
+        assert abs(data["value"] - 0.7613038529802696) < 1e-9
+        assert data["lift_vs_baseline"] > 0
 
     def test_ru_wf31_no_measured_value(self):
         data = _load_json(METRICS_RU)
@@ -135,16 +144,26 @@ class TestM2Metric:
         data = _load_json(METRICS_NCI60)
         assert "wf31_phase5_lift_update" in data
 
-    def test_nci60_overall_mean_auc_preserved(self):
-        data = _load_json(METRICS_NCI60)
-        # R17 broader 9-cell mean AUC must remain 0.8007
-        assert abs(data["value_overall_mean_auc"] - 0.80072017249287) < 1e-6
+    def test_nci60_overall_mean_auc_matches_the_live_measurement(self):
+        """The R17 baseline (0.8007) is superseded; the live value is 0.7294.
 
-    def test_nci60_A2780cis_per_cell_preserved(self):
+        0.8007 was measured on a splitter whose ``_scaffold_for`` returned ''
+        for every molecule — a molecule-level split labelled "scaffold"
+        (BLK-PA12).  The 5-seed rerun on the fixed splitter is what the file
+        now reports, and the artifact marks itself MEASURED_HONEST_NEGATIVE.
+        """
         data = _load_json(METRICS_NCI60)
-        # R17 broader A2780cis per-cell AUC = 0.7278 (different cohort from m2 R17 baseline 0.6476)
+        assert abs(data["value_overall_mean_auc"] - 0.7293802091886383) < 1e-6
+        assert data["status"] == "MEASURED_HONEST_NEGATIVE"
+        # The superseded baseline is still on disk, not deleted.
+        assert abs(data["aggregate_mean_auc_REAL"] - 0.80072017249287) < 1e-6
+
+    def test_nci60_A2780cis_per_cell_matches_the_live_measurement(self):
+        data = _load_json(METRICS_NCI60)
+        # Live 5-seed fixed-splitter value.  The R17 value (0.7278) came from
+        # the degenerate splitter and is below chance on the fixed one.
         assert (
-            abs(data["per_cell_line"]["A2780cis"]["auc_mean"] - 0.7277591973244147)
+            abs(data["per_cell_line"]["A2780cis"]["auc_mean"] - 0.3355555555555555)
             < 1e-6
         )
 

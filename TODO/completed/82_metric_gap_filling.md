@@ -1,5 +1,7 @@
 # TODO-82 — Metric Gap Filling final close-out (Wf-29~Wf-34 synthesis)
 
+> **SUPERSEDED 2026-10-20** — the m21 figures in this record (`0.8007 ± 0.0160`, 3 seeds) were measured on a splitter whose `_scaffold_for` returned `''` for every molecule, i.e. a molecule-level split labelled "scaffold" (BLK-PA12). The live 5-seed table on the fixed Bemis-Murcko splitter is **0.7294** (9-cell mean) / **0.5923** (`n_test >= 20`), status `MEASURED_HONEST_NEGATIVE`. See `metrics/by_metric/nci60_precious_9cell_auc.json` and `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` §3.1.
+
 **Date**: 2026-09-26
 **Workflows**: Wf-29 (fix+smoke) · Wf-30 (Vina Dock) · Wf-31 (m1/m2/m7 retrain) · Wf-32 (m16/m19/m8 bench) · Wf-33 (paper v3) · Wf-34 (NEW skill + synthesis)
 **Status**: ⚠️ **PARTIAL SHIP** — 7/7 gaps remain WEAK after Wf-29~Wf-34; only **scaffolding + scripts + verify + 10/10 pocket receptor prep + 1 NEW skill** actually shipped. Real GPU retrain (Wf-30 Phase 2 onward) deferred to R20.

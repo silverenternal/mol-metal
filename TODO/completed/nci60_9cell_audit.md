@@ -1,5 +1,7 @@
 # NCI-60 9-cell Training Provenance Audit
 
+> **SUPERSEDED 2026-10-20** — the m21 figures in this record (`0.8007 ± 0.0160`, 3 seeds) were measured on a splitter whose `_scaffold_for` returned `''` for every molecule, i.e. a molecule-level split labelled "scaffold" (BLK-PA12). The live 5-seed table on the fixed Bemis-Murcko splitter is **0.7294** (9-cell mean) / **0.5923** (`n_test >= 20`), status `MEASURED_HONEST_NEGATIVE`. See `metrics/by_metric/nci60_precious_9cell_auc.json` and `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` §3.1.
+
 **Date:** 2026-09-27
 **Trigger:** Wf-141 §2.1 honest-framing — earlier user turn claimed `seeds=N/A epochs=N/A` for the NCI-60 9-cell metric. The JSON metadata and source report contradict that. This audit settles the provenance before any retrain plan is locked in.
 

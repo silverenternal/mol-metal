@@ -28,7 +28,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -39,14 +39,44 @@ BLOCK_KEY = "wf312b_nci60_smoke_aggregate"
 
 # Below this many test molecules a per-cell AUC cannot support a claim: a
 # 3-molecule test set can reach 1.0 by ranking one positive first.
+#
+# This is only the fallback.  The artifact already carries
+# ``test_set_size_funnel.primary_filter`` (BLK-PA16, ``n_test_ge_20``) — that is
+# the file's own declared primary, and this script must mirror it rather than
+# introduce a second, quieter definition.  Measured 2026-10-20: the first
+# version of this script hardcoded 10 and wrote 0.6521 into
+# ``resolvable_subset`` while ``test_set_size_funnel.primary_mean_auc`` said
+# 0.5923 — two "honest" numbers in one file, which is the same defect class the
+# script was written to remove.
 MIN_RESOLVABLE_N_TEST = 10
+
+
+def _resolve_threshold(doc: Dict[str, object]) -> Tuple[int, str]:
+    """Return ``(min_n_test, where_it_came_from)``.
+
+    Prefers the artifact's own ``test_set_size_funnel.primary_filter`` so the
+    rebuilt block cannot disagree with the funnel that sits beside it.
+    """
+    funnel = doc.get("test_set_size_funnel")
+    if isinstance(funnel, dict):
+        primary = funnel.get("primary_filter")
+        if isinstance(primary, str) and primary.startswith("n_test_ge_"):
+            try:
+                return int(primary.rsplit("_", 1)[1]), "test_set_size_funnel.primary_filter"
+            except ValueError:
+                pass
+    return MIN_RESOLVABLE_N_TEST, "MIN_RESOLVABLE_N_TEST (funnel absent)"
 
 
 def _simple_mean(values: List[float]) -> float:
     return sum(values) / len(values)
 
 
-def build_block(per_cell: Dict[str, Dict[str, object]]) -> Dict[str, object]:
+def build_block(
+    per_cell: Dict[str, Dict[str, object]],
+    min_n_test: int = MIN_RESOLVABLE_N_TEST,
+    threshold_source: str = "MIN_RESOLVABLE_N_TEST",
+) -> Dict[str, object]:
     """Build the aggregate block from the real per-cell measurements."""
     breakdown = {
         cell: {
@@ -66,7 +96,7 @@ def build_block(per_cell: Dict[str, Dict[str, object]]) -> Dict[str, object]:
     hn_value = breakdown[hn_cell]["mean_auc"]
 
     resolvable = {
-        c: b for c, b in breakdown.items() if b["n_test"] >= MIN_RESOLVABLE_N_TEST
+        c: b for c, b in breakdown.items() if b["n_test"] >= min_n_test
     }
     excluded = sorted(c for c in breakdown if c not in resolvable)
     weighted_den = sum(b["n_test"] for b in breakdown.values())
@@ -102,7 +132,8 @@ def build_block(per_cell: Dict[str, Dict[str, object]]) -> Dict[str, object]:
             "and the pre-flight gate validated those instead of the real table."
         ),
         "resolvable_subset": {
-            "min_n_test": MIN_RESOLVABLE_N_TEST,
+            "min_n_test": min_n_test,
+            "threshold_source": threshold_source,
             "cells_included": sorted(resolvable),
             "cells_excluded": excluded,
             "n_cells": len(resolvable),
@@ -113,11 +144,16 @@ def build_block(per_cell: Dict[str, Dict[str, object]]) -> Dict[str, object]:
             ),
             "n_weighted_mean": weighted,
             "why": (
-                "A per-cell AUC on a single-digit test set is not evidence — "
-                "DU145 (n_test=7) and SKOV3 (n_test=3) both scored exactly 1.0 "
-                "across every seed.  The unweighted 9-cell mean gives those two "
-                "the same weight as A549 (n_test=107), which is why it is the "
-                "larger number."
+                f"A per-cell AUC on a test set smaller than {min_n_test} is not "
+                f"evidence.  Excluded here: "
+                + ", ".join(
+                    f"{c} (n_test={breakdown[c]['n_test']}, "
+                    f"AUC={breakdown[c]['mean_auc']:.4f})"
+                    for c in excluded
+                )
+                + ".  The unweighted 9-cell mean gives each of those the same "
+                "weight as A549 (n_test=107), which is why it is the larger "
+                "number."
             ),
         },
     }
@@ -144,7 +180,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 2
 
     old = doc.get(BLOCK_KEY) or {}
-    block = build_block(per_cell)
+    min_n_test, threshold_source = _resolve_threshold(doc)
+    block = build_block(per_cell, min_n_test, threshold_source)
 
     drift = []
     for cell, new in block["per_cell_breakdown"].items():
@@ -162,10 +199,34 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     doc[BLOCK_KEY] = block
 
+    # The funnel and the rebuilt block must state the same honest number.  If
+    # they can drift, one file carries two answers again.
+    funnel = doc.get("test_set_size_funnel")
+    if isinstance(funnel, dict):
+        primary_mean = funnel.get("primary_mean_auc")
+        rs = block["resolvable_subset"]
+        if isinstance(primary_mean, (int, float)) and rs["n_cells"]:
+            delta = abs(float(primary_mean) - rs["unweighted_mean"])
+            if delta > 1e-6:
+                print(
+                    f"[nci60] ERROR: rebuilt resolvable_subset says "
+                    f"{rs['unweighted_mean']:.6f} but "
+                    f"test_set_size_funnel.primary_mean_auc says "
+                    f"{float(primary_mean):.6f} (Δ={delta:.2e}).  Refusing to "
+                    f"write two different honest numbers into one artifact.",
+                    file=sys.stderr,
+                )
+                return 2
+            print(
+                f"[nci60] resolvable_subset agrees with "
+                f"test_set_size_funnel.primary_mean_auc ({float(primary_mean):.4f})"
+            )
+
     print(f"[nci60] overall_mean {block['overall_mean']:.4f} "
           f"(was {old.get('overall_mean')})")
     rs = block["resolvable_subset"]
-    print(f"[nci60] resolvable ({rs['n_cells']}/9, n_test>={rs['min_n_test']}): "
+    print(f"[nci60] resolvable ({rs['n_cells']}/9, n_test>={rs['min_n_test']} "
+          f"from {rs['threshold_source']}): "
           f"unweighted {rs['unweighted_mean']:.4f}, "
           f"n-weighted {rs['n_weighted_mean']:.4f}")
     print(f"[nci60] excluded: {rs['cells_excluded']}")

@@ -1,5 +1,7 @@
 # TODO-23 weak → strong conversion — synthesis report
 
+> **SUPERSEDED 2026-10-20** — the m21 figures in this record (`0.8007 ± 0.0160`, 3 seeds) were measured on a splitter whose `_scaffold_for` returned `''` for every molecule, i.e. a molecule-level split labelled "scaffold" (BLK-PA12). The live 5-seed table on the fixed Bemis-Murcko splitter is **0.7294** (9-cell mean) / **0.5923** (`n_test >= 20`), status `MEASURED_HONEST_NEGATIVE`. See `metrics/by_metric/nci60_precious_9cell_auc.json` and `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` §3.1.
+
 **Date**: 2026-09-26
 **Round**: R17 close-out → R18 plan ship
 **Parent**: `TODO/pending/23_weak_to_strong_plan.md` (R13-deferred, now R18)

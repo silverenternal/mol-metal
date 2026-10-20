@@ -202,12 +202,23 @@ enforces. The gate checked the block's internal consistency, never its agreement
 with the real table, so it PASSed. Fixed:
 `molmetal/scripts/wf_a55_nci60_aggregate_refresh.py` rebuilds the block from
 `per_cell_line`; the gate now cross-checks the two (Δ > 1e-3 on any cell = FAIL).
-The block also carries `resolvable_subset` — 0.6521 over the 7 cells with
-`n_test >= 10`. Pinned by `molmetal/tests/test_nci60_aggregate_refresh.py` (8 tests).
+The block also carries `resolvable_subset`. Its threshold is **not** hand-picked:
+it is read from the artifact's own `test_set_size_funnel.primary_filter`
+(`n_test_ge_20`), giving **0.5923 over 5 cells**, and the rebuild refuses to write
+if the two disagree. (A first version hardcoded `n_test >= 10` and produced 0.6521
+— a second "honest" number beside the funnel's 0.5923, i.e. the same defect class
+one level up. 0.6521 survives only as the `n_test_ge_10` sensitivity row in
+`test_set_size_funnel.subsets`.) Pinned by
+`molmetal/tests/test_nci60_aggregate_refresh.py` (16 tests, including both
+divergence directions and the threshold/filter mismatch).
 **Citation correction:** 0.8007 is a real but superseded 8-cell / 3-seed run
-(DU145 had no test rows); the live number is 0.7294 / 0.6521. `ALIGNED_COMPARISON`
-§0/§2 and both skill files are corrected. `docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md`
-still quotes 0.8007 and is **not** edited here (paper text, §5.3).
+(DU145 had no test rows); the live number is **0.7294 / 0.5923**.
+`ALIGNED_COMPARISON` §0/§2, both skill files, and
+`docs/PAPER_SECTION_3_METRIC_TABLE_FINAL.md` (§3.1 + both LaTeX blocks + the path
+ledger) are corrected; the paper doc now carries m21 as
+MEASURED_HONEST_NEGATIVE and demotes it out of the Tier-1 LEAD sub-table.
+Eight `TODO/completed/` records still contain the old figure but now carry a
+`SUPERSEDED 2026-10-20` banner rather than being rewritten.
 
 **b. The merged Pt pool mixes two label definitions.** In
 `platinai_4cells_with_5metal_train.csv` the `activity` column is not one task:

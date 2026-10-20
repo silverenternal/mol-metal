@@ -144,10 +144,23 @@ def _count_measurements(metric_id: str, payload: Dict) -> int:
     if metric_id == "m21_nci60":
         per_cell = payload.get("per_cell_line", {})
         # Sum across cells (each cell has 3 per_seed values)
-        return sum(
+        n_seed_records = sum(
             len(cell.get("per_seed", []))
             for cell in per_cell.values()
             if isinstance(cell, dict)
+        )
+        if n_seed_records:
+            return n_seed_records
+        # 2026-10-20: the 5-seed rerun on the fixed splitter stores only
+        # per-cell aggregates (``per_seed_available: false``), so counting
+        # ``per_seed`` returned 0 and the probe declared the metric
+        # unprovenanced.  A cell with a numeric ``auc_mean`` *is* a
+        # measurement record.
+        return sum(
+            1
+            for cell in per_cell.values()
+            if isinstance(cell, dict)
+            and isinstance(cell.get("auc_mean"), (int, float))
         )
     return 0
 
@@ -248,10 +261,12 @@ def probe_metric(metric_id: str, rel_path: str) -> MetricProbe:
         )
     elif metric_id == "m21_nci60":
         honest_negative_note = (
-            "DU145 per_seed AUC is null across all 3 seeds (cohort structural "
-            "collapse on DU145); A2780cis (cisplatin-resistant) cohort MEASURED "
-            "0.42 < random-chance floor 0.5 per Wf-312B smoke; not retrainable "
-            "without chemprop v2 backbone + cisplatin-resistance-aware head."
+            "Live 5-seed table on the fixed Bemis-Murcko splitter is 0.7294 "
+            "(9-cell mean) / 0.5923 over the cells with n_test>=20. A2780cis "
+            "0.3356 is below the 0.5 chance floor; A2780 0.5104 is at it. "
+            "DU145 (n_test=7) and SKOV3 (n_test=3) both score 1.0 and are "
+            "unresolvable, not evidence. The 0.8007 previously reported here "
+            "was a 3-seed run on a degenerate molecule-level split (BLK-PA12)."
         )
 
     return MetricProbe(
