@@ -9138,9 +9138,16 @@ MEASURED on that pool:
 | 3 | 26.4265 | 0.7312 | **8.38%** | 0.00% |
 | **all** | | | **4.47%** (126/2,816) | **0.36%** [0.19, 0.65] (10/2,816) |
 
+*(This table is the 4-epoch pool only. The run later finished 18/18 — see "the run finished"
+below for the numbers that supersede the "all" row.)*
+
 Two things follow, and they point in opposite directions:
-  * **Connectivity is improving monotonically** — 2.84% → 8.38% single-fragment over four epochs.
-    The generator is learning to bond atoms, just slowly; four epochs is not where it plateaus.
+  * ⚠️ **CORRECTED below ("the run finished").** ~~**Connectivity is improving monotonically** —
+    2.84% → 8.38% single-fragment over four epochs. The generator is learning to bond atoms, just
+    slowly; four epochs is not where it plateaus.~~ The second sentence was right for the wrong
+    reason: four epochs is not where it plateaus, but the trend does not continue upward in
+    quality — it continues upward in *fragmentation*, reaching 12.22% by epoch 17. Reading a
+    monotone four-point rise as "learning" was an extrapolation, and the full run refutes it.
   * **The synthesis gate is not.** SA ≤ 4.5 at full corpus is **0.36%**, against **0.69%** for the
     n_train=256 pools. Scaling the corpus up did **not** improve it. This is the same conclusion as
     C7 v1.1, now measured on a real full-corpus generation pool rather than inferred from the
