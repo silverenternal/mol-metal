@@ -81,7 +81,13 @@ def consistency_loss_fn(
     Scalar tensor — the consistency regulariser.
     """
     b = int(x_t.shape[0])
-    sigma = sample_edm_sigma(b, sigma_min=sigma_min, sigma_max=sigma_max)
+    # 2026-10-20 (FIX-C8) — sigma must live on x_t's device. It defaulted to
+    # CPU, so ``sigma_b * noise`` raised "Expected all tensors to be on the
+    # same device" on every CUDA step; the trainer's ConsistencyTerm caught the
+    # exception and returned ``torch.zeros(())``, which made the default
+    # ``--consistency-term-weight 0.05`` an exact zero for every run since the
+    # weight was wired in.
+    sigma = sample_edm_sigma(b, sigma_min=sigma_min, sigma_max=sigma_max, device=x_t.device)
     noise = torch.randn_like(x_t)
     sigma_b = sigma.view(-1, *([1] * (x_t.dim() - 1)))
     x_perturbed = x_t + sigma_b * noise

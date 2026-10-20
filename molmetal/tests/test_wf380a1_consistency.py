@@ -52,3 +52,44 @@ def test_module_importable():
     import molmetal.adapters.flow_matching_lipman.consistency_regularization_wf380 as mod
 
     assert hasattr(mod, "consistency_loss_fn")
+
+
+# --- FIX-C8 (2026-10-20) -----------------------------------------------------
+# The sigma draw defaulted to CPU, so on a CUDA input the multiply raised and
+# the trainer's ConsistencyTerm swallowed it and returned exactly zero. The
+# default weight is 0.05, so a non-zero term was silently absent from every run.
+
+
+def test_sigma_draw_follows_the_input_device():
+    if not torch.cuda.is_available():
+        import pytest
+
+        pytest.skip("no CUDA device")
+    x_t = torch.randn(4, 3, device="cuda:0")
+    sigma = sample_edm_sigma(4, device=x_t.device)
+    assert sigma.device == x_t.device
+
+
+def test_consistency_loss_does_not_raise_on_cuda():
+    if not torch.cuda.is_available():
+        import pytest
+
+        pytest.skip("no CUDA device")
+    torch.manual_seed(0)
+    x_t = torch.randn(4, 3, device="cuda:0", requires_grad=True)
+    loss = consistency_loss_fn(lambda z: z * 0.5, x_t, weight=0.05)
+    assert loss.device == x_t.device
+    assert loss.item() > 0.0
+
+
+def test_consistency_loss_carries_gradient():
+    # A LINEAR pred_fn has zero gradient by construction: v(x+sn) - v(x) = s*n
+    # does not depend on x. The term is a smoothness penalty, so it only carries
+    # gradient for a nonlinear field.
+    torch.manual_seed(0)
+    x_t = torch.randn(4, 3, requires_grad=True)
+    loss = consistency_loss_fn(lambda z: torch.tanh(z) * 2.0, x_t, weight=1.0)
+    loss.backward()
+    assert x_t.grad is not None
+    assert torch.isfinite(x_t.grad).all()
+    assert x_t.grad.abs().sum().item() > 0.0

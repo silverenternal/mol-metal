@@ -961,7 +961,7 @@
       "title": "一致性正则项权重 0.05 但每步静默返回 0（设备不匹配）",
       "layer": "模型",
       "priority": "P2",
-      "status": "OPEN",
+      "status": "DONE",
       "gpu": "none",
       "wall": "1 小时",
       "why": "--consistency-term-weight 默认 0.05 且 enabled=True，但 consistency_loss_fn 内部 sample_edm_sigma 默认 device=cpu，与 cuda 上的 noise 相乘抛 RuntimeError，被 ConsistencyTerm.compute 的 except 捕获后返回 torch.zeros(())。所以自该权重上线以来，这一项在每一步都是精确 0。",
@@ -970,7 +970,24 @@
       "gate": "修复后同 seed 单 epoch CPU/GPU smoke：该项非零且 grad 非零。",
       "kill": "若修复后该项数值爆炸或训练发散，则把它显式设为 0 并声明为 DECLARED_INERT_PATHS。",
       "depends_on": [],
-      "note": "2026-10-20 C7 全语料 run 的 smoke 日志里发现。刻意未在 C7 run 进行中修复：修了会改变目标函数，使该 run 与 cfm_fullcorpus_b64 不可比，且这一项在 b64 里同样是死的。"
+      "note": "2026-10-20 C7 全语料 run 的 smoke 日志里发现。刻意未在 C7 run 进行中修复：修了会改变目标函数，使该 run 与 cfm_fullcorpus_b64 不可比，且这一项在 b64 里同样是死的。",
+      "result": {
+        "verdict": "FIXED (term restored; quality effect unmeasured)",
+        "root_cause": "sample_edm_sigma defaulted to device=cpu; sigma_b * noise raised on CUDA; ConsistencyTerm.compute caught it and returned torch.zeros(())",
+        "fix": "sample_edm_sigma(..., device=x_t.device)",
+        "verified": {
+          "trainer_path_value": 0.0010665,
+          "device": "cuda:0",
+          "requires_grad": true,
+          "grad_nonzero": true
+        },
+        "tests": "molmetal/tests/test_wf380a1_consistency.py 7 passed (4 new)",
+        "artifacts": [
+          "docs/HONEST_NEGATIVE_CATALOG.md §6.145"
+        ],
+        "note": "C7 在跑的 run 用的是修前代码（启动早于编辑），因此目标函数与 b64 一致。"
+      },
+      "acceptance_result": "修复后该项非零且梯度非零；质量影响未测，不得声称。"
     }
   ],
   "decision_points": [

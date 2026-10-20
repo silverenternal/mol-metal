@@ -8477,3 +8477,65 @@ docstring corrected; §5.2: every number traces to the probe output reproduced a
 
 ---
 
+### §6.145 FIX-C8 — a 0.05-weight loss term returned exact zero on every CUDA step (2026-10-20)
+
+**Claim under test.**  ``--consistency-term-weight`` defaults to **0.05** with
+``enabled=True``, so the EDM consistency regulariser (Karras 2022) contributes
+``0.05 * L_consistency`` to every CFM training step.
+
+**What was measured.**  It contributes **exactly zero**, on every step, since the
+weight was wired in. Three-line reproduction:
+
+```python
+from molmetal.adapters.flow_matching_lipman.consistency_regularization_wf380 import consistency_loss_fn
+x = torch.randn(4, 3, device="cuda:0")
+consistency_loss_fn(lambda z: z * 0.5, x, weight=0.05)
+# RuntimeError: Expected all tensors to be on the same device ... cuda:0 and cpu
+```
+
+**Root cause.**  ``consistency_loss_fn`` draws ``sigma = sample_edm_sigma(b, ...)``,
+whose ``device`` parameter defaults to ``torch.device("cpu")``. It then computes
+``sigma_b * noise`` where ``noise = torch.randn_like(x_t)`` is on CUDA. The multiply
+raises, ``ConsistencyTerm.compute`` catches every exception by design (``Wf-A34-1 B4``
+"surface instead of swallow"), and returns ``torch.zeros(())``. The warning fires
+once per step, into a log nobody reads at 417 steps/epoch.
+
+**Why it matters beyond one term.**  This is the §6.143 (Wf-A100) failure mode in a
+different disguise. Wf-A100 fixed weights that never reached the trainer; this one
+reached the trainer and then computed nothing. A weight that is declared, parsed,
+enabled, logged — and mathematically absent — is indistinguishable from a working
+one in every artifact the project produces, because the loss sum carries no record
+of which terms were non-zero.
+
+**Fix.**  ``sample_edm_sigma(..., device=x_t.device)``. Verified at the trainer path:
+
+```
+ConsistencyTerm(weight=0.05, enabled=True).compute(pred_fn=tanh, x_t=cuda)
+  -> value 0.0010665  device cuda:0  requires_grad True  grad_nonzero True
+```
+
+**Honest negatives (ACTIVE, this entry):**
+  * **Every CFM run to date trained without this term.**  It was dead from the
+    moment the 0.05 default was set, so no checkpoint on disk carries its effect —
+    including ``cfm_r9_fix_v2`` and every pool used in the C7 audit.
+  * **A linear velocity field has zero gradient through this term by construction.**
+    ``v(x+sn) - v(x) = s*n`` does not depend on ``x``. The regulariser only binds
+    for a nonlinear field, so "the term is non-zero" is not by itself evidence that
+    it does anything; the regression test pins gradient flow through ``tanh``.
+  * **No GPU run measures the term's effect on quality.**  The verification is a
+    shape/gradient check on a 4x3 tensor. Whether restoring it helps or hurts
+    ``bond_type_f1`` / ``gen_validity`` is unmeasured and must not be claimed.
+  * **The C7 full-corpus run in flight (2026-10-20) still uses the pre-fix code.**
+    It was launched before this edit and imported the module at start-up, so its
+    objective matches ``cfm_fullcorpus_b64`` — which is the comparison C7 needs.
+    Fixing it mid-run would have silently made the two runs incomparable.
+
+**§6.145 catalog-count math.** Net catalog-count delta: **+1** (§6.145 itself).
+ACTIVE count delta: **+1**. Cumulative catalog count: **197 -> 198** (+1).
+ACTIVE count: **153 -> 154** (+1).
+
+**Workflow** | FIX-C8 (2026-10-20; CPU + one 4x3 CUDA check; 4 new tests in
+``test_wf380a1_consistency.py``; §5.2: every number traces to the reproduction above;
+§5.3 + §5.4: 0 paper/* + 0 wet-lab).
+
+---
