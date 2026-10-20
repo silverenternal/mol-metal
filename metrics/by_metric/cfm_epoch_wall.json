@@ -91,6 +91,58 @@
       "train_loss": 27.194684,
       "status": "MEASURED",
       "source": "molmetal/reports/c7_sixterms_nogen_2026_10_20/events.jsonl"
+    },
+    {
+      "run": "cfm_c7_fullgen_2026_10_20 (epochs 0-3, cold start)",
+      "what": "first full-corpus epoch timings, n_train=26715, six terms, n_rot=1, gen_eval_n 128 x 6 seeds",
+      "epoch_time_sec": 1063.6,
+      "n_train": 26715,
+      "n_val": 192,
+      "batch_size": 64,
+      "steps_per_epoch": 417,
+      "train_loss": 26.772,
+      "peak_vram_mib": 97331,
+      "recoverable_ooms": 48,
+      "status": "MEASURED",
+      "source": "molmetal/reports/cfm_c7_fullgen_2026_10_20/events.jsonl"
+    },
+    {
+      "run": "cfm_c7_fullgen_2026_10_20 (epoch 4, resumed)",
+      "what": "resumed from epoch-3 checkpoint with PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True and MOLMETAL_EMPTY_CACHE_EVERY=8",
+      "epoch_time_sec": 1140.197,
+      "n_train": 26715,
+      "n_val": 192,
+      "batch_size": 64,
+      "steps_per_epoch": 417,
+      "train_loss": 26.3485,
+      "bond_ce": 0.715,
+      "gen_validity": 1.0,
+      "gen_validity_n": 704,
+      "regularizer_fallbacks": {},
+      "status": "MEASURED",
+      "source": "molmetal/reports/cfm_c7_fullgen_2026_10_20/events.jsonl"
+    },
+    {
+      "run": "cfm_c7_fullgen_2026_10_20 (epoch 5, resumed)",
+      "what": "same settings; first epoch where the regulariser-swallow counter fired",
+      "epoch_time_sec": 1005.79,
+      "n_train": 26715,
+      "n_val": 192,
+      "batch_size": 64,
+      "steps_per_epoch": 417,
+      "train_loss": 26.3107,
+      "bond_ce": 0.7027,
+      "gen_validity": 1.0,
+      "gen_validity_n": 704,
+      "gen_single_fragment_ratio": 0.0952,
+      "gen_ring_3_share": 0.7016,
+      "gen_ring_5_6_share": 0.0783,
+      "regularizer_fallbacks": {
+        "EnergyConservation": 1,
+        "SBOO3Term": 1
+      },
+      "status": "MEASURED",
+      "source": "molmetal/reports/cfm_c7_fullgen_2026_10_20/events.jsonl"
     }
   ],
   "speedup": {
@@ -141,9 +193,11 @@
     }
   ],
   "see_also": [
+    "docs/HONEST_NEGATIVE_CATALOG.md §6.149",
+    "docs/HONEST_NEGATIVE_CATALOG.md §6.150b",
+    "docs/HONEST_NEGATIVE_CATALOG.md §6.150c",
     "metrics/by_metric/cfm_bond_accuracy.json",
-    "metrics/by_metric/decode_ratio.json",
-    "docs/HONEST_NEGATIVE_CATALOG.md §6.149"
+    "metrics/by_metric/decode_ratio.json"
   ],
   "six_term_objective": {
     "status": "MEASURED",
@@ -158,5 +212,22 @@
     "per_step_sec_six_terms": 3.4907,
     "per_step_method": "(47.364676 - 19.437882 bond+decode eval) / 8",
     "comparability": "this run's objective is NOT byte-identical to cfm_fullcorpus_b64; b64-vs-C7 must be read as 'different objective', not 'different scale'"
+  },
+  "memory_decomposition": {
+    "status": "MEASURED",
+    "method": "MOLMETAL_MEM_TRACE=1 prints memory_allocated / memory_reserved / max_memory_allocated after every optimizer step; read from /tmp/c7_calib/resume2.log",
+    "n_train": 26715,
+    "batch_size": 64,
+    "allocated_between_steps_mib": 88,
+    "allocated_trend": "flat at 87-88 MiB across 400+ steps — no reference leak, no retained graph",
+    "reserved_mib_range": [
+      10894,
+      38602
+    ],
+    "reserved_note": "sawtooth bounded by MOLMETAL_EMPTY_CACHE_EVERY=8; nvidia-smi reports THIS number, not allocated",
+    "peak_allocated_mib": 85030,
+    "peak_allocated_note": "converged by step ~150 of epoch 5 and did not move for the next 300 steps, i.e. it is the max over sampled cloud sizes, not growth",
+    "interpretation": "nvidia-smi's 97,331 MiB peak is reserved, not live tensors. The model's true per-step requirement is peak_allocated 85,030 MiB. Any statement that the run 'used 97 GB' is a statement about empty allocator blocks.",
+    "caveat": "peak_allocated 85,030 MiB is still within 10 GB of the 95.06 GiB card minus the 11.3 GB co-tenant, which is why the un-instrumented run died and this one survives."
   }
 }
