@@ -8544,6 +8544,49 @@ ACTIVE count: **153 -> 154** (+1).
 ``test_wf380a1_consistency.py``; §5.2: every number traces to the reproduction above;
 §5.3 + §5.4: 0 paper/* + 0 wet-lab).
 
+#### §6.145b addendum — the term was dead twice over, and the premise of §6.145 was wrong (2026-10-20, same day)
+
+*Addendum to §6.145; no new catalog row, count math below is unchanged.*
+
+§6.145 opened with "``--consistency-term-weight`` defaults to **0.05** with
+``enabled=True``". That premise is **false**, and it was false in a way that made the
+whole entry read as a narrower bug than it is.
+
+**MEASURED via `parse_args()`** (no config, then with `configs/c7_fullgen_2026_10_20.yaml`):
+the dest is `consistency_weight`, and its argparse default is **0.0**. There is no
+`--consistency-term-weight` flag at all; that name is one of the four keys that
+`scripts/_config_binding_gate.py` flags as resolving to no dest (§6.149). The gate at
+`train_cfm_yuelbond_wasserstein.py:4996` is
+`if float(consistency_weight) > 0.0 and fm_objective and x_t is not None:` — so at the
+default the block is **never entered**, and the device bug never fires.
+
+**MEASURED:** `grep -rl consistency_weight configs/*.yaml` returns **0 files**. No
+config-driven run in this repo has ever set it.
+
+So the term was dead **twice**: the weight is 0.0, and even if it had not been, the
+`sample_edm_sigma(device="cpu")` bug would have zeroed it. The fix in §6.145 is still
+correct and still necessary — it just was not the binding constraint.
+
+**Two corrections to §6.145's honest-negatives:**
+
+* "Every CFM run to date trained without this term" — **true, but for the simpler
+  reason**: the weight was 0.0 everywhere. No checkpoint carries its effect either way.
+* "The C7 full-corpus run in flight (2026-10-20) still uses the pre-fix code" —
+  **stale as of 2026-10-20 evening**: there is no run in flight. The three launch
+  attempts (gen_eval 256x6 OOM, 128x6 stalled behind Triton autotune, calibration)
+  produced no artifacts and the report directory was cleared. The C7 launch that is
+  now being prepared sets `consistency_weight: 0.05` explicitly, so it **will** be the
+  first run on disk that carries this term — which also means its objective is not
+  byte-identical to `cfm_fullcorpus_b64`, and any b64-vs-C7 comparison must be read as
+  "different objective", not "different scale".
+
+The general lesson is the one §6.143 keeps teaching from a new angle: an entry can be
+right about the bug and wrong about the premise, and the wrong premise is the part
+that propagates into how the result gets read.
+
+**§6.145b catalog-count math.** Net catalog-count delta: **0** (addendum). Cumulative
+catalog count unchanged at **202**. ACTIVE count unchanged at **158**.
+
 ---
 
 ### §6.146 Wf-A102 — the shortcut class term could never be non-zero, and wiring it shows why it was invisible (2026-10-20)
