@@ -351,6 +351,24 @@ train:
   shortcut_distill: true
   so3_average: true
 
+  # FIX-C11 (2026-10-20) — SBOO3 rotation count, the one memory knob in the
+  # six. SBOO3Term.compute runs 2*n_rot extra velocity-field forwards per step
+  # and holds every graph until backward.
+  #
+  # MEASURED at n_train=4096 (one epoch, gen_eval_n=0, 11.3 GB of another
+  # project's memory resident on the same GPU):
+  #     three regularisers, n_rot n/a    peak 78,320 MiB
+  #     six regularisers, n_rot 4        peak 97,286 MiB  (the whole card)
+  # and the n_train=26715 launch OOM'd on its first step. n_rot 1 runs 2 extra
+  # forwards instead of 8.
+  #
+  # This is an ESTIMATOR change, not a weight change: the term still enters the
+  # loss at 0.05, but the O(3) residual is a 1-sample estimate of the same
+  # expectation instead of a 4-sample average. Higher variance per step, no
+  # bias. It also means this run's loss is NOT numerically comparable to a
+  # n_rot=4 run at the same seed.
+  sboo3_n_rot: 1
+
   # ======================================================================
   # Wf-TRACK5 (2026-10-11) — the two zero-weight loss terms that are NOT
   # degenerate. The third (gen_validity_weight / soft_valence_term) stays 0

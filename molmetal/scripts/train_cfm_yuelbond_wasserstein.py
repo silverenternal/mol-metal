@@ -10349,8 +10349,52 @@ def parse_args() -> argparse.Namespace:
         default=0.05,
         help=(
             "Wf-A100: weight of the SBOO3Term class wrapper (Wf-A23/A44). "
-            "Default 0.05 = ON; 0.0 is bit-exact pre-Wf-A23. sboo3_alpha / "
-            "n_perm / n_rot remain function defaults (0.5 / 4 / 4)."
+            "Default 0.05 = ON; 0.0 is bit-exact pre-Wf-A23."
+        ),
+    )
+    # FIX-C11 (2026-10-20) — the three SBOO3 knobs used to be function
+    # defaults on train_one_epoch (0.5 / 4 / 4) with no argparse dest, so
+    # §5.11 had nothing to bind and a config could not change them. They are
+    # now real dests with those same values as their defaults, which keeps
+    # every existing YAML bit-exact.
+    #
+    # Why n_rot needed a knob: SBOO3Term.compute runs ``2 * n_rot`` extra
+    # velocity-field forwards per step (one ``pred_fn(x_rot)`` and one
+    # ``pred_fn(x_t)`` per rotation) and holds all of their autograd graphs
+    # until backward. MEASURED at n_train=4096 on GPU0 with 11.3 GB of another
+    # project's memory resident: the six-regulariser arm peaks at 97,286 MiB
+    # (the whole card) versus 78,320 MiB for the three-regulariser arm, and the
+    # n_train=26715 launch OOMs on its first step. Dropping n_rot 4 -> 1 cuts
+    # the extra forwards 8 -> 2.
+    p.add_argument(
+        "--sboo3-alpha",
+        type=float,
+        default=0.5,
+        help=(
+            "SBO x O(3) mixing weight inside SBOO3Term. Default 0.5 is the "
+            "pre-FIX-C11 function default, so existing runs are bit-exact."
+        ),
+    )
+    p.add_argument(
+        "--sboo3-n-perm",
+        type=int,
+        default=4,
+        help=(
+            "Batch-order permutations per step inside SBOO3Term. Default 4 is "
+            "the pre-FIX-C11 function default. This term is cheap (no model "
+            "forward) — it is n_rot that costs memory."
+        ),
+    )
+    p.add_argument(
+        "--sboo3-n-rot",
+        type=int,
+        default=4,
+        help=(
+            "O(3) rotations per step inside SBOO3Term. Default 4 is the "
+            "pre-FIX-C11 function default. Each rotation costs TWO extra "
+            "velocity-field forwards and retains both graphs until backward; "
+            "set to 1 when VRAM-bound (1-sample estimate of the same "
+            "expectation, higher variance, no bias)."
         ),
     )
     p.add_argument(
@@ -13900,6 +13944,12 @@ def main() -> int:
             sboo3_term_weight=float(
                 getattr(args, "sboo3_term_weight", 0.05)
             ),
+            # FIX-C11 — these three were function defaults with no dest before;
+            # the getattr fallbacks keep a caller that passes nothing (every
+            # pre-FIX-C11 launch) on the same 0.5 / 4 / 4 values.
+            sboo3_alpha=float(getattr(args, "sboo3_alpha", 0.5)),
+            sboo3_n_perm=int(getattr(args, "sboo3_n_perm", 4)),
+            sboo3_n_rot=int(getattr(args, "sboo3_n_rot", 4)),
             per_cohort_features=bool(getattr(args, "per_cohort_features", False)),
             bond_class_weights=_bond_class_weights,
             # Wf-A90 — reproducible epoch permutation.
