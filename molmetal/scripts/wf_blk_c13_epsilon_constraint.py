@@ -46,13 +46,21 @@ import csv
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import numpy as np
 
 REPO = Path(__file__).resolve().parent.parent.parent
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
+
+from molmetal.eval.bond_metric_schema import (
+    BOND_AP_UNDECLARED,
+    bond_ap_definition,
+    bond_ap_legend,
+    require_single_definition,
+)
+
 
 RUNS = {
     "control": "molmetal/reports/cfm_fm_control_2026_10_09/per_epoch_metrics.csv",
@@ -71,17 +79,26 @@ OBJECTIVES = {
 }
 
 
-def load(rel: str) -> Dict[str, np.ndarray]:
+def load(rel: str) -> Dict[str, Any]:
     rows = list(csv.DictReader((REPO / rel).open(encoding="utf-8")))
     def col(name):
         return np.array([float(r[name]) for r in rows])
     gv_n = col("gen_validity_n")
     gv = col("gen_validity_val")
+    # Wf-A99 (2026-10-20) — these two runs are dated 2026-10-09, i.e. before
+    # Wf-A97 corrected the metric, so their `bond_pr_auc` column is the
+    # NO_BOND one-vs-rest AP (majority class).  The stamp is read from the
+    # CSV when present and reported as `undeclared` otherwise; the module
+    # never guesses a definition from a date.
+    definition = BOND_AP_UNDECLARED
+    if rows and "bond_pr_auc_definition" in rows[0]:
+        definition = bond_ap_definition(rows[-1])
     return {
         "epoch": col("epoch").astype(int),
         "gen_validity": np.where(gv_n > 0, gv / np.where(gv_n > 0, gv_n, 1), 0.0),
         "bond_type_macro_f1": col(OBJECTIVES["bond_type_macro_f1"]),
         "bond_pr_auc": col(OBJECTIVES["bond_pr_auc"]),
+        "bond_pr_auc_definition": definition,
     }
 
 
@@ -160,6 +177,11 @@ def analyse(name: str, run: Dict[str, np.ndarray], second: str) -> Dict:
     return {
         "run": name,
         "second_objective": second,
+        # Wf-A99 — the definition only exists for bond_pr_auc; macro-F1 has
+        # one meaning and does not need a stamp.
+        "second_objective_definition": (
+            run.get("bond_pr_auc_definition") if second == "bond_pr_auc" else None
+        ),
         "n_epochs": int(len(epochs)),
         "pareto_front": [
             {
@@ -230,8 +252,21 @@ def main() -> int:
         ),
         "analyses": [],
     }
+    _runs = {name: load(rel) for name, rel in RUNS.items()}
+    _defs = {name: r["bond_pr_auc_definition"] for name, r in _runs.items()}
+    out["bond_pr_auc_definition"] = _defs
+    out["bond_pr_auc_definition_legend"] = {
+        d: bond_ap_legend(d) for d in sorted(set(_defs.values()))
+    }
+    # Refuses to build a frontier if a future re-run stamps one arm with the
+    # post-Wf-A97 definition and leaves the other unstamped — those numbers
+    # are not on the same scale and a Pareto front over them is meaningless.
+    require_single_definition(
+        [{"run": n, "bond_pr_auc_definition": d} for n, d in _defs.items()],
+        context="blk_c13 epsilon-constraint frontier",
+    )
     for name, rel in RUNS.items():
-        run = load(rel)
+        run = _runs[name]
         for second in ("bond_type_macro_f1", "bond_pr_auc"):
             a = analyse(name, run, second)
             out["analyses"].append(a)

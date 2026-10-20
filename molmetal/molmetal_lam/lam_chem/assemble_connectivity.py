@@ -212,6 +212,59 @@ def mean_stay_probability(
         return float(torch.stack(diags).mean(dim=0).mean())
 
 
+def hinge_tau_from_values(
+    values,
+    *,
+    headroom: float = 1.13,
+    round_to: float = 0.01,
+) -> float:
+    """The ONE definition of the assemble dead-zone threshold rule.
+
+    Wf-A99 (2026-10-20).  The rule "ceil(max * headroom / round_to) *
+    round_to" existed twice: once inside
+    :func:molmetal.scripts.train_cfm_yuelbond_wasserstein.derive_assemble_hinge_tau
+    and once, spelled out as "math.ceil(max(truth) * 1.13 * 100) / 100",
+    inside :mod:molmetal.scripts.wf_a98_assemble_discrimination.  Two copies
+    of a calibration rule is how a probe ends up "reproducing" a trainer
+    value that has since moved -- the same drift the donor-list unification
+    (Wf-A94) and the bond-metric definition stamp (Wf-A99) exist to prevent.
+
+    The rule reproduces the published tmQM value from its published input:
+    0.2649 * 1.13 = 0.2993 -> 0.30.
+
+    Parameters
+    ----------
+    values : iterable of float
+        Per-cloud "what does a correct complex score" statistics.  Only the
+        maximum matters; the full list is accepted so callers can hand over
+        the same collection they already computed.
+    headroom : float
+        Multiplicative margin above the maximum.  1.13 is the published
+        value and is what makes the rule reproduce 0.30.
+    round_to : float
+        Grid the result is rounded UP to.  0.01 keeps tau readable in a
+        config without changing the hinge's behaviour materially.
+
+    Raises
+    ------
+    ValueError
+        When "values" is empty.  Silently returning a default here is the
+        defect the caller exists to remove: a threshold from a different
+        corpus reads ON and contributes zero gradient.
+    """
+    vals = [float(v) for v in values]
+    if not vals:
+        raise ValueError(
+            "hinge_tau_from_values needs at least one statistic; an empty "
+            "corpus must fail loudly rather than fall back to a foreign tau"
+        )
+    step = float(round_to)
+    if step <= 0.0:
+        raise ValueError(f"round_to must be positive, got {round_to!r}")
+    vmax = max(vals)
+    return math.ceil(vmax * float(headroom) / step) * step
+
+
 def _spectral_component_penalty(
     adj: torch.Tensor,
     *,

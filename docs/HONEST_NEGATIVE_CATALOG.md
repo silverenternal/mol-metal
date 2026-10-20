@@ -8064,8 +8064,9 @@ Hanley-McNeil intervals, and then tests whether seed-averaging the *scores*
 [0.5495,0.6456]; Os n=36 0.5831 [0.3907,0.7755]; Rh n=51 **0.3812**
 [0.2217,0.5407]; Re n=74 0.6288 [0.4628,0.7947].  Aggregates: all-metals
 **0.5576**, resolvable-only (Ru+Ir) **0.5974** vs 0.6.  Seed ensemble
-(score-average): Ru 0.5901, Ir **0.6012**, Os 0.5636, Rh 0.3814, Re 0.5722;
-resolvable-only **0.5957**.
+(score-average, one sequential 5x5 batch): Ru 0.5901 [0.5551,0.6252], Ir
+**0.5993** [0.5513,0.6473], Os 0.5701, Rh 0.3724, Re 0.5594; resolvable-only
+**0.5947**.
 
 **Honest negatives (ACTIVE, this entry):**
   * **The published 0.5575 is an artefact of the aggregation.**  Under the
@@ -8075,14 +8076,20 @@ resolvable-only **0.5957**.
     contains 0.5.  Five seeds landing in 0.35-0.43 is model variance on one
     test set, not sampling error (Hanley SE = 0.081).
   * **Seed ensembling is the right direction and is not enough.**  +0.0016 (Ru)
-    and +0.0025 (Ir); resolvable-only 0.5957 < 0.6.  Closing 0.004 needs a
+    and +0.0085 (Ir); resolvable-only 0.5947 < 0.6.  Closing 0.005 needs a
     different representation, not a different aggregate.
   * **The rerun does not reproduce the published panel.**  Re-run all-metal
-    mean 0.5417 vs published 0.5575 (|diff| 0.0158 > the 0.01 pre-registered
-    bar); Re moves 0.6288 -> 0.5438.  Consistent with the known CUDA
-    non-determinism (+-0.08/fold); ``--deterministic`` was not used and the
-    historical panel did not record it.  The ensemble gain is an internal
-    comparison and is valid; the absolute level is not comparable.
+    mean 0.5405 vs published 0.5575 (|diff| 0.0171 > the 0.01 pre-registered
+    bar); Re moves 0.6288 -> 0.5721 (largest fold gap 0.0567).  Consistent with
+    the known CUDA non-determinism (+-0.08/fold); ``--deterministic`` was not
+    used and the historical panel did not record it.  The ensemble gain is an
+    internal comparison and is valid; the absolute level is not comparable.
+  * **The interval convention had to be reconciled.**  The AUC is computed on
+    the dumped rows (Ru 3,668), but rows repeat ligands (~2.8 per ligand), so a
+    binomial SE on rows (Ru 0.0109) understates uncertainty.  The headline CI
+    uses the ligand-collapsed n (Ru SE 0.0179), the same n the resolvability
+    audit uses; the row-based CI is recorded beside it so the two are never
+    confused.  Both resolvable CIs still contain 0.6.
   * **The 0.7 and 0.6 targets were being mixed.**  ``gate_target`` in the
     artifact is 0.7 while ``target_overall_auc`` is 0.6; quoting 0.5575 < 0.7
     overstates the gap.

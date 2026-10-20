@@ -48,6 +48,10 @@ from typing import Any, Dict, List
 
 import torch
 
+from molmetal.molmetal_lam.lam_chem.assemble_connectivity import (
+    hinge_tau_from_values,
+)
+
 REPO = Path(__file__).resolve().parents[2]
 
 # One-hot logit magnitude for a synthetic p in {0, 1}.  softmax([0, 20]) gives
@@ -314,7 +318,10 @@ def main() -> int:
     # comparable: 0.2649 * 1.13 = 0.2993 -> 0.30 reproduces the shipped value.
     tau_corpus = None
     if truth:
-        tau_corpus = math.ceil(max(truth) * 1.13 * 100.0) / 100.0
+        # Wf-A99 — call the trainer's rule instead of re-spelling it.  The
+        # arithmetic is identical; the point is that a future change to the
+        # rule cannot leave the probe "reproducing" a stale constant.
+        tau_corpus = hinge_tau_from_values(truth, headroom=1.13, round_to=0.01)
 
     truth_l2 = col("truth_l2")
     hard_l2 = col("hard_l2")

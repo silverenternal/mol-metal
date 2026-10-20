@@ -14,6 +14,7 @@
     {
       "run": "control",
       "second_objective": "bond_type_macro_f1",
+      "second_objective_definition": null,
       "n_epochs": 30,
       "pareto_front": [
         {
@@ -159,6 +160,7 @@
     {
       "run": "control",
       "second_objective": "bond_pr_auc",
+      "second_objective_definition": "undeclared",
       "n_epochs": 30,
       "pareto_front": [
         {
@@ -304,6 +306,7 @@
     {
       "run": "fm_ab",
       "second_objective": "bond_type_macro_f1",
+      "second_objective_definition": null,
       "n_epochs": 30,
       "pareto_front": [
         {
@@ -459,6 +462,7 @@
     {
       "run": "fm_ab",
       "second_objective": "bond_pr_auc",
+      "second_objective_definition": "undeclared",
       "n_epochs": 30,
       "pareto_front": [
         {
@@ -601,5 +605,12 @@
       ],
       "no_checkpoint_satisfies_both": null
     }
-  ]
+  ],
+  "bond_pr_auc_definition": {
+    "control": "undeclared",
+    "fm_ab": "undeclared"
+  },
+  "bond_pr_auc_definition_legend": {
+    "undeclared": "no definition stamped; pre-Wf-A97 artefacts measured the NO_BOND AP"
+  }
 }

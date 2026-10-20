@@ -264,6 +264,12 @@ def train_one_arm(
             # that only learns existence is worth nothing here.
             "bond_type_macro_f1_pooled": acc.get("bond_type_macro_f1_pooled", 0.0),
             "bond_pr_auc": acc.get("bond_pr_auc", 0.0),
+            # Wf-A99 — the runtime report stamps what the number means;
+            # copy it through so a later reader does not have to guess
+            # which era this row came from.
+            "bond_pr_auc_definition": acc.get(
+                "bond_pr_auc_definition", "undeclared"
+            ),
             "n_scored": acc.get("n_scored", 0),
             "n_truth_bonds": acc.get("n_truth_bonds", 0),
             "secs": round(time.time() - t0, 1),

@@ -24,6 +24,16 @@ from __future__ import annotations
 from pathlib import Path
 
 from molmetal.eval.bond_decision import bond_decision_settings
+from molmetal.eval.bond_metric_schema import (
+    BOND_AP_EXISTENCE,
+    BOND_AP_NO_BOND_LEGACY,
+    BOND_AP_UNDECLARED,
+    MixedBondApDefinition,
+    bond_ap_definition,
+    bond_ap_legend,
+    require_single_definition,
+    stamp_counts,
+)
 
 
 def ckpt_is_smoke_stub(path: "Path") -> bool:
@@ -55,4 +65,15 @@ def ckpt_is_smoke_stub(path: "Path") -> bool:
     return suffix == ".pt" and stem.endswith(".smoke_stub")
 
 
-__all__ = ["ckpt_is_smoke_stub", "bond_decision_settings"]
+__all__ = [
+    "ckpt_is_smoke_stub",
+    "bond_decision_settings",
+    "BOND_AP_EXISTENCE",
+    "BOND_AP_NO_BOND_LEGACY",
+    "BOND_AP_UNDECLARED",
+    "MixedBondApDefinition",
+    "bond_ap_definition",
+    "bond_ap_legend",
+    "require_single_definition",
+    "stamp_counts",
+]

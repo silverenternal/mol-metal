@@ -160,6 +160,13 @@ from molmetal.molmetal_lam.lam_chem.yuelbond_decoder import (
 from molmetal.eval.bond_decision import (
     bond_decision_settings as _bond_decision_settings,
 )
+# Wf-A99 (2026-10-20) — the DEFINITION of ``bond_pr_auc`` is now a
+# stamped field.  Before this, the same name meant the NO_BOND
+# AP before Wf-A97 and the existence AP after it, and no
+# artefact said which.  Consumers import the guard from here.
+from molmetal.eval.bond_metric_schema import (
+    BOND_AP_EXISTENCE as _BOND_AP_EXISTENCE,
+)
 
 # Round-3 D1 — the assemble-aware connectivity term.  Added 2026-10-05
 # because the Round-3 tmQM all6 retrain MEASURED `bond_ce` falling
@@ -169,6 +176,7 @@ from molmetal.eval.bond_decision import (
 # pre-D1 behaviour; see `assemble_loss_weight` in train_one_epoch).
 from molmetal.molmetal_lam.lam_chem.assemble_connectivity import (
     batch_assemble_loss as _batch_assemble_loss,
+    hinge_tau_from_values as _hinge_tau_from_values,
     mean_stay_probability as _mean_stay_probability,
 )
 # Wf-A13 (2026-10-13) — loss-layer modular refactor.  Replaces inline
@@ -1172,6 +1180,13 @@ class EpochMetrics:
     # gap between `bond_pr_auc` and `bond_f1` means the head ranks bonds well
     # and only the decision boundary is wrong.
     bond_pr_auc: float = 0.0
+    # Wf-A99 (2026-10-20) — WHAT the number above measures.  Two definitions
+    # shipped under this name: ``no_bond_ap_v1`` (pre-Wf-A97, AP of the
+    # majority NO_BOND class, 0.62-0.99) and ``existence_ap_v2`` (Wf-A97
+    # onward, AP of bond existence, 0.2659 on the same 64 val clouds).
+    # Empty string on every artefact written before this field existed, which
+    # ``molmetal.eval.bond_metric_schema`` reports as ``undeclared``.
+    bond_pr_auc_definition: str = ""
     bond_best_f1_at_threshold: float = 0.0
     bond_best_f1_threshold: float = 0.0
     # Round-4 E3 — the corpus-wide base rate of bonded pairs.  Without it
@@ -7436,6 +7451,7 @@ def _bond_ranking_report(
     if n == 0 or sum(is_true) == 0:
         return {
             "bond_pr_auc": 0.0,
+            "bond_pr_auc_definition": _BOND_AP_EXISTENCE,
             "bond_best_f1_threshold": 0.0,
             "bond_best_f1_at_threshold": 0.0,
             "bond_pr_auc_note": "no scored pairs or no positives",
@@ -7473,6 +7489,7 @@ def _bond_ranking_report(
     # NO_BOND prior).
     return {
         "bond_pr_auc": float(ap),
+        "bond_pr_auc_definition": _BOND_AP_EXISTENCE,
         "bond_best_f1_threshold": float(best_t),
         "bond_best_f1_at_threshold": float(best_f1),
         "bond_n_pairs_scored": float(n),
@@ -7598,6 +7615,7 @@ def _bond_ranking_report_per_class(
     if len(pair_probs) == 0:
         out: Dict[str, float] = {
             "bond_pr_auc": 0.0,
+            "bond_pr_auc_definition": _BOND_AP_EXISTENCE,
             "bond_best_f1_threshold": 0.0,
             "bond_best_f1_at_threshold": 0.0,
             "bond_n_pairs_scored": 0.0,
@@ -7659,6 +7677,11 @@ def _bond_ranking_report_per_class(
     )
     out["bond_existence_ap"] = float(existence_ap)
     out["bond_pr_auc"] = float(existence_ap)
+    # Wf-A99 — stamp WHAT the number is.  A reader that picks up a run
+    # artefact written before Wf-A97 sees no stamp at all, and
+    # ``bond_metric_schema.bond_ap_definition`` reports it as
+    # ``undeclared`` rather than assuming either definition.
+    out["bond_pr_auc_definition"] = _BOND_AP_EXISTENCE
     out["bond_pr_auc_class0"] = float(out[f"bond_class_{int(BOND_NO_BOND)}_pr_auc"])
     # Legacy ``bond_positive_rate`` = fraction of pairs that are NOT
     # NO_BOND (existence), distinct from the new per-class pos_rate
@@ -12194,7 +12217,11 @@ def derive_assemble_hinge_tau(
 
     vals.sort()
     vmax = vals[-1]
-    tau = math.ceil(vmax * float(headroom) / float(round_to)) * float(round_to)
+    # Wf-A99 — the rule itself lives in one place now, shared with the
+    # Wf-A98 discrimination probe that used to re-spell it.
+    tau = float(
+        _hinge_tau_from_values(vals, headroom=headroom, round_to=round_to)
+    )
     report = {
         "tau": float(tau),
         "rule": "ceil(max * headroom / round_to) * round_to",
@@ -14963,6 +14990,9 @@ def main() -> int:
             bond_exact_match=float(_bond_acc.get("bond_exact_match", 0.0)),
             bond_n_scored=int(_bond_acc.get("n_scored", 0.0)),
             bond_pr_auc=float(_bond_acc.get("bond_pr_auc", 0.0)),
+            bond_pr_auc_definition=str(
+                _bond_acc.get("bond_pr_auc_definition", _BOND_AP_EXISTENCE)
+            ),
             bond_best_f1_at_threshold=float(
                 _bond_acc.get("bond_best_f1_at_threshold", 0.0)
             ),
@@ -15921,6 +15951,9 @@ def main() -> int:
                 "bond_exact_type_rate",
                 "bond_type_macro_f1_pooled",
                 "bond_pr_auc",
+                # Wf-A99 — the definition travels with the number, in the
+                # grep surface as well as the JSON.
+                "bond_pr_auc_definition",
                 "bond_pos_rate",
                 "bond_n_scored",
                 "bond_n_truth_bonds",
@@ -15972,6 +16005,7 @@ def main() -> int:
                     f"{m.bond_exact_type_rate:.4f}",
                     f"{m.bond_type_macro_f1_pooled:.4f}",
                     f"{m.bond_pr_auc:.4f}",
+                    m.bond_pr_auc_definition,
                     f"{m.bond_pos_rate:.4f}",
                     m.bond_n_scored,
                     m.bond_n_truth_bonds,

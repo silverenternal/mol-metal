@@ -106,6 +106,13 @@ ALREADY_ANSWERS: Dict[str, List[str]] = {
 }
 
 
+from molmetal.eval.bond_metric_schema import (
+    bond_ap_definition,
+    bond_ap_legend,
+    stamp_counts,
+)
+
+
 def _f(row: Dict[str, str], key: str) -> Optional[float]:
     try:
         v = float(row.get(key, "") or "nan")
@@ -117,6 +124,14 @@ def _f(row: Dict[str, str], key: str) -> Optional[float]:
 def _gv(row: Dict[str, str]) -> Optional[float]:
     n, v = _f(row, "gen_validity_n"), _f(row, "gen_validity_val")
     return v / n if n and v is not None else None
+
+
+#: Wf-A99 — one glyph per definition so the table stays narrow.
+_DEF_CODE = {
+    "existence_ap_v2": "v2",
+    "no_bond_ap_v1": "v1",
+    "undeclared": "?",
+}
 
 
 def load_run(d: Path) -> Optional[Dict]:
@@ -142,6 +157,11 @@ def load_run(d: Path) -> Optional[Dict]:
         "bond_type_macro_f1": _f(last, "bond_type_macro_f1_pooled"),
         "bond_exact_type_rate": _f(last, "bond_exact_type_rate"),
         "bond_pr_auc": _f(last, "bond_pr_auc"),
+        # Wf-A99 (2026-10-20) — runs written before Wf-A97 carry the
+        # NO_BOND AP here, runs after it carry the existence AP, and
+        # nothing in the old rows said which.  Stamp per row so the
+        # census cannot present the two as one column.
+        "bond_pr_auc_definition": bond_ap_definition(last),
         "decode_ratio": _f(last, "decode_ratio"),
         "gen_validity_max": max(gvs) if gvs else None,
         "gen_validity_end": gvs[-1] if gvs else None,
@@ -166,9 +186,19 @@ def main() -> int:
         if r:
             runs.append(r)
 
+    _defs = stamp_counts(runs)
+    print(
+        "bond_pr_auc definitions present: "
+        + ", ".join(f"{d}={n}" for d, n in sorted(_defs.items()))
+    )
+    for d in sorted(_defs):
+        print(f"  {_DEF_CODE[d]:>4} = {d}: {bond_ap_legend(d)}")
+    print()
+
     hdr = (
         f"{'run':<40}{'ep':>4}{'n_train':>9}{'bs':>4}{'step/ep':>9}"
         f"{'hid':>5}{'lr':>8}{'typeF1':>8}{'exactT':>8}{'gv_max':>8}{'gv_end':>8}"
+        f"{'prAUC':>8}{'def':>4}"
     )
     print(hdr)
     print("-" * len(hdr))
@@ -186,6 +216,7 @@ def main() -> int:
             f"{g('hidden_dim', 5)}{g('lr', 8)}"
             f"{num(r['bond_type_macro_f1'], 8)}{num(r['bond_exact_type_rate'], 8)}"
             f"{num(r['gen_validity_max'], 8)}{num(r['gen_validity_end'], 8)}"
+            f"{num(r['bond_pr_auc'], 8)}{_DEF_CODE[r['bond_pr_auc_definition']]:>4}"
         )
 
     out = {
@@ -197,6 +228,10 @@ def main() -> int:
         ),
         "source": "each run's own per_epoch_metrics.{csv,json}; nothing re-derived",
         "n_runs": len(runs),
+        "bond_pr_auc_definitions": _defs,
+        "bond_pr_auc_definition_legend": {
+            d: bond_ap_legend(d) for d in sorted(_defs)
+        },
         "runs": runs,
         "already_answers": ALREADY_ANSWERS,
         "not_counted": (

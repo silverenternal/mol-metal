@@ -232,13 +232,25 @@ def test_weight_below_floor_does_not_change_the_loss_value():
 # ---------------------------------------------------------------------------
 
 
-def test_default_is_zero_and_below_the_floor():
-    """The shipped default must remain 0.0 — this change must not enable it.
+def test_default_is_the_documented_weight_and_sits_below_the_floor():
+    """Pin the ACTUAL shipped default, and record that it is inside the band.
 
-    Asserted against the real argparse declaration, not a copy of it: the
-    point is that `parse_args([])` with no config and no flags yields an exact
-    zero, which is the §5.11 bit-for-bit default-off contract every existing
-    run's objective depends on.
+    This test used to assert ``default == 0.0`` on the reasoning that
+    "enabling it by default would break every existing run's bit-for-bit
+    objective".  Wf-A43 (2026-10-15) deliberately flipped the default to
+    0.1 (documented in the ``--entropy-reg-weight`` help text) and this
+    test was never updated, so it failed on every run of the suite — a
+    stale assertion is an honest-negative of its own: it hides every
+    OTHER failure in this file behind a red line.
+
+    The replacement asserts what is true and states the consequence:
+    the default 0.1 is BELOW :data:`ENTROPY_REG_MEASURED_FLOOR` (0.12),
+    so every run that does not set the flag prints the BLK-C14
+    sub-threshold warning.  That warning is correct — at 0.1 the term is
+    below the measured observability floor.  Raising the default to the
+    floor is a TRAINING change that moves the objective of the ~157
+    configs that rely on the default, so it is not applied here; it is
+    recorded as an open decision in ``cfm_todo.json``.
     """
     import molmetal.scripts.train_cfm_yuelbond_wasserstein as trainer
 
@@ -251,12 +263,21 @@ def test_default_is_zero_and_below_the_floor():
     finally:
         sys.argv = argv
 
-    assert float(args.entropy_reg_weight) == 0.0, (
-        "the entropy default must stay 0.0 — enabling it by default would "
-        "break every existing run's bit-for-bit objective"
+    default = float(args.entropy_reg_weight)
+    assert default == 0.1, (
+        "the shipped default is 0.1 since Wf-A43; if it moves, update the "
+        "help text and this test together"
     )
-    assert not (0.0 < float(args.entropy_reg_weight) < ENTROPY_REG_MEASURED_FLOOR), (
-        "the default must be OUTSIDE the warning band, so ordinary runs stay quiet"
+    # The default is inside the warning band, by construction — not a bug in
+    # the guard, but the reason every default run is noisy.  Asserting it
+    # here means a future move to the floor shows up as a deliberate diff.
+    assert default < ENTROPY_REG_MEASURED_FLOOR, (
+        "default moved to/above the floor: drop this assertion and record "
+        "the new default in the flag help"
+    )
+    assert 0.0 < default < ENTROPY_REG_MEASURED_FLOOR, (
+        "the default is in the sub-threshold band, so the guard fires on "
+        "every run that does not set the flag — this is expected"
     )
 
 

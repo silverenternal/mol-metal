@@ -52,6 +52,39 @@ def test_rule_reproduces_the_published_threshold():
     assert math.ceil(0.2649 * 1.13 * 100.0) / 100.0 == pytest.approx(0.30)
 
 
+def test_the_rule_lives_in_exactly_one_place():
+    """Wf-A99 — trainer and probe must call the SAME function object.
+
+    The rule used to be spelled twice: inside
+    derive_assemble_hinge_tau and, as
+    "math.ceil(max(truth) * 1.13 * 100) / 100", inside the Wf-A98
+    discrimination probe.  A duplicated calibration rule lets a probe keep
+    "reproducing" a trainer value that has since moved, so this pins
+    identity, not equality of results.
+    """
+    from molmetal.molmetal_lam.lam_chem.assemble_connectivity import (
+        hinge_tau_from_values,
+    )
+    import molmetal.scripts.wf_a98_assemble_discrimination as probe
+
+    T = _trainer()
+    assert T._hinge_tau_from_values is hinge_tau_from_values
+    assert probe.hinge_tau_from_values is hinge_tau_from_values
+    # and the shared rule still reproduces the published 0.30
+    assert hinge_tau_from_values([0.2649]) == pytest.approx(0.30)
+
+
+def test_the_rule_refuses_an_empty_corpus():
+    from molmetal.molmetal_lam.lam_chem.assemble_connectivity import (
+        hinge_tau_from_values,
+    )
+
+    with pytest.raises(ValueError, match="at least one statistic"):
+        hinge_tau_from_values([])
+    with pytest.raises(ValueError, match="round_to must be positive"):
+        hinge_tau_from_values([0.1], round_to=0.0)
+
+
 def test_tau_never_penalises_the_truth_graph():
     """The whole point of the dead zone: a correct complex is never charged."""
     T = _trainer()
