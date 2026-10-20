@@ -103,7 +103,11 @@ LINE_METRICS: Dict[str, Dict[str, str]] = {
     "line2_dmpnn": {
         "m1_ru_auc": "metalcytotox_ru_auc",
         "m19_lomo": "metal_lomo_auc_wasserstein",
-        "m2_r2_per_cell": "platinai_4cell_auc",
+        # m2 is an R², so it must read an R² file.  Until 2026-10-20 this
+        # pointed at platinai_4cell_auc.json, whose unit is ROC-AUC: the gap
+        # table then compared 0.7105 (AUC) against the R² target 0.85 and
+        # reported a 0.14 shortfall where the real one is 0.88.
+        "m2_r2_per_cell": "m2_r2_per_cohort",
         "m21_nci60_9cell": "nci60_precious_9cell_auc",
     },
     "line3_lambda_mcts": {
@@ -128,18 +132,26 @@ METRIC_TARGETS: Dict[str, Dict[str, Any]] = {
         "remains": "no scalar emitted on disk; one GPU probe to score it",
     },
     "m3_vina_dock": {
-        "value_key": "v3_cohort_median_REAL",
+        # The only REAL number on disk is the cisplatin reference mean.  It was
+        # stored under ``v3_cohort_median_REAL``, a name that claims it is the
+        # generated-molecule cohort median — it is not, and its own ``_source``
+        # string says so.  The −7.782 "V3 cohort median" is PROJECTED
+        # arithmetic (333_final_synthesis.md §0), not a docking run.
+        "value_key": "cisplatin_reference_mean_kcal_per_mol",
         "target": -8.5,
         "direction": "<=",
         "verdict": "HONEST_NEGATIVE",
-        "remains": "Pt+2 parameterisation (BLOCKED, Wf-299B); real Vina run blocked",
+        "remains": "Pt+2 parameterisation (BLOCKED, Wf-299B); the REAL value here is the cisplatin positive control, not a generated-molecule score",
     },
     "m7_diversity": {
+        # No target: the metric file explicitly refuses one
+        # (target.note = "NO target is asserted"), so inventing 0.65 here
+        # manufactured a PASS the file never claimed.  No verdict override
+        # either — the file's own MEASURED_NOT_A_CLAIM must survive.
         "value_key": "aggregate.best_measured",
-        "target": 0.65,
-        "direction": ">=",
-        "verdict": "HONEST_NEGATIVE",
-        "remains": "GPU launch L1 (flags ON, ~4hr) converts PROJECTED->MEASURED; will not reach 0.65",
+        "target": None,
+        "direction": None,
+        "remains": "no target is asserted at n=37-47 (see m7_diversity.json::target.note); GPU launch L1 would convert PROJECTED->MEASURED, not make the number comparable",
     },
     "m1_ru_auc": {
         "target": 0.86,
@@ -154,10 +166,11 @@ METRIC_TARGETS: Dict[str, Dict[str, Any]] = {
         "remains": "P-A drift ALREADY FIXED on disk (real-only 5-fold); doc retag only",
     },
     "m2_r2_per_cell": {
+        "value_key": "aggregate.mean_r2",
         "target": 0.85,
         "direction": ">=",
         "verdict": "HONEST_NEGATIVE",
-        "remains": "closed structural (Wf-369-A2); synthetic labels; no GPU",
+        "remains": "closed structural (Wf-369-A2); REAL cohorts per Wf-388-A1 (2 of 3 independent — hilbert is aliased); no GPU",
     },
     "m21_nci60_9cell": {
         "target": 0.70,
@@ -485,7 +498,16 @@ def check_metrics(repo_root: Path = REPO_ROOT) -> CheckResult:
             continue
         checks.append({"id": mid, "status": "PASS", "detail": "source_json hash current"})
     status = "FAIL" if bad else ("STALE" if stale else "PASS")
-    return CheckResult("metrics", status, checks, f"{len(checks)-bad-stale} current, {stale} stale, {bad} missing")
+    unlabelled = sum(
+        1 for rec in (reg.get("metrics") or {}).values() if rec.get("status") is None
+    )
+    return CheckResult(
+        "metrics",
+        status,
+        checks,
+        f"{len(checks)-bad-stale} current, {stale} stale, {bad} missing, "
+        f"{unlabelled} indexed without a status field",
+    )
 
 
 def check_all(repo_root: Path = REPO_ROOT) -> Dict[str, CheckResult]:

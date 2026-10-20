@@ -4,7 +4,7 @@
   "unit": "count of training molecules",
   "scope": "CFM training-data filter (r10_cfg_real_crossdocked.py)",
   "status": "MEASURED via Phase 1 filter fix",
-  "source": "wf_metallodrug_vertical/phase1_filter_fix.md (2026-09-16)",
+  "source": "molmetal/reports/wf_metallodrug_vertical/phase1_filter_fix.md (2026-09-16)",
   "source_file": "molmetal/scripts/r10_cfg_real_crossdocked.py line 308 (--n-train CLI default)",
   "pre_widzuipcl": {
     "n_train": 32,

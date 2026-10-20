@@ -3,7 +3,7 @@
   "description": "Vina Score: mean +/- std AutoDock Vina top-pose kcal/mol across docked molecules per pocket (TargetDiff Table 1 convention; TODO-22 metric #1).",
   "unit": "kcal/mol (mean +/- std across pool; lower = better)",
   "scope": "pocket-bound docking metric (TODO-22 metric #1) \u2014 Phase-1B pocket 3eml",
-  "source": "Pool: 100 drug-like SMILES sampled from molmetal/data/metallo_drugs_500_train.csv (metallo complexes filtered out, Vina can't dock them via meeko). Engine: VinaDockingAdapter-equivalent direct Vina API. Receptors prepared with mk_prepare_receptor.py --allow_bad_res --default_altloc A. Exhaustiveness=4 (reduced from 830c reference 8 for time budget). Wall-clock: 29.0 s for 20 mols.",
+  "source": "Pool: 100 drug-like SMILES sampled from molmetal/data/metallo_drugs_500_train.csv (metallo complexes filtered out, Vina can't dock them via meeko). Engine: VinaDockingAdapter-equivalent direct Vina API. Receptors prepared with meeko.cli.mk_prepare_receptor (shipped as .venv/bin/mk_prepare_receptor.py) --allow_bad_res --default_altloc A. Exhaustiveness=4 (reduced from 830c reference 8 for time budget). Wall-clock: 29.0 s for 20 mols.",
   "value": {
     "mean": -6.1357,
     "std": 0.9439,

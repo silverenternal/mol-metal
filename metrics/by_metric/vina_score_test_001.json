@@ -3,7 +3,7 @@
   "description": "Vina Score: mean +/- std AutoDock Vina top-pose kcal/mol across docked molecules per pocket (TargetDiff Table 1 convention; TODO-22 metric #1).",
   "unit": "kcal/mol (mean +/- std across pool; lower = better)",
   "scope": "pocket-bound docking metric (TODO-22 metric #1)",
-  "source": "no dock_results.csv produced for pocket test_001 (receptors missing)",
+  "source": "no docking results produced for pocket test_001 (receptors missing)",
   "value": {
     "mean": null,
     "std": null,

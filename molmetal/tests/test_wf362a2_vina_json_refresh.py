@@ -1,36 +1,44 @@
-"""Wf-362-A2 Vina JSON refresh regression tests.
+"""m3 Vina JSON honesty tests (rewritten 2026-10-20).
 
 ================================================================
-Why this test file exists
+Why this file was rewritten
 ================================================================
-Per Wf-359-A3 audit: metrics/by_metric/vina_kcal_per_mol.json was
-STALE (~28h, last MEASURED entry Wf-143 P4 2026-09-27) with no
-Wf-333-V3 combined entry even though V3 cohort lift closes the
-m3 Vina Dock gap (cohort median -7.782 kcal/mol PASSES industry
--7.0 by +0.782 margin per Wf-331-R1 §6.3-§6.4).
+The original Wf-362-A2 tests asserted that
+``metrics/by_metric/vina_kcal_per_mol.json`` had been refreshed with a
+``wf333_v3_*`` measurement entry worth −7.782 kcal/mol that "PASSES
+industry −7.0 by +0.782 margin".  That refresh never landed:
+``git log -S wf333_v3 -- metrics/by_metric/vina_kcal_per_mol.json`` is
+empty, so the file has never contained such an entry, and the tests
+have been red since they were written.
 
-Wf-362-A2 refreshes the JSON with the Wf-333-V3 V1+V2+V3 combined
-entry (V0 MEASURED + V1+V2+V3 PROJECTED per Wf-331-R1 §6.6).
+More importantly, the claim they encoded was not measurable.  In
+``molmetal/reports/wf333v3_vina_p2p3/smoke_per_pocket.json`` every
+pocket's "V3 combined" value is the REAL Vina score plus a fixed
+−4.5 kcal/mol constant (per-centre −1.5 + per-bond −3.0, with the
+distance term folded into the same ladder)::
 
-Verification axes (2 NEW tests):
+    1h36: vina −3.589 → v3 −8.089   (Δ = −4.5)
+    4aaw: vina −3.282 → v3 −7.782   (Δ = −4.5)
 
-1. test_v3_entry_present — the JSON now contains the wf333_v3_*
-   combined entry dated 2026-09-29 sourced from
-   wf333v3_vina_p2p3/smoke_per_pocket.json.
-2. test_v3_combined_median_matches_smoke — the V3 combined cohort
-   median in the JSON (-7.782 kcal/mol) matches the headline in
-   molmetal/reports/wf333v3_vina_p2p3/smoke_per_pocket.json.
+The "lift" is therefore arithmetic on a hand-set constant, not a
+docking run, and ``TODO/completed/333_final_synthesis.md`` §0 tags the
+V3 −1.5 delta PROJECTED.  The same JSON's own
+``aggregate.n_pockets_pass_cutoff_minus7`` is 0 — the file contradicted
+the test that read it.
 
-Honest framing
---------------
-* CPU-only; depends on JSON parsing only (stdlib json).
-* The V0 kcal/mol values are MEASURED per Wf-143 / Wf-325B; the
-  V1+V2+V3 lifts are PROJECTED per Wf-331-R1 §6.3-§6.4 (per-bond
-  F2(a) -1.5 + per-centre -1.5 + distance sub-score -1.5;
-  total -4.5 kcal/mol combined).
-* The JSON refresh is not a re-bench; it consolidates existing
-  measured + projected results into the file that downstream
-  consumers (paper §4.5, dashboard) read.
+What this file asserts now
+--------------------------
+1. The V3 ladder is provably a constant offset (per pocket AND in the
+   smoke headline), so it cannot be reported as a measurement.
+2. The JSON records no ``wf333_v3_*`` measurement entry.
+3. The only REAL number is the cisplatin positive control, and it is
+   flagged as a control rather than passed off as a model score.
+4. The old mislabelled key ``v3_cohort_median_REAL`` is gone.
+5. The measured values do not pass the −7.0 industry cutoff.
+6. The tuning block that quotes −7.782 is tagged PROJECTED.
+
+Per AGENTS.md §5.2 every assertion here is either arithmetic over
+on-disk files or a structural presence/absence check.
 """
 
 from __future__ import annotations
@@ -47,8 +55,9 @@ SMOKE_PATH = (
     REPO_ROOT / "molmetal" / "reports" / "wf333v3_vina_p2p3" / "smoke_per_pocket.json"
 )
 
-# The headline median that Wf-362-A2 propagates into the JSON.
-V3_COMBINED_MEDIAN_KCAL_MOL = -7.782
+# The constant the V3 ladder adds to every pocket's real Vina score.
+V3_CONSTANT_OFFSET_KCAL_MOL = -4.5
+INDUSTRY_CUTOFF_KCAL_MOL = -7.0
 
 
 def _load_json(path: Path) -> Dict[str, Any]:
@@ -57,243 +66,122 @@ def _load_json(path: Path) -> Dict[str, Any]:
         return json.load(f)
 
 
-# ---------------------------------------------------------------------------
-# Test 1: V3 entry is now present in the JSON
-# ---------------------------------------------------------------------------
-class TestV3EntryPresent:
-    """The Wf-333-V3 combined entry must now be present in
-    metrics/by_metric/vina_kcal_per_mol.json.
-    """
+def _v3_measurement_entries(data: Dict[str, Any]) -> list:
+    return [
+        m
+        for m in data.get("measurements", [])
+        if isinstance(m, dict)
+        and isinstance(m.get("run", ""), str)
+        and m["run"].startswith("wf333_v3_")
+    ]
 
-    def test_json_exists(self) -> None:
+
+# ---------------------------------------------------------------------------
+# The ladder is arithmetic, not a docking run
+# ---------------------------------------------------------------------------
+class TestV3LadderIsArithmetic:
+    def test_inputs_exist(self) -> None:
         assert JSON_PATH.exists(), f"vina_kcal_per_mol.json missing at {JSON_PATH}"
+        assert SMOKE_PATH.exists(), f"smoke_per_pocket.json missing at {SMOKE_PATH}"
 
     def test_json_parses(self) -> None:
         data = _load_json(JSON_PATH)
         assert isinstance(data, dict)
-        assert "measurements" in data
-        assert "aggregate" in data
-        assert "verdict" in data
+        for key in ("measurements", "aggregate", "verdict"):
+            assert key in data, f"vina_kcal_per_mol.json missing {key!r}"
 
-    def test_v3_entry_in_measurements(self) -> None:
-        """At least one measurement entry must be a wf333_v3_* combined run."""
-        data = _load_json(JSON_PATH)
-        v3_entries = [
-            m
-            for m in data["measurements"]
-            if isinstance(m, dict)
-            and isinstance(m.get("run", ""), str)
-            and m["run"].startswith("wf333_v3_")
-        ]
-        assert len(v3_entries) >= 1, (
-            "expected at least one wf333_v3_* combined entry in "
-            f"vina_kcal_per_mol.json; got {len(v3_entries)} of "
-            f"{len(data['measurements'])} total"
+    def test_every_pocket_offset_is_the_same_constant(self) -> None:
+        """v3_combined − vina must equal −4.5 for every pocket.
+
+        A real re-bench would not produce a constant difference; a
+        constant difference is proof the V3 number is derived.
+        """
+        smoke = _load_json(SMOKE_PATH)
+        per_pocket = smoke["per_pocket"]
+        assert per_pocket, "smoke_per_pocket.json has no per_pocket entries"
+        for pocket, row in per_pocket.items():
+            offset = row["v3_combined_kcal_mol"] - row["vina_kcal_mol"]
+            assert offset == pytest.approx(
+                V3_CONSTANT_OFFSET_KCAL_MOL, abs=1e-6
+            ), (
+                f"pocket {pocket}: v3 − vina = {offset}, expected the constant "
+                f"{V3_CONSTANT_OFFSET_KCAL_MOL}"
+            )
+
+    def test_headline_median_offset_is_the_same_constant(self) -> None:
+        smoke = _load_json(SMOKE_PATH)
+        headline = smoke["headline"]
+        offset = (
+            headline["cohort_v3_combined_median_kcal_mol"]
+            - headline["cohort_v0_vina_median_kcal_mol"]
+        )
+        assert offset == pytest.approx(V3_CONSTANT_OFFSET_KCAL_MOL, abs=1e-6), (
+            f"headline V3 − V0 = {offset}, expected {V3_CONSTANT_OFFSET_KCAL_MOL}"
         )
 
-    def test_v3_entry_is_dated_2026_09_29(self) -> None:
-        """The Wf-333-V3 combined entry must be dated 2026-09-29."""
-        data = _load_json(JSON_PATH)
-        v3_entries = [
-            m
-            for m in data["measurements"]
-            if isinstance(m, dict)
-            and isinstance(m.get("run", ""), str)
-            and m["run"].startswith("wf333_v3_")
-        ]
-        assert v3_entries, "no wf333_v3_* entry found"
-        dates = {m.get("date_utc") for m in v3_entries}
-        assert (
-            "2026-09-29" in dates
-        ), f"V3 entry must be dated 2026-09-29, got dates {dates}"
-
-    def test_v3_entry_sources_smoke_per_pocket_json(self) -> None:
-        """The V3 entry must cite wf333v3_vina_p2p3/smoke_per_pocket.json."""
-        data = _load_json(JSON_PATH)
-        v3_entries = [
-            m
-            for m in data["measurements"]
-            if isinstance(m, dict)
-            and isinstance(m.get("run", ""), str)
-            and m["run"].startswith("wf333_v3_")
-        ]
-        assert v3_entries, "no wf333_v3_* entry found"
-        m = v3_entries[0]
-        source = m.get("source", "")
-        assert "wf333v3_vina_p2p3/smoke_per_pocket.json" in source, (
-            f"V3 entry source must cite wf333v3_vina_p2p3/smoke_per_pocket.json; "
-            f"got {source!r}"
+    def test_the_real_median_does_not_pass_the_cutoff(self) -> None:
+        """The measured V0 median sits well above −7.0; only the offset does."""
+        smoke = _load_json(SMOKE_PATH)
+        v0 = smoke["headline"]["cohort_v0_vina_median_kcal_mol"]
+        assert v0 > INDUSTRY_CUTOFF_KCAL_MOL, (
+            f"measured V0 median {v0} unexpectedly reaches the {INDUSTRY_CUTOFF_KCAL_MOL} cutoff"
         )
-
-    def test_v3_entry_value_is_minus_7_782(self) -> None:
-        """The V3 entry's value (cohort median) must be -7.782 kcal/mol."""
-        data = _load_json(JSON_PATH)
-        v3_entries = [
-            m
-            for m in data["measurements"]
-            if isinstance(m, dict)
-            and isinstance(m.get("run", ""), str)
-            and m["run"].startswith("wf333_v3_")
-        ]
-        assert v3_entries, "no wf333_v3_* entry found"
-        m = v3_entries[0]
-        assert m.get("value") == pytest.approx(
-            -7.782, abs=1e-6
-        ), f"V3 entry value must be -7.782 kcal/mol, got {m.get('value')!r}"
-
-    def test_aggregate_has_v3_block(self) -> None:
-        """The aggregate section must include wf333_v3_combined_* keys."""
-        data = _load_json(JSON_PATH)
-        agg = data["aggregate"]
-        for required in (
-            "wf333_v3_combined_median_kcal_mol",
-            "wf333_v3_combined_passes_industry_cutoff",
-            "wf333_v3_combined_gap_to_industry_kcal_mol",
-            "wf333_v3_combined_verdict",
-            "wf333_v3_combined_source",
-        ):
-            assert (
-                required in agg
-            ), f"aggregate.{required} must be present after Wf-362-A2 refresh"
-
-    def test_refresh_metadata_present(self) -> None:
-        """The top-level description / last_refresh_utc fields must reflect
-        the 2026-09-29 Wf-362-A2 refresh."""
-        data = _load_json(JSON_PATH)
-        assert (
-            "last_refresh_utc" in data
-        ), "vina_kcal_per_mol.json must have last_refresh_utc after refresh"
-        assert data["last_refresh_utc"].startswith("2026-09-29"), (
-            f"last_refresh_utc must start with 2026-09-29, got "
-            f"{data['last_refresh_utc']!r}"
-        )
-        assert "Wf-362-A2" in data.get("last_refresh_wf", ""), (
-            f"last_refresh_wf must reference Wf-362-A2, got "
-            f"{data.get('last_refresh_wf', '')!r}"
-        )
-        assert (
-            data.get("stale_flag_at_24h") is False
-        ), "stale_flag_at_24h must be False after refresh"
 
 
 # ---------------------------------------------------------------------------
-# Test 2: V3 combined median matches smoke_per_pocket.json headline
+# The JSON must not dress the ladder up as a measurement
 # ---------------------------------------------------------------------------
-class TestV3CombinedMedianMatchesSmoke:
-    """The V3 cohort median in the JSON must match the headline median
-    in molmetal/reports/wf333v3_vina_p2p3/smoke_per_pocket.json.
-    """
-
-    def test_smoke_per_pocket_json_exists(self) -> None:
-        assert SMOKE_PATH.exists(), f"smoke_per_pocket.json missing at {SMOKE_PATH}"
-
-    def test_smoke_per_pocket_headline_median(self) -> None:
-        """smoke_per_pocket.json headline V3 median must be -7.782 kcal/mol."""
-        smoke = _load_json(SMOKE_PATH)
-        headline = smoke.get("headline", {})
-        assert headline.get("cohort_v3_combined_median_kcal_mol") == pytest.approx(
-            V3_COMBINED_MEDIAN_KCAL_MOL, abs=1e-6
-        ), (
-            f"smoke headline V3 median must be {V3_COMBINED_MEDIAN_KCAL_MOL}, "
-            f"got {headline.get('cohort_v3_combined_median_kcal_mol')!r}"
-        )
-
-    def test_smoke_per_pocket_v3_gap_to_industry(self) -> None:
-        """smoke_per_pocket.json headline V3 gap must be -0.782 kcal/mol."""
-        smoke = _load_json(SMOKE_PATH)
-        headline = smoke.get("headline", {})
-        assert headline.get("v3_combined_gap_to_industry_kcal_mol") == pytest.approx(
-            -0.782, abs=1e-3
-        ), (
-            f"smoke headline V3 gap must be -0.782 kcal/mol, got "
-            f"{headline.get('v3_combined_gap_to_industry_kcal_mol')!r}"
-        )
-
-    def test_v3_json_matches_smoke_median(self) -> None:
-        """The V3 combined median in vina_kcal_per_mol.json must match
-        the smoke_per_pocket.json headline median exactly (-7.782)."""
+class TestJsonDoesNotClaimAMeasurement:
+    def test_no_v3_measurement_entry(self) -> None:
+        """A wf333_v3_* entry would record arithmetic as a run."""
         data = _load_json(JSON_PATH)
-        smoke = _load_json(SMOKE_PATH)
-        smoke_v3_median = smoke["headline"]["cohort_v3_combined_median_kcal_mol"]
-
-        # Cross-check 1: aggregate.wf333_v3_combined_median_kcal_mol
-        agg_median = data["aggregate"]["wf333_v3_combined_median_kcal_mol"]
-        assert agg_median == pytest.approx(smoke_v3_median, abs=1e-6), (
-            f"aggregate.wf333_v3_combined_median_kcal_mol ({agg_median}) must "
-            f"match smoke headline ({smoke_v3_median})"
+        entries = _v3_measurement_entries(data)
+        assert not entries, (
+            "vina_kcal_per_mol.json records wf333_v3_* as a measurement: "
+            f"{[m.get('run') for m in entries]}. The V3 value is the real Vina "
+            "score plus a fixed −4.5 kcal/mol constant and belongs in a "
+            "PROJECTED block, not in `measurements`."
         )
 
-        # Cross-check 2: the wf333_v3_* measurement's value field
-        v3_entries = [
-            m
-            for m in data["measurements"]
-            if isinstance(m, dict)
-            and isinstance(m.get("run", ""), str)
-            and m["run"].startswith("wf333_v3_")
-        ]
-        assert v3_entries, "no wf333_v3_* entry found"
-        m_value = v3_entries[0].get("value")
-        assert m_value == pytest.approx(smoke_v3_median, abs=1e-6), (
-            f"V3 measurement value ({m_value}) must match smoke headline "
-            f"({smoke_v3_median})"
-        )
-
-    def test_v3_json_per_pocket_matches_smoke_per_pocket(self) -> None:
-        """Each per-pocket V3 combined kcal/mol in the JSON must match
-        the per-pocket entry in smoke_per_pocket.json within 1e-3."""
+    def test_old_mislabelled_key_is_gone(self) -> None:
+        """`v3_cohort_median_REAL` held the cisplatin control, not a cohort median."""
         data = _load_json(JSON_PATH)
-        smoke = _load_json(SMOKE_PATH)
-        v3_entries = [
-            m
-            for m in data["measurements"]
-            if isinstance(m, dict)
-            and isinstance(m.get("run", ""), str)
-            and m["run"].startswith("wf333_v3_")
-        ]
-        assert v3_entries, "no wf333_v3_* entry found"
-        json_per_pocket = v3_entries[0].get("per_pocket_v3_combined_kcal_mol", {})
-        smoke_per_pocket = smoke.get("per_pocket", {})
-        # 5-pocket cohort.
-        assert set(json_per_pocket.keys()) == set(smoke_per_pocket.keys()), (
-            f"V3 per-pocket pocket set mismatch: json={set(json_per_pocket)}, "
-            f"smoke={set(smoke_per_pocket)}"
+        assert "v3_cohort_median_REAL" not in data, (
+            "v3_cohort_median_REAL is back: that name asserts a generated-molecule "
+            "cohort median while its value is aggregate.cisplatin_mean_kcal_per_mol"
         )
-        for pocket, json_v in json_per_pocket.items():
-            smoke_v = smoke_per_pocket[pocket]["v3_combined_kcal_mol"]
-            assert json_v == pytest.approx(
-                smoke_v, abs=1e-3
-            ), f"pocket {pocket}: json V3={json_v}, smoke V3={smoke_v}"
 
-    def test_v3_passes_industry_cutoff_in_json(self) -> None:
-        """The V3 combined median in the JSON must be < -7.0
-        (i.e. PASSES industry cutoff by margin = median - (-7.0))."""
+    def test_control_is_recorded_as_a_control(self) -> None:
+        data = _load_json(JSON_PATH)
+        value = data.get("cisplatin_reference_mean_kcal_per_mol")
+        assert value is not None, "cisplatin_reference_mean_kcal_per_mol missing"
+        assert value < 0.0, f"a Vina score must be negative kcal/mol, got {value}"
+        assert data.get("cisplatin_reference_mean_is_control") is True, (
+            "the cisplatin mean must be flagged as a positive control so it is "
+            "not read as a generated-molecule score"
+        )
+
+    def test_measured_values_do_not_pass_the_cutoff(self) -> None:
         data = _load_json(JSON_PATH)
         agg = data["aggregate"]
-        median = agg["wf333_v3_combined_median_kcal_mol"]
-        gap = agg["wf333_v3_combined_gap_to_industry_kcal_mol"]
-        assert median < -7.0, f"V3 median {median} must be < -7.0 industry cutoff"
-        assert gap == pytest.approx(
-            median - (-7.0), abs=1e-3
-        ), f"V3 gap {gap} must equal median - industry cutoff = {median - (-7.0)}"
-        assert agg["wf333_v3_combined_passes_industry_cutoff"] is True
-        assert agg["wf333_v3_combined_verdict"] == "HONEST_NEGATIVE_VINA_RESOLVED"
+        assert agg["n_pockets_pass_cutoff_minus7"] == 0, (
+            "n_pockets_pass_cutoff_minus7 must stay 0 — no measured pocket "
+            f"reaches −7.0, got {agg['n_pockets_pass_cutoff_minus7']}"
+        )
+        assert agg["cisplatin_mean_kcal_per_mol"] > INDUSTRY_CUTOFF_KCAL_MOL, (
+            "the measured cisplatin mean must not be reported as passing −7.0"
+        )
 
-    def test_v3_5_of_5_pockets_pass_cutoff(self) -> None:
-        """All 5 pockets in the V3 cohort must PASS the -7.0 cutoff."""
+    def test_projected_block_is_tagged(self) -> None:
         data = _load_json(JSON_PATH)
-        v3_entries = [
-            m
-            for m in data["measurements"]
-            if isinstance(m, dict)
-            and isinstance(m.get("run", ""), str)
-            and m["run"].startswith("wf333_v3_")
-        ]
-        assert v3_entries, "no wf333_v3_* entry found"
-        m = v3_entries[0]
-        json_per_pocket = m.get("per_pocket_v3_combined_kcal_mol", {})
-        for pocket, v in json_per_pocket.items():
-            assert v < -7.0, f"pocket {pocket} V3 combined = {v} must PASS -7.0 cutoff"
-        assert m.get("n_pockets_pass_cutoff_minus7") == len(json_per_pocket), (
-            f"n_pockets_pass_cutoff_minus7 must equal {len(json_per_pocket)} "
-            f"(the cohort size), got {m.get('n_pockets_pass_cutoff_minus7')}"
+        block = data["wf432a1_vina_param_tuning_block"]
+        assert block.get("MEASURED_vs_PROJECTED") == "PROJECTED", (
+            "the block that quotes −7.782 must be tagged PROJECTED"
+        )
+        status = block.get("current_status", "")
+        assert not status.startswith("MEASURED"), (
+            f"current_status still opens with a MEASURED claim: {status[:80]!r}"
+        )
+        assert "PROJECTED" in status, (
+            "current_status must say the −7.782 is PROJECTED"
         )

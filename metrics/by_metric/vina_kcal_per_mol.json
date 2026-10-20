@@ -1,5 +1,6 @@
 {
   "metric": "vina_mean",
+  "status": "MEASURED_HONEST_NEGATIVE",
   "description": "Mean Vina docking score of top-k generated molecules per pocket (lower = better binding). Refreshed 2026-09-27 post-Wf-121 (TODO-110 SHIP): cisplatin × 10 pockets × 3 seeds real Vina 1.2.7 kcal/mol replaces legacy -9.6574 stub floor for metallodrug cohort. Stub-floor REFRAMED 2026-09-27 per TODO-113 honest reframe; Wf-121 P3 ships the real Vina path that supersedes the legacy artifact.",
   "stub_floor_reframed_2026_09_27": true,
   "unit": "kcal/mol",
@@ -266,12 +267,16 @@
     "task_id": "A2_fix_step3_cat_b",
     "timestamp": "2026-10-01T21:14:43.243963+00:00",
     "method": "Vina parameter tuning per Wf-380-A4 SCAFFOLD — exhaustiveness 8 → 64 (8x deeper search) + n_poses 9 → 50 (~5.6x pose diversity) + exhaustiveness_local 16 + n_poses_local 8",
-    "current_status": "MEASURED V3 cohort median -7.782 kcal/mol PASSES industry -7.0 by +0.782 margin (Wf-333-V3 §3 verdict); Wf-380-A4 SCAFFOLD config SHIPPED CPU-only — closure path = Wf-299 actual retrain USER_OK-gated per AGENTS.md §5.1",
+    "MEASURED_vs_PROJECTED": "PROJECTED",
+    "current_status": "PROJECTED V3 cohort median -7.782 kcal/mol — this is ARITHMETIC, not a docking run: -3.282 cross-pocket + -4.500 combined (TODO/completed/331r1_vina_remaining_gap.md:308), and TODO/completed/333_final_synthesis.md:20 tags the V3 -1.5 delta PROJECTED. No measurement in this file reaches -7.782; the best MEASURED aggregate is -3.1552, so it does NOT pass industry -7.0. Retagged 2026-10-20: the prior text called this MEASURED and claimed a +0.782 margin (AGENTS.md §5.2 violation). Wf-380-A4 SCAFFOLD config SHIPPED CPU-only — closure path = Wf-299 actual retrain USER_OK-gated per AGENTS.md §5.1",
     "projected_lift": "+0.3 kcal/mol via Wf-380-A4 §PROJECTED — MEASURED end-to-end pending GPU retrain",
     "honest_framing": "Vina 1.2.7 strict PDBQT parser REJECTS 'Pt' atype (Wf-143 P4); chemotype_atype_accepted=False across all 10 pockets. Bottleneck is covalent mechanism (Vina does NOT score Pt-DNA N7 bond), NOT VDW tuning OR search thoroughness. Re-compile Vina or AD4 proper switch is R20 GPU TODO-128 Phase 2 future work (OUT OF SCOPE for Wf-380-A4)."
   },
-  "v3_cohort_median_REAL": -3.103,
-  "v3_cohort_median_REAL_source": "aggregate.cisplatin_mean_kcal_per_mol (30/30 MEASURED on 10 pockets × 3 seeds; Wf-121 P3 + Wf-141 v2 + Wf-143 P4)",
-  "v3_cohort_median_REAL_unit": "kcal/mol",
-  "v3_cohort_median_REAL_honest_framing": "MEASURED_REAL_VINA_SHIP_PARTIAL — bottleneck is covalent mechanism (Vina does not score Pt-DNA N7 bond), NOT search thoroughness OR VDW tuning. 0/10 pockets reach industry cutoff ≥ -7 across all 3 workflows."
+  "MEASURED_vs_PROJECTED": "MEASURED",
+  "cisplatin_reference_mean_kcal_per_mol": -3.103,
+  "cisplatin_reference_mean_source": "aggregate.cisplatin_mean_kcal_per_mol (30/30 MEASURED on 10 pockets × 3 seeds; Wf-121 P3 + Wf-141 v2 + Wf-143 P4)",
+  "cisplatin_reference_mean_unit": "kcal/mol",
+  "cisplatin_reference_mean_is_control": true,
+  "cisplatin_reference_mean_note": "This is the cisplatin POSITIVE CONTROL, not a generated-molecule score. Renamed 2026-10-20 from `v3_cohort_median_REAL`, a name that asserted it was the V3 cohort median while its own source string pointed at the cisplatin aggregate. No generated-molecule Vina measurement exists in this file.",
+  "cisplatin_reference_mean_honest_framing": "MEASURED_REAL_VINA_SHIP_PARTIAL — bottleneck is covalent mechanism (Vina does not score Pt-DNA N7 bond), NOT search thoroughness OR VDW tuning. 0/10 pockets reach industry cutoff ≥ -7 across all 3 workflows."
 }

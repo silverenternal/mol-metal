@@ -353,9 +353,9 @@ These 5 gates convert the 5 MOCK metrics (per Wf-432 design) to REAL measurement
 ### L3 Gate 1: `p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket`
 
 - **Purpose**: Verify `m3 Vina Dock median` is REAL-MEASURED on 5-pocket cohort (NOT MOCK / synthetic)
-- **Spec**: Verify `metrics/by_metric/vina_kcal_per_mol.json::v3_cohort_median_REAL` field exists + value is REAL-MEASURED (NOT synthetic placeholder)
-- **Source**: `metrics/by_metric/vina_kcal_per_mol.json` (current state per Wf-333-V3 + Wf-362-A2 + Wf-410-A2: V3 cohort median **−7.782 kcal/mol** PASSES industry -7.0 by +0.782 margin)
-- **Verdict gate**: `PASS` if `v3_cohort_median_REAL` field present + value = MEASURED (-7.782)
+- **Spec**: Verify `metrics/by_metric/vina_kcal_per_mol.json::cisplatin_reference_mean_kcal_per_mol` field exists + value is REAL-MEASURED (NOT synthetic placeholder)
+- **Source**: `metrics/by_metric/vina_kcal_per_mol.json` (current state: cisplatin positive control **−3.103 kcal/mol** MEASURED on 10 pockets × 3 seeds; best MEASURED aggregate −3.1552). This is a **provenance** gate, not a threshold gate — the value does **NOT** reach industry −7.0.
+- **Verdict gate**: `PASS` if the field is present and MEASURED. The gate must not assert a margin: the −7.782 "V3 cohort median" quoted here before 2026-10-20 is **PROJECTED** arithmetic (`333_final_synthesis.md` §0: MEASURED V1 −1.5 + MEASURED V2 −1.5 + **PROJECTED** V3 −1.5), and the old field name `v3_cohort_median_REAL` actually held the cisplatin control.
 - **Wave**: pre-retrain (CPU-only)
 
 ### L3 Gate 2: `p3_mock_to_real_m15_rmsd_REAL_5_pocket`

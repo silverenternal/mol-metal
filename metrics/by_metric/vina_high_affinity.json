@@ -3,7 +3,7 @@
   "description": "High Affinity rate: fraction of docked molecules whose top-pose Vina kcal/mol is BELOW the co-crystal reference redocked score (TargetDiff Table 1 'High Affinity' convention; TODO-22 metric #3).",
   "unit": "fraction in [0, 1]",
   "scope": "pocket-bound docking metric (TODO-22 metric #3)",
-  "source": "computed from /mnt/disk1/Hugo_Lee/mol-metal/molmetal/data/mmp13_real/dock_results.csv (100 rows) and vina_reference.json#value.score_kcal_mol = -1.285",
+  "source": "computed from molmetal/data/mmp13_real/dock_results.csv (100 rows) and metrics/by_metric/vina_reference.json#value.score_kcal_mol = -1.285",
   "value": {
     "rate": 0.51,
     "n_better_than_ref": 51,

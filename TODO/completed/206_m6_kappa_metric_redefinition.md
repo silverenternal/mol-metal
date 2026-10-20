@@ -174,7 +174,7 @@ HONEST_NEGATIVE_PARTIAL_STRUCTURAL FINAL FINAL — 8 paths exhausted.
 |---|---|---|---|
 | §3 headline (4) | **m1_auc (MetalCytotoxDB Ru 5-seed A2780 cisplatin)** | **KEEP** | `metrics/by_metric/metalcytotox_ru_auc.json` MEASURED_PARTIAL_LIFT |
 | §3 headline (4) | **m2 R² (metalcytotox_combined)** | **KEEP** | `metrics/by_metric/metalcytotox_combined_r2.json::wf335m2_ceiling_break` CEILING_BREAK R²=+0.3196 lift +0.2141 |
-| §3 headline (4) | **m3 Vina (5-pocket cohort median)** | **KEEP** | `metrics/by_metric/vina_kcal_per_mol.json::wf333_v3_combined_median` −7.782 kcal/mol |
+| §3 headline (4) | **m3 Vina (cisplatin reference)** | **KEEP** | `metrics/by_metric/vina_kcal_per_mol.json::cisplatin_reference_mean_kcal_per_mol` −3.103 kcal/mol MEASURED (positive control). The −7.782 "V3 cohort median" is **PROJECTED** arithmetic, not a docking run — no such key has ever existed in the JSON (corrected 2026-10-20). |
 | §3 headline (4) | **m15 RMSD (5-pocket redock)** | **KEEP** | `metrics/by_metric/docked_pose_rmsd.json::aggregate_median` 0.6578 Å 5/5 PASS |
 | §3 supplementary (3) | **MolLogP (Wildman-Crippen LogP)** | **PROMOTE** per Wf-377-A1 | Pearson r=+0.1999 (n=5460) WEAK band |
 | §3 supplementary (3) | **MorganDensity_r2 (Morgan ECFP r=2 bit density)** | **PROMOTE** per Wf-377-A1 | Pearson r=+0.1644 WEAK band |

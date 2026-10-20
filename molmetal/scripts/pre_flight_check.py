@@ -10489,17 +10489,18 @@ def gate_p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket(
             f"parse error: {type(exc).__name__}: {exc}",
             time.perf_counter() - t0,
         )
-    # Look for v3_cohort_median_REAL or aggregate_v3_real field.
-    # Per actual on-disk JSON schema (Wf-430 fresh-run audit):
-    # vina_kcal_per_mol.json::aggregate.cisplatin_mean_kcal_per_mol is the
-    # REAL-MEASURED cisplatin cohort mean (Wf-121 P3). v3_cohort_median
-    # is the projected pIC50-targeted delta field (Wf-333-V3) — kept as a
-    # fallback for forward-compat if v3-cohort REAL measurement ships.
+    # m3 is a *provenance* gate: it asks whether the number on disk is REAL or a
+    # mock.  It is NOT a threshold gate.  Until 2026-10-20 it read
+    # ``v3_cohort_median_REAL`` — a field that actually held the cisplatin
+    # positive control — and printed "PASSES industry -7.0 by +0.782 margin"
+    # regardless of the value it had just read.  The −7.782 it referred to is
+    # PROJECTED arithmetic (333_final_synthesis.md §0), not a docking run; the
+    # best MEASURED aggregate is −3.1552, which does not reach −7.0.
+    agg = data.get("aggregate") if isinstance(data.get("aggregate"), dict) else {}
     real_value = (
-        data.get("v3_cohort_median_REAL")
-        or data.get("aggregate", {}).get("v3_cohort_median_REAL")
-        or data.get("v3_cohort_median")
-        or data.get("aggregate", {}).get("cisplatin_mean_kcal_per_mol")
+        data.get("cisplatin_reference_mean_kcal_per_mol")
+        or agg.get("cisplatin_mean_kcal_per_mol")
+        or data.get("v3_cohort_median_REAL")
     )
     if real_value is None:
         return GateResult(
@@ -10507,17 +10508,24 @@ def gate_p3_mock_to_real_m3_vina_kcal_per_mol_REAL_5_pocket(
             priority,
             pipeline,
             "FAIL",
-            "vina_kcal_per_mol.json missing v3_cohort_median_REAL field "
-            "(and aggregate.cisplatin_mean_kcal_per_mol fallback)",
+            "vina_kcal_per_mol.json has no REAL-MEASURED value "
+            "(looked for cisplatin_reference_mean_kcal_per_mol and "
+            "aggregate.cisplatin_mean_kcal_per_mol)",
             time.perf_counter() - t0,
         )
+    is_control = bool(data.get("cisplatin_reference_mean_is_control"))
+    evidence = (
+        f"m3 Vina REAL-MEASURED {real_value} kcal/mol"
+        + (" (cisplatin positive control, NOT a generated-molecule score)" if is_control else "")
+        + "; does NOT reach industry -7.0 — the -7.782 'V3 cohort median' is "
+        "PROJECTED arithmetic, not a docking run"
+    )
     return GateResult(
         name,
         priority,
         pipeline,
         "PASS",
-        f"m3 Vina REAL-MEASURED on 5-pocket cohort: median = {real_value} kcal/mol "
-        f"(PASSES industry -7.0 by +0.782 margin per Wf-333-V3 + Wf-362-A2)",
+        evidence,
         time.perf_counter() - t0,
     )
 

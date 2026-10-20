@@ -3,7 +3,7 @@
   "description": "Sprint A multi-task 4-domain (m3 + m5 + m14 + m17) drop-in mechanism flags + test counts. Honest framing for paper §4 lead-claim completeness.",
   "unit": "engine_flags + test_counts (boolean + integer)",
   "scope": "tier1_precious_metal_anticancer + tier2_sbdd_ood_lomo + cfm_decode_real + platinai_4cell",
-  "source": "TODO/pending/144_q2_paper_ship_priority_roadmap.md §1 Sprint A + TODO/pending/143_clone_adapt_cross_domain_training.md",
+  "source": "TODO/completed/144_q2_paper_ship_done.md §1 Sprint A + TODO/completed/143_clone_adapt_cross_domain_training.md",
   "sprint_a_date": "2026-09-27",
   "sprint_a_phase": "Phase 1 — mechanism drop-ins (CPU-shippable, NO GPU needed)",
   "sprint_a_mechanisms": {
