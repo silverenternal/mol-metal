@@ -130,8 +130,9 @@
       1.0
     ]
   },
-  "generated_utc": "2026-10-20T21:19:46+00:00",
+  "generated_utc": "2026-10-20T21:24:44+00:00",
   "overall": {
+    "bonds_per_heavy_atom": 0.8936,
     "mean_heavy_atoms": 44.362,
     "mean_largest_frag_frac": 0.7395,
     "n_parse": 12668,
@@ -190,6 +191,7 @@
   },
   "per_epoch": {
     "0": {
+      "bonds_per_heavy_atom": 0.5283,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.4264,
       "n_parse": 704,
@@ -216,6 +218,7 @@
       "validity": 1.0
     },
     "1": {
+      "bonds_per_heavy_atom": 0.2928,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.2634,
       "n_parse": 704,
@@ -232,6 +235,7 @@
       "validity": 1.0
     },
     "10": {
+      "bonds_per_heavy_atom": 1.007,
       "mean_heavy_atoms": 44.337,
       "mean_largest_frag_frac": 0.8404,
       "n_parse": 703,
@@ -278,6 +282,7 @@
       "validity": 1.0
     },
     "11": {
+      "bonds_per_heavy_atom": 1.0488,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.8486,
       "n_parse": 704,
@@ -320,6 +325,7 @@
       "validity": 1.0
     },
     "12": {
+      "bonds_per_heavy_atom": 1.0523,
       "mean_heavy_atoms": 44.337,
       "mean_largest_frag_frac": 0.8625,
       "n_parse": 703,
@@ -366,6 +372,7 @@
       "validity": 1.0
     },
     "13": {
+      "bonds_per_heavy_atom": 1.091,
       "mean_heavy_atoms": 44.299,
       "mean_largest_frag_frac": 0.8751,
       "n_parse": 702,
@@ -412,6 +419,7 @@
       "validity": 0.9986
     },
     "14": {
+      "bonds_per_heavy_atom": 1.1064,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.8852,
       "n_parse": 704,
@@ -460,6 +468,7 @@
       "validity": 1.0
     },
     "15": {
+      "bonds_per_heavy_atom": 1.129,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.8892,
       "n_parse": 704,
@@ -506,6 +515,7 @@
       "validity": 1.0
     },
     "16": {
+      "bonds_per_heavy_atom": 1.1137,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.8921,
       "n_parse": 704,
@@ -548,6 +558,7 @@
       "validity": 1.0
     },
     "17": {
+      "bonds_per_heavy_atom": 1.137,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.9156,
       "n_parse": 704,
@@ -596,6 +607,7 @@
       "validity": 1.0
     },
     "2": {
+      "bonds_per_heavy_atom": 0.3988,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.3629,
       "n_parse": 704,
@@ -612,6 +624,7 @@
       "validity": 1.0
     },
     "3": {
+      "bonds_per_heavy_atom": 0.6212,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.5741,
       "n_parse": 704,
@@ -632,6 +645,7 @@
       "validity": 1.0
     },
     "4": {
+      "bonds_per_heavy_atom": 0.7635,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.6826,
       "n_parse": 704,
@@ -661,6 +675,7 @@
       "validity": 1.0
     },
     "5": {
+      "bonds_per_heavy_atom": 0.8434,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.7357,
       "n_parse": 704,
@@ -693,6 +708,7 @@
       "validity": 1.0
     },
     "6": {
+      "bonds_per_heavy_atom": 0.9584,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.8011,
       "n_parse": 704,
@@ -738,6 +754,7 @@
       "validity": 1.0
     },
     "7": {
+      "bonds_per_heavy_atom": 0.9646,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.8082,
       "n_parse": 704,
@@ -776,6 +793,7 @@
       "validity": 1.0
     },
     "8": {
+      "bonds_per_heavy_atom": 1.0211,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.8314,
       "n_parse": 704,
@@ -828,6 +846,7 @@
       "validity": 1.0
     },
     "9": {
+      "bonds_per_heavy_atom": 1.0082,
       "mean_heavy_atoms": 44.369,
       "mean_largest_frag_frac": 0.8173,
       "n_parse": 704,
@@ -880,11 +899,33 @@
   },
   "provenance": {
     "epochs": 18,
-    "git_commit": "e206cc7b9f5de235e760061ae130d966348e57c6",
+    "git_commit": "9d9f6342c8f4fd15509e4c7f340ae659c3153c7a",
     "n_rows": 12669,
     "pool": "molmetal/reports/cfm_c7_fullgen_2026_10_20/generated_smiles.csv",
     "script": "molmetal/scripts/c7_fullgen_pool_quality.py"
   },
   "reading": "Single-fragment rate is the share of parsed molecules that came out as one connected component; three_ring_share is the fraction of all atom rings that are 3-membered. Both are descriptive: they say what the pool looks like, not whether it is useful. bond_head_trajectory is teacher-forced (true atoms, predicted bonds) and is NOT comparable to the pool's connectivity: it measures the head, the pool measures the sampler.",
+  "reference": {
+    "bonds_per_heavy_atom": 1.0694,
+    "mean_heavy_atoms": 41.617,
+    "n": 18137,
+    "n_rings": 113558,
+    "ring_size_distribution": {
+      "14": 9,
+      "15": 22,
+      "16": 51,
+      "18": 7,
+      "3": 17,
+      "4": 12,
+      "5": 13659,
+      "6": 99402,
+      "7": 226,
+      "8": 42,
+      "9": 111
+    },
+    "six_ring_share": 0.8753,
+    "source": "/home/hugo/codes/mol-metal/.data/molmetal/metalcytotox_5metal_multitask_v4.csv",
+    "three_ring_share": 0.0001
+  },
   "tag": "MEASURED"
 }

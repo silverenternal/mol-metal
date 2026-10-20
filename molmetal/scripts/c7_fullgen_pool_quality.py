@@ -50,6 +50,8 @@ def _epoch_summary(rows: Sequence[Dict[str, str]]) -> Dict[str, object]:
     n_frac_present = 0
     frac_sum = 0.0
     heavy_sum = 0
+    bond_sum = 0
+    n_bond_eligible = 0
     unique = set()
     ring_sizes: Counter = Counter()
     for row in rows:
@@ -59,7 +61,11 @@ def _epoch_summary(rows: Sequence[Dict[str, str]]) -> Dict[str, object]:
             continue
         n_parse += 1
         unique.add(Chem.MolToSmiles(mol))
-        heavy_sum += mol.GetNumHeavyAtoms()
+        heavy = mol.GetNumHeavyAtoms()
+        heavy_sum += heavy
+        if heavy >= 2:
+            bond_sum += mol.GetNumBonds()
+            n_bond_eligible += 1
         frag = row.get("n_frags_raw", "")
         try:
             if int(float(frag)) == 1:
@@ -88,6 +94,12 @@ def _epoch_summary(rows: Sequence[Dict[str, str]]) -> Dict[str, object]:
         "mean_largest_frag_frac": round(frac_sum / n_frac_present, 4) if n_frac_present else None,
         "n_unique_smiles": len(unique),
         "mean_heavy_atoms": round(heavy_sum / n_parse, 3) if n_parse else None,
+        # Bonds per heavy atom separates "how many bonds" from "which bonds".
+        # A pool can match the real bond density and still put every bond in a
+        # 3-membered ring.
+        "bonds_per_heavy_atom": (
+            round(bond_sum / heavy_sum, 4) if heavy_sum else None
+        ),
         "n_rings": total_rings,
         "ring_size_distribution": {str(k): v for k, v in sorted(ring_sizes.items())},
         "three_ring_share": round(ring_sizes.get(3, 0) / total_rings, 4) if total_rings else None,
@@ -124,12 +136,69 @@ def _bond_head_trajectory(run_dir: Path) -> Dict[str, object] | None:
     return out or None
 
 
+def _reference_stats(path: Path) -> Dict[str, object] | None:
+    """The same numbers for real chemistry, so the pool has something to be wrong against.
+
+    Without this, ``three_ring_share = 0.67`` reads as "lots of small rings",
+    which sounds like a stylistic quirk. Against the corpus it is a different
+    statement: the corpus has essentially no 3-membered rings at all.
+    """
+    if not path.exists():
+        return None
+    import pandas as pd
+
+    from rdkit import Chem, RDLogger
+
+    RDLogger.DisableLog("rdApp.*")
+    frame = pd.read_csv(path, low_memory=False)
+    if "split" in frame.columns:
+        frame = frame[frame["split"] == "train"]
+    if "smiles" not in frame.columns:
+        return None
+    texts = frame["smiles"].dropna().astype(str)
+    heavy_sum = 0
+    bond_sum = 0
+    n = 0
+    ring_sizes: Counter = Counter()
+    for text in texts:
+        mol = Chem.MolFromSmiles(text)
+        if mol is None:
+            continue
+        heavy = mol.GetNumHeavyAtoms()
+        if heavy < 2:
+            continue
+        n += 1
+        heavy_sum += heavy
+        bond_sum += mol.GetNumBonds()
+        for ring in mol.GetRingInfo().AtomRings():
+            ring_sizes[len(ring)] += 1
+    if not n:
+        return None
+    total_rings = sum(ring_sizes.values())
+    return {
+        "source": str(path),
+        "n": n,
+        "mean_heavy_atoms": round(heavy_sum / n, 3),
+        "bonds_per_heavy_atom": round(bond_sum / heavy_sum, 4),
+        "n_rings": total_rings,
+        "ring_size_distribution": {str(k): v for k, v in sorted(ring_sizes.items())},
+        "three_ring_share": round(ring_sizes.get(3, 0) / total_rings, 4) if total_rings else None,
+        "six_ring_share": round(ring_sizes.get(6, 0) / total_rings, 4) if total_rings else None,
+    }
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--run",
         type=Path,
         default=PROJECT_ROOT / "molmetal" / "reports" / "cfm_c7_fullgen_2026_10_20",
+    )
+    parser.add_argument(
+        "--reference",
+        type=Path,
+        default=PROJECT_ROOT / ".data" / "molmetal" / "metalcytotox_5metal_multitask_v4.csv",
+        help="real corpus to compare the pool against; skipped when absent",
     )
     parser.add_argument(
         "--out",
@@ -184,6 +253,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "per_epoch": per_epoch,
         "first_vs_last": trend,
         "bond_head_trajectory": _bond_head_trajectory(args.run),
+        "reference": _reference_stats(args.reference),
         "reading": (
             "Single-fragment rate is the share of parsed molecules that came out "
             "as one connected component; three_ring_share is the fraction of all "

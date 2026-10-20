@@ -119,3 +119,36 @@ def test_bond_head_trajectory_carries_the_head_metrics(tmp_path):
     traj = json.loads(out_path.read_text())["bond_head_trajectory"]
     assert [row["bond_f1"] for row in traj] == [0.1, 0.6]
     assert traj[0]["bond_n_scored"] == 192
+
+
+def test_bonds_per_heavy_atom_divides_by_atoms_not_by_molecules():
+    # Regression: the first version divided total bonds by the number of
+    # molecules, so a pool of 40-atom molecules scored ~40 instead of ~1.
+    rows = [_row(0, "c1ccccc1", 1), _row(0, "C" * 20, 1)]
+    out = _epoch_summary(rows)
+    # benzene: 6 heavy, 6 bonds; C20: 20 heavy, 19 bonds -> 25 / 26
+    assert out["bonds_per_heavy_atom"] == round(25 / 26, 4)
+
+
+def test_reference_stats_are_none_when_the_corpus_is_absent(tmp_path):
+    from molmetal.scripts.c7_fullgen_pool_quality import _reference_stats
+
+    assert _reference_stats(tmp_path / "nope.csv") is None
+
+
+def test_reference_stats_use_the_train_split_only(tmp_path):
+    import pandas as pd
+
+    from molmetal.scripts.c7_fullgen_pool_quality import _reference_stats
+
+    path = tmp_path / "ref.csv"
+    pd.DataFrame(
+        {
+            "smiles": ["c1ccccc1", "C1CC1", "C1CC1"],
+            "split": ["train", "test", "test"],
+        }
+    ).to_csv(path, index=False)
+    ref = _reference_stats(path)
+    assert ref["n"] == 1
+    assert ref["ring_size_distribution"] == {"6": 1}
+    assert ref["three_ring_share"] == 0.0

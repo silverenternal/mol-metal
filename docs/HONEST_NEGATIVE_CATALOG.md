@@ -9190,7 +9190,7 @@ same card) and completed all 18 epochs: `exit=0`, wall **11,232 s**, `nvidia-smi
 | 17 | — | **12.22%** | 67.5% | 0.57% |
 | **all 18** | | **8.51%** | 66.8% | **0.28%** [0.21, 0.39] (36/12,668) |
 
-Five conclusions, three of which overturn what §6.150b inferred from four epochs:
+Six conclusions, three of which overturn what §6.150b inferred from four epochs:
 
   * **Connectivity does not plateau — it keeps degrading.** 2.84% → 8.38% → 10.23% → **12.22%**
     single-fragment across 18 epochs, a 4.3× rise. §6.150b read the first four points as "the
@@ -9215,6 +9215,23 @@ Five conclusions, three of which overturn what §6.150b inferred from four epoch
     them 3.5× better by the last epoch. Whatever breaks connectivity happens in the sampler /
     decode path, downstream of the head. This is a mechanism statement, not a fix: nothing here
     says which part of the sampler is at fault.
+  * **The model learned how many bonds, not which bonds.** Bonds per heavy atom against the real
+    training corpus (n=18,137; reference measured from the same corpus file):
+
+    | | bonds / heavy atom | 3-ring share | 6-ring share |
+    |---|---:|---:|---:|
+    | real corpus | 1.069 | **0.01%** | **87.5%** |
+    | epoch 0 | 0.528 | 66.8% | 2.7% |
+    | epoch 8 | 1.021 | 65.0% | 3.4% |
+    | epoch 17 | **1.137** | 67.5% | 2.8% |
+
+    By epoch 8 the pool's bond *density* is within 5% of real chemistry, and by epoch 17 it is
+    slightly *above* it. Nothing is missing: the bonds are there, they are simply spent on
+    3-membered rings inside fragments instead of 6-membered rings connecting the molecule. Real
+    chemistry in this corpus has essentially **zero** 3-membered rings (0.01%); the pool has
+    **two thirds**. That is the sharpest form of the failure available from the artifacts on disk,
+    and it reframes the target: the problem is not "generate more bonds", it is the ring-size /
+    topology prior.
 
 **One bookkeeping correction the resume forced.** `cfm_c7_fullgen_ep4_partial_2026_10_20` was
 preserved from the crashed run. While the resumed pool was also 4 epochs the two files were
