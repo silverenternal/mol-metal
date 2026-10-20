@@ -8789,3 +8789,86 @@ unchanged at **201**. ACTIVE count unchanged at **157**.
 
 ---
 
+### §6.149 FIX-C9 — 86% of every CFM epoch was benchmarking a kernel that cannot be tuned, and three of my own attributions were wrong (2026-10-20)
+
+**Trigger.** User: *"cpu跑满了，你看看是不是有该用gpu的地方用cpu了?"* followed by *"6个loss得开啊，该上gpu的地方进gpu就行"*. The instruction was to find CPU work that belongs on the GPU **without** turning any of the six regularisers off.
+
+**What was actually wrong.** Not the CPU, and not the six terms. `_aggregate_vectors_kernel`
+(`triton_kernels/equivariant_ops.py`) was decorated
+`@triton.autotune(configs=AUTOTUNE_CONFIGS, key=["n_edges", "feat_dim"], ...)`. The kernel launches
+`grid=(n_edges,)` — one program per edge — and its body has **no loop over edges**; `n_edges`
+appears only in the guard `eid >= n_edges`. The per-program instruction stream is therefore
+independent of `n_edges`, so the optimal `(num_warps, num_stages)` cannot depend on it. Triton caches
+autotune results per key tuple, and `n_edges` changes on **every batch** and — because both eval
+paths run one cloud at a time — on **every eval call**. The tuner was re-benchmarking all 9 configs
+almost continuously.
+
+**MEASURED (cProfile, 128-cloud / 2-step arm, pre-fix).** 576 module forwards produced **981**
+autotune `_bench` calls: **109.4 s** inside `triton.testing.do_bench` and **40.1 s** inside
+`torch._C._cuda_synchronize`, out of **126.9 s** of `train_one_epoch`. That is ~86% of the epoch
+spent selecting between configs that provably cannot differ. The profile also showed the model is
+called **per cloud**, so this cost was paid 128 times per epoch on the training side and 192 times
+on the eval side.
+
+**Fix.** Key on `["feat_dim"]` only (`FEAT_BLOCK` is a constexpr derived from `feat_dim` in the
+wrapper, so `feat_dim` is a complete key). Regression guard:
+`molmetal/tests/test_triton_autotune_keys.py` asserts the key **and** asserts the kernel body does
+not loop over `n_edges` — if a future rewrite makes it a persistent kernel, `n_edges` becomes a
+legitimate axis and the key test must be revisited.
+
+**MEASURED (same config, six regularisers on, 512 clouds, 1 epoch).**
+
+| | pre-fix | post-fix | ratio |
+|---|---:|---:|---:|
+| `epoch_time_sec` | 304.303 | 40.304 | **7.55x** |
+| `wall_time_s` | 304.303 | 40.304 | 7.55x |
+
+Source: `molmetal/reports/c7_calib_eval0_2026_10_20/events.jsonl` and
+`molmetal/reports/c7_calib_postfix_2026_10_20/events.jsonl`; consolidated in
+`metrics/by_metric/cfm_epoch_wall.json`.
+
+**Honest boundary — NOT bit-exact.** A different kernel config changes the atomic-add ordering.
+Per-term deltas are ≤1.5e-4 relative (`bond_ce` 1.418785 → 1.418784, `train_w2` 0.791708 →
+0.791588, `grad_norm` 18.7369 → 18.7347); total `train_loss` moves 5.8e-3 relative (13.8963 →
+13.8156) because the six regularisers are noise-sampled per step. The source comment says so.
+
+**Three of my own attributions were wrong and are retracted here.** Each was stated as a
+conclusion before it was checked, and each is the same failure shape: *a timing difference between
+two single-epoch runs, in a regime where 86% of the runtime was autotune noise.*
+
+1. **"Turning the six regularisers off costs 262.0 s vs 304.4 s, so they are 14% of the epoch."**
+   INVALID. `configs/c7_calib_noterms_2026_10_20.yaml` set `train.consistency_term_weight`,
+   `train.so3_term_weight`, `train.edm_term_weight` and `train.shortcut_distill_term_weight` —
+   **none of which resolves to a trainer dest.** `scripts/_config_binding_gate.py` reported 4
+   VIOLATIONs on that file, so four of the seven keys never left their argparse defaults and the
+   terms stayed **ON**. The 42 s delta was autotune-cache variance. This is the AGENTS.md §5.11
+   YAML-key-that-reaches-nothing trap again, caught this time only because the gate is wired into
+   pre-flight. The config was **deleted**, not repaired — the standing instruction is that all six
+   terms stay on, so a "noterms" arm has no reason to exist.
+2. **"`fm_ode` alone is 12% of the epoch (269.1 s vs 304.4 s)."** INVALID as an attribution.
+   `train.fm_ode_term_weight` *does* reach a dest, so that arm genuinely disabled the term — the
+   269.1 s reading is real, but a 35 s difference between two single-epoch runs sits inside the
+   pre-fix autotune noise, so it does not measure the term.
+3. **"`_build_bond_pair_features` (per-edge Python loop with `.cpu().tolist()`) is the CPU hotspot."**
+   INVALID. The function **does not appear in the cProfile output at all** — this trainer never
+   calls `adapter.train_step`; it runs its own inline FM block, so that path is dead here. The
+   per-edge Python loop is real code and would be a genuine hotspot on the `train_step` path, but it
+   is not exercised by this trainer. Had I "fixed" it first, the commit would have been a
+   vectorisation of a function nothing calls, and the real 7.55x would still be on the table.
+
+**What is still slow, recorded rather than fixed.** With autotune gone the split is
+`2.61 s/step` + `19.44 s` eval per epoch (DERIVED from two MEASURED points). Both halves scale with
+the **per-cloud** forward: the trainer's `forward()` contract is one cloud in, `(logits, velocities)`
+out, so a batch of 64 is 64 separate model calls. Batching them would use the GPU the way the user
+asked, but it is a contract change across `evaluate_bond_accuracy`, `evaluate_decode_ratio` and the
+assemble / soft-valence stashes — not a wire-in, and not attempted in this wave.
+
+**§6.149 catalog-count math.** Net catalog-count delta: **+1**. Cumulative catalog count
+**201 → 202**. ACTIVE count **157 → 158**.
+
+**Workflow** | FIX-C9 (2026-10-20; GPU: 2 short calibration runs, ~4 min total; §5.2: every number
+traces to an `events.jsonl` on disk, the two retracted claims trace to
+`scripts/_config_binding_gate.py` output and to the absence of a symbol in `/tmp/c7_prof.out`).
+
+---
+

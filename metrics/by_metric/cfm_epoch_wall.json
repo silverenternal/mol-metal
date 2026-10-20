@@ -1,0 +1,98 @@
+{
+  "metric": "cfm_epoch_wall",
+  "description": "Wall-clock cost of one CFM training epoch, and the split between optimizer steps and the per-epoch held-out evaluation. Recorded to attribute the 2026-10-20 CPU-saturation report ('cpu跑满了') and to size the C7 full-corpus run. All numbers are epoch_time_sec from the trainer's own events.jsonl, not stopwatch readings of a shell wrapper.",
+  "unit": "seconds",
+  "scope": "CFM (Conditional Flow Matching) train path — molmetal/scripts/train_cfm_yuelbond_wasserstein.py",
+  "dataset": "tmQM 6-metal (Ir/Os/Pt/Re/Rh/Ru), scaffold split, val_frac 0.2",
+  "split": "train=512 val=192 (the two 512-cloud arms) and train=128 val=192 (the timing arm)",
+  "n_seeds": 1,
+  "status": "MEASURED",
+  "date_utc": "2026-10-20",
+  "measurements": [
+    {
+      "run": "c7_calib_eval0_2026_10_20 (PRE-FIX)",
+      "what": "512 clouds, 1 epoch, batch 64, gen_eval_n=0, six regularisers at their argparse defaults",
+      "epoch_time_sec": 304.302690,
+      "wall_time_s": 304.302690,
+      "n_train": 512,
+      "n_val": 192,
+      "batch_size": 64,
+      "steps_per_epoch": 8,
+      "status": "MEASURED",
+      "source": "molmetal/reports/c7_calib_eval0_2026_10_20/events.jsonl"
+    },
+    {
+      "run": "c7_calib_postfix_2026_10_20 (POST-FIX)",
+      "what": "byte-identical config to the PRE-FIX arm; only change is the Triton autotune key on _aggregate_vectors_kernel (n_edges,feat_dim) -> (feat_dim)",
+      "epoch_time_sec": 40.303891,
+      "wall_time_s": 40.303891,
+      "n_train": 512,
+      "n_val": 192,
+      "batch_size": 64,
+      "steps_per_epoch": 8,
+      "status": "MEASURED",
+      "source": "molmetal/reports/c7_calib_postfix_2026_10_20/events.jsonl"
+    },
+    {
+      "run": "c7_prof_2026_10_20 (POST-FIX, 2-step arm)",
+      "what": "n_train 128 / val 192, same batch and regularisers; exists only to separate per-step cost from per-epoch eval cost",
+      "epoch_time_sec": 24.654188,
+      "n_train": 128,
+      "n_val": 192,
+      "batch_size": 64,
+      "steps_per_epoch": 2,
+      "status": "MEASURED",
+      "source": "molmetal/reports/c7_prof_2026_10_20/events.jsonl"
+    }
+  ],
+  "speedup": {
+    "epoch_time_ratio_pre_over_post": 7.5501,
+    "status": "MEASURED",
+    "note": "304.302690 / 40.303891. Same config, same hardware, same six loss terms."
+  },
+  "derived_split": {
+    "status": "DERIVED",
+    "method": "two MEASURED points, 8 steps + E = 40.303891 and 2 steps + E = 24.654188; solve for the step and eval terms",
+    "per_train_step_sec": 2.608251,
+    "per_epoch_eval_sec": 19.437882,
+    "per_eval_cloud_ms": 101.24,
+    "note": "The trainer evaluates ONE CLOUD AT A TIME (evaluate_bond_accuracy + evaluate_decode_ratio each call model.forward per cloud), so eval cost scales with n_val, not with n_val/batch."
+  },
+  "projection_full_corpus": {
+    "status": "PROJECTED",
+    "basis": "26715 clouds / batch 64 = 418 steps at the DERIVED 2.608251 s/step, plus the DERIVED 19.44 s eval",
+    "epoch_sec": 1109.6,
+    "epoch_min": 18.5,
+    "n_epochs": 18,
+    "total_hours": 5.55,
+    "caveat": "PROJECTED, not MEASURED: assumes per-step cost is flat in n_train (it should be, since each step touches a fixed 64 clouds) and that no epoch is slower for another reason (early-stop bookkeeping, checkpoint writes). The 5.55 h excludes the one-time ~90 s cohort load."
+  },
+  "attribution": {
+    "pre_fix_hotspot": "triton autotune, not the model",
+    "evidence": "cProfile on the 2-step arm (pre-fix): 576 module forwards produced 981 autotune _bench calls — 109.4 s in triton.testing.do_bench and 40.1 s in torch._C._cuda_synchronize — out of 126.9 s of train_one_epoch.",
+    "why": "_aggregate_vectors_kernel was autotuned with key=[\"n_edges\", \"feat_dim\"]. The kernel launches grid=(n_edges,), one program per edge, and never loops over edges, so the optimal (num_warps, num_stages) cannot depend on n_edges. n_edges changes on every batch and on every eval cloud, so nearly every call re-benchmarked all 9 configs."
+  },
+  "retractions": [
+    {
+      "claim": "'Turning the six regularisers off costs 262.0 s vs 304.4 s, so the six terms are 14% of the epoch and are not the CPU bottleneck'",
+      "verdict": "INVALID — retracted 2026-10-20",
+      "why": "configs/c7_calib_noterms_2026_10_20.yaml set train.consistency_term_weight / so3_term_weight / edm_term_weight / shortcut_distill_term_weight, none of which resolves to a trainer dest. scripts/_config_binding_gate.py reported 4 VIOLATIONs on that file, so four of the seven keys never left the argparse defaults and the terms stayed ON. The 42 s delta was autotune-cache variance between two runs, not the regularisers. The config was deleted rather than repaired: the user's standing instruction is that all six terms stay on.",
+      "gate_output": "scripts/_config_binding_gate.py -> 4 VIOLATIONs, all in configs/c7_calib_noterms_2026_10_20.yaml"
+    },
+    {
+      "claim": "'fm_ode alone accounts for 12% of the epoch (269.1 s vs 304.4 s)'",
+      "verdict": "INVALID — retracted 2026-10-20",
+      "why": "Same pre-fix regime: 86% of the epoch was autotune benchmarking, so a 35 s difference between two single-epoch runs is within the run-to-run autotune noise. train.fm_ode_term_weight DOES resolve to a dest, so that arm did turn the term off — the measurement was real, the attribution was not."
+    },
+    {
+      "claim": "'_build_bond_pair_features (per-edge Python loop, .cpu().tolist()) is the CPU hotspot in the train step'",
+      "verdict": "INVALID — retracted 2026-10-20",
+      "why": "_build_bond_pair_features does not appear in the cProfile output at all: this trainer never calls adapter.train_step, it runs its own inline FM block, so that function is dead on this path. The per-edge Python loop is real but unexercised here."
+    }
+  ],
+  "see_also": [
+    "metrics/by_metric/cfm_bond_accuracy.json",
+    "metrics/by_metric/decode_ratio.json",
+    "docs/HONEST_NEGATIVE_CATALOG.md §6.149"
+  ]
+}
