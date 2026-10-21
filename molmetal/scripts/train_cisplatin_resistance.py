@@ -76,7 +76,7 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -473,6 +473,26 @@ def _predict(
     return out
 
 
+def _finite_or_none(x: float) -> float | None:
+    """NaN is not JSON.  A cell that was never evaluated is null, not a number."""
+    return float(x) if np.isfinite(x) else None
+
+
+def _json_safe(obj: Any) -> Any:
+    """Replace non-finite floats with None, recursively.
+
+    ``json.dumps`` emits bare ``NaN`` for these, which is not valid JSON and
+    which a strict reader (or the registry) then has to guess about.
+    """
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_safe(v) for v in obj]
+    if isinstance(obj, (float, np.floating)):
+        return float(obj) if np.isfinite(obj) else None
+    return obj
+
+
 def _per_cell_auc(
     active: np.ndarray, probs: np.ndarray, cell_lines: Tuple[str, ...] = CELL_LINES
 ) -> Dict[str, float]:
@@ -639,7 +659,17 @@ def main() -> int:
                     f"[train] seed={seed} epoch={epoch:3d} "
                     f"loss={tr_loss:.4f}  "
                     + "  ".join(
-                        f"val_{cl}={val_aucs.get(cl, 0):.3f}" for cl in CELL_LINES
+                        # n/a, not 0.000: _per_cell_auc skips a cell with <30
+                        # labelled rows or a single class, and printing the
+                        # skipped case as 0.000 reads as "AUC zero" -- a
+                        # different and much worse claim than "not evaluated".
+                        f"val_{cl}="
+                        + (
+                            f"{val_aucs[cl]:.3f}"
+                            if cl in val_aucs
+                            else "n/a"
+                        )
+                        for cl in CELL_LINES
                     )
                     + f"  mean_val={mean_val:.3f}  best={best_mean_val_auc:.3f}"
                 )
@@ -679,11 +709,18 @@ def main() -> int:
     for r in seed_results:
         means.append(r["test_auc_mean"])
         for cl in CELL_LINES:
-            per_cell[cl]["per_seed"].append(r["test_auc_per_cell"].get(cl, 0.0))
+            # NaN, not 0.0, when the cell was not evaluated: appending 0.0
+            # would silently turn "too few labelled test rows" into "the model
+            # scored random-or-worse", and nanmean below keeps it out instead.
+            per_cell[cl]["per_seed"].append(
+                r["test_auc_per_cell"].get(cl, float("nan"))
+            )
     for cl in CELL_LINES:
         vals = per_cell[cl]["per_seed"]
-        per_cell[cl]["auc_mean"] = float(np.mean(vals))
-        per_cell[cl]["auc_std"] = float(np.std(vals))
+        finite = [v for v in vals if not np.isnan(v)]
+        per_cell[cl]["auc_mean"] = float(np.mean(finite)) if finite else float("nan")
+        per_cell[cl]["auc_std"] = float(np.std(finite)) if finite else float("nan")
+        per_cell[cl]["n_seeds_evaluated"] = len(finite)
 
     out = {
         # Derived from --out so a run on a different cohort cannot silently
@@ -720,8 +757,8 @@ def main() -> int:
         },
         "value_overall_mean_auc": float(np.mean(means)),
         "value_overall_mean_std": float(np.std(means)),
-        "value_a2780cis_auc": per_cell["A2780cis"]["auc_mean"],
-        "value_a2780cis_std": per_cell["A2780cis"]["auc_std"],
+        "value_a2780cis_auc": _finite_or_none(per_cell["A2780cis"]["auc_mean"]),
+        "value_a2780cis_std": _finite_or_none(per_cell["A2780cis"]["auc_std"]),
         "per_cell_line": per_cell,
         "per_seed": seed_results,
         "n_seeds": len(seed_results),
@@ -744,7 +781,7 @@ def main() -> int:
         "timestamp": time.strftime("%Y-%m-%d"),
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(out, indent=2))
+    args.out.write_text(json.dumps(_json_safe(out), indent=2))
     print(f"[train] wrote {args.out}")
     return 0
 

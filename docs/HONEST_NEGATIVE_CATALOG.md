@@ -1989,7 +1989,8 @@ Per the Wf-A33 v2 CLOSEOUT, 3 items were queued for the next wave: REGR-1 (per_p
 - **Diagnosis**: MB-Finder `get-substances` page-by-page scan starting at page 850 (Pt range per Wf-301C scout) hit the cached `MB-Pt-*` imageIds but the `substances` endpoint returned imageIds that did NOT match the target compound_code set (likely a serialization mismatch between MB-Finder's substance IDs and PlatinAI's compound_code — both formats `MB-Pt-NNNNN` but MB-Finder pads to 6 digits while PlatinAI may have non-padded or suffixed forms like `MB-Pt-002238-1`).
 - **BLOCKED**: SMILES acquisition is insufficient for ANY D-MPNN / chemprop / CFM model that requires SMILES. Re-attempting the scan with a different match strategy (imageId vs compound_code, padding rule, MB-Finder substanceIds enumeration) is DEFERRED to a future Wf-A40-X with user OK. The current `pnmi.4cell_real_label_pool_with_smiles.csv` is **NOT** a viable REAL pool for SMILES-required models.
 
-**§6.65b — m2 PlatinAI re-measurement BLOCKED on data quality (ACTIVE honest-negative; brief's "replace synthetic 0.7105" NOT executed).** Per §6.64c (Wf-A39-5): the "synthetic 0.7105" headline does NOT exist in the narrative — verified by grep across `docs/`, `TODO/`, `molmetal/`. The active REAL m2 numbers remain from Wf-388-A1 (`metrics/by_metric/m2_r2_per_cohort.json`): platinai_4cell n=200 12d_R + Ridge α=1.0 → **−0.1440 ± 0.0325** (HONEST_NEGATIVE_R2_DEEP, §1.2); metalcytotox_combined n=2000 → **+0.1981 ± 0.0056** (WEAK_RECOVERY); n=4078 expanded → **+0.0102 ± 0.0036** (CEILING_BREAK). The brief's F4 "m2 row: replace 0.7105 (synthetic) with REAL value from F3" is **NOT executable on disk** because (a) no F3 m2 measurement exists, (b) there is no m2 row in `docs/00_MODEL_NARRATIVE.md` §2.1 or §2.2 to replace (the narrative §2.1 + §2.2 has PlatinAI m3 = MoleculeNet bace (pool=mean) = 0.8399, NOT PlatinAI 3-cell resistance), (c) the on-disk real PlatinAI pool has §6.65a SMILES gap AND missing MCF-7 (per §6.65c). m2 PlatinAI re-measurement stays DEFERRED to a future Wf-A40-X with both §6.65a (SMILES) and §6.65c (MCF-7) resolved. The m2 R² per-cohort ledger stays as documented in §1.2 + §1.3 + §6.18 + §6.39 — no NEW m2 measurement is fabricated.
+**§6.65b — m2 PlatinAI re-measurement BLOCKED on data quality (RESOLVED 2026-10-21 — the blocker was the cohort, not the brief).** Per §6.64c (Wf-A39-5): the "synthetic 0.7105" headline does NOT exist in the narrative — verified by grep across `docs/`, `TODO/`, `molmetal/`. The active REAL m2 numbers remain from Wf-388-A1 (`metrics/by_metric/m2_r2_per_cohort.json`): platinai_4cell n=200 12d_R + Ridge α=1.0 → **−0.1440 ± 0.0325** (HONEST_NEGATIVE_R2_DEEP, §1.2); metalcytotox_combined n=2000 → **+0.1981 ± 0.0056** (WEAK_RECOVERY); n=4078 expanded → **+0.0102 ± 0.0036** (CEILING_BREAK). The brief's F4 "m2 row: replace 0.7105 (synthetic) with REAL value from F3" is **NOT executable on disk** because (a) no F3 m2 measurement exists, (b) there is no m2 row in `docs/00_MODEL_NARRATIVE.md` §2.1 or §2.2 to replace (the narrative §2.1 + §2.2 has PlatinAI m3 = MoleculeNet bace (pool=mean) = 0.8399, NOT PlatinAI 3-cell resistance), (c) the on-disk real PlatinAI pool has §6.65a SMILES gap AND missing MCF-7 (per §6.65c). m2 PlatinAI re-measurement stays DEFERRED to a future Wf-A40-X with both §6.65a (SMILES) and §6.65c (MCF-7) resolved. The m2 R² per-cohort ledger stays as documented in §1.2 + §1.3 + §6.18 + §6.39 — no NEW m2 measurement is fabricated.
+**RESOLUTION (2026-10-21).** The premise ("deferred until the real pool has SMILES and MCF-7") was correct, and both gaps closed: `build_platinai_4cell_real_cohort.py` produced 1,966 compounds / 4,370 REAL measurements with SMILES for every row and MCF-7 present (813). `m2_r2_real_4cell.json` is now the m2 paper line: **−0.2045** (32-d, scaffold) / **−0.0234** (12-d, scaffold), with random-split counterparts +0.0912 / +0.0551. Note what this does and does not say: the numbers are NOT comparable with the −0.1440 above (n=200 vs 1,966, mean-over-4-cells target vs per-cell, α=1.0 vs 0.5), and the 32-d vs 12-d gap is larger than the cohort effect, so quote both widths. What it does establish is that the descriptor family has no signal that survives a scaffold split on real labels — the same conclusion the synthetic cohort suggested, now on measurements rather than on a generator. Entry stays in the catalog as RESOLVED, not deleted.
 
 **§6.65c — m3 PlatinAI 3-cell resistance re-measurement BLOCKED on data quality + trainer format mismatch (ACTIVE honest-negative; brief's "Re-run m3 (3-cell resistance) on SMILES-enriched real pool" NOT executed).** Three on-disk blockers prevent the brief's CLI from producing a valid MEASURED m3 value. **Per Wf-A42 §6.68c (2026-10-15) the trainer-side column-schema bug (a SEPARATE finding from sub-blocker #3 long→wide pivot) is RESOLVED:** `molmetal/scripts/train_cisplatin_resistance.py` previously declared `IC50_COLS = ("ic50_mcf7_nm", "ic50_a549_nm", "ic50_a2780cis_nm")` + `ACTIVE_THRESHOLD_NM = 10_000.0` + `r["smiles"]`, none of which match the live `platinai_4cell.csv` (`SMILES_Ligands,pIC50_mcf7,pIC50_a549,pIC50_a2780,pIC50_a2780cis,metal`); that schema mismatch was a separate root-cause preventing ANY prior m3 measurement on the synthetic pool. The Wf-A42 fix renames to `SMILES_COL = "SMILES_Ligands"`, `PIC50_COLS = ("pIC50_mcf7", "pIC50_a549", "pIC50_a2780cis")`, `ACTIVE_THRESHOLD_PIC50 = 5.0` (pIC50 ≥ 5.0 ⇔ IC50 ≤ 10 µM, unit-equivalent to 10_000 nM); smoke returns 4078 rows, `active.shape=(4078,3)`, 0 missing, 4027/4060/4075 active. **Sub-blockers #1 (SMILES coverage 1/2053) and #2 (missing MCF-7) and #3 (long→wide pivot for the Wf-A40 MB-Finder real pool) remain ACTIVE** — the m3 PlatinAI re-measurement on the real pool is still DEFERRED until those are resolved.
 
@@ -9392,3 +9393,83 @@ is a `torch.cuda` reading or an `nvidia-smi` sample, every second an `epoch_time
 
 ---
 
+
+## §6.151 — EXT phase: the cross-metal failure is shape, not level; and there is no external cohort (2026-10-21)
+
+**Claim under test.** The 2026-10-21 EXT plan (`todo.json` EXT-1..EXT-8) assumed the
+leave-one-metal-out failure was dominated by an unidentifiable *level*: the model could not
+place a new metal's mean, so k measurements of that metal would fix it. Three pre-registered
+gates followed from that assumption.
+
+**What was measured.**
+
+| term | share of squared error | range across 4 cells |
+|---|---:|---|
+| offset (level) | **0.045 – 0.100** | potency/metal_out 0.100, cisplatin/ligand_disjoint 0.053 |
+| scale (compression) | 0.198 – 0.272 | sd_pred 0.31–0.54 vs sd_obs 0.64–0.96; slope 0.24–1.16 |
+| shape (ranking) | **0.653 – 0.757** | dominant in all four endpoint × split cells |
+
+So the premise was **wrong**: the level is the smallest of the three terms. Three consequences,
+each measured:
+
+1. **Perfect level prediction buys almost nothing.** Oracle-offset counterfactual:
+   `+0.078` R², and **4/5 metals remain negative**. Half-bias correction: `+0.059`.
+2. **k-shot calibration fails, and at small k it hurts.** On the ligand-disjoint split,
+   k=50 linear calibration leaves **0/5** metals with R² ≥ 0. At k=5 the offset-only
+   calibration is *worse than no calibration* in **55–95%** of the 20 repeats, per metal.
+   Mechanism: the bias being corrected is 5–10% of MSE, so the estimation noise from k
+   points exceeds the bias.
+3. **The apparent transfer is ligand overlap.** Pooled Spearman drops from **+0.296**
+   (metal_out) to **+0.158** (metal_out_ligand_disjoint) for potency, and from **+0.269**
+   to **+0.062** for cisplatin_ratio. Only Os survives the disjoint split (+0.36 / +0.32).
+
+**A metal embedding is not identifiable either.** Only **379/2,846 (13.3%)** of potency
+ligands were measured against ≥2 metals, and exactly **1** was measured against all five.
+After ligand-centring the matrix has rank ≤ 4, so an 8-dimensional embedding is
+unidentifiable by construction; the leave-one-metal-out "mean of the other four residual
+rows" predictor scores **R² = −2.19**.
+
+**There is no independent external cohort.** IrCytoToxDB (Scientific Data 2024, Zenodo
+10.5281/zenodo.13120939, CC-BY-4.0, 2,694 values / 222 papers / 127 cell lines) shares
+**221/222 = 99.55%** of its DOIs with MSRS and adds **1** new DOI. On 653 matched
+(DOI, cell line) cells, **89.4%** agree with MSRS to within 0.01 log10, the median absolute
+difference is **0.0**, and r = 0.9611. It is the Ir slice of the same curation, not an
+external test set. Every other route was probed and failed: ChEMBL 29 local export (0 target
+metals), PlatinAI (Pt only), NCI-60 (no SMILES), DepMap (HTTP 200 but Cloudflare Turnstile —
+the body is HTML), GDSC / CancerRxGene (HTTP 410 Gone), Cellosaurus API (timeout), GEO
+GSE36133 (reachable but RAW.tar of per-sample CEL files), RuCytoToxDB (no Zenodo deposit;
+921 papers ⊂ MSRS's 1,427 Ru DOIs).
+
+**Cell features are blocked twice over.** 0 annotation files on disk, and **21.9%**
+(9,253/42,167) of rows come from five lines that have no CCLE/DepMap counterpart *by
+construction*: HELA (excluded from CCLE), HEK293 (not a cancer line), A2780 (outside the
+CCLE panel), A2780CISR and A549CISR (resistant derivatives). The second failure does not
+improve with a better download, so B2 is closed permanently.
+
+**Decision.** Pre-registered rule: `EXT-1 = SAR_FAILS or EXT-3 KILL → boundary_path`.
+EXT-3 = KILL → **boundary_path**. EXT-1 was PARTIAL on the overlapping split (2/5 metals
+above the 0.10 gate: Os +0.316, Re +0.106) and SAR_FAILS on the honest split (1/5: Os +0.080).
+
+**One gate was amended, and it is recorded.** EXT-3's original gate was "k=50 recovers ≥60%
+of the level gap". Because the level gap turned out to be 5–10% of MSE, that gate's
+denominator is degenerate. It was rewritten to "k=50 linear calibration gives R² ≥ 0 for
+≥3/5 metals on the ligand-disjoint split" **before the script was first run**, and the reason
+plus timestamp is in the artifact's `design.amendment_note`. No gate was changed after
+seeing its own result.
+
+**What was not done.** The 2023-2025 manual curation (EXT-5's two-week budget) was **not**
+performed, and **no compound rows were fabricated**. The EXT-3 KILL is specific to
+LightGBM with additive interaction constraints; a different learner class is a new
+pre-registered test, not a reinterpretation of this one.
+
+**Artifacts.** `msrs_lomo_error_decomposition.json`, `msrs_metal_descriptor_level.json`,
+`msrs_kshot_calibration.json`, `msrs_metal_embedding.json`,
+`msrs_external_cohort_probe.json`, `msrs_cell_feature_probe.json`;
+narrative in `TODO/completed/ext_phase_results.md`; claims C8/C9/C10 in
+`docs/CLAIM_LEDGER.md`.
+
+**§6.151 catalog-count math.** Net catalog-count delta: **+1** (this entry). ACTIVE count
+**161 → 162**.
+
+**Workflow** | EXT-1..EXT-8 (2026-10-21; CPU only, no GPU; §5.2: every number is an artifact
+field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).

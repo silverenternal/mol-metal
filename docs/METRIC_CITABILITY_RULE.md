@@ -222,8 +222,8 @@ The vocabulary is `REAL` / `SYNTHETIC` / `COMPUTED` / `NOT_APPLICABLE` /
 measured nor simulated, and lumping the 214,373 predicted complexes in
 Rusanov Table S6 in with measured IC50s is exactly the confusion the column is
 meant to prevent. `NOT_APPLICABLE` covers structure lists and manifests, which
-have no labels to be right or wrong about. State 2026-10-21: **33 datasets,
-0 `UNRECORDED`, 0 `UNCLASSIFIED`** — 18 `REAL`, 1 `SYNTHETIC`, 2 `COMPUTED`,
+have no labels to be right or wrong about. State 2026-10-21: **34 datasets,
+0 `UNRECORDED`, 0 `UNCLASSIFIED`** — 19 `REAL`, 1 `SYNTHETIC`, 2 `COMPUTED`,
 12 `NOT_APPLICABLE`.
 
 #### A label is only usable when its unit is known
@@ -244,6 +244,21 @@ individual cell lines"*. That sentence, and the path to the PDF, is recorded in
 it drops rows whose pIC50 falls outside `[3, 10]` (0.1 nM – 1 mM, where a
 cell-viability IC50 cannot live) and counts every drop in the meta file rather
 than filtering silently.
+
+#### A skipped evaluation is not a zero
+
+Measured 2026-10-21 in `train_cisplatin_resistance.py`: `_per_cell_auc` skips a
+cell line when its evaluation slice has fewer than 30 labelled rows or only one
+class, which is right — AUC is undefined there. But three call sites turned that
+skip into `0.0`: the epoch print (`val_A2780cis=0.000`), the per-seed aggregate
+(`.get(cl, 0.0)`), and therefore the reported mean. A reader sees "AUC 0.000",
+which is a *worse than random* claim, when the truth is "not measured". The
+distinction matters because one is a finding and the other is a coverage gap.
+
+Rule: an unevaluated cell is `null` / `n/a` in the artifact, and the aggregate
+uses `nanmean` with an `n_seeds_evaluated` count beside it. Never let a default
+value stand in for an absent measurement — the same reason `UNRECORDED` is a
+gap rather than a provenance claim.
 
 
 ### Optional disclosure field
