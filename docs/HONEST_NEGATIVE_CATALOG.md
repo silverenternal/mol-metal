@@ -9513,7 +9513,7 @@ plus one chord at the same probability:
 So the 6-ring term had no gradient at all whenever ring edges also sat in partial
 triangles — i.e. in every dense predicted graph.
 
-**The A/B, decoded val molecules (96 per epoch, last epoch = 5th):**
+**The A/B, decoded val molecules (96 per epoch, last epoch = 5th; all seed 0):**
 
 | arm | grad norm (peak) | bond AP | best F1 | rings/mol | 3-share | 5/6-share |
 |---|---:|---:|---:|---:|---:|---:|
@@ -9559,17 +9559,46 @@ A count-matching
 prior on a soft graph cannot say "close THIS ring"; it can only say "add edges until the
 count matches", and every added edge creates rings of all sizes.
 
+**Seed spread — the protocol had n_seeds = 1 until this run, and it matters.** Adding
+seeds 1 and 2 to both arms (`metrics/by_metric/wfa107_ring_prior_ab.json`,
+`comparison.seed_spread`) changes what the single-seed table above can support:
+
+| arm | seed 0 | seed 1 | seed 2 | mean | range |
+|---|---:|---:|---:|---:|---:|
+| control, bond AP | 0.5617 | 0.6950 | 0.6949 | 0.6505 | **0.1333** |
+| features, bond AP | 0.7556 | 0.7357 | 0.8724 | 0.7879 | **0.1367** |
+| control, 3-ring share | 0.5096 | 0.6000 | 0.4716 | 0.5271 | 0.1284 |
+| features, 3-ring share | 0.2630 | 0.4531 | 0.3277 | 0.3479 | 0.1901 |
+| control, 5/6 share | 0.1720 | 0.1429 | 0.1383 | 0.1510 | 0.0337 |
+| features, 5/6 share | 0.2520 | 0.1406 | 0.2090 | 0.2005 | 0.1113 |
+
+The run-to-run spread of bond AP (**0.133**) is the same size as the single-seed effect
+(+0.194). Paired at the same seed, features − control is:
+
+| delta | seed 0 | seed 1 | seed 2 | mean | signs | paired t(2) | p (two-sided) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| bond AP | +0.1939 | +0.0408 | +0.1774 | **+0.1374** | 3/3 + | 2.83 | **0.106** |
+| 3-ring share | −0.2466 | −0.1469 | −0.1439 | **−0.1791** | 3/3 − | −5.31 | **0.034** |
+| 5/6 share | +0.0800 | −0.0022 | +0.0707 | +0.0495 | 2/3 + | 1.90 | 0.197 |
+
+So the honest version of "the one positive result": **the 3-ring share falls in 3/3 seeds
+and that one survives a paired test; the bond-AP gain is consistent in sign but not
+significant at n = 3, and the 5/6-share gain is not separated from noise.** The
+single-seed +0.194 must not be quoted as the effect size; +0.137 ± 0.084 (sd) is.
+
 **The one positive result is not the prior.** RBF distance + pair chemistry
 (Wf-A72 Op2/Op3), with the prior off: bond AP **0.5617 → 0.7556** (+0.194), best F1
 0.7157 → 0.7743, `bond_ce` 0.798 → 0.745, and ring composition improves as a side effect
-(3-share 0.510 → 0.263, 5/6 0.172 → 0.252). On truth geometry the bond F1 is flat
-(0.688 → 0.654) but the 5/6 share rises 0.191 → 0.252. The rare classes gain most:
-class-2 AP 0.017 → 0.120, class-4 AP 0.532 → 0.729.
+(3-share 0.510 → 0.263, 5/6 0.172 → 0.252) — all seed 0; the 3-seed version is the table
+above. The rare classes gain most at seed 0: class-2 AP 0.017 → 0.120, class-4 AP
+0.532 → 0.729. On truth geometry the 3-seed deltas are all null (3-share −0.008,
+p = 0.90; 5/6 +0.018, p = 0.63; bond F1 −0.013, p = 0.48).
 
 **Honest boundaries (ACTIVE).**
-  * **5 epochs, 1 seed, 200 training clouds.** This is a direction test. No delta here is
-    a quality result, and the 1e-3 vs 1e-2 ordering (0.451 vs 0.467 AP) is inside the
-    run-to-run spread this protocol has never measured (n_seeds = 1).
+  * **5 epochs, 200 training clouds, and n = 3 seeds only where stated.** The seed-spread
+    table above is the only part of this entry with a spread; every other arm is seed 0
+    and its deltas must be read against that 0.133 AP range. The 1e-3 vs 1e-2 ordering
+    (0.451 vs 0.467 AP) is far inside it.
   * **The C7 verdict is untouched.** SA≤4.5 0.28%, joint gate 0/10,190 were measured on
     an 18-epoch full-corpus pool. Nothing here re-opens it.
   * **"No weight helps" is scoped to 5 epochs.** At w=1e-4 the AP trajectory is still
@@ -9692,3 +9721,122 @@ conditioning on cohort size rather than metal. Recorded here only because it cha
 (and cannot be changed without new information), but the **conditional** coverage is now
 defensible. `metal`-Mondrian alone moves 0.8096 → 0.8331 — the failing stratum is cohort size 2
 (n=851), not a metal.
+
+---
+
+## §6.155 — UP-3: the corpus does not contain the complex, so no 3D graph can be built (2026-10-21)
+
+**Claim under test.** The residual error is 65–76% *shape* (ordering), and the D-MPNN beats
+LightGBM by only +0.0019 on the canonical split (`msrs_dmpnn_surface.json`), so the hypothesis
+was that the missing input is **3D coordination geometry** — metal–donor bonds, bite angles,
+coordination number. UP-3 planned an ETKDG build of every complex and a 5-seed DOI-holdout run.
+
+**Measured (step 1, 200 metal-stratified complexes).** `metrics/by_metric/msrs_complex3d_probe.json`:
+
+| quantity | value | what it means |
+|---|---:|---|
+| `explicit_metal_share` | **0.000** | the ligand SMILES **contains no metal atom at all** |
+| `multi_fragment_share` | **1.000** | every "complex" is a multi-component string (median 3 fragments, mean 2.23 charged ancillary fragments) |
+| `organic_embed_success` | 1.000 | the organic fragments embed — but they are disconnected, so their relative geometry is unconstrained |
+| `legal_embed_success` | 0.250 | metal bonded only to donors RDKit can sanitise (non-aromatic heteroatoms + halides) |
+| `complete_embed_success` | **0.065** | metal bonded to the donors that actually bind (aromatic N 84%, Cp/aryl carbanion 33.5%) |
+| `complete_fail_graph_rejected` | **0.935** | the failures are sanitisation (kekulisation), not embedding |
+
+**Verdict: `ORGANIC_ONLY_FALLBACK`.** A construction that drops the Cp and pyridyl donors
+embeds 25% of the time but no longer describes the species in the table; the gate is scored on
+the complete donor set, which is not constructible. UP-3 therefore falls back to the 2D graph
+that already exists — `molmetal/data/metal_graph.py:303-310` (explicit metal node + coordination
+edges), shipped as the `metal_state` arm of `msrs_dmpnn_surface.json`.
+
+**The one thing the probe did find.** `_DONOR_STRENGTH` covers N/O/S/P/Se only, so the 33.5% of
+complexes that bind through a Cp or aryl carbanion had **no donor edge at all** — the metal node
+was connected to whatever heteroatom happened to be present, or to nothing. That is now
+representable (`include_carbanion=True`, default off so old artifacts stay reproducible), and it
+is being A/B'd in `msrs_dmpnn_donor_ab.json`.
+
+**Do not** describe this corpus as containing complexes. It contains **ligand sets plus a metal
+label**; the coordination sphere, the binding mode and the ancillary geometry are all absent.
+
+**Artifacts.** `metrics/by_metric/msrs_complex3d_probe.json`;
+`molmetal/scripts/msrs_complex3d_probe.py`.
+
+**§6.155 catalog-count math.** Net **+1**. Cumulative **209 → 210**. ACTIVE **165 → 166**.
+
+---
+
+## §6.153 — Wf-A107b: an extensive statistic cannot be reweighted into an intensive one, so the prior was rebuilt per edge (2026-10-21)
+
+**The argument §6.152 left open.** Both count forms failed, and the reason is not the
+weight: a cycle count is *extensive* in graph density, so any bounded function of it has a
+derivative that shrinks as the graph densifies — exactly when the correction is needed.
+The share form was tried first and measured on the same synthetic probe: gradient
+**0.011 at p = 0.50 → 1.4e-4 at p = 0.90**, a 77x collapse, i.e. the same disease. No
+reweighting of an extensive statistic can be density-invariant.
+
+**What replaced it.** `formulation="edge_ring"`: one Bernoulli per candidate edge, target
+= "this truth edge lies in a ring of size 3-6". Ring membership is computed exactly from
+the truth adjacency with the same non-backtracking operator (`(B**k)[e,e] > 0`, smallest k
+wins, so a triangle edge is not relabelled a 6-ring by double traversal) — no RDKit call
+and no SSSR ambiguity. Loss is a class-weighted BCE; exact zero when the truth molecule
+has no such ring.
+
+| probe (20-atom complete candidate graph, weight 1.0) | p=0.50 | p=0.90 | ratio |
+|---|---:|---:|---:|
+| `count` loss | 0.480 | 489.12 | 1,018x |
+| `count` gradient | 78.22 | 0.0104 | **1/7,543** |
+| `edge_ring` loss | 1.343 | 2.332 | 1.7x |
+| `edge_ring` gradient | 0.2246 | 0.0843 | **1/2.7** |
+
+**MEASURED, 3 seeds, decoded val molecules** (`wfa107_ring_prior_ab.json`,
+`comparison.seed_spread.paired_edge_ring_w1_*`), paired against the same-seed control:
+
+| delta (edge_ring w=1.0 − control) | seed 0 | seed 1 | seed 2 | mean | signs | p (two-sided) |
+|---|---:|---:|---:|---:|---:|---:|
+| bond existence AP | +0.0188 | −0.0005 | −0.0221 | **−0.0013** | 1/3 + | 0.924 |
+| 3-ring share | −0.1357 | −0.1758 | −0.1130 | **−0.1415** | 3/3 − | **0.016** |
+| 5/6-ring share | +0.0399 | +0.0693 | +0.1067 | **+0.0719** | 3/3 + | 0.065 |
+
+So this is the first prior variant that moves the decoded ring profile in the right
+direction **without paying bond accuracy**: 3-share 0.527 → 0.386 and 5/6 0.151 → 0.223 on
+the 3-seed means, with bond AP 0.650 → 0.649.
+
+**But the mechanism is not local ring closure, and the probe says so.** On the bond head's
+own graph over the 63 val clouds' truth geometry (threshold 0.5,
+`wfa107_bond_graph_profile.json`, `paired_vs_control.edge_ring_w1`), every delta is null:
+3-share **+0.002** (p = 0.98), 5/6 **−0.019** (p = 0.23), bond F1 **−0.029** (p = 0.46),
+rings/mol +5.56 (p = 0.24). The decoded improvement therefore cannot be attributed to the
+head learning which edges close rings — it appears only after the ODE sampler, and this
+entry does not explain it. Lowering the profile threshold to 0.25 does not help: the
+control graph degenerates there (342.5 rings/mol, recall 1.000, precision 0.075), so 0.5
+is the only meaningful operating point for that probe.
+
+**Honest boundaries (ACTIVE).**
+  * **Opt-in, not default.** `flow.ring_template_weight` stays 0.0 and
+    `flow.ring_template_formulation` stays `count`; edge_ring is reachable from YAML and
+    has to be asked for. A term whose decoded effect does not appear in its own local
+    probe should not become a default.
+  * **3 seeds, 5 epochs, 200 clouds.** The 5/6 delta (p = 0.065) is not significant; the
+    3-share delta is, and 3/3 seeds agree. The absolute level is still far from the
+    corpus: 3-share 0.386 vs 0.005, 5/6 0.223 vs 0.969.
+  * **C7 is untouched.** SA≤4.5 0.28% / joint gate 0/10,190 were measured on an 18-epoch
+    full-corpus pool. A 5-epoch ring-share shift does not reopen it.
+  * **A device bug was hit and fixed while running this.** `_truth_ring_edges` allocated
+    its `found` mask on CPU while the truth tensors were on `cuda:0`; the first two arms
+    died at epoch 0 with a mixed-device RuntimeError and were relaunched. The unit tests
+    run on CPU and could not catch it — the regression test now exercises the same code
+    path, but the device assertion itself is only covered by the GPU runs.
+
+**Artifacts.** `metrics/by_metric/wfa107_ring_prior_ab.json`,
+`metrics/by_metric/wfa107_bond_graph_profile.json`,
+`molmetal/loss/ring_template.py` (`_truth_ring_edges`, `_edge_ring_loss`),
+`configs/wfa107_edge_ring_{w1,w03}.yaml`,
+`results/wfa107_edge_ring_w1{,_seed1,_seed2}/`; 4 new tests in
+`test_wfa107_ring_prior_per_atom.py` (14 in the file) + 4 parametrized YAML→prior
+cases in `test_wfa107_wiring.py`.
+
+**§6.153 catalog-count math.** Net catalog-count delta: **+1**. Cumulative catalog count
+**207 → 208**. ACTIVE count **163 → 164**.
+
+**Workflow** | Wf-A107b (2026-10-21; GPU0: 2 formulation arms + 2 seeds × 2 arms + 2
+seed-spread arms, 5 epochs each; §5.2: every number is an artifact field; §5.3 + §5.4:
+0 `paper/*` + 0 wet-lab).

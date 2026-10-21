@@ -101,9 +101,11 @@ class RingTemplatePriorConfig:
     size_weights: per-size weight on the squared count error.  Uniform
         by default: the target is the molecule's own profile, so no size
         needs to be privileged a priori.
-    formulation: ``"count"`` (default, Wf-A78 behaviour, bit-exact) or
-        ``"per_atom"`` (Wf-A107).  See :meth:`RingTemplatePrior.compute`
-        for why ``per_atom`` exists.
+    formulation: ``"count"`` (default, Wf-A78 behaviour, bit-exact),
+        ``"per_atom"`` (Wf-A107) or ``"edge_ring"`` (Wf-A107b).  See
+        :meth:`RingTemplatePrior.compute` for why ``per_atom`` exists and
+        :meth:`RingTemplatePrior._edge_ring_loss` for why the two count
+        forms cannot be fixed by reweighting.
     deficit_sizes: in ``per_atom`` mode, sizes whose error is one-sided
         *deficit* (promote rings).  Every other size is one-sided
         *excess* (suppress rings).  Default (5, 6) matches the chemistry
@@ -116,11 +118,16 @@ class RingTemplatePriorConfig:
     eps: float = 1e-6
     formulation: str = "count"
     deficit_sizes: Tuple[int, ...] = (5, 6)
+    #: ``edge_ring`` only.  Weight on the positive (ring-edge) class of the
+    #: per-edge BCE.  ``None`` derives ``neg/pos`` from the molecule's own
+    #: candidate list, so a molecule with 6 ring edges out of 190 candidates
+    #: does not drown them.
+    edge_ring_positive_weight: Optional[float] = None
 
     def __post_init__(self) -> None:
-        if self.formulation not in ("count", "per_atom"):
+        if self.formulation not in ("count", "per_atom", "edge_ring"):
             raise ValueError(
-                "formulation must be 'count' or 'per_atom', got "
+                "formulation must be 'count', 'per_atom' or 'edge_ring', got "
                 f"{self.formulation!r}"
             )
 
@@ -193,6 +200,47 @@ def _cycle_counts(
     return {k: raw[k] for k in sizes}
 
 
+def _truth_ring_edges(
+    truth_bonds: torch.Tensor,
+    sizes: Sequence[int],
+) -> Dict[Tuple[int, int], int]:
+    """Map each truth edge that lies in a small ring to its smallest ring size.
+
+    Wf-A107b — the per-edge supervision needs to know WHICH edges close a
+    3-6 ring in the truth molecule.  This is computed exactly from the
+    truth adjacency with the same non-backtracking operator used for the
+    counts: an edge is in a k-cycle iff ``(B**k)[e, e] > 0``.  No RDKit
+    call, no SSSR ambiguity, and the smallest k wins so a triangle edge is
+    not relabelled as a 6-ring by the double traversal.
+
+    Returns ``{(i, j): k}`` with ``i < j``; empty when the molecule has no
+    ring of the requested sizes.
+    """
+    src = truth_bonds[0].to(torch.long)
+    dst = truth_bonds[1].to(torch.long)
+    if src.numel() == 0 or not sizes:
+        return {}
+    d_src = torch.cat([src, dst])
+    d_dst = torch.cat([dst, src])
+    continues = d_dst.unsqueeze(1) == d_src.unsqueeze(0)
+    backtracks = d_dst.unsqueeze(0) == d_src.unsqueeze(1)
+    b_mat = (continues & ~backtracks).to(torch.float64)
+
+    ring: Dict[Tuple[int, int], int] = {}
+    found = torch.zeros(d_src.numel(), dtype=torch.bool, device=b_mat.device)
+    power = b_mat
+    for k in range(2, max(sizes) + 1):
+        power = power @ b_mat
+        if k not in sizes:
+            continue
+        in_ring = torch.diagonal(power) > 0.5
+        for e in torch.nonzero(in_ring & ~found).flatten().tolist():
+            i, j = int(d_src[e]), int(d_dst[e])
+            ring[(min(i, j), max(i, j))] = k
+        found = found | in_ring
+    return ring
+
+
 def _as_pair_index(pair_index) -> torch.Tensor:
     """Accept (2, E) tensors and (i_idx, j_idx) tuples alike."""
     if isinstance(pair_index, (tuple, list)) and len(pair_index) == 2:
@@ -259,12 +307,18 @@ class RingTemplatePrior:
         soft = 1.0 - probs[:, 0]
         hard = (soft > 0.5).to(soft.dtype)
 
-        soft_counts = _cycle_counts(soft, pair_index, self.config.sizes, n_atoms)
-        hard_counts = _cycle_counts(hard, pair_index, self.config.sizes, n_atoms)
-
         truth = truth_bonds.to(bond_logits.device)
         if truth.dim() != 2 or truth.shape[0] != 2:
             return zero
+
+        # Wf-A107b — the per-edge form needs no cycle counts: it labels
+        # each candidate edge from the truth graph directly.
+        if self.config.formulation == "edge_ring":
+            return self.weight * self._edge_ring_loss(soft, pair_index, truth)
+
+        soft_counts = _cycle_counts(soft, pair_index, self.config.sizes, n_atoms)
+        hard_counts = _cycle_counts(hard, pair_index, self.config.sizes, n_atoms)
+
         truth_counts = _cycle_counts(
             torch.ones(truth.shape[1], device=bond_logits.device, dtype=soft.dtype),
             truth,
@@ -310,6 +364,66 @@ class RingTemplatePrior:
                 torch.log1p(c) - torch.log1p(truth_counts[k])
             ) ** 2
         return self.weight * loss
+
+    def _edge_ring_loss(
+        self,
+        soft: torch.Tensor,
+        pair_index: torch.Tensor,
+        truth_bonds: torch.Tensor,
+    ) -> torch.Tensor:
+        """Wf-A107b — per-edge ring-membership BCE.
+
+        WHY THIS FORM EXISTS (MEASURED 2026-10-21, Wf-A107)
+        ----------------------------------------------------
+        Both count forms have an EXTENSIVE gradient: the cycle count grows
+        with graph density, so any bounded function of it has a derivative
+        that shrinks exactly when the graph is densest.  Measured on the
+        real runs, the count form's pre-clip gradient norm falls
+        53.8 -> 86.2 -> 280.1 -> 25.1 -> 1.7 across five epochs *while the
+        graph densifies*, and the bond AP only starts moving on the epoch
+        where the prior has already gone quiet.  The share form does not
+        fix it (probe: 0.011 at p=0.50 -> 1.4e-4 at p=0.90, the same
+        collapse).  No reweighting of an extensive statistic can.
+
+        This form is INTENSIVE: one Bernoulli per candidate edge, so the
+        loss and its gradient are O(1) per edge regardless of how many
+        rings the graph has, and it says which edges to close rather than
+        how many rings to have.  The target is the truth molecule's own
+        ring-edge set (smallest ring size in ``sizes``).
+
+        Returns the mean weighted BCE over candidate edges; exact zero
+        when the truth molecule has no ring of the requested sizes (there
+        is nothing to prefer) — inventing a target would penalise a
+        correct acyclic output.
+        """
+        ring = _truth_ring_edges(truth_bonds, self.config.sizes)
+        if not ring:
+            return torch.zeros((), device=soft.device, dtype=soft.dtype)
+
+        src = pair_index[0].tolist()
+        dst = pair_index[1].tolist()
+        target = torch.tensor(
+            [1.0 if (min(i, j), max(i, j)) in ring else 0.0
+             for i, j in zip(src, dst)],
+            device=soft.device,
+            dtype=soft.dtype,
+        )
+        n_pos = float(target.sum())
+        if n_pos <= 0.0:
+            return torch.zeros((), device=soft.device, dtype=soft.dtype)
+
+        if self.config.edge_ring_positive_weight is not None:
+            pos_w = float(self.config.edge_ring_positive_weight)
+        else:
+            n_neg = float(target.numel()) - n_pos
+            pos_w = max(n_neg / n_pos, 1.0)
+        weights = torch.where(
+            target > 0.5,
+            torch.full_like(target, pos_w),
+            torch.ones_like(target),
+        )
+        p = soft.clamp(1e-4, 1.0 - 1e-4)
+        return F.binary_cross_entropy(p, target, weight=weights)
 
     def _per_atom_loss(
         self,

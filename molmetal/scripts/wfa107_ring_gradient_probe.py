@@ -211,6 +211,77 @@ def probe_2_triangle_correction(hex_p=0.35, chord_p=0.35):
     }
 
 
+def _share_loss(soft_counts, hard_counts, truth_counts, sizes):
+    """Analysis-only share form (Wf-A107b) — never shipped.
+
+    Included so the claim "the share form has the same disease" has an
+    artifact path rather than a memory.  Shares are scale-free in the
+    VALUE but their gradient is O(1/S) with S the total cycle count, so
+    it collapses on a dense graph just like the count form.
+    """
+    sv = torch.stack([soft_counts[k] for k in sizes])
+    hv = torch.stack([hard_counts[k] for k in sizes])
+    tv = torch.stack([truth_counts[k] for k in sizes])
+    ss = sv / sv.sum().clamp(min=1e-6)
+    hs = hv / hv.sum().clamp(min=1e-6)
+    t = tv / tv.sum()
+    u = hs + ss - ss.detach()
+    return ((u - t) ** 2).sum()
+
+
+def probe_3_formulation_scale(n_atoms=20, weight=1.0):
+    """All four formulations at the SAME weight on the same two graphs.
+
+    Answers: is the failure a weight problem (then any form works at some
+    weight) or a functional-form problem (then the gradient ratios differ
+    by orders of magnitude at every weight)?
+    """
+    from molmetal.loss.ring_template import RingTemplatePrior, RingTemplatePriorConfig
+
+    pair_index = _complete_pair_index(n_atoms)
+    truth = _hexagon_truth(n_atoms)
+    sizes = (3, 4, 5, 6)
+    out = {"n_atoms": n_atoms, "weight": weight, "sizes": list(sizes), "rows": []}
+    for p in (0.50, 0.90):
+        logits0 = _logits_for(p, pair_index.shape[1])
+        row = {"bond_prob": p}
+        for form in ("count", "per_atom", "edge_ring"):
+            logits = logits0.clone().requires_grad_(True)
+            prior = RingTemplatePrior(
+                weight=weight,
+                config=RingTemplatePriorConfig(formulation=form),
+            )
+            loss = prior.compute(logits, pair_index, n_atoms, truth)
+            loss.backward()
+            row[form] = {
+                "loss": float(loss.detach()),
+                "grad_norm": float(logits.grad.norm()),
+            }
+        # share: analysis-only, needs the counts directly
+        logits = logits0.clone().requires_grad_(True)
+        soft = 1.0 - torch.softmax(logits, dim=-1)[:, NO_BOND_CLASS]
+        hard = (soft > 0.5).to(soft.dtype)
+        sc = _cycle_counts(soft, pair_index, sizes, n_atoms)
+        hc = _cycle_counts(hard, pair_index, sizes, n_atoms)
+        tc = _cycle_counts(
+            torch.ones(truth.shape[1], dtype=soft.dtype), truth, sizes, n_atoms
+        )
+        loss = weight * _share_loss(sc, hc, tc, sizes)
+        loss.backward()
+        row["share_analysis_only"] = {
+            "loss": float(loss.detach()),
+            "grad_norm": float(logits.grad.norm()),
+        }
+        out["rows"].append(row)
+
+    lo, hi = out["rows"][0], out["rows"][1]
+    out["grad_ratio_p050_over_p090"] = {
+        k: (lo[k]["grad_norm"] / hi[k]["grad_norm"] if hi[k]["grad_norm"] else None)
+        for k in ("count", "per_atom", "edge_ring", "share_analysis_only")
+    }
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="metrics/by_metric/wfa107_ring_gradient_probe.json")
@@ -221,6 +292,7 @@ def main():
         "kind": "synthetic gradient probe (CPU)",
         "probe_1_gradient_collapse": probe_1_gradient_collapse(),
         "probe_2_triangle_correction": probe_2_triangle_correction(),
+        "probe_3_formulation_scale": probe_3_formulation_scale(),
     }
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as fh:

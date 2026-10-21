@@ -22,10 +22,23 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-ARMS = ("control", "count", "per_atom", "features", "count_w1e3", "count_w1e4")
+ARMS = (
+    "control", "count", "per_atom", "features", "count_w1e3", "count_w1e4",
+    "edge_ring_w1", "edge_ring_w03",
+    "control_seed1", "control_seed2", "features_seed1", "features_seed2",
+    "edge_ring_w1_seed1", "edge_ring_w1_seed2",
+)
 
 #: Weight sweep, in increasing order.  ``control`` is weight 0 by construction.
 _SWEEP = ("control", "count_w1e4", "count_w1e3", "count")
+
+#: Arms that differ from their base arm only in ``seed``.  Used to put a
+#: spread on the one number this protocol is quoted for.
+_SEED_ARMS = {
+    "control": ("control", "control_seed1", "control_seed2"),
+    "features": ("features", "features_seed1", "features_seed2"),
+    "edge_ring_w1": ("edge_ring_w1", "edge_ring_w1_seed1", "edge_ring_w1_seed2"),
+}
 
 #: Fields copied verbatim from each per-epoch record.
 _ROW_FIELDS = (
@@ -40,6 +53,11 @@ _ROW_FIELDS = (
     "bond_class_2_pr_auc",
     "bond_class_3_pr_auc",
     "bond_class_4_pr_auc",
+    "bond_class_0_pos_rate",
+    "bond_class_1_pos_rate",
+    "bond_class_2_pos_rate",
+    "bond_class_3_pos_rate",
+    "bond_class_4_pos_rate",
     "bond_best_f1_at_threshold",
     "bond_best_f1_threshold",
     "bond_f1",
@@ -66,6 +84,10 @@ def _read_knobs(arm: str) -> Optional[Dict[str, Any]]:
     otherwise be indistinguishable from each other in the artifact.
     """
     path = Path("configs") / f"wfa107_{arm}.yaml"
+    if not path.exists():
+        # seed variants reuse their base arm's config
+        base = arm.split("_seed")[0]
+        path = Path("configs") / f"wfa107_{base}.yaml"
     if not path.exists():
         return None
     try:
@@ -95,6 +117,7 @@ def _load_arm(root: Path, arm: str) -> Optional[Dict[str, Any]]:
     return {
         "path": str(path),
         "knobs": _read_knobs(arm),
+        "seed": (doc.get("config", {}) or {}).get("seed"),
         "config": {
             k: cfg.get(k)
             for k in ("epochs", "batch_size", "n_train", "n_val", "hidden_dim",
@@ -214,6 +237,152 @@ def main() -> int:
                 "only ring_template_weight changed."
             ),
             "rows": sweep_rows,
+        }
+
+    # Wf-A107b — the per-edge (intensive) formulation against the control.
+    er_rows = []
+    for arm in ("control", "edge_ring_w03", "edge_ring_w1"):
+        rec = arms.get(arm)
+        if not rec or not rec.get("last"):
+            continue
+        last = rec["last"]
+        knobs = rec.get("knobs") or {}
+        er_rows.append({
+            "arm": arm,
+            "ring_template_formulation": knobs.get("ring_template_formulation"),
+            "ring_template_weight": knobs.get("ring_template_weight"),
+            "last_epoch": {
+                k: last.get(k)
+                for k in ("grad_norm", "bond_ce_loss", "bond_pr_auc",
+                          "bond_best_f1_at_threshold", "gen_rings_per_mol",
+                          "gen_ring_3_share", "gen_ring_5_6_share")
+            },
+            "max_grad_norm": max(
+                (r["grad_norm"] for r in rec["rows"]
+                 if isinstance(r.get("grad_norm"), (int, float))),
+                default=None,
+            ),
+        })
+    if len(er_rows) >= 2:
+        comparison["edge_ring_vs_control"] = {
+            "note": (
+                "Same protocol as the weight sweep.  edge_ring replaces the "
+                "cycle count with a per-edge ring-membership BCE, whose "
+                "gradient is intensive in graph density (probe: 0.225 at "
+                "p=0.50 vs 0.084 at p=0.90, a 2.7x change, against the count "
+                "form's 7,500x collapse)."
+            ),
+            "rows": er_rows,
+        }
+
+    # Seed spread — the protocol has n_seeds=1 everywhere else.
+    spread = {}
+    for base, members in _SEED_ARMS.items():
+        vals = {}
+        for arm in members:
+            rec = arms.get(arm)
+            if rec and rec.get("last"):
+                vals[arm] = {
+                    "seed": rec.get("seed"),
+                    "bond_pr_auc": rec["last"].get("bond_pr_auc"),
+                    "bond_best_f1_at_threshold": rec["last"].get(
+                        "bond_best_f1_at_threshold"),
+                    "gen_ring_3_share": rec["last"].get("gen_ring_3_share"),
+                    "gen_ring_5_6_share": rec["last"].get("gen_ring_5_6_share"),
+                }
+        if len(vals) < 2:
+            continue
+        for key in ("bond_pr_auc", "bond_best_f1_at_threshold",
+                    "gen_ring_3_share", "gen_ring_5_6_share"):
+            xs = [v[key] for v in vals.values() if isinstance(v.get(key), (int, float))]
+            if xs:
+                spread.setdefault(base, {})[key] = {
+                    "values": xs,
+                    "mean": sum(xs) / len(xs),
+                    "min": min(xs),
+                    "max": max(xs),
+                    "range": max(xs) - min(xs),
+                }
+        spread[base]["seeds"] = vals
+    if spread:
+        # Paired delta: each arm - control at the SAME seed.
+        for base in ("features", "edge_ring_w1"):
+            pairs = []
+            for i in (0, 1, 2):
+                suffix = "" if i == 0 else f"_seed{i}"
+                c = arms.get("control" + suffix)
+                f = arms.get(base + suffix)
+                if c and f and c.get("last") and f.get("last"):
+                    pairs.append({
+                        "seed": i,
+                        "control_ap": c["last"].get("bond_pr_auc"),
+                        "arm_ap": f["last"].get("bond_pr_auc"),
+                        "delta_ap": _delta(f["last"].get("bond_pr_auc"),
+                                           c["last"].get("bond_pr_auc")),
+                        "control_ring_3": c["last"].get("gen_ring_3_share"),
+                        "arm_ring_3": f["last"].get("gen_ring_3_share"),
+                        "delta_ring_3": _delta(f["last"].get("gen_ring_3_share"),
+                                               c["last"].get("gen_ring_3_share")),
+                        "delta_ring_5_6": _delta(
+                            f["last"].get("gen_ring_5_6_share"),
+                            c["last"].get("gen_ring_5_6_share")),
+                    })
+            if pairs:
+                spread[f"paired_{base}_minus_control"] = pairs
+                for key in ("delta_ap", "delta_ring_3", "delta_ring_5_6"):
+                    xs = [x[key] for x in pairs if isinstance(x.get(key), (int, float))]
+                    if len(xs) < 2:
+                        continue
+                    mean = sum(xs) / len(xs)
+                    var = sum((x - mean) ** 2 for x in xs) / (len(xs) - 1)
+                    sd = var ** 0.5
+                    entry = {
+                        "values": xs,
+                        "mean": mean,
+                        "min": min(xs),
+                        "max": max(xs),
+                        "n_positive": sum(1 for x in xs if x > 0),
+                        "n": len(xs),
+                        "sd": sd,
+                    }
+                    try:
+                        from scipy import stats as _st
+                        # Two-sided paired t on (arm - control) vs 0.  The
+                        # direction is carried by n_positive and the sign of
+                        # the mean, not by the p-value.
+                        res = _st.ttest_1samp(xs, 0.0)
+                        entry["t"] = float(res.statistic)
+                        entry["p_two_sided"] = float(res.pvalue)
+                    except Exception:  # pragma: no cover
+                        pass
+                    spread.setdefault(f"paired_{base}_stats", {})[key] = entry
+        comparison["seed_spread"] = spread
+
+    # Per-class lift — the SINGLE gate (0.7) has to be read against the base
+    # rate: 2.36% of candidate pairs are SINGLE on this cohort.
+    lifts = {}
+    for arm, rec in arms.items():
+        if not rec or not rec.get("last"):
+            continue
+        row = {}
+        for c in range(5):
+            ap = rec["last"].get(f"bond_class_{c}_pr_auc")
+            pr = rec["last"].get(f"bond_class_{c}_pos_rate")
+            if isinstance(ap, (int, float)) and isinstance(pr, (int, float)) and pr > 0:
+                row[f"class_{c}"] = {
+                    "pos_rate": pr, "pr_auc": ap, "lift_over_base": ap / pr,
+                }
+        if row:
+            lifts[arm] = row
+    if lifts:
+        comparison["per_class_lift"] = {
+            "note": (
+                "PR-AUC divided by the class base rate.  On this cohort "
+                "SINGLE is 2.36% of candidate pairs, so the Wf-A72 gate "
+                "'SINGLE >= 0.7' would require near-perfect ranking; it was "
+                "already recorded as aspirational in §6.100."
+            ),
+            "rows": lifts,
         }
 
     doc = {

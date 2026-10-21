@@ -116,5 +116,61 @@
     "triangle_term_squared": 0.0018382656249999992,
     "triangle_term_unsquared": 0.04287499999999999
   },
+  "probe_3_formulation_scale": {
+    "grad_ratio_p050_over_p090": {
+      "count": 7540.24915441513,
+      "edge_ring": 2.6626216869818333,
+      "per_atom": 0.002371795255927442,
+      "share_analysis_only": 76.8107325988422
+    },
+    "n_atoms": 20,
+    "rows": [
+      {
+        "bond_prob": 0.5,
+        "count": {
+          "grad_norm": 78.22368301827662,
+          "loss": 0.4804530143737793
+        },
+        "edge_ring": {
+          "grad_norm": 0.2245853858819321,
+          "loss": 1.3425166606903076
+        },
+        "per_atom": {
+          "grad_norm": 53.605103523177895,
+          "loss": 0.002500000176951289
+        },
+        "share_analysis_only": {
+          "grad_norm": 0.011104903467216523,
+          "loss": 1.0
+        }
+      },
+      {
+        "bond_prob": 0.9,
+        "count": {
+          "grad_norm": 0.010374150961904673,
+          "loss": 489.1235046386719
+        },
+        "edge_ring": {
+          "grad_norm": 0.08434746362203142,
+          "loss": 2.3319051265716553
+        },
+        "per_atom": {
+          "grad_norm": 22601.06701420006,
+          "loss": 531414.5625
+        },
+        "share_analysis_only": {
+          "grad_norm": 0.00014457489326672447,
+          "loss": 0.008271893892204838
+        }
+      }
+    ],
+    "sizes": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "weight": 1.0
+  },
   "workflow": "Wf-A107"
 }

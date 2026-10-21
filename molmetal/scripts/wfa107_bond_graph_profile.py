@@ -174,6 +174,48 @@ def main() -> int:
             f"bondF1={r['bond']['f1']:.3f} (P={r['bond']['precision']:.3f} R={r['bond']['recall']:.3f})"
         )
 
+    # Paired deltas against the same-seed control, so the truth-geometry
+    # numbers can be read the same way as the decoded ones.
+    def _pick(prefix, seed):
+        return arms.get(prefix if seed == 0 else f"{prefix}_seed{seed}")
+
+    paired = {}
+    for base in ("features", "edge_ring_w1"):
+        rows = []
+        for seed in (0, 1, 2):
+            c = _pick("control", seed)
+            a = _pick(base, seed)
+            if not c or not a:
+                continue
+            rows.append({
+                "seed": seed,
+                "delta_ring_3": a["ring_profile"]["ring_3_share"] - c["ring_profile"]["ring_3_share"],
+                "delta_ring_5_6": a["ring_profile"]["ring_5_6_share"] - c["ring_profile"]["ring_5_6_share"],
+                "delta_rings_per_mol": a["ring_profile"]["rings_per_mol_mean"] - c["ring_profile"]["rings_per_mol_mean"],
+                "delta_bond_f1": a["bond"]["f1"] - c["bond"]["f1"],
+            })
+        if len(rows) < 2:
+            continue
+        stats = {}
+        for key in ("delta_ring_3", "delta_ring_5_6", "delta_rings_per_mol", "delta_bond_f1"):
+            xs = [r[key] for r in rows]
+            mean = sum(xs) / len(xs)
+            var = sum((x - mean) ** 2 for x in xs) / (len(xs) - 1)
+            entry = {
+                "values": xs, "mean": mean, "min": min(xs), "max": max(xs),
+                "n_positive": sum(1 for x in xs if x > 0), "n": len(xs),
+                "sd": var ** 0.5,
+            }
+            try:
+                from scipy import stats as _st
+                res = _st.ttest_1samp(xs, 0.0)
+                entry["t"] = float(res.statistic)
+                entry["p_two_sided"] = float(res.pvalue)
+            except Exception:  # pragma: no cover
+                pass
+            stats[key] = entry
+        paired[base] = {"rows": rows, "stats": stats}
+
     doc = {
         "metric": "wfa107_bond_graph_profile",
         "tag": "MEASURED",
@@ -185,8 +227,10 @@ def main() -> int:
             "acts on; it is not the decoded-molecule profile."
         ),
         "arms": arms,
+        "paired_vs_control": paired,
         "honest_limits": [
-            "One checkpoint per arm (the last epoch), one seed.",
+            "One checkpoint per arm (the last epoch); seeds 0/1/2 are separate "
+            "runs of the same config, so the paired block is a 3-seed test.",
             "Ring perception runs on an un-sanitised RWMol built from the "
             "predicted edges; it is topological SSSR, not a valence check.",
             "The val clouds are the same 64 the trainer scored; this is a "

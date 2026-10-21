@@ -251,3 +251,83 @@ def test_triangle_correction_keeps_the_six_ring_gradient():
 
     assert float(six) == pytest.approx(0.35 ** 6, rel=1e-4)
     assert abs(g_hex) > 1e-4
+
+
+# ---------------------------------------------------------------------------
+# Wf-A107b — the per-edge (intensive) formulation
+# ---------------------------------------------------------------------------
+from molmetal.loss.ring_template import _truth_ring_edges  # noqa: E402
+
+
+def test_truth_ring_edges_finds_the_ring_and_excludes_the_substituent():
+    """A hexagon plus a pendant bond: only the six ring edges are labelled."""
+    truth = torch.tensor(
+        [[0, 1, 2, 3, 4, 5, 0], [1, 2, 3, 4, 5, 0, 6]], dtype=torch.long
+    )
+    ring = _truth_ring_edges(truth, (3, 4, 5, 6))
+    assert set(ring) == {(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (0, 5)}
+    assert set(ring.values()) == {6}
+    assert (0, 6) not in ring          # pendant bond is not in a ring
+
+
+def test_truth_ring_edges_labels_a_triangle_as_three_not_six():
+    """The smallest ring wins: a triangle edge is 3, not 6-by-double-traversal."""
+    tri = torch.tensor([[0, 1, 2], [1, 2, 0]], dtype=torch.long)
+    ring = _truth_ring_edges(tri, (3, 4, 5, 6))
+    assert set(ring) == {(0, 1), (0, 2), (1, 2)}
+    assert set(ring.values()) == {3}
+
+
+def test_edge_ring_is_zero_when_the_truth_molecule_has_no_ring():
+    """An acyclic truth has no ring edges, so the term must be exact zero."""
+    truth = torch.tensor([[0, 1], [1, 2]], dtype=torch.long)   # chain
+    pairs = torch.tensor([[0, 0, 1], [1, 2, 2]], dtype=torch.long)
+    logits = torch.zeros((3, 5))
+    prior = RingTemplatePrior(
+        weight=1.0, config=RingTemplatePriorConfig(formulation="edge_ring")
+    )
+    loss = prior.compute(logits, pairs, 3, truth)
+    assert float(loss) == 0.0
+
+
+def test_edge_ring_gradient_is_intensive_in_graph_density():
+    """The whole point of Wf-A107b: density must not extinguish the gradient.
+
+    On a complete 20-atom candidate graph the count form's gradient falls
+    ~7,500x between p=0.50 and p=0.90 (MEASURED).  The per-edge form must
+    stay within a small factor, because each edge is its own Bernoulli.
+    """
+    import math
+
+    def _complete(n):
+        rows, cols = [], []
+        for i in range(n):
+            for j in range(i + 1, n):
+                rows.append(i)
+                cols.append(j)
+        return torch.tensor([rows, cols], dtype=torch.long)
+
+    n = 20
+    pairs = _complete(n)
+    truth = _truth_hexagon()
+
+    def _grad(p, formulation):
+        logits = torch.zeros((pairs.shape[1], 5), dtype=torch.float64)
+        logits[:, 0] = math.log(4.0 * (1.0 - p) / p)
+        logits.requires_grad_(True)
+        prior = RingTemplatePrior(
+            weight=1.0, config=RingTemplatePriorConfig(formulation=formulation)
+        )
+        loss = prior.compute(logits, pairs, n, truth)
+        loss.backward()
+        return float(loss.detach()), float(logits.grad.norm())
+
+    c_lo, g_c_lo = _grad(0.50, "count")
+    c_hi, g_c_hi = _grad(0.90, "count")
+    e_lo, g_e_lo = _grad(0.50, "edge_ring")
+    e_hi, g_e_hi = _grad(0.90, "edge_ring")
+
+    assert g_c_hi / g_c_lo < 1e-2          # count collapses
+    assert g_e_hi / g_e_lo > 0.05          # edge_ring does not (< 20x)
+    assert c_hi > 100.0                    # count loss explodes ...
+    assert e_hi < 10.0                     # ... edge_ring stays O(1)

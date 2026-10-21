@@ -21,6 +21,8 @@ _EXPECTED = {
     "count": dict(weight=0.01, formulation="count", rbf=False, chem=False),
     "per_atom": dict(weight=0.01, formulation="per_atom", rbf=False, chem=False),
     "features": dict(weight=0.0, formulation="count", rbf=True, chem=True),
+    "edge_ring_w1": dict(weight=1.0, formulation="edge_ring", rbf=False, chem=False),
+    "edge_ring_w03": dict(weight=0.3, formulation="edge_ring", rbf=False, chem=False),
 }
 
 
@@ -60,3 +62,18 @@ def test_flags_reach_the_head(arm: str):
         assert head.edge_init.in_features == head.hidden_dim * 2 + 4 + 3 + 8 + 5
     else:
         assert head.edge_init.in_features == head.hidden_dim * 2 + 4 + 3
+
+
+@pytest.mark.parametrize("arm", ["count", "per_atom", "edge_ring_w1", "edge_ring_w03"])
+def test_formulation_reaches_the_prior_config(arm: str):
+    """The YAML string must be one RingTemplatePriorConfig accepts.
+
+    Wf-A107b: `--ring-template-formulation` gained a third choice.  A typo
+    in either the argparse `choices` list or the config's own validation
+    would otherwise only show up as a crash mid-epoch on the GPU.
+    """
+    from molmetal.loss.ring_template import RingTemplatePriorConfig
+
+    a = _args(arm)
+    cfg = RingTemplatePriorConfig(formulation=a.ring_template_formulation)
+    assert cfg.formulation == _EXPECTED[arm]["formulation"]
