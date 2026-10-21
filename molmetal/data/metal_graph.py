@@ -138,6 +138,7 @@ def chem_metal_block(metal: str) -> np.ndarray:
     )
 
 _DONOR_STRENGTH = {"N": 3.0, "O": 2.0, "S": 1.5, "P": 2.0, "Se": 1.0}
+_CARBANION_STRENGTH = 3.5
 
 
 def d_electrons(metal: str, oxidation_state: int) -> int:
@@ -222,13 +223,31 @@ def _metal_node_atom_feats(
     return f
 
 
-def _donor_atom_indices(mol: Chem.Mol, cap: int) -> List[int]:
-    """Top-``cap`` donor atoms (N/O/S/P/Se) by strength, tie-break by degree."""
+def _donor_atom_indices(
+    mol: Chem.Mol, cap: int, include_carbanion: bool = False
+) -> List[int]:
+    """Top-``cap`` donor atoms (N/O/S/P/Se) by strength, tie-break by degree.
+
+    ``include_carbanion`` also scores carbanions (``[c-]`` / ``[C-]``), which are
+    the Cp and aryl-anion ligands in the MSRS corpus.  They are excluded by
+    default because the original graph never had them and every artifact under
+    ``metrics/by_metric/msrs_dmpnn*`` was produced without them.
+
+    Why they matter: ``msrs_complex3d_probe.json`` measured that 33.5% of a
+    200-complex sample binds the metal through a Cp/aryl carbanion, and that
+    RDKit cannot represent those bonds at all (93.5% of complete-donor graphs
+    are rejected on sanitisation).  The graph builder never sanitises — it only
+    emits edge indices — so this is the one place where those donors can be
+    represented at zero cost.
+    """
     scored = []
     for atom in mol.GetAtoms():
         sym = atom.GetSymbol()
         if sym in _DONOR_STRENGTH:
             scored.append((_DONOR_STRENGTH[sym] + 0.1 * atom.GetDegree(), atom.GetIdx()))
+        elif include_carbanion and sym == "C" and atom.GetFormalCharge() == -1:
+            # Cp / aryl anions bind more strongly than a neutral amine
+            scored.append((_CARBANION_STRENGTH + 0.1 * atom.GetDegree(), atom.GetIdx()))
     scored.sort(key=lambda t: (-t[0], t[1]))
     return [idx for _s, idx in scored[:cap]]
 
@@ -252,6 +271,7 @@ def build_metal_graph(
     strip_metals: bool = True,
     rich_metal: bool = False,
     chem_metal: bool = False,
+    include_carbanion: bool = False,
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
     """Build a (possibly metal-augmented) directed-edge graph for one row.
 
@@ -304,7 +324,7 @@ def build_metal_graph(
         m_idx = V  # metal node is appended at the end
         atom_feats.append(_metal_node_atom_feats(metal, int(oxidation_state), int(charge_complex), cap))
         cbf = _coordination_bond_feature()
-        for d in _donor_atom_indices(mol, cap):
+        for d in _donor_atom_indices(mol, cap, include_carbanion=include_carbanion):
             edge_src += [m_idx, d]
             edge_dst += [d, m_idx]
             bond_feats += [cbf, cbf]

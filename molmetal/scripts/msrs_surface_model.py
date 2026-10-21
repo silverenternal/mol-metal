@@ -163,17 +163,27 @@ def morgan_matrix(smiles: Sequence[str], n_bits: int = FP_BITS, radius: int = FP
     return sparse.csr_matrix((data, (rows, cols)), shape=(len(smiles), n_bits), dtype=np.float32)
 
 
-def metal_matrix(metals: Sequence[str], descriptors: pd.DataFrame) -> np.ndarray:
-    """One-hot metal + three tabulated descriptors (IE1, IE2, Pauling EN)."""
+def metal_matrix(
+    metals: Sequence[str],
+    descriptors: pd.DataFrame,
+    columns: Sequence[str] = ("ie1_kj", "ie2_kj", "pauling_en"),
+) -> np.ndarray:
+    """One-hot metal + the tabulated descriptor block.
+
+    ``columns`` defaults to IE1 / IE2 / Pauling EN, which is what every artifact
+    produced before 2026-10-21 used.  UP-4 passes an eRAC block instead
+    (``z_eff_slater`` / ``z_eff_over_rcov`` / ``d_count_M3``) to test whether the
+    nuclear charge is the wrong coordinate for same-group metals.
+    """
     desc = descriptors.set_index("metal_symbol")
     onehot = np.zeros((len(metals), len(METALS)), dtype=np.float32)
     for i, m in enumerate(metals):
         onehot[i, METALS.index(m)] = 1.0
     extra = np.array(
         [
-            [desc.at[m, "ie1_kj"], desc.at[m, "ie2_kj"], desc.at[m, "pauling_en"]]
+            [desc.at[m, c] for c in columns]
             if m in desc.index
-            else [np.nan, np.nan, np.nan]
+            else [np.nan] * len(columns)
             for m in metals
         ],
         dtype=np.float32,

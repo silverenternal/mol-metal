@@ -9840,3 +9840,49 @@ cases in `test_wfa107_wiring.py`.
 **Workflow** | Wf-A107b (2026-10-21; GPU0: 2 formulation arms + 2 seeds × 2 arms + 2
 seed-spread arms, 5 epochs each; §5.2: every number is an artifact field; §5.3 + §5.4:
 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.156 — UP-4: the effective nuclear charge does not rescue the metal level either (2026-10-21)
+
+**Claim under test.** EXT-2 (`msrs_metal_descriptor_level.json`) fed IE1 / IE2 / Pauling-EN into
+a leave-one-metal-out ridge and failed (permutation p=0.167). eRAC's argument is that this was
+the wrong coordinate, not the wrong idea: Ru (Z=44) and Os (Z=76) are both group 8, but a raw
+nuclear charge puts them maximally far apart. Replacing Z with **Z_eff** (Slater's rules on the
+nd electron: Ru 4.90, Rh 5.55, Os 4.25, Ir 4.90, Re 3.60) should let same-group metals share
+information.
+
+**Measured.** `metrics/by_metric/msrs_erac_metal.json` — same surface model, same folds, same
+learner; only the three-column metal block changes
+(`ie1_kj, ie2_kj, pauling_en` → `z_eff_nd, z_eff_over_rcov, d_count_M3`).
+
+| cell | weighted R² raw | weighted R² eRAC | Δ |
+|---|---:|---:|---:|
+| potency / metal_out | −0.0734 | −0.0744 | **−0.0010** |
+| potency / metal_out_ligand_disjoint | −0.1500 | −0.1739 | **−0.0239** |
+| cisplatin_ratio / metal_out | −0.0793 | −0.0904 | **−0.0111** |
+| cisplatin_ratio / metal_out_ligand_disjoint | −0.2171 | −0.2306 | **−0.0135** |
+
+Sign test over the 20 (metal, cell) pairs: eRAC better in **8/20**, p = **0.5034**.
+Metals with R² ≥ 0 on potency/metal_out: **1/5 raw, 2/5 eRAC** — the gate asked for 3/5 and R² ≥ 0.
+
+**Verdict: FAIL.** The per-metal swings (Rh +0.219, Ir −0.088 in the same cell, on 349–3,666
+test rows) are sampling, not chemistry. Z_eff also collapses Ru and Ir onto the same value
+(4.90 each) despite different groups, so it is not a clean coordinate either.
+
+**Why partial pooling was not run.** The three representations bracket the pooling question
+exactly: `none` = complete pooling (no metal information), `one_hot` = no pooling (metal
+identity), `descriptors` = the eRAC bridge. On potency/metal_out they are
+**−0.0806 / −0.0744 / −0.0708** — the whole spectrum is **0.0098 R² wide**. A shrinkage
+coefficient has nothing to interpolate between. Running a GPU shrinkage sweep over a 0.01-wide
+range would produce a tuned number indistinguishable from noise.
+
+**This is the third independent measurement of the same thing**: UP-1 (metal block worth
+0.0011 R² on a held-out metal), EXT-2 (p=0.167), and UP-4 (p=0.50, Δ<0 in all four cells). The
+level term is not recoverable from static metal properties in this corpus.
+
+**Artifacts.** `metrics/by_metric/msrs_erac_metal.json`;
+`molmetal/data/metal_chemistry_5_erac.csv` + `molmetal/scripts/build_metal_erac_table.py`
+(the table is computed, not curated); `msrs_lomo_surface.py --metal-cols`.
+
+**§6.156 catalog-count math.** Net **+1**. Cumulative **210 → 211**. ACTIVE **166 → 167**.

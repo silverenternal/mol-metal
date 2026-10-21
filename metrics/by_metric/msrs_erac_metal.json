@@ -1,0 +1,219 @@
+{
+ "artifact": "msrs_erac_metal",
+ "version": "1.0",
+ "framework": "MSRS — Metal Substitution Response Surface",
+ "level": "L3 metal extrapolation / UP-4 step 1",
+ "generated_utc": "2026-10-21T08:02:30+00:00",
+ "provenance": {
+  "script": "molmetal/scripts/msrs_lomo_surface.py --metal-cols",
+  "table": "molmetal/data/metal_chemistry_5_erac.csv",
+  "table_builder": "molmetal/scripts/build_metal_erac_table.py",
+  "baseline_artifact": "metrics/by_metric/msrs_lomo_surface.json",
+  "git_commit": "24a943cf02f3e661e3163a1e1efbffb39b071a0f"
+ },
+ "design": {
+  "arms": {
+   "raw": "ie1_kj, ie2_kj, pauling_en (the pre-2026-10-21 block)",
+   "erac": "z_eff_nd (Slater), z_eff_over_rcov, d_count_M3"
+  },
+  "same_everything_else": true,
+  "why_erac": "eRAC argues the nuclear charge is the wrong coordinate for same-group metals: Ru (Z=44) and Os (Z=76) are both group 8 but maximally distant under raw Z. Z_eff compresses them (4.90 vs 4.25) without collapsing them.",
+  "z_eff_source": "Slater's rules applied to the nd electron; left = Z - n_d shields 1.00, other nd electrons 0.35. Computed, not curated.",
+  "gate": {
+   "metal_out_r2": 0.0,
+   "n_metals_nonneg": 3,
+   "frozen_at": "2026-10-21T15:10+08:00"
+  }
+ },
+ "cells": {
+  "potency|metal_out": {
+   "per_metal": {
+    "Ru": {
+     "n_test": 14785,
+     "raw_r2": -0.0777,
+     "erac_r2": -0.0722,
+     "delta": 0.0055
+    },
+    "Ir": {
+     "n_test": 3666,
+     "raw_r2": -0.1283,
+     "erac_r2": -0.2163,
+     "delta": -0.088
+    },
+    "Rh": {
+     "n_test": 959,
+     "raw_r2": -0.1589,
+     "erac_r2": 0.0598,
+     "delta": 0.2187
+    },
+    "Os": {
+     "n_test": 879,
+     "raw_r2": 0.3479,
+     "erac_r2": 0.2887,
+     "delta": -0.0592
+    },
+    "Re": {
+     "n_test": 756,
+     "raw_r2": -0.1034,
+     "erac_r2": -0.0211,
+     "delta": 0.0823
+    }
+   },
+   "weighted_r2_raw": -0.0734,
+   "weighted_r2_erac": -0.0744,
+   "weighted_delta": -0.001,
+   "n_metals_r2_nonneg_raw": 1,
+   "n_metals_r2_nonneg_erac": 2,
+   "pooling_spectrum": {
+    "descriptors": -0.0744,
+    "one_hot": -0.0708,
+    "none": -0.0806
+   }
+  },
+  "potency|metal_out_ligand_disjoint": {
+   "per_metal": {
+    "Ru": {
+     "n_test": 14785,
+     "raw_r2": -0.1154,
+     "erac_r2": -0.1131,
+     "delta": 0.0023
+    },
+    "Ir": {
+     "n_test": 3666,
+     "raw_r2": -0.348,
+     "erac_r2": -0.4903,
+     "delta": -0.1423
+    },
+    "Rh": {
+     "n_test": 959,
+     "raw_r2": -0.1948,
+     "erac_r2": -0.0256,
+     "delta": 0.1692
+    },
+    "Os": {
+     "n_test": 879,
+     "raw_r2": 0.1143,
+     "erac_r2": -0.0846,
+     "delta": -0.1989
+    },
+    "Re": {
+     "n_test": 756,
+     "raw_r2": -0.1173,
+     "erac_r2": -0.1216,
+     "delta": -0.0043
+    }
+   },
+   "weighted_r2_raw": -0.15,
+   "weighted_r2_erac": -0.1739,
+   "weighted_delta": -0.0239,
+   "n_metals_r2_nonneg_raw": 1,
+   "n_metals_r2_nonneg_erac": 0,
+   "pooling_spectrum": {
+    "descriptors": -0.1739,
+    "one_hot": -0.1556,
+    "none": -0.184
+   }
+  },
+  "cisplatin_ratio|metal_out": {
+   "per_metal": {
+    "Ru": {
+     "n_test": 9014,
+     "raw_r2": -0.106,
+     "erac_r2": -0.1065,
+     "delta": -0.0005
+    },
+    "Ir": {
+     "n_test": 1029,
+     "raw_r2": -0.1179,
+     "erac_r2": -0.262,
+     "delta": -0.1441
+    },
+    "Rh": {
+     "n_test": 558,
+     "raw_r2": 0.0541,
+     "erac_r2": 0.12,
+     "delta": 0.0659
+    },
+    "Os": {
+     "n_test": 453,
+     "raw_r2": 0.335,
+     "erac_r2": 0.3023,
+     "delta": -0.0327
+    },
+    "Re": {
+     "n_test": 349,
+     "raw_r2": -0.0257,
+     "erac_r2": -0.0146,
+     "delta": 0.0111
+    }
+   },
+   "weighted_r2_raw": -0.0793,
+   "weighted_r2_erac": -0.0904,
+   "weighted_delta": -0.0111,
+   "n_metals_r2_nonneg_raw": 2,
+   "n_metals_r2_nonneg_erac": 2,
+   "pooling_spectrum": {
+    "descriptors": -0.0904,
+    "one_hot": -0.0804,
+    "none": -0.0948
+   }
+  },
+  "cisplatin_ratio|metal_out_ligand_disjoint": {
+   "per_metal": {
+    "Ru": {
+     "n_test": 9014,
+     "raw_r2": -0.2255,
+     "erac_r2": -0.2315,
+     "delta": -0.006
+    },
+    "Ir": {
+     "n_test": 1029,
+     "raw_r2": -0.3061,
+     "erac_r2": -0.4201,
+     "delta": -0.114
+    },
+    "Rh": {
+     "n_test": 558,
+     "raw_r2": -0.1844,
+     "erac_r2": -0.115,
+     "delta": 0.0694
+    },
+    "Os": {
+     "n_test": 453,
+     "raw_r2": 0.059,
+     "erac_r2": 0.0157,
+     "delta": -0.0433
+    },
+    "Re": {
+     "n_test": 349,
+     "raw_r2": -0.1475,
+     "erac_r2": -0.152,
+     "delta": -0.0045
+    }
+   },
+   "weighted_r2_raw": -0.2171,
+   "weighted_r2_erac": -0.2306,
+   "weighted_delta": -0.0135,
+   "n_metals_r2_nonneg_raw": 1,
+   "n_metals_r2_nonneg_erac": 1,
+   "pooling_spectrum": {
+    "descriptors": -0.2306,
+    "one_hot": -0.2302,
+    "none": -0.2638
+   }
+  }
+ },
+ "pooling_spectrum_note": "The three representations bracket the pooling question: 'none' is complete pooling (no metal information), 'one_hot' is no pooling (metal identity), 'descriptors' is the eRAC bridge. Their spread is the room a shrinkage coefficient has.",
+ "sign_test": {
+  "n_cells": 20,
+  "n_erac_better": 8,
+  "p_two_sided": 0.5034
+ },
+ "verdict": "FAIL",
+ "verdict_rule": "metal_out absolute R2 >= 0 AND >= 3/5 metals with R2 >= 0",
+ "caveats": [
+  "Per-metal R2 swings are large (Rh +0.219, Ir -0.088 in the same cell) on 349-3666 test rows. With five metals the per-metal delta is a sampling quantity, not a chemical one.",
+  "z_eff_nd collapses Ru (4.90) and Ir (4.90) onto the same value even though they are in different groups; z_eff_over_rcov separates them (3.36 vs 3.48) but only weakly.",
+  "The descriptor block is still three columns. A wider eRAC block was not tested; the pooling spectrum below bounds what any bridge can buy."
+ ]
+}

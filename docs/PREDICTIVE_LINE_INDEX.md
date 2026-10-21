@@ -168,9 +168,45 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP6.cohort_metal_worst_stratum", "value": 0.8956, "artifact": "metrics/by_metric/msrs_calibration_shift.json", "path": "variants.cohort_metal.worst_stratum.coverage"},
   {"id": "UP6.cohort_metal_width", "value": 2.0183, "artifact": "metrics/by_metric/msrs_calibration_shift.json", "path": "variants.cohort_metal.median_width"},
   {"id": "UP6.width_change", "value": 0.0065, "artifact": "metrics/by_metric/msrs_calibration_shift.json", "path": "gate.width_change_vs_reference"},
-  {"id": "UP6.metal_worst_stratum", "value": 0.8331, "artifact": "metrics/by_metric/msrs_calibration_shift.json", "path": "variants.metal.worst_stratum.coverage"}
+  {"id": "UP6.metal_worst_stratum", "value": 0.8331, "artifact": "metrics/by_metric/msrs_calibration_shift.json", "path": "variants.metal.worst_stratum.coverage"},
+  {"id": "UP3.explicit_metal_share", "value": 0.0, "artifact": "metrics/by_metric/msrs_complex3d_probe.json", "path": "summary.explicit_metal_share"},
+  {"id": "UP3.multi_fragment_share", "value": 1.0, "artifact": "metrics/by_metric/msrs_complex3d_probe.json", "path": "summary.multi_fragment_share"},
+  {"id": "UP3.organic_embed", "value": 1.0, "artifact": "metrics/by_metric/msrs_complex3d_probe.json", "path": "summary.organic_embed_success"},
+  {"id": "UP3.complete_embed", "value": 0.065, "artifact": "metrics/by_metric/msrs_complex3d_probe.json", "path": "summary.complete_embed_success"},
+  {"id": "UP3.legal_embed", "value": 0.25, "artifact": "metrics/by_metric/msrs_complex3d_probe.json", "path": "summary.legal_embed_success"},
+  {"id": "UP3.needs_carbanion", "value": 0.335, "artifact": "metrics/by_metric/msrs_complex3d_probe.json", "path": "summary.needs_aromatic_carbanion"},
+  {"id": "UP3.needs_aromatic_n", "value": 0.84, "artifact": "metrics/by_metric/msrs_complex3d_probe.json", "path": "summary.needs_aromatic_n"},
+  {"id": "UP3b.hetero_r2", "value": 0.2504, "artifact": "metrics/by_metric/msrs_dmpnn_donor_ab.json", "path": "results.hetero.r2"},
+  {"id": "UP3b.carbanion_r2", "value": 0.2454, "artifact": "metrics/by_metric/msrs_dmpnn_donor_ab.json", "path": "results.hetero_carbanion.r2"},
+  {"id": "UP3b.delta_r2", "value": -0.005, "artifact": "metrics/by_metric/msrs_dmpnn_donor_ab.json", "path": "delta_r2"},
+  {"id": "UP4.potency_metal_out_raw", "value": -0.0734, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "cells.potency|metal_out.weighted_r2_raw"},
+  {"id": "UP4.potency_metal_out_erac", "value": -0.0744, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "cells.potency|metal_out.weighted_r2_erac"},
+  {"id": "UP4.potency_ligdisj_raw", "value": -0.15, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "cells.potency|metal_out_ligand_disjoint.weighted_r2_raw"},
+  {"id": "UP4.potency_ligdisj_erac", "value": -0.1739, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "cells.potency|metal_out_ligand_disjoint.weighted_r2_erac"},
+  {"id": "UP4.cis_metal_out_raw", "value": -0.0793, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "cells.cisplatin_ratio|metal_out.weighted_r2_raw"},
+  {"id": "UP4.cis_metal_out_erac", "value": -0.0904, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "cells.cisplatin_ratio|metal_out.weighted_r2_erac"},
+  {"id": "UP4.pooling_none", "value": -0.0806, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "cells.potency|metal_out.pooling_spectrum.none"},
+  {"id": "UP4.pooling_one_hot", "value": -0.0708, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "cells.potency|metal_out.pooling_spectrum.one_hot"},
+  {"id": "UP4.sign_p", "value": 0.5034, "artifact": "metrics/by_metric/msrs_erac_metal.json", "path": "sign_test.p_two_sided"}
 ]
 ```
+
+### 2.8 UP-3 探针：3D 配位图在这份数据上做不出来（2026-10-21）
+
+`msrs_complex3d_probe.json`，200 个金属分层抽样的 (配体, 金属) 对：
+
+| 量 | 值 | 含义 |
+|---|---:|---|
+| `explicit_metal_share` | **0.000** | 配体 SMILES 里**根本没有金属原子** |
+| `multi_fragment_share` | **1.000** | 每个"配合物"都是多点断开串（中位 3 段，平均 2.23 个带电荷辅片段） |
+| `organic_embed_success` | 1.000 | 有机片段能嵌入 —— 但片段之间不相连，相对几何完全不受约束 |
+| `legal_embed_success` | 0.250 | 只连 RDKit 能表示的给体（非芳香杂原子 + 卤素）时的成功率 |
+| `complete_embed_success` | **0.065** | 连上真正会配位的给体（含芳香 N 0.84 / Cp、芳基碳负离子 0.335）后 |
+| `complete_fail_graph_rejected` | **0.935** | 失败全部发生在 sanitize（kekulize）阶段，不是嵌入阶段 |
+
+**判据用的是 complete 臂**：一个把 Cp / 吡啶给体丢掉的构造，描述的不是表里那个物种。
+⇒ `ORGANIC_ONLY_FALLBACK`：退回「2D 图 + 显式金属节点 + 配位键」，而这条退路**已经存在**
+（`molmetal/data/metal_graph.py:303-310`），就是 `msrs_dmpnn_surface.json` 的 `metal_state` 臂。
 
 ### 2.7 UP 强化轮（2026-10-21，四臂全部预注册门槛）
 

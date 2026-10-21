@@ -1,0 +1,6 @@
+metal_symbol,ie1_kj,ie2_kj,pauling_en,source,z_eff_nd,z_eff_over_rcov,ie_gap_kj,en_over_rcov,d_count_M3
+Ru,710.2,1620,2.2,IE1/IE2: NIST ASD (via Wikipedia 'Molar ionization energies of the elements'); Pauling EN: Wikipedia 'Electronegativities of the elements (data page)',4.9,3.3562,909.8,1.5068,5
+Rh,719.7,1740,2.28,IE1/IE2: NIST ASD (via Wikipedia 'Molar ionization energies of the elements'); Pauling EN: Wikipedia 'Electronegativities of the elements (data page)',5.55,3.9085,1020.3,1.6056,6
+Os,840,1600,2.2,IE1/IE2: NIST ASD (via Wikipedia 'Molar ionization energies of the elements'); Pauling EN: Wikipedia 'Electronegativities of the elements (data page)',4.25,2.9514,760.0,1.5278,5
+Ir,880,1600,2.20,IE1/IE2: NIST ASD (via Wikipedia 'Molar ionization energies of the elements'); Pauling EN: Wikipedia 'Electronegativities of the elements (data page)',4.9,3.4752,720.0,1.5603,6
+Re,760,1260,1.9,IE1/IE2: NIST ASD (via Wikipedia 'Molar ionization energies of the elements'); Pauling EN: Wikipedia 'Electronegativities of the elements (data page)',3.6,2.3841,500.0,1.2583,4

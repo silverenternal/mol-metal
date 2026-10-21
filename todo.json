@@ -350,7 +350,7 @@
       "priority": "P1",
       "wave": 2,
       "wall": "1 天 GPU（cuda:0）",
-      "status": "PENDING",
+      "status": "DONE-FAIL",
       "why": "shape 占平方误差 0.65-0.76，而当前表示是 2D ECFP4/MACCS + 手写配位块（msrs_172d_full.json 的三个 stream 全是 2D）。D-MPNN 在 canonical 分组上只比 LightGBM 高 +0.0019（msrs_dmpnn_surface.json），说明换模型类不解决问题——问题在输入里没有金属-配体键的几何。",
       "lever": "eRAC（arXiv:2106.10768）用有效核电荷让同族金属的距离反映周期表；MLIP 局部描述符注入 GNN 在 tmQM 的 5 个目标上全部提升（arXiv 2026-02）；mCGCNN（arXiv:2606.28458）证明显式金属-配体交换路径子图能提升过渡金属体系；TMCgen（arXiv 2026-05）说明配位角几何可以被生成。",
       "code_points": [
@@ -370,7 +370,32 @@
       "artifacts_needed": [
         "msrs_172d_full.json",
         "msrs_dmpnn_surface.json"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_complex3d_probe.json",
+        "verdict": "ORGANIC_ONLY_FALLBACK",
+        "numbers": {
+          "explicit_metal_share": 0.0,
+          "multi_fragment_share": 1.0,
+          "organic_embed_success": 1.0,
+          "legal_embed_success": 0.25,
+          "complete_embed_success": 0.065,
+          "complete_fail_graph_rejected": 0.935,
+          "needs_aromatic_n": 0.84,
+          "needs_aromatic_carbanion": 0.335
+        },
+        "reading": "这份语料里没有配合物，只有「配体片段串 + 金属标签」：金属原子缺席（0/200），100% 是多点断开串，连上真正会配位的给体（芳香 N / Cp 碳负离子）后 93.5% 在 RDKit sanitize 阶段被拒。3D 几何做不出来。",
+        "fallback": "计划里写明的退路是「2D 图 + 显式金属节点 + 配位键」——这条已经存在（molmetal/data/metal_graph.py:303-310），就是 msrs_dmpnn_surface.json 的 metal_state 臂。所以 UP-3 的 GPU 部分不是新建几何，而是补上探针发现的唯一缺口：33.5% 的配合物靠 Cp/芳基碳负离子配位，而 _DONOR_STRENGTH 只有 N/O/S/P/Se，这些给体此前一条边都没有。已加 include_carbanion（默认 False，旧 artifact 逐位不变），A/B 在 msrs_dmpnn_donor_ab.json。",
+        "fallback_ab": {
+          "artifact": "metrics/by_metric/msrs_dmpnn_donor_ab.json",
+          "verdict": "DONORS_DO_NOT_MATTER",
+          "hetero_r2": 0.2504,
+          "hetero_carbanion_r2": 0.2454,
+          "delta_r2": -0.005,
+          "graph_change_share": 0.3357,
+          "reading": "33.6% 的图真的换了边，但 DOI 留出 R² 从 0.2504 掉到 0.2454。Cp/芳基碳负离子给体不是缺的那个输入。1 seed，Δ 的噪声量级未知，所以这个 −0.005 只能说「没有 +0.03 的证据」，不能说「确定有害」。"
+        }
+      }
     },
     {
       "id": "UP-4",
@@ -378,7 +403,7 @@
       "priority": "P1",
       "wave": 2,
       "wall": "1 天 CPU",
-      "status": "PENDING",
+      "status": "DONE-FAIL",
       "why": "EXT-2 用 16 列静态描述符直接预测金属水平，结果 KILL（置换 p=0.167，且在 cisplatin_ratio 上反号 −0.410）。但那是「硬预测水平」，不是「在金属之间做部分池化」。metal_out 的绝对 R² 仍是 −0.0734，4/5 金属为负；5 金属中心化后秩 ≤4。",
       "lever": "eRAC 的核心不是多几列，是把 nuclear charge 换成 effective nuclear charge，使同族金属（Ru/Os 都是 group 8）不被过度判为相异；Harper 等的迁移做法是「一个大样本金属的模型 + 新金属的少量点」而不是「用描述符硬算」。",
       "code_points": [
@@ -397,7 +422,29 @@
       "artifacts_needed": [
         "msrs_metal_descriptor_level.json",
         "msrs_lomo_surface.json"
-      ]
+      ],
+      "result": {
+        "artifact": "metrics/by_metric/msrs_erac_metal.json",
+        "verdict": "FAIL",
+        "numbers": {
+          "potency_metal_out_raw": -0.0734,
+          "potency_metal_out_erac": -0.0744,
+          "potency_ligand_disjoint_raw": -0.15,
+          "potency_ligand_disjoint_erac": -0.1739,
+          "cisplatin_metal_out_raw": -0.0793,
+          "cisplatin_metal_out_erac": -0.0904,
+          "cisplatin_ligand_disjoint_raw": -0.2171,
+          "cisplatin_ligand_disjoint_erac": -0.2306,
+          "sign_test_better": 8,
+          "sign_test_n": 20,
+          "sign_test_p": 0.5034,
+          "metals_nonneg_raw": 1,
+          "metals_nonneg_erac": 2,
+          "pooling_spectrum_width": 0.0098
+        },
+        "reading": "eRAC 的 Z_eff 没有改善 metal_out：四个 cell 的加权 Δ 全是负的（−0.001 / −0.024 / −0.011 / −0.014），20 个 (金属, cell) 里只有 8 个变好，符号检验 p=0.50。Rh 涨 +0.219、Ir 掉 −0.088 是 349–3666 行上的抽样波动，不是化学。",
+        "step2_not_run": "部分池化没跑，因为它的先验就是刚刚失败的东西：三种表示的完整谱（none 完全池化 / descriptors eRAC 桥 / one_hot 不池化）在 potency|metal_out 上只差 0.0098 R²（−0.0806 / −0.0744 / −0.0708）。收缩系数没有可插值的空间。"
+      }
     },
     {
       "id": "UP-5",
@@ -557,7 +604,8 @@
       "if_yes": "继续 UP-3 / UP-5 的 GPU 投入；UP-4 作为水平项的兜底。",
       "if_no": "停止模型侧投入，只做 UP-4 / UP-6，按机制论文定稿；负结果比 EXT 强（四臂 A/B + n=436）。",
       "status": "RESOLVED-NO (2026-10-21)",
-      "answer": "形状在留出金属上不可学。UP-1：放开约束全部更差（free -0.097 / pair -0.113 / product -0.164），最好 +0.020 且 CI 含 0。UP-2：balanced 首次显著 >0.5（0.5985 [0.5262,0.6663]），但 raw 0.5417 低于多数类 0.6222，未过门。⇒ 按 if_no 分支：停模型侧投入，只做 UP-4 / UP-6；UP-3 / UP-5 的 GPU 预算改为「表示探针」规模（200 配合物可行性 + 1 seed），不再按强路径铺开。"
+      "answer": "形状在留出金属上不可学。UP-1：放开约束全部更差（free -0.097 / pair -0.113 / product -0.164），最好 +0.020 且 CI 含 0。UP-2：balanced 首次显著 >0.5（0.5985 [0.5262,0.6663]），但 raw 0.5417 低于多数类 0.6222，未过门。⇒ 按 if_no 分支：停模型侧投入，只做 UP-4 / UP-6；UP-3 / UP-5 的 GPU 预算改为「表示探针」规模（200 配合物可行性 + 1 seed），不再按强路径铺开。",
+      "deviation": "if_no 原文是「停止模型侧投入，只做 UP-4 / UP-6」。**本次没有完全照办**：用户指令是逐项做完，所以 UP-3 / UP-5 不跳过，但预算按「表示探针」计（UP-3 先做 200 配合物的 ETKDG 成功率；UP-5 只跑 1 seed），并且在开跑前写死 kill 门槛。这是显式放宽，不是把 DP-1 判成 yes。"
     },
     {
       "id": "DP-2",

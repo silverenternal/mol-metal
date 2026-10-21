@@ -1,0 +1,113 @@
+{
+ "artifact": "msrs_complex3d_probe",
+ "version": "1.0",
+ "framework": "MSRS — Metal Substitution Response Surface",
+ "level": "L3 representation / UP-3 step 1",
+ "generated_utc": "2026-10-21T07:44:42+00:00",
+ "provenance": {
+  "dedup_parquet": "/home/hugo/codes/mol-metal/data/msrs/measurements_dedup.parquet",
+  "script": "molmetal/scripts/msrs_complex3d_probe.py",
+  "seed": 20261021,
+  "n_per_metal": 40,
+  "rdkit": "2026.03.6",
+  "python": "3.12.13"
+ },
+ "design": {
+  "sample": "metal-stratified unique (ligand_canonical, metal) pairs",
+  "embed": "ETKDGv3, 3 attempts (deterministic seed, random coords on retry)",
+  "metal_construction": "bare metal atom + DATIVE bonds to the top-CN donors",
+  "complete_donor_set": "neutral hetero N/P/S/O + halides + anionic hetero + aromatic N + aromatic carbanion",
+  "legal_donor_set": "neutral hetero N/P/S/O + halides + anionic hetero (the subset RDKit sanitises without breaking kekulisation)",
+  "coordination_number": {
+   "Ru": 6,
+   "Ir": 6,
+   "Rh": 6,
+   "Os": 6,
+   "Re": 6
+  },
+  "gate": {
+   "organic_embed_success": 0.95,
+   "complete_embed_success": 0.8,
+   "donor_count_ge_2": 0.9,
+   "frozen_at": "2026-10-21T15:10+08:00"
+  },
+  "gate_uses": "complete_embed_success"
+ },
+ "summary": {
+  "n_sampled": 200,
+  "parse_success": 1.0,
+  "organic_embed_success": 1.0,
+  "legal_built": 0.255,
+  "legal_embed_success": 0.25,
+  "complete_built": 0.065,
+  "complete_embed_success": 0.065,
+  "complete_fail_graph_rejected": 0.935,
+  "complete_fail_embed": 0.0,
+  "donor_count_ge_2": 1.0,
+  "donor_count_ge_cn": 0.625,
+  "needs_aromatic_n": 0.84,
+  "needs_aromatic_carbanion": 0.335,
+  "explicit_metal_share": 0.0,
+  "multi_fragment_share": 1.0,
+  "ancillary_fragment_mean": 2.23,
+  "n_fragments_median": 3.0,
+  "heavy_atoms_median": 35.0,
+  "n_donors_median": 6.0
+ },
+ "per_metal": {
+  "Ru": {
+   "n": 40,
+   "organic_embed_success": 1.0,
+   "legal_embed_success": 0.15,
+   "complete_embed_success": 0.05,
+   "n_donors_median": 9.0,
+   "n_fragments_median": 3.0,
+   "needs_aromatic_carbanion": 0.025
+  },
+  "Ir": {
+   "n": 40,
+   "organic_embed_success": 1.0,
+   "legal_embed_success": 0.125,
+   "complete_embed_success": 0.025,
+   "n_donors_median": 8.0,
+   "n_fragments_median": 3.0,
+   "needs_aromatic_carbanion": 0.975
+  },
+  "Rh": {
+   "n": 40,
+   "organic_embed_success": 1.0,
+   "legal_embed_success": 0.45,
+   "complete_embed_success": 0.1,
+   "n_donors_median": 6.0,
+   "n_fragments_median": 3.0,
+   "needs_aromatic_carbanion": 0.5
+  },
+  "Os": {
+   "n": 40,
+   "organic_embed_success": 1.0,
+   "legal_embed_success": 0.125,
+   "complete_embed_success": 0.0,
+   "n_donors_median": 5.0,
+   "n_fragments_median": 3.0,
+   "needs_aromatic_carbanion": 0.1
+  },
+  "Re": {
+   "n": 40,
+   "organic_embed_success": 1.0,
+   "legal_embed_success": 0.4,
+   "complete_embed_success": 0.15,
+   "n_donors_median": 5.0,
+   "n_fragments_median": 5.0,
+   "needs_aromatic_carbanion": 0.075
+  }
+ },
+ "verdict": "ORGANIC_ONLY_FALLBACK",
+ "verdict_rule": "PASS iff organic_embed_success >= 0.95 AND complete_embed_success >= 0.80 AND donor_count_ge_2 >= 0.90",
+ "caveats": [
+  "The corpus stores the complex as DISCONNECTED fragments with the metal omitted; explicit_metal_share measures exactly that.",
+  "organic_embed_success is a weak signal: disconnected fragments are placed independently, so their relative geometry is unconstrained.",
+  "The gate is scored on the COMPLETE donor set. A construction that drops the Cp / pyridyl donors embeds fine but no longer describes the species in the table; legal_embed_success is reported only to show where the failure comes from.",
+  "The binding mode is not in the data. donor_classes() is a heuristic; a Cp ring is counted as one donor and a chelating N,N ligand is not distinguished from two monodentate donors.",
+  "A successful embed is not a correct geometry: no force field was minimised and no reference structure was compared against."
+ ]
+}

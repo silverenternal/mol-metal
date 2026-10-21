@@ -82,6 +82,9 @@ from molmetal.scripts.wf386a3_atomic_write import atomic_write_file  # noqa: E40
 
 ENDPOINTS = ("potency", "cisplatin_ratio")
 REPRESENTATIONS = ("descriptors", "one_hot", "none")
+# The descriptor block every pre-2026-10-21 artifact used.  UP-4 overrides it
+# with an eRAC block via --metal-cols; the default keeps old runs byte-identical.
+DEFAULT_METAL_COLUMNS = ("ie1_kj", "ie2_kj", "pauling_en")
 
 
 # ---------------------------------------------------------------------------
@@ -108,10 +111,15 @@ def _git_commit() -> Optional[str]:
 # Design matrices per representation
 # ---------------------------------------------------------------------------
 def build_blocks(
-    df: pd.DataFrame, descriptors: pd.DataFrame, vocabulary: Sequence[str]
+    df: pd.DataFrame,
+    descriptors: pd.DataFrame,
+    vocabulary: Sequence[str],
+    metal_columns: Sequence[str] = DEFAULT_METAL_COLUMNS,
 ) -> Dict[str, sparse.csr_matrix]:
     lig = morgan_matrix(df["ligand_main_fragment"].tolist())
-    met_full = sparse.csr_matrix(metal_matrix(df["metal"].tolist(), descriptors))
+    met_full = sparse.csr_matrix(
+        metal_matrix(df["metal"].tolist(), descriptors, columns=metal_columns)
+    )
     cell = cell_matrix(df["cell_line_key"].tolist(), vocabulary)
     return {
         "ligand": lig,
@@ -293,7 +301,11 @@ def paired_tests(per_metal: Dict[str, Dict[str, object]], fragments: np.ndarray)
 # One endpoint
 # ---------------------------------------------------------------------------
 def run_endpoint(
-    df: pd.DataFrame, endpoint: str, descriptors: pd.DataFrame, verbose: bool = True
+    df: pd.DataFrame,
+    endpoint: str,
+    descriptors: pd.DataFrame,
+    verbose: bool = True,
+    metal_columns: Sequence[str] = DEFAULT_METAL_COLUMNS,
 ) -> Dict[str, object]:
     t0 = time.time()
     sub = df[df["endpoint"] == endpoint]
@@ -305,7 +317,7 @@ def run_endpoint(
         return {"status": "EMPTY"}
 
     vocabulary = sub["cell_line_key"].value_counts().head(TOP_CELL_LINES).index.tolist()
-    blocks = build_blocks(sub, descriptors, vocabulary)
+    blocks = build_blocks(sub, descriptors, vocabulary, metal_columns=metal_columns)
     y = sub["value_log10"].to_numpy(dtype=float)
 
     out: Dict[str, object] = {
@@ -362,6 +374,12 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument(
         "--out", type=Path, default=PROJECT_ROOT / "metrics" / "by_metric" / "msrs_lomo_surface.json"
     )
+    parser.add_argument(
+        "--metal-cols",
+        default=",".join(DEFAULT_METAL_COLUMNS),
+        help="comma-separated descriptor columns for the 'descriptors' arm "
+             "(default: the pre-2026-10-21 block)",
+    )
     args = parser.parse_args(argv)
 
     for p in (args.dedup, args.metal_desc):
@@ -371,7 +389,15 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     df = pd.read_parquet(args.dedup)
     descriptors = pd.read_csv(args.metal_desc)
-    results = {ep: run_endpoint(df, ep, descriptors) for ep in ENDPOINTS}
+    metal_columns = tuple(c.strip() for c in str(args.metal_cols).split(",") if c.strip())
+    missing = [c for c in metal_columns if c not in descriptors.columns]
+    if missing:
+        print(f"FAIL: --metal-cols not in {args.metal_desc}: {missing}")
+        return 1
+    results = {
+        ep: run_endpoint(df, ep, descriptors, metal_columns=metal_columns)
+        for ep in ENDPOINTS
+    }
 
     # Holm across the four endpoint x split cells. Two pre-specified directions:
     # "the baseline is better" (does the metal block hurt?) and "the metal block
@@ -400,6 +426,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             "dedup_parquet": str(args.dedup),
             "dedup_sha256": _sha256(args.dedup),
             "metal_descriptors": str(args.metal_desc),
+            "metal_descriptor_columns": list(metal_columns),
             "metal_descriptors_sha256": _sha256(args.metal_desc),
             "script": str(Path(__file__).relative_to(PROJECT_ROOT)),
             "git_commit": _git_commit(),
