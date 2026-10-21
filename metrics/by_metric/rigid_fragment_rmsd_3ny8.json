@@ -1,5 +1,6 @@
 {
   "metric": "rigid_fragment_rmsd",
+  "definition_variant": "self_rmsd_etkdgv3_uff",
   "description": "Rigid fragment RMSD: self-RMSD between two ETKDGv3 + UFF-optimised conformers of the same molecule (deterministic seed). A near-zero value indicates a rigid molecule that embeds reproducibly; high values indicate flexible molecules with multiple minima.",
   "unit": "Angstroms (mean +/- std across pool)",
   "scope": "3D geometry diagnostic for pocket 3ny8",

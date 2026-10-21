@@ -1,5 +1,6 @@
 {
   "metric": "metric18_protein_metal_binding_auc",
+  "protocol_variant": "100ep",
   "seeds": [
     0,
     1,

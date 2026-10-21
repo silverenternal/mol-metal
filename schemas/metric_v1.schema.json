@@ -99,6 +99,22 @@
     "definition_status": {
       "type": ["string", "null"],
       "description": "REDEFINED / RECONSTRUCTED / RENAMED when the metric's definition changed. Stays quotable but can never be table-grade: values on either side of the change are not comparable."
+    },
+    "cohort_spec": {
+      "type": ["string", "null"],
+      "description": "Short token naming the cohort construction (e.g. 'paper_funnel', 'probe_time_filtered'). Two rows of the same family with different cohorts are different measurements and must not be averaged."
+    },
+    "definition_variant": {
+      "type": ["string", "null"],
+      "description": "Short token naming which definition of the quantity was measured, when one label covers several (e.g. 'aronov2005_veber2002' vs 'veith2009' for herg_cardio_risk; 'generated_vs_reference' vs 'vina_box_center_displacement' for com_shift)."
+    },
+    "protocol_variant": {
+      "type": ["string", "null"],
+      "description": "Short token naming the run protocol when one label covers several (e.g. '5seed_50ep_9cell' vs '3seed_5ep_8cell'; '50ep' vs '100ep')."
+    },
+    "verdict": {
+      "type": ["string", "object", "array", "null"],
+      "description": "The finding. Three shapes coexist: prose, a status token, and a bespoke dict (19 distinct key sets, 2026-10-21). A dict is not a status token and does not make the row quotable; registry.py records `verdict_shape` and lifts the boolean keys into `verdict_conclusions`."
     }
   }
 }

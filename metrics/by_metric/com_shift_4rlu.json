@@ -1,5 +1,6 @@
 {
   "metric": "com_shift",
+  "definition_variant": "vina_box_center_displacement",
   "description": "Center-of-mass displacement: distance from the embedded-conformer CoM to the Vina box center, across the candidate pool. Diagnostic for whether the pool's geometry sits near the pocket.",
   "unit": "Angstroms (mean +/- std across pool)",
   "scope": "3D geometry diagnostic for pocket 4rlu",

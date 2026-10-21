@@ -1,5 +1,5 @@
 schema: molmetal-registry-protocols-v1
-generated_at: '2026-10-08T09:33:34+00:00'
+generated_at: '2026-10-21T02:40:40+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable protocol facts. A protocol is LOCKED iff protocol_lock_sha256
   still matches disk.
@@ -16,6 +16,7 @@ protocols:
     - 0
     epochs: 10
     trainer_config: configs/dmpnn.yaml
+    metric_id: m1_ru_auc
     protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m2_r2_per_cell:
@@ -29,6 +30,7 @@ protocols:
     seeds: null
     epochs: null
     trainer_config: configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml
+    metric_id: m2_r2_per_cell
     protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m17_drugood_ood:
@@ -42,6 +44,7 @@ protocols:
     seeds: null
     epochs: null
     trainer_config: configs/locks/drugood.yaml
+    metric_id: drugood_ood_auc
     protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m19_lomo:
@@ -55,6 +58,7 @@ protocols:
     seeds: null
     epochs: null
     trainer_config: configs/dmpnn.yaml
+    metric_id: m19_lomo
     protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m21_nci60_9cell:
@@ -71,6 +75,7 @@ protocols:
     - 2
     epochs: null
     trainer_config: configs/dmpnn.yaml
+    metric_id: m21_nci60_9cell
     protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   l5_hilbert_r2:
@@ -90,6 +95,7 @@ protocols:
     - 4
     epochs: null
     trainer_config: null
+    metric_id: l5_hilbert_r2
     protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   l6_closure:
@@ -104,6 +110,7 @@ protocols:
     seeds: null
     epochs: null
     trainer_config: null
+    metric_id: l6_closure
     protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
     protocol_lock_ref: configs/locks/protocol_lock.yaml
   m6_kappa:
@@ -117,5 +124,6 @@ protocols:
     seeds: null
     epochs: null
     trainer_config: null
+    metric_id: m6_kappa
     protocol_lock_sha256: b54ab2ab61390951bd071e75522f8b4e555632c8c432125646d3643fe080422f
     protocol_lock_ref: configs/locks/protocol_lock.yaml

@@ -121,6 +121,54 @@ has never existed on disk or in git history, so nothing said the old number was
 dead and nothing could have said so. The real replacement is
 `dmpnn_within_metal_cap512_pf_gpu0.json`.
 
+The relation is read in **both** directions. PROV-O puts
+`prov:wasRevisionOf` on the newer entity, so a file is entitled to write only
+`supersedes: old_id`; the older row is still superseded, and the registry fills
+its `superseded_by` from the reverse index (`superseded_by_source:
+"reverse: <newer>.supersedes"`). Before 2026-10-21 only the outgoing pointer
+was read, so a relationship declared on the newer file left the older one
+quotable.
+
+### A metric label is a family, not an identifier
+
+The `metric` field looks like a primary key and is not one. Measured
+2026-10-21, four labels cover more than one measurement:
+
+| Label | Rows | What actually differs |
+|---|---|---|
+| `dmpnn_within_metal_auc` | 5 | cohort — Ru `n_unique` 1255 (probe, `time_threshold=24.0`) vs 4793 (paper funnel, no time window) |
+| `herg_cardio_risk` | 2 | definition — Aronov 2005 + Veber 2002 vs Veith 2009 |
+| `com_shift` | 6 | definition — conformer-pair RMSD vs distance from the Vina box centre |
+| `rigid_fragment_rmsd` | 6 | definition — MCS overlay RMSD vs self-RMSD of two ETKDGv3 conformers |
+
+The five `dmpnn_within_metal_auc` files even carry a **byte-identical
+`description`**, so nothing in the file says which cohort it measured. A
+consumer that groups by `metric` and averages gets a number that describes no
+experiment.
+
+The identifier is therefore composite: `(metric_family, grain)`, where grain is
+whatever the file declares to separate it from its siblings —
+`cohort_spec`, `definition_variant`, `protocol_variant`, `pocket`, or the
+measured `per_metal[*].n_unique`. FAIR **F1** asks for a globally unique,
+persistent identifier; renaming 395 files to get one would break every
+reference already pointing at them, so the grain is declared instead and the
+registry reports the families that still cannot be told apart.
+
+`family_collision` is the column that matters: a family with more than one
+**live** row (superseded rows are out of the running) where this row declares
+no grain. One silent member makes the whole label unreadable, which is exactly
+how `dmpnn_within_metal_auc` behaved for five months.
+
+### Unit is a dimension; the parenthetical is a definition
+
+`unit` strings had drifted within two families — `angstrom (Å; mean +/- std
+across pool)` vs `Angstroms (mean +/- std across pool)`, and `across
+overlayable pool` vs `across pool`. The spelling difference is noise; the
+denominator difference is not. The registry strips the parenthetical into
+`unit_canonical` (so `angstrom` == `angstrom`) and leaves the definition where
+it belongs, in `definition_variant`. Unit drift is then counted as a real
+disagreement rather than as punctuation.
+
 ### Optional disclosure field
 
 `headline_caveat` (string) is printed under the row whatever the mark. Use it
@@ -218,10 +266,18 @@ a merge, so those files looked like they had never been committed at all.
 - **It does not parse prose.** A file that describes its protocol only in an
   `honest_framing` paragraph does not pass. Every fact the rule reads must be a
   field.
+- **It does not rewrite a structured verdict.** `verdict` is prose in 124
+  files, a status token in some, and a bespoke dict in 19 (19 distinct key
+  sets). The dicts are conclusions — `headline_lockable`, `hypothesis_holds`,
+  `target_met_all_metals` — but they are 19 different schemas, and collapsing
+  them into one is an editorial decision about what each finding meant. The
+  registry records `verdict_shape` and lifts the boolean keys into
+  `verdict_conclusions`, so a rejected hypothesis is visible rather than
+  reported as "no conclusion"; it does not invent a token for it.
 
 ---
 
-## 7. State (2026-10-20, MEASURED)
+## 7. State (2026-10-21, MEASURED)
 
 `registry.py cite` — 11 paper-line metrics:
 
@@ -234,11 +290,14 @@ a merge, so those files looked like they had never been committed at all.
 `registry.py check` on the same registry:
 
 ```
-394 current, 0 stale, 0 missing | 11 paper-line (9 quotable, 4 headline-grade)
+395 current, 0 stale, 0 missing | 11 paper-line (9 quotable, 4 headline-grade)
 | 0 paper-line + 0 artifact claims without a status (15 hold a narrative verdict instead)
-| 0 paper-line + 198 artifact rows record no measurement date (198 carry a commit date instead, 0 carry neither)
-| 0 paper-line + 118 artifact rows labelled MEASURED with no standardised scalar (117 hold numbers under a file-specific key, 1 hold none)
+| 0 paper-line + 199 artifact rows record no measurement date (199 carry a commit date instead, 0 carry neither)
+| 0 paper-line + 119 artifact rows labelled MEASURED with no standardised scalar (118 hold numbers under a file-specific key, 1 hold none)
 | 0 dangling supersession pointers
+| 18 metric families span >1 row (0 rows declare no grain, 0 families disagree on the canonical unit)
+| 19 rows carry a structured verdict (13 with a boolean conclusion)
+| 1 supersession declared only on the newer row
 ```
 
 The zeros are the point: every paper-line row has a status, a date and — if it

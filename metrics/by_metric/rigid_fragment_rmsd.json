@@ -1,5 +1,6 @@
 {
   "metric": "rigid_fragment_rmsd",
+  "definition_variant": "overlayable_pool_rmsd",
   "description": "Rigid-fragment RMSD: symmetry-aware MCS overlay RMSD (\u00c5) of the maximum common substructure after MMFF94 minimization (TargetDiff Table 1 convention; TODO-22 metric #13, shipped 2026-09-18).",
   "unit": "angstrom (\u00c5; mean +/- std across overlayable pool)",
   "scope": "3D-conformer comparison metric (TargetDiff Table 1)",

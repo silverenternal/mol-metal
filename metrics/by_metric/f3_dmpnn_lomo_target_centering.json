@@ -2,6 +2,7 @@
   "wave": "F3",
   "finding": "D-MPNN LOMO regression auxiliary on metal-stripped graph, not capacity, is the transfer bottleneck",
   "metric": "f3_dmpnn_lomo_target_centering",
+  "unit": "ROC-AUC (0-1, higher better)",
   "v3_baseline_claimed": 0.338,
   "reproduced_baseline": 0.3512,
   "ablations": {

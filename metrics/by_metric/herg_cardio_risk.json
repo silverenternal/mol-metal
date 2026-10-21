@@ -1,5 +1,6 @@
 {
   "metric": "herg_cardio_risk",
+  "definition_variant": "aronov2005_veber2002",
   "description": "hERG cardiotoxicity risk heuristic (Aronov 2005 + Veber 2002): composite of tertiary basic N count + logP > 3.5 + aromatic rings > 2 + MW > 400. Higher = more hERG-blocking risk.",
   "unit": "ratio (0-1)",
   "scope": "anticancer metric suite, real impl shipped 2026-09-17 via wjd0svg3v (TODO-15)",

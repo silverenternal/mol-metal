@@ -1,5 +1,6 @@
 {
   "metric": "cfm_valence_budget_variant_ab",
+  "protocol_variant": "ode_decode",
   "tag": "MEASURED",
   "run": "cfm_objective_terms_2026_10_11",
   "checkpoint": "molmetal/reports/cfm_objective_terms_2026_10_11/checkpoints/cfm_yuelbond_wasserstein_seed0.pt",

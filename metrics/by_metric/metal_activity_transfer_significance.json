@@ -1,5 +1,6 @@
 {
   "metric": "metal_activity_transfer",
+  "definition_variant": "significance",
   "description": "Anticancer cytotoxicity AUC for noble-metal complexes, measured BOTH within-metal (5-fold CV, the setting Krasnov et al. 2026 report) and cross-metal (leave-one-metal-out, which the comparison set does not publish), on the SAME deduplicated cohort with the SAME scorer. The difference is the transfer penalty and is the actual finding.",
   "unit": "ROC-AUC (0-1, higher better)",
   "scope": "tier2_precious_metal_anticancer",

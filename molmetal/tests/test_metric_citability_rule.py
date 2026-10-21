@@ -41,12 +41,17 @@ if str(REPO_ROOT) not in str(sys.path):
 from molmetal.scripts.registry import assess_citability  # noqa: E402
 from molmetal.scripts.registry import (  # noqa: E402
     _extract_value_basis,
+    _grain,
     _has_numeric_leaf,
+    _link_families,
+    _metric_family,
     _metric_timestamp,
     _preserve_underived_datasets,
     _resolve_metric_ref,
     _status_with_source,
     _supersession_fields,
+    _unit_canonical,
+    _verdict_shape,
 )
 
 
@@ -459,3 +464,120 @@ def test_redefined_metric_cannot_be_table_grade():
 def test_definition_status_that_is_not_a_redefinition_is_ignored():
     r = _assess(_good(definition_status="STABLE since 2026-09-01"))
     assert r["headline_grade"] is True
+
+
+# --- metric identity: the label is a family, not a measurement -------------
+#
+# Measured 2026-10-21: five files carry `metric: dmpnn_within_metal_auc` and an
+# identical description while measuring two cohorts (Ru n_unique 1255 vs 4793).
+# `herg_cardio_risk` is two different published heuristics.  The label alone
+# cannot be the identity, so a row must declare its grain.
+
+
+def test_metric_family_normalises_the_label():
+    assert _metric_family({"metric": " DMPNN_Within_Metal_AUC "}) == (
+        "dmpnn_within_metal_auc"
+    )
+    assert _metric_family({"metric": ""}) is None
+    assert _metric_family({"metric": 3}) is None
+    assert _metric_family({}) is None
+
+
+def test_grain_reads_a_pocket_dict():
+    # `pocket` is a dict in all 49 files that carry it; reading only string
+    # keys reported 35 docking rows as "no grain" when the pocket was there.
+    g = _grain({"pocket": {"name": "1h36", "pdb_path": "/tmp/1h36.pdb"}})
+    assert g == {"pocket": "1h36"}
+
+
+def test_grain_lifts_cohort_size_from_per_metal():
+    g = _grain({"per_metal": {"Ru": {"n_unique": 4793}, "Ir": {"n_unique": 1281}}})
+    assert g["n_unique"] == {"Ru": 4793, "Ir": 1281}
+
+
+def test_grain_is_empty_when_nothing_is_declared():
+    assert _grain({"metric": "x", "value": 0.5}) == {}
+
+
+def test_unit_canonical_collapses_angstrom_spellings():
+    a = _unit_canonical("angstrom (\u00c5; mean +/- std across overlayable pool)")
+    b = _unit_canonical("Angstroms (mean +/- std across pool)")
+    assert a == b == "angstrom"
+
+
+def test_unit_canonical_keeps_different_dimensions_apart():
+    assert _unit_canonical("kcal/mol (lower = better)") == "kcal/mol"
+    assert _unit_canonical("ROC-AUC (0-1, higher better)") == "roc-auc"
+    assert _unit_canonical(None) is None
+
+
+def test_structured_verdict_is_not_a_status():
+    r = _assess(_good(status=None, verdict={"hypothesis_holds": False}))
+    assert r["quotable"] is False
+    assert any("structured dict" in m for m in r["not_quotable"])
+
+
+def test_structured_verdict_lifts_boolean_conclusions():
+    shape, conclusions = _verdict_shape(
+        {"verdict": {"headline_lockable": True, "why": "text", "n": 5}}
+    )
+    assert shape == "structured"
+    assert conclusions == {"headline_lockable": True}
+
+
+def test_prose_verdict_has_no_boolean_conclusions():
+    assert _verdict_shape({"verdict": "MEASURED"}) == ("text", None)
+    assert _verdict_shape({}) == (None, None)
+
+
+def _row(**over):
+    row = {
+        "metric_family": "demo",
+        "grain": {},
+        "quotable": True,
+        "headline_grade": True,
+        "not_quotable": [],
+    }
+    row.update(over)
+    return row
+
+
+def test_family_members_that_declare_grain_are_not_a_collision():
+    rows = {
+        "a": _row(grain={"cohort_spec": "paper_funnel"}),
+        "b": _row(grain={"cohort_spec": "probe_time_filtered"}),
+    }
+    _link_families(rows)
+    assert rows["a"]["family_collision"] is False
+    assert rows["b"]["family_collision"] is False
+    assert rows["a"]["family_size"] == 2
+
+
+def test_one_silent_member_makes_the_family_a_collision():
+    rows = {"a": _row(grain={"cohort_spec": "paper_funnel"}), "b": _row()}
+    _link_families(rows)
+    assert rows["a"]["family_collision"] is False
+    assert rows["b"]["family_collision"] is True
+
+
+def test_supersession_declared_on_the_newer_row_blocks_the_older_row():
+    # PROV-O puts `wasRevisionOf` on the newer entity.  The rule only read the
+    # outgoing `superseded_by`, so this direction left the old row quotable.
+    rows = {"old": _row(), "new": _row(supersedes="old")}
+    _link_families(rows)
+    assert rows["old"]["superseded_by"] == "new"
+    assert rows["old"]["superseded_by_source"] == "reverse: new.supersedes"
+    assert rows["old"]["quotable"] is False
+    assert any("declared on the newer row" in m for m in rows["old"]["not_quotable"])
+    # A superseded row is out of the running for the label, so it needs no grain.
+    assert rows["old"]["family_collision"] is False
+    assert rows["old"]["family_live"] == 1
+
+
+def test_reverse_supersession_does_not_override_an_explicit_pointer():
+    rows = {
+        "old": _row(superseded_by="third"),
+        "new": _row(supersedes="old"),
+    }
+    _link_families(rows)
+    assert rows["old"]["superseded_by"] == "third"

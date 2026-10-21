@@ -1,5 +1,6 @@
 {
   "metric": "dmpnn_within_metal_auc",
+  "cohort_spec": "probe_time_filtered",
   "status": "MEASURED",
   "MEASURED_vs_PROJECTED": "MEASURED",
   "description": "D-MPNN within-metal ROC-AUC on the probe's deduplicated cohort, measured on the SAME folds the probe's XGBoost within-metal column uses. Fills BLK-P1: the paper names the D-MPNN as a predictive-line model but had no within-metal number for it on this cohort.",

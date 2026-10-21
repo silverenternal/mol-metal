@@ -1,5 +1,6 @@
 {
   "metric": "com_shift",
+  "definition_variant": "generated_vs_reference",
   "description": "CoM shift: RMSD of centre-of-mass (\u00c5) between two MMFF94-minimised 3D conformers (TargetDiff Table 1 convention; TODO-22 metric #15, shipped 2026-09-18).",
   "unit": "angstrom (\u00c5; mean +/- std across pool)",
   "scope": "3D-conformer comparison metric (TargetDiff Table 1)",

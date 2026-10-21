@@ -1,5 +1,6 @@
 {
   "metric": "tmqm_pretrain_init_ab_metalcytotox_ru",
+  "unit": "ROC-AUC difference (init_from_tmqm minus random_init)",
   "value": -0.009432,
   "value_std": 0.025128,
   "tag": "MEASURED_HONEST_NEGATIVE",

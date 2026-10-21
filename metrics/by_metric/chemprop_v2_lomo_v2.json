@@ -1,5 +1,6 @@
 {
   "metric": "chemprop_v2_lomo_v2",
+  "unit": "ROC-AUC (0-1, higher better)",
   "description": "Per-metal single-task chemprop v2 binary activity classifier; one independent BinaryClassificationFFN per metal (Ru/Ir/Os/Rh/Re), trained on only that metal's data with 80/20 stratified holdout. Honest in-domain baseline (no cross-metal leakage).  Replaces the broken Wf-146 v1 design (TODO-170 \u00a70; mean AUC 0.446).",
   "scope": "5 precious metals \u00d7 5 seeds \u00d7 50 epochs",
   "source": "molmetal/scripts/wf146_chemprop_v2_lomo_v2.py",

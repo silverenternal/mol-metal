@@ -1,5 +1,6 @@
 {
  "metric": "fsma_kshot_curve_paperfunnel",
+  "protocol_variant": "head_full_controls",
  "status": "MEASURED",
  "MEASURED_vs_PROJECTED": "MEASURED",
  "unit": "ROC-AUC delta (higher better)",

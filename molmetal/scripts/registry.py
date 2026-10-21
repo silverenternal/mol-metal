@@ -315,6 +315,17 @@ def _dataset_id(path: str) -> str:
     return Path(path).name
 
 
+#: Protocol ids that name a *protocol* while the metric row names the
+#: *measurement*.  ``m17_drugood_ood`` is the lock's key; the row it locks is
+#: ``drugood_ood_auc``.  Without this the join silently returns nothing and the
+#: three DrugOOD datasets look like they are locked for a metric that does not
+#: exist.  Add an entry here rather than renaming either side: both names are
+#: referenced from docs and from the lock file.
+_PROTOCOL_METRIC_ALIASES = {
+    "m17_drugood_ood": "drugood_ood_auc",
+}
+
+
 def build_protocols(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
     """Harvest the protocol layer from configs/locks/protocol_lock.yaml."""
     lock_path = PROTOCOL_LOCK_PATH
@@ -335,6 +346,7 @@ def build_protocols(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
             "seeds": entry.get("seeds"),
             "epochs": entry.get("epochs"),
             "trainer_config": entry.get("trainer_config"),
+            "metric_id": _PROTOCOL_METRIC_ALIASES.get(metric_key, metric_key),
             "protocol_lock_sha256": lock_sha,
             "protocol_lock_ref": _rel(lock_path),
         }
@@ -678,6 +690,112 @@ def _std_fields(payload: Dict[str, Any]) -> List[str]:
     return out
 
 
+# ---------------------------------------------------------------------------
+# Metric identity: a label names a FAMILY, not a measurement.
+#
+# Measured 2026-10-21.  Five files carry ``metric: dmpnn_within_metal_auc`` and
+# the *identical* ``description`` while measuring two different cohorts
+# (Ru n_unique 1255 vs 4793).  ``herg_cardio_risk`` is two different published
+# heuristics (Aronov 2005 + Veber 2002 vs Veith 2009).  ``com_shift`` is
+# "generated vs reference" in one file and "distance from the Vina box centre"
+# in five others.  So the label is not an identifier — it is the name of a
+# family, and a measurement is ``(family, grain)``.
+#
+# FAIR F1 asks for a globally unique, persistent identifier.  Renaming 395
+# files to get one would break every reference that already points at them;
+# declaring the grain gets the same property without the churn.  The check then
+# reports the families that still cannot be told apart, instead of letting a
+# consumer group by ``metric`` and silently average incompatible numbers.
+# ---------------------------------------------------------------------------
+
+#: Fields that qualify *what* was measured, as opposed to how well.
+_QUALIFIER_KEYS = ("cohort_spec", "definition_variant", "protocol_variant")
+
+
+def _metric_family(payload: Dict[str, Any]) -> Optional[str]:
+    """The ``metric`` label, normalised.  Rows sharing it are a family."""
+    m = payload.get("metric")
+    if isinstance(m, str) and m.strip():
+        return m.strip().lower()
+    return None
+
+
+def _grain(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Declared qualifiers that separate two rows of the same family.
+
+    Only fields the file actually carries are reported.  ``n_unique`` is
+    lifted out of ``per_metal`` because cohort size is the qualifier that
+    differs between the two ``dmpnn_within_metal_auc`` cohorts, and it is
+    already measured in every one of those files.
+
+    ``pocket`` is a dict in all 49 files that carry it (``{name, pdb_path,
+    engine, ...}``), so reading only string-valued keys reported 35 vina and
+    steric-clash rows as "no grain" when the pocket was right there.
+    """
+    g: Dict[str, Any] = {}
+    for k in _QUALIFIER_KEYS:
+        v = payload.get(k)
+        if isinstance(v, str) and v.strip():
+            g[k] = v.strip()
+    pocket = payload.get("pocket")
+    if isinstance(pocket, dict):
+        name = pocket.get("name") or pocket.get("pdb") or pocket.get("id")
+        if isinstance(name, str) and name.strip():
+            g["pocket"] = name.strip()
+    elif isinstance(pocket, str) and pocket.strip():
+        g["pocket"] = pocket.strip()
+    pm = payload.get("per_metal")
+    if isinstance(pm, dict):
+        ns = {
+            m: v.get("n_unique")
+            for m, v in pm.items()
+            if isinstance(v, dict) and _coerce_float(v.get("n_unique")) is not None
+        }
+        if ns:
+            g["n_unique"] = ns
+    return g
+
+
+# The unit is a *dimension*; the parenthetical is a *definition*.  Keeping them
+# in one string is how `angstrom (Å; mean +/- std across overlayable pool)` and
+# `Angstroms (mean +/- std across pool)` looked like two units when they are one
+# unit measuring two different things.
+_UNIT_PAREN_RE = re.compile(r"\([^)]*\)")
+
+
+def _unit_canonical(unit: Any) -> Optional[str]:
+    if not isinstance(unit, str) or not unit.strip():
+        return None
+    s = _UNIT_PAREN_RE.sub(" ", unit).strip().lower()
+    s = s.replace("\u00e5", "angstrom").replace("angstroms", "angstrom")
+    s = re.sub(r"\s+", " ", s).strip()
+    return s or None
+
+
+def _verdict_shape(payload: Dict[str, Any]) -> tuple:
+    """(shape, boolean conclusions) for the ``verdict`` field.
+
+    ``verdict`` is three different things in this repo: a prose finding, a
+    status token, and a bespoke dict (19 distinct key sets).  The dicts carry
+    real conclusions — ``headline_lockable``, ``hypothesis_holds``,
+    ``target_met_all_metals`` — that no rule could read, so those rows were
+    reported as "no conclusion" when they had one.  Reporting the shape and the
+    booleans is enough to stop that; rewriting 19 scientific verdicts into one
+    schema is not a data-layer decision.
+    """
+    v = payload.get("verdict")
+    if v is None:
+        return None, None
+    if isinstance(v, str):
+        return "text", None
+    if isinstance(v, dict):
+        bools = {k: val for k, val in v.items() if isinstance(val, bool)}
+        return "structured", (bools or None)
+    if isinstance(v, list):
+        return "list", None
+    return type(v).__name__, None
+
+
 def assess_citability(
     payload: Dict[str, Any],
     value: Any,
@@ -700,7 +818,12 @@ def assess_citability(
     not_quotable: List[str] = []
     status = (_status_with_source(payload)[0] or "").strip()
     if not status:
-        not_quotable.append("no status")
+        shape, _ = _verdict_shape(payload)
+        not_quotable.append(
+            "no status (verdict is a structured dict, not a status token)"
+            if shape == "structured"
+            else "no status"
+        )
     elif not _is_status_token(status):
         # An explicit `status` is authoritative, but a paragraph there is not a
         # status: no prefix rule can read it, so it cannot be classified.
@@ -785,6 +908,61 @@ def assess_citability(
     }
 
 
+def _link_families(rows: Dict[str, Dict[str, Any]]) -> None:
+    """Fill the family columns and make supersession symmetric.
+
+    Two jobs, both about the same failure: a fact that is true on one row and
+    invisible from the other.
+
+    * ``family_size`` / ``family_collision`` — how many rows share this
+      ``metric`` label, and whether *this* row declares a grain that
+      distinguishes it from its siblings.
+    * reverse supersession — if row B says ``supersedes: A``, then A is
+      superseded.  The citability rule only read the outgoing
+      ``superseded_by``, so a relationship declared on the newer file left the
+      older one quotable.  PROV-O puts ``prov:wasRevisionOf`` on the newer
+      entity, so the direction the file chose is legitimate; the check was not.
+    """
+    families: Dict[str, List[str]] = {}
+    for mid, rec in rows.items():
+        fam = rec.get("metric_family")
+        if fam:
+            families.setdefault(fam, []).append(mid)
+
+    reverse: Dict[str, List[str]] = {}
+    for mid, rec in rows.items():
+        target = rec.get("supersedes")
+        if target and target in rows and target != mid:
+            reverse.setdefault(target, []).append(mid)
+    for target, sources in reverse.items():
+        rec = rows[target]
+        if rec.get("superseded_by"):
+            continue
+        rec["superseded_by"] = sources[0]
+        rec["superseded_by_resolved"] = True
+        rec["superseded_by_source"] = f"reverse: {sources[0]}.supersedes"
+        reason = f"superseded by {sources[0]} (declared on the newer row)"
+        reasons = rec.setdefault("not_quotable", [])
+        if reason not in reasons:
+            reasons.append(reason)
+        rec["quotable"] = False
+        rec["headline_grade"] = False
+
+    for fam, ids in families.items():
+        # A superseded row has already said which row replaces it, so it does
+        # not need a grain to be distinguishable.  Only the rows still standing
+        # compete for the label.
+        live = [mid for mid in ids if not rows[mid].get("superseded_by")]
+        for mid in ids:
+            rec = rows[mid]
+            rec["family_size"] = len(ids)
+            rec["family_live"] = len(live)
+            # One live row cannot collide.  Several live rows are only
+            # distinguishable if every one of them says what makes it
+            # different; a single silent member makes the group unreadable.
+            rec["family_collision"] = len(live) > 1 and not rec.get("grain")
+
+
 def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
     """Harvest the metric layer from metrics/by_metric/*.json.
 
@@ -826,6 +1004,7 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
             value, value_basis = _extract_value_basis(
                 payload, METRIC_TARGETS.get(metric_id, {}).get("value_key")
             )
+            verdict_shape, verdict_conclusions = _verdict_shape(payload)
             rec: Dict[str, Any] = {
                 "source_json": _rel(src_path),
                 "source_json_sha256": _sha256_file(src_path),
@@ -836,12 +1015,18 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
                 "status_source": status_source,
                 "status_narrative_source": narrative,
                 "verdict": payload.get("verdict"),
+                "verdict_shape": verdict_shape,
                 "scope": payload.get("scope"),
                 "metric_timestamp": stamp,
                 "metric_timestamp_source": stamp_source,
                 "registry_role": "paper_line",
                 "last_refreshed": _now_utc(),
+                "metric_family": _metric_family(payload),
+                "grain": _grain(payload),
+                "unit_canonical": _unit_canonical(payload.get("unit")),
             }
+            if verdict_conclusions:
+                rec["verdict_conclusions"] = verdict_conclusions
             added = vcs_added.get(_rel(src_path))
             if added:
                 rec["date_added_to_repo"] = added
@@ -898,6 +1083,9 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
         value, value_basis = _extract_value_basis(
             payload if isinstance(payload, dict) else {}
         )
+        verdict_shape, verdict_conclusions = (
+            _verdict_shape(payload) if isinstance(payload, dict) else (None, None)
+        )
         rec = {
             "source_json": _rel(src_path),
             "source_json_sha256": _sha256_file(src_path),
@@ -908,13 +1096,23 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
             "status_source": status_source,
             "status_narrative_source": narrative,
             "verdict": payload.get("verdict") if isinstance(payload, dict) else None,
+            "verdict_shape": verdict_shape,
             "scope": payload.get("scope") if isinstance(payload, dict) else None,
             "metric_timestamp": stamp,
             "metric_timestamp_source": stamp_source,
             "registry_role": "artifact",
             "last_refreshed": _now_utc(),
             "registry_origin": "wf_a36_3_g1_disk_walk",
+            "metric_family": _metric_family(payload) if isinstance(payload, dict) else None,
+            "grain": _grain(payload) if isinstance(payload, dict) else {},
+            "unit_canonical": (
+                _unit_canonical(payload.get("unit"))
+                if isinstance(payload, dict)
+                else None
+            ),
         }
+        if verdict_conclusions:
+            rec["verdict_conclusions"] = verdict_conclusions
         added = vcs_added.get(_rel(src_path))
         if added:
             rec["date_added_to_repo"] = added
@@ -939,6 +1137,7 @@ def build_metrics(repo_root: Path = REPO_ROOT) -> Dict[str, Any]:
             )
         )
         out[metric_id] = rec
+    _link_families(out)
     return out, covered_files
 
 
@@ -999,8 +1198,25 @@ def check_protocols(repo_root: Path = REPO_ROOT) -> CheckResult:
             bad += 1
             continue
         checks.append({"id": mid, "status": "PASS", "detail": "lock hash intact"})
+    # Cross-layer join: a lock that resolves to no metric row is a protocol
+    # nobody can check against a number.  Reported as a count, not a FAIL,
+    # because the layer's PASS contract is "every recorded fact still matches
+    # disk" — a missing join is a completeness gap, like the metric-layer gaps.
+    metric_rows = _load_yaml(METRICS_PATH).get("metrics") or {}
+    unresolved = [
+        mid
+        for mid, rec in (reg.get("protocols") or {}).items()
+        if (rec.get("metric_id") or mid) not in metric_rows
+    ]
     status = "FAIL" if bad else "PASS"
-    return CheckResult("protocols", status, checks, f"{len(checks)-bad}/{len(checks)} protocol locks verified")
+    return CheckResult(
+        "protocols",
+        status,
+        checks,
+        f"{len(checks)-bad}/{len(checks)} protocol locks verified | "
+        f"{len(checks)-len(unresolved)}/{len(checks)} protocol ids resolve to a "
+        f"metric row" + (f" (unresolved: {', '.join(unresolved)})" if unresolved else ""),
+    )
 
 
 def check_metrics(repo_root: Path = REPO_ROOT) -> CheckResult:
@@ -1073,6 +1289,32 @@ def check_metrics(repo_root: Path = REPO_ROOT) -> CheckResult:
     )
     quotable = sum(1 for r in paper_rows if r.get("quotable"))
     headline_grade = sum(1 for r in paper_rows if r.get("headline_grade"))
+
+    # A `metric` label that appears on several rows is a family, not an
+    # identifier.  Count the families, and count the rows inside them that
+    # never said what makes them different — those are the ones a consumer
+    # would average together by accident.
+    families: Dict[str, List[Dict[str, Any]]] = {}
+    for r in rows:
+        fam = r.get("metric_family")
+        if fam:
+            families.setdefault(fam, []).append(r)
+    multi = {f: rs for f, rs in families.items() if len(rs) > 1}
+    collision_rows = sum(1 for r in rows if r.get("family_collision"))
+    # Same dimension, different spelling.  `unit_canonical` strips the
+    # parenthetical definition, so this counts real unit drift only.
+    unit_drift = 0
+    for f, rs in multi.items():
+        units = {r.get("unit_canonical") for r in rs if r.get("unit_canonical")}
+        if len(units) > 1:
+            unit_drift += 1
+    structured = sum(1 for r in rows if r.get("verdict_shape") == "structured")
+    concluded = sum(1 for r in rows if r.get("verdict_conclusions"))
+    reverse_sup = sum(
+        1
+        for r in rows
+        if str(r.get("superseded_by_source") or "").startswith("reverse:")
+    )
     return CheckResult(
         "metrics",
         status,
@@ -1088,7 +1330,13 @@ def check_metrics(repo_root: Path = REPO_ROOT) -> CheckResult:
         f"{value_missing_paper} paper-line + {len(missing_art)} artifact rows "
         f"labelled MEASURED with no standardised scalar "
         f"({missing_unstandardised} hold numbers under a file-specific key, "
-        f"{missing_none} hold none) | {dangling} dangling supersession pointers",
+        f"{missing_none} hold none) | {dangling} dangling supersession pointers | "
+        f"{len(multi)} metric families span >1 row "
+        f"({collision_rows} rows declare no grain, {unit_drift} families "
+        f"disagree on the canonical unit) | "
+        f"{structured} rows carry a structured verdict "
+        f"({concluded} with a boolean conclusion) | "
+        f"{reverse_sup} supersessions declared only on the newer row",
     )
 
 
