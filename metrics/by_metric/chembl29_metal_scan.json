@@ -1,0 +1,87 @@
+{
+  "metric": "chembl29_metal_scan",
+  "description": "Counts of metal-bearing structures in the local ChEMBL 29 SQLite dump, by bracketed element token, plus the bare-substring probe used on 2026-10-19.",
+  "scope": "blocker B1 (external independent cohort) — can this dump supply one?",
+  "status": "MEASURED",
+  "measured_at": "2026-10-21T03:51:09.911651+00:00",
+  "db": {
+    "path": "/home/hugo/codes/mol-metal/.data/molmetal/chembl_29/chembl_29_sqlite/chembl_29.db",
+    "size_bytes": 21672992768,
+    "mtime_iso": "2021-07-20T21:59:57+00:00",
+    "opened": "read-only (mode=ro)"
+  },
+  "total_structures": 2084724,
+  "total_seconds": 0.01,
+  "by_metal": {
+    "Pt": {
+      "pattern": "%[Pt]%",
+      "query": "SELECT COUNT(*) FROM compound_structures WHERE canonical_smiles LIKE '%[Pt]%'",
+      "n": 0,
+      "seconds": 0.223
+    },
+    "Ru": {
+      "pattern": "%[Ru]%",
+      "query": "SELECT COUNT(*) FROM compound_structures WHERE canonical_smiles LIKE '%[Ru]%'",
+      "n": 0,
+      "seconds": 0.223
+    },
+    "Ir": {
+      "pattern": "%[Ir]%",
+      "query": "SELECT COUNT(*) FROM compound_structures WHERE canonical_smiles LIKE '%[Ir]%'",
+      "n": 0,
+      "seconds": 0.229
+    },
+    "Rh": {
+      "pattern": "%[Rh]%",
+      "query": "SELECT COUNT(*) FROM compound_structures WHERE canonical_smiles LIKE '%[Rh]%'",
+      "n": 0,
+      "seconds": 0.213
+    },
+    "Os": {
+      "pattern": "%[Os]%",
+      "query": "SELECT COUNT(*) FROM compound_structures WHERE canonical_smiles LIKE '%[Os]%'",
+      "n": 0,
+      "seconds": 0.215
+    },
+    "Re": {
+      "pattern": "%[Re]%",
+      "query": "SELECT COUNT(*) FROM compound_structures WHERE canonical_smiles LIKE '%[Re]%'",
+      "n": 0,
+      "seconds": 0.215
+    },
+    "Fe": {
+      "pattern": "%[Fe]%",
+      "query": "SELECT COUNT(*) FROM compound_structures WHERE canonical_smiles LIKE '%[Fe]%'",
+      "n": 0,
+      "seconds": 0.218
+    },
+    "Na": {
+      "pattern": "%[Na]%",
+      "query": "SELECT COUNT(*) FROM compound_structures WHERE canonical_smiles LIKE '%[Na]%'",
+      "n": 2,
+      "seconds": 0.169
+    }
+  },
+  "legacy_substring_probe": {
+    "pattern": "%Pt%",
+    "query": "SELECT COUNT(*) FROM compound_structures WHERE canonical_smiles LIKE '%Pt%'",
+    "n": 0,
+    "seconds": 0.12
+  },
+  "n_metals_with_any_hit": 1,
+  "n_target_metals_with_any_hit": 0,
+  "target_metals": [
+    "Pt",
+    "Ru",
+    "Ir",
+    "Rh",
+    "Os",
+    "Re"
+  ],
+  "cross_check_metals": [
+    "Fe",
+    "Na"
+  ],
+  "verdict": "NO_TARGET_METAL_STRUCTURES",
+  "reading": "The dump is de-metallised for everything this project models: all six target/precious metals (Pt, Ru, Ir, Rh, Os, Re) and Fe return 0, so it cannot supply an external cohort and B1 stays blocked on data rather than on effort. The two [Na] hits are sodium salts of an azo dye (SMILES `OCCC[Na]`, an Na-C bond no chemist would draw); they are parse artefacts, not a metal chemistry cohort. A non-zero count for a target metal would not by itself unblock B1 either — the structures would still need SMILES, cell line and potency in the same units as the training corpus."
+}

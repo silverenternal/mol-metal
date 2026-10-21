@@ -326,16 +326,23 @@
       "id": "B1",
       "what": "外部独立 cohort",
       "status": "BLOCKED-PENDING-DATA",
-      "measured": "MET-7：同金属交集 0；ChEMBL 29 本地库 0 个金属结构（2026-10-19 实测）",
-      "unblock": "需要一份含 Ru/Ir/Rh/Os/Re + SMILES + 细胞系 + potency 的外部表；仓库内和 ChEMBL dump 都没有",
-      "do_not": "不要用 Pt 的 PlatinAI 冒充外部验证；不要从 ChEMBL 29 挖（已去金属）"
+      "measured": "MET-7：同金属交集 0。2026-10-21 复测（可执行，有产物）：ChEMBL 29 本地库 2,084,724 个结构，六个目标/贵金属 Pt/Ru/Ir/Rh/Os/Re 全部 0 命中，Fe 也 0；唯一的 2 个 [Na] 命中是同一偶氮染料的钠盐（SMILES 含 OCCC[Na]，一个化学上不该存在的 Na-C 键），是解析产物，不是金属化学队列。旧说法「0 个金属结构」严格讲不成立，已改为「0 个目标金属结构」。",
+      "unblock": "需要一份含 Ru/Ir/Rh/Os/Re + SMILES + 细胞系 + potency 的外部表；仓库内和 ChEMBL dump 都没有。ChEMBL 那条路现在有产物可复现，不需要再查。",
+      "do_not": "不要用 Pt 的 PlatinAI 冒充外部验证；不要从 ChEMBL 29 挖（已去金属）",
+      "evidence": [
+        "metrics/by_metric/chembl29_metal_scan.json",
+        "molmetal/scripts/chembl29_metal_scan.py",
+        "molmetal/tests/test_chembl29_metal_scan.py"
+      ],
+      "reconfirmed": "2026-10-21（脚本可重跑，查询文本与计数同产物；DB 自 2021 年起未变）"
     },
     {
       "id": "B2",
       "what": "细胞系生物学特征",
       "status": "BLOCKED-PENDING-DATA",
-      "measured": "FIX-L4：0 个注释文件；46 个系即可覆盖 80%",
-      "unblock": "下载 ≥46 个系的 CCLE/GDSC 表，并跑一次带特征的消融（≥+0.005）"
+      "measured": "FIX-L4：0 个注释文件（2026-10-21 复测：全仓 *ccle*/*gdsc*/*depmap*/*cellosaurus* 仍为 0）；46 个系即可覆盖 80% 的行；细胞身份本身值 0.0629（ligand）/ 0.0442（DOI）R²。",
+      "unblock": "下载 ≥46 个系的 CCLE/GDSC 表，并跑一次带特征的消融（≥+0.005）",
+      "reconfirmed": "2026-10-21（文件系统复测，仍未出现任何注释表）"
     },
     {
       "id": "B3",

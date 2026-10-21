@@ -59,6 +59,14 @@ year 的 CI 含 0。**融合不改善排序**（0.5826→0.5505）。」
 **不能写**：「融合是全面更强的模型」——它在排序上更差，且 ligand 之外的增益有一半
 来自 GNN 的 seed 平均而非融合本身。
 
+**来源订正（2026-10-21）**：这四个协议来自 `msrs_dmpnn_protocols.py` 的模块常量
+`SCHEMES = ("ligand", "doi", "scaffold", "year")`，**不是**来自配置里的 `eval.splits`。
+`configs/msrs_dmpnn_protocols_gpu0.yaml` 曾写着 `eval.splits: [canonical_grouped]`，
+而该脚本从不读这个键，`canonical_grouped` 也不在它跑的四个协议里——配置描述的是
+另一个实验。该键（连同 `eval.baseline_arm`、`arms.*`、`output.path`）已删除，理由写在
+配置注释里。**数字不受影响**（键从未被读），但任何引用「这份配置选了什么协议」的
+说法都必须改指向 `SCHEMES`。
+
 ## C5 — 校准
 
 **能写**：「DOI 留出、α=0.10 的 split conformal 覆盖 0.9004，中位宽 2.0052 log10；
