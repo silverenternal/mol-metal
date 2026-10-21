@@ -82,12 +82,18 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
 | `lomo_resolvability_audit.json` | **0.5974** | 把 Rh/Os/Re 三个低于 `MIN_UNIQUE_FOR_GATE=200` 的折剔除后重聚合 | **这是可引的那个** |
 | `lomo_seed_ensemble.json` | 0.5947 | 同一可解析子集，但按「先平均分数再算 AUC」（部署口径） | 可引，作为 0.5974 的稳健性 |
 
-**已知冲突（未修，需要裁定）**：`molmetal/scripts/registry.py::LINE_METRICS` 仍把
-`m19_lomo` 钉在 `metal_lomo_auc_wasserstein`，所以 `registry.py cite` 会告诉你引
-**0.5575**；而 `docs/CLAIM_LEDGER.md`（STR-7 / FIX-C6，2026-10-20 已裁定）说的是
-**0.5974**。两份文件对同一个论文线指标给出两个数。**以本索引和台账为准**；
-要消除冲突需要把 pin 改到 `lomo_resolvability_audit` 并加 `value_key`，那会改变
-论文线数字，属于需要用户点头的改动，本次没有动。
+**已知冲突（未修，需要裁定）——不是「pin 过时」，是两个不同的估计量：**
+
+| 出处 | 数 | 估计量 |
+|---|---:|---|
+| `configs/locks/protocol_lock.yaml::m19_lomo` | — | 锁定协议写的是 `target_metric: mean test AUC over 5 metals`，`n_folds: 5` |
+| `molmetal/scripts/registry.py::LINE_METRICS` → `metal_lomo_auc_wasserstein` | **0.5575** | 5 个金属**等权**平均（含 Rh 51 / Os 36 / Re 74 三个低于 `MIN_UNIQUE_FOR_GATE=200` 的折） |
+| `docs/CLAIM_LEDGER.md`（STR-7 / FIX-C6）→ `lomo_resolvability_audit` | **0.5974** | 只对可入闸的 Ru(1,311) / Ir(538) 平均 |
+
+所以 `registry.py cite` 说引 0.5575、台账说引 0.5974，两边都符合各自的定义。**以本索引和台账为准**
+（0.5974），因为把三个测量地板上的折等权平均进去会低估。但要真正消除冲突，需要改
+`protocol_lock.yaml` 的 `target_metric` 定义，而不是只改一个 pin——那会改变锁定协议，
+本次没有动，留作待裁定项。
 
 ### 2.6 机器校验块
 
