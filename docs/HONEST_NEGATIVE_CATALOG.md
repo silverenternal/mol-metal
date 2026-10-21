@@ -10393,3 +10393,76 @@ the CPU sampler >20 min for 2x32 clouds vs ~1 min on GPU0).
 
 **Workflow** | Wf-A107e (2026-10-21; GPU0: 2 arms x 5 epochs with FM on, 2 probes; §5.2
 every number is an artifact field; §5.3 + §5.4: 0 `paper/*` + 0 wet-lab).
+
+---
+
+## §6.165 — UP-11: the rank-1 interaction test is not identifiable, and the fallback transfer is worse than the mean (2026-10-21)
+
+**The plan.** Fit Delta(l, p) = u_l * v_p, a shared ligand profile times one scalar
+per metal pair, then bridge v_p to a metal-pair descriptor difference with a single
+parameter. Frozen gate: rank-1 share >= 0.50, and on a held-out pair sign accuracy
+>= 0.60, R2_Delta >= 0.10, >= +0.05 over Delta = 0.
+
+**Why the frozen test cannot run.** A rank-1 factorisation needs at least one ligand
+carrying two pair-columns. Measured (`metrics/by_metric/msrs_pair_delta.json`):
+
+| metal pair | ligands | ligands shared with another pair |
+|---|---:|---:|
+| Ru–Os | 118 | **0** |
+| Ir–Rh | 73 | **0** |
+| Ru–Rh | 10 | **0** |
+
+`ligand_metal_span_histogram = {"2": 201}` — every one of the 201 cross-metal ligands
+spans **exactly two** metals. The three 2-metal groups (Os,Ru) 125, (Ir,Rh) 75,
+(Rh,Ru) 14 are pairwise disjoint, so `complete_case_ligands = 0` and the rank-1 share
+is **undefined**, not small. `verdict = NOT_IDENTIFIABLE`.
+
+**The fallback, which is strictly harder.** Fit Delta on the ligands of pair A, predict
+Delta on the disjoint ligands of pair B (ligand *and* pair both unseen). One bridge
+parameter, alpha = (desc_b - desc_a)_test / (desc_b - desc_a)_train.
+
+| direction | arm | R2_Delta [95% CI] | sign accuracy [95% CI] |
+|---|---|---:|---|
+| Ir–Rh -> Ru–Os (73/118) | Delta = 0 | −0.1227 [−0.2621, −0.0366] | — |
+| | raw ridge | −0.3619 [−0.6064, −0.1825] | 0.5085 [0.4153, 0.6017] |
+| | bridged (ie1_kj) | **−0.0952** [−0.2327, −0.0044] | 0.4915 [0.3983, 0.5847] |
+| Ru–Os -> Ir–Rh (118/73) | Delta = 0 | −0.0317 [−0.2116, −0.0001] | — |
+| | raw ridge | −0.4245 [−1.0069, −0.1584] | 0.4658 [0.3562, 0.5753] |
+| | bridged (ie1_kj) | **−0.2256** [−0.5855, −0.0446] | 0.5342 [0.4247, 0.6438] |
+
+**No arm has a positive R2_Delta** — every one is worse than predicting the test pair's
+mean. Every sign-accuracy CI covers 0.5. All three gate conditions fail in both
+directions.
+
+**The bridge parameter is itself unstable**, which is the structural weakness of a
+one-parameter model:
+  * `pauling_en` cannot bridge Ru–Os at all: Ru, Os and Ir all carry 2.20, so the
+    difference is 0.0, the scale is 0.0, and the "bridged" arm collapses onto Delta = 0.
+  * `ie2_kj` gives scale = **−7.0** on Ru–Os -> Ir–Rh and R2_Delta = **−11.06**. A ratio
+    of two small descriptor differences is not a calibration.
+  * Only `ie1_kj` changes sign between the two supported pairs (Ru->Os +129.8,
+    Ir->Rh −160.3), and it is still negative R2 in both directions.
+
+**Honest boundaries (ACTIVE).**
+  * **This is not evidence that "interactions do not exist".** §2.12 shows ligand x metal
+    carries 0.80 of the residual variance. It is evidence that the interaction cannot be
+    *shared* across pairs in this corpus, because no ligand is measured under two pairs.
+  * **The fallback changes the estimand.** The frozen test asked whether a *shared*
+    profile exists; the fallback asks whether a model fitted on one pair's ligands
+    transfers to another pair's ligands. Both are unanswerable in the affirmative here,
+    but they are different questions and the gate thresholds were written for the first.
+  * **Per-ligand Delta averages over cell lines unweighted.** A ligand measured in one
+    cell line and one measured in ten contribute equally.
+  * **Ridge on 2048 ECFP4 bits with 73–118 training ligands is high-variance.** Alpha is
+    chosen by inner 5-fold on the training pair only; the test pair never informs it.
+  * **Ru–Rh is excluded from training** per the UP-10 kill rule (15 groups < 20). Its 10
+    ligands enter the matrix description only.
+
+**Artifacts.** `molmetal/scripts/msrs_pair_delta.py`, `metrics/by_metric/msrs_pair_delta.json`
+(GPU0, `design.device = cuda:0`).
+
+**§6.165 catalog-count math.** Net **+1**. Cumulative **219 → 220**. ACTIVE **175 → 176**.
+
+**Workflow** | UP-11 (2026-10-21; GPU0, 2 ridge fits x 8 alphas x 5 inner folds in float64,
+plus 1000 ligand-clustered resamples per arm; §5.2 every number is an artifact field;
+§5.3 + §5.4: 0 `paper/*` + 0 wet-lab).

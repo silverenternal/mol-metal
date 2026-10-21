@@ -38,7 +38,8 @@
       "排序的 360 对**全部**落在 539 个支持组内（658/658 原始对 = 100%）——这解释了为什么排序是唯一有信号的指标，也说明它不能外推到未观测金属对。",
       "另外两个端点的配对：phototoxicity 0 组；cisplatin_ratio 169 组 / 353 行，金属对与 potency 完全相同（Os–Ru 128 / Ir–Rh 34 / Rh–Ru 7）。",
       "可分性（|Δ|/SD，UP-10）：Ru–Os 0.592（354 组、121 配体）、Ir–Rh **0.115**（170 组、73 配体）——两个「有支持」的金属对，其典型替换效应都不大于各自化验重复散布。Ru–Rh 可分性 2.464 但只有 15 组，按冻结规则 UNSUPPORTED（msrs_support_audit.json:/endpoints/potency/pairs）。",
-      "shape 来源（UP-17）：加性残差上四路分解，配体×金属 0.8015 [0.7884,0.8151]（结构优先）、论文×金属 0.5484 [0.5801,0.6297]（批次优先）、细胞×金属 0.0（两种顺序）、配体×细胞 0.1269/0.4106。两块各自在自己优先的顺序下都 >0.5 ⇒ 不存在唯一主导分量；kill 触发但推论不成立（msrs_shape_decomposition.json:/gate, /verdict）。"
+      "shape 来源（UP-17）：加性残差上四路分解，配体×金属 0.8015 [0.7884,0.8151]（结构优先）、论文×金属 0.5484 [0.5801,0.6297]（批次优先）、细胞×金属 0.0（两种顺序）、配体×细胞 0.1269/0.4106。两块各自在自己优先的顺序下都 >0.5 ⇒ 不存在唯一主导分量；kill 触发但推论不成立（msrs_shape_decomposition.json:/gate, /verdict）。",
+      "配体跨金属数（UP-11）：201 个跨金属配体中**每一个都恰好跨 2 个金属，没有一个跨 ≥3**；三个双金属组的配体集合两两不相交（Ru–Os 118 / Ir–Rh 73 / Ru–Rh 10，交集全为 0）。⇒ Δ 矩阵完整行 = 0，共享配体剖面不存在（msrs_pair_delta.json:/rank_structure）。"
     ],
     "measured_facts": [
       "DOI 留出 R²：ECFP4 0.3380 / MACCS+RDKit 0.3767 / +GNN 融合 0.3811（msrs_seed_ensemble.json, msrs_feature_expansion_5seed.json, msrs_feature_fusion.json）。scaffold 0.4733 / year 0.3946。ligand 0.5596 是内插，不可当泛化报。",
@@ -286,9 +287,11 @@
         "UP-11"
       ],
       "question": "交互能不能迁移到不相交的金属对？",
-      "status": "OPEN",
+      "status": "RESOLVED-NO",
       "if_yes": "UP-12 用描述符桥把 7 个未观测对补上；metal_out 才有上升空间。",
-      "if_no": "7/10 金属对不可学；停止建模，按 UP-14 的支持度分层写机制结论。"
+      "if_no": "7/10 金属对不可学；停止建模，按 UP-14 的支持度分层写机制结论。",
+      "resolved": "2026-10-21",
+      "resolution": "秩-1 分解不可识别（没有任何配体跨两个金属对），配体不相交的跨对迁移 R²_Δ 全负、符号在 0.5 附近 ⇒ 交互不能迁移。按 if_no 走：7/10 金属对不可学，停止对未观测金属对建模，转 UP-14 的支持度分层结论。"
     },
     {
       "id": "DP-5",
@@ -319,7 +322,9 @@
       "items": [
         "UP-11"
       ],
-      "note": "纯 CPU，约 3 小时。本轮唯一的决定性实验：留出金属对能不能预测。"
+      "note": "GPU0（用户指定），实际 2 分钟；原估 3 小时 CPU。冻结检验不可识别，跨对迁移为补充证据。",
+      "status": "DONE",
+      "result": "UP-11 NOT_IDENTIFIABLE（配体不跨对）+ 跨对迁移全负。DP-4 走 no 分支。"
     },
     "wave_3_models": {
       "items": [
@@ -388,7 +393,12 @@
       ],
       "gate": "rank-1 份额 ≥0.50，且在留出金属对上符号准确率 ≥0.60、R²_Δ ≥0.10、比 Δ=0 高 ≥0.05。（三项都要过；1 参数模型下这是能要求的上限，不再加码。）",
       "kill": "rank-1 份额 <0.30 → 交互是配对特异的，7/10 金属对不可学，走 DP-4 的 no 分支；若 rank-1 高但符号检验不过 → 结构存在但金属描述符不能定标，同样不能外推。",
-      "deliverable": "metrics/by_metric/msrs_pair_delta.json"
+      "deliverable": "metrics/by_metric/msrs_pair_delta.json",
+      "status": "DONE-NOT-IDENTIFIABLE",
+      "completed": "2026-10-21",
+      "device": "cuda:0",
+      "artifact": "metrics/by_metric/msrs_pair_delta.json",
+      "result": "冻结的秩-1 检验不可识别：201 个跨金属配体**全部只跨 2 个金属**，三对（Ru–Os 118 / Ir–Rh 73 / Ru–Rh 10）配体集合两两不相交，complete_case=0，rank1_share 无定义。退化为配体不相交的跨对迁移后，两个方向 R²_Δ 全为负（Ir–Rh→Ru–Os bridged −0.0952、Ru–Os→Ir–Rh bridged −0.2256），符号准确率 0.4915 / 0.5342，CI 全含 0.5。gate_pass=false。"
     },
     {
       "id": "UP-12",

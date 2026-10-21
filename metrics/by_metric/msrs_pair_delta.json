@@ -1,0 +1,318 @@
+{
+  "artifact": "msrs_pair_delta",
+  "version": "1.0",
+  "framework": "MSRS \u2014 Metal Substitution Response Surface",
+  "level": "UP-11 interaction transfer",
+  "generated_utc": "2026-10-21T14:50:22+00:00",
+  "provenance": {
+    "dedup_parquet": "data/msrs/measurements_dedup.parquet",
+    "dedup_sha256": "ca9cd0eceb5f0975054101043feb9bf0d5b9f9fa1e670d8412c5a20ca4b1a975",
+    "metal_descriptors": "molmetal/data/metal_chemistry_5.csv",
+    "script": "molmetal/scripts/msrs_pair_delta.py",
+    "git_commit": "6a1c7ff75755f51af82adbf72bef6851e39de245",
+    "argv": [
+      "/home/hugo/codes/mol-metal/.venv/bin/python",
+      "--device",
+      "cuda:0"
+    ]
+  },
+  "design": {
+    "endpoint": "potency",
+    "device": "cuda:0",
+    "unit": "(ligand_canonical, cell_line_key, metal) mean of value_log10",
+    "delta": "mean(y | metal_b) - mean(y | metal_a) per (ligand, cell), then mean over cells per ligand",
+    "matrix": "ligand x metal pair, NaN preserved (never filled with 0)",
+    "bridge": "one parameter, alpha = (desc_b - desc_a)_test / (desc_b - desc_a)_train",
+    "bridge_descriptors_tested": [
+      "pauling_en",
+      "ie1_kj",
+      "ie2_kj"
+    ],
+    "scale_descriptor": "ie1_kj",
+    "model": "ridge on ECFP4 (2048 bits), alpha by 5-fold inner CV",
+    "bootstrap": "1000 ligand resamples, seed 20261021",
+    "min_groups_per_pair": 20,
+    "gate_frozen_at": "2026-10-21T20:30+08:00"
+  },
+  "pair_metadata": {
+    "Ru-Rh": {
+      "n_groups": 15,
+      "n_ligands": 10,
+      "n_cells": 8,
+      "mean_delta": -1.3411,
+      "median_abs_delta": 0.8796,
+      "sd_delta": 1.6619,
+      "status": "UNSUPPORTED"
+    },
+    "Ru-Os": {
+      "n_groups": 347,
+      "n_ligands": 118,
+      "n_cells": 36,
+      "mean_delta": -0.1454,
+      "median_abs_delta": 0.2563,
+      "sd_delta": 0.4169,
+      "status": "OK"
+    },
+    "Ir-Rh": {
+      "n_groups": 170,
+      "n_ligands": 73,
+      "n_cells": 33,
+      "mean_delta": 0.0726,
+      "median_abs_delta": 0.1185,
+      "sd_delta": 0.4107,
+      "status": "OK"
+    }
+  },
+  "rank_structure": {
+    "pairs": [
+      "Ru-Rh",
+      "Ru-Os",
+      "Ir-Rh"
+    ],
+    "n_ligands_per_pair": {
+      "Ru-Rh": 10,
+      "Ru-Os": 118,
+      "Ir-Rh": 73
+    },
+    "pair_ligand_overlap": {
+      "Ru-Rh & Ru-Os": 0,
+      "Ru-Rh & Ir-Rh": 0,
+      "Ru-Os & Ir-Rh": 0
+    },
+    "complete_case_ligands": 0,
+    "ligand_metal_span_histogram": {
+      "2": 201
+    },
+    "status": "NOT_IDENTIFIABLE",
+    "svd_ran": false,
+    "reason": "No ligand carries two metal-pair columns, so the delta matrix has zero complete-case rows. A rank-1 model Delta(l, p) = u_l * v_p needs at least one ligand observed under two pairs to identify u_l; the corpus has none. The rank-1 share is therefore undefined, not merely small.",
+    "degenerate_single_column_rank1_share": 1.0
+  },
+  "transfer": {
+    "Ru-Os": {
+      "train_pair": "Ir-Rh",
+      "test_pair": "Ru-Os",
+      "n_train_ligands": 73,
+      "n_test_ligands": 118,
+      "ridge_alpha": 30.0,
+      "test_delta_mean": -0.1454,
+      "test_delta_sd": 0.4169,
+      "n_nonzero_test_delta": 118,
+      "raw_sign_accuracy": 0.5085,
+      "arms": {
+        "zero": {
+          "r2_delta": -0.1227,
+          "mae": 0.328,
+          "sign_accuracy": 0.0,
+          "r2_delta_ci95": [
+            -0.2621,
+            -0.0366
+          ],
+          "sign_accuracy_ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "raw": {
+          "r2_delta": -0.3619,
+          "mae": 0.3572,
+          "sign_accuracy": 0.5085,
+          "r2_delta_ci95": [
+            -0.6064,
+            -0.1825
+          ],
+          "sign_accuracy_ci95": [
+            0.4153,
+            0.6017
+          ]
+        },
+        "bridged[pauling_en]": {
+          "r2_delta": -0.1227,
+          "mae": 0.328,
+          "sign_accuracy": 0.0,
+          "r2_delta_ci95": [
+            -0.2621,
+            -0.0366
+          ],
+          "sign_accuracy_ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "bridged[ie1_kj]": {
+          "r2_delta": -0.0952,
+          "mae": 0.3311,
+          "sign_accuracy": 0.4915,
+          "r2_delta_ci95": [
+            -0.2327,
+            -0.0044
+          ],
+          "sign_accuracy_ci95": [
+            0.3983,
+            0.5847
+          ]
+        },
+        "bridged[ie2_kj]": {
+          "r2_delta": -0.107,
+          "mae": 0.3273,
+          "sign_accuracy": 0.4915,
+          "r2_delta_ci95": [
+            -0.2434,
+            -0.026
+          ],
+          "sign_accuracy_ci95": [
+            0.3983,
+            0.5847
+          ]
+        }
+      },
+      "bridges": {
+        "pauling_en": {
+          "descriptor_diff_train": 0.08,
+          "descriptor_diff_test": 0.0,
+          "bridge_scale": 0.0,
+          "degenerate": false,
+          "unstable": true
+        },
+        "ie1_kj": {
+          "descriptor_diff_train": -160.3,
+          "descriptor_diff_test": 129.8,
+          "bridge_scale": -0.8097,
+          "degenerate": false,
+          "unstable": false
+        },
+        "ie2_kj": {
+          "descriptor_diff_train": 140.0,
+          "descriptor_diff_test": -20.0,
+          "bridge_scale": -0.1429,
+          "degenerate": false,
+          "unstable": false
+        }
+      }
+    },
+    "Ir-Rh": {
+      "train_pair": "Ru-Os",
+      "test_pair": "Ir-Rh",
+      "n_train_ligands": 118,
+      "n_test_ligands": 73,
+      "ridge_alpha": 10.0,
+      "test_delta_mean": 0.0726,
+      "test_delta_sd": 0.4107,
+      "n_nonzero_test_delta": 73,
+      "raw_sign_accuracy": 0.4658,
+      "arms": {
+        "zero": {
+          "r2_delta": -0.0317,
+          "mae": 0.2707,
+          "sign_accuracy": 0.0,
+          "r2_delta_ci95": [
+            -0.2116,
+            -0.0001
+          ],
+          "sign_accuracy_ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "raw": {
+          "r2_delta": -0.4245,
+          "mae": 0.3635,
+          "sign_accuracy": 0.4658,
+          "r2_delta_ci95": [
+            -1.0069,
+            -0.1584
+          ],
+          "sign_accuracy_ci95": [
+            0.3562,
+            0.5753
+          ]
+        },
+        "bridged[ie1_kj]": {
+          "r2_delta": -0.2256,
+          "mae": 0.344,
+          "sign_accuracy": 0.5342,
+          "r2_delta_ci95": [
+            -0.5855,
+            -0.0446
+          ],
+          "sign_accuracy_ci95": [
+            0.4247,
+            0.6438
+          ]
+        },
+        "bridged[ie2_kj]": {
+          "r2_delta": -11.0587,
+          "mae": 1.1544,
+          "sign_accuracy": 0.5342,
+          "r2_delta_ci95": [
+            -21.5835,
+            -6.5404
+          ],
+          "sign_accuracy_ci95": [
+            0.4247,
+            0.6438
+          ]
+        }
+      },
+      "bridges": {
+        "pauling_en": {
+          "descriptor_diff_train": 0.0,
+          "descriptor_diff_test": 0.08,
+          "bridge_scale": null,
+          "degenerate": true,
+          "unstable": true
+        },
+        "ie1_kj": {
+          "descriptor_diff_train": 129.8,
+          "descriptor_diff_test": -160.3,
+          "bridge_scale": -1.235,
+          "degenerate": false,
+          "unstable": false
+        },
+        "ie2_kj": {
+          "descriptor_diff_train": -20.0,
+          "descriptor_diff_test": 140.0,
+          "bridge_scale": -7.0,
+          "degenerate": false,
+          "unstable": true
+        }
+      }
+    }
+  },
+  "gate": {
+    "rank1_share_min": 0.5,
+    "sign_accuracy_min": 0.6,
+    "r2_delta_min": 0.1,
+    "r2_delta_margin_over_zero": 0.05,
+    "primary_scale_descriptor": "ie1_kj",
+    "rank1_share": null,
+    "rank1_evaluable": false,
+    "transfer_evaluable": true,
+    "per_test_pair": {
+      "Ru-Os": {
+        "best_arm": "bridged[ie1_kj]",
+        "sign_accuracy": 0.4915,
+        "r2_delta": -0.0952,
+        "r2_delta_vs_zero": 0.0275,
+        "pass": false
+      },
+      "Ir-Rh": {
+        "best_arm": "bridged[ie1_kj]",
+        "sign_accuracy": 0.5342,
+        "r2_delta": -0.2256,
+        "r2_delta_vs_zero": -0.1939,
+        "pass": false
+      }
+    },
+    "gate_pass": false
+  },
+  "verdict": "NOT_IDENTIFIABLE",
+  "caveats": [
+    "The frozen rank-1 test is undefined here, not failed: zero ligands carry two pair columns, so there is no shared ligand profile to factorise. The transfer block below is a strictly harder substitute (ligand AND pair both unseen).",
+    "The bridge has one parameter and one usable training pair, so alpha is a ratio of descriptor differences, not a fitted coefficient. It cannot be validated inside the training side.",
+    "Per-ligand Delta averages over cell lines without weighting; a ligand measured in one cell line and one measured in ten contribute equally.",
+    "n_groups here is 347 for Ru-Os vs 354 in the UP-10 audit: this script additionally drops rows with a missing cell_line_key, because the delta key needs one.",
+    "pauling_en cannot bridge Ru-Os at all (Ru, Os and Ir all carry 2.20), so the scale is 0.0 and the bridged arm collapses onto the zero arm. ie1_kj is the only descriptor whose sign differs between the two supported pairs.",
+    "Ridge on 2048 ECFP4 bits with ~100 training ligands is a high-variance estimator; alpha is chosen on the training pair only, never on the test pair."
+  ]
+}

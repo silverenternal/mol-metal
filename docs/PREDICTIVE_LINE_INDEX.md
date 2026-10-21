@@ -20,6 +20,7 @@
 UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没有一个过门。
 
 - **"shape 学不会"的真实原因是支持度，不是模型**（UP-10，2026-10-21）：10 个金属对里 **7 个的配对组数是 0**，只有 Ru–Os（354 组）与 Ir–Rh（170 组）过 20 组门槛；跨 ≥2 金属的配体只占 **3.64%**。而且这两个"有支持"的对，典型替换效应**不大于自身化验重复散布**（可分性 0.592 / **0.115**）。
+- **交互无法外推到未观测金属对**（UP-11）：201 个跨金属配体**没有一个跨 ≥3 个金属**，三个金属对的配体集合**两两不相交**，所以 Δ 矩阵的完整行是 0 行 —— 秩-1 分解**不可识别**，不是份额小。退一步做配体不相交的跨对迁移，两个方向的 R²_Δ 全为负（−0.0952 / −0.2256），符号准确率 0.49 / 0.53，CI 全含 0.5。
 - **shape 里结构与论文批次各自都超过 50%**（UP-17）：配体×金属 0.8015 [0.7884, 0.8151]、论文×金属 0.5484 [0.5801, 0.6297]，**两块在自己的优先顺序下都过 0.5、在对方的顺序下都归 0**；细胞×金属两种顺序都是 0.0。冻结的 kill 规则触发，但它的推论（"建模即拟合噪声"）**不成立**。
 
 **UP 强化轮记分牌（第一轮 9 项，门槛在 2026-10-21T15:10+08:00 写死）**
@@ -44,6 +45,7 @@ UP 轮之后仍是 2/4：UP-6 是**已过项的内部加固**，其余八项没�
 |---|---|---|---|
 | UP-10 | 配对支持到底有多少 | **PASS**（审计无阈值） | 10 个金属对里 **7 个组数为 0**，只有 Ru–Os 354 / Ir–Rh 170 |
 | UP-17 | shape 是不是论文批次 | **FAIL**（gate 0.0716 > 0.05） | 配体×金属 0.8015 vs 论文×金属 0.5484，两块各自在自己顺序下都 >0.5 |
+| UP-11 | 交互能不能外推到未观测金属对 | **NOT_IDENTIFIABLE** | 201 个跨金属配体**全部只跨 2 个金属**；三对两两共享配体 = 0 |
 
 ---
 
@@ -253,7 +255,17 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
   {"id": "UP17.paper_metal_batch_first", "value": 0.5484, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "independent.paper_x_metal.share_batch_first"},
   {"id": "UP17.cell_metal_forward", "value": 0.0, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "independent.cell_x_metal.share_forward"},
   {"id": "UP17.unexplained_structure_first", "value": 0.0716, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "gate.unexplained_share.structure_first"},
-  {"id": "UP17.unexplained_batch_first", "value": 0.041, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "gate.unexplained_share.batch_first"}
+  {"id": "UP17.unexplained_batch_first", "value": 0.041, "artifact": "metrics/by_metric/msrs_shape_decomposition.json", "path": "gate.unexplained_share.batch_first"},
+  {"id": "UP11.complete_case_ligands", "value": 0, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "rank_structure.complete_case_ligands"},
+  {"id": "UP11.span_2_metals", "value": 201, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "rank_structure.ligand_metal_span_histogram.2"},
+  {"id": "UP11.ruos_ligands", "value": 118, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "rank_structure.n_ligands_per_pair.Ru-Os"},
+  {"id": "UP11.irrh_ligands", "value": 73, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "rank_structure.n_ligands_per_pair.Ir-Rh"},
+  {"id": "UP11.ruos_irrh_overlap", "value": 0, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "rank_structure.pair_ligand_overlap.Ru-Os & Ir-Rh"},
+  {"id": "UP11.irrh_to_ruos_raw_r2", "value": -0.3619, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "transfer.Ru-Os.arms.raw.r2_delta"},
+  {"id": "UP11.irrh_to_ruos_bridged_r2", "value": -0.0952, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "transfer.Ru-Os.arms.bridged[ie1_kj].r2_delta"},
+  {"id": "UP11.ruos_to_irrh_raw_sign", "value": 0.4658, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "transfer.Ir-Rh.arms.raw.sign_accuracy"},
+  {"id": "UP11.ruos_to_irrh_bridged_r2", "value": -0.2256, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "transfer.Ir-Rh.arms.bridged[ie1_kj].r2_delta"},
+  {"id": "UP11.ie1_diff_ruos", "value": 129.8, "artifact": "metrics/by_metric/msrs_pair_delta.json", "path": "transfer.Ru-Os.bridges.ie1_kj.descriptor_diff_test"}
 ]
 ```
 
@@ -442,6 +454,42 @@ phototoxicity 的 **479 个配体里没有一个在两种金属下被测过** �
 - 独立矩估计之和不等于 1（0.7556 + 0.0745 + 0.8733 + 0.5258 = **2.2292**），这不是错误，是重叠块的定义。**独立份额只能当上界读**。
 
 **CI 的一个诚实的瑕疵**：批次优先顺序下 bootstrap 区间不包住点估计（paper×metal 点 0.5484、CI [0.5801, 0.6297]；ligand×cell 点 0.4106、CI [0.3386, 0.3887]）。原因是按配体整簇重采样会复制配体、放大组大小 n，而可靠性权重 `w = σ²_b/(σ²_b + σ²_noise/n)` 依赖 n，所以**被重采样的估计量不是原点估计量**。区间只能当方向性证据（paper×metal 在批次优先下稳定高于 0.5），不能当 0.5484 的误差棒。
+
+### 2.13 UP-11 交互迁移：低秩检验**不可识别**，不是失败；配体不相交的跨对迁移全部为负（2026-10-21）
+
+`msrs_pair_delta.json`（GPU0，`device = cuda:0`）。
+
+**冻结的检验跑不了，原因比"rank-1 份额小"更硬。** Δ 矩阵的行是配体、列是金属对，要估计共享剖面 `u_l` 至少需要**一个配体出现在两列里**。实测：
+
+| 金属对 | 配体数 | 与其它对共享的配体 |
+|---|---:|---:|
+| Ru–Os | 118 | **0** |
+| Ir–Rh | 73 | **0** |
+| Ru–Rh | 10 | **0** |
+
+`ligand_metal_span_histogram = {"2": 201}` —— **201 个跨金属配体，每一个都恰好只跨 2 个金属，没有一个跨 ≥3**。三个双金属组（Os,Ru）125 /（Ir,Rh）75 /（Rh,Ru）14 两两不相交。所以 `complete_case_ligands = 0`，SVD 无从做起，`rank1_share` **无定义**（不是 0，也不是小于 0.30）。
+
+⇒ `verdict = NOT_IDENTIFIABLE`。kill 条款「rank-1 < 0.30 → 7/10 金属对不可学」在形式上没有触发，因为分子分母都不存在；但结论方向相同。
+
+**唯一还能操作的版本：配体不相交的跨对迁移。** 在 A 对的配体上拟合 Δ，在 B 对**完全不同的配体**上预测。这比原计划的秩-1 桥更严（配体和金属对同时未见），门槛按原值套用。
+
+| 方向 | 训练/测试配体 | 臂 | R²_Δ [95% CI] | 符号准确率 [95% CI] |
+|---|---|---:|---:|---|
+| Ir–Rh → Ru–Os | 73 / 118 | Δ=0 | −0.1227 [−0.2621, −0.0366] | — |
+| | | raw | −0.3619 [−0.6064, −0.1825] | 0.5085 [0.4153, 0.6017] |
+| | | **bridged（ie1_kj）** | **−0.0952** [−0.2327, −0.0044] | 0.4915 [0.3983, 0.5847] |
+| Ru–Os → Ir–Rh | 118 / 73 | Δ=0 | −0.0317 [−0.2116, −0.0001] | — |
+| | | raw | −0.4245 [−1.0069, −0.1584] | 0.4658 [0.3562, 0.5753] |
+| | | **bridged（ie1_kj）** | **−0.2256** [−0.5855, −0.0446] | 0.5342 [0.4247, 0.6438] |
+
+**没有一个臂的 R²_Δ 是正的**，全部低于"预测测试集均值"。符号准确率的 CI 全部覆盖 0.5。门槛（符号 ≥0.60、R²_Δ ≥0.10、比 Δ=0 高 ≥0.05）三项全不满足。
+
+**桥参数本身也不稳**（这是 1 参数模型的固有脆弱）：
+- `pauling_en` 对 Ru–Os **完全无效** —— Ru / Os / Ir 的 Pauling 电负性都是 2.20，差值 0.0，scale 被压成 0，bridged 臂退化成 Δ=0 臂。
+- `ie2_kj` 在 Ru–Os → Ir–Rh 上给出 scale = **−7.0**，R²_Δ 崩到 **−11.06**。两个小描述符差之比不是标定。
+- 只有 `ie1_kj` 在两个对之间**符号相反**（Ru→Os +129.8，Ir→Rh −160.3），是唯一有区分力的桥；它的两个方向 R² 分别是 −0.0952 和 −0.2256。
+
+**结论**：交互既不能从语料里分解出共享剖面（不可识别），也不能在配体不相交的两个金属对之间迁移（R²_Δ 全负、符号在 0.5 附近）。**7/10 金属对没有任何可用的外推路径**，这与 UP-10 的支持度边界一致。
 
 
 
