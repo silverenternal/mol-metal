@@ -402,32 +402,32 @@
       }
     }
   },
-  "counterfactual_stratified": {
+  "applied_coverage_split": {
     "train": {
-      "rows": 1375,
+      "rows": 1376,
       "labelled": {
-        "A549": 666,
-        "A2780": 520,
-        "A2780cis": 346,
-        "MCF-7": 594
+        "A549": 663,
+        "A2780": 517,
+        "A2780cis": 343,
+        "MCF-7": 599
       }
     },
     "val": {
       "rows": 197,
       "labelled": {
         "A549": 86,
-        "A2780": 121,
-        "A2780cis": 83,
-        "MCF-7": 57
+        "A2780": 124,
+        "A2780cis": 86,
+        "MCF-7": 54
       }
     },
     "test": {
-      "rows": 394,
+      "rows": 393,
       "labelled": {
-        "A549": 119,
+        "A549": 122,
         "A2780": 219,
         "A2780cis": 171,
-        "MCF-7": 162
+        "MCF-7": 160
       }
     }
   },
@@ -465,9 +465,45 @@
       "note": "`_assign_groups` budgets capacities in scaffolds, not rows, so 70/10/20 scaffolds is 84/5/11 rows on this cohort: val receives 105 singleton scaffolds and therefore 105 rows."
     },
     "not_a_fix": "Lowering MIN_EVAL_ROWS would make A2780cis report a number from 27 rows; the split would still have 27. The bar is not what starved the cell.",
-    "fix_options": {
-      "hash_tiebreak": "Deterministic tie-break on a hash of the scaffold instead of first appearance. Same groups, same fractions, same greedy, no leakage. Over 200 salts A2780cis test coverage never falls below 43 (median 61), so the cell becomes evaluable and stays evaluable. Cost: it changes the split for EVERY ScaffoldSplitter caller, so any number measured on a largest-first scaffold split has to be re-run or pinned.",
-      "stratified_assignment": "Choose the split per group to hit each cell line's label share. Here: A2780cis 171 test rows, all four cells evaluable, rows still 70/10/20 (1375/197/394). Cost: a protocol change, not a bug fix, and it makes the split depend on the label columns.",
+    "applied": {
+      "mode": "scaffold_coverage",
+      "config": "configs/train_cisplatin_resistance_real_strat_v1.yaml",
+      "metric": "metrics/by_metric/platinai_3cell_resistance_real_strat.json",
+      "what_changed": "`ScaffoldSplitter(coverage={...})` targets fractions of each cell line's labelled rows instead of fractions of the scaffold count, and breaks size ties on a hash of the scaffold. One scaffold still lands in exactly one split, and the split no longer depends on the cohort file's row order.",
+      "split": {
+        "train": {
+          "rows": 1376,
+          "labelled": {
+            "A549": 663,
+            "A2780": 517,
+            "A2780cis": 343,
+            "MCF-7": 599
+          }
+        },
+        "val": {
+          "rows": 197,
+          "labelled": {
+            "A549": 86,
+            "A2780": 124,
+            "A2780cis": 86,
+            "MCF-7": 54
+          }
+        },
+        "test": {
+          "rows": 393,
+          "labelled": {
+            "A549": 122,
+            "A2780": 219,
+            "A2780cis": 171,
+            "MCF-7": 160
+          }
+        }
+      },
+      "a2780cis_test_rows": 171,
+      "all_cells_evaluable": true
+    },
+    "not_applied": {
+      "hash_tiebreak_globally": "Deterministic tie-break on a hash of the scaffold instead of first appearance. Same groups, same fractions, same greedy, no leakage. Over 200 salts A2780cis test coverage never falls below 43 (median 61). Not taken: it changes the split for EVERY ScaffoldSplitter caller, so every number measured on a largest-first scaffold split would have to be re-run or pinned.",
       "reorder_only": "Shuffle the cohort file's row order. Removes the correlation between descending label coverage and train membership, but gives no guarantee: A2780cis ranges 45-77 over permutations."
     }
   }

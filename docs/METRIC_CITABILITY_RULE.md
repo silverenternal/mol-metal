@@ -261,6 +261,30 @@ value stand in for an absent measurement — the same reason `UNRECORDED` is a
 gap rather than a provenance claim.
 
 
+### A split is only reproducible if its tie order is defined
+
+`ScaffoldSplitter` groups rows by Bemis-Murcko scaffold and sorts the groups by
+size descending. That sort is *stable*, so equal-size groups keep the order they
+were first seen — which is the order of the input file. On a cohort where most
+scaffolds are singletons that is not a detail: on the PlatinAI 4-cell cohort 801
+of 1,053 scaffolds are singletons, so the split of 76% of the groups was decided
+by row order, and the cohort file is written sorted by descending cell-line
+coverage.
+
+Measured 2026-10-21 (`metrics/by_metric/split_coverage_4cell.json`): permuting
+the same 1,966 compounds moved A2780cis test coverage from 27 to a median of 60
+(min 45 over 500 permutations). The on-disk order was below every permutation.
+A2780cis fell under the 30-row evaluation bar and the run could not score it —
+not because the data was short, but because the file was sorted.
+
+Rule: a splitter that claims to be deterministic must be deterministic *with
+respect to the data*, not with respect to the file. Break ties on content (a
+hash of the group key), and check that permuting the input gives the same
+group→split map. `ScaffoldSplitter(coverage=...)` does both and additionally
+targets each label column's share, which is what an evaluation needs; the
+legacy `largest_first` path is unchanged and a test pins it.
+
+
 ### Optional disclosure field
 
 `headline_caveat` (string) is printed under the row whatever the mark. Use it

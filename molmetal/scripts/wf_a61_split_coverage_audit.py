@@ -41,6 +41,11 @@ Four things are measured, in increasing order of how much they explain:
     bounds what re-ordering alone can achieve, because it also randomises which
     scaffolds are large.
 
+``applied_coverage_split``
+    The split the coverage-stratified config actually uses, computed by calling
+    the production splitter (not a copy of its greedy), so this row cannot drift
+    from what the trainer ran.
+
 Output: ``metrics/by_metric/split_coverage_4cell.json``
 """
 
@@ -314,52 +319,30 @@ def _hash_tiebreak(labels, groups, keys, n_salts: int = 200) -> Dict[str, object
     }
 
 
-def _stratified(labels, groups, keys) -> Dict[str, Dict[str, int]]:
-    """Greedy that targets each cell line's label share, not just scaffold count.
+def _applied_coverage_split(labels, smiles) -> Dict[str, Dict[str, int]]:
+    """The split the coverage-stratified config actually uses.
 
-    Groups are still visited largest-first, and a scaffold still lands in
-    exactly one split, so no leakage is introduced.  The choice of *which*
-    split takes a group minimises the squared shortfall against the per-cell
-    label targets (0.7 / 0.1 / 0.2 of that cell's labelled rows) plus a row
-    fraction term.  Purely a counterfactual: the trainer is untouched.
+    Calls the production splitter rather than re-implementing the greedy, so
+    this row cannot drift from what the trainer ran.  Coverage is the three
+    cell lines the trainer models (A2780 is dropped as label-noise), which is
+    exactly what `train_cisplatin_resistance.py` passes.
     """
-    names = ("train", "val", "test")
-    n_cells_total = {cl: int(labels[cl].sum()) for cl in CELLS}
-    target = {
-        s: {cl: FRACTIONS[k] * n_cells_total[cl] for cl in CELLS}
-        for k, s in enumerate(names)
-    }
-    n_rows = sum(len(g) for _, g in groups)
-    cap = {s: FRACTIONS[k] * n_rows for k, s in enumerate(names)}
-    rows = {s: 0 for s in names}
-    have = {s: {cl: 0 for cl in CELLS} for s in names}
-    assign: Dict[int, str] = {}
-    order = sorted(groups, key=lambda kv: (-len(kv[1]), kv[0]))
-    for _, g in order:
-        vec = {cl: int(labels[cl][g].sum()) for cl in CELLS}
-        best, best_score = None, None
-        for s in names:
-            # Hard row budget, so the split sizes stay 70/10/20.  Without it the
-            # greedy keeps feeding the most starved split and test grows to a
-            # third of the cohort.
-            over = max(0.0, rows[s] + len(g) - cap[s])
-            shortfall = sum(
-                (target[s][cl] - have[s][cl] - vec[cl]) ** 2 / max(n_cells_total[cl], 1)
-                for cl in CELLS
-            )
-            score = shortfall + 1e3 * over ** 2
-            if best_score is None or score < best_score:
-                best, best_score = s, score
-        assign.update({int(i): best for i in g})
-        rows[best] += len(g)
-        for cl in CELLS:
-            have[best][cl] += vec[cl]
+    from molmetal.scripts.train_cisplatin_resistance import CELL_LINES
+
+    splitter = ScaffoldSplitter(
+        fractions=FRACTIONS, coverage={cl: labels[cl] for cl in CELL_LINES}
+    )
+    result = splitter(_Smiles(smiles))
     out = {}
-    for s in names:
-        idx = np.array(sorted(i for i, v in assign.items() if v == s), dtype=int)
-        out[s] = {"rows": int(idx.size), "labelled": {
-            cl: int(labels[cl][idx].sum()) for cl in CELLS
-        }}
+    for name, idx in (
+        ("train", result.train_idx),
+        ("val", result.val_idx),
+        ("test", result.test_idx),
+    ):
+        out[name] = {
+            "rows": int(idx.size),
+            "labelled": {cl: int(labels[cl][idx].sum()) for cl in CELLS},
+        }
     return out
 
 
@@ -423,13 +406,13 @@ def build() -> dict:
             "test_labelled_rows": _assignment_randomness(labels, groups, N_RANDOM_SEEDS),
         },
         "counterfactual_hash_tiebreak": _hash_tiebreak(labels, groups, keys),
-        "counterfactual_stratified": _stratified(labels, groups, keys),
+        "applied_coverage_split": _applied_coverage_split(labels, smiles),
     }
 
     order = payload["order_sensitivity"]["test_labelled_rows"]
     rand = payload["assignment_randomness"]["test_labelled_rows"]
     h = payload["counterfactual_hash_tiebreak"]["test_labelled_rows"]
-    s = payload["counterfactual_stratified"]
+    s = payload["applied_coverage_split"]
     a2780cis_perm = order["A2780cis"]
     payload["value"] = as_is_test["A2780cis"]
     payload["value_basis"] = "as_is.test.cells.A2780cis.labelled"
@@ -478,25 +461,35 @@ def build() -> dict:
             "rows; the split would still have 27. The bar is not what starved "
             "the cell."
         ),
-        "fix_options": {
-            "hash_tiebreak": (
+        "applied": {
+            "mode": "scaffold_coverage",
+            "config": "configs/train_cisplatin_resistance_real_strat_v1.yaml",
+            "metric": "metrics/by_metric/platinai_3cell_resistance_real_strat.json",
+            "what_changed": (
+                "`ScaffoldSplitter(coverage={...})` targets fractions of each "
+                "cell line's labelled rows instead of fractions of the scaffold "
+                "count, and breaks size ties on a hash of the scaffold. One "
+                "scaffold still lands in exactly one split, and the split no "
+                "longer depends on the cohort file's row order."
+            ),
+            "split": s,
+            "a2780cis_test_rows": s["test"]["labelled"]["A2780cis"],
+            "all_cells_evaluable": all(
+                s["test"]["labelled"][cl] >= MIN_EVAL_ROWS
+                and s["val"]["labelled"][cl] >= MIN_EVAL_ROWS
+                for cl in CELLS
+            ),
+        },
+        "not_applied": {
+            "hash_tiebreak_globally": (
                 "Deterministic tie-break on a hash of the scaffold instead of "
                 "first appearance. Same groups, same fractions, same greedy, no "
                 f"leakage. Over {payload['counterfactual_hash_tiebreak']['n_salts']} "
                 "salts A2780cis test coverage never falls below "
-                f"{h['A2780cis']['min']} (median {h['A2780cis']['median']:.0f}), so "
-                "the cell becomes evaluable and stays evaluable. Cost: it changes "
-                "the split for EVERY ScaffoldSplitter caller, so any number "
-                "measured on a largest-first scaffold split has to be re-run or "
-                "pinned."
-            ),
-            "stratified_assignment": (
-                "Choose the split per group to hit each cell line's label share. "
-                f"Here: A2780cis {s['test']['labelled']['A2780cis']} test rows, "
-                f"all four cells evaluable, rows still 70/10/20 "
-                f"({s['train']['rows']}/{s['val']['rows']}/{s['test']['rows']}). "
-                "Cost: a protocol change, not a bug fix, and it makes the split "
-                "depend on the label columns."
+                f"{h['A2780cis']['min']} (median {h['A2780cis']['median']:.0f}). "
+                "Not taken: it changes the split for EVERY ScaffoldSplitter "
+                "caller, so every number measured on a largest-first scaffold "
+                "split would have to be re-run or pinned."
             ),
             "reorder_only": (
                 "Shuffle the cohort file's row order. Removes the correlation "
@@ -529,14 +522,14 @@ def main() -> int:
     o = payload["order_sensitivity"]["test_labelled_rows"]
     r = payload["assignment_randomness"]["test_labelled_rows"]
     h = payload["counterfactual_hash_tiebreak"]["test_labelled_rows"]
-    s = payload["counterfactual_stratified"]
+    s = payload["applied_coverage_split"]
     print("reorder-only (median [p05, max]) vs size-blind mean:")
     for cl in CELLS:
         print(
             f"  {cl:8s} {o[cl]['median']:6.0f} [{o[cl]['p05']:3.0f}, {o[cl]['max']:3.0f}]"
             f"   {r[cl]['mean']:6.1f}   hash-tiebreak={h[cl]['median']:4.0f}"
             f" (min {h[cl]['min']}, <bar {h[cl]['share_below_bar']:.0%})"
-            f"   stratified={s['test']['labelled'][cl]:4d}"
+            f"   applied={s['test']['labelled'][cl]:4d}"
         )
     print(f"wrote {args.out.relative_to(ROOT)}")
     tv = payload["trainer_view"]

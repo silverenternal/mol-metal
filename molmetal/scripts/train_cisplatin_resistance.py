@@ -544,6 +544,14 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
+        "--supersedes",
+        type=str,
+        default=None,
+        help="Metric id this run replaces, recorded in the output payload. "
+        "Declared per config: a run that changes the split is a different "
+        "measurement from the one it replaces.",
+    )
+    p.add_argument(
         "--limit", type=int, default=None, help="Debug: cap n rows (post-split)"
     )
     p.add_argument(
@@ -776,18 +784,23 @@ def main() -> int:
         # claim the same metric id as the shipped one.  The legacy config
         # writes .../platinai_3cell_resistance.json and is unchanged.
         "metric": Path(args.out).stem,
-        # Same model, same hyperparameters, same splitter -- only the labels
-        # differ.  That is the one case where supersession is the right word:
-        # the synthetic row is a valid measurement of a null test, and this row
-        # replaces it as the number to quote.
-        "supersedes": "platinai_3cell_resistance"
-        if Path(args.out).stem != "platinai_3cell_resistance"
-        else None,
+        # Declared by the launch config, not inferred from the output path: a
+        # run that changes the split is not the same measurement as the one it
+        # replaces, and only the caller knows which row it is replacing.
+        "supersedes": args.supersedes,
         "dataset": str(args.data),
         "description": (
             f"Test ROC-AUC per cell line on {Path(args.data).name} after "
             "dropping the A2780 column. 3-cell-line D-MPNN with "
             "chemoinformatic resistance side-features and tmQM-pretrained init."
+            + (
+                " Split is coverage-stratified: 70/10/20 of each cell line's "
+                "labelled rows, not of the scaffold count. Not comparable as "
+                "an improvement with platinai_3cell_resistance_real, which "
+                "reports 0.6683 over 2 cells on 190 test rows."
+                if args.split == "scaffold_coverage"
+                else ""
+            )
         ),
         "unit": "ROC-AUC (0-1, higher better) per cell line",
         "scope": "tier1_precious_metal_anticancer",

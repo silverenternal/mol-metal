@@ -36,6 +36,9 @@ entry:
 # Top-level scalar → --data dest.
 data: .data/molmetal/platinai_4cell_real_trainer.csv
 
+# Top-level scalar → --supersedes dest.
+supersedes: platinai_3cell_resistance
+
 # Sections required by scripts/_pre_flight_check.sh.
 model:
   scaffold_split: true

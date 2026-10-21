@@ -19,6 +19,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 AUDIT = ROOT / "metrics" / "by_metric" / "split_coverage_4cell.json"
 RUN = ROOT / "metrics" / "by_metric" / "platinai_3cell_resistance_real.json"
+STRAT = ROOT / "metrics" / "by_metric" / "platinai_3cell_resistance_real_strat.json"
 
 
 @pytest.fixture(scope="module")
@@ -64,3 +65,22 @@ def test_audit_bar_matches_the_trainer_constant(audit):
     from molmetal.scripts.train_cisplatin_resistance import MIN_EVAL_ROWS
 
     assert audit["evaluation_bar"]["min_labelled_rows"] == MIN_EVAL_ROWS
+
+
+def test_applied_split_is_the_one_the_stratified_run_trained(audit):
+    """The audit calls the production splitter; this pins it to the artifact."""
+    if not STRAT.exists():
+        pytest.skip("coverage-stratified run not present")
+    strat = json.loads(STRAT.read_text())
+    applied = audit["applied_coverage_split"]
+    dropped = audit["trainer_view"]["dropped_rows"]
+    assert strat["split"] == "scaffold_70_10_20_by_cell_coverage"
+    for name, key in (("train", "n_train"), ("val", "n_val"), ("test", "n_test")):
+        # The audit measures the split before the trainer's three-column
+        # filter; the difference is the A2780-only rows, counted once.
+        assert strat["split_sizes"][key] <= applied[name]["rows"]
+        assert applied[name]["rows"] - strat["split_sizes"][key] <= dropped
+    assert strat["status"] == "MEASURED"
+    for cell, info in strat["per_cell_line"].items():
+        assert info["n_seeds_evaluated"] == 5, cell
+        assert info["auc_mean"] is not None, cell
