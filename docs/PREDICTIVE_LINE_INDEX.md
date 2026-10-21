@@ -82,6 +82,13 @@ DOI 留出、α=0.10 split conformal：覆盖 **0.9004**，中位宽 **2.0052** 
 | `lomo_resolvability_audit.json` | **0.5974** | 把 Rh/Os/Re 三个低于 `MIN_UNIQUE_FOR_GATE=200` 的折剔除后重聚合 | **这是可引的那个** |
 | `lomo_seed_ensemble.json` | 0.5947 | 同一可解析子集，但按「先平均分数再算 AUC」（部署口径） | 可引，作为 0.5974 的稳健性 |
 
+**已知冲突（未修，需要裁定）**：`molmetal/scripts/registry.py::LINE_METRICS` 仍把
+`m19_lomo` 钉在 `metal_lomo_auc_wasserstein`，所以 `registry.py cite` 会告诉你引
+**0.5575**；而 `docs/CLAIM_LEDGER.md`（STR-7 / FIX-C6，2026-10-20 已裁定）说的是
+**0.5974**。两份文件对同一个论文线指标给出两个数。**以本索引和台账为准**；
+要消除冲突需要把 pin 改到 `lomo_resolvability_audit` 并加 `value_key`，那会改变
+论文线数字，属于需要用户点头的改动，本次没有动。
+
 ### 2.6 机器校验块
 
 测试从下面这个代码块读取，逐条比对 artifact。**不要手改数值，改 artifact 后同步这里。**
