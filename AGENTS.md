@@ -50,6 +50,7 @@ These rules apply to **every** agent action in this repo. Violations are honest-
 | "What's the project status today?" | [`README.md`](README.md) §0 |
 | "Where are measured numbers?" | [`metrics/by_metric/*.json`](metrics/) (394 files, counted 2026-10-20; 394 registry rows, 0 stale) |
 | **"Which numbers may I quote in the paper?"** | **[`docs/METRIC_CITABILITY_RULE.md`](docs/METRIC_CITABILITY_RULE.md) — `[CITE]` / `[NUM]` / `[NO]` per paper-line metric; run `.venv/bin/python molmetal/scripts/registry.py cite`** |
+| **"What's the predictive line's authoritative number?"** | **[`docs/PREDICTIVE_LINE_INDEX.md`](docs/PREDICTIVE_LINE_INDEX.md) — one artifact:jsonpath per metric, machine-checked by `molmetal/tests/test_predictive_line_index.py`. Read its §3 retraction log before quoting: five headline numbers were retracted in one week (0.5828 ligand-interpolation, Δ sign 0.6193, "0.5826 is close to the gate", SA≤4.5 33.7%, LOMO 0.5575).** |
 | "What are the architectural decisions?" | [`TODO/decisions.md`](TODO/decisions.md) |
 | "What are the open blockers?" | [`TODO/risks.md`](TODO/risks.md) |
 | **"What's the paper's model narrative?"** | **[`docs/00_MODEL_NARRATIVE.md`](docs/00_MODEL_NARRATIVE.md) — PINNED. Authoritative for how the two models + the algorithm integrate. Overrides README/ARCHITECTURE/DESIGN_BOUNDARY on conflict.** |

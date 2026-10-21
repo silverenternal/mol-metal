@@ -28,6 +28,9 @@ be audited (AGENTS.md section 5.5).
 - `SUBMISSION_PLAN.md` — Submission plan (2026-10-12).
 - `HONEST_NEGATIVE_CATALOG.md` — Every honest-negative, 1300+ lines. The source for any negative claim.
 - `METRIC_CITABILITY_RULE.md` — Which numbers may go in a table (`[CITE]`), which only in prose (`[NUM ]`), which not at all (`[NO ]`). Run `registry.py cite`.
+- `CLAIM_LEDGER.md` — Claim → evidence → verdict (C1-C7). **This is the ceiling on what the text may say.**
+- `PREDICTIVE_LINE_INDEX.md` — **Predictive line's single source of truth** (2026-10-21). One `artifact:jsonpath` per metric, machine-checked by `molmetal/tests/test_predictive_line_index.py`. Read its §3 retraction log first.
+- `METRIC_GAP_ANALYSIS.md` — Gap analysis against the "strong metric paper" criteria. Numbers here defer to `PREDICTIVE_LINE_INDEX.md`.
 
 ## What is the architecture?
 
