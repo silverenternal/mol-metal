@@ -306,6 +306,26 @@ def run() -> Dict[str, Any]:
         "5 seeds x 5 folds under two protocols: random permutation and "
         "Bemis-Murcko scaffold groups (largest-first)"
     )
+    # The single scalar is one of two widths, and a reader who sees only the
+    # scalar would draw the wrong conclusion about it: the 12-d width is an
+    # order of magnitude less negative, so "R2 = -0.2045" is not a property of
+    # the descriptors, it is a property of the width.  Say that here, where
+    # `registry.py cite` prints it.
+    scaffold_12 = payload["mean_scaffold_r2_over_cells"]["rdkit_12d"]
+    random_32 = payload["mean_random_r2_over_cells"]["rdkit_32d"]
+    random_12 = payload["mean_random_r2_over_cells"]["rdkit_12d"]
+    payload["headline_caveat"] = (
+        f"The scalar is the 32-d RDKit width ({scaffold_32:+.4f}); the 12-d "
+        f"width reads {scaffold_12:+.4f} under the same scaffold split. The two "
+        "are an order of magnitude apart, so neither is 'the' R2 and both belong "
+        "in the table. NOT directly comparable with the -0.0300 this metric used "
+        "to quote: that was a 3-cohort aggregate with platinai weighted 2/3, and "
+        "platinai's own 12-d entry was -0.1440 on n=200 against a mean-over-4-"
+        "cells target, whereas this is a per-cell mean over 4,370 measurements. "
+        f"Both random-split counterparts are positive ({random_12:+.4f} at 12-d, "
+        f"{random_32:+.4f} at 32-d), so neither result survives a scaffold split "
+        "and neither is evidence of generalisation."
+    )
     payload["verdict"] = {
         "scaffold_gate_0_85_met": bool(
             usable
@@ -314,7 +334,10 @@ def run() -> Dict[str, Any]:
                 for t in usable
             )
         ),
-        "any_cell_positive_scaffold_r2": bool(
+        # Width-qualified on purpose: at 32-d every cell is negative, but at
+        # 12-d A2780 is +0.0270, so an unqualified "any_cell_positive" would be
+        # true or false depending on which width the reader assumed.
+        "any_cell_positive_scaffold_r2_32d": bool(
             any(
                 t["by_feature_set"]["rdkit_32d"]["scaffold_5x5"]["mean_r2"] > 0
                 for t in usable

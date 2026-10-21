@@ -223,16 +223,17 @@
   },
   "verdict": {
     "scaffold_gate_0_85_met": false,
-    "any_cell_positive_scaffold_r2": false,
+    "any_cell_positive_scaffold_r2_32d": false,
     "headline": "REAL-label R2: 32-d RDKit + Ridge does not clear the 0.85 gate (mean scaffold R2 over cells = -0.2045); the RDKit descriptor family carries no cytotoxicity signal that survives a scaffold split on this cohort."
   },
   "source": "molmetal/scripts/wf_a60_m2_real_cohort.py",
   "wf_tag": "Wf-A60 m2 R2 on REAL PlatinAI 4-cell labels",
-  "wall_seconds": 15.6,
+  "wall_seconds": 14.8,
   "timestamp": "2026-10-21",
   "value": -0.20452201768910916,
   "value_basis": "mean over the four cell lines of the 5-seed x 5-fold Bemis-Murcko scaffold-split R2 (32-d RDKit, Ridge alpha=0.5). The random-split mean is reported separately under mean_random_r2_over_cells.",
   "n_seeds": 5,
   "n_folds": 5,
-  "split": "5 seeds x 5 folds under two protocols: random permutation and Bemis-Murcko scaffold groups (largest-first)"
+  "split": "5 seeds x 5 folds under two protocols: random permutation and Bemis-Murcko scaffold groups (largest-first)",
+  "headline_caveat": "The scalar is the 32-d RDKit width (-0.2045); the 12-d width reads -0.0234 under the same scaffold split. The two are an order of magnitude apart, so neither is 'the' R2 and both belong in the table. NOT directly comparable with the -0.0300 this metric used to quote: that was a 3-cohort aggregate with platinai weighted 2/3, and platinai's own 12-d entry was -0.1440 on n=200 against a mean-over-4-cells target, whereas this is a per-cell mean over 4,370 measurements. Both random-split counterparts are positive (+0.0551 at 12-d, +0.0912 at 32-d), so neither result survives a scaffold split and neither is evidence of generalisation."
 }
