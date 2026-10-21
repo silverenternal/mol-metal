@@ -11,7 +11,7 @@
 # Update via: .venv/bin/python molmetal/scripts/registry.py generate
 #
 schema: molmetal-registry-datasets-v1
-generated_at: '2026-10-21T06:08:05+00:00'
+generated_at: '2026-10-21T06:36:47+00:00'
 generator: python -m molmetal.scripts.registry generate
 note: Machine-readable dataset facts. A dataset is READY iff sha256(path) == sha256
   here.
@@ -120,15 +120,43 @@ datasets:
     lifecycle_source: docs/DATA_INVENTORY.json
     lifecycle_note: Raw Krasnov corpus. Predictive cohorts are derived from this by
       build_paper_cohort() + collapse_duplicates(tie->active).
+  platinai_4cell_real_cohort.csv:
+    path: .data/molmetal/platinai_4cell_real_cohort.csv
+    md5: bc79ad79f91114cb499c966e1ac5986e
+    sha256: 5563b619374aa00bd846e2d3c80939cadc9f5f241a71ef86f9d3d89df3db7a18
+    why: 'REAL-label 4-cell cohort: 1,966 compounds / 4,370 measurements (A549 871,
+      A2780 860, A2780cis 600, MCF-7 813), built from the MB-Finder PlatinAI harvest
+      with the unit pinned to uM by the Rusanov 2025 SI figure captions S17-S28.  This
+      is the artifact m2 is measured on since 2026-10-21.'
+    source: configs/locks/protocol_lock.yaml
+    locked_for:
+    - m2_r2_per_cell
+    labels: REAL
+    label_evidence: 'docs/DATA_PROVENANCE.json: MB-Finder harvest platinai_pt_all_cells_with_smiles.jsonl,
+      collapsed by build_platinai_4cell_real_cohort.py — Every value descends from
+      a row carrying doi + method + incubationTime in platinai_pt_all_cells_with_smiles.jsonl.
+      Unit is uM, stated by the Rusanov 2025 SI figure captions (''log-scaled IC50
+      values (uM) for individual cell lines''); pIC50 = 6 - log10(IC50_uM). The sibling
+      .meta.json records the source sha256, the filters and the drop counts.'
+    lifecycle_status: ACTIVE
+    role: eval_pt
+    lifecycle_source: docs/DATA_INVENTORY.json
+    lifecycle_note: REAL structures + REAL IC50 labels for the four PlatinAI cell
+      lines, built from the 2026-10-19 MB-Finder harvest by build_platinai_4cell_real_cohort.py.
+      1,966 compounds / 3,144 unique (compound, cell) pairs from 4,370 raw biodata
+      rows (A549 871, A2780 860, A2780cis 600, MCF-7 813); 953 compounds cover >=2
+      cells, 56 cover all four. Unit is uM per the Rusanov 2025 SI figure captions;
+      pIC50 = 6 - log10(IC50_uM). This is the cohort that can replace pt_4cell_synthetic
+      (which carries simulated labels).
   platinai_4cell.csv:
     path: .data/molmetal/platinai_4cell.csv
     md5: 5a5d8da8d1b05a9647546a5c2101f6f2
     sha256: 5f939af7eae2a932c467339194d276f366b4fe5b8e7dd54d03f16f60f803f27b
-    why: Pt-only PlatinAI 4-cell-line cohort in the schema the trainer's loader accepts
-      (SMILES_Ligands + pIC50_{mcf7,a549,a2780,a2780cis} + metal). This is the file
-      `--dataset platinai_4cell` resolves to and the file configs/training/platinai_pt_4cell_5seed_50ep_v1.yaml
-      names under `data.csv` (added 2026-10-07; resolves to the live --csv dest, so
-      it is NOT a wfA2_config_loader dead key).
+    why: 'KEPT ACCEPTED so the pre-flight gate still validates the D-MPNN trainer
+      config, which loads this file (4,078 complexes, schema SMILES_Ligands + pIC50_{mcf7,a549,a2780,a2780cis}
+      + metal).  Its labels are SYNTHETIC and the dataset is DO-NOT-TRAIN: any R2
+      from it is a pipeline null test.  It is no longer the artifact m2''s paper line
+      reads.'
     source: configs/locks/protocol_lock.yaml
     locked_for:
     - m2_r2_per_cell
@@ -289,29 +317,29 @@ datasets:
       are real; the structures are not: 2,052 of 2,053 rows have smiles == ''__no_smiles__''
       because the get-substances join had not run yet. Superseded by platinai_pt_all_cells_with_smiles.jsonl
       (2026-10-19), which has SMILES on every row.'
-  platinai_4cell_real_cohort.csv:
-    path: .data/molmetal/platinai_4cell_real_cohort.csv
-    sha256: 5563b619374aa00bd846e2d3c80939cadc9f5f241a71ef86f9d3d89df3db7a18
+  platinai_4cell_real_trainer.csv:
+    path: .data/molmetal/platinai_4cell_real_trainer.csv
+    sha256: ede0ca20b0a0ef571a6df11ca56349f6ee89e99fd9bf243cd25796a6526e4409
     n_lines: 1967
     source: docs/DATA_INVENTORY.json
-    inventory_id: pt_4cell_real
+    inventory_id: pt_4cell_real_trainer
     declared_rows: 1966
     role: eval_pt
     lifecycle_status: ACTIVE
     lifecycle_source: docs/DATA_INVENTORY.json
-    lifecycle_note: REAL structures + REAL IC50 labels for the four PlatinAI cell
-      lines, built from the 2026-10-19 MB-Finder harvest by build_platinai_4cell_real_cohort.py.
-      1,966 compounds / 3,144 measurements (A549 871, A2780 860, A2780cis 600, MCF-7
-      813); 953 compounds cover >=2 cells, 56 cover all four. Unit is uM per the Rusanov
-      2025 SI figure captions; pIC50 = 6 - log10(IC50_uM). This is the cohort that
-      can replace pt_4cell_synthetic (which carries simulated labels).
+    lifecycle_note: 'The same 1,966 compounds projected into the schema load_platinai_4cell_split_table
+      accepts (SMILES_Ligands + pIC50_{a549,a2780,a2780cis,mcf7} + metal=Pt). A projection,
+      not a second cohort: no measurement is added, dropped or imputed, and a compound
+      with no IC50 for a cell line has an empty cell that the loader turns into NaN
+      and masks out of the loss. Exists so the D-MPNN trainer can be pointed at REAL
+      labels without hand-editing a CSV.'
     labels: REAL
-    label_evidence: 'docs/DATA_PROVENANCE.json: MB-Finder harvest platinai_pt_all_cells_with_smiles.jsonl,
-      collapsed by build_platinai_4cell_real_cohort.py — Every value descends from
-      a row carrying doi + method + incubationTime in platinai_pt_all_cells_with_smiles.jsonl.
-      Unit is uM, stated by the Rusanov 2025 SI figure captions (''log-scaled IC50
-      values (uM) for individual cell lines''); pIC50 = 6 - log10(IC50_uM). The sibling
-      .meta.json records the source sha256, the filters and the drop counts.'
+    label_evidence: 'docs/DATA_PROVENANCE.json: column projection of platinai_4cell_real_cohort.csv,
+      written by build_platinai_4cell_real_cohort.py::write_trainer_view — No new
+      measurement is introduced: the file is the same 1,966 rows renamed into the
+      schema load_platinai_4cell_split_table requires (SMILES_Ligands + pIC50_{a549,a2780,a2780cis,mcf7}
+      + metal=Pt). Label provenance is inherited unchanged from platinai_4cell_real_cohort.csv,
+      including its uM evidence and its 1,966-vs-4,078 caveat.'
   bace.csv:
     path: .data/molmetal/moleculenet/bace.csv
     sha256: f3fb9ce90bada3e2bd6148b0df13f8f8145a357bf87df0dd5b391ede974fc737

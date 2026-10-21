@@ -1,0 +1,62 @@
+# 3-cell-line resistance classifier on the REAL-label PlatinAI cohort — §5.11 YAML-only launch.
+#
+# WHY THIS CONFIG EXISTS
+# ----------------------
+# `metrics/by_metric/platinai_3cell_resistance.json` carries status
+# MEASURED_SYNTHETIC_LABELS: it was trained on `molmetal/data/platinai_4cell.csv`,
+# whose pIC50 columns come from a log-normal generator
+# (`base_log10_ic50_nm=3.95`, `sigma=0.45`, per-cell offsets), and
+# `docs/DATA_INVENTORY.json` marks that file DO-NOT-TRAIN.  The 0.5459 it
+# reports is how well a graph net recovers that generator, not how well it
+# predicts Pt cytotoxicity.
+#
+# `build_platinai_4cell_real_cohort.py` now emits the same four cell lines with
+# measured IC50s, in the wide schema `load_dataset` reads:
+#
+#   SMILES_Ligands, pIC50_{a549,a2780,a2780cis,mcf7}, metal
+#
+# 1,966 compounds / 4,370 measurements, unit uM pinned by the Rusanov 2025 SI
+# figure captions S17-S28.  Missing measurements are empty cells, not imputed
+# values: `load_dataset` marks them -1 and the loss masks them.
+#
+# Label balance at the script's ACTIVE_THRESHOLD_PIC50 = 5.0 (IC50 <= 10 uM):
+# MCF-7 467/813 (57.4%), A549 409/871 (47.0%), A2780cis 333/600 (55.5%).
+# None of the three heads is degenerate, so a per-cell AUC is interpretable.
+#
+# OUTPUT IS A NEW PATH ON PURPOSE.  The published
+# `metrics/by_metric/platinai_3cell_resistance.json` is not overwritten
+# (AGENTS.md §5.5 + §5.6); the synthetic row keeps its number and its
+# provenance, and the real-label row sits beside it.
+
+entry:
+  script: molmetal/scripts/train_cisplatin_resistance.py
+  command_template: /home/hugo/codes/mol-metal/.venv/bin/python -u molmetal/scripts/train_cisplatin_resistance.py
+    --config {yaml_path}
+
+# Top-level scalar → --data dest.
+data: .data/molmetal/platinai_4cell_real_trainer.csv
+
+# Sections required by scripts/_pre_flight_check.sh.
+model:
+  scaffold_split: true
+protocol:
+  scaffold_split: true
+directives:
+  user_ok_required: false
+
+# --- run hyperparameters (leaf names bind to the script's argparse dests) -----
+# Unchanged from configs/train_cisplatin_resistance_v1.yaml so the only
+# difference between the two runs is the cohort, not the tuning.
+train:
+  seeds: [0, 1, 2, 3, 4]
+  epochs: 100
+  batch: 64
+  lr: 5.0e-4
+  eval_every: 10
+
+output:
+  base_dir: molmetal/reports/platinai_3cell_resistance_real
+  log_master: molmetal/reports/platinai_3cell_resistance_real/master.log
+  training_summary: molmetal/reports/platinai_3cell_resistance_real/training_summary.json
+
+out: metrics/by_metric/platinai_3cell_resistance_real.json

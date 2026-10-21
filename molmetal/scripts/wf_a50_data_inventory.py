@@ -90,11 +90,21 @@ DECLARED: List[tuple] = [
     ("pt_4cell_real", DATA / "platinai_4cell_real_cohort.csv", "eval_pt", "ACTIVE",
      "REAL structures + REAL IC50 labels for the four PlatinAI cell lines, built "
      "from the 2026-10-19 MB-Finder harvest by "
-     "build_platinai_4cell_real_cohort.py. 1,966 compounds / 3,144 measurements "
-     "(A549 871, A2780 860, A2780cis 600, MCF-7 813); 953 compounds cover >=2 "
-     "cells, 56 cover all four. Unit is uM per the Rusanov 2025 SI figure "
-     "captions; pIC50 = 6 - log10(IC50_uM). This is the cohort that can replace "
+     "build_platinai_4cell_real_cohort.py. 1,966 compounds / 3,144 unique "
+     "(compound, cell) pairs from 4,370 raw biodata rows (A549 871, A2780 860, "
+     "A2780cis 600, MCF-7 813); 953 compounds cover >=2 cells, 56 cover all "
+     "four. Unit is uM per the Rusanov 2025 SI figure captions; "
+     "pIC50 = 6 - log10(IC50_uM). This is the cohort that can replace "
      "pt_4cell_synthetic (which carries simulated labels)."),
+    ("pt_4cell_real_trainer", DATA / "platinai_4cell_real_trainer.csv",
+     "eval_pt", "ACTIVE",
+     "The same 1,966 compounds projected into the schema "
+     "load_platinai_4cell_split_table accepts (SMILES_Ligands + "
+     "pIC50_{a549,a2780,a2780cis,mcf7} + metal=Pt). A projection, not a second "
+     "cohort: no measurement is added, dropped or imputed, and a compound with "
+     "no IC50 for a cell line has an empty cell that the loader turns into NaN "
+     "and masks out of the loss. Exists so the D-MPNN trainer can be pointed at "
+     "REAL labels without hand-editing a CSV."),
     # --- controls --------------------------------------------------------
     ("moleculenet_bace", DATA / "moleculenet" / "bace.csv",
      "control_general", "ACTIVE", "Scaffold 70/10/20, 5 seeds."),

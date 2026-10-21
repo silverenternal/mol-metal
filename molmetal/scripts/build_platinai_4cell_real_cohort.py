@@ -73,6 +73,11 @@ SOURCE = (
 )
 OUT_CSV = ROOT / ".data" / "molmetal" / "platinai_4cell_real_cohort.csv"
 OUT_META = ROOT / ".data" / "molmetal" / "platinai_4cell_real_cohort.meta.json"
+#: Same rows, in the schema `load_platinai_4cell_split_table` accepts
+#: (SMILES_Ligands + pIC50_{cell} + metal).  Missing measurements stay empty:
+#: that loader drops NaN per cell, so a sparse cohort is expected input rather
+#: than something to impute.
+OUT_TRAINER = ROOT / ".data" / "molmetal" / "platinai_4cell_real_trainer.csv"
 
 #: Harvest spelling -> column suffix.  MCF-7 keeps its hyphen in the harvest.
 CELLS = {"A549": "a549", "A2780": "a2780", "A2780cis": "a2780cis", "MCF-7": "mcf7"}
@@ -240,11 +245,35 @@ def write(result: Dict[str, Any]) -> Dict[str, Any]:
     return meta
 
 
+def write_trainer_view(rows: List[Dict[str, Any]]) -> int:
+    """Project the cohort into the D-MPNN loader's wide schema.
+
+    ``load_platinai_4cell_split_table`` wants one row per SMILES with a
+    ``pIC50_<cell>`` column per cell line and calls ``dropna`` per column, so
+    writing an empty string where a compound has no measurement for that cell
+    is the intended input — it becomes NaN and the row is skipped for that
+    head.  Nothing is imputed: filling a missing IC50 would put a number on the
+    paper line that no experiment produced.
+    """
+    suffixes = list(CELLS.values())
+    header = ["SMILES_Ligands"] + [f"pIC50_{s}" for s in suffixes] + ["metal"]
+    tmp = OUT_TRAINER.with_suffix(".csv.tmp")
+    with tmp.open("w", encoding="utf-8", newline="") as f:
+        f.write(",".join(header) + "\n")
+        for r in rows:
+            cells = [str(r[f"pIC50_{s}"]) for s in suffixes]
+            f.write(",".join([str(r["smiles"])] + cells + ["Pt"]) + "\n")
+    tmp.replace(OUT_TRAINER)
+    return len(rows)
+
+
 def main() -> int:
     result = build()
     meta = write(result)
+    n_trainer = write_trainer_view(result["rows"])
     print(f"wrote {OUT_CSV.relative_to(ROOT)}  ({meta['n_compounds']} compounds)")
     print(f"wrote {OUT_META.relative_to(ROOT)}")
+    print(f"wrote {OUT_TRAINER.relative_to(ROOT)}  ({n_trainer} rows, trainer schema)")
     print(f"  per cell: {meta['per_cell_compounds']}")
     print(f"  >=2 cells: {meta['n_compounds_with_2plus_cells']}  4 cells: {meta['n_compounds_with_4_cells']}")
     print(f"  dropped: { {k: v for k, v in meta['counts'].items() if k.startswith('dropped')} }")

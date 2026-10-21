@@ -686,12 +686,15 @@ def main() -> int:
         per_cell[cl]["auc_std"] = float(np.std(vals))
 
     out = {
-        "metric": "platinai_3cell_resistance",
+        # Derived from --out so a run on a different cohort cannot silently
+        # claim the same metric id as the shipped one.  The legacy config
+        # writes .../platinai_3cell_resistance.json and is unchanged.
+        "metric": Path(args.out).stem,
+        "dataset": str(args.data),
         "description": (
-            "Test ROC-AUC per cell line on PlatinAI 4,078 Pt dataset "
-            "after dropping the A2780 column (label-noise, r=0.003 vs "
-            "A2780cis). 3-cell-line D-MPNN with chemoinformatic "
-            "resistance side-features and tmQM-pretrained init."
+            f"Test ROC-AUC per cell line on {Path(args.data).name} after "
+            "dropping the A2780 column. 3-cell-line D-MPNN with "
+            "chemoinformatic resistance side-features and tmQM-pretrained init."
         ),
         "unit": "ROC-AUC (0-1, higher better) per cell line",
         "scope": "tier1_precious_metal_anticancer",
@@ -702,10 +705,16 @@ def main() -> int:
         ),
         "diagnosis": {
             "a2780_dropped": True,
+            # Qualified on purpose: the numbers in the old reason were
+            # measured on the SYNTHETIC cohort.  Re-deriving them on real
+            # labels is a separate experiment, so the text says which cohort
+            # the justification belongs to instead of implying it carries over.
             "reason": (
-                "A2780 4-cell AUC was 0.350 (worse than random); "
-                "log(IC50) Pearson r vs A2780cis = 0.003. Treated as "
-                "a labelling artefact and excluded from this 3-cell run."
+                "A2780 is dropped by this script's cell-line list. The "
+                "original justification (4-cell AUC 0.350; log(IC50) Pearson "
+                "r vs A2780cis = 0.003) was measured on the SYNTHETIC "
+                "platinai_4cell cohort and has NOT been re-derived on real "
+                "labels."
             ),
             "reference": "metrics/by_metric/platinai_4cell_auc.json",
         },
@@ -714,8 +723,19 @@ def main() -> int:
         "value_a2780cis_auc": per_cell["A2780cis"]["auc_mean"],
         "value_a2780cis_std": per_cell["A2780cis"]["auc_std"],
         "per_cell_line": per_cell,
+        "per_seed": seed_results,
         "n_seeds": len(seed_results),
         "n_rows": len(smiles),
+        "split_sizes": {
+            "n_train": seed_results[0]["n_train"] if seed_results else None,
+            "n_val": seed_results[0]["n_val"] if seed_results else None,
+            "n_test": seed_results[0]["n_test"] if seed_results else None,
+            # Every seed shares one scaffold split (the loop re-runs the same
+            # splitter on the same SMILES), so the spread across seeds is
+            # training noise only.  It is NOT a split-level confidence
+            # interval: a single 20% test fold is one draw.
+            "note": "one split shared by all seeds; seed std measures init/shuffle/dropout, not split variance",
+        },
         "wall_clock_minutes": round(elapsed / 60, 1),
         "encoder_init": f"tmqm_pretrained_encoder.pt ({n_loaded}/12 backbone tensors)",
         "model": "dmpnn_3cell_resistance_with_sidefeat",

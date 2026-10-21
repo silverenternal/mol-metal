@@ -119,6 +119,14 @@
       "unit": "uM (source) -> pIC50 (output)",
       "caveat": "1,966 compounds, not the 4,078 of the synthetic cohort, and not a reproduction of Rusanov Table S4-S5 (their cohort spans 592 cell lines and is not fully reachable through the public API)."
     },
+    "platinai_4cell_real_trainer.csv": {
+      "labels": "REAL",
+      "label_type": "experimental IC50, converted to pIC50 (same values as platinai_4cell_real_cohort.csv)",
+      "source": "column projection of platinai_4cell_real_cohort.csv, written by build_platinai_4cell_real_cohort.py::write_trainer_view",
+      "evidence": "No new measurement is introduced: the file is the same 1,966 rows renamed into the schema load_platinai_4cell_split_table requires (SMILES_Ligands + pIC50_{a549,a2780,a2780cis,mcf7} + metal=Pt). Label provenance is inherited unchanged from platinai_4cell_real_cohort.csv, including its uM evidence and its 1,966-vs-4,078 caveat.",
+      "unit": "uM (source) -> pIC50 (output)",
+      "caveat": "Sparse by construction: a compound with no IC50 for a cell line has an empty cell, which the loader turns into NaN and masks out of the loss. Do not read an empty cell as 'inactive' — it is 'not measured'."
+    },
     "bace.csv": {
       "labels": "REAL",
       "label_type": "experimental pIC50",
